@@ -46,11 +46,26 @@ it. New findings go here when they are made.
 ## Toolchain
 
 - The HuC6280 defines 234 opcodes: the 65C02's, the Rockwell bit
-  instructions and Hudson's own; the 22 others run as NOPs. `huc.py`
-  decodes exactly the 234; its encodings are proven only when the pinned
-  assembler round-trips them.
+  instructions and Hudson's own; the 22 others run as NOPs. `huc.py` and
+  ca65 agree on all 910 forms of the control
+  ([decomp/log/bootstrap-2026-11-03](decomp/log/bootstrap-2026-11-03.md)).
+- ca65 refuses a constant branch target in a relocatable segment ("Range
+  error (Address size 2 does not match fragment size 1)"), BNE as much as
+  BBR. Branches go to labels, never to addresses.
+- ca65 takes no `z:` on BBR and BBS (their operand is always zero page),
+  but needs `z:` and `a:` everywhere else to fix the operand size.
+- ca65 takes TMA's operand only as a single MPR bit or 0 (TAM takes any):
+  any other TMA is written as `.byte $43,$nn`.
+- Beetle PCE's bundled zlib 1.2.11 defines `fdopen` away whenever
+  `TARGET_OS_MAC` is set, which breaks the macOS SDK's own declaration;
+  patch 0001 keeps only the `MACOS` test, as later zlib does.
 
 ## Method
+
+- ASM is the bit-exact decompilation, C the behaviour-exact one, and the C
+  is proper C: registers and flags appear only in each routine's `abi_`
+  wrapper. Register-shaped C is a stepping stone, never counted as
+  decompiled.
 
 - Routines are named by disc location, `@routine SSSS:OOO`, with
   `@run BB:AAAA` for where they execute: overlays reuse run addresses, a

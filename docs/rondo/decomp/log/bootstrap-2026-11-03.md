@@ -77,3 +77,36 @@ Sector $43 at $4000: `JMP $40F9`, three zero bytes, then 24 `JMP`s into
 $4393-$5BA0: the kernel's entry vectors. Sector $23 at $4000: a short
 program calling $E069 among others. Sectors $4C, $58 and $60 start with
 $FF filler; $4D starts with code-shaped bytes (`LDA <$31; ASL; TAX`).
+
+## Toolchain (fetch approved by the maintainer)
+
+cc65 pinned at `77b6484615427746e55fda2755c9cbc320a1fb51` and Beetle PCE
+at `b96c11e095b6a40a412d2da02766ae1c3f4fd539` (both upstream master
+today), fetched shallow into `tools/toolchains/src/`.
+
+ca65 and ld65: built in 4 s (`ca65 V2.19 - Git 77b6484`).
+
+Assembler control, first run: all 192 BBR and BBS lines refused `z:` on
+their zero-page operand, and two TMA lines refused operands $5A and $FF
+("Argument of TMA must be a power of two"). With those fixed, the second
+run failed on 232 lines, every branch: the 192 BBR and BBS lines and the
+40 plain ones (10 opcodes at 4 reaches), each "Range error (Address size
+2 does not match fragment size 1)". A four-line probe showed BNE to a
+constant fails the same way, and to a label passes. With branches written as
+`img+$offset` from a label at the image's start:
+
+```
+910 instructions over 234 defined opcodes, 22 undefined as data; 2388 B expected, 2388 B assembled, 0 differing bytes
+```
+
+`--plant` (`tsb a:$0012` written without `a:`) assembles TSB as zero page,
+moves every later byte down one and pushes 58 branches out of range: ca65
+fails, exit 1.
+
+Beetle PCE, first build: exit 2, `deps/zlib-1.2.11/zutil.o`: the SDK's
+`_stdio.h` line 322 declaration of `fdopen` broken by zutil.h line 133,
+which defines `fdopen(fd,mode)` as `NULL` when `TARGET_OS_MAC` is
+defined. Patch `tools/toolchains/patches/pce/0001-zlib-darwin-fdopen.patch`
+drops that test. Clean build from the patched checkout: 2.7 s on 14
+cores, `mednafen_pce_libretro.dylib`, arm64, 54 `retro_` exports, SHA-1
+prefix `d1dce514a128`, identical to the incremental build before it.

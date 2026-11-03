@@ -163,6 +163,35 @@ def text(name, mode, ops):
     return name + f.format(*ops)
 
 
+def ca65(name, mode, ops, label=None):
+    """The instruction in ca65 syntax, every operand size explicit.
+
+    z: forces a zero-page operand and a: an absolute one, so the bytes never
+    depend on the assembler choosing the shorter form. ca65 refuses a
+    constant branch target in a relocatable segment, so a branch goes to
+    a label: label(target) gives its text.
+    """
+    if mode in ("rel", "zrel") and label is not None:
+        tgt = label(ops[-1])
+        return name + (f" {tgt}" if mode == "rel" else f" ${ops[0]:02X},{tgt}")
+    if name is None:
+        return f".byte ${ops[0]:02X}"
+    # ca65 takes TMA's operand only as a single MPR bit; any other is data.
+    if name == "tma" and ops[0] & (ops[0] - 1):
+        return f".byte $43,${ops[0]:02X}"
+    f = {
+        "imp": "", "acc": " a", "imm": " #${0:02X}", "zp": " z:${0:02X}",
+        "zpx": " z:${0:02X},x", "zpy": " z:${0:02X},y", "izp": " (${0:02X})",
+        "izx": " (${0:02X},x)", "izy": " (${0:02X}),y", "abs": " a:${0:04X}",
+        "abx": " a:${0:04X},x", "aby": " a:${0:04X},y", "ind": " (${0:04X})",
+        "iax": " (${0:04X},x)", "rel": " ${0:04X}", "zrel": " ${0:02X},${1:04X}",
+        "blk": " ${0:04X},${1:04X},${2:04X}", "tzp": " #${0:02X},z:${1:02X}",
+        "tzx": " #${0:02X},z:${1:02X},x", "tab": " #${0:02X},a:${1:04X}",
+        "tax": " #${0:02X},a:${1:04X},x",
+    }[mode]
+    return name + f.format(*ops)
+
+
 def listing(buf, org, start=0, count=None):
     end = len(buf) if count is None else min(len(buf), start + count)
     i = start

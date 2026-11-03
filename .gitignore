@@ -4,3 +4,5 @@ build/
 references/
 reference/
 tools/toolchains/src/
+tools/toolchains/cc65/
+tools/toolchains/pce/

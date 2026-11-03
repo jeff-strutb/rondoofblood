@@ -1,13 +1,87 @@
 #!/bin/sh
-# Stage the project inside the repo. Nothing is installed on the host.
+# Stage the toolchain inside the repo. Nothing is installed on the host.
 #
-#   ./setup.sh            hooks, then check and split the reference disc
+#   ./setup.sh            hooks, toolchain, then check and split the disc
+#   ./setup.sh cc65       one component (cc65, pce, disc)
 #
-# The pinned assembler and emulator core join this script once their pins
-# are chosen (docs/rondo/PLAN.md, section 5); bumping a pin means
-# re-verifying every gate, so pins change deliberately and nowhere else.
+# Sources land in tools/toolchains/src/<name> at a pinned commit; build
+# products in tools/toolchains/<name>/. Bumping a pin means re-verifying
+# every gate, so pins change deliberately and nowhere else.
 set -eu
 top="$(cd "$(dirname "$0")" && pwd)"
-python3 "$top/tools/common/install_hooks.py"
-python3 -I "$top/tools/rondo/disc.py"
-python3 -I "$top/tools/rondo/image.py"
+tc="$top/tools/toolchains"
+mkdir -p "$tc/src"
+jobs="$(sysctl -n hw.ncpu 2>/dev/null || nproc)"
+
+CC65_URL=https://github.com/cc65/cc65
+CC65_PIN=77b6484615427746e55fda2755c9cbc320a1fb51      # master, 2026-11-03
+PCE_URL=https://github.com/libretro/beetle-pce-libretro
+PCE_PIN=b96c11e095b6a40a412d2da02766ae1c3f4fd539       # master, 2026-11-03
+
+fetch() { # name url pin
+    d="$tc/src/$1"
+    if [ ! -d "$d/.git" ]; then
+        git init -q "$d"
+        git -C "$d" remote add origin "$2"
+    fi
+    if [ "$(git -C "$d" rev-parse -q --verify HEAD 2>/dev/null || true)" != "$3" ]; then
+        git -C "$d" fetch -q --depth 1 origin "$3"
+        git -C "$d" checkout -q --force "$3"
+    fi
+    # Local patches live in the repo and are applied on a clean checkout,
+    # again whenever the patch set changes.
+    pd="$tc/patches/$1"
+    if [ -d "$pd" ] && ls "$pd"/*.patch >/dev/null 2>&1; then
+        stamp="$(cat "$pd"/*.patch | shasum | cut -c1-40)"
+        if [ "$(cat "$d/.patch-stamp" 2>/dev/null || true)" != "$stamp" ]; then
+            git -C "$d" reset -q --hard "$3"
+            git -C "$d" clean -qfd
+            for p in "$pd"/*.patch; do git -C "$d" apply "$p"; done
+            echo "$stamp" > "$d/.patch-stamp"
+        fi
+    fi
+    return 0
+}
+
+build_cc65() {
+    fetch cc65 "$CC65_URL" "$CC65_PIN"
+    make -C "$tc/src/cc65/src" -j "$jobs" ca65 ld65 >/dev/null
+    mkdir -p "$tc/cc65"
+    for t in ca65 ld65; do
+        cp "$tc/src/cc65/bin/$t" "$tc/cc65/.$t.new"
+        mv "$tc/cc65/.$t.new" "$tc/cc65/$t"
+    done
+    "$tc/cc65/ca65" --version 2>&1 | head -1
+}
+
+build_pce() {
+    fetch pce "$PCE_URL" "$PCE_PIN"
+    make -C "$tc/src/pce" -j "$jobs" >/dev/null 2>&1
+    mkdir -p "$tc/pce"
+    # Built into a new file and moved in: never overwrite a core a run is using.
+    cp "$tc/src/pce/mednafen_pce_libretro.dylib" "$tc/pce/.core.new" 2>/dev/null ||
+        cp "$tc/src/pce/mednafen_pce_libretro.so" "$tc/pce/.core.new"
+    mv "$tc/pce/.core.new" "$tc/pce/mednafen_pce_libretro.dylib"
+    echo "pce core: $(shasum "$tc/pce/mednafen_pce_libretro.dylib" | cut -c1-12)"
+}
+
+disc() {
+    python3 -I "$top/tools/rondo/disc.py"
+    python3 -I "$top/tools/rondo/image.py"
+}
+
+if [ $# -eq 0 ]; then
+    python3 "$top/tools/common/install_hooks.py"
+    build_cc65
+    build_pce
+    disc
+else
+    for c in "$@"; do
+        case "$c" in
+            cc65) build_cc65 ;;
+            pce) build_pce ;;
+            disc) disc ;;
+            *) echo "unknown component: $c" >&2; exit 2 ;;
+        esac
+    done
+fi

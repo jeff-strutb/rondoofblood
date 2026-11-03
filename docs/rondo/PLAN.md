@@ -12,11 +12,24 @@ from RAM.
 
 ## 1. Standard
 
+The game was written in assembly, so it has two decompilations, as the
+SNES decomps do:
+
 | | |
 |---|---|
-| ASM | the decompilation: symbolic source that rebuilds the disc's data track byte for byte (image gate) |
-| C | the companion: behaviour exact, each routine's inputs to outputs exactly the original's (A5 + A7) |
+| ASM | the bit-exact decompilation: symbolic source that rebuilds the disc's data track byte for byte (image gate) |
+| C | the behaviour-exact decompilation: proper C, each routine's inputs to outputs exactly the original's (A5 + A7) |
 | Enhanced | later, beside the C, never in place of it |
+
+**Proper C** means typed arguments and returns, locals, loops, structs and
+named RAM: written as C, not as assembly in C's syntax. No register file,
+flag helpers or gotos standing in for branches in a routine's body; the
+registers and flags the original leaves visible (to its caller, at a wait,
+to a callee) are set only in the routine's `abi_` wrapper, the one place
+that meets the assembly's calling convention. Register-shaped C is at most
+a stepping stone, reported as one with its count, never as decompiled
+(playbook sections 0.15 and 18). Where ASM and C disagree, the ASM and
+the original disc are right.
 
 Cycle exact is not the standard (playbook section 15): the C carries no
 instruction timing.
@@ -25,7 +38,7 @@ instruction timing.
 |---|---|
 | T1 | traced; in the raw intake with address labels; reassembles exact |
 | T2 | C written and filed, assembly named and filed; not yet certified |
-| T3 | C certified behaviour exact: gates 0, C, A5, A7 pass |
+| T3 | the C is proper C and certified behaviour exact: gates 0, C, A5, A7 pass |
 | T4 | T3, and its assembly is symbolic and byte identical in place in the whole image |
 
 M1 = every routine T3. M2 = every routine T4 and the data track rebuilt
@@ -46,7 +59,7 @@ script runs (the census) in the denominator.
 
 ## 3. Status (2026-11-03)
 
-Phase 0 has begun. Done and verified:
+Phase 0 is under way. Done and verified:
 
 - The reference set: all 23 files hashed and pinned; every MODE1 sector of
   both data tracks checked (sync, header address, mode, EDC): 0 bad.
@@ -58,8 +71,16 @@ Phase 0 has begun. Done and verified:
   progress.
 - The boot read by hand: the boot block, the boot program and its load
   table (HANDBOOK, Code).
-- A HuC6280 decoder with all 234 defined opcodes (`huc.py`), for reading;
-  its encodings are not yet proven against an assembler.
+- A HuC6280 decoder with all 234 defined opcodes (`huc.py`), which writes
+  the intake's text form in ca65 syntax.
+- ca65 and ld65 (cc65 at `77b64846`) built in the repo. Assembler control
+  (`asmcontrol.py`): 910 instruction forms over all 234 defined opcodes,
+  operands chosen to tempt a shorter form, plus the 22 undefined opcodes
+  as data: 2,388 B, 0 differing bytes. Dropping one operand size fails it.
+- Beetle PCE (Mednafen's accurate PC Engine, `b96c11e0`) built headless in
+  the repo with one local patch: arm64, 54 libretro exports, the same
+  library from a clean build. Not yet patched with hooks; not yet run, as
+  it has no System Card image.
 
 No routine is at any tier. The code-byte denominator is unknown until the
 first traces.
@@ -68,28 +89,28 @@ first traces.
 
 | Phase | | State |
 |---|---|---|
-| 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | layout, hooks, disc and image gate done; assembler and core waiting on pins (section 5) |
+| 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | done but for the core's hooks, the headless runner and a first boot, which wait on the System Card image (section 5) |
 | 1 | A dozen scripts from power-on through every mode; trace; fold RAM execution onto the disc; T1 raw intake; image gate from source | not started |
 | 2 | A5 and A7 proven on one tiny routine with negative controls; catalog | not started |
 | 3 | Routines bottom up, smallest first, committed per verified batch | not started |
 | 4 | Coverage closure and the static census | not started |
 
-## 5. Open decisions (the maintainer's)
+## 5. Toolchain and open decisions
 
-1. **Fetching the toolchain.** Both pins come from GitHub and need
-   permission to download:
-   - **Assembler:** asar has no HuC6280. Proposed: ca65 from cc65 at a
-     pinned commit (`.setcpu "huc6280"`; `z:` and `a:` force operand
-     sizes, as `.b` and `.w` did under asar). Accepted only after a
-     control image of every opcode form round-trips with 0 differing
-     bytes, and fails on a planted operand size. Alternative: PCEAS
-     (HuC), the PC Engine's own assembler.
-   - **Core:** Mednafen's accurate `pce` emulation (the libretro Beetle
-     PCE core, not Beetle PCE Fast), pinned and patched for the trace,
-     check and lockstep hooks, the role bsnes played for the SNES.
-2. **The System Card 3.0 image** the core boots from. It is not in
-   `references/`; the oracle cannot run without one. It is pinned by hash
-   once supplied.
+Decided 2026-11-03 (fetch approved by the maintainer):
+
+- **Assembler:** ca65 and ld65 from cc65, pinned (`.setcpu "huc6280"`;
+  `z:` and `a:` force operand sizes, as `.b` and `.w` did under asar),
+  accepted on the control above.
+- **Core:** Mednafen's accurate `pce` emulation (the libretro Beetle PCE
+  core, not Beetle PCE Fast), pinned, to be patched for the trace, check
+  and lockstep hooks: the role bsnes played for the SNES.
+
+Open, the maintainer's:
+
+1. **The System Card 3.0 image** the core boots from. It is not in
+   `references/`; nothing can run without one. It is pinned by hash once
+   supplied.
 
 ## 6. Limits known before building (playbook rule 11)
 

@@ -1,0 +1,47 @@
+# From power on to Stage 0's first frames: RUN on the card's title, the
+# intro to the title (frame 7,400), RUN, NAME ENTRY (cursor 4) for PLAYER1
+# named A, back to the file menu (cursor 1), PLAYER1, GAME START.
+wait 120
+press RUN 6
+wait 7280
+press RUN 6
+wait 300
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press I 6
+wait 120
+press I 6
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press UP 4
+wait 20
+press UP 4
+wait 20
+press UP 4
+wait 20
+press I 6
+wait 120
+press I 6

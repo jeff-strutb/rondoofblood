@@ -65,6 +65,10 @@ are filed by responsibility, never by sector or address range.
 | `tools/rondo/pcebox/` | the original game run headless on the pinned core from a script in `tools/rondo/scripts/`: wait, press, shot, dump |
 | `tools/rondo/loadcheck.py` | which disc sectors each RAM bank of a dump holds |
 | `tools/rondo/ppm2png.py` | frame dumps to PNG |
+| `tools/rondo/sheet.py` | frame dumps as one contact sheet |
+| `tools/rondo/pcebox/trace.c` | `--trace`: executed and read bytes folded onto the disc through each RAM byte's disc origin; `--watch` lists the instructions touching a byte |
+| `tools/rondo/trace.py` | every script traced in parallel under a timeout, maps merged into `build/rondo/trace/`, disc consistency enforced |
+| `tools/rondo/estimate.py` | the code-size estimate, with its measured error |
 | `tools/rondo/precommit.py` | filing rules on staged files |
 
 ```bash

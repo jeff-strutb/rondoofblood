@@ -1,0 +1,21 @@
+# Stage 0 by seeded random play, 5 minutes.
+include _newgame.txt
+wait 1500
+random 101 3000 8
+shot r1
+dump r1
+random 102 3000 8
+shot r2
+dump r2
+random 103 3000 8
+shot r3
+dump r3
+random 104 3000 8
+shot r4
+dump r4
+random 105 3000 8
+shot r5
+dump r5
+random 106 3000 8
+shot r6
+dump r6

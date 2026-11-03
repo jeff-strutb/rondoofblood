@@ -57,12 +57,15 @@ build_cc65() {
 
 build_pce() {
     fetch pce "$PCE_URL" "$PCE_PIN"
+    mkdir -p "$top/build"
     # New patches: build from clean, so no object predates them.
     if [ -e "$tc/src/pce/.rebuild" ]; then
         make -C "$tc/src/pce" clean >/dev/null 2>&1
         rm "$tc/src/pce/.rebuild"
     fi
-    make -C "$tc/src/pce" -j "$jobs" >/dev/null
+    # The SDK's libc++ warns on every file; the log keeps it, a failure shows it.
+    make -C "$tc/src/pce" -j "$jobs" >"$top/build/pce-make.log" 2>&1 ||
+        { tail -20 "$top/build/pce-make.log"; exit 1; }
     mkdir -p "$tc/pce"
     # Built into a new file and moved in: never overwrite a core a run is using.
     cp "$tc/src/pce/mednafen_pce_libretro.dylib" "$tc/pce/.core.new" 2>/dev/null ||
@@ -73,8 +76,10 @@ build_pce() {
 
 build_pcebox() {
     mkdir -p "$top/build/rondo/pcebox"
-    cc -O2 -Wall -Wextra -I "$tc/src/pce/libretro-common/include" \
-        -o "$top/build/rondo/pcebox/.pcebox.new" "$top/tools/rondo/pcebox/pcebox.c"
+    python3 -I "$top/tools/rondo/huc.py" --c-opclass > "$top/build/rondo/pcebox/opclass.h"
+    cc -O2 -Wall -Wextra -I "$tc/src/pce/libretro-common/include" -I "$top/build/rondo/pcebox" \
+        -o "$top/build/rondo/pcebox/.pcebox.new" "$top/tools/rondo/pcebox/pcebox.c" \
+        "$top/tools/rondo/pcebox/trace.c"
     mv "$top/build/rondo/pcebox/.pcebox.new" "$top/build/rondo/pcebox/pcebox"
     echo "pcebox: built"
 }

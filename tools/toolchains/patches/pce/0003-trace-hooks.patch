@@ -1,0 +1,253 @@
+diff --git a/mednafen/cdrom/scsicd.cpp b/mednafen/cdrom/scsicd.cpp
+index 4406d66..cbbc0b6 100644
+--- a/mednafen/cdrom/scsicd.cpp
++++ b/mednafen/cdrom/scsicd.cpp
+@@ -180,6 +180,19 @@ static cdda_t cdda;
+ 
+ static SimpleFIFO<uint8_t> *din = NULL;
+ 
++// For the decomp's harness: beside each FIFO byte, the disc byte it came
++// from (absolute LBA * 2048 + offset), or none; and that of the byte on DB.
++#define RONDO_NONE 0xFFFFFFFFu
++static uint32_t rondo_din_origin[2048];
++uint32_t rondo_db_origin = RONDO_NONE;
++
++static void rondo_din_mark(uint32_t lba, uint32_t len)
++{
++ for(uint32_t i = 0; i < len; i++)
++  rondo_din_origin[(din->write_pos + i) & (din->data.size() - 1)] =
++   lba == RONDO_NONE ? RONDO_NONE : lba * 2048 + i;
++}
++
+ static TOC toc;
+ 
+ static uint32_t read_sec_start;
+@@ -286,6 +299,7 @@ void SCSICD_Power(scsicd_timestamp_t system_timestamp)
+ void SCSICD_SetDB(uint8_t data)
+ {
+  cd_bus.DB = data;
++ rondo_db_origin = RONDO_NONE;
+ }
+ 
+ void SCSICD_SetACK(bool set)
+@@ -455,12 +469,14 @@ static void SendStatusAndMessage(uint8_t status, uint8_t message)
+    cd_bus.DB = 0x00;
+  else
+    cd_bus.DB = 0x01;
++ rondo_db_origin = RONDO_NONE;
+ 
+  ChangePhase(PHASE_STATUS);
+ }
+ 
+ static void DoSimpleDataIn(const uint8_t *data_in, uint32_t len)
+ {
++ rondo_din_mark(RONDO_NONE, len);
+  din->Write(data_in, len);
+ 
+  cd.data_transfer_done = true;
+@@ -1322,6 +1338,7 @@ static INLINE void RunCDRead(uint32_t system_timestamp, int32_t run_time)
+     {
+      memcpy(cd.SubPWBuf, tmp_read_buf + 2352, 96);
+ 
++     rondo_din_mark(SectorAddr, 2048);
+      if(tmp_read_buf[12 + 3] == 0x2)
+       din->Write(tmp_read_buf + 24, 2048);
+      else
+@@ -1513,6 +1530,7 @@ uint32_t SCSICD_Run(scsicd_timestamp_t system_timestamp)
+      // Status sent, so get ready to send the message!
+      cd.status_sent = FALSE;
+      cd_bus.DB = cd.message_pending;
++     rondo_db_origin = RONDO_NONE;
+ 
+      ChangePhase(PHASE_MESSAGE_IN);
+     }
+@@ -1534,6 +1552,7 @@ uint32_t SCSICD_Run(scsicd_timestamp_t system_timestamp)
+      }
+      else
+      {
++      rondo_db_origin = rondo_din_origin[din->read_pos];
+       cd_bus.DB = din->ReadByte();
+       SetREQ(TRUE);
+      }
+diff --git a/mednafen/pce/huc.cpp b/mednafen/pce/huc.cpp
+index bb34116..de2c4c9 100644
+--- a/mednafen/pce/huc.cpp
++++ b/mednafen/pce/huc.cpp
+@@ -573,3 +573,11 @@ extern "C" __attribute__((visibility("default"))) unsigned rondo_pc(void)
+ {
+ 	return HuCPU.PeekPC();
+ }
++
++// The trace hooks (huc6280.h): NULL turns each off.
++extern "C" __attribute__((visibility("default"))) void rondo_set_hooks(rondo_rd_t rd, rondo_wr_t wr, void (*irq)(void))
++{
++	rondo_rd_hook = rd;
++	rondo_wr_hook = wr;
++	rondo_irq_hook = irq;
++}
+diff --git a/mednafen/pce/huc6280.cpp b/mednafen/pce/huc6280.cpp
+index cc323df..b6ddb2b 100644
+--- a/mednafen/pce/huc6280.cpp
++++ b/mednafen/pce/huc6280.cpp
+@@ -540,6 +540,13 @@ void HuC6280::HappySync(void)
+ 	CalcNextEvent();
+ }
+ 
++extern "C" {
++rondo_rd_t rondo_rd_hook = NULL;
++rondo_wr_t rondo_wr_hook = NULL;
++void (*rondo_irq_hook)(void) = NULL;
++int rondo_kind = 0;
++}
++
+ NO_INLINE void HuC6280::RunSub(void)
+ {
+ 	uint32 old_PC;
+@@ -563,6 +570,8 @@ NO_INLINE void HuC6280::RunSub(void)
+ 		{
+ 			if(MDFN_UNLIKELY(IRQSample & IQRESET))
+ 			{
++				if(rondo_irq_hook)
++					rondo_irq_hook();
+ 				speed = 0;
+ 				REDOSPEEDCACHE();
+ 
+@@ -590,6 +599,8 @@ NO_INLINE void HuC6280::RunSub(void)
+ 
+ 				if(tmpa)
+ 				{
++					if(rondo_irq_hook)
++						rondo_irq_hook();
+ 					// Total: 8 cycles(7 ADDCYC(1), 1 LASTCYCLE)
+ 
+ 					ADDCYC(1);	// Cycle 1
+@@ -624,7 +635,7 @@ NO_INLINE void HuC6280::RunSub(void)
+ 		}
+ 		PC &= 0xFFFF;     // Our cpu core can only handle PC going about 8192 bytes over, so make sure it never gets that far...
+ 
+-		lastop = RdOp(PC);
++		lastop = RdOpcode(PC);
+ 
+ 		PC++;
+ 
+diff --git a/mednafen/pce/huc6280.h b/mednafen/pce/huc6280.h
+index 97e110c..47ba58c 100644
+--- a/mednafen/pce/huc6280.h
++++ b/mednafen/pce/huc6280.h
+@@ -1,6 +1,18 @@
+ #ifndef __MDFN_PCE_HUC6280_H
+ #define __MDFN_PCE_HUC6280_H
+ 
++// Trace hooks for the decomp's harness: called on every access when set,
++// with the 21-bit physical address. No effect on emulation.
++// kind: 0 data read, 1 operand fetch, 2 opcode fetch.
++extern "C" {
++typedef void (*rondo_rd_t)(uint32 phys, uint8 v, int kind);
++typedef void (*rondo_wr_t)(uint32 phys, uint8 v);
++extern rondo_rd_t rondo_rd_hook;
++extern rondo_wr_t rondo_wr_hook;
++extern void (*rondo_irq_hook)(void);
++extern int rondo_kind;
++}
++
+ class MDFN_ALIGN(128) HuC6280
+ {
+ public:
+@@ -165,19 +177,37 @@ private:
+ 	// Logical
+ 	uint8 INLINE RdMem(unsigned int address)
+ 	{
+-		if(FastPageR[address >> 13])
+-			return *(uint8*)(FastPageR[address >> 13] + address);
+-
+-		LastLogicalReadAddr = address;
+-
++		uint8 v;
+ 		uint8 wmpr = MPR[address >> 13];
+-		return ReadMap[wmpr]((wmpr << 13) | (address & 0x1FFF));
++
++		if(FastPageR[address >> 13])
++			v = *(uint8*)(FastPageR[address >> 13] + address);
++		else
++		{
++			LastLogicalReadAddr = address;
++			v = ReadMap[wmpr]((wmpr << 13) | (address & 0x1FFF));
++		}
++		if(MDFN_UNLIKELY(rondo_rd_hook != NULL))
++			rondo_rd_hook((wmpr << 13) | (address & 0x1FFF), v, rondo_kind);
++		return v;
+ 	}
+ 
+ 	// Logical
+ 	uint8 INLINE RdOp(unsigned int address)
+ 	{
+-		return RdMem(address);
++		rondo_kind = 1;
++		uint8 v = RdMem(address);
++		rondo_kind = 0;
++		return v;
++	}
++
++	// Logical: the first byte of an instruction.
++	uint8 INLINE RdOpcode(unsigned int address)
++	{
++		rondo_kind = 2;
++		uint8 v = RdMem(address);
++		rondo_kind = 0;
++		return v;
+ 	}
+ 
+ 	// Logical
+@@ -188,6 +218,8 @@ private:
+ 		LastLogicalWriteAddr = address;
+ 
+ 		WriteMap[wmpr]((wmpr << 13) | (address & 0x1FFF), V);
++		if(MDFN_UNLIKELY(rondo_wr_hook != NULL))
++			rondo_wr_hook((wmpr << 13) | (address & 0x1FFF), V);
+ 	}
+ 
+ 	// Used for ST0, ST1, ST2
+@@ -195,6 +227,8 @@ private:
+ 	void INLINE WrMemPhysical(uint32 address, uint8 data)
+ 	{
+ 		WriteMap[(address >> 13) & 0xFF](address, data);
++		if(MDFN_UNLIKELY(rondo_wr_hook != NULL))
++			rondo_wr_hook(address & 0x1FFFFF, data);
+ 	}
+ 
+ 	void INLINE REDOPIMCACHE(void)
+diff --git a/mednafen/pce/pcecd.cpp b/mednafen/pce/pcecd.cpp
+index 80219ea..78cacf5 100644
+--- a/mednafen/pce/pcecd.cpp
++++ b/mednafen/pce/pcecd.cpp
+@@ -372,9 +372,21 @@ static void UpdateADPCMIRQState(void)
+ 	update_irq_state();
+ }
+ 
++// For the decomp's harness: the disc origin of the last byte the CPU read
++// from the CD data bus ($1801 or $1808), as scsicd.cpp tracks it.
++extern uint32_t rondo_db_origin;
++static uint32_t rondo_cpu_origin = 0xFFFFFFFFu;
++
++extern "C" __attribute__((visibility("default"))) uint32_t rondo_cd_origin(void)
++{
++	return rondo_cpu_origin;
++}
++
+ static uint8 INLINE read_1808(int32 timestamp, const bool PeekMode)
+ {
+ 	uint8 ret = SCSICD_GetDB();
++	if(!PeekMode)
++		rondo_cpu_origin = rondo_db_origin;
+ 
+ 	if(!PeekMode)
+ 	{
+@@ -534,6 +546,8 @@ uint8 MDFN_FASTCALL PCECD_Read(uint32 timestamp, uint32 A, int32 &next_event, co
+ 
+ 			case 0x1:
+ 				ret = SCSICD_GetDB();
++				if(!PeekMode)
++					rondo_cpu_origin = rondo_db_origin;
+ 				break;
+ 
+ 			case 0x2:

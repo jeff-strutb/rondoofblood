@@ -87,6 +87,11 @@ Phase 0 is under way. Done and verified:
   hand reading predicted, the kernel loads on, the Konami logo fades in;
   overlays reuse RAM within four seconds. The USA card loads identical
   Super and CD RAM.
+- Tracing (core patch 0003, `trace.c`, `trace.py`): every executed and
+  read byte folded onto the disc through each RAM byte's disc origin,
+  consistent with the disc at every dump. Scripts reach the menus,
+  Stage 0 and Stage 1: 44,847 B of disc code traced. Estimated total
+  about 196 KB of distinct code (131 to 260 KB; `estimate.py`).
 
 No routine is at any tier. The code-byte denominator is unknown until the
 first traces.
@@ -95,8 +100,8 @@ first traces.
 
 | Phase | | State |
 |---|---|---|
-| 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | done but for the trace hooks (per-instruction events, who touched each RAM byte, bus accesses), next |
-| 1 | A dozen scripts from power-on through every mode; trace; fold RAM execution onto the disc; T1 raw intake; image gate from source | not started |
+| 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | done |
+| 1 | A dozen scripts from power-on through every mode; trace; fold RAM execution onto the disc; T1 raw intake; image gate from source | trace and fold done; 6 scripts (boot, attract, menus, Stage 0-1); the other stages, the menus' other paths, Maria and the ending not yet reached; T1 intake next |
 | 2 | A5 and A7 proven on one tiny routine with negative controls; catalog | not started |
 | 3 | Routines bottom up, smallest first, committed per verified batch | not started |
 | 4 | Coverage closure and the static census | not started |

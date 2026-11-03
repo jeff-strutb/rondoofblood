@@ -2,6 +2,7 @@
  * pcebox: the original game run headless on the pinned PC Engine core.
  *
  *   pcebox --core LIB --cue CUE --system DIR --script FILE --out DIR [--card jp|us]
+ *          [--trace USER [--plant-origin N]]
  *
  * The core is Mednafen's accurate PC Engine (Beetle PCE). Every option it
  * asks for that bears on emulation is answered explicitly, and every one
@@ -11,12 +12,26 @@
  *
  *   wait N              run N frames, pad released
  *   press B+B N         hold the buttons N frames, then release
+ *   hold B+B            hold the buttons from here on (wait releases them)
+ *   run N               run N frames, the pad as it is
+ *   include FILE        run another script here (relative to this one)
+ *   random SEED N H     N frames of seeded random play: a new pad state every
+ *                       H frames, drawn from moves, jumps, attacks, the
+ *                       sub-weapon and crouching (never SELECT+RUN, the
+ *                       soft reset); the same seed plays the same
  *   shot NAME           the last frame as OUT/NAME.ppm
  *   dump NAME           OUT/NAME.ram: frame number, MPR0-7 and PC, then
  *                       Super System Card RAM ($68-$7F), CD RAM ($80-$87)
  *                       and base RAM ($F8), 8 KB a bank in that order
  *
  * Buttons: UP DOWN LEFT RIGHT I II SELECT RUN.
+ *
+ * --trace USER (track 02's user data) folds what runs onto the disc
+ * (trace.c): every dump also checks that each RAM byte with a disc origin
+ * holds that disc byte, and the maps are written to OUT at the end.
+ * --plant-origin N shifts every CD origin by N bytes, to prove that check
+ * fails. --watch PHYS (hex, repeatable) lists every instruction that reads
+ * or writes that physical byte, with its disc origin.
  */
 #include <dlfcn.h>
 #include <stdarg.h>
@@ -26,6 +41,16 @@
 #include <string.h>
 
 #include "libretro.h"
+
+int trace_init(const char *user_path, int plant_offset, uint32_t (*origin)(void));
+void trace_rd(uint32_t phys, uint8_t v, int kind);
+void trace_wr(uint32_t phys, uint8_t v);
+void trace_irq(void);
+void trace_check(const char *name, const uint8_t *(*bank)(unsigned));
+void trace_finish(const char *dir);
+void trace_watch(uint32_t phys);
+static const char *trace_user;
+static int trace_plant;
 
 static const char *opt_card = "System Card 3";
 static const char *system_dir, *out_dir;
@@ -69,6 +94,7 @@ static void core_log(enum retro_log_level level, const char *fmt, ...)
     va_end(ap);
 }
 
+static enum retro_pixel_format pixfmt = RETRO_PIXEL_FORMAT_0RGB1555;
 static char defaulted[64][64];
 static int ndefaulted;
 
@@ -85,7 +111,10 @@ static bool environment(unsigned cmd, void *data)
         ((struct retro_log_callback *)data)->log = core_log;
         return true;
     case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT:
-        return *(enum retro_pixel_format *)data == RETRO_PIXEL_FORMAT_XRGB8888;
+        /* The core is built 16-bit (RGB565) and draws so whatever the
+         * answer; take what it asks for and convert. */
+        pixfmt = *(enum retro_pixel_format *)data;
+        return pixfmt == RETRO_PIXEL_FORMAT_XRGB8888 || pixfmt == RETRO_PIXEL_FORMAT_RGB565;
     case RETRO_ENVIRONMENT_GET_VARIABLE: {
         struct retro_variable *v = data;
         v->value = answer(v->key);
@@ -122,8 +151,18 @@ static void video(const void *data, unsigned w, unsigned h, size_t pitch)
         return;
     if (w > 1024) w = 1024;
     if (h > 512) h = 512;
-    for (unsigned y = 0; y < h; y++)
-        memcpy(frame_px + y * w, (const uint8_t *)data + y * pitch, w * 4);
+    for (unsigned y = 0; y < h; y++) {
+        const uint8_t *row = (const uint8_t *)data + y * pitch;
+        if (pixfmt == RETRO_PIXEL_FORMAT_XRGB8888) {
+            memcpy(frame_px + y * w, row, w * 4);
+            continue;
+        }
+        for (unsigned x = 0; x < w; x++) {
+            uint16_t c = ((const uint16_t *)row)[x];
+            uint32_t r = (c >> 11) & 31, g = (c >> 5) & 63, b = c & 31;
+            frame_px[y * w + x] = ((r << 3 | r >> 2) << 16) | ((g << 2 | g >> 4) << 8) | (b << 3 | b >> 2);
+        }
+    }
     frame_w = w;
     frame_h = h;
 }
@@ -180,6 +219,25 @@ static void run(unsigned long n)
     }
 }
 
+static void random_play(uint32_t seed, unsigned long n, unsigned long hold)
+{
+    static const char *states[] = {
+        "RIGHT", "RIGHT", "RIGHT+II", "RIGHT+I", "II", "I", "LEFT", "LEFT+II",
+        "DOWN+I", "UP+I", "RIGHT+UP+I", "DOWN", "UP", "RIGHT+II", "I", "RIGHT",
+    };
+    uint32_t x = seed ? seed : 1;
+    while (n) {
+        unsigned long k = n < hold ? n : hold;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        pad = (x >> 8) % 7 == 0 ? 0 : buttons(states[x & 15]);
+        run(k);
+        n -= k;
+    }
+    pad = 0;
+}
+
 static FILE *open_out(const char *name, const char *ext)
 {
     char path[4096];
@@ -207,6 +265,8 @@ static void shot(const char *name)
 
 static void dump(const char *name)
 {
+    if (trace_user)
+        trace_check(name, core_bank);
     static const uint8_t zero[8192];
     FILE *f = open_out(name, "ram");
     uint8_t hdr[16] = { 0 };
@@ -223,6 +283,67 @@ static void dump(const char *name)
         fwrite(p ? p : zero, 1, 8192, f);
     }
     fclose(f);
+}
+
+/* Run a script; include nests up to 8 deep. 0, or nonzero on a bad line. */
+static int run_script(const char *script, int depth)
+{
+    FILE *s = fopen(script, "r");
+    if (!s) {
+        perror(script);
+        return 1;
+    }
+    char line[512];
+    int ln = 0;
+    while (fgets(line, sizeof line, s)) {
+        char cmd[32], a1[128];
+        unsigned long n = 0;
+        ln++;
+        char *h = strchr(line, '#');
+        if (h) *h = 0;
+        int k = sscanf(line, "%31s %127s %lu", cmd, a1, &n);
+        if (k <= 0)
+            continue;
+        if (!strcmp(cmd, "wait") && k >= 2) {
+            pad = 0;
+            run(strtoul(a1, NULL, 10));
+        } else if (!strcmp(cmd, "random") && k == 3) {
+            unsigned long hold = 8;
+            char a3[32];
+            if (sscanf(line, "%*s %*s %*s %31s", a3) == 1)
+                hold = strtoul(a3, NULL, 10);
+            random_play((uint32_t)strtoul(a1, NULL, 10), n, hold ? hold : 8);
+        } else if (!strcmp(cmd, "hold") && k == 2) {
+            pad = buttons(a1);
+        } else if (!strcmp(cmd, "run") && k == 2) {
+            run(strtoul(a1, NULL, 10));
+        } else if (!strcmp(cmd, "press") && k == 3) {
+            pad = buttons(a1);
+            run(n);
+            pad = 0;
+        } else if (!strcmp(cmd, "include") && k == 2) {
+            char path[4096];
+            const char *slash = strrchr(script, '/');
+            if (a1[0] == '/' || !slash)
+                snprintf(path, sizeof path, "%s", a1);
+            else
+                snprintf(path, sizeof path, "%.*s/%s", (int)(slash - script), script, a1);
+            if (depth > 8 || run_script(path, depth + 1)) {
+                fclose(s);
+                return 2;
+            }
+        } else if (!strcmp(cmd, "shot") && k == 2) {
+            shot(a1);
+        } else if (!strcmp(cmd, "dump") && k == 2) {
+            dump(a1);
+        } else {
+            fprintf(stderr, "pcebox: %s:%d: bad command\n", script, ln);
+            fclose(s);
+            return 2;
+        }
+    }
+    fclose(s);
+    return 0;
 }
 
 static void *sym(void *lib, const char *name)
@@ -244,6 +365,9 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--system")) system_dir = argv[i + 1];
         else if (!strcmp(argv[i], "--script")) script = argv[i + 1];
         else if (!strcmp(argv[i], "--out")) out_dir = argv[i + 1];
+        else if (!strcmp(argv[i], "--trace")) trace_user = argv[i + 1];
+        else if (!strcmp(argv[i], "--plant-origin")) trace_plant = atoi(argv[i + 1]);
+        else if (!strcmp(argv[i], "--watch")) trace_watch((uint32_t)strtoul(argv[i + 1], NULL, 16));
         else if (!strcmp(argv[i], "--card"))
             opt_card = !strcmp(argv[i + 1], "us") ? "System Card 3 US" : "System Card 3";
         else {
@@ -278,43 +402,20 @@ int main(int argc, char **argv)
         return 1;
     }
     ((void (*)(unsigned, unsigned))sym(lib, "retro_set_controller_port_device"))(0, RETRO_DEVICE_JOYPAD);
+    if (trace_user) {
+        if (trace_init(trace_user, trace_plant, (uint32_t (*)(void))sym(lib, "rondo_cd_origin")))
+            return 1;
+        ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
+            (void *)trace_rd, (void *)trace_wr, (void *)trace_irq);
+    }
     for (int i = 0; i < ndefaulted; i++)
         fprintf(stderr, "pcebox: option %s left at the core's default\n", defaulted[i]);
 
-    FILE *s = fopen(script, "r");
-    if (!s) {
-        perror(script);
-        return 1;
-    }
-    char line[512];
-    int ln = 0;
-    while (fgets(line, sizeof line, s)) {
-        char cmd[32], a1[128];
-        unsigned long n = 0;
-        ln++;
-        char *h = strchr(line, '#');
-        if (h) *h = 0;
-        int k = sscanf(line, "%31s %127s %lu", cmd, a1, &n);
-        if (k <= 0)
-            continue;
-        if (!strcmp(cmd, "wait") && k >= 2) {
-            pad = 0;
-            run(strtoul(a1, NULL, 10));
-        } else if (!strcmp(cmd, "press") && k == 3) {
-            pad = buttons(a1);
-            run(n);
-            pad = 0;
-        } else if (!strcmp(cmd, "shot") && k == 2) {
-            shot(a1);
-        } else if (!strcmp(cmd, "dump") && k == 2) {
-            dump(a1);
-        } else {
-            fprintf(stderr, "pcebox: %s:%d: bad command\n", script, ln);
-            return 2;
-        }
-    }
-    fclose(s);
+    if (run_script(script, 0))
+        return 2;
     printf("pcebox: %lu frames\n", frames);
+    if (trace_user)
+        trace_finish(out_dir);
     ((void (*)(void))sym(lib, "retro_unload_game"))();
     ((void (*)(void))sym(lib, "retro_deinit"))();
     return 0;

@@ -52,6 +52,30 @@ it. New findings go here when they are made.
   at frame 240, $61-$64 at frame 480). By frame 480 CD RAM ($80-$87)
   holds sectors $81-$A0.
 
+- Disc code starts in user sector 0: 159 B of it run from $2B26-$2CD3,
+  where the card loads sector 0 beside the warning text
+  ([decomp/log/trace-2026-11-03](decomp/log/trace-2026-11-03.md)).
+- The game builds code in RAM: an 8-byte block-move stub at $22E7
+  (`TIA`, operands, `RTS`), written by the kernel (0043:100) and by
+  004E:685. Its bytes have no disc copy; the decomp files the code that
+  writes it. The card builds another at $2286 for itself.
+- The disc repeats code: of 739 sectors that call the kernel's jump
+  table, 605 are distinct, and about half of their 256-byte chunks are
+  copies. Count code by distinct bytes, never by sectors.
+
+## Running the game
+
+- Power on, RUN on the card's title (frame 120). The prologue runs about
+  100 s; the title's "PUSH RUN BUTTON!" is up by frame 7,300 and RUN
+  before it is ignored. Then a second cutscene unless RUN.
+- Pad bits ($2228 pressed, $222D new presses): I $01, II $02, SELECT $04,
+  RUN $08, UP $10, RIGHT $20, DOWN $40, LEFT $80. Menus confirm with I.
+- The file menu's cursor ($34B8) moves over every item, enabled or not; I
+  works only on an item whose bit is set in $26D3 (empty save: only NAME
+  ENTRY, item 4). New game: DOWN x3, I; I (PLAYER1); I (enters A); DOWN
+  x4, I (END); DOWN x3, I (END); UP x3, I (PLAYER1); I (GAME START).
+  `tools/rondo/scripts/_newgame.txt` has it with the waits.
+
 ## System Card
 
 - The System Card stops on its own title screen until RUN is pressed; no
@@ -78,6 +102,14 @@ it. New findings go here when they are made.
   but needs `z:` and `a:` everywhere else to fix the operand size.
 - ca65 takes TMA's operand only as a single MPR bit or 0 (TAM takes any):
   any other TMA is written as `.byte $43,$nn`.
+- This Beetle PCE build draws RGB565 whatever the frontend answers; a
+  frontend that takes the frame as 32-bit shows half of each line.
+- The fold: a byte the CPU reads from the CD data bus ($1801 or $1808 in
+  $1800-$19FF) carries the disc position the drive read it from (patch
+  0003 keeps one beside each FIFO byte); loads, stores, pushes, pulls,
+  register transfers and block moves carry it; anything else clears it.
+  Lost, never misplaced: checked at every dump (every RAM byte with an
+  origin equals that disc byte), and an origin shifted one byte fails it.
 - Beetle PCE leaves the Arcade Card on and multitap on by default; a
   frontend that answers no option gets a machine the game never ran on.
   pcebox answers every option that bears on emulation and logs the rest.

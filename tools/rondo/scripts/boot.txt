@@ -1,0 +1,18 @@
+# Power on, press RUN on the System Card's title screen, and let the boot
+# run, dumping RAM along the way: the boot program at $3000, the load
+# table, the kernel.
+wait 120
+dump f0120
+press RUN 6
+dump f0126
+wait 54
+dump f0180
+wait 60
+dump f0240
+shot f0240
+wait 240
+dump f0480
+shot f0480
+wait 420
+dump f0900
+shot f0900

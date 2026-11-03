@@ -1,0 +1,45 @@
+diff --git a/mednafen/pce/huc.cpp b/mednafen/pce/huc.cpp
+index e6d3a93..bb34116 100644
+--- a/mednafen/pce/huc.cpp
++++ b/mednafen/pce/huc.cpp
+@@ -551,3 +551,25 @@ void HuC_Power(void)
+ 	if(mcg)
+ 		mcg->Power();
+ }
++
++// Inspection for the decomp's harness: no effect on emulation.
++// The 8 KB of physical bank `bank` where it is memory (HuCard ROM, Super
++// System Card RAM, CD RAM, base RAM), else NULL.
++extern "C" __attribute__((visibility("default"))) const uint8 *rondo_bank(unsigned bank)
++{
++	bank &= 0xFF;
++	if(bank >= 0xF8 && bank <= 0xFB)
++		return BaseRAM;
++	return ROMMap[bank] ? ROMMap[bank] + bank * 8192 : NULL;
++}
++
++// The CPU's MPR i (0-7) and program counter.
++extern "C" __attribute__((visibility("default"))) unsigned rondo_mpr(unsigned i)
++{
++	return HuCPU.PeekMPR(i);
++}
++
++extern "C" __attribute__((visibility("default"))) unsigned rondo_pc(void)
++{
++	return HuCPU.PeekPC();
++}
+diff --git a/mednafen/pce/huc6280.h b/mednafen/pce/huc6280.h
+index ed3bf0c..97e110c 100644
+--- a/mednafen/pce/huc6280.h
++++ b/mednafen/pce/huc6280.h
+@@ -148,6 +148,10 @@ public:
+ 		overclock_rate = rate;
+ 	}
+ 
++	// Inspection for the decomp's harness: no effect on emulation.
++	uint8 INLINE PeekMPR(unsigned int i) { return(MPR[i & 7]); }
++	uint16 INLINE PeekPC(void) { return(PC); }
++
+ private:
+ 	void FlushMPRCache(void);
+ 

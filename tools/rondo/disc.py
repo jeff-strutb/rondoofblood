@@ -80,6 +80,40 @@ def parse_cue(path):
     return tracks
 
 
+# The System Card images, in references/ beside the disc. Japan is the
+# target (the card the game shipped against); the USA card is a witness.
+CARDS = {
+    "[BIOS] Super CD-ROM System (Japan) (En) (v3.0).pce":
+        ("syscard3.pce", "79f5ff55dd10187c7fd7b8daab0b3ffbd1f56a2c"),
+    "[BIOS] TurboGrafx CD Super System Card (USA) (v3.0).pce":
+        ("syscard3u.pce", "d02611d99921986147c753df14c7349b31d71950"),
+}
+SYSTEM = os.path.join(TOP, "build", "rondo", "system")
+
+
+def stage_cards(check_only):
+    """Check the System Card images; link them where the core looks."""
+    bad = 0
+    for name, (core_name, pin) in CARDS.items():
+        path = os.path.join(os.path.dirname(REF), name)
+        if not os.path.exists(path):
+            print(f"{name}: missing")
+            bad += 1
+            continue
+        if sha1(path) != pin:
+            print(f"{name}: SHA-1 differs from the pinned one")
+            bad += 1
+            continue
+        print(f"{core_name}: {name}, SHA-1 pinned")
+        if not check_only:
+            os.makedirs(SYSTEM, exist_ok=True)
+            link = os.path.join(SYSTEM, core_name)
+            if os.path.lexists(link):
+                os.remove(link)
+            os.symlink(path, link)
+    return bad
+
+
 def sha1(path):
     h = hashlib.sha1()
     with open(path, "rb") as f:
@@ -174,6 +208,7 @@ def main():
                                               "bad_sectors", "user_sha1"])
             w.writeheader()
             w.writerows(rows)
+    bad += stage_cards(check_only)
     print(f"{len(tracks)} tracks, {lba} sectors on the disc, {bad} problems")
     return 1 if bad else 0
 

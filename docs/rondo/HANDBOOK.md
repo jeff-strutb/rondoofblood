@@ -42,6 +42,28 @@ it. New findings go here when they are made.
 - BIOS names ($E006 cd_base, $E009 cd_read, $E05A ex_getver, $E0DE
   ex_memopen) are from public System Card notes: hints until a trace
   confirms them.
+- The boot confirmed in RAM: at frame 180 the load table's three blocks
+  sit exactly where the hand reading put them (base bank $68 from $E0DE,
+  table offset 0 from $E0BD, MPR2 = $69). The four slots read as filler
+  ($4C, $57, $58, $60) are $FF sectors
+  ([decomp/log/first-boot-2026-11-03](decomp/log/first-boot-2026-11-03.md)).
+- The kernel loads on at once (sectors $C1-$E8 into $6B-$74 by frame 240)
+  and reuses RAM for other sectors within four seconds (bank $78: $A1-$A4
+  at frame 240, $61-$64 at frame 480). By frame 480 CD RAM ($80-$87)
+  holds sectors $81-$A0.
+
+## System Card
+
+- The System Card stops on its own title screen until RUN is pressed; no
+  disc sector is read before it. Every script starts `wait 120`,
+  `press RUN 6`.
+- After RUN the card reads user sectors 0 and 1 (the warning text and the
+  boot block) to $2800-$37FF before the boot program.
+- Both 3.0 cards hold $68 at $FFF4 (first Super RAM bank) and $80 at
+  $FFF5 (first CD RAM bank); the boot program's fallback maps $FFF5's.
+- The Japan and USA 3.0 cards differ in 11,210 bytes over banks 0, 1, 3,
+  4, 22 and 23, so traces of card code are card specific. The game loads
+  identical Super and CD RAM on both; base RAM differs by 4 to 10 bytes.
 
 ## Toolchain
 
@@ -56,6 +78,9 @@ it. New findings go here when they are made.
   but needs `z:` and `a:` everywhere else to fix the operand size.
 - ca65 takes TMA's operand only as a single MPR bit or 0 (TAM takes any):
   any other TMA is written as `.byte $43,$nn`.
+- Beetle PCE leaves the Arcade Card on and multitap on by default; a
+  frontend that answers no option gets a machine the game never ran on.
+  pcebox answers every option that bears on emulation and logs the rest.
 - Beetle PCE's bundled zlib 1.2.11 defines `fdopen` away whenever
   `TARGET_OS_MAC` is set, which breaks the macOS SDK's own declaration;
   patch 0001 keeps only the `MACOS` test, as later zlib does.

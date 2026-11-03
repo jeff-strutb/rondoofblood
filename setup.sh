@@ -2,7 +2,7 @@
 # Stage the toolchain inside the repo. Nothing is installed on the host.
 #
 #   ./setup.sh            hooks, toolchain, then check and split the disc
-#   ./setup.sh cc65       one component (cc65, pce, disc)
+#   ./setup.sh cc65       one component (cc65, pce, pcebox, disc)
 #
 # Sources land in tools/toolchains/src/<name> at a pinned commit; build
 # products in tools/toolchains/<name>/. Bumping a pin means re-verifying
@@ -38,6 +38,7 @@ fetch() { # name url pin
             git -C "$d" clean -qfd
             for p in "$pd"/*.patch; do git -C "$d" apply "$p"; done
             echo "$stamp" > "$d/.patch-stamp"
+            touch "$d/.rebuild"
         fi
     fi
     return 0
@@ -56,13 +57,26 @@ build_cc65() {
 
 build_pce() {
     fetch pce "$PCE_URL" "$PCE_PIN"
-    make -C "$tc/src/pce" -j "$jobs" >/dev/null 2>&1
+    # New patches: build from clean, so no object predates them.
+    if [ -e "$tc/src/pce/.rebuild" ]; then
+        make -C "$tc/src/pce" clean >/dev/null 2>&1
+        rm "$tc/src/pce/.rebuild"
+    fi
+    make -C "$tc/src/pce" -j "$jobs" >/dev/null
     mkdir -p "$tc/pce"
     # Built into a new file and moved in: never overwrite a core a run is using.
     cp "$tc/src/pce/mednafen_pce_libretro.dylib" "$tc/pce/.core.new" 2>/dev/null ||
         cp "$tc/src/pce/mednafen_pce_libretro.so" "$tc/pce/.core.new"
     mv "$tc/pce/.core.new" "$tc/pce/mednafen_pce_libretro.dylib"
     echo "pce core: $(shasum "$tc/pce/mednafen_pce_libretro.dylib" | cut -c1-12)"
+}
+
+build_pcebox() {
+    mkdir -p "$top/build/rondo/pcebox"
+    cc -O2 -Wall -Wextra -I "$tc/src/pce/libretro-common/include" \
+        -o "$top/build/rondo/pcebox/.pcebox.new" "$top/tools/rondo/pcebox/pcebox.c"
+    mv "$top/build/rondo/pcebox/.pcebox.new" "$top/build/rondo/pcebox/pcebox"
+    echo "pcebox: built"
 }
 
 disc() {
@@ -74,12 +88,14 @@ if [ $# -eq 0 ]; then
     python3 "$top/tools/common/install_hooks.py"
     build_cc65
     build_pce
+    build_pcebox
     disc
 else
     for c in "$@"; do
         case "$c" in
             cc65) build_cc65 ;;
             pce) build_pce ;;
+            pcebox) build_pcebox ;;
             disc) disc ;;
             *) echo "unknown component: $c" >&2; exit 2 ;;
         esac

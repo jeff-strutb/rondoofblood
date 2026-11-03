@@ -77,10 +77,16 @@ Phase 0 is under way. Done and verified:
   (`asmcontrol.py`): 910 instruction forms over all 234 defined opcodes,
   operands chosen to tempt a shorter form, plus the 22 undefined opcodes
   as data: 2,388 B, 0 differing bytes. Dropping one operand size fails it.
-- Beetle PCE (Mednafen's accurate PC Engine, `b96c11e0`) built headless in
-  the repo with one local patch: arm64, 54 libretro exports, the same
-  library from a clean build. Not yet patched with hooks; not yet run, as
-  it has no System Card image.
+- Beetle PCE (Mednafen's accurate PC Engine, `b96c11e0`) built in the
+  repo with two local patches: bundled zlib for the macOS SDK, and
+  read-only inspection exports (RAM banks, MPRs, PC).
+- Both System Card 3.0 images pinned: Japan (the target) and USA (a
+  witness).
+- `pcebox`, the headless runner, with every emulation option answered
+  explicitly. First boot: the load table's blocks land exactly where the
+  hand reading predicted, the kernel loads on, the Konami logo fades in;
+  overlays reuse RAM within four seconds. The USA card loads identical
+  Super and CD RAM.
 
 No routine is at any tier. The code-byte denominator is unknown until the
 first traces.
@@ -89,7 +95,7 @@ first traces.
 
 | Phase | | State |
 |---|---|---|
-| 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | done but for the core's hooks, the headless runner and a first boot, which wait on the System Card image (section 5) |
+| 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | done but for the trace hooks (per-instruction events, who touched each RAM byte, bus accesses), next |
 | 1 | A dozen scripts from power-on through every mode; trace; fold RAM execution onto the disc; T1 raw intake; image gate from source | not started |
 | 2 | A5 and A7 proven on one tiny routine with negative controls; catalog | not started |
 | 3 | Routines bottom up, smallest first, committed per verified batch | not started |
@@ -106,11 +112,10 @@ Decided 2026-11-03 (fetch approved by the maintainer):
   core, not Beetle PCE Fast), pinned, to be patched for the trace, check
   and lockstep hooks: the role bsnes played for the SNES.
 
-Open, the maintainer's:
+- **System Card:** the Japanese Super CD-ROM² System 3.0 is the target
+  (the card the game shipped against); the USA card is a witness.
 
-1. **The System Card 3.0 image** the core boots from. It is not in
-   `references/`; nothing can run without one. It is pinned by hash once
-   supplied.
+Nothing is open.
 
 ## 6. Limits known before building (playbook rule 11)
 

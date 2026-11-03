@@ -56,12 +56,15 @@ are filed by responsibility, never by sector or address range.
 
 | | |
 |---|---|
-| `setup.sh` | install hooks; fetch and build pinned cc65 and Beetle PCE, apply local patches; check and split the disc, run the image gate |
+| `setup.sh` | install hooks; fetch and build pinned cc65 and Beetle PCE, apply local patches, build pcebox; check the disc and System Cards, split the disc, run the image gate |
 | `tools/rondo/asmcontrol.py` | assembler control: every HuC6280 instruction form round-trips through ca65; `--plant` must fail |
 | `tools/rondo/disc.py` | check every reference file's SHA-1 and every data sector; write track user data and `tracks.csv` |
 | `tools/rondo/sector.py` | MODE1 sector encoding: sync, header, EDC, P and Q parity |
 | `tools/rondo/image.py` | image gate: both data tracks rebuilt from user data, 0 differing bytes or exit 1; `--plant` proves it fails |
 | `tools/rondo/huc.py` | HuC6280 decoder and linear listing, for reading |
+| `tools/rondo/pcebox/` | the original game run headless on the pinned core from a script in `tools/rondo/scripts/`: wait, press, shot, dump |
+| `tools/rondo/loadcheck.py` | which disc sectors each RAM bank of a dump holds |
+| `tools/rondo/ppm2png.py` | frame dumps to PNG |
 | `tools/rondo/precommit.py` | filing rules on staged files |
 
 ```bash

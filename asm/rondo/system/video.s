@@ -193,7 +193,7 @@ ClearScreenState:
     sta z:zDisplayDelay
     stz z:zRasterEffect
     stz z:zVideoMode
-    tai KernelZeros,ScrollWanted,$00EE
+    tai KernelZeros,ScrollXFrac,$00EE
     jsr ClearVdcControlHigh
     jsr SelectVramWriteAddress
     st1 #$00

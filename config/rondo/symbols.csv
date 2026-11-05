@@ -149,10 +149,10 @@ E0A2,abs,BiosE0A2,called once at start
 3C88,abs,ListChannelList,list channel list by channel
 3C90,abs,ListChannelPlace,list channel position by channel
 3C98,abs,ListChannelHold,list channel hold timer by channel
-3E00,abs,ScrollWanted,the six scroll bytes the game sets
+3E00,abs,ScrollXFrac,the scroll along X: fraction; the first of the six scroll bytes the game sets
 3E08,abs,ScrollXLo,scroll X the game wants low
 3E10,abs,ScrollXHi,scroll X the game wants high
-3E18,abs,ScrollWanted18,one of the six not yet identified
+3E18,abs,ScrollYFrac,the scroll along Y: fraction
 3E20,abs,ScrollYLo,scroll Y the game wants low
 3E28,abs,ScrollYHi,scroll Y the game wants high
 3E30,abs,ScrollBandFirst,the first of the six scroll bytes by band
@@ -212,9 +212,6 @@ E0A2,abs,BiosE0A2,called once at start
 4072,abs,VecRecordEvent,jump table entry
 4075,abs,VecBitOfIndex,jump table entry
 43CE,abs,VceControlTable,VCE control by screen timing
-5105,abs,FrameModeDispatch,runs the current game mode
-6E43,abs,LoadSceneWhole,kernel routine called at start
-6FD8,abs,LoadScenePart,kernel routine called at start
 4021,abs,VecSelectVramWriteAddress,jump table entry
 4027,abs,VecSelectVramData,jump table entry
 402D,abs,VecClearVdcControlHigh,jump table entry
@@ -238,3 +235,115 @@ B233,abs,SoundDrvInit,starts the driver
 B25A,abs,SoundDrvStopAll,stops every channel
 B284,abs,SoundDrvCommand,takes a command in A
 B521,abs,SoundDrvTick,one frame of the driver
+# The player and the camera.
+C9,zp,zPlayerPush,what pushes the player this frame: bits 4 and 5 add to the speed; bit 3 lifts the scroll; bits 2 and 1 force a wall check left or right
+CC,zp,zPushXLo,push along X
+CD,zp,zPushXHi,push along X
+CE,zp,zPushYLo,push along Y
+CF,zp,zPushYHi,push along Y
+3BD3,abs,PlayerMayLeaveTop,not zero: the player may go above the map
+3BF6,abs,PlayerAnchorObject,the object whose Y fraction the player takes when pushed
+3E6E,abs,ScrollStepYLo,this frame's scroll along Y
+3E76,abs,ScrollStepYHi,this frame's scroll along Y
+3E7E,abs,ScrollStepXLo,this frame's scroll along X
+3E86,abs,ScrollStepXHi,this frame's scroll along X
+3EB6,abs,CameraMode,index of the section's camera mode
+3EBE,abs,ScrollXMinHi,the scroll's start along X
+3EC6,abs,ScrollXMaxHi,the scroll's limit along X
+3EC7,abs,ScrollXMaxLo,the scroll's limit along X
+3ECE,abs,ScrollYMinHi,the scroll's start along Y
+3ED6,abs,ScrollYMaxHi,the scroll's limit along Y
+3ED7,abs,ScrollYMaxLo,the scroll's limit along Y
+6689,abs,CameraModeHandlers,30 words by camera mode
+693E,abs,WallLeftPush,how far a wall to the left pushes the player by depth
+401B,abs,VecSoundCommand,vector to SoundCommand
+40AE,abs,VecDistanceXToPlayer,vector to DistanceXToPlayer
+A006,abs,PlayerOvlMoved,the player overlay's step after moving
+A021,abs,PlayerOvlWall,the player overlay's wall probe: Y side; Z set is no wall; zTemp00 the depth
+A024,abs,PlayerOvlFloor,the player overlay's floor probe: Z set is no floor
+# Game modes and loading. The BIOS's names are Hudson's, by how the game calls them.
+18,zp,zCdPlayMode,the mode for the BIOS's CD play
+27,zp,zSaveSlot,the save slot in use; negative none
+31,zp,zGameSubMode,the mode's sub-mode
+35,zp,zGameRunning,counts demos and runs; not zero while one runs
+37,zp,zModeDone,set by an overlay when its mode has finished
+38,zp,zSubStep,the sub-mode's step
+3E,zp,zAttractStep,which demo stage comes next
+78,zp,zWaitTimer,frames left in a wait
+80,zp,zField80,cleared on entering a stage
+81,zp,zStage,the stage; bit 7 secret; bit 6 asks for a restart
+82,zp,zField82,cleared on entering a stage
+83,zp,zField83,read on entering stage $85
+85,zp,zField85,cleared on entering a stage
+89,zp,zField89,cleared on entering a stage
+8A,zp,zField8A,how the stage starts
+8C,zp,zField8C,decides a secret stage's route at 5 or more
+8D,zp,zStock,the player's stock
+8E,zp,zField8E,set by the stage load; bits 3 and 4 keep the CD playing
+8F,zp,zField8F,cleared on entering a stage
+90,zp,zField90,cleared on entering a stage
+91,zp,zField91,cleared on entering a stage
+92,zp,zField92,cleared on entering a stage
+93,zp,zField93,cleared with the score
+95,zp,zField95,set to 5 on entering a stage
+96,zp,zScoreAddLo,score to add to the save; BCD
+97,zp,zScoreAddHi,score to add to the save; BCD
+99,zp,zField99,cleared on entering a stage
+9A,zp,zModeEvents,bits that ask a mode for something when its overlay is done
+9C,zp,zCdTrack,the last CD track asked for
+9F,zp,zCharacter,which character plays
+A0,zp,zCharacterLoaded,whose scene is loaded; $FF none
+A1,zp,zStageRequested,the stage as it was asked for
+A3,zp,zFieldA3,goes to zField83 after a screen
+F8,zp,zBiosAl,BIOS argument _AL
+F9,zp,zBiosAh,BIOS argument _AH
+FA,zp,zBiosBl,BIOS argument _BL
+FB,zp,zBiosBh,BIOS argument _BH
+FC,zp,zBiosCl,BIOS argument _CL
+FD,zp,zBiosCh,BIOS argument _CH
+FE,zp,zBiosDl,BIOS argument _DL
+FF,zp,zBiosDh,BIOS argument _DH
+222D,abs,BiosJoyTrigger,the BIOS's joypad byte for the first pad
+25FB,abs,BiosAdpcmBusy,cleared after an ADPCM load
+3F24,abs,ContinueChoice,what the continue screen chose
+3F40,abs,ProgressCharacter,saved to the slot's first byte
+3F41,abs,ContinuesLo,continues used; BCD
+3F42,abs,ContinuesHi,continues used; BCD
+3F43,abs,StagesReached,stage bits by character
+3F4D,abs,StagesVisited,stage bits by character
+510E,abs,GameModeHandlers,11 words by game mode
+51B1,abs,AttractStages,the demo stages by zAttractStep
+53D4,abs,SaveSlotOffsets,where each slot lies in the backup file
+7D00,abs,SaveBuffer,the backup file in RAM
+7D1D,abs,SaveContinues,continues in a slot
+7D1F,abs,SaveScoreTotal,total score in a slot; BCD
+7115,abs,StageTrack,CD track by stage
+7126,abs,StageTrackSecret,CD track by secret stage
+7230,abs,StageAdpcm,ADPCM by stage
+7241,abs,StageAdpcmSecret,ADPCM by secret stage
+70F8,abs,SceneReadDestinations,RAM addresses for a scene's reads by op
+72C8,abs,SceneCallTable,pointers for the scene overlay
+4024,abs,VecSelectVramReadAddress,vector
+40E7,abs,VecBackupRead,vector to BackupRead
+40EA,abs,VecBackupWrite,vector to BackupWrite
+4006,abs,VecResetGameState,vector to ResetGameState
+401E,abs,VecSoundStopAll,vector to SoundStopAll
+8006,abs,FrameOverlay8006,a mode overlay's entry; the scene overlay's call
+8009,abs,FrameOverlay8009,a mode overlay's entry
+E009,abs,BiosCdRead,cd_read
+E012,abs,BiosCdPlay,cd_play
+E015,abs,BiosCdSearch,cd_search
+E018,abs,BiosCdPause,cd_pause
+E01B,abs,BiosCdStat,cd_stat
+E02D,abs,BiosCdFade,cd_fade
+E033,abs,BiosAdTrans,ad_trans
+E03F,abs,BiosAdCplay,ad_cplay
+E042,abs,BiosAdStop,ad_stop
+E045,abs,BiosAdStat,ad_stat
+E048,abs,BiosBmFormat,bm_format
+E04B,abs,BiosBmFree,bm_free
+E04E,abs,BiosBmRead,bm_read
+E051,abs,BiosBmWrite,bm_write
+E054,abs,BiosBmDelete,bm_delete
+E069,abs,BiosExScrSiz,ex_scrsiz
+E0BD,abs,BiosMaMul8u,ma_mul8u

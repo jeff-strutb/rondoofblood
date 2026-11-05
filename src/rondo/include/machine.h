@@ -56,6 +56,9 @@ typedef struct {
     bool v;       /* overflow, when v_set */
     bool v_set;   /* false: nothing here set V; the caller's stands */
     bool c_kept;  /* true: nothing here set C; the caller's stands */
+    bool nz_kept; /* true: N and Z are as cpu holds them */
+    bool n_on;    /* TST: N set although nz is zero, as Z and N can both be */
+    bool from_cpu;/* came back from original code: cpu holds the flags */
 } Alu;
 
 static inline Alu adc8(uint8_t a, uint8_t b, bool carry)
@@ -69,6 +72,7 @@ static inline Alu adc8(uint8_t a, uint8_t b, bool carry)
     r.v = (((a ^ b) & 0x80) == 0) && (((a ^ sum) & 0x80) != 0);
     r.v_set = true;
     r.c_kept = false;
+    r.nz_kept = r.n_on = r.from_cpu = false;
     return r;
 }
 
@@ -83,6 +87,7 @@ static inline Alu sbc8(uint8_t a, uint8_t b, bool carry)
     r.v = (((a ^ b) & (a ^ diff)) & 0x80) != 0;
     r.v_set = true;
     r.c_kept = false;
+    r.nz_kept = r.n_on = r.from_cpu = false;
     return r;
 }
 
@@ -103,7 +108,73 @@ static inline Alu adc8_bcd(uint8_t a, uint8_t b, bool carry)
     r.v = false;
     r.v_set = false;
     r.c_kept = false;
+    r.nz_kept = r.n_on = r.from_cpu = false;
     return r;
+}
+
+/* Nothing has happened yet: every flag is the caller's. */
+static inline Alu alu_none(void)
+{
+    Alu r = { 0 };
+
+    r.c_kept = true;
+    return r;
+}
+
+/* LDA and the like: a value in A, N and Z from it; C and V stand. */
+static inline void alu_load(Alu *r, uint8_t value)
+{
+    r->a = value;
+    r->nz = value;
+    r->nz_kept = false;
+    r->n_on = false;
+}
+
+/* LDX, LDY: N and Z from a value that is not going to A. */
+static inline void alu_nz(Alu *r, uint8_t value)
+{
+    r->nz = value;
+    r->nz_kept = false;
+    r->n_on = false;
+}
+
+/* CMP: A kept; N, Z and C from the compare; V stands. */
+static inline void alu_compare(Alu *r, uint8_t a, uint8_t b)
+{
+    r->a = a;
+    r->nz = (uint8_t)(a - b);
+    r->nz_kept = false;
+    r->n_on = false;
+    r->c = a >= b;
+    r->c_kept = false;
+}
+
+/* TST #mask, memory: A and C kept; Z from the AND; N and V bits 7 and 6. */
+static inline void alu_tst(Alu *r, uint8_t mask, uint8_t memory)
+{
+    bool zero = (mask & memory) == 0;
+
+    r->nz = zero ? 0 : (uint8_t)((memory & 0x80) | 0x01);
+    r->n_on = zero && (memory & 0x80) != 0;
+    r->nz_kept = false;
+    r->v = (memory & 0x40) != 0;
+    r->v_set = true;
+}
+
+/* What a call left, after what came before it: flags it did not set stand. */
+static inline Alu alu_then(Alu before, Alu after)
+{
+    if (after.from_cpu)
+        return after;
+    if (after.c_kept) {
+        after.c = before.c;
+        after.c_kept = before.c_kept;
+    }
+    if (!after.v_set) {
+        after.v = before.v;
+        after.v_set = before.v_set;
+    }
+    return after;
 }
 
 /* Reads through a zero-page pointer: LDA [zp] and LDA [zp],Y. */
@@ -121,6 +192,15 @@ static inline uint8_t rd8_zp_y(uint16_t pointer, uint8_t y)
     uint8_t hi = rd8((uint16_t)(pointer + 1));
 
     return rd8((uint16_t)((lo | (hi << 8)) + y));
+}
+
+/* Writes through a zero-page pointer: STA [zp],Y. */
+static inline void wr8_zp_y(uint16_t pointer, uint8_t y, uint8_t value)
+{
+    uint8_t lo = rd8(pointer);
+    uint8_t hi = rd8((uint16_t)(pointer + 1));
+
+    wr8((uint16_t)((lo | (hi << 8)) + y), value);
 }
 
 /* Memory shifts: the bit shifted out. */
@@ -184,11 +264,46 @@ static inline void abi_alu_flags(Alu *r)
 static inline void abi_alu(Alu r)
 {
     cpu.a = r.a;
-    abi_nz(r.nz);
+    if (!r.nz_kept) {
+        abi_nz(r.nz);
+        if (r.n_on)
+            abi_flag(P_N, true);
+    }
     if (!r.c_kept)
         abi_flag(P_C, r.c);
     if (r.v_set)
         abi_flag(P_V, r.v);
+}
+
+/* A and the flags as cpu holds them: at entry, and after original code. */
+static inline Alu alu_from_cpu(void)
+{
+    Alu r = { 0 };
+
+    r.a = cpu.a;
+    r.nz = (cpu.p & P_Z) ? 0 : ((cpu.p & P_N) ? 0x80 : 0x01);
+    r.nz_kept = true;
+    r.c = (cpu.p & P_C) != 0;
+    r.c_kept = true;
+    r.v = (cpu.p & P_V) != 0;
+    r.from_cpu = true;
+    return r;
+}
+
+/* Runs original code with A and the flags as r leaves them, and gives what it left. */
+static inline Alu call_with(uint16_t addr, Alu r)
+{
+    abi_alu(r);
+    call_original(addr);
+    return alu_from_cpu();
+}
+
+/* Runs a routine through its wrapper, for one that meets the assembly's registers. */
+static inline Alu call_abi(void (*abi)(void), Alu r)
+{
+    abi_alu(r);
+    abi();
+    return alu_from_cpu();
 }
 
 #endif

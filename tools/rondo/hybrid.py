@@ -20,7 +20,8 @@ TOP = asmfile.TOP
 OUT = os.path.join(TOP, "build", "rondo", "pcebox", "hybrid_table.c")
 FUNC = re.compile(r"^(?:static\s+)?[\w\s\*]+?\b(\w+)\s*\([^;{}]*\)\s*\n\{", re.M)
 CALL = re.compile(r"\b(\w+)\s*\(")
-ORIGINAL = {"call_original", "wait_interrupt"}
+ORIGINAL = {"call_original", "call_with", "wait_interrupt"}
+CALL_ABI = re.compile(r"\bcall_abi\(\s*(\w+)")
 
 
 def function_calls():
@@ -33,7 +34,8 @@ def function_calls():
             while depth and i < len(text):
                 depth += {"{": 1, "}": -1}.get(text[i], 0)
                 i += 1
-            calls[m.group(1)] = set(CALL.findall(text[m.end():i]))
+            body = text[m.end():i]
+            calls[m.group(1)] = set(CALL.findall(body)) | set(CALL_ABI.findall(body))
     return calls
 
 

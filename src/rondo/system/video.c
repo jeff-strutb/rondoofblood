@@ -291,7 +291,7 @@ void ClearScreenState(void)
     wr8(zDisplayDelay, 4);
     wr8(zRasterEffect, 0);
     wr8(zVideoMode, 0);
-    tai(KernelZeros, ScrollWanted, 0x00EE);
+    tai(KernelZeros, ScrollXFrac, 0x00EE);
     ClearVdcControlHigh();
     SelectVramWriteAddress();
     st1(0);

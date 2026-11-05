@@ -147,10 +147,10 @@
 #define ListChannelList 0x3C88 /* list channel list by channel */
 #define ListChannelPlace 0x3C90 /* list channel position by channel */
 #define ListChannelHold 0x3C98 /* list channel hold timer by channel */
-#define ScrollWanted 0x3E00 /* the six scroll bytes the game sets */
+#define ScrollXFrac 0x3E00 /* the scroll along X: fraction; the first of the six scroll bytes the game sets */
 #define ScrollXLo 0x3E08 /* scroll X the game wants low */
 #define ScrollXHi 0x3E10 /* scroll X the game wants high */
-#define ScrollWanted18 0x3E18 /* one of the six not yet identified */
+#define ScrollYFrac 0x3E18 /* the scroll along Y: fraction */
 #define ScrollYLo 0x3E20 /* scroll Y the game wants low */
 #define ScrollYHi 0x3E28 /* scroll Y the game wants high */
 #define ScrollBandFirst 0x3E30 /* the first of the six scroll bytes by band */
@@ -209,9 +209,6 @@
 #define VecRecordEvent 0x4072 /* jump table entry */
 #define VecBitOfIndex 0x4075 /* jump table entry */
 #define VceControlTable 0x43CE /* VCE control by screen timing */
-#define FrameModeDispatch 0x5105 /* runs the current game mode */
-#define LoadSceneWhole 0x6E43 /* kernel routine called at start */
-#define LoadScenePart 0x6FD8 /* kernel routine called at start */
 #define VecSelectVramWriteAddress 0x4021 /* jump table entry */
 #define VecSelectVramData 0x4027 /* jump table entry */
 #define VecClearVdcControlHigh 0x402D /* jump table entry */
@@ -234,5 +231,115 @@
 #define SoundDrvStopAll 0xB25A /* stops every channel */
 #define SoundDrvCommand 0xB284 /* takes a command in A */
 #define SoundDrvTick 0xB521 /* one frame of the driver */
+#define zPlayerPush 0x20C9 /* what pushes the player this frame: bits 4 and 5 add to the speed; bit 3 lifts the scroll; bits 2 and 1 force a wall check left or right */
+#define zPushXLo 0x20CC /* push along X */
+#define zPushXHi 0x20CD /* push along X */
+#define zPushYLo 0x20CE /* push along Y */
+#define zPushYHi 0x20CF /* push along Y */
+#define PlayerMayLeaveTop 0x3BD3 /* not zero: the player may go above the map */
+#define PlayerAnchorObject 0x3BF6 /* the object whose Y fraction the player takes when pushed */
+#define ScrollStepYLo 0x3E6E /* this frame's scroll along Y */
+#define ScrollStepYHi 0x3E76 /* this frame's scroll along Y */
+#define ScrollStepXLo 0x3E7E /* this frame's scroll along X */
+#define ScrollStepXHi 0x3E86 /* this frame's scroll along X */
+#define CameraMode 0x3EB6 /* index of the section's camera mode */
+#define ScrollXMinHi 0x3EBE /* the scroll's start along X */
+#define ScrollXMaxHi 0x3EC6 /* the scroll's limit along X */
+#define ScrollXMaxLo 0x3EC7 /* the scroll's limit along X */
+#define ScrollYMinHi 0x3ECE /* the scroll's start along Y */
+#define ScrollYMaxHi 0x3ED6 /* the scroll's limit along Y */
+#define ScrollYMaxLo 0x3ED7 /* the scroll's limit along Y */
+#define CameraModeHandlers 0x6689 /* 30 words by camera mode */
+#define WallLeftPush 0x693E /* how far a wall to the left pushes the player by depth */
+#define VecSoundCommand 0x401B /* vector to SoundCommand */
+#define VecDistanceXToPlayer 0x40AE /* vector to DistanceXToPlayer */
+#define PlayerOvlMoved 0xA006 /* the player overlay's step after moving */
+#define PlayerOvlWall 0xA021 /* the player overlay's wall probe: Y side; Z set is no wall; zTemp00 the depth */
+#define PlayerOvlFloor 0xA024 /* the player overlay's floor probe: Z set is no floor */
+#define zCdPlayMode 0x2018 /* the mode for the BIOS's CD play */
+#define zSaveSlot 0x2027 /* the save slot in use; negative none */
+#define zGameSubMode 0x2031 /* the mode's sub-mode */
+#define zGameRunning 0x2035 /* counts demos and runs; not zero while one runs */
+#define zModeDone 0x2037 /* set by an overlay when its mode has finished */
+#define zSubStep 0x2038 /* the sub-mode's step */
+#define zAttractStep 0x203E /* which demo stage comes next */
+#define zWaitTimer 0x2078 /* frames left in a wait */
+#define zField80 0x2080 /* cleared on entering a stage */
+#define zStage 0x2081 /* the stage; bit 7 secret; bit 6 asks for a restart */
+#define zField82 0x2082 /* cleared on entering a stage */
+#define zField83 0x2083 /* read on entering stage $85 */
+#define zField85 0x2085 /* cleared on entering a stage */
+#define zField89 0x2089 /* cleared on entering a stage */
+#define zField8A 0x208A /* how the stage starts */
+#define zField8C 0x208C /* decides a secret stage's route at 5 or more */
+#define zStock 0x208D /* the player's stock */
+#define zField8E 0x208E /* set by the stage load; bits 3 and 4 keep the CD playing */
+#define zField8F 0x208F /* cleared on entering a stage */
+#define zField90 0x2090 /* cleared on entering a stage */
+#define zField91 0x2091 /* cleared on entering a stage */
+#define zField92 0x2092 /* cleared on entering a stage */
+#define zField93 0x2093 /* cleared with the score */
+#define zField95 0x2095 /* set to 5 on entering a stage */
+#define zScoreAddLo 0x2096 /* score to add to the save; BCD */
+#define zScoreAddHi 0x2097 /* score to add to the save; BCD */
+#define zField99 0x2099 /* cleared on entering a stage */
+#define zModeEvents 0x209A /* bits that ask a mode for something when its overlay is done */
+#define zCdTrack 0x209C /* the last CD track asked for */
+#define zCharacter 0x209F /* which character plays */
+#define zCharacterLoaded 0x20A0 /* whose scene is loaded; $FF none */
+#define zStageRequested 0x20A1 /* the stage as it was asked for */
+#define zFieldA3 0x20A3 /* goes to zField83 after a screen */
+#define zBiosAl 0x20F8 /* BIOS argument _AL */
+#define zBiosAh 0x20F9 /* BIOS argument _AH */
+#define zBiosBl 0x20FA /* BIOS argument _BL */
+#define zBiosBh 0x20FB /* BIOS argument _BH */
+#define zBiosCl 0x20FC /* BIOS argument _CL */
+#define zBiosCh 0x20FD /* BIOS argument _CH */
+#define zBiosDl 0x20FE /* BIOS argument _DL */
+#define zBiosDh 0x20FF /* BIOS argument _DH */
+#define BiosJoyTrigger 0x222D /* the BIOS's joypad byte for the first pad */
+#define BiosAdpcmBusy 0x25FB /* cleared after an ADPCM load */
+#define ContinueChoice 0x3F24 /* what the continue screen chose */
+#define ProgressCharacter 0x3F40 /* saved to the slot's first byte */
+#define ContinuesLo 0x3F41 /* continues used; BCD */
+#define ContinuesHi 0x3F42 /* continues used; BCD */
+#define StagesReached 0x3F43 /* stage bits by character */
+#define StagesVisited 0x3F4D /* stage bits by character */
+#define GameModeHandlers 0x510E /* 11 words by game mode */
+#define AttractStages 0x51B1 /* the demo stages by zAttractStep */
+#define SaveSlotOffsets 0x53D4 /* where each slot lies in the backup file */
+#define SaveBuffer 0x7D00 /* the backup file in RAM */
+#define SaveContinues 0x7D1D /* continues in a slot */
+#define SaveScoreTotal 0x7D1F /* total score in a slot; BCD */
+#define StageTrack 0x7115 /* CD track by stage */
+#define StageTrackSecret 0x7126 /* CD track by secret stage */
+#define StageAdpcm 0x7230 /* ADPCM by stage */
+#define StageAdpcmSecret 0x7241 /* ADPCM by secret stage */
+#define SceneReadDestinations 0x70F8 /* RAM addresses for a scene's reads by op */
+#define SceneCallTable 0x72C8 /* pointers for the scene overlay */
+#define VecSelectVramReadAddress 0x4024 /* vector */
+#define VecBackupRead 0x40E7 /* vector to BackupRead */
+#define VecBackupWrite 0x40EA /* vector to BackupWrite */
+#define VecResetGameState 0x4006 /* vector to ResetGameState */
+#define VecSoundStopAll 0x401E /* vector to SoundStopAll */
+#define FrameOverlay8006 0x8006 /* a mode overlay's entry; the scene overlay's call */
+#define FrameOverlay8009 0x8009 /* a mode overlay's entry */
+#define BiosCdRead 0xE009 /* cd_read */
+#define BiosCdPlay 0xE012 /* cd_play */
+#define BiosCdSearch 0xE015 /* cd_search */
+#define BiosCdPause 0xE018 /* cd_pause */
+#define BiosCdStat 0xE01B /* cd_stat */
+#define BiosCdFade 0xE02D /* cd_fade */
+#define BiosAdTrans 0xE033 /* ad_trans */
+#define BiosAdCplay 0xE03F /* ad_cplay */
+#define BiosAdStop 0xE042 /* ad_stop */
+#define BiosAdStat 0xE045 /* ad_stat */
+#define BiosBmFormat 0xE048 /* bm_format */
+#define BiosBmFree 0xE04B /* bm_free */
+#define BiosBmRead 0xE04E /* bm_read */
+#define BiosBmWrite 0xE051 /* bm_write */
+#define BiosBmDelete 0xE054 /* bm_delete */
+#define BiosExScrSiz 0xE069 /* ex_scrsiz */
+#define BiosMaMul8u 0xE0BD /* ma_mul8u */
 
 #endif

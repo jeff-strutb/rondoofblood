@@ -78,7 +78,7 @@ static void late_frame(void)
 static void full_frame(void)
 {
     static const uint16_t wanted[] = {
-        ScrollWanted, ScrollXLo, ScrollXHi, ScrollWanted18, ScrollYLo, ScrollYHi
+        ScrollXFrac, ScrollXLo, ScrollXHi, ScrollYFrac, ScrollYLo, ScrollYHi
     };
     static const uint16_t bands[] = {
         ScrollBandFirst, ScrollBgxLo, ScrollBgxHi, ScrollBandFourth, ScrollBgyLo, ScrollBgyHi
@@ -132,7 +132,7 @@ static void full_frame(void)
     call_original(BiosE063);
     NextRandom();
     map_from_base(MPR4, 0x03);
-    call_original(FrameModeDispatch);
+    abi_FrameModeDispatch();
     map_from_base(MPR3, 0x00);
     map_from_base(MPR4, 0x0A);
     map_from_base(MPR5, 0x07);
@@ -240,11 +240,11 @@ void KernelStart(void)
     SelectVdcRegister(0x0D);
     wr8(VDC_DATA_LO, 0xE0);
     cpu.a = 0x04;
-    call_original(LoadScenePart);
+    abi_LoadSceneScript();
     cpu.a = 0x06;
-    call_original(LoadScenePart);
+    abi_LoadSceneScript();
     cpu.a = 0x24;
-    call_original(LoadSceneWhole);
+    abi_AdpcmLoad();
     wr8(zMusicWanted, 0xFF);
     cpu.a = 1;
     cpu.x = 0x77;

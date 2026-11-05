@@ -35,11 +35,11 @@ KernelStart:
     lda #$E0
     sta a:VDC_DATA_LO
     lda #$04
-    jsr LoadScenePart
+    jsr LoadSceneScript
     lda #$06
-    jsr LoadScenePart
+    jsr LoadSceneScript
     lda #$24
-    jsr LoadSceneWhole
+    jsr AdpcmLoad
     lda #$FF
     sta z:zMusicWanted
     lda #$01
@@ -147,13 +147,13 @@ FrameInterrupt_at5:
     jsr SelectVdcControl
     sty a:VdcCrShadow
     sty a:VDC_DATA_LO
-    lda a:ScrollWanted
+    lda a:ScrollXFrac
     sta a:ScrollBandFirst
     lda a:ScrollXLo
     sta a:ScrollBgxLo
     lda a:ScrollXHi
     sta a:ScrollBgxHi
-    lda a:ScrollWanted18
+    lda a:ScrollYFrac
     sta a:ScrollBandFourth
     lda a:ScrollYLo
     sta a:ScrollBgyLo

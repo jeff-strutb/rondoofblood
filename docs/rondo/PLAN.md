@@ -93,14 +93,14 @@ Phase 0 is under way. Done and verified:
   Stage 0 and Stage 1: 44,847 B of disc code traced. Estimated total
   about 196 KB of distinct code (131 to 260 KB; `estimate.py`).
 
-Status 2026-11-05: 250 routines of the kernel (10,986 B) have C and symbolic
-assembly, and the image gate passes with them in place (0 differing). A5 and A7 are
-built and each has failed on a planted bug, on earlier builds: A5 judged 8,600,927
-calls identical and 0 divergent, A7 119,770 frames identical. 85 routines (2,000 B)
-meet every gate as measured. None is recorded at T3: there is no verdict ledger yet,
-and A7 cannot swap 82 routines that run original code. The other 165 lack coverage or
-an oracle ([log](decomp/log/oracles-2026-11-05.md)). The denominator is still the
-estimate.
+Status 2026-11-05: 404 routines (13,112 B), the kernel's and the first part of
+Richter's overlay, have C and symbolic assembly, and the image gate passes with them in
+place (0 differing). A5 and A7 are built and each has failed on a planted bug, on earlier
+builds: A5 judged 13,747,708 calls identical and 0 divergent, A7 119,770 frames
+identical. 148 routines (2,366 B) meet every gate as measured. None is recorded at T3:
+there is no verdict ledger yet, and A7 cannot swap 153 routines that run original code.
+The other 256 lack coverage or an oracle
+([log](decomp/log/oracles-2026-11-05.md)). The denominator is still the estimate.
 
 ## 4. Phases
 
@@ -108,8 +108,8 @@ estimate.
 |---|---|---|
 | 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | done |
 | 1 | A dozen scripts from power-on through every mode; trace; fold RAM execution onto the disc; T1 raw intake; image gate from source | trace and fold done; 6 scripts (boot, attract, menus, Stage 0-1); the other stages, the menus' other paths, Maria and the ending not yet reached; T1 intake next |
-| 2 | A5 and A7 proven with negative controls; catalog | A5 and A7 built and proven on a planted bug; A7 cannot yet swap a routine that runs original code (82 of 250); catalog not started |
-| 3 | Routines bottom up, smallest first, committed per verified batch | 250 routines written, 3 batches committed; the kernel's vectors and gaps next |
+| 2 | A5 and A7 proven with negative controls; catalog | A5 and A7 built and proven on a planted bug; A7 cannot yet swap a routine that runs original code (153 of 404); catalog not started |
+| 3 | Routines bottom up, smallest first, committed per verified batch | 404 routines written, 4 batches committed; the rest of Richter's overlay next |
 | 4 | Coverage closure and the static census | not started |
 
 ## 5. Toolchain and open decisions

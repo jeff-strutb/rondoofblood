@@ -8,7 +8,9 @@ label). The draft is then source, edited by hand as names improve; the decode
 makes its bytes the disc's by construction, and the whole-image gate proves it.
 
 A routine's span runs from its tag until the next tag on the disc, or the first
-instruction that ends flow with no branch inside the span still pending.
+instruction that ends flow with no branch inside the span still pending. A routine
+whose branches pass over a table ends at its `@stop ADDR` instead, so the table is left
+as bytes from the disc.
 
     python3 tools/rondo/asmfile.py [src/rondo/math/trig.c ...]
 """
@@ -38,11 +40,13 @@ def routines_in(path):
             continue
         run = RUN.search(block)
         ends = re.search(r"@ends\s+([0-9A-Fa-f]{4})", block)
+        stop = re.search(r"@stop\s+([0-9A-Fa-f]{4})", block)
         lines = [re.sub(r"^\s*\*? ?", "", ln).rstrip() for ln in block.split("\n")[1:-1]]
         found.append({"disc": int(m.group(1), 16) * SECTOR + int(m.group(2), 16),
                       "tag": f"{m.group(1)}:{m.group(2)}", "name": m.group(3),
                       "run": int(run.group(2), 16), "header": lines, "path": path,
-                      "ends": int(ends.group(1), 16) if ends else 0})
+                      "ends": int(ends.group(1), 16) if ends else 0,
+                      "stop": int(stop.group(1), 16) if stop else 0})
     return found
 
 
@@ -61,7 +65,7 @@ def span(buf, routine, next_disc):
     pending = pc
     while True:
         off = start + (pc - routine["run"])
-        if off >= next_disc:
+        if off >= next_disc or pc == routine["stop"]:
             return out
         n, name, mode, ops, target = huc.decode(buf, off, pc)
         out.append((pc, n, name, mode, ops, target))

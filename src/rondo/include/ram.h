@@ -202,18 +202,7 @@
 #define Effect30Bands 0x5093 /* band by step */
 #define Effect30YAdds 0x5096 /* Y offset by step */
 #define Effect30Lines 0x5097 /* next line by step */
-#define VecStartListChannelKind2 0x400F /* jump table entry */
-#define VecStartScriptSlotKind1 0x4015 /* jump table entry */
-#define VecStartListChannelKind3 0x403C /* jump table entry */
-#define VecClearObject 0x4054 /* jump table entry */
-#define VecRecordEvent 0x4072 /* jump table entry */
-#define VecBitOfIndex 0x4075 /* jump table entry */
 #define VceControlTable 0x43CE /* VCE control by screen timing */
-#define VecSelectVramWriteAddress 0x4021 /* jump table entry */
-#define VecSelectVramData 0x4027 /* jump table entry */
-#define VecClearVdcControlHigh 0x402D /* jump table entry */
-#define VecApplyVelocity 0x4045 /* jump table entry */
-#define VecClearObjectInY 0x405D /* jump table entry */
 #define StreamHandlers 0x5FEB /* addresses of the stream record handlers */
 #define WallPushTable 0x62C3 /* pixels out of a wall by depth */
 #define KernelZeros 0x4003 /* three zero bytes block fills copy from */
@@ -251,8 +240,6 @@
 #define ScrollYMaxLo 0x3ED7 /* the scroll's limit along Y */
 #define CameraModeHandlers 0x6689 /* 30 words by camera mode */
 #define WallLeftPush 0x693E /* how far a wall to the left pushes the player by depth */
-#define VecSoundCommand 0x401B /* vector to SoundCommand */
-#define VecDistanceXToPlayer 0x40AE /* vector to DistanceXToPlayer */
 #define PlayerOvlMoved 0xA006 /* the player overlay's step after moving */
 #define PlayerOvlWall 0xA021 /* the player overlay's wall probe: Y side; Z set is no wall; zTemp00 the depth */
 #define PlayerOvlFloor 0xA024 /* the player overlay's floor probe: Z set is no floor */
@@ -317,11 +304,6 @@
 #define StageAdpcmSecret 0x7241 /* ADPCM by secret stage */
 #define SceneReadDestinations 0x70F8 /* RAM addresses for a scene's reads by op */
 #define SceneCallTable 0x72C8 /* pointers for the scene overlay */
-#define VecSelectVramReadAddress 0x4024 /* vector */
-#define VecBackupRead 0x40E7 /* vector to BackupRead */
-#define VecBackupWrite 0x40EA /* vector to BackupWrite */
-#define VecResetGameState 0x4006 /* vector to ResetGameState */
-#define VecSoundStopAll 0x401E /* vector to SoundStopAll */
 #define FrameOverlay8006 0x8006 /* a mode overlay's entry; the scene overlay's call */
 #define FrameOverlay8009 0x8009 /* a mode overlay's entry */
 #define BiosCdRead 0xE009 /* cd_read */
@@ -341,5 +323,45 @@
 #define BiosBmDelete 0xE054 /* bm_delete */
 #define BiosExScrSiz 0xE069 /* ex_scrsiz */
 #define BiosMaMul8u 0xE0BD /* ma_mul8u */
+#define zPlayerHealth 0x2098 /* the player's health */
+#define zPadHeld 0x20C0 /* the pad as the player reads it: bit 7 left; bit 5 right; bit 4 down; bit 0 and 1 buttons */
+#define zPadPressed 0x20C1 /* the pad's new presses */
+#define zPadPrevious 0x20C2 /* the pad before a forced input */
+#define zFieldC4 0x20C4 /* cleared on starting to climb */
+#define zFieldC6 0x20C6 /* cleared on a knockback or a jump */
+#define zFieldD3 0x20D3 /* cleared with the player's pad overrides */
+#define zField94 0x2094 /* set when the player starts */
+#define PlayerByte3BD5 0x3BD5 /* player state not yet identified */
+#define PlayerByte3BD6 0x3BD6 /* player state not yet identified */
+#define PlayerByte3BD7 0x3BD7 /* player state not yet identified */
+#define PadForcedPress 0x3BDD /* ORed into zPadPressed each frame */
+#define PadForcedPressB 0x3BDF /* ORed into zPadPressed each frame */
+#define PlayerByte3BE1 0x3BE1 /* player state not yet identified */
+#define PlayerByte3BE2 0x3BE2 /* player state not yet identified */
+#define PlayerByte3BE3 0x3BE3 /* player state not yet identified */
+#define PlayerByte3BE8 0x3BE8 /* player state not yet identified */
+#define PlayerByte3BE9 0x3BE9 /* player state not yet identified */
+#define PlayerByte3BF0 0x3BF0 /* player state not yet identified */
+#define PlayerByte3BF1 0x3BF1 /* player state not yet identified */
+#define PlayerDying 0x3BF4 /* not zero while the player's death runs */
+#define PlayerDyingTimer 0x3BF5 /* frames left in a step of the death */
+#define PlayerByte3BF7 0x3BF7 /* player state not yet identified */
+#define OverlayOrphanA02A 0xA02A /* a piece of the player overlay nothing reaches */
+#define PlayerFootYByState 0xA0FF /* how far above the position to probe by state */
+#define PlayerStartHandlers 0xA116 /* 4 words by zField8A */
+#define PlayerStateHandlers 0xA27E /* 13 words by the player's state */
+#define HitInvulnerableFrames 0xA2DC /* frames of invulnerability by hit kind */
+#define PlayerStandHandlers 0xA3DB /* 3 words by the state's step */
+#define WalkSpeeds 0xA490 /* walking speed by facing */
+#define BackstepSpeeds 0xA4A6 /* back-step speed by facing */
+#define JumpSpeeds 0xA4AA /* jump's X speed by facing */
+#define LandAnimations 0xA51D /* landing's animation by PlayerByte3BD5 */
+#define LedgeNudge 0xA5EE /* X nudge off a ledge by facing */
+#define LedgeNudgeB 0xA5F0 /* X nudge off a ledge by facing */
+#define HitReactionHandlers 0xA621 /* 9 words by zField93 */
+#define KnockSpeeds 0xA6C1 /* knockback's X speed by facing */
+#define AnimationSounds 0xBE8E /* the list to start by animation */
+#define AnimationHitboxIndex 0xBF08 /* hitbox index by animation */
+#define AnimationHitbox 0xBF84 /* hitbox of four bytes */
 
 #endif

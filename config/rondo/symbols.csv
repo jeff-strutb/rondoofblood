@@ -205,18 +205,7 @@ E0A2,abs,BiosE0A2,called once at start
 5093,abs,Effect30Bands,band by step
 5096,abs,Effect30YAdds,Y offset by step
 5097,abs,Effect30Lines,next line by step
-400F,abs,VecStartListChannelKind2,jump table entry
-4015,abs,VecStartScriptSlotKind1,jump table entry
-403C,abs,VecStartListChannelKind3,jump table entry
-4054,abs,VecClearObject,jump table entry
-4072,abs,VecRecordEvent,jump table entry
-4075,abs,VecBitOfIndex,jump table entry
 43CE,abs,VceControlTable,VCE control by screen timing
-4021,abs,VecSelectVramWriteAddress,jump table entry
-4027,abs,VecSelectVramData,jump table entry
-402D,abs,VecClearVdcControlHigh,jump table entry
-4045,abs,VecApplyVelocity,jump table entry
-405D,abs,VecClearObjectInY,jump table entry
 5FEB,abs,StreamHandlers,addresses of the stream record handlers
 62C3,abs,WallPushTable,pixels out of a wall by depth
 4003,abs,KernelZeros,three zero bytes block fills copy from
@@ -256,8 +245,6 @@ CF,zp,zPushYHi,push along Y
 3ED7,abs,ScrollYMaxLo,the scroll's limit along Y
 6689,abs,CameraModeHandlers,30 words by camera mode
 693E,abs,WallLeftPush,how far a wall to the left pushes the player by depth
-401B,abs,VecSoundCommand,vector to SoundCommand
-40AE,abs,VecDistanceXToPlayer,vector to DistanceXToPlayer
 A006,abs,PlayerOvlMoved,the player overlay's step after moving
 A021,abs,PlayerOvlWall,the player overlay's wall probe: Y side; Z set is no wall; zTemp00 the depth
 A024,abs,PlayerOvlFloor,the player overlay's floor probe: Z set is no floor
@@ -323,11 +310,6 @@ FF,zp,zBiosDh,BIOS argument _DH
 7241,abs,StageAdpcmSecret,ADPCM by secret stage
 70F8,abs,SceneReadDestinations,RAM addresses for a scene's reads by op
 72C8,abs,SceneCallTable,pointers for the scene overlay
-4024,abs,VecSelectVramReadAddress,vector
-40E7,abs,VecBackupRead,vector to BackupRead
-40EA,abs,VecBackupWrite,vector to BackupWrite
-4006,abs,VecResetGameState,vector to ResetGameState
-401E,abs,VecSoundStopAll,vector to SoundStopAll
 8006,abs,FrameOverlay8006,a mode overlay's entry; the scene overlay's call
 8009,abs,FrameOverlay8009,a mode overlay's entry
 E009,abs,BiosCdRead,cd_read
@@ -347,3 +329,44 @@ E051,abs,BiosBmWrite,bm_write
 E054,abs,BiosBmDelete,bm_delete
 E069,abs,BiosExScrSiz,ex_scrsiz
 E0BD,abs,BiosMaMul8u,ma_mul8u
+# The player's overlay. Names by role where the code shows it; by address until then.
+98,zp,zPlayerHealth,the player's health
+C0,zp,zPadHeld,the pad as the player reads it: bit 7 left; bit 5 right; bit 4 down; bit 0 and 1 buttons
+C1,zp,zPadPressed,the pad's new presses
+C2,zp,zPadPrevious,the pad before a forced input
+C4,zp,zFieldC4,cleared on starting to climb
+C6,zp,zFieldC6,cleared on a knockback or a jump
+D3,zp,zFieldD3,cleared with the player's pad overrides
+94,zp,zField94,set when the player starts
+3BD5,abs,PlayerByte3BD5,player state not yet identified
+3BD6,abs,PlayerByte3BD6,player state not yet identified
+3BD7,abs,PlayerByte3BD7,player state not yet identified
+3BDD,abs,PadForcedPress,ORed into zPadPressed each frame
+3BDF,abs,PadForcedPressB,ORed into zPadPressed each frame
+3BE1,abs,PlayerByte3BE1,player state not yet identified
+3BE2,abs,PlayerByte3BE2,player state not yet identified
+3BE3,abs,PlayerByte3BE3,player state not yet identified
+3BE8,abs,PlayerByte3BE8,player state not yet identified
+3BE9,abs,PlayerByte3BE9,player state not yet identified
+3BF0,abs,PlayerByte3BF0,player state not yet identified
+3BF1,abs,PlayerByte3BF1,player state not yet identified
+3BF4,abs,PlayerDying,not zero while the player's death runs
+3BF5,abs,PlayerDyingTimer,frames left in a step of the death
+3BF7,abs,PlayerByte3BF7,player state not yet identified
+A02A,abs,OverlayOrphanA02A,a piece of the player overlay nothing reaches
+A0FF,abs,PlayerFootYByState,how far above the position to probe by state
+A116,abs,PlayerStartHandlers,4 words by zField8A
+A27E,abs,PlayerStateHandlers,13 words by the player's state
+A2DC,abs,HitInvulnerableFrames,frames of invulnerability by hit kind
+A3DB,abs,PlayerStandHandlers,3 words by the state's step
+A490,abs,WalkSpeeds,walking speed by facing
+A4A6,abs,BackstepSpeeds,back-step speed by facing
+A4AA,abs,JumpSpeeds,jump's X speed by facing
+A51D,abs,LandAnimations,landing's animation by PlayerByte3BD5
+A5EE,abs,LedgeNudge,X nudge off a ledge by facing
+A5F0,abs,LedgeNudgeB,X nudge off a ledge by facing
+A621,abs,HitReactionHandlers,9 words by zField93
+A6C1,abs,KnockSpeeds,knockback's X speed by facing
+BE8E,abs,AnimationSounds,the list to start by animation
+BF08,abs,AnimationHitboxIndex,hitbox index by animation
+BF84,abs,AnimationHitbox,hitbox of four bytes

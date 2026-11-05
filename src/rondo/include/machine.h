@@ -130,6 +130,13 @@ static inline void alu_load(Alu *r, uint8_t value)
     r->n_on = false;
 }
 
+/* LDA #value, STA addr. */
+static inline void alu_put(Alu *r, uint16_t addr, uint8_t value)
+{
+    alu_load(r, value);
+    wr8(addr, value);
+}
+
 /* LDX, LDY: N and Z from a value that is not going to A. */
 static inline void alu_nz(Alu *r, uint8_t value)
 {

@@ -59,6 +59,14 @@ it. New findings go here when they are made.
   (`TIA`, operands, `RTS`), written by the kernel (0043:100) and by
   004E:685. Its bytes have no disc copy; the decomp files the code that
   writes it. The card builds another at $2286 for itself.
+- The kernel's first 16 KB run at $4000 with MPR2-3 = $69-$6A: $4000-$5FFF is
+  bank $69, and only $6000 up is $6A. Sector = $43 + (run - $4000) / $800.
+- Objects are parallel byte arrays $58 apart, indexed by slot; slot 0 is the
+  player. Position is 16.8 (X at $2B70, $2BC8, $2C20; Y at $2C78, $2CD0, $2D28),
+  velocity 8.8 (X at $2D80, $2DD8; Y at $2E30, $2E88). 256 steps to the turn.
+- `JMP [zp]` reads its pointer from RAM, and an indirect load reads its zero page
+  pointer every time: both are accesses the C makes
+  ([decomp/log/oracles-2026-11-05](decomp/log/oracles-2026-11-05.md)).
 - The disc repeats code: of 739 sectors that call the kernel's jump
   table, 605 are distinct, and about half of their 256-byte chunks are
   copies. Count code by distinct bytes, never by sectors.
@@ -119,6 +127,13 @@ it. New findings go here when they are made.
 
 ## Method
 
+- The core resets its timestamp inside a frame's run, not at its end: a clock
+  that goes backward during a call means the call crossed that reset
+  ([decomp/log/oracles-2026-11-05](decomp/log/oracles-2026-11-05.md)).
+- A Linux core exports only what `link.T` lists: the harness's `rondo_*` symbols
+  must be listed there, though macOS builds see them without it.
+- ca65 joins every file name to a search path with "/", so an absolute `.include`
+  never opens: use names relative to the root given with `-I`.
 - ASM is the bit-exact decompilation, C the behaviour-exact one, and the C
   is proper C: registers and flags appear only in each routine's `abi_`
   wrapper. Register-shaped C is a stepping stone, never counted as

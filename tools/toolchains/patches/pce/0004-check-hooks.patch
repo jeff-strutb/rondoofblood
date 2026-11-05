@@ -1,0 +1,156 @@
+diff --git a/link.T b/link.T
+index b0c262d..04250a0 100644
+--- a/link.T
++++ b/link.T
+@@ -1,5 +1,5 @@
+ {
+-   global: retro_*;
++   global: retro_*; rondo_*;
+    local: *;
+ };
+ 
+diff --git a/mednafen/pce/huc.cpp b/mednafen/pce/huc.cpp
+index de2c4c9..9fefa45 100644
+--- a/mednafen/pce/huc.cpp
++++ b/mednafen/pce/huc.cpp
+@@ -581,3 +581,45 @@ extern "C" __attribute__((visibility("default"))) void rondo_set_hooks(rondo_rd_
+ 	rondo_wr_hook = wr;
+ 	rondo_irq_hook = irq;
+ }
++
++// The oracles: registers, MPRs, the clock, the bus.
++extern "C" __attribute__((visibility("default"))) void rondo_set_check_hooks(rondo_exec_t exec, rondo_wr_t wr_pre)
++{
++	rondo_exec_hook = exec;
++	rondo_wr_pre_hook = wr_pre;
++}
++
++extern "C" __attribute__((visibility("default"))) void rondo_get_regs(uint8 *a, uint8 *x, uint8 *y, uint8 *s, uint8 *p, uint16 *pc)
++{
++	HuCPU.GetRegs(a, x, y, s, p, pc);
++}
++
++extern "C" __attribute__((visibility("default"))) void rondo_set_regs(uint8 a, uint8 x, uint8 y, uint8 s, uint8 p, uint16 pc)
++{
++	HuCPU.SetRegs(a, x, y, s, p, pc);
++}
++
++extern "C" __attribute__((visibility("default"))) void rondo_set_mpr(unsigned i, uint8 v)
++{
++	HuCPU.PokeMPR(i, v);
++}
++
++extern "C" __attribute__((visibility("default"))) uint32 rondo_timestamp(void)
++{
++	return HuCPU.Timestamp();
++}
++
++extern "C" __attribute__((visibility("default"))) uint8 rondo_bus_rd(uint16 addr)
++{
++	return HuCPU.BusRead(addr);
++}
++
++extern "C" __attribute__((visibility("default"))) void rondo_bus_wr(uint16 addr, uint8 v)
++{
++	HuCPU.BusWrite(addr, v);
++}
++
++extern "C" __attribute__((visibility("default"))) void rondo_bus_st(unsigned reg, uint8 v)
++{
++	HuCPU.BusST(reg, v);
++}
+diff --git a/mednafen/pce/huc6280.cpp b/mednafen/pce/huc6280.cpp
+index b6ddb2b..d23f8cf 100644
+--- a/mednafen/pce/huc6280.cpp
++++ b/mednafen/pce/huc6280.cpp
+@@ -545,6 +545,8 @@ rondo_rd_t rondo_rd_hook = NULL;
+ rondo_wr_t rondo_wr_hook = NULL;
+ void (*rondo_irq_hook)(void) = NULL;
+ int rondo_kind = 0;
++rondo_exec_t rondo_exec_hook = NULL;
++rondo_wr_t rondo_wr_pre_hook = NULL;
+ }
+ 
+ NO_INLINE void HuC6280::RunSub(void)
+@@ -635,6 +637,25 @@ NO_INLINE void HuC6280::RunSub(void)
+ 		}
+ 		PC &= 0xFFFF;     // Our cpu core can only handle PC going about 8192 bytes over, so make sure it never gets that far...
+ 
++		if(MDFN_UNLIKELY(rondo_exec_hook != NULL))
++		{
++			int owed = rondo_exec_hook(PC);
++
++			if(owed)
++			{
++				// The C ran in the routine's place: charge what the routine
++				// took, sampling interrupts where its last cycle would.
++				const int last = 3 << speed_shift_cache;
++
++				if(owed > last)
++					ADDCYC_MASTER(owed - last);
++				IRQSample = (IRQlow & IRQMask) & PIMaskCache;
++				IFlagSample = P & I_FLAG;
++				ADDCYC_MASTER(owed > last ? last : owed);
++				P &= ~T_FLAG;
++				continue;
++			}
++		}
+ 		lastop = RdOpcode(PC);
+ 
+ 		PC++;
+diff --git a/mednafen/pce/huc6280.h b/mednafen/pce/huc6280.h
+index 47ba58c..eb820af 100644
+--- a/mednafen/pce/huc6280.h
++++ b/mednafen/pce/huc6280.h
+@@ -11,6 +11,11 @@ extern rondo_rd_t rondo_rd_hook;
+ extern rondo_wr_t rondo_wr_hook;
+ extern void (*rondo_irq_hook)(void);
+ extern int rondo_kind;
++// For the oracles. Before each instruction: nonzero means the C ran in its
++// place, and that many master clocks are owed. Before each write: the byte.
++typedef int (*rondo_exec_t)(uint32 pc);
++extern rondo_exec_t rondo_exec_hook;
++extern rondo_wr_t rondo_wr_pre_hook;
+ }
+ 
+ class MDFN_ALIGN(128) HuC6280
+@@ -164,6 +169,21 @@ public:
+ 	uint8 INLINE PeekMPR(unsigned int i) { return(MPR[i & 7]); }
+ 	uint16 INLINE PeekPC(void) { return(PC); }
+ 
++	// For the oracles.
++	void INLINE GetRegs(uint8 *a, uint8 *x, uint8 *y, uint8 *s, uint8 *p, uint16 *pc)
++	{
++		*a = A; *x = X; *y = Y; *s = S; *p = P; *pc = PC;
++	}
++	void INLINE SetRegs(uint8 a, uint8 x, uint8 y, uint8 s, uint8 p, uint16 pc)
++	{
++		A = a; X = x; Y = y; S = s; P = p; PC = pc;
++		REDOPIMCACHE();
++	}
++	void INLINE PokeMPR(unsigned int i, uint8 v) { MPR[i & 7] = v; FlushMPRCache(); }
++	uint8 INLINE BusRead(unsigned int address) { return RdMem(address); }
++	void INLINE BusWrite(unsigned int address, uint8 v) { WrMem(address, v); }
++	void INLINE BusST(unsigned int reg, uint8 v) { WrMemPhysical(0x80000000 | (0xFF << 13) | reg, v); }
++
+ private:
+ 	void FlushMPRCache(void);
+ 
+@@ -216,6 +236,8 @@ private:
+ 		uint8 wmpr = MPR[address >> 13];
+ 
+ 		LastLogicalWriteAddr = address;
++		if(MDFN_UNLIKELY(rondo_wr_pre_hook != NULL))
++			rondo_wr_pre_hook((wmpr << 13) | (address & 0x1FFF), V);
+ 
+ 		WriteMap[wmpr]((wmpr << 13) | (address & 0x1FFF), V);
+ 		if(MDFN_UNLIKELY(rondo_wr_hook != NULL))
+@@ -226,6 +248,8 @@ private:
+ 	// Must not modify address(upper bit is abused for ST0/ST1/ST2 handling).
+ 	void INLINE WrMemPhysical(uint32 address, uint8 data)
+ 	{
++		if(MDFN_UNLIKELY(rondo_wr_pre_hook != NULL))
++			rondo_wr_pre_hook(address & 0x1FFFFF, data);
+ 		WriteMap[(address >> 13) & 0xFF](address, data);
+ 		if(MDFN_UNLIKELY(rondo_wr_hook != NULL))
+ 			rondo_wr_hook(address & 0x1FFFFF, data);

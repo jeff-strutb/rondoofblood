@@ -32,6 +32,11 @@
  * --plant-origin N shifts every CD origin by N bytes, to prove that check
  * fails. --watch PHYS (hex, repeatable) lists every instruction that reads
  * or writes that physical byte, with its disc origin.
+ *
+ * The oracles (check.c), each with --user (track 02's user data):
+ *   --a5 FILE        judge every call of a routine with C; report to FILE
+ *   --record FILE    log every call's cost and each frame's hash to FILE
+ *   --hybrid FILE    run with the C swapped in against that record
  */
 #include <dlfcn.h>
 #include <stdarg.h>
@@ -51,6 +56,25 @@ void trace_finish(const char *dir);
 void trace_watch(uint32_t phys);
 static const char *trace_user;
 static int trace_plant;
+
+extern void (*chk_get_regs)(uint8_t *, uint8_t *, uint8_t *, uint8_t *, uint8_t *, uint16_t *);
+extern void (*chk_set_regs)(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint16_t);
+extern unsigned (*chk_mpr)(unsigned);
+extern void (*chk_set_mpr)(unsigned, uint8_t);
+extern uint32_t (*chk_ts)(void);
+extern uint8_t (*chk_bus_rd)(uint16_t);
+extern void (*chk_bus_wr)(uint16_t, uint8_t);
+extern void (*chk_bus_st)(unsigned, uint8_t);
+extern const uint8_t *(*chk_bank)(unsigned);
+int check_init(int which, const char *path, const char *user_path);
+void check_finish(void);
+void check_rd(uint32_t phys, uint8_t v, int kind);
+void check_wr_pre(uint32_t phys, uint8_t v);
+void check_irq(void);
+int check_exec(uint32_t pc);
+void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsigned h);
+static int check_mode;
+static const char *check_file, *check_user;
 
 static const char *opt_card = "System Card 3";
 static const char *system_dir, *out_dir;
@@ -216,6 +240,8 @@ static void run(unsigned long n)
     while (n--) {
         core_run();
         frames++;
+        if (check_mode)
+            check_frame(frames, frame_px, frame_w, frame_h);
     }
 }
 
@@ -366,6 +392,10 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--script")) script = argv[i + 1];
         else if (!strcmp(argv[i], "--out")) out_dir = argv[i + 1];
         else if (!strcmp(argv[i], "--trace")) trace_user = argv[i + 1];
+        else if (!strcmp(argv[i], "--a5")) { check_mode = 1; check_file = argv[i + 1]; }
+        else if (!strcmp(argv[i], "--record")) { check_mode = 2; check_file = argv[i + 1]; }
+        else if (!strcmp(argv[i], "--hybrid")) { check_mode = 3; check_file = argv[i + 1]; }
+        else if (!strcmp(argv[i], "--user")) check_user = argv[i + 1];
         else if (!strcmp(argv[i], "--plant-origin")) trace_plant = atoi(argv[i + 1]);
         else if (!strcmp(argv[i], "--watch")) trace_watch((uint32_t)strtoul(argv[i + 1], NULL, 16));
         else if (!strcmp(argv[i], "--card"))
@@ -408,6 +438,23 @@ int main(int argc, char **argv)
         ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
             (void *)trace_rd, (void *)trace_wr, (void *)trace_irq);
     }
+    if (check_mode) {
+        chk_get_regs = (void (*)(uint8_t *, uint8_t *, uint8_t *, uint8_t *, uint8_t *, uint16_t *))sym(lib, "rondo_get_regs");
+        chk_set_regs = (void (*)(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint16_t))sym(lib, "rondo_set_regs");
+        chk_mpr = core_mpr;
+        chk_set_mpr = (void (*)(unsigned, uint8_t))sym(lib, "rondo_set_mpr");
+        chk_ts = (uint32_t (*)(void))sym(lib, "rondo_timestamp");
+        chk_bus_rd = (uint8_t (*)(uint16_t))sym(lib, "rondo_bus_rd");
+        chk_bus_wr = (void (*)(uint16_t, uint8_t))sym(lib, "rondo_bus_wr");
+        chk_bus_st = (void (*)(unsigned, uint8_t))sym(lib, "rondo_bus_st");
+        chk_bank = core_bank;
+        if (!check_user || check_init(check_mode, check_file, check_user))
+            return 1;
+        ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
+            (void *)check_rd, NULL, (void *)check_irq);
+        ((void (*)(void *, void *))sym(lib, "rondo_set_check_hooks"))(
+            (void *)check_exec, check_mode == 1 ? (void *)check_wr_pre : NULL);
+    }
     for (int i = 0; i < ndefaulted; i++)
         fprintf(stderr, "pcebox: option %s left at the core's default\n", defaulted[i]);
 
@@ -416,6 +463,8 @@ int main(int argc, char **argv)
     printf("pcebox: %lu frames\n", frames);
     if (trace_user)
         trace_finish(out_dir);
+    if (check_mode)
+        check_finish();
     ((void (*)(void))sym(lib, "retro_unload_game"))();
     ((void (*)(void))sym(lib, "retro_deinit"))();
     return 0;

@@ -1,0 +1,207 @@
+addr,kind,name,note
+# Zero page, logical $2000 up. An asm operand is the low byte, C adds $2000.
+00,zp,zTemp00,scratch: multiplicand low; delta X low; pointer low
+01,zp,zTemp01,scratch: multiplicand high; delta X high; pointer high
+02,zp,zTemp02,scratch: delta Y low
+03,zp,zTemp03,scratch: delta Y high
+04,zp,zTemp04,scratch
+05,zp,zTemp05,scratch
+06,zp,zTemp06,scratch
+08,zp,zTemp08,scratch: point X low
+09,zp,zTemp09,scratch: point X high
+0A,zp,zTemp0A,scratch: point Y low
+0B,zp,zTemp0B,scratch: point Y high
+0C,zp,zTemp0C,scratch
+0D,zp,zTemp0D,scratch
+0E,zp,zTemp0E,scratch
+0F,zp,zTemp0F,scratch
+10,zp,zTemp10,scratch: multiply shift; velocity sign
+11,zp,zTemp11,scratch: multiply shift
+12,zp,zTemp12,scratch: multiply shift
+13,zp,zProduct0,multiply result low
+14,zp,zProduct1,multiply result middle; probe height
+15,zp,zProduct2,multiply result high
+16,zp,zMultiplierLo,multiplier low
+17,zp,zMultiplierHi,multiplier high
+20,zp,zRandom0,generator state low
+21,zp,zRandom1,generator state
+22,zp,zRandom2,generator state
+23,zp,zRandom3,generator state high and the last result
+24,zp,zScore0,score BCD low
+25,zp,zScore1,score BCD middle
+26,zp,zScore2,score BCD high
+2F,zp,zIdleFlag,cleared at start
+30,zp,zGameMode,game mode the frame logic dispatches on
+33,zp,zFrameBusy,set while the frame interrupt's work is running
+34,zp,zSoundBusy,bit 7 set while the sound driver is being called
+39,zp,zDisplayDelay,frames left before the display is enabled
+3A,zp,zVdcStatus,VDC status as the interrupt last read it
+45,zp,zRasterEffect,raster effect requested for the next frame
+46,zp,zRasterArg,raster effect's first line
+47,zp,zFrameCount,counts vblanks
+4A,zp,zVdcCrLo,VDC control low as the game wants it
+4B,zp,zVdcCrHi,VDC control high as the game wants it
+4C,zp,zVideoMode,index of the screen timing
+4F,zp,zVdcReg,VDC register last selected
+A2,zp,zMusicWanted,set to $FF at start
+DB,zp,zRamBaseBank,first Super RAM bank from the card
+F5,zp,BiosIrqDisable,the card's interrupt mask byte
+# Hardware, with MPR0 on the I/O bank.
+0000,abs,VDC_ADDR,VDC register select and status
+0002,abs,VDC_DATA_LO,VDC data low
+0003,abs,VDC_DATA_HI,VDC data high
+0400,abs,VCE_CONTROL,VCE dot clock and control
+0402,abs,VCE_ADDR_LO,VCE colour address low
+0403,abs,VCE_ADDR_HI,VCE colour address high
+0404,abs,VCE_DATA_LO,VCE colour data low
+0405,abs,VCE_DATA_HI,VCE colour data high
+# The System Card's own RAM and entries. Names by address until a trace or the
+# card's own code says what each is.
+2214,abs,BiosScreenLo,the card's RAM: written once at start
+2215,abs,BiosScreenHi,the card's RAM: written once at start
+E05D,abs,BiosE05D,sets an interrupt handler: A which, X and Y its address
+E063,abs,BiosE063,called every frame
+E06C,abs,BiosE06C,called once at start
+E06F,abs,BiosE06F,called once at start
+E0A2,abs,BiosE0A2,called once at start
+# Work RAM.
+22D0,abs,GameRamLow,first byte of low game RAM start clears
+26D0,abs,LevelStreamLo,the object stream's position low
+26D1,abs,LevelStreamHi,the object stream's position high
+26D2,abs,LevelAxis,1: the level runs vertically; 2: its height is fixed
+26D3,abs,EventFlags,bit set of events the save remembers
+26F3,abs,GameRamStart,first byte reset clears
+26F3,abs,TileHit,attributes of the columns a terrain lookup read
+26F7,abs,TileDepthX,pixels into a wall per column
+26FB,abs,TileDepthY,pixels into a floor per column
+26FF,abs,WorkByteA,shared work byte: landed answer; stream count high
+2700,abs,WorkByteB,shared work byte: walled answer; stream count low
+2701,abs,StreamStepLo,stream walk step low
+2702,abs,StreamStepHi,stream walk step high
+2744,abs,LevelFullWalk,set during a whole-screen stream walk
+2750,abs,OBJ_2750,object field not yet identified
+27A8,abs,OBJ_27A8,object field not yet identified
+2800,abs,OBJ_2800,object field not yet identified
+2A10,abs,OBJ_2A10,object field not yet identified
+2A68,abs,OBJ_2A68,object field not yet identified
+2AC0,abs,OBJ_2AC0,object field not yet identified
+2B18,abs,OBJ_2B18,object field not yet identified
+2B70,abs,OBJ_X_HI,object X position high
+2BC8,abs,OBJ_X_LO,object X position low
+2C20,abs,OBJ_X_FRAC,object X position fraction
+2C78,abs,OBJ_Y_HI,object Y position high
+2CD0,abs,OBJ_Y_LO,object Y position low
+2D28,abs,OBJ_Y_FRAC,object Y position fraction
+2D80,abs,OBJ_VX_HI,object X velocity high
+2DD8,abs,OBJ_VX_LO,object X velocity low
+2E30,abs,OBJ_VY_HI,object Y velocity high
+2E88,abs,OBJ_VY_LO,object Y velocity low
+2EE0,abs,OBJ_FIELDS_2EE0,first of the object fields cleared together
+2F38,abs,OBJ_FLAGS_2F38,bit 7: records an event when told to
+3098,abs,OBJ_EVENT_ID,event this object records
+2F90,abs,OBJ_2F90,object field not yet identified
+2FE8,abs,OBJ_2FE8,object field not yet identified
+3040,abs,OBJ_3040,object field not yet identified
+30F0,abs,OBJ_30F0,object field not yet identified
+3148,abs,OBJ_3148,object field not yet identified
+31A0,abs,OBJ_31A0,object field not yet identified
+31F8,abs,OBJ_31F8,object field not yet identified
+3250,abs,OBJ_3250,object field not yet identified
+32A8,abs,OBJ_32A8,object field not yet identified
+3300,abs,OBJ_3300,object field not yet identified
+3358,abs,OBJ_3358,object field not yet identified
+33B0,abs,OBJ_33B0,object field not yet identified
+3408,abs,OBJ_3408,object field not yet identified
+3460,abs,OBJ_3460,object field not yet identified
+34B8,abs,OBJ_34B8,object field not yet identified
+3510,abs,OBJ_3510,object field not yet identified
+3568,abs,OBJ_3568,object field not yet identified
+35C0,abs,OBJ_35C0,object field not yet identified
+3618,abs,OBJ_3618,object field not yet identified
+3670,abs,OBJ_3670,object field not yet identified
+36C8,abs,OBJ_36C8,object field not yet identified
+3720,abs,OBJ_3720,object field not yet identified
+3778,abs,OBJ_3778,object field not yet identified
+37D0,abs,OBJ_37D0,object field not yet identified
+3828,abs,OBJ_3828,object field not yet identified
+3880,abs,OBJ_3880,object field not yet identified
+38D8,abs,OBJ_38D8,object field not yet identified
+3930,abs,OBJ_3930,object field not yet identified
+3988,abs,OBJ_3988,object field not yet identified
+39E0,abs,OBJ_39E0,object field not yet identified
+3A38,abs,OBJ_3A38,object field not yet identified
+3A90,abs,OBJ_3A90,object field not yet identified
+3AE8,abs,OBJ_3AE8,object field not yet identified
+3C00,abs,ScriptSlotKind,script slot kind by slot
+3C0C,abs,ScriptSlotScript,script slot script by slot
+3C18,abs,ScriptSlotField18,script slot field not yet identified
+3C24,abs,ScriptSlotField24,script slot field not yet identified
+3C30,abs,ScriptSlotTimer,script slot hold timer
+3C3C,abs,ScriptSlotField3C,script slot field not yet identified
+3C48,abs,ScriptSlotField48,script slot field not yet identified
+3C54,abs,ScriptSlotField54,script slot field not yet identified
+3C80,abs,ListChannelKind,list channel kind by channel
+3C88,abs,ListChannelList,list channel list by channel
+3C90,abs,ListChannelPlace,list channel position by channel
+3C98,abs,ListChannelHold,list channel hold timer by channel
+3E00,abs,ScrollWanted,the six scroll bytes the game sets
+3E08,abs,ScrollXLo,scroll X the game wants low
+3E10,abs,ScrollXHi,scroll X the game wants high
+3E18,abs,ScrollWanted18,one of the six not yet identified
+3E20,abs,ScrollYLo,scroll Y the game wants low
+3E28,abs,ScrollYHi,scroll Y the game wants high
+3E30,abs,ScrollBandFirst,the first of the six scroll bytes by band
+3E39,abs,ScrollBgxLo,BG X values by raster band
+3E42,abs,ScrollBgxHi,BG X values by raster band
+3E4B,abs,ScrollBandFourth,the fourth of the six scroll bytes by band
+3E54,abs,ScrollBgyLo,BG Y values by raster band
+3E5D,abs,ScrollBgyHi,BG Y values by raster band
+3E8E,abs,ScrollYHiScreen,scroll Y high of the level position
+3E96,abs,ScrollXHiScreen,scroll X high of the level position
+3E9E,abs,ScrollSpeedX,scroll speed along X this frame
+3EA6,abs,ScrollSpeedY,scroll speed along Y this frame
+3EBB,abs,ScrollYOffset,fixed Y offset of a horizontal level
+3F0C,abs,SavedMprA,MPR4 kept across a sound call
+3F0D,abs,SavedMprB,MPR5 kept across a sound call
+3F0E,abs,SavedMprC,MPR6 kept across a sound call
+3F30,abs,VdcCrShadow,VDC control low last written
+3F31,abs,RasterEffectNow,raster effect this frame
+3F32,abs,RasterLine,raster line this frame starts from
+3F33,abs,RasterStep,raster band the handler is on
+3F80,abs,ScreenWideFlag,nonzero: timing index 2 after the frame's work
+# Tables and vectors in the kernel.
+400F,abs,VecStartListChannelKind2,jump table entry
+4015,abs,VecStartScriptSlotKind1,jump table entry
+403C,abs,VecStartListChannelKind3,jump table entry
+4054,abs,VecClearObject,jump table entry
+4072,abs,VecRecordEvent,jump table entry
+4075,abs,VecBitOfIndex,jump table entry
+43CE,abs,VceControlTable,VCE control by screen timing
+43FC,abs,RasterStart,sets up a frame's raster effect
+44E1,abs,RasterInterrupt,the raster interrupt's handler
+5105,abs,FrameModeDispatch,runs the current game mode
+6E43,abs,LoadSceneWhole,kernel routine called at start
+6FD8,abs,LoadScenePart,kernel routine called at start
+4021,abs,VecSelectVramWriteAddress,jump table entry
+4027,abs,VecSelectVramData,jump table entry
+402D,abs,VecClearVdcControlHigh,jump table entry
+4045,abs,VecApplyVelocity,jump table entry
+405D,abs,VecClearObjectInY,jump table entry
+5FEB,abs,StreamHandlers,addresses of the stream record handlers
+62C3,abs,WallPushTable,pixels out of a wall by depth
+4003,abs,KernelZeros,three zero bytes block fills copy from
+43D0,abs,VdcHsrTable,VDC horizontal sync by screen timing
+43D4,abs,VdcHdrTable,VDC horizontal display by screen timing
+56CF,abs,SineTable,quarter and more of a sine as 8.8 words by angle
+58E7,abs,AtanTable,angle by 4-bit Y and X
+# The sound driver's entries, in the sound bank.
+8000,abs,FrameOverlay8000,the frame's first overlay entry
+8003,abs,FrameOverlay8003,the frame's second overlay entry
+800C,abs,OverlayTerrainLookup,the stage overlay's first terrain lookup
+800F,abs,OverlayTerrainLookupAlt,the stage overlay's second terrain lookup
+8012,abs,OverlayObjectRecords,the stage overlay's pointer to its object records
+8014,abs,OverlayTileScripts,the stage overlay's pointer to its tile scripts
+B233,abs,SoundDrvInit,starts the driver
+B25A,abs,SoundDrvStopAll,stops every channel
+B284,abs,SoundDrvCommand,takes a command in A
+B521,abs,SoundDrvTick,one frame of the driver

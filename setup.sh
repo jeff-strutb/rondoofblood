@@ -77,10 +77,15 @@ build_pce() {
 build_pcebox() {
     mkdir -p "$top/build/rondo/pcebox"
     python3 -I "$top/tools/rondo/huc.py" --c-opclass > "$top/build/rondo/pcebox/opclass.h"
+    python3 -I "$top/tools/rondo/hybrid.py"
+    # A planted bug comes in as RONDO_SRC, a copy of src/rondo with one change.
+    src="${RONDO_SRC:-$top/src/rondo}"
+    out="${RONDO_BOX:-$top/build/rondo/pcebox/pcebox}"
     cc -O2 -Wall -Wextra -I "$tc/src/pce/libretro-common/include" -I "$top/build/rondo/pcebox" \
-        -o "$top/build/rondo/pcebox/.pcebox.new" "$top/tools/rondo/pcebox/pcebox.c" \
-        "$top/tools/rondo/pcebox/trace.c"
-    mv "$top/build/rondo/pcebox/.pcebox.new" "$top/build/rondo/pcebox/pcebox"
+        -I "$src/include" -o "$out.new" "$top/tools/rondo/pcebox/pcebox.c" \
+        "$top/tools/rondo/pcebox/trace.c" "$top/tools/rondo/pcebox/check.c" \
+        "$top/build/rondo/pcebox/hybrid_table.c" "$src"/*/*.c -ldl
+    mv "$out.new" "$out"
     echo "pcebox: built"
 }
 

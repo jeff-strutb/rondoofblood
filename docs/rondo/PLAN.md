@@ -93,8 +93,13 @@ Phase 0 is under way. Done and verified:
   Stage 0 and Stage 1: 44,847 B of disc code traced. Estimated total
   about 196 KB of distinct code (131 to 260 KB; `estimate.py`).
 
-No routine is at any tier. The code-byte denominator is unknown until the
-first traces.
+Status 2026-11-05: the first 118 routines of the kernel (4,019 B) have C and
+symbolic assembly, and the image gate passes with them in place (0 differing).
+A5 and A7 are built and each proven to fail on a planted bug: A5 judged 7,431,332
+calls identical and 0 divergent, A7 119,770 frames identical. 59 routines (1,164 B)
+meet every gate as measured, on source not yet committed, so none is recorded at T3;
+the other 59 (2,855 B) lack coverage or an oracle
+([log](decomp/log/oracles-2026-11-05.md)). The denominator is still the estimate.
 
 ## 4. Phases
 
@@ -102,8 +107,8 @@ first traces.
 |---|---|---|
 | 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | done |
 | 1 | A dozen scripts from power-on through every mode; trace; fold RAM execution onto the disc; T1 raw intake; image gate from source | trace and fold done; 6 scripts (boot, attract, menus, Stage 0-1); the other stages, the menus' other paths, Maria and the ending not yet reached; T1 intake next |
-| 2 | A5 and A7 proven on one tiny routine with negative controls; catalog | not started |
-| 3 | Routines bottom up, smallest first, committed per verified batch | not started |
+| 2 | A5 and A7 proven with negative controls; catalog | A5 and A7 built and proven on a planted bug; A7 cannot yet swap a routine that runs original code (31 of 118); catalog not started |
+| 3 | Routines bottom up, smallest first, committed per verified batch | first batch of 118 written; continuing with the kernel |
 | 4 | Coverage closure and the static census | not started |
 
 ## 5. Toolchain and open decisions

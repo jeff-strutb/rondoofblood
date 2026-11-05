@@ -69,6 +69,13 @@ are filed by responsibility, never by sector or address range.
 | `tools/rondo/pcebox/trace.c` | `--trace`: executed and read bytes folded onto the disc through each RAM byte's disc origin; `--watch` lists the instructions touching a byte |
 | `tools/rondo/trace.py` | every script traced in parallel under a timeout, maps merged into `build/rondo/trace/`, disc consistency enforced |
 | `tools/rondo/estimate.py` | the code-size estimate, with its measured error |
+| `tools/rondo/reach.py` | reads a piece of the disc as code from its entry points: a listing, not a proof |
+| `tools/rondo/ramnames.py` | writes `ram.h` and `ram.inc` from `config/rondo/symbols.csv` |
+| `tools/rondo/asmfile.py` | drafts a C file's assembly from the disc, with its header and names |
+| `tools/rondo/asmbuild.py` | assembles the filed assembly in place in the whole track, called from Windows through WSL |
+| `tools/rondo/hybrid.py` | the table of routines with C, for the oracles |
+| `tools/rondo/pcebox/check.c` | A5 (`--a5`), and A7's two runs (`--record`, `--hybrid`) |
+| `tools/rondo/oracle.py` | `a5`, `a7` and `plant` over the scripts, by routine, into `build/rondo/oracle/` |
 | `tools/rondo/precommit.py` | filing rules on staged files |
 
 ```bash

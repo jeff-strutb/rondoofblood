@@ -53,7 +53,7 @@ def main():
     buf = open(asmfile.IMAGE, "rb").read()
     calls = function_calls()
     out = ['#include <stdint.h>', 'typedef struct { uint16_t run; uint16_t len; uint32_t disc; '
-           'const char *name; void (*abi)(void); int swappable; } Tag;']
+           'const char *name; void (*abi)(void); int swappable; uint16_t ends; } Tag;']
     rows = []
     bad = 0
     swappable = 0
@@ -68,7 +68,7 @@ def main():
         ok = not reaches_original(abi, calls)
         swappable += ok
         out.append(f"void {abi}(void);")
-        rows.append(f'    {{ 0x{r["run"]:04X}, {length}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)} }},')
+        rows.append(f'    {{ 0x{r["run"]:04X}, {length}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x{r["ends"]:04X} }},')
     out += ["const Tag rondo_tags[] = {"] + rows + ["};",
             f"const unsigned rondo_tag_count = {len(rows)};", ""]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

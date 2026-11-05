@@ -19,8 +19,9 @@
  * every call's cost in master clocks, and a hash of RAM and the picture for each
  * frame. The hybrid run swaps in the C at every call the original made, where the
  * call had no interrupt in it, did not cross a frame, and its C runs no original
- * code; the machine's clock is charged what the original took. Every frame must
- * hash the same. The stack below S is not hashed.
+ * code. Each of its hardware accesses is made at the clock the original made it,
+ * and at the end the machine is charged the rest of what the original took. Every
+ * frame must hash the same. The stack below S is not hashed.
  */
 #include <setjmp.h>
 #include <stdint.h>
@@ -37,6 +38,7 @@ typedef struct {
     const char *name;
     void (*abi)(void);
     int swappable;
+    uint16_t ends;   /* nonzero: judged on reaching this address at the entry's S */
 } Tag;
 
 extern const Tag rondo_tags[];
@@ -54,6 +56,7 @@ uint8_t (*chk_bus_rd)(uint16_t);
 void (*chk_bus_wr)(uint16_t, uint8_t);
 void (*chk_bus_st)(unsigned, uint8_t);
 const uint8_t *(*chk_bank)(unsigned);
+void (*chk_charge)(int);
 
 Cpu cpu;
 
@@ -178,12 +181,22 @@ static uint32_t a5_phys(uint16_t addr)
     return canon(((uint32_t)mshadow[addr >> 13] << 13) | (addr & 0x1FFF));
 }
 
+static void pace_hw(void);
+
+static unsigned hy_bank(uint16_t addr)
+{
+    return canon((uint32_t)chk_mpr(addr >> 13) << 13) >> 13;
+}
+
 uint8_t rd8(uint16_t addr)
 {
     uint32_t p;
 
-    if (mode == MODE_HYBRID)
+    if (mode == MODE_HYBRID) {
+        if (!rom_bank[hy_bank(addr)])
+            pace_hw();
         return chk_bus_rd(addr);
+    }
     if (++c_budget > 4000000)
         stop_c(ABORT_UNVERIFIED, "C ran past its access budget", 0, 0, 0);
     p = a5_phys(addr);
@@ -230,6 +243,8 @@ void wr8(uint16_t addr, uint8_t value)
     uint32_t p;
 
     if (mode == MODE_HYBRID) {
+        if (!ram_bank[hy_bank(addr)])
+            pace_hw();
         chk_bus_wr(addr, value);
         return;
     }
@@ -246,25 +261,28 @@ void wr8(uint16_t addr, uint8_t value)
 
 void st0(uint8_t value)
 {
-    if (mode == MODE_HYBRID)
+    if (mode == MODE_HYBRID) {
+        pace_hw();
         chk_bus_st(0, value);
-    else
+    } else
         hw_write(0x1FE000, value);
 }
 
 void st1(uint8_t value)
 {
-    if (mode == MODE_HYBRID)
+    if (mode == MODE_HYBRID) {
+        pace_hw();
         chk_bus_st(2, value);
-    else
+    } else
         hw_write(0x1FE002, value);
 }
 
 void st2(uint8_t value)
 {
-    if (mode == MODE_HYBRID)
+    if (mode == MODE_HYBRID) {
+        pace_hw();
         chk_bus_st(3, value);
-    else
+    } else
         hw_write(0x1FE003, value);
 }
 
@@ -355,6 +373,9 @@ void call_original(uint16_t addr)
     hw_cursor = ret + 1;
 }
 
+static void note_hw_clock(void);
+static void pace_hw(void);
+
 /* The original's side of the log. */
 static void log_push(int type, uint32_t phys, uint8_t val, uint8_t old)
 {
@@ -383,17 +404,31 @@ void check_rd(uint32_t phys, uint8_t v, int kind)
         prev_op = v;
         return;
     }
-    if (kind != 0 || !depth || mode != MODE_A5)
+    if (kind != 0 || !depth)
         return;
     phys = canon(phys);
+    if (mode == MODE_RECORD) {
+        if (!rom_bank[phys >> 13])
+            note_hw_clock();
+        return;
+    }
+    if (mode != MODE_A5)
+        return;
     log_push(rom_bank[phys >> 13] ? E_READ : E_HWREAD, phys, v, 0);
 }
 
 void check_wr_pre(uint32_t phys, uint8_t v)
 {
-    if (!depth || mode != MODE_A5)
+    if (!depth)
         return;
     phys = canon(phys);
+    if (mode == MODE_RECORD) {
+        if (!ram_bank[phys >> 13])
+            note_hw_clock();
+        return;
+    }
+    if (mode != MODE_A5)
+        return;
     if (ram_bank[phys >> 13])
         log_push(E_WRITE, phys, v, ram_bank[phys >> 13][phys & 0x1FFF]);
     else
@@ -481,13 +516,16 @@ static void judge(Frame *f, const Regs *r)
     if (reason == 0)
         f->tag->abi();
     if (reason == ABORT_NONE) {
-        if (cpu.a != r->a)
+        /* Where a routine ends on a shared exit, registers and flags are dead. */
+        if (f->tag->ends)
+            ;
+        else if (cpu.a != r->a)
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " A C %02X orig %02X;", cpu.a, r->a);
-        if (cpu.x != r->x)
+        if (!f->tag->ends && cpu.x != r->x)
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " X C %02X orig %02X;", cpu.x, r->x);
-        if (cpu.y != r->y)
+        if (!f->tag->ends && cpu.y != r->y)
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " Y C %02X orig %02X;", cpu.y, r->y);
-        if ((cpu.p ^ r->p) & PFLAGS)
+        if (!f->tag->ends && ((cpu.p ^ r->p) & PFLAGS))
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " P C %02X orig %02X (entry %02X);",
                                    cpu.p, r->p, f->regs.p);
         for (unsigned i = 0; i < 8; i++)
@@ -564,11 +602,14 @@ typedef struct {
     uint32_t end;
     uint32_t flags;
     uint32_t start_ts;
+    uint64_t hw_first;     /* its first entry in the clocks of hardware accesses */
 } Rec;
 enum { REC_OVERLAP = 1, REC_CROSSED = 2, REC_UNCLOSED = 4 };
 
 static Rec *recs;
 static uint64_t nrec, recmax;
+static uint32_t *hw_clock;
+static uint64_t nhw, hwmax, hw_replay;
 static uint64_t rec_cursor;
 static int run_frame_stamp;
 static uint64_t swapped, kept_interrupt, kept_crossed, kept_original;
@@ -584,6 +625,27 @@ static struct { int tag; uint8_t a, x, y; unsigned long frame; int owed, used; u
 static unsigned recent_n;
 static int drift_reported;
 
+static void note_hw_clock(void)
+{
+    if (nhw == hwmax) {
+        hwmax = hwmax ? hwmax * 2 : (1u << 20);
+        hw_clock = realloc(hw_clock, hwmax * sizeof *hw_clock);
+    }
+    hw_clock[nhw++] = chk_ts();
+}
+
+/* Up to the clock the original made this access at. */
+static void pace_hw(void)
+{
+    if (hw_replay < hwmax) {
+        uint32_t want = hw_clock[hw_replay++];
+        uint32_t now = chk_ts();
+
+        if (want > now)
+            chk_charge((int)(want - now));
+    }
+}
+
 static void rec_new(int tag_index)
 {
     if (nrec == recmax) {
@@ -595,6 +657,7 @@ static void rec_new(int tag_index)
     recs[nrec].end = 0;
     recs[nrec].flags = REC_UNCLOSED;
     recs[nrec].start_ts = chk_ts();
+    recs[nrec].hw_first = nhw;
     nrec++;
 }
 
@@ -631,7 +694,8 @@ static void close_frames(const Regs *r)
         Frame *f = &frames[depth - 1];
         uint8_t up = (uint8_t)(r->s - f->regs.s);
 
-        if (up == 2 && r->pc == f->ret && prev_op == 0x60) {
+        if (f->tag->ends ? (r->pc == f->tag->ends && r->s == f->regs.s)
+                         : (up == 2 && r->pc == f->ret && prev_op == 0x60)) {
             if (mode == MODE_A5) {
                 judge(f, r);
             } else {
@@ -749,15 +813,17 @@ int check_exec(uint32_t pc)
         cpu.p = r.p;
         {
             uint32_t ts0 = chk_ts();
-            uint16_t ret = stack_return(r.s);
+            const Tag *t = &rondo_tags[index];
+            uint16_t ret = t->ends ? t->ends : stack_return(r.s);
             int32_t owed;
 
+            hw_replay = c->hw_first;
             rondo_tags[index].abi();
             owed = (int32_t)c->delta - (int32_t)(chk_ts() - ts0);
             recent[(recent_n - 1) % RECENT].owed = owed;
             recent[(recent_n - 1) % RECENT].used = (int)(chk_ts() - ts0);
             recent[(recent_n - 1) % RECENT].delta = c->delta;
-            chk_set_regs(cpu.a, cpu.x, cpu.y, (uint8_t)(r.s + 2), cpu.p, ret);
+            chk_set_regs(cpu.a, cpu.x, cpu.y, t->ends ? r.s : (uint8_t)(r.s + 2), cpu.p, ret);
             prev_op = 0x60;
             return owed > 0 ? owed : 1;
         }
@@ -879,7 +945,7 @@ int check_init(int which, const char *path, const char *user_path)
     }
     if (mode == MODE_HYBRID) {
         FILE *r = fopen(path, "rb");
-        uint64_t head[2];
+        uint64_t head[3];
 
         if (!r || fread(head, sizeof head, 1, r) != 1) {
             fprintf(stderr, "check: cannot read the record %s\n", path);
@@ -887,9 +953,12 @@ int check_init(int which, const char *path, const char *user_path)
         }
         nrec = head[0];
         fhmax = head[1];
+        hwmax = head[2];
+        hw_clock = malloc((hwmax + 1) * sizeof *hw_clock);
         recs = malloc(nrec * sizeof *recs);
         fhash = malloc(fhmax * sizeof *fhash);
-        if (fread(recs, sizeof *recs, nrec, r) != nrec || fread(fhash, sizeof *fhash, fhmax, r) != fhmax) {
+        if (fread(recs, sizeof *recs, nrec, r) != nrec || fread(fhash, sizeof *fhash, fhmax, r) != fhmax ||
+            fread(hw_clock, sizeof *hw_clock, hwmax, r) != hwmax) {
             fprintf(stderr, "check: short record %s\n", path);
             return -1;
         }
@@ -924,10 +993,11 @@ void check_finish(void)
         fclose(report);
     } else if (mode == MODE_RECORD) {
         FILE *r = fopen(check_path, "wb");
-        uint64_t head[2] = { nrec, nf };
+        uint64_t head[3] = { nrec, nf, nhw };
 
         if (!r || fwrite(head, sizeof head, 1, r) != 1 ||
-            fwrite(recs, sizeof *recs, nrec, r) != nrec || fwrite(fhash, sizeof *fhash, nf, r) != nf) {
+            fwrite(recs, sizeof *recs, nrec, r) != nrec || fwrite(fhash, sizeof *fhash, nf, r) != nf ||
+            fwrite(hw_clock, sizeof *hw_clock, nhw, r) != nhw) {
             perror(check_path);
             exit(1);
         }

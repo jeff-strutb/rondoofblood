@@ -32,6 +32,7 @@ addr,kind,name,note
 26,zp,zScore2,score BCD high
 2F,zp,zIdleFlag,cleared at start
 30,zp,zGameMode,game mode the frame logic dispatches on
+32,zp,zFrameTick,counts game frames
 33,zp,zFrameBusy,set while the frame interrupt's work is running
 34,zp,zSoundBusy,bit 7 set while the sound driver is being called
 39,zp,zDisplayDelay,frames left before the display is enabled
@@ -43,6 +44,8 @@ addr,kind,name,note
 4B,zp,zVdcCrHi,VDC control high as the game wants it
 4C,zp,zVideoMode,index of the screen timing
 4F,zp,zVdcReg,VDC register last selected
+8B,zp,zWaveCounter,a counter the water effects move with
+9E,zp,zRasterStage,stage value one raster effect tests
 A2,zp,zMusicWanted,set to $FF at start
 DB,zp,zRamBaseBank,first Super RAM bank from the card
 F5,zp,BiosIrqDisable,the card's interrupt mask byte
@@ -140,6 +143,8 @@ E0A2,abs,BiosE0A2,called once at start
 3C3C,abs,ScriptSlotField3C,script slot field not yet identified
 3C48,abs,ScriptSlotField48,script slot field not yet identified
 3C54,abs,ScriptSlotField54,script slot field not yet identified
+3C60,abs,SavedColoursLo,sprite colours a raster effect keeps
+3C70,abs,SavedColoursHi,sprite colours a raster effect keeps
 3C80,abs,ListChannelKind,list channel kind by channel
 3C88,abs,ListChannelList,list channel list by channel
 3C90,abs,ListChannelPlace,list channel position by channel
@@ -161,6 +166,8 @@ E0A2,abs,BiosE0A2,called once at start
 3E9E,abs,ScrollSpeedX,scroll speed along X this frame
 3EA6,abs,ScrollSpeedY,scroll speed along Y this frame
 3EBB,abs,ScrollYOffset,fixed Y offset of a horizontal level
+3EB8,abs,RasterWaterWanted,the water line the game wants
+3EBC,abs,RasterWaterLine,the water line this frame
 3F0C,abs,SavedMprA,MPR4 kept across a sound call
 3F0D,abs,SavedMprB,MPR5 kept across a sound call
 3F0E,abs,SavedMprC,MPR6 kept across a sound call
@@ -169,7 +176,35 @@ E0A2,abs,BiosE0A2,called once at start
 3F32,abs,RasterLine,raster line this frame starts from
 3F33,abs,RasterStep,raster band the handler is on
 3F80,abs,ScreenWideFlag,nonzero: timing index 2 after the frame's work
+3F8F,abs,RasterMarks,one byte per band for the marked raster effects
 # Tables and vectors in the kernel.
+4404,abs,RasterStartEntries,band copy entry by raster effect
+44E9,abs,RasterEffects,handler by raster effect
+46A6,abs,Effect6Bands,band by step
+46AB,abs,Effect6YAdds,Y offset by step
+46B0,abs,Effect6Lines,next line by step
+4724,abs,Effect7YAdds,Y offset words by step
+4832,abs,Effect8Bands,band by step
+4833,abs,Effect8YAdds,Y offset words by step
+4838,abs,Effect8Lines,next line by step
+483B,abs,FlickerMasks,VDC control mask by odd or even frame
+4931,abs,Effect12Bands,band by step
+4934,abs,Effect12YAdds,Y offset by step
+4935,abs,Effect12Lines,next line by step
+49C0,abs,Effect13Bands,band by step
+49C3,abs,Effect13YAdds,Y offset words by step
+49CC,abs,Effect13Lines,next line by step
+4AA1,abs,WaterWave,X offset words by wave phase
+4B14,abs,Effect16Bands,band by step
+4B18,abs,Effect16YAdds,Y offset by step
+4B1C,abs,Effect16Lines,next line by step
+4B84,abs,Effect17Bands,band by step
+4B89,abs,Effect17YAdds,Y offset by step
+4B8A,abs,Effect17Lines,next line by step
+4EA0,abs,DeepWave,X offset words by wave phase
+5093,abs,Effect30Bands,band by step
+5096,abs,Effect30YAdds,Y offset by step
+5097,abs,Effect30Lines,next line by step
 400F,abs,VecStartListChannelKind2,jump table entry
 4015,abs,VecStartScriptSlotKind1,jump table entry
 403C,abs,VecStartListChannelKind3,jump table entry
@@ -177,8 +212,6 @@ E0A2,abs,BiosE0A2,called once at start
 4072,abs,VecRecordEvent,jump table entry
 4075,abs,VecBitOfIndex,jump table entry
 43CE,abs,VceControlTable,VCE control by screen timing
-43FC,abs,RasterStart,sets up a frame's raster effect
-44E1,abs,RasterInterrupt,the raster interrupt's handler
 5105,abs,FrameModeDispatch,runs the current game mode
 6E43,abs,LoadSceneWhole,kernel routine called at start
 6FD8,abs,LoadScenePart,kernel routine called at start

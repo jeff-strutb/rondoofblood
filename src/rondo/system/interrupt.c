@@ -97,10 +97,13 @@ static void full_frame(void)
     byte = rd8(zRasterEffect);
     wr8(RasterEffectNow, byte);
     if (byte != 0) {
+        uint8_t effect;
+        uint8_t last;
+
         byte = rd8(zRasterArg);
         wr8(RasterLine, byte);
         write_raster_line();
-        call_original(RasterStart);
+        RasterStart(&effect, &last);
         set_raster_enable();
     }
     byte = rd8(zVdcCrLo);
@@ -167,11 +170,8 @@ void FrameInterrupt(void)
 
     wr8(zVdcStatus, status);
     if (status & STATUS_RASTER) {
-        /* The raster handler ends on this routine's own tail and RTI. */
-        call_original(RasterInterrupt);
-        return;
-    }
-    if (status & STATUS_VBLANK) {
+        RasterInterrupt();
+    } else if (status & STATUS_VBLANK) {
         cli();
         byte = (uint8_t)(rd8(zFrameCount) + 1);
         wr8(zFrameCount, byte);

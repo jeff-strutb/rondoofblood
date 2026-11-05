@@ -16,6 +16,8 @@ uint8_t WriteBandScroll(uint8_t band);
 void ResetDisplayControl(void);
 uint8_t SoundFrameTick(void);
 Alu NextRandom(void);
+bool RasterStart(uint8_t *effect, uint8_t *last);
+void RasterInterrupt(void);
 uint8_t BitOfIndex(uint8_t index, uint8_t *byte);
 uint8_t RecordEvent(uint8_t event, uint8_t *byte);
 void StartScriptSlotKind1(uint8_t script, uint8_t slot);

@@ -10,10 +10,10 @@ index b0c262d..04250a0 100644
  };
  
 diff --git a/mednafen/pce/huc.cpp b/mednafen/pce/huc.cpp
-index de2c4c9..9fefa45 100644
+index de2c4c9..08b4303 100644
 --- a/mednafen/pce/huc.cpp
 +++ b/mednafen/pce/huc.cpp
-@@ -581,3 +581,45 @@ extern "C" __attribute__((visibility("default"))) void rondo_set_hooks(rondo_rd_
+@@ -581,3 +581,50 @@ extern "C" __attribute__((visibility("default"))) void rondo_set_hooks(rondo_rd_
  	rondo_wr_hook = wr;
  	rondo_irq_hook = irq;
  }
@@ -58,6 +58,11 @@ index de2c4c9..9fefa45 100644
 +extern "C" __attribute__((visibility("default"))) void rondo_bus_st(unsigned reg, uint8 v)
 +{
 +	HuCPU.BusST(reg, v);
++}
++
++extern "C" __attribute__((visibility("default"))) void rondo_charge(int master)
++{
++	HuCPU.StealMasterCycles(master);
 +}
 diff --git a/mednafen/pce/huc6280.cpp b/mednafen/pce/huc6280.cpp
 index b6ddb2b..d23f8cf 100644

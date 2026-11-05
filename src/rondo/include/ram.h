@@ -34,6 +34,7 @@
 #define zScore2 0x2026 /* score BCD high */
 #define zIdleFlag 0x202F /* cleared at start */
 #define zGameMode 0x2030 /* game mode the frame logic dispatches on */
+#define zFrameTick 0x2032 /* counts game frames */
 #define zFrameBusy 0x2033 /* set while the frame interrupt's work is running */
 #define zSoundBusy 0x2034 /* bit 7 set while the sound driver is being called */
 #define zDisplayDelay 0x2039 /* frames left before the display is enabled */
@@ -45,6 +46,8 @@
 #define zVdcCrHi 0x204B /* VDC control high as the game wants it */
 #define zVideoMode 0x204C /* index of the screen timing */
 #define zVdcReg 0x204F /* VDC register last selected */
+#define zWaveCounter 0x208B /* a counter the water effects move with */
+#define zRasterStage 0x209E /* stage value one raster effect tests */
 #define zMusicWanted 0x20A2 /* set to $FF at start */
 #define zRamBaseBank 0x20DB /* first Super RAM bank from the card */
 #define BiosIrqDisable 0x20F5 /* the card's interrupt mask byte */
@@ -138,6 +141,8 @@
 #define ScriptSlotField3C 0x3C3C /* script slot field not yet identified */
 #define ScriptSlotField48 0x3C48 /* script slot field not yet identified */
 #define ScriptSlotField54 0x3C54 /* script slot field not yet identified */
+#define SavedColoursLo 0x3C60 /* sprite colours a raster effect keeps */
+#define SavedColoursHi 0x3C70 /* sprite colours a raster effect keeps */
 #define ListChannelKind 0x3C80 /* list channel kind by channel */
 #define ListChannelList 0x3C88 /* list channel list by channel */
 #define ListChannelPlace 0x3C90 /* list channel position by channel */
@@ -159,6 +164,8 @@
 #define ScrollSpeedX 0x3E9E /* scroll speed along X this frame */
 #define ScrollSpeedY 0x3EA6 /* scroll speed along Y this frame */
 #define ScrollYOffset 0x3EBB /* fixed Y offset of a horizontal level */
+#define RasterWaterWanted 0x3EB8 /* the water line the game wants */
+#define RasterWaterLine 0x3EBC /* the water line this frame */
 #define SavedMprA 0x3F0C /* MPR4 kept across a sound call */
 #define SavedMprB 0x3F0D /* MPR5 kept across a sound call */
 #define SavedMprC 0x3F0E /* MPR6 kept across a sound call */
@@ -167,6 +174,34 @@
 #define RasterLine 0x3F32 /* raster line this frame starts from */
 #define RasterStep 0x3F33 /* raster band the handler is on */
 #define ScreenWideFlag 0x3F80 /* nonzero: timing index 2 after the frame's work */
+#define RasterMarks 0x3F8F /* one byte per band for the marked raster effects */
+#define RasterStartEntries 0x4404 /* band copy entry by raster effect */
+#define RasterEffects 0x44E9 /* handler by raster effect */
+#define Effect6Bands 0x46A6 /* band by step */
+#define Effect6YAdds 0x46AB /* Y offset by step */
+#define Effect6Lines 0x46B0 /* next line by step */
+#define Effect7YAdds 0x4724 /* Y offset words by step */
+#define Effect8Bands 0x4832 /* band by step */
+#define Effect8YAdds 0x4833 /* Y offset words by step */
+#define Effect8Lines 0x4838 /* next line by step */
+#define FlickerMasks 0x483B /* VDC control mask by odd or even frame */
+#define Effect12Bands 0x4931 /* band by step */
+#define Effect12YAdds 0x4934 /* Y offset by step */
+#define Effect12Lines 0x4935 /* next line by step */
+#define Effect13Bands 0x49C0 /* band by step */
+#define Effect13YAdds 0x49C3 /* Y offset words by step */
+#define Effect13Lines 0x49CC /* next line by step */
+#define WaterWave 0x4AA1 /* X offset words by wave phase */
+#define Effect16Bands 0x4B14 /* band by step */
+#define Effect16YAdds 0x4B18 /* Y offset by step */
+#define Effect16Lines 0x4B1C /* next line by step */
+#define Effect17Bands 0x4B84 /* band by step */
+#define Effect17YAdds 0x4B89 /* Y offset by step */
+#define Effect17Lines 0x4B8A /* next line by step */
+#define DeepWave 0x4EA0 /* X offset words by wave phase */
+#define Effect30Bands 0x5093 /* band by step */
+#define Effect30YAdds 0x5096 /* Y offset by step */
+#define Effect30Lines 0x5097 /* next line by step */
 #define VecStartListChannelKind2 0x400F /* jump table entry */
 #define VecStartScriptSlotKind1 0x4015 /* jump table entry */
 #define VecStartListChannelKind3 0x403C /* jump table entry */
@@ -174,8 +209,6 @@
 #define VecRecordEvent 0x4072 /* jump table entry */
 #define VecBitOfIndex 0x4075 /* jump table entry */
 #define VceControlTable 0x43CE /* VCE control by screen timing */
-#define RasterStart 0x43FC /* sets up a frame's raster effect */
-#define RasterInterrupt 0x44E1 /* the raster interrupt's handler */
 #define FrameModeDispatch 0x5105 /* runs the current game mode */
 #define LoadSceneWhole 0x6E43 /* kernel routine called at start */
 #define LoadScenePart 0x6FD8 /* kernel routine called at start */

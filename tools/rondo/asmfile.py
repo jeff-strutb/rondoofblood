@@ -37,10 +37,12 @@ def routines_in(path):
         if not m:
             continue
         run = RUN.search(block)
+        ends = re.search(r"@ends\s+([0-9A-Fa-f]{4})", block)
         lines = [re.sub(r"^\s*\*? ?", "", ln).rstrip() for ln in block.split("\n")[1:-1]]
         found.append({"disc": int(m.group(1), 16) * SECTOR + int(m.group(2), 16),
                       "tag": f"{m.group(1)}:{m.group(2)}", "name": m.group(3),
-                      "run": int(run.group(2), 16), "header": lines, "path": path})
+                      "run": int(run.group(2), 16), "header": lines, "path": path,
+                      "ends": int(ends.group(1), 16) if ends else 0})
     return found
 
 

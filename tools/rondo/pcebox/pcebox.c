@@ -66,6 +66,7 @@ extern uint8_t (*chk_bus_rd)(uint16_t);
 extern void (*chk_bus_wr)(uint16_t, uint8_t);
 extern void (*chk_bus_st)(unsigned, uint8_t);
 extern const uint8_t *(*chk_bank)(unsigned);
+extern void (*chk_charge)(int);
 int check_init(int which, const char *path, const char *user_path);
 void check_finish(void);
 void check_rd(uint32_t phys, uint8_t v, int kind);
@@ -448,12 +449,13 @@ int main(int argc, char **argv)
         chk_bus_wr = (void (*)(uint16_t, uint8_t))sym(lib, "rondo_bus_wr");
         chk_bus_st = (void (*)(unsigned, uint8_t))sym(lib, "rondo_bus_st");
         chk_bank = core_bank;
+        chk_charge = (void (*)(int))sym(lib, "rondo_charge");
         if (!check_user || check_init(check_mode, check_file, check_user))
             return 1;
         ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
             (void *)check_rd, NULL, (void *)check_irq);
         ((void (*)(void *, void *))sym(lib, "rondo_set_check_hooks"))(
-            (void *)check_exec, check_mode == 1 ? (void *)check_wr_pre : NULL);
+            (void *)check_exec, check_mode != 3 ? (void *)check_wr_pre : NULL);
     }
     for (int i = 0; i < ndefaulted; i++)
         fprintf(stderr, "pcebox: option %s left at the core's default\n", defaulted[i]);

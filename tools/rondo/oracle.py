@@ -17,6 +17,7 @@ Run under WSL: the core and pcebox are Linux builds.
 import concurrent.futures
 import glob
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -131,6 +132,7 @@ def report_a5(totals, details, bad):
           "order flags", sum(t[4] for t in totals.values()))
     print("routines fully executed (gate C):",
           sum(1 for n, ran in cover.values() if n and n == ran), "of", len(cover))
+    report_gates(rows)
     for kind in ("DIVERGENT", "ORDER", "UNVERIFIED"):
         for name, lines in sorted(details.items()):
             for line in [ln for ln in lines if ln.split()[1:2] == [kind]][:2]:
@@ -140,6 +142,32 @@ def report_a5(totals, details, bad):
     print("run but not every byte:", " ".join(
         f"{name}({ran}/{n})" for name, (n, ran) in sorted(cover.items()) if 0 < ran < n))
     return bad
+
+
+def report_gates(rows):
+    """Which routines meet every gate as measured, and what the others lack."""
+    table = open(os.path.join(TOP, "build", "rondo", "pcebox", "hybrid_table.c")).read()
+    swappable = {m.group(1): m.group(2) == "1"
+                 for m in re.finditer(r'"(\w+)", abi_\w+, (\d),', table)}
+    met, total = [0, 0], 0
+    lacking = {"no call judged": 0, "not every byte run": 0, "cannot be swapped in A7": 0}
+    for row in rows[1:]:
+        name, n, ran, calls, same = row.split(",")[:5]
+        n, ran, calls, same = int(n), int(ran), int(calls), int(same)
+        total += n
+        reasons = []
+        if same == 0:
+            reasons.append("no call judged")
+        if ran < n:
+            reasons.append("not every byte run")
+        if not swappable.get(name):
+            reasons.append("cannot be swapped in A7")
+        for r in reasons:
+            lacking[r] += 1
+        if not reasons:
+            met[0] += 1
+            met[1] += n
+    print(f"every gate met as measured: {met[0]} routines, {met[1]} B of {total} B; lacking: {lacking}")
 
 
 def run_a7(names):

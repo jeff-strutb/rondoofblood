@@ -38,16 +38,39 @@ static void work_y_hi(uint8_t value)
     wr8(ScrollBgyHi + WORK_BAND, value);
 }
 
-/* Y low is a field plus a constant, Y high another field plus the carry. */
+/* Words of scroll and table RAM, by where their two bytes are. */
+static uint16_t raster_word(uint16_t lo, uint16_t hi)
+{
+    uint8_t low = rd8(lo);
+
+    return (uint16_t)(low | (rd8(hi) << 8));
+}
+
+static void raster_put_word(uint16_t lo, uint16_t hi, uint16_t value)
+{
+    wr8(lo, (uint8_t)value);
+    wr8(hi, (uint8_t)(value >> 8));
+}
+
+static void work_y_word(uint16_t y)
+{
+    work_y_lo((uint8_t)y);
+    work_y_hi((uint8_t)(y >> 8));
+}
+
+/* The working band's Y is a band's, moved on. */
 static void work_y_sum(uint16_t low_field, uint8_t add, uint16_t high_field)
 {
-    uint8_t byte = rd8(low_field);
-    Alu r = adc8(byte, add, false);
+    work_y_word((uint16_t)(raster_word(low_field, high_field) + add));
+}
 
-    work_y_lo(r.a);
-    byte = rd8(high_field);
-    r = adc8(0, byte, r.c);
-    work_y_hi(r.a);
+/* The working band's X is band 1's, moved by a word of a wave table. */
+static void work_x_band1_plus_wave(uint16_t wave, uint8_t index)
+{
+    uint16_t moved = raster_word((uint16_t)(wave + index), (uint16_t)(wave + 1 + index));
+
+    moved = (uint16_t)(moved + raster_word(ScrollBgxLo + 1, ScrollBgxHi + 1));
+    raster_put_word(ScrollBgxLo + WORK_BAND, ScrollBgxHi + WORK_BAND, moved);
 }
 
 static void next_step(void)
@@ -57,14 +80,17 @@ static void next_step(void)
     wr8(RasterStep, step);
 }
 
+/* A compare line of nine bits to the VDC's data port. */
+static void write_compare_line(uint16_t line)
+{
+    wr8(VDC_DATA_LO, (uint8_t)line);
+    wr8(VDC_DATA_HI, (uint8_t)(line >> 8));
+}
+
 /* The compare line, as the VDC counts: $40 is the first visible. */
 static void write_line_word(uint8_t line)
 {
-    Alu r = adc8(RCR_BASE, line, false);
-
-    wr8(VDC_DATA_LO, r.a);
-    r = adc8(0, 0, r.c);
-    wr8(VDC_DATA_HI, r.a);
+    write_compare_line((uint16_t)(RCR_BASE + line));
 }
 
 /* A compare line in screen lines, the high byte zero, written past the MPRs. */
@@ -197,18 +223,10 @@ void abi_RasterBandThenLine(void)
 static void band_table_step(uint8_t step, uint16_t bands, uint16_t y_adds, uint16_t lines)
 {
     uint8_t band = rd8((uint16_t)(bands + step));
-    uint8_t byte;
-    uint8_t other;
-    Alu r;
 
     work_x_from(band);
-    byte = rd8((uint16_t)(ScrollBgyLo + band));
-    other = rd8((uint16_t)(y_adds + step));
-    r = adc8(byte, other, false);
-    work_y_lo(r.a);
-    byte = rd8((uint16_t)(ScrollBgyHi + band));
-    r = adc8(0, byte, r.c);
-    work_y_hi(r.a);
+    work_y_sum((uint16_t)(ScrollBgyLo + band), rd8((uint16_t)(y_adds + step)),
+               (uint16_t)(ScrollBgyHi + band));
     WriteBandScroll(WORK_BAND);
     next_step();
     SelectVdcRegister(VDC_REG_RCR);
@@ -221,19 +239,13 @@ static void band_table_step_word(uint8_t step, uint16_t bands, uint16_t y_adds, 
 {
     uint8_t band = rd8((uint16_t)(bands + step));
     uint8_t index = (uint8_t)(step << 1);
-    uint8_t byte;
-    uint8_t other;
-    Alu r;
+    uint16_t y;
 
     work_x_from(band);
-    byte = rd8((uint16_t)(ScrollBgyLo + band));
-    other = rd8((uint16_t)(y_adds + index));
-    r = adc8(byte, other, false);
-    work_y_lo(r.a);
-    byte = rd8((uint16_t)(ScrollBgyHi + band));
-    other = rd8((uint16_t)(y_adds + 1 + index));
-    r = adc8(byte, other, r.c);
-    work_y_hi(r.a);
+    y = raster_word((uint16_t)(ScrollBgyLo + band), (uint16_t)(ScrollBgyHi + band));
+    y = (uint16_t)(y + raster_word((uint16_t)(y_adds + index), (uint16_t)(y_adds + 1 + index)));
+    work_y_lo((uint8_t)y);
+    work_y_hi((uint8_t)(y >> 8));
     WriteBandScroll(WORK_BAND);
     next_step();
     SelectVdcRegister(VDC_REG_RCR);
@@ -249,7 +261,7 @@ static void band_table_step_word(uint8_t step, uint16_t bands, uint16_t y_adds, 
  * HOW: Band 1, then band 0's X and Y high with Y low $7F.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect2(void)
+void RasterEffect2(void)
 {
     uint8_t byte;
 
@@ -264,6 +276,11 @@ void abi_RasterEffect2(void)
     RasterEndWorkBand();
 }
 
+void abi_RasterEffect2(void)
+{
+    RasterEffect2();
+}
+
 /*
  * @routine 0043:55C RasterEffect3
  * @run 69:455C
@@ -274,7 +291,7 @@ void abi_RasterEffect2(void)
  * Y offset; the last, band 0.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect3(void)
+void RasterEffect3(void)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
@@ -296,6 +313,11 @@ void abi_RasterEffect3(void)
     }
 }
 
+void abi_RasterEffect3(void)
+{
+    RasterEffect3();
+}
+
 /*
  * @routine 0043:5B1 RasterEffect4
  * @run 69:45B1
@@ -304,7 +326,7 @@ void abi_RasterEffect3(void)
  * HOW: Copies them to the working band.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect4(void)
+void RasterEffect4(void)
 {
     uint8_t byte;
 
@@ -316,6 +338,11 @@ void abi_RasterEffect4(void)
     RasterEndWorkBand();
 }
 
+void abi_RasterEffect4(void)
+{
+    RasterEffect4();
+}
+
 /*
  * @routine 0043:5CC RasterEffect5
  * @run 69:45CC
@@ -324,7 +351,7 @@ void abi_RasterEffect4(void)
  * HOW: Bands 1, 2 and 1 with their Y offsets, then band 0.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect5(void)
+void RasterEffect5(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -345,6 +372,11 @@ void abi_RasterEffect5(void)
     }
 }
 
+void abi_RasterEffect5(void)
+{
+    RasterEffect5();
+}
+
 /*
  * @routine 0043:643 RasterEffect6
  * @run 69:4643
@@ -353,7 +385,7 @@ void abi_RasterEffect5(void)
  * HOW: Band 4, five steps from the tables, then band 1 at Y $DB.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect6(void)
+void RasterEffect6(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -368,6 +400,11 @@ void abi_RasterEffect6(void)
     }
 }
 
+void abi_RasterEffect6(void)
+{
+    RasterEffect6();
+}
+
 /*
  * @routine 0043:6B6 RasterEffect7
  * @run 69:46B6
@@ -376,7 +413,7 @@ void abi_RasterEffect6(void)
  * HOW: Band 4, five steps from the tables, then band 1 at Y $11B.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect7(void)
+void RasterEffect7(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -390,6 +427,11 @@ void abi_RasterEffect7(void)
     } else {
         band_table_step_word(step, Effect6Bands, Effect7YAdds, Effect6Lines);
     }
+}
+
+void abi_RasterEffect7(void)
+{
+    RasterEffect7();
 }
 
 /*
@@ -522,7 +564,7 @@ static void flatten_colours(void)
  * HOW: A step per band, as the steps above.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect8(void)
+void RasterEffect8(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -538,6 +580,11 @@ void abi_RasterEffect8(void)
         flatten_colours();
     else
         restore_saved_colours();
+}
+
+void abi_RasterEffect8(void)
+{
+    RasterEffect8();
 }
 
 /* Two bands of a three-step split, the last at a fixed Y. */
@@ -568,9 +615,14 @@ static void three_step_split(uint8_t line0, uint8_t y1, uint8_t line1, uint8_t y
  * HOW: Band 0, band 1 at Y $13F, band 0 at Y $7F.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect9(void)
+void RasterEffect9(void)
 {
     three_step_split(0x7F, 0x3F, 0xBF, 0x7F);
+}
+
+void abi_RasterEffect9(void)
+{
+    RasterEffect9();
 }
 
 /*
@@ -581,9 +633,14 @@ void abi_RasterEffect9(void)
  * HOW: Band 0, band 1 at Y $15F, band 0 at Y $9F.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect10(void)
+void RasterEffect10(void)
 {
     three_step_split(0x9F, 0x5F, 0xDF, 0x9F);
+}
+
+void abi_RasterEffect10(void)
+{
+    RasterEffect10();
 }
 
 /*
@@ -594,10 +651,15 @@ void abi_RasterEffect10(void)
  * HOW: Clears its bit in the VDC's control.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect11(void)
+void RasterEffect11(void)
 {
     background_off();
     cli();
+}
+
+void abi_RasterEffect11(void)
+{
+    RasterEffect11();
 }
 
 /*
@@ -608,7 +670,7 @@ void abi_RasterEffect11(void)
  * HOW: Band 2, three steps from the tables, then band 5 at Y $B8.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect12(void)
+void RasterEffect12(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -623,6 +685,11 @@ void abi_RasterEffect12(void)
     }
 }
 
+void abi_RasterEffect12(void)
+{
+    RasterEffect12();
+}
+
 /*
  * @routine 0044:139 RasterEffect13
  * @run 69:4939
@@ -632,7 +699,7 @@ void abi_RasterEffect12(void)
  * HOW: Raises band 4's Y high around its write, then the tables, then band 0.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect13(void)
+void RasterEffect13(void)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
@@ -656,6 +723,11 @@ void abi_RasterEffect13(void)
     }
 }
 
+void abi_RasterEffect13(void)
+{
+    RasterEffect13();
+}
+
 /*
  * @routine 0044:1D1 RasterEffect14
  * @run 69:49D1
@@ -665,7 +737,7 @@ void abi_RasterEffect13(void)
  * HOW: Band 4, band 0, then the colours' two steps.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect14(void)
+void RasterEffect14(void)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
@@ -690,6 +762,11 @@ void abi_RasterEffect14(void)
     }
 }
 
+void abi_RasterEffect14(void)
+{
+    RasterEffect14();
+}
+
 /* A byte of the frame's count over 8, plus the step: where a wave starts. */
 static uint8_t wave_index(uint16_t counter_field, uint8_t shift)
 {
@@ -709,13 +786,11 @@ static uint8_t wave_index(uint16_t counter_field, uint8_t shift)
  * with the step; then band 0.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect15(void)
+void RasterEffect15(void)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
     uint8_t other;
-    uint8_t index;
-    Alu r;
 
     if (step == 0) {
         byte = rd8(RasterWaterLine);
@@ -729,35 +804,25 @@ void abi_RasterEffect15(void)
         RasterEndWorkBand();
         return;
     }
+    /* The step here is 1 to $14: two lines a step down from band 1, a byte that wraps. */
     step = (uint8_t)(rd8(RasterStep) - 1);
-    other = rd8(ScrollBgyLo + 1);
-    r = adc8((uint8_t)(step << 1), other, (step & 0x80) != 0);
-    r = adc8(r.a, 0x8F, false);
-    work_y_lo(r.a);
-    other = rd8(ScrollBgyHi + 1);
-    r = adc8(0, other, r.c);
-    work_y_hi(r.a);
-    index = wave_index(zFrameTick, 3);
-    byte = rd8((uint16_t)(WaterWave + index));
-    other = rd8(ScrollBgxLo + 1);
-    r = adc8(byte, other, false);
-    wr8(ScrollBgxLo + WORK_BAND, r.a);
-    byte = rd8((uint16_t)(WaterWave + 1 + index));
-    other = rd8(ScrollBgxHi + 1);
-    r = adc8(byte, other, r.c);
-    wr8(ScrollBgxHi + WORK_BAND, r.a);
+    byte = (uint8_t)((step << 1) + rd8(ScrollBgyLo + 1));
+    work_y_word((uint16_t)(((rd8(ScrollBgyHi + 1) << 8) | byte) + 0x8F));
+    work_x_band1_plus_wave(WaterWave, wave_index(zFrameTick, 3));
     WriteBandScroll(WORK_BAND);
     SelectVdcRegister(VDC_REG_RCR);
     step = (uint8_t)(rd8(RasterStep) << 1);
     work_y_lo(step);
     other = rd8(RasterWaterLine);
     byte = (uint8_t)(0xCF - other);
-    other = rd8(ScrollBgyLo + WORK_BAND);
-    r = adc8(byte, other, false);
-    wr8(VDC_DATA_LO, r.a);
-    wr8(VDC_DATA_HI, r.c ? 1 : 0);
+    write_compare_line((uint16_t)(byte + rd8(ScrollBgyLo + WORK_BAND)));
     next_step();
     cli();
+}
+
+void abi_RasterEffect15(void)
+{
+    RasterEffect15();
 }
 
 /*
@@ -768,7 +833,7 @@ void abi_RasterEffect15(void)
  * HOW: Band 5, four steps from the tables, then band 1 at Y $BF.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect16(void)
+void RasterEffect16(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -783,6 +848,11 @@ void abi_RasterEffect16(void)
     }
 }
 
+void abi_RasterEffect16(void)
+{
+    RasterEffect16();
+}
+
 /*
  * @routine 0044:321 RasterEffect17
  * @run 69:4B21
@@ -791,7 +861,7 @@ void abi_RasterEffect16(void)
  * HOW: Band 4, four steps from the tables, then band 2 at Y $D7.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect17(void)
+void RasterEffect17(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -804,6 +874,11 @@ void abi_RasterEffect17(void)
     } else {
         band_table_step(step, Effect17Bands, Effect17YAdds, Effect17Lines);
     }
+}
+
+void abi_RasterEffect17(void)
+{
+    RasterEffect17();
 }
 
 /* Band 0's X low with X high 1, at Y $168: the fixed band of effect 18. */
@@ -827,12 +902,11 @@ static void effect18_work_band(void)
  * down by that height, then the fixed band again.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect18(void)
+void RasterEffect18(void)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
     uint8_t other;
-    Alu r;
 
     if (step == 0) {
         effect18_work_band();
@@ -847,10 +921,7 @@ void abi_RasterEffect18(void)
         wr8(ScrollBgxHi + 1, byte);
         byte = rd8(ScrollBgyLo);
         other = rd8(ScrollBgyLo + 2);
-        r = adc8(byte, other, false);
-        wr8(ScrollBgyLo + 1, r.a);
-        r = adc8(0, 0, r.c);
-        wr8(ScrollBgyHi + 1, r.a);
+        raster_put_word(ScrollBgyLo + 1, ScrollBgyHi + 1, (uint16_t)((unsigned)byte + other));
         WriteBandScroll(1);
         next_step();
         SelectVdcRegister(VDC_REG_RCR);
@@ -863,6 +934,11 @@ void abi_RasterEffect18(void)
     }
 }
 
+void abi_RasterEffect18(void)
+{
+    RasterEffect18();
+}
+
 /*
  * @routine 0044:415 RasterEffect19
  * @run 69:4C15
@@ -873,7 +949,7 @@ void abi_RasterEffect18(void)
  * background off at the game's say.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect19(void)
+void RasterEffect19(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -898,6 +974,11 @@ void abi_RasterEffect19(void)
     }
 }
 
+void abi_RasterEffect19(void)
+{
+    RasterEffect19();
+}
+
 /*
  * @routine 0044:479 RasterEffect20
  * @run 69:4C79
@@ -908,7 +989,7 @@ void abi_RasterEffect19(void)
  * background on.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect20(void)
+void RasterEffect20(void)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t line;
@@ -962,6 +1043,11 @@ void abi_RasterEffect20(void)
     }
 }
 
+void abi_RasterEffect20(void)
+{
+    RasterEffect20();
+}
+
 /*
  * @routine 0044:532 RasterEffect21
  * @run 69:4D32
@@ -971,7 +1057,7 @@ void abi_RasterEffect20(void)
  * HOW: Bands 2, 1, 3, then band 0 twice.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect21(void)
+void RasterEffect21(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -1001,6 +1087,11 @@ void abi_RasterEffect21(void)
     }
 }
 
+void abi_RasterEffect21(void)
+{
+    RasterEffect21();
+}
+
 /*
  * @routine 0044:5A4 RasterEffect22
  * @run 69:4DA4
@@ -1009,11 +1100,8 @@ void abi_RasterEffect21(void)
  * HOW: Builds the working band each step.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect22(void)
+void RasterEffect22(void)
 {
-    uint8_t byte;
-    Alu r;
-
     if (rd8(RasterStep) == 0) {
         work_y_lo(0x10);
         work_y_hi(0x01);
@@ -1021,12 +1109,15 @@ void abi_RasterEffect22(void)
         RasterBandThenLine(WORK_BAND, 0x67);
     } else {
         work_x_from(0);
-        byte = rd8(ScrollBgyLo);
-        r = adc8(0x27, byte, false);
-        work_y_lo(r.a);
+        work_y_lo((uint8_t)(0x27 + rd8(ScrollBgyLo)));
         work_y_hi(0);
         RasterEndWorkBand();
     }
+}
+
+void abi_RasterEffect22(void)
+{
+    RasterEffect22();
 }
 
 /* Effects 23, 25 and 29: flatten the colours and restore them, after a first line. */
@@ -1056,9 +1147,14 @@ static void flatten_after_line(uint8_t first_line)
  * HOW: A first compare, then the colours' two steps.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect23(void)
+void RasterEffect23(void)
 {
     flatten_after_line(0x01);
+}
+
+void abi_RasterEffect23(void)
+{
+    RasterEffect23();
 }
 
 /*
@@ -1070,12 +1166,17 @@ void abi_RasterEffect23(void)
  * HOW: The colours' two steps.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect25(void)
+void RasterEffect25(void)
 {
     if (rd8(RasterStep) == 0)
         flatten_colours();
     else
         restore_saved_colours();
+}
+
+void abi_RasterEffect25(void)
+{
+    RasterEffect25();
 }
 
 /*
@@ -1087,9 +1188,14 @@ void abi_RasterEffect25(void)
  * HOW: A first compare, then the colours' two steps.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect29(void)
+void RasterEffect29(void)
 {
     flatten_after_line(0x18);
+}
+
+void abi_RasterEffect29(void)
+{
+    RasterEffect29();
 }
 
 /*
@@ -1103,13 +1209,12 @@ void abi_RasterEffect29(void)
  * kept in band 2's X bytes, itself moved on each step.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect24(void)
+void RasterEffect24(void)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
     uint8_t other;
-    uint8_t index;
-    Alu r;
+    uint16_t next_line;
 
     if (step == 0) {
         wr8(ScrollBgxLo + 2, 0xFF);
@@ -1121,35 +1226,28 @@ void abi_RasterEffect24(void)
         RasterEndBand1();
         return;
     }
+    /* The step here is 1 to $10, so doubling it one less carries nothing. */
     step = (uint8_t)(rd8(RasterStep) - 1);
-    other = rd8(ScrollBgyLo + 1);
-    r = adc8((uint8_t)(step << 1), other, (step & 0x80) != 0);
-    work_y_lo(r.a);
+    work_y_lo((uint8_t)((step << 1) + rd8(ScrollBgyLo + 1)));
     work_y_hi(0);
-    index = wave_index(zWaveCounter, 3);
-    byte = rd8((uint16_t)(DeepWave + index));
-    other = rd8(ScrollBgxLo + 1);
-    r = adc8(byte, other, false);
-    wr8(ScrollBgxLo + WORK_BAND, r.a);
-    byte = rd8((uint16_t)(DeepWave + 1 + index));
-    other = rd8(ScrollBgxHi + 1);
-    r = adc8(byte, other, r.c);
-    wr8(ScrollBgxHi + WORK_BAND, r.a);
+    work_x_band1_plus_wave(DeepWave, wave_index(zWaveCounter, 3));
     WriteBandScroll(WORK_BAND);
     SelectVdcRegister(VDC_REG_RCR);
     byte = (uint8_t)(rd8(zWaveCounter) >> 3);
     other = rd8(RasterStep);
     byte = (uint8_t)((uint8_t)(byte + other) >> 3) & 1;
-    other = rd8(ScrollBgxLo + 2);
-    r = adc8((uint8_t)(byte + 2), other, false);
-    wr8(ScrollBgxLo + 2, r.a);
-    wr8(VDC_DATA_LO, r.a);
-    other = rd8(ScrollBgxHi + 2);
-    r = adc8(0, other, r.c);
-    wr8(ScrollBgxHi + 2, r.a);
-    wr8(VDC_DATA_HI, r.a);
+    next_line = raster_word(ScrollBgxLo + 2, ScrollBgxHi + 2);
+    next_line = (uint16_t)(next_line + byte + 2);
+    raster_put_word(ScrollBgxLo + 2, ScrollBgxHi + 2, next_line);
+    wr8(VDC_DATA_LO, (uint8_t)next_line);
+    wr8(VDC_DATA_HI, (uint8_t)(next_line >> 8));
     next_step();
     cli();
+}
+
+void abi_RasterEffect24(void)
+{
+    RasterEffect24();
 }
 
 /*
@@ -1162,7 +1260,6 @@ static void marked_band_step(uint8_t limit, uint8_t shift)
     uint8_t mark;
     uint8_t byte;
     uint8_t other;
-    Alu r;
 
     if (step == 0) {
         RasterBandThenLine(0, 0x41);
@@ -1195,9 +1292,7 @@ static void marked_band_step(uint8_t limit, uint8_t shift)
     WriteBandScroll(WORK_BAND);
     SelectVdcRegister(VDC_REG_RCR);
     byte = rd8(RasterStep);
-    r = adc8((uint8_t)(byte << shift), 0x41, false);
-    wr8(VDC_DATA_LO, r.a);
-    wr8(VDC_DATA_HI, r.c ? 1 : 0);
+    write_compare_line((uint16_t)((uint8_t)(byte << shift) + 0x41));
     next_step();
     cli();
 }
@@ -1210,9 +1305,14 @@ static void marked_band_step(uint8_t limit, uint8_t shift)
  * HOW: See marked_band_step.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect26(void)
+void RasterEffect26(void)
 {
     marked_band_step(0x71, 1);
+}
+
+void abi_RasterEffect26(void)
+{
+    RasterEffect26();
 }
 
 /*
@@ -1223,9 +1323,14 @@ void abi_RasterEffect26(void)
  * HOW: See marked_band_step.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect27(void)
+void RasterEffect27(void)
 {
     marked_band_step(0x1D, 3);
+}
+
+void abi_RasterEffect27(void)
+{
+    RasterEffect27();
 }
 
 /*
@@ -1238,12 +1343,11 @@ void abi_RasterEffect27(void)
  * zero, the top of the random byte is added. Then band 0.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect28(void)
+void RasterEffect28(void)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
     uint8_t other;
-    Alu r;
 
     if (step == 0) {
         RasterBandThenLine(3, 0xA7);
@@ -1270,22 +1374,22 @@ void abi_RasterEffect28(void)
     byte = (uint8_t)(rd8(zFrameTick) >> 3);
     other = rd8(RasterStep);
     if (((uint8_t)((uint8_t)(byte + other) >> 1) & 0x0F) == 0) {
-        byte = (uint8_t)((rd8(zRandom3) & 1) + 1);
-        other = rd8(ScrollBgxLo + WORK_BAND);
-        r = adc8(byte, other, false);
-        wr8(ScrollBgxLo + WORK_BAND, r.a);
-        other = rd8(ScrollBgxHi + WORK_BAND);
-        r = adc8(0, other, r.c);
-        wr8(ScrollBgxHi + WORK_BAND, r.a);
+        uint16_t shaken = raster_word(ScrollBgxLo + WORK_BAND, ScrollBgxHi + WORK_BAND);
+
+        shaken = (uint16_t)(shaken + (rd8(zRandom3) & 1) + 1);
+        raster_put_word(ScrollBgxLo + WORK_BAND, ScrollBgxHi + WORK_BAND, shaken);
     }
     WriteBandScroll(WORK_BAND);
     SelectVdcRegister(VDC_REG_RCR);
     byte = rd8(RasterStep);
-    r = adc8((uint8_t)(byte << 1), 0xA9, false);
-    wr8(VDC_DATA_LO, r.a);
-    wr8(VDC_DATA_HI, r.c ? 1 : 0);
+    write_compare_line((uint16_t)((uint8_t)(byte << 1) + 0xA9));
     next_step();
     cli();
+}
+
+void abi_RasterEffect28(void)
+{
+    RasterEffect28();
 }
 
 /*
@@ -1296,7 +1400,7 @@ void abi_RasterEffect28(void)
  * HOW: Band 1, three steps from the tables, then band 0 at Y $AF.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect30(void)
+void RasterEffect30(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -1312,6 +1416,11 @@ void abi_RasterEffect30(void)
     }
 }
 
+void abi_RasterEffect30(void)
+{
+    RasterEffect30();
+}
+
 /*
  * @routine 0045:09B RasterEffect31
  * @run 69:509B
@@ -1321,7 +1430,7 @@ void abi_RasterEffect30(void)
  * HOW: Background off and line $57; background on and line $E7; band 0.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void abi_RasterEffect31(void)
+void RasterEffect31(void)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -1342,6 +1451,11 @@ void abi_RasterEffect31(void)
         wr8(ScrollBgyLo + 1, 0x17);
         RasterBandThenLine(1, 0xE7);
     }
+}
+
+void abi_RasterEffect31(void)
+{
+    RasterEffect31();
 }
 
 /*

@@ -83,15 +83,15 @@ VecStopOnLandingNoMove,0043:0F3,3,T2,1,1,1,0,0,0,0,,ddd6d12a5e08
 VecSoundIfOnFirstScreen,0043:0F6,3,T2,1,1,1,1,1,0,1,,ca60962d1884
 KernelStart,0043:0F9,123,T2,0,1,0,1,0,0,0,cpu,5120bda92afc
 KernelIdle,0043:174,3,T2,1,1,1,1,0,0,0,,47c9dd9430be
-FrameInterrupt,0043:177,288,T2,0,1,1,0,0,0,320703,Alu; adc8/sbc8; cpu,bce38c9fa4bc
+FrameInterrupt,0043:177,288,T2,0,1,1,0,0,0,320703,Alu; adc8/sbc8,bce38c9fa4bc
 IgnoredInterrupt,0043:297,1,T2,1,1,1,1,0,0,0,,60d5307f20ba
-LateFrame,0043:298,60,T2,0,1,1,1,0,0,3970,Alu; adc8/sbc8; cpu,60232317f998
+LateFrame,0043:298,60,T2,0,1,1,1,0,0,3970,Alu; adc8/sbc8,60232317f998
 ResetDisplayControl,0043:2D4,37,T4,1,1,1,1,1,1,0,,b9795d5bae8d
 WriteBandScroll,0043:2F9,35,T4,1,1,1,1,1,1,0,,7aff539dc7eb
 WriteScreenTiming,0043:31C,35,T4,1,1,1,1,1,1,0,,d622d5d61dd0
-SoundStopAll,0043:33F,39,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; cpu,9fcd9c67df21
-SoundFrameTick,0043:366,45,T2,0,1,1,0,1,0,2633,Alu; adc8/sbc8; cpu,6a362e437e6c
-SoundCommand,0043:393,59,T2,0,1,1,0,1,0,13,Alu; adc8/sbc8; cpu,26c10c69b281
+SoundStopAll,0043:33F,39,T2,1,1,1,1,1,0,0,,300b564da1b3
+SoundFrameTick,0043:366,45,T2,1,1,1,0,1,0,2633,,9556f1883a52
+SoundCommand,0043:393,59,T2,1,1,1,0,1,0,13,,f9615170bf10
 WaitVblankDisplayOff,0043:3D8,22,T2,1,1,1,1,0,0,282,,834623c09b98
 WriteVdcControl,0043:3EE,14,T2,1,1,1,0,0,0,0,,8ff9d4c6adb4
 RasterStart,0043:3FC,8,T4,1,1,1,1,1,1,0,,63027eee330e
@@ -107,39 +107,39 @@ RasterInterrupt,0043:4E1,8,T4,1,1,1,1,1,1,0,,8b8a9979c3b4
 RasterEndBand1,0043:529,5,T2,1,1,1,1,1,0,0,,c5fbe204a6ba
 RasterDone,0043:52E,4,T2,1,1,1,1,1,0,0,,513d00d3eb0d
 RasterEndWorkBand,0043:532,4,T2,1,1,1,1,1,0,0,,eedeb746beef
-RasterEffect2,0043:536,38,T2,0,1,1,0,0,0,0,logic in the wrapper,13d9279fe2d2
-RasterEffect3,0043:55C,85,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,0feb0dc3068d
-RasterEffect4,0043:5B1,27,T2,1,1,1,0,0,0,0,,8bbb43afaaa3
-RasterEffect5,0043:5CC,119,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,9879586157f1
-RasterEffect6,0043:643,100,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,4c6d553fb82b
-RasterEffect7,0043:6B6,112,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,8da41ad11303
+RasterEffect2,0043:536,38,T2,1,1,1,0,0,0,0,,8f2fa7659349
+RasterEffect3,0043:55C,85,T2,1,1,1,0,0,0,0,,e3e86d67d30d
+RasterEffect4,0043:5B1,27,T2,1,1,1,0,0,0,0,,96fc3e4ae2b7
+RasterEffect5,0043:5CC,119,T2,1,1,1,0,0,0,0,,c0a0953f28b4
+RasterEffect6,0043:643,100,T2,1,1,1,0,0,0,0,,d0f0973a2a36
+RasterEffect7,0043:6B6,112,T2,1,1,1,0,0,0,0,,cc5dc9a8f281
 RasterEffect8Step4,0043:730,15,T2,1,1,1,0,0,0,0,,13df2884c25c
 RasterEffect8Step0,0043:73F,16,T2,1,1,1,0,0,0,0,,a6515e4b15ea
 RasterEffect8Step3,0043:74F,27,T2,1,1,1,0,0,0,0,,d8b51b9c901e
-RasterEffect8,0043:76A,201,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,1e0be6caf9b2
-RasterEffect9,0044:03D,66,T2,1,1,1,0,0,0,0,,d706512d0e03
-RasterEffect10,0044:07F,66,T2,1,1,1,0,0,0,0,,c0cc3e50cc7a
-RasterEffect11,0044:0C1,13,T2,1,1,1,0,0,0,0,,465036c22095
-RasterEffect12,0044:0CE,100,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; logic in the wrapper,805073e8c69d
-RasterEffect13,0044:139,136,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,fa7485f0d8ae
-RasterEffect14,0044:1D1,69,T2,0,1,1,0,0,0,0,logic in the wrapper,f127d1f98be0
-RasterEffect15,0044:216,139,T2,0,1,1,0,0,0,0,logic in the wrapper,8126947e11c0
-RasterEffect16,0044:2B1,100,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,8982ed6311ff
-RasterEffect17,0044:321,100,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,d3e48cdf7e61
-RasterEffect18,0044:38F,134,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; logic in the wrapper,574efa9ef7d9
-RasterEffect19,0044:415,100,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; logic in the wrapper,fd36dc5c6a1b
-RasterEffect20,0044:479,185,T2,0,1,1,0,1,0,0,logic in the wrapper,faecda42f59c
-RasterEffect21,0044:532,114,T2,0,1,1,0,1,0,0,logic in the wrapper,3ef5c29823ba
-RasterEffect22,0044:5A4,61,T2,0,1,1,0,0,0,0,logic in the wrapper,6df0aefc492c
-RasterEffect23,0044:5E1,29,T2,1,1,1,0,0,0,0,,704f0347b897
-RasterEffect25,0044:5FE,11,T2,1,1,1,0,0,0,0,,69551f1fdfe8
-RasterEffect29,0044:609,29,T2,1,1,1,0,0,0,0,,918be8cdb78f
-RasterEffect24,0044:626,122,T2,0,1,1,0,0,0,0,logic in the wrapper,195d6de88c48
-RasterEffect26,0044:6B0,118,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,862fba042bab
-RasterEffect27,0044:726,122,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,3942d8d5d491
-RasterEffect28,0044:7A0,141,T2,0,1,1,0,0,0,0,logic in the wrapper,4a1b6e7d01f6
-RasterEffect30,0045:02D,103,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; logic in the wrapper,752ccbaa7acf
-RasterEffect31,0045:09B,82,T2,0,1,1,0,0,0,0,logic in the wrapper,755ec39463fd
+RasterEffect8,0043:76A,201,T2,1,1,1,0,0,0,0,,0e9a6218d339
+RasterEffect9,0044:03D,66,T2,1,1,1,0,0,0,0,,a0fad021d087
+RasterEffect10,0044:07F,66,T2,1,1,1,0,0,0,0,,105af5416a53
+RasterEffect11,0044:0C1,13,T2,1,1,1,0,0,0,0,,04b82a82672f
+RasterEffect12,0044:0CE,100,T2,1,1,1,1,1,0,0,,e4c2552c601f
+RasterEffect13,0044:139,136,T2,1,1,1,0,0,0,0,,dfa3297ebc6c
+RasterEffect14,0044:1D1,69,T2,1,1,1,0,0,0,0,,e2bd1241b2e8
+RasterEffect15,0044:216,139,T2,1,1,1,0,0,0,0,,0411c93fff73
+RasterEffect16,0044:2B1,100,T2,1,1,1,0,0,0,0,,a08c9e029843
+RasterEffect17,0044:321,100,T2,1,1,1,0,0,0,0,,820c847e5c35
+RasterEffect18,0044:38F,134,T2,1,1,1,1,1,0,0,,8df0967baa2a
+RasterEffect19,0044:415,100,T2,1,1,1,1,1,0,0,,af282e24b5a0
+RasterEffect20,0044:479,185,T2,1,1,1,0,1,0,0,,5dfa5891003f
+RasterEffect21,0044:532,114,T2,1,1,1,0,1,0,0,,955a13bfb7c3
+RasterEffect22,0044:5A4,61,T2,1,1,1,0,0,0,0,,772a4a78454d
+RasterEffect23,0044:5E1,29,T2,1,1,1,0,0,0,0,,27b575397980
+RasterEffect25,0044:5FE,11,T2,1,1,1,0,0,0,0,,e13bb6e5ae57
+RasterEffect29,0044:609,29,T2,1,1,1,0,0,0,0,,5d9a8f97cf01
+RasterEffect24,0044:626,122,T2,1,1,1,0,0,0,0,,7e10a68ad8a3
+RasterEffect26,0044:6B0,118,T2,1,1,1,0,0,0,0,,ab41e9d1205a
+RasterEffect27,0044:726,122,T2,1,1,1,0,0,0,0,,d7a1de6fdaf5
+RasterEffect28,0044:7A0,141,T2,1,1,1,0,0,0,0,,cbcb747f39d7
+RasterEffect30,0045:02D,103,T2,1,1,1,0,0,0,0,,f5cdcc02ad14
+RasterEffect31,0045:09B,82,T2,1,1,1,0,0,0,0,,8f56d654fa2c
 RasterSetNextLine,0045:0ED,3,T2,1,1,1,0,0,0,0,,107ddcb12e71
 RasterBandThenLine,0045:0F0,21,T2,1,1,1,1,1,0,0,,8dfc3f92c29d
 FrameModeDispatch,0045:105,9,T2,0,1,1,1,1,0,70577,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,5eb751cba560
@@ -186,25 +186,25 @@ StartScriptSlotKind7,0045:568,6,T4,1,1,1,1,1,1,0,,1f134ca56c70
 ClearScriptSlot,0045:56E,25,T4,1,1,1,1,1,1,142,,b3cf21534195
 FadeAndStopSound,0045:587,11,T2,0,1,1,0,1,0,1,logic in the wrapper,59ba0267ede9
 StopSound,0045:592,5,T2,1,1,1,1,0,0,0,,66c06a2983d2
-AddScoreByte,0045:597,13,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,26df593727ba
-AddScoreWord,0045:5A4,46,T2,0,1,1,0,1,0,0,Alu; adc8/sbc8,e719842f5f92
+AddScoreByte,0045:597,13,T2,1,1,1,0,0,0,0,,f637572cd92d
+AddScoreWord,0045:5A4,46,T2,1,1,1,0,1,0,0,,69732ca7eeb1
 ApplyVelocity,0045:5D2,36,T2,0,1,1,1,1,1,445,Alu; adc8/sbc8,544fe53aca1a
 ApplyVelocityY,0045:5F6,37,T2,0,1,1,1,1,1,121,Alu; adc8/sbc8,629d30e08640
 ApplyVelocityX,0045:61B,37,T2,0,1,1,1,1,1,41,Alu; adc8/sbc8,9bd220351263
-SetVelocityFromAngle,0045:640,29,T2,0,1,1,1,1,1,1260,Alu; adc8/sbc8,e429b1a55148
-ScaleByCosine,0045:65D,3,T2,0,1,1,1,1,1,1228,Alu; adc8/sbc8,102e8495461f
-ScaleBySine,0045:660,58,T2,0,1,1,1,1,1,565,Alu; adc8/sbc8,91f71ec144a8
-MultiplyBySineWord,0045:69A,53,T2,0,1,1,1,1,1,1621,Alu; adc8/sbc8,5677d9c38c25
-AngleToPoint,0045:7CF,32,T2,0,1,1,1,1,0,10,Alu; adc8/sbc8,f59dcf4b3933
-AngleToPlayerOffset,0045:7EF,62,T2,0,1,1,1,1,0,3,Alu; adc8/sbc8,29e50cc3cd0c
-AngleToPlayer,0046:02D,34,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,356a11fb2b04
-AngleFromDelta,0046:04F,152,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,e5c7c4e821ac
+SetVelocityFromAngle,0045:640,29,T4,1,1,1,1,1,1,1260,,88d02c5e51dd
+ScaleByCosine,0045:65D,3,T4,1,1,1,1,1,1,1228,,36923ee44ab7
+ScaleBySine,0045:660,58,T4,1,1,1,1,1,1,565,,55130b94e471
+MultiplyBySineWord,0045:69A,53,T4,1,1,1,1,1,1,1621,,7d681f095ce2
+AngleToPoint,0045:7CF,32,T2,1,1,1,1,1,0,10,,68dad498b658
+AngleToPlayerOffset,0045:7EF,62,T2,1,1,1,1,1,0,3,,3435fe77c5a9
+AngleToPlayer,0046:02D,34,T2,1,1,1,0,0,0,0,,be5279aa41d1
+AngleFromDelta,0046:04F,152,T2,1,1,1,0,0,0,0,,a5627908797f
 ClearObjectInY,0046:1E7,6,T2,1,1,1,1,1,0,7,,508a6b9f40ba
 ClearObject,0046:1ED,30,T4,1,1,1,1,1,1,39,,41c1fd3c0206
 ClearObjectExceptPlace,0046:20B,130,T2,1,1,1,1,0,0,0,,f25f483fc7f6
 ClearEnemySlots,0046:28D,13,T2,1,1,1,1,1,0,0,,0104d92eeb07
-NextRandom,0046:29A,56,T2,0,1,1,0,1,1,81,Alu; adc8/sbc8,bdab2b7df855
-TurnAngleToward,0046:2D2,49,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,5372a2463c6e
+NextRandom,0046:29A,56,T2,1,1,1,0,1,1,81,,386be29841b9
+TurnAngleToward,0046:2D2,49,T2,1,1,1,0,0,0,0,,a8044b721fa2
 BitOfIndex,0046:303,22,T2,1,1,1,1,1,0,0,,89d4fb88265a
 RecordObjectEvent,0046:319,10,T2,1,1,1,1,1,0,0,,9a19e61c6ac3
 RecordEvent,0046:323,10,T2,1,1,1,1,1,0,0,,ea45dffd31fa
@@ -261,18 +261,18 @@ FindFreeSlotFrom20,0047:3DB,4,T2,1,1,1,1,1,0,0,,2e6da9041479
 FindFreeSlotFrom50,0047:3DF,14,T2,1,1,1,0,1,0,0,,d6b7f46df2b9
 ApplyGravity,0047:3ED,9,T2,0,1,1,1,1,1,22,Alu; adc8/sbc8,93bf7afd8648
 ApplyGravityUnlimited,0047:3F6,15,T2,0,1,1,1,1,0,1,Alu; adc8/sbc8,7bd7e17cf181
-TileOpAttributeHigh,0047:405,18,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,e588b49c3923
-TileOpAttributeLow,0047:417,9,T2,0,1,1,1,0,0,0,Alu; adc8/sbc8,ac9f58f1eef6
+TileOpAttributeHigh,0047:405,18,T2,1,1,1,1,1,0,0,,c1f090504b42
+TileOpAttributeLow,0047:417,9,T2,1,1,1,1,0,0,0,,7f01066160df
 TileScriptReturn,0047:420,1,T2,1,1,1,1,0,0,0,,2d412acd6f51
-TileOpAlternateUp,0047:421,22,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,7db95ce08231
-TileOpAlternateDown,0047:437,22,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,195546695b4c
-DrawTileScript,0047:44D,41,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,e2cf531bdcba
-RunTileScript,0047:476,147,T2,0,1,1,0,1,0,0,Alu; adc8/sbc8,07a2e508c5f2
+TileOpAlternateUp,0047:421,22,T2,1,1,1,0,0,0,0,,2740776d9986
+TileOpAlternateDown,0047:437,22,T2,1,1,1,0,0,0,0,,2c45a31920c3
+DrawTileScript,0047:44D,41,T2,1,1,1,1,1,0,0,,00cd6407df78
+RunTileScript,0047:476,147,T2,1,1,1,0,1,0,0,,908a4bde79cf
 WriteTileAscending,0047:509,5,T2,1,1,1,1,1,0,0,,5cebce3ace98
 WriteTileDescending,0047:50E,5,T2,1,1,1,0,0,0,0,,a0d61013edc5
 WriteTile,0047:513,11,T2,1,1,1,1,1,0,0,,b2dd9efb03d8
 SetVramFromScript,0047:51E,26,T2,1,1,1,1,1,0,0,,de4a2d4bb19c
-NextVramLine,0047:538,24,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,e0cb80104f2b
+NextVramLine,0047:538,24,T2,1,1,1,1,1,0,0,,6ee1247f7a77
 AdvanceTileScript,0047:550,7,T2,1,1,1,1,1,0,0,,81e24374cbce
 PlayerDistanceSum,0047:557,50,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8; alu helper,17c87aace738
 SoundIfOnFirstScreen,0047:589,15,T2,1,1,1,1,1,0,1,,a36aa5b80ac8

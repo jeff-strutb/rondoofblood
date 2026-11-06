@@ -1,0 +1,53 @@
+addr,kind,name,note
+F7,zp,CardVdcReg,the VDC register last selected
+F8,zp,CardAl,BIOS argument _AL
+FA,zp,CardBl,BIOS argument _BL
+FB,zp,CardBh,BIOS argument _BH
+FC,zp,CardCl,BIOS argument _CL
+FD,zp,CardCh,BIOS argument _CH
+FE,zp,CardDl,BIOS argument _DL
+2200,abs,CardIrqVectors,interrupt handlers: a word each
+2242,abs,CardVdcMwr,the copy of the VDC's memory width register
+224C,abs,CardCdCommand,the CD command being built
+2256,abs,CardCdResult,what the drive last answered
+2260,abs,CardSavedArgs,_AX to _DX kept across a command
+2272,abs,CardVramPending,set when _BX was written to the VDC's data port
+2273,abs,CardCdBaseIndex,which disc base a request adds
+2274,abs,CardCdBases,disc addresses added to a request: three bytes each
+227E,abs,CardSubcodeByte,the subcode byte last read
+2284,abs,CardSoftResetLo,the soft reset's handler
+2285,abs,CardSoftResetHi,the soft reset's handler
+229D,abs,CardAdpcmPlayLo,ADPCM play state
+229E,abs,CardAdpcmPlayMid,ADPCM play state
+229F,abs,CardAdpcmPlayHi,ADPCM play state
+22A0,abs,CardAdpcmPlayEnd,ADPCM play state
+22A5,abs,CardAdpcmActive,ADPCM play state
+22BB,abs,CardSavedMpr6,MPR6 while the math bank is mapped
+0000,abs,VdcAddress,the VDC's address port
+0002,abs,VdcDataLo,the VDC's data port
+0003,abs,VdcDataHi,the VDC's data port
+1800,abs,CdBusStatus,the CD bus's phase and handshake bits
+1801,abs,CdData,the CD bus's data port
+1802,abs,CdIrqControl,the CD unit's interrupt enables and the bus acknowledge
+2241,abs,CardFrameTick,counted by the card's frame interrupt
+2248,abs,CardCdNoWait,set: a command returns without waiting on the drive
+227A,abs,CardBusPhase,the bus phase last read
+227B,abs,CardCdStatus,the status byte the drive last gave
+227C,abs,CardCdSense,the drive's sense code
+229B,abs,CardCdTimedOut,set: the drive did not answer a command in time
+22A4,abs,CardCdBusy,set while an interrupt-driven transfer runs
+1804,abs,CdResetPort,the CD unit's reset line
+1803,abs,CdIrqStatus,the CD unit's interrupt status
+1805,abs,CdPcmLatch,CD audio sample latch and low byte
+1806,abs,CdPcmHigh,CD audio sample high byte
+1807,abs,CdSubcode,subcode byte
+180C,abs,AdpcmStatus,ADPCM status
+180D,abs,AdpcmControl,ADPCM control
+180F,abs,CdFade,CD and ADPCM volume fade
+18C1,abs,SuperRamSigA,signature of the Super System Card's RAM
+18C2,abs,SuperRamSigB,signature of the Super System Card's RAM
+18C3,abs,SuperRamBank,the Super System Card RAM's bank
+18C5,abs,ArcadeRamSigA,signature of the extra RAM read first
+18C6,abs,ArcadeRamSigB,signature of the extra RAM read first
+18C7,abs,ArcadeRamBank,that RAM's bank
+FFF4,abs,CardVersionByte,the byte of the card ex_memopen returns

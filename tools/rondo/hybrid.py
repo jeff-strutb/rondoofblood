@@ -15,6 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import asmfile  # noqa: E402
+import cardfile  # noqa: E402
 
 TOP = asmfile.TOP
 OUT = os.path.join(TOP, "build", "rondo", "pcebox", "hybrid_table.c")
@@ -27,7 +28,8 @@ CALL_ABI = re.compile(r"\bcall_abi\(\s*(\w+)")
 def function_calls():
     """Each C function's name, with the names it calls."""
     calls = {}
-    for path in glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True):
+    for path in (glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True) +
+                 glob.glob(os.path.join(TOP, "syscard", "src", "*.c"))):
         text = open(path, encoding="utf-8").read()
         for m in FUNC.finditer(text):
             depth, i = 1, m.end()
@@ -55,7 +57,7 @@ def main():
     buf = open(asmfile.IMAGE, "rb").read()
     calls = function_calls()
     out = ['#include <stdint.h>', 'typedef struct { uint16_t run; uint16_t len; uint32_t disc; '
-           'const char *name; void (*abi)(void); int swappable; uint16_t ends; } Tag;']
+           'const char *name; void (*abi)(void); int swappable; uint16_t ends; int rom; } Tag;']
     rows = []
     bad = 0
     swappable = 0
@@ -70,8 +72,18 @@ def main():
         ok = not reaches_original(abi, calls)
         swappable += ok
         out.append(f"void {abi}(void);")
-        rows.append(f'    {{ 0x{r["run"]:04X}, {length}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x{r["ends"]:04X} }},')
-    out += ["const Tag rondo_tags[] = {"] + rows + ["};",
+        rows.append(f'    {{ 0x{r["run"]:04X}, {length}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x{r["ends"]:04X}, 0 }},')
+    for r in cardfile.spans():
+        abi = "abi_" + r["name"]
+        if abi not in calls:
+            print(f"{r['tag']} {r['name']}: no {abi}")
+            bad += 1
+            continue
+        ok = not reaches_original(abi, calls)
+        swappable += ok
+        out.append(f"void {abi}(void);")
+        rows.append(f'    {{ 0x{r["run"]:04X}, {r["length"]}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x0000, 1 }},')
+    out +=["const Tag rondo_tags[] = {"] + rows + ["};",
             f"const unsigned rondo_tag_count = {len(rows)};", ""]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="ascii", newline="\n") as f:

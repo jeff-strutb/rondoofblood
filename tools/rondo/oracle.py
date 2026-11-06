@@ -28,6 +28,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import asmfile  # noqa: E402
+import cardfile  # noqa: E402
 import disc  # noqa: E402
 
 PCEBOX = os.path.join(TOP, "build", "rondo", "pcebox", "pcebox")
@@ -108,7 +109,8 @@ def tree_stamp():
     """A hash of everything a verdict depends on: any change voids it (ledger.py)."""
     digest = hashlib.sha256()
     tops = [os.path.join(TOP, "src", "rondo"), os.path.join(TOP, "tools", "rondo", "pcebox"),
-            os.path.join(TOP, "config", "rondo", "symbols.csv"), os.path.join(HERE, "scripts")]
+            os.path.join(TOP, "config", "rondo", "symbols.csv"), os.path.join(HERE, "scripts"),
+            os.path.join(TOP, "syscard", "src"), os.path.join(TOP, "syscard", "include")]
     files = []
     for top in tops:
         if os.path.isfile(top):
@@ -129,6 +131,21 @@ def write_stamp(name, whole):
     if whole:
         with open(path, "w", newline="\n") as f:
             f.write(tree_stamp() + "\n")
+
+
+def report_card(totals, csv_name):
+    """The System Card's routines, judged the same way, in a table of their own."""
+    cover = cardfile.coverage()
+    rows = ["routine,bytes,bytes_run,calls,identical,divergent,unverified,order_flags,verdict"]
+    for r in cardfile.spans():
+        name = r["name"]
+        calls, same, diff, unv, order = totals.get(name, [0, 0, 0, 0, 0])
+        n, ran = cover.get(name, (r["length"], 0))
+        v = "UNCOVERED" if calls == 0 else "DIVERGENT" if diff else "UNVERIFIED" if same == 0 else "IDENTICAL"
+        rows.append(f"{name},{n},{ran},{calls},{same},{diff},{unv},{order},{v}")
+    with open(os.path.join(OUT, "card_" + csv_name), "w", newline="\n") as f:
+        f.write("\n".join(rows) + "\n")
+    print("card routines:", "; ".join(f"{row.split(',')[0]} {row.split(',')[-1]}" for row in rows[1:]))
 
 
 def report_a5(totals, details, bad, csv_name="a5.csv"):
@@ -154,6 +171,7 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
         rows.append(f"{name},{n},{ran},{calls},{same},{diff},{unv},{order},{v}")
     with open(os.path.join(OUT, csv_name), "w", newline="\n") as f:
         f.write("\n".join(rows) + "\n")
+    report_card(totals, csv_name)
     print("routine verdicts:", tally)
     print("bytes by verdict:", b_tally)
     print("calls:", sum(t[0] for t in totals.values()), "identical", sum(t[1] for t in totals.values()),

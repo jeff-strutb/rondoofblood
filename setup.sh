@@ -82,9 +82,9 @@ build_pcebox() {
     src="${RONDO_SRC:-$top/src/rondo}"
     out="${RONDO_BOX:-$top/build/rondo/pcebox/pcebox}"
     cc -O2 -Wall -Wextra -I "$tc/src/pce/libretro-common/include" -I "$top/build/rondo/pcebox" \
-        -I "$src/include" -o "$out.new" "$top/tools/rondo/pcebox/pcebox.c" \
+        -I "$src/include" -I "$top/syscard/include" -o "$out.new" "$top/tools/rondo/pcebox/pcebox.c" \
         "$top/tools/rondo/pcebox/trace.c" "$top/tools/rondo/pcebox/check.c" \
-        "$top/build/rondo/pcebox/hybrid_table.c" "$src"/*/*.c -ldl
+        "$top/build/rondo/pcebox/hybrid_table.c" "$src"/*/*.c "$top/syscard/src"/*.c -ldl
     mv "$out.new" "$out"
     echo "pcebox: built"
 }

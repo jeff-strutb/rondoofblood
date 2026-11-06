@@ -39,6 +39,7 @@ typedef struct {
     void (*abi)(void);
     int swappable;
     uint16_t ends;   /* nonzero: judged on reaching this address at the entry's S */
+    int rom;         /* nonzero: disc is an offset in the System Card's ROM */
 } Tag;
 
 extern const Tag rondo_tags[];
@@ -665,6 +666,16 @@ static void rec_new(int tag_index)
 
 static int tag_resident(const Tag *t)
 {
+    /* A card routine is in ROM: it is resident when its bank is mapped at its address. */
+    if (t->rom) {
+        for (unsigned i = 0; i < t->len; i++) {
+            uint16_t logical = (uint16_t)(t->run + i);
+
+            if (chk_mpr(logical >> 13) != (t->disc + i) >> 13)
+                return 0;
+        }
+        return 1;
+    }
     for (unsigned i = 0; i < t->len; i++) {
         uint16_t logical = (uint16_t)(t->run + i);
         uint32_t p = canon(((uint32_t)chk_mpr(logical >> 13) << 13) | (logical & 0x1FFF));

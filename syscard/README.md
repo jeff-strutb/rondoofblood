@@ -11,6 +11,16 @@ this repo, so that it can move to a repo of its own. Nothing is decompiled here 
   Hudson names the entries.
 - To move it: take `syscard/` with its history, and point the game at the header.
 
+## Filing
+
+The same standard as any assembly-based decompilation: symbolic assembly under `syscard/asm/`,
+bit exact against the card's own image, and proper C under `syscard/src/`, behaviour exact.
+
+A routine is named by where it lies in the card's ROM, not on any disc: `@card BB:AAAA name`,
+the ROM bank and the address it runs at, then `WHAT IT DOES:` and `HOW:`. The header is the same
+above the C and above the assembly. Names are Hudson's where public notes give them, confirmed
+only by what the code does.
+
 ## What is known
 
 From reading the image and the game's traces (`build/rondo/trace/cardmap.bin`), 2026-11-05:

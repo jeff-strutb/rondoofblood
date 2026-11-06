@@ -15,7 +15,7 @@ uint8_t WriteScreenTiming(uint8_t index);
 uint8_t WriteBandScroll(uint8_t band);
 void ResetDisplayControl(void);
 uint8_t SoundFrameTick(void);
-Alu NextRandom(void);
+uint8_t NextRandom(void);
 bool RasterStart(uint8_t *effect, uint8_t *last);
 void RasterInterrupt(void);
 uint8_t BitOfIndex(uint8_t index, uint8_t *byte);

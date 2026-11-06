@@ -1,26 +1,90 @@
-/* Angles, sines, the multiply under them, and the game's random numbers. */
+/*
+ * Angles, sines, the multiply under them, and the game's random numbers.
+ *
+ * The bodies work in whole words and leave the original's results in the original's RAM.
+ * What the assembly leaves in A and the flags is worked out from those values in the
+ * *_exit_shim functions, for the abi_ wrappers, and nowhere else.
+ */
 #include "machine.h"
 #include "ram.h"
 
-/* Two's complement of a word in RAM, low byte then high. */
-static Alu negate16(uint16_t lo, uint16_t hi)
-{
-    Alu r = adc8((uint8_t)~rd8(lo), 1, false);
+#define PRODUCT_MASK 0xFFFFFFu
+#define PRODUCT_TOP 0x800000u
 
-    wr8(lo, r.a);
-    r = adc8((uint8_t)~rd8(hi), 0, r.c);
-    wr8(hi, r.a);
-    return r;
+enum {
+    MULTIPLY_ROUNDS = 9,
+    MULTIPLIER_BITS = 0x1FF,
+    ANGLE_NEGATIVE = 0x80,
+    QUARTER_TURN = 0x40,
+    HALF_TURN = 0x80,
+    ATAN_AXIS_MAX = 0x0F
+};
+
+/* The two velocities' 24-bit products, the top two bytes of each being the velocity. */
+typedef struct {
+    uint32_t x;
+    uint32_t y;
+} ScaledVector;
+
+/* How the first quadrant's angle folds into the vector's real quadrant. */
+typedef enum { FOLD_NONE, FOLD_MIRROR, FOLD_HALF_TURN, FOLD_NEGATE } AngleFold;
+
+typedef struct {
+    uint8_t angle;
+    uint8_t index;
+    uint8_t first_quadrant;
+    AngleFold fold;
+} AngleResult;
+
+static uint16_t trig_word(uint16_t lo, uint16_t hi)
+{
+    uint8_t low = rd8(lo);
+
+    return (uint16_t)(low | (rd8(hi) << 8));
 }
 
-/* Keeps the V an earlier step set when the later one set none. */
-static Alu keep_v(Alu later, Alu earlier)
+static void trig_put_word(uint16_t lo, uint16_t hi, uint16_t value)
 {
-    if (!later.v_set && earlier.v_set) {
-        later.v = earlier.v;
-        later.v_set = true;
+    wr8(lo, (uint8_t)value);
+    wr8(hi, (uint8_t)(value >> 8));
+}
+
+static void put_product(uint32_t product)
+{
+    wr8(zProduct0, (uint8_t)product);
+    wr8(zProduct1, (uint8_t)(product >> 8));
+    wr8(zProduct2, (uint8_t)(product >> 16));
+}
+
+/*
+ * What the assembly leaves after the multiply. The last add was the highest multiplier bit
+ * set, so its operands, and V, follow from the value, the word and the product. C is the
+ * top bit the last round shifted out of the copy, bit 15 of the value. N and Z are the
+ * round counter's, at zero.
+ */
+static Alu multiply_exit_shim(uint16_t value, uint16_t word, uint32_t product)
+{
+    Alu exit = alu_none();
+    unsigned bits = word & MULTIPLIER_BITS;
+
+    exit.a = (uint8_t)(value >> 8);
+    exit.nz = 0;
+    exit.c = (value & 0x8000) != 0;
+    exit.c_kept = false;
+    if (bits != 0) {
+        unsigned top = MULTIPLY_ROUNDS - 1;
+        uint32_t added;
+        uint32_t before;
+
+        while (!(bits & (1u << top)))
+            top--;
+        added = (uint32_t)value << top;
+        before = (product - added) & PRODUCT_MASK;
+        exit.a = (uint8_t)(product >> 16);
+        exit.v = (~(before ^ added) & (before ^ product) & PRODUCT_TOP) != 0;
+        exit.v_set = true;
     }
-    return later;
+    return exit;
 }
 
 /*
@@ -37,54 +101,42 @@ static Alu keep_v(Alu later, Alu earlier)
  * Z 1, C the top bit shifted out of zTemp12, V from the last add if any.
  * X kept. Clobbers zTemp10-12, zMultiplierLo-Hi.
  */
-Alu MultiplyBySineWord(void)
+uint32_t MultiplyBySineWord(void)
 {
-    Alu r = { 0 };
-    uint8_t a;
-    bool out;
+    uint32_t shifted = trig_word(zTemp00, zTemp01);
+    uint16_t multiplier = trig_word(zMultiplierLo, zMultiplierHi);
+    uint32_t product = 0;
 
-    wr8(zProduct0, 0);
-    wr8(zProduct1, 0);
-    wr8(zProduct2, 0);
-    a = rd8(zTemp00);
-    wr8(zTemp10, a);
-    a = rd8(zTemp01);
-    wr8(zTemp11, a);
-    wr8(zTemp12, 0);
-    r.a = a;
-    r.c = false;
-    r.v = false;
-    r.v_set = false;
-    for (int round = 0; round < 9; round++) {
-        out = lsr_mem(zMultiplierHi);
-        out = ror_mem(zMultiplierLo, out);
-        if (out) {
-            uint8_t sum = rd8(zProduct0);
-            uint8_t add = rd8(zTemp10);
-
-            r = adc8(sum, add, false);
-            wr8(zProduct0, r.a);
-            sum = rd8(zProduct1);
-            add = rd8(zTemp11);
-            r = adc8(sum, add, r.c);
-            wr8(zProduct1, r.a);
-            sum = rd8(zProduct2);
-            add = rd8(zTemp12);
-            r = adc8(sum, add, r.c);
-            wr8(zProduct2, r.a);
-        }
-        out = asl_mem(zTemp10);
-        out = rol_mem(zTemp11, out);
-        r.c = rol_mem(zTemp12, out);
+    for (int round = 0; round < MULTIPLY_ROUNDS; round++) {
+        if (multiplier & 1)
+            product += shifted;
+        multiplier >>= 1;
+        shifted <<= 1;
     }
-    r.nz = 0;
-    return r;
+    product &= PRODUCT_MASK;
+    put_product(product);
+    wr8(zTemp10, (uint8_t)shifted);
+    wr8(zTemp11, (uint8_t)(shifted >> 8));
+    wr8(zTemp12, (uint8_t)(shifted >> 16));
+    trig_put_word(zMultiplierLo, zMultiplierHi, multiplier);
+    return product;
 }
 
 void abi_MultiplyBySineWord(void)
 {
-    abi_alu(MultiplyBySineWord());
+    uint16_t value = trig_word(zTemp00, zTemp01);
+    uint16_t word = trig_word(zMultiplierLo, zMultiplierHi);
+
+    abi_alu(multiply_exit_shim(value, word, MultiplyBySineWord()));
     cpu.y = 0;
+}
+
+/* The half wave's word for an angle: the angle's sign is not part of the index. */
+static uint16_t sine_word(uint8_t angle)
+{
+    uint8_t index = (uint8_t)(angle << 1);
+
+    return trig_word((uint16_t)(SineTable + index), (uint16_t)(SineTable + 1 + index));
 }
 
 /*
@@ -99,31 +151,42 @@ void abi_MultiplyBySineWord(void)
  * from the multiply, or from the complement's last add when negative; Y 0.
  * X kept. Clobbers zTemp10-12, zMultiplierLo-Hi.
  */
-Alu ScaleBySine(uint8_t angle)
+uint32_t ScaleBySine(uint8_t angle)
 {
-    uint8_t index = (uint8_t)(angle << 1);
-    uint8_t word;
-    Alu r = { 0 };
+    uint32_t product;
 
-    word = rd8((uint16_t)(SineTable + index));
-    wr8(zMultiplierLo, word);
-    word = rd8((uint16_t)(SineTable + 1 + index));
-    wr8(zMultiplierHi, word);
-    r = MultiplyBySineWord();
-    if (angle & 0x80) {
-        r = adc8((uint8_t)~rd8(zProduct0), 1, false);
-        wr8(zProduct0, r.a);
-        r = adc8((uint8_t)~rd8(zProduct1), 0, r.c);
-        wr8(zProduct1, r.a);
-        r = adc8((uint8_t)~rd8(zProduct2), 0, r.c);
-        wr8(zProduct2, r.a);
+    trig_put_word(zMultiplierLo, zMultiplierHi, sine_word(angle));
+    product = MultiplyBySineWord();
+    if (angle & ANGLE_NEGATIVE) {
+        product = (0u - product) & PRODUCT_MASK;
+        put_product(product);
     }
-    return r;
+    return product;
+}
+
+/* The complement's last add carries only out of zero, and overflows only on $800000. */
+static Alu scale_exit_shim(uint8_t angle, uint16_t value, uint32_t result)
+{
+    bool negative = (angle & ANGLE_NEGATIVE) != 0;
+    uint32_t magnitude = negative ? (0u - result) & PRODUCT_MASK : result;
+    Alu exit = multiply_exit_shim(value, sine_word(angle), magnitude);
+
+    if (negative) {
+        exit.a = (uint8_t)(result >> 16);
+        exit.nz = exit.a;
+        exit.c = magnitude == 0;
+        exit.v = magnitude == PRODUCT_TOP;
+        exit.v_set = true;
+    }
+    return exit;
 }
 
 void abi_ScaleBySine(void)
 {
-    abi_alu(ScaleBySine(cpu.a));
+    uint8_t angle = cpu.a;
+    uint16_t value = trig_word(zTemp00, zTemp01);
+
+    abi_alu(scale_exit_shim(angle, value, ScaleBySine(angle)));
     cpu.y = 0;
 }
 
@@ -135,16 +198,29 @@ void abi_ScaleBySine(void)
  * Entry: A angle, zTemp00-01 value. Exit: as ScaleBySine; V from the angle's
  * add when no later add set it.
  */
-Alu ScaleByCosine(uint8_t angle)
+uint32_t ScaleByCosine(uint8_t angle)
 {
-    Alu turned = adc8(angle, 0x40, false);
+    return ScaleBySine((uint8_t)(angle + QUARTER_TURN));
+}
 
-    return keep_v(ScaleBySine(turned.a), turned);
+/* Adding $40 overflows only from $40-$7F. */
+static Alu cosine_exit_shim(uint8_t angle, uint16_t value, uint32_t result)
+{
+    Alu exit = scale_exit_shim((uint8_t)(angle + QUARTER_TURN), value, result);
+
+    if (!exit.v_set) {
+        exit.v = (angle & 0xC0) == QUARTER_TURN;
+        exit.v_set = true;
+    }
+    return exit;
 }
 
 void abi_ScaleByCosine(void)
 {
-    abi_alu(ScaleByCosine(cpu.a));
+    uint8_t angle = cpu.a;
+    uint16_t value = trig_word(zTemp00, zTemp01);
+
+    abi_alu(cosine_exit_shim(angle, value, ScaleByCosine(angle)));
     cpu.y = 0;
 }
 
@@ -159,73 +235,115 @@ void abi_ScaleByCosine(void)
  * byte, N and Z from it, C and V from the sine, Y 0. X kept. Clobbers zTemp10-12,
  * zProduct0-2, zMultiplierLo-Hi.
  */
-Alu SetVelocityFromAngle(uint8_t angle, uint8_t object)
+ScaledVector SetVelocityFromAngle(uint8_t angle, uint8_t object)
 {
-    Alu first = ScaleByCosine(angle);
-    Alu r = { 0 };
-    uint8_t byte;
+    ScaledVector scaled;
 
-    byte = rd8(zProduct2);
-    wr8((uint16_t)(OBJ_VX_HI + object), byte);
-    byte = rd8(zProduct1);
-    wr8((uint16_t)(OBJ_VX_LO + object), byte);
-    r = keep_v(ScaleBySine(angle), first);
-    byte = rd8(zProduct2);
-    wr8((uint16_t)(OBJ_VY_HI + object), byte);
-    byte = rd8(zProduct1);
-    wr8((uint16_t)(OBJ_VY_LO + object), byte);
-    r.a = byte;
-    r.nz = byte;
-    return r;
+    scaled.x = ScaleByCosine(angle);
+    wr8((uint16_t)(OBJ_VX_HI + object), (uint8_t)(scaled.x >> 16));
+    wr8((uint16_t)(OBJ_VX_LO + object), (uint8_t)(scaled.x >> 8));
+    scaled.y = ScaleBySine(angle);
+    wr8((uint16_t)(OBJ_VY_HI + object), (uint8_t)(scaled.y >> 16));
+    wr8((uint16_t)(OBJ_VY_LO + object), (uint8_t)(scaled.y >> 8));
+    return scaled;
+}
+
+/* The cosine's V stands when the sine set none. */
+static Alu velocity_exit_shim(uint8_t angle, uint16_t speed, ScaledVector scaled)
+{
+    Alu exit = scale_exit_shim(angle, speed, scaled.y);
+
+    if (!exit.v_set)
+        exit.v = cosine_exit_shim(angle, speed, scaled.x).v;
+    exit.v_set = true;
+    exit.a = (uint8_t)(scaled.y >> 8);
+    exit.nz = exit.a;
+    return exit;
 }
 
 void abi_SetVelocityFromAngle(void)
 {
-    abi_alu(SetVelocityFromAngle(cpu.a, cpu.x));
+    uint8_t angle = cpu.a;
+    uint16_t speed = trig_word(zTemp00, zTemp01);
+
+    abi_alu(velocity_exit_shim(angle, speed, SetVelocityFromAngle(angle, cpu.x)));
     cpu.y = 0;
 }
 
 /*
- * The first quadrant: the angle of a positive delta, read from AtanTable by
- * the top four significant bits of each axis. Returns the table index too.
+ * The direction of a vector. Both axes are made positive and shifted down together until
+ * each fits four bits, which index the first quadrant's angles; the angle is then folded
+ * by the signs. What is left of the axes stays in zTemp00-03.
  */
-static Alu first_quadrant_angle(uint8_t *index)
+static AngleResult angle_of_vector(uint16_t dx, uint16_t dy)
 {
-    uint8_t high = rd8(zTemp01);
-    uint8_t low;
-    uint8_t other;
-    uint8_t y;
-    Alu r = { 0 };
+    bool x_negative = (dx & 0x8000) != 0;
+    bool y_negative = (dy & 0x8000) != 0;
+    AngleResult result;
 
-    other = rd8(zTemp03);
-    high |= other;
-    while (high != 0) {
-        bool out = lsr_mem(zTemp01);
+    if (x_negative)
+        dx = (uint16_t)(0u - dx);
+    if (y_negative)
+        dy = (uint16_t)(0u - dy);
+    while ((dx | dy) > ATAN_AXIS_MAX) {
+        dx >>= 1;
+        dy >>= 1;
+    }
+    trig_put_word(zTemp00, zTemp01, dx);
+    trig_put_word(zTemp02, zTemp03, dy);
+    result.index = (uint8_t)((dy << 4) | dx);
+    result.first_quadrant = rd8((uint16_t)(AtanTable + result.index));
+    if (x_negative && y_negative) {
+        result.fold = FOLD_HALF_TURN;
+        result.angle = (uint8_t)(result.first_quadrant + HALF_TURN);
+    } else if (x_negative) {
+        result.fold = FOLD_MIRROR;
+        result.angle = (uint8_t)(HALF_TURN + 1 - result.first_quadrant);
+    } else if (y_negative) {
+        result.fold = FOLD_NEGATE;
+        result.angle = (uint8_t)(1 - result.first_quadrant);
+    } else {
+        result.fold = FOLD_NONE;
+        result.angle = result.first_quadrant;
+    }
+    return result;
+}
 
-        ror_mem(zTemp00, out);
-        out = lsr_mem(zTemp03);
-        ror_mem(zTemp02, out);
-        high >>= 1;
+/*
+ * The table read leaves C clear, the axes' last shift having moved out a zero, and V set,
+ * by the BIT #$F0 on every path. The mirror's SBC #$80 and the half turn's ADC #$80 then
+ * set both from the first quadrant's angle.
+ */
+static Alu angle_exit_shim(AngleResult result)
+{
+    Alu exit = { 0 };
+    bool high = result.first_quadrant >= 0x80;
+
+    exit.a = result.angle;
+    exit.nz = result.angle;
+    exit.v_set = true;
+    switch (result.fold) {
+    case FOLD_NONE:
+    case FOLD_NEGATE:
+        exit.c = false;
+        exit.v = true;
+        break;
+    case FOLD_MIRROR:
+        exit.c = high;
+        exit.v = !high;
+        break;
+    case FOLD_HALF_TURN:
+        exit.c = high;
+        exit.v = high;
+        break;
     }
-    low = rd8(zTemp00);
-    other = rd8(zTemp02);
-    low |= other;
-    while (low & 0xF0) {
-        lsr_mem(zTemp00);
-        lsr_mem(zTemp02);
-        low >>= 1;
-    }
-    y = rd8(zTemp02);
-    r.c = (y & 0x10) != 0;
-    y = (uint8_t)(y << 4);
-    other = rd8(zTemp00);
-    y |= other;
-    *index = y;
-    r.a = rd8((uint16_t)(AtanTable + y));
-    r.nz = r.a;
-    r.v = true;    /* BIT #$F0 sets it, on every path */
-    r.v_set = true;
-    return r;
+    return exit;
+}
+
+static void abi_angle(AngleResult result)
+{
+    abi_alu(angle_exit_shim(result));
+    cpu.y = result.index;
 }
 
 /*
@@ -241,56 +359,27 @@ static Alu first_quadrant_angle(uint8_t *index)
  * table index, N and Z from the last step, C and V as it left them. X kept.
  * Clobbers zTemp00-03.
  */
-Alu AngleFromDelta(uint8_t *index)
+AngleResult AngleFromDelta(void)
 {
-    uint8_t y_high = rd8(zTemp03);
-    uint8_t x_high = rd8(zTemp01);
-    Alu r = { 0 };
+    uint16_t dx = trig_word(zTemp00, zTemp01);
+    uint16_t dy = trig_word(zTemp02, zTemp03);
 
-    if (!(y_high & 0x80)) {
-        if (!(x_high & 0x80))
-            return first_quadrant_angle(index);
-        negate16(zTemp00, zTemp01);
-        r = first_quadrant_angle(index);
-        r = sbc8(r.a, 0x80, true);
-        r.a = (uint8_t)(~r.a + 2);
-        r.nz = r.a;
-        return r;
-    }
-    if (x_high & 0x80) {
-        negate16(zTemp00, zTemp01);
-        negate16(zTemp02, zTemp03);
-        r = first_quadrant_angle(index);
-        return adc8(r.a, 0x80, false);
-    }
-    negate16(zTemp02, zTemp03);
-    r = first_quadrant_angle(index);
-    r.a = (uint8_t)(~r.a + 2);
-    r.nz = r.a;
-    return r;
+    return angle_of_vector(dx, dy);
 }
 
 void abi_AngleFromDelta(void)
 {
-    uint8_t index = cpu.y;
-
-    abi_alu(AngleFromDelta(&index));
-    cpu.y = index;
+    abi_angle(AngleFromDelta());
 }
 
-/* One axis of a vector: the word at to_lo and to_hi less an object's. */
-static void store_axis_delta(uint16_t to_lo, uint16_t to_hi, uint16_t field_lo,
-                             uint16_t field_hi, uint16_t out_lo, uint16_t out_hi)
+static uint16_t trig_object_x(uint8_t object)
 {
-    uint8_t minuend = rd8(to_lo);
-    uint8_t subtrahend = rd8(field_lo);
-    Alu r = sbc8(minuend, subtrahend, true);
+    return trig_word((uint16_t)(OBJ_X_LO + object), (uint16_t)(OBJ_X_HI + object));
+}
 
-    wr8(out_lo, r.a);
-    minuend = rd8(to_hi);
-    subtrahend = rd8(field_hi);
-    r = sbc8(minuend, subtrahend, r.c);
-    wr8(out_hi, r.a);
+static uint16_t trig_object_y(uint8_t object)
+{
+    return trig_word((uint16_t)(OBJ_Y_LO + object), (uint16_t)(OBJ_Y_HI + object));
 }
 
 /*
@@ -301,21 +390,17 @@ static void store_axis_delta(uint16_t to_lo, uint16_t to_hi, uint16_t field_lo,
  * Entry: X object, zTemp08-09 point X, zTemp0A-0B point Y. Exit: as
  * AngleFromDelta. Clobbers zTemp00-03.
  */
-Alu AngleToPoint(uint8_t object, uint8_t *index)
+AngleResult AngleToPoint(uint8_t object)
 {
-    store_axis_delta(zTemp08, zTemp09, (uint16_t)(OBJ_X_LO + object),
-                     (uint16_t)(OBJ_X_HI + object), zTemp00, zTemp01);
-    store_axis_delta(zTemp0A, zTemp0B, (uint16_t)(OBJ_Y_LO + object),
-                     (uint16_t)(OBJ_Y_HI + object), zTemp02, zTemp03);
-    return AngleFromDelta(index);
+    uint16_t dx = (uint16_t)(trig_word(zTemp08, zTemp09) - trig_object_x(object));
+    uint16_t dy = (uint16_t)(trig_word(zTemp0A, zTemp0B) - trig_object_y(object));
+
+    return angle_of_vector(dx, dy);
 }
 
 void abi_AngleToPoint(void)
 {
-    uint8_t index = cpu.y;
-
-    abi_alu(AngleToPoint(cpu.x, &index));
-    cpu.y = index;
+    abi_angle(AngleToPoint(cpu.x));
 }
 
 /*
@@ -328,41 +413,17 @@ void abi_AngleToPoint(void)
  * Entry: X object, zTemp08-09 offset X, zTemp0A-0B offset Y. Exit: as
  * AngleFromDelta. Clobbers zTemp00-03.
  */
-Alu AngleToPlayerOffset(uint8_t object, uint8_t *index)
+AngleResult AngleToPlayerOffset(uint8_t object)
 {
-    uint8_t a;
-    uint8_t b;
-    Alu r = { 0 };
+    uint16_t dx = (uint16_t)(trig_object_x(0) - trig_object_x(object) + trig_word(zTemp08, zTemp09));
+    uint16_t dy = (uint16_t)(trig_object_y(0) - trig_object_y(object) + trig_word(zTemp0A, zTemp0B));
 
-    store_axis_delta(OBJ_X_LO, OBJ_X_HI, (uint16_t)(OBJ_X_LO + object),
-                     (uint16_t)(OBJ_X_HI + object), zTemp00, zTemp01);
-    store_axis_delta(OBJ_Y_LO, OBJ_Y_HI, (uint16_t)(OBJ_Y_LO + object),
-                     (uint16_t)(OBJ_Y_HI + object), zTemp02, zTemp03);
-    a = rd8(zTemp00);
-    b = rd8(zTemp08);
-    r = adc8(a, b, false);
-    wr8(zTemp00, r.a);
-    a = rd8(zTemp01);
-    b = rd8(zTemp09);
-    r = adc8(a, b, r.c);
-    wr8(zTemp01, r.a);
-    a = rd8(zTemp02);
-    b = rd8(zTemp0A);
-    r = adc8(a, b, false);
-    wr8(zTemp02, r.a);
-    a = rd8(zTemp03);
-    b = rd8(zTemp0B);
-    r = adc8(a, b, r.c);
-    wr8(zTemp03, r.a);
-    return AngleFromDelta(index);
+    return angle_of_vector(dx, dy);
 }
 
 void abi_AngleToPlayerOffset(void)
 {
-    uint8_t index = cpu.y;
-
-    abi_alu(AngleToPlayerOffset(cpu.x, &index));
-    cpu.y = index;
+    abi_angle(AngleToPlayerOffset(cpu.x));
 }
 
 /*
@@ -372,21 +433,23 @@ void abi_AngleToPlayerOffset(void)
  * HOW: Subtracts the object's position from the player's, then AngleFromDelta.
  * Entry: X object. Exit: as AngleFromDelta. Clobbers zTemp00-03.
  */
-Alu AngleToPlayer(uint8_t object, uint8_t *index)
+AngleResult AngleToPlayer(uint8_t object)
 {
-    store_axis_delta(OBJ_X_LO, OBJ_X_HI, (uint16_t)(OBJ_X_LO + object),
-                     (uint16_t)(OBJ_X_HI + object), zTemp00, zTemp01);
-    store_axis_delta(OBJ_Y_LO, OBJ_Y_HI, (uint16_t)(OBJ_Y_LO + object),
-                     (uint16_t)(OBJ_Y_HI + object), zTemp02, zTemp03);
-    return AngleFromDelta(index);
+    uint16_t dx = (uint16_t)(trig_object_x(0) - trig_object_x(object));
+    uint16_t dy = (uint16_t)(trig_object_y(0) - trig_object_y(object));
+
+    return angle_of_vector(dx, dy);
 }
 
 void abi_AngleToPlayer(void)
 {
-    uint8_t index = cpu.y;
+    abi_angle(AngleToPlayer(cpu.x));
+}
 
-    abi_alu(AngleToPlayer(cpu.x, &index));
-    cpu.y = index;
+/* The short way round is downward when the target is less than a half turn below. */
+static bool turn_goes_down(uint8_t now, uint8_t target)
+{
+    return (uint8_t)(now - target) < HALF_TURN;
 }
 
 /*
@@ -401,48 +464,40 @@ void abi_AngleToPlayer(void)
  * N and Z from it, C and V from the step; on equal angles A current, N 0, Z 1,
  * C 1, V kept. X and Y kept.
  */
-Alu TurnAngleToward(void)
+uint8_t TurnAngleToward(void)
 {
+    uint8_t step = rd8(zTemp00);
     uint8_t now = rd8(zTemp01);
     uint8_t target = rd8(zTemp02);
-    bool subtract;
-    uint8_t step;
-    Alu r = { 0 };
+
+    if (now == target)
+        return now;
+    return (uint8_t)(turn_goes_down(now, target) ? now - step : now + step);
+}
+
+static Alu turn_exit_shim(uint8_t step, uint8_t now, uint8_t target)
+{
+    Alu exit = alu_none();
 
     if (now == target) {
-        r.a = now;
-        r.nz = 0;
-        r.c = true;
-        r.v = false;
-        r.v_set = false;
-        return r;
+        exit.a = now;
+        exit.nz = 0;
+        exit.c = true;
+        exit.c_kept = false;
+        return exit;
     }
-    now = rd8(zTemp01);
-    if (!(now & 0x80)) {
-        target = rd8(zTemp02);
-        if (now >= target) {
-            subtract = true;
-        } else {
-            target = rd8(zTemp02);
-            subtract = (uint8_t)(now + 0x80) < target;
-        }
-    } else {
-        target = rd8(zTemp02);
-        if (now < target) {
-            subtract = false;
-        } else {
-            target = rd8(zTemp02);
-            subtract = (uint8_t)(now - 0x80) < target;
-        }
-    }
-    now = rd8(zTemp01);
-    step = rd8(zTemp00);
-    return subtract ? sbc8(now, step, true) : adc8(now, step, false);
+    return turn_goes_down(now, target) ? sbc8(now, step, true) : adc8(now, step, false);
 }
 
 void abi_TurnAngleToward(void)
 {
-    abi_alu(TurnAngleToward());
+    uint8_t step = rd8(zTemp00);
+    uint8_t now = rd8(zTemp01);
+    uint8_t target = rd8(zTemp02);
+    Alu exit = turn_exit_shim(step, now, target);
+
+    exit.a = TurnAngleToward();
+    abi_alu(exit);
 }
 
 /*
@@ -457,56 +512,43 @@ void abi_TurnAngleToward(void)
  * Entry: nothing. Exit: A zRandom3, N and Z from it, C and V from the last add.
  * X and Y kept.
  */
-Alu NextRandom(void)
+uint8_t NextRandom(void)
 {
-    uint8_t a;
-    uint8_t b;
-    Alu r = { 0 };
+    uint32_t state = (uint32_t)rd8(zRandom0) | ((uint32_t)rd8(zRandom1) << 8) |
+                     ((uint32_t)rd8(zRandom2) << 16) | ((uint32_t)rd8(zRandom3) << 24);
 
-    a = rd8(zRandom3);
-    b = rd8(zRandom2);
-    r = adc8(a, b, false);
-    wr8(zRandom3, r.a);
-    a = rd8(zRandom2);
-    b = rd8(zRandom1);
-    r = adc8(a, b, false);
-    wr8(zRandom2, r.a);
-    a = rd8(zRandom3);
-    b = rd8(zRandom1);
-    r = adc8(a, b, r.c);
-    wr8(zRandom3, r.a);
-    a = rd8(zRandom1);
-    b = rd8(zRandom0);
-    r = adc8(a, b, false);
-    wr8(zRandom1, r.a);
-    a = rd8(zRandom2);
-    b = rd8(zRandom0);
-    r = adc8(a, b, r.c);
-    wr8(zRandom2, r.a);
-    a = rd8(zRandom3);
-    b = rd8(zRandom0);
-    r = adc8(a, b, r.c);
-    wr8(zRandom3, r.a);
-    a = (uint8_t)(rd8(zRandom0) + 1);
-    wr8(zRandom0, a);
-    if (a == 0) {
-        a = (uint8_t)(rd8(zRandom1) + 1);
-        wr8(zRandom1, a);
-        if (a == 0) {
-            a = (uint8_t)(rd8(zRandom2) + 1);
-            wr8(zRandom2, a);
-            if (a == 0) {
-                a = (uint8_t)(rd8(zRandom3) + 1);
-                wr8(zRandom3, a);
-            }
-        }
-    }
-    r.a = rd8(zRandom3);
-    r.nz = r.a;
-    return r;
+    state = state * 0x01010101u + 1u;
+    wr8(zRandom0, (uint8_t)state);
+    wr8(zRandom1, (uint8_t)(state >> 8));
+    wr8(zRandom2, (uint8_t)(state >> 16));
+    wr8(zRandom3, (uint8_t)(state >> 24));
+    return (uint8_t)(state >> 24);
+}
+
+/* C and V are the top byte's last add, as the assembly's order of adds leaves them. */
+static Alu random_exit_shim(uint8_t state0, uint8_t state1, uint8_t state2, uint8_t state3,
+                            uint8_t result)
+{
+    uint8_t top = (uint8_t)(state3 + state2);
+    Alu middle = adc8(state2, state1, false);
+    Alu low;
+    Alu exit;
+
+    top = adc8(top, state1, middle.c).a;
+    low = adc8(state1, state0, false);
+    middle = adc8(middle.a, state0, low.c);
+    exit = adc8(top, state0, middle.c);
+    exit.a = result;
+    exit.nz = result;
+    return exit;
 }
 
 void abi_NextRandom(void)
 {
-    abi_alu(NextRandom());
+    uint8_t state0 = rd8(zRandom0);
+    uint8_t state1 = rd8(zRandom1);
+    uint8_t state2 = rd8(zRandom2);
+    uint8_t state3 = rd8(zRandom3);
+
+    abi_alu(random_exit_shim(state0, state1, state2, state3, NextRandom()));
 }

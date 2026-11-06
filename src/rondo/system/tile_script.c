@@ -7,24 +7,55 @@
 #include "ram.h"
 #include "routines.h"
 
-/* What the interpreter's loop keeps in Y and V between ops. */
+enum {
+    TILE_OP_LITERAL_WORD = 0x00, TILE_OP_REPEATED = 0x20, TILE_OP_ASCENDING = 0x40,
+    TILE_OP_ALTERNATE_UP = 0x60, TILE_OP_ALTERNATE_DOWN = 0x80, TILE_OP_PALETTE = 0xC0,
+    TILE_OP_ATTRIBUTE_LOW = 0xD0, TILE_OP_JUMP = 0xE0, TILE_OP_NEXT_LINE = 0xF0,
+    TILE_OP_SET_ADDRESS = 0xFE, TILE_OP_END = 0xFF,
+    TILES_PER_LINE = 0x40, VDC_DATA_PORT_SELECTED = 2
+};
+
+/* What a script's run did last, for what its caller is left with. */
 typedef struct {
-    uint8_t y;
-    bool v;
-    bool v_set;
+    uint8_t last_op;      /* the last op that counted or set the attribute, or TILE_OP_END */
+    uint8_t jump_low;     /* the low byte of the last jump */
+    bool stepped_line;
+    uint16_t line_start;  /* where the last line step went */
 } TileRun;
 
-static TileRun run_tile_script(uint8_t y);
+static TileRun run_tile_script(void);
 
-/* Every way out of the interpreter. */
-static void abi_exit_tile_run(TileRun run)
+/* A line step adds to the high byte with its carry: V is overflow from $7F to $80. */
+static bool line_step_overflowed_shim(uint16_t line_start)
 {
-    cpu.a = 0xFF;
-    cpu.y = run.y;
+    uint16_t before = (uint16_t)(line_start - TILES_PER_LINE);
+
+    return (before >> 8) == 0x7F && (line_start >> 8) == 0x80;
+}
+
+/* Y as the last op left it: a count run down to zero, a shifted nibble or a jump's low. */
+static uint8_t tile_run_y_shim(TileRun run, uint8_t y_before)
+{
+    if (run.last_op == TILE_OP_END)
+        return y_before;
+    if (run.last_op == TILE_OP_JUMP)
+        return run.jump_low;
+    if (run.last_op >= TILE_OP_ATTRIBUTE_LOW)
+        return run.last_op & 0x0F;
+    if (run.last_op >= TILE_OP_PALETTE)
+        return (uint8_t)(run.last_op << 4);
+    return 0;
+}
+
+/* Every way out of the interpreter: the compare with $FF, and Y and V as the ops left them. */
+static void abi_exit_tile_run(TileRun run, uint8_t y_before)
+{
+    cpu.a = TILE_OP_END;
+    cpu.y = tile_run_y_shim(run, y_before);
     abi_nz(0);
     abi_flag(P_C, true);
-    if (run.v_set)
-        abi_flag(P_V, run.v);
+    if (run.stepped_line)
+        abi_flag(P_V, line_step_overflowed_shim(run.line_start));
 }
 
 /*
@@ -163,39 +194,43 @@ void abi_SetVramFromScript(void)
  * Entry: zTemp00-01 line start. Exit: A 2, N 0, Z 0, C and V from the sum. X and Y
  * kept.
  */
-Alu NextVramLine(void)
+uint16_t NextVramLine(void)
 {
-    uint8_t byte;
-    Alu r;
+    uint8_t low = rd8(zTemp00);
+    uint16_t start = (uint16_t)(low | (rd8(zTemp01) << 8));
 
+    start = (uint16_t)(start + TILES_PER_LINE);
     SelectVramWriteAddress();
-    byte = rd8(zTemp00);
-    r = adc8(byte, 0x40, false);
-    wr8(zTemp00, r.a);
-    wr8(VDC_DATA_LO, r.a);
-    byte = rd8(zTemp01);
-    r = adc8(0, byte, r.c);
-    wr8(zTemp01, r.a);
-    wr8(VDC_DATA_HI, r.a);
+    wr8(zTemp00, (uint8_t)start);
+    wr8(VDC_DATA_LO, (uint8_t)start);
+    wr8(zTemp01, (uint8_t)(start >> 8));
+    wr8(VDC_DATA_HI, (uint8_t)(start >> 8));
     SelectVramData();
-    r.a = 2;
-    r.nz = 2;
-    return r;
+    return start;
+}
+
+/* The carry out is of the high byte: only $FFxx wrapping to $00xx. */
+static Alu next_line_exit_shim(uint16_t start)
+{
+    Alu exit = { 0 };
+    uint16_t before = (uint16_t)(start - TILES_PER_LINE);
+
+    exit.a = VDC_DATA_PORT_SELECTED;
+    exit.nz = VDC_DATA_PORT_SELECTED;
+    exit.c = (before >> 8) == 0xFF && (start >> 8) == 0x00;
+    exit.v = line_step_overflowed_shim(start);
+    exit.v_set = true;
+    return exit;
 }
 
 void abi_NextVramLine(void)
 {
-    abi_alu(NextVramLine());
+    abi_alu(next_line_exit_shim(NextVramLine()));
 }
 
 static void set_attribute_high(uint8_t op)
 {
-    uint8_t high = (uint8_t)(op << 4);
-    uint8_t byte = rd8(zTemp04) & 0x0F;
-
-    wr8(zTemp04, byte);
-    byte = rd8(zTemp04);
-    wr8(zTemp04, (uint8_t)(high | byte));
+    wr8(zTemp04, (uint8_t)((op << 4) | (rd8(zTemp04) & 0x0F)));
 }
 
 /*
@@ -209,17 +244,12 @@ static void set_attribute_high(uint8_t op)
 void abi_TileOpAttributeHigh(void)
 {
     set_attribute_high(cpu.a);
-    abi_exit_tile_run(run_tile_script((uint8_t)(cpu.a << 4)));
+    abi_exit_tile_run(run_tile_script(), (uint8_t)(cpu.a << 4));
 }
 
 static void set_attribute_low(uint8_t op)
 {
-    uint8_t low = op & 0x0F;
-    uint8_t byte = rd8(zTemp04) & 0xF0;
-
-    wr8(zTemp04, byte);
-    byte = rd8(zTemp04);
-    wr8(zTemp04, (uint8_t)(low | byte));
+    wr8(zTemp04, (uint8_t)((op & 0x0F) | (rd8(zTemp04) & 0xF0)));
 }
 
 /*
@@ -233,7 +263,7 @@ static void set_attribute_low(uint8_t op)
 void abi_TileOpAttributeLow(void)
 {
     set_attribute_low(cpu.a);
-    abi_exit_tile_run(run_tile_script(cpu.a & 0x0F));
+    abi_exit_tile_run(run_tile_script(), cpu.a & 0x0F);
 }
 
 /*
@@ -306,7 +336,7 @@ static void run_alternating(uint8_t count, bool up_first)
 void abi_TileOpAlternateUp(void)
 {
     run_alternating(cpu.a & 0x1F, true);
-    abi_exit_tile_run(run_tile_script(0));
+    abi_exit_tile_run(run_tile_script(), 0);
 }
 
 /*
@@ -319,7 +349,7 @@ void abi_TileOpAlternateUp(void)
 void abi_TileOpAlternateDown(void)
 {
     run_alternating(cpu.a & 0x1F, false);
-    abi_exit_tile_run(run_tile_script(0));
+    abi_exit_tile_run(run_tile_script(), 0);
 }
 
 /*
@@ -335,38 +365,25 @@ void abi_TileOpAlternateDown(void)
  * A $FF, N 0, Z 1, C 1, Y as the last op left it, V from the last line step. X
  * kept. Clobbers zTemp00-01, zTemp04.
  */
-static TileRun run_tile_script(uint8_t entry_y)
+static TileRun run_tile_script(void)
 {
-    TileRun run = { entry_y, false, false };
+    TileRun run = { TILE_OP_END, 0, false, 0 };
 
     for (;;) {
         uint8_t op = next_script_byte();
 
-        if (op == 0xFF)
+        if (op == TILE_OP_END)
             return run;
-        if (op == 0xFE) {
+        if (op == TILE_OP_SET_ADDRESS) {
             SetVramFromScript();
-        } else if (op == 0xF0) {
-            Alu line = NextVramLine();
-
-            run.v = line.v;
-            run.v_set = line.v_set;
-        } else if (op == 0xE0) {
-            uint8_t low = rd8_zp(zTemp02);
-            uint8_t high;
-
-            run.y = low;
-            AdvanceTileScript();
-            high = rd8_zp(zTemp02);
-            wr8(zTemp02, low);
-            wr8(zTemp03, high);
-        } else if (op >= 0xD0) {
-            set_attribute_low(op);
-            run.y = op & 0x0F;
-        } else if (op >= 0xC0) {
-            set_attribute_high(op);
-            run.y = (uint8_t)(op << 4);
-        } else if (op == 0x00) {
+            continue;
+        }
+        if (op == TILE_OP_NEXT_LINE) {
+            run.line_start = NextVramLine();
+            run.stepped_line = true;
+            continue;
+        }
+        if (op == TILE_OP_LITERAL_WORD) {
             uint8_t byte = rd8_zp(zTemp02);
 
             wr8(VDC_DATA_LO, byte);
@@ -374,28 +391,54 @@ static TileRun run_tile_script(uint8_t entry_y)
             byte = rd8_zp(zTemp02);
             wr8(VDC_DATA_HI, byte);
             AdvanceTileScript();
-        } else if (op < 0x20) {
+            continue;
+        }
+        run.last_op = op;
+        if (op == TILE_OP_JUMP) {
+            uint8_t low = rd8_zp(zTemp02);
+            uint8_t high;
+
+            run.jump_low = low;
+            AdvanceTileScript();
+            high = rd8_zp(zTemp02);
+            wr8(zTemp02, low);
+            wr8(zTemp03, high);
+        } else if (op >= TILE_OP_ATTRIBUTE_LOW) {
+            set_attribute_low(op);
+        } else if (op >= TILE_OP_PALETTE) {
+            set_attribute_high(op);
+        } else if (op < TILE_OP_REPEATED) {
             run_repeated(op & 0x1F);
-            run.y = 0;
-        } else if (op < 0x40) {
+        } else if (op < TILE_OP_ASCENDING) {
             run_ascending(op & 0x1F);
-            run.y = 0;
-        } else if (op < 0x60) {
+        } else if (op < TILE_OP_ALTERNATE_UP) {
             run_alternating(op & 0x1F, true);
-            run.y = 0;
-        } else if (op < 0x80) {
+        } else if (op < TILE_OP_ALTERNATE_DOWN) {
             run_alternating(op & 0x1F, false);
-            run.y = 0;
         } else {
             run_literal(op & 0x3F);
-            run.y = 0;
         }
     }
 }
 
 void abi_RunTileScript(void)
 {
-    abi_exit_tile_run(run_tile_script(cpu.y));
+    uint8_t y_before = cpu.y;
+
+    abi_exit_tile_run(run_tile_script(), y_before);
+}
+
+static uint16_t tile_pointer_at(uint16_t address)
+{
+    uint8_t low = rd8(address);
+
+    return (uint16_t)(low | (rd8((uint16_t)(address + 1)) << 8));
+}
+
+static void tile_pointer_to(uint16_t lo, uint16_t hi, uint16_t pointer)
+{
+    wr8(lo, (uint8_t)pointer);
+    wr8(hi, (uint8_t)(pointer >> 8));
 }
 
 /*
@@ -410,29 +453,22 @@ void abi_RunTileScript(void)
  */
 static TileRun draw_tile_script(uint8_t item, uint8_t group)
 {
-    uint8_t byte;
-    uint8_t index;
+    uint16_t groups = tile_pointer_at(OverlayTileScripts);
+    uint16_t items = tile_pointer_at((uint16_t)(groups + (uint8_t)(group << 1)));
+    uint16_t script = tile_pointer_at((uint16_t)(items + (uint8_t)(item << 1)));
 
-    byte = rd8(OverlayTileScripts);
-    wr8(zTemp08, byte);
-    byte = rd8(OverlayTileScripts + 1);
-    wr8(zTemp09, byte);
-    index = (uint8_t)(group << 1);
-    byte = rd8_zp_y(zTemp08, index);
-    wr8(zTemp00, byte);
-    byte = rd8_zp_y(zTemp08, (uint8_t)(index + 1));
-    wr8(zTemp01, byte);
-    index = (uint8_t)(item << 1);
-    byte = rd8_zp_y(zTemp00, index);
-    wr8(zTemp02, byte);
-    byte = rd8_zp_y(zTemp00, (uint8_t)(index + 1));
-    wr8(zTemp03, byte);
+    tile_pointer_to(zTemp08, zTemp09, groups);
+    tile_pointer_to(zTemp00, zTemp01, items);
+    tile_pointer_to(zTemp02, zTemp03, script);
     ClearVdcControlHigh();
     SetVramFromScript();
-    return run_tile_script((uint8_t)(index + 1));
+    return run_tile_script();
 }
 
 void abi_DrawTileScript(void)
 {
-    abi_exit_tile_run(draw_tile_script(cpu.a, cpu.y));
+    uint8_t item = cpu.a;
+    uint8_t group = cpu.y;
+
+    abi_exit_tile_run(draw_tile_script(item, group), (uint8_t)((uint8_t)(item << 1) + 1));
 }

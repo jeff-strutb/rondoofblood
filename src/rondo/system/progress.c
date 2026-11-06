@@ -2,30 +2,56 @@
 #include "machine.h"
 #include "ram.h"
 
-/* A score sum finishing from the middle byte on. */
-static Alu finish_score(uint8_t add_middle, bool carry)
-{
-    uint8_t byte;
-    uint8_t old_middle;
-    Alu r = { 0 };
+enum { SCORE_DIGIT_MAX = 0x99, SCORE_MARK_BITS = 0xA0 };
 
-    byte = rd8(zScore1);
-    r = adc8_bcd(add_middle, byte, carry);
-    wr8(zScore1, r.a);
-    byte = rd8(zScore2);
-    r = adc8_bcd(0, byte, r.c);
-    wr8(zScore2, r.a);
-    if (r.c) {
-        wr8(zScore0, 0x99);
-        wr8(zScore1, 0x99);
-        wr8(zScore2, 0x99);
+/* Two packed decimal digits and a carry, as the HuC6280 adds them in decimal mode. */
+static uint8_t add_decimal(uint8_t a, uint8_t b, bool *carry)
+{
+    unsigned sum = (a & 0x0Fu) + (b & 0x0Fu) + (*carry ? 1u : 0u);
+
+    if (sum >= 0x0A)
+        sum += 0x06;
+    sum += (a & 0xF0u) + (b & 0xF0u);
+    if (sum >= 0xA0)
+        sum += 0x60;
+    *carry = (sum & 0xFF00u) != 0;
+    return (uint8_t)sum;
+}
+
+/*
+ * Adds points in packed decimal to the score, which stops at 999999. Gives the bits of the
+ * middle byte the mark watches that changed. The old middle byte stays in zTemp00.
+ */
+static uint8_t add_points(uint8_t low, uint8_t middle)
+{
+    uint8_t old_middle = rd8(zScore1);
+    uint8_t new_middle;
+    uint8_t new_low;
+    uint8_t new_high;
+    bool carry = false;
+
+    wr8(zTemp00, old_middle);
+    new_low = add_decimal(low, rd8(zScore0), &carry);
+    new_middle = add_decimal(middle, old_middle, &carry);
+    new_high = add_decimal(0, rd8(zScore2), &carry);
+    if (carry) {
+        new_low = SCORE_DIGIT_MAX;
+        new_middle = SCORE_DIGIT_MAX;
+        new_high = SCORE_DIGIT_MAX;
     }
-    old_middle = rd8(zTemp00);
-    byte = rd8(zScore1);
-    r.a = (old_middle ^ byte) & 0xA0;
-    r.nz = r.a;
-    r.c = r.a != 0;
-    return r;
+    wr8(zScore0, new_low);
+    wr8(zScore1, new_middle);
+    wr8(zScore2, new_high);
+    return (old_middle ^ new_middle) & SCORE_MARK_BITS;
+}
+
+/* The bits are the answer in A; C says whether there were any. BCD adds leave V alone. */
+static void abi_score_exit(uint8_t changed)
+{
+    cpu.a = changed;
+    abi_nz(changed);
+    abi_flag(P_C, changed != 0);
+    abi_flag(P_D, false);
 }
 
 /*
@@ -38,21 +64,14 @@ static Alu finish_score(uint8_t add_middle, bool carry)
  * Entry: A points in BCD. Exit: C the answer, A those differing bits, N and Z
  * from them, D 0. V, X and Y kept.
  */
-Alu AddScoreByte(uint8_t points)
+uint8_t AddScoreByte(uint8_t points)
 {
-    uint8_t byte = rd8(zScore0);
-    Alu r = adc8_bcd(points, byte, false);
-
-    wr8(zScore0, r.a);
-    byte = rd8(zScore1);
-    wr8(zTemp00, byte);
-    return finish_score(0, r.c);
+    return add_points(points, 0);
 }
 
 void abi_AddScoreByte(void)
 {
-    abi_alu(AddScoreByte(cpu.a));
-    abi_flag(P_D, false);
+    abi_score_exit(AddScoreByte(cpu.a));
 }
 
 /*
@@ -62,23 +81,17 @@ void abi_AddScoreByte(void)
  * HOW: The same sum with a middle byte to add.
  * Entry: zTemp00-01 points in BCD. Exit: as AddScoreByte. Clobbers zTemp00.
  */
-Alu AddScoreWord(void)
+uint8_t AddScoreWord(void)
 {
-    uint8_t points = rd8(zTemp00);
-    uint8_t byte = rd8(zScore0);
-    Alu r = adc8_bcd(points, byte, false);
+    uint8_t low = rd8(zTemp00);
+    uint8_t middle = rd8(zTemp01);
 
-    wr8(zScore0, r.a);
-    byte = rd8(zScore1);
-    wr8(zTemp00, byte);
-    points = rd8(zTemp01);
-    return finish_score(points, r.c);
+    return add_points(low, middle);
 }
 
 void abi_AddScoreWord(void)
 {
-    abi_alu(AddScoreWord());
-    abi_flag(P_D, false);
+    abi_score_exit(AddScoreWord());
 }
 
 /*

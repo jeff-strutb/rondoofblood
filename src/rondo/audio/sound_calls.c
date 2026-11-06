@@ -5,20 +5,29 @@
 /* The driver's three banks, as offsets from the first Super RAM bank. */
 enum { SOUND_BANK_OFFSET = 0x0D, MPR4 = 0x10, MPR5 = 0x20, MPR6 = 0x40, SOUND_CALL_BUSY = 0x80 };
 
-/*
- * Maps the driver. The driver is entered with what this leaves in A and the
- * flags: its entries do not all overwrite C and V, so they reach the caller.
- */
-static void map_sound_banks(void)
+/* Maps the driver, and gives the last of its banks. */
+static uint8_t map_sound_banks(void)
 {
-    uint8_t base = rd8(zRamBaseBank);
-    Alu bank = adc8(SOUND_BANK_OFFSET, base, false);
+    uint8_t bank = (uint8_t)(SOUND_BANK_OFFSET + rd8(zRamBaseBank));
 
-    tam(MPR4, bank.a);
-    tam(MPR5, (uint8_t)(bank.a + 1));
-    tam(MPR6, (uint8_t)(bank.a + 2));
-    cpu.a = (uint8_t)(bank.a + 2);
-    abi_alu((Alu){ cpu.a, cpu.a, bank.c, bank.v, bank.v_set, false });
+    tam(MPR4, bank);
+    tam(MPR5, (uint8_t)(bank + 1));
+    tam(MPR6, (uint8_t)(bank + 2));
+    return (uint8_t)(bank + 2);
+}
+
+/*
+ * Enters the driver, which is original code, with A and the flags the assembly gives it:
+ * C and V from the sum of the banks, since its entries do not all overwrite them.
+ */
+static void enter_sound_driver_shim(uint16_t entry, uint8_t a)
+{
+    Alu sum = adc8(SOUND_BANK_OFFSET, rd8(zRamBaseBank), false);
+
+    sum.a = a;
+    sum.nz = a;
+    abi_alu(sum);
+    call_original(entry);
 }
 
 /*
@@ -35,23 +44,23 @@ uint8_t SoundStopAll(void)
     uint8_t mpr4 = tma(MPR4);
     uint8_t mpr5 = tma(MPR5);
     uint8_t mpr6 = tma(MPR6);
-    uint8_t x = cpu.x;
-    uint8_t y = cpu.y;
 
-    map_sound_banks();
-    call_original(SoundDrvStopAll);
+    enter_sound_driver_shim(SoundDrvStopAll, map_sound_banks());
     tam(MPR6, mpr6);
     tam(MPR5, mpr5);
     tam(MPR4, mpr4);
-    cpu.x = x;
-    cpu.y = y;
     return mpr4;
 }
 
 void abi_SoundStopAll(void)
 {
+    uint8_t x = cpu.x;
+    uint8_t y = cpu.y;
+
     cpu.a = SoundStopAll();
-    abi_nz(cpu.x);
+    cpu.x = x;
+    cpu.y = y;
+    abi_nz(x);
 }
 
 /*
@@ -77,8 +86,7 @@ uint8_t SoundFrameTick(void)
     mpr4 = tma(MPR4);
     mpr5 = tma(MPR5);
     mpr6 = tma(MPR6);
-    map_sound_banks();
-    call_original(SoundDrvTick);
+    enter_sound_driver_shim(SoundDrvTick, map_sound_banks());
     tam(MPR6, mpr6);
     tam(MPR5, mpr5);
     tam(MPR4, mpr4);
@@ -121,9 +129,7 @@ bool SoundCommand(uint8_t command, uint8_t *busy_or_bank)
     byte = tma(MPR6);
     wr8(SavedMprC, byte);
     map_sound_banks();
-    cpu.a = command;
-    abi_nz(command);
-    call_original(SoundDrvCommand);
+    enter_sound_driver_shim(SoundDrvCommand, command);
     byte = rd8(SavedMprC);
     tam(MPR6, byte);
     byte = rd8(SavedMprB);

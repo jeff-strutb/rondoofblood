@@ -74,6 +74,134 @@ typedef struct {
     CdStatusRead read;
 } CdFinish;
 
+/* What reading bytes from the drive saw. */
+typedef struct {
+    bool acked;            /* a byte was taken */
+    uint8_t last_control;  /* the control port at the last acknowledge */
+    uint8_t answer;        /* the phase at the end, its answer bits */
+    bool drained;          /* the drive had more than was asked for */
+    bool drained_block;    /* and a block of it was read and dropped */
+} CdDataIn;
+
+/* A command from sending it to taking its status. */
+typedef struct {
+    CdSent sent;
+    bool read_data;
+    CdDataIn data;
+    CdFinish finish;
+} CdExchange;
+
+/* What the BIOS decided about a failed command. */
+typedef struct {
+    bool give_up;
+    uint8_t error;
+    bool asked;      /* the error was one that asks the drive why */
+    uint8_t sense;
+    CdExchange sense_exchange;
+    uint8_t sense_status;
+} CdRetry;
+
+/* What testing the unit found. */
+typedef struct {
+    CdExchange exchange;
+    uint8_t status;
+    bool failed;
+    CdRetry retry;
+} CdTest;
+
+/* What cd_stat found: its own read of the bus, or a test of the unit. */
+typedef struct {
+    bool tested;
+    uint8_t busy;
+    CdTest test;
+} CdStat;
+
+/* What an earlier failed try left behind, the last that mattered. */
+typedef enum { CD_LEFT_NOTHING, CD_LEFT_CLEARED, CD_LEFT_ASKED } CdLeftOver;
+
+/* A command tried until it worked or the BIOS gave up: the last try's story. */
+typedef struct {
+    CdExchange exchange;
+    uint8_t status;
+    bool failed;
+    CdRetry retry;
+    CdLeftOver left_over;
+} CdAttempt;
+
+/* What cd_contnts gathered: it stops at the first answer that failed. */
+typedef struct {
+    CdAttempt attempt;
+} CdContents;
+
+/* What cd_pause found and did. */
+typedef struct {
+    CdAttempt subq;
+    uint8_t playing;
+    bool told_to_pause;
+    CdExchange pause;
+    uint8_t status;
+    bool failed;
+    CdRetry retry;
+} CdPause;
+
+/* How cd_search ended: left running on an interrupt, or tried to its end. */
+typedef struct {
+    bool on_interrupt;
+    CdSent sent;
+    uint8_t irq_control;
+    uint8_t copied_to;
+    CdAttempt attempt;
+} CdSearch;
+
+/* How taking a frame off the disc's end went. */
+typedef struct {
+    bool borrowed_minute;
+    bool unused;
+    uint8_t minutes_before;
+} DiscEndStep;
+
+/* How cd_play ended, and the values it worked with. */
+typedef enum {
+    CD_PLAY_FINISHED,
+    CD_PLAY_GAVE_UP_SEARCHING,
+    CD_PLAY_SEEK_ONLY,
+    CD_PLAY_RETURNED,
+    CD_PLAY_ON_INTERRUPT
+} CdPlayHow;
+
+typedef struct {
+    CdPlayHow how;
+    uint8_t start_mode;
+    bool searched;
+    CdAttempt search;
+    CdSent sent;
+    uint8_t sub;
+    uint8_t irq_control;
+    CdFinish finish;
+    uint8_t status;
+    bool failed;
+    CdRetry retry;
+    CdLeftOver left_over;
+} CdPlay;
+
+DiscEndStep disc_end_minus_one_frame(void);
+CdPlay cd_play(void);
+CdAttempt cd_subq(void);
+CdAttempt cd_dinfo(void);
+CdContents cd_contnts(void);
+CdPause cd_pause(void);
+CdSearch cd_search(void);
+void clear_cd_command(void);
+void clear_cd_result(void);
+void save_card_args(void);
+void restore_card_args(void);
+uint8_t copy_args_to_command(uint8_t from, uint8_t to);
+bool cd_drop_extra_data(void);
+CdTest cd_test_unit(void);
+CdDataIn cd_read_data_in(void);
+uint8_t cd_request_sense(CdExchange *exchange);
+CdRetry cd_retry_after_error(uint8_t error);
+CdStat cd_stat(uint8_t what);
 CdSent cd_send_command(void);
 CdStatusRead cd_read_status(void);
 CdFinish cd_finish_command(void);

@@ -31,7 +31,17 @@
 #define VdcDataHi 0x0003 /* the VDC's data port */
 #define CdBusStatus 0x1800 /* the CD bus's phase and handshake bits */
 #define CdData 0x1801 /* the CD bus's data port */
+#define CardAh 0x20F9 /* BIOS argument _AH */
 #define CdIrqControl 0x1802 /* the CD unit's interrupt enables and the bus acknowledge */
+#define CdDataAuto 0x1808 /* the CD data port with its handshake done for each read */
+#define CardCdNotReady 0x2247 /* set when the drive's sense code said not ready */
+#define CardDiscFirstTrack 0x226A /* the first and last tracks from the table of contents */
+#define CardDiscLength 0x226C /* the disc's length from the table of contents */
+#define CardDh 0x20FF /* BIOS argument _DH */
+#define CardDiscEnd 0x226F /* the disc's end as a play takes it: minutes then seconds then frames */
+#define CardCdPlayMode 0x229C /* the mode of the last play */
+#define CardCdSenseKey 0x227D /* the sense data's key byte */
+#define CardCdFailedCommand 0x2291 /* the command that last failed */
 #define CardFrameTick 0x2241 /* counted by the card's frame interrupt */
 #define CardCdNoWait 0x2248 /* set: a command returns without waiting on the drive */
 #define CardBusPhase 0x227A /* the bus phase last read */

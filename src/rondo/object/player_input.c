@@ -71,16 +71,58 @@ void abi_RichterClearPadOverrides(void)
     RichterClearPadOverrides();
 }
 
-/* What a step of the animation did, for the wrapper. */
-typedef enum { FRAME_STOPPED, FRAME_END_MARK, FRAME_SHOWN } FrameEnd;
+/*
+ * @routine 01BB:659 RichterAnimationWait
+ * @run 6D:B659
+ * WHAT IT DOES: Steps the animation and, unless it has ended, returns to its caller's caller, so
+ * the caller's own work waits for the end.
+ * HOW: RichterAnimationRunning; the assembly drops the return address.
+ * Entry: nothing. Exit, ended: as RichterAnimationRunning. Otherwise the caller's return address
+ * is gone, A its high byte, N and Z from it.
+ */
+static void drop_return_shim(void)
+{
+    cpu.a = rd8((uint16_t)(0x2100 + (uint8_t)(cpu.s + 2)));
+    cpu.s = (uint8_t)(cpu.s + 2);
+    abi_nz(cpu.a);
+}
 
-typedef struct {
-    FrameEnd how;
-    bool looped;        /* the list started over, so its step before that doubles to zero */
-    bool same_frame;    /* the timer ran on: the list was not read for a new one */
-    uint8_t step;
-    uint8_t frame;
-} AnimationStep;
+void abi_RichterAnimationWait(void)
+{
+    AnimationStep step = RichterAnimationRunning();
+
+    animation_running_exit_shim(step);
+    if (rd8(OBJ_2F90) != ANIMATION_STOPPED)
+        drop_return_shim();
+}
+
+/*
+ * @routine 01BB:660 RichterAnimationRunning
+ * @run 6D:B660
+ * WHAT IT DOES: Steps the animation; a caller looks at whether it has ended.
+ * HOW: RichterAnimationTick, then the timer against $FF.
+ * Entry: nothing. Exit: A the timer, N, Z and C from comparing it with $FF. Y as the tick. X and V
+ * kept. Clobbers zTemp00-01.
+ */
+AnimationStep RichterAnimationRunning(void)
+{
+    return RichterAnimationTick();
+}
+
+void animation_running_exit_shim(AnimationStep step)
+{
+    uint8_t time = rd8(OBJ_2F90);
+
+    animation_exit_shim(step);
+    cpu.a = time;
+    abi_nz((uint8_t)(time - ANIMATION_STOPPED));
+    abi_flag(P_C, time == ANIMATION_STOPPED);
+}
+
+void abi_RichterAnimationRunning(void)
+{
+    animation_running_exit_shim(RichterAnimationRunning());
+}
 
 /* The list of the animation in play, with zTemp00-01 left pointing at it as the original does. */
 static uint16_t animation_list(void)
@@ -153,7 +195,7 @@ AnimationStep RichterAnimationTick(void)
     }
 }
 
-static void animation_exit_shim(AnimationStep result)
+void animation_exit_shim(AnimationStep result)
 {
     uint8_t doubled = (uint8_t)(result.step << 1);
 

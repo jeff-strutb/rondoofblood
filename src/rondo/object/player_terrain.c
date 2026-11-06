@@ -37,11 +37,12 @@ static TileRead read_point_or_nothing(bool off_the_map)
  * WHAT IT DOES: Reads the terrain at a row that may lie above the map: a row off the top
  * reads as nothing.
  * HOW: The row's add, with its carry, decides the point's Y high byte; only zero is read.
- * Entry: A row, C its add's carry, zTemp00 X. Exit: as the read, or A 0 with N and Z from the add.
+ * Entry: A row, C its add's carry: set while the row stays on the map. zTemp00 X. Exit: as the
+ * read, or A 0 with N and Z from the add.
  */
-TileRead RichterReadAbove(uint8_t row, bool carry)
+TileRead RichterReadAbove(uint8_t row, bool on_the_map)
 {
-    uint8_t high = (uint8_t)(0xFF + (carry ? 1 : 0));
+    uint8_t high = (uint8_t)(0xFF + (on_the_map ? 1 : 0));
 
     wr8(zTemp02, row);
     wr8(zTemp03, high);
@@ -63,17 +64,20 @@ static void read_or_nothing_exit_shim(TileRead read, bool read_made)
         cpu.a = 0;
 }
 
+void read_above_exit_shim(TileRead read, bool on_the_map)
+{
+    abi_flag(P_V, false);
+    abi_flag(P_C, on_the_map);
+    if (!on_the_map)
+        abi_nz(ROW_ABOVE_THE_MAP);
+    read_or_nothing_exit_shim(read, on_the_map);
+}
+
 void abi_RichterReadAbove(void)
 {
-    bool carry = (cpu.p & P_C) != 0;
-    uint8_t row = cpu.a;
-    TileRead read = RichterReadAbove(row, carry);
+    bool on_the_map = (cpu.p & P_C) != 0;
 
-    abi_flag(P_V, false);
-    abi_flag(P_C, carry);
-    if (!carry)
-        abi_nz(ROW_ABOVE_THE_MAP);
-    read_or_nothing_exit_shim(read, carry);
+    read_above_exit_shim(RichterReadAbove(cpu.a, on_the_map), on_the_map);
 }
 
 /*
@@ -801,20 +805,6 @@ static bool set_ladder_point(uint16_t reach)
     return (y >> 8) == 0;
 }
 
-/* How the ladder check ended. */
-typedef enum {
-    LADDER_CAMERA_NO, LADDER_CAMERA_YES, LADDER_OFF_SCREEN, LADDER_TOO_LOW, LADDER_OFF_PAGE,
-    LADDER_BLOCKED, LADDER_REACH_OUT, LADDER_ANSWERED
-} LadderEnd;
-
-typedef struct {
-    LadderEnd how;
-    uint16_t reach;     /* the last reach below him */
-    bool any_read;
-    TileRead last;
-    uint8_t answer;
-} LadderCheck;
-
 /*
  * @routine 01BC:093 RichterLadderCheck
  * @run 6D:B893
@@ -873,7 +863,12 @@ LadderCheck RichterLadderCheck(void)
     return check;
 }
 
-static void ladder_exit_shim(LadderCheck check)
+bool ladder_found(LadderCheck check)
+{
+    return check.how == LADDER_CAMERA_YES || (check.how == LADDER_ANSWERED && check.answer == 0);
+}
+
+void ladder_exit_shim(LadderCheck check)
 {
     uint8_t y_low = rd8(OBJ_Y_LO);
 
@@ -1072,57 +1067,82 @@ void abi_RichterLedgeCheck(void)
     }
 }
 
+/*
+ * @routine 01BC:280 RichterLiftByColumn
+ * @run 6D:BA80
+ * WHAT IT DOES: Lifts him out of the floor by how deep this column read, and not above the top
+ * of the map.
+ * HOW: The depth in RichterColumnRow, signed, which is cleared.
+ * Entry: X column. Exit: A his Y high byte, or 2 at the top; N and Z from it; C and V from the
+ * subtract. X and Y kept. Clobbers zTemp10.
+ */
+ColumnLift RichterLiftByColumn(uint8_t column)
+{
+    uint16_t depth_field = (uint16_t)(RichterColumnRow + column);
+    ColumnLift lift;
+    uint16_t lifted;
+
+    lift.depth = (uint16_t)(int16_t)(int8_t)rd8(depth_field);
+    lift.y = (uint16_t)(rd8(OBJ_Y_LO) | (rd8(OBJ_Y_HI) << 8));
+    lifted = (uint16_t)(lift.y - lift.depth);
+    wr8(zTemp10, (uint8_t)(lift.depth >> 8));
+    lift.off_the_top = (lifted & 0x8000) != 0;
+    wr8(OBJ_Y_LO, lift.off_the_top ? FLOOR_TOP_OF_MAP : (uint8_t)lifted);
+    wr8(OBJ_Y_HI, lift.off_the_top ? 0 : (uint8_t)(lifted >> 8));
+    wr8(depth_field, 0);
+    return lift;
+}
+
+void column_lift_exit_shim(ColumnLift lift)
+{
+    uint16_t lifted = (uint16_t)(lift.y - lift.depth);
+
+    cpu.a = lift.off_the_top ? FLOOR_TOP_OF_MAP : (uint8_t)(lifted >> 8);
+    abi_nz(cpu.a);
+    abi_flag(P_C, lift.y >= lift.depth);
+    abi_flag(P_V, ((lift.y ^ lift.depth) & (lift.y ^ lifted) & 0x8000) != 0);
+}
+
+void abi_RichterLiftByColumn(void)
+{
+    column_lift_exit_shim(RichterLiftByColumn(cpu.x));
+}
+
 /* How a landing lift ended. */
 typedef struct {
     FloorResult check;
     bool lifted;
-    bool off_the_top;
-    uint16_t y, depth;
+    ColumnLift lift;
 } LandingLift;
 
 /*
  * @routine 01BC:27A RichterLandOnFloor
  * @run 6D:BA7A
- * WHAT IT DOES: If there is a floor under him, lifts him out of it by how deep the column read,
- * and not above the top of the map.
- * HOW: RichterFloorCheck, then the depth in RichterColumnRow, which is cleared.
- * Entry: nothing. Exit: C from the lift, or clear with no floor. A and N, Z from the last load.
+ * WHAT IT DOES: If there is a floor under him, lifts him out of it.
+ * HOW: RichterFloorCheck, then runs on into RichterLiftByColumn.
+ * Entry: nothing. Exit: as RichterLiftByColumn, or as RichterFloorCheck with no floor.
  */
 LandingLift RichterLandOnFloor(void)
 {
-    LandingLift lift = { RichterFloorCheck() };
+    LandingLift landing = { RichterFloorCheck() };
 
-    if (lift.check.how == FLOOR_NONE)
-        return lift;
-    lift.lifted = true;
-    {
-        uint16_t depth_field = (uint16_t)(RichterColumnRow + lift.check.column);
-        uint16_t lifted;
+    if (landing.check.how == FLOOR_NONE)
+        return landing;
+    landing.lifted = true;
+    landing.lift = RichterLiftByColumn(landing.check.column);
+    return landing;
+}
 
-        lift.depth = (uint16_t)(int16_t)(int8_t)rd8(depth_field);
-        lift.y = (uint16_t)(rd8(OBJ_Y_LO) | (rd8(OBJ_Y_HI) << 8));
-        lifted = (uint16_t)(lift.y - lift.depth);
-        wr8(zTemp10, (uint8_t)(lift.depth >> 8));
-        lift.off_the_top = (lifted & 0x8000) != 0;
-        wr8(OBJ_Y_LO, lift.off_the_top ? FLOOR_TOP_OF_MAP : (uint8_t)lifted);
-        wr8(OBJ_Y_HI, lift.off_the_top ? 0 : (uint8_t)(lifted >> 8));
-        wr8(depth_field, 0);
-    }
-    return lift;
+void landing_exit_shim(LandingLift landing)
+{
+    floor_check_exit_shim(landing.check);
+    if (landing.lifted)
+        column_lift_exit_shim(landing.lift);
 }
 
 void abi_RichterLandOnFloor(void)
 {
-    LandingLift lift = RichterLandOnFloor();
-    uint16_t lifted = (uint16_t)(lift.y - lift.depth);
-
-    floor_check_exit_shim(lift.check);
-    if (!lift.lifted)
-        return;
-    cpu.a = lift.off_the_top ? FLOOR_TOP_OF_MAP : (uint8_t)(lifted >> 8);
-    abi_nz(cpu.a);
-    abi_flag(P_C, lift.y >= lift.depth);
-    abi_flag(P_V, ((lift.y ^ lift.depth) & (lift.y ^ lifted) & 0x8000) != 0);
+    landing_exit_shim(RichterLandOnFloor());
 }
 
 /* The answers a caller branches on. */

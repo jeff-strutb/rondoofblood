@@ -37,7 +37,8 @@ RichterReadUnderFeet:
 ; WHAT IT DOES: Reads the terrain at a row that may lie above the map: a row off the top
 ; reads as nothing.
 ; HOW: The row's add, with its carry, decides the point's Y high byte; only zero is read.
-; Entry: A row, C its add's carry, zTemp00 X. Exit: as the read, or A 0 with N and Z from the add.
+; Entry: A row, C its add's carry: set while the row stays on the map. zTemp00 X. Exit: as the
+; read, or A 0 with N and Z from the add.
 RichterReadAbove:
     sta z:zTemp02
     cla
@@ -280,20 +281,27 @@ RichterLedgeCheck_at2:
 
 ; @routine 01BC:27A RichterLandOnFloor
 ; @run 6D:BA7A
-; WHAT IT DOES: If there is a floor under him, lifts him out of it by how deep the column read,
-; and not above the top of the map.
-; HOW: RichterFloorCheck, then the depth in RichterColumnRow, which is cleared.
-; Entry: nothing. Exit: C from the lift, or clear with no floor. A and N, Z from the last load.
+; WHAT IT DOES: If there is a floor under him, lifts him out of it.
+; HOW: RichterFloorCheck, then runs on into RichterLiftByColumn.
+; Entry: nothing. Exit: as RichterLiftByColumn, or as RichterFloorCheck with no floor.
 RichterLandOnFloor:
     jsr RichterFloorCheck
-    bcs RichterLandOnFloor_at0
+    bcs RichterLiftByColumn
     rts
-RichterLandOnFloor_at0:
+
+; @routine 01BC:280 RichterLiftByColumn
+; @run 6D:BA80
+; WHAT IT DOES: Lifts him out of the floor by how deep this column read, and not above the top
+; of the map.
+; HOW: The depth in RichterColumnRow, signed, which is cleared.
+; Entry: X column. Exit: A his Y high byte, or 2 at the top; N and Z from it; C and V from the
+; subtract. X and Y kept. Clobbers zTemp10.
+RichterLiftByColumn:
     stz z:zTemp10
     lda a:RichterColumnRow,x
-    bpl RichterLandOnFloor_at1
+    bpl RichterLiftByColumn_at0
     dec z:zTemp10
-RichterLandOnFloor_at1:
+RichterLiftByColumn_at0:
     lda a:OBJ_Y_LO
     sec
     sbc a:RichterColumnRow,x
@@ -301,10 +309,10 @@ RichterLandOnFloor_at1:
     lda a:OBJ_Y_HI
     sbc z:zTemp10
     sta a:OBJ_Y_HI
-    bmi RichterLandOnFloor_at2
+    bmi RichterLiftByColumn_at1
     stz a:RichterColumnRow,x
     rts
-RichterLandOnFloor_at2:
+RichterLiftByColumn_at1:
     lda #$02
     sta a:OBJ_Y_LO
     stz a:OBJ_Y_HI

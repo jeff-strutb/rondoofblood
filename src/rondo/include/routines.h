@@ -102,6 +102,55 @@ typedef struct {
     uint16_t depth;
 } FloorProbe;
 
+/* What a step of an animation did. */
+typedef enum { FRAME_STOPPED, FRAME_END_MARK, FRAME_SHOWN } FrameEnd;
+
+typedef struct {
+    FrameEnd how;
+    bool looped;        /* the list started over, so its step before that doubles to zero */
+    bool same_frame;    /* the timer ran on: the list was not read for a new one */
+    uint8_t step;
+    uint8_t frame;
+} AnimationStep;
+
+/* A lift out of the floor by how deep a column read. */
+typedef struct {
+    bool off_the_top;
+    uint16_t y;
+    uint16_t depth;
+} ColumnLift;
+
+/* How the ladder check ended. */
+typedef enum {
+    LADDER_CAMERA_NO, LADDER_CAMERA_YES, LADDER_OFF_SCREEN, LADDER_TOO_LOW, LADDER_OFF_PAGE,
+    LADDER_BLOCKED, LADDER_REACH_OUT, LADDER_ANSWERED
+} LadderEnd;
+
+typedef struct {
+    LadderEnd how;
+    uint16_t reach;     /* the last reach below him */
+    bool any_read;
+    TileRead last;
+    uint8_t answer;
+} LadderCheck;
+
+AnimationStep RichterAnimationRunning(void);
+void animation_running_exit_shim(AnimationStep step);
+AnimationStep RichterAnimationTick(void);
+AnimationStep RichterSetAnimation(uint8_t animation);
+void animation_exit_shim(AnimationStep result);
+void RichterClearPadOverrides(void);
+void RichterFaceByPad(void);
+ColumnsEnd RichterReadColumns(void);
+TileRead RichterReadAbove(uint8_t row, bool on_the_map);
+void read_above_exit_shim(TileRead read, bool on_the_map);
+uint8_t RichterColumnOffset(uint8_t column);
+ColumnLift RichterLiftByColumn(uint8_t column);
+void column_lift_exit_shim(ColumnLift lift);
+LadderCheck RichterLadderCheck(void);
+bool ladder_found(LadderCheck check);
+void ladder_exit_shim(LadderCheck check);
+bool SoundCommand(uint8_t command, uint8_t *busy_or_bank);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

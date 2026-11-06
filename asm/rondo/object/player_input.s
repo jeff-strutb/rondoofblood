@@ -43,6 +43,33 @@ RichterClearPadOverrides:
     stz a:PadOverrides+3
     rts
 
+; @routine 01BB:659 RichterAnimationWait
+; @run 6D:B659
+; WHAT IT DOES: Steps the animation and, unless it has ended, returns to its caller's caller, so
+; the caller's own work waits for the end.
+; HOW: RichterAnimationRunning; the assembly drops the return address.
+; Entry: nothing. Exit, ended: as RichterAnimationRunning. Otherwise the caller's return address
+; is gone, A its high byte, N and Z from it.
+RichterAnimationWait:
+    bsr RichterAnimationRunning
+    beq RichterAnimationWait_at0
+    pla
+    pla
+RichterAnimationWait_at0:
+    rts
+
+; @routine 01BB:660 RichterAnimationRunning
+; @run 6D:B660
+; WHAT IT DOES: Steps the animation; a caller looks at whether it has ended.
+; HOW: RichterAnimationTick, then the timer against $FF.
+; Entry: nothing. Exit: A the timer, N, Z and C from comparing it with $FF. Y as the tick. X and V
+; kept. Clobbers zTemp00-01.
+RichterAnimationRunning:
+    jsr RichterAnimationTick
+    lda a:OBJ_2F90
+    cmp #$FF
+    rts
+
 ; @routine 01BB:669 RichterAnimationTick
 ; @run 6D:B669
 ; WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.

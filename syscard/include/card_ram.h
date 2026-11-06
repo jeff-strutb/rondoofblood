@@ -40,6 +40,32 @@
 #define CardDh 0x20FF /* BIOS argument _DH */
 #define CardDiscEnd 0x226F /* the disc's end as a play takes it: minutes then seconds then frames */
 #define CardCdPlayMode 0x229C /* the mode of the last play */
+#define CardCdSectors 0x2280 /* the sectors a read asks for */
+#define CardCdWhole 0x2281 /* 1 when a byte count is a whole number of sectors */
+#define CardSavedMprBank 0x2268 /* the bank a mapped read replaced */
+#define CardMprStub 0x228E /* a stub built in RAM: TMA or TAM with a mask */
+#define CardMprStubMask 0x228F /* the stub's MPR mask */
+#define CardMprStubReturn 0x2290 /* the stub's return */
+#define AdpcmAddressLo 0x1808 /* the ADPCM unit's address: the same port as CdDataAuto */
+#define AdpcmAddressHi 0x1809 /* the ADPCM unit's address */
+#define CardVdcCrLo 0x20F3 /* the copy of the VDC's control register */
+#define CardCopyLo 0x20EE /* the second pointer the card keeps for itself */
+#define CardCopyHi 0x20EF /* the second pointer the card keeps for itself */
+#define CardFileLo 0x20F0 /* the backup file the card is at */
+#define CardFileHi 0x20F1 /* the backup file the card is at */
+#define CardByteCount 0x22B3 /* bytes left of a backup copy or sum */
+#define CardPointerLo 0x20EC /* a pointer the card keeps for itself */
+#define CardPointerHi 0x20ED /* a pointer the card keeps for itself */
+#define BackupUnlock 0x1807 /* opens the backup memory: the same port as CdSubcode */
+#define CardSavedMprs 0x22B5 /* the eight MPRs while backup memory is open */
+#define BackupHeader 0x8000 /* the backup memory's header */
+#define BackupEnd 0x8004 /* where the backup memory ends */
+#define BackupNextFree 0x8006 /* where its next free byte is */
+#define BackupFirstFile 0x8010 /* its first file */
+#define BackupSignature 0xF8A9 /* HUBM: what a formatted header starts with */
+#define BackupFormatPassword 0xF8AD /* what bm_format must be handed */
+#define AdpcmData 0x180A /* the ADPCM unit's data port */
+#define AdpcmDma 0x180B /* the ADPCM unit's transfer from the CD */
 #define CardCdSenseKey 0x227D /* the sense data's key byte */
 #define CardCdFailedCommand 0x2291 /* the command that last failed */
 #define CardFrameTick 0x2241 /* counted by the card's frame interrupt */

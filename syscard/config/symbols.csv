@@ -37,6 +37,32 @@ F9,zp,CardAh,BIOS argument _AH
 FF,zp,CardDh,BIOS argument _DH
 226F,abs,CardDiscEnd,the disc's end as a play takes it: minutes then seconds then frames
 229C,abs,CardCdPlayMode,the mode of the last play
+2280,abs,CardCdSectors,the sectors a read asks for
+2281,abs,CardCdWhole,1 when a byte count is a whole number of sectors
+2268,abs,CardSavedMprBank,the bank a mapped read replaced
+228E,abs,CardMprStub,a stub built in RAM: TMA or TAM with a mask
+228F,abs,CardMprStubMask,the stub's MPR mask
+2290,abs,CardMprStubReturn,the stub's return
+1808,abs,AdpcmAddressLo,the ADPCM unit's address: the same port as CdDataAuto
+1809,abs,AdpcmAddressHi,the ADPCM unit's address
+F3,zp,CardVdcCrLo,the copy of the VDC's control register
+EE,zp,CardCopyLo,the second pointer the card keeps for itself
+EF,zp,CardCopyHi,the second pointer the card keeps for itself
+F0,zp,CardFileLo,the backup file the card is at
+F1,zp,CardFileHi,the backup file the card is at
+22B3,abs,CardByteCount,bytes left of a backup copy or sum
+EC,zp,CardPointerLo,a pointer the card keeps for itself
+ED,zp,CardPointerHi,a pointer the card keeps for itself
+1807,abs,BackupUnlock,opens the backup memory: the same port as CdSubcode
+22B5,abs,CardSavedMprs,the eight MPRs while backup memory is open
+8000,abs,BackupHeader,the backup memory's header
+8004,abs,BackupEnd,where the backup memory ends
+8006,abs,BackupNextFree,where its next free byte is
+8010,abs,BackupFirstFile,its first file
+F8A9,abs,BackupSignature,HUBM: what a formatted header starts with
+F8AD,abs,BackupFormatPassword,what bm_format must be handed
+180A,abs,AdpcmData,the ADPCM unit's data port
+180B,abs,AdpcmDma,the ADPCM unit's transfer from the CD
 227D,abs,CardCdSenseKey,the sense data's key byte
 2291,abs,CardCdFailedCommand,the command that last failed
 2241,abs,CardFrameTick,counted by the card's frame interrupt

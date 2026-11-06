@@ -73,38 +73,45 @@ static uint32_t cd_base_at(uint8_t offset)
  * Entry: _CL, _CH, _DL. Exit: A the sum's top byte, N, Z, C, V from its add, Y the table's
  * offset. X kept.
  */
-void add_cd_base(void)
+CdBaseSum add_cd_base(void)
 {
-    uint32_t sum = card_disc_address() + cd_base_at(cd_base_offset());
+    CdBaseSum added;
+    uint32_t sum;
 
+    added.offset = cd_base_offset();
+    added.address = card_disc_address();
+    added.base = cd_base_at(added.offset);
+    sum = added.address + added.base;
     wr8(CardDl, (uint8_t)sum);
     wr8(CardCh, (uint8_t)(sum >> 8));
     wr8(CardCl, (uint8_t)(sum >> 16));
+    return added;
 }
 
-/* The top byte's add, with what carried out of the two below it. */
-static void add_cd_base_exit_shim(uint32_t address, uint32_t base, uint8_t offset)
+/* Whether the top byte's add overflowed, with what carried out of the two below it. */
+bool cd_base_sum_overflowed(CdBaseSum added)
 {
-    uint8_t a = (uint8_t)(address >> 16);
-    uint8_t b = (uint8_t)(base >> 16);
-    unsigned carry = ((address & 0xFFFF) + (base & 0xFFFF)) >> 16;
+    uint8_t a = (uint8_t)(added.address >> 16);
+    uint8_t b = (uint8_t)(added.base >> 16);
+    unsigned carry = ((added.address & 0xFFFF) + (added.base & 0xFFFF)) >> 16;
     unsigned sum = (unsigned)a + b + carry;
 
-    cpu.a = (uint8_t)sum;
-    cpu.y = offset;
-    abi_nz((uint8_t)sum);
-    abi_flag(P_C, sum > 0xFF);
-    abi_flag(P_V, (~(a ^ b) & (a ^ sum) & 0x80) != 0);
+    return (~(a ^ b) & (a ^ sum) & 0x80) != 0;
 }
 
 void abi_add_cd_base(void)
 {
-    uint8_t offset = cd_base_offset();
-    uint32_t address = card_disc_address();
-    uint32_t base = cd_base_at(offset);
+    CdBaseSum added = add_cd_base();
+    uint8_t a = (uint8_t)(added.address >> 16);
+    uint8_t b = (uint8_t)(added.base >> 16);
+    unsigned carry = ((added.address & 0xFFFF) + (added.base & 0xFFFF)) >> 16;
+    unsigned sum = (unsigned)a + b + carry;
 
-    add_cd_base();
-    add_cd_base_exit_shim(address, base, offset);
+    cpu.a = (uint8_t)sum;
+    cpu.y = added.offset;
+    abi_nz((uint8_t)sum);
+    abi_flag(P_C, sum > 0xFF);
+    abi_flag(P_V, cd_base_sum_overflowed(added));
 }
 
 /*

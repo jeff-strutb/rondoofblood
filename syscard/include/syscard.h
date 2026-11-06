@@ -184,6 +184,130 @@ typedef struct {
     CdLeftOver left_over;
 } CdPlay;
 
+/* How a block read to memory ended. */
+typedef struct {
+    bool at_status;
+    bool moved;
+    uint8_t phase;
+    uint8_t pages_left;
+    uint8_t page_offset;
+} CdBlockRead;
+
+/* How a read to VRAM ended. */
+typedef struct {
+    CdDataIn in;
+    bool at_status;
+    bool moved;
+    bool counted;
+    uint16_t count_before;
+    uint8_t pages_left;
+    uint8_t words_left;
+} CdVramRead;
+
+/* What adding a disc base worked with. */
+typedef struct {
+    uint32_t address;
+    uint32_t base;
+    uint8_t offset;
+} CdBaseSum;
+
+/* How cd_read ended, and the values it worked with. */
+typedef struct {
+    bool bad_request;
+    bool mapped;
+    bool again;
+    uint8_t mode;
+    uint8_t count;
+    uint16_t bytes_asked;
+    CdBaseSum added;
+    CdSent sent;
+    bool to_memory;
+    CdBlockRead block;
+    bool dropped;
+    bool to_vram;
+    bool vram_slow;
+    CdVramRead vram;
+    bool moved_through_bank;
+    uint8_t pages_left;
+    uint8_t page_offset;
+    CdFinish finish;
+    uint8_t status;
+    bool failed;
+    CdRetry retry;
+} CdRead;
+
+/* What checking the backup memory's header found. */
+typedef struct {
+    bool formatted;
+    uint8_t read;
+    uint8_t expected;
+    uint8_t where;
+} BackupCheck;
+
+typedef struct {
+    BackupCheck check;
+    uint16_t room;
+    uint16_t after_header;
+} BackupFree;
+
+typedef struct {
+    uint8_t page;
+    uint8_t offset;
+    uint8_t pages_left;
+    bool whole;
+} BackupSize;
+
+typedef struct {
+    bool accepted;
+    uint8_t read;
+    uint8_t expected;
+    uint8_t where;
+    BackupSize size;
+} BackupFormat;
+
+/* What a look for a file found: where it stopped, and its last step through the list. */
+typedef struct {
+    bool found;
+    uint16_t file;
+    uint8_t window;
+    bool stepped;
+    uint16_t last_file;
+    uint16_t last_length;
+} BackupFind;
+
+uint8_t bm_map_name_window(void);
+uint16_t bm_count_down(void);
+BackupFind bm_find_file(void);
+void bm_open(void);
+void bm_close(void);
+BackupCheck bm_open_formatted(void);
+BackupFree bm_free(void);
+BackupFormat bm_format(void);
+
+/* How ad_trans ended. */
+typedef struct {
+    bool refused;
+    uint8_t busy_port;
+    CdExchange exchange;
+    uint8_t status;
+    bool failed;
+    CdRetry retry;
+} AdTrans;
+
+AdTrans ad_trans(void);
+void ad_set_address(uint8_t low, uint8_t high);
+uint8_t ad_latch_read_address(void);
+uint8_t ad_latch_write_address(void);
+uint8_t ad_latch_length(void);
+uint8_t ad_read_byte(void);
+CdBaseSum add_cd_base(void);
+bool cd_base_sum_overflowed(CdBaseSum added);
+uint8_t write_vram_word_pending(void);
+CdRead cd_read(void);
+CdBlockRead cd_read_to_memory(void);
+CdVramRead cd_read_to_vram_fast(void);
+CdVramRead cd_read_to_vram_slow(void);
+uint8_t cd_bytes_to_sectors(void);
 DiscEndStep disc_end_minus_one_frame(void);
 CdPlay cd_play(void);
 CdAttempt cd_subq(void);

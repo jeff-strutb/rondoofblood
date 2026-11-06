@@ -19,7 +19,13 @@ enum {
     SEARCH_PLAY_AFTER = 0x02, SEARCH_DONE_IRQ = 0x20, SEARCH_KIND_MASKED = 0xC0,
     COMMAND_PLAY = 0xD9, PLAY_MODE_BITS = 0x07, PLAY_KIND_DISC_END = 0xC0, PLAY_KIND_TIME = 0x40,
     PLAY_MODE_KEEP_LAST = 4, PLAY_MODE_DONE = 1, PLAY_MODE_ON_INTERRUPT = 2,
-    CARD_ARG_CX = 4,
+    AD_DMA_FROM_CD = 0x02, AD_DMA_RUNNING = 0x03, AD_STATUS_DMA_BUSY = 0x04,
+    CD_STATUS_TRANSFER_DONE = 0x20, AD_ERROR_BUSY = 4,
+    COMMAND_READ = 8, READ_BYTES = 0, READ_SECTORS = 1, READ_TO_VRAM_FAST = 0xFF,
+    READ_TO_VRAM_SLOW = 0xFE, READ_MPR_LIMIT = 7, READ_BAD_REQUEST = 0x22,
+    SENSE_TRY_OTHER_BASE = 0x10, VDC_REG_MAWR = 0, VDC_REG_DATA = 2, BANK_PAGES = 0x20,
+    PHASE_MAPPED_BIT = 0x40, MPR_STUB_TMA = 0x43, MPR_STUB_TAM = 0x53, MPR_STUB_RTS = 0x60,
+    CARD_ARG_CX = 4, BLOCK_PAGES = 8, VRAM_BLOCK_PAGES = 4, SECTOR_PAGES_MASK = 0x07,
     CD_FRAMES_PER_SECOND = 0x75, CD_LAST_FRAME = 0x74,
     CD_SECONDS_PER_MINUTE = 0x60, CD_LAST_SECOND = 0x59
 };
@@ -1207,6 +1213,707 @@ void abi_cd_play(void)
             abi_flag(P_C, true);
         }
         break;
+    }
+}
+
+/*
+ * @card 00:EA79 cd_read_to_memory
+ * WHAT IT DOES: Takes whole blocks from the drive to memory, through the auto port, up to the
+ * count in _AX.
+ * HOW: Bytes to where _BX points, in blocks of eight pages, until the count runs out or the
+ * drive moves to its status phase.
+ * Entry: _AX count, _BX pointer. Exit, status phase: A $D8, N 0, Z 1, C 1. Exit, count out: A
+ * the phase, N and Z from it, C 1. X and Y as the loop left them, if a byte moved. V kept.
+ * Clobbers _AX, _BH.
+ */
+CdBlockRead cd_read_to_memory(void)
+{
+    CdBlockRead read = { false, false, 0, 0, 0 };
+    uint8_t low = rd8(CardBl);
+    uint8_t page = rd8(CardBh);
+    uint8_t count_low = rd8(CardAl);
+    uint16_t count = (uint16_t)(count_low | (rd8((uint16_t)(CardAl + 1)) << 8));
+
+    for (;;) {
+        read.phase = read_bus_phase();
+        if (read.phase == PHASE_STATUS) {
+            read.at_status = true;
+            break;
+        }
+        if (read.phase != PHASE_DATA_IN)
+            continue;
+        if (count == 0) {
+            read.phase = read_bus_phase();
+            break;
+        }
+        read.moved = true;
+        read.pages_left = BLOCK_PAGES;
+        read.page_offset = 0;
+        while (count != 0) {
+            wr8((uint16_t)(((page << 8) | low) + read.page_offset), rd8(CdDataAuto));
+            count--;
+            if (count == 0)
+                break;
+            read.page_offset++;
+            if (read.page_offset != 0)
+                continue;
+            page++;
+            read.pages_left--;
+            if (read.pages_left == 0)
+                break;
+        }
+        if (count == 0) {
+            read.phase = read_bus_phase();
+            break;
+        }
+    }
+    wr8(CardAl, (uint8_t)count);
+    wr8((uint16_t)(CardAl + 1), (uint8_t)(count >> 8));
+    wr8(CardBh, page);
+    return read;
+}
+
+void abi_cd_read_to_memory(void)
+{
+    CdBlockRead read = cd_read_to_memory();
+
+    if (read.moved) {
+        cpu.x = read.pages_left;
+        cpu.y = read.page_offset;
+    }
+    cpu.a = read.phase;
+    abi_nz(read.at_status ? 0 : read.phase);
+    abi_flag(P_C, true);
+}
+
+/* The end of a transfer to VRAM: the phase's answer bits, and any extra data dropped. */
+static CdDataIn cd_vram_read_end(CdDataIn in)
+{
+    in.answer = read_bus_phase() & PHASE_ANSWER_BITS;
+    if (in.answer == PHASE_STATUS_DONE) {
+        in.drained = true;
+        in.drained_block = cd_drop_extra_data();
+    }
+    return in;
+}
+
+/* The count's last subtract: V when its high byte went from $80 to $7F. */
+static bool count_step_overflowed_shim(uint16_t count_before, uint8_t step)
+{
+    return (count_before >> 8) == 0x80 && (count_before & 0xFF) < step;
+}
+
+/*
+ * @card 00:EABE cd_read_to_vram_fast
+ * WHAT IT DOES: Takes whole blocks from the drive to VRAM, through the auto port, up to the
+ * count in _AX.
+ * HOW: A word to the VDC's data port for each two bytes, in blocks of four pages of words.
+ * Entry: _AX count, VDC on its data port. Exit, status phase first: as the end of a read. Exit,
+ * count out: as cd_vram_read_end. X, Y as the loop left them. Clobbers _AX.
+ */
+CdVramRead cd_read_to_vram_fast(void)
+{
+    CdVramRead read;
+    uint8_t count_low = rd8(CardAl);
+    uint16_t count = (uint16_t)(count_low | (rd8((uint16_t)(CardAl + 1)) << 8));
+
+    read.in = (CdDataIn){ false, 0, 0, false, false };
+    read.moved = false;
+    read.counted = false;
+    read.count_before = 0;
+    read.pages_left = 0;
+    read.words_left = 0;
+    for (;;) {
+        uint8_t phase = read_bus_phase();
+
+        if (phase == PHASE_STATUS)
+            break;
+        if (phase != PHASE_DATA_IN)
+            continue;
+        read.moved = true;
+        read.pages_left = VRAM_BLOCK_PAGES;
+        read.words_left = 0;
+        do {
+            wr8(VdcDataLo, rd8(CdDataAuto));
+            wr8(VdcDataHi, rd8(CdDataAuto));
+            read.count_before = count;
+            read.counted = true;
+            count = (uint16_t)(count - 2);
+            if (count == 0)
+                break;
+            read.words_left--;
+            if (read.words_left == 0)
+                read.pages_left--;
+        } while (read.words_left != 0 || read.pages_left != 0);
+        if (count == 0)
+            break;
+    }
+    wr8(CardAl, (uint8_t)count);
+    wr8((uint16_t)(CardAl + 1), (uint8_t)(count >> 8));
+    read.in = cd_vram_read_end(read.in);
+    return read;
+}
+
+static void cd_vram_read_exit_shim(CdVramRead read)
+{
+    if (read.moved) {
+        cpu.x = read.pages_left;
+        cpu.y = read.words_left;
+    }
+    if (read.counted)
+        abi_flag(P_V, count_step_overflowed_shim(read.count_before, 2));
+    cd_data_in_exit_shim(read.in);
+}
+
+void abi_cd_read_to_vram_fast(void)
+{
+    cd_vram_read_exit_shim(cd_read_to_vram_fast());
+}
+
+/*
+ * @card 00:EB16 cd_read_to_vram_slow
+ * WHAT IT DOES: Takes bytes from the drive to VRAM one handshake at a time, up to the count in
+ * _AX.
+ * HOW: Each byte to the VDC's data port, low then high, through a pointer in _BX.
+ * Entry: _AX count. Exit, status phase first: A $D8, N 0, Z 1, C 1. Exit, count out: as
+ * cd_vram_read_end. Clobbers _AX, _BX.
+ */
+CdVramRead cd_read_to_vram_slow(void)
+{
+    CdVramRead read;
+    uint8_t count_low = rd8(CardAl);
+    uint16_t count = (uint16_t)(count_low | (rd8((uint16_t)(CardAl + 1)) << 8));
+    uint8_t port = VdcDataLo;
+    bool at_status = false;
+
+    read.in = (CdDataIn){ false, 0, 0, false, false };
+    read.moved = false;
+    read.counted = false;
+    read.count_before = 0;
+    read.pages_left = 0;
+    read.words_left = 0;
+    wr8(CardBh, 0);
+    for (;;) {
+        uint8_t phase = read_bus_phase();
+
+        if (phase == PHASE_STATUS) {
+            at_status = true;
+            break;
+        }
+        if (phase != PHASE_DATA_IN)
+            continue;
+        wr8(port, rd8(CdData));
+        cd_ack_pulse();
+        port ^= 1;
+        read.count_before = count;
+        read.counted = true;
+        count--;
+        if (count == 0)
+            break;
+    }
+    wr8(CardBl, port);
+    wr8(CardAl, (uint8_t)count);
+    wr8((uint16_t)(CardAl + 1), (uint8_t)(count >> 8));
+    read.at_status = at_status;
+    if (!at_status)
+        read.in = cd_vram_read_end(read.in);
+    return read;
+}
+
+void abi_cd_read_to_vram_slow(void)
+{
+    CdVramRead read = cd_read_to_vram_slow();
+
+    if (read.counted)
+        abi_flag(P_V, count_step_overflowed_shim(read.count_before, 1));
+    if (read.at_status) {
+        cpu.a = PHASE_STATUS;
+        abi_nz(0);
+        abi_flag(P_C, true);
+    } else {
+        cd_data_in_exit_shim(read.in);
+    }
+}
+
+/*
+ * @card 00:ED9F cd_bytes_to_sectors
+ * WHAT IT DOES: Works out how many sectors hold the count in _AX.
+ * HOW: The high byte over 8, and one more if anything is left over: CardCdWhole says none was.
+ * Entry: _AX bytes. Exit: A CardCdWhole; N and Z from it, or from the sectors counted if one
+ * was added; C bit 2 of _AH. X, Y, V kept.
+ */
+uint8_t cd_bytes_to_sectors(void)
+{
+    uint8_t low = rd8(CardAl);
+    uint8_t high = rd8((uint16_t)(CardAl + 1));
+    bool whole = low == 0 && (high & SECTOR_PAGES_MASK) == 0;
+    uint8_t sectors = (uint8_t)((high >> 3) + (whole ? 0 : 1));
+
+    wr8(CardCdSectors, sectors);
+    wr8(CardCdWhole, whole ? 1 : 0);
+    return sectors;
+}
+
+void abi_cd_bytes_to_sectors(void)
+{
+    uint8_t high = rd8((uint16_t)(CardAl + 1));
+    uint8_t sectors = cd_bytes_to_sectors();
+    uint8_t whole = rd8(CardCdWhole);
+
+    cpu.a = whole;
+    abi_nz(whole != 0 ? whole : sectors);
+    abi_flag(P_C, (high & 0x04) != 0);
+}
+
+/* A read's command asks for this many sectors. */
+static void ask_for_sectors(uint8_t sectors)
+{
+    wr8((uint16_t)(CardCdCommand + 4), sectors);
+}
+
+/* The count of whole sectors, in bytes, as the transfer loops take it. */
+static void expect_bytes_of_sectors(uint8_t sectors)
+{
+    wr8((uint16_t)(CardAl + 1), (uint8_t)(sectors << 3));
+    wr8(CardAl, 0);
+}
+
+static uint16_t bytes_still_expected(void)
+{
+    uint8_t low = rd8(CardAl);
+
+    return (uint16_t)(low | (rd8((uint16_t)(CardAl + 1)) << 8));
+}
+
+/* The drive's status, and whether the BIOS will try the read again. */
+static CdRead read_outcome(CdRead read, bool wants_every_byte)
+{
+    read.finish = cd_finish_command();
+    read.status = read.finish.timed_out ? CD_ERROR_TIMED_OUT : read.finish.read.status;
+    read.failed = read.status != 0;
+    if (read.failed) {
+        read.retry = cd_retry_after_error(read.status);
+        read.again = !read.retry.give_up;
+    } else if (wants_every_byte) {
+        read.again = bytes_still_expected() != 0;
+    }
+    return read;
+}
+
+static CdRead read_to_memory(CdRead read, uint8_t sectors)
+{
+    read.bad_request = sectors == 0;
+    if (read.bad_request)
+        return read;
+    ask_for_sectors(sectors);
+    read.sent = cd_send_command();
+    if (cd_sent_value(read.sent) == PHASE_DATA_IN) {
+        read.to_memory = true;
+        read.block = cd_read_to_memory();
+        if (!read.block.at_status && read.block.phase == PHASE_DATA_IN)
+            read.dropped = cd_drop_extra_data();
+    }
+    return read_outcome(read, true);
+}
+
+static void clear_vram_pending(void)
+{
+    wr8(CardVramPending, 0);
+}
+
+/* The VDC register the data port will reach, kept where the card keeps it. */
+static void vdc_select_shim(uint8_t reg)
+{
+    wr8(CardVdcReg, reg);
+    wr8(VdcAddress, reg);
+}
+
+/* Points the VDC's write address at _BX, and leaves it on the data port. */
+static void vram_destination_shim(void)
+{
+    vdc_select_shim(VDC_REG_MAWR);
+    write_vram_word_pending();
+    vdc_select_shim(VDC_REG_DATA);
+}
+
+static CdRead read_to_vram(CdRead read, uint8_t sectors, bool one_handshake_a_byte)
+{
+    read.bad_request = sectors == 0;
+    if (read.bad_request)
+        return read;
+    ask_for_sectors(sectors);
+    read.sent = cd_send_command();
+    if (cd_sent_value(read.sent) == PHASE_DATA_IN) {
+        read.to_vram = true;
+        read.vram_slow = one_handshake_a_byte;
+        if (!one_handshake_a_byte)
+            expect_bytes_of_sectors(sectors);
+        vram_destination_shim();
+        read.vram = one_handshake_a_byte ? cd_read_to_vram_slow() : cd_read_to_vram_fast();
+        clear_vram_pending();
+    }
+    return read_outcome(read, true);
+}
+
+/* The bank now at an MPR, through the stub the card builds in its RAM for this. */
+static uint8_t mpr_bank_shim(uint8_t mask)
+{
+    wr8(CardMprStubMask, mask);
+    wr8(CardMprStub, MPR_STUB_TMA);
+    wr8(CardMprStubReturn, MPR_STUB_RTS);
+    return tma(mask);
+}
+
+/* Maps a bank at an MPR, through the same stub. */
+static void mpr_map_shim(uint8_t mask, uint8_t bank)
+{
+    wr8(CardMprStub, MPR_STUB_TAM);
+    tam(mask, bank);
+}
+
+static void keep_replaced_bank(uint8_t bank)
+{
+    wr8(CardSavedMprBank, bank);
+}
+
+/* What is left of a read through a bank. */
+typedef struct {
+    uint8_t mask;
+    uint8_t mpr_number;
+    uint8_t next_bank;
+    uint8_t banks_left;
+    uint8_t left_over;
+} BankRead;
+
+/* Where a piece of a read through a bank goes: the start of the mapped page. */
+static void expect_bank_piece(BankRead plan)
+{
+    uint8_t pages = plan.banks_left != 0 ? BANK_PAGES : (uint8_t)(plan.left_over << 3);
+
+    wr8((uint16_t)(CardAl + 1), pages);
+    wr8(CardAl, 0);
+    wr8(CardBh, (uint8_t)(plan.mpr_number << 5));
+    wr8(CardBl, 0);
+}
+
+static void keep_bank_read_plan(BankRead plan)
+{
+    wr8(CardDl, plan.next_bank);
+    wr8(CardCdSectors, plan.banks_left);
+    wr8(CardCdWhole, plan.left_over);
+}
+
+/* A piece of a read through a bank: true while the drive has more for the next. */
+static bool read_bank_piece(CdRead *read, BankRead plan)
+{
+    CdBlockRead block;
+
+    expect_bank_piece(plan);
+    mpr_map_shim(plan.mask, plan.next_bank);
+    block = cd_read_to_memory();
+    if (block.moved) {
+        read->moved_through_bank = true;
+        read->pages_left = block.pages_left;
+        read->page_offset = block.page_offset;
+    }
+    return !block.at_status && (block.phase | PHASE_MAPPED_BIT) == PHASE_DATA_IN;
+}
+
+static BankRead plan_bank_read(uint8_t mpr_number, uint8_t sectors, uint8_t first_bank)
+{
+    BankRead plan;
+
+    plan.mask = mpr_number < 8 ? (uint8_t)(1u << mpr_number) : 0;
+    plan.mpr_number = mpr_number;
+    plan.next_bank = first_bank;
+    plan.banks_left = sectors >> 2;
+    plan.left_over = sectors & 3;
+    return plan;
+}
+
+static void keep_sector_count(uint8_t sectors)
+{
+    wr8(CardCdSectors, sectors);
+}
+
+/* After a sense code of $10 or more, the other base is tried. */
+static void choose_base_for_retry(void)
+{
+    if (rd8(CardCdSense) >= SENSE_TRY_OTHER_BASE)
+        wr8(CardCdBaseIndex, 1);
+}
+
+/* Where a read's sectors go, and how many: what _AX, _BL and _DH ask. */
+typedef struct {
+    uint8_t where;
+    uint8_t count;
+    uint8_t first_bank;
+    uint16_t bytes;
+} ReadRequest;
+
+static ReadRequest load_read_request(void)
+{
+    ReadRequest request;
+
+    request.where = rd8(CardDh);
+    request.count = rd8(CardAl);
+    request.first_bank = rd8(CardBl);
+    request.bytes = bytes_still_expected();
+    return request;
+}
+
+/* Only MPR numbers below 7 can take a read through a bank. */
+static bool bank_read_is_valid(ReadRequest request)
+{
+    return request.count != 0 && (int8_t)(request.where - READ_MPR_LIMIT) < 0;
+}
+
+static void begin_read_command(CdRead *read)
+{
+    clear_cd_command();
+    wr8(CardCdCommand, COMMAND_READ);
+    read->added = add_cd_base();
+    copy_args_to_command(CARD_ARG_CX, 1);
+}
+
+/* Whether the drive answered a read through a bank with data. */
+static bool drive_offers_bank_data(CdSent sent)
+{
+    return (cd_sent_value(sent) | PHASE_MAPPED_BIT) == PHASE_DATA_IN;
+}
+
+static CdRead read_through_bank(CdRead read, uint8_t mpr_number, uint8_t sectors, uint8_t first_bank)
+{
+    BankRead plan = plan_bank_read(mpr_number, sectors, first_bank);
+    uint8_t replaced = mpr_bank_shim(plan.mask);
+    bool more;
+
+    read.mapped = true;
+    keep_replaced_bank(replaced);
+    ask_for_sectors(sectors);
+    keep_bank_read_plan(plan);
+    read.sent = cd_send_command();
+    more = drive_offers_bank_data(read.sent);
+    while (more && (plan.banks_left != 0 || plan.left_over != 0)) {
+        bool last_piece = plan.banks_left == 0;
+
+        more = read_bank_piece(&read, plan) && !last_piece;
+        plan.next_bank++;
+        plan.banks_left--;
+        keep_bank_read_plan(plan);
+    }
+    read = read_outcome(read, false);
+    if (!read.again)
+        mpr_map_shim(plan.mask, replaced);
+    return read;
+}
+
+/* One try of a read, by where its sectors go. */
+static CdRead try_read(void)
+{
+    CdRead read = { 0 };
+    ReadRequest request = load_read_request();
+
+    read.mode = request.where;
+    read.count = request.count;
+    read.bytes_asked = request.bytes;
+    begin_read_command(&read);
+    switch (request.where) {
+    case READ_BYTES:
+        return read_to_memory(read, cd_bytes_to_sectors());
+    case READ_SECTORS:
+        keep_sector_count(request.count);
+        expect_bytes_of_sectors(request.count);
+        return read_to_memory(read, request.count);
+    case READ_TO_VRAM_FAST:
+        return read_to_vram(read, request.count, false);
+    case READ_TO_VRAM_SLOW:
+        return read_to_vram(read, cd_bytes_to_sectors(), true);
+    default:
+        read.bad_request = !bank_read_is_valid(request);
+        if (read.bad_request)
+            return read;
+        return read_through_bank(read, request.where, request.count, request.first_bank);
+    }
+}
+
+/*
+ * @card 00:EC05 cd_read
+ * WHAT IT DOES: Reads sectors from the disc to memory or VRAM.
+ * HOW: Command 8, with the address plus the chosen base. _DH says where they go: 0 _AX bytes
+ * to _BX, 1 _AL sectors to _BX, 2-6 _AL sectors through the MPR it names, $FE _AX bytes to VRAM
+ * with a handshake each, $FF _AL sectors to VRAM. After a sense code of $10 or more it uses the
+ * other base.
+ * Entry: _CL, _CH, _DL address; the rest by _DH. Exit: A 0 if well, $22 for a bad request; else
+ * as cd_retry_after_error. C 1 if well. X, Y and V as the last step left them.
+ */
+CdRead cd_read(void)
+{
+    CdRead read;
+
+    wr8(CardCdBaseIndex, 0);
+    save_card_args();
+    for (read = try_read(); read.again; read = try_read()) {
+        restore_card_args();
+        choose_base_for_retry();
+    }
+    return read;
+}
+
+/* C when a request was refused, from the last thing that set it on each kind of request. */
+static bool bad_read_carry_shim(CdRead read)
+{
+    if (read.mode == READ_BYTES || read.mode == READ_TO_VRAM_SLOW)
+        return (read.bytes_asked & 0x0400) != 0;
+    if (read.mode == READ_SECTORS)
+        return false;
+    if (read.mode == READ_TO_VRAM_FAST)
+        return true;
+    return read.count != 0 && read.mode >= READ_MPR_LIMIT;
+}
+
+void abi_cd_read(void)
+{
+    CdRead read = cd_read();
+    bool through_bank = read.mode >= 2 && read.mode != READ_TO_VRAM_FAST &&
+                        read.mode != READ_TO_VRAM_SLOW;
+
+    cpu.y = 1;
+    if (read.bad_request) {
+        cpu.x = through_bank ? read.count : CARD_ARG_CX;
+        cpu.a = READ_BAD_REQUEST;
+        abi_nz(READ_BAD_REQUEST);
+        abi_flag(P_C, bad_read_carry_shim(read));
+        abi_flag(P_V, cd_base_sum_overflowed(read.added));
+        return;
+    }
+    cd_send_exit_shim(read.sent);
+    if (read.to_memory && read.block.moved) {
+        cpu.x = read.block.pages_left;
+        cpu.y = read.block.page_offset;
+    }
+    if (read.moved_through_bank) {
+        cpu.x = read.pages_left;
+        cpu.y = read.page_offset;
+    }
+    if (read.to_vram && read.vram.moved) {
+        cpu.x = read.vram.pages_left;
+        cpu.y = read.vram.words_left;
+    }
+    if (read.to_vram && read.vram.counted)
+        abi_flag(P_V, count_step_overflowed_shim(read.vram.count_before, read.vram_slow ? 1 : 2));
+    if (read.dropped || (read.to_vram && read.vram.in.drained_block)) {
+        cpu.x = 0;
+        cpu.y = 0;
+    }
+    if (read.finish.timed_out) {
+        cd_reset_exit_shim(read.finish.reset);
+        cpu.a = CD_ERROR_TIMED_OUT;
+        abi_nz(CD_ERROR_TIMED_OUT);
+    } else {
+        cd_status_exit_shim(read.finish.read);
+    }
+    if (read.failed) {
+        cd_retry_exit_shim(read.retry);
+    } else {
+        cpu.a = 0;
+        abi_nz(0);
+        abi_flag(P_C, true);
+    }
+    if (read.mapped)
+        abi_nz(cpu.a);
+}
+
+/* The ADPCM unit takes the drive's data on its own until the drive has finished. */
+static void transfer_to_adpcm(void)
+{
+    wr8(AdpcmDma, AD_DMA_FROM_CD);
+    do {
+        while (rd8(AdpcmStatus) & AD_STATUS_DMA_BUSY)
+            ;
+    } while (!(rd8(CdIrqStatus) & CD_STATUS_TRANSFER_DONE));
+    wr8(AdpcmDma, 0);
+}
+
+/* A request gives its ADPCM address unless _DH says to carry on from the last. */
+static void set_adpcm_write_address(void)
+{
+    if (rd8(CardDh) == 0) {
+        uint8_t low = rd8(CardBl);
+
+        ad_set_address(low, rd8(CardBh));
+        ad_latch_write_address();
+    }
+}
+
+static CdExchange try_adpcm_transfer(void)
+{
+    CdExchange exchange = { 0 };
+    uint8_t sectors = rd8(CardAl);
+
+    set_adpcm_write_address();
+    clear_cd_command();
+    wr8(CardCdCommand, COMMAND_READ);
+    add_cd_base();
+    copy_args_to_command(CARD_ARG_CX, 1);
+    ask_for_sectors(sectors);
+    exchange.sent = cd_send_command();
+    transfer_to_adpcm();
+    exchange.finish = cd_finish_command();
+    return exchange;
+}
+
+/*
+ * @card 00:F393 ad_trans
+ * WHAT IT DOES: Reads sectors from the disc into ADPCM memory.
+ * HOW: Command 8 with the unit's own transfer running until the drive is done. Refuses while
+ * a transfer is already running, and retries like cd_read.
+ * Entry: _AL sectors, _BX ADPCM address, _CL, _CH, _DL disc address, _DH 0 to set the address.
+ * Exit, refused: A 4, N and Z from it, V bit 6 of the transfer port. Exit, well: A 0, N 0, Z 1,
+ * C 1. Exit, gave up: as cd_retry_after_error. Y 1 unless a step changed it.
+ */
+AdTrans ad_trans(void)
+{
+    AdTrans trans = { 0 };
+
+    trans.busy_port = rd8(AdpcmDma);
+    trans.refused = (trans.busy_port & AD_DMA_RUNNING) != 0;
+    if (trans.refused)
+        return trans;
+    wr8(CardCdBaseIndex, 0);
+    save_card_args();
+    for (;;) {
+        trans.exchange = try_adpcm_transfer();
+        trans.status = cd_exchange_value(trans.exchange);
+        trans.failed = trans.status != 0;
+        if (!trans.failed)
+            return trans;
+        trans.retry = cd_retry_after_error(trans.status);
+        if (trans.retry.give_up)
+            return trans;
+        restore_card_args();
+        choose_base_for_retry();
+    }
+}
+
+void abi_ad_trans(void)
+{
+    AdTrans trans = ad_trans();
+
+    if (trans.refused) {
+        cpu.a = AD_ERROR_BUSY;
+        abi_nz(AD_ERROR_BUSY);
+        abi_flag(P_V, (trans.busy_port & 0x40) != 0);
+        return;
+    }
+    cpu.y = 1;
+    cd_exchange_exit_shim(trans.exchange);
+    if (trans.failed) {
+        cd_retry_exit_shim(trans.retry);
+    } else {
+        cpu.a = 0;
+        abi_nz(0);
+        abi_flag(P_C, true);
     }
 }
 

@@ -19,12 +19,13 @@ typedef struct {
 
 extern Cpu cpu;
 
-enum { P_C = 0x01, P_Z = 0x02, P_V = 0x40, P_N = 0x80 };
+enum { P_C = 0x01, P_Z = 0x02, P_I = 0x04, P_V = 0x40, P_N = 0x80 };
 
 uint8_t rd8(uint16_t addr);
 void wr8(uint16_t addr, uint8_t value);
 uint8_t tma(uint8_t mpr_bit);
 void tam(uint8_t mpr_bits, uint8_t bank);
+void cli(void);
 
 static inline void abi_flag(uint8_t flag, bool on)
 {

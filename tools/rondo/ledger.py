@@ -33,10 +33,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import asmfile  # noqa: E402
+import cardfile  # noqa: E402
 import oracle  # noqa: E402
 
 BUILD = os.path.join(TOP, "build", "rondo")
 OUT = os.path.join(TOP, "docs", "rondo", "ledger.csv")
+CARD_OUT = os.path.join(TOP, "syscard", "ledger.csv")
 WAIVERS = os.path.join(TOP, "config", "rondo", "ledger_waivers.csv")
 FUNC = re.compile(r"^(?:static\s+)?(?:inline\s+)?[\w\s\*]+?\b(\w+)\s*\(([^;{}]*)\)\s*\n\{", re.M)
 CALL = re.compile(r"\b(\w+)\s*\(")
@@ -50,7 +52,8 @@ WRAPPER_MAX_LINES = 14
 def functions():
     """Every C function: its signature and body, comments out, by name."""
     found = {}
-    for path in glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True):
+    for path in (glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True) +
+                 glob.glob(os.path.join(TOP, "syscard", "src", "*.c"))):
         text = re.sub(r"/\*.*?\*/", "", open(path, encoding="utf-8").read(), flags=re.S)
         for m in FUNC.finditer(text):
             depth, i = 1, m.end()
@@ -106,10 +109,10 @@ def image_fresh(image):
     return all(os.path.getmtime(p) <= built for p in sources if os.path.isfile(p))
 
 
-def assembly_blocks():
+def assembly_blocks(pattern=("asm", "rondo", "**", "*.s")):
     """Each routine's lines of assembly, comments out."""
     blocks = {}
-    for path in glob.glob(os.path.join(TOP, "asm", "rondo", "**", "*.s"), recursive=True):
+    for path in glob.glob(os.path.join(TOP, *pattern), recursive=True):
         name = None
         for line in open(path, encoding="ascii"):
             label = re.match(r"^(\w+):\s*$", line)
@@ -125,6 +128,55 @@ def waivers():
     if not os.path.exists(WAIVERS):
         return set()
     return {(row["routine"], row["gate"]) for row in csv.DictReader(open(WAIVERS, newline=""))}
+
+
+def tier_of(gates, filed):
+    t3 = all(gates[g] for g in ("proper_c", "gate_0", "gate_c", "gate_a5", "gate_a7"))
+    return "T4" if t3 and gates["symbolic"] else "T3" if t3 else "T2" if filed else ""
+
+
+def card_image_fresh(image):
+    """The card's image must be newer than its assembly and its names."""
+    if not os.path.exists(image):
+        return False
+    built = os.path.getmtime(image)
+    sources = glob.glob(os.path.join(TOP, "syscard", "asm", "**", "*"), recursive=True)
+    sources.append(os.path.join(TOP, "syscard", "config", "symbols.csv"))
+    return all(os.path.getmtime(p) <= built for p in sources if os.path.isfile(p))
+
+
+def card_ledger(funcs, a7):
+    """The System Card's routines, held to the same gates, in a ledger of its own."""
+    rom = open(cardfile.IMAGE, "rb").read()
+    image_path = os.path.join(BUILD, "card", "image.bin")
+    image = open(image_path, "rb").read() if card_image_fresh(image_path) else None
+    blocks = assembly_blocks(("syscard", "asm", "*.s"))
+    a5 = read_csv(os.path.join(BUILD, "oracle", "card_a5.csv"), "routine") if stamp_valid("a5") else {}
+    cover = cardfile.coverage()
+    rows = []
+    for r in cardfile.spans():
+        name, n = r["name"], r["length"]
+        faults = proper_c_faults(name, funcs)
+        row5 = a5.get(name, {})
+        gates = {
+            "proper_c": not faults,
+            "gate_0": image is not None and image[r["disc"]:r["disc"] + n] == rom[r["disc"]:r["disc"] + n],
+            "symbolic": name in blocks and not any(
+                re.search(r"(?<!#)\$[0-9A-Fa-f]{2,4}", line) for line in blocks[name]),
+            "gate_c": cover.get(name, (0, 0))[0] > 0 and cover[name][0] == cover[name][1],
+            "gate_a5": int(row5.get("identical", 0)) > 0 and int(row5.get("divergent", 1)) == 0,
+            "gate_a7": int(a7.get(name, {}).get("swapped", 0)) > 0,
+        }
+        rows.append({"routine": name, "where": r["tag"], "bytes": n,
+                     "tier": tier_of(gates, name in blocks), **{g: int(v) for g, v in gates.items()},
+                     "unverified_calls": row5.get("unverified", ""), "faults": "; ".join(faults)})
+    with open(CARD_OUT, "w", newline="\n", encoding="ascii") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+    for tier in ("T4", "T3", "T2", ""):
+        chosen = [row for row in rows if row["tier"] == tier]
+        print(f"card {tier or 'no tier'}: {len(chosen)} routines, {sum(row['bytes'] for row in chosen)} B")
 
 
 def main():
@@ -157,8 +209,7 @@ def main():
         for gate in gates:
             if (name, gate) in waived:
                 gates[gate] = True
-        t3 = all(gates[g] for g in ("proper_c", "gate_0", "gate_c", "gate_a5", "gate_a7"))
-        tier = "T4" if t3 and gates["symbolic"] else "T3" if t3 else "T2" if name in blocks else ""
+        tier = tier_of(gates, name in blocks)
         c_text = funcs.get(name, "") + funcs.get("abi_" + name, "")
         rows.append({
             "routine": name, "where": r["tag"], "bytes": n, "tier": tier,
@@ -183,6 +234,7 @@ def main():
         print(f"{tier or 'no tier'}:", tally(lambda row, t=tier: row["tier"] == t))
     print("A5 verdicts counted:", bool(a5), "; A7 verdicts counted:", bool(a7),
           "; image counted:", image is not None, "; waivers:", len(waived))
+    card_ledger(funcs, a7)
 
 
 if __name__ == "__main__":

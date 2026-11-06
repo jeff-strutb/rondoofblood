@@ -256,17 +256,19 @@ def run_a7(names):
 
 def plant(name, old, new):
     """a5 on a copy of the C with one bug: the routine must come back divergent."""
+    card = name.startswith("syscard/")
     src = os.path.join(OUT, "plant", "src")
     shutil.rmtree(os.path.join(OUT, "plant"), ignore_errors=True)
-    shutil.copytree(os.path.join(TOP, "src", "rondo"), src)
-    path = os.path.join(src, name)
+    shutil.copytree(os.path.join(TOP, "syscard", "src") if card else os.path.join(TOP, "src", "rondo"), src)
+    path = os.path.join(src, name[len("syscard/src/"):] if card else name)
     text = open(path, encoding="utf-8").read()
     if old not in text:
         print(f"{old!r} is not in {name}")
         return 1
     open(path, "w", encoding="utf-8", newline="\n").write(text.replace(old, new, 1))
     built = os.path.join(OUT, "plant", "pcebox")
-    env = dict(os.environ, RONDO_SRC=src, RONDO_BOX=built)
+    env = dict(os.environ, RONDO_BOX=built)
+    env["RONDO_CARD_SRC" if card else "RONDO_SRC"] = src
     r = subprocess.run(["sh", os.path.join(TOP, "setup.sh"), "pcebox"], env=env, capture_output=True, text=True)
     if r.returncode:
         print(r.stderr[-600:])

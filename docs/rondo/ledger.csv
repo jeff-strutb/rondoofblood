@@ -188,9 +188,9 @@ FadeAndStopSound,0045:587,11,T2,0,1,1,0,1,0,1,logic in the wrapper,59ba0267ede9
 StopSound,0045:592,5,T2,1,1,1,1,0,0,0,,66c06a2983d2
 AddScoreByte,0045:597,13,T2,1,1,1,0,0,0,0,,f637572cd92d
 AddScoreWord,0045:5A4,46,T2,1,1,1,0,1,0,0,,69732ca7eeb1
-ApplyVelocity,0045:5D2,36,T2,0,1,1,1,1,1,445,Alu; adc8/sbc8,544fe53aca1a
-ApplyVelocityY,0045:5F6,37,T2,0,1,1,1,1,1,121,Alu; adc8/sbc8,629d30e08640
-ApplyVelocityX,0045:61B,37,T2,0,1,1,1,1,1,41,Alu; adc8/sbc8,9bd220351263
+ApplyVelocity,0045:5D2,36,T4,1,1,1,1,1,1,445,,b2812dec56e2
+ApplyVelocityY,0045:5F6,37,T4,1,1,1,1,1,1,121,,359691b5a779
+ApplyVelocityX,0045:61B,37,T4,1,1,1,1,1,1,41,,891f5f899ff0
 SetVelocityFromAngle,0045:640,29,T4,1,1,1,1,1,1,1260,,88d02c5e51dd
 ScaleByCosine,0045:65D,3,T4,1,1,1,1,1,1,1228,,36923ee44ab7
 ScaleBySine,0045:660,58,T4,1,1,1,1,1,1,565,,55130b94e471
@@ -208,8 +208,8 @@ TurnAngleToward,0046:2D2,49,T2,1,1,1,0,0,0,0,,a8044b721fa2
 BitOfIndex,0046:303,22,T2,1,1,1,1,1,0,0,,89d4fb88265a
 RecordObjectEvent,0046:319,10,T2,1,1,1,1,1,0,0,,9a19e61c6ac3
 RecordEvent,0046:323,10,T2,1,1,1,1,1,0,0,,ea45dffd31fa
-NegateVelocityX,0046:32D,22,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,d127110a1c28
-NegateVelocityY,0046:343,22,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,239a8c0cf0c9
+NegateVelocityX,0046:32D,22,T2,1,1,1,0,0,0,0,,7ecdb10172c3
+NegateVelocityY,0046:343,22,T2,1,1,1,0,0,0,0,,453976e8c173
 SelectVramData,0046:359,4,T4,1,1,1,1,1,1,684,,5023a736bf68
 SelectVramReadAddress,0046:35D,4,T4,1,1,1,1,1,1,378,,de58f0c65ca0
 SelectVramWriteAddress,0046:361,3,T4,1,1,1,1,1,1,260,,9ebe5d205c7e
@@ -218,49 +218,49 @@ SelectVdcRegister,0046:366,6,T4,1,1,1,1,1,1,94,,8eca9ed0f2b2
 ClearVdcControlHigh,0046:36C,9,T4,1,1,1,1,1,1,10,,f61622be1278
 ResetGameState,0046:375,43,T2,1,1,0,1,0,0,53,,4beca7463dff
 ClearScreenState,0046:3A0,45,T2,1,1,0,1,0,0,170,,e85345cff1c9
-StreamFullWalk,0046:53E,169,T2,0,1,1,0,0,0,25,Alu; adc8/sbc8; cpu,dbccf3d87a79
-StreamWalkLines,0046:5E7,71,T2,0,1,1,1,1,0,25,Alu; adc8/sbc8; cpu,81251daf7325
-StreamScrollStep,0046:62E,54,T2,0,1,1,0,1,0,178,Alu; adc8/sbc8; cpu,228eb6fff73c
-StreamEdgeRight,0046:664,23,T2,0,1,1,1,1,0,41,Alu; adc8/sbc8; cpu,ae0eeb8784d5
-StreamEdgeLeft,0046:67B,29,T2,0,1,1,1,1,0,23,Alu; adc8/sbc8; cpu,b08f76138aeb
-StreamEdgeDown,0046:698,23,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; cpu,2323ac2ed7c3
-StreamEdgeUp,0046:6AF,29,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; cpu,f905150c18e8
-StreamWalkForward,0046:6CC,87,T2,0,1,1,1,1,0,41,Alu; adc8/sbc8; cpu,9436def09f70
-StreamDistance,0046:723,33,T2,0,1,1,1,1,1,19,Alu; adc8/sbc8,d7a6ed9c5618
-StreamWalkBack,0046:744,97,T2,0,1,1,0,1,0,22,Alu; adc8/sbc8; cpu,583a29f34ee4
-RunStreamRecord,0046:7A5,70,T2,0,1,0,1,1,0,1,Alu; adc8/sbc8; cpu,f33171102b8d
-StreamSpawnIfFree,0046:7F9,11,T2,0,1,1,1,1,1,1,Alu; adc8/sbc8,a16af720635d
-StreamPlaceObject,0047:004,136,T2,0,1,1,0,0,0,182,Alu; adc8/sbc8,815ebc4ada4f
-StreamStartScript,0047:08C,9,T4,1,1,1,1,1,1,0,,09def8174a75
-RecordIfMarked,0047:095,10,T2,1,1,1,0,0,0,0,,d1ad015bcfa9
-StreamStartListKind2,0047:09F,17,T2,1,1,1,0,0,0,0,,cf313d573e0b
-StreamStartListKind3,0047:0B0,11,T2,1,1,1,0,0,0,0,,312f606d3e31
-StreamClearObject,0047:0BB,9,T2,1,1,1,0,0,0,0,,21c2a0e2305c
-StreamSpawnIfOther,0047:0C4,23,T2,0,1,1,0,1,1,0,Alu; adc8/sbc8,d2d9ef166e60
-StreamCallOverlay,0047:0DB,8,T2,0,1,1,0,0,0,0,cpu,a25a3a06a8dc
-JumpThroughRecord,0047:0E3,3,T2,1,1,0,0,0,0,0,,37708d2cf871
+StreamFullWalk,0046:53E,169,T2,1,1,1,0,0,0,25,,586d52aa1d69
+StreamWalkLines,0046:5E7,71,T2,1,1,1,1,1,0,25,,2e98e84766fc
+StreamScrollStep,0046:62E,54,T2,1,1,1,0,1,0,178,,4d58a12d587f
+StreamEdgeRight,0046:664,23,T2,1,1,1,1,1,0,41,,95b6f6d1c92d
+StreamEdgeLeft,0046:67B,29,T2,1,1,1,1,1,0,23,,c47d9bfe29b7
+StreamEdgeDown,0046:698,23,T2,1,1,1,0,0,0,0,,caeba3ddd93a
+StreamEdgeUp,0046:6AF,29,T2,1,1,1,0,0,0,0,,f960c46f40cc
+StreamWalkForward,0046:6CC,87,T2,1,1,1,1,1,0,41,,54a7fe98980f
+StreamDistance,0046:723,33,T4,1,1,1,1,1,1,19,,138418342aba
+StreamWalkBack,0046:744,97,T2,1,1,1,0,1,0,22,,fb196fd9a9ea
+RunStreamRecord,0046:7A5,70,T2,1,1,0,1,1,0,1,,3cb0d0740f08
+StreamSpawnIfFree,0046:7F9,11,T4,1,1,1,1,1,1,1,,027b9ec33a5e
+StreamPlaceObject,0047:004,136,T2,1,1,1,0,0,0,182,,18a49698dde1
+StreamStartScript,0047:08C,9,T4,1,1,1,1,1,1,0,,5bd9c15f71fa
+RecordIfMarked,0047:095,10,T2,1,1,1,0,0,0,0,,cf5fc9774289
+StreamStartListKind2,0047:09F,17,T2,1,1,1,0,0,0,0,,755a08765460
+StreamStartListKind3,0047:0B0,11,T2,1,1,1,0,0,0,0,,eaccd96c2538
+StreamClearObject,0047:0BB,9,T2,1,1,1,0,0,0,0,,7dab9fad0d5b
+StreamSpawnIfOther,0047:0C4,23,T2,1,1,1,0,1,1,0,,0dc4d598d477
+StreamCallOverlay,0047:0DB,8,T2,1,1,1,0,0,0,0,,d05615cc0d67
+JumpThroughRecord,0047:0E3,3,T2,1,1,0,0,0,0,0,,55c467f87755
 LoadObjectRecord,0047:0E6,118,T2,1,1,1,1,1,0,8,,001db8333dce
 StartObjectAtPlace,0047:15C,3,T2,1,1,1,1,1,0,0,,b8f7abbe8b95
 CopyObjectPlace,0047:15F,37,T4,1,1,1,1,1,1,66,,1ac087669737
 CopyObjectPlaceBack,0047:184,6,T4,1,1,1,1,1,1,89,,1d978d92938f
 StepObjectFrames,0047:18A,50,T4,1,1,1,1,1,1,1052,,396af59062c3
-ProbeTerrain,0047:1BC,198,T2,0,1,1,0,1,0,1373,adc8/sbc8; cpu,bac6aba4245b
-ProbeTerrainAlt,0047:282,19,T2,0,1,1,0,1,0,2001,adc8/sbc8; cpu,3bd3c93ad96d
-ProbeTerrainFrontColumn,0047:295,40,T2,0,1,1,0,0,0,0,adc8/sbc8; cpu,775530a620ae
-LookUpTerrainBelow,0047:2BD,3,T2,1,1,1,1,0,0,16693,,cb39ce22670a
-LookUpTerrainBelowAlt,0047:2C0,3,T2,1,1,1,1,0,0,8524,,581e7ea3a302
-DistanceXToPlayer,0047:2CB,24,T2,0,1,1,1,1,0,2,Alu; adc8/sbc8,56755602c05f
-DistanceYToPlayer,0047:2E3,24,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,a53c1f47f128
-SideOfPlayer,0047:2FB,50,T2,0,1,1,0,1,0,0,Alu,fb3dc355da0a
-MoveAndLand,0047:32D,58,T2,0,1,1,0,1,0,678,Alu; adc8/sbc8; cpu,bcb45547aff0
-StopOnLanding,0047:367,14,T2,0,1,1,1,1,0,2645,Alu; adc8/sbc8; cpu,0e0e9d688e3c
-StopOnLandingNoMove,0047:375,54,T2,0,1,1,1,0,0,0,Alu; adc8/sbc8; cpu,64d0c47100eb
-StopOnLandingFrontColumn,0047:3AB,29,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; cpu,b29be90055eb
+ProbeTerrain,0047:1BC,198,T2,1,1,1,0,1,0,1373,,d1f8c4bf9a07
+ProbeTerrainAlt,0047:282,19,T2,1,1,1,0,1,0,2001,,31cbe3579153
+ProbeTerrainFrontColumn,0047:295,40,T2,1,1,1,0,0,0,0,,d8e5c5ce8778
+LookUpTerrainBelow,0047:2BD,3,T2,1,1,1,1,1,0,1279,,ef0997abcd68
+LookUpTerrainBelowAlt,0047:2C0,3,T2,1,1,1,1,1,0,1940,,0651eff20fd5
+DistanceXToPlayer,0047:2CB,24,T2,1,1,1,1,1,0,2,,120637475d89
+DistanceYToPlayer,0047:2E3,24,T2,1,1,1,1,1,0,0,,b886ba4d4812
+SideOfPlayer,0047:2FB,50,T2,1,1,1,0,1,0,0,,4ab2652475e2
+MoveAndLand,0047:32D,58,T2,1,1,1,0,1,0,678,,c1d338c473ec
+StopOnLanding,0047:367,14,T2,1,1,1,1,1,0,2645,,379c037e5ed4
+StopOnLandingNoMove,0047:375,54,T2,1,1,1,1,0,0,0,,eef6f7d2e156
+StopOnLandingFrontColumn,0047:3AB,29,T2,1,1,1,0,0,0,0,,ad3c017fc771
 FindFreeSlotFrom30,0047:3C8,19,T2,1,1,1,1,1,0,1,,5bbcd8a2298c
 FindFreeSlotFrom20,0047:3DB,4,T2,1,1,1,1,1,0,0,,2e6da9041479
 FindFreeSlotFrom50,0047:3DF,14,T2,1,1,1,0,1,0,0,,d6b7f46df2b9
-ApplyGravity,0047:3ED,9,T2,0,1,1,1,1,1,22,Alu; adc8/sbc8,93bf7afd8648
-ApplyGravityUnlimited,0047:3F6,15,T2,0,1,1,1,1,0,1,Alu; adc8/sbc8,7bd7e17cf181
+ApplyGravity,0047:3ED,9,T4,1,1,1,1,1,1,22,,5fc01c16c20f
+ApplyGravityUnlimited,0047:3F6,15,T2,1,1,1,1,1,0,1,,8c0310a3a32c
 TileOpAttributeHigh,0047:405,18,T2,1,1,1,1,1,0,0,,c1f090504b42
 TileOpAttributeLow,0047:417,9,T2,1,1,1,1,0,0,0,,7f01066160df
 TileScriptReturn,0047:420,1,T2,1,1,1,1,0,0,0,,2d412acd6f51
@@ -274,46 +274,46 @@ WriteTile,0047:513,11,T2,1,1,1,1,1,0,0,,b2dd9efb03d8
 SetVramFromScript,0047:51E,26,T2,1,1,1,1,1,0,0,,de4a2d4bb19c
 NextVramLine,0047:538,24,T2,1,1,1,1,1,0,0,,6ee1247f7a77
 AdvanceTileScript,0047:550,7,T2,1,1,1,1,1,0,0,,81e24374cbce
-PlayerDistanceSum,0047:557,50,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8; alu helper,17c87aace738
+PlayerDistanceSum,0047:557,50,T2,1,1,0,1,1,0,0,,91baf23c0628
 SoundIfOnFirstScreen,0047:589,15,T2,1,1,1,1,1,0,1,,a36aa5b80ac8
 StopPlayerX,0047:598,7,T4,1,1,1,1,1,1,0,,4ca1b8ae4eb4
-MovePlayerX,0047:59F,20,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8,d6d5e2f39c3d
-MovePlayerY,0047:5B3,52,T2,0,1,1,0,1,1,16,Alu; adc8/sbc8; alu helper,5d18cecced87
+MovePlayerX,0047:59F,20,T2,1,1,1,0,0,0,0,,4e0cbd59e300
+MovePlayerY,0047:5B3,52,T2,1,1,1,0,1,1,16,,3d25febab7de
 ScrollStepXFromPlayer,0047:5E7,13,T2,1,1,1,0,0,0,0,,98627fde3467
-MovePlayerYIfMoving,0047:5F4,20,T2,0,1,1,1,1,0,12351,Alu; adc8/sbc8; alu helper; call_with,4debb5ead9c1
-PlayerAndCameraFrame,0047:608,129,T2,0,1,1,0,1,0,737,Alu; adc8/sbc8; alu helper; call_with; cpu,10f85882a8d7
-CameraModeCarried,0047:6C5,42,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,26b4aa081175
-PlayerNextX,0047:6EF,18,T2,0,1,1,1,1,1,17,Alu; adc8/sbc8,09c577538308
-CheckPlayerAtLevelEnd,0047:701,33,T2,0,1,1,0,0,0,0,Alu; alu helper,74fbe47c6ccc
-CameraModeLeftWall,0047:722,108,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,c0d3a0948933
-CameraModeFollow,0047:78E,45,T2,0,1,1,0,1,0,416,Alu; adc8/sbc8; alu helper; call_with; cpu,9f6c61f0601e
-PlayerWallRight,0047:7BB,72,T2,0,1,1,0,1,0,68,Alu; adc8/sbc8; alu helper; call_with; cpu,96c681d34666
-MovePlayerRightOrWall,0048:003,9,T2,0,1,1,1,1,0,92,Alu; adc8/sbc8; alu helper; call_with; cpu,ba02a7b3455b
-PlayerXFromNext,0048:00C,11,T2,0,1,1,1,0,0,0,Alu; alu helper,1dfbfa7c4984
+MovePlayerYIfMoving,0047:5F4,20,T2,1,1,1,1,1,0,55,,d9de2b0c5230
+PlayerAndCameraFrame,0047:608,129,T2,1,1,1,0,1,0,737,,3f52ebfa229c
+CameraModeCarried,0047:6C5,42,T2,1,1,1,0,0,0,0,,210d3e141b9c
+PlayerNextX,0047:6EF,18,T4,1,1,1,1,1,1,17,,cb6cb72ccb54
+CheckPlayerAtLevelEnd,0047:701,33,T2,1,1,1,0,0,0,0,,d145a8113110
+CameraModeLeftWall,0047:722,108,T2,1,1,1,0,0,0,0,,0e3447aa34f2
+CameraModeFollow,0047:78E,45,T2,1,1,1,0,1,0,416,,f99365157dd3
+PlayerWallRight,0047:7BB,72,T2,1,1,1,0,1,0,68,,00bf75a65d40
+MovePlayerRightOrWall,0048:003,9,T2,1,1,1,1,1,0,92,,6aa0dccb50de
+PlayerXFromNext,0048:00C,11,T2,1,1,1,1,0,0,0,,27ec9d0085ea
 MovePlayerRight,0048:017,152,T4,1,1,1,1,1,1,16,,1c0ae2ead2dd
 PlayerAtRightEdge,0048:0AF,9,T4,1,1,1,1,1,1,0,,26616639d776
-NextPastMiddle,0048:0B8,10,T2,0,1,1,1,1,1,1,Alu; alu helper,c04863f7e6b3
-NextFractionSet,0048:0C2,7,T2,0,1,1,0,0,0,0,Alu; alu helper,a653dd163fe7
-PlayerXPastMiddle,0048:0C9,19,T2,0,1,1,1,1,1,0,Alu; alu helper,63f6a826351a
-NextPastMiddleAmount,0048:0DC,14,T2,0,1,1,1,1,1,0,Alu; adc8/sbc8,98fe33b5ebbd
-CompareScrollWithRightLimit,0048:0EA,11,T2,0,1,1,1,1,1,0,Alu; alu helper,c01949c852df
-PlayerWallLeft,0048:0F5,73,T2,0,1,1,0,1,0,208,Alu; adc8/sbc8; alu helper; call_with; cpu,5f103a1a73a7
-MovePlayerLeftOrWall,0048:146,9,T2,0,1,1,1,1,0,231,Alu; adc8/sbc8; alu helper; call_with; cpu,943bedb33902
-PlayerXFromNextAlt,0048:14F,11,T2,0,1,1,1,0,0,0,Alu; alu helper,6dde2e7c6aae
-MovePlayerLeft,0048:15A,172,T2,0,1,1,0,1,1,7,Alu; adc8/sbc8; alu helper,75bafc1d327a
+NextPastMiddle,0048:0B8,10,T4,1,1,1,1,1,1,1,,d4acc3494f07
+NextFractionSet,0048:0C2,7,T2,1,1,1,0,0,0,0,,f55855760276
+PlayerXPastMiddle,0048:0C9,19,T4,1,1,1,1,1,1,0,,02fe895f6cd4
+NextPastMiddleAmount,0048:0DC,14,T4,1,1,1,1,1,1,0,,454470c6b13c
+CompareScrollWithRightLimit,0048:0EA,11,T4,1,1,1,1,1,1,0,,177c340158f5
+PlayerWallLeft,0048:0F5,73,T2,1,1,1,0,1,0,208,,17bd3a420ef4
+MovePlayerLeftOrWall,0048:146,9,T2,1,1,1,1,1,0,231,,f3cf128749f2
+PlayerXFromNextAlt,0048:14F,11,T2,1,1,1,1,0,0,0,,f2ba1ac8ce8a
+MovePlayerLeft,0048:15A,172,T2,1,1,1,0,1,1,7,,1085cda2ff71
 PlayerAtLeftEdge,0048:206,9,T4,1,1,1,1,1,1,4,,c7f8eca68117
-CameraModeVertical,0048:20F,42,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,db469a29e16d
-MovePlayerYIfMovingGoTo,0048:239,3,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_with,ccd409991b7a
+CameraModeVertical,0048:20F,42,T2,1,1,1,0,0,0,0,,ec589e6390a2
+MovePlayerYIfMovingGoTo,0048:239,3,T2,1,1,1,0,0,0,0,,2eadffe732f4
 PlayerStopAtRightEdge,0048:23C,9,T2,1,1,1,0,0,0,0,,9618817088fe
 PlayerStopAtLeftEdge,0048:245,4,T2,1,1,1,0,0,0,0,,ba8163cd3a4c
-PlayerXOnScreen,0048:249,63,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,440d7d44d997
-PlayerYFromNextWord,0048:288,16,T2,0,1,1,0,0,0,0,Alu; alu helper,afdddd42f53b
-MovePlayerDown,0048:298,165,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper,42d306716865
-PlayerYPastMiddle,0048:33D,19,T2,0,1,1,0,0,0,0,Alu; alu helper,28903adf9d09
-CompareScrollWithBottomLimit,0048:350,11,T2,0,1,1,0,0,0,0,Alu; alu helper,3dca25c72aac
+PlayerXOnScreen,0048:249,63,T2,1,1,1,0,0,0,0,,106b2175d621
+PlayerYFromNextWord,0048:288,16,T2,1,1,1,0,0,0,0,,0469e64cde6f
+MovePlayerDown,0048:298,165,T2,1,1,1,0,0,0,0,,c862b6ad808b
+PlayerYPastMiddle,0048:33D,19,T2,1,1,1,0,0,0,0,,4e2358777207
+CompareScrollWithBottomLimit,0048:350,11,T2,1,1,1,0,0,0,0,,61703ce723e9
 PlayerAtTop,0048:35B,10,T2,1,1,1,0,0,0,0,,4e77a764cf98
-PlayerYFromNext,0048:365,11,T2,0,1,1,0,0,0,0,Alu; alu helper,dbc4ba468909
-MovePlayerUp,0048:370,180,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper,5ce026bd7378
+PlayerYFromNext,0048:365,11,T2,1,1,1,0,0,0,0,,5c1911a235e2
+MovePlayerUp,0048:370,180,T2,1,1,1,0,0,0,0,,c2310a08f49d
 BackupRead,0048:424,31,T2,0,1,1,1,0,0,16,Alu; alu helper; call_with,0ed9d44748f2
 BackupWrite,0048:443,55,T2,0,1,1,0,0,0,13,Alu; adc8/sbc8; alu helper; call_with,49394bf6b4cc
 BackupFormat,0048:47A,18,T2,0,1,1,0,0,0,0,logic in the wrapper,9cb29dbf8067
@@ -403,3 +403,57 @@ RichterJumpSpeed,01B9:70C,16,T2,0,1,1,1,1,1,2,Alu; adc8/sbc8; alu helper,3d3fb8b
 RichterLiftThree,01B9:71C,29,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper,3f0f4a31fb78
 RichterStateWalk,01B9:739,115,T2,0,1,0,0,1,0,328,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,865936ea92b5
 RichterStand,01B9:7AC,24,T2,0,1,0,1,1,0,0,Alu; alu helper; call_with,30d7715611da
+RichterSolidUnderColumn,01BA:22F,25,T2,1,1,1,0,1,0,164,,14302340a2cc
+RichterReadUnderFeet,01BA:248,14,T2,1,1,1,1,1,0,0,,78bda31b1482
+RichterReadPad,01BB:611,59,T4,1,1,1,1,1,1,158,,257c7cf815fd
+RichterClearPadOverrides,01BB:64C,13,T4,1,1,1,1,1,1,32,,96ff878d2cc4
+RichterAnimationTick,01BB:669,18,T4,1,1,1,1,1,1,23,,d6891f6b7c60
+RichterSetAnimation,01BB:67B,54,T4,1,1,1,1,1,1,0,,eb3208ff45a1
+RichterReadAbove,01BB:6D2,11,T2,1,1,1,0,0,0,0,,3923028822bc
+RichterReadBelow,01BB:6DD,13,T2,1,1,1,1,1,0,2760,,069488e9c00b
+RichterReadOnScreen,01BB:6EA,10,T2,1,1,1,1,1,0,0,,7cab3f3d981a
+RichterReadIfOnPage,01BB:6F4,5,T2,1,1,1,1,1,0,232,,e507776358d5
+RichterColumnOffset,01BB:6F9,11,T4,1,1,1,1,1,1,306,,5e685ca1d5a0
+RichterCheckTurnWindow,01BB:704,41,T4,1,1,1,1,1,1,14,,5f2d72560076
+RichterFaceByPad,01BB:7CA,19,T4,1,1,1,1,1,1,0,,292fd7828bc8
+RichterNoteItemPress,01BB:7DD,12,T2,1,1,1,0,1,1,0,,86a6a96d1d4d
+RichterCheckItemHearts,01BB:7E9,19,T4,1,1,1,1,1,1,5,,6b57232e9a15
+RichterUpHeld,01BC:068,7,T4,1,1,1,1,1,1,8,,66189d8c068c
+RichterJumpOrClimb,01BC:06F,15,T2,1,1,1,1,1,0,0,,af92d01cbc88
+RichterJumpPressed,01BC:07E,7,T4,1,1,1,1,1,1,0,,2ced37962917
+RichterHasNoFooting,01BC:085,14,T2,1,1,1,0,1,0,190,,874bac14f2df
+RichterLadderCheck,01BC:093,118,T2,1,1,1,0,1,0,0,,e691540bd42f
+RichterLatchButtons,01BB:909,17,T4,1,1,1,1,1,1,0,,88a1ab1c8857
+RichterLedgeCheck,01BC:241,57,T2,1,1,1,0,1,0,41,,d0548b089b3e
+RichterLandOnFloor,01BC:27A,51,T2,1,1,1,0,1,1,24,,2107513a1860
+RichterColumnsBlocked,01BC:2AD,15,T4,1,1,1,1,1,1,0,,b703bf150b33
+RichterFloorCheck,01BC:2C2,61,T2,1,1,0,0,1,1,27,,aca1cf696993
+RichterLowColumnsBlocked,01BC:2FF,30,T2,1,1,1,1,1,0,38,,c10a9f38a035
+RichterReadColumnsHigh,01BC:31D,6,T2,1,1,1,0,0,0,0,,d9c9b98e1db6
+RichterReadColumns,01BC:323,42,T2,1,1,1,1,1,0,3656,,9e3f0704c7ba
+RichterWall,01BC:36E,83,T2,1,1,0,0,1,0,265,,350aebf16c6e
+RichterFloor,01BC:3C1,90,T2,1,1,1,0,1,0,23,,2bbfda618e5d
+TerrainLookup,050F:5AB,96,T2,1,1,1,0,1,1,2383,,262275c0fa2b
+TerrainLookupAlt,050F:60B,116,T2,1,1,1,0,1,1,1938,,0a702bb56fd9
+TerrainTileRead,050F:67F,155,T2,1,1,0,0,1,1,4822,,1164b6008f32
+TileStepC,050F:752,13,T2,1,1,1,0,0,0,0,,1faeacf90ee1
+TileRowA,050F:75F,17,T2,1,1,1,0,0,0,0,,a5c6d7ae50b1
+TileRowB,050F:770,17,T2,1,1,1,0,0,0,0,,9e27bc4e600d
+TileHalfStepA,050F:781,20,T2,1,1,1,0,0,0,0,,1c69d9d5169f
+TileHalfStepB,050F:795,20,T2,1,1,1,0,0,0,0,,ca723b2c6dcf
+TileNudgeA,050F:7A9,5,T2,1,1,1,0,0,0,0,,e0144e843b61
+TileStepD,050F:7AE,13,T2,1,1,1,0,0,0,0,,4a9473cc3e28
+TileRowC,050F:7BB,17,T2,1,1,1,0,0,0,0,,d47484c837b6
+TileRowD,050F:7CC,17,T2,1,1,1,0,0,0,0,,cc1c77840d4f
+TileStepTwice,0510:0FD,9,T2,1,1,1,0,0,0,0,,35bd3ffc320e
+TileRowOffset,0510:106,14,T2,1,1,1,0,0,0,0,,221462342ee8
+TileStepOffset,0510:114,11,T2,1,1,1,0,0,0,0,,111fd11f2c2b
+TileRowE,0510:11F,17,T2,1,1,1,0,0,0,0,,7c78ca72235d
+TileNudgeB,0510:170,5,T2,1,1,1,0,0,0,0,,8cbfedf6ed85
+TileLift7,0510:175,10,T2,1,1,1,0,0,0,0,,f09b167db8e4
+TileLift6,0510:17F,10,T2,1,1,1,0,0,0,0,,7600ac14c6a8
+TileLift5,0510:189,10,T2,1,1,1,0,0,0,0,,0ad31e681a30
+TileLift4,0510:193,10,T2,1,1,1,0,0,0,0,,cb4acdc70a0e
+TileLift3,0510:19D,10,T2,1,1,1,0,0,0,0,,fd10f1375dfd
+TileLift2,0510:1A7,10,T2,1,1,1,0,0,0,0,,e2d74d42364c
+TileLift1,0510:1B1,10,T2,1,1,1,0,0,0,0,,4e26f398a0d4

@@ -16,11 +16,13 @@ Run under WSL: the core and pcebox are Linux builds.
 """
 import concurrent.futures
 import glob
+import hashlib
 import os
 import re
 import shutil
 import subprocess
 import sys
+import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
@@ -102,7 +104,34 @@ def coverage():
     return cover
 
 
-def report_a5(totals, details, bad):
+def tree_stamp():
+    """A hash of everything a verdict depends on: any change voids it (ledger.py)."""
+    digest = hashlib.sha256()
+    tops = [os.path.join(TOP, "src", "rondo"), os.path.join(TOP, "tools", "rondo", "pcebox"),
+            os.path.join(TOP, "config", "rondo", "symbols.csv"), os.path.join(HERE, "scripts")]
+    files = []
+    for top in tops:
+        if os.path.isfile(top):
+            files.append(top)
+        for folder, _, names in os.walk(top):
+            files += [os.path.join(folder, n) for n in names]
+    for path in sorted(files):
+        digest.update(os.path.relpath(path, TOP).replace("\\", "/").encode())
+        digest.update(open(path, "rb").read())
+    return digest.hexdigest()
+
+
+def write_stamp(name, whole):
+    """A verdict counts only from a run of every script, with no script failing."""
+    path = os.path.join(OUT, name + ".stamp")
+    if os.path.exists(path):
+        os.remove(path)
+    if whole:
+        with open(path, "w", newline="\n") as f:
+            f.write(tree_stamp() + "\n")
+
+
+def report_a5(totals, details, bad, csv_name="a5.csv"):
     cover = coverage()
     os.makedirs(OUT, exist_ok=True)
     rows = ["routine,bytes,bytes_run,calls,identical,divergent,unverified,order_flags,verdict"]
@@ -123,7 +152,7 @@ def report_a5(totals, details, bad):
         tally[v] += 1
         b_tally[v] += n
         rows.append(f"{name},{n},{ran},{calls},{same},{diff},{unv},{order},{v}")
-    with open(os.path.join(OUT, "a5.csv"), "w", newline="\n") as f:
+    with open(os.path.join(OUT, csv_name), "w", newline="\n") as f:
         f.write("\n".join(rows) + "\n")
     print("routine verdicts:", tally)
     print("bytes by verdict:", b_tally)
@@ -185,13 +214,25 @@ def run_a7(names):
             return script, f"timed out after {TIMEOUT} s"
         if h.returncode:
             return script, f"hybrid exit {h.returncode}: {h.stderr.strip()[-400:]}"
+        for line in h.stdout.splitlines():
+            if line.startswith("SWAPPED "):
+                _, name, count = line.split()
+                with swapped_lock:
+                    swapped[name] = swapped.get(name, 0) + int(count)
         return script, next((ln for ln in h.stdout.splitlines() if ln.startswith("hybrid:")), "no result")
 
     bad = 0
+    swapped = {}
+    swapped_lock = threading.Lock()
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), os.cpu_count())) as ex:
         for script, text in ex.map(one, names):
             print(f"{script}: {text}", flush=True)
             bad += "first differing -1" not in text
+    with open(os.path.join(OUT, "a7.csv"), "w", newline="\n") as f:
+        f.write("routine,swapped\n")
+        for name, count in sorted(swapped.items()):
+            f.write(f"{name},{count}\n")
+    write_stamp("a7", not bad and names == scripts_from([]))
     return 1 if bad else 0
 
 
@@ -213,14 +254,18 @@ def plant(name, old, new):
         print(r.stderr[-600:])
         return 1
     totals, details, bad = run_a5(built, "plant", ["play_s0_r1"])
-    report_a5(totals, details, bad)
+    report_a5(totals, details, bad, "plant.csv")
     return 0
 
 
 def main():
     what = sys.argv[1] if len(sys.argv) > 1 else ""
     if what == "a5":
-        return report_a5(*run_a5(PCEBOX, "a5", scripts_from(sys.argv[2:])))
+        names = scripts_from(sys.argv[2:])
+        totals, details, bad = run_a5(PCEBOX, "a5", names)
+        status = report_a5(totals, details, bad)
+        write_stamp("a5", not bad and names == scripts_from([]))
+        return status
     if what == "a7":
         return run_a7(scripts_from(sys.argv[2:]))
     if what == "plant" and len(sys.argv) == 5:

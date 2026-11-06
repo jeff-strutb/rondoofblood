@@ -802,6 +802,7 @@ int check_exec(uint32_t pc)
         }
         rec_cursor = c->end;
         swapped++;
+        stats[index].calls++;
         recent[recent_n % RECENT].tag = index;
         recent[recent_n % RECENT].a = r.a;
         recent[recent_n % RECENT].x = r.x;
@@ -1013,6 +1014,9 @@ void check_finish(void)
                 (unsigned long long)(nf / 2), hy_frames_ok,
                 hy_first_bad == (unsigned long)-1 ? -1L : (long)hy_first_bad);
         fclose(report);
+        for (unsigned i = 0; i < rondo_tag_count; i++)
+            if (stats[i].calls)
+                printf("SWAPPED %s %llu\n", rondo_tags[i].name, (unsigned long long)stats[i].calls);
         printf("hybrid: %llu swapped, frames compared %llu, identical %lu, first differing %ld\n",
                (unsigned long long)swapped, (unsigned long long)(nf / 2), hy_frames_ok,
                hy_first_bad == (unsigned long)-1 ? -1L : (long)hy_first_bad);

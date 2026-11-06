@@ -7,6 +7,7 @@ addr,kind,name,note
 04,zp,zTemp04,scratch
 05,zp,zTemp05,scratch
 06,zp,zTemp06,scratch
+07,zp,zTemp07,scratch: terrain read VRAM address high
 08,zp,zTemp08,scratch: point X low
 09,zp,zTemp09,scratch: point X high
 0A,zp,zTemp0A,scratch: point Y low
@@ -370,3 +371,15 @@ A6C1,abs,KnockSpeeds,knockback's X speed by facing
 BE8E,abs,AnimationSounds,the list to start by animation
 BF08,abs,AnimationHitboxIndex,hitbox index by animation
 BF84,abs,AnimationHitbox,hitbox of four bytes
+971A,abs,TileHandlers,the stage overlay's handlers for attributes $80-$9B
+97DD,abs,TileHalfStepsA,steps for tiles $87-$8A by half of the tile
+97E5,abs,TileHalfStepsB,steps for tiles $8C-$8F by half of the tile
+97ED,abs,TileStepsC,steps for tile $80 by column
+97F5,abs,TileRowsA,new rows for tile $81 by row and column
+9835,abs,TileRowsB,new rows for tile $82 by row and column
+9875,abs,TileStepsD,steps for tile $83 by column
+987D,abs,TileRowsC,new rows for tile $84 by row and column
+98BD,abs,TileRowsD,new rows for tile $85 by row and column
+9930,abs,TileRowsE,new rows for tile $90 by row and column
+9968,abs,TileRowOffsets,offsets by column for tiles $91-$93
+CBE0,abs,TerrainProbes,pointers to each probe's column offsets in the overlay at sector $50D

@@ -9,6 +9,7 @@
 #define zTemp04 0x2004 /* scratch */
 #define zTemp05 0x2005 /* scratch */
 #define zTemp06 0x2006 /* scratch */
+#define zTemp07 0x2007 /* scratch: terrain read VRAM address high */
 #define zTemp08 0x2008 /* scratch: point X low */
 #define zTemp09 0x2009 /* scratch: point X high */
 #define zTemp0A 0x200A /* scratch: point Y low */
@@ -363,5 +364,17 @@
 #define AnimationSounds 0xBE8E /* the list to start by animation */
 #define AnimationHitboxIndex 0xBF08 /* hitbox index by animation */
 #define AnimationHitbox 0xBF84 /* hitbox of four bytes */
+#define TileHandlers 0x971A /* the stage overlay's handlers for attributes $80-$9B */
+#define TileHalfStepsA 0x97DD /* steps for tiles $87-$8A by half of the tile */
+#define TileHalfStepsB 0x97E5 /* steps for tiles $8C-$8F by half of the tile */
+#define TileStepsC 0x97ED /* steps for tile $80 by column */
+#define TileRowsA 0x97F5 /* new rows for tile $81 by row and column */
+#define TileRowsB 0x9835 /* new rows for tile $82 by row and column */
+#define TileStepsD 0x9875 /* steps for tile $83 by column */
+#define TileRowsC 0x987D /* new rows for tile $84 by row and column */
+#define TileRowsD 0x98BD /* new rows for tile $85 by row and column */
+#define TileRowsE 0x9930 /* new rows for tile $90 by row and column */
+#define TileRowOffsets 0x9968 /* offsets by column for tiles $91-$93 */
+#define TerrainProbes 0xCBE0 /* pointers to each probe's column offsets in the overlay at sector $50D */
 
 #endif

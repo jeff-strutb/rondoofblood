@@ -4,8 +4,9 @@
  * $80-$9B are slopes and steps, each with a handler that moves the point's row within the
  * tile. The two lookups read a probe's columns around an object into TileHit.
  *
- * This is the copy in the overlay at sector $50D, which the scripts run. 33 of the 40
- * overlays hold this code, differing in the probe table's address and where the code sits.
+ * This is the copy in the overlay at sector $50D. 11 of the 40 overlays hold the same code at
+ * the same addresses, differing only in the probe table's address, and the scripts run two
+ * of them, $24D and $50D. The other overlays' shapes have no C yet.
  *
  * zTemp00-09 and zTemp0A-0D are RAM these routines leave behind, so they are written here.
  * Only the wrappers and exit shims know registers and flags.
@@ -22,18 +23,6 @@ enum {
     HIT_NEEDS_SECOND_LOOK = 0xA1, HIT_SECOND_LOOK_SKIP = 0x80, SECOND_LOOK_SOLID = 0x01,
     HIT_CLEARED_BY_SECOND_LOOK = 0x5E, SECOND_LOOK_RAISE = 0xF8
 };
-
-/* What a read found, and the point's place in the tile before any handler moved it. */
-typedef enum { TILE_EMPTY_PAGE, TILE_PLAIN, TILE_PAST_HANDLED, TILE_HANDLED } TileKind;
-
-typedef struct {
-    TileKind kind;
-    uint8_t attribute;  /* the byte read from the page */
-    uint8_t page;       /* the page's entry */
-    uint8_t high;       /* the tile's high bits, which pick the page */
-    uint8_t column;     /* the point's pixel across the tile */
-    uint8_t row;        /* the point's pixel down the tile */
-} TileRead;
 
 static uint16_t read_word(uint16_t lo, uint16_t hi)
 {
@@ -639,12 +628,16 @@ TileRead TerrainTileRead(void)
 }
 
 /* A, Y, C and V as a read leaves them. The page's add sets V, and an empty page's is clear. */
-static void tile_exit_shim(TileRead read)
+void terrain_read_exit_shim(TileRead read)
 {
     bool page_overflow = read.page >= 3;
 
+    if (read.kind == TILE_BY_ORIGINAL)
+        return;
     cpu.y = read.high;
     switch (read.kind) {
+    case TILE_BY_ORIGINAL:
+        break;
     case TILE_EMPTY_PAGE:
         cpu.a = 0;
         abi_nz(0);
@@ -675,21 +668,81 @@ static void tile_exit_shim(TileRead read)
 
 void abi_TerrainTileRead(void)
 {
-    tile_exit_shim(TerrainTileRead());
+    terrain_read_exit_shim(TerrainTileRead());
 }
 
-/* How a lookup's last column ended, for the V it leaves. */
-typedef struct {
-    bool last_skipped;
-    uint8_t offset_low;
-    uint8_t object_low;
-    bool read_any;
-    TileRead last;
-} LookupEnd;
+/* What a read answers in A. */
+uint8_t tile_answer(TileRead read)
+{
+    switch (read.kind) {
+    case TILE_EMPTY_PAGE:
+        return 0;
+    case TILE_HANDLED:
+        return TILE_HANDLED_RESULT;
+    default:
+        return read.attribute;
+    }
+}
+
+/*
+ * Is an overlay of this family in RAM? The 11 that hold this code at these addresses share these
+ * jumps at $8006-$8011, and no other overlay does.
+ */
+static bool terrain_family_resident(void)
+{
+    static const uint8_t jumps[] = {
+        0x4C, 0x7F, 0x96, 0x4C, 0xD9, 0x92, 0x4C, 0xAB, 0x95, 0x4C, 0x0B, 0x96
+    };
+
+    for (unsigned i = 0; i < sizeof jumps; i++)
+        if (rd8((uint16_t)(FrameOverlay8006 + i)) != jumps[i])
+            return false;
+    return true;
+}
+
+/* One call to another overlay's copy of the read, which has no C yet. */
+static TileRead original_tile_read_shim(void)
+{
+    TileRead read = { TILE_BY_ORIGINAL, 0, 0, 0, 0, 0 };
+
+    call_original(FrameOverlay8006);
+    read.attribute = cpu.a;
+    return read;
+}
+
+/* The read at $8006 of whichever stage overlay is in RAM. */
+TileRead StageTileRead(void)
+{
+    return terrain_family_resident() ? TerrainTileRead() : original_tile_read_shim();
+}
+
+/* Each overlay of the family has its own probe table; its object records' address names it. */
+static uint16_t family_probe_table(void)
+{
+    static const struct { uint16_t records, probes; } family[] = {
+        { 0xAC96, 0xC11F }, /* sector $24D */
+        { 0xACCB, 0xCBE0 }, /* sector $50D */
+        { 0xD0D5, 0xD9DE }, /* sector $7CD */
+        { 0xAC8F, 0xB547 }, /* sector $92D */
+        { 0xACE4, 0xBD92 }, /* sector $A8D */
+        { 0xACA8, 0xD658 }, /* sector $BED */
+        { 0xAD92, 0xD771 }, /* sector $D4D */
+        { 0xAD40, 0xB23F }, /* sector $EAD */
+        { 0xAD1C, 0xD2CF }, /* sector $100D */
+        { 0xAD37, 0xD9A2 }, /* sector $116D */
+        { 0xAD32, 0xD6C8 }  /* sector $160D */
+    };
+    uint16_t records = read_word(OverlayObjectRecords, OverlayObjectRecords + 1);
+
+    for (unsigned i = 0; i < sizeof family / sizeof family[0]; i++)
+        if (family[i].records == records)
+            return family[i].probes;
+    return TerrainProbes;
+}
 
 static uint16_t probe_columns(uint8_t probe)
 {
-    uint16_t entry = (uint16_t)(TerrainProbes + (uint8_t)(probe << 1));
+    uint16_t entry = (uint16_t)(family_probe_table() + (uint8_t)(probe << 1));
     uint16_t columns = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
 
     wr8(zTemp0C, (uint8_t)columns);
@@ -711,7 +764,7 @@ static uint16_t probe_columns(uint8_t probe)
 LookupEnd TerrainLookup(uint8_t probe, uint8_t object)
 {
     uint16_t columns = probe_columns(probe);
-    LookupEnd end = { false, 0, 0, false, { TILE_PLAIN, 0, 0, 0, 0, 0 } };
+    LookupEnd end = { false, false, 0, 0, false, { TILE_PLAIN, 0, 0, 0, 0, 0 }, 0 };
 
     for (uint8_t column = 0; column < PROBE_COLUMNS; column++) {
         uint16_t at = (uint16_t)(columns + column * PROBE_COLUMN_BYTES);
@@ -750,14 +803,16 @@ LookupEnd TerrainLookup(uint8_t probe, uint8_t object)
 }
 
 /* Y 16 and A 4 with C set and Z set from the compare that ended the loop; V by the last column. */
-static void lookup_exit_shim(LookupEnd end)
+void lookup_exit_shim(LookupEnd end)
 {
+    if (end.by_original)
+        return;
     if (end.last_skipped) {
         uint8_t sum = (uint8_t)(end.offset_low + end.object_low);
 
         abi_flag(P_V, (~(end.offset_low ^ end.object_low) & (end.offset_low ^ sum) & 0x80) != 0);
     } else if (end.read_any) {
-        tile_exit_shim(end.last);
+        terrain_read_exit_shim(end.last);
     }
     cpu.a = PROBE_COLUMNS;
     cpu.y = PROBE_COLUMNS * PROBE_COLUMN_BYTES;
@@ -822,4 +877,44 @@ LookupEnd TerrainLookupAlt(uint8_t probe, uint8_t object)
 void abi_TerrainLookupAlt(void)
 {
     lookup_exit_shim(TerrainLookupAlt(cpu.a, cpu.x));
+}
+
+/* One call to another overlay's copy of a lookup, which has no C yet. */
+static LookupEnd original_lookup_shim(uint16_t vector, uint8_t probe, uint8_t object, uint8_t column)
+{
+    LookupEnd end = { true };
+
+    cpu.a = probe;
+    abi_nz(probe);
+    cpu.x = object;
+    cpu.y = column;
+    call_original(vector);
+    end.column_after = cpu.y;
+    return end;
+}
+
+/*
+ * The lookups at $800C and $800F of whichever stage overlay is in RAM. Y on entry is a column
+ * only to another overlay's code, and all of this copy's leave it past their last column.
+ */
+LookupEnd StageLookup(uint8_t probe, uint8_t object, uint8_t column)
+{
+    LookupEnd end;
+
+    if (!terrain_family_resident())
+        return original_lookup_shim(OverlayTerrainLookup, probe, object, column);
+    end = TerrainLookup(probe, object);
+    end.column_after = PROBE_COLUMNS * PROBE_COLUMN_BYTES;
+    return end;
+}
+
+LookupEnd StageLookupAlt(uint8_t probe, uint8_t object, uint8_t column)
+{
+    LookupEnd end;
+
+    if (!terrain_family_resident())
+        return original_lookup_shim(OverlayTerrainLookupAlt, probe, object, column);
+    end = TerrainLookupAlt(probe, object);
+    end.column_after = PROBE_COLUMNS * PROBE_COLUMN_BYTES;
+    return end;
 }

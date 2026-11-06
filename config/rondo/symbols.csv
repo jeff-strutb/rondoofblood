@@ -227,6 +227,8 @@ B284,abs,SoundDrvCommand,takes a command in A
 B521,abs,SoundDrvTick,one frame of the driver
 # The player and the camera.
 C9,zp,zPlayerPush,what pushes the player this frame: bits 4 and 5 add to the speed; bit 3 lifts the scroll; bits 2 and 1 force a wall check left or right
+CA,zp,zFieldCA,read by the floor check; its sign says a push does not lift the player
+CB,zp,zPlayerPushDepth,how deep a push counts as a wall
 CC,zp,zPushXLo,push along X
 CD,zp,zPushXHi,push along X
 CE,zp,zPushYLo,push along Y
@@ -338,7 +340,7 @@ C2,zp,zPadPrevious,the pad before a forced input
 C4,zp,zFieldC4,cleared on starting to climb
 C6,zp,zFieldC6,cleared on a knockback or a jump
 D3,zp,zFieldD3,cleared with the player's pad overrides
-94,zp,zField94,set when the player starts
+94,zp,zField94,hearts in BCD; set when the player starts
 3BD5,abs,PlayerByte3BD5,player state not yet identified
 3BD6,abs,PlayerByte3BD6,player state not yet identified
 3BD7,abs,PlayerByte3BD7,player state not yet identified
@@ -383,3 +385,18 @@ BF84,abs,AnimationHitbox,hitbox of four bytes
 9930,abs,TileRowsE,new rows for tile $90 by row and column
 9968,abs,TileRowOffsets,offsets by column for tiles $91-$93
 CBE0,abs,TerrainProbes,pointers to each probe's column offsets in the overlay at sector $50D
+BB4D,abs,RichterColumnOffsets,how far across a probe's column lies by column and facing
+BB57,abs,RichterWallReach,how far to the side a wall probe reads by side
+BB59,abs,RichterWallLift,height of each wall probe column low
+BB5F,abs,RichterWallLiftHigh,height of each wall probe column high
+BB65,abs,RichterWallPushBits,the zPlayerPush bit that counts as a wall by side
+3BC3,abs,RichterColumnHit,the attribute each of the five columns read
+3BC8,abs,RichterColumnRow,how far into its tile each column read
+3BCD,abs,RichterColumnX,the pixel across its tile each column read
+2228,abs,BiosPadState,the pad as the card last read it
+3BF8,abs,PadHistory,the pad over the last four frames
+3BD9,abs,PadOverrides,four bytes that force the pad
+3BE0,abs,RichterItemReady,$0F when the player has the hearts for the item in hand
+BC1B,abs,AnimationLists,pointers to Richter's animations
+B72D,abs,RichterTurnStates,whether each state lets him turn at the screen's middle
+B84D,abs,RichterItemCosts,hearts each item costs

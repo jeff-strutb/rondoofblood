@@ -3,6 +3,10 @@
  * forward and back as the screen scrolls, each acted on as it comes in range. A
  * record is ten bytes: position (word), handler, four arguments, the event's flags
  * and its id, as zTemp12-13 and zTemp08-0F hold them while it is read.
+ *
+ * The bodies deal in values. What the assembly leaves in A and the flags when a routine
+ * ends is worked out in the *_exit_shim functions the wrappers call, from how the routine
+ * ended and the RAM it left.
  */
 #include "machine.h"
 #include "ram.h"
@@ -10,31 +14,58 @@
 
 enum {
     STREAM_RECORD_BYTES = 0x0A, STREAM_END_MARK = 0xFF, SLOT_RESERVED = 0x10,
-    AXIS_HORIZONTAL_LOCKED = 0x02, AXIS_VERTICAL = 0x01, OBJECT_MARKED = 0x80
+    AXIS_HORIZONTAL_LOCKED = 0x02, AXIS_VERTICAL = 0x01, OBJECT_MARKED = 0x80,
+    EDGE_AHEAD = 0x0140, EDGE_BEHIND = 0xFFC0, FULL_WALK_AHEAD = 0x0141, FULL_WALK_BEHIND = 0x0041,
+    RECORD_HANDLERS = 7, RECORD_ARGUMENTS = 2, RECORD_SLOT_BYTE = 5
 };
 
-typedef struct {
-    Alu r;
-    uint8_t y;
-    bool nz_from_x;  /* the path ended on PLX, so N and Z are the caller's X */
-} StreamExit;
-
-static void abi_exit_stream(StreamExit e)
+static uint16_t read_word(uint16_t lo, uint16_t hi)
 {
-    abi_alu(e.r);
-    cpu.y = e.y;
-    if (e.nz_from_x)
-        abi_nz(cpu.x);
+    return (uint16_t)(rd8(lo) | (rd8(hi) << 8));
 }
 
-/* The record the walk stands on: its position, into zTemp12-13. */
+static void write_word(uint16_t lo, uint16_t hi, uint16_t value)
+{
+    wr8(lo, (uint8_t)value);
+    wr8(hi, (uint8_t)(value >> 8));
+}
+
+static uint16_t stream_record_at(void)
+{
+    return read_word(zTemp10, zTemp11);
+}
+
+/* The record the walk stands on: its position, into zTemp12 and zProduct0. */
 static void read_record_position(void)
 {
-    uint8_t byte = rd8_zp_y(zTemp10, 0);
+    uint16_t record = stream_record_at();
 
-    wr8(zTemp12, byte);
-    byte = rd8_zp_y(zTemp10, 1);
-    wr8(zProduct0, byte);
+    wr8(zTemp12, rd8(record));
+    wr8(zProduct0, rd8((uint16_t)(record + 1)));
+}
+
+static void word_add_flags_shim(uint16_t before, uint16_t amount)
+{
+    uint16_t sum = (uint16_t)(before + amount);
+
+    abi_flag(P_C, sum < before);
+    abi_flag(P_V, (~(before ^ amount) & (before ^ sum) & 0x8000) != 0);
+}
+
+static void word_subtract_flags_shim(uint16_t before, uint16_t amount)
+{
+    uint16_t difference = (uint16_t)(before - amount);
+
+    abi_flag(P_C, before >= amount);
+    abi_flag(P_V, ((before ^ amount) & (before ^ difference) & 0x8000) != 0);
+}
+
+/* A compare leaves A, N, Z and C; V stands. */
+static void compare_exit_shim(uint8_t a, uint8_t b)
+{
+    cpu.a = a;
+    abi_nz((uint8_t)(a - b));
+    abi_flag(P_C, a >= b);
 }
 
 /*
@@ -46,46 +77,54 @@ static void read_record_position(void)
  * zProduct1-2 the distance; A its high byte, N, Z, C and V from the last add or
  * subtract. X and Y kept.
  */
-Alu StreamDistance(void)
+uint16_t StreamDistance(void)
 {
-    uint8_t a = rd8(zTemp12);
-    uint8_t b = rd8(zTemp04);
-    Alu r = sbc8(a, b, true);
+    uint16_t record = read_word(zTemp12, zProduct0);
+    uint16_t walk = read_word(zTemp04, zTemp05);
+    uint16_t distance = record >= walk ? (uint16_t)(record - walk) : (uint16_t)(walk - record);
 
-    wr8(zProduct1, r.a);
-    a = rd8(zProduct0);
-    b = rd8(zTemp05);
-    r = sbc8(a, b, r.c);
-    wr8(zProduct2, r.a);
-    if (r.c)
-        return r;
-    r = adc8((uint8_t)~rd8(zProduct1), 1, false);
-    wr8(zProduct1, r.a);
-    r = adc8((uint8_t)~rd8(zProduct2), 0, r.c);
-    wr8(zProduct2, r.a);
-    return r;
+    write_word(zProduct1, zProduct2, distance);
+    return distance;
+}
+
+/*
+ * C and V as StreamDistance leaves them. A negated word carries out only from zero, which
+ * a borrow rules out, and overflows only on $8000.
+ */
+static void distance_flags_shim(void)
+{
+    uint16_t record = read_word(zTemp12, zProduct0);
+    uint16_t walk = read_word(zTemp04, zTemp05);
+
+    if (record >= walk) {
+        word_subtract_flags_shim(record, walk);
+    } else {
+        abi_flag(P_C, false);
+        abi_flag(P_V, (uint16_t)(walk - record) == 0x8000);
+    }
 }
 
 void abi_StreamDistance(void)
 {
-    abi_alu(StreamDistance());
+    uint16_t distance = StreamDistance();
+
+    cpu.a = (uint8_t)(distance >> 8);
+    abi_nz(cpu.a);
+    distance_flags_shim();
 }
 
 /* Is the record close enough to act on? zTemp06 is how close. */
-static bool record_in_range(Alu *distance)
+static bool record_in_range(void)
 {
-    uint8_t high;
-    uint8_t low;
-    uint8_t range;
-
-    *distance = StreamDistance();
-    high = rd8(zProduct2);
-    if (high != 0)
-        return false;
-    low = rd8(zProduct1);
-    range = rd8(zTemp06);
-    return low < range;
+    return StreamDistance() < rd8(zTemp06);
 }
+
+/* Whether a handler recorded its event, and the bit and byte that event is in. */
+typedef struct {
+    bool recorded;
+    uint8_t mask;
+    uint8_t byte;
+} MarkedEvent;
 
 /*
  * @routine 0047:095 RecordIfMarked
@@ -96,96 +135,98 @@ static bool record_in_range(Alu *distance)
  * Entry: zTemp0E, zTemp0F. Exit: unmarked, A zTemp0E, N and Z from it, C, Y kept.
  * Else as RecordEvent. X and V kept.
  */
-static StreamExit record_if_marked(uint8_t y)
+MarkedEvent RecordIfMarked(void)
 {
-    uint8_t flags = rd8(zTemp0E);
-    StreamExit e = { { 0 }, y, false };
+    MarkedEvent e = { false, 0, 0 };
 
-    if (!(flags & OBJECT_MARKED)) {
-        e.r.a = flags;
-        e.r.nz = flags;
-        e.r.c_kept = true;
-        return e;
+    if (rd8(zTemp0E) & OBJECT_MARKED) {
+        e.recorded = true;
+        e.mask = RecordEvent(rd8(zTemp0F), &e.byte);
     }
-    flags = rd8(zTemp0F);
-    e.r.a = RecordEvent(flags, &e.y);
-    e.r.nz = e.r.a;
-    e.r.c = (flags & 7) == 0;
     return e;
+}
+
+static void marked_exit_shim(MarkedEvent e)
+{
+    if (e.recorded) {
+        cpu.a = e.mask;
+        cpu.y = e.byte;
+        abi_flag(P_C, (rd8(zTemp0F) & 7) == 0);
+    } else {
+        cpu.a = rd8(zTemp0E);
+    }
+    abi_nz(cpu.a);
 }
 
 void abi_RecordIfMarked(void)
 {
-    abi_exit_stream(record_if_marked(cpu.y));
+    marked_exit_shim(RecordIfMarked());
 }
 
-/* One axis of a new object's place: position less scroll, word from the bytes. */
-static Alu place_axis(uint16_t pos_lo, uint16_t pos_hi, uint16_t scroll_lo,
-                      uint16_t scroll_hi, uint16_t field_lo, uint16_t field_hi)
-{
-    uint8_t a = rd8(pos_lo);
-    uint8_t b = rd8(scroll_lo);
-    Alu r = sbc8(a, b, true);
+/* What a place on the map is, less the scroll: a word subtract, kept for the exit's flags. */
+typedef struct {
+    uint16_t before;
+    uint16_t amount;
+} PlaceStep;
 
-    wr8(field_lo, r.a);
-    a = rd8(pos_hi);
-    b = rd8(scroll_hi);
-    r = sbc8(a, b, r.c);
-    wr8(field_hi, r.a);
-    return r;
+static PlaceStep place_axis(uint16_t place, uint16_t scroll, uint16_t field_lo, uint16_t field_hi)
+{
+    PlaceStep step = { place, scroll };
+
+    write_word(field_lo, field_hi, (uint16_t)(place - scroll));
+    return step;
 }
 
 /* Fills a slot from the record; the slot is already known usable. */
-static Alu place_new_object(uint8_t slot)
+static PlaceStep place_new_object(uint8_t slot)
 {
-    uint8_t byte;
+    uint16_t x_lo = (uint16_t)(OBJ_X_LO + slot);
+    uint16_t x_hi = (uint16_t)(OBJ_X_HI + slot);
+    uint16_t y_lo = (uint16_t)(OBJ_Y_LO + slot);
+    uint16_t y_hi = (uint16_t)(OBJ_Y_HI + slot);
+    uint16_t place_along;
+    uint16_t place_across;
     uint8_t axis;
-    Alu r;
+    PlaceStep step;
 
     ClearObject(slot);
-    byte = rd8(zTemp0C);
-    wr8((uint16_t)(OBJ_2750 + slot), byte);
+    place_along = read_word(zTemp12, zProduct0);
+    place_across = read_word(zTemp09, zTemp0A);
+    wr8((uint16_t)(OBJ_2750 + slot), rd8(zTemp0C));
     axis = rd8(LevelAxis);
     if (axis == AXIS_VERTICAL) {
-        place_axis(zTemp12, zProduct0, ScrollYLo, ScrollYHiScreen,
-                   (uint16_t)(OBJ_Y_LO + slot), (uint16_t)(OBJ_Y_HI + slot));
-        r = place_axis(zTemp09, zTemp0A, ScrollXLo, ScrollXHiScreen,
-                       (uint16_t)(OBJ_X_LO + slot), (uint16_t)(OBJ_X_HI + slot));
+        place_axis(place_along, read_word(ScrollYLo, ScrollYHiScreen), y_lo, y_hi);
+        step = place_axis(place_across, read_word(ScrollXLo, ScrollXHiScreen), x_lo, x_hi);
     } else {
-        place_axis(zTemp12, zProduct0, ScrollXLo, ScrollXHiScreen,
-                   (uint16_t)(OBJ_X_LO + slot), (uint16_t)(OBJ_X_HI + slot));
-        r = place_axis(zTemp09, zTemp0A, ScrollYOffset, ScrollYHiScreen,
-                       (uint16_t)(OBJ_Y_LO + slot), (uint16_t)(OBJ_Y_HI + slot));
-        axis = rd8(LevelAxis);
-        r.c = axis >= AXIS_HORIZONTAL_LOCKED;
+        place_axis(place_along, read_word(ScrollXLo, ScrollXHiScreen), x_lo, x_hi);
+        step = place_axis(place_across, read_word(ScrollYOffset, ScrollYHiScreen), y_lo, y_hi);
         if (axis != AXIS_HORIZONTAL_LOCKED) {
-            uint8_t sign_byte;
+            int8_t scroll = (int8_t)rd8(ScrollYLo);
 
-            wr8(zTemp09, 0);
-            sign_byte = rd8(ScrollYLo);
-            if (sign_byte & 0x80) {
-                sign_byte = rd8(zTemp09);
-                wr8(zTemp09, (uint8_t)(sign_byte - 1));
-            }
-            byte = rd8((uint16_t)(OBJ_Y_LO + slot));
-            sign_byte = rd8(ScrollYLo);
-            r = sbc8(byte, sign_byte, true);
-            wr8((uint16_t)(OBJ_Y_LO + slot), r.a);
-            byte = rd8((uint16_t)(OBJ_Y_HI + slot));
-            sign_byte = rd8(zTemp09);
-            r = sbc8(byte, sign_byte, r.c);
-            wr8((uint16_t)(OBJ_Y_HI + slot), r.a);
+            wr8(zTemp09, scroll < 0 ? 0xFF : 0x00);
+            step = place_axis(read_word(y_lo, y_hi), (uint16_t)(int16_t)scroll, y_lo, y_hi);
         }
     }
-    byte = rd8(zTemp0D);
-    wr8((uint16_t)(OBJ_3040 + slot), byte);
-    byte = rd8(zTemp0E);
-    wr8((uint16_t)(OBJ_FLAGS_2F38 + slot), byte);
-    byte = rd8(zTemp0F);
-    wr8((uint16_t)(OBJ_EVENT_ID + slot), byte);
-    r.a = byte;
-    return r;
+    wr8((uint16_t)(OBJ_3040 + slot), rd8(zTemp0D));
+    wr8((uint16_t)(OBJ_FLAGS_2F38 + slot), rd8(zTemp0E));
+    wr8((uint16_t)(OBJ_EVENT_ID + slot), rd8(zTemp0F));
+    return step;
 }
+
+/* A zTemp0F; C and V from the last subtract, but the locked axis's compare sets C. */
+static void placed_exit_shim(PlaceStep step)
+{
+    word_subtract_flags_shim(step.before, step.amount);
+    if (rd8(LevelAxis) == AXIS_HORIZONTAL_LOCKED)
+        abi_flag(P_C, true);
+    cpu.a = rd8(zTemp0F);
+}
+
+/* Whether a spawn placed its object, and how. */
+typedef struct {
+    bool placed;
+    PlaceStep step;
+} Spawn;
 
 /*
  * @routine 0046:7F9 StreamSpawnIfFree
@@ -197,28 +238,27 @@ static Alu place_new_object(uint8_t slot)
  * Entry: the record in zTemp09-0F, zTemp12, zProduct0. Exit: A zTemp0F (or the
  * slot's type, if taken), X and Y kept, N and Z from X, C and V from the last step.
  */
-Alu StreamSpawnIfFree(void)
+Spawn StreamSpawnIfFree(void)
 {
     uint8_t slot = rd8(zTemp0B);
-    uint8_t type = rd8((uint16_t)(OBJ_2750 + slot));
-    Alu r = { 0 };
+    Spawn spawn = { false, { 0, 0 } };
 
-    if (type == 0)
-        return place_new_object(slot);
-    r.a = type;
-    r.c_kept = true;
-    return r;
-}
-
-static void abi_exit_handler(Alu r, uint8_t x)
-{
-    abi_alu(r);
-    abi_nz(x);
+    if (rd8((uint16_t)(OBJ_2750 + slot)) == 0) {
+        spawn.placed = true;
+        spawn.step = place_new_object(slot);
+    }
+    return spawn;
 }
 
 void abi_StreamSpawnIfFree(void)
 {
-    abi_exit_handler(StreamSpawnIfFree(), cpu.x);
+    Spawn spawn = StreamSpawnIfFree();
+
+    if (spawn.placed)
+        placed_exit_shim(spawn.step);
+    else
+        cpu.a = rd8((uint16_t)(OBJ_2750 + rd8(zTemp0B)));
+    abi_nz(cpu.x);
 }
 
 /*
@@ -230,7 +270,8 @@ void abi_StreamSpawnIfFree(void)
  */
 void abi_StreamPlaceObject(void)
 {
-    abi_alu(place_new_object(cpu.x));
+    placed_exit_shim(place_new_object(cpu.x));
+    abi_nz(cpu.a);
 }
 
 /*
@@ -241,18 +282,19 @@ void abi_StreamPlaceObject(void)
  * Entry: zTemp09 script, zTemp0A slot. Exit: as RecordIfMarked, with Y the script
  * if nothing else set it.
  */
-StreamExit StreamStartScript(void)
+MarkedEvent StreamStartScript(void)
 {
-    uint8_t script = rd8(zTemp09);
-    uint8_t slot = rd8(zTemp0A);
-
-    StartScriptSlotKind1(script, slot);
-    return record_if_marked(script);
+    StartScriptSlotKind1(rd8(zTemp09), rd8(zTemp0A));
+    return RecordIfMarked();
 }
 
 void abi_StreamStartScript(void)
 {
-    abi_exit_stream(StreamStartScript());
+    uint8_t script = rd8(zTemp09);
+    MarkedEvent e = StreamStartScript();
+
+    cpu.y = script;
+    marked_exit_shim(e);
 }
 
 /*
@@ -264,25 +306,27 @@ void abi_StreamStartScript(void)
  * Entry: zTemp09 list, zTemp0A channel. Exit: flag down, A 0, N 0, Z 1. Else as
  * RecordIfMarked.
  */
-StreamExit StreamStartListKind2(uint8_t y)
+MarkedEvent StreamStartListKind2(void)
 {
-    StreamExit e = { { 0 }, y, false };
-    uint8_t list;
-    uint8_t channel;
+    MarkedEvent none = { false, 0, 0 };
 
-    if (rd8(LevelFullWalk) == 0) {
-        e.r.c_kept = true;
-        return e;
-    }
-    list = rd8(zTemp09);
-    channel = rd8(zTemp0A);
-    StartListChannelKind2(list, channel);
-    return record_if_marked(y);
+    if (rd8(LevelFullWalk) == 0)
+        return none;
+    StartListChannelKind2(rd8(zTemp09), rd8(zTemp0A));
+    return RecordIfMarked();
 }
 
 void abi_StreamStartListKind2(void)
 {
-    abi_exit_stream(StreamStartListKind2(cpu.y));
+    bool walking = rd8(LevelFullWalk) != 0;
+    MarkedEvent e = StreamStartListKind2();
+
+    if (walking) {
+        marked_exit_shim(e);
+    } else {
+        cpu.a = 0;
+        abi_nz(0);
+    }
 }
 
 /*
@@ -292,18 +336,15 @@ void abi_StreamStartListKind2(void)
  * HOW: List and channel from the record; then RecordIfMarked.
  * Entry: zTemp09 list, zTemp0A channel. Exit: as RecordIfMarked.
  */
-StreamExit StreamStartListKind3(uint8_t y)
+MarkedEvent StreamStartListKind3(void)
 {
-    uint8_t list = rd8(zTemp09);
-    uint8_t channel = rd8(zTemp0A);
-
-    StartListChannelKind3(list, channel);
-    return record_if_marked(y);
+    StartListChannelKind3(rd8(zTemp09), rd8(zTemp0A));
+    return RecordIfMarked();
 }
 
 void abi_StreamStartListKind3(void)
 {
-    abi_exit_stream(StreamStartListKind3(cpu.y));
+    marked_exit_shim(StreamStartListKind3());
 }
 
 /*
@@ -313,15 +354,15 @@ void abi_StreamStartListKind3(void)
  * HOW: ClearObject on the record's slot; then RecordIfMarked.
  * Entry: zTemp09 slot. Exit: as RecordIfMarked.
  */
-StreamExit StreamClearObject(uint8_t y)
+MarkedEvent StreamClearObject(void)
 {
     ClearObject(rd8(zTemp09));
-    return record_if_marked(y);
+    return RecordIfMarked();
 }
 
 void abi_StreamClearObject(void)
 {
-    abi_exit_stream(StreamClearObject(cpu.y));
+    marked_exit_shim(StreamClearObject());
 }
 
 /*
@@ -333,28 +374,39 @@ void abi_StreamClearObject(void)
  * Entry: as StreamSpawnIfFree. Exit: placed, as StreamSpawnIfFree. Same event: A the
  * event id, N and Z from X, C 1. X and Y kept. An inner entry at $6004 places directly.
  */
-Alu StreamSpawnIfOther(void)
+Spawn StreamSpawnIfOther(void)
 {
     uint8_t slot = rd8(zTemp0B);
-    uint8_t type = rd8((uint16_t)(OBJ_2750 + slot));
-    uint8_t mine;
-    uint8_t theirs;
-    Alu r = { 0 };
+    Spawn spawn = { false, { 0, 0 } };
 
-    if (type == 0)
-        return place_new_object(slot);
-    mine = rd8((uint16_t)(OBJ_EVENT_ID + slot));
-    theirs = rd8(zTemp0F);
-    if (mine != theirs)
-        return place_new_object(slot);
-    r.a = mine;
-    r.c = true;
-    return r;
+    if (rd8((uint16_t)(OBJ_2750 + slot)) == 0 ||
+        rd8((uint16_t)(OBJ_EVENT_ID + slot)) != rd8(zTemp0F)) {
+        spawn.placed = true;
+        spawn.step = place_new_object(slot);
+    }
+    return spawn;
 }
 
 void abi_StreamSpawnIfOther(void)
 {
-    abi_exit_handler(StreamSpawnIfOther(), cpu.x);
+    Spawn spawn = StreamSpawnIfOther();
+
+    if (spawn.placed) {
+        placed_exit_shim(spawn.step);
+    } else {
+        cpu.a = rd8(zTemp0F);
+        abi_flag(P_C, true);
+    }
+    abi_nz(cpu.x);
+}
+
+/* One call to the code a record names, with X kept round it. */
+static void record_code_shim(uint16_t code)
+{
+    uint8_t x = cpu.x;
+
+    call_original(code);
+    cpu.x = x;
 }
 
 /*
@@ -364,21 +416,15 @@ void abi_StreamSpawnIfOther(void)
  * HOW: JMP through the pointer in zTemp09-0A; then RecordIfMarked.
  * Entry: zTemp09-0A code. Exit: as RecordIfMarked.
  */
-StreamExit StreamCallOverlay(uint8_t y)
+MarkedEvent StreamCallOverlay(void)
 {
-    uint8_t x = cpu.x;
-    uint8_t low = rd8(zTemp09);
-    uint8_t high = rd8(zTemp0A);
-
-    cpu.y = y;
-    call_original((uint16_t)(low | (high << 8)));
-    cpu.x = x;
-    return record_if_marked(cpu.y);
+    record_code_shim(read_word(zTemp09, zTemp0A));
+    return RecordIfMarked();
 }
 
 void abi_StreamCallOverlay(void)
 {
-    abi_exit_stream(StreamCallOverlay(cpu.y));
+    marked_exit_shim(StreamCallOverlay());
 }
 
 /*
@@ -390,10 +436,48 @@ void abi_StreamCallOverlay(void)
  */
 void abi_JumpThroughRecord(void)
 {
-    uint8_t low = rd8(zTemp09);
-    uint8_t high = rd8(zTemp0A);
+    call_original(read_word(zTemp09, zTemp0A));
+}
 
-    call_original((uint16_t)(low | (high << 8)));
+/* Copies the record to zero page. Returns the mask of its event's bit if already done. */
+static uint8_t load_record(uint8_t *byte)
+{
+    uint16_t record = stream_record_at();
+    uint8_t mask;
+
+    wr8(zTemp08, rd8((uint16_t)(record + RECORD_ARGUMENTS)));
+    wr8(zTemp09, rd8((uint16_t)(record + 3)));
+    wr8(zTemp0A, rd8((uint16_t)(record + 4)));
+    wr8(zTemp0B, (uint8_t)(rd8((uint16_t)(record + RECORD_SLOT_BYTE)) + SLOT_RESERVED));
+    wr8(zTemp0C, rd8((uint16_t)(record + 6)));
+    wr8(zTemp0D, rd8((uint16_t)(record + 7)));
+    wr8(zTemp0E, rd8((uint16_t)(record + 8)));
+    wr8(zTemp0F, rd8((uint16_t)(record + 9)));
+    mask = BitOfIndex(rd8(zTemp0F), byte);
+    return (uint8_t)(mask & rd8((uint16_t)(EventFlags + *byte)));
+}
+
+/* The handler's table entry, as the assembly keeps it in zTemp00-01. */
+static uint16_t handler_entry(uint8_t handler)
+{
+    uint16_t entry = (uint16_t)(StreamHandlers + (uint8_t)(handler << 1));
+
+    wr8(zTemp00, rd8(entry));
+    wr8(zTemp01, rd8((uint16_t)(entry + 1)));
+    return read_word(zTemp00, zTemp01);
+}
+
+/* What the assembly has in A, Y and the flags as it jumps to a handler. */
+static void handler_entry_shim(uint8_t handler, uint16_t code)
+{
+    uint8_t slot = rd8((uint16_t)(stream_record_at() + RECORD_SLOT_BYTE));
+    uint8_t slot_sum = (uint8_t)(slot + SLOT_RESERVED);
+
+    cpu.a = (uint8_t)(code >> 8);
+    cpu.y = (uint8_t)(handler << 1);
+    abi_nz(cpu.a);
+    abi_flag(P_C, (handler & 0x80) != 0);
+    abi_flag(P_V, (~(slot ^ SLOT_RESERVED) & (slot ^ slot_sum) & 0x80) != 0);
 }
 
 /*
@@ -408,104 +492,91 @@ void abi_JumpThroughRecord(void)
  * its byte, C as BitOfIndex. Else as the handler, with Y its table index if the
  * handler leaves it. X kept. Clobbers zTemp00-01, zTemp08-0F.
  */
-StreamExit RunStreamRecord(uint8_t y)
+void RunStreamRecord(void)
 {
-    static const uint16_t fields[] = {
-        zTemp08, zTemp09, zTemp0A, zTemp0B, zTemp0C, zTemp0D, zTemp0E, zTemp0F
-    };
-    StreamExit e = { { 0 }, y, false };
-    uint8_t byte = 0;
-    uint8_t mask;
+    uint8_t byte;
     uint8_t handler;
-    uint8_t entry_lo;
-    uint8_t entry_hi;
+    uint16_t code;
 
-    for (unsigned i = 0; i < sizeof fields / sizeof fields[0]; i++) {
-        byte = rd8_zp_y(zTemp10, (uint8_t)(2 + i));
-        if (fields[i] == zTemp0B) {
-            Alu slot = adc8(byte, SLOT_RESERVED, false);
-
-            e.r.v = slot.v;
-            e.r.v_set = true;
-            byte = slot.a;
-        }
-        wr8(fields[i], byte);
-    }
-    mask = BitOfIndex(byte, &e.y);
-    e.r.a = mask & rd8((uint16_t)(EventFlags + e.y));
-    e.r.nz = e.r.a;
-    e.r.c = (byte & 7) == 0;
-    if (e.r.a != 0)
-        return e;
+    if (load_record(&byte) != 0)
+        return;
     handler = rd8(zTemp08);
-    e.y = (uint8_t)(handler << 1);
-    entry_lo = rd8((uint16_t)(StreamHandlers + e.y));
-    wr8(zTemp00, entry_lo);
-    entry_hi = rd8((uint16_t)(StreamHandlers + 1 + e.y));
-    wr8(zTemp01, entry_hi);
-    /* JMP [zTemp00] reads the pointer back. */
-    entry_lo = rd8(zTemp00);
-    entry_hi = rd8(zTemp01);
+    code = handler_entry(handler);
     switch (handler) {
     case 0:
-        e.r = StreamSpawnIfFree();
-        e.nz_from_x = true;
-        return e;
+        StreamSpawnIfFree();
+        break;
     case 1:
-        return StreamStartScript();
+        StreamStartScript();
+        break;
     case 2:
-        return StreamStartListKind2(e.y);
+        StreamStartListKind2();
+        break;
     case 3:
-        return StreamStartListKind3(e.y);
+        StreamStartListKind3();
+        break;
     case 4:
-        return StreamClearObject(e.y);
+        StreamClearObject();
+        break;
     case 5:
-        e.r = StreamSpawnIfOther();
-        e.nz_from_x = true;
-        return e;
+        StreamSpawnIfOther();
+        break;
     case 6:
-        return StreamCallOverlay(e.y);
+        handler_entry_shim(handler, code);
+        StreamCallOverlay();
+        break;
     default:
         /* Past the table: its bytes are the entry, as on the original. */
-        cpu.y = e.y;
-        call_original((uint16_t)(entry_lo | (entry_hi << 8)));
-        e.y = cpu.y;
-        e.r.c_kept = true;
-        e.r.v_set = false;
-        e.r.a = cpu.a;
-        e.r.nz = cpu.a;
-        return e;
+        handler_entry_shim(handler, code);
+        record_code_shim(code);
+        break;
     }
 }
 
 void abi_RunStreamRecord(void)
 {
-    abi_exit_stream(RunStreamRecord(cpu.y));
+    static void (*const handlers[RECORD_HANDLERS])(void) = {
+        abi_StreamSpawnIfFree, abi_StreamStartScript, abi_StreamStartListKind2,
+        abi_StreamStartListKind3, abi_StreamClearObject, abi_StreamSpawnIfOther,
+        abi_StreamCallOverlay
+    };
+    uint8_t byte;
+    uint8_t done = load_record(&byte);
+    uint8_t handler = rd8(zTemp08);
+    uint16_t code;
+
+    if (done != 0) {
+        handler_entry_shim(0, 0);
+        cpu.a = done;
+        cpu.y = byte;
+        abi_nz(done);
+        abi_flag(P_C, (rd8(zTemp0F) & 7) == 0);
+        return;
+    }
+    code = handler_entry(handler);
+    handler_entry_shim(handler, code);
+    if (handler < RECORD_HANDLERS)
+        handlers[handler]();
+    else
+        call_original(code);
 }
 
-/* A step of the walk: the record pointer moved, kept, and the next read. */
-static void step_forward(void)
-{
-    uint8_t low = rd8(zTemp10);
-    Alu r = adc8(low, STREAM_RECORD_BYTES, false);
+/* How a walk ended. */
+typedef enum {
+    WALK_STOPPED_HIGH,     /* the record's high byte differs from the position's */
+    WALK_STOPPED_LOW,      /* the high bytes matched; the low bytes decided */
+    WALK_END_MARK,
+    WALK_BEFORE_START,     /* backward: the record stepped to has its top bit set */
+    EDGE_BEFORE_START,     /* the edge lies before the level's start: no walk made */
+    STEP_NO_SPEED          /* the scroll did not move: no walk made */
+} WalkEnd;
 
-    wr8(zTemp10, r.a);
-    wr8(LevelStreamLo, r.a);
-    low = rd8(zTemp11);
-    r = adc8(low, 0, r.c);
-    wr8(zTemp11, r.a);
-    wr8(LevelStreamHi, r.a);
-    read_record_position();
-}
-
-/* A compare of A with a byte, as the exit flags take it. */
-static void note_compare(Alu *r, uint8_t a, uint8_t b)
-{
-    r->a = a;
-    r->nz = (uint8_t)(a - b);
-    r->c = a >= b;
-    r->c_kept = false;
-}
+typedef struct {
+    WalkEnd how;
+    bool back;
+    bool stepped;          /* a record was stepped to, which leaves Y 1 */
+    uint16_t scroll_lo, scroll_hi;
+} StreamWalk;
 
 /*
  * @routine 0046:6CC StreamWalkForward
@@ -519,52 +590,94 @@ static void note_compare(Alu *r, uint8_t a, uint8_t b)
  * position, zTemp06 the range. Exit: A, Y and flags as the last step left them: Y 1
  * once a record has been stepped to. X kept. Clobbers what the handlers do.
  */
-StreamExit StreamWalkForward(uint8_t y)
+StreamWalk StreamWalkForward(void)
 {
-    StreamExit e = { { 0 }, y, false };
+    StreamWalk walk = { WALK_STOPPED_HIGH, false, false, 0, 0 };
 
     for (;;) {
-        Alu distance;
+        uint16_t record;
 
-        if (record_in_range(&distance)) {
-            e = RunStreamRecord(e.y);
-            e.nz_from_x = false;
+        if (record_in_range()) {
+            RunStreamRecord();
         } else {
             uint8_t high = rd8(zProduct0);
             uint8_t low = rd8(zTemp12);
-            uint8_t wanted;
+            uint8_t wanted = rd8(zTemp05);
 
-            e.r = distance;
-            if ((uint8_t)(high & low) == STREAM_END_MARK) {
-                low = rd8(zTemp10);
-                e.r = sbc8(low, STREAM_RECORD_BYTES, true);
-                wr8(LevelStreamLo, e.r.a);
-                low = rd8(zTemp11);
-                e.r = sbc8(low, 0, e.r.c);
-                wr8(LevelStreamHi, e.r.a);
-                return e;
+            if ((high & low) == STREAM_END_MARK) {
+                write_word(LevelStreamLo, LevelStreamHi,
+                           (uint16_t)(stream_record_at() - STREAM_RECORD_BYTES));
+                walk.how = WALK_END_MARK;
+                return walk;
             }
-            high = rd8(zProduct0);
-            wanted = rd8(zTemp05);
-            note_compare(&e.r, high, wanted);
-            if (high > wanted)
-                return e;
-            if (high == wanted) {
-                low = rd8(zTemp12);
-                wanted = rd8(zTemp04);
-                note_compare(&e.r, low, wanted);
-                if (low >= wanted)
-                    return e;
+            if (high > wanted) {
+                walk.how = WALK_STOPPED_HIGH;
+                return walk;
+            }
+            if (high == wanted && low >= rd8(zTemp04)) {
+                walk.how = WALK_STOPPED_LOW;
+                return walk;
             }
         }
-        step_forward();
-        e.y = 1;
+        record = (uint16_t)(stream_record_at() + STREAM_RECORD_BYTES);
+        write_word(zTemp10, zTemp11, record);
+        write_word(LevelStreamLo, LevelStreamHi, record);
+        read_record_position();
+        walk.stepped = true;
+    }
+}
+
+/* A, the flags and Y as a walk leaves them. V is StreamDistance's until an end changes it. */
+static void walk_exit_shim(StreamWalk walk)
+{
+    uint16_t record = stream_record_at();
+
+    if (walk.stepped)
+        cpu.y = 1;
+    switch (walk.how) {
+    case WALK_STOPPED_HIGH:
+        distance_flags_shim();
+        compare_exit_shim(rd8(zProduct0), rd8(zTemp05));
+        break;
+    case WALK_STOPPED_LOW:
+        distance_flags_shim();
+        compare_exit_shim(rd8(zTemp12), rd8(zTemp04));
+        break;
+    case WALK_END_MARK:
+        if (walk.back) {
+            word_add_flags_shim(record, STREAM_RECORD_BYTES);
+            cpu.a = (uint8_t)((uint16_t)(record + STREAM_RECORD_BYTES) >> 8);
+        } else {
+            word_subtract_flags_shim(record, STREAM_RECORD_BYTES);
+            cpu.a = (uint8_t)((uint16_t)(record - STREAM_RECORD_BYTES) >> 8);
+        }
+        abi_nz(cpu.a);
+        break;
+    case WALK_BEFORE_START:
+        word_subtract_flags_shim((uint16_t)(record + STREAM_RECORD_BYTES), STREAM_RECORD_BYTES);
+        cpu.a = rd8((uint16_t)(record + 1));
+        abi_nz(cpu.a);
+        break;
+    case EDGE_BEFORE_START: {
+        uint16_t scroll = read_word(walk.scroll_lo, walk.scroll_hi);
+
+        word_add_flags_shim(scroll, EDGE_BEHIND);
+        cpu.a = (uint8_t)((uint16_t)(scroll + EDGE_BEHIND) >> 8);
+        abi_nz(cpu.a);
+        break;
+    }
+    case STEP_NO_SPEED:
+        cpu.y = 1;
+        cpu.a = 0;
+        abi_nz(0);
+        abi_flag(P_C, rd8(LevelAxis) >= AXIS_VERTICAL);
+        break;
     }
 }
 
 void abi_StreamWalkForward(void)
 {
-    abi_exit_stream(StreamWalkForward(cpu.y));
+    walk_exit_shim(StreamWalkForward());
 }
 
 /*
@@ -578,78 +691,56 @@ void abi_StreamWalkForward(void)
  * that passes the top-bit test.
  * Entry and exit: as StreamWalkForward.
  */
-StreamExit StreamWalkBack(uint8_t y)
+StreamWalk StreamWalkBack(void)
 {
-    StreamExit e = { { 0 }, y, false };
+    StreamWalk walk = { WALK_STOPPED_HIGH, true, false, 0, 0 };
 
     for (;;) {
-        Alu distance;
-        uint8_t byte;
+        uint16_t record;
 
-        if (record_in_range(&distance)) {
-            e = RunStreamRecord(e.y);
-            e.nz_from_x = false;
+        if (record_in_range()) {
+            RunStreamRecord();
         } else {
             uint8_t high = rd8(zProduct0);
             uint8_t low = rd8(zTemp12);
-            uint8_t wanted;
+            uint8_t wanted = rd8(zTemp05);
 
-            e.r = distance;
-            if ((uint8_t)(high & low) == STREAM_END_MARK) {
-                low = rd8(zTemp10);
-                e.r = adc8(low, STREAM_RECORD_BYTES, false);
-                wr8(LevelStreamLo, e.r.a);
-                low = rd8(zTemp11);
-                e.r = adc8(low, 0, e.r.c);
-                wr8(LevelStreamHi, e.r.a);
-                return e;
+            if ((high & low) == STREAM_END_MARK) {
+                write_word(LevelStreamLo, LevelStreamHi,
+                           (uint16_t)(stream_record_at() + STREAM_RECORD_BYTES));
+                walk.how = WALK_END_MARK;
+                return walk;
             }
-            high = rd8(zProduct0);
-            wanted = rd8(zTemp05);
-            note_compare(&e.r, high, wanted);
-            if (high < wanted)
-                return e;
-            if (high == wanted) {
-                low = rd8(zTemp12);
-                wanted = rd8(zTemp04);
-                note_compare(&e.r, low, wanted);
-                if (low < wanted)
-                    return e;
+            if (high < wanted) {
+                walk.how = WALK_STOPPED_HIGH;
+                return walk;
+            }
+            if (high == wanted && low < rd8(zTemp04)) {
+                walk.how = WALK_STOPPED_LOW;
+                return walk;
             }
         }
-        byte = rd8(zTemp10);
-        e.r = sbc8(byte, STREAM_RECORD_BYTES, true);
-        wr8(zTemp10, e.r.a);
-        byte = rd8(zTemp11);
-        e.r = sbc8(byte, 0, e.r.c);
-        wr8(zTemp11, e.r.a);
-        e.y = 1;
-        byte = rd8_zp_y(zTemp10, 1);
-        e.r.a = byte;
-        e.r.nz = byte;
-        if (byte & 0x80)
-            return e;
-        byte = rd8(zTemp10);
-        wr8(LevelStreamLo, byte);
-        byte = rd8(zTemp11);
-        wr8(LevelStreamHi, byte);
+        record = (uint16_t)(stream_record_at() - STREAM_RECORD_BYTES);
+        write_word(zTemp10, zTemp11, record);
+        walk.stepped = true;
+        if (rd8((uint16_t)(record + 1)) & 0x80) {
+            walk.how = WALK_BEFORE_START;
+            return walk;
+        }
+        write_word(LevelStreamLo, LevelStreamHi, record);
         read_record_position();
     }
 }
 
 void abi_StreamWalkBack(void)
 {
-    abi_exit_stream(StreamWalkBack(cpu.y));
+    walk_exit_shim(StreamWalkBack());
 }
 
-/* The record pointer, and its position: every walk starts here. Leaves Y 1. */
+/* The record pointer, and its position: every walk starts here. */
 static void walk_start(void)
 {
-    uint8_t byte = rd8(LevelStreamLo);
-
-    wr8(zTemp10, byte);
-    byte = rd8(LevelStreamHi);
-    wr8(zTemp11, byte);
+    write_word(zTemp10, zTemp11, read_word(LevelStreamLo, LevelStreamHi));
     read_record_position();
 }
 
@@ -663,60 +754,47 @@ static void walk_start(void)
  * count. Exit: A 0, N 0, Z 1, C from the count's borrow, V from the last subtract, Y
  * as the last walk left it. X kept.
  */
-StreamExit StreamWalkLines(void)
+void StreamWalkLines(void)
 {
-    for (;;) {
-        StreamExit e;
-        uint8_t byte;
-        uint8_t other;
+    uint16_t count;
 
+    do {
         walk_start();
-        byte = rd8(StreamStepLo);
-        e = (byte & 0x80) ? StreamWalkBack(1) : StreamWalkForward(1);
-        byte = rd8(zTemp04);
-        other = rd8(StreamStepLo);
-        e.r = adc8(byte, other, false);
-        wr8(zTemp04, e.r.a);
-        byte = rd8(zTemp05);
-        other = rd8(StreamStepHi);
-        e.r = adc8(byte, other, e.r.c);
-        wr8(zTemp05, e.r.a);
-        byte = rd8(WorkByteB);
-        e.r = sbc8(byte, 1, true);
-        wr8(WorkByteB, e.r.a);
-        byte = rd8(WorkByteA);
-        e.r = sbc8(byte, 0, e.r.c);
-        wr8(WorkByteA, e.r.a);
-        other = rd8(WorkByteB);
-        e.r.a |= other;
-        e.r.nz = e.r.a;
-        e.nz_from_x = false;
-        if (e.r.a == 0)
-            return e;
-    }
+        if (rd8(StreamStepLo) & 0x80)
+            StreamWalkBack();
+        else
+            StreamWalkForward();
+        write_word(zTemp04, zTemp05,
+                   (uint16_t)(read_word(zTemp04, zTemp05) + read_word(StreamStepLo, StreamStepHi)));
+        count = (uint16_t)(read_word(WorkByteB, WorkByteA) - 1);
+        write_word(WorkByteB, WorkByteA, count);
+    } while (count != 0);
+}
+
+/* The count ended by going from 1 to 0, with no borrow and no overflow. Every walk has Y 1. */
+static void lines_exit_shim(void)
+{
+    cpu.a = 0;
+    cpu.y = 1;
+    abi_nz(0);
+    abi_flag(P_C, true);
+    abi_flag(P_V, false);
 }
 
 void abi_StreamWalkLines(void)
 {
-    abi_exit_stream(StreamWalkLines());
+    StreamWalkLines();
+    lines_exit_shim();
 }
 
-/* One walk of a full pass, in the bus order the assembly stores its arguments. */
-static StreamExit walk_full_span(uint8_t step_lo, uint8_t step_hi, uint16_t scroll_hi,
-                                 uint16_t scroll_lo, uint8_t count_hi)
+/* One walk of a full pass, from the scroll, one line in range at a time. */
+static void walk_full_span(uint16_t step, uint16_t scroll, uint16_t lines)
 {
-    uint8_t byte;
-
-    wr8(StreamStepLo, step_lo);
-    wr8(StreamStepHi, step_hi);
-    byte = rd8(scroll_hi);
-    wr8(zTemp05, byte);
-    byte = rd8(scroll_lo);
-    wr8(zTemp04, byte);
-    wr8(WorkByteA, count_hi);
-    wr8(WorkByteB, 0x41);
+    write_word(StreamStepLo, StreamStepHi, step);
+    write_word(zTemp04, zTemp05, scroll);
+    write_word(WorkByteB, WorkByteA, lines);
     wr8(zTemp06, 1);
-    return StreamWalkLines();
+    StreamWalkLines();
 }
 
 /*
@@ -729,59 +807,45 @@ static StreamExit walk_full_span(uint8_t step_lo, uint8_t step_hi, uint16_t scro
  * axis the level runs along.
  * Entry: LevelAxis. Exit: as StreamWalkLines; the flag down. Clobbers zTemp04-06.
  */
-StreamExit StreamFullWalk(void)
+void StreamFullWalk(void)
 {
-    uint8_t axis = rd8(LevelAxis);
-    uint16_t scroll_hi = axis == AXIS_VERTICAL ? ScrollYHiScreen : ScrollXHiScreen;
-    uint16_t scroll_lo = axis == AXIS_VERTICAL ? ScrollYLo : ScrollXLo;
-    StreamExit e;
+    bool vertical = rd8(LevelAxis) == AXIS_VERTICAL;
+    uint16_t scroll_lo = vertical ? ScrollYLo : ScrollXLo;
+    uint16_t scroll_hi = vertical ? ScrollYHiScreen : ScrollXHiScreen;
 
     wr8(LevelFullWalk, 1);
-    walk_full_span(1, 0, scroll_hi, scroll_lo, 1);
-    e = walk_full_span(0xFF, 0xFF, scroll_hi, scroll_lo, 0);
+    walk_full_span(0x0001, read_word(scroll_lo, scroll_hi), FULL_WALK_AHEAD);
+    walk_full_span(0xFFFF, read_word(scroll_lo, scroll_hi), FULL_WALK_BEHIND);
     wr8(LevelFullWalk, 0);
-    return e;
 }
 
 void abi_StreamFullWalk(void)
 {
-    abi_exit_stream(StreamFullWalk());
+    StreamFullWalk();
+    lines_exit_shim();
 }
 
-/* The start of a walk one edge past the screen, with the speed as its range. */
-static StreamExit edge_walk_forward(uint16_t scroll_lo, uint16_t scroll_hi, uint16_t speed,
-                                    uint8_t y)
+/* A walk one edge past the screen, with the speed as its range. */
+static StreamWalk edge_walk_forward(uint16_t scroll_lo, uint16_t scroll_hi, uint16_t speed)
 {
-    uint8_t byte = rd8(scroll_lo);
-    Alu r = adc8(byte, 0x40, false);
-
-    wr8(zTemp04, r.a);
-    byte = rd8(scroll_hi);
-    r = adc8(byte, 1, r.c);
-    wr8(zTemp05, r.a);
-    byte = rd8(speed);
-    wr8(zTemp06, byte);
-    return StreamWalkForward(y);
+    write_word(zTemp04, zTemp05, (uint16_t)(read_word(scroll_lo, scroll_hi) + EDGE_AHEAD));
+    wr8(zTemp06, rd8(speed));
+    return StreamWalkForward();
 }
 
-static StreamExit edge_walk_back(uint16_t scroll_lo, uint16_t scroll_hi, uint16_t speed,
-                                 uint8_t y)
+static StreamWalk edge_walk_back(uint16_t scroll_lo, uint16_t scroll_hi, uint16_t speed)
 {
-    uint8_t byte = rd8(scroll_lo);
-    Alu r = adc8(byte, 0xC0, false);
+    uint16_t edge = (uint16_t)(read_word(scroll_lo, scroll_hi) + EDGE_BEHIND);
 
-    wr8(zTemp04, r.a);
-    byte = rd8(scroll_hi);
-    r = adc8(byte, 0xFF, r.c);
-    if (r.a & 0x80) {
-        StreamExit before_start = { r, y, false };
+    wr8(zTemp04, (uint8_t)edge);
+    if (edge & 0x8000) {
+        StreamWalk before_start = { EDGE_BEFORE_START, true, false, scroll_lo, scroll_hi };
 
         return before_start;
     }
-    wr8(zTemp05, r.a);
-    byte = (uint8_t)(~rd8(speed) + 1);
-    wr8(zTemp06, byte);
-    return StreamWalkBack(y);
+    wr8(zTemp05, (uint8_t)(edge >> 8));
+    wr8(zTemp06, (uint8_t)(0u - rd8(speed)));
+    return StreamWalkBack();
 }
 
 /*
@@ -793,7 +857,7 @@ static StreamExit edge_walk_back(uint16_t scroll_lo, uint16_t scroll_hi, uint16_
  */
 void abi_StreamEdgeRight(void)
 {
-    abi_exit_stream(edge_walk_forward(ScrollXLo, ScrollXHiScreen, ScrollSpeedX, cpu.y));
+    walk_exit_shim(edge_walk_forward(ScrollXLo, ScrollXHiScreen, ScrollSpeedX));
 }
 
 /*
@@ -807,7 +871,7 @@ void abi_StreamEdgeRight(void)
  */
 void abi_StreamEdgeLeft(void)
 {
-    abi_exit_stream(edge_walk_back(ScrollXLo, ScrollXHiScreen, ScrollSpeedX, cpu.y));
+    walk_exit_shim(edge_walk_back(ScrollXLo, ScrollXHiScreen, ScrollSpeedX));
 }
 
 /*
@@ -819,7 +883,7 @@ void abi_StreamEdgeLeft(void)
  */
 void abi_StreamEdgeDown(void)
 {
-    abi_exit_stream(edge_walk_forward(ScrollYLo, ScrollYHiScreen, ScrollSpeedY, cpu.y));
+    walk_exit_shim(edge_walk_forward(ScrollYLo, ScrollYHiScreen, ScrollSpeedY));
 }
 
 /*
@@ -832,7 +896,7 @@ void abi_StreamEdgeDown(void)
  */
 void abi_StreamEdgeUp(void)
 {
-    abi_exit_stream(edge_walk_back(ScrollYLo, ScrollYHiScreen, ScrollSpeedY, cpu.y));
+    walk_exit_shim(edge_walk_back(ScrollYLo, ScrollYHiScreen, ScrollSpeedY));
 }
 
 /*
@@ -845,32 +909,27 @@ void abi_StreamEdgeUp(void)
  * Entry: nothing. Exit: as the walk; no speed, A 0, N 0, Z 1, Y 1. C and V from the
  * compare and what came before.
  */
-StreamExit StreamScrollStep(void)
+StreamWalk StreamScrollStep(void)
 {
-    uint8_t axis;
-    uint8_t speed;
-    StreamExit none = { { 0 }, 1, false };
+    bool vertical = rd8(LevelAxis) == AXIS_VERTICAL;
+    uint16_t scroll_lo = vertical ? ScrollYLo : ScrollXLo;
+    uint16_t scroll_hi = vertical ? ScrollYHiScreen : ScrollXHiScreen;
+    uint16_t speed_field = vertical ? ScrollSpeedY : ScrollSpeedX;
+    int8_t speed = (int8_t)rd8(speed_field);
+    StreamWalk none = { STEP_NO_SPEED, false, false, 0, 0 };
 
     walk_start();
-    axis = rd8(LevelAxis);
-    none.r.c = axis >= AXIS_VERTICAL;
-    if (axis == AXIS_VERTICAL) {
-        speed = rd8(ScrollSpeedY);
-        if (speed == 0)
-            return none;
-        if (speed & 0x80)
-            return edge_walk_back(ScrollYLo, ScrollYHiScreen, ScrollSpeedY, 1);
-        return edge_walk_forward(ScrollYLo, ScrollYHiScreen, ScrollSpeedY, 1);
-    }
-    speed = rd8(ScrollSpeedX);
     if (speed == 0)
         return none;
-    if (speed & 0x80)
-        return edge_walk_back(ScrollXLo, ScrollXHiScreen, ScrollSpeedX, 1);
-    return edge_walk_forward(ScrollXLo, ScrollXHiScreen, ScrollSpeedX, 1);
+    if (speed < 0)
+        return edge_walk_back(scroll_lo, scroll_hi, speed_field);
+    return edge_walk_forward(scroll_lo, scroll_hi, speed_field);
 }
 
 void abi_StreamScrollStep(void)
 {
-    abi_exit_stream(StreamScrollStep());
+    StreamWalk walk = StreamScrollStep();
+
+    cpu.y = 1;
+    walk_exit_shim(walk);
 }

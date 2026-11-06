@@ -6,10 +6,10 @@
  * ScrollStepY. The original writes the two axes twice in the same shape; here Axis
  * holds what differs.
  *
- * The player overlay answers walls and floors at $A0xx. Routines that reach it keep
- * A and the flags in an Alu flushed to cpu by call_with, and write X and Y straight
- * to cpu where the assembly loads them, since that code sees them. A routine here
- * that starts from alu_from_cpu must be called with cpu's flags current.
+ * The player overlay answers walls and floors at $A0xx, through PlayerWall and PlayerFloor.
+ * A routine's body returns how it ended, as plain values. Its wrapper replays what those
+ * steps leave in the registers and flags, in the assembly's order, through the *_exit_shim
+ * functions, so that only the wrappers know them.
  */
 #include "machine.h"
 #include "ram.h"
@@ -17,6 +17,7 @@
 
 enum {
     SCREEN_MIDDLE = 0x80, PLAYER_MAX_X = 0xF0, PLAYER_MIN_X = 0x10,
+    LEVEL_END_FROM_X = 0xC0, LEVEL_END_TO_X = 0xEC, LEVEL_END_TIMER = 0x20,
     PUSH_ADDS_X = 0x10, PUSH_ADDS_Y = 0x20, PUSH_LIFTS_SCROLL = 0x08,
     PUSH_LEFT = 0x04, PUSH_RIGHT = 0x02,
     PLAYER_STATE_NO_WALL_PUSH = 3,
@@ -117,28 +118,40 @@ static Alu right_move_exit_shim(RightMoveResult move)
  * HOW: A carry chain through all of them, set once before the last.
  * Entry: X object. Exit: A the sum, N, Z, C and V from the last subtract. X and Y kept.
  */
-Alu PlayerDistanceSum(uint8_t object, Alu entry)
+uint8_t PlayerDistanceSum(uint8_t object, bool carry_in)
 {
-    static const struct { uint16_t addr; bool subtract; } steps[] = {
-        { 0x3418, false }, { 0x3480, false }, { 0x2CE1, false }, { 0x2C32, true },
-        { 0x2CE3, true }, { 0x2BDC, false }, { 0x2765, false }, { 0x2766, true },
-        { 0x2C37, true }, { 0x2D00, false }, { 0x2781, false }, { 0x2BFA, true },
-        { 0x2D03, true }, { 0x2EE0, false }
+    static const struct { uint16_t field; bool subtract; } terms[] = {
+        { OBJ_3408 + 0x10, false }, { OBJ_3460 + 0x20, false }, { OBJ_Y_LO + 0x11, false },
+        { OBJ_X_FRAC + 0x12, true }, { OBJ_Y_LO + 0x13, true }, { OBJ_X_LO + 0x14, false },
+        { OBJ_2750 + 0x15, false }, { OBJ_2750 + 0x16, true }, { OBJ_X_FRAC + 0x17, true },
+        { OBJ_Y_LO + 0x30, false }, { OBJ_2750 + 0x31, false }, { OBJ_X_LO + 0x32, true },
+        { OBJ_Y_LO + 0x33, true }, { OBJ_FIELDS_2EE0, false }
     };
-    Alu r = alu_then(entry, DistanceXToPlayer(object));
-    uint8_t byte;
+    PlayerDistance distance = DistanceXToPlayer(object);
+    bool carry = distance.far ? carry_in : distance.object_further;
+    unsigned sum = distance.distance;
 
-    for (unsigned i = 0; i < sizeof steps / sizeof steps[0]; i++) {
-        byte = rd8(steps[i].addr);
-        r = steps[i].subtract ? sbc8(r.a, byte, r.c) : adc8(r.a, byte, r.c);
+    for (unsigned i = 0; i < sizeof terms / sizeof terms[0]; i++) {
+        unsigned term = rd8(terms[i].field);
+
+        sum = terms[i].subtract ? sum - term - (carry ? 0u : 1u) : sum + term + (carry ? 1u : 0u);
+        carry = terms[i].subtract ? sum <= 0xFF : sum > 0xFF;
+        sum &= 0xFF;
     }
-    byte = rd8(0x2F90);
-    return sbc8(r.a, byte, true);
+    return (uint8_t)(sum - rd8(OBJ_2F90));
 }
 
+/* A, N, Z, C and V are the last subtract's, worked back from its result. */
 void abi_PlayerDistanceSum(void)
 {
-    abi_alu(PlayerDistanceSum(cpu.x, alu_from_cpu()));
+    uint8_t result = PlayerDistanceSum(cpu.x, (cpu.p & P_C) != 0);
+    uint8_t term = rd8(OBJ_2F90);
+    uint8_t before = (uint8_t)(result + term);
+
+    cpu.a = result;
+    abi_nz(result);
+    abi_flag(P_C, before >= term);
+    abi_flag(P_V, ((before ^ term) & (before ^ result) & 0x80) != 0);
 }
 
 /*
@@ -184,6 +197,295 @@ void abi_StopPlayerX(void)
     StopPlayerX();
 }
 
+/* Words of plain RAM, by where their two bytes are. */
+static uint16_t read16(uint16_t lo, uint16_t hi)
+{
+    uint8_t low = rd8(lo);
+
+    return (uint16_t)(low | (rd8(hi) << 8));
+}
+
+static void write16(uint16_t lo, uint16_t hi, uint16_t value)
+{
+    wr8(lo, (uint8_t)value);
+    wr8(hi, (uint8_t)(value >> 8));
+}
+
+/* The two words of an 8.8 add or subtract, kept for the wrapper's flags. */
+typedef struct {
+    uint16_t a;
+    uint16_t b;
+} WordPair;
+
+/* A the high byte of the sum, with N, Z, C and V from its add. */
+static Alu word_add_exit_shim(WordPair words)
+{
+    Alu exit = { 0 };
+    uint16_t sum = (uint16_t)(words.a + words.b);
+
+    exit.a = (uint8_t)(sum >> 8);
+    exit.nz = exit.a;
+    exit.c = sum < words.a;
+    exit.v = add_overflows(words.a, words.b);
+    exit.v_set = true;
+    return exit;
+}
+
+/* A the high byte of the difference, with N, Z, C and V from its subtract. */
+static Alu word_subtract_exit_shim(WordPair words)
+{
+    Alu exit = { 0 };
+
+    exit.a = (uint8_t)((uint16_t)(words.a - words.b) >> 8);
+    exit.nz = exit.a;
+    exit.c = words.a >= words.b;
+    exit.v = subtract_overflows(words.a, words.b);
+    exit.v_set = true;
+    return exit;
+}
+
+/* How a move left or up ended, and the values it worked with. */
+typedef enum {
+    BACK_AT_EDGE, BACK_AT_TOP, BACK_PLAYER, BACK_AT_START, BACK_STEP_FAR, BACK_STEP_NEAR, BACK_BOTH
+} BackEnd;
+
+typedef struct {
+    BackEnd how;
+    uint16_t speed, from, next, step, position, added;
+    bool at_middle, carried;
+    uint8_t page;
+} BackMove;
+
+/* How a move down ended, and the values it worked with. */
+typedef enum { DOWN_PLAYER, DOWN_AT_LIMIT, DOWN_STEP, DOWN_BOTH } DownEnd;
+
+typedef struct {
+    DownEnd how;
+    uint16_t next, step;
+    uint8_t high, next_page, page;
+    bool next_carried, carried;
+} DownMove;
+
+BackMove MovePlayerLeft(void);
+BackMove MovePlayerUp(void);
+DownMove MovePlayerDown(void);
+
+/* How MovePlayerYIfMoving ended. */
+typedef enum { Y_NOT_MOVING, Y_UP, Y_DOWN } YEnd;
+
+typedef struct {
+    YEnd how;
+    AxisMove move;
+    FloorProbe floor;
+} YMove;
+
+/* What a wall pushed the player back to. */
+typedef enum { WALL_NOT_THERE, WALL_STOPPED_ONLY, WALL_PAST_EDGE, WALL_PUSHED_BACK } WallPushEnd;
+
+typedef struct {
+    WallPushEnd how;
+    bool leftward;
+    WallProbe first;
+    WallProbe second;
+    uint8_t amount;
+    uint8_t position;
+} WallPush;
+
+/* Which way the player's speed or push asked it to go. */
+typedef enum { GOES_NOWHERE, GOES_LEFT, GOES_RIGHT } Direction;
+
+typedef struct {
+    bool moving;
+    bool tested_right;
+    uint8_t push;
+    Direction way;
+} Choice;
+
+/* Moving unless there is a wall. */
+typedef struct {
+    WallPush wall;
+    bool moved;
+    RightMoveResult move;
+} RightOrWall;
+
+typedef struct {
+    WallPush wall;
+    bool moved;
+    BackMove move;
+} LeftOrWall;
+
+/* PlayerXOnScreen: where the move left the player. */
+typedef enum { ON_SCREEN_STAYED, ON_SCREEN_WALLED, ON_SCREEN_MOVED, ON_SCREEN_RIGHT_EDGE, ON_SCREEN_LEFT_EDGE } OnScreenEnd;
+
+typedef struct {
+    Choice choice;
+    WallPush wall;
+    OnScreenEnd how;
+    WordPair move;
+} OnScreen;
+
+typedef struct {
+    YMove y;
+    OnScreen x;
+    bool copied_push;
+} CarriedMode;
+
+typedef struct {
+    YMove y;
+    Choice choice;
+    RightOrWall right;
+    LeftOrWall left;
+} FollowMode;
+
+/* CameraModeLeftWall's leftward path. */
+typedef enum {
+    LEFT_WALL_NOT_LEFT, LEFT_WALL_AT_EDGE, LEFT_WALL_MOVED, LEFT_WALL_STOPPED, LEFT_WALL_PAST_RIGHT,
+    LEFT_WALL_PUSHED
+} LeftWallEnd;
+
+typedef struct {
+    YMove y;
+    Choice choice;
+    RightOrWall right;
+    WallProbe wall;
+    LeftWallEnd how;
+    WordPair next;
+    uint8_t depth;
+    uint8_t push;
+    uint8_t position;
+} LeftWallMode;
+
+/* CameraModeVertical's ends. */
+typedef enum { VERTICAL_UP, VERTICAL_FLOOR_FIRST, VERTICAL_DOWN } VerticalEnd;
+
+typedef struct {
+    OnScreen x;
+    VerticalEnd how;
+    BackMove up;
+    FloorProbe floor_before;
+    DownMove down;
+    FloorProbe floor_after;
+} VerticalMode;
+
+CarriedMode CameraModeCarried(void);
+LeftWallMode CameraModeLeftWall(void);
+FollowMode CameraModeFollow(void);
+VerticalMode CameraModeVertical(void);
+OnScreen PlayerXOnScreen(void);
+WallPush PlayerWallRight(void);
+WallPush PlayerWallLeft(void);
+RightOrWall MovePlayerRightOrWall(void);
+LeftOrWall MovePlayerLeftOrWall(void);
+void PlayerXFromNextAlt(void);
+WordPair PlayerNextX(void);
+static void RunCameraMode(void);
+static void x_on_screen_exit_shim(OnScreen x);
+static void right_or_wall_exit_shim(RightOrWall result);
+static void left_or_wall_exit_shim(LeftOrWall result);
+
+static bool add8_overflows(uint8_t a, uint8_t b)
+{
+    return (~(a ^ b) & (a ^ (uint8_t)(a + b)) & 0x80) != 0;
+}
+
+/* By the speed's sign, or at no speed by bits 2 and 1 of what pushes the player. */
+static Choice choose_direction(void)
+{
+    Choice choice = { 0 };
+
+    choice.moving = (rd8(OBJ_VX_HI) | rd8(OBJ_VX_LO)) != 0;
+    choice.push = rd8(zPlayerPush);
+    if (choice.moving) {
+        choice.way = (rd8(OBJ_VX_HI) & 0x80) ? GOES_LEFT : GOES_RIGHT;
+    } else if (choice.push & PUSH_LEFT) {
+        choice.way = GOES_LEFT;
+    } else {
+        choice.tested_right = true;
+        choice.way = (choice.push & PUSH_RIGHT) ? GOES_RIGHT : GOES_NOWHERE;
+    }
+    return choice;
+}
+
+/* A speed's load, or the TST that decided: Z from its AND, N and V from the byte's top bits. */
+static void choice_exit_shim(Choice choice)
+{
+    uint8_t mask = choice.tested_right ? PUSH_RIGHT : PUSH_LEFT;
+
+    if (choice.moving) {
+        cpu.a = rd8(OBJ_VX_HI);
+        abi_nz(cpu.a);
+        return;
+    }
+    cpu.a = 0;
+    abi_nz(choice.push & mask);
+    abi_flag(P_N, (choice.push & 0x80) != 0);
+    abi_flag(P_V, (choice.push & 0x40) != 0);
+}
+
+/* For the wrappers: A, N and Z from a value, with C and V given. */
+static void move_exit_shim(uint8_t a, bool carry, bool overflow)
+{
+    cpu.a = a;
+    abi_nz(a);
+    abi_flag(P_C, carry);
+    abi_flag(P_V, overflow);
+}
+
+/* For the wrappers: A and the flags at each end of a move left or up. */
+static void back_exit_shim(BackMove move)
+{
+    uint8_t next_high = (uint8_t)(move.next >> 8);
+    uint8_t step_high = (uint8_t)(move.step >> 8);
+    uint8_t page_sum = (uint8_t)(0xFF + move.page + (move.carried ? 1 : 0));
+    uint16_t sum = (uint16_t)(move.position + move.added);
+
+    switch (move.how) {
+    case BACK_AT_EDGE:
+        move_exit_shim(PLAYER_MIN_X, next_high >= PLAYER_MIN_X, add_overflows(move.speed, move.from));
+        break;
+    case BACK_AT_TOP:
+        move_exit_shim(next_high, move.next < move.speed, add_overflows(move.speed, move.from));
+        break;
+    case BACK_PLAYER:
+        move_exit_shim(next_high, true, add_overflows(move.speed, move.from));
+        break;
+    case BACK_AT_START:
+        move_exit_shim(next_high, true, subtract_overflows(move.next, 0x8000));
+        break;
+    case BACK_STEP_FAR:
+        move_exit_shim(step_high, move.at_middle, subtract_overflows(move.next, 0x8000));
+        break;
+    case BACK_STEP_NEAR:
+        move_exit_shim(step_high, true, (move.page & 0x80) != 0 && (page_sum & 0x80) == 0);
+        break;
+    case BACK_BOTH:
+        move_exit_shim((uint8_t)(sum >> 8), sum < move.position, add_overflows(move.position, move.added));
+        break;
+    }
+}
+
+/* For the wrappers: A and the flags at each end of a move down. */
+static void down_exit_shim(DownMove move)
+{
+    bool next_overflow = move.high == 0x7F && move.next_carried;
+
+    switch (move.how) {
+    case DOWN_PLAYER:
+        move_exit_shim(move.next_page, false, next_overflow);
+        break;
+    case DOWN_AT_LIMIT:
+        move_exit_shim(move.next_page, true, next_overflow);
+        break;
+    case DOWN_STEP:
+        move_exit_shim((uint8_t)(move.step >> 8), false, move.page == 0x7F && move.carried);
+        break;
+    case DOWN_BOTH:
+        move_exit_shim((uint8_t)((uint16_t)(move.next - move.step) >> 8), move.next >= move.step,
+                       subtract_overflows(move.next, move.step));
+        break;
+    }
+}
+
 /*
  * @routine 0047:59F MovePlayerX
  * @run 6A:659F
@@ -192,23 +494,17 @@ void abi_StopPlayerX(void)
  * byte: the player stays on the screen.
  * Entry: nothing. Exit: A position low, N, Z, C and V from its add. X and Y kept.
  */
-Alu MovePlayerX(void)
+WordPair MovePlayerX(void)
 {
-    uint8_t a = rd8(OBJ_VX_LO);
-    uint8_t b = rd8(OBJ_X_FRAC);
-    Alu r = adc8(a, b, false);
+    WordPair words = { read16(OBJ_VX_LO, OBJ_VX_HI), read16(OBJ_X_FRAC, OBJ_X_LO) };
 
-    wr8(OBJ_X_FRAC, r.a);
-    a = rd8(OBJ_VX_HI);
-    b = rd8(OBJ_X_LO);
-    r = adc8(a, b, r.c);
-    wr8(OBJ_X_LO, r.a);
-    return r;
+    write16(OBJ_X_FRAC, OBJ_X_LO, (uint16_t)(words.a + words.b));
+    return words;
 }
 
 void abi_MovePlayerX(void)
 {
-    abi_alu(MovePlayerX());
+    abi_alu(word_add_exit_shim(MovePlayerX()));
 }
 
 /*
@@ -221,38 +517,42 @@ void abi_MovePlayerX(void)
  * Entry: nothing. Exit: A the position's high byte, or PlayerMayLeaveTop if it was read;
  * N and Z from A, C and V from the add. X and Y kept.
  */
-Alu MovePlayerY(void)
+AxisMove MovePlayerY(void)
 {
-    uint8_t a = rd8(OBJ_VY_LO);
-    uint8_t b = rd8(OBJ_Y_FRAC);
-    Alu r = adc8(a, b, false);
+    AxisMove move;
+    uint32_t after;
 
-    wr8(OBJ_Y_FRAC, r.a);
-    a = rd8(OBJ_VY_HI);
-    b = rd8(OBJ_Y_LO);
-    r = adc8(a, b, r.c);
-    wr8(OBJ_Y_LO, r.a);
-    a = rd8(OBJ_VY_HI);
-    a = (a & 0x80) ? 0xFF : 0x00;
-    b = rd8(OBJ_Y_HI);
-    r = adc8(a, b, r.c);
-    wr8(OBJ_Y_HI, r.a);
-    if (r.a & 0x80) {
-        uint8_t may_leave = rd8(PlayerMayLeaveTop);
+    move.velocity = (int16_t)read16(OBJ_VY_LO, OBJ_VY_HI);
+    move.before = read16(OBJ_Y_FRAC, OBJ_Y_LO) | ((uint32_t)rd8(OBJ_Y_HI) << 16);
+    after = move.before + (uint32_t)(int32_t)move.velocity;
+    write16(OBJ_Y_FRAC, OBJ_Y_LO, (uint16_t)after);
+    wr8(OBJ_Y_HI, (uint8_t)(after >> 16));
+    if ((after & 0x800000) && rd8(PlayerMayLeaveTop) == 0)
+        PlayerAtTop();
+    return move;
+}
 
-        alu_load(&r, may_leave);
-        if (may_leave == 0) {
-            wr8(OBJ_Y_LO, 0);
-            wr8(OBJ_Y_HI, 0);
-            wr8(OBJ_Y_FRAC, 0);
-        }
-    }
-    return r;
+/* C and V from the high byte's add; A that byte, or PlayerMayLeaveTop if it was read. */
+static Alu move_y_exit_shim(AxisMove move)
+{
+    uint32_t added = (uint32_t)(int32_t)move.velocity & 0xFFFFFF;
+    uint32_t sum = move.before + added;
+    uint8_t sign = (uint8_t)(added >> 16);
+    uint8_t high = (uint8_t)(move.before >> 16);
+    uint8_t result = (uint8_t)(sum >> 16);
+    Alu exit = { 0 };
+
+    exit.a = (result & 0x80) ? rd8(PlayerMayLeaveTop) : result;
+    exit.nz = exit.a;
+    exit.c = sum > 0xFFFFFF;
+    exit.v = (~(sign ^ high) & (sign ^ result) & 0x80) != 0;
+    exit.v_set = true;
+    return exit;
 }
 
 void abi_MovePlayerY(void)
 {
-    abi_alu(MovePlayerY());
+    abi_alu(move_y_exit_shim(MovePlayerY()));
 }
 
 /*
@@ -287,26 +587,40 @@ void abi_ScrollStepXFromPlayer(void)
  * Entry: nothing. Exit, not moving: A zero, Z set. Exit, moving up: A the speed's high
  * byte, C and V from MovePlayerY. Exit, moving down: as the overlay leaves them.
  */
-Alu MovePlayerYIfMoving(void)
+YMove MovePlayerYIfMoving(void)
 {
-    uint8_t low = rd8(OBJ_VY_LO);
-    uint8_t high = rd8(OBJ_VY_HI);
-    Alu r = alu_none();
+    YMove move = { Y_NOT_MOVING };
 
-    alu_load(&r, (uint8_t)(low | high));
-    if (r.a == 0)
-        return r;
-    r = MovePlayerY();
-    high = rd8(OBJ_VY_HI);
-    alu_load(&r, high);
-    if (high & 0x80)
-        return r;
-    return call_with(PlayerOvlFloor, r);
+    if ((rd8(OBJ_VY_LO) | rd8(OBJ_VY_HI)) == 0)
+        return move;
+    move.move = MovePlayerY();
+    if (rd8(OBJ_VY_HI) & 0x80) {
+        move.how = Y_UP;
+        return move;
+    }
+    move.how = Y_DOWN;
+    move.floor = PlayerFloor();
+    return move;
+}
+
+/* A and the flags as the steps left them, in the order the assembly made them. */
+static void y_move_exit_shim(YMove move)
+{
+    if (move.how == Y_NOT_MOVING) {
+        cpu.a = 0;
+        abi_nz(0);
+        return;
+    }
+    abi_alu(move_y_exit_shim(move.move));
+    cpu.a = rd8(OBJ_VY_HI);
+    abi_nz(cpu.a);
+    if (move.how == Y_DOWN)
+        floor_exit_shim(move.floor);
 }
 
 void abi_MovePlayerYIfMoving(void)
 {
-    abi_alu(MovePlayerYIfMoving());
+    y_move_exit_shim(MovePlayerYIfMoving());
 }
 
 /*
@@ -322,105 +636,82 @@ void abi_MovePlayerYIfMoving(void)
  * mode.
  * Entry: nothing. Exit: A and Y as the overlay leaves them, V too, X 7, N 0, Z 1, C 1.
  */
-Alu PlayerAndCameraFrame(void)
+ColumnsEnd PlayerAndCameraFrame(void)
 {
-    uint8_t vx_lo = rd8(OBJ_VX_LO);
-    uint8_t vx_hi = rd8(OBJ_VX_HI);
-    uint8_t vy_lo = rd8(OBJ_VY_LO);
-    uint8_t vy_hi = rd8(OBJ_VY_HI);
-    uint8_t a;
-    uint8_t b;
-    Alu r = alu_from_cpu();
+    uint16_t speed_x = read16(OBJ_VX_LO, OBJ_VX_HI);
+    uint16_t speed_y = read16(OBJ_VY_LO, OBJ_VY_HI);
+    ColumnsEnd moved;
 
-    alu_load(&r, vy_hi);
-    if (rd8(zPlayerPush) & PUSH_ADDS_X) {
-        a = rd8(OBJ_VX_LO);
-        b = rd8(zPushXLo);
-        r = adc8(a, b, false);
-        wr8(OBJ_VX_LO, r.a);
-        a = rd8(OBJ_VX_HI);
-        b = rd8(zPushXHi);
-        r = adc8(a, b, r.c);
-        wr8(OBJ_VX_HI, r.a);
-    }
+    if (rd8(zPlayerPush) & PUSH_ADDS_X)
+        write16(OBJ_VX_LO, OBJ_VX_HI, (uint16_t)(speed_x + read16(zPushXLo, zPushXHi)));
     if (rd8(zPlayerPush) & PUSH_ADDS_Y) {
-        a = rd8(OBJ_VY_LO);
-        b = rd8(zPushYLo);
-        r = adc8(a, b, false);
-        wr8(OBJ_VY_LO, r.a);
-        a = rd8(OBJ_VY_HI);
-        b = rd8(zPushYHi);
-        r = adc8(a, b, r.c);
-        wr8(OBJ_VY_HI, r.a);
-        cpu.x = rd8(PlayerAnchorObject);
-        a = rd8((uint16_t)(OBJ_Y_FRAC + cpu.x));
-        alu_load(&r, a);
-        wr8(ScrollYFrac, a);
-        wr8(OBJ_Y_FRAC, a);
+        uint8_t fraction = rd8((uint16_t)(OBJ_Y_FRAC + rd8(PlayerAnchorObject)));
+
+        write16(OBJ_VY_LO, OBJ_VY_HI, (uint16_t)(speed_y + read16(zPushYLo, zPushYHi)));
+        wr8(ScrollYFrac, fraction);
+        wr8(OBJ_Y_FRAC, fraction);
     }
     if (rd8(zPlayerPush) & PUSH_LIFTS_SCROLL) {
-        wr8(ScrollStepYLo, 0);
-        a = rd8(zPushYHi);
-        wr8(ScrollStepYHi, a);
-        a = (uint8_t)((a ^ 0xFF) + 1);
-        b = rd8(OBJ_Y_LO);
-        r = adc8(a, b, false);
-        wr8(OBJ_Y_LO, r.a);
+        uint8_t lift = rd8(zPushYHi);
+
+        write16(ScrollStepYLo, ScrollStepYHi, (uint16_t)(lift << 8));
+        wr8(OBJ_Y_LO, (uint8_t)(rd8(OBJ_Y_LO) - lift));
     } else {
-        r = RunCameraMode(r);
+        RunCameraMode();
     }
-    wr8(OBJ_VY_HI, vy_hi);
-    wr8(OBJ_VY_LO, vy_lo);
-    wr8(OBJ_VX_HI, vx_hi);
-    wr8(OBJ_VX_LO, vx_lo);
-    alu_load(&r, vx_lo);
-    r = call_with(PlayerOvlMoved, r);
-    cpu.x = PLAYER_PUSH_BYTES;
+    write16(OBJ_VY_LO, OBJ_VY_HI, speed_y);
+    write16(OBJ_VX_LO, OBJ_VX_HI, speed_x);
+    moved = PlayerMoved();
     for (unsigned i = 0; i < PLAYER_PUSH_BYTES; i++)
         wr8((uint16_t)(zPlayerPush + i), 0);
-    a = r.a;
-    alu_compare(&r, PLAYER_PUSH_BYTES, PLAYER_PUSH_BYTES);
-    r.a = a;
-    return r;
+    return moved;
 }
 
+/* A, Y and V from the overlay's step; the loop that clears the push leaves X, Z and C. */
 void abi_PlayerAndCameraFrame(void)
 {
-    abi_alu(PlayerAndCameraFrame());
+    columns_exit_shim(PlayerAndCameraFrame());
+    cpu.x = PLAYER_PUSH_BYTES;
+    abi_nz(0);
+    abi_flag(P_C, true);
+}
+
+/* One call to a camera mode with no C yet, with what the table's jump leaves. */
+static void camera_mode_original_shim(uint16_t handler, uint8_t mode)
+{
+    cpu.a = (uint8_t)(mode << 1);
+    cpu.x = cpu.a;
+    abi_nz(cpu.a);
+    abi_flag(P_C, (mode & 0x80) != 0);
+    call_original(handler);
 }
 
 /*
  * The camera mode's handler, from a table of 30 words by CameraMode. RTS from the
  * handler comes back to the caller of RunCameraMode.
  */
-Alu RunCameraMode(Alu r)
+static void RunCameraMode(void)
 {
     uint8_t mode = rd8(CameraMode);
-    uint8_t lo;
-    uint8_t hi;
-    uint16_t handler;
+    uint16_t entry = (uint16_t)(CameraModeHandlers + (uint8_t)(mode << 1));
+    uint16_t handler = read16(entry, (uint16_t)(entry + 1));
 
-    r.a = (uint8_t)(mode << 1);
-    alu_nz(&r, r.a);
-    r.c = (mode & 0x80) != 0;
-    r.c_kept = false;
-    cpu.x = r.a;
-    lo = rd8((uint16_t)(CameraModeHandlers + cpu.x));
-    hi = rd8((uint16_t)(CameraModeHandlers + cpu.x + 1));
-    handler = (uint16_t)(lo | (hi << 8));
-    abi_alu(r);
     switch (handler) {
     case 0x66C5:
-        return CameraModeCarried();
+        CameraModeCarried();
+        break;
     case 0x6722:
-        return CameraModeLeftWall();
+        CameraModeLeftWall();
+        break;
     case 0x678E:
-        return CameraModeFollow();
+        CameraModeFollow();
+        break;
     case 0x6A0F:
-        return CameraModeVertical();
+        CameraModeVertical();
+        break;
     default:
-        call_original(handler);
-        return alu_from_cpu();
+        camera_mode_original_shim(handler, mode);
+        break;
     }
 }
 
@@ -434,35 +725,32 @@ Alu RunCameraMode(Alu r)
  * Entry: cpu flags current. Exit: A and N, Z the last read; C and V as the moves left
  * them; X and Y as the overlay left them.
  */
-Alu CameraModeCarried(void)
+CarriedMode CameraModeCarried(void)
 {
-    Alu r;
-    uint8_t byte;
+    CarriedMode mode;
 
-    wr8(ScrollStepXLo, 0);
-    wr8(ScrollStepXHi, 0);
-    wr8(ScrollStepYLo, 0);
-    wr8(ScrollStepYHi, 0);
-    r = MovePlayerYIfMoving();
-    abi_alu(r);
-    r = PlayerXOnScreen();
-    if (rd8(zPlayerPush) & PUSH_ADDS_X)
-        return r;
-    byte = rd8(zPushXLo);
-    wr8(ScrollStepXLo, byte);
-    byte = rd8(zPushXHi);
-    wr8(ScrollStepXHi, byte);
-    byte = rd8(zPushYLo);
-    wr8(ScrollStepYLo, byte);
-    byte = rd8(zPushYHi);
-    wr8(ScrollStepYHi, byte);
-    alu_load(&r, byte);
-    return r;
+    write16(ScrollStepXLo, ScrollStepXHi, 0);
+    write16(ScrollStepYLo, ScrollStepYHi, 0);
+    mode.y = MovePlayerYIfMoving();
+    mode.x = PlayerXOnScreen();
+    mode.copied_push = !(rd8(zPlayerPush) & PUSH_ADDS_X);
+    if (mode.copied_push) {
+        write16(ScrollStepXLo, ScrollStepXHi, read16(zPushXLo, zPushXHi));
+        write16(ScrollStepYLo, ScrollStepYHi, read16(zPushYLo, zPushYHi));
+    }
+    return mode;
 }
 
 void abi_CameraModeCarried(void)
 {
-    abi_alu(CameraModeCarried());
+    CarriedMode mode = CameraModeCarried();
+
+    y_move_exit_shim(mode.y);
+    x_on_screen_exit_shim(mode.x);
+    if (mode.copied_push) {
+        cpu.a = rd8(zPushYHi);
+        abi_nz(cpu.a);
+    }
 }
 
 /*
@@ -473,23 +761,17 @@ void abi_CameraModeCarried(void)
  * HOW: The 8.8 sum, left in zTemp04-05.
  * Entry: nothing. Exit: A zTemp05, N, Z, C, V from its add. X and Y kept.
  */
-Alu PlayerNextX(void)
+WordPair PlayerNextX(void)
 {
-    uint8_t a = rd8(OBJ_VX_LO);
-    uint8_t b = rd8(OBJ_X_FRAC);
-    Alu r = adc8(a, b, false);
+    WordPair words = { read16(OBJ_VX_LO, OBJ_VX_HI), read16(OBJ_X_FRAC, OBJ_X_LO) };
 
-    wr8(zTemp04, r.a);
-    a = rd8(OBJ_VX_HI);
-    b = rd8(OBJ_X_LO);
-    r = adc8(a, b, r.c);
-    wr8(zTemp05, r.a);
-    return r;
+    write16(zTemp04, zTemp05, (uint16_t)(words.a + words.b));
+    return words;
 }
 
 void abi_PlayerNextX(void)
 {
-    abi_alu(PlayerNextX());
+    abi_alu(word_add_exit_shim(PlayerNextX()));
 }
 
 /*
@@ -500,32 +782,48 @@ void abi_PlayerNextX(void)
  * HOW: Compares the scroll's high byte with its limit, and the position with the range.
  * Entry: nothing. Exit: A and flags as the last compare or load left them. X, Y, V kept.
  */
-Alu CheckPlayerAtLevelEnd(void)
+void CheckPlayerAtLevelEnd(void)
 {
-    uint8_t a = rd8(ScrollXHiScreen);
-    uint8_t b = rd8(ScrollXMaxHi);
-    Alu r = { 0 };
+    uint8_t x = rd8(OBJ_X_LO);
 
-    alu_compare(&r, a, b);
-    if (a != b)
-        return r;
-    a = rd8(OBJ_X_LO);
-    alu_compare(&r, a, 0xC0);
-    if (a < 0xC0)
-        return r;
-    a = rd8(OBJ_X_LO);
-    alu_compare(&r, a, 0xEC);
-    if (a >= 0xEC)
-        return r;
-    wr8(OBJ_3510, 0xFF);
-    wr8(OBJ_3568, 0x20);
-    alu_load(&r, 0x20);
-    return r;
+    if (rd8(ScrollXHiScreen) == rd8(ScrollXMaxHi) && x >= LEVEL_END_FROM_X && x < LEVEL_END_TO_X) {
+        wr8(OBJ_3510, 0xFF);
+        wr8(OBJ_3568, LEVEL_END_TIMER);
+    }
+}
+
+/* A compare leaves A, N, Z and C; V stands. */
+static void compare_exit_shim(uint8_t a, uint8_t b)
+{
+    cpu.a = a;
+    abi_nz((uint8_t)(a - b));
+    abi_flag(P_C, a >= b);
+}
+
+/* A and the flags from the compare that decided, or the last load. V stands. */
+static void level_end_exit_shim(void)
+{
+    uint8_t scroll = rd8(ScrollXHiScreen);
+    uint8_t limit = rd8(ScrollXMaxHi);
+    uint8_t x = rd8(OBJ_X_LO);
+
+    if (scroll != limit) {
+        compare_exit_shim(scroll, limit);
+    } else if (x < LEVEL_END_FROM_X) {
+        compare_exit_shim(x, LEVEL_END_FROM_X);
+    } else {
+        compare_exit_shim(x, LEVEL_END_TO_X);
+        if (x < LEVEL_END_TO_X) {
+            cpu.a = LEVEL_END_TIMER;
+            abi_nz(LEVEL_END_TIMER);
+        }
+    }
 }
 
 void abi_CheckPlayerAtLevelEnd(void)
 {
-    abi_alu(CheckPlayerAtLevelEnd());
+    CheckPlayerAtLevelEnd();
+    level_end_exit_shim();
 }
 
 /*
@@ -539,80 +837,95 @@ void abi_CheckPlayerAtLevelEnd(void)
  * Entry: cpu flags current. Exit: A and flags as the path taken left them; X and Y as
  * the overlay left them or X the depth.
  */
-Alu CameraModeLeftWall(void)
+LeftWallMode CameraModeLeftWall(void)
 {
-    Alu r = CheckPlayerAtLevelEnd();
-    uint8_t high;
-    uint8_t low;
-    uint8_t depth;
-    uint8_t byte;
-    bool left;
+    LeftWallMode mode = { 0 };
 
-    r = alu_then(r, MovePlayerYIfMoving());
-    wr8(ScrollStepXLo, 0);
-    wr8(ScrollStepXHi, 0);
-    high = rd8(OBJ_VX_HI);
-    low = rd8(OBJ_VX_LO);
-    alu_load(&r, (uint8_t)(high | low));
-    if (r.a != 0) {
-        high = rd8(OBJ_VX_HI);
-        alu_load(&r, high);
-        left = (high & 0x80) != 0;
-    } else {
-        alu_tst(&r, PUSH_LEFT, rd8(zPlayerPush));
-        left = r.nz != 0;
-        if (!left) {
-            alu_tst(&r, PUSH_RIGHT, rd8(zPlayerPush));
-            if (r.nz == 0)
-                return r;
-        }
+    CheckPlayerAtLevelEnd();
+    mode.y = MovePlayerYIfMoving();
+    write16(ScrollStepXLo, ScrollStepXHi, 0);
+    mode.choice = choose_direction();
+    if (mode.choice.way == GOES_NOWHERE)
+        return mode;
+    if (mode.choice.way == GOES_RIGHT) {
+        mode.right = MovePlayerRightOrWall();
+        return mode;
     }
-    if (!left) {
-        abi_alu(r);
-        return MovePlayerRightOrWall();
-    }
-    cpu.y = 1;
-    alu_nz(&r, 1);
-    r = call_with(PlayerOvlWall, r);
-    if (r.nz == 0) {
-        r = PlayerNextX();
-        alu_compare(&r, r.a, PLAYER_MIN_X);
-        if (r.a <= PLAYER_MIN_X) {
+    mode.wall = PlayerWall(1);
+    if (!wall_found(mode.wall)) {
+        mode.next = PlayerNextX();
+        if (rd8(zTemp05) <= PLAYER_MIN_X) {
             PlayerAtLeftEdge();
-            alu_load(&r, PLAYER_MIN_X);
-            return r;
+            mode.how = LEFT_WALL_AT_EDGE;
+        } else {
+            PlayerXFromNextAlt();
+            mode.how = LEFT_WALL_MOVED;
         }
-        return PlayerXFromNextAlt(r);
+        return mode;
     }
-    byte = rd8(OBJ_27A8);
-    alu_compare(&r, byte, PLAYER_STATE_NO_WALL_PUSH);
-    if (byte == PLAYER_STATE_NO_WALL_PUSH) {
-        byte = rd8(OBJ_VY_HI);
-        alu_load(&r, byte);
-        if (!(byte & 0x80))
+    if (rd8(OBJ_27A8) == PLAYER_STATE_NO_WALL_PUSH) {
+        if (!(rd8(OBJ_VY_HI) & 0x80))
             StopPlayerX();
-        return r;
+        mode.how = LEFT_WALL_STOPPED;
+        return mode;
     }
-    depth = rd8(zTemp00);
-    cpu.x = depth;
-    byte = rd8((uint16_t)(WallLeftPush + depth));
-    low = rd8(OBJ_X_LO);
-    r = adc8(byte, low, false);
-    alu_compare(&r, r.a, PLAYER_MAX_X);
-    if (r.a >= PLAYER_MAX_X) {
+    mode.depth = rd8(zTemp00);
+    mode.push = rd8((uint16_t)(WallLeftPush + mode.depth));
+    mode.position = rd8(OBJ_X_LO);
+    if ((uint8_t)(mode.push + mode.position) >= PLAYER_MAX_X) {
         PlayerAtRightEdge();
-        alu_load(&r, PLAYER_MAX_X);
-        return r;
+        mode.how = LEFT_WALL_PAST_RIGHT;
+        return mode;
     }
-    wr8(OBJ_X_LO, r.a);
+    wr8(OBJ_X_LO, (uint8_t)(mode.push + mode.position));
     wr8(OBJ_X_FRAC, 0);
     StopPlayerX();
-    return r;
+    mode.how = LEFT_WALL_PUSHED;
+    return mode;
 }
 
 void abi_CameraModeLeftWall(void)
 {
-    abi_alu(CameraModeLeftWall());
+    LeftWallMode mode = CameraModeLeftWall();
+    uint8_t sum = (uint8_t)(mode.push + mode.position);
+
+    level_end_exit_shim();
+    y_move_exit_shim(mode.y);
+    choice_exit_shim(mode.choice);
+    if (mode.choice.way == GOES_NOWHERE)
+        return;
+    if (mode.choice.way == GOES_RIGHT) {
+        right_or_wall_exit_shim(mode.right);
+        return;
+    }
+    cpu.y = 1;
+    wall_exit_shim(mode.wall);
+    switch (mode.how) {
+    case LEFT_WALL_NOT_LEFT:
+        break;
+    case LEFT_WALL_AT_EDGE:
+    case LEFT_WALL_MOVED:
+        abi_alu(word_add_exit_shim(mode.next));
+        compare_exit_shim(rd8(zTemp05), PLAYER_MIN_X);
+        cpu.a = mode.how == LEFT_WALL_AT_EDGE ? PLAYER_MIN_X : rd8(zTemp05);
+        abi_nz(cpu.a);
+        break;
+    case LEFT_WALL_STOPPED:
+        abi_flag(P_C, true);
+        cpu.a = rd8(OBJ_VY_HI);
+        abi_nz(cpu.a);
+        break;
+    case LEFT_WALL_PAST_RIGHT:
+    case LEFT_WALL_PUSHED:
+        cpu.x = mode.depth;
+        abi_flag(P_V, add8_overflows(mode.push, mode.position));
+        compare_exit_shim(sum, PLAYER_MAX_X);
+        if (mode.how == LEFT_WALL_PAST_RIGHT) {
+            cpu.a = PLAYER_MAX_X;
+            abi_nz(PLAYER_MAX_X);
+        }
+        break;
+    }
 }
 
 /*
@@ -623,39 +936,31 @@ void abi_CameraModeLeftWall(void)
  * HOW: Follows the speed's sign, or bits 2 and 1 of zPlayerPush at no speed.
  * Entry: cpu flags current. Exit: A and flags as the path taken left them.
  */
-Alu CameraModeFollow(void)
+/* FollowMode holds how each step ended, as plain values: no flags pass through this body. */
+FollowMode CameraModeFollow(void)
 {
-    Alu r = MovePlayerYIfMoving();
-    uint8_t high;
-    uint8_t low;
+    FollowMode mode = { 0 };
 
-    wr8(ScrollStepXLo, 0);
-    wr8(ScrollStepXHi, 0);
-    high = rd8(OBJ_VX_HI);
-    low = rd8(OBJ_VX_LO);
-    alu_load(&r, (uint8_t)(high | low));
-    if (r.a != 0) {
-        high = rd8(OBJ_VX_HI);
-        alu_load(&r, high);
-        abi_alu(r);
-        return (high & 0x80) ? MovePlayerLeftOrWall() : MovePlayerRightOrWall();
-    }
-    alu_tst(&r, PUSH_LEFT, rd8(zPlayerPush));
-    if (r.nz != 0) {
-        abi_alu(r);
-        return MovePlayerLeftOrWall();
-    }
-    alu_tst(&r, PUSH_RIGHT, rd8(zPlayerPush));
-    if (r.nz != 0) {
-        abi_alu(r);
-        return MovePlayerRightOrWall();
-    }
-    return r;
+    mode.y = MovePlayerYIfMoving();
+    write16(ScrollStepXLo, ScrollStepXHi, 0);
+    mode.choice = choose_direction();
+    if (mode.choice.way == GOES_LEFT)
+        mode.left = MovePlayerLeftOrWall();
+    else if (mode.choice.way == GOES_RIGHT)
+        mode.right = MovePlayerRightOrWall();
+    return mode;
 }
 
 void abi_CameraModeFollow(void)
 {
-    abi_alu(CameraModeFollow());
+    FollowMode mode = CameraModeFollow();
+
+    y_move_exit_shim(mode.y);
+    choice_exit_shim(mode.choice);
+    if (mode.choice.way == GOES_LEFT)
+        left_or_wall_exit_shim(mode.left);
+    else if (mode.choice.way == GOES_RIGHT)
+        right_or_wall_exit_shim(mode.right);
 }
 
 /*
@@ -670,54 +975,78 @@ void abi_CameraModeFollow(void)
  * Entry: cpu flags current. Exit, no wall: A and flags as the overlay left them, Z set.
  * Exit, wall: A 1, N and Z from it.
  */
-Alu PlayerWallRight(void)
+/* After a wall: stop only, or push back unless that passes the edge or meets another wall. */
+static void push_from_wall(WallPush *push, uint8_t amount, uint8_t other_side)
 {
-    Alu r = alu_from_cpu();
-    uint8_t byte;
-    uint8_t position;
+    uint8_t moved;
 
-    cpu.y = 0;
-    r = call_with(PlayerOvlWall, r);
-    if (r.nz == 0)
-        return r;
-    byte = rd8(OBJ_27A8);
-    alu_compare(&r, byte, PLAYER_STATE_NO_WALL_PUSH);
-    if (byte == PLAYER_STATE_NO_WALL_PUSH) {
-        byte = rd8(OBJ_VY_HI);
-        alu_load(&r, byte);
-        if (!(byte & 0x80))
+    if (rd8(OBJ_27A8) == PLAYER_STATE_NO_WALL_PUSH) {
+        if (!(rd8(OBJ_VY_HI) & 0x80))
             StopPlayerX();
-    } else {
-        byte = rd8(zTemp00);
-        byte = (uint8_t)((byte ^ 0xFF) + 1);
-        position = rd8(OBJ_X_LO);
-        r = adc8(byte, position, false);
-        alu_compare(&r, r.a, PLAYER_MIN_X);
-        if (r.a < PLAYER_MIN_X) {
-            PlayerAtLeftEdge();
-        } else {
-            position = rd8(OBJ_X_LO);
-            cpu.x = position;
-            wr8(OBJ_X_LO, r.a);
-            wr8(OBJ_X_FRAC, 0);
-            StopPlayerX();
-            wr8(zPlayerPush, 0);
-            cpu.y = 1;
-            alu_nz(&r, 1);
-            r = call_with(PlayerOvlWall, r);
-            cpu.x = position;
-            alu_load(&r, r.a);
-            if (r.a != 0)
-                wr8(OBJ_X_LO, position);
-        }
+        push->how = WALL_STOPPED_ONLY;
+        return;
     }
-    alu_load(&r, 1);
-    return r;
+    push->amount = amount;
+    push->position = rd8(OBJ_X_LO);
+    moved = (uint8_t)(amount + push->position);
+    if (push->leftward ? moved >= PLAYER_MAX_X : moved < PLAYER_MIN_X) {
+        if (push->leftward)
+            PlayerAtRightEdge();
+        else
+            PlayerAtLeftEdge();
+        push->how = WALL_PAST_EDGE;
+        return;
+    }
+    wr8(OBJ_X_LO, moved);
+    wr8(OBJ_X_FRAC, 0);
+    StopPlayerX();
+    wr8(zPlayerPush, 0);
+    push->second = PlayerWall(other_side);
+    if (wall_answer(push->second) != 0)
+        wr8(OBJ_X_LO, push->position);
+    push->how = WALL_PUSHED_BACK;
+}
+
+/* Registers and flags as the steps of a wall push left them, in the assembly's order. */
+static void wall_push_exit_shim(WallPush push)
+{
+    cpu.y = push.leftward ? 1 : 0;
+    wall_exit_shim(push.first);
+    if (push.how == WALL_NOT_THERE)
+        return;
+    switch (push.how) {
+    case WALL_STOPPED_ONLY:
+        abi_flag(P_C, true);
+        break;
+    case WALL_PAST_EDGE:
+        abi_flag(P_C, push.leftward);
+        abi_flag(P_V, add8_overflows(push.amount, push.position));
+        if (push.leftward)
+            cpu.x = rd8(zTemp00);
+        break;
+    default:
+        cpu.y = push.leftward ? 0 : 1;
+        wall_exit_shim(push.second);
+        cpu.x = push.position;
+        break;
+    }
+    cpu.a = 1;
+    abi_nz(1);
+}
+
+WallPush PlayerWallRight(void)
+{
+    WallPush push = { WALL_NOT_THERE };
+
+    push.first = PlayerWall(0);
+    if (wall_found(push.first))
+        push_from_wall(&push, (uint8_t)(0u - rd8(zTemp00)), 1);
+    return push;
 }
 
 void abi_PlayerWallRight(void)
 {
-    abi_alu(PlayerWallRight());
+    wall_push_exit_shim(PlayerWallRight());
 }
 
 /*
@@ -727,30 +1056,35 @@ void abi_PlayerWallRight(void)
  * HOW: PlayerWallRight, then MovePlayerRight.
  * Entry: cpu flags current. Exit: as the one that ran last.
  */
-Alu MovePlayerRightOrWall(void)
+RightOrWall MovePlayerRightOrWall(void)
 {
-    Alu r = PlayerWallRight();
+    RightOrWall result = { 0 };
 
-    if (r.nz != 0)
-        return r;
-    return right_move_exit_shim(MovePlayerRight());
+    result.wall = PlayerWallRight();
+    if (result.wall.how == WALL_NOT_THERE) {
+        result.moved = true;
+        result.move = MovePlayerRight();
+    }
+    return result;
+}
+
+static void right_or_wall_exit_shim(RightOrWall result)
+{
+    wall_push_exit_shim(result.wall);
+    if (result.moved)
+        abi_alu(right_move_exit_shim(result.move));
 }
 
 void abi_MovePlayerRightOrWall(void)
 {
-    abi_alu(MovePlayerRightOrWall());
+    right_or_wall_exit_shim(MovePlayerRightOrWall());
 }
 
 /* The position worked out in zTemp04-05 becomes the player's. */
-static Alu from_next(const Axis *axis, Alu r)
+static void position_from_next(const Axis *axis)
 {
-    uint8_t byte = rd8(zTemp04);
-
-    wr8(axis->pos_frac, byte);
-    byte = rd8(zTemp05);
-    wr8(axis->pos_lo, byte);
-    alu_load(&r, byte);
-    return r;
+    wr8(axis->pos_frac, rd8(zTemp04));
+    wr8(axis->pos_lo, rd8(zTemp05));
 }
 
 /*
@@ -760,141 +1094,50 @@ static Alu from_next(const Axis *axis, Alu r)
  * HOW: Copies zTemp04-05 to the position.
  * Entry: zTemp04-05. Exit: A zTemp05, N and Z from it. X, Y, C, V kept.
  */
+void PlayerXFromNext(void)
+{
+    position_from_next(&axis_x);
+}
+
 void abi_PlayerXFromNext(void)
 {
-    abi_alu(from_next(&axis_x, alu_from_cpu()));
+    PlayerXFromNext();
+    cpu.a = rd8(zTemp05);
+    abi_nz(cpu.a);
 }
 
-/* A scroll position against a limit: the high in A, the low in zTemp03. */
-static Alu compare_with_limit(uint8_t high, uint16_t limit_hi, uint16_t limit_lo)
+/* A scroll position against a limit: the high byte given, the low in zTemp03. */
+static bool scroll_reaches_limit(uint8_t high, uint16_t limit_hi, uint16_t limit_lo)
 {
-    uint8_t byte = rd8(limit_hi);
-    Alu r = { 0 };
-
-    alu_compare(&r, high, byte);
-    if (high != byte)
-        return r;
-    high = rd8(zTemp03);
-    byte = rd8(limit_lo);
-    alu_compare(&r, high, byte);
-    return r;
+    return (uint16_t)((high << 8) | rd8(zTemp03)) >= read16(limit_lo, limit_hi);
 }
 
-/* At the screen's middle or past it, by the position itself. */
-static Alu position_past_middle(const Axis *axis)
+/* A and N, Z, C from the compare that decided: the high bytes, or on equal the low. */
+static void limit_exit_shim(uint8_t high, uint16_t limit_hi, uint16_t limit_lo)
 {
-    uint8_t byte = rd8(axis->pos_lo);
-    Alu r = { 0 };
+    uint8_t a = high;
+    uint8_t b = rd8(limit_hi);
 
-    alu_compare(&r, byte, SCREEN_MIDDLE);
-    if (byte == SCREEN_MIDDLE) {
-        byte = rd8(axis->pos_frac);
-        alu_load(&r, byte);
+    if (a == b) {
+        a = rd8(zTemp03);
+        b = rd8(limit_lo);
     }
-    return r;
+    cpu.a = a;
+    abi_nz((uint8_t)(a - b));
+    abi_flag(P_C, a >= b);
 }
 
-/* What is left of the move goes to the scroll: the step is the amount past the middle. */
-static Alu step_from_amount(const Axis *axis, Alu r)
+/* A and N, Z from the compare with the middle, or at the middle from the fraction read. */
+static void middle_exit_shim(uint8_t high, uint16_t frac)
 {
-    uint8_t byte = rd8(zTemp00);
-
-    wr8(axis->step_lo, byte);
-    byte = rd8(zTemp01);
-    wr8(axis->step_hi, byte);
-    alu_load(&r, byte);
-    return r;
-}
-
-/*
- * The scroll takes a forward move. Before the limit it takes all of what is past the
- * middle; at the limit only what reaches it, and the player the rest.
- */
-static Alu scroll_forward(const Axis *axis, Alu r)
-{
-    uint8_t a;
-    uint8_t b;
-    Alu sum;
-
-    a = rd8(axis->scroll_lo);
-    wr8(zTemp03, a);
-    a = rd8(axis->scroll_hi);
-    r = alu_then(r, compare_with_limit(a, axis->limit_hi, axis->limit_lo));
-    if (r.nz == 0) {
-        r = from_next(axis, r);
-        if (axis->pos_hi_forward) {
-            a = rd8(zTemp06);
-            wr8(axis->pos_hi_forward, a);
-            alu_load(&r, a);
-        }
-        return r;
-    }
-    r = alu_then(r, NextPastMiddleAmount());
-    r = alu_then(r, position_past_middle(axis));
-    if (r.c) {
-        a = rd8(axis->vel_lo);
-        wr8(zTemp00, a);
-        b = rd8(axis->scroll_frac);
-        sum = adc8(a, b, false);
-        wr8(zTemp02, sum.a);
-        a = rd8(axis->vel_hi);
-        wr8(zTemp01, a);
-        b = rd8(axis->scroll_lo);
-        sum = adc8(a, b, sum.c);
-        wr8(zTemp03, sum.a);
-        b = rd8(axis->scroll_hi);
-        sum = adc8(0, b, sum.c);
-        sum = alu_then(sum, compare_with_limit(sum.a, axis->limit_hi, axis->limit_lo));
-        if (!sum.c)
-            return step_from_amount(axis, sum);
+    if (high == SCREEN_MIDDLE) {
+        cpu.a = rd8(frac);
+        abi_nz(cpu.a);
     } else {
-        a = rd8(zTemp00);
-        b = rd8(axis->scroll_frac);
-        sum = adc8(a, b, false);
-        wr8(zTemp02, sum.a);
-        a = rd8(zTemp01);
-        b = rd8(axis->scroll_lo);
-        sum = adc8(a, b, sum.c);
-        wr8(zTemp03, sum.a);
-        b = rd8(axis->scroll_hi);
-        sum = adc8(0, b, sum.c);
-        sum = alu_then(sum, compare_with_limit(sum.a, axis->limit_hi, axis->limit_lo));
-        if (!sum.c) {
-            wr8(axis->pos_lo, SCREEN_MIDDLE);
-            wr8(axis->pos_frac, 0);
-            return step_from_amount(axis, sum);
-        }
+        cpu.a = high;
+        abi_nz((uint8_t)(high - SCREEN_MIDDLE));
     }
-    b = rd8(axis->scroll_frac);
-    sum = sbc8(0, b, true);
-    wr8(axis->step_lo, sum.a);
-    a = rd8(axis->limit_lo);
-    b = rd8(axis->scroll_lo);
-    sum = sbc8(a, b, sum.c);
-    wr8(axis->step_hi, sum.a);
-    a = rd8(zTemp04);
-    b = rd8(axis->step_lo);
-    sum = sbc8(a, b, true);
-    wr8(axis->pos_frac, sum.a);
-    a = rd8(zTemp05);
-    b = rd8(axis->step_hi);
-    sum = sbc8(a, b, sum.c);
-    wr8(axis->pos_lo, sum.a);
-    return sum;
-}
-
-/* Words of plain RAM, by where their two bytes are. */
-static uint16_t read16(uint16_t lo, uint16_t hi)
-{
-    uint8_t low = rd8(lo);
-
-    return (uint16_t)(low | (rd8(hi) << 8));
-}
-
-static void write16(uint16_t lo, uint16_t hi, uint16_t value)
-{
-    wr8(lo, (uint8_t)value);
-    wr8(hi, (uint8_t)(value >> 8));
+    abi_flag(P_C, high >= SCREEN_MIDDLE);
 }
 
 static void set_player_x(uint16_t x)
@@ -1005,22 +1248,15 @@ void abi_PlayerAtRightEdge(void)
  * Entry: zTemp05. Exit: C the answer; A and N, Z from the last read or compare. X, Y, V
  * kept.
  */
-Alu NextPastMiddle(void)
+bool NextPastMiddle(void)
 {
-    uint8_t byte = rd8(zTemp05);
-    Alu r = { 0 };
-
-    alu_compare(&r, byte, SCREEN_MIDDLE);
-    if (byte == SCREEN_MIDDLE) {
-        byte = rd8(OBJ_X_FRAC);
-        alu_load(&r, byte);
-    }
-    return r;
+    return rd8(zTemp05) >= SCREEN_MIDDLE;
 }
 
 void abi_NextPastMiddle(void)
 {
-    abi_alu(NextPastMiddle());
+    NextPastMiddle();
+    middle_exit_shim(rd8(zTemp05), OBJ_X_FRAC);
 }
 
 /*
@@ -1031,22 +1267,17 @@ void abi_NextPastMiddle(void)
  * HOW: A read and a branch.
  * Entry: zTemp04. Exit: A zTemp04, N and Z from it; C set if not zero, else kept.
  */
-Alu NextFractionSet(void)
+bool NextFractionSet(void)
 {
-    uint8_t byte = rd8(zTemp04);
-    Alu r = alu_none();
-
-    alu_load(&r, byte);
-    if (byte != 0) {
-        r.c = true;
-        r.c_kept = false;
-    }
-    return r;
+    return rd8(zTemp04) != 0;
 }
 
 void abi_NextFractionSet(void)
 {
-    abi_alu(NextFractionSet());
+    if (NextFractionSet())
+        abi_flag(P_C, true);
+    cpu.a = rd8(zTemp04);
+    abi_nz(cpu.a);
 }
 
 /*
@@ -1056,14 +1287,15 @@ void abi_NextFractionSet(void)
  * HOW: As NextPastMiddle, on the position.
  * Entry: nothing. Exit: as NextPastMiddle.
  */
-Alu PlayerXPastMiddle(void)
+bool PlayerXPastMiddle(void)
 {
-    return position_past_middle(&axis_x);
+    return rd8(OBJ_X_LO) >= SCREEN_MIDDLE;
 }
 
 void abi_PlayerXPastMiddle(void)
 {
-    abi_alu(PlayerXPastMiddle());
+    PlayerXPastMiddle();
+    middle_exit_shim(rd8(OBJ_X_LO), OBJ_X_FRAC);
 }
 
 /*
@@ -1073,21 +1305,17 @@ void abi_PlayerXPastMiddle(void)
  * HOW: Subtracts $8000 from zTemp04-05, into zTemp00-01.
  * Entry: zTemp04-05. Exit: A zTemp01, N, Z, C, V from its subtract. X and Y kept.
  */
-Alu NextPastMiddleAmount(void)
+WordPair NextPastMiddleAmount(void)
 {
-    uint8_t byte = rd8(zTemp04);
-    Alu r = sbc8(byte, 0x00, true);
+    WordPair words = { read16(zTemp04, zTemp05), (uint16_t)(SCREEN_MIDDLE << 8) };
 
-    wr8(zTemp00, r.a);
-    byte = rd8(zTemp05);
-    r = sbc8(byte, SCREEN_MIDDLE, r.c);
-    wr8(zTemp01, r.a);
-    return r;
+    write16(zTemp00, zTemp01, (uint16_t)(words.a - words.b));
+    return words;
 }
 
 void abi_NextPastMiddleAmount(void)
 {
-    abi_alu(NextPastMiddleAmount());
+    abi_alu(word_subtract_exit_shim(NextPastMiddleAmount()));
 }
 
 /*
@@ -1097,14 +1325,15 @@ void abi_NextPastMiddleAmount(void)
  * HOW: High bytes, then on equal low bytes.
  * Entry: A high, zTemp03 low. Exit: A and N, Z, C from the last compare. X, Y, V kept.
  */
-Alu CompareScrollWithRightLimit(uint8_t high)
+bool CompareScrollWithRightLimit(uint8_t high)
 {
-    return compare_with_limit(high, ScrollXMaxHi, ScrollXMaxLo);
+    return scroll_reaches_limit(high, ScrollXMaxHi, ScrollXMaxLo);
 }
 
 void abi_CompareScrollWithRightLimit(void)
 {
-    abi_alu(CompareScrollWithRightLimit(cpu.a));
+    CompareScrollWithRightLimit(cpu.a);
+    limit_exit_shim(cpu.a, ScrollXMaxHi, ScrollXMaxLo);
 }
 
 /*
@@ -1116,55 +1345,19 @@ void abi_CompareScrollWithRightLimit(void)
  * HOW: As PlayerWallRight, with Y 1 then Y 0.
  * Entry: cpu flags current. Exit: as PlayerWallRight.
  */
-Alu PlayerWallLeft(void)
+WallPush PlayerWallLeft(void)
 {
-    Alu r = alu_from_cpu();
-    uint8_t byte;
-    uint8_t position;
+    WallPush push = { WALL_NOT_THERE, true };
 
-    cpu.y = 1;
-    alu_nz(&r, 1);
-    r = call_with(PlayerOvlWall, r);
-    if (r.nz == 0)
-        return r;
-    byte = rd8(OBJ_27A8);
-    alu_compare(&r, byte, PLAYER_STATE_NO_WALL_PUSH);
-    if (byte == PLAYER_STATE_NO_WALL_PUSH) {
-        byte = rd8(OBJ_VY_HI);
-        alu_load(&r, byte);
-        if (!(byte & 0x80))
-            StopPlayerX();
-    } else {
-        cpu.x = rd8(zTemp00);
-        byte = rd8((uint16_t)(WallLeftPush + cpu.x));
-        position = rd8(OBJ_X_LO);
-        r = adc8(byte, position, false);
-        alu_compare(&r, r.a, PLAYER_MAX_X);
-        if (r.a >= PLAYER_MAX_X) {
-            PlayerAtRightEdge();
-        } else {
-            position = rd8(OBJ_X_LO);
-            cpu.x = position;
-            wr8(OBJ_X_LO, r.a);
-            wr8(OBJ_X_FRAC, 0);
-            StopPlayerX();
-            wr8(zPlayerPush, 0);
-            cpu.y = 0;
-            alu_nz(&r, 0);
-            r = call_with(PlayerOvlWall, r);
-            cpu.x = position;
-            alu_load(&r, r.a);
-            if (r.a != 0)
-                wr8(OBJ_X_LO, position);
-        }
-    }
-    alu_load(&r, 1);
-    return r;
+    push.first = PlayerWall(1);
+    if (wall_found(push.first))
+        push_from_wall(&push, rd8((uint16_t)(WallLeftPush + rd8(zTemp00))), 0);
+    return push;
 }
 
 void abi_PlayerWallLeft(void)
 {
-    abi_alu(PlayerWallLeft());
+    wall_push_exit_shim(PlayerWallLeft());
 }
 
 /*
@@ -1174,18 +1367,28 @@ void abi_PlayerWallLeft(void)
  * HOW: PlayerWallLeft, then MovePlayerLeft.
  * Entry: cpu flags current. Exit: as the one that ran last.
  */
-Alu MovePlayerLeftOrWall(void)
+LeftOrWall MovePlayerLeftOrWall(void)
 {
-    Alu r = PlayerWallLeft();
+    LeftOrWall result = { 0 };
 
-    if (r.nz != 0)
-        return r;
-    return MovePlayerLeft();
+    result.wall = PlayerWallLeft();
+    if (result.wall.how == WALL_NOT_THERE) {
+        result.moved = true;
+        result.move = MovePlayerLeft();
+    }
+    return result;
+}
+
+static void left_or_wall_exit_shim(LeftOrWall result)
+{
+    wall_push_exit_shim(result.wall);
+    if (result.moved)
+        back_exit_shim(result.move);
 }
 
 void abi_MovePlayerLeftOrWall(void)
 {
-    abi_alu(MovePlayerLeftOrWall());
+    left_or_wall_exit_shim(MovePlayerLeftOrWall());
 }
 
 /*
@@ -1195,14 +1398,28 @@ void abi_MovePlayerLeftOrWall(void)
  * HOW: Copies zTemp04-05 to the position.
  * Entry: zTemp04-05. Exit: A zTemp05, N and Z from it. X, Y, C, V kept.
  */
-Alu PlayerXFromNextAlt(Alu r)
+void PlayerXFromNextAlt(void)
 {
-    return from_next(&axis_x, r);
+    position_from_next(&axis_x);
 }
 
 void abi_PlayerXFromNextAlt(void)
 {
-    abi_alu(PlayerXFromNextAlt(alu_from_cpu()));
+    PlayerXFromNextAlt();
+    cpu.a = rd8(zTemp05);
+    abi_nz(cpu.a);
+}
+
+/* The scroll takes the step: at the middle the player sits there, and the step is the amount. */
+static void step_scroll_back(const Axis *axis, BackMove *move)
+{
+    if (move->at_middle) {
+        write16(axis->pos_frac, axis->pos_lo, (uint16_t)(SCREEN_MIDDLE << 8));
+        move->step = read16(zTemp00, zTemp01);
+    } else {
+        move->step = read16(axis->vel_lo, axis->vel_hi);
+    }
+    write16(axis->step_lo, axis->step_hi, move->step);
 }
 
 /*
@@ -1210,75 +1427,41 @@ void abi_PlayerXFromNextAlt(void)
  * scroll takes the move, down to its start, and then the player the rest. A scroll
  * already at its start leaves it all to the player.
  */
-static Alu scroll_back(const Axis *axis, Alu r)
+static BackMove scroll_back(const Axis *axis, BackMove move)
 {
-    uint8_t a = rd8(axis->scroll_hi);
-    uint8_t b = rd8(axis->min_hi);
-    bool at_middle;
-    bool to_step;
-    Alu sum;
+    uint8_t lowest = rd8(axis->min_hi);
+    uint16_t scroll = read16(axis->scroll_frac, axis->scroll_lo);
+    uint16_t taken;
+    uint16_t sum;
 
-    alu_compare(&r, a, b);
-    if (a != b) {
-        r = alu_then(r, position_past_middle(axis));
-        sum = r;
-        at_middle = r.c;
-        to_step = true;
-    } else {
-        a = rd8(axis->scroll_frac);
-        b = rd8(axis->scroll_lo);
-        alu_load(&r, (uint8_t)(a | b));
-        if (r.a == 0)
-            return from_next(axis, r);
-        r = alu_then(r, position_past_middle(axis));
-        at_middle = r.c;
-        if (at_middle) {
-            a = rd8(zTemp00);
-            b = rd8(axis->scroll_frac);
-        } else {
-            a = rd8(axis->vel_lo);
-            b = rd8(axis->scroll_frac);
-        }
-        sum = adc8(a, b, false);
-        wr8(zTemp02, sum.a);
-        a = rd8(at_middle ? zTemp01 : axis->vel_hi);
-        b = rd8(axis->scroll_lo);
-        sum = adc8(a, b, sum.c);
-        wr8(zTemp03, sum.a);
-        b = rd8(axis->scroll_hi);
-        sum = adc8(0xFF, b, sum.c);
-        b = rd8(axis->min_hi);
-        alu_compare(&sum, sum.a, b);
-        to_step = sum.a == b;
+    write16(zTemp00, zTemp01, (uint16_t)(move.next - 0x8000));
+    move.page = rd8(axis->scroll_hi);
+    move.at_middle = rd8(axis->pos_lo) >= SCREEN_MIDDLE;
+    if (move.page != lowest) {
+        step_scroll_back(axis, &move);
+        move.how = BACK_STEP_FAR;
+        return move;
     }
-    if (to_step) {
-        if (at_middle) {
-            wr8(axis->pos_lo, SCREEN_MIDDLE);
-            wr8(axis->pos_frac, 0);
-            return step_from_amount(axis, sum);
-        }
-        a = rd8(axis->vel_lo);
-        wr8(axis->step_lo, a);
-        a = rd8(axis->vel_hi);
-        wr8(axis->step_hi, a);
-        alu_load(&sum, a);
-        return sum;
+    if (scroll == 0) {
+        position_from_next(axis);
+        move.how = BACK_AT_START;
+        return move;
     }
-    b = rd8(axis->scroll_frac);
-    sum = sbc8(0, b, true);
-    wr8(axis->step_lo, sum.a);
-    b = rd8(axis->scroll_lo);
-    sum = sbc8(0, b, sum.c);
-    wr8(axis->step_hi, sum.a);
-    a = rd8(axis->pos_frac);
-    b = rd8(axis->back_add_lo);
-    sum = adc8(a, b, false);
-    wr8(axis->pos_frac, sum.a);
-    a = rd8(axis->pos_lo);
-    b = rd8(axis->back_add_hi);
-    sum = adc8(a, b, sum.c);
-    wr8(axis->pos_lo, sum.a);
-    return sum;
+    taken = move.at_middle ? read16(zTemp00, zTemp01) : read16(axis->vel_lo, axis->vel_hi);
+    sum = (uint16_t)(scroll + taken);
+    move.carried = sum < scroll;
+    write16(zTemp02, zTemp03, sum);
+    if ((uint8_t)(0xFF + move.page + (move.carried ? 1 : 0)) == lowest) {
+        step_scroll_back(axis, &move);
+        move.how = BACK_STEP_NEAR;
+        return move;
+    }
+    write16(axis->step_lo, axis->step_hi, (uint16_t)(0u - scroll));
+    move.position = read16(axis->pos_frac, axis->pos_lo);
+    move.added = read16(axis->back_add_lo, axis->back_add_hi);
+    write16(axis->pos_frac, axis->pos_lo, (uint16_t)(move.position + move.added));
+    move.how = BACK_BOTH;
+    return move;
 }
 
 /*
@@ -1290,26 +1473,32 @@ static Alu scroll_back(const Axis *axis, Alu r)
  * Entry: nothing. Exit: A, flags as the last step left them. X and Y kept. Clobbers
  * zTemp00-05.
  */
-Alu MovePlayerLeft(void)
+BackMove MovePlayerLeft(void)
 {
-    Alu r = PlayerNextX();
+    BackMove move = { 0 };
+    uint8_t high;
 
-    alu_compare(&r, r.a, PLAYER_MIN_X);
-    if (r.a <= PLAYER_MIN_X) {
+    move.speed = read16(OBJ_VX_LO, OBJ_VX_HI);
+    move.from = read16(OBJ_X_FRAC, OBJ_X_LO);
+    move.next = (uint16_t)(move.speed + move.from);
+    high = (uint8_t)(move.next >> 8);
+    write16(zTemp04, zTemp05, move.next);
+    if (high <= PLAYER_MIN_X) {
         PlayerAtLeftEdge();
-        alu_load(&r, PLAYER_MIN_X);
-        return r;
+        move.how = BACK_AT_EDGE;
+        return move;
     }
-    r = alu_then(r, NextPastMiddle());
-    if (r.c)
-        return from_next(&axis_x, r);
-    r = alu_then(r, NextPastMiddleAmount());
-    return scroll_back(&axis_x, r);
+    if (high >= SCREEN_MIDDLE) {
+        position_from_next(&axis_x);
+        move.how = BACK_PLAYER;
+        return move;
+    }
+    return scroll_back(&axis_x, move);
 }
 
 void abi_MovePlayerLeft(void)
 {
-    abi_alu(MovePlayerLeft());
+    back_exit_shim(MovePlayerLeft());
 }
 
 /*
@@ -1342,34 +1531,47 @@ void abi_PlayerAtLeftEdge(void)
  * speed's sign. The first floor answer not zero means no move.
  * Entry: cpu flags current. Exit: A and flags as the path taken left them.
  */
-Alu CameraModeVertical(void)
+VerticalMode CameraModeVertical(void)
 {
-    Alu r = PlayerXOnScreen();
-    uint8_t high;
-    uint8_t low;
+    VerticalMode mode = { 0 };
 
-    wr8(ScrollStepYHi, 0);
-    wr8(ScrollStepYLo, 0);
-    high = rd8(OBJ_VY_HI);
-    low = rd8(OBJ_VY_LO);
-    alu_load(&r, (uint8_t)(high | low));
-    if (r.a == 0)
+    mode.x = PlayerXOnScreen();
+    write16(ScrollStepYLo, ScrollStepYHi, 0);
+    if ((rd8(OBJ_VY_HI) | rd8(OBJ_VY_LO)) == 0)
         wr8(ScrollYFrac, 0);
-    high = rd8(OBJ_VY_HI);
-    alu_load(&r, high);
-    if (high & 0x80)
-        return MovePlayerUp();
-    r = call_with(PlayerOvlFloor, r);
-    if (r.nz != 0)
-        return r;
-    r = MovePlayerDown();
+    if (rd8(OBJ_VY_HI) & 0x80) {
+        mode.how = VERTICAL_UP;
+        mode.up = MovePlayerUp();
+        return mode;
+    }
+    mode.floor_before = PlayerFloor();
+    if (floor_answer(mode.floor_before) != 0) {
+        mode.how = VERTICAL_FLOOR_FIRST;
+        return mode;
+    }
+    mode.how = VERTICAL_DOWN;
+    mode.down = MovePlayerDown();
     wr8(zPlayerPush, 0);
-    return call_with(PlayerOvlFloor, r);
+    mode.floor_after = PlayerFloor();
+    return mode;
 }
 
 void abi_CameraModeVertical(void)
 {
-    abi_alu(CameraModeVertical());
+    VerticalMode mode = CameraModeVertical();
+
+    x_on_screen_exit_shim(mode.x);
+    cpu.a = rd8(OBJ_VY_HI);
+    abi_nz(cpu.a);
+    if (mode.how == VERTICAL_UP) {
+        back_exit_shim(mode.up);
+        return;
+    }
+    floor_exit_shim(mode.floor_before);
+    if (mode.how == VERTICAL_DOWN) {
+        down_exit_shim(mode.down);
+        floor_exit_shim(mode.floor_after);
+    }
 }
 
 /*
@@ -1381,7 +1583,7 @@ void abi_CameraModeVertical(void)
  */
 void abi_MovePlayerYIfMovingGoTo(void)
 {
-    abi_alu(MovePlayerYIfMoving());
+    abi_MovePlayerYIfMoving();
 }
 
 /*
@@ -1421,49 +1623,62 @@ void abi_PlayerStopAtLeftEdge(void)
  * wall checks.
  * Entry: cpu flags current. Exit: A and flags as the path taken left them.
  */
-Alu PlayerXOnScreen(void)
+OnScreen PlayerXOnScreen(void)
 {
-    uint8_t low = rd8(OBJ_VX_LO);
-    uint8_t high = rd8(OBJ_VX_HI);
-    Alu r = alu_from_cpu();
-    bool left;
+    OnScreen screen = { 0 };
+    uint8_t x;
 
-    alu_load(&r, (uint8_t)(low | high));
-    if (r.a != 0) {
-        high = rd8(OBJ_VX_HI);
-        alu_load(&r, high);
-        left = (high & 0x80) != 0;
-    } else {
-        alu_tst(&r, PUSH_LEFT, rd8(zPlayerPush));
-        left = r.nz != 0;
-        if (!left) {
-            alu_tst(&r, PUSH_RIGHT, rd8(zPlayerPush));
-            if (r.nz == 0)
-                return r;
-        }
+    screen.choice = choose_direction();
+    if (screen.choice.way == GOES_NOWHERE) {
+        screen.how = ON_SCREEN_STAYED;
+        return screen;
     }
-    abi_alu(r);
-    r = left ? PlayerWallLeft() : PlayerWallRight();
-    if (r.nz != 0)
-        return r;
-    r = MovePlayerX();
-    alu_compare(&r, r.a, PLAYER_MAX_X);
-    if (r.a >= PLAYER_MAX_X) {
+    screen.wall = screen.choice.way == GOES_LEFT ? PlayerWallLeft() : PlayerWallRight();
+    if (screen.wall.how != WALL_NOT_THERE) {
+        screen.how = ON_SCREEN_WALLED;
+        return screen;
+    }
+    screen.move = MovePlayerX();
+    x = rd8(OBJ_X_LO);
+    if (x >= PLAYER_MAX_X) {
         PlayerAtRightEdge();
-        alu_load(&r, PLAYER_MAX_X);
-        return r;
-    }
-    alu_compare(&r, r.a, PLAYER_MIN_X);
-    if (r.a < PLAYER_MIN_X) {
+        screen.how = ON_SCREEN_RIGHT_EDGE;
+    } else if (x < PLAYER_MIN_X) {
         PlayerAtLeftEdge();
-        alu_load(&r, PLAYER_MIN_X);
+        screen.how = ON_SCREEN_LEFT_EDGE;
+    } else {
+        screen.how = ON_SCREEN_MOVED;
     }
-    return r;
+    return screen;
+}
+
+static void x_on_screen_exit_shim(OnScreen screen)
+{
+    uint8_t x = (uint8_t)((uint16_t)(screen.move.a + screen.move.b) >> 8);
+
+    choice_exit_shim(screen.choice);
+    if (screen.how == ON_SCREEN_STAYED)
+        return;
+    wall_push_exit_shim(screen.wall);
+    if (screen.how == ON_SCREEN_WALLED)
+        return;
+    abi_alu(word_add_exit_shim(screen.move));
+    compare_exit_shim(x, PLAYER_MAX_X);
+    if (screen.how == ON_SCREEN_RIGHT_EDGE) {
+        cpu.a = PLAYER_MAX_X;
+        abi_nz(PLAYER_MAX_X);
+        return;
+    }
+    compare_exit_shim(x, PLAYER_MIN_X);
+    if (screen.how == ON_SCREEN_LEFT_EDGE) {
+        cpu.a = PLAYER_MIN_X;
+        abi_nz(PLAYER_MIN_X);
+    }
 }
 
 void abi_PlayerXOnScreen(void)
 {
-    abi_alu(PlayerXOnScreen());
+    x_on_screen_exit_shim(PlayerXOnScreen());
 }
 
 /*
@@ -1473,14 +1688,17 @@ void abi_PlayerXOnScreen(void)
  * HOW: Copies it to the position.
  * Entry: zTemp04-06. Exit: A the high byte, N and Z from it. X, Y, C, V kept.
  */
+void PlayerYFromNextWord(void)
+{
+    position_from_next(&axis_y);
+    wr8(OBJ_Y_HI, rd8(zTemp06));
+}
+
 void abi_PlayerYFromNextWord(void)
 {
-    Alu r = from_next(&axis_y, alu_from_cpu());
-    uint8_t byte = rd8(zTemp06);
-
-    wr8(OBJ_Y_HI, byte);
-    alu_load(&r, byte);
-    abi_alu(r);
+    PlayerYFromNextWord();
+    cpu.a = rd8(zTemp06);
+    abi_nz(cpu.a);
 }
 
 /*
@@ -1492,39 +1710,60 @@ void abi_PlayerYFromNextWord(void)
  * Entry: nothing. Exit: A, flags as the last step left them. X and Y kept. Clobbers
  * zTemp00-06.
  */
-Alu MovePlayerDown(void)
+/* zTemp00-06 hold the sums here because the routine leaves them: they are RAM it must end with. */
+DownMove MovePlayerDown(void)
 {
-    uint8_t a;
-    uint8_t b;
-    Alu r;
+    DownMove move = { 0 };
+    uint16_t speed = read16(OBJ_VY_LO, OBJ_VY_HI);
+    uint16_t from = read16(OBJ_Y_FRAC, OBJ_Y_LO);
+    uint16_t limit = read16(ScrollYMaxLo, ScrollYMaxHi);
+    uint16_t scroll = read16(ScrollYFrac, ScrollYLo);
+    bool at_middle_already = rd8(OBJ_Y_LO) >= SCREEN_MIDDLE;
+    uint16_t taken;
+    uint16_t sum;
 
-    wr8(ScrollStepYLo, 0);
-    wr8(ScrollStepYHi, 0);
-    a = rd8(OBJ_VY_LO);
-    b = rd8(OBJ_Y_FRAC);
-    r = adc8(a, b, false);
-    wr8(zTemp04, r.a);
-    a = rd8(OBJ_VY_HI);
-    b = rd8(OBJ_Y_LO);
-    r = adc8(a, b, r.c);
-    wr8(zTemp05, r.a);
-    b = rd8(OBJ_Y_HI);
-    r = adc8(0, b, r.c);
-    wr8(zTemp06, r.a);
-    r = alu_then(r, NextPastMiddle());
-    if (!r.c) {
-        r = from_next(&axis_y, r);
-        a = rd8(zTemp06);
-        wr8(OBJ_Y_HI, a);
-        alu_load(&r, a);
-        return r;
+    write16(ScrollStepYLo, ScrollStepYHi, 0);
+    move.next = (uint16_t)(speed + from);
+    move.next_carried = move.next < speed;
+    move.high = rd8(OBJ_Y_HI);
+    move.next_page = (uint8_t)(move.high + (move.next_carried ? 1 : 0));
+    write16(zTemp04, zTemp05, move.next);
+    wr8(zTemp06, move.next_page);
+    if ((move.next >> 8) < SCREEN_MIDDLE) {
+        PlayerYFromNextWord();
+        move.how = DOWN_PLAYER;
+        return move;
     }
-    return scroll_forward(&axis_y, r);
+    wr8(zTemp03, (uint8_t)(scroll >> 8));
+    move.page = rd8(ScrollYHiScreen);
+    if ((uint16_t)((move.page << 8) | (scroll >> 8)) == limit) {
+        PlayerYFromNextWord();
+        move.how = DOWN_AT_LIMIT;
+        return move;
+    }
+    taken = at_middle_already ? speed : (uint16_t)(move.next - (SCREEN_MIDDLE << 8));
+    write16(zTemp00, zTemp01, taken);
+    sum = (uint16_t)(scroll + taken);
+    move.carried = sum < scroll;
+    write16(zTemp02, zTemp03, sum);
+    if ((uint16_t)(((uint8_t)(move.page + (move.carried ? 1 : 0)) << 8) | (sum >> 8)) < limit) {
+        if (!at_middle_already)
+            write16(OBJ_Y_FRAC, OBJ_Y_LO, (uint16_t)(SCREEN_MIDDLE << 8));
+        move.step = taken;
+        write16(ScrollStepYLo, ScrollStepYHi, taken);
+        move.how = DOWN_STEP;
+        return move;
+    }
+    move.step = (uint16_t)(((limit & 0xFF) << 8) - scroll);
+    write16(ScrollStepYLo, ScrollStepYHi, move.step);
+    write16(OBJ_Y_FRAC, OBJ_Y_LO, (uint16_t)(move.next - move.step));
+    move.how = DOWN_BOTH;
+    return move;
 }
 
 void abi_MovePlayerDown(void)
 {
-    abi_alu(MovePlayerDown());
+    down_exit_shim(MovePlayerDown());
 }
 
 /*
@@ -1534,14 +1773,15 @@ void abi_MovePlayerDown(void)
  * HOW: As PlayerXPastMiddle.
  * Entry: nothing. Exit: as NextPastMiddle.
  */
-Alu PlayerYPastMiddle(void)
+bool PlayerYPastMiddle(void)
 {
-    return position_past_middle(&axis_y);
+    return rd8(OBJ_Y_LO) >= SCREEN_MIDDLE;
 }
 
 void abi_PlayerYPastMiddle(void)
 {
-    abi_alu(PlayerYPastMiddle());
+    PlayerYPastMiddle();
+    middle_exit_shim(rd8(OBJ_Y_LO), OBJ_Y_FRAC);
 }
 
 /*
@@ -1551,14 +1791,15 @@ void abi_PlayerYPastMiddle(void)
  * HOW: High bytes, then on equal low bytes.
  * Entry: A high, zTemp03 low. Exit: A and N, Z, C from the last compare. X, Y, V kept.
  */
-Alu CompareScrollWithBottomLimit(uint8_t high)
+bool CompareScrollWithBottomLimit(uint8_t high)
 {
-    return compare_with_limit(high, ScrollYMaxHi, ScrollYMaxLo);
+    return scroll_reaches_limit(high, ScrollYMaxHi, ScrollYMaxLo);
 }
 
 void abi_CompareScrollWithBottomLimit(void)
 {
-    abi_alu(CompareScrollWithBottomLimit(cpu.a));
+    CompareScrollWithBottomLimit(cpu.a);
+    limit_exit_shim(cpu.a, ScrollYMaxHi, ScrollYMaxLo);
 }
 
 /*
@@ -1587,9 +1828,16 @@ void abi_PlayerAtTop(void)
  * HOW: Copies it to the position.
  * Entry: zTemp04-05. Exit: A zTemp05, N and Z from it. X, Y, C, V kept.
  */
+void PlayerYFromNext(void)
+{
+    position_from_next(&axis_y);
+}
+
 void abi_PlayerYFromNext(void)
 {
-    abi_alu(from_next(&axis_y, alu_from_cpu()));
+    PlayerYFromNext();
+    cpu.a = rd8(zTemp05);
+    abi_nz(cpu.a);
 }
 
 /*
@@ -1602,29 +1850,30 @@ void abi_PlayerYFromNext(void)
  * Entry: nothing. Exit: A, flags as the last step left them. X and Y kept. Clobbers
  * zTemp00-05.
  */
-Alu MovePlayerUp(void)
+BackMove MovePlayerUp(void)
 {
-    uint8_t a = rd8(OBJ_VY_LO);
-    uint8_t b = rd8(OBJ_Y_FRAC);
-    Alu r = adc8(a, b, false);
+    BackMove move = { 0 };
+    uint8_t high;
 
-    wr8(zTemp04, r.a);
-    a = rd8(OBJ_VY_HI);
-    b = rd8(OBJ_Y_LO);
-    r = adc8(a, b, r.c);
-    wr8(zTemp05, r.a);
-    if (r.a == 0 || !r.c) {
+    move.speed = read16(OBJ_VY_LO, OBJ_VY_HI);
+    move.from = read16(OBJ_Y_FRAC, OBJ_Y_LO);
+    move.next = (uint16_t)(move.speed + move.from);
+    high = (uint8_t)(move.next >> 8);
+    write16(zTemp04, zTemp05, move.next);
+    if (high == 0 || move.next >= move.speed) {
         PlayerAtTop();
-        return r;
+        move.how = BACK_AT_TOP;
+        return move;
     }
-    r = alu_then(r, NextPastMiddle());
-    if (r.c)
-        return from_next(&axis_y, r);
-    r = alu_then(r, NextPastMiddleAmount());
-    return scroll_back(&axis_y, r);
+    if (high >= SCREEN_MIDDLE) {
+        position_from_next(&axis_y);
+        move.how = BACK_PLAYER;
+        return move;
+    }
+    return scroll_back(&axis_y, move);
 }
 
 void abi_MovePlayerUp(void)
 {
-    abi_alu(MovePlayerUp());
+    back_exit_shim(MovePlayerUp());
 }

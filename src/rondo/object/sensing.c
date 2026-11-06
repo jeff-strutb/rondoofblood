@@ -1,4 +1,9 @@
-/* What an object can tell about the player and about the ground under it. */
+/*
+ * What an object can tell about the player and about the ground under it.
+ *
+ * A routine's body returns how it ended, as plain values. Its wrapper replays what those steps
+ * leave in the registers and flags, in the assembly's order, through the *_exit_shim functions.
+ */
 #include "machine.h"
 #include "ram.h"
 #include "routines.h"
@@ -10,29 +15,40 @@ enum {
 };
 /* Tile attributes the overlay's lookups leave in TileHit. */
 enum { TILE_SOLID_TOP = 0x21, TILE_SOLID_SIDE = 0x02, TILE_FLOOR_ANY = 0x01, TILE_DEADLY = 0x10 };
+enum {
+    GRAVITY = 0x38, FALL_LIMIT = 7, FLOOR_COLUMNS = 3, COLUMNS_ON_LEFT = 2, DEADLY_THROW = 0x40,
+    REQUEST_FLOOR_LIFT = 0x09, REQUEST_WALL_PUSH = 0x22
+};
 
 /* |object - player| on one axis as a byte, or $FF if not in the first screen. */
-static Alu axis_distance(uint8_t object, uint16_t high_field, uint16_t low_field)
+static PlayerDistance axis_distance(uint8_t object, uint16_t high_field, uint16_t low_field)
 {
-    uint8_t a = rd8((uint16_t)(high_field + object));
-    uint8_t b = rd8(high_field);
-    Alu r = { 0 };
+    PlayerDistance d = { 0xFF, true, false };
 
-    a |= b;
-    if (a != 0) {
-        r.a = 0xFF;
-        r.nz = 0xFF;
-        r.c_kept = true;
-        return r;
+    if ((rd8((uint16_t)(high_field + object)) | rd8(high_field)) == 0) {
+        uint8_t mine = rd8((uint16_t)(low_field + object));
+        uint8_t player = rd8(low_field);
+
+        d.far = false;
+        d.object_further = mine >= player;
+        d.distance = d.object_further ? (uint8_t)(mine - player) : (uint8_t)(player - mine);
     }
-    a = rd8((uint16_t)(low_field + object));
-    b = rd8(low_field);
-    r = sbc8(a, b, true);
-    if (!r.c) {
-        r.a = (uint8_t)(~r.a + 1);
-        r.nz = r.a;
+    return d;
+}
+
+/* A and N and Z from the distance; C and V from the subtract, if one was made. */
+static void distance_exit_shim(PlayerDistance d, uint16_t low_field)
+{
+    cpu.a = d.distance;
+    abi_nz(d.distance);
+    if (!d.far) {
+        uint8_t mine = rd8((uint16_t)(low_field + cpu.x));
+        uint8_t player = rd8(low_field);
+        uint8_t difference = (uint8_t)(mine - player);
+
+        abi_flag(P_C, d.object_further);
+        abi_flag(P_V, ((mine ^ player) & (mine ^ difference) & 0x80) != 0);
     }
-    return r;
 }
 
 /*
@@ -45,14 +61,14 @@ static Alu axis_distance(uint8_t object, uint16_t high_field, uint16_t low_field
  * further along, V from the subtract; when $FF, N 1, Z 0, C and V kept. X and Y
  * kept.
  */
-Alu DistanceXToPlayer(uint8_t object)
+PlayerDistance DistanceXToPlayer(uint8_t object)
 {
     return axis_distance(object, OBJ_X_HI, OBJ_X_LO);
 }
 
 void abi_DistanceXToPlayer(void)
 {
-    abi_alu(DistanceXToPlayer(cpu.x));
+    distance_exit_shim(DistanceXToPlayer(cpu.x), OBJ_X_LO);
 }
 
 /*
@@ -63,14 +79,20 @@ void abi_DistanceXToPlayer(void)
  * HOW: The same, on the Y position.
  * Entry: X object. Exit: as DistanceXToPlayer.
  */
-Alu DistanceYToPlayer(uint8_t object)
+PlayerDistance DistanceYToPlayer(uint8_t object)
 {
     return axis_distance(object, OBJ_Y_HI, OBJ_Y_LO);
 }
 
 void abi_DistanceYToPlayer(void)
 {
-    abi_alu(DistanceYToPlayer(cpu.x));
+    distance_exit_shim(DistanceYToPlayer(cpu.x), OBJ_Y_LO);
+}
+
+/* A high byte decides by its sign; zero compares the low byte with the player's. */
+static bool before_player(uint8_t high, uint8_t mine, uint8_t player)
+{
+    return high != 0 ? (high & 0x80) != 0 : mine < player;
 }
 
 /*
@@ -84,45 +106,27 @@ void abi_DistanceYToPlayer(void)
  * Entry: X object. Exit: A the bits, N and Z from it, C from the last compare
  * made, else kept. zTemp00 bit 0. X, Y and V kept.
  */
-Alu SideOfPlayer(uint8_t object)
+uint8_t SideOfPlayer(uint8_t object)
 {
-    uint8_t high = rd8((uint16_t)(OBJ_X_HI + object));
-    bool before;
-    Alu r = { 0 };
+    uint8_t sides = before_player(rd8((uint16_t)(OBJ_X_HI + object)),
+                                  rd8((uint16_t)(OBJ_X_LO + object)), rd8(OBJ_X_LO)) ? 1 : 0;
 
-    r.c_kept = true;
-    if (high != 0) {
-        before = (high & 0x80) != 0;
-    } else {
-        uint8_t mine = rd8((uint16_t)(OBJ_X_LO + object));
-        uint8_t player = rd8(OBJ_X_LO);
-
-        r.c = mine >= player;
-        r.c_kept = false;
-        before = !r.c;
-    }
-    wr8(zTemp00, before ? 1 : 0);
-    high = rd8((uint16_t)(OBJ_Y_HI + object));
-    if (high != 0) {
-        before = (high & 0x80) != 0;
-    } else {
-        uint8_t mine = rd8((uint16_t)(OBJ_Y_LO + object));
-        uint8_t player = rd8(OBJ_Y_LO);
-
-        r.c = mine >= player;
-        r.c_kept = false;
-        before = !r.c;
-    }
-    r.a = rd8(zTemp00);
-    if (before)
-        r.a |= 0x02;
-    r.nz = r.a;
-    return r;
+    wr8(zTemp00, sides);
+    if (before_player(rd8((uint16_t)(OBJ_Y_HI + object)),
+                      rd8((uint16_t)(OBJ_Y_LO + object)), rd8(OBJ_Y_LO)))
+        sides |= 2;
+    return sides;
 }
 
+/* C from the last compare the assembly made: an axis compares only if its high byte is 0. */
 void abi_SideOfPlayer(void)
 {
-    abi_alu(SideOfPlayer(cpu.x));
+    cpu.a = SideOfPlayer(cpu.x);
+    abi_nz(cpu.a);
+    if (rd8((uint16_t)(OBJ_Y_HI + cpu.x)) == 0)
+        abi_flag(P_C, rd8((uint16_t)(OBJ_Y_LO + cpu.x)) >= rd8(OBJ_Y_LO));
+    else if (rd8((uint16_t)(OBJ_X_HI + cpu.x)) == 0)
+        abi_flag(P_C, rd8((uint16_t)(OBJ_X_LO + cpu.x)) >= rd8(OBJ_X_LO));
 }
 
 /*
@@ -133,24 +137,14 @@ void abi_SideOfPlayer(void)
  * Entry: X object. Exit: A the new low byte, C and V from its add, N and Z from it
  * or, on a carry, from the new high byte. X and Y kept.
  */
-Alu ApplyGravityUnlimited(uint8_t object)
+void ApplyGravityUnlimited(uint8_t object)
 {
-    uint8_t low = rd8((uint16_t)(OBJ_VY_LO + object));
-    Alu r = adc8(low, 0x38, false);
+    uint16_t lo = (uint16_t)(OBJ_VY_LO + object);
+    uint16_t hi = (uint16_t)(OBJ_VY_HI + object);
+    uint16_t speed = (uint16_t)((rd8(lo) | (rd8(hi) << 8)) + GRAVITY);
 
-    wr8((uint16_t)(OBJ_VY_LO + object), r.a);
-    if (r.c) {
-        uint8_t high = (uint8_t)(rd8((uint16_t)(OBJ_VY_HI + object)) + 1);
-
-        wr8((uint16_t)(OBJ_VY_HI + object), high);
-        r.nz = high;
-    }
-    return r;
-}
-
-void abi_ApplyGravityUnlimited(void)
-{
-    abi_alu(ApplyGravityUnlimited(cpu.x));
+    wr8(lo, (uint8_t)speed);
+    wr8(hi, (uint8_t)(speed >> 8));
 }
 
 /*
@@ -162,24 +156,48 @@ void abi_ApplyGravityUnlimited(void)
  * ApplyGravityUnlimited.
  * Entry: X object. Exit, at the limit: A the speed high, N and Z of A - 7, C 1.
  * Exit, gaining: as ApplyGravityUnlimited. X and Y kept.
+ * Returns whether the speed gained.
  */
-Alu ApplyGravity(uint8_t object)
+bool ApplyGravity(uint8_t object)
+{
+    int8_t high = (int8_t)rd8((uint16_t)(OBJ_VY_HI + object));
+
+    if (high >= FALL_LIMIT)
+        return false;
+    ApplyGravityUnlimited(object);
+    return true;
+}
+
+/* What the add, or at the limit the compare, leaves in A and the flags. V stands at the limit. */
+static void gravity_exit_shim(uint8_t object, bool gained)
 {
     uint8_t high = rd8((uint16_t)(OBJ_VY_HI + object));
-    Alu r = { 0 };
 
-    if (!(high & 0x80) && high >= 7) {
-        r.a = high;
-        r.nz = (uint8_t)(high - 7);
-        r.c = true;
-        return r;
+    if (gained) {
+        uint8_t low = rd8((uint16_t)(OBJ_VY_LO + object));
+        uint8_t before = (uint8_t)(low - GRAVITY);
+        bool carried = low < GRAVITY;
+
+        cpu.a = low;
+        abi_nz(carried ? high : low);
+        abi_flag(P_C, carried);
+        abi_flag(P_V, (~(before ^ GRAVITY) & (before ^ low) & 0x80) != 0);
+    } else {
+        cpu.a = high;
+        abi_nz((uint8_t)(high - FALL_LIMIT));
+        abi_flag(P_C, true);
     }
-    return ApplyGravityUnlimited(object);
+}
+
+void abi_ApplyGravityUnlimited(void)
+{
+    ApplyGravityUnlimited(cpu.x);
+    gravity_exit_shim(cpu.x, true);
 }
 
 void abi_ApplyGravity(void)
 {
-    abi_alu(ApplyGravity(cpu.x));
+    gravity_exit_shim(cpu.x, ApplyGravity(cpu.x));
 }
 
 /*
@@ -192,7 +210,7 @@ void abi_ApplyGravity(void)
  */
 void abi_LookUpTerrainBelow(void)
 {
-    call_original(OverlayTerrainLookup);
+    lookup_exit_shim(StageLookup(cpu.a, cpu.x, cpu.y));
 }
 
 /*
@@ -205,177 +223,182 @@ void abi_LookUpTerrainBelow(void)
  */
 void abi_LookUpTerrainBelowAlt(void)
 {
-    call_original(OverlayTerrainLookupAlt);
+    lookup_exit_shim(StageLookupAlt(cpu.a, cpu.x, cpu.y));
 }
 
-/*
- * A probe's state along its paths: what the assembly keeps in Y and the flags.
- * The overlay's lookups may leave C and V alone, so what came before them must
- * be in cpu when they are called.
- */
+/* What was done about a wall. */
+typedef enum { NO_PUSH, PUSHED_RIGHT, PUSHED_LEFT } WallPushed;
+
+/* How a probe went, step by step, for what the wrapper replays. */
 typedef struct {
     uint8_t object;
-    uint8_t y;
-    Alu last;
+    uint8_t column;
+    uint8_t answer;
+    bool floor_asked;
+    LookupEnd floor;
+    bool scanned;
+    uint8_t scanned_to;
+    bool lifted;
+    uint16_t lift_before, lift_amount;
+    bool wall_asked;
+    LookupEnd wall;
+    WallPushed pushed;
+    uint16_t push_before, push_amount;
 } Probe;
 
-static void run_lookup(Probe *p, uint16_t vector, uint8_t height)
+static void add_to_answer(uint8_t bits)
 {
-    abi_alu_flags(&p->last);
-    cpu.a = height;
-    abi_nz(height);
-    cpu.x = p->object;
-    cpu.y = p->y;
-    call_original(vector);
-    p->object = cpu.x;
-    p->y = cpu.y;
+    wr8(zProduct0, (uint8_t)(rd8(zProduct0) | bits));
 }
 
-static void or_answer(uint8_t bits)
-{
-    uint8_t answer = rd8(zProduct0);
-
-    wr8(zProduct0, (uint8_t)(answer | bits));
-}
-
-/* Is a wall bit set in the side the object is moving toward? Leaves Y on it. */
+/* Is a wall bit set in the side the object is moving toward? Leaves the column on it. */
 static bool wall_on_moving_side(Probe *p)
 {
-    uint8_t byte;
-
-    p->y = 0;
-    byte = rd8((uint16_t)(OBJ_VX_HI + p->object));
-    if (!(byte & 0x80))
-        p->y = 2;
-    byte = rd8((uint16_t)(TileHit + p->y));
-    if (byte & TILE_SOLID_SIDE)
+    p->column = (rd8((uint16_t)(OBJ_VX_HI + p->object)) & 0x80) ? 0 : COLUMNS_ON_LEFT;
+    if (rd8((uint16_t)(TileHit + p->column)) & TILE_SOLID_SIDE)
         return true;
-    p->y++;
-    byte = rd8((uint16_t)(TileHit + p->y));
-    return (byte & TILE_SOLID_SIDE) != 0;
+    p->column++;
+    return (rd8((uint16_t)(TileHit + p->column)) & TILE_SOLID_SIDE) != 0;
 }
 
 static void push_out_of_wall(Probe *p)
 {
-    uint8_t low;
-    uint8_t other;
+    uint16_t lo = (uint16_t)(OBJ_X_LO + p->object);
+    uint16_t hi = (uint16_t)(OBJ_X_HI + p->object);
 
-    if (p->y < 2) {
-        p->y = rd8((uint16_t)(TileDepthX + p->y));
-        low = rd8((uint16_t)(OBJ_X_LO + p->object));
-        other = rd8((uint16_t)(WallPushTable + p->y));
-        p->last = adc8(low, other, false);
-        wr8((uint16_t)(OBJ_X_LO + p->object), p->last.a);
-        if (p->last.c) {
-            low = (uint8_t)(rd8((uint16_t)(OBJ_X_HI + p->object)) + 1);
-            wr8((uint16_t)(OBJ_X_HI + p->object), low);
-        }
+    if (p->column < COLUMNS_ON_LEFT) {
+        uint8_t depth = rd8((uint16_t)(TileDepthX + p->column));
+        uint8_t push = rd8((uint16_t)(WallPushTable + depth));
+        uint8_t low = rd8(lo);
+
+        p->column = depth;
+        p->pushed = PUSHED_RIGHT;
+        p->push_before = low;
+        p->push_amount = push;
+        wr8(lo, (uint8_t)(low + push));
+        if (low + push > 0xFF)
+            wr8(hi, (uint8_t)(rd8(hi) + 1));
     } else {
-        low = rd8((uint16_t)(OBJ_X_LO + p->object));
-        other = rd8((uint16_t)(TileDepthX + p->y));
-        p->last = sbc8(low, other, true);
-        wr8((uint16_t)(OBJ_X_LO + p->object), p->last.a);
-        low = rd8((uint16_t)(OBJ_X_HI + p->object));
-        p->last = sbc8(low, 0, p->last.c);
-        wr8((uint16_t)(OBJ_X_HI + p->object), p->last.a);
+        uint16_t x = (uint16_t)(rd8(lo) | (rd8(hi) << 8));
+        uint16_t depth = rd8((uint16_t)(TileDepthX + p->column));
+        uint16_t pushed = (uint16_t)(x - depth);
+
+        p->pushed = PUSHED_LEFT;
+        p->push_before = x;
+        p->push_amount = depth;
+        wr8(lo, (uint8_t)pushed);
+        wr8(hi, (uint8_t)(pushed >> 8));
     }
 }
 
 /* The wall half of a probe, and its end: every probe finishes here. */
 static void probe_walls(Probe *p)
 {
-    uint8_t request = rd8(zTemp12);
-
-    if (request & PROBE_WALL) {
-        uint8_t height = rd8(zProduct1);
-
-        run_lookup(p, OverlayTerrainLookup, (uint8_t)(height + 1));
+    if (rd8(zTemp12) & PROBE_WALL) {
+        p->wall_asked = true;
+        p->wall = StageLookup((uint8_t)(rd8(zProduct1) + 1), p->object, p->column);
+        p->column = p->wall.column_after;
         if (wall_on_moving_side(p)) {
-            or_answer(PROBE_WALL);
-            request = rd8(zTemp12);
-            if (request & PROBE_WALL_PUSH)
+            add_to_answer(PROBE_WALL);
+            if (rd8(zTemp12) & PROBE_WALL_PUSH)
                 push_out_of_wall(p);
         }
     }
-    p->last.a = rd8(zProduct0);
-    p->last.nz = p->last.a;
-    abi_alu_flags(&p->last);
+    p->answer = rd8(zProduct0);
 }
 
 /* Standing on a floor: says so, and on request lifts the object onto it. */
 static void probe_floor_hit(Probe *p)
 {
-    uint8_t request;
+    add_to_answer(PROBE_FLOOR);
+    if (rd8(zTemp12) & PROBE_FLOOR_PUSH) {
+        uint16_t lo = (uint16_t)(OBJ_Y_LO + p->object);
+        uint16_t hi = (uint16_t)(OBJ_Y_HI + p->object);
+        uint16_t depth = (uint16_t)(int16_t)(int8_t)rd8((uint16_t)(TileDepthY + p->column));
+        uint16_t y = (uint16_t)(rd8(lo) | (rd8(hi) << 8));
+        uint16_t lifted = (uint16_t)(y - depth);
 
-    or_answer(PROBE_FLOOR);
-    request = rd8(zTemp12);
-    if (request & PROBE_FLOOR_PUSH) {
-        uint8_t depth = rd8((uint16_t)(TileDepthY + p->y));
-        uint8_t sign = (depth & 0x80) ? 0xFF : 0x00;
-        uint8_t byte;
-
-        wr8(zTemp00, sign);
-        byte = rd8((uint16_t)(OBJ_Y_LO + p->object));
-        depth = rd8((uint16_t)(TileDepthY + p->y));
-        p->last = sbc8(byte, depth, true);
-        wr8((uint16_t)(OBJ_Y_LO + p->object), p->last.a);
-        byte = rd8((uint16_t)(OBJ_Y_HI + p->object));
-        sign = rd8(zTemp00);
-        p->last = sbc8(byte, sign, p->last.c);
-        wr8((uint16_t)(OBJ_Y_HI + p->object), p->last.a);
+        p->lifted = true;
+        p->lift_before = y;
+        p->lift_amount = depth;
+        wr8(zTemp00, (uint8_t)(depth >> 8));
+        wr8(lo, (uint8_t)lifted);
+        wr8(hi, (uint8_t)(lifted >> 8));
     }
 }
 
 /* Deadly ground throws the object up at a fixed speed, with no X speed. */
-static void probe_deadly_hit(Probe *p)
+static void probe_deadly_hit(const Probe *p)
 {
     wr8((uint16_t)(OBJ_VX_HI + p->object), 0);
     wr8((uint16_t)(OBJ_VX_LO + p->object), 0);
     wr8((uint16_t)(OBJ_VY_HI + p->object), 0);
-    wr8((uint16_t)(OBJ_VY_LO + p->object), 0x40);
-    or_answer(PROBE_SPIKES_ANSWER);
+    wr8((uint16_t)(OBJ_VY_LO + p->object), DEADLY_THROW);
+    add_to_answer(PROBE_SPIKES_ANSWER);
 }
 
 /* Reads the three columns the lookup filled and acts on what is under them. */
 static void probe_read_floor(Probe *p)
 {
-    uint8_t all = rd8(TileHit);
-    uint8_t more = rd8(TileHit + 1);
+    uint8_t all = (uint8_t)(rd8(TileHit) | rd8(TileHit + 1) | rd8(TileHit + 2));
 
-    all |= more;
-    more = rd8(TileHit + 2);
-    all |= more;
     if (all & TILE_DEADLY) {
         probe_deadly_hit(p);
         return;
     }
-    p->y = 0;
-    do {
-        uint8_t hit = rd8((uint16_t)(TileHit + p->y));
-
-        if (hit & TILE_SOLID_TOP) {
-            probe_floor_hit(p);
-            return;
-        }
-        p->y++;
-    } while (p->y < 3);
-    p->last.c = true;
-    p->last.c_kept = false;
+    for (p->column = 0; p->column < FLOOR_COLUMNS; p->column++)
+        if (rd8((uint16_t)(TileHit + p->column)) & TILE_SOLID_TOP)
+            break;
+    p->scanned = true;
+    p->scanned_to = p->column;
+    if (p->column < FLOOR_COLUMNS)
+        probe_floor_hit(p);
 }
 
-static Probe probe_start(uint8_t request, uint8_t object, uint8_t y)
+static Probe probe_start(uint8_t request, uint8_t object, uint8_t column)
 {
-    Probe p = { object, y, { 0 } };
+    Probe p = { object, column };
 
     wr8(zProduct0, 0);
     wr8(zTemp12, request);
-    p.last.c_kept = true;
     return p;
 }
 
-static uint8_t probe_height(void)
+/* C and V from a word's subtract, as the lifts and the left push leave them. */
+static void word_subtract_shim(uint16_t before, uint16_t amount)
 {
-    return rd8(zProduct1);
+    uint16_t after = (uint16_t)(before - amount);
+
+    abi_flag(P_C, before >= amount);
+    abi_flag(P_V, ((before ^ amount) & (before ^ after) & 0x8000) != 0);
+}
+
+/* Registers and flags as a probe's steps leave them, in the assembly's order. */
+static void probe_exit_shim(Probe p)
+{
+    if (p.floor_asked) {
+        lookup_exit_shim(p.floor);
+        if (p.scanned && p.scanned_to > 0)
+            abi_flag(P_C, p.scanned_to >= FLOOR_COLUMNS);
+        if (p.lifted)
+            word_subtract_shim(p.lift_before, p.lift_amount);
+    }
+    if (p.wall_asked) {
+        lookup_exit_shim(p.wall);
+        if (p.pushed == PUSHED_RIGHT) {
+            uint8_t before = (uint8_t)p.push_before;
+            uint8_t amount = (uint8_t)p.push_amount;
+
+            abi_flag(P_C, before + amount > 0xFF);
+            abi_flag(P_V, (~(before ^ amount) & (before ^ (uint8_t)(before + amount)) & 0x80) != 0);
+        } else if (p.pushed == PUSHED_LEFT) {
+            word_subtract_shim(p.push_before, p.push_amount);
+        }
+    }
+    cpu.a = p.answer;
+    abi_nz(p.answer);
+    cpu.x = p.object;
+    cpu.y = p.column;
 }
 
 /*
@@ -390,28 +413,23 @@ static uint8_t probe_height(void)
  * Entry: A request, X object, zProduct1 probe height. Exit: A answer, N and Z from
  * it; Y, C and V as the path left them. Clobbers zTemp00, zTemp12, zProduct0.
  */
-Probe ProbeTerrain(uint8_t request, uint8_t object, uint8_t y)
+Probe ProbeTerrain(uint8_t request, uint8_t object, uint8_t column)
 {
-    Probe p = probe_start(request, object, y);
+    Probe p = probe_start(request, object, column);
 
     if (request & PROBE_FLOOR) {
-        run_lookup(&p, OverlayTerrainLookup, probe_height());
+        p.floor_asked = true;
+        p.floor = StageLookup(rd8(zProduct1), p.object, p.column);
+        p.column = p.floor.column_after;
         probe_read_floor(&p);
     }
     probe_walls(&p);
     return p;
 }
 
-static void abi_exit_probe(Probe p)
-{
-    abi_alu(p.last);
-    cpu.x = p.object;
-    cpu.y = p.y;
-}
-
 void abi_ProbeTerrain(void)
 {
-    abi_exit_probe(ProbeTerrain(cpu.a, cpu.x, cpu.y));
+    probe_exit_shim(ProbeTerrain(cpu.a, cpu.x, cpu.y));
 }
 
 /*
@@ -421,12 +439,14 @@ void abi_ProbeTerrain(void)
  * HOW: As ProbeTerrain.
  * Entry and exit: as ProbeTerrain.
  */
-Probe ProbeTerrainAlt(uint8_t request, uint8_t object, uint8_t y)
+Probe ProbeTerrainAlt(uint8_t request, uint8_t object, uint8_t column)
 {
-    Probe p = probe_start(request, object, y);
+    Probe p = probe_start(request, object, column);
 
     if (request & PROBE_FLOOR) {
-        run_lookup(&p, OverlayTerrainLookupAlt, probe_height());
+        p.floor_asked = true;
+        p.floor = StageLookupAlt(rd8(zProduct1), p.object, p.column);
+        p.column = p.floor.column_after;
         probe_read_floor(&p);
     }
     probe_walls(&p);
@@ -435,7 +455,7 @@ Probe ProbeTerrainAlt(uint8_t request, uint8_t object, uint8_t y)
 
 void abi_ProbeTerrainAlt(void)
 {
-    abi_exit_probe(ProbeTerrainAlt(cpu.a, cpu.x, cpu.y));
+    probe_exit_shim(ProbeTerrainAlt(cpu.a, cpu.x, cpu.y));
 }
 
 /*
@@ -446,21 +466,19 @@ void abi_ProbeTerrainAlt(void)
  * any floor bit is floor.
  * Entry and exit: as ProbeTerrain.
  */
-Probe ProbeTerrainFrontColumn(uint8_t request, uint8_t object, uint8_t y)
+Probe ProbeTerrainFrontColumn(uint8_t request, uint8_t object, uint8_t column)
 {
-    Probe p = probe_start(request, object, y);
+    Probe p = probe_start(request, object, column);
 
     if (request & PROBE_FLOOR) {
-        uint8_t hit;
-
-        run_lookup(&p, OverlayTerrainLookupAlt, probe_height());
-        hit = rd8(TileHit);
-        if (hit & TILE_DEADLY) {
+        p.floor_asked = true;
+        p.floor = StageLookupAlt(rd8(zProduct1), p.object, p.column);
+        p.column = p.floor.column_after;
+        if (rd8(TileHit) & TILE_DEADLY) {
             probe_deadly_hit(&p);
         } else {
-            p.y = 0;
-            hit = rd8(TileHit);
-            if (hit & TILE_FLOOR_ANY)
+            p.column = 0;
+            if (rd8(TileHit) & TILE_FLOOR_ANY)
                 probe_floor_hit(&p);
         }
     }
@@ -470,35 +488,51 @@ Probe ProbeTerrainFrontColumn(uint8_t request, uint8_t object, uint8_t y)
 
 void abi_ProbeTerrainFrontColumn(void)
 {
-    abi_exit_probe(ProbeTerrainFrontColumn(cpu.a, cpu.x, cpu.y));
+    probe_exit_shim(ProbeTerrainFrontColumn(cpu.a, cpu.x, cpu.y));
 }
 
-/* Standard requests the movers make. */
-enum { REQUEST_FLOOR_LIFT = 0x09, REQUEST_WALL_PUSH = 0x22 };
+/* How a mover's start went: the move and whether gravity gained. */
+typedef struct {
+    bool moved;
+    AxisMove move;
+    bool gained;
+} MoverStart;
 
-/* A mover's result: what it returns in A with C for hit a wall or floor. */
-static Alu mover_result(uint8_t value, bool carry, Probe p)
+/* How a mover went, for what the wrapper replays. */
+typedef struct {
+    uint8_t object;
+    MoverStart start;
+    bool floor_probed;
+    Probe floor;
+    Probe wall;
+    uint8_t hits;
+} Mover;
+
+static MoverStart mover_start(uint8_t height, uint8_t object)
 {
-    Alu r = p.last;
-
-    r.a = value;
-    r.nz = value;
-    r.c = carry;
-    r.c_kept = false;
-    return r;
-}
-
-static void mover_start(uint8_t height, uint8_t object)
-{
-    Alu step;
+    MoverStart start = { true };
 
     wr8(zProduct1, height);
-    step = ApplyVelocity(object);
-    abi_alu_flags(&step);
+    start.move = ApplyVelocity(object);
     wr8(WorkByteA, 0);
     wr8(WorkByteB, 0);
-    step = ApplyGravity(object);
-    abi_alu_flags(&step);
+    start.gained = ApplyGravity(object);
+    return start;
+}
+
+/* A the hits, and C says the bit asked about is among them. X and Y as the last probe left them. */
+static void mover_exit_shim(Mover mover, uint8_t carry_bit)
+{
+    if (mover.start.moved) {
+        axis_move_flags_shim(mover.start.move);
+        gravity_exit_shim(mover.object, mover.start.gained);
+    }
+    if (mover.floor_probed)
+        probe_exit_shim(mover.floor);
+    probe_exit_shim(mover.wall);
+    cpu.a = mover.hits;
+    abi_nz(mover.hits);
+    abi_flag(P_C, (mover.hits & carry_bit) != 0);
 }
 
 /*
@@ -511,61 +545,58 @@ static void mover_start(uint8_t height, uint8_t object)
  * Entry: A probe height, X object. Exit: A bit 0 landed, bit 1 walled; C 1 if
  * walled; N and Z from A. Y and V as the probes left them. X kept.
  */
-Alu MoveAndLand(uint8_t height, uint8_t object, uint8_t y, uint8_t *exit_y)
+Mover MoveAndLand(uint8_t height, uint8_t object, uint8_t column)
 {
-    uint8_t byte;
-    Probe p;
+    Mover mover = { object };
 
-    mover_start(height, object);
-    byte = rd8((uint16_t)(OBJ_VY_HI + object));
-    if (!(byte & 0x80)) {
-        p = ProbeTerrain(REQUEST_FLOOR_LIFT, object, y);
-        object = p.object;
-        y = p.y;
-        if (p.last.a & PROBE_FLOOR) {
-            byte = (uint8_t)(rd8(WorkByteB) + 1);
-            wr8(WorkByteB, byte);
+    mover.start = mover_start(height, object);
+    if (!(rd8((uint16_t)(OBJ_VY_HI + object)) & 0x80)) {
+        mover.floor_probed = true;
+        mover.floor = ProbeTerrain(REQUEST_FLOOR_LIFT, object, column);
+        column = mover.floor.column;
+        if (mover.floor.answer & PROBE_FLOOR) {
+            wr8(WorkByteB, (uint8_t)(rd8(WorkByteB) + 1));
             wr8((uint16_t)(OBJ_VY_HI + object), 0);
             wr8((uint16_t)(OBJ_VY_LO + object), 0);
         }
     }
-    p = ProbeTerrain(REQUEST_WALL_PUSH, object, y);
-    *exit_y = p.y;
-    byte = rd8(WorkByteB);
-    if (p.last.a & PROBE_WALL)
-        return mover_result((uint8_t)(byte | PROBE_WALL), true, p);
-    return mover_result(byte, false, p);
+    mover.wall = ProbeTerrain(REQUEST_WALL_PUSH, object, column);
+    mover.hits = rd8(WorkByteB);
+    if (mover.wall.answer & PROBE_WALL)
+        mover.hits |= PROBE_WALL;
+    return mover;
 }
 
 void abi_MoveAndLand(void)
 {
-    uint8_t y;
-
-    abi_alu(MoveAndLand(cpu.a, cpu.x, cpu.y, &y));
-    cpu.y = y;
+    mover_exit_shim(MoveAndLand(cpu.a, cpu.x, cpu.y), PROBE_WALL);
 }
 
-/* The end of the two movers below: the wall probe and stopping on landing. */
-static Alu mover_finish(uint8_t object, uint8_t y, uint8_t *exit_y)
+/* The end of the movers below: the wall probe and stopping on landing. */
+static void mover_finish(Mover *mover, uint8_t column)
 {
-    Probe p = ProbeTerrain(REQUEST_WALL_PUSH, object, y);
-    uint8_t byte;
-
-    object = p.object;
-    *exit_y = p.y;
-    byte = p.last.a & PROBE_WALL;
-    wr8(WorkByteB, byte);
-    byte = rd8(WorkByteA);
-    if (byte & PROBE_FLOOR) {
-        wr8((uint16_t)(OBJ_VX_HI + object), 0);
-        wr8((uint16_t)(OBJ_VX_LO + object), 0);
-        wr8((uint16_t)(OBJ_VY_HI + object), 0);
-        wr8((uint16_t)(OBJ_VY_LO + object), 0);
-        byte = rd8(WorkByteB);
-        return mover_result((uint8_t)(byte | PROBE_FLOOR), true, p);
+    mover->wall = ProbeTerrain(REQUEST_WALL_PUSH, mover->object, column);
+    mover->hits = mover->wall.answer & PROBE_WALL;
+    wr8(WorkByteB, mover->hits);
+    if (rd8(WorkByteA) & PROBE_FLOOR) {
+        wr8((uint16_t)(OBJ_VX_HI + mover->object), 0);
+        wr8((uint16_t)(OBJ_VX_LO + mover->object), 0);
+        wr8((uint16_t)(OBJ_VY_HI + mover->object), 0);
+        wr8((uint16_t)(OBJ_VY_LO + mover->object), 0);
+        mover->hits |= PROBE_FLOOR;
     }
-    byte = rd8(WorkByteB);
-    return mover_result(byte, false, p);
+}
+
+/* The floor probe when not rising, by the one given, then the end. */
+static void land_with(Mover *mover, Probe (*probe)(uint8_t, uint8_t, uint8_t), uint8_t column)
+{
+    if (!(rd8((uint16_t)(OBJ_VY_HI + mover->object)) & 0x80)) {
+        mover->floor_probed = true;
+        mover->floor = probe(REQUEST_FLOOR_LIFT, mover->object, column);
+        column = mover->floor.column;
+        wr8(WorkByteA, mover->floor.answer);
+    }
+    mover_finish(mover, column);
 }
 
 /*
@@ -579,26 +610,17 @@ static Alu mover_finish(uint8_t object, uint8_t y, uint8_t *exit_y)
  * landed, bit 1 walled; C 1 if landed; N and Z from A. Y and V as the probes left
  * them.
  */
-Alu StopOnLandingNoMove(uint8_t object, uint8_t y, uint8_t *exit_y)
+Mover StopOnLandingNoMove(uint8_t object, uint8_t column)
 {
-    uint8_t byte = rd8((uint16_t)(OBJ_VY_HI + object));
+    Mover mover = { object };
 
-    if (!(byte & 0x80)) {
-        Probe p = ProbeTerrainAlt(REQUEST_FLOOR_LIFT, object, y);
-
-        object = p.object;
-        y = p.y;
-        wr8(WorkByteA, p.last.a);
-    }
-    return mover_finish(object, y, exit_y);
+    land_with(&mover, ProbeTerrainAlt, column);
+    return mover;
 }
 
 void abi_StopOnLandingNoMove(void)
 {
-    uint8_t y;
-
-    abi_alu(StopOnLandingNoMove(cpu.x, cpu.y, &y));
-    cpu.y = y;
+    mover_exit_shim(StopOnLandingNoMove(cpu.x, cpu.y), PROBE_FLOOR);
 }
 
 /*
@@ -609,18 +631,18 @@ void abi_StopOnLandingNoMove(void)
  * HOW: The start of MoveAndLand, then runs into StopOnLandingNoMove.
  * Entry: A probe height, X object. Exit: as StopOnLandingNoMove.
  */
-Alu StopOnLanding(uint8_t height, uint8_t object, uint8_t y, uint8_t *exit_y)
+Mover StopOnLanding(uint8_t height, uint8_t object, uint8_t column)
 {
-    mover_start(height, object);
-    return StopOnLandingNoMove(object, y, exit_y);
+    Mover mover = { object };
+
+    mover.start = mover_start(height, object);
+    land_with(&mover, ProbeTerrainAlt, column);
+    return mover;
 }
 
 void abi_StopOnLanding(void)
 {
-    uint8_t y;
-
-    abi_alu(StopOnLanding(cpu.a, cpu.x, cpu.y, &y));
-    cpu.y = y;
+    mover_exit_shim(StopOnLanding(cpu.a, cpu.x, cpu.y), PROBE_FLOOR);
 }
 
 /*
@@ -630,26 +652,16 @@ void abi_StopOnLanding(void)
  * HOW: The same start, ProbeTerrainFrontColumn for the floor, the same end.
  * Entry: A probe height, X object. Exit: as StopOnLandingNoMove.
  */
-Alu StopOnLandingFrontColumn(uint8_t height, uint8_t object, uint8_t y, uint8_t *exit_y)
+Mover StopOnLandingFrontColumn(uint8_t height, uint8_t object, uint8_t column)
 {
-    uint8_t byte;
+    Mover mover = { object };
 
-    mover_start(height, object);
-    byte = rd8((uint16_t)(OBJ_VY_HI + object));
-    if (!(byte & 0x80)) {
-        Probe p = ProbeTerrainFrontColumn(REQUEST_FLOOR_LIFT, object, y);
-
-        object = p.object;
-        y = p.y;
-        wr8(WorkByteA, p.last.a);
-    }
-    return mover_finish(object, y, exit_y);
+    mover.start = mover_start(height, object);
+    land_with(&mover, ProbeTerrainFrontColumn, column);
+    return mover;
 }
 
 void abi_StopOnLandingFrontColumn(void)
 {
-    uint8_t y;
-
-    abi_alu(StopOnLandingFrontColumn(cpu.a, cpu.x, cpu.y, &y));
-    cpu.y = y;
+    mover_exit_shim(StopOnLandingFrontColumn(cpu.a, cpu.x, cpu.y), PROBE_FLOOR);
 }

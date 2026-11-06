@@ -1,34 +1,65 @@
 /* Object movement: velocity added to position, velocity turned round. */
 #include "machine.h"
 #include "ram.h"
+#include "routines.h"
 
-/* An 8.8 velocity, sign extended through zTemp10, added to a 16.8 position. */
-static Alu apply_axis(uint16_t velocity_hi, uint16_t velocity_lo, uint16_t frac,
-                      uint16_t low, uint16_t high)
+/* One object's fields on one axis, as addresses. */
+typedef struct {
+    uint16_t velocity_lo, velocity_hi, frac, low, high;
+} AxisFields;
+
+static AxisFields x_fields(uint8_t object)
 {
-    uint8_t a;
-    uint8_t b;
-    Alu r = { 0 };
+    AxisFields f = { (uint16_t)(OBJ_VX_LO + object), (uint16_t)(OBJ_VX_HI + object),
+                     (uint16_t)(OBJ_X_FRAC + object), (uint16_t)(OBJ_X_LO + object),
+                     (uint16_t)(OBJ_X_HI + object) };
 
-    wr8(zTemp10, 0);
-    a = rd8(velocity_hi);
-    if (a & 0x80) {
-        a = rd8(zTemp10);
-        wr8(zTemp10, (uint8_t)(a - 1));
-    }
-    a = rd8(velocity_lo);
-    b = rd8(frac);
-    r = adc8(a, b, false);
-    wr8(frac, r.a);
-    a = rd8(velocity_hi);
-    b = rd8(low);
-    r = adc8(a, b, r.c);
-    wr8(low, r.a);
-    a = rd8(zTemp10);
-    b = rd8(high);
-    r = adc8(a, b, r.c);
-    wr8(high, r.a);
-    return r;
+    return f;
+}
+
+static AxisFields y_fields(uint8_t object)
+{
+    AxisFields f = { (uint16_t)(OBJ_VY_LO + object), (uint16_t)(OBJ_VY_HI + object),
+                     (uint16_t)(OBJ_Y_FRAC + object), (uint16_t)(OBJ_Y_LO + object),
+                     (uint16_t)(OBJ_Y_HI + object) };
+
+    return f;
+}
+
+/* An 8.8 velocity added to a 16.8 position. zTemp10 is left as the velocity's sign. */
+static AxisMove apply_axis(AxisFields f)
+{
+    AxisMove move;
+    uint32_t after;
+
+    move.velocity = (int16_t)(rd8(f.velocity_lo) | (rd8(f.velocity_hi) << 8));
+    move.before = rd8(f.frac) | ((uint32_t)rd8(f.low) << 8) | ((uint32_t)rd8(f.high) << 16);
+    after = move.before + (uint32_t)(int32_t)move.velocity;
+    wr8(zTemp10, move.velocity < 0 ? 0xFF : 0x00);
+    wr8(f.frac, (uint8_t)after);
+    wr8(f.low, (uint8_t)(after >> 8));
+    wr8(f.high, (uint8_t)(after >> 16));
+    return move;
+}
+
+/* What the assembly's last add leaves in C and V, and in A: the position's high byte. */
+uint8_t axis_move_flags_shim(AxisMove move)
+{
+    uint32_t added = (uint32_t)(int32_t)move.velocity & 0xFFFFFF;
+    uint32_t sum = move.before + added;
+    uint8_t sign = (uint8_t)(added >> 16);
+    uint8_t high = (uint8_t)(move.before >> 16);
+    uint8_t result = (uint8_t)(sum >> 16);
+
+    abi_flag(P_C, sum > 0xFFFFFF);
+    abi_flag(P_V, (~(sign ^ high) & (sign ^ result) & 0x80) != 0);
+    return result;
+}
+
+static void axis_move_exit_shim(AxisMove move)
+{
+    cpu.a = axis_move_flags_shim(move);
+    abi_nz(cpu.a);
 }
 
 /*
@@ -40,16 +71,14 @@ static Alu apply_axis(uint16_t velocity_hi, uint16_t velocity_lo, uint16_t frac,
  * Entry: X object. Exit: A the position's high byte, N, Z, C and V from its add.
  * X and Y kept. Clobbers zTemp10.
  */
-Alu ApplyVelocityX(uint8_t object)
+AxisMove ApplyVelocityX(uint8_t object)
 {
-    return apply_axis((uint16_t)(OBJ_VX_HI + object), (uint16_t)(OBJ_VX_LO + object),
-                      (uint16_t)(OBJ_X_FRAC + object), (uint16_t)(OBJ_X_LO + object),
-                      (uint16_t)(OBJ_X_HI + object));
+    return apply_axis(x_fields(object));
 }
 
 void abi_ApplyVelocityX(void)
 {
-    abi_alu(ApplyVelocityX(cpu.x));
+    axis_move_exit_shim(ApplyVelocityX(cpu.x));
 }
 
 /*
@@ -59,16 +88,14 @@ void abi_ApplyVelocityX(void)
  * HOW: See apply_axis.
  * Entry: X object. Exit: as ApplyVelocityX. Clobbers zTemp10.
  */
-Alu ApplyVelocityY(uint8_t object)
+AxisMove ApplyVelocityY(uint8_t object)
 {
-    return apply_axis((uint16_t)(OBJ_VY_HI + object), (uint16_t)(OBJ_VY_LO + object),
-                      (uint16_t)(OBJ_Y_FRAC + object), (uint16_t)(OBJ_Y_LO + object),
-                      (uint16_t)(OBJ_Y_HI + object));
+    return apply_axis(y_fields(object));
 }
 
 void abi_ApplyVelocityY(void)
 {
-    abi_alu(ApplyVelocityY(cpu.x));
+    axis_move_exit_shim(ApplyVelocityY(cpu.x));
 }
 
 /*
@@ -78,7 +105,7 @@ void abi_ApplyVelocityY(void)
  * HOW: X, then runs into ApplyVelocityY.
  * Entry: X object. Exit: as ApplyVelocityY. Clobbers zTemp10.
  */
-Alu ApplyVelocity(uint8_t object)
+AxisMove ApplyVelocity(uint8_t object)
 {
     ApplyVelocityX(object);
     return ApplyVelocityY(object);
@@ -86,17 +113,30 @@ Alu ApplyVelocity(uint8_t object)
 
 void abi_ApplyVelocity(void)
 {
-    abi_alu(ApplyVelocity(cpu.x));
+    axis_move_exit_shim(ApplyVelocity(cpu.x));
 }
 
-static Alu negate_velocity(uint16_t lo, uint16_t hi)
+/* A velocity word replaced by its negative, which is returned. */
+static uint16_t negate_velocity(uint16_t lo, uint16_t hi)
 {
-    Alu r = adc8((uint8_t)~rd8(lo), 1, false);
+    uint16_t word = (uint16_t)(rd8(lo) | (rd8(hi) << 8));
+    uint16_t negated = (uint16_t)(0u - word);
 
-    wr8(lo, r.a);
-    r = adc8((uint8_t)~rd8(hi), 0, r.c);
-    wr8(hi, r.a);
-    return r;
+    wr8(lo, (uint8_t)negated);
+    wr8(hi, (uint8_t)(negated >> 8));
+    return negated;
+}
+
+/*
+ * The high byte's add leaves A and the flags. Its carry comes only from zero, and it
+ * overflows only on $8000: the two words that are their own negatives.
+ */
+static void negate_exit_shim(uint16_t negated)
+{
+    cpu.a = (uint8_t)(negated >> 8);
+    abi_nz(cpu.a);
+    abi_flag(P_C, negated == 0);
+    abi_flag(P_V, negated == 0x8000);
 }
 
 /*
@@ -106,14 +146,14 @@ static Alu negate_velocity(uint16_t lo, uint16_t hi)
  * HOW: Two's complement of the word, low byte first.
  * Entry: X object. Exit: A the high byte, N, Z, C and V from its add. X and Y kept.
  */
-Alu NegateVelocityX(uint8_t object)
+uint16_t NegateVelocityX(uint8_t object)
 {
     return negate_velocity((uint16_t)(OBJ_VX_LO + object), (uint16_t)(OBJ_VX_HI + object));
 }
 
 void abi_NegateVelocityX(void)
 {
-    abi_alu(NegateVelocityX(cpu.x));
+    negate_exit_shim(NegateVelocityX(cpu.x));
 }
 
 /*
@@ -123,12 +163,12 @@ void abi_NegateVelocityX(void)
  * HOW: Two's complement of the word, low byte first.
  * Entry: X object. Exit: as NegateVelocityX.
  */
-Alu NegateVelocityY(uint8_t object)
+uint16_t NegateVelocityY(uint8_t object)
 {
     return negate_velocity((uint16_t)(OBJ_VY_LO + object), (uint16_t)(OBJ_VY_HI + object));
 }
 
 void abi_NegateVelocityY(void)
 {
-    abi_alu(NegateVelocityY(cpu.x));
+    negate_exit_shim(NegateVelocityY(cpu.x));
 }

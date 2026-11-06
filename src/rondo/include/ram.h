@@ -222,6 +222,8 @@
 #define SoundDrvCommand 0xB284 /* takes a command in A */
 #define SoundDrvTick 0xB521 /* one frame of the driver */
 #define zPlayerPush 0x20C9 /* what pushes the player this frame: bits 4 and 5 add to the speed; bit 3 lifts the scroll; bits 2 and 1 force a wall check left or right */
+#define zFieldCA 0x20CA /* read by the floor check; its sign says a push does not lift the player */
+#define zPlayerPushDepth 0x20CB /* how deep a push counts as a wall */
 #define zPushXLo 0x20CC /* push along X */
 #define zPushXHi 0x20CD /* push along X */
 #define zPushYLo 0x20CE /* push along Y */
@@ -331,7 +333,7 @@
 #define zFieldC4 0x20C4 /* cleared on starting to climb */
 #define zFieldC6 0x20C6 /* cleared on a knockback or a jump */
 #define zFieldD3 0x20D3 /* cleared with the player's pad overrides */
-#define zField94 0x2094 /* set when the player starts */
+#define zField94 0x2094 /* hearts in BCD; set when the player starts */
 #define PlayerByte3BD5 0x3BD5 /* player state not yet identified */
 #define PlayerByte3BD6 0x3BD6 /* player state not yet identified */
 #define PlayerByte3BD7 0x3BD7 /* player state not yet identified */
@@ -376,5 +378,20 @@
 #define TileRowsE 0x9930 /* new rows for tile $90 by row and column */
 #define TileRowOffsets 0x9968 /* offsets by column for tiles $91-$93 */
 #define TerrainProbes 0xCBE0 /* pointers to each probe's column offsets in the overlay at sector $50D */
+#define RichterColumnOffsets 0xBB4D /* how far across a probe's column lies by column and facing */
+#define RichterWallReach 0xBB57 /* how far to the side a wall probe reads by side */
+#define RichterWallLift 0xBB59 /* height of each wall probe column low */
+#define RichterWallLiftHigh 0xBB5F /* height of each wall probe column high */
+#define RichterWallPushBits 0xBB65 /* the zPlayerPush bit that counts as a wall by side */
+#define RichterColumnHit 0x3BC3 /* the attribute each of the five columns read */
+#define RichterColumnRow 0x3BC8 /* how far into its tile each column read */
+#define RichterColumnX 0x3BCD /* the pixel across its tile each column read */
+#define BiosPadState 0x2228 /* the pad as the card last read it */
+#define PadHistory 0x3BF8 /* the pad over the last four frames */
+#define PadOverrides 0x3BD9 /* four bytes that force the pad */
+#define RichterItemReady 0x3BE0 /* $0F when the player has the hearts for the item in hand */
+#define AnimationLists 0xBC1B /* pointers to Richter's animations */
+#define RichterTurnStates 0xB72D /* whether each state lets him turn at the screen's middle */
+#define RichterItemCosts 0xB84D /* hearts each item costs */
 
 #endif

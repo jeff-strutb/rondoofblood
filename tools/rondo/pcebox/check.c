@@ -134,9 +134,14 @@ static int is_stack(uint32_t phys)
     return (phys >> 13) == 0xF8 && (phys & 0x1F00) == 0x0100;
 }
 
+/*
+ * An access whose order is behaviour: hardware only. C is behaviour exact and the ASM bit
+ * exact, so the order and count of plain RAM accesses are the ASM's to keep, and RAM is
+ * judged by what it holds when the routine ends.
+ */
 static int is_access(const LogE *e)
 {
-    return e->type <= E_HWWRITE && !is_stack(e->phys);
+    return e->type == E_HWREAD || e->type == E_HWWRITE;
 }
 
 static void stop_c(int reason, const char *fmt, uint32_t a, uint32_t b, uint32_t c)
@@ -200,10 +205,8 @@ uint8_t rd8(uint16_t addr)
     if (++c_budget > 4000000)
         stop_c(ABORT_UNVERIFIED, "C ran past its access budget", 0, 0, 0);
     p = a5_phys(addr);
-    if (rom_bank[p >> 13]) {
-        order_step(E_READ, p);
+    if (rom_bank[p >> 13])
         return rom_bank[p >> 13][p & 0x1FFF];
-    }
     {
         LogE *e = next_hw();
 
@@ -252,7 +255,6 @@ void wr8(uint16_t addr, uint8_t value)
         stop_c(ABORT_UNVERIFIED, "C ran past its access budget", 0, 0, 0);
     p = a5_phys(addr);
     if (ram_bank[p >> 13]) {
-        order_step(E_WRITE, p);
         ram_put(p, value);
     } else {
         hw_write(p, value);

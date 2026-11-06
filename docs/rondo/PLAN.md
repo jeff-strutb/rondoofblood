@@ -18,7 +18,7 @@ SNES decomps do:
 | | |
 |---|---|
 | ASM | the bit-exact decompilation: symbolic source that rebuilds the disc's data track byte for byte (image gate) |
-| C | the behaviour-exact decompilation: proper C, each routine's inputs to outputs exactly the original's (A5 + A7) |
+| C | the behaviour-exact decompilation: proper C, each routine's inputs to outputs exactly the original's: the RAM it leaves, the registers and flags it leaves visible, and its hardware accesses in order (A5 + A7). The order and count of plain RAM accesses are the ASM's to keep, not the C's |
 | Enhanced | later, beside the C, never in place of it |
 
 **Proper C** means typed arguments and returns, locals, loops, structs and
@@ -54,7 +54,7 @@ script runs (the census) in the denominator.
 | Overlays | Pieces of the program are read into the same RAM banks at different times, so a run address does not name a routine. Routines are named by disc location (`@routine SSSS:OOO`) and say where they run (`@run BB:AAAA`) |
 | Code bytes | Found by folding RAM execution traces back onto the disc sectors that loaded them, as the SPC700 lanes fold APU RAM onto ROM: a RAM byte counts for a disc byte only while it still holds that byte |
 | Processors | One: the HuC6280 runs the game and its PSG sound driver. CD-DA (20 audio tracks) and ADPCM are streams, data, not code |
-| Not the game's | The System Card 3.0 BIOS (a HuCard ROM, entered through the $E000 jump table) is fenced out like a C runtime: called, never decompiled |
+| Not the game's | The System Card 3.0 BIOS (a HuCard ROM, entered through the $E000 jump table) is in scope as its own project, in its own top-level folder `syscard/`, kept separate so it can move to its own repo; the game reaches it through one interface header. M1 and M2 count the game's bytes only; the card has its own measure (Jeff's decisions in chat, 2026-11-05) |
 | Memory | MMU of 8 MPRs mapping 8 KB banks of a 2 MB physical space: CD RAM $80-$87 (64 KB), Super System Card RAM $68-$7F (192 KB), work RAM $F8, I/O $FF. Zero page $2000, stack $2100 |
 
 ## 3. Status (2026-11-03)
@@ -93,14 +93,16 @@ Phase 0 is under way. Done and verified:
   Stage 0 and Stage 1: 44,847 B of disc code traced. Estimated total
   about 196 KB of distinct code (131 to 260 KB; `estimate.py`).
 
-Status 2026-11-05: 404 routines (13,112 B), the kernel's and the first part of
-Richter's overlay, have C and symbolic assembly, and the image gate passes with them in
-place (0 differing). A5 and A7 are built and each has failed on a planted bug, on earlier
+Status 2026-11-05: 404 routines (13,112 B) have symbolic assembly and C, and the image
+gate passes with them in place (0 differing). 156 of them, in `camera.c`, `game_mode.c`,
+`disc_load.c`, `stage_load.c` and `richter_state.c`, are register-shaped C: a stepping
+stone, not decompiled, being redone bottom up. Of their 151 C functions, 100 take an Alu
+parameter and 57 touch `cpu`, with 429 flag-helper calls. The other 248 have not had a
+proper-C review. A5 and A7 are built and each has failed on a planted bug, on earlier
 builds: A5 judged 13,747,708 calls identical and 0 divergent, A7 119,770 frames
-identical. 148 routines (2,366 B) meet every gate as measured. None is recorded at T3:
-there is no verdict ledger yet, and A7 cannot swap 153 routines that run original code.
-The other 256 lack coverage or an oracle
-([log](decomp/log/oracles-2026-11-05.md)). The denominator is still the estimate.
+identical. None is recorded at T3: there is no verdict ledger yet, and A7 cannot swap
+153 routines that run original code ([log](decomp/log/oracles-2026-11-05.md)). The
+denominator is still the estimate.
 
 ## 4. Phases
 
@@ -109,7 +111,7 @@ The other 256 lack coverage or an oracle
 | 0 | Layout, hooks, provenance; disc split and image gate; assembler staged and controlled; core built headless with trace hooks, accuracy settings | done |
 | 1 | A dozen scripts from power-on through every mode; trace; fold RAM execution onto the disc; T1 raw intake; image gate from source | trace and fold done; 6 scripts (boot, attract, menus, Stage 0-1); the other stages, the menus' other paths, Maria and the ending not yet reached; T1 intake next |
 | 2 | A5 and A7 proven with negative controls; catalog | A5 and A7 built and proven on a planted bug; A7 cannot yet swap a routine that runs original code (153 of 404); catalog not started |
-| 3 | Routines bottom up, smallest first, committed per verified batch | 404 routines written, 4 batches committed; the rest of Richter's overlay next |
+| 3 | Routines bottom up, smallest first, committed per verified batch | 404 routines filed, 156 of them register-shaped and being redone; T1 intake and the catalog were skipped and are still owed |
 | 4 | Coverage closure and the static census | not started |
 
 ## 5. Toolchain and open decisions

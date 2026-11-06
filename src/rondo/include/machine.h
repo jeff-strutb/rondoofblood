@@ -2,9 +2,9 @@
  * The machine as the C decompilation sees it.
  *
  * Bus: rd8 and wr8 take a logical address and go through the MPRs, as the
- * CPU does. Access order is behaviour: every routine touches each byte as
- * often and in the order its assembly does, so two reads are never put in
- * one expression.
+ * CPU does. ASM is bit exact, C behaviour exact: hardware accesses keep the
+ * assembly's order and count, because they are behaviour. Plain RAM keeps
+ * neither, and is judged by what it holds when the routine ends.
  *
  * Registers: `cpu` is touched only by abi_ wrappers, the one place that
  * meets the assembly's calling convention, and by call_original, which hands

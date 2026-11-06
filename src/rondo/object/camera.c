@@ -48,6 +48,67 @@ static const Axis axis_y = {
     ScrollStepYLo, ScrollStepYHi
 };
 
+/* How a move to the right ended, and the values it worked with. */
+typedef enum {
+    MOVED_TO_RIGHT_EDGE, MOVED_PLAYER, MOVED_PLAYER_AT_SCROLL_END, MOVED_SCROLL, MOVED_BOTH
+} RightMove;
+
+typedef struct {
+    RightMove how;
+    uint16_t speed;
+    uint16_t from;
+    uint16_t next;
+    uint16_t scroll;
+    uint16_t step;
+    uint8_t page;
+} RightMoveResult;
+
+RightMoveResult MovePlayerRight(void);
+
+static bool add_overflows(uint16_t a, uint16_t b)
+{
+    return (~(a ^ b) & (a ^ (uint16_t)(a + b)) & 0x8000) != 0;
+}
+
+static bool subtract_overflows(uint16_t a, uint16_t b)
+{
+    return ((a ^ b) & (a ^ (uint16_t)(a - b)) & 0x8000) != 0;
+}
+
+/* What the assembly leaves in A, C and V at the end of that move. */
+static Alu right_move_exit_shim(RightMoveResult move)
+{
+    Alu exit = { 0 };
+    uint8_t screen = (uint8_t)(move.next >> 8);
+
+    exit.v_set = true;
+    exit.v = add_overflows(move.speed, move.from);
+    switch (move.how) {
+    case MOVED_TO_RIGHT_EDGE:
+        exit.a = PLAYER_MAX_X;
+        exit.c = true;
+        break;
+    case MOVED_PLAYER:
+        exit.a = screen;
+        break;
+    case MOVED_PLAYER_AT_SCROLL_END:
+        exit.a = screen;
+        exit.c = true;
+        break;
+    case MOVED_SCROLL:
+        exit.a = (uint8_t)(move.step >> 8);
+        exit.v = move.page == 0x7F && (uint32_t)move.step + move.scroll > 0xFFFF;
+        break;
+    case MOVED_BOTH:
+        exit.a = (uint8_t)((uint16_t)(move.next - move.step) >> 8);
+        exit.c = move.next >= move.step;
+        exit.v = subtract_overflows(move.next, move.step);
+        break;
+    }
+    exit.nz = exit.a;
+    return exit;
+}
+
 /*
  * @routine 0047:557 PlayerDistanceSum
  * @run 6A:6557
@@ -672,7 +733,7 @@ Alu MovePlayerRightOrWall(void)
 
     if (r.nz != 0)
         return r;
-    return MovePlayerRight();
+    return right_move_exit_shim(MovePlayerRight());
 }
 
 void abi_MovePlayerRightOrWall(void)
@@ -822,6 +883,30 @@ static Alu scroll_forward(const Axis *axis, Alu r)
     return sum;
 }
 
+/* Words of plain RAM, by where their two bytes are. */
+static uint16_t read16(uint16_t lo, uint16_t hi)
+{
+    uint8_t low = rd8(lo);
+
+    return (uint16_t)(low | (rd8(hi) << 8));
+}
+
+static void write16(uint16_t lo, uint16_t hi, uint16_t value)
+{
+    wr8(lo, (uint8_t)value);
+    wr8(hi, (uint8_t)(value >> 8));
+}
+
+static void set_player_x(uint16_t x)
+{
+    write16(OBJ_X_FRAC, OBJ_X_LO, x);
+}
+
+static void set_scroll_step_x(uint16_t step)
+{
+    write16(ScrollStepXLo, ScrollStepXHi, step);
+}
+
 /*
  * @routine 0048:017 MovePlayerRight
  * @run 6A:6817
@@ -829,32 +914,65 @@ static Alu scroll_forward(const Axis *axis, Alu r)
  * with the scroll at the level's end, the player moves; past the middle, the scroll
  * moves by what is left, and the player stays at the middle. At the level's end the
  * scroll takes only what reaches the limit, and the player the rest.
- * HOW: Follows the next position through NextPastMiddle and the limit compares.
- * Entry: nothing. Exit: A, flags as the last step left them. X and Y kept. Clobbers
- * zTemp00-05.
+ * HOW: 8.8 positions on the screen against a 16.8 scroll in the level.
+ * Entry: nothing. Exit: A the last value, N and Z from it, C and V as
+ * right_move_exit_shim gives them. X and Y kept. Clobbers zTemp00-05.
  */
-Alu MovePlayerRight(void)
+RightMoveResult MovePlayerRight(void)
 {
-    Alu r;
+    RightMoveResult move = { 0 };
+    uint32_t position;
+    uint32_t moved;
+    uint16_t limit;
 
-    wr8(ScrollStepXLo, 0);
-    wr8(ScrollStepXHi, 0);
-    r = PlayerNextX();
-    alu_compare(&r, r.a, PLAYER_MAX_X);
-    if (r.a >= PLAYER_MAX_X) {
-        PlayerAtRightEdge();
-        alu_load(&r, PLAYER_MAX_X);
-        return r;
+    move.speed = read16(OBJ_VX_LO, OBJ_VX_HI);
+    move.from = read16(OBJ_X_FRAC, OBJ_X_LO);
+    move.next = (uint16_t)(move.speed + move.from);
+    set_scroll_step_x(0);
+    write16(zTemp04, zTemp05, move.next);
+    if ((move.next >> 8) >= PLAYER_MAX_X) {
+        set_player_x((uint16_t)(PLAYER_MAX_X << 8));
+        move.how = MOVED_TO_RIGHT_EDGE;
+        return move;
     }
-    r = alu_then(r, NextPastMiddle());
-    if (!r.c)
-        return from_next(&axis_x, r);
-    return scroll_forward(&axis_x, r);
+    if ((move.next >> 8) < SCREEN_MIDDLE) {
+        set_player_x(move.next);
+        move.how = MOVED_PLAYER;
+        return move;
+    }
+    move.scroll = read16(ScrollXFrac, ScrollXLo);
+    wr8(zTemp03, (uint8_t)(move.scroll >> 8));
+    limit = read16(ScrollXMaxLo, ScrollXMaxHi);
+    move.page = rd8(ScrollXHiScreen);
+    position = ((uint32_t)move.page << 16) | move.scroll;
+    if ((uint16_t)(position >> 8) == limit) {
+        set_player_x(move.next);
+        move.how = MOVED_PLAYER_AT_SCROLL_END;
+        return move;
+    }
+    bool at_middle_already = (move.from >> 8) >= SCREEN_MIDDLE;
+
+    move.step = at_middle_already ? move.speed : (uint16_t)(move.next - 0x8000);
+    write16(zTemp00, zTemp01, move.step);
+    moved = position + move.step;
+    write16(zTemp02, zTemp03, (uint16_t)moved);
+    if ((uint16_t)(moved >> 8) < limit) {
+        if (!at_middle_already)
+            set_player_x((uint16_t)(SCREEN_MIDDLE << 8));
+        set_scroll_step_x(move.step);
+        move.how = MOVED_SCROLL;
+        return move;
+    }
+    move.step = (uint16_t)((limit << 8) - move.scroll);
+    set_scroll_step_x(move.step);
+    set_player_x((uint16_t)(move.next - move.step));
+    move.how = MOVED_BOTH;
+    return move;
 }
 
 void abi_MovePlayerRight(void)
 {
-    abi_alu(MovePlayerRight());
+    abi_alu(right_move_exit_shim(MovePlayerRight()));
 }
 
 /*

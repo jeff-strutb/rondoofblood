@@ -35,7 +35,6 @@ Alu PlayerWallRight(void);
 Alu PlayerWallLeft(void);
 Alu MovePlayerRightOrWall(void);
 Alu MovePlayerLeftOrWall(void);
-Alu MovePlayerRight(void);
 Alu MovePlayerLeft(void);
 Alu MovePlayerDown(void);
 Alu MovePlayerUp(void);

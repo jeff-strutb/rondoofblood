@@ -1,14 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="176" viewBox="0 0 720 176" role="img" aria-label="Decompilation progress">
-<style>.label{font:13px sans-serif;fill:#57606a}.title{font:bold 15px sans-serif;fill:#57606a}.track{fill:#8c959f;fill-opacity:.2}</style>
-<text x="40" y="24" class="title">Code bytes by tier, against about 196 KB estimated on the disc</text>
-<text x="40" y="46" class="label">M1, every routine T3: 807 B, 0.40%</text>
-<rect x="40" y="52" width="640" height="16" class="track"/>
-<rect x="40.0" y="52" width="2.5" height="16" fill="#2da44e"/>
-<rect x="42.5" y="52" width="2.0" height="16" fill="#54aeff"/>
-<text x="40" y="86" class="label">M2, every routine T4: 792 B, 0.39%</text>
-<rect x="40" y="92" width="640" height="16" class="track"/>
-<rect x="40.0" y="92" width="2.5" height="16" fill="#2da44e"/>
-<text x="40" y="126" class="label">Filed, not yet certified (T2): 12,937 B, 6.45%</text>
-<rect x="40" y="132" width="640" height="16" class="track"/>
-<rect x="40.0" y="132" width="41.3" height="16" fill="#bf8700"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="592" height="156" viewBox="0 0 592 156" role="img" aria-label="Decompilation progress">
+<style>.t{font:13px sans-serif;fill:#57606a}.h{font:bold 14px sans-serif;fill:#57606a}.track{fill:#8c959f;fill-opacity:.25}</style>
+<text x="16" y="22" class="h">Progress against the estimate of 196 KB of game code</text>
+<text x="16" y="50" class="t">M1, T3 or better: 0.40% (807 B, 76 routines)</text><rect x="16" y="56" width="560" height="18" class="track"/><rect x="16" y="56" width="2" height="18" fill="#2da44e"/>
+<text x="16" y="98" class="t">M2, T4: 0.39% (792 B, 75 routines)</text><rect x="16" y="104" width="560" height="18" class="track"/><rect x="16" y="104" width="2" height="18" fill="#0969da"/>
+<text x="16" y="146" class="t">Below proper C: 164 routines, 7,478 B, a stepping stone</text>
 </svg>

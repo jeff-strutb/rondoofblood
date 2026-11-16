@@ -400,3 +400,5 @@ BB65,abs,RichterWallPushBits,the zPlayerPush bit that counts as a wall by side
 BC1B,abs,AnimationLists,pointers to Richter's animations
 B72D,abs,RichterTurnStates,whether each state lets him turn at the screen's middle
 B84D,abs,RichterItemCosts,hearts each item costs
+B856,abs,RichterItemCrashLists,the sound list each item's crash starts; 0 none
+B85F,abs,RichterItemCrashScripts,the script each item's crash starts; 0 none

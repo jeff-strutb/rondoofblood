@@ -12,7 +12,8 @@
 enum {
     PAD_LEFT_OR_RIGHT = 0xA0, PAD_RIGHT_ONLY = 0x20, PAD_TURBO_BIT = 0x01, PAD_ORDINARY_BITS = 0xFE,
     PAD_SELECT_BIT = 0x04, ANIMATION_STOPPED = 0xFF, ANIMATION_LOOPS = 0xFE,
-    ITEM_READY = 0x0F, ITEM_REQUEST = 0x04
+    ITEM_READY = 0x0F, ITEM_REQUEST = 0x04, ITEM_FIRST_SLOT = 3, ITEM_SLOT_END = 0x10,
+    ITEM_CRASH_CHANNEL = 6, ITEM_CRASH_SLOT = 6
 };
 
 /*
@@ -372,6 +373,103 @@ void abi_RichterCheckItemHearts(void)
     } else {
         cpu.a = hearts;
         abi_nz((uint8_t)(hearts - cost));
+    }
+}
+
+/* Hearts less a cost, in BCD, as the processor's decimal subtract with no borrow in gives it. */
+static uint8_t bcd_subtract(uint8_t hearts, uint8_t cost)
+{
+    uint8_t low = (uint8_t)((hearts & 0x0F) - (cost & 0x0F));
+    uint8_t high = (uint8_t)((hearts >> 4) - (cost >> 4) - ((low >> 4) & 1));
+    uint8_t left = (uint8_t)((high << 4) | (low & 0x0F));
+
+    if (low & 0x10)
+        left = (uint8_t)(left - 0x06);
+    if (high & 0x10)
+        left = (uint8_t)(left - 0x60);
+    return left;
+}
+
+/*
+ * @routine 01BB:7FC RichterTryItemCrash
+ * @run 6D:B7FC
+ * WHAT IT DOES: The item crash: on a press of the item button with no item of his out, clears
+ * the item slots and, if he has the hearts the crash costs, starts its sound and its script and
+ * pays the hearts. Says whether it started; when it does not, the forced press is dropped.
+ * HOW: Bit 2 of zPadPressed; OBJ_2750 of slots 3 to 15 all empty; RichterItemCosts in BCD, then
+ * RichterItemCrashLists and RichterItemCrashScripts by item, 0 for none, on channel and slot 6.
+ * Entry: nothing. Exit: V bit 6 of the presses. Started: C set, A the hearts left, N and Z from
+ * them, X the item, Y the script if one started. Not started, C clear and: no press, N bit 7 of
+ * the presses, Z set, A, X, Y kept; an item out, A its OBJ_2750, N and Z from it, X its slot;
+ * too few hearts, A the hearts, N and Z from comparing them with the cost, X the item. Y kept.
+ */
+ItemCrash RichterTryItemCrash(void)
+{
+    ItemCrash crash = { CRASH_NO_PRESS };
+    uint8_t list;
+
+    crash.pressed = rd8(zPadPressed);
+    if (crash.pressed & PAD_SELECT_BIT) {
+        for (crash.slot = ITEM_FIRST_SLOT; crash.slot < ITEM_SLOT_END; crash.slot++) {
+            crash.out = rd8((uint16_t)(OBJ_2750 + crash.slot));
+            if (crash.out != 0) {
+                crash.how = CRASH_ITEM_OUT;
+                break;
+            }
+        }
+    }
+    if (crash.pressed & PAD_SELECT_BIT && crash.how != CRASH_ITEM_OUT) {
+        for (uint8_t slot = ITEM_SLOT_END - 1; slot >= ITEM_FIRST_SLOT; slot--)
+            ClearObject(slot);
+        crash.item = rd8(zField93);
+        crash.hearts = rd8(zField94);
+        crash.cost = rd8((uint16_t)(RichterItemCosts + crash.item));
+        crash.how = crash.hearts >= crash.cost ? CRASH_STARTED : CRASH_TOO_FEW_HEARTS;
+    }
+    if (crash.how != CRASH_STARTED) {
+        wr8(PadForcedPress, 0);
+        return crash;
+    }
+    list = rd8((uint16_t)(RichterItemCrashLists + crash.item));
+    if (list != 0)
+        StartListChannelKind2(list, ITEM_CRASH_CHANNEL);
+    wr8(PlayerByte3BD6, 0);
+    crash.script = rd8((uint16_t)(RichterItemCrashScripts + crash.item));
+    if (crash.script != 0)
+        StartScriptSlotKind1(crash.script, ITEM_CRASH_SLOT);
+    crash.hearts = bcd_subtract(rd8(zField94), crash.cost);
+    wr8(zField94, crash.hearts);
+    return crash;
+}
+
+void abi_RichterTryItemCrash(void)
+{
+    ItemCrash crash = RichterTryItemCrash();
+
+    abi_flag(P_V, (crash.pressed & 0x40) != 0);
+    abi_flag(P_C, crash.how == CRASH_STARTED);
+    switch (crash.how) {
+    case CRASH_NO_PRESS:
+        abi_flag(P_N, (crash.pressed & 0x80) != 0);
+        abi_flag(P_Z, true);
+        break;
+    case CRASH_ITEM_OUT:
+        cpu.a = crash.out;
+        cpu.x = crash.slot;
+        abi_nz(crash.out);
+        break;
+    case CRASH_TOO_FEW_HEARTS:
+        cpu.a = crash.hearts;
+        cpu.x = crash.item;
+        abi_nz((uint8_t)(crash.hearts - crash.cost));
+        break;
+    case CRASH_STARTED:
+        if (crash.script != 0)
+            cpu.y = crash.script;
+        cpu.a = crash.hearts;
+        cpu.x = crash.item;
+        abi_nz(crash.hearts);
+        break;
     }
 }
 

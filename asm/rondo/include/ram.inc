@@ -390,3 +390,5 @@ RichterItemReady = $3BE0 ; $0F when the player has the hearts for the item in ha
 AnimationLists = $BC1B ; pointers to Richter's animations
 RichterTurnStates = $B72D ; whether each state lets him turn at the screen's middle
 RichterItemCosts = $B84D ; hearts each item costs
+RichterItemCrashLists = $B856 ; the sound list each item's crash starts; 0 none
+RichterItemCrashScripts = $B85F ; the script each item's crash starts; 0 none

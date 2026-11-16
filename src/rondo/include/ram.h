@@ -393,5 +393,7 @@
 #define AnimationLists 0xBC1B /* pointers to Richter's animations */
 #define RichterTurnStates 0xB72D /* whether each state lets him turn at the screen's middle */
 #define RichterItemCosts 0xB84D /* hearts each item costs */
+#define RichterItemCrashLists 0xB856 /* the sound list each item's crash starts; 0 none */
+#define RichterItemCrashScripts 0xB85F /* the script each item's crash starts; 0 none */
 
 #endif

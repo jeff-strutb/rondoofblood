@@ -141,6 +141,21 @@ AnimationStep RichterSetAnimation(uint8_t animation);
 void animation_exit_shim(AnimationStep result);
 void RichterClearPadOverrides(void);
 void RichterFaceByPad(void);
+typedef enum { CRASH_NO_PRESS, CRASH_ITEM_OUT, CRASH_TOO_FEW_HEARTS, CRASH_STARTED } CrashHow;
+
+/* What RichterTryItemCrash did, with what its exit leaves in the registers. */
+typedef struct {
+    CrashHow how;
+    uint8_t pressed;
+    uint8_t slot;
+    uint8_t out;
+    uint8_t item;
+    uint8_t hearts;
+    uint8_t cost;
+    uint8_t script;
+} ItemCrash;
+
+ItemCrash RichterTryItemCrash(void);
 ColumnsEnd RichterReadColumns(void);
 TileRead RichterReadAbove(uint8_t row, bool on_the_map);
 void read_above_exit_shim(TileRead read, bool on_the_map);

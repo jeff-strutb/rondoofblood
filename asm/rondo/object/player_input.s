@@ -210,6 +210,65 @@ RichterCheckItemHearts_at0:
     sta a:RichterItemReady
     rts
 
+; @routine 01BB:7FC RichterTryItemCrash
+; @run 6D:B7FC
+; WHAT IT DOES: The item crash: on a press of the item button with no item of his out, clears
+; the item slots and, if he has the hearts the crash costs, starts its sound and its script and
+; pays the hearts. Says whether it started; when it does not, the forced press is dropped.
+; HOW: Bit 2 of zPadPressed; OBJ_2750 of slots 3 to 15 all empty; RichterItemCosts in BCD, then
+; RichterItemCrashLists and RichterItemCrashScripts by item, 0 for none, on channel and slot 6.
+; Entry: nothing. Exit: V bit 6 of the presses. Started: C set, A the hearts left, N and Z from
+; them, X the item, Y the script if one started. Not started, C clear and: no press, N bit 7 of
+; the presses, Z set, A, X, Y kept; an item out, A its OBJ_2750, N and Z from it, X its slot;
+; too few hearts, A the hearts, N and Z from comparing them with the cost, X the item. Y kept.
+RichterTryItemCrash:
+    tst #$04,z:zPadPressed
+    beq RichterTryItemCrash_at0
+    ldx #$03
+RichterTryItemCrash_at1:
+    lda a:OBJ_2750,x
+    bne RichterTryItemCrash_at0
+    inx
+    cpx #$10
+    bne RichterTryItemCrash_at1
+    dex
+RichterTryItemCrash_at2:
+    jsr VecClearObject
+    dex
+    cpx #$02
+    bne RichterTryItemCrash_at2
+    ldx z:zField93
+    lda z:zField94
+    cmp a:RichterItemCosts,x
+    bcs RichterTryItemCrash_at3
+RichterTryItemCrash_at0:
+    stz a:PadForcedPress
+    clc
+    rts
+RichterTryItemCrash_at3:
+    ldx z:zField93
+    lda a:RichterItemCrashLists,x
+    beq RichterTryItemCrash_at4
+    ldx #$06
+    jsr VecStartListChannelKind2
+RichterTryItemCrash_at4:
+    stz a:PlayerByte3BD6
+    ldx z:zField93
+    lda a:RichterItemCrashScripts,x
+    beq RichterTryItemCrash_at5
+    ldx #$06
+    jsr VecStartScriptSlotKind1
+RichterTryItemCrash_at5:
+    ldx z:zField93
+    lda z:zField94
+    sed
+    sec
+    sbc a:RichterItemCosts,x
+    cld
+    sta z:zField94
+    sec
+    rts
+
 ; @routine 01BB:909 RichterLatchButtons
 ; @run 6D:B909
 ; WHAT IT DOES: Keeps the jump and attack presses until a state acts on them.

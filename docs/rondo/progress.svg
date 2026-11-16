@@ -5,6 +5,6 @@
 <text x="16" y="98" class="t">M2, T4: 2.27% (4,548 B, 228 routines)</text><rect x="16" y="104" width="560" height="18" class="track"/><rect x="16" y="104" width="13" height="18" fill="#0969da"/>
 <text x="16" y="146" class="t">Below proper C: 49 routines, 3,366 B, a stepping stone</text>
 <text x="16" y="176" class="h">The System Card, against the 4,649 B the scripts run (a floor)</text>
-<text x="16" y="200" class="t">Card M1, T3 or better: 0.00% (0 B, 0 routines)</text><rect x="16" y="206" width="560" height="18" class="track"/><rect x="16" y="206" width="0" height="18" fill="#2da44e"/>
-<text x="16" y="244" class="t">Card M2, T4: 0.00% (0 B, 0 routines)</text><rect x="16" y="250" width="560" height="18" class="track"/><rect x="16" y="250" width="0" height="18" fill="#0969da"/>
+<text x="16" y="200" class="t">Card M1, T3 or better: 22.84% (1,062 B, 39 routines)</text><rect x="16" y="206" width="560" height="18" class="track"/><rect x="16" y="206" width="128" height="18" fill="#2da44e"/>
+<text x="16" y="244" class="t">Card M2, T4: 22.84% (1,062 B, 39 routines)</text><rect x="16" y="250" width="560" height="18" class="track"/><rect x="16" y="250" width="128" height="18" fill="#0969da"/>
 </svg>

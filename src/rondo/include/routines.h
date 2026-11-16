@@ -222,6 +222,7 @@ typedef struct { SlideHow how; uint8_t value; bool carry; bool overflow; } Slide
 
 SlideStep SoundSlideStep(uint8_t channel);
 SlideStep SoundPanSlideStep(uint8_t channel);
+void slide_exit_shim(SlideStep slide);
 void SoundSetPan(uint8_t channel, uint8_t pan);
 uint16_t SoundWaveAddress(uint8_t wave);
 
@@ -237,6 +238,7 @@ CommandLength SoundCommandLength(uint8_t byte, uint8_t channel);
 void command_length_exit_shim(CommandLength length);
 CommandRead SoundReadCommand(uint8_t channel);
 CommandRead SoundPeekCommand(uint8_t channel);
+void command_read_exit_shim(CommandRead read);
 
 /* A modulation step: whether it ran, the phase before, and the high byte's add. */
 typedef struct {
@@ -271,6 +273,7 @@ typedef struct {
 } TempoSlide;
 
 TempoSlide SoundTempoSlideStep(uint8_t channel);
+void tempo_slide_exit_shim(TempoSlide approach);
 
 typedef enum {
     ENVELOPE_OFF, ENVELOPE_START, ENVELOPE_ATTACK, ENVELOPE_DECAY, ENVELOPE_RELEASE,
@@ -353,6 +356,7 @@ typedef enum { VOLUME_NONE, VOLUME_PLAIN, VOLUME_WAITING, VOLUME_TREMOLO } Volum
 typedef struct { VolumeHow how; Ramp ramp; uint8_t less; ControlSet volume; } VolumeTick;
 
 VolumeTick SoundVolumeTick(uint8_t channel);
+void volume_tick_exit_shim(VolumeTick tick, uint8_t channel);
 
 /* A division: whether its last step subtracted, the remainder's high byte before and its borrow. */
 typedef struct { bool took; uint8_t last; uint8_t high_before; bool borrow; bool unused; uint16_t quotient; } Division;
@@ -405,6 +409,7 @@ typedef struct { uint8_t tens; uint8_t units; uint8_t sustain; bool subtracted; 
 typedef struct { bool ended; ChannelRelease release; WaveLoad wave; uint8_t value; } SequenceEnd;
 
 void sequence_end_exit_shim(SequenceEnd end, uint8_t channel);
+void sequence_end_flags_shim(SequenceEnd end, uint8_t channel);
 WaveLoad SoundCommandWave(uint8_t channel);
 uint8_t SoundCommandPan(uint8_t channel);
 SlideStart SoundCommandPanSlide(uint8_t channel);
@@ -432,6 +437,68 @@ void SoundCommandNothing(void);
 uint8_t SoundCommandJump(void);
 uint8_t SoundCommandCall(uint8_t channel);
 SequenceEnd SoundCommandReturn(uint8_t channel);
+void glide_setup_exit_shim(GlideSetup setup);
+void note_start_exit_shim(NoteStart start);
+
+typedef enum { SEQUENCE_ENDED, SEQUENCE_AT_REST, SEQUENCE_AT_LENGTH, SEQUENCE_AT_NOTE } SequenceHow;
+
+/* A sequence read on: how it stopped, the channel it ran on, the last command, and what it did. */
+typedef struct {
+    SequenceHow how;
+    uint8_t channel;
+    uint8_t command;
+    CommandRead read;
+    ChannelSilence rest;
+    NoteLength length;
+    NoteStart note;
+    SequenceEnd end;
+    uint8_t place_high;
+} SequenceRead;
+
+SequenceRead SoundReadSequence(uint8_t channel);
+void sequence_read_exit_shim(SequenceRead read);
+PitchTick SoundGateStep(uint8_t channel);
+
+typedef enum { LOOK_GLIDING, LOOK_OTHER, LOOK_TAKEN } LookHow;
+
+/* A look at the next command: a glide going, another command, or a glide taken and aimed. */
+typedef struct {
+    LookHow how;
+    uint8_t value;
+    CommandRead peek;
+    uint8_t note;
+    uint8_t fine;
+    bool carry;
+    GlideSetup glide;
+} Lookahead;
+
+Lookahead SoundGlideLookahead(uint8_t channel);
+void glide_lookahead_exit_shim(Lookahead look);
+
+typedef enum {
+    CHANNEL_BETWEEN_RESTING, CHANNEL_BETWEEN, CHANNEL_ENDED, CHANNEL_RESTING, CHANNEL_READ, CHANNEL_GATED
+} ChannelHow;
+
+/* A channel's frame: what ran, and what each step it ran did. */
+typedef struct {
+    ChannelHow how;
+    Sum tempo;
+    uint8_t rest;
+    VolumeTick volume;
+    PitchTick pitch;
+    uint8_t length;
+    SequenceRead sequence;
+    uint8_t bit;
+    uint8_t playing;
+    TempoSlide tempo_slide;
+    SlideStep slide;
+    SlideStep pan;
+    PitchTick gate;
+    Lookahead lookahead;
+    uint8_t wait;
+} ChannelTick;
+
+ChannelTick SoundChannelTick(uint8_t channel);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

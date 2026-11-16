@@ -1836,3 +1836,192 @@ SoundCommandReturn_at0:
     stz a:SoundReturnHi,x
     clc
     rts
+
+; @routine 004D:592 SoundChannelTick
+; @run 75:8592
+; WHAT IT DOES: A frame of one channel: its tempo is added to its phase, and a carry is a tick.
+; Between ticks, a playing note gets its volume and its pitch between ticks. On a tick, the note
+; counts down, and at its end the sequence is read on; the channel is switched off when its
+; sequence ends. A rest only runs its tempo, slide and pan; a note runs its gate, the tempo,
+; the glide's lookahead, the slide, the pan and the volume, and counts the tremolo's wait.
+; HOW: SoundTempo, or $FF when SoundFullTempo's bit 0 is set, onto SoundTempoPhase; SoundChannel2550
+; says a rest; SoundNoteLength; SoundReadSequence; the channel's bit in zSoundChannelBit taken
+; out of zSoundChannelsOn.
+; Entry: X channel. Exit: as the last call left them; a rest's tick or between ticks while
+; resting, A SoundChannel2550 with the tempo's add in C and V; switched off, A the channel's bit,
+; Z if no other bit is on, N and V the playing bits 7 and 6 before.
+SoundChannelTick:
+    lda a:SoundFullTempo
+    and #$01
+    bne SoundChannelTick_at0
+    lda a:SoundTempo,x
+    bra SoundChannelTick_at1
+SoundChannelTick_at0:
+    lda #$FF
+SoundChannelTick_at1:
+    clc
+    adc a:SoundTempoPhase,x
+    sta a:SoundTempoPhase,x
+    bcc SoundChannelTick_at2
+    jsr SoundLoadSequence
+    dec a:SoundNoteLength,x
+    bne SoundChannelTick_at3
+    jsr SoundReadSequence
+    bcc SoundChannelTick_at4
+    lda z:zSoundChannelBit
+    trb z:zSoundChannelsOn
+    bra SoundChannelTick_at5
+SoundChannelTick_at3:
+    lda a:SoundChannel2550,x
+    bne SoundChannelTick_at6
+    jsr SoundGateStep
+SoundChannelTick_at4:
+    jsr SoundTempoSlideStep
+    jsr SoundGlideLookahead
+    jsr SoundSlideStep
+    jsr SoundPanSlideStep
+    jsr SoundVolumeTick
+    bcc SoundChannelTick_at5
+    inc a:SoundTremoloWait,x
+    bra SoundChannelTick_at5
+SoundChannelTick_at6:
+    jsr SoundTempoSlideStep
+    jsr SoundSlideStep
+    jsr SoundPanSlideStep
+    bra SoundChannelTick_at5
+SoundChannelTick_at2:
+    lda a:SoundChannel2550,x
+    bne SoundChannelTick_at5
+    jsr SoundVolumeTick
+    jsr SoundPitchTickPlain
+SoundChannelTick_at5:
+    rts
+
+; @routine 004D:7F8 SoundGateStep
+; @run 75:87F8
+; WHAT IT DOES: A frame of the note's gate: while it sounds, its timer counts down; when it is
+; over, the ramp moves on while the volume less the slide is still at least the ramp, and the
+; channel is silenced once it is not, or at once with no ramp. Then a frame of the pitch.
+; HOW: SoundGateTimer; SoundRampBy onto SoundRampLo and Hi against SoundVolumeBase less
+; SoundSlideHi; SoundSilenceChannel; runs on into SoundPitchTick.
+; Entry: X channel. Exit: as SoundPitchTick.
+SoundGateStep:
+    lda a:SoundGateTimer,x
+    beq SoundGateStep_at0
+    dec a:SoundGateTimer,x
+    bne SoundPitchTick
+    lda a:SoundRampBy,x
+    beq SoundGateStep_at1
+SoundGateStep_at0:
+    lda a:SoundVolumeBase,x
+    sec
+    sbc a:SoundSlideHi,x
+    cmp a:SoundRampHi,x
+    bcc SoundGateStep_at1
+    lda a:SoundRampLo,x
+    clc
+    adc a:SoundRampBy,x
+    sta a:SoundRampLo,x
+    lda a:SoundRampHi,x
+    adc #$00
+    sta a:SoundRampHi,x
+    bra SoundPitchTick
+SoundGateStep_at1:
+    jsr SoundSilenceChannel
+
+; @routine 004E:129 SoundGlideLookahead
+; @run 75:8929
+; WHAT IT DOES: With no glide going, looks at the channel's next command: a $F3 is a glide to its
+; note, after its delay, over its frames, from the pitch now; it is taken and the glide aimed.
+; HOW: SoundPeekCommand; SoundSequenceFromWord takes it; SoundGlideDelay and SoundGlideFrames; the
+; note with the transpose, less one with a negative fine tune; SoundGlideSetup with the fine tune.
+; Entry: X channel. Exit: X kept. Gliding, A the frames, N and Z from them. Not $F3, as
+; SoundPeekCommand, with A the command, N, Z and C from comparing it with $F3. Taken, as
+; SoundGlideSetup, with A the fine tune, Y the note and C from adding the transpose where it
+; keeps them.
+SoundGlideLookahead:
+    lda a:SoundGlideFrames,x
+    bne SoundGlideLookahead_at0
+    jsr SoundPeekCommand
+    lda a:SoundCommandByte
+    cmp #$F3
+    bne SoundGlideLookahead_at0
+    jsr SoundSequenceFromWord
+    lda a:SoundCommandArgs
+    sta a:SoundGlideDelay,x
+    lda a:SoundCommandArgs+1
+    sta a:SoundGlideFrames,x
+    lda a:SoundCommandArgs+2
+    clc
+    adc a:SoundTranspose,x
+    tay
+    lda a:SoundFineTune,x
+    bpl SoundGlideLookahead_at1
+    dey
+SoundGlideLookahead_at1:
+    jsr SoundGlideSetup
+SoundGlideLookahead_at0:
+    rts
+
+; @routine 0053:645 SoundReadSequence
+; @run 76:B645
+; WHAT IT DOES: Reads a channel's sequence on to its next note, rest or length: commands $E2 up
+; run their handlers, $60 to $6F set the gate notes take and $70 to $7F their volume, and the
+; channel's place is kept. Says whether the sequence ended.
+; HOW: SoundReadCommand; the handlers through SoundCommandHandlers, each pushed and returned to,
+; coming back to read again with X from zSoundChannel; $E0 SoundRest, $E1 SoundSetLength, a note
+; SoundStartNote with SoundGateSet and SoundVolumeDefault; SoundSaveSequence.
+; Entry: X channel. Exit: ended, C set, and as SoundCommandReturn left them on its way out.
+; Otherwise A the place's high byte, N and Z from it, C clear, X the channel, Y and V as the last
+; command left them.
+SoundReadSequence:
+    jsr SoundReadCommand
+    lda a:SoundCommandByte
+    cmp #$E2
+    bcc SoundReadSequence_at0
+    sbc #$E2
+    asl a
+    tax
+    lda #$B6
+    pha
+    lda #$44
+    pha
+    lda a:SoundCommandHandlers+1,x
+    pha
+    lda a:SoundCommandHandlers,x
+    pha
+    ldx z:zSoundChannel
+    rts
+SoundReadSequence_at0:
+    cmp #$E0
+    bne SoundReadSequence_at1
+    jsr SoundRest
+    bra SoundReadSequence_at2
+SoundReadSequence_at1:
+    cmp #$E1
+    bne SoundReadSequence_at4
+    jsr SoundSetLength
+    bra SoundReadSequence_at2
+SoundReadSequence_at4:
+    cmp #$70
+    bcc SoundReadSequence_at5
+    and #$0F
+    sta a:SoundVolumeDefault,x
+    bra SoundReadSequence
+SoundReadSequence_at5:
+    cmp #$60
+    bcc SoundReadSequence_at6
+    and #$0F
+    sta a:SoundGateSet,x
+    bra SoundReadSequence
+SoundReadSequence_at6:
+    stz a:SoundChannel2550,x
+    lda a:SoundGateSet,x
+    sta a:SoundCommandArgs+1
+    lda a:SoundVolumeDefault,x
+    sta a:SoundCommandArgs+2
+    jsr SoundStartNote
+SoundReadSequence_at2:
+    jsr SoundSaveSequence
+    clc
+    rts

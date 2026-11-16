@@ -19,7 +19,9 @@ enum {
     PSG_VOLUME_LIMIT = 0x20, WAVE_NOISE = 0xFF, NOISE_FREQUENCY = 0x1F, PSG_NOISE_ON = 0x80,
     PSG_WAVE_RESET = 0x40, OPCODE_TIN = 0xD3, OPCODE_RTS = 0x60, WAVE_SAMPLES = 0x20,
     SOUND_CHANNELS = 8, NOTE_VOLUME_BASE = 0x10, VOLUME_STEPS = 0x0F, RATE_TENS = 10,
-    REPEAT_MARKED = 0, REPEAT_FIRST_PASS = 1, REPEAT_AGAIN = 2
+    REPEAT_MARKED = 0, REPEAT_FIRST_PASS = 1, REPEAT_AGAIN = 2, SEQUENCE_HANDLERS_FIRST = 0xE2,
+    SEQUENCE_REST = 0xE0, SEQUENCE_LENGTH = 0xE1, SEQUENCE_VOLUMES = 0x70, SEQUENCE_GLIDE_TO = 0xF3,
+    TEMPO_FULL = 0xFF
 };
 
 /* PSG channels 4 and 5 are left alone while effect channels 6 and 7 play on them. */
@@ -364,7 +366,7 @@ static SlideStep slide_step(uint8_t channel, uint16_t step_lo, uint16_t step_hi,
 }
 
 /* Idle, A 0 and Z set; reached, A the value with Z and C set; moved, A the value with its sum. */
-static void abi_exit_slide(SlideStep slide)
+void slide_exit_shim(SlideStep slide)
 {
     switch (slide.how) {
     case SLIDE_IDLE:
@@ -402,7 +404,7 @@ SlideStep SoundSlideStep(uint8_t channel)
 
 void abi_SoundSlideStep(void)
 {
-    abi_exit_slide(SoundSlideStep(cpu.x));
+    slide_exit_shim(SoundSlideStep(cpu.x));
 }
 
 /*
@@ -420,7 +422,7 @@ SlideStep SoundPanSlideStep(uint8_t channel)
 
 void abi_SoundPanSlideStep(void)
 {
-    abi_exit_slide(SoundPanSlideStep(cpu.x));
+    slide_exit_shim(SoundPanSlideStep(cpu.x));
 }
 
 /*
@@ -580,7 +582,7 @@ static CommandRead read_command(uint16_t pointer, uint8_t channel)
 }
 
 /* As the count's exit, with A the count run out, N set, Z clear and Y the bytes read. */
-static void abi_exit_command(CommandRead read)
+void command_read_exit_shim(CommandRead read)
 {
     command_length_exit_shim(read.length);
     cpu.a = read.left;
@@ -603,7 +605,7 @@ CommandRead SoundReadCommand(uint8_t channel)
 
 void abi_SoundReadCommand(void)
 {
-    abi_exit_command(SoundReadCommand(cpu.x));
+    command_read_exit_shim(SoundReadCommand(cpu.x));
 }
 
 /*
@@ -623,7 +625,7 @@ CommandRead SoundPeekCommand(uint8_t channel)
 
 void abi_SoundPeekCommand(void)
 {
-    abi_exit_command(SoundPeekCommand(cpu.x));
+    command_read_exit_shim(SoundPeekCommand(cpu.x));
 }
 
 /*
@@ -791,9 +793,8 @@ TempoSlide SoundTempoSlideStep(uint8_t channel)
     return approach;
 }
 
-void abi_SoundTempoSlideStep(void)
+void tempo_slide_exit_shim(TempoSlide approach)
 {
-    TempoSlide approach = SoundTempoSlideStep(cpu.x);
     uint8_t fraction;
 
     switch (approach.how) {
@@ -821,6 +822,11 @@ void abi_SoundTempoSlideStep(void)
     }
     cpu.a = fraction;
     abi_nz(approach.carried ? approach.value : fraction);
+}
+
+void abi_SoundTempoSlideStep(void)
+{
+    tempo_slide_exit_shim(SoundTempoSlideStep(cpu.x));
 }
 
 /* A timer set to a rate, with the phase moved on when asked. */
@@ -1627,11 +1633,8 @@ VolumeTick SoundVolumeTick(uint8_t channel)
     return tick;
 }
 
-void abi_SoundVolumeTick(void)
+void volume_tick_exit_shim(VolumeTick tick, uint8_t channel)
 {
-    uint8_t channel = cpu.x;
-    VolumeTick tick = SoundVolumeTick(channel);
-
     ramp_exit_shim(tick.ramp);
     if (tick.how == VOLUME_NONE) {
         cpu.a = 0;
@@ -1646,6 +1649,13 @@ void abi_SoundVolumeTick(void)
         cpu.a = tick.volume.volume;
     control_exit_shim(tick.volume, channel);
     abi_flag(P_C, tick.how == VOLUME_WAITING);
+}
+
+void abi_SoundVolumeTick(void)
+{
+    uint8_t channel = cpu.x;
+
+    volume_tick_exit_shim(SoundVolumeTick(channel), channel);
 }
 
 /*
@@ -1906,10 +1916,8 @@ NoteStart SoundStartNote(uint8_t channel)
     return start;
 }
 
-void abi_SoundStartNote(void)
+void note_start_exit_shim(NoteStart start)
 {
-    NoteStart start = SoundStartNote(cpu.x);
-
     pitch_exit_shim(start.pitch, false);
     cpu.a = start.timer;
     cpu.y = start.length;
@@ -1919,6 +1927,11 @@ void abi_SoundStartNote(void)
     abi_flag(P_C, (start.product.value & 0x08) != 0);
     if (start.product.added)
         abi_flag(P_V, start.product.overflow);
+}
+
+void abi_SoundStartNote(void)
+{
+    note_start_exit_shim(SoundStartNote(cpu.x));
 }
 
 /* The command's arguments, as SoundReadCommand left them. */
@@ -2690,6 +2703,11 @@ void abi_SoundCommandReturn(void)
 void sequence_end_exit_shim(SequenceEnd end, uint8_t channel)
 {
     cpu.s = (uint8_t)(cpu.s + 2);
+    sequence_end_flags_shim(end, channel);
+}
+
+void sequence_end_flags_shim(SequenceEnd end, uint8_t channel)
+{
     if (end.release.looked)
         abi_flag(P_V, (end.release.effect & 0x40) != 0);
     if (channel >= EFFECT_SHARED_END) {
@@ -2699,4 +2717,357 @@ void sequence_end_exit_shim(SequenceEnd end, uint8_t channel)
         abi_nz((uint8_t)(channel - EFFECT_SHARED_END));
     }
     abi_flag(P_C, true);
+}
+
+/* A command from $E2 up, run by its handler; true when it ended the channel's sequence. */
+static bool run_command(uint8_t command, uint8_t channel, SequenceEnd *end)
+{
+    switch (command) {
+    case 0xE2: SoundCommandWave(channel); break;
+    case 0xE3: SoundCommandPan(channel); break;
+    case 0xE4: SoundCommandVibrato(channel); break;
+    case 0xE5: SoundCommandModulation(channel); break;
+    case 0xE6: SoundCommandLoopA(channel); break;
+    case 0xE7: SoundCommandLoopAEnd(channel); break;
+    case 0xE8: SoundCommandLoopB(channel); break;
+    case 0xE9: SoundCommandLoopBEnd(channel); break;
+    case 0xEA: SoundCommandTempo(channel); break;
+    case 0xEB: SoundCommandTempoSlide(channel); break;
+    case 0xEC: SoundCommandTranspose(channel); break;
+    case 0xED: SoundCommandTremolo(channel); break;
+    case 0xEE: SoundCommandVolume(channel); break;
+    case 0xEF: SoundCommandVolumeSlide(channel); break;
+    case 0xF0: SoundCommandGlideFromLast(channel); break;
+    case 0xF1: SoundCommandGlideFromBelow(channel); break;
+    case 0xF2: SoundCommandFineTune(channel); break;
+    case 0xF6: SoundCommandRepeatMark(channel); break;
+    case 0xF7: SoundCommandRepeat(channel); break;
+    case 0xF8: SoundCommandPanSlide(channel); break;
+    case 0xF9: SoundCommandVibratoGrow(channel); break;
+    case 0xFA: SoundCommandEnvelope(channel); break;
+    case 0xFB: SoundCommandRamp(channel); break;
+    case 0xFD: SoundCommandJump(); break;
+    case 0xFE: SoundCommandCall(channel); break;
+    case 0xFF:
+        *end = SoundCommandReturn(channel);
+        return end->ended;
+    default:
+        SoundCommandNothing();
+        break;
+    }
+    return false;
+}
+
+/*
+ * @routine 0053:645 SoundReadSequence
+ * @run 76:B645
+ * WHAT IT DOES: Reads a channel's sequence on to its next note, rest or length: commands $E2 up
+ * run their handlers, $60 to $6F set the gate notes take and $70 to $7F their volume, and the
+ * channel's place is kept. Says whether the sequence ended.
+ * HOW: SoundReadCommand; the handlers through SoundCommandHandlers, each pushed and returned to,
+ * coming back to read again with X from zSoundChannel; $E0 SoundRest, $E1 SoundSetLength, a note
+ * SoundStartNote with SoundGateSet and SoundVolumeDefault; SoundSaveSequence.
+ * Entry: X channel. Exit: ended, C set, and as SoundCommandReturn left them on its way out.
+ * Otherwise A the place's high byte, N and Z from it, C clear, X the channel, Y and V as the last
+ * command left them.
+ */
+SequenceRead SoundReadSequence(uint8_t channel)
+{
+    SequenceRead read;
+
+    read.channel = channel;
+    for (;;) {
+        uint8_t command;
+
+        read.read = SoundReadCommand(read.channel);
+        command = rd8(SoundCommandByte);
+        read.command = command;
+        if (command >= SEQUENCE_HANDLERS_FIRST) {
+            uint16_t entry = (uint16_t)(SoundCommandHandlers + (uint8_t)((command - SEQUENCE_HANDLERS_FIRST) << 1));
+
+            rd8((uint16_t)(entry + 1));
+            rd8(entry);
+            read.channel = rd8(zSoundChannel);
+            if (run_command(command, read.channel, &read.end)) {
+                read.how = SEQUENCE_ENDED;
+                return read;
+            }
+            continue;
+        }
+        if (command == SEQUENCE_REST) {
+            read.rest = SoundRest(read.channel);
+            read.how = SEQUENCE_AT_REST;
+            break;
+        }
+        if (command == SEQUENCE_LENGTH) {
+            read.length = SoundSetLength(read.channel);
+            read.how = SEQUENCE_AT_LENGTH;
+            break;
+        }
+        if (command >= SEQUENCE_VOLUMES) {
+            wr8((uint16_t)(SoundVolumeDefault + read.channel), (uint8_t)(command & 0x0F));
+            continue;
+        }
+        if (command >= SEQUENCE_NOTES_END) {
+            wr8((uint16_t)(SoundGateSet + read.channel), (uint8_t)(command & 0x0F));
+            continue;
+        }
+        wr8((uint16_t)(SoundChannel2550 + read.channel), 0);
+        wr8(SoundCommandArgs + 1, rd8((uint16_t)(SoundGateSet + read.channel)));
+        wr8(SoundCommandArgs + 2, rd8((uint16_t)(SoundVolumeDefault + read.channel)));
+        read.note = SoundStartNote(read.channel);
+        read.how = SEQUENCE_AT_NOTE;
+        break;
+    }
+    read.place_high = SoundSaveSequence(read.channel);
+    return read;
+}
+
+void sequence_read_exit_shim(SequenceRead read)
+{
+    command_read_exit_shim(read.read);
+    cpu.x = read.channel;
+    switch (read.how) {
+    case SEQUENCE_ENDED:
+        sequence_end_flags_shim(read.end, read.channel);
+        return;
+    case SEQUENCE_AT_REST:
+        abi_flag(P_C, read.channel >= EFFECT_SHARED_END);
+        if (read.rest.release.looked)
+            abi_flag(P_V, (read.rest.release.effect & 0x40) != 0);
+        break;
+    case SEQUENCE_AT_LENGTH:
+        if (read.length.gate != 0) {
+            cpu.y = read.length.length;
+            if (read.length.product.added)
+                abi_flag(P_V, read.length.product.overflow);
+        }
+        break;
+    case SEQUENCE_AT_NOTE:
+        note_start_exit_shim(read.note);
+        break;
+    }
+    cpu.a = read.place_high;
+    abi_nz(read.place_high);
+    abi_flag(P_C, false);
+}
+
+void abi_SoundReadSequence(void)
+{
+    sequence_read_exit_shim(SoundReadSequence(cpu.x));
+}
+
+/*
+ * @routine 004D:7F8 SoundGateStep
+ * @run 75:87F8
+ * WHAT IT DOES: A frame of the note's gate: while it sounds, its timer counts down; when it is
+ * over, the ramp moves on while the volume less the slide is still at least the ramp, and the
+ * channel is silenced once it is not, or at once with no ramp. Then a frame of the pitch.
+ * HOW: SoundGateTimer; SoundRampBy onto SoundRampLo and Hi against SoundVolumeBase less
+ * SoundSlideHi; SoundSilenceChannel; runs on into SoundPitchTick.
+ * Entry: X channel. Exit: as SoundPitchTick.
+ */
+PitchTick SoundGateStep(uint8_t channel)
+{
+    uint8_t timer = rd8((uint16_t)(SoundGateTimer + channel));
+    bool ramp = true;
+
+    if (timer != 0) {
+        timer = (uint8_t)(timer - 1);
+        wr8((uint16_t)(SoundGateTimer + channel), timer);
+        if (timer != 0)
+            return SoundPitchTick(channel);
+        ramp = rd8((uint16_t)(SoundRampBy + channel)) != 0;
+    }
+    if (ramp && (uint8_t)(rd8((uint16_t)(SoundVolumeBase + channel)) - rd8((uint16_t)(SoundSlideHi + channel))) >=
+                    rd8((uint16_t)(SoundRampHi + channel))) {
+        Sum low = add_bytes(rd8((uint16_t)(SoundRampLo + channel)), rd8((uint16_t)(SoundRampBy + channel)), false);
+
+        wr8((uint16_t)(SoundRampLo + channel), low.value);
+        wr8((uint16_t)(SoundRampHi + channel), (uint8_t)(rd8((uint16_t)(SoundRampHi + channel)) + low.carry));
+    } else {
+        SoundSilenceChannel(channel);
+    }
+    return SoundPitchTick(channel);
+}
+
+void abi_SoundGateStep(void)
+{
+    pitch_exit_shim(SoundGateStep(cpu.x), false);
+}
+
+/*
+ * @routine 004E:129 SoundGlideLookahead
+ * @run 75:8929
+ * WHAT IT DOES: With no glide going, looks at the channel's next command: a $F3 is a glide to its
+ * note, after its delay, over its frames, from the pitch now; it is taken and the glide aimed.
+ * HOW: SoundPeekCommand; SoundSequenceFromWord takes it; SoundGlideDelay and SoundGlideFrames; the
+ * note with the transpose, less one with a negative fine tune; SoundGlideSetup with the fine tune.
+ * Entry: X channel. Exit: X kept. Gliding, A the frames, N and Z from them. Not $F3, as
+ * SoundPeekCommand, with A the command, N, Z and C from comparing it with $F3. Taken, as
+ * SoundGlideSetup, with A the fine tune, Y the note and C from adding the transpose where it
+ * keeps them.
+ */
+Lookahead SoundGlideLookahead(uint8_t channel)
+{
+    Lookahead look = { LOOK_GLIDING, 0, { { LENGTH_ONE, 0, 0, 0 }, 0, 0 }, 0, 0, false, { false, false, { false, 0, 0, false, false, 0 }, 0, 0 } };
+    Sum note;
+
+    look.value = rd8((uint16_t)(SoundGlideFrames + channel));
+    if (look.value != 0)
+        return look;
+    look.peek = SoundPeekCommand(channel);
+    look.value = rd8(SoundCommandByte);
+    look.how = LOOK_OTHER;
+    if (look.value != SEQUENCE_GLIDE_TO)
+        return look;
+    look.how = LOOK_TAKEN;
+    SoundSequenceFromWord();
+    set_from(SoundGlideDelay, channel, 0);
+    set_from(SoundGlideFrames, channel, 1);
+    note = add_bytes(argument(2), rd8((uint16_t)(SoundTranspose + channel)), false);
+    look.carry = note.carry;
+    look.note = note.value;
+    look.fine = rd8((uint16_t)(SoundFineTune + channel));
+    if (look.fine & 0x80)
+        look.note = (uint8_t)(look.note - 1);
+    look.glide = SoundGlideSetup(look.fine, look.note, channel);
+    return look;
+}
+
+void glide_lookahead_exit_shim(Lookahead look)
+{
+    if (look.how == LOOK_GLIDING) {
+        abi_exit_loaded(look.value);
+        return;
+    }
+    command_read_exit_shim(look.peek);
+    if (look.how == LOOK_OTHER) {
+        cpu.a = look.value;
+        abi_nz((uint8_t)(look.value - SEQUENCE_GLIDE_TO));
+        abi_flag(P_C, look.value >= SEQUENCE_GLIDE_TO);
+        return;
+    }
+    cpu.a = look.fine;
+    cpu.y = look.note;
+    abi_flag(P_C, look.carry);
+    glide_setup_exit_shim(look.glide);
+}
+
+void abi_SoundGlideLookahead(void)
+{
+    glide_lookahead_exit_shim(SoundGlideLookahead(cpu.x));
+}
+
+/*
+ * @routine 004D:592 SoundChannelTick
+ * @run 75:8592
+ * WHAT IT DOES: A frame of one channel: its tempo is added to its phase, and a carry is a tick.
+ * Between ticks, a playing note gets its volume and its pitch between ticks. On a tick, the note
+ * counts down, and at its end the sequence is read on; the channel is switched off when its
+ * sequence ends. A rest only runs its tempo, slide and pan; a note runs its gate, the tempo,
+ * the glide's lookahead, the slide, the pan and the volume, and counts the tremolo's wait.
+ * HOW: SoundTempo, or $FF when SoundFullTempo's bit 0 is set, onto SoundTempoPhase; SoundChannel2550
+ * says a rest; SoundNoteLength; SoundReadSequence; the channel's bit in zSoundChannelBit taken
+ * out of zSoundChannelsOn.
+ * Entry: X channel. Exit: as the last call left them; a rest's tick or between ticks while
+ * resting, A SoundChannel2550 with the tempo's add in C and V; switched off, A the channel's bit,
+ * Z if no other bit is on, N and V the playing bits 7 and 6 before.
+ */
+ChannelTick SoundChannelTick(uint8_t channel)
+{
+    ChannelTick tick;
+    uint8_t step = (rd8(SoundFullTempo) & 1) ? TEMPO_FULL : rd8((uint16_t)(SoundTempo + channel));
+
+    tick.tempo = add_bytes(step, rd8((uint16_t)(SoundTempoPhase + channel)), false);
+    wr8((uint16_t)(SoundTempoPhase + channel), tick.tempo.value);
+    if (!tick.tempo.carry) {
+        tick.rest = rd8((uint16_t)(SoundChannel2550 + channel));
+        tick.how = CHANNEL_BETWEEN_RESTING;
+        if (tick.rest != 0)
+            return tick;
+        tick.volume = SoundVolumeTick(channel);
+        tick.pitch = SoundPitchTickPlain(channel);
+        tick.how = CHANNEL_BETWEEN;
+        return tick;
+    }
+    SoundLoadSequence(channel);
+    tick.length = (uint8_t)(rd8((uint16_t)(SoundNoteLength + channel)) - 1);
+    wr8((uint16_t)(SoundNoteLength + channel), tick.length);
+    if (tick.length == 0) {
+        tick.sequence = SoundReadSequence(channel);
+        if (tick.sequence.how == SEQUENCE_ENDED) {
+            tick.bit = rd8(zSoundChannelBit);
+            tick.playing = rd8(zSoundChannelsOn);
+            wr8(zSoundChannelsOn, (uint8_t)(tick.playing & ~tick.bit));
+            tick.how = CHANNEL_ENDED;
+            return tick;
+        }
+        tick.how = CHANNEL_READ;
+    } else {
+        tick.rest = rd8((uint16_t)(SoundChannel2550 + channel));
+        if (tick.rest != 0) {
+            tick.tempo_slide = SoundTempoSlideStep(channel);
+            tick.slide = SoundSlideStep(channel);
+            tick.pan = SoundPanSlideStep(channel);
+            tick.how = CHANNEL_RESTING;
+            return tick;
+        }
+        tick.gate = SoundGateStep(channel);
+        tick.how = CHANNEL_GATED;
+    }
+    tick.tempo_slide = SoundTempoSlideStep(channel);
+    tick.lookahead = SoundGlideLookahead(channel);
+    tick.slide = SoundSlideStep(channel);
+    tick.pan = SoundPanSlideStep(channel);
+    tick.volume = SoundVolumeTick(channel);
+    if (tick.volume.how == VOLUME_WAITING) {
+        tick.wait = (uint8_t)(rd8((uint16_t)(SoundTremoloWait + channel)) + 1);
+        wr8((uint16_t)(SoundTremoloWait + channel), tick.wait);
+    }
+    return tick;
+}
+
+void abi_SoundChannelTick(void)
+{
+    uint8_t channel = cpu.x;
+    ChannelTick tick = SoundChannelTick(channel);
+
+    abi_flag(P_C, tick.tempo.carry);
+    abi_flag(P_V, tick.tempo.overflow);
+    switch (tick.how) {
+    case CHANNEL_BETWEEN_RESTING:
+        abi_exit_loaded(tick.rest);
+        return;
+    case CHANNEL_BETWEEN:
+        volume_tick_exit_shim(tick.volume, channel);
+        pitch_exit_shim(tick.pitch, true);
+        return;
+    case CHANNEL_ENDED:
+        sequence_read_exit_shim(tick.sequence);
+        cpu.a = tick.bit;
+        abi_flag(P_Z, (tick.playing & ~tick.bit) == 0);
+        abi_flag(P_N, (tick.playing & 0x80) != 0);
+        abi_flag(P_V, (tick.playing & 0x40) != 0);
+        return;
+    case CHANNEL_RESTING:
+        abi_exit_loaded(tick.rest);
+        tempo_slide_exit_shim(tick.tempo_slide);
+        slide_exit_shim(tick.slide);
+        slide_exit_shim(tick.pan);
+        return;
+    case CHANNEL_READ:
+        sequence_read_exit_shim(tick.sequence);
+        break;
+    case CHANNEL_GATED:
+        pitch_exit_shim(tick.gate, false);
+        break;
+    }
+    tempo_slide_exit_shim(tick.tempo_slide);
+    glide_lookahead_exit_shim(tick.lookahead);
+    slide_exit_shim(tick.slide);
+    slide_exit_shim(tick.pan);
+    volume_tick_exit_shim(tick.volume, channel);
+    if (tick.volume.how == VOLUME_WAITING)
+        abi_nz(tick.wait);
 }

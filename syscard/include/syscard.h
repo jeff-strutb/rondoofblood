@@ -284,6 +284,109 @@ BackupCheck bm_open_formatted(void);
 BackupFree bm_free(void);
 BackupFormat bm_format(void);
 
+/* A file's name and data summed as bm_sum_file sums them, with its last step. */
+typedef struct {
+    uint16_t sum;
+    uint16_t before_last;  /* the sum before the last byte was added */
+    uint8_t last_byte;
+    uint32_t bytes;        /* bytes summed: $10000 when the count started at zero */
+} BackupSum;
+
+/* Where a read or write of _CX bytes at offset _DX falls in the file at CardFileLo. */
+typedef struct {
+    uint16_t overrun;      /* bytes past the file's end, negative when it fits */
+    uint16_t data;         /* the file's address plus its header */
+    uint16_t offset;       /* _DX */
+} BackupSpan;
+
+/* Which way a move of bytes inside the backup memory went. */
+typedef struct {
+    bool forward;          /* from a source at or above its destination */
+    uint16_t source;
+    uint16_t destination;
+    uint16_t count;
+} BackupMoveWay;
+
+/* A copy between the caller's memory and the backup memory: the window and the bytes. */
+typedef struct {
+    uint8_t window;
+    uint8_t old_high;      /* the caller's pointer's high byte before it was rebased */
+    uint32_t bytes;
+} BackupCopy;
+
+/* What adding a file's header for a new name found. */
+typedef struct {
+    bool made;
+    uint16_t pointer;      /* CardCopyLo-Hi, compared with $10 */
+    uint16_t next_free;    /* where the file went */
+    BackupCopy copy;
+} BackupNewFile;
+
+typedef struct {
+    bool moved;            /* there were bytes to move */
+    BackupMoveWay way;
+} BackupMove;
+
+/* How bm_read, bm_write and bm_delete ended, and the values their exits show. */
+typedef enum {
+    BM_ENDED_NOT_FORMATTED,
+    BM_ENDED_NOT_FOUND,     /* no such file, or no room for its header */
+    BM_ENDED_NO_ROOM,       /* a write that would run past the memory's end */
+    BM_ENDED_PAST_END,      /* a read starting at or past the file's end */
+    BM_ENDED_DONE
+} BackupEnding;
+
+typedef struct {
+    BackupEnding ending;
+    uint8_t result;         /* what A gives: 0 done, 1 not found or no room, 2 bad checksum */
+    BackupCheck check;
+    BackupFind find;
+    BackupNewFile new_file;
+    BackupSpan span;
+    bool truncated;         /* a read cut short at the file's end */
+    uint16_t count_before;  /* the count it was cut from */
+    uint16_t count;         /* bytes copied */
+    BackupCopy copy;
+    BackupSum sum;
+    uint16_t end;           /* write: the memory's end, compared with the room needed */
+    uint16_t needed;
+    BackupMove move;
+    uint16_t next_free;     /* delete: before it was taken down */
+    uint16_t length;        /* delete: the file's length */
+} BackupAccess;
+
+/* How ex_scrmod set the screen, and the values its exit shows. */
+typedef struct {
+    bool accepted;            /* false: the fallback mode was set instead */
+    uint8_t columns;
+    uint8_t width_register;   /* the memory width register ex_dotmod left */
+    uint8_t dot_bits;         /* what ex_dotmod was given */
+    uint8_t end_inverse;      /* the horizontal end's inverse, before its base was added */
+    uint8_t end_base;
+} ScreenMode;
+
+/* What setting the vertical display left. */
+typedef struct {
+    uint8_t rows_dots;        /* the rows times eight, as a byte */
+    uint8_t vce;              /* what went to the VCE */
+} ScreenRows;
+
+ScreenRows set_screen_rows(void);
+ScreenMode ex_scrmod(uint8_t mode, uint8_t columns, uint8_t rows);
+ScreenMode ex_scrmod_fallback(void);
+void ex_satclr(void);
+
+BackupSum bm_sum_file(void);
+BackupSpan bm_place_span(void);
+BackupMoveWay bm_move_direction(void);
+BackupMove bm_move(void);
+BackupCopy bm_copy_out(void);
+BackupCopy bm_copy_in(void);
+BackupNewFile bm_new_file(void);
+BackupAccess bm_read(void);
+BackupAccess bm_write(void);
+BackupAccess bm_delete(void);
+
 /* How ad_trans ended. */
 typedef struct {
     bool refused;

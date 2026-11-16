@@ -90,5 +90,11 @@
 #define ArcadeRamSigB 0x18C6 /* signature of the extra RAM read first */
 #define ArcadeRamBank 0x18C7 /* that RAM's bank */
 #define CardVersionByte 0xFFF4 /* the byte of the card ex_memopen returns */
+#define VceControl 0x0400 /* the VCE's control register: dot clock and colour burst */
+#define CardScreenMode 0x2244 /* the mode ex_scrmod was given: bit 0 wide and bit 2 the dot clock */
+#define CardScreenColumns 0x2245 /* the columns of tiles ex_scrmod was given */
+#define CardScreenRows 0x2246 /* the rows of tiles ex_scrmod was given */
+#define CardSatAddress 0x2214 /* where the sprite table is in VRAM */
+#define CardSatFlag 0x2216 /* cleared by ex_satclr */
 
 #endif

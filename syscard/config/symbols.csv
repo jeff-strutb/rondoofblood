@@ -87,3 +87,9 @@ F8AD,abs,BackupFormatPassword,what bm_format must be handed
 18C6,abs,ArcadeRamSigB,signature of the extra RAM read first
 18C7,abs,ArcadeRamBank,that RAM's bank
 FFF4,abs,CardVersionByte,the byte of the card ex_memopen returns
+0400,abs,VceControl,the VCE's control register: dot clock and colour burst
+2244,abs,CardScreenMode,the mode ex_scrmod was given: bit 0 wide and bit 2 the dot clock
+2245,abs,CardScreenColumns,the columns of tiles ex_scrmod was given
+2246,abs,CardScreenRows,the rows of tiles ex_scrmod was given
+2214,abs,CardSatAddress,where the sprite table is in VRAM
+2216,abs,CardSatFlag,cleared by ex_satclr

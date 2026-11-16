@@ -441,5 +441,33 @@
 #define SoundVolumeLo 0x2410 /* the sound driver: by channel, the volume, fraction */
 #define SoundVolume 0x2418 /* the sound driver: by channel, the volume, which picks the balance */
 #define SoundVolumeTarget 0x2420 /* the sound driver: by channel, the volume the slide stops at */
+#define SoundCommandByte 0x22E2 /* the sound driver: the sequence command being read */
+#define SoundCommandArgs 0x22E3 /* the sound driver: the command's argument bytes */
+#define BlockMoveOpcode 0x22E7 /* the RAM block-move stub: its opcode */
+#define BlockMoveSourceLo 0x22E8 /* the RAM block-move stub: source low */
+#define BlockMoveSourceHi 0x22E9 /* the RAM block-move stub: source high */
+#define BlockMoveDestLo 0x22EA /* the RAM block-move stub: destination low */
+#define BlockMoveDestHi 0x22EB /* the RAM block-move stub: destination high */
+#define BlockMoveLengthLo 0x22EC /* the RAM block-move stub: length low */
+#define BlockMoveLengthHi 0x22ED /* the RAM block-move stub: length high */
+#define BlockMoveReturn 0x22EE /* the RAM block-move stub: its RTS */
+#define SoundApproachBy 0x2300 /* the sound driver: by channel, the approach's step; 0 none */
+#define SoundApproachLo 0x2308 /* the sound driver: by channel, the approaching value, fraction */
+#define SoundApproachTarget 0x2310 /* the sound driver: by channel, the value approached */
+#define SoundApproach 0x2320 /* the sound driver: by channel, the approaching value */
+#define SoundChannelWait 0x2330 /* the sound driver: by channel, frames to wait */
+#define SoundChannelDefaultArg 0x2338 /* the sound driver: by channel, the argument a short command takes */
+#define SoundSlideFrom 0x23F8 /* the sound driver: by channel, what the ramp's distance is measured from */
+#define SoundVolumeSet 0x2428 /* the sound driver: by channel, the volume as set */
+#define SoundModulationPhaseLo 0x24E8 /* the sound driver: by channel, the modulation's phase, fraction */
+#define SoundModulationPhase 0x24F0 /* the sound driver: by channel, the modulation's phase */
+#define SoundModulationSpeed 0x24F8 /* the sound driver: by channel, the modulation's speed; 0 none */
+#define SoundModulationMaskLo 0x2500 /* the sound driver: by channel, the mask on the table's low byte */
+#define SoundModulationMaskHi 0x2508 /* the sound driver: by channel, the mask on the table's high byte */
+#define SoundRampBy 0x2558 /* the sound driver: by channel, the ramp's step; 0 none */
+#define SoundRampLo 0x2560 /* the sound driver: by channel, the ramp, fraction */
+#define SoundRampHi 0x2568 /* the sound driver: by channel, the ramp */
+#define SoundModulationTable 0x908E /* the sound driver: modulation words, one step a byte apart */
+#define SoundCommandLengths 0xB7A2 /* the sound driver: argument bytes of commands $E0 and up */
 
 #endif

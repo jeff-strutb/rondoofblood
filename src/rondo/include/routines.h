@@ -222,6 +222,54 @@ typedef struct { SlideHow how; uint8_t value; bool carry; bool overflow; } Slide
 
 SlideStep SoundSlideStep(uint8_t channel);
 SlideStep SoundVolumeSlideStep(uint8_t channel);
+void SoundSetVolume(uint8_t channel, uint8_t volume);
+uint16_t SoundWaveAddress(uint8_t wave);
+
+typedef enum { LENGTH_ONE, LENGTH_DEFAULT, LENGTH_NONE, LENGTH_TABLE } LengthHow;
+
+/* A command's argument count, how it was found, the command, and the default or table index. */
+typedef struct { LengthHow how; uint8_t count; uint8_t command; uint8_t value; } CommandLength;
+
+/* A command read: its length, the argument bytes read, and the count as it ran out. */
+typedef struct { CommandLength length; uint8_t args; uint8_t left; } CommandRead;
+
+CommandLength SoundCommandLength(uint8_t byte, uint8_t channel);
+void command_length_exit_shim(CommandLength length);
+CommandRead SoundReadCommand(uint8_t channel);
+CommandRead SoundPeekCommand(uint8_t channel);
+
+/* A modulation step: whether it ran, the phase before, and the high byte's add. */
+typedef struct {
+    bool applied;
+    uint8_t speed;
+    uint8_t phase;
+    uint8_t add;
+    uint8_t before;
+    bool carry_in;
+} Modulation;
+
+Modulation SoundModulate(uint8_t channel);
+
+typedef enum { RAMP_WAITING, RAMP_NO_STEP, RAMP_TOO_CLOSE, RAMP_MOVED } RampHow;
+
+/* A ramp step: what stopped or moved it, the value its exit shows, and what was compared. */
+typedef struct { RampHow how; uint8_t value; uint8_t from; uint8_t slide; uint8_t high; } Ramp;
+
+Ramp SoundRampStep(uint8_t channel);
+
+typedef enum { APPROACH_IDLE, APPROACH_THERE, APPROACH_UP, APPROACH_DOWN } ApproachHow;
+
+/* An approach step: which way, the step, the fraction before, and the value after any carry. */
+typedef struct {
+    ApproachHow how;
+    uint8_t step;
+    uint8_t target;
+    uint8_t value;
+    uint8_t before;
+    bool carried;
+} Approach;
+
+Approach SoundApproachStep(uint8_t channel);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

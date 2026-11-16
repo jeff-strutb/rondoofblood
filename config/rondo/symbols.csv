@@ -448,3 +448,31 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 2410,abs,SoundVolumeLo,the sound driver: by channel, the volume, fraction
 2418,abs,SoundVolume,the sound driver: by channel, the volume, which picks the balance
 2420,abs,SoundVolumeTarget,the sound driver: by channel, the volume the slide stops at
+22E2,abs,SoundCommandByte,the sound driver: the sequence command being read
+22E3,abs,SoundCommandArgs,the sound driver: the command's argument bytes
+22E7,abs,BlockMoveOpcode,the RAM block-move stub: its opcode
+22E8,abs,BlockMoveSourceLo,the RAM block-move stub: source low
+22E9,abs,BlockMoveSourceHi,the RAM block-move stub: source high
+22EA,abs,BlockMoveDestLo,the RAM block-move stub: destination low
+22EB,abs,BlockMoveDestHi,the RAM block-move stub: destination high
+22EC,abs,BlockMoveLengthLo,the RAM block-move stub: length low
+22ED,abs,BlockMoveLengthHi,the RAM block-move stub: length high
+22EE,abs,BlockMoveReturn,the RAM block-move stub: its RTS
+2300,abs,SoundApproachBy,the sound driver: by channel, the approach's step; 0 none
+2308,abs,SoundApproachLo,the sound driver: by channel, the approaching value, fraction
+2310,abs,SoundApproachTarget,the sound driver: by channel, the value approached
+2320,abs,SoundApproach,the sound driver: by channel, the approaching value
+2330,abs,SoundChannelWait,the sound driver: by channel, frames to wait
+2338,abs,SoundChannelDefaultArg,the sound driver: by channel, the argument a short command takes
+23F8,abs,SoundSlideFrom,the sound driver: by channel, what the ramp's distance is measured from
+2428,abs,SoundVolumeSet,the sound driver: by channel, the volume as set
+24E8,abs,SoundModulationPhaseLo,the sound driver: by channel, the modulation's phase, fraction
+24F0,abs,SoundModulationPhase,the sound driver: by channel, the modulation's phase
+24F8,abs,SoundModulationSpeed,the sound driver: by channel, the modulation's speed; 0 none
+2500,abs,SoundModulationMaskLo,the sound driver: by channel, the mask on the table's low byte
+2508,abs,SoundModulationMaskHi,the sound driver: by channel, the mask on the table's high byte
+2558,abs,SoundRampBy,the sound driver: by channel, the ramp's step; 0 none
+2560,abs,SoundRampLo,the sound driver: by channel, the ramp, fraction
+2568,abs,SoundRampHi,the sound driver: by channel, the ramp
+908E,abs,SoundModulationTable,the sound driver: modulation words, one step a byte apart
+B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 and up

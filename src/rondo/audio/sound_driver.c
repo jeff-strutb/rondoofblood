@@ -14,7 +14,8 @@
 enum {
     PSG_CHANNELS = 6, PSG_VOLUME_FULL = 0xFF, CHANNEL_RELEASED = 0x1F,
     EFFECT_SHARED_FIRST = 4, EFFECT_SHARED_END = 6, EFFECT_CHANNEL_OFFSET = 2,
-    FADE_STEP_START = 0x10
+    FADE_STEP_START = 0x10, SOUND_WAVES = 0xBD11, SEQUENCE_NOTES_END = 0x60, SEQUENCE_REUSE = 0x80,
+    SEQUENCE_LONG_FIRST = 0xE0
 };
 
 /* PSG channels 4 and 5 are left alone while effect channels 6 and 7 play on them. */
@@ -416,4 +417,393 @@ SlideStep SoundVolumeSlideStep(uint8_t channel)
 void abi_SoundVolumeSlideStep(void)
 {
     abi_exit_slide(SoundVolumeSlideStep(cpu.x));
+}
+
+/*
+ * @routine 004E:310 SoundSetVolume
+ * @run 75:8B10
+ * WHAT IT DOES: Sets a channel's volume outright, as set and as it plays, with no fraction.
+ * HOW: SoundVolumeSet and SoundVolume, SoundVolumeLo cleared.
+ * Entry: A volume, X channel. Exit: all registers and flags kept.
+ */
+void SoundSetVolume(uint8_t channel, uint8_t volume)
+{
+    wr8((uint16_t)(SoundVolumeSet + channel), volume);
+    wr8((uint16_t)(SoundVolume + channel), volume);
+    wr8((uint16_t)(SoundVolumeLo + channel), 0);
+}
+
+void abi_SoundSetVolume(void)
+{
+    SoundSetVolume(cpu.x, cpu.a);
+}
+
+/*
+ * @routine 0053:721 SoundWaveAddress
+ * @run 76:B721
+ * WHAT IT DOES: Points the block-move stub's source at a waveform: 32 bytes each from $BD11.
+ * HOW: The waveform times 32, plus $BD11, into BlockMoveSourceLo and Hi.
+ * Entry: A waveform. Exit: A the address's high byte, N, Z, C and V from adding it. X and Y kept.
+ */
+uint16_t SoundWaveAddress(uint8_t wave)
+{
+    uint16_t address = (uint16_t)(SOUND_WAVES + (wave << 5));
+
+    wr8(BlockMoveSourceLo, (uint8_t)address);
+    wr8(BlockMoveSourceHi, (uint8_t)(address >> 8));
+    return address;
+}
+
+void abi_SoundWaveAddress(void)
+{
+    uint8_t page = (uint8_t)(cpu.a >> 3);
+    uint8_t high = (uint8_t)(SoundWaveAddress(cpu.a) >> 8);
+    bool carry = ((cpu.a & 0x07) << 5) + (SOUND_WAVES & 0xFF) > 0xFF;
+
+    cpu.a = high;
+    abi_nz(high);
+    abi_flag(P_C, page + (SOUND_WAVES >> 8) + carry > 0xFF);
+    abi_flag(P_V, (~(page ^ (SOUND_WAVES >> 8)) & (page ^ high) & 0x80) != 0);
+}
+
+/*
+ * @routine 0053:6F1 SoundCommandLength
+ * @run 76:B6F1
+ * WHAT IT DOES: How many argument bytes the command in SoundCommandByte takes. Below $60 one,
+ * unless its bit 7 says to reuse the channel's default, which goes into SoundCommandArgs with none
+ * read; $60 up none, except the commands from $E0 up, whose lengths are a table.
+ * HOW: A with bit 7 off picks the class; SoundChannelDefaultArg; SoundCommandLengths.
+ * Entry: A the command byte, X channel. Exit: A the count. One, N and Z from it, C clear. A
+ * default, N and Z from the default, C set. None from $60 to $DF, N and Z from it less $E0, C
+ * clear. From the table, N and Z from the count, C set, V clear, Y the command less $E0.
+ * Otherwise X, Y and V kept.
+ */
+CommandLength SoundCommandLength(uint8_t byte, uint8_t channel)
+{
+    CommandLength length = { LENGTH_ONE, 1, 0, 0 };
+
+    length.command = rd8(SoundCommandByte);
+    if ((byte & 0x7F) < SEQUENCE_NOTES_END) {
+        if (length.command < SEQUENCE_REUSE) {
+            return length;
+        }
+        wr8(SoundCommandByte, (uint8_t)(length.command & 0x7F));
+        length.value = rd8((uint16_t)(SoundChannelDefaultArg + channel));
+        wr8(SoundCommandArgs, length.value);
+        length.how = LENGTH_DEFAULT;
+        length.count = 0;
+        return length;
+    }
+    length.count = 0;
+    if (length.command < SEQUENCE_LONG_FIRST) {
+        length.how = LENGTH_NONE;
+        return length;
+    }
+    length.value = (uint8_t)(length.command - SEQUENCE_LONG_FIRST);
+    length.count = rd8((uint16_t)(SoundCommandLengths + length.value));
+    length.how = LENGTH_TABLE;
+    return length;
+}
+
+void command_length_exit_shim(CommandLength length)
+{
+    cpu.a = length.count;
+    switch (length.how) {
+    case LENGTH_ONE:
+        abi_nz(length.count);
+        abi_flag(P_C, false);
+        break;
+    case LENGTH_DEFAULT:
+        abi_nz(length.value);
+        abi_flag(P_C, true);
+        break;
+    case LENGTH_NONE:
+        abi_nz((uint8_t)(length.command - SEQUENCE_LONG_FIRST));
+        abi_flag(P_C, false);
+        break;
+    case LENGTH_TABLE:
+        cpu.y = length.value;
+        abi_nz(length.count);
+        abi_flag(P_C, true);
+        abi_flag(P_V, false);
+        break;
+    }
+}
+
+void abi_SoundCommandLength(void)
+{
+    command_length_exit_shim(SoundCommandLength(cpu.a, cpu.x));
+}
+
+/* The next byte of a sequence through a pointer in zero page, and the pointer on past it. */
+static uint8_t sequence_byte(uint16_t pointer)
+{
+    uint8_t byte = rd8_zp(pointer);
+    uint8_t low = (uint8_t)(rd8(pointer) + 1);
+
+    wr8(pointer, low);
+    if (low == 0)
+        wr8((uint16_t)(pointer + 1), (uint8_t)(rd8((uint16_t)(pointer + 1)) + 1));
+    return byte;
+}
+
+/* A command and its arguments into SoundCommandByte and SoundCommandArgs, through a pointer. */
+static CommandRead read_command(uint16_t pointer, uint8_t channel)
+{
+    CommandRead read;
+    uint8_t byte = sequence_byte(pointer);
+    uint8_t left;
+
+    wr8(SoundCommandByte, byte);
+    read.length = SoundCommandLength(byte, channel);
+    /* The count is taken down until it goes negative, so above $80 it reads none. */
+    left = read.length.count;
+    read.args = 0;
+    while ((int8_t)(left = (uint8_t)(left - 1)) >= 0) {
+        wr8((uint16_t)(SoundCommandArgs + read.args), sequence_byte(pointer));
+        read.args++;
+    }
+    read.left = left;
+    return read;
+}
+
+/* As the count's exit, with A the count run out, N set, Z clear and Y the bytes read. */
+static void abi_exit_command(CommandRead read)
+{
+    command_length_exit_shim(read.length);
+    cpu.a = read.left;
+    cpu.y = read.args;
+    abi_nz(read.left);
+}
+
+/*
+ * @routine 0053:6A3 SoundReadCommand
+ * @run 76:B6A3
+ * WHAT IT DOES: Reads the channel's next sequence command and its arguments, moving its place on.
+ * HOW: Through zSoundSequenceLo and Hi; SoundCommandLength says how many arguments follow.
+ * Entry: X channel. Exit: A $FF, or the count less one when it is above $80; N set, Z clear; Y
+ * the argument bytes read; C and V as SoundCommandLength left them. X kept.
+ */
+CommandRead SoundReadCommand(uint8_t channel)
+{
+    return read_command(zSoundSequenceLo, channel);
+}
+
+void abi_SoundReadCommand(void)
+{
+    abi_exit_command(SoundReadCommand(cpu.x));
+}
+
+/*
+ * @routine 0053:6C6 SoundPeekCommand
+ * @run 76:B6C6
+ * WHAT IT DOES: Reads the channel's next sequence command and its arguments without moving its
+ * place on.
+ * HOW: A copy of the place in zSoundWordLo and Hi is read through instead.
+ * Entry: X channel. Exit: as SoundReadCommand.
+ */
+CommandRead SoundPeekCommand(uint8_t channel)
+{
+    wr8(zSoundWordLo, rd8(zSoundSequenceLo));
+    wr8(zSoundWordHi, rd8(zSoundSequenceHi));
+    return read_command(zSoundWordLo, channel);
+}
+
+void abi_SoundPeekCommand(void)
+{
+    abi_exit_command(SoundPeekCommand(cpu.x));
+}
+
+/*
+ * @routine 004E:1F2 SoundModulate
+ * @run 75:89F2
+ * WHAT IT DOES: Adds a channel's modulation to the word in zSoundWordLo and Hi: a table word at
+ * its phase, masked by channel; the phase moves on by the channel's speed.
+ * HOW: SoundModulationSpeed onto SoundModulationPhaseLo, carrying into SoundModulationPhase,
+ * which indexes SoundModulationTable a byte a step; SoundModulationMaskLo and Hi.
+ * Entry: X channel. Exit: no speed, A 0, Z set, N clear, Y, C and V kept. Otherwise A the word's
+ * high byte, N, Z, C and V from adding to it, Y the phase before. X kept.
+ */
+Modulation SoundModulate(uint8_t channel)
+{
+    Modulation mod = { false, 0, 0, 0, 0, 0 };
+    unsigned sum;
+
+    mod.speed = rd8((uint16_t)(SoundModulationSpeed + channel));
+    if (mod.speed == 0)
+        return mod;
+    mod.applied = true;
+    mod.phase = rd8((uint16_t)(SoundModulationPhase + channel));
+    sum = (unsigned)mod.speed + rd8((uint16_t)(SoundModulationPhaseLo + channel));
+    wr8((uint16_t)(SoundModulationPhaseLo + channel), (uint8_t)sum);
+    if (sum > 0xFF)
+        wr8((uint16_t)(SoundModulationPhase + channel),
+            (uint8_t)(rd8((uint16_t)(SoundModulationPhase + channel)) + 1));
+    sum = (unsigned)(rd8((uint16_t)(SoundModulationTable + mod.phase)) &
+                     rd8((uint16_t)(SoundModulationMaskLo + channel))) + rd8(zSoundWordLo);
+    wr8(zSoundWordLo, (uint8_t)sum);
+    mod.add = (uint8_t)(rd8((uint16_t)(SoundModulationTable + 1 + mod.phase)) &
+                        rd8((uint16_t)(SoundModulationMaskHi + channel)));
+    mod.before = rd8(zSoundWordHi);
+    mod.carry_in = sum > 0xFF;
+    wr8(zSoundWordHi, (uint8_t)(mod.add + mod.before + mod.carry_in));
+    return mod;
+}
+
+void abi_SoundModulate(void)
+{
+    Modulation mod = SoundModulate(cpu.x);
+    uint8_t high;
+
+    if (!mod.applied) {
+        cpu.a = 0;
+        abi_nz(0);
+        return;
+    }
+    high = (uint8_t)(mod.add + mod.before + mod.carry_in);
+    cpu.a = high;
+    cpu.y = mod.phase;
+    abi_nz(high);
+    abi_flag(P_C, mod.add + mod.before + mod.carry_in > 0xFF);
+    abi_flag(P_V, (~(mod.add ^ mod.before) & (mod.add ^ high) & 0x80) != 0);
+}
+
+/*
+ * @routine 004E:21C SoundRampStep
+ * @run 75:8A1C
+ * WHAT IT DOES: Moves a channel's ramp on by its step, once its wait is over and only while the
+ * slide is still at least the ramp away from where it started.
+ * HOW: SoundChannelWait, SoundRampBy, SoundSlideFrom less SoundSlideHi against SoundRampHi;
+ * SoundRampBy onto SoundRampLo, carrying into SoundRampHi.
+ * Entry: X channel. Exit: X and Y kept. Waiting, A the wait, N and Z from it. No step, A 0, Z
+ * set, N clear. Too close, A the distance, N and Z from it less the ramp, C clear, V from the
+ * distance's subtract. Moved, A the ramp, N, Z, C and V from its add.
+ */
+Ramp SoundRampStep(uint8_t channel)
+{
+    Ramp ramp = { RAMP_WAITING, 0, 0, 0, 0 };
+    unsigned sum;
+
+    ramp.value = rd8((uint16_t)(SoundChannelWait + channel));
+    if (ramp.value != 0)
+        return ramp;
+    ramp.value = rd8((uint16_t)(SoundRampBy + channel));
+    ramp.how = RAMP_NO_STEP;
+    if (ramp.value == 0)
+        return ramp;
+    ramp.from = rd8((uint16_t)(SoundSlideFrom + channel));
+    ramp.slide = rd8((uint16_t)(SoundSlideHi + channel));
+    ramp.value = (uint8_t)(ramp.from - ramp.slide);
+    ramp.high = rd8((uint16_t)(SoundRampHi + channel));
+    ramp.how = RAMP_TOO_CLOSE;
+    if (ramp.value < ramp.high)
+        return ramp;
+    sum = (unsigned)rd8((uint16_t)(SoundRampLo + channel)) + rd8((uint16_t)(SoundRampBy + channel));
+    wr8((uint16_t)(SoundRampLo + channel), (uint8_t)sum);
+    ramp.high = rd8((uint16_t)(SoundRampHi + channel));
+    ramp.value = (uint8_t)(ramp.high + (sum >> 8));
+    wr8((uint16_t)(SoundRampHi + channel), ramp.value);
+    ramp.how = RAMP_MOVED;
+    return ramp;
+}
+
+void abi_SoundRampStep(void)
+{
+    Ramp ramp = SoundRampStep(cpu.x);
+
+    cpu.a = ramp.value;
+    switch (ramp.how) {
+    case RAMP_WAITING:
+    case RAMP_NO_STEP:
+        abi_nz(ramp.value);
+        break;
+    case RAMP_TOO_CLOSE:
+        abi_nz((uint8_t)(ramp.value - ramp.high));
+        abi_flag(P_C, false);
+        abi_flag(P_V, ((ramp.from ^ ramp.slide) & (ramp.from ^ ramp.value) & 0x80) != 0);
+        break;
+    case RAMP_MOVED:
+        abi_nz(ramp.value);
+        abi_flag(P_C, ramp.value < ramp.high);
+        abi_flag(P_V, ramp.high == 0x7F && ramp.value == 0x80);
+        break;
+    }
+}
+
+/*
+ * @routine 004E:245 SoundApproachStep
+ * @run 75:8A45
+ * WHAT IT DOES: Moves a channel's approaching value toward its target by its step, as 8.8, and
+ * ends the approach when it gets there.
+ * HOW: SoundApproachBy added to or taken from SoundApproachLo, carrying into SoundApproach;
+ * SoundApproachTarget.
+ * Entry: X channel. Exit: X and Y kept. No step, A 0, Z set, N clear. There, A the target, Z and
+ * C set, N clear. Moved, A the fraction, C and V from its add or subtract, N and Z from it, or
+ * from the value when that carried into it.
+ */
+Approach SoundApproachStep(uint8_t channel)
+{
+    Approach approach = { APPROACH_IDLE, 0, 0, 0, 0, false };
+    unsigned sum;
+
+    approach.step = rd8((uint16_t)(SoundApproachBy + channel));
+    if (approach.step == 0)
+        return approach;
+    approach.target = rd8((uint16_t)(SoundApproachTarget + channel));
+    approach.value = rd8((uint16_t)(SoundApproach + channel));
+    if (approach.target == approach.value) {
+        wr8((uint16_t)(SoundApproachBy + channel), 0);
+        approach.how = APPROACH_THERE;
+        return approach;
+    }
+    approach.before = rd8((uint16_t)(SoundApproachLo + channel));
+    approach.step = rd8((uint16_t)(SoundApproachBy + channel));
+    if (approach.target > approach.value) {
+        sum = (unsigned)approach.before + approach.step;
+        approach.how = APPROACH_UP;
+        approach.carried = sum > 0xFF;
+    } else {
+        sum = (unsigned)approach.before - approach.step;
+        approach.how = APPROACH_DOWN;
+        approach.carried = approach.before < approach.step;
+    }
+    wr8((uint16_t)(SoundApproachLo + channel), (uint8_t)sum);
+    if (approach.carried) {
+        approach.value = (uint8_t)(rd8((uint16_t)(SoundApproach + channel)) +
+                                   (approach.how == APPROACH_UP ? 1 : -1));
+        wr8((uint16_t)(SoundApproach + channel), approach.value);
+    }
+    return approach;
+}
+
+void abi_SoundApproachStep(void)
+{
+    Approach approach = SoundApproachStep(cpu.x);
+    uint8_t fraction;
+
+    switch (approach.how) {
+    case APPROACH_IDLE:
+        cpu.a = 0;
+        abi_nz(0);
+        return;
+    case APPROACH_THERE:
+        cpu.a = approach.target;
+        abi_nz(0);
+        abi_flag(P_C, true);
+        return;
+    case APPROACH_UP:
+        fraction = (uint8_t)(approach.before + approach.step);
+        abi_flag(P_C, approach.carried);
+        abi_flag(P_V, (~(approach.before ^ approach.step) & (approach.before ^ fraction) & 0x80) != 0);
+        break;
+    case APPROACH_DOWN:
+        fraction = (uint8_t)(approach.before - approach.step);
+        abi_flag(P_C, !approach.carried);
+        abi_flag(P_V, ((approach.before ^ approach.step) & (approach.before ^ fraction) & 0x80) != 0);
+        break;
+    default:
+        return;
+    }
+    cpu.a = fraction;
+    abi_nz(approach.carried ? approach.value : fraction);
 }

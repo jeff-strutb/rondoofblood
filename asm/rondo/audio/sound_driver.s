@@ -88,6 +88,112 @@ SoundVolumeSlideStep_at1:
 SoundVolumeSlideStep_at0:
     rts
 
+; @routine 004E:1F2 SoundModulate
+; @run 75:89F2
+; WHAT IT DOES: Adds a channel's modulation to the word in zSoundWordLo and Hi: a table word at
+; its phase, masked by channel; the phase moves on by the channel's speed.
+; HOW: SoundModulationSpeed onto SoundModulationPhaseLo, carrying into SoundModulationPhase,
+; which indexes SoundModulationTable a byte a step; SoundModulationMaskLo and Hi.
+; Entry: X channel. Exit: no speed, A 0, Z set, N clear, Y, C and V kept. Otherwise A the word's
+; high byte, N, Z, C and V from adding to it, Y the phase before. X kept.
+SoundModulate:
+    lda a:SoundModulationSpeed,x
+    beq SoundModulate_at0
+    ldy a:SoundModulationPhase,x
+    clc
+    adc a:SoundModulationPhaseLo,x
+    sta a:SoundModulationPhaseLo,x
+    bcc SoundModulate_at1
+    inc a:SoundModulationPhase,x
+SoundModulate_at1:
+    lda a:SoundModulationTable,y
+    and a:SoundModulationMaskLo,x
+    clc
+    adc z:zSoundWordLo
+    sta z:zSoundWordLo
+    lda a:SoundModulationTable+1,y
+    and a:SoundModulationMaskHi,x
+    adc z:zSoundWordHi
+    sta z:zSoundWordHi
+SoundModulate_at0:
+    rts
+
+; @routine 004E:21C SoundRampStep
+; @run 75:8A1C
+; WHAT IT DOES: Moves a channel's ramp on by its step, once its wait is over and only while the
+; slide is still at least the ramp away from where it started.
+; HOW: SoundChannelWait, SoundRampBy, SoundSlideFrom less SoundSlideHi against SoundRampHi;
+; SoundRampBy onto SoundRampLo, carrying into SoundRampHi.
+; Entry: X channel. Exit: X and Y kept. Waiting, A the wait, N and Z from it. No step, A 0, Z
+; set, N clear. Too close, A the distance, N and Z from it less the ramp, C clear, V from the
+; distance's subtract. Moved, A the ramp, N, Z, C and V from its add.
+SoundRampStep:
+    lda a:SoundChannelWait,x
+    bne SoundRampStep_at0
+    lda a:SoundRampBy,x
+    beq SoundRampStep_at0
+    lda a:SoundSlideFrom,x
+    sec
+    sbc a:SoundSlideHi,x
+    cmp a:SoundRampHi,x
+    bcc SoundRampStep_at0
+    lda a:SoundRampLo,x
+    clc
+    adc a:SoundRampBy,x
+    sta a:SoundRampLo,x
+    lda a:SoundRampHi,x
+    adc #$00
+    sta a:SoundRampHi,x
+SoundRampStep_at0:
+    rts
+
+; @routine 004E:245 SoundApproachStep
+; @run 75:8A45
+; WHAT IT DOES: Moves a channel's approaching value toward its target by its step, as 8.8, and
+; ends the approach when it gets there.
+; HOW: SoundApproachBy added to or taken from SoundApproachLo, carrying into SoundApproach;
+; SoundApproachTarget.
+; Entry: X channel. Exit: X and Y kept. No step, A 0, Z set, N clear. There, A the target, Z and
+; C set, N clear. Moved, A the fraction, C and V from its add or subtract, N and Z from it, or
+; from the value when that carried into it.
+SoundApproachStep:
+    lda a:SoundApproachBy,x
+    beq SoundApproachStep_at0
+    lda a:SoundApproachTarget,x
+    cmp a:SoundApproach,x
+    bne SoundApproachStep_at1
+    stz a:SoundApproachBy,x
+    bra SoundApproachStep_at0
+SoundApproachStep_at1:
+    bcc SoundApproachStep_at2
+    lda a:SoundApproachLo,x
+    clc
+    adc a:SoundApproachBy,x
+    sta a:SoundApproachLo,x
+    bcc SoundApproachStep_at0
+    inc a:SoundApproach,x
+    bra SoundApproachStep_at0
+SoundApproachStep_at2:
+    lda a:SoundApproachLo,x
+    sec
+    sbc a:SoundApproachBy,x
+    sta a:SoundApproachLo,x
+    bcs SoundApproachStep_at0
+    dec a:SoundApproach,x
+SoundApproachStep_at0:
+    rts
+
+; @routine 004E:310 SoundSetVolume
+; @run 75:8B10
+; WHAT IT DOES: Sets a channel's volume outright, as set and as it plays, with no fraction.
+; HOW: SoundVolumeSet and SoundVolume, SoundVolumeLo cleared.
+; Entry: A volume, X channel. Exit: all registers and flags kept.
+SoundSetVolume:
+    sta a:SoundVolumeSet,x
+    sta a:SoundVolume,x
+    stz a:SoundVolumeLo,x
+    rts
+
 ; @routine 004E:614 SoundSilenceAll
 ; @run 75:8E14
 ; WHAT IT DOES: Turns every PSG channel off, and the main volume down.
@@ -252,4 +358,130 @@ SoundReadPair_at0:
     bne SoundReadPair_at1
     inc z:zSoundWordHi
 SoundReadPair_at1:
+    rts
+
+; @routine 0053:6A3 SoundReadCommand
+; @run 76:B6A3
+; WHAT IT DOES: Reads the channel's next sequence command and its arguments, moving its place on.
+; HOW: Through zSoundSequenceLo and Hi; SoundCommandLength says how many arguments follow.
+; Entry: X channel. Exit: A $FF, or the count less one when it is above $80; N set, Z clear; Y
+; the argument bytes read; C and V as SoundCommandLength left them. X kept.
+SoundReadCommand:
+    lda (zSoundSequenceLo)
+    sta a:SoundCommandByte
+    inc z:zSoundSequenceLo
+    bne SoundReadCommand_at2
+    inc z:zSoundSequenceHi
+SoundReadCommand_at2:
+    jsr SoundCommandLength
+    cly
+SoundReadCommand_at1:
+    dec a
+    bmi SoundReadCommand_at0
+    pha
+    lda (zSoundSequenceLo)
+    sta a:SoundCommandArgs,y
+    iny
+    pla
+    inc z:zSoundSequenceLo
+    bne SoundReadCommand_at1
+    inc z:zSoundSequenceHi
+    bra SoundReadCommand_at1
+SoundReadCommand_at0:
+    rts
+
+; @routine 0053:6C6 SoundPeekCommand
+; @run 76:B6C6
+; WHAT IT DOES: Reads the channel's next sequence command and its arguments without moving its
+; place on.
+; HOW: A copy of the place in zSoundWordLo and Hi is read through instead.
+; Entry: X channel. Exit: as SoundReadCommand.
+SoundPeekCommand:
+    lda z:zSoundSequenceLo
+    sta z:zSoundWordLo
+    lda z:zSoundSequenceHi
+    sta z:zSoundWordHi
+    lda (zSoundWordLo)
+    sta a:SoundCommandByte
+    inc z:zSoundWordLo
+    bne SoundPeekCommand_at0
+    inc z:zSoundWordHi
+SoundPeekCommand_at0:
+    jsr SoundCommandLength
+    cly
+SoundPeekCommand_at1:
+    dec a
+    bmi SoundPeekCommand_at2
+    pha
+    lda (zSoundWordLo)
+    sta a:SoundCommandArgs,y
+    iny
+    pla
+    inc z:zSoundWordLo
+    bne SoundPeekCommand_at1
+    inc z:zSoundWordHi
+    bra SoundPeekCommand_at1
+SoundPeekCommand_at2:
+    rts
+
+; @routine 0053:6F1 SoundCommandLength
+; @run 76:B6F1
+; WHAT IT DOES: How many argument bytes the command in SoundCommandByte takes. Below $60 one,
+; unless its bit 7 says to reuse the channel's default, which goes into SoundCommandArgs with none
+; read; $60 up none, except the commands from $E0 up, whose lengths are a table.
+; HOW: A with bit 7 off picks the class; SoundChannelDefaultArg; SoundCommandLengths.
+; Entry: A the command byte, X channel. Exit: A the count. One, N and Z from it, C clear. A
+; default, N and Z from the default, C set. None from $60 to $DF, N and Z from it less $E0, C
+; clear. From the table, N and Z from the count, C set, V clear, Y the command less $E0.
+; Otherwise X, Y and V kept.
+SoundCommandLength:
+    and #$7F
+    cmp #$60
+    bcs SoundCommandLength_at2
+    lda a:SoundCommandByte
+    cmp #$80
+    bcs SoundCommandLength_at0
+    lda #$01
+    bra SoundCommandLength_at3
+SoundCommandLength_at0:
+    and #$7F
+    sta a:SoundCommandByte
+    lda a:SoundChannelDefaultArg,x
+    sta a:SoundCommandArgs
+    cla
+    bra SoundCommandLength_at3
+SoundCommandLength_at2:
+    lda a:SoundCommandByte
+    cmp #$E0
+    bcs SoundCommandLength_at1
+    cla
+    bra SoundCommandLength_at3
+SoundCommandLength_at1:
+    sbc #$E0
+    tay
+    lda a:SoundCommandLengths,y
+SoundCommandLength_at3:
+    rts
+
+; @routine 0053:721 SoundWaveAddress
+; @run 76:B721
+; WHAT IT DOES: Points the block-move stub's source at a waveform: 32 bytes each from $BD11.
+; HOW: The waveform times 32, plus $BD11, into BlockMoveSourceLo and Hi.
+; Entry: A waveform. Exit: A the address's high byte, N, Z, C and V from adding it. X and Y kept.
+SoundWaveAddress:
+    stz a:BlockMoveSourceLo
+    lsr a
+    ror a:BlockMoveSourceLo
+    lsr a
+    ror a:BlockMoveSourceLo
+    lsr a
+    ror a:BlockMoveSourceLo
+    sta a:BlockMoveSourceHi
+    lda a:BlockMoveSourceLo
+    clc
+    adc #$11
+    sta a:BlockMoveSourceLo
+    lda a:BlockMoveSourceHi
+    adc #$BD
+    sta a:BlockMoveSourceHi
     rts

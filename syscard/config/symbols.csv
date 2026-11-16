@@ -106,3 +106,6 @@ FFF5,abs,CardBootRamBank,the first of the five CD RAM banks the boot maps at $40
 E6,zp,CardZpE6,cleared at boot; its use is not yet traced
 E7,zp,CardResetMark,set to $80 at boot and before a soft reset
 8000,abs,Mpr4Window,what MPR4 maps at $8000; also the backup memory when it is open
+22B8,abs,CardFontSavedMprs,the two MPRs ex_getfnt replaced: MPR3-4 at $22B8 or MPR5-6 at $22BA
+22BD,abs,CardFontShift,the bits of a 12-dot glyph's row being shifted into place
+F27E,abs,FontRowStarts,the index of each JIS row's first glyph in the font: a word each

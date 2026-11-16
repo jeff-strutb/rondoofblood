@@ -109,5 +109,8 @@
 #define CardZpE6 0x20E6 /* cleared at boot; its use is not yet traced */
 #define CardResetMark 0x20E7 /* set to $80 at boot and before a soft reset */
 #define Mpr4Window 0x8000 /* what MPR4 maps at $8000; also the backup memory when it is open */
+#define CardFontSavedMprs 0x22B8 /* the two MPRs ex_getfnt replaced: MPR3-4 at $22B8 or MPR5-6 at $22BA */
+#define CardFontShift 0x22BD /* the bits of a 12-dot glyph's row being shifted into place */
+#define FontRowStarts 0xF27E /* the index of each JIS row's first glyph in the font: a word each */
 
 #endif

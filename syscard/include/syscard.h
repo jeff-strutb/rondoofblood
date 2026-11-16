@@ -482,6 +482,41 @@ void ex_setred(uint8_t low, uint8_t high);
 void ex_setwrt(uint8_t low, uint8_t high);
 uint8_t ex_setdma(void);
 
+/* Where sjis_to_font_index gave up, if it did. */
+typedef enum {
+    FONT_FOUND,
+    FONT_LEAD_HIGH,     /* the first byte past $EF */
+    FONT_LEAD_GAP,      /* the first byte in $A0-$BF */
+    FONT_TRAIL_HIGH,    /* the second byte past $FC */
+    FONT_TRAIL_GAP,     /* the second byte $7F */
+    FONT_ROW_UNUSED,    /* a JIS row with no glyphs: $28-$2F */
+    FONT_ROW_HIGH       /* a JIS row past $4F */
+} FontFailure;
+
+/* A Shift-JIS code made into a glyph number, with what the exits' flags come from. */
+typedef struct {
+    FontFailure failure;
+    uint8_t lead;        /* _AH as given */
+    uint8_t trail;       /* _AL as given */
+    uint8_t row;         /* the JIS row */
+    uint8_t column;      /* the column after its first step, before the row's adjustments */
+    bool second_half;    /* the code's second byte was in the lead's second row */
+    uint8_t table_index;
+    uint8_t carry_in;    /* the carry into the index's high byte */
+} FontIndex;
+
+/* What ex_getfnt did. */
+typedef struct {
+    FontIndex index;
+    bool twelve_dot;
+    uint8_t restored_high;  /* the second MPR it put back */
+} FontGet;
+
+FontIndex sjis_to_font_index(void);
+void put_font_byte(uint8_t byte);
+void expand_12dot_glyph(void);
+FontGet ex_getfnt(void);
+
 BackupSum bm_sum_file(void);
 BackupSpan bm_place_span(void);
 BackupMoveWay bm_move_direction(void);

@@ -106,3 +106,6 @@ CardBootRamBank = $FFF5
 CardZpE6 = $E6
 CardResetMark = $E7
 Mpr4Window = $8000
+CardFontSavedMprs = $22B8
+CardFontShift = $22BD
+FontRowStarts = $F27E

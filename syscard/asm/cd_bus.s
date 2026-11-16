@@ -231,3 +231,62 @@ cd_ack_on:
     lda #$80
     tsb a:CdIrqControl
     rts
+
+; @card 00:EB8F cd_base
+; WHAT IT DOES: Sets the disc address that reads count from: _AL, _AH, _BL as a sector number
+; if _BH is zero, as BCD minutes, seconds and frames if bit 6 of _BH is set, or else the start
+; of the track numbered _AL. Bit 1 of _CL keeps the first base as it was, bit 0 the second.
+; HOW: A track's start is asked of the drive's table of contents into CardCdResult; a position
+; is copied there; either is made into a sector number by msf_to_lba in bank 1, mapped at
+; $C000 for the call. Then the sector number goes to the bases asked for.
+; Entry: _AX, _BX, _CL. Exit: A _BL, N and Z from it, if a base was set. Else A 0, Z 1, N 0 for a
+; sector number, or A the bank MPR6 held, N and Z from it. C and V from msf_to_lba, kept for a
+; sector number. X and Y as cd_dinfo leaves them for a track; kept otherwise.
+cd_base:
+    lda z:CardBh
+    beq cd_base_at0
+    bbs6 CardBh,cd_base_at1
+    lda z:CardAl
+    sta z:CardAh
+    lda #$02
+    sta z:CardAl
+    lda #<CardCdResult
+    sta z:CardBl
+    lda #>CardCdResult
+    sta z:CardBh
+    jsr cd_dinfo
+    bra cd_base_at2
+cd_base_at1:
+    lda z:CardAl
+    sta a:CardCdResult
+    lda z:CardAh
+    sta a:CardCdResult+1
+    lda z:CardBl
+    sta a:CardCdResult+2
+cd_base_at2:
+    tma #$40
+    pha
+    lda #$01
+    tam #$40
+    jsr msf_to_lba
+    pla
+    tam #$40
+cd_base_at0:
+    bbs1 CardCl,cd_base_at3
+    lda z:CardAl
+    sta a:CardCdBases
+    lda z:CardAh
+    sta a:CardCdBases+1
+    lda z:CardBl
+    sta a:CardCdBases+2
+cd_base_at3:
+    bbs0 CardCl,cd_base_at4
+    lda z:CardAl
+    sta a:CardCdBases+3
+    lda z:CardAh
+    sta a:CardCdBases+4
+    lda z:CardBl
+    sta a:CardCdBases+5
+cd_base_at4:
+    rts
+

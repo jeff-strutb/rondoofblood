@@ -819,6 +819,80 @@ void abi_cd_dinfo(void)
     cd_attempt_exit_shim(cd_dinfo());
 }
 
+enum {
+    BASE_GIVEN_AS_MSF = 0x40, DINFO_TRACK_START = 0x02, ADDRESS_BANK = 0x01,
+    BASE_KEEP_FIRST = 0x02, BASE_KEEP_SECOND = 0x01, BASE_BYTES = 3
+};
+
+/* From cd_address.c: an exit as lba_add_term leaves it. */
+void abi_lba_add_exit_shim(LbaAdd add);
+
+static void set_base(unsigned index)
+{
+    for (unsigned i = 0; i < BASE_BYTES; i++)
+        wr8((uint16_t)(CardCdBases + index * BASE_BYTES + i), rd8((uint16_t)(CardAl + i)));
+}
+
+/*
+ * @card 00:EB8F cd_base
+ * WHAT IT DOES: Sets the disc address that reads count from: _AL, _AH, _BL as a sector number
+ * if _BH is zero, as BCD minutes, seconds and frames if bit 6 of _BH is set, or else the start
+ * of the track numbered _AL. Bit 1 of _CL keeps the first base as it was, bit 0 the second.
+ * HOW: A track's start is asked of the drive's table of contents into CardCdResult; a position
+ * is copied there; either is made into a sector number by msf_to_lba in bank 1, mapped at
+ * $C000 for the call. Then the sector number goes to the bases asked for.
+ * Entry: _AX, _BX, _CL. Exit: A _BL, N and Z from it, if a base was set. Else A 0, Z 1, N 0 for a
+ * sector number, or A the bank MPR6 held, N and Z from it. C and V from msf_to_lba, kept for a
+ * sector number. X and Y as cd_dinfo leaves them for a track; kept otherwise.
+ */
+CdBase cd_base(void)
+{
+    CdBase base = { 0 };
+    uint8_t given = rd8(CardBh);
+
+    if (given != 0) {
+        base.converted = true;
+        if (given & BASE_GIVEN_AS_MSF) {
+            for (unsigned i = 0; i < BASE_BYTES; i++)
+                wr8((uint16_t)(CardCdResult + i), rd8((uint16_t)(CardAl + i)));
+        } else {
+            base.from_track = true;
+            wr8(CardAh, rd8(CardAl));
+            wr8(CardAl, DINFO_TRACK_START);
+            wr8(CardBl, (uint8_t)CardCdResult);
+            wr8(CardBh, (uint8_t)(CardCdResult >> 8));
+            base.dinfo = cd_dinfo();
+        }
+        base.saved_mpr6 = tma(MPR6);
+        tam(MPR6, ADDRESS_BANK);
+        base.add = msf_to_lba();
+        tam(MPR6, base.saved_mpr6);
+    }
+    base.which = rd8(CardCl);
+    if (!(base.which & BASE_KEEP_FIRST))
+        set_base(0);
+    if (!(base.which & BASE_KEEP_SECOND))
+        set_base(1);
+    return base;
+}
+
+void abi_cd_base(void)
+{
+    CdBase base = cd_base();
+
+    if (base.from_track)
+        cd_attempt_exit_shim(base.dinfo);
+    if (base.converted) {
+        abi_lba_add_exit_shim(base.add);
+        cpu.a = base.saved_mpr6;
+    } else {
+        cpu.a = 0;
+    }
+    if ((base.which & (BASE_KEEP_FIRST | BASE_KEEP_SECOND)) != (BASE_KEEP_FIRST | BASE_KEEP_SECOND))
+        cpu.a = rd8(CardBl);
+    abi_nz(cpu.a);
+}
+
 static void ask_dinfo_to_result(uint8_t what)
 {
     wr8(CardAl, what);

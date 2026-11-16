@@ -404,6 +404,40 @@ AdStat ad_stat(void);
 uint8_t ad_latch_read_address(void);
 uint8_t ad_latch_length(void);
 
+/* A byte converted between binary and BCD, and whether it could be. */
+typedef struct {
+    bool converted;
+    uint8_t value;      /* the converted byte, or the one given */
+    uint8_t tens;       /* ex_bcdbin: the high digit, or ten times it once it was checked */
+} BcdConvert;
+
+BcdConvert ex_bcdbin(uint8_t bcd);
+BcdConvert ex_binbcd(uint8_t value);
+
+/* The last add of a sector number's terms, which the exit's flags come from. */
+typedef struct {
+    uint32_t before;    /* the sum before it, 24 bits */
+    uint32_t term;      /* what was added, 24 bits */
+} LbaAdd;
+
+void lba_load_term(uint8_t value);
+bool lba_double_term(void);
+LbaAdd lba_add_term(void);
+LbaAdd lba_double_and_add(void);
+LbaAdd msf_to_lba(void);
+
+/* How cd_base read the base it was given, and what its exit shows. */
+typedef struct {
+    bool converted;      /* a position or a track was made into a sector number */
+    bool from_track;     /* the position came from the table of contents */
+    CdAttempt dinfo;
+    LbaAdd add;
+    uint8_t saved_mpr6;  /* what MPR6 held while bank 1 was mapped */
+    uint8_t which;       /* _CL: bit 1 keeps the first base, bit 0 the second */
+} CdBase;
+
+CdBase cd_base(void);
+
 BackupSum bm_sum_file(void);
 BackupSpan bm_place_span(void);
 BackupMoveWay bm_move_direction(void);

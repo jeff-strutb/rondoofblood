@@ -61,3 +61,65 @@ ma_mul8u:
     bsr map_math_bank
     jsr mul_u8
     bra unmap_math_bank
+
+; @card 00:E600 ex_bcdbin
+; WHAT IT DOES: Turns a two-digit BCD byte into binary.
+; HOW: Ten times the high digit, made as twice it plus eight times it in CardPointerLo, plus the
+; low digit. A digit of ten or more gives the byte back unchanged, with C set.
+; Entry: A. Exit: A the result, C clear, V clear; or A as given, C set, and V kept if the high
+; digit was bad, clear if the low one was. N and Z from X, which is kept.
+ex_bcdbin:
+    phx
+    tax
+    and #$F0
+    cmp #$A0
+    bcs ex_bcdbin_at0
+    lsr a
+    sta z:CardPointerLo
+    lsr a
+    lsr a
+    clc
+    adc z:CardPointerLo
+    sta z:CardPointerLo
+    txa
+    and #$0F
+    cmp #$0A
+    bcs ex_bcdbin_at0
+    clc
+    adc z:CardPointerLo
+    tax
+    clc
+ex_bcdbin_at0:
+    txa
+    plx
+    rts
+
+; @card 00:E621 ex_binbcd
+; WHAT IT DOES: Turns a binary byte below 100 into two BCD digits.
+; HOW: Takes tens off counting them, then puts the count in the high digit; the units go
+; through CardPointerLo. 100 or more gives the byte back with C set.
+; Entry: A. Exit: A the result, C clear, V clear, N and Z from X, which is kept. 100 or more: A
+; kept, C set, N and Z from A less 100. V kept.
+ex_binbcd:
+    cmp #$64
+    bcs ex_binbcd_at0
+    phx
+    ldx #$FF
+    sec
+ex_binbcd_at1:
+    inx
+    sbc #$0A
+    bcs ex_binbcd_at1
+    adc #$0A
+    sax
+    asl a
+    asl a
+    asl a
+    asl a
+    stx z:CardPointerLo
+    adc z:CardPointerLo
+    plx
+    clc
+ex_binbcd_at0:
+    rts
+

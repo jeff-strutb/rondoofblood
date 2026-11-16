@@ -577,5 +577,6 @@
 #define SoundEffectTable 0xB7FB /* the sound driver: by effect command, three bytes: priority and its sequence's address */
 #define zPaused 0x203B /* bit 0 set while the game is paused */
 #define RichterCrashFrames 0xAF4C /* an item crash's frame by its pair of states and the attack kind */
+#define CdTrackTable 0x7250 /* by track, six bytes for the BIOS's CD play: _AL, _AH, _BL, _CL, _CH, _DL */
 
 #endif

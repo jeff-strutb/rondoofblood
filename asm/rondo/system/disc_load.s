@@ -255,7 +255,8 @@ AdpcmPlayFromDisc_at0:
 ; @run 6A:6F43
 ; WHAT IT DOES: Plays a CD track once.
 ; HOW: Mode $42 for the BIOS's play.
-; Entry: A track. Exit: A as the BIOS's fade leaves it, X and Y kept, N and Z from X.
+; Entry: A track. Exit: A 0 from the BIOS's fade, C and V as its play left them, X and Y kept, N
+; and Z from X. The BIOS's play is tried until it succeeds; the C replays the last 32 tries' exits.
 CdPlayOnce:
     phx
     phy

@@ -574,3 +574,4 @@ SoundChannel25F7 = $25F7 ; the sound driver: weighs effect channel 7 against 6 w
 SoundEffectTable = $B7FB ; the sound driver: by effect command, three bytes: priority and its sequence's address
 zPaused = $3B ; bit 0 set while the game is paused
 RichterCrashFrames = $AF4C ; an item crash's frame by its pair of states and the attack kind
+CdTrackTable = $7250 ; by track, six bytes for the BIOS's CD play: _AL, _AH, _BL, _CL, _CH, _DL

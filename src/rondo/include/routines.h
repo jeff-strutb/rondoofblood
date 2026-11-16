@@ -843,4 +843,23 @@ typedef struct { uint8_t facing; uint8_t pressed; bool turned; } TurnPress;
 
 DyingStep RichterDyingStep(void);
 TurnPress RichterTurnOnPress(void);
+/* A CD track played: its entry's address, and the BIOS's play tried until it succeeded. */
+enum { CD_PLAY_KEPT = 32 };
+
+typedef struct { uint16_t product; Sum high; } TrackEntry;
+
+typedef struct {
+    uint8_t track;
+    uint8_t mode;
+    uint8_t dl;
+    TrackEntry entry;
+    unsigned tries;
+    uint8_t results[CD_PLAY_KEPT];
+    CdPlay attempts[CD_PLAY_KEPT];
+} TrackPlay;
+
+TrackPlay CdPlayOnce(uint8_t track);
+TrackPlay CdPlayAgain(void);
+TrackPlay CdPlayRepeat(uint8_t track);
+
 #endif

@@ -9,7 +9,8 @@
 #include "routines.h"
 
 enum {
-    MPR4 = 0x10, MPR5 = 0x20, MPR6 = 0x40,
+    MPR4 = 0x10, MPR5 = 0x20, MPR6 = 0x40, CD_TRACK_ENTRY = 6, CD_PLAY_FROM_MSF = 0x40,
+    CD_PLAY_ONCE = 0x42, CD_PLAY_REPEAT = 0x41,
     CD_STATUS_IDLE = 0,
     BACKUP_NAME_LO = 0x9A, BACKUP_NAME_HI = 0x6C,
     BACKUP_BLANK_LO = 0x8F, BACKUP_BLANK_HI = 0x6C,
@@ -345,39 +346,80 @@ static Alu track_record_start(Alu r)
 }
 
 /* The play of a track, whichever way the mode came. A in r is the track. */
-static Alu play_track(Alu r, uint8_t mode, uint8_t saved_x, uint8_t saved_y)
+/* The track's entry in CdTrackTable, through zTemp00 and 01, from the BIOS's multiply. */
+static TrackEntry track_entry(uint8_t track)
 {
-    uint8_t byte;
-    uint8_t track = r.a;
+    TrackEntry entry;
+    Sum low;
 
-    cpu.x = mode;
+    wr8(zBiosAl, track);
+    wr8(zBiosBl, CD_TRACK_ENTRY);
+    entry.product = ma_mul8u(track, CD_TRACK_ENTRY);
+    low = add_bytes((uint8_t)CdTrackTable, rd8(zBiosCl), false);
+    wr8(zTemp00, low.value);
+    entry.high = add_bytes((uint8_t)(CdTrackTable >> 8), rd8(zBiosCh), low.carry);
+    wr8(zTemp01, entry.high.value);
+    return entry;
+}
+
+/* A track played in the mode given until the BIOS's play succeeds, then the CD's fade off. */
+static TrackPlay play_track(uint8_t track, uint8_t mode)
+{
+    TrackPlay play;
+    uint8_t result;
+
     wr8(zCdPlayMode, mode);
     wr8(zCdTrack, track);
-    r = record_pointer(r, track, 6, 0x50, 0x72);
+    play.track = track;
+    play.mode = mode;
+    play.entry = track_entry(track);
+    play.tries = 0;
     do {
-        r = track_record_start(r);
-        byte = rd8(zCdPlayMode);
-        wr8(zBiosDh, byte);
-        cpu.y = 3;
-        byte = rd8_zp_y(zTemp00, cpu.y);
-        wr8(zBiosCl, byte);
-        cpu.y = 4;
-        byte = rd8_zp_y(zTemp00, cpu.y);
-        wr8(zBiosCh, byte);
+        CdPlay tried;
+
+        wr8(zBiosBh, CD_PLAY_FROM_MSF);
+        wr8(zBiosAl, rd8_zp(zTemp00));
+        wr8(zBiosAh, rd8_zp_y(zTemp00, 1));
+        wr8(zBiosBl, rd8_zp_y(zTemp00, 2));
+        wr8(zBiosDh, rd8(zCdPlayMode));
+        wr8(zBiosCl, rd8_zp_y(zTemp00, 3));
+        wr8(zBiosCh, rd8_zp_y(zTemp00, 4));
+        play.dl = rd8_zp_y(zTemp00, 5);
+        wr8(zBiosDl, play.dl);
+        tried = cd_play();
+        result = cd_play_result(tried);
+        play.results[play.tries % CD_PLAY_KEPT] = result;
+        play.attempts[play.tries % CD_PLAY_KEPT] = tried;
+        play.tries++;
+    } while (result != 0);
+    cd_fade(0);
+    return play;
+}
+
+/* As the BIOS's calls leave the registers, then X and Y back as they came, N and Z from X. */
+static void play_track_exit_shim(TrackPlay play)
+{
+    uint8_t x = cpu.x;
+    uint8_t y = cpu.y;
+    unsigned first = play.tries > CD_PLAY_KEPT ? play.tries - CD_PLAY_KEPT : 0;
+
+    ma_mul8u_exit_shim(play.track, CD_TRACK_ENTRY, play.entry.product);
+    cpu.a = play.entry.high.value;
+    abi_nz(play.entry.high.value);
+    abi_flag(P_C, play.entry.high.carry);
+    abi_flag(P_V, play.entry.high.overflow);
+    for (unsigned i = first; i < play.tries; i++) {
+        cpu.x = i == 0 ? play.mode : play.results[(i - 1) % CD_PLAY_KEPT];
+        cpu.a = play.dl;
         cpu.y = 5;
-        byte = rd8_zp_y(zTemp00, cpu.y);
-        alu_load(&r, byte);
-        wr8(zBiosDl, byte);
-        r = call_with(BiosCdPlay, r);
-        cpu.x = r.a;
-        alu_nz(&r, r.a);
-    } while (r.a != 0);
-    r.a = 0;
-    r = call_with(BiosCdFade, r);
-    cpu.y = saved_y;
-    cpu.x = saved_x;
-    alu_nz(&r, saved_x);
-    return r;
+        abi_nz(play.dl);
+        cd_play_exit_shim(play.attempts[i % CD_PLAY_KEPT]);
+    }
+    cpu.x = 0;
+    cd_fade_exit_shim(0);
+    cpu.x = x;
+    cpu.y = y;
+    abi_nz(x);
 }
 
 /*
@@ -385,14 +427,17 @@ static Alu play_track(Alu r, uint8_t mode, uint8_t saved_x, uint8_t saved_y)
  * @run 6A:6F43
  * WHAT IT DOES: Plays a CD track once.
  * HOW: Mode $42 for the BIOS's play.
- * Entry: A track. Exit: A as the BIOS's fade leaves it, X and Y kept, N and Z from X.
+ * Entry: A track. Exit: A 0 from the BIOS's fade, C and V as its play left them, X and Y kept, N
+ * and Z from X. The BIOS's play is tried until it succeeds; the C replays the last 32 tries' exits.
  */
+TrackPlay CdPlayOnce(uint8_t track)
+{
+    return play_track(track, CD_PLAY_ONCE);
+}
+
 void abi_CdPlayOnce(void)
 {
-    Alu r = alu_from_cpu();
-
-    alu_nz(&r, 0x42);
-    abi_alu(play_track(r, 0x42, cpu.x, cpu.y));
+    play_track_exit_shim(CdPlayOnce(cpu.a));
 }
 
 /*
@@ -402,14 +447,14 @@ void abi_CdPlayOnce(void)
  * HOW: zCdTrack into CdPlayRepeat.
  * Entry: nothing. Exit: as CdPlayRepeat.
  */
+TrackPlay CdPlayAgain(void)
+{
+    return play_track(rd8(zCdTrack), CD_PLAY_REPEAT);
+}
+
 void abi_CdPlayAgain(void)
 {
-    uint8_t track = rd8(zCdTrack);
-    Alu r = alu_from_cpu();
-
-    alu_load(&r, track);
-    alu_nz(&r, 0x41);
-    abi_alu(play_track(r, 0x41, cpu.x, cpu.y));
+    play_track_exit_shim(CdPlayAgain());
 }
 
 /*
@@ -419,12 +464,14 @@ void abi_CdPlayAgain(void)
  * HOW: Mode $41 for the BIOS's play.
  * Entry: A track. Exit: as CdPlayOnce.
  */
+TrackPlay CdPlayRepeat(uint8_t track)
+{
+    return play_track(track, CD_PLAY_REPEAT);
+}
+
 void abi_CdPlayRepeat(void)
 {
-    Alu r = alu_from_cpu();
-
-    alu_nz(&r, 0x41);
-    abi_alu(play_track(r, 0x41, cpu.x, cpu.y));
+    play_track_exit_shim(CdPlayRepeat(cpu.a));
 }
 
 /*

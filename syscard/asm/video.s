@@ -207,3 +207,272 @@ ex_satclr_at0:
     stz a:CardSatFlag
     rts
 
+
+; @card 00:E382 ex_imode
+; WHAT IT DOES: Sets how far the VDC's VRAM address steps after each access: A 0 to 3 for 1,
+; 32, 64 or 128 words.
+; HOW: The two bits go to bits 3 and 4 of the control register's high byte, kept in
+; CardVdcCrHi, which is then written.
+; Entry: A. Exit: A the high byte, N and Z from it. X, Y, C, V kept.
+ex_imode:
+    rmb3 z:CardVdcCrHi
+    rmb4 z:CardVdcCrHi
+    asl a
+    asl a
+    asl a
+    and #$18
+    ora z:CardVdcCrHi
+    sta z:CardVdcCrHi
+    bra ex_hmode_at0
+
+; @card 00:E391 ex_vmode
+; WHAT IT DOES: Steps the VRAM address by one column of the background map: 32 words if the map
+; is 32 tiles wide, else 64.
+; HOW: Reads the map's width from CardVdcMwr. (Its test of bit 0 after keeping bits 4 and 5 can
+; never be true.)
+; Entry: nothing. Exit: as ex_imode.
+ex_vmode:
+    smb3 z:CardVdcCrHi
+    lda a:CardVdcMwr
+    and #$30
+    beq ex_hmode_at1
+    smb4 z:CardVdcCrHi
+    and #$01
+    bne ex_hmode_at0
+    rmb3 z:CardVdcCrHi
+    bra ex_hmode_at0
+
+; @card 00:E3A4 ex_hmode
+; WHAT IT DOES: Steps the VRAM address by one word after each access.
+; HOW: Clears both step bits, then writes the high byte.
+; Entry: nothing. Exit: as ex_imode.
+ex_hmode:
+    rmb3 z:CardVdcCrHi
+ex_hmode_at1:
+    rmb4 z:CardVdcCrHi
+ex_hmode_at0:
+    lda #$05
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda z:CardVdcCrHi
+    sta a:VdcDataHi
+    rts
+
+; @card 00:E3B5 ex_vsync
+; WHAT IT DOES: Waits for the next vertical blank, unless bit 1 of CardIrqFlags says not to.
+; HOW: Enables interrupts, turns on the VDC's vertical blank interrupt if it was off, then
+; waits for CardFrameTick to change.
+; Entry: nothing. Exit, no wait: everything kept. Waited: I clear, A the count it waited on, Z 0,
+; N and C from comparing it with the new one. X, Y, V kept.
+ex_vsync:
+    bbs1 CardIrqFlags,ex_vsync_at0
+    cli
+    bbs3 CardVdcCrLo,ex_vsync_at1
+    bsr ex_irqon
+ex_vsync_at1:
+    lda a:CardFrameTick
+ex_vsync_at2:
+    cmp a:CardFrameTick
+    beq ex_vsync_at2
+ex_vsync_at0:
+    rts
+
+; @card 00:E3C7 ex_rcron
+; WHAT IT DOES: Turns on the VDC's raster compare interrupt.
+; HOW: Sets bit 2 of CardVdcCrLo and writes the control register's low byte.
+; Entry: nothing. Exit: A the low byte, N and Z from it. X, Y, C, V kept.
+ex_rcron:
+    smb2 z:CardVdcCrLo
+    bra ex_irqoff_at0
+
+; @card 00:E3CB ex_rcroff
+; WHAT IT DOES: Turns off the VDC's raster compare interrupt.
+; HOW: As ex_rcron, clearing the bit.
+; Entry: nothing. Exit: as ex_rcron.
+ex_rcroff:
+    rmb2 z:CardVdcCrLo
+    bra ex_irqoff_at0
+
+; @card 00:E3CF ex_irqon
+; WHAT IT DOES: Turns on the VDC's vertical blank interrupt.
+; HOW: As ex_rcron, with bit 3.
+; Entry: nothing. Exit: as ex_rcron.
+ex_irqon:
+    smb3 z:CardVdcCrLo
+    bra ex_irqoff_at0
+
+; @card 00:E3D3 ex_irqoff
+; WHAT IT DOES: Turns off the VDC's vertical blank interrupt.
+; HOW: As ex_rcroff, with bit 3.
+; Entry: nothing. Exit: as ex_rcron.
+ex_irqoff:
+    rmb3 z:CardVdcCrLo
+ex_irqoff_at0:
+    lda #$05
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda z:CardVdcCrLo
+    sta a:VdcDataLo
+    rts
+
+; @card 00:E3E2 ex_bgon
+; WHAT IT DOES: Asks for the background to be shown, from the next time the control register's
+; low byte is written.
+; HOW: Sets bit 7 of CardVdcCrLo.
+; Entry: nothing. Exit: everything kept.
+ex_bgon:
+    smb7 z:CardVdcCrLo
+    rts
+
+; @card 00:E3E5 ex_bgoff
+; WHAT IT DOES: Asks for the background to be hidden, as ex_bgon.
+; HOW: Clears bit 7 of CardVdcCrLo.
+; Entry: nothing. Exit: everything kept.
+ex_bgoff:
+    rmb7 z:CardVdcCrLo
+    rts
+
+; @card 00:E3E8 ex_spron
+; WHAT IT DOES: Asks for sprites to be shown, as ex_bgon.
+; HOW: Sets bit 6 of CardVdcCrLo.
+; Entry: nothing. Exit: everything kept.
+ex_spron:
+    smb6 z:CardVdcCrLo
+    rts
+
+; @card 00:E3EB ex_sproff
+; WHAT IT DOES: Asks for sprites to be hidden, as ex_bgon.
+; HOW: Clears bit 6 of CardVdcCrLo.
+; Entry: nothing. Exit: everything kept.
+ex_sproff:
+    rmb6 z:CardVdcCrLo
+    rts
+
+; @card 00:E3EE ex_dspon
+; WHAT IT DOES: Asks for the background and sprites to be shown, as ex_bgon.
+; HOW: Sets bits 6 and 7 of CardVdcCrLo.
+; Entry: nothing. Exit: everything kept.
+ex_dspon:
+    smb6 z:CardVdcCrLo
+    smb7 z:CardVdcCrLo
+    rts
+
+; @card 00:E3F3 ex_dspoff
+; WHAT IT DOES: Asks for the background and sprites to be hidden, as ex_bgon.
+; HOW: Clears bits 6 and 7 of CardVdcCrLo.
+; Entry: nothing. Exit: everything kept.
+ex_dspoff:
+    rmb6 z:CardVdcCrLo
+    rmb7 z:CardVdcCrLo
+    rts
+
+; @card 00:E3F8 ex_dmamod
+; WHAT IT DOES: Sets the VDC's DMA control register.
+; HOW: Its five bits of A to CardVdcDcr, which goes to the register's low byte.
+; Entry: A. Exit: A the bits, N and Z from them. X, Y, C, V kept.
+ex_dmamod:
+    and #$1F
+    sta a:CardVdcDcr
+    lda #$0F
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda a:CardVdcDcr
+    sta a:VdcDataLo
+    rts
+
+; @card 00:E40B ex_sprdma
+; WHAT IT DOES: Has the VDC copy the sprite table from VRAM at the next vertical blank.
+; HOW: CardSatAddress to the VDC's sprite table address register.
+; Entry: CardSatAddress. Exit: A its high byte, N and Z from it. X, Y, C, V kept.
+ex_sprdma:
+    lda #$13
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda a:CardSatAddress
+    sta a:VdcDataLo
+    lda a:CardSatAddress+1
+    sta a:VdcDataHi
+    rts
+
+; @card 00:E41F ex_setrcr
+; WHAT IT DOES: Sets the raster line the VDC interrupts at: A low, X high.
+; HOW: The two bytes to the raster compare register.
+; Entry: A, X. Exit: N and Z from A. A, X, Y, C, V kept.
+ex_setrcr:
+    pha
+    lda #$06
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    pla
+    sta a:VdcDataLo
+    stx a:VdcDataHi
+    rts
+
+; @card 00:E42F ex_setred
+; WHAT IT DOES: Sets the VRAM address to read from, A low, X high, and selects the data port.
+; HOW: The address to the read address register, then the data register selected.
+; Entry: A, X. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
+ex_setred:
+    pha
+    lda #$01
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    pla
+    sta a:VdcDataLo
+    stx a:VdcDataHi
+    lda #$02
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    rts
+
+; @card 00:E446 ex_setwrt
+; WHAT IT DOES: Sets the VRAM address to write to, A low, X high, and selects the data port.
+; HOW: As ex_setred, with the write address register.
+; Entry: A, X. Exit: as ex_setred.
+ex_setwrt:
+    pha
+    lda #$00
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    pla
+    sta a:VdcDataLo
+    stx a:VdcDataHi
+    lda #$02
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    rts
+
+; @card 00:E45D ex_setdma
+; WHAT IT DOES: Sets up a VRAM to VRAM copy: _BX the source, _DX the destination, _CX the length.
+; HOW: The three to the VDC's DMA registers, then the register that was selected is selected
+; again.
+; Entry: _BX, _CX, _DX. Exit: A the register selected, N and Z from it. X, Y, C, V kept.
+ex_setdma:
+    lda z:CardVdcReg
+    pha
+    lda #$10
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda z:CardBl
+    sta a:VdcDataLo
+    lda z:CardBh
+    sta a:VdcDataHi
+    lda #$11
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda z:CardDl
+    sta a:VdcDataLo
+    lda z:CardDh
+    sta a:VdcDataHi
+    lda #$12
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda z:CardCl
+    sta a:VdcDataLo
+    lda z:CardCh
+    sta a:VdcDataHi
+    pla
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    rts
+

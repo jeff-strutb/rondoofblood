@@ -99,3 +99,6 @@ FEC3,abs,CardVersionMinor,the card's version after the point: 0
 22A6,abs,CardAdpcmLength,the length ad_play last latched
 22A8,abs,CardAdpcmAddress,the address ad_play last latched
 22AA,abs,CardAdpcmRate,the rate ad_play last set
+F4,zp,CardVdcCrHi,the copy of the VDC's control register's high byte
+F5,zp,CardIrqFlags,bit 1 set: ex_vsync returns without waiting
+2243,abs,CardVdcDcr,the copy of the VDC's DMA control register

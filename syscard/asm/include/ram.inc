@@ -99,3 +99,6 @@ AdpcmRate = $180E
 CardAdpcmLength = $22A6
 CardAdpcmAddress = $22A8
 CardAdpcmRate = $22AA
+CardVdcCrHi = $F4
+CardIrqFlags = $F5
+CardVdcDcr = $2243

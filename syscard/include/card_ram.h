@@ -102,5 +102,8 @@
 #define CardAdpcmLength 0x22A6 /* the length ad_play last latched */
 #define CardAdpcmAddress 0x22A8 /* the address ad_play last latched */
 #define CardAdpcmRate 0x22AA /* the rate ad_play last set */
+#define CardVdcCrHi 0x20F4 /* the copy of the VDC's control register's high byte */
+#define CardIrqFlags 0x20F5 /* bit 1 set: ex_vsync returns without waiting */
+#define CardVdcDcr 0x2243 /* the copy of the VDC's DMA control register */
 
 #endif

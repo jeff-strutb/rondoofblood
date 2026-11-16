@@ -438,6 +438,34 @@ typedef struct {
 
 CdBase cd_base(void);
 
+/* What ex_vsync did: returned at once, or waited for the frame count to move. */
+typedef struct {
+    bool waited;
+    uint8_t before;
+    uint8_t after;
+} VsyncWait;
+
+uint8_t ex_imode(uint8_t mode);
+uint8_t ex_vmode(void);
+uint8_t ex_hmode(void);
+VsyncWait ex_vsync(void);
+uint8_t ex_rcron(void);
+uint8_t ex_rcroff(void);
+uint8_t ex_irqon(void);
+uint8_t ex_irqoff(void);
+void ex_bgon(void);
+void ex_bgoff(void);
+void ex_spron(void);
+void ex_sproff(void);
+void ex_dspon(void);
+void ex_dspoff(void);
+uint8_t ex_dmamod(uint8_t mode);
+uint8_t ex_sprdma(void);
+void ex_setrcr(uint8_t low, uint8_t high);
+void ex_setred(uint8_t low, uint8_t high);
+void ex_setwrt(uint8_t low, uint8_t high);
+uint8_t ex_setdma(void);
+
 BackupSum bm_sum_file(void);
 BackupSpan bm_place_span(void);
 BackupMoveWay bm_move_direction(void);

@@ -37,11 +37,16 @@ uint8_t ex_scrsiz(uint8_t size)
 
 void abi_ex_scrsiz(void)
 {
-    uint8_t bits = size_bits(cpu.a);
-    uint8_t width = ex_scrsiz(cpu.a);
+    uint8_t given = cpu.a;
 
+    ex_scrsiz_exit_shim(given, ex_scrsiz(given));
+}
+
+/* ex_scrsiz's exit, for its wrapper and for a caller's that ends in it: the size given, and what it returned. */
+void ex_scrsiz_exit_shim(uint8_t given, uint8_t width)
+{
     cpu.a = width;
-    cpu.y = bits;
+    cpu.y = size_bits(given);
     abi_nz(width);
     abi_flag(P_C, false);
 }

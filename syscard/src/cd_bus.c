@@ -651,6 +651,12 @@ static void cd_retry_exit_shim(CdRetry retry)
     abi_flag(P_C, retry.give_up);
 }
 
+/* What A gives after a command the BIOS retried: the sense key if it asked for one, else the error. */
+static uint8_t retry_result(CdRetry retry)
+{
+    return retry.asked ? retry.sense : retry.error;
+}
+
 void abi_cd_retry_after_error(void)
 {
     cd_retry_exit_shim(cd_retry_after_error(cpu.a));
@@ -973,10 +979,16 @@ CdPause cd_pause(void)
     }
 }
 
-void abi_cd_pause(void)
+/* The A cd_pause leaves: 0, or the error the BIOS gave up with. */
+uint8_t cd_pause_result(CdPause pause)
 {
-    CdPause pause = cd_pause();
+    if (!pause.told_to_pause)
+        return 0;
+    return pause.failed ? retry_result(pause.retry) : 0;
+}
 
+static void cd_pause_registers_shim(CdPause pause)
+{
     cd_attempt_exit_shim(pause.subq);
     if (!pause.told_to_pause) {
         cpu.a = 0;
@@ -992,6 +1004,18 @@ void abi_cd_pause(void)
         abi_nz(0);
         abi_flag(P_C, true);
     }
+}
+
+/* cd_pause's exit, for its wrapper and for a caller's that ends in it. */
+void cd_pause_exit_shim(CdPause pause)
+{
+    cd_pause_registers_shim(pause);
+    cpu.a = cd_pause_result(pause);
+}
+
+void abi_cd_pause(void)
+{
+    cd_pause_exit_shim(cd_pause());
 }
 
 /* The command's address and the flags: the mode bits of _BH say how _AX and _BL are read. */
@@ -1054,10 +1078,16 @@ CdSearch cd_search(void)
     }
 }
 
-void abi_cd_search(void)
+/* The A cd_search leaves: 0, or the error the BIOS gave up with. */
+uint8_t cd_search_result(CdSearch search)
 {
-    CdSearch search = cd_search();
+    if (search.on_interrupt)
+        return 0;
+    return search.attempt.failed ? retry_result(search.attempt.retry) : 0;
+}
 
+static void cd_search_registers_shim(CdSearch search)
+{
     if (search.on_interrupt) {
         cd_send_exit_shim(search.sent);
         cpu.y = search.copied_to;
@@ -1069,6 +1099,18 @@ void abi_cd_search(void)
     }
     cpu.y = search.copied_to;
     cd_attempt_exit_shim(search.attempt);
+}
+
+/* cd_search's exit, for its wrapper and for a caller's that ends in it. */
+void cd_search_exit_shim(CdSearch search)
+{
+    cd_search_registers_shim(search);
+    cpu.a = cd_search_result(search);
+}
+
+void abi_cd_search(void)
+{
+    cd_search_exit_shim(cd_search());
 }
 
 /* One less, in packed decimal: a zero low digit borrows, and zero wraps to $99. */
@@ -1240,12 +1282,6 @@ CdPlay cd_play(void)
 void abi_cd_play(void)
 {
     cd_play_exit_shim(cd_play());
-}
-
-/* What A gives after a command the BIOS retried: the sense key if it asked for one, else the error. */
-static uint8_t retry_result(CdRetry retry)
-{
-    return retry.asked ? retry.sense : retry.error;
 }
 
 /* The A cd_play leaves, which callers branch on: 0, or the error it gave up with. */
@@ -2015,10 +2051,16 @@ AdTrans ad_trans(void)
     }
 }
 
-void abi_ad_trans(void)
+/* The A ad_trans leaves: 0, 4 busy, or the error the BIOS gave up with. */
+uint8_t ad_trans_result(AdTrans trans)
 {
-    AdTrans trans = ad_trans();
+    if (trans.refused)
+        return AD_ERROR_BUSY;
+    return trans.failed ? retry_result(trans.retry) : 0;
+}
 
+static void ad_trans_registers_shim(AdTrans trans)
+{
     if (trans.refused) {
         cpu.a = AD_ERROR_BUSY;
         abi_nz(AD_ERROR_BUSY);
@@ -2036,10 +2078,28 @@ void abi_ad_trans(void)
     }
 }
 
-void abi_cd_stat(void)
+/* ad_trans's exit, for its wrapper and for a caller's that ends in it. */
+void ad_trans_exit_shim(AdTrans trans)
 {
-    CdStat stat = cd_stat(cpu.a);
+    ad_trans_registers_shim(trans);
+    cpu.a = ad_trans_result(trans);
+}
 
+void abi_ad_trans(void)
+{
+    ad_trans_exit_shim(ad_trans());
+}
+
+/* The A cd_stat leaves: the busy bits, or after a test 0 or the error. */
+uint8_t cd_stat_result(CdStat stat)
+{
+    if (!stat.tested)
+        return stat.busy;
+    return stat.test.failed ? retry_result(stat.test.retry) : 0;
+}
+
+static void cd_stat_registers_shim(CdStat stat)
+{
     if (stat.tested) {
         cd_test_exit_shim(stat.test);
     } else {
@@ -2047,4 +2107,16 @@ void abi_cd_stat(void)
         abi_nz(stat.busy);
         abi_flag(P_C, true);
     }
+}
+
+/* cd_stat's exit, for its wrapper and for a caller's that ends in it. */
+void cd_stat_exit_shim(CdStat stat)
+{
+    cd_stat_registers_shim(stat);
+    cpu.a = cd_stat_result(stat);
+}
+
+void abi_cd_stat(void)
+{
+    cd_stat_exit_shim(cd_stat(cpu.a));
 }

@@ -9,10 +9,10 @@ ad_stop:
     lda #$60
     trb a:AdpcmControl
     stz a:CardAdpcmActive
-    stz a:CardAdpcmPlayLo
-    stz a:CardAdpcmPlayMid
-    stz a:CardAdpcmPlayHi
-    stz a:CardAdpcmPlayEnd
+    stz a:CardAdpcmStep
+    stz a:CardAdpcmSectorsLeft
+    stz a:CardAdpcmSectorsLeft+1
+    stz a:CardAdpcmSectorsLeft+2
     rts
 
 ; @card 00:F6DB ad_stat
@@ -248,5 +248,95 @@ aim_bx_at_vram_port:
     lda #$02
     sta z:CardBl
     stz z:CardBh
+    rts
+
+
+; @card 00:F61F ad_cplay
+; WHAT IT DOES: Plays ADPCM straight from the disc: _AL, _AH, _BL sectors (low first) from the
+; sector _CL, _CH, _DL (high first, counted from the first disc base) at rate _DH.
+; HOW: Does nothing while ADPCM plays. Keeps the count and the first sector, resets the unit,
+; sets the rate, loads the first $20 sectors into ADPCM memory from 0 with ad_trans, moves the
+; counts on by them, makes the length all of memory, and starts the unit with its half-way and
+; end interrupts, which carry on the play.
+; Entry: _AX, _BL, _CL, _CH, _DL, _DH. Exit: busy, as ad_stat; bad rate, A _DH and C set; a
+; failed load, as ad_trans with C set; started, A 0, N 0, Z 0, X and Y as ad_trans left them.
+; _AL, _BX and _DH changed.
+ad_cplay:
+    jsr ad_stat
+    bne ad_cplay_at0
+    lda z:CardAl
+    sta a:CardAdpcmSectorsLeft
+    lda z:CardAh
+    sta a:CardAdpcmSectorsLeft+1
+    lda z:CardBl
+    sta a:CardAdpcmSectorsLeft+2
+    lda z:CardDl
+    clc
+    adc a:CardCdBases+2
+    sta a:CardAdpcmNextSector+2
+    lda z:CardCh
+    adc a:CardCdBases+1
+    sta a:CardAdpcmNextSector+1
+    lda z:CardCl
+    adc a:CardCdBases
+    sta a:CardAdpcmNextSector
+    jsr ad_reset
+    lda z:CardDh
+    cmp #$10
+    bcs ad_cplay_at0
+    sta a:AdpcmRate
+    lda #$20
+    sta z:CardAl
+    lda #$00
+    sta z:CardDh
+    stz z:CardBl
+    stz z:CardBh
+    jsr ad_trans
+    cmp #$00
+    bne ad_cplay_at0
+    lda #$20
+    sta a:CardAdpcmStep
+    bsr cplay_advance
+    lda #$FF
+    sta a:AdpcmAddressLo
+    sta a:AdpcmAddressHi
+    jsr ad_latch_length
+    stz a:CardAdpcmActive
+    lda #$0C
+    tsb a:CdIrqControl
+    lda #$60
+    sta a:AdpcmControl
+    cla
+ad_cplay_at0:
+    rts
+
+; @card 00:F68C cplay_advance
+; WHAT IT DOES: Moves continuous ADPCM play on by CardAdpcmStep sectors: the next sector to read
+; on, the sectors left down.
+; HOW: A three-byte add to CardAdpcmNextSector (high first) and a three-byte subtract from
+; CardAdpcmSectorsLeft (low first).
+; Entry: CardAdpcmStep. Exit: A the high byte of what is left, N and Z from it, C clear if the
+; subtract went below zero, V from its high byte. X, Y kept.
+cplay_advance:
+    clc
+    lda a:CardAdpcmNextSector+2
+    adc a:CardAdpcmStep
+    sta a:CardAdpcmNextSector+2
+    lda a:CardAdpcmNextSector+1
+    adc #$00
+    sta a:CardAdpcmNextSector+1
+    lda a:CardAdpcmNextSector
+    adc #$00
+    sta a:CardAdpcmNextSector
+    sec
+    lda a:CardAdpcmSectorsLeft
+    sbc a:CardAdpcmStep
+    sta a:CardAdpcmSectorsLeft
+    lda a:CardAdpcmSectorsLeft+1
+    sbc #$00
+    sta a:CardAdpcmSectorsLeft+1
+    lda a:CardAdpcmSectorsLeft+2
+    sbc #$00
+    sta a:CardAdpcmSectorsLeft+2
     rts
 

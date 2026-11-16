@@ -17,10 +17,8 @@ FE,zp,CardDl,BIOS argument _DL
 227E,abs,CardSubcodeByte,the subcode byte last read
 2284,abs,CardSoftResetLo,the soft reset's handler
 2285,abs,CardSoftResetHi,the soft reset's handler
-229D,abs,CardAdpcmPlayLo,ADPCM play state
-229E,abs,CardAdpcmPlayMid,ADPCM play state
-229F,abs,CardAdpcmPlayHi,ADPCM play state
-22A0,abs,CardAdpcmPlayEnd,ADPCM play state
+229D,abs,CardAdpcmStep,the sectors ad_cplay moves at a time
+229E,abs,CardAdpcmSectorsLeft,the sectors ad_cplay has still to play: three bytes low first
 22A5,abs,CardAdpcmActive,ADPCM play state
 22BB,abs,CardSavedMpr6,MPR6 while the math bank is mapped
 0000,abs,VdcAddress,the VDC's address port
@@ -118,3 +116,4 @@ F27E,abs,FontRowStarts,the index of each JIS row's first glyph in the font: a wo
 0404,abs,VceDataLo,the VCE's colour data port
 0405,abs,VceDataHi,the VCE's colour data port
 E5D7,abs,ColorReadStub,the first three bytes of the stub that reads the palettes: TAI from the colour data port
+22A1,abs,CardAdpcmNextSector,the next sector ad_cplay reads: three bytes high first

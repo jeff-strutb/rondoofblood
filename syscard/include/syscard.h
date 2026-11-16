@@ -445,6 +445,19 @@ uint8_t cd_play_result(CdPlay play);
 uint8_t cd_read_result(CdRead read);
 uint8_t bm_read_result(BackupAccess read);
 uint8_t bm_write_result(BackupAccess write);
+void bm_delete_exit_shim(BackupAccess removal);
+uint8_t bm_delete_result(BackupAccess removal);
+void bm_free_exit_shim(BackupFree free_space);
+uint8_t bm_free_result(BackupFree free_space);
+uint16_t bm_free_bytes(BackupFree free_space);
+void bm_format_exit_shim(BackupFormat format);
+uint8_t bm_format_result(BackupFormat format);
+void cd_pause_exit_shim(CdPause pause);
+uint8_t cd_pause_result(CdPause pause);
+void cd_search_exit_shim(CdSearch search);
+uint8_t cd_search_result(CdSearch search);
+void cd_stat_exit_shim(CdStat stat);
+uint8_t cd_stat_result(CdStat stat);
 AdStat ad_stat(void);
 uint8_t ad_latch_read_address(void);
 uint8_t ad_latch_length(void);
@@ -545,6 +558,7 @@ FontIndex sjis_to_font_index(void);
 void put_font_byte(uint8_t byte);
 void expand_12dot_glyph(void);
 FontGet ex_getfnt(void);
+void ex_getfnt_exit_shim(FontGet get);
 
 /* What ex_colorcmd moved: the command, and each set's count of 16-colour palettes. */
 typedef struct {
@@ -577,6 +591,31 @@ typedef struct {
 } AdTrans;
 
 AdTrans ad_trans(void);
+void ad_trans_exit_shim(AdTrans trans);
+uint8_t ad_trans_result(AdTrans trans);
+/* What one step of continuous ADPCM play did to its counts. */
+typedef struct {
+    uint32_t left_before;  /* the sectors left, before the step */
+    uint8_t step;
+} CplayStep;
+
+/* How ad_cplay ended. */
+typedef enum { AD_CPLAY_BUSY, AD_CPLAY_BAD_RATE, AD_CPLAY_TRANSFER_FAILED, AD_CPLAY_STARTED } AdCplayHow;
+
+typedef struct {
+    AdCplayHow how;
+    AdStat stat;
+    uint8_t reset_enables;  /* the CD unit's interrupt enables as ad_reset found them */
+    uint8_t rate;
+    AdTrans trans;
+    CplayStep step;
+    uint8_t irq_before;
+} AdCplay;
+
+CplayStep cplay_advance(void);
+AdCplay ad_cplay(void);
+uint8_t ad_cplay_result(AdCplay play);
+void ad_cplay_exit_shim(AdCplay play);
 void ad_set_address(uint8_t low, uint8_t high);
 uint8_t ad_latch_read_address(void);
 uint8_t ad_latch_write_address(void);
@@ -620,6 +659,7 @@ void cd_fade(uint8_t type);
 uint8_t ad_stop(void);
 AdStat ad_stat(void);
 uint8_t ex_scrsiz(uint8_t size);
+void ex_scrsiz_exit_shim(uint8_t given, uint8_t width);
 uint8_t ex_dotmod(uint8_t mode);
 MemOpen ex_memopen(void);
 void ex_setvec(uint8_t which, uint8_t low, uint8_t high);

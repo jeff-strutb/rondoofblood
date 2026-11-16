@@ -381,10 +381,14 @@ BackupFormat bm_format(void)
     return format;
 }
 
-void abi_bm_format(void)
+/* The A bm_format leaves: 0, or 1 for a wrong password. */
+uint8_t bm_format_result(BackupFormat format)
 {
-    BackupFormat format = bm_format();
+    return format.accepted ? 0 : BM_BAD_PASSWORD;
+}
 
+static void bm_format_registers_shim(BackupFormat format)
+{
     if (!format.accepted) {
         cpu.a = BM_BAD_PASSWORD;
         cpu.y = format.where;
@@ -398,6 +402,18 @@ void abi_bm_format(void)
     abi_nz(0);
     abi_flag(P_C, format.size.whole);
     abi_flag(P_I, false);
+}
+
+/* bm_format's exit, for its wrapper and for a caller's that ends in it. */
+void bm_format_exit_shim(BackupFormat format)
+{
+    bm_format_registers_shim(format);
+    cpu.a = bm_format_result(format);
+}
+
+void abi_bm_format(void)
+{
+    bm_format_exit_shim(bm_format());
 }
 
 /*
@@ -422,10 +438,20 @@ BackupFree bm_free(void)
     return free_space;
 }
 
-void abi_bm_free(void)
+/* The free bytes bm_free leaves in _CX: the room after a file's header, or 0. */
+uint16_t bm_free_bytes(BackupFree free_space)
 {
-    BackupFree free_space = bm_free();
+    return (int16_t)free_space.after_header < 0 ? 0 : free_space.after_header;
+}
 
+/* The A bm_free leaves: 0, or $FF not formatted. */
+uint8_t bm_free_result(BackupFree free_space)
+{
+    return free_space.check.formatted ? 0 : BM_NOT_FORMATTED;
+}
+
+static void bm_free_registers_shim(BackupFree free_space)
+{
     abi_flag(P_I, false);
     if (!free_space.check.formatted) {
         abi_flag(P_C, free_space.check.read >= free_space.check.expected);
@@ -439,6 +465,18 @@ void abi_bm_free(void)
     abi_nz(0);
     abi_flag(P_C, free_space.room >= BACKUP_HEADER_BYTES);
     abi_flag(P_V, ((free_space.room ^ BACKUP_HEADER_BYTES) & (free_space.room ^ free_space.after_header) & 0x8000) != 0);
+}
+
+/* bm_free's exit, for its wrapper and for a caller's that ends in it. */
+void bm_free_exit_shim(BackupFree free_space)
+{
+    bm_free_registers_shim(free_space);
+    cpu.a = bm_free_result(free_space);
+}
+
+void abi_bm_free(void)
+{
+    bm_free_exit_shim(bm_free());
 }
 
 static void put_word(uint16_t lo, uint16_t value)
@@ -1093,10 +1131,14 @@ BackupAccess bm_delete(void)
     return removal;
 }
 
-void abi_bm_delete(void)
+/* The A bm_delete leaves: 0, 1 for no such file, $FF not formatted. */
+uint8_t bm_delete_result(BackupAccess removal)
 {
-    BackupAccess removal = bm_delete();
+    return removal.result;
+}
 
+static void bm_delete_registers_shim(BackupAccess removal)
+{
     if (removal.ending == BM_ENDED_NOT_FORMATTED) {
         abi_not_formatted_shim(removal.check);
         return;
@@ -1116,4 +1158,16 @@ void abi_bm_delete(void)
         abi_flag(P_V, sub_overflows((uint8_t)(removal.next_free >> 8), (uint8_t)(removal.length >> 8),
                                     (removal.next_free & 0xFF) < (removal.length & 0xFF)));
     }
+}
+
+/* bm_delete's exit, for its wrapper and for a caller's that ends in it. */
+void bm_delete_exit_shim(BackupAccess removal)
+{
+    bm_delete_registers_shim(removal);
+    cpu.a = bm_delete_result(removal);
+}
+
+void abi_bm_delete(void)
+{
+    bm_delete_exit_shim(bm_delete());
 }

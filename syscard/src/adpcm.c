@@ -23,10 +23,10 @@ uint8_t ad_stop(void)
     control = rd8(AdpcmControl);
     wr8(AdpcmControl, (uint8_t)(control & ~AD_CONTROL_PLAY_BITS));
     wr8(CardAdpcmActive, 0);
-    wr8(CardAdpcmPlayLo, 0);
-    wr8(CardAdpcmPlayMid, 0);
-    wr8(CardAdpcmPlayHi, 0);
-    wr8(CardAdpcmPlayEnd, 0);
+    wr8(CardAdpcmStep, 0);
+    wr8(CardAdpcmSectorsLeft, 0);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), 0);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), 0);
     return control;
 }
 
@@ -399,3 +399,173 @@ void abi_ad_read(void)
     abi_flag(P_C, (read.mode & 0x08) != 0);
 }
 
+
+enum {
+    CPLAY_STEP = 0x20, CPLAY_LENGTH_ALL = 0xFF, CPLAY_IRQ_BITS = 0x0C, SECTOR_BYTES_MASK = 0xFFFFFF
+};
+
+static uint32_t read_sector_high_first(uint16_t at)
+{
+    uint8_t high = rd8(at);
+    uint8_t middle = rd8((uint16_t)(at + 1));
+
+    return ((uint32_t)high << 16) | ((uint32_t)middle << 8) | rd8((uint16_t)(at + 2));
+}
+
+/*
+ * @card 00:F68C cplay_advance
+ * WHAT IT DOES: Moves continuous ADPCM play on by CardAdpcmStep sectors: the next sector to read
+ * on, the sectors left down.
+ * HOW: A three-byte add to CardAdpcmNextSector (high first) and a three-byte subtract from
+ * CardAdpcmSectorsLeft (low first).
+ * Entry: CardAdpcmStep. Exit: A the high byte of what is left, N and Z from it, C clear if the
+ * subtract went below zero, V from its high byte. X, Y kept.
+ */
+CplayStep cplay_advance(void)
+{
+    CplayStep step;
+    uint32_t next, left;
+
+    step.step = rd8(CardAdpcmStep);
+    next = (read_sector_high_first(CardAdpcmNextSector) + step.step) & SECTOR_BYTES_MASK;
+    wr8(CardAdpcmNextSector, (uint8_t)(next >> 16));
+    wr8((uint16_t)(CardAdpcmNextSector + 1), (uint8_t)(next >> 8));
+    wr8((uint16_t)(CardAdpcmNextSector + 2), (uint8_t)next);
+    step.left_before = (uint32_t)rd8(CardAdpcmSectorsLeft) |
+                       ((uint32_t)rd8((uint16_t)(CardAdpcmSectorsLeft + 1)) << 8) |
+                       ((uint32_t)rd8((uint16_t)(CardAdpcmSectorsLeft + 2)) << 16);
+    left = (step.left_before - step.step) & SECTOR_BYTES_MASK;
+    wr8(CardAdpcmSectorsLeft, (uint8_t)left);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), (uint8_t)(left >> 8));
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), (uint8_t)(left >> 16));
+    return step;
+}
+
+/* C and V as cplay_advance's subtract leaves them. */
+static void abi_cplay_step_flags_shim(CplayStep step)
+{
+    bool borrow_into_high = (step.left_before & 0xFFFF) < step.step;
+    int high = (int8_t)(step.left_before >> 16) - (borrow_into_high ? 1 : 0);
+
+    abi_flag(P_C, step.left_before >= step.step);
+    abi_flag(P_V, high < -128);
+}
+
+void abi_cplay_advance(void)
+{
+    CplayStep step = cplay_advance();
+
+    cpu.a = rd8((uint16_t)(CardAdpcmSectorsLeft + 2));
+    abi_nz(cpu.a);
+    abi_cplay_step_flags_shim(step);
+}
+
+/*
+ * @card 00:F61F ad_cplay
+ * WHAT IT DOES: Plays ADPCM straight from the disc: _AL, _AH, _BL sectors (low first) from the
+ * sector _CL, _CH, _DL (high first, counted from the first disc base) at rate _DH.
+ * HOW: Does nothing while ADPCM plays. Keeps the count and the first sector, resets the unit,
+ * sets the rate, loads the first $20 sectors into ADPCM memory from 0 with ad_trans, moves the
+ * counts on by them, makes the length all of memory, and starts the unit with its half-way and
+ * end interrupts, which carry on the play.
+ * Entry: _AX, _BL, _CL, _CH, _DL, _DH. Exit: busy, as ad_stat; bad rate, A _DH and C set; a
+ * failed load, as ad_trans with C set; started, A 0, N 0, Z 0, X and Y as ad_trans left them.
+ * _AL, _BX and _DH changed.
+ */
+AdCplay ad_cplay(void)
+{
+    AdCplay play = { 0 };
+    uint32_t sector, base;
+
+    play.stat = ad_stat();
+    if (play.stat.playing != 0) {
+        play.how = AD_CPLAY_BUSY;
+        return play;
+    }
+    wr8(CardAdpcmSectorsLeft, rd8(CardAl));
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), rd8(CardAh));
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), rd8(CardBl));
+    sector = ((uint32_t)rd8(CardCl) << 16) | ((uint32_t)rd8(CardCh) << 8) | rd8(CardDl);
+    base = read_sector_high_first(CardCdBases);
+    sector = (sector + base) & SECTOR_BYTES_MASK;
+    wr8(CardAdpcmNextSector, (uint8_t)(sector >> 16));
+    wr8((uint16_t)(CardAdpcmNextSector + 1), (uint8_t)(sector >> 8));
+    wr8((uint16_t)(CardAdpcmNextSector + 2), (uint8_t)sector);
+    play.reset_enables = ad_reset();
+    play.rate = rd8(CardDh);
+    if (play.rate >= AD_RATE_LIMIT) {
+        play.how = AD_CPLAY_BAD_RATE;
+        return play;
+    }
+    wr8(AdpcmRate, play.rate);
+    wr8(CardAl, CPLAY_STEP);
+    wr8(CardDh, 0);
+    wr8(CardBl, 0);
+    wr8(CardBh, 0);
+    play.trans = ad_trans();
+    if (ad_trans_result(play.trans) != 0) {
+        play.how = AD_CPLAY_TRANSFER_FAILED;
+        return play;
+    }
+    wr8(CardAdpcmStep, CPLAY_STEP);
+    play.step = cplay_advance();
+    wr8(AdpcmAddressLo, CPLAY_LENGTH_ALL);
+    wr8(AdpcmAddressHi, CPLAY_LENGTH_ALL);
+    ad_latch_length();
+    wr8(CardAdpcmActive, 0);
+    play.irq_before = rd8(CdIrqControl);
+    wr8(CdIrqControl, play.irq_before | CPLAY_IRQ_BITS);
+    wr8(AdpcmControl, AD_CONTROL_PLAY_BITS);
+    play.how = AD_CPLAY_STARTED;
+    return play;
+}
+
+/* The A ad_cplay leaves: 0 started, what ad_stat gave if busy, _DH for a bad rate, or ad_trans's error. */
+uint8_t ad_cplay_result(AdCplay play)
+{
+    switch (play.how) {
+    case AD_CPLAY_BUSY:
+        return play.stat.playing;
+    case AD_CPLAY_BAD_RATE:
+        return play.rate;
+    case AD_CPLAY_TRANSFER_FAILED:
+        return ad_trans_result(play.trans);
+    default:
+        return 0;
+    }
+}
+
+/* ad_cplay's exit, for its wrapper and for a caller's that ends in it. */
+void ad_cplay_exit_shim(AdCplay play)
+{
+    uint8_t a = ad_cplay_result(play);
+
+    switch (play.how) {
+    case AD_CPLAY_BUSY:
+        ad_stat_exit_shim(play.stat);
+        return;
+    case AD_CPLAY_BAD_RATE:
+        cpu.x = play.stat.busy;
+        abi_nz((uint8_t)(a - AD_RATE_LIMIT));
+        abi_flag(P_C, true);
+        abi_flag(P_V, (play.reset_enables & 0x40) != 0);
+        break;
+    case AD_CPLAY_TRANSFER_FAILED:
+        ad_trans_exit_shim(play.trans);
+        abi_nz(a);
+        abi_flag(P_C, true);
+        break;
+    default:
+        ad_trans_exit_shim(play.trans);
+        abi_nz(AD_CONTROL_PLAY_BITS);
+        abi_cplay_step_flags_shim(play.step);
+        abi_flag(P_V, (play.irq_before & 0x40) != 0);
+        break;
+    }
+    cpu.a = a;
+}
+
+void abi_ad_cplay(void)
+{
+    ad_cplay_exit_shim(ad_cplay());
+}

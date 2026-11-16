@@ -301,8 +301,12 @@ FontGet ex_getfnt(void)
 
 void abi_ex_getfnt(void)
 {
-    FontGet get = ex_getfnt();
+    ex_getfnt_exit_shim(ex_getfnt());
+}
 
+/* ex_getfnt's exit, for its wrapper and for a caller's that ends in it. */
+void ex_getfnt_exit_shim(FontGet get)
+{
     if (get.index.failure != FONT_FOUND) {
         abi_font_index_shim(get.index);
         cpu.a = 1;

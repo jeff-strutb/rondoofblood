@@ -20,10 +20,8 @@
 #define CardSubcodeByte 0x227E /* the subcode byte last read */
 #define CardSoftResetLo 0x2284 /* the soft reset's handler */
 #define CardSoftResetHi 0x2285 /* the soft reset's handler */
-#define CardAdpcmPlayLo 0x229D /* ADPCM play state */
-#define CardAdpcmPlayMid 0x229E /* ADPCM play state */
-#define CardAdpcmPlayHi 0x229F /* ADPCM play state */
-#define CardAdpcmPlayEnd 0x22A0 /* ADPCM play state */
+#define CardAdpcmStep 0x229D /* the sectors ad_cplay moves at a time */
+#define CardAdpcmSectorsLeft 0x229E /* the sectors ad_cplay has still to play: three bytes low first */
 #define CardAdpcmActive 0x22A5 /* ADPCM play state */
 #define CardSavedMpr6 0x22BB /* MPR6 while the math bank is mapped */
 #define VdcAddress 0x0000 /* the VDC's address port */
@@ -121,5 +119,6 @@
 #define VceDataLo 0x0404 /* the VCE's colour data port */
 #define VceDataHi 0x0405 /* the VCE's colour data port */
 #define ColorReadStub 0xE5D7 /* the first three bytes of the stub that reads the palettes: TAI from the colour data port */
+#define CardAdpcmNextSector 0x22A1 /* the next sector ad_cplay reads: three bytes high first */
 
 #endif

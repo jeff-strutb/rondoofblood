@@ -413,3 +413,26 @@ BA1D,abs,RichterItemUseCosts,hearts each item's use costs
 BA26,abs,RichterItemUseLists,the sound list each thrown item starts
 BA2F,abs,RichterItemUseScripts,the script each thrown item starts
 BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
+0800,abs,PsgSelect,PSG: which channel the channel registers address
+0801,abs,PsgMainVolume,PSG: main volume, left and right nibbles
+0802,abs,PsgFreqLo,PSG: the channel's frequency low
+0803,abs,PsgFreqHi,PSG: the channel's frequency high
+0804,abs,PsgControl,PSG: the channel's on, DDA and volume
+0805,abs,PsgBalance,PSG: the channel's left and right volume
+0806,abs,PsgWaveData,PSG: the channel's waveform, 32 writes
+0807,abs,PsgNoise,PSG: noise on channels 4 and 5
+0808,abs,PsgLfoFreq,PSG: LFO frequency
+0809,abs,PsgLfoControl,PSG: LFO control
+52,zp,zSoundChannel,the sound driver: the PSG channel it last selected
+55,zp,zSoundWordLo,the sound driver: a product, or a pointer, low
+56,zp,zSoundWordHi,the sound driver: a product, or a pointer, high
+57,zp,zSoundMultiplier,the sound driver: the multiplier as it is shifted out
+71,zp,zSoundAltBalance,the sound driver: set by command $FD, the second balance table
+22DA,abs,SoundFading,the sound driver: 1 while the music fades
+22DB,abs,SoundFadeStep,the sound driver: the fade's step
+22E0,abs,SoundInCommand,the sound driver: 1 while a command goes in
+2598,abs,SoundChannelMarked,the sound driver: 8 bytes by channel
+25A8,abs,SoundChannel25A8,the sound driver: 8 bytes by channel; $1F on release
+25B8,abs,SoundChannelCommand,the sound driver: the command playing on each of 8 channels
+22F0,abs,SoundChannelPairA,the sound driver: 8 bytes by channel, first of a pair read from a sequence
+22F8,abs,SoundChannelPairB,the sound driver: 8 bytes by channel, second of the pair

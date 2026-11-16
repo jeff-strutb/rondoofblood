@@ -195,6 +195,22 @@ LadderCheck RichterLadderCheck(void);
 bool ladder_found(LadderCheck check);
 void ladder_exit_shim(LadderCheck check);
 bool SoundCommand(uint8_t command, uint8_t *busy_or_bank);
+
+/* What SoundReleaseChannel looked at: the effect on a shared channel, when 4 or 5. */
+typedef struct { bool looked; uint8_t effect; } ChannelRelease;
+
+/* A product of the driver's shift and add, with the last add's high byte and overflow. */
+typedef struct { uint16_t value; bool added; uint8_t high; bool overflow; } SoundProduct;
+
+void SoundSilenceAll(void);
+void SoundVolumeFull(void);
+void SoundMarkChannel(uint8_t channel);
+ChannelRelease SoundReleaseChannel(uint8_t channel);
+SoundProduct SoundMultiply(uint8_t a, uint8_t y);
+SoundProduct SoundMultiplyNibble(uint8_t a, uint8_t y);
+uint8_t SoundReadPair(uint8_t channel);
+void sound_pointer_step(void);
+uint8_t SoundStartFade(void);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

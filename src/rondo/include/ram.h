@@ -406,5 +406,28 @@
 #define RichterItemUseLists 0xBA26 /* the sound list each thrown item starts */
 #define RichterItemUseScripts 0xBA2F /* the script each thrown item starts */
 #define RichterItemAttacks 0xBA38 /* the attack kind using each item gives; 0 the whip */
+#define PsgSelect 0x0800 /* PSG: which channel the channel registers address */
+#define PsgMainVolume 0x0801 /* PSG: main volume, left and right nibbles */
+#define PsgFreqLo 0x0802 /* PSG: the channel's frequency low */
+#define PsgFreqHi 0x0803 /* PSG: the channel's frequency high */
+#define PsgControl 0x0804 /* PSG: the channel's on, DDA and volume */
+#define PsgBalance 0x0805 /* PSG: the channel's left and right volume */
+#define PsgWaveData 0x0806 /* PSG: the channel's waveform, 32 writes */
+#define PsgNoise 0x0807 /* PSG: noise on channels 4 and 5 */
+#define PsgLfoFreq 0x0808 /* PSG: LFO frequency */
+#define PsgLfoControl 0x0809 /* PSG: LFO control */
+#define zSoundChannel 0x2052 /* the sound driver: the PSG channel it last selected */
+#define zSoundWordLo 0x2055 /* the sound driver: a product, or a pointer, low */
+#define zSoundWordHi 0x2056 /* the sound driver: a product, or a pointer, high */
+#define zSoundMultiplier 0x2057 /* the sound driver: the multiplier as it is shifted out */
+#define zSoundAltBalance 0x2071 /* the sound driver: set by command $FD, the second balance table */
+#define SoundFading 0x22DA /* the sound driver: 1 while the music fades */
+#define SoundFadeStep 0x22DB /* the sound driver: the fade's step */
+#define SoundInCommand 0x22E0 /* the sound driver: 1 while a command goes in */
+#define SoundChannelMarked 0x2598 /* the sound driver: 8 bytes by channel */
+#define SoundChannel25A8 0x25A8 /* the sound driver: 8 bytes by channel; $1F on release */
+#define SoundChannelCommand 0x25B8 /* the sound driver: the command playing on each of 8 channels */
+#define SoundChannelPairA 0x22F0 /* the sound driver: 8 bytes by channel, first of a pair read from a sequence */
+#define SoundChannelPairB 0x22F8 /* the sound driver: 8 bytes by channel, second of the pair */
 
 #endif

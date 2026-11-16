@@ -1080,3 +1080,223 @@ SoundPitchTickPlain_at5:
     ldy z:zSoundWordHi
     jsr SoundSetFrequency
     rts
+
+; @routine 004D:610 SoundStartNote
+; @run 75:8610
+; WHAT IT DOES: Starts a note from the command's three arguments: its length, its gate in
+; sixteenths of the length, and its volume, $10 up; its pitch; then its gate timer, at least a
+; frame, or the whole length with no gate.
+; HOW: SoundChannelDefaultArg, SoundGate and SoundVolumeBase; SoundNotePitch; SoundNoteLength;
+; SoundMultiplyNibble, its product shifted down four places, into SoundGateTimer.
+; Entry: X channel. Exit: A the gate timer, N and Z from it, Y the length. No gate, C and V as
+; SoundNotePitch left them; otherwise C bit 3 of the product, V as SoundMultiplyNibble. X kept.
+SoundStartNote:
+    lda a:SoundCommandArgs
+    sta a:SoundChannelDefaultArg,x
+    lda a:SoundCommandArgs+1
+    and #$0F
+    sta a:SoundGate,x
+    lda a:SoundCommandArgs+2
+    and #$0F
+    clc
+    adc #$10
+    sta a:SoundVolumeBase,x
+    jsr SoundNotePitch
+    lda a:SoundChannelDefaultArg,x
+    sta a:SoundNoteLength,x
+    tay
+    lda a:SoundGate,x
+    bne SoundStartNote_at0
+    lda a:SoundChannelDefaultArg,x
+    bra SoundStartNote_at1
+SoundStartNote_at0:
+    jsr SoundMultiplyNibble
+    lda z:zSoundWordLo
+    lsr z:zSoundWordHi
+    ror a
+    lsr z:zSoundWordHi
+    ror a
+    lsr z:zSoundWordHi
+    ror a
+    lsr z:zSoundWordHi
+    ror a
+    bne SoundStartNote_at1
+    inc a
+SoundStartNote_at1:
+    sta a:SoundGateTimer,x
+    rts
+
+; @routine 004D:655 SoundNotePitch
+; @run 75:8655
+; WHAT IT DOES: Starts a channel's note at the pitch of the command: the note with the
+; transpose, the signed fine tune and both detunes; the vibrato from the start; a glide to it,
+; from an offset below it or from the last note; the frequency, the envelope from its start, the
+; tremolo and the ramp from the start; then a frame of the pitch.
+; HOW: SoundCommandByte is the note. The last note's pitch is kept in zSoundScratch and
+; zSoundFine for a glide from it; SoundGlideSetup; SoundSetFrequency; SoundStartEnvelope;
+; SoundPitchTick.
+; Entry: X channel. Exit: as SoundPitchTick.
+SoundNotePitch:
+    lda a:SoundCommandByte
+    lda a:SoundPitchFine,x
+    sta z:zSoundScratch
+    lda a:SoundPitchNote,x
+    sta z:zSoundFine
+    lda a:SoundCommandByte
+    clc
+    adc a:SoundTranspose,x
+    sta z:zSoundWordLo
+    lda a:SoundFineTune,x
+    bpl SoundNotePitch_at0
+    dec z:zSoundWordLo
+SoundNotePitch_at0:
+    clc
+    adc a:SoundDetuneAFine,x
+    pha
+    lda z:zSoundWordLo
+    adc a:SoundDetuneANote,x
+    sta z:zSoundWordLo
+    pla
+    clc
+    adc a:SoundDetuneBFine,x
+    sta a:SoundPitchFine,x
+    lda z:zSoundWordLo
+    adc a:SoundDetuneBNote,x
+    sta a:SoundPitchNote,x
+    stz a:SoundVibratoPhase,x
+    stz a:SoundVibratoWait,x
+    stz a:SoundVibratoDepthLo,x
+    stz a:SoundVibratoDepth,x
+    lda a:SoundGlideFramesSet,x
+    sta a:SoundGlideFrames,x
+    beq SoundNotePitch_at1
+    lda a:SoundGlideDelaySet,x
+    sta a:SoundGlideDelay,x
+    lda a:SoundGlideFromLast,x
+    bne SoundNotePitch_at2
+    lda a:SoundPitchFine,x
+    pha
+    sec
+    sbc a:SoundGlideOffsetFine,x
+    sta a:SoundPitchFine,x
+    lda a:SoundPitchNote,x
+    tay
+    sbc a:SoundGlideOffsetNote,x
+    sta a:SoundPitchNote,x
+    pla
+    bra SoundNotePitch_at3
+SoundNotePitch_at2:
+    ldy a:SoundPitchNote,x
+    lda a:SoundPitchFine,x
+    pha
+    lda z:zSoundScratch
+    sta a:SoundPitchFine,x
+    lda z:zSoundFine
+    sta a:SoundPitchNote,x
+    pla
+SoundNotePitch_at3:
+    jsr SoundGlideSetup
+SoundNotePitch_at1:
+    lda a:SoundPitchFine,x
+    ldy a:SoundPitchNote,x
+    jsr SoundSetFrequency
+    jsr SoundStartEnvelope
+    stz a:SoundTremoloPhase,x
+    stz a:SoundTremoloWait,x
+    stz a:SoundRampLo,x
+    stz a:SoundRampHi,x
+    jsr SoundPitchTick
+    rts
+
+; @routine 004D:6F6 SoundGlideSetup
+; @run 75:86F6
+; WHAT IT DOES: Aims a channel's glide at a pitch: the target kept, and the step a frame that
+; gets there from the pitch it has now in the glide's frames. Nothing without a glide.
+; HOW: The distance in zSoundWordLo and Hi, made positive for SoundDivide and the quotient made
+; negative again; SoundGlideStepLo and Hi.
+; Entry: A the target's fine part, Y its note, X channel. Exit: no glide, A and Y kept, Z set, N
+; and V clear. Otherwise A the step's low byte, N and Z from it, Y 0, C and V as SoundDivide, or
+; from negating the quotient's high byte when the glide goes down. X kept.
+SoundGlideSetup:
+    tst #$FF,a:SoundGlideFrames,x
+    beq SoundGlideSetup_at0
+    sta a:SoundGlideTargetFine,x
+    tya
+    sta a:SoundGlideTargetNote,x
+    lda a:SoundGlideTargetFine,x
+    sec
+    sbc a:SoundPitchFine,x
+    sta z:zSoundWordLo
+    tya
+    sbc a:SoundPitchNote,x
+    sta z:zSoundWordHi
+    bpl SoundGlideSetup_at1
+    cla
+    sec
+    sbc z:zSoundWordLo
+    sta z:zSoundWordLo
+    cla
+    sbc z:zSoundWordHi
+    sta z:zSoundWordHi
+    lda a:SoundGlideFrames,x
+    jsr SoundDivide
+    cla
+    sec
+    sbc z:zSoundQuotientLo
+    sta z:zSoundQuotientLo
+    cla
+    sbc z:zSoundQuotientHi
+    sta z:zSoundQuotientHi
+    bra SoundGlideSetup_at2
+SoundGlideSetup_at1:
+    lda a:SoundGlideFrames,x
+    jsr SoundDivide
+SoundGlideSetup_at2:
+    lda z:zSoundQuotientHi
+    sta a:SoundGlideStepHi,x
+    lda z:zSoundQuotientLo
+    sta a:SoundGlideStepLo,x
+SoundGlideSetup_at0:
+    rts
+
+; @routine 004E:710 SoundDivide
+; @run 75:8F10
+; WHAT IT DOES: Divides the word in zSoundWordLo and Hi by A: the quotient in zSoundQuotientLo
+; and Hi, what is left in zSoundScratch and zSoundFine.
+; HOW: Sixteen steps of shift and subtract. Where the remainder's low byte is under the divisor
+; but its high byte is not 0, the high byte is taken down once before the subtract and again by
+; its borrow; the C keeps that.
+; Entry: A divisor. Exit: Y 0, Z set, N clear; X kept. A, C and V from the last step: after a
+; subtract, A the remainder's high byte with C and V from it; else A its low byte, C and V clear.
+SoundDivide:
+    stz z:zSoundScratch
+    stz z:zSoundFine
+    sta z:zSoundStepHi
+    stz z:zSoundQuotientLo
+    stz z:zSoundQuotientHi
+    ldy #$10
+SoundDivide_at2:
+    asl z:zSoundWordLo
+    rol z:zSoundWordHi
+    rol z:zSoundScratch
+    rol z:zSoundFine
+    asl z:zSoundQuotientLo
+    rol z:zSoundQuotientHi
+    lda z:zSoundScratch
+    cmp z:zSoundStepHi
+    bcs SoundDivide_at0
+    tst #$FF,z:zSoundFine
+    beq SoundDivide_at1
+    dec z:zSoundFine
+SoundDivide_at0:
+    sec
+    sbc z:zSoundStepHi
+    sta z:zSoundScratch
+    lda z:zSoundFine
+    sbc #$00
+    sta z:zSoundFine
+    inc z:zSoundQuotientLo
+SoundDivide_at1:
+    dey
+    bne SoundDivide_at2
+    rts

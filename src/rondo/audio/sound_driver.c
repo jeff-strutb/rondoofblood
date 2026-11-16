@@ -18,7 +18,7 @@ enum {
     SEQUENCE_LONG_FIRST = 0xE0, OFFSET_NEGATIVE = 0x40, PSG_CHANNEL_ON = 0x80, BALANCE_SET_SIZE = 0x10,
     PSG_VOLUME_LIMIT = 0x20, WAVE_NOISE = 0xFF, NOISE_FREQUENCY = 0x1F, PSG_NOISE_ON = 0x80,
     PSG_WAVE_RESET = 0x40, OPCODE_TIN = 0xD3, OPCODE_RTS = 0x60, WAVE_SAMPLES = 0x20,
-    SOUND_CHANNELS = 8
+    SOUND_CHANNELS = 8, NOTE_VOLUME_BASE = 0x10
 };
 
 /* PSG channels 4 and 5 are left alone while effect channels 6 and 7 play on them. */
@@ -1638,4 +1638,277 @@ void abi_SoundVolumeTick(void)
         cpu.a = tick.volume.volume;
     control_exit_shim(tick.volume, channel);
     abi_flag(P_C, tick.how == VOLUME_WAITING);
+}
+
+/*
+ * @routine 004E:710 SoundDivide
+ * @run 75:8F10
+ * WHAT IT DOES: Divides the word in zSoundWordLo and Hi by A: the quotient in zSoundQuotientLo
+ * and Hi, what is left in zSoundScratch and zSoundFine.
+ * HOW: Sixteen steps of shift and subtract. Where the remainder's low byte is under the divisor
+ * but its high byte is not 0, the high byte is taken down once before the subtract and again by
+ * its borrow; the C keeps that.
+ * Entry: A divisor. Exit: Y 0, Z set, N clear; X kept. A, C and V from the last step: after a
+ * subtract, A the remainder's high byte with C and V from it; else A its low byte, C and V clear.
+ */
+Division SoundDivide(uint8_t divisor)
+{
+    Division division = { false, 0, 0, false, false, 0 };
+    uint8_t low = rd8(zSoundWordLo);
+    uint8_t high = rd8(zSoundWordHi);
+    uint8_t left_lo = 0;
+    uint8_t left_hi = 0;
+    uint8_t quotient_lo = 0;
+    uint8_t quotient_hi = 0;
+
+    wr8(zSoundStepHi, divisor);
+    for (int step = 0; step < 16; step++) {
+        bool take;
+
+        left_hi = (uint8_t)((left_hi << 1) | (left_lo >> 7));
+        left_lo = (uint8_t)((left_lo << 1) | (high >> 7));
+        high = (uint8_t)((high << 1) | (low >> 7));
+        low = (uint8_t)(low << 1);
+        quotient_hi = (uint8_t)((quotient_hi << 1) | (quotient_lo >> 7));
+        quotient_lo = (uint8_t)(quotient_lo << 1);
+        take = left_lo >= divisor;
+        if (!take && left_hi != 0) {
+            left_hi = (uint8_t)(left_hi - 1);
+            take = true;
+        }
+        division.took = take;
+        if (take) {
+            bool borrow = left_lo < divisor;
+
+            left_lo = (uint8_t)(left_lo - divisor);
+            division.high_before = left_hi;
+            division.borrow = borrow;
+            left_hi = (uint8_t)(left_hi - borrow);
+            quotient_lo = (uint8_t)(quotient_lo + 1);
+        }
+        division.last = take ? left_hi : left_lo;
+    }
+    wr8(zSoundWordLo, low);
+    wr8(zSoundWordHi, high);
+    wr8(zSoundScratch, left_lo);
+    wr8(zSoundFine, left_hi);
+    wr8(zSoundQuotientLo, quotient_lo);
+    wr8(zSoundQuotientHi, quotient_hi);
+    division.quotient = (uint16_t)(quotient_lo | (quotient_hi << 8));
+    return division;
+}
+
+void division_exit_shim(Division division)
+{
+    cpu.a = division.last;
+    cpu.y = 0;
+    abi_nz(0);
+    if (division.took) {
+        abi_flag(P_C, !(division.high_before == 0 && division.borrow));
+        abi_flag(P_V, division.high_before == 0x80 && division.borrow);
+    } else {
+        abi_flag(P_C, false);
+        abi_flag(P_V, false);
+    }
+}
+
+void abi_SoundDivide(void)
+{
+    division_exit_shim(SoundDivide(cpu.a));
+}
+
+/*
+ * @routine 004D:6F6 SoundGlideSetup
+ * @run 75:86F6
+ * WHAT IT DOES: Aims a channel's glide at a pitch: the target kept, and the step a frame that
+ * gets there from the pitch it has now in the glide's frames. Nothing without a glide.
+ * HOW: The distance in zSoundWordLo and Hi, made positive for SoundDivide and the quotient made
+ * negative again; SoundGlideStepLo and Hi.
+ * Entry: A the target's fine part, Y its note, X channel. Exit: no glide, A and Y kept, Z set, N
+ * and V clear. Otherwise A the step's low byte, N and Z from it, Y 0, C and V as SoundDivide, or
+ * from negating the quotient's high byte when the glide goes down. X kept.
+ */
+GlideSetup SoundGlideSetup(uint8_t fine, uint8_t note, uint8_t channel)
+{
+    GlideSetup setup = { false, false, { false, 0, 0, false, false, 0 }, 0, 0 };
+    uint8_t frames = rd8((uint16_t)(SoundGlideFrames + channel));
+    uint16_t distance;
+
+    setup.frames = frames;
+    if (frames == 0)
+        return setup;
+    setup.aimed = true;
+    wr8((uint16_t)(SoundGlideTargetFine + channel), fine);
+    wr8((uint16_t)(SoundGlideTargetNote + channel), note);
+    distance = (uint16_t)(((note << 8) | rd8((uint16_t)(SoundGlideTargetFine + channel))) -
+                          ((rd8((uint16_t)(SoundPitchNote + channel)) << 8) |
+                           rd8((uint16_t)(SoundPitchFine + channel))));
+    setup.down = (distance & 0x8000) != 0;
+    if (setup.down)
+        distance = (uint16_t)(0 - distance);
+    wr8(zSoundWordLo, (uint8_t)distance);
+    wr8(zSoundWordHi, (uint8_t)(distance >> 8));
+    setup.division = SoundDivide(rd8((uint16_t)(SoundGlideFrames + channel)));
+    setup.step = setup.division.quotient;
+    if (setup.down) {
+        setup.step = (uint16_t)(0 - setup.step);
+        wr8(zSoundQuotientLo, (uint8_t)setup.step);
+        wr8(zSoundQuotientHi, (uint8_t)(setup.step >> 8));
+    }
+    wr8((uint16_t)(SoundGlideStepHi + channel), (uint8_t)(setup.step >> 8));
+    wr8((uint16_t)(SoundGlideStepLo + channel), (uint8_t)setup.step);
+    return setup;
+}
+
+void glide_setup_exit_shim(GlideSetup setup)
+{
+    uint8_t low = (uint8_t)setup.step;
+
+    if (!setup.aimed) {
+        abi_nz(0);
+        abi_flag(P_V, false);
+        return;
+    }
+    division_exit_shim(setup.division);
+    if (setup.down) {
+        uint8_t high = (uint8_t)(setup.division.quotient >> 8);
+        bool borrow = (setup.division.quotient & 0xFF) != 0;
+        uint8_t result = (uint8_t)(0 - high - borrow);
+
+        abi_flag(P_C, !borrow && high == 0);
+        abi_flag(P_V, (high & result & 0x80) != 0);
+    }
+    cpu.a = low;
+    abi_nz(low);
+}
+
+void abi_SoundGlideSetup(void)
+{
+    glide_setup_exit_shim(SoundGlideSetup(cpu.a, cpu.y, cpu.x));
+}
+
+/*
+ * @routine 004D:655 SoundNotePitch
+ * @run 75:8655
+ * WHAT IT DOES: Starts a channel's note at the pitch of the command: the note with the
+ * transpose, the signed fine tune and both detunes; the vibrato from the start; a glide to it,
+ * from an offset below it or from the last note; the frequency, the envelope from its start, the
+ * tremolo and the ramp from the start; then a frame of the pitch.
+ * HOW: SoundCommandByte is the note. The last note's pitch is kept in zSoundScratch and
+ * zSoundFine for a glide from it; SoundGlideSetup; SoundSetFrequency; SoundStartEnvelope;
+ * SoundPitchTick.
+ * Entry: X channel. Exit: as SoundPitchTick.
+ */
+PitchTick SoundNotePitch(uint8_t channel)
+{
+    uint8_t note;
+    uint8_t fine;
+    Sum low;
+    Sum high;
+
+    rd8(SoundCommandByte);
+    wr8(zSoundScratch, rd8((uint16_t)(SoundPitchFine + channel)));
+    wr8(zSoundFine, rd8((uint16_t)(SoundPitchNote + channel)));
+    note = (uint8_t)(rd8(SoundCommandByte) + rd8((uint16_t)(SoundTranspose + channel)));
+    fine = rd8((uint16_t)(SoundFineTune + channel));
+    if (fine & 0x80)
+        note = (uint8_t)(note - 1);
+    wr8(zSoundWordLo, note);
+    low = add_bytes(fine, rd8((uint16_t)(SoundDetuneAFine + channel)), false);
+    high = add_bytes(note, rd8((uint16_t)(SoundDetuneANote + channel)), low.carry);
+    wr8(zSoundWordLo, high.value);
+    low = add_bytes(low.value, rd8((uint16_t)(SoundDetuneBFine + channel)), false);
+    wr8((uint16_t)(SoundPitchFine + channel), low.value);
+    wr8((uint16_t)(SoundPitchNote + channel),
+        add_bytes(rd8(zSoundWordLo), rd8((uint16_t)(SoundDetuneBNote + channel)), low.carry).value);
+    wr8((uint16_t)(SoundVibratoPhase + channel), 0);
+    wr8((uint16_t)(SoundVibratoWait + channel), 0);
+    wr8((uint16_t)(SoundVibratoDepthLo + channel), 0);
+    wr8((uint16_t)(SoundVibratoDepth + channel), 0);
+    wr8((uint16_t)(SoundGlideFrames + channel), rd8((uint16_t)(SoundGlideFramesSet + channel)));
+    if (rd8((uint16_t)(SoundGlideFrames + channel)) != 0) {
+        uint8_t target_fine = rd8((uint16_t)(SoundPitchFine + channel));
+        uint8_t target_note;
+
+        wr8((uint16_t)(SoundGlideDelay + channel), rd8((uint16_t)(SoundGlideDelaySet + channel)));
+        if (rd8((uint16_t)(SoundGlideFromLast + channel)) == 0) {
+            low = sub_bytes(target_fine, rd8((uint16_t)(SoundGlideOffsetFine + channel)), true);
+            wr8((uint16_t)(SoundPitchFine + channel), low.value);
+            target_note = rd8((uint16_t)(SoundPitchNote + channel));
+            wr8((uint16_t)(SoundPitchNote + channel),
+                sub_bytes(target_note, rd8((uint16_t)(SoundGlideOffsetNote + channel)), low.carry).value);
+        } else {
+            target_note = rd8((uint16_t)(SoundPitchNote + channel));
+            target_fine = rd8((uint16_t)(SoundPitchFine + channel));
+            wr8((uint16_t)(SoundPitchFine + channel), rd8(zSoundScratch));
+            wr8((uint16_t)(SoundPitchNote + channel), rd8(zSoundFine));
+        }
+        SoundGlideSetup(target_fine, target_note, channel);
+    }
+    SoundSetFrequency(rd8((uint16_t)(SoundPitchFine + channel)), channel, rd8((uint16_t)(SoundPitchNote + channel)));
+    SoundStartEnvelope(channel);
+    wr8((uint16_t)(SoundTremoloPhase + channel), 0);
+    wr8((uint16_t)(SoundTremoloWait + channel), 0);
+    wr8((uint16_t)(SoundRampLo + channel), 0);
+    wr8((uint16_t)(SoundRampHi + channel), 0);
+    return SoundPitchTick(channel);
+}
+
+void abi_SoundNotePitch(void)
+{
+    pitch_exit_shim(SoundNotePitch(cpu.x), false);
+}
+
+/*
+ * @routine 004D:610 SoundStartNote
+ * @run 75:8610
+ * WHAT IT DOES: Starts a note from the command's three arguments: its length, its gate in
+ * sixteenths of the length, and its volume, $10 up; its pitch; then its gate timer, at least a
+ * frame, or the whole length with no gate.
+ * HOW: SoundChannelDefaultArg, SoundGate and SoundVolumeBase; SoundNotePitch; SoundNoteLength;
+ * SoundMultiplyNibble, its product shifted down four places, into SoundGateTimer.
+ * Entry: X channel. Exit: A the gate timer, N and Z from it, Y the length. No gate, C and V as
+ * SoundNotePitch left them; otherwise C bit 3 of the product, V as SoundMultiplyNibble. X kept.
+ */
+NoteStart SoundStartNote(uint8_t channel)
+{
+    NoteStart start;
+    uint8_t length;
+    uint8_t gate;
+
+    wr8((uint16_t)(SoundChannelDefaultArg + channel), rd8(SoundCommandArgs));
+    wr8((uint16_t)(SoundGate + channel), (uint8_t)(rd8(SoundCommandArgs + 1) & 0x0F));
+    wr8((uint16_t)(SoundVolumeBase + channel), (uint8_t)((rd8(SoundCommandArgs + 2) & 0x0F) + NOTE_VOLUME_BASE));
+    start.pitch = SoundNotePitch(channel);
+    length = rd8((uint16_t)(SoundChannelDefaultArg + channel));
+    wr8((uint16_t)(SoundNoteLength + channel), length);
+    start.length = length;
+    gate = rd8((uint16_t)(SoundGate + channel));
+    start.gated = gate != 0;
+    if (!start.gated) {
+        start.timer = rd8((uint16_t)(SoundChannelDefaultArg + channel));
+    } else {
+        start.product = SoundMultiplyNibble(gate, length);
+        wr8(zSoundWordHi, (uint8_t)(start.product.value >> 12));
+        start.timer = (uint8_t)(start.product.value >> 4);
+        if (start.timer == 0)
+            start.timer = 1;
+    }
+    wr8((uint16_t)(SoundGateTimer + channel), start.timer);
+    return start;
+}
+
+void abi_SoundStartNote(void)
+{
+    NoteStart start = SoundStartNote(cpu.x);
+
+    pitch_exit_shim(start.pitch, false);
+    cpu.a = start.timer;
+    cpu.y = start.length;
+    abi_nz(start.timer);
+    if (!start.gated)
+        return;
+    abi_flag(P_C, (start.product.value & 0x08) != 0);
+    if (start.product.added)
+        abi_flag(P_V, start.product.overflow);
 }

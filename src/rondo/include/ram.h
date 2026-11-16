@@ -514,5 +514,18 @@
 #define SoundTremoloSpeed 0x2528 /* the sound driver: by channel, added to the tremolo's phase a frame */
 #define SoundTremoloDelay 0x2530 /* the sound driver: by channel, frames before the tremolo starts */
 #define zSoundStepHi 0x2059 /* the sound driver: a glide step shifted down, high; the low byte in zSoundFine */
+#define zSoundQuotientLo 0x205A /* the sound driver: a quotient, low */
+#define zSoundQuotientHi 0x205B /* the sound driver: a quotient, high */
+#define SoundDetuneAFine 0x2368 /* the sound driver: by channel, a detune added to every note, fine part */
+#define SoundDetuneBFine 0x2370 /* the sound driver: by channel, a second detune, fine part */
+#define SoundDetuneANote 0x2378 /* the sound driver: by channel, a detune added to every note, notes */
+#define SoundDetuneBNote 0x2380 /* the sound driver: by channel, a second detune, notes */
+#define SoundGlideFramesSet 0x2478 /* the sound driver: by channel, the glide's frames as set; 0 none */
+#define SoundGlideDelaySet 0x2480 /* the sound driver: by channel, the glide's delay as set */
+#define SoundGlideFromLast 0x2488 /* the sound driver: by channel, not 0 to glide from the last note, else from an offset */
+#define SoundGlideOffsetFine 0x2490 /* the sound driver: by channel, how far below the note a glide starts, fine part */
+#define SoundGlideOffsetNote 0x2498 /* the sound driver: by channel, how far below the note a glide starts, notes */
+#define SoundTranspose 0x2540 /* the sound driver: by channel, added to every note */
+#define SoundFineTune 0x2548 /* the sound driver: by channel, the fine part of every note, signed */
 
 #endif

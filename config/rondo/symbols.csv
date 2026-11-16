@@ -521,3 +521,16 @@ B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 an
 2528,abs,SoundTremoloSpeed,the sound driver: by channel, added to the tremolo's phase a frame
 2530,abs,SoundTremoloDelay,the sound driver: by channel, frames before the tremolo starts
 59,zp,zSoundStepHi,the sound driver: a glide step shifted down, high; the low byte in zSoundFine
+5A,zp,zSoundQuotientLo,the sound driver: a quotient, low
+5B,zp,zSoundQuotientHi,the sound driver: a quotient, high
+2368,abs,SoundDetuneAFine,the sound driver: by channel, a detune added to every note, fine part
+2370,abs,SoundDetuneBFine,the sound driver: by channel, a second detune, fine part
+2378,abs,SoundDetuneANote,the sound driver: by channel, a detune added to every note, notes
+2380,abs,SoundDetuneBNote,the sound driver: by channel, a second detune, notes
+2478,abs,SoundGlideFramesSet,the sound driver: by channel, the glide's frames as set; 0 none
+2480,abs,SoundGlideDelaySet,the sound driver: by channel, the glide's delay as set
+2488,abs,SoundGlideFromLast,the sound driver: by channel, not 0 to glide from the last note, else from an offset
+2490,abs,SoundGlideOffsetFine,the sound driver: by channel, how far below the note a glide starts, fine part
+2498,abs,SoundGlideOffsetNote,the sound driver: by channel, how far below the note a glide starts, notes
+2540,abs,SoundTranspose,the sound driver: by channel, added to every note
+2548,abs,SoundFineTune,the sound driver: by channel, the fine part of every note, signed

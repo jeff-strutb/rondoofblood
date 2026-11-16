@@ -354,6 +354,23 @@ typedef struct { VolumeHow how; Ramp ramp; uint8_t less; ControlSet volume; } Vo
 
 VolumeTick SoundVolumeTick(uint8_t channel);
 
+/* A division: whether its last step subtracted, the remainder's high byte before and its borrow. */
+typedef struct { bool took; uint8_t last; uint8_t high_before; bool borrow; bool unused; uint16_t quotient; } Division;
+
+Division SoundDivide(uint8_t divisor);
+void division_exit_shim(Division division);
+
+/* A glide aimed: whether it was, which way, the division, the step and the frames. */
+typedef struct { bool aimed; bool down; Division division; uint16_t step; uint8_t frames; } GlideSetup;
+
+GlideSetup SoundGlideSetup(uint8_t fine, uint8_t note, uint8_t channel);
+PitchTick SoundNotePitch(uint8_t channel);
+
+/* A note started: its pitch tick, length, gate timer and the product it came from. */
+typedef struct { PitchTick pitch; uint8_t length; bool gated; SoundProduct product; uint8_t timer; } NoteStart;
+
+NoteStart SoundStartNote(uint8_t channel);
+
 typedef enum { WAVE_NONE, WAVE_HELD, WAVE_LOADED } WaveHow;
 
 typedef struct { WaveHow how; uint8_t wave; uint8_t effect; } WaveLoad;

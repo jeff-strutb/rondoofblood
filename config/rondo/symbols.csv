@@ -426,7 +426,7 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 52,zp,zSoundChannel,the sound driver: the PSG channel it last selected
 55,zp,zSoundWordLo,the sound driver: a product, or a pointer, low
 56,zp,zSoundWordHi,the sound driver: a product, or a pointer, high
-57,zp,zSoundMultiplier,the sound driver: the multiplier as it is shifted out
+57,zp,zSoundScratch,the sound driver: the multiplier as it is shifted out; what a pitch tick changed, counted
 71,zp,zSoundAltBalance,the sound driver: set by command $FD, the second balance table
 22DA,abs,SoundFading,the sound driver: 1 while the music fades
 22DB,abs,SoundFadeStep,the sound driver: the fade's step
@@ -476,7 +476,7 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 2568,abs,SoundRampHi,the sound driver: by channel, the ramp
 908E,abs,SoundModulationTable,the sound driver: modulation words, one step a byte apart
 B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 and up
-24B8,abs,SoundOffsetScale,the sound driver: by channel, what SoundScaledOffset multiplies by
+24B8,abs,SoundVibratoDepth,the sound driver: by channel, the vibrato's depth, what SoundScaledOffset multiplies by
 2570,abs,SoundAttackRate,the sound driver: by channel, frames a step of the attack; 0 none
 2578,abs,SoundAttackLevel,the sound driver: by channel, the level the attack starts from
 2580,abs,SoundDecayRate,the sound driver: by channel, frames a step of the decay
@@ -498,3 +498,26 @@ B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 an
 25B0,abs,SoundChannel25B0,the sound driver: by channel; cleared at start
 25F0,abs,SoundChannelPriority,the sound driver: by channel, the priority of what plays on it
 8F8E,abs,SoundPeriods,the sound driver: PSG periods by note, a word each
+2318,abs,SoundGlideShift,the sound driver: by channel, a bit whose place says how far the glide step is shifted down
+2438,abs,SoundGlideFrames,the sound driver: by channel, frames of glide left; 0 none
+2440,abs,SoundGlideDelay,the sound driver: by channel, frames before the glide starts
+2448,abs,SoundPitchFine,the sound driver: by channel, the pitch, fine part
+2450,abs,SoundPitchNote,the sound driver: by channel, the pitch, note
+2458,abs,SoundGlideStepLo,the sound driver: by channel, the glide's step, fine part
+2460,abs,SoundGlideStepHi,the sound driver: by channel, the glide's step, notes
+2468,abs,SoundGlideTargetFine,the sound driver: by channel, where the glide ends, fine part
+2470,abs,SoundGlideTargetNote,the sound driver: by channel, where the glide ends, note
+24A0,abs,SoundVibratoWait,the sound driver: by channel, frames the vibrato has waited
+24A8,abs,SoundVibratoPhase,the sound driver: by channel, the vibrato's phase
+24B0,abs,SoundVibratoDepthLo,the sound driver: by channel, the vibrato's depth, fraction
+24C0,abs,SoundVibratoDepthMax,the sound driver: by channel, the depth the vibrato grows to; 0 none
+24C8,abs,SoundVibratoDelay,the sound driver: by channel, frames before the vibrato starts
+24D0,abs,SoundVibratoSpeed,the sound driver: by channel, added to the vibrato's phase a frame
+24D8,abs,SoundVibratoGrowLo,the sound driver: by channel, added to the depth a frame, fraction
+24E0,abs,SoundVibratoGrowHi,the sound driver: by channel, added to the depth a frame
+2510,abs,SoundTremoloPhase,the sound driver: by channel, the tremolo's phase
+2518,abs,SoundTremoloWait,the sound driver: by channel, frames the tremolo has waited
+2520,abs,SoundTremoloDepth,the sound driver: by channel, places the tremolo is shifted up; 0 none
+2528,abs,SoundTremoloSpeed,the sound driver: by channel, added to the tremolo's phase a frame
+2530,abs,SoundTremoloDelay,the sound driver: by channel, frames before the tremolo starts
+59,zp,zSoundStepHi,the sound driver: a glide step shifted down, high; the low byte in zSoundFine

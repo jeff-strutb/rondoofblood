@@ -419,7 +419,7 @@
 #define zSoundChannel 0x2052 /* the sound driver: the PSG channel it last selected */
 #define zSoundWordLo 0x2055 /* the sound driver: a product, or a pointer, low */
 #define zSoundWordHi 0x2056 /* the sound driver: a product, or a pointer, high */
-#define zSoundMultiplier 0x2057 /* the sound driver: the multiplier as it is shifted out */
+#define zSoundScratch 0x2057 /* the sound driver: the multiplier as it is shifted out; what a pitch tick changed, counted */
 #define zSoundAltBalance 0x2071 /* the sound driver: set by command $FD, the second balance table */
 #define SoundFading 0x22DA /* the sound driver: 1 while the music fades */
 #define SoundFadeStep 0x22DB /* the sound driver: the fade's step */
@@ -469,7 +469,7 @@
 #define SoundRampHi 0x2568 /* the sound driver: by channel, the ramp */
 #define SoundModulationTable 0x908E /* the sound driver: modulation words, one step a byte apart */
 #define SoundCommandLengths 0xB7A2 /* the sound driver: argument bytes of commands $E0 and up */
-#define SoundOffsetScale 0x24B8 /* the sound driver: by channel, what SoundScaledOffset multiplies by */
+#define SoundVibratoDepth 0x24B8 /* the sound driver: by channel, the vibrato's depth, what SoundScaledOffset multiplies by */
 #define SoundAttackRate 0x2570 /* the sound driver: by channel, frames a step of the attack; 0 none */
 #define SoundAttackLevel 0x2578 /* the sound driver: by channel, the level the attack starts from */
 #define SoundDecayRate 0x2580 /* the sound driver: by channel, frames a step of the decay */
@@ -491,5 +491,28 @@
 #define SoundChannel25B0 0x25B0 /* the sound driver: by channel; cleared at start */
 #define SoundChannelPriority 0x25F0 /* the sound driver: by channel, the priority of what plays on it */
 #define SoundPeriods 0x8F8E /* the sound driver: PSG periods by note, a word each */
+#define SoundGlideShift 0x2318 /* the sound driver: by channel, a bit whose place says how far the glide step is shifted down */
+#define SoundGlideFrames 0x2438 /* the sound driver: by channel, frames of glide left; 0 none */
+#define SoundGlideDelay 0x2440 /* the sound driver: by channel, frames before the glide starts */
+#define SoundPitchFine 0x2448 /* the sound driver: by channel, the pitch, fine part */
+#define SoundPitchNote 0x2450 /* the sound driver: by channel, the pitch, note */
+#define SoundGlideStepLo 0x2458 /* the sound driver: by channel, the glide's step, fine part */
+#define SoundGlideStepHi 0x2460 /* the sound driver: by channel, the glide's step, notes */
+#define SoundGlideTargetFine 0x2468 /* the sound driver: by channel, where the glide ends, fine part */
+#define SoundGlideTargetNote 0x2470 /* the sound driver: by channel, where the glide ends, note */
+#define SoundVibratoWait 0x24A0 /* the sound driver: by channel, frames the vibrato has waited */
+#define SoundVibratoPhase 0x24A8 /* the sound driver: by channel, the vibrato's phase */
+#define SoundVibratoDepthLo 0x24B0 /* the sound driver: by channel, the vibrato's depth, fraction */
+#define SoundVibratoDepthMax 0x24C0 /* the sound driver: by channel, the depth the vibrato grows to; 0 none */
+#define SoundVibratoDelay 0x24C8 /* the sound driver: by channel, frames before the vibrato starts */
+#define SoundVibratoSpeed 0x24D0 /* the sound driver: by channel, added to the vibrato's phase a frame */
+#define SoundVibratoGrowLo 0x24D8 /* the sound driver: by channel, added to the depth a frame, fraction */
+#define SoundVibratoGrowHi 0x24E0 /* the sound driver: by channel, added to the depth a frame */
+#define SoundTremoloPhase 0x2510 /* the sound driver: by channel, the tremolo's phase */
+#define SoundTremoloWait 0x2518 /* the sound driver: by channel, frames the tremolo has waited */
+#define SoundTremoloDepth 0x2520 /* the sound driver: by channel, places the tremolo is shifted up; 0 none */
+#define SoundTremoloSpeed 0x2528 /* the sound driver: by channel, added to the tremolo's phase a frame */
+#define SoundTremoloDelay 0x2530 /* the sound driver: by channel, frames before the tremolo starts */
+#define zSoundStepHi 0x2059 /* the sound driver: a glide step shifted down, high; the low byte in zSoundFine */
 
 #endif

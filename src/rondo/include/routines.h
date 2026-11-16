@@ -256,6 +256,7 @@ typedef enum { RAMP_WAITING, RAMP_NO_STEP, RAMP_TOO_CLOSE, RAMP_MOVED } RampHow;
 typedef struct { RampHow how; uint8_t value; uint8_t from; uint8_t slide; uint8_t high; } Ramp;
 
 Ramp SoundRampStep(uint8_t channel);
+void ramp_exit_shim(Ramp ramp);
 
 typedef enum { APPROACH_IDLE, APPROACH_THERE, APPROACH_UP, APPROACH_DOWN } ApproachHow;
 
@@ -320,6 +321,7 @@ ChannelSilence SoundRest(uint8_t channel);
 typedef struct { uint8_t length; uint8_t gate; SoundProduct product; uint8_t timer; } NoteLength;
 
 NoteLength SoundSetLength(uint8_t channel);
+
 void wave_address_exit_shim(uint8_t wave);
 
 /* A frequency set: whether an effect held the channel, noise or tone, the byte written last. */
@@ -334,6 +336,23 @@ typedef struct {
 } FrequencySet;
 
 FrequencySet SoundSetFrequency(uint8_t fine, uint8_t channel, uint8_t note);
+void frequency_exit_shim(FrequencySet set, uint8_t note);
+
+/* A byte add or subtract: the result, its carry as the processor's C, and its overflow. */
+typedef struct { uint8_t value; bool carry; bool overflow; } Sum;
+
+/* A pitch tick: the fine part and note set, the last add's flags, and the frequency's set. */
+typedef struct { uint8_t fine; uint8_t note; Sum last; FrequencySet frequency; } PitchTick;
+
+PitchTick SoundPitchTick(uint8_t channel);
+PitchTick SoundPitchTickPlain(uint8_t channel);
+
+typedef enum { VOLUME_NONE, VOLUME_PLAIN, VOLUME_WAITING, VOLUME_TREMOLO } VolumeHow;
+
+/* A volume tick: what ran, the ramp's step, the tremolo taken off and the control set. */
+typedef struct { VolumeHow how; Ramp ramp; uint8_t less; ControlSet volume; } VolumeTick;
+
+VolumeTick SoundVolumeTick(uint8_t channel);
 
 typedef enum { WAVE_NONE, WAVE_HELD, WAVE_LOADED } WaveHow;
 

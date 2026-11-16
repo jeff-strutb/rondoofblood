@@ -262,19 +262,19 @@ SoundSilenceChannel_at1:
 ; @routine 004E:746 SoundMultiply
 ; @run 75:8F46
 ; WHAT IT DOES: Multiplies two bytes into a word in zSoundWordLo and zSoundWordHi.
-; HOW: Eight steps of shift and add, the multiplier from zSoundMultiplier.
+; HOW: Eight steps of shift and add, the multiplier from zSoundScratch.
 ; Entry: A and Y the bytes. Exit: X and Y kept, N and Z from X; C clear; A the product's high
 ; byte as of the last add, V from that add, or A and V kept when A was 0.
 SoundMultiply:
     phx
-    sta z:zSoundMultiplier
+    sta z:zSoundScratch
     ldx #$08
     stz z:zSoundWordLo
     stz z:zSoundWordHi
 SoundMultiply_at1:
     asl z:zSoundWordLo
     rol z:zSoundWordHi
-    asl z:zSoundMultiplier
+    asl z:zSoundScratch
     bcc SoundMultiply_at0
     tya
     clc
@@ -300,14 +300,14 @@ SoundMultiplyNibble:
     asl a
     asl a
     asl a
-    sta z:zSoundMultiplier
+    sta z:zSoundScratch
     ldx #$04
     stz z:zSoundWordLo
     stz z:zSoundWordHi
 SoundMultiplyNibble_at1:
     asl z:zSoundWordLo
     rol z:zSoundWordHi
-    asl z:zSoundMultiplier
+    asl z:zSoundScratch
     bcc SoundMultiplyNibble_at0
     tya
     clc
@@ -489,7 +489,7 @@ SoundWaveAddress:
 ; @routine 004E:0FF SoundScaledOffset
 ; @run 75:88FF
 ; WHAT IT DOES: A signed offset into zSoundWordLo and Hi: an entry of SoundOffsetTable times the
-; channel's SoundOffsetScale, negated when bit 6 of the byte is set.
+; channel's SoundVibratoDepth, negated when bit 6 of the byte is set.
 ; HOW: The byte's low six bits pick the entry; SoundMultiply.
 ; Entry: A the byte, X channel. Exit: Y the scale; X kept. Positive, as SoundMultiply. Negative, A
 ; the word's high byte, N, Z, C and V from subtracting it from 0 with the low byte's borrow.
@@ -499,14 +499,14 @@ SoundScaledOffset:
     bcs SoundScaledOffset_at0
     tay
     lda a:SoundOffsetTable,y
-    ldy a:SoundOffsetScale,x
+    ldy a:SoundVibratoDepth,x
     jsr SoundMultiply
     bra SoundScaledOffset_at1
 SoundScaledOffset_at0:
     and #$3F
     tay
     lda a:SoundOffsetTable,y
-    ldy a:SoundOffsetScale,x
+    ldy a:SoundVibratoDepth,x
     jsr SoundMultiply
     cla
     sec
@@ -864,4 +864,219 @@ SoundDriverStopAll_at0:
     jsr SoundSilenceAll
     stz a:PsgNoise
     stz a:PsgLfoControl
+    rts
+
+; @routine 004D:76F SoundVolumeTick
+; @run 75:876F
+; WHAT IT DOES: A frame of a channel's volume: its ramp, then, with a volume at all, its PSG
+; volume, less its tremolo once the tremolo's wait is over. Says whether the tremolo is still
+; waiting.
+; HOW: SoundRampStep; the tremolo's phase moved on, made positive and shifted up by its depth,
+; the high byte taken off by SoundApplyVolume.
+; Entry: X channel. Exit: no volume, A 0, Z set, N clear, C clear, Y and V as SoundRampStep.
+; Otherwise as SoundApplyVolume, with C set while the tremolo waits, else clear; Y 0 after a
+; tremolo where it keeps it.
+SoundVolumeTick:
+    jsr SoundRampStep
+    lda a:SoundVolumeBase,x
+    beq SoundVolumeTick_at0
+    lda a:SoundTremoloDepth,x
+    beq SoundVolumeTick_at1
+    lda a:SoundTremoloWait,x
+    cmp a:SoundTremoloDelay,x
+    beq SoundVolumeTick_at2
+    cla
+    jsr SoundApplyVolume
+    sec
+    rts
+SoundVolumeTick_at2:
+    lda a:SoundTremoloPhase,x
+    clc
+    adc a:SoundTremoloSpeed,x
+    sta a:SoundTremoloPhase,x
+    bpl SoundVolumeTick_at3
+    eor #$FF
+    inc a
+SoundVolumeTick_at3:
+    sta z:zSoundWordLo
+    cla
+    ldy a:SoundTremoloDepth,x
+SoundVolumeTick_at4:
+    asl z:zSoundWordLo
+    rol a
+    dey
+    beq SoundVolumeTick_at1
+    bra SoundVolumeTick_at4
+SoundVolumeTick_at1:
+    jsr SoundApplyVolume
+SoundVolumeTick_at0:
+    clc
+    rts
+
+; @routine 004E:02A SoundPitchTick
+; @run 75:882A
+; WHAT IT DOES: A frame of a channel's pitch: its glide, after its delay, a step toward the
+; target note and at the end onto it; its vibrato, after its delay, growing to its depth; its
+; modulation; then the PSG frequency for the pitch with those offsets.
+; HOW: SoundGlide*, SoundVibrato* and SoundModulate by channel; zSoundScratch counts what
+; changed; SoundSetFrequency with the fine part and the note.
+; Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note and C and V from
+; adding the note where it keeps them.
+SoundPitchTick:
+    stz z:zSoundWordLo
+    stz z:zSoundWordHi
+    stz z:zSoundScratch
+    lda a:SoundGlideFrames,x
+    beq SoundPitchTick_at0
+    lda a:SoundGlideDelay,x
+    beq SoundPitchTick_at1
+    dec a:SoundGlideDelay,x
+    bra SoundPitchTick_at0
+SoundPitchTick_at1:
+    dec a:SoundGlideFrames,x
+    bne SoundPitchTick_at2
+    lda a:SoundGlideTargetFine,x
+    sta a:SoundPitchFine,x
+    lda a:SoundGlideTargetNote,x
+    sta a:SoundPitchNote,x
+    bra SoundPitchTick_at3
+SoundPitchTick_at2:
+    lda a:SoundPitchFine,x
+    clc
+    adc a:SoundGlideStepLo,x
+    sta a:SoundPitchFine,x
+    lda a:SoundPitchNote,x
+    adc a:SoundGlideStepHi,x
+    sta a:SoundPitchNote,x
+SoundPitchTick_at3:
+    inc z:zSoundScratch
+SoundPitchTick_at0:
+    lda a:SoundVibratoDepthMax,x
+    beq SoundPitchTick_at4
+    lda a:SoundVibratoWait,x
+    cmp a:SoundVibratoDelay,x
+    beq SoundPitchTick_at5
+    inc a:SoundVibratoWait,x
+    bra SoundPitchTick_at4
+SoundPitchTick_at5:
+    lda a:SoundVibratoDepth,x
+    cmp a:SoundVibratoDepthMax,x
+    bcs SoundPitchTick_at6
+    lda a:SoundVibratoDepthLo,x
+    clc
+    adc a:SoundVibratoGrowLo,x
+    sta a:SoundVibratoDepthLo,x
+    lda a:SoundVibratoDepth,x
+    adc a:SoundVibratoGrowHi,x
+    sta a:SoundVibratoDepth,x
+SoundPitchTick_at6:
+    lda a:SoundVibratoPhase,x
+    clc
+    adc a:SoundVibratoSpeed,x
+    sta a:SoundVibratoPhase,x
+    jsr SoundScaledOffset
+    inc z:zSoundScratch
+SoundPitchTick_at4:
+    lda a:SoundModulationSpeed,x
+    beq SoundPitchTick_at7
+    jsr SoundModulate
+    inc z:zSoundScratch
+SoundPitchTick_at7:
+    lda a:SoundPitchFine,x
+    clc
+    adc z:zSoundWordLo
+    pha
+    lda a:SoundPitchNote,x
+    adc z:zSoundWordHi
+    tay
+    pla
+    jsr SoundSetFrequency
+    rts
+
+; @routine 004E:159 SoundPitchTickPlain
+; @run 75:8959
+; WHAT IT DOES: A frame of a channel's pitch, the plain way: the vibrato at its depth with no
+; growing and no counting of its wait; the pitch; the glide's step shifted down by the channel's
+; shift and added, or taken off when it goes down; the modulation; then the PSG frequency.
+; HOW: The shift is a bit in SoundGlideShift: one place for bit 7, two for bit 6, and so on.
+; Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note, N and Z from
+; the note, and C and V from the last add or subtract where it keeps them.
+SoundPitchTickPlain:
+    stz z:zSoundWordLo
+    stz z:zSoundWordHi
+    stz z:zSoundScratch
+    lda a:SoundVibratoDepthLo,x
+    ora a:SoundVibratoDepth,x
+    beq SoundPitchTickPlain_at0
+    lda a:SoundVibratoWait,x
+    cmp a:SoundVibratoDelay,x
+    bne SoundPitchTickPlain_at0
+    lda a:SoundVibratoPhase,x
+    clc
+    adc a:SoundVibratoSpeed,x
+    sta a:SoundVibratoPhase,x
+    jsr SoundScaledOffset
+    inc z:zSoundScratch
+SoundPitchTickPlain_at0:
+    lda z:zSoundWordLo
+    clc
+    adc a:SoundPitchFine,x
+    sta z:zSoundWordLo
+    lda z:zSoundWordHi
+    adc a:SoundPitchNote,x
+    sta z:zSoundWordHi
+    lda a:SoundGlideFrames,x
+    beq SoundPitchTickPlain_at1
+    lda a:SoundGlideDelay,x
+    bne SoundPitchTickPlain_at1
+    inc z:zSoundScratch
+    lda a:SoundGlideStepLo,x
+    sta z:zSoundFine
+    lda a:SoundGlideStepHi,x
+    sta z:zSoundStepHi
+    bmi SoundPitchTickPlain_at2
+    lda a:SoundGlideShift,x
+SoundPitchTickPlain_at3:
+    lsr z:zSoundStepHi
+    ror z:zSoundFine
+    asl a
+    bcc SoundPitchTickPlain_at3
+    lda z:zSoundFine
+    clc
+    adc z:zSoundWordLo
+    sta z:zSoundWordLo
+    lda z:zSoundStepHi
+    adc z:zSoundWordHi
+    sta z:zSoundWordHi
+    bra SoundPitchTickPlain_at1
+SoundPitchTickPlain_at2:
+    cla
+    sec
+    sbc z:zSoundFine
+    sta z:zSoundFine
+    cla
+    sbc z:zSoundStepHi
+    sta z:zSoundStepHi
+    lda a:SoundGlideShift,x
+SoundPitchTickPlain_at4:
+    lsr z:zSoundStepHi
+    ror z:zSoundFine
+    asl a
+    bcc SoundPitchTickPlain_at4
+    lda z:zSoundWordLo
+    sec
+    sbc z:zSoundFine
+    sta z:zSoundWordLo
+    lda z:zSoundWordHi
+    sbc z:zSoundStepHi
+    sta z:zSoundWordHi
+SoundPitchTickPlain_at1:
+    lda a:SoundModulationSpeed,x
+    beq SoundPitchTickPlain_at5
+    jsr SoundModulate
+    inc z:zSoundScratch
+SoundPitchTickPlain_at5:
+    lda z:zSoundWordLo
+    ldy z:zSoundWordHi
+    jsr SoundSetFrequency
     rts

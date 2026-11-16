@@ -144,7 +144,7 @@ static SoundProduct shift_add(uint8_t multiplier, int bits, uint8_t multiplicand
     }
     wr8(zSoundWordLo, (uint8_t)product.value);
     wr8(zSoundWordHi, (uint8_t)(product.value >> 8));
-    wr8(zSoundMultiplier, 0);
+    wr8(zSoundScratch, 0);
     return product;
 }
 
@@ -162,7 +162,7 @@ static void abi_exit_product(SoundProduct product, uint8_t before)
  * @routine 004E:746 SoundMultiply
  * @run 75:8F46
  * WHAT IT DOES: Multiplies two bytes into a word in zSoundWordLo and zSoundWordHi.
- * HOW: Eight steps of shift and add, the multiplier from zSoundMultiplier.
+ * HOW: Eight steps of shift and add, the multiplier from zSoundScratch.
  * Entry: A and Y the bytes. Exit: X and Y kept, N and Z from X; C clear; A the product's high
  * byte as of the last add, V from that add, or A and V kept when A was 0.
  */
@@ -718,10 +718,8 @@ Ramp SoundRampStep(uint8_t channel)
     return ramp;
 }
 
-void abi_SoundRampStep(void)
+void ramp_exit_shim(Ramp ramp)
 {
-    Ramp ramp = SoundRampStep(cpu.x);
-
     cpu.a = ramp.value;
     switch (ramp.how) {
     case RAMP_WAITING:
@@ -739,6 +737,11 @@ void abi_SoundRampStep(void)
         abi_flag(P_V, ramp.high == 0x7F && ramp.value == 0x80);
         break;
     }
+}
+
+void abi_SoundRampStep(void)
+{
+    ramp_exit_shim(SoundRampStep(cpu.x));
 }
 
 /*
@@ -941,7 +944,7 @@ void abi_SoundEnvelopeStep(void)
  * @routine 004E:0FF SoundScaledOffset
  * @run 75:88FF
  * WHAT IT DOES: A signed offset into zSoundWordLo and Hi: an entry of SoundOffsetTable times the
- * channel's SoundOffsetScale, negated when bit 6 of the byte is set.
+ * channel's SoundVibratoDepth, negated when bit 6 of the byte is set.
  * HOW: The byte's low six bits pick the entry; SoundMultiply.
  * Entry: A the byte, X channel. Exit: Y the scale; X kept. Positive, as SoundMultiply. Negative, A
  * the word's high byte, N, Z, C and V from subtracting it from 0 with the low byte's borrow.
@@ -952,7 +955,7 @@ ScaledOffset SoundScaledOffset(uint8_t byte, uint8_t channel)
     uint8_t entry = (uint8_t)(byte & 0x7F);
 
     offset.negative = entry >= OFFSET_NEGATIVE;
-    offset.scale = rd8((uint16_t)(SoundOffsetScale + channel));
+    offset.scale = rd8((uint16_t)(SoundVibratoDepth + channel));
     offset.product = SoundMultiply(rd8((uint16_t)(SoundOffsetTable + (entry & 0x3F))), offset.scale);
     if (offset.negative) {
         uint16_t word = (uint16_t)(0 - offset.product.value);
@@ -1206,11 +1209,8 @@ FrequencySet SoundSetFrequency(uint8_t fine, uint8_t channel, uint8_t note)
     return set;
 }
 
-void abi_SoundSetFrequency(void)
+void frequency_exit_shim(FrequencySet set, uint8_t note)
 {
-    uint8_t note = cpu.y;
-    FrequencySet set = SoundSetFrequency(cpu.a, cpu.x, note);
-
     if (set.held) {
         abi_flag(P_N, (set.effect & 0x80) != 0);
         abi_flag(P_V, (set.effect & 0x40) != 0);
@@ -1230,6 +1230,13 @@ void abi_SoundSetFrequency(void)
     cpu.y = (uint8_t)(note << 1);
     abi_flag(P_C, !(set.high_before == 0 && set.borrow));
     abi_flag(P_V, set.high_before == 0x80 && set.borrow);
+}
+
+void abi_SoundSetFrequency(void)
+{
+    uint8_t note = cpu.y;
+
+    frequency_exit_shim(SoundSetFrequency(cpu.a, cpu.x, note), note);
 }
 
 /*
@@ -1355,4 +1362,280 @@ void abi_SoundDriverStopAll(void)
     SoundDriverStopAll();
     cpu.x = 0xFF;
     abi_nz(0xFF);
+}
+
+/* An add of a byte and a byte with a carry in: the sum, and its carry and overflow. */
+static Sum add_bytes(uint8_t a, uint8_t b, bool carry_in)
+{
+    Sum sum;
+    unsigned total = (unsigned)a + b + carry_in;
+
+    sum.value = (uint8_t)total;
+    sum.carry = total > 0xFF;
+    sum.overflow = (~(a ^ b) & (a ^ sum.value) & 0x80) != 0;
+    return sum;
+}
+
+/* A subtract of a byte from a byte with the carry in as the processor's: set for no borrow. */
+static Sum sub_bytes(uint8_t a, uint8_t b, bool carry_in)
+{
+    Sum sum;
+    int total = (int)a - b - (carry_in ? 0 : 1);
+
+    sum.value = (uint8_t)total;
+    sum.carry = total >= 0;
+    sum.overflow = ((a ^ b) & (a ^ sum.value) & 0x80) != 0;
+    return sum;
+}
+
+/* The pitch word in zSoundWordLo and Hi plus the channel's pitch; the high add is what shows. */
+static Sum add_pitch(uint8_t channel)
+{
+    Sum low = add_bytes(rd8(zSoundWordLo), rd8((uint16_t)(SoundPitchFine + channel)), false);
+    Sum high;
+
+    wr8(zSoundWordLo, low.value);
+    high = add_bytes(rd8(zSoundWordHi), rd8((uint16_t)(SoundPitchNote + channel)), low.carry);
+    wr8(zSoundWordHi, high.value);
+    return high;
+}
+
+/* The work word and the change count cleared, as a pitch tick starts. */
+static void pitch_tick_start(void)
+{
+    wr8(zSoundWordLo, 0);
+    wr8(zSoundWordHi, 0);
+    wr8(zSoundScratch, 0);
+}
+
+static void count_change(void)
+{
+    wr8(zSoundScratch, (uint8_t)(rd8(zSoundScratch) + 1));
+}
+
+/* The vibrato's phase moved on, and its offset for that phase into the work word. */
+static void vibrato_offset(uint8_t channel)
+{
+    uint8_t phase = (uint8_t)(rd8((uint16_t)(SoundVibratoPhase + channel)) +
+                              rd8((uint16_t)(SoundVibratoSpeed + channel)));
+
+    wr8((uint16_t)(SoundVibratoPhase + channel), phase);
+    SoundScaledOffset(phase, channel);
+    count_change();
+}
+
+/* What a pitch tick leaves before it sets the frequency: A the fine part, Y the note, N and Z. */
+static void pitch_exit_shim(PitchTick tick, bool nz_from_note)
+{
+    cpu.a = tick.fine;
+    cpu.y = tick.note;
+    abi_nz(nz_from_note ? tick.note : tick.fine);
+    abi_flag(P_C, tick.last.carry);
+    abi_flag(P_V, tick.last.overflow);
+    frequency_exit_shim(tick.frequency, tick.note);
+}
+
+/*
+ * @routine 004E:02A SoundPitchTick
+ * @run 75:882A
+ * WHAT IT DOES: A frame of a channel's pitch: its glide, after its delay, a step toward the
+ * target note and at the end onto it; its vibrato, after its delay, growing to its depth; its
+ * modulation; then the PSG frequency for the pitch with those offsets.
+ * HOW: SoundGlide*, SoundVibrato* and SoundModulate by channel; zSoundScratch counts what
+ * changed; SoundSetFrequency with the fine part and the note.
+ * Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note and C and V from
+ * adding the note where it keeps them.
+ */
+PitchTick SoundPitchTick(uint8_t channel)
+{
+    PitchTick tick;
+    Sum low;
+
+    pitch_tick_start();
+    if (rd8((uint16_t)(SoundGlideFrames + channel)) != 0) {
+        uint8_t delay = rd8((uint16_t)(SoundGlideDelay + channel));
+
+        if (delay != 0) {
+            wr8((uint16_t)(SoundGlideDelay + channel), (uint8_t)(delay - 1));
+        } else {
+            uint8_t left = (uint8_t)(rd8((uint16_t)(SoundGlideFrames + channel)) - 1);
+
+            wr8((uint16_t)(SoundGlideFrames + channel), left);
+            if (left == 0) {
+                wr8((uint16_t)(SoundPitchFine + channel), rd8((uint16_t)(SoundGlideTargetFine + channel)));
+                wr8((uint16_t)(SoundPitchNote + channel), rd8((uint16_t)(SoundGlideTargetNote + channel)));
+            } else {
+                low = add_bytes(rd8((uint16_t)(SoundPitchFine + channel)), rd8((uint16_t)(SoundGlideStepLo + channel)), false);
+                wr8((uint16_t)(SoundPitchFine + channel), low.value);
+                wr8((uint16_t)(SoundPitchNote + channel),
+                    add_bytes(rd8((uint16_t)(SoundPitchNote + channel)), rd8((uint16_t)(SoundGlideStepHi + channel)),
+                              low.carry).value);
+            }
+            count_change();
+        }
+    }
+    if (rd8((uint16_t)(SoundVibratoDepthMax + channel)) != 0) {
+        if (rd8((uint16_t)(SoundVibratoWait + channel)) != rd8((uint16_t)(SoundVibratoDelay + channel))) {
+            wr8((uint16_t)(SoundVibratoWait + channel), (uint8_t)(rd8((uint16_t)(SoundVibratoWait + channel)) + 1));
+        } else {
+            if (rd8((uint16_t)(SoundVibratoDepth + channel)) < rd8((uint16_t)(SoundVibratoDepthMax + channel))) {
+                low = add_bytes(rd8((uint16_t)(SoundVibratoDepthLo + channel)), rd8((uint16_t)(SoundVibratoGrowLo + channel)), false);
+                wr8((uint16_t)(SoundVibratoDepthLo + channel), low.value);
+                wr8((uint16_t)(SoundVibratoDepth + channel),
+                    add_bytes(rd8((uint16_t)(SoundVibratoDepth + channel)), rd8((uint16_t)(SoundVibratoGrowHi + channel)),
+                              low.carry).value);
+            }
+            vibrato_offset(channel);
+        }
+    }
+    if (rd8((uint16_t)(SoundModulationSpeed + channel)) != 0) {
+        SoundModulate(channel);
+        count_change();
+    }
+    low = add_bytes(rd8((uint16_t)(SoundPitchFine + channel)), rd8(zSoundWordLo), false);
+    tick.fine = low.value;
+    tick.last = add_bytes(rd8((uint16_t)(SoundPitchNote + channel)), rd8(zSoundWordHi), low.carry);
+    tick.note = tick.last.value;
+    tick.frequency = SoundSetFrequency(tick.fine, channel, tick.note);
+    return tick;
+}
+
+void abi_SoundPitchTick(void)
+{
+    pitch_exit_shim(SoundPitchTick(cpu.x), false);
+}
+
+/*
+ * @routine 004E:159 SoundPitchTickPlain
+ * @run 75:8959
+ * WHAT IT DOES: A frame of a channel's pitch, the plain way: the vibrato at its depth with no
+ * growing and no counting of its wait; the pitch; the glide's step shifted down by the channel's
+ * shift and added, or taken off when it goes down; the modulation; then the PSG frequency.
+ * HOW: The shift is a bit in SoundGlideShift: one place for bit 7, two for bit 6, and so on.
+ * Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note, N and Z from
+ * the note, and C and V from the last add or subtract where it keeps them.
+ */
+PitchTick SoundPitchTickPlain(uint8_t channel)
+{
+    PitchTick tick;
+
+    pitch_tick_start();
+    if ((rd8((uint16_t)(SoundVibratoDepthLo + channel)) | rd8((uint16_t)(SoundVibratoDepth + channel))) != 0 &&
+        rd8((uint16_t)(SoundVibratoWait + channel)) == rd8((uint16_t)(SoundVibratoDelay + channel)))
+        vibrato_offset(channel);
+    tick.last = add_pitch(channel);
+    if (rd8((uint16_t)(SoundGlideFrames + channel)) != 0 && rd8((uint16_t)(SoundGlideDelay + channel)) == 0) {
+        uint16_t step = (uint16_t)(rd8((uint16_t)(SoundGlideStepLo + channel)) |
+                                   (rd8((uint16_t)(SoundGlideStepHi + channel)) << 8));
+        bool down = (step & 0x8000) != 0;
+        uint8_t shift = rd8((uint16_t)(SoundGlideShift + channel));
+        Sum low;
+
+        count_change();
+        if (down)
+            step = (uint16_t)(0 - step);
+        /* Shifted down a place for each bit the shift byte gives up before its set bit comes out. */
+        for (;;) {
+            bool last = (shift & 0x80) != 0;
+
+            step = (uint16_t)(step >> 1);
+            shift = (uint8_t)(shift << 1);
+            if (last)
+                break;
+        }
+        wr8(zSoundFine, (uint8_t)step);
+        wr8(zSoundStepHi, (uint8_t)(step >> 8));
+        if (!down) {
+            low = add_bytes(rd8(zSoundWordLo), (uint8_t)step, false);
+            wr8(zSoundWordLo, low.value);
+            tick.last = add_bytes(rd8(zSoundWordHi), (uint8_t)(step >> 8), low.carry);
+        } else {
+            low = sub_bytes(rd8(zSoundWordLo), (uint8_t)step, true);
+            wr8(zSoundWordLo, low.value);
+            tick.last = sub_bytes(rd8(zSoundWordHi), (uint8_t)(step >> 8), low.carry);
+        }
+        wr8(zSoundWordHi, tick.last.value);
+    }
+    if (rd8((uint16_t)(SoundModulationSpeed + channel)) != 0) {
+        Modulation mod = SoundModulate(channel);
+
+        tick.last = add_bytes(mod.add, mod.before, mod.carry_in);
+        count_change();
+    }
+    tick.fine = rd8(zSoundWordLo);
+    tick.note = rd8(zSoundWordHi);
+    tick.frequency = SoundSetFrequency(tick.fine, channel, tick.note);
+    return tick;
+}
+
+void abi_SoundPitchTickPlain(void)
+{
+    pitch_exit_shim(SoundPitchTickPlain(cpu.x), true);
+}
+
+/*
+ * @routine 004D:76F SoundVolumeTick
+ * @run 75:876F
+ * WHAT IT DOES: A frame of a channel's volume: its ramp, then, with a volume at all, its PSG
+ * volume, less its tremolo once the tremolo's wait is over. Says whether the tremolo is still
+ * waiting.
+ * HOW: SoundRampStep; the tremolo's phase moved on, made positive and shifted up by its depth,
+ * the high byte taken off by SoundApplyVolume.
+ * Entry: X channel. Exit: no volume, A 0, Z set, N clear, C clear, Y and V as SoundRampStep.
+ * Otherwise as SoundApplyVolume, with C set while the tremolo waits, else clear; Y 0 after a
+ * tremolo where it keeps it.
+ */
+VolumeTick SoundVolumeTick(uint8_t channel)
+{
+    VolumeTick tick = { VOLUME_NONE, { RAMP_WAITING, 0, 0, 0, 0 }, 0, { false, false, 0, 0, 0, 0, 0 } };
+    uint8_t depth;
+    uint8_t less = 0;
+
+    tick.ramp = SoundRampStep(channel);
+    if (rd8((uint16_t)(SoundVolumeBase + channel)) == 0)
+        return tick;
+    depth = rd8((uint16_t)(SoundTremoloDepth + channel));
+    tick.how = VOLUME_PLAIN;
+    if (depth != 0) {
+        if (rd8((uint16_t)(SoundTremoloWait + channel)) != rd8((uint16_t)(SoundTremoloDelay + channel))) {
+            tick.how = VOLUME_WAITING;
+        } else {
+            uint8_t phase = (uint8_t)(rd8((uint16_t)(SoundTremoloPhase + channel)) +
+                                      rd8((uint16_t)(SoundTremoloSpeed + channel)));
+            uint16_t shifted;
+
+            wr8((uint16_t)(SoundTremoloPhase + channel), phase);
+            if (phase & 0x80)
+                phase = (uint8_t)(0 - phase);
+            shifted = phase;
+            for (uint8_t place = depth; place != 0; place--)
+                shifted = (uint16_t)(shifted << 1);
+            less = (uint8_t)(shifted >> 8);
+            tick.how = VOLUME_TREMOLO;
+        }
+    }
+    tick.volume = SoundApplyVolume(less, channel);
+    tick.less = less;
+    return tick;
+}
+
+void abi_SoundVolumeTick(void)
+{
+    uint8_t channel = cpu.x;
+    VolumeTick tick = SoundVolumeTick(channel);
+
+    ramp_exit_shim(tick.ramp);
+    if (tick.how == VOLUME_NONE) {
+        cpu.a = 0;
+        abi_nz(0);
+        abi_flag(P_C, false);
+        return;
+    }
+    if (tick.how == VOLUME_TREMOLO)
+        cpu.y = 0;
+    cpu.a = tick.less;
+    if (tick.volume.held)
+        cpu.a = tick.volume.volume;
+    control_exit_shim(tick.volume, channel);
+    abi_flag(P_C, tick.how == VOLUME_WAITING);
 }

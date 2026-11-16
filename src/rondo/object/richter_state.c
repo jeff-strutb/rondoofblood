@@ -35,7 +35,10 @@ enum {
     LIST_KIND_2 = 2, ANIM_WALK = 0x00, ANIM_STAND = 0x01, ANIM_CROUCH = 0x0C, ANIM_FALL = 0x10,
     ANIM_KNOCK = 0x31, ANIM_WALK_BACK = 0x32, CROUCH_STEP = 3, STATE_FALL_34B8 = 4,
     FALL_SPEED_HI = 0x03, KNOCK_RISE_LO = 0xC0, KNOCK_RISE_HI = 0xFD, KNOCKED = 0x01,
-    START_NEW_RUN = 0, START_HEALTH = 1, START_STAND = 2, START_FIELD94 = 0x10, HEALTH_FULL = 0x5C, START_LIVE = 0x01
+    START_NEW_RUN = 0, START_HEALTH = 1, START_STAND = 2, START_FIELD94 = 0x10,
+    LEAP_LIST = 0x60, LEAP_SCRIPT = 0x01, LEAP_SCRIPT_UNLESS_HELD = 0x0B, LEAP_HIT_KEEPS = 0x20,
+    LEAP_RISE_LO = 0x80, LEAP_RISE_HI = 0xFE, ANIM_LEAP = 0x22, LEAP_CHANNEL = 6,
+    OBJECT_FIRST_OTHER = 1, OBJECT_END = 0x10, WHIP_KEPT = 1, CRASH_FIRST_STATE = 5, HEALTH_FULL = 0x5C, START_LIVE = 0x01
 };
 
 /* Called before they are defined. */
@@ -84,6 +87,17 @@ void abi_RichterCrouch(void);
 void abi_RichterToFall(void);
 void abi_RichterKnockBack(void);
 void abi_RichterStand(void);
+typedef struct { FacingSpeed speed; bool tested; uint8_t hit; } Leap;
+typedef struct { uint8_t whip; } OthersCleared;
+typedef struct { uint8_t state; uint8_t index; } CrashEnd;
+Leap RichterLeapClearingOthers(void);
+OthersCleared RichterClearOthersKeepWhip(void);
+CrashEnd RichterEndItemCrash(void);
+void abi_RichterLeapClearingOthers(void);
+void abi_RichterClearOthersKeepWhip(void);
+void abi_RichterEndItemCrash(void);
+static FacingSpeed speed_by_facing(uint16_t table);
+static void abi_exit_speed(FacingSpeed set);
 void abi_RichterAnimationSound(void);
 void abi_RichterHitReact(void);
 void abi_RichterStartHitScript(void);
@@ -200,13 +214,13 @@ void abi_RichterVecC3A7(void)
 /*
  * @routine 01B9:00C RichterVecC023
  * @run 6D:A00C
- * WHAT IT DOES: Goes to $C023.
+ * WHAT IT DOES: Goes to RichterLeapClearingOthers.
  * HOW: One jump.
- * Entry, exit: as that code.
+ * Entry, exit: as RichterLeapClearingOthers.
  */
 void abi_RichterVecC023(void)
 {
-    call_original(RH_C023);
+    abi_RichterLeapClearingOthers();
 }
 
 /*
@@ -236,13 +250,13 @@ void abi_RichterVecAnimationSound(void)
 /*
  * @routine 01B9:015 RichterVecCE1D
  * @run 6D:A015
- * WHAT IT DOES: Goes to $CE1D.
+ * WHAT IT DOES: Goes to RichterClearOthersKeepWhip.
  * HOW: One jump.
- * Entry, exit: as that code.
+ * Entry, exit: as RichterClearOthersKeepWhip.
  */
 void abi_RichterVecCE1D(void)
 {
-    call_original(RH_CE1D);
+    abi_RichterClearOthersKeepWhip();
 }
 
 /*
@@ -1191,7 +1205,7 @@ Alu RichterStandStep2(Alu r)
         alu_compare(&r, byte, 0);
         if (byte == 0)
             return call_abi(abi_RichterStand, r);
-        return call_with(RH_B180, r);
+        return call_abi(abi_RichterEndItemCrash, r);
     }
     byte = rd8(OBJ_30F0);
     wr8(OBJ_30F0, (uint8_t)(byte - 1));
@@ -2270,4 +2284,119 @@ AnimationStep RichterStand(void)
 void abi_RichterStand(void)
 {
     animation_exit_shim(RichterStand());
+}
+
+/*
+ * @routine 01BB:180 RichterEndItemCrash
+ * @run 6D:B180
+ * WHAT IT DOES: Ends an item crash: no attack, the crash's last frame held, the animation stopped,
+ * the step back to 0.
+ * HOW: States 5 to 8 are the crashes; two of them share each entry of RichterCrashEndFrames and
+ * RichterCrashEndAnimations.
+ * Entry: nothing. Exit: A $FF, N set, Z clear; Y the entry; C bit 0 of the state less 5, V from
+ * that subtract. X kept.
+ */
+CrashEnd RichterEndItemCrash(void)
+{
+    CrashEnd end;
+
+    wr8(PlayerByte3BD5, 0);
+    end.state = rd8(OBJ_27A8);
+    end.index = (uint8_t)((uint8_t)(end.state - CRASH_FIRST_STATE) >> 1);
+    wr8(OBJ_2A68, rd8((uint16_t)(RichterCrashEndFrames + end.index)));
+    wr8(OBJ_FIELDS_2EE0, rd8((uint16_t)(RichterCrashEndAnimations + end.index)));
+    wr8(OBJ_2F90, 0xFF);
+    wr8(OBJ_2800, 0);
+    return end;
+}
+
+void abi_RichterEndItemCrash(void)
+{
+    CrashEnd end = RichterEndItemCrash();
+    uint8_t less = (uint8_t)(end.state - CRASH_FIRST_STATE);
+
+    cpu.a = 0xFF;
+    cpu.y = end.index;
+    abi_nz(0xFF);
+    abi_flag(P_C, (less & 1) != 0);
+    abi_flag(P_V, ((end.state ^ CRASH_FIRST_STATE) & (end.state ^ less) & 0x80) != 0);
+}
+
+/*
+ * @routine 01BD:023 RichterLeapClearingOthers
+ * @run 6D:C023
+ * WHAT IT DOES: Clears every object but him, starts sound list $60 and script 1, and script $0B
+ * unless PlayerByte3BE2 is set or bit 5 of his OBJ_33B0 is; then leaps up and back: Y speed
+ * $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_2750 1.
+ * HOW: ClearObject on 1 to 15, StartListChannelKind2 on channel 6, RichterStartHitScript.
+ * Entry: nothing. Exit: A 1, N and Z from it; X 7; Y twice the facing, C the facing's bit 7; V
+ * bit 6 of OBJ_33B0 if it was tested, else kept.
+ */
+Leap RichterLeapClearingOthers(void)
+{
+    Leap leap = { { 0, 0 }, false, 0 };
+
+    for (uint8_t object = OBJECT_FIRST_OTHER; object < OBJECT_END; object++)
+        ClearObject(object);
+    StartListChannelKind2(LEAP_LIST, LEAP_CHANNEL);
+    RichterStartHitScript(LEAP_SCRIPT);
+    if (rd8(PlayerByte3BE2) == 0) {
+        leap.tested = true;
+        leap.hit = rd8(OBJ_33B0);
+        if (!(leap.hit & LEAP_HIT_KEEPS))
+            RichterStartHitScript(LEAP_SCRIPT_UNLESS_HELD);
+    }
+    wr8(OBJ_VY_LO, LEAP_RISE_LO);
+    wr8(OBJ_VY_HI, LEAP_RISE_HI);
+    RichterSetAnimation(ANIM_LEAP);
+    leap.speed = speed_by_facing(RichterLeapSpeeds);
+    wr8(OBJ_27A8, STATE_STAND);
+    wr8(OBJ_2750, 1);
+    return leap;
+}
+
+void abi_RichterLeapClearingOthers(void)
+{
+    Leap leap = RichterLeapClearingOthers();
+
+    abi_exit_speed(leap.speed);
+    cpu.x = SCRIPT_SLOT_PLAYER;
+    cpu.a = 1;
+    abi_nz(1);
+    if (leap.tested)
+        abi_flag(P_V, (leap.hit & 0x40) != 0);
+}
+
+/*
+ * @routine 01BE:61D RichterClearOthersKeepWhip
+ * @run 6D:CE1D
+ * WHAT IT DOES: Clears every object but him, and the whip when its OBJ_2750 is 1; drops the
+ * forced presses and PlayerByte3BD8.
+ * HOW: ClearObject on 1 to 15, passing over 3 when it is kept.
+ * Entry: nothing. Exit: A the whip's OBJ_2750; X $10; Z and C set, N clear. Y and V kept.
+ */
+OthersCleared RichterClearOthersKeepWhip(void)
+{
+    OthersCleared cleared = { 0 };
+
+    for (uint8_t object = OBJECT_FIRST_OTHER; object < OBJECT_END; object++) {
+        if (object == OBJECT_WHIP) {
+            cleared.whip = rd8((uint16_t)(OBJ_2750 + OBJECT_WHIP));
+            if (cleared.whip == WHIP_KEPT)
+                continue;
+        }
+        ClearObject(object);
+    }
+    wr8(PlayerByte3BD8, 0);
+    wr8(PadForcedPress, 0);
+    wr8(PadForcedPressB, 0);
+    return cleared;
+}
+
+void abi_RichterClearOthersKeepWhip(void)
+{
+    cpu.a = RichterClearOthersKeepWhip().whip;
+    cpu.x = OBJECT_END;
+    abi_nz(0);
+    abi_flag(P_C, true);
 }

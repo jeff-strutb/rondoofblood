@@ -36,7 +36,7 @@ RichterVecC3A7:
 ; HOW: One jump.
 ; Entry, exit: as that code.
 RichterVecC023:
-    jmp $C023
+    jmp RichterLeapClearingOthers
 
 ; @routine 01B9:00F RichterVecC076
 ; @run 6D:A00F
@@ -60,7 +60,7 @@ RichterVecAnimationSound:
 ; HOW: One jump.
 ; Entry, exit: as that code.
 RichterVecCE1D:
-    jmp $CE1D
+    jmp RichterClearOthersKeepWhip
 
 ; @routine 01B9:018 RichterVecSetAnimation
 ; @run 6D:A018
@@ -683,7 +683,7 @@ RichterStandStep2_at2:
     bne RichterStandStep2_at8
     jmp RichterStand
 RichterStandStep2_at8:
-    jmp $B180
+    jmp RichterEndItemCrash
 RichterStandStep2_at4:
     inc a:PlayerByte3BD6
     jmp RichterToFall
@@ -1399,3 +1399,97 @@ RichterStand:
     lda #$01
     jsr RichterSetAnimation
     jmp RichterStopMoving
+
+; @routine 01BB:180 RichterEndItemCrash
+; @run 6D:B180
+; WHAT IT DOES: Ends an item crash: no attack, the crash's last frame held, the animation stopped,
+; the step back to 0.
+; HOW: States 5 to 8 are the crashes; two of them share each entry of RichterCrashEndFrames and
+; RichterCrashEndAnimations.
+; Entry: nothing. Exit: A $FF, N set, Z clear; Y the entry; C bit 0 of the state less 5, V from
+; that subtract. X kept.
+RichterEndItemCrash:
+    stz a:PlayerByte3BD5
+    lda a:OBJ_27A8
+    sec
+    sbc #$05
+    lsr a
+    tay
+    lda a:RichterCrashEndFrames,y
+    sta a:OBJ_2A68
+    lda a:RichterCrashEndAnimations,y
+    sta a:OBJ_FIELDS_2EE0
+    lda #$FF
+    sta a:OBJ_2F90
+    stz a:OBJ_2800
+    rts
+
+; @routine 01BD:023 RichterLeapClearingOthers
+; @run 6D:C023
+; WHAT IT DOES: Clears every object but him, starts sound list $60 and script 1, and script $0B
+; unless PlayerByte3BE2 is set or bit 5 of his OBJ_33B0 is; then leaps up and back: Y speed
+; $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_2750 1.
+; HOW: ClearObject on 1 to 15, StartListChannelKind2 on channel 6, RichterStartHitScript.
+; Entry: nothing. Exit: A 1, N and Z from it; X 7; Y twice the facing, C the facing's bit 7; V
+; bit 6 of OBJ_33B0 if it was tested, else kept.
+RichterLeapClearingOthers:
+    ldx #$01
+RichterLeapClearingOthers_at0:
+    jsr VecClearObject
+    inx
+    cpx #$10
+    bne RichterLeapClearingOthers_at0
+    lda #$60
+    ldx #$06
+    jsr VecStartListChannelKind2
+    lda #$01
+    jsr RichterStartHitScript
+    lda a:PlayerByte3BE2
+    bne RichterLeapClearingOthers_at1
+    tst #$20,a:OBJ_33B0
+    bne RichterLeapClearingOthers_at1
+    lda #$0B
+    jsr RichterStartHitScript
+RichterLeapClearingOthers_at1:
+    lda #$80
+    sta a:OBJ_VY_LO
+    lda #$FE
+    sta a:OBJ_VY_HI
+    lda #$22
+    jsr RichterSetAnimation
+    lda a:OBJ_2AC0
+    asl a
+    tay
+    lda a:RichterLeapSpeeds,y
+    sta a:OBJ_VX_LO
+    lda a:RichterLeapSpeeds+1,y
+    sta a:OBJ_VX_HI
+    stz a:OBJ_27A8
+    lda #$01
+    sta a:OBJ_2750
+    rts
+
+; @routine 01BE:61D RichterClearOthersKeepWhip
+; @run 6D:CE1D
+; WHAT IT DOES: Clears every object but him, and the whip when its OBJ_2750 is 1; drops the
+; forced presses and PlayerByte3BD8.
+; HOW: ClearObject on 1 to 15, passing over 3 when it is kept.
+; Entry: nothing. Exit: A the whip's OBJ_2750; X $10; Z and C set, N clear. Y and V kept.
+RichterClearOthersKeepWhip:
+    ldx #$01
+RichterClearOthersKeepWhip_at1:
+    cpx #$03
+    bne RichterClearOthersKeepWhip_at0
+    lda a:OBJ_2750,x
+    cmp #$01
+    bne RichterClearOthersKeepWhip_at0
+    inx
+RichterClearOthersKeepWhip_at0:
+    jsr VecClearObject
+    inx
+    cpx #$10
+    bne RichterClearOthersKeepWhip_at1
+    stz a:PlayerByte3BD8
+    stz a:PadForcedPress
+    stz a:PadForcedPressB
+    rts

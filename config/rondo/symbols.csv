@@ -343,6 +343,7 @@ D3,zp,zFieldD3,cleared with the player's pad overrides
 94,zp,zField94,hearts in BCD; set when the player starts
 3BD5,abs,PlayerByte3BD5,player state not yet identified
 3BD6,abs,PlayerByte3BD6,player state not yet identified
+3BD8,abs,PlayerByte3BD8,player state not yet identified
 3BD7,abs,PlayerByte3BD7,player state not yet identified
 3BDD,abs,PadForcedPress,ORed into zPadPressed each frame
 3BDF,abs,PadForcedPressB,ORed into zPadPressed each frame
@@ -402,6 +403,9 @@ B72D,abs,RichterTurnStates,whether each state lets him turn at the screen's midd
 B84D,abs,RichterItemCosts,hearts each item costs
 B856,abs,RichterItemCrashLists,the sound list each item's crash starts; 0 none
 B85F,abs,RichterItemCrashScripts,the script each item's crash starts; 0 none
+B1A6,abs,RichterCrashEndFrames,the frame each pair of crash states ends on
+B1A8,abs,RichterCrashEndAnimations,the animation each pair of crash states ends with
+C072,abs,RichterLeapSpeeds,X speed words by facing for RichterLeapClearingOthers
 B949,abs,RichterItemUseHandlers,9 words by item: how using it goes
 BA0B,abs,RichterItemThirdCosts,hearts needed by item to throw with two already out
 BA14,abs,RichterItemSecondCosts,hearts needed by item to throw with one already out

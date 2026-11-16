@@ -336,6 +336,7 @@
 #define zField94 0x2094 /* hearts in BCD; set when the player starts */
 #define PlayerByte3BD5 0x3BD5 /* player state not yet identified */
 #define PlayerByte3BD6 0x3BD6 /* player state not yet identified */
+#define PlayerByte3BD8 0x3BD8 /* player state not yet identified */
 #define PlayerByte3BD7 0x3BD7 /* player state not yet identified */
 #define PadForcedPress 0x3BDD /* ORed into zPadPressed each frame */
 #define PadForcedPressB 0x3BDF /* ORed into zPadPressed each frame */
@@ -395,6 +396,9 @@
 #define RichterItemCosts 0xB84D /* hearts each item costs */
 #define RichterItemCrashLists 0xB856 /* the sound list each item's crash starts; 0 none */
 #define RichterItemCrashScripts 0xB85F /* the script each item's crash starts; 0 none */
+#define RichterCrashEndFrames 0xB1A6 /* the frame each pair of crash states ends on */
+#define RichterCrashEndAnimations 0xB1A8 /* the animation each pair of crash states ends with */
+#define RichterLeapSpeeds 0xC072 /* X speed words by facing for RichterLeapClearingOthers */
 #define RichterItemUseHandlers 0xB949 /* 9 words by item: how using it goes */
 #define RichterItemThirdCosts 0xBA0B /* hearts needed by item to throw with two already out */
 #define RichterItemSecondCosts 0xBA14 /* hearts needed by item to throw with one already out */

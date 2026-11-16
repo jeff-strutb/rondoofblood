@@ -1,0 +1,120 @@
+# SOUND TEST from PLAYER1's menu: twelve tracks started in turn, then MUSIC STOP and END.
+# From power on to Stage 0's first frames: RUN on the card's title, the
+# intro to the title (frame 7,400), RUN, NAME ENTRY (cursor 4) for PLAYER1
+# named A, back to the file menu (cursor 1), PLAYER1, GAME START.
+wait 120
+press RUN 6
+wait 7280
+press RUN 6
+wait 300
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press I 6
+wait 120
+press I 6
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press UP 4
+wait 20
+press UP 4
+wait 20
+press UP 4
+wait 20
+press I 6
+wait 120
+wait 60
+press DOWN 4
+wait 30
+press DOWN 4
+wait 30
+press I 6
+wait 120
+press I 6
+wait 600
+shot t01
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t02
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t03
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t04
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t05
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t06
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t07
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t08
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t09
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t10
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t11
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t12
+press RIGHT 4
+wait 60
+press DOWN 4
+wait 30
+press I 6
+wait 120
+shot stopped
+dump stopped

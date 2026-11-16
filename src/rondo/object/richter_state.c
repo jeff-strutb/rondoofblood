@@ -36,6 +36,7 @@ enum {
     ANIM_KNOCK = 0x31, ANIM_WALK_BACK = 0x32, CROUCH_STEP = 3, STATE_FALL_34B8 = 4,
     FALL_SPEED_HI = 0x03, KNOCK_RISE_LO = 0xC0, KNOCK_RISE_HI = 0xFD, KNOCKED = 0x01,
     START_NEW_RUN = 0, START_HEALTH = 1, START_STAND = 2, START_FIELD94 = 0x10,
+    FACING_RIGHT = 0, FACING_LEFT = 1, ANIM_AIR = 0x0A, ANIM_AIR_MOVING = 0x02, AIR_SAME_WAY = 0x80,
     LEAP_LIST = 0x60, LEAP_SCRIPT = 0x01, LEAP_SCRIPT_UNLESS_HELD = 0x0B, LEAP_HIT_KEEPS = 0x20,
     LEAP_RISE_LO = 0x80, LEAP_RISE_HI = 0xFE, ANIM_LEAP = 0x22, LEAP_CHANNEL = 6,
     OBJECT_FIRST_OTHER = 1, OBJECT_END = 0x10, WHIP_KEPT = 1, CRASH_FIRST_STATE = 5, HEALTH_FULL = 0x5C, START_LIVE = 0x01
@@ -87,6 +88,15 @@ void abi_RichterCrouch(void);
 void abi_RichterToFall(void);
 void abi_RichterKnockBack(void);
 void abi_RichterStand(void);
+typedef struct {
+    Lift lift;
+    bool moving;
+    bool same_way;
+    AnimationStep animation;
+    FacingSpeed speed;
+} AirStart;
+AirStart RichterToAir(void);
+void abi_RichterToAir(void);
 typedef struct { FacingSpeed speed; bool tested; uint8_t hit; } Leap;
 typedef struct { uint8_t whip; } OthersCleared;
 typedef struct { uint8_t state; uint8_t index; } CrashEnd;
@@ -132,7 +142,6 @@ Alu RichterNudgeBJump(Alu r);
 Alu RichterUpWhipRight(Alu r);
 Alu RichterToHurtAir(Alu r);
 Alu RichterItemCrashFive(Alu r);
-Alu RichterToAir(Alu r);
 Alu RichterStateWalk(Alu r);
 void abi_RichterFrame(void);
 void abi_RichterApplyMoveAndPush(void);
@@ -1170,7 +1179,7 @@ void abi_RichterClearWhip(void)
 void abi_RichterOrphanClearWhipAir(void)
 {
     abi_RichterClearWhip();
-    abi_alu(RichterToAir(alu_from_cpu()));
+    abi_alu(call_abi(abi_RichterToAir, alu_from_cpu()));
 }
 
 /*
@@ -1227,7 +1236,7 @@ Alu RichterStandStep2(Alu r)
         byte = rd8(OBJ_27A8);
         alu_compare(&r, byte, 0);
         if (byte == 0)
-            return RichterToAir(r);
+            return call_abi(abi_RichterToAir, r);
         alu_compare(&r, byte, 7);
         if (byte < 7)
             return RichterUpWhipLeft(r);
@@ -1330,7 +1339,7 @@ Alu RichterStandStep0(Alu r)
         return call_abi(abi_RichterToFall, r);
     r = call_with(RH_B87E, r);
     if (r.c)
-        return RichterToAir(r);
+        return call_abi(abi_RichterToAir, r);
     r = call_with(RH_BA7A, r);
     r = call_with(RH_B7FC, r);
     if (r.c)
@@ -1706,7 +1715,7 @@ void abi_RichterLedgeHurtB(void)
 /* Off a ledge upward: a nudge, then the fall that starts with an up speed. */
 static Alu jump_off_ledge(Alu r)
 {
-    r = RichterToAir(r);
+    r = call_abi(abi_RichterToAir, r);
     alu_put(&r, OBJ_VY_LO, 0xC0);
     alu_put(&r, OBJ_VY_HI, 0xFA);
     return r;
@@ -2095,45 +2104,57 @@ void abi_RichterKnockBack(void)
  * WHAT IT DOES: Takes to the air: state 3, the jump's speed; with left or right held, a
  * moving jump, and when that faces the way the player already did, marks it in
  * PlayerByte3BF1; otherwise animation $0A.
- * HOW: Y is the facing the pad asks for, tried and put back.
- * Entry: nothing. Exit: as the animation's code, or A $80 and its flags.
+ * HOW: The facing the pad asks for is set for the jump's speed, then the old one put back.
+ * Entry: nothing. Exit: V as RichterLiftThree; X kept. Marked, A $80, N set, Z clear, C set, Y
+ * twice the facing asked for; otherwise as RichterSetAnimation.
  */
-Alu RichterToAir(Alu r)
+AirStart RichterToAir(void)
 {
+    AirStart air = { { 0, 0, false }, false, false, { FRAME_STOPPED }, { 0, 0 } };
+    uint8_t way;
     uint8_t facing;
-    uint8_t now;
 
     wr8(PlayerMayLeaveTop, 0);
     wr8(PadForcedPressB, 0);
     wr8(zFieldC6, 0);
-    set_state_alu(&r, STATE_AIR, 0);
-    r = call_abi(abi_RichterJumpSpeed, r);
-    cpu.y = 0;
-    if (!(rd8(zPadHeld) & PAD_RIGHT)) {
-        cpu.y = 1;
-        alu_nz(&r, 1);
-        if (!(rd8(zPadHeld) & PAD_LEFT))
-            return animation(r, 0x0A);
+    set_state(STATE_AIR, 0);
+    air.lift = RichterJumpSpeed();
+    if (rd8(zPadHeld) & PAD_RIGHT) {
+        way = FACING_RIGHT;
+    } else if (rd8(zPadHeld) & PAD_LEFT) {
+        way = FACING_LEFT;
+    } else {
+        air.animation = RichterSetAnimation(ANIM_AIR);
+        return air;
     }
+    air.moving = true;
     facing = rd8(OBJ_2AC0);
-    alu_load(&r, facing);
-    wr8(OBJ_2AC0, cpu.y);
-    r = animation(r, 0x02);
-    r = call_abi(abi_RichterSpeedJump, r);
-    alu_load(&r, facing);
-    now = rd8(OBJ_2AC0);
-    alu_compare(&r, facing, now);
+    wr8(OBJ_2AC0, way);
+    RichterSetAnimation(ANIM_AIR_MOVING);
+    air.speed = RichterSpeedJump();
+    air.same_way = facing == rd8(OBJ_2AC0);
     wr8(OBJ_2AC0, facing);
-    if (facing == now) {
-        alu_put(&r, PlayerByte3BF1, 0x80);
-        return r;
+    if (air.same_way) {
+        wr8(PlayerByte3BF1, AIR_SAME_WAY);
+        return air;
     }
-    return animation(r, 0x0A);
+    air.animation = RichterSetAnimation(ANIM_AIR);
+    return air;
 }
 
 void abi_RichterToAir(void)
 {
-    abi_alu(RichterToAir(alu_from_cpu()));
+    AirStart air = RichterToAir();
+
+    lift_exit_shim(air.lift);
+    if (air.moving && air.same_way) {
+        abi_exit_speed(air.speed);
+        cpu.a = AIR_SAME_WAY;
+        abi_nz(AIR_SAME_WAY);
+        abi_flag(P_C, true);
+    } else {
+        animation_exit_shim(air.animation);
+    }
 }
 
 /*
@@ -2223,7 +2244,7 @@ Alu RichterStateWalk(Alu r)
     }
     r = call_with(RH_B87E, r);
     if (r.c)
-        return RichterToAir(r);
+        return call_abi(abi_RichterToAir, r);
     r = call_with(RH_BA7A, r);
     r = call_with(RH_B7FC, r);
     if (r.c)

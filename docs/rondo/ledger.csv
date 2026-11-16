@@ -2,42 +2,42 @@ routine,where,bytes,tier,proper_c,gate_0,symbolic,gate_c,gate_a5,gate_a7,unverif
 VecKernelStart,0043:000,3,T2,1,1,1,1,0,0,6,,71aadc823f87
 VecResetGameState,0043:006,3,T2,1,1,1,1,0,0,53,,bd0948215b87
 VecClearScreenState,0043:009,3,T2,1,1,1,1,0,0,170,,4bdcd9420946
-VecStartListChannel0Kind2,0043:00C,3,T4,1,1,1,1,1,1,0,,083177a03620
-VecStartListChannelKind2,0043:00F,3,T4,1,1,1,1,1,1,7,,33c6d59b9e80
-VecStartScriptSlot0Kind1,0043:012,3,T4,1,1,1,1,1,1,0,,4fc6c77747c7
-VecStartScriptSlotKind1,0043:015,3,T4,1,1,1,1,1,1,0,,7a04660a5196
-VecStartScriptSlotKind4,0043:018,3,T4,1,1,1,1,1,1,247,,1b7b9fbe5700
+VecStartListChannel0Kind2,0043:00C,3,T2,1,1,1,1,1,0,0,,083177a03620
+VecStartListChannelKind2,0043:00F,3,T2,1,1,1,1,1,0,7,,33c6d59b9e80
+VecStartScriptSlot0Kind1,0043:012,3,T2,1,1,1,1,1,0,0,,4fc6c77747c7
+VecStartScriptSlotKind1,0043:015,3,T2,1,1,1,1,1,0,0,,7a04660a5196
+VecStartScriptSlotKind4,0043:018,3,T2,1,1,1,1,1,0,247,,1b7b9fbe5700
 VecSoundCommand,0043:01B,3,T2,1,1,1,1,1,0,13,,9b79089eca30
 VecSoundStopAll,0043:01E,3,T2,1,1,1,1,1,0,0,,3290cdebb6e1
-VecSelectVramWriteAddress,0043:021,3,T4,1,1,1,1,1,1,297,,1446ab66fab3
-VecSelectVramReadAddress,0043:024,3,T4,1,1,1,1,1,1,508,,6861adf9add9
-VecSelectVramData,0043:027,3,T4,1,1,1,1,1,1,781,,a8d5cddf4a3f
-VecSelectVdcControl,0043:02A,3,T4,1,1,1,1,1,1,31,,b5b65f203ece
-VecClearVdcControlHigh,0043:02D,3,T4,1,1,1,1,1,1,10,,5ba3a911088b
-VecStartScriptSlot0Kind2,0043:030,3,T4,1,1,1,1,1,1,0,,1adcf5fac64c
-VecStartScriptSlotKind2,0043:033,3,T4,1,1,1,1,1,1,0,,cb9584365bcd
-VecStartScriptSlot0Kind3,0043:036,3,T4,1,1,1,1,1,1,0,,815a3aa2fb5f
-VecStartScriptSlotKind3,0043:039,3,T4,1,1,1,1,1,1,0,,b278184015ac
-VecStartListChannelKind3,0043:03C,3,T4,1,1,1,1,1,1,0,,d8658049a4e8
-VecClearListChannels,0043:03F,3,T4,1,1,1,1,1,1,0,,135b95decf6d
+VecSelectVramWriteAddress,0043:021,3,T2,1,1,1,1,1,0,297,,1446ab66fab3
+VecSelectVramReadAddress,0043:024,3,T2,1,1,1,1,1,0,508,,6861adf9add9
+VecSelectVramData,0043:027,3,T2,1,1,1,1,1,0,781,,a8d5cddf4a3f
+VecSelectVdcControl,0043:02A,3,T2,1,1,1,1,1,0,31,,b5b65f203ece
+VecClearVdcControlHigh,0043:02D,3,T2,1,1,1,1,1,0,10,,5ba3a911088b
+VecStartScriptSlot0Kind2,0043:030,3,T2,1,1,1,1,1,0,0,,1adcf5fac64c
+VecStartScriptSlotKind2,0043:033,3,T2,1,1,1,1,1,0,0,,cb9584365bcd
+VecStartScriptSlot0Kind3,0043:036,3,T2,1,1,1,1,1,0,0,,815a3aa2fb5f
+VecStartScriptSlotKind3,0043:039,3,T2,1,1,1,1,1,0,0,,b278184015ac
+VecStartListChannelKind3,0043:03C,3,T2,1,1,1,1,1,0,0,,d8658049a4e8
+VecClearListChannels,0043:03F,3,T2,1,1,1,1,1,0,0,,135b95decf6d
 VecStartSoleScriptSlot,0043:042,3,T2,1,1,1,0,0,0,0,,bf0b32e89568
-VecApplyVelocity,0043:045,3,T4,1,1,1,1,1,1,458,,d81d0a8cf1fb
-VecSetVelocityFromAngle,0043:048,3,T4,1,1,1,1,1,1,1263,,838bb9f4daee
+VecApplyVelocity,0043:045,3,T2,1,1,1,1,1,0,458,,d81d0a8cf1fb
+VecSetVelocityFromAngle,0043:048,3,T2,1,1,1,1,1,0,1263,,838bb9f4daee
 VecAngleToPlayer,0043:04B,3,T2,1,1,1,0,0,0,0,,346ace9bf9dc
 VecAngleFromDelta,0043:04E,3,T2,1,1,1,0,0,0,0,,0819d67e5658
-VecNextRandom,0043:051,3,T4,1,1,1,1,1,1,24,,f944dbe53b5f
-VecClearObject,0043:054,3,T4,1,1,1,1,1,1,33,,6bacbcf20117
-VecClearEnemySlots,0043:057,3,T4,1,1,1,1,1,1,0,,059f801573e9
+VecNextRandom,0043:051,3,T2,1,1,1,1,1,0,24,,f944dbe53b5f
+VecClearObject,0043:054,3,T2,1,1,1,1,1,0,33,,6bacbcf20117
+VecClearEnemySlots,0043:057,3,T2,1,1,1,1,1,0,0,,059f801573e9
 VecClearObjectExceptPlace,0043:05A,3,T2,1,1,1,0,0,0,0,,f383d8cce5cb
-VecClearObjectInY,0043:05D,3,T4,1,1,1,1,1,1,7,,df782c81ef3f
-VecApplyVelocityX,0043:060,3,T4,1,1,1,1,1,1,41,,5643afc398c2
-VecApplyVelocityY,0043:063,3,T4,1,1,1,1,1,1,128,,5f86dc8471d1
-VecScaleBySine,0043:066,3,T4,1,1,1,1,1,1,0,,821d9a87fead
-VecScaleByCosine,0043:069,3,T4,1,1,1,1,1,1,599,,ce481da7df31
+VecClearObjectInY,0043:05D,3,T2,1,1,1,1,1,0,7,,df782c81ef3f
+VecApplyVelocityX,0043:060,3,T2,1,1,1,1,1,0,41,,5643afc398c2
+VecApplyVelocityY,0043:063,3,T2,1,1,1,1,1,0,128,,5f86dc8471d1
+VecScaleBySine,0043:066,3,T2,1,1,1,1,1,0,0,,821d9a87fead
+VecScaleByCosine,0043:069,3,T2,1,1,1,1,1,0,599,,ce481da7df31
 VecTurnAngleToward,0043:06C,3,T2,1,1,1,0,0,0,0,,cf0ace878ac4
-VecRecordObjectEvent,0043:06F,3,T4,1,1,1,1,1,1,0,,1b4da89eeb94
+VecRecordObjectEvent,0043:06F,3,T2,1,1,1,1,1,0,0,,1b4da89eeb94
 VecRecordEvent,0043:072,3,T2,1,1,1,1,1,0,0,,7167a44b95df
-VecBitOfIndex,0043:075,3,T4,1,1,1,1,1,1,0,,610e64587abc
+VecBitOfIndex,0043:075,3,T2,1,1,1,1,1,0,0,,610e64587abc
 VecClearScriptSlot,0043:078,3,T2,1,1,1,0,0,0,0,,e4f1b7ffccd2
 VecCdPlayAgain,0043:07B,3,T2,1,1,1,1,1,0,0,,7b0dbdd263d6
 VecNegateVelocityX,0043:07E,3,T2,1,1,1,0,0,0,0,,eae8d31aad26
@@ -45,31 +45,31 @@ VecNegateVelocityY,0043:081,3,T2,1,1,1,0,0,0,0,,98c580f1a5b4
 VecFadeAndStopSound,0043:084,3,T2,1,1,1,1,1,0,1,,bd2e33693a68
 VecStopSound,0043:087,3,T2,1,1,1,0,0,0,0,,df06f4900f31
 VecAddScoreByte,0043:08A,3,T2,1,1,1,0,0,0,0,,fa30ded2eb46
-VecAddScoreWord,0043:08D,3,T4,1,1,1,1,1,1,0,,31336b256636
+VecAddScoreWord,0043:08D,3,T2,1,1,1,1,1,0,0,,31336b256636
 VecAdpcmLoad,0043:090,3,T2,1,1,1,0,0,0,0,,e3540f6129b3
 VecStreamFullWalk,0043:093,3,T2,1,1,1,1,0,0,25,,872d67c775de
 VecStreamScrollStep,0043:096,3,T2,1,1,1,1,1,0,190,,aaeb7ebe8811
-VecAngleToPlayerOffset,0043:099,3,T4,1,1,1,1,1,1,3,,82ada3b8ae21
-VecAngleToPoint,0043:09C,3,T4,1,1,1,1,1,1,10,,333c87c14af0
-VecStartObjectAtPlace,0043:09F,3,T4,1,1,1,1,1,1,0,,5bed5d81d1f6
-VecCopyObjectPlace,0043:0A2,3,T4,1,1,1,1,1,1,0,,835d70182520
-VecCopyObjectPlaceBack,0043:0A5,3,T4,1,1,1,1,1,1,90,,608627c70ca6
-VecStepObjectFrames,0043:0A8,3,T4,1,1,1,1,1,1,1140,,a1e060849e55
+VecAngleToPlayerOffset,0043:099,3,T2,1,1,1,1,1,0,3,,82ada3b8ae21
+VecAngleToPoint,0043:09C,3,T2,1,1,1,1,1,0,10,,333c87c14af0
+VecStartObjectAtPlace,0043:09F,3,T2,1,1,1,1,1,0,0,,5bed5d81d1f6
+VecCopyObjectPlace,0043:0A2,3,T2,1,1,1,1,1,0,0,,835d70182520
+VecCopyObjectPlaceBack,0043:0A5,3,T2,1,1,1,1,1,0,90,,608627c70ca6
+VecStepObjectFrames,0043:0A8,3,T2,1,1,1,1,1,0,1140,,a1e060849e55
 VecProbeTerrain,0043:0AB,3,T2,1,1,1,1,1,0,214,,bc48e96122bc
-VecDistanceXToPlayer,0043:0AE,3,T4,1,1,1,1,1,1,2,,de000f3a68e8
-VecDistanceYToPlayer,0043:0B1,3,T4,1,1,1,1,1,1,0,,442d27307d77
-VecSideOfPlayer,0043:0B4,3,T4,1,1,1,1,1,1,0,,050ecf8625c7
+VecDistanceXToPlayer,0043:0AE,3,T2,1,1,1,1,1,0,2,,de000f3a68e8
+VecDistanceYToPlayer,0043:0B1,3,T2,1,1,1,1,1,0,0,,442d27307d77
+VecSideOfPlayer,0043:0B4,3,T2,1,1,1,1,1,0,0,,050ecf8625c7
 VecMoveAndLand,0043:0B7,3,T2,1,1,1,1,1,0,678,,e928fc38d1c1
 VecStopOnLanding,0043:0BA,3,T2,1,1,1,1,1,0,2647,,b4abe6e1017a
 VecStopOnLandingFrontColumn,0043:0BD,3,T2,1,1,1,0,0,0,0,,6ef1c19a3c21
-VecFindFreeSlotFrom30,0043:0C0,3,T4,1,1,1,1,1,1,1,,898645b4b27d
-VecFindFreeSlotFrom20,0043:0C3,3,T4,1,1,1,1,1,1,0,,b7b054befc2e
-VecFindFreeSlotFrom50,0043:0C6,3,T4,1,1,1,1,1,1,0,,dec794a4e58e
-VecDrawTileScript,0043:0C9,3,T4,1,1,1,1,1,1,0,,f6d06e78e100
+VecFindFreeSlotFrom30,0043:0C0,3,T2,1,1,1,1,1,0,1,,898645b4b27d
+VecFindFreeSlotFrom20,0043:0C3,3,T2,1,1,1,1,1,0,0,,b7b054befc2e
+VecFindFreeSlotFrom50,0043:0C6,3,T2,1,1,1,1,1,0,0,,dec794a4e58e
+VecDrawTileScript,0043:0C9,3,T2,1,1,1,1,1,0,0,,f6d06e78e100
 VecApplyGravity,0043:0CC,3,T2,1,1,1,0,0,0,0,,947cfb24dbe2
-VecApplyGravityUnlimited,0043:0CF,3,T4,1,1,1,1,1,1,1,,a2d22f23c8a9
-VecLoadObjectRecord,0043:0D2,3,T4,1,1,1,1,1,1,8,,8c0ea382dcbb
-VecPlayerDistanceSum,0043:0D5,3,T4,1,1,1,1,1,1,0,,c6c449693449
+VecApplyGravityUnlimited,0043:0CF,3,T2,1,1,1,1,1,0,1,,a2d22f23c8a9
+VecLoadObjectRecord,0043:0D2,3,T2,1,1,1,1,1,0,8,,8c0ea382dcbb
+VecPlayerDistanceSum,0043:0D5,3,T2,1,1,1,1,1,0,0,,c6c449693449
 VecPlayerAndCameraFrame,0043:0D8,3,T2,1,1,1,1,1,0,738,,666f61ae918d
 VecPlayerWallLeft,0043:0DB,3,T2,1,1,1,0,0,0,0,,e4fbe73a5b6a
 VecPlayerWallRight,0043:0DE,3,T2,1,1,1,0,0,0,0,,257b5f10ad6f
@@ -86,15 +86,15 @@ KernelIdle,0043:174,3,T2,1,1,1,1,0,0,0,,47c9dd9430be
 FrameInterrupt,0043:177,288,T2,0,1,1,0,0,0,320703,Alu; adc8/sbc8,bce38c9fa4bc
 IgnoredInterrupt,0043:297,1,T2,1,1,1,1,0,0,0,,60d5307f20ba
 LateFrame,0043:298,60,T2,0,1,1,1,0,0,3970,Alu; adc8/sbc8,60232317f998
-ResetDisplayControl,0043:2D4,37,T4,1,1,1,1,1,1,0,,b9795d5bae8d
-WriteBandScroll,0043:2F9,35,T4,1,1,1,1,1,1,0,,7aff539dc7eb
-WriteScreenTiming,0043:31C,35,T4,1,1,1,1,1,1,0,,d622d5d61dd0
+ResetDisplayControl,0043:2D4,37,T2,1,1,1,1,1,0,0,,b9795d5bae8d
+WriteBandScroll,0043:2F9,35,T2,1,1,1,1,1,0,0,,7aff539dc7eb
+WriteScreenTiming,0043:31C,35,T2,1,1,1,1,1,0,0,,d622d5d61dd0
 SoundStopAll,0043:33F,39,T2,1,1,1,1,1,0,0,,300b564da1b3
 SoundFrameTick,0043:366,45,T2,1,1,1,0,1,0,2633,,9556f1883a52
 SoundCommand,0043:393,59,T2,1,1,1,0,1,0,13,,f9615170bf10
 WaitVblankDisplayOff,0043:3D8,22,T2,1,1,1,1,0,0,282,,834623c09b98
 WriteVdcControl,0043:3EE,14,T2,1,1,1,0,0,0,0,,8ff9d4c6adb4
-RasterStart,0043:3FC,8,T4,1,1,1,1,1,1,0,,63027eee330e
+RasterStart,0043:3FC,8,T2,1,1,1,1,1,0,0,,63027eee330e
 CopyBands7Down,0043:444,6,T2,1,1,1,0,0,0,0,,350560c88734
 CopyBands6Down,0043:44A,48,T2,1,1,1,1,1,0,0,,154c6926527d
 CopyBands4Down,0043:47A,24,T2,1,1,1,1,1,0,0,,2a655c14bb00
@@ -103,7 +103,7 @@ CopyBandsYFrom3,0043:49E,12,T2,1,1,1,1,0,0,0,,646504c0e67c
 CopyBandsWaterDown,0043:4AA,30,T2,1,1,1,1,1,0,0,,9e1918a2f05e
 CopyBand1,0043:4C8,24,T2,1,1,1,1,1,0,0,,d781690f5d19
 CopyNoBands,0043:4E0,1,T2,1,1,1,1,0,0,0,,f21509f0aa5d
-RasterInterrupt,0043:4E1,8,T4,1,1,1,1,1,1,0,,8b8a9979c3b4
+RasterInterrupt,0043:4E1,8,T2,1,1,1,1,1,0,0,,8b8a9979c3b4
 RasterEndBand1,0043:529,5,T2,1,1,1,1,1,0,0,,c5fbe204a6ba
 RasterDone,0043:52E,4,T2,1,1,1,1,1,0,0,,513d00d3eb0d
 RasterEndWorkBand,0043:532,4,T2,1,1,1,1,1,0,0,,eedeb746beef
@@ -144,34 +144,34 @@ RasterSetNextLine,0045:0ED,3,T2,1,1,1,0,0,0,0,,107ddcb12e71
 RasterBandThenLine,0045:0F0,21,T2,1,1,1,1,1,0,0,,8dfc3f92c29d
 FrameModeDispatch,0045:105,9,T2,0,1,1,1,1,0,70577,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,5eb751cba560
 ModeBoot,0045:124,43,T2,0,1,1,0,1,0,6,Alu; alu helper; call_abi; call_with; cpu,ac34383fbbff
-ModeLogo,0045:14F,15,T2,0,1,1,1,1,0,4,Alu; alu helper; call_with,eadcd72116df
-ModeAttract,0045:15E,84,T2,0,1,1,0,1,0,36239,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,5634791f6ee3
+ModeLogo,0045:14F,15,T2,0,1,1,1,1,0,4,Alu; alu helper; call_abi; call_with,eadcd72116df
+ModeAttract,0045:15E,84,T2,0,1,1,0,1,0,36239,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,f6f43c76d15a
 ModeAttractPlay,0045:1B6,39,T2,0,1,1,0,0,0,0,Alu; alu helper; call_abi; call_with,99d2d8918ded
 ModeStageLoad,0045:1DD,19,T2,0,1,1,0,1,0,8,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,c0b6f58beefb
-StageEnterNext,0045:1F0,9,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,fdf467318083
+StageEnterNext,0045:1F0,9,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,3a165b9e8987
 ModeStageLoadScreens,0045:1F9,30,T2,0,1,1,1,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,d791b398b02a
-ModeStageLoadContinue,0045:217,18,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,df1030faa345
-ModeStageDone,0045:229,60,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,99a1b6b06915
+ModeStageLoadContinue,0045:217,18,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,64631856b2d5
+ModeStageDone,0045:229,60,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,01ca5e35135d
 ModeStage,0045:265,153,T2,0,1,1,0,1,0,34226,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,db5655e66c5a
 ModeStageCleared,0045:2FE,8,T2,0,1,1,1,0,0,4,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,27188ee7102a
-StageClearedNext,0045:306,31,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,9a594139e3f8
-StageClearBit,0045:325,41,T2,0,1,1,0,1,1,0,Alu; adc8/sbc8; alu helper; cpu,d1abe6250acd
-ModeDead,0045:34E,105,T2,0,1,1,0,1,0,1,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,b225724e4f29
-ModeBackToTitle,0045:3B7,29,T2,0,1,1,1,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,c9b7825275bb
+StageClearedNext,0045:306,31,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,b231aeb38b53
+StageClearBit,0045:325,41,T2,0,1,1,0,1,0,0,Alu; adc8/sbc8; alu helper; cpu,d1abe6250acd
+ModeDead,0045:34E,105,T2,0,1,1,0,1,0,1,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,67ec014dcc6a
+ModeBackToTitle,0045:3B7,29,T2,0,1,1,1,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,a926601e0b39
 SaveProgress,0045:3D7,10,T2,0,1,1,1,0,0,4,Alu; adc8/sbc8; alu helper; call_with; cpu,4639e5b2c4e9
 SaveScore,0045:3E1,81,T2,0,1,1,0,0,0,1,Alu; adc8/sbc8; alu helper; call_with; cpu,974778738de3
 ModeGameOverWait,0045:432,28,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,a6efdb271573
 ModeScreen,0045:44E,76,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,a676b16f7745
-ModeEnding,0045:49A,29,T2,0,1,1,1,1,0,88,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,7ee16295aefa
-NextGameMode,0045:4B7,3,T2,0,1,1,1,1,1,0,Alu; alu helper,69c5abdd2056
-SetGameMode,0045:4BA,7,T2,0,1,1,1,1,1,0,Alu,a30c22d1f602
+ModeEnding,0045:49A,29,T2,0,1,1,1,1,0,88,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,a972ba59cbe7
+NextGameMode,0045:4B7,3,T2,1,1,1,1,1,0,0,,55cd2e98ccad
+SetGameMode,0045:4BA,7,T2,1,1,1,1,1,0,0,,adec68690fbc
 NextSubMode,0045:4C1,8,T2,1,1,1,0,0,0,0,,04a04b603173
-ResetScoreCounters,0045:4C9,17,T2,0,1,1,1,1,1,0,Alu; alu helper,b466eeb55ee0
+ResetScoreCounters,0045:4C9,17,T2,1,1,1,1,1,0,0,,0236a73f6029
 ClearListChannels,0045:506,8,T2,1,1,0,1,1,0,0,,8b5e17ae6dd7
 StartListChannel0Kind1,0045:50E,1,T2,1,1,1,0,0,0,0,,675bdfa03854
 StartListChannelKind1,0045:50F,15,T2,1,1,1,0,0,0,0,,119202e26d0a
 StartListChannel0Kind2,0045:51E,1,T2,1,1,1,1,1,0,0,,7e77c5024c0d
-StartListChannelKind2,0045:51F,7,T4,1,1,1,1,1,1,6,,a6e234cc26af
+StartListChannelKind2,0045:51F,7,T2,1,1,1,1,1,0,6,,a6e234cc26af
 StartListChannelKind3,0045:526,7,T2,1,1,1,1,1,0,0,,fa5669335f57
 StartScriptSlot0Kind1,0045:52D,1,T2,1,1,1,1,1,0,0,,01ed18215274
 StartScriptSlotKind1,0045:52E,13,T2,1,1,1,1,1,0,0,,77d7a95e12de
@@ -179,43 +179,43 @@ StartScriptSlot0Kind2,0045:53B,1,T2,1,1,1,1,1,0,0,,7a14edc21da5
 StartScriptSlotKind2,0045:53C,7,T2,1,1,1,1,1,0,0,,f642ac30de15
 StartScriptSlot0Kind3,0045:543,1,T2,1,1,1,1,1,0,0,,f9aa7c9f736a
 StartScriptSlotKind3,0045:544,7,T2,1,1,1,1,1,0,0,,5ce2cd6adfe3
-StartScriptSlotKind4,0045:54B,7,T4,1,1,1,1,1,1,239,,ce2526dadf77
+StartScriptSlotKind4,0045:54B,7,T2,1,1,1,1,1,0,239,,ce2526dadf77
 StartSoleScriptSlot,0045:552,16,T2,1,1,1,0,0,0,0,,e8917e71338b
-StartScriptSlotKind6,0045:562,6,T4,1,1,1,1,1,1,0,,79bba87c4d19
-StartScriptSlotKind7,0045:568,6,T4,1,1,1,1,1,1,0,,1f134ca56c70
-ClearScriptSlot,0045:56E,25,T4,1,1,1,1,1,1,142,,b3cf21534195
+StartScriptSlotKind6,0045:562,6,T2,1,1,1,1,1,0,0,,79bba87c4d19
+StartScriptSlotKind7,0045:568,6,T2,1,1,1,1,1,0,0,,1f134ca56c70
+ClearScriptSlot,0045:56E,25,T2,1,1,1,1,1,0,142,,b3cf21534195
 FadeAndStopSound,0045:587,11,T2,0,1,1,0,1,0,1,logic in the wrapper,59ba0267ede9
 StopSound,0045:592,5,T2,1,1,1,1,0,0,0,,66c06a2983d2
 AddScoreByte,0045:597,13,T2,1,1,1,0,0,0,0,,f637572cd92d
 AddScoreWord,0045:5A4,46,T2,1,1,1,0,1,0,0,,69732ca7eeb1
-ApplyVelocity,0045:5D2,36,T4,1,1,1,1,1,1,445,,b2812dec56e2
-ApplyVelocityY,0045:5F6,37,T4,1,1,1,1,1,1,121,,359691b5a779
-ApplyVelocityX,0045:61B,37,T4,1,1,1,1,1,1,41,,891f5f899ff0
-SetVelocityFromAngle,0045:640,29,T4,1,1,1,1,1,1,1260,,88d02c5e51dd
-ScaleByCosine,0045:65D,3,T4,1,1,1,1,1,1,1228,,36923ee44ab7
-ScaleBySine,0045:660,58,T4,1,1,1,1,1,1,565,,55130b94e471
-MultiplyBySineWord,0045:69A,53,T4,1,1,1,1,1,1,1621,,7d681f095ce2
+ApplyVelocity,0045:5D2,36,T2,1,1,1,1,1,0,445,,b2812dec56e2
+ApplyVelocityY,0045:5F6,37,T2,1,1,1,1,1,0,121,,359691b5a779
+ApplyVelocityX,0045:61B,37,T2,1,1,1,1,1,0,41,,891f5f899ff0
+SetVelocityFromAngle,0045:640,29,T2,1,1,1,1,1,0,1260,,88d02c5e51dd
+ScaleByCosine,0045:65D,3,T2,1,1,1,1,1,0,1228,,36923ee44ab7
+ScaleBySine,0045:660,58,T2,1,1,1,1,1,0,565,,55130b94e471
+MultiplyBySineWord,0045:69A,53,T2,1,1,1,1,1,0,1621,,7d681f095ce2
 AngleToPoint,0045:7CF,32,T2,1,1,1,1,1,0,10,,68dad498b658
 AngleToPlayerOffset,0045:7EF,62,T2,1,1,1,1,1,0,3,,3435fe77c5a9
 AngleToPlayer,0046:02D,34,T2,1,1,1,0,0,0,0,,be5279aa41d1
 AngleFromDelta,0046:04F,152,T2,1,1,1,0,0,0,0,,a5627908797f
 ClearObjectInY,0046:1E7,6,T2,1,1,1,1,1,0,7,,508a6b9f40ba
-ClearObject,0046:1ED,30,T4,1,1,1,1,1,1,39,,41c1fd3c0206
+ClearObject,0046:1ED,30,T2,1,1,1,1,1,0,39,,41c1fd3c0206
 ClearObjectExceptPlace,0046:20B,130,T2,1,1,1,1,0,0,0,,f25f483fc7f6
 ClearEnemySlots,0046:28D,13,T2,1,1,1,1,1,0,0,,0104d92eeb07
-NextRandom,0046:29A,56,T2,1,1,1,0,1,1,81,,386be29841b9
+NextRandom,0046:29A,56,T2,1,1,1,0,1,0,81,,386be29841b9
 TurnAngleToward,0046:2D2,49,T2,1,1,1,0,0,0,0,,a8044b721fa2
 BitOfIndex,0046:303,22,T2,1,1,1,1,1,0,0,,89d4fb88265a
 RecordObjectEvent,0046:319,10,T2,1,1,1,1,1,0,0,,9a19e61c6ac3
 RecordEvent,0046:323,10,T2,1,1,1,1,1,0,0,,ea45dffd31fa
 NegateVelocityX,0046:32D,22,T2,1,1,1,0,0,0,0,,7ecdb10172c3
 NegateVelocityY,0046:343,22,T2,1,1,1,0,0,0,0,,453976e8c173
-SelectVramData,0046:359,4,T4,1,1,1,1,1,1,684,,5023a736bf68
-SelectVramReadAddress,0046:35D,4,T4,1,1,1,1,1,1,378,,de58f0c65ca0
-SelectVramWriteAddress,0046:361,3,T4,1,1,1,1,1,1,260,,9ebe5d205c7e
-SelectVdcControl,0046:364,2,T4,1,1,1,1,1,1,26,,2f1f8cd4cc61
-SelectVdcRegister,0046:366,6,T4,1,1,1,1,1,1,94,,8eca9ed0f2b2
-ClearVdcControlHigh,0046:36C,9,T4,1,1,1,1,1,1,10,,f61622be1278
+SelectVramData,0046:359,4,T2,1,1,1,1,1,0,684,,5023a736bf68
+SelectVramReadAddress,0046:35D,4,T2,1,1,1,1,1,0,378,,de58f0c65ca0
+SelectVramWriteAddress,0046:361,3,T2,1,1,1,1,1,0,260,,9ebe5d205c7e
+SelectVdcControl,0046:364,2,T2,1,1,1,1,1,0,26,,2f1f8cd4cc61
+SelectVdcRegister,0046:366,6,T2,1,1,1,1,1,0,94,,8eca9ed0f2b2
+ClearVdcControlHigh,0046:36C,9,T2,1,1,1,1,1,0,10,,f61622be1278
 ResetGameState,0046:375,43,T2,1,1,0,1,0,0,53,,4beca7463dff
 ClearScreenState,0046:3A0,45,T2,1,1,0,1,0,0,170,,e85345cff1c9
 StreamFullWalk,0046:53E,169,T2,1,1,1,0,0,0,25,,586d52aa1d69
@@ -226,24 +226,24 @@ StreamEdgeLeft,0046:67B,29,T2,1,1,1,1,1,0,23,,c47d9bfe29b7
 StreamEdgeDown,0046:698,23,T2,1,1,1,0,0,0,0,,caeba3ddd93a
 StreamEdgeUp,0046:6AF,29,T2,1,1,1,0,0,0,0,,f960c46f40cc
 StreamWalkForward,0046:6CC,87,T2,1,1,1,1,1,0,41,,54a7fe98980f
-StreamDistance,0046:723,33,T4,1,1,1,1,1,1,19,,138418342aba
+StreamDistance,0046:723,33,T2,1,1,1,1,1,0,19,,138418342aba
 StreamWalkBack,0046:744,97,T2,1,1,1,0,1,0,22,,fb196fd9a9ea
 RunStreamRecord,0046:7A5,70,T2,1,1,0,1,1,0,1,,3cb0d0740f08
-StreamSpawnIfFree,0046:7F9,11,T4,1,1,1,1,1,1,1,,027b9ec33a5e
+StreamSpawnIfFree,0046:7F9,11,T2,1,1,1,1,1,0,1,,027b9ec33a5e
 StreamPlaceObject,0047:004,136,T2,1,1,1,0,0,0,182,,18a49698dde1
-StreamStartScript,0047:08C,9,T4,1,1,1,1,1,1,0,,5bd9c15f71fa
+StreamStartScript,0047:08C,9,T2,1,1,1,1,1,0,0,,5bd9c15f71fa
 RecordIfMarked,0047:095,10,T2,1,1,1,0,0,0,0,,cf5fc9774289
 StreamStartListKind2,0047:09F,17,T2,1,1,1,0,0,0,0,,755a08765460
 StreamStartListKind3,0047:0B0,11,T2,1,1,1,0,0,0,0,,eaccd96c2538
 StreamClearObject,0047:0BB,9,T2,1,1,1,0,0,0,0,,7dab9fad0d5b
-StreamSpawnIfOther,0047:0C4,23,T2,1,1,1,0,1,1,0,,0dc4d598d477
+StreamSpawnIfOther,0047:0C4,23,T2,1,1,1,0,1,0,0,,0dc4d598d477
 StreamCallOverlay,0047:0DB,8,T2,1,1,1,0,0,0,0,,d05615cc0d67
 JumpThroughRecord,0047:0E3,3,T2,1,1,0,0,0,0,0,,55c467f87755
 LoadObjectRecord,0047:0E6,118,T2,1,1,1,1,1,0,8,,001db8333dce
 StartObjectAtPlace,0047:15C,3,T2,1,1,1,1,1,0,0,,b8f7abbe8b95
-CopyObjectPlace,0047:15F,37,T4,1,1,1,1,1,1,66,,1ac087669737
-CopyObjectPlaceBack,0047:184,6,T4,1,1,1,1,1,1,89,,1d978d92938f
-StepObjectFrames,0047:18A,50,T4,1,1,1,1,1,1,1052,,396af59062c3
+CopyObjectPlace,0047:15F,37,T2,1,1,1,1,1,0,66,,1ac087669737
+CopyObjectPlaceBack,0047:184,6,T2,1,1,1,1,1,0,89,,1d978d92938f
+StepObjectFrames,0047:18A,50,T2,1,1,1,1,1,0,1052,,396af59062c3
 ProbeTerrain,0047:1BC,198,T2,1,1,1,0,1,0,1373,,d1f8c4bf9a07
 ProbeTerrainAlt,0047:282,19,T2,1,1,1,0,1,0,2001,,31cbe3579153
 ProbeTerrainFrontColumn,0047:295,40,T2,1,1,1,0,0,0,0,,d8e5c5ce8778
@@ -259,7 +259,7 @@ StopOnLandingFrontColumn,0047:3AB,29,T2,1,1,1,0,0,0,0,,ad3c017fc771
 FindFreeSlotFrom30,0047:3C8,19,T2,1,1,1,1,1,0,1,,5bbcd8a2298c
 FindFreeSlotFrom20,0047:3DB,4,T2,1,1,1,1,1,0,0,,2e6da9041479
 FindFreeSlotFrom50,0047:3DF,14,T2,1,1,1,0,1,0,0,,d6b7f46df2b9
-ApplyGravity,0047:3ED,9,T4,1,1,1,1,1,1,22,,5fc01c16c20f
+ApplyGravity,0047:3ED,9,T2,1,1,1,1,1,0,22,,5fc01c16c20f
 ApplyGravityUnlimited,0047:3F6,15,T2,1,1,1,1,1,0,1,,8c0310a3a32c
 TileOpAttributeHigh,0047:405,18,T2,1,1,1,1,1,0,0,,c1f090504b42
 TileOpAttributeLow,0047:417,9,T2,1,1,1,1,0,0,0,,7f01066160df
@@ -276,32 +276,32 @@ NextVramLine,0047:538,24,T2,1,1,1,1,1,0,0,,6ee1247f7a77
 AdvanceTileScript,0047:550,7,T2,1,1,1,1,1,0,0,,81e24374cbce
 PlayerDistanceSum,0047:557,50,T2,1,1,0,1,1,0,0,,91baf23c0628
 SoundIfOnFirstScreen,0047:589,15,T2,1,1,1,1,1,0,1,,a36aa5b80ac8
-StopPlayerX,0047:598,7,T4,1,1,1,1,1,1,0,,4ca1b8ae4eb4
+StopPlayerX,0047:598,7,T2,1,1,1,1,1,0,0,,4ca1b8ae4eb4
 MovePlayerX,0047:59F,20,T2,1,1,1,0,0,0,0,,4e0cbd59e300
-MovePlayerY,0047:5B3,52,T2,1,1,1,0,1,1,16,,3d25febab7de
+MovePlayerY,0047:5B3,52,T2,1,1,1,0,1,0,16,,3d25febab7de
 ScrollStepXFromPlayer,0047:5E7,13,T2,1,1,1,0,0,0,0,,98627fde3467
 MovePlayerYIfMoving,0047:5F4,20,T2,1,1,1,1,1,0,55,,d9de2b0c5230
 PlayerAndCameraFrame,0047:608,129,T2,1,1,1,0,1,0,737,,3f52ebfa229c
 CameraModeCarried,0047:6C5,42,T2,1,1,1,0,0,0,0,,210d3e141b9c
-PlayerNextX,0047:6EF,18,T4,1,1,1,1,1,1,17,,cb6cb72ccb54
+PlayerNextX,0047:6EF,18,T2,1,1,1,1,1,0,17,,cb6cb72ccb54
 CheckPlayerAtLevelEnd,0047:701,33,T2,1,1,1,0,0,0,0,,d145a8113110
 CameraModeLeftWall,0047:722,108,T2,1,1,1,0,0,0,0,,0e3447aa34f2
 CameraModeFollow,0047:78E,45,T2,1,1,1,0,1,0,416,,f99365157dd3
 PlayerWallRight,0047:7BB,72,T2,1,1,1,0,1,0,68,,00bf75a65d40
 MovePlayerRightOrWall,0048:003,9,T2,1,1,1,1,1,0,92,,6aa0dccb50de
 PlayerXFromNext,0048:00C,11,T2,1,1,1,1,0,0,0,,27ec9d0085ea
-MovePlayerRight,0048:017,152,T4,1,1,1,1,1,1,16,,1c0ae2ead2dd
-PlayerAtRightEdge,0048:0AF,9,T4,1,1,1,1,1,1,0,,26616639d776
-NextPastMiddle,0048:0B8,10,T4,1,1,1,1,1,1,1,,d4acc3494f07
+MovePlayerRight,0048:017,152,T2,1,1,1,1,1,0,16,,1c0ae2ead2dd
+PlayerAtRightEdge,0048:0AF,9,T2,1,1,1,1,1,0,0,,26616639d776
+NextPastMiddle,0048:0B8,10,T2,1,1,1,1,1,0,1,,d4acc3494f07
 NextFractionSet,0048:0C2,7,T2,1,1,1,0,0,0,0,,f55855760276
-PlayerXPastMiddle,0048:0C9,19,T4,1,1,1,1,1,1,0,,02fe895f6cd4
-NextPastMiddleAmount,0048:0DC,14,T4,1,1,1,1,1,1,0,,454470c6b13c
-CompareScrollWithRightLimit,0048:0EA,11,T4,1,1,1,1,1,1,0,,177c340158f5
+PlayerXPastMiddle,0048:0C9,19,T2,1,1,1,1,1,0,0,,02fe895f6cd4
+NextPastMiddleAmount,0048:0DC,14,T2,1,1,1,1,1,0,0,,454470c6b13c
+CompareScrollWithRightLimit,0048:0EA,11,T2,1,1,1,1,1,0,0,,177c340158f5
 PlayerWallLeft,0048:0F5,73,T2,1,1,1,0,1,0,208,,17bd3a420ef4
 MovePlayerLeftOrWall,0048:146,9,T2,1,1,1,1,1,0,231,,f3cf128749f2
 PlayerXFromNextAlt,0048:14F,11,T2,1,1,1,1,0,0,0,,f2ba1ac8ce8a
-MovePlayerLeft,0048:15A,172,T2,1,1,1,0,1,1,7,,1085cda2ff71
-PlayerAtLeftEdge,0048:206,9,T4,1,1,1,1,1,1,4,,c7f8eca68117
+MovePlayerLeft,0048:15A,172,T2,1,1,1,0,1,0,7,,1085cda2ff71
+PlayerAtLeftEdge,0048:206,9,T2,1,1,1,1,1,0,4,,c7f8eca68117
 CameraModeVertical,0048:20F,42,T2,1,1,1,0,0,0,0,,ec589e6390a2
 MovePlayerYIfMovingGoTo,0048:239,3,T2,1,1,1,0,0,0,0,,2eadffe732f4
 PlayerStopAtRightEdge,0048:23C,9,T2,1,1,1,0,0,0,0,,9618817088fe
@@ -331,111 +331,137 @@ CdSearchTrack,0048:79E,58,T2,0,1,1,0,1,0,0,Alu; adc8/sbc8; alu helper; call_with
 LoadSceneScript,0048:7D8,217,T2,0,1,0,0,0,0,50,Alu; adc8/sbc8; alu helper; call_with; cpu,46a50133c57e
 SceneReadSectors,0049:0B1,73,T2,0,1,1,0,0,0,247,Alu; adc8/sbc8; alu helper; call_with; cpu,120c60436dd3
 SceneCallOverlay,0049:100,21,T2,0,1,1,1,0,0,27,Alu; adc8/sbc8; alu helper; call_with; cpu,78d4f57e9c00
+SoundLoadSequence,004D:5F1,11,T2,1,1,1,1,1,0,131,,9ea3763c1585
+SoundSaveSequence,004D:5FC,11,T2,1,1,1,1,1,0,0,,e5451fae3fe9
+SoundSequenceFromWord,004D:607,9,T2,1,1,1,1,1,0,0,,f8f835b2aec9
+SoundSlideStep,004D:743,44,T2,1,1,1,1,1,0,3,,aab23d2e4020
+SoundVolumeSlideStep,004D:7CC,44,T2,1,1,1,1,1,0,0,,152ae24cd11e
+SoundSilenceAll,004E:614,19,T2,1,1,1,1,1,0,0,,8c0890291bc0
+SoundVolumeFull,004E:627,6,T2,1,1,1,1,1,0,0,,9b39fc9de80a
+SoundMarkChannel,004E:62D,8,T2,1,1,1,1,1,0,2,,b71eaa273a30
+SoundReleaseChannel,004E:635,31,T2,1,1,1,0,1,0,0,,22766c99feb5
+SoundMultiply,004E:746,34,T2,1,1,1,1,1,0,29,,6b66d162ebd6
+SoundMultiplyNibble,004E:768,38,T2,1,1,1,1,1,0,2,,3ed421163f12
+SoundStartFade,0053:274,16,T2,1,1,1,0,0,0,0,,0ef50b5393f5
+SoundReadPair,0053:62E,23,T2,1,1,1,0,1,0,1,,9cdf565cba15
 RichterVecFrame,01B9:000,3,T2,1,1,1,1,1,0,9102,,f85a1b3cddcd
 RichterVecStart,01B9:003,3,T2,1,1,1,1,1,0,0,,334402df0dc1
-RichterVecApplyMove,01B9:006,3,T2,1,1,0,1,0,0,53575,,a4e3266e199c
+RichterVecApplyMove,01B9:006,3,T2,1,1,1,1,0,0,53575,,a4e3266e199c
 RichterVecC3A7,01B9:009,3,T2,1,1,0,1,0,0,51858,,53a72495a782
-RichterVecC023,01B9:00C,3,T2,1,1,0,1,0,0,2,,2a75436df099
+RichterVecC023,01B9:00C,3,T2,1,1,1,1,1,0,1,,f7081dde5b68
 RichterVecC076,01B9:00F,3,T2,1,1,0,1,0,0,460,,65c317989791
-RichterVecAnimationSound,01B9:012,3,T4,1,1,1,1,1,1,1,,133a3f901751
-RichterVecCE1D,01B9:015,3,T2,1,1,0,1,0,0,11,,2e50ff364d9b
-RichterVecSetAnimation,01B9:018,3,T2,1,1,0,0,0,0,0,,0879f33ef86f
-RichterVecSetIdle,01B9:01B,3,T2,1,1,0,0,0,0,0,,2b2d73ef6936
+RichterVecAnimationSound,01B9:012,3,T2,1,1,1,1,1,0,1,,133a3f901751
+RichterVecCE1D,01B9:015,3,T2,1,1,1,1,1,0,0,,03b8cf6f4489
+RichterVecSetAnimation,01B9:018,3,T2,1,1,1,0,0,0,0,,0879f33ef86f
+RichterVecSetIdle,01B9:01B,3,T2,1,1,1,0,0,0,0,,2b2d73ef6936
 RichterVecCE73,01B9:01E,3,T2,1,1,0,0,0,0,0,,c5ea1d0b0ef2
-RichterVecWall,01B9:021,3,T2,1,1,0,1,0,0,27851,,4398297f8d2e
-RichterVecFloor,01B9:024,3,T2,1,1,0,1,0,0,12319,,e2770615a290
+RichterVecWall,01B9:021,3,T2,1,1,1,1,0,0,27851,,4398297f8d2e
+RichterVecFloor,01B9:024,3,T2,1,1,1,1,0,0,12319,,e2770615a290
 RichterApplyMoveAndPushGoTo,01B9:027,3,T2,1,1,1,1,1,0,2405,,bcbe8031aea5
 RichterApplyMoveAndPush,01B9:02A,33,T2,0,1,0,0,1,0,2400,Alu; alu helper; call_with; cpu,59d2b377cde2
-RichterFrame,01B9:04B,99,T2,0,1,0,1,1,0,9092,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,237e2b848161
+RichterFrame,01B9:04B,99,T2,0,1,1,1,1,0,9092,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,23cf81cdaae4
 RichterHitWhilePushed,01B9:0AE,39,T2,0,1,1,0,1,0,4,Alu; adc8/sbc8; alu helper; call_with; cpu,b2cb56ed943a
-RichterSpikeBelow,01B9:0D5,42,T2,0,1,0,0,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,c7846f1e7b94
-RichterStart,01B9:10F,7,T2,0,1,1,1,1,0,0,Alu; alu helper; call_abi; call_with; cpu,480ea555380e
-RichterClearWork,01B9:11E,15,T3,1,1,0,1,1,1,0,,132957a1fd53
-RichterClearKeepPlace,01B9:12D,29,T2,0,1,1,1,1,1,0,Alu; alu helper; call_abi; cpu,c5ec831872a6
-RichterStartNew,01B9:14A,6,T2,0,1,1,1,1,0,0,Alu; alu helper; call_abi; call_with; cpu,dea1545b9be8
-RichterStartHealth,01B9:150,4,T2,0,1,1,1,1,0,0,Alu; alu helper; call_abi; call_with; cpu,7d401fb0ba1c
-RichterStartClear,01B9:154,19,T2,0,1,1,1,0,0,0,Alu; alu helper; call_abi; call_with; cpu,91ed5e30e30d
-RichterStartStand,01B9:167,8,T2,0,1,1,1,1,0,0,Alu; alu helper; call_abi; call_with; cpu,074818f3a183
-RichterAnimationSound,01B9:16F,11,T2,0,1,1,1,1,1,8,Alu; alu helper; call_abi; cpu,2b6cb4a6a857
-RichterDyingStep,01B9:17A,42,T2,0,1,1,0,0,0,0,Alu; alu helper; call_abi; cpu,803a7e4f7132
-RichterDie,01B9:1A4,26,T2,0,1,1,1,0,0,0,Alu; alu helper; call_abi,1493aa51df8c
-RichterStateFrame,01B9:1BE,192,T2,0,1,0,0,1,0,42878,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,43b554690653
+RichterSpikeBelow,01B9:0D5,42,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,c7846f1e7b94
+RichterStart,01B9:10F,7,T2,1,1,1,1,1,0,0,,acf9fbafe668
+RichterClearWork,01B9:11E,15,T2,1,1,0,1,1,0,0,,132957a1fd53
+RichterClearKeepPlace,01B9:12D,29,T2,1,1,1,1,1,0,0,,e4baa814158b
+RichterStartNew,01B9:14A,6,T2,1,1,1,1,1,0,0,,e40787c7dc53
+RichterStartHealth,01B9:150,4,T2,1,1,1,1,1,0,0,,251d2accbc9b
+RichterStartClear,01B9:154,19,T2,1,1,1,1,0,0,0,,4387b3fdb46e
+RichterStartStand,01B9:167,8,T2,1,1,1,1,1,0,0,,87950242ab6e
+RichterAnimationSound,01B9:16F,11,T2,1,1,1,1,1,0,8,,82470e9428ef
+RichterDyingStep,01B9:17A,42,T2,0,1,1,0,0,0,0,Alu; alu helper; call_abi; cpu,610ef4ea0b21
+RichterDie,01B9:1A4,26,T2,0,1,1,1,0,0,0,Alu; alu helper; call_abi,f550decef969
+RichterStateFrame,01B9:1BE,192,T2,0,1,0,0,1,0,42250,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,b0bd6c7cf125
 RichterOutOfHealth,01B9:298,26,T2,0,1,1,0,1,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,dd7412cb2499
-RichterHitReact,01B9:2B2,37,T2,0,1,1,1,1,1,0,Alu; alu helper; call_abi; cpu,94b1d10eb6ec
-RichterStartHitScript,01B9:2D7,5,T2,0,1,1,1,1,1,0,Alu; alu helper; call_abi; cpu,121108ec1731
-RichterTurnOnPress,01B9:2E4,25,T2,0,1,1,0,1,1,0,Alu; alu helper,efea3fd6ef8c
-RichterStandStep1,01B9:2FD,79,T2,0,1,0,0,1,0,7256,Alu; alu helper; call_with,5f660914fe3d
-RichterClearWhip,01B9:34C,5,T2,0,1,1,1,1,1,0,Alu; alu helper; call_abi; cpu,349965c82cf2
-RichterOrphanClearWhipAir,01B9:351,5,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,1476cc66da00
-RichterStandStep2,01B9:358,120,T2,0,1,0,0,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,fde0955bb545
-RichterStepIndex,01B9:3D0,6,T2,0,1,1,1,1,1,13,Alu; alu helper; cpu,b14c43ab7a59
-RichterStateStand,01B9:3D6,5,T2,0,1,1,1,1,0,8314,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,6bcc210a9018
-RichterStandStep0,01B9:3E1,97,T2,0,1,0,0,1,0,1053,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,0912d240761b
-RichterStartWalk,01B9:442,42,T2,0,1,0,1,1,0,492,Alu; alu helper; call_with; cpu,ad361564a2bb
-RichterSpeedWalk,01B9:46C,18,T2,0,1,1,1,1,1,0,Alu; alu helper; cpu,205fb2a66ffd
-RichterSpeedJump,01B9:47E,18,T2,0,1,1,1,1,1,0,Alu; alu helper; cpu,9aa9d3a97526
-RichterSpeedBackstep,01B9:494,18,T2,0,1,1,1,1,1,0,Alu; alu helper; cpu,3f6934b4d78e
-RichterCrouch,01B9:4AE,18,T2,0,1,0,1,1,0,0,Alu; alu helper; call_with,ad4956aa922e
-RichterStopMoving,01B9:4C0,6,T2,0,1,1,1,1,1,0,Alu,da4c6903270b
-RichterStopX,01B9:4C6,7,T2,0,1,1,1,1,1,0,Alu,264d200fb72f
-RichterAttack,01B9:4CD,80,T2,0,1,0,0,1,0,0,Alu; alu helper; call_abi; call_with; cpu,6a13cf8e7d17
-RichterToFall,01B9:521,33,T2,0,1,0,1,1,0,0,Alu; alu helper; call_with,d243b743871c
-RichterPadOverridesOff,01B9:542,9,T2,0,1,1,1,1,1,6,Alu,77267b843a8f
-RichterLedgeHurtA,01B9:54B,15,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,820b0cd5d74f
-RichterLedgeHurtB,01B9:55A,38,T2,0,1,0,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,c0ec9dc9e57f
-RichterUpWhipLeft,01B9:580,43,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,3cbb39688d6d
-RichterNudgeA,01B9:5AB,17,T2,0,1,1,1,1,1,0,Alu; adc8/sbc8; cpu,6fad8ae162d1
-RichterNudgeB,01B9:5BC,8,T2,0,1,1,1,1,1,0,Alu; adc8/sbc8; cpu,eafa31deffa7
-RichterNudgeBJump,01B9:5C4,4,T2,0,1,1,1,0,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,a90b89c548a7
-RichterUpWhipRight,01B9:5C8,38,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,055bf45102e7
-RichterToHurtAir,01B9:5F2,47,T2,0,1,0,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,60f608f1a4b4
+RichterHitReact,01B9:2B2,37,T2,1,1,1,1,1,0,0,,ba2c189297bd
+RichterStartHitScript,01B9:2D7,5,T2,1,1,1,1,1,0,0,,c7b1a99fe487
+RichterTurnOnPress,01B9:2E4,25,T2,0,1,1,0,1,0,0,Alu; alu helper,efea3fd6ef8c
+RichterStandStep1,01B9:2FD,79,T2,0,1,0,0,1,0,7256,Alu; alu helper; call_abi; call_with,3b67075833d8
+RichterClearWhip,01B9:34C,5,T2,1,1,1,1,1,0,0,,e3c561149d6f
+RichterOrphanClearWhipAir,01B9:351,5,T2,1,1,1,0,0,0,0,,f83b2eaf5d2b
+RichterStandStep2,01B9:358,120,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,f348e22848ef
+RichterStepIndex,01B9:3D0,6,T2,1,1,1,1,1,0,13,,5bc4326a612f
+RichterStateStand,01B9:3D6,5,T2,0,1,1,1,1,0,7682,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,eb1c4de8efac
+RichterStandStep0,01B9:3E1,97,T2,0,1,0,0,1,0,419,Alu; alu helper; call_abi; call_with; cpu,e153738d7172
+RichterStartWalk,01B9:442,42,T2,1,1,1,1,1,0,0,,9a7059f2068f
+RichterSpeedWalk,01B9:46C,18,T2,1,1,1,1,1,0,0,,afb2389222c4
+RichterSpeedJump,01B9:47E,18,T2,1,1,1,1,1,0,0,,ef345df66d1f
+RichterSpeedBackstep,01B9:494,18,T2,1,1,1,1,1,0,0,,82dc1ed4639a
+RichterCrouch,01B9:4AE,18,T2,1,1,1,1,1,0,0,,3ffe4b35feaf
+RichterStopMoving,01B9:4C0,6,T2,1,1,1,1,1,0,0,,1823148fa949
+RichterStopX,01B9:4C6,7,T2,1,1,1,1,1,0,0,,b9e599ea4625
+RichterAttack,01B9:4CD,80,T2,0,1,1,0,1,0,0,Alu; alu helper; call_abi; call_with; cpu,ed43bef0af56
+RichterToFall,01B9:521,33,T2,1,1,1,1,1,0,0,,2b9cc387145b
+RichterPadOverridesOff,01B9:542,9,T2,1,1,1,1,1,0,6,,1f4c8eb8d751
+RichterLedgeHurtA,01B9:54B,15,T2,0,1,1,0,0,0,0,Alu; alu helper; call_abi; call_with; cpu,8288c28f3f8f
+RichterLedgeHurtB,01B9:55A,38,T2,0,1,1,0,0,0,0,Alu; alu helper; call_abi; call_with; cpu,e07aa50d9514
+RichterUpWhipLeft,01B9:580,43,T2,0,1,1,0,1,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,67afdff58c1f
+RichterNudgeA,01B9:5AB,17,T2,1,1,1,1,1,0,0,,160b8785c4d0
+RichterNudgeB,01B9:5BC,8,T2,1,1,1,1,1,0,0,,3eb954f61625
+RichterNudgeBJump,01B9:5C4,4,T2,0,1,1,1,0,0,0,Alu; alu helper; call_abi,377a95757f98
+RichterUpWhipRight,01B9:5C8,38,T2,0,1,1,0,1,0,0,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,055bf45102e7
+RichterToHurtAir,01B9:5F2,47,T2,0,1,1,0,0,0,0,Alu; alu helper; call_abi; call_with; cpu,c83c9ff32584
 RichterReactFillD,01B9:633,13,T2,0,1,1,0,0,0,0,Alu; alu helper; cpu,20a5a928f908
 RichterReactFillB,01B9:640,4,T2,0,1,1,0,0,0,0,Alu; alu helper; cpu,751192e79cc1
-RichterItemCrashFive,01B9:644,29,T2,0,1,0,0,0,0,0,Alu; alu helper; call_abi; call_with,f63da1609b8f
+RichterItemCrashFive,01B9:644,29,T2,0,1,1,0,0,0,0,Alu; alu helper; call_abi; call_with,e7d06f87704e
 RichterReactE,01B9:661,6,T2,0,1,1,0,0,0,0,Alu; alu helper,be4d5da44591
 RichterReact11,01B9:667,16,T2,0,1,1,0,0,0,0,Alu; alu helper,6f9244015e5b
 RichterReact10,01B9:677,4,T2,0,1,1,0,0,0,0,Alu; alu helper,27e149921891
 RichterReact12,01B9:67B,4,T2,0,1,1,0,0,0,0,Alu; alu helper,285136d08440
 RichterReact13,01B9:67F,4,T2,0,1,1,0,0,0,0,Alu; alu helper,e37e8a5934bc
-RichterKnockBack,01B9:683,62,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8; alu helper; call_with; cpu,9aa6cf87998b
-RichterToAir,01B9:6C5,71,T2,0,1,0,0,1,0,356,Alu; adc8/sbc8; alu helper; call_with; cpu,e93f1b456905
-RichterJumpSpeed,01B9:70C,16,T2,0,1,1,1,1,1,2,Alu; adc8/sbc8; alu helper,3d3fb8b50f43
-RichterLiftThree,01B9:71C,29,T2,0,1,1,0,0,0,0,Alu; adc8/sbc8; alu helper,3f0f4a31fb78
-RichterStateWalk,01B9:739,115,T2,0,1,0,0,1,0,328,Alu; adc8/sbc8; alu helper; call_abi; call_with; cpu,865936ea92b5
-RichterStand,01B9:7AC,24,T2,0,1,0,1,1,0,0,Alu; alu helper; call_with,30d7715611da
+RichterKnockBack,01B9:683,62,T2,1,1,1,1,1,0,0,,78687ca58301
+RichterToAir,01B9:6C5,71,T2,1,1,1,0,1,0,4,,5087b30cc930
+RichterJumpSpeed,01B9:70C,16,T2,1,1,1,1,1,0,2,,f64b889bbc0f
+RichterLiftThree,01B9:71C,29,T2,1,1,1,0,0,0,0,,81ead72a59da
+RichterStateWalk,01B9:739,115,T2,0,1,0,0,1,0,328,Alu; alu helper; call_abi; call_with; cpu,b799e7c0eb57
+RichterStand,01B9:7AC,24,T2,1,1,1,1,1,0,0,,763a10a5d415
 RichterSolidUnderColumn,01BA:22F,25,T2,1,1,1,0,1,0,164,,14302340a2cc
 RichterReadUnderFeet,01BA:248,14,T2,1,1,1,1,1,0,0,,78bda31b1482
-RichterReadPad,01BB:611,59,T4,1,1,1,1,1,1,158,,257c7cf815fd
-RichterClearPadOverrides,01BB:64C,13,T4,1,1,1,1,1,1,32,,96ff878d2cc4
-RichterAnimationTick,01BB:669,18,T4,1,1,1,1,1,1,23,,d6891f6b7c60
-RichterSetAnimation,01BB:67B,54,T4,1,1,1,1,1,1,0,,eb3208ff45a1
-RichterReadAbove,01BB:6D2,11,T2,1,1,1,0,0,0,0,,3923028822bc
+RichterEndItemCrash,01BB:180,32,T2,1,1,1,1,1,0,0,,6d789db6fef9
+RichterReadPad,01BB:611,59,T2,1,1,1,1,1,0,158,,257c7cf815fd
+RichterClearPadOverrides,01BB:64C,13,T2,1,1,1,1,1,0,32,,96ff878d2cc4
+RichterAnimationWait,01BB:659,7,T2,1,1,1,1,1,0,15779,,b2d3cd439cb7
+RichterAnimationRunning,01BB:660,9,T2,1,1,1,1,1,0,16,,29a8a132b1e8
+RichterAnimationTick,01BB:669,18,T2,1,1,1,1,1,0,23,,d6891f6b7c60
+RichterSetAnimation,01BB:67B,54,T2,1,1,1,1,1,0,0,,eb3208ff45a1
+RichterReadAbove,01BB:6D2,11,T2,1,1,1,0,0,0,0,,d495b7bad751
 RichterReadBelow,01BB:6DD,13,T2,1,1,1,1,1,0,2760,,069488e9c00b
 RichterReadOnScreen,01BB:6EA,10,T2,1,1,1,1,1,0,0,,7cab3f3d981a
 RichterReadIfOnPage,01BB:6F4,5,T2,1,1,1,1,1,0,232,,e507776358d5
-RichterColumnOffset,01BB:6F9,11,T4,1,1,1,1,1,1,306,,5e685ca1d5a0
-RichterCheckTurnWindow,01BB:704,41,T4,1,1,1,1,1,1,14,,5f2d72560076
-RichterFaceByPad,01BB:7CA,19,T4,1,1,1,1,1,1,0,,292fd7828bc8
-RichterNoteItemPress,01BB:7DD,12,T2,1,1,1,0,1,1,0,,86a6a96d1d4d
-RichterCheckItemHearts,01BB:7E9,19,T4,1,1,1,1,1,1,5,,6b57232e9a15
-RichterUpHeld,01BC:068,7,T4,1,1,1,1,1,1,8,,66189d8c068c
+RichterColumnOffset,01BB:6F9,11,T2,1,1,1,1,1,0,306,,5e685ca1d5a0
+RichterCheckTurnWindow,01BB:704,41,T2,1,1,1,1,1,0,14,,5f2d72560076
+RichterFaceByPad,01BB:7CA,19,T2,1,1,1,1,1,0,0,,292fd7828bc8
+RichterNoteItemPress,01BB:7DD,12,T2,1,1,1,0,1,0,0,,86a6a96d1d4d
+RichterCheckItemHearts,01BB:7E9,19,T2,1,1,1,1,1,0,5,,6b57232e9a15
+RichterTryItemCrash,01BB:7FC,81,T2,1,1,1,0,1,0,23,,3de2c7e4d457
+RichterUpHeld,01BC:068,7,T2,1,1,1,1,1,0,8,,66189d8c068c
 RichterJumpOrClimb,01BC:06F,15,T2,1,1,1,1,1,0,0,,af92d01cbc88
-RichterJumpPressed,01BC:07E,7,T4,1,1,1,1,1,1,0,,2ced37962917
+RichterJumpPressed,01BC:07E,7,T2,1,1,1,1,1,0,0,,2ced37962917
 RichterHasNoFooting,01BC:085,14,T2,1,1,1,0,1,0,190,,874bac14f2df
 RichterLadderCheck,01BC:093,118,T2,1,1,1,0,1,0,0,,e691540bd42f
-RichterLatchButtons,01BB:909,17,T4,1,1,1,1,1,1,0,,88a1ab1c8857
+RichterLatchButtons,01BB:909,17,T2,1,1,1,1,1,0,0,,88a1ab1c8857
+RichterUseItem,01BC:129,32,T2,1,1,1,0,1,0,1,,e2b86dc76c40
+RichterUseThrownItem,01BC:15B,86,T2,1,1,1,0,0,0,0,,d8b704d39638
+RichterUseItemSix,01BC:1B1,28,T2,1,1,1,0,0,0,0,,2555732f339f
+RichterUseItemSeven,01BC:1CD,18,T2,1,1,1,0,0,0,0,,f47db8e08c91
+RichterFindItemOut,01BC:1DF,13,T2,1,1,1,0,0,0,0,,33024e2e6d91
+RichterUseItemEight,01BC:1EC,31,T2,1,1,1,0,0,0,0,,cdbe5e5d46f1
 RichterLedgeCheck,01BC:241,57,T2,1,1,1,0,1,0,41,,d0548b089b3e
-RichterLandOnFloor,01BC:27A,51,T2,1,1,1,0,1,1,24,,2107513a1860
-RichterColumnsBlocked,01BC:2AD,15,T4,1,1,1,1,1,1,0,,b703bf150b33
-RichterFloorCheck,01BC:2C2,61,T2,1,1,0,0,1,1,27,,aca1cf696993
+RichterLandOnFloor,01BC:27A,6,T2,1,1,1,0,1,0,24,,62cc569c9046
+RichterLiftByColumn,01BC:280,45,T2,1,1,1,0,1,0,0,,33d538b8aeda
+RichterColumnsBlocked,01BC:2AD,15,T2,1,1,1,1,1,0,0,,b703bf150b33
+RichterFloorCheck,01BC:2C2,61,T2,1,1,0,0,1,0,27,,aca1cf696993
 RichterLowColumnsBlocked,01BC:2FF,30,T2,1,1,1,1,1,0,38,,c10a9f38a035
 RichterReadColumnsHigh,01BC:31D,6,T2,1,1,1,0,0,0,0,,d9c9b98e1db6
 RichterReadColumns,01BC:323,42,T2,1,1,1,1,1,0,3656,,9e3f0704c7ba
 RichterWall,01BC:36E,83,T2,1,1,0,0,1,0,265,,350aebf16c6e
 RichterFloor,01BC:3C1,90,T2,1,1,1,0,1,0,23,,2bbfda618e5d
-TerrainLookup,050F:5AB,96,T2,1,1,1,0,1,1,2383,,262275c0fa2b
-TerrainLookupAlt,050F:60B,116,T2,1,1,1,0,1,1,1938,,0a702bb56fd9
-TerrainTileRead,050F:67F,155,T2,1,1,0,0,1,1,4822,,1164b6008f32
+RichterLeapClearingOthers,01BD:023,79,T2,1,1,1,0,1,0,1,,e866563e76f4
+RichterClearOthersKeepWhip,01BE:61D,32,T2,1,1,1,0,1,0,0,,624a8a169bfb
+TerrainLookup,050F:5AB,96,T2,1,1,1,0,1,0,2383,,262275c0fa2b
+TerrainLookupAlt,050F:60B,116,T2,1,1,1,0,1,0,1938,,0a702bb56fd9
+TerrainTileRead,050F:67F,155,T2,1,1,0,0,1,0,4822,,1164b6008f32
 TileStepC,050F:752,13,T2,1,1,1,0,0,0,0,,1faeacf90ee1
 TileRowA,050F:75F,17,T2,1,1,1,0,0,0,0,,a5c6d7ae50b1
 TileRowB,050F:770,17,T2,1,1,1,0,0,0,0,,9e27bc4e600d

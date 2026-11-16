@@ -407,6 +407,23 @@ void clear_vram(void);
 uint8_t load_font(void);
 uint8_t ad_reset(void);
 AdPlay ad_play(void);
+/* What ad_read did, and what its exit shows. */
+typedef struct {
+    AdStat stat;
+    uint8_t latch;        /* the control port as ad_latch_read_address read it */
+    uint8_t mode;         /* _DH */
+    bool refused;
+    uint8_t mask;         /* the MPR bit, reading to banks */
+    uint8_t saved_bank;
+    uint8_t pages_left;
+    uint8_t bytes_left;
+} AdRead;
+
+AdRead ad_read(void);
+void ad_read_to_banks(AdRead *read);
+void aim_bx_at_vram_port(void);
+uint8_t ad_read_byte(void);
+uint8_t write_vram_word_pending(void);
 
 /*
  * The exits of ad_play, ad_stat and ad_stop: the registers and flags each leaves, for its abi_

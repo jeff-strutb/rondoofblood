@@ -195,3 +195,207 @@ void ad_play_exit_shim(AdPlay play)
     abi_nz(AD_CONTROL_PLAY_BITS);
     abi_flag(P_V, (play.irq_before & 0x40) != 0);
 }
+
+enum {
+    AD_READ_TO_MEMORY = 0x00, AD_READ_TO_VRAM = 0xFF, AD_READ_BANK_LIMIT = 0x07,
+    AD_READ_REFUSED = 0x22, STUB_TMA = 0x43, STUB_TAM = 0x53, STUB_RTS = 0x60,
+    BANK_PAGES = 0x20, BANK_WINDOW_SHIFT = 5, VDC_SELECT_MAWR = 0x00, VDC_SELECT_VWR = 0x02,
+    VDC_DATA_PORT = 0x0002
+};
+
+/* Takes one from the 16-bit count in _AX, and says whether any is left. */
+static bool count_down_ax(void)
+{
+    uint16_t left = (uint16_t)((rd8(CardAl) | (rd8(CardAh) << 8)) - 1);
+
+    wr8(CardAl, (uint8_t)left);
+    wr8(CardAh, (uint8_t)(left >> 8));
+    return left != 0;
+}
+
+static void select_vdc(uint8_t reg)
+{
+    wr8(CardVdcReg, reg);
+    wr8(VdcAddress, reg);
+}
+
+/* The MPR stub the card builds in RAM: TMA or TAM with the mask, then RTS. */
+static void build_mpr_stub(uint8_t opcode, uint8_t mask)
+{
+    wr8(CardMprStub, opcode);
+    wr8(CardMprStubMask, mask);
+    wr8(CardMprStubReturn, STUB_RTS);
+}
+
+/*
+ * @card 00:F6F5 aim_bx_at_vram_port
+ * WHAT IT DOES: Makes _BX the VDC's write address, then points _BX at the VDC's data port, for a
+ * copy that writes through [_BX].
+ * HOW: write_vram_word_pending, with the address register selected; then _BX = $0002.
+ * Entry: _BX, the VDC's address register selected. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
+ */
+void aim_bx_at_vram_port(void)
+{
+    write_vram_word_pending();
+    wr8(CardBl, (uint8_t)VDC_DATA_PORT);
+    wr8(CardBh, (uint8_t)(VDC_DATA_PORT >> 8));
+}
+
+void abi_aim_bx_at_vram_port(void)
+{
+    aim_bx_at_vram_port();
+    cpu.a = (uint8_t)VDC_DATA_PORT;
+    abi_nz(cpu.a);
+}
+
+/*
+ * @card 00:F407 ad_read
+ * WHAT IT DOES: Reads _AX bytes of ADPCM memory from address _CX: to memory at _BX if _DH is 0,
+ * to VRAM at _BX if _DH is $FF, or else to banks from _BL on, mapped through the MPR numbered _DH
+ * (1 to 6). Any other _DH gives $22.
+ * HOW: Waits until ADPCM is not playing, latches the address, drops the byte the unit had
+ * fetched, then reads byte after byte. VRAM goes through the data port, its two halves in turn;
+ * banks through a TMA or TAM stub it writes in RAM, 8 KB a bank, the MPR put back at the end.
+ * Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit: A 0, or $22 refused. See abi_ad_read.
+ */
+AdRead ad_read(void)
+{
+    AdRead read = { 0 };
+
+    do
+        read.stat = ad_stat();
+    while (read.stat.playing != 0);
+    ad_set_address(rd8(CardCl), rd8(CardCh));
+    read.latch = ad_latch_read_address();
+    ad_read_byte();
+    read.mode = rd8(CardDh);
+    if (read.mode == AD_READ_TO_MEMORY) {
+        do {
+            uint16_t at = (uint16_t)(rd8(CardBl) | (rd8(CardBh) << 8));
+
+            wr8(at, ad_read_byte());
+            at++;
+            wr8(CardBl, (uint8_t)at);
+            wr8(CardBh, (uint8_t)(at >> 8));
+        } while (count_down_ax());
+        return read;
+    }
+    if (read.mode == AD_READ_TO_VRAM) {
+        select_vdc(VDC_SELECT_MAWR);
+        aim_bx_at_vram_port();
+        select_vdc(VDC_SELECT_VWR);
+        do {
+            wr8(rd8(CardBl), ad_read_byte());
+            wr8(CardBl, rd8(CardBl) ^ 1);
+        } while (count_down_ax());
+        wr8(CardVramPending, 0);
+        return read;
+    }
+    ad_read_to_banks(&read);
+    return read;
+}
+
+/*
+ * @card 00:F46B ad_read_to_banks
+ * WHAT IT DOES: ad_read's reading to banks: _AX bytes of ADPCM memory to bank _BL and the banks
+ * after it, through the MPR numbered _DH (A on entry). A number of 7 or more is refused with $22.
+ * HOW: A TMA stub written in RAM keeps the bank the MPR held; each bank is mapped with a TAM stub
+ * and filled, 8 KB, at the MPR's window; the kept bank goes back at the end.
+ * Entry: A _DH, the ADPCM address latched. Exit, refused: A $22, N 0, Z 0, C from comparing with
+ * 7. Read: A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left
+ * of the last bank. V kept.
+ */
+void ad_read_to_banks(AdRead *read)
+{
+    if ((int8_t)(read->mode - AD_READ_BANK_LIMIT) >= 0) {
+        read->refused = true;
+        return;
+    }
+    read->mask = (uint8_t)(read->mode < 8 ? 1u << read->mode : 0);
+    build_mpr_stub(STUB_TMA, read->mask);
+    read->saved_bank = tma(read->mask);
+    wr8(CardSavedMprBank, read->saved_bank);
+    wr8(CardDl, rd8(CardBl));
+    for (;;) {
+        uint16_t at = (uint16_t)((uint8_t)(read->mode << BANK_WINDOW_SHIFT) << 8);
+        bool more = true;
+
+        wr8(CardBl, 0);
+        wr8(CardBh, (uint8_t)(at >> 8));
+        wr8(CardMprStub, STUB_TAM);
+        tam(read->mask, rd8(CardDl));
+        for (read->pages_left = BANK_PAGES; read->pages_left != 0 && more; ) {
+            for (read->bytes_left = 0; ; ) {
+                wr8(at, ad_read_byte());
+                at++;
+                wr8(CardBl, (uint8_t)at);
+                wr8(CardBh, (uint8_t)(at >> 8));
+                more = count_down_ax();
+                if (!more)
+                    break;
+                read->bytes_left--;
+                if (read->bytes_left == 0)
+                    break;
+            }
+            if (more)
+                read->pages_left--;
+        }
+        if (!more)
+            break;
+        wr8(CardDl, (uint8_t)(rd8(CardDl) + 1));
+    }
+    wr8(CardMprStub, STUB_TAM);
+    tam(read->mask, rd8(CardSavedMprBank));
+}
+
+void abi_ad_read_to_banks(void)
+{
+    AdRead read = { 0 };
+
+    read.mode = rd8(CardDh);
+    ad_read_to_banks(&read);
+    if (read.refused) {
+        cpu.a = AD_READ_REFUSED;
+        abi_nz(AD_READ_REFUSED);
+        abi_flag(P_C, read.mode >= AD_READ_BANK_LIMIT);
+        return;
+    }
+    cpu.a = 0;
+    cpu.x = read.pages_left;
+    cpu.y = read.bytes_left;
+    abi_nz(read.saved_bank);
+    abi_flag(P_C, (read.mode & 0x08) != 0);
+}
+
+/*
+ * ad_read's exits: X _CL and Y _CH, V bit 6 of the control port as the latch read it. To memory
+ * or VRAM: A 0, N 0, Z 1, C kept. Refused: A $22, N 0, Z 0, C from comparing _DH with 7. Banks:
+ * A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left of the
+ * last bank.
+ */
+void abi_ad_read(void)
+{
+    uint8_t low = rd8(CardCl);
+    uint8_t high = rd8(CardCh);
+    AdRead read = ad_read();
+
+    cpu.x = low;
+    cpu.y = high;
+    abi_flag(P_V, (read.latch & 0x40) != 0);
+    if (read.refused) {
+        cpu.a = AD_READ_REFUSED;
+        abi_nz(AD_READ_REFUSED);
+        abi_flag(P_C, read.mode >= AD_READ_BANK_LIMIT);
+        return;
+    }
+    cpu.a = 0;
+    if (read.mode == AD_READ_TO_MEMORY || read.mode == AD_READ_TO_VRAM) {
+        abi_nz(0);
+        return;
+    }
+    cpu.x = read.pages_left;
+    cpu.y = read.bytes_left;
+    abi_nz(read.saved_bank);
+    abi_flag(P_C, (read.mode & 0x08) != 0);
+}
+

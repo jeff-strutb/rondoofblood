@@ -233,23 +233,24 @@ def run_a7(names):
         if h.returncode:
             return script, f"hybrid exit {h.returncode}: {h.stderr.strip()[-400:]}"
         for line in h.stdout.splitlines():
-            if line.startswith("SWAPPED "):
-                _, name, count = line.split()
+            if line.startswith("SWAPPED ") or line.startswith("RAN "):
+                kind, name, count = line.split()
+                table = swapped if kind == "SWAPPED" else ran_inside
                 with swapped_lock:
-                    swapped[name] = swapped.get(name, 0) + int(count)
+                    table[name] = table.get(name, 0) + int(count)
         return script, next((ln for ln in h.stdout.splitlines() if ln.startswith("hybrid:")), "no result")
 
     bad = 0
-    swapped = {}
+    swapped, ran_inside = {}, {}
     swapped_lock = threading.Lock()
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), os.cpu_count())) as ex:
         for script, text in ex.map(one, names):
             print(f"{script}: {text}", flush=True)
             bad += "first differing -1" not in text
     with open(os.path.join(OUT, "a7.csv"), "w", newline="\n") as f:
-        f.write("routine,swapped\n")
-        for name, count in sorted(swapped.items()):
-            f.write(f"{name},{count}\n")
+        f.write("routine,swapped,ran_inside\n")
+        for name in sorted(set(swapped) | set(ran_inside)):
+            f.write(f"{name},{swapped.get(name, 0)},{ran_inside.get(name, 0)}\n")
     write_stamp("a7", not bad and names == scripts_from([]))
     return 1 if bad else 0
 

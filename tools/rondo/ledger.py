@@ -16,7 +16,8 @@ Writes docs/rondo/ledger.csv and prints the counts, below-standard first. For ea
   symbolic  no bare address among its assembly's operands.
   gate_c    every byte of it ran in the traces.
   gate_a5   A5 judged calls of it and none diverged.
-  gate_a7   A7 swapped it in, in a run of every script with every frame identical.
+  gate_a7   A7 swapped it in, or its C ran inside a call A7 swapped in, in a run of every script
+            with every frame identical (approved by the maintainer in chat, 2026-11-16).
 
 Any change to the C, the names, the harness or the scripts voids A5 and A7 until they run
 again, through the stamps oracle.py writes. A waiver is a line in
@@ -90,6 +91,11 @@ def proper_c_faults(name, funcs):
             if not callee.startswith("abi_") and not callee.endswith("_shim"):
                 work.append(callee)
     return sorted(faults)
+
+
+def a7_passed(row):
+    """Swapped in itself, or its C ran inside a swapped call: both seen in the run."""
+    return int(row.get("swapped", 0) or 0) > 0 or int(row.get("ran_inside", 0) or 0) > 0
 
 
 def stamp_valid(name):
@@ -169,7 +175,7 @@ def card_ledger(funcs, a7):
                 re.search(r"(?<!#)\$[0-9A-Fa-f]{2,4}", line) for line in blocks[name]),
             "gate_c": cover.get(name, (0, 0))[0] > 0 and cover[name][0] == cover[name][1],
             "gate_a5": int(row5.get("identical", 0)) > 0 and int(row5.get("divergent", 1)) == 0,
-            "gate_a7": int(a7.get(name, {}).get("swapped", 0)) > 0,
+            "gate_a7": a7_passed(a7.get(name, {})),
         }
         rows.append({"routine": name, "where": r["tag"], "bytes": n,
                      "tier": tier_of(gates, name in blocks), **{g: int(v) for g, v in gates.items()},
@@ -212,7 +218,7 @@ def main():
                 re.search(r"(?<!#)\$[0-9A-Fa-f]{2,4}", line) for line in blocks[name]),
             "gate_c": cover.get(name, (0, 0))[0] > 0 and cover[name][0] == cover[name][1],
             "gate_a5": int(row5.get("identical", 0)) > 0 and int(row5.get("divergent", 1)) == 0,
-            "gate_a7": int(a7.get(name, {}).get("swapped", 0)) > 0,
+            "gate_a7": a7_passed(a7.get(name, {})),
         }
         for gate in gates:
             if (name, gate) in waived:

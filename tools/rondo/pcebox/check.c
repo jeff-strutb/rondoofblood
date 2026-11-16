@@ -23,6 +23,8 @@
  * and at the end the machine is charged the rest of what the original took. Every
  * frame must hash the same. The stack below S is not hashed.
  */
+#define _GNU_SOURCE
+#include <dlfcn.h>
 #include <setjmp.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -780,6 +782,58 @@ static int kept_by_name(int index)
     return 0;
 }
 
+/*
+ * A7's evidence for a routine whose C runs only inside another's: the decompiled C is built with
+ * -finstrument-functions, and while a swapped call's C runs, every routine whose own C function
+ * is entered is counted. A routine's C function has the routine's name; the address is matched
+ * to it once through the executable's symbols and cached.
+ */
+static int in_swap = -1;
+static uint64_t *ran_inside;
+static struct { void *fn; int tag; } fn_cache[1 << 14];
+
+static int tag_of_fn(void *fn)
+{
+    unsigned h = (unsigned)(((uintptr_t)fn >> 4) & ((1u << 14) - 1));
+
+    while (fn_cache[h].fn && fn_cache[h].fn != fn)
+        h = (h + 1) & ((1u << 14) - 1);
+    if (!fn_cache[h].fn) {
+        Dl_info info;
+
+        fn_cache[h].fn = fn;
+        fn_cache[h].tag = -1;
+        if (dladdr(fn, &info) && info.dli_sname)
+            for (unsigned i = 0; i < rondo_tag_count; i++)
+                if (!strcmp(rondo_tags[i].name, info.dli_sname)) {
+                    fn_cache[h].tag = (int)i;
+                    break;
+                }
+    }
+    return fn_cache[h].tag;
+}
+
+void __cyg_profile_func_enter(void *fn, void *site)
+{
+    int tag;
+
+    (void)site;
+    if (in_swap < 0)
+        return;
+    tag = tag_of_fn(fn);
+    if (tag >= 0 && tag != in_swap) {
+        if (!ran_inside)
+            ran_inside = calloc(rondo_tag_count, sizeof *ran_inside);
+        ran_inside[tag]++;
+    }
+}
+
+void __cyg_profile_func_exit(void *fn, void *site)
+{
+    (void)fn;
+    (void)site;
+}
+
 static int tag_resident(const Tag *t)
 {
     /* A card routine is in ROM: it is resident when its bank is mapped at its address. */
@@ -953,7 +1007,9 @@ int check_exec(uint32_t pc)
                 fprintf(stderr, "SWAP %s record %llu hw_first %llu delta %u start %u\n", t->name,
                         (unsigned long long)(c - recs), (unsigned long long)c->hw_first, c->delta,
                         c->start_ts);
+            in_swap = index;
             rondo_tags[index].abi();
+            in_swap = -1;
             owed = (int32_t)c->delta - (int32_t)(chk_ts() - ts0);
             recent[(recent_n - 1) % RECENT].owed = owed;
             recent[(recent_n - 1) % RECENT].used = (int)(chk_ts() - ts0);
@@ -1152,6 +1208,9 @@ void check_finish(void)
         for (unsigned i = 0; i < rondo_tag_count; i++)
             if (stats[i].calls)
                 printf("SWAPPED %s %llu\n", rondo_tags[i].name, (unsigned long long)stats[i].calls);
+        for (unsigned i = 0; ran_inside && i < rondo_tag_count; i++)
+            if (ran_inside[i])
+                printf("RAN %s %llu\n", rondo_tags[i].name, (unsigned long long)ran_inside[i]);
         printf("hybrid: %llu swapped, frames compared %llu, identical %lu, first differing %ld\n",
                (unsigned long long)swapped, (unsigned long long)(nf / 2), hy_frames_ok,
                hy_first_bad == (unsigned long)-1 ? -1L : (long)hy_first_bad);

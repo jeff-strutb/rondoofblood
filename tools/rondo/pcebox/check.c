@@ -736,6 +736,21 @@ static void note_clock_step(void)
     last_ts_seen = now;
 }
 
+/*
+ * RONDO_KEEP=name,name,...: those routines are never swapped by the hybrid, to test whether a
+ * difference comes from them. Off unless set; a run with it set is a diagnostic, not A7.
+ */
+static int kept_by_name(int index)
+{
+    const char *keep = getenv("RONDO_KEEP");
+    size_t n = strlen(rondo_tags[index].name);
+
+    for (const char *at = keep; at && (at = strstr(at, rondo_tags[index].name)) != NULL; at += n)
+        if ((at == keep || at[-1] == ',') && (at[n] == ',' || at[n] == 0))
+            return 1;
+    return 0;
+}
+
 static int tag_resident(const Tag *t)
 {
     /* A card routine is in ROM: it is resident when its bank is mapped at its address. */
@@ -877,9 +892,9 @@ int check_exec(uint32_t pc)
             kept_interrupt++;
         if (c->flags & (REC_CROSSED | REC_UNCLOSED))
             kept_crossed++;
-        if (!rondo_tags[index].swappable)
+        if (!rondo_tags[index].swappable || kept_by_name(index))
             kept_original++;
-        if (c->flags || !rondo_tags[index].swappable) {
+        if (c->flags || !rondo_tags[index].swappable || kept_by_name(index)) {
             rec_cursor++;
             return 0;
         }

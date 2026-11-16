@@ -71,3 +71,22 @@ ex_getver:
     ldy a:CardVersionMinor
     rts
 
+
+; @card 00:E13A map_boot_ram
+; WHAT IT DOES: Maps the five CD RAM banks the boot program runs in at $4000-$DFFF.
+; HOW: The bank in CardBootRamBank to MPR2 and the four after it to MPR3 to MPR6.
+; Entry: nothing. Exit: A the last bank mapped, N and Z from it. X, Y, C, V kept. Gives the last
+; bank.
+map_boot_ram:
+    lda a:CardBootRamBank
+    tam #$04
+    inc a
+    tam #$08
+    inc a
+    tam #$10
+    inc a
+    tam #$20
+    inc a
+    tam #$40
+    rts
+

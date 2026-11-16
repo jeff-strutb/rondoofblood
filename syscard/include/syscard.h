@@ -400,6 +400,7 @@ typedef struct {
 } AdPlay;
 
 CardVersion ex_getver(void);
+uint8_t map_boot_ram(void);
 uint8_t ad_reset(void);
 AdPlay ad_play(void);
 

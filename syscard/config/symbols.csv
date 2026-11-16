@@ -102,3 +102,4 @@ FEC3,abs,CardVersionMinor,the card's version after the point: 0
 F4,zp,CardVdcCrHi,the copy of the VDC's control register's high byte
 F5,zp,CardIrqFlags,bit 1 set: ex_vsync returns without waiting
 2243,abs,CardVdcDcr,the copy of the VDC's DMA control register
+FFF5,abs,CardBootRamBank,the first of the five CD RAM banks the boot maps at $4000: $80

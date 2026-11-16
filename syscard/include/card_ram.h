@@ -105,5 +105,6 @@
 #define CardVdcCrHi 0x20F4 /* the copy of the VDC's control register's high byte */
 #define CardIrqFlags 0x20F5 /* bit 1 set: ex_vsync returns without waiting */
 #define CardVdcDcr 0x2243 /* the copy of the VDC's DMA control register */
+#define CardBootRamBank 0xFFF5 /* the first of the five CD RAM banks the boot maps at $4000: $80 */
 
 #endif

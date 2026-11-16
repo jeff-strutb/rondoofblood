@@ -106,3 +106,27 @@ void abi_ex_getver(void)
     cpu.y = version.minor;
     abi_nz(version.minor);
 }
+
+enum { BOOT_RAM_FIRST_MPR = 2, BOOT_RAM_LAST_MPR = 6 };
+
+/*
+ * @card 00:E13A map_boot_ram
+ * WHAT IT DOES: Maps the five CD RAM banks the boot program runs in at $4000-$DFFF.
+ * HOW: The bank in CardBootRamBank to MPR2 and the four after it to MPR3 to MPR6.
+ * Entry: nothing. Exit: A the last bank mapped, N and Z from it. X, Y, C, V kept. Gives the last
+ * bank.
+ */
+uint8_t map_boot_ram(void)
+{
+    uint8_t bank = rd8(CardBootRamBank);
+
+    for (unsigned mpr = BOOT_RAM_FIRST_MPR; mpr <= BOOT_RAM_LAST_MPR; mpr++, bank++)
+        tam((uint8_t)(1u << mpr), bank);
+    return (uint8_t)(bank - 1);
+}
+
+void abi_map_boot_ram(void)
+{
+    cpu.a = map_boot_ram();
+    abi_nz(cpu.a);
+}

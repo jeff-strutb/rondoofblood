@@ -8,8 +8,8 @@
  */
 #include "machine.h"
 #include "ram.h"
-#include "routines.h"
 #include "syscard.h"
+#include "routines.h"
 
 enum {
     AD_STATUS_BUSY_BIT = 0x01, CD_IRQ_HALF_BIT = 0x04, AD_CONTROL_PLAYING_BIT = 0x20,
@@ -100,4 +100,89 @@ void abi_KernelAdpcmLatchWrite(void)
     abi_flag(P_Z, (control & ~AD_CONTROL_LATCH_WRITE) == 0);
     abi_flag(P_N, (control & 0x80) != 0);
     abi_flag(P_V, (control & 0x40) != 0);
+}
+
+/*
+ * @routine 0046:4CE KernelAdpcmPlay
+ * @run 69:5CCE
+ * WHAT IT DOES: Plays ADPCM from the BIOS's arguments: _AX bytes from _BX at rate _DH, once. On
+ * a card past 1.00 that is the card's ad_play; on 1.00 the kernel latches the address and length
+ * and starts the unit itself, unless it is playing or the rate is bad.
+ * HOW: zBiosDl cleared for a single play; CardIsVersionOne; ad_play, or the ADPCM ports through
+ * KernelAdpcmStat and KernelAdpcmLatchWrite.
+ * Entry: zBiosAl to zBiosDh. Exit: the card's, as ad_play after X the major version less one and
+ * Y the minor. 1.00: Y 0; busy, as KernelAdpcmStat; bad rate, A the rate, N and Z from comparing
+ * it with $10, C set, X as KernelAdpcmStat; played, A 0, N and Z clear, C clear, V bit 6 of the
+ * interrupt enables before, X as KernelAdpcmStat.
+ */
+KernelPlay KernelAdpcmPlay(void)
+{
+    KernelPlay play;
+    uint8_t enables;
+
+    wr8(zBiosDl, 0);
+    play.version = CardIsVersionOne();
+    if (play.version.major != 1 || play.version.minor != 0) {
+        play.how = KERNEL_PLAY_CARD;
+        play.card = ad_play();
+        return play;
+    }
+    play.stat = KernelAdpcmStat();
+    play.how = KERNEL_PLAY_BUSY;
+    if (play.stat.playing != 0)
+        return play;
+    play.rate = rd8(zBiosDh);
+    play.how = KERNEL_PLAY_BAD_RATE;
+    if (play.rate >= AD_RATE_LIMIT)
+        return play;
+    wr8(AdpcmRate, play.rate);
+    wr8(AdpcmAddressLo, rd8(zBiosBl));
+    wr8(AdpcmAddressHi, rd8(zBiosBh));
+    KernelAdpcmLatchWrite();
+    wr8(AdpcmAddressLo, rd8(zBiosAl));
+    wr8(AdpcmAddressHi, rd8(zBiosAh));
+    wr8(AdpcmControl, (uint8_t)(rd8(AdpcmControl) | AD_CONTROL_LATCH_LENGTH));
+    wr8(AdpcmControl, (uint8_t)(rd8(AdpcmControl) & ~AD_CONTROL_LATCH_LENGTH));
+    enables = rd8(CdIrqControl);
+    wr8(CdIrqControl, (uint8_t)(enables | CD_IRQ_ADPCM_HALF));
+    wr8(AdpcmControl, AD_CONTROL_PLAY);
+    play.enables = enables;
+    play.how = KERNEL_PLAY_STARTED;
+    return play;
+}
+
+void kernel_play_exit_shim(KernelPlay play)
+{
+    cpu.x = (uint8_t)(play.version.major - 1);
+    cpu.y = play.version.minor;
+    if (play.how == KERNEL_PLAY_CARD) {
+        abi_nz(play.version.major != 1 ? cpu.x : play.version.minor);
+        if (play.version.major == 1)
+            cpu.a = play.version.minor;
+        ad_play_exit_shim(play.card);
+        return;
+    }
+    cpu.x = play.stat.busy;
+    switch (play.how) {
+    case KERNEL_PLAY_BUSY:
+        cpu.a = play.stat.playing;
+        abi_nz(play.stat.playing);
+        break;
+    case KERNEL_PLAY_BAD_RATE:
+        cpu.a = play.rate;
+        abi_nz((uint8_t)(play.rate - AD_RATE_LIMIT));
+        abi_flag(P_C, true);
+        break;
+    default:
+        cpu.a = 0;
+        abi_nz(AD_CONTROL_PLAY);
+        abi_flag(P_C, false);
+        abi_flag(P_V, (play.enables & 0x40) != 0);
+        break;
+    }
+}
+
+void abi_KernelAdpcmPlay(void)
+{
+    kernel_play_exit_shim(KernelAdpcmPlay());
 }

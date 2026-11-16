@@ -664,4 +664,23 @@ Alu StageLoad(Alu r);
 Alu SaveVramToRam(Alu r);
 
 /* The kernel's ADPCM play: src/rondo/audio/adpcm.c. The card's types come from syscard.h. */
+#ifdef SYSCARD_H
+typedef enum { KERNEL_PLAY_CARD, KERNEL_PLAY_BUSY, KERNEL_PLAY_BAD_RATE, KERNEL_PLAY_STARTED } KernelPlayHow;
+
+/* The kernel's play: the card's version, and what the card's ad_play or its own ports did. */
+typedef struct {
+    KernelPlayHow how;
+    CardVersion version;
+    AdPlay card;
+    AdStat stat;
+    uint8_t rate;
+    uint8_t enables;
+} KernelPlay;
+
+CardVersion CardIsVersionOne(void);
+AdStat KernelAdpcmStat(void);
+uint8_t KernelAdpcmLatchWrite(void);
+KernelPlay KernelAdpcmPlay(void);
+void kernel_play_exit_shim(KernelPlay play);
+#endif
 #endif

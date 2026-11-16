@@ -12,6 +12,50 @@ CardIsVersionOne:
 CardIsVersionOne_at0:
     rts
 
+; @routine 0046:4CE KernelAdpcmPlay
+; @run 69:5CCE
+; WHAT IT DOES: Plays ADPCM from the BIOS's arguments: _AX bytes from _BX at rate _DH, once. On
+; a card past 1.00 that is the card's ad_play; on 1.00 the kernel latches the address and length
+; and starts the unit itself, unless it is playing or the rate is bad.
+; HOW: zBiosDl cleared for a single play; CardIsVersionOne; ad_play, or the ADPCM ports through
+; KernelAdpcmStat and KernelAdpcmLatchWrite.
+; Entry: zBiosAl to zBiosDh. Exit: the card's, as ad_play after X the major version less one and
+; Y the minor. 1.00: Y 0; busy, as KernelAdpcmStat; bad rate, A the rate, N and Z from comparing
+; it with $10, C set, X as KernelAdpcmStat; played, A 0, N and Z clear, C clear, V bit 6 of the
+; interrupt enables before, X as KernelAdpcmStat.
+KernelAdpcmPlay:
+    stz z:zBiosDl
+    bsr CardIsVersionOne
+    beq KernelAdpcmPlay_at0
+    jmp BiosAdPlay
+KernelAdpcmPlay_at0:
+    bsr KernelAdpcmStat
+    bne KernelAdpcmPlay_at1
+    lda z:zBiosDh
+    cmp #$10
+    bcs KernelAdpcmPlay_at1
+    sta a:AdpcmRate
+    lda z:zBiosBl
+    sta a:AdpcmAddressLo
+    lda z:zBiosBh
+    sta a:AdpcmAddressHi
+    jsr KernelAdpcmLatchWrite
+    lda z:zBiosAl
+    sta a:AdpcmAddressLo
+    lda z:zBiosAh
+    sta a:AdpcmAddressHi
+    lda #$10
+    tsb a:AdpcmControl
+    lda #$10
+    trb a:AdpcmControl
+    lda #$08
+    tsb a:CdIrqControl
+    lda #$60
+    sta a:AdpcmControl
+    cla
+KernelAdpcmPlay_at1:
+    rts
+
 ; @routine 0046:511 KernelAdpcmStat
 ; @run 69:5D11
 ; WHAT IT DOES: Whether ADPCM is busy, and whether it is playing, from the ports.

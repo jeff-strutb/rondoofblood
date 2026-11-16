@@ -534,6 +534,15 @@ void put_font_byte(uint8_t byte);
 void expand_12dot_glyph(void);
 FontGet ex_getfnt(void);
 
+/* What ex_colorcmd moved: the command, and each set's count of 16-colour palettes. */
+typedef struct {
+    uint8_t command;
+    uint8_t background_sets;
+    uint8_t sprite_sets;
+} ColorCommand;
+
+ColorCommand ex_colorcmd(void);
+
 BackupSum bm_sum_file(void);
 BackupSpan bm_place_span(void);
 BackupMoveWay bm_move_direction(void);

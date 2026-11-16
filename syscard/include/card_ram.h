@@ -112,5 +112,14 @@
 #define CardFontSavedMprs 0x22B8 /* the two MPRs ex_getfnt replaced: MPR3-4 at $22B8 or MPR5-6 at $22BA */
 #define CardFontShift 0x22BD /* the bits of a 12-dot glyph's row being shifted into place */
 #define FontRowStarts 0xF27E /* the index of each JIS row's first glyph in the font: a word each */
+#define CardColorCommand 0x221F /* set for ex_colorcmd: bit 0 reads the palettes back; cleared once done */
+#define CardColorBackground 0x2220 /* the background colours' address and their count in 16-colour sets */
+#define CardColorSprites 0x2223 /* the sprite colours' address and their count in 16-colour sets */
+#define CardBlockStub 0x2286 /* a block move ex_colorcmd writes in RAM and calls: opcode then source then destination then length then RTS */
+#define VceAddressLo 0x0402 /* the VCE's colour address */
+#define VceAddressHi 0x0403 /* the VCE's colour address */
+#define VceDataLo 0x0404 /* the VCE's colour data port */
+#define VceDataHi 0x0405 /* the VCE's colour data port */
+#define ColorReadStub 0xE5D7 /* the first three bytes of the stub that reads the palettes: TAI from the colour data port */
 
 #endif

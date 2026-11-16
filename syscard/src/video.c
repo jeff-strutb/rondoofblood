@@ -744,3 +744,96 @@ void abi_load_font(void)
     abi_flag(P_C, false);
     abi_flag(P_V, false);
 }
+
+enum {
+    COLOR_READ_BACK = 0x01, COLOR_SET_BYTES_SHIFT = 5, SPRITE_PALETTE_HIGH = 0x01,
+    STUB_TIA = 0xE3, STUB_RTS = 0x60, STUB_SOURCE = 1, STUB_DESTINATION = 3, STUB_LENGTH = 5,
+    STUB_RETURN = 7, COLOR_STUB_HEAD = 3
+};
+
+static void put_stub_word(unsigned at, uint16_t value)
+{
+    wr8((uint16_t)(CardBlockStub + at), (uint8_t)value);
+    wr8((uint16_t)(CardBlockStub + at + 1), (uint8_t)(value >> 8));
+}
+
+static uint16_t word_at(uint16_t at)
+{
+    return (uint16_t)(rd8(at) | (rd8((uint16_t)(at + 1)) << 8));
+}
+
+/* One set of palettes, to the VCE or back: the length into the stub, the VCE's address, the move. */
+static void move_colors(uint16_t set, uint8_t palette_high, bool read_back)
+{
+    uint16_t bytes = (uint16_t)(rd8((uint16_t)(set + 2)) << COLOR_SET_BYTES_SHIFT);
+    uint16_t memory = word_at(set);
+
+    put_stub_word(STUB_LENGTH, bytes);
+    put_stub_word(read_back ? STUB_DESTINATION : STUB_SOURCE, memory);
+    wr8(VceAddressLo, 0);
+    wr8(VceAddressHi, palette_high);
+    for (uint16_t i = 0; i < bytes; i++) {
+        uint16_t port = (i & 1) ? VceDataHi : VceDataLo;
+
+        if (read_back)
+            wr8((uint16_t)(memory + i), rd8(port));
+        else
+            wr8(port, rd8((uint16_t)(memory + i)));
+    }
+}
+
+/*
+ * @card 00:E509 ex_colorcmd
+ * WHAT IT DOES: Does what CardColorCommand asks of the palettes, if anything: writes the
+ * background and sprite colours to the VCE, or with bit 0 reads them back into memory.
+ * HOW: Writes a block move in RAM at CardBlockStub (TIA to the colour data port, or TAI from it)
+ * and runs it once for each set whose count is not zero: the background's at colour 0, the
+ * sprites' at colour $100, 32 bytes a 16-colour palette. The C makes the moves itself. Then it
+ * clears the command.
+ * Entry: CardColorCommand, CardColorBackground, CardColorSprites. Exit, no command: A 0, N 0, Z 1.
+ * Otherwise, after the last set moved: A the low byte of its length, C 0, N and Z from its high
+ * byte; after a set skipped: A 0, N 0, Z 1, C as it was. X, Y, V kept.
+ */
+ColorCommand ex_colorcmd(void)
+{
+    ColorCommand done;
+    bool read_back;
+
+    done.command = rd8(CardColorCommand);
+    done.background_sets = rd8((uint16_t)(CardColorBackground + 2));
+    done.sprite_sets = rd8((uint16_t)(CardColorSprites + 2));
+    if (done.command == 0)
+        return done;
+    read_back = (done.command & COLOR_READ_BACK) != 0;
+    if (read_back) {
+        for (unsigned i = 0; i < COLOR_STUB_HEAD; i++)
+            wr8((uint16_t)(CardBlockStub + i), rd8((uint16_t)(ColorReadStub + i)));
+    } else {
+        wr8(CardBlockStub, STUB_TIA);
+        put_stub_word(STUB_DESTINATION, VceDataLo);
+    }
+    wr8((uint16_t)(CardBlockStub + STUB_RETURN), STUB_RTS);
+    if (done.background_sets != 0)
+        move_colors(CardColorBackground, 0, read_back);
+    if (done.sprite_sets != 0)
+        move_colors(CardColorSprites, SPRITE_PALETTE_HIGH, read_back);
+    wr8(CardColorCommand, 0);
+    return done;
+}
+
+void abi_ex_colorcmd(void)
+{
+    ColorCommand done = ex_colorcmd();
+    uint8_t last = done.sprite_sets;
+
+    if (done.command == 0 || last == 0) {
+        cpu.a = 0;
+        abi_nz(0);
+        if (done.command != 0 && done.background_sets != 0)
+            abi_flag(P_C, false);
+        return;
+    }
+    cpu.a = (uint8_t)(last << COLOR_SET_BYTES_SHIFT);
+    abi_nz((uint8_t)(last >> (8 - COLOR_SET_BYTES_SHIFT)));
+    abi_flag(P_C, false);
+}

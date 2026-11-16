@@ -109,3 +109,12 @@ E7,zp,CardResetMark,set to $80 at boot and before a soft reset
 22B8,abs,CardFontSavedMprs,the two MPRs ex_getfnt replaced: MPR3-4 at $22B8 or MPR5-6 at $22BA
 22BD,abs,CardFontShift,the bits of a 12-dot glyph's row being shifted into place
 F27E,abs,FontRowStarts,the index of each JIS row's first glyph in the font: a word each
+221F,abs,CardColorCommand,set for ex_colorcmd: bit 0 reads the palettes back; cleared once done
+2220,abs,CardColorBackground,the background colours' address and their count in 16-colour sets
+2223,abs,CardColorSprites,the sprite colours' address and their count in 16-colour sets
+2286,abs,CardBlockStub,a block move ex_colorcmd writes in RAM and calls: opcode then source then destination then length then RTS
+0402,abs,VceAddressLo,the VCE's colour address
+0403,abs,VceAddressHi,the VCE's colour address
+0404,abs,VceDataLo,the VCE's colour data port
+0405,abs,VceDataHi,the VCE's colour data port
+E5D7,abs,ColorReadStub,the first three bytes of the stub that reads the palettes: TAI from the colour data port

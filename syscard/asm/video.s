@@ -562,3 +562,105 @@ load_font_at0:
     tam #$10
     rts
 
+
+; @card 00:E509 ex_colorcmd
+; WHAT IT DOES: Does what CardColorCommand asks of the palettes, if anything: writes the
+; background and sprite colours to the VCE, or with bit 0 reads them back into memory.
+; HOW: Writes a block move in RAM at CardBlockStub (TIA to the colour data port, or TAI from it)
+; and runs it once for each set whose count is not zero: the background's at colour 0, the
+; sprites' at colour $100, 32 bytes a 16-colour palette. The C makes the moves itself. Then it
+; clears the command.
+; Entry: CardColorCommand, CardColorBackground, CardColorSprites. Exit, no command: A 0, N 0, Z 1.
+; Otherwise, after the last set moved: A the low byte of its length, C 0, N and Z from its high
+; byte; after a set skipped: A 0, N 0, Z 1, C as it was. X, Y, V kept.
+ex_colorcmd:
+    lda a:CardColorCommand
+    bne ex_colorcmd_at0
+    rts
+ex_colorcmd_at0:
+    and #$01
+    beq ex_colorcmd_at1
+    bne ex_colorcmd_at2
+ex_colorcmd_at1:
+    lda #$E3
+    sta a:CardBlockStub
+    lda #$04
+    sta a:CardBlockStub+3
+    sta a:CardBlockStub+4
+    lda #$60
+    sta a:CardBlockStub+7
+    lda a:CardColorBackground+2
+    beq ex_colorcmd_at3
+    stz a:CardBlockStub+6
+    asl a
+    asl a
+    asl a
+    asl a
+    rol a:CardBlockStub+6
+    asl a
+    rol a:CardBlockStub+6
+    sta a:CardBlockStub+5
+    tii CardColorBackground,CardBlockStub+1,2
+    stz a:VceAddressLo
+    stz a:VceAddressHi
+    jsr CardBlockStub
+ex_colorcmd_at3:
+    lda a:CardColorSprites+2
+    beq ex_colorcmd_at4
+    stz a:CardBlockStub+6
+    asl a
+    asl a
+    asl a
+    asl a
+    rol a:CardBlockStub+6
+    asl a
+    rol a:CardBlockStub+6
+    sta a:CardBlockStub+5
+    tii CardColorSprites,CardBlockStub+1,2
+    stz a:VceAddressLo
+    lda #$01
+    sta a:VceAddressHi
+    jsr CardBlockStub
+ex_colorcmd_at4:
+    stz a:CardColorCommand
+    rts
+ex_colorcmd_at2:
+    tii ColorReadStub,CardBlockStub,3
+    lda #$60
+    sta a:CardBlockStub+7
+    lda a:CardColorBackground+2
+    beq ex_colorcmd_at5
+    stz a:CardBlockStub+6
+    asl a
+    asl a
+    asl a
+    asl a
+    rol a:CardBlockStub+6
+    asl a
+    rol a:CardBlockStub+6
+    sta a:CardBlockStub+5
+    tii CardColorBackground,CardBlockStub+3,2
+    stz a:VceAddressLo
+    stz a:VceAddressHi
+    jsr CardBlockStub
+ex_colorcmd_at5:
+    lda a:CardColorSprites+2
+    beq ex_colorcmd_at6
+    stz a:CardBlockStub+6
+    asl a
+    asl a
+    asl a
+    asl a
+    rol a:CardBlockStub+6
+    asl a
+    rol a:CardBlockStub+6
+    sta a:CardBlockStub+5
+    tii CardColorSprites,CardBlockStub+3,2
+    stz a:VceAddressLo
+    lda #$01
+    sta a:VceAddressHi
+    jsr CardBlockStub
+ex_colorcmd_at6:
+    stz a:CardColorCommand
+    rts
+

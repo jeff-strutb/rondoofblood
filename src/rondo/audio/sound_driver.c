@@ -746,72 +746,72 @@ void abi_SoundRampStep(void)
 }
 
 /*
- * @routine 004E:245 SoundApproachStep
+ * @routine 004E:245 SoundTempoSlideStep
  * @run 75:8A45
- * WHAT IT DOES: Moves a channel's approaching value toward its target by its step, as 8.8, and
- * ends the approach when it gets there.
- * HOW: SoundApproachBy added to or taken from SoundApproachLo, carrying into SoundApproach;
- * SoundApproachTarget.
+ * WHAT IT DOES: Moves a channel's tempo toward its target by its step, as 8.8, and ends the slide
+ * when it gets there.
+ * HOW: SoundTempoSlideBy added to or taken from SoundTempoLo, carrying into SoundTempo;
+ * SoundTempoTarget.
  * Entry: X channel. Exit: X and Y kept. No step, A 0, Z set, N clear. There, A the target, Z and
  * C set, N clear. Moved, A the fraction, C and V from its add or subtract, N and Z from it, or
  * from the value when that carried into it.
  */
-Approach SoundApproachStep(uint8_t channel)
+TempoSlide SoundTempoSlideStep(uint8_t channel)
 {
-    Approach approach = { APPROACH_IDLE, 0, 0, 0, 0, false };
+    TempoSlide approach = { TEMPO_SLIDE_IDLE, 0, 0, 0, 0, false };
     unsigned sum;
 
-    approach.step = rd8((uint16_t)(SoundApproachBy + channel));
+    approach.step = rd8((uint16_t)(SoundTempoSlideBy + channel));
     if (approach.step == 0)
         return approach;
-    approach.target = rd8((uint16_t)(SoundApproachTarget + channel));
-    approach.value = rd8((uint16_t)(SoundApproach + channel));
+    approach.target = rd8((uint16_t)(SoundTempoTarget + channel));
+    approach.value = rd8((uint16_t)(SoundTempo + channel));
     if (approach.target == approach.value) {
-        wr8((uint16_t)(SoundApproachBy + channel), 0);
-        approach.how = APPROACH_THERE;
+        wr8((uint16_t)(SoundTempoSlideBy + channel), 0);
+        approach.how = TEMPO_SLIDE_THERE;
         return approach;
     }
-    approach.before = rd8((uint16_t)(SoundApproachLo + channel));
-    approach.step = rd8((uint16_t)(SoundApproachBy + channel));
+    approach.before = rd8((uint16_t)(SoundTempoLo + channel));
+    approach.step = rd8((uint16_t)(SoundTempoSlideBy + channel));
     if (approach.target > approach.value) {
         sum = (unsigned)approach.before + approach.step;
-        approach.how = APPROACH_UP;
+        approach.how = TEMPO_SLIDE_UP;
         approach.carried = sum > 0xFF;
     } else {
         sum = (unsigned)approach.before - approach.step;
-        approach.how = APPROACH_DOWN;
+        approach.how = TEMPO_SLIDE_DOWN;
         approach.carried = approach.before < approach.step;
     }
-    wr8((uint16_t)(SoundApproachLo + channel), (uint8_t)sum);
+    wr8((uint16_t)(SoundTempoLo + channel), (uint8_t)sum);
     if (approach.carried) {
-        approach.value = (uint8_t)(rd8((uint16_t)(SoundApproach + channel)) +
-                                   (approach.how == APPROACH_UP ? 1 : -1));
-        wr8((uint16_t)(SoundApproach + channel), approach.value);
+        approach.value = (uint8_t)(rd8((uint16_t)(SoundTempo + channel)) +
+                                   (approach.how == TEMPO_SLIDE_UP ? 1 : -1));
+        wr8((uint16_t)(SoundTempo + channel), approach.value);
     }
     return approach;
 }
 
-void abi_SoundApproachStep(void)
+void abi_SoundTempoSlideStep(void)
 {
-    Approach approach = SoundApproachStep(cpu.x);
+    TempoSlide approach = SoundTempoSlideStep(cpu.x);
     uint8_t fraction;
 
     switch (approach.how) {
-    case APPROACH_IDLE:
+    case TEMPO_SLIDE_IDLE:
         cpu.a = 0;
         abi_nz(0);
         return;
-    case APPROACH_THERE:
+    case TEMPO_SLIDE_THERE:
         cpu.a = approach.target;
         abi_nz(0);
         abi_flag(P_C, true);
         return;
-    case APPROACH_UP:
+    case TEMPO_SLIDE_UP:
         fraction = (uint8_t)(approach.before + approach.step);
         abi_flag(P_C, approach.carried);
         abi_flag(P_V, (~(approach.before ^ approach.step) & (approach.before ^ fraction) & 0x80) != 0);
         break;
-    case APPROACH_DOWN:
+    case TEMPO_SLIDE_DOWN:
         fraction = (uint8_t)(approach.before - approach.step);
         abi_flag(P_C, !approach.carried);
         abi_flag(P_V, ((approach.before ^ approach.step) & (approach.before ^ fraction) & 0x80) != 0);
@@ -1516,9 +1516,10 @@ void abi_SoundPitchTick(void)
  * @routine 004E:159 SoundPitchTickPlain
  * @run 75:8959
  * WHAT IT DOES: A frame of a channel's pitch, the plain way: the vibrato at its depth with no
- * growing and no counting of its wait; the pitch; the glide's step shifted down by the channel's
- * shift and added, or taken off when it goes down; the modulation; then the PSG frequency.
- * HOW: The shift is a bit in SoundGlideShift: one place for bit 7, two for bit 6, and so on.
+ * growing and no counting of its wait; the pitch; the glide's step scaled by the tempo's phase and
+ * added, or taken off when it goes down; the modulation; then the PSG frequency.
+ * HOW: The step is shifted down one place for each bit of SoundTempoPhase above its highest set bit,
+ * and one more: a power of two near the share of the tick gone.
  * Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note, N and Z from
  * the note, and C and V from the last add or subtract where it keeps them.
  */
@@ -1535,7 +1536,7 @@ PitchTick SoundPitchTickPlain(uint8_t channel)
         uint16_t step = (uint16_t)(rd8((uint16_t)(SoundGlideStepLo + channel)) |
                                    (rd8((uint16_t)(SoundGlideStepHi + channel)) << 8));
         bool down = (step & 0x8000) != 0;
-        uint8_t shift = rd8((uint16_t)(SoundGlideShift + channel));
+        uint8_t shift = rd8((uint16_t)(SoundTempoPhase + channel));
         Sum low;
 
         count_change();
@@ -2259,39 +2260,39 @@ void abi_SoundCommandLoopBEnd(void)
 }
 
 /*
- * @routine 004E:45B SoundCommandApproachFrom
+ * @routine 004E:45B SoundCommandTempo
  * @run 75:8C5B
- * WHAT IT DOES: Command $EA: where the channel's approaching value starts.
- * HOW: SoundApproach.
+ * WHAT IT DOES: Command $EA: the channel's tempo.
+ * HOW: SoundTempo.
  * Entry: X channel. Exit: A the value, N and Z from it. X, Y, C and V kept.
  */
-uint8_t SoundCommandApproachFrom(uint8_t channel)
+uint8_t SoundCommandTempo(uint8_t channel)
 {
-    return set_from(SoundApproach, channel, 0);
+    return set_from(SoundTempo, channel, 0);
 }
 
-void abi_SoundCommandApproachFrom(void)
+void abi_SoundCommandTempo(void)
 {
-    abi_exit_loaded(SoundCommandApproachFrom(cpu.x));
+    abi_exit_loaded(SoundCommandTempo(cpu.x));
 }
 
 /*
- * @routine 004E:462 SoundCommandApproach
+ * @routine 004E:462 SoundCommandTempoSlide
  * @run 75:8C62
- * WHAT IT DOES: Command $EB: an approach by a step to a target, from no fraction.
- * HOW: SoundApproachBy, SoundApproachLo cleared, SoundApproachTarget.
+ * WHAT IT DOES: Command $EB: a tempo slide by a step to a target tempo, from no fraction.
+ * HOW: SoundTempoSlideBy, SoundTempoLo cleared, SoundTempoTarget.
  * Entry: X channel. Exit: A the target, N and Z from it. X, Y, C and V kept.
  */
-uint8_t SoundCommandApproach(uint8_t channel)
+uint8_t SoundCommandTempoSlide(uint8_t channel)
 {
-    set_from(SoundApproachBy, channel, 0);
-    wr8((uint16_t)(SoundApproachLo + channel), 0);
-    return set_from(SoundApproachTarget, channel, 1);
+    set_from(SoundTempoSlideBy, channel, 0);
+    wr8((uint16_t)(SoundTempoLo + channel), 0);
+    return set_from(SoundTempoTarget, channel, 1);
 }
 
-void abi_SoundCommandApproach(void)
+void abi_SoundCommandTempoSlide(void)
 {
-    abi_exit_loaded(SoundCommandApproach(cpu.x));
+    abi_exit_loaded(SoundCommandTempoSlide(cpu.x));
 }
 
 /*

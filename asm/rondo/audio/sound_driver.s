@@ -147,40 +147,40 @@ SoundRampStep:
 SoundRampStep_at0:
     rts
 
-; @routine 004E:245 SoundApproachStep
+; @routine 004E:245 SoundTempoSlideStep
 ; @run 75:8A45
-; WHAT IT DOES: Moves a channel's approaching value toward its target by its step, as 8.8, and
-; ends the approach when it gets there.
-; HOW: SoundApproachBy added to or taken from SoundApproachLo, carrying into SoundApproach;
-; SoundApproachTarget.
+; WHAT IT DOES: Moves a channel's tempo toward its target by its step, as 8.8, and ends the slide
+; when it gets there.
+; HOW: SoundTempoSlideBy added to or taken from SoundTempoLo, carrying into SoundTempo;
+; SoundTempoTarget.
 ; Entry: X channel. Exit: X and Y kept. No step, A 0, Z set, N clear. There, A the target, Z and
 ; C set, N clear. Moved, A the fraction, C and V from its add or subtract, N and Z from it, or
 ; from the value when that carried into it.
-SoundApproachStep:
-    lda a:SoundApproachBy,x
-    beq SoundApproachStep_at0
-    lda a:SoundApproachTarget,x
-    cmp a:SoundApproach,x
-    bne SoundApproachStep_at1
-    stz a:SoundApproachBy,x
-    bra SoundApproachStep_at0
-SoundApproachStep_at1:
-    bcc SoundApproachStep_at2
-    lda a:SoundApproachLo,x
+SoundTempoSlideStep:
+    lda a:SoundTempoSlideBy,x
+    beq SoundTempoSlideStep_at0
+    lda a:SoundTempoTarget,x
+    cmp a:SoundTempo,x
+    bne SoundTempoSlideStep_at1
+    stz a:SoundTempoSlideBy,x
+    bra SoundTempoSlideStep_at0
+SoundTempoSlideStep_at1:
+    bcc SoundTempoSlideStep_at2
+    lda a:SoundTempoLo,x
     clc
-    adc a:SoundApproachBy,x
-    sta a:SoundApproachLo,x
-    bcc SoundApproachStep_at0
-    inc a:SoundApproach,x
-    bra SoundApproachStep_at0
-SoundApproachStep_at2:
-    lda a:SoundApproachLo,x
+    adc a:SoundTempoSlideBy,x
+    sta a:SoundTempoLo,x
+    bcc SoundTempoSlideStep_at0
+    inc a:SoundTempo,x
+    bra SoundTempoSlideStep_at0
+SoundTempoSlideStep_at2:
+    lda a:SoundTempoLo,x
     sec
-    sbc a:SoundApproachBy,x
-    sta a:SoundApproachLo,x
-    bcs SoundApproachStep_at0
-    dec a:SoundApproach,x
-SoundApproachStep_at0:
+    sbc a:SoundTempoSlideBy,x
+    sta a:SoundTempoLo,x
+    bcs SoundTempoSlideStep_at0
+    dec a:SoundTempo,x
+SoundTempoSlideStep_at0:
     rts
 
 ; @routine 004E:310 SoundSetPan
@@ -997,9 +997,10 @@ SoundPitchTick_at7:
 ; @routine 004E:159 SoundPitchTickPlain
 ; @run 75:8959
 ; WHAT IT DOES: A frame of a channel's pitch, the plain way: the vibrato at its depth with no
-; growing and no counting of its wait; the pitch; the glide's step shifted down by the channel's
-; shift and added, or taken off when it goes down; the modulation; then the PSG frequency.
-; HOW: The shift is a bit in SoundGlideShift: one place for bit 7, two for bit 6, and so on.
+; growing and no counting of its wait; the pitch; the glide's step scaled by the tempo's phase and
+; added, or taken off when it goes down; the modulation; then the PSG frequency.
+; HOW: The step is shifted down one place for each bit of SoundTempoPhase above its highest set bit,
+; and one more: a power of two near the share of the tick gone.
 ; Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note, N and Z from
 ; the note, and C and V from the last add or subtract where it keeps them.
 SoundPitchTickPlain:
@@ -1036,7 +1037,7 @@ SoundPitchTickPlain_at0:
     lda a:SoundGlideStepHi,x
     sta z:zSoundStepHi
     bmi SoundPitchTickPlain_at2
-    lda a:SoundGlideShift,x
+    lda a:SoundTempoPhase,x
 SoundPitchTickPlain_at3:
     lsr z:zSoundStepHi
     ror z:zSoundFine
@@ -1058,7 +1059,7 @@ SoundPitchTickPlain_at2:
     cla
     sbc z:zSoundStepHi
     sta z:zSoundStepHi
-    lda a:SoundGlideShift,x
+    lda a:SoundTempoPhase,x
 SoundPitchTickPlain_at4:
     lsr z:zSoundStepHi
     ror z:zSoundFine
@@ -1532,27 +1533,27 @@ SoundCommandLoopBEnd_at1:
 SoundCommandLoopBEnd_at4:
     rts
 
-; @routine 004E:45B SoundCommandApproachFrom
+; @routine 004E:45B SoundCommandTempo
 ; @run 75:8C5B
-; WHAT IT DOES: Command $EA: where the channel's approaching value starts.
-; HOW: SoundApproach.
+; WHAT IT DOES: Command $EA: the channel's tempo.
+; HOW: SoundTempo.
 ; Entry: X channel. Exit: A the value, N and Z from it. X, Y, C and V kept.
-SoundCommandApproachFrom:
+SoundCommandTempo:
     lda a:SoundCommandArgs
-    sta a:SoundApproach,x
+    sta a:SoundTempo,x
     rts
 
-; @routine 004E:462 SoundCommandApproach
+; @routine 004E:462 SoundCommandTempoSlide
 ; @run 75:8C62
-; WHAT IT DOES: Command $EB: an approach by a step to a target, from no fraction.
-; HOW: SoundApproachBy, SoundApproachLo cleared, SoundApproachTarget.
+; WHAT IT DOES: Command $EB: a tempo slide by a step to a target tempo, from no fraction.
+; HOW: SoundTempoSlideBy, SoundTempoLo cleared, SoundTempoTarget.
 ; Entry: X channel. Exit: A the target, N and Z from it. X, Y, C and V kept.
-SoundCommandApproach:
+SoundCommandTempoSlide:
     lda a:SoundCommandArgs
-    sta a:SoundApproachBy,x
-    stz a:SoundApproachLo,x
+    sta a:SoundTempoSlideBy,x
+    stz a:SoundTempoLo,x
     lda a:SoundCommandArgs+1
-    sta a:SoundApproachTarget,x
+    sta a:SoundTempoTarget,x
     rts
 
 ; @routine 004E:472 SoundCommandTranspose

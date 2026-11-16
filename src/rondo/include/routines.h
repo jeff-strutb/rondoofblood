@@ -258,19 +258,19 @@ typedef struct { RampHow how; uint8_t value; uint8_t from; uint8_t slide; uint8_
 Ramp SoundRampStep(uint8_t channel);
 void ramp_exit_shim(Ramp ramp);
 
-typedef enum { APPROACH_IDLE, APPROACH_THERE, APPROACH_UP, APPROACH_DOWN } ApproachHow;
+typedef enum { TEMPO_SLIDE_IDLE, TEMPO_SLIDE_THERE, TEMPO_SLIDE_UP, TEMPO_SLIDE_DOWN } TempoSlideHow;
 
-/* An approach step: which way, the step, the fraction before, and the value after any carry. */
+/* A tempo slide step: which way, the step, the fraction before, and the tempo after any carry. */
 typedef struct {
-    ApproachHow how;
+    TempoSlideHow how;
     uint8_t step;
     uint8_t target;
     uint8_t value;
     uint8_t before;
     bool carried;
-} Approach;
+} TempoSlide;
 
-Approach SoundApproachStep(uint8_t channel);
+TempoSlide SoundTempoSlideStep(uint8_t channel);
 
 typedef enum {
     ENVELOPE_OFF, ENVELOPE_START, ENVELOPE_ATTACK, ENVELOPE_DECAY, ENVELOPE_RELEASE,
@@ -415,8 +415,8 @@ uint8_t SoundCommandLoopA(uint8_t channel);
 LoopEnd SoundCommandLoopAEnd(uint8_t channel);
 uint8_t SoundCommandLoopB(uint8_t channel);
 LoopEnd SoundCommandLoopBEnd(uint8_t channel);
-uint8_t SoundCommandApproachFrom(uint8_t channel);
-uint8_t SoundCommandApproach(uint8_t channel);
+uint8_t SoundCommandTempo(uint8_t channel);
+uint8_t SoundCommandTempoSlide(uint8_t channel);
 uint8_t SoundCommandTranspose(uint8_t channel);
 uint8_t SoundCommandTremolo(uint8_t channel);
 uint8_t SoundCommandVolume(uint8_t channel);

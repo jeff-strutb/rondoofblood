@@ -451,10 +451,10 @@
 #define BlockMoveLengthLo 0x22EC /* the RAM block-move stub: length low */
 #define BlockMoveLengthHi 0x22ED /* the RAM block-move stub: length high */
 #define BlockMoveReturn 0x22EE /* the RAM block-move stub: its RTS */
-#define SoundApproachBy 0x2300 /* the sound driver: by channel, the approach's step; 0 none */
-#define SoundApproachLo 0x2308 /* the sound driver: by channel, the approaching value, fraction */
-#define SoundApproachTarget 0x2310 /* the sound driver: by channel, the value approached */
-#define SoundApproach 0x2320 /* the sound driver: by channel, the approaching value */
+#define SoundTempoSlideBy 0x2300 /* the sound driver: by channel, the tempo slide's step; 0 none */
+#define SoundTempoLo 0x2308 /* the sound driver: by channel, the tempo, fraction */
+#define SoundTempoTarget 0x2310 /* the sound driver: by channel, the tempo the slide stops at */
+#define SoundTempo 0x2320 /* the sound driver: by channel, the tempo, added to SoundTempoPhase each frame */
 #define SoundGateTimer 0x2330 /* the sound driver: by channel, frames the note sounds before its release */
 #define SoundChannelDefaultArg 0x2338 /* the sound driver: by channel, the length a note with none given takes */
 #define SoundVolumeBase 0x23F8 /* the sound driver: by channel, the volume before every attenuation */
@@ -491,7 +491,7 @@
 #define SoundChannel25B0 0x25B0 /* the sound driver: by channel; cleared at start */
 #define SoundChannelPriority 0x25F0 /* the sound driver: by channel, the priority of what plays on it */
 #define SoundPeriods 0x8F8E /* the sound driver: PSG periods by note, a word each */
-#define SoundGlideShift 0x2318 /* the sound driver: by channel, a bit whose place says how far the glide step is shifted down */
+#define SoundTempoPhase 0x2318 /* the sound driver: by channel, the tempo summed; a carry out is a tick */
 #define SoundGlideFrames 0x2438 /* the sound driver: by channel, frames of glide left; 0 none */
 #define SoundGlideDelay 0x2440 /* the sound driver: by channel, frames before the glide starts */
 #define SoundPitchFine 0x2448 /* the sound driver: by channel, the pitch, fine part */
@@ -543,5 +543,8 @@
 #define SoundAttackPresets 0x8D31 /* the sound driver: attack rate and level by preset, a pair each */
 #define SoundRatePresets 0x8D51 /* the sound driver: ten rates the decay and the release are picked from */
 #define SoundPaused 0x22E1 /* the sound driver: bit 0 of zp $3B as it last saw it; set, the sound is paused */
+#define SoundFullTempo 0x22E6 /* the sound driver: bit 0 set plays every channel at tempo $FF */
+#define SoundVolumeDefault 0x25C8 /* the sound driver: by channel, the volume a note takes, from commands $70 to $7F */
+#define SoundCommandHandlers 0xB7C2 /* the sound driver: commands $E2 to $FF, each its handler less one, for a return to it */
 
 #endif

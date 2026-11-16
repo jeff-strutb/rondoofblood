@@ -458,10 +458,10 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 22EC,abs,BlockMoveLengthLo,the RAM block-move stub: length low
 22ED,abs,BlockMoveLengthHi,the RAM block-move stub: length high
 22EE,abs,BlockMoveReturn,the RAM block-move stub: its RTS
-2300,abs,SoundApproachBy,the sound driver: by channel, the approach's step; 0 none
-2308,abs,SoundApproachLo,the sound driver: by channel, the approaching value, fraction
-2310,abs,SoundApproachTarget,the sound driver: by channel, the value approached
-2320,abs,SoundApproach,the sound driver: by channel, the approaching value
+2300,abs,SoundTempoSlideBy,the sound driver: by channel, the tempo slide's step; 0 none
+2308,abs,SoundTempoLo,the sound driver: by channel, the tempo, fraction
+2310,abs,SoundTempoTarget,the sound driver: by channel, the tempo the slide stops at
+2320,abs,SoundTempo,the sound driver: by channel, the tempo, added to SoundTempoPhase each frame
 2330,abs,SoundGateTimer,the sound driver: by channel, frames the note sounds before its release
 2338,abs,SoundChannelDefaultArg,the sound driver: by channel, the length a note with none given takes
 23F8,abs,SoundVolumeBase,the sound driver: by channel, the volume before every attenuation
@@ -498,7 +498,7 @@ B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 an
 25B0,abs,SoundChannel25B0,the sound driver: by channel; cleared at start
 25F0,abs,SoundChannelPriority,the sound driver: by channel, the priority of what plays on it
 8F8E,abs,SoundPeriods,the sound driver: PSG periods by note, a word each
-2318,abs,SoundGlideShift,the sound driver: by channel, a bit whose place says how far the glide step is shifted down
+2318,abs,SoundTempoPhase,the sound driver: by channel, the tempo summed; a carry out is a tick
 2438,abs,SoundGlideFrames,the sound driver: by channel, frames of glide left; 0 none
 2440,abs,SoundGlideDelay,the sound driver: by channel, frames before the glide starts
 2448,abs,SoundPitchFine,the sound driver: by channel, the pitch, fine part
@@ -550,3 +550,6 @@ B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 an
 8D31,abs,SoundAttackPresets,the sound driver: attack rate and level by preset, a pair each
 8D51,abs,SoundRatePresets,the sound driver: ten rates the decay and the release are picked from
 22E1,abs,SoundPaused,the sound driver: bit 0 of zp $3B as it last saw it; set, the sound is paused
+22E6,abs,SoundFullTempo,the sound driver: bit 0 set plays every channel at tempo $FF
+25C8,abs,SoundVolumeDefault,the sound driver: by channel, the volume a note takes, from commands $70 to $7F
+B7C2,abs,SoundCommandHandlers,the sound driver: commands $E2 to $FF, each its handler less one, for a return to it

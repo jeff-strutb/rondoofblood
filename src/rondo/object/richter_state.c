@@ -37,6 +37,7 @@ enum {
     FALL_SPEED_HI = 0x03, KNOCK_RISE_LO = 0xC0, KNOCK_RISE_HI = 0xFD, KNOCKED = 0x01,
     START_NEW_RUN = 0, START_HEALTH = 1, START_STAND = 2, START_FIELD94 = 0x10,
     FACING_RIGHT = 0, FACING_LEFT = 1, ANIM_AIR = 0x0A, ANIM_AIR_MOVING = 0x02, AIR_SAME_WAY = 0x80,
+    SOUND_WHIP = 0x03, ITEM_SLOT_A = 5, ITEM_SLOT_B = 8, ITEM_SLOT_C = 11,
     LEAP_LIST = 0x60, LEAP_SCRIPT = 0x01, LEAP_SCRIPT_UNLESS_HELD = 0x0B, LEAP_HIT_KEEPS = 0x20,
     LEAP_RISE_LO = 0x80, LEAP_RISE_HI = 0xFE, ANIM_LEAP = 0x22, LEAP_CHANNEL = 6,
     OBJECT_FIRST_OTHER = 1, OBJECT_END = 0x10, WHIP_KEPT = 1, CRASH_FIRST_STATE = 5, HEALTH_FULL = 0x5C, START_LIVE = 0x01
@@ -88,6 +89,7 @@ void abi_RichterCrouch(void);
 void abi_RichterToFall(void);
 void abi_RichterKnockBack(void);
 void abi_RichterStand(void);
+void abi_RichterAttack(void);
 typedef struct {
     Lift lift;
     bool moving;
@@ -134,7 +136,6 @@ Alu RichterStandStep1(Alu r);
 Alu RichterStandStep2(Alu r);
 Alu RichterStateStand(Alu r);
 Alu RichterStandStep0(Alu r);
-Alu RichterAttack(Alu r);
 Alu RichterLedgeHurtA(Alu r);
 Alu RichterLedgeHurtB(Alu r);
 Alu RichterUpWhipLeft(Alu r);
@@ -1346,7 +1347,7 @@ Alu RichterStandStep0(Alu r)
         return RichterToHurtAir(r);
     r = call_with(RH_B929, r);
     if (r.c)
-        return RichterAttack(r);
+        return call_abi(abi_RichterAttack, r);
     r = call_with(RH_BA41, r);
     if (r.c)
         return call_with(RH_CLIMB_START, r);
@@ -1556,53 +1557,77 @@ void abi_RichterStopX(void)
     RichterStopX();
 }
 
+/* The attack from its animation on: step 1, then the whip with its sound or the item's object. */
+static AttackStart attack_with_animation(uint8_t animation)
+{
+    AttackStart attack;
+
+    attack.animation = RichterSetAnimation(animation);
+    wr8(OBJ_2800, 1);
+    attack.kind = rd8(PlayerByte3BD5);
+    if (attack.kind == 0) {
+        RichterClearWhip();
+        wr8(OBJ_2750 + OBJECT_WHIP, 1);
+        attack.sound = SoundCommand(SOUND_WHIP);
+        return attack;
+    }
+    attack.item = rd8(zField93);
+    attack.tested_b = rd8(OBJ_2750 + ITEM_SLOT_A);
+    attack.slot = ITEM_SLOT_A;
+    if (attack.tested_b != 0) {
+        attack.tested_b = rd8(OBJ_2750 + ITEM_SLOT_B);
+        attack.slot = attack.tested_b == 0 ? ITEM_SLOT_B : ITEM_SLOT_C;
+    }
+    ClearObject(attack.slot);
+    wr8((uint16_t)(OBJ_2750 + attack.slot), attack.item);
+    return attack;
+}
+
 /*
  * @routine 01B9:4CD RichterAttack
  * @run 6D:A4CD
  * WHAT IT DOES: Starts an attack standing: state 0, step 1, the animation by the attack's
  * kind; the whip, with its sound, or the kind's object in a free slot among 5, 8 and $0B.
- * HOW: PlayerByte3BD5 is the kind. zField93 is what goes in the slot.
- * Entry: nothing. Exit: as the path taken left them.
+ * HOW: PlayerByte3BD5 is the kind. zField93 is what goes in the slot. SoundCommand 3 for the whip.
+ * Entry: nothing. Exit: Y and C as RichterSetAnimation. The whip, as SoundCommand with command
+ * 3 and X 3; an item, A the item, X its slot, N, Z and V from testing the last slot looked at.
  */
-Alu RichterAttack(Alu r)
+AttackStart RichterAttack(void)
 {
-    uint8_t byte;
-
     RichterPadOverridesOff();
     wr8(PlayerByte3BE1, 0);
-    r = call_with(RH_B7CA, r);
-    alu_put(&r, OBJ_27A8, STATE_STAND);
+    RichterFaceByPad();
+    wr8(OBJ_27A8, STATE_STAND);
     RichterStopMoving();
-    cpu.x = rd8(PlayerByte3BD5);
-    byte = rd8((uint16_t)(LandAnimations + cpu.x));
-    r = animation(r, byte);
-    alu_put(&r, OBJ_2800, 1);
-    byte = rd8(PlayerByte3BD5);
-    alu_load(&r, byte);
-    if (byte == 0) {
-        r = call_abi(abi_RichterClearWhip, r);
-        alu_put(&r, (uint16_t)(OBJ_2750 + 3), 1);
-        alu_load(&r, 3);
-        return call_abi(abi_SoundCommand, r);
+    return attack_with_animation(rd8((uint16_t)(LandAnimations + rd8(PlayerByte3BD5))));
+}
+
+/* The whip's sound's exit after X 3; or the item in A and X its slot, N, Z and V from the last test. */
+void attack_exit_shim(AttackStart attack)
+{
+    animation_exit_shim(attack.animation);
+    if (attack.kind == 0) {
+        cpu.x = OBJECT_WHIP;
+        cpu.a = SOUND_WHIP;
+        sound_command_exit_shim(SOUND_WHIP, attack.sound);
+        return;
     }
-    byte = rd8(zField93);
-    alu_load(&r, byte);
-    alu_tst(&r, 0xFF, rd8((uint16_t)(OBJ_2750 + 5)));
-    if (r.nz == 0) {
-        cpu.x = 5;
+    cpu.a = attack.item;
+    cpu.x = attack.slot;
+    if (attack.slot == ITEM_SLOT_C) {
+        abi_flag(P_Z, false);
+        abi_flag(P_N, (attack.tested_b & 0x80) != 0);
+        abi_flag(P_V, (attack.tested_b & 0x40) != 0);
     } else {
-        alu_tst(&r, 0xFF, rd8((uint16_t)(OBJ_2750 + 8)));
-        cpu.x = r.nz == 0 ? 8 : 0x0B;
+        abi_flag(P_Z, true);
+        abi_flag(P_N, false);
+        abi_flag(P_V, false);
     }
-    alu_nz(&r, cpu.x);
-    r = call_abi(abi_ClearObject, r);
-    wr8((uint16_t)(OBJ_2750 + cpu.x), r.a);
-    return r;
 }
 
 void abi_RichterAttack(void)
 {
-    abi_alu(RichterAttack(alu_from_cpu()));
+    attack_exit_shim(RichterAttack());
 }
 
 /*
@@ -2251,7 +2276,7 @@ Alu RichterStateWalk(Alu r)
         return RichterToHurtAir(r);
     r = call_with(RH_B929, r);
     if (r.c)
-        return RichterAttack(r);
+        return call_abi(abi_RichterAttack, r);
     r = call_with(RH_BA41, r);
     if (r.c)
         return call_with(RH_CLIMB_START, r);

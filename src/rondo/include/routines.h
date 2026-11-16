@@ -784,4 +784,18 @@ typedef struct { bool taken; Sum bank; uint8_t mpr4; DriverCommand command; } Co
 StopCall SoundStopAll(void);
 TickCall SoundFrameTick(void);
 CommandCall SoundCommand(uint8_t command);
+void sound_command_exit_shim(uint8_t command, CommandCall call);
+
+/* An attack started: its animation, its kind, and the whip's sound or the item and its slot. */
+typedef struct {
+    AnimationStep animation;
+    uint8_t kind;
+    CommandCall sound;
+    uint8_t item;
+    uint8_t slot;
+    uint8_t tested_b;
+} AttackStart;
+
+AttackStart RichterAttack(void);
+void attack_exit_shim(AttackStart attack);
 #endif

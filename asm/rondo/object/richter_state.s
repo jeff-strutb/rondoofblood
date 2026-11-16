@@ -32,9 +32,9 @@ RichterVecC3A7:
 
 ; @routine 01B9:00C RichterVecC023
 ; @run 6D:A00C
-; WHAT IT DOES: Goes to $C023.
+; WHAT IT DOES: Goes to RichterLeapClearingOthers.
 ; HOW: One jump.
-; Entry, exit: as that code.
+; Entry, exit: as RichterLeapClearingOthers.
 RichterVecC023:
     jmp RichterLeapClearingOthers
 
@@ -56,9 +56,9 @@ RichterVecAnimationSound:
 
 ; @routine 01B9:015 RichterVecCE1D
 ; @run 6D:A015
-; WHAT IT DOES: Goes to $CE1D.
+; WHAT IT DOES: Goes to RichterClearOthersKeepWhip.
 ; HOW: One jump.
-; Entry, exit: as that code.
+; Entry, exit: as RichterClearOthersKeepWhip.
 RichterVecCE1D:
     jmp RichterClearOthersKeepWhip
 
@@ -253,8 +253,10 @@ RichterSpikeBelow_at2:
 ; @routine 01B9:10F RichterStart
 ; @run 6D:A10F
 ; WHAT IT DOES: Starts Richter as zField8A says.
-; HOW: The table of four entries, each of which goes on into the next.
-; Entry: nothing. Exit: as RichterAnimationSound.
+; HOW: The table of four entries: a new run, the health, the stand, the clear; each goes on
+; into the next. zField8A is 0 to 3; the C takes anything past 2 as the clear, where the table
+; would send it elsewhere.
+; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStart:
     lda z:zField8A
     asl a
@@ -275,7 +277,7 @@ RichterClearWork:
 ; @run 6D:A12D
 ; WHAT IT DOES: Clears object 0, the player, keeping where it is and which way it faces.
 ; HOW: The three bytes on the stack around ClearObject.
-; Entry: nothing. Exit: A the X position, N and Z from it, X 0. Y, C, V as ClearObject.
+; Entry: nothing. Exit: A the X position, N and Z from it, X 0. Y, C and V kept.
 RichterClearKeepPlace:
     lda a:OBJ_X_LO
     pha
@@ -298,7 +300,7 @@ RichterClearKeepPlace:
 ; WHAT IT DOES: Starts a new run: clears zField93 and sets zField94, then as
 ; RichterStartHealth.
 ; HOW: Runs on into it.
-; Entry: nothing. Exit: as RichterAnimationSound.
+; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStartNew:
     stz z:zField93
     lda #$10
@@ -308,7 +310,7 @@ RichterStartNew:
 ; @run 6D:A150
 ; WHAT IT DOES: Fills the health, then as RichterStartClear.
 ; HOW: Runs on into it.
-; Entry: nothing. Exit: as RichterAnimationSound.
+; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStartHealth:
     lda #$5C
     sta z:zPlayerHealth
@@ -318,7 +320,7 @@ RichterStartHealth:
 ; WHAT IT DOES: Clears the player's work and object, marks it live, gives a frame of the
 ; hit timer, then as RichterStartStand.
 ; HOW: Runs on into it.
-; Entry: nothing. Exit: as RichterAnimationSound.
+; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStartClear:
     jsr RichterClearWork
     jsr RichterClearKeepPlace
@@ -332,7 +334,7 @@ RichterStartClear:
 ; @run 6D:A167
 ; WHAT IT DOES: Stands the player, and runs on into RichterAnimationSound.
 ; HOW: PlayerByte3BD6 set, RichterStand.
-; Entry: nothing. Exit: as RichterAnimationSound.
+; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStartStand:
     lda #$01
     sta a:PlayerByte3BD6
@@ -342,7 +344,7 @@ RichterStartStand:
 ; @run 6D:A16F
 ; WHAT IT DOES: Starts the list that goes with the player's animation on its channel.
 ; HOW: The table by animation, then StartListChannelKind2 with X 7.
-; Entry: nothing. Exit: as StartListChannelKind2, Y the animation.
+; Entry: nothing. Exit: A 2, N 0, Z 0, X 7, Y the animation. C and V kept.
 RichterAnimationSound:
     ldy a:OBJ_2A68
     lda a:AnimationSounds,y
@@ -522,7 +524,7 @@ RichterOutOfHealth_at0:
 ; WHAT IT DOES: Starts the reaction to a hit: the invulnerable frames by the hit's kind,
 ; the state kept to come back to, the state set to 9, and the hit's script.
 ; HOW: Runs on into RichterStartHitScript with 8.
-; Entry: nothing. Exit: as RichterStartHitScript.
+; Entry: nothing. Exit: A and Y 8, X 7, N and Z from 8. C and V kept.
 RichterHitReact:
     jsr RichterPadOverridesOff
     lda a:OBJ_33B0
@@ -543,7 +545,7 @@ RichterHitReact:
 ; @run 6D:A2D7
 ; WHAT IT DOES: Starts a script on the player's slot.
 ; HOW: StartScriptSlotKind1 with X 7.
-; Entry: A script. Exit: as StartScriptSlotKind1.
+; Entry: A script. Exit: A and Y the script, X 7, N and Z from the script. C and V kept.
 RichterStartHitScript:
     ldx #$07
     jmp VecStartScriptSlotKind1
@@ -617,7 +619,7 @@ RichterStandStep1_at3:
 ; @run 6D:A34C
 ; WHAT IT DOES: Clears object 3, the whip.
 ; HOW: ClearObject with X 3.
-; Entry: nothing. Exit: as ClearObject, X 3.
+; Entry: nothing. Exit: X 3, N and Z from it. A, Y, C and V kept.
 RichterClearWhip:
     ldx #$03
     jmp VecClearObject
@@ -702,8 +704,8 @@ RichterStandStep2_at10:
 
 ; @routine 01B9:3D0 RichterStepIndex
 ; @run 6D:A3D0
-; WHAT IT DOES: Gives the state's step as a table offset.
-; HOW: OBJ_2800 doubled, in A and X.
+; WHAT IT DOES: Gives the state's step, for its caller to index a table of words by.
+; HOW: OBJ_2800, which the wrapper leaves doubled in A and X.
 ; Entry: nothing. Exit: A and X the offset, N and Z from it, C the step's bit 7. Y, V kept.
 RichterStepIndex:
     lda a:OBJ_2800
@@ -783,7 +785,8 @@ RichterStandStep0_at9:
 ; WHAT IT DOES: Starts walking the way the pad says, unless a button stops it; a held jump
 ; keeps the facing and walks backward.
 ; HOW: Y is the new facing, kept unless bit 1 is held. Animation 0 or $32.
-; Entry: Y the facing. Exit: as the animation's code, or on an attack held as the test.
+; Entry: Y the facing. Exit: as RichterSetAnimation; with an attack held, A, X, Y and C kept,
+; N and V the pad's bits 7 and 6, Z clear.
 RichterStartWalk:
     jsr RichterPadOverridesOff
     tst #$02,z:zPadHeld
@@ -856,7 +859,7 @@ RichterSpeedBackstep:
 ; @run 6D:A4AE
 ; WHAT IT DOES: Crouches: state 2, step 3, animation $0C, all speed gone.
 ; HOW: Runs on into RichterStopMoving.
-; Entry: nothing. Exit: as the animation's code left them.
+; Entry: nothing. Exit: as RichterSetAnimation. X and V kept.
 RichterCrouch:
     jsr RichterPadOverridesOff
     lda #$02
@@ -889,8 +892,9 @@ RichterStopX:
 ; @run 6D:A4CD
 ; WHAT IT DOES: Starts an attack standing: state 0, step 1, the animation by the attack's
 ; kind; the whip, with its sound, or the kind's object in a free slot among 5, 8 and $0B.
-; HOW: PlayerByte3BD5 is the kind. zField93 is what goes in the slot.
-; Entry: nothing. Exit: as the path taken left them.
+; HOW: PlayerByte3BD5 is the kind. zField93 is what goes in the slot. SoundCommand 3 for the whip.
+; Entry: nothing. Exit: Y and C as RichterSetAnimation. The whip, as SoundCommand with command
+; 3 and X 3; an item, A the item, X its slot, N, Z and V from testing the last slot looked at.
 RichterAttack:
     jsr RichterPadOverridesOff
     stz a:PlayerByte3BE1
@@ -932,7 +936,7 @@ RichterAttack_at2:
 ; @run 6D:A521
 ; WHAT IT DOES: Starts falling: state 4, animation $10, Y speed 3, no X speed.
 ; HOW: Runs on into RichterPadOverridesOff.
-; Entry: nothing. Exit: A as the animation's code left it, flags too.
+; Entry: nothing. Exit: A 4, N and Z from it; Y and C as RichterSetAnimation. X and V kept.
 RichterToFall:
     lda #$04
     sta a:OBJ_27A8
@@ -1217,7 +1221,8 @@ RichterReact13:
 ; WHAT IT DOES: Knocked into the air: state 3, animation $31, the knock's speeds, marks
 ; PlayerByte3BF1 bit 0.
 ; HOW: The jump's speed replaced by the knock's.
-; Entry: nothing. Exit: A PlayerByte3BF1, N and Z from it; C and V as the last left them.
+; Entry: nothing. Exit: A PlayerByte3BF1, N and Z from it; Y twice the facing, C the facing's
+; bit 7; V as RichterLiftThree. X kept.
 RichterKnockBack:
     stz a:PlayerMayLeaveTop
     stz a:PadForcedPressB
@@ -1250,8 +1255,9 @@ RichterKnockBack:
 ; WHAT IT DOES: Takes to the air: state 3, the jump's speed; with left or right held, a
 ; moving jump, and when that faces the way the player already did, marks it in
 ; PlayerByte3BF1; otherwise animation $0A.
-; HOW: Y is the facing the pad asks for, tried and put back.
-; Entry: nothing. Exit: as the animation's code, or A $80 and its flags.
+; HOW: The facing the pad asks for is set for the jump's speed, then the old one put back.
+; Entry: nothing. Exit: V as RichterLiftThree; X kept. Marked, A $80, N set, Z clear, C set, Y
+; twice the facing asked for; otherwise as RichterSetAnimation.
 RichterToAir:
     stz a:PlayerMayLeaveTop
     stz a:PadForcedPressB
@@ -1388,7 +1394,7 @@ RichterStateWalk_at10:
 ; @run 6D:A7AC
 ; WHAT IT DOES: Stands the player: state 0, step 0, animation 1, no speed.
 ; HOW: Clears PlayerMayLeaveTop and PlayerByte3BD5 first.
-; Entry: nothing. Exit: A and flags as the animation's code left them.
+; Entry: nothing. Exit: as RichterSetAnimation. X and V kept.
 RichterStand:
     stz a:PlayerMayLeaveTop
     stz a:PlayerByte3BD5

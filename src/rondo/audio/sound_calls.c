@@ -150,11 +150,8 @@ CommandCall SoundCommand(uint8_t command)
     return call;
 }
 
-void abi_SoundCommand(void)
+void sound_command_exit_shim(uint8_t command, CommandCall call)
 {
-    uint8_t command = cpu.a;
-    CommandCall call = SoundCommand(command);
-
     if (!call.taken) {
         abi_flag(P_N, (call.mpr4 & 0x80) != 0);
         abi_flag(P_V, (call.mpr4 & 0x40) != 0);
@@ -165,4 +162,11 @@ void abi_SoundCommand(void)
     driver_command_exit_shim(call.command);
     cpu.a = call.mpr4;
     abi_nz(call.mpr4);
+}
+
+void abi_SoundCommand(void)
+{
+    uint8_t command = cpu.a;
+
+    sound_command_exit_shim(command, SoundCommand(command));
 }

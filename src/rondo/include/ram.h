@@ -575,5 +575,6 @@
 #define SoundChannel25F6 0x25F6 /* the sound driver: weighs effect channel 6 against 7 when an effect starts */
 #define SoundChannel25F7 0x25F7 /* the sound driver: weighs effect channel 7 against 6 when an effect starts */
 #define SoundEffectTable 0xB7FB /* the sound driver: by effect command, three bytes: priority and its sequence's address */
+#define zPaused 0x203B /* bit 0 set while the game is paused */
 
 #endif

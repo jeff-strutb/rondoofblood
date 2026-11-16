@@ -235,7 +235,7 @@ void KernelStart(void)
     tam(MPR4, bank);
     tam(MPR5, (uint8_t)(bank + 1));
     tam(MPR6, (uint8_t)(bank + 2));
-    call_original(SoundDrvInit);
+    abi_SoundInit();
     ResetDisplayControl();
     SelectVdcRegister(0x0D);
     wr8(VDC_DATA_LO, 0xE0);

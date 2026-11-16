@@ -572,3 +572,4 @@ SoundVoicesSecond = $BC44 ; the sound driver: voices of commands $72 up on stage
 SoundChannel25F6 = $25F6 ; the sound driver: weighs effect channel 6 against 7 when an effect starts
 SoundChannel25F7 = $25F7 ; the sound driver: weighs effect channel 7 against 6 when an effect starts
 SoundEffectTable = $B7FB ; the sound driver: by effect command, three bytes: priority and its sequence's address
+zPaused = $3B ; bit 0 set while the game is paused

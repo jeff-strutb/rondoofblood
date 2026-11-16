@@ -3,6 +3,7 @@
 #define RONDO_ROUTINES_H
 
 #include "machine.h"
+#include "syscard.h"
 
 /* A byte add or subtract: the result, its carry as the processor's C, and its overflow. */
 typedef struct { uint8_t value; bool carry; bool overflow; } Sum;
@@ -221,7 +222,6 @@ void column_lift_exit_shim(ColumnLift lift);
 LadderCheck RichterLadderCheck(void);
 bool ladder_found(LadderCheck check);
 void ladder_exit_shim(LadderCheck check);
-bool SoundCommand(uint8_t command, uint8_t *busy_or_bank);
 
 /* What SoundSilenceChannel looked at: the effect on a shared channel, when 4 or 5. */
 typedef struct { bool looked; uint8_t effect; } ChannelRelease;
@@ -405,6 +405,7 @@ typedef struct { WaveHow how; uint8_t wave; uint8_t effect; } WaveLoad;
 
 WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel);
 void SoundInit(void);
+void abi_SoundInit(void);
 void SoundDriverStopAll(void);
 void wave_load_exit_shim(WaveLoad load, uint8_t wave);
 
@@ -573,6 +574,7 @@ typedef struct {
 } ChannelTick;
 
 ChannelTick SoundChannelTick(uint8_t channel);
+void channel_tick_exit_shim(ChannelTick tick, uint8_t channel);
 void SoundStartChannel(uint8_t channel);
 uint8_t SoundStartMusic(void);
 
@@ -602,7 +604,6 @@ void SelectVdcControl(void);
 uint8_t WriteScreenTiming(uint8_t index);
 uint8_t WriteBandScroll(uint8_t band);
 void ResetDisplayControl(void);
-uint8_t SoundFrameTick(void);
 uint8_t NextRandom(void);
 bool RasterStart(uint8_t *effect, uint8_t *last);
 void RasterInterrupt(void);
@@ -665,7 +666,6 @@ Alu StageLoad(Alu r);
 Alu SaveVramToRam(Alu r);
 
 /* The kernel's ADPCM play: src/rondo/audio/adpcm.c. The card's types come from syscard.h. */
-#ifdef SYSCARD_H
 typedef enum { KERNEL_PLAY_CARD, KERNEL_PLAY_BUSY, KERNEL_PLAY_BAD_RATE, KERNEL_PLAY_STARTED } KernelPlayHow;
 
 /* The kernel's play: the card's version, and what the card's ad_play or its own ports did. */
@@ -731,5 +731,57 @@ typedef struct {
 
 DriverCommand SoundDriverCommand(uint8_t command);
 void driver_command_exit_shim(DriverCommand taken);
-#endif
+
+typedef enum { PAUSE_SAME, PAUSE_ON, PAUSE_OFF } PauseHow;
+
+/* The pause followed: what changed, and what each call it made did. */
+typedef struct {
+    PauseHow how;
+    uint8_t bit;
+    uint8_t stop;
+    DriverCommand command;
+    WaveLoad four;
+    WaveLoad five;
+    uint8_t wave_five;
+    uint8_t on_before_five;
+} PauseCheck;
+
+PauseCheck SoundCheckPause(void);
+void pause_check_exit_shim(PauseCheck check);
+
+/* A frame of the driver: what ran, and what each call it made did, channel by channel. */
+typedef struct {
+    bool ran;
+    PauseCheck pause;
+    bool paused;
+    AdStat stat;
+    bool stop_ran;
+    uint8_t stop;
+    AdStat stat_again;
+    bool voice_waited;
+    SoundProduct product;
+    Sum table_low;
+    Sum table_high;
+    bool moved_back;
+    VoiceBack back;
+    KernelPlay play;
+    bool played;
+    bool fade_ended;
+    ChannelRelease faded[6];
+    uint8_t on_before_fade;
+    bool ticked[8];
+    ChannelTick channel[8];
+} DriverTick;
+
+DriverTick SoundDriverTick(void);
+void driver_tick_exit_shim(DriverTick tick);
+
+/* The kernel's calls into the driver: the add that mapped it, the MPR4 bank given back, and the driver's work. */
+typedef struct { Sum bank; uint8_t mpr4; } StopCall;
+typedef struct { uint8_t busy; Sum bank; uint8_t mpr4; DriverTick tick; } TickCall;
+typedef struct { bool taken; Sum bank; uint8_t mpr4; DriverCommand command; } CommandCall;
+
+StopCall SoundStopAll(void);
+TickCall SoundFrameTick(void);
+CommandCall SoundCommand(uint8_t command);
 #endif

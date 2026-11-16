@@ -2443,3 +2443,209 @@ SoundDriverCommand_at17:
     jsr SoundStartChannel
     jsr SoundVolumeFull
     jmp SoundCommandEnd
+
+; @routine 0053:4D4 SoundCheckPause
+; @run 76:B4D4
+; WHAT IT DOES: Follows the game's pause: on pausing, the PSG silenced, ADPCM stopped and effect
+; $53 played; on going on, the two effect channels let go and PSG channels 4 and 5 given their
+; music's waveforms back, the main volume full.
+; HOW: Bit 0 of zPaused against SoundPaused; SoundSilenceAll, ad_stop, SoundDriverCommand; or
+; SoundLoadWave on 4 and 5 and SoundVolumeFull.
+; Entry: nothing. Exit: unchanged, A the bit, Z and C set, N clear. Paused, as SoundDriverCommand.
+; Going on, as SoundVolumeFull after SoundLoadWave on channel 5, X 5. Y kept.
+SoundCheckPause:
+    lda z:zPaused
+    and #$01
+    cmp a:SoundPaused
+    beq SoundCheckPause_at0
+    sta a:SoundPaused
+    cmp #$00
+    beq SoundCheckPause_at1
+    jsr SoundSilenceAll
+    jsr BiosAdStop
+    lda #$53
+    jsr SoundDriverCommand
+SoundCheckPause_at0:
+    rts
+SoundCheckPause_at1:
+    ldx #$04
+    stx a:PsgSelect
+    stx z:zSoundChannel
+    stz a:SoundChannelCommand+6
+    lda #$40
+    trb z:zSoundChannelsOn
+    stz a:SoundChannel25F6
+    lda a:SoundChannelWave,x
+    jsr SoundLoadWave
+    ldx #$05
+    stx a:PsgSelect
+    stx z:zSoundChannel
+    stz a:SoundChannelCommand+7
+    lda #$80
+    trb z:zSoundChannelsOn
+    stz a:SoundChannel25F7
+    lda a:SoundChannelWave,x
+    jsr SoundLoadWave
+    jmp SoundVolumeFull
+
+; @routine 0053:521 SoundDriverTick
+; @run 76:B521
+; WHAT IT DOES: One frame of the driver, unless a command is going in: the pause followed; while
+; paused, ADPCM stopped and only the two effect channels run; otherwise a voice waiting played
+; once the unit is free, the music's fade a step on, and every playing channel's frame. With
+; nothing playing, the main volume off.
+; HOW: SoundInCommand set while it works; SoundCheckPause; ad_stat and ad_stop; the voice waiting
+; from its set's table, SoundVoiceAddressBack and KernelAdpcmPlay; SoundFading and SoundFadeStep,
+; $14 its end; zSoundChannelBit walks zSoundChannelsOn; channels 6 and 7 select PSG channels 4 and
+; 5; SoundChannelTick.
+; Entry: frame interrupt. Exit: A, X and Y kept, N and Z from A; C set, and C and V kept if a
+; command was going in; otherwise V as the last call left it.
+SoundDriverTick:
+    pha
+    phx
+    phy
+    lda a:SoundInCommand
+    beq SoundDriverTick_at0
+    jmp SoundDriverTick_at20
+SoundDriverTick_at0:
+    inc a:SoundInCommand
+    jsr SoundCheckPause
+    lda a:SoundPaused
+    beq SoundDriverTick_at1
+    jsr BiosAdStat
+    cmp #$00
+    beq SoundDriverTick_at2
+    jsr BiosAdStop
+SoundDriverTick_at2:
+    ldx #$06
+    lda #$40
+    sta z:zSoundChannelBit
+    jmp SoundDriverTick_at3
+SoundDriverTick_at1:
+    jsr BiosAdStat
+    cmp #$00
+    bne SoundDriverTick_at4
+    lda a:SoundVoiceFlags
+    and #$01
+    bne SoundDriverTick_at5
+SoundDriverTick_at4:
+    jmp SoundDriverTick_at6
+SoundDriverTick_at5:
+    jsr BiosAdStop
+    jsr BiosAdStat
+    cmp #$00
+    beq SoundDriverTick_at7
+SoundDriverTick_at12:
+    jmp SoundDriverTick_at6
+SoundDriverTick_at7:
+    lda a:SoundVoiceFlags
+    and #$80
+    bne SoundDriverTick_at8
+    lda a:SoundVoiceIndex
+    ldy #$06
+    jsr SoundMultiply
+    lda z:zSoundWordLo
+    clc
+    adc #$14
+    sta z:zSoundTableLo
+    lda z:zSoundWordHi
+    adc #$B9
+    sta z:zSoundTableHi
+    bra SoundDriverTick_at9
+SoundDriverTick_at8:
+    lda a:SoundVoiceIndex
+    ldy #$06
+    jsr SoundMultiply
+    lda z:zSoundWordLo
+    clc
+    adc #$44
+    sta z:zSoundTableLo
+    lda z:zSoundWordHi
+    adc #$BC
+    sta z:zSoundTableHi
+SoundDriverTick_at9:
+    ldy #$01
+    lda (zSoundTableLo),y
+    sta z:zBiosBl
+    iny
+    lda (zSoundTableLo),y
+    sta z:zBiosBh
+    iny
+    lda (zSoundTableLo),y
+    sta z:zBiosAl
+    iny
+    lda (zSoundTableLo),y
+    sta z:zBiosAh
+    iny
+    lda (zSoundTableLo),y
+    sta z:zBiosDh
+    stz z:zBiosDl
+    lda z:zCharacter
+    and #$01
+    beq SoundDriverTick_at10
+    jsr SoundVoiceAddressBack
+SoundDriverTick_at10:
+    jsr KernelAdpcmPlay
+    cmp #$00
+    beq SoundDriverTick_at11
+    jmp SoundDriverTick_at12
+SoundDriverTick_at11:
+    stz a:SoundVoiceFlags
+SoundDriverTick_at6:
+    lda a:SoundFading
+    beq SoundDriverTick_at13
+    dec a:SoundFadeStep
+    bne SoundDriverTick_at13
+    lda #$10
+    sta a:SoundFadeStep
+    inc a:SoundFading
+    lda #$14
+    cmp a:SoundFading
+    bne SoundDriverTick_at13
+    ldx #$05
+    stz a:SoundFading
+SoundDriverTick_at14:
+    stx z:zSoundChannel
+    stx a:PsgSelect
+    jsr SoundSilenceChannel
+    dex
+    bpl SoundDriverTick_at14
+    lda #$3F
+    trb z:zSoundChannelsOn
+SoundDriverTick_at13:
+    clx
+    stx z:zSoundChannelBit
+    sec
+SoundDriverTick_at15:
+    rol z:zSoundChannelBit
+SoundDriverTick_at3:
+    stx z:zSoundChannel
+    lda z:zSoundChannelBit
+    and z:zSoundChannelsOn
+    beq SoundDriverTick_at18
+    cpx #$06
+    bcc SoundDriverTick_at16
+    dex
+    dex
+    stx a:PsgSelect
+    inx
+    inx
+    bra SoundDriverTick_at17
+SoundDriverTick_at16:
+    stx a:PsgSelect
+SoundDriverTick_at17:
+    jsr SoundChannelTick
+SoundDriverTick_at18:
+    inx
+    cpx #$08
+    bcc SoundDriverTick_at15
+    lda z:zSoundChannelsOn
+    bne SoundDriverTick_at19
+    stz a:PsgMainVolume
+SoundDriverTick_at19:
+    stz a:SoundInCommand
+SoundDriverTick_at20:
+    ply
+    plx
+    pla
+    rts

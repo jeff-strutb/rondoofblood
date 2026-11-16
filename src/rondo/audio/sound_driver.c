@@ -21,6 +21,7 @@ enum {
     PSG_WAVE_RESET = 0x40, OPCODE_TIN = 0xD3, OPCODE_RTS = 0x60, WAVE_SAMPLES = 0x20,
     SOUND_CHANNELS = 8, NOTE_VOLUME_BASE = 0x10, VOLUME_STEPS = 0x0F, RATE_TENS = 10,
     REPEAT_MARKED = 0, REPEAT_FIRST_PASS = 1, REPEAT_AGAIN = 2, SEQUENCE_HANDLERS_FIRST = 0xE2,
+    PAUSE_EFFECT = 0x53, FADE_END = 0x14,
     CHANNEL_VOLUME_START = 0x1F, CHANNEL_PAN_START = 0x08, MUSIC_CHANNELS = 0x3F, MUSIC_FIRST = 0x55,
     VOICE_SECOND_SET = 0x80, VOICE_SET_FIRST = 0x62, VOICE_SET_END = 0x70, VOICE_BACK = 0x3FF6,
     VOICE_WAITING = 0x01, VOICE_SECOND_FIRST = 0x72, VOICE_SECOND_STAGES = 0x0C, VOICE_ENTRY = 6,
@@ -3011,11 +3012,8 @@ ChannelTick SoundChannelTick(uint8_t channel)
     return tick;
 }
 
-void abi_SoundChannelTick(void)
+void channel_tick_exit_shim(ChannelTick tick, uint8_t channel)
 {
-    uint8_t channel = cpu.x;
-    ChannelTick tick = SoundChannelTick(channel);
-
     abi_flag(P_C, tick.tempo.carry);
     abi_flag(P_V, tick.tempo.overflow);
     switch (tick.how) {
@@ -3053,6 +3051,13 @@ void abi_SoundChannelTick(void)
     volume_tick_exit_shim(tick.volume, channel);
     if (tick.volume.how == VOLUME_WAITING)
         abi_nz(tick.wait);
+}
+
+void abi_SoundChannelTick(void)
+{
+    uint8_t channel = cpu.x;
+
+    channel_tick_exit_shim(SoundChannelTick(channel), channel);
 }
 
 /*
@@ -3519,4 +3524,249 @@ void driver_command_exit_shim(DriverCommand taken)
 void abi_SoundDriverCommand(void)
 {
     driver_command_exit_shim(SoundDriverCommand(cpu.a));
+}
+
+/* A channel shared with an effect given back to its music: selected, its effect off, its wave. */
+static WaveLoad give_back_channel(uint8_t channel, uint8_t bit, uint16_t weight)
+{
+    wr8(PsgSelect, channel);
+    wr8(zSoundChannel, channel);
+    wr8((uint16_t)(SoundChannelCommand + channel + EFFECT_CHANNEL_OFFSET), 0);
+    wr8(zSoundChannelsOn, (uint8_t)(rd8(zSoundChannelsOn) & ~bit));
+    wr8(weight, 0);
+    return SoundLoadWave(rd8((uint16_t)(SoundChannelWave + channel)), channel);
+}
+
+/*
+ * @routine 0053:4D4 SoundCheckPause
+ * @run 76:B4D4
+ * WHAT IT DOES: Follows the game's pause: on pausing, the PSG silenced, ADPCM stopped and effect
+ * $53 played; on going on, the two effect channels let go and PSG channels 4 and 5 given their
+ * music's waveforms back, the main volume full.
+ * HOW: Bit 0 of zPaused against SoundPaused; SoundSilenceAll, ad_stop, SoundDriverCommand; or
+ * SoundLoadWave on 4 and 5 and SoundVolumeFull.
+ * Entry: nothing. Exit: unchanged, A the bit, Z and C set, N clear. Paused, as SoundDriverCommand.
+ * Going on, as SoundVolumeFull after SoundLoadWave on channel 5, X 5. Y kept.
+ */
+PauseCheck SoundCheckPause(void)
+{
+    PauseCheck check;
+
+    check.bit = (uint8_t)(rd8(zPaused) & 1);
+    if (check.bit == rd8(SoundPaused)) {
+        check.how = PAUSE_SAME;
+        return check;
+    }
+    wr8(SoundPaused, check.bit);
+    if (check.bit != 0) {
+        SoundSilenceAll();
+        check.stop = ad_stop();
+        check.command = SoundDriverCommand(PAUSE_EFFECT);
+        check.how = PAUSE_ON;
+        return check;
+    }
+    check.four = give_back_channel(EFFECT_SHARED_FIRST, 0x40, SoundChannel25F6);
+    check.wave_five = rd8((uint16_t)(SoundChannelWave + EFFECT_SHARED_FIRST + 1));
+    check.on_before_five = rd8(zSoundChannelsOn);
+    check.five = give_back_channel(EFFECT_SHARED_FIRST + 1, 0x80, SoundChannel25F7);
+    SoundVolumeFull();
+    check.how = PAUSE_OFF;
+    return check;
+}
+
+void pause_check_exit_shim(PauseCheck check)
+{
+    switch (check.how) {
+    case PAUSE_SAME:
+        cpu.a = check.bit;
+        abi_nz(0);
+        abi_flag(P_C, true);
+        break;
+    case PAUSE_ON:
+        ad_stop_exit_shim(check.stop);
+        cpu.a = PAUSE_EFFECT;
+        driver_command_exit_shim(check.command);
+        break;
+    case PAUSE_OFF:
+        cpu.x = EFFECT_SHARED_FIRST + 1;
+        abi_flag(P_V, (check.on_before_five & 0x40) != 0);
+        wave_load_exit_shim(check.five, check.wave_five);
+        cpu.a = PSG_VOLUME_FULL;
+        abi_nz(PSG_VOLUME_FULL);
+        break;
+    }
+}
+
+void abi_SoundCheckPause(void)
+{
+    pause_check_exit_shim(SoundCheckPause());
+}
+
+/* The waiting voice played, if the unit is free. */
+static void play_waiting_voice(DriverTick *tick)
+{
+    uint16_t table = (rd8(SoundVoiceFlags) & VOICE_SECOND_SET) ? SoundVoicesSecond : SoundVoicesFirst;
+
+    tick->product = SoundMultiply(rd8(SoundVoiceIndex), VOICE_ENTRY);
+    tick->table_low = add_bytes(rd8(zSoundWordLo), (uint8_t)table, false);
+    wr8(zSoundTableLo, tick->table_low.value);
+    tick->table_high = add_bytes(rd8(zSoundWordHi), (uint8_t)(table >> 8), tick->table_low.carry);
+    wr8(zSoundTableHi, tick->table_high.value);
+    wr8(zBiosBl, rd8_zp_y(zSoundTableLo, 1));
+    wr8(zBiosBh, rd8_zp_y(zSoundTableLo, 2));
+    wr8(zBiosAl, rd8_zp_y(zSoundTableLo, 3));
+    wr8(zBiosAh, rd8_zp_y(zSoundTableLo, 4));
+    wr8(zBiosDh, rd8_zp_y(zSoundTableLo, 5));
+    wr8(zBiosDl, 0);
+    tick->moved_back = (rd8(zCharacter) & 1) != 0;
+    if (tick->moved_back)
+        tick->back = SoundVoiceAddressBack();
+    tick->play = KernelAdpcmPlay();
+    tick->played = kernel_play_started(tick->play);
+    if (tick->played)
+        wr8(SoundVoiceFlags, 0);
+}
+
+/* The music's fade a step on; at its end the six PSG channels silenced and let go. */
+static void fade_step(DriverTick *tick)
+{
+    uint8_t step;
+
+    if (rd8(SoundFading) == 0)
+        return;
+    step = (uint8_t)(rd8(SoundFadeStep) - 1);
+    wr8(SoundFadeStep, step);
+    if (step != 0)
+        return;
+    wr8(SoundFadeStep, FADE_STEP_START);
+    wr8(SoundFading, (uint8_t)(rd8(SoundFading) + 1));
+    if (rd8(SoundFading) != FADE_END)
+        return;
+    wr8(SoundFading, 0);
+    for (int channel = PSG_CHANNELS - 1; channel >= 0; channel--) {
+        wr8(zSoundChannel, (uint8_t)channel);
+        wr8(PsgSelect, (uint8_t)channel);
+        tick->faded[channel] = SoundSilenceChannel((uint8_t)channel);
+    }
+    tick->fade_ended = true;
+    tick->on_before_fade = rd8(zSoundChannelsOn);
+    wr8(zSoundChannelsOn, (uint8_t)(tick->on_before_fade & ~MUSIC_CHANNELS));
+}
+
+/* Each playing channel's frame, from the first given, its PSG channel selected first. */
+static void run_channels(DriverTick *tick, uint8_t first, uint8_t bit)
+{
+    wr8(zSoundChannelBit, bit);
+    for (uint8_t channel = first; channel < SOUND_CHANNELS; channel++) {
+        if (channel != first)
+            wr8(zSoundChannelBit, (uint8_t)(rd8(zSoundChannelBit) << 1));
+        wr8(zSoundChannel, channel);
+        tick->ticked[channel] = (rd8(zSoundChannelBit) & rd8(zSoundChannelsOn)) != 0;
+        if (!tick->ticked[channel])
+            continue;
+        wr8(PsgSelect, channel >= EFFECT_SHARED_END ? (uint8_t)(channel - EFFECT_CHANNEL_OFFSET) : channel);
+        tick->channel[channel] = SoundChannelTick(channel);
+    }
+    if (rd8(zSoundChannelsOn) == 0)
+        wr8(PsgMainVolume, 0);
+    wr8(SoundInCommand, 0);
+}
+
+/*
+ * @routine 0053:521 SoundDriverTick
+ * @run 76:B521
+ * WHAT IT DOES: One frame of the driver, unless a command is going in: the pause followed; while
+ * paused, ADPCM stopped and only the two effect channels run; otherwise a voice waiting played
+ * once the unit is free, the music's fade a step on, and every playing channel's frame. With
+ * nothing playing, the main volume off.
+ * HOW: SoundInCommand set while it works; SoundCheckPause; ad_stat and ad_stop; the voice waiting
+ * from its set's table, SoundVoiceAddressBack and KernelAdpcmPlay; SoundFading and SoundFadeStep,
+ * $14 its end; zSoundChannelBit walks zSoundChannelsOn; channels 6 and 7 select PSG channels 4 and
+ * 5; SoundChannelTick.
+ * Entry: frame interrupt. Exit: A, X and Y kept, N and Z from A; C set, and C and V kept if a
+ * command was going in; otherwise V as the last call left it.
+ */
+DriverTick SoundDriverTick(void)
+{
+    DriverTick tick;
+
+    tick.ran = rd8(SoundInCommand) == 0;
+    if (!tick.ran)
+        return tick;
+    wr8(SoundInCommand, (uint8_t)(rd8(SoundInCommand) + 1));
+    tick.pause = SoundCheckPause();
+    tick.paused = rd8(SoundPaused) != 0;
+    tick.fade_ended = false;
+    tick.voice_waited = false;
+    tick.stop_ran = false;
+    tick.stat = ad_stat();
+    if (tick.paused) {
+        if (tick.stat.playing != 0) {
+            tick.stop = ad_stop();
+            tick.stop_ran = true;
+        }
+        run_channels(&tick, EFFECT_CHANNEL_A, 0x40);
+        return tick;
+    }
+    if (tick.stat.playing == 0 && (rd8(SoundVoiceFlags) & VOICE_WAITING)) {
+        tick.stop = ad_stop();
+        tick.stop_ran = true;
+        tick.stat_again = ad_stat();
+        if (tick.stat_again.playing == 0) {
+            tick.voice_waited = true;
+            play_waiting_voice(&tick);
+        }
+    }
+    fade_step(&tick);
+    run_channels(&tick, 0, 1);
+    return tick;
+}
+
+void driver_tick_exit_shim(DriverTick tick)
+{
+    uint8_t a = cpu.a;
+    uint8_t x = cpu.x;
+    uint8_t y = cpu.y;
+    uint8_t first;
+
+    if (tick.ran) {
+        pause_check_exit_shim(tick.pause);
+        ad_stat_exit_shim(tick.stat);
+        if (tick.stop_ran)
+            ad_stop_exit_shim(tick.stop);
+        if (!tick.paused && tick.stop_ran)
+            ad_stat_exit_shim(tick.stat_again);
+        if (tick.voice_waited) {
+            cpu.y = VOICE_ENTRY;
+            abi_exit_product(tick.product, rd8(SoundVoiceIndex));
+            abi_flag(P_V, tick.table_high.overflow);
+            if (tick.moved_back)
+                voice_back_exit_shim(tick.back);
+            kernel_play_exit_shim(tick.play);
+        }
+        if (tick.fade_ended)
+            for (int channel = PSG_CHANNELS - 1; channel >= 0; channel--) {
+                cpu.x = (uint8_t)channel;
+                if (tick.faded[channel].looked)
+                    abi_flag(P_V, (tick.faded[channel].effect & 0x40) != 0);
+            }
+        if (tick.fade_ended)
+            abi_flag(P_V, (tick.on_before_fade & 0x40) != 0);
+        first = tick.paused ? EFFECT_CHANNEL_A : 0;
+        for (uint8_t channel = first; channel < SOUND_CHANNELS; channel++)
+            if (tick.ticked[channel]) {
+                cpu.x = channel;
+                channel_tick_exit_shim(tick.channel[channel], channel);
+            }
+        abi_flag(P_C, true);
+    }
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    abi_nz(a);
+}
+
+void abi_SoundDriverTick(void)
+{
+    driver_tick_exit_shim(SoundDriverTick());
 }

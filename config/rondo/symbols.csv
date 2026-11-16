@@ -450,7 +450,7 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 2420,abs,SoundPanTarget,the sound driver: by channel, the pan the slide stops at
 22E2,abs,SoundCommandByte,the sound driver: the sequence command being read
 22E3,abs,SoundCommandArgs,the sound driver: the command's argument bytes
-22E7,abs,BlockMoveOpcode,the RAM block-move stub: its opcode
+22E7,abs,BlockMoveStub,the RAM block-move stub: its entry, and the opcode it is built with
 22E8,abs,BlockMoveSourceLo,the RAM block-move stub: source low
 22E9,abs,BlockMoveSourceHi,the RAM block-move stub: source high
 22EA,abs,BlockMoveDestLo,the RAM block-move stub: destination low
@@ -491,3 +491,10 @@ B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 an
 2360,abs,SoundVolumeAddB,the sound driver: by channel, added to the volume
 2550,abs,SoundChannel2550,the sound driver: by channel; set to 1 on a rest
 87AC,abs,SoundBalances,the sound driver: PSG balance by pan, 16 each, the second set for zSoundAltBalance
+50,zp,zSoundChannelBit,the sound driver: the tick's channel as a bit
+51,zp,zSoundChannelsOn,the sound driver: a bit for each channel that plays
+58,zp,zSoundFine,the sound driver: the fine part of a note's frequency
+2538,abs,SoundChannelWave,the sound driver: by channel, its waveform; $FF noise
+25B0,abs,SoundChannel25B0,the sound driver: by channel; cleared at start
+25F0,abs,SoundChannelPriority,the sound driver: by channel, the priority of what plays on it
+8F8E,abs,SoundPeriods,the sound driver: PSG periods by note, a word each

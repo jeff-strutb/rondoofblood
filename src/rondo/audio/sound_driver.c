@@ -16,7 +16,9 @@ enum {
     EFFECT_SHARED_FIRST = 4, EFFECT_SHARED_END = 6, EFFECT_CHANNEL_OFFSET = 2,
     FADE_STEP_START = 0x10, SOUND_WAVES = 0xBD11, SEQUENCE_NOTES_END = 0x60, SEQUENCE_REUSE = 0x80,
     SEQUENCE_LONG_FIRST = 0xE0, OFFSET_NEGATIVE = 0x40, PSG_CHANNEL_ON = 0x80, BALANCE_SET_SIZE = 0x10,
-    PSG_VOLUME_LIMIT = 0x20
+    PSG_VOLUME_LIMIT = 0x20, WAVE_NOISE = 0xFF, NOISE_FREQUENCY = 0x1F, PSG_NOISE_ON = 0x80,
+    PSG_WAVE_RESET = 0x40, OPCODE_TIN = 0xD3, OPCODE_RTS = 0x60, WAVE_SAMPLES = 0x20,
+    SOUND_CHANNELS = 8
 };
 
 /* PSG channels 4 and 5 are left alone while effect channels 6 and 7 play on them. */
@@ -455,16 +457,24 @@ uint16_t SoundWaveAddress(uint8_t wave)
     return address;
 }
 
-void abi_SoundWaveAddress(void)
+void wave_address_exit_shim(uint8_t wave)
 {
-    uint8_t page = (uint8_t)(cpu.a >> 3);
-    uint8_t high = (uint8_t)(SoundWaveAddress(cpu.a) >> 8);
-    bool carry = ((cpu.a & 0x07) << 5) + (SOUND_WAVES & 0xFF) > 0xFF;
+    uint8_t page = (uint8_t)(wave >> 3);
+    uint8_t high = (uint8_t)((SOUND_WAVES + (wave << 5)) >> 8);
+    bool carry = ((wave & 0x07) << 5) + (SOUND_WAVES & 0xFF) > 0xFF;
 
     cpu.a = high;
     abi_nz(high);
     abi_flag(P_C, page + (SOUND_WAVES >> 8) + carry > 0xFF);
     abi_flag(P_V, (~(page ^ (SOUND_WAVES >> 8)) & (page ^ high) & 0x80) != 0);
+}
+
+void abi_SoundWaveAddress(void)
+{
+    uint8_t wave = cpu.a;
+
+    SoundWaveAddress(wave);
+    wave_address_exit_shim(wave);
 }
 
 /*
@@ -1149,4 +1159,200 @@ void abi_SoundSetLength(void)
     abi_flag(P_C, (note.product.value & 0x08) != 0);
     if (note.product.added)
         abi_flag(P_V, note.product.overflow);
+}
+
+/*
+ * @routine 004E:69E SoundSetFrequency
+ * @run 75:8E9E
+ * WHAT IT DOES: Sets the selected PSG channel's pitch for a note: the note's period less a fine
+ * share of the step to the next note; on a channel whose waveform is noise, the noise frequency
+ * instead. Channels 4 and 5 are left alone while an effect plays on them.
+ * HOW: SoundPeriods by note; the fine part times the step, SoundMultiply, its high byte off the
+ * period; noise off for a tone. Noise takes the note less one, its low five bits.
+ * Entry: A the fine part, X channel, Y note. Exit: X kept. Left alone, A and Y kept, N and V the
+ * effect's bits 7 and 6, Z and C clear. Noise, A the noise byte, N and Z from it, C set, Y the
+ * note less one. Tone, A the period's high byte, N, Z, C and V from its subtract, Y twice the
+ * note. V for channels 4 and 5 clear otherwise.
+ */
+FrequencySet SoundSetFrequency(uint8_t fine, uint8_t channel, uint8_t note)
+{
+    FrequencySet set = { false, false, 0, false, 0, 0, 0 };
+    uint16_t entry = (uint16_t)(SoundPeriods + (uint8_t)(note << 1));
+    uint16_t period;
+    uint8_t step;
+
+    set.looked = channel >= EFFECT_SHARED_FIRST && channel < EFFECT_SHARED_END;
+    if (effect_holds(channel, &set.effect)) {
+        set.held = true;
+        return set;
+    }
+    wr8(zSoundFine, fine);
+    if (rd8((uint16_t)(SoundChannelWave + channel)) == WAVE_NOISE) {
+        set.noise = true;
+        set.value = (uint8_t)(((uint8_t)(note - 1) & NOISE_FREQUENCY) | PSG_NOISE_ON);
+        wr8(PsgNoise, set.value);
+        return set;
+    }
+    step = (uint8_t)(rd8(entry) - rd8((uint16_t)(entry + 2)));
+    SoundMultiply(step, rd8(zSoundFine));
+    wr8(PsgNoise, 0);
+    period = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
+    set.high_before = (uint8_t)(period >> 8);
+    set.borrow = (period & 0xFF) < rd8(zSoundWordHi);
+    period = (uint16_t)(period - rd8(zSoundWordHi));
+    wr8(PsgFreqLo, (uint8_t)period);
+    set.value = (uint8_t)(period >> 8);
+    wr8(PsgFreqHi, set.value);
+    return set;
+}
+
+void abi_SoundSetFrequency(void)
+{
+    uint8_t note = cpu.y;
+    FrequencySet set = SoundSetFrequency(cpu.a, cpu.x, note);
+
+    if (set.held) {
+        abi_flag(P_N, (set.effect & 0x80) != 0);
+        abi_flag(P_V, (set.effect & 0x40) != 0);
+        abi_flag(P_Z, false);
+        abi_flag(P_C, false);
+        return;
+    }
+    if (set.looked)
+        abi_flag(P_V, false);
+    cpu.a = set.value;
+    abi_nz(set.value);
+    if (set.noise) {
+        cpu.y = (uint8_t)(note - 1);
+        abi_flag(P_C, true);
+        return;
+    }
+    cpu.y = (uint8_t)(note << 1);
+    abi_flag(P_C, !(set.high_before == 0 && set.borrow));
+    abi_flag(P_V, set.high_before == 0x80 && set.borrow);
+}
+
+/*
+ * @routine 004E:654 SoundLoadWave
+ * @run 75:8E54
+ * WHAT IT DOES: Loads a waveform into the selected PSG channel: the channel off, its write place
+ * reset, the 32 samples written. $FF loads none, and channels 4 and 5 are left alone while an
+ * effect plays on them.
+ * HOW: SoundWaveAddress, then the RAM block-move stub at $22E7 built as a TIN of 32 bytes to
+ * PsgWaveData and called.
+ * Entry: A waveform, X channel. Exit: X and Y kept. $FF, A $FF, Z and C set, N clear, V kept.
+ * Left alone, A kept, N and V the effect's bits 7 and 6, Z and C clear. Loaded, A $60, N and Z
+ * clear, C and V as SoundWaveAddress.
+ */
+WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel)
+{
+    WaveLoad load = { WAVE_NONE, 0, 0 };
+    uint16_t source;
+
+    load.wave = wave;
+    if (wave == WAVE_NOISE)
+        return load;
+    if (effect_holds(channel, &load.effect)) {
+        load.how = WAVE_HELD;
+        return load;
+    }
+    wr8(PsgBalance, 0);
+    wr8(PsgControl, 0);
+    wr8(PsgControl, PSG_WAVE_RESET);
+    wr8(PsgControl, 0);
+    source = SoundWaveAddress(wave);
+    wr8(BlockMoveDestLo, (uint8_t)PsgWaveData);
+    wr8(BlockMoveDestHi, (uint8_t)(PsgWaveData >> 8));
+    wr8(BlockMoveStub, OPCODE_TIN);
+    wr8(BlockMoveLengthLo, WAVE_SAMPLES);
+    wr8(BlockMoveLengthHi, 0);
+    wr8(BlockMoveReturn, OPCODE_RTS);
+    for (uint16_t i = 0; i < WAVE_SAMPLES; i++)
+        wr8(PsgWaveData, rd8((uint16_t)(source + i)));
+    wr8(PsgControl, 0);
+    load.how = WAVE_LOADED;
+    return load;
+}
+
+void abi_SoundLoadWave(void)
+{
+    uint8_t wave = cpu.a;
+    WaveLoad load = SoundLoadWave(wave, cpu.x);
+
+    switch (load.how) {
+    case WAVE_NONE:
+        abi_nz(0);
+        abi_flag(P_C, true);
+        break;
+    case WAVE_HELD:
+        abi_flag(P_N, (load.effect & 0x80) != 0);
+        abi_flag(P_V, (load.effect & 0x40) != 0);
+        abi_flag(P_Z, false);
+        abi_flag(P_C, false);
+        break;
+    case WAVE_LOADED:
+        wave_address_exit_shim(wave);
+        cpu.a = OPCODE_RTS;
+        abi_nz(OPCODE_RTS);
+        break;
+    }
+}
+
+/*
+ * @routine 0053:233 SoundInit
+ * @run 76:B233
+ * WHAT IT DOES: Starts the driver: every channel cleared, the PSG silent, no fade, nothing
+ * playing, the LFO off.
+ * HOW: SoundChannel25B0, SoundChannelCommand and SoundChannelPriority cleared by channel;
+ * SoundSilenceAll.
+ * Entry: nothing. Exit: A, X, Y, C and V kept; N and Z from X.
+ */
+void SoundInit(void)
+{
+    wr8(SoundInCommand, 0);
+    for (uint8_t channel = 0; channel < SOUND_CHANNELS; channel++) {
+        wr8((uint16_t)(SoundChannel25B0 + channel), 0);
+        wr8((uint16_t)(SoundChannelCommand + channel), 0);
+        wr8((uint16_t)(SoundChannelPriority + channel), 0);
+        wr8(zSoundAltBalance, 0);
+    }
+    SoundSilenceAll();
+    wr8(SoundFading, 0);
+    wr8(zSoundChannelsOn, 0);
+    wr8(PsgLfoFreq, 0);
+    wr8(PsgLfoControl, 0);
+}
+
+void abi_SoundInit(void)
+{
+    SoundInit();
+    abi_nz(cpu.x);
+}
+
+/*
+ * @routine 0053:25A SoundDriverStopAll
+ * @run 76:B25A
+ * WHAT IT DOES: Stops everything: no command or priority on any channel, no fade, nothing
+ * playing, the PSG silent, noise and the LFO off.
+ * HOW: The channels from 7 down; SoundSilenceAll.
+ * Entry: nothing. Exit: X $FF, N set, Z clear. A, Y, C and V kept.
+ */
+void SoundDriverStopAll(void)
+{
+    for (int channel = SOUND_CHANNELS - 1; channel >= 0; channel--) {
+        wr8((uint16_t)(SoundChannelCommand + channel), 0);
+        wr8((uint16_t)(SoundChannelPriority + channel), 0);
+    }
+    wr8(SoundFading, 0);
+    wr8(zSoundChannelsOn, 0);
+    SoundSilenceAll();
+    wr8(PsgNoise, 0);
+    wr8(PsgLfoControl, 0);
+}
+
+void abi_SoundDriverStopAll(void)
+{
+    SoundDriverStopAll();
+    cpu.x = 0xFF;
+    abi_nz(0xFF);
 }

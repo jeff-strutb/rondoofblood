@@ -443,7 +443,7 @@
 #define SoundPanTarget 0x2420 /* the sound driver: by channel, the pan the slide stops at */
 #define SoundCommandByte 0x22E2 /* the sound driver: the sequence command being read */
 #define SoundCommandArgs 0x22E3 /* the sound driver: the command's argument bytes */
-#define BlockMoveOpcode 0x22E7 /* the RAM block-move stub: its opcode */
+#define BlockMoveStub 0x22E7 /* the RAM block-move stub: its entry, and the opcode it is built with */
 #define BlockMoveSourceLo 0x22E8 /* the RAM block-move stub: source low */
 #define BlockMoveSourceHi 0x22E9 /* the RAM block-move stub: source high */
 #define BlockMoveDestLo 0x22EA /* the RAM block-move stub: destination low */
@@ -484,5 +484,12 @@
 #define SoundVolumeAddB 0x2360 /* the sound driver: by channel, added to the volume */
 #define SoundChannel2550 0x2550 /* the sound driver: by channel; set to 1 on a rest */
 #define SoundBalances 0x87AC /* the sound driver: PSG balance by pan, 16 each, the second set for zSoundAltBalance */
+#define zSoundChannelBit 0x2050 /* the sound driver: the tick's channel as a bit */
+#define zSoundChannelsOn 0x2051 /* the sound driver: a bit for each channel that plays */
+#define zSoundFine 0x2058 /* the sound driver: the fine part of a note's frequency */
+#define SoundChannelWave 0x2538 /* the sound driver: by channel, its waveform; $FF noise */
+#define SoundChannel25B0 0x25B0 /* the sound driver: by channel; cleared at start */
+#define SoundChannelPriority 0x25F0 /* the sound driver: by channel, the priority of what plays on it */
+#define SoundPeriods 0x8F8E /* the sound driver: PSG periods by note, a word each */
 
 #endif

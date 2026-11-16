@@ -320,6 +320,28 @@ ChannelSilence SoundRest(uint8_t channel);
 typedef struct { uint8_t length; uint8_t gate; SoundProduct product; uint8_t timer; } NoteLength;
 
 NoteLength SoundSetLength(uint8_t channel);
+void wave_address_exit_shim(uint8_t wave);
+
+/* A frequency set: whether an effect held the channel, noise or tone, the byte written last. */
+typedef struct {
+    bool looked;
+    bool held;
+    uint8_t effect;
+    bool noise;
+    uint8_t value;
+    uint8_t high_before;
+    bool borrow;
+} FrequencySet;
+
+FrequencySet SoundSetFrequency(uint8_t fine, uint8_t channel, uint8_t note);
+
+typedef enum { WAVE_NONE, WAVE_HELD, WAVE_LOADED } WaveHow;
+
+typedef struct { WaveHow how; uint8_t wave; uint8_t effect; } WaveLoad;
+
+WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel);
+void SoundInit(void);
+void SoundDriverStopAll(void);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

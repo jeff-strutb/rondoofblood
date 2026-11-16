@@ -720,3 +720,148 @@ SoundSetControl_at4:
     sta a:PsgBalance
 SoundSetControl_at1:
     rts
+
+; @routine 004E:654 SoundLoadWave
+; @run 75:8E54
+; WHAT IT DOES: Loads a waveform into the selected PSG channel: the channel off, its write place
+; reset, the 32 samples written. $FF loads none, and channels 4 and 5 are left alone while an
+; effect plays on them.
+; HOW: SoundWaveAddress, then the RAM block-move stub at $22E7 built as a TIN of 32 bytes to
+; PsgWaveData and called.
+; Entry: A waveform, X channel. Exit: X and Y kept. $FF, A $FF, Z and C set, N clear, V kept.
+; Left alone, A kept, N and V the effect's bits 7 and 6, Z and C clear. Loaded, A $60, N and Z
+; clear, C and V as SoundWaveAddress.
+SoundLoadWave:
+    cmp #$FF
+    beq SoundLoadWave_at0
+    cpx #$04
+    bcc SoundLoadWave_at1
+    cpx #$06
+    bcs SoundLoadWave_at1
+    tst #$FF,a:SoundChannelCommand+2,x
+    bne SoundLoadWave_at0
+SoundLoadWave_at1:
+    pha
+    stz a:PsgBalance
+    stz a:PsgControl
+    lda #$40
+    sta a:PsgControl
+    stz a:PsgControl
+    pla
+    jsr SoundWaveAddress
+    lda #$06
+    sta a:BlockMoveDestLo
+    lda #$08
+    sta a:BlockMoveDestHi
+    lda #$D3
+    sta a:BlockMoveStub
+    lda #$20
+    sta a:BlockMoveLengthLo
+    lda #$00
+    sta a:BlockMoveLengthHi
+    lda #$60
+    sta a:BlockMoveReturn
+    jsr BlockMoveStub
+    stz a:PsgControl
+SoundLoadWave_at0:
+    rts
+
+; @routine 004E:69E SoundSetFrequency
+; @run 75:8E9E
+; WHAT IT DOES: Sets the selected PSG channel's pitch for a note: the note's period less a fine
+; share of the step to the next note; on a channel whose waveform is noise, the noise frequency
+; instead. Channels 4 and 5 are left alone while an effect plays on them.
+; HOW: SoundPeriods by note; the fine part times the step, SoundMultiply, its high byte off the
+; period; noise off for a tone. Noise takes the note less one, its low five bits.
+; Entry: A the fine part, X channel, Y note. Exit: X kept. Left alone, A and Y kept, N and V the
+; effect's bits 7 and 6, Z and C clear. Noise, A the noise byte, N and Z from it, C set, Y the
+; note less one. Tone, A the period's high byte, N, Z, C and V from its subtract, Y twice the
+; note. V for channels 4 and 5 clear otherwise.
+SoundSetFrequency:
+    cpx #$04
+    bcc SoundSetFrequency_at0
+    cpx #$06
+    bcs SoundSetFrequency_at0
+    tst #$FF,a:SoundChannelCommand+2,x
+    bne SoundSetFrequency_at1
+SoundSetFrequency_at0:
+    sta z:zSoundFine
+    lda a:SoundChannelWave,x
+    cmp #$FF
+    beq SoundSetFrequency_at2
+    tya
+    asl a
+    tay
+    lda a:SoundPeriods,y
+    sec
+    sbc a:SoundPeriods+2,y
+    phy
+    ldy z:zSoundFine
+    jsr SoundMultiply
+    stz a:PsgNoise
+    ply
+    lda a:SoundPeriods,y
+    sec
+    sbc z:zSoundWordHi
+    sta a:PsgFreqLo
+    lda a:SoundPeriods+1,y
+    sbc #$00
+    sta a:PsgFreqHi
+SoundSetFrequency_at1:
+    rts
+SoundSetFrequency_at2:
+    dey
+    tya
+    and #$1F
+    ora #$80
+    sta a:PsgNoise
+    rts
+
+; @routine 0053:233 SoundInit
+; @run 76:B233
+; WHAT IT DOES: Starts the driver: every channel cleared, the PSG silent, no fade, nothing
+; playing, the LFO off.
+; HOW: SoundChannel25B0, SoundChannelCommand and SoundChannelPriority cleared by channel;
+; SoundSilenceAll.
+; Entry: nothing. Exit: A, X, Y, C and V kept; N and Z from X.
+SoundInit:
+    phx
+    pha
+    clx
+    stz a:SoundInCommand
+SoundInit_at0:
+    stz a:SoundChannel25B0,x
+    stz a:SoundChannelCommand,x
+    stz a:SoundChannelPriority,x
+    stz z:zSoundAltBalance
+    inx
+    cpx #$08
+    bne SoundInit_at0
+    jsr SoundSilenceAll
+    stz a:SoundFading
+    stz z:zSoundChannelsOn
+    stz a:PsgLfoFreq
+    stz a:PsgLfoControl
+    pla
+    plx
+    rts
+
+; @routine 0053:25A SoundDriverStopAll
+; @run 76:B25A
+; WHAT IT DOES: Stops everything: no command or priority on any channel, no fade, nothing
+; playing, the PSG silent, noise and the LFO off.
+; HOW: The channels from 7 down; SoundSilenceAll.
+; Entry: nothing. Exit: X $FF, N set, Z clear. A, Y, C and V kept.
+SoundDriverStopAll:
+    ldx #$07
+SoundDriverStopAll_at0:
+    stz a:SoundChannelCommand,x
+    stz a:SoundChannelPriority,x
+    dex
+    bpl SoundDriverStopAll_at0
+    stz a:SoundFading
+    stz z:zSoundChannelsOn
+    jsr SoundSilenceAll
+    stz a:PsgNoise
+    stz a:PsgLfoControl
+    rts

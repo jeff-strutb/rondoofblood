@@ -192,6 +192,7 @@ SoundSetPan:
     sta a:SoundPanSet,x
     sta a:SoundPan,x
     stz a:SoundPanLo,x
+SoundSetPan_at0:
     rts
 
 ; @routine 004E:614 SoundSilenceAll
@@ -1299,4 +1300,538 @@ SoundDivide_at0:
 SoundDivide_at1:
     dey
     bne SoundDivide_at2
+    rts
+
+; @routine 004E:2FF SoundCommandWave
+; @run 75:8AFF
+; WHAT IT DOES: Command $E2: the channel's waveform, loaded into its PSG channel.
+; HOW: SoundChannelWave; SoundLoadWave.
+; Entry: X channel. Exit: as SoundLoadWave.
+SoundCommandWave:
+    lda a:SoundCommandArgs
+    sta a:SoundChannelWave,x
+    jsr SoundLoadWave
+    rts
+
+; @routine 004E:309 SoundCommandPan
+; @run 75:8B09
+; WHAT IT DOES: Command $E3: the channel's pan, unless it is 0.
+; HOW: SoundSetPan.
+; Entry: X channel. Exit: A the pan, N and Z from it. X, Y, C and V kept.
+SoundCommandPan:
+    lda a:SoundCommandArgs
+    bne SoundSetPan
+    bra SoundSetPan_at0
+
+; @routine 004E:31A SoundCommandPanSlide
+; @run 75:8B1A
+; WHAT IT DOES: Command $F8: a pan slide by a step toward a target pan, down when the target is
+; below the pan as set.
+; HOW: SoundPanStepLo and Hi, SoundPanTarget against SoundPanSet.
+; Entry: X channel. Exit: X and Y kept. Up, A the target, N and Z from comparing it, C set, V
+; kept. Down, A the step made negative, N set, Z clear, C and V from negating it.
+SoundCommandPanSlide:
+    lda a:SoundCommandArgs
+    sta a:SoundPanStepLo,x
+    stz a:SoundPanStepHi,x
+    lda a:SoundCommandArgs+1
+    sta a:SoundPanTarget,x
+    cmp a:SoundPanSet,x
+    bcs SoundCommandPanSlide_at0
+    lda #$00
+    sec
+    sbc a:SoundCommandArgs
+    sta a:SoundPanStepLo,x
+    dec a:SoundPanStepHi,x
+SoundCommandPanSlide_at0:
+    rts
+
+; @routine 004E:33B SoundCommandVibrato
+; @run 75:8B3B
+; WHAT IT DOES: Command $E4: the vibrato's delay, speed and the depth it grows to, by a whole
+; step a frame, from no fraction.
+; HOW: SoundVibratoDelay, SoundVibratoSpeed, SoundVibratoDepthMax and SoundVibratoGrowHi.
+; Entry: X channel. Exit: A the depth, N and Z from it. X, Y, C and V kept.
+SoundCommandVibrato:
+    lda a:SoundCommandArgs
+    sta a:SoundVibratoDelay,x
+    lda a:SoundCommandArgs+1
+    sta a:SoundVibratoSpeed,x
+    lda a:SoundCommandArgs+2
+    sta a:SoundVibratoDepthMax,x
+    sta a:SoundVibratoGrowHi,x
+    stz a:SoundVibratoDepthLo,x
+    rts
+
+; @routine 004E:354 SoundCommandVibratoGrow
+; @run 75:8B54
+; WHAT IT DOES: Command $F9: how fast the vibrato's depth grows, in sixteenths a frame.
+; HOW: The argument shifted up four places into SoundVibratoGrowLo and Hi.
+; Entry: X channel. Exit: A the low byte, N and Z from the high, C clear. X, Y and V kept.
+SoundCommandVibratoGrow:
+    stz a:SoundVibratoGrowHi,x
+    lda a:SoundCommandArgs
+    asl a
+    rol a:SoundVibratoGrowHi,x
+    asl a
+    rol a:SoundVibratoGrowHi,x
+    asl a
+    rol a:SoundVibratoGrowHi,x
+    asl a
+    rol a:SoundVibratoGrowHi,x
+    sta a:SoundVibratoGrowLo,x
+    rts
+
+; @routine 004E:36E SoundCommandModulation
+; @run 75:8B6E
+; WHAT IT DOES: Command $E5: the modulation's speed and its two masks, from the start.
+; HOW: SoundModulationSpeed, SoundModulationMaskHi and Lo; the phase cleared.
+; Entry: X channel. Exit: A the low mask, N and Z from it. X, Y, C and V kept.
+SoundCommandModulation:
+    lda a:SoundCommandArgs
+    sta a:SoundModulationSpeed,x
+    lda a:SoundCommandArgs+1
+    sta a:SoundModulationMaskHi,x
+    lda a:SoundCommandArgs+2
+    sta a:SoundModulationMaskLo,x
+    stz a:SoundModulationPhaseLo,x
+    stz a:SoundModulationPhase,x
+    rts
+
+; @routine 004E:387 SoundCommandLoopA
+; @run 75:8B87
+; WHAT IT DOES: Command $E6: the start of loop A, with no passes made and nothing added yet.
+; HOW: The place after the command into SoundLoopAStartLo and Hi; SoundLoopACount,
+; SoundVolumeAddA and detune A cleared.
+; Entry: X channel. Exit: A the place's high byte, N and Z from it. X, Y, C and V kept.
+SoundCommandLoopA:
+    lda z:zSoundSequenceLo
+    sta a:SoundLoopAStartLo,x
+    lda z:zSoundSequenceHi
+    sta a:SoundLoopAStartHi,x
+    stz a:SoundLoopACount,x
+    stz a:SoundVolumeAddA,x
+    stz a:SoundDetuneAFine,x
+    stz a:SoundDetuneANote,x
+    rts
+
+; @routine 004E:39E SoundCommandLoopAEnd
+; @run 75:8B9E
+; WHAT IT DOES: Command $E7: the end of loop A: after its passes, on with what it added cleared;
+; else the volume and detune A moved by the arguments and back to its start. 0 passes loops for
+; ever.
+; HOW: SoundLoopACount; SoundVolumeAddA; the detune in sixteenths, signed, onto detune A.
+; Entry: X channel. Exit: done, A the passes, Z and C set, N clear, V kept. Back, A the start's
+; high byte, N and Z from it, C and V from adding the detune's notes. X and Y kept.
+SoundCommandLoopAEnd:
+    lda a:SoundCommandArgs
+    beq SoundCommandLoopAEnd_at0
+    inc a:SoundLoopACount,x
+    cmp a:SoundLoopACount,x
+    beq SoundCommandLoopAEnd_at1
+SoundCommandLoopAEnd_at0:
+    lda a:SoundCommandArgs+1
+    clc
+    adc a:SoundVolumeAddA,x
+    sta a:SoundVolumeAddA,x
+    stz z:zSoundWordLo
+    lda a:SoundCommandArgs+2
+    bmi SoundCommandLoopAEnd_at2
+    bra SoundCommandLoopAEnd_at3
+SoundCommandLoopAEnd_at2:
+    dec z:zSoundWordLo
+SoundCommandLoopAEnd_at3:
+    asl a
+    rol z:zSoundWordLo
+    asl a
+    rol z:zSoundWordLo
+    asl a
+    rol z:zSoundWordLo
+    asl a
+    rol z:zSoundWordLo
+    clc
+    adc a:SoundDetuneAFine,x
+    sta a:SoundDetuneAFine,x
+    lda z:zSoundWordLo
+    adc a:SoundDetuneANote,x
+    sta a:SoundDetuneANote,x
+    lda a:SoundLoopAStartLo,x
+    sta z:zSoundSequenceLo
+    lda a:SoundLoopAStartHi,x
+    sta z:zSoundSequenceHi
+    bra SoundCommandLoopAEnd_at4
+SoundCommandLoopAEnd_at1:
+    stz a:SoundVolumeAddA,x
+    stz a:SoundDetuneAFine,x
+    stz a:SoundDetuneANote,x
+SoundCommandLoopAEnd_at4:
+    rts
+
+; @routine 004E:3F1 SoundCommandLoopB
+; @run 75:8BF1
+; WHAT IT DOES: Command $E8: the start of loop B, as loop A's.
+; HOW: SoundLoopBStartLo and Hi; SoundLoopBCount, SoundVolumeAddB and detune B cleared.
+; Entry: X channel. Exit: as SoundCommandLoopA.
+SoundCommandLoopB:
+    lda z:zSoundSequenceLo
+    sta a:SoundLoopBStartLo,x
+    lda z:zSoundSequenceHi
+    sta a:SoundLoopBStartHi,x
+    stz a:SoundLoopBCount,x
+    stz a:SoundVolumeAddB,x
+    stz a:SoundDetuneBFine,x
+    stz a:SoundDetuneBNote,x
+    rts
+
+; @routine 004E:408 SoundCommandLoopBEnd
+; @run 75:8C08
+; WHAT IT DOES: Command $E9: the end of loop B, as loop A's.
+; HOW: SoundLoopBCount; SoundVolumeAddB; detune B.
+; Entry: X channel. Exit: as SoundCommandLoopAEnd.
+SoundCommandLoopBEnd:
+    lda a:SoundCommandArgs
+    beq SoundCommandLoopBEnd_at0
+    inc a:SoundLoopBCount,x
+    cmp a:SoundLoopBCount,x
+    beq SoundCommandLoopBEnd_at1
+SoundCommandLoopBEnd_at0:
+    lda a:SoundCommandArgs+1
+    clc
+    adc a:SoundVolumeAddB,x
+    sta a:SoundVolumeAddB,x
+    stz z:zSoundWordLo
+    lda a:SoundCommandArgs+2
+    bmi SoundCommandLoopBEnd_at2
+    bra SoundCommandLoopBEnd_at3
+SoundCommandLoopBEnd_at2:
+    dec z:zSoundWordLo
+SoundCommandLoopBEnd_at3:
+    asl a
+    rol z:zSoundWordLo
+    asl a
+    rol z:zSoundWordLo
+    asl a
+    rol z:zSoundWordLo
+    asl a
+    rol z:zSoundWordLo
+    clc
+    adc a:SoundDetuneBFine,x
+    sta a:SoundDetuneBFine,x
+    lda z:zSoundWordLo
+    adc a:SoundDetuneBNote,x
+    sta a:SoundDetuneBNote,x
+    lda a:SoundLoopBStartLo,x
+    sta z:zSoundSequenceLo
+    lda a:SoundLoopBStartHi,x
+    sta z:zSoundSequenceHi
+    bra SoundCommandLoopBEnd_at4
+SoundCommandLoopBEnd_at1:
+    stz a:SoundVolumeAddB,x
+    stz a:SoundDetuneBFine,x
+    stz a:SoundDetuneBNote,x
+SoundCommandLoopBEnd_at4:
+    rts
+
+; @routine 004E:45B SoundCommandApproachFrom
+; @run 75:8C5B
+; WHAT IT DOES: Command $EA: where the channel's approaching value starts.
+; HOW: SoundApproach.
+; Entry: X channel. Exit: A the value, N and Z from it. X, Y, C and V kept.
+SoundCommandApproachFrom:
+    lda a:SoundCommandArgs
+    sta a:SoundApproach,x
+    rts
+
+; @routine 004E:462 SoundCommandApproach
+; @run 75:8C62
+; WHAT IT DOES: Command $EB: an approach by a step to a target, from no fraction.
+; HOW: SoundApproachBy, SoundApproachLo cleared, SoundApproachTarget.
+; Entry: X channel. Exit: A the target, N and Z from it. X, Y, C and V kept.
+SoundCommandApproach:
+    lda a:SoundCommandArgs
+    sta a:SoundApproachBy,x
+    stz a:SoundApproachLo,x
+    lda a:SoundCommandArgs+1
+    sta a:SoundApproachTarget,x
+    rts
+
+; @routine 004E:472 SoundCommandTranspose
+; @run 75:8C72
+; WHAT IT DOES: Command $EC: the channel's transpose.
+; HOW: SoundTranspose.
+; Entry: X channel. Exit: A the transpose, N and Z from it. X, Y, C and V kept.
+SoundCommandTranspose:
+    lda a:SoundCommandArgs
+    sta a:SoundTranspose,x
+    rts
+
+; @routine 004E:479 SoundCommandTremolo
+; @run 75:8C79
+; WHAT IT DOES: Command $ED: the tremolo's delay, speed and depth.
+; HOW: SoundTremoloDelay, SoundTremoloSpeed, SoundTremoloDepth.
+; Entry: X channel. Exit: A the depth, N and Z from it. X, Y, C and V kept.
+SoundCommandTremolo:
+    lda a:SoundCommandArgs
+    sta a:SoundTremoloDelay,x
+    lda a:SoundCommandArgs+1
+    sta a:SoundTremoloSpeed,x
+    lda a:SoundCommandArgs+2
+    sta a:SoundTremoloDepth,x
+    rts
+
+; @routine 004E:48C SoundCommandVolume
+; @run 75:8C8C
+; WHAT IT DOES: Command $EE: the channel's volume, 0 to $0F, as the slide's attenuation $0F less
+; it, with no fraction.
+; HOW: SoundSlideHi, SoundSlideLo cleared.
+; Entry: X channel. Exit: A the attenuation, N, Z, C and V from its subtract. X and Y kept.
+SoundCommandVolume:
+    lda #$0F
+    sec
+    sbc a:SoundCommandArgs
+    sta a:SoundSlideHi,x
+    stz a:SoundSlideLo,x
+    rts
+
+; @routine 004E:499 SoundCommandVolumeSlide
+; @run 75:8C99
+; WHAT IT DOES: Command $EF: a volume slide by a step to a target volume, as the attenuation $0F
+; less it; down in attenuation when the target is below the slide's.
+; HOW: SoundSlideStepLo and Hi, SoundSlideTarget against SoundSlideHi.
+; Entry: X channel. Exit: as SoundCommandPanSlide, with V from the target's subtract when up.
+SoundCommandVolumeSlide:
+    lda a:SoundCommandArgs
+    sta a:SoundSlideStepLo,x
+    stz a:SoundSlideStepHi,x
+    lda #$0F
+    sec
+    sbc a:SoundCommandArgs+1
+    sta a:SoundSlideTarget,x
+    cmp a:SoundSlideHi,x
+    bcs SoundCommandVolumeSlide_at0
+    lda #$00
+    sec
+    sbc a:SoundCommandArgs
+    sta a:SoundSlideStepLo,x
+    dec a:SoundSlideStepHi,x
+SoundCommandVolumeSlide_at0:
+    rts
+
+; @routine 004E:4BD SoundCommandGlideFromLast
+; @run 75:8CBD
+; WHAT IT DOES: Command $F0: glides from the last note to each new one, over the frames given,
+; with no delay.
+; HOW: SoundGlideFromLast 1, SoundGlideDelaySet 0, SoundGlideFramesSet.
+; Entry: X channel. Exit: A the frames, N and Z from them. X, Y, C and V kept.
+SoundCommandGlideFromLast:
+    lda #$01
+    sta a:SoundGlideFromLast,x
+    stz a:SoundGlideDelaySet,x
+    lda a:SoundCommandArgs
+    sta a:SoundGlideFramesSet,x
+    rts
+
+; @routine 004E:4CC SoundCommandGlideFromBelow
+; @run 75:8CCC
+; WHAT IT DOES: Command $F1: glides into each new note from notes below it, after a delay, over
+; the frames given.
+; HOW: SoundGlideFromLast 0, SoundGlideDelaySet, SoundGlideFramesSet, SoundGlideOffsetNote, no
+; fine offset.
+; Entry: X channel. Exit: A the notes below, N and Z from them. X, Y, C and V kept.
+SoundCommandGlideFromBelow:
+    stz a:SoundGlideFromLast,x
+    lda a:SoundCommandArgs
+    sta a:SoundGlideDelaySet,x
+    lda a:SoundCommandArgs+1
+    sta a:SoundGlideFramesSet,x
+    lda a:SoundCommandArgs+2
+    sta a:SoundGlideOffsetNote,x
+    stz a:SoundGlideOffsetFine,x
+    rts
+
+; @routine 004E:4E5 SoundCommandFineTune
+; @run 75:8CE5
+; WHAT IT DOES: Command $F2: the channel's fine tune.
+; HOW: SoundFineTune.
+; Entry: X channel. Exit: A the fine tune, N and Z from it. X, Y, C and V kept.
+SoundCommandFineTune:
+    lda a:SoundCommandArgs
+    sta a:SoundFineTune,x
+    rts
+
+; @routine 004E:4EC SoundCommandRepeatMark
+; @run 75:8CEC
+; WHAT IT DOES: Command $F6: marks the start of a section to be played twice.
+; HOW: The place after the command into SoundRepeatMarkLo and Hi; SoundRepeatState 0.
+; Entry: X channel. Exit: A the place's high byte, N and Z from it. X, Y, C and V kept.
+SoundCommandRepeatMark:
+    lda z:zSoundSequenceLo
+    sta a:SoundRepeatMarkLo,x
+    lda z:zSoundSequenceHi
+    sta a:SoundRepeatMarkHi,x
+    stz a:SoundRepeatState,x
+    rts
+
+; @routine 004E:4FA SoundCommandRepeat
+; @run 75:8CFA
+; WHAT IT DOES: Command $F7, met three times: the first goes on; the second keeps its place and
+; goes back to the mark, playing the section again; the third goes back to where the second was,
+; and the next pass goes on again.
+; HOW: SoundRepeatState 0, 1 and 2; SoundRepeatReturnLo and Hi.
+; Entry: X channel. Exit: X, Y, C and V kept. First, A 0, N and Z from the state 1. Second and
+; third, A the high byte of where it goes, N and Z from it. Past 2, A the state less 2, N and Z
+; from it.
+SoundCommandRepeat:
+    lda a:SoundRepeatState,x
+    bne SoundCommandRepeat_at0
+    inc a:SoundRepeatState,x
+    bra SoundCommandRepeat_at1
+SoundCommandRepeat_at0:
+    dec a
+    bne SoundCommandRepeat_at2
+    inc a:SoundRepeatState,x
+    lda z:zSoundSequenceLo
+    sta a:SoundRepeatReturnLo,x
+    lda z:zSoundSequenceHi
+    sta a:SoundRepeatReturnHi,x
+    lda a:SoundRepeatMarkLo,x
+    sta z:zSoundSequenceLo
+    lda a:SoundRepeatMarkHi,x
+    sta z:zSoundSequenceHi
+    bra SoundCommandRepeat_at1
+SoundCommandRepeat_at2:
+    dec a
+    bne SoundCommandRepeat_at1
+    dec a:SoundRepeatState,x
+    lda a:SoundRepeatReturnLo,x
+    sta z:zSoundSequenceLo
+    lda a:SoundRepeatReturnHi,x
+    sta z:zSoundSequenceHi
+SoundCommandRepeat_at1:
+    rts
+
+; @routine 004E:55B SoundCommandEnvelope
+; @run 75:8D5B
+; WHAT IT DOES: Command $FA: the channel's envelope: its attack from a preset, its decay and
+; release rates from the tens and units of the second argument, its sustain level.
+; HOW: SoundAttackPresets by the first; SoundRatePresets by the second's tens and units.
+; Entry: X channel. Exit: A the sustain level, N and Z from it, Y the units, C clear, V from the
+; last subtract of ten if there was one. X kept.
+SoundCommandEnvelope:
+    lda a:SoundCommandArgs
+    asl a
+    tay
+    lda a:SoundAttackPresets,y
+    sta a:SoundAttackRate,x
+    iny
+    lda a:SoundAttackPresets,y
+    sta a:SoundAttackLevel,x
+    lda a:SoundCommandArgs+1
+    cly
+SoundCommandEnvelope_at1:
+    cmp #$0A
+    bcc SoundCommandEnvelope_at0
+    sec
+    sbc #$0A
+    iny
+    bra SoundCommandEnvelope_at1
+SoundCommandEnvelope_at0:
+    pha
+    lda a:SoundRatePresets,y
+    sta a:SoundDecayRate,x
+    ply
+    lda a:SoundRatePresets,y
+    sta a:SoundReleaseRate,x
+    lda a:SoundCommandArgs+2
+    sta a:SoundSustainLevel,x
+    rts
+
+; @routine 004E:60C SoundCommandRamp
+; @run 75:8E0C
+; WHAT IT DOES: Command $FB: the ramp's step.
+; HOW: SoundRampBy.
+; Entry: X channel. Exit: A the step, N and Z from it. X, Y, C and V kept.
+SoundCommandRamp:
+    lda a:SoundCommandArgs
+    sta a:SoundRampBy,x
+    rts
+
+; @routine 004E:613 SoundCommandNothing
+; @run 75:8E13
+; WHAT IT DOES: Commands $F3, $F4, $F5 and $FC: nothing.
+; HOW: Returns.
+; Entry: anything. Exit: all registers and flags kept.
+SoundCommandNothing:
+    rts
+
+; @routine 0053:745 SoundCommandJump
+; @run 76:B745
+; WHAT IT DOES: Command $FD: the sequence goes on at the address given.
+; HOW: The two arguments into zSoundSequenceLo and Hi.
+; Entry: X channel. Exit: A the address's high byte, N and Z from it. X, Y, C and V kept.
+SoundCommandJump:
+    lda a:SoundCommandArgs
+    sta z:zSoundSequenceLo
+    lda a:SoundCommandArgs+1
+    sta z:zSoundSequenceHi
+    rts
+
+; @routine 0053:750 SoundCommandCall
+; @run 76:B750
+; WHAT IT DOES: Command $FE: plays the sequence at the address given, then comes back after the
+; command; one level only.
+; HOW: The place after the command into SoundReturnLo and Hi, then the address.
+; Entry: X channel. Exit: A the address's high byte, N and Z from it. X, Y, C and V kept.
+SoundCommandCall:
+    lda z:zSoundSequenceLo
+    sta a:SoundReturnLo,x
+    lda z:zSoundSequenceHi
+    sta a:SoundReturnHi,x
+    lda a:SoundCommandArgs
+    sta z:zSoundSequenceLo
+    lda a:SoundCommandArgs+1
+    sta z:zSoundSequenceHi
+    rts
+
+; @routine 0053:765 SoundCommandReturn
+; @run 76:B765
+; WHAT IT DOES: Command $FF: back from a called sequence; with none to go back to, the end of the
+; channel's sequence: it is silenced, the main volume off while the sound is paused, the channel's
+; command cleared from 4 up, and from 6 up its priority too and the waveform given back to the
+; PSG channel it shared.
+; HOW: SoundReturnLo and Hi. The end drops the return into the command loop, so the loop's
+; caller gets C set; SoundSilenceChannel; SoundLoadWave with the shared channel's waveform.
+; Entry: X channel. Exit: back, A the high byte, N and Z from it, C clear. End, C set, and as the
+; last call left them; the return address dropped from the stack.
+SoundCommandReturn:
+    lda a:SoundReturnLo,x
+    ora a:SoundReturnHi,x
+    bne SoundCommandReturn_at0
+    pla
+    pla
+    jsr SoundSilenceChannel
+    lda a:SoundPaused
+    beq SoundCommandReturn_at1
+    stz a:PsgMainVolume
+SoundCommandReturn_at1:
+    cpx #$04
+    bcc SoundCommandReturn_at2
+    stz a:SoundChannelCommand,x
+SoundCommandReturn_at2:
+    cpx #$06
+    bcc SoundCommandReturn_at3
+    stz a:SoundChannelPriority,x
+    lda a:SoundChannelWave-2,x
+    jsr SoundLoadWave
+SoundCommandReturn_at3:
+    sec
+    rts
+SoundCommandReturn_at0:
+    lda a:SoundReturnLo,x
+    sta z:zSoundSequenceLo
+    lda a:SoundReturnHi,x
+    sta z:zSoundSequenceHi
+    stz a:SoundReturnLo,x
+    stz a:SoundReturnHi,x
+    clc
     rts

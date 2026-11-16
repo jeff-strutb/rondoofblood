@@ -18,7 +18,8 @@ enum {
     SEQUENCE_LONG_FIRST = 0xE0, OFFSET_NEGATIVE = 0x40, PSG_CHANNEL_ON = 0x80, BALANCE_SET_SIZE = 0x10,
     PSG_VOLUME_LIMIT = 0x20, WAVE_NOISE = 0xFF, NOISE_FREQUENCY = 0x1F, PSG_NOISE_ON = 0x80,
     PSG_WAVE_RESET = 0x40, OPCODE_TIN = 0xD3, OPCODE_RTS = 0x60, WAVE_SAMPLES = 0x20,
-    SOUND_CHANNELS = 8, NOTE_VOLUME_BASE = 0x10
+    SOUND_CHANNELS = 8, NOTE_VOLUME_BASE = 0x10, VOLUME_STEPS = 0x0F, RATE_TENS = 10,
+    REPEAT_MARKED = 0, REPEAT_FIRST_PASS = 1, REPEAT_AGAIN = 2
 };
 
 /* PSG channels 4 and 5 are left alone while effect channels 6 and 7 play on them. */
@@ -1281,13 +1282,11 @@ WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel)
     return load;
 }
 
-void abi_SoundLoadWave(void)
+void wave_load_exit_shim(WaveLoad load, uint8_t wave)
 {
-    uint8_t wave = cpu.a;
-    WaveLoad load = SoundLoadWave(wave, cpu.x);
-
     switch (load.how) {
     case WAVE_NONE:
+        cpu.a = wave;
         abi_nz(0);
         abi_flag(P_C, true);
         break;
@@ -1296,6 +1295,7 @@ void abi_SoundLoadWave(void)
         abi_flag(P_V, (load.effect & 0x40) != 0);
         abi_flag(P_Z, false);
         abi_flag(P_C, false);
+        cpu.a = wave;
         break;
     case WAVE_LOADED:
         wave_address_exit_shim(wave);
@@ -1303,6 +1303,13 @@ void abi_SoundLoadWave(void)
         abi_nz(OPCODE_RTS);
         break;
     }
+}
+
+void abi_SoundLoadWave(void)
+{
+    uint8_t wave = cpu.a;
+
+    wave_load_exit_shim(SoundLoadWave(wave, cpu.x), wave);
 }
 
 /*
@@ -1911,4 +1918,784 @@ void abi_SoundStartNote(void)
     abi_flag(P_C, (start.product.value & 0x08) != 0);
     if (start.product.added)
         abi_flag(P_V, start.product.overflow);
+}
+
+/* The command's arguments, as SoundReadCommand left them. */
+static uint8_t argument(int index)
+{
+    return rd8((uint16_t)(SoundCommandArgs + index));
+}
+
+/* A byte set by channel from an argument; the last such load is what a handler's exit shows. */
+static uint8_t set_from(uint16_t field, uint8_t channel, int index)
+{
+    uint8_t value = argument(index);
+
+    wr8((uint16_t)(field + channel), value);
+    return value;
+}
+
+/* A handler's exit that is the last byte it loaded: A that byte, N and Z from it. */
+static void abi_exit_loaded(uint8_t value)
+{
+    cpu.a = value;
+    abi_nz(value);
+}
+
+/*
+ * @routine 004E:2FF SoundCommandWave
+ * @run 75:8AFF
+ * WHAT IT DOES: Command $E2: the channel's waveform, loaded into its PSG channel.
+ * HOW: SoundChannelWave; SoundLoadWave.
+ * Entry: X channel. Exit: as SoundLoadWave.
+ */
+WaveLoad SoundCommandWave(uint8_t channel)
+{
+    return SoundLoadWave(set_from(SoundChannelWave, channel, 0), channel);
+}
+
+void abi_SoundCommandWave(void)
+{
+    uint8_t wave = argument(0);
+
+    cpu.a = wave;
+    wave_load_exit_shim(SoundCommandWave(cpu.x), wave);
+}
+
+/*
+ * @routine 004E:309 SoundCommandPan
+ * @run 75:8B09
+ * WHAT IT DOES: Command $E3: the channel's pan, unless it is 0.
+ * HOW: SoundSetPan.
+ * Entry: X channel. Exit: A the pan, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandPan(uint8_t channel)
+{
+    uint8_t pan = argument(0);
+
+    if (pan != 0)
+        SoundSetPan(channel, pan);
+    return pan;
+}
+
+void abi_SoundCommandPan(void)
+{
+    abi_exit_loaded(SoundCommandPan(cpu.x));
+}
+
+/* A slide's start toward a target: up by the step, or down by it when the target is below. */
+static SlideStart start_slide(uint8_t channel, uint16_t step_lo, uint16_t step_hi, uint16_t target,
+                              uint16_t from, uint8_t step, uint8_t aim)
+{
+    SlideStart start = { false, 0, 0, 0 };
+
+    wr8((uint16_t)(step_lo + channel), step);
+    wr8((uint16_t)(step_hi + channel), 0);
+    wr8((uint16_t)(target + channel), aim);
+    start.aim = aim;
+    start.from = rd8((uint16_t)(from + channel));
+    if (aim >= start.from)
+        return start;
+    start.down = true;
+    start.step = (uint8_t)(0 - argument(0));
+    wr8((uint16_t)(step_lo + channel), start.step);
+    wr8((uint16_t)(step_hi + channel), (uint8_t)(rd8((uint16_t)(step_hi + channel)) - 1));
+    return start;
+}
+
+/* Up, A the target with the compare's flags; down, A the step, C and V from negating it, N set. */
+static void abi_exit_slide_start(SlideStart start)
+{
+    if (!start.down) {
+        cpu.a = start.aim;
+        abi_nz((uint8_t)(start.aim - start.from));
+        abi_flag(P_C, true);
+        return;
+    }
+    cpu.a = start.step;
+    abi_nz(0xFF);
+    abi_flag(P_C, start.step == 0);
+    abi_flag(P_V, (start.step & (uint8_t)(0 - start.step) & 0x80) != 0);
+}
+
+/*
+ * @routine 004E:31A SoundCommandPanSlide
+ * @run 75:8B1A
+ * WHAT IT DOES: Command $F8: a pan slide by a step toward a target pan, down when the target is
+ * below the pan as set.
+ * HOW: SoundPanStepLo and Hi, SoundPanTarget against SoundPanSet.
+ * Entry: X channel. Exit: X and Y kept. Up, A the target, N and Z from comparing it, C set, V
+ * kept. Down, A the step made negative, N set, Z clear, C and V from negating it.
+ */
+SlideStart SoundCommandPanSlide(uint8_t channel)
+{
+    return start_slide(channel, SoundPanStepLo, SoundPanStepHi, SoundPanTarget, SoundPanSet,
+                       argument(0), argument(1));
+}
+
+void abi_SoundCommandPanSlide(void)
+{
+    abi_exit_slide_start(SoundCommandPanSlide(cpu.x));
+}
+
+/*
+ * @routine 004E:33B SoundCommandVibrato
+ * @run 75:8B3B
+ * WHAT IT DOES: Command $E4: the vibrato's delay, speed and the depth it grows to, by a whole
+ * step a frame, from no fraction.
+ * HOW: SoundVibratoDelay, SoundVibratoSpeed, SoundVibratoDepthMax and SoundVibratoGrowHi.
+ * Entry: X channel. Exit: A the depth, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandVibrato(uint8_t channel)
+{
+    uint8_t depth;
+
+    set_from(SoundVibratoDelay, channel, 0);
+    set_from(SoundVibratoSpeed, channel, 1);
+    depth = set_from(SoundVibratoDepthMax, channel, 2);
+    wr8((uint16_t)(SoundVibratoGrowHi + channel), depth);
+    wr8((uint16_t)(SoundVibratoDepthLo + channel), 0);
+    return depth;
+}
+
+void abi_SoundCommandVibrato(void)
+{
+    abi_exit_loaded(SoundCommandVibrato(cpu.x));
+}
+
+/*
+ * @routine 004E:354 SoundCommandVibratoGrow
+ * @run 75:8B54
+ * WHAT IT DOES: Command $F9: how fast the vibrato's depth grows, in sixteenths a frame.
+ * HOW: The argument shifted up four places into SoundVibratoGrowLo and Hi.
+ * Entry: X channel. Exit: A the low byte, N and Z from the high, C clear. X, Y and V kept.
+ */
+uint16_t SoundCommandVibratoGrow(uint8_t channel)
+{
+    uint16_t grow = (uint16_t)(argument(0) << 4);
+
+    wr8((uint16_t)(SoundVibratoGrowHi + channel), (uint8_t)(grow >> 8));
+    wr8((uint16_t)(SoundVibratoGrowLo + channel), (uint8_t)grow);
+    return grow;
+}
+
+void abi_SoundCommandVibratoGrow(void)
+{
+    uint16_t grow = SoundCommandVibratoGrow(cpu.x);
+
+    cpu.a = (uint8_t)grow;
+    abi_nz((uint8_t)(grow >> 8));
+    abi_flag(P_C, false);
+}
+
+/*
+ * @routine 004E:36E SoundCommandModulation
+ * @run 75:8B6E
+ * WHAT IT DOES: Command $E5: the modulation's speed and its two masks, from the start.
+ * HOW: SoundModulationSpeed, SoundModulationMaskHi and Lo; the phase cleared.
+ * Entry: X channel. Exit: A the low mask, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandModulation(uint8_t channel)
+{
+    uint8_t mask;
+
+    set_from(SoundModulationSpeed, channel, 0);
+    set_from(SoundModulationMaskHi, channel, 1);
+    mask = set_from(SoundModulationMaskLo, channel, 2);
+    wr8((uint16_t)(SoundModulationPhaseLo + channel), 0);
+    wr8((uint16_t)(SoundModulationPhase + channel), 0);
+    return mask;
+}
+
+void abi_SoundCommandModulation(void)
+{
+    abi_exit_loaded(SoundCommandModulation(cpu.x));
+}
+
+/* A loop's start: the place after the command kept, its passes and what it adds cleared. */
+static uint8_t loop_start(uint8_t channel, const SoundLoop *loop)
+{
+    uint8_t high;
+
+    wr8((uint16_t)(loop->start_lo + channel), rd8(zSoundSequenceLo));
+    high = rd8(zSoundSequenceHi);
+    wr8((uint16_t)(loop->start_hi + channel), high);
+    wr8((uint16_t)(loop->count + channel), 0);
+    wr8((uint16_t)(loop->volume + channel), 0);
+    wr8((uint16_t)(loop->detune_fine + channel), 0);
+    wr8((uint16_t)(loop->detune_note + channel), 0);
+    return high;
+}
+
+/*
+ * A loop's end: after its passes, what it added cleared and on; otherwise the volume and the
+ * detune moved by the arguments, the detune's sixteenths signed, and back to its start. 0 passes
+ * loops for ever.
+ */
+static LoopEnd loop_end(uint8_t channel, const SoundLoop *loop)
+{
+    LoopEnd end = { false, 0, { 0, false, false } };
+    uint8_t passes = argument(0);
+    int16_t detune;
+    Sum low;
+
+    if (passes != 0) {
+        uint8_t count = (uint8_t)(rd8((uint16_t)(loop->count + channel)) + 1);
+
+        wr8((uint16_t)(loop->count + channel), count);
+        if (passes == count) {
+            wr8((uint16_t)(loop->volume + channel), 0);
+            wr8((uint16_t)(loop->detune_fine + channel), 0);
+            wr8((uint16_t)(loop->detune_note + channel), 0);
+            end.done = true;
+            end.value = passes;
+            return end;
+        }
+    }
+    wr8((uint16_t)(loop->volume + channel), (uint8_t)(argument(1) + rd8((uint16_t)(loop->volume + channel))));
+    detune = (int16_t)((int8_t)argument(2) * 16);
+    wr8(zSoundWordLo, (uint8_t)((uint16_t)detune >> 8));
+    low = add_bytes((uint8_t)detune, rd8((uint16_t)(loop->detune_fine + channel)), false);
+    wr8((uint16_t)(loop->detune_fine + channel), low.value);
+    end.sum = add_bytes(rd8(zSoundWordLo), rd8((uint16_t)(loop->detune_note + channel)), low.carry);
+    wr8((uint16_t)(loop->detune_note + channel), end.sum.value);
+    wr8(zSoundSequenceLo, rd8((uint16_t)(loop->start_lo + channel)));
+    end.value = rd8((uint16_t)(loop->start_hi + channel));
+    wr8(zSoundSequenceHi, end.value);
+    return end;
+}
+
+/* Done, A the passes, Z and C set, N clear; back, A the start's high byte, C and V from the detune. */
+static void abi_exit_loop_end(LoopEnd end)
+{
+    cpu.a = end.value;
+    if (end.done) {
+        abi_nz(0);
+        abi_flag(P_C, true);
+        return;
+    }
+    abi_nz(end.value);
+    abi_flag(P_C, end.sum.carry);
+    abi_flag(P_V, end.sum.overflow);
+}
+
+static const SoundLoop loop_a = {
+    SoundLoopAStartLo, SoundLoopAStartHi, SoundLoopACount, SoundVolumeAddA, SoundDetuneAFine, SoundDetuneANote
+};
+static const SoundLoop loop_b = {
+    SoundLoopBStartLo, SoundLoopBStartHi, SoundLoopBCount, SoundVolumeAddB, SoundDetuneBFine, SoundDetuneBNote
+};
+
+/*
+ * @routine 004E:387 SoundCommandLoopA
+ * @run 75:8B87
+ * WHAT IT DOES: Command $E6: the start of loop A, with no passes made and nothing added yet.
+ * HOW: The place after the command into SoundLoopAStartLo and Hi; SoundLoopACount,
+ * SoundVolumeAddA and detune A cleared.
+ * Entry: X channel. Exit: A the place's high byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandLoopA(uint8_t channel)
+{
+    return loop_start(channel, &loop_a);
+}
+
+void abi_SoundCommandLoopA(void)
+{
+    abi_exit_loaded(SoundCommandLoopA(cpu.x));
+}
+
+/*
+ * @routine 004E:39E SoundCommandLoopAEnd
+ * @run 75:8B9E
+ * WHAT IT DOES: Command $E7: the end of loop A: after its passes, on with what it added cleared;
+ * else the volume and detune A moved by the arguments and back to its start. 0 passes loops for
+ * ever.
+ * HOW: SoundLoopACount; SoundVolumeAddA; the detune in sixteenths, signed, onto detune A.
+ * Entry: X channel. Exit: done, A the passes, Z and C set, N clear, V kept. Back, A the start's
+ * high byte, N and Z from it, C and V from adding the detune's notes. X and Y kept.
+ */
+LoopEnd SoundCommandLoopAEnd(uint8_t channel)
+{
+    return loop_end(channel, &loop_a);
+}
+
+void abi_SoundCommandLoopAEnd(void)
+{
+    abi_exit_loop_end(SoundCommandLoopAEnd(cpu.x));
+}
+
+/*
+ * @routine 004E:3F1 SoundCommandLoopB
+ * @run 75:8BF1
+ * WHAT IT DOES: Command $E8: the start of loop B, as loop A's.
+ * HOW: SoundLoopBStartLo and Hi; SoundLoopBCount, SoundVolumeAddB and detune B cleared.
+ * Entry: X channel. Exit: as SoundCommandLoopA.
+ */
+uint8_t SoundCommandLoopB(uint8_t channel)
+{
+    return loop_start(channel, &loop_b);
+}
+
+void abi_SoundCommandLoopB(void)
+{
+    abi_exit_loaded(SoundCommandLoopB(cpu.x));
+}
+
+/*
+ * @routine 004E:408 SoundCommandLoopBEnd
+ * @run 75:8C08
+ * WHAT IT DOES: Command $E9: the end of loop B, as loop A's.
+ * HOW: SoundLoopBCount; SoundVolumeAddB; detune B.
+ * Entry: X channel. Exit: as SoundCommandLoopAEnd.
+ */
+LoopEnd SoundCommandLoopBEnd(uint8_t channel)
+{
+    return loop_end(channel, &loop_b);
+}
+
+void abi_SoundCommandLoopBEnd(void)
+{
+    abi_exit_loop_end(SoundCommandLoopBEnd(cpu.x));
+}
+
+/*
+ * @routine 004E:45B SoundCommandApproachFrom
+ * @run 75:8C5B
+ * WHAT IT DOES: Command $EA: where the channel's approaching value starts.
+ * HOW: SoundApproach.
+ * Entry: X channel. Exit: A the value, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandApproachFrom(uint8_t channel)
+{
+    return set_from(SoundApproach, channel, 0);
+}
+
+void abi_SoundCommandApproachFrom(void)
+{
+    abi_exit_loaded(SoundCommandApproachFrom(cpu.x));
+}
+
+/*
+ * @routine 004E:462 SoundCommandApproach
+ * @run 75:8C62
+ * WHAT IT DOES: Command $EB: an approach by a step to a target, from no fraction.
+ * HOW: SoundApproachBy, SoundApproachLo cleared, SoundApproachTarget.
+ * Entry: X channel. Exit: A the target, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandApproach(uint8_t channel)
+{
+    set_from(SoundApproachBy, channel, 0);
+    wr8((uint16_t)(SoundApproachLo + channel), 0);
+    return set_from(SoundApproachTarget, channel, 1);
+}
+
+void abi_SoundCommandApproach(void)
+{
+    abi_exit_loaded(SoundCommandApproach(cpu.x));
+}
+
+/*
+ * @routine 004E:472 SoundCommandTranspose
+ * @run 75:8C72
+ * WHAT IT DOES: Command $EC: the channel's transpose.
+ * HOW: SoundTranspose.
+ * Entry: X channel. Exit: A the transpose, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandTranspose(uint8_t channel)
+{
+    return set_from(SoundTranspose, channel, 0);
+}
+
+void abi_SoundCommandTranspose(void)
+{
+    abi_exit_loaded(SoundCommandTranspose(cpu.x));
+}
+
+/*
+ * @routine 004E:479 SoundCommandTremolo
+ * @run 75:8C79
+ * WHAT IT DOES: Command $ED: the tremolo's delay, speed and depth.
+ * HOW: SoundTremoloDelay, SoundTremoloSpeed, SoundTremoloDepth.
+ * Entry: X channel. Exit: A the depth, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandTremolo(uint8_t channel)
+{
+    set_from(SoundTremoloDelay, channel, 0);
+    set_from(SoundTremoloSpeed, channel, 1);
+    return set_from(SoundTremoloDepth, channel, 2);
+}
+
+void abi_SoundCommandTremolo(void)
+{
+    abi_exit_loaded(SoundCommandTremolo(cpu.x));
+}
+
+/*
+ * @routine 004E:48C SoundCommandVolume
+ * @run 75:8C8C
+ * WHAT IT DOES: Command $EE: the channel's volume, 0 to $0F, as the slide's attenuation $0F less
+ * it, with no fraction.
+ * HOW: SoundSlideHi, SoundSlideLo cleared.
+ * Entry: X channel. Exit: A the attenuation, N, Z, C and V from its subtract. X and Y kept.
+ */
+uint8_t SoundCommandVolume(uint8_t channel)
+{
+    uint8_t attenuation = (uint8_t)(VOLUME_STEPS - argument(0));
+
+    wr8((uint16_t)(SoundSlideHi + channel), attenuation);
+    wr8((uint16_t)(SoundSlideLo + channel), 0);
+    return attenuation;
+}
+
+void abi_SoundCommandVolume(void)
+{
+    uint8_t volume = argument(0);
+    Sum sum = sub_bytes(VOLUME_STEPS, volume, true);
+
+    cpu.a = SoundCommandVolume(cpu.x);
+    abi_nz(cpu.a);
+    abi_flag(P_C, sum.carry);
+    abi_flag(P_V, sum.overflow);
+}
+
+/*
+ * @routine 004E:499 SoundCommandVolumeSlide
+ * @run 75:8C99
+ * WHAT IT DOES: Command $EF: a volume slide by a step to a target volume, as the attenuation $0F
+ * less it; down in attenuation when the target is below the slide's.
+ * HOW: SoundSlideStepLo and Hi, SoundSlideTarget against SoundSlideHi.
+ * Entry: X channel. Exit: as SoundCommandPanSlide, with V from the target's subtract when up.
+ */
+SlideStart SoundCommandVolumeSlide(uint8_t channel)
+{
+    return start_slide(channel, SoundSlideStepLo, SoundSlideStepHi, SoundSlideTarget, SoundSlideHi,
+                       argument(0), (uint8_t)(VOLUME_STEPS - argument(1)));
+}
+
+void abi_SoundCommandVolumeSlide(void)
+{
+    Sum aim = sub_bytes(VOLUME_STEPS, argument(1), true);
+
+    abi_flag(P_V, aim.overflow);
+    abi_exit_slide_start(SoundCommandVolumeSlide(cpu.x));
+}
+
+/*
+ * @routine 004E:4BD SoundCommandGlideFromLast
+ * @run 75:8CBD
+ * WHAT IT DOES: Command $F0: glides from the last note to each new one, over the frames given,
+ * with no delay.
+ * HOW: SoundGlideFromLast 1, SoundGlideDelaySet 0, SoundGlideFramesSet.
+ * Entry: X channel. Exit: A the frames, N and Z from them. X, Y, C and V kept.
+ */
+uint8_t SoundCommandGlideFromLast(uint8_t channel)
+{
+    wr8((uint16_t)(SoundGlideFromLast + channel), 1);
+    wr8((uint16_t)(SoundGlideDelaySet + channel), 0);
+    return set_from(SoundGlideFramesSet, channel, 0);
+}
+
+void abi_SoundCommandGlideFromLast(void)
+{
+    abi_exit_loaded(SoundCommandGlideFromLast(cpu.x));
+}
+
+/*
+ * @routine 004E:4CC SoundCommandGlideFromBelow
+ * @run 75:8CCC
+ * WHAT IT DOES: Command $F1: glides into each new note from notes below it, after a delay, over
+ * the frames given.
+ * HOW: SoundGlideFromLast 0, SoundGlideDelaySet, SoundGlideFramesSet, SoundGlideOffsetNote, no
+ * fine offset.
+ * Entry: X channel. Exit: A the notes below, N and Z from them. X, Y, C and V kept.
+ */
+uint8_t SoundCommandGlideFromBelow(uint8_t channel)
+{
+    uint8_t below;
+
+    wr8((uint16_t)(SoundGlideFromLast + channel), 0);
+    set_from(SoundGlideDelaySet, channel, 0);
+    set_from(SoundGlideFramesSet, channel, 1);
+    below = set_from(SoundGlideOffsetNote, channel, 2);
+    wr8((uint16_t)(SoundGlideOffsetFine + channel), 0);
+    return below;
+}
+
+void abi_SoundCommandGlideFromBelow(void)
+{
+    abi_exit_loaded(SoundCommandGlideFromBelow(cpu.x));
+}
+
+/*
+ * @routine 004E:4E5 SoundCommandFineTune
+ * @run 75:8CE5
+ * WHAT IT DOES: Command $F2: the channel's fine tune.
+ * HOW: SoundFineTune.
+ * Entry: X channel. Exit: A the fine tune, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandFineTune(uint8_t channel)
+{
+    return set_from(SoundFineTune, channel, 0);
+}
+
+void abi_SoundCommandFineTune(void)
+{
+    abi_exit_loaded(SoundCommandFineTune(cpu.x));
+}
+
+/*
+ * @routine 004E:4EC SoundCommandRepeatMark
+ * @run 75:8CEC
+ * WHAT IT DOES: Command $F6: marks the start of a section to be played twice.
+ * HOW: The place after the command into SoundRepeatMarkLo and Hi; SoundRepeatState 0.
+ * Entry: X channel. Exit: A the place's high byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandRepeatMark(uint8_t channel)
+{
+    uint8_t high;
+
+    wr8((uint16_t)(SoundRepeatMarkLo + channel), rd8(zSoundSequenceLo));
+    high = rd8(zSoundSequenceHi);
+    wr8((uint16_t)(SoundRepeatMarkHi + channel), high);
+    wr8((uint16_t)(SoundRepeatState + channel), 0);
+    return high;
+}
+
+void abi_SoundCommandRepeatMark(void)
+{
+    abi_exit_loaded(SoundCommandRepeatMark(cpu.x));
+}
+
+/*
+ * @routine 004E:4FA SoundCommandRepeat
+ * @run 75:8CFA
+ * WHAT IT DOES: Command $F7, met three times: the first goes on; the second keeps its place and
+ * goes back to the mark, playing the section again; the third goes back to where the second was,
+ * and the next pass goes on again.
+ * HOW: SoundRepeatState 0, 1 and 2; SoundRepeatReturnLo and Hi.
+ * Entry: X channel. Exit: X, Y, C and V kept. First, A 0, N and Z from the state 1. Second and
+ * third, A the high byte of where it goes, N and Z from it. Past 2, A the state less 2, N and Z
+ * from it.
+ */
+Repeat SoundCommandRepeat(uint8_t channel)
+{
+    Repeat repeat = { 0, 0 };
+
+    repeat.state = rd8((uint16_t)(SoundRepeatState + channel));
+    switch (repeat.state) {
+    case REPEAT_MARKED:
+        wr8((uint16_t)(SoundRepeatState + channel), REPEAT_FIRST_PASS);
+        repeat.value = 0;
+        break;
+    case REPEAT_FIRST_PASS:
+        wr8((uint16_t)(SoundRepeatState + channel), REPEAT_AGAIN);
+        wr8((uint16_t)(SoundRepeatReturnLo + channel), rd8(zSoundSequenceLo));
+        wr8((uint16_t)(SoundRepeatReturnHi + channel), rd8(zSoundSequenceHi));
+        wr8(zSoundSequenceLo, rd8((uint16_t)(SoundRepeatMarkLo + channel)));
+        repeat.value = rd8((uint16_t)(SoundRepeatMarkHi + channel));
+        wr8(zSoundSequenceHi, repeat.value);
+        break;
+    case REPEAT_AGAIN:
+        wr8((uint16_t)(SoundRepeatState + channel), REPEAT_FIRST_PASS);
+        wr8(zSoundSequenceLo, rd8((uint16_t)(SoundRepeatReturnLo + channel)));
+        repeat.value = rd8((uint16_t)(SoundRepeatReturnHi + channel));
+        wr8(zSoundSequenceHi, repeat.value);
+        break;
+    default:
+        repeat.value = (uint8_t)(repeat.state - REPEAT_AGAIN);
+        break;
+    }
+    return repeat;
+}
+
+void abi_SoundCommandRepeat(void)
+{
+    Repeat repeat = SoundCommandRepeat(cpu.x);
+
+    cpu.a = repeat.value;
+    abi_nz(repeat.state == REPEAT_MARKED ? REPEAT_FIRST_PASS : repeat.value);
+}
+
+/*
+ * @routine 004E:55B SoundCommandEnvelope
+ * @run 75:8D5B
+ * WHAT IT DOES: Command $FA: the channel's envelope: its attack from a preset, its decay and
+ * release rates from the tens and units of the second argument, its sustain level.
+ * HOW: SoundAttackPresets by the first; SoundRatePresets by the second's tens and units.
+ * Entry: X channel. Exit: A the sustain level, N and Z from it, Y the units, C clear, V from the
+ * last subtract of ten if there was one. X kept.
+ */
+Envelope SoundCommandEnvelope(uint8_t channel)
+{
+    Envelope envelope = { 0, 0, 0, false, false };
+    uint8_t preset = (uint8_t)(argument(0) << 1);
+    uint8_t rate = argument(1);
+
+    wr8((uint16_t)(SoundAttackRate + channel), rd8((uint16_t)(SoundAttackPresets + preset)));
+    wr8((uint16_t)(SoundAttackLevel + channel), rd8((uint16_t)(SoundAttackPresets + (uint8_t)(preset + 1))));
+    while (rate >= RATE_TENS) {
+        Sum less = sub_bytes(rate, RATE_TENS, true);
+
+        envelope.subtracted = true;
+        envelope.overflow = less.overflow;
+        rate = less.value;
+        envelope.tens++;
+    }
+    envelope.units = rate;
+    wr8((uint16_t)(SoundDecayRate + channel), rd8((uint16_t)(SoundRatePresets + envelope.tens)));
+    wr8((uint16_t)(SoundReleaseRate + channel), rd8((uint16_t)(SoundRatePresets + envelope.units)));
+    envelope.sustain = set_from(SoundSustainLevel, channel, 2);
+    return envelope;
+}
+
+void abi_SoundCommandEnvelope(void)
+{
+    Envelope envelope = SoundCommandEnvelope(cpu.x);
+
+    cpu.y = envelope.units;
+    abi_exit_loaded(envelope.sustain);
+    abi_flag(P_C, false);
+    if (envelope.subtracted)
+        abi_flag(P_V, envelope.overflow);
+}
+
+/*
+ * @routine 004E:60C SoundCommandRamp
+ * @run 75:8E0C
+ * WHAT IT DOES: Command $FB: the ramp's step.
+ * HOW: SoundRampBy.
+ * Entry: X channel. Exit: A the step, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandRamp(uint8_t channel)
+{
+    return set_from(SoundRampBy, channel, 0);
+}
+
+void abi_SoundCommandRamp(void)
+{
+    abi_exit_loaded(SoundCommandRamp(cpu.x));
+}
+
+/*
+ * @routine 004E:613 SoundCommandNothing
+ * @run 75:8E13
+ * WHAT IT DOES: Commands $F3, $F4, $F5 and $FC: nothing.
+ * HOW: Returns.
+ * Entry: anything. Exit: all registers and flags kept.
+ */
+void SoundCommandNothing(void)
+{
+}
+
+void abi_SoundCommandNothing(void)
+{
+    SoundCommandNothing();
+}
+
+/*
+ * @routine 0053:745 SoundCommandJump
+ * @run 76:B745
+ * WHAT IT DOES: Command $FD: the sequence goes on at the address given.
+ * HOW: The two arguments into zSoundSequenceLo and Hi.
+ * Entry: X channel. Exit: A the address's high byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandJump(void)
+{
+    uint8_t high;
+
+    wr8(zSoundSequenceLo, argument(0));
+    high = argument(1);
+    wr8(zSoundSequenceHi, high);
+    return high;
+}
+
+void abi_SoundCommandJump(void)
+{
+    abi_exit_loaded(SoundCommandJump());
+}
+
+/*
+ * @routine 0053:750 SoundCommandCall
+ * @run 76:B750
+ * WHAT IT DOES: Command $FE: plays the sequence at the address given, then comes back after the
+ * command; one level only.
+ * HOW: The place after the command into SoundReturnLo and Hi, then the address.
+ * Entry: X channel. Exit: A the address's high byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundCommandCall(uint8_t channel)
+{
+    wr8((uint16_t)(SoundReturnLo + channel), rd8(zSoundSequenceLo));
+    wr8((uint16_t)(SoundReturnHi + channel), rd8(zSoundSequenceHi));
+    return SoundCommandJump();
+}
+
+void abi_SoundCommandCall(void)
+{
+    abi_exit_loaded(SoundCommandCall(cpu.x));
+}
+
+/*
+ * @routine 0053:765 SoundCommandReturn
+ * @run 76:B765
+ * WHAT IT DOES: Command $FF: back from a called sequence; with none to go back to, the end of the
+ * channel's sequence: it is silenced, the main volume off while the sound is paused, the channel's
+ * command cleared from 4 up, and from 6 up its priority too and the waveform given back to the
+ * PSG channel it shared.
+ * HOW: SoundReturnLo and Hi. The end drops the return into the command loop, so the loop's
+ * caller gets C set; SoundSilenceChannel; SoundLoadWave with the shared channel's waveform.
+ * Entry: X channel. Exit: back, A the high byte, N and Z from it, C clear. End, C set, and as the
+ * last call left them; the return address dropped from the stack.
+ */
+SequenceEnd SoundCommandReturn(uint8_t channel)
+{
+    SequenceEnd end = { false, { false, 0 }, { WAVE_NONE, 0, 0 }, 0 };
+
+    if ((rd8((uint16_t)(SoundReturnLo + channel)) | rd8((uint16_t)(SoundReturnHi + channel))) != 0) {
+        wr8(zSoundSequenceLo, rd8((uint16_t)(SoundReturnLo + channel)));
+        end.value = rd8((uint16_t)(SoundReturnHi + channel));
+        wr8(zSoundSequenceHi, end.value);
+        wr8((uint16_t)(SoundReturnLo + channel), 0);
+        wr8((uint16_t)(SoundReturnHi + channel), 0);
+        return end;
+    }
+    end.ended = true;
+    end.release = SoundSilenceChannel(channel);
+    end.value = rd8(SoundPaused);
+    if (end.value != 0)
+        wr8(PsgMainVolume, 0);
+    if (channel >= EFFECT_SHARED_FIRST)
+        wr8((uint16_t)(SoundChannelCommand + channel), 0);
+    if (channel >= EFFECT_SHARED_END) {
+        wr8((uint16_t)(SoundChannelPriority + channel), 0);
+        end.wave = SoundLoadWave(rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)), channel);
+    }
+    return end;
+}
+
+void abi_SoundCommandReturn(void)
+{
+    uint8_t channel = cpu.x;
+    SequenceEnd end = SoundCommandReturn(channel);
+
+    if (!end.ended) {
+        abi_exit_loaded(end.value);
+        abi_flag(P_C, false);
+        return;
+    }
+    sequence_end_exit_shim(end, channel);
+}
+
+/* The end of a sequence: the loop's return dropped, C set, and the registers its last steps leave. */
+void sequence_end_exit_shim(SequenceEnd end, uint8_t channel)
+{
+    cpu.s = (uint8_t)(cpu.s + 2);
+    if (end.release.looked)
+        abi_flag(P_V, (end.release.effect & 0x40) != 0);
+    if (channel >= EFFECT_SHARED_END) {
+        wave_load_exit_shim(end.wave, rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)));
+    } else {
+        cpu.a = end.value;
+        abi_nz((uint8_t)(channel - EFFECT_SHARED_END));
+    }
+    abi_flag(P_C, true);
 }

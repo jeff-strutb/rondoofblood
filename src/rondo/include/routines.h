@@ -378,6 +378,60 @@ typedef struct { WaveHow how; uint8_t wave; uint8_t effect; } WaveLoad;
 WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel);
 void SoundInit(void);
 void SoundDriverStopAll(void);
+void wave_load_exit_shim(WaveLoad load, uint8_t wave);
+
+/* A slide started: down or up, its target and what it was compared with, the step made negative. */
+typedef struct { bool down; uint8_t aim; uint8_t from; uint8_t step; } SlideStart;
+
+/* A loop's arrays by channel: where it starts, its passes, and the volume and detune it adds. */
+typedef struct {
+    uint16_t start_lo;
+    uint16_t start_hi;
+    uint16_t count;
+    uint16_t volume;
+    uint16_t detune_fine;
+    uint16_t detune_note;
+} SoundLoop;
+
+/* A loop's end: done or back, the byte its exit shows, and the detune's add. */
+typedef struct { bool done; uint8_t value; Sum sum; } LoopEnd;
+
+typedef struct { uint8_t state; uint8_t value; } Repeat;
+
+/* An envelope set: the rate's tens and units, the sustain, and the last subtract of ten. */
+typedef struct { uint8_t tens; uint8_t units; uint8_t sustain; bool subtracted; bool overflow; } Envelope;
+
+/* A return or an end: whether it ended, and what silencing and the waveform did. */
+typedef struct { bool ended; ChannelRelease release; WaveLoad wave; uint8_t value; } SequenceEnd;
+
+void sequence_end_exit_shim(SequenceEnd end, uint8_t channel);
+WaveLoad SoundCommandWave(uint8_t channel);
+uint8_t SoundCommandPan(uint8_t channel);
+SlideStart SoundCommandPanSlide(uint8_t channel);
+uint8_t SoundCommandVibrato(uint8_t channel);
+uint16_t SoundCommandVibratoGrow(uint8_t channel);
+uint8_t SoundCommandModulation(uint8_t channel);
+uint8_t SoundCommandLoopA(uint8_t channel);
+LoopEnd SoundCommandLoopAEnd(uint8_t channel);
+uint8_t SoundCommandLoopB(uint8_t channel);
+LoopEnd SoundCommandLoopBEnd(uint8_t channel);
+uint8_t SoundCommandApproachFrom(uint8_t channel);
+uint8_t SoundCommandApproach(uint8_t channel);
+uint8_t SoundCommandTranspose(uint8_t channel);
+uint8_t SoundCommandTremolo(uint8_t channel);
+uint8_t SoundCommandVolume(uint8_t channel);
+SlideStart SoundCommandVolumeSlide(uint8_t channel);
+uint8_t SoundCommandGlideFromLast(uint8_t channel);
+uint8_t SoundCommandGlideFromBelow(uint8_t channel);
+uint8_t SoundCommandFineTune(uint8_t channel);
+uint8_t SoundCommandRepeatMark(uint8_t channel);
+Repeat SoundCommandRepeat(uint8_t channel);
+Envelope SoundCommandEnvelope(uint8_t channel);
+uint8_t SoundCommandRamp(uint8_t channel);
+void SoundCommandNothing(void);
+uint8_t SoundCommandJump(void);
+uint8_t SoundCommandCall(uint8_t channel);
+SequenceEnd SoundCommandReturn(uint8_t channel);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

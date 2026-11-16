@@ -527,5 +527,21 @@
 #define SoundGlideOffsetNote 0x2498 /* the sound driver: by channel, how far below the note a glide starts, notes */
 #define SoundTranspose 0x2540 /* the sound driver: by channel, added to every note */
 #define SoundFineTune 0x2548 /* the sound driver: by channel, the fine part of every note, signed */
+#define SoundLoopACount 0x2348 /* the sound driver: by channel, passes of loop A made */
+#define SoundLoopBCount 0x2350 /* the sound driver: by channel, passes of loop B made */
+#define SoundLoopAStartLo 0x2388 /* the sound driver: by channel, where loop A starts, low */
+#define SoundLoopBStartLo 0x2390 /* the sound driver: by channel, where loop B starts, low */
+#define SoundLoopAStartHi 0x2398 /* the sound driver: by channel, where loop A starts, high */
+#define SoundLoopBStartHi 0x23A0 /* the sound driver: by channel, where loop B starts, high */
+#define SoundRepeatState 0x23A8 /* the sound driver: by channel, a marked section's repeat: 0 marked, 1 first pass, 2 repeating */
+#define SoundRepeatMarkLo 0x23B0 /* the sound driver: by channel, where the repeated section starts, low */
+#define SoundRepeatMarkHi 0x23B8 /* the sound driver: by channel, where the repeated section starts, high */
+#define SoundRepeatReturnLo 0x23C0 /* the sound driver: by channel, where the repeat goes back to, low */
+#define SoundRepeatReturnHi 0x23C8 /* the sound driver: by channel, where the repeat goes back to, high */
+#define SoundReturnLo 0x25D0 /* the sound driver: by channel, where a called sequence returns to, low; 0 and the high 0 none */
+#define SoundReturnHi 0x25D8 /* the sound driver: by channel, where a called sequence returns to, high */
+#define SoundAttackPresets 0x8D31 /* the sound driver: attack rate and level by preset, a pair each */
+#define SoundRatePresets 0x8D51 /* the sound driver: ten rates the decay and the release are picked from */
+#define SoundPaused 0x22E1 /* the sound driver: bit 0 of zp $3B as it last saw it; set, the sound is paused */
 
 #endif

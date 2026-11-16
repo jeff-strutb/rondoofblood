@@ -534,3 +534,19 @@ B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 an
 2498,abs,SoundGlideOffsetNote,the sound driver: by channel, how far below the note a glide starts, notes
 2540,abs,SoundTranspose,the sound driver: by channel, added to every note
 2548,abs,SoundFineTune,the sound driver: by channel, the fine part of every note, signed
+2348,abs,SoundLoopACount,the sound driver: by channel, passes of loop A made
+2350,abs,SoundLoopBCount,the sound driver: by channel, passes of loop B made
+2388,abs,SoundLoopAStartLo,the sound driver: by channel, where loop A starts, low
+2390,abs,SoundLoopBStartLo,the sound driver: by channel, where loop B starts, low
+2398,abs,SoundLoopAStartHi,the sound driver: by channel, where loop A starts, high
+23A0,abs,SoundLoopBStartHi,the sound driver: by channel, where loop B starts, high
+23A8,abs,SoundRepeatState,the sound driver: by channel, a marked section's repeat: 0 marked, 1 first pass, 2 repeating
+23B0,abs,SoundRepeatMarkLo,the sound driver: by channel, where the repeated section starts, low
+23B8,abs,SoundRepeatMarkHi,the sound driver: by channel, where the repeated section starts, high
+23C0,abs,SoundRepeatReturnLo,the sound driver: by channel, where the repeat goes back to, low
+23C8,abs,SoundRepeatReturnHi,the sound driver: by channel, where the repeat goes back to, high
+25D0,abs,SoundReturnLo,the sound driver: by channel, where a called sequence returns to, low; 0 and the high 0 none
+25D8,abs,SoundReturnHi,the sound driver: by channel, where a called sequence returns to, high
+8D31,abs,SoundAttackPresets,the sound driver: attack rate and level by preset, a pair each
+8D51,abs,SoundRatePresets,the sound driver: ten rates the decay and the release are picked from
+22E1,abs,SoundPaused,the sound driver: bit 0 of zp $3B as it last saw it; set, the sound is paused

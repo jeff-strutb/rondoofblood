@@ -2,6 +2,9 @@
 """ledger.py -- what tier each routine has earned, worked out, never entered by hand.
 
     python3 tools/rondo/ledger.py
+    python3 tools/rondo/ledger.py --card    the System Card's ledger only
+
+RONDO_ORACLE_OUT names the folder the oracles wrote, as it does for oracle.py.
 
 Writes docs/rondo/ledger.csv and prints the counts, below-standard first. For each routine:
 
@@ -37,6 +40,7 @@ import cardfile  # noqa: E402
 import oracle  # noqa: E402
 
 BUILD = os.path.join(TOP, "build", "rondo")
+ORACLE = os.environ.get("RONDO_ORACLE_OUT") or os.path.join(BUILD, "oracle")
 OUT = os.path.join(TOP, "docs", "rondo", "ledger.csv")
 CARD_OUT = os.path.join(TOP, "syscard", "ledger.csv")
 WAIVERS = os.path.join(TOP, "config", "rondo", "ledger_waivers.csv")
@@ -89,7 +93,7 @@ def proper_c_faults(name, funcs):
 
 
 def stamp_valid(name):
-    path = os.path.join(BUILD, "oracle", name + ".stamp")
+    path = os.path.join(ORACLE, name + ".stamp")
     return os.path.exists(path) and open(path).read().strip() == oracle.tree_stamp()
 
 
@@ -151,7 +155,7 @@ def card_ledger(funcs, a7):
     image_path = os.path.join(BUILD, "card", "image.bin")
     image = open(image_path, "rb").read() if card_image_fresh(image_path) else None
     blocks = assembly_blocks(("syscard", "asm", "*.s"))
-    a5 = read_csv(os.path.join(BUILD, "oracle", "card_a5.csv"), "routine") if stamp_valid("a5") else {}
+    a5 = read_csv(os.path.join(ORACLE, "card_a5.csv"), "routine") if stamp_valid("a5") else {}
     cover = cardfile.coverage()
     rows = []
     for r in cardfile.spans():
@@ -180,13 +184,17 @@ def card_ledger(funcs, a7):
 
 
 def main():
+    if "--card" in sys.argv[1:]:
+        a7 = read_csv(os.path.join(ORACLE, "a7.csv"), "routine") if stamp_valid("a7") else {}
+        card_ledger(functions(), a7)
+        return
     buf = open(oracle.TRACK, "rb").read()
     image_path = os.path.join(BUILD, "asm", "image.bin")
     image = open(image_path, "rb").read() if image_fresh(image_path) else None
     funcs = functions()
     blocks = assembly_blocks()
-    a5 = read_csv(os.path.join(BUILD, "oracle", "a5.csv"), "routine") if stamp_valid("a5") else {}
-    a7 = read_csv(os.path.join(BUILD, "oracle", "a7.csv"), "routine") if stamp_valid("a7") else {}
+    a5 = read_csv(os.path.join(ORACLE, "a5.csv"), "routine") if stamp_valid("a5") else {}
+    a7 = read_csv(os.path.join(ORACLE, "a7.csv"), "routine") if stamp_valid("a7") else {}
     cover = oracle.coverage()
     waived = waivers()
     routines = asmfile.all_routines()

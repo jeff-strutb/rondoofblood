@@ -439,6 +439,12 @@ void cd_fade_exit_shim(uint8_t given);
 void ma_mul8u_exit_shim(uint8_t al, uint8_t bl, uint16_t product);
 void bm_read_exit_shim(BackupAccess read);
 void bm_write_exit_shim(BackupAccess write);
+
+/* The A each leaves, which the game's callers branch on: the BIOS's status, 0 for success. */
+uint8_t cd_play_result(CdPlay play);
+uint8_t cd_read_result(CdRead read);
+uint8_t bm_read_result(BackupAccess read);
+uint8_t bm_write_result(BackupAccess write);
 AdStat ad_stat(void);
 uint8_t ad_latch_read_address(void);
 uint8_t ad_latch_length(void);

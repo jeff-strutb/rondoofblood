@@ -1242,8 +1242,32 @@ void abi_cd_play(void)
     cd_play_exit_shim(cd_play());
 }
 
+/* What A gives after a command the BIOS retried: the sense key if it asked for one, else the error. */
+static uint8_t retry_result(CdRetry retry)
+{
+    return retry.asked ? retry.sense : retry.error;
+}
+
+/* The A cd_play leaves, which callers branch on: 0, or the error it gave up with. */
+uint8_t cd_play_result(CdPlay play)
+{
+    if (play.how == CD_PLAY_GAVE_UP_SEARCHING)
+        return play.search.failed ? retry_result(play.search.retry) : 0;
+    if (play.how == CD_PLAY_SEEK_ONLY || play.how == CD_PLAY_RETURNED || play.how == CD_PLAY_ON_INTERRUPT)
+        return 0;
+    return play.failed ? retry_result(play.retry) : 0;
+}
+
+/* The A cd_read leaves: 0, the error it gave up with, or READ_BAD_REQUEST for a refused request. */
+uint8_t cd_read_result(CdRead read)
+{
+    if (read.bad_request)
+        return READ_BAD_REQUEST;
+    return read.failed ? retry_result(read.retry) : 0;
+}
+
 /* cd_play's exit, for its wrapper and for a caller's that ends in it. */
-void cd_play_exit_shim(CdPlay play)
+static void cd_play_registers_shim(CdPlay play)
 {
     if (play.searched) {
         cpu.y = play.start_mode != 0 ? 2 : 3;
@@ -1292,6 +1316,12 @@ void cd_play_exit_shim(CdPlay play)
         }
         break;
     }
+}
+
+void cd_play_exit_shim(CdPlay play)
+{
+    cd_play_registers_shim(play);
+    cpu.a = cd_play_result(play);
 }
 
 /*
@@ -1856,7 +1886,7 @@ void abi_cd_read(void)
 }
 
 /* cd_read's exit, for its wrapper and for a caller's that ends in it. */
-void cd_read_exit_shim(CdRead read)
+static void cd_read_registers_shim(CdRead read)
 {
     bool through_bank = read.mode >= 2 && read.mode != READ_TO_VRAM_FAST &&
                         read.mode != READ_TO_VRAM_SLOW;
@@ -1905,6 +1935,12 @@ void cd_read_exit_shim(CdRead read)
     }
     if (read.mapped)
         abi_nz(cpu.a);
+}
+
+void cd_read_exit_shim(CdRead read)
+{
+    cd_read_registers_shim(read);
+    cpu.a = cd_read_result(read);
 }
 
 /* The ADPCM unit takes the drive's data on its own until the drive has finished. */

@@ -895,7 +895,19 @@ void abi_bm_read(void)
 }
 
 /* bm_read's exit, for its wrapper and for a caller's that ends in it. */
-void bm_read_exit_shim(BackupAccess read)
+/* The A bm_read leaves: 0, 1 for no such file, 2 for a bad checksum, $FF not formatted. */
+uint8_t bm_read_result(BackupAccess read)
+{
+    return read.result;
+}
+
+/* The A bm_write leaves: 0, 1 for no room, $FF not formatted. */
+uint8_t bm_write_result(BackupAccess write)
+{
+    return write.result;
+}
+
+static void bm_read_registers_shim(BackupAccess read)
 {
     if (read.ending == BM_ENDED_NOT_FORMATTED) {
         abi_not_formatted_shim(read.check);
@@ -918,6 +930,12 @@ void bm_read_exit_shim(BackupAccess read)
         cpu.x = read.find.window;
         cpu.y = 1;
     }
+}
+
+void bm_read_exit_shim(BackupAccess read)
+{
+    bm_read_registers_shim(read);
+    cpu.a = bm_read_result(read);
 }
 
 /*
@@ -997,7 +1015,7 @@ void abi_bm_write(void)
 }
 
 /* bm_write's exit, for its wrapper and for a caller's that ends in it. */
-void bm_write_exit_shim(BackupAccess write)
+static void bm_write_registers_shim(BackupAccess write)
 {
     uint16_t sum = write.sum.sum;
 
@@ -1025,6 +1043,12 @@ void bm_write_exit_shim(BackupAccess write)
     cpu.y = 3;
     abi_flag(P_C, sum == 0);
     abi_flag(P_V, sub_overflows(0, (uint8_t)(sum >> 8), (sum & 0xFF) != 0));
+}
+
+void bm_write_exit_shim(BackupAccess write)
+{
+    bm_write_registers_shim(write);
+    cpu.a = bm_write_result(write);
 }
 
 /*

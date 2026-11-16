@@ -401,6 +401,10 @@ typedef struct {
 
 CardVersion ex_getver(void);
 uint8_t map_boot_ram(void);
+void init_card_vectors(void);
+CdSubcodeRead reset_cd_unit(void);
+void clear_vram(void);
+uint8_t load_font(void);
 uint8_t ad_reset(void);
 AdPlay ad_play(void);
 

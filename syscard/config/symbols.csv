@@ -103,3 +103,6 @@ F4,zp,CardVdcCrHi,the copy of the VDC's control register's high byte
 F5,zp,CardIrqFlags,bit 1 set: ex_vsync returns without waiting
 2243,abs,CardVdcDcr,the copy of the VDC's DMA control register
 FFF5,abs,CardBootRamBank,the first of the five CD RAM banks the boot maps at $4000: $80
+E6,zp,CardZpE6,cleared at boot; its use is not yet traced
+E7,zp,CardResetMark,set to $80 at boot and before a soft reset
+8000,abs,Mpr4Window,what MPR4 maps at $8000; also the backup memory when it is open

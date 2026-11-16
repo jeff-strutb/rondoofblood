@@ -103,3 +103,6 @@ CardVdcCrHi = $F4
 CardIrqFlags = $F5
 CardVdcDcr = $2243
 CardBootRamBank = $FFF5
+CardZpE6 = $E6
+CardResetMark = $E7
+Mpr4Window = $8000

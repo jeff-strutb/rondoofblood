@@ -476,3 +476,89 @@ ex_setdma:
     sta a:VdcAddress
     rts
 
+
+; @card 01:CBF0 clear_vram
+; WHAT IT DOES: Fills the first 4K words of VRAM, where the background map lies, with tile $200.
+; HOW: The write address to 0, then $0200 written 4,096 times.
+; Entry: nothing. Exit: A 2, X 0, Y 0, N 0, Z 1. C, V kept.
+clear_vram:
+    lda #$00
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    st1 #$00
+    st2 #$00
+    lda #$02
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    ldy #$40
+clear_vram_at1:
+    ldx #$40
+clear_vram_at0:
+    lda #$00
+    sta a:VdcDataLo
+    lda #$02
+    sta a:VdcDataHi
+    dex
+    bne clear_vram_at0
+    dey
+    bne clear_vram_at1
+    rts
+
+; @card 01:CC9E load_font
+; WHAT IT DOES: Loads the card's font and its title picture's tiles into VRAM from $2000.
+; HOW: 256 one-plane glyphs of eight rows from $C000 in bank 1, each row written as both bytes
+; of a word, twice over, for 16 words a tile; then banks $16 and $17 mapped at $8000 for a block
+; move of $2000 bytes to the data port, and the MPRs put back.
+; Entry: bank 1 at $C000. Exit: A what MPR4 held, N and Z from it, X 0, Y 8, C 0, V 0.
+; CardPointerLo-Hi $C800, CardCopyLo 0.
+load_font:
+    lda #$00
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    st1 #$00
+    st2 #$20
+    lda #$02
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda #$00
+    sta z:CardPointerLo
+    lda #$C0
+    sta z:CardPointerHi
+    stz z:CardCopyLo
+load_font_at2:
+    ldx #$02
+load_font_at1:
+    cly
+load_font_at0:
+    lda (CardPointerLo),y
+    sta a:VdcDataLo
+    sta a:VdcDataHi
+    iny
+    cpy #$08
+    bcc load_font_at0
+    dex
+    bne load_font_at1
+    clc
+    lda z:CardPointerLo
+    adc #$08
+    sta z:CardPointerLo
+    lda z:CardPointerHi
+    adc #$00
+    sta z:CardPointerHi
+    dec z:CardCopyLo
+    bne load_font_at2
+    tma #$10
+    pha
+    tma #$20
+    pha
+    lda #$16
+    tam #$10
+    inc a
+    tam #$20
+    tia Mpr4Window,VdcDataLo,8192
+    pla
+    tam #$20
+    pla
+    tam #$10
+    rts
+

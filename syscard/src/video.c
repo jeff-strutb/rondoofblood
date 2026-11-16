@@ -663,3 +663,84 @@ void abi_ex_setdma(void)
 {
     abi_written_shim(ex_setdma());
 }
+
+enum {
+    CLEAR_TILE = 0x0200, CLEAR_WORDS = 0x1000, FONT_VRAM = 0x2000, FONT_GLYPHS = 0x100,
+    FONT_ROWS = 8, FONT_PASSES = 2, FONT_GLYPH_ROM = 0xC000,
+    PICTURE_BANK = 0x16, PICTURE_AT = 0x8000, PICTURE_BYTES = 0x2000, MPR4 = 0x10, MPR5 = 0x20
+};
+
+/*
+ * @card 01:CBF0 clear_vram
+ * WHAT IT DOES: Fills the first 4K words of VRAM, where the background map lies, with tile $200.
+ * HOW: The write address to 0, then $0200 written 4,096 times.
+ * Entry: nothing. Exit: A 2, X 0, Y 0, N 0, Z 1. C, V kept.
+ */
+void clear_vram(void)
+{
+    set_vdc_register(VDC_REG_MAWR, 0, 0);
+    select_vdc_register(VDC_REG_VWR);
+    for (unsigned i = 0; i < CLEAR_WORDS; i++) {
+        wr8(VdcDataLo, (uint8_t)CLEAR_TILE);
+        wr8(VdcDataHi, (uint8_t)(CLEAR_TILE >> 8));
+    }
+}
+
+void abi_clear_vram(void)
+{
+    clear_vram();
+    cpu.a = (uint8_t)(CLEAR_TILE >> 8);
+    cpu.x = 0;
+    cpu.y = 0;
+    abi_nz(0);
+}
+
+/*
+ * @card 01:CC9E load_font
+ * WHAT IT DOES: Loads the card's font and its title picture's tiles into VRAM from $2000.
+ * HOW: 256 one-plane glyphs of eight rows from $C000 in bank 1, each row written as both bytes
+ * of a word, twice over, for 16 words a tile; then banks $16 and $17 mapped at $8000 for a block
+ * move of $2000 bytes to the data port, and the MPRs put back.
+ * Entry: bank 1 at $C000. Exit: A what MPR4 held, N and Z from it, X 0, Y 8, C 0, V 0.
+ * CardPointerLo-Hi $C800, CardCopyLo 0.
+ */
+uint8_t load_font(void)
+{
+    uint16_t glyph = FONT_GLYPH_ROM;
+    uint8_t saved4, saved5;
+
+    set_vdc_register(VDC_REG_MAWR, (uint8_t)FONT_VRAM, (uint8_t)(FONT_VRAM >> 8));
+    select_vdc_register(VDC_REG_VWR);
+    for (unsigned g = 0; g < FONT_GLYPHS; g++, glyph = (uint16_t)(glyph + FONT_ROWS)) {
+        for (unsigned pass = 0; pass < FONT_PASSES; pass++) {
+            for (unsigned row = 0; row < FONT_ROWS; row++) {
+                uint8_t bits = rd8((uint16_t)(glyph + row));
+
+                wr8(VdcDataLo, bits);
+                wr8(VdcDataHi, bits);
+            }
+        }
+    }
+    wr8(CardPointerLo, (uint8_t)glyph);
+    wr8(CardPointerHi, (uint8_t)(glyph >> 8));
+    wr8(CardCopyLo, 0);
+    saved4 = tma(MPR4);
+    saved5 = tma(MPR5);
+    tam(MPR4, PICTURE_BANK);
+    tam(MPR5, PICTURE_BANK + 1);
+    for (unsigned i = 0; i < PICTURE_BYTES; i++)
+        wr8((i & 1) ? VdcDataHi : VdcDataLo, rd8((uint16_t)(PICTURE_AT + i)));
+    tam(MPR5, saved5);
+    tam(MPR4, saved4);
+    return saved4;
+}
+
+void abi_load_font(void)
+{
+    cpu.a = load_font();
+    cpu.x = 0;
+    cpu.y = FONT_ROWS;
+    abi_nz(cpu.a);
+    abi_flag(P_C, false);
+    abi_flag(P_V, false);
+}

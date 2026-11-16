@@ -106,5 +106,8 @@
 #define CardIrqFlags 0x20F5 /* bit 1 set: ex_vsync returns without waiting */
 #define CardVdcDcr 0x2243 /* the copy of the VDC's DMA control register */
 #define CardBootRamBank 0xFFF5 /* the first of the five CD RAM banks the boot maps at $4000: $80 */
+#define CardZpE6 0x20E6 /* cleared at boot; its use is not yet traced */
+#define CardResetMark 0x20E7 /* set to $80 at boot and before a soft reset */
+#define Mpr4Window 0x8000 /* what MPR4 maps at $8000; also the backup memory when it is open */
 
 #endif

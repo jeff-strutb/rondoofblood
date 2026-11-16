@@ -130,3 +130,36 @@ void abi_map_boot_ram(void)
     cpu.a = map_boot_ram();
     abi_nz(cpu.a);
 }
+
+enum {
+    SOFT_RESET_ENTRY = 0xE000, DEFAULT_IRQ_HANDLER = 0xE8E2, IRQ_VECTOR_COUNT = 6,
+    RESET_MARK = 0x80
+};
+
+/*
+ * @card 01:CB30 init_card_vectors
+ * WHAT IT DOES: Sets the card's vectors at boot: the soft reset to $E000, and all six interrupt
+ * handlers to the card's default at $E8E2.
+ * HOW: Writes the reset vector and CardResetMark, then the first handler, and a block move
+ * repeats its two bytes over the other five.
+ * Entry: nothing. Exit: A $E8, N 1, Z 0. X, Y, C, V kept.
+ */
+void init_card_vectors(void)
+{
+    wr8(CardSoftResetLo, (uint8_t)SOFT_RESET_ENTRY);
+    wr8(CardSoftResetHi, (uint8_t)(SOFT_RESET_ENTRY >> 8));
+    wr8(CardResetMark, RESET_MARK);
+    wr8(CardZpE6, 0);
+    for (unsigned i = 0; i < IRQ_VECTOR_COUNT; i++) {
+        wr8((uint16_t)(CardIrqVectors + 2 * i), (uint8_t)DEFAULT_IRQ_HANDLER);
+        wr8((uint16_t)(CardIrqVectors + 2 * i + 1), (uint8_t)(DEFAULT_IRQ_HANDLER >> 8));
+    }
+    wr8(CardIrqFlags, 0);
+}
+
+void abi_init_card_vectors(void)
+{
+    init_card_vectors();
+    cpu.a = (uint8_t)(DEFAULT_IRQ_HANDLER >> 8);
+    abi_nz(cpu.a);
+}

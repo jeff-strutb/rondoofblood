@@ -90,3 +90,26 @@ map_boot_ram:
     tam #$40
     rts
 
+
+; @card 01:CB30 init_card_vectors
+; WHAT IT DOES: Sets the card's vectors at boot: the soft reset to $E000, and all six interrupt
+; handlers to the card's default at $E8E2.
+; HOW: Writes the reset vector and CardResetMark, then the first handler, and a block move
+; repeats its two bytes over the other five.
+; Entry: nothing. Exit: A $E8, N 1, Z 0. X, Y, C, V kept.
+init_card_vectors:
+    lda #$00
+    sta a:CardSoftResetLo
+    lda #$E0
+    sta a:CardSoftResetHi
+    lda #$80
+    sta z:CardResetMark
+    stz z:CardZpE6
+    lda #$E2
+    sta a:CardIrqVectors
+    lda #$E8
+    sta a:CardIrqVectors+1
+    tai CardIrqVectors,CardIrqVectors+2,10
+    stz z:CardIrqFlags
+    rts
+

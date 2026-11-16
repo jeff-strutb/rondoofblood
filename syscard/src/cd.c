@@ -222,10 +222,8 @@ CdSubcodeRead cd_subrd(void)
     return read;
 }
 
-void abi_cd_subrd(void)
+static void cd_subrd_exit_shim(CdSubcodeRead read)
 {
-    CdSubcodeRead read = cd_subrd();
-
     abi_flag(P_V, (read.status & 0x40) != 0);
     abi_flag(P_C, !read.ready);
     if (read.ready) {
@@ -235,6 +233,37 @@ void abi_cd_subrd(void)
         abi_flag(P_N, (read.status & 0x80) != 0);
         abi_flag(P_Z, true);
     }
+}
+
+void abi_cd_subrd(void)
+{
+    cd_subrd_exit_shim(cd_subrd());
+}
+
+/*
+ * @card 01:CB54 reset_cd_unit
+ * WHAT IT DOES: Puts the CD unit in a known state at boot: reset, its interrupts off, no fade,
+ * ADPCM reset, and any waiting subcode byte taken.
+ * HOW: cd_reset, then the interrupt enables and the fade port cleared, ad_reset, cd_subrd.
+ * Entry: nothing. Exit: X 0, Y 0; A, N, Z, C and V as cd_subrd leaves them, A $6F if no byte.
+ */
+CdSubcodeRead reset_cd_unit(void)
+{
+    cd_reset();
+    wr8(CdIrqControl, 0);
+    wr8(CdFade, 0);
+    ad_reset();
+    return cd_subrd();
+}
+
+void abi_reset_cd_unit(void)
+{
+    CdSubcodeRead read = reset_cd_unit();
+
+    cpu.x = 0;
+    cpu.y = 0;
+    cpu.a = 0x6F;
+    cd_subrd_exit_shim(read);
 }
 
 /*

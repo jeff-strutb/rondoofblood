@@ -573,3 +573,4 @@ SoundChannel25F6 = $25F6 ; the sound driver: weighs effect channel 6 against 7 w
 SoundChannel25F7 = $25F7 ; the sound driver: weighs effect channel 7 against 6 when an effect starts
 SoundEffectTable = $B7FB ; the sound driver: by effect command, three bytes: priority and its sequence's address
 zPaused = $3B ; bit 0 set while the game is paused
+RichterCrashFrames = $AF4C ; an item crash's frame by its pair of states and the attack kind

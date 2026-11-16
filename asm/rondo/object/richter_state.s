@@ -1506,3 +1506,84 @@ RichterClearOthersKeepWhip_at0:
     stz a:PadForcedPress
     stz a:PadForcedPressB
     rts
+
+; @routine 01BA:389 RichterOnMarkedFloor
+; @run 6D:AB89
+; WHAT IT DOES: Says whether the floor under him is marked: once he is $10 down the screen, a
+; column read with bit 5, or with bit 2 while down is held.
+; HOW: OBJ_Y_LO; RichterColumnHit's bits 5 and 2; bit 4 of zPadHeld.
+; Entry: nothing. Exit: C set if marked. Too high, A his Y, N and Z from comparing it with $10.
+; No bit, A 0, Z set. Bit 5, A $20, Z clear. Bit 2, A 0, Z clear if down is held, N and V the
+; pad's bits 7 and 6. X, Y kept; V kept but for the pad's test.
+RichterOnMarkedFloor:
+    lda a:OBJ_Y_LO
+    cmp #$10
+    bcc RichterOnMarkedFloor_at0
+    lda a:RichterColumnHit
+    and #$24
+    beq RichterOnMarkedFloor_at0
+    and #$20
+    bne RichterOnMarkedFloor_at1
+    tst #$10,z:zPadHeld
+    beq RichterOnMarkedFloor_at0
+RichterOnMarkedFloor_at1:
+    sec
+    rts
+RichterOnMarkedFloor_at0:
+    clc
+    rts
+
+; @routine 01BA:3CB RichterFallGravity
+; @run 6D:ABCB
+; WHAT IT DOES: Pulls him down while he falls: $38 more Y speed a frame, held at $0700.
+; HOW: OBJ_VY_LO and Hi; at 7 and up the low byte is cleared.
+; Entry: nothing. Exit: A the speed's high byte, V from its add; rising, N, Z and C from the add;
+; falling, N, Z and C from comparing it with 7. X and Y kept.
+RichterFallGravity:
+    lda a:OBJ_VY_LO
+    clc
+    adc #$38
+    sta a:OBJ_VY_LO
+    lda a:OBJ_VY_HI
+    adc #$00
+    sta a:OBJ_VY_HI
+    bmi RichterFallGravity_at0
+    cmp #$07
+    bcc RichterFallGravity_at0
+    stz a:OBJ_VY_LO
+RichterFallGravity_at0:
+    rts
+
+; @routine 01BA:62F RichterMoveStopped
+; @run 6D:AE2F
+; WHAT IT DOES: Moves him along X, stops his animation and sets the state's step back to 0.
+; HOW: A added to OBJ_X_LO; OBJ_2F90 $FF; OBJ_2800 0.
+; Entry: A the move. Exit: A $FF, X the facing, N and Z from it, C and V from the add. Y kept.
+RichterMoveStopped:
+    clc
+    adc a:OBJ_X_LO
+    sta a:OBJ_X_LO
+    lda #$FF
+    sta a:OBJ_2F90
+    stz a:OBJ_2800
+    ldx a:OBJ_2AC0
+    rts
+
+; @routine 01BA:73A RichterCrashFrame
+; @run 6D:AF3A
+; WHAT IT DOES: The frame an item crash shows: by which pair of crash states he is in, and by
+; the attack's kind.
+; HOW: RichterCrashFrames: states 5 and 6 at 0, 7 and 8 at 4, then PlayerByte3BD5.
+; Entry: nothing. Exit: A the frame, N and Z from it, X the entry, C and V from adding the kind.
+; Y kept.
+RichterCrashFrame:
+    lda a:OBJ_27A8
+    sec
+    sbc #$05
+    and #$FE
+    asl a
+    clc
+    adc a:PlayerByte3BD5
+    tax
+    lda a:RichterCrashFrames,x
+    rts

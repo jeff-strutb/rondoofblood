@@ -583,3 +583,4 @@ BC44,abs,SoundVoicesSecond,the sound driver: voices of commands $72 up on stages
 25F7,abs,SoundChannel25F7,the sound driver: weighs effect channel 7 against 6 when an effect starts
 B7FB,abs,SoundEffectTable,the sound driver: by effect command, three bytes: priority and its sequence's address
 3B,zp,zPaused,bit 0 set while the game is paused
+AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the attack kind

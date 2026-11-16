@@ -37,7 +37,8 @@ enum {
     FALL_SPEED_HI = 0x03, KNOCK_RISE_LO = 0xC0, KNOCK_RISE_HI = 0xFD, KNOCKED = 0x01,
     START_NEW_RUN = 0, START_HEALTH = 1, START_STAND = 2, START_FIELD94 = 0x10,
     FACING_RIGHT = 0, FACING_LEFT = 1, ANIM_AIR = 0x0A, ANIM_AIR_MOVING = 0x02, AIR_SAME_WAY = 0x80,
-    SOUND_WHIP = 0x03, DEATH_SUB_STEP = 5, SCRIPT_DEATH = 9, ANIM_LEDGE_CRASH_A = 0x2B,
+    SOUND_WHIP = 0x03, FLOOR_MARK_FROM = 0x10, FLOOR_MARKS = 0x24, FLOOR_MARK_ALWAYS = 0x20,
+    FALL_PULL = 0x38, FALL_LIMIT = 7, DEATH_SUB_STEP = 5, SCRIPT_DEATH = 9, ANIM_LEDGE_CRASH_A = 0x2B,
     ANIM_LEDGE_CRASH_B = 0x2C, LEDGE_CRASH_STEP = 5, LEDGE_JUMP_LO = 0xC0, LEDGE_JUMP_HI = 0xFA, SOUND_HURT = 0x65, ANIM_CRASH_FIVE = 0x2A, ANIM_HURT_AIR = 0x23,
     CRASH_FIVE_TIMER = 0x60, ITEM_CRASH_FIVE = 5, HURT_TIMER = 0xFF, REACT_FILL_D = 0x0D,
     REACT_FILL_B = 0x0B, REACT_E = 0x0E, REACT_10 = 0x10, REACT_11 = 0x11, REACT_12 = 0x12,
@@ -107,6 +108,14 @@ typedef struct {
     AnimationStep animation;
     FacingSpeed speed;
 } AirStart;
+
+typedef enum { FLOOR_TOO_HIGH, FLOOR_UNMARKED, FLOOR_MARKED, FLOOR_MARKED_DOWN, FLOOR_NOT_DOWN } FloorHow;
+
+/* A look at the floor's marks: what it found, the value its exit shows, and the pad held. */
+typedef struct { FloorHow how; uint8_t value; uint8_t held; } MarkedFloor;
+
+/* An item crash's frame and the add that found its entry. */
+typedef struct { Sum entry; uint8_t frame; } CrashFrame;
 
 /* A hurt off a ledge: item 5's crash with its animation, or the nudge and the hurt jump. */
 typedef struct { bool crash; AnimationStep animation; Nudge nudge; HurtAir hurt; } LedgeHurt;
@@ -2596,4 +2605,150 @@ void abi_RichterClearOthersKeepWhip(void)
     cpu.x = OBJECT_END;
     abi_nz(0);
     abi_flag(P_C, true);
+}
+
+/*
+ * @routine 01BA:389 RichterOnMarkedFloor
+ * @run 6D:AB89
+ * WHAT IT DOES: Says whether the floor under him is marked: once he is $10 down the screen, a
+ * column read with bit 5, or with bit 2 while down is held.
+ * HOW: OBJ_Y_LO; RichterColumnHit's bits 5 and 2; bit 4 of zPadHeld.
+ * Entry: nothing. Exit: C set if marked. Too high, A his Y, N and Z from comparing it with $10.
+ * No bit, A 0, Z set. Bit 5, A $20, Z clear. Bit 2, A 0, Z clear if down is held, N and V the
+ * pad's bits 7 and 6. X, Y kept; V kept but for the pad's test.
+ */
+MarkedFloor RichterOnMarkedFloor(void)
+{
+    MarkedFloor floor = { FLOOR_TOO_HIGH, 0, 0 };
+
+    floor.value = rd8(OBJ_Y_LO);
+    if (floor.value < FLOOR_MARK_FROM)
+        return floor;
+    floor.value = (uint8_t)(rd8(RichterColumnHit) & FLOOR_MARKS);
+    floor.how = FLOOR_UNMARKED;
+    if (floor.value == 0)
+        return floor;
+    floor.value &= FLOOR_MARK_ALWAYS;
+    floor.how = FLOOR_MARKED;
+    if (floor.value != 0)
+        return floor;
+    floor.held = rd8(zPadHeld);
+    floor.how = (floor.held & PAD_DOWN) ? FLOOR_MARKED_DOWN : FLOOR_NOT_DOWN;
+    return floor;
+}
+
+void abi_RichterOnMarkedFloor(void)
+{
+    MarkedFloor floor = RichterOnMarkedFloor();
+
+    cpu.a = floor.value;
+    switch (floor.how) {
+    case FLOOR_TOO_HIGH:
+        abi_nz((uint8_t)(floor.value - FLOOR_MARK_FROM));
+        break;
+    case FLOOR_UNMARKED:
+    case FLOOR_MARKED:
+        abi_nz(floor.value);
+        break;
+    default:
+        abi_flag(P_Z, floor.how == FLOOR_NOT_DOWN);
+        abi_flag(P_N, (floor.held & 0x80) != 0);
+        abi_flag(P_V, (floor.held & 0x40) != 0);
+        break;
+    }
+    abi_flag(P_C, floor.how == FLOOR_MARKED || floor.how == FLOOR_MARKED_DOWN);
+}
+
+/*
+ * @routine 01BA:3CB RichterFallGravity
+ * @run 6D:ABCB
+ * WHAT IT DOES: Pulls him down while he falls: $38 more Y speed a frame, held at $0700.
+ * HOW: OBJ_VY_LO and Hi; at 7 and up the low byte is cleared.
+ * Entry: nothing. Exit: A the speed's high byte, V from its add; rising, N, Z and C from the add;
+ * falling, N, Z and C from comparing it with 7. X and Y kept.
+ */
+Sum RichterFallGravity(void)
+{
+    Sum low = add_bytes(rd8(OBJ_VY_LO), FALL_PULL, false);
+    Sum high;
+
+    wr8(OBJ_VY_LO, low.value);
+    high = add_bytes(rd8(OBJ_VY_HI), 0, low.carry);
+    wr8(OBJ_VY_HI, high.value);
+    if (!(high.value & 0x80) && high.value >= FALL_LIMIT)
+        wr8(OBJ_VY_LO, 0);
+    return high;
+}
+
+void abi_RichterFallGravity(void)
+{
+    Sum high = RichterFallGravity();
+
+    cpu.a = high.value;
+    abi_flag(P_V, high.overflow);
+    if (high.value & 0x80) {
+        abi_nz(high.value);
+        abi_flag(P_C, high.carry);
+        return;
+    }
+    abi_nz((uint8_t)(high.value - FALL_LIMIT));
+    abi_flag(P_C, high.value >= FALL_LIMIT);
+}
+
+/*
+ * @routine 01BA:73A RichterCrashFrame
+ * @run 6D:AF3A
+ * WHAT IT DOES: The frame an item crash shows: by which pair of crash states he is in, and by
+ * the attack's kind.
+ * HOW: RichterCrashFrames: states 5 and 6 at 0, 7 and 8 at 4, then PlayerByte3BD5.
+ * Entry: nothing. Exit: A the frame, N and Z from it, X the entry, C and V from adding the kind.
+ * Y kept.
+ */
+CrashFrame RichterCrashFrame(void)
+{
+    CrashFrame frame;
+    uint8_t pair = (uint8_t)(((uint8_t)(rd8(OBJ_27A8) - CRASH_FIRST_STATE) & 0xFE) << 1);
+
+    frame.entry = add_bytes(pair, rd8(PlayerByte3BD5), false);
+    frame.frame = rd8((uint16_t)(RichterCrashFrames + frame.entry.value));
+    return frame;
+}
+
+void abi_RichterCrashFrame(void)
+{
+    CrashFrame frame = RichterCrashFrame();
+
+    cpu.a = frame.frame;
+    cpu.x = frame.entry.value;
+    abi_nz(frame.frame);
+    abi_flag(P_C, frame.entry.carry);
+    abi_flag(P_V, frame.entry.overflow);
+}
+
+/*
+ * @routine 01BA:62F RichterMoveStopped
+ * @run 6D:AE2F
+ * WHAT IT DOES: Moves him along X, stops his animation and sets the state's step back to 0.
+ * HOW: A added to OBJ_X_LO; OBJ_2F90 $FF; OBJ_2800 0.
+ * Entry: A the move. Exit: A $FF, X the facing, N and Z from it, C and V from the add. Y kept.
+ */
+Sum RichterMoveStopped(uint8_t move)
+{
+    Sum moved = add_bytes(move, rd8(OBJ_X_LO), false);
+
+    wr8(OBJ_X_LO, moved.value);
+    wr8(OBJ_2F90, 0xFF);
+    wr8(OBJ_2800, 0);
+    return moved;
+}
+
+void abi_RichterMoveStopped(void)
+{
+    Sum moved = RichterMoveStopped(cpu.a);
+
+    cpu.a = 0xFF;
+    cpu.x = rd8(OBJ_2AC0);
+    abi_nz(cpu.x);
+    abi_flag(P_C, moved.carry);
+    abi_flag(P_V, moved.overflow);
 }

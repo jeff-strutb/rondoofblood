@@ -309,9 +309,17 @@ void cd_fade(uint8_t type)
 
 void abi_cd_fade(void)
 {
-    uint8_t nibble = cpu.a & CD_FADE_BITS;
+    uint8_t given = cpu.a;
 
-    cd_fade(cpu.a);
+    cd_fade(given);
+    cd_fade_exit_shim(given);
+}
+
+/* cd_fade's exit, for its wrapper and for a caller's that ends in it: given the A it was called with. */
+void cd_fade_exit_shim(uint8_t given)
+{
+    uint8_t nibble = given & CD_FADE_BITS;
+
     cpu.a = nibble;
     abi_nz(nibble);
 }

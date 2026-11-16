@@ -1239,8 +1239,12 @@ CdPlay cd_play(void)
 
 void abi_cd_play(void)
 {
-    CdPlay play = cd_play();
+    cd_play_exit_shim(cd_play());
+}
 
+/* cd_play's exit, for its wrapper and for a caller's that ends in it. */
+void cd_play_exit_shim(CdPlay play)
+{
     if (play.searched) {
         cpu.y = play.start_mode != 0 ? 2 : 3;
         cd_attempt_exit_shim(play.search);
@@ -1848,7 +1852,12 @@ static bool bad_read_carry_shim(CdRead read)
 
 void abi_cd_read(void)
 {
-    CdRead read = cd_read();
+    cd_read_exit_shim(cd_read());
+}
+
+/* cd_read's exit, for its wrapper and for a caller's that ends in it. */
+void cd_read_exit_shim(CdRead read)
+{
     bool through_bank = read.mode >= 2 && read.mode != READ_TO_VRAM_FAST &&
                         read.mode != READ_TO_VRAM_SLOW;
 

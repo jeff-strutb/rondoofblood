@@ -111,6 +111,12 @@ void abi_ma_mul8u(void)
     mul_exit_shim(al, bl, ma_mul8u(al, bl));
 }
 
+/* ma_mul8u's exit, for a caller's wrapper that ends in it: given the two bytes and the product. */
+void ma_mul8u_exit_shim(uint8_t al, uint8_t bl, uint16_t product)
+{
+    mul_exit_shim(al, bl, product);
+}
+
 enum { BCD_DIGIT_LIMIT = 0x0A, BCD_HIGH_LIMIT = 0xA0, BCD_LOW_DIGIT = 0x0F, BCD_HIGH_DIGIT = 0xF0,
        BINBCD_LIMIT = 100 };
 

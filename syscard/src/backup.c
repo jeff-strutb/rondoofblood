@@ -891,8 +891,12 @@ static void abi_cut_flags_shim(BackupAccess read)
 
 void abi_bm_read(void)
 {
-    BackupAccess read = bm_read();
+    bm_read_exit_shim(bm_read());
+}
 
+/* bm_read's exit, for its wrapper and for a caller's that ends in it. */
+void bm_read_exit_shim(BackupAccess read)
+{
     if (read.ending == BM_ENDED_NOT_FORMATTED) {
         abi_not_formatted_shim(read.check);
         return;
@@ -989,7 +993,12 @@ BackupAccess bm_write(void)
 
 void abi_bm_write(void)
 {
-    BackupAccess write = bm_write();
+    bm_write_exit_shim(bm_write());
+}
+
+/* bm_write's exit, for its wrapper and for a caller's that ends in it. */
+void bm_write_exit_shim(BackupAccess write)
+{
     uint16_t sum = write.sum.sum;
 
     if (write.ending == BM_ENDED_NOT_FORMATTED) {

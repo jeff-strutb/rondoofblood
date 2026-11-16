@@ -32,8 +32,12 @@ uint8_t ad_stop(void)
 
 void abi_ad_stop(void)
 {
-    uint8_t control = ad_stop();
+    ad_stop_exit_shim(ad_stop());
+}
 
+/* ad_stop's exit, for its wrapper and for a caller's that ends in it. */
+void ad_stop_exit_shim(uint8_t control)
+{
     cpu.a = AD_CONTROL_PLAY_BITS;
     abi_flag(P_N, (control & 0x80) != 0);
     abi_flag(P_V, (control & 0x40) != 0);
@@ -61,8 +65,12 @@ AdStat ad_stat(void)
 
 void abi_ad_stat(void)
 {
-    AdStat stat = ad_stat();
+    ad_stat_exit_shim(ad_stat());
+}
 
+/* ad_stat's exit, for its wrapper and for a caller's that ends in it. */
+void ad_stat_exit_shim(AdStat stat)
+{
     cpu.x = stat.busy;
     cpu.a = stat.playing;
     abi_nz(stat.playing);
@@ -122,7 +130,7 @@ static void latch_word(uint16_t at)
  */
 AdPlay ad_play(void)
 {
-    AdPlay play = { AD_PLAY_BUSY, { 0, 0 }, 0, 0 };
+    AdPlay play = { AD_PLAY_BUSY, { 0, 0 }, 0, 0, 0, 0 };
     uint8_t mode;
 
     play.stat = ad_stat();
@@ -145,6 +153,8 @@ AdPlay ad_play(void)
         ad_latch_read_address();
         latch_word(CardAdpcmLength);
         ad_latch_length();
+        play.length_low = rd8(CardAdpcmLength);
+        play.length_high = rd8((uint16_t)(CardAdpcmLength + 1));
         wr8(AdpcmRate, rd8(CardAdpcmRate));
         play.how = AD_PLAY_STARTED;
     } else {
@@ -158,8 +168,12 @@ AdPlay ad_play(void)
 
 void abi_ad_play(void)
 {
-    AdPlay play = ad_play();
+    ad_play_exit_shim(ad_play());
+}
 
+/* ad_play's exit, for its wrapper and for a caller's that ends in it. */
+void ad_play_exit_shim(AdPlay play)
+{
     cpu.x = play.stat.busy;
     if (play.how == AD_PLAY_BUSY) {
         cpu.a = play.stat.playing;
@@ -173,8 +187,8 @@ void abi_ad_play(void)
         return;
     }
     if (play.how == AD_PLAY_STARTED) {
-        cpu.x = rd8(CardAdpcmLength);
-        cpu.y = rd8((uint16_t)(CardAdpcmLength + 1));
+        cpu.x = play.length_low;
+        cpu.y = play.length_high;
         abi_flag(P_C, false);
     }
     cpu.a = 0;

@@ -395,11 +395,22 @@ typedef struct {
     AdStat stat;
     uint8_t rate;
     uint8_t irq_before;  /* the CD unit's interrupt enables before playing turned one on */
+    uint8_t length_low;  /* what was latched as the length, which X and Y give back */
+    uint8_t length_high;
 } AdPlay;
 
 CardVersion ex_getver(void);
 uint8_t ad_reset(void);
 AdPlay ad_play(void);
+
+/*
+ * The exits of ad_play, ad_stat and ad_stop: the registers and flags each leaves, for its abi_
+ * wrapper and for a caller's wrapper whose routine ends in it. They touch the CPU, so only abi_
+ * wrappers call them.
+ */
+void ad_play_exit_shim(AdPlay play);
+void ad_stat_exit_shim(AdStat stat);
+void ad_stop_exit_shim(uint8_t control);
 AdStat ad_stat(void);
 uint8_t ad_latch_read_address(void);
 uint8_t ad_latch_length(void);

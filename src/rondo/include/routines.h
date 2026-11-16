@@ -196,7 +196,7 @@ bool ladder_found(LadderCheck check);
 void ladder_exit_shim(LadderCheck check);
 bool SoundCommand(uint8_t command, uint8_t *busy_or_bank);
 
-/* What SoundReleaseChannel looked at: the effect on a shared channel, when 4 or 5. */
+/* What SoundSilenceChannel looked at: the effect on a shared channel, when 4 or 5. */
 typedef struct { bool looked; uint8_t effect; } ChannelRelease;
 
 /* A product of the driver's shift and add, with the last add's high byte and overflow. */
@@ -204,8 +204,8 @@ typedef struct { uint16_t value; bool added; uint8_t high; bool overflow; } Soun
 
 void SoundSilenceAll(void);
 void SoundVolumeFull(void);
-void SoundMarkChannel(uint8_t channel);
-ChannelRelease SoundReleaseChannel(uint8_t channel);
+void SoundStartEnvelope(uint8_t channel);
+ChannelRelease SoundSilenceChannel(uint8_t channel);
 SoundProduct SoundMultiply(uint8_t a, uint8_t y);
 SoundProduct SoundMultiplyNibble(uint8_t a, uint8_t y);
 uint8_t SoundReadPair(uint8_t channel);
@@ -270,6 +270,31 @@ typedef struct {
 } Approach;
 
 Approach SoundApproachStep(uint8_t channel);
+
+typedef enum {
+    ENVELOPE_OFF, ENVELOPE_START, ENVELOPE_ATTACK, ENVELOPE_DECAY, ENVELOPE_RELEASE,
+    ENVELOPE_PAST, ENVELOPE_WAITING, ENVELOPE_TIMED
+} EnvelopeHow;
+
+typedef enum { ENVELOPE_COMPARED_NONE, ENVELOPE_COMPARED_SUSTAIN, ENVELOPE_COMPARED_RELEASE } EnvelopeCompare;
+
+/* An envelope frame: the phase it was in, what happened, and what its exit shows. */
+typedef struct {
+    uint8_t how;
+    uint8_t phase;
+    uint8_t timer;
+    uint8_t frames;
+    EnvelopeCompare compared;
+    uint8_t level;
+    uint8_t sustain;
+} EnvelopeStep;
+
+EnvelopeStep SoundEnvelopeStep(uint8_t channel);
+
+/* A scaled offset: its sign, the scale, and the product before any negation. */
+typedef struct { bool negative; uint8_t scale; SoundProduct product; } ScaledOffset;
+
+ScaledOffset SoundScaledOffset(uint8_t byte, uint8_t channel);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

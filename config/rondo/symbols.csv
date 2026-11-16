@@ -431,8 +431,8 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 22DA,abs,SoundFading,the sound driver: 1 while the music fades
 22DB,abs,SoundFadeStep,the sound driver: the fade's step
 22E0,abs,SoundInCommand,the sound driver: 1 while a command goes in
-2598,abs,SoundChannelMarked,the sound driver: 8 bytes by channel
-25A8,abs,SoundChannel25A8,the sound driver: 8 bytes by channel; $1F on release
+2598,abs,SoundEnvelopePhase,the sound driver: by channel, the envelope's phase: 0 off, 1 start, 2 attack, 3 decay, 4 release
+25A8,abs,SoundEnvelopeLevel,the sound driver: by channel, the envelope's attenuation; 0 loudest, $1F silent
 25B8,abs,SoundChannelCommand,the sound driver: the command playing on each of 8 channels
 22F0,abs,SoundSequenceLo,the sound driver: each channel's place in its sequence, low
 22F8,abs,SoundSequenceHi,the sound driver: each channel's place in its sequence, high
@@ -476,3 +476,11 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 2568,abs,SoundRampHi,the sound driver: by channel, the ramp
 908E,abs,SoundModulationTable,the sound driver: modulation words, one step a byte apart
 B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 and up
+24B8,abs,SoundOffsetScale,the sound driver: by channel, what SoundScaledOffset multiplies by
+2570,abs,SoundAttackRate,the sound driver: by channel, frames a step of the attack; 0 none
+2578,abs,SoundAttackLevel,the sound driver: by channel, the level the attack starts from
+2580,abs,SoundDecayRate,the sound driver: by channel, frames a step of the decay
+2588,abs,SoundReleaseRate,the sound driver: by channel, frames a step of the release
+2590,abs,SoundSustainLevel,the sound driver: by channel, the level the decay stops at
+25A0,abs,SoundEnvelopeTimer,the sound driver: by channel, frames left to the envelope's next step
+88BF,abs,SoundOffsetTable,the sound driver: 64 offsets SoundScaledOffset scales

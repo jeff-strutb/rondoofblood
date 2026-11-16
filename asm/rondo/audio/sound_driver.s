@@ -222,40 +222,40 @@ SoundVolumeFull:
     sta a:PsgMainVolume
     rts
 
-; @routine 004E:62D SoundMarkChannel
+; @routine 004E:62D SoundStartEnvelope
 ; @run 75:8E2D
-; WHAT IT DOES: Marks a channel in SoundChannelMarked.
-; HOW: Stores 1.
+; WHAT IT DOES: Starts a channel's envelope from its first phase.
+; HOW: SoundEnvelopePhase 1.
 ; Entry: X channel. Exit: A, X, Y, C and V kept; N and Z from A.
-SoundMarkChannel:
+SoundStartEnvelope:
     pha
     lda #$01
-    sta a:SoundChannelMarked,x
+    sta a:SoundEnvelopePhase,x
     pla
     rts
 
-; @routine 004E:635 SoundReleaseChannel
+; @routine 004E:635 SoundSilenceChannel
 ; @run 75:8E35
-; WHAT IT DOES: Releases a channel: SoundChannel25A8 to $1F, the mark cleared, and the PSG
+; WHAT IT DOES: Silences a channel: its envelope's level to $1F and its phase off, and the PSG
 ; channel's control and balance cleared, unless it is 4 or 5 and an effect plays on it.
 ; HOW: The PSG channel is the one already selected.
 ; Entry: X channel. Exit: A, X and Y kept; N and Z from A; C set if the channel is 6 or more; V
 ; bit 6 of the effect's command when channel 4 or 5, else kept.
-SoundReleaseChannel:
+SoundSilenceChannel:
     pha
     lda #$1F
-    sta a:SoundChannel25A8,x
-    stz a:SoundChannelMarked,x
+    sta a:SoundEnvelopeLevel,x
+    stz a:SoundEnvelopePhase,x
     cpx #$04
-    bcc SoundReleaseChannel_at0
+    bcc SoundSilenceChannel_at0
     cpx #$06
-    bcs SoundReleaseChannel_at0
+    bcs SoundSilenceChannel_at0
     tst #$FF,a:SoundChannelCommand+2,x
-    bne SoundReleaseChannel_at1
-SoundReleaseChannel_at0:
+    bne SoundSilenceChannel_at1
+SoundSilenceChannel_at0:
     stz a:PsgControl
     stz a:PsgBalance
-SoundReleaseChannel_at1:
+SoundSilenceChannel_at1:
     pla
     rts
 
@@ -484,4 +484,109 @@ SoundWaveAddress:
     lda a:BlockMoveSourceHi
     adc #$BD
     sta a:BlockMoveSourceHi
+    rts
+
+; @routine 004E:0FF SoundScaledOffset
+; @run 75:88FF
+; WHAT IT DOES: A signed offset into zSoundWordLo and Hi: an entry of SoundOffsetTable times the
+; channel's SoundOffsetScale, negated when bit 6 of the byte is set.
+; HOW: The byte's low six bits pick the entry; SoundMultiply.
+; Entry: A the byte, X channel. Exit: Y the scale; X kept. Positive, as SoundMultiply. Negative, A
+; the word's high byte, N, Z, C and V from subtracting it from 0 with the low byte's borrow.
+SoundScaledOffset:
+    and #$7F
+    cmp #$40
+    bcs SoundScaledOffset_at0
+    tay
+    lda a:SoundOffsetTable,y
+    ldy a:SoundOffsetScale,x
+    jsr SoundMultiply
+    bra SoundScaledOffset_at1
+SoundScaledOffset_at0:
+    and #$3F
+    tay
+    lda a:SoundOffsetTable,y
+    ldy a:SoundOffsetScale,x
+    jsr SoundMultiply
+    cla
+    sec
+    sbc z:zSoundWordLo
+    sta z:zSoundWordLo
+    cla
+    sbc z:zSoundWordHi
+    sta z:zSoundWordHi
+SoundScaledOffset_at1:
+    rts
+
+; @routine 004E:590 SoundEnvelopeStep
+; @run 75:8D90
+; WHAT IT DOES: One frame of a channel's volume envelope. Start: the attack's level and timer, or
+; straight to the decay with no attack. Attack: a step louder each time its timer runs out, to
+; the decay at full volume. Decay: a step quieter, to the release at the sustain level. Release:
+; a step quieter each time, without end. Off, and past the release, nothing.
+; HOW: SoundEnvelopePhase, SoundEnvelopeTimer and SoundEnvelopeLevel by channel, with the rates
+; and levels set for it. The release compares A, which is 0 there, with $1F, so it never stops
+; itself.
+; Entry: X channel. Exit: X, Y and V kept. Off, A $FF, N set, Z clear. Past the release, A the
+; phase less 4, N and Z from it. Timer still running, A 0, N and Z from the timer. Timer set, A
+; the frames it was set to, N and Z from them; C from comparing the level with the sustain in the
+; decay, clear in the release, else kept.
+SoundEnvelopeStep:
+    lda a:SoundEnvelopePhase,x
+    dec a
+    bmi SoundEnvelopeStep_at0
+    bne SoundEnvelopeStep_at1
+    inc a:SoundEnvelopePhase,x
+    lda a:SoundAttackLevel,x
+    sta a:SoundEnvelopeLevel,x
+    lda a:SoundAttackRate,x
+    beq SoundEnvelopeStep_at2
+    sta a:SoundEnvelopeTimer,x
+    bra SoundEnvelopeStep_at0
+SoundEnvelopeStep_at1:
+    dec a
+    bne SoundEnvelopeStep_at3
+    dec a:SoundEnvelopeTimer,x
+    bne SoundEnvelopeStep_at0
+    dec a:SoundEnvelopeLevel,x
+    beq SoundEnvelopeStep_at2
+    lda a:SoundAttackRate,x
+    sta a:SoundEnvelopeTimer,x
+    bra SoundEnvelopeStep_at0
+SoundEnvelopeStep_at2:
+    inc a:SoundEnvelopePhase,x
+    lda a:SoundDecayRate,x
+    sta a:SoundEnvelopeTimer,x
+    bra SoundEnvelopeStep_at0
+SoundEnvelopeStep_at3:
+    dec a
+    bne SoundEnvelopeStep_at4
+    dec a:SoundEnvelopeTimer,x
+    bne SoundEnvelopeStep_at0
+    inc a:SoundEnvelopeLevel,x
+    lda a:SoundEnvelopeLevel,x
+    cmp a:SoundSustainLevel,x
+    beq SoundEnvelopeStep_at5
+    lda a:SoundDecayRate,x
+    sta a:SoundEnvelopeTimer,x
+    bra SoundEnvelopeStep_at0
+SoundEnvelopeStep_at5:
+    inc a:SoundEnvelopePhase,x
+    lda a:SoundReleaseRate,x
+    sta a:SoundEnvelopeTimer,x
+    bra SoundEnvelopeStep_at0
+SoundEnvelopeStep_at4:
+    dec a
+    bne SoundEnvelopeStep_at0
+    dec a:SoundEnvelopeTimer,x
+    bne SoundEnvelopeStep_at0
+    inc a:SoundEnvelopeLevel,x
+    cmp #$1F
+    bne SoundEnvelopeStep_at6
+    stz a:SoundEnvelopePhase,x
+    bra SoundEnvelopeStep_at0
+SoundEnvelopeStep_at6:
+    lda a:SoundReleaseRate,x
+    sta a:SoundEnvelopeTimer,x
+SoundEnvelopeStep_at0:
     rts

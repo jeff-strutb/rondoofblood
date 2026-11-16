@@ -12,10 +12,10 @@
 #include "routines.h"
 
 enum {
-    PSG_CHANNELS = 6, PSG_VOLUME_FULL = 0xFF, CHANNEL_RELEASED = 0x1F,
+    PSG_CHANNELS = 6, PSG_VOLUME_FULL = 0xFF, LEVEL_SILENT = 0x1F,
     EFFECT_SHARED_FIRST = 4, EFFECT_SHARED_END = 6, EFFECT_CHANNEL_OFFSET = 2,
     FADE_STEP_START = 0x10, SOUND_WAVES = 0xBD11, SEQUENCE_NOTES_END = 0x60, SEQUENCE_REUSE = 0x80,
-    SEQUENCE_LONG_FIRST = 0xE0
+    SEQUENCE_LONG_FIRST = 0xE0, OFFSET_NEGATIVE = 0x40
 };
 
 /* PSG channels 4 and 5 are left alone while effect channels 6 and 7 play on them. */
@@ -70,38 +70,38 @@ void abi_SoundVolumeFull(void)
 }
 
 /*
- * @routine 004E:62D SoundMarkChannel
+ * @routine 004E:62D SoundStartEnvelope
  * @run 75:8E2D
- * WHAT IT DOES: Marks a channel in SoundChannelMarked.
- * HOW: Stores 1.
+ * WHAT IT DOES: Starts a channel's envelope from its first phase.
+ * HOW: SoundEnvelopePhase 1.
  * Entry: X channel. Exit: A, X, Y, C and V kept; N and Z from A.
  */
-void SoundMarkChannel(uint8_t channel)
+void SoundStartEnvelope(uint8_t channel)
 {
-    wr8((uint16_t)(SoundChannelMarked + channel), 1);
+    wr8((uint16_t)(SoundEnvelopePhase + channel), 1);
 }
 
-void abi_SoundMarkChannel(void)
+void abi_SoundStartEnvelope(void)
 {
-    SoundMarkChannel(cpu.x);
+    SoundStartEnvelope(cpu.x);
     abi_nz(cpu.a);
 }
 
 /*
- * @routine 004E:635 SoundReleaseChannel
+ * @routine 004E:635 SoundSilenceChannel
  * @run 75:8E35
- * WHAT IT DOES: Releases a channel: SoundChannel25A8 to $1F, the mark cleared, and the PSG
+ * WHAT IT DOES: Silences a channel: its envelope's level to $1F and its phase off, and the PSG
  * channel's control and balance cleared, unless it is 4 or 5 and an effect plays on it.
  * HOW: The PSG channel is the one already selected.
  * Entry: X channel. Exit: A, X and Y kept; N and Z from A; C set if the channel is 6 or more; V
  * bit 6 of the effect's command when channel 4 or 5, else kept.
  */
-ChannelRelease SoundReleaseChannel(uint8_t channel)
+ChannelRelease SoundSilenceChannel(uint8_t channel)
 {
     ChannelRelease release = { false, 0 };
 
-    wr8((uint16_t)(SoundChannel25A8 + channel), CHANNEL_RELEASED);
-    wr8((uint16_t)(SoundChannelMarked + channel), 0);
+    wr8((uint16_t)(SoundEnvelopeLevel + channel), LEVEL_SILENT);
+    wr8((uint16_t)(SoundEnvelopePhase + channel), 0);
     release.looked = channel >= EFFECT_SHARED_FIRST && channel < EFFECT_SHARED_END;
     if (!effect_holds(channel, &release.effect)) {
         wr8(PsgControl, 0);
@@ -110,9 +110,9 @@ ChannelRelease SoundReleaseChannel(uint8_t channel)
     return release;
 }
 
-void abi_SoundReleaseChannel(void)
+void abi_SoundSilenceChannel(void)
 {
-    ChannelRelease release = SoundReleaseChannel(cpu.x);
+    ChannelRelease release = SoundSilenceChannel(cpu.x);
 
     abi_nz(cpu.a);
     abi_flag(P_C, cpu.x >= EFFECT_SHARED_END);
@@ -806,4 +806,169 @@ void abi_SoundApproachStep(void)
     }
     cpu.a = fraction;
     abi_nz(approach.carried ? approach.value : fraction);
+}
+
+/* A timer set to a rate, with the phase moved on when asked. */
+static uint8_t envelope_next(uint8_t channel, uint16_t rate, bool next_phase)
+{
+    uint8_t frames;
+
+    if (next_phase)
+        wr8((uint16_t)(SoundEnvelopePhase + channel), (uint8_t)(rd8((uint16_t)(SoundEnvelopePhase + channel)) + 1));
+    frames = rd8((uint16_t)(rate + channel));
+    wr8((uint16_t)(SoundEnvelopeTimer + channel), frames);
+    return frames;
+}
+
+/* The phase's timer counted down; true when it ran out. */
+static bool envelope_timer_out(uint8_t channel, EnvelopeStep *step)
+{
+    step->timer = (uint8_t)(rd8((uint16_t)(SoundEnvelopeTimer + channel)) - 1);
+    wr8((uint16_t)(SoundEnvelopeTimer + channel), step->timer);
+    if (step->timer != 0) {
+        step->how = ENVELOPE_WAITING;
+        return false;
+    }
+    step->how = ENVELOPE_TIMED;
+    return true;
+}
+
+/*
+ * @routine 004E:590 SoundEnvelopeStep
+ * @run 75:8D90
+ * WHAT IT DOES: One frame of a channel's volume envelope. Start: the attack's level and timer, or
+ * straight to the decay with no attack. Attack: a step louder each time its timer runs out, to
+ * the decay at full volume. Decay: a step quieter, to the release at the sustain level. Release:
+ * a step quieter each time, without end. Off, and past the release, nothing.
+ * HOW: SoundEnvelopePhase, SoundEnvelopeTimer and SoundEnvelopeLevel by channel, with the rates
+ * and levels set for it. The release compares A, which is 0 there, with $1F, so it never stops
+ * itself.
+ * Entry: X channel. Exit: X, Y and V kept. Off, A $FF, N set, Z clear. Past the release, A the
+ * phase less 4, N and Z from it. Timer still running, A 0, N and Z from the timer. Timer set, A
+ * the frames it was set to, N and Z from them; C from comparing the level with the sustain in the
+ * decay, clear in the release, else kept.
+ */
+EnvelopeStep SoundEnvelopeStep(uint8_t channel)
+{
+    EnvelopeStep step = { ENVELOPE_OFF, 0, 0, 0, ENVELOPE_COMPARED_NONE, 0, 0 };
+
+    step.phase = rd8((uint16_t)(SoundEnvelopePhase + channel));
+    switch (step.phase) {
+    case ENVELOPE_OFF:
+        return step;
+    case ENVELOPE_START:
+        wr8((uint16_t)(SoundEnvelopePhase + channel), ENVELOPE_ATTACK);
+        wr8((uint16_t)(SoundEnvelopeLevel + channel), rd8((uint16_t)(SoundAttackLevel + channel)));
+        step.how = ENVELOPE_TIMED;
+        if (rd8((uint16_t)(SoundAttackRate + channel)) != 0) {
+            step.frames = envelope_next(channel, SoundAttackRate, false);
+            return step;
+        }
+        step.frames = envelope_next(channel, SoundDecayRate, true);
+        return step;
+    case ENVELOPE_ATTACK:
+        if (!envelope_timer_out(channel, &step))
+            return step;
+        step.level = (uint8_t)(rd8((uint16_t)(SoundEnvelopeLevel + channel)) - 1);
+        wr8((uint16_t)(SoundEnvelopeLevel + channel), step.level);
+        step.frames = step.level == 0 ? envelope_next(channel, SoundDecayRate, true)
+                                      : envelope_next(channel, SoundAttackRate, false);
+        return step;
+    case ENVELOPE_DECAY:
+        if (!envelope_timer_out(channel, &step))
+            return step;
+        step.level = (uint8_t)(rd8((uint16_t)(SoundEnvelopeLevel + channel)) + 1);
+        wr8((uint16_t)(SoundEnvelopeLevel + channel), step.level);
+        step.level = rd8((uint16_t)(SoundEnvelopeLevel + channel));
+        step.compared = ENVELOPE_COMPARED_SUSTAIN;
+        step.sustain = rd8((uint16_t)(SoundSustainLevel + channel));
+        step.frames = step.level == step.sustain ? envelope_next(channel, SoundReleaseRate, true)
+                                                 : envelope_next(channel, SoundDecayRate, false);
+        return step;
+    case ENVELOPE_RELEASE:
+        if (!envelope_timer_out(channel, &step))
+            return step;
+        wr8((uint16_t)(SoundEnvelopeLevel + channel), (uint8_t)(rd8((uint16_t)(SoundEnvelopeLevel + channel)) + 1));
+        step.compared = ENVELOPE_COMPARED_RELEASE;
+        step.frames = envelope_next(channel, SoundReleaseRate, false);
+        return step;
+    default:
+        step.how = ENVELOPE_PAST;
+        return step;
+    }
+}
+
+void abi_SoundEnvelopeStep(void)
+{
+    EnvelopeStep step = SoundEnvelopeStep(cpu.x);
+
+    switch (step.how) {
+    case ENVELOPE_OFF:
+        cpu.a = 0xFF;
+        abi_nz(0xFF);
+        return;
+    case ENVELOPE_PAST:
+        cpu.a = (uint8_t)(step.phase - ENVELOPE_RELEASE);
+        abi_nz(cpu.a);
+        return;
+    case ENVELOPE_WAITING:
+        cpu.a = 0;
+        abi_nz(step.timer);
+        return;
+    default:
+        cpu.a = step.frames;
+        abi_nz(step.frames);
+        if (step.compared == ENVELOPE_COMPARED_SUSTAIN)
+            abi_flag(P_C, step.level >= step.sustain);
+        else if (step.compared == ENVELOPE_COMPARED_RELEASE)
+            abi_flag(P_C, false);
+        return;
+    }
+}
+
+/*
+ * @routine 004E:0FF SoundScaledOffset
+ * @run 75:88FF
+ * WHAT IT DOES: A signed offset into zSoundWordLo and Hi: an entry of SoundOffsetTable times the
+ * channel's SoundOffsetScale, negated when bit 6 of the byte is set.
+ * HOW: The byte's low six bits pick the entry; SoundMultiply.
+ * Entry: A the byte, X channel. Exit: Y the scale; X kept. Positive, as SoundMultiply. Negative, A
+ * the word's high byte, N, Z, C and V from subtracting it from 0 with the low byte's borrow.
+ */
+ScaledOffset SoundScaledOffset(uint8_t byte, uint8_t channel)
+{
+    ScaledOffset offset;
+    uint8_t entry = (uint8_t)(byte & 0x7F);
+
+    offset.negative = entry >= OFFSET_NEGATIVE;
+    offset.scale = rd8((uint16_t)(SoundOffsetScale + channel));
+    offset.product = SoundMultiply(rd8((uint16_t)(SoundOffsetTable + (entry & 0x3F))), offset.scale);
+    if (offset.negative) {
+        uint16_t word = (uint16_t)(0 - offset.product.value);
+
+        wr8(zSoundWordLo, (uint8_t)word);
+        wr8(zSoundWordHi, (uint8_t)(word >> 8));
+    }
+    return offset;
+}
+
+void abi_SoundScaledOffset(void)
+{
+    uint8_t factor = rd8((uint16_t)(SoundOffsetTable + (cpu.a & 0x3F)));
+    ScaledOffset offset = SoundScaledOffset(cpu.a, cpu.x);
+    uint8_t low = (uint8_t)offset.product.value;
+    uint8_t high = (uint8_t)(offset.product.value >> 8);
+    uint8_t result;
+    bool borrow = low != 0;
+
+    cpu.y = offset.scale;
+    if (!offset.negative) {
+        abi_exit_product(offset.product, factor);
+        return;
+    }
+    result = (uint8_t)(0 - high - borrow);
+    cpu.a = result;
+    abi_nz(result);
+    abi_flag(P_C, !borrow && high == 0);
+    abi_flag(P_V, (high & result & 0x80) != 0);
 }

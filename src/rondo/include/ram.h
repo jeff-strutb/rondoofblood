@@ -424,8 +424,8 @@
 #define SoundFading 0x22DA /* the sound driver: 1 while the music fades */
 #define SoundFadeStep 0x22DB /* the sound driver: the fade's step */
 #define SoundInCommand 0x22E0 /* the sound driver: 1 while a command goes in */
-#define SoundChannelMarked 0x2598 /* the sound driver: 8 bytes by channel */
-#define SoundChannel25A8 0x25A8 /* the sound driver: 8 bytes by channel; $1F on release */
+#define SoundEnvelopePhase 0x2598 /* the sound driver: by channel, the envelope's phase: 0 off, 1 start, 2 attack, 3 decay, 4 release */
+#define SoundEnvelopeLevel 0x25A8 /* the sound driver: by channel, the envelope's attenuation; 0 loudest, $1F silent */
 #define SoundChannelCommand 0x25B8 /* the sound driver: the command playing on each of 8 channels */
 #define SoundSequenceLo 0x22F0 /* the sound driver: each channel's place in its sequence, low */
 #define SoundSequenceHi 0x22F8 /* the sound driver: each channel's place in its sequence, high */
@@ -469,5 +469,13 @@
 #define SoundRampHi 0x2568 /* the sound driver: by channel, the ramp */
 #define SoundModulationTable 0x908E /* the sound driver: modulation words, one step a byte apart */
 #define SoundCommandLengths 0xB7A2 /* the sound driver: argument bytes of commands $E0 and up */
+#define SoundOffsetScale 0x24B8 /* the sound driver: by channel, what SoundScaledOffset multiplies by */
+#define SoundAttackRate 0x2570 /* the sound driver: by channel, frames a step of the attack; 0 none */
+#define SoundAttackLevel 0x2578 /* the sound driver: by channel, the level the attack starts from */
+#define SoundDecayRate 0x2580 /* the sound driver: by channel, frames a step of the decay */
+#define SoundReleaseRate 0x2588 /* the sound driver: by channel, frames a step of the release */
+#define SoundSustainLevel 0x2590 /* the sound driver: by channel, the level the decay stops at */
+#define SoundEnvelopeTimer 0x25A0 /* the sound driver: by channel, frames left to the envelope's next step */
+#define SoundOffsetTable 0x88BF /* the sound driver: 64 offsets SoundScaledOffset scales */
 
 #endif

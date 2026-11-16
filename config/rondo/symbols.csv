@@ -322,6 +322,7 @@ E018,abs,BiosCdPause,cd_pause
 E01B,abs,BiosCdStat,cd_stat
 E02D,abs,BiosCdFade,cd_fade
 E033,abs,BiosAdTrans,ad_trans
+E03C,abs,BiosAdPlay,ad_play
 E03F,abs,BiosAdCplay,ad_cplay
 E042,abs,BiosAdStop,ad_stop
 E045,abs,BiosAdStat,ad_stat
@@ -330,6 +331,7 @@ E04B,abs,BiosBmFree,bm_free
 E04E,abs,BiosBmRead,bm_read
 E051,abs,BiosBmWrite,bm_write
 E054,abs,BiosBmDelete,bm_delete
+E05A,abs,BiosExGetver,ex_getver
 E069,abs,BiosExScrSiz,ex_scrsiz
 E0BD,abs,BiosMaMul8u,ma_mul8u
 # The player's overlay. Names by role where the code shows it; by address until then.
@@ -560,3 +562,11 @@ B7C2,abs,SoundCommandHandlers,the sound driver: commands $E2 to $FF, each its ha
 B8FA,abs,SoundMusicTable,the sound driver: by music command less $55, the address of its six channels' sequences
 25F9,abs,SoundVoiceFlags,the sound driver: bit 7 the voice is of the second set; bit 0 one is waiting
 25FC,abs,SoundVoiceIndex,the sound driver: the voice within its set
+1802,abs,CdIrqControl,the CD unit's interrupt enables
+1803,abs,CdIrqStatus,the CD unit's interrupt status
+1808,abs,AdpcmAddressLo,the ADPCM unit's address port, low
+1809,abs,AdpcmAddressHi,the ADPCM unit's address port, high
+180A,abs,AdpcmData,the ADPCM unit's data port
+180C,abs,AdpcmStatus,the ADPCM unit's status
+180D,abs,AdpcmControl,the ADPCM unit's control
+180E,abs,AdpcmRate,the ADPCM unit's playback rate

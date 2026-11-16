@@ -316,6 +316,7 @@
 #define BiosCdStat 0xE01B /* cd_stat */
 #define BiosCdFade 0xE02D /* cd_fade */
 #define BiosAdTrans 0xE033 /* ad_trans */
+#define BiosAdPlay 0xE03C /* ad_play */
 #define BiosAdCplay 0xE03F /* ad_cplay */
 #define BiosAdStop 0xE042 /* ad_stop */
 #define BiosAdStat 0xE045 /* ad_stat */
@@ -324,6 +325,7 @@
 #define BiosBmRead 0xE04E /* bm_read */
 #define BiosBmWrite 0xE051 /* bm_write */
 #define BiosBmDelete 0xE054 /* bm_delete */
+#define BiosExGetver 0xE05A /* ex_getver */
 #define BiosExScrSiz 0xE069 /* ex_scrsiz */
 #define BiosMaMul8u 0xE0BD /* ma_mul8u */
 #define zPlayerHealth 0x2098 /* the player's health */
@@ -553,5 +555,13 @@
 #define SoundMusicTable 0xB8FA /* the sound driver: by music command less $55, the address of its six channels' sequences */
 #define SoundVoiceFlags 0x25F9 /* the sound driver: bit 7 the voice is of the second set; bit 0 one is waiting */
 #define SoundVoiceIndex 0x25FC /* the sound driver: the voice within its set */
+#define CdIrqControl 0x1802 /* the CD unit's interrupt enables */
+#define CdIrqStatus 0x1803 /* the CD unit's interrupt status */
+#define AdpcmAddressLo 0x1808 /* the ADPCM unit's address port, low */
+#define AdpcmAddressHi 0x1809 /* the ADPCM unit's address port, high */
+#define AdpcmData 0x180A /* the ADPCM unit's data port */
+#define AdpcmStatus 0x180C /* the ADPCM unit's status */
+#define AdpcmControl 0x180D /* the ADPCM unit's control */
+#define AdpcmRate 0x180E /* the ADPCM unit's playback rate */
 
 #endif

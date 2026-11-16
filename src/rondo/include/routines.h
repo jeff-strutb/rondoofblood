@@ -589,4 +589,5 @@ Alu StageEnter(Alu r);
 Alu StageLoad(Alu r);
 Alu SaveVramToRam(Alu r);
 
+/* The kernel's ADPCM play: src/rondo/audio/adpcm.c. The card's types come from syscard.h. */
 #endif

@@ -20,7 +20,7 @@ RichterVecStart:
 ; HOW: One jump.
 ; Entry, exit: as that code.
 RichterVecApplyMove:
-    jmp $BB23
+    jmp RichterReadColumns
 
 ; @routine 01B9:009 RichterVecC3A7
 ; @run 6D:A009
@@ -68,7 +68,7 @@ RichterVecCE1D:
 ; HOW: One jump.
 ; Entry, exit: as that code.
 RichterVecSetAnimation:
-    jmp $B67B
+    jmp RichterSetAnimation
 
 ; @routine 01B9:01B RichterVecSetIdle
 ; @run 6D:A01B
@@ -76,7 +76,7 @@ RichterVecSetAnimation:
 ; HOW: One jump.
 ; Entry, exit: as that code.
 RichterVecSetIdle:
-    jmp $B669
+    jmp RichterAnimationTick
 
 ; @routine 01B9:01E RichterVecCE73
 ; @run 6D:A01E
@@ -92,7 +92,7 @@ RichterVecCE73:
 ; HOW: One jump.
 ; Entry, exit: as that code.
 RichterVecWall:
-    jmp $BB6E
+    jmp RichterWall
 
 ; @routine 01B9:024 RichterVecFloor
 ; @run 6D:A024
@@ -100,7 +100,7 @@ RichterVecWall:
 ; HOW: One jump.
 ; Entry, exit: as that code.
 RichterVecFloor:
-    jmp $BBC1
+    jmp RichterFloor
 
 ; @routine 01B9:027 RichterApplyMoveAndPushGoTo
 ; @run 6D:A027
@@ -118,7 +118,7 @@ RichterApplyMoveAndPushGoTo:
 ; HOW: Bits $81 of the three bytes at $3BC3 stop it.
 ; Entry: nothing. Exit: as the path taken leaves them.
 RichterApplyMoveAndPush:
-    jsr $BB23
+    jsr RichterReadColumns
     clx
 RichterApplyMoveAndPush_at1:
     lda a:$3BC3,x
@@ -132,7 +132,7 @@ RichterApplyMoveAndPush_at1:
     lda z:$CA
     sta a:$3BC8
     clx
-    jsr $BA80
+    jsr RichterLiftByColumn
     stz z:$CA
 RichterApplyMoveAndPush_at0:
     rts
@@ -157,7 +157,7 @@ RichterFrame:
     bne RichterFrame_at1
 RichterFrame_at0:
     stz a:PlayerByte3BF0
-    jsr $B611
+    jsr RichterReadPad
 RichterFrame_at1:
     lda a:PadForcedPress
     ora z:zPadPressed
@@ -165,11 +165,11 @@ RichterFrame_at1:
     sta z:zPadPressed
     lda a:OBJ_2A68
     pha
-    jsr $B64C
+    jsr RichterClearPadOverrides
     jsr RichterHitWhilePushed
     jsr RichterStateFrame
-    jsr $B704
-    jsr $B7E9
+    jsr RichterCheckTurnWindow
+    jsr RichterCheckItemHearts
     pla
     eor a:OBJ_2A68
     beq RichterFrame_at2
@@ -225,7 +225,7 @@ RichterHitWhilePushed_at0:
 RichterSpikeBelow:
     clx
 RichterSpikeBelow_at3:
-    jsr $B6F9
+    jsr RichterColumnOffset
     beq RichterSpikeBelow_at0
     bmi RichterSpikeBelow_at1
     dec a
@@ -240,7 +240,7 @@ RichterSpikeBelow_at0:
     ldy a:OBJ_27A8
     clc
     adc a:PlayerFootYByState,y
-    jsr $B6D2
+    jsr RichterReadAbove
     and #$02
     beq RichterSpikeBelow_at2
     rts
@@ -575,12 +575,12 @@ RichterTurnOnPress_at1:
 ; HOW: OBJ_FLAGS_2F38 counts the attack's progress; object 3, the whip, ends it.
 ; Entry: nothing. Exit: as the path taken left them.
 RichterStandStep1:
-    jsr $BB23
-    jsr $B885
+    jsr RichterReadColumns
+    jsr RichterHasNoFooting
     bcc RichterStandStep1_at0
     jmp $A9DD
 RichterStandStep1_at0:
-    jsr $BA7A
+    jsr RichterLandOnFloor
     lda a:OBJ_FLAGS_2F38
     cmp #$03
     bcs RichterStandStep1_at1
@@ -594,16 +594,16 @@ RichterStandStep1_at1:
     lda a:OBJ_FLAGS_2F38
     cmp #$06
     bcs RichterStandStep1_at3
-    jsr $B868
+    jsr RichterUpHeld
     bcs RichterStandStep1_at4
 RichterStandStep1_at2:
-    jsr $B659
+    jsr RichterAnimationWait
     stz a:PlayerByte3BD5
     jmp RichterStand
 RichterStandStep1_at4:
     lda #$06
     sta a:OBJ_FIELDS_2EE0
-    jsr $B669
+    jsr RichterAnimationTick
     lda #$02
     sta a:OBJ_27A8
     rts
@@ -657,13 +657,13 @@ RichterStandStep2_at1:
     lda a:OBJ_27A8
     cmp #$00
     bne RichterStandStep2_at3
-    jsr $BB23
-    jsr $B885
+    jsr RichterReadColumns
+    jsr RichterHasNoFooting
     bcs RichterStandStep2_at4
 RichterStandStep2_at3:
-    jsr $B87E
+    jsr RichterJumpPressed
     bcs RichterStandStep2_at5
-    jsr $B669
+    jsr RichterAnimationTick
     ldy #$05
 RichterStandStep2_at7:
     lda a:OBJ_2750,y
@@ -728,16 +728,16 @@ RichterStateStand:
 ; HOW: Each check is a routine leaving its answer in C.
 ; Entry: nothing. Exit: as the path taken left them.
 RichterStandStep0:
-    jsr $BB23
-    jsr $B885
+    jsr RichterReadColumns
+    jsr RichterHasNoFooting
     bcc RichterStandStep0_at0
     jmp RichterToFall
 RichterStandStep0_at0:
-    jsr $B87E
+    jsr RichterJumpPressed
     bcc RichterStandStep0_at1
     jmp RichterToAir
 RichterStandStep0_at1:
-    jsr $BA7A
+    jsr RichterLandOnFloor
     jsr $B7FC
     bcc RichterStandStep0_at2
     jmp RichterToHurtAir
@@ -746,11 +746,11 @@ RichterStandStep0_at2:
     bcc RichterStandStep0_at3
     jmp RichterAttack
 RichterStandStep0_at3:
-    jsr $BA41
+    jsr RichterLedgeCheck
     bcc RichterStandStep0_at4
     jmp $A7C4
 RichterStandStep0_at4:
-    jsr $B868
+    jsr RichterUpHeld
     bcc RichterStandStep0_at5
     jmp RichterCrouch
 RichterStandStep0_at5:
@@ -766,7 +766,7 @@ RichterStandStep0_at6:
     sta a:OBJ_2A68
     bra RichterStandStep0_at7
 RichterStandStep0_at8:
-    jsr $B669
+    jsr RichterAnimationTick
 RichterStandStep0_at7:
     cly
     tst #$20,z:zPadHeld
@@ -801,10 +801,10 @@ RichterStartWalk_at1:
     tst #$02,z:zPadHeld
     bne RichterStartWalk_at2
     lda #$00
-    jmp $B67B
+    jmp RichterSetAnimation
 RichterStartWalk_at2:
     lda #$32
-    jmp $B67B
+    jmp RichterSetAnimation
 
 ; @routine 01B9:46C RichterSpeedWalk
 ; @run 6D:A46C
@@ -864,7 +864,7 @@ RichterCrouch:
     lda #$03
     sta a:OBJ_2800
     lda #$0C
-    jsr $B67B
+    jsr RichterSetAnimation
 
 ; @routine 01B9:4C0 RichterStopMoving
 ; @run 6D:A4C0
@@ -894,13 +894,13 @@ RichterStopX:
 RichterAttack:
     jsr RichterPadOverridesOff
     stz a:PlayerByte3BE1
-    jsr $B7CA
+    jsr RichterFaceByPad
     lda #$00
     sta a:OBJ_27A8
     jsr RichterStopMoving
     ldx a:PlayerByte3BD5
     lda a:LandAnimations,x
-    jsr $B67B
+    jsr RichterSetAnimation
     lda #$01
     sta a:OBJ_2800
     lda a:PlayerByte3BD5
@@ -939,7 +939,7 @@ RichterToFall:
     lda #$00
     sta a:OBJ_2800
     lda #$10
-    jsr $B67B
+    jsr RichterSetAnimation
     lda #$00
     sta a:OBJ_VY_LO
     lda #$03
@@ -987,7 +987,7 @@ RichterLedgeHurtB:
 RichterLedgeHurtB_at0:
     lda #$2B
 RichterLedgeHurtB_at2:
-    jsr $B67B
+    jsr RichterSetAnimation
     jsr RichterStopMoving
     lda #$05
     sta a:OBJ_2800
@@ -1005,12 +1005,12 @@ RichterLedgeHurtB_at1:
 ; HOW: Reads the pad; clears PadForcedPressB and zFieldC6.
 ; Entry: nothing. Exit: as the path taken left them.
 RichterUpWhipLeft:
-    jsr $B64C
+    jsr RichterClearPadOverrides
     stz a:PadForcedPressB
     stz z:zFieldC6
     tst #$40,z:zPadHeld
     beq RichterUpWhipLeft_at0
-    jsr $B893
+    jsr RichterLadderCheck
     bcs RichterUpWhipLeft_at1
     rts
 RichterUpWhipLeft_at1:
@@ -1068,12 +1068,12 @@ RichterNudgeBJump:
 ; HOW: The same tests.
 ; Entry: nothing. Exit: as the path taken left them.
 RichterUpWhipRight:
-    jsr $B64C
+    jsr RichterClearPadOverrides
     stz a:PadForcedPressB
     stz z:zFieldC6
     tst #$40,z:zPadHeld
     beq RichterNudgeBJump
-    jsr $B893
+    jsr RichterLadderCheck
     bcs RichterUpWhipRight_at1
     rts
 RichterUpWhipRight_at1:
@@ -1107,7 +1107,7 @@ RichterToHurtAir:
     sta a:OBJ_3460
     stz a:OBJ_3250
     lda #$23
-    jsr $B67B
+    jsr RichterSetAnimation
     lda #$65
     jsr VecSoundCommand
     lda z:zField93
@@ -1149,7 +1149,7 @@ RichterReactFillB:
 RichterItemCrashFive:
     jsr RichterStopMoving
     lda #$2A
-    jsr $B67B
+    jsr RichterSetAnimation
     lda #$65
     jsr VecSoundCommand
     lda #$00
@@ -1228,7 +1228,7 @@ RichterKnockBack:
     lda #$00
     sta a:OBJ_2800
     lda #$31
-    jsr $B67B
+    jsr RichterSetAnimation
     lda a:OBJ_2AC0
     asl a
     tay
@@ -1266,13 +1266,13 @@ RichterToAir:
     iny
     bbs7 zPadHeld,RichterToAir_at0
     lda #$0A
-    jmp $B67B
+    jmp RichterSetAnimation
 RichterToAir_at0:
     lda a:OBJ_2AC0
     pha
     sty a:OBJ_2AC0
     lda #$02
-    jsr $B67B
+    jsr RichterSetAnimation
     jsr RichterSpeedJump
     pla
     cmp a:OBJ_2AC0
@@ -1284,7 +1284,7 @@ RichterToAir_at0:
 RichterToAir_at1:
     sta a:OBJ_2AC0
     lda #$0A
-    jmp $B67B
+    jmp RichterSetAnimation
 
 ; @routine 01B9:70C RichterJumpSpeed
 ; @run 6D:A70C
@@ -1329,20 +1329,20 @@ RichterLiftThree_at0:
 ; HOW: $BAC2's C says there is a floor. The direction held must be the facing's.
 ; Entry: nothing. Exit: as the path taken left them.
 RichterStateWalk:
-    jsr $BB23
-    jsr $BAC2
+    jsr RichterReadColumns
+    jsr RichterFloorCheck
     bcs RichterStateWalk_at0
     inc a:OBJ_Y_LO
-    jsr $BB23
-    jsr $BAC2
+    jsr RichterReadColumns
+    jsr RichterFloorCheck
     bcs RichterStateWalk_at0
     jmp RichterToFall
 RichterStateWalk_at0:
-    jsr $B87E
+    jsr RichterJumpPressed
     bcc RichterStateWalk_at1
     jmp RichterToAir
 RichterStateWalk_at1:
-    jsr $BA7A
+    jsr RichterLandOnFloor
     jsr $B7FC
     bcc RichterStateWalk_at2
     jmp RichterToHurtAir
@@ -1351,15 +1351,15 @@ RichterStateWalk_at2:
     bcc RichterStateWalk_at3
     jmp RichterAttack
 RichterStateWalk_at3:
-    jsr $BA41
+    jsr RichterLedgeCheck
     bcc RichterStateWalk_at4
     jmp $A7C4
 RichterStateWalk_at4:
-    jsr $B868
+    jsr RichterUpHeld
     bcc RichterStateWalk_at5
     jmp RichterCrouch
 RichterStateWalk_at5:
-    jsr $B669
+    jsr RichterAnimationTick
     lda a:OBJ_2AC0
     bne RichterStateWalk_at6
     bbr5 zPadHeld,RichterStateWalk_at7
@@ -1397,5 +1397,5 @@ RichterStand:
     lda #$00
     sta a:OBJ_2800
     lda #$01
-    jsr $B67B
+    jsr RichterSetAnimation
     jmp RichterStopMoving

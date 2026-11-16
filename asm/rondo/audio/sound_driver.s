@@ -2131,7 +2131,7 @@ SoundStartMusic_at0:
     bcc SoundStartMusic_at0
     stz a:SoundFading
     jsr SoundVolumeFull
-    jmp $B4AF
+    jmp SoundCommandEnd
 
 ; @routine 0053:4B5 SoundVoiceAddressBack
 ; @run 76:B4B5
@@ -2159,4 +2159,121 @@ SoundVoiceAddressBack_at0:
     adc z:zBiosBh
     sta z:zBiosBh
 SoundVoiceAddressBack_at1:
+    rts
+
+; @routine 0053:3F0 SoundStartVoice
+; @run 76:B3F0
+; @ends B4AF
+; WHAT IT DOES: Starts an ADPCM voice, commands $62 up: the second set from $72 on stages $0C
+; up, else the first. One of lower priority than the voice playing is dropped unless one is
+; waiting; otherwise the playing voice is stopped and this one played, or left waiting while the
+; unit is still busy. The second character's voices start ten bytes back.
+; HOW: ad_stat; SoundVoicePriority, cleared when nothing plays or waits; SoundVoicesFirst or
+; SoundVoicesSecond by the command, six bytes a voice, through zSoundTableLo and Hi; ad_stop,
+; ad_stat; the voice into zBiosBl to zBiosDh; SoundVoiceAddressBack for character 1;
+; KernelAdpcmPlay. Bit 0 of SoundVoiceFlags marks a voice waiting.
+; Entry: from SoundDriverCommand, SoundCommandIn the command. Exit, at the command's shared end,
+; as the last of those calls left them, then: dropped, A 0, Z set, N and C clear; waiting, A the
+; flags with bit 0, N and Z from them, C set; played, Z and C set, N clear.
+SoundStartVoice:
+    jsr BiosAdStat
+    cmp #$00
+    bne SoundStartVoice_at1
+    lda a:SoundVoiceFlags
+    and #$01
+    bne SoundStartVoice_at1
+    stz a:SoundVoicePriority
+SoundStartVoice_at1:
+    lda a:SoundCommandIn
+    cmp #$72
+    bmi SoundStartVoice_at2
+    lda z:zStage
+    and #$7F
+    cmp #$0C
+    bpl SoundStartVoice_at3
+SoundStartVoice_at2:
+    lda a:SoundVoiceFlags
+    and #$7F
+    sta a:SoundVoiceFlags
+    lda a:SoundCommandIn
+    sec
+    sbc #$62
+    sta a:SoundVoiceIndex
+    ldy #$06
+    jsr SoundMultiply
+    lda z:zSoundWordLo
+    clc
+    adc #$14
+    sta z:zSoundTableLo
+    lda z:zSoundWordHi
+    adc #$B9
+    sta z:zSoundTableHi
+    bra SoundStartVoice_at4
+SoundStartVoice_at3:
+    lda a:SoundVoiceFlags
+    ora #$80
+    sta a:SoundVoiceFlags
+    lda a:SoundCommandIn
+    sec
+    sbc #$72
+    sta a:SoundVoiceIndex
+    ldy #$06
+    jsr SoundMultiply
+    lda z:zSoundWordLo
+    clc
+    adc #$44
+    sta z:zSoundTableLo
+    lda z:zSoundWordHi
+    adc #$BC
+    sta z:zSoundTableHi
+SoundStartVoice_at4:
+    lda (zSoundTableLo)
+    cmp a:SoundVoicePriority
+    bcs SoundStartVoice_at5
+    lda a:SoundVoiceFlags
+    beq SoundCommandEnd
+    lda a:SoundVoicePriority
+SoundStartVoice_at5:
+    sta a:SoundVoicePriority
+    jsr BiosAdStop
+    jsr BiosAdStat
+    cmp #$00
+    beq SoundStartVoice_at6
+SoundStartVoice_at9:
+    lda a:SoundVoiceFlags
+    ora #$01
+    sta a:SoundVoiceFlags
+    bra SoundCommandEnd
+SoundStartVoice_at6:
+    ldy #$01
+    lda (zSoundTableLo),y
+    sta z:zBiosBl
+    iny
+    lda (zSoundTableLo),y
+    sta z:zBiosBh
+    iny
+    lda (zSoundTableLo),y
+    sta z:zBiosAl
+    iny
+    lda (zSoundTableLo),y
+    sta z:zBiosAh
+    iny
+    lda (zSoundTableLo),y
+    sta z:zBiosDh
+    stz z:zBiosDl
+    lda z:zCharacter
+    and #$01
+    beq SoundStartVoice_at7
+    jsr SoundVoiceAddressBack
+SoundStartVoice_at7:
+    jsr KernelAdpcmPlay
+    cmp #$00
+    beq SoundStartVoice_at8
+    bra SoundStartVoice_at9
+SoundStartVoice_at8:
+    stz a:SoundVoiceFlags
+SoundCommandEnd:
+    ply
+    plx
+    stz a:SoundInCommand
     rts

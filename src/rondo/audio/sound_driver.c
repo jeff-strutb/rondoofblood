@@ -9,6 +9,7 @@
  */
 #include "machine.h"
 #include "ram.h"
+#include "syscard.h"
 #include "routines.h"
 
 enum {
@@ -22,6 +23,7 @@ enum {
     REPEAT_MARKED = 0, REPEAT_FIRST_PASS = 1, REPEAT_AGAIN = 2, SEQUENCE_HANDLERS_FIRST = 0xE2,
     CHANNEL_VOLUME_START = 0x1F, CHANNEL_PAN_START = 0x08, MUSIC_CHANNELS = 0x3F, MUSIC_FIRST = 0x55,
     VOICE_SECOND_SET = 0x80, VOICE_SET_FIRST = 0x62, VOICE_SET_END = 0x70, VOICE_BACK = 0x3FF6,
+    VOICE_WAITING = 0x01, VOICE_SECOND_FIRST = 0x72, VOICE_SECOND_STAGES = 0x0C, VOICE_ENTRY = 6,
     SEQUENCE_REST = 0xE0, SEQUENCE_LENGTH = 0xE1, SEQUENCE_VOLUMES = 0x70, SEQUENCE_GLIDE_TO = 0xF3,
     TEMPO_FULL = 0xFF
 };
@@ -3177,9 +3179,8 @@ VoiceBack SoundVoiceAddressBack(void)
     return back;
 }
 
-void abi_SoundVoiceAddressBack(void)
+void voice_back_exit_shim(VoiceBack back)
 {
-    VoiceBack back = SoundVoiceAddressBack();
     uint8_t limit = (uint8_t)(VOICE_SET_END - VOICE_SET_FIRST);
 
     if (!back.moved) {
@@ -3193,5 +3194,139 @@ void abi_SoundVoiceAddressBack(void)
     abi_nz(back.high.value);
     abi_flag(P_C, back.high.carry);
     abi_flag(P_V, back.high.overflow);
-    (void)back.compared;
+}
+
+void abi_SoundVoiceAddressBack(void)
+{
+    voice_back_exit_shim(SoundVoiceAddressBack());
+}
+
+/* Whether the play started, which is when it leaves A 0. */
+static bool kernel_play_started(KernelPlay play)
+{
+    if (play.how == KERNEL_PLAY_CARD)
+        return play.card.how == AD_PLAY_STARTED || play.card.how == AD_PLAY_AGAIN;
+    return play.how == KERNEL_PLAY_STARTED;
+}
+
+/*
+ * @routine 0053:3F0 SoundStartVoice
+ * @run 76:B3F0
+ * @ends B4AF
+ * WHAT IT DOES: Starts an ADPCM voice, commands $62 up: the second set from $72 on stages $0C
+ * up, else the first. One of lower priority than the voice playing is dropped unless one is
+ * waiting; otherwise the playing voice is stopped and this one played, or left waiting while the
+ * unit is still busy. The second character's voices start ten bytes back.
+ * HOW: ad_stat; SoundVoicePriority, cleared when nothing plays or waits; SoundVoicesFirst or
+ * SoundVoicesSecond by the command, six bytes a voice, through zSoundTableLo and Hi; ad_stop,
+ * ad_stat; the voice into zBiosBl to zBiosDh; SoundVoiceAddressBack for character 1;
+ * KernelAdpcmPlay. Bit 0 of SoundVoiceFlags marks a voice waiting.
+ * Entry: from SoundDriverCommand, SoundCommandIn the command. Exit, at the command's shared end,
+ * as the last of those calls left them, then: dropped, A 0, Z set, N and C clear; waiting, A the
+ * flags with bit 0, N and Z from them, C set; played, Z and C set, N clear.
+ */
+VoiceStart SoundStartVoice(void)
+{
+    VoiceStart voice;
+    uint16_t table;
+
+    voice.stat_before = ad_stat();
+    if (voice.stat_before.playing == 0 && !(rd8(SoundVoiceFlags) & VOICE_WAITING))
+        wr8(SoundVoicePriority, 0);
+    voice.command = rd8(SoundCommandIn);
+    voice.second = !((uint8_t)(voice.command - VOICE_SECOND_FIRST) & 0x80) &&
+                   !((uint8_t)((rd8(zStage) & 0x7F) - VOICE_SECOND_STAGES) & 0x80);
+    if (voice.second) {
+        wr8(SoundVoiceFlags, (uint8_t)(rd8(SoundVoiceFlags) | VOICE_SECOND_SET));
+        voice.index = (uint8_t)(voice.command - VOICE_SECOND_FIRST);
+        table = SoundVoicesSecond;
+    } else {
+        wr8(SoundVoiceFlags, (uint8_t)(rd8(SoundVoiceFlags) & ~VOICE_SECOND_SET));
+        voice.index = (uint8_t)(voice.command - VOICE_SET_FIRST);
+        table = SoundVoicesFirst;
+    }
+    wr8(SoundVoiceIndex, voice.index);
+    voice.product = SoundMultiply(voice.index, VOICE_ENTRY);
+    voice.table_low = add_bytes(rd8(zSoundWordLo), (uint8_t)table, false);
+    wr8(zSoundTableLo, voice.table_low.value);
+    voice.table_high = add_bytes(rd8(zSoundWordHi), (uint8_t)(table >> 8), voice.table_low.carry);
+    wr8(zSoundTableHi, voice.table_high.value);
+    voice.priority = rd8_zp(zSoundTableLo);
+    voice.playing_priority = rd8(SoundVoicePriority);
+    if (voice.priority < voice.playing_priority) {
+        if (rd8(SoundVoiceFlags) == 0) {
+            voice.how = VOICE_DROPPED;
+            return voice;
+        }
+        voice.priority = rd8(SoundVoicePriority);
+    }
+    wr8(SoundVoicePriority, voice.priority);
+    voice.stop = ad_stop();
+    voice.stat = ad_stat();
+    if (voice.stat.playing != 0) {
+        voice.flags = (uint8_t)(rd8(SoundVoiceFlags) | VOICE_WAITING);
+        wr8(SoundVoiceFlags, voice.flags);
+        voice.how = VOICE_WAITING_BUSY;
+        return voice;
+    }
+    wr8(zBiosBl, rd8_zp_y(zSoundTableLo, 1));
+    wr8(zBiosBh, rd8_zp_y(zSoundTableLo, 2));
+    wr8(zBiosAl, rd8_zp_y(zSoundTableLo, 3));
+    wr8(zBiosAh, rd8_zp_y(zSoundTableLo, 4));
+    wr8(zBiosDh, rd8_zp_y(zSoundTableLo, 5));
+    wr8(zBiosDl, 0);
+    voice.moved_back = (rd8(zCharacter) & 1) != 0;
+    if (voice.moved_back)
+        voice.back = SoundVoiceAddressBack();
+    voice.play = KernelAdpcmPlay();
+    if (!kernel_play_started(voice.play)) {
+        voice.flags = (uint8_t)(rd8(SoundVoiceFlags) | VOICE_WAITING);
+        wr8(SoundVoiceFlags, voice.flags);
+        voice.how = VOICE_WAITING_PLAY;
+        return voice;
+    }
+    wr8(SoundVoiceFlags, 0);
+    voice.how = VOICE_PLAYED;
+    return voice;
+}
+
+void voice_start_exit_shim(VoiceStart voice)
+{
+    ad_stat_exit_shim(voice.stat_before);
+    cpu.y = VOICE_ENTRY;
+    abi_exit_product(voice.product, voice.index);
+    cpu.a = voice.table_high.value;
+    abi_nz(voice.table_high.value);
+    abi_flag(P_C, voice.table_high.carry);
+    abi_flag(P_V, voice.table_high.overflow);
+    if (voice.how == VOICE_DROPPED) {
+        cpu.a = 0;
+        abi_nz(0);
+        abi_flag(P_C, false);
+        return;
+    }
+    ad_stop_exit_shim(voice.stop);
+    ad_stat_exit_shim(voice.stat);
+    if (voice.how == VOICE_WAITING_BUSY) {
+        cpu.a = voice.flags;
+        abi_nz(voice.flags);
+        abi_flag(P_C, true);
+        return;
+    }
+    cpu.y = VOICE_ENTRY - 1;
+    if (voice.moved_back)
+        voice_back_exit_shim(voice.back);
+    kernel_play_exit_shim(voice.play);
+    abi_flag(P_C, true);
+    if (voice.how == VOICE_WAITING_PLAY) {
+        cpu.a = voice.flags;
+        abi_nz(voice.flags);
+        return;
+    }
+    abi_nz(cpu.a);
+}
+
+void abi_SoundStartVoice(void)
+{
+    voice_start_exit_shim(SoundStartVoice());
 }

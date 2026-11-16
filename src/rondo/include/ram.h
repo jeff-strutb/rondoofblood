@@ -553,7 +553,7 @@
 #define SoundChannel2430 0x2430 /* the sound driver: by channel; 1 when it starts */
 #define SoundChannel25E0 0x25E0 /* the sound driver: by channel; cleared when it starts */
 #define SoundMusicTable 0xB8FA /* the sound driver: by music command less $55, the address of its six channels' sequences */
-#define SoundVoiceFlags 0x25F9 /* the sound driver: bit 7 the voice is of the second set; bit 0 one is waiting */
+#define SoundVoiceFlags 0x25F9 /* the sound driver: bit 7 the voice is of the second set; bit 0 one is waiting to play */
 #define SoundVoiceIndex 0x25FC /* the sound driver: the voice within its set */
 #define CdIrqControl 0x1802 /* the CD unit's interrupt enables */
 #define CdIrqStatus 0x1803 /* the CD unit's interrupt status */
@@ -569,5 +569,8 @@
 #define RichterObjectAnimations 0xDA99 /* the animation lists of Richter's objects, a word each */
 #define RichterFrameHitboxes 0xDD56 /* the hitbox of each frame of Richter's objects; 0 none */
 #define RichterObjectHitboxes 0xDDE8 /* hitboxes, four bytes each: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38 */
+#define SoundVoicePriority 0x25F8 /* the sound driver: the priority of the voice playing; 0 none */
+#define SoundVoicesFirst 0xB914 /* the sound driver: voices of commands $62 to $71, six bytes each: priority, address, length, rate */
+#define SoundVoicesSecond 0xBC44 /* the sound driver: voices of commands $72 up on stages $0C up, six bytes each */
 
 #endif

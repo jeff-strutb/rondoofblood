@@ -580,6 +580,7 @@ uint8_t SoundStartMusic(void);
 typedef struct { bool moved; bool compared; uint8_t voice; Sum high; } VoiceBack;
 
 VoiceBack SoundVoiceAddressBack(void);
+void voice_back_exit_shim(VoiceBack back);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);
@@ -682,5 +683,30 @@ AdStat KernelAdpcmStat(void);
 uint8_t KernelAdpcmLatchWrite(void);
 KernelPlay KernelAdpcmPlay(void);
 void kernel_play_exit_shim(KernelPlay play);
+
+typedef enum { VOICE_DROPPED, VOICE_WAITING_BUSY, VOICE_WAITING_PLAY, VOICE_PLAYED } VoiceHow;
+
+/* A voice started or not, with what each call on the way did, for its exit. */
+typedef struct {
+    VoiceHow how;
+    AdStat stat_before;
+    uint8_t command;
+    bool second;
+    uint8_t index;
+    SoundProduct product;
+    Sum table_low;
+    Sum table_high;
+    uint8_t priority;
+    uint8_t playing_priority;
+    uint8_t stop;
+    AdStat stat;
+    uint8_t flags;
+    bool moved_back;
+    VoiceBack back;
+    KernelPlay play;
+} VoiceStart;
+
+VoiceStart SoundStartVoice(void);
+void voice_start_exit_shim(VoiceStart voice);
 #endif
 #endif

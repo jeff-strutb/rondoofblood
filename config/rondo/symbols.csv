@@ -560,7 +560,7 @@ B7C2,abs,SoundCommandHandlers,the sound driver: commands $E2 to $FF, each its ha
 2430,abs,SoundChannel2430,the sound driver: by channel; 1 when it starts
 25E0,abs,SoundChannel25E0,the sound driver: by channel; cleared when it starts
 B8FA,abs,SoundMusicTable,the sound driver: by music command less $55, the address of its six channels' sequences
-25F9,abs,SoundVoiceFlags,the sound driver: bit 7 the voice is of the second set; bit 0 one is waiting
+25F9,abs,SoundVoiceFlags,the sound driver: bit 7 the voice is of the second set; bit 0 one is waiting to play
 25FC,abs,SoundVoiceIndex,the sound driver: the voice within its set
 1802,abs,CdIrqControl,the CD unit's interrupt enables
 1803,abs,CdIrqStatus,the CD unit's interrupt status
@@ -576,3 +576,6 @@ C4F9,abs,RichterFlashFlags,OBJ_2B18 for a charged object's flash, by OBJ_34B8 le
 DA99,abs,RichterObjectAnimations,the animation lists of Richter's objects, a word each
 DD56,abs,RichterFrameHitboxes,the hitbox of each frame of Richter's objects; 0 none
 DDE8,abs,RichterObjectHitboxes,hitboxes, four bytes each: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38
+25F8,abs,SoundVoicePriority,the sound driver: the priority of the voice playing; 0 none
+B914,abs,SoundVoicesFirst,the sound driver: voices of commands $62 to $71, six bytes each: priority, address, length, rate
+BC44,abs,SoundVoicesSecond,the sound driver: voices of commands $72 up on stages $0C up, six bytes each

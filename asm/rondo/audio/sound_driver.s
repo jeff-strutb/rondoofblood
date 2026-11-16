@@ -824,7 +824,7 @@ SoundSetFrequency_at2:
 ; playing, the LFO off.
 ; HOW: SoundChannel25B0, SoundChannelCommand and SoundChannelPriority cleared by channel;
 ; SoundSilenceAll.
-; Entry: nothing. Exit: A, X, Y, C and V kept; N and Z from X.
+; Entry: nothing. Exit: A, X, Y and V kept; N and Z from X; C set by the loop's last compare.
 SoundInit:
     phx
     pha

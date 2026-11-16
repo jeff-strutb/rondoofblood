@@ -214,9 +214,14 @@ void abi_StartScriptSlot0Kind2(void)
  * HOW: Empties it, stores the kind and the script.
  * Entry: A script, X slot. Exit: A and Y the script, N and Z from it. X kept.
  */
+void StartScriptSlotKind2(uint8_t script, uint8_t slot)
+{
+    start_script_slot(2, script, slot);
+}
+
 void abi_StartScriptSlotKind2(void)
 {
-    start_script_slot(2, cpu.a, cpu.x);
+    StartScriptSlotKind2(cpu.a, cpu.x);
     abi_exit_script_slot(cpu.a);
 }
 

@@ -99,13 +99,16 @@ BackupAccess BackupRead(void)
     return bm_read();
 }
 
-void abi_BackupRead(void)
+void backup_read_exit_shim(BackupAccess read)
 {
-    BackupAccess read = BackupRead();
-
     cpu.a = 0;
     abi_nz(0);
     bm_read_exit_shim(read);
+}
+
+void abi_BackupRead(void)
+{
+    backup_read_exit_shim(BackupRead());
 }
 
 /*

@@ -1333,7 +1333,7 @@ void abi_SoundLoadWave(void)
  * playing, the LFO off.
  * HOW: SoundChannel25B0, SoundChannelCommand and SoundChannelPriority cleared by channel;
  * SoundSilenceAll.
- * Entry: nothing. Exit: A, X, Y, C and V kept; N and Z from X.
+ * Entry: nothing. Exit: A, X, Y and V kept; N and Z from X; C set by the loop's last compare.
  */
 void SoundInit(void)
 {
@@ -1355,6 +1355,7 @@ void abi_SoundInit(void)
 {
     SoundInit();
     abi_nz(cpu.x);
+    abi_flag(P_C, true);
 }
 
 /*

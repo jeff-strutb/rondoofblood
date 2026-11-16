@@ -611,6 +611,7 @@ void RasterInterrupt(void);
 uint8_t BitOfIndex(uint8_t index, uint8_t *byte);
 uint8_t RecordEvent(uint8_t event, uint8_t *byte);
 void StartScriptSlotKind1(uint8_t script, uint8_t slot);
+void StartScriptSlotKind2(uint8_t script, uint8_t slot);
 void StartListChannelKind2(uint8_t list, uint8_t channel);
 void StartListChannelKind3(uint8_t list, uint8_t channel);
 PlayerDistance DistanceXToPlayer(uint8_t object);
@@ -659,6 +660,7 @@ void abi_ResetScoreCounters(void);
 Alu SaveProgress(Alu r);
 Alu SaveScore(Alu r);
 BackupAccess BackupRead(void);
+void backup_read_exit_shim(BackupAccess read);
 void abi_BackupRead(void);
 Alu BackupWrite(Alu r);
 Alu AdpcmLoad(Alu r);
@@ -789,6 +791,7 @@ typedef struct { uint8_t busy; Sum bank; uint8_t mpr4; DriverTick tick; } TickCa
 typedef struct { bool taken; Sum bank; uint8_t mpr4; DriverCommand command; } CommandCall;
 
 StopCall SoundStopAll(void);
+void stop_call_exit_shim(StopCall call);
 TickCall SoundFrameTick(void);
 CommandCall SoundCommand(uint8_t command);
 void sound_command_exit_shim(uint8_t command, CommandCall call);
@@ -862,5 +865,41 @@ typedef struct {
 TrackPlay CdPlayOnce(uint8_t track);
 TrackPlay CdPlayAgain(void);
 TrackPlay CdPlayRepeat(uint8_t track);
+
+/* The title: src/rondo/menu/title.c. */
+typedef struct { uint8_t tiles; Sum low; bool done; uint8_t step; } ScrollIn;
+typedef struct { bool rotated; uint8_t tick; uint8_t moved; uint8_t left; } Blink;
+typedef struct { Sum line; uint8_t step; } Wipe;
+typedef struct { CommandCall sound; uint8_t step; } LogoStart;
+
+typedef enum { LOGO_HOLDING, LOGO_SECOND, LOGO_SCRIPT_STARTED, LOGO_DONE, LOGO_ODD_FRAME, LOGO_THIRD } LogoHow;
+
+/* A frame of the logo's fades: which step ran, and what its exit shows. */
+typedef struct {
+    LogoHow how;
+    bool first;
+    uint8_t moved;
+    uint8_t value;
+    uint8_t held;
+    uint8_t count;
+    uint8_t tick;
+} LogoFade;
+
+typedef struct { bool stepped; uint8_t count; Sum low; Sum high; bool ended; uint8_t step; } Cycle;
+
+uint8_t TitlePaletteRotate(uint8_t which);
+void palette_rotate_exit_shim(uint8_t moved);
+uint8_t TitleTileWrite(void);
+uint8_t TitleTileRows(void);
+void tile_rows_exit_shim(uint8_t last);
+uint8_t TitleWait(void);
+uint8_t TitleEnd(void);
+void TitleLastScript(void);
+ScrollIn TitleScrollIn(void);
+Blink TitleBlink(void);
+Wipe TitleWipe(void);
+LogoStart TitleLogoStart(void);
+LogoFade TitleLogoFade(void);
+Cycle TitleCycle(void);
 
 #endif

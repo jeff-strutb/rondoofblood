@@ -578,5 +578,13 @@
 #define zPaused 0x203B /* bit 0 set while the game is paused */
 #define RichterCrashFrames 0xAF4C /* an item crash's frame by its pair of states and the attack kind */
 #define CdTrackTable 0x7250 /* by track, six bytes for the BIOS's CD play: _AL, _AH, _BL, _CL, _CH, _DL */
+#define zWaitTimer2 0x2079 /* frames or steps left in a second wait */
+#define zWaitTimer3 0x207A /* steps left in a third wait */
+#define zWaitTimer4 0x207B /* frames left in a fourth wait */
+#define PaletteWork 0x3B00 /* 32 bytes: a palette of 16 colours read from the VCE to be worked on */
+#define PaletteWorkSpare 0x3B20 /* the colour kept while a palette is rotated */
+#define TitleSaveRead 0x3F83 /* 1 once the title has read the backup file */
+#define TitleSeen 0x3F84 /* 1 once the title has run to its end; then Run skips it */
+#define TitleSteps 0x802E /* the title's handlers by sub-mode, a word each */
 
 #endif

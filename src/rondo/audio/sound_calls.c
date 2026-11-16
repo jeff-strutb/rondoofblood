@@ -53,17 +53,21 @@ StopCall SoundStopAll(void)
     return call;
 }
 
-void abi_SoundStopAll(void)
+void stop_call_exit_shim(StopCall call)
 {
     uint8_t x = cpu.x;
     uint8_t y = cpu.y;
-    StopCall call = SoundStopAll();
 
     driver_entry_shim((uint8_t)(call.bank.value + 2), call.bank);
     cpu.a = call.mpr4;
     cpu.x = x;
     cpu.y = y;
     abi_nz(x);
+}
+
+void abi_SoundStopAll(void)
+{
+    stop_call_exit_shim(SoundStopAll());
 }
 
 /*

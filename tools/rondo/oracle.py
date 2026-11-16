@@ -31,10 +31,10 @@ import asmfile  # noqa: E402
 import cardfile  # noqa: E402
 import disc  # noqa: E402
 
-PCEBOX = os.path.join(TOP, "build", "rondo", "pcebox", "pcebox")
+PCEBOX = os.environ.get("RONDO_BOX") or os.path.join(TOP, "build", "rondo", "pcebox", "pcebox")
 CORE = os.path.join(TOP, "tools", "toolchains", "pce", "mednafen_pce_libretro.dylib")
 SCRIPTS = os.path.join(HERE, "scripts")
-OUT = os.path.join(TOP, "build", "rondo", "oracle")
+OUT = os.environ.get("RONDO_ORACLE_OUT") or os.path.join(TOP, "build", "rondo", "oracle")
 TRACK = os.path.join(disc.OUT, "track02.bin")
 TIMEOUT = 1500
 

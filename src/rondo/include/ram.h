@@ -563,5 +563,8 @@
 #define AdpcmStatus 0x180C /* the ADPCM unit's status */
 #define AdpcmControl 0x180D /* the ADPCM unit's control */
 #define AdpcmRate 0x180E /* the ADPCM unit's playback rate */
+#define zRichterObject 0x20D9 /* the slot of the object of Richter's that is being run */
+#define RichterChargePads 0xC4EB /* the press that charges an object, by its facing */
+#define RichterFlashFlags 0xC4F9 /* OBJ_2B18 for a charged object's flash, by OBJ_34B8 less $0E */
 
 #endif

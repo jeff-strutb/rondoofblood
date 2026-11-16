@@ -560,3 +560,6 @@ AdpcmData = $180A ; the ADPCM unit's data port
 AdpcmStatus = $180C ; the ADPCM unit's status
 AdpcmControl = $180D ; the ADPCM unit's control
 AdpcmRate = $180E ; the ADPCM unit's playback rate
+zRichterObject = $D9 ; the slot of the object of Richter's that is being run
+RichterChargePads = $C4EB ; the press that charges an object, by its facing
+RichterFlashFlags = $C4F9 ; OBJ_2B18 for a charged object's flash, by OBJ_34B8 less $0E

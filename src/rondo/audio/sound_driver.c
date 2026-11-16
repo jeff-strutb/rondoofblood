@@ -1379,30 +1379,6 @@ void abi_SoundDriverStopAll(void)
     abi_nz(0xFF);
 }
 
-/* An add of a byte and a byte with a carry in: the sum, and its carry and overflow. */
-static Sum add_bytes(uint8_t a, uint8_t b, bool carry_in)
-{
-    Sum sum;
-    unsigned total = (unsigned)a + b + carry_in;
-
-    sum.value = (uint8_t)total;
-    sum.carry = total > 0xFF;
-    sum.overflow = (~(a ^ b) & (a ^ sum.value) & 0x80) != 0;
-    return sum;
-}
-
-/* A subtract of a byte from a byte with the carry in as the processor's: set for no borrow. */
-static Sum sub_bytes(uint8_t a, uint8_t b, bool carry_in)
-{
-    Sum sum;
-    int total = (int)a - b - (carry_in ? 0 : 1);
-
-    sum.value = (uint8_t)total;
-    sum.carry = total >= 0;
-    sum.overflow = ((a ^ b) & (a ^ sum.value) & 0x80) != 0;
-    return sum;
-}
-
 /* The pitch word in zSoundWordLo and Hi plus the channel's pitch; the high add is what shows. */
 static Sum add_pitch(uint8_t channel)
 {

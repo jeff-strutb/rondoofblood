@@ -4,6 +4,33 @@
 
 #include "machine.h"
 
+/* A byte add or subtract: the result, its carry as the processor's C, and its overflow. */
+typedef struct { uint8_t value; bool carry; bool overflow; } Sum;
+
+/* An add of two bytes with a carry in: the sum, its carry out and its signed overflow. */
+static inline Sum add_bytes(uint8_t a, uint8_t b, bool carry_in)
+{
+    Sum sum;
+    unsigned total = (unsigned)a + b + carry_in;
+
+    sum.value = (uint8_t)total;
+    sum.carry = total > 0xFF;
+    sum.overflow = (~(a ^ b) & (a ^ sum.value) & 0x80) != 0;
+    return sum;
+}
+
+/* A subtract of b from a with the carry in as no borrow: the difference, C as no borrow out. */
+static inline Sum sub_bytes(uint8_t a, uint8_t b, bool carry_in)
+{
+    Sum sum;
+    int total = (int)a - b - (carry_in ? 0 : 1);
+
+    sum.value = (uint8_t)total;
+    sum.carry = total >= 0;
+    sum.overflow = ((a ^ b) & (a ^ sum.value) & 0x80) != 0;
+    return sum;
+}
+
 /* An object's move along one axis: its 16.8 position before, and the velocity added. */
 typedef struct {
     uint32_t before;
@@ -341,9 +368,6 @@ typedef struct {
 FrequencySet SoundSetFrequency(uint8_t fine, uint8_t channel, uint8_t note);
 void frequency_exit_shim(FrequencySet set, uint8_t note);
 
-/* A byte add or subtract: the result, its carry as the processor's C, and its overflow. */
-typedef struct { uint8_t value; bool carry; bool overflow; } Sum;
-
 /* A pitch tick: the fine part and note set, the last add's flags, and the frequency's set. */
 typedef struct { uint8_t fine; uint8_t note; Sum last; FrequencySet frequency; } PitchTick;
 
@@ -435,6 +459,35 @@ Envelope SoundCommandEnvelope(uint8_t channel);
 uint8_t SoundCommandRamp(uint8_t channel);
 void SoundCommandNothing(void);
 uint8_t SoundCommandJump(void);
+
+/* Richter's own objects: src/rondo/object/richter_objects.c. */
+typedef struct { uint8_t player_2fe8; uint8_t facing; } ObjectFromPlayer;
+
+typedef enum { QUICKEN_DONE_BEFORE, QUICKEN_NOT_STEP, QUICKEN_NOT_ASKED, QUICKEN_DONE } QuickenHow;
+
+/* What stopped or made the quickening, the value its exit shows, the mark and the add. */
+typedef struct { QuickenHow how; uint8_t value; uint8_t mark; Sum sum; } Quicken;
+
+typedef enum { FLASH_NOT_CHARGED, FLASH_OTHER_FRAME, FLASH_SHOWN } FlashHow;
+
+/* A flash: what happened, the frame or flags its exit shows, the frame code, and OBJ_34B8. */
+typedef struct { FlashHow how; uint8_t value; uint8_t code; uint8_t base; } Flash;
+
+typedef enum { CHARGE_TOO_SOON, CHARGE_ALREADY, CHARGE_NOT_PRESSED, CHARGE_NOW } ChargeHow;
+
+/* A charge: what stopped or made it, the value its exit shows, the facing and the new charge. */
+typedef struct { ChargeHow how; uint8_t value; uint8_t facing; uint8_t charge; } Charge;
+
+uint8_t RichterObjectMarkOn(uint8_t object);
+uint8_t RichterObjectMarkOff(uint8_t object);
+uint8_t RichterObjectTake2FE8(uint8_t object);
+ObjectFromPlayer RichterObjectFromPlayer(uint8_t object);
+uint8_t RichterObjectSlot(void);
+uint8_t RichterObjectNextState(uint8_t object);
+Quicken RichterObjectQuicken(uint8_t object);
+Flash RichterObjectFlash(uint8_t object);
+Charge RichterObjectCharge(uint8_t object);
+Sum RichterObjectAtPlayer(uint8_t object);
 uint8_t SoundCommandCall(uint8_t channel);
 SequenceEnd SoundCommandReturn(uint8_t channel);
 void glide_setup_exit_shim(GlideSetup setup);

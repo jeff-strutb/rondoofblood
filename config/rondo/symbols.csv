@@ -402,3 +402,10 @@ B72D,abs,RichterTurnStates,whether each state lets him turn at the screen's midd
 B84D,abs,RichterItemCosts,hearts each item costs
 B856,abs,RichterItemCrashLists,the sound list each item's crash starts; 0 none
 B85F,abs,RichterItemCrashScripts,the script each item's crash starts; 0 none
+B949,abs,RichterItemUseHandlers,9 words by item: how using it goes
+BA0B,abs,RichterItemThirdCosts,hearts needed by item to throw with two already out
+BA14,abs,RichterItemSecondCosts,hearts needed by item to throw with one already out
+BA1D,abs,RichterItemUseCosts,hearts each item's use costs
+BA26,abs,RichterItemUseLists,the sound list each thrown item starts
+BA2F,abs,RichterItemUseScripts,the script each thrown item starts
+BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip

@@ -269,6 +269,165 @@ RichterTryItemCrash_at5:
     sec
     rts
 
+; @routine 01BC:129 RichterUseItem
+; @run 6D:B929
+; WHAT IT DOES: Using the item in hand: on the use press with the use direction held and the
+; hearts the item costs, goes to the item's own handler, which throws it or not. Says whether
+; to attack, and with what in PlayerByte3BD5: 0 the whip, or the item's attack.
+; HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, RichterItemUseCosts by item, then the jump
+; through RichterItemUseHandlers: items 0 and 1 attack with the whip. zField93 is 0 to 8; the
+; C takes anything past 8 as the whip.
+; Entry: nothing. Exit: no press, C clear and all else kept. Otherwise C set, V and Y kept
+; except as a handler leaves Y, and: not held, A 0, N and Z from it; too few hearts, A the
+; hearts, X the item, N and Z from comparing them; items 0 and 1, A and X twice the item, N and
+; Z from it; as the handler otherwise.
+RichterUseItem:
+    bbs1 zPadPressed,RichterUseItem_at0
+    clc
+    rts
+RichterUseItem_at0:
+    lda z:zPadHeld
+    and #$10
+    beq RichterUseItem_at1
+    ldx z:zField93
+    lda z:zField94
+    cmp a:RichterItemUseCosts,x
+    bcs RichterUseItem_at2
+RichterUseItem_at1:
+    stz a:PlayerByte3BD5
+    sec
+    rts
+RichterUseItem_at2:
+    lda z:zField93
+    asl a
+    tax
+    jmp (RichterItemUseHandlers,x)
+
+; @routine 01BC:15B RichterUseThrownItem
+; @run 6D:B95B
+; WHAT IT DOES: Items 2 to 5, which can be thrown up to three at a time: the first throw of a
+; use starts the item's sound and script, unless one is out already; a second or third throw
+; needs more hearts, and a fourth is refused. Then the item's attack, and its hearts paid.
+; HOW: PlayerByte3BD6 marks the first throw. The items fly in slots 5, 8 and 11; with one out
+; the hearts must reach RichterItemSecondCosts, with two RichterItemThirdCosts.
+; Entry: X twice the item. Exit: as RichterUseItem.
+RichterUseThrownItem:
+    lda a:PlayerByte3BD6
+    beq RichterUseThrownItem_at0
+    jsr RichterFindItemOut
+    bne RichterUseItem_at1
+    ldx z:zField93
+    lda a:RichterItemUseLists,x
+    ldx #$06
+    jsr VecStartListChannelKind2
+    stz a:PlayerByte3BD6
+    ldx z:zField93
+    lda a:RichterItemUseScripts,x
+    ldx #$06
+    jsr VecStartScriptSlotKind1
+RichterUseThrownItem_at0:
+    ldx z:zField93
+    lda a:OBJ_2750+5
+    beq RichterUseThrownItem_at1
+    ldx z:zField93
+    lda z:zField94
+    cmp a:RichterItemSecondCosts,x
+    bcc RichterUseItem_at1
+    lda a:OBJ_2750+8
+    beq RichterUseThrownItem_at1
+    lda z:zField94
+    cmp a:RichterItemThirdCosts,x
+    bcc RichterUseItem_at1
+    lda a:OBJ_2750+11
+    bne RichterUseItem_at1
+RichterUseThrownItem_at1:
+    ldx z:zField93
+    lda a:RichterItemAttacks,x
+    sta a:PlayerByte3BD5
+    lda z:zField94
+    sed
+    sec
+    sbc a:RichterItemUseCosts,x
+    cld
+    sta z:zField94
+    sec
+    rts
+
+; @routine 01BC:1B1 RichterUseItemSix
+; @run 6D:B9B1
+; WHAT IT DOES: Item 6: only with no item out; the first use starts sound list $54 and script 7.
+; Then the item's attack, and its hearts paid.
+; HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+; Entry: X twice the item. Exit: as RichterUseItem.
+RichterUseItemSix:
+    bsr RichterFindItemOut
+    bne RichterUseItem_at1
+    lda a:PlayerByte3BD6
+    beq RichterUseItemSix_at0
+    lda #$54
+    ldx #$06
+    jsr VecStartListChannelKind2
+    lda #$07
+    ldx #$06
+    jsr VecStartScriptSlotKind1
+    stz a:PlayerByte3BD6
+RichterUseItemSix_at0:
+    bra RichterUseThrownItem_at1
+
+; @routine 01BC:1CD RichterUseItemSeven
+; @run 6D:B9CD
+; WHAT IT DOES: Item 7: used while one of slots 5, 8 and 11 is free; then the item's attack, and
+; its hearts paid. With all three taken, the whip.
+; HOW: OBJ_2750 of each slot in turn.
+; Entry: X twice the item. Exit: as RichterUseItem.
+RichterUseItemSeven:
+    lda a:OBJ_2750+5
+    beq RichterUseThrownItem_at1
+    lda a:OBJ_2750+8
+    beq RichterUseThrownItem_at1
+    lda a:OBJ_2750+11
+    beq RichterUseThrownItem_at1
+    jmp RichterUseItem_at1
+
+; @routine 01BC:1DF RichterFindItemOut
+; @run 6D:B9DF
+; WHAT IT DOES: Finds the first of slots 5 to 15 with an object in it.
+; HOW: OBJ_2750 of each.
+; Entry: nothing. Exit: Y the slot, or $10; A its OBJ_2750, or 0. Found: N and Z from A, C kept
+; if it was slot 5, else clear. None: Z and C set, N clear. X and V kept.
+RichterFindItemOut:
+    ldy #$05
+RichterFindItemOut_at1:
+    lda a:OBJ_2750,y
+    bne RichterFindItemOut_at0
+    iny
+    cpy #$10
+    bne RichterFindItemOut_at1
+RichterFindItemOut_at0:
+    rts
+
+; @routine 01BC:1EC RichterUseItemEight
+; @run 6D:B9EC
+; WHAT IT DOES: Item 8: only with no item out; the first use starts sound list $53 and script
+; $15. Then the item's attack, and its hearts paid.
+; HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+; Entry: X twice the item. Exit: as RichterUseItem.
+RichterUseItemEight:
+    bsr RichterFindItemOut
+    beq RichterUseItemEight_at0
+    jmp RichterUseItem_at1
+RichterUseItemEight_at0:
+    lda a:PlayerByte3BD6
+    beq RichterUseItemSix_at0
+    lda #$53
+    ldx #$06
+    jsr VecStartListChannelKind2
+    lda #$15
+    ldx #$06
+    jsr VecStartScriptSlotKind1
+    stz a:PlayerByte3BD6
+    bra RichterUseThrownItem_at1
+
 ; @routine 01BB:909 RichterLatchButtons
 ; @run 6D:B909
 ; WHAT IT DOES: Keeps the jump and attack presses until a state acts on them.

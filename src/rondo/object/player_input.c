@@ -13,8 +13,14 @@ enum {
     PAD_LEFT_OR_RIGHT = 0xA0, PAD_RIGHT_ONLY = 0x20, PAD_TURBO_BIT = 0x01, PAD_ORDINARY_BITS = 0xFE,
     PAD_SELECT_BIT = 0x04, ANIMATION_STOPPED = 0xFF, ANIMATION_LOOPS = 0xFE,
     ITEM_READY = 0x0F, ITEM_REQUEST = 0x04, ITEM_FIRST_SLOT = 3, ITEM_SLOT_END = 0x10,
-    ITEM_CRASH_CHANNEL = 6, ITEM_CRASH_SLOT = 6
+    ITEM_CRASH_CHANNEL = 6, ITEM_CRASH_SLOT = 6, ITEM_USE_PRESS = 0x02, ITEM_USE_HELD = 0x10,
+    ITEM_THROWN_FIRST = 2, ITEM_THROWN_LAST = 5, ITEM_SIX = 6, ITEM_SEVEN = 7, ITEM_EIGHT = 8,
+    ITEM_SLOT_A = 5, ITEM_SLOT_B = 8, ITEM_SLOT_C = 11, ITEM_SIX_LIST = 0x54, ITEM_SIX_SCRIPT = 7,
+    ITEM_EIGHT_LIST = 0x53, ITEM_EIGHT_SCRIPT = 0x15
 };
+
+static uint8_t bcd_subtract(uint8_t hearts, uint8_t cost);
+static ItemUse item_not_used(ItemUse use, ItemUseHow how);
 
 /*
  * @routine 01BB:611 RichterReadPad
@@ -471,6 +477,314 @@ void abi_RichterTryItemCrash(void)
         abi_nz(crash.hearts);
         break;
     }
+}
+
+/*
+ * @routine 01BC:129 RichterUseItem
+ * @run 6D:B929
+ * WHAT IT DOES: Using the item in hand: on the use press with the use direction held and the
+ * hearts the item costs, goes to the item's own handler, which throws it or not. Says whether
+ * to attack, and with what in PlayerByte3BD5: 0 the whip, or the item's attack.
+ * HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, RichterItemUseCosts by item, then the jump
+ * through RichterItemUseHandlers: items 0 and 1 attack with the whip. zField93 is 0 to 8; the
+ * C takes anything past 8 as the whip.
+ * Entry: nothing. Exit: no press, C clear and all else kept. Otherwise C set, V and Y kept
+ * except as a handler leaves Y, and: not held, A 0, N and Z from it; too few hearts, A the
+ * hearts, X the item, N and Z from comparing them; items 0 and 1, A and X twice the item, N and
+ * Z from it; as the handler otherwise.
+ */
+ItemUse RichterUseItem(void)
+{
+    ItemUse use = { USE_NO_PRESS };
+    uint16_t entry;
+
+    if (!(rd8(zPadPressed) & ITEM_USE_PRESS))
+        return use;
+    if (!(rd8(zPadHeld) & ITEM_USE_HELD))
+        return item_not_used(use, USE_NOT_HELD);
+    use.item = rd8(zField93);
+    use.hearts = rd8(zField94);
+    use.cost = rd8((uint16_t)(RichterItemUseCosts + use.item));
+    if (use.hearts < use.cost)
+        return item_not_used(use, USE_TOO_FEW_HEARTS);
+    /* The jump reads its entry. */
+    entry = (uint16_t)(RichterItemUseHandlers + (uint8_t)(rd8(zField93) << 1));
+    rd8(entry);
+    rd8((uint16_t)(entry + 1));
+    switch (use.item) {
+    case ITEM_THROWN_FIRST:
+    case ITEM_THROWN_FIRST + 1:
+    case ITEM_THROWN_FIRST + 2:
+    case ITEM_THROWN_LAST:
+        return RichterUseThrownItem(use.item);
+    case ITEM_SIX:
+        return RichterUseItemSix(use.item);
+    case ITEM_SEVEN:
+        return RichterUseItemSeven(use.item);
+    case ITEM_EIGHT:
+        return RichterUseItemEight(use.item);
+    default:
+        use.by_index = true;
+        return item_not_used(use, USE_WHIP);
+    }
+}
+
+/* The exit every path of RichterUseItem and its handlers leaves. */
+void item_use_exit_shim(ItemUse use)
+{
+    uint8_t index = (uint8_t)(use.item << 1);
+
+    abi_flag(P_C, use.how != USE_NO_PRESS);
+    switch (use.how) {
+    case USE_NO_PRESS:
+        break;
+    case USE_NOT_HELD:
+        cpu.a = 0;
+        abi_nz(0);
+        break;
+    case USE_WHIP:
+        cpu.a = index;
+        cpu.x = index;
+        abi_nz(index);
+        break;
+    case USE_TOO_FEW_HEARTS:
+        cpu.a = use.hearts;
+        cpu.x = use.item;
+        abi_nz((uint8_t)(use.hearts - use.cost));
+        break;
+    case USE_ITEM_OUT:
+        cpu.a = use.seen;
+        cpu.x = index;
+        cpu.y = use.slot;
+        abi_nz(use.seen);
+        break;
+    case USE_SLOTS_FULL:
+        cpu.a = use.seen;
+        cpu.x = use.by_index ? index : use.item;
+        abi_nz(use.seen);
+        break;
+    case USE_STARTED:
+        cpu.a = use.hearts;
+        cpu.x = use.item;
+        if (use.script_started)
+            cpu.y = use.script;
+        else if (use.scanned)
+            cpu.y = ITEM_SLOT_END;
+        abi_nz(use.hearts);
+        break;
+    }
+}
+
+void abi_RichterUseItem(void)
+{
+    item_use_exit_shim(RichterUseItem());
+}
+
+/* Not used: attack with the whip. */
+static ItemUse item_not_used(ItemUse use, ItemUseHow how)
+{
+    use.how = how;
+    wr8(PlayerByte3BD5, 0);
+    return use;
+}
+
+/* Used: the item's attack, and its hearts paid. */
+static ItemUse item_used(ItemUse use)
+{
+    use.how = USE_STARTED;
+    wr8(PlayerByte3BD5, rd8((uint16_t)(RichterItemAttacks + use.item)));
+    use.hearts = bcd_subtract(rd8(zField94), rd8((uint16_t)(RichterItemUseCosts + use.item)));
+    wr8(zField94, use.hearts);
+    return use;
+}
+
+/* A handler's start: the item, with X still holding twice it. */
+static ItemUse item_handler(uint8_t item)
+{
+    ItemUse use = { USE_STARTED };
+
+    use.item = item;
+    use.by_index = true;
+    return use;
+}
+
+/* The scan for an item out, which a handler stops on. */
+static bool item_out(ItemUse *use)
+{
+    ItemScan scan = RichterFindItemOut();
+
+    use->scanned = true;
+    use->slot = scan.slot;
+    use->seen = scan.seen;
+    return scan.found;
+}
+
+/* A start of the item's sound and script on channel and slot 6, as the first of its throws. */
+static void start_item(ItemUse *use, uint8_t list, uint8_t script)
+{
+    StartListChannelKind2(list, ITEM_CRASH_CHANNEL);
+    StartScriptSlotKind1(script, ITEM_CRASH_SLOT);
+    use->script = script;
+    use->script_started = true;
+}
+
+/*
+ * @routine 01BC:15B RichterUseThrownItem
+ * @run 6D:B95B
+ * WHAT IT DOES: Items 2 to 5, which can be thrown up to three at a time: the first throw of a
+ * use starts the item's sound and script, unless one is out already; a second or third throw
+ * needs more hearts, and a fourth is refused. Then the item's attack, and its hearts paid.
+ * HOW: PlayerByte3BD6 marks the first throw. The items fly in slots 5, 8 and 11; with one out
+ * the hearts must reach RichterItemSecondCosts, with two RichterItemThirdCosts.
+ * Entry: X twice the item. Exit: as RichterUseItem.
+ */
+ItemUse RichterUseThrownItem(uint8_t item)
+{
+    ItemUse use = item_handler(item);
+
+    if (rd8(PlayerByte3BD6) != 0) {
+        if (item_out(&use))
+            return item_not_used(use, USE_ITEM_OUT);
+        StartListChannelKind2(rd8((uint16_t)(RichterItemUseLists + use.item)), ITEM_CRASH_CHANNEL);
+        wr8(PlayerByte3BD6, 0);
+        use.script = rd8((uint16_t)(RichterItemUseScripts + use.item));
+        StartScriptSlotKind1(use.script, ITEM_CRASH_SLOT);
+        use.script_started = true;
+    }
+    use.by_index = false;
+    if (rd8(OBJ_2750 + ITEM_SLOT_A) != 0) {
+        use.hearts = rd8(zField94);
+        use.cost = rd8((uint16_t)(RichterItemSecondCosts + use.item));
+        if (use.hearts < use.cost)
+            return item_not_used(use, USE_TOO_FEW_HEARTS);
+        if (rd8(OBJ_2750 + ITEM_SLOT_B) != 0) {
+            use.hearts = rd8(zField94);
+            use.cost = rd8((uint16_t)(RichterItemThirdCosts + use.item));
+            if (use.hearts < use.cost)
+                return item_not_used(use, USE_TOO_FEW_HEARTS);
+            use.seen = rd8(OBJ_2750 + ITEM_SLOT_C);
+            if (use.seen != 0)
+                return item_not_used(use, USE_SLOTS_FULL);
+        }
+    }
+    return item_used(use);
+}
+
+void abi_RichterUseThrownItem(void)
+{
+    item_use_exit_shim(RichterUseThrownItem((uint8_t)(cpu.x >> 1)));
+}
+
+/*
+ * @routine 01BC:1B1 RichterUseItemSix
+ * @run 6D:B9B1
+ * WHAT IT DOES: Item 6: only with no item out; the first use starts sound list $54 and script 7.
+ * Then the item's attack, and its hearts paid.
+ * HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+ * Entry: X twice the item. Exit: as RichterUseItem.
+ */
+ItemUse RichterUseItemSix(uint8_t item)
+{
+    ItemUse use = item_handler(item);
+
+    if (item_out(&use))
+        return item_not_used(use, USE_ITEM_OUT);
+    if (rd8(PlayerByte3BD6) != 0) {
+        start_item(&use, ITEM_SIX_LIST, ITEM_SIX_SCRIPT);
+        wr8(PlayerByte3BD6, 0);
+    }
+    return item_used(use);
+}
+
+void abi_RichterUseItemSix(void)
+{
+    item_use_exit_shim(RichterUseItemSix((uint8_t)(cpu.x >> 1)));
+}
+
+/*
+ * @routine 01BC:1CD RichterUseItemSeven
+ * @run 6D:B9CD
+ * WHAT IT DOES: Item 7: used while one of slots 5, 8 and 11 is free; then the item's attack, and
+ * its hearts paid. With all three taken, the whip.
+ * HOW: OBJ_2750 of each slot in turn.
+ * Entry: X twice the item. Exit: as RichterUseItem.
+ */
+ItemUse RichterUseItemSeven(uint8_t item)
+{
+    ItemUse use = item_handler(item);
+
+    if (rd8(OBJ_2750 + ITEM_SLOT_A) == 0 || rd8(OBJ_2750 + ITEM_SLOT_B) == 0)
+        return item_used(use);
+    use.seen = rd8(OBJ_2750 + ITEM_SLOT_C);
+    if (use.seen == 0)
+        return item_used(use);
+    return item_not_used(use, USE_SLOTS_FULL);
+}
+
+void abi_RichterUseItemSeven(void)
+{
+    item_use_exit_shim(RichterUseItemSeven((uint8_t)(cpu.x >> 1)));
+}
+
+/*
+ * @routine 01BC:1DF RichterFindItemOut
+ * @run 6D:B9DF
+ * WHAT IT DOES: Finds the first of slots 5 to 15 with an object in it.
+ * HOW: OBJ_2750 of each.
+ * Entry: nothing. Exit: Y the slot, or $10; A its OBJ_2750, or 0. Found: N and Z from A, C kept
+ * if it was slot 5, else clear. None: Z and C set, N clear. X and V kept.
+ */
+ItemScan RichterFindItemOut(void)
+{
+    ItemScan scan = { false, ITEM_SLOT_A, 0 };
+
+    for (; scan.slot < ITEM_SLOT_END; scan.slot++) {
+        scan.seen = rd8((uint16_t)(OBJ_2750 + scan.slot));
+        if (scan.seen != 0) {
+            scan.found = true;
+            break;
+        }
+    }
+    return scan;
+}
+
+void abi_RichterFindItemOut(void)
+{
+    ItemScan scan = RichterFindItemOut();
+
+    cpu.y = scan.slot;
+    cpu.a = scan.seen;
+    abi_nz(scan.seen);
+    if (!scan.found)
+        abi_flag(P_C, true);
+    else if (scan.slot != ITEM_SLOT_A)
+        abi_flag(P_C, false);
+}
+
+/*
+ * @routine 01BC:1EC RichterUseItemEight
+ * @run 6D:B9EC
+ * WHAT IT DOES: Item 8: only with no item out; the first use starts sound list $53 and script
+ * $15. Then the item's attack, and its hearts paid.
+ * HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+ * Entry: X twice the item. Exit: as RichterUseItem.
+ */
+ItemUse RichterUseItemEight(uint8_t item)
+{
+    ItemUse use = item_handler(item);
+
+    if (item_out(&use))
+        return item_not_used(use, USE_ITEM_OUT);
+    if (rd8(PlayerByte3BD6) != 0) {
+        start_item(&use, ITEM_EIGHT_LIST, ITEM_EIGHT_SCRIPT);
+        wr8(PlayerByte3BD6, 0);
+    }
+    return item_used(use);
+}
+
+void abi_RichterUseItemEight(void)
+{
+    item_use_exit_shim(RichterUseItemEight((uint8_t)(cpu.x >> 1)));
 }
 
 /*

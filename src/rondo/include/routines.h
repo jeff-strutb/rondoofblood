@@ -156,6 +156,35 @@ typedef struct {
 } ItemCrash;
 
 ItemCrash RichterTryItemCrash(void);
+
+typedef enum {
+    USE_NO_PRESS, USE_NOT_HELD, USE_WHIP, USE_TOO_FEW_HEARTS, USE_ITEM_OUT, USE_SLOTS_FULL,
+    USE_STARTED
+} ItemUseHow;
+
+/* What using the item did, and what it looked at last, which its exit leaves in the registers. */
+typedef struct {
+    ItemUseHow how;
+    uint8_t item;
+    uint8_t hearts;
+    uint8_t cost;
+    uint8_t seen;
+    uint8_t slot;
+    uint8_t script;
+    bool by_index;
+    bool scanned;
+    bool script_started;
+} ItemUse;
+
+typedef struct { bool found; uint8_t slot; uint8_t seen; } ItemScan;
+
+ItemUse RichterUseItem(void);
+ItemUse RichterUseThrownItem(uint8_t item);
+ItemUse RichterUseItemSix(uint8_t item);
+ItemUse RichterUseItemSeven(uint8_t item);
+ItemUse RichterUseItemEight(uint8_t item);
+ItemScan RichterFindItemOut(void);
+void item_use_exit_shim(ItemUse use);
 ColumnsEnd RichterReadColumns(void);
 TileRead RichterReadAbove(uint8_t row, bool on_the_map);
 void read_above_exit_shim(TileRead read, bool on_the_map);

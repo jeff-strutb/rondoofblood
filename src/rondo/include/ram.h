@@ -395,5 +395,12 @@
 #define RichterItemCosts 0xB84D /* hearts each item costs */
 #define RichterItemCrashLists 0xB856 /* the sound list each item's crash starts; 0 none */
 #define RichterItemCrashScripts 0xB85F /* the script each item's crash starts; 0 none */
+#define RichterItemUseHandlers 0xB949 /* 9 words by item: how using it goes */
+#define RichterItemThirdCosts 0xBA0B /* hearts needed by item to throw with two already out */
+#define RichterItemSecondCosts 0xBA14 /* hearts needed by item to throw with one already out */
+#define RichterItemUseCosts 0xBA1D /* hearts each item's use costs */
+#define RichterItemUseLists 0xBA26 /* the sound list each thrown item starts */
+#define RichterItemUseScripts 0xBA2F /* the script each thrown item starts */
+#define RichterItemAttacks 0xBA38 /* the attack kind using each item gives; 0 the whip */
 
 #endif

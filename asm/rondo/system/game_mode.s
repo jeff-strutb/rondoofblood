@@ -351,8 +351,8 @@ StageClearedNext_at0:
 ; WHAT IT DOES: Finds zStage's bit in the visited tables: the byte in X, the bit in A.
 ; HOW: Bits 2-4 of the stage give the byte, five further on for the second character;
 ; bits 0-1 the bit; a stage with bit 7 set takes the high nibble.
-; Entry: nothing. Exit: A the bit, X the byte, Y zStage, N and Z from Y or the last shift;
-; C from the last shift or the add; V from the add. Clobbers zTemp00.
+; Entry: nothing. Exit: A the bit, X the byte, Y zStage, N and Z from Y, or from the bit with
+; bit 7 set; C and V clear, the add and the shifts never carrying. Clobbers zTemp00.
 StageClearBit:
     cla
     ldx z:zCharacter
@@ -622,7 +622,7 @@ ModeEnding_at0:
 ; @run 69:54B7
 ; WHAT IT DOES: Goes on to the next game mode.
 ; HOW: zGameMode plus one, into SetGameMode.
-; Entry: nothing. Exit: as SetGameMode, N and Z from the new mode.
+; Entry: nothing. Exit: A 0, N and Z from the new mode. X, Y, C and V kept.
 NextGameMode:
     lda z:zGameMode
     inc a

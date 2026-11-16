@@ -599,6 +599,7 @@ void ClearObject(uint8_t object);
 void SelectVdcRegister(uint8_t reg);
 void SelectVramWriteAddress(void);
 void SelectVramData(void);
+void SelectVramReadAddress(void);
 void ClearVdcControlHigh(void);
 void SelectVdcControl(void);
 uint8_t WriteScreenTiming(uint8_t index);
@@ -638,7 +639,11 @@ Alu ModeStageDone(Alu r);
 Alu ModeStage(void);
 Alu ModeStageCleared(void);
 Alu StageClearedNext(Alu r);
-Alu StageClearBit(Alu r);
+/* A stage's bit in the visited tables: the byte, the bit, and zStage as read. */
+typedef struct { uint8_t index; uint8_t bit; uint8_t stage; } StageBit;
+
+StageBit StageClearBit(void);
+void abi_StageClearBit(void);
 Alu ModeDead(void);
 Alu ModeBackToTitle(Alu r);
 Alu ModeGameOverWait(void);
@@ -663,7 +668,8 @@ Alu SceneCallOverlay(Alu r);
 Alu SceneReadSectors(Alu r);
 Alu StageEnter(Alu r);
 Alu StageLoad(Alu r);
-Alu SaveVramToRam(Alu r);
+Sum SaveVramToRam(void);
+void abi_SaveVramToRam(void);
 
 /* The kernel's ADPCM play: src/rondo/audio/adpcm.c. The card's types come from syscard.h. */
 typedef enum { KERNEL_PLAY_CARD, KERNEL_PLAY_BUSY, KERNEL_PLAY_BAD_RATE, KERNEL_PLAY_STARTED } KernelPlayHow;

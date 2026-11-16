@@ -15,7 +15,7 @@ enum {
     MODE_STAGE = 5, MODE_DEAD = 7, MODE_GAME_OVER = 8, MODE_SCREEN = 9, MODE_ENDING = 10,
     SOUND_FADE = 0xFE, SOUND_STOP = 0xFF,
     SCENE_COMMON = 5, SCENE_MENU_A = 4, SCENE_MENU_B = 6, ADPCM_MENU = 0x24,
-    STAGE_BONUS = 0x8A, EVENTS_BANK_OFFSET = 0x0D,
+    STAGE_BONUS = 0x8A, SECOND_CHARACTER_BYTES = 5, STAGE_SECRET = 0x80, EVENTS_BANK_OFFSET = 0x0D,
     CD_FADE_OUT = 0x0C,
     STAGES_ATTRACT = 5, JOY_RUN = 0x08, STOCK_AT_START = 3
 };
@@ -55,7 +55,7 @@ static Alu mark_stage(Alu r, uint16_t table)
 {
     uint8_t byte;
 
-    r = StageClearBit(r);
+    r = call_abi(abi_StageClearBit, r);
     byte = rd8((uint16_t)(table + cpu.x));
     alu_load(&r, (uint8_t)(r.a | byte));
     wr8((uint16_t)(table + cpu.x), r.a);
@@ -547,48 +547,35 @@ void abi_StageClearedNext(void)
  * WHAT IT DOES: Finds zStage's bit in the visited tables: the byte in X, the bit in A.
  * HOW: Bits 2-4 of the stage give the byte, five further on for the second character;
  * bits 0-1 the bit; a stage with bit 7 set takes the high nibble.
- * Entry: nothing. Exit: A the bit, X the byte, Y zStage, N and Z from Y or the last shift;
- * C from the last shift or the add; V from the add. Clobbers zTemp00.
+ * Entry: nothing. Exit: A the bit, X the byte, Y zStage, N and Z from Y, or from the bit with
+ * bit 7 set; C and V clear, the add and the shifts never carrying. Clobbers zTemp00.
  */
-Alu StageClearBit(Alu r)
+StageBit StageClearBit(void)
 {
-    uint8_t value = 0;
+    StageBit found;
     uint8_t stage;
-    uint8_t shifts;
-    uint8_t byte;
+    uint8_t base = rd8(zCharacter) != 0 ? SECOND_CHARACTER_BYTES : 0;
 
-    cpu.x = rd8(zCharacter);
-    if (cpu.x != 0)
-        value = 5;
-    wr8(zTemp00, value);
+    wr8(zTemp00, base);
     stage = rd8(zStage);
-    byte = rd8(zTemp00);
-    r = adc8((uint8_t)((stage >> 2) & 0x07), byte, false);
-    cpu.x = r.a;
-    stage = rd8(zStage);
-    shifts = stage & 0x03;
-    value = 1;
-    for (uint8_t i = 0; i < shifts; i++) {
-        r.c = (value & 0x80) != 0;
-        value = (uint8_t)(value << 1);
-    }
-    stage = rd8(zStage);
-    cpu.y = stage;
-    alu_nz(&r, stage);
-    if (stage & 0x80) {
-        for (unsigned i = 0; i < 4; i++) {
-            r.c = (value & 0x80) != 0;
-            value = (uint8_t)(value << 1);
-        }
-        alu_nz(&r, value);
-    }
-    r.a = value;
-    return r;
+    found.index = (uint8_t)(((stage >> 2) & 0x07) + base);
+    found.bit = (uint8_t)(1 << (rd8(zStage) & 0x03));
+    found.stage = rd8(zStage);
+    if (found.stage & STAGE_SECRET)
+        found.bit = (uint8_t)(found.bit << 4);
+    return found;
 }
 
 void abi_StageClearBit(void)
 {
-    abi_alu(StageClearBit(alu_from_cpu()));
+    StageBit found = StageClearBit();
+
+    cpu.a = found.bit;
+    cpu.x = found.index;
+    cpu.y = found.stage;
+    abi_nz((found.stage & STAGE_SECRET) ? found.bit : found.stage);
+    abi_flag(P_C, false);
+    abi_flag(P_V, false);
 }
 
 /*

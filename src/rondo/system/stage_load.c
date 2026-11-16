@@ -216,17 +216,17 @@ Alu StageLoad(Alu r)
     stage = rd8(zStage);
     alu_load(&r, stage);
     if (stage & 0x80) {
-        r = SaveVramToRam(r);
+        r = call_abi(abi_SaveVramToRam, r);
         adpcm_table = StageAdpcmSecret;
         track_table = StageTrackSecret;
     } else {
         alu_compare(&r, stage, 0x10);
         if (stage == 0x10) {
-            r = SaveVramToRam(r);
+            r = call_abi(abi_SaveVramToRam, r);
         } else {
             alu_compare(&r, stage, 0x0C);
             if (stage == 0x0C)
-                r = SaveVramToRam(r);
+                r = call_abi(abi_SaveVramToRam, r);
         }
         adpcm_table = StageAdpcm;
         track_table = StageTrack;
@@ -258,45 +258,38 @@ void abi_StageLoad(void)
  * Entry: nothing. Exit: A the pointer's low byte, N and Z from X reaching zero, C from its
  * add, V too; X 0, Y $80.
  */
-Alu SaveVramToRam(Alu r)
+Sum SaveVramToRam(void)
 {
-    uint8_t base = rd8(zRamBaseBank);
-    uint8_t byte;
+    Sum low = { 0, false, false };
 
-    r = adc8(0, base, false);
-    tam(MPR4, r.a);
-    r = call_abi(abi_SelectVramWriteAddress, r);
+    tam(MPR4, rd8(zRamBaseBank));
+    SelectVramReadAddress();
     st1(0x00);
     st2(VRAM_COPY_ADDR_HI);
-    r = call_abi(abi_SelectVramData, r);
+    SelectVramData();
     wr8(zBiosAl, 0);
-    alu_load(&r, VRAM_COPY_RAM_HI);
     wr8(zBiosAh, VRAM_COPY_RAM_HI);
-    for (uint8_t row = VRAM_COPY_ROWS; row != 0; row--) {
-        cpu.x = row;
-        cpu.y = 0;
-        do {
-            byte = rd8(VDC_DATA_LO);
-            wr8_zp_y(zBiosAl, cpu.y, byte);
-            cpu.y++;
-            byte = rd8(VDC_DATA_HI);
-            wr8_zp_y(zBiosAl, cpu.y, byte);
-            cpu.y++;
-        } while (cpu.y != VRAM_COPY_ROW_BYTES);
-        byte = rd8(zBiosAl);
-        r = adc8(byte, VRAM_COPY_ROW_BYTES, false);
-        wr8(zBiosAl, r.a);
-        if (r.c) {
-            byte = rd8(zBiosAh);
-            wr8(zBiosAh, (uint8_t)(byte + 1));
+    for (uint8_t row = 0; row < VRAM_COPY_ROWS; row++) {
+        for (uint8_t at = 0; at < VRAM_COPY_ROW_BYTES; at += 2) {
+            wr8_zp_y(zBiosAl, at, rd8(VDC_DATA_LO));
+            wr8_zp_y(zBiosAl, (uint8_t)(at + 1), rd8(VDC_DATA_HI));
         }
+        low = add_bytes(rd8(zBiosAl), VRAM_COPY_ROW_BYTES, false);
+        wr8(zBiosAl, low.value);
+        if (low.carry)
+            wr8(zBiosAh, (uint8_t)(rd8(zBiosAh) + 1));
     }
-    cpu.x = 0;
-    alu_nz(&r, 0);
-    return r;
+    return low;
 }
 
 void abi_SaveVramToRam(void)
 {
-    abi_alu(SaveVramToRam(alu_from_cpu()));
+    Sum low = SaveVramToRam();
+
+    cpu.a = low.value;
+    cpu.x = 0;
+    cpu.y = VRAM_COPY_ROW_BYTES;
+    abi_nz(0);
+    abi_flag(P_C, low.carry);
+    abi_flag(P_V, low.overflow);
 }

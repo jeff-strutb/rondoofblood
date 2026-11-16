@@ -7,7 +7,7 @@
 ; Entry: from the loader, zRamBaseBank set, MPR2-3 the kernel. Exit: never.
 KernelStart:
     tai KernelZeros,zTemp00+$2000,$00DB
-    tai KernelZeros,GameRamLow,$1D30
+    tai KernelZeros,SoundCommandIn,$1D30
     cla
     ldx #$20
     ldy #$1E

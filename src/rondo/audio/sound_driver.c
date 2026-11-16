@@ -20,6 +20,8 @@ enum {
     PSG_WAVE_RESET = 0x40, OPCODE_TIN = 0xD3, OPCODE_RTS = 0x60, WAVE_SAMPLES = 0x20,
     SOUND_CHANNELS = 8, NOTE_VOLUME_BASE = 0x10, VOLUME_STEPS = 0x0F, RATE_TENS = 10,
     REPEAT_MARKED = 0, REPEAT_FIRST_PASS = 1, REPEAT_AGAIN = 2, SEQUENCE_HANDLERS_FIRST = 0xE2,
+    CHANNEL_VOLUME_START = 0x1F, CHANNEL_PAN_START = 0x08, MUSIC_CHANNELS = 0x3F, MUSIC_FIRST = 0x55,
+    VOICE_SECOND_SET = 0x80, VOICE_SET_FIRST = 0x62, VOICE_SET_END = 0x70, VOICE_BACK = 0x3FF6,
     SEQUENCE_REST = 0xE0, SEQUENCE_LENGTH = 0xE1, SEQUENCE_VOLUMES = 0x70, SEQUENCE_GLIDE_TO = 0xF3,
     TEMPO_FULL = 0xFF
 };
@@ -3070,4 +3072,150 @@ void abi_SoundChannelTick(void)
     volume_tick_exit_shim(tick.volume, channel);
     if (tick.volume.how == VOLUME_WAITING)
         abi_nz(tick.wait);
+}
+
+/*
+ * @routine 004D:4EE SoundStartChannel
+ * @run 75:84EE
+ * WHAT IT DOES: Starts a channel from nothing: every effect off, its note due on the next tick, a
+ * length of 1, the slide, envelope, loops and returns cleared, the volume base $1F, the pan 8,
+ * the tempo 1 with its phase full so the first frame ticks.
+ * HOW: Each field by channel cleared or set; SoundSetPan.
+ * Entry: X channel. Exit: A 1, N and Z from it. X, Y, C and V kept.
+ */
+void SoundStartChannel(uint8_t channel)
+{
+    static const uint16_t cleared_first[] = {
+        SoundModulationMaskLo, SoundGateTimer, SoundChannelDefaultArg, SoundGate, SoundLoopACount,
+        SoundLoopBCount, SoundVolumeAddA, SoundVolumeAddB, SoundDetuneAFine, SoundDetuneANote,
+        SoundDetuneBFine, SoundDetuneBNote, SoundSlideStepLo, SoundPanLo, SoundPanStepLo,
+        SoundGlideFramesSet, SoundVibratoDepthLo, SoundVibratoDepthMax, SoundVibratoGrowHi,
+        SoundVibratoGrowLo, SoundTremoloDepth, SoundChannelWave, SoundTranspose, SoundFineTune,
+        SoundRampBy, SoundChannel2550, SoundModulationSpeed
+    };
+    static const uint16_t cleared_next[] = {
+        SoundSlideHi, SoundSlideLo, SoundSlideStepLo, SoundSlideStepHi, SoundEnvelopeLevel,
+        SoundAttackRate, SoundAttackLevel, SoundSustainLevel, SoundEnvelopePhase
+    };
+    static const uint16_t cleared_last[] = {
+        SoundTempoSlideBy, SoundChannel25B0, SoundGateSet, SoundChannel25E0, SoundVolumeDefault,
+        SoundReturnLo, SoundReturnHi
+    };
+
+    for (unsigned i = 0; i < sizeof cleared_first / sizeof cleared_first[0]; i++)
+        wr8((uint16_t)(cleared_first[i] + channel), 0);
+    wr8((uint16_t)(SoundChannel2430 + channel), 1);
+    wr8((uint16_t)(SoundNoteLength + channel), 1);
+    for (unsigned i = 0; i < sizeof cleared_next / sizeof cleared_next[0]; i++)
+        wr8((uint16_t)(cleared_next[i] + channel), 0);
+    wr8((uint16_t)(SoundVolumeBase + channel), CHANNEL_VOLUME_START);
+    SoundSetPan(channel, CHANNEL_PAN_START);
+    wr8((uint16_t)(SoundTempoPhase + channel), TEMPO_FULL);
+    wr8((uint16_t)(SoundDecayRate + channel), 0);
+    wr8((uint16_t)(SoundReleaseRate + channel), 0);
+    wr8((uint16_t)(SoundTempo + channel), 1);
+    for (unsigned i = 0; i < sizeof cleared_last / sizeof cleared_last[0]; i++)
+        wr8((uint16_t)(cleared_last[i] + channel), 0);
+}
+
+void abi_SoundStartChannel(void)
+{
+    SoundStartChannel(cpu.x);
+    abi_exit_loaded(1);
+}
+
+/*
+ * @routine 0053:3B6 SoundStartMusic
+ * @run 76:B3B6
+ * @ends B4AF
+ * WHAT IT DOES: Starts a piece of music, commands $55 to $61, on the six PSG channels: each takes
+ * the command and its sequence from the piece's list and starts from nothing; no fade, the main
+ * volume full.
+ * HOW: zSoundChannelsOn gets the six channels' bits; SoundMusicTable by the command less $55 gives
+ * the list, through zSoundTableLo and Hi; SoundReadPair and SoundStartChannel for each.
+ * Entry: from SoundDriverCommand, SoundCommandIn the command. Exit, at the command's shared
+ * end: A $FF, N set, Z clear, X 6, Y 1, C set, V from the table address's add.
+ */
+uint8_t SoundStartMusic(void)
+{
+    uint8_t command;
+    uint16_t entry;
+
+    wr8(zSoundChannelsOn, (uint8_t)(rd8(zSoundChannelsOn) | MUSIC_CHANNELS));
+    command = rd8(SoundCommandIn);
+    entry = (uint16_t)(SoundMusicTable + (uint8_t)((uint8_t)(command - MUSIC_FIRST) << 1));
+    wr8(zSoundTableLo, (uint8_t)entry);
+    wr8(zSoundTableHi, (uint8_t)(entry >> 8));
+    wr8(zSoundWordLo, rd8_zp(zSoundTableLo));
+    wr8(zSoundWordHi, rd8_zp_y(zSoundTableLo, 1));
+    for (uint8_t channel = 0; channel < PSG_CHANNELS; channel++) {
+        wr8((uint16_t)(SoundChannelCommand + channel), rd8(SoundCommandIn));
+        SoundReadPair(channel);
+        SoundStartChannel(channel);
+    }
+    wr8(SoundFading, 0);
+    SoundVolumeFull();
+    return command;
+}
+
+void abi_SoundStartMusic(void)
+{
+    uint8_t command = SoundStartMusic();
+    Sum low = add_bytes((uint8_t)((uint8_t)(command - MUSIC_FIRST) << 1), (uint8_t)SoundMusicTable, false);
+    Sum high = add_bytes(0, (uint8_t)(SoundMusicTable >> 8), low.carry);
+
+    cpu.a = PSG_VOLUME_FULL;
+    cpu.x = PSG_CHANNELS;
+    cpu.y = 1;
+    abi_nz(PSG_VOLUME_FULL);
+    abi_flag(P_C, true);
+    abi_flag(P_V, high.overflow);
+}
+
+/*
+ * @routine 0053:4B5 SoundVoiceAddressBack
+ * @run 76:B4B5
+ * WHAT IT DOES: Moves a voice's ADPCM start back by 10, modulo the buffer's $4000: every voice of
+ * the second set, and the first set's above $0E.
+ * HOW: Bit 7 of SoundVoiceFlags is the set, SoundVoiceIndex the voice; $3FF6 added to zBiosBl and
+ * zBiosBh.
+ * Entry: nothing. Exit: not moved, A $0E, N, Z and C from comparing it with the voice, V clear.
+ * Moved, A the high byte, N, Z, C and V from its add. X and Y kept.
+ */
+VoiceBack SoundVoiceAddressBack(void)
+{
+    VoiceBack back = { false, false, 0, { 0, false, false } };
+    Sum low;
+
+    if (!(rd8(SoundVoiceFlags) & VOICE_SECOND_SET)) {
+        back.voice = rd8(SoundVoiceIndex);
+        back.compared = true;
+        if ((uint8_t)(VOICE_SET_END - VOICE_SET_FIRST) >= back.voice)
+            return back;
+    }
+    back.moved = true;
+    low = add_bytes((uint8_t)VOICE_BACK, rd8(zBiosBl), false);
+    wr8(zBiosBl, low.value);
+    back.high = add_bytes((uint8_t)(VOICE_BACK >> 8), rd8(zBiosBh), low.carry);
+    wr8(zBiosBh, back.high.value);
+    return back;
+}
+
+void abi_SoundVoiceAddressBack(void)
+{
+    VoiceBack back = SoundVoiceAddressBack();
+    uint8_t limit = (uint8_t)(VOICE_SET_END - VOICE_SET_FIRST);
+
+    if (!back.moved) {
+        cpu.a = limit;
+        abi_nz((uint8_t)(limit - back.voice));
+        abi_flag(P_C, limit >= back.voice);
+        abi_flag(P_V, false);
+        return;
+    }
+    cpu.a = back.high.value;
+    abi_nz(back.high.value);
+    abi_flag(P_C, back.high.carry);
+    abi_flag(P_V, back.high.overflow);
+    (void)back.compared;
 }

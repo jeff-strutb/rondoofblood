@@ -220,7 +220,7 @@ void KernelStart(void)
     uint8_t bank;
 
     tai(KernelZeros, zTemp00, 0x00DB);
-    tai(KernelZeros, GameRamLow, 0x1D30);
+    tai(KernelZeros, SoundCommandIn, 0x1D30);
     cpu.a = 0;
     cpu.x = 0x20;
     cpu.y = 0x1E;

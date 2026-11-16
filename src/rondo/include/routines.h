@@ -499,6 +499,13 @@ typedef struct {
 } ChannelTick;
 
 ChannelTick SoundChannelTick(uint8_t channel);
+void SoundStartChannel(uint8_t channel);
+uint8_t SoundStartMusic(void);
+
+/* A voice's start moved back: whether it was, the voice compared, and the high byte's add. */
+typedef struct { bool moved; bool compared; uint8_t voice; Sum high; } VoiceBack;
+
+VoiceBack SoundVoiceAddressBack(void);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

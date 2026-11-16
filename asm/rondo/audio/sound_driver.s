@@ -2025,3 +2025,138 @@ SoundReadSequence_at2:
     jsr SoundSaveSequence
     clc
     rts
+
+; @routine 004D:4EE SoundStartChannel
+; @run 75:84EE
+; WHAT IT DOES: Starts a channel from nothing: every effect off, its note due on the next tick, a
+; length of 1, the slide, envelope, loops and returns cleared, the volume base $1F, the pan 8,
+; the tempo 1 with its phase full so the first frame ticks.
+; HOW: Each field by channel cleared or set; SoundSetPan.
+; Entry: X channel. Exit: A 1, N and Z from it. X, Y, C and V kept.
+SoundStartChannel:
+    stz a:SoundModulationMaskLo,x
+    stz a:SoundGateTimer,x
+    stz a:SoundChannelDefaultArg,x
+    stz a:SoundGate,x
+    stz a:SoundLoopACount,x
+    stz a:SoundLoopBCount,x
+    stz a:SoundVolumeAddA,x
+    stz a:SoundVolumeAddB,x
+    stz a:SoundDetuneAFine,x
+    stz a:SoundDetuneANote,x
+    stz a:SoundDetuneBFine,x
+    stz a:SoundDetuneBNote,x
+    stz a:SoundSlideStepLo,x
+    stz a:SoundPanLo,x
+    stz a:SoundPanStepLo,x
+    stz a:SoundGlideFramesSet,x
+    stz a:SoundVibratoDepthLo,x
+    stz a:SoundVibratoDepthMax,x
+    stz a:SoundVibratoGrowHi,x
+    stz a:SoundVibratoGrowLo,x
+    stz a:SoundTremoloDepth,x
+    stz a:SoundChannelWave,x
+    stz a:SoundTranspose,x
+    stz a:SoundFineTune,x
+    stz a:SoundRampBy,x
+    stz a:SoundChannel2550,x
+    stz a:SoundModulationSpeed,x
+    lda #$01
+    sta a:SoundChannel2430,x
+    sta a:SoundNoteLength,x
+    stz a:SoundSlideHi,x
+    stz a:SoundSlideLo,x
+    stz a:SoundSlideStepLo,x
+    stz a:SoundSlideStepHi,x
+    stz a:SoundEnvelopeLevel,x
+    stz a:SoundAttackRate,x
+    stz a:SoundAttackLevel,x
+    stz a:SoundSustainLevel,x
+    stz a:SoundEnvelopePhase,x
+    lda #$1F
+    sta a:SoundVolumeBase,x
+    lda #$08
+    jsr SoundSetPan
+    lda #$FF
+    sta a:SoundTempoPhase,x
+    stz a:SoundDecayRate,x
+    stz a:SoundReleaseRate,x
+    lda #$01
+    sta a:SoundTempo,x
+    stz a:SoundTempoSlideBy,x
+    stz a:SoundChannel25B0,x
+    stz a:SoundGateSet,x
+    stz a:SoundChannel25E0,x
+    stz a:SoundVolumeDefault,x
+    stz a:SoundReturnLo,x
+    stz a:SoundReturnHi,x
+    rts
+
+; @routine 0053:3B6 SoundStartMusic
+; @run 76:B3B6
+; @ends B4AF
+; WHAT IT DOES: Starts a piece of music, commands $55 to $61, on the six PSG channels: each takes
+; the command and its sequence from the piece's list and starts from nothing; no fade, the main
+; volume full.
+; HOW: zSoundChannelsOn gets the six channels' bits; SoundMusicTable by the command less $55 gives
+; the list, through zSoundTableLo and Hi; SoundReadPair and SoundStartChannel for each.
+; Entry: from SoundDriverCommand, SoundCommandIn the command. Exit, at the command's shared
+; end: A $FF, N set, Z clear, X 6, Y 1, C set, V from the table address's add.
+SoundStartMusic:
+    lda #$3F
+    tsb z:zSoundChannelsOn
+    lda a:SoundCommandIn
+    sec
+    sbc #$55
+    asl a
+    clc
+    adc #$FA
+    sta z:zSoundTableLo
+    cla
+    adc #$B8
+    sta z:zSoundTableHi
+    lda (zSoundTableLo)
+    sta z:zSoundWordLo
+    ldy #$01
+    lda (zSoundTableLo),y
+    sta z:zSoundWordHi
+    clx
+SoundStartMusic_at0:
+    lda a:SoundCommandIn
+    sta a:SoundChannelCommand,x
+    jsr SoundReadPair
+    jsr SoundStartChannel
+    inx
+    cpx #$06
+    bcc SoundStartMusic_at0
+    stz a:SoundFading
+    jsr SoundVolumeFull
+    jmp $B4AF
+
+; @routine 0053:4B5 SoundVoiceAddressBack
+; @run 76:B4B5
+; WHAT IT DOES: Moves a voice's ADPCM start back by 10, modulo the buffer's $4000: every voice of
+; the second set, and the first set's above $0E.
+; HOW: Bit 7 of SoundVoiceFlags is the set, SoundVoiceIndex the voice; $3FF6 added to zBiosBl and
+; zBiosBh.
+; Entry: nothing. Exit: not moved, A $0E, N, Z and C from comparing it with the voice, V clear.
+; Moved, A the high byte, N, Z, C and V from its add. X and Y kept.
+SoundVoiceAddressBack:
+    lda a:SoundVoiceFlags
+    and #$80
+    bne SoundVoiceAddressBack_at0
+    lda #$70
+    sec
+    sbc #$62
+    cmp a:SoundVoiceIndex
+    bcs SoundVoiceAddressBack_at1
+SoundVoiceAddressBack_at0:
+    lda #$F6
+    clc
+    adc z:zBiosBl
+    sta z:zBiosBl
+    lda #$3F
+    adc z:zBiosBh
+    sta z:zBiosBh
+SoundVoiceAddressBack_at1:
+    rts

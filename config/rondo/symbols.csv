@@ -69,7 +69,7 @@ E06C,abs,BiosE06C,called once at start
 E06F,abs,BiosE06F,called once at start
 E0A2,abs,BiosE0A2,called once at start
 # Work RAM.
-22D0,abs,GameRamLow,first byte of low game RAM start clears
+22D0,abs,SoundCommandIn,the sound driver: the command it is taking; also the first byte of low game RAM the start clears
 26D0,abs,LevelStreamLo,the object stream's position low
 26D1,abs,LevelStreamHi,the object stream's position high
 26D2,abs,LevelAxis,1: the level runs vertically; 2: its height is fixed
@@ -553,3 +553,10 @@ B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 an
 22E6,abs,SoundFullTempo,the sound driver: bit 0 set plays every channel at tempo $FF
 25C8,abs,SoundVolumeDefault,the sound driver: by channel, the volume a note takes, from commands $70 to $7F
 B7C2,abs,SoundCommandHandlers,the sound driver: commands $E2 to $FF, each its handler less one, for a return to it
+5C,zp,zSoundTableLo,the sound driver: a pointer into its tables, low
+5D,zp,zSoundTableHi,the sound driver: a pointer into its tables, high
+2430,abs,SoundChannel2430,the sound driver: by channel; 1 when it starts
+25E0,abs,SoundChannel25E0,the sound driver: by channel; cleared when it starts
+B8FA,abs,SoundMusicTable,the sound driver: by music command less $55, the address of its six channels' sequences
+25F9,abs,SoundVoiceFlags,the sound driver: bit 7 the voice is of the second set; bit 0 one is waiting
+25FC,abs,SoundVoiceIndex,the sound driver: the voice within its set

@@ -67,7 +67,7 @@
 #define BiosE06C 0xE06C /* called once at start */
 #define BiosE06F 0xE06F /* called once at start */
 #define BiosE0A2 0xE0A2 /* called once at start */
-#define GameRamLow 0x22D0 /* first byte of low game RAM start clears */
+#define SoundCommandIn 0x22D0 /* the sound driver: the command it is taking; also the first byte of low game RAM the start clears */
 #define LevelStreamLo 0x26D0 /* the object stream's position low */
 #define LevelStreamHi 0x26D1 /* the object stream's position high */
 #define LevelAxis 0x26D2 /* 1: the level runs vertically; 2: its height is fixed */
@@ -546,5 +546,12 @@
 #define SoundFullTempo 0x22E6 /* the sound driver: bit 0 set plays every channel at tempo $FF */
 #define SoundVolumeDefault 0x25C8 /* the sound driver: by channel, the volume a note takes, from commands $70 to $7F */
 #define SoundCommandHandlers 0xB7C2 /* the sound driver: commands $E2 to $FF, each its handler less one, for a return to it */
+#define zSoundTableLo 0x205C /* the sound driver: a pointer into its tables, low */
+#define zSoundTableHi 0x205D /* the sound driver: a pointer into its tables, high */
+#define SoundChannel2430 0x2430 /* the sound driver: by channel; 1 when it starts */
+#define SoundChannel25E0 0x25E0 /* the sound driver: by channel; cleared when it starts */
+#define SoundMusicTable 0xB8FA /* the sound driver: by music command less $55, the address of its six channels' sequences */
+#define SoundVoiceFlags 0x25F9 /* the sound driver: bit 7 the voice is of the second set; bit 0 one is waiting */
+#define SoundVoiceIndex 0x25FC /* the sound driver: the voice within its set */
 
 #endif

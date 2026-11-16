@@ -436,11 +436,11 @@
 #define SoundSlideLo 0x23E0 /* the sound driver: by channel, the sliding value, low */
 #define SoundSlideHi 0x23E8 /* the sound driver: by channel, the sliding value, high */
 #define SoundSlideTarget 0x23F0 /* the sound driver: by channel, the high byte the slide stops at */
-#define SoundVolumeStepLo 0x2400 /* the sound driver: by channel, the volume slide's step, low */
-#define SoundVolumeStepHi 0x2408 /* the sound driver: by channel, the volume slide's step, high */
-#define SoundVolumeLo 0x2410 /* the sound driver: by channel, the volume, fraction */
-#define SoundVolume 0x2418 /* the sound driver: by channel, the volume, which picks the balance */
-#define SoundVolumeTarget 0x2420 /* the sound driver: by channel, the volume the slide stops at */
+#define SoundPanStepLo 0x2400 /* the sound driver: by channel, the pan slide's step, low */
+#define SoundPanStepHi 0x2408 /* the sound driver: by channel, the pan slide's step, high */
+#define SoundPanLo 0x2410 /* the sound driver: by channel, the pan, fraction */
+#define SoundPan 0x2418 /* the sound driver: by channel, the pan, which picks the PSG balance */
+#define SoundPanTarget 0x2420 /* the sound driver: by channel, the pan the slide stops at */
 #define SoundCommandByte 0x22E2 /* the sound driver: the sequence command being read */
 #define SoundCommandArgs 0x22E3 /* the sound driver: the command's argument bytes */
 #define BlockMoveOpcode 0x22E7 /* the RAM block-move stub: its opcode */
@@ -455,10 +455,10 @@
 #define SoundApproachLo 0x2308 /* the sound driver: by channel, the approaching value, fraction */
 #define SoundApproachTarget 0x2310 /* the sound driver: by channel, the value approached */
 #define SoundApproach 0x2320 /* the sound driver: by channel, the approaching value */
-#define SoundChannelWait 0x2330 /* the sound driver: by channel, frames to wait */
-#define SoundChannelDefaultArg 0x2338 /* the sound driver: by channel, the argument a short command takes */
-#define SoundSlideFrom 0x23F8 /* the sound driver: by channel, what the ramp's distance is measured from */
-#define SoundVolumeSet 0x2428 /* the sound driver: by channel, the volume as set */
+#define SoundGateTimer 0x2330 /* the sound driver: by channel, frames the note sounds before its release */
+#define SoundChannelDefaultArg 0x2338 /* the sound driver: by channel, the length a note with none given takes */
+#define SoundVolumeBase 0x23F8 /* the sound driver: by channel, the volume before every attenuation */
+#define SoundPanSet 0x2428 /* the sound driver: by channel, the pan as set */
 #define SoundModulationPhaseLo 0x24E8 /* the sound driver: by channel, the modulation's phase, fraction */
 #define SoundModulationPhase 0x24F0 /* the sound driver: by channel, the modulation's phase */
 #define SoundModulationSpeed 0x24F8 /* the sound driver: by channel, the modulation's speed; 0 none */
@@ -477,5 +477,12 @@
 #define SoundSustainLevel 0x2590 /* the sound driver: by channel, the level the decay stops at */
 #define SoundEnvelopeTimer 0x25A0 /* the sound driver: by channel, frames left to the envelope's next step */
 #define SoundOffsetTable 0x88BF /* the sound driver: 64 offsets SoundScaledOffset scales */
+#define SoundNoteLength 0x2328 /* the sound driver: by channel, the note's length */
+#define SoundGate 0x2340 /* the sound driver: by channel, the share of the length the note sounds, in sixteenths; 0 all */
+#define SoundGateSet 0x25C0 /* the sound driver: by channel, the gate as set */
+#define SoundVolumeAddA 0x2358 /* the sound driver: by channel, added to the volume */
+#define SoundVolumeAddB 0x2360 /* the sound driver: by channel, added to the volume */
+#define SoundChannel2550 0x2550 /* the sound driver: by channel; set to 1 on a rest */
+#define SoundBalances 0x87AC /* the sound driver: PSG balance by pan, 16 each, the second set for zSoundAltBalance */
 
 #endif

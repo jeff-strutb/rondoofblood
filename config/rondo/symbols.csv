@@ -443,11 +443,11 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 23E0,abs,SoundSlideLo,the sound driver: by channel, the sliding value, low
 23E8,abs,SoundSlideHi,the sound driver: by channel, the sliding value, high
 23F0,abs,SoundSlideTarget,the sound driver: by channel, the high byte the slide stops at
-2400,abs,SoundVolumeStepLo,the sound driver: by channel, the volume slide's step, low
-2408,abs,SoundVolumeStepHi,the sound driver: by channel, the volume slide's step, high
-2410,abs,SoundVolumeLo,the sound driver: by channel, the volume, fraction
-2418,abs,SoundVolume,the sound driver: by channel, the volume, which picks the balance
-2420,abs,SoundVolumeTarget,the sound driver: by channel, the volume the slide stops at
+2400,abs,SoundPanStepLo,the sound driver: by channel, the pan slide's step, low
+2408,abs,SoundPanStepHi,the sound driver: by channel, the pan slide's step, high
+2410,abs,SoundPanLo,the sound driver: by channel, the pan, fraction
+2418,abs,SoundPan,the sound driver: by channel, the pan, which picks the PSG balance
+2420,abs,SoundPanTarget,the sound driver: by channel, the pan the slide stops at
 22E2,abs,SoundCommandByte,the sound driver: the sequence command being read
 22E3,abs,SoundCommandArgs,the sound driver: the command's argument bytes
 22E7,abs,BlockMoveOpcode,the RAM block-move stub: its opcode
@@ -462,10 +462,10 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 2308,abs,SoundApproachLo,the sound driver: by channel, the approaching value, fraction
 2310,abs,SoundApproachTarget,the sound driver: by channel, the value approached
 2320,abs,SoundApproach,the sound driver: by channel, the approaching value
-2330,abs,SoundChannelWait,the sound driver: by channel, frames to wait
-2338,abs,SoundChannelDefaultArg,the sound driver: by channel, the argument a short command takes
-23F8,abs,SoundSlideFrom,the sound driver: by channel, what the ramp's distance is measured from
-2428,abs,SoundVolumeSet,the sound driver: by channel, the volume as set
+2330,abs,SoundGateTimer,the sound driver: by channel, frames the note sounds before its release
+2338,abs,SoundChannelDefaultArg,the sound driver: by channel, the length a note with none given takes
+23F8,abs,SoundVolumeBase,the sound driver: by channel, the volume before every attenuation
+2428,abs,SoundPanSet,the sound driver: by channel, the pan as set
 24E8,abs,SoundModulationPhaseLo,the sound driver: by channel, the modulation's phase, fraction
 24F0,abs,SoundModulationPhase,the sound driver: by channel, the modulation's phase
 24F8,abs,SoundModulationSpeed,the sound driver: by channel, the modulation's speed; 0 none
@@ -484,3 +484,10 @@ B7A2,abs,SoundCommandLengths,the sound driver: argument bytes of commands $E0 an
 2590,abs,SoundSustainLevel,the sound driver: by channel, the level the decay stops at
 25A0,abs,SoundEnvelopeTimer,the sound driver: by channel, frames left to the envelope's next step
 88BF,abs,SoundOffsetTable,the sound driver: 64 offsets SoundScaledOffset scales
+2328,abs,SoundNoteLength,the sound driver: by channel, the note's length
+2340,abs,SoundGate,the sound driver: by channel, the share of the length the note sounds, in sixteenths; 0 all
+25C0,abs,SoundGateSet,the sound driver: by channel, the gate as set
+2358,abs,SoundVolumeAddA,the sound driver: by channel, added to the volume
+2360,abs,SoundVolumeAddB,the sound driver: by channel, added to the volume
+2550,abs,SoundChannel2550,the sound driver: by channel; set to 1 on a rest
+87AC,abs,SoundBalances,the sound driver: PSG balance by pan, 16 each, the second set for zSoundAltBalance

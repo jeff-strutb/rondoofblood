@@ -62,30 +62,30 @@ SoundSlideStep_at1:
 SoundSlideStep_at0:
     rts
 
-; @routine 004D:7CC SoundVolumeSlideStep
+; @routine 004D:7CC SoundPanSlideStep
 ; @run 75:87CC
-; WHAT IT DOES: Moves a channel's volume on by its step, until it reaches the target.
-; HOW: SoundVolumeStepLo and Hi onto SoundVolumeLo and SoundVolume; SoundVolumeTarget.
+; WHAT IT DOES: Moves a channel's pan on by its step, until it reaches the target.
+; HOW: SoundPanStepLo and Hi onto SoundPanLo and SoundPan; SoundPanTarget.
 ; Entry: X channel. Exit: as SoundSlideStep.
-SoundVolumeSlideStep:
-    lda a:SoundVolumeStepLo,x
-    ora a:SoundVolumeStepHi,x
-    beq SoundVolumeSlideStep_at0
-    lda a:SoundVolume,x
-    cmp a:SoundVolumeTarget,x
-    bne SoundVolumeSlideStep_at1
-    stz a:SoundVolumeStepLo,x
-    stz a:SoundVolumeStepHi,x
-    bra SoundVolumeSlideStep_at0
-SoundVolumeSlideStep_at1:
+SoundPanSlideStep:
+    lda a:SoundPanStepLo,x
+    ora a:SoundPanStepHi,x
+    beq SoundPanSlideStep_at0
+    lda a:SoundPan,x
+    cmp a:SoundPanTarget,x
+    bne SoundPanSlideStep_at1
+    stz a:SoundPanStepLo,x
+    stz a:SoundPanStepHi,x
+    bra SoundPanSlideStep_at0
+SoundPanSlideStep_at1:
     clc
-    lda a:SoundVolumeStepLo,x
-    adc a:SoundVolumeLo,x
-    sta a:SoundVolumeLo,x
-    lda a:SoundVolume,x
-    adc a:SoundVolumeStepHi,x
-    sta a:SoundVolume,x
-SoundVolumeSlideStep_at0:
+    lda a:SoundPanStepLo,x
+    adc a:SoundPanLo,x
+    sta a:SoundPanLo,x
+    lda a:SoundPan,x
+    adc a:SoundPanStepHi,x
+    sta a:SoundPan,x
+SoundPanSlideStep_at0:
     rts
 
 ; @routine 004E:1F2 SoundModulate
@@ -120,19 +120,19 @@ SoundModulate_at0:
 
 ; @routine 004E:21C SoundRampStep
 ; @run 75:8A1C
-; WHAT IT DOES: Moves a channel's ramp on by its step, once its wait is over and only while the
-; slide is still at least the ramp away from where it started.
-; HOW: SoundChannelWait, SoundRampBy, SoundSlideFrom less SoundSlideHi against SoundRampHi;
+; WHAT IT DOES: Moves a channel's ramp on by its step, once the note's gate is over and only while
+; the volume less the slide is still at least the ramp.
+; HOW: SoundGateTimer, SoundRampBy, SoundVolumeBase less SoundSlideHi against SoundRampHi;
 ; SoundRampBy onto SoundRampLo, carrying into SoundRampHi.
 ; Entry: X channel. Exit: X and Y kept. Waiting, A the wait, N and Z from it. No step, A 0, Z
 ; set, N clear. Too close, A the distance, N and Z from it less the ramp, C clear, V from the
 ; distance's subtract. Moved, A the ramp, N, Z, C and V from its add.
 SoundRampStep:
-    lda a:SoundChannelWait,x
+    lda a:SoundGateTimer,x
     bne SoundRampStep_at0
     lda a:SoundRampBy,x
     beq SoundRampStep_at0
-    lda a:SoundSlideFrom,x
+    lda a:SoundVolumeBase,x
     sec
     sbc a:SoundSlideHi,x
     cmp a:SoundRampHi,x
@@ -183,15 +183,15 @@ SoundApproachStep_at2:
 SoundApproachStep_at0:
     rts
 
-; @routine 004E:310 SoundSetVolume
+; @routine 004E:310 SoundSetPan
 ; @run 75:8B10
-; WHAT IT DOES: Sets a channel's volume outright, as set and as it plays, with no fraction.
-; HOW: SoundVolumeSet and SoundVolume, SoundVolumeLo cleared.
-; Entry: A volume, X channel. Exit: all registers and flags kept.
-SoundSetVolume:
-    sta a:SoundVolumeSet,x
-    sta a:SoundVolume,x
-    stz a:SoundVolumeLo,x
+; WHAT IT DOES: Sets a channel's pan outright, as set and as it plays, with no fraction.
+; HOW: SoundPanSet and SoundPan, SoundPanLo cleared.
+; Entry: A pan, X channel. Exit: all registers and flags kept.
+SoundSetPan:
+    sta a:SoundPanSet,x
+    sta a:SoundPan,x
+    stz a:SoundPanLo,x
     rts
 
 ; @routine 004E:614 SoundSilenceAll
@@ -589,4 +589,134 @@ SoundEnvelopeStep_at6:
     lda a:SoundReleaseRate,x
     sta a:SoundEnvelopeTimer,x
 SoundEnvelopeStep_at0:
+    rts
+
+; @routine 004E:27A SoundApplyVolume
+; @run 75:8A7A
+; WHAT IT DOES: A frame of the channel's envelope, then its PSG volume: the base, less the
+; envelope, the slide, the ramp and what is given, less the fade on the six PSG channels, plus
+; the two additions; below 0 it is 0, above $1F it is $1F.
+; HOW: zSoundWordLo holds what is given; SoundEnvelopeStep; SoundSetControl.
+; Entry: A what to take off, X channel. Exit: as SoundSetControl, with A the volume when left
+; alone.
+SoundApplyVolume:
+    sta z:zSoundWordLo
+    jsr SoundEnvelopeStep
+    lda a:SoundVolumeBase,x
+    sec
+    sbc a:SoundEnvelopeLevel,x
+    sec
+    sbc a:SoundSlideHi,x
+    sec
+    sbc a:SoundRampHi,x
+    sec
+    sbc z:zSoundWordLo
+    cpx #$06
+    bcs SoundApplyVolume_at0
+    sec
+    sbc a:SoundFading
+SoundApplyVolume_at0:
+    clc
+    adc a:SoundVolumeAddA,x
+    clc
+    adc a:SoundVolumeAddB,x
+    bpl SoundApplyVolume_at1
+    cla
+    bra SoundApplyVolume_at2
+SoundApplyVolume_at1:
+    cmp #$20
+    bcc SoundApplyVolume_at2
+    lda #$1F
+SoundApplyVolume_at2:
+    jsr SoundSetControl
+    rts
+
+; @routine 004E:2B0 SoundRest
+; @run 75:8AB0
+; WHAT IT DOES: A rest: the channel silenced for the length in the command's argument, with no
+; gate and no volume.
+; HOW: SoundChannel2550 1, SoundSilenceChannel; the length into SoundChannelDefaultArg and
+; SoundNoteLength.
+; Entry: X channel. Exit: A the length, N and Z from it; C and V as SoundSilenceChannel. X and Y
+; kept.
+SoundRest:
+    lda #$01
+    sta a:SoundChannel2550,x
+    jsr SoundSilenceChannel
+    lda a:SoundCommandArgs
+    sta a:SoundChannelDefaultArg,x
+    sta a:SoundNoteLength,x
+    stz a:SoundGate,x
+    stz a:SoundGateTimer,x
+    stz a:SoundVolumeBase,x
+    rts
+
+; @routine 004E:2CB SoundSetLength
+; @run 75:8ACB
+; WHAT IT DOES: Sets a note's length and its gate from the command's two arguments: the gate is
+; that many sixteenths of the length, at least one frame; a gate of 0 sounds the whole length.
+; HOW: SoundNoteLength and SoundChannelDefaultArg, SoundGate and SoundGateSet;
+; SoundMultiplyNibble, its product shifted down four places, into SoundGateTimer.
+; Entry: X channel. Exit: A the gate timer, N and Z from it. No gate, C, V and Y kept. Otherwise
+; Y the length, C bit 3 of the product, V as SoundMultiplyNibble. X kept.
+SoundSetLength:
+    lda a:SoundCommandArgs
+    sta a:SoundChannelDefaultArg,x
+    sta a:SoundNoteLength,x
+    lda a:SoundCommandArgs+1
+    sta a:SoundGate,x
+    sta a:SoundGateSet,x
+    bne SoundSetLength_at0
+    lda a:SoundCommandArgs
+    bra SoundSetLength_at1
+SoundSetLength_at0:
+    ldy a:SoundCommandArgs
+    jsr SoundMultiplyNibble
+    lda z:zSoundWordLo
+    lsr z:zSoundWordHi
+    ror a
+    lsr z:zSoundWordHi
+    ror a
+    lsr z:zSoundWordHi
+    ror a
+    lsr z:zSoundWordHi
+    ror a
+    bne SoundSetLength_at1
+    inc a
+SoundSetLength_at1:
+    sta a:SoundGateTimer,x
+    rts
+
+; @routine 004E:6E5 SoundSetControl
+; @run 75:8EE5
+; WHAT IT DOES: Sets the selected PSG channel's volume, on when not 0, and its balance by the
+; channel's pan; channels 4 and 5 are left alone while an effect plays on them.
+; HOW: The volume with bit 7 to the control; SoundBalances by SoundPan, the second set when
+; zSoundAltBalance is set.
+; Entry: A volume, X channel. Exit: X kept; C set if the channel is 6 or more. Left alone, A and
+; Y kept, N and V the effect's bits 7 and 6, Z clear. Otherwise A the balance, N and Z from it, Y
+; the pan; V clear for channels 4 and 5, else kept.
+SoundSetControl:
+    cpx #$04
+    bcc SoundSetControl_at0
+    cpx #$06
+    bcs SoundSetControl_at0
+    tst #$FF,a:SoundChannelCommand+2,x
+    bne SoundSetControl_at1
+SoundSetControl_at0:
+    and #$FF
+    beq SoundSetControl_at2
+    ora #$80
+SoundSetControl_at2:
+    sta a:PsgControl
+    ldy a:SoundPan,x
+    tst #$FF,z:zSoundAltBalance
+    bne SoundSetControl_at3
+    lda a:SoundBalances,y
+    bra SoundSetControl_at4
+SoundSetControl_at3:
+    lda a:$87BC,y
+SoundSetControl_at4:
+    sta a:PsgBalance
+SoundSetControl_at1:
     rts

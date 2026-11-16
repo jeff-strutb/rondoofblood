@@ -221,8 +221,8 @@ typedef enum { SLIDE_IDLE, SLIDE_REACHED, SLIDE_MOVED } SlideHow;
 typedef struct { SlideHow how; uint8_t value; bool carry; bool overflow; } SlideStep;
 
 SlideStep SoundSlideStep(uint8_t channel);
-SlideStep SoundVolumeSlideStep(uint8_t channel);
-void SoundSetVolume(uint8_t channel, uint8_t volume);
+SlideStep SoundPanSlideStep(uint8_t channel);
+void SoundSetPan(uint8_t channel, uint8_t pan);
 uint16_t SoundWaveAddress(uint8_t wave);
 
 typedef enum { LENGTH_ONE, LENGTH_DEFAULT, LENGTH_NONE, LENGTH_TABLE } LengthHow;
@@ -295,6 +295,31 @@ EnvelopeStep SoundEnvelopeStep(uint8_t channel);
 typedef struct { bool negative; uint8_t scale; SoundProduct product; } ScaledOffset;
 
 ScaledOffset SoundScaledOffset(uint8_t byte, uint8_t channel);
+
+/* A PSG control set: whether an effect held the channel, what it read, and the pan and balance. */
+typedef struct {
+    bool looked;
+    bool held;
+    uint8_t effect;
+    uint8_t pan;
+    uint8_t alt;
+    uint8_t balance;
+    uint8_t volume;
+} ControlSet;
+
+ControlSet SoundSetControl(uint8_t volume, uint8_t channel);
+void control_exit_shim(ControlSet set, uint8_t channel);
+ControlSet SoundApplyVolume(uint8_t less, uint8_t channel);
+
+/* A rest: what silencing the channel looked at, and the length. */
+typedef struct { ChannelRelease release; uint8_t length; } ChannelSilence;
+
+ChannelSilence SoundRest(uint8_t channel);
+
+/* A note's length and gate, the product the gate came from, and the gate timer. */
+typedef struct { uint8_t length; uint8_t gate; SoundProduct product; uint8_t timer; } NoteLength;
+
+NoteLength SoundSetLength(uint8_t channel);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

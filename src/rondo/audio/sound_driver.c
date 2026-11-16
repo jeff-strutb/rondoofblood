@@ -15,7 +15,8 @@ enum {
     PSG_CHANNELS = 6, PSG_VOLUME_FULL = 0xFF, LEVEL_SILENT = 0x1F,
     EFFECT_SHARED_FIRST = 4, EFFECT_SHARED_END = 6, EFFECT_CHANNEL_OFFSET = 2,
     FADE_STEP_START = 0x10, SOUND_WAVES = 0xBD11, SEQUENCE_NOTES_END = 0x60, SEQUENCE_REUSE = 0x80,
-    SEQUENCE_LONG_FIRST = 0xE0, OFFSET_NEGATIVE = 0x40
+    SEQUENCE_LONG_FIRST = 0xE0, OFFSET_NEGATIVE = 0x40, PSG_CHANNEL_ON = 0x80, BALANCE_SET_SIZE = 0x10,
+    PSG_VOLUME_LIMIT = 0x20
 };
 
 /* PSG channels 4 and 5 are left alone while effect channels 6 and 7 play on them. */
@@ -402,40 +403,40 @@ void abi_SoundSlideStep(void)
 }
 
 /*
- * @routine 004D:7CC SoundVolumeSlideStep
+ * @routine 004D:7CC SoundPanSlideStep
  * @run 75:87CC
- * WHAT IT DOES: Moves a channel's volume on by its step, until it reaches the target.
- * HOW: SoundVolumeStepLo and Hi onto SoundVolumeLo and SoundVolume; SoundVolumeTarget.
+ * WHAT IT DOES: Moves a channel's pan on by its step, until it reaches the target.
+ * HOW: SoundPanStepLo and Hi onto SoundPanLo and SoundPan; SoundPanTarget.
  * Entry: X channel. Exit: as SoundSlideStep.
  */
-SlideStep SoundVolumeSlideStep(uint8_t channel)
+SlideStep SoundPanSlideStep(uint8_t channel)
 {
-    return slide_step(channel, SoundVolumeStepLo, SoundVolumeStepHi, SoundVolumeLo, SoundVolume,
-                      SoundVolumeTarget);
+    return slide_step(channel, SoundPanStepLo, SoundPanStepHi, SoundPanLo, SoundPan,
+                      SoundPanTarget);
 }
 
-void abi_SoundVolumeSlideStep(void)
+void abi_SoundPanSlideStep(void)
 {
-    abi_exit_slide(SoundVolumeSlideStep(cpu.x));
+    abi_exit_slide(SoundPanSlideStep(cpu.x));
 }
 
 /*
- * @routine 004E:310 SoundSetVolume
+ * @routine 004E:310 SoundSetPan
  * @run 75:8B10
- * WHAT IT DOES: Sets a channel's volume outright, as set and as it plays, with no fraction.
- * HOW: SoundVolumeSet and SoundVolume, SoundVolumeLo cleared.
- * Entry: A volume, X channel. Exit: all registers and flags kept.
+ * WHAT IT DOES: Sets a channel's pan outright, as set and as it plays, with no fraction.
+ * HOW: SoundPanSet and SoundPan, SoundPanLo cleared.
+ * Entry: A pan, X channel. Exit: all registers and flags kept.
  */
-void SoundSetVolume(uint8_t channel, uint8_t volume)
+void SoundSetPan(uint8_t channel, uint8_t pan)
 {
-    wr8((uint16_t)(SoundVolumeSet + channel), volume);
-    wr8((uint16_t)(SoundVolume + channel), volume);
-    wr8((uint16_t)(SoundVolumeLo + channel), 0);
+    wr8((uint16_t)(SoundPanSet + channel), pan);
+    wr8((uint16_t)(SoundPan + channel), pan);
+    wr8((uint16_t)(SoundPanLo + channel), 0);
 }
 
-void abi_SoundSetVolume(void)
+void abi_SoundSetPan(void)
 {
-    SoundSetVolume(cpu.x, cpu.a);
+    SoundSetPan(cpu.x, cpu.a);
 }
 
 /*
@@ -671,9 +672,9 @@ void abi_SoundModulate(void)
 /*
  * @routine 004E:21C SoundRampStep
  * @run 75:8A1C
- * WHAT IT DOES: Moves a channel's ramp on by its step, once its wait is over and only while the
- * slide is still at least the ramp away from where it started.
- * HOW: SoundChannelWait, SoundRampBy, SoundSlideFrom less SoundSlideHi against SoundRampHi;
+ * WHAT IT DOES: Moves a channel's ramp on by its step, once the note's gate is over and only while
+ * the volume less the slide is still at least the ramp.
+ * HOW: SoundGateTimer, SoundRampBy, SoundVolumeBase less SoundSlideHi against SoundRampHi;
  * SoundRampBy onto SoundRampLo, carrying into SoundRampHi.
  * Entry: X channel. Exit: X and Y kept. Waiting, A the wait, N and Z from it. No step, A 0, Z
  * set, N clear. Too close, A the distance, N and Z from it less the ramp, C clear, V from the
@@ -684,14 +685,14 @@ Ramp SoundRampStep(uint8_t channel)
     Ramp ramp = { RAMP_WAITING, 0, 0, 0, 0 };
     unsigned sum;
 
-    ramp.value = rd8((uint16_t)(SoundChannelWait + channel));
+    ramp.value = rd8((uint16_t)(SoundGateTimer + channel));
     if (ramp.value != 0)
         return ramp;
     ramp.value = rd8((uint16_t)(SoundRampBy + channel));
     ramp.how = RAMP_NO_STEP;
     if (ramp.value == 0)
         return ramp;
-    ramp.from = rd8((uint16_t)(SoundSlideFrom + channel));
+    ramp.from = rd8((uint16_t)(SoundVolumeBase + channel));
     ramp.slide = rd8((uint16_t)(SoundSlideHi + channel));
     ramp.value = (uint8_t)(ramp.from - ramp.slide);
     ramp.high = rd8((uint16_t)(SoundRampHi + channel));
@@ -971,4 +972,181 @@ void abi_SoundScaledOffset(void)
     abi_nz(result);
     abi_flag(P_C, !borrow && high == 0);
     abi_flag(P_V, (high & result & 0x80) != 0);
+}
+
+/*
+ * @routine 004E:6E5 SoundSetControl
+ * @run 75:8EE5
+ * WHAT IT DOES: Sets the selected PSG channel's volume, on when not 0, and its balance by the
+ * channel's pan; channels 4 and 5 are left alone while an effect plays on them.
+ * HOW: The volume with bit 7 to the control; SoundBalances by SoundPan, the second set when
+ * zSoundAltBalance is set.
+ * Entry: A volume, X channel. Exit: X kept; C set if the channel is 6 or more. Left alone, A and
+ * Y kept, N and V the effect's bits 7 and 6, Z clear. Otherwise A the balance, N and Z from it, Y
+ * the pan; V clear for channels 4 and 5, else kept.
+ */
+ControlSet SoundSetControl(uint8_t volume, uint8_t channel)
+{
+    ControlSet set = { false, false, 0, 0, 0, 0, 0 };
+
+    set.looked = channel >= EFFECT_SHARED_FIRST && channel < EFFECT_SHARED_END;
+    if (effect_holds(channel, &set.effect)) {
+        set.held = true;
+        return set;
+    }
+    wr8(PsgControl, volume != 0 ? (uint8_t)(volume | PSG_CHANNEL_ON) : 0);
+    set.pan = rd8((uint16_t)(SoundPan + channel));
+    set.alt = rd8(zSoundAltBalance);
+    set.balance = rd8((uint16_t)(SoundBalances + (set.alt != 0 ? BALANCE_SET_SIZE : 0) + set.pan));
+    wr8(PsgBalance, set.balance);
+    return set;
+}
+
+void control_exit_shim(ControlSet set, uint8_t channel)
+{
+    abi_flag(P_C, channel >= EFFECT_SHARED_END);
+    if (set.held) {
+        abi_flag(P_N, (set.effect & 0x80) != 0);
+        abi_flag(P_V, (set.effect & 0x40) != 0);
+        abi_flag(P_Z, false);
+        return;
+    }
+    cpu.a = set.balance;
+    cpu.y = set.pan;
+    abi_nz(set.balance);
+    abi_flag(P_V, (set.alt & 0x40) != 0);
+}
+
+void abi_SoundSetControl(void)
+{
+    control_exit_shim(SoundSetControl(cpu.a, cpu.x), cpu.x);
+}
+
+/*
+ * @routine 004E:27A SoundApplyVolume
+ * @run 75:8A7A
+ * WHAT IT DOES: A frame of the channel's envelope, then its PSG volume: the base, less the
+ * envelope, the slide, the ramp and what is given, less the fade on the six PSG channels, plus
+ * the two additions; below 0 it is 0, above $1F it is $1F.
+ * HOW: zSoundWordLo holds what is given; SoundEnvelopeStep; SoundSetControl.
+ * Entry: A what to take off, X channel. Exit: as SoundSetControl, with A the volume when left
+ * alone.
+ */
+ControlSet SoundApplyVolume(uint8_t less, uint8_t channel)
+{
+    uint8_t volume;
+
+    wr8(zSoundWordLo, less);
+    SoundEnvelopeStep(channel);
+    volume = (uint8_t)(rd8((uint16_t)(SoundVolumeBase + channel)) - rd8((uint16_t)(SoundEnvelopeLevel + channel)) -
+                       rd8((uint16_t)(SoundSlideHi + channel)) - rd8((uint16_t)(SoundRampHi + channel)) -
+                       rd8(zSoundWordLo));
+    if (channel < EFFECT_SHARED_END)
+        volume = (uint8_t)(volume - rd8(SoundFading));
+    volume = (uint8_t)(volume + rd8((uint16_t)(SoundVolumeAddA + channel)) + rd8((uint16_t)(SoundVolumeAddB + channel)));
+    if (volume & 0x80)
+        volume = 0;
+    else if (volume >= PSG_VOLUME_LIMIT)
+        volume = PSG_VOLUME_LIMIT - 1;
+    {
+        ControlSet set = SoundSetControl(volume, channel);
+
+        set.volume = volume;
+        return set;
+    }
+}
+
+void abi_SoundApplyVolume(void)
+{
+    uint8_t channel = cpu.x;
+    ControlSet set = SoundApplyVolume(cpu.a, channel);
+
+    if (set.held)
+        cpu.a = set.volume;
+    control_exit_shim(set, channel);
+}
+
+/*
+ * @routine 004E:2B0 SoundRest
+ * @run 75:8AB0
+ * WHAT IT DOES: A rest: the channel silenced for the length in the command's argument, with no
+ * gate and no volume.
+ * HOW: SoundChannel2550 1, SoundSilenceChannel; the length into SoundChannelDefaultArg and
+ * SoundNoteLength.
+ * Entry: X channel. Exit: A the length, N and Z from it; C and V as SoundSilenceChannel. X and Y
+ * kept.
+ */
+ChannelSilence SoundRest(uint8_t channel)
+{
+    ChannelSilence silence;
+    uint8_t length;
+
+    wr8((uint16_t)(SoundChannel2550 + channel), 1);
+    silence.release = SoundSilenceChannel(channel);
+    length = rd8(SoundCommandArgs);
+    wr8((uint16_t)(SoundChannelDefaultArg + channel), length);
+    wr8((uint16_t)(SoundNoteLength + channel), length);
+    wr8((uint16_t)(SoundGate + channel), 0);
+    wr8((uint16_t)(SoundGateTimer + channel), 0);
+    wr8((uint16_t)(SoundVolumeBase + channel), 0);
+    silence.length = length;
+    return silence;
+}
+
+void abi_SoundRest(void)
+{
+    ChannelSilence silence = SoundRest(cpu.x);
+
+    abi_flag(P_C, cpu.x >= EFFECT_SHARED_END);
+    if (silence.release.looked)
+        abi_flag(P_V, (silence.release.effect & 0x40) != 0);
+    cpu.a = silence.length;
+    abi_nz(silence.length);
+}
+
+/*
+ * @routine 004E:2CB SoundSetLength
+ * @run 75:8ACB
+ * WHAT IT DOES: Sets a note's length and its gate from the command's two arguments: the gate is
+ * that many sixteenths of the length, at least one frame; a gate of 0 sounds the whole length.
+ * HOW: SoundNoteLength and SoundChannelDefaultArg, SoundGate and SoundGateSet;
+ * SoundMultiplyNibble, its product shifted down four places, into SoundGateTimer.
+ * Entry: X channel. Exit: A the gate timer, N and Z from it. No gate, C, V and Y kept. Otherwise
+ * Y the length, C bit 3 of the product, V as SoundMultiplyNibble. X kept.
+ */
+NoteLength SoundSetLength(uint8_t channel)
+{
+    NoteLength note = { 0, 0, { 0, false, 0, false }, 0 };
+
+    note.length = rd8(SoundCommandArgs);
+    wr8((uint16_t)(SoundChannelDefaultArg + channel), note.length);
+    wr8((uint16_t)(SoundNoteLength + channel), note.length);
+    note.gate = rd8(SoundCommandArgs + 1);
+    wr8((uint16_t)(SoundGate + channel), note.gate);
+    wr8((uint16_t)(SoundGateSet + channel), note.gate);
+    if (note.gate == 0) {
+        note.timer = rd8(SoundCommandArgs);
+    } else {
+        note.product = SoundMultiplyNibble(note.gate, rd8(SoundCommandArgs));
+        wr8(zSoundWordHi, (uint8_t)(note.product.value >> 12));
+        note.timer = (uint8_t)(note.product.value >> 4);
+        if (note.timer == 0)
+            note.timer = 1;
+    }
+    wr8((uint16_t)(SoundGateTimer + channel), note.timer);
+    return note;
+}
+
+void abi_SoundSetLength(void)
+{
+    NoteLength note = SoundSetLength(cpu.x);
+
+    cpu.a = note.timer;
+    abi_nz(note.timer);
+    if (note.gate == 0)
+        return;
+    cpu.y = note.length;
+    abi_flag(P_C, (note.product.value & 0x08) != 0);
+    if (note.product.added)
+        abi_flag(P_V, note.product.overflow);
 }

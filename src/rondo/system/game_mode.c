@@ -17,7 +17,7 @@ enum {
     SCENE_COMMON = 5, SCENE_MENU_A = 4, SCENE_MENU_B = 6, ADPCM_MENU = 0x24,
     STAGE_BONUS = 0x8A, EVENTS_BANK_OFFSET = 0x0D,
     CD_FADE_OUT = 0x0C,
-    STAGES_ATTRACT = 5, JOY_RUN = 0x08
+    STAGES_ATTRACT = 5, JOY_RUN = 0x08, STOCK_AT_START = 3
 };
 
 /* Reads zModeDone; true when the overlay has finished. */
@@ -47,7 +47,7 @@ static Alu load_scene(Alu r, uint8_t scene)
 static Alu set_mode(Alu r, uint8_t mode)
 {
     alu_load(&r, mode);
-    return SetGameMode(r);
+    return call_abi(abi_SetGameMode, r);
 }
 
 /* The bit of StageClearBit, ORed into a table byte at the index it gave in X. */
@@ -206,9 +206,9 @@ Alu ModeAttract(void)
         r = load_scene(r, 8);
         r = load_scene(r, 9);
         r = AdpcmLoadFixed(r);
-        return NextGameMode(r);
+        return call_abi(abi_NextGameMode, r);
     }
-    r = ResetScoreCounters(r);
+    r = call_abi(abi_ResetScoreCounters, r);
     wr8(zCharacter, 0);
     r = load_scene(r, SCENE_COMMON);
     byte = rd8(zAttractStep);
@@ -225,7 +225,7 @@ Alu ModeAttract(void)
         wr8(zAttractStep, 0);
     byte = rd8(zGameRunning);
     wr8(zGameRunning, (uint8_t)(byte + 1));
-    return NextGameMode(r);
+    return call_abi(abi_NextGameMode, r);
 }
 
 void abi_ModeAttract(void)
@@ -309,8 +309,8 @@ void abi_ModeStageLoad(void)
 Alu StageEnterNext(Alu r)
 {
     r = StageEnter(r);
-    r = ResetScoreCounters(r);
-    return NextGameMode(r);
+    r = call_abi(abi_ResetScoreCounters, r);
+    return call_abi(abi_NextGameMode, r);
 }
 
 void abi_StageEnterNext(void)
@@ -357,7 +357,7 @@ Alu ModeStageLoadContinue(Alu r)
 {
     uint8_t byte;
 
-    r = ResetScoreCounters(r);
+    r = call_abi(abi_ResetScoreCounters, r);
     r = load_scene(r, SCENE_COMMON);
     r = StageEnter(r);
     byte = rd8(zGameRunning);
@@ -385,7 +385,7 @@ Alu ModeStageDone(Alu r)
 
     alu_compare(&r, byte, STAGE_BONUS);
     if (byte != STAGE_BONUS)
-        return NextGameMode(r);
+        return call_abi(abi_NextGameMode, r);
     r = mark_stage(r, StagesVisited);
     r = call_abi(abi_ResetGameState, r);
     r = call_abi(abi_SoundStopAll, r);
@@ -398,7 +398,7 @@ Alu ModeStageDone(Alu r)
         byte = rd8((uint16_t)(0x7D25 + cpu.x));
         alu_load(&r, byte);
         if (byte != 0)
-            return NextGameMode(r);
+            return call_abi(abi_NextGameMode, r);
     }
     alu_load(&r, 0xFF);
     wr8(zCharacterLoaded, 0xFF);
@@ -526,7 +526,7 @@ Alu StageClearedNext(Alu r)
     alu_load(&r, byte);
     if (byte == 0) {
         r.a = 0;
-        return SetGameMode(r);
+        return call_abi(abi_SetGameMode, r);
     }
     r = mark_stage(r, StagesReached);
     byte = rd8(zSaveSlot);
@@ -658,7 +658,7 @@ Alu ModeDead(void)
     byte |= 0x40;
     alu_load(&r, byte);
     wr8(zStage, byte);
-    r = ResetScoreCounters(r);
+    r = call_abi(abi_ResetScoreCounters, r);
     byte = rd8(zStage);
     alu_compare(&r, byte, 0x43);
     if (byte == 0x43) {
@@ -694,7 +694,7 @@ Alu ModeBackToTitle(Alu r)
     alu_load(&r, ADPCM_MENU);
     r = AdpcmLoad(r);
     r.a = 0;
-    return SetGameMode(r);
+    return call_abi(abi_SetGameMode, r);
 }
 
 void abi_ModeBackToTitle(void)
@@ -892,7 +892,7 @@ Alu ModeEnding(void)
     r = call_abi(abi_ResetGameState, r);
     r = load_scene(r, SCENE_COMMON);
     r = StageEnter(r);
-    r = ResetScoreCounters(r);
+    r = call_abi(abi_ResetScoreCounters, r);
     return set_mode(r, MODE_STAGE);
 }
 
@@ -906,19 +906,22 @@ void abi_ModeEnding(void)
  * @run 69:54B7
  * WHAT IT DOES: Goes on to the next game mode.
  * HOW: zGameMode plus one, into SetGameMode.
- * Entry: nothing. Exit: as SetGameMode, N and Z from the new mode.
+ * Entry: nothing. Exit: A 0, N and Z from the new mode. X, Y, C and V kept.
  */
-Alu NextGameMode(Alu r)
+uint8_t NextGameMode(void)
 {
-    uint8_t byte = rd8(zGameMode);
+    uint8_t mode = (uint8_t)(rd8(zGameMode) + 1);
 
-    alu_load(&r, (uint8_t)(byte + 1));
-    return SetGameMode(r);
+    SetGameMode(mode);
+    return mode;
 }
 
 void abi_NextGameMode(void)
 {
-    abi_alu(NextGameMode(alu_from_cpu()));
+    uint8_t mode = NextGameMode();
+
+    cpu.a = 0;
+    abi_nz(mode);
 }
 
 /*
@@ -928,19 +931,18 @@ void abi_NextGameMode(void)
  * HOW: Writes zGameMode, clears zModeDone, then zGameSubMode and zSubStep.
  * Entry: A mode. Exit: A 0. N, Z, C, V, X and Y kept.
  */
-Alu SetGameMode(Alu r)
+void SetGameMode(uint8_t mode)
 {
-    wr8(zGameMode, r.a);
+    wr8(zGameMode, mode);
     wr8(zModeDone, 0);
-    r.a = 0;
     wr8(zGameSubMode, 0);
     wr8(zSubStep, 0);
-    return r;
 }
 
 void abi_SetGameMode(void)
 {
-    abi_alu(SetGameMode(alu_from_cpu()));
+    SetGameMode(cpu.a);
+    cpu.a = 0;
 }
 
 /*
@@ -969,22 +971,22 @@ void abi_NextSubMode(void)
  * HOW: Clears the score to add, the score, and zField93.
  * Entry: nothing. Exit: A 3, N and Z from it. X, Y, C, V kept.
  */
-Alu ResetScoreCounters(Alu r)
+void ResetScoreCounters(void)
 {
     wr8(zScoreAddLo, 0);
     wr8(zScoreAddHi, 0);
     wr8(zScore0, 0);
     wr8(zScore1, 0);
     wr8(zScore2, 0);
-    alu_load(&r, 3);
-    wr8(zStock, 3);
+    wr8(zStock, STOCK_AT_START);
     wr8(zField93, 0);
-    return r;
 }
 
 void abi_ResetScoreCounters(void)
 {
-    abi_alu(ResetScoreCounters(alu_from_cpu()));
+    ResetScoreCounters();
+    cpu.a = STOCK_AT_START;
+    abi_nz(STOCK_AT_START);
 }
 
 /*

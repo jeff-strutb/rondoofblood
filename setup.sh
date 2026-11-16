@@ -98,8 +98,8 @@ if [ $# -eq 0 ]; then
     python3 "$top/tools/common/install_hooks.py"
     build_cc65
     build_pce
+    disc            # pcebox's routine table reads the split disc
     build_pcebox
-    disc
 else
     for c in "$@"; do
         case "$c" in

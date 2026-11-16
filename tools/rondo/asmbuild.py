@@ -6,7 +6,7 @@ at its @run address; every other byte of track 02 is included from the disc.
 Writes build/rondo/asm/image.bin. Assembling only: comparing the result with the
 disc is the image gate's job.
 
-    python3 tools/rondo/asmbuild.py       (needs the Linux ca65 and ld65 under WSL)
+    python3 tools/rondo/asmbuild.py       (on Windows, needs the Linux ca65 and ld65 under WSL)
 """
 import glob
 import os
@@ -54,6 +54,9 @@ def blocks():
 
 
 def wsl(path):
+    """A Windows path as WSL sees it; on Linux or macOS the path itself."""
+    if os.name != "nt":
+        return os.path.abspath(path)
     drive, rest = os.path.splitdrive(os.path.abspath(path))
     return "/mnt/" + drive[0].lower() + rest.replace("\\", "/")
 
@@ -80,7 +83,8 @@ def main():
     base = wsl(os.path.join(OUT, "image"))
     root = wsl(TOP)
     cmd = f"{ca65} -I {root} --bin-include-dir {root} -o {base}.o {base}.s && {ld65} -C {base}.cfg -o {base}.bin {base}.o"
-    subprocess.run(["wsl.exe", "-e", "sh", "-c", cmd], check=True, timeout=120)
+    shell = ["wsl.exe", "-e", "sh", "-c"] if os.name == "nt" else ["sh", "-c"]
+    subprocess.run(shell + [cmd], check=True, timeout=120)
     print(f"{len(pieces)} routines assembled in place: {os.path.join(OUT, 'image.bin')}")
 
 

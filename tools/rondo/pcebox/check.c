@@ -194,13 +194,40 @@ static unsigned hy_bank(uint16_t addr)
     return canon((uint32_t)chk_mpr(addr >> 13) << 13) >> 13;
 }
 
+/*
+ * RONDO_TRACE_HW=LO:HI: every hardware access whose index in the record's stream of them is in
+ * [LO, HI), to stderr, from the record run and from the hybrid, to find where they part. Off
+ * unless set; it changes nothing that is run or judged.
+ */
+static uint64_t trace_lo, trace_hi;
+
+static void trace_access(char kind, uint32_t where, uint8_t value, uint64_t index, uint32_t ts,
+                         uint32_t want)
+{
+    if (index >= trace_lo && index < trace_hi)
+        fprintf(stderr, "HW %c %llu ts %u want %u %06X %02X\n", kind, (unsigned long long)index, ts,
+                want, where, value);
+}
+
+static uint64_t hw_index_next(void);
+static uint64_t hw_count(void);
+static uint32_t hw_clock_at(uint64_t index);
+
 uint8_t rd8(uint16_t addr)
 {
     uint32_t p;
 
     if (mode == MODE_HYBRID) {
-        if (!rom_bank[hy_bank(addr)])
+        if (!rom_bank[hy_bank(addr)]) {
+            uint64_t index = hw_index_next();
+            uint8_t v;
+
             pace_hw();
+            v = chk_bus_rd(addr);
+            trace_access('r', ((uint32_t)hy_bank(addr) << 13) | (addr & 0x1FFF), v, index, chk_ts(),
+                         hw_clock_at(index));
+            return v;
+        }
         return chk_bus_rd(addr);
     }
     if (++c_budget > 4000000)
@@ -247,8 +274,13 @@ void wr8(uint16_t addr, uint8_t value)
     uint32_t p;
 
     if (mode == MODE_HYBRID) {
-        if (!ram_bank[hy_bank(addr)])
+        if (!ram_bank[hy_bank(addr)]) {
+            uint64_t index = hw_index_next();
+
             pace_hw();
+            trace_access('w', ((uint32_t)hy_bank(addr) << 13) | (addr & 0x1FFF), value, index,
+                         chk_ts(), hw_clock_at(index));
+        }
         chk_bus_wr(addr, value);
         return;
     }
@@ -401,18 +433,24 @@ static void log_push(int type, uint32_t phys, uint8_t val, uint8_t old)
     e->old = old;
 }
 
+static void note_clock_step(void);
+
 void check_rd(uint32_t phys, uint8_t v, int kind)
 {
     if (kind == 2) {
         prev_op = v;
+        if (mode == MODE_RECORD)
+            note_clock_step();
         return;
     }
     if (kind != 0 || !depth)
         return;
     phys = canon(phys);
     if (mode == MODE_RECORD) {
-        if (!rom_bank[phys >> 13])
+        if (!rom_bank[phys >> 13]) {
+            trace_access('R', phys, v, hw_count(), chk_ts(), chk_ts());
             note_hw_clock();
+        }
         return;
     }
     if (mode != MODE_A5)
@@ -426,8 +464,10 @@ void check_wr_pre(uint32_t phys, uint8_t v)
         return;
     phys = canon(phys);
     if (mode == MODE_RECORD) {
-        if (!ram_bank[phys >> 13])
+        if (!ram_bank[phys >> 13]) {
+            trace_access('W', phys, v, hw_count(), chk_ts(), chk_ts());
             note_hw_clock();
+        }
         return;
     }
     if (mode != MODE_A5)
@@ -649,6 +689,21 @@ static void pace_hw(void)
     }
 }
 
+static uint64_t hw_count(void)
+{
+    return nhw;
+}
+
+static uint64_t hw_index_next(void)
+{
+    return hw_replay;
+}
+
+static uint32_t hw_clock_at(uint64_t index)
+{
+    return index < nhw ? hw_clock[index] : 0;
+}
+
 static void rec_new(int tag_index)
 {
     if (nrec == recmax) {
@@ -662,6 +717,23 @@ static void rec_new(int tag_index)
     recs[nrec].start_ts = chk_ts();
     recs[nrec].hw_first = nhw;
     nrec++;
+}
+
+/*
+ * The core resets its clock inside a frame's run, at a point of its own. A call open across that
+ * reset crossed a frame even when its end's clock is above its start's, so the clock is watched
+ * at every instruction of the record run: a step backward marks every open call crossed.
+ */
+static uint32_t last_ts_seen;
+
+static void note_clock_step(void)
+{
+    uint32_t now = chk_ts();
+
+    if (now < last_ts_seen)
+        for (int i = 0; i < depth; i++)
+            recs[frames[i].record].flags |= REC_CROSSED;
+    last_ts_seen = now;
 }
 
 static int tag_resident(const Tag *t)
@@ -791,9 +863,9 @@ int check_exec(uint32_t pc)
         /* The first call the clocks disagree at, with what ran before it. */
         if (!drift_reported && c->start_ts != chk_ts()) {
             drift_reported = 1;
-            fprintf(report, "first clock drift at frame %d, %s: original ts %u, hybrid ts %u (record %llu, flags %u)\n",
+            fprintf(report, "first clock drift at frame %d, %s: original ts %u, hybrid ts %u (record %llu, flags %u, hw_first %llu)\n",
                     run_frame_stamp, rondo_tags[index].name, c->start_ts, chk_ts(),
-                    (unsigned long long)rec_cursor, c->flags);
+                    (unsigned long long)rec_cursor, c->flags, (unsigned long long)c->hw_first);
             for (unsigned i = recent_n > 16 ? recent_n - 16 : 0; i < recent_n; i++)
                 fprintf(report, "  before: frame %lu %s A%02X X%02X Y%02X owed %d used %d rec %u\n",
                         recent[i % RECENT].frame, rondo_tags[recent[i % RECENT].tag].name,
@@ -832,6 +904,10 @@ int check_exec(uint32_t pc)
             int32_t owed;
 
             hw_replay = c->hw_first;
+            if (c->hw_first >= trace_lo && c->hw_first < trace_hi)
+                fprintf(stderr, "SWAP %s record %llu hw_first %llu delta %u start %u\n", t->name,
+                        (unsigned long long)(c - recs), (unsigned long long)c->hw_first, c->delta,
+                        c->start_ts);
             rondo_tags[index].abi();
             owed = (int32_t)c->delta - (int32_t)(chk_ts() - ts0);
             recent[(recent_n - 1) % RECENT].owed = owed;
@@ -934,6 +1010,9 @@ int check_init(int which, const char *path, const char *user_path)
 
     mode = which;
     check_path = path;
+    if (getenv("RONDO_TRACE_HW"))
+        sscanf(getenv("RONDO_TRACE_HW"), "%llu:%llu", (unsigned long long *)&trace_lo,
+               (unsigned long long *)&trace_hi);
     if (getenv("RONDO_DUMP_FRAME"))
         dump_frame = strtoul(getenv("RONDO_DUMP_FRAME"), NULL, 10);
     user = malloc(20785152);

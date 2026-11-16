@@ -563,3 +563,6 @@ AdpcmRate = $180E ; the ADPCM unit's playback rate
 zRichterObject = $D9 ; the slot of the object of Richter's that is being run
 RichterChargePads = $C4EB ; the press that charges an object, by its facing
 RichterFlashFlags = $C4F9 ; OBJ_2B18 for a charged object's flash, by OBJ_34B8 less $0E
+RichterObjectAnimations = $DA99 ; the animation lists of Richter's objects, a word each
+RichterFrameHitboxes = $DD56 ; the hitbox of each frame of Richter's objects; 0 none
+RichterObjectHitboxes = $DDE8 ; hitboxes, four bytes each: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38

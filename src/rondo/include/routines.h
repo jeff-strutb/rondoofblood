@@ -488,6 +488,27 @@ Quicken RichterObjectQuicken(uint8_t object);
 Flash RichterObjectFlash(uint8_t object);
 Charge RichterObjectCharge(uint8_t object);
 Sum RichterObjectAtPlayer(uint8_t object);
+Sum RichterObjectAddXLow(uint8_t object, uint8_t amount);
+Sum RichterObjectAddXHigh(uint8_t object, uint8_t amount, bool carry);
+Sum RichterObjectSetFall(uint8_t object, uint8_t low, bool carry);
+Sum RichterObjectFall(uint8_t object);
+Sum RichterObjectFallSlow(uint8_t object);
+uint8_t RichterObjectAtPlayerPlace(uint8_t object);
+uint8_t RichterObjectToPoint(uint8_t object);
+void RichterObjectHitboxOff(uint8_t object);
+
+/* A hitbox given or not: the hitbox, the frame it came from, and the last byte written. */
+typedef struct { bool given; uint8_t hitbox; uint8_t last; uint8_t frame; } Hitbox;
+
+Hitbox RichterObjectHitboxFrom(uint8_t object, uint8_t hitbox, bool none);
+void hitbox_exit_shim(Hitbox box);
+Hitbox RichterObjectHitboxForFrame(uint8_t object);
+Hitbox RichterObjectHitboxOn(uint8_t object);
+uint8_t RichterObjectAnimationList(uint8_t object);
+AnimationStep RichterObjectSetAnimation(uint8_t object, uint8_t animation);
+AnimationStep RichterObjectAnimationTick(uint8_t object);
+AnimationStep RichterObjectAnimationRunning(uint8_t object);
+AnimationStep RichterObjectAnimationWait(uint8_t object);
 uint8_t SoundCommandCall(uint8_t channel);
 SequenceEnd SoundCommandReturn(uint8_t channel);
 void glide_setup_exit_shim(GlideSetup setup);

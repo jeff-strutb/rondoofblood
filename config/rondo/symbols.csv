@@ -573,3 +573,6 @@ B8FA,abs,SoundMusicTable,the sound driver: by music command less $55, the addres
 D9,zp,zRichterObject,the slot of the object of Richter's that is being run
 C4EB,abs,RichterChargePads,the press that charges an object, by its facing
 C4F9,abs,RichterFlashFlags,OBJ_2B18 for a charged object's flash, by OBJ_34B8 less $0E
+DA99,abs,RichterObjectAnimations,the animation lists of Richter's objects, a word each
+DD56,abs,RichterFrameHitboxes,the hitbox of each frame of Richter's objects; 0 none
+DDE8,abs,RichterObjectHitboxes,hitboxes, four bytes each: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38

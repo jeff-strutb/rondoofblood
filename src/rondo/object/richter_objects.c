@@ -12,8 +12,33 @@
 
 enum {
     OBJECT_MARK = 0x10, OBJECT_STATE_QUICK = 6, OBJECT_QUICKEN = 4, OBJECT_FLASH_FIRST = 0x8E,
-    OBJECT_FLASH_BIT = 0x80, OBJECT_CHARGE_FROM = 0x0C, OBJECT_FLASH_BASE = 0x0E, PLAYER = 0
+    OBJECT_FLASH_BIT = 0x80, OBJECT_CHARGE_FROM = 0x0C, OBJECT_FLASH_BASE = 0x0E, PLAYER = 0,
+    OBJECT_FALL = 6, OBJECT_FALL_SLOW = 3, OBJECT_ANIMATION_STOPPED = 0xFF, OBJECT_ANIMATION_LOOPS = 0xFE
 };
+
+/* A, N, Z, C and V as an add leaves them. */
+static void abi_exit_sum(Sum sum)
+{
+    cpu.a = sum.value;
+    abi_nz(sum.value);
+    abi_flag(P_C, sum.carry);
+    abi_flag(P_V, sum.overflow);
+}
+
+/* A the byte loaded last, N and Z from it. */
+static void abi_exit_loaded_object(uint8_t value)
+{
+    cpu.a = value;
+    abi_nz(value);
+}
+
+/* The caller's return address dropped, as PLA PLA does: A its high byte, N and Z from it. */
+static void object_drop_return_shim(void)
+{
+    cpu.a = rd8((uint16_t)(0x2100 + (uint8_t)(cpu.s + 2)));
+    cpu.s = (uint8_t)(cpu.s + 2);
+    abi_nz(cpu.a);
+}
 
 /* The frames a charged object flashes in place of: one flash frame for each. */
 static const uint8_t flash_frames[] = { 0x07, 0x0E, 0x15, 0x1C };
@@ -364,4 +389,442 @@ void abi_RichterObjectAtPlayer(void)
     abi_nz(high.value);
     abi_flag(P_C, high.carry);
     abi_flag(P_V, high.overflow);
+}
+
+/*
+ * @routine 01BD:00C RichterObjectAddXLow
+ * @run 6E:C00C
+ * WHAT IT DOES: Adds to an object's X position's low byte.
+ * HOW: A plain add, the carry left for RichterObjectAddXHigh.
+ * Entry: A the amount, X object. Exit: A the low byte, N, Z, C and V from the add. X and Y kept.
+ */
+Sum RichterObjectAddXLow(uint8_t object, uint8_t amount)
+{
+    Sum sum = add_bytes(amount, rd8((uint16_t)(OBJ_X_LO + object)), false);
+
+    wr8((uint16_t)(OBJ_X_LO + object), sum.value);
+    return sum;
+}
+
+void abi_RichterObjectAddXLow(void)
+{
+    abi_exit_sum(RichterObjectAddXLow(cpu.x, cpu.a));
+}
+
+/*
+ * @routine 01BD:014 RichterObjectAddXHigh
+ * @run 6E:C014
+ * WHAT IT DOES: Adds to an object's X position's high byte, with the carry from the low byte.
+ * HOW: An add with the carry in.
+ * Entry: A the amount, C the carry, X object. Exit: A the high byte, N, Z, C and V from the add.
+ * X and Y kept.
+ */
+Sum RichterObjectAddXHigh(uint8_t object, uint8_t amount, bool carry)
+{
+    Sum sum = add_bytes(amount, rd8((uint16_t)(OBJ_X_HI + object)), carry);
+
+    wr8((uint16_t)(OBJ_X_HI + object), sum.value);
+    return sum;
+}
+
+void abi_RichterObjectAddXHigh(void)
+{
+    abi_exit_sum(RichterObjectAddXHigh(cpu.x, cpu.a, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 01BD:1D5 RichterObjectSetFall
+ * @run 6E:C1D5
+ * WHAT IT DOES: Sets an object's Y speed's low byte, carrying into its high byte.
+ * HOW: The carry added to OBJ_VY_HI.
+ * Entry: A the low byte, C the carry, X object. Exit: A the high byte, N, Z, C and V from adding
+ * the carry. X and Y kept.
+ */
+Sum RichterObjectSetFall(uint8_t object, uint8_t low, bool carry)
+{
+    Sum high;
+
+    wr8((uint16_t)(OBJ_VY_LO + object), low);
+    high = add_bytes(0, rd8((uint16_t)(OBJ_VY_HI + object)), carry);
+    wr8((uint16_t)(OBJ_VY_HI + object), high.value);
+    return high;
+}
+
+void abi_RichterObjectSetFall(void)
+{
+    abi_exit_sum(RichterObjectSetFall(cpu.x, cpu.a, (cpu.p & P_C) != 0));
+}
+
+/* An object's Y speed made larger by a pull. */
+static Sum fall_by(uint8_t object, uint8_t pull)
+{
+    Sum low = add_bytes(rd8((uint16_t)(OBJ_VY_LO + object)), pull, false);
+
+    return RichterObjectSetFall(object, low.value, low.carry);
+}
+
+/*
+ * @routine 01BD:1CF RichterObjectFall
+ * @run 6E:C1CF
+ * WHAT IT DOES: Pulls an object down: its Y speed grows by 6.
+ * HOW: Runs on into RichterObjectSetFall.
+ * Entry: X object. Exit: as RichterObjectSetFall.
+ */
+Sum RichterObjectFall(uint8_t object)
+{
+    return fall_by(object, OBJECT_FALL);
+}
+
+void abi_RichterObjectFall(void)
+{
+    abi_exit_sum(RichterObjectFall(cpu.x));
+}
+
+/*
+ * @routine 01BD:1E0 RichterObjectFallSlow
+ * @run 6E:C1E0
+ * WHAT IT DOES: Pulls an object down more gently: its Y speed grows by 3.
+ * HOW: RichterObjectSetFall.
+ * Entry: X object. Exit: as RichterObjectSetFall.
+ */
+Sum RichterObjectFallSlow(uint8_t object)
+{
+    return fall_by(object, OBJECT_FALL_SLOW);
+}
+
+void abi_RichterObjectFallSlow(void)
+{
+    abi_exit_sum(RichterObjectFallSlow(cpu.x));
+}
+
+/*
+ * @routine 01BE:6BE RichterObjectAtPlayerPlace
+ * @run 6E:CEBE
+ * WHAT IT DOES: Puts an object exactly where Richter is.
+ * HOW: His position into zTemp00 to 03; runs on into RichterObjectToPoint.
+ * Entry: X object. Exit: as RichterObjectToPoint.
+ */
+uint8_t RichterObjectAtPlayerPlace(uint8_t object)
+{
+    wr8(zTemp00, rd8(OBJ_X_LO + PLAYER));
+    wr8(zTemp01, rd8(OBJ_X_HI + PLAYER));
+    wr8(zTemp02, rd8(OBJ_Y_LO + PLAYER));
+    wr8(zTemp03, rd8(OBJ_Y_HI + PLAYER));
+    return RichterObjectToPoint(object);
+}
+
+void abi_RichterObjectAtPlayerPlace(void)
+{
+    abi_exit_loaded_object(RichterObjectAtPlayerPlace(cpu.x));
+}
+
+/*
+ * @routine 01BE:6D2 RichterObjectToPoint
+ * @run 6E:CED2
+ * WHAT IT DOES: Puts an object at the point in zTemp00 to 03.
+ * HOW: X low and high, Y low and high.
+ * Entry: X object. Exit: A the Y position's high byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t RichterObjectToPoint(uint8_t object)
+{
+    uint8_t high;
+
+    wr8((uint16_t)(OBJ_X_LO + object), rd8(zTemp00));
+    wr8((uint16_t)(OBJ_X_HI + object), rd8(zTemp01));
+    wr8((uint16_t)(OBJ_Y_LO + object), rd8(zTemp02));
+    high = rd8(zTemp03);
+    wr8((uint16_t)(OBJ_Y_HI + object), high);
+    return high;
+}
+
+void abi_RichterObjectToPoint(void)
+{
+    abi_exit_loaded_object(RichterObjectToPoint(cpu.x));
+}
+
+/*
+ * @routine 01C0:51B RichterObjectHitboxOff
+ * @run 6E:DD1B
+ * WHAT IT DOES: Takes an object's hitbox away.
+ * HOW: OBJ_3250 cleared.
+ * Entry: X object. Exit: all registers and flags kept.
+ */
+void RichterObjectHitboxOff(uint8_t object)
+{
+    wr8((uint16_t)(OBJ_3250 + object), 0);
+}
+
+void abi_RichterObjectHitboxOff(void)
+{
+    RichterObjectHitboxOff(cpu.x);
+}
+
+/*
+ * @routine 01C0:52A RichterObjectHitboxFrom
+ * @run 6E:DD2A
+ * WHAT IT DOES: Gives an object the hitbox picked, or none.
+ * HOW: Z from the caller says none; otherwise the hitbox's four bytes from RichterObjectHitboxes,
+ * four bytes a hitbox.
+ * Entry: A the hitbox, Z set for none, X object. Exit: none, as RichterObjectHitboxOff. Otherwise
+ * A the last byte, N and Z from it, Y four times the hitbox, C its bit 6. X and V kept.
+ */
+Hitbox RichterObjectHitboxFrom(uint8_t object, uint8_t hitbox, bool none)
+{
+    Hitbox box = { false, 0, 0, 0 };
+    uint8_t entry;
+
+    if (none) {
+        RichterObjectHitboxOff(object);
+        return box;
+    }
+    box.given = true;
+    box.hitbox = hitbox;
+    entry = (uint8_t)(hitbox << 2);
+    wr8((uint16_t)(OBJ_3930 + object), rd8((uint16_t)(RichterObjectHitboxes + entry)));
+    wr8((uint16_t)(OBJ_39E0 + object), rd8((uint16_t)(RichterObjectHitboxes + entry + 1)));
+    wr8((uint16_t)(OBJ_3988 + object), rd8((uint16_t)(RichterObjectHitboxes + entry + 2)));
+    box.last = rd8((uint16_t)(RichterObjectHitboxes + entry + 3));
+    wr8((uint16_t)(OBJ_3A38 + object), box.last);
+    return box;
+}
+
+void hitbox_exit_shim(Hitbox box)
+{
+    if (!box.given)
+        return;
+    cpu.a = box.last;
+    cpu.y = (uint8_t)(box.hitbox << 2);
+    abi_nz(box.last);
+    abi_flag(P_C, (box.hitbox & 0x40) != 0);
+}
+
+void abi_RichterObjectHitboxFrom(void)
+{
+    hitbox_exit_shim(RichterObjectHitboxFrom(cpu.x, cpu.a, (cpu.p & P_Z) != 0));
+}
+
+/*
+ * @routine 01C0:524 RichterObjectHitboxByFrame
+ * @run 6E:DD24
+ * WHAT IT DOES: Gives an object the hitbox of the frame it shows, or none.
+ * HOW: RichterFrameHitboxes by OBJ_2A68; runs on into RichterObjectHitboxFrom.
+ * Entry: X object. Exit: none, A 0, Z set, N clear, Y the frame. Otherwise as
+ * RichterObjectHitboxFrom.
+ */
+Hitbox RichterObjectHitboxForFrame(uint8_t object)
+{
+    uint8_t frame = rd8((uint16_t)(OBJ_2A68 + object));
+    uint8_t hitbox = rd8((uint16_t)(RichterFrameHitboxes + frame));
+    Hitbox box = RichterObjectHitboxFrom(object, hitbox, hitbox == 0);
+
+    box.frame = frame;
+    return box;
+}
+
+void abi_RichterObjectHitboxByFrame(void)
+{
+    Hitbox box = RichterObjectHitboxForFrame(cpu.x);
+
+    if (!box.given) {
+        cpu.a = 0;
+        cpu.y = box.frame;
+        abi_nz(0);
+        return;
+    }
+    hitbox_exit_shim(box);
+}
+
+/*
+ * @routine 01C0:51F RichterObjectHitboxOn
+ * @run 6E:DD1F
+ * WHAT IT DOES: Marks an object as having a hitbox and gives it its frame's.
+ * HOW: OBJ_3250 1; runs on into RichterObjectHitboxByFrame.
+ * Entry: X object. Exit: as RichterObjectHitboxByFrame.
+ */
+Hitbox RichterObjectHitboxOn(uint8_t object)
+{
+    wr8((uint16_t)(OBJ_3250 + object), 1);
+    return RichterObjectHitboxForFrame(object);
+}
+
+void abi_RichterObjectHitboxOn(void)
+{
+    Hitbox box = RichterObjectHitboxOn(cpu.x);
+
+    if (!box.given) {
+        cpu.a = 0;
+        cpu.y = box.frame;
+        abi_nz(0);
+        return;
+    }
+    hitbox_exit_shim(box);
+}
+
+/* An object's animation list, with zTemp00 and 01 left pointing at it as the original does. */
+static uint16_t object_animation_list(uint8_t object)
+{
+    uint16_t entry = (uint16_t)(RichterObjectAnimations + (uint8_t)(rd8((uint16_t)(OBJ_FIELDS_2EE0 + object)) << 1));
+    uint16_t list = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
+
+    wr8(zTemp00, (uint8_t)list);
+    wr8(zTemp01, (uint8_t)(list >> 8));
+    return list;
+}
+
+/*
+ * @routine 01C0:284 RichterObjectAnimationList
+ * @run 6E:DA84
+ * WHAT IT DOES: Points at an object's animation list and its step's entry.
+ * HOW: RichterObjectAnimations by OBJ_FIELDS_2EE0 into zTemp00 and 01; the step doubled.
+ * Entry: X object. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V
+ * kept.
+ */
+uint8_t RichterObjectAnimationList(uint8_t object)
+{
+    object_animation_list(object);
+    return rd8((uint16_t)(OBJ_FLAGS_2F38 + object));
+}
+
+void abi_RichterObjectAnimationList(void)
+{
+    uint8_t step = RichterObjectAnimationList(cpu.x);
+
+    cpu.a = (uint8_t)(step << 1);
+    cpu.y = cpu.a;
+    abi_nz(cpu.a);
+    abi_flag(P_C, (step & 0x80) != 0);
+}
+
+/* The list's entry at the object's step: how long, then which frame; $FE starts it over. */
+static AnimationStep object_read_entry(uint8_t object, AnimationStep result)
+{
+    for (;;) {
+        uint16_t list = object_animation_list(object);
+        uint8_t step = rd8((uint16_t)(OBJ_FLAGS_2F38 + object));
+        uint8_t time;
+
+        result.step = step;
+        time = rd8((uint16_t)(list + (uint8_t)(step << 1)));
+        wr8((uint16_t)(OBJ_2F90 + object), time);
+        if (time == OBJECT_ANIMATION_STOPPED) {
+            result.how = FRAME_END_MARK;
+            return result;
+        }
+        if (time != OBJECT_ANIMATION_LOOPS) {
+            result.frame = rd8((uint16_t)(list + (uint8_t)((step << 1) + 1)));
+            wr8((uint16_t)(OBJ_2A68 + object), result.frame);
+            result.how = FRAME_SHOWN;
+            return result;
+        }
+        wr8((uint16_t)(OBJ_FLAGS_2F38 + object), 0);
+        result.looped = true;
+    }
+}
+
+/*
+ * @routine 01C0:263 RichterObjectSetAnimation
+ * @run 6E:DA63
+ * @stop DA84
+ * WHAT IT DOES: Starts an object's animation from its first step.
+ * HOW: The animation into OBJ_FIELDS_2EE0, step zero, and its first entry read.
+ * Entry: A animation, X object. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
+ */
+AnimationStep RichterObjectSetAnimation(uint8_t object, uint8_t animation)
+{
+    AnimationStep result = { FRAME_STOPPED };
+
+    wr8((uint16_t)(OBJ_FIELDS_2EE0 + object), animation);
+    wr8((uint16_t)(OBJ_FLAGS_2F38 + object), 0);
+    return object_read_entry(object, result);
+}
+
+void abi_RichterObjectSetAnimation(void)
+{
+    animation_exit_shim(RichterObjectSetAnimation(cpu.x, cpu.a));
+}
+
+/*
+ * @routine 01C0:251 RichterObjectAnimationTick
+ * @run 6E:DA51
+ * WHAT IT DOES: Counts down an object's frame on show; at zero moves to the next step of its list.
+ * A timer of $FF means its animation has stopped.
+ * HOW: OBJ_2F90 the timer, OBJ_FLAGS_2F38 the step, OBJ_2A68 the frame shown.
+ * Entry: X object. Exit: as RichterAnimationTick.
+ */
+AnimationStep RichterObjectAnimationTick(uint8_t object)
+{
+    AnimationStep result = { FRAME_STOPPED };
+    uint8_t time = rd8((uint16_t)(OBJ_2F90 + object));
+
+    if (time == OBJECT_ANIMATION_STOPPED)
+        return result;
+    wr8((uint16_t)(OBJ_2F90 + object), (uint8_t)(time - 1));
+    if (time == 1) {
+        wr8((uint16_t)(OBJ_FLAGS_2F38 + object), (uint8_t)(rd8((uint16_t)(OBJ_FLAGS_2F38 + object)) + 1));
+        return object_read_entry(object, result);
+    }
+    {
+        uint16_t list = object_animation_list(object);
+        uint8_t step = rd8((uint16_t)(OBJ_FLAGS_2F38 + object));
+
+        result.step = step;
+        result.same_frame = true;
+        result.frame = rd8((uint16_t)(list + (uint8_t)((step << 1) + 1)));
+        wr8((uint16_t)(OBJ_2A68 + object), result.frame);
+        result.how = FRAME_SHOWN;
+        return result;
+    }
+}
+
+void abi_RichterObjectAnimationTick(void)
+{
+    animation_exit_shim(RichterObjectAnimationTick(cpu.x));
+}
+
+/*
+ * @routine 01C0:248 RichterObjectAnimationRunning
+ * @run 6E:DA48
+ * WHAT IT DOES: Steps an object's animation; its caller looks at whether it has ended.
+ * HOW: RichterObjectAnimationTick, then the timer against $FF.
+ * Entry: X object. Exit: A the timer, N, Z and C from comparing it with $FF. Y as the tick. X and
+ * V kept. Clobbers zTemp00-01.
+ */
+AnimationStep RichterObjectAnimationRunning(uint8_t object)
+{
+    return RichterObjectAnimationTick(object);
+}
+
+void abi_RichterObjectAnimationRunning(void)
+{
+    uint8_t object = cpu.x;
+    AnimationStep step = RichterObjectAnimationRunning(object);
+    uint8_t time = rd8((uint16_t)(OBJ_2F90 + object));
+
+    animation_exit_shim(step);
+    cpu.a = time;
+    abi_nz((uint8_t)(time - OBJECT_ANIMATION_STOPPED));
+    abi_flag(P_C, time == OBJECT_ANIMATION_STOPPED);
+}
+
+/*
+ * @routine 01C0:240 RichterObjectAnimationWait
+ * @run 6E:DA40
+ * WHAT IT DOES: Steps an object's animation and, unless it has ended or shows frame 0, returns to
+ * its caller's caller, so the caller's own work waits for the end.
+ * HOW: RichterObjectAnimationTick; Z from it; the assembly drops the return address.
+ * Entry: X object. Exit, Z set: as the tick. Otherwise the caller's return address is gone, A its
+ * high byte, N and Z from it.
+ */
+AnimationStep RichterObjectAnimationWait(uint8_t object)
+{
+    return RichterObjectAnimationTick(object);
+}
+
+void abi_RichterObjectAnimationWait(void)
+{
+    AnimationStep step = RichterObjectAnimationWait(cpu.x);
+
+    animation_exit_shim(step);
+    if (step.how == FRAME_SHOWN && step.frame != 0)
+        object_drop_return_shim();
 }

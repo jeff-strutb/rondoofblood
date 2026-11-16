@@ -566,5 +566,8 @@
 #define zRichterObject 0x20D9 /* the slot of the object of Richter's that is being run */
 #define RichterChargePads 0xC4EB /* the press that charges an object, by its facing */
 #define RichterFlashFlags 0xC4F9 /* OBJ_2B18 for a charged object's flash, by OBJ_34B8 less $0E */
+#define RichterObjectAnimations 0xDA99 /* the animation lists of Richter's objects, a word each */
+#define RichterFrameHitboxes 0xDD56 /* the hitbox of each frame of Richter's objects; 0 none */
+#define RichterObjectHitboxes 0xDDE8 /* hitboxes, four bytes each: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38 */
 
 #endif

@@ -24,6 +24,9 @@ enum {
     CHANNEL_VOLUME_START = 0x1F, CHANNEL_PAN_START = 0x08, MUSIC_CHANNELS = 0x3F, MUSIC_FIRST = 0x55,
     VOICE_SECOND_SET = 0x80, VOICE_SET_FIRST = 0x62, VOICE_SET_END = 0x70, VOICE_BACK = 0x3FF6,
     VOICE_WAITING = 0x01, VOICE_SECOND_FIRST = 0x72, VOICE_SECOND_STAGES = 0x0C, VOICE_ENTRY = 6,
+    COMMAND_STOP = 0xFF, COMMAND_FADE = 0xFE, COMMAND_ALT_BALANCE = 0xFD, COMMAND_FIRST_BALANCE = 0xFC,
+    COMMAND_MUSIC_LAST = 0x61, COMMAND_EXCLUSIVE = 0x60, COMMAND_VOICES = 0x62, COMMAND_PAIRED = 0x3D,
+    EFFECT_ENTRY = 3, EFFECT_CHANNEL_A = 6, EFFECT_CHANNEL_B = 7, EFFECT_CHANNEL_BITS = 0xC0,
     SEQUENCE_REST = 0xE0, SEQUENCE_LENGTH = 0xE1, SEQUENCE_VOLUMES = 0x70, SEQUENCE_GLIDE_TO = 0xF3,
     TEMPO_FULL = 0xFF
 };
@@ -3136,9 +3139,8 @@ uint8_t SoundStartMusic(void)
     return command;
 }
 
-void abi_SoundStartMusic(void)
+void music_start_exit_shim(uint8_t command)
 {
-    uint8_t command = SoundStartMusic();
     Sum low = add_bytes((uint8_t)((uint8_t)(command - MUSIC_FIRST) << 1), (uint8_t)SoundMusicTable, false);
     Sum high = add_bytes(0, (uint8_t)(SoundMusicTable >> 8), low.carry);
 
@@ -3148,6 +3150,11 @@ void abi_SoundStartMusic(void)
     abi_nz(PSG_VOLUME_FULL);
     abi_flag(P_C, true);
     abi_flag(P_V, high.overflow);
+}
+
+void abi_SoundStartMusic(void)
+{
+    music_start_exit_shim(SoundStartMusic());
 }
 
 /*
@@ -3329,4 +3336,187 @@ void voice_start_exit_shim(VoiceStart voice)
 void abi_SoundStartVoice(void)
 {
     voice_start_exit_shim(SoundStartVoice());
+}
+
+/* An effect's entry: its priority, with zSoundTableLo and Hi at it. */
+static EffectEntry effect_entry(uint8_t command)
+{
+    EffectEntry entry;
+
+    entry.product = SoundMultiply(command, EFFECT_ENTRY);
+    entry.low = add_bytes(rd8(zSoundWordLo), (uint8_t)SoundEffectTable, false);
+    wr8(zSoundTableLo, entry.low.value);
+    entry.high = add_bytes(rd8(zSoundWordHi), (uint8_t)(SoundEffectTable >> 8), entry.low.carry);
+    wr8(zSoundTableHi, entry.high.value);
+    entry.priority = rd8_zp(zSoundTableLo);
+    return entry;
+}
+
+/* An effect's sequence started on a channel from its entry. */
+static void start_effect_channel(uint8_t channel)
+{
+    SoundReadPair(channel);
+    SoundStartChannel(channel);
+}
+
+/* An effect on one channel: 7 when it is free or plays this one, 6 when 6 does, else by weight. */
+static DriverHow start_effect(uint8_t command, DriverCommand *taken)
+{
+    uint8_t channel = EFFECT_CHANNEL_B;
+    uint8_t playing = rd8(SoundChannelCommand + EFFECT_CHANNEL_B);
+
+    (void)command;
+    if (playing != 0 && rd8(SoundCommandIn) != rd8(SoundChannelCommand + EFFECT_CHANNEL_B)) {
+        if (rd8(SoundCommandIn) == rd8(SoundChannelCommand + EFFECT_CHANNEL_A))
+            channel = EFFECT_CHANNEL_A;
+        else if (rd8(SoundChannel25F6) < rd8(SoundChannel25F7))
+            channel = EFFECT_CHANNEL_A;
+    }
+    taken->entry = effect_entry(rd8(SoundCommandIn));
+    if (taken->entry.priority < rd8((uint16_t)(SoundChannelPriority + channel)))
+        return DRIVER_EFFECT_LOW;
+    wr8((uint16_t)(SoundChannelPriority + channel), taken->entry.priority);
+    taken->channels_before = rd8(zSoundChannelsOn);
+    wr8(zSoundChannelsOn, (uint8_t)(taken->channels_before | (channel == EFFECT_CHANNEL_B ? 0x80 : 0x40)));
+    wr8((uint16_t)(SoundChannelCommand + channel), rd8(SoundCommandIn));
+    wr8(zSoundWordLo, rd8_zp_y(zSoundTableLo, 1));
+    wr8(zSoundWordHi, rd8_zp_y(zSoundTableLo, 2));
+    start_effect_channel(channel);
+    SoundVolumeFull();
+    return DRIVER_EFFECT;
+}
+
+/* An effect on both channels, from $3D: its priority weighed against the lighter channel's. */
+static DriverHow start_effect_pair(uint8_t command, DriverCommand *taken)
+{
+    uint8_t channel = rd8(SoundChannel25F6) >= rd8(SoundChannel25F7) ? EFFECT_CHANNEL_A : EFFECT_CHANNEL_B;
+    uint8_t played;
+
+    (void)command;
+    taken->entry = effect_entry(rd8(SoundCommandIn));
+    if (taken->entry.priority < rd8((uint16_t)(SoundChannelPriority + channel)))
+        return DRIVER_EFFECT_LOW;
+    wr8(SoundChannelPriority + EFFECT_CHANNEL_A, taken->entry.priority);
+    wr8(SoundChannelPriority + EFFECT_CHANNEL_B, taken->entry.priority);
+    taken->channels_before = rd8(zSoundChannelsOn);
+    wr8(zSoundChannelsOn, (uint8_t)(taken->channels_before | EFFECT_CHANNEL_BITS));
+    played = rd8(SoundCommandIn);
+    wr8(SoundChannelCommand + EFFECT_CHANNEL_A, played);
+    wr8(SoundChannelCommand + EFFECT_CHANNEL_B, played);
+    wr8(zSoundWordLo, rd8_zp_y(zSoundTableLo, 1));
+    wr8(zSoundWordHi, rd8_zp_y(zSoundTableLo, 2));
+    start_effect_channel(EFFECT_CHANNEL_A);
+    start_effect_channel(EFFECT_CHANNEL_B);
+    SoundVolumeFull();
+    return DRIVER_EFFECT;
+}
+
+/*
+ * @routine 0053:284 SoundDriverCommand
+ * @run 76:B284
+ * WHAT IT DOES: Takes a command: $FF stops everything, $FE fades the music, $FD and $FC choose
+ * the balance tables, $55 to $61 start music and $62 up a voice; below $55 an effect starts, on
+ * channel 6 or 7 or, from $3D, on both, if its priority is at least what plays there. Nothing
+ * starts while music $60 plays.
+ * HOW: SoundInCommand set while it works; SoundCommandIn keeps the command; SoundEffectTable, three
+ * bytes an effect, through zSoundTableLo and Hi; SoundChannelPriority, SoundChannelCommand and
+ * zSoundChannelsOn by channel; SoundReadPair, SoundStartChannel, SoundVolumeFull.
+ * Entry: A command. Exit: X and Y kept, N and Z from X; A, C and V as the command's path left them.
+ */
+DriverCommand SoundDriverCommand(uint8_t command)
+{
+    DriverCommand taken;
+
+    wr8(SoundInCommand, 1);
+    taken.command = command;
+    switch (command) {
+    case COMMAND_STOP:
+        SoundDriverStopAll();
+        taken.how = DRIVER_STOPPED;
+        break;
+    case COMMAND_FADE:
+        taken.fade = SoundStartFade();
+        taken.how = DRIVER_FADING;
+        break;
+    case COMMAND_ALT_BALANCE:
+        wr8(zSoundAltBalance, 1);
+        taken.how = DRIVER_BALANCE_ON;
+        break;
+    case COMMAND_FIRST_BALANCE:
+        wr8(zSoundAltBalance, 0);
+        taken.how = DRIVER_BALANCE_OFF;
+        break;
+    case COMMAND_MUSIC_LAST:
+        wr8(SoundCommandIn, command);
+        taken.music = SoundStartMusic();
+        taken.how = DRIVER_MUSIC;
+        break;
+    default:
+        if (rd8(SoundCommandIn) == COMMAND_EXCLUSIVE && (rd8(zSoundChannelsOn) & 1)) {
+            taken.how = DRIVER_HELD;
+            break;
+        }
+        wr8(SoundCommandIn, command);
+        if (command >= COMMAND_VOICES) {
+            taken.voice = SoundStartVoice();
+            taken.how = DRIVER_VOICE;
+        } else if (command >= MUSIC_FIRST) {
+            taken.music = SoundStartMusic();
+            taken.how = DRIVER_MUSIC;
+        } else if (command >= COMMAND_PAIRED) {
+            taken.how = start_effect_pair(command, &taken);
+        } else {
+            taken.how = start_effect(command, &taken);
+        }
+        break;
+    }
+    wr8(SoundInCommand, 0);
+    return taken;
+}
+
+void driver_command_exit_shim(DriverCommand taken)
+{
+    uint8_t x = cpu.x;
+    uint8_t y = cpu.y;
+
+    switch (taken.how) {
+    case DRIVER_STOPPED:
+    case DRIVER_BALANCE_OFF:
+    case DRIVER_HELD:
+        cpu.a = taken.command;
+        abi_flag(P_C, true);
+        break;
+    case DRIVER_FADING:
+        cpu.a = taken.fade;
+        abi_flag(P_C, true);
+        break;
+    case DRIVER_BALANCE_ON:
+        cpu.a = 1;
+        abi_flag(P_C, true);
+        break;
+    case DRIVER_MUSIC:
+        music_start_exit_shim(taken.music);
+        break;
+    case DRIVER_VOICE:
+        voice_start_exit_shim(taken.voice);
+        break;
+    case DRIVER_EFFECT_LOW:
+        cpu.a = taken.entry.priority;
+        abi_flag(P_C, false);
+        abi_flag(P_V, taken.entry.high.overflow);
+        break;
+    case DRIVER_EFFECT:
+        cpu.a = PSG_VOLUME_FULL;
+        abi_flag(P_C, true);
+        abi_flag(P_V, (taken.channels_before & 0x40) != 0);
+        break;
+    }
+    cpu.x = x;
+    cpu.y = y;
+    abi_nz(x);
+}
+
+void abi_SoundDriverCommand(void)
+{
+    driver_command_exit_shim(SoundDriverCommand(cpu.a));
 }

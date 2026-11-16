@@ -579,3 +579,6 @@ DDE8,abs,RichterObjectHitboxes,hitboxes, four bytes each: OBJ_3930, OBJ_39E0, OB
 25F8,abs,SoundVoicePriority,the sound driver: the priority of the voice playing; 0 none
 B914,abs,SoundVoicesFirst,the sound driver: voices of commands $62 to $71, six bytes each: priority, address, length, rate
 BC44,abs,SoundVoicesSecond,the sound driver: voices of commands $72 up on stages $0C up, six bytes each
+25F6,abs,SoundChannel25F6,the sound driver: weighs effect channel 6 against 7 when an effect starts
+25F7,abs,SoundChannel25F7,the sound driver: weighs effect channel 7 against 6 when an effect starts
+B7FB,abs,SoundEffectTable,the sound driver: by effect command, three bytes: priority and its sequence's address

@@ -569,3 +569,6 @@ RichterObjectHitboxes = $DDE8 ; hitboxes, four bytes each: OBJ_3930, OBJ_39E0, O
 SoundVoicePriority = $25F8 ; the sound driver: the priority of the voice playing; 0 none
 SoundVoicesFirst = $B914 ; the sound driver: voices of commands $62 to $71, six bytes each: priority, address, length, rate
 SoundVoicesSecond = $BC44 ; the sound driver: voices of commands $72 up on stages $0C up, six bytes each
+SoundChannel25F6 = $25F6 ; the sound driver: weighs effect channel 6 against 7 when an effect starts
+SoundChannel25F7 = $25F7 ; the sound driver: weighs effect channel 7 against 6 when an effect starts
+SoundEffectTable = $B7FB ; the sound driver: by effect command, three bytes: priority and its sequence's address

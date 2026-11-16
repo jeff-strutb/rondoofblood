@@ -2277,3 +2277,169 @@ SoundCommandEnd:
     plx
     stz a:SoundInCommand
     rts
+
+; @routine 0053:284 SoundDriverCommand
+; @run 76:B284
+; WHAT IT DOES: Takes a command: $FF stops everything, $FE fades the music, $FD and $FC choose
+; the balance tables, $55 to $61 start music and $62 up a voice; below $55 an effect starts, on
+; channel 6 or 7 or, from $3D, on both, if its priority is at least what plays there. Nothing
+; starts while music $60 plays.
+; HOW: SoundInCommand set while it works; SoundCommandIn keeps the command; SoundEffectTable, three
+; bytes an effect, through zSoundTableLo and Hi; SoundChannelPriority, SoundChannelCommand and
+; zSoundChannelsOn by channel; SoundReadPair, SoundStartChannel, SoundVolumeFull.
+; Entry: A command. Exit: X and Y kept, N and Z from X; A, C and V as the command's path left them.
+SoundDriverCommand:
+    phx
+    phy
+    ldx #$01
+    stx a:SoundInCommand
+    cmp #$FF
+    bne SoundDriverCommand_at0
+    jsr SoundDriverStopAll
+    jmp SoundCommandEnd
+SoundDriverCommand_at0:
+    cmp #$FE
+    bne SoundDriverCommand_at1
+    jsr SoundStartFade
+    jmp SoundCommandEnd
+SoundDriverCommand_at1:
+    cmp #$FD
+    bne SoundDriverCommand_at2
+    lda #$01
+    sta z:zSoundAltBalance
+    jmp SoundCommandEnd
+SoundDriverCommand_at2:
+    cmp #$FC
+    bne SoundDriverCommand_at3
+    stz z:zSoundAltBalance
+    jmp SoundCommandEnd
+SoundDriverCommand_at3:
+    cmp #$61
+    bne SoundDriverCommand_at4
+    sta a:SoundCommandIn
+    jmp SoundStartMusic
+SoundDriverCommand_at4:
+    pha
+    lda a:SoundCommandIn
+    cmp #$60
+    bne SoundDriverCommand_at5
+    lda z:zSoundChannelsOn
+    and #$01
+    beq SoundDriverCommand_at5
+    pla
+    jmp SoundCommandEnd
+SoundDriverCommand_at5:
+    pla
+    sta a:SoundCommandIn
+    cmp #$62
+    bcs SoundDriverCommand_at6
+    bra SoundDriverCommand_at7
+SoundDriverCommand_at6:
+    jmp SoundStartVoice
+SoundDriverCommand_at7:
+    cmp #$55
+    bcs SoundDriverCommand_at8
+    bra SoundDriverCommand_at9
+SoundDriverCommand_at8:
+    jmp SoundStartMusic
+SoundDriverCommand_at9:
+    cmp #$3D
+    bcs SoundDriverCommand_at10
+    bne SoundDriverCommand_at11
+    jmp SoundCommandEnd
+SoundDriverCommand_at11:
+    lda a:SoundCommandIn
+    tst #$FF,a:SoundChannelCommand+7
+    beq SoundDriverCommand_at12
+    cmp a:SoundChannelCommand+7
+    beq SoundDriverCommand_at12
+    cmp a:SoundChannelCommand+6
+    beq SoundDriverCommand_at13
+    ldx a:SoundChannel25F6
+    cpx a:SoundChannel25F7
+    bcs SoundDriverCommand_at12
+SoundDriverCommand_at13:
+    ldx #$06
+    ldy #$40
+    bra SoundDriverCommand_at14
+SoundDriverCommand_at12:
+    ldx #$07
+    ldy #$80
+SoundDriverCommand_at14:
+    phy
+    lda a:SoundCommandIn
+    ldy #$03
+    jsr SoundMultiply
+    ply
+    lda z:zSoundWordLo
+    clc
+    adc #$FB
+    sta z:zSoundTableLo
+    lda z:zSoundWordHi
+    adc #$B7
+    sta z:zSoundTableHi
+    lda (zSoundTableLo)
+    cmp a:SoundChannelPriority,x
+    bcs SoundDriverCommand_at15
+    jmp SoundCommandEnd
+SoundDriverCommand_at15:
+    sta a:SoundChannelPriority,x
+    tya
+    tsb z:zSoundChannelsOn
+    lda a:SoundCommandIn
+    sta a:SoundChannelCommand,x
+    ldy #$01
+    lda (zSoundTableLo),y
+    sta z:zSoundWordLo
+    iny
+    lda (zSoundTableLo),y
+    sta z:zSoundWordHi
+    jsr SoundReadPair
+    jsr SoundStartChannel
+    jsr SoundVolumeFull
+    jmp SoundCommandEnd
+SoundDriverCommand_at10:
+    ldx #$07
+    lda a:SoundChannel25F6
+    cmp a:SoundChannel25F7
+    bcc SoundDriverCommand_at16
+    dex
+SoundDriverCommand_at16:
+    phy
+    lda a:SoundCommandIn
+    ldy #$03
+    jsr SoundMultiply
+    ply
+    lda z:zSoundWordLo
+    clc
+    adc #$FB
+    sta z:zSoundTableLo
+    lda z:zSoundWordHi
+    adc #$B7
+    sta z:zSoundTableHi
+    lda (zSoundTableLo)
+    cmp a:SoundChannelPriority,x
+    bcs SoundDriverCommand_at17
+    jmp SoundCommandEnd
+SoundDriverCommand_at17:
+    ldx #$06
+    sta a:SoundChannelPriority,x
+    sta a:SoundChannelPriority+1,x
+    lda #$C0
+    tsb z:zSoundChannelsOn
+    lda a:SoundCommandIn
+    sta a:SoundChannelCommand,x
+    sta a:SoundChannelCommand+1,x
+    ldy #$01
+    lda (zSoundTableLo),y
+    sta z:zSoundWordLo
+    iny
+    lda (zSoundTableLo),y
+    sta z:zSoundWordHi
+    jsr SoundReadPair
+    jsr SoundStartChannel
+    inx
+    jsr SoundReadPair
+    jsr SoundStartChannel
+    jsr SoundVolumeFull
+    jmp SoundCommandEnd

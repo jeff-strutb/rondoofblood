@@ -708,5 +708,28 @@ typedef struct {
 
 VoiceStart SoundStartVoice(void);
 void voice_start_exit_shim(VoiceStart voice);
+void music_start_exit_shim(uint8_t command);
+
+typedef enum {
+    DRIVER_STOPPED, DRIVER_FADING, DRIVER_BALANCE_ON, DRIVER_BALANCE_OFF, DRIVER_MUSIC, DRIVER_HELD,
+    DRIVER_VOICE, DRIVER_EFFECT_LOW, DRIVER_EFFECT
+} DriverHow;
+
+/* An effect's entry in SoundEffectTable: the multiply and adds that found it, and its priority. */
+typedef struct { SoundProduct product; Sum low; Sum high; uint8_t priority; } EffectEntry;
+
+/* A command taken: its path, and what that path's calls did. */
+typedef struct {
+    DriverHow how;
+    uint8_t command;
+    uint8_t fade;
+    uint8_t music;
+    VoiceStart voice;
+    EffectEntry entry;
+    uint8_t channels_before;
+} DriverCommand;
+
+DriverCommand SoundDriverCommand(uint8_t command);
+void driver_command_exit_shim(DriverCommand taken);
 #endif
 #endif

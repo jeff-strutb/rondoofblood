@@ -93,3 +93,9 @@ FFF4,abs,CardVersionByte,the byte of the card ex_memopen returns
 2246,abs,CardScreenRows,the rows of tiles ex_scrmod was given
 2214,abs,CardSatAddress,where the sprite table is in VRAM
 2216,abs,CardSatFlag,cleared by ex_satclr
+FEC2,abs,CardVersionMajor,the card's version: 3
+FEC3,abs,CardVersionMinor,the card's version after the point: 0
+180E,abs,AdpcmRate,the ADPCM unit's playback rate
+22A6,abs,CardAdpcmLength,the length ad_play last latched
+22A8,abs,CardAdpcmAddress,the address ad_play last latched
+22AA,abs,CardAdpcmRate,the rate ad_play last set

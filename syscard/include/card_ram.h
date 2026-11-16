@@ -96,5 +96,11 @@
 #define CardScreenRows 0x2246 /* the rows of tiles ex_scrmod was given */
 #define CardSatAddress 0x2214 /* where the sprite table is in VRAM */
 #define CardSatFlag 0x2216 /* cleared by ex_satclr */
+#define CardVersionMajor 0xFEC2 /* the card's version: 3 */
+#define CardVersionMinor 0xFEC3 /* the card's version after the point: 0 */
+#define AdpcmRate 0x180E /* the ADPCM unit's playback rate */
+#define CardAdpcmLength 0x22A6 /* the length ad_play last latched */
+#define CardAdpcmAddress 0x22A8 /* the address ad_play last latched */
+#define CardAdpcmRate 0x22AA /* the rate ad_play last set */
 
 #endif

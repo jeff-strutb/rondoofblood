@@ -669,9 +669,9 @@ bm_sum_file_at0:
 ; file list at its next free byte.
 ; HOW: bm_move_direction picks the way; bytes go one at a time, each pointer moved a page at a
 ; time; then a zero length is written at the next free byte.
-; Entry: CardPointerLo the source, CardCopyLo the destination, CardByteCount. Exit: A 0, N 0,
-; Z 1, Y 1, CardPointerLo the next free byte. Nothing to move: X, C, V kept. Else X, C and V
-; as bm_move_direction leaves them.
+; Entry: CardPointerLo the source, CardCopyLo the destination, CardByteCount. Exit: A 0, Y 1, N
+; and Z from loading Y (CLA leaves them), CardPointerLo the next free byte. Nothing to
+; move: X, C, V kept. Else X, C and V as bm_move_direction leaves them.
 bm_move:
     lda a:CardByteCount
     ora a:CardByteCount+1

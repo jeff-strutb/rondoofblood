@@ -61,3 +61,13 @@ ex_setvec_at0:
 ex_setvec_at1:
     plp
     rts
+
+; @card 00:F02D ex_getver
+; WHAT IT DOES: Gives the card's version: 3.00 on this card.
+; HOW: Two bytes of the ROM.
+; Entry: nothing. Exit: X the major version, Y the minor, N and Z from Y. A, C, V kept.
+ex_getver:
+    ldx a:CardVersionMajor
+    ldy a:CardVersionMinor
+    rts
+

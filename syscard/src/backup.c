@@ -615,9 +615,9 @@ void abi_bm_move_direction(void)
  * file list at its next free byte.
  * HOW: bm_move_direction picks the way; bytes go one at a time, each pointer moved a page at a
  * time; then a zero length is written at the next free byte.
- * Entry: CardPointerLo the source, CardCopyLo the destination, CardByteCount. Exit: A 0, N 0,
- * Z 1, Y 1, CardPointerLo the next free byte. Nothing to move: X, C, V kept. Else X, C and V
- * as bm_move_direction leaves them.
+ * Entry: CardPointerLo the source, CardCopyLo the destination, CardByteCount. Exit: A 0, Y 1, N
+ * and Z from loading Y (CLA leaves them), CardPointerLo the next free byte. Nothing to
+ * move: X, C, V kept. Else X, C and V as bm_move_direction leaves them.
  */
 BackupMove bm_move(void)
 {
@@ -658,7 +658,7 @@ void abi_bm_move(void)
 
     cpu.a = 0;
     cpu.y = 1;
-    abi_nz(0);
+    abi_nz(1);
     if (move.moved) {
         cpu.x = move.way.forward ? 2 : 0;
         abi_move_way_flags_shim(move.way);

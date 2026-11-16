@@ -82,3 +82,27 @@ void abi_ex_setvec(void)
     if (cpu.a != VECTOR_SOFT_RESET)
         cpu.x = (uint8_t)((uint8_t)(cpu.a << 1) + 1);
 }
+
+/*
+ * @card 00:F02D ex_getver
+ * WHAT IT DOES: Gives the card's version: 3.00 on this card.
+ * HOW: Two bytes of the ROM.
+ * Entry: nothing. Exit: X the major version, Y the minor, N and Z from Y. A, C, V kept.
+ */
+CardVersion ex_getver(void)
+{
+    CardVersion version;
+
+    version.major = rd8(CardVersionMajor);
+    version.minor = rd8(CardVersionMinor);
+    return version;
+}
+
+void abi_ex_getver(void)
+{
+    CardVersion version = ex_getver();
+
+    cpu.x = version.major;
+    cpu.y = version.minor;
+    abi_nz(version.minor);
+}

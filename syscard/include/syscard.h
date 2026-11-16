@@ -376,6 +376,34 @@ ScreenMode ex_scrmod(uint8_t mode, uint8_t columns, uint8_t rows);
 ScreenMode ex_scrmod_fallback(void);
 void ex_satclr(void);
 
+/* The card's version, as ex_getver gives it. */
+typedef struct {
+    uint8_t major;
+    uint8_t minor;
+} CardVersion;
+
+/* How ad_play ended. */
+typedef enum {
+    AD_PLAY_BUSY,       /* ADPCM was already playing: nothing done */
+    AD_PLAY_BAD_RATE,   /* a rate of $10 or more: nothing played */
+    AD_PLAY_AGAIN,      /* played from what is already latched */
+    AD_PLAY_STARTED     /* latched _BX and _AX, then played */
+} AdPlayHow;
+
+typedef struct {
+    AdPlayHow how;
+    AdStat stat;
+    uint8_t rate;
+    uint8_t irq_before;  /* the CD unit's interrupt enables before playing turned one on */
+} AdPlay;
+
+CardVersion ex_getver(void);
+uint8_t ad_reset(void);
+AdPlay ad_play(void);
+AdStat ad_stat(void);
+uint8_t ad_latch_read_address(void);
+uint8_t ad_latch_length(void);
+
 BackupSum bm_sum_file(void);
 BackupSpan bm_place_span(void);
 BackupMoveWay bm_move_direction(void);

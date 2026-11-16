@@ -1,8 +1,8 @@
 ; @routine 0048:424 BackupRead
 ; @run 6A:6C24
 ; WHAT IT DOES: Reads the game's backup file to RAM at $7D00.
-; HOW: The BIOS's backup read, with the file's name at $6C9A and $90 bytes.
-; Entry: nothing. Exit: as the BIOS leaves them.
+; HOW: The card's bm_read, with the file's name at $6C9A and $90 bytes.
+; Entry: nothing. Exit: as bm_read, entered with A 0 and Z set.
 BackupRead:
     lda #$9A
     sta z:zBiosAl

@@ -723,7 +723,7 @@ static Alu save_progress_tail(Alu r)
  */
 Alu SaveProgress(Alu r)
 {
-    r = BackupRead(r);
+    r = call_abi(abi_BackupRead, r);
     cpu.y = rd8(zSaveSlot);
     cpu.x = rd8((uint16_t)(SaveSlotOffsets + cpu.y));
     return save_progress_tail(r);
@@ -747,7 +747,7 @@ Alu SaveScore(Alu r)
     uint8_t a;
     uint8_t b;
 
-    r = BackupRead(r);
+    r = call_abi(abi_BackupRead, r);
     cpu.y = rd8(zSaveSlot);
     cpu.x = rd8((uint16_t)(SaveSlotOffsets + cpu.y));
     a = rd8(zScoreAddLo);
@@ -837,7 +837,7 @@ Alu ModeScreen(void)
         byte = rd8(zSaveSlot);
         alu_load(&r, byte);
         if (!(byte & 0x80)) {
-            r = BackupRead(r);
+            r = call_abi(abi_BackupRead, r);
             cpu.y = rd8(zSaveSlot);
             cpu.x = rd8((uint16_t)(SaveSlotOffsets + cpu.y));
             alu_load(&r, 1);

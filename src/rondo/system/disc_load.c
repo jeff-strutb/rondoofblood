@@ -77,31 +77,35 @@ static Alu record_pointer(Alu r, uint8_t index, uint8_t size, uint8_t table_lo, 
  * @routine 0048:424 BackupRead
  * @run 6A:6C24
  * WHAT IT DOES: Reads the game's backup file to RAM at $7D00.
- * HOW: The BIOS's backup read, with the file's name at $6C9A and $90 bytes.
- * Entry: nothing. Exit: as the BIOS leaves them.
+ * HOW: The card's bm_read, with the file's name at $6C9A and $90 bytes.
+ * Entry: nothing. Exit: as bm_read, entered with A 0 and Z set.
  */
-Alu BackupRead(Alu r)
+/* The BIOS's arguments for the game's backup file: its name, $7D00, $90 bytes, from the start. */
+static void backup_file_arguments(void)
 {
-    alu_load(&r, BACKUP_NAME_LO);
     wr8(zBiosAl, BACKUP_NAME_LO);
-    alu_load(&r, BACKUP_NAME_HI);
     wr8(zBiosAh, BACKUP_NAME_HI);
-    alu_load(&r, 0);
     wr8(zBiosBl, 0);
-    alu_load(&r, BACKUP_BUFFER_HI);
     wr8(zBiosBh, BACKUP_BUFFER_HI);
-    alu_load(&r, BACKUP_SIZE);
     wr8(zBiosCl, BACKUP_SIZE);
-    alu_load(&r, 0);
     wr8(zBiosCh, 0);
     wr8(zBiosDl, 0);
     wr8(zBiosDh, 0);
-    return call_with(BiosBmRead, r);
+}
+
+BackupAccess BackupRead(void)
+{
+    backup_file_arguments();
+    return bm_read();
 }
 
 void abi_BackupRead(void)
 {
-    abi_alu(BackupRead(alu_from_cpu()));
+    BackupAccess read = BackupRead();
+
+    cpu.a = 0;
+    abi_nz(0);
+    bm_read_exit_shim(read);
 }
 
 /*

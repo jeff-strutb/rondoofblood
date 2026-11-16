@@ -571,8 +571,8 @@ load_font_at0:
 ; sprites' at colour $100, 32 bytes a 16-colour palette. The C makes the moves itself. Then it
 ; clears the command.
 ; Entry: CardColorCommand, CardColorBackground, CardColorSprites. Exit, no command: A 0, N 0, Z 1.
-; Otherwise, after the last set moved: A the low byte of its length, C 0, N and Z from its high
-; byte; after a set skipped: A 0, N 0, Z 1, C as it was. X, Y, V kept.
+; Sprites moved: A 1, the VCE address's high byte it last loaded, N 0, Z 0, C 0. Sprites skipped:
+; A 0, N 0, Z 1, C 0 if the background moved, else as it was. X, Y, V kept.
 ex_colorcmd:
     lda a:CardColorCommand
     bne ex_colorcmd_at0

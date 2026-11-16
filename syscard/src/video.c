@@ -796,8 +796,8 @@ static void move_colors(uint16_t set, uint8_t palette_high, bool read_back)
  * sprites' at colour $100, 32 bytes a 16-colour palette. The C makes the moves itself. Then it
  * clears the command.
  * Entry: CardColorCommand, CardColorBackground, CardColorSprites. Exit, no command: A 0, N 0, Z 1.
- * Otherwise, after the last set moved: A the low byte of its length, C 0, N and Z from its high
- * byte; after a set skipped: A 0, N 0, Z 1, C as it was. X, Y, V kept.
+ * Sprites moved: A 1, the VCE address's high byte it last loaded, N 0, Z 0, C 0. Sprites skipped:
+ * A 0, N 0, Z 1, C 0 if the background moved, else as it was. X, Y, V kept.
  */
 ColorCommand ex_colorcmd(void)
 {
@@ -829,16 +829,15 @@ ColorCommand ex_colorcmd(void)
 void abi_ex_colorcmd(void)
 {
     ColorCommand done = ex_colorcmd();
-    uint8_t last = done.sprite_sets;
 
-    if (done.command == 0 || last == 0) {
+    if (done.command == 0 || done.sprite_sets == 0) {
         cpu.a = 0;
         abi_nz(0);
         if (done.command != 0 && done.background_sets != 0)
             abi_flag(P_C, false);
         return;
     }
-    cpu.a = (uint8_t)(last << COLOR_SET_BYTES_SHIFT);
-    abi_nz((uint8_t)(last >> (8 - COLOR_SET_BYTES_SHIFT)));
+    cpu.a = SPRITE_PALETTE_HIGH;
+    abi_nz(SPRITE_PALETTE_HIGH);
     abi_flag(P_C, false);
 }

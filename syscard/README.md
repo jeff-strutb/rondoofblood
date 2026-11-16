@@ -1,7 +1,9 @@
 # System Card 3.0
 
 The Japanese Super CD-ROM² System 3.0 HuCard's BIOS, decompiled as its own project inside
-this repo, so that it can move to a repo of its own. Nothing is decompiled here yet.
+this repo, so that it can move to a repo of its own. Its routines are counted in
+[ledger.csv](ledger.csv), which `tools/rondo/ledger.py --card` works out from the gates: query it,
+not a number written here.
 
 ## Keeping it separate
 
@@ -39,3 +41,21 @@ From reading the image and the game's traces (`build/rondo/trace/cardmap.bin`), 
 - The CD and ADPCM entries drive the hardware at $1800 directly and may wait on it, and
   44 `TAM`s in bank 0 map other banks in. A5 cannot judge calls that interrupts overlap, so
   some may be hard to certify.
+
+## The card's machine, as its C sees it
+
+`include/card.h`: `rd8` and `wr8` on logical addresses, `tma` and `tam`, `cli`, and `csl` and
+`csh` for the CPU's clock, which the backup memory's routines change and leave changed for their
+caller. Registers and flags appear only in `abi_` wrappers and `_shim` functions.
+
+## Status, 2026-11-16
+
+- 113 routines filed as C and assembly; the card image gate passes with all of them in place.
+- A5, at c823a16: 71 card routines identical, none divergent. Six are unverified on every call
+  (cd_read, cd_pause, cd_subq, cd_test_unit, ad_trans, ex_vsync): the drive or the frame they wait
+  on lets interrupts in, and A5 does not judge a call an interrupt overlapped.
+- A7, at c823a16: every frame of every script identical, the card's C swapped in.
+- What keeps the rest from T3: gate C (every byte run). 45 routines are run whole by the scripts;
+  the others have paths the scripts never take (error exits, unused entries).
+- ex_joysns is not filed: its soft reset jumps through a vector set at run time, which C that
+  runs no original code cannot do.

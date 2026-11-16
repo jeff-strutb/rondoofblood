@@ -96,6 +96,20 @@ it. New findings go here when they are made.
 - The Japan and USA 3.0 cards differ in 11,210 bytes over banks 0, 1, 3,
   4, 22 and 23, so traces of card code are card specific. The game loads
   identical Super and CD RAM on both; base RAM differs by 4 to 10 bytes.
+- bm_open runs CSL and bm_close CSH, and the CPU stays on that clock for the
+  caller, as it does the I flag. The card's C sets it with `csl()` and
+  `csh()`; A5 judges the clock a routine leaves, and A7 sets the live CPU's
+  (core patch 0005). Without it every A7 drifted at frame 377.
+- The oracles take the backup memory's bank, $F7, as hardware: the C reads and
+  writes its bytes in the original's order and number, a byte at a time where
+  a subtract reads both low bytes before both high ones.
+- CLA, CLX and CLY leave the flags (the core's `OP_CLEARR`): a routine ending
+  in one shows the flags of the instruction before it.
+- TRB and TSB set Z from the memory with A (TRB: M AND NOT A is zero; TSB: M
+  OR A is zero), and N and V from bits 7 and 6 of the memory as read.
+- Card calls that wait on the drive or on a frame (cd_read, cd_subq,
+  cd_pause, cd_test_unit, ad_trans, ex_vsync) have interrupts in them every
+  time the scripts make them, so A5 counts them unverified, never judged.
 
 ## Toolchain
 
@@ -130,6 +144,13 @@ it. New findings go here when they are made.
 - The core resets its timestamp inside a frame's run, not at its end: a clock
   that goes backward during a call means the call crossed that reset
   ([decomp/log/oracles-2026-11-05](decomp/log/oracles-2026-11-05.md)).
+  A call can run on past its own start's clock after that reset, so its end
+  being later says nothing: the record watches the clock at every
+  instruction and marks every open call crossed when it steps back. Missing
+  this swapped cd_read_to_memory across a reset and timed out every A7.
+- The oracle stamp hashes the whole working tree, the game's C and the card's
+  together: a gate run whose ledger must count is made in a worktree frozen at
+  one commit, never in a checkout someone is editing.
 - A Linux core exports only what `link.T` lists: the harness's `rondo_*` symbols
   must be listed there, though macOS builds see them without it.
 - ca65 joins every file name to a search path with "/", so an absolute `.include`

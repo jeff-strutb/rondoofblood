@@ -35,7 +35,7 @@ enum {
     LIST_KIND_2 = 2, ANIM_WALK = 0x00, ANIM_STAND = 0x01, ANIM_CROUCH = 0x0C, ANIM_FALL = 0x10,
     ANIM_KNOCK = 0x31, ANIM_WALK_BACK = 0x32, CROUCH_STEP = 3, STATE_FALL_34B8 = 4,
     FALL_SPEED_HI = 0x03, KNOCK_RISE_LO = 0xC0, KNOCK_RISE_HI = 0xFD, KNOCKED = 0x01,
-    START_FIELD94 = 0x10, HEALTH_FULL = 0x5C, START_LIVE = 0x01
+    START_NEW_RUN = 0, START_HEALTH = 1, START_STAND = 2, START_FIELD94 = 0x10, HEALTH_FULL = 0x5C, START_LIVE = 0x01
 };
 
 /* Called before they are defined. */
@@ -67,6 +67,7 @@ StandSound RichterStartNew(void);
 StandSound RichterStartHealth(void);
 StandSound RichterStartClear(void);
 StandSound RichterStartStand(void);
+StandSound RichterStart(void);
 WalkStart RichterStartWalk(uint8_t facing);
 AnimationStep RichterCrouch(void);
 AnimationStep RichterToFall(void);
@@ -100,7 +101,6 @@ Alu RichterApplyMoveAndPush(Alu r);
 Alu RichterFrame(Alu r);
 Alu RichterHitWhilePushed(Alu r);
 Alu RichterSpikeBelow(Alu r);
-Alu RichterStart(Alu r);
 Alu RichterDyingStep(Alu r);
 Alu RichterDie(Alu r);
 Alu RichterStateFrame(Alu r);
@@ -517,41 +517,34 @@ void abi_RichterSpikeBelow(void)
  * @routine 01B9:10F RichterStart
  * @run 6D:A10F
  * WHAT IT DOES: Starts Richter as zField8A says.
- * HOW: The table of four entries, each of which goes on into the next.
- * Entry: nothing. Exit: as RichterAnimationSound.
+ * HOW: The table of four entries: a new run, the health, the stand, the clear; each goes on
+ * into the next. zField8A is 0 to 3; the C takes anything past 2 as the clear, where the table
+ * would send it elsewhere.
+ * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
-Alu RichterStart(Alu r)
+StandSound RichterStart(void)
 {
-    uint8_t byte = rd8(zField8A);
-    uint8_t lo;
-    uint8_t hi;
-    uint16_t handler;
+    uint8_t how = rd8(zField8A);
+    uint16_t entry = (uint16_t)(PlayerStartHandlers + (uint8_t)(how << 1));
 
-    r.a = (uint8_t)(byte << 1);
-    alu_nz(&r, r.a);
-    r.c = (byte & 0x80) != 0;
-    r.c_kept = false;
-    cpu.x = r.a;
-    lo = rd8((uint16_t)(PlayerStartHandlers + cpu.x));
-    hi = rd8((uint16_t)(PlayerStartHandlers + cpu.x + 1));
-    handler = (uint16_t)(lo | (hi << 8));
-    switch (handler) {
-    case 0xA14A:
-        return call_abi(abi_RichterStartNew, r);
-    case 0xA150:
-        return call_abi(abi_RichterStartHealth, r);
-    case 0xA154:
-        return call_abi(abi_RichterStartClear, r);
-    case 0xA167:
-        return call_abi(abi_RichterStartStand, r);
+    /* The jump reads its entry; each start runs on into the next, so all end standing. */
+    rd8(entry);
+    rd8((uint16_t)(entry + 1));
+    switch (how) {
+    case START_NEW_RUN:
+        return RichterStartNew();
+    case START_HEALTH:
+        return RichterStartHealth();
+    case START_STAND:
+        return RichterStartStand();
     default:
-        return call_with(handler, r);
+        return RichterStartClear();
     }
 }
 
 void abi_RichterStart(void)
 {
-    abi_alu(RichterStart(alu_from_cpu()));
+    stand_sound_exit_shim(RichterStart());
 }
 
 /*

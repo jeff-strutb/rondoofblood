@@ -427,7 +427,19 @@
 #define SoundChannelMarked 0x2598 /* the sound driver: 8 bytes by channel */
 #define SoundChannel25A8 0x25A8 /* the sound driver: 8 bytes by channel; $1F on release */
 #define SoundChannelCommand 0x25B8 /* the sound driver: the command playing on each of 8 channels */
-#define SoundChannelPairA 0x22F0 /* the sound driver: 8 bytes by channel, first of a pair read from a sequence */
-#define SoundChannelPairB 0x22F8 /* the sound driver: 8 bytes by channel, second of the pair */
+#define SoundSequenceLo 0x22F0 /* the sound driver: each channel's place in its sequence, low */
+#define SoundSequenceHi 0x22F8 /* the sound driver: each channel's place in its sequence, high */
+#define zSoundSequenceLo 0x2053 /* the sound driver: the place in the channel's sequence, low */
+#define zSoundSequenceHi 0x2054 /* the sound driver: the place in the channel's sequence, high */
+#define SoundSlideStepLo 0x23D0 /* the sound driver: by channel, the slide's step, low; 0 and the high 0 for none */
+#define SoundSlideStepHi 0x23D8 /* the sound driver: by channel, the slide's step, high */
+#define SoundSlideLo 0x23E0 /* the sound driver: by channel, the sliding value, low */
+#define SoundSlideHi 0x23E8 /* the sound driver: by channel, the sliding value, high */
+#define SoundSlideTarget 0x23F0 /* the sound driver: by channel, the high byte the slide stops at */
+#define SoundVolumeStepLo 0x2400 /* the sound driver: by channel, the volume slide's step, low */
+#define SoundVolumeStepHi 0x2408 /* the sound driver: by channel, the volume slide's step, high */
+#define SoundVolumeLo 0x2410 /* the sound driver: by channel, the volume, fraction */
+#define SoundVolume 0x2418 /* the sound driver: by channel, the volume, which picks the balance */
+#define SoundVolumeTarget 0x2420 /* the sound driver: by channel, the volume the slide stops at */
 
 #endif

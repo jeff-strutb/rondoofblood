@@ -211,6 +211,17 @@ SoundProduct SoundMultiplyNibble(uint8_t a, uint8_t y);
 uint8_t SoundReadPair(uint8_t channel);
 void sound_pointer_step(void);
 uint8_t SoundStartFade(void);
+uint8_t SoundLoadSequence(uint8_t channel);
+uint8_t SoundSaveSequence(uint8_t channel);
+uint8_t SoundSequenceFromWord(void);
+
+typedef enum { SLIDE_IDLE, SLIDE_REACHED, SLIDE_MOVED } SlideHow;
+
+/* A slide's step: what it did, and the high byte with its add's carry and overflow. */
+typedef struct { SlideHow how; uint8_t value; bool carry; bool overflow; } SlideStep;
+
+SlideStep SoundSlideStep(uint8_t channel);
+SlideStep SoundVolumeSlideStep(uint8_t channel);
 WallProbe PlayerWall(uint8_t side);
 FloorProbe PlayerFloor(void);
 ColumnsEnd PlayerMoved(void);

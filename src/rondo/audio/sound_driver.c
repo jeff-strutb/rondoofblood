@@ -192,7 +192,8 @@ void abi_SoundMultiplyNibble(void)
 /*
  * @routine 0053:62E SoundReadPair
  * @run 76:B62E
- * WHAT IT DOES: Reads the next two bytes of a sequence into a channel's pair.
+ * WHAT IT DOES: Reads a sequence's address for a channel: the next two bytes, its place low and
+ * high.
  * HOW: Through the pointer in zSoundWordLo and zSoundWordHi, moved on past them.
  * Entry: X channel. Exit: A the second byte; N and Z from the pointer's low byte, or its high
  * when the low wrapped to 0. X, Y, C and V kept.
@@ -201,10 +202,10 @@ uint8_t SoundReadPair(uint8_t channel)
 {
     uint8_t second;
 
-    wr8((uint16_t)(SoundChannelPairA + channel), rd8_zp(zSoundWordLo));
+    wr8((uint16_t)(SoundSequenceLo + channel), rd8_zp(zSoundWordLo));
     sound_pointer_step();
     second = rd8_zp(zSoundWordLo);
-    wr8((uint16_t)(SoundChannelPairB + channel), second);
+    wr8((uint16_t)(SoundSequenceHi + channel), second);
     sound_pointer_step();
     return second;
 }
@@ -251,4 +252,168 @@ void abi_SoundStartFade(void)
 {
     cpu.a = SoundStartFade();
     abi_nz(cpu.a);
+}
+
+/*
+ * @routine 004D:5F1 SoundLoadSequence
+ * @run 75:85F1
+ * WHAT IT DOES: Takes up a channel's place in its sequence.
+ * HOW: SoundSequenceLo and Hi into zSoundSequenceLo and Hi.
+ * Entry: X channel. Exit: A the place's high byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundLoadSequence(uint8_t channel)
+{
+    uint8_t high;
+
+    wr8(zSoundSequenceLo, rd8((uint16_t)(SoundSequenceLo + channel)));
+    high = rd8((uint16_t)(SoundSequenceHi + channel));
+    wr8(zSoundSequenceHi, high);
+    return high;
+}
+
+void abi_SoundLoadSequence(void)
+{
+    cpu.a = SoundLoadSequence(cpu.x);
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 004D:5FC SoundSaveSequence
+ * @run 75:85FC
+ * WHAT IT DOES: Keeps a channel's place in its sequence.
+ * HOW: zSoundSequenceLo and Hi into SoundSequenceLo and Hi.
+ * Entry: X channel. Exit: A the place's high byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundSaveSequence(uint8_t channel)
+{
+    uint8_t high;
+
+    wr8((uint16_t)(SoundSequenceLo + channel), rd8(zSoundSequenceLo));
+    high = rd8(zSoundSequenceHi);
+    wr8((uint16_t)(SoundSequenceHi + channel), high);
+    return high;
+}
+
+void abi_SoundSaveSequence(void)
+{
+    cpu.a = SoundSaveSequence(cpu.x);
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 004D:607 SoundSequenceFromWord
+ * @run 75:8607
+ * WHAT IT DOES: Moves the place in the sequence to the address in zSoundWordLo and Hi.
+ * HOW: Two bytes copied.
+ * Entry: nothing. Exit: A the address's high byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t SoundSequenceFromWord(void)
+{
+    uint8_t high;
+
+    wr8(zSoundSequenceLo, rd8(zSoundWordLo));
+    high = rd8(zSoundWordHi);
+    wr8(zSoundSequenceHi, high);
+    return high;
+}
+
+void abi_SoundSequenceFromWord(void)
+{
+    cpu.a = SoundSequenceFromWord();
+    abi_nz(cpu.a);
+}
+
+/*
+ * One step of a slide by channel: none while its step is 0; stopped, its step cleared, when the
+ * value's high byte has reached the target; else the step added to the value. The array addresses
+ * are the slide's.
+ */
+static SlideStep slide_step(uint8_t channel, uint16_t step_lo, uint16_t step_hi, uint16_t value_lo,
+                            uint16_t value_hi, uint16_t target)
+{
+    SlideStep slide = { SLIDE_IDLE, 0, false, false };
+    unsigned sum;
+    uint8_t high;
+    uint8_t step;
+
+    if ((rd8((uint16_t)(step_lo + channel)) | rd8((uint16_t)(step_hi + channel))) == 0)
+        return slide;
+    slide.value = rd8((uint16_t)(value_hi + channel));
+    if (slide.value == rd8((uint16_t)(target + channel))) {
+        wr8((uint16_t)(step_lo + channel), 0);
+        wr8((uint16_t)(step_hi + channel), 0);
+        slide.how = SLIDE_REACHED;
+        return slide;
+    }
+    sum = (unsigned)rd8((uint16_t)(step_lo + channel)) + rd8((uint16_t)(value_lo + channel));
+    wr8((uint16_t)(value_lo + channel), (uint8_t)sum);
+    step = rd8((uint16_t)(step_hi + channel));
+    high = rd8((uint16_t)(value_hi + channel));
+    sum = (unsigned)step + high + (sum >> 8);
+    slide.value = (uint8_t)sum;
+    slide.carry = sum > 0xFF;
+    slide.overflow = (~(step ^ high) & (step ^ slide.value) & 0x80) != 0;
+    wr8((uint16_t)(value_hi + channel), slide.value);
+    slide.how = SLIDE_MOVED;
+    return slide;
+}
+
+/* Idle, A 0 and Z set; reached, A the value with Z and C set; moved, A the value with its sum. */
+static void abi_exit_slide(SlideStep slide)
+{
+    switch (slide.how) {
+    case SLIDE_IDLE:
+        cpu.a = 0;
+        abi_nz(0);
+        break;
+    case SLIDE_REACHED:
+        cpu.a = slide.value;
+        abi_nz(0);
+        abi_flag(P_C, true);
+        break;
+    case SLIDE_MOVED:
+        cpu.a = slide.value;
+        abi_nz(slide.value);
+        abi_flag(P_C, slide.carry);
+        abi_flag(P_V, slide.overflow);
+        break;
+    }
+}
+
+/*
+ * @routine 004D:743 SoundSlideStep
+ * @run 75:8743
+ * WHAT IT DOES: Moves a channel's slide on by its step, until its high byte reaches the target.
+ * HOW: SoundSlideStepLo and Hi onto SoundSlideLo and Hi; SoundSlideTarget.
+ * Entry: X channel. Exit: X and Y kept. No slide, A 0, Z set, N clear, C and V kept. At the
+ * target, A the high byte, Z and C set, N clear, V kept. Moved, A the high byte, N, Z, C and V
+ * from its add.
+ */
+SlideStep SoundSlideStep(uint8_t channel)
+{
+    return slide_step(channel, SoundSlideStepLo, SoundSlideStepHi, SoundSlideLo, SoundSlideHi,
+                      SoundSlideTarget);
+}
+
+void abi_SoundSlideStep(void)
+{
+    abi_exit_slide(SoundSlideStep(cpu.x));
+}
+
+/*
+ * @routine 004D:7CC SoundVolumeSlideStep
+ * @run 75:87CC
+ * WHAT IT DOES: Moves a channel's volume on by its step, until it reaches the target.
+ * HOW: SoundVolumeStepLo and Hi onto SoundVolumeLo and SoundVolume; SoundVolumeTarget.
+ * Entry: X channel. Exit: as SoundSlideStep.
+ */
+SlideStep SoundVolumeSlideStep(uint8_t channel)
+{
+    return slide_step(channel, SoundVolumeStepLo, SoundVolumeStepHi, SoundVolumeLo, SoundVolume,
+                      SoundVolumeTarget);
+}
+
+void abi_SoundVolumeSlideStep(void)
+{
+    abi_exit_slide(SoundVolumeSlideStep(cpu.x));
 }

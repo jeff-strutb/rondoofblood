@@ -434,5 +434,17 @@ BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 2598,abs,SoundChannelMarked,the sound driver: 8 bytes by channel
 25A8,abs,SoundChannel25A8,the sound driver: 8 bytes by channel; $1F on release
 25B8,abs,SoundChannelCommand,the sound driver: the command playing on each of 8 channels
-22F0,abs,SoundChannelPairA,the sound driver: 8 bytes by channel, first of a pair read from a sequence
-22F8,abs,SoundChannelPairB,the sound driver: 8 bytes by channel, second of the pair
+22F0,abs,SoundSequenceLo,the sound driver: each channel's place in its sequence, low
+22F8,abs,SoundSequenceHi,the sound driver: each channel's place in its sequence, high
+53,zp,zSoundSequenceLo,the sound driver: the place in the channel's sequence, low
+54,zp,zSoundSequenceHi,the sound driver: the place in the channel's sequence, high
+23D0,abs,SoundSlideStepLo,the sound driver: by channel, the slide's step, low; 0 and the high 0 for none
+23D8,abs,SoundSlideStepHi,the sound driver: by channel, the slide's step, high
+23E0,abs,SoundSlideLo,the sound driver: by channel, the sliding value, low
+23E8,abs,SoundSlideHi,the sound driver: by channel, the sliding value, high
+23F0,abs,SoundSlideTarget,the sound driver: by channel, the high byte the slide stops at
+2400,abs,SoundVolumeStepLo,the sound driver: by channel, the volume slide's step, low
+2408,abs,SoundVolumeStepHi,the sound driver: by channel, the volume slide's step, high
+2410,abs,SoundVolumeLo,the sound driver: by channel, the volume, fraction
+2418,abs,SoundVolume,the sound driver: by channel, the volume, which picks the balance
+2420,abs,SoundVolumeTarget,the sound driver: by channel, the volume the slide stops at

@@ -1,3 +1,93 @@
+; @routine 004D:5F1 SoundLoadSequence
+; @run 75:85F1
+; WHAT IT DOES: Takes up a channel's place in its sequence.
+; HOW: SoundSequenceLo and Hi into zSoundSequenceLo and Hi.
+; Entry: X channel. Exit: A the place's high byte, N and Z from it. X, Y, C and V kept.
+SoundLoadSequence:
+    lda a:SoundSequenceLo,x
+    sta z:zSoundSequenceLo
+    lda a:SoundSequenceHi,x
+    sta z:zSoundSequenceHi
+    rts
+
+; @routine 004D:5FC SoundSaveSequence
+; @run 75:85FC
+; WHAT IT DOES: Keeps a channel's place in its sequence.
+; HOW: zSoundSequenceLo and Hi into SoundSequenceLo and Hi.
+; Entry: X channel. Exit: A the place's high byte, N and Z from it. X, Y, C and V kept.
+SoundSaveSequence:
+    lda z:zSoundSequenceLo
+    sta a:SoundSequenceLo,x
+    lda z:zSoundSequenceHi
+    sta a:SoundSequenceHi,x
+    rts
+
+; @routine 004D:607 SoundSequenceFromWord
+; @run 75:8607
+; WHAT IT DOES: Moves the place in the sequence to the address in zSoundWordLo and Hi.
+; HOW: Two bytes copied.
+; Entry: nothing. Exit: A the address's high byte, N and Z from it. X, Y, C and V kept.
+SoundSequenceFromWord:
+    lda z:zSoundWordLo
+    sta z:zSoundSequenceLo
+    lda z:zSoundWordHi
+    sta z:zSoundSequenceHi
+    rts
+
+; @routine 004D:743 SoundSlideStep
+; @run 75:8743
+; WHAT IT DOES: Moves a channel's slide on by its step, until its high byte reaches the target.
+; HOW: SoundSlideStepLo and Hi onto SoundSlideLo and Hi; SoundSlideTarget.
+; Entry: X channel. Exit: X and Y kept. No slide, A 0, Z set, N clear, C and V kept. At the
+; target, A the high byte, Z and C set, N clear, V kept. Moved, A the high byte, N, Z, C and V
+; from its add.
+SoundSlideStep:
+    lda a:SoundSlideStepLo,x
+    ora a:SoundSlideStepHi,x
+    beq SoundSlideStep_at0
+    lda a:SoundSlideHi,x
+    cmp a:SoundSlideTarget,x
+    bne SoundSlideStep_at1
+    stz a:SoundSlideStepLo,x
+    stz a:SoundSlideStepHi,x
+    bra SoundSlideStep_at0
+SoundSlideStep_at1:
+    lda a:SoundSlideStepLo,x
+    clc
+    adc a:SoundSlideLo,x
+    sta a:SoundSlideLo,x
+    lda a:SoundSlideStepHi,x
+    adc a:SoundSlideHi,x
+    sta a:SoundSlideHi,x
+SoundSlideStep_at0:
+    rts
+
+; @routine 004D:7CC SoundVolumeSlideStep
+; @run 75:87CC
+; WHAT IT DOES: Moves a channel's volume on by its step, until it reaches the target.
+; HOW: SoundVolumeStepLo and Hi onto SoundVolumeLo and SoundVolume; SoundVolumeTarget.
+; Entry: X channel. Exit: as SoundSlideStep.
+SoundVolumeSlideStep:
+    lda a:SoundVolumeStepLo,x
+    ora a:SoundVolumeStepHi,x
+    beq SoundVolumeSlideStep_at0
+    lda a:SoundVolume,x
+    cmp a:SoundVolumeTarget,x
+    bne SoundVolumeSlideStep_at1
+    stz a:SoundVolumeStepLo,x
+    stz a:SoundVolumeStepHi,x
+    bra SoundVolumeSlideStep_at0
+SoundVolumeSlideStep_at1:
+    clc
+    lda a:SoundVolumeStepLo,x
+    adc a:SoundVolumeLo,x
+    sta a:SoundVolumeLo,x
+    lda a:SoundVolume,x
+    adc a:SoundVolumeStepHi,x
+    sta a:SoundVolume,x
+SoundVolumeSlideStep_at0:
+    rts
+
 ; @routine 004E:614 SoundSilenceAll
 ; @run 75:8E14
 ; WHAT IT DOES: Turns every PSG channel off, and the main volume down.
@@ -144,19 +234,20 @@ SoundStartFade_at0:
 
 ; @routine 0053:62E SoundReadPair
 ; @run 76:B62E
-; WHAT IT DOES: Reads the next two bytes of a sequence into a channel's pair.
+; WHAT IT DOES: Reads a sequence's address for a channel: the next two bytes, its place low and
+; high.
 ; HOW: Through the pointer in zSoundWordLo and zSoundWordHi, moved on past them.
 ; Entry: X channel. Exit: A the second byte; N and Z from the pointer's low byte, or its high
 ; when the low wrapped to 0. X, Y, C and V kept.
 SoundReadPair:
     lda (zSoundWordLo)
-    sta a:SoundChannelPairA,x
+    sta a:SoundSequenceLo,x
     inc z:zSoundWordLo
     bne SoundReadPair_at0
     inc z:zSoundWordHi
 SoundReadPair_at0:
     lda (zSoundWordLo)
-    sta a:SoundChannelPairB,x
+    sta a:SoundSequenceHi,x
     inc z:zSoundWordLo
     bne SoundReadPair_at1
     inc z:zSoundWordHi

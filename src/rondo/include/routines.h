@@ -798,4 +798,43 @@ typedef struct {
 
 AttackStart RichterAttack(void);
 void attack_exit_shim(AttackStart attack);
+
+/* A lift by the jump's speed: the position's high byte before and after, and the borrow. */
+typedef struct { uint8_t high_before; uint8_t high; bool borrow; } Lift;
+
+/* Item 5's crash: its animation and its sound. */
+typedef struct { AnimationStep animation; CommandCall sound; } CrashFive;
+
+/* A hurt jump: item 5's crash at once, or the lift, animation and sound, then the reaction. */
+typedef struct {
+    bool crash;
+    CrashFive crash_five;
+    Lift lift;
+    AnimationStep animation;
+    CommandCall sound;
+    uint8_t item;
+} HurtAir;
+
+CrashFive RichterItemCrashFive(void);
+void crash_five_exit_shim(CrashFive crash);
+HurtAir RichterToHurtAir(void);
+void RichterReactFillD(void);
+void RichterReactFillB(void);
+void RichterReactE(void);
+void RichterReact10(void);
+void RichterReact11(void);
+void RichterReact12(void);
+void RichterReact13(void);
+void hurt_air_exit_shim(HurtAir hurt);
+
+typedef enum { DYING_WAITING, DYING_OBJECT_LEFT, DYING_OVER } DyingHow;
+
+/* A frame of dying: still waiting, an object still out, or over; the value its exit shows. */
+typedef struct { DyingHow how; uint8_t value; uint8_t object; } DyingStep;
+
+/* A turn on a press: the facing before, the presses, and whether it turned. */
+typedef struct { uint8_t facing; uint8_t pressed; bool turned; } TurnPress;
+
+DyingStep RichterDyingStep(void);
+TurnPress RichterTurnOnPress(void);
 #endif

@@ -37,7 +37,11 @@ enum {
     FALL_SPEED_HI = 0x03, KNOCK_RISE_LO = 0xC0, KNOCK_RISE_HI = 0xFD, KNOCKED = 0x01,
     START_NEW_RUN = 0, START_HEALTH = 1, START_STAND = 2, START_FIELD94 = 0x10,
     FACING_RIGHT = 0, FACING_LEFT = 1, ANIM_AIR = 0x0A, ANIM_AIR_MOVING = 0x02, AIR_SAME_WAY = 0x80,
-    SOUND_WHIP = 0x03, ITEM_SLOT_A = 5, ITEM_SLOT_B = 8, ITEM_SLOT_C = 11,
+    SOUND_WHIP = 0x03, DEATH_SUB_STEP = 5, SCRIPT_DEATH = 9, ANIM_LEDGE_CRASH_A = 0x2B,
+    ANIM_LEDGE_CRASH_B = 0x2C, LEDGE_CRASH_STEP = 5, LEDGE_JUMP_LO = 0xC0, LEDGE_JUMP_HI = 0xFA, SOUND_HURT = 0x65, ANIM_CRASH_FIVE = 0x2A, ANIM_HURT_AIR = 0x23,
+    CRASH_FIVE_TIMER = 0x60, ITEM_CRASH_FIVE = 5, HURT_TIMER = 0xFF, REACT_FILL_D = 0x0D,
+    REACT_FILL_B = 0x0B, REACT_E = 0x0E, REACT_10 = 0x10, REACT_11 = 0x11, REACT_12 = 0x12,
+    REACT_13 = 0x13, REACT_11_TIMER = 0x60, ITEM_SLOT_A = 5, ITEM_SLOT_B = 8, ITEM_SLOT_C = 11,
     LEAP_LIST = 0x60, LEAP_SCRIPT = 0x01, LEAP_SCRIPT_UNLESS_HELD = 0x0B, LEAP_HIT_KEEPS = 0x20,
     LEAP_RISE_LO = 0x80, LEAP_RISE_HI = 0xFE, ANIM_LEAP = 0x22, LEAP_CHANNEL = 6,
     OBJECT_FIRST_OTHER = 1, OBJECT_END = 0x10, WHIP_KEPT = 1, CRASH_FIRST_STATE = 5, HEALTH_FULL = 0x5C, START_LIVE = 0x01
@@ -46,7 +50,6 @@ enum {
 /* Called before they are defined. */
 typedef struct { uint8_t facing; uint8_t high; } FacingSpeed;
 typedef struct { uint8_t facing; uint8_t step; uint8_t was; } Nudge;
-typedef struct { uint8_t high_before; uint8_t high; bool borrow; } Lift;
 uint8_t RichterClearKeepPlace(void);
 uint8_t RichterAnimationSound(void);
 void RichterHitReact(void);
@@ -90,6 +93,13 @@ void abi_RichterToFall(void);
 void abi_RichterKnockBack(void);
 void abi_RichterStand(void);
 void abi_RichterAttack(void);
+void abi_RichterItemCrashFive(void);
+void abi_RichterToHurtAir(void);
+void abi_RichterDyingStep(void);
+void abi_RichterTurnOnPress(void);
+void abi_RichterLedgeHurtA(void);
+void abi_RichterLedgeHurtB(void);
+void abi_RichterNudgeBJump(void);
 typedef struct {
     Lift lift;
     bool moving;
@@ -97,6 +107,19 @@ typedef struct {
     AnimationStep animation;
     FacingSpeed speed;
 } AirStart;
+
+/* A hurt off a ledge: item 5's crash with its animation, or the nudge and the hurt jump. */
+typedef struct { bool crash; AnimationStep animation; Nudge nudge; HurtAir hurt; } LedgeHurt;
+
+/* A jump off a ledge: the nudge, and taking to the air. */
+typedef struct { Nudge nudge; AirStart air; } LedgeJump;
+
+LedgeHurt RichterLedgeHurtA(void);
+LedgeHurt RichterLedgeHurtB(void);
+LedgeJump RichterNudgeBJump(void);
+void ledge_hurt_exit_shim(LedgeHurt hurt);
+void air_exit_shim(AirStart air);
+static void abi_exit_nudge(Nudge nudge);
 AirStart RichterToAir(void);
 void abi_RichterToAir(void);
 typedef struct { FacingSpeed speed; bool tested; uint8_t hit; } Leap;
@@ -127,22 +150,15 @@ Alu RichterApplyMoveAndPush(Alu r);
 Alu RichterFrame(Alu r);
 Alu RichterHitWhilePushed(Alu r);
 Alu RichterSpikeBelow(Alu r);
-Alu RichterDyingStep(Alu r);
 Alu RichterDie(Alu r);
 Alu RichterStateFrame(Alu r);
 Alu RichterOutOfHealth(Alu r);
-Alu RichterTurnOnPress(Alu r);
 Alu RichterStandStep1(Alu r);
 Alu RichterStandStep2(Alu r);
 Alu RichterStateStand(Alu r);
 Alu RichterStandStep0(Alu r);
-Alu RichterLedgeHurtA(Alu r);
-Alu RichterLedgeHurtB(Alu r);
 Alu RichterUpWhipLeft(Alu r);
-Alu RichterNudgeBJump(Alu r);
 Alu RichterUpWhipRight(Alu r);
-Alu RichterToHurtAir(Alu r);
-Alu RichterItemCrashFive(Alu r);
 Alu RichterStateWalk(Alu r);
 void abi_RichterFrame(void);
 void abi_RichterApplyMoveAndPush(void);
@@ -742,43 +758,56 @@ void abi_RichterAnimationSound(void)
  * WHAT IT DOES: The death's wait: holds the player still, and when the timer ends clears
  * the objects from 1 up, stopping at one still live, and ends the mode.
  * HOW: OBJ_2750 not zero is live. zSubStep 5 ends it.
- * Entry: nothing. Exit: as the last step left them.
+ * Entry: nothing. Exit: still dying, N and Z from the timer, A, X, Y, C and V kept. An object
+ * still out, A its OBJ_2750 and X its slot, N and Z from it, C clear past slot 1. Over, as
+ * RichterStartHitScript with script 9, and C set.
  */
-Alu RichterDyingStep(Alu r)
+DyingStep RichterDyingStep(void)
 {
-    uint8_t byte;
+    DyingStep step = { DYING_WAITING, 0, 0 };
 
     RichterStopX();
     wr8(OBJ_2A68, 0);
-    byte = rd8(PlayerDyingTimer);
-    byte = (uint8_t)(byte - 1);
-    wr8(PlayerDyingTimer, byte);
-    alu_nz(&r, byte);
-    if (byte != 0)
-        return r;
-    cpu.x = 1;
-    alu_nz(&r, 1);
-    do {
-        byte = rd8((uint16_t)(OBJ_2750 + cpu.x));
-        alu_load(&r, byte);
-        if (byte != 0)
-            return r;
-        r = call_abi(abi_ClearObject, r);
-        cpu.x++;
-        byte = r.a;
-        alu_compare(&r, cpu.x, 0x10);
-        r.a = byte;
-    } while (cpu.x != 0x10);
-    alu_put(&r, zSubStep, 5);
+    step.value = (uint8_t)(rd8(PlayerDyingTimer) - 1);
+    wr8(PlayerDyingTimer, step.value);
+    if (step.value != 0)
+        return step;
+    for (step.object = OBJECT_FIRST_OTHER; step.object < OBJECT_END; step.object++) {
+        step.value = rd8((uint16_t)(OBJ_2750 + step.object));
+        if (step.value != 0) {
+            step.how = DYING_OBJECT_LEFT;
+            return step;
+        }
+        ClearObject(step.object);
+    }
+    wr8(zSubStep, DEATH_SUB_STEP);
     wr8(PlayerByte3BD7, 0);
     wr8(PlayerDying, 0);
-    alu_load(&r, 9);
-    return call_abi(abi_RichterStartHitScript, r);
+    RichterStartHitScript(SCRIPT_DEATH);
+    step.how = DYING_OVER;
+    return step;
 }
 
 void abi_RichterDyingStep(void)
 {
-    abi_alu(RichterDyingStep(alu_from_cpu()));
+    DyingStep step = RichterDyingStep();
+
+    switch (step.how) {
+    case DYING_WAITING:
+        abi_nz(step.value);
+        break;
+    case DYING_OBJECT_LEFT:
+        cpu.a = step.value;
+        cpu.x = step.object;
+        abi_nz(step.value);
+        if (step.object != OBJECT_FIRST_OTHER)
+            abi_flag(P_C, false);
+        break;
+    case DYING_OVER:
+        hit_script_exit_shim(SCRIPT_DEATH);
+        abi_flag(P_C, true);
+        break;
+    }
 }
 
 /*
@@ -918,7 +947,7 @@ Alu RichterStateFrame(Alu r)
 
     alu_load(&r, byte);
     if (byte != 0)
-        return RichterDyingStep(r);
+        return call_abi(abi_RichterDyingStep, r);
     byte = rd8(OBJ_Y_HI);
     alu_load(&r, byte);
     if (!(byte & 0x80)) {
@@ -1074,28 +1103,33 @@ void abi_RichterStartHitScript(void)
  * @run 6D:A2E4
  * WHAT IT DOES: Turns the player to face the way just pressed.
  * HOW: OBJ_2AC0 is the facing, 0 right, 1 left.
- * Entry: nothing. Exit: A the facing or 1, flags as the last test left them. X, Y, C kept.
+ * Entry: nothing. Exit: N and V bits 7 and 6 of the presses, Z set if it did not turn; A the
+ * facing, or 1 and N and Z from it when it turned left. X, Y and C kept.
  */
-Alu RichterTurnOnPress(Alu r)
+TurnPress RichterTurnOnPress(void)
 {
-    uint8_t facing = rd8(OBJ_2AC0);
+    TurnPress turn;
 
-    alu_load(&r, facing);
-    if (facing == 0) {
-        alu_tst(&r, PAD_LEFT, rd8(zPadPressed));
-        if (r.nz != 0)
-            alu_put(&r, OBJ_2AC0, 1);
-    } else {
-        alu_tst(&r, PAD_RIGHT, rd8(zPadPressed));
-        if (r.nz != 0)
-            wr8(OBJ_2AC0, 0);
-    }
-    return r;
+    turn.facing = rd8(OBJ_2AC0);
+    turn.pressed = rd8(zPadPressed);
+    turn.turned = (turn.pressed & (turn.facing == 0 ? PAD_LEFT : PAD_RIGHT)) != 0;
+    if (turn.turned)
+        wr8(OBJ_2AC0, turn.facing == 0 ? FACING_LEFT : FACING_RIGHT);
+    return turn;
 }
 
 void abi_RichterTurnOnPress(void)
 {
-    abi_alu(RichterTurnOnPress(alu_from_cpu()));
+    TurnPress turn = RichterTurnOnPress();
+
+    cpu.a = turn.facing;
+    abi_flag(P_N, (turn.pressed & 0x80) != 0);
+    abi_flag(P_V, (turn.pressed & 0x40) != 0);
+    abi_flag(P_Z, !turn.turned);
+    if (turn.turned && turn.facing == 0) {
+        cpu.a = FACING_LEFT;
+        abi_nz(FACING_LEFT);
+    }
 }
 
 /*
@@ -1118,7 +1152,7 @@ Alu RichterStandStep1(Alu r)
     byte = rd8(OBJ_FLAGS_2F38);
     alu_compare(&r, byte, 3);
     if (byte < 3)
-        r = RichterTurnOnPress(r);
+        r = call_abi(abi_RichterTurnOnPress, r);
     byte = rd8(PlayerByte3BD5);
     alu_load(&r, byte);
     if (byte == 0) {
@@ -1344,7 +1378,7 @@ Alu RichterStandStep0(Alu r)
     r = call_with(RH_BA7A, r);
     r = call_with(RH_B7FC, r);
     if (r.c)
-        return RichterToHurtAir(r);
+        return call_abi(abi_RichterToHurtAir, r);
     r = call_with(RH_B929, r);
     if (r.c)
         return call_abi(abi_RichterAttack, r);
@@ -1692,24 +1726,30 @@ static Alu item_crash(Alu r, uint8_t id)
  * @run 6D:A54B
  * WHAT IT DOES: A hurt jump off a ledge the first way, or item $05's crash.
  * HOW: Nudges off the ledge and to RichterToHurtAir, or animation $2B.
- * Entry: nothing. Exit: as the path taken left them.
+ * Entry: nothing. Exit: item 5, A $60, N and Z from it, Y and C as RichterSetAnimation. Otherwise
+ * as RichterToHurtAir after RichterNudgeA.
  */
-Alu RichterLedgeHurtA(Alu r)
+LedgeHurt RichterLedgeHurtA(void)
 {
-    uint8_t byte;
+    LedgeHurt hurt;
 
     RichterPadOverridesOff();
-    byte = rd8(zField93);
-    alu_compare(&r, byte, 5);
-    if (byte == 5)
-        return item_crash(r, 0x2B);
-    r = call_abi(abi_RichterNudgeA, r);
-    return RichterToHurtAir(r);
+    hurt.crash = rd8(zField93) == ITEM_CRASH_FIVE;
+    if (hurt.crash) {
+        hurt.animation = RichterSetAnimation(ANIM_LEDGE_CRASH_A);
+        RichterStopMoving();
+        wr8(OBJ_2800, LEDGE_CRASH_STEP);
+        wr8(OBJ_30F0, CRASH_FIVE_TIMER);
+        return hurt;
+    }
+    hurt.nudge = RichterNudgeA();
+    hurt.hurt = RichterToHurtAir();
+    return hurt;
 }
 
 void abi_RichterLedgeHurtA(void)
 {
-    abi_alu(RichterLedgeHurtA(alu_from_cpu()));
+    ledge_hurt_exit_shim(RichterLedgeHurtA());
 }
 
 /*
@@ -1717,24 +1757,30 @@ void abi_RichterLedgeHurtA(void)
  * @run 6D:A55A
  * WHAT IT DOES: A hurt jump off a ledge the second way, or item $05's crash.
  * HOW: As RichterLedgeHurtA with the other nudge and animation $2C.
- * Entry: nothing. Exit: as the path taken left them.
+ * Entry: nothing. Exit: item 5, A $60, N and Z from it, Y and C as RichterSetAnimation. Otherwise
+ * as RichterToHurtAir after RichterNudgeB.
  */
-Alu RichterLedgeHurtB(Alu r)
+LedgeHurt RichterLedgeHurtB(void)
 {
-    uint8_t byte;
+    LedgeHurt hurt;
 
     RichterPadOverridesOff();
-    byte = rd8(zField93);
-    alu_compare(&r, byte, 5);
-    if (byte == 5)
-        return item_crash(r, 0x2C);
-    r = call_abi(abi_RichterNudgeB, r);
-    return RichterToHurtAir(r);
+    hurt.crash = rd8(zField93) == ITEM_CRASH_FIVE;
+    if (hurt.crash) {
+        hurt.animation = RichterSetAnimation(ANIM_LEDGE_CRASH_B);
+        RichterStopMoving();
+        wr8(OBJ_2800, LEDGE_CRASH_STEP);
+        wr8(OBJ_30F0, CRASH_FIVE_TIMER);
+        return hurt;
+    }
+    hurt.nudge = RichterNudgeB();
+    hurt.hurt = RichterToHurtAir();
+    return hurt;
 }
 
 void abi_RichterLedgeHurtB(void)
 {
-    abi_alu(RichterLedgeHurtB(alu_from_cpu()));
+    ledge_hurt_exit_shim(RichterLedgeHurtB());
 }
 
 /* Off a ledge upward: a nudge, then the fall that starts with an up speed. */
@@ -1855,17 +1901,27 @@ void abi_RichterNudgeB(void)
  * @run 6D:A5C4
  * WHAT IT DOES: The second nudge, and the jump up off the ledge.
  * HOW: RichterNudgeB, then as RichterUpWhipLeft's jump.
- * Entry: nothing. Exit: as the jump left them.
+ * Entry: nothing. Exit: A $FA, N set, Z clear; C, V and Y as RichterToAir after the nudge.
  */
-Alu RichterNudgeBJump(Alu r)
+LedgeJump RichterNudgeBJump(void)
 {
-    r = call_abi(abi_RichterNudgeB, r);
-    return jump_off_ledge(r);
+    LedgeJump jump;
+
+    jump.nudge = RichterNudgeB();
+    jump.air = RichterToAir();
+    wr8(OBJ_VY_LO, LEDGE_JUMP_LO);
+    wr8(OBJ_VY_HI, LEDGE_JUMP_HI);
+    return jump;
 }
 
 void abi_RichterNudgeBJump(void)
 {
-    abi_alu(RichterNudgeBJump(alu_from_cpu()));
+    LedgeJump jump = RichterNudgeBJump();
+
+    abi_exit_nudge(jump.nudge);
+    air_exit_shim(jump.air);
+    cpu.a = LEDGE_JUMP_HI;
+    abi_nz(LEDGE_JUMP_HI);
 }
 
 /*
@@ -1882,7 +1938,7 @@ Alu RichterUpWhipRight(Alu r)
     wr8(zFieldC6, 0);
     alu_tst(&r, PAD_UP_B, rd8(zPadHeld));
     if (r.nz == 0)
-        return RichterNudgeBJump(r);
+        return call_abi(abi_RichterNudgeBJump, r);
     r = call_with(RH_B893, r);
     if (!r.c)
         return r;
@@ -1895,24 +1951,26 @@ void abi_RichterUpWhipRight(void)
 }
 
 /* What each hit reaction spawns. */
-static Alu react_fill_slots(Alu r, uint8_t kind)
+/* The slots from 5 filled with one object. */
+static void react_fill_slots(uint8_t kind)
 {
-    alu_load(&r, kind);
-    cpu.y = 5;
-    alu_nz(&r, 5);
-    do {
-        wr8((uint16_t)(OBJ_2750 + cpu.y), kind);
-        cpu.y++;
-        alu_compare(&r, cpu.y, 0x10);
-        r.a = kind;
-    } while (cpu.y != 0x10);
-    return r;
+    for (uint8_t slot = ITEM_SLOT_A; slot < OBJECT_END; slot++)
+        wr8((uint16_t)(OBJ_2750 + slot), kind);
 }
 
-static Alu react_slot_5(Alu r, uint8_t kind)
+/* A, Y $10 and the flags of the loop's last compare. */
+static void abi_exit_filled(uint8_t kind)
 {
-    alu_put(&r, (uint16_t)(OBJ_2750 + 5), kind);
-    return r;
+    cpu.a = kind;
+    cpu.y = OBJECT_END;
+    abi_nz(0);
+    abi_flag(P_C, true);
+}
+
+/* One object put in slot 5. */
+static void react_slot_5(uint8_t kind)
+{
+    wr8(OBJ_2750 + ITEM_SLOT_A, kind);
 }
 
 /*
@@ -1920,58 +1978,93 @@ static Alu react_slot_5(Alu r, uint8_t kind)
  * @run 6D:A5F2
  * WHAT IT DOES: Hurt jump: state 3, step 2, the jump's speeds, a long hit timer, animation
  * $23, its sound, and a reaction by zField93. Item $05 goes to RichterItemCrashFive.
- * HOW: Table by zField93.
- * Entry: nothing. Exit: as the reaction left them.
+ * HOW: Table by zField93, 0 to 8; the C takes anything past 8 as 8. SoundCommand $65.
+ * Entry: nothing. Exit: item 5 first, as RichterItemCrashFive. Otherwise as the reaction, after
+ * A and X twice the item, N and Z from it, C its bit 7, Y as the animation and V as the sound left
+ * them.
  * @stop A621
  */
-Alu RichterToHurtAir(Alu r)
+HurtAir RichterToHurtAir(void)
 {
-    uint8_t byte;
+    HurtAir hurt;
+    uint16_t entry;
 
     RichterPadOverridesOff();
-    byte = rd8(zField93);
-    alu_compare(&r, byte, 5);
-    if (byte == 5)
-        return RichterItemCrashFive(r);
-    set_state_alu(&r, STATE_AIR, 2);
-    r = call_abi(abi_RichterJumpSpeed, r);
-    alu_put(&r, OBJ_3460, 0xFF);
+    hurt.crash = rd8(zField93) == ITEM_CRASH_FIVE;
+    if (hurt.crash) {
+        hurt.crash_five = RichterItemCrashFive();
+        return hurt;
+    }
+    set_state(STATE_AIR, 2);
+    hurt.lift = RichterJumpSpeed();
+    wr8(OBJ_3460, HURT_TIMER);
     wr8(OBJ_3250, 0);
-    r = animation(r, 0x23);
-    alu_load(&r, 0x65);
-    r = call_abi(abi_SoundCommand, r);
-    byte = rd8(zField93);
-    r.a = (uint8_t)(byte << 1);
-    alu_nz(&r, r.a);
-    r.c = (byte & 0x80) != 0;
-    r.c_kept = false;
-    cpu.x = r.a;
-    {
-        uint8_t lo = rd8((uint16_t)(HitReactionHandlers + cpu.x));
-        uint8_t hi = rd8((uint16_t)(HitReactionHandlers + cpu.x + 1));
+    hurt.animation = RichterSetAnimation(ANIM_HURT_AIR);
+    hurt.sound = SoundCommand(SOUND_HURT);
+    hurt.item = rd8(zField93);
+    entry = (uint16_t)(HitReactionHandlers + (uint8_t)(hurt.item << 1));
+    rd8(entry);
+    rd8((uint16_t)(entry + 1));
+    switch (hurt.item) {
+    case 0: RichterReactFillD(); break;
+    case 1:
+    case 2: RichterReactFillB(); break;
+    case 3: RichterReact12(); break;
+    case 4: RichterReactE(); break;
+    case ITEM_CRASH_FIVE: hurt.crash_five = RichterItemCrashFive(); break;
+    case 6: RichterReact10(); break;
+    case 7: RichterReact11(); break;
+    default: RichterReact13(); break;
+    }
+    return hurt;
+}
 
-        switch ((uint16_t)(lo | (hi << 8))) {
-        case 0xA633: return react_fill_slots(r, 0x0D);
-        case 0xA640: return react_fill_slots(r, 0x0B);
-        case 0xA644: return RichterItemCrashFive(r);
-        case 0xA661: return react_slot_5(r, 0x0E);
-        case 0xA667:
-            r = react_slot_5(r, 0x11);
-            alu_put(&r, OBJ_3250, 1);
-            alu_put(&r, OBJ_3460, 0x60);
-            return r;
-        case 0xA677: return react_slot_5(r, 0x10);
-        case 0xA67B: return react_slot_5(r, 0x12);
-        case 0xA67F: return react_slot_5(r, 0x13);
-        default:
-            return call_with((uint16_t)(lo | (hi << 8)), r);
-        }
+void hurt_air_exit_shim(HurtAir hurt)
+{
+    uint8_t index;
+
+    if (hurt.crash) {
+        crash_five_exit_shim(hurt.crash_five);
+        return;
+    }
+    lift_exit_shim(hurt.lift);
+    animation_exit_shim(hurt.animation);
+    cpu.a = SOUND_HURT;
+    sound_command_exit_shim(SOUND_HURT, hurt.sound);
+    index = (uint8_t)(hurt.item << 1);
+    cpu.a = index;
+    cpu.x = index;
+    abi_nz(index);
+    abi_flag(P_C, (hurt.item & 0x80) != 0);
+    switch (hurt.item) {
+    case 0: abi_exit_filled(REACT_FILL_D); break;
+    case 1:
+    case 2: abi_exit_filled(REACT_FILL_B); break;
+    case 3: cpu.a = REACT_12; abi_nz(REACT_12); break;
+    case 4: cpu.a = REACT_E; abi_nz(REACT_E); break;
+    case ITEM_CRASH_FIVE: crash_five_exit_shim(hurt.crash_five); break;
+    case 6: cpu.a = REACT_10; abi_nz(REACT_10); break;
+    case 7: cpu.a = REACT_11_TIMER; abi_nz(REACT_11_TIMER); break;
+    default: cpu.a = REACT_13; abi_nz(REACT_13); break;
     }
 }
 
 void abi_RichterToHurtAir(void)
 {
-    abi_alu(RichterToHurtAir(alu_from_cpu()));
+    hurt_air_exit_shim(RichterToHurtAir());
+}
+
+/* Item 5's ledge crash: the animation's exit, A $60; or the nudge's exit, then the hurt jump's. */
+void ledge_hurt_exit_shim(LedgeHurt hurt)
+{
+    if (hurt.crash) {
+        animation_exit_shim(hurt.animation);
+        cpu.a = CRASH_FIVE_TIMER;
+        abi_nz(CRASH_FIVE_TIMER);
+        return;
+    }
+    abi_exit_nudge(hurt.nudge);
+    hurt_air_exit_shim(hurt.hurt);
 }
 
 /*
@@ -1981,9 +2074,15 @@ void abi_RichterToHurtAir(void)
  * HOW: A loop to $10.
  * Entry: nothing. Exit: A $0D, Y $10, N, Z, C from comparing it.
  */
+void RichterReactFillD(void)
+{
+    react_fill_slots(REACT_FILL_D);
+}
+
 void abi_RichterReactFillD(void)
 {
-    abi_alu(react_fill_slots(alu_from_cpu(), 0x0D));
+    RichterReactFillD();
+    abi_exit_filled(REACT_FILL_D);
 }
 
 /*
@@ -1993,9 +2092,15 @@ void abi_RichterReactFillD(void)
  * HOW: Goes back into the loop.
  * Entry: nothing. Exit: A $0B, Y $10, N, Z, C from comparing it.
  */
+void RichterReactFillB(void)
+{
+    react_fill_slots(REACT_FILL_B);
+}
+
 void abi_RichterReactFillB(void)
 {
-    abi_alu(react_fill_slots(alu_from_cpu(), 0x0B));
+    RichterReactFillB();
+    abi_exit_filled(REACT_FILL_B);
 }
 
 /*
@@ -2006,20 +2111,30 @@ void abi_RichterReactFillB(void)
  * HOW: The fields in turn.
  * Entry: nothing. Exit: A $60, N and Z from it; C and V as SoundCommand left them.
  */
-Alu RichterItemCrashFive(Alu r)
+CrashFive RichterItemCrashFive(void)
 {
+    CrashFive crash;
+
     RichterStopMoving();
-    r = animation(r, 0x2A);
-    alu_load(&r, 0x65);
-    r = call_abi(abi_SoundCommand, r);
-    set_state_alu(&r, STATE_STAND, 2);
-    alu_put(&r, OBJ_30F0, 0x60);
-    return r;
+    crash.animation = RichterSetAnimation(ANIM_CRASH_FIVE);
+    crash.sound = SoundCommand(SOUND_HURT);
+    set_state(STATE_STAND, 2);
+    wr8(OBJ_30F0, CRASH_FIVE_TIMER);
+    return crash;
+}
+
+void crash_five_exit_shim(CrashFive crash)
+{
+    animation_exit_shim(crash.animation);
+    cpu.a = SOUND_HURT;
+    sound_command_exit_shim(SOUND_HURT, crash.sound);
+    cpu.a = CRASH_FIVE_TIMER;
+    abi_nz(CRASH_FIVE_TIMER);
 }
 
 void abi_RichterItemCrashFive(void)
 {
-    abi_alu(RichterItemCrashFive(alu_from_cpu()));
+    crash_five_exit_shim(RichterItemCrashFive());
 }
 
 /*
@@ -2029,9 +2144,16 @@ void abi_RichterItemCrashFive(void)
  * HOW: One store.
  * Entry: nothing. Exit: A $0E, N and Z from it. X, Y, C, V kept.
  */
+void RichterReactE(void)
+{
+    react_slot_5(REACT_E);
+}
+
 void abi_RichterReactE(void)
 {
-    abi_alu(react_slot_5(alu_from_cpu(), 0x0E));
+    RichterReactE();
+    cpu.a = REACT_E;
+    abi_nz(REACT_E);
 }
 
 /*
@@ -2041,13 +2163,18 @@ void abi_RichterReactE(void)
  * HOW: Three stores.
  * Entry: nothing. Exit: A $60, N and Z from it. X, Y, C, V kept.
  */
+void RichterReact11(void)
+{
+    react_slot_5(REACT_11);
+    wr8(OBJ_3250, 1);
+    wr8(OBJ_3460, REACT_11_TIMER);
+}
+
 void abi_RichterReact11(void)
 {
-    Alu r = react_slot_5(alu_from_cpu(), 0x11);
-
-    alu_put(&r, OBJ_3250, 1);
-    alu_put(&r, OBJ_3460, 0x60);
-    abi_alu(r);
+    RichterReact11();
+    cpu.a = REACT_11_TIMER;
+    abi_nz(REACT_11_TIMER);
 }
 
 /*
@@ -2057,9 +2184,16 @@ void abi_RichterReact11(void)
  * HOW: Goes back into RichterReactE's store.
  * Entry: nothing. Exit: A $10, N and Z from it. X, Y, C, V kept.
  */
+void RichterReact10(void)
+{
+    react_slot_5(REACT_10);
+}
+
 void abi_RichterReact10(void)
 {
-    abi_alu(react_slot_5(alu_from_cpu(), 0x10));
+    RichterReact10();
+    cpu.a = REACT_10;
+    abi_nz(REACT_10);
 }
 
 /*
@@ -2069,9 +2203,16 @@ void abi_RichterReact10(void)
  * HOW: Goes back into RichterReactE's store.
  * Entry: nothing. Exit: A $12, N and Z from it. X, Y, C, V kept.
  */
+void RichterReact12(void)
+{
+    react_slot_5(REACT_12);
+}
+
 void abi_RichterReact12(void)
 {
-    abi_alu(react_slot_5(alu_from_cpu(), 0x12));
+    RichterReact12();
+    cpu.a = REACT_12;
+    abi_nz(REACT_12);
 }
 
 /*
@@ -2081,9 +2222,16 @@ void abi_RichterReact12(void)
  * HOW: Goes back into RichterReactE's store.
  * Entry: nothing. Exit: A $13, N and Z from it. X, Y, C, V kept.
  */
+void RichterReact13(void)
+{
+    react_slot_5(REACT_13);
+}
+
 void abi_RichterReact13(void)
 {
-    abi_alu(react_slot_5(alu_from_cpu(), 0x13));
+    RichterReact13();
+    cpu.a = REACT_13;
+    abi_nz(REACT_13);
 }
 
 /*
@@ -2167,10 +2315,8 @@ AirStart RichterToAir(void)
     return air;
 }
 
-void abi_RichterToAir(void)
+void air_exit_shim(AirStart air)
 {
-    AirStart air = RichterToAir();
-
     lift_exit_shim(air.lift);
     if (air.moving && air.same_way) {
         abi_exit_speed(air.speed);
@@ -2180,6 +2326,11 @@ void abi_RichterToAir(void)
     } else {
         animation_exit_shim(air.animation);
     }
+}
+
+void abi_RichterToAir(void)
+{
+    air_exit_shim(RichterToAir());
 }
 
 /*
@@ -2273,7 +2424,7 @@ Alu RichterStateWalk(Alu r)
     r = call_with(RH_BA7A, r);
     r = call_with(RH_B7FC, r);
     if (r.c)
-        return RichterToHurtAir(r);
+        return call_abi(abi_RichterToHurtAir, r);
     r = call_with(RH_B929, r);
     if (r.c)
         return call_abi(abi_RichterAttack, r);

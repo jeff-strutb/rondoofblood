@@ -356,7 +356,9 @@ RichterAnimationSound:
 ; WHAT IT DOES: The death's wait: holds the player still, and when the timer ends clears
 ; the objects from 1 up, stopping at one still live, and ends the mode.
 ; HOW: OBJ_2750 not zero is live. zSubStep 5 ends it.
-; Entry: nothing. Exit: as the last step left them.
+; Entry: nothing. Exit: still dying, N and Z from the timer, A, X, Y, C and V kept. An object
+; still out, A its OBJ_2750 and X its slot, N and Z from it, C clear past slot 1. Over, as
+; RichterStartHitScript with script 9, and C set.
 RichterDyingStep:
     jsr RichterStopX
     stz a:OBJ_2A68
@@ -554,7 +556,8 @@ RichterStartHitScript:
 ; @run 6D:A2E4
 ; WHAT IT DOES: Turns the player to face the way just pressed.
 ; HOW: OBJ_2AC0 is the facing, 0 right, 1 left.
-; Entry: nothing. Exit: A the facing or 1, flags as the last test left them. X, Y, C kept.
+; Entry: nothing. Exit: N and V bits 7 and 6 of the presses, Z set if it did not turn; A the
+; facing, or 1 and N and Z from it when it turned left. X, Y and C kept.
 RichterTurnOnPress:
     lda a:OBJ_2AC0
     bne RichterTurnOnPress_at0
@@ -967,7 +970,8 @@ RichterPadOverridesOff:
 ; @run 6D:A54B
 ; WHAT IT DOES: A hurt jump off a ledge the first way, or item $05's crash.
 ; HOW: Nudges off the ledge and to RichterToHurtAir, or animation $2B.
-; Entry: nothing. Exit: as the path taken left them.
+; Entry: nothing. Exit: item 5, A $60, N and Z from it, Y and C as RichterSetAnimation. Otherwise
+; as RichterToHurtAir after RichterNudgeA.
 RichterLedgeHurtA:
     jsr RichterPadOverridesOff
     lda z:zField93
@@ -980,7 +984,8 @@ RichterLedgeHurtA:
 ; @run 6D:A55A
 ; WHAT IT DOES: A hurt jump off a ledge the second way, or item $05's crash.
 ; HOW: As RichterLedgeHurtA with the other nudge and animation $2C.
-; Entry: nothing. Exit: as the path taken left them.
+; Entry: nothing. Exit: item 5, A $60, N and Z from it, Y and C as RichterSetAnimation. Otherwise
+; as RichterToHurtAir after RichterNudgeB.
 RichterLedgeHurtB:
     jsr RichterPadOverridesOff
     lda z:zField93
@@ -1061,7 +1066,7 @@ RichterNudgeB:
 ; @run 6D:A5C4
 ; WHAT IT DOES: The second nudge, and the jump up off the ledge.
 ; HOW: RichterNudgeB, then as RichterUpWhipLeft's jump.
-; Entry: nothing. Exit: as the jump left them.
+; Entry: nothing. Exit: A $FA, N set, Z clear; C, V and Y as RichterToAir after the nudge.
 RichterNudgeBJump:
     bsr RichterNudgeB
     bra RichterUpWhipLeft_at2
@@ -1094,8 +1099,10 @@ RichterUpWhipRight_at0:
 ; @run 6D:A5F2
 ; WHAT IT DOES: Hurt jump: state 3, step 2, the jump's speeds, a long hit timer, animation
 ; $23, its sound, and a reaction by zField93. Item $05 goes to RichterItemCrashFive.
-; HOW: Table by zField93.
-; Entry: nothing. Exit: as the reaction left them.
+; HOW: Table by zField93, 0 to 8; the C takes anything past 8 as 8. SoundCommand $65.
+; Entry: nothing. Exit: item 5 first, as RichterItemCrashFive. Otherwise as the reaction, after
+; A and X twice the item, N and Z from it, C its bit 7, Y as the animation and V as the sound left
+; them.
 ; @stop A621
 RichterToHurtAir:
     jsr RichterPadOverridesOff

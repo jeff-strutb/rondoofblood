@@ -67,6 +67,8 @@ extern void (*chk_bus_wr)(uint16_t, uint8_t);
 extern void (*chk_bus_st)(unsigned, uint8_t);
 extern const uint8_t *(*chk_bank)(unsigned);
 extern void (*chk_charge)(int);
+extern uint8_t (*chk_get_speed)(void);
+extern void (*chk_set_speed)(uint8_t);
 int check_init(int which, const char *path, const char *user_path);
 void check_finish(void);
 void check_rd(uint32_t phys, uint8_t v, int kind);
@@ -450,6 +452,8 @@ int main(int argc, char **argv)
         chk_bus_st = (void (*)(unsigned, uint8_t))sym(lib, "rondo_bus_st");
         chk_bank = core_bank;
         chk_charge = (void (*)(int))sym(lib, "rondo_charge");
+        chk_get_speed = (uint8_t (*)(void))sym(lib, "rondo_get_speed");
+        chk_set_speed = (void (*)(uint8_t))sym(lib, "rondo_set_speed");
         if (!check_user || check_init(check_mode, check_file, check_user))
             return 1;
         ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(

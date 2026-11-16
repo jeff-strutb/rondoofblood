@@ -58,6 +58,8 @@ void (*chk_bus_wr)(uint16_t, uint8_t);
 void (*chk_bus_st)(unsigned, uint8_t);
 const uint8_t *(*chk_bank)(unsigned);
 void (*chk_charge)(int);
+uint8_t (*chk_get_speed)(void);
+void (*chk_set_speed)(uint8_t);
 
 Cpu cpu;
 
@@ -87,6 +89,7 @@ typedef struct {
     uint16_t ret;
     Regs regs;
     uint8_t mpr[8];
+    uint8_t speed;         /* the CPU's clock at entry: 1 fast, 0 slow */
     int overlapped;
 } Frame;
 
@@ -354,6 +357,28 @@ void cli(void)
     cpu.p &= (uint8_t)~P_I;
 }
 
+/*
+ * The CPU's clock, which CSL and CSH set and which stays set for the caller: A5 keeps the C's in
+ * c_speed and judges it at the exit beside the flags; the hybrid sets the live CPU's.
+ */
+static uint8_t c_speed;
+
+void csl(void)
+{
+    if (mode == MODE_HYBRID)
+        chk_set_speed(0);
+    else
+        c_speed = 0;
+}
+
+void csh(void)
+{
+    if (mode == MODE_HYBRID)
+        chk_set_speed(1);
+    else
+        c_speed = 1;
+}
+
 void wait_interrupt(void)
 {
     if (mode == MODE_A5)
@@ -546,6 +571,7 @@ static void judge(Frame *f, const Regs *r)
         if (logb[i].type == E_WRITE)
             final_val[logb[i].phys] = logb[i].val;
     memcpy(mshadow, f->mpr, 8);
+    c_speed = f->speed;
     cpu.a = f->regs.a;
     cpu.x = f->regs.x;
     cpu.y = f->regs.y;
@@ -571,6 +597,9 @@ static void judge(Frame *f, const Regs *r)
         if (!f->tag->ends && ((cpu.p ^ r->p) & PFLAGS))
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " P C %02X orig %02X (entry %02X);",
                                    cpu.p, r->p, f->regs.p);
+        if (c_speed != chk_get_speed())
+            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " CPU clock C %s orig %s;",
+                                   c_speed ? "fast" : "slow", chk_get_speed() ? "fast" : "slow");
         for (unsigned i = 0; i < 8; i++)
             if (mshadow[i] != (uint8_t)chk_mpr(i))
                 dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " MPR%u C %02X orig %02X;", i,
@@ -845,6 +874,7 @@ static void open_frame(int index, const Regs *r)
     f->overlapped = 0;
     for (unsigned i = 0; i < 8; i++)
         f->mpr[i] = (uint8_t)chk_mpr(i);
+    f->speed = chk_get_speed();
     if (mode == MODE_RECORD) {
         f->record = (uint32_t)nrec;
         f->ts = chk_ts();

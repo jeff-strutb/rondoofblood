@@ -86,11 +86,12 @@ static void write_backup_header(BackupSize size)
  * WHAT IT DOES: Opens the backup memory at $8000, keeping every MPR.
  * HOW: The eight MPRs go to CardSavedMprs, its bank to MPR4, slow speed, interrupts off, and
  * the unlock port.
- * Entry: nothing. Exit: A kept, N and Z from it, I set. X, Y, C, V kept.
+ * Entry: nothing. Exit: A kept, N and Z from it, I set, the CPU on its slow clock. X, Y, C, V kept.
  */
 void bm_open(void)
 {
     map_backup_bank_shim();
+    csl();
     wr8(BackupUnlock, BACKUP_OPEN);
 }
 
@@ -106,12 +107,14 @@ void abi_bm_open(void)
  * WHAT IT DOES: Closes the backup memory and puts back every MPR.
  * HOW: The eight MPRs back; a read of the status port locks it; full speed; then waits out a
  * vertical blank with its interrupt on, so that none was lost, and puts the VDC back.
- * Entry: nothing. Exit: A kept, N and Z from it, I clear. X, Y, C, V kept.
+ * Entry: nothing. Exit: A kept, N and Z from it, I clear, the CPU on its fast clock. X, Y, C, V
+ * kept.
  */
 void bm_close(void)
 {
     unmap_backup_bank_shim();
     rd8(CdIrqStatus);
+    csh();
     wait_vblank_with_interrupt_shim();
 }
 

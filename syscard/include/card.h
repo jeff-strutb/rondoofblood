@@ -26,6 +26,8 @@ void wr8(uint16_t addr, uint8_t value);
 uint8_t tma(uint8_t mpr_bit);
 void tam(uint8_t mpr_bits, uint8_t bank);
 void cli(void);
+void csl(void); /* the CPU to its slow clock, as CSL; it stays so for the caller */
+void csh(void); /* the CPU to its fast clock, as CSH */
 
 static inline void abi_flag(uint8_t flag, bool on)
 {

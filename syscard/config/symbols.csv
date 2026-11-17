@@ -65,6 +65,7 @@ F8AD,abs,BackupFormatPassword,what bm_format must be handed
 2291,abs,CardCdFailedCommand,the command that last failed
 2241,abs,CardFrameTick,counted by the card's frame interrupt
 2248,abs,CardCdNoWait,set: a command returns without waiting on the drive
+2249,abs,CardRndSeed,ex_rnd's three bytes of state
 227A,abs,CardBusPhase,the bus phase last read
 227B,abs,CardCdStatus,the status byte the drive last gave
 227C,abs,CardCdSense,the drive's sense code
@@ -90,7 +91,8 @@ FFF4,abs,CardVersionByte,the byte of the card ex_memopen returns
 2245,abs,CardScreenColumns,the columns of tiles ex_scrmod was given
 2246,abs,CardScreenRows,the rows of tiles ex_scrmod was given
 2214,abs,CardSatAddress,where the sprite table is in VRAM
-2216,abs,CardSatFlag,cleared by ex_satclr
+2216,abs,CardSatFlag,the sprites ex_sprput has put: 0 to 64; cleared by ex_satclr
+2217,abs,CardSprite,the sprite ex_sprput puts next: its four words in eight bytes
 FEC2,abs,CardVersionMajor,the card's version: 3
 FEC3,abs,CardVersionMinor,the card's version after the point: 0
 180E,abs,AdpcmRate,the ADPCM unit's playback rate
@@ -117,3 +119,8 @@ F27E,abs,FontRowStarts,the index of each JIS row's first glyph in the font: a wo
 0405,abs,VceDataHi,the VCE's colour data port
 E5D7,abs,ColorReadStub,the first three bytes of the stub that reads the palettes: TAI from the colour data port
 22A1,abs,CardAdpcmNextSector,the next sector ad_cplay reads: three bytes high first
+22C1,abs,CardAdTransSent,the command bytes ad_trans_step has sent
+22C2,abs,CardAdTransStep,ad_trans_step's state: 0 none; 1 select; 2 command; 3 start the transfer; 4 status
+22C3,abs,CardAdTransAddress,the ADPCM address ad_trans_step's transfer writes to: low first
+222D,abs,CardPadPressed,"the buttons each of the five pads has newly pressed, as ex_joysns finds them: bit 2 select, bit 3 run"
+18C0,abs,SuperRamKey,"written $AA then $55 at boot when the Super System Card's RAM is found; its effect is not traced"

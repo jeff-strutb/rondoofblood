@@ -252,6 +252,55 @@ void abi_ex_satclr(void)
     abi_nz(0);
 }
 
+enum { SAT_SPRITES = 0x40, SPRITE_BYTES = 8, SPRITE_WORDS_SHIFT = 2 };
+
+/*
+ * @card 00:E63C ex_sprput
+ * WHAT IT DOES: Puts the sprite in CardSprite into the next of the sprite table's 64 entries in
+ * VRAM, and counts it.
+ * HOW: CardSatFlag counts the sprites put since ex_satclr; at 64 nothing is done. The write
+ * address is CardSatAddress plus four words for each sprite put, then the sprite's four words
+ * go out.
+ * Entry: CardSprite, CardSatFlag, CardSatAddress. Exit: C 1; X, Y kept. Put: A the sprite's
+ * last byte, N and Z from Y, V from adding the low byte's carry to the table's high byte. Full:
+ * A the count, N and Z from it less $40, V kept.
+ */
+SpritePut ex_sprput(void)
+{
+    SpritePut put = { false, rd8(CardSatFlag), 0, 0 };
+    uint16_t at;
+
+    if (put.count >= SAT_SPRITES)
+        return put;
+    put.put = true;
+    put.sat = (uint16_t)(rd8(CardSatAddress) | (rd8((uint16_t)(CardSatAddress + 1)) << 8));
+    at = (uint16_t)(put.sat + (put.count << SPRITE_WORDS_SHIFT));
+    set_vdc_register(VDC_REG_MAWR, (uint8_t)at, (uint8_t)(at >> 8));
+    select_vdc_register(VDC_REG_VWR);
+    for (unsigned i = 0; i < SPRITE_BYTES; i += 2) {
+        wr8(VdcDataLo, rd8((uint16_t)(CardSprite + i)));
+        put.last = rd8((uint16_t)(CardSprite + i + 1));
+        wr8(VdcDataHi, put.last);
+    }
+    wr8(CardSatFlag, (uint8_t)(put.count + 1));
+    return put;
+}
+
+void abi_ex_sprput(void)
+{
+    SpritePut put = ex_sprput();
+
+    abi_flag(P_C, true);
+    if (!put.put) {
+        cpu.a = put.count;
+        abi_nz((uint8_t)(put.count - SAT_SPRITES));
+        return;
+    }
+    cpu.a = put.last;
+    abi_nz(cpu.y);
+    abi_flag(P_V, (put.sat >> 8) == 0x7F && (put.sat & 0xFF) + (put.count << SPRITE_WORDS_SHIFT) > 0xFF);
+}
+
 enum {
     VDC_REG_CONTROL = 0x05, VDC_REG_RCR = 0x06, VDC_REG_MARR = 0x01, VDC_REG_DCR = 0x0F,
     VDC_REG_SATB = 0x13, VDC_REG_SOUR = 0x10, VDC_REG_DESR = 0x11, VDC_REG_LENR = 0x12,

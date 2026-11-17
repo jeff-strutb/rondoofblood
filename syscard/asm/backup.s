@@ -513,6 +513,83 @@ bm_delete_at0:
     lda #$01
     jmp bm_close
 
+; @card 00:FA72 bm_files
+; WHAT IT DOES: Gives the name and data size of the backup memory's file number _AL, counting
+; from 1, in the fourteen bytes at _BX.
+; HOW: Walks the file list from $8010 by each file's length, counting the files in _AL and down
+; in CardByteCount; a length of zero ends the list. The file's twelve-byte name goes to _BX
+; through bm_map_name_window, then its length less its $10-byte header, low byte first.
+; Entry: _AL the file's number (0 walks to the 256th), _BX the buffer. Exit: I clear, A the
+; result, N and Z from it; not formatted, as bm_open_formatted. Named: A 0, X the saved MPR,
+; Y $0D, C 1, V from moving CardFileLo on by 4 to the name. No such file: A 1, X $FF, Y 1, _AL
+; the files counted, C and V from the high byte of the last step past a file, or C 1 and V kept
+; if there was none.
+bm_files:
+    jsr bm_open_formatted
+    lda #$10
+    sta z:CardFileLo
+    lda #$80
+    sta z:CardFileHi
+    lda z:CardAl
+    sta a:CardByteCount
+    stz z:CardAl
+    ldy #$01
+bm_files_at0:
+    lda (CardFileLo)
+    ora (CardFileLo),y
+    beq bm_files_at3
+    inc z:CardAl
+    dec a:CardByteCount
+    beq bm_files_at1
+    lda (CardFileLo),y
+    pha
+    lda (CardFileLo)
+    clc
+    adc z:CardFileLo
+    sta z:CardFileLo
+    pla
+    adc z:CardFileHi
+    sta z:CardFileHi
+    bra bm_files_at0
+bm_files_at1:
+    lda (CardFileLo)
+    sec
+    sbc #$10
+    tax
+    lda (CardFileLo),y
+    sbc #$00
+    pha
+    phx
+    lda z:CardFileLo
+    clc
+    adc #$04
+    sta z:CardFileLo
+    lda z:CardFileHi
+    adc #$00
+    sta z:CardFileHi
+    lda z:CardBl
+    sta z:CardCopyLo
+    lda z:CardBh
+    sta z:CardCopyHi
+    jsr bm_map_name_window
+    cly
+bm_files_at2:
+    lda (CardFileLo),y
+    sta (CardCopyLo),y
+    iny
+    cpy #$0C
+    bcc bm_files_at2
+    pla
+    sta (CardCopyLo),y
+    iny
+    pla
+    sta (CardCopyLo),y
+    cla
+    jmp bm_close
+bm_files_at3:
+    lda #$01
+    jmp bm_close
+
 ; @card 00:FAE2 bm_new_file
 ; WHAT IT DOES: Starts a new, empty file named by _AX at the backup memory's next free byte.
 ; HOW: Works out the room left into CardPointerLo, but tests CardCopyLo-Hi against $10 instead,

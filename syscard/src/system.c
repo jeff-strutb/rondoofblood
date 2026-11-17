@@ -163,3 +163,45 @@ void abi_init_card_vectors(void)
     cpu.a = (uint8_t)(DEFAULT_IRQ_HANDLER >> 8);
     abi_nz(cpu.a);
 }
+
+enum { RND_FEEDBACK_BIT = 6 };
+
+/*
+ * @card 00:E67E ex_rnd
+ * WHAT IT DOES: Gives a pseudo-random byte from the three bytes of state in CardRndSeed.
+ * HOW: The state's low byte is XORed into its middle byte, and its high byte XORed with it
+ * becomes the new low byte; those two then shift left one as a word, taking in bit 6 of the old
+ * middle byte XOR bit 0 of the old low byte. The high byte never changes. The byte given is the
+ * new low and middle bytes XORed.
+ * Entry: CardRndSeed. Exit: A the byte, N and Z from it, C the bit shifted out of the middle
+ * byte. X, Y, V kept.
+ */
+RandomByte ex_rnd(void)
+{
+    uint8_t low = rd8(CardRndSeed);
+    uint8_t middle = rd8((uint16_t)(CardRndSeed + 1));
+    uint8_t high = rd8((uint16_t)(CardRndSeed + 2));
+    uint8_t feedback = (uint8_t)(((middle >> RND_FEEDBACK_BIT) ^ low) & 1);
+    uint8_t mixed_middle = (uint8_t)(middle ^ low);
+    uint8_t mixed_low = (uint8_t)(high ^ low);
+    RandomByte random;
+
+    wr8((uint16_t)(CardRndSeed + 1), mixed_middle);
+    wr8(CardRndSeed, mixed_low);
+    low = (uint8_t)((mixed_low << 1) | feedback);
+    wr8(CardRndSeed, low);
+    middle = (uint8_t)((mixed_middle << 1) | (mixed_low >> 7));
+    wr8((uint16_t)(CardRndSeed + 1), middle);
+    random.value = (uint8_t)(middle ^ low);
+    random.carry = (mixed_middle & 0x80) != 0;
+    return random;
+}
+
+void abi_ex_rnd(void)
+{
+    RandomByte random = ex_rnd();
+
+    cpu.a = random.value;
+    abi_nz(random.value);
+    abi_flag(P_C, random.carry);
+}

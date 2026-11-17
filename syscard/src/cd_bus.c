@@ -1979,6 +1979,97 @@ void cd_read_exit_shim(CdRead read)
     cpu.a = cd_read_result(read);
 }
 
+enum { SEEK_SECTORS = 1 };
+
+/* One try of a seek: a read of one sector, whose data the drive is let send and is dropped. */
+static CdSeek try_seek(void)
+{
+    CdSeek seek = { 0 };
+
+    clear_cd_command();
+    wr8(CardCdCommand, COMMAND_READ);
+    add_cd_base();
+    copy_args_to_command(CARD_ARG_CX, 1);
+    ask_for_sectors(SEEK_SECTORS);
+    seek.sent = cd_send_command();
+    seek.drained = cd_sent_value(seek.sent) == PHASE_DATA_IN;
+    if (seek.drained)
+        seek.dropped = cd_drop_extra_data();
+    seek.finish = cd_finish_command();
+    seek.status = seek.finish.timed_out ? CD_ERROR_TIMED_OUT : seek.finish.read.status;
+    seek.failed = seek.status != 0;
+    return seek;
+}
+
+/*
+ * @card 00:EDCB cd_seek
+ * WHAT IT DOES: Moves the drive to a disc address: _CL, _CH, _DL (high first) plus the chosen
+ * base.
+ * HOW: Command 8 for one sector, as cd_read sends it, and whatever data the drive offers is
+ * thrown away. Retries as cd_read does: from the first base, and after a sense code of $10 or
+ * more from the other.
+ * Entry: _CL, _CH, _DL address. Exit, well: A 0, N 0, Z 1, C 1. Exit, gave up: as
+ * cd_retry_after_error. Y 1 unless a step changed it; X and V as the last step left them. _CL,
+ * _CH, _DL left as the address plus the base.
+ */
+CdSeek cd_seek(void)
+{
+    CdSeek seek;
+
+    wr8(CardCdBaseIndex, 0);
+    save_card_args();
+    for (;;) {
+        seek = try_seek();
+        if (!seek.failed)
+            return seek;
+        seek.retry = cd_retry_after_error(seek.status);
+        if (seek.retry.give_up)
+            return seek;
+        restore_card_args();
+        choose_base_for_retry();
+    }
+}
+
+/* The A cd_seek leaves: 0, or the error the BIOS gave up with. */
+uint8_t cd_seek_result(CdSeek seek)
+{
+    return seek.failed ? retry_result(seek.retry) : 0;
+}
+
+static void cd_seek_registers_shim(CdSeek seek)
+{
+    cpu.y = 1;
+    cd_send_exit_shim(seek.sent);
+    if (seek.drained)
+        cd_dropped_exit_shim(seek.dropped);
+    if (seek.finish.timed_out) {
+        cd_reset_exit_shim(seek.finish.reset);
+        cpu.a = CD_ERROR_TIMED_OUT;
+        abi_nz(CD_ERROR_TIMED_OUT);
+    } else {
+        cd_status_exit_shim(seek.finish.read);
+    }
+    if (seek.failed) {
+        cd_retry_exit_shim(seek.retry);
+    } else {
+        cpu.a = 0;
+        abi_nz(0);
+        abi_flag(P_C, true);
+    }
+}
+
+/* cd_seek's exit, for its wrapper and for a caller's that ends in it. */
+void cd_seek_exit_shim(CdSeek seek)
+{
+    cd_seek_registers_shim(seek);
+    cpu.a = cd_seek_result(seek);
+}
+
+void abi_cd_seek(void)
+{
+    cd_seek_exit_shim(cd_seek());
+}
+
 /* The ADPCM unit takes the drive's data on its own until the drive has finished. */
 static void transfer_to_adpcm(void)
 {

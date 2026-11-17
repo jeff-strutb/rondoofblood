@@ -68,6 +68,7 @@
 #define CardCdFailedCommand 0x2291 /* the command that last failed */
 #define CardFrameTick 0x2241 /* counted by the card's frame interrupt */
 #define CardCdNoWait 0x2248 /* set: a command returns without waiting on the drive */
+#define CardRndSeed 0x2249 /* ex_rnd's three bytes of state */
 #define CardBusPhase 0x227A /* the bus phase last read */
 #define CardCdStatus 0x227B /* the status byte the drive last gave */
 #define CardCdSense 0x227C /* the drive's sense code */
@@ -93,7 +94,8 @@
 #define CardScreenColumns 0x2245 /* the columns of tiles ex_scrmod was given */
 #define CardScreenRows 0x2246 /* the rows of tiles ex_scrmod was given */
 #define CardSatAddress 0x2214 /* where the sprite table is in VRAM */
-#define CardSatFlag 0x2216 /* cleared by ex_satclr */
+#define CardSatFlag 0x2216 /* the sprites ex_sprput has put: 0 to 64; cleared by ex_satclr */
+#define CardSprite 0x2217 /* the sprite ex_sprput puts next: its four words in eight bytes */
 #define CardVersionMajor 0xFEC2 /* the card's version: 3 */
 #define CardVersionMinor 0xFEC3 /* the card's version after the point: 0 */
 #define AdpcmRate 0x180E /* the ADPCM unit's playback rate */
@@ -120,5 +122,10 @@
 #define VceDataHi 0x0405 /* the VCE's colour data port */
 #define ColorReadStub 0xE5D7 /* the first three bytes of the stub that reads the palettes: TAI from the colour data port */
 #define CardAdpcmNextSector 0x22A1 /* the next sector ad_cplay reads: three bytes high first */
+#define CardAdTransSent 0x22C1 /* the command bytes ad_trans_step has sent */
+#define CardAdTransStep 0x22C2 /* ad_trans_step's state: 0 none; 1 select; 2 command; 3 start the transfer; 4 status */
+#define CardAdTransAddress 0x22C3 /* the ADPCM address ad_trans_step's transfer writes to: low first */
+#define CardPadPressed 0x222D /* the buttons each of the five pads has newly pressed, as ex_joysns finds them: bit 2 select, bit 3 run */
+#define SuperRamKey 0x18C0 /* written $AA then $55 at boot when the Super System Card's RAM is found; its effect is not traced */
 
 #endif

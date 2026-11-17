@@ -113,3 +113,32 @@ init_card_vectors:
     stz z:CardIrqFlags
     rts
 
+
+; @card 00:E67E ex_rnd
+; WHAT IT DOES: Gives a pseudo-random byte from the three bytes of state in CardRndSeed.
+; HOW: The state's low byte is XORed into its middle byte, and its high byte XORed with it
+; becomes the new low byte; those two then shift left one as a word, taking in bit 6 of the old
+; middle byte XOR bit 0 of the old low byte. The high byte never changes. The byte given is the
+; new low and middle bytes XORed.
+; Entry: CardRndSeed. Exit: A the byte, N and Z from it, C the bit shifted out of the middle
+; byte. X, Y, V kept.
+ex_rnd:
+    lda a:CardRndSeed+1
+    rol a
+    rol a
+    rol a
+    eor a:CardRndSeed
+    ror a
+    php
+    lda a:CardRndSeed+1
+    eor a:CardRndSeed
+    sta a:CardRndSeed+1
+    lda a:CardRndSeed+2
+    eor a:CardRndSeed
+    sta a:CardRndSeed
+    plp
+    rol a:CardRndSeed
+    rol a:CardRndSeed+1
+    lda a:CardRndSeed+1
+    eor a:CardRndSeed
+    rts

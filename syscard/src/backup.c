@@ -1171,3 +1171,118 @@ void abi_bm_delete(void)
 {
     bm_delete_exit_shim(bm_delete());
 }
+
+/*
+ * @card 00:FA72 bm_files
+ * WHAT IT DOES: Gives the name and data size of the backup memory's file number _AL, counting
+ * from 1, in the fourteen bytes at _BX.
+ * HOW: Walks the file list from $8010 by each file's length, counting the files in _AL and down
+ * in CardByteCount; a length of zero ends the list. The file's twelve-byte name goes to _BX
+ * through bm_map_name_window, then its length less its $10-byte header, low byte first.
+ * Entry: _AL the file's number (0 walks to the 256th), _BX the buffer. Exit: I clear, A the
+ * result, N and Z from it; not formatted, as bm_open_formatted. Named: A 0, X the saved MPR,
+ * Y $0D, C 1, V from moving CardFileLo on by 4 to the name. No such file: A 1, X $FF, Y 1, _AL
+ * the files counted, C and V from the high byte of the last step past a file, or C 1 and V kept
+ * if there was none.
+ */
+BackupFiles bm_files(void)
+{
+    BackupFiles files = { 0 };
+    uint16_t file = FIRST_FILE_ADDRESS;
+    uint8_t left;
+    uint16_t name;
+    uint16_t buffer;
+    uint16_t data_bytes;
+
+    files.check = bm_open_formatted();
+    if (!files.check.formatted) {
+        files.result = BM_NOT_FORMATTED;
+        return files;
+    }
+    put_word(CardFileLo, file);
+    left = rd8(CardAl);
+    wr8(CardByteCount, left);
+    wr8(CardAl, 0);
+    for (;;) {
+        uint8_t low = rd8(file);
+        uint8_t high = rd8((uint16_t)(file + 1));
+
+        if ((low | high) == 0) {
+            files.file = file;
+            files.result = BM_NO_FILE;
+            bm_close();
+            return files;
+        }
+        wr8(CardAl, (uint8_t)(rd8(CardAl) + 1));
+        left--;
+        wr8(CardByteCount, left);
+        if (left == 0)
+            break;
+        high = rd8((uint16_t)(file + 1));
+        low = rd8(file);
+        files.stepped = true;
+        files.stepped_from = file;
+        files.stepped_length = (uint16_t)((high << 8) | low);
+        file = (uint16_t)(file + files.stepped_length);
+        put_word(CardFileLo, file);
+    }
+    files.file = file;
+    files.length = backup_word(file);
+    data_bytes = (uint16_t)(files.length - FILE_HEADER_BYTES);
+    name = (uint16_t)(file + FILE_NAME_AT);
+    put_word(CardFileLo, name);
+    wr8(CardCopyLo, rd8(CardBl));
+    wr8(CardCopyHi, rd8(CardBh));
+    files.window = bm_map_name_window();
+    buffer = backup_word(CardCopyLo);
+    for (unsigned i = 0; i < FILE_NAME_BYTES; i++)
+        wr8((uint16_t)(buffer + i), rd8((uint16_t)(name + i)));
+    put_word((uint16_t)(buffer + FILE_NAME_BYTES), data_bytes);
+    files.result = BM_DONE;
+    bm_close();
+    return files;
+}
+
+/* The A bm_files leaves: 0, 1 for no such file, $FF not formatted. */
+uint8_t bm_files_result(BackupFiles files)
+{
+    return files.result;
+}
+
+static void bm_files_registers_shim(BackupFiles files)
+{
+    if (files.result == BM_NOT_FORMATTED) {
+        abi_not_formatted_shim(files.check);
+        return;
+    }
+    abi_flag(P_I, false);
+    abi_nz(files.result);
+    if (files.result == BM_DONE) {
+        cpu.x = files.window;
+        cpu.y = FILE_NAME_BYTES + 1;
+        abi_flag(P_C, true);
+        abi_flag(P_V, add_overflows((uint8_t)(files.file >> 8), 0, (files.file & 0xFF) + FILE_NAME_AT > 0xFF));
+        return;
+    }
+    cpu.x = 0xFF;
+    cpu.y = 1;
+    if (!files.stepped) {
+        abi_flag(P_C, true);
+        return;
+    }
+    abi_flag(P_C, (uint32_t)files.stepped_from + files.stepped_length > 0xFFFF);
+    abi_flag(P_V, add_overflows((uint8_t)(files.stepped_from >> 8), (uint8_t)(files.stepped_length >> 8),
+                                (files.stepped_from & 0xFF) + (files.stepped_length & 0xFF) > 0xFF));
+}
+
+/* bm_files's exit, for its wrapper and for a caller's that ends in it. */
+void bm_files_exit_shim(BackupFiles files)
+{
+    bm_files_registers_shim(files);
+    cpu.a = bm_files_result(files);
+}
+
+void abi_bm_files(void)
+{
+    bm_files_exit_shim(bm_files());
+}

@@ -401,6 +401,229 @@ void abi_ad_read(void)
 
 
 enum {
+    AD_DMA_BITS = 0x03, AD_ADDRESS_CARRY_ON = 0xFF, AD_STATUS_WRITING = 0x04,
+    VDC_SELECT_MARR = 0x01
+};
+
+/* Waits for the unit to take the byte before; gives the status as the wait last read it. */
+static uint8_t wait_for_adpcm_write(void)
+{
+    uint8_t status;
+
+    do
+        status = rd8(AdpcmStatus);
+    while (status & AD_STATUS_WRITING);
+    return status;
+}
+
+static uint16_t card_bx(void)
+{
+    uint8_t low = rd8(CardBl);
+
+    return (uint16_t)(low | (rd8(CardBh) << 8));
+}
+
+static void set_card_bx(uint16_t value)
+{
+    wr8(CardBl, (uint8_t)value);
+    wr8(CardBh, (uint8_t)(value >> 8));
+}
+
+/* One bank of ad_write's writing from banks: true while bytes are left for the next. */
+static bool write_from_bank(AdWrite *write)
+{
+    uint16_t at = (uint16_t)((uint8_t)(write->mode << BANK_WINDOW_SHIFT) << 8);
+
+    set_card_bx(at);
+    wr8(CardMprStub, STUB_TAM);
+    tam(write->mask, rd8(CardDl));
+    write->pages_left = BANK_PAGES;
+    write->bytes_left = 0;
+    for (;;) {
+        write->last_status = wait_for_adpcm_write();
+        wr8(AdpcmData, rd8(at));
+        at++;
+        set_card_bx(at);
+        if (!count_down_ax())
+            return false;
+        write->bytes_left--;
+        if (write->bytes_left != 0)
+            continue;
+        write->pages_left--;
+        if (write->pages_left == 0)
+            return true;
+    }
+}
+
+static void write_from_banks(AdWrite *write)
+{
+    if ((int8_t)(write->mode - AD_READ_BANK_LIMIT) >= 0) {
+        write->refused = true;
+        return;
+    }
+    write->mask = (uint8_t)(write->mode < 8 ? 1u << write->mode : 0);
+    build_mpr_stub(STUB_TMA, write->mask);
+    write->saved_bank = tma(write->mask);
+    wr8(CardSavedMprBank, write->saved_bank);
+    wr8(CardDl, rd8(CardBl));
+    while (write_from_bank(write))
+        wr8(CardDl, (uint8_t)(rd8(CardDl) + 1));
+    wr8(CardMprStub, STUB_TAM);
+    tam(write->mask, rd8(CardSavedMprBank));
+}
+
+/*
+ * @card 00:F4D8 ad_write
+ * WHAT IT DOES: Writes _AX bytes to ADPCM memory at address _CX, or where the last write left
+ * off if _CX is $FFFF: from memory at _BX if _DH is 0, from VRAM at _BX if _DH is $FF, or else
+ * from banks from _BL on, mapped through the MPR numbered _DH (1 to 6; $87 to $FE pass the same
+ * test). _DH of 7 to $86 gives $22. Refused while a transfer from the CD runs.
+ * HOW: Latches the address unless _CX is $FFFF, then byte after byte, waiting for the unit to
+ * take each. VRAM comes through the VDC's read address and data port, its two halves in turn;
+ * banks through a TMA or TAM stub it writes in RAM, 8 KB a bank, the MPR put back at the end.
+ * Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit, a transfer running: A its bits, N 0, Z 0;
+ * X, Y, C, V kept. Else, if _CX was latched, X _CL, Y _CH, C 0, V bit 6 of the control port as
+ * the latch read it; if not, X, Y, V kept and C 1. Bad _DH: A $22, N 0, Z 0, C 1. Written: A 0,
+ * V bit 6 of the status as the last wait read it; from memory N 0, Z 1; from VRAM N 0, Z 1, C 1;
+ * from banks N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left of
+ * the last bank.
+ */
+AdWrite ad_write(void)
+{
+    AdWrite write = { 0 };
+
+    write.busy = rd8(AdpcmDma) & AD_DMA_BITS;
+    if (write.busy != 0)
+        return write;
+    write.address_low = rd8(CardCl);
+    write.address_high = rd8(CardCh);
+    write.addressed = (write.address_low & write.address_high) != AD_ADDRESS_CARRY_ON;
+    if (write.addressed) {
+        ad_set_address(write.address_low, write.address_high);
+        write.latch = ad_latch_write_address();
+    }
+    write.mode = rd8(CardDh);
+    if (write.mode == AD_READ_TO_MEMORY) {
+        do {
+            uint16_t at = card_bx();
+
+            wr8(AdpcmData, rd8(at));
+            write.last_status = wait_for_adpcm_write();
+            set_card_bx((uint16_t)(at + 1));
+        } while (count_down_ax());
+        return write;
+    }
+    if (write.mode == AD_READ_TO_VRAM) {
+        select_vdc(VDC_SELECT_MARR);
+        aim_bx_at_vram_port();
+        select_vdc(VDC_SELECT_VWR);
+        do {
+            write.last_status = wait_for_adpcm_write();
+            wr8(AdpcmData, rd8(rd8(CardBl)));
+            wr8(CardBl, rd8(CardBl) ^ 1);
+        } while (count_down_ax());
+        wr8(CardVramPending, 0);
+        return write;
+    }
+    write_from_banks(&write);
+    return write;
+}
+
+/* ad_write's exit, for its wrapper and for a caller's that ends in it. */
+void ad_write_exit_shim(AdWrite write)
+{
+    if (write.busy != 0) {
+        cpu.a = write.busy;
+        abi_nz(write.busy);
+        return;
+    }
+    if (write.addressed) {
+        cpu.x = write.address_low;
+        cpu.y = write.address_high;
+        abi_flag(P_V, (write.latch & 0x40) != 0);
+    }
+    abi_flag(P_C, !write.addressed);
+    if (write.refused) {
+        cpu.a = AD_READ_REFUSED;
+        abi_nz(AD_READ_REFUSED);
+        abi_flag(P_C, write.mode >= AD_READ_BANK_LIMIT);
+        return;
+    }
+    cpu.a = 0;
+    abi_flag(P_V, (write.last_status & 0x40) != 0);
+    if (write.mode == AD_READ_TO_MEMORY || write.mode == AD_READ_TO_VRAM) {
+        abi_nz(0);
+        if (write.mode == AD_READ_TO_VRAM)
+            abi_flag(P_C, true);
+        return;
+    }
+    cpu.x = write.pages_left;
+    cpu.y = write.bytes_left;
+    abi_nz(write.saved_bank);
+    abi_flag(P_C, (write.mode & 0x08) != 0);
+}
+
+void abi_ad_write(void)
+{
+    ad_write_exit_shim(ad_write());
+}
+
+enum { AD_TRANS_COMMAND_READ = 0x08, AD_TRANS_FIRST_STEP = 1 };
+
+/*
+ * @card 00:F730 ad_trans_begin
+ * WHAT IT DOES: Sets up a read of _AL sectors from the disc into ADPCM memory at _BX, from the
+ * sector _CL, _CH, _DL (high first) plus the base CardCdBaseIndex chooses, for ad_trans_step to
+ * carry out a step a call. Returns at once; refused while a transfer from the CD runs.
+ * HOW: Builds command 8 in CardCdCommand without clearing it first (bytes 6 to 9 stay as they
+ * were), keeps _BX, and sets ad_trans_step's first step.
+ * Entry: _AL, _BX, _CL, _CH, _DL. Exit, refused: C 1, N and V bits 7 and 6 of the transfer port,
+ * Z 0; A, X, Y kept. Set up: A 1, N 0, Z 0, C 0, V from the base's add, Y the base's offset; X
+ * kept. _CL, _CH, _DL left as the sector plus the base.
+ */
+AdTransBegin ad_trans_begin(void)
+{
+    AdTransBegin begin = { 0 };
+
+    begin.dma_port = rd8(AdpcmDma);
+    begin.refused = (begin.dma_port & AD_DMA_BITS) != 0;
+    if (begin.refused)
+        return begin;
+    wr8(CardCdCommand, AD_TRANS_COMMAND_READ);
+    begin.added = add_cd_base();
+    wr8((uint16_t)(CardCdCommand + 1), rd8(CardCl));
+    wr8((uint16_t)(CardCdCommand + 2), rd8(CardCh));
+    wr8((uint16_t)(CardCdCommand + 3), rd8(CardDl));
+    wr8((uint16_t)(CardCdCommand + 4), rd8(CardAl));
+    wr8((uint16_t)(CardCdCommand + 5), 0);
+    wr8(CardAdTransAddress, rd8(CardBl));
+    wr8((uint16_t)(CardAdTransAddress + 1), rd8(CardBh));
+    wr8(CardAdTransSent, 0);
+    wr8(CardAdTransStep, AD_TRANS_FIRST_STEP);
+    return begin;
+}
+
+static void ad_trans_begin_exit_shim(AdTransBegin begin)
+{
+    abi_flag(P_C, begin.refused);
+    if (begin.refused) {
+        abi_flag(P_N, (begin.dma_port & 0x80) != 0);
+        abi_flag(P_V, (begin.dma_port & 0x40) != 0);
+        abi_flag(P_Z, false);
+        return;
+    }
+    cpu.a = AD_TRANS_FIRST_STEP;
+    cpu.y = begin.added.offset;
+    abi_nz(AD_TRANS_FIRST_STEP);
+    abi_flag(P_V, cd_base_sum_overflowed(begin.added));
+}
+
+void abi_ad_trans_begin(void)
+{
+    ad_trans_begin_exit_shim(ad_trans_begin());
+}
+
+enum {
     CPLAY_STEP = 0x20, CPLAY_LENGTH_ALL = 0xFF, CPLAY_IRQ_BITS = 0x0C, SECTOR_BYTES_MASK = 0xFFFFFF
 };
 

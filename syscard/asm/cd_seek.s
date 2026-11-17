@@ -1,3 +1,46 @@
+; @card 00:EDCB cd_seek
+; WHAT IT DOES: Moves the drive to a disc address: _CL, _CH, _DL (high first) plus the chosen
+; base.
+; HOW: Command 8 for one sector, as cd_read sends it, and whatever data the drive offers is
+; thrown away. Retries as cd_read does: from the first base, and after a sense code of $10 or
+; more from the other.
+; Entry: _CL, _CH, _DL address. Exit, well: A 0, N 0, Z 1, C 1. Exit, gave up: as
+; cd_retry_after_error. Y 1 unless a step changed it; X and V as the last step left them. _CL,
+; _CH, _DL left as the address plus the base.
+cd_seek:
+    stz a:CardCdBaseIndex
+    jsr save_card_args
+cd_seek_at0:
+    jsr clear_cd_command
+    lda #$08
+    sta a:CardCdCommand
+    jsr add_cd_base
+    ldx #$04
+    ldy #$01
+    jsr copy_args_to_command
+    lda #$01
+    sta a:CardCdCommand+4
+    jsr cd_send_command
+    cmp #$C8
+    bne cd_seek_at1
+    jsr cd_drop_extra_data
+cd_seek_at1:
+    jsr cd_finish_command
+    cmp #$00
+    beq cd_seek_at2
+    jsr cd_retry_after_error
+    bcc cd_seek_at3
+cd_seek_at2:
+    rts
+cd_seek_at3:
+    jsr restore_card_args
+    lda a:CardCdSense
+    cmp #$10
+    bcc cd_seek_at0
+    lda #$01
+    sta a:CardCdBaseIndex
+    bra cd_seek_at0
+
 ; @card 00:EF34 cd_search
 ; WHAT IT DOES: Seeks to a place on the disc; with bit 0 of _BH, returns at once and lets an
 ; interrupt report the end.

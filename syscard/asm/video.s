@@ -207,6 +207,50 @@ ex_satclr_at0:
     stz a:CardSatFlag
     rts
 
+; @card 00:E63C ex_sprput
+; WHAT IT DOES: Puts the sprite in CardSprite into the next of the sprite table's 64 entries in
+; VRAM, and counts it.
+; HOW: CardSatFlag counts the sprites put since ex_satclr; at 64 nothing is done. The write
+; address is CardSatAddress plus four words for each sprite put, then the sprite's four words
+; go out.
+; Entry: CardSprite, CardSatFlag, CardSatAddress. Exit: C 1; X, Y kept. Put: A the sprite's
+; last byte, N and Z from Y, V from adding the low byte's carry to the table's high byte. Full:
+; A the count, N and Z from it less $40, V kept.
+ex_sprput:
+    lda a:CardSatFlag
+    cmp #$40
+    bcs ex_sprput_at1
+    phy
+    lda #$00
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    lda a:CardSatFlag
+    asl a
+    asl a
+    clc
+    adc a:CardSatAddress
+    sta a:VdcDataLo
+    lda a:CardSatAddress+1
+    adc #$00
+    sta a:VdcDataHi
+    lda #$02
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    cly
+ex_sprput_at0:
+    lda a:CardSprite,y
+    sta a:VdcDataLo
+    iny
+    lda a:CardSprite,y
+    sta a:VdcDataHi
+    iny
+    cpy #$08
+    bne ex_sprput_at0
+    inc a:CardSatFlag
+    ply
+ex_sprput_at1:
+    rts
+
 
 ; @card 00:E382 ex_imode
 ; WHAT IT DOES: Sets how far the VDC's VRAM address steps after each access: A 0 to 3 for 1,

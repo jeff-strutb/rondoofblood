@@ -340,3 +340,40 @@ cplay_advance:
     sta a:CardAdpcmSectorsLeft+2
     rts
 
+; @card 00:F730 ad_trans_begin
+; WHAT IT DOES: Sets up a read of _AL sectors from the disc into ADPCM memory at _BX, from the
+; sector _CL, _CH, _DL (high first) plus the base CardCdBaseIndex chooses, for ad_trans_step to
+; carry out a step a call. Returns at once; refused while a transfer from the CD runs.
+; HOW: Builds command 8 in CardCdCommand without clearing it first (bytes 6 to 9 stay as they
+; were), keeps _BX, and sets ad_trans_step's first step.
+; Entry: _AL, _BX, _CL, _CH, _DL. Exit, refused: C 1, N and V bits 7 and 6 of the transfer port,
+; Z 0; A, X, Y kept. Set up: A 1, N 0, Z 0, C 0, V from the base's add, Y the base's offset; X
+; kept. _CL, _CH, _DL left as the sector plus the base.
+ad_trans_begin:
+    tst #$03,a:AdpcmDma
+    beq ad_trans_begin_at0
+    sec
+    bra ad_trans_begin_at1
+ad_trans_begin_at0:
+    lda #$08
+    sta a:CardCdCommand
+    jsr add_cd_base
+    lda z:CardCl
+    sta a:CardCdCommand+1
+    lda z:CardCh
+    sta a:CardCdCommand+2
+    lda z:CardDl
+    sta a:CardCdCommand+3
+    lda z:CardAl
+    sta a:CardCdCommand+4
+    stz a:CardCdCommand+5
+    lda z:CardBl
+    sta a:CardAdTransAddress
+    lda z:CardBh
+    sta a:CardAdTransAddress+1
+    stz a:CardAdTransSent
+    lda #$01
+    sta a:CardAdTransStep
+    clc
+ad_trans_begin_at1:
+    rts

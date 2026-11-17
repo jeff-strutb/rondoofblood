@@ -236,6 +236,17 @@ typedef struct {
     CdRetry retry;
 } CdRead;
 
+/* How cd_seek ended: its last try. */
+typedef struct {
+    CdSent sent;
+    bool drained;   /* the drive offered the sector's data, and it was thrown away */
+    bool dropped;   /* a block of it was read */
+    CdFinish finish;
+    uint8_t status;
+    bool failed;
+    CdRetry retry;
+} CdSeek;
+
 /* What checking the backup memory's header found. */
 typedef struct {
     bool formatted;
@@ -355,6 +366,22 @@ typedef struct {
     uint16_t length;        /* delete: the file's length */
 } BackupAccess;
 
+/* What bm_files found, and the values its exit shows. */
+typedef struct {
+    uint8_t result;          /* 0 named, 1 no such file, $FF not formatted */
+    BackupCheck check;
+    uint16_t file;           /* the file walked to */
+    uint16_t length;         /* its length word */
+    bool stepped;            /* a file was stepped past: the last step's add gives C and V */
+    uint16_t stepped_from;   /* the last file stepped past, and its length */
+    uint16_t stepped_length;
+    uint8_t window;          /* the saved MPR bm_map_name_window chose */
+} BackupFiles;
+
+BackupFiles bm_files(void);
+uint8_t bm_files_result(BackupFiles files);
+void bm_files_exit_shim(BackupFiles files);
+
 /* How ex_scrmod set the screen, and the values its exit shows. */
 typedef struct {
     bool accepted;            /* false: the fallback mode was set instead */
@@ -375,6 +402,24 @@ ScreenRows set_screen_rows(void);
 ScreenMode ex_scrmod(uint8_t mode, uint8_t columns, uint8_t rows);
 ScreenMode ex_scrmod_fallback(void);
 void ex_satclr(void);
+
+/* What ex_sprput did. */
+typedef struct {
+    bool put;           /* false: the table already held 64 sprites */
+    uint8_t count;      /* CardSatFlag as it was read */
+    uint16_t sat;       /* CardSatAddress */
+    uint8_t last;       /* the last byte written to the VDC */
+} SpritePut;
+
+SpritePut ex_sprput(void);
+
+/* A byte from ex_rnd, and the bit its last shift carried out. */
+typedef struct {
+    uint8_t value;
+    bool carry;
+} RandomByte;
+
+RandomByte ex_rnd(void);
 
 /* The card's version, as ex_getver gives it. */
 typedef struct {
@@ -405,6 +450,30 @@ void init_card_vectors(void);
 CdSubcodeRead reset_cd_unit(void);
 void clear_vram(void);
 uint8_t load_font(void);
+uint8_t boot_display(void);
+
+/* What a run of print_text's list did: where its end mark was, and the last text placed. */
+typedef struct {
+    uint8_t end;
+    bool placed;
+    uint8_t column;
+    uint8_t row;
+} TextRun;
+
+uint16_t text_cursor(uint8_t column, uint8_t row);
+TextRun print_text(void);
+TextRun print_text_run(uint8_t index);
+
+/* What the start screen ended with: run (with the drive's test) or select, and any wait. */
+enum { START_RUN = 0, START_SELECT = 1 };
+
+typedef struct {
+    uint8_t choice;
+    CdStat drive;
+    bool waited;
+} StartScreen;
+
+StartScreen start_screen(void);
 uint8_t ad_reset(void);
 AdPlay ad_play(void);
 /* What ad_read did, and what its exit shows. */
@@ -421,6 +490,34 @@ typedef struct {
 
 AdRead ad_read(void);
 void ad_read_to_banks(AdRead *read);
+
+/* What ad_write did, and what its exit shows. */
+typedef struct {
+    uint8_t busy;         /* the transfer bits of the port: not zero refuses */
+    bool addressed;       /* _CX was not $FFFF: it was latched */
+    uint8_t address_low;  /* _CL */
+    uint8_t address_high; /* _CH */
+    uint8_t latch;        /* the control port as ad_latch_write_address read it */
+    uint8_t mode;         /* _DH */
+    bool refused;
+    uint8_t mask;         /* the MPR bit, writing from banks */
+    uint8_t saved_bank;
+    uint8_t pages_left;
+    uint8_t bytes_left;
+    uint8_t last_status;  /* the status port as the last wait read it */
+} AdWrite;
+
+AdWrite ad_write(void);
+void ad_write_exit_shim(AdWrite write);
+
+/* What ad_trans_begin did. */
+typedef struct {
+    bool refused;
+    uint8_t dma_port;     /* the transfer port as it read it */
+    CdBaseSum added;
+} AdTransBegin;
+
+AdTransBegin ad_trans_begin(void);
 void aim_bx_at_vram_port(void);
 uint8_t ad_read_byte(void);
 uint8_t write_vram_word_pending(void);
@@ -625,6 +722,9 @@ CdBaseSum add_cd_base(void);
 bool cd_base_sum_overflowed(CdBaseSum added);
 uint8_t write_vram_word_pending(void);
 CdRead cd_read(void);
+CdSeek cd_seek(void);
+uint8_t cd_seek_result(CdSeek seek);
+void cd_seek_exit_shim(CdSeek seek);
 CdBlockRead cd_read_to_memory(void);
 CdVramRead cd_read_to_vram_fast(void);
 CdVramRead cd_read_to_vram_slow(void);
@@ -663,5 +763,52 @@ void ex_scrsiz_exit_shim(uint8_t given, uint8_t width);
 uint8_t ex_dotmod(uint8_t mode);
 MemOpen ex_memopen(void);
 void ex_setvec(uint8_t which, uint8_t low, uint8_t high);
+
+uint8_t cd_ack_on(void);
+uint8_t cd_ack_off(void);
+
+/* ad_trans_step's states, as CardAdTransStep holds them. */
+enum { AD_TRANS_IDLE, AD_TRANS_SELECT, AD_TRANS_COMMAND, AD_TRANS_DATA, AD_TRANS_STATUS };
+
+/* How ad_trans_select's try at the drive went. */
+typedef enum { AD_SELECT_BUSY, AD_SELECT_TIMED_OUT, AD_SELECTED } AdSelectHow;
+
+typedef struct {
+    AdSelectHow how;
+    uint8_t bus;         /* the bus as the busy test read it */
+    uint8_t tries_left;  /* X: the count of tries, down from 0, when the drive answered */
+} AdTransSelect;
+
+/* What ad_trans_command did with the phase it found. */
+typedef enum { AD_COMMAND_WAITING, AD_COMMAND_SENT, AD_COMMAND_DONE } AdCommandHow;
+
+typedef struct {
+    AdCommandHow how;
+    uint8_t index;    /* the command byte sent */
+    uint8_t control;  /* the CD control port as the acknowledge found it */
+    uint8_t answer;   /* the phase and $B8, when not the command phase */
+} AdTransCommand;
+
+typedef struct {
+    bool done;
+    uint8_t phase;     /* the phase first read */
+    uint8_t status;    /* the drive's status byte */
+    uint8_t last_bus;  /* the bus's last read, once free */
+} AdTransFinish;
+
+/* One step of ad_trans_step: the state it found, and what that state's step did. */
+typedef struct {
+    uint8_t state;
+    AdTransSelect select;
+    AdTransCommand command;
+    uint8_t control;   /* the ADPCM control port, starting the transfer */
+    AdTransFinish finish;
+} AdTransStep;
+
+AdTransSelect ad_trans_select(void);
+AdTransCommand ad_trans_command(void);
+uint8_t ad_trans_start_dma(void);
+AdTransFinish ad_trans_finish(void);
+AdTransStep ad_trans_step(void);
 
 #endif

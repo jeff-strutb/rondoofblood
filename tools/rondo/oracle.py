@@ -68,7 +68,7 @@ def run_a5(pcebox, label, names):
 
     totals, details = {}, {}
     bad = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), os.cpu_count())) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), int(os.environ.get("CPU_RUN_JOBS") or os.cpu_count()))) as ex:
         for script, err in ex.map(one, names):
             print(f"{script}: {err or 'done'}", flush=True)
             bad += err is not None
@@ -243,7 +243,7 @@ def run_a7(names):
     bad = 0
     swapped, ran_inside = {}, {}
     swapped_lock = threading.Lock()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), os.cpu_count())) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), int(os.environ.get("CPU_RUN_JOBS") or os.cpu_count()))) as ex:
         for script, text in ex.map(one, names):
             print(f"{script}: {text}", flush=True)
             bad += "first differing -1" not in text

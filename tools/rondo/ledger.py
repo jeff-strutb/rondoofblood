@@ -4,8 +4,6 @@
     python3 tools/rondo/ledger.py
     python3 tools/rondo/ledger.py --card    the System Card's ledger only
 
-RONDO_ORACLE_OUT names the folder the oracles wrote, as it does for oracle.py.
-
 Writes docs/rondo/ledger.csv and prints the counts, below-standard first. For each routine:
 
   proper_c  no flag state or registers in its body or the helpers it reaches: no Alu, adc8,
@@ -19,18 +17,25 @@ Writes docs/rondo/ledger.csv and prints the counts, below-standard first. For ea
   gate_a7   A7 swapped it in, or its C ran inside a call A7 swapped in, in a run of every script
             with every frame identical (approved by the maintainer in chat, 2026-11-16).
 
-Any change to the C, the names, the harness or the scripts voids A5 and A7 until they run
-again, through the stamps oracle.py writes. A waiver is a line in
+A5 and A7 are read from the records gate.py writes (config/rondo/gate_a5.csv, gate_a7.csv,
+gate_a7_routines.csv), each measured on a commit. A record counts for a routine while nothing
+it depends on has changed between that commit and the work tree: the C file that holds it,
+the C files of every function its C reaches, and the shared paths (SHARED: the headers, the
+harness, the scripts, the build). A commit elsewhere leaves it standing; a change to anything
+it depends on, committed or not, voids it until a gate measures a commit that has it. A7
+also needs every script of that run identical. A waiver is a line in
 config/rondo/ledger_waivers.csv (routine,gate,reason), which only the maintainer writes.
 
 T2 C and assembly filed. T3 proper_c, gate_0, gate_c, gate_a5 and gate_a7. T4 T3 and symbolic.
-Run under WSL or Windows: it reads what the oracles left in build/ and runs nothing.
+It reads the gate records, the traces and the image, and runs nothing but git.
 """
 import csv
+import functools
 import glob
 import hashlib
 import os
 import re
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -41,7 +46,12 @@ import cardfile  # noqa: E402
 import oracle  # noqa: E402
 
 BUILD = os.path.join(TOP, "build", "rondo")
-ORACLE = os.environ.get("RONDO_ORACLE_OUT") or os.path.join(BUILD, "oracle")
+CONFIG = os.path.join(TOP, "config", "rondo")
+# Paths every verdict depends on, whatever the routine: a change to any of them voids every
+# record measured before it. Any file under src/rondo/ or syscard/src/ that is not .c counts too.
+SHARED = ("src/rondo/include/", "syscard/include/", "tools/rondo/pcebox/", "tools/toolchains/patches/",
+          "tools/rondo/hybrid.py", "tools/rondo/huc.py", "tools/rondo/oracle.py", "tools/rondo/asmfile.py",
+          "tools/rondo/cardfile.py", "tools/rondo/scripts/", "setup.sh", "config/rondo/symbols.csv")
 OUT = os.path.join(TOP, "docs", "rondo", "ledger.csv")
 CARD_OUT = os.path.join(TOP, "syscard", "ledger.csv")
 WAIVERS = os.path.join(TOP, "config", "rondo", "ledger_waivers.csv")
@@ -98,9 +108,92 @@ def a7_passed(row):
     return int(row.get("swapped", 0) or 0) > 0 or int(row.get("ran_inside", 0) or 0) > 0
 
 
-def stamp_valid(name):
-    path = os.path.join(ORACLE, name + ".stamp")
-    return os.path.exists(path) and open(path).read().strip() == oracle.tree_stamp()
+def git(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True, cwd=TOP)
+
+
+@functools.lru_cache(maxsize=None)
+def dirty_paths():
+    """Every path with uncommitted changes in the work tree."""
+    out = iter(git("status", "--porcelain", "-z", "--untracked-files=all").stdout.split("\0"))
+    paths = set()
+    for e in out:
+        if len(e) > 3:
+            paths.add(e[3:])
+            if e[0] in "RC":
+                paths.add(next(out, ""))
+    return frozenset(paths)
+
+
+@functools.lru_cache(maxsize=None)
+def changed_since(rev):
+    """Paths that differ between commit rev and the work tree; None if rev is not in HEAD's history."""
+    if not rev or git("merge-base", "--is-ancestor", rev, "HEAD").returncode:
+        return None
+    r = git("diff", "--name-only", rev, "HEAD")
+    if r.returncode:
+        return None
+    return frozenset(p for p in r.stdout.splitlines() if p) | dirty_paths()
+
+
+def shared_changed(paths):
+    return any(p.startswith(SHARED) or (p.startswith(("src/rondo/", "syscard/src/")) and not p.endswith(".c"))
+               for p in paths)
+
+
+@functools.lru_cache(maxsize=None)
+def function_files():
+    """Each C function's file (relative to TOP) and the names its body calls."""
+    files, calls = {}, {}
+    for path in (glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True) +
+                 glob.glob(os.path.join(TOP, "syscard", "src", "*.c"))):
+        text = re.sub(r"/\*.*?\*/", "", open(path, encoding="utf-8").read(), flags=re.S)
+        rel = os.path.relpath(path, TOP).replace(os.sep, "/")
+        for m in FUNC.finditer(text):
+            depth, i = 1, m.end()
+            while depth and i < len(text):
+                depth += {"{": 1, "}": -1}.get(text[i], 0)
+                i += 1
+            files[m.group(1)] = rel
+            calls[m.group(1)] = set(CALL.findall(text[m.end():i]))
+    return files, calls
+
+
+def depends_on(name):
+    """The C files a routine's verdicts depend on: its own, and those of every function it reaches."""
+    files, calls = function_files()
+    out, work, seen = set(), [name, "abi_" + name], set()
+    while work:
+        f = work.pop()
+        if f in seen or f not in files:
+            continue
+        seen.add(f)
+        out.add(files[f])
+        work += calls[f]
+    return out
+
+
+def record_holds(name, rev):
+    """A record measured on commit rev still holds for this routine in the work tree."""
+    paths = changed_since(rev)
+    if paths is None or shared_changed(paths):
+        return False
+    return not (depends_on(name) & paths)
+
+
+def a5_records(card):
+    rows = read_csv(os.path.join(CONFIG, "gate_a5.csv"), "routine")
+    return {k: v for k, v in rows.items() if int(v["card"]) == card and record_holds(k, v["source"])}
+
+
+def a7_records():
+    """Routines A7 credits: every script of the run identical, and the record still holding."""
+    scripts = list(csv.DictReader(open(os.path.join(CONFIG, "gate_a7.csv"), newline=""))) \
+        if os.path.exists(os.path.join(CONFIG, "gate_a7.csv")) else []
+    if not scripts or any(s["verdict"] != "IDENTICAL" for s in scripts) or len({s["source"] for s in scripts}) != 1:
+        return {}
+    rows = read_csv(os.path.join(CONFIG, "gate_a7_routines.csv"), "routine")
+    return {k: v for k, v in rows.items() if v["source"] == scripts[0]["source"] and record_holds(k, v["source"])}
 
 
 def read_csv(path, key):
@@ -161,7 +254,7 @@ def card_ledger(funcs, a7):
     image_path = os.path.join(BUILD, "card", "image.bin")
     image = open(image_path, "rb").read() if card_image_fresh(image_path) else None
     blocks = assembly_blocks(("syscard", "asm", "*.s"))
-    a5 = read_csv(os.path.join(ORACLE, "card_a5.csv"), "routine") if stamp_valid("a5") else {}
+    a5 = a5_records(1)
     cover = cardfile.coverage()
     rows = []
     for r in cardfile.spans():
@@ -191,16 +284,15 @@ def card_ledger(funcs, a7):
 
 def main():
     if "--card" in sys.argv[1:]:
-        a7 = read_csv(os.path.join(ORACLE, "a7.csv"), "routine") if stamp_valid("a7") else {}
-        card_ledger(functions(), a7)
+        card_ledger(functions(), a7_records())
         return
     buf = open(oracle.TRACK, "rb").read()
     image_path = os.path.join(BUILD, "asm", "image.bin")
     image = open(image_path, "rb").read() if image_fresh(image_path) else None
     funcs = functions()
     blocks = assembly_blocks()
-    a5 = read_csv(os.path.join(ORACLE, "a5.csv"), "routine") if stamp_valid("a5") else {}
-    a7 = read_csv(os.path.join(ORACLE, "a7.csv"), "routine") if stamp_valid("a7") else {}
+    a5 = a5_records(0)
+    a7 = a7_records()
     cover = oracle.coverage()
     waived = waivers()
     routines = asmfile.all_routines()

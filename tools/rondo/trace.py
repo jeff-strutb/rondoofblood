@@ -65,7 +65,7 @@ def main():
             print(f"{need}: missing; run ./setup.sh")
             return 1
     bad = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=int(os.environ.get("CPU_RUN_JOBS") or os.cpu_count())) as ex:
         for name, err, ok in ex.map(run, scripts):
             print(f"{name}: {err or ok}")
             bad += err is not None

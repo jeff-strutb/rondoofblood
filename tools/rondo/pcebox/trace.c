@@ -15,6 +15,12 @@
  *   discmap.bin   track 02's user data, 20,785,152 B
  *   cardmap.bin   the System Card, 262,144 B
  *   noprov.bin    the 2 MB physical space: RAM executed with no provenance
+ *
+ * And edges.csv: every distinct transfer of control the catalog starts routines at,
+ * each end where it ran: kind (the opcode: 20 JSR, 44 BSR, 4C JMP, 6C JMP (abs),
+ * 7C JMP (abs,X); 100 an interrupt's entry, from the instruction it interrupted),
+ * then from and to, each a space (D the disc's track 02 user data, C the System Card,
+ * R RAM with no disc origin, or I/O) and an offset in it.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -40,6 +46,20 @@ static uint32_t last_read = NONE, block_read = NONE;
 static int plant;
 static uint64_t outside;                  /* provenance outside track 02's user data */
 static uint32_t (*cd_origin)(void);
+
+/* Edges: a set of (kind, from, to), each end a location: 2 bits of space, 25 of offset. */
+#define EDGE_BITS 21
+#define EDGE_SLOTS (1u << EDGE_BITS)
+#define EDGE_EMPTY 0xFFFFFFFFFFFFFFFFull
+#define SP_DISC 0u
+#define SP_CARD 1u
+#define SP_RAM 2u
+#define SP_IO 3u
+static uint64_t *edges;
+static uint64_t nedges, edges_lost;
+static uint32_t prev_loc = NONE;          /* the last instruction's opcode, as a location */
+static uint8_t prev_opc;
+static int irq_pending;
 
 /* --watch: which instructions read or write these physical bytes. */
 #define WATCH_MAX 8
@@ -132,6 +152,40 @@ static void exec(uint32_t p, uint8_t flag)
     }
 }
 
+/* Where the byte at physical p came from, as a location: disc, card, RAM with no origin, I/O. */
+static uint32_t loc_of(uint32_t p)
+{
+    uint32_t bank = p >> 13, lo = USER_LBA * 2048u;
+    if (bank < 0x20)
+        return SP_CARD << 25 | p;
+    if (is_ram(bank)) {
+        uint32_t o = prov[p];
+        if (o != NONE && o >= lo && o - lo < USER_BYTES)
+            return SP_DISC << 25 | (o - lo);
+        return SP_RAM << 25 | p;
+    }
+    return SP_IO << 25 | p;
+}
+
+static void edge(uint32_t kind, uint32_t from, uint32_t to)
+{
+    uint64_t key = (uint64_t)kind << 54 | (uint64_t)from << 27 | to;
+    uint64_t h = key * 0x9E3779B97F4A7C15ull;
+    for (uint32_t i = (uint32_t)(h >> (64 - EDGE_BITS)), n = 0; n < EDGE_SLOTS; i = (i + 1) & (EDGE_SLOTS - 1), n++) {
+        if (edges[i] == key)
+            return;
+        if (edges[i] == EDGE_EMPTY) {
+            if (nedges * 2 >= EDGE_SLOTS) {   /* half full: count what is lost, never fail quietly */
+                edges_lost++;
+                return;
+            }
+            edges[i] = key;
+            nedges++;
+            return;
+        }
+    }
+}
+
 static uint32_t origin_of(uint32_t p)
 {
     uint32_t bank = p >> 13, off = p & 0x1FFF;
@@ -154,6 +208,15 @@ void trace_rd(uint32_t phys, uint8_t v, int kind)
         last_read = block_read = NONE;
         op_phys = p;
         exec(p, F_OPC);
+        uint32_t here = loc_of(p);
+        if (irq_pending && prev_loc != NONE)
+            edge(0x100, prev_loc, here);
+        else if (!irq_pending && prev_loc != NONE && (prev_opc == 0x20 || prev_opc == 0x44 || prev_opc == 0x4C ||
+                                                      prev_opc == 0x6C || prev_opc == 0x7C))
+            edge(prev_opc, prev_loc, here);
+        irq_pending = 0;
+        prev_loc = here;
+        prev_opc = v;
     } else if (kind == 1) {
         exec(p, F_OPD);
     } else {
@@ -187,6 +250,7 @@ void trace_wr(uint32_t phys, uint8_t v)
 
 void trace_irq(void)
 {
+    irq_pending = 1;
     finish();
     last_read = block_read = NONE;
 }
@@ -199,13 +263,15 @@ int trace_init(const char *user_path, int plant_offset, uint32_t (*origin)(void)
     cardmap = calloc(1u << 18, 1);
     noprov = calloc(PHYS, 1);
     user = malloc(USER_BYTES);
-    if (!f || !prov || !discmap || !cardmap || !noprov || !user ||
+    edges = malloc(EDGE_SLOTS * sizeof *edges);
+    if (!f || !prov || !discmap || !cardmap || !noprov || !user || !edges ||
         fread(user, 1, USER_BYTES, f) != USER_BYTES) {
         fprintf(stderr, "pcebox: cannot load %s\n", user_path);
         return -1;
     }
     fclose(f);
     memset(prov, 0xFF, PHYS * sizeof *prov);
+    memset(edges, 0xFF, EDGE_SLOTS * sizeof *edges);
     plant = plant_offset;
     cd_origin = origin;
     return 0;
@@ -271,4 +337,27 @@ void trace_finish(const char *dir)
     write_map(dir, "discmap.bin", discmap, USER_BYTES);
     write_map(dir, "cardmap.bin", cardmap, 1u << 18);
     write_map(dir, "noprov.bin", noprov, PHYS);
+    static const char space[] = "DCRI";
+    char path[4096];
+    snprintf(path, sizeof path, "%s/edges.csv", dir);
+    FILE *f = fopen(path, "w");
+    if (!f) {
+        perror(path);
+        exit(1);
+    }
+    fprintf(f, "kind,from_space,from,to_space,to\n");
+    for (uint32_t i = 0; i < EDGE_SLOTS; i++) {
+        uint64_t k = edges[i];
+        if (k == EDGE_EMPTY)
+            continue;
+        uint32_t kind = (uint32_t)(k >> 54), from = (uint32_t)(k >> 27) & 0x7FFFFFF, to = (uint32_t)k & 0x7FFFFFF;
+        fprintf(f, "%X,%c,%X,%c,%X\n", kind, space[from >> 25], from & 0x1FFFFFF, space[to >> 25], to & 0x1FFFFFF);
+    }
+    fclose(f);
+    printf("trace: %llu edges, %llu lost to a full table\n", (unsigned long long)nedges,
+           (unsigned long long)edges_lost);
+    if (edges_lost) {
+        fprintf(stderr, "pcebox: the edge table is full: %llu edges lost\n", (unsigned long long)edges_lost);
+        exit(1);
+    }
 }

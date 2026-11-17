@@ -1,9 +1,10 @@
 /*
  * The game's modes: FrameModeDispatch runs the handler for zGameMode each frame, and
  * most handlers run an overlay's frame until it sets zModeDone, then load what the
- * next mode needs and set it. Every handler ends with what the overlay, the BIOS or
- * the loaders left in A and the flags, so each carries them in an Alu, and X and Y go
- * straight to cpu where the assembly loads them.
+ * next mode needs and set it. Each handler gives back what its calls did; its wrapper
+ * replays their exits in order, with the registers the game loads before each, so that
+ * it leaves what the original leaves. An overlay's frame is original code: a shim runs it
+ * and keeps what it left.
  */
 #include "machine.h"
 #include "ram.h"
@@ -15,100 +16,245 @@ enum {
     MODE_STAGE = 5, MODE_DEAD = 7, MODE_GAME_OVER = 8, MODE_SCREEN = 9, MODE_ENDING = 10,
     SOUND_FADE = 0xFE, SOUND_STOP = 0xFF,
     SCENE_COMMON = 5, SCENE_MENU_A = 4, SCENE_MENU_B = 6, ADPCM_MENU = 0x24,
+    SCENE_SCREENS_A = 7, SCENE_SCREENS_B = 8, SCENE_SCREENS_C = 9,
+    SCENE_ENDING_A = 0x5C, SCENE_ENDING_B = 0x5D, SCENE_BOSS = 0x5E, ADPCM_BOSS = 0x22,
+    SCENE_CLEAR = 0x58, STAGE_TITLE_BACK = 0x10,
     STAGE_BONUS = 0x8A, SECOND_CHARACTER_BYTES = 5, STAGE_SECRET = 0x80, EVENTS_BANK_OFFSET = 0x0D,
-    CD_FADE_OUT = 0x0C,
-    STAGES_ATTRACT = 5, JOY_RUN = 0x08, STOCK_AT_START = 3
+    CD_FADE_OUT = 0x0C, SCREEN_SIZE = 5, BOOT_DISPLAY_DELAY = 4, BOOT_SUB_MODE = 3,
+    GAME_OVER_WAIT = 0x40, CONTINUES_CAP_HI = 0x0A, CONTINUES_MAX_LO = 0x99, CONTINUES_MAX_HI = 0x09,
+    STAGE_RESTART = 0x40, STAGE_RETRY_FROM = 0x43, STAGE_RETRY_TO = 0x42,
+    STAGES_ATTRACT = 5, JOY_RUN = 0x08, STOCK_AT_START = 3, SAVE_STAGE_BYTES = 0x14,
+    EVENT_BOSS = 0x01, EVENT_SCREEN = 0x02, EVENT_CLEAR = 0x04, EVENT_SCREENS = 0x08,
+    EVENT_CONTINUE = 0x10, SOUND_KEEP_TRACK = 0x18
 };
 
-/* Reads zModeDone; true when the overlay has finished. */
-static bool mode_done(Alu *r)
-{
-    uint8_t byte = rd8(zModeDone);
+/* The handlers' wrappers, which the dispatch reaches through its table. */
+void abi_ModeBoot(void);
+void abi_ModeLogo(void);
+void abi_ModeAttract(void);
+void abi_ModeAttractPlay(void);
+void abi_ModeStageLoad(void);
+void abi_ModeStage(void);
+void abi_ModeStageCleared(void);
+void abi_ModeDead(void);
+void abi_ModeGameOverWait(void);
+void abi_ModeScreen(void);
+void abi_ModeEnding(void);
 
-    alu_load(r, byte);
-    return byte != 0;
+/* The save slot's flag that the bonus stage has been seen. */
+#define SaveBonusSeen (SaveScoreTotal + 6)
+
+/* A packed-decimal add, as ADC with D set: the sum and its carry. V is left alone. */
+static Sum add_decimal(uint8_t a, uint8_t b, bool carry_in)
+{
+    Sum sum;
+    unsigned low = (a & 0x0Fu) + (b & 0x0Fu) + (carry_in ? 1u : 0u);
+    unsigned total;
+
+    if (low >= 0x0A)
+        low += 0x06;
+    total = low + (a & 0xF0u) + (b & 0xF0u);
+    if (total >= 0xA0)
+        total += 0x60;
+    sum.value = (uint8_t)total;
+    sum.carry = total > 0xFF;
+    sum.overflow = false;
+    return sum;
 }
 
-/* An overlay's frame, then whether it has finished. */
-static Alu overlay_frame(uint16_t entry, bool *done)
+/* An overlay's entry, run with the registers as the handler was entered with them. */
+static Cpu overlay_shim(uint16_t entry)
 {
-    Alu r = call_with(entry, alu_from_cpu());
-
-    *done = mode_done(&r);
-    return r;
+    call_original(entry);
+    return cpu;
 }
 
-static Alu load_scene(Alu r, uint8_t scene)
+/* An overlay's entry, with A just loaded: N and Z from it. */
+static Cpu overlay_loaded_shim(uint16_t entry, uint8_t a)
 {
-    alu_load(&r, scene);
-    return call_abi(abi_LoadSceneScript, r);
+    cpu.a = a;
+    abi_nz(a);
+    call_original(entry);
+    return cpu;
 }
 
-static Alu set_mode(Alu r, uint8_t mode)
+/* An overlay's entry, with A the bank an add just made: N, Z, C and V from the add. */
+static Cpu overlay_added_shim(uint16_t entry, Sum bank)
 {
-    alu_load(&r, mode);
-    return call_abi(abi_SetGameMode, r);
+    cpu.a = bank.value;
+    abi_nz(bank.value);
+    abi_flag(P_C, bank.carry);
+    abi_flag(P_V, bank.overflow);
+    call_original(entry);
+    return cpu;
 }
 
-/* The bit of StageClearBit, ORed into a table byte at the index it gave in X. */
-static Alu mark_stage(Alu r, uint16_t table)
+/* The registers and flags original code left. */
+static void restore_shim(Cpu after)
 {
-    uint8_t byte;
+    cpu.a = after.a;
+    cpu.x = after.x;
+    cpu.y = after.y;
+    cpu.p = after.p;
+}
 
-    r = call_abi(abi_StageClearBit, r);
-    byte = rd8((uint16_t)(table + cpu.x));
-    alu_load(&r, (uint8_t)(r.a | byte));
-    wr8((uint16_t)(table + cpu.x), r.a);
-    return r;
+/* What the overlay left, then zModeDone loaded as the original loads it. */
+static void overlay_done_shim(Cpu after, uint8_t done)
+{
+    restore_shim(after);
+    cpu.a = done;
+    abi_nz(done);
+}
+
+/* LDA of a value: A and N, Z. */
+static void load_shim(uint8_t a)
+{
+    cpu.a = a;
+    abi_nz(a);
+}
+
+/* LDA #mode, JSR SetGameMode: A 0, N and Z from the mode. */
+static void set_mode_shim(uint8_t mode)
+{
+    load_shim(mode);
+    cpu.a = 0;
+}
+
+/* NextGameMode's exit: A 0, N and Z from the new mode. */
+static void next_mode_shim(uint8_t mode)
+{
+    cpu.a = 0;
+    abi_nz(mode);
+}
+
+/* ResetScoreCounters' exit: A 3, N and Z from it. */
+static void reset_score_shim(void)
+{
+    load_shim(STOCK_AT_START);
+}
+
+/* LDA #scene, JSR LoadSceneScript. */
+static void scene_shim(uint8_t scene, const DiscLog *log)
+{
+    load_shim(scene);
+    disc_log_exit_shim(log);
+}
+
+/* A compare's flags: N and Z from the difference, C from no borrow. */
+static void compare_shim(uint8_t a, uint8_t b)
+{
+    abi_nz((uint8_t)(a - b));
+    abi_flag(P_C, a >= b);
+}
+
+/* A stage's bit, ORed into a table byte at the index StageClearBit gave. */
+typedef struct { StageBit found; uint8_t marked; } StageMark;
+
+static StageMark mark_stage(uint16_t table)
+{
+    StageMark mark;
+    uint16_t at;
+
+    mark.found = StageClearBit();
+    at = (uint16_t)(table + mark.found.index);
+    mark.marked = (uint8_t)(mark.found.bit | rd8(at));
+    wr8(at, mark.marked);
+    return mark;
+}
+
+static void mark_stage_shim(StageMark mark)
+{
+    stage_bit_exit_shim(mark.found);
+    load_shim(mark.marked);
+}
+
+/* The title's three scenes and the fixed ADPCM, as two paths load them. */
+typedef struct { DiscLog a; DiscLog b; DiscLog c; DiscLog fixed; } ScreensLoad;
+
+static ScreensLoad load_screens(void)
+{
+    ScreensLoad load;
+
+    wr8(zMusicWanted, 0);
+    ResetGameState();
+    load.a = LoadSceneScript(SCENE_SCREENS_A);
+    load.b = LoadSceneScript(SCENE_SCREENS_B);
+    load.c = LoadSceneScript(SCENE_SCREENS_C);
+    load.fixed = AdpcmLoadFixed();
+    return load;
+}
+
+static void screens_load_shim(const ScreensLoad *load)
+{
+    reset_game_state_exit_shim();
+    scene_shim(SCENE_SCREENS_A, &load->a);
+    scene_shim(SCENE_SCREENS_B, &load->b);
+    scene_shim(SCENE_SCREENS_C, &load->c);
+    disc_log_exit_shim(&load->fixed);
+}
+
+/* An overlay's frame: what it left, and the answer it gave in zModeDone. */
+typedef struct { Cpu after; uint8_t done; } OverlayFrame;
+
+static OverlayFrame overlay_frame(uint16_t entry)
+{
+    OverlayFrame frame;
+
+    frame.after = overlay_shim(entry);
+    frame.done = rd8(zModeDone);
+    return frame;
 }
 
 /*
  * @routine 0045:105 FrameModeDispatch
  * @run 69:5105
  * WHAT IT DOES: Runs this frame's game mode.
- * HOW: Counts zFrameTick, then jumps through the table by zGameMode.
- * Entry: nothing. Exit: as the handler leaves them.
+ * HOW: Counts zFrameTick, then jumps through GameModeHandlers by zGameMode.
+ * Entry: nothing. Exit: as the handler leaves them; it is entered with A and X twice the mode,
+ * N and Z from it, C the mode's bit 7.
  */
-Alu FrameModeDispatch(void)
-{
-    uint8_t byte = rd8(zFrameTick);
-    uint8_t lo;
-    uint8_t hi;
-    uint16_t handler;
-    Alu r = alu_from_cpu();
+typedef struct { uint8_t mode; uint16_t handler; } ModeHandler;
 
-    wr8(zFrameTick, (uint8_t)(byte + 1));
-    byte = rd8(zGameMode);
-    r.a = (uint8_t)(byte << 1);
-    alu_nz(&r, r.a);
-    r.c = (byte & 0x80) != 0;
-    r.c_kept = false;
-    cpu.x = r.a;
-    lo = rd8((uint16_t)(GameModeHandlers + cpu.x));
-    hi = rd8((uint16_t)(GameModeHandlers + cpu.x + 1));
-    handler = (uint16_t)(lo | (hi << 8));
-    abi_alu(r);
-    switch (handler) {
-    case 0x5124: return ModeBoot();
-    case 0x514F: return ModeLogo();
-    case 0x515E: return ModeAttract();
-    case 0x51B6: return ModeAttractPlay();
-    case 0x51DD: return ModeStageLoad();
-    case 0x5265: return ModeStage();
-    case 0x52FE: return ModeStageCleared();
-    case 0x534E: return ModeDead();
-    case 0x5432: return ModeGameOverWait();
-    case 0x544E: return ModeScreen();
-    case 0x549A: return ModeEnding();
-    default:
-        call_original(handler);
-        return alu_from_cpu();
-    }
+ModeHandler FrameModeDispatch(void)
+{
+    ModeHandler found;
+    uint8_t twice;
+
+    wr8(zFrameTick, (uint8_t)(rd8(zFrameTick) + 1));
+    found.mode = rd8(zGameMode);
+    twice = (uint8_t)(found.mode << 1);
+    found.handler = (uint16_t)(rd8((uint16_t)(GameModeHandlers + twice)) |
+                               (rd8((uint16_t)(GameModeHandlers + twice + 1)) << 8));
+    return found;
+}
+
+/* The handler at the address the table gave, through its C where it has C. */
+static void mode_handler_shim(uint16_t handler)
+{
+    static const struct { uint16_t run; void (*abi)(void); } handlers[] = {
+        { 0x5124, abi_ModeBoot }, { 0x514F, abi_ModeLogo }, { 0x515E, abi_ModeAttract },
+        { 0x51B6, abi_ModeAttractPlay }, { 0x51DD, abi_ModeStageLoad }, { 0x5265, abi_ModeStage },
+        { 0x52FE, abi_ModeStageCleared }, { 0x534E, abi_ModeDead },
+        { 0x5432, abi_ModeGameOverWait }, { 0x544E, abi_ModeScreen }, { 0x549A, abi_ModeEnding }
+    };
+
+    for (unsigned i = 0; i < sizeof handlers / sizeof handlers[0]; i++)
+        if (handlers[i].run == handler) {
+            handlers[i].abi();
+            return;
+        }
+    call_original(handler);
 }
 
 void abi_FrameModeDispatch(void)
 {
-    abi_alu(FrameModeDispatch());
+    ModeHandler found = FrameModeDispatch();
+
+    cpu.a = (uint8_t)(found.mode << 1);
+    cpu.x = cpu.a;
+    abi_nz(cpu.a);
+    abi_flag(P_C, (found.mode & 0x80) != 0);
+    mode_handler_shim(found.handler);
 }
 
 /*
@@ -116,40 +262,45 @@ void abi_FrameModeDispatch(void)
  * @run 69:5124
  * WHAT IT DOES: Mode 0: the boot overlay's frame, then the display off, the screen size
  * set and on to the title; a negative zModeDone goes on to the title's sub-mode 3.
- * HOW: Overlay frame, WaitVblankDisplayOff, the BIOS's screen size, SetGameMode.
- * Entry: nothing. Exit: as SetGameMode, or with zGameSubMode 3 and A 3.
+ * HOW: Overlay frame, WaitVblankDisplayOff, the card's ex_scrsiz, SetGameMode.
+ * Entry: nothing. Exit, the overlay not done: as it leaves them, with A zModeDone, N and Z
+ * from it. Exit: A zModeDone, or 3 if it was negative; N and Z from A; X zModeDone; Y and C as
+ * ex_scrsiz leaves them; V as the overlay left it.
  */
-Alu ModeBoot(void)
-{
-    bool done;
-    Alu r = overlay_frame(FrameOverlay8000, &done);
-    uint8_t value;
+typedef struct { OverlayFrame frame; uint8_t control; uint8_t width; uint8_t done_again; } BootRun;
 
-    if (!done)
-        return r;
-    r = call_abi(abi_WaitVblankDisplayOff, r);
-    alu_load(&r, 4);
-    wr8(zDisplayDelay, 4);
-    alu_load(&r, 5);
-    r = call_with(BiosExScrSiz, r);
+BootRun ModeBoot(void)
+{
+    BootRun run;
+
+    run.frame = overlay_frame(FrameOverlay8000);
+    if (run.frame.done == 0)
+        return run;
+    run.control = WaitVblankDisplayOff();
+    wr8(zDisplayDelay, BOOT_DISPLAY_DELAY);
+    run.width = ex_scrsiz(SCREEN_SIZE);
     wr8(zStage, 0);
-    alu_load(&r, 0xFF);
     wr8(zCharacterLoaded, 0xFF);
     wr8(zCharacter, 0);
-    value = rd8(zModeDone);
-    cpu.x = value;
-    r = set_mode(r, MODE_TITLE);
-    alu_load(&r, cpu.x);
-    if (r.a & 0x80) {
-        alu_load(&r, 3);
-        wr8(zGameSubMode, 3);
-    }
-    return r;
+    run.done_again = rd8(zModeDone);
+    SetGameMode(MODE_TITLE);
+    if (run.done_again & 0x80)
+        wr8(zGameSubMode, BOOT_SUB_MODE);
+    return run;
 }
 
 void abi_ModeBoot(void)
 {
-    abi_alu(ModeBoot());
+    BootRun run = ModeBoot();
+
+    overlay_done_shim(run.frame.after, run.frame.done);
+    if (run.frame.done == 0)
+        return;
+    load_shim(run.control);
+    load_shim(SCREEN_SIZE);
+    ex_scrsiz_exit_shim(SCREEN_SIZE, run.width);
+    cpu.x = run.done_again;
+    load_shim(run.done_again & 0x80 ? BOOT_SUB_MODE : run.done_again);
 }
 
 /*
@@ -157,22 +308,26 @@ void abi_ModeBoot(void)
  * @run 69:514F
  * WHAT IT DOES: Mode 1: the overlay's frame, then the stage's load.
  * HOW: Overlay frame at its second entry; zField80 cleared; SetGameMode.
- * Entry: nothing. Exit: as SetGameMode.
+ * Entry: nothing. Exit: as the overlay leaves them, A zModeDone and N, Z from it; done, A 0.
  */
-Alu ModeLogo(void)
+OverlayFrame ModeLogo(void)
 {
-    bool done;
-    Alu r = overlay_frame(FrameOverlay8003, &done);
+    OverlayFrame frame = overlay_frame(FrameOverlay8003);
 
-    if (!done)
-        return r;
+    if (frame.done == 0)
+        return frame;
     wr8(zField80, 0);
-    return set_mode(r, MODE_STAGE_LOAD);
+    SetGameMode(MODE_STAGE_LOAD);
+    return frame;
 }
 
 void abi_ModeLogo(void)
 {
-    abi_alu(ModeLogo());
+    OverlayFrame frame = ModeLogo();
+
+    overlay_done_shim(frame.after, frame.done);
+    if (frame.done != 0)
+        set_mode_shim(MODE_STAGE_LOAD);
 }
 
 /*
@@ -181,56 +336,94 @@ void abi_ModeLogo(void)
  * WHAT IT DOES: Mode 2: the title's frame. The overlay's answer picks what comes next:
  * zero runs the overlay's other entry; positive restarts the attract's load; negative
  * starts the next demo stage, or on the first pass loads the title's scenes.
- * HOW: The overlay at $8006, then zAttractStep; the five demo stages are a table.
+ * HOW: The overlay at $8006, then zAttractStep; the five demo stages are AttractStages.
  * Entry: nothing. Exit: as what ran last.
  */
-Alu ModeAttract(void)
-{
-    Alu r = call_with(FrameOverlay8006, alu_from_cpu());
-    uint8_t byte = rd8(zModeDone);
+typedef enum { ATTRACT_OTHER_ENTRY, ATTRACT_RESTART, ATTRACT_SCREENS, ATTRACT_DEMO } AttractPath;
 
-    alu_load(&r, byte);
-    if (!(byte & 0x80)) {
-        if (byte == 0)
-            return call_with(FrameOverlay8009, r);
-        return set_mode(r, MODE_ATTRACT_LOAD);
+typedef struct {
+    OverlayFrame frame;
+    AttractPath path;
+    Cpu second;
+    ScreensLoad screens;
+    DiscLog scene;
+    uint8_t step;
+    uint8_t stage;
+    StageEnterRun enter;
+    uint8_t step_after;
+    uint8_t mode;
+} AttractRun;
+
+AttractRun ModeAttract(void)
+{
+    AttractRun run;
+    uint8_t step;
+
+    run.frame = overlay_frame(FrameOverlay8006);
+    if (!(run.frame.done & 0x80)) {
+        if (run.frame.done == 0) {
+            run.path = ATTRACT_OTHER_ENTRY;
+            run.second = overlay_loaded_shim(FrameOverlay8009, run.frame.done);
+        } else {
+            run.path = ATTRACT_RESTART;
+            SetGameMode(MODE_ATTRACT_LOAD);
+        }
+        return run;
     }
-    byte = rd8(zAttractStep);
-    alu_load(&r, byte);
-    if (byte == 0) {
-        byte = rd8(zAttractStep);
-        wr8(zAttractStep, (uint8_t)(byte + 1));
-        wr8(zMusicWanted, 0);
-        r = call_abi(abi_ResetGameState, r);
-        r = load_scene(r, 7);
-        r = load_scene(r, 8);
-        r = load_scene(r, 9);
-        r = call_abi(abi_AdpcmLoadFixed, r);
-        return call_abi(abi_NextGameMode, r);
+    if (rd8(zAttractStep) == 0) {
+        run.path = ATTRACT_SCREENS;
+        wr8(zAttractStep, (uint8_t)(rd8(zAttractStep) + 1));
+        run.screens = load_screens();
+        run.mode = NextGameMode();
+        return run;
     }
-    r = call_abi(abi_ResetScoreCounters, r);
+    run.path = ATTRACT_DEMO;
+    ResetScoreCounters();
     wr8(zCharacter, 0);
-    r = load_scene(r, SCENE_COMMON);
-    byte = rd8(zAttractStep);
-    cpu.y = byte;
-    byte = rd8((uint16_t)(AttractStages + cpu.y));
-    alu_load(&r, byte);
-    wr8(zStage, byte);
-    r = call_abi(abi_StageEnter, r);
-    byte = rd8(zAttractStep);
-    wr8(zAttractStep, (uint8_t)(byte + 1));
-    byte = rd8(zAttractStep);
-    alu_compare(&r, byte, STAGES_ATTRACT);
-    if (byte == STAGES_ATTRACT)
+    run.scene = LoadSceneScript(SCENE_COMMON);
+    run.step = rd8(zAttractStep);
+    run.stage = rd8((uint16_t)(AttractStages + run.step));
+    wr8(zStage, run.stage);
+    run.enter = StageEnter();
+    step = (uint8_t)(rd8(zAttractStep) + 1);
+    wr8(zAttractStep, step);
+    run.step_after = rd8(zAttractStep);
+    if (run.step_after == STAGES_ATTRACT)
         wr8(zAttractStep, 0);
-    byte = rd8(zGameRunning);
-    wr8(zGameRunning, (uint8_t)(byte + 1));
-    return call_abi(abi_NextGameMode, r);
+    wr8(zGameRunning, (uint8_t)(rd8(zGameRunning) + 1));
+    run.mode = NextGameMode();
+    return run;
 }
 
 void abi_ModeAttract(void)
 {
-    abi_alu(ModeAttract());
+    AttractRun run = ModeAttract();
+
+    overlay_done_shim(run.frame.after, run.frame.done);
+    switch (run.path) {
+    case ATTRACT_OTHER_ENTRY:
+        restore_shim(run.second);
+        return;
+    case ATTRACT_RESTART:
+        set_mode_shim(MODE_ATTRACT_LOAD);
+        return;
+    case ATTRACT_SCREENS:
+        load_shim(0);
+        screens_load_shim(&run.screens);
+        next_mode_shim(run.mode);
+        return;
+    case ATTRACT_DEMO:
+        load_shim(run.step);
+        reset_score_shim();
+        scene_shim(SCENE_COMMON, &run.scene);
+        cpu.y = run.step;
+        load_shim(run.stage);
+        stage_enter_exit_shim(&run.enter);
+        cpu.a = run.step_after;
+        compare_shim(run.step_after, STAGES_ATTRACT);
+        next_mode_shim(run.mode);
+        return;
+    }
 }
 
 /*
@@ -238,37 +431,155 @@ void abi_ModeAttract(void)
  * @run 69:51B6
  * WHAT IT DOES: Mode 3: a demo's title frames; Run or the overlay's end stops the demo,
  * fades the CD and goes to mode 8.
- * HOW: The BIOS's joypad byte, the overlay's frame, a sound fade, the CD fade.
+ * HOW: The card's joypad byte, the overlay's frame, a sound fade, the card's cd_fade.
  * Entry: nothing. Exit: as what ran last.
  */
-Alu ModeAttractPlay(void)
+typedef struct {
+    uint8_t run_pressed;
+    OverlayFrame frame;
+    CommandCall sound;
+} AttractPlayRun;
+
+AttractPlayRun ModeAttractPlay(void)
 {
-    uint8_t byte = rd8(BiosJoyTrigger);
-    Alu r = alu_from_cpu();
+    AttractPlayRun run;
 
-    alu_load(&r, (uint8_t)(byte & JOY_RUN));
-    if (r.a == 0) {
-        bool done;
-
-        r = call_with(FrameOverlay8000, r);
-        done = mode_done(&r);
-        if (!done)
-            return r;
+    run.run_pressed = rd8(BiosJoyTrigger) & JOY_RUN;
+    if (run.run_pressed == 0) {
+        run.frame.after = overlay_loaded_shim(FrameOverlay8000, 0);
+        run.frame.done = rd8(zModeDone);
+        if (run.frame.done == 0)
+            return run;
     }
     wr8(zGameRunning, 0);
-    alu_load(&r, SOUND_FADE);
-    r = call_abi(abi_SoundCommand, r);
-    alu_load(&r, CD_FADE_OUT);
-    r = call_with(BiosCdFade, r);
-    alu_load(&r, 0x40);
-    wr8(zWaitTimer, 0x40);
-    r = call_abi(abi_ResetGameState, r);
-    return set_mode(r, MODE_GAME_OVER);
+    run.sound = SoundCommand(SOUND_FADE);
+    cd_fade(CD_FADE_OUT);
+    wr8(zWaitTimer, GAME_OVER_WAIT);
+    ResetGameState();
+    SetGameMode(MODE_GAME_OVER);
+    return run;
 }
 
 void abi_ModeAttractPlay(void)
 {
-    abi_alu(ModeAttractPlay());
+    AttractPlayRun run = ModeAttractPlay();
+
+    if (run.run_pressed == 0) {
+        overlay_done_shim(run.frame.after, run.frame.done);
+        if (run.frame.done == 0)
+            return;
+    } else {
+        load_shim(run.run_pressed);
+    }
+    load_shim(SOUND_FADE);
+    sound_command_exit_shim(SOUND_FADE, run.sound);
+    load_shim(CD_FADE_OUT);
+    cd_fade_exit_shim(CD_FADE_OUT);
+    load_shim(GAME_OVER_WAIT);
+    reset_game_state_exit_shim();
+    set_mode_shim(MODE_GAME_OVER);
+}
+
+/*
+ * @routine 0045:1F0 StageEnterNext
+ * @run 69:51F0
+ * WHAT IT DOES: Enters the stage in zStage with a clean score count and goes on a mode.
+ * HOW: StageEnter, ResetScoreCounters, NextGameMode.
+ * Entry: nothing. Exit: as NextGameMode.
+ */
+typedef struct { StageEnterRun enter; uint8_t mode; } EnterNextRun;
+
+EnterNextRun StageEnterNext(void)
+{
+    EnterNextRun run;
+
+    run.enter = StageEnter();
+    ResetScoreCounters();
+    run.mode = NextGameMode();
+    return run;
+}
+
+static void enter_next_exit_shim(const EnterNextRun *run)
+{
+    stage_enter_exit_shim(&run->enter);
+    reset_score_shim();
+    next_mode_shim(run->mode);
+}
+
+void abi_StageEnterNext(void)
+{
+    EnterNextRun run = StageEnterNext();
+
+    enter_next_exit_shim(&run);
+}
+
+/*
+ * @routine 0045:1F9 ModeStageLoadScreens
+ * @run 69:51F9
+ * WHAT IT DOES: The path of ModeStageLoad for bit 3 of zModeEvents: loads the screens'
+ * scenes and goes to mode 10.
+ * HOW: Clears the bit and the wanted ADPCM, ResetGameState, three scenes, the fixed ADPCM.
+ * Entry: from ModeStageLoad. Exit: A 0, N 0, Z 0, from SetGameMode's mode; the rest as
+ * AdpcmLoadFixed leaves them.
+ */
+ScreensLoad ModeStageLoadScreens(void)
+{
+    ScreensLoad load;
+
+    wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREENS));
+    load = load_screens();
+    SetGameMode(MODE_ENDING);
+    return load;
+}
+
+static void load_screens_exit_shim(const ScreensLoad *load)
+{
+    screens_load_shim(load);
+    set_mode_shim(MODE_ENDING);
+}
+
+void abi_ModeStageLoadScreens(void)
+{
+    ScreensLoad load = ModeStageLoadScreens();
+
+    load_screens_exit_shim(&load);
+}
+
+/*
+ * @routine 0045:217 ModeStageLoadContinue
+ * @run 69:5217
+ * WHAT IT DOES: The path of ModeStageLoad for bit 4 of zModeEvents: enters the stage and
+ * goes to the intro mode.
+ * HOW: ResetScoreCounters, a scene, StageEnter, zGameRunning counted, SetGameMode.
+ * Entry: from ModeStageLoad. Exit: A 0, N 0, Z 0; the rest as StageEnter leaves them.
+ */
+typedef struct { DiscLog scene; StageEnterRun enter; } ContinueRun;
+
+ContinueRun ModeStageLoadContinue(void)
+{
+    ContinueRun run;
+
+    ResetScoreCounters();
+    run.scene = LoadSceneScript(SCENE_COMMON);
+    run.enter = StageEnter();
+    wr8(zGameRunning, (uint8_t)(rd8(zGameRunning) + 1));
+    SetGameMode(MODE_INTRO);
+    return run;
+}
+
+static void continue_exit_shim(const ContinueRun *run)
+{
+    reset_score_shim();
+    scene_shim(SCENE_COMMON, &run->scene);
+    stage_enter_exit_shim(&run->enter);
+    set_mode_shim(MODE_INTRO);
+}
+
+void abi_ModeStageLoadContinue(void)
+{
+    ContinueRun run = ModeStageLoadContinue();
+
+    continue_exit_shim(&run);
 }
 
 /*
@@ -279,95 +590,158 @@ void abi_ModeAttractPlay(void)
  * HOW: The overlay's fifth entry, then bits 3 and 4 of zModeEvents.
  * Entry: nothing. Exit: as what ran last.
  */
-Alu ModeStageLoad(void)
-{
-    bool done;
-    Alu r = overlay_frame(OverlayTerrainLookup, &done);
+typedef enum { STAGE_LOAD_WAIT, STAGE_LOAD_SCREENS, STAGE_LOAD_CONTINUE, STAGE_LOAD_FIRST } StageLoadPath;
 
-    if (!done)
-        return r;
-    if (rd8(zModeEvents) & 0x08)
-        return ModeStageLoadScreens(r);
-    if (rd8(zModeEvents) & 0x10)
-        return ModeStageLoadContinue(r);
-    r = load_scene(r, SCENE_COMMON);
-    return StageEnterNext(r);
+typedef struct {
+    OverlayFrame frame;
+    StageLoadPath path;
+    ScreensLoad screens;
+    ContinueRun resume;
+    DiscLog scene;
+    EnterNextRun next;
+} ModeStageLoadRun;
+
+ModeStageLoadRun ModeStageLoad(void)
+{
+    ModeStageLoadRun run;
+
+    run.frame = overlay_frame(OverlayTerrainLookup);
+    run.path = STAGE_LOAD_WAIT;
+    if (run.frame.done == 0)
+        return run;
+    if (rd8(zModeEvents) & EVENT_SCREENS) {
+        run.path = STAGE_LOAD_SCREENS;
+        run.screens = ModeStageLoadScreens();
+    } else if (rd8(zModeEvents) & EVENT_CONTINUE) {
+        run.path = STAGE_LOAD_CONTINUE;
+        run.resume = ModeStageLoadContinue();
+    } else {
+        run.path = STAGE_LOAD_FIRST;
+        run.scene = LoadSceneScript(SCENE_COMMON);
+        run.next = StageEnterNext();
+    }
+    return run;
 }
 
 void abi_ModeStageLoad(void)
 {
-    abi_alu(ModeStageLoad());
+    ModeStageLoadRun run = ModeStageLoad();
+
+    overlay_done_shim(run.frame.after, run.frame.done);
+    switch (run.path) {
+    case STAGE_LOAD_WAIT:
+        return;
+    case STAGE_LOAD_SCREENS:
+        load_screens_exit_shim(&run.screens);
+        return;
+    case STAGE_LOAD_CONTINUE:
+        continue_exit_shim(&run.resume);
+        return;
+    case STAGE_LOAD_FIRST:
+        scene_shim(SCENE_COMMON, &run.scene);
+        enter_next_exit_shim(&run.next);
+        return;
+    }
 }
 
 /*
- * @routine 0045:1F0 StageEnterNext
- * @run 69:51F0
- * WHAT IT DOES: Enters the stage in zStage with a clean score count and goes on a mode.
- * HOW: StageEnter, ResetScoreCounters, NextGameMode.
- * Entry: nothing. Exit: as NextGameMode.
+ * @routine 0045:3D7 SaveProgress
+ * @run 69:53D7
+ * WHAT IT DOES: Writes the character's progress to the save slot in zSaveSlot.
+ * HOW: Reads the backup file to RAM, copies into the slot, writes it back.
+ * Entry: nothing. Exit: as BackupWrite, entered with X past the slot's stage bytes, Y $14, A
+ * the last byte copied, Z and C set.
  */
-Alu StageEnterNext(Alu r)
+typedef struct {
+    BackupAccess read;
+    uint8_t slot;
+    uint8_t offset;
+    uint8_t last;
+    BackupWriteRun write;
+} SaveRun;
+
+/* The save slot's copy of the character's progress, from the working bytes. */
+static void save_progress_tail(SaveRun *run)
 {
-    r = call_abi(abi_StageEnter, r);
-    r = call_abi(abi_ResetScoreCounters, r);
-    return call_abi(abi_NextGameMode, r);
+    wr8((uint16_t)(SaveBuffer + run->offset), rd8(ProgressCharacter));
+    wr8((uint16_t)(SaveContinues + run->offset), rd8(ContinuesLo));
+    wr8((uint16_t)(SaveContinues + 1 + run->offset), rd8(ContinuesHi));
+    for (uint8_t i = 0; i < SAVE_STAGE_BYTES; i++) {
+        run->last = rd8((uint16_t)(StagesReached + i));
+        wr8((uint16_t)(SaveBuffer + 1 + run->offset + i), run->last);
+    }
+    run->write = BackupWrite();
 }
 
-void abi_StageEnterNext(void)
+static SaveRun save_slot_open(void)
 {
-    abi_alu(StageEnterNext(alu_from_cpu()));
+    SaveRun run;
+
+    run.read = BackupRead();
+    run.slot = rd8(zSaveSlot);
+    run.offset = rd8((uint16_t)(SaveSlotOffsets + run.slot));
+    return run;
+}
+
+SaveRun SaveProgress(void)
+{
+    SaveRun run = save_slot_open();
+
+    save_progress_tail(&run);
+    return run;
+}
+
+static void save_exit_shim(const SaveRun *run)
+{
+    backup_read_exit_shim(run->read);
+    cpu.y = SAVE_STAGE_BYTES;
+    cpu.x = (uint8_t)(run->offset + SAVE_STAGE_BYTES);
+    cpu.a = run->last;
+    compare_shim(SAVE_STAGE_BYTES, SAVE_STAGE_BYTES);
+    backup_write_exit_shim(&run->write);
+}
+
+void abi_SaveProgress(void)
+{
+    SaveRun run = SaveProgress();
+
+    save_exit_shim(&run);
 }
 
 /*
- * @routine 0045:1F9 ModeStageLoadScreens
- * @run 69:51F9
- * WHAT IT DOES: The path of ModeStageLoad for bit 3 of zModeEvents: loads the screens'
- * scenes and goes to mode 10.
- * HOW: Clears the bit and the wanted ADPCM, ResetGameState, three scenes, the fixed ADPCM.
- * Entry: from ModeStageLoad. Exit: as SetGameMode.
+ * @routine 0045:3E1 SaveScore
+ * @run 69:53E1
+ * WHAT IT DOES: As SaveProgress, and first adds the stage's score to the slot's total, in
+ * BCD, stopping at 999999.
+ * HOW: A 24-bit BCD add from zScoreAddLo-Hi.
+ * Entry: nothing. Exit: as SaveProgress.
  */
-Alu ModeStageLoadScreens(Alu r)
+SaveRun SaveScore(void)
 {
-    uint8_t byte = rd8(zModeEvents);
+    SaveRun run = save_slot_open();
+    uint16_t total = (uint16_t)(SaveScoreTotal + run.offset);
+    Sum sum;
 
-    wr8(zModeEvents, (uint8_t)(byte & ~0x08));
-    wr8(zMusicWanted, 0);
-    r = call_abi(abi_ResetGameState, r);
-    r = load_scene(r, 7);
-    r = load_scene(r, 8);
-    r = load_scene(r, 9);
-    r = call_abi(abi_AdpcmLoadFixed, r);
-    return set_mode(r, MODE_ENDING);
+    sum = add_decimal(rd8(zScoreAddLo), rd8(total), false);
+    wr8(total, sum.value);
+    sum = add_decimal(rd8(zScoreAddHi), rd8((uint16_t)(total + 1)), sum.carry);
+    wr8((uint16_t)(total + 1), sum.value);
+    sum = add_decimal(0, rd8((uint16_t)(total + 2)), sum.carry);
+    wr8((uint16_t)(total + 2), sum.value);
+    if (sum.carry) {
+        wr8(total, 0x99);
+        wr8((uint16_t)(total + 1), 0x99);
+        wr8((uint16_t)(total + 2), 0x99);
+    }
+    save_progress_tail(&run);
+    return run;
 }
 
-void abi_ModeStageLoadScreens(void)
+void abi_SaveScore(void)
 {
-    abi_alu(ModeStageLoadScreens(alu_from_cpu()));
-}
+    SaveRun run = SaveScore();
 
-/*
- * @routine 0045:217 ModeStageLoadContinue
- * @run 69:5217
- * WHAT IT DOES: The path of ModeStageLoad for bit 4 of zModeEvents: enters the stage and
- * goes to the intro mode.
- * HOW: ResetScoreCounters, a scene, StageEnter, zGameRunning counted, SetGameMode.
- * Entry: from ModeStageLoad. Exit: as SetGameMode.
- */
-Alu ModeStageLoadContinue(Alu r)
-{
-    uint8_t byte;
-
-    r = call_abi(abi_ResetScoreCounters, r);
-    r = load_scene(r, SCENE_COMMON);
-    r = call_abi(abi_StageEnter, r);
-    byte = rd8(zGameRunning);
-    wr8(zGameRunning, (uint8_t)(byte + 1));
-    return set_mode(r, MODE_INTRO);
-}
-
-void abi_ModeStageLoadContinue(void)
-{
-    abi_alu(ModeStageLoadContinue(alu_from_cpu()));
+    save_exit_shim(&run);
 }
 
 /*
@@ -376,40 +750,92 @@ void abi_ModeStageLoadContinue(void)
  * WHAT IT DOES: The stage's overlay finished with a positive answer: goes on a mode,
  * except on the bonus stage, which marks it and, unless the save slot's flag is set,
  * loads the ending's scenes and goes to mode 9.
- * HOW: Compares zStage; StageClearBit in StagesVisited; the save's flag at $7D25.
+ * HOW: Compares zStage; StageClearBit in StagesVisited; the save's flag at SaveBonusSeen.
  * Entry: from ModeStage. Exit: as what ran last.
  */
-Alu ModeStageDone(Alu r)
-{
-    uint8_t byte = rd8(zStage);
+typedef struct {
+    uint8_t stage;
+    StageMark mark;
+    StopCall stop;
+    uint8_t slot;
+    bool saved;
+    SaveRun save;
+    uint8_t save_slot;
+    uint8_t offset;
+    uint8_t seen;
+    bool next;
+    uint8_t mode;
+    DiscLog ending_a;
+    DiscLog ending_b;
+} StageDoneRun;
 
-    alu_compare(&r, byte, STAGE_BONUS);
-    if (byte != STAGE_BONUS)
-        return call_abi(abi_NextGameMode, r);
-    r = mark_stage(r, StagesVisited);
-    r = call_abi(abi_ResetGameState, r);
-    r = call_abi(abi_SoundStopAll, r);
-    byte = rd8(zSaveSlot);
-    alu_load(&r, byte);
-    if (!(byte & 0x80)) {
-        r = SaveProgress(r);
-        cpu.y = rd8(zSaveSlot);
-        cpu.x = rd8((uint16_t)(SaveSlotOffsets + cpu.y));
-        byte = rd8((uint16_t)(0x7D25 + cpu.x));
-        alu_load(&r, byte);
-        if (byte != 0)
-            return call_abi(abi_NextGameMode, r);
+StageDoneRun ModeStageDone(void)
+{
+    StageDoneRun run;
+
+    run.stage = rd8(zStage);
+    run.saved = false;
+    run.next = run.stage != STAGE_BONUS;
+    if (run.next) {
+        run.mode = NextGameMode();
+        return run;
     }
-    alu_load(&r, 0xFF);
+    run.mark = mark_stage(StagesVisited);
+    ResetGameState();
+    run.stop = SoundStopAll();
+    run.slot = rd8(zSaveSlot);
+    if (!(run.slot & 0x80)) {
+        run.saved = true;
+        run.save = SaveProgress();
+        run.save_slot = rd8(zSaveSlot);
+        run.offset = rd8((uint16_t)(SaveSlotOffsets + run.save_slot));
+        run.seen = rd8((uint16_t)(SaveBonusSeen + run.offset));
+        run.next = run.seen != 0;
+        if (run.next) {
+            run.mode = NextGameMode();
+            return run;
+        }
+    }
     wr8(zCharacterLoaded, 0xFF);
-    r = load_scene(r, 0x5C);
-    r = load_scene(r, 0x5D);
-    return set_mode(r, MODE_SCREEN);
+    run.ending_a = LoadSceneScript(SCENE_ENDING_A);
+    run.ending_b = LoadSceneScript(SCENE_ENDING_B);
+    SetGameMode(MODE_SCREEN);
+    return run;
+}
+
+static void stage_done_exit_shim(const StageDoneRun *run)
+{
+    load_shim(run->stage);
+    compare_shim(run->stage, STAGE_BONUS);
+    if (run->stage != STAGE_BONUS) {
+        next_mode_shim(run->mode);
+        return;
+    }
+    mark_stage_shim(run->mark);
+    reset_game_state_exit_shim();
+    stop_call_exit_shim(run->stop);
+    load_shim(run->slot);
+    if (run->saved) {
+        save_exit_shim(&run->save);
+        cpu.y = run->save_slot;
+        cpu.x = run->offset;
+        load_shim(run->seen);
+        if (run->next) {
+            next_mode_shim(run->mode);
+            return;
+        }
+    }
+    load_shim(0xFF);
+    scene_shim(SCENE_ENDING_A, &run->ending_a);
+    scene_shim(SCENE_ENDING_B, &run->ending_b);
+    set_mode_shim(MODE_SCREEN);
 }
 
 void abi_ModeStageDone(void)
 {
-    abi_alu(ModeStageDone(alu_from_cpu()));
+    StageDoneRun run = ModeStageDone();
+
+    stage_done_exit_shim(&run);
 }
 
 /*
@@ -421,75 +847,197 @@ void abi_ModeStageDone(void)
  * HOW: Bits 0, 1 and 2 of zModeEvents, each cleared as it is taken.
  * Entry: nothing. Exit: as what ran last.
  */
-Alu ModeStage(void)
-{
-    Alu r = call_with(FrameOverlay8000, alu_from_cpu());
-    uint8_t byte = rd8(zModeDone);
-    uint8_t high;
+typedef enum {
+    STAGE_PLAYING, STAGE_LOST, STAGE_DONE, STAGE_BOSS, STAGE_SCREEN, STAGE_CLEAR
+} StagePath;
 
-    alu_load(&r, byte);
-    if (byte & 0x80)
-        return set_mode(r, MODE_DEAD);
-    if (byte != 0)
-        return ModeStageDone(r);
-    if (rd8(zModeEvents) & 0x01) {
-        byte = rd8(zModeEvents);
-        wr8(zModeEvents, (uint8_t)(byte & ~0x01));
-        byte = rd8(zCharacter);
-        r = adc8(0x22, byte, false);
-        r = call_abi(abi_AdpcmLoad, r);
-        return load_scene(r, 0x5E);
+typedef struct {
+    OverlayFrame frame;
+    StagePath path;
+    StageDoneRun done;
+    Sum adpcm_sum;
+    AdpcmLoadRun adpcm;
+    uint8_t stage;
+    uint8_t first;
+    DiscLog scene_a;
+    DiscLog scene_b;
+    StageMark mark;
+    uint8_t slot;
+    SaveRun save;
+    Sum clear_a;
+    Sum clear_b;
+} StageRun;
+
+/* The two scenes of a screen between stages, by the stage that asks for it. */
+static uint8_t screen_scenes(uint8_t stage)
+{
+    switch (stage) {
+    case 0x04:
+        return 0x02;
+    case 0x07:
+        return 0x0A;
+    case 0x09:
+        return 0x0C;
+    default:
+        return 0x0E;
     }
-    if (rd8(zModeEvents) & 0x02) {
-        byte = rd8(zModeEvents);
-        wr8(zModeEvents, (uint8_t)(byte & ~0x02));
-        r = call_abi(abi_ResetGameState, r);
-        alu_load(&r, 0xFF);
+}
+
+StageRun ModeStage(void)
+{
+    StageRun run;
+    uint8_t character;
+
+    run.frame = overlay_frame(FrameOverlay8000);
+    if (run.frame.done & 0x80) {
+        run.path = STAGE_LOST;
+        SetGameMode(MODE_DEAD);
+    } else if (run.frame.done != 0) {
+        run.path = STAGE_DONE;
+        run.done = ModeStageDone();
+    } else if (rd8(zModeEvents) & EVENT_BOSS) {
+        run.path = STAGE_BOSS;
+        wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_BOSS));
+        run.adpcm_sum = add_bytes(ADPCM_BOSS, rd8(zCharacter), false);
+        run.adpcm = AdpcmLoad(run.adpcm_sum.value);
+        run.scene_a = LoadSceneScript(SCENE_BOSS);
+    } else if (rd8(zModeEvents) & EVENT_SCREEN) {
+        run.path = STAGE_SCREEN;
+        wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREEN));
+        ResetGameState();
         wr8(zMusicWanted, 0xFF);
         wr8(zCharacterLoaded, 0xFF);
-        byte = rd8(zStage);
-        alu_compare(&r, byte, 4);
-        if (byte == 4) {
-            high = 2;
-        } else {
-            alu_compare(&r, byte, 7);
-            if (byte == 7) {
-                high = 0x0A;
-            } else {
-                alu_compare(&r, byte, 9);
-                high = byte == 9 ? 0x0C : 0x0E;
-            }
-        }
-        r = load_scene(r, high);
-        r = load_scene(r, (uint8_t)(high + 1));
-        return set_mode(r, MODE_SCREEN);
+        run.stage = rd8(zStage);
+        run.first = screen_scenes(run.stage);
+        run.scene_a = LoadSceneScript(run.first);
+        run.scene_b = LoadSceneScript((uint8_t)(run.first + 1));
+        SetGameMode(MODE_SCREEN);
+    } else if (rd8(zModeEvents) & EVENT_CLEAR) {
+        run.path = STAGE_CLEAR;
+        wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_CLEAR));
+        run.mark = mark_stage(StagesVisited);
+        run.slot = rd8(zSaveSlot);
+        if (!(run.slot & 0x80))
+            run.save = SaveScore();
+        character = rd8(zCharacter);
+        run.clear_a = add_bytes((uint8_t)(character << 1), SCENE_CLEAR, (character & 0x80) != 0);
+        run.scene_a = LoadSceneScript(run.clear_a.value);
+        character = rd8(zCharacter);
+        run.clear_b = add_bytes((uint8_t)(character << 1), SCENE_CLEAR + 1, (character & 0x80) != 0);
+        run.scene_b = LoadSceneScript(run.clear_b.value);
+        SetGameMode(MODE_SCREEN);
+    } else {
+        run.path = STAGE_PLAYING;
     }
-    if (rd8(zModeEvents) & 0x04) {
-        byte = rd8(zModeEvents);
-        wr8(zModeEvents, (uint8_t)(byte & ~0x04));
-        r = mark_stage(r, StagesVisited);
-        byte = rd8(zSaveSlot);
-        alu_load(&r, byte);
-        if (!(byte & 0x80))
-            r = SaveScore(r);
-        byte = rd8(zCharacter);
-        r.c = (byte & 0x80) != 0;
-        r.c_kept = false;
-        r = adc8((uint8_t)(byte << 1), 0x58, r.c);
-        r = call_abi(abi_LoadSceneScript, r);
-        byte = rd8(zCharacter);
-        r.c = (byte & 0x80) != 0;
-        r.c_kept = false;
-        r = adc8((uint8_t)(byte << 1), 0x59, r.c);
-        r = call_abi(abi_LoadSceneScript, r);
-        return set_mode(r, MODE_SCREEN);
-    }
-    return r;
+    return run;
+}
+
+static void sum_shim(Sum sum)
+{
+    load_shim(sum.value);
+    abi_flag(P_C, sum.carry);
+    abi_flag(P_V, sum.overflow);
 }
 
 void abi_ModeStage(void)
 {
-    abi_alu(ModeStage());
+    StageRun run = ModeStage();
+
+    overlay_done_shim(run.frame.after, run.frame.done);
+    switch (run.path) {
+    case STAGE_PLAYING:
+        return;
+    case STAGE_LOST:
+        set_mode_shim(MODE_DEAD);
+        return;
+    case STAGE_DONE:
+        stage_done_exit_shim(&run.done);
+        return;
+    case STAGE_BOSS:
+        sum_shim(run.adpcm_sum);
+        adpcm_load_exit_shim(&run.adpcm);
+        scene_shim(SCENE_BOSS, &run.scene_a);
+        return;
+    case STAGE_SCREEN:
+        reset_game_state_exit_shim();
+        load_shim(run.stage);
+        if (run.stage == 0x04 || run.stage == 0x07 || run.stage == 0x09)
+            compare_shim(0, 0);
+        else
+            compare_shim(run.stage, 0x09);
+        scene_shim(run.first, &run.scene_a);
+        scene_shim((uint8_t)(run.first + 1), &run.scene_b);
+        set_mode_shim(MODE_SCREEN);
+        return;
+    case STAGE_CLEAR:
+        mark_stage_shim(run.mark);
+        load_shim(run.slot);
+        if (!(run.slot & 0x80))
+            save_exit_shim(&run.save);
+        sum_shim(run.clear_a);
+        disc_log_exit_shim(&run.scene_a);
+        sum_shim(run.clear_b);
+        disc_log_exit_shim(&run.scene_b);
+        set_mode_shim(MODE_SCREEN);
+        return;
+    }
+}
+
+/*
+ * @routine 0045:306 StageClearedNext
+ * @run 69:5306
+ * WHAT IT DOES: Enters the next stage, marks it and saves, and goes to the stage mode; if
+ * there is no next stage, back to the title's mode 0.
+ * HOW: StageEnter; zStage zero is the end. StageClearBit into StagesReached.
+ * Entry: nothing. Exit: A 0; N and Z from mode 5, or from zStage zero; the rest as what ran
+ * last.
+ */
+typedef struct {
+    StageEnterRun enter;
+    uint8_t stage;
+    StageMark mark;
+    uint8_t slot;
+    SaveRun save;
+} ClearedNextRun;
+
+ClearedNextRun StageClearedNext(void)
+{
+    ClearedNextRun run;
+
+    run.enter = StageEnter();
+    run.stage = rd8(zStage);
+    if (run.stage == 0) {
+        SetGameMode(0);
+        return run;
+    }
+    run.mark = mark_stage(StagesReached);
+    run.slot = rd8(zSaveSlot);
+    if (!(run.slot & 0x80))
+        run.save = SaveProgress();
+    SetGameMode(MODE_STAGE);
+    return run;
+}
+
+static void cleared_next_exit_shim(const ClearedNextRun *run)
+{
+    stage_enter_exit_shim(&run->enter);
+    load_shim(run->stage);
+    if (run->stage == 0) {
+        cpu.a = 0;
+        return;
+    }
+    mark_stage_shim(run->mark);
+    load_shim(run->slot);
+    if (!(run->slot & 0x80))
+        save_exit_shim(&run->save);
+    set_mode_shim(MODE_STAGE);
+}
+
+void abi_StageClearedNext(void)
+{
+    ClearedNextRun run = StageClearedNext();
+
+    cleared_next_exit_shim(&run);
 }
 
 /*
@@ -499,46 +1047,23 @@ void abi_ModeStage(void)
  * HOW: StageClearBit into StagesVisited.
  * Entry: nothing. Exit: as StageClearedNext.
  */
-Alu ModeStageCleared(void)
+typedef struct { StageMark mark; ClearedNextRun next; } StageClearedRun;
+
+StageClearedRun ModeStageCleared(void)
 {
-    return StageClearedNext(mark_stage(alu_from_cpu(), StagesVisited));
+    StageClearedRun run;
+
+    run.mark = mark_stage(StagesVisited);
+    run.next = StageClearedNext();
+    return run;
 }
 
 void abi_ModeStageCleared(void)
 {
-    abi_alu(ModeStageCleared());
-}
+    StageClearedRun run = ModeStageCleared();
 
-/*
- * @routine 0045:306 StageClearedNext
- * @run 69:5306
- * WHAT IT DOES: Enters the next stage, marks it and saves, and goes to the stage mode; if
- * there is no next stage, back to the title's mode 0.
- * HOW: StageEnter; zStage zero is the end. StageClearBit into StagesReached.
- * Entry: nothing. Exit: as SetGameMode.
- */
-Alu StageClearedNext(Alu r)
-{
-    uint8_t byte;
-
-    r = call_abi(abi_StageEnter, r);
-    byte = rd8(zStage);
-    alu_load(&r, byte);
-    if (byte == 0) {
-        r.a = 0;
-        return call_abi(abi_SetGameMode, r);
-    }
-    r = mark_stage(r, StagesReached);
-    byte = rd8(zSaveSlot);
-    alu_load(&r, byte);
-    if (!(byte & 0x80))
-        r = SaveProgress(r);
-    return set_mode(r, MODE_STAGE);
-}
-
-void abi_StageClearedNext(void)
-{
-    abi_alu(StageClearedNext(alu_from_cpu()));
+    mark_stage_shim(run.mark);
+    cleared_next_exit_shim(&run.next);
 }
 
 /*
@@ -566,10 +1091,9 @@ StageBit StageClearBit(void)
     return found;
 }
 
-void abi_StageClearBit(void)
+/* StageClearBit's exit, for its wrapper and for a caller's that replays it. */
+void stage_bit_exit_shim(StageBit found)
 {
-    StageBit found = StageClearBit();
-
     cpu.a = found.bit;
     cpu.x = found.index;
     cpu.y = found.stage;
@@ -578,87 +1102,9 @@ void abi_StageClearBit(void)
     abi_flag(P_V, false);
 }
 
-/*
- * @routine 0045:34E ModeDead
- * @run 69:534E
- * WHAT IT DOES: Mode 7: the continue screen's frame. Then counts a continue used, in
- * BCD up to 999, saves, and goes back into the stage, or at the last continue to the
- * title. A stage with bit 7 set restarts from zStageRequested.
- * HOW: Maps the overlay's bank; the continues at $3F41-$3F42; $3F24 picks what follows.
- * Entry: nothing. Exit: as what ran last.
- */
-Alu ModeDead(void)
+void abi_StageClearBit(void)
 {
-    Alu r;
-    uint8_t base;
-    uint8_t byte;
-    bool done;
-
-    base = rd8(zRamBaseBank);
-    r = adc8(EVENTS_BANK_OFFSET, base, false);
-    tam(MPR4, r.a);
-    r = call_with(FrameOverlay8000, r);
-    done = mode_done(&r);
-    if (!done)
-        return r;
-    byte = rd8(ContinuesLo);
-    r = adc8_bcd(byte, 1, false);
-    wr8(ContinuesLo, r.a);
-    if (r.c) {
-        byte = rd8(ContinuesHi);
-        alu_nz(&r, (uint8_t)(byte + 1));
-        wr8(ContinuesHi, (uint8_t)(byte + 1));
-    }
-    byte = rd8(ContinuesHi);
-    alu_compare(&r, byte, 0x0A);
-    if (byte == 0x0A) {
-        alu_load(&r, 0x99);
-        wr8(ContinuesLo, 0x99);
-        alu_load(&r, 0x09);
-        wr8(ContinuesHi, 0x09);
-    }
-    byte = rd8(zSaveSlot);
-    alu_load(&r, byte);
-    if (!(byte & 0x80))
-        r = SaveScore(r);
-    byte = rd8(ContinueChoice);
-    alu_load(&r, byte);
-    if (byte != 0) {
-        byte = (uint8_t)(byte - 1);
-        alu_load(&r, byte);
-        if (byte == 0) {
-            r = call_abi(abi_ResetGameState, r);
-            return ModeBackToTitle(r);
-        }
-        byte = rd8(zCharacter);
-        byte ^= 0x01;
-        alu_load(&r, byte);
-        wr8(zCharacter, byte);
-    }
-    byte = rd8(zStage);
-    alu_load(&r, byte);
-    if (byte & 0x80) {
-        byte = rd8(zStageRequested);
-        byte &= 0x7F;
-        alu_load(&r, byte);
-    }
-    byte |= 0x40;
-    alu_load(&r, byte);
-    wr8(zStage, byte);
-    r = call_abi(abi_ResetScoreCounters, r);
-    byte = rd8(zStage);
-    alu_compare(&r, byte, 0x43);
-    if (byte == 0x43) {
-        alu_load(&r, 0x42);
-        wr8(zStage, 0x42);
-    }
-    r = set_mode(r, MODE_STAGE_LOAD);
-    return StageEnterNext(r);
-}
-
-void abi_ModeDead(void)
-{
-    abi_alu(ModeDead());
+    stage_bit_exit_shim(StageClearBit());
 }
 
 /*
@@ -667,112 +1113,144 @@ void abi_ModeDead(void)
  * WHAT IT DOES: Goes back to the title: forgets what is loaded, loads the menu's scenes
  * and ADPCM, and sets mode 0.
  * HOW: Two scenes, an ADPCM, SetGameMode.
- * Entry: nothing. Exit: as SetGameMode.
+ * Entry: nothing. Exit: A 0; the rest as AdpcmLoad leaves them.
  */
-Alu ModeBackToTitle(Alu r)
+typedef struct { DiscLog menu_a; DiscLog menu_b; AdpcmLoadRun adpcm; } BackToTitleRun;
+
+BackToTitleRun ModeBackToTitle(void)
 {
-    alu_load(&r, 0xFF);
+    BackToTitleRun run;
+
     wr8(zMusicWanted, 0xFF);
     wr8(zCharacterLoaded, 0xFF);
-    alu_load(&r, 0);
     wr8(zStage, 0);
-    r = load_scene(r, SCENE_MENU_A);
-    r = load_scene(r, SCENE_MENU_B);
-    alu_load(&r, ADPCM_MENU);
-    r = call_abi(abi_AdpcmLoad, r);
-    r.a = 0;
-    return call_abi(abi_SetGameMode, r);
+    run.menu_a = LoadSceneScript(SCENE_MENU_A);
+    run.menu_b = LoadSceneScript(SCENE_MENU_B);
+    run.adpcm = AdpcmLoad(ADPCM_MENU);
+    SetGameMode(0);
+    return run;
+}
+
+static void back_to_title_exit_shim(const BackToTitleRun *run)
+{
+    scene_shim(SCENE_MENU_A, &run->menu_a);
+    scene_shim(SCENE_MENU_B, &run->menu_b);
+    load_shim(ADPCM_MENU);
+    adpcm_load_exit_shim(&run->adpcm);
+    cpu.a = 0;
 }
 
 void abi_ModeBackToTitle(void)
 {
-    abi_alu(ModeBackToTitle(alu_from_cpu()));
-}
+    BackToTitleRun run = ModeBackToTitle();
 
-/* The save slot's copy of the character's progress, from the working bytes. */
-static Alu save_progress_tail(Alu r)
-{
-    uint8_t byte = rd8(ProgressCharacter);
-
-    alu_load(&r, byte);
-    wr8((uint16_t)(SaveBuffer + cpu.x), byte);
-    byte = rd8(ContinuesLo);
-    alu_load(&r, byte);
-    wr8((uint16_t)(SaveContinues + cpu.x), byte);
-    byte = rd8(ContinuesHi);
-    alu_load(&r, byte);
-    wr8((uint16_t)(SaveContinues + 1 + cpu.x), byte);
-    cpu.y = 0;
-    do {
-        byte = rd8((uint16_t)(StagesReached + cpu.y));
-        wr8((uint16_t)(SaveBuffer + 1 + cpu.x), byte);
-        cpu.x++;
-        cpu.y++;
-    } while (cpu.y != 0x14);
-    alu_compare(&r, cpu.y, 0x14);
-    r.a = byte;
-    return BackupWrite(r);
+    back_to_title_exit_shim(&run);
 }
 
 /*
- * @routine 0045:3D7 SaveProgress
- * @run 69:53D7
- * WHAT IT DOES: Writes the character's progress to the save slot in zSaveSlot.
- * HOW: Reads the backup file to RAM, copies into the slot, writes it back.
- * Entry: nothing. Exit: as BackupWrite.
+ * @routine 0045:34E ModeDead
+ * @run 69:534E
+ * WHAT IT DOES: Mode 7: the continue screen's frame. Then counts a continue used, in
+ * BCD up to 999, saves, and goes back into the stage, or at the last continue to the
+ * title. A stage with bit 7 set restarts from zStageRequested.
+ * HOW: Maps the overlay's bank; the continues at ContinuesLo-Hi; ContinueChoice picks what
+ * follows.
+ * Entry: nothing. Exit: as what ran last.
  */
-Alu SaveProgress(Alu r)
-{
-    r = call_abi(abi_BackupRead, r);
-    cpu.y = rd8(zSaveSlot);
-    cpu.x = rd8((uint16_t)(SaveSlotOffsets + cpu.y));
-    return save_progress_tail(r);
-}
+typedef struct {
+    Cpu after;
+    uint8_t done;
+    uint8_t continues_hi;
+    uint8_t slot;
+    SaveRun save;
+    uint8_t choice;
+    BackToTitleRun title;
+    uint8_t character;
+    uint8_t stage;
+    bool from_request;
+    uint8_t requested;
+    uint8_t restart;
+    uint8_t retry;
+    EnterNextRun next;
+} DeadRun;
 
-void abi_SaveProgress(void)
+DeadRun ModeDead(void)
 {
-    abi_alu(SaveProgress(alu_from_cpu()));
-}
+    DeadRun run;
+    Sum bank = add_bytes(EVENTS_BANK_OFFSET, rd8(zRamBaseBank), false);
+    Sum continues;
 
-/*
- * @routine 0045:3E1 SaveScore
- * @run 69:53E1
- * WHAT IT DOES: As SaveProgress, and first adds the stage's score to the slot's total, in
- * BCD, stopping at 999999.
- * HOW: A 24-bit BCD add from zScoreAddLo-Hi.
- * Entry: nothing. Exit: as BackupWrite.
- */
-Alu SaveScore(Alu r)
-{
-    uint8_t a;
-    uint8_t b;
-
-    r = call_abi(abi_BackupRead, r);
-    cpu.y = rd8(zSaveSlot);
-    cpu.x = rd8((uint16_t)(SaveSlotOffsets + cpu.y));
-    a = rd8(zScoreAddLo);
-    b = rd8((uint16_t)(SaveScoreTotal + cpu.x));
-    r = adc8_bcd(a, b, false);
-    wr8((uint16_t)(SaveScoreTotal + cpu.x), r.a);
-    a = rd8(zScoreAddHi);
-    b = rd8((uint16_t)(SaveScoreTotal + 1 + cpu.x));
-    r = adc8_bcd(a, b, r.c);
-    wr8((uint16_t)(SaveScoreTotal + 1 + cpu.x), r.a);
-    b = rd8((uint16_t)(SaveScoreTotal + 2 + cpu.x));
-    r = adc8_bcd(0, b, r.c);
-    wr8((uint16_t)(SaveScoreTotal + 2 + cpu.x), r.a);
-    if (r.c) {
-        alu_load(&r, 0x99);
-        wr8((uint16_t)(SaveScoreTotal + cpu.x), 0x99);
-        wr8((uint16_t)(SaveScoreTotal + 1 + cpu.x), 0x99);
-        wr8((uint16_t)(SaveScoreTotal + 2 + cpu.x), 0x99);
+    tam(MPR4, bank.value);
+    run.after = overlay_added_shim(FrameOverlay8000, bank);
+    run.done = rd8(zModeDone);
+    if (run.done == 0)
+        return run;
+    continues = add_decimal(rd8(ContinuesLo), 1, false);
+    wr8(ContinuesLo, continues.value);
+    if (continues.carry)
+        wr8(ContinuesHi, (uint8_t)(rd8(ContinuesHi) + 1));
+    run.continues_hi = rd8(ContinuesHi);
+    if (run.continues_hi == CONTINUES_CAP_HI) {
+        wr8(ContinuesLo, CONTINUES_MAX_LO);
+        wr8(ContinuesHi, CONTINUES_MAX_HI);
     }
-    return save_progress_tail(r);
+    run.slot = rd8(zSaveSlot);
+    if (!(run.slot & 0x80))
+        run.save = SaveScore();
+    run.choice = rd8(ContinueChoice);
+    if (run.choice == 1) {
+        ResetGameState();
+        run.title = ModeBackToTitle();
+        return run;
+    }
+    if (run.choice != 0) {
+        run.character = rd8(zCharacter) ^ 0x01;
+        wr8(zCharacter, run.character);
+    }
+    run.stage = rd8(zStage);
+    run.from_request = (run.stage & 0x80) != 0;
+    if (run.from_request)
+        run.requested = rd8(zStageRequested) & 0x7F;
+    run.restart = (uint8_t)((run.from_request ? run.requested : run.stage) | STAGE_RESTART);
+    wr8(zStage, run.restart);
+    ResetScoreCounters();
+    run.retry = rd8(zStage);
+    if (run.retry == STAGE_RETRY_FROM)
+        wr8(zStage, STAGE_RETRY_TO);
+    SetGameMode(MODE_STAGE_LOAD);
+    run.next = StageEnterNext();
+    return run;
 }
 
-void abi_SaveScore(void)
+void abi_ModeDead(void)
 {
-    abi_alu(SaveScore(alu_from_cpu()));
+    DeadRun run = ModeDead();
+
+    overlay_done_shim(run.after, run.done);
+    if (run.done == 0)
+        return;
+    compare_shim(run.continues_hi, CONTINUES_CAP_HI);
+    load_shim(run.slot);
+    if (!(run.slot & 0x80))
+        save_exit_shim(&run.save);
+    load_shim(run.choice);
+    if (run.choice == 1) {
+        abi_nz(0);
+        reset_game_state_exit_shim();
+        back_to_title_exit_shim(&run.title);
+        return;
+    }
+    if (run.choice != 0)
+        load_shim(run.character);
+    load_shim(run.stage);
+    if (run.from_request)
+        load_shim(run.requested);
+    load_shim(run.restart);
+    reset_score_shim();
+    load_shim(run.retry);
+    compare_shim(run.retry, STAGE_RETRY_FROM);
+    set_mode_shim(MODE_STAGE_LOAD);
+    enter_next_exit_shim(&run.next);
 }
 
 /*
@@ -783,30 +1261,41 @@ void abi_SaveScore(void)
  * HOW: Counts down; SoundStopAll; ModeBackToTitle.
  * Entry: nothing. Exit: on waiting, A kept, N and Z from the count; else as what ran last.
  */
-Alu ModeGameOverWait(void)
-{
-    uint8_t byte = rd8(zWaitTimer);
-    Alu r = alu_from_cpu();
+typedef struct { uint8_t timer; StopCall stop; bool restart; BackToTitleRun title; } GameOverRun;
 
-    byte = (uint8_t)(byte - 1);
-    wr8(zWaitTimer, byte);
-    alu_nz(&r, byte);
-    if (byte != 0)
-        return r;
-    r = call_abi(abi_SoundStopAll, r);
-    if (!(rd8(zModeEvents) & 0x10))
-        return ModeBackToTitle(r);
-    byte = rd8(zModeEvents);
-    wr8(zModeEvents, (uint8_t)(byte & ~0x10));
-    r = ModeBackToTitle(r);
+GameOverRun ModeGameOverWait(void)
+{
+    GameOverRun run;
+
+    run.timer = (uint8_t)(rd8(zWaitTimer) - 1);
+    wr8(zWaitTimer, run.timer);
+    if (run.timer != 0)
+        return run;
+    run.stop = SoundStopAll();
+    run.restart = (rd8(zModeEvents) & EVENT_CONTINUE) != 0;
+    if (!run.restart) {
+        run.title = ModeBackToTitle();
+        return run;
+    }
+    wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_CONTINUE));
+    run.title = ModeBackToTitle();
     wr8(zCharacter, 0);
     wr8(zField80, 0);
-    return set_mode(r, MODE_STAGE_LOAD);
+    SetGameMode(MODE_STAGE_LOAD);
+    return run;
 }
 
 void abi_ModeGameOverWait(void)
 {
-    abi_alu(ModeGameOverWait());
+    GameOverRun run = ModeGameOverWait();
+
+    abi_nz(run.timer);
+    if (run.timer != 0)
+        return;
+    stop_call_exit_shim(run.stop);
+    back_to_title_exit_shim(&run.title);
+    if (run.restart)
+        set_mode_shim(MODE_STAGE_LOAD);
 }
 
 /*
@@ -818,47 +1307,96 @@ void abi_ModeGameOverWait(void)
  * HOW: Overlay frame, then zStage.
  * Entry: nothing. Exit: as what ran last.
  */
-Alu ModeScreen(void)
-{
-    bool done;
-    Alu r = overlay_frame(FrameOverlay8000, &done);
-    uint8_t byte;
+typedef enum { SCREEN_WAIT, SCREEN_TITLE, SCREEN_BONUS, SCREEN_STAGE } ScreenPath;
 
-    if (!done)
-        return r;
-    r = call_abi(abi_ResetGameState, r);
-    r = load_scene(r, SCENE_COMMON);
-    byte = rd8(zStage);
-    alu_compare(&r, byte, 0x10);
-    if (byte == 0x10)
-        return ModeBackToTitle(r);
-    alu_compare(&r, byte, STAGE_BONUS);
-    if (byte == STAGE_BONUS) {
-        byte = rd8(zSaveSlot);
-        alu_load(&r, byte);
-        if (!(byte & 0x80)) {
-            r = call_abi(abi_BackupRead, r);
-            cpu.y = rd8(zSaveSlot);
-            cpu.x = rd8((uint16_t)(SaveSlotOffsets + cpu.y));
-            alu_load(&r, 1);
-            wr8((uint16_t)(0x7D25 + cpu.x), 1);
-            r = BackupWrite(r);
-        }
-        return StageClearedNext(r);
+typedef struct {
+    OverlayFrame frame;
+    ScreenPath path;
+    DiscLog scene;
+    uint8_t stage;
+    BackToTitleRun title;
+    uint8_t slot;
+    BackupAccess read;
+    uint8_t save_slot;
+    uint8_t offset;
+    BackupWriteRun write;
+    ClearedNextRun next;
+    StageLoadRun load;
+    uint8_t field_a3;
+} ScreenRun;
+
+ScreenRun ModeScreen(void)
+{
+    ScreenRun run;
+
+    run.frame = overlay_frame(FrameOverlay8000);
+    run.path = SCREEN_WAIT;
+    if (run.frame.done == 0)
+        return run;
+    ResetGameState();
+    run.scene = LoadSceneScript(SCENE_COMMON);
+    run.stage = rd8(zStage);
+    if (run.stage == STAGE_TITLE_BACK) {
+        run.path = SCREEN_TITLE;
+        run.title = ModeBackToTitle();
+        return run;
     }
-    r = call_abi(abi_StageLoad, r);
+    if (run.stage == STAGE_BONUS) {
+        run.path = SCREEN_BONUS;
+        run.slot = rd8(zSaveSlot);
+        if (!(run.slot & 0x80)) {
+            run.read = BackupRead();
+            run.save_slot = rd8(zSaveSlot);
+            run.offset = rd8((uint16_t)(SaveSlotOffsets + run.save_slot));
+            wr8((uint16_t)(SaveBonusSeen + run.offset), 1);
+            run.write = BackupWrite();
+        }
+        run.next = StageClearedNext();
+        return run;
+    }
+    run.path = SCREEN_STAGE;
+    run.load = StageLoad();
     wr8(zField99, 0);
     wr8(zField95, 5);
     wr8(zField8A, 3);
     wr8(zField8E, 1);
-    byte = rd8(zFieldA3);
-    wr8(zField83, byte);
-    return set_mode(r, MODE_STAGE);
+    run.field_a3 = rd8(zFieldA3);
+    wr8(zField83, run.field_a3);
+    SetGameMode(MODE_STAGE);
+    return run;
 }
 
 void abi_ModeScreen(void)
 {
-    abi_alu(ModeScreen());
+    ScreenRun run = ModeScreen();
+
+    overlay_done_shim(run.frame.after, run.frame.done);
+    if (run.path == SCREEN_WAIT)
+        return;
+    reset_game_state_exit_shim();
+    scene_shim(SCENE_COMMON, &run.scene);
+    load_shim(run.stage);
+    compare_shim(run.stage, STAGE_TITLE_BACK);
+    if (run.path == SCREEN_TITLE) {
+        back_to_title_exit_shim(&run.title);
+        return;
+    }
+    compare_shim(run.stage, STAGE_BONUS);
+    if (run.path == SCREEN_BONUS) {
+        load_shim(run.slot);
+        if (!(run.slot & 0x80)) {
+            backup_read_exit_shim(run.read);
+            cpu.y = run.save_slot;
+            cpu.x = run.offset;
+            load_shim(1);
+            backup_write_exit_shim(&run.write);
+        }
+        cleared_next_exit_shim(&run.next);
+        return;
+    }
+    stage_load_exit_shim(&run.load);
+    load_shim(run.field_a3);
+    set_mode_shim(MODE_STAGE);
 }
 
 /*
@@ -868,24 +1406,36 @@ void abi_ModeScreen(void)
  * HOW: Overlay frame, ResetGameState, a scene, StageEnter, ResetScoreCounters, SetGameMode.
  * Entry: nothing. Exit: as what ran last.
  */
-Alu ModeEnding(void)
-{
-    bool done;
-    Alu r = overlay_frame(FrameOverlay8000, &done);
+typedef struct { OverlayFrame frame; DiscLog scene; StageEnterRun enter; } EndingRun;
 
-    if (!done)
-        return r;
+EndingRun ModeEnding(void)
+{
+    EndingRun run;
+
+    run.frame = overlay_frame(FrameOverlay8000);
+    if (run.frame.done == 0)
+        return run;
     wr8(zGameRunning, 0);
-    r = call_abi(abi_ResetGameState, r);
-    r = load_scene(r, SCENE_COMMON);
-    r = call_abi(abi_StageEnter, r);
-    r = call_abi(abi_ResetScoreCounters, r);
-    return set_mode(r, MODE_STAGE);
+    ResetGameState();
+    run.scene = LoadSceneScript(SCENE_COMMON);
+    run.enter = StageEnter();
+    ResetScoreCounters();
+    SetGameMode(MODE_STAGE);
+    return run;
 }
 
 void abi_ModeEnding(void)
 {
-    abi_alu(ModeEnding());
+    EndingRun run = ModeEnding();
+
+    overlay_done_shim(run.frame.after, run.frame.done);
+    if (run.frame.done == 0)
+        return;
+    reset_game_state_exit_shim();
+    scene_shim(SCENE_COMMON, &run.scene);
+    stage_enter_exit_shim(&run.enter);
+    reset_score_shim();
+    set_mode_shim(MODE_STAGE);
 }
 
 /*
@@ -981,22 +1531,33 @@ void abi_ResetScoreCounters(void)
  * @run 69:5587
  * WHAT IT DOES: Fades the CD out, unless zField8E says a stage's track goes on, and stops
  * the sound.
- * HOW: Bits 3 and 4 of zField8E; the BIOS's fade; SoundCommand.
+ * HOW: Bits 3 and 4 of zField8E; the card's cd_fade; SoundCommand.
  * Entry: nothing. Exit: as SoundCommand.
  */
+typedef struct { uint8_t keep; CommandCall sound; } FadeStop;
+
+FadeStop FadeAndStopSound(void)
+{
+    FadeStop run;
+
+    run.keep = rd8(zField8E) & SOUND_KEEP_TRACK;
+    if (run.keep == 0)
+        cd_fade(CD_FADE_OUT);
+    run.sound = SoundCommand(SOUND_STOP);
+    return run;
+}
+
 void abi_FadeAndStopSound(void)
 {
-    uint8_t byte = rd8(zField8E);
-    Alu r = alu_from_cpu();
+    FadeStop run = FadeAndStopSound();
 
-    alu_load(&r, (uint8_t)(byte & 0x18));
-    if (r.a == 0) {
-        alu_load(&r, CD_FADE_OUT);
-        r = call_with(BiosCdFade, r);
+    load_shim(run.keep);
+    if (run.keep == 0) {
+        load_shim(CD_FADE_OUT);
+        cd_fade_exit_shim(CD_FADE_OUT);
     }
-    alu_load(&r, SOUND_STOP);
-    abi_alu(r);
-    abi_SoundCommand();
+    load_shim(SOUND_STOP);
+    sound_command_exit_shim(SOUND_STOP, run.sound);
 }
 
 /*

@@ -71,70 +71,79 @@ void abi_BackupRead(void)
  * @run 6A:6C43
  * WHAT IT DOES: Writes the game's backup file from $7D00, if there is room once the old
  * one is gone.
- * HOW: The BIOS's delete, its free count compared with $0092, its write.
- * Entry: nothing. Exit, no room: A 1, N and Z from it. Exit: as the BIOS leaves them.
+ * HOW: The card's bm_delete, its bm_free count compared with $0092, its bm_write.
+ * Entry: nothing. Exit, no room: A 1, N and Z from it, C and V from the compare's subtract, X
+ * and Y as bm_free left them. Exit: as bm_write, entered with A 0 and Z set.
  */
-Alu BackupWrite(Alu r)
+BackupWriteRun BackupWrite(void)
 {
-    uint8_t byte;
+    BackupWriteRun run;
 
-    alu_load(&r, BACKUP_NAME_LO);
     wr8(zBiosAl, BACKUP_NAME_LO);
-    alu_load(&r, BACKUP_NAME_HI);
     wr8(zBiosAh, BACKUP_NAME_HI);
-    r = call_with(BiosBmDelete, r);
-    r = call_with(BiosBmFree, r);
-    byte = rd8(zBiosCl);
-    alu_compare(&r, byte, BACKUP_FREE_NEEDED);
-    byte = rd8(zBiosCh);
-    r = sbc8(byte, 0, r.c);
-    if (r.a & 0x80) {
-        alu_load(&r, 1);
-        return r;
+    run.removal = bm_delete();
+    run.free_space = bm_free();
+    run.room = sub_bytes(rd8(zBiosCh), 0, rd8(zBiosCl) >= BACKUP_FREE_NEEDED);
+    run.fits = !(run.room.value & 0x80);
+    if (!run.fits)
+        return run;
+    backup_file_arguments();
+    run.write = bm_write();
+    return run;
+}
+
+void backup_write_exit_shim(const BackupWriteRun *run)
+{
+    cpu.a = BACKUP_NAME_HI;
+    abi_nz(BACKUP_NAME_HI);
+    bm_delete_exit_shim(run->removal);
+    bm_free_exit_shim(run->free_space);
+    abi_flag(P_C, run->room.carry);
+    abi_flag(P_V, run->room.overflow);
+    if (!run->fits) {
+        cpu.a = 1;
+        abi_nz(1);
+        return;
     }
-    alu_load(&r, BACKUP_NAME_LO);
-    wr8(zBiosAl, BACKUP_NAME_LO);
-    alu_load(&r, BACKUP_NAME_HI);
-    wr8(zBiosAh, BACKUP_NAME_HI);
-    alu_load(&r, 0);
-    wr8(zBiosBl, 0);
-    alu_load(&r, BACKUP_BUFFER_HI);
-    wr8(zBiosBh, BACKUP_BUFFER_HI);
-    alu_load(&r, BACKUP_SIZE);
-    wr8(zBiosCl, BACKUP_SIZE);
-    alu_load(&r, 0);
-    wr8(zBiosCh, 0);
-    wr8(zBiosDl, 0);
-    wr8(zBiosDh, 0);
-    return call_with(BiosBmWrite, r);
+    cpu.a = 0;
+    abi_nz(0);
+    bm_write_exit_shim(run->write);
 }
 
 void abi_BackupWrite(void)
 {
-    abi_alu(BackupWrite(alu_from_cpu()));
+    BackupWriteRun run = BackupWrite();
+
+    backup_write_exit_shim(&run);
 }
 
 /*
  * @routine 0048:47A BackupFormat
  * @run 6A:6C7A
  * WHAT IT DOES: Formats the backup memory; on failure the game stops at BackupFailed.
- * HOW: The BIOS's format; its answer goes to X.
- * Entry: nothing. Exit: as the BIOS leaves them, with X its answer, N and Z from it.
+ * HOW: The card's bm_format with the blank name at $6C8F; its answer goes to X.
+ * Entry: nothing. Exit: as bm_format leaves them, with X its answer, N and Z from it.
  */
+BackupFormat BackupFormatMemory(void)
+{
+    BackupFormat format;
+
+    wr8(zBiosAl, BACKUP_BLANK_LO);
+    wr8(zBiosAh, BACKUP_BLANK_HI);
+    format = bm_format();
+    if (bm_format_result(format) != 0)
+        for (;;)
+            wait_interrupt();
+    return format;
+}
+
 void abi_BackupFormat(void)
 {
-    Alu r = alu_from_cpu();
-
-    alu_load(&r, BACKUP_BLANK_LO);
-    wr8(zBiosAl, BACKUP_BLANK_LO);
-    alu_load(&r, BACKUP_BLANK_HI);
-    wr8(zBiosAh, BACKUP_BLANK_HI);
-    r = call_with(BiosBmFormat, r);
-    cpu.x = r.a;
-    alu_nz(&r, r.a);
-    abi_alu(r);
-    if (r.a != 0)
-        abi_BackupFailed();
+    cpu.a = BACKUP_BLANK_HI;
+    abi_nz(BACKUP_BLANK_HI);
+    bm_format_exit_shim(BackupFormatMemory());
+    cpu.x = cpu.a;
+    abi_nz(cpu.a);
 }
 
 /*

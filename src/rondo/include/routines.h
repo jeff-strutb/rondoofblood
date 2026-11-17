@@ -629,40 +629,21 @@ void abi_BackupFailed(void);
 void abi_FrameModeDispatch(void);
 void abi_LoadSceneScript(void);
 void abi_AdpcmLoad(void);
-Alu ModeBoot(void);
-Alu ModeLogo(void);
-Alu ModeAttract(void);
-Alu ModeAttractPlay(void);
-Alu ModeStageLoad(void);
-Alu ModeStageLoadScreens(Alu r);
-Alu ModeStageLoadContinue(Alu r);
-Alu ModeStageDone(Alu r);
-Alu ModeStage(void);
-Alu ModeStageCleared(void);
-Alu StageClearedNext(Alu r);
 /* A stage's bit in the visited tables: the byte, the bit, and zStage as read. */
 typedef struct { uint8_t index; uint8_t bit; uint8_t stage; } StageBit;
 
 StageBit StageClearBit(void);
 void abi_StageClearBit(void);
-Alu ModeDead(void);
-Alu ModeBackToTitle(Alu r);
-Alu ModeGameOverWait(void);
-Alu ModeScreen(void);
-Alu ModeEnding(void);
-Alu StageEnterNext(Alu r);
+void stage_bit_exit_shim(StageBit found);
 uint8_t NextGameMode(void);
 void SetGameMode(uint8_t mode);
 void ResetScoreCounters(void);
 void abi_NextGameMode(void);
 void abi_SetGameMode(void);
 void abi_ResetScoreCounters(void);
-Alu SaveProgress(Alu r);
-Alu SaveScore(Alu r);
 BackupAccess BackupRead(void);
 void backup_read_exit_shim(BackupAccess read);
 void abi_BackupRead(void);
-Alu BackupWrite(Alu r);
 Sum SaveVramToRam(void);
 void abi_SaveVramToRam(void);
 
@@ -955,8 +936,23 @@ void track_search_exit_shim(const TrackSearch *search);
 void save_vram_exit_shim(Sum low);
 void reset_game_state_exit_shim(void);
 void ResetGameState(void);
+uint8_t WaitVblankDisplayOff(void);
 void abi_StageEnter(void);
 void abi_StageLoad(void);
+
+/* The backup file written: the old one deleted, the room counted, and the write if it fits. */
+typedef struct {
+    BackupAccess removal;
+    BackupFree free_space;
+    Sum room;          /* the free count's high byte less the borrow from its low byte's compare */
+    bool fits;
+    BackupAccess write;
+} BackupWriteRun;
+
+BackupWriteRun BackupWrite(void);
+void backup_write_exit_shim(const BackupWriteRun *run);
+BackupFormat BackupFormatMemory(void);
+void abi_BackupWrite(void);
 
 /* A stage's load: each call it made, with what the game loaded before it, for the replay. */
 typedef struct {

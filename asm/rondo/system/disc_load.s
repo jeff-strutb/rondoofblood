@@ -24,8 +24,9 @@ BackupRead:
 ; @run 6A:6C43
 ; WHAT IT DOES: Writes the game's backup file from $7D00, if there is room once the old
 ; one is gone.
-; HOW: The BIOS's delete, its free count compared with $0092, its write.
-; Entry: nothing. Exit, no room: A 1, N and Z from it. Exit: as the BIOS leaves them.
+; HOW: The card's bm_delete, its bm_free count compared with $0092, its bm_write.
+; Entry: nothing. Exit, no room: A 1, N and Z from it, C and V from the compare's subtract, X
+; and Y as bm_free left them. Exit: as bm_write, entered with A 0 and Z set.
 BackupWrite:
     lda #$9A
     sta z:zBiosAl
@@ -57,8 +58,8 @@ BackupWrite:
 ; @routine 0048:47A BackupFormat
 ; @run 6A:6C7A
 ; WHAT IT DOES: Formats the backup memory; on failure the game stops at BackupFailed.
-; HOW: The BIOS's format; its answer goes to X.
-; Entry: nothing. Exit: as the BIOS leaves them, with X its answer, N and Z from it.
+; HOW: The card's bm_format with the blank name at $6C8F; its answer goes to X.
+; Entry: nothing. Exit: as bm_format leaves them, with X its answer, N and Z from it.
 BackupFormat:
     lda #$8F
     sta z:zBiosAl

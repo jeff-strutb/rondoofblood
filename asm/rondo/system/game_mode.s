@@ -1,8 +1,9 @@
 ; @routine 0045:105 FrameModeDispatch
 ; @run 69:5105
 ; WHAT IT DOES: Runs this frame's game mode.
-; HOW: Counts zFrameTick, then jumps through the table by zGameMode.
-; Entry: nothing. Exit: as the handler leaves them.
+; HOW: Counts zFrameTick, then jumps through GameModeHandlers by zGameMode.
+; Entry: nothing. Exit: as the handler leaves them; it is entered with A and X twice the mode,
+; N and Z from it, C the mode's bit 7.
 FrameModeDispatch:
     inc z:zFrameTick
     lda z:zGameMode
@@ -14,8 +15,10 @@ FrameModeDispatch:
 ; @run 69:5124
 ; WHAT IT DOES: Mode 0: the boot overlay's frame, then the display off, the screen size
 ; set and on to the title; a negative zModeDone goes on to the title's sub-mode 3.
-; HOW: Overlay frame, WaitVblankDisplayOff, the BIOS's screen size, SetGameMode.
-; Entry: nothing. Exit: as SetGameMode, or with zGameSubMode 3 and A 3.
+; HOW: Overlay frame, WaitVblankDisplayOff, the card's ex_scrsiz, SetGameMode.
+; Entry: nothing. Exit, the overlay not done: as it leaves them, with A zModeDone, N and Z
+; from it. Exit: A zModeDone, or 3 if it was negative; N and Z from A; X zModeDone; Y and C as
+; ex_scrsiz leaves them; V as the overlay left it.
 ModeBoot:
     jsr FrameOverlay8000
     lda z:zModeDone
@@ -45,7 +48,7 @@ ModeBoot_at1:
 ; @run 69:514F
 ; WHAT IT DOES: Mode 1: the overlay's frame, then the stage's load.
 ; HOW: Overlay frame at its second entry; zField80 cleared; SetGameMode.
-; Entry: nothing. Exit: as SetGameMode.
+; Entry: nothing. Exit: as the overlay leaves them, A zModeDone and N, Z from it; done, A 0.
 ModeLogo:
     jsr FrameOverlay8003
     lda z:zModeDone
@@ -61,7 +64,7 @@ ModeLogo_at0:
 ; WHAT IT DOES: Mode 2: the title's frame. The overlay's answer picks what comes next:
 ; zero runs the overlay's other entry; positive restarts the attract's load; negative
 ; starts the next demo stage, or on the first pass loads the title's scenes.
-; HOW: The overlay at $8006, then zAttractStep; the five demo stages are a table.
+; HOW: The overlay at $8006, then zAttractStep; the five demo stages are AttractStages.
 ; Entry: nothing. Exit: as what ran last.
 ModeAttract:
     jsr FrameOverlay8006
@@ -108,7 +111,7 @@ ModeAttract_at2:
 ; @run 69:51B6
 ; WHAT IT DOES: Mode 3: a demo's title frames; Run or the overlay's end stops the demo,
 ; fades the CD and goes to mode 8.
-; HOW: The BIOS's joypad byte, the overlay's frame, a sound fade, the CD fade.
+; HOW: The card's joypad byte, the overlay's frame, a sound fade, the card's cd_fade.
 ; Entry: nothing. Exit: as what ran last.
 ModeAttractPlay:
     lda a:BiosJoyTrigger
@@ -162,7 +165,8 @@ StageEnterNext:
 ; WHAT IT DOES: The path of ModeStageLoad for bit 3 of zModeEvents: loads the screens'
 ; scenes and goes to mode 10.
 ; HOW: Clears the bit and the wanted ADPCM, ResetGameState, three scenes, the fixed ADPCM.
-; Entry: from ModeStageLoad. Exit: as SetGameMode.
+; Entry: from ModeStageLoad. Exit: A 0, N 0, Z 0, from SetGameMode's mode; the rest as
+; AdpcmLoadFixed leaves them.
 ModeStageLoadScreens:
     rmb3 z:zModeEvents
     stz z:zMusicWanted
@@ -182,7 +186,7 @@ ModeStageLoadScreens:
 ; WHAT IT DOES: The path of ModeStageLoad for bit 4 of zModeEvents: enters the stage and
 ; goes to the intro mode.
 ; HOW: ResetScoreCounters, a scene, StageEnter, zGameRunning counted, SetGameMode.
-; Entry: from ModeStageLoad. Exit: as SetGameMode.
+; Entry: from ModeStageLoad. Exit: A 0, N 0, Z 0; the rest as StageEnter leaves them.
 ModeStageLoadContinue:
     jsr ResetScoreCounters
     lda #$05
@@ -197,7 +201,7 @@ ModeStageLoadContinue:
 ; WHAT IT DOES: The stage's overlay finished with a positive answer: goes on a mode,
 ; except on the bonus stage, which marks it and, unless the save slot's flag is set,
 ; loads the ending's scenes and goes to mode 9.
-; HOW: Compares zStage; StageClearBit in StagesVisited; the save's flag at $7D25.
+; HOW: Compares zStage; StageClearBit in StagesVisited; the save's flag at SaveBonusSeen.
 ; Entry: from ModeStage. Exit: as what ran last.
 ModeStageDone:
     lda z:zStage
@@ -328,7 +332,8 @@ ModeStageCleared:
 ; WHAT IT DOES: Enters the next stage, marks it and saves, and goes to the stage mode; if
 ; there is no next stage, back to the title's mode 0.
 ; HOW: StageEnter; zStage zero is the end. StageClearBit into StagesReached.
-; Entry: nothing. Exit: as SetGameMode.
+; Entry: nothing. Exit: A 0; N and Z from mode 5, or from zStage zero; the rest as what ran
+; last.
 StageClearedNext:
     jsr StageEnter
     lda z:zStage
@@ -391,7 +396,8 @@ StageClearBit_at3:
 ; WHAT IT DOES: Mode 7: the continue screen's frame. Then counts a continue used, in
 ; BCD up to 999, saves, and goes back into the stage, or at the last continue to the
 ; title. A stage with bit 7 set restarts from zStageRequested.
-; HOW: Maps the overlay's bank; the continues at $3F41-$3F42; $3F24 picks what follows.
+; HOW: Maps the overlay's bank; the continues at ContinuesLo-Hi; ContinueChoice picks what
+; follows.
 ; Entry: nothing. Exit: as what ran last.
 ModeDead:
     lda #$0D
@@ -457,7 +463,7 @@ ModeDead_at5:
 ; WHAT IT DOES: Goes back to the title: forgets what is loaded, loads the menu's scenes
 ; and ADPCM, and sets mode 0.
 ; HOW: Two scenes, an ADPCM, SetGameMode.
-; Entry: nothing. Exit: as SetGameMode.
+; Entry: nothing. Exit: A 0; the rest as AdpcmLoad leaves them.
 ModeBackToTitle:
     lda #$FF
     sta z:zMusicWanted
@@ -477,7 +483,8 @@ ModeBackToTitle:
 ; @run 69:53D7
 ; WHAT IT DOES: Writes the character's progress to the save slot in zSaveSlot.
 ; HOW: Reads the backup file to RAM, copies into the slot, writes it back.
-; Entry: nothing. Exit: as BackupWrite.
+; Entry: nothing. Exit: as BackupWrite, entered with X past the slot's stage bytes, Y $14, A
+; the last byte copied, Z and C set.
 SaveProgress:
     jsr VecBackupRead
     ldy z:zSaveSlot
@@ -489,7 +496,7 @@ SaveProgress:
 ; WHAT IT DOES: As SaveProgress, and first adds the stage's score to the slot's total, in
 ; BCD, stopping at 999999.
 ; HOW: A 24-bit BCD add from zScoreAddLo-Hi.
-; Entry: nothing. Exit: as BackupWrite.
+; Entry: nothing. Exit: as SaveProgress.
 SaveScore:
     jsr VecBackupRead
     ldy z:zSaveSlot
@@ -672,7 +679,7 @@ ResetScoreCounters:
 ; @run 69:5587
 ; WHAT IT DOES: Fades the CD out, unless zField8E says a stage's track goes on, and stops
 ; the sound.
-; HOW: Bits 3 and 4 of zField8E; the BIOS's fade; SoundCommand.
+; HOW: Bits 3 and 4 of zField8E; the card's cd_fade; SoundCommand.
 ; Entry: nothing. Exit: as SoundCommand.
 FadeAndStopSound:
     lda z:zField8E

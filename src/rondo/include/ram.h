@@ -228,6 +228,7 @@
 #define zPushXHi 0x20CD /* push along X */
 #define zPushYLo 0x20CE /* push along Y */
 #define zPushYHi 0x20CF /* push along Y */
+#define PlayerClimbReach 0x3BD2 /* how far across he has to go to the edge of the ledge he climbs */
 #define PlayerMayLeaveTop 0x3BD3 /* not zero: the player may go above the map */
 #define PlayerAnchorObject 0x3BF6 /* the object whose Y fraction the player takes when pushed */
 #define ScrollStepYLo 0x3E6E /* this frame's scroll along Y */
@@ -397,6 +398,7 @@
 #define AnimationLists 0xBC1B /* pointers to Richter's animations */
 #define RichterInvincibleScripts 0xB792 /* the flashing script started at each of the invincibility's marks */
 #define RichterInvincibleMarks 0xB798 /* the invincibility timer's values that start a flashing script */
+#define RichterCrouchHandlers 0xA864 /* the crouch's handlers: five words by the state's step */
 #define RichterTurnStates 0xB72D /* whether each state lets him turn at the screen's middle */
 #define RichterItemCosts 0xB84D /* hearts each item costs */
 #define RichterItemCrashLists 0xB856 /* the sound list each item's crash starts; 0 none */

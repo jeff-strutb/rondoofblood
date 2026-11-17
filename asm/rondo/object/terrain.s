@@ -231,7 +231,7 @@ TerrainTileRead_at1:
     lda a:TileHandlers+1,y
     sta z:zTemp05
     pla
-    jmp (zTemp04+$2000)
+    jmp (ZeroPage+zTemp04)
 
 ; @routine 050F:752 TileStepC
 ; @run 6B:9752

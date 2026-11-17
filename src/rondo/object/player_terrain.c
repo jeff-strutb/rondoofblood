@@ -23,6 +23,10 @@ enum {
     TILE_BLOCK_ANY = 0x20
 };
 
+FloorResult RichterFloorOddScreen(void);
+void RichterWallPushed(void);
+static void floor_clears_push(void);
+
 /* The point's X and Y high byte are set, or zero: a read of the point or no answer. */
 static TileRead read_point_or_nothing(bool off_the_map)
 {
@@ -172,6 +176,26 @@ void abi_RichterColumnOffset(void)
 }
 
 /*
+ * @routine 01BC:367 RichterWallPushed
+ * @run 6D:BB67
+ * WHAT IT DOES: The wall probe's answer when a push holds him against that side: a wall as
+ * deep as the push says.
+ * HOW: zPlayerPushDepth to zTemp00. Sits before RichterWall, which branches back to it.
+ * Entry: nothing. Exit: A 2, N and Z clear. X, Y, C and V kept.
+ */
+void RichterWallPushed(void)
+{
+    wr8(zTemp00, rd8(zPlayerPushDepth));
+}
+
+void abi_RichterWallPushed(void)
+{
+    RichterWallPushed();
+    cpu.a = WALL_ANSWER;
+    abi_nz(WALL_ANSWER);
+}
+
+/*
  * @routine 01BC:36E RichterWall
  * @run 6D:BB6E
  * WHAT IT DOES: Asks whether Richter runs into a wall on one side, and how deep: what pushes
@@ -190,7 +214,7 @@ WallProbe RichterWall(uint8_t side)
     if (rd8(PlayerMayLeaveTop) == 1)
         return probe;
     if (rd8(zPlayerPush) & rd8((uint16_t)(RichterWallPushBits + side))) {
-        wr8(zTemp00, rd8(zPlayerPushDepth));
+        RichterWallPushed();
         probe.how = WALL_PUSHED;
         return probe;
     }
@@ -395,6 +419,29 @@ static void floor_clears_push(void)
 }
 
 /*
+ * @routine 01BC:2BC RichterFloorOddScreen
+ * @run 6D:BABC
+ * WHAT IT DOES: The floor check's answer on an odd screen across: a floor at the first column,
+ * its depth cleared, as the floor check finds one.
+ * HOW: Sits before RichterFloorCheck, which branches back to it, and goes on into its found
+ * floor's end.
+ * Entry: nothing. Exit: as RichterFloorCheck finding a floor at column 0.
+ */
+FloorResult RichterFloorOddScreen(void)
+{
+    FloorResult result = { FLOOR_HIGH_ON_ODD_SCREEN, 0, rd8(zPlayerPush) };
+
+    wr8(RichterColumnRow, 0);
+    floor_clears_push();
+    return result;
+}
+
+void abi_RichterFloorOddScreen(void)
+{
+    floor_check_exit_shim(RichterFloorOddScreen());
+}
+
+/*
  * @routine 01BC:2C2 RichterFloorCheck
  * @run 6D:BAC2
  * WHAT IT DOES: Says whether the columns read have a floor under Richter, and at which: on
@@ -407,12 +454,8 @@ FloorResult RichterFloorCheck(void)
 {
     FloorResult result = { FLOOR_NONE, 0, rd8(zPlayerPush) };
 
-    if (rd8(OBJ_X_HI) & 1) {
-        wr8(RichterColumnRow, 0);
-        result.how = FLOOR_HIGH_ON_ODD_SCREEN;
-        floor_clears_push();
-        return result;
-    }
+    if (rd8(OBJ_X_HI) & 1)
+        return RichterFloorOddScreen();
     for (uint8_t column = 0; column < FLOOR_COLUMNS; column++) {
         uint8_t hit = rd8((uint16_t)(RichterColumnHit + column)) & TILE_FLOOR;
 
@@ -432,7 +475,7 @@ FloorResult RichterFloorCheck(void)
     return result;
 }
 
-static void floor_check_exit_shim(FloorResult result)
+void floor_check_exit_shim(FloorResult result)
 {
     uint8_t before = result.push_before;
 
@@ -461,15 +504,6 @@ void abi_RichterFloorCheck(void)
     floor_check_exit_shim(RichterFloorCheck());
 }
 
-/* How a read of the two low columns ended. */
-typedef struct {
-    int blocked_column;
-    bool read_made;
-    TileRead last;
-    uint8_t answer;
-    uint8_t row;
-} LowColumns;
-
 /*
  * @routine 01BC:2FF RichterLowColumnsBlocked
  * @run 6D:BAFF
@@ -495,7 +529,7 @@ LowColumns RichterLowColumnsBlocked(void)
     return low;
 }
 
-static void low_columns_exit_shim(LowColumns low)
+void low_columns_exit_shim(LowColumns low)
 {
     if (low.read_made) {
         terrain_read_exit_shim(low.last);
@@ -615,15 +649,6 @@ void abi_RichterFloor(void)
     floor_exit_shim(RichterFloor());
 }
 
-/* How a read of one column ended, for what the wrapper leaves. */
-typedef struct {
-    uint8_t column;
-    uint8_t row;
-    uint8_t below;
-    bool read_made;
-    TileRead read;
-} ColumnRead;
-
 static ColumnRead read_one_column(uint8_t column, uint8_t below)
 {
     ColumnRead one = { column, rd8(OBJ_Y_LO), below };
@@ -638,7 +663,7 @@ static uint8_t column_answer(ColumnRead one)
     return one.read_made ? tile_answer(one.read) : 0;
 }
 
-static void column_read_exit_shim(ColumnRead one)
+void column_read_exit_shim(ColumnRead one)
 {
     if (one.read_made) {
         terrain_read_exit_shim(one.read);
@@ -750,14 +775,6 @@ void abi_RichterJumpPressed(void)
     abi_flag(P_C, RichterJumpPressed());
 }
 
-/* How a fall-through check ended. */
-typedef struct {
-    FloorResult check;
-    bool read_made;
-    ColumnRead under;
-    bool no_floor;
-} FootingCheck;
-
 /*
  * @routine 01BC:085 RichterHasNoFooting
  * @run 6D:B885
@@ -780,10 +797,8 @@ FootingCheck RichterHasNoFooting(void)
     return footing;
 }
 
-void abi_RichterHasNoFooting(void)
+void footing_exit_shim(FootingCheck footing)
 {
-    FootingCheck footing = RichterHasNoFooting();
-
     floor_check_exit_shim(footing.check);
     if (footing.read_made) {
         column_read_exit_shim(footing.under);
@@ -791,6 +806,11 @@ void abi_RichterHasNoFooting(void)
         abi_nz(cpu.a);
     }
     abi_flag(P_C, footing.no_floor);
+}
+
+void abi_RichterHasNoFooting(void)
+{
+    footing_exit_shim(RichterHasNoFooting());
 }
 
 /* The point this far under him at his own X. Returns whether it is on the first page down. */
@@ -979,15 +999,6 @@ static bool column_counts(uint8_t answer, uint8_t pad_bit)
 }
 
 /* How the ledge check ended. */
-typedef enum { LEDGE_PUSHED, LEDGE_LOW, LEDGE_HIGH, LEDGE_NONE } LedgeEnd;
-
-typedef struct {
-    LedgeEnd how;
-    uint8_t push;
-    LowColumns low;
-    int high_column;
-} LedgeCheck;
-
 /*
  * @routine 01BC:241 RichterLedgeCheck
  * @run 6D:BA41
@@ -1022,9 +1033,8 @@ LedgeCheck RichterLedgeCheck(void)
     return check;
 }
 
-void abi_RichterLedgeCheck(void)
+void ledge_check_exit_shim(LedgeCheck check)
 {
-    LedgeCheck check = RichterLedgeCheck();
     uint8_t low_bit = check.low.answer & TILE_BLOCK_ANY;
 
     abi_flag(P_V, (check.push & 0x40) != 0);
@@ -1067,6 +1077,11 @@ void abi_RichterLedgeCheck(void)
     }
 }
 
+void abi_RichterLedgeCheck(void)
+{
+    ledge_check_exit_shim(RichterLedgeCheck());
+}
+
 /*
  * @routine 01BC:280 RichterLiftByColumn
  * @run 6D:BA80
@@ -1107,13 +1122,6 @@ void abi_RichterLiftByColumn(void)
 {
     column_lift_exit_shim(RichterLiftByColumn(cpu.x));
 }
-
-/* How a landing lift ended. */
-typedef struct {
-    FloorResult check;
-    bool lifted;
-    ColumnLift lift;
-} LandingLift;
 
 /*
  * @routine 01BC:27A RichterLandOnFloor

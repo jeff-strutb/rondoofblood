@@ -338,6 +338,18 @@ RichterColumnsBlocked_at0:
     bne RichterColumnsBlocked_at1
     rts
 
+; @routine 01BC:2BC RichterFloorOddScreen
+; @run 6D:BABC
+; WHAT IT DOES: The floor check's answer on an odd screen across: a floor at the first column,
+; its depth cleared, as the floor check finds one.
+; HOW: Sits before RichterFloorCheck, which branches back to it, and goes on into its found
+; floor's end.
+; Entry: nothing. Exit: as RichterFloorCheck finding a floor at column 0.
+RichterFloorOddScreen:
+    clx
+    stz a:RichterColumnRow,x
+    bra RichterFloorCheck_at3
+
 ; @routine 01BC:2C2 RichterFloorCheck
 ; @run 6D:BAC2
 ; WHAT IT DOES: Says whether the columns read have a floor under Richter, and at which: on
@@ -348,7 +360,7 @@ RichterColumnsBlocked_at0:
 RichterFloorCheck:
     lda a:OBJ_X_HI
     and #$01
-    bne $BABC
+    bne RichterFloorOddScreen
     clx
 RichterFloorCheck_at1:
     lda a:RichterColumnHit,x
@@ -456,6 +468,18 @@ RichterReadColumns_at1:
     bne RichterReadColumns_at1
     rts
 
+; @routine 01BC:367 RichterWallPushed
+; @run 6D:BB67
+; WHAT IT DOES: The wall probe's answer when a push holds him against that side: a wall as
+; deep as the push says.
+; HOW: zPlayerPushDepth to zTemp00. Sits before RichterWall, which branches back to it.
+; Entry: nothing. Exit: A 2, N and Z clear. X, Y, C and V kept.
+RichterWallPushed:
+    lda z:zPlayerPushDepth
+    sta z:zTemp00
+    lda #$02
+    rts
+
 ; @routine 01BC:36E RichterWall
 ; @run 6D:BB6E
 ; WHAT IT DOES: Asks whether Richter runs into a wall on one side, and how deep: what pushes
@@ -470,7 +494,7 @@ RichterWall:
     beq RichterWall_at0
     lda z:zPlayerPush
     and a:RichterWallPushBits,y
-    bne $BB67
+    bne RichterWallPushed
     lda a:RichterWallReach,y
     sta z:zTemp10
     lda a:OBJ_27A8

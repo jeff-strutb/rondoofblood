@@ -233,6 +233,7 @@ CC,zp,zPushXLo,push along X
 CD,zp,zPushXHi,push along X
 CE,zp,zPushYLo,push along Y
 CF,zp,zPushYHi,push along Y
+3BD2,abs,PlayerClimbReach,how far across he has to go to the edge of the ledge he climbs
 3BD3,abs,PlayerMayLeaveTop,not zero: the player may go above the map
 3BF6,abs,PlayerAnchorObject,the object whose Y fraction the player takes when pushed
 3E6E,abs,ScrollStepYLo,this frame's scroll along Y
@@ -404,6 +405,7 @@ BB65,abs,RichterWallPushBits,the zPlayerPush bit that counts as a wall by side
 BC1B,abs,AnimationLists,pointers to Richter's animations
 B792,abs,RichterInvincibleScripts,the flashing script started at each of the invincibility's marks
 B798,abs,RichterInvincibleMarks,the invincibility timer's values that start a flashing script
+A864,abs,RichterCrouchHandlers,the crouch's handlers: five words by the state's step
 B72D,abs,RichterTurnStates,whether each state lets him turn at the screen's middle
 B84D,abs,RichterItemCosts,hearts each item costs
 B856,abs,RichterItemCrashLists,the sound list each item's crash starts; 0 none

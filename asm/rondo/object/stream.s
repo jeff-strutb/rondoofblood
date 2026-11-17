@@ -440,7 +440,7 @@ RunStreamRecord_at0:
     sta z:zTemp00
     lda a:StreamHandlers+1,y
     sta z:zTemp01
-    jmp (zTemp00+$2000)
+    jmp (ZeroPage+zTemp00)
 
 ; @routine 0046:7F9 StreamSpawnIfFree
 ; @run 69:5FF9
@@ -636,4 +636,4 @@ StreamCallOverlay:
 ; HOW: JMP [zTemp09].
 ; Entry: zTemp09-0A code. Exit: as that code leaves it.
 JumpThroughRecord:
-    jmp (zTemp09+$2000)
+    jmp (ZeroPage+zTemp09)

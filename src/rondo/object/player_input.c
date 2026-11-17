@@ -448,10 +448,8 @@ ItemCrash RichterTryItemCrash(void)
     return crash;
 }
 
-void abi_RichterTryItemCrash(void)
+void item_crash_exit_shim(ItemCrash crash)
 {
-    ItemCrash crash = RichterTryItemCrash();
-
     abi_flag(P_V, (crash.pressed & 0x40) != 0);
     abi_flag(P_C, crash.how == CRASH_STARTED);
     switch (crash.how) {
@@ -477,6 +475,11 @@ void abi_RichterTryItemCrash(void)
         abi_nz(crash.hearts);
         break;
     }
+}
+
+void abi_RichterTryItemCrash(void)
+{
+    item_crash_exit_shim(RichterTryItemCrash());
 }
 
 /*

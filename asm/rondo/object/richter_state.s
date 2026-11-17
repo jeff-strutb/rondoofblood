@@ -112,16 +112,18 @@ RichterApplyMoveAndPushGoTo:
 
 ; @routine 01B9:02A RichterApplyMoveAndPush
 ; @run 6D:A02A
-; WHAT IT DOES: Applies the move and, if nothing in three probes touches, takes the push
-; from $CA into $3BC8 when the push flag says so. Called from outside what has been read
-; of the overlay so far.
-; HOW: Bits $81 of the three bytes at $3BC3 stop it.
-; Entry: nothing. Exit: as the path taken leaves them.
+; WHAT IT DOES: Reads the five columns under him after his move and, if none of the first
+; three is solid or a floor, lets a push on the floor lift him by zFieldCA.
+; HOW: Bits $81 of RichterColumnHit; zFieldCA goes in as column 0's depth for
+; RichterLiftByColumn, then is cleared.
+; Entry: nothing. Exit: Y as RichterReadColumns left it. A column hit, A its bits, N and Z from
+; them, X the column, C and V from the read. Not pushed, A 0, X 3, Z and C set, N and V the
+; push's bits 7 and 6. Lifted, as RichterLiftByColumn, X 0.
 RichterApplyMoveAndPush:
     jsr RichterReadColumns
     clx
 RichterApplyMoveAndPush_at1:
-    lda a:$3BC3,x
+    lda a:RichterColumnHit,x
     and #$81
     bne RichterApplyMoveAndPush_at0
     inx
@@ -129,11 +131,11 @@ RichterApplyMoveAndPush_at1:
     bne RichterApplyMoveAndPush_at1
     tst #$01,z:zPlayerPush
     beq RichterApplyMoveAndPush_at0
-    lda z:$CA
-    sta a:$3BC8
+    lda z:zFieldCA
+    sta a:RichterColumnRow
     clx
     jsr RichterLiftByColumn
-    stz z:$CA
+    stz z:zFieldCA
 RichterApplyMoveAndPush_at0:
     rts
 
@@ -270,7 +272,7 @@ RichterStart:
 ; Entry: nothing. Exit: all registers and flags kept.
 RichterClearWork:
     tai KernelZeros,$3BC0,$0040
-    tai KernelZeros,zPadHeld+$2000,$0019
+    tai KernelZeros,ZeroPage+zPadHeld,$0019
     rts
 
 ; @routine 01B9:12D RichterClearKeepPlace
@@ -417,7 +419,7 @@ RichterStateFrame:
     cmp #$FF
     bcs RichterDie
 RichterStateFrame_at0:
-    jsr $B73D
+    jsr RichterInvincibleTick
     lda a:OBJ_3460
     beq RichterStateFrame_at1
     stz a:OBJ_33B0
@@ -743,17 +745,17 @@ RichterStandStep0_at0:
     jmp RichterToAir
 RichterStandStep0_at1:
     jsr RichterLandOnFloor
-    jsr $B7FC
+    jsr RichterTryItemCrash
     bcc RichterStandStep0_at2
     jmp RichterToHurtAir
 RichterStandStep0_at2:
-    jsr $B929
+    jsr RichterUseItem
     bcc RichterStandStep0_at3
     jmp RichterAttack
 RichterStandStep0_at3:
     jsr RichterLedgeCheck
     bcc RichterStandStep0_at4
-    jmp $A7C4
+    jmp RichterClimbStart
 RichterStandStep0_at4:
     jsr RichterUpHeld
     bcc RichterStandStep0_at5
@@ -907,6 +909,7 @@ RichterAttack:
     jsr RichterStopMoving
     ldx a:PlayerByte3BD5
     lda a:LandAnimations,x
+RichterAttack_at4:
     jsr RichterSetAnimation
     lda #$01
     sta a:OBJ_2800
@@ -1356,17 +1359,17 @@ RichterStateWalk_at0:
     jmp RichterToAir
 RichterStateWalk_at1:
     jsr RichterLandOnFloor
-    jsr $B7FC
+    jsr RichterTryItemCrash
     bcc RichterStateWalk_at2
     jmp RichterToHurtAir
 RichterStateWalk_at2:
-    jsr $B929
+    jsr RichterUseItem
     bcc RichterStateWalk_at3
     jmp RichterAttack
 RichterStateWalk_at3:
     jsr RichterLedgeCheck
     bcc RichterStateWalk_at4
-    jmp $A7C4
+    jmp RichterClimbStart
 RichterStateWalk_at4:
     jsr RichterUpHeld
     bcc RichterStateWalk_at5
@@ -1412,6 +1415,273 @@ RichterStand:
     lda #$01
     jsr RichterSetAnimation
     jmp RichterStopMoving
+
+; @routine 01B9:7C4 RichterClimbStart
+; @run 6D:A7C4
+; WHAT IT DOES: Takes hold of the ledge RichterLedgeCheck found, to climb it: the low ledge
+; (zTemp01 0) or the high one, each in one of two holds by whether the point past the ledge's
+; edge reads bit 2: states 5 and 6 low, 7 and 8 high. PlayerClimbReach is how far he has to
+; go across to the edge. He stops, and the state's step is 2.
+; HOW: The column's offset (RichterColumnOffset) and 8 more past it, read $0A below him for the
+; low ledge, $1E for the high; the reach from the offset less zTemp00 for the low, less the
+; column's RichterColumnX for the high. The stand's animation unless he was walking.
+; Entry: X the column, zTemp00 the low ledge's X, zTemp01 low or high. Exit: A 2, N and Z clear,
+; X the state; Y the column's index, or as RichterSetAnimation; C set unless he was standing, or as
+; RichterSetAnimation; V from the reach's last add or subtract.
+RichterClimbStart:
+    jsr RichterPadOverridesOff
+    stz z:zFieldC4
+    lda #$01
+    sta a:PlayerMayLeaveTop
+    lda z:zTemp01
+    bne RichterClimbStart_at0
+    lda z:zTemp00
+    pha
+    jsr RichterColumnOffset
+    clc
+    adc a:OBJ_X_LO
+    clc
+    adc #$08
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc #$0A
+    jsr RichterReadBelow
+    and #$04
+    beq RichterClimbStart_at1
+    pla
+    sta z:zTemp00
+    jsr RichterColumnOffset
+    sec
+    sbc z:zTemp00
+    sec
+    sbc #$08
+    ldx #$05
+RichterClimbStart_at3:
+    sta a:PlayerClimbReach
+    lda a:OBJ_27A8
+    cmp #$01
+    beq RichterClimbStart_at2
+    lda #$00
+    jsr RichterSetAnimation
+RichterClimbStart_at2:
+    lda #$02
+    sta a:OBJ_2800
+    stx a:OBJ_27A8
+    jmp RichterStopMoving
+RichterClimbStart_at1:
+    pla
+    sta z:zTemp00
+    jsr RichterColumnOffset
+    sec
+    sbc z:zTemp00
+    clc
+    adc #$07
+    clc
+    adc #$08
+    ldx #$06
+    bra RichterClimbStart_at3
+RichterClimbStart_at0:
+    jsr RichterColumnOffset
+    clc
+    adc a:OBJ_X_LO
+    clc
+    adc #$08
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc #$1E
+    jsr RichterReadBelow
+    and #$04
+    beq RichterClimbStart_at4
+    jsr RichterColumnOffset
+    sec
+    sbc a:RichterColumnX,x
+    sec
+    sbc #$01
+    ldx #$07
+    bra RichterClimbStart_at3
+RichterClimbStart_at4:
+    jsr RichterColumnOffset
+    sec
+    sbc a:RichterColumnX,x
+    clc
+    adc #$08
+    ldx #$08
+    bra RichterClimbStart_at3
+
+; @routine 01B9:85E RichterStateCrouch
+; @run 6D:A85E
+; WHAT IT DOES: State 2, crouching: runs the step's handler: down, attacking, nothing, the
+; crouch's end, or rising.
+; HOW: RichterCrouchHandlers, five words by RichterStepIndex; step 2's is the RTS of step 0.
+; Entry: nothing. Exit: as the handler leaves them; step 2, as RichterStepIndex.
+RichterStateCrouch:
+    jsr RichterStepIndex
+    jmp (RichterCrouchHandlers,x)
+
+; @routine 01B9:86E RichterCrouchStep0
+; @run 6D:A86E
+; WHAT IT DOES: Crouched: reads the ground, falls if nothing is below; then a jump, the item
+; crash, an item or the whip from the crouch; with up let go he starts to rise (animation $0D,
+; step 4); held, left or right alone turns him.
+; HOW: The ground checks in turn, each answering in C. zPadPressed bits 7 and 5: right alone
+; faces right, left alone left, both or neither leave him.
+; Entry: nothing. Exit: as the transition taken, with what the checks before it left. Rising,
+; A 4, as RichterSetAnimation left the rest. Still down, A the presses' left and right bits,
+; C set, Z clear only for left alone.
+RichterCrouchStep0:
+    jsr RichterReadColumns
+    jsr RichterHasNoFooting
+    bcc RichterCrouchStep0_at0
+    jmp RichterToFall
+RichterCrouchStep0_at0:
+    jsr RichterLandOnFloor
+    jsr RichterJumpPressed
+    bcc RichterCrouchStep0_at1
+    jmp RichterToAir
+RichterCrouchStep0_at1:
+    jsr RichterTryItemCrash
+    bcc RichterCrouchStep0_at2
+    jmp RichterToHurtAir
+RichterCrouchStep0_at2:
+    jsr RichterUseItem
+    bcs RichterCrouchAttack
+    jsr RichterUpHeld
+    bcc RichterCrouchStep0_at3
+    lda z:zPadPressed
+    and #$A0
+    beq RichterCrouchStep0_at4
+    cmp #$A0
+    beq RichterCrouchStep0_at4
+    stz a:OBJ_2AC0
+    cmp #$20
+    beq RichterCrouchStep0_at4
+    inc a:OBJ_2AC0
+RichterCrouchStep0_at4:
+    rts
+RichterCrouchStep0_at3:
+    lda #$0D
+    jsr RichterSetAnimation
+    lda #$04
+    sta a:OBJ_2800
+    rts
+
+; @routine 01B9:8B6 RichterCrouchAttack
+; @run 6D:A8B6
+; WHAT IT DOES: Starts an attack from the crouch: turned by the pad, stopped, animation 6, and
+; the whip or the item as a standing attack starts them.
+; HOW: As RichterAttack from its animation on, keeping the state.
+; Entry: nothing. Exit: as RichterAttack.
+RichterCrouchAttack:
+    jsr RichterPadOverridesOff
+    stz a:PlayerByte3BE1
+    jsr RichterFaceByPad
+    jsr RichterStopMoving
+    lda #$06
+    jmp RichterAttack_at4
+
+; @routine 01B9:8C7 RichterCrouchStep1
+; @run 6D:A8C7
+; WHAT IT DOES: Attacking from the crouch: reads the ground (nothing below goes to $A9DD); turns
+; with a press while the attack is young; with up let go before it is far along, stands; else
+; waits for the animation's end, then is down again, animation $0E, step 0.
+; HOW: OBJ_FLAGS_2F38 against 3 and 6. RichterAnimationWait returns past this routine while it
+; runs.
+; Entry: nothing. Exit: falling, as $A9DD. Stood, as RichterAnimationTick, state 0 and
+; OBJ_FIELDS_2EE0 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
+; clear, the rest as RichterAnimationRunning. With what the checks before left.
+RichterCrouchStep1:
+    jsr RichterReadColumns
+    jsr RichterHasNoFooting
+    bcc RichterCrouchStep1_at0
+    jmp $A9DD
+RichterCrouchStep1_at0:
+    jsr RichterLandOnFloor
+    lda a:OBJ_FLAGS_2F38
+    cmp #$03
+    bcs RichterCrouchStep1_at1
+    jsr RichterTurnOnPress
+RichterCrouchStep1_at1:
+    lda a:OBJ_FLAGS_2F38
+    cmp #$06
+    bcs RichterCrouchStep1_at2
+    jsr RichterUpHeld
+    bcc RichterCrouchStep1_at3
+RichterCrouchStep1_at2:
+    jsr RichterAnimationWait
+    stz a:PlayerByte3BD5
+    lda #$0E
+    sta a:OBJ_2A68
+    stz a:OBJ_2800
+    rts
+RichterCrouchStep1_at3:
+    lda #$00
+    sta a:OBJ_27A8
+    lda #$03
+    sta a:OBJ_FIELDS_2EE0
+    jmp RichterAnimationTick
+
+; @routine 01B9:907 RichterCrouchStep3
+; @run 6D:A907
+; WHAT IT DOES: The crouch's end: the pad's overrides off; reads the ground, falls if nothing
+; is below; a jump, the item crash, an item or the whip; else waits for the animation's end
+; and goes back to step 0.
+; HOW: The ground checks in turn. RichterAnimationWait returns past this routine while it runs.
+; Entry: nothing. Exit: as the transition taken; waiting, as RichterAnimationRunning, A $A9 and
+; N set; ended, as RichterAnimationRunning. With what the checks before left.
+RichterCrouchStep3:
+    jsr RichterPadOverridesOff
+    jsr RichterReadColumns
+    jsr RichterHasNoFooting
+    bcc RichterCrouchStep3_at0
+    jmp RichterToFall
+RichterCrouchStep3_at0:
+    jsr RichterLandOnFloor
+    jsr RichterJumpPressed
+    bcc RichterCrouchStep3_at1
+    jmp RichterToAir
+RichterCrouchStep3_at1:
+    jsr RichterTryItemCrash
+    bcc RichterCrouchStep3_at2
+    jmp RichterToHurtAir
+RichterCrouchStep3_at2:
+    jsr RichterUseItem
+    bcc RichterCrouchStep3_at3
+    jmp RichterCrouchAttack
+RichterCrouchStep3_at3:
+    jsr RichterAnimationWait
+    stz a:OBJ_2800
+    rts
+
+; @routine 01B9:937 RichterCrouchStep4
+; @run 6D:A937
+; WHAT IT DOES: Rising from the crouch: reads the ground, falls if nothing is below; a jump,
+; the item crash, a standing attack; else waits for the animation's end and stands.
+; HOW: The ground checks in turn. RichterAnimationWait returns past this routine while it runs.
+; Entry: nothing. Exit: as the transition taken; waiting, as RichterAnimationRunning, A $A9 and
+; N set; risen, as RichterStand. With what the checks before left.
+RichterCrouchStep4:
+    jsr RichterReadColumns
+    jsr RichterHasNoFooting
+    bcc RichterCrouchStep4_at0
+    jmp RichterToFall
+RichterCrouchStep4_at0:
+    jsr RichterLandOnFloor
+    jsr RichterJumpPressed
+    bcc RichterCrouchStep4_at1
+    jmp RichterToAir
+RichterCrouchStep4_at1:
+    jsr RichterTryItemCrash
+    bcc RichterCrouchStep4_at2
+    jmp RichterToHurtAir
+RichterCrouchStep4_at2:
+    jsr RichterUseItem
+    bcc RichterCrouchStep4_at3
+    jmp RichterAttack
+RichterCrouchStep4_at3:
+    jsr RichterAnimationWait
+    jmp RichterStand
 
 ; @routine 01BB:180 RichterEndItemCrash
 ; @run 6D:B180
@@ -1586,4 +1856,62 @@ RichterCrashFrame:
     adc a:PlayerByte3BD5
     tax
     lda a:RichterCrashFrames,x
+    rts
+
+; @routine 01BB:73D RichterInvincibleTick
+; @run 6D:B73D
+; WHAT IT DOES: Runs the invincibility a potion gives: while its timer runs, every fourth frame
+; he is kept unhittable and the timer counts down, with a sound as it starts and another as it
+; wears off, the flashing scripts at set marks, and his hit timer and flash back to 1 at the end.
+; HOW: PlayerInvincibleTimer; zWaveCounter's low two bits pick the frame. The marks and their
+; scripts are two tables of six. OBJ_3460 $80 holds hits off; OBJ_3828 2 while it runs.
+; Entry: nothing. Exit: off, A 0, Z set. Not this frame, A the frame's bits, N and Z from them.
+; Otherwise X, Y, C and V as a sound command left them, C from comparing A with $10 when the
+; second sound was dropped or not made. Ended, A 1, N and Z clear. A mark, as
+; RichterStartHitScript with its script, C set. No mark, A the timer, Y 6, Z and C set, N clear.
+RichterInvincibleTick:
+    lda a:PlayerInvincibleTimer
+    bne RichterInvincibleTick_at0
+    rts
+RichterInvincibleTick_at0:
+    stz a:PlayerByte3BE8
+    stz a:PlayerByte3BE9
+    lda #$02
+    sta a:OBJ_3828
+    lda z:zWaveCounter
+    and #$03
+    beq RichterInvincibleTick_at1
+    rts
+RichterInvincibleTick_at1:
+    lda #$80
+    sta a:OBJ_3460
+    lda a:PlayerInvincibleTimer
+    cmp #$80
+    bne RichterInvincibleTick_at2
+    lda #$31
+    jsr VecSoundCommand
+RichterInvincibleTick_at2:
+    cmp #$10
+    bne RichterInvincibleTick_at3
+    lda #$32
+    jsr VecSoundCommand
+RichterInvincibleTick_at3:
+    dec a:PlayerInvincibleTimer
+    beq RichterInvincibleTick_at4
+    cly
+RichterInvincibleTick_at6:
+    lda a:PlayerInvincibleTimer
+    cmp a:RichterInvincibleMarks,y
+    beq RichterInvincibleTick_at5
+    iny
+    cpy #$06
+    bne RichterInvincibleTick_at6
+    rts
+RichterInvincibleTick_at5:
+    lda a:RichterInvincibleScripts,y
+    jmp RichterStartHitScript
+RichterInvincibleTick_at4:
+    lda #$01
+    sta a:OBJ_3460
+    sta a:OBJ_3828
     rts

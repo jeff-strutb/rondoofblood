@@ -997,4 +997,59 @@ StageEnterRun StageEnter(void);
 void stage_load_exit_shim(const StageLoadRun *run);
 void stage_enter_exit_shim(const StageEnterRun *run);
 
+/* Richter's ground checks, as his states call them (object/player_terrain.c). */
+/* How a read of the two low columns ended. */
+typedef struct {
+    int blocked_column;
+    bool read_made;
+    TileRead last;
+    uint8_t answer;
+    uint8_t row;
+} LowColumns;
+
+/* How a read of one column ended, for what the wrapper leaves. */
+typedef struct {
+    uint8_t column;
+    uint8_t row;
+    uint8_t below;
+    bool read_made;
+    TileRead read;
+} ColumnRead;
+
+/* How a fall-through check ended. */
+typedef struct {
+    FloorResult check;
+    bool read_made;
+    ColumnRead under;
+    bool no_floor;
+} FootingCheck;
+
+typedef enum { LEDGE_PUSHED, LEDGE_LOW, LEDGE_HIGH, LEDGE_NONE } LedgeEnd;
+
+typedef struct {
+    LedgeEnd how;
+    uint8_t push;
+    LowColumns low;
+    int high_column;
+} LedgeCheck;
+
+/* How a landing lift ended. */
+typedef struct {
+    FloorResult check;
+    bool lifted;
+    ColumnLift lift;
+} LandingLift;
+
+void floor_check_exit_shim(FloorResult result);
+void column_read_exit_shim(ColumnRead one);
+void low_columns_exit_shim(LowColumns low);
+FootingCheck RichterHasNoFooting(void);
+void footing_exit_shim(FootingCheck footing);
+LedgeCheck RichterLedgeCheck(void);
+void ledge_check_exit_shim(LedgeCheck check);
+LandingLift RichterLandOnFloor(void);
+void landing_exit_shim(LandingLift landing);
+bool RichterJumpPressed(void);
+bool RichterUpHeld(void);
+
 #endif

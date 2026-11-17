@@ -6,19 +6,19 @@
 ; Entry: X object. Exit: A the sum, N, Z, C and V from the last subtract. X and Y kept.
 PlayerDistanceSum:
     jsr VecDistanceXToPlayer
-    adc a:$3418
-    adc a:$3480
-    adc a:$2CE1
-    sbc a:$2C32
-    sbc a:$2CE3
-    adc a:$2BDC
-    adc a:$2765
-    sbc a:$2766
-    sbc a:$2C37
-    adc a:$2D00
-    adc a:$2781
-    sbc a:$2BFA
-    sbc a:$2D03
+    adc a:OBJ_3408+$10
+    adc a:OBJ_3460+$20
+    adc a:OBJ_Y_LO+$11
+    sbc a:OBJ_X_FRAC+$12
+    sbc a:OBJ_Y_LO+$13
+    adc a:OBJ_X_LO+$14
+    adc a:OBJ_2750+$15
+    sbc a:OBJ_2750+$16
+    sbc a:OBJ_X_FRAC+$17
+    adc a:OBJ_Y_LO+$30
+    adc a:OBJ_2750+$31
+    sbc a:OBJ_X_LO+$32
+    sbc a:OBJ_Y_LO+$33
     adc a:OBJ_FIELDS_2EE0
     sec
     sbc a:OBJ_2F90

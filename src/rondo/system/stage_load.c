@@ -11,10 +11,59 @@ enum {
     STAGE_RESTART_BIT = 0x40, STAGE_SECRET_BIT = 0x80, STAGE_ROUTE_BIT = 0x01,
     STAGE_INDEX_MASK = 0x7F,
     SCENE_MENU_A = 4, SCENE_MENU_B = 6, ADPCM_MENU = 0x24,
-    STAGE_TABLE_SECRET_LO = 0xC2, STAGE_TABLE_LO = 0xB1, STAGE_TABLE_HI = 0x74,
+    STAGE_AFTER_LAST_SECRET = 0x80, STAGE_TITLE = 0x02, ROUTE_SECOND = 0x05,
+    STAGE_KEEPS_VRAM_A = 0x10, STAGE_KEEPS_VRAM_B = 0x0C,
     VRAM_COPY_ROWS = 8, VRAM_COPY_ROW_BYTES = 0x80, VRAM_COPY_ADDR_HI = 0x7E,
     VRAM_COPY_RAM_HI = 0x9C
 };
+
+/* What a stage's request turns into, where its stage ends elsewhere; stage 2 is the title's. */
+static bool stage_redirect(StageEnterRun *run, uint8_t stage)
+{
+    uint8_t next = stage;
+
+    switch (stage) {
+    case STAGE_AFTER_LAST_SECRET:
+        wr8(zField8A, 1);
+        next = 2;
+        break;
+    case STAGE_TITLE:
+        wr8(zStage, 0);
+        run->to_title = true;
+        run->menu_a = LoadSceneScript(SCENE_MENU_A);
+        run->menu_b = LoadSceneScript(SCENE_MENU_B);
+        run->menu_adpcm = AdpcmLoad(ADPCM_MENU);
+        return true;
+    case 0x85:
+        run->field83_read = true;
+        run->field83 = rd8(zField83);
+        if (run->field83 == 0x0A) {
+            wr8(zField8A, 1);
+            next = 0x07;
+        }
+        break;
+    case 0x0B:
+        if (((rd8((uint16_t)(StagesVisited + 4)) | rd8((uint16_t)(StagesVisited + 9))) & 0x01) == 0) {
+            wr8(zStageRequested, 0x4A);
+            next = 0x0A;
+        }
+        break;
+    case 0x8B:
+        wr8(zField8A, 1);
+        wr8(zStageRequested, 0x4C);
+        next = 0x0C;
+        break;
+    case 0x8C:
+        wr8(zField8A, 1);
+        wr8(zStageRequested, 0x4E);
+        next = 0x0E;
+        break;
+    default:
+        return false;
+    }
+    wr8(zStage, next);
+    return false;
+}
 
 /*
  * @routine 0048:4A6 StageEnter
@@ -26,11 +75,14 @@ enum {
  * HOW: Keeps the request in zStageRequested; zField8A says how the stage starts.
  * Entry: nothing. Exit: as StageLoad, or as AdpcmLoad back at the title's load.
  */
-Alu StageEnter(Alu r)
+StageEnterRun StageEnter(void)
 {
-    uint8_t byte;
-    bool finished = false;
+    StageEnterRun run;
+    uint8_t stage;
 
+    run.route_read = false;
+    run.field83_read = false;
+    run.to_title = false;
     wr8(zField80, 0);
     wr8(zField89, 0);
     wr8(zField85, 0);
@@ -40,115 +92,66 @@ Alu StageEnter(Alu r)
     wr8(zField91, 0);
     wr8(zField92, 0);
     wr8(zField99, 0);
-    alu_load(&r, 5);
     wr8(zField95, 5);
-    byte = rd8(zField8C);
-    alu_load(&r, (uint8_t)(byte & 0x7F));
-    wr8(zField8C, r.a);
-    r = call_abi(abi_ResetGameState, r);
-    r = call_abi(abi_SoundStopAll, r);
-    byte = rd8(zStage);
-    wr8(zStageRequested, byte);
-    alu_load(&r, (uint8_t)(byte & STAGE_RESTART_BIT));
-    if (r.a != 0) {
-        byte = rd8(zStage);
-        alu_load(&r, (uint8_t)(byte & 0xBF));
-        wr8(zStage, r.a);
+    wr8(zField8C, (uint8_t)(rd8(zField8C) & 0x7F));
+    ResetGameState();
+    run.stop = SoundStopAll();
+    wr8(zStageRequested, rd8(zStage));
+    if (rd8(zStageRequested) & STAGE_RESTART_BIT) {
+        wr8(zStage, (uint8_t)(rd8(zStage) & ~STAGE_RESTART_BIT));
         wr8(zField8A, 0);
     } else {
-        byte = rd8(zStage);
-        alu_load(&r, byte);
-        if (!(byte & STAGE_SECRET_BIT)) {
-            byte = (uint8_t)((byte | STAGE_SECRET_BIT) & ~STAGE_ROUTE_BIT);
-            alu_load(&r, byte);
-            cpu.x = rd8(zField8C);
-            alu_compare(&r, cpu.x, 0x05);
-            r.a = byte;
-            if (cpu.x >= 0x05) {
-                byte |= STAGE_ROUTE_BIT;
-                alu_load(&r, byte);
-            }
-            wr8(zStage, byte);
-            alu_load(&r, 3);
+        stage = rd8(zStage);
+        if (!(stage & STAGE_SECRET_BIT)) {
+            stage = (uint8_t)((stage | STAGE_SECRET_BIT) & ~STAGE_ROUTE_BIT);
+            run.route_read = true;
+            run.route = rd8(zField8C);
+            if (run.route >= ROUTE_SECOND)
+                stage |= STAGE_ROUTE_BIT;
+            wr8(zStage, stage);
             wr8(zField8A, 3);
         } else {
-            byte = (uint8_t)((byte & STAGE_INDEX_MASK) + 2);
-            alu_load(&r, byte);
-            wr8(zStage, byte);
-            alu_load(&r, 1);
+            wr8(zStage, (uint8_t)((stage & STAGE_INDEX_MASK) + 2));
             wr8(zField8A, 1);
         }
         wr8(zField8C, 0);
     }
-    byte = rd8(zStageRequested);
-    alu_load(&r, (uint8_t)(byte & STAGE_RESTART_BIT));
-    if (r.a == 0) {
-        byte = rd8(zStage);
-        alu_load(&r, byte);
-        alu_compare(&r, byte, 0x80);
-        if (byte == 0x80) {
-            alu_load(&r, 1);
-            wr8(zField8A, 1);
-            alu_load(&r, 2);
-            wr8(zStage, 2);
-        } else if (alu_compare(&r, byte, 0x02), byte == 0x02) {
-            alu_load(&r, 0);
-            wr8(zStage, 0);
-            alu_load(&r, SCENE_MENU_A);
-            r = call_abi(abi_LoadSceneScript, r);
-            alu_load(&r, SCENE_MENU_B);
-            r = call_abi(abi_LoadSceneScript, r);
-            alu_load(&r, ADPCM_MENU);
-            r = call_abi(abi_AdpcmLoad, r);
-            finished = true;
-        } else if (alu_compare(&r, byte, 0x85), byte == 0x85) {
-            cpu.y = rd8(zField83);
-            alu_compare(&r, cpu.y, 0x0A);
-            r.a = byte;
-            if (cpu.y == 0x0A) {
-                alu_load(&r, 1);
-                wr8(zField8A, 1);
-                alu_load(&r, 7);
-            }
-            wr8(zStage, r.a);
-        } else if (alu_compare(&r, byte, 0x0B), byte == 0x0B) {
-            uint8_t first = rd8(0x3F51);
-            uint8_t second = rd8(0x3F56);
-
-            alu_load(&r, (uint8_t)((first | second) & 0x01));
-            if (r.a == 0) {
-                alu_load(&r, 0x4A);
-                wr8(zStageRequested, 0x4A);
-                alu_load(&r, 0x0A);
-            } else {
-                alu_load(&r, 0x0B);
-            }
-            wr8(zStage, r.a);
-        } else if (alu_compare(&r, byte, 0x8B), byte == 0x8B) {
-            alu_load(&r, 1);
-            wr8(zField8A, 1);
-            alu_load(&r, 0x4C);
-            wr8(zStageRequested, 0x4C);
-            alu_load(&r, 0x0C);
-            wr8(zStage, 0x0C);
-        } else if (alu_compare(&r, byte, 0x8C), byte == 0x8C) {
-            alu_load(&r, 1);
-            wr8(zField8A, 1);
-            alu_load(&r, 0x4E);
-            wr8(zStageRequested, 0x4E);
-            alu_load(&r, 0x0E);
-            wr8(zStage, 0x0E);
-        }
-    }
-    if (finished)
-        return r;
+    if (!(rd8(zStageRequested) & STAGE_RESTART_BIT) && stage_redirect(&run, rd8(zStage)))
+        return run;
     wr8(zField83, 0);
-    return StageLoad(r);
+    run.load = StageLoad();
+    return run;
+}
+
+void stage_enter_exit_shim(const StageEnterRun *run)
+{
+    reset_game_state_exit_shim();
+    stop_call_exit_shim(run->stop);
+    if (run->route_read)
+        cpu.x = run->route;
+    if (run->field83_read)
+        cpu.y = run->field83;
+    if (!run->to_title) {
+        stage_load_exit_shim(&run->load);
+        return;
+    }
+    cpu.a = SCENE_MENU_A;
+    abi_nz(SCENE_MENU_A);
+    abi_flag(P_C, true);
+    disc_log_exit_shim(&run->menu_a);
+    cpu.a = SCENE_MENU_B;
+    abi_nz(SCENE_MENU_B);
+    disc_log_exit_shim(&run->menu_b);
+    cpu.a = ADPCM_MENU;
+    abi_nz(ADPCM_MENU);
+    adpcm_load_exit_shim(&run->menu_adpcm);
 }
 
 void abi_StageEnter(void)
 {
-    abi_alu(StageEnter(alu_from_cpu()));
+    StageEnterRun run = StageEnter();
+
+    stage_enter_exit_shim(&run);
 }
 
 /*
@@ -157,95 +160,95 @@ void abi_StageEnter(void)
  * WHAT IT DOES: Loads the stage in zStage: the character's scene if another is loaded,
  * the stage's two scenes, its ADPCM and a seek to its CD track, so the stage can start
  * with its music at once. Secret stages and stages $10 and $0C first copy VRAM to RAM.
- * HOW: A table at $74B1 or, for bit 7, at $74C2 gives the scene by stage; tables at $7230
- * and $7115, or $7241 and $7126, give the ADPCM and the track.
- * Entry: nothing. Exit: as CdSearchTrack. Clobbers zTemp0A-0B.
+ * HOW: StageScenes or, for bit 7, StageScenesSecret gives the scene by stage, through a pointer
+ * in zTemp0A-0B; StageAdpcm and StageTrack, or their secret tables, give the ADPCM and the track.
+ * Entry: nothing. Exit: as CdSearchTrack, entered with X the stage's index. Clobbers zTemp0A-0B.
  */
-Alu StageLoad(Alu r)
+StageLoadRun StageLoad(void)
 {
-    uint8_t stage = rd8(zStage);
-    uint8_t byte;
-    uint16_t adpcm_table;
-    uint16_t track_table;
+    StageLoadRun run;
+    uint16_t scenes;
+    Sum low;
+    Sum high;
+    bool secret;
 
-    alu_load(&r, stage);
-    if (stage & 0x80) {
-        alu_load(&r, STAGE_TABLE_SECRET_LO);
-        wr8(zTemp0A, STAGE_TABLE_SECRET_LO);
-        alu_load(&r, STAGE_TABLE_HI);
-        wr8(zTemp0B, STAGE_TABLE_HI);
-        alu_load(&r, 9);
+    if (rd8(zStage) & STAGE_SECRET_BIT) {
+        scenes = StageScenesSecret;
+        wr8(zTemp0A, (uint8_t)scenes);
+        wr8(zTemp0B, (uint8_t)(scenes >> 8));
         wr8(zField8E, 9);
     } else {
-        alu_load(&r, STAGE_TABLE_LO);
-        wr8(zTemp0A, STAGE_TABLE_LO);
-        alu_load(&r, STAGE_TABLE_HI);
-        wr8(zTemp0B, STAGE_TABLE_HI);
+        scenes = StageScenes;
+        wr8(zTemp0A, (uint8_t)scenes);
+        wr8(zTemp0B, (uint8_t)(scenes >> 8));
         wr8(zField8E, 0);
-        stage = rd8(zStage);
-        alu_load(&r, stage);
-        if (stage == 0) {
-            byte = rd8(zField8E);
-            alu_nz(&r, (uint8_t)(byte + 1));
-            wr8(zField8E, (uint8_t)(byte + 1));
-        }
+        if (rd8(zStage) == 0)
+            wr8(zField8E, (uint8_t)(rd8(zField8E) + 1));
     }
-    stage = rd8(zStage);
-    byte = rd8(zTemp0A);
-    r = adc8((uint8_t)(stage & STAGE_INDEX_MASK), byte, false);
-    wr8(zTemp0A, r.a);
-    byte = rd8(zTemp0B);
-    r = adc8(0, byte, r.c);
-    wr8(zTemp0B, r.a);
-    byte = rd8(zCharacter);
-    {
-        uint8_t loaded = rd8(zCharacterLoaded);
+    low = add_bytes((uint8_t)(rd8(zStage) & STAGE_INDEX_MASK), rd8(zTemp0A), false);
+    wr8(zTemp0A, low.value);
+    high = add_bytes(0, rd8(zTemp0B), low.carry);
+    wr8(zTemp0B, high.value);
+    run.character = rd8(zCharacter);
+    run.loaded_before = rd8(zCharacterLoaded);
+    run.character_loaded = run.character != run.loaded_before;
+    if (run.character_loaded) {
+        wr8(zCharacterLoaded, run.character);
+        run.character_scene = LoadSceneScript(run.character);
+    }
+    run.first_sum = add_bytes(rd8_zp(zTemp0A), rd8(zCharacter), false);
+    run.first_scene = LoadSceneScript(run.first_sum.value);
+    run.second = (uint8_t)(rd8_zp(zTemp0A) + 2);
+    run.second_scene = LoadSceneScript(run.second);
+    secret = (rd8(zStage) & STAGE_SECRET_BIT) != 0;
+    run.saved = secret || rd8(zStage) == STAGE_KEEPS_VRAM_A || rd8(zStage) == STAGE_KEEPS_VRAM_B;
+    if (run.saved)
+        run.vram = SaveVramToRam();
+    run.adpcm_index = (uint8_t)(rd8(zStage) & STAGE_INDEX_MASK);
+    run.adpcm_sum = add_bytes(rd8((uint16_t)((secret ? StageAdpcmSecret : StageAdpcm) + run.adpcm_index)),
+                              rd8(zCharacter), false);
+    run.adpcm = AdpcmLoad(run.adpcm_sum.value);
+    run.track_index = (uint8_t)(rd8(zStage) & STAGE_INDEX_MASK);
+    run.track = rd8((uint16_t)((secret ? StageTrackSecret : StageTrack) + run.track_index));
+    run.search = CdSearchTrack(run.track);
+    return run;
+}
 
-        alu_compare(&r, byte, loaded);
-        if (byte != loaded) {
-            wr8(zCharacterLoaded, byte);
-            r = call_abi(abi_LoadSceneScript, r);
-        }
+void stage_load_exit_shim(const StageLoadRun *run)
+{
+    if (run->character_loaded) {
+        cpu.a = run->character;
+        abi_nz((uint8_t)(run->character - run->loaded_before));
+        abi_flag(P_C, run->character >= run->loaded_before);
+        disc_log_exit_shim(&run->character_scene);
     }
-    byte = rd8_zp(zTemp0A);
-    r = adc8(byte, rd8(zCharacter), false);
-    r = call_abi(abi_LoadSceneScript, r);
-    byte = rd8_zp(zTemp0A);
-    alu_load(&r, (uint8_t)(byte + 2));
-    r = call_abi(abi_LoadSceneScript, r);
-    stage = rd8(zStage);
-    alu_load(&r, stage);
-    if (stage & 0x80) {
-        r = call_abi(abi_SaveVramToRam, r);
-        adpcm_table = StageAdpcmSecret;
-        track_table = StageTrackSecret;
-    } else {
-        alu_compare(&r, stage, 0x10);
-        if (stage == 0x10) {
-            r = call_abi(abi_SaveVramToRam, r);
-        } else {
-            alu_compare(&r, stage, 0x0C);
-            if (stage == 0x0C)
-                r = call_abi(abi_SaveVramToRam, r);
-        }
-        adpcm_table = StageAdpcm;
-        track_table = StageTrack;
-    }
-    stage = rd8(zStage);
-    cpu.x = (uint8_t)(stage & STAGE_INDEX_MASK);
-    byte = rd8((uint16_t)(adpcm_table + cpu.x));
-    r = adc8(byte, rd8(zCharacter), false);
-    r = call_abi(abi_AdpcmLoad, r);
-    stage = rd8(zStage);
-    cpu.x = (uint8_t)(stage & STAGE_INDEX_MASK);
-    byte = rd8((uint16_t)(track_table + cpu.x));
-    alu_load(&r, byte);
-    return call_abi(abi_CdSearchTrack, r);
+    cpu.a = run->first_sum.value;
+    abi_nz(run->first_sum.value);
+    abi_flag(P_C, run->first_sum.carry);
+    abi_flag(P_V, run->first_sum.overflow);
+    disc_log_exit_shim(&run->first_scene);
+    cpu.a = run->second;
+    abi_nz(run->second);
+    disc_log_exit_shim(&run->second_scene);
+    if (run->saved)
+        save_vram_exit_shim(run->vram);
+    cpu.x = run->adpcm_index;
+    cpu.a = run->adpcm_sum.value;
+    abi_nz(run->adpcm_sum.value);
+    abi_flag(P_C, run->adpcm_sum.carry);
+    abi_flag(P_V, run->adpcm_sum.overflow);
+    adpcm_load_exit_shim(&run->adpcm);
+    cpu.x = run->track_index;
+    cpu.a = run->track;
+    abi_nz(run->track);
+    track_search_exit_shim(&run->search);
 }
 
 void abi_StageLoad(void)
 {
-    abi_alu(StageLoad(alu_from_cpu()));
+    StageLoadRun run = StageLoad();
+
+    stage_load_exit_shim(&run);
 }
 
 /*
@@ -282,14 +285,17 @@ Sum SaveVramToRam(void)
     return low;
 }
 
-void abi_SaveVramToRam(void)
+void save_vram_exit_shim(Sum low)
 {
-    Sum low = SaveVramToRam();
-
     cpu.a = low.value;
     cpu.x = 0;
     cpu.y = VRAM_COPY_ROW_BYTES;
     abi_nz(0);
     abi_flag(P_C, low.carry);
     abi_flag(P_V, low.overflow);
+}
+
+void abi_SaveVramToRam(void)
+{
+    save_vram_exit_shim(SaveVramToRam());
 }

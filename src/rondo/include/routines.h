@@ -663,8 +663,6 @@ BackupAccess BackupRead(void);
 void backup_read_exit_shim(BackupAccess read);
 void abi_BackupRead(void);
 Alu BackupWrite(Alu r);
-Alu StageEnter(Alu r);
-Alu StageLoad(Alu r);
 Sum SaveVramToRam(void);
 void abi_SaveVramToRam(void);
 
@@ -953,5 +951,50 @@ void disc_log_exit_shim(const DiscLog *log);
 void adpcm_load_exit_shim(const AdpcmLoadRun *run);
 void abi_AdpcmLoadFixed(void);
 void abi_CdSearchTrack(void);
+void track_search_exit_shim(const TrackSearch *search);
+void save_vram_exit_shim(Sum low);
+void reset_game_state_exit_shim(void);
+void ResetGameState(void);
+void abi_StageEnter(void);
+void abi_StageLoad(void);
+
+/* A stage's load: each call it made, with what the game loaded before it, for the replay. */
+typedef struct {
+    bool character_loaded;
+    uint8_t character;
+    uint8_t loaded_before;
+    DiscLog character_scene;
+    Sum first_sum;
+    DiscLog first_scene;
+    uint8_t second;
+    DiscLog second_scene;
+    bool saved;
+    Sum vram;
+    uint8_t adpcm_index;
+    Sum adpcm_sum;
+    AdpcmLoadRun adpcm;
+    uint8_t track_index;
+    uint8_t track;
+    TrackSearch search;
+} StageLoadRun;
+
+/* A stage entered: its load, or for stage 2 the title's scenes and ADPCM. */
+typedef struct {
+    StopCall stop;
+    bool route_read;
+    uint8_t route;
+    bool field83_read;
+    uint8_t field83;
+    bool to_title;
+    DiscLog menu_a;
+    DiscLog menu_b;
+    AdpcmLoadRun menu_adpcm;
+    StageLoadRun load;
+} StageEnterRun;
+
+StageLoadRun StageLoad(void);
+StageEnterRun StageEnter(void);
+void stage_load_exit_shim(const StageLoadRun *run);
+void stage_enter_exit_shim(const StageEnterRun *run);
 
 #endif

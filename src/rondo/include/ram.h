@@ -596,5 +596,7 @@
 #define AdpcmRecords 0x7135 /* by ADPCM sound, four bytes: its disc address (less the track's start by AdpcmLoad) and its sector count */
 #define AdpcmStreamRecords 0x720D /* by sound played from the disc, five bytes: its disc address and _AL, _AH for the BIOS's ADPCM play */
 #define SceneRecords 0x74D1 /* by scene, five bytes: its disc address and the address of its list of ops */
+#define StageScenes 0x74B1 /* by stage, its scene; the next byte on is the second scene, and the character's added to the first */
+#define StageScenesSecret 0x74C2 /* as StageScenes, for the stages with bit 7 set */
 
 #endif

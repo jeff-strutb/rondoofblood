@@ -337,11 +337,17 @@ void ResetGameState(void)
     ClearScreenState();
 }
 
-void abi_ResetGameState(void)
+/* ResetGameState's exit, for its wrapper and for a caller's that replays it. */
+void reset_game_state_exit_shim(void)
 {
-    ResetGameState();
     cpu.a = VDC_REG_VRAM;
     cpu.x = 0;
     cpu.y = 0xFF;
     abi_nz(0xFF);
+}
+
+void abi_ResetGameState(void)
+{
+    ResetGameState();
+    reset_game_state_exit_shim();
 }

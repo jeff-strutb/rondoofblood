@@ -378,10 +378,10 @@ CdSearchTrack_at0:
 ; @run 6A:6FD8
 ; WHAT IT DOES: Loads a scene: runs its list of ops, which map banks, read sectors from
 ; the disc, and call the scene overlay, until an op it does not know ends it.
-; HOW: The scene's record, five bytes each from $74D1, holds the disc address and at Y 3
+; HOW: The scene's record, five bytes each in SceneRecords, holds the disc address and at 3
 ; and 4 the list.
-; Entry: A scene. Exit: A the last op, N, Z and C from comparing it. Clobbers zTemp00-02,
-; zTemp08-09.
+; Entry: A scene. Exit: A the last op, N and Z from comparing it with $80, C 1; X, Y and V as
+; the last op left them. Clobbers zTemp00-02, zTemp08-09.
 LoadSceneScript:
     sta z:zTemp02
     sta z:zBiosAl
@@ -511,12 +511,12 @@ LoadSceneScript_at14:
 
 ; @routine 0049:0B1 SceneReadSectors
 ; @run 6A:70B1
-; WHAT IT DOES: A scene op from 1 to 3: reads sectors from the disc to the place in RAM
-; the op gives, at an offset from the scene's own disc address.
-; HOW: The op indexes the table of destinations at $70FA; the op's second byte is the
-; sector offset and its third the count; the BIOS's read, asked again until it answers
-; zero, and each time the table is indexed by what A then holds.
-; Entry: A the op. Exit: the list moved on, and the ops go on.
+; WHAT IT DOES: A scene op from 1 to $7F: reads sectors from the disc to the place in RAM
+; the op gives, at an offset from the scene's own disc address; then the ops go on.
+; HOW: The op indexes SceneReadDestinations; the op's second byte is the sector offset and its
+; third the count; the BIOS's read, asked again until it answers zero, and each time the table
+; is indexed by what A then holds.
+; Entry: A the op. Exit: as LoadSceneScript.
 SceneReadSectors:
     asl a
     tay
@@ -561,9 +561,9 @@ SceneReadSectors:
 
 ; @routine 0049:100 SceneCallOverlay
 ; @run 6A:7100
-; WHAT IT DOES: Maps the scene overlay and runs its entry at $8006 with a pointer from the
-; table at $72C8.
-; HOW: The pointer goes to zProduct1-2, where that entry takes it.
+; WHAT IT DOES: Maps the scene overlay and runs its entry at $8006 with a pointer from
+; SceneCallTable.
+; HOW: The pointer goes to zProduct1-2, where that entry takes it; Y 0.
 ; Entry: X the table's offset. Exit: as the overlay leaves them.
 SceneCallOverlay:
     lda #$04

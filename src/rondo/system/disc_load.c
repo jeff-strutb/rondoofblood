@@ -660,21 +660,28 @@ TrackSearch CdSearchTrack(uint8_t track)
     return search;
 }
 
-void abi_CdSearchTrack(void)
+/* CdSearchTrack's exit, from the registers it was entered with. */
+void track_search_exit_shim(const TrackSearch *search)
 {
     uint8_t x = cpu.x;
     uint8_t y = cpu.y;
-    TrackSearch search = CdSearchTrack(cpu.a);
 
-    if (search.skipped) {
+    if (search->skipped) {
         abi_nz(0);
         abi_flag(P_C, true);
         return;
     }
-    disc_log_exit_shim(&search.log);
+    disc_log_exit_shim(&search->log);
     cpu.x = x;
     cpu.y = y;
     abi_nz(x);
+}
+
+void abi_CdSearchTrack(void)
+{
+    TrackSearch search = CdSearchTrack(cpu.a);
+
+    track_search_exit_shim(&search);
 }
 
 /* The scene overlay's entry at $8006, with the registers SceneCallOverlay gives it. */

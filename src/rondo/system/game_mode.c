@@ -216,7 +216,7 @@ Alu ModeAttract(void)
     byte = rd8((uint16_t)(AttractStages + cpu.y));
     alu_load(&r, byte);
     wr8(zStage, byte);
-    r = StageEnter(r);
+    r = call_abi(abi_StageEnter, r);
     byte = rd8(zAttractStep);
     wr8(zAttractStep, (uint8_t)(byte + 1));
     byte = rd8(zAttractStep);
@@ -308,7 +308,7 @@ void abi_ModeStageLoad(void)
  */
 Alu StageEnterNext(Alu r)
 {
-    r = StageEnter(r);
+    r = call_abi(abi_StageEnter, r);
     r = call_abi(abi_ResetScoreCounters, r);
     return call_abi(abi_NextGameMode, r);
 }
@@ -359,7 +359,7 @@ Alu ModeStageLoadContinue(Alu r)
 
     r = call_abi(abi_ResetScoreCounters, r);
     r = load_scene(r, SCENE_COMMON);
-    r = StageEnter(r);
+    r = call_abi(abi_StageEnter, r);
     byte = rd8(zGameRunning);
     wr8(zGameRunning, (uint8_t)(byte + 1));
     return set_mode(r, MODE_INTRO);
@@ -521,7 +521,7 @@ Alu StageClearedNext(Alu r)
 {
     uint8_t byte;
 
-    r = StageEnter(r);
+    r = call_abi(abi_StageEnter, r);
     byte = rd8(zStage);
     alu_load(&r, byte);
     if (byte == 0) {
@@ -846,7 +846,7 @@ Alu ModeScreen(void)
         }
         return StageClearedNext(r);
     }
-    r = StageLoad(r);
+    r = call_abi(abi_StageLoad, r);
     wr8(zField99, 0);
     wr8(zField95, 5);
     wr8(zField8A, 3);
@@ -878,7 +878,7 @@ Alu ModeEnding(void)
     wr8(zGameRunning, 0);
     r = call_abi(abi_ResetGameState, r);
     r = load_scene(r, SCENE_COMMON);
-    r = StageEnter(r);
+    r = call_abi(abi_StageEnter, r);
     r = call_abi(abi_ResetScoreCounters, r);
     return set_mode(r, MODE_STAGE);
 }

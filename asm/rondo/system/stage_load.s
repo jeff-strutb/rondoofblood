@@ -99,7 +99,7 @@ StageEnter_at8:
     bra StageEnter_at13
 StageEnter_at9:
     lda a:StagesVisited+4
-    ora a:$3F56
+    ora a:StagesVisited+9
     and #$01
     bne StageEnter_at14
     lda #$4A
@@ -133,23 +133,23 @@ StageEnter_at12:
 ; WHAT IT DOES: Loads the stage in zStage: the character's scene if another is loaded,
 ; the stage's two scenes, its ADPCM and a seek to its CD track, so the stage can start
 ; with its music at once. Secret stages and stages $10 and $0C first copy VRAM to RAM.
-; HOW: A table at $74B1 or, for bit 7, at $74C2 gives the scene by stage; tables at $7230
-; and $7115, or $7241 and $7126, give the ADPCM and the track.
-; Entry: nothing. Exit: as CdSearchTrack. Clobbers zTemp0A-0B.
+; HOW: StageScenes or, for bit 7, StageScenesSecret gives the scene by stage, through a pointer
+; in zTemp0A-0B; StageAdpcm and StageTrack, or their secret tables, give the ADPCM and the track.
+; Entry: nothing. Exit: as CdSearchTrack, entered with X the stage's index. Clobbers zTemp0A-0B.
 StageLoad:
     lda z:zStage
     bpl StageLoad_at0
-    lda #$C2
+    lda #<StageScenesSecret
     sta z:zTemp0A
-    lda #$74
+    lda #>StageScenesSecret
     sta z:zTemp0B
     lda #$09
     sta z:zField8E
     bra StageLoad_at1
 StageLoad_at0:
-    lda #$B1
+    lda #<StageScenes
     sta z:zTemp0A
-    lda #$74
+    lda #>StageScenes
     sta z:zTemp0B
     stz z:zField8E
     lda z:zStage

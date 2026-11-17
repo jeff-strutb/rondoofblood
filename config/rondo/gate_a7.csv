@@ -1,0 +1,12 @@
+script,verdict,detail,source
+attract,IDENTICAL,"hybrid: 71623 swapped, frames compared 6126, identical 6126, first differing -1",7deb15f
+boot,IDENTICAL,"hybrid: 7742 swapped, frames compared 900, identical 900, first differing -1",7deb15f
+gameover,IDENTICAL,"hybrid: 1804409 swapped, frames compared 29092, identical 29092, first differing -1",7deb15f
+menu_files,IDENTICAL,"hybrid: 141980 swapped, frames compared 10746, identical 10746, first differing -1",7deb15f
+play_s0_r1,IDENTICAL,"hybrid: 2014041 swapped, frames compared 28186, identical 28186, first differing -1",7deb15f
+play_s0_r2,IDENTICAL,"hybrid: 2016648 swapped, frames compared 28186, identical 28186, first differing -1",7deb15f
+play_s0_r3,IDENTICAL,"hybrid: 2022895 swapped, frames compared 28186, identical 28186, first differing -1",7deb15f
+play_s0_r4,IDENTICAL,"hybrid: 1422350 swapped, frames compared 28186, identical 28186, first differing -1",7deb15f
+play_s0_r5,IDENTICAL,"hybrid: 2029124 swapped, frames compared 28186, identical 28186, first differing -1",7deb15f
+play_s0_r6,IDENTICAL,"hybrid: 2004492 swapped, frames compared 28186, identical 28186, first differing -1",7deb15f
+sound_test,IDENTICAL,"hybrid: 224857 swapped, frames compared 17134, identical 17134, first differing -1",7deb15f

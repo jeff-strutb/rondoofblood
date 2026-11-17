@@ -30,7 +30,10 @@ def function_calls():
     calls = {}
     for path in (glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True) +
                  glob.glob(os.path.join(TOP, "syscard", "src", "*.c"))):
-        text = open(path, encoding="utf-8").read()
+        # Comments out first, as ledger.py does: prose with a parenthesis in a comment above a
+        # function let the pattern run from there to the function's body, filing the body under
+        # a word of the comment, so a routine that reaches original code looked swappable.
+        text = re.sub(r"/\*.*?\*/", "", open(path, encoding="utf-8").read(), flags=re.S)
         for m in FUNC.finditer(text):
             depth, i = 1, m.end()
             while depth and i < len(text):

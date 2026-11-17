@@ -220,7 +220,7 @@ TitlePaletteRotate:
     and #$F0
     sta a:VCE_ADDR_LO
     stz a:VCE_ADDR_HI
-    tai VCE_DATA_LO,PaletteWork,$0020
+    tai VCE_DATA_LO,PaletteWork,PaletteWorkSpare-PaletteWork
     sta a:VCE_ADDR_LO
     stz a:VCE_ADDR_HI
     txa
@@ -240,7 +240,7 @@ TitlePaletteRotate_at0:
     inx
     cpx #$22
     bcc TitlePaletteRotate_at0
-    tia PaletteWork,VCE_DATA_LO,$0020
+    tia PaletteWork,VCE_DATA_LO,PaletteWorkSpare-PaletteWork
     rts
 
 ; @routine 00C1:1CA TitleTileRows

@@ -176,8 +176,8 @@ ResetGameState:
     sta a:VCE_ADDR_HI
     stz a:VCE_DATA_LO
     stz a:VCE_DATA_HI
-    tai KernelZeros,LevelStreamLo,$0003
-    tai KernelZeros,TileHit,$164D
+    tai KernelZeros,LevelStreamLo,LevelAxis+1-LevelStreamLo
+    tai KernelZeros,GameRamStart,GameRamClearEnd-GameRamStart
 
 ; @routine 0046:3A0 ClearScreenState
 ; @run 69:5BA0
@@ -193,7 +193,7 @@ ClearScreenState:
     sta z:zDisplayDelay
     stz z:zRasterEffect
     stz z:zVideoMode
-    tai KernelZeros,ScrollXFrac,$00EE
+    tai KernelZeros,ScrollXFrac,ScrollStateClearEnd-ScrollXFrac
     jsr ClearVdcControlHigh
     jsr SelectVramWriteAddress
     st1 #$00

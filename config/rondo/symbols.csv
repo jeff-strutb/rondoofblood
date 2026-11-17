@@ -593,3 +593,7 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 3F83,abs,TitleSaveRead,1 once the title has read the backup file
 3F84,abs,TitleSeen,1 once the title has run to its end; then Run skips it
 802E,abs,TitleSteps,the title's handlers by sub-mode, a word each
+2000,abs,ZeroPage,the zero page's first byte as a logical address: KernelStart clears it up to zRamBaseBank
+3CFF,abs,ListChannelClearEnd,the first byte past what ClearListChannels clears from ListChannelKind
+3D40,abs,GameRamClearEnd,the first byte past what ResetGameState clears from GameRamStart
+3EEE,abs,ScrollStateClearEnd,the first byte past what ClearScreenState clears from ScrollXFrac

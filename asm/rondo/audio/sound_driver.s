@@ -716,7 +716,7 @@ SoundSetControl_at2:
     lda a:SoundBalances,y
     bra SoundSetControl_at4
 SoundSetControl_at3:
-    lda a:$87BC,y
+    lda a:SoundBalances+16,y
 SoundSetControl_at4:
     sta a:PsgBalance
 SoundSetControl_at1:

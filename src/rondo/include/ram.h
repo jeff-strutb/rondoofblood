@@ -586,5 +586,9 @@
 #define TitleSaveRead 0x3F83 /* 1 once the title has read the backup file */
 #define TitleSeen 0x3F84 /* 1 once the title has run to its end; then Run skips it */
 #define TitleSteps 0x802E /* the title's handlers by sub-mode, a word each */
+#define ZeroPage 0x2000 /* the zero page's first byte as a logical address: KernelStart clears it up to zRamBaseBank */
+#define ListChannelClearEnd 0x3CFF /* the first byte past what ClearListChannels clears from ListChannelKind */
+#define GameRamClearEnd 0x3D40 /* the first byte past what ResetGameState clears from GameRamStart */
+#define ScrollStateClearEnd 0x3EEE /* the first byte past what ClearScreenState clears from ScrollXFrac */
 
 #endif

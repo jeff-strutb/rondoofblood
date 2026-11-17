@@ -22,16 +22,13 @@ static void map_from_base(uint8_t mpr_bit, uint8_t offset)
 /* Sets the raster compare line from a RAM copy and enables its interrupt. */
 static void write_raster_line(void)
 {
-    uint8_t line;
-    Alu r;
+    Sum low;
 
     wr8(RasterStep, 0);
     SelectVdcRegister(VDC_REG_RCR);
-    line = rd8(RasterLine);
-    r = adc8(line, RCR_LINE_BASE, false);
-    wr8(VDC_DATA_LO, r.a);
-    r = adc8(0, 0, r.c);
-    wr8(VDC_DATA_HI, r.a);
+    low = add_bytes(rd8(RasterLine), RCR_LINE_BASE, false);
+    wr8(VDC_DATA_LO, low.value);
+    wr8(VDC_DATA_HI, low.carry ? 1 : 0);
 }
 
 static void set_raster_enable(void)

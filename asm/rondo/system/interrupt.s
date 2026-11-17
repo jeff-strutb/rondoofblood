@@ -6,8 +6,8 @@
 ; HOW: Block fills of zero page and game RAM, then BIOS and kernel calls in order.
 ; Entry: from the loader, zRamBaseBank set, MPR2-3 the kernel. Exit: never.
 KernelStart:
-    tai KernelZeros,zTemp00+$2000,$00DB
-    tai KernelZeros,SoundCommandIn,$1D30
+    tai KernelZeros,ZeroPage,zRamBaseBank
+    tai KernelZeros,SoundCommandIn,VecKernelStart-SoundCommandIn
     cla
     ldx #$20
     ldy #$1E

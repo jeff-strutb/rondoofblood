@@ -4,7 +4,7 @@
 ; HOW: Block-fills $3C80 up with zero.
 ; Entry: nothing. Exit: all registers and flags kept.
 ClearListChannels:
-    tai KernelZeros,ListChannelKind,$007F
+    tai KernelZeros,ListChannelKind,ListChannelClearEnd-ListChannelKind
     rts
 
 ; @routine 0045:50E StartListChannel0Kind1

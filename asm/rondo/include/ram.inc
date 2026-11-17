@@ -583,3 +583,7 @@ PaletteWorkSpare = $3B20 ; the colour kept while a palette is rotated
 TitleSaveRead = $3F83 ; 1 once the title has read the backup file
 TitleSeen = $3F84 ; 1 once the title has run to its end; then Run skips it
 TitleSteps = $802E ; the title's handlers by sub-mode, a word each
+ZeroPage = $2000 ; the zero page's first byte as a logical address: KernelStart clears it up to zRamBaseBank
+ListChannelClearEnd = $3CFF ; the first byte past what ClearListChannels clears from ListChannelKind
+GameRamClearEnd = $3D40 ; the first byte past what ResetGameState clears from GameRamStart
+ScrollStateClearEnd = $3EEE ; the first byte past what ClearScreenState clears from ScrollXFrac

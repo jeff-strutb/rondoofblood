@@ -1,0 +1,13 @@
+# Stage $04 (StageScenes: scenes $1C and $1E) by a continue restart, then seeded random play.
+include _continue_to.txt
+poke 2081 04
+press I 6
+wait 900
+shot entered
+dump entered
+random 401 3000 8
+shot r1
+dump r1
+random 402 3000 8
+shot r2
+dump r2

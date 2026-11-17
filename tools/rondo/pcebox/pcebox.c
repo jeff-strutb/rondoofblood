@@ -20,6 +20,10 @@
  *                       sub-weapon and crouching (never SELECT+RUN, the
  *                       soft reset); the same seed plays the same
  *   shot NAME           the last frame as OUT/NAME.ppm
+ *   poke ADDR VALUE     write VALUE (hex) to the logical address ADDR (hex, $2000-$7FFF:
+ *                       base RAM or a RAM bank mapped there) between frames; the
+ *                       byte loses its disc origin in a trace. Same frame, same byte,
+ *                       in a record and its hybrid, so the oracles see one game
  *   dump NAME           OUT/NAME.ram: frame number, MPR0-7 and PC, then
  *                       Super System Card RAM ($68-$7F), CD RAM ($80-$87)
  *                       and base RAM ($F8), 8 KB a bank in that order
@@ -54,6 +58,7 @@ void trace_irq(void);
 void trace_check(const char *name, const uint8_t *(*bank)(unsigned));
 void trace_finish(const char *dir);
 void trace_watch(uint32_t phys);
+void trace_poke(uint32_t phys);
 static const char *trace_user;
 static int trace_plant;
 
@@ -314,6 +319,21 @@ static void dump(const char *name)
     fclose(f);
 }
 
+/* Write a byte of RAM mapped at a logical address, between frames. 0, or 1 if nothing is there. */
+static int poke(unsigned addr, unsigned value)
+{
+    if (addr < 0x2000 || addr >= 0x8000 || value > 0xFF)
+        return 1;
+    unsigned bank = core_mpr(addr >> 13);
+    uint8_t *p = (uint8_t *)core_bank(bank);
+    if (!p || !((bank >= 0x68 && bank <= 0x87) || (bank >= 0xF8 && bank <= 0xFB)))
+        return 1;
+    p[addr & 0x1FFF] = (uint8_t)value;
+    if (trace_user)
+        trace_poke((uint32_t)bank << 13 | (addr & 0x1FFF));
+    return 0;
+}
+
 /* Run a script; include nests up to 8 deep. 0, or nonzero on a bad line. */
 static int run_script(const char *script, int depth)
 {
@@ -365,6 +385,15 @@ static int run_script(const char *script, int depth)
             shot(a1);
         } else if (!strcmp(cmd, "dump") && k == 2) {
             dump(a1);
+        } else if (!strcmp(cmd, "poke") && k >= 2) {
+            char a2[32];
+            if (sscanf(line, "%*s %*s %31s", a2) != 1 ||
+                poke((unsigned)strtoul(a1[0] == '$' ? a1 + 1 : a1, NULL, 16),
+                     (unsigned)strtoul(a2[0] == '$' ? a2 + 1 : a2, NULL, 16))) {
+                fprintf(stderr, "pcebox: %s:%d: poke: no RAM there, or a bad value\n", script, ln);
+                fclose(s);
+                return 2;
+            }
         } else {
             fprintf(stderr, "pcebox: %s:%d: bad command\n", script, ln);
             fclose(s);

@@ -4,7 +4,8 @@
 Runs each script in tools/rondo/scripts/ (names starting with `_` are
 include-only) on pcebox with --trace, in parallel, each under a timeout,
 into build/rondo/trace/<script>/. Then merges the per-run maps (an OR of
-the flags) into build/rondo/trace/discmap.bin, cardmap.bin and noprov.bin.
+the flags) of every script's last trace, whichever were run now, into
+build/rondo/trace/discmap.bin, cardmap.bin and noprov.bin.
 
 Fails if any run fails, times out, or reports a RAM byte that differs from
 the disc byte its provenance names.
@@ -69,8 +70,10 @@ def main():
         for name, err, ok in ex.map(run, scripts):
             print(f"{name}: {err or ok}")
             bad += err is not None
+    # The merged maps cover every script's last trace, not only the ones run now.
     merged = {m: bytearray(n) for m, n in MAPS}
-    for script in scripts:
+    every = sorted(p for p in glob.glob(os.path.join(SCRIPTS, "*.txt")) if not os.path.basename(p).startswith("_"))
+    for script in every:
         name = os.path.splitext(os.path.basename(script))[0]
         for m, n in MAPS:
             p = os.path.join(OUT, name, m)

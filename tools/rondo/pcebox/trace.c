@@ -248,6 +248,13 @@ void trace_wr(uint32_t phys, uint8_t v)
     }
 }
 
+/* A script's poke: the byte now holds no disc byte. */
+void trace_poke(uint32_t phys)
+{
+    if (prov)
+        prov[canon(phys)] = NONE;
+}
+
 void trace_irq(void)
 {
     irq_pending = 1;

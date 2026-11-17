@@ -663,12 +663,6 @@ BackupAccess BackupRead(void);
 void backup_read_exit_shim(BackupAccess read);
 void abi_BackupRead(void);
 Alu BackupWrite(Alu r);
-Alu AdpcmLoad(Alu r);
-Alu AdpcmLoadFixed(Alu r);
-Alu CdSearchTrack(Alu r);
-Alu LoadSceneScript(Alu r);
-Alu SceneCallOverlay(Alu r);
-Alu SceneReadSectors(Alu r);
 Alu StageEnter(Alu r);
 Alu StageLoad(Alu r);
 Sum SaveVramToRam(void);
@@ -901,5 +895,63 @@ Wipe TitleWipe(void);
 LogoStart TitleLogoStart(void);
 LogoFade TitleLogoFade(void);
 Cycle TitleCycle(void);
+
+/*
+ * The disc loaders: each BIOS call they made, in order, with what the game loaded before it,
+ * for their wrappers to replay as the registers and flags the calls leave.
+ */
+typedef enum {
+    DISC_AD_STOP, DISC_AD_STAT, DISC_SUM, DISC_MUL, DISC_CD_STAT, DISC_CD_PAUSE, DISC_AD_TRANS,
+    DISC_AD_CPLAY, DISC_CD_SEARCH, DISC_CD_READ, DISC_OVERLAY, DISC_SCENE_BANKS, DISC_SCENE_GOTO,
+    DISC_SCENE_END
+} DiscCallKind;
+
+typedef struct { uint8_t al; uint8_t bl; uint16_t product; } DiscProduct;
+
+typedef struct {
+    DiscCallKind kind;
+    uint8_t given;   /* the byte the game loaded last before the call */
+    uint8_t index;   /* DISC_SCENE_GOTO: the list's new low byte, which goes by X */
+    bool summed;     /* a subtract since the last call left C and V: sum */
+    Sum sum;         /* DISC_SUM: an address's last add, its value left in A */
+    union {
+        uint8_t control;
+        AdStat ad_stat;
+        DiscProduct mul;
+        CdStat cd_stat;
+        CdPause cd_pause;
+        AdTrans ad_trans;
+        AdCplay ad_cplay;
+        CdSearch cd_search;
+        CdRead cd_read;
+        Cpu after;   /* DISC_OVERLAY: what original code left, which has no C yet */
+    } as;
+} DiscCall;
+
+enum { DISC_CALLS_KEPT = 32 };
+
+typedef struct {
+    unsigned count;
+    DiscCall calls[DISC_CALLS_KEPT];
+} DiscLog;
+
+typedef struct { bool already; uint8_t sound; DiscLog log; } AdpcmLoadRun;
+typedef struct { bool skipped; DiscLog log; } TrackSearch;
+
+AdpcmLoadRun AdpcmLoad(uint8_t sound);
+DiscLog AdpcmLoadFixed(void);
+DiscLog AdpcmPlayFromDisc(uint8_t sound);
+TrackSearch CdSearchTrack(uint8_t track);
+/* A scene overlay's entry run, and the bank add that mapped it, which leaves C and V for it. */
+typedef struct { Sum bank; uint8_t pointer_high; Cpu after; } SceneCall;
+SceneCall SceneCallOverlay(uint8_t offset);
+DiscLog LoadSceneScript(uint8_t scene);
+DiscLog SceneReadSectors(uint8_t op);
+void abi_SceneCallOverlay(void);
+void abi_SceneReadSectors(void);
+void disc_log_exit_shim(const DiscLog *log);
+void adpcm_load_exit_shim(const AdpcmLoadRun *run);
+void abi_AdpcmLoadFixed(void);
+void abi_CdSearchTrack(void);
 
 #endif

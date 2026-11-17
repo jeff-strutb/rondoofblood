@@ -95,11 +95,11 @@ Alu StageEnter(Alu r)
             alu_load(&r, 0);
             wr8(zStage, 0);
             alu_load(&r, SCENE_MENU_A);
-            r = LoadSceneScript(r);
+            r = call_abi(abi_LoadSceneScript, r);
             alu_load(&r, SCENE_MENU_B);
-            r = LoadSceneScript(r);
+            r = call_abi(abi_LoadSceneScript, r);
             alu_load(&r, ADPCM_MENU);
-            r = AdpcmLoad(r);
+            r = call_abi(abi_AdpcmLoad, r);
             finished = true;
         } else if (alu_compare(&r, byte, 0x85), byte == 0x85) {
             cpu.y = rd8(zField83);
@@ -204,15 +204,15 @@ Alu StageLoad(Alu r)
         alu_compare(&r, byte, loaded);
         if (byte != loaded) {
             wr8(zCharacterLoaded, byte);
-            r = LoadSceneScript(r);
+            r = call_abi(abi_LoadSceneScript, r);
         }
     }
     byte = rd8_zp(zTemp0A);
     r = adc8(byte, rd8(zCharacter), false);
-    r = LoadSceneScript(r);
+    r = call_abi(abi_LoadSceneScript, r);
     byte = rd8_zp(zTemp0A);
     alu_load(&r, (uint8_t)(byte + 2));
-    r = LoadSceneScript(r);
+    r = call_abi(abi_LoadSceneScript, r);
     stage = rd8(zStage);
     alu_load(&r, stage);
     if (stage & 0x80) {
@@ -235,12 +235,12 @@ Alu StageLoad(Alu r)
     cpu.x = (uint8_t)(stage & STAGE_INDEX_MASK);
     byte = rd8((uint16_t)(adpcm_table + cpu.x));
     r = adc8(byte, rd8(zCharacter), false);
-    r = AdpcmLoad(r);
+    r = call_abi(abi_AdpcmLoad, r);
     stage = rd8(zStage);
     cpu.x = (uint8_t)(stage & STAGE_INDEX_MASK);
     byte = rd8((uint16_t)(track_table + cpu.x));
     alu_load(&r, byte);
-    return CdSearchTrack(r);
+    return call_abi(abi_CdSearchTrack, r);
 }
 
 void abi_StageLoad(void)

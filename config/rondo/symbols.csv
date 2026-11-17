@@ -350,6 +350,7 @@ D3,zp,zFieldD3,cleared with the player's pad overrides
 3BDD,abs,PadForcedPress,ORed into zPadPressed each frame
 3BDF,abs,PadForcedPressB,ORed into zPadPressed each frame
 3BE1,abs,PlayerByte3BE1,player state not yet identified
+3BDE,abs,PlayerInvincibleTimer,the potion's invincibility: counts down every fourth frame while not zero
 3BE2,abs,PlayerByte3BE2,player state not yet identified
 3BE3,abs,PlayerByte3BE3,player state not yet identified
 3BE8,abs,PlayerByte3BE8,player state not yet identified
@@ -401,6 +402,8 @@ BB65,abs,RichterWallPushBits,the zPlayerPush bit that counts as a wall by side
 3BD9,abs,PadOverrides,four bytes that force the pad
 3BE0,abs,RichterItemReady,$0F when the player has the hearts for the item in hand
 BC1B,abs,AnimationLists,pointers to Richter's animations
+B792,abs,RichterInvincibleScripts,the flashing script started at each of the invincibility's marks
+B798,abs,RichterInvincibleMarks,the invincibility timer's values that start a flashing script
 B72D,abs,RichterTurnStates,whether each state lets him turn at the screen's middle
 B84D,abs,RichterItemCosts,hearts each item costs
 B856,abs,RichterItemCrashLists,the sound list each item's crash starts; 0 none
@@ -597,3 +600,6 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 3CFF,abs,ListChannelClearEnd,the first byte past what ClearListChannels clears from ListChannelKind
 3D40,abs,GameRamClearEnd,the first byte past what ResetGameState clears from GameRamStart
 3EEE,abs,ScrollStateClearEnd,the first byte past what ClearScreenState clears from ScrollXFrac
+7135,abs,AdpcmRecords,by ADPCM sound, four bytes: its disc address (less the track's start by AdpcmLoad) and its sector count
+720D,abs,AdpcmStreamRecords,by sound played from the disc, five bytes: its disc address and _AL, _AH for the BIOS's ADPCM play
+74D1,abs,SceneRecords,by scene, five bytes: its disc address and the address of its list of ops

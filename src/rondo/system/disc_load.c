@@ -8,9 +8,18 @@
 #include "ram.h"
 #include "routines.h"
 
+/* The disc addresses in the records count from the disc's start; the BIOS's, from the track's. */
+#define TRACK_START 0x000F32u
+#define FIXED_ADPCM_ADDRESS 0x0010ABu
+
 enum {
     MPR4 = 0x10, MPR5 = 0x20, MPR6 = 0x40, CD_TRACK_ENTRY = 6, CD_PLAY_FROM_MSF = 0x40,
-    CD_PLAY_ONCE = 0x42, CD_PLAY_REPEAT = 0x41,
+    CD_PLAY_ONCE = 0x42, CD_PLAY_REPEAT = 0x41, NO_TRACK = 0xFF,
+    STREAM_RECORD_BYTES = 5, CPLAY_MODE = 0x0E,
+    FIXED_ADPCM_SKIP = 0x20, FIXED_ADPCM_SECTORS = 0x20,
+    SCENE_RECORD_BYTES = 5, SCENE_OVERLAY_BANK = 0x04, SCENE_READ_BYTES = 3, SCENE_BANKS_BYTES = 4,
+    SCENE_CALL_FIRST = 0, SCENE_CALL_ONE = 2, SCENE_CALL_SECOND = 4, SCENE_CALL_OTHER = 0x10,
+    SCENE_TILE_BYTES = 0x1400, SCENE_TILES_FROM = 0xC000, SCENE_TILES_TO = 0xA000,
     CD_STATUS_IDLE = 0,
     BACKUP_NAME_LO = 0x9A, BACKUP_NAME_HI = 0x6C,
     BACKUP_BLANK_LO = 0x8F, BACKUP_BLANK_HI = 0x6C,
@@ -18,60 +27,6 @@ enum {
     OP_BANKS = 0, OP_GOTO = 0xC0, OP_CALL_BY_SCENE = 0x82, OP_COPY_TILES = 0x81,
     OP_CALL_TWO = 0x80, OP_CALL_ONE = 0x83
 };
-
-/* The three bytes of a record's disc address, at Y 0 to 2, less the track's start. */
-static Alu record_address(Alu r)
-{
-    uint8_t byte;
-
-    cpu.y = 0;
-    byte = rd8_zp_y(zTemp00, cpu.y);
-    r = sbc8(byte, 0x32, true);
-    wr8(zBiosDl, r.a);
-    cpu.y = 1;
-    byte = rd8_zp_y(zTemp00, cpu.y);
-    r = sbc8(byte, 0x0F, r.c);
-    wr8(zBiosCh, r.a);
-    cpu.y = 2;
-    byte = rd8_zp_y(zTemp00, cpu.y);
-    r = sbc8(byte, 0x00, r.c);
-    wr8(zBiosCl, r.a);
-    return r;
-}
-
-/* Waits for the drive: asks its status, and pauses it until it will stop. */
-static Alu wait_drive_idle(Alu r)
-{
-    for (;;) {
-        r.a = 0;
-        r = call_with(BiosCdStat, r);
-        alu_compare(&r, r.a, CD_STATUS_IDLE);
-        if (r.a == CD_STATUS_IDLE)
-            return r;
-        do {
-            r = call_with(BiosCdPause, r);
-            alu_compare(&r, r.a, CD_STATUS_IDLE);
-        } while (r.a != CD_STATUS_IDLE);
-    }
-}
-
-/* index * size + table, with the BIOS's 8-bit multiply, into zTemp00-01. */
-static Alu record_pointer(Alu r, uint8_t index, uint8_t size, uint8_t table_lo, uint8_t table_hi)
-{
-    uint8_t byte;
-
-    wr8(zBiosAl, index);
-    alu_load(&r, size);
-    wr8(zBiosBl, size);
-    r = call_with(BiosMaMul8u, r);
-    byte = rd8(zBiosCl);
-    r = adc8(table_lo, byte, false);
-    wr8(zTemp00, r.a);
-    byte = rd8(zBiosCh);
-    r = adc8(table_hi, byte, r.c);
-    wr8(zTemp01, r.a);
-    return r;
-}
 
 /*
  * @routine 0048:424 BackupRead
@@ -195,164 +150,352 @@ void abi_BackupFailed(void)
         wait_interrupt();
 }
 
+/* A call made, kept in the log; past DISC_CALLS_KEPT the oldest go. */
+static void log_call(DiscLog *log, DiscCall call)
+{
+    log->calls[log->count % DISC_CALLS_KEPT] = call;
+    log->count++;
+}
+
+static DiscCall disc_call(DiscCallKind kind)
+{
+    DiscCall call = { 0 };
+
+    call.kind = kind;
+    return call;
+}
+
+/* An address's last add, which leaves its byte in A and its carry and overflow. */
+static void log_sum(DiscLog *log, Sum sum)
+{
+    DiscCall call = disc_call(DISC_SUM);
+
+    call.sum = sum;
+    log_call(log, call);
+}
+
+/* Waits for the drive: asks whether it is busy, and pauses it until it says it has stopped. */
+static void wait_drive_idle(DiscLog *log)
+{
+    for (;;) {
+        DiscCall stat = disc_call(DISC_CD_STAT);
+
+        stat.as.cd_stat = cd_stat(0);
+        log_call(log, stat);
+        if (cd_stat_result(stat.as.cd_stat) == 0)
+            return;
+        for (;;) {
+            DiscCall pause = disc_call(DISC_CD_PAUSE);
+
+            pause.as.cd_pause = cd_pause();
+            log_call(log, pause);
+            if (cd_pause_result(pause.as.cd_pause) == 0)
+                break;
+        }
+    }
+}
+
+/* A record's three address bytes, from the pointer in zTemp00-01, less the track's start. */
+static Sum record_disc_address(void)
+{
+    Sum low = sub_bytes(rd8_zp_y(zTemp00, 0), (uint8_t)TRACK_START, true);
+    Sum middle;
+    Sum high;
+
+    wr8(zBiosDl, low.value);
+    middle = sub_bytes(rd8_zp_y(zTemp00, 1), (uint8_t)(TRACK_START >> 8), low.carry);
+    wr8(zBiosCh, middle.value);
+    high = sub_bytes(rd8_zp_y(zTemp00, 2), (uint8_t)(TRACK_START >> 16), middle.carry);
+    wr8(zBiosCl, high.value);
+    return high;
+}
+
+/* A record's address in zTemp00-01: the BIOS's multiply of index by size, plus the table. */
+static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size)
+{
+    DiscCall mul = disc_call(DISC_MUL);
+    Sum low;
+    Sum high;
+
+    wr8(zBiosAl, index);
+    wr8(zBiosBl, size);
+    mul.as.mul.al = index;
+    mul.as.mul.bl = size;
+    mul.as.mul.product = ma_mul8u(index, size);
+    log_call(log, mul);
+    low = add_bytes((uint8_t)table, rd8(zBiosCl), false);
+    wr8(zTemp00, low.value);
+    high = add_bytes((uint8_t)(table >> 8), rd8(zBiosCh), low.carry);
+    wr8(zTemp01, high.value);
+    log_sum(log, high);
+}
+
+/* The BIOS's ADPCM transfer of _AL sectors from the address in _CL, _CH, _DL to ADPCM 0. */
+static AdTrans adpcm_transfer(DiscLog *log, uint8_t sectors, Sum last)
+{
+    DiscCall trans = disc_call(DISC_AD_TRANS);
+
+    wr8(zBiosAl, sectors);
+    wr8(zBiosDh, 0);
+    wr8(zBiosBh, 0);
+    wr8(zBiosBl, 0);
+    trans.given = sectors;
+    trans.summed = true;
+    trans.sum = last;
+    trans.as.ad_trans = ad_trans();
+    log_call(log, trans);
+    return trans.as.ad_trans;
+}
+
 /*
  * @routine 0048:643 AdpcmLoad
  * @run 6A:6E43
  * WHAT IT DOES: Loads a sound into ADPCM memory from the disc, unless it is already there.
  * HOW: Stops the ADPCM and waits on its status, waits for the drive, then the BIOS's ADPCM
- * transfer from the record for it, until it answers zero.
- * Entry: A sound. Exit, already there: A kept, N, Z, C from the compare. Exit: A zero,
- * N 0, Z 1, C 1; Y 3; V as the BIOS leaves it.
+ * transfer from the sound's record in AdpcmRecords, until it answers zero.
+ * Entry: A sound. Exit, already there: A kept, N 0, Z 1, C 1 from the compare. Exit: A zero,
+ * N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves them. The C replays the last 32
+ * of the BIOS's calls.
  */
-Alu AdpcmLoad(Alu r)
+AdpcmLoadRun AdpcmLoad(uint8_t sound)
 {
-    uint8_t sound = r.a;
-    uint8_t byte;
+    AdpcmLoadRun run;
+    DiscCall stop = disc_call(DISC_AD_STOP);
+    DiscCall stat;
+    Sum low;
 
-    byte = rd8(zMusicWanted);
-    alu_compare(&r, sound, byte);
-    if (sound == byte)
-        return r;
+    run.sound = sound;
+    run.log.count = 0;
+    run.already = sound == rd8(zMusicWanted);
+    if (run.already)
+        return run;
     wr8(zMusicWanted, sound);
-    r = call_with(BiosAdStop, r);
+    stop.as.control = ad_stop();
+    log_call(&run.log, stop);
     do {
-        r = call_with(BiosAdStat, r);
-        cpu.y = r.a;
-        alu_nz(&r, r.a);
-    } while (r.a != 0);
-    alu_load(&r, sound);
-    r.a = (uint8_t)(sound << 2);
-    r = adc8(r.a, 0x35, false);
-    wr8(zTemp00, r.a);
-    r = adc8(0, 0x71, r.c);
-    wr8(zTemp01, r.a);
-    do {
-        r = wait_drive_idle(r);
-        r = record_address(r);
-        cpu.y = 3;
-        byte = rd8_zp_y(zTemp00, cpu.y);
-        alu_load(&r, byte);
-        wr8(zBiosAl, byte);
-        wr8(zBiosDh, 0);
-        wr8(zBiosBh, 0);
-        wr8(zBiosBl, 0);
-        r = call_with(BiosAdTrans, r);
-        alu_compare(&r, r.a, 0);
-    } while (r.a != 0);
+        stat = disc_call(DISC_AD_STAT);
+        stat.as.ad_stat = ad_stat();
+        log_call(&run.log, stat);
+    } while (stat.as.ad_stat.playing != 0);
+    low = add_bytes((uint8_t)(sound << 2), (uint8_t)AdpcmRecords, false);
+    wr8(zTemp00, low.value);
+    low = add_bytes(0, (uint8_t)(AdpcmRecords >> 8), low.carry);
+    wr8(zTemp01, low.value);
+    log_sum(&run.log, low);
+    for (;;) {
+        Sum last;
+
+        wait_drive_idle(&run.log);
+        last = record_disc_address();
+        if (ad_trans_result(adpcm_transfer(&run.log, rd8_zp_y(zTemp00, 3), last)) == 0)
+            break;
+    }
     wr8(BiosAdpcmBusy, 0);
-    return r;
+    return run;
+}
+
+void adpcm_load_exit_shim(const AdpcmLoadRun *run)
+{
+    if (run->already) {
+        cpu.a = run->sound;
+        abi_nz(0);
+        abi_flag(P_C, true);
+        return;
+    }
+    disc_log_exit_shim(&run->log);
 }
 
 void abi_AdpcmLoad(void)
 {
-    abi_alu(AdpcmLoad(alu_from_cpu()));
+    AdpcmLoadRun run = AdpcmLoad(cpu.a);
+
+    adpcm_load_exit_shim(&run);
 }
 
 /*
  * @routine 0048:69D AdpcmLoadFixed
  * @run 6A:6E9D
- * WHAT IT DOES: Loads $20 sectors of ADPCM from $20 past disc address $0010AB, with the
+ * WHAT IT DOES: Loads $20 sectors of ADPCM from $20 sectors past disc address $0010AB, with the
  * track's start taken off as a record's is.
- * HOW: Waits for the drive; the address worked out from its constants; ADPCM transfer.
- * Entry: nothing. Exit: A zero, N 0, Z 1, C 1; Y 3; V as the BIOS leaves it.
+ * HOW: Waits for the drive; the address worked out a byte at a time from its constants; the
+ * BIOS's ADPCM transfer, until it answers zero.
+ * Entry: nothing. Exit: A zero, N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves
+ * them.
  */
-Alu AdpcmLoadFixed(Alu r)
+DiscLog AdpcmLoadFixed(void)
 {
-    uint8_t byte;
+    DiscLog log;
 
-    do {
-        r = wait_drive_idle(r);
-        cpu.y = 0;
-        r = sbc8(0xAB, 0x32, true);
-        wr8(zBiosDl, r.a);
-        cpu.y = 1;
-        r = sbc8(0x10, 0x0F, r.c);
-        wr8(zBiosCh, r.a);
-        cpu.y = 2;
-        r = sbc8(0x00, 0x00, r.c);
-        wr8(zBiosCl, r.a);
-        byte = rd8(zBiosDl);
-        r = adc8(byte, 0x20, false);
-        wr8(zBiosDl, r.a);
-        byte = rd8(zBiosCh);
-        r = adc8(0, byte, r.c);
-        wr8(zBiosCh, r.a);
-        byte = rd8(zBiosCl);
-        r = adc8(0, byte, r.c);
-        wr8(zBiosCl, r.a);
-        cpu.y = 3;
-        alu_load(&r, 0x20);
-        wr8(zBiosAl, 0x20);
-        wr8(zBiosDh, 0);
-        wr8(zBiosBh, 0);
-        wr8(zBiosBl, 0);
-        r = call_with(BiosAdTrans, r);
-        alu_compare(&r, r.a, 0);
-    } while (r.a != 0);
+    log.count = 0;
+    for (;;) {
+        Sum low;
+        Sum middle;
+        Sum high;
+
+        wait_drive_idle(&log);
+        low = sub_bytes((uint8_t)FIXED_ADPCM_ADDRESS, (uint8_t)TRACK_START, true);
+        wr8(zBiosDl, low.value);
+        middle = sub_bytes((uint8_t)(FIXED_ADPCM_ADDRESS >> 8), (uint8_t)(TRACK_START >> 8),
+                           low.carry);
+        wr8(zBiosCh, middle.value);
+        high = sub_bytes((uint8_t)(FIXED_ADPCM_ADDRESS >> 16), (uint8_t)(TRACK_START >> 16),
+                         middle.carry);
+        wr8(zBiosCl, high.value);
+        low = add_bytes(rd8(zBiosDl), FIXED_ADPCM_SKIP, false);
+        wr8(zBiosDl, low.value);
+        middle = add_bytes(0, rd8(zBiosCh), low.carry);
+        wr8(zBiosCh, middle.value);
+        high = add_bytes(0, rd8(zBiosCl), middle.carry);
+        wr8(zBiosCl, high.value);
+        if (ad_trans_result(adpcm_transfer(&log, FIXED_ADPCM_SECTORS, high)) == 0)
+            break;
+    }
     wr8(BiosAdpcmBusy, 0);
-    return r;
+    return log;
 }
 
 void abi_AdpcmLoadFixed(void)
 {
-    abi_alu(AdpcmLoadFixed(alu_from_cpu()));
+    DiscLog log = AdpcmLoadFixed();
+
+    disc_log_exit_shim(&log);
 }
 
 /*
  * @routine 0048:6EB AdpcmPlayFromDisc
  * @run 6A:6EEB
  * WHAT IT DOES: Plays a sound straight from the disc as ADPCM.
- * HOW: The record for it, five bytes each from $720D; waits for the drive; the BIOS's
- * ADPCM play with mode $0E, until it answers zero.
- * Entry: A sound. Exit: A zero, N 0, Z 1, C 1; Y 4; V as the BIOS leaves it.
+ * HOW: The sound's record, five bytes each in AdpcmStreamRecords; waits for the drive; the
+ * BIOS's continuous ADPCM play in mode $0E, until it answers zero.
+ * Entry: A sound. Exit: A zero, N 0, Z 1, C 1; Y 4 unless the BIOS changed it; X and V as the
+ * BIOS leaves them.
  */
+DiscLog AdpcmPlayFromDisc(uint8_t sound)
+{
+    DiscLog log;
+
+    log.count = 0;
+    record_at(&log, AdpcmStreamRecords, sound, STREAM_RECORD_BYTES);
+    for (;;) {
+        DiscCall play = disc_call(DISC_AD_CPLAY);
+
+        wait_drive_idle(&log);
+        play.summed = true;
+        play.sum = record_disc_address();
+        wr8(zBiosAl, rd8_zp_y(zTemp00, 3));
+        wr8(zBiosAh, rd8_zp_y(zTemp00, 4));
+        wr8(zBiosBl, 0);
+        wr8(zBiosDh, CPLAY_MODE);
+        play.given = CPLAY_MODE;
+        play.as.ad_cplay = ad_cplay();
+        log_call(&log, play);
+        if (ad_cplay_result(play.as.ad_cplay) == 0)
+            break;
+    }
+    wr8(BiosAdpcmBusy, 0);
+    return log;
+}
+
 void abi_AdpcmPlayFromDisc(void)
 {
-    Alu r = record_pointer(alu_from_cpu(), cpu.a, 5, 0x0D, 0x72);
-    uint8_t byte;
+    DiscLog log = AdpcmPlayFromDisc(cpu.a);
 
-    do {
-        r = wait_drive_idle(r);
-        r = record_address(r);
-        cpu.y = 3;
-        byte = rd8_zp_y(zTemp00, cpu.y);
-        alu_load(&r, byte);
-        wr8(zBiosAl, byte);
-        cpu.y = 4;
-        byte = rd8_zp_y(zTemp00, cpu.y);
-        wr8(zBiosAh, byte);
-        wr8(zBiosBl, 0);
-        alu_load(&r, 0x0E);
-        wr8(zBiosDh, 0x0E);
-        r = call_with(BiosAdCplay, r);
-        alu_compare(&r, r.a, 0);
-    } while (r.a != 0);
-    wr8(BiosAdpcmBusy, 0);
-    abi_alu(r);
+    disc_log_exit_shim(&log);
 }
 
-/* The record for a track, six bytes each from $7250, as the BIOS's play and search want. */
-static Alu track_record_start(Alu r)
+/*
+ * The registers and flags each call leaves, with what the game loads before it and the compare
+ * or transfer it makes of the answer: the order the original runs them in.
+ */
+static void disc_call_exit_shim(const DiscCall *call)
 {
-    uint8_t byte;
-
-    alu_load(&r, 0x40);
-    wr8(zBiosBh, 0x40);
-    byte = rd8_zp(zTemp00);
-    alu_load(&r, byte);
-    wr8(zBiosAl, byte);
-    cpu.y = 1;
-    byte = rd8_zp_y(zTemp00, cpu.y);
-    alu_load(&r, byte);
-    wr8(zBiosAh, byte);
-    cpu.y = 2;
-    byte = rd8_zp_y(zTemp00, cpu.y);
-    alu_load(&r, byte);
-    wr8(zBiosBl, byte);
-    return r;
+    if (call->kind == DISC_AD_TRANS || call->kind == DISC_AD_CPLAY || call->kind == DISC_CD_SEARCH ||
+        call->kind == DISC_CD_READ) {
+        cpu.y = call->kind == DISC_AD_TRANS ? 3 : call->kind == DISC_AD_CPLAY ? 4 : 2;
+        cpu.a = call->given;
+        abi_nz(call->given);
+    }
+    if (call->summed) {
+        abi_flag(P_C, call->sum.carry);
+        abi_flag(P_V, call->sum.overflow);
+    }
+    switch (call->kind) {
+    case DISC_AD_STOP:
+        ad_stop_exit_shim(call->as.control);
+        return;
+    case DISC_AD_STAT:
+        ad_stat_exit_shim(call->as.ad_stat);
+        cpu.y = cpu.a;
+        abi_nz(cpu.a);
+        return;
+    case DISC_SUM:
+        cpu.a = call->sum.value;
+        abi_nz(call->sum.value);
+        abi_flag(P_C, call->sum.carry);
+        abi_flag(P_V, call->sum.overflow);
+        return;
+    case DISC_MUL:
+        cpu.a = call->as.mul.bl;
+        abi_nz(call->as.mul.bl);
+        ma_mul8u_exit_shim(call->as.mul.al, call->as.mul.bl, call->as.mul.product);
+        return;
+    case DISC_CD_STAT:
+        cpu.a = 0;
+        cd_stat_exit_shim(call->as.cd_stat);
+        break;
+    case DISC_CD_PAUSE:
+        cd_pause_exit_shim(call->as.cd_pause);
+        break;
+    case DISC_AD_TRANS:
+        ad_trans_exit_shim(call->as.ad_trans);
+        break;
+    case DISC_AD_CPLAY:
+        ad_cplay_exit_shim(call->as.ad_cplay);
+        break;
+    case DISC_CD_SEARCH:
+        cd_search_exit_shim(call->as.cd_search);
+        cpu.x = cpu.a;
+        abi_nz(cpu.a);
+        return;
+    case DISC_CD_READ:
+        cd_read_exit_shim(call->as.cd_read);
+        cpu.x = cpu.a;
+        abi_nz(cpu.a);
+        return;
+    case DISC_OVERLAY:
+        cpu.a = call->as.after.a;
+        cpu.x = call->as.after.x;
+        cpu.y = call->as.after.y;
+        cpu.p = call->as.after.p;
+        return;
+    case DISC_SCENE_BANKS:
+        cpu.y = 3;
+        return;
+    case DISC_SCENE_GOTO:
+        cpu.x = call->index;
+        cpu.y = 2;
+        cpu.a = call->given;
+        abi_nz(call->given);
+        return;
+    case DISC_SCENE_END:
+        cpu.a = call->given;
+        abi_nz((uint8_t)(call->given - 0x80));
+        abi_flag(P_C, true);
+        return;
+    }
+    abi_nz(cpu.a);
+    abi_flag(P_C, true);
 }
 
-/* The play of a track, whichever way the mode came. A in r is the track. */
+/* A loader's exit: its kept calls replayed, oldest first. */
+void disc_log_exit_shim(const DiscLog *log)
+{
+    unsigned first = log->count > DISC_CALLS_KEPT ? log->count - DISC_CALLS_KEPT : 0;
+
+    for (unsigned i = first; i < log->count; i++)
+        disc_call_exit_shim(&log->calls[i % DISC_CALLS_KEPT]);
+}
+
 /* The track's entry in CdTrackTable, through zTemp00 and 01, from the BIOS's multiply. */
 static TrackEntry track_entry(uint8_t track)
 {
@@ -486,236 +629,235 @@ void abi_CdPlayRepeat(void)
  * @run 6A:6F9E
  * WHAT IT DOES: Seeks to a CD track, so that its play will start at once. $FF does
  * nothing.
- * HOW: The record for it; the BIOS's search, until it answers zero.
+ * HOW: The track's entry in CdTrackTable; the BIOS's search from its first three bytes, until it
+ * answers zero.
  * Entry: A track. Exit, $FF: A kept, N 0, Z 1, C 1. Exit: A zero, X and Y kept, N and Z
  * from X; C and V as the BIOS leaves them.
  */
-Alu CdSearchTrack(Alu r)
+TrackSearch CdSearchTrack(uint8_t track)
 {
-    uint8_t track = r.a;
-    uint8_t saved_x = cpu.x;
-    uint8_t saved_y = cpu.y;
+    TrackSearch search;
 
-    alu_compare(&r, track, 0xFF);
-    if (track == 0xFF)
-        return r;
+    search.log.count = 0;
+    search.skipped = track == NO_TRACK;
+    if (search.skipped)
+        return search;
     wr8(zCdTrack, track);
-    r = record_pointer(r, track, 6, 0x50, 0x72);
-    do {
-        r = track_record_start(r);
-        r = call_with(BiosCdSearch, r);
-        cpu.x = r.a;
-        alu_nz(&r, r.a);
-    } while (r.a != 0);
-    cpu.y = saved_y;
-    cpu.x = saved_x;
-    alu_nz(&r, saved_x);
-    return r;
+    record_at(&search.log, CdTrackTable, track, CD_TRACK_ENTRY);
+    for (;;) {
+        DiscCall seek = disc_call(DISC_CD_SEARCH);
+
+        wr8(zBiosBh, CD_PLAY_FROM_MSF);
+        wr8(zBiosAl, rd8_zp(zTemp00));
+        wr8(zBiosAh, rd8_zp_y(zTemp00, 1));
+        seek.given = rd8_zp_y(zTemp00, 2);
+        wr8(zBiosBl, seek.given);
+        seek.as.cd_search = cd_search();
+        log_call(&search.log, seek);
+        if (cd_search_result(seek.as.cd_search) == 0)
+            break;
+    }
+    return search;
 }
 
 void abi_CdSearchTrack(void)
 {
-    abi_alu(CdSearchTrack(alu_from_cpu()));
+    uint8_t x = cpu.x;
+    uint8_t y = cpu.y;
+    TrackSearch search = CdSearchTrack(cpu.a);
+
+    if (search.skipped) {
+        abi_nz(0);
+        abi_flag(P_C, true);
+        return;
+    }
+    disc_log_exit_shim(&search.log);
+    cpu.x = x;
+    cpu.y = y;
+    abi_nz(x);
+}
+
+/* The scene overlay's entry at $8006, with the registers SceneCallOverlay gives it. */
+static Cpu scene_overlay_shim(uint8_t offset, uint8_t pointer_high, Sum bank)
+{
+    cpu.a = pointer_high;
+    cpu.x = offset;
+    cpu.y = 0;
+    abi_nz(pointer_high);
+    abi_flag(P_C, bank.carry);
+    abi_flag(P_V, bank.overflow);
+    call_original(FrameOverlay8006);
+    return cpu;
 }
 
 /*
  * @routine 0049:100 SceneCallOverlay
  * @run 6A:7100
- * WHAT IT DOES: Maps the scene overlay and runs its entry at $8006 with a pointer from the
- * table at $72C8.
- * HOW: The pointer goes to zProduct1-2, where that entry takes it.
+ * WHAT IT DOES: Maps the scene overlay and runs its entry at $8006 with a pointer from
+ * SceneCallTable.
+ * HOW: The pointer goes to zProduct1-2, where that entry takes it; Y 0.
  * Entry: X the table's offset. Exit: as the overlay leaves them.
  */
-Alu SceneCallOverlay(Alu r)
+SceneCall SceneCallOverlay(uint8_t offset)
 {
-    uint8_t byte = rd8(zRamBaseBank);
+    SceneCall call;
 
-    r = adc8(0x04, byte, false);
-    tam(MPR4, r.a);
-    byte = rd8((uint16_t)(SceneCallTable + cpu.x));
-    alu_load(&r, byte);
-    wr8(zProduct1, byte);
-    byte = rd8((uint16_t)(SceneCallTable + 1 + cpu.x));
-    alu_load(&r, byte);
-    wr8(zProduct2, byte);
-    cpu.y = 0;
-    return call_with(FrameOverlay8006, r);
+    call.bank = add_bytes(SCENE_OVERLAY_BANK, rd8(zRamBaseBank), false);
+    tam(MPR4, call.bank.value);
+    wr8(zProduct1, rd8((uint16_t)(SceneCallTable + offset)));
+    call.pointer_high = rd8((uint16_t)(SceneCallTable + 1 + offset));
+    wr8(zProduct2, call.pointer_high);
+    call.after = scene_overlay_shim(offset, call.pointer_high, call.bank);
+    return call;
 }
 
 void abi_SceneCallOverlay(void)
 {
-    abi_alu(SceneCallOverlay(alu_from_cpu()));
+    cpu = SceneCallOverlay(cpu.x).after;
 }
 
-/* The scene's pieces, one op at a time from the list at zTemp08-09. */
-static Alu scene_ops(Alu r);
-
-/* The list moves on by the op's length. */
-static Alu scene_next(Alu r, uint8_t length)
+static void log_overlay(DiscLog *log, uint8_t offset)
 {
-    uint8_t byte = rd8(zTemp08);
+    DiscCall call = disc_call(DISC_OVERLAY);
 
-    r = adc8(length, byte, false);
-    wr8(zTemp08, r.a);
-    byte = rd8(zTemp09);
-    r = adc8(0, byte, r.c);
-    wr8(zTemp09, r.a);
-    return r;
+    call.as.after = SceneCallOverlay(offset).after;
+    log_call(log, call);
+}
+
+/* The list moves on by the op's length; the add's high byte stays in A. */
+static void scene_next(DiscLog *log, uint8_t length)
+{
+    Sum low = add_bytes(length, rd8(zTemp08), false);
+    Sum high;
+
+    wr8(zTemp08, low.value);
+    high = add_bytes(0, rd8(zTemp09), low.carry);
+    wr8(zTemp09, high.value);
+    log_sum(log, high);
 }
 
 /* Which overlay pointer an op $82 takes, by the scene. */
-static Alu scene_call_by_scene(Alu r)
+static uint8_t scene_call_offset(uint8_t scene)
 {
     static const struct { uint8_t scene; uint8_t offset; } cases[] = {
         { 0x02, 0x0C }, { 0x58, 0x0C }, { 0x5A, 0x0C }, { 0x5C, 0x0C },
         { 0x0E, 0x06 }, { 0x0C, 0x0A }, { 0x0A, 0x08 }, { 0x08, 0x0E }
     };
-    uint8_t scene = rd8(zTemp02);
-    uint8_t offset = 0x10;
 
-    for (unsigned i = 0; i < sizeof cases / sizeof cases[0]; i++) {
-        alu_compare(&r, scene, cases[i].scene);
-        if (scene == cases[i].scene) {
-            offset = cases[i].offset;
+    for (unsigned i = 0; i < sizeof cases / sizeof cases[0]; i++)
+        if (scene == cases[i].scene)
+            return cases[i].offset;
+    return SCENE_CALL_OTHER;
+}
+
+/*
+ * An op from 1 to $7F: the BIOS's read of _AL sectors to the op's destination. A failed read is
+ * asked again with the destination the BIOS's answer indexes, as the original's A holds it.
+ */
+static void scene_read(DiscLog *log, uint8_t op)
+{
+    uint8_t index = op;
+
+    for (;;) {
+        DiscCall read = disc_call(DISC_CD_READ);
+        Sum low;
+        Sum middle;
+        uint8_t entry = (uint8_t)(index << 1);
+
+        wr8(zBiosBl, rd8((uint16_t)(SceneReadDestinations + entry)));
+        wr8(zBiosBh, rd8((uint16_t)(SceneReadDestinations + 1 + entry)));
+        record_disc_address();
+        wr8(zBiosDh, 1);
+        low = add_bytes(rd8_zp_y(zTemp08, 1), rd8(zBiosDl), false);
+        wr8(zBiosDl, low.value);
+        middle = add_bytes(0, rd8(zBiosCh), low.carry);
+        wr8(zBiosCh, middle.value);
+        read.sum = add_bytes(0, rd8(zBiosCl), middle.carry);
+        wr8(zBiosCl, read.sum.value);
+        read.summed = true;
+        read.given = rd8_zp_y(zTemp08, 2);
+        wr8(zBiosAl, read.given);
+        read.as.cd_read = cd_read();
+        log_call(log, read);
+        index = cd_read_result(read.as.cd_read);
+        if (index == 0)
             break;
+    }
+    scene_next(log, SCENE_READ_BYTES);
+}
+
+/* The scene's ops, one at a time from the list at zTemp08-09, until one it does not know. */
+static void scene_ops(DiscLog *log)
+{
+    static const uint8_t mprs[] = { MPR4, MPR5, MPR6 };
+
+    for (;;) {
+        uint8_t op = rd8_zp(zTemp08);
+        DiscCall step;
+
+        if (op == OP_BANKS) {
+            for (uint8_t i = 0; i < 3; i++)
+                tam(mprs[i], (uint8_t)(rd8_zp_y(zTemp08, (uint8_t)(i + 1)) + rd8(zRamBaseBank)));
+            log_call(log, disc_call(DISC_SCENE_BANKS));
+            scene_next(log, SCENE_BANKS_BYTES);
+        } else if (!(op & 0x80)) {
+            scene_read(log, op);
+        } else if (op == OP_GOTO) {
+            step = disc_call(DISC_SCENE_GOTO);
+            step.index = rd8_zp_y(zTemp08, 1);
+            step.given = rd8_zp_y(zTemp08, 2);
+            wr8(zTemp08, step.index);
+            wr8(zTemp09, step.given);
+            log_call(log, step);
+        } else if (op == OP_CALL_ONE) {
+            log_overlay(log, SCENE_CALL_ONE);
+            scene_next(log, 1);
+        } else if (op == OP_CALL_BY_SCENE) {
+            log_overlay(log, scene_call_offset(rd8(zTemp02)));
+            scene_next(log, 1);
+        } else if (op == OP_COPY_TILES) {
+            tam(MPR5, (uint8_t)(SCENE_OVERLAY_BANK + rd8(zRamBaseBank)));
+            for (uint16_t i = 0; i < SCENE_TILE_BYTES; i++)
+                wr8((uint16_t)(SCENE_TILES_TO + i), rd8((uint16_t)(SCENE_TILES_FROM + i)));
+            scene_next(log, 1);
+        } else if (op == OP_CALL_TWO) {
+            log_overlay(log, SCENE_CALL_FIRST);
+            log_overlay(log, SCENE_CALL_SECOND);
+            scene_next(log, 1);
+        } else {
+            step = disc_call(DISC_SCENE_END);
+            step.given = op;
+            log_call(log, step);
+            return;
         }
     }
-    cpu.x = offset;
-    alu_nz(&r, offset);
-    return SceneCallOverlay(r);
 }
 
 /*
  * @routine 0049:0B1 SceneReadSectors
  * @run 6A:70B1
- * WHAT IT DOES: A scene op from 1 to 3: reads sectors from the disc to the place in RAM
- * the op gives, at an offset from the scene's own disc address.
- * HOW: The op indexes the table of destinations at $70FA; the op's second byte is the
- * sector offset and its third the count; the BIOS's read, asked again until it answers
- * zero, and each time the table is indexed by what A then holds.
- * Entry: A the op. Exit: the list moved on, and the ops go on.
+ * WHAT IT DOES: A scene op from 1 to $7F: reads sectors from the disc to the place in RAM
+ * the op gives, at an offset from the scene's own disc address; then the ops go on.
+ * HOW: The op indexes SceneReadDestinations; the op's second byte is the sector offset and its
+ * third the count; the BIOS's read, asked again until it answers zero, and each time the table
+ * is indexed by what A then holds.
+ * Entry: A the op. Exit: as LoadSceneScript.
  */
-Alu SceneReadSectors(Alu r)
+DiscLog SceneReadSectors(uint8_t op)
 {
-    uint8_t byte;
+    DiscLog log;
 
-    do {
-        cpu.y = (uint8_t)(r.a << 1);
-        r.c = (r.a & 0x80) != 0;
-        r.c_kept = false;
-        byte = rd8((uint16_t)(SceneReadDestinations + cpu.y));
-        alu_load(&r, byte);
-        wr8(zBiosBl, byte);
-        byte = rd8((uint16_t)(SceneReadDestinations + 1 + cpu.y));
-        wr8(zBiosBh, byte);
-        r = record_address(r);
-        alu_load(&r, 1);
-        wr8(zBiosDh, 1);
-        cpu.y = 1;
-        byte = rd8_zp_y(zTemp08, cpu.y);
-        r = adc8(byte, rd8(zBiosDl), false);
-        wr8(zBiosDl, r.a);
-        byte = rd8(zBiosCh);
-        r = adc8(0, byte, r.c);
-        wr8(zBiosCh, r.a);
-        byte = rd8(zBiosCl);
-        r = adc8(0, byte, r.c);
-        wr8(zBiosCl, r.a);
-        cpu.y = 2;
-        byte = rd8_zp_y(zTemp08, cpu.y);
-        alu_load(&r, byte);
-        wr8(zBiosAl, byte);
-        r = call_with(BiosCdRead, r);
-        cpu.x = r.a;
-        alu_nz(&r, r.a);
-    } while (r.a != 0);
-    r = scene_next(r, 3);
-    return scene_ops(r);
+    log.count = 0;
+    scene_read(&log, op);
+    scene_ops(&log);
+    return log;
 }
 
 void abi_SceneReadSectors(void)
 {
-    abi_alu(SceneReadSectors(alu_from_cpu()));
-}
+    DiscLog log = SceneReadSectors(cpu.a);
 
-static Alu scene_ops(Alu r)
-{
-    uint8_t op;
-    uint8_t byte;
-    uint8_t base;
-
-    for (;;) {
-        op = rd8_zp(zTemp08);
-        alu_load(&r, op);
-        if (op == OP_BANKS) {
-            static const uint8_t mprs[] = { MPR4, MPR5, MPR6 };
-
-            for (uint8_t i = 0; i < 3; i++) {
-                cpu.y = (uint8_t)(i + 1);
-                byte = rd8_zp_y(zTemp08, cpu.y);
-                base = rd8(zRamBaseBank);
-                r = adc8(byte, base, false);
-                tam(mprs[i], r.a);
-            }
-            r = scene_next(r, 4);
-            continue;
-        }
-        if (!(op & 0x80)) {
-            r = SceneReadSectors(r);
-            return r;
-        }
-        alu_compare(&r, op, OP_GOTO);
-        if (op == OP_GOTO) {
-            uint8_t lo;
-
-            cpu.y = 1;
-            lo = rd8_zp_y(zTemp08, cpu.y);
-            cpu.x = lo;
-            cpu.y = 2;
-            byte = rd8_zp_y(zTemp08, cpu.y);
-            alu_load(&r, byte);
-            wr8(zTemp08, lo);
-            wr8(zTemp09, byte);
-            continue;
-        }
-        alu_compare(&r, op, OP_CALL_ONE);
-        if (op == OP_CALL_ONE) {
-            cpu.x = 2;
-            alu_nz(&r, 2);
-            r = SceneCallOverlay(r);
-            r = scene_next(r, 1);
-            continue;
-        }
-        alu_compare(&r, op, OP_CALL_BY_SCENE);
-        if (op == OP_CALL_BY_SCENE) {
-            r = scene_call_by_scene(r);
-            r = scene_next(r, 1);
-            continue;
-        }
-        alu_compare(&r, op, OP_COPY_TILES);
-        if (op == OP_COPY_TILES) {
-            base = rd8(zRamBaseBank);
-            r = adc8(0x04, base, false);
-            tam(MPR5, r.a);
-            for (uint16_t i = 0; i < 0x1400; i++) {
-                byte = rd8((uint16_t)(0xC000 + i));
-                wr8((uint16_t)(0xA000 + i), byte);
-            }
-            r = scene_next(r, 1);
-            continue;
-        }
-        alu_compare(&r, op, OP_CALL_TWO);
-        if (op == OP_CALL_TWO) {
-            cpu.x = 0;
-            r = SceneCallOverlay(r);
-            cpu.x = 4;
-            alu_nz(&r, 4);
-            r = SceneCallOverlay(r);
-            r = scene_next(r, 1);
-            continue;
-        }
-        return r;
-    }
+    disc_log_exit_shim(&log);
 }
 
 /*
@@ -723,28 +865,27 @@ static Alu scene_ops(Alu r)
  * @run 6A:6FD8
  * WHAT IT DOES: Loads a scene: runs its list of ops, which map banks, read sectors from
  * the disc, and call the scene overlay, until an op it does not know ends it.
- * HOW: The scene's record, five bytes each from $74D1, holds the disc address and at Y 3
+ * HOW: The scene's record, five bytes each in SceneRecords, holds the disc address and at 3
  * and 4 the list.
- * Entry: A scene. Exit: A the last op, N, Z and C from comparing it. Clobbers zTemp00-02,
- * zTemp08-09.
+ * Entry: A scene. Exit: A the last op, N and Z from comparing it with $80, C 1; X, Y and V as
+ * the last op left them. Clobbers zTemp00-02, zTemp08-09.
  */
-Alu LoadSceneScript(Alu r)
+DiscLog LoadSceneScript(uint8_t scene)
 {
-    uint8_t scene = r.a;
-    uint8_t byte;
+    DiscLog log;
 
+    log.count = 0;
     wr8(zTemp02, scene);
-    r = record_pointer(r, scene, 5, 0xD1, 0x74);
-    cpu.y = 3;
-    byte = rd8_zp_y(zTemp00, cpu.y);
-    wr8(zTemp08, byte);
-    cpu.y = 4;
-    byte = rd8_zp_y(zTemp00, cpu.y);
-    wr8(zTemp09, byte);
-    return scene_ops(r);
+    record_at(&log, SceneRecords, scene, SCENE_RECORD_BYTES);
+    wr8(zTemp08, rd8_zp_y(zTemp00, 3));
+    wr8(zTemp09, rd8_zp_y(zTemp00, 4));
+    scene_ops(&log);
+    return log;
 }
 
 void abi_LoadSceneScript(void)
 {
-    abi_alu(LoadSceneScript(alu_from_cpu()));
+    DiscLog log = LoadSceneScript(cpu.a);
+
+    disc_log_exit_shim(&log);
 }

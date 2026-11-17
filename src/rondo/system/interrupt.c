@@ -9,7 +9,10 @@
 enum {
     STATUS_RASTER = 0x04, STATUS_VBLANK = 0x20, CR_RASTER_ENABLE = 0x04,
     CR_VBLANK_ENABLE = 0x08, MPR3 = 0x08, MPR4 = 0x10, MPR5 = 0x20, MPR6 = 0x40,
-    RCR_LINE_BASE = 0x40, VDC_REG_RCR = 0x06, VDC_REG_VSYNC_DMA = 0x13
+    RCR_LINE_BASE = 0x40, VDC_REG_RCR = 0x06, VDC_REG_VSYNC_DMA = 0x13,
+    SCREEN_COLUMNS = 0x20, SCREEN_ROWS = 0x1E, SCENE_MENU_A = 4, SCENE_MENU_B = 6, ADPCM_MENU = 0x24,
+    VECTOR_VDC = 1, VECTOR_TIMER = 2,
+    KERNEL_RUN = 0x4000, FRAME_INTERRUPT_RUN = 0x4177, IGNORED_INTERRUPT_RUN = 0x4297
 };
 
 static void map_from_base(uint8_t mpr_bit, uint8_t offset)
@@ -216,41 +219,28 @@ void KernelStart(void)
 {
     uint8_t bank;
 
-    tai(KernelZeros, zTemp00, 0x00DB);
-    tai(KernelZeros, SoundCommandIn, 0x1D30);
-    cpu.a = 0;
-    cpu.x = 0x20;
-    cpu.y = 0x1E;
-    call_original(BiosE06F);
-    cpu.a = 0;
-    call_original(BiosE06C);
+    tai(KernelZeros, ZeroPage, zRamBaseBank - zTemp00);
+    tai(KernelZeros, SoundCommandIn, KERNEL_RUN - SoundCommandIn);
+    ex_scrmod(0, SCREEN_COLUMNS, SCREEN_ROWS);
+    ex_dotmod(0);
     wr8(BiosScreenLo, 0);
     wr8(BiosScreenHi, 0x10);
-    call_original(BiosE0A2);
+    ex_satclr();
     wr8(zGameMode, 0);
     bank = (uint8_t)(rd8(zRamBaseBank) + 0x0D);
     tam(MPR4, bank);
     tam(MPR5, (uint8_t)(bank + 1));
     tam(MPR6, (uint8_t)(bank + 2));
-    abi_SoundInit();
+    SoundInit();
     ResetDisplayControl();
     SelectVdcRegister(0x0D);
     wr8(VDC_DATA_LO, 0xE0);
-    cpu.a = 0x04;
-    abi_LoadSceneScript();
-    cpu.a = 0x06;
-    abi_LoadSceneScript();
-    cpu.a = 0x24;
-    abi_AdpcmLoad();
+    LoadSceneScript(SCENE_MENU_A);
+    LoadSceneScript(SCENE_MENU_B);
+    AdpcmLoad(ADPCM_MENU);
     wr8(zMusicWanted, 0xFF);
-    cpu.a = 1;
-    cpu.x = 0x77;
-    cpu.y = 0x41;
-    call_original(BiosE05D);
-    cpu.a = 2;
-    cpu.x = 0x97;
-    cpu.y = 0x42;
-    call_original(BiosE05D);
+    ex_setvec(VECTOR_VDC, (uint8_t)FRAME_INTERRUPT_RUN, (uint8_t)(FRAME_INTERRUPT_RUN >> 8));
+    ex_setvec(VECTOR_TIMER, (uint8_t)IGNORED_INTERRUPT_RUN, (uint8_t)(IGNORED_INTERRUPT_RUN >> 8));
     wr8(BiosIrqDisable, 0x06);
     map_from_base(MPR4, 0x03);
     wr8(zIdleFlag, 0);

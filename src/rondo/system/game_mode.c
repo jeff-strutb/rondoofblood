@@ -41,7 +41,7 @@ static Alu overlay_frame(uint16_t entry, bool *done)
 static Alu load_scene(Alu r, uint8_t scene)
 {
     alu_load(&r, scene);
-    return LoadSceneScript(r);
+    return call_abi(abi_LoadSceneScript, r);
 }
 
 static Alu set_mode(Alu r, uint8_t mode)
@@ -205,7 +205,7 @@ Alu ModeAttract(void)
         r = load_scene(r, 7);
         r = load_scene(r, 8);
         r = load_scene(r, 9);
-        r = AdpcmLoadFixed(r);
+        r = call_abi(abi_AdpcmLoadFixed, r);
         return call_abi(abi_NextGameMode, r);
     }
     r = call_abi(abi_ResetScoreCounters, r);
@@ -336,7 +336,7 @@ Alu ModeStageLoadScreens(Alu r)
     r = load_scene(r, 7);
     r = load_scene(r, 8);
     r = load_scene(r, 9);
-    r = AdpcmLoadFixed(r);
+    r = call_abi(abi_AdpcmLoadFixed, r);
     return set_mode(r, MODE_ENDING);
 }
 
@@ -437,7 +437,7 @@ Alu ModeStage(void)
         wr8(zModeEvents, (uint8_t)(byte & ~0x01));
         byte = rd8(zCharacter);
         r = adc8(0x22, byte, false);
-        r = AdpcmLoad(r);
+        r = call_abi(abi_AdpcmLoad, r);
         return load_scene(r, 0x5E);
     }
     if (rd8(zModeEvents) & 0x02) {
@@ -476,12 +476,12 @@ Alu ModeStage(void)
         r.c = (byte & 0x80) != 0;
         r.c_kept = false;
         r = adc8((uint8_t)(byte << 1), 0x58, r.c);
-        r = LoadSceneScript(r);
+        r = call_abi(abi_LoadSceneScript, r);
         byte = rd8(zCharacter);
         r.c = (byte & 0x80) != 0;
         r.c_kept = false;
         r = adc8((uint8_t)(byte << 1), 0x59, r.c);
-        r = LoadSceneScript(r);
+        r = call_abi(abi_LoadSceneScript, r);
         return set_mode(r, MODE_SCREEN);
     }
     return r;
@@ -679,7 +679,7 @@ Alu ModeBackToTitle(Alu r)
     r = load_scene(r, SCENE_MENU_A);
     r = load_scene(r, SCENE_MENU_B);
     alu_load(&r, ADPCM_MENU);
-    r = AdpcmLoad(r);
+    r = call_abi(abi_AdpcmLoad, r);
     r.a = 0;
     return call_abi(abi_SetGameMode, r);
 }

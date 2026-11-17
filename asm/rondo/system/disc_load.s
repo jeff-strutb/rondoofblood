@@ -84,9 +84,10 @@ BackupFailed:
 ; @run 6A:6E43
 ; WHAT IT DOES: Loads a sound into ADPCM memory from the disc, unless it is already there.
 ; HOW: Stops the ADPCM and waits on its status, waits for the drive, then the BIOS's ADPCM
-; transfer from the record for it, until it answers zero.
-; Entry: A sound. Exit, already there: A kept, N, Z, C from the compare. Exit: A zero,
-; N 0, Z 1, C 1; Y 3; V as the BIOS leaves it.
+; transfer from the sound's record in AdpcmRecords, until it answers zero.
+; Entry: A sound. Exit, already there: A kept, N 0, Z 1, C 1 from the compare. Exit: A zero,
+; N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves them. The C replays the last 32
+; of the BIOS's calls.
 AdpcmLoad:
     cmp z:zMusicWanted
     beq SaveVramToRam_at3
@@ -101,10 +102,10 @@ AdpcmLoad_at0:
     asl a
     asl a
     clc
-    adc #$35
+    adc #<AdpcmRecords
     sta z:zTemp00
     cla
-    adc #$71
+    adc #>AdpcmRecords
     sta z:zTemp01
 AdpcmLoad_at3:
     cla
@@ -144,10 +145,12 @@ AdpcmLoad_at1:
 
 ; @routine 0048:69D AdpcmLoadFixed
 ; @run 6A:6E9D
-; WHAT IT DOES: Loads $20 sectors of ADPCM from $20 past disc address $0010AB, with the
+; WHAT IT DOES: Loads $20 sectors of ADPCM from $20 sectors past disc address $0010AB, with the
 ; track's start taken off as a record's is.
-; HOW: Waits for the drive; the address worked out from its constants; ADPCM transfer.
-; Entry: nothing. Exit: A zero, N 0, Z 1, C 1; Y 3; V as the BIOS leaves it.
+; HOW: Waits for the drive; the address worked out a byte at a time from its constants; the
+; BIOS's ADPCM transfer, until it answers zero.
+; Entry: nothing. Exit: A zero, N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves
+; them.
 AdpcmLoadFixed:
     cla
     jsr BiosCdStat
@@ -197,19 +200,20 @@ AdpcmLoadFixed_at0:
 ; @routine 0048:6EB AdpcmPlayFromDisc
 ; @run 6A:6EEB
 ; WHAT IT DOES: Plays a sound straight from the disc as ADPCM.
-; HOW: The record for it, five bytes each from $720D; waits for the drive; the BIOS's
-; ADPCM play with mode $0E, until it answers zero.
-; Entry: A sound. Exit: A zero, N 0, Z 1, C 1; Y 4; V as the BIOS leaves it.
+; HOW: The sound's record, five bytes each in AdpcmStreamRecords; waits for the drive; the
+; BIOS's continuous ADPCM play in mode $0E, until it answers zero.
+; Entry: A sound. Exit: A zero, N 0, Z 1, C 1; Y 4 unless the BIOS changed it; X and V as the
+; BIOS leaves them.
 AdpcmPlayFromDisc:
     sta z:zBiosAl
     lda #$05
     sta z:zBiosBl
     jsr BiosMaMul8u
-    lda #$0D
+    lda #<AdpcmStreamRecords
     clc
     adc z:zBiosCl
     sta z:zTemp00
-    lda #$72
+    lda #>AdpcmStreamRecords
     adc z:zBiosCh
     sta z:zTemp01
 AdpcmPlayFromDisc_at2:
@@ -288,11 +292,11 @@ CdPlayRepeat_at0:
     lda #$06
     sta z:zBiosBl
     jsr BiosMaMul8u
-    lda #$50
+    lda #<CdTrackTable
     clc
     adc z:zBiosCl
     sta z:zTemp00
-    lda #$72
+    lda #>CdTrackTable
     adc z:zBiosCh
     sta z:zTemp01
 CdPlayRepeat_at1:
@@ -331,7 +335,8 @@ CdPlayRepeat_at2:
 ; @run 6A:6F9E
 ; WHAT IT DOES: Seeks to a CD track, so that its play will start at once. $FF does
 ; nothing.
-; HOW: The record for it; the BIOS's search, until it answers zero.
+; HOW: The track's entry in CdTrackTable; the BIOS's search from its first three bytes, until it
+; answers zero.
 ; Entry: A track. Exit, $FF: A kept, N 0, Z 1, C 1. Exit: A zero, X and Y kept, N and Z
 ; from X; C and V as the BIOS leaves them.
 CdSearchTrack:
@@ -344,11 +349,11 @@ CdSearchTrack:
     lda #$06
     sta z:zBiosBl
     jsr BiosMaMul8u
-    lda #$50
+    lda #<CdTrackTable
     clc
     adc z:zBiosCl
     sta z:zTemp00
-    lda #$72
+    lda #>CdTrackTable
     adc z:zBiosCh
     sta z:zTemp01
 CdSearchTrack_at0:
@@ -383,11 +388,11 @@ LoadSceneScript:
     lda #$05
     sta z:zBiosBl
     jsr BiosMaMul8u
-    lda #$D1
+    lda #<SceneRecords
     clc
     adc z:zBiosCl
     sta z:zTemp00
-    lda #$74
+    lda #>SceneRecords
     adc z:zBiosCh
     sta z:zTemp01
     ldy #$03

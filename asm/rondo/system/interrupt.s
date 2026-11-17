@@ -43,12 +43,12 @@ KernelStart:
     lda #$FF
     sta z:zMusicWanted
     lda #$01
-    ldx #$77
-    ldy #$41
+    ldx #<FrameInterrupt
+    ldy #>FrameInterrupt
     jsr BiosE05D
     lda #$02
-    ldx #$97
-    ldy #$42
+    ldx #<IgnoredInterrupt
+    ldy #>IgnoredInterrupt
     jsr BiosE05D
     lda #$06
     sta z:BiosIrqDisable

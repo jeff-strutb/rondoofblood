@@ -343,6 +343,7 @@
 #define PadForcedPress 0x3BDD /* ORed into zPadPressed each frame */
 #define PadForcedPressB 0x3BDF /* ORed into zPadPressed each frame */
 #define PlayerByte3BE1 0x3BE1 /* player state not yet identified */
+#define PlayerInvincibleTimer 0x3BDE /* the potion's invincibility: counts down every fourth frame while not zero */
 #define PlayerByte3BE2 0x3BE2 /* player state not yet identified */
 #define PlayerByte3BE3 0x3BE3 /* player state not yet identified */
 #define PlayerByte3BE8 0x3BE8 /* player state not yet identified */
@@ -394,6 +395,8 @@
 #define PadOverrides 0x3BD9 /* four bytes that force the pad */
 #define RichterItemReady 0x3BE0 /* $0F when the player has the hearts for the item in hand */
 #define AnimationLists 0xBC1B /* pointers to Richter's animations */
+#define RichterInvincibleScripts 0xB792 /* the flashing script started at each of the invincibility's marks */
+#define RichterInvincibleMarks 0xB798 /* the invincibility timer's values that start a flashing script */
 #define RichterTurnStates 0xB72D /* whether each state lets him turn at the screen's middle */
 #define RichterItemCosts 0xB84D /* hearts each item costs */
 #define RichterItemCrashLists 0xB856 /* the sound list each item's crash starts; 0 none */
@@ -590,5 +593,8 @@
 #define ListChannelClearEnd 0x3CFF /* the first byte past what ClearListChannels clears from ListChannelKind */
 #define GameRamClearEnd 0x3D40 /* the first byte past what ResetGameState clears from GameRamStart */
 #define ScrollStateClearEnd 0x3EEE /* the first byte past what ClearScreenState clears from ScrollXFrac */
+#define AdpcmRecords 0x7135 /* by ADPCM sound, four bytes: its disc address (less the track's start by AdpcmLoad) and its sector count */
+#define AdpcmStreamRecords 0x720D /* by sound played from the disc, five bytes: its disc address and _AL, _AH for the BIOS's ADPCM play */
+#define SceneRecords 0x74D1 /* by scene, five bytes: its disc address and the address of its list of ops */
 
 #endif

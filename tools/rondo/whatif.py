@@ -33,15 +33,15 @@ def tiers(rows, st, ext, fixed_scripts, fixed_routines, t3):
     if fixed_scripts or fixed_routines:
         a5 = {k: dict(v) for k, v in a5.items()}
         for r in rec.a5:
-            if r["chash"] == chash.get(r["routine"]) and int(r["divergent"]) and r["routine"] in a5 and \
+            if records.row_counts(r, chash, rec) and int(r["divergent"]) and r["routine"] in a5 and \
                     (r["script"] in fixed_scripts or r["routine"] in fixed_routines):
                 a5[r["routine"]]["divergent"] -= int(r["divergent"])
                 a5[r["routine"]]["identical"] += int(r["divergent"])
     stats = records.a7_scripts(rec, chash, ext)
     ran = {}
     for r in rec.a7:
-        if r["chash"] == chash.get(r["routine"]) and (stats.get(r["script"], ("", ""))[0] == "current" or
-                                                       r["script"] in fixed_scripts) and \
+        if records.row_counts(r, chash, rec) and (stats.get(r["script"], ("", ""))[0] == "current" or
+                                                   r["script"] in fixed_scripts) and \
                 (int(r["swapped"]) or int(r["ran_inside"])):
             ran[r["routine"]] = ran.get(r["routine"], 0) + 1
     names = records.script_names()
@@ -72,7 +72,8 @@ def bars(rows, tier):
 
 
 def main():
-    cpuguard.require("whatif.py", jobs=4, mem="3G")
+    if "--chash" not in sys.argv:           # without a stored compiled-hash file it compiles every C file
+        cpuguard.require("whatif.py", jobs=4, mem="3G")
     ap = argparse.ArgumentParser()
     ap.add_argument("--scripts", default="")
     ap.add_argument("--routines", default="")

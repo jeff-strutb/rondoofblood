@@ -1,19 +1,27 @@
 /*
  * The machine as the C decompilation sees it.
  *
- * Bus: rd8 and wr8 take a logical address and go through the MPRs, as the
- * CPU does. ASM is bit exact, C behaviour exact: hardware accesses keep the
- * assembly's order and count, because they are behaviour. Plain RAM keeps
- * neither, and is judged by what it holds when the routine ends.
+ * Bus: rd8 and wr8 take a logical address and go through the MPRs, as the CPU does. Every
+ * work RAM read and write, every hardware access, every push and pull, and every TAM, CSL
+ * and CSH the original makes, the C makes: where the assembly makes it, in its order and
+ * number. No value is kept in a C variable across a point where the original reads memory
+ * again (docs/rondo/PLAN.md, section 1). The checker judges the order of these accesses, A5
+ * per call and A7 in lockstep with interrupts delivered inside the C where the original took
+ * them. What it does not count: instruction and operand fetches, reads of ROM, and the pulls
+ * an RTS or RTI makes of its return address.
  *
- * Registers: `cpu` is touched only by abi_ wrappers, the one place that
- * meets the assembly's calling convention, and by call_original, which hands
- * registers to code that has no C yet. A routine's body takes arguments and
- * returns values.
+ * Registers: `cpu` is touched only by abi_ wrappers, the one place that meets the assembly's
+ * calling convention, by call_original and the stack helpers below. A routine's body takes
+ * arguments and returns values. cpu.s is the emulated stack pointer: at a routine's end it
+ * holds S as it stood just before the routine's RTS.
  *
- * Alu is the value of an addition or subtraction with what it carried out.
- * It is what lets a multi-byte sum be written byte by byte, in the bus order
- * the original has, and what a wrapper gives its caller as flags.
+ * The stack: a call the original makes with JSR or BSR is made with call_frame (C) or
+ * call_orig (code with no C): they push the return address where the original pushes it and
+ * pop it after. PHA, PHX, PHY and PHP are push8, and the pulls pull8.
+ *
+ * Alu is the value of an addition or subtraction with what it carried out. It is what lets a
+ * multi-byte sum be written byte by byte, in the bus order the original has, and what a
+ * wrapper gives its caller as flags.
  */
 #ifndef RONDO_MACHINE_H
 #define RONDO_MACHINE_H
@@ -42,11 +50,67 @@ uint8_t tma(uint8_t mpr_bit);             /* TMA: the bank in one MPR */
 void tam(uint8_t mpr_bits, uint8_t bank); /* TAM: set a bank in the given MPRs */
 /* TAI: block move, source alternating between src and src + 1. */
 void tai(uint16_t src, uint16_t dst, uint16_t len);
-/* Runs original code, with the registers as they stand in cpu. */
+/*
+ * Runs original code, with the registers as they stand in cpu. call_original makes no frame
+ * (the checker reports the original's JSR pushes as missing); call_orig is the JSR: ret is the
+ * address after the JSR's last byte.
+ */
 void call_original(uint16_t addr);
+void call_orig(uint16_t ret, uint16_t addr);
 void cli(void);                           /* CLI: interrupts on */
-/* Returns once an interrupt has run: a wait the original spins on. */
+/* A wait the original spins on with no data access (a jump or branch to itself): returns once the
+ * interrupt the original took there has run. A spin that reads memory is a loop of reads in the C. */
 void wait_interrupt(void);
+void csl(void);                           /* CSL: the CPU's slow clock */
+void csh(void);                           /* CSH: the fast clock */
+
+/* The emulated stack, at $2100 + S. */
+static inline void push8(uint8_t value)
+{
+    wr8((uint16_t)(0x2100 + cpu.s), value);
+    cpu.s = (uint8_t)(cpu.s - 1);
+}
+
+static inline uint8_t pull8(void)
+{
+    cpu.s = (uint8_t)(cpu.s + 1);
+    return rd8((uint16_t)(0x2100 + cpu.s));
+}
+
+/*
+ * JSR or BSR to a routine written as typed C: jsr_push(ret) before the call, jsr_pop() after. ret
+ * is the address after the JSR's last byte; the pushed bytes are judged against the original's.
+ * The callee's own pushes then land where the original's do.
+ */
+static inline void jsr_push(uint16_t ret)
+{
+    push8((uint8_t)((uint16_t)(ret - 1) >> 8));
+    push8((uint8_t)(ret - 1));
+}
+
+static inline void jsr_pop(void)
+{
+    cpu.s = (uint8_t)(cpu.s + 2);
+}
+
+/*
+ * JSR or BSR to C: pushes the address of the call's last byte, runs the routine, pops. Returns
+ * nonzero when the callee dropped the frame (it ended with S two higher than it should): the
+ * caller then ends at once, as the original's caller never went on.
+ */
+static inline int call_frame(uint16_t ret, void (*abi)(void))
+{
+    uint8_t expect;
+
+    push8((uint8_t)((uint16_t)(ret - 1) >> 8));
+    push8((uint8_t)(ret - 1));
+    expect = cpu.s;
+    abi();
+    if (cpu.s != expect)
+        return 1;
+    cpu.s = (uint8_t)(cpu.s + 2);
+    return 0;
+}
 
 /* The result of an operation, as the flags and A leave it. */
 typedef struct {

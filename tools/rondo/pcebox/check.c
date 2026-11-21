@@ -1,35 +1,43 @@
 /*
  * check.c: the oracles. The C decompilation against the running original.
  *
- * A5 (--a5 FILE). The original runs untouched. A call of a routine with C opens
- * a frame when its first instruction is reached by JSR, BSR or a jump, with the
- * disc's bytes resident at its run address. While a frame is open, every data
- * access goes to a log. At the return (RTS with S back and PC where the stack
- * said) RAM is rewound to the call's entry by undoing the log, the C runs on the
- * entry registers against that RAM with hardware reads replayed from the log, and
- * registers, flags, MPRs, RAM written and hardware writes must be the original's.
- * RAM is then put forward again. A call an interrupt overlapped is reported as
- * unverified, never judged; so is one that waits or leaves its frame. The order of
- * accesses is checked as well and reported on its own: a state match with a
- * different order is flagged. Stack bytes are not compared: the C keeps those in
- * locals. Code the C calls by address is replayed from the log: its entry registers
- * are compared, its writes applied and its exit registers taken.
+ * Every counted access of a routine is judged in the original's order and number. Counted:
+ * work RAM reads and writes (the stack page and CD RAM included), hardware reads and writes,
+ * and changes of the MPRs and the CPU clock. Not counted (build/rondo/checker/DESIGN.md, 3.2):
+ * instruction and operand fetches, reads of ROM, the pulls an RTS or RTI makes of the return
+ * address, and everything between an interrupt's entry and its return (the handler is judged as
+ * calls of its own).
  *
- * A7 (--record FILE, then --hybrid FILE). A recording run of the original logs
- * every call's cost in master clocks, and a hash of RAM and the picture for each
- * frame. The hybrid run swaps in the C at every call the original made, where the
- * call had no interrupt in it, did not cross a frame, and its C runs no original
- * code. Each of its hardware accesses is made at the clock the original made it,
- * and at the end the machine is charged the rest of what the original took. Every
- * frame must hash the same. The stack below S is not hashed.
+ * The original runs untouched and writes one stream of events while a tagged routine is open:
+ * OPEN and CLOSE of each tagged call (JSR, BSR, JMP or an interrupt entry), CALL and RET of every
+ * entry, INT and IRET around an interrupt, and every counted access. A call opens when its first
+ * instruction is reached with the disc's bytes resident at its run address.
+ *
+ * A5 (--a5 FILE). The stream is kept in memory. At each call's return RAM is rewound to its entry,
+ * the C runs on the entry registers against that RAM, and each access it makes is matched to the
+ * next counted event of the call. Hardware reads are answered from the stream. An interrupt the
+ * call had is passed where the original took it: the handler's RAM writes are applied then. At
+ * the end registers, flags, MPRs, CPU clock, the stack and the return target, and RAM must be
+ * the original's.
+ *
+ * A7 (--record FILE, then --hybrid FILE, run at the same time over a FIFO or one after the other
+ * over a file). The record writes the stream. The hybrid runs the C in place of every tagged
+ * call, as a coroutine the emulated CPU can run under: an interrupt is dispatched inside the C at
+ * the place the original took it (its handler then runs on the live machine and sees the RAM and
+ * stack the original had), code with no C is run when the C calls it, and a frame that ends in the
+ * middle of a call ends there. Every frame's hash must equal the record's.
  */
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <setjmp.h>
+#include <signal.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <ucontext.h>
 
 #include "machine.h"
 
@@ -49,12 +57,13 @@ extern const unsigned rondo_tag_count;
 
 typedef struct { uint8_t a, x, y, s, p; uint16_t pc; } Regs;
 
-/* The core's exports (patch 0004). */
+/* The core's exports (patches 0004, 0005, 0006). */
 void (*chk_get_regs)(uint8_t *a, uint8_t *x, uint8_t *y, uint8_t *s, uint8_t *p, uint16_t *pc);
 void (*chk_set_regs)(uint8_t a, uint8_t x, uint8_t y, uint8_t s, uint8_t p, uint16_t pc);
 unsigned (*chk_mpr)(unsigned);
 void (*chk_set_mpr)(unsigned, uint8_t);
 uint32_t (*chk_ts)(void);
+uint64_t (*chk_ts_abs)(void);
 uint8_t (*chk_bus_rd)(uint16_t);
 void (*chk_bus_wr)(uint16_t, uint8_t);
 void (*chk_bus_st)(unsigned, uint8_t);
@@ -66,65 +75,59 @@ void (*chk_set_speed)(uint8_t);
 Cpu cpu;
 
 enum { MODE_OFF, MODE_A5, MODE_RECORD, MODE_HYBRID };
-enum { E_READ, E_WRITE, E_HWREAD, E_HWWRITE, E_CALL, E_RET };
+
+/* Events. Accesses first; the rest are markers with a payload. */
+enum {
+    EV_R, EV_W, EV_ROMR, EV_HWR, EV_HWW, EV_RTPULL, EV_STATE,
+    EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME
+};
+enum { K_JSR, K_IRQ, K_JMP };          /* OPEN, CALL: how the entry was made */
+enum { CL_OK, CL_DROP, CL_LEFT };      /* CLOSE: how it ended */
 
 typedef struct {
-    uint32_t phys;
-    uint8_t type, val, old;
-    uint8_t a, x, y, s, p;
-    uint16_t pc;
+    uint8_t type, val, old, kind;
+    uint32_t addr;                     /* physical address; for OPEN, CLOSE the tag index */
+    uint64_t clock;                    /* absolute master clock: markers, hardware accesses */
+    uint64_t hash2;                    /* FRAME: the picture's hash; the RAM hash is in clock */
+    uint16_t pc, ret;
+    uint8_t a, x, y, s, p, speed;
     uint8_t mpr[8];
-} LogE;
+} Ev;
 
-#define LOG_MAX (1u << 22)
-#define FRAMES 64
-#define C_MAX (1u << 20)
+static int is_marker(int t) { return t >= EV_STATE; }
+static int is_counted(int t) { return t == EV_R || t == EV_W || t == EV_HWR || t == EV_HWW || t == EV_STATE; }
+static int is_noise(int t) { return t == EV_ROMR || t == EV_RTPULL; }
+
 #define PFLAGS 0xCF
 #define PREV_IRQ 0x100
+#define PREV_UNIT 0x101
+#define FRAMES 64
+#define LOG_MAX (1u << 22)
+#define C_MAX (1u << 20)
+#define UNIT_MARK 0x0001
+
+enum { D_MOVED, D_EXTRA, D_MISSING, D_VALUE, D_STACK, D_STATE, D_REGS, D_CALL, D_INT, NKIND };
+static const char *kind_name[NKIND] = {
+    "MOVED", "EXTRA", "MISSING", "VALUE", "STACK", "STATE", "REGS", "CALL", "INT"
+};
 
 typedef struct {
-    const Tag *tag;
-    int tag_index;
-    uint32_t start;
-    uint32_t record;
-    uint32_t ts;
-    uint16_t ret;
-    Regs regs;
-    uint8_t mpr[8];
-    uint8_t speed;         /* the CPU's clock at entry: 1 fast, 0 slow */
-    int overlapped;
-} Frame;
+    uint64_t calls, identical, divergent, unverified, order, printed, printed_v;
+    uint64_t kind[NKIND];
+    uint64_t ints, originals, waits;   /* hybrid: interrupts dispatched inside its C, calls into original code, waits */
+} Stat;
 
 static int mode;
 static const char *check_path;
 static FILE *report;
 static uint8_t *user;
-static LogE *logb;
-static uint32_t logn;
-static Frame frames[FRAMES];
-static int depth;
-static int prev_op = -1;
+static Stat *stats;
 static int16_t *tag_at;     /* run address to tag index, or -1 */
 static uint8_t *ram_bank[256];
 static uint8_t *rom_bank[256];
-
-/* Results by tag. */
-typedef struct { uint64_t calls, identical, divergent, unverified, order, printed; } Stat;
-static Stat *stats;
-static uint64_t judged;
-
-/* The machine, for the C under A5: where it stands in the log. */
-static uint8_t mshadow[8];
-static uint32_t cursor, hw_cursor, seg_end, seg_start;
-static struct { uint32_t phys; uint8_t old; } cw[C_MAX];
-static uint32_t cwn;
-static jmp_buf c_abort;
-static char why[256];
-static int order_bad;
-static char order_why[160];
-static uint64_t c_budget;
-
-enum { ABORT_NONE, ABORT_DIVERGED, ABORT_UNVERIFIED };
+static int prev_op = -1;
+static unsigned long cur_frame;
+static const char *script_where = "";      /* the script line being run, for reports */
 
 static uint32_t canon(uint32_t phys)
 {
@@ -140,15 +143,409 @@ static int is_stack(uint32_t phys)
     return (phys >> 13) == 0xF8 && (phys & 0x1F00) == 0x0100;
 }
 
-/*
- * An access whose order is behaviour: hardware only. C is behaviour exact and the ASM bit
- * exact, so the order and count of plain RAM accesses are the ASM's to keep, and RAM is
- * judged by what it holds when the routine ends.
- */
-static int is_access(const LogE *e)
+static int is_ram(uint32_t phys) { return ram_bank[phys >> 13] != NULL; }
+static int is_rom(uint32_t phys) { return rom_bank[phys >> 13] != NULL && ram_bank[phys >> 13] == NULL; }
+
+/* ------------------------------------------------------------------------------------------ */
+/* The stream: the record's side.                                                              */
+
+static FILE *out;                       /* the record's stream */
+static uint64_t emitted;
+
+static void wire_write(const Ev *e)
 {
-    return e->type == E_HWREAD || e->type == E_HWWRITE;
+    uint8_t head[8] = { e->type, e->val, e->old, e->kind, (uint8_t)e->addr, (uint8_t)(e->addr >> 8),
+                        (uint8_t)(e->addr >> 16), (uint8_t)(e->addr >> 24) };
+
+    fwrite(head, 1, 8, out);
+    if (e->type == EV_HWR || e->type == EV_HWW) {
+        fwrite(&e->clock, 8, 1, out);
+    } else if (is_marker(e->type)) {
+        fwrite(&e->clock, 8, 1, out);
+        fwrite(&e->hash2, 8, 1, out);
+        fwrite(&e->pc, 2, 1, out);
+        fwrite(&e->ret, 2, 1, out);
+        fwrite(&e->a, 1, 6, out);
+        fwrite(e->mpr, 1, 8, out);
+    }
+    emitted++;
 }
+
+static int wire_read(FILE *f, Ev *e)
+{
+    uint8_t head[8];
+
+    if (fread(head, 1, 8, f) != 8)
+        return 0;
+    memset(e, 0, sizeof *e);
+    e->type = head[0];
+    e->val = head[1];
+    e->old = head[2];
+    e->kind = head[3];
+    e->addr = head[4] | (head[5] << 8) | (head[6] << 16) | ((uint32_t)head[7] << 24);
+    if (e->type == EV_HWR || e->type == EV_HWW) {
+        if (fread(&e->clock, 8, 1, f) != 1)
+            return 0;
+    } else if (is_marker(e->type)) {
+        if (fread(&e->clock, 8, 1, f) != 1 || fread(&e->hash2, 8, 1, f) != 1 ||
+            fread(&e->pc, 2, 1, f) != 1 || fread(&e->ret, 2, 1, f) != 1 ||
+            fread(&e->a, 1, 6, f) != 6 || fread(e->mpr, 1, 8, f) != 8)
+            return 0;
+    }
+    return 1;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* The event store: A5 keeps the stream in an array it fills; the hybrid reads it from the     */
+/* record through a window.                                                                     */
+
+static Ev *win;
+static uint64_t wbase, wn, wcap;
+static int at_eof;
+static FILE *in;
+
+/* Frames the hybrid has read ahead of its own: the record's hashes. */
+static struct { uint64_t ram, pic; } *fq;
+static uint64_t fq_head, fq_tail, fq_cap;
+
+static void store_push(const Ev *e)
+{
+    if (wn == wcap) {
+        wcap = wcap ? wcap * 2 : (1u << 16);
+        win = realloc(win, wcap * sizeof *win);
+        if (!win) {
+            fprintf(stderr, "check: out of memory in the event window\n");
+            exit(5);
+        }
+    }
+    win[wn++] = *e;
+}
+
+/* Reads one event from the record's stream into the window. */
+static int fetch_one(void)
+{
+    Ev e;
+
+    if (at_eof)
+        return 0;
+    if (!wire_read(in, &e)) {
+        at_eof = 1;
+        return 0;
+    }
+    if (e.type == EV_FRAME) {
+        if (fq_tail == fq_cap) {
+            fq_cap = fq_cap ? fq_cap * 2 : 1024;
+            fq = realloc(fq, fq_cap * sizeof *fq);
+        }
+        fq[fq_tail].ram = e.clock;
+        fq[fq_tail].pic = e.hash2;
+        fq_tail++;
+        return 1;          /* a frame's hash is not part of any span */
+    }
+    store_push(&e);
+    return 1;
+}
+
+/* The event at an absolute index, reading ahead as far as it takes; NULL past the end. */
+static Ev *evp(uint64_t i)
+{
+    if (mode == MODE_A5)
+        return i < wn ? &win[i] : NULL;
+    while (i >= wbase + wn)
+        if (!fetch_one())
+            return NULL;
+    return &win[i - wbase];
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Spans: the part of the stream one call's C is matched against.                              */
+
+typedef struct {
+    uint64_t start, cur, end;          /* end: the CLOSE's index; unknown (UINT64_MAX) until the scan reaches it */
+    int tag;
+    int nest;                          /* OPENs minus CLOSEs between start and cur (hybrid) */
+    uint64_t defects;
+} Span;
+
+#define SPAN_OPEN UINT64_MAX
+
+static Ev *evp(uint64_t i);
+
+/*
+ * The event at j for a scan of a span: NULL at the span's end (its own CLOSE, which sets end) or
+ * where the record stops. *nest counts the frames the scan has gone into.
+ */
+static Ev *sev(Span *s, uint64_t j, int *nest)
+{
+    Ev *e;
+
+    if (j >= s->end || !(e = evp(j)))
+        return NULL;
+    if (mode != MODE_A5) {
+        if (e->type == EV_OPEN) {
+            (*nest)++;
+        } else if (e->type == EV_CLOSE) {
+            if (*nest == 0) {
+                s->end = j;
+                return NULL;
+            }
+            (*nest)--;
+        }
+    }
+    return e;
+}
+
+static Span *sp;                       /* the span whose C is running */
+static int blame_tag = -1;             /* the innermost tagged routine whose C is running */
+
+static char why[256];
+
+/* A defect: counted, and the first few of a routine printed. */
+static void defect(int kind, const char *fmt, ...)
+{
+    char text[300];
+    va_list ap;
+    Stat *s;
+    /* The routine whose call is judged owns the defect (a missing frame at its call shows up in its
+     * callee); the text names the innermost routine whose C made the access. */
+    int tag = sp ? sp->tag : (blame_tag >= 0 ? blame_tag : 0);
+    size_t used;
+
+    va_start(ap, fmt);
+    used = (size_t)vsnprintf(text, sizeof text, fmt, ap);
+    va_end(ap);
+    if (blame_tag >= 0 && blame_tag != tag && used < sizeof text)
+        snprintf(text + used, sizeof text - used, " [in %s]", rondo_tags[blame_tag].name);
+    s = &stats[tag];
+    s->kind[kind]++;
+    if (sp)
+        sp->defects++;
+    if (s->printed < 6) {
+        s->printed++;
+        fprintf(report, "%s %s call %llu frame %lu%s%s: %s\n", rondo_tags[tag].name, kind_name[kind],
+                (unsigned long long)s->calls, cur_frame, script_where[0] ? " at " : "", script_where, text);
+    }
+}
+
+void check_finish(void);
+static const char *stopped_why;
+
+/* The hybrid can not go on in step: the report and the totals so far are written and the run ends. */
+static void stop_run(int code, const char *fmt, ...)
+{
+    static char text[300];
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(text, sizeof text, fmt, ap);
+    va_end(ap);
+    fprintf(report, "stopped at frame %lu: %s\n", cur_frame, text);
+    stopped_why = text;
+    fflush(report);
+    check_finish();
+    exit(code);
+}
+
+/* The access an event stands for, for a message. */
+static const char *describe(const Ev *e, char *buf, size_t n)
+{
+    switch (e->type) {
+    case EV_R: snprintf(buf, n, "read %06X (%02X)", e->addr, e->val); break;
+    case EV_W: snprintf(buf, n, "write %06X (%02X)", e->addr, e->val); break;
+    case EV_HWR: snprintf(buf, n, "hardware read %06X (%02X)", e->addr, e->val); break;
+    case EV_HWW: snprintf(buf, n, "hardware write %06X (%02X)", e->addr, e->val); break;
+    case EV_STATE: snprintf(buf, n, "MPR or clock change"); break;
+    default: snprintf(buf, n, "event %d", e->type); break;
+    }
+    return buf;
+}
+
+static const char *describe_c(int type, uint32_t phys, char *buf, size_t n)
+{
+    if (type == EV_STATE)
+        snprintf(buf, n, "MPR or clock change");
+    else
+        snprintf(buf, n, "%s %06X",
+                 type == EV_R ? "read" : type == EV_W ? "write" : type == EV_HWR ? "hardware read" : "hardware write",
+                 phys);
+    return buf;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Placement: one C access against the stream.                                                  */
+
+static void (*int_pass)(Span *s, uint64_t int_idx, uint64_t iret_idx);
+static unsigned long place_from = (unsigned long)-1, place_to;   /* RONDO_PLACE=lo,hi, frames */
+static unsigned long skip_frame = (unsigned long)-1;
+
+/* The IRET that closes the interrupt at index i; the span's CLOSE if the handler never returned. */
+static uint64_t section_end(Span *s, uint64_t i)
+{
+    int depth = 1, open = 0;
+
+    for (uint64_t k = i + 1; k < s->end; k++) {
+        Ev *e = evp(k);
+
+        if (!e)
+            return k;
+        if (e->type == EV_INT)
+            depth++;
+        else if (e->type == EV_IRET && --depth == 0)
+            return k;
+        else if (e->type == EV_OPEN)
+            open++;
+        else if (e->type == EV_CLOSE && open-- == 0 && mode != MODE_A5)
+            return k;
+    }
+    return s->end;
+}
+
+static int same_state(const Ev *e, const uint8_t *mpr, uint8_t speed)
+{
+    return !memcmp(e->mpr, mpr, 8) && e->speed == speed;
+}
+
+/*
+ * Places a counted access of the C: the index of the event it matches, or -1 when the original made
+ * no such access before a barrier. Interrupts passed on the way are delivered before it returns.
+ * A match that is not the next counted event is a MOVED defect; none at all is EXTRA.
+ */
+static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8_t speed)
+{
+    uint64_t j = s->cur;
+    int nest = s->nest;
+    uint64_t ints[16], irets[16];
+    unsigned nints = 0;
+    int64_t found = -1, first = -1;
+    unsigned skipped = 0;
+    int hw = type == EV_HWR || type == EV_HWW;
+    uint64_t from = s->cur;
+    char a[96], b[96];
+    int watching = place_from != (unsigned long)-1 && cur_frame >= place_from && cur_frame <= place_to;
+
+    for (;; j++) {
+        Ev *e = sev(s, j, &nest);
+
+        if (!e)
+            break;
+        if (is_noise(e->type))
+            continue;
+        if (e->type == EV_INT) {
+            uint64_t r = section_end(s, j);
+
+            if (nints < 16) {
+                ints[nints] = j;
+                irets[nints++] = r;
+            }
+            j = r;
+            continue;
+        }
+        if (e->type == EV_CALL && e->kind == K_JSR && tag_at[e->pc] < 0 && !hw) {
+            /* The original called code the C has not: the C must say so (call_original) first. */
+            break;
+        }
+        if (!is_counted(e->type))
+            continue;
+        if (first < 0)
+            first = (int64_t)j;
+        if (e->type == type && (type == EV_STATE ? same_state(e, mpr, speed) : e->addr == phys)) {
+            found = (int64_t)j;
+            break;
+        }
+        skipped++;
+        if (!hw && type != EV_STATE && (e->type == EV_HWR || e->type == EV_HWW || e->type == EV_STATE))
+            break;
+    }
+    if (found < 0) {
+        if (first >= 0)
+            defect(D_EXTRA, "C %s; the original's next is %s at access %llu of the call",
+                   describe_c(type, phys, a, sizeof a), describe(evp((uint64_t)first), b, sizeof b),
+                   (unsigned long long)((uint64_t)first - s->start));
+        else
+            defect(D_EXTRA, "C %s; the original made no more accesses in the call", describe_c(type, phys, a, sizeof a));
+        if (watching)
+            fprintf(report, "PLACE %lu %s %06X %llu -> %llu\n", cur_frame, type == EV_R || type == EV_HWR ? "r" : "w",
+                    phys, (unsigned long long)from, (unsigned long long)from);
+        return -1;
+    }
+    if (found != first)
+        defect(D_MOVED, "C %s placed at access %lld, the original's next was %s at %lld (%u counted accesses skipped)",
+               describe_c(type, phys, a, sizeof a), (long long)(found - (int64_t)s->start),
+               describe(evp((uint64_t)first), b, sizeof b), (long long)(first - (int64_t)s->start), skipped);
+    if (watching)
+        fprintf(report, "PLACE %lu %s %06X %llu -> %llu\n", cur_frame, type == EV_R || type == EV_HWR ? "r" : "w", phys,
+                (unsigned long long)from, (unsigned long long)found + 1);
+    if (nints && found != first && skip_frame != (unsigned long)-1 && cur_frame >= skip_frame) {
+        fprintf(report, "SKIP frame %lu in %s: %s %06X placed at %lld from %llu, past an interrupt at %llu\n", cur_frame,
+                rondo_tags[blame_tag >= 0 ? blame_tag : s->tag].name, type == EV_R || type == EV_HWR ? "read" : "write",
+                phys, (long long)found, (unsigned long long)from, (unsigned long long)ints[0]);
+        skip_frame = (unsigned long)-1;
+    }
+    s->cur = (uint64_t)found + 1;
+    s->nest = nest;
+    for (unsigned i = 0; i < nints; i++) {
+        uint64_t keep = s->cur;
+
+        int_pass(s, ints[i], irets[i]);
+        s->cur = keep;
+    }
+    return found;
+}
+
+/* A call's end: what the original did that the C did not is missing; interrupts left are delivered. */
+static void span_finish(Span *s)
+{
+    int reported = 0;
+    int nest = s->nest;
+
+    for (uint64_t j = s->cur;; j++) {
+        Ev *e = sev(s, j, &nest);
+        char b[96];
+
+        if (!e)
+            break;
+        if (e->type == EV_INT) {
+            uint64_t r = section_end(s, j);
+
+            int_pass(s, j, r);
+            j = r;
+        } else if (is_counted(e->type) && !reported) {
+            defect(D_MISSING, "the original's %s at access %llu of the call is not made", describe(e, b, sizeof b),
+                   (unsigned long long)(j - s->start));
+            reported = 1;
+        }
+    }
+    if (s->end == SPAN_OPEN)
+        s->end = wbase + wn;
+    s->cur = s->end;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* A5's machine.                                                                                */
+
+typedef struct {
+    const Tag *tag;
+    int tag_index;
+    int kind;              /* K_JSR or K_IRQ */
+    uint64_t start;
+    uint16_t ret;
+    Regs regs;
+    uint8_t mpr[8];
+    uint8_t speed;
+} Frame;
+
+static Frame frames[FRAMES];
+static int depth;
+
+static uint8_t mshadow[8];
+static uint8_t c_speed;
+static struct { uint32_t phys; uint8_t old; } cw[C_MAX];
+static uint32_t cwn;
+static jmp_buf c_abort;
+static uint64_t c_budget;
+
+enum { ABORT_NONE, ABORT_DIVERGED, ABORT_UNVERIFIED };
+static const Regs *exit_regs_a5;
 
 static void stop_c(int reason, const char *fmt, uint32_t a, uint32_t b, uint32_t c)
 {
@@ -156,113 +553,9 @@ static void stop_c(int reason, const char *fmt, uint32_t a, uint32_t b, uint32_t
     longjmp(c_abort, reason);
 }
 
-/* The next access of the original's record, for the order check. */
-static void order_step(int type, uint32_t phys)
-{
-    if (order_bad)
-        return;
-    while (cursor < seg_end && !is_access(&logb[cursor]))
-        cursor++;
-    if (cursor >= seg_end) {
-        order_bad = 1;
-        snprintf(order_why, sizeof order_why, "C %s %06X past the original's last access",
-                 type == E_READ || type == E_HWREAD ? "read" : "write", phys);
-        return;
-    }
-    if (logb[cursor].phys != phys || logb[cursor].type != type) {
-        order_bad = 1;
-        snprintf(order_why, sizeof order_why, "C %s %06X, original %s %06X, access %u",
-                 type == E_READ || type == E_HWREAD ? "read" : "write", phys,
-                 logb[cursor].type == E_READ || logb[cursor].type == E_HWREAD ? "read" : "write",
-                 logb[cursor].phys, cursor - seg_start);
-        return;
-    }
-    cursor++;
-}
-
-static LogE *next_hw(void)
-{
-    while (hw_cursor < seg_end && logb[hw_cursor].type != E_HWREAD && logb[hw_cursor].type != E_HWWRITE)
-        hw_cursor++;
-    return hw_cursor < seg_end ? &logb[hw_cursor] : NULL;
-}
-
 static uint32_t a5_phys(uint16_t addr)
 {
     return canon(((uint32_t)mshadow[addr >> 13] << 13) | (addr & 0x1FFF));
-}
-
-static void pace_hw(void);
-
-static unsigned hy_bank(uint16_t addr)
-{
-    return canon((uint32_t)chk_mpr(addr >> 13) << 13) >> 13;
-}
-
-/*
- * RONDO_TRACE_HW=LO:HI: every hardware access whose index in the record's stream of them is in
- * [LO, HI), to stderr, from the record run and from the hybrid, to find where they part. Off
- * unless set; it changes nothing that is run or judged.
- */
-static uint64_t trace_lo, trace_hi;
-
-static void trace_access(char kind, uint32_t where, uint8_t value, uint64_t index, uint32_t ts,
-                         uint32_t want)
-{
-    if (index >= trace_lo && index < trace_hi)
-        fprintf(stderr, "HW %c %llu ts %u want %u %06X %02X\n", kind, (unsigned long long)index, ts,
-                want, where, value);
-}
-
-static uint64_t hw_index_next(void);
-static uint64_t hw_count(void);
-static uint32_t hw_clock_at(uint64_t index);
-
-uint8_t rd8(uint16_t addr)
-{
-    uint32_t p;
-
-    if (mode == MODE_HYBRID) {
-        if (!rom_bank[hy_bank(addr)]) {
-            uint64_t index = hw_index_next();
-            uint8_t v;
-
-            pace_hw();
-            v = chk_bus_rd(addr);
-            trace_access('r', ((uint32_t)hy_bank(addr) << 13) | (addr & 0x1FFF), v, index, chk_ts(),
-                         hw_clock_at(index));
-            return v;
-        }
-        return chk_bus_rd(addr);
-    }
-    if (++c_budget > 4000000)
-        stop_c(ABORT_UNVERIFIED, "C ran past its access budget", 0, 0, 0);
-    p = a5_phys(addr);
-    if (rom_bank[p >> 13])
-        return rom_bank[p >> 13][p & 0x1FFF];
-    {
-        LogE *e = next_hw();
-
-        if (!e || e->type != E_HWREAD || e->phys != p)
-            stop_c(ABORT_DIVERGED, "C reads hardware %06X; original's next %06X type %u", p,
-                   e ? e->phys : 0, e ? e->type : 99);
-        order_step(E_HWREAD, p);
-        hw_cursor++;
-        return e->val;
-    }
-}
-
-static void hw_write(uint32_t p, uint8_t value)
-{
-    LogE *e = next_hw();
-
-    if (!e || e->type != E_HWWRITE || e->phys != p)
-        stop_c(ABORT_DIVERGED, "C writes hardware %06X; original's next %06X type %u", p,
-               e ? e->phys : 0, e ? e->type : 99);
-    if (e->val != value)
-        stop_c(ABORT_DIVERGED, "hardware write %06X: C %02X, original %02X", p, value, e->val);
-    order_step(E_HWWRITE, p);
-    hw_cursor++;
 }
 
 static void ram_put(uint32_t p, uint8_t value)
@@ -274,17 +567,202 @@ static void ram_put(uint32_t p, uint8_t value)
     ram_bank[p >> 13][p & 0x1FFF] = value;
 }
 
+/* A5: the original's interrupt handler wrote this; put it where the C will read it. */
+static void a5_int_pass(Span *s, uint64_t i, uint64_t r)
+{
+    for (uint64_t k = i + 1; k < r && k < s->end; k++) {
+        Ev *e = evp(k);
+
+        if (e && e->type == EV_W)
+            ram_bank[e->addr >> 13][e->addr & 0x1FFF] = e->val;
+    }
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* The hybrid's coroutines.                                                                     */
+
+#define CO_STACK (512u * 1024u)
+#define FS_MAX 96
+
+typedef struct Ctx {
+    ucontext_t uc;
+    void *stack;
+    Span span;
+    int tag;
+    int kind;
+    uint8_t entry_s;
+    uint64_t open_i, close_i;
+    Cpu saved_cpu;
+    int parked, done, abandoned;
+    uint16_t resume_pc;
+    uint8_t resume_s;
+    int fs[FS_MAX], fsn;
+    struct Ctx *below;
+} Ctx;
+
+static ucontext_t main_uc;
+static Ctx *top;
+static Ctx *free_ctx;
+static uint64_t scan;                      /* where the next tagged entry's OPEN is looked for */
+static int in_swap = -1;
+static uint64_t *ran_inside;
+static int *cur_fs;
+static int *cur_fsn;
+
+static uint64_t hybrid_clock_now(void) { return chk_ts_abs(); }
+
+/* Brings the hybrid's clock to the original's at an access of hardware. */
+static void pace_to(uint64_t want)
+{
+    uint64_t now = hybrid_clock_now();
+
+    if (want > now) {
+        uint64_t d = want - now;
+
+        chk_charge((int)(d > 0x7FFFFFFF ? 0x7FFFFFFF : d));
+    }
+}
+
+/*
+ * The one primitive: park the C, with the emulated CPU set up (by the caller) to run what must
+ * run. The hook resumes the C when the CPU reaches resume_pc with S resume_s after an RTS or RTI.
+ */
+static void cpu_run_until(uint16_t resume_pc, uint8_t resume_s)
+{
+    Ctx *c = top;
+
+    c->parked = 1;
+    c->resume_pc = resume_pc;
+    c->resume_s = resume_s;
+    c->saved_cpu = cpu;
+    swapcontext(&c->uc, &main_uc);
+    cpu = c->saved_cpu;
+}
+
+/* Dispatches the interrupt the original took at event i: charge to its clock, hand the handler
+ * the original's registers, and run the machine until it returns here. */
+static void hy_int_pass(Span *s, uint64_t i, uint64_t r)
+{
+    Ev *e = evp(i);
+    Ev ev;
+    uint64_t entry_idx = i + 1;
+    uint16_t handler = 0;
+    uint8_t mpr[8];
+
+    if (!e)
+        return;
+    ev = *e;
+    for (uint64_t k = i + 1; k < r; k++) {
+        Ev *x = evp(k);
+
+        if (x && x->type == EV_CALL && x->kind == K_IRQ) {
+            handler = x->pc;
+            entry_idx = k;
+            break;
+        }
+    }
+    stats[s->tag].ints++;
+    pace_to(ev.clock);
+    for (unsigned k = 0; k < 8; k++)
+        mpr[k] = (uint8_t)chk_mpr(k);
+    if (memcmp(mpr, ev.mpr, 8) || chk_get_speed() != ev.speed)
+        defect(D_INT, "at the interrupt the MPRs or the CPU clock differ from the original's");
+    if (cpu.s != ev.s)
+        defect(D_STACK, "at the interrupt S is %02X, the original's %02X", cpu.s, ev.s);
+    /* The interrupt's own pushes on the live stack, as the CPU makes them. */
+    chk_bus_wr((uint16_t)(0x2100 | ev.s), (uint8_t)(ev.pc >> 8));
+    chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(ev.s - 1)), (uint8_t)ev.pc);
+    chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(ev.s - 2)), (uint8_t)(ev.p & ~P_B));
+    chk_set_regs(ev.a, ev.x, ev.y, (uint8_t)(ev.s - 3), (uint8_t)((ev.p | P_I) & ~(P_T | P_D)), handler);
+    prev_op = PREV_IRQ;
+    scan = entry_idx + 1;
+    cpu_run_until(ev.pc, ev.s);
+    scan = r + 1;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* The C's machine.                                                                             */
+
+static unsigned hy_bank_phys(uint16_t addr, uint32_t *phys)
+{
+    *phys = canon(((uint32_t)chk_mpr(addr >> 13) << 13) | (addr & 0x1FFF));
+    return *phys >> 13;
+}
+
+uint8_t rd8(uint16_t addr)
+{
+    uint32_t p;
+
+    if (mode == MODE_HYBRID) {
+        Ev *e;
+        int64_t j;
+        uint8_t v;
+
+        hy_bank_phys(addr, &p);
+        if (!sp || is_rom(p))
+            return chk_bus_rd(addr);
+        j = place(sp, is_ram(p) ? EV_R : EV_HWR, p, NULL, 0);
+        e = j >= 0 ? evp((uint64_t)j) : NULL;
+        if (e && !is_ram(p))
+            pace_to(e->clock);
+        v = chk_bus_rd(addr);
+        if (e && e->val != v) {
+            char b[96];
+
+            defect(D_VALUE, "C read %06X gave %02X, the original's %s", p, v, describe(e, b, sizeof b));
+        }
+        return v;
+    }
+    if (++c_budget > 4000000)
+        stop_c(ABORT_UNVERIFIED, "C ran past its access budget", 0, 0, 0);
+    p = a5_phys(addr);
+    if (is_rom(p))
+        return rom_bank[p >> 13][p & 0x1FFF];
+    if (is_ram(p)) {
+        int64_t j = place(sp, EV_R, p, NULL, 0);
+        uint8_t v = ram_bank[p >> 13][p & 0x1FFF];
+
+        if (j >= 0) {
+            Ev *e = evp((uint64_t)j);
+
+            if (e->val != v) {
+                char b[96];
+
+                defect(D_VALUE, "C read %06X gave %02X, the original's %s", p, v, describe(e, b, sizeof b));
+            }
+        }
+        return v;
+    }
+    {
+        int64_t j = place(sp, EV_HWR, p, NULL, 0);
+
+        if (j < 0)
+            stop_c(ABORT_DIVERGED, "C reads hardware %06X; the original made no such read here", p, 0, 0);
+        return evp((uint64_t)j)->val;
+    }
+}
+
 void wr8(uint16_t addr, uint8_t value)
 {
     uint32_t p;
 
     if (mode == MODE_HYBRID) {
-        if (!ram_bank[hy_bank(addr)]) {
-            uint64_t index = hw_index_next();
+        int64_t j;
+        Ev *e;
 
-            pace_hw();
-            trace_access('w', ((uint32_t)hy_bank(addr) << 13) | (addr & 0x1FFF), value, index,
-                         chk_ts(), hw_clock_at(index));
+        hy_bank_phys(addr, &p);
+        if (!sp || is_rom(p)) {
+            chk_bus_wr(addr, value);
+            return;
+        }
+        j = place(sp, is_ram(p) ? EV_W : EV_HWW, p, NULL, 0);
+        e = j >= 0 ? evp((uint64_t)j) : NULL;
+        if (e && !is_ram(p))
+            pace_to(e->clock);
+        if (e && e->val != value) {
+            char b[96];
+
+            defect(D_VALUE, "C wrote %06X with %02X, the original's %s", p, value, describe(e, b, sizeof b));
         }
         chk_bus_wr(addr, value);
         return;
@@ -292,50 +770,84 @@ void wr8(uint16_t addr, uint8_t value)
     if (++c_budget > 4000000)
         stop_c(ABORT_UNVERIFIED, "C ran past its access budget", 0, 0, 0);
     p = a5_phys(addr);
-    if (ram_bank[p >> 13]) {
+    if (is_ram(p)) {
+        int64_t j = place(sp, EV_W, p, NULL, 0);
+
+        if (j >= 0) {
+            Ev *e = evp((uint64_t)j);
+
+            if (e->val != value) {
+                char b[96];
+
+                defect(D_VALUE, "C wrote %06X with %02X, the original's %s", p, value, describe(e, b, sizeof b));
+            }
+        }
         ram_put(p, value);
-    } else {
-        hw_write(p, value);
+    } else if (!is_rom(p)) {
+        int64_t j = place(sp, EV_HWW, p, NULL, 0);
+        Ev *e;
+
+        if (j < 0)
+            stop_c(ABORT_DIVERGED, "C writes hardware %06X; the original made no such write here", p, 0, 0);
+        e = evp((uint64_t)j);
+        if (e->val != value)
+            stop_c(ABORT_DIVERGED, "hardware write %06X: C %02X, original %02X", p, value, e->val);
     }
 }
 
-void st0(uint8_t value)
+static void st_reg(unsigned which, uint32_t phys, uint8_t value)
 {
+    int64_t j = sp ? place(sp, EV_HWW, phys, NULL, 0) : -1;
+    Ev *e = j >= 0 ? evp((uint64_t)j) : NULL;
+
     if (mode == MODE_HYBRID) {
-        pace_hw();
-        chk_bus_st(0, value);
-    } else
-        hw_write(0x1FE000, value);
+        if (e)
+            pace_to(e->clock);
+        if (e && e->val != value)
+            defect(D_VALUE, "C wrote hardware %06X with %02X, the original %02X", phys, value, e->val);
+        chk_bus_st(which, value);
+        return;
+    }
+    if (!e)
+        stop_c(ABORT_DIVERGED, "C writes hardware %06X; the original made no such write here", phys, 0, 0);
+    if (e->val != value)
+        stop_c(ABORT_DIVERGED, "hardware write %06X: C %02X, original %02X", phys, value, e->val);
 }
 
-void st1(uint8_t value)
-{
-    if (mode == MODE_HYBRID) {
-        pace_hw();
-        chk_bus_st(2, value);
-    } else
-        hw_write(0x1FE002, value);
-}
+void st0(uint8_t value) { st_reg(0, 0x1FE000, value); }
+void st1(uint8_t value) { st_reg(2, 0x1FE002, value); }
+void st2(uint8_t value) { st_reg(3, 0x1FE003, value); }
 
-void st2(uint8_t value)
+static void mprs_now(uint8_t *v)
 {
-    if (mode == MODE_HYBRID) {
-        pace_hw();
-        chk_bus_st(3, value);
-    } else
-        hw_write(0x1FE003, value);
+    if (mode == MODE_HYBRID)
+        for (unsigned i = 0; i < 8; i++)
+            v[i] = (uint8_t)chk_mpr(i);
+    else
+        memcpy(v, mshadow, 8);
 }
 
 uint8_t tma(uint8_t mpr_bit)
 {
+    uint8_t v[8];
+
+    mprs_now(v);
     for (unsigned i = 0; i < 8; i++)
         if (mpr_bit & (1u << i))
-            return mode == MODE_HYBRID ? (uint8_t)chk_mpr(i) : mshadow[i];
+            return v[i];
     return 0;
 }
 
 void tam(uint8_t mpr_bits, uint8_t bank)
 {
+    uint8_t v[8];
+
+    mprs_now(v);
+    for (unsigned i = 0; i < 8; i++)
+        if (mpr_bits & (1u << i))
+            v[i] = bank;
+    if (sp)
+        place(sp, EV_STATE, 0, v, mode == MODE_HYBRID ? chk_get_speed() : c_speed);
     for (unsigned i = 0; i < 8; i++)
         if (mpr_bits & (1u << i)) {
             if (mode == MODE_HYBRID)
@@ -359,437 +871,229 @@ void cli(void)
     cpu.p &= (uint8_t)~P_I;
 }
 
+static void set_speed(uint8_t fast)
+{
+    uint8_t v[8];
+
+    mprs_now(v);
+    if (sp)
+        place(sp, EV_STATE, 0, v, fast);
+    if (mode == MODE_HYBRID)
+        chk_set_speed(fast);
+    else
+        c_speed = fast;
+}
+
+void csl(void) { set_speed(0); }
+void csh(void) { set_speed(1); }
+
 /*
- * The CPU's clock, which CSL and CSH set and which stays set for the caller: A5 keeps the C's in
- * c_speed and judges it at the exit beside the flags; the hybrid sets the live CPU's.
+ * wait_interrupt: the original spins with no data access (a jump or branch to itself) until an
+ * interrupt. The next counted event of the span must be that interrupt's; it is delivered here.
  */
-static uint8_t c_speed;
-
-void csl(void)
-{
-    if (mode == MODE_HYBRID)
-        chk_set_speed(0);
-    else
-        c_speed = 0;
-}
-
-void csh(void)
-{
-    if (mode == MODE_HYBRID)
-        chk_set_speed(1);
-    else
-        c_speed = 1;
-}
-
 void wait_interrupt(void)
 {
+    uint64_t j;
+    Ev *e;
+
     if (mode == MODE_A5)
         stop_c(ABORT_UNVERIFIED, "waits on an interrupt", 0, 0, 0);
-    fprintf(stderr, "check: a swapped routine waited on an interrupt\n");
-    exit(3);
+    if (!sp) {
+        stop_run(3, "wait_interrupt outside a swapped call");
+    }
+    stats[sp->tag].waits++;
+    {
+        int nest = sp->nest;
+
+        for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e->type) && e->type != EV_INT; j++)
+            ;
+    }
+    if (!e || e->type != EV_INT) {
+        defect(D_CALL, "the C waits for an interrupt; the original's next event is not one");
+        stop_run(3, "a wait with no interrupt in the record");
+    }
+    {
+        uint64_t r = section_end(sp, j);
+
+        sp->cur = r + 1;
+        hy_int_pass(sp, j, r);
+        sp->cur = r + 1;
+    }
+}
+
+/*
+ * call_original(addr): run code that has no C yet, with the registers as cpu holds them. The
+ * original made the call at a CALL event of the call's stream; the counted events before it that
+ * the C has not made (the JSR's pushes among them) are missing, and the C states them with call_orig.
+ */
+static void original_at(uint16_t ret, uint16_t addr)
+{
+    uint64_t call = sp->cur, retidx;
+    Ev *e = NULL;
+    Span *span = sp;
+    int nest = span->nest;
+
+    for (uint64_t j = sp->cur;; j++) {
+        Ev *x = sev(sp, j, &nest);
+
+        if (!x)
+            break;
+        if (x->type == EV_INT) {
+            j = section_end(sp, j);
+            continue;
+        }
+        if (x->type == EV_CALL && x->pc == addr && x->kind != K_IRQ) {
+            e = x;
+            call = j;
+            break;
+        }
+    }
+    if (!e) {
+        if (mode == MODE_A5)
+            stop_c(ABORT_DIVERGED, "C calls %04X; the original made no such call", addr, 0, 0);
+        defect(D_CALL, "C calls %04X; the original made no such call", addr);
+        stop_run(3, "a call into original code the record does not have");
+    }
+    /* Everything counted before the call the C has not made. */
+    for (uint64_t k = span->cur; k < call; k++) {
+        Ev *x = evp(k);
+        char b[96];
+
+        if (x->type == EV_INT) {
+            uint64_t r = section_end(span, k);
+
+            int_pass(span, k, r);
+            k = r;
+            continue;
+        }
+        if (is_counted(x->type)) {
+            defect(D_MISSING, "before the call to %04X the original's %s is not made", addr, describe(x, b, sizeof b));
+            break;
+        }
+    }
+    if (e->a != cpu.a || e->x != cpu.x || e->y != cpu.y || ((e->p ^ cpu.p) & PFLAGS)) {
+        if (mode == MODE_A5) {
+            snprintf(why, sizeof why, "to %04X: C A%02X X%02X Y%02X P%02X, original A%02X X%02X Y%02X P%02X", addr,
+                     cpu.a, cpu.x, cpu.y, cpu.p, e->a, e->x, e->y, e->p);
+            longjmp(c_abort, ABORT_DIVERGED);
+        }
+        defect(D_CALL, "to %04X: C A%02X X%02X Y%02X P%02X, original A%02X X%02X Y%02X P%02X", addr, cpu.a, cpu.x,
+               cpu.y, cpu.p, e->a, e->x, e->y, e->p);
+    }
+    if (e->kind == K_JMP) {
+        /* A tail jump: the code returns to the routine's own caller, so the routine ends here. */
+        if (mode == MODE_A5) {
+            const Regs *x = exit_regs_a5;
+
+            for (uint64_t k = call + 1; k < span->end; k++)
+                if (evp(k)->type == EV_W)
+                    ram_put(evp(k)->addr, evp(k)->val);
+            cpu.a = x->a;
+            cpu.x = x->x;
+            cpu.y = x->y;
+            cpu.p = x->p;
+            for (unsigned i = 0; i < 8; i++)
+                mshadow[i] = (uint8_t)chk_mpr(i);
+            c_speed = chk_get_speed();
+            span->cur = span->end;
+            return;
+        }
+        {
+            Ctx *c = top;
+
+            stats[span->tag].originals++;
+            pace_to(e->clock);
+            chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, addr);
+            prev_op = 0x4C;
+            scan = call + 1;
+            c->abandoned = 1;
+            swapcontext(&c->uc, &main_uc);
+        }
+    }
+    for (retidx = call + 1;; retidx++) {
+        Ev *x = sev(span, retidx, &nest);
+
+        if (!x || (x->type == EV_RET && x->s == (uint8_t)(e->s + 2)))
+            break;
+    }
+    if (retidx >= span->end || !evp(retidx)) {
+        if (mode == MODE_A5)
+            stop_c(ABORT_UNVERIFIED, "code called at %04X does not come back in this call", addr, 0, 0);
+        defect(D_CALL, "the code called at %04X does not come back in this call", addr);
+        stop_run(3, "original code does not return");
+    }
+    if (mode == MODE_A5) {
+        Ev *r = evp(retidx);
+
+        for (uint64_t k = call + 1; k < retidx; k++) {
+            Ev *x = evp(k);
+
+            if (x->type == EV_W)
+                ram_put(x->addr, x->val);
+        }
+        cpu.a = r->a;
+        cpu.x = r->x;
+        cpu.y = r->y;
+        cpu.p = r->p;
+        memcpy(mshadow, r->mpr, 8);
+        c_speed = r->speed;
+        span->cur = retidx + 1;
+        span->nest = nest;
+        return;
+    }
+    /* The hybrid: run the code on the live machine and come back where it returns. */
+    {
+        Ev ec = *e;
+        uint8_t s0 = cpu.s;
+        uint16_t back = ret;
+
+        pace_to(ec.clock);
+        if (!ret) {
+            /* No frame was stated: the code needs a return address on the stack all the same. */
+            uint16_t r2 = ec.kind == K_JSR ? ec.ret : 0;
+
+            chk_bus_wr((uint16_t)(0x2100 | s0), (uint8_t)((uint16_t)(r2 - 1) >> 8));
+            chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(s0 - 1)), (uint8_t)(r2 - 1));
+            back = r2;
+            s0 = (uint8_t)(s0 - 2);
+        }
+        stats[span->tag].originals++;
+        chk_set_regs(cpu.a, cpu.x, cpu.y, s0, cpu.p, addr);
+        prev_op = 0x20;
+        scan = call + 1;
+        cpu_run_until(back, (uint8_t)(s0 + 2));
+        {
+            uint8_t a, x, y, s, p;
+            uint16_t pc;
+
+            chk_get_regs(&a, &x, &y, &s, &p, &pc);
+            cpu.a = a;
+            cpu.x = x;
+            cpu.y = y;
+            cpu.p = p;
+        }
+        span->cur = retidx + 1;
+        span->nest = nest;
+        scan = retidx + 1;
+    }
 }
 
 void call_original(uint16_t addr)
 {
-    uint32_t call = hw_cursor > cursor ? cursor : hw_cursor;
-    uint32_t ret;
-    LogE *e = NULL;
-
-    if (mode != MODE_A5) {
-        fprintf(stderr, "check: a swapped routine called original code at %04X\n", addr);
-        exit(3);
-    }
-    /* The first entry to that address after where the C has reached. */
-    for (uint32_t i = call; i < seg_end; i++)
-        if (logb[i].type == E_CALL && logb[i].pc == addr) {
-            e = &logb[i];
-            call = i;
-            break;
-        }
-    if (!e)
-        stop_c(ABORT_DIVERGED, "C calls %04X; the original made no such call", addr, 0, 0);
-    {
-        LogE *h = next_hw();
-
-        if (h && hw_cursor < call)
-            stop_c(ABORT_DIVERGED, "C skipped hardware access %06X before calling %04X", h->phys, addr, 0);
-    }
-    if (e->a != cpu.a || e->x != cpu.x || e->y != cpu.y || ((e->p ^ cpu.p) & PFLAGS))
-        stop_c(ABORT_DIVERGED, "to %04X: C A%02X X%02X Y%02X/P%02X", addr,
-               (uint32_t)((cpu.a << 16) | (cpu.x << 8) | cpu.y), cpu.p);
-    for (ret = call + 1; ret < seg_end; ret++)
-        if (logb[ret].type == E_RET && logb[ret].s == (uint8_t)(e->s + 2))
-            break;
-    if (ret >= seg_end)
-        stop_c(ABORT_UNVERIFIED, "code called at %04X does not come back in this call", addr, 0, 0);
-    for (uint32_t i = call + 1; i < ret; i++)
-        if (logb[i].type == E_WRITE)
-            ram_put(logb[i].phys, logb[i].val);
-    cpu.a = logb[ret].a;
-    cpu.x = logb[ret].x;
-    cpu.y = logb[ret].y;
-    cpu.p = logb[ret].p;
-    memcpy(mshadow, logb[ret].mpr, 8);
-    if (!order_bad)
-        cursor = ret + 1;
-    hw_cursor = ret + 1;
+    original_at(0, addr);
 }
 
-static void note_hw_clock(void);
-static void pace_hw(void);
-
-/* The original's side of the log. */
-static void log_push(int type, uint32_t phys, uint8_t val, uint8_t old)
+void call_orig(uint16_t ret, uint16_t addr)
 {
-    LogE *e;
-
-    if (logn >= LOG_MAX) {
-        /* Too long to judge: every open call goes down as unverified. */
-        for (int i = 0; i < depth; i++) {
-            stats[frames[i].tag_index].calls++;
-            stats[frames[i].tag_index].unverified++;
-        }
-        depth = 0;
-        logn = 0;
-        return;
-    }
-    e = &logb[logn++];
-    e->type = (uint8_t)type;
-    e->phys = phys;
-    e->val = val;
-    e->old = old;
+    push8((uint8_t)((uint16_t)(ret - 1) >> 8));
+    push8((uint8_t)(ret - 1));
+    original_at(ret, addr);
+    cpu.s = (uint8_t)(cpu.s + 2);
 }
 
-static void note_clock_step(void);
+/* ------------------------------------------------------------------------------------------ */
+/* Instrumentation: which routine's C is running, for blame.                                    */
 
-void check_rd(uint32_t phys, uint8_t v, int kind)
-{
-    if (kind == 2) {
-        prev_op = v;
-        if (mode == MODE_RECORD)
-            note_clock_step();
-        return;
-    }
-    if (kind != 0 || !depth)
-        return;
-    phys = canon(phys);
-    if (mode == MODE_RECORD) {
-        if (!rom_bank[phys >> 13]) {
-            trace_access('R', phys, v, hw_count(), chk_ts(), chk_ts());
-            note_hw_clock();
-        }
-        return;
-    }
-    if (mode != MODE_A5)
-        return;
-    log_push(rom_bank[phys >> 13] ? E_READ : E_HWREAD, phys, v, 0);
-}
-
-void check_wr_pre(uint32_t phys, uint8_t v)
-{
-    if (!depth)
-        return;
-    phys = canon(phys);
-    if (mode == MODE_RECORD) {
-        if (!ram_bank[phys >> 13]) {
-            trace_access('W', phys, v, hw_count(), chk_ts(), chk_ts());
-            note_hw_clock();
-        }
-        return;
-    }
-    if (mode != MODE_A5)
-        return;
-    if (ram_bank[phys >> 13])
-        log_push(E_WRITE, phys, v, ram_bank[phys >> 13][phys & 0x1FFF]);
-    else
-        log_push(E_HWWRITE, phys, v, 0);
-}
-
-void check_irq(void)
-{
-    prev_op = PREV_IRQ;
-    for (int i = 0; i < depth; i++)
-        frames[i].overlapped = 1;
-}
-
-static void log_marker(int type, const Regs *r)
-{
-    if (logn >= LOG_MAX)
-        return;
-    LogE *e = &logb[logn++];
-
-    e->type = (uint8_t)type;
-    e->phys = 0;
-    e->a = r->a;
-    e->x = r->x;
-    e->y = r->y;
-    e->s = r->s;
-    e->p = r->p;
-    e->pc = r->pc;
-    for (unsigned i = 0; i < 8; i++)
-        e->mpr[i] = (uint8_t)chk_mpr(i);
-}
-
-static void say(const Tag *t, Stat *s, const char *verdict, const char *text)
-{
-    if (s->printed < 6) {
-        s->printed++;
-        fprintf(report, "%s %s call %llu: %s\n", t->name, verdict,
-                (unsigned long long)s->calls, text);
-    }
-}
-
-/* Rewinds, runs the C, compares, puts RAM forward. The frame is on top. */
-static void judge(Frame *f, const Regs *r)
-{
-    Stat *s = &stats[f->tag_index];
-    static uint8_t *final_val;
-    static uint32_t *final_stamp;
-    static uint32_t stamp;
-    int reason;
-    char diff[400] = "";
-    size_t dl = 0;
-
-    s->calls++;
-    judged++;
-    if (f->overlapped) {
-        s->unverified++;
-        return;
-    }
-    if (!final_val) {
-        final_val = malloc(1u << 21);
-        final_stamp = calloc(1u << 21, sizeof *final_stamp);
-    }
-    stamp++;
-    seg_start = cursor = hw_cursor = f->start;
-    seg_end = logn;
-    for (uint32_t i = logn; i-- > f->start;) {
-        if (logb[i].type == E_WRITE) {
-            ram_bank[logb[i].phys >> 13][logb[i].phys & 0x1FFF] = logb[i].old;
-            final_stamp[logb[i].phys] = stamp;
-        }
-    }
-    for (uint32_t i = f->start; i < logn; i++)
-        if (logb[i].type == E_WRITE)
-            final_val[logb[i].phys] = logb[i].val;
-    memcpy(mshadow, f->mpr, 8);
-    c_speed = f->speed;
-    cpu.a = f->regs.a;
-    cpu.x = f->regs.x;
-    cpu.y = f->regs.y;
-    cpu.s = f->regs.s;
-    cpu.p = f->regs.p;
-    cwn = 0;
-    order_bad = 0;
-    c_budget = 0;
-    why[0] = 0;
-    reason = setjmp(c_abort);
-    if (reason == 0)
-        f->tag->abi();
-    if (reason == ABORT_NONE) {
-        /* Where a routine ends on a shared exit, registers and flags are dead. */
-        if (f->tag->ends)
-            ;
-        else if (cpu.a != r->a)
-            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " A C %02X orig %02X;", cpu.a, r->a);
-        if (!f->tag->ends && cpu.x != r->x)
-            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " X C %02X orig %02X;", cpu.x, r->x);
-        if (!f->tag->ends && cpu.y != r->y)
-            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " Y C %02X orig %02X;", cpu.y, r->y);
-        if (!f->tag->ends && ((cpu.p ^ r->p) & PFLAGS))
-            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " P C %02X orig %02X (entry %02X);",
-                                   cpu.p, r->p, f->regs.p);
-        if (c_speed != chk_get_speed())
-            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " CPU clock C %s orig %s;",
-                                   c_speed ? "fast" : "slow", chk_get_speed() ? "fast" : "slow");
-        for (unsigned i = 0; i < 8; i++)
-            if (mshadow[i] != (uint8_t)chk_mpr(i))
-                dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " MPR%u C %02X orig %02X;", i,
-                                       mshadow[i], chk_mpr(i));
-        /* RAM: everything either side wrote. */
-        for (uint32_t i = f->start; i < logn && dl < 300; i++) {
-            if (logb[i].type == E_WRITE && !is_stack(logb[i].phys)) {
-                uint32_t p = logb[i].phys;
-                uint8_t c = ram_bank[p >> 13][p & 0x1FFF];
-
-                if (c != final_val[p] && dl < 300)
-                    dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " %06X C %02X orig %02X;",
-                                           p, c, final_val[p]);
-            }
-        }
-        for (uint32_t i = 0; i < cwn && dl < 300; i++) {
-            uint32_t p = cw[i].phys;
-
-            if (final_stamp[p] != stamp &&
-                ram_bank[p >> 13][p & 0x1FFF] != cw[i].old)
-                dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " %06X C wrote %02X, orig left %02X;",
-                                       p, ram_bank[p >> 13][p & 0x1FFF], cw[i].old);
-        }
-        {
-            LogE *h = next_hw();
-
-            if (h && dl < 300)
-                dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " original's hardware access %06X not made;",
-                                       h->phys);
-        }
-    }
-    /* Put RAM back: undo the C, redo the original. */
-    while (cwn) {
-        cwn--;
-        ram_bank[cw[cwn].phys >> 13][cw[cwn].phys & 0x1FFF] = cw[cwn].old;
-    }
-    for (uint32_t i = f->start; i < logn; i++)
-        if (logb[i].type == E_WRITE)
-            ram_bank[logb[i].phys >> 13][logb[i].phys & 0x1FFF] = logb[i].val;
-    if (reason == ABORT_UNVERIFIED) {
-        s->unverified++;
-        say(f->tag, s, "UNVERIFIED", why);
-    } else if (reason == ABORT_DIVERGED) {
-        s->divergent++;
-        say(f->tag, s, "DIVERGENT", why);
-    } else if (dl) {
-        s->divergent++;
-        say(f->tag, s, "DIVERGENT", diff);
-    } else {
-        s->identical++;
-    }
-    if (reason == ABORT_NONE && !dl) {
-        if (!order_bad) {
-            while (cursor < seg_end && !is_access(&logb[cursor]))
-                cursor++;
-            if (cursor < seg_end) {
-                order_bad = 1;
-                snprintf(order_why, sizeof order_why, "original's access %06X not made", logb[cursor].phys);
-            }
-        }
-        if (order_bad) {
-            s->order++;
-            say(f->tag, s, "ORDER", order_why);
-        }
-    }
-}
-
-/* A7: the record. */
-typedef struct {
-    int32_t tag;
-    uint32_t delta;
-    uint32_t end;
-    uint32_t flags;
-    uint32_t start_ts;
-    uint64_t hw_first;     /* its first entry in the clocks of hardware accesses */
-} Rec;
-enum { REC_OVERLAP = 1, REC_CROSSED = 2, REC_UNCLOSED = 4 };
-
-static Rec *recs;
-static uint64_t nrec, recmax;
-static uint32_t *hw_clock;
-static uint64_t nhw, hwmax, hw_replay;
-static uint64_t rec_cursor;
-static int run_frame_stamp;
-static uint64_t swapped, kept_interrupt, kept_crossed, kept_original;
-static uint64_t *fhash;
-static uint64_t nf, fhmax;
-static unsigned long hy_frames_ok, hy_first_bad = (unsigned long)-1;
-
-/* RONDO_DUMP_FRAME=N: at frame N, RAM to <record>.<mode>.ram; and the hybrid's last
- * swapped calls, to find what wrote a byte that differs. */
-static unsigned long dump_frame;
-#define RECENT 256
-static struct { int tag; uint8_t a, x, y; unsigned long frame; int owed, used; uint32_t delta; } recent[RECENT];
-static unsigned recent_n;
-static int drift_reported;
-
-static void note_hw_clock(void)
-{
-    if (nhw == hwmax) {
-        hwmax = hwmax ? hwmax * 2 : (1u << 20);
-        hw_clock = realloc(hw_clock, hwmax * sizeof *hw_clock);
-    }
-    hw_clock[nhw++] = chk_ts();
-}
-
-/* Up to the clock the original made this access at. */
-static void pace_hw(void)
-{
-    if (hw_replay < hwmax) {
-        uint32_t want = hw_clock[hw_replay++];
-        uint32_t now = chk_ts();
-
-        if (want > now)
-            chk_charge((int)(want - now));
-    }
-}
-
-static uint64_t hw_count(void)
-{
-    return nhw;
-}
-
-static uint64_t hw_index_next(void)
-{
-    return hw_replay;
-}
-
-static uint32_t hw_clock_at(uint64_t index)
-{
-    return index < nhw ? hw_clock[index] : 0;
-}
-
-static void rec_new(int tag_index)
-{
-    if (nrec == recmax) {
-        recmax = recmax ? recmax * 2 : (1u << 20);
-        recs = realloc(recs, recmax * sizeof *recs);
-    }
-    recs[nrec].tag = tag_index;
-    recs[nrec].delta = 0;
-    recs[nrec].end = 0;
-    recs[nrec].flags = REC_UNCLOSED;
-    recs[nrec].start_ts = chk_ts();
-    recs[nrec].hw_first = nhw;
-    nrec++;
-}
-
-/*
- * The core resets its clock inside a frame's run, at a point of its own. A call open across that
- * reset crossed a frame even when its end's clock is above its start's, so the clock is watched
- * at every instruction of the record run: a step backward marks every open call crossed.
- */
-static uint32_t last_ts_seen;
-
-static void note_clock_step(void)
-{
-    uint32_t now = chk_ts();
-
-    if (now < last_ts_seen)
-        for (int i = 0; i < depth; i++)
-            recs[frames[i].record].flags |= REC_CROSSED;
-    last_ts_seen = now;
-}
-
-/*
- * RONDO_KEEP=name,name,...: those routines are never swapped by the hybrid, to test whether a
- * difference comes from them. Off unless set; a run with it set is a diagnostic, not A7.
- */
-static int kept_by_name(int index)
-{
-    const char *keep = getenv("RONDO_KEEP");
-    size_t n = strlen(rondo_tags[index].name);
-
-    for (const char *at = keep; at && (at = strstr(at, rondo_tags[index].name)) != NULL; at += n)
-        if ((at == keep || at[-1] == ',') && (at[n] == ',' || at[n] == 0))
-            return 1;
-    return 0;
-}
-
-/*
- * A7's evidence for a routine whose C runs only inside another's: the decompiled C is built with
- * -finstrument-functions, and while a swapped call's C runs, every routine whose own C function
- * is entered is counted. A routine's C function has the routine's name; the address is matched
- * to it once through the executable's symbols and cached.
- */
-static int in_swap = -1;
-static uint64_t *ran_inside;
 static struct { void *fn; int tag; } fn_cache[1 << 14];
 
 static int tag_of_fn(void *fn)
@@ -803,12 +1107,17 @@ static int tag_of_fn(void *fn)
 
         fn_cache[h].fn = fn;
         fn_cache[h].tag = -1;
-        if (dladdr(fn, &info) && info.dli_sname)
+        if (dladdr(fn, &info) && info.dli_sname) {
+            const char *n = info.dli_sname;
+
+            if (!strncmp(n, "abi_", 4))
+                n += 4;
             for (unsigned i = 0; i < rondo_tag_count; i++)
-                if (!strcmp(rondo_tags[i].name, info.dli_sname)) {
+                if (!strcmp(rondo_tags[i].name, n)) {
                     fn_cache[h].tag = (int)i;
                     break;
                 }
+        }
     }
     return fn_cache[h].tag;
 }
@@ -818,20 +1127,505 @@ void __cyg_profile_func_enter(void *fn, void *site)
     int tag;
 
     (void)site;
-    if (in_swap < 0)
+    if (!cur_fs)
         return;
     tag = tag_of_fn(fn);
-    if (tag >= 0 && tag != in_swap) {
+    if (in_swap >= 0 && tag >= 0 && tag != in_swap) {
         if (!ran_inside)
             ran_inside = calloc(rondo_tag_count, sizeof *ran_inside);
         ran_inside[tag]++;
     }
+    if (*cur_fsn < FS_MAX) {
+        cur_fs[*cur_fsn] = tag >= 0 ? tag : (*cur_fsn ? cur_fs[*cur_fsn - 1] : -1);
+        (*cur_fsn)++;
+    }
+    blame_tag = cur_fs[*cur_fsn - 1];
 }
 
 void __cyg_profile_func_exit(void *fn, void *site)
 {
     (void)fn;
     (void)site;
+    if (!cur_fs)
+        return;
+    if (*cur_fsn > 0)
+        (*cur_fsn)--;
+    if (*cur_fsn > 0)
+        blame_tag = cur_fs[*cur_fsn - 1];
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* The record's side of the bookkeeping, shared by the record run and A5.                       */
+
+static uint8_t last_mpr[8];
+static uint8_t last_speed;
+static uint64_t cur_clock(void) { return chk_ts_abs(); }
+
+static void log_event(const Ev *e)
+{
+    if (mode == MODE_A5) {
+        if (wn >= LOG_MAX) {
+            /* Too long to judge: every open call goes down as unverified. */
+            for (int i = 0; i < depth; i++) {
+                stats[frames[i].tag_index].calls++;
+                stats[frames[i].tag_index].unverified++;
+            }
+            depth = 0;
+            wn = 0;
+            return;
+        }
+        win[wn++] = *e;
+    } else if (mode == MODE_RECORD) {
+        wire_write(e);
+    }
+}
+
+static void marker(int type, const Regs *r, int kind, uint32_t addr, uint16_t ret)
+{
+    Ev e;
+
+    memset(&e, 0, sizeof e);
+    e.type = (uint8_t)type;
+    e.kind = (uint8_t)kind;
+    e.addr = addr;
+    e.clock = cur_clock();
+    e.pc = r->pc;
+    e.ret = ret;
+    e.a = r->a;
+    e.x = r->x;
+    e.y = r->y;
+    e.s = r->s;
+    e.p = r->p;
+    e.speed = chk_get_speed();
+    for (unsigned i = 0; i < 8; i++)
+        e.mpr[i] = (uint8_t)chk_mpr(i);
+    log_event(&e);
+}
+
+static void sync_state(const Regs *r)
+{
+    uint8_t m[8];
+    uint8_t now = chk_get_speed();
+    int changed = now != last_speed;
+
+    for (unsigned i = 0; i < 8; i++) {
+        m[i] = (uint8_t)chk_mpr(i);
+        changed |= m[i] != last_mpr[i];
+    }
+    if (changed) {
+        if (depth)
+            marker(EV_STATE, r, 0, 0, 0);
+        memcpy(last_mpr, m, 8);
+        last_speed = now;
+    }
+}
+
+void check_rd(uint32_t phys, uint8_t v, int kind)
+{
+    Ev e;
+
+    if (kind == 2) {
+        prev_op = v;
+        return;
+    }
+    if (kind != 0 || !depth || (mode != MODE_A5 && mode != MODE_RECORD))
+        return;
+    phys = canon(phys);
+    memset(&e, 0, sizeof e);
+    e.addr = phys;
+    e.val = v;
+    if (is_ram(phys)) {
+        e.type = (prev_op == 0x60 || prev_op == 0x40) && is_stack(phys) ? EV_RTPULL : EV_R;
+    } else if (is_rom(phys)) {
+        e.type = EV_ROMR;
+    } else {
+        e.type = EV_HWR;
+        e.clock = cur_clock();
+    }
+    log_event(&e);
+}
+
+void check_wr_pre(uint32_t phys, uint8_t v)
+{
+    Ev e;
+
+    if (!depth || (mode != MODE_A5 && mode != MODE_RECORD))
+        return;
+    phys = canon(phys);
+    memset(&e, 0, sizeof e);
+    e.addr = phys;
+    e.val = v;
+    if (is_ram(phys)) {
+        e.type = EV_W;
+        e.old = ram_bank[phys >> 13][phys & 0x1FFF];
+    } else {
+        e.type = EV_HWW;
+        e.clock = cur_clock();
+    }
+    log_event(&e);
+}
+
+/* Interrupts taken while a call is open. The pushes follow the marker. */
+static struct { uint16_t resume; uint8_t s; } ints[FRAMES];
+static int nints;
+
+/*
+ * Interrupts entered and not yet returned from, by the S the handler starts with (the three pushed bytes
+ * above it). A routine entered by a JMP at that same S, as the card's interrupt handler jumps through the
+ * game's vector, leaves by RTI: its frame is an interrupt's.
+ */
+static uint8_t ichain[FRAMES];
+static int nchain;
+
+static uint16_t stack_return(uint8_t s)
+{
+    const uint8_t *base = ram_bank[0xF8];
+    unsigned lo = base[0x100 + (uint8_t)(s + 1)];
+    unsigned hi = base[0x100 + (uint8_t)(s + 2)];
+
+    return (uint16_t)(((hi << 8) | lo) + 1);
+}
+
+static uint16_t irq_return(uint8_t s)
+{
+    const uint8_t *base = ram_bank[0xF8];
+
+    return (uint16_t)(base[0x100 + (uint8_t)(s + 2)] | (base[0x100 + (uint8_t)(s + 3)] << 8));
+}
+
+static void boundary(const Regs *r);
+
+void check_irq(void)
+{
+    if (mode == MODE_A5 || mode == MODE_RECORD) {
+        Regs r;
+
+        chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
+        /* The instruction just run may have been the call's RTS: the interrupt comes before the
+         * hook for the instruction after it, so the call is closed here, outside the interrupt. */
+        boundary(&r);
+        if (depth) {
+            sync_state(&r);
+            marker(EV_INT, &r, 0, 0, 0);
+            if (nints < FRAMES) {
+                ints[nints].resume = r.pc;
+                ints[nints].s = r.s;
+                nints++;
+            }
+        }
+    }
+    prev_op = PREV_IRQ;
+}
+
+static int prev_is_entry(void)
+{
+    return prev_op == 0x20 || prev_op == 0x44 || prev_op == 0x4C || prev_op == 0x6C || prev_op == 0x7C ||
+           prev_op == PREV_UNIT;
+}
+
+static int entry_kind(void)
+{
+    if (prev_op == PREV_IRQ)
+        return K_IRQ;
+    return prev_op == 0x20 || prev_op == 0x44 || prev_op == PREV_UNIT ? K_JSR : K_JMP;
+}
+
+static void judge(Frame *f, const Regs *r);
+
+static void close_event(const Frame *f, const Regs *r, int how)
+{
+    Ev e;
+
+    memset(&e, 0, sizeof e);
+    e.type = EV_CLOSE;
+    e.kind = (uint8_t)how;
+    e.addr = (uint32_t)f->tag_index;
+    e.clock = cur_clock();
+    e.pc = r->pc;
+    e.a = r->a;
+    e.x = r->x;
+    e.y = r->y;
+    e.s = r->s;
+    e.p = r->p;
+    e.speed = chk_get_speed();
+    for (unsigned i = 0; i < 8; i++)
+        e.mpr[i] = (uint8_t)chk_mpr(i);
+    log_event(&e);
+}
+
+static void close_frames(const Regs *r)
+{
+    while (depth) {
+        Frame *f = &frames[depth - 1];
+        uint8_t up = (uint8_t)(r->s - f->regs.s);
+        int how = -1;
+
+        if (f->tag->ends) {
+            if (r->pc == f->tag->ends && r->s == f->regs.s)
+                how = CL_OK;
+        } else if (f->kind == K_IRQ) {
+            if (up == 3 && r->pc == f->ret && prev_op == 0x40)
+                how = CL_OK;
+            else if (up > 3 && up < 0x80)
+                how = CL_LEFT;
+        } else {
+            if (up == 2 && r->pc == f->ret && prev_op == 0x60)
+                how = CL_OK;
+            else if (up > 2 && up < 0x80 && prev_op == 0x60)
+                how = CL_DROP;
+            else if (up > 2 && up < 0x80)
+                how = CL_LEFT;
+        }
+        if (how < 0)
+            break;
+        if (how == CL_LEFT && getenv("RONDO_DEBUG_LEFT") && !strcmp(f->tag->name, getenv("RONDO_DEBUG_LEFT")))
+            fprintf(stderr, "LEFT %s kind %d entry S %02X now S %02X pc %04X ret %04X prev_op %X frame %lu\n",
+                    f->tag->name, f->kind, f->regs.s, r->s, r->pc, f->ret, prev_op, cur_frame);
+        if (mode == MODE_A5) {
+            if (how == CL_LEFT) {
+                stats[f->tag_index].calls++;
+                stats[f->tag_index].unverified++;
+            } else {
+                judge(f, r);
+            }
+        } else if (mode == MODE_RECORD) {
+            close_event(f, r, how);
+        }
+        depth--;
+    }
+    if (!depth) {
+        wn = 0;
+        nints = 0;
+    }
+}
+
+static void open_frame(int index, const Regs *r, int kind)
+{
+    Frame *f;
+    Ev e;
+
+    if (depth == FRAMES) {
+        if (mode == MODE_RECORD) {
+            while (depth) {
+                Regs z = { 0 };
+
+                close_event(&frames[depth - 1], &z, CL_LEFT);
+                depth--;
+            }
+        }
+        depth = 0;
+        wn = 0;
+        nints = 0;
+    }
+    f = &frames[depth++];
+    f->tag = &rondo_tags[index];
+    f->tag_index = index;
+    f->kind = kind;
+    f->ret = kind == K_IRQ ? irq_return(r->s) : stack_return(r->s);
+    f->regs = *r;
+    for (unsigned i = 0; i < 8; i++)
+        f->mpr[i] = (uint8_t)chk_mpr(i);
+    f->speed = chk_get_speed();
+    memset(&e, 0, sizeof e);
+    e.type = EV_OPEN;
+    e.kind = (uint8_t)kind;
+    e.addr = (uint32_t)index;
+    e.clock = cur_clock();
+    e.pc = r->pc;
+    e.ret = f->ret;
+    e.a = r->a;
+    e.x = r->x;
+    e.y = r->y;
+    e.s = r->s;
+    e.p = r->p;
+    e.speed = f->speed;
+    memcpy(e.mpr, f->mpr, 8);
+    log_event(&e);
+    f->start = wn;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* A5: judging a call.                                                                          */
+
+static void say(const Tag *t, Stat *s, const char *verdict, const char *text)
+{
+    if (s->printed_v < 4) {
+        s->printed_v++;
+        fprintf(report, "%s %s call %llu: %s\n", t->name, verdict, (unsigned long long)s->calls, text);
+    }
+}
+
+static uint8_t *final_val;
+static uint32_t *final_stamp;
+static uint32_t stamp;
+
+static void judge(Frame *f, const Regs *r)
+{
+    Stat *s = &stats[f->tag_index];
+    int reason;
+    char diff[400] = "";
+    size_t dl = 0;
+    Span span;
+    uint64_t end = wn;
+    int fs0[2] = { f->tag_index, f->tag_index };
+    int fsn0 = 1;
+
+    s->calls++;
+    if (!final_val) {
+        final_val = malloc(1u << 21);
+        final_stamp = calloc(1u << 21, sizeof *final_stamp);
+    }
+    stamp++;
+    span.start = span.cur = f->start;
+    span.end = end;
+    span.nest = 0;
+    span.tag = f->tag_index;
+    span.defects = 0;
+    sp = &span;
+    blame_tag = f->tag_index;
+    cur_fs = fs0;
+    cur_fsn = &fsn0;
+    for (uint64_t i = end; i-- > f->start;) {
+        if (win[i].type == EV_W) {
+            ram_bank[win[i].addr >> 13][win[i].addr & 0x1FFF] = win[i].old;
+            final_stamp[win[i].addr] = stamp;
+        }
+    }
+    for (uint64_t i = f->start; i < end; i++)
+        if (win[i].type == EV_W)
+            final_val[win[i].addr] = win[i].val;
+    memcpy(mshadow, f->mpr, 8);
+    c_speed = f->speed;
+    cpu.a = f->regs.a;
+    cpu.x = f->regs.x;
+    cpu.y = f->regs.y;
+    cpu.s = f->regs.s;
+    cpu.p = f->regs.p;
+    cwn = 0;
+    c_budget = 0;
+    why[0] = 0;
+    exit_regs_a5 = r;
+    reason = setjmp(c_abort);
+    if (reason == 0) {
+        f->tag->abi();
+        span_finish(&span);
+    }
+    if (reason == ABORT_NONE) {
+        uint8_t exit_s;
+        uint16_t exit_pc;
+        const uint8_t *stack = ram_bank[0xF8] + 0x100;
+
+        /* Where a routine ends on a shared exit, registers and flags are dead. */
+        if (!f->tag->ends && cpu.a != r->a)
+            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " A C %02X orig %02X;", cpu.a, r->a);
+        if (!f->tag->ends && cpu.x != r->x)
+            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " X C %02X orig %02X;", cpu.x, r->x);
+        if (!f->tag->ends && cpu.y != r->y)
+            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " Y C %02X orig %02X;", cpu.y, r->y);
+        if (f->kind == K_IRQ) {
+            exit_s = (uint8_t)(cpu.s + 3);
+            exit_pc = (uint16_t)(stack[(uint8_t)(cpu.s + 2)] | (stack[(uint8_t)(cpu.s + 3)] << 8));
+            if (((stack[(uint8_t)(cpu.s + 1)] ^ r->p) & PFLAGS))
+                dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " P at RTI C %02X orig %02X;",
+                                       stack[(uint8_t)(cpu.s + 1)], r->p);
+        } else if (f->tag->ends) {
+            exit_s = cpu.s;
+            exit_pc = f->tag->ends;
+        } else {
+            exit_s = (uint8_t)(cpu.s + 2);
+            exit_pc = (uint16_t)((stack[(uint8_t)(cpu.s + 1)] | (stack[(uint8_t)(cpu.s + 2)] << 8)) + 1);
+            if ((cpu.p ^ r->p) & PFLAGS)
+                dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " P C %02X orig %02X (entry %02X);", cpu.p, r->p,
+                                       f->regs.p);
+        }
+        if (exit_s != r->s || exit_pc != r->pc)
+            defect(D_STACK, "the call ends with S %02X and returns to %04X, the original S %02X and %04X", exit_s,
+                   exit_pc, r->s, r->pc);
+        if (c_speed != chk_get_speed())
+            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " CPU clock C %s orig %s;", c_speed ? "fast" : "slow",
+                                   chk_get_speed() ? "fast" : "slow");
+        for (unsigned i = 0; i < 8; i++)
+            if (mshadow[i] != (uint8_t)chk_mpr(i))
+                dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " MPR%u C %02X orig %02X;", i, mshadow[i],
+                                       chk_mpr(i));
+        /* RAM: everything either side wrote; the stack at and below S is dead. */
+        for (uint64_t i = f->start; i < end && dl < 300; i++) {
+            if (win[i].type == EV_W) {
+                uint32_t p = win[i].addr;
+                uint8_t c = ram_bank[p >> 13][p & 0x1FFF];
+
+                if (is_stack(p) && (uint8_t)(p & 0xFF) <= exit_s)
+                    continue;
+                if (c != final_val[p])
+                    dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " %06X C %02X orig %02X;", p, c, final_val[p]);
+            }
+        }
+        for (uint32_t i = 0; i < cwn && dl < 300; i++) {
+            uint32_t p = cw[i].phys;
+
+            if (is_stack(p) && (uint8_t)(p & 0xFF) <= exit_s)
+                continue;
+            if (final_stamp[p] != stamp && ram_bank[p >> 13][p & 0x1FFF] != cw[i].old)
+                dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " %06X C wrote %02X, orig left %02X;", p,
+                                       ram_bank[p >> 13][p & 0x1FFF], cw[i].old);
+        }
+    }
+    /* Put RAM back: undo the C, redo the original. */
+    while (cwn) {
+        cwn--;
+        ram_bank[cw[cwn].phys >> 13][cw[cwn].phys & 0x1FFF] = cw[cwn].old;
+    }
+    for (uint64_t i = f->start; i < end; i++)
+        if (win[i].type == EV_W)
+            ram_bank[win[i].addr >> 13][win[i].addr & 0x1FFF] = win[i].val;
+    sp = NULL;
+    cur_fs = NULL;
+    cur_fsn = NULL;
+    blame_tag = -1;
+    if (reason == ABORT_UNVERIFIED) {
+        s->unverified++;
+        say(f->tag, s, "UNVERIFIED", why);
+    } else if (reason == ABORT_DIVERGED) {
+        s->divergent++;
+        say(f->tag, s, "DIVERGENT", why);
+    } else if (dl) {
+        s->divergent++;
+        say(f->tag, s, "DIVERGENT", diff);
+    } else if (span.defects) {
+        s->order++;
+    } else {
+        s->identical++;
+    }
+    (void)fsn0;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* A7: the hybrid's calls.                                                                      */
+
+static uint64_t swapped;
+static unsigned long hy_frames_ok, hy_frames_total, hy_first_bad = (unsigned long)-1;
+static uint64_t nf_record;
+static unsigned long dump_frame;
+
+static int kept_by_name(int index)
+{
+    const char *keep = getenv("RONDO_KEEP");
+    const char *only = getenv("RONDO_ONLY");
+    size_t n = strlen(rondo_tags[index].name);
+
+    /* RONDO_ONLY=name,...: only those routines are swapped; every other call runs the original. */
+    if (only) {
+        for (const char *at = only; (at = strstr(at, rondo_tags[index].name)) != NULL; at += n)
+            if ((at == only || at[-1] == ',') && (at[n] == ',' || at[n] == 0))
+                return 0;
+        return 1;
+    }
+    if (keep && !strcmp(keep, "all"))
+        return 1;
+    for (const char *at = keep; at && (at = strstr(at, rondo_tags[index].name)) != NULL; at += n)
+        if ((at == keep || at[-1] == ',') && (at[n] == ',' || at[n] == 0))
+            return 1;
+    return 0;
 }
 
 static int tag_resident(const Tag *t)
@@ -857,86 +1651,277 @@ static int tag_resident(const Tag *t)
     return 1;
 }
 
-static uint16_t stack_return(uint8_t s)
+static Ctx *ctx_new(void)
 {
-    const uint8_t *base = ram_bank[0xF8];
-    unsigned lo = base[0x100 + (uint8_t)(s + 1)];
-    unsigned hi = base[0x100 + (uint8_t)(s + 2)];
+    Ctx *c = free_ctx;
 
-    return (uint16_t)(((hi << 8) | lo) + 1);
-}
-
-static int prev_is_entry(void)
-{
-    return prev_op == 0x20 || prev_op == 0x44 || prev_op == 0x4C || prev_op == 0x6C || prev_op == 0x7C;
-}
-
-static void close_frames(const Regs *r)
-{
-    while (depth) {
-        Frame *f = &frames[depth - 1];
-        uint8_t up = (uint8_t)(r->s - f->regs.s);
-
-        if (f->tag->ends ? (r->pc == f->tag->ends && r->s == f->regs.s)
-                         : (up == 2 && r->pc == f->ret && prev_op == 0x60)) {
-            if (mode == MODE_A5) {
-                judge(f, r);
-            } else {
-                Rec *c = &recs[f->record];
-
-                /* The core resets its clock inside a frame's run, so a clock
-                 * that went backward means the call crossed that reset. */
-                if (chk_ts() < f->ts)
-                    c->flags |= REC_CROSSED;
-                c->delta = chk_ts() - f->ts;
-                c->end = (uint32_t)nrec;
-                c->flags &= ~(uint32_t)REC_UNCLOSED;
-                if (f->overlapped)
-                    c->flags |= REC_OVERLAP;
-            }
-            depth--;
-            continue;
+    if (c) {
+        free_ctx = c->below;
+    } else {
+        c = calloc(1, sizeof *c);
+        c->stack = mmap(NULL, CO_STACK, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (c->stack == MAP_FAILED) {
+            fprintf(stderr, "check: no stack for a coroutine\n");
+            exit(5);
         }
-        if (up > 2 && up < 0x80) {
-            if (mode == MODE_A5) {
-                stats[f->tag_index].calls++;
-                stats[f->tag_index].unverified++;
-            }
-            depth--;
-            continue;
-        }
-        break;
     }
-    if (!depth)
-        logn = 0;
+    return c;
 }
 
-static void open_frame(int index, const Regs *r)
+/* Drops the events no open call or scan can need any more. */
+static void hy_trim(void)
 {
-    Frame *f;
+    uint64_t keep = scan;
 
-    if (depth == FRAMES) {
-        depth = 0;
-        logn = 0;
-    }
-    f = &frames[depth++];
-    f->tag = &rondo_tags[index];
-    f->tag_index = index;
-    f->start = logn;
-    f->ret = stack_return(r->s);
-    f->regs = *r;
-    f->overlapped = 0;
-    for (unsigned i = 0; i < 8; i++)
-        f->mpr[i] = (uint8_t)chk_mpr(i);
-    f->speed = chk_get_speed();
-    if (mode == MODE_RECORD) {
-        f->record = (uint32_t)nrec;
-        f->ts = chk_ts();
-        rec_new(index);
+    for (Ctx *c = top; c; c = c->below)
+        if (c->span.cur < keep)
+            keep = c->span.cur;
+    if (keep > wbase + (1u << 17) && keep - wbase > wn / 2) {
+        uint64_t drop = keep - wbase;
+
+        memmove(win, win + drop, (wn - drop) * sizeof *win);
+        wn -= drop;
+        wbase = keep;
     }
 }
 
-/* Runs before each instruction. Nonzero: the C ran; the machine owes those clocks. */
+static void co_main(void)
+{
+    Ctx *c = top;
+
+    sp = &c->span;
+    cur_fs = c->fs;
+    cur_fsn = &c->fsn;
+    c->fsn = 1;
+    c->fs[0] = c->tag;
+    blame_tag = c->tag;
+    in_swap = c->tag;
+    rondo_tags[c->tag].abi();
+    span_finish(&c->span);
+    in_swap = -1;
+    c->done = 1;
+    swapcontext(&c->uc, &main_uc);
+}
+
+static void hy_switch_in(Ctx *c)
+{
+    c->parked = 0;
+    sp = &c->span;
+    cur_fs = c->fs;
+    cur_fsn = &c->fsn;
+    blame_tag = c->fsn ? c->fs[c->fsn - 1] : c->tag;
+    swapcontext(&main_uc, &c->uc);
+}
+
+static int hy_finish(Ctx *c)
+{
+    const Tag *t = &rondo_tags[c->tag];
+    Ev *close = evp(c->span.end);
+    uint8_t s = cpu.s;
+    uint16_t pc;
+    uint8_t ns;
+    uint8_t p = cpu.p;
+    int64_t owed;
+
+    if (c->kind == K_IRQ) {
+        p = chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s + 1)));
+        pc = (uint16_t)(chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s + 2))) |
+                        (chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s + 3))) << 8));
+        ns = (uint8_t)(s + 3);
+    } else if (t->ends) {
+        pc = t->ends;
+        ns = s;
+    } else {
+        pc = (uint16_t)((chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s + 1))) |
+                         (chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s + 2))) << 8)) + 1);
+        ns = (uint8_t)(s + 2);
+    }
+    if (close && close->type == EV_CLOSE) {
+        blame_tag = c->tag;
+        if (!t->ends && (ns != close->s || pc != close->pc))
+            defect(D_STACK, "the call ends with S %02X and returns to %04X, the original S %02X and %04X", ns, pc,
+                   close->s, close->pc);
+        else if (!t->ends && (cpu.a != close->a || cpu.x != close->x || cpu.y != close->y ||
+                              ((p ^ close->p) & PFLAGS)))
+            defect(D_REGS, "the call leaves A%02X X%02X Y%02X P%02X, the original A%02X X%02X Y%02X P%02X", cpu.a,
+                   cpu.x, cpu.y, p, close->a, close->x, close->y, close->p);
+        blame_tag = -1;
+        owed = (int64_t)close->clock - (int64_t)hybrid_clock_now();
+    } else {
+        owed = 1;
+    }
+    chk_set_regs(cpu.a, cpu.x, cpu.y, ns, p, pc);
+    prev_op = c->kind == K_IRQ ? 0x40 : 0x60;
+    scan = c->span.end + 1;
+    return owed > 0 ? (int)(owed > 0x7FFFFFFF ? 0x7FFFFFFF : owed) : 1;
+}
+
+/* A coroutine ran or parked; the hook's answer: 0 to go on running the CPU, else clocks owed. */
+static int hy_after(void)
+{
+    Ctx *c = top;
+    int ret = 0;
+
+    sp = NULL;
+    cur_fs = NULL;
+    cur_fsn = NULL;
+    blame_tag = -1;
+    if (c && c->abandoned) {
+        top = c->below;
+        c->abandoned = 0;
+        c->below = free_ctx;
+        free_ctx = c;
+        hy_trim();
+        return 0;
+    }
+    if (c && c->done) {
+        top = c->below;
+        ret = hy_finish(c);
+        c->below = free_ctx;
+        free_ctx = c;
+        c->done = 0;
+        hy_trim();
+    }
+    return ret;
+}
+
+static int hy_enter(int index, const Regs *r, int kind, int keep)
+{
+    uint64_t i = scan;
+    Ev *e = NULL;
+    Ctx *c;
+
+    for (;; i++) {
+        e = evp(i);
+        if (!e || e->type == EV_OPEN)
+            break;
+    }
+    if (!e && keep) {
+        scan = i;
+        return 0;
+    }
+    if (!e) {
+        stop_run(4, "the call of %s is past the record's end", rondo_tags[index].name);
+    }
+    if ((int)e->addr != index) {
+        stop_run(4, "the hybrid calls %s; the record's next is %s", rondo_tags[index].name,
+                 rondo_tags[e->addr].name);
+    }
+    if (keep) {
+        scan = i + 1;
+        return 0;
+    }
+    if (e->a != r->a || e->x != r->x || e->y != r->y || e->s != r->s || ((e->p ^ r->p) & PFLAGS)) {
+        fprintf(report, "entry of %s at frame %lu: A%02X X%02X Y%02X S%02X P%02X, the record's A%02X X%02X Y%02X "
+                "S%02X P%02X\n", rondo_tags[index].name, cur_frame, r->a, r->x, r->y, r->s, r->p, e->a, e->x, e->y,
+                e->s, e->p);
+        fflush(report);
+    }
+    c = ctx_new();
+    memset(&c->span, 0, sizeof c->span);
+    c->span.start = c->span.cur = i + 1;
+    c->span.end = SPAN_OPEN;
+    c->span.nest = 0;
+    c->span.tag = index;
+    c->tag = index;
+    c->kind = e->kind;
+    (void)kind;
+    c->open_i = i;
+    c->entry_s = r->s;
+    c->done = c->parked = c->abandoned = 0;
+    c->fsn = 0;
+    c->below = top;
+    top = c;
+    swapped++;
+    stats[index].calls++;
+    cpu.a = r->a;
+    cpu.x = r->x;
+    cpu.y = r->y;
+    cpu.s = r->s;
+    cpu.p = r->p;
+    scan = i + 1;
+    getcontext(&c->uc);
+    c->uc.uc_stack.ss_sp = c->stack;
+    c->uc.uc_stack.ss_size = CO_STACK;
+    c->uc.uc_link = &main_uc;
+    makecontext(&c->uc, co_main, 0);
+    hy_switch_in(c);
+    return hy_after();
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Unit calls: a call at a routine's own entry, made by the script.                             */
+
+static struct {
+    int active, entered;
+    uint16_t entry;
+    Regs saved;
+    uint8_t s;
+} unit;
+
+/* NULL on success; otherwise why not. Called between frames, in every run alike. */
+const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint8_t x, int has_y, uint8_t y,
+                            int has_p, uint8_t p)
+{
+    Regs r;
+    int index = tag_at[addr];
+
+    if (unit.active)
+        return "a unit call is still running";
+    if (index < 0)
+        return "the address is not a routine's own entry";
+    if (!tag_resident(&rondo_tags[index]))
+        return "the routine's bytes are not resident at its address";
+    chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
+    unit.saved = r;
+    chk_bus_wr((uint16_t)(0x2100 | r.s), (uint8_t)((uint16_t)(UNIT_MARK - 1) >> 8));
+    chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(r.s - 1)), (uint8_t)(UNIT_MARK - 1));
+    unit.s = (uint8_t)(r.s - 2);
+    unit.entry = addr;
+    unit.entered = 0;
+    unit.active = 1;
+    chk_set_regs(has_a ? a : r.a, has_x ? x : r.x, has_y ? y : r.y, unit.s, has_p ? p : r.p, addr);
+    return NULL;
+}
+
+/* What happens between two instructions, for the record and A5: state changes, calls that ended, interrupts that returned. */
+static void boundary(const Regs *r)
+{
+    if (prev_op == 0x53 || prev_op == 0x54 || prev_op == 0xD4 || prev_op == PREV_IRQ) {
+        if (depth) {
+            sync_state(r);
+        } else {
+            for (unsigned i = 0; i < 8; i++)
+                last_mpr[i] = (uint8_t)chk_mpr(i);
+            last_speed = chk_get_speed();
+        }
+    }
+    close_frames(r);
+    if (prev_op == 0x40 && nchain && r->s == (uint8_t)(ichain[nchain - 1] + 3))
+        nchain--;
+    if (nints && depth && prev_op == 0x40 && r->pc == ints[nints - 1].resume && r->s == ints[nints - 1].s) {
+        Ev e;
+
+        memset(&e, 0, sizeof e);
+        e.type = EV_IRET;
+        e.clock = cur_clock();
+        log_event(&e);
+        nints--;
+    }
+}
+
+/* The run address of a routine by name, or -1. */
+int check_tag_run(const char *name)
+{
+    for (unsigned i = 0; i < rondo_tag_count; i++)
+        if (!strcmp(rondo_tags[i].name, name))
+            return rondo_tags[i].run;
+    return -1;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* The hook before every instruction.                                                           */
+
 int check_exec(uint32_t pc)
 {
     Regs r;
@@ -944,93 +1929,62 @@ int check_exec(uint32_t pc)
 
     chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
     r.pc = (uint16_t)pc;
+    if (unit.active && !unit.entered && pc == unit.entry && r.s == unit.s) {
+        unit.entered = 1;
+        prev_op = PREV_UNIT;
+    }
     if (mode == MODE_HYBRID) {
+        if (top && top->parked && (prev_op == 0x60 || prev_op == 0x40) && pc == top->resume_pc &&
+            r.s == top->resume_s) {
+            hy_switch_in(top);
+            return hy_after();
+        }
+        if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
+            unit.active = 0;
+            chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
+            prev_op = -1;
+            return 0;
+        }
         index = tag_at[pc & 0xFFFF];
-        if (index < 0 || !prev_is_entry() || !tag_resident(&rondo_tags[index]))
+        if (index < 0 || !(prev_is_entry() || prev_op == PREV_IRQ) || !tag_resident(&rondo_tags[index]))
             return 0;
-        if (rec_cursor >= nrec) {
-            fprintf(stderr, "check: call of %s past the record's end\n", rondo_tags[index].name);
-            exit(4);
-        }
-        Rec *c = &recs[rec_cursor];
-
-        if (c->tag != index) {
-            fprintf(stderr, "check: call of %s at frame %d; the record's next is %s\n",
-                    rondo_tags[index].name, run_frame_stamp, rondo_tags[c->tag].name);
-            exit(4);
-        }
-        /* The first call the clocks disagree at, with what ran before it. */
-        if (!drift_reported && c->start_ts != chk_ts()) {
-            drift_reported = 1;
-            fprintf(report, "first clock drift at frame %d, %s: original ts %u, hybrid ts %u (record %llu, flags %u, hw_first %llu)\n",
-                    run_frame_stamp, rondo_tags[index].name, c->start_ts, chk_ts(),
-                    (unsigned long long)rec_cursor, c->flags, (unsigned long long)c->hw_first);
-            for (unsigned i = recent_n > 16 ? recent_n - 16 : 0; i < recent_n; i++)
-                fprintf(report, "  before: frame %lu %s A%02X X%02X Y%02X owed %d used %d rec %u\n",
-                        recent[i % RECENT].frame, rondo_tags[recent[i % RECENT].tag].name,
-                        recent[i % RECENT].a, recent[i % RECENT].x, recent[i % RECENT].y,
-                        recent[i % RECENT].owed, recent[i % RECENT].used, recent[i % RECENT].delta);
-            fflush(report);
-        }
-        if (c->flags & REC_OVERLAP)
-            kept_interrupt++;
-        if (c->flags & (REC_CROSSED | REC_UNCLOSED))
-            kept_crossed++;
-        if (!rondo_tags[index].swappable || kept_by_name(index))
-            kept_original++;
-        if (c->flags || !rondo_tags[index].swappable || kept_by_name(index)) {
-            rec_cursor++;
-            return 0;
-        }
-        rec_cursor = c->end;
-        swapped++;
-        stats[index].calls++;
-        recent[recent_n % RECENT].tag = index;
-        recent[recent_n % RECENT].a = r.a;
-        recent[recent_n % RECENT].x = r.x;
-        recent[recent_n % RECENT].y = r.y;
-        recent[recent_n % RECENT].frame = (unsigned long)run_frame_stamp;
-        recent_n++;
-        cpu.a = r.a;
-        cpu.x = r.x;
-        cpu.y = r.y;
-        cpu.s = r.s;
-        cpu.p = r.p;
-        {
-            uint32_t ts0 = chk_ts();
-            const Tag *t = &rondo_tags[index];
-            uint16_t ret = t->ends ? t->ends : stack_return(r.s);
-            int32_t owed;
-
-            hw_replay = c->hw_first;
-            if (c->hw_first >= trace_lo && c->hw_first < trace_hi)
-                fprintf(stderr, "SWAP %s record %llu hw_first %llu delta %u start %u\n", t->name,
-                        (unsigned long long)(c - recs), (unsigned long long)c->hw_first, c->delta,
-                        c->start_ts);
-            in_swap = index;
-            rondo_tags[index].abi();
-            in_swap = -1;
-            owed = (int32_t)c->delta - (int32_t)(chk_ts() - ts0);
-            recent[(recent_n - 1) % RECENT].owed = owed;
-            recent[(recent_n - 1) % RECENT].used = (int)(chk_ts() - ts0);
-            recent[(recent_n - 1) % RECENT].delta = c->delta;
-            chk_set_regs(cpu.a, cpu.x, cpu.y, t->ends ? r.s : (uint8_t)(r.s + 2), cpu.p, ret);
-            prev_op = 0x60;
-            return owed > 0 ? owed : 1;
-        }
+        return hy_enter(index, &r, prev_op == PREV_IRQ ? K_IRQ : K_JSR, kept_by_name(index));
     }
-    close_frames(&r);
-    if (depth && mode == MODE_A5) {
-        if (prev_is_entry() || prev_op == PREV_IRQ)
-            log_marker(E_CALL, &r);
-        else if (prev_op == 0x60)
-            log_marker(E_RET, &r);
+    if (mode != MODE_A5 && mode != MODE_RECORD) {
+        if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
+            unit.active = 0;
+            chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
+        }
+        return 0;
     }
-    index = tag_at[pc & 0xFFFF];
-    if (index >= 0 && prev_is_entry() && tag_resident(&rondo_tags[index]))
-        open_frame(index, &r);
+    boundary(&r);
+    if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
+        unit.active = 0;
+        chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
+        prev_op = -1;
+        return 0;
+    }
+    if (prev_op == PREV_IRQ && nchain < FRAMES)
+        ichain[nchain++] = r.s;
+    {
+        int irq_kind = prev_op == PREV_IRQ || (prev_is_entry() && entry_kind() == K_JMP && nchain && r.s == ichain[nchain - 1]);
+
+        if (depth) {
+            if (prev_is_entry() || prev_op == PREV_IRQ)
+                marker(EV_CALL, &r, prev_op == PREV_IRQ ? K_IRQ : entry_kind(), 0,
+                       irq_kind ? irq_return(r.s) : stack_return(r.s));
+            else if (prev_op == 0x60)
+                marker(EV_RET, &r, 0, 0, 0);
+        }
+        index = tag_at[pc & 0xFFFF];
+        if (index >= 0 && (prev_is_entry() || prev_op == PREV_IRQ) && tag_resident(&rondo_tags[index]))
+            open_frame(index, &r, irq_kind ? K_IRQ : K_JSR);
+    }
     return 0;
 }
+
+/* ------------------------------------------------------------------------------------------ */
+/* Frames.                                                                                      */
 
 static uint64_t hash_bytes(uint64_t h, const uint8_t *p, size_t n)
 {
@@ -1041,7 +1995,7 @@ static uint64_t hash_bytes(uint64_t h, const uint8_t *p, size_t n)
     return h;
 }
 
-/* RAM and the picture; the stack below S is not state. */
+/* RAM and the picture; the stack at and below S is not state. */
 void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsigned h)
 {
     uint64_t hash = 0xCBF29CE484222325ull;
@@ -1049,7 +2003,7 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
     uint8_t a, x, y, s, p;
     uint16_t pc;
 
-    run_frame_stamp = (int)frame;
+    cur_frame = frame;
     if (mode != MODE_RECORD && mode != MODE_HYBRID)
         return;
     if (dump_frame && frame == dump_frame) {
@@ -1065,13 +2019,6 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
             fwrite(ram_bank[0xF8], 1, 8192, d);
             fclose(d);
         }
-        if (mode == MODE_HYBRID && report) {
-            for (unsigned i = recent_n > RECENT ? recent_n - RECENT : 0; i < recent_n; i++)
-                fprintf(report, "swapped frame %lu %s A%02X X%02X Y%02X\n", recent[i % RECENT].frame,
-                        rondo_tags[recent[i % RECENT].tag].name, recent[i % RECENT].a,
-                        recent[i % RECENT].x, recent[i % RECENT].y);
-            fflush(report);
-        }
     }
     chk_get_regs(&a, &x, &y, &s, &p, &pc);
     for (unsigned b = 0x68; b <= 0x87; b++)
@@ -1082,27 +2029,45 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
     hash = hash_bytes(hash, ram_bank[0xF8] + 0x200, 8192 - 0x200);
     picture = hash_bytes(picture, (const uint8_t *)pixels, (size_t)w * h * 4);
     if (mode == MODE_RECORD) {
-        if (nf + 2 > fhmax) {
-            fhmax = fhmax ? fhmax * 2 : 65536;
-            fhash = realloc(fhash, fhmax * sizeof *fhash);
-        }
-        fhash[nf++] = hash;
-        fhash[nf++] = picture;
-        for (int i = 0; i < depth; i++)
-            recs[frames[i].record].flags |= REC_CROSSED;
-    } else if (nf + 2 <= fhmax) {
-        if (fhash[nf] != hash || fhash[nf + 1] != picture) {
-            if (hy_first_bad == (unsigned long)-1) {
-                hy_first_bad = frame;
-                fprintf(report, "first differing frame %lu: RAM %s, picture %s\n", frame,
-                        fhash[nf] != hash ? "differs" : "same",
-                        fhash[nf + 1] != picture ? "differs" : "same");
+        Ev e;
+
+        memset(&e, 0, sizeof e);
+        e.type = EV_FRAME;
+        e.addr = (uint32_t)frame;
+        e.clock = hash;
+        e.hash2 = picture;
+        wire_write(&e);
+        nf_record++;
+        fflush(out);
+        if (ferror(out))
+            exit(0);         /* the hybrid stopped reading: its report says why */
+    } else {
+        hy_trim();
+        /* The record's hashes for this frame: read ahead until they are there. */
+        while (fq_head == fq_tail && fetch_one())
+            ;
+        if (fq_head < fq_tail) {
+            hy_frames_total++;
+            if (fq[fq_head].ram != hash || fq[fq_head].pic != picture) {
+                if (hy_first_bad == (unsigned long)-1) {
+                    hy_first_bad = frame;
+                    fprintf(report, "first differing frame %lu: RAM %s, picture %s\n", frame,
+                            fq[fq_head].ram != hash ? "differs" : "same", fq[fq_head].pic != picture ? "differs" : "same");
+                }
+            } else {
+                hy_frames_ok++;
             }
-        } else {
-            hy_frames_ok++;
+            fq_head++;
         }
-        nf += 2;
     }
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Setup and the end.                                                                           */
+
+void check_where(const char *text)
+{
+    script_where = text;
 }
 
 int check_init(int which, const char *path, const char *user_path)
@@ -1111,11 +2076,17 @@ int check_init(int which, const char *path, const char *user_path)
 
     mode = which;
     check_path = path;
-    if (getenv("RONDO_TRACE_HW"))
-        sscanf(getenv("RONDO_TRACE_HW"), "%llu:%llu", (unsigned long long *)&trace_lo,
-               (unsigned long long *)&trace_hi);
     if (getenv("RONDO_DUMP_FRAME"))
         dump_frame = strtoul(getenv("RONDO_DUMP_FRAME"), NULL, 10);
+    if (getenv("RONDO_PLACE")) {
+        unsigned long lo = 0, hi = 0;
+
+        sscanf(getenv("RONDO_PLACE"), "%lu,%lu", &lo, &hi);
+        place_from = lo;
+        place_to = hi;
+    }
+    if (getenv("RONDO_SKIPS"))
+        skip_frame = strtoul(getenv("RONDO_SKIPS"), NULL, 10);
     user = malloc(20785152);
     tag_at = malloc(65536 * sizeof *tag_at);
     if (!f || !user || !tag_at || fread(user, 1, 20785152, f) != 20785152) {
@@ -1129,42 +2100,41 @@ int check_init(int which, const char *path, const char *user_path)
         if (strcmp(rondo_tags[i].name, "KernelStart") && strcmp(rondo_tags[i].name, "KernelIdle"))
             tag_at[rondo_tags[i].run] = (int16_t)i;
     stats = calloc(rondo_tag_count, sizeof *stats);
-    if (mode == MODE_A5)
-        logb = malloc(LOG_MAX * sizeof *logb);
     for (unsigned b = 0; b < 256; b++) {
         const uint8_t *p = chk_bank(b);
+
         rom_bank[b] = (uint8_t *)p;
         if (p && ((b >= 0x68 && b <= 0x87) || (b >= 0xF8 && b <= 0xFB)))
             ram_bank[b] = (uint8_t *)p;
     }
-    if (mode == MODE_HYBRID) {
-        FILE *r = fopen(path, "rb");
-        uint64_t head[3];
+    for (unsigned i = 0; i < 8; i++)
+        last_mpr[i] = (uint8_t)chk_mpr(i);
+    last_speed = chk_get_speed();
+    if (mode == MODE_A5) {
+        win = malloc(LOG_MAX * sizeof *win);
+        wcap = LOG_MAX;
+        report = fopen(path, "w");
+        int_pass = a5_int_pass;
+    } else if (mode == MODE_RECORD) {
+        signal(SIGPIPE, SIG_IGN);
+        out = fopen(path, "wb");
+        if (!out) {
+            fprintf(stderr, "check: cannot write the record %s\n", path);
+            return -1;
+        }
+        setvbuf(out, NULL, _IOFBF, 1u << 22);
+    } else if (mode == MODE_HYBRID) {
+        char name[4200];
 
-        if (!r || fread(head, sizeof head, 1, r) != 1) {
+        in = fopen(path, "rb");
+        if (!in) {
             fprintf(stderr, "check: cannot read the record %s\n", path);
             return -1;
         }
-        nrec = head[0];
-        fhmax = head[1];
-        hwmax = head[2];
-        hw_clock = malloc((hwmax + 1) * sizeof *hw_clock);
-        recs = malloc(nrec * sizeof *recs);
-        fhash = malloc(fhmax * sizeof *fhash);
-        if (fread(recs, sizeof *recs, nrec, r) != nrec || fread(fhash, sizeof *fhash, fhmax, r) != fhmax ||
-            fread(hw_clock, sizeof *hw_clock, hwmax, r) != hwmax) {
-            fprintf(stderr, "check: short record %s\n", path);
-            return -1;
-        }
-        fclose(r);
-    } else if (mode == MODE_A5) {
-        report = fopen(path, "w");
-    }
-    if (mode == MODE_HYBRID) {
-        char name[4200];
-
+        setvbuf(in, NULL, _IOFBF, 1u << 22);
         snprintf(name, sizeof name, "%s.hybrid.txt", path);
         report = fopen(name, "w");
+        int_pass = hy_int_pass;
     }
     if ((mode == MODE_A5 || mode == MODE_HYBRID) && !report) {
         fprintf(stderr, "check: cannot write the report for %s\n", path);
@@ -1179,40 +2149,63 @@ void check_finish(void)
         for (unsigned i = 0; i < rondo_tag_count; i++) {
             Stat *s = &stats[i];
 
-            fprintf(report, "TAG %s %llu %llu %llu %llu %llu\n", rondo_tags[i].name,
-                    (unsigned long long)s->calls, (unsigned long long)s->identical,
-                    (unsigned long long)s->divergent, (unsigned long long)s->unverified,
-                    (unsigned long long)s->order);
+            fprintf(report, "TAG %s %llu %llu %llu %llu %llu", rondo_tags[i].name, (unsigned long long)s->calls,
+                    (unsigned long long)s->identical, (unsigned long long)s->divergent,
+                    (unsigned long long)s->unverified, (unsigned long long)s->order);
+            for (int k = 0; k < NKIND; k++)
+                fprintf(report, " %llu", (unsigned long long)s->kind[k]);
+            fprintf(report, "\n");
         }
         fclose(report);
     } else if (mode == MODE_RECORD) {
-        FILE *r = fopen(check_path, "wb");
-        uint64_t head[3] = { nrec, nf, nhw };
+        while (depth) {
+            Regs z = { 0 };
 
-        if (!r || fwrite(head, sizeof head, 1, r) != 1 ||
-            fwrite(recs, sizeof *recs, nrec, r) != nrec || fwrite(fhash, sizeof *fhash, nf, r) != nf ||
-            fwrite(hw_clock, sizeof *hw_clock, nhw, r) != nhw) {
-            perror(check_path);
-            exit(1);
+            close_event(&frames[depth - 1], &z, CL_LEFT);
+            depth--;
         }
-        fclose(r);
-        printf("record: %llu calls, %llu frames\n", (unsigned long long)nrec, (unsigned long long)(nf / 2));
+        fflush(out);
+        fclose(out);
+        printf("record: %llu events, %llu frames\n", (unsigned long long)emitted, (unsigned long long)nf_record);
     } else if (mode == MODE_HYBRID) {
-        fprintf(report, "calls swapped %llu; left to the original: interrupt %llu, crossed a frame %llu, "
-                "runs original code %llu\nframes compared %llu, identical %lu, first differing %ld\n",
-                (unsigned long long)swapped, (unsigned long long)kept_interrupt,
-                (unsigned long long)kept_crossed, (unsigned long long)kept_original,
-                (unsigned long long)(nf / 2), hy_frames_ok,
-                hy_first_bad == (unsigned long)-1 ? -1L : (long)hy_first_bad);
-        fclose(report);
+        uint64_t defects = 0;
+        long first;
+
         for (unsigned i = 0; i < rondo_tag_count; i++)
+            for (int k = 0; k < NKIND; k++)
+                defects += stats[i].kind[k];
+        first = hy_first_bad == (unsigned long)-1 ? (stopped_why ? -3L : defects ? -2L : -1L) : (long)hy_first_bad;
+        if (stopped_why)
+            printf("STOPPED %s\n", stopped_why);
+        fprintf(report, "calls swapped %llu; access defects %llu\nframes compared %llu, identical %lu, first "
+                "differing %ld\n", (unsigned long long)swapped, (unsigned long long)defects,
+                (unsigned long long)hy_frames_total, hy_frames_ok, first);
+        fclose(report);
+        for (unsigned i = 0; i < rondo_tag_count; i++) {
             if (stats[i].calls)
                 printf("SWAPPED %s %llu\n", rondo_tags[i].name, (unsigned long long)stats[i].calls);
+            if (stats[i].ints || stats[i].originals || stats[i].waits)
+                printf("UNDER %s %llu %llu %llu\n", rondo_tags[i].name, (unsigned long long)stats[i].ints,
+                       (unsigned long long)stats[i].originals, (unsigned long long)stats[i].waits);
+            for (int k = 0; k < NKIND; k++)
+                if (stats[i].kind[k])
+                    printf("DEFECT %s %s %llu\n", rondo_tags[i].name, kind_name[k], (unsigned long long)stats[i].kind[k]);
+        }
         for (unsigned i = 0; ran_inside && i < rondo_tag_count; i++)
             if (ran_inside[i])
                 printf("RAN %s %llu\n", rondo_tags[i].name, (unsigned long long)ran_inside[i]);
-        printf("hybrid: %llu swapped, frames compared %llu, identical %lu, first differing %ld\n",
-               (unsigned long long)swapped, (unsigned long long)(nf / 2), hy_frames_ok,
-               hy_first_bad == (unsigned long)-1 ? -1L : (long)hy_first_bad);
+        {
+            uint64_t ni = 0, no = 0, nw = 0;
+
+            for (unsigned i = 0; i < rondo_tag_count; i++) {
+                ni += stats[i].ints;
+                no += stats[i].originals;
+                nw += stats[i].waits;
+            }
+            printf("hybrid: %llu swapped, frames compared %llu, identical %lu, first differing %ld, access defects %llu, "
+                   "interrupts inside %llu, original calls %llu, waits %llu\n",
+                   (unsigned long long)swapped, (unsigned long long)hy_frames_total, hy_frames_ok, first,
+                   (unsigned long long)defects, (unsigned long long)ni, (unsigned long long)no, (unsigned long long)nw);
+        }
     }
 }

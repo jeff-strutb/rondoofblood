@@ -67,6 +67,7 @@ extern void (*chk_set_regs)(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint16_
 extern unsigned (*chk_mpr)(unsigned);
 extern void (*chk_set_mpr)(unsigned, uint8_t);
 extern uint32_t (*chk_ts)(void);
+extern uint64_t (*chk_ts_abs)(void);
 extern uint8_t (*chk_bus_rd)(uint16_t);
 extern void (*chk_bus_wr)(uint16_t, uint8_t);
 extern void (*chk_bus_st)(unsigned, uint8_t);
@@ -74,6 +75,10 @@ extern const uint8_t *(*chk_bank)(unsigned);
 extern void (*chk_charge)(int);
 extern uint8_t (*chk_get_speed)(void);
 extern void (*chk_set_speed)(uint8_t);
+const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint8_t x, int has_y, uint8_t y,
+                            int has_p, uint8_t p);
+int check_tag_run(const char *name);
+void check_where(const char *text);
 int check_init(int which, const char *path, const char *user_path);
 void check_finish(void);
 void check_rd(uint32_t phys, uint8_t v, int kind);
@@ -334,6 +339,78 @@ static int poke(unsigned addr, unsigned value)
     return 0;
 }
 
+/*
+ * call ADDR|NAME [A=hh] [X=hh] [Y=hh] [P=hh] [M=aaaa:hh,aaaa:hh...]
+ * A unit call at a routine's own entry, from outside: the CPU's context is saved, the registers set,
+ * the bytes of M written, and the routine run on the next frame; when it returns the context is
+ * restored and the game goes on. The address must be a tagged routine's own entry with its bytes
+ * resident; the middle of a routine is refused. The same call is made in a record and its hybrid.
+ */
+static int unit_call(const char *line, const char *script, int ln)
+{
+    char word[64], where[256];
+    const char *at = line;
+    int has[4] = { 0 };
+    unsigned v[4] = { 0 };
+    long addr = -1;
+    const char *err;
+
+    snprintf(where, sizeof where, "%s:%d", strrchr(script, '/') ? strrchr(script, '/') + 1 : script, ln);
+    check_where(where);
+    while (*at == ' ' || *at == '\t')
+        at++;
+    while (*at && *at != ' ' && *at != '\t')
+        at++;                                   /* "call" */
+    while (sscanf(at, " %63s", word) == 1) {
+        at = strstr(at, word) + strlen(word);
+        if (addr < 0 && strchr(word, '=') == NULL) {
+            char *end;
+            const char *num = word[0] == '$' ? word + 1 : word;
+
+            addr = strtol(num, &end, 16);
+            if (*end || strlen(num) < 3)
+                addr = check_tag_run(word);
+            if (addr < 0) {
+                fprintf(stderr, "pcebox: %s:%d: call: %s is neither a routine's name nor an address\n", script, ln, word);
+                return 1;
+            }
+        } else if (word[1] == '=' && strchr("AXYP", word[0])) {
+            int i = (int)(strchr("AXYP", word[0]) - "AXYP");
+
+            has[i] = 1;
+            v[i] = (unsigned)strtoul(word + 2, NULL, 16);
+        } else if (word[0] == 'M' && word[1] == '=') {
+            char *s = word + 2;
+
+            while (*s) {
+                unsigned a = (unsigned)strtoul(s, &s, 16), b;
+
+                if (*s != ':') {
+                    fprintf(stderr, "pcebox: %s:%d: call: M=addr:value\n", script, ln);
+                    return 1;
+                }
+                b = (unsigned)strtoul(s + 1, &s, 16);
+                if (poke(a, b)) {
+                    fprintf(stderr, "pcebox: %s:%d: call: no RAM at %04X\n", script, ln, a);
+                    return 1;
+                }
+                if (*s == ',')
+                    s++;
+            }
+        } else {
+            fprintf(stderr, "pcebox: %s:%d: call: bad word %s\n", script, ln, word);
+            return 1;
+        }
+    }
+    err = check_unit_call((uint16_t)addr, has[0], (uint8_t)v[0], has[1], (uint8_t)v[1], has[2], (uint8_t)v[2],
+                          has[3], (uint8_t)v[3]);
+    if (err) {
+        fprintf(stderr, "pcebox: %s:%d: call: %s\n", script, ln, err);
+        return 1;
+    }
+    return 0;
+}
+
 /* Run a script; include nests up to 8 deep. 0, or nonzero on a bad line. */
 static int run_script(const char *script, int depth)
 {
@@ -391,6 +468,11 @@ static int run_script(const char *script, int depth)
                 poke((unsigned)strtoul(a1[0] == '$' ? a1 + 1 : a1, NULL, 16),
                      (unsigned)strtoul(a2[0] == '$' ? a2 + 1 : a2, NULL, 16))) {
                 fprintf(stderr, "pcebox: %s:%d: poke: no RAM there, or a bad value\n", script, ln);
+                fclose(s);
+                return 2;
+            }
+        } else if (!strcmp(cmd, "call") && k >= 2) {
+            if (unit_call(line, script, ln)) {
                 fclose(s);
                 return 2;
             }
@@ -470,12 +552,13 @@ int main(int argc, char **argv)
         ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
             (void *)trace_rd, (void *)trace_wr, (void *)trace_irq);
     }
-    if (check_mode) {
+    if (check_mode || trace_user) {
         chk_get_regs = (void (*)(uint8_t *, uint8_t *, uint8_t *, uint8_t *, uint8_t *, uint16_t *))sym(lib, "rondo_get_regs");
         chk_set_regs = (void (*)(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint16_t))sym(lib, "rondo_set_regs");
         chk_mpr = core_mpr;
         chk_set_mpr = (void (*)(unsigned, uint8_t))sym(lib, "rondo_set_mpr");
         chk_ts = (uint32_t (*)(void))sym(lib, "rondo_timestamp");
+        chk_ts_abs = (uint64_t (*)(void))sym(lib, "rondo_timestamp_abs");
         chk_bus_rd = (uint8_t (*)(uint16_t))sym(lib, "rondo_bus_rd");
         chk_bus_wr = (void (*)(uint16_t, uint8_t))sym(lib, "rondo_bus_wr");
         chk_bus_st = (void (*)(unsigned, uint8_t))sym(lib, "rondo_bus_st");
@@ -483,12 +566,20 @@ int main(int argc, char **argv)
         chk_charge = (void (*)(int))sym(lib, "rondo_charge");
         chk_get_speed = (uint8_t (*)(void))sym(lib, "rondo_get_speed");
         chk_set_speed = (void (*)(uint8_t))sym(lib, "rondo_set_speed");
-        if (!check_user || check_init(check_mode, check_file, check_user))
-            return 1;
-        ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
-            (void *)check_rd, NULL, (void *)check_irq);
-        ((void (*)(void *, void *))sym(lib, "rondo_set_check_hooks"))(
-            (void *)check_exec, check_mode != 3 ? (void *)check_wr_pre : NULL);
+        if (check_mode) {
+            if (!check_user || check_init(check_mode, check_file, check_user))
+                return 1;
+            ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
+                (void *)check_rd, NULL, (void *)check_irq);
+            ((void (*)(void *, void *))sym(lib, "rondo_set_check_hooks"))(
+                (void *)check_exec, check_mode != 3 ? (void *)check_wr_pre : NULL);
+        } else {
+            /* A traced run keeps the trace's read and write hooks; the oracles' exec hook only
+             * serves the script's unit calls. */
+            if (check_init(0, "", trace_user))
+                return 1;
+            ((void (*)(void *, void *))sym(lib, "rondo_set_check_hooks"))((void *)check_exec, NULL);
+        }
     }
     for (int i = 0; i < ndefaulted; i++)
         fprintf(stderr, "pcebox: option %s left at the core's default\n", defaulted[i]);

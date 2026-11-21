@@ -32,7 +32,7 @@ import cardfile  # noqa: E402
 import disc  # noqa: E402
 
 PCEBOX = os.environ.get("RONDO_BOX") or os.path.join(TOP, "build", "rondo", "pcebox", "pcebox")
-CORE = os.path.join(TOP, "tools", "toolchains", "pce", "mednafen_pce_libretro.dylib")
+CORE = os.environ.get("RONDO_CORE") or os.path.join(TOP, "tools", "toolchains", "pce", "mednafen_pce_libretro.dylib")
 SCRIPTS = os.path.join(HERE, "scripts")
 OUT = os.environ.get("RONDO_ORACLE_OUT") or os.path.join(TOP, "build", "rondo", "oracle")
 TRACK = os.path.join(disc.OUT, "track02.bin")
@@ -53,6 +53,15 @@ def box(pcebox, script, flag, path, out):
                            "--script", os.path.join(SCRIPTS, script + ".txt"), "--out", out,
                            flag, path, "--user", TRACK],
                           capture_output=True, text=True, timeout=TIMEOUT)
+
+
+def box_start(pcebox, script, flag, path, out):
+    os.makedirs(out, exist_ok=True)
+    return subprocess.Popen([pcebox, "--core", CORE, "--cue", os.path.join(disc.REF, disc.CUE),
+                             "--system", disc.SYSTEM,
+                             "--script", os.path.join(SCRIPTS, script + ".txt"), "--out", out,
+                             flag, path, "--user", TRACK],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 
 def run_a5(pcebox, label, names):
@@ -141,7 +150,7 @@ def report_card(totals, csv_name):
         name = r["name"]
         calls, same, diff, unv, order = totals.get(name, [0, 0, 0, 0, 0])
         n, ran = cover.get(name, (r["length"], 0))
-        v = "UNCOVERED" if calls == 0 else "DIVERGENT" if diff else "UNVERIFIED" if same == 0 else "IDENTICAL"
+        v = "UNCOVERED" if calls == 0 else "DIVERGENT" if diff or order else "UNVERIFIED" if same == 0 else "IDENTICAL"
         rows.append(f"{name},{n},{ran},{calls},{same},{diff},{unv},{order},{v}")
     with open(os.path.join(OUT, "card_" + csv_name), "w", newline="\n") as f:
         f.write("\n".join(rows) + "\n")
@@ -160,7 +169,7 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
         n, ran = cover.get(name, (0, 0))
         if calls == 0:
             v = "UNCOVERED"
-        elif diff:
+        elif diff or order:
             v = "DIVERGENT"
         elif same == 0:
             v = "UNVERIFIED"
@@ -193,7 +202,7 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
 
 def report_gates(rows):
     """Which routines meet every gate as measured, and what the others lack."""
-    table = open(os.path.join(TOP, "build", "rondo", "pcebox", "hybrid_table.c")).read()
+    table = open(PCEBOX + ".gen/hybrid_table.c").read()
     swappable = {m.group(1): m.group(2) == "1"
                  for m in re.finditer(r'"(\w+)", abi_\w+, (\d),', table)}
     met, total = [0, 0], 0
@@ -221,32 +230,63 @@ def run_a7(names):
     out = os.path.join(OUT, "a7")
 
     def one(script):
+        # The record streams its events to the hybrid through a FIFO: the whole stream of a
+        # long script is gigabytes. Both run at once, so a script holds two slots.
         rec = os.path.join(out, script + ".rec")
         d = os.path.join(out, script)
+        os.makedirs(out, exist_ok=True)
+        if os.path.lexists(rec):
+            os.remove(rec)
+        os.mkfifo(rec)
+        procs = []
         try:
-            r = box(PCEBOX, script, "--record", rec, d)
-            if r.returncode:
-                return script, f"record exit {r.returncode}: {r.stderr.strip()[-300:]}"
-            h = box(PCEBOX, script, "--hybrid", rec, d)
-        except subprocess.TimeoutExpired:
-            return script, f"timed out after {TIMEOUT} s"
-        if h.returncode:
-            return script, f"hybrid exit {h.returncode}: {h.stderr.strip()[-400:]}"
-        for line in h.stdout.splitlines():
-            if line.startswith("SWAPPED ") or line.startswith("RAN "):
-                kind, name, count = line.split()
+            r = box_start(PCEBOX, script, "--record", rec, d)
+            h = box_start(PCEBOX, script, "--hybrid", rec, d)
+            procs = [r, h]
+            res = {}
+            for name, proc in (("record", r), ("hybrid", h)):
+                try:
+                    res[name] = proc.communicate(timeout=TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    for q in procs:
+                        q.kill()
+                    return script, f"timed out after {TIMEOUT} s"
+                # A hybrid that could not go on in step exits 3 or 4 with its report written: a result.
+                if proc.returncode and not (name == "hybrid" and proc.returncode in (3, 4)):
+                    for q in procs:
+                        if q.poll() is None:
+                            q.kill()
+                    return script, f"{name} exit {proc.returncode}: {res[name][1].strip()[-400:]}"
+        finally:
+            for q in procs:
+                if q.poll() is None:
+                    q.kill()
+            if os.path.lexists(rec):
+                os.remove(rec)
+        for line in res["hybrid"][0].splitlines():
+            if line.startswith(("SWAPPED ", "RAN ", "DEFECT ")):
+                parts = line.split()
+                if parts[0] == "DEFECT":
+                    with swapped_lock:
+                        defects[(parts[1], parts[2])] = defects.get((parts[1], parts[2]), 0) + int(parts[3])
+                    continue
+                kind, name, count = parts
                 table = swapped if kind == "SWAPPED" else ran_inside
                 with swapped_lock:
                     table[name] = table.get(name, 0) + int(count)
-        return script, next((ln for ln in h.stdout.splitlines() if ln.startswith("hybrid:")), "no result")
+        return script, next((ln for ln in res["hybrid"][0].splitlines() if ln.startswith("hybrid:")), "no result")
 
     bad = 0
-    swapped, ran_inside = {}, {}
+    swapped, ran_inside, defects = {}, {}, {}
     swapped_lock = threading.Lock()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), int(os.environ.get("CPU_RUN_JOBS") or os.cpu_count()))) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(len(names), int(os.environ.get("CPU_RUN_JOBS") or os.cpu_count()) // 2))) as ex:
         for script, text in ex.map(one, names):
             print(f"{script}: {text}", flush=True)
             bad += "first differing -1" not in text
+    with open(os.path.join(OUT, "a7_defects.csv"), "w", newline="\n") as f:
+        f.write("routine,kind,defects\n")
+        for (name, kind), n in sorted(defects.items()):
+            f.write(f"{name},{kind},{n}\n")
     with open(os.path.join(OUT, "a7.csv"), "w", newline="\n") as f:
         f.write("routine,swapped,ran_inside\n")
         for name in sorted(set(swapped) | set(ran_inside)):

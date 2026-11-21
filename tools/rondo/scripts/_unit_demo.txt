@@ -1,0 +1,11 @@
+# Unit calls at a routine's own entry, for the oracles to judge (check.c, check_unit_call). The kernel
+# is resident from about frame 400. A call may only enter a tagged routine at its own first byte.
+wait 600
+# WriteBandScroll, band 2: X is its argument.
+call WriteBandScroll X=02
+wait 2
+# ApplyVelocityX on object slot 0, with a negative velocity poked first (M= pokes RAM before the call).
+call ApplyVelocityX X=00 M=2D80:FF,2DD8:F0
+wait 2
+call ApplyVelocityY X=01
+wait 30

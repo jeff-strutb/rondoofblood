@@ -55,17 +55,13 @@ exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
   done
   F=$(git diff --name-only --diff-filter=ACMR main HEAD)
   [ -z "$F" ] || python3 tools/common/provcheck.py $F > "$O/prov.txt" 2>&1 || { echo "LAND REFUSED (provenance): $(head -3 "$O/prov.txt" | tr "\n" " ")"; exit 8; }
-  for r in references tools/toolchains/src tools/toolchains/cc65 tools/toolchains/pce build/rondo/disc build/rondo/system build/rondo/trace; do
+  for r in references tools/toolchains/src tools/toolchains/cc65 tools/toolchains/pce build/rondo/disc build/rondo/system; do
     [ -e "$W/$r" ] || { mkdir -p "$(dirname "$W/$r")"; ln -sfn "$M/$r" "$W/$r"; }
   done
-  if git diff --quiet main HEAD -- asm src syscard tools; then
-    echo "decomp tree identical to main: image and link checks skipped"
-  else
-    python3 tools/rondo/landcheck.py image "$O" || exit 5
-    python3 tools/rondo/landcheck.py link "$O" || exit 6
-  fi
+  mkdir -p "$W/build/rondo"
+  if [ -L "$W/build/rondo/trace" ] || [ ! -e "$W/build/rondo/trace" ]; then ln -sfn "$M/build/rondo/trace" "$W/build/rondo/trace"; fi
   # New or changed scripts: trace them here, in a private trace folder (main is not touched), so a failure
-  # refuses the landing with main as it was. The folder holds links to main existing script folders, except
+  # refuses the landing with main as it was, and before the checks, whose build refuses a script with no trace. The folder holds links to main existing script folders, except
   # the ones being traced, and the merged maps written into it cover all of them.
   S=$(python3 tools/rondo/landcheck.py scripts main) || exit 9
   if [ -n "$S" ]; then
@@ -73,7 +69,7 @@ exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
     T=$O/trace; rm -rf "$T"; mkdir -p "$T"
     for d in "$M"/build/rondo/trace/*/; do
       n=$(basename "$d")
-      case " $S " in *" $n "*) ;; *) ln -s "${d%/}" "$T/$n" ;; esac
+      case " $S " in *" $n "*) ;; *) ln -s "$M/build/rondo/trace/$n" "$T/$n" ;; esac
     done
     P=""; for n in $S; do P="$P tools/rondo/scripts/$n.txt"; done
     B=$(python3 tools/rondo/landcheck.py code "$M/build/rondo/trace/discmap.bin")
@@ -81,6 +77,13 @@ exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
       || { echo "LAND REFUSED (trace): tracing $S failed, main untouched: $(grep -v merged: "$O/trace.log" | tail -2 | tr "\n" " ")"; exit 9; }
     A=$(python3 tools/rondo/landcheck.py code "$T/discmap.bin")
     echo "traced $S into a private folder: $(grep "^merged:" "$O/trace.log")"
+    if [ -L "$W/build/rondo/trace" ]; then ln -sfn "$T" "$W/build/rondo/trace"; fi    # the intake in the checks below sees the new traces
+  fi
+  if git diff --quiet main HEAD -- asm src syscard tools; then
+    echo "decomp tree identical to main: image and link checks skipped"
+  else
+    python3 tools/rondo/landcheck.py image "$O" || exit 5
+    python3 tools/rondo/landcheck.py link "$O" || exit 6
   fi
   git -C "$M" merge -q --ff-only "$BR" || { echo "LAND REFUSED (main): main could not fast-forward to $BR (main checkout has changes at those paths, or main moved); land again"; exit 7; }
   echo "LANDED $(git -C "$M" log --oneline -1)"

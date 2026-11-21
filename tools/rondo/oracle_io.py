@@ -81,24 +81,24 @@ def job(tree, script, out, box):
     t0 = time.time()
     r = run_oracle(tree, "a7", script, os.path.join(out, "a7run"), box)
     result["secs"]["a7"] = round(time.time() - t0, 1)
-    bad = re.search(rf"^{script}: (record exit|hybrid exit|timed out).*$", r.stdout, re.M)
-    if r.returncode and not bad and A7_IDENTICAL not in r.stdout:
-        bad = re.search(r".*", r.stderr.strip()[-300:] or f"exit {r.returncode}")
+    hard = re.search(rf"^{script}: (record exit|timed out).*$", r.stdout, re.M)
     report = os.path.join(out, "a7run", "a7", script + ".rec.hybrid.txt")
-    diff = None
-    if bad and bad.group(0).startswith(f"{script}: hybrid exit") and os.path.exists(report):
-        # The hybrid run exits non-zero when the frames differ: that is a red verdict, not a failed run.
-        text = " ".join(open(report, errors="replace").read().split())
-        m = re.search(r"first differing (\d+)", text)
-        diff = (text, m) if m else None
-    if diff:
-        result["a7"] = {"verdict": "DIVERGENT", "detail": f"hybrid: {diff[0]}"[:400]}
-    elif bad:
-        result["errors"].append("a7: " + bad.group(0))
-    else:
+    text = " ".join(open(report, errors="replace").read().split()) if os.path.exists(report) else ""
+    differs = re.search(r"first differing ([1-9]\d*)", text)
+    if hard:
+        result["errors"].append("a7: " + hard.group(0))
+    elif r.returncode == 0 or A7_IDENTICAL in r.stdout:
         detail, reach = read_a7(os.path.join(out, "a7run"), script, r.stdout)
         result["a7"] = {"verdict": "IDENTICAL" if A7_IDENTICAL in detail else "DIVERGENT", "detail": detail}
         result["reach"] = reach
+    elif differs:
+        # The oracle exits non-zero when the frames differ: that is a red verdict, not a failed run.
+        detail, reach = read_a7(os.path.join(out, "a7run"), script, r.stdout)
+        result["a7"] = {"verdict": "DIVERGENT", "detail": ("hybrid: " + text)[:400]}
+        result["reach"] = reach
+    else:
+        result["errors"].append("a7: " + (r.stdout.strip().splitlines() or [""])[-1][:300] +
+                                (r.stderr.strip()[-300:] or f" exit {r.returncode}"))
     json.dump(result, open(os.path.join(out, "result.json"), "w"), indent=1)
     print(f"{script}: a5 {result['secs']['a5']} s, a7 {result['secs']['a7']} s, "
           f"{'errors: ' + '; '.join(result['errors']) if result['errors'] else 'ok'}")

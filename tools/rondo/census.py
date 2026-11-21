@@ -41,6 +41,7 @@ import csv
 import glob
 import math
 import os
+import struct
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +62,7 @@ SCENE_RECORDS, SCENE_DESTINATIONS = 0x74D1, 0x70F8
 KERNEL_SECTOR = 0x43
 OP_BANKS, OP_GOTO, OP_CALLS = 0, 0xC0, (0x80, 0x81, 0x82, 0x83)
 CALL_KINDS = (0x20, 0x44, 0x4C, 0x6C, 0x7C, 0x100)
+SUNK = 4 | 8 | 16 | 32            # discmap2: sent to the VDC, the VCE, the PSG or the ADPCM port: data, for certain
 WINDOWS = (2, 3, 4, 5, 6)           # 8 KB windows at $4000 .. $DFFF
 TABLE_MAX = 256                     # entries: X is eight bits
 BOOT_READS = ((0x43, 10, 0x4000), (0x4D, 12, 0x8000), (0x59, 8, 0x8000))  # boot block's load table
@@ -186,6 +188,19 @@ class Traces:
         for n in self.names:
             acc |= int.from_bytes(open(os.path.join(TRACE, n, "discmap.bin"), "rb").read(), "little")
         self.map = acc.to_bytes(USER_BYTES, "little")
+        self.map2 = None                # what each disc byte is: trace.c's discmap2 flags (None: not traced yet)
+        self.runs = None                # (disc offset, logical address, bank) of every executed opcode
+        if all(os.path.exists(os.path.join(TRACE, n, "discmap2.bin")) for n in self.names):
+            acc, self.runs = 0, set()
+            for n in self.names:
+                acc |= int.from_bytes(open(os.path.join(TRACE, n, "discmap2.bin"), "rb").read(), "little")
+                mine = {}
+                for line in open(os.path.join(TRACE, n, "mprcfg.csv")).read().splitlines()[1:]:
+                    f = line.split(",")
+                    mine[int(f[0])] = tuple(int(x, 16) for x in f[1:])
+                d = open(os.path.join(TRACE, n, "runmap.bin"), "rb").read()
+                self.runs.update((a, b, c, mine[g]) for a, b, c, k, g, _ in struct.iter_unpack("<IHBBHH", d) if k == 1)
+            self.map2 = acc.to_bytes(USER_BYTES, "little")
         self.edges = set()
         for n in self.names:
             for r in csv.DictReader(open(os.path.join(TRACE, n, "edges.csv"), newline="")):
@@ -211,6 +226,7 @@ class Ctx:
     def __init__(self, key, list_key, banks):
         self.key, self.list_key, self.banks = key, list_key, banks
         self.wins = {}
+        self.cfgs = {}                  # (bank, window) -> the banks in windows 2-6 when code from that bank ran there
         self.ambiguous = 0
 
     def place(self, run):
@@ -237,6 +253,11 @@ class Ctx:
         if bank is not None and window == w and bank in self.banks:
             d = self.banks[bank][off]
             return [(bank, d)] if d >= 0 else []
+        if bank is not None and window is not None and 2 <= w <= 6 and self.cfgs.get((bank, window)):
+            seen = {c[w - 2] for c in self.cfgs[(bank, window)]}
+            got = [(b, self.banks[b][off]) for b in seen if b in self.banks and self.banks[b][off] >= 0]
+            if got:
+                return got
         out = [(b, self.banks[b][off]) for b, ws in self.wins.items() if w in ws and self.banks[b][off] >= 0]
         if bank is not None and any(b == bank for b, _ in out) and w in self.wins.get(bank, ()):
             return [(b, d) for b, d in out if b == bank]
@@ -274,11 +295,14 @@ def contexts(disc, tr):
         ctxs.append(Ctx(f"scene{s['n']:02X}", s["list"], replay(s["ops"])))
     # (disc offset, run address) wherever a traced JSR or JMP abs gave both
     pairs = set()
-    for kind, space, frm, to in tr.edges:
-        if kind in (0x20, 0x4C) and space == "D":
-            n, name, mode, w = disc.decode(frm)
-            if name in ("jsr", "jmp") and mode == "abs":
-                pairs.add((to, w))
+    if tr.runs is not None:             # exact: where every executed opcode ran
+        pairs = {(d, logical) for d, logical, bank, cfg in tr.runs}
+    else:
+        for kind, space, frm, to in tr.edges:
+            if kind in (0x20, 0x4C) and space == "D":
+                n, name, mode, w = disc.decode(frm)
+                if name in ("jsr", "jmp") and mode == "abs":
+                    pairs.add((to, w))
     by_list = collections.defaultdict(list)
     for c in ctxs:
         by_list[c.list_key].append(c)
@@ -290,7 +314,16 @@ def contexts(disc, tr):
                 for b, off in at.get(d, ()):
                     if off == run & (BANK - 1) and run >> 13 in WINDOWS:
                         seen[b].add(run >> 13)
+        cfgs = collections.defaultdict(set)
+        if tr.runs is not None:         # the mapper as the traces saw it when code from a bank ran in a window
+            for c in group:
+                at = c.at()
+                for d, logical, phys, cfg in tr.runs:
+                    for b, off in at.get(d, ()):
+                        if off == logical & (BANK - 1) and b < 1000:
+                            cfgs[(b, logical >> 13)].add(tuple(x - 0x68 for x in cfg))
         for c in group:
+            c.cfgs = cfgs
             for b, a in c.banks.items():
                 ws = seen.get(b) or ({vector_window(a, disc)} - {None})
                 if ws:
@@ -327,7 +360,7 @@ class Model:
         for i, v in enumerate(tr.map):
             if v & 3:
                 sec_code[i // SECTOR] += 1
-            elif v == 4:
+            elif (tr.map2[i] & SUNK if tr.map2 is not None else v == 4):
                 sec_data[i // SECTOR] += 1
         self.pure = sorted(s for s, c in sec_data.items() if c >= 800 and not sec_code[s])
         for s in self.pure:
@@ -656,6 +689,8 @@ def holdout(only=None, out=None):
     disc = Disc()
     full = Traces(names)
     pure = set(Model(disc, full).pure)
+    # data for certain: sent to a sound or video port by some script and executed by none
+    sunk = {i for i, v in enumerate(full.map2) if v & SUNK and not full.map[i] & 3} if full.map2 else set()
     rows, sink = [], (open(out, "w") if out else None)
 
     def say(text):
@@ -681,10 +716,12 @@ def holdout(only=None, out=None):
             row = {"held_out": label, "mode": mode, "truth": len(truth),
                    "found_of_truth": sum(1 for d in claims if d in truth), "claims": len(claims),
                    "claims_ran": sum(1 for d in claims if d in full.code),
-                   "claims_in_unrun_loaded_sectors": sum(1 for d in claims if d // SECTOR in pure)}
+                   "claims_in_unrun_loaded_sectors": sum(1 for d in claims if d // SECTOR in pure),
+                   "sunk_bytes": len(sunk), "false_claims_in_sunk": sum(1 for d in claims if d in sunk)}
             row["recall"] = round(row["found_of_truth"] / max(1, row["truth"]), 3)
             for rule in ("copy", "entry", "table", "array", "next", "array3", "sweep"):
                 row["by_" + rule] = sum(1 for r in claims.values() if r == rule)
+                row["false_" + rule] = sum(1 for d, r in claims.items() if r == rule and d in sunk)
             # a claimed instruction that a script ran differently is wrong: it starts on an operand byte, or has
             # the opcode of another instruction inside it. Only bytes some script ran can show this.
             ran_starts = [p for p in c.starts if p not in tr.code and p in full.code]

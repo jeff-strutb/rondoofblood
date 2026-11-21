@@ -1838,7 +1838,7 @@ static int hy_after(void)
         c->below = free_ctx;
         free_ctx = c;
         hy_trim();
-        return 0;
+        return 1;       /* the hook must see the first instruction of the code jumped to */
     }
     if (c && c->done) {
         top = c->below;
@@ -1847,8 +1847,41 @@ static int hy_after(void)
         free_ctx = c;
         c->done = 0;
         hy_trim();
+    } else if (c && c->parked) {
+        ret = 1;        /* the CPU is set to run code: the core goes round once more and the hook sees its first instruction */
     }
     return ret;
+}
+
+static int recent_tags[16];
+static unsigned recent_n;
+
+/* For a stop: the calls swapped last, and what the record has next. */
+static void stop_context(uint64_t from)
+{
+    unsigned shown = 0;
+
+    fprintf(report, "  swapped last:");
+    for (unsigned i = recent_n > 12 ? recent_n - 12 : 0; i < recent_n; i++)
+        fprintf(report, " %s", rondo_tags[recent_tags[i % 16]].name);
+    fprintf(report, "\n  the record's next calls:");
+    for (uint64_t i = from; shown < 8; i++) {
+        Ev *e = evp(i);
+
+        if (!e)
+            break;
+        if (e->type == EV_OPEN) {
+            fprintf(report, " %s(S%02X)", rondo_tags[e->addr].name, e->s);
+            shown++;
+        } else if (e->type == EV_CALL) {
+            fprintf(report, " >%04X", e->pc);
+        } else if (e->type == EV_CLOSE) {
+            fprintf(report, " <%s", rondo_tags[e->addr].name);
+        } else if (e->type == EV_INT) {
+            fprintf(report, " INT");
+        }
+    }
+    fprintf(report, "\n");
 }
 
 static int hy_enter(int index, const Regs *r, int kind, int keep)
@@ -1870,8 +1903,9 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
         stop_run(4, "the call of %s is past the record's end", rondo_tags[index].name);
     }
     if ((int)e->addr != index) {
-        stop_run(4, "the hybrid calls %s; the record's next is %s", rondo_tags[index].name,
-                 rondo_tags[e->addr].name);
+        stop_context(i > 24 ? i - 24 : 0);
+        stop_run(4, "the hybrid calls %s (S%02X); the record's next is %s (S%02X)", rondo_tags[index].name, r->s,
+                 rondo_tags[e->addr].name, e->s);
     }
     if (keep) {
         scan = i + 1;
@@ -1894,6 +1928,7 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
     (void)kind;
     c->open_i = i;
     c->entry_s = r->s;
+    recent_tags[recent_n++ % 16] = index;
     c->done = c->parked = c->abandoned = 0;
     c->fsn = 0;
     c->below = top;
@@ -2019,6 +2054,11 @@ int check_exec(uint32_t pc)
             return 0;
         }
         index = tag_at[pc & 0xFFFF];
+        if (getenv("RONDO_TRACE_ENTRY") && index >= 0 && strstr(getenv("RONDO_TRACE_ENTRY"), rondo_tags[index].name))
+            fprintf(stderr, "ENTRY frame %lu %s pc %04X S%02X prev_op %X entry %d resident %d kept %d scan %llu top %s\n",
+                    cur_frame, rondo_tags[index].name, (unsigned)pc, r.s, prev_op, prev_is_entry(),
+                    tag_resident(&rondo_tags[index]), kept_by_name(index), (unsigned long long)scan,
+                    top ? rondo_tags[top->tag].name : "-");
         if (index < 0 || !(prev_is_entry() || prev_op == PREV_IRQ) || !tag_resident(&rondo_tags[index]))
             return 0;
         return hy_enter(index, &r, prev_op == PREV_IRQ ? K_IRQ : K_JSR, kept_by_name(index));

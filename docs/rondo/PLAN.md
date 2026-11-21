@@ -248,6 +248,36 @@ gate, an audited census, and a unit call for scripts.
 
 Steps 1 to 3 run at once, on separate files. Step 4 is the master's.
 
+### Order changed, 2026-11-21: draft and prove first, proper C second
+
+Measured with the new checker, about 410 of the 738 filed routines fail:
+their C was written as typed C first (values read up front, exit flags
+worked out afterwards by reading memory again, calls restructured, the
+stack unused). Only about a fifth could be patched; most would be
+rewritten beside the assembly, and with that C in place the boot runs with
+over a million access defects, so no routine can be judged in a clean
+lockstep. Both finished projects went the other way, and this one now
+does (the maintainer's decision, 2026-11-21):
+
+1. **Draft.** A tool writes, for every traced routine, C that follows its
+   assembly instruction for instruction on the register file, so every
+   access, push, pull and call frame is where the original makes it by
+   construction. One function per distinct routine content, serving every
+   disc location that holds it. This is register-shaped C: a stepping
+   stone, never counted as decompiled, reported with its count.
+2. **Prove.** The drafts are judged by the new A5 and the lockstep A7
+   with C in place for every routine, until every script is identical.
+3. **Lift.** Each routine is then written as proper C over the typed
+   access layer, filed by responsibility, and judged by the same gates in
+   a hybrid where every other routine is proven C. The 603 filed routines'
+   C is the starting text for their lift.
+
+Two bars are reported, never one for the other: behaviour proven (a
+routine whose draft or filed C passes the gates) and M1 (proper C at T3).
+
+Steps 5 to 7 of the table above follow this order: the drafter comes
+before any writer, and writers lift.
+
 ### Rules carried from Aladdin
 
 - Before a fix, state the expected result in numbers. A miss is explained

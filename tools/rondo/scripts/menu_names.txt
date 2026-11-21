@@ -1,0 +1,221 @@
+# The file menu in full on an empty memory, as frames show it (2026-11-21): NAME ENTRY of PLAYER1
+# with eight characters (one of each kind: letters of the three rows, / & ' from the last row;
+# the cursor jumps to END after the eighth), PLAYER2 with ? . - and a backspace (II), PLAYER3
+# with B cancelled by II II; NAME CHANGE of PLAYER1 (the old name is cleared) and of PLAYER2
+# cancelled (II II restores it); FILE COPY PLAYER1 to PLAYER3, then every item greyed with three
+# files (I on NAME ENTRY and FILE COPY does nothing); FILE DELETE of PLAYER2, PLAYER1, PLAYER3;
+# then I on each greyed item of the empty memory. No poke.
+include _filemenu.txt
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press I 6
+wait 150
+press I 6
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 20
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press I 6
+wait 150
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press RIGHT 4
+wait 20
+press RIGHT 4
+wait 20
+press RIGHT 4
+wait 20
+press RIGHT 4
+wait 20
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press II 6
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press II 6
+wait 20
+press II 6
+wait 20
+wait 150
+shot f1
+press DOWN 4
+wait 20
+press I 6
+wait 150
+shot f2
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press I 6
+wait 150
+press I 6
+wait 20
+press RIGHT 4
+wait 20
+press I 6
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 150
+shot f3
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press II 6
+wait 20
+press II 6
+wait 20
+wait 150
+shot f4
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press I 6
+wait 150
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press I 6
+wait 30
+shot f5
+press DOWN 4
+wait 20
+press I 6
+wait 150
+shot f6
+press I 6
+wait 30
+press UP 4
+wait 20
+press UP 4
+wait 20
+press UP 4
+wait 20
+press I 6
+wait 30
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 150
+press DOWN 4
+wait 20
+press I 6
+wait 150
+wait 100
+shot f7
+press UP 4
+wait 20
+press I 6
+wait 150
+wait 100
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 150
+wait 100
+shot f8
+press DOWN 4
+wait 20
+press I 6
+wait 150
+shot f9
+press I 6
+wait 30
+press DOWN 4
+wait 20
+press I 6
+wait 30
+press DOWN 4
+wait 20
+press I 6
+wait 30
+press DOWN 4
+wait 20
+press I 6
+wait 30
+shot f10

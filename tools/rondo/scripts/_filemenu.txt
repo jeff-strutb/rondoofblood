@@ -1,0 +1,7 @@
+# From power on to the file menu with the backup memory empty: RUN on the card's title, the
+# intro to the title (frame 7,400), RUN, and the menu's slide in. Input as seen in frames.
+wait 120
+press RUN 6
+wait 7280
+press RUN 6
+wait 300

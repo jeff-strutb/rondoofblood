@@ -46,7 +46,7 @@ LINKS = ("references", "tools/toolchains/src", "tools/toolchains/cc65", "tools/t
          "build/rondo/disc", "build/rondo/system", "build/rondo/trace")
 OWNED = ("config/rondo/runs", "docs/rondo/ledger.csv", "syscard/ledger.csv")
 SCRIPT_TIMEOUT = 7200
-PER_FRAME = 0.085      # seconds of A5 plus A7 per scripted frame, from play_s0_r1 (34 s + 89 s for 1500 frames)
+GUESS = 150.0          # seconds of A5 plus A7 for a script never measured: play_s0_r1 took 123 s and attract_82 174 s
 
 
 def log(msg, d=None):
@@ -102,16 +102,11 @@ def prepare(main, rev, b, d):
     return tree, box, chash, ext
 
 
-def frames(script, top):
-    return sum(int(m) for m in re.findall(r"^wait\s+(\d+)", open(os.path.join(
-        top, "tools", "rondo", "scripts", script + ".txt")).read(), re.M)) or 1000
-
-
 def estimate(script, rec, top):
     row = rec.scripts.get(script)
     if row and row.get("a5_secs"):
         return float(row["a5_secs"]) + float(row["a7_secs"])
-    return frames(script, top) * PER_FRAME
+    return GUESS
 
 
 def make_plan(rec, chash, ext, opts, top):

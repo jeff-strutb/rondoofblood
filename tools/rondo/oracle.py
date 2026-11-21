@@ -206,7 +206,7 @@ def report_gates(rows):
     swappable = {m.group(1): m.group(2) == "1"
                  for m in re.finditer(r'"(\w+)", abi_\w+, (\d),', table)}
     met, total = [0, 0], 0
-    lacking = {"no call judged": 0, "not every byte run": 0, "cannot be swapped in A7": 0}
+    lacking = {"no call judged": 0, "not every byte run": 0, "C waits (wait_interrupt)": 0}
     for row in rows[1:]:
         name, n, ran, calls, same = row.split(",")[:5]
         n, ran, calls, same = int(n), int(ran), int(calls), int(same)
@@ -217,7 +217,7 @@ def report_gates(rows):
         if ran < n:
             reasons.append("not every byte run")
         if not swappable.get(name):
-            reasons.append("cannot be swapped in A7")
+            reasons.append("C waits (wait_interrupt)")
         for r in reasons:
             lacking[r] += 1
         if not reasons:

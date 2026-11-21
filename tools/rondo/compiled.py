@@ -15,11 +15,19 @@ the tree's build/rondo/pcebox/hybrid_table.c, which setup.sh pcebox writes):
   * the hash covers the closure's code and data and the routine's own table row (run address,
     length, disc offset, end): the extent the oracles judge.
 
+Each routine also gets an OWN hash: the same, over the routine's own code only (its function and abi_
+wrapper, the helpers and data only they use, and its table row) and not over the code of other
+routines it calls. A callee that is a routine of its own is not part of the caller's own code; an
+inlined one is, because inlining changes the caller's own bytes (the hybrid is built at -O2, so the
+compiler inlines small static callees and this shows as a changed OWN hash of the caller). With
+--out FILE a second file FILE.nodes lists every node's hash and, per routine, its closure and own
+set; records.py needs it to say which scripts a change can affect (rule in records.py).
+
 Comments, local names, the order of functions in a file and unrelated functions change nothing. A
 file's merged constants (strings, small literals) count for every function that uses any of them,
 which can only re-test too much. The checker, harness, hybrid.py and setup.sh are not in the hash:
 a checker fix re-measures only the routines it is told to (runner.py --routines).
-Output: NAME HASH RUN LENGTH DISC ROM per line (ROM 1: the card). Compiles under cpu-run (a few seconds on CPU_RUN_JOBS cores).
+Output: NAME HASH RUN LENGTH DISC ROM OWN per line (ROM 1: the card). Compiles under cpu-run (a few seconds on CPU_RUN_JOBS cores).
 """
 import collections
 import concurrent.futures
@@ -121,18 +129,60 @@ def extents(tree):
             for m in ROW.finditer(open(os.path.join(tree, "build", "rondo", "pcebox", "hybrid_table.c")).read())}
 
 
+class Compiled(dict):
+    """{routine: closure hash} (a dict, as before) that also carries the graph the refined rule needs:
+    nodes [(name, hash)], closure {routine: set of node indexes}, own {routine: set of node indexes},
+    own_hash and row_hash {routine: str}, owners {node index: set of routines}. graph is False when the
+    object came from a file without .nodes (then records.py judges every script by closure)."""
+    graph = False
+
+    def set_graph(self, nodes, closure, own, own_hash, row_hash):
+        self.graph = True
+        self.nodes, self.closure, self.own, self.own_hash, self.row_hash = nodes, closure, own, own_hash, row_hash
+        self.owners = {}
+        for r, idx in own.items():
+            for i in idx:
+                self.owners.setdefault(i, set()).add(r)
+
+
 def load(path):
-    """(chash, extents) from a file written by main(): NAME HASH RUN LEN DISC ROM per line."""
-    chash, ext = {}, {}
+    """(chash, extents) from a file written by main(): NAME HASH RUN LEN DISC ROM OWN per line, and the
+    graph from PATH.nodes when it exists."""
+    chash, ext = Compiled(), {}
     for line in open(path):
-        n, h, run, length, disc, rom = line.split()
+        n, h, run, length, disc, rom = line.split()[:6]
         chash[n], ext[n] = h, (int(run), int(length), int(disc), int(rom))
+    nodes_path = path + ".nodes"
+    if os.path.exists(nodes_path):
+        nodes, closure, own, own_hash, row_hash = [], {}, {}, {}, {}
+        for line in open(nodes_path):
+            f = line.rstrip("\n").split("\t")
+            if f[0] == "N":
+                nodes.append((f[1], f[2]))
+            else:
+                ints = lambda x: {int(i) for i in x.split(",") if i}
+                closure[f[1]], own[f[1]] = ints(f[4]), ints(f[5])
+                row_hash[f[1]], own_hash[f[1]] = f[2], f[3]
+        chash.set_graph(nodes, closure, own, own_hash, row_hash)
+    chash.ext = ext
     return chash, ext
 
 
 def compute(tree):
     """(chash, extents) for the tree: hybrid_table.c must be current (setup.sh pcebox, or hybrid.py)."""
-    return hashes(tree, os.path.join(tree, "build", "rondo", "compiled")), extents(tree)
+    got, ext = hashes(tree, os.path.join(tree, "build", "rondo", "compiled")), extents(tree)
+    got.ext = ext
+    return got, ext
+
+
+def write_nodes(got, path):
+    """FILE.nodes: N <name> <hash> per node, R <routine> <row hash> <own hash> <closure> <own set> per routine."""
+    with open(path, "w") as f:
+        for name, h in got.nodes:
+            f.write(f"N\t{name}\t{h}\n")
+        for r in sorted(got.closure):
+            f.write("R\t%s\t%s\t%s\t%s\t%s\n" % (r, got.row_hash[r], got.own_hash[r],
+                    ",".join(map(str, sorted(got.closure[r]))), ",".join(map(str, sorted(got.own[r])))))
 
 
 def hashes(tree, work, names=None):
@@ -154,13 +204,18 @@ def hashes(tree, work, names=None):
         return found[0] if found else None
 
     rows = routine_rows(tree)
-    out = {}
-    for name, row in rows.items():
-        if names and name not in names:
-            continue
-        roots = [n for sym in (name, "abi_" + name) for n in where.get(sym, [])
-                 if n[1].startswith(".text.")]
-        seen, stack = set(), list(roots)
+    root_of = {}                                     # a routine's function and wrapper nodes -> the routine
+    roots_of = {}
+    for name in rows:
+        roots_of[name] = [n for sym in (name, "abi_" + name) for n in where.get(sym, [])
+                          if n[1].startswith(".text.")]
+        for n in roots_of[name]:
+            root_of[n] = name
+
+    def walk(name, private):
+        """The nodes reachable from the routine's roots. private: do not enter the root of another routine
+        (what is left is the routine's own code, helpers and data included)."""
+        seen, stack = set(), list(roots_of[name])
         while stack:
             n = stack.pop()
             if n in seen:
@@ -168,12 +223,32 @@ def hashes(tree, work, names=None):
             seen.add(n)
             for sym in nodes[n][1]:
                 t = resolve(n[0], sym)
-                if t and t not in seen:
+                if t and t not in seen and not (private and root_of.get(t, name) != name):
                     stack.append(t)
+        return seen
+
+    out = Compiled()
+    closure, own, own_hash, row_hash = {}, {}, {}, {}
+    for name, row in rows.items():
+        if names and name not in names:
+            continue
+        seen = walk(name, False)
         h = hashlib.sha256(row.encode())
         for n in sorted(seen):
             h.update(n[1].encode() + b"=" + nodes[n][0].encode() + b"\n")
-        out[name] = h.hexdigest()[:16] if roots else "noc"
+        out[name] = h.hexdigest()[:16] if roots_of[name] else "noc"
+        if roots_of[name]:
+            mine = walk(name, True)
+            oh = hashlib.sha256(row.encode())
+            for n in sorted(mine):
+                oh.update(n[1].encode() + b"=" + nodes[n][0].encode() + b"\n")
+            closure[name], own[name] = seen, mine
+            own_hash[name], row_hash[name] = oh.hexdigest()[:16], hashlib.sha256(row.encode()).hexdigest()[:16]
+    used = sorted({n for s_ in closure.values() for n in s_})
+    index = {n: i for i, n in enumerate(used)}
+    out.set_graph([(f"{n[0]}:{n[1]}", nodes[n][0][:16]) for n in used],
+                  {r: {index[n] for n in s_} for r, s_ in closure.items()},
+                  {r: {index[n] for n in s_} for r, s_ in own.items()}, own_hash, row_hash)
     return out
 
 
@@ -193,9 +268,11 @@ def main():
     work = os.path.join(tree, "build", "rondo", "compiled")
     got = hashes(tree, work, set(args) or None)
     ext = extents(tree)
-    text = "".join(f"{k} {v} {ext[k][0]} {ext[k][1]} {ext[k][2]} {ext[k][3]}\n" for k, v in sorted(got.items()))
+    text = "".join(f"{k} {v} {ext[k][0]} {ext[k][1]} {ext[k][2]} {ext[k][3]} {got.own_hash.get(k, 'noc')}\n"
+                   for k, v in sorted(got.items()))
     if outfile:
         open(outfile, "w").write(text)
+        write_nodes(got, outfile + ".nodes")
     else:
         sys.stdout.write(text)
     return 0

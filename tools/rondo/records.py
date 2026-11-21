@@ -26,6 +26,26 @@ When a record stops counting (the whole rule):
   * a checker, harness, hybrid.py or setup.sh change changes nothing. Re-measuring after one is
     asked for by name (runner.py --routines / --scripts).
 A script with no row, or a row for other text, is unmeasured: no report is written (complete()).
+
+The refinement (what a callee's change costs). Counting a routine's whole closure would re-measure
+every script that reaches any caller of a changed routine: one edited routine re-tested 28 of 32 scripts
+though 31 never ran its bytes. Where a script's stored result is a clean pass, only a routine whose OWN
+compiled code changed, and that the script reaches, voids it:
+  * why it is sound: the script passed, so the C made exactly the calls the original made; a routine
+    the original never entered in that script never had its C run there, so changing it cannot change
+    that script's result. Own code is compiled.py's OWN set: the routine's function and abi_ wrapper,
+    the helpers and data only they use, its table row; an inlined callee is part of the caller's own
+    bytes (the build is -O2), so inlining makes the caller changed;
+  * reach is the union of two facts, never one alone: the original ran a byte of the routine in the
+    script (its trace), or the hybrid ran the routine's C in it (a row of its A5 or A7 records);
+  * a clean pass is: the script's A7 identical, and for a routine, no divergent A5 row of it in that
+    script. A divergent routine keeps the closure rule: its whole closure is part of the script's world,
+    and its row's key is the whole closure. A script whose A7 is not identical keeps the closure rule
+    throughout. (An unverified row is a call A5 could not compare, not a defect found; counted as a
+    defect it would put every closure back, since every script has hundreds.);
+  * the key of an A5 or A7 row is, for a clean row, the hash of the routine's closure nodes that some
+    routine the script reaches owns (an "e" in front); otherwise the closure hash.
+Without compiled.py's .nodes file (a plain dict of hashes) every key is the closure hash, as before.
 """
 import csv
 import glob
@@ -97,6 +117,8 @@ class Records:
         self.a5 = [r for r in self.a5 if r["script"] != script] + a5_rows
         self.a7 = [r for r in self.a7 if r["script"] != script] + a7_rows
         self._by_script = None
+        self.__dict__.pop("_reached", None)
+        self.__dict__.pop("_owned", None)
 
     def routines_of(self, script):
         if self._by_script is None:
@@ -132,13 +154,71 @@ def reach(script, routine, extents, rec, top=TOP):
     return True if covered is None else covered
 
 
+def reached(script, extents, rec, top=TOP):
+    """The routines with an extent the script reaches (trace or rows)."""
+    cache = rec.__dict__.setdefault("_reached", {})
+    if script not in cache:
+        cache[script] = {r for r in extents if reach(script, r, extents, rec, top)}
+    return cache[script]
+
+
+def strict_routines(script, rec):
+    """Routines with a divergent A5 row in the script: they keep the closure rule. (An unverified row is a
+    call A5 could not compare, not a defect found: the script's A7 run still covers it, so it stays relaxed.
+    Every script has hundreds of them; counting them would put every closure back.)"""
+    return {r["routine"] for r in rec.a5 if r["script"] == script and int(r["divergent"])}
+
+
+def owned_by_reached(script, chash, extents, rec, top=TOP):
+    """Node indexes some routine the script reaches owns."""
+    cache = rec.__dict__.setdefault("_owned", {})
+    key = (script, id(chash))
+    if key not in cache:
+        rs = reached(script, extents, rec, top)
+        cache[key] = {i for i, owners in chash.owners.items() if owners & rs}
+    return cache[key]
+
+
+def refined(script, chash, rec):
+    """True when the script's stored result is a clean pass and the graph is there."""
+    row = rec.scripts.get(script)
+    return bool(getattr(chash, "graph", False) and row and row["verdict"] == "IDENTICAL")
+
+
 def world(script, chash, extents, rec, top=TOP):
-    """The hash of (routine, compiled hash) over the routines the script reaches."""
+    """The hash of what the script's stored result depends on: for a clean pass, the nodes owned by routines
+    it reaches plus the whole closure of every divergent or unverified routine; else (routine, closure
+    hash) over the routines it reaches."""
     h = hashlib.sha256()
+    if refined(script, chash, rec):
+        nodes = set(owned_by_reached(script, chash, extents, rec, top))
+        for r in strict_routines(script, rec):
+            nodes |= chash.closure.get(r, set())
+        for i in sorted(nodes):
+            h.update(f"{chash.nodes[i][0]} {chash.nodes[i][1]}\n".encode())
+        return "e" + h.hexdigest()[:15]
     for r in sorted(extents):
         if chash.get(r, "noc") != "noc" and reach(script, r, extents, rec, top):
             h.update(f"{r} {chash[r]}\n".encode())
     return h.hexdigest()[:16]
+
+
+def row_key(script, routine, chash, rec, top=TOP):
+    """What an A5 or A7 row of (script, routine) must carry to still count: the routine's closure hash, or
+    for a clean row of a clean-pass script the hash of the closure nodes the script's reached routines own."""
+    base = chash.get(routine)
+    if base is None or base == "noc" or not refined(script, chash, rec) or routine not in chash.closure \
+            or routine in strict_routines(script, rec):
+        return base
+    mine = owned_by_reached(script, chash, chash.ext, rec, top)
+    h = hashlib.sha256(chash.row_hash[routine].encode())
+    for i in sorted(chash.closure[routine] & mine):
+        h.update(f"{chash.nodes[i][0]} {chash.nodes[i][1]}\n".encode())
+    return "e" + h.hexdigest()[:15]
+
+
+def row_counts(row, chash, rec, top=TOP):
+    return row["chash"] == row_key(row["script"], row["routine"], chash, rec, top)
 
 
 def status(script, chash, extents, rec, top=TOP):
@@ -162,8 +242,8 @@ def a5_counts(rec, chash, top=TOP):
     for r in rec.a5:
         s = r["script"]
         row = rec.scripts.get(s)
-        if r["chash"] != chash.get(r["routine"]) or not row or row["script_hash"] != script_hash(s, top) \
-                or r.get("epoch") != epoch(top):
+        if not row or row["script_hash"] != script_hash(s, top) or r.get("epoch") != epoch(top) \
+                or not row_counts(r, chash, rec, top):
             continue
         t = out.setdefault(r["routine"], {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0,
                                           "order_flags": 0, "scripts": 0, "detail": "", "where": ""})
@@ -186,9 +266,8 @@ def a7_routines(rec, chash, extents, top=TOP):
     stats = a7_scripts(rec, chash, extents, top)
     ran = {}
     for r in rec.a7:
-        if r["chash"] == chash.get(r["routine"]) and r.get("epoch") == epoch(top) \
-                and stats.get(r["script"], ("", ""))[0] == "current" \
-                and (int(r["swapped"]) or int(r["ran_inside"])):
+        if r.get("epoch") == epoch(top) and stats.get(r["script"], ("", ""))[0] == "current" \
+                and row_counts(r, chash, rec, top) and (int(r["swapped"]) or int(r["ran_inside"])):
             ran[r["routine"]] = ran.get(r["routine"], 0) + 1
     out = {}
     for routine, n in ran.items():
@@ -235,8 +314,8 @@ def write_views(rec, chash, ext, top=TOP):
     write(os.path.join(cfg, "gate_a7.csv"), ["script", "verdict", "detail", "source"], srows)
     agg = {}
     for r in rec.a7:
-        if r["chash"] == chash.get(r["routine"]) and r.get("epoch") == epoch(top) \
-                and stats.get(r["script"], ("", ""))[0] == "current":
+        if r.get("epoch") == epoch(top) and stats.get(r["script"], ("", ""))[0] == "current" \
+                and row_counts(r, chash, rec, top):
             t = agg.setdefault(r["routine"], [0, 0])
             t[0] += int(r["swapped"])
             t[1] += int(r["ran_inside"])

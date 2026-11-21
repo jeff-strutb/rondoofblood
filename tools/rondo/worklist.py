@@ -237,7 +237,8 @@ def part_nocode(args, cat):
 
 
 def main():
-    cpuguard.require("worklist.py", jobs=4, mem="3G")
+    if "--chash" not in sys.argv:           # without a stored compiled-hash file it compiles every C file
+        cpuguard.require("worklist.py", jobs=4, mem="3G")
     ap = argparse.ArgumentParser()
     ap.add_argument("--by-script", action="store_true")
     ap.add_argument("--by-routine", action="store_true")

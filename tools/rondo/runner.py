@@ -95,7 +95,7 @@ def prepare(main, rev, b, d):
     if r.returncode:
         raise SystemExit(f"pcebox build of {rev} failed:\n{(r.stdout + r.stderr)[-800:]}")
     out = os.path.join(tree, "chash.txt")
-    r = cpu_run(4, "3G", sys.executable, os.path.join(tree, "tools", "rondo", "compiled.py"), "--tree", tree,
+    r = cpu_run(2, "3G", sys.executable, os.path.join(tree, "tools", "rondo", "compiled.py"), "--tree", tree,
                 "--out", out)
     if r.returncode:
         raise SystemExit(f"compiled.py failed on {rev}:\n{(r.stdout + r.stderr)[-800:]}")
@@ -112,30 +112,42 @@ def estimate(script, rec, top):
 
 
 def make_plan(rec, chash, ext, opts, top):
-    """{script: why} and the routines whose compiled hash is new."""
+    """({script: the fact its run establishes}, the routines whose own code changed or None). Every planned run
+    names the new fact it yields (a run that yields none is not planned)."""
     plan = {}
     names = records.script_names(top)
+    changed = changed_routines(chash, top)
     for s in names:
         st = records.status(s, chash, ext, rec, top)
         if opts["sweep"]:
-            plan[s] = "whole-game run"
+            plan[s] = "whole-game run asked for: every verdict re-established"
+        elif st == "unmeasured":
+            plan[s] = f"first result for {s}'s present text: A5 counts and the A7 verdict, none stored"
         elif st != "current":
-            plan[s] = "no result for its text" if st == "unmeasured" else "a routine it reaches changed"
+            hit = [r for r in (changed or []) if r in records.reached(s, ext, rec, top)]
+            what = ", ".join(hit[:4]) + (f" and {len(hit) - 4} more" if len(hit) > 4 else "") if hit else \
+                "a routine in its stored closure"
+            plan[s] = f"whether {what} still passes in {s}: its stored result no longer counts"
     for s in opts["scripts"]:
         if s not in names:
             raise SystemExit(f"{s}: no such script")
-        plan.setdefault(s, "named")
+        plan.setdefault(s, f"named: {s} re-measured on request")
     for r in opts["routines"]:
         if r not in ext:
             raise SystemExit(f"{r}: no routine with C")
         for s in names:
             if records.reach(s, r, ext, rec, top):
-                plan.setdefault(s, f"named routine {r}")
-    have = {}
-    for x in rec.a5 + rec.a7:
-        have.setdefault(x["routine"], set()).add(x["chash"])
-    changed = sorted(r for r, h in chash.items() if r in have and h not in have[r])
+                plan.setdefault(s, f"named routine {r}: its verdict in {s} re-established on request")
     return plan, changed
+
+
+def changed_routines(chash, top):
+    """The routines whose own compiled code differs from the last run's (own.txt), or None if not known."""
+    path = os.path.join(top, "build", "rondo", "runner", "own.txt")
+    if not os.path.exists(path) or not getattr(chash, "graph", False):
+        return None
+    old = dict(line.split() for line in open(path))
+    return sorted(r for r, h in chash.own_hash.items() if old.get(r) != h)
 
 
 def measure(tree, box, out, script):
@@ -155,15 +167,17 @@ def red(res):
 def store(rec, res, rev, chash, ext, top):
     s = res["script"]
     a5 = [{"script": s, "routine": r, **{k: v[k] for k in ("calls", "identical", "divergent", "unverified",
-           "order_flags")}, "chash": chash.get(r, "noc"), "detail": v["detail"], "epoch": records.epoch(top),
+           "order_flags")}, "chash": "", "detail": v["detail"], "epoch": records.epoch(top),
            "source": rev}
           for r, v in sorted(res["a5"].items())]
-    a7 = [{"script": s, "routine": r, "swapped": v[0], "ran_inside": v[1], "chash": chash.get(r, "noc"),
+    a7 = [{"script": s, "routine": r, "swapped": v[0], "ran_inside": v[1], "chash": "",
            "epoch": records.epoch(top)} for r, v in sorted(res["reach"].items())]
     row = {"script": s, "script_hash": records.script_hash(s, top), "verdict": res["a7"]["verdict"],
            "detail": res["a7"]["detail"], "a5_secs": res["secs"]["a5"], "a7_secs": res["secs"]["a7"],
            "world": "", "epoch": records.epoch(top), "source": rev}
     rec.replace_script(s, row, a5, a7)
+    for x in a5 + a7:                       # the key needs the script's stored rows and verdict, so after
+        x["chash"] = records.row_key(s, x["routine"], chash, rec, top) or "noc"
     row["world"] = records.world(s, chash, ext, rec, top)
 
 
@@ -184,10 +198,11 @@ def cycle(main, opts):
     secs = {s: estimate(s, rec, main) for s in plan}
     full = sum(estimate(s, rec, main) for s in names)
     workers = max(1, min(opts["workers"], len(plan)))
-    log(f"{rev}: {len(changed)} measured routine(s) with a new compiled hash; "
-        f"{len(plan)} of {len(names)} scripts to measure", b)
+    log(f"{rev}: " + ("no previous own hashes to compare; " if changed is None else
+        f"{len(changed)} routine(s) with changed own code" + (": " + ", ".join(changed[:12]) if changed else "") + "; ")
+        + f"{len(plan)} of {len(names)} scripts to measure", b)
     for s, why in sorted(plan.items()):
-        log(f"  {s}: {why}, about {secs[s]:.0f} s of one core", b)
+        log(f"  {s}: establishes {why}; about {secs[s]:.0f} s of one core", b)
     log(f"  expected {sum(secs.values()):.0f} core-seconds, about {sum(secs.values()) / workers:.0f} s"
         f" on {workers} at once; the whole game would be {full:.0f} core-seconds (all {len(names)} scripts)", b)
     if opts["mode"] == "plan" or not plan:
@@ -217,6 +232,9 @@ def cycle(main, opts):
         if s not in failed:
             store(rec, results[s], rev, chash, ext, main)
     rec.save()
+    if getattr(chash, "graph", False) and not failed:
+        with open(os.path.join(b, "own.txt"), "w") as f:
+            f.writelines(f"{r} {h}\n" for r, h in sorted(chash.own_hash.items()))
     records.write_views(rec, chash, ext, main)
     reds = []
     for s in sorted(results):

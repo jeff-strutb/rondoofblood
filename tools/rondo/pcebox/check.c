@@ -142,7 +142,22 @@ static const char *check_path;
 static FILE *report;
 static uint8_t *user;
 static Stat *stats;
-static int16_t *tag_at;     /* run address to tag index, or -1 */
+static int16_t *tag_at;     /* run address to the first tag index there, or -1 */
+static int16_t *tag_next;   /* the next tag with the same run address (another overlay's bytes), or -1 */
+static int tag_resident(const Tag *t);
+
+/* The tag at a run address: the first whose bytes are resident, else the first. */
+static int tag_pick(unsigned pc)
+{
+    int first = tag_at[pc & 0xFFFF];
+
+    if (first < 0 || tag_next[first] < 0)
+        return first;
+    for (int i = first; i >= 0; i = tag_next[i])
+        if (tag_resident(&rondo_tags[i]))
+            return i;
+    return first;
+}
 static uint8_t *ram_bank[256];
 static uint8_t *rom_bank[256];
 static int prev_op = -1;
@@ -517,7 +532,7 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
             irets[nints++] = j;
             continue;
         }
-        if (e->type == EV_CALL && e->kind == K_JSR && tag_at[e->pc] < 0 && !hw) {
+        if (e->type == EV_CALL && e->kind == K_JSR && tag_pick(e->pc) < 0 && !hw) {
             /* The original called code the C has not: the C must say so (call_original) first. */
             break;
         }
@@ -2300,7 +2315,7 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
                             int has_p, uint8_t p)
 {
     Regs r;
-    int index = tag_at[addr];
+    int index = tag_pick(addr);
 
     if (unit.active)
         return "a unit call is still running";
@@ -2433,16 +2448,16 @@ int check_exec(uint32_t pc)
         jsrmark[(uint8_t)(r.s + 1)] = stack_return(r.s);
     before_pc = last_pc;
     last_pc = (uint16_t)pc;
-    computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
-    classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
+    computed_entry = prev_op == 0x60 && tag_pick(pc & 0xFFFF) >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
+    classify_arrival(tag_pick(pc & 0xFFFF), (uint16_t)pc);
     if (getenv("RONDO_TRACE_PC") && pc == strtoul(getenv("RONDO_TRACE_PC"), NULL, 16))
         fprintf(stderr, "PC %04X frame %lu S%02X prev_op %X before %04X mpr2 %02X tag %d resident %d\n", (unsigned)pc,
-                cur_frame, r.s, prev_op, before_pc, chk_mpr(2), tag_at[pc & 0xFFFF],
-                tag_at[pc & 0xFFFF] >= 0 ? tag_resident(&rondo_tags[tag_at[pc & 0xFFFF]]) : -1);
-    if (getenv("RONDO_TRACE_ENTRY") && tag_at[pc & 0xFFFF] >= 0 &&
-        strstr(getenv("RONDO_TRACE_ENTRY"), rondo_tags[tag_at[pc & 0xFFFF]].name) && mode != MODE_HYBRID)
+                cur_frame, r.s, prev_op, before_pc, chk_mpr(2), tag_pick(pc & 0xFFFF),
+                tag_pick(pc & 0xFFFF) >= 0 ? tag_resident(&rondo_tags[tag_pick(pc & 0xFFFF)]) : -1);
+    if (getenv("RONDO_TRACE_ENTRY") && tag_pick(pc & 0xFFFF) >= 0 &&
+        strstr(getenv("RONDO_TRACE_ENTRY"), rondo_tags[tag_pick(pc & 0xFFFF)].name) && mode != MODE_HYBRID)
         fprintf(stderr, "ENTRY frame %lu %s pc %04X S%02X prev_op %X before %04X computed %d tail %d self %d depth %d\n",
-                cur_frame, rondo_tags[tag_at[pc & 0xFFFF]].name, (unsigned)pc, r.s, prev_op, before_pc, computed_entry,
+                cur_frame, rondo_tags[tag_pick(pc & 0xFFFF)].name, (unsigned)pc, r.s, prev_op, before_pc, computed_entry,
                 tail_entry, self_jump, depth);
     if (unit.active && unit.entered && ++unit.count > 2000000) {
         /* A crafted state that runs data as code or loops for ever is not a valid script. */
@@ -2470,8 +2485,8 @@ int check_exec(uint32_t pc)
             before_pc = ipend[nipend - 1].from;
             before_pc = ipend[nipend - 1].from;
         prev_op = ipend[--nipend].prev;
-            computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
-            classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
+            computed_entry = prev_op == 0x60 && tag_pick(pc & 0xFFFF) >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
+            classify_arrival(tag_pick(pc & 0xFFFF), (uint16_t)pc);
         }
         if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
             unit.active = 0;
@@ -2479,7 +2494,7 @@ int check_exec(uint32_t pc)
             prev_op = -1;
             return 0;
         }
-        index = tag_at[pc & 0xFFFF];
+        index = tag_pick(pc & 0xFFFF);
         if (getenv("RONDO_TRACE_ENTRY") && index >= 0 && strstr(getenv("RONDO_TRACE_ENTRY"), rondo_tags[index].name))
             fprintf(stderr, "ENTRY frame %lu %s pc %04X S%02X prev_op %X before %04X self %d tail %d comp %d entry %d resident %d kept %d scan %llu top %s\n",
                     cur_frame, rondo_tags[index].name, (unsigned)pc, r.s, prev_op, before_pc, self_jump, tail_entry, computed_entry, prev_is_entry(),
@@ -2502,8 +2517,8 @@ int check_exec(uint32_t pc)
     if (prev_op == 0x40 && nipend && pc == ipend[nipend - 1].resume && r.s == ipend[nipend - 1].s) {
         before_pc = ipend[nipend - 1].from;
         prev_op = ipend[--nipend].prev;
-        computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
-        classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
+        computed_entry = prev_op == 0x60 && tag_pick(pc & 0xFFFF) >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
+        classify_arrival(tag_pick(pc & 0xFFFF), (uint16_t)pc);
     }
     if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
         unit.active = 0;
@@ -2523,7 +2538,7 @@ int check_exec(uint32_t pc)
             else if (prev_op == 0x60)
                 marker(EV_RET, &r, 0, 0, 0);
         }
-        index = tag_at[pc & 0xFFFF];
+        index = tag_pick(pc & 0xFFFF);
         if (index >= 0)
             count_arrival(index, 1);
         if (index >= 0 && (prev_is_entry() || prev_op == PREV_IRQ) && tag_resident(&rondo_tags[index]))
@@ -2666,8 +2681,11 @@ int check_init(int which, const char *path, const char *user_path)
     }
     fclose(f);
     memset(tag_at, 0xFF, 65536 * sizeof *tag_at);
-    for (unsigned i = 0; i < rondo_tag_count; i++)
+    tag_next = malloc(rondo_tag_count * sizeof *tag_next + 2);
+    for (unsigned i = rondo_tag_count; i-- > 0;) {
+        tag_next[i] = tag_at[rondo_tags[i].run];
         tag_at[rondo_tags[i].run] = (int16_t)i;
+    }
     stats = calloc(rondo_tag_count, sizeof *stats);
     for (unsigned b = 0; b < 256; b++) {
         const uint8_t *p = chk_bank(b);

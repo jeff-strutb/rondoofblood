@@ -1,0 +1,12 @@
+--- a/mednafen/pce/huc.cpp	2026-11-21 14:56:16.471213044 -0700
++++ b/mednafen/pce/huc.cpp	2026-11-21 14:56:16.472449576 -0700
+@@ -639,3 +639,9 @@
+ {
+ 	HuCPU.SetSpeed(speed);
+ }
++
++// The oracles: write a byte of the backup memory (bank $F7, 2 KB) between frames, for a script's `poke F7:OFFSET VALUE`.
++extern "C" __attribute__((visibility("default"))) void rondo_save_poke(unsigned off, uint8 v)
++{
++	SaveRAM[off & 2047] = v;
++}

@@ -15,6 +15,7 @@ then report that routine divergent.
 Run under WSL: the core and pcebox are Linux builds.
 """
 import concurrent.futures
+import csv
 import glob
 import hashlib
 import os
@@ -228,29 +229,41 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
 
 
 def report_gates(rows):
-    """Which routines meet every gate as measured, and what the others lack."""
-    table = open(os.path.join(PCEBOX + ".gen" if os.environ.get("RONDO_BOX") else os.path.join(TOP, "build", "rondo", "pcebox"), "hybrid_table.c")).read()
-    swappable = {m.group(1): m.group(2) == "1"
-                 for m in re.finditer(r'"(\w+)", abi_\w+, (\d),', table)}
+    """Which routines meet every gate as measured, and what the others lack. A7 counts when its results are in
+    the output folder: a routine with a defect under it, or never swapped in, lacks A7."""
+    a7_swapped, a7_defects = None, set()
+    try:
+        a7_swapped = {r["routine"]: int(r["swapped"]) for r in csv.DictReader(open(os.path.join(OUT, "a7.csv"), newline=""))}
+        a7_defects = {r["routine"] for r in csv.DictReader(open(os.path.join(OUT, "a7_defects.csv"), newline=""))}
+    except OSError:
+        pass
     met, total = [0, 0], 0
-    lacking = {"no call judged": 0, "not every byte run": 0, "C waits (wait_interrupt)": 0}
+    lacking = {"A5 not identical": 0, "no call judged": 0, "not every byte run": 0, "A7 defect": 0, "never swapped in A7": 0}
     for row in rows[1:]:
-        name, n, ran, calls, same = row.split(",")[:5]
+        fields = row.split(",")
+        name, n, ran, calls, same = fields[:5]
+        verdict = fields[-1]
         n, ran, calls, same = int(n), int(ran), int(calls), int(same)
         total += n
         reasons = []
+        if verdict != "IDENTICAL":
+            reasons.append("A5 not identical")
         if same == 0:
             reasons.append("no call judged")
         if ran < n:
             reasons.append("not every byte run")
-        if not swappable.get(name):
-            reasons.append("C waits (wait_interrupt)")
+        if a7_swapped is not None:
+            if name in a7_defects:
+                reasons.append("A7 defect")
+            if not a7_swapped.get(name):
+                reasons.append("never swapped in A7")
         for r in reasons:
             lacking[r] += 1
         if not reasons:
             met[0] += 1
             met[1] += n
-    print(f"every gate met as measured: {met[0]} routines, {met[1]} B of {total} B; lacking: {lacking}")
+    print(f"every gate met as measured: {met[0]} routines, {met[1]} B of {total} B; lacking: {lacking}"
+          + ("" if a7_swapped is not None else " (no A7 results in the output folder: A7 not counted)"))
 
 
 def run_a7(names):

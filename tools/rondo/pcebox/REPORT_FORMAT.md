@@ -1,0 +1,93 @@
+# Oracle report format (A5 and lockstep A7)
+
+For the readers of `oracle.py`'s output and of `pcebox`'s reports. Written with the checker; if it changes, this file does.
+**These gates changed what A5 and A7 prove** (access order, the emulated stack, interrupts inside calls, waits, frame
+ends inside calls, calls into original code): old records of either gate no longer count.
+
+## Running
+
+`oracle.py a5 [SCRIPT...]` and `oracle.py a7 [SCRIPT...]` refuse to run unless `CPU_RUN_JOBS` is set (run them under
+`cpu-run`). Pools come only from it: A5 runs `CPU_RUN_JOBS` scripts at once (one slot, about 0.9 GB each); A7 runs
+`CPU_RUN_JOBS / 2` scripts at once, each a record process and a hybrid process joined by a FIFO. Output goes to
+`$RONDO_ORACLE_OUT` (default `build/rondo/oracle`). `RONDO_BOX` names the pcebox binary, `RONDO_CORE` the core.
+A run whose environment holds `RONDO_KEEP`, `RONDO_ONLY`, `RONDO_KEEP_WAITS`, `RONDO_PLACE`, `RONDO_SKIPS` or
+`RONDO_DUMP_FRAME` is a diagnostic: it never writes the `.stamp` and its A7 lines never read identical.
+
+## pcebox exit codes
+
+| code | meaning |
+|---|---|
+| 0 | the script ran to its end |
+| 1 | setup failed (a file, the core, a symbol) |
+| 2 | a bad argument or script line (an unknown command; a `call` at an address that is not a routine's own entry, or whose bytes are not resident) |
+| 3 | lockstep could not go on in step; the report and totals were written first (a wait with no interrupt in the record, a call into original code the record does not have, original code that does not return, the C making 200,000 accesses in a row the original did not) |
+| 4 | the hybrid and the record disagree on which routine is called next; report and totals written first |
+| 5 | out of memory, or an event was trimmed from the window (a checker fault) |
+| 6 | a unit call ran over 2,000,000 instructions (not a valid script) |
+
+`oracle.py` takes 3, 4 and 6 from the hybrid as a result (`STOPPED`), any other nonzero exit of either process as a failure
+of that script ("record exit N", "hybrid exit N", "timed out after 1500 s"); a failed script writes no result.
+
+## A5
+
+`pcebox --a5 FILE` writes FILE (per script):
+
+- Per-call lines, at most 6 defect lines and 4 verdict lines per routine per script:
+  `<routine> <KIND> call <n> frame <f>[ at <script>:<line>]: <text>` with KIND one of
+  `MOVED` (the C's access is matched later than the original's next counted access, with how many were skipped),
+  `EXTRA` (the original made no such access before a barrier: a read twice, a value re-read, an access with no counterpart),
+  `MISSING` (an access of the original the C never made; before a call into original code: the JSR's frame),
+  `VALUE` (a read or write of another value than the original's), `STACK` (the call ends with another S or return target),
+  `STATE` (MPRs or the CPU clock set in another order), `REGS` (A7: entry or exit registers), `CALL` (a call into original
+  code with other registers, or none in the record), `INT` (an interrupt's handler that does not return in the call, more than
+  256 passed). Text ends `[in the call of X]` when the access was made inside the call of another routine than the one named.
+  Verdict lines: `<routine> DIVERGENT call <n>: <text>` (registers, flags, MPR, CPU clock or RAM differ at the end, or
+  hardware not in the original's place, or the C ran away) and `<routine> UNVERIFIED call <n>: <text>`.
+- `TAG <routine> <calls> <identical> <divergent> <unverified> <order>` then nine defect counts in the order
+  MOVED EXTRA MISSING VALUE STACK STATE REGS CALL INT (every defect, so a cascade counts many), then eight cause counts:
+  `left` (left by a longer route than RTS or RTI: unverified), `log` (calls whose log filled: judged as a prefix),
+  `depth` (nested deeper than 512: unverified), `computed` (unused, 0), `arrive_branch` (a branch back into the routine's own
+  first byte, information), `arrive_nonres` (entered while another overlay's bytes were there, information), `runaway`
+  (the C ran past its access or write budget: counted in `divergent`), `prefix` (open at the script's end or at a full log:
+  judged as far as the record goes, counted in `identical` or `order`).
+  `order` counts calls with an access defect and no other fault. `calls = identical + divergent + unverified + order`.
+
+`oracle.py a5` writes, in `$RONDO_ORACLE_OUT`:
+
+- `a5.csv` and `card_a5.csv`: `routine,bytes,bytes_run,calls,identical,divergent,unverified,order_flags,verdict`. Verdict:
+  `UNCOVERED` (no call), `DIVERGENT` (any divergent or order call), `UNVERIFIED` (any unverified call, or none identical),
+  else `IDENTICAL`. A routine with one call not judged is not IDENTICAL. (Columns are those `gate.py` reads; unchanged.)
+- `a5_causes.csv`: `routine,MOVED,EXTRA,MISSING,VALUE,STACK,STATE,REGS,CALL,INT,left,log,depth,computed,arrive_branch,arrive_nonres,runaway,prefix`,
+  summed over the scripts (and `a5_causes_card_a5.csv` for the card).
+- stdout: `<script>: done` or `<script>: exit N: ...`, then `routine verdicts`, `bytes by verdict`, `calls`, a line
+  `calls not judged or set aside, by cause`, per-routine example lines, the UNVERIFIED and UNCOVERED name lists.
+
+## Lockstep A7
+
+`pcebox --record FILE` writes a stream (FILE should be a FIFO; a long script is gigabytes) and prints
+`record: <events> events, <frames> frames`. `pcebox --hybrid FILE` reads it, writes `FILE.hybrid.txt`, and prints:
+
+- `SWAPPED <routine> <n>` (calls run as C, by the routine entered), `UNDER <routine> <interrupts> <originals> <waits>`
+  (interrupts dispatched inside its C, calls into original code, waits), `DEFECT <routine> <KIND> <n>` (**under the innermost
+  tagged routine whose C made the access**, the routine to open), `RAN <routine> <n>` (its C ran inside another's swapped call),
+  `STOPPED <reason>` if it stopped.
+- the summary line, always last, fields in this order:
+  `hybrid: <N> swapped, frames compared <C>, identical <I>, first differing <X>, access defects <D>, interrupts inside <K>,
+  original calls <O>, waits <W>, frames expected <E>, parked <P>, kept <Q>, unreached <U>, unopened arrivals <A>, diagnostic <Z>`.
+  `X` is the first frame whose hash differs (>= 1), else a code: **-1 identical**, -2 access defects with every frame
+  identical, -3 stopped in step, -4 diagnostic run, -5 not a verdict (nothing swapped, the record's frame count unknown or
+  not equal to `C`, `parked` more than the calls the record left open, or calls of the record never reached).
+  A script's A7 is IDENTICAL only on `-1`: frames compared = frames expected, all identical, no access defect, nothing swapped
+  by name excluded, nothing left over, and not a diagnostic. `oracle.py` also needs the line to exist (otherwise "no result").
+- `FILE.hybrid.txt`: the defect lines as in A5 (at most 6 a routine), `SKIP`/`PLACE` lines if asked, `stopped at frame F: <reason>`
+  with the calls swapped last and the record's next calls, then `calls swapped N; access defects D; parked P, kept Q, unreached U`
+  and `frames compared C of E, identical I, first differing X`.
+
+`oracle.py a7` writes `a7.csv` (`routine,swapped,ran_inside`; columns as `gate.py` reads), `a7_defects.csv`
+(`routine,kind,defects` per innermost routine), and prints `<script>: <summary line>` per script. A routine's A7 passes when
+no script has a `DEFECT` for it, every script that reaches it is IDENTICAL (`-1`) and it was swapped in at least one.
+
+## Not in the format
+
+Frame hashes cover RAM, the stack above S, and the picture; the stack at and below S is not state. Timing is not judged
+except that interrupts are dispatched where the original took them and frames end where the original's did.

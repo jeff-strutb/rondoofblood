@@ -42,6 +42,32 @@ BSR pushes the original's return address on the emulated stack at the
 original's place, through one helper. Each routine's header says whether
 it can wait, and how deep.
 
+**The typed access layer** (decided 2026-11-21). The decomp's C is an
+intermediary to a later port, and this layer is what lets a routine's body
+survive that move:
+
+- One macro per access, taking a named field: `RD8(OBJ->vx_hi[slot])`,
+  `WR8(ZP->temp10, v)`. Each expands to exactly one checked access of the
+  member's original address, so order and count stay visible to the
+  gates. The struct is laid at the original address and is never
+  dereferenced. For the port only the macros' bodies change.
+- A field wider than a byte is read and written through a macro that names
+  the order (`RD16_LH`, `RD16_HL` and the like). There is none without an
+  order.
+- Records (object slots, sound channels, save files, zero page) are
+  described in a file of their own, not in `symbols.csv`, and their
+  structs are written by the generator, which adds a compile-time check
+  that every member sits at its original address. The assembly's include does not change.
+- Disc tables are read through generated readers from a table list whose
+  bank column a tool fills from the traces. A table read under two banks
+  has a row per overlay; a table no script reads has no reader until a
+  script reaches it.
+- It is required for T3: a routine's body names no bare address. Every
+  filed routine is rewritten for access order anyway, and this is done in
+  the same rewrite, not a second one.
+- The lists of names and records have one owner. A writer that needs a new
+  name or field sends it to that owner; no two writers edit those files.
+
 Cycle exact is not the standard (playbook section 15): the C carries no
 instruction timing.
 

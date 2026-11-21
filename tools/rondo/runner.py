@@ -7,7 +7,8 @@
     options: --routines A,B   re-measure the scripts reaching these routines (after a checker change)
              --scripts a,b    re-measure these scripts
              --sweep          every script: the whole-game run, only when asked
-             --no-commit      write the records into DIR and leave them uncommitted
+             --commit         commit the records and ledgers to DIR's branch under the landing lock (off by
+                              default until the state session has handed those files over)
              --workers N      scripts measured at once (default 8; each is one cpu-run claim)
 
 What it does for main's tip (design: build/rondo/pipeline/DESIGN.md, the rule: records.py):
@@ -153,13 +154,14 @@ def red(res):
 def store(rec, res, rev, chash, ext, top):
     s = res["script"]
     a5 = [{"script": s, "routine": r, **{k: v[k] for k in ("calls", "identical", "divergent", "unverified",
-           "order_flags")}, "chash": chash.get(r, "noc"), "detail": v["detail"], "source": rev}
+           "order_flags")}, "chash": chash.get(r, "noc"), "detail": v["detail"], "epoch": records.epoch(top),
+           "source": rev}
           for r, v in sorted(res["a5"].items())]
-    a7 = [{"script": s, "routine": r, "swapped": v[0], "ran_inside": v[1], "chash": chash.get(r, "noc")}
-          for r, v in sorted(res["reach"].items())]
+    a7 = [{"script": s, "routine": r, "swapped": v[0], "ran_inside": v[1], "chash": chash.get(r, "noc"),
+           "epoch": records.epoch(top)} for r, v in sorted(res["reach"].items())]
     row = {"script": s, "script_hash": records.script_hash(s, top), "verdict": res["a7"]["verdict"],
            "detail": res["a7"]["detail"], "a5_secs": res["secs"]["a5"], "a7_secs": res["secs"]["a7"],
-           "world": "", "source": rev}
+           "world": "", "epoch": records.epoch(top), "source": rev}
     rec.replace_script(s, row, a5, a7)
     row["world"] = records.world(s, chash, ext, rec, top)
 
@@ -277,7 +279,7 @@ def commit(main, rev, paths, n, reds, b):
 
 def parse(argv):
     opts = {"mode": argv[0] if argv else "", "main": TOP, "routines": [], "scripts": [], "sweep": False,
-            "commit": True, "workers": 8}
+            "commit": False, "workers": 8}
     i = 1
     while i < len(argv):
         a = argv[i]
@@ -291,8 +293,8 @@ def parse(argv):
             opts["workers"] = int(argv[i + 1]); i += 1
         elif a == "--sweep":
             opts["sweep"] = True
-        elif a == "--no-commit":
-            opts["commit"] = False
+        elif a == "--commit":
+            opts["commit"] = True
         else:
             raise SystemExit(f"unknown option {a}")
         i += 1

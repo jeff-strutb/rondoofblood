@@ -8,7 +8,7 @@
 | T2 | C written and filed, assembly named and filed; not yet certified |
 | T3 | the C is proper C and certified behaviour exact: every T3 gate passes |
 | T4 | T3, and the routine's assembly is symbolic and byte-identical in place in the whole-image gate |
-| EXCLUDED | beside the tiers: code the retail game provably never runs, proof in the routine header |
+| EXEMPT | beside the tiers, by bytes, not by routine: bytes no input, poke or unit call at the routine's own entry can run sanely, with the proof and the byte range in the routine header. Dead code is not exempt ([PLAN.md](PLAN.md), section 1) |
 | M1 | every game routine T3 |
 | M2 | every game routine T4, and the data track rebuilt byte exact |
 
@@ -26,7 +26,11 @@ The header comment above each routine (C and assembly) carries:
 @run <bank>:<addr>
 WHAT IT DOES: its purpose, in game terms
 HOW: how it does it
+WAITS: no, or what it waits on and how deep its stack is there
 ```
+
+`WAITS:` is new from 2026-11-21: every routine written or changed from
+then carries it; the routines filed before are owed it.
 
 plus its entry contract (inputs in A, X, Y and zero page, the MPR banks it
 expects, outputs, flags, what it clobbers). The sector counts from track

@@ -18,7 +18,7 @@ SNES decomps do:
 | | |
 |---|---|
 | ASM | the bit-exact decompilation: symbolic source that rebuilds the disc's data track byte for byte (image gate) |
-| C | the behaviour-exact decompilation: proper C, each routine's inputs to outputs exactly the original's: the RAM it leaves, the registers and flags it leaves visible, and its hardware accesses in order (A5 + A7). The order and count of plain RAM accesses are the ASM's to keep, not the C's |
+| C | the behaviour-exact decompilation: proper C, each routine's inputs to outputs exactly the original's: the RAM it leaves, the registers and flags it leaves visible, and its hardware accesses in order (A5 + A7). The C makes every work RAM read, write, push and pull where the assembly makes it, in its order and number. No value is kept in a C variable across a point where the original reads memory again (decided 2026-11-21; it replaces "the order and count of plain RAM accesses are the ASM's to keep") |
 | Enhanced | later, beside the C, never in place of it |
 
 **Proper C** means typed arguments and returns, locals, loops, structs and
@@ -31,8 +31,42 @@ a stepping stone, reported as one with its count, never as decompiled
 (playbook sections 0.15 and 18). Where ASM and C disagree, the ASM and
 the original disc are right.
 
+**Shaped for the native target** (decided 2026-11-21, from Aladdin's
+second step, where C shaped only by the proof had to be rewritten whole):
+RAM is reached through typed fields laid over the original layout, a
+struct member at the original address, not through bare addresses; records
+(an object slot, a sound channel, a save file) have their own types; disc
+tables are read through one typed data layer, each table's bank settled
+from traces, never from a comment. A call the original makes with JSR or
+BSR pushes the original's return address on the emulated stack at the
+original's place, through one helper. Each routine's header says whether
+it can wait, and how deep.
+
 Cycle exact is not the standard (playbook section 15): the C carries no
 instruction timing.
+
+**The gates.**
+
+| Gate | Proves |
+|---|---|
+| 0 | the routine's bytes in the built image equal the disc's, and its header is complete |
+| C | every byte of the routine was run by a script, or is exempt by proof |
+| A5 | each call of the C, alone, gives the original's outputs, with its accesses in the original's order |
+| A7 | whole scripts in lockstep, the C running in place for every call: calls an interrupt lands in, calls that cross a frame, calls into original code and waits included. A routine passes when every script that reaches it is identical and measured |
+
+**Exempt by proof** (decided 2026-11-21): only bytes that no input, no
+poke of work RAM and no unit call at the routine's own entry can run
+sanely (a path that would run data as code, a branch its own code makes
+impossible). The proof and the exact byte range go in the routine's
+header. Dead code is not exempt for being dead: it gets a unit call at its
+own entry or a poke, and certified C. "The checker cannot follow it" is a
+limit of the checker, not a proof.
+
+**The denominator** is every code byte: run by a script, or found by a
+static census that follows calls, jumps, tables and handler pointers. The
+census is audited as hard as the gates: tables read to their full length,
+no block thrown out for an opcode the game uses, and a second, relaxed
+census whose every disagreeing byte is explained.
 
 | Tier | Meaning |
 |---|---|
@@ -127,6 +161,83 @@ Decided 2026-11-03 (fetch approved by the maintainer):
   (the card the game shipped against); the USA card is a witness.
 
 Nothing is open.
+
+## 7. Plan from 2026-11-21
+
+The method from here is Aladdin's, which reached M1 and M2 100%
+(`aladdinsvhc`, `docs/aladdin/ASM console decom strategy.md`). Where it and
+this project's earlier practice disagree, Aladdin's wins (the maintainer's
+decision, 2026-11-21).
+
+### What was measured (main at 5692076, and the scripts branch at f3fb945)
+
+| | |
+|---|---|
+| Filed | 603 game routines, about 20 KB, and 135 card routines, each with assembly and C |
+| M1, M2 | 2.36%, 2.27%, last measured at 00d4c3c against the 196 KB estimate; the ledger was not rerun for the eight C commits after it |
+| A5, 11 scripts (8a1b865) | 456 identical, 34 unverified, 246 uncovered, 2 divergent |
+| A5, 32 scripts (f3fb945) | 476 identical, 32 unverified, 184 uncovered, 46 divergent |
+| A7 | identical on every script, both times |
+| Traced code, 32 scripts | 210,017 B, more than the 196 KB estimate used as the denominator |
+
+**A7 as built does not test access order.** A call runs the original, not
+the C, when the original took an interrupt inside it, when it crossed a
+frame, or when its C reaches original code or a wait (`check.c`, the
+hybrid's entry test). A5 counts the same calls unverified. Neither
+compares the stack or the order of work RAM accesses. So the A7 results
+above are true and do not yet meet gate A7 as section 1 now defines it,
+and every T3 and T4 counted so far is unproven until the new checker
+measures it.
+
+**Missing on main:** a runner that tests only what changed, a landing
+script, a written procedure for writers, a worklist that names the failing
+gate, an audited census, and a unit call for scripts.
+
+### Roles
+
+- **The master** thinks, briefs and certifies. It writes no game C and no
+  tools.
+- **Writers** decompile and write coverage scripts, each in its own
+  worktree, split by file so no two touch the same files. They do not run
+  gates.
+- **One runner** certifies: it tests only the routines whose compiled C
+  changed and the scripts that reach them, reports failures, holds
+  nothing, and commits the ledgers itself.
+- **Landing** goes through one script under one lock.
+- Every job that uses a core or can grow in memory runs under the
+  machine's slot queue.
+
+### Order of work
+
+| Step | Work | Done when |
+|---|---|---|
+| 1 | **State.** Gate records for f3fb945 committed; all scripts traced again; catalog, ledger and progress rebuilt; the census audited (section 1) and put in the denominator | the README's numbers are measured at one named commit with every script having a result |
+| 2 | **Checker.** Lockstep A7 as section 1 defines it: interrupts delivered inside C calls at the original's place, C calling original code, waits, return frames on the emulated stack; A5 judging work RAM order; a unit call and a poke for scripts | planted bugs of each kind (a read moved, a read doubled, a frame left out) fail it, and the original against itself passes |
+| 3 | **Pipeline.** The landing script (rebase, assembly byte exact, link clean, fast forward, one lock); the runner; a worklist by script that prints each routine short of the bar, the gate that fails and the reason; a what-if that predicts the bars for a fix | a change to one routine is certified without the whole game being rerun |
+| 4 | **Procedure.** One rules file every writer reads, amended with a dated section each time a new cause is found | written before any writer starts |
+| 5 | **Measure main** with the new checker, then clear reds by cause, largest predicted gain first | every filed routine has a verdict from the new gates |
+| 6 | **File everything**: the traced code with no C yet, many writers by disc range, bottom up | every traced routine has assembly and C |
+| 7 | **Coverage** for the unreached: a script with real input, then pokes, then a unit call at the routine's own entry, then exempt by proof | gate C passes or is exempt for every byte in the denominator |
+| 8 | **Symbolic assembly** last | M2 |
+
+Steps 1 to 3 run at once, on separate files. Step 4 is the master's.
+
+### Rules carried from Aladdin
+
+- Before a fix, state the expected result in numbers. A miss is explained
+  from evidence before anything else is done.
+- A red script is rerun alone before it is believed. No report is
+  published while a script has no result.
+- A new script's trace can add catalog entries inside code that already
+  has C: rebuild the catalog with it and give every new entry its own tag
+  and C in the same landing.
+- A coverage script that pokes RAM is checked against the original alone
+  first.
+- A checker change may only make the judgement more correct. Its landing
+  lists every routine whose verdict changed, with the evidence.
+- Concurrent runs never share a checker binary or an output folder.
+- A session's report is not proof: the diff is read or the gate run
+  before its claim is repeated.
 
 ## 6. Limits known before building (playbook rule 11)
 

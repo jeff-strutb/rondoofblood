@@ -1,6 +1,9 @@
 # Unit calls at a routine's own entry, for the oracles to judge (check.c, check_unit_call). The kernel
 # is resident from about frame 400. A call may only enter a tagged routine at its own first byte.
-wait 600
+# Power on, RUN on the card's title (as every script does), then let the kernel start.
+wait 120
+press RUN 6
+wait 700
 # WriteBandScroll, band 2: X is its argument.
 call WriteBandScroll X=02
 wait 2

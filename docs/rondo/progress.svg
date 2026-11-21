@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="592" height="284" viewBox="0 0 592 284" role="img" aria-label="Decompilation progress">
 <style>.t{font:13px sans-serif;fill:#57606a}.h{font:bold 14px sans-serif;fill:#57606a}.track{fill:#8c959f;fill-opacity:.25}</style>
-<text x="16" y="22" class="h">Progress against the estimate of 196 KB of game code</text>
-<text x="16" y="50" class="t">M1, T3 or better: 2.36% (4,729 B, 233 routines)</text><rect x="16" y="56" width="560" height="18" class="track"/><rect x="16" y="56" width="13" height="18" fill="#2da44e"/>
-<text x="16" y="98" class="t">M2, T4: 2.27% (4,548 B, 228 routines)</text><rect x="16" y="104" width="560" height="18" class="track"/><rect x="16" y="104" width="13" height="18" fill="#0969da"/>
-<text x="16" y="146" class="t">Below proper C: 49 routines, 3,366 B, a stepping stone</text>
-<text x="16" y="176" class="h">The System Card, against the 4,649 B the scripts run (a floor)</text>
-<text x="16" y="200" class="t">Card M1, T3 or better: 22.84% (1,062 B, 39 routines)</text><rect x="16" y="206" width="560" height="18" class="track"/><rect x="16" y="206" width="128" height="18" fill="#2da44e"/>
-<text x="16" y="244" class="t">Card M2, T4: 22.84% (1,062 B, 39 routines)</text><rect x="16" y="250" width="560" height="18" class="track"/><rect x="16" y="250" width="128" height="18" fill="#0969da"/>
+<text x="16" y="22" class="h">Progress against the traced floor, 210,017 B of game code (census not counted)</text>
+<text x="16" y="50" class="t">M1, T3 or better: 3.27% (6,867 B, 279 routines)</text><rect x="16" y="56" width="560" height="18" class="track"/><rect x="16" y="56" width="18" height="18" fill="#2da44e"/>
+<text x="16" y="98" class="t">M2, T4: 3.24% (6,802 B, 277 routines)</text><rect x="16" y="104" width="560" height="18" class="track"/><rect x="16" y="104" width="18" height="18" fill="#0969da"/>
+<text x="16" y="146" class="t">Below proper C: 0 routines, 0 B, a stepping stone</text>
+<text x="16" y="176" class="h">The System Card, against the 4,676 B the scripts run (a floor)</text>
+<text x="16" y="200" class="t">Card M1, T3 or better: 25.24% (1,180 B, 43 routines)</text><rect x="16" y="206" width="560" height="18" class="track"/><rect x="16" y="206" width="141" height="18" fill="#2da44e"/>
+<text x="16" y="244" class="t">Card M2, T4: 25.24% (1,180 B, 43 routines)</text><rect x="16" y="250" width="560" height="18" class="track"/><rect x="16" y="250" width="141" height="18" fill="#0969da"/>
 </svg>

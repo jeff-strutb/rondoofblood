@@ -94,7 +94,7 @@ exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
       if [ -e "$TM/$n" ] || [ -L "$TM/$n" ]; then mv "$TM/$n" "$TM/$n.old"; fi
       mv "$T/$n" "$TM/$n"; rm -rf "$TM/$n.old"
     done
-    for m in discmap.bin cardmap.bin noprov.bin; do cp "$T/$m" "$TM/$m.new" && mv "$TM/$m.new" "$TM/$m"; done
+    for m in discmap.bin cardmap.bin noprov.bin discmap2.bin; do cp "$T/$m" "$TM/$m.new" && mv "$TM/$m.new" "$TM/$m"; done
     echo "trace published to main: $S; merged disc code bytes $B -> $A"
     (cd "$M" && python3 tools/rondo/catalog.py | tail -3 && python3 tools/rondo/worklist.py --catalog) \
       || { echo "LANDED, but the catalog step failed: run catalog.py in the main checkout"; exit 10; }

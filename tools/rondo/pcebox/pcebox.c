@@ -20,6 +20,10 @@
  *                       sub-weapon and crouching (never SELECT+RUN, the
  *                       soft reset); the same seed plays the same
  *   shot NAME           the last frame as OUT/NAME.ppm
+ *   poke BANK:OFFSET VALUE   write VALUE (hex) to byte OFFSET (hex, inside the 8 KB bank) of the physical bank
+ *                       BANK (hex): the backup memory is F7 (offsets 0-7FF; the core starts it formatted
+ *                       and empty), the RAM banks 68-87 and F8-FB also work. Between frames, in every
+ *                       run alike, so a record, its hybrid and A5 read the same byte
  *   poke ADDR VALUE     write VALUE (hex) to the logical address ADDR (hex, $2000-$7FFF:
  *                       base RAM or a RAM bank mapped there) between frames; the
  *                       byte loses its disc origin in a trace. Same frame, same byte,
@@ -247,6 +251,7 @@ static void (*core_run)(void);
 static const uint8_t *(*core_bank)(unsigned);
 static unsigned (*core_mpr)(unsigned);
 static unsigned (*core_pc)(void);
+static void (*core_save_poke)(unsigned, uint8_t);
 
 static void run(unsigned long n)
 {
@@ -322,6 +327,30 @@ static void dump(const char *name)
         fwrite(p ? p : zero, 1, 8192, f);
     }
     fclose(f);
+}
+
+/*
+ * Write a byte of a physical bank, between frames: BANK:OFFSET, both hex, OFFSET inside the 8 KB bank. The
+ * backup memory is bank $F7 (2 KB: offsets 0 to 7FF) and is not mapped at any fixed logical address, so it is
+ * named this way; so can the RAM banks $68-$87 and $F8-$FB be. 0, or 1 if there is no such byte.
+ */
+static int poke_bank(unsigned bank, unsigned off, unsigned value)
+{
+    if (value > 0xFF || off >= 0x2000)
+        return 1;
+    if (bank == 0xF7) {
+        if (off >= 0x800 || !core_save_poke)
+            return 1;
+        core_save_poke(off, (uint8_t)value);
+        return 0;
+    }
+    uint8_t *p = (uint8_t *)core_bank(bank);
+    if (!p || !((bank >= 0x68 && bank <= 0x87) || (bank >= 0xF8 && bank <= 0xFB)))
+        return 1;
+    p[off] = (uint8_t)value;
+    if (trace_user)
+        trace_poke((uint32_t)bank << 13 | off);
+    return 0;
 }
 
 /* Write a byte of RAM mapped at a logical address, between frames. 0, or 1 if nothing is there. */
@@ -464,9 +493,16 @@ static int run_script(const char *script, int depth)
             dump(a1);
         } else if (!strcmp(cmd, "poke") && k >= 2) {
             char a2[32];
-            if (sscanf(line, "%*s %*s %31s", a2) != 1 ||
-                poke((unsigned)strtoul(a1[0] == '$' ? a1 + 1 : a1, NULL, 16),
-                     (unsigned)strtoul(a2[0] == '$' ? a2 + 1 : a2, NULL, 16))) {
+            const char *colon = strchr(a1, ':');
+            unsigned v;
+
+            if (sscanf(line, "%*s %*s %31s", a2) != 1) {
+                v = 0x100;
+            } else {
+                v = (unsigned)strtoul(a2[0] == '$' ? a2 + 1 : a2, NULL, 16);
+            }
+            if (v > 0xFF || (colon ? poke_bank((unsigned)strtoul(a1, NULL, 16), (unsigned)strtoul(colon + 1, NULL, 16), v)
+                                   : poke((unsigned)strtoul(a1[0] == '$' ? a1 + 1 : a1, NULL, 16), v))) {
                 fprintf(stderr, "pcebox: %s:%d: poke: no RAM there, or a bad value\n", script, ln);
                 fclose(s);
                 return 2;
@@ -538,6 +574,7 @@ int main(int argc, char **argv)
     core_bank = (const uint8_t *(*)(unsigned))sym(lib, "rondo_bank");
     core_mpr = (unsigned (*)(unsigned))sym(lib, "rondo_mpr");
     core_pc = (unsigned (*)(void))sym(lib, "rondo_pc");
+    core_save_poke = (void (*)(unsigned, uint8_t))dlsym(lib, "rondo_save_poke");
     ((void (*)(void))sym(lib, "retro_init"))();
 
     struct retro_game_info game = { cue, NULL, 0, NULL };

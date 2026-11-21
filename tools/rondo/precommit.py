@@ -11,6 +11,7 @@ in that sector), and says separately where it runs:
     @run <bank>:<addr>                  the physical bank and logical address
     WHAT IT DOES:                       its purpose, in game terms
     HOW:                                how it does it
+    WAITS:                              no, or what it waits on and how deep its stack is there
 
 In C the header is the comment block directly above the definition; in the
 companion assembly it is the run of `;` comment lines directly above the
@@ -20,9 +21,19 @@ The only such files allowed are the raw intake under asm/rondo/raw/, which
 the audit ratchets down to nothing.
 
 The hook judges only staged files that the commit adds or modifies, so a
-backlog never blocks an unrelated commit.
+backlog never blocks an unrelated commit. Two rules are judged on what the commit
+changes, not on the whole file:
+
+  WAITS:     a routine that is new in the commit, or whose block (header and body) differs
+             from HEAD's, must carry a WAITS: line with a value (the routines filed before
+             2026-11-21 are owed it, and owe it only when changed);
+  sequence   (seqcheck.py) a changed line of C where one operator or call has two operands that
+             each touch the machine (two rd8 in one expression, or a call and a read): C leaves
+             their order open, the original's order is the standard. Read one into a local first.
 """
 import os, re, subprocess, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TAG = re.compile(r'@routine\s+([0-9A-Fa-f]{4}:[0-9A-Fa-f]{3})\b')
@@ -56,6 +67,37 @@ def header_block(lines, i, asm):
     return '\n'.join(lines[lo:hi + 1])
 
 
+def tag_blocks(lines, asm):
+    """{where: block text} for each @routine: from its header's first line to the next header's."""
+    marks = []
+    for i, line in enumerate(lines):
+        m = TAG.search(line)
+        if m:
+            lo = i
+            if asm:
+                while lo > 0 and lines[lo - 1].lstrip().startswith(';'):
+                    lo -= 1
+            else:
+                while lo > 0 and '/*' not in lines[lo]:
+                    lo -= 1
+            marks.append((lo, m.group(1).upper()))
+    out = {}
+    for k, (lo, where) in enumerate(marks):
+        hi = marks[k + 1][0] if k + 1 < len(marks) else len(lines)
+        out[where] = '\n'.join(x.rstrip() for x in lines[lo:hi]).strip()
+    return out
+
+
+def added_lines(rel):
+    """The line numbers the staged change adds or changes in the new file (all, for a new file)."""
+    out = set()
+    diff = git('diff', '--cached', '-U0', '--', rel).decode('utf-8', 'replace')
+    for m in re.finditer(r'^@@ -\S+ \+(\d+)(?:,(\d+))? @@', diff, re.M):
+        start, n = int(m.group(1)), int(m.group(2) if m.group(2) is not None else 1)
+        out.update(range(start, start + n))
+    return out
+
+
 def main():
     bad = []
     staged = [p for p in git('diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z').decode().split('\0') if p]
@@ -71,6 +113,9 @@ def main():
             continue
         text = git('show', ':' + rel).decode('utf-8', 'replace')
         lines = text.splitlines()
+        new_blocks = tag_blocks(lines, asm)
+        old = git('show', 'HEAD:' + rel).decode('utf-8', 'replace') if rel not in added else ''
+        old_blocks = tag_blocks(old.splitlines(), asm)
         seen = {}
         for i, line in enumerate(lines):
             m = TAG.search(line)
@@ -86,8 +131,23 @@ def main():
             for need in ('WHAT IT DOES:', 'HOW:'):
                 if need not in block:
                     bad.append('%s:%d: @routine %s has no %s' % (rel, i + 1, where, need))
+            if where not in old_blocks or old_blocks[where] != new_blocks.get(where):
+                waits = re.search(r'WAITS:\s*(\S.*)', block)
+                if not waits:
+                    bad.append('%s:%d: @routine %s is new or changed and has no WAITS: (write no, or what it '
+                               'waits on and how deep its stack is there)' % (rel, i + 1, where))
             if not RUN.search(block):
                 bad.append('%s:%d: @routine %s has no @run <bank>:<addr>' % (rel, i + 1, where))
+    c_texts = {rel: git('show', ':' + rel).decode('utf-8', 'replace') for rel in staged
+               if rel.startswith(('src/rondo/', 'syscard/src/', 'syscard/include/')) and rel.endswith(('.c', '.h'))}
+    if c_texts:
+        import seqcheck
+        try:
+            for f in seqcheck.check_texts(c_texts, ROOT):
+                if f[1] in (added_lines(f[0]) if f[0] not in added else range(1, 10 ** 6)):
+                    bad.append(seqcheck.fmt(f) + "; read one into a local first, in the original's order")
+        except SyntaxError as e:
+            bad.append('seqcheck cannot parse: %s (extend tools/rondo/seqcheck.py for it)' % e)
     for b in bad:
         print(b)
     if bad:

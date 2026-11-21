@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """hybrid.py -- the table of routines with C, for the oracles.
 
-Every @routine must have an abi_ wrapper of its name. Writes
-build/rondo/pcebox/hybrid_table.c: run address, disc location, length, name and
+Every @routine must have an abi_ wrapper of its name. Writes hybrid_table.c (into
+$RONDO_GEN, or build/rondo/pcebox when that is unset): run address, disc location, length, name and
 wrapper of each, and whether its C is free of wait_interrupt. Lockstep A7 swaps every
 routine and runs original code the C calls (call_original), so the flag no longer keeps
 a routine out; it names the routines that wait, which RONDO_KEEP_WAITS=1 keeps as

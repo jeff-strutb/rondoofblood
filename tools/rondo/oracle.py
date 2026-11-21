@@ -23,6 +23,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
@@ -37,6 +38,18 @@ SCRIPTS = os.path.join(HERE, "scripts")
 OUT = os.environ.get("RONDO_ORACLE_OUT") or os.path.join(TOP, "build", "rondo", "oracle")
 TRACK = os.path.join(disc.OUT, "track02.bin")
 TIMEOUT = 1500
+CAUSES = ["left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix"]
+KINDS = ["MOVED", "EXTRA", "MISSING", "VALUE", "STACK", "STATE", "REGS", "CALL", "INT"]
+
+
+def jobs():
+    """The cores this run may use: CPU_RUN_JOBS, set by the machine's cpu-run queue, and nothing else."""
+    value = os.environ.get("CPU_RUN_JOBS")
+    if not value or not value.isdigit() or int(value) < 1:
+        sys.exit("oracle.py: CPU_RUN_JOBS is not set. Every run goes through the machine's queue, which sets it:\n"
+                 "  cpu-run -j N -m SIZE -- python3 tools/rondo/oracle.py " + " ".join(sys.argv[1:]) +
+                 "\nA5 uses one slot a script at a time; A7 two (the record and the hybrid), so N is the pool.")
+    return int(value)
 
 
 def scripts_from(args):
@@ -64,6 +77,9 @@ def box_start(pcebox, script, flag, path, out):
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 
+CAUSE_TOTALS = {}
+
+
 def run_a5(pcebox, label, names):
     out = os.path.join(OUT, label)
 
@@ -77,7 +93,7 @@ def run_a5(pcebox, label, names):
 
     totals, details = {}, {}
     bad = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), int(os.environ.get("CPU_RUN_JOBS") or os.cpu_count()))) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(names), jobs())) as ex:
         for script, err in ex.map(one, names):
             print(f"{script}: {err or 'done'}", flush=True)
             bad += err is not None
@@ -91,6 +107,9 @@ def run_a5(pcebox, label, names):
                 t = totals.setdefault(f[1], [0, 0, 0, 0, 0])
                 for i in range(5):
                     t[i] += int(f[2 + i])
+                extra = CAUSE_TOTALS.setdefault(f[1], [0] * (len(KINDS) + len(CAUSES)))
+                for i in range(min(len(extra), len(f) - 7)):
+                    extra[i] += int(f[7 + i])
             elif f:
                 d = details.setdefault(f[0], [])
                 if sum(1 for ln in d if ln.split()[1:2] == f[1:2]) < 2:
@@ -150,7 +169,7 @@ def report_card(totals, csv_name):
         name = r["name"]
         calls, same, diff, unv, order = totals.get(name, [0, 0, 0, 0, 0])
         n, ran = cover.get(name, (r["length"], 0))
-        v = "UNCOVERED" if calls == 0 else "DIVERGENT" if diff or order else "UNVERIFIED" if same == 0 else "IDENTICAL"
+        v = "UNCOVERED" if calls == 0 else "DIVERGENT" if diff or order else "UNVERIFIED" if unv or same == 0 else "IDENTICAL"
         rows.append(f"{name},{n},{ran},{calls},{same},{diff},{unv},{order},{v}")
     with open(os.path.join(OUT, "card_" + csv_name), "w", newline="\n") as f:
         f.write("\n".join(rows) + "\n")
@@ -167,11 +186,12 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
         name = r["name"]
         calls, same, diff, unv, order = totals.get(name, [0, 0, 0, 0, 0])
         n, ran = cover.get(name, (0, 0))
+        # A routine with any call not judged is not IDENTICAL: the unjudged calls may be the faulty ones.
         if calls == 0:
             v = "UNCOVERED"
         elif diff or order:
             v = "DIVERGENT"
-        elif same == 0:
+        elif unv or same == 0:
             v = "UNVERIFIED"
         else:
             v = "IDENTICAL"
@@ -197,6 +217,13 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
         print(v + ":", " ".join(r.split(",")[0] for r in rows[1:] if r.endswith("," + v)))
     print("run but not every byte:", " ".join(
         f"{name}({ran}/{n})" for name, (n, ran) in sorted(cover.items()) if 0 < ran < n))
+    with open(os.path.join(OUT, "a5_causes.csv" if csv_name == "a5.csv" else "a5_causes_" + csv_name), "w", newline="\n") as f:
+        f.write("routine," + ",".join(KINDS + CAUSES) + "\n")
+        for name in sorted(CAUSE_TOTALS):
+            f.write(name + "," + ",".join(str(n) for n in CAUSE_TOTALS[name]) + "\n")
+    sums = [sum(v[i] for v in CAUSE_TOTALS.values()) for i in range(len(KINDS) + len(CAUSES))]
+    print("calls not judged or set aside, by cause: " + ", ".join(
+        f"{n} {s}" for n, s in zip(KINDS + CAUSES, sums) if n in CAUSES and s))
     return bad
 
 
@@ -230,35 +257,55 @@ def run_a7(names):
     out = os.path.join(OUT, "a7")
 
     def one(script):
-        # The record streams its events to the hybrid through a FIFO: the whole stream of a
-        # long script is gigabytes. Both run at once, so a script holds two slots.
+        # The record streams its events to the hybrid through a FIFO: the whole stream of a long script is
+        # gigabytes. Both run at once, so a script holds two slots. Each side's output is read as it comes (a
+        # hybrid that stops early with much output must not block), and when either side ends or dies the other
+        # is given a short time and then killed, so neither waits for a peer that is gone.
         rec = os.path.join(out, script + ".rec")
         d = os.path.join(out, script)
         os.makedirs(out, exist_ok=True)
         if os.path.lexists(rec):
             os.remove(rec)
         os.mkfifo(rec)
-        procs = []
+        procs = {}
+        res = {}
         try:
-            r = box_start(PCEBOX, script, "--record", rec, d)
-            h = box_start(PCEBOX, script, "--hybrid", rec, d)
-            procs = [r, h]
-            res = {}
-            for name, proc in (("record", r), ("hybrid", h)):
-                try:
-                    res[name] = proc.communicate(timeout=TIMEOUT)
-                except subprocess.TimeoutExpired:
-                    for q in procs:
+            procs["record"] = box_start(PCEBOX, script, "--record", rec, d)
+            procs["hybrid"] = box_start(PCEBOX, script, "--hybrid", rec, d)
+            readers = {}
+
+            def drain(name, proc):
+                res[name] = proc.communicate()
+
+            for name, proc in procs.items():
+                readers[name] = threading.Thread(target=drain, args=(name, proc), daemon=True)
+                readers[name].start()
+            deadline = time.time() + TIMEOUT
+            grace = None
+            while any(th.is_alive() for th in readers.values()):
+                time.sleep(0.5)
+                if time.time() > deadline:
+                    for q in procs.values():
                         q.kill()
                     return script, f"timed out after {TIMEOUT} s"
-                # A hybrid that could not go on in step exits 3 or 4 with its report written: a result.
-                if proc.returncode and not (name == "hybrid" and proc.returncode in (3, 4)):
-                    for q in procs:
-                        if q.poll() is None:
-                            q.kill()
-                    return script, f"{name} exit {proc.returncode}: {res[name][1].strip()[-400:]}"
+                done = [n for n, q in procs.items() if q.poll() is not None]
+                if done and len(done) < 2:
+                    # One side ended. A hybrid that stopped in step (exit 3, 4 or 6) lets the record finish on its
+                    # own (it exits at its next frame once nobody reads); anything else is a failure of its own.
+                    grace = grace or time.time() + 60
+                    if time.time() > grace:
+                        for q in procs.values():
+                            if q.poll() is None:
+                                q.kill()
+            for th in readers.values():
+                th.join(10)
+            for name, proc in procs.items():
+                if proc.returncode and not (name == "hybrid" and proc.returncode in (3, 4, 6)) and \
+                        not (name == "record" and procs["hybrid"].returncode in (3, 4, 6)):
+                    err = res.get(name, ("", ""))[1].strip()[-400:]
+                    return script, f"{name} exit {proc.returncode}: {err}"
         finally:
-            for q in procs:
+            for q in procs.values():
                 if q.poll() is None:
                     q.kill()
             if os.path.lexists(rec):
@@ -279,10 +326,10 @@ def run_a7(names):
     bad = 0
     swapped, ran_inside, defects = {}, {}, {}
     swapped_lock = threading.Lock()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(len(names), int(os.environ.get("CPU_RUN_JOBS") or os.cpu_count()) // 2))) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(len(names), jobs() // 2))) as ex:
         for script, text in ex.map(one, names):
             print(f"{script}: {text}", flush=True)
-            bad += "first differing -1" not in text
+            bad += "first differing -1," not in text
     with open(os.path.join(OUT, "a7_defects.csv"), "w", newline="\n") as f:
         f.write("routine,kind,defects\n")
         for (name, kind), n in sorted(defects.items()):
@@ -291,7 +338,8 @@ def run_a7(names):
         f.write("routine,swapped,ran_inside\n")
         for name in sorted(set(swapped) | set(ran_inside)):
             f.write(f"{name},{swapped.get(name, 0)},{ran_inside.get(name, 0)}\n")
-    write_stamp("a7", not bad and names == scripts_from([]))
+    diagnostic = any(os.environ.get(k) for k in ("RONDO_KEEP", "RONDO_ONLY", "RONDO_KEEP_WAITS", "RONDO_PLACE", "RONDO_SKIPS", "RONDO_DUMP_FRAME"))
+    write_stamp("a7", not bad and not diagnostic and names == scripts_from([]))
     return 1 if bad else 0
 
 
@@ -321,6 +369,8 @@ def plant(name, old, new):
 
 def main():
     what = sys.argv[1] if len(sys.argv) > 1 else ""
+    if what in ("a5", "a7", "plant"):
+        jobs()
     if what == "a5":
         names = scripts_from(sys.argv[2:])
         totals, details, bad = run_a5(PCEBOX, "a5", names)

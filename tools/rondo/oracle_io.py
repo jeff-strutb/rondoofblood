@@ -84,7 +84,16 @@ def job(tree, script, out, box):
     bad = re.search(rf"^{script}: (record exit|hybrid exit|timed out).*$", r.stdout, re.M)
     if r.returncode and not bad and A7_IDENTICAL not in r.stdout:
         bad = re.search(r".*", r.stderr.strip()[-300:] or f"exit {r.returncode}")
-    if bad:
+    report = os.path.join(out, "a7run", "a7", script + ".rec.hybrid.txt")
+    diff = None
+    if bad and bad.group(0).startswith(f"{script}: hybrid exit") and os.path.exists(report):
+        # The hybrid run exits non-zero when the frames differ: that is a red verdict, not a failed run.
+        text = " ".join(open(report, errors="replace").read().split())
+        m = re.search(r"first differing (\d+)", text)
+        diff = (text, m) if m else None
+    if diff:
+        result["a7"] = {"verdict": "DIVERGENT", "detail": f"hybrid: {diff[0]}"[:400]}
+    elif bad:
         result["errors"].append("a7: " + bad.group(0))
     else:
         detail, reach = read_a7(os.path.join(out, "a7run"), script, r.stdout)

@@ -226,12 +226,16 @@ uint8_t WriteBandScroll(uint8_t band)
 {
     uint8_t byte;
 
+    jsr_push(0x42FE);
     SelectVdcRegister(VDC_REG_BXR);
+    jsr_pop();
     byte = rd8((uint16_t)(ScrollBgxLo + band));
     wr8(VDC_DATA_LO, byte);
     byte = rd8((uint16_t)(ScrollBgxHi + band));
     wr8(VDC_DATA_HI, byte);
+    jsr_push(0x430F);
     SelectVdcRegister(VDC_REG_BYR);
+    jsr_pop();
     byte = rd8((uint16_t)(ScrollBgyLo + band));
     wr8(VDC_DATA_LO, byte);
     byte = rd8((uint16_t)(ScrollBgyHi + band));

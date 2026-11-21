@@ -18,7 +18,7 @@ import asmfile  # noqa: E402
 import cardfile  # noqa: E402
 
 TOP = asmfile.TOP
-OUT = os.path.join(TOP, "build", "rondo", "pcebox", "hybrid_table.c")
+OUT = os.path.join(os.environ.get("RONDO_GEN") or os.path.join(TOP, "build", "rondo", "pcebox"), "hybrid_table.c")
 FUNC = re.compile(r"^(?:static\s+)?[\w\s\*]+?\b(\w+)\s*\([^;{}]*\)\s*\n\{", re.M)
 CALL = re.compile(r"\b(\w+)\s*\(")
 ORIGINAL = {"call_original", "call_with", "wait_interrupt"}

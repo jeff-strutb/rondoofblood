@@ -75,20 +75,22 @@ build_pce() {
 }
 
 build_pcebox() {
-    mkdir -p "$top/build/rondo/pcebox"
-    python3 -I "$top/tools/rondo/huc.py" --c-opclass > "$top/build/rondo/pcebox/opclass.h"
-    python3 -I "$top/tools/rondo/hybrid.py"
     # A planted bug comes in as RONDO_SRC or RONDO_CARD_SRC, a copy of the C with one change.
     src="${RONDO_SRC:-$top/src/rondo}"
     out="${RONDO_BOX:-$top/build/rondo/pcebox/pcebox}"
+    # The two generated files go beside the binary, so two builds never write the same file.
+    gen="$out.gen"
+    mkdir -p "$gen"
+    python3 -I "$top/tools/rondo/huc.py" --c-opclass > "$gen/opclass.h"
+    RONDO_GEN="$gen" python3 -I "$top/tools/rondo/hybrid.py"
     # The decompiled C reports each function it enters, so A7 sees which routines' C ran inside a
     # swapped call (check.c); the harness itself is left out of that.
     cc -O2 -Wall -Wextra -rdynamic -finstrument-functions \
         -finstrument-functions-exclude-file-list=tools/rondo/pcebox/,build/rondo/pcebox/ \
-        -I "$tc/src/pce/libretro-common/include" -I "$top/build/rondo/pcebox" \
+        -I "$tc/src/pce/libretro-common/include" -I "$gen" \
         -I "$src/include" -I "$top/syscard/include" -o "$out.new" "$top/tools/rondo/pcebox/pcebox.c" \
         "$top/tools/rondo/pcebox/trace.c" "$top/tools/rondo/pcebox/check.c" \
-        "$top/build/rondo/pcebox/hybrid_table.c" "$src"/*/*.c "${RONDO_CARD_SRC:-$top/syscard/src}"/*.c -ldl
+        "$gen/hybrid_table.c" "$src"/*/*.c "${RONDO_CARD_SRC:-$top/syscard/src}"/*.c -ldl
     mv "$out.new" "$out"
     echo "pcebox: built"
 }

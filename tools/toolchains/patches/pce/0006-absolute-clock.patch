@@ -1,0 +1,12 @@
+--- a/mednafen/pce/pce.cpp	2026-11-21 10:33:30.565318504 -0700
++++ b/mednafen/pce/pce.cpp	2026-11-21 10:33:30.566496164 -0700
+@@ -755,3 +755,9 @@
+ 	vce->SetVDCUnlimitedSprites(MDFN_GetSettingB("pce.nospritelimit"));
+ 	vce->SetShowHorizOS(MDFN_GetSettingB("pce.h_overscan"));
+ }
++
++// The oracles: the CPU's clock summed over frame resets, so it never steps back.
++extern "C" __attribute__((visibility("default"))) uint64 rondo_timestamp_abs(void)
++{
++	return PCE_TimestampBase + HuCPU.Timestamp();
++}

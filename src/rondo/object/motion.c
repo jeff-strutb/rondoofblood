@@ -26,19 +26,39 @@ static AxisFields y_fields(uint8_t object)
     return f;
 }
 
-/* An 8.8 velocity added to a 16.8 position. zTemp10 is left as the velocity's sign. */
+/*
+ * An 8.8 velocity added to a 16.8 position, access for access as the assembly makes them: the
+ * sign byte is stored first, the velocity's high byte is read twice (once for the sign, once
+ * for the add), and each position byte is read, added and stored before the next. zTemp10 is
+ * left as the velocity's sign.
+ */
 static AxisMove apply_axis(AxisFields f)
 {
     AxisMove move;
-    uint32_t after;
+    uint8_t high_for_sign, low, high, frac, mid, top, sign;
+    unsigned sum;
+    uint8_t carry;
 
-    move.velocity = (int16_t)(rd8(f.velocity_lo) | (rd8(f.velocity_hi) << 8));
-    move.before = rd8(f.frac) | ((uint32_t)rd8(f.low) << 8) | ((uint32_t)rd8(f.high) << 16);
-    after = move.before + (uint32_t)(int32_t)move.velocity;
-    wr8(zTemp10, move.velocity < 0 ? 0xFF : 0x00);
-    wr8(f.frac, (uint8_t)after);
-    wr8(f.low, (uint8_t)(after >> 8));
-    wr8(f.high, (uint8_t)(after >> 16));
+    wr8(zTemp10, 0);
+    high_for_sign = rd8(f.velocity_hi);
+    if (high_for_sign & 0x80)
+        wr8(zTemp10, (uint8_t)(rd8(zTemp10) - 1));
+    low = rd8(f.velocity_lo);
+    frac = rd8(f.frac);
+    sum = (unsigned)low + frac;
+    carry = sum > 0xFF;
+    wr8(f.frac, (uint8_t)sum);
+    high = rd8(f.velocity_hi);
+    mid = rd8(f.low);
+    sum = (unsigned)high + mid + carry;
+    carry = sum > 0xFF;
+    wr8(f.low, (uint8_t)sum);
+    sign = rd8(zTemp10);
+    top = rd8(f.high);
+    sum = (unsigned)sign + top + carry;
+    wr8(f.high, (uint8_t)sum);
+    move.velocity = (int16_t)(low | (high << 8));
+    move.before = frac | ((uint32_t)mid << 8) | ((uint32_t)top << 16);
     return move;
 }
 

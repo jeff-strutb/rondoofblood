@@ -10,7 +10,7 @@ ran and no routine spans is included from the disc. Writes build/rondo/asm/image
 Assembling only: comparing the result with the disc is the image gate's job. Before assembling it
 refuses a plan in which two pieces overlap or a byte a script ran is in no piece.
 
-    cpu-run -j 1 -m 3G -- python3 tools/rondo/asmbuild.py [--raw DIR] [--control NAME]
+    cpu-run -j 1 -m 3G -- python3 tools/rondo/asmbuild.py [--raw DIR] [--control NAME] [--allow-missing-trace]
 
 --raw DIR also writes the readable intake files there. --control plants a fault, to prove the
 checks catch it: alter (one intake instruction changed), omit (one intake routine left out),
@@ -116,6 +116,7 @@ def plan(filed, intake, disc, dm):
                              f"{tag(last['end'])} and {x['src']} {x['name']} at {tag(x['disc'])}: a range is "
                              f"assembled twice (a filed routine's range must not also be in the intake)")
         last = x
+    cover = None
     if intake is not None:
         cov = bytearray(len(dm))
         for x in pieces:
@@ -123,10 +124,52 @@ def plan(filed, intake, disc, dm):
         ex = intake.imask                      # every byte of an instruction a script began
         miss = (int.from_bytes(ex, "little") & ~int.from_bytes(cov, "little")).to_bytes(len(dm), "little")
         n = len(miss) - miss.count(0)
-        if n:
+        # the span audit: every traced routine of the catalog must be produced by a filed file or the intake
+        src_at = {}
+        for x in pieces:
+            src_at[x["disc"]] = x["src"]
+        starts = sorted(src_at)
+        import bisect
+        bad = []
+        by = {"filed": 0, "intake": 0}
+        no_asm = []
+        run_rows = 0
+        for r in intake.rows:
+            lo, hi = r["lo"], r["lo"] + r["bytes"]
+            if not any(ex[lo:hi]):
+                continue
+            run_rows += 1
+            if any(ex[i] and not cov[i] for i in range(lo, hi)):
+                bad.append(r)
+                continue
+            k = bisect.bisect_right(starts, lo) - 1
+            kind = "intake" if pieces[k]["src"] == "intake" else "filed"
+            by[kind] += 1
+            if kind == "intake" and r["name"]:
+                no_asm.append(r)
+        if n or bad:
             first = miss.find(1)
-            raise SystemExit(f"asmbuild: {n} bytes of instructions a script ran are in no piece (first at {tag(first)}): "
-                             f"a routine of the intake is not placed")
+            names = ", ".join(f"{tag(r['lo'])}{' ' + r['name'] if r['name'] else ''}" for r in bad[:5])
+            raise SystemExit(f"asmbuild: {len(bad)} traced catalog routines are produced by neither a filed file nor "
+                             f"the intake ({n} B of instructions a script ran are in no piece, first at "
+                             f"{tag(first) if first >= 0 else '-'}): {names}")
+        fl = sum(x["end"] - x["disc"] for x in pieces if x["src"] == "filed")
+        fc = sum(x["end"] - x["disc"] for x in pieces if x["src"] == "filed copy")
+        ii = sum(x.get("ins", 0) for x in pieces if x["src"] == "intake")
+        idt = sum(x.get("dat", 0) for x in pieces if x["src"] == "intake")
+        total = len(dm)
+        cover = [("source_filed", len(filed), fl, ""), ("source_filed_copy", sum(1 for x in pieces if x["src"] == "filed copy"), fc, ""),
+                 ("source_intake_instruction", sum(1 for x in pieces if x["src"] == "intake"), ii, ""),
+                 ("source_intake_byte", "", idt, "untraced bytes inside intake routines, written as .byte"),
+                 ("from_disc", "", total - fl - fc - ii - idt, "gaps no trace ran and no routine spans, included from the disc"),
+                 ("total", "", total, ""),
+                 ("catalog_routines_with_run_code", run_rows, "", ""),
+                 ("catalog_produced_by_filed_file", by["filed"], "", ""),
+                 ("catalog_produced_by_intake", by["intake"], "", ""),
+                 ("catalog_produced_by_neither", 0, "", "the build fails if this is not 0"),
+                 ("filed_c_routine_without_filed_asm", len(no_asm), sum(r["bytes"] for r in no_asm), "assembled from the intake")]
+        cover += [("  filed_c_without_asm", "", r["bytes"], f"{tag(r['lo'])} {r['name']}") for r in no_asm]
+    plan.cover = cover
     return pieces
 
 
@@ -137,11 +180,17 @@ def main():
     raw = argv[argv.index("--raw") + 1] if "--raw" in argv else None
     t0 = time.time()
     os.makedirs(OUT, exist_ok=True)
+    for stale in ("image.bin", "image.o", "coverage.csv"):     # first: a refusal must not leave an old image to be graded
+        if os.path.exists(os.path.join(OUT, stale)):
+            os.remove(os.path.join(OUT, stale))
     disc = open(TRACK, "rb").read()
     size = len(disc)
     filed = filed_pieces(disc)
     intake = dm = None
     import intake as intake_mod
+    if "--allow-missing-trace" in argv:           # for proving the build while a new script awaits its trace
+        intake_mod.ALLOW_MISSING = True
+        print("asmbuild: WARNING --allow-missing-trace: the intake is not a function of every script's trace")
     data = intake_mod.load()
     if data is None:
         print("asmbuild: no trace under build/rondo/trace: filed assembly only, the rest from the disc")
@@ -154,6 +203,7 @@ def main():
             intake_mod.headers(intake, es, sc, names)
             print(f"  {intake_mod.write_files(intake, raw)} intake files in {raw}")
     t1 = time.time()
+    plan.cover = None
     pieces = plan(filed, intake, disc, dm)
     src = ['.setcpu "huc6280"', '.segment "CODE"', '.include "asm/rondo/include/ram.inc"']
     last = 0
@@ -172,11 +222,29 @@ def main():
     root = wsl(TOP)
     cmd = f"{ca65} -I {root} --bin-include-dir {root} -o {base}.o {base}.s && {ld65} -C {base}.cfg -o {base}.bin {base}.o"
     shell = ["wsl.exe", "-e", "sh", "-c"] if os.name == "nt" else ["sh", "-c"]
+    for stale in ("image.bin", "image.o"):          # a failed build must not leave an old binary to be graded
+        if os.path.exists(os.path.join(OUT, stale)):
+            os.remove(os.path.join(OUT, stale))
     t2 = time.time()
     r = subprocess.run(shell + [cmd], capture_output=True, text=True, timeout=900)
     if r.returncode:
         print((r.stdout + r.stderr)[-1500:])
         return 1
+    binp = os.path.join(OUT, "image.bin")
+    if not os.path.exists(binp) or os.path.getsize(binp) != size or os.path.getmtime(binp) < t2 - 1:
+        print("asmbuild: the linker produced no fresh image.bin of the disc's size")
+        return 1
+    if plan.cover:
+        import hashlib
+        rows = plan.cover + [("image_sha1", "", size, hashlib.sha1(open(binp, "rb").read()).hexdigest())]
+        import csv
+        with open(os.path.join(OUT, "coverage.csv"), "w", encoding="ascii", newline="\n") as f:
+            w = csv.writer(f, lineterminator="\n")
+            w.writerow(["what", "count", "bytes", "detail"])
+            w.writerows(rows)
+        print("coverage (build/rondo/asm/coverage.csv): " + "; ".join(
+            f"{a} {c if c != '' else ''} {b} B".replace("  ", " ") for a, c, b, _ in plan.cover
+            if not a.startswith(" ") and b != ""))
     kinds = {}
     for x in pieces:
         kinds[x["src"]] = kinds.get(x["src"], 0) + 1

@@ -42,6 +42,7 @@ SMALL = 16                       # under this many bytes a copy must sit at the 
 NEAR_ABS = ("abs", "abx", "aby", "ind", "iax", "blk", "tab", "tax")
 KIND = {0x20: "call", 0x44: "call", 0x4C: "jump", 0x6C: "table", 0x7C: "table", 0x100: "interrupt"}
 CAP = 8
+ALLOW_MISSING = False             # set by asmbuild --allow-missing-trace, never by a landing
 PER_FILE = 64                    # sectors per raw file
 
 
@@ -214,6 +215,15 @@ def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
     pieces.sort(key=lambda p: p.lo)
     out.orphans, out.orphan_bytes = orphans, orphan_b
 
+    # how each piece is entered, from the edges (catalog.py's single label depends on set order when a routine is
+    # entered in two ways, so it is not used)
+    ent = collections.defaultdict(set)
+    for kind, src, dst in es:
+        if dst[0] == "D" and kind in KIND:
+            ent[dst[1]].add(KIND[kind])
+    for p in pieces:
+        p.kinds = ent.get(p.lo) or {p.entry}
+
     # ---- run addresses: from the JSR or JMP operand that reached a piece (the catalog's rule, applied to
     # every piece, entered at its start or inside it)
     plos = [p.lo for p in pieces]
@@ -322,6 +332,7 @@ def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
     # ---- operands
     st = collections.Counter()
     ambiguous = []
+    unres = []
     byc = {g.canon: g for g in groups}
     for g in groups:
         g.text_ops = {}
@@ -335,17 +346,29 @@ def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
                 disp = dispb - 256 if dispb & 0x80 else dispb
                 tgt_off = o + ln + disp
                 res = set()
+                why = set()
                 for p in g.members:
                     if 0 <= tgt_off < g.n:
-                        res.add(("in", tgt_off) if tgt_off not in g.inside else None)
+                        if tgt_off in g.inside:
+                            res.add(None)
+                            why.add("target is inside an instruction")
+                        else:
+                            res.add(("in", tgt_off))
                     else:
                         nm = named(p.lo + tgt_off)
-                        res.add(("x", nm[0], nm[2].canon if nm[2] else None, nm[3])
-                                if nm and nm[1] - (g.org + o + ln) == disp else None)
+                        if nm and nm[1] - (g.org + o + ln) == disp:
+                            res.add(("x", nm[0], nm[2].canon if nm[2] else None, nm[3]))
+                        else:
+                            res.add(None)
+                            why.add("target is in no routine or filed label" if not nm else
+                                    "label's run address does not give the displacement")
                 one = next(iter(res)) if len(res) == 1 else None
+                if len(res) > 1:
+                    why.add("copies of the routine disagree")
                 if one is None:
                     g.text_ops[o] = f"*{ln + disp:+d}"
                     st["branch left as an offset from *"] += 1
+                    unres.append((g, o, name, "branch: " + "; ".join(sorted(why)), ""))
                 elif one[0] == "in":
                     g.needs.add(one[1])
                     g.text_ops[o] = label(g.canon, one[1])
@@ -380,11 +403,14 @@ def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
                            "no trace edge for this instruction" if not seen else
                            "target's own run address differs from this operand")
                     st["call or jump left as a number: " + why] += 1
+                    unres.append((g, o, name, "call or jump: " + why, f"${T:04X}"))
                     if len(cand) > 1:
                         names = sorted(c[0] for c in cand)
                         ambiguous.append((g.canon, o, names))
                         g.notes[o] = "ambiguous: " + " | ".join(names)
     out.stats = st
+    out.unres = unres
+    out.rows = rows
 
     # ---- near copies: same instruction layout and bytes, absolute operands masked
     def near_key(g):
@@ -418,7 +444,9 @@ def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
             if p is not g.members[0]:
                 body = [".scope"] + body + [".endscope"]
             out.pieces.append({"disc": p.lo, "end": p.hi, "run": g.org, "text": "\n".join(body), "src": "intake",
-                               "name": label(g.canon)})
+                               "name": label(g.canon),
+                               "ins": sum(it[2] for it in g.items if it[0] == "i"),
+                               "dat": sum(it[2] for it in g.items if it[0] == "d")})
     out.pieces.sort(key=lambda x: x["disc"])
     out.ambiguous = ambiguous
     out.toC = toC
@@ -492,11 +520,36 @@ TRACE = os.path.join(TOP, "build", "rondo", "trace")
 RAW = os.path.join(TOP, "build", "rondo", "raw")
 
 
+def check_inputs():
+    """Refuse unless every script has a trace and the merged map is exactly the OR of those traces.
+
+    The intake reads: track 02 (build/rondo/disc/track02.bin), the merged code map
+    build/rondo/trace/discmap.bin, every script's build/rondo/trace/<script>/edges.csv, the filed
+    assembly under asm/rondo and the filed C under src/rondo (catalog.py's names). Nothing else.
+    """
+    import glob
+    names = sorted(os.path.splitext(os.path.basename(p))[0] for p in
+                   glob.glob(os.path.join(HERE, "scripts", "*.txt")) if not os.path.basename(p).startswith("_"))
+    missing = [n for n in names if not (os.path.exists(os.path.join(TRACE, n, "discmap.bin")) and
+                                        os.path.exists(os.path.join(TRACE, n, "edges.csv")))]
+    if missing and not ALLOW_MISSING:
+        raise SystemExit(f"intake: scripts with no trace under build/rondo/trace: {' '.join(missing)}; "
+                         f"run trace.py before building (the intake is a function of the traces)")
+    merged = open(os.path.join(TRACE, "discmap.bin"), "rb").read()
+    acc = 0
+    for n in [n for n in names if n not in missing]:
+        acc |= int.from_bytes(open(os.path.join(TRACE, n, "discmap.bin"), "rb").read(), "little")
+    if acc != int.from_bytes(merged, "little"):
+        raise SystemExit("intake: the merged build/rondo/trace/discmap.bin is not the OR of the scripts' traces "
+                         "(older than a script's trace?); rerun trace.py so it is merged again")
+
+
 def load():
     """Track 02, the merged code map, and the catalog's routines and edges; None if there is no trace."""
     import catalog
     if not os.path.exists(os.path.join(TRACE, "discmap.bin")):
         return None
+    check_inputs()
     disc = open(TRACK, "rb").read()
     dm = open(os.path.join(TRACE, "discmap.bin"), "rb").read()
     rows, es = catalog.build()
@@ -557,7 +610,7 @@ def headers(out, es, scripts, names):
                 callees[o[1]].add(who(out, *dst) if dst[0] == "D" else "System Card")
     out.hdr = {}
     for g in out.groups:
-        ent = sorted({p.entry for p in g.members})
+        ent = sorted({k for p in g.members for k in p.kinds})
         runs = collections.Counter(r for p in g.members for r in p.runs)
         other = sorted(r for r in runs if r != g.run)
         lines = [f"; ---- {label(g.canon)}: {len(g.members)} location{'s' if len(g.members) > 1 else ''}, "
@@ -610,8 +663,13 @@ def write_files(out, path):
                 f.write("\n".join(out.hdr[g]) + "\n" + "\n".join(g.lines) + "\n\n")
                 for p in g.members:
                     near = f"N{g.near[0]:04d}" if g.near else ""
-                    rows.append((tag(p.lo), label(g.canon), tag(g.canon), g.n, g.opc_run, p.entry,
+                    rows.append((tag(p.lo), label(g.canon), tag(g.canon), g.n, g.opc_run, "/".join(sorted(p.kinds)),
                                  f"{g.org:04X}" if g.run is not None else "", near, name))
+    with open(os.path.join(path, "unresolved.csv"), "w", encoding="ascii", newline="\n") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["group", "location", "offset", "instruction", "cause", "operand", "candidates"])
+        for g, o, name, cause, opd in sorted(out.unres, key=lambda u: (u[0].canon, u[1])):
+            w.writerow([label(g.canon), tag(g.canon), f"{o:03X}", name, cause, opd, g.notes.get(o, "")])
     with open(os.path.join(path, "index.csv"), "w", encoding="ascii", newline="\n") as f:
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["where", "group", "canonical", "bytes", "bytes_run", "entry", "run", "near", "file"])

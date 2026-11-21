@@ -1,0 +1,8 @@
+# Control script: two unit calls of ApplyVelocityX, slot 0 and slot 5.
+wait 120
+press RUN 6
+wait 700
+call ApplyVelocityX X=00
+wait 2
+call ApplyVelocityX X=05
+wait 30

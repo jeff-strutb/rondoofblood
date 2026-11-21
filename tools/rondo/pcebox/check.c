@@ -79,7 +79,7 @@ enum { MODE_OFF, MODE_A5, MODE_RECORD, MODE_HYBRID };
 /* Events. Accesses first; the rest are markers with a payload. */
 enum {
     EV_R, EV_W, EV_ROMR, EV_HWR, EV_HWW, EV_RTPULL, EV_STATE,
-    EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME
+    EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME, EV_END
 };
 enum { K_JSR, K_IRQ, K_JMP };          /* OPEN, CALL: how the entry was made */
 enum { CL_OK, CL_DROP, CL_LEFT };      /* CLOSE: how it ended */
@@ -101,8 +101,9 @@ static int is_noise(int t) { return t == EV_ROMR || t == EV_RTPULL; }
 #define PFLAGS 0xCF
 #define PREV_IRQ 0x100
 #define PREV_UNIT 0x101
-#define FRAMES 64
-#define LOG_MAX (1u << 22)
+#define FRAMES 512
+#define LOG_START (1u << 22)
+#define LOG_HARD (1u << 24)
 #define C_MAX (1u << 20)
 #define UNIT_MARK 0x0001
 
@@ -115,6 +116,16 @@ typedef struct {
     uint64_t calls, identical, divergent, unverified, order, printed, printed_v;
     uint64_t kind[NKIND];
     uint64_t ints, originals, waits;   /* hybrid: interrupts dispatched inside its C, calls into original code, waits */
+    /* Calls not judged, by cause (each also counted in `unverified`, except the three arrivals): */
+    uint64_t unv_left;       /* left by a longer route than RTS or RTI */
+    uint64_t unv_log;        /* the stream outgrew LOG_HARD events */
+    uint64_t unv_depth;      /* nested deeper than FRAMES */
+    uint64_t unv_computed;   /* a tagged address entered by RTS: a computed dispatch, not opened */
+    uint64_t arrive_branch;  /* a tagged address reached by a branch, fall-through or other non-entry (not opened) */
+    uint64_t arrive_nonres;  /* a tagged address entered by JSR or JMP while its bytes are not resident (not opened) */
+    uint64_t runaway;        /* the C ran past its access or write budget (counted divergent) */
+    uint64_t prefix;         /* open at the script's end: its accesses judged as far as the log goes */
+    uint64_t kept;           /* hybrid: entered by the original's code, not swapped (a diagnostic run) */
 } Stat;
 
 static int mode;
@@ -201,6 +212,8 @@ static int wire_read(FILE *f, Ev *e)
 
 static Ev *win;
 static uint64_t wbase, wn, wcap;
+static int end_seen;                    /* the record's closing marker: what it opened, how many frames, how many left open */
+static uint64_t end_opens, end_frames, end_left;
 static int at_eof;
 static FILE *in;
 
@@ -232,6 +245,12 @@ static int fetch_one(void)
         at_eof = 1;
         return 0;
     }
+    if (e.type == EV_END) {
+        end_seen = 1;
+        end_opens = e.clock;
+        end_frames = e.hash2;
+        end_left = e.addr;
+    }
     if (e.type == EV_FRAME) {
         if (fq_tail == fq_cap) {
             fq_cap = fq_cap ? fq_cap * 2 : 1024;
@@ -250,6 +269,11 @@ static Ev *evp(uint64_t i)
 {
     if (mode == MODE_A5)
         return i < wn ? &win[i] : NULL;
+    if (i < wbase) {
+        fprintf(stderr, "check: event %llu was trimmed (window starts at %llu)\n", (unsigned long long)i,
+                (unsigned long long)wbase);
+        exit(5);
+    }
     while (i >= wbase + wn)
         if (!fetch_one())
             return NULL;
@@ -295,6 +319,9 @@ static Ev *sev(Span *s, uint64_t j, int *nest)
 }
 
 static Span *sp;                       /* the span whose C is running */
+enum { ABORT_NONE, ABORT_DIVERGED, ABORT_RUNAWAY, ABORT_END };
+static int prefix_mode;                /* A5: judging a call open at the script's end: the log ending is not a defect */
+static jmp_buf c_abort;
 static int blame_tag = -1;             /* the innermost tagged routine whose C is running */
 
 static char why[256];
@@ -305,16 +332,17 @@ static void defect(int kind, const char *fmt, ...)
     char text[300];
     va_list ap;
     Stat *s;
-    /* The routine whose call is judged owns the defect (a missing frame at its call shows up in its
-     * callee); the text names the innermost routine whose C made the access. */
-    int tag = sp ? sp->tag : (blame_tag >= 0 ? blame_tag : 0);
+    /* The defect is the innermost tagged routine's whose C made the access: that is the routine a writer
+     * opens. A call whose C lacks a frame shows up in its callee; the call judged (or swapped) is named in
+     * the text when it is another. The judged call's own verdict counts it too (sp->defects). */
+    int tag = blame_tag >= 0 ? blame_tag : (sp ? sp->tag : 0);
     size_t used;
 
     va_start(ap, fmt);
     used = (size_t)vsnprintf(text, sizeof text, fmt, ap);
     va_end(ap);
-    if (blame_tag >= 0 && blame_tag != tag && used < sizeof text)
-        snprintf(text + used, sizeof text - used, " [in %s]", rondo_tags[blame_tag].name);
+    if (sp && sp->tag != tag && used < sizeof text)
+        snprintf(text + used, sizeof text - used, " [in the call of %s]", rondo_tags[sp->tag].name);
     s = &stats[tag];
     s->kind[kind]++;
     if (sp)
@@ -379,7 +407,10 @@ static void frame_pass(Span *s, uint64_t idx, unsigned pulls);
 static unsigned long place_from = (unsigned long)-1, place_to;   /* RONDO_PLACE=lo,hi, frames */
 static unsigned long skip_frame = (unsigned long)-1;
 
-/* The IRET that closes the interrupt at index i; the span's CLOSE if the handler never returned. */
+#define NO_RETURN UINT64_MAX
+#define PASSES 256
+
+/* The IRET that closes the interrupt at index i; NO_RETURN if the handler does not return in this call. */
 static uint64_t section_end(Span *s, uint64_t i)
 {
     int depth = 1, open = 0;
@@ -388,7 +419,7 @@ static uint64_t section_end(Span *s, uint64_t i)
         Ev *e = evp(k);
 
         if (!e)
-            return k;
+            return NO_RETURN;
         if (e->type == EV_INT)
             depth++;
         else if (e->type == EV_IRET && --depth == 0)
@@ -396,9 +427,9 @@ static uint64_t section_end(Span *s, uint64_t i)
         else if (e->type == EV_OPEN)
             open++;
         else if (e->type == EV_CLOSE && open-- == 0 && mode != MODE_A5)
-            return k;
+            return NO_RETURN;
     }
-    return s->end;
+    return NO_RETURN;
 }
 
 static int same_state(const Ev *e, const uint8_t *mpr, uint8_t speed)
@@ -415,7 +446,7 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
 {
     uint64_t j = s->cur;
     int nest = s->nest;
-    uint64_t ints[16], irets[16];
+    uint64_t ints[PASSES], irets[PASSES];
     unsigned nints = 0;
     int64_t found = -1, first = -1;
     unsigned skipped = 0;
@@ -424,28 +455,40 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
     char a[96], b[96];
     int watching = place_from != (unsigned long)-1 && cur_frame >= place_from && cur_frame <= place_to;
 
+    int hit_end = 0;
+
     for (;; j++) {
         Ev *e = sev(s, j, &nest);
 
-        if (!e)
+        if (!e) {
+            hit_end = 1;
             break;
+        }
         if (is_noise(e->type))
             continue;
         if (e->type == EV_INT) {
             uint64_t r = section_end(s, j);
 
-            if (nints < 16) {
-                ints[nints] = j;
-                irets[nints++] = r;
+            if (r == NO_RETURN) {
+                defect(D_INT, "an interrupt the call took does not return in the call");
+                break;
             }
+            if (nints == PASSES) {
+                defect(D_INT, "more than %d interrupts or frame ends passed in one placement", PASSES);
+                break;
+            }
+            ints[nints] = j;
+            irets[nints++] = r;
             j = r;
             continue;
         }
         if (e->type == EV_FRAME && mode == MODE_HYBRID) {
-            if (nints < 16) {
-                ints[nints] = j;
-                irets[nints++] = j;
+            if (nints == PASSES) {
+                defect(D_INT, "more than %d interrupts or frame ends passed in one placement", PASSES);
+                break;
             }
+            ints[nints] = j;
+            irets[nints++] = j;
             continue;
         }
         if (e->type == EV_CALL && e->kind == K_JSR && tag_at[e->pc] < 0 && !hw) {
@@ -464,6 +507,8 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
         if (!hw && type != EV_STATE && (e->type == EV_HWR || e->type == EV_HWW || e->type == EV_STATE))
             break;
     }
+    if (found < 0 && hit_end && first < 0 && mode == MODE_A5 && prefix_mode)
+        longjmp(c_abort, ABORT_END);          /* the call was still open when the script ended: its accesses so far held */
     if (found < 0) {
         if (first >= 0)
             defect(D_EXTRA, "C %s; the original's next is %s at access %llu of the call",
@@ -518,6 +563,10 @@ static void span_finish(Span *s)
         if (e->type == EV_INT) {
             uint64_t r = section_end(s, j);
 
+            if (r == NO_RETURN) {
+                defect(D_INT, "an interrupt the call took does not return in the call");
+                break;
+            }
             int_pass(s, j, r);
             j = r;
         } else if (e->type == EV_FRAME && mode == MODE_HYBRID) {
@@ -554,10 +603,9 @@ static uint8_t mshadow[8];
 static uint8_t c_speed;
 static struct { uint32_t phys; uint8_t old; } cw[C_MAX];
 static uint32_t cwn;
-static jmp_buf c_abort;
 static uint64_t c_budget;
 
-enum { ABORT_NONE, ABORT_DIVERGED, ABORT_UNVERIFIED };
+
 static const Regs *exit_regs_a5;
 
 static void stop_c(int reason, const char *fmt, uint32_t a, uint32_t b, uint32_t c)
@@ -574,7 +622,7 @@ static uint32_t a5_phys(uint16_t addr)
 static void ram_put(uint32_t p, uint8_t value)
 {
     if (cwn >= C_MAX)
-        stop_c(ABORT_UNVERIFIED, "C wrote past its record", 0, 0, 0);
+        stop_c(ABORT_RUNAWAY, "C wrote past its record", 0, 0, 0);
     cw[cwn].phys = p;
     cw[cwn++].old = ram_bank[p >> 13][p & 0x1FFF];
     ram_bank[p >> 13][p & 0x1FFF] = value;
@@ -606,7 +654,7 @@ typedef struct Ctx {
     uint8_t entry_s;
     uint64_t open_i, close_i;
     Cpu saved_cpu;
-    int parked, done, abandoned;
+    int parked, done, abandoned, natural;
     uint16_t resume_pc;
     uint8_t resume_s;
     unsigned long wait_frame;      /* parked until the core has ended this frame */
@@ -666,6 +714,11 @@ static void hy_int_pass(Span *s, uint64_t i, uint64_t r)
 
     if (!e)
         return;
+    if (top && top->natural) {
+        /* The core took this interrupt itself, at the instruction the C was waiting to resume at. */
+        top->natural--;
+        return;
+    }
     ev = *e;
     for (uint64_t k = i + 1; k < r; k++) {
         Ev *x = evp(k);
@@ -767,7 +820,7 @@ uint8_t rd8(uint16_t addr)
         return v;
     }
     if (++c_budget > 4000000)
-        stop_c(ABORT_UNVERIFIED, "C ran past its access budget", 0, 0, 0);
+        stop_c(ABORT_RUNAWAY, "C ran past its access budget", 0, 0, 0);
     p = a5_phys(addr);
     if (is_rom(p))
         return rom_bank[p >> 13][p & 0x1FFF];
@@ -821,7 +874,7 @@ void wr8(uint16_t addr, uint8_t value)
         return;
     }
     if (++c_budget > 4000000)
-        stop_c(ABORT_UNVERIFIED, "C ran past its access budget", 0, 0, 0);
+        stop_c(ABORT_RUNAWAY, "C ran past its access budget", 0, 0, 0);
     p = a5_phys(addr);
     if (is_ram(p)) {
         int64_t j = place(sp, EV_W, p, NULL, 0);
@@ -947,30 +1000,40 @@ void csh(void) { set_speed(1); }
 void wait_interrupt(void)
 {
     uint64_t j;
-    Ev *e;
+    Ev *e = NULL;
+    int nest;
 
-    if (mode == MODE_A5)
-        stop_c(ABORT_UNVERIFIED, "waits on an interrupt", 0, 0, 0);
     if (!sp) {
         stop_run(3, "wait_interrupt outside a swapped call");
     }
     stats[sp->tag].waits++;
-    {
-        int nest = sp->nest;
-
-        for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e->type) && e->type != EV_INT; j++)
-            if (e->type == EV_FRAME)
-                frame_pass(sp, j, 0);
-    }
+    nest = sp->nest;
+    for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e->type) && e->type != EV_INT; j++)
+        if (e->type == EV_FRAME && mode == MODE_HYBRID)
+            frame_pass(sp, j, 0);
     if (!e || e->type != EV_INT) {
+        if (mode == MODE_A5) {
+            if (!e && prefix_mode)
+                longjmp(c_abort, ABORT_END);
+            snprintf(why, sizeof why, "the C waits for an interrupt; the original's next event is not one");
+            longjmp(c_abort, ABORT_DIVERGED);
+        }
         defect(D_CALL, "the C waits for an interrupt; the original's next event is not one");
         stop_run(3, "a wait with no interrupt in the record");
     }
     {
         uint64_t r = section_end(sp, j);
 
+        if (r == NO_RETURN) {
+            if (mode == MODE_A5) {
+                snprintf(why, sizeof why, "the interrupt the C waits for does not return in the call");
+                longjmp(c_abort, ABORT_DIVERGED);
+            }
+            defect(D_INT, "an interrupt the call took does not return in the call");
+            stop_run(3, "a wait whose interrupt does not return in the call");
+        }
         sp->cur = r + 1;
-        hy_int_pass(sp, j, r);
+        int_pass(sp, j, r);
         sp->cur = r + 1;
     }
 }
@@ -983,9 +1046,12 @@ void wait_interrupt(void)
 static void original_at(uint16_t ret, uint16_t addr)
 {
     uint64_t call = sp->cur, retidx;
-    Ev *e = NULL;
+    Ev ec;
+    int found = 0;
     Span *span = sp;
     int nest = span->nest;
+    int own = blame_tag < 0 || blame_tag == span->tag;     /* the routine whose call this is makes the call itself */
+    int noreturn;
 
     for (uint64_t j = sp->cur;; j++) {
         Ev *x = sev(sp, j, &nest);
@@ -994,15 +1060,18 @@ static void original_at(uint16_t ret, uint16_t addr)
             break;
         if (x->type == EV_INT) {
             j = section_end(sp, j);
+            if (j == NO_RETURN)
+                break;
             continue;
         }
         if (x->type == EV_CALL && x->pc == addr && x->kind != K_IRQ) {
-            e = x;
+            ec = *x;            /* a copy: delivering an interrupt below can move the window */
+            found = 1;
             call = j;
             break;
         }
     }
-    if (!e) {
+    if (!found) {
         if (mode == MODE_A5)
             stop_c(ABORT_DIVERGED, "C calls %04X; the original made no such call", addr, 0, 0);
         defect(D_CALL, "C calls %04X; the original made no such call", addr);
@@ -1016,6 +1085,8 @@ static void original_at(uint16_t ret, uint16_t addr)
         if (x->type == EV_INT) {
             uint64_t r = section_end(span, k);
 
+            if (r == NO_RETURN)
+                break;
             int_pass(span, k, r);
             k = r;
             continue;
@@ -1029,20 +1100,32 @@ static void original_at(uint16_t ret, uint16_t addr)
             break;
         }
     }
-    if (e->a != cpu.a || e->x != cpu.x || e->y != cpu.y || ((e->p ^ cpu.p) & PFLAGS)) {
+    if (ec.a != cpu.a || ec.x != cpu.x || ec.y != cpu.y || ((ec.p ^ cpu.p) & PFLAGS)) {
         if (mode == MODE_A5) {
             snprintf(why, sizeof why, "to %04X: C A%02X X%02X Y%02X P%02X, original A%02X X%02X Y%02X P%02X", addr,
-                     cpu.a, cpu.x, cpu.y, cpu.p, e->a, e->x, e->y, e->p);
+                     cpu.a, cpu.x, cpu.y, cpu.p, ec.a, ec.x, ec.y, ec.p);
             longjmp(c_abort, ABORT_DIVERGED);
         }
         defect(D_CALL, "to %04X: C A%02X X%02X Y%02X P%02X, original A%02X X%02X Y%02X P%02X", addr, cpu.a, cpu.x,
-               cpu.y, cpu.p, e->a, e->x, e->y, e->p);
+               cpu.y, cpu.p, ec.a, ec.x, ec.y, ec.p);
     }
-    if (e->kind == K_JMP) {
-        /* A tail jump: the code returns to the routine's own caller, so the routine ends here. */
+    /* Where it comes back: the RET that pops the callee's frame. A tail jump pushes none, and its code returns
+     * to the caller of the routine that jumped. */
+    for (retidx = call + 1;; retidx++) {
+        Ev *x = sev(span, retidx, &nest);
+
+        if (!x || (x->type == EV_RET && x->s == (uint8_t)(ec.s + 2)))
+            break;
+    }
+    noreturn = retidx >= span->end || !evp(retidx);
+    if (own && (ec.kind == K_JMP || noreturn)) {
+        /* The routine's own tail jump, or code that does not come back in the call: the routine ends there.
+         * (A routine called by C from another's C that jumps this way is a call and a return: below.) */
         if (mode == MODE_A5) {
             const Regs *x = exit_regs_a5;
 
+            if (prefix_mode)
+                longjmp(c_abort, ABORT_END);     /* still open at the script's end: nothing of its exit to compare */
             for (uint64_t k = call + 1; k < span->end; k++)
                 if (evp(k)->type == EV_W)
                     ram_put(evp(k)->addr, evp(k)->val);
@@ -1060,23 +1143,18 @@ static void original_at(uint16_t ret, uint16_t addr)
             Ctx *c = top;
 
             stats[span->tag].originals++;
-            pace_to(e->clock);
+            pace_to(ec.clock);
             chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, addr);
-            prev_op = 0x4C;
+            prev_op = ec.kind == K_JMP ? 0x4C : 0x20;
             scan = call + 1;
             c->abandoned = 1;
             swapcontext(&c->uc, &main_uc);
         }
     }
-    for (retidx = call + 1;; retidx++) {
-        Ev *x = sev(span, retidx, &nest);
-
-        if (!x || (x->type == EV_RET && x->s == (uint8_t)(e->s + 2)))
-            break;
-    }
-    if (retidx >= span->end || !evp(retidx)) {
+    if (noreturn) {
+        /* A routine called from another's C jumps to code that never returns here: the C after it is wrong. */
         if (mode == MODE_A5)
-            stop_c(ABORT_UNVERIFIED, "code called at %04X does not come back in this call", addr, 0, 0);
+            stop_c(ABORT_DIVERGED, "code called at %04X does not come back in this call, from a routine the call did not enter", addr, 0, 0);
         defect(D_CALL, "the code called at %04X does not come back in this call", addr);
         stop_run(3, "original code does not return");
     }
@@ -1101,7 +1179,6 @@ static void original_at(uint16_t ret, uint16_t addr)
     }
     /* The hybrid: run the code on the live machine and come back where it returns. */
     {
-        Ev ec = *e;
         uint8_t s0 = cpu.s;
         uint16_t back = ret;
 
@@ -1157,10 +1234,14 @@ static struct { void *fn; int tag; } fn_cache[1 << 14];
 static int tag_of_fn(void *fn)
 {
     unsigned h = (unsigned)(((uintptr_t)fn >> 4) & ((1u << 14) - 1));
+    static unsigned used;
 
     while (fn_cache[h].fn && fn_cache[h].fn != fn)
         h = (h + 1) & ((1u << 14) - 1);
     if (!fn_cache[h].fn) {
+        if (used >= (1u << 14) - 64)
+            return -1;      /* the table is full: an unnamed function is blamed on its caller */
+        used++;
         Dl_info info;
 
         fn_cache[h].fn = fn;
@@ -1193,11 +1274,16 @@ void __cyg_profile_func_enter(void *fn, void *site)
             ran_inside = calloc(rondo_tag_count, sizeof *ran_inside);
         ran_inside[tag]++;
     }
-    if (*cur_fsn < FS_MAX) {
-        cur_fs[*cur_fsn] = tag >= 0 ? tag : (*cur_fsn ? cur_fs[*cur_fsn - 1] : -1);
+    {
+        int n = *cur_fsn;
+        int below = n ? cur_fs[(n < FS_MAX ? n : FS_MAX) - 1] : -1;
+
+        /* Deeper than FS_MAX the depth is still counted so the pops match; the name stays the last kept. */
+        if (n < FS_MAX)
+            cur_fs[n] = tag >= 0 ? tag : below;
         (*cur_fsn)++;
+        blame_tag = tag >= 0 ? tag : below;
     }
-    blame_tag = cur_fs[*cur_fsn - 1];
 }
 
 void __cyg_profile_func_exit(void *fn, void *site)
@@ -1209,7 +1295,7 @@ void __cyg_profile_func_exit(void *fn, void *site)
     if (*cur_fsn > 0)
         (*cur_fsn)--;
     if (*cur_fsn > 0)
-        blame_tag = cur_fs[*cur_fsn - 1];
+        blame_tag = cur_fs[(*cur_fsn < FS_MAX ? *cur_fsn : FS_MAX) - 1];
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -1219,18 +1305,45 @@ static uint8_t last_mpr[8];
 static uint8_t last_speed;
 static uint64_t cur_clock(void) { return chk_ts_abs(); }
 
+static void judge(Frame *f, const Regs *r);
+
+/*
+ * The log is full (LOG_HARD events) with calls still open: a call that has stayed open for millions of accesses, as
+ * the kernel's start does for the whole run. Its accesses so far are judged now, as far as the log goes (counted
+ * under the routine as a prefix, and as unv_log when the outermost call is the only one), then the log from the next
+ * call on is kept and the run goes on. Nothing is dropped without a count.
+ */
+static void trim_log(void)
+{
+    uint64_t base;
+
+    if (!depth) {
+        wn = 0;
+        return;
+    }
+    judge(&frames[0], NULL);
+    stats[frames[0].tag_index].unv_log++;
+    base = depth > 1 ? frames[1].start : wn;
+    memmove(win, win + base, (wn - base) * sizeof *win);
+    wn -= base;
+    memmove(frames, frames + 1, (size_t)(depth - 1) * sizeof frames[0]);
+    depth--;
+    for (int i = 0; i < depth; i++)
+        frames[i].start -= base;
+}
+
 static void log_event(const Ev *e)
 {
     if (mode == MODE_A5) {
-        if (wn >= LOG_MAX) {
-            /* Too long to judge: every open call goes down as unverified. */
-            for (int i = 0; i < depth; i++) {
-                stats[frames[i].tag_index].calls++;
-                stats[frames[i].tag_index].unverified++;
+        if (wn == wcap && wcap >= LOG_HARD)
+            trim_log();
+        if (wn == wcap) {
+            wcap *= 2;
+            win = realloc(win, wcap * sizeof *win);
+            if (!win) {
+                fprintf(stderr, "check: out of memory for the A5 log\n");
+                exit(5);
             }
-            depth = 0;
-            wn = 0;
-            return;
         }
         win[wn++] = *e;
     } else if (mode == MODE_RECORD) {
@@ -1316,6 +1429,8 @@ void check_wr_pre(uint32_t phys, uint8_t v)
     if (is_ram(phys)) {
         e.type = EV_W;
         e.old = ram_bank[phys >> 13][phys & 0x1FFF];
+    } else if (is_rom(phys)) {
+        return;         /* a write to ROM does nothing: no program state, no access to place */
     } else {
         e.type = EV_HWW;
         e.clock = cur_clock();
@@ -1334,6 +1449,15 @@ static int nints;
  */
 static uint8_t ichain[FRAMES];
 static int nchain;
+
+/*
+ * The interrupt can come between a JSR and the first instruction of its callee, or between an RTS and the
+ * instruction after it: the hook for that instruction then sees the RTI that ended the handler. What the
+ * interrupted instruction was is kept with the PC and S the handler returns to, and put back when it returns,
+ * so the call is opened and the return marked as if the interrupt had not come between.
+ */
+static struct { uint16_t resume; uint8_t s; int prev; } ipend[FRAMES];
+static int nipend;
 
 static uint16_t stack_return(uint8_t s)
 {
@@ -1355,10 +1479,20 @@ static void boundary(const Regs *r);
 
 void check_irq(void)
 {
-    if (mode == MODE_A5 || mode == MODE_RECORD) {
-        Regs r;
+    Regs r;
 
-        chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
+    chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
+    if (nipend == FRAMES) {
+        memmove(ipend, ipend + 1, (FRAMES - 1) * sizeof ipend[0]);
+        nipend--;
+    }
+    ipend[nipend].resume = r.pc;
+    ipend[nipend].s = r.s;
+    ipend[nipend++].prev = prev_op;
+    if (mode == MODE_HYBRID && top && top->parked && !top->wait_frame && r.pc == top->resume_pc &&
+        r.s == top->resume_s)
+        top->natural++;      /* taken at the place the C waits for: the record's next interrupt is this one */
+    if (mode == MODE_A5 || mode == MODE_RECORD) {
         /* The instruction just run may have been the call's RTS: the interrupt comes before the
          * hook for the instruction after it, so the call is closed here, outside the interrupt. */
         boundary(&r);
@@ -1375,17 +1509,53 @@ void check_irq(void)
     prev_op = PREV_IRQ;
 }
 
+/*
+ * A computed dispatch: the code pushes a routine's address less one and RTSes to it. The RTS lands on a tagged
+ * routine's first byte without having been a return: no JSR left that address on the stack where it was popped
+ * from (jsrmark). Such an arrival is a call, with the dispatcher's own return address below it.
+ */
+static uint16_t jsrmark[256];
+static int computed_entry;
+/*
+ * Code can also run into a tagged routine without a call instruction: a branch or fall-through from other code (a
+ * routine that ends by running on into the next), or the return of a call that lands on the next routine's first
+ * byte. That is a jump into it, as a JMP is: no frame is pushed and the routine returns to the caller of the code it
+ * came from. A branch back to a routine's own first byte (a loop) is not an entry.
+ */
+static int tail_entry;
+static uint16_t last_pc, before_pc;
+
+static int in_routine(int index, uint16_t pc)
+{
+    return index >= 0 && (uint16_t)(pc - rondo_tags[index].run) < rondo_tags[index].len;
+}
+
 static int prev_is_entry(void)
 {
     return prev_op == 0x20 || prev_op == 0x44 || prev_op == 0x4C || prev_op == 0x6C || prev_op == 0x7C ||
-           prev_op == PREV_UNIT;
+           prev_op == PREV_UNIT || computed_entry || tail_entry;
 }
 
 static int entry_kind(void)
 {
     if (prev_op == PREV_IRQ)
         return K_IRQ;
-    return prev_op == 0x20 || prev_op == 0x44 || prev_op == PREV_UNIT ? K_JSR : K_JMP;
+    if (tail_entry)
+        return K_JMP;
+    return prev_op == 0x20 || prev_op == 0x44 || prev_op == PREV_UNIT || computed_entry ? K_JSR : K_JMP;
+}
+
+/* The arrival at tagged index at pc, other than by an entry instruction: is it a jump into the routine? */
+static void classify_arrival(int index, uint16_t pc)
+{
+    int plain = prev_op == 0x20 || prev_op == 0x44 || prev_op == 0x4C || prev_op == 0x6C || prev_op == 0x7C ||
+                prev_op == PREV_UNIT || prev_op == PREV_IRQ;
+
+    (void)pc;
+    tail_entry = 0;
+    if (index < 0 || plain || computed_entry)
+        return;
+    tail_entry = prev_op == 0x60 || !in_routine(index, before_pc);
 }
 
 static void judge(Frame *f, const Regs *r);
@@ -1443,6 +1613,7 @@ static void close_frames(const Regs *r)
             if (how == CL_LEFT) {
                 stats[f->tag_index].calls++;
                 stats[f->tag_index].unverified++;
+                stats[f->tag_index].unv_left++;
             } else {
                 judge(f, r);
             }
@@ -1457,19 +1628,29 @@ static void close_frames(const Regs *r)
     }
 }
 
+static uint64_t opens_emitted;
+
 static void open_frame(int index, const Regs *r, int kind)
 {
     Frame *f;
     Ev e;
 
-    if (depth == FRAMES) {
-        if (mode == MODE_RECORD) {
-            while (depth) {
-                Regs z = { 0 };
+    opens_emitted++;
 
+    if (depth == FRAMES) {
+        while (depth) {
+            Regs z = { 0 };
+
+            if (mode == MODE_RECORD)
                 close_event(&frames[depth - 1], &z, CL_LEFT);
-                depth--;
+            else {
+                Stat *s = &stats[frames[depth - 1].tag_index];
+
+                s->calls++;
+                s->unverified++;
+                s->unv_depth++;
             }
+            depth--;
         }
         depth = 0;
         wn = 0;
@@ -1519,13 +1700,14 @@ static uint32_t stamp;
 
 static void judge(Frame *f, const Regs *r)
 {
+    const int prefix = r == NULL;           /* open at the script's end */
     Stat *s = &stats[f->tag_index];
     int reason;
     char diff[400] = "";
     size_t dl = 0;
     Span span;
     uint64_t end = wn;
-    int fs0[2] = { f->tag_index, f->tag_index };
+    int fs0[FS_MAX] = { f->tag_index };
     int fsn0 = 1;
 
     s->calls++;
@@ -1563,22 +1745,26 @@ static void judge(Frame *f, const Regs *r)
     c_budget = 0;
     why[0] = 0;
     exit_regs_a5 = r;
+    prefix_mode = prefix;
     reason = setjmp(c_abort);
     if (reason == 0) {
         f->tag->abi();
-        span_finish(&span);
+        if (!prefix)
+            span_finish(&span);
     }
-    if (reason == ABORT_NONE) {
+    prefix_mode = 0;
+    if (reason == ABORT_NONE && !prefix) {
         uint8_t exit_s;
         uint16_t exit_pc;
         const uint8_t *stack = ram_bank[0xF8] + 0x100;
 
-        /* Where a routine ends on a shared exit, registers and flags are dead. */
-        if (!f->tag->ends && cpu.a != r->a)
+        /* A routine that ends on a shared exit is judged on what it leaves for that code: registers and flags
+         * included. Anything a header proves dead is for the header to say, with the reason. */
+        if (cpu.a != r->a)
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " A C %02X orig %02X;", cpu.a, r->a);
-        if (!f->tag->ends && cpu.x != r->x)
+        if (cpu.x != r->x)
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " X C %02X orig %02X;", cpu.x, r->x);
-        if (!f->tag->ends && cpu.y != r->y)
+        if (cpu.y != r->y)
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " Y C %02X orig %02X;", cpu.y, r->y);
         if (f->kind == K_IRQ) {
             exit_s = (uint8_t)(cpu.s + 3);
@@ -1596,6 +1782,9 @@ static void judge(Frame *f, const Regs *r)
                 dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " P C %02X orig %02X (entry %02X);", cpu.p, r->p,
                                        f->regs.p);
         }
+        if (f->tag->ends && ((cpu.p ^ r->p) & PFLAGS))
+            dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " P C %02X orig %02X (entry %02X);", cpu.p, r->p,
+                                   f->regs.p);
         if (exit_s != r->s || exit_pc != r->pc)
             defect(D_STACK, "the call ends with S %02X and returns to %04X, the original S %02X and %04X", exit_s,
                    exit_pc, r->s, r->pc);
@@ -1640,12 +1829,20 @@ static void judge(Frame *f, const Regs *r)
     cur_fs = NULL;
     cur_fsn = NULL;
     blame_tag = -1;
-    if (reason == ABORT_UNVERIFIED) {
-        s->unverified++;
-        say(f->tag, s, "UNVERIFIED", why);
+    if (reason == ABORT_RUNAWAY) {
+        /* The C itself ran away (an endless loop, a write count past the call's): its fault, not the checker's. */
+        s->divergent++;
+        s->runaway++;
+        say(f->tag, s, "DIVERGENT", why);
     } else if (reason == ABORT_DIVERGED) {
         s->divergent++;
         say(f->tag, s, "DIVERGENT", why);
+    } else if (reason == ABORT_END || prefix) {
+        s->prefix++;
+        if (span.defects)
+            s->order++;
+        else
+            s->identical++;
     } else if (dl) {
         s->divergent++;
         say(f->tag, s, "DIVERGENT", diff);
@@ -1737,6 +1934,8 @@ static void hy_trim(void)
     for (Ctx *c = top; c; c = c->below)
         if (c->span.cur < keep)
             keep = c->span.cur;
+    if (keep > wbase + wn)
+        keep = wbase + wn;
     if (keep > wbase + (1u << 17) && keep - wbase > wn / 2) {
         uint64_t drop = keep - wbase;
 
@@ -1799,11 +1998,10 @@ static int hy_finish(Ctx *c)
     }
     if (close && close->type == EV_CLOSE) {
         blame_tag = c->tag;
-        if (!t->ends && (ns != close->s || pc != close->pc))
+        if (ns != close->s || pc != close->pc)
             defect(D_STACK, "the call ends with S %02X and returns to %04X, the original S %02X and %04X", ns, pc,
                    close->s, close->pc);
-        else if (!t->ends && (cpu.a != close->a || cpu.x != close->x || cpu.y != close->y ||
-                              ((p ^ close->p) & PFLAGS)))
+        else if (cpu.a != close->a || cpu.x != close->x || cpu.y != close->y || ((p ^ close->p) & PFLAGS))
             defect(D_REGS, "the call leaves A%02X X%02X Y%02X P%02X, the original A%02X X%02X Y%02X P%02X", cpu.a,
                    cpu.x, cpu.y, p, close->a, close->x, close->y, close->p);
         blame_tag = -1;
@@ -1908,14 +2106,20 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
                  rondo_tags[e->addr].name, e->s);
     }
     if (keep) {
+        stats[index].kept++;
         scan = i + 1;
         return 0;
     }
     if (e->a != r->a || e->x != r->x || e->y != r->y || e->s != r->s || ((e->p ^ r->p) & PFLAGS)) {
-        fprintf(report, "entry of %s at frame %lu: A%02X X%02X Y%02X S%02X P%02X, the record's A%02X X%02X Y%02X "
-                "S%02X P%02X\n", rondo_tags[index].name, cur_frame, r->a, r->x, r->y, r->s, r->p, e->a, e->x, e->y,
-                e->s, e->p);
-        fflush(report);
+        Span none = { 0 };
+
+        none.tag = index;
+        sp = &none;
+        blame_tag = index;
+        defect(D_REGS, "entry A%02X X%02X Y%02X S%02X P%02X, the record's A%02X X%02X Y%02X S%02X P%02X", r->a, r->x,
+               r->y, r->s, r->p, e->a, e->x, e->y, e->s, e->p);
+        sp = NULL;
+        blame_tag = -1;
     }
     c = ctx_new();
     memset(&c->span, 0, sizeof c->span);
@@ -1955,6 +2159,7 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
 
 static struct {
     int active, entered;
+    unsigned long count;
     uint16_t entry;
     Regs saved;
     uint8_t s;
@@ -1980,9 +2185,30 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
     unit.s = (uint8_t)(r.s - 2);
     unit.entry = addr;
     unit.entered = 0;
+    unit.count = 0;
     unit.active = 1;
     chk_set_regs(has_a ? a : r.a, has_x ? x : r.x, has_y ? y : r.y, unit.s, has_p ? p : r.p, addr);
     return NULL;
+}
+
+/*
+ * Every arrival at a tagged routine's first byte that does not open a call is counted under the routine, never
+ * dropped quietly: a branch or fall-through (information), an entry while the bytes there are another overlay's
+ * (information), and an RTS landing there (a computed dispatch: a call the checker cannot judge, counted as
+ * unverified, so the routine is not IDENTICAL on the strength of other calls). `judge_calls`: A5 and the record
+ * count the calls; the hybrid counts the arrivals only.
+ */
+static void count_arrival(int index, int judge_calls)
+{
+    Stat *s = &stats[index];
+
+    (void)judge_calls;
+    if (prev_is_entry() || prev_op == PREV_IRQ) {
+        if (!tag_resident(&rondo_tags[index]))
+            s->arrive_nonres++;
+        return;
+    }
+    s->arrive_branch++;      /* a branch back into the routine's own first byte */
 }
 
 /* What happens between two instructions, for the record and A5: state changes, calls that ended, interrupts that returned. */
@@ -2034,6 +2260,19 @@ int check_exec(uint32_t pc)
         unit.entered = 1;
         prev_op = PREV_UNIT;
     }
+    if (prev_op == 0x20 || prev_op == 0x44)
+        jsrmark[(uint8_t)(r.s + 1)] = stack_return(r.s);
+    before_pc = last_pc;
+    last_pc = (uint16_t)pc;
+    computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
+    classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
+    if (unit.active && unit.entered && ++unit.count > 2000000) {
+        /* A crafted state that runs data as code or loops for ever is not a valid script. */
+        fprintf(stderr, "check: a unit call ran over 2,000,000 instructions: not a valid script\n");
+        if (mode == MODE_HYBRID)
+            stop_run(6, "a unit call ran over 2,000,000 instructions");
+        exit(6);
+    }
     if (mode == MODE_HYBRID) {
         if (top && top->parked && top->wait_frame) {
             if (cur_frame < top->wait_frame)
@@ -2044,8 +2283,15 @@ int check_exec(uint32_t pc)
         }
         if (top && top->parked && (prev_op == 0x60 || prev_op == 0x40) && pc == top->resume_pc &&
             r.s == top->resume_s) {
+            if (prev_op == 0x40 && nipend && ipend[nipend - 1].resume == pc && ipend[nipend - 1].s == r.s)
+                nipend--;
             hy_switch_in(top);
             return hy_after();
+        }
+        if (prev_op == 0x40 && nipend && pc == ipend[nipend - 1].resume && r.s == ipend[nipend - 1].s) {
+            prev_op = ipend[--nipend].prev;
+            computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
+            classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
         }
         if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
             unit.active = 0;
@@ -2059,6 +2305,8 @@ int check_exec(uint32_t pc)
                     cur_frame, rondo_tags[index].name, (unsigned)pc, r.s, prev_op, prev_is_entry(),
                     tag_resident(&rondo_tags[index]), kept_by_name(index), (unsigned long long)scan,
                     top ? rondo_tags[top->tag].name : "-");
+        if (index >= 0)
+            count_arrival(index, 0);
         if (index < 0 || !(prev_is_entry() || prev_op == PREV_IRQ) || !tag_resident(&rondo_tags[index]))
             return 0;
         return hy_enter(index, &r, prev_op == PREV_IRQ ? K_IRQ : K_JSR, kept_by_name(index));
@@ -2071,6 +2319,11 @@ int check_exec(uint32_t pc)
         return 0;
     }
     boundary(&r);
+    if (prev_op == 0x40 && nipend && pc == ipend[nipend - 1].resume && r.s == ipend[nipend - 1].s) {
+        prev_op = ipend[--nipend].prev;
+        computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
+        classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
+    }
     if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
         unit.active = 0;
         chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
@@ -2090,6 +2343,8 @@ int check_exec(uint32_t pc)
                 marker(EV_RET, &r, 0, 0, 0);
         }
         index = tag_at[pc & 0xFFFF];
+        if (index >= 0)
+            count_arrival(index, 1);
         if (index >= 0 && (prev_is_entry() || prev_op == PREV_IRQ) && tag_resident(&rondo_tags[index]))
             open_frame(index, &r, irq_kind ? K_IRQ : K_JSR);
     }
@@ -2241,8 +2496,8 @@ int check_init(int which, const char *path, const char *user_path)
         last_mpr[i] = (uint8_t)chk_mpr(i);
     last_speed = chk_get_speed();
     if (mode == MODE_A5) {
-        win = malloc(LOG_MAX * sizeof *win);
-        wcap = LOG_MAX;
+        win = malloc(LOG_START * sizeof *win);
+        wcap = LOG_START;
         report = fopen(path, "w");
         int_pass = a5_int_pass;
     } else if (mode == MODE_RECORD) {
@@ -2276,6 +2531,13 @@ int check_init(int which, const char *path, const char *user_path)
 void check_finish(void)
 {
     if (mode == MODE_A5) {
+        /* Calls open at the script's end are judged as far as their log goes, innermost first. */
+        while (depth) {
+            Frame *f = &frames[depth - 1];
+
+            judge(f, NULL);
+            depth--;
+        }
         for (unsigned i = 0; i < rondo_tag_count; i++) {
             Stat *s = &stats[i];
 
@@ -2284,16 +2546,30 @@ void check_finish(void)
                     (unsigned long long)s->unverified, (unsigned long long)s->order);
             for (int k = 0; k < NKIND; k++)
                 fprintf(report, " %llu", (unsigned long long)s->kind[k]);
-            fprintf(report, "\n");
+            /* Causes: left, log, depth, computed, arrive_branch, arrive_nonres, runaway, prefix */
+            fprintf(report, " %llu %llu %llu %llu %llu %llu %llu %llu\n", (unsigned long long)s->unv_left,
+                    (unsigned long long)s->unv_log, (unsigned long long)s->unv_depth,
+                    (unsigned long long)s->unv_computed, (unsigned long long)s->arrive_branch,
+                    (unsigned long long)s->arrive_nonres, (unsigned long long)s->runaway,
+                    (unsigned long long)s->prefix);
         }
         fclose(report);
     } else if (mode == MODE_RECORD) {
+        Ev e;
+        uint32_t left = (uint32_t)depth;
+
         while (depth) {
             Regs z = { 0 };
 
             close_event(&frames[depth - 1], &z, CL_LEFT);
             depth--;
         }
+        memset(&e, 0, sizeof e);
+        e.type = EV_END;
+        e.addr = left;
+        e.clock = opens_emitted;
+        e.hash2 = nf_record;
+        wire_write(&e);
         fflush(out);
         fclose(out);
         printf("record: %llu events, %llu frames\n", (unsigned long long)emitted, (unsigned long long)nf_record);
@@ -2301,15 +2577,51 @@ void check_finish(void)
         uint64_t defects = 0;
         long first;
 
-        for (unsigned i = 0; i < rondo_tag_count; i++)
+        uint64_t expected = 0, parked_n = 0, kept_n = 0, unreached = 0, unopened = 0;
+        int known = 0, diagnostic;
+
+        for (unsigned i = 0; i < rondo_tag_count; i++) {
             for (int k = 0; k < NKIND; k++)
                 defects += stats[i].kind[k];
-        first = hy_first_bad == (unsigned long)-1 ? (stopped_why ? -3L : defects ? -2L : -1L) : (long)hy_first_bad;
+            kept_n += stats[i].kept;
+            unopened += stats[i].arrive_branch + stats[i].arrive_nonres + stats[i].unv_computed;
+        }
+        for (Ctx *c = top; c; c = c->below)
+            parked_n++;
+        if (!stopped_why) {
+            /* The rest of the record: the frames and calls this run did not reach. */
+            while (fetch_one())
+                ;
+            known = end_seen;
+            expected = end_frames;
+            for (uint64_t k = scan > wbase ? scan : wbase; k < wbase + wn; k++)
+                if (win[k - wbase].type == EV_OPEN)
+                    unreached++;
+        }
+        diagnostic = getenv("RONDO_KEEP") || getenv("RONDO_ONLY") || getenv("RONDO_KEEP_WAITS") ||
+                     getenv("RONDO_PLACE") || getenv("RONDO_SKIPS") || getenv("RONDO_DUMP_FRAME");
+        /* Identical only when everything was compared and nothing is left over. A diagnostic run, a run that
+         * stopped, one that swapped nothing, or one that left calls or frames unreached has no verdict. */
+        if (hy_first_bad != (unsigned long)-1)
+            first = (long)hy_first_bad;
+        else if (stopped_why)
+            first = -3L;
+        else if (diagnostic)
+            first = -4L;
+        else if (defects)
+            first = -2L;
+        else if (!swapped || !known || hy_frames_total != expected || hy_frames_ok != hy_frames_total || parked_n ||
+                 unreached)
+            first = -5L;
+        else
+            first = -1L;
         if (stopped_why)
             printf("STOPPED %s\n", stopped_why);
-        fprintf(report, "calls swapped %llu; access defects %llu\nframes compared %llu, identical %lu, first "
-                "differing %ld\n", (unsigned long long)swapped, (unsigned long long)defects,
-                (unsigned long long)hy_frames_total, hy_frames_ok, first);
+        fprintf(report, "calls swapped %llu; access defects %llu; parked %llu, kept %llu, unreached %lld\n"
+                "frames compared %llu of %lld, identical %lu, first differing %ld\n", (unsigned long long)swapped,
+                (unsigned long long)defects, (unsigned long long)parked_n, (unsigned long long)kept_n,
+                stopped_why ? -1LL : (long long)unreached, (unsigned long long)hy_frames_total,
+                known ? (long long)expected : -1LL, hy_frames_ok, first);
         fclose(report);
         for (unsigned i = 0; i < rondo_tag_count; i++) {
             if (stats[i].calls)
@@ -2333,9 +2645,12 @@ void check_finish(void)
                 nw += stats[i].waits;
             }
             printf("hybrid: %llu swapped, frames compared %llu, identical %lu, first differing %ld, access defects %llu, "
-                   "interrupts inside %llu, original calls %llu, waits %llu\n",
+                   "interrupts inside %llu, original calls %llu, waits %llu, frames expected %lld, parked %llu, "
+                   "kept %llu, unreached %lld, unopened arrivals %llu, diagnostic %d\n",
                    (unsigned long long)swapped, (unsigned long long)hy_frames_total, hy_frames_ok, first,
-                   (unsigned long long)defects, (unsigned long long)ni, (unsigned long long)no, (unsigned long long)nw);
+                   (unsigned long long)defects, (unsigned long long)ni, (unsigned long long)no, (unsigned long long)nw,
+                   known ? (long long)expected : -1LL, (unsigned long long)parked_n, (unsigned long long)kept_n,
+                   stopped_why ? -1LL : (long long)unreached, (unsigned long long)unopened, diagnostic ? 1 : 0);
         }
     }
 }

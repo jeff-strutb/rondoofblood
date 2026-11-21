@@ -532,9 +532,10 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
         return -1;
     }
     if (found != first)
-        defect(D_MOVED, "C %s placed at access %lld, the original's next was %s at %lld (%u counted accesses skipped)",
-               describe_c(type, phys, a, sizeof a), (long long)(found - (int64_t)s->start),
-               describe(evp((uint64_t)first), b, sizeof b), (long long)(first - (int64_t)s->start), skipped);
+        defect(D_MOVED, "C %s placed at access %lld, past %u of the original's accesses it has not made first: %s at %lld "
+               "(a read the C skips is reported here, on the access after it)",
+               describe_c(type, phys, a, sizeof a), (long long)(found - (int64_t)s->start), skipped,
+               describe(evp((uint64_t)first), b, sizeof b), (long long)(first - (int64_t)s->start));
     if (watching)
         fprintf(report, "PLACE %lu %s %06X %llu -> %llu\n", cur_frame, type == EV_R || type == EV_HWR ? "r" : "w", phys,
                 (unsigned long long)from, (unsigned long long)found + 1);
@@ -2258,6 +2259,8 @@ static void count_arrival(int index, int judge_calls)
     Stat *s = &stats[index];
 
     (void)judge_calls;
+    if (self_jump)
+        return;                 /* a JMP to the routine's own first byte: the idle loop, not an arrival */
     if (prev_is_entry() || prev_op == PREV_IRQ) {
         if (!tag_resident(&rondo_tags[index]))
             s->arrive_nonres++;

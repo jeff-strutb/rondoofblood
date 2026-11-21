@@ -240,7 +240,6 @@ static int fetch_one(void)
         fq[fq_tail].ram = e.clock;
         fq[fq_tail].pic = e.hash2;
         fq_tail++;
-        return 1;          /* a frame's hash is not part of any span */
     }
     store_push(&e);
     return 1;
@@ -375,6 +374,8 @@ static const char *describe_c(int type, uint32_t phys, char *buf, size_t n)
 /* Placement: one C access against the stream.                                                  */
 
 static void (*int_pass)(Span *s, uint64_t int_idx, uint64_t iret_idx);
+static void do_pass(Span *s, uint64_t i, uint64_t r);
+static void frame_pass(Span *s, uint64_t idx, unsigned pulls);
 static unsigned long place_from = (unsigned long)-1, place_to;   /* RONDO_PLACE=lo,hi, frames */
 static unsigned long skip_frame = (unsigned long)-1;
 
@@ -440,6 +441,13 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
             j = r;
             continue;
         }
+        if (e->type == EV_FRAME && mode == MODE_HYBRID) {
+            if (nints < 16) {
+                ints[nints] = j;
+                irets[nints++] = j;
+            }
+            continue;
+        }
         if (e->type == EV_CALL && e->kind == K_JSR && tag_at[e->pc] < 0 && !hw) {
             /* The original called code the C has not: the C must say so (call_original) first. */
             break;
@@ -486,7 +494,7 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
     for (unsigned i = 0; i < nints; i++) {
         uint64_t keep = s->cur;
 
-        int_pass(s, ints[i], irets[i]);
+        do_pass(s, ints[i], irets[i]);
         s->cur = keep;
     }
     return found;
@@ -497,6 +505,7 @@ static void span_finish(Span *s)
 {
     int reported = 0;
     int nest = s->nest;
+    unsigned pulls = 0;
 
     for (uint64_t j = s->cur;; j++) {
         Ev *e = sev(s, j, &nest);
@@ -504,11 +513,15 @@ static void span_finish(Span *s)
 
         if (!e)
             break;
+        if (e->type == EV_RTPULL)
+            pulls++;
         if (e->type == EV_INT) {
             uint64_t r = section_end(s, j);
 
             int_pass(s, j, r);
             j = r;
+        } else if (e->type == EV_FRAME && mode == MODE_HYBRID) {
+            frame_pass(s, j, pulls);
         } else if (is_counted(e->type) && !reported) {
             defect(D_MISSING, "the original's %s at access %llu of the call is not made", describe(e, b, sizeof b),
                    (unsigned long long)(j - s->start));
@@ -596,6 +609,8 @@ typedef struct Ctx {
     int parked, done, abandoned;
     uint16_t resume_pc;
     uint8_t resume_s;
+    unsigned long wait_frame;      /* parked until the core has ended this frame */
+    uint64_t wait_clock;
     int fs[FS_MAX], fsn;
     struct Ctx *below;
 } Ctx;
@@ -678,6 +693,44 @@ static void hy_int_pass(Span *s, uint64_t i, uint64_t r)
     scan = entry_idx + 1;
     cpu_run_until(ev.pc, ev.s);
     scan = r + 1;
+}
+
+/*
+ * The original's frame ended here, between two accesses of the call: park the C until the core has ended
+ * its frame too, with the machine's S and the clock where the original's were, so the frame's hash is
+ * taken with the call half done, as the record's was. The interrupts are masked meanwhile: the one the
+ * record took after the frame end is dispatched by the C at its place, not by the core at this PC.
+ */
+static void frame_pass(Span *s, uint64_t idx, unsigned pulls)
+{
+    Ev *e = evp(idx);
+    Ctx *c = top;
+    uint8_t a, x, y, st, p;
+    uint16_t pc;
+
+    (void)s;
+    if (!e || !c || cur_frame >= e->addr)
+        return;
+    memcpy(&c->wait_clock, e->mpr, 8);
+    c->wait_frame = e->addr;
+    chk_get_regs(&a, &x, &y, &st, &p, &pc);
+    /* pulls: the bytes of its return address the original's RTS or RTI had taken when the frame ended. */
+    chk_set_regs(cpu.a, cpu.x, cpu.y, (uint8_t)(cpu.s + pulls), (uint8_t)(cpu.p | P_I), pc);
+    c->parked = 1;
+    c->saved_cpu = cpu;
+    swapcontext(&c->uc, &main_uc);
+    cpu = c->saved_cpu;
+}
+
+/* Passes the interrupt or frame end at index i of the stream. */
+static void do_pass(Span *s, uint64_t i, uint64_t r)
+{
+    Ev *e = evp(i);
+
+    if (e && e->type == EV_FRAME)
+        frame_pass(s, i, 0);
+    else
+        int_pass(s, i, r);
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -906,7 +959,8 @@ void wait_interrupt(void)
         int nest = sp->nest;
 
         for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e->type) && e->type != EV_INT; j++)
-            ;
+            if (e->type == EV_FRAME)
+                frame_pass(sp, j, 0);
     }
     if (!e || e->type != EV_INT) {
         defect(D_CALL, "the C waits for an interrupt; the original's next event is not one");
@@ -964,6 +1018,10 @@ static void original_at(uint16_t ret, uint16_t addr)
 
             int_pass(span, k, r);
             k = r;
+            continue;
+        }
+        if (x->type == EV_FRAME && mode == MODE_HYBRID) {
+            frame_pass(span, k, 0);
             continue;
         }
         if (is_counted(x->type)) {
@@ -1622,6 +1680,9 @@ static int kept_by_name(int index)
     }
     if (keep && !strcmp(keep, "all"))
         return 1;
+    /* RONDO_KEEP_WAITS=1 (a diagnostic): routines whose C reaches wait_interrupt run as original code. */
+    if (getenv("RONDO_KEEP_WAITS") && !rondo_tags[index].swappable)
+        return 1;
     for (const char *at = keep; at && (at = strstr(at, rondo_tags[index].name)) != NULL; at += n)
         if ((at == keep || at[-1] == ',') && (at[n] == ',' || at[n] == 0))
             return 1;
@@ -1766,6 +1827,11 @@ static int hy_after(void)
     cur_fs = NULL;
     cur_fsn = NULL;
     blame_tag = -1;
+    if (c && c->parked && c->wait_frame) {
+        int64_t owed = (int64_t)c->wait_clock - (int64_t)hybrid_clock_now();
+
+        return owed > 0 ? (int)(owed > 0x7FFFFFFF ? 0x7FFFFFFF : owed) : 1;
+    }
     if (c && c->abandoned) {
         top = c->below;
         c->abandoned = 0;
@@ -1934,6 +2000,13 @@ int check_exec(uint32_t pc)
         prev_op = PREV_UNIT;
     }
     if (mode == MODE_HYBRID) {
+        if (top && top->parked && top->wait_frame) {
+            if (cur_frame < top->wait_frame)
+                return 1;                    /* the frame has not ended: the core goes on, running nothing */
+            top->wait_frame = 0;
+            hy_switch_in(top);
+            return hy_after();
+        }
         if (top && top->parked && (prev_op == 0x60 || prev_op == 0x40) && pc == top->resume_pc &&
             r.s == top->resume_s) {
             hy_switch_in(top);
@@ -2021,6 +2094,18 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
         }
     }
     chk_get_regs(&a, &x, &y, &s, &p, &pc);
+    if (dump_frame && frame == dump_frame) {
+        fprintf(stderr, "FRAME %lu %s: PC %04X A%02X X%02X Y%02X S%02X P%02X", frame,
+                mode == MODE_RECORD ? "record" : "hybrid", pc, a, x, y, s, p);
+        if (mode == MODE_RECORD) {
+            for (int i = 0; i < depth; i++)
+                fprintf(stderr, " open:%s(kind %d,S%02X)", frames[i].tag->name, frames[i].kind, frames[i].regs.s);
+        } else {
+            for (Ctx *c = top; c; c = c->below)
+                fprintf(stderr, " ctx:%s(parked %d)", rondo_tags[c->tag].name, c->parked);
+        }
+        fprintf(stderr, "\n");
+    }
     for (unsigned b = 0x68; b <= 0x87; b++)
         if (ram_bank[b])
             hash = hash_bytes(hash, ram_bank[b], 8192);
@@ -2036,6 +2121,11 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
         e.addr = (uint32_t)frame;
         e.clock = hash;
         e.hash2 = picture;
+        {
+            uint64_t when = cur_clock();
+
+            memcpy(e.mpr, &when, 8);
+        }
         wire_write(&e);
         nf_record++;
         fflush(out);

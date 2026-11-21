@@ -3,8 +3,11 @@
 
 Every @routine must have an abi_ wrapper of its name. Writes
 build/rondo/pcebox/hybrid_table.c: run address, disc location, length, name and
-wrapper of each, and whether its C can run on the live machine: not if it reaches
-call_original or wait_interrupt, which only the per-call oracle can answer.
+wrapper of each, and whether its C is free of wait_interrupt. Lockstep A7 swaps every
+routine and runs original code the C calls (call_original), so the flag no longer keeps
+a routine out; it names the routines that wait, which RONDO_KEEP_WAITS=1 keeps as
+original code in a diagnostic run, since a wait that stands for a spin which reads
+memory can not be placed.
 
     python3 tools/rondo/hybrid.py
 """
@@ -21,7 +24,7 @@ TOP = asmfile.TOP
 OUT = os.path.join(os.environ.get("RONDO_GEN") or os.path.join(TOP, "build", "rondo", "pcebox"), "hybrid_table.c")
 FUNC = re.compile(r"^(?:static\s+)?[\w\s\*]+?\b(\w+)\s*\([^;{}]*\)\s*\n\{", re.M)
 CALL = re.compile(r"\b(\w+)\s*\(")
-ORIGINAL = {"call_original", "call_with", "wait_interrupt"}
+ORIGINAL = {"wait_interrupt"}
 CALL_ABI = re.compile(r"\bcall_abi\(\s*(\w+)")
 
 

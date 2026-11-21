@@ -16,6 +16,7 @@ import concurrent.futures
 import glob
 import os
 import re
+import struct
 import subprocess
 import sys
 import time
@@ -26,11 +27,12 @@ sys.path.insert(0, HERE)
 import disc  # noqa: E402
 
 PCEBOX = os.path.join(TOP, "build", "rondo", "pcebox", "pcebox")
-CORE = os.path.join(TOP, "tools", "toolchains", "pce", "mednafen_pce_libretro.dylib")
+CORE = os.environ.get("RONDO_CORE") or os.path.join(TOP, "tools", "toolchains", "pce", "mednafen_pce_libretro.dylib")
 SCRIPTS = os.path.join(HERE, "scripts")
 OUT = os.path.join(TOP, "build", "rondo", "trace")
 TIMEOUT = 600
-MAPS = (("discmap.bin", 10149 * 2048), ("cardmap.bin", 1 << 18), ("noprov.bin", 1 << 21))
+MAPS = (("discmap.bin", 10149 * 2048), ("cardmap.bin", 1 << 18), ("noprov.bin", 1 << 21),
+        ("discmap2.bin", 10149 * 2048))   # discmap2: what each disc byte is (pcebox/trace.c)
 
 
 def run(script):
@@ -87,11 +89,46 @@ def main():
                 acc[:] = (int.from_bytes(acc, "little") | int.from_bytes(d, "little")).to_bytes(n, "little")
     for m, n in MAPS:
         open(os.path.join(OUT, m), "wb").write(merged[m])
+    # runmap.bin: the distinct (disc offset, logical address, bank, kind, mapper configuration) records of every
+    # script, sorted, with the configurations (mprcfg.csv) numbered afresh; reads.csv: every script's read runs.
+    cfg_ids, recs, rows, header = {}, set(), set(), None
+    for script in every:
+        name = os.path.splitext(os.path.basename(script))[0]
+        p = os.path.join(OUT, name, "runmap.bin")
+        if os.path.exists(p):
+            mine = {}
+            for line in open(os.path.join(OUT, name, "mprcfg.csv")).read().splitlines()[1:]:
+                f = line.split(",")
+                mine[int(f[0])] = tuple(f[1:])
+            d = open(p, "rb").read()
+            for i in range(0, len(d), 12):
+                disc_off, logical, bank, kind, cfg, _ = struct.unpack("<IHBBHH", d[i:i + 12])
+                gid = cfg_ids.setdefault(mine[cfg], len(cfg_ids))
+                recs.add((disc_off, logical, bank, kind, gid))
+        p = os.path.join(OUT, name, "reads.csv")
+        if os.path.exists(p):
+            lines = open(p).read().splitlines()
+            header = lines[0]
+            rows.update(lines[1:])
+    with open(os.path.join(OUT, "runmap.bin"), "wb") as f:
+        for r in sorted(recs):
+            f.write(struct.pack("<IHBBHH", *r, 0))
+    with open(os.path.join(OUT, "mprcfg.csv"), "w") as f:
+        f.write("id,mpr2,mpr3,mpr4,mpr5,mpr6\n")
+        for cfg, gid in sorted(cfg_ids.items(), key=lambda kv: kv[1]):
+            f.write(f"{gid},{','.join(cfg)}\n")
+    if header:
+        with open(os.path.join(OUT, "reads.csv"), "w") as f:
+            f.write(header + "\n" + "\n".join(sorted(rows)) + "\n")
     d = merged["discmap.bin"]
     code = sum(1 for v in d if v & 3)
     sectors = len({i // 2048 for i, v in enumerate(d) if v & 3})
     card = sum(1 for v in merged["cardmap.bin"] if v & 3)
     noprov = sum(1 for v in merged["noprov.bin"] if v & 3)
+    m2 = merged["discmap2.bin"]
+    print("merged data: " + ", ".join(f"{name} {sum(1 for v in m2 if v & bit)}" for name, bit in (
+        ("loaded", 1), ("read by code", 2), ("sent to VDC", 4), ("VCE", 8), ("PSG", 16), ("ADPCM", 32),
+        ("other port", 64), ("block moved", 128))) + f"; {len(recs)} run records, {len(cfg_ids)} mapper configurations")
     print(f"merged: disc code {code} B in {sectors} sectors; System Card code {card} B; "
           f"RAM code with no disc origin {noprov} B")
     return 1 if bad else 0

@@ -1,0 +1,4 @@
+# Gate epoch. Moves only by a commit to this file that says why: the gates were replaced by ones
+# that prove more (A5/A7 lockstep with interrupts inside C, access order, stack). Every record row
+# stores it; a row of another epoch counts for nothing.
+1 old A5 and A7: calls that took an interrupt or crossed a frame were not judged, no access order

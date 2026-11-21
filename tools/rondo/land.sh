@@ -25,6 +25,7 @@ CR=${CPU_RUN:-$(command -v cpu-run || ls "$HOME"/.c*/bin/cpu-run 2>/dev/null | h
 O=$W/build/rondo/land-out
 mkdir -p "$O" "$M/build/rondo"
 export M W BR O CR
+echo "land: queued for one CPU slot and the landing lock; other sessions' jobs and landings go first, so this can wait minutes though the work itself takes about 15 s (cpu-run prints its queue state; this is not a hang)"
 exec "$CR" -j 1 -m 3G -- flock "$M/build/rondo/land.lock" sh -c '
   cd "$W" || exit 2
   D=$(git status --porcelain --untracked-files=all -- asm src syscard tools ":(exclude)tools/toolchains")
@@ -34,6 +35,14 @@ exec "$CR" -j 1 -m 3G -- flock "$M/build/rondo/land.lock" sh -c '
     git rebase --abort
     echo "LAND REFUSED (conflict): rebase on main conflicts in $F; run git rebase main in the worktree, resolve, commit, land again"; exit 4
   fi
+  # The commit hooks do not run when a rebase replays commits, so their checks are made here, on
+  # every message and file this landing adds to main.
+  for c in $(git rev-list main..HEAD); do
+    git log -1 --format=%B "$c" > "$O/msg.txt"
+    python3 tools/common/provcheck.py --msg "$O/msg.txt" > "$O/prov.txt" 2>&1 || { echo "LAND REFUSED (provenance): commit $(echo $c | cut -c1-7) message: $(head -2 "$O/prov.txt" | tr "\n" " ")"; exit 8; }
+  done
+  F=$(git diff --name-only --diff-filter=ACMR main HEAD)
+  [ -z "$F" ] || python3 tools/common/provcheck.py $F > "$O/prov.txt" 2>&1 || { echo "LAND REFUSED (provenance): $(head -3 "$O/prov.txt" | tr "\n" " ")"; exit 8; }
   if git diff --quiet main HEAD -- asm src syscard tools; then
     echo "decomp tree identical to main: image and link checks skipped"
   else

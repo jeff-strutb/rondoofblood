@@ -18,6 +18,10 @@ When a record stops counting (the whole rule):
     compiled hash of every routine it reaches (the routines of its own rows, and those whose bytes
     its trace ran) is the one it was measured with. A new routine with C that the script reaches
     changes its world, as does a changed one; an unrelated change does not;
+  * every row carries the gate epoch it was measured at (epoch.txt, moved only by an explicit commit
+    saying why, when the checker is replaced by gates that prove more). A row of another epoch counts
+    for nothing: when the epoch moves every filed routine is unmeasured and the headline is blocked
+    until the runner has measured every script again. Ordinary checker fixes do not move it;
   * a script with no trace folder reaches every routine with C (conservative);
   * a checker, harness, hybrid.py or setup.sh change changes nothing. Re-measuring after one is
     asked for by name (runner.py --routines / --scripts).
@@ -30,10 +34,20 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
-SCRIPTS_FIELDS = ["script", "script_hash", "verdict", "detail", "a5_secs", "a7_secs", "world", "source"]
+SCRIPTS_FIELDS = ["script", "script_hash", "verdict", "detail", "a5_secs", "a7_secs", "world", "epoch", "source"]
 A5_FIELDS = ["script", "routine", "calls", "identical", "divergent", "unverified", "order_flags", "chash",
-             "detail", "source"]
-A7_FIELDS = ["script", "routine", "swapped", "ran_inside", "chash"]
+             "detail", "epoch", "source"]
+A7_FIELDS = ["script", "routine", "swapped", "ran_inside", "chash", "epoch"]
+
+
+def epoch(top=TOP):
+    """The gate epoch: the first number in config/rondo/runs/epoch.txt. It moves only by a commit to that
+    file that says why (the gates were replaced by ones that prove more); never because a file changed."""
+    path = os.path.join(runs_dir(top), "epoch.txt")
+    for line in open(path):
+        if line.strip() and not line.startswith("#"):
+            return line.split()[0]
+    raise SystemExit(f"{path}: no epoch number")
 
 
 def runs_dir(top=TOP):
@@ -130,7 +144,7 @@ def world(script, chash, extents, rec, top=TOP):
 def status(script, chash, extents, rec, top=TOP):
     """'unmeasured' (no row, or the script text changed), 'stale' (the world changed), or 'current'."""
     row = rec.scripts.get(script)
-    if not row or row["script_hash"] != script_hash(script, top):
+    if not row or row["script_hash"] != script_hash(script, top) or row.get("epoch") != epoch(top):
         return "unmeasured"
     return "current" if row["world"] == world(script, chash, extents, rec, top) else "stale"
 
@@ -138,7 +152,8 @@ def status(script, chash, extents, rec, top=TOP):
 def complete(rec, top=TOP):
     """The scripts with no result for their present text: no report may be written while any."""
     return [s for s in script_names(top)
-            if s not in rec.scripts or rec.scripts[s]["script_hash"] != script_hash(s, top)]
+            if s not in rec.scripts or rec.scripts[s]["script_hash"] != script_hash(s, top)
+            or rec.scripts[s].get("epoch") != epoch(top)]
 
 
 def a5_counts(rec, chash, top=TOP):
@@ -147,7 +162,8 @@ def a5_counts(rec, chash, top=TOP):
     for r in rec.a5:
         s = r["script"]
         row = rec.scripts.get(s)
-        if r["chash"] != chash.get(r["routine"]) or not row or row["script_hash"] != script_hash(s, top):
+        if r["chash"] != chash.get(r["routine"]) or not row or row["script_hash"] != script_hash(s, top) \
+                or r.get("epoch") != epoch(top):
             continue
         t = out.setdefault(r["routine"], {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0,
                                           "order_flags": 0, "scripts": 0, "detail": "", "where": ""})
@@ -170,7 +186,8 @@ def a7_routines(rec, chash, extents, top=TOP):
     stats = a7_scripts(rec, chash, extents, top)
     ran = {}
     for r in rec.a7:
-        if r["chash"] == chash.get(r["routine"]) and stats.get(r["script"], ("", ""))[0] == "current" \
+        if r["chash"] == chash.get(r["routine"]) and r.get("epoch") == epoch(top) \
+                and stats.get(r["script"], ("", ""))[0] == "current" \
                 and (int(r["swapped"]) or int(r["ran_inside"])):
             ran[r["routine"]] = ran.get(r["routine"], 0) + 1
     out = {}

@@ -31,6 +31,7 @@ T2 C and assembly filed. T3 proper_c, gate_0, gate_c, gate_a5 and gate_a7. T4 T3
 It reads the gate records, the traces and the image, and runs nothing but git.
 """
 import csv
+import functools
 import glob
 import hashlib
 import os
@@ -104,6 +105,24 @@ def proper_c_faults(name, funcs):
 def a7_passed(entry):
     """C of the routine ran in a counting script's lockstep run, and every script reaching it passes."""
     return bool(entry) and entry[0] > 0 and not entry[1]
+
+
+@functools.lru_cache(maxsize=None)
+def function_files():
+    """Each C function's file (relative to TOP) and the names its body calls."""
+    files, calls = {}, {}
+    for path in (glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True) +
+                 glob.glob(os.path.join(TOP, "syscard", "src", "*.c"))):
+        text = re.sub(r"/\*.*?\*/", "", open(path, encoding="utf-8").read(), flags=re.S)
+        rel = os.path.relpath(path, TOP).replace(os.sep, "/")
+        for m in FUNC.finditer(text):
+            depth, i = 1, m.end()
+            while depth and i < len(text):
+                depth += {"{": 1, "}": -1}.get(text[i], 0)
+                i += 1
+            files[m.group(1)] = rel
+            calls[m.group(1)] = set(CALL.findall(text[m.end():i]))
+    return files, calls
 
 
 STATE = {}

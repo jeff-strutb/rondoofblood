@@ -714,6 +714,10 @@ def holdout(only=None, out=None):
 
 
 def main():
+    if not os.environ.get("CPU_RUN_JOBS"):
+        print("refusing to run outside the slot queue (CPU_RUN_JOBS is not set); run it as:\n"
+              "  cpu-run -j N -m SIZE -- python3 tools/rondo/census.py ...")
+        return 2
     if "--holdout" in sys.argv[1:]:
         holdout(out=os.path.join(TOP, "build", "rondo", "census_holdout.txt"))
         return 0

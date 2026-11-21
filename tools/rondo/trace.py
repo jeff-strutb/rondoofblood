@@ -59,6 +59,10 @@ def run(script):
 
 
 def main():
+    if not os.environ.get("CPU_RUN_JOBS"):
+        print("refusing to run outside the slot queue (CPU_RUN_JOBS is not set); run it as:\n"
+              "  cpu-run -j N -m SIZE -- python3 tools/rondo/trace.py ...")
+        return 2
     scripts = sys.argv[1:] or sorted(p for p in glob.glob(os.path.join(SCRIPTS, "*.txt"))
                                      if not os.path.basename(p).startswith("_"))
     for need in (PCEBOX, CORE):
@@ -66,7 +70,7 @@ def main():
             print(f"{need}: missing; run ./setup.sh")
             return 1
     bad = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=int(os.environ.get("CPU_RUN_JOBS") or os.cpu_count())) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=int(os.environ["CPU_RUN_JOBS"])) as ex:
         for name, err, ok in ex.map(run, scripts):
             print(f"{name}: {err or ok}")
             bad += err is not None

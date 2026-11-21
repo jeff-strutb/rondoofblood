@@ -59,6 +59,10 @@ def fill(chunk):
 
 
 def main():
+    if not os.environ.get("CPU_RUN_JOBS"):
+        print("refusing to run outside the slot queue (CPU_RUN_JOBS is not set); run it as:\n"
+              "  cpu-run -j N -m SIZE -- python3 tools/rondo/estimate.py ...")
+        return 2
     user = open(os.path.join(TOP, "build/rondo/disc/track02.bin"), "rb").read()
     flags = open(os.path.join(TOP, "build/rondo/trace/discmap.bin"), "rb").read()
     common = common_opcodes(user, flags)

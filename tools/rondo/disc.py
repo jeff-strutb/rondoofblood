@@ -123,6 +123,10 @@ def sha1(path):
 
 
 def main():
+    if not os.environ.get("CPU_RUN_JOBS"):
+        print("refusing to run outside the slot queue (CPU_RUN_JOBS is not set); run it as:\n"
+              "  cpu-run -j N -m SIZE -- python3 tools/rondo/disc.py ...")
+        return 2
     check_only = "--check" in sys.argv[1:]
     bad = 0
     cue = os.path.join(REF, CUE)

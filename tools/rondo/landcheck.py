@@ -3,6 +3,9 @@
 
     python3 tools/rondo/landcheck.py image OUTDIR     filed assembly in place, whole image, game and card
     python3 tools/rondo/landcheck.py link OUTDIR      the hybrid built from this tree's C links clean
+    python3 tools/rondo/landcheck.py scripts BASE     the scripts this tree changes against BASE that need a trace:
+                                                      added or changed, or including a changed include file
+    python3 tools/rondo/landcheck.py code FILE        bytes the code map FILE marks as run
 
 Run from the tree being checked (its own tools/rondo/landcheck.py), so every output lands in that
 tree's own build/rondo and OUTDIR; nothing is shared with another tree. One line per refusal, exit 1.
@@ -91,7 +94,37 @@ def link(out):
     return 1
 
 
+def scripts(base):
+    """Names (no .txt) of the scripts to trace: those added or changed since BASE, and every script that
+    includes (through any chain of include-only `_` files) a changed file."""
+    folder = os.path.join(TOP, "tools", "rondo", "scripts")
+    out = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMR", base, "HEAD", "--", "tools/rondo/scripts"],
+                         cwd=TOP, capture_output=True, text=True).stdout.split()
+    hit = {os.path.splitext(os.path.basename(p))[0] for p in out if p.endswith(".txt")}
+    includes = {}
+    for f in os.listdir(folder):
+        if f.endswith(".txt"):
+            includes[f[:-4]] = {os.path.splitext(os.path.basename(m))[0] for m in
+                                re.findall(r"^include\s+(\S+)", open(os.path.join(folder, f)).read(), re.M)}
+    grew = True
+    while grew:
+        grew = False
+        for name, inc in includes.items():
+            if name not in hit and inc & hit:
+                hit.add(name)
+                grew = True
+    print(" ".join(sorted(n for n in hit if not n.startswith("_") and n in includes)))
+    return 0
+
+
+def code(path):
+    print(sum(1 for b in open(path, "rb").read() if b & 3) if os.path.exists(path) else 0)
+    return 0
+
+
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] in ("scripts", "code"):
+        return {"scripts": scripts, "code": code}[sys.argv[1]](sys.argv[2])
     if len(sys.argv) == 3 and sys.argv[1] in ("image", "link"):
         return {"image": image, "link": link}[sys.argv[1]](sys.argv[2])
     print(__doc__)

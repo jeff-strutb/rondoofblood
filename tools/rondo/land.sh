@@ -8,7 +8,13 @@
 #   3. when asm, src, syscard or tools differ from main: assembles all filed assembly in place and
 #      requires the whole game image and the whole card image byte exact, and builds the hybrid from
 #      the worktree's C and requires a clean link, no undefined abi_ symbol (landcheck.py);
-#   4. fast-forwards main to the branch.
+#   4. when the landing adds or changes a file in tools/rondo/scripts, traces those scripts (and the ones
+#      including a changed include file) into a private copy of the trace folder, one cpu-run slot each, up to
+#      4: a failed or inconsistent trace refuses the landing here, before main is touched;
+#   5. fast-forwards main to the branch;
+#   6. then publishes the new traces and the re-merged code maps into main's build/rondo/trace, rebuilds the
+#      catalog there, and prints the merged code bytes before and after and any catalog entry that now
+#      falls inside a routine with C and has no tag (worklist.py --catalog).
 # Every output goes to the landing worktree's own build/rondo/land-out. A refusal prints one line
 # "LAND REFUSED (rule): what to do" and exits non-zero.
 set -u
@@ -24,9 +30,15 @@ CR=${CPU_RUN:-$(command -v cpu-run || ls "$HOME"/.c*/bin/cpu-run 2>/dev/null | h
 [ -x "$CR" ] || { echo "LAND REFUSED (input): cpu-run not found; set CPU_RUN to the queue command"; exit 2; }
 O=$W/build/rondo/land-out
 mkdir -p "$O" "$M/build/rondo"
+# A landing that touches scripts claims one slot per script to trace (up to 4, 2 GB each).
+NS=$(git -C "$W" diff --name-only --diff-filter=ACMR "$(git -C "$W" merge-base main "$BR")" "$BR" -- tools/rondo/scripts | wc -l)
+[ "$NS" -ge 1 ] || NS=1
+[ "$NS" -le 4 ] || NS=4
+MEM=$((1 + 2 * NS))
+[ "$MEM" -ge 3 ] || MEM=3
 export M W BR O CR
 echo "land: queued for one CPU slot and the landing lock; other sessions' jobs and landings go first, so this can wait minutes though the work itself takes about 15 s (cpu-run prints its queue state; this is not a hang)"
-exec "$CR" -j 1 -m 3G -- flock "$M/build/rondo/land.lock" sh -c '
+exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
   cd "$W" || exit 2
   D=$(git status --porcelain --untracked-files=all -- asm src syscard tools ":(exclude)tools/toolchains")
   [ -z "$D" ] || { echo "LAND REFUSED (dirty): uncommitted changes in the worktree, commit or drop them: $(echo "$D" | head -5 | tr "\n" ";")"; exit 3; }
@@ -43,15 +55,45 @@ exec "$CR" -j 1 -m 3G -- flock "$M/build/rondo/land.lock" sh -c '
   done
   F=$(git diff --name-only --diff-filter=ACMR main HEAD)
   [ -z "$F" ] || python3 tools/common/provcheck.py $F > "$O/prov.txt" 2>&1 || { echo "LAND REFUSED (provenance): $(head -3 "$O/prov.txt" | tr "\n" " ")"; exit 8; }
+  for r in references tools/toolchains/src tools/toolchains/cc65 tools/toolchains/pce build/rondo/disc build/rondo/system build/rondo/trace; do
+    [ -e "$W/$r" ] || { mkdir -p "$(dirname "$W/$r")"; ln -sfn "$M/$r" "$W/$r"; }
+  done
   if git diff --quiet main HEAD -- asm src syscard tools; then
     echo "decomp tree identical to main: image and link checks skipped"
   else
-    for r in references tools/toolchains/src tools/toolchains/cc65 tools/toolchains/pce build/rondo/disc build/rondo/system build/rondo/trace; do
-      [ -e "$W/$r" ] || { mkdir -p "$(dirname "$W/$r")"; ln -sfn "$M/$r" "$W/$r"; }
-    done
     python3 tools/rondo/landcheck.py image "$O" || exit 5
     python3 tools/rondo/landcheck.py link "$O" || exit 6
   fi
+  # New or changed scripts: trace them here, in a private trace folder (main is not touched), so a failure
+  # refuses the landing with main as it was. The folder holds links to main existing script folders, except
+  # the ones being traced, and the merged maps written into it cover all of them.
+  S=$(python3 tools/rondo/landcheck.py scripts main) || exit 9
+  if [ -n "$S" ]; then
+    [ -x "$M/build/rondo/pcebox/pcebox" ] || { echo "LAND REFUSED (trace): main has no pcebox binary; run setup.sh pcebox in the main checkout"; exit 9; }
+    T=$O/trace; rm -rf "$T"; mkdir -p "$T"
+    for d in "$M"/build/rondo/trace/*/; do
+      n=$(basename "$d")
+      case " $S " in *" $n "*) ;; *) ln -s "${d%/}" "$T/$n" ;; esac
+    done
+    P=""; for n in $S; do P="$P tools/rondo/scripts/$n.txt"; done
+    B=$(python3 tools/rondo/landcheck.py code "$M/build/rondo/trace/discmap.bin")
+    RONDO_TRACE_OUT=$T RONDO_PCEBOX=$M/build/rondo/pcebox/pcebox python3 tools/rondo/trace.py $P > "$O/trace.log" 2>&1 \
+      || { echo "LAND REFUSED (trace): tracing $S failed, main untouched: $(grep -v merged: "$O/trace.log" | tail -2 | tr "\n" " ")"; exit 9; }
+    A=$(python3 tools/rondo/landcheck.py code "$T/discmap.bin")
+    echo "traced $S into a private folder: $(grep "^merged:" "$O/trace.log")"
+  fi
   git -C "$M" merge -q --ff-only "$BR" || { echo "LAND REFUSED (main): main could not fast-forward to $BR (main checkout has changes at those paths, or main moved); land again"; exit 7; }
   echo "LANDED $(git -C "$M" log --oneline -1)"
+  if [ -n "$S" ]; then
+    TM=$M/build/rondo/trace
+    for n in $S; do
+      rm -rf "$TM/$n.old"
+      if [ -e "$TM/$n" ] || [ -L "$TM/$n" ]; then mv "$TM/$n" "$TM/$n.old"; fi
+      mv "$T/$n" "$TM/$n"; rm -rf "$TM/$n.old"
+    done
+    for m in discmap.bin cardmap.bin noprov.bin; do cp "$T/$m" "$TM/$m.new" && mv "$TM/$m.new" "$TM/$m"; done
+    echo "trace published to main: $S; merged disc code bytes $B -> $A"
+    (cd "$M" && python3 tools/rondo/catalog.py | tail -3 && python3 tools/rondo/worklist.py --catalog) \
+      || { echo "LANDED, but the catalog step failed: run catalog.py in the main checkout"; exit 10; }
+  fi
 '

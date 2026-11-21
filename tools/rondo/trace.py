@@ -26,10 +26,10 @@ TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import disc  # noqa: E402
 
-PCEBOX = os.path.join(TOP, "build", "rondo", "pcebox", "pcebox")
+PCEBOX = os.environ.get("RONDO_PCEBOX") or os.path.join(TOP, "build", "rondo", "pcebox", "pcebox")
 CORE = os.environ.get("RONDO_CORE") or os.path.join(TOP, "tools", "toolchains", "pce", "mednafen_pce_libretro.dylib")
 SCRIPTS = os.path.join(HERE, "scripts")
-OUT = os.path.join(TOP, "build", "rondo", "trace")
+OUT = os.environ.get("RONDO_TRACE_OUT") or os.path.join(TOP, "build", "rondo", "trace")
 TIMEOUT = 600
 MAPS = (("discmap.bin", 10149 * 2048), ("cardmap.bin", 1 << 18), ("noprov.bin", 1 << 21),
         ("discmap2.bin", 10149 * 2048))   # discmap2: what each disc byte is (pcebox/trace.c)

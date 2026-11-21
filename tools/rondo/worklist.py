@@ -237,7 +237,7 @@ def part_nocode(args, cat):
 
 
 def main():
-    if "--chash" not in sys.argv:           # without a stored compiled-hash file it compiles every C file
+    if "--chash" not in sys.argv and "--catalog" not in sys.argv:           # without a stored compiled-hash file it compiles every C file
         cpuguard.require("worklist.py", jobs=4, mem="3G")
     ap = argparse.ArgumentParser()
     ap.add_argument("--by-script", action="store_true")
@@ -250,7 +250,14 @@ def main():
     ap.add_argument("--limit", type=int, default=40)
     ap.add_argument("--wave")
     ap.add_argument("--no-c-only", action="store_true")
+    ap.add_argument("--catalog", action="store_true", help="only the catalog check (no records, no compile)")
     a = ap.parse_args()
+    if a.catalog:
+        if not os.path.exists(catalog.OUT):
+            print("no build/rondo/routines.csv: run catalog.py first")
+            return 1
+        part_catalog(catalog.load())
+        return 0
     parts = {"routine": a.by_routine, "script": a.by_script}
     everything = not (a.by_routine or a.by_script or a.no_c_only)
     ledger.load_records(a.chash)

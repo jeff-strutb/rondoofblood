@@ -97,7 +97,8 @@ def main():
             raise SystemExit(f"{r}: not in the ledger")
     before = tiers(rows, st, ext, set(), set(), set())
     after = tiers(rows, st, ext, split(a.scripts), split(a.routines), split(a.t3))
-    est = progress.ESTIMATE
+    with open(os.path.join(TOP, "build", "rondo", "trace", "discmap.bin"), "rb") as f:
+        est = sum(1 for b in f.read() if b & 3)          # progress.py's denominator: the traced floor
     for label, t in (("now", before), ("after", after)):
         m1, n1, m2, n2 = bars(rows, t)
         print(f"{label:5} M1 {progress.percent(m1, est)} ({m1:,} B, {n1} routines)   "

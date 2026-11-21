@@ -45,7 +45,8 @@ import records  # noqa: E402
 
 LINKS = ("references", "tools/toolchains/src", "tools/toolchains/cc65", "tools/toolchains/pce",
          "build/rondo/disc", "build/rondo/system", "build/rondo/trace")
-OWNED = ("config/rondo/runs", "docs/rondo/ledger.csv", "syscard/ledger.csv")
+OWNED = ("config/rondo/runs", "config/rondo/gate_a5.csv", "config/rondo/gate_a7.csv",
+         "config/rondo/gate_a7_routines.csv", "docs/rondo/ledger.csv", "syscard/ledger.csv")
 SCRIPT_TIMEOUT = 7200
 GUESS = 150.0          # seconds of A5 plus A7 for a script never measured: play_s0_r1 took 123 s and attract_82 174 s
 
@@ -216,6 +217,7 @@ def cycle(main, opts):
         if s not in failed:
             store(rec, results[s], rev, chash, ext, main)
     rec.save()
+    records.write_views(rec, chash, ext, main)
     reds = []
     for s in sorted(results):
         res = results[s]
@@ -232,7 +234,8 @@ def cycle(main, opts):
     log(f"{rev}: measured {len(results) - len(failed)} script(s) in {time.time() - t0:.0f} s; "
         f"{len(failed)} failed: {' '.join(failed) or '-'}; {len(reds)} red line(s)", b)
     missing = records.complete(rec, main)
-    wrote = ["config/rondo/runs"]
+    wrote = ["config/rondo/runs", "config/rondo/gate_a5.csv", "config/rondo/gate_a7.csv",
+             "config/rondo/gate_a7_routines.csv"]
     if failed or missing:
         log(f"  no ledger: scripts without a result: {' '.join(sorted(set(failed) | set(missing)))}", b)
     else:
@@ -255,7 +258,7 @@ def cycle(main, opts):
                 ok = False
                 break
         if ok:
-            for item in OWNED[1:]:
+            for item in OWNED[4:]:
                 shutil.copy(os.path.join(tree, item), os.path.join(main, item))
             wrote = list(OWNED)
     if opts["commit"]:

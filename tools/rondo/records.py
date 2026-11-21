@@ -197,3 +197,48 @@ def a7_routines(rec, chash, extents, top=TOP):
         out[routine] = (n, sorted({s for s in failing if s} | {s for s in script_names(top) if s not in stats and
                                                            reach(s, routine, extents, rec, top)}))
     return out
+
+
+def write_views(rec, chash, ext, top=TOP):
+    """The three files progress.py and the README read (config/rondo/gate_a5.csv, gate_a7.csv,
+    gate_a7_routines.csv), derived from the records, same columns as ever. A5 counts only the rows that
+    count; a script whose result does not count shows its verdict as STALE or MISSING, never IDENTICAL."""
+    counts = a5_counts(rec, chash, top)
+    cfg = os.path.join(top, "config", "rondo")
+    sources = sorted({r["source"] for r in rec.a5 if r["script"] in rec.scripts})
+    src = sources[-1] if sources else ""
+    rows = []
+    for name in sorted(ext):
+        run, length, disc, rom = ext[name]
+        path = os.path.join(top, "build", "rondo", "trace", "cardmap.bin" if rom else "discmap.bin")
+        ran = 0
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                f.seek(disc)
+                ran = sum(1 for b in f.read(length) if b & 3)
+        t = counts.get(name, {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0, "order_flags": 0})
+        v = ("UNCOVERED" if not t["calls"] else "DIVERGENT" if t["divergent"] else
+             "UNVERIFIED" if not t["identical"] else "IDENTICAL")
+        rows.append({"routine": name, "card": rom, "bytes": length, "bytes_run": ran, "calls": t["calls"],
+                     "identical": t["identical"], "divergent": t["divergent"], "unverified": t["unverified"],
+                     "order_flags": t["order_flags"], "verdict": v, "source": src})
+    write(os.path.join(cfg, "gate_a5.csv"), ["routine", "card", "bytes", "bytes_run", "calls", "identical",
+          "divergent", "unverified", "order_flags", "verdict", "source"], rows)
+    stats = a7_scripts(rec, chash, ext, top)
+    srows = []
+    for s in script_names(top):
+        status_, verdict = stats.get(s, ("unmeasured", ""))
+        row = rec.scripts.get(s, {})
+        srows.append({"script": s, "verdict": verdict if status_ == "current" else
+                      ("MISSING" if status_ == "unmeasured" else "STALE"),
+                      "detail": row.get("detail", ""), "source": row.get("source", "")})
+    write(os.path.join(cfg, "gate_a7.csv"), ["script", "verdict", "detail", "source"], srows)
+    agg = {}
+    for r in rec.a7:
+        if r["chash"] == chash.get(r["routine"]) and r.get("epoch") == epoch(top) \
+                and stats.get(r["script"], ("", ""))[0] == "current":
+            t = agg.setdefault(r["routine"], [0, 0])
+            t[0] += int(r["swapped"])
+            t[1] += int(r["ran_inside"])
+    write(os.path.join(cfg, "gate_a7_routines.csv"), ["routine", "swapped", "ran_inside", "source"],
+          [{"routine": k, "swapped": v[0], "ran_inside": v[1], "source": src} for k, v in sorted(agg.items())])

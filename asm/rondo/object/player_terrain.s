@@ -348,7 +348,7 @@ RichterColumnsBlocked_at0:
 RichterFloorOddScreen:
     clx
     stz a:RichterColumnRow,x
-    bra RichterFloorCheck_at3
+    bra RichterFloorCheck_at0
 
 ; @routine 01BC:2C2 RichterFloorCheck
 ; @run 6D:BAC2

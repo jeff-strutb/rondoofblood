@@ -6,6 +6,7 @@
     python3 tools/rondo/runner.py plan  [--main DIR] [options]    print what would run and the time expected
     options: --routines A,B   re-measure the scripts reaching these routines (after a checker change)
              --scripts a,b    re-measure these scripts
+             --only           with --scripts: nothing else (a partial check; no ledger is written)
              --sweep          every script: the whole-game run, only when asked
              --commit         commit the records and ledgers to DIR's branch under the landing lock (off by
                               default until the state session has handed those files over)
@@ -128,6 +129,8 @@ def make_plan(rec, chash, ext, opts, top):
             what = ", ".join(hit[:4]) + (f" and {len(hit) - 4} more" if len(hit) > 4 else "") if hit else \
                 "a routine in its stored closure"
             plan[s] = f"whether {what} still passes in {s}: its stored result no longer counts"
+    if opts["only"]:
+        plan = {}           # --only: just the named scripts, whatever else is stale (a partial check)
     for s in opts["scripts"]:
         if s not in names:
             raise SystemExit(f"{s}: no such script")
@@ -251,7 +254,7 @@ def cycle(main, opts):
         log("  RED " + x, b)
     log(f"{rev}: measured {len(results) - len(failed)} script(s) in {time.time() - t0:.0f} s; "
         f"{len(failed)} failed: {' '.join(failed) or '-'}; {len(reds)} red line(s)", b)
-    missing = records.complete(rec, main)
+    missing = [s for s in records.script_names(main) if records.status(s, chash, ext, rec, main) != "current"]
     wrote = ["config/rondo/runs", "config/rondo/gate_a5.csv", "config/rondo/gate_a7.csv",
              "config/rondo/gate_a7_routines.csv"]
     if failed or missing:
@@ -300,7 +303,7 @@ def commit(main, rev, paths, n, reds, b):
 
 def parse(argv):
     opts = {"mode": argv[0] if argv else "", "main": TOP, "routines": [], "scripts": [], "sweep": False,
-            "commit": False, "workers": 8}
+            "commit": False, "workers": 8, "only": False}
     i = 1
     while i < len(argv):
         a = argv[i]
@@ -312,6 +315,8 @@ def parse(argv):
             opts["scripts"] = argv[i + 1].split(","); i += 1
         elif a == "--workers":
             opts["workers"] = int(argv[i + 1]); i += 1
+        elif a == "--only":
+            opts["only"] = True
         elif a == "--sweep":
             opts["sweep"] = True
         elif a == "--commit":

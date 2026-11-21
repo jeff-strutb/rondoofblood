@@ -15,6 +15,8 @@ enum {
     KERNEL_RUN = 0x4000, FRAME_INTERRUPT_RUN = 0x4177, IGNORED_INTERRUPT_RUN = 0x4297
 };
 
+void abi_KernelIdle(void);
+
 static void map_from_base(uint8_t mpr_bit, uint8_t offset)
 {
     uint8_t base = rd8(zRamBaseBank);
@@ -217,35 +219,67 @@ void abi_IgnoredInterrupt(void)
  */
 void KernelStart(void)
 {
-    uint8_t bank;
+    uint8_t base;
+    Alu sum;
 
     tai(KernelZeros, ZeroPage, zRamBaseBank - zTemp00);
     tai(KernelZeros, SoundCommandIn, KERNEL_RUN - SoundCommandIn);
-    ex_scrmod(0, SCREEN_COLUMNS, SCREEN_ROWS);
-    ex_dotmod(0);
+    /* The calls below are made to code with no typed C yet, each with the registers and flags the assembly has
+     * at its JSR (call_orig); SelectVdcRegister is typed C and is called with its frame. */
+    cpu.a = 0;
+    cpu.x = SCREEN_COLUMNS;
+    cpu.y = SCREEN_ROWS;
+    abi_nz(SCREEN_ROWS);
+    call_orig(0x410F, 0xE06F);                      /* ex_scrmod */
+    cpu.a = 0;
+    call_orig(0x4113, 0xE06C);                      /* ex_dotmod */
     wr8(BiosScreenLo, 0);
     wr8(BiosScreenHi, 0x10);
-    ex_satclr();
+    cpu.a = 0x10;
+    abi_nz(0x10);
+    call_orig(0x411E, 0xE0A2);                      /* ex_satclr */
     wr8(zGameMode, 0);
-    bank = (uint8_t)(rd8(zRamBaseBank) + 0x0D);
-    tam(MPR4, bank);
-    tam(MPR5, (uint8_t)(bank + 1));
-    tam(MPR6, (uint8_t)(bank + 2));
-    SoundInit();
-    ResetDisplayControl();
+    sum = adc8(0x0D, rd8(zRamBaseBank), false);
+    base = sum.a;
+    tam(MPR4, base);
+    tam(MPR5, (uint8_t)(base + 1));
+    tam(MPR6, (uint8_t)(base + 2));
+    cpu.a = (uint8_t)(base + 2);
+    abi_nz(cpu.a);
+    abi_flag(P_C, sum.c);
+    abi_flag(P_V, sum.v);
+    call_orig(0x4132, 0xB233);                      /* SoundDrvInit */
+    call_orig(0x4135, 0x42D4);                      /* ResetDisplayControl */
+    abi_nz(0x0D);
+    jsr_push(0x413A);
     SelectVdcRegister(0x0D);
+    jsr_pop();
     wr8(VDC_DATA_LO, 0xE0);
-    LoadSceneScript(SCENE_MENU_A);
-    LoadSceneScript(SCENE_MENU_B);
-    AdpcmLoad(ADPCM_MENU);
+    cpu.a = SCENE_MENU_A;
+    abi_nz(SCENE_MENU_A);
+    call_orig(0x4144, 0x6FD8);                      /* LoadSceneScript */
+    cpu.a = SCENE_MENU_B;
+    abi_nz(SCENE_MENU_B);
+    call_orig(0x4149, 0x6FD8);
+    cpu.a = ADPCM_MENU;
+    abi_nz(ADPCM_MENU);
+    call_orig(0x414E, 0x6E43);                      /* AdpcmLoad */
     wr8(zMusicWanted, 0xFF);
-    ex_setvec(VECTOR_VDC, (uint8_t)FRAME_INTERRUPT_RUN, (uint8_t)(FRAME_INTERRUPT_RUN >> 8));
-    ex_setvec(VECTOR_TIMER, (uint8_t)IGNORED_INTERRUPT_RUN, (uint8_t)(IGNORED_INTERRUPT_RUN >> 8));
+    cpu.a = VECTOR_VDC;
+    cpu.x = (uint8_t)FRAME_INTERRUPT_RUN;
+    cpu.y = (uint8_t)(FRAME_INTERRUPT_RUN >> 8);
+    abi_nz(cpu.y);
+    call_orig(0x415B, 0xE05D);                      /* ex_setvec */
+    cpu.a = VECTOR_TIMER;
+    cpu.x = (uint8_t)IGNORED_INTERRUPT_RUN;
+    cpu.y = (uint8_t)(IGNORED_INTERRUPT_RUN >> 8);
+    abi_nz(cpu.y);
+    call_orig(0x4164, 0xE05D);
     wr8(BiosIrqDisable, 0x06);
-    map_from_base(MPR4, 0x03);
+    sum = adc8(0x03, rd8(zRamBaseBank), false);
+    tam(MPR4, sum.a);
     wr8(zIdleFlag, 0);
-    for (;;)
-        wait_interrupt();
+    abi_KernelIdle();                               /* JMP KernelIdle */
 }
 
 void abi_KernelStart(void)

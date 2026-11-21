@@ -78,8 +78,9 @@ build_pcebox() {
     # A planted bug comes in as RONDO_SRC or RONDO_CARD_SRC, a copy of the C with one change.
     src="${RONDO_SRC:-$top/src/rondo}"
     out="${RONDO_BOX:-$top/build/rondo/pcebox/pcebox}"
-    # The two generated files go beside the binary, so two builds never write the same file.
-    gen="$out.gen"
+    # With RONDO_BOX set (a private build) the two generated files go beside the binary, so two builds
+    # never write the same file. Unset, they stay where they have always been.
+    if [ -n "${RONDO_BOX:-}" ]; then gen="$out.gen"; else gen="$top/build/rondo/pcebox"; fi
     mkdir -p "$gen"
     python3 -I "$top/tools/rondo/huc.py" --c-opclass > "$gen/opclass.h"
     RONDO_GEN="$gen" python3 -I "$top/tools/rondo/hybrid.py"
@@ -96,11 +97,22 @@ build_pcebox() {
 }
 
 disc() {
+    # disc.py and image.py run only under the machine's queue (they refuse without CPU_RUN_JOBS).
+    if [ -z "${CPU_RUN_JOBS:-}" ]; then
+        echo "setup.sh: CPU_RUN_JOBS is not set; the disc steps run only under the queue:" >&2
+        echo "  cpu-run -j N -m SIZE -- ./setup.sh   (or: ./setup.sh disc)" >&2
+        exit 2
+    fi
     python3 -I "$top/tools/rondo/disc.py"
     python3 -I "$top/tools/rondo/image.py"
 }
 
 if [ $# -eq 0 ]; then
+    if [ -z "${CPU_RUN_JOBS:-}" ]; then
+        echo "setup.sh: CPU_RUN_JOBS is not set; the whole setup runs only under the queue:" >&2
+        echo "  cpu-run -j N -m SIZE -- ./setup.sh" >&2
+        exit 2
+    fi
     python3 "$top/tools/common/install_hooks.py"
     build_cc65
     build_pce

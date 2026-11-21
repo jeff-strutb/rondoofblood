@@ -229,7 +229,7 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
 
 def report_gates(rows):
     """Which routines meet every gate as measured, and what the others lack."""
-    table = open(PCEBOX + ".gen/hybrid_table.c").read()
+    table = open(os.path.join(PCEBOX + ".gen" if os.environ.get("RONDO_BOX") else os.path.join(TOP, "build", "rondo", "pcebox"), "hybrid_table.c")).read()
     swappable = {m.group(1): m.group(2) == "1"
                  for m in re.finditer(r'"(\w+)", abi_\w+, (\d),', table)}
     met, total = [0, 0], 0

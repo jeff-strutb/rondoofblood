@@ -143,9 +143,11 @@ uint8_t WaitVblankDisplayOff(void)
 
     wr8(zVdcStatus, 0);
     while (!(rd8(zVdcStatus) & VDC_STATUS_VBLANK))
-        wait_interrupt();
+        ;                               /* BBR5 on itself: one read a pass, the interrupt sets the bit between two */
     wr8(RasterEffectNow, 0);
+    jsr_push(0x43E3);
     SelectVdcControl();
+    jsr_pop();
     control = rd8(zVdcCrLo) & 0x3F;
     wr8(VdcCrShadow, control);
     wr8(VDC_DATA_LO, control);

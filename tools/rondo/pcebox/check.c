@@ -355,6 +355,8 @@ static void defect(int kind, const char *fmt, ...)
 }
 
 void check_finish(void);
+static void stop_context(uint64_t from);
+static unsigned long extra_run;
 static const char *stopped_why;
 
 /* The hybrid can not go on in step: the report and the totals so far are written and the run ends. */
@@ -419,7 +421,7 @@ static uint64_t section_end(Span *s, uint64_t i)
         Ev *e = evp(k);
 
         if (!e)
-            return NO_RETURN;
+            return k;           /* the record ends inside the handler (the script ended there): it never returns */
         if (e->type == EV_INT)
             depth++;
         else if (e->type == EV_IRET && --depth == 0)
@@ -427,7 +429,7 @@ static uint64_t section_end(Span *s, uint64_t i)
         else if (e->type == EV_OPEN)
             open++;
         else if (e->type == EV_CLOSE && open-- == 0 && mode != MODE_A5)
-            return NO_RETURN;
+            return e->kind == CL_LEFT ? k : NO_RETURN;    /* a call left open at the record's end closes there */
     }
     return NO_RETURN;
 }
@@ -506,6 +508,14 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
         skipped++;
         if (!hw && type != EV_STATE && (e->type == EV_HWR || e->type == EV_HWW || e->type == EV_STATE))
             break;
+    }
+    if (found >= 0) {
+        extra_run = 0;
+    } else if (mode == MODE_HYBRID && ++extra_run > 200000) {
+        /* A C that keeps making accesses the original did not (a spin the record has no iterations of) never
+         * lets time pass: the run is stopped with a report, not left to spin. */
+        stop_context(s->cur);
+        stop_run(3, "the C made %lu accesses in a row that the original did not (a spin or a runaway)", extra_run);
     }
     if (found < 0 && hit_end && first < 0 && mode == MODE_A5 && prefix_mode)
         longjmp(c_abort, ABORT_END);          /* the call was still open when the script ended: its accesses so far held */
@@ -731,6 +741,9 @@ static void hy_int_pass(Span *s, uint64_t i, uint64_t r)
     }
     stats[s->tag].ints++;
     pace_to(ev.clock);
+    /* The interrupt's own eight cycles (seven, and the one that samples the next), which the core spends before the
+     * handler's first instruction: 3 master clocks a cycle at the fast clock, 12 at the slow. */
+    chk_charge(8 * (ev.speed ? 3 : 12));
     for (unsigned k = 0; k < 8; k++)
         mpr[k] = (uint8_t)chk_mpr(k);
     if (memcmp(mpr, ev.mpr, 8) || chk_get_speed() != ev.speed)
@@ -963,13 +976,25 @@ void tam(uint8_t mpr_bits, uint8_t bank)
         }
 }
 
+/*
+ * TAI: a block move pushes Y, A and X, moves the bytes (a read of the source, alternating between its two
+ * bytes, and a write of the destination, each), and pulls X, A and Y. Those six accesses are the core's
+ * (huc6280.cpp, LD_BMT) and the original makes them, so the C does: the registers the C holds at the call are
+ * the ones pushed.
+ */
 void tai(uint16_t src, uint16_t dst, uint16_t len)
 {
+    push8(cpu.y);
+    push8(cpu.a);
+    push8(cpu.x);
     for (unsigned i = 0; i < len; i++) {
         uint8_t v = rd8((uint16_t)(src + (i & 1)));
 
         wr8((uint16_t)(dst + i), v);
     }
+    cpu.x = pull8();
+    cpu.a = pull8();
+    cpu.y = pull8();
 }
 
 void cli(void)
@@ -1011,6 +1036,23 @@ void wait_interrupt(void)
     for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e->type) && e->type != EV_INT; j++)
         if (e->type == EV_FRAME && mode == MODE_HYBRID)
             frame_pass(sp, j, 0);
+    if (!e && mode == MODE_HYBRID && at_eof) {
+        /* The record ends here, in this wait: the script's last frames go on with the call parked, as the
+         * original's did (the idle spin runs nothing the C makes). It is never resumed. */
+        Ctx *c = top;
+        uint8_t a, x, y, st, p;
+        uint16_t pc;
+
+        c->wait_frame = (unsigned long)-1;
+        c->wait_clock = hybrid_clock_now() + 1;
+        chk_get_regs(&a, &x, &y, &st, &p, &pc);
+        chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, (uint8_t)(cpu.p | P_I), pc);
+        c->parked = 1;
+        c->saved_cpu = cpu;
+        swapcontext(&c->uc, &main_uc);
+        for (;;)
+            ;
+    }
     if (!e || e->type != EV_INT) {
         if (mode == MODE_A5) {
             if (!e && prefix_mode)
@@ -1018,7 +1060,13 @@ void wait_interrupt(void)
             snprintf(why, sizeof why, "the C waits for an interrupt; the original's next event is not one");
             longjmp(c_abort, ABORT_DIVERGED);
         }
-        defect(D_CALL, "the C waits for an interrupt; the original's next event is not one");
+        {
+            char b[96];
+
+            defect(D_CALL, "the C waits for an interrupt; the original's next is %s, at access %llu of the call",
+                   e ? describe(e, b, sizeof b) : "the end of the record", (unsigned long long)(e ? j - sp->start : 0));
+        }
+        stop_context(sp->cur);
         stop_run(3, "a wait with no interrupt in the record");
     }
     {
@@ -1456,7 +1504,8 @@ static int nchain;
  * interrupted instruction was is kept with the PC and S the handler returns to, and put back when it returns,
  * so the call is opened and the return marked as if the interrupt had not come between.
  */
-static struct { uint16_t resume; uint8_t s; int prev; } ipend[FRAMES];
+static uint16_t last_pc, before_pc;   /* the PC of the last instruction the hook saw, and the one before the arrival */
+static struct { uint16_t resume; uint8_t s; int prev; uint16_t from; } ipend[FRAMES];
 static int nipend;
 
 static uint16_t stack_return(uint8_t s)
@@ -1488,6 +1537,7 @@ void check_irq(void)
     }
     ipend[nipend].resume = r.pc;
     ipend[nipend].s = r.s;
+    ipend[nipend].from = last_pc;
     ipend[nipend++].prev = prev_op;
     if (mode == MODE_HYBRID && top && top->parked && !top->wait_frame && r.pc == top->resume_pc &&
         r.s == top->resume_s)
@@ -1523,7 +1573,7 @@ static int computed_entry;
  * came from. A branch back to a routine's own first byte (a loop) is not an entry.
  */
 static int tail_entry;
-static uint16_t last_pc, before_pc;
+static int self_jump;      /* a JMP from inside the routine to its own first byte: a loop, not a call */
 
 static int in_routine(int index, uint16_t pc)
 {
@@ -1532,6 +1582,8 @@ static int in_routine(int index, uint16_t pc)
 
 static int prev_is_entry(void)
 {
+    if (self_jump)
+        return 0;
     return prev_op == 0x20 || prev_op == 0x44 || prev_op == 0x4C || prev_op == 0x6C || prev_op == 0x7C ||
            prev_op == PREV_UNIT || computed_entry || tail_entry;
 }
@@ -1553,6 +1605,7 @@ static void classify_arrival(int index, uint16_t pc)
 
     (void)pc;
     tail_entry = 0;
+    self_jump = (prev_op == 0x4C || prev_op == 0x6C || prev_op == 0x7C) && in_routine(index, before_pc);
     if (index < 0 || plain || computed_entry)
         return;
     tail_entry = prev_op == 0x60 || !in_routine(index, before_pc);
@@ -2015,6 +2068,8 @@ static int hy_finish(Ctx *c)
     return owed > 0 ? (int)(owed > 0x7FFFFFFF ? 0x7FFFFFFF : owed) : 1;
 }
 
+static int hook_again(void);
+
 /* A coroutine ran or parked; the hook's answer: 0 to go on running the CPU, else clocks owed. */
 static int hy_after(void)
 {
@@ -2036,7 +2091,7 @@ static int hy_after(void)
         c->below = free_ctx;
         free_ctx = c;
         hy_trim();
-        return 1;       /* the hook must see the first instruction of the code jumped to */
+        return hook_again();     /* the hook must see the first instruction of the code jumped to */
     }
     if (c && c->done) {
         top = c->below;
@@ -2046,7 +2101,7 @@ static int hy_after(void)
         c->done = 0;
         hy_trim();
     } else if (c && c->parked) {
-        ret = 1;        /* the CPU is set to run code: the core goes round once more and the hook sees its first instruction */
+        ret = hook_again();      /* the CPU is set to run code: the hook sees its first instruction, now, at no cost in time */
     }
     return ret;
 }
@@ -2249,6 +2304,18 @@ int check_tag_run(const char *name)
 /* ------------------------------------------------------------------------------------------ */
 /* The hook before every instruction.                                                           */
 
+int check_exec(uint32_t pc);
+
+/* The CPU was set to run code at its registers' PC: what the hook does for that instruction. */
+static int hook_again(void)
+{
+    uint8_t a, x, y, s, p;
+    uint16_t pc;
+
+    chk_get_regs(&a, &x, &y, &s, &p, &pc);
+    return check_exec(pc);
+}
+
 int check_exec(uint32_t pc)
 {
     Regs r;
@@ -2289,7 +2356,9 @@ int check_exec(uint32_t pc)
             return hy_after();
         }
         if (prev_op == 0x40 && nipend && pc == ipend[nipend - 1].resume && r.s == ipend[nipend - 1].s) {
-            prev_op = ipend[--nipend].prev;
+            before_pc = ipend[nipend - 1].from;
+            before_pc = ipend[nipend - 1].from;
+        prev_op = ipend[--nipend].prev;
             computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
             classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
         }
@@ -2320,6 +2389,7 @@ int check_exec(uint32_t pc)
     }
     boundary(&r);
     if (prev_op == 0x40 && nipend && pc == ipend[nipend - 1].resume && r.s == ipend[nipend - 1].s) {
+        before_pc = ipend[nipend - 1].from;
         prev_op = ipend[--nipend].prev;
         computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
         classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
@@ -2481,9 +2551,7 @@ int check_init(int which, const char *path, const char *user_path)
     fclose(f);
     memset(tag_at, 0xFF, 65536 * sizeof *tag_at);
     for (unsigned i = 0; i < rondo_tag_count; i++)
-        /* These two never return, so a frame for them would never close. */
-        if (strcmp(rondo_tags[i].name, "KernelStart") && strcmp(rondo_tags[i].name, "KernelIdle"))
-            tag_at[rondo_tags[i].run] = (int16_t)i;
+        tag_at[rondo_tags[i].run] = (int16_t)i;
     stats = calloc(rondo_tag_count, sizeof *stats);
     for (unsigned b = 0; b < 256; b++) {
         const uint8_t *p = chk_bank(b);
@@ -2610,8 +2678,8 @@ void check_finish(void)
             first = -4L;
         else if (defects)
             first = -2L;
-        else if (!swapped || !known || hy_frames_total != expected || hy_frames_ok != hy_frames_total || parked_n ||
-                 unreached)
+        else if (!swapped || !known || hy_frames_total != expected || hy_frames_ok != hy_frames_total ||
+                 parked_n > end_left || unreached)
             first = -5L;
         else
             first = -1L;

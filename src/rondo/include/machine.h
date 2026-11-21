@@ -48,7 +48,7 @@ void st1(uint8_t value);                  /* ST1: VDC data low */
 void st2(uint8_t value);                  /* ST2: VDC data high */
 uint8_t tma(uint8_t mpr_bit);             /* TMA: the bank in one MPR */
 void tam(uint8_t mpr_bits, uint8_t bank); /* TAM: set a bank in the given MPRs */
-/* TAI: block move, source alternating between src and src + 1. */
+/* TAI: a block move, source alternating between src and src + 1; it pushes and pulls Y, A and X as the CPU does. */
 void tai(uint16_t src, uint16_t dst, uint16_t len);
 /*
  * Runs original code, with the registers as they stand in cpu. call_original makes no frame

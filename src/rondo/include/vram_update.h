@@ -61,4 +61,17 @@ void abi_VramCommandsFetch(void);
 void abi_VramCommandsNext(void);
 void abi_VramCommandsRepeat(void);
 
+
+typedef struct {
+    Sum sum;
+    uint8_t left;
+} PaletteLoad;
+
+PaletteLoad LoadPackedPalette(uint8_t y);
+PaletteLoad LoadPackedPaletteB(uint8_t y);
+PaletteLoad LoadPackedPaletteC(uint8_t y);
+void abi_LoadPackedPalette(void);
+void abi_LoadPackedPaletteB(void);
+void abi_LoadPackedPaletteC(void);
+
 #endif

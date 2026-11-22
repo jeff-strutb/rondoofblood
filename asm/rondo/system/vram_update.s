@@ -915,3 +915,139 @@ VramCommandsRepeat_address:
     jsr VecSelectVramData
     jmp a:VramCommandsNext
 
+; @routine 0251:4BF LoadPackedPalette
+; @run 6C:84BF
+; WHAT IT DOES: Loads a packed palette into the VCE from a list: the colour address, a pointer to the blocks, then the
+; colours, eight a block with their ninth bits in the block's first byte.
+; HOW: load_packed_palette.
+; WAITS: no.
+; Entry: zp $00 the list, Y its place in it. Exit: A the last block pointer's low byte, Y 9, N and Z from the block
+; count's last value, C and V from the pointer's add. X kept.
+LoadPackedPalette:
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    lda (zTemp02)
+    sta z:zTemp05
+LoadPackedPalette_at0:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+LoadPackedPalette_at1:
+    iny
+    lda (zTemp02),y
+    sta a:VCE_DATA_LO
+    cla
+    asl z:zTemp04
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc LoadPackedPalette_at1
+    clc
+    lda z:zTemp02
+    adc #$09
+    sta z:zTemp02
+    bcc LoadPackedPalette_at2
+    inc z:zTemp03
+LoadPackedPalette_at2:
+    dec z:zTemp05
+    bpl LoadPackedPalette_at0
+    rts
+
+; @routine 00C5:580 LoadPackedPaletteB
+; @run 6C:8580
+; WHAT IT DOES: LoadPackedPalette, as the 00C5 overlay has it at $8580.
+; HOW: The same bytes at another run address; load_packed_palette.
+; WAITS: no.
+; Entry, exit: as LoadPackedPalette.
+LoadPackedPaletteB:
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    lda (zTemp02)
+    sta z:zTemp05
+LoadPackedPaletteB_at0:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+LoadPackedPaletteB_at1:
+    iny
+    lda (zTemp02),y
+    sta a:VCE_DATA_LO
+    cla
+    asl z:zTemp04
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc LoadPackedPaletteB_at1
+    clc
+    lda z:zTemp02
+    adc #$09
+    sta z:zTemp02
+    bcc LoadPackedPaletteB_at2
+    inc z:zTemp03
+LoadPackedPaletteB_at2:
+    dec z:zTemp05
+    bpl LoadPackedPaletteB_at0
+    rts
+
+; @routine 0111:4CE LoadPackedPaletteC
+; @run 6C:84CE
+; WHAT IT DOES: LoadPackedPalette, as the 0111 overlay has it at $84CE.
+; HOW: The same bytes at another run address; load_packed_palette.
+; WAITS: no.
+; Entry, exit: as LoadPackedPalette.
+LoadPackedPaletteC:
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    lda (zTemp02)
+    sta z:zTemp05
+LoadPackedPaletteC_at0:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+LoadPackedPaletteC_at1:
+    iny
+    lda (zTemp02),y
+    sta a:VCE_DATA_LO
+    cla
+    asl z:zTemp04
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc LoadPackedPaletteC_at1
+    clc
+    lda z:zTemp02
+    adc #$09
+    sta z:zTemp02
+    bcc LoadPackedPaletteC_at2
+    inc z:zTemp03
+LoadPackedPaletteC_at2:
+    dec z:zTemp05
+    bpl LoadPackedPaletteC_at0
+    rts

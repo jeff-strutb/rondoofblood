@@ -38,8 +38,8 @@ typedef struct {
     uint8_t temp10; /* zTemp10 */
     uint8_t temp11; /* zTemp11 */
     uint8_t temp12; /* zTemp12 */
-    U24LE product; /* zProduct0 +2 */
-    U16LE multiplier; /* zMultiplierLo +1 */
+    union { U24LE product; struct { uint8_t _pad_sprite_flip_mask[1]; uint8_t sprite_flip_mask; }; }; /* zProduct0 +2 */
+    union { U16LE multiplier; struct { uint8_t sprite_parts_left; }; struct { uint8_t _pad_sprites_left[1]; uint8_t sprites_left; }; }; /* zMultiplierLo +1 */
     uint8_t cd_play_mode; /* zCdPlayMode */
     uint8_t _gap_0019[7]; /* no name yet: $2019-$201F */
     uint8_t random0; /* zRandom0 */
@@ -172,9 +172,12 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp10) + 0 == zTemp10, 
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp11) + 0 == zTemp11, "ZeroPageRec.temp11 is not at zTemp11");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp12) + 0 == zTemp12, "ZeroPageRec.temp12 is not at zTemp12");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, product) + 0 == zProduct0, "ZeroPageRec.product is not at zProduct0");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sprite_flip_mask) == SpriteFlipMask, "ZeroPageRec.sprite_flip_mask is not at SpriteFlipMask");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, product) + 1 == zProduct1, "ZeroPageRec.product is not at zProduct1");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, product) + 2 == zProduct2, "ZeroPageRec.product is not at zProduct2");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, multiplier) + 0 == zMultiplierLo, "ZeroPageRec.multiplier is not at zMultiplierLo");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sprite_parts_left) == SpritePartsLeft, "ZeroPageRec.sprite_parts_left is not at SpritePartsLeft");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sprites_left) == SpritesLeft, "ZeroPageRec.sprites_left is not at SpritesLeft");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, multiplier) + 1 == zMultiplierHi, "ZeroPageRec.multiplier is not at zMultiplierHi");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, cd_play_mode) + 0 == zCdPlayMode, "ZeroPageRec.cd_play_mode is not at zCdPlayMode");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, random0) + 0 == zRandom0, "ZeroPageRec.random0 is not at zRandom0");
@@ -288,7 +291,7 @@ typedef struct {
     union { uint8_t state[88]; uint8_t f27a8[88]; }; /* OBJ_27A8 */
     uint8_t f2800[88]; /* OBJ_2800 */
     uint8_t _gap_0108[440]; /* no name yet: $2858-$2A0F */
-    uint8_t f2a10[88]; /* OBJ_2A10 */
+    union { uint8_t sprite_set[88]; uint8_t f2a10[88]; }; /* OBJ_2A10 */
     union { uint8_t frame[88]; uint8_t f2a68[88]; }; /* OBJ_2A68 */
     union { uint8_t facing_left[88]; uint8_t f2ac0[88]; }; /* OBJ_2AC0 */
     union { uint8_t flash_flags[88]; uint8_t f2b18[88]; }; /* OBJ_2B18 */
@@ -305,7 +308,7 @@ typedef struct {
     uint8_t fields_2ee0[88]; /* OBJ_FIELDS_2EE0 */
     uint8_t flags[88]; /* OBJ_FLAGS_2F38 */
     uint8_t f2f90[88]; /* OBJ_2F90 */
-    uint8_t f2fe8[88]; /* OBJ_2FE8 */
+    union { uint8_t sprite_flip[88]; uint8_t f2fe8[88]; }; /* OBJ_2FE8 */
     union { uint8_t next_kind[88]; uint8_t f3040[88]; }; /* OBJ_3040 */
     uint8_t event_id[88]; /* OBJ_EVENT_ID */
     uint8_t f30f0[88]; /* OBJ_30F0 */
@@ -344,6 +347,7 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2750) + 0 == OBJ_2750, 
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, state) + 0 == OBJ_27A8, "ObjectTable.state is not at OBJ_27A8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f27a8) + 0 == OBJ_27A8, "ObjectTable.f27a8 is not at OBJ_27A8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2800) + 0 == OBJ_2800, "ObjectTable.f2800 is not at OBJ_2800");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, sprite_set) + 0 == OBJ_2A10, "ObjectTable.sprite_set is not at OBJ_2A10");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2a10) + 0 == OBJ_2A10, "ObjectTable.f2a10 is not at OBJ_2A10");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, frame) + 0 == OBJ_2A68, "ObjectTable.frame is not at OBJ_2A68");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2a68) + 0 == OBJ_2A68, "ObjectTable.f2a68 is not at OBJ_2A68");
@@ -364,6 +368,7 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, vy_lo) + 0 == OBJ_VY_LO,
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fields_2ee0) + 0 == OBJ_FIELDS_2EE0, "ObjectTable.fields_2ee0 is not at OBJ_FIELDS_2EE0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, flags) + 0 == OBJ_FLAGS_2F38, "ObjectTable.flags is not at OBJ_FLAGS_2F38");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2f90) + 0 == OBJ_2F90, "ObjectTable.f2f90 is not at OBJ_2F90");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, sprite_flip) + 0 == OBJ_2FE8, "ObjectTable.sprite_flip is not at OBJ_2FE8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2fe8) + 0 == OBJ_2FE8, "ObjectTable.f2fe8 is not at OBJ_2FE8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, next_kind) + 0 == OBJ_3040, "ObjectTable.next_kind is not at OBJ_3040");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3040) + 0 == OBJ_3040, "ObjectTable.f3040 is not at OBJ_3040");
@@ -783,7 +788,7 @@ _Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, f48) + 0 == ScriptSlotFi
 _Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, f54) + 0 == ScriptSlotField54, "ScriptSlots.f54 is not at ScriptSlotField54");
 #define SLOTS ((ScriptSlots *)ScriptSlots_BASE)
 
-/* ListChannels: parallel byte arrays at $3C80, 8 slots, 32 bytes */
+/* ListChannels: parallel byte arrays at $3C80, 8 slots, 48 bytes */
 #define ListChannels_BASE 0x3C80
 #define ListChannels_COUNT 8
 typedef struct {
@@ -791,12 +796,16 @@ typedef struct {
     uint8_t list[8]; /* ListChannelList */
     uint8_t place[8]; /* ListChannelPlace */
     uint8_t hold[8]; /* ListChannelHold */
+    uint8_t word_lo[8]; /* ListWordLo */
+    uint8_t word_hi[8]; /* ListWordHi */
 } ListChannels;
-_Static_assert(sizeof(ListChannels) == 0x20, "ListChannels size");
+_Static_assert(sizeof(ListChannels) == 0x30, "ListChannels size");
 _Static_assert(ListChannels_BASE + offsetof(ListChannels, kind) + 0 == ListChannelKind, "ListChannels.kind is not at ListChannelKind");
 _Static_assert(ListChannels_BASE + offsetof(ListChannels, list) + 0 == ListChannelList, "ListChannels.list is not at ListChannelList");
 _Static_assert(ListChannels_BASE + offsetof(ListChannels, place) + 0 == ListChannelPlace, "ListChannels.place is not at ListChannelPlace");
 _Static_assert(ListChannels_BASE + offsetof(ListChannels, hold) + 0 == ListChannelHold, "ListChannels.hold is not at ListChannelHold");
+_Static_assert(ListChannels_BASE + offsetof(ListChannels, word_lo) + 0 == ListWordLo, "ListChannels.word_lo is not at ListWordLo");
+_Static_assert(ListChannels_BASE + offsetof(ListChannels, word_hi) + 0 == ListWordHi, "ListChannels.word_hi is not at ListWordHi");
 #define LCH ((ListChannels *)ListChannels_BASE)
 
 /* StageWork: one struct at $3B40, 1 element(s), 128 bytes */
@@ -866,5 +875,16 @@ _Static_assert(HitboxPos_BASE + offsetof(HitboxPos, x_lo) + 0 == HitboxXLo, "Hit
 _Static_assert(HitboxPos_BASE + offsetof(HitboxPos, y_lo) + 0 == HitboxYLo, "HitboxPos.y_lo is not at HitboxYLo");
 _Static_assert(HitboxPos_BASE + offsetof(HitboxPos, hi) + 0 == HitboxHi, "HitboxPos.hi is not at HitboxHi");
 #define HITBOX ((HitboxPos *)HitboxPos_BASE)
+
+/* LevelWord: one struct at $3EB8, 1 element(s), 2 bytes */
+#define LevelWord_BASE 0x3EB8
+#define LevelWord_COUNT 1
+typedef struct {
+    U16LE y; /* RasterWaterWanted +1 */
+} LevelWord;
+_Static_assert(sizeof(LevelWord) == 0x2, "LevelWord size");
+_Static_assert(LevelWord_BASE + offsetof(LevelWord, y) + 0 == RasterWaterWanted, "LevelWord.y is not at RasterWaterWanted");
+_Static_assert(LevelWord_BASE + offsetof(LevelWord, y) + 1 == LevelYHi, "LevelWord.y is not at LevelYHi");
+#define LEVELW ((LevelWord *)LevelWord_BASE)
 
 #endif

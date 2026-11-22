@@ -117,7 +117,7 @@ record,ObjectTable,soa,2750,58,1398,OBJ
 member,ObjectTable,kind,u8,0000,OBJ_2750,
 member,ObjectTable,state,u8,0058,OBJ_27A8,
 member,ObjectTable,f2800,u8,00B0,OBJ_2800,
-member,ObjectTable,f2a10,u8,02C0,OBJ_2A10,
+member,ObjectTable,sprite_set,u8,02C0,OBJ_2A10,
 member,ObjectTable,frame,u8,0318,OBJ_2A68,
 member,ObjectTable,facing_left,u8,0370,OBJ_2AC0,
 member,ObjectTable,flash_flags,u8,03C8,OBJ_2B18,
@@ -134,7 +134,7 @@ member,ObjectTable,vy_lo,u8,0738,OBJ_VY_LO,
 member,ObjectTable,fields_2ee0,u8,0790,OBJ_FIELDS_2EE0,
 member,ObjectTable,flags,bits:ObjFlags,07E8,OBJ_FLAGS_2F38,
 member,ObjectTable,f2f90,u8,0840,OBJ_2F90,
-member,ObjectTable,f2fe8,u8,0898,OBJ_2FE8,
+member,ObjectTable,sprite_flip,u8,0898,OBJ_2FE8,
 member,ObjectTable,next_kind,u8,08F0,OBJ_3040,
 member,ObjectTable,event_id,u8,0948,OBJ_EVENT_ID,
 member,ObjectTable,f30f0,u8,09A0,OBJ_30F0,
@@ -333,12 +333,14 @@ member,ScriptSlots,f3c,u8,003C,ScriptSlotField3C,
 member,ScriptSlots,f48,u8,0048,ScriptSlotField48,
 member,ScriptSlots,f54,u8,0054,ScriptSlotField54,
 
-# The list channels: four columns of eight, 3C80 to 3C9F.
-record,ListChannels,soa,3C80,8,20,LCH
+# The list channels: six columns of eight, 3C80 to 3CAF.
+record,ListChannels,soa,3C80,8,30,LCH
 member,ListChannels,kind,u8,0000,ListChannelKind,
 member,ListChannels,list,u8,0008,ListChannelList,
 member,ListChannels,place,u8,0010,ListChannelPlace,
 member,ListChannels,hold,u8,0018,ListChannelHold,
+member,ListChannels,word_lo,u8,0020,ListWordLo,
+member,ListChannels,word_hi,u8,0028,ListWordHi,
 
 # Work buffers.
 record,StageWork,aos,3B40,1,80,STAGEWORK
@@ -393,3 +395,14 @@ alias,ObjectTable,f31a0,status_flags,
 alias,ObjectTable,f3568,angle_hi,
 alias,ObjectTable,f35c0,angle_lo,
 alias,ObjectTable,f34b8,life_timer,
+alias,ObjectTable,f2a10,sprite_set,
+alias,ObjectTable,f2fe8,sprite_flip,
+
+# Scratch bytes that one routine names for its own use (the byte keeps its first name too).
+alias,ZeroPageRec,sprite_flip_mask,product.mid,SpriteFlipMask
+alias,ZeroPageRec,sprite_parts_left,multiplier.lo,SpritePartsLeft
+alias,ZeroPageRec,sprites_left,multiplier.hi,SpritesLeft
+
+# The word at $3EB8: the level's Y word that some routines copy to the scroll.
+record,LevelWord,aos,3EB8,1,2,LEVELW
+member,LevelWord,y,u16le,00,RasterWaterWanted|LevelYHi,

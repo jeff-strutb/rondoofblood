@@ -24,6 +24,9 @@ addr,kind,name,note
 15,zp,zProduct2,multiply result high
 16,zp,zMultiplierLo,multiplier low
 17,zp,zMultiplierHi,multiplier high
+14,zp,SpriteFlipMask,EmitObjectSprites' scratch: the object's flip bit; the same byte as zProduct1
+16,zp,SpritePartsLeft,EmitObjectSprites' scratch: parts of the sprite still to draw; the same byte as zMultiplierLo
+17,zp,SpritesLeft,EmitObjectSprites' scratch: sprites still to draw; the same byte as zMultiplierHi
 20,zp,zRandom0,generator state low
 21,zp,zRandom1,generator state
 22,zp,zRandom2,generator state
@@ -153,6 +156,8 @@ E0A2,abs,BiosE0A2,called once at start
 3C88,abs,ListChannelList,list channel list by channel
 3C90,abs,ListChannelPlace,list channel position by channel
 3C98,abs,ListChannelHold,list channel hold timer by channel
+3CA0,abs,ListWordLo,the list channels' word, low byte, by channel (AddToListWord adds a byte with carry)
+3CA8,abs,ListWordHi,the list channels' word, high byte, by channel
 3E00,abs,ScrollXFrac,the scroll along X: fraction; the first of the six scroll bytes the game sets
 3E08,abs,ScrollXLo,scroll X the game wants low
 3E10,abs,ScrollXHi,scroll X the game wants high
@@ -172,6 +177,7 @@ E0A2,abs,BiosE0A2,called once at start
 3EBB,abs,ScrollYOffset,fixed Y offset of a horizontal level
 3EB8,abs,RasterWaterWanted,the water line the game wants
 3EBC,abs,RasterWaterLine,the water line this frame
+3EB9,abs,LevelYHi,the high byte of the word at $3EB8 that ScrollYFromLevelWord copies to the scroll (ScrollYLo, ScrollYHi); $3EB8 is also named RasterWaterWanted
 3F0C,abs,SavedMprA,MPR4 kept across a sound call
 3F0D,abs,SavedMprB,MPR5 kept across a sound call
 3F0E,abs,SavedMprC,MPR6 kept across a sound call
@@ -600,6 +606,9 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 3B20,abs,PaletteWorkSpare,the colour kept while a palette is rotated
 3B40,abs,StageMaskBuffer,128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask
 9149,abs,StageMaskOffsets,the stage overlay's 8 offsets (00 01 20 21 40 41 60 61) of the mask buffer's cells one masking step touches; the same bytes at every copy of the overlay
+819F,abs,SpriteMirrorWidth,the 00D1 overlay's 2 widths a mirrored sprite's X offsets are taken from (bank 6C)
+81A1,abs,SpriteXMin,the 00D1 overlay's 2 lowest X values a sprite part is drawn at (bank 6C)
+81A3,abs,SpriteSetTable,the 00D1 overlay's table of sprite sets, a word per set: the frame pointers' table (bank 6C)
 93D0,abs,StageSpawnSlot,by spawn row of 8 in the stage overlay: the object slot to clear and fill
 93D8,abs,StageSpawnFrame,by spawn row of 8 in the stage overlay: stored to the object's 2A68 field (its frame)
 93E0,abs,StageSpawnKind,by spawn row of 8 in the stage overlay: stored to the object's 2A10 field

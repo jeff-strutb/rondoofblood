@@ -14,6 +14,8 @@ uint8_t RestoreStageBanks(void);
 uint8_t ComputeHitboxPositions(void);
 
 /* system/map_draw.c: the VDC data port's word, masked in place; the high byte read back and returned. */
+void SetVramAddresses(uint8_t lo, uint8_t hi);
+void SetVramAddressesLong(uint8_t lo, uint8_t hi);
 uint8_t AndVramData(uint8_t lo_mask, uint8_t hi_mask);
 uint8_t OrVramData(uint8_t lo_mask, uint8_t hi_mask);
 

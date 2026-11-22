@@ -23,7 +23,7 @@ void abi_HalveScrollStepFirstToSecond(void);
 void ClearScrollSpeeds(void);
 void ClearScrollSpeedsB(void);
 void ClearScrollSpeedsC(void);
-void ScrollYFromLevelWord(void);
+uint8_t ScrollYFromLevelWord(void);
 Alu AddToListWord(uint8_t amount, uint8_t entry);
 uint8_t ScreenMapOfEntry(uint8_t entry);
 uint8_t ScreenMapOfEntryB(uint8_t entry);

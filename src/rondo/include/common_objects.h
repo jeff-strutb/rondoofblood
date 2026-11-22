@@ -90,8 +90,8 @@ typedef struct {
     bool overflow;        /* V: the frame's subtract of 1 overflowed (only frame $80) */
 } FrameLookup;
 
-/* An object's four hit offsets are loaded from the table row picked by its animation frame. */
-FrameLookup SetHitOffsetsFromFrame(uint8_t slot);
+/* An object's four hitbox are loaded from the table row picked by its animation frame. */
+FrameLookup SetHitboxFromFrame(uint8_t slot);
 
 
 /* Moved unchanged from object/sensing.c, which still includes this header. */
@@ -118,5 +118,30 @@ typedef struct {
 /* Exit shims exported from the files that define them, for callers' wrappers. */
 void probe_exit_shim(Probe p);  /* object/sensing.c */
 Alu cosine_exit_shim(uint8_t angle, uint16_t value, uint32_t result);  /* math/trig.c */
+
+/* What TurnAngleBack left. */
+typedef struct {
+    bool borrowed;        /* the 16-bit angle went below zero: the object moved on */
+    uint8_t high;         /* the angle's high byte after the subtract (A on the plain path) */
+    bool carry;           /* the high subtract's carry (no borrow) */
+    bool overflow;        /* its signed overflow */
+    uint8_t new_state;    /* when borrowed: the state after INC */
+} TurnBack;
+
+/* An object's angle falls by $0080; when it passes zero, the object enters its next state. */
+TurnBack TurnAngleBack(uint8_t slot);
+
+/* What AdvanceOnTimer left. */
+typedef struct {
+    bool waiting;         /* the timer has not run out */
+    uint8_t timer;        /* the timer after its DEC */
+    uint8_t loaded;       /* the last byte loaded from the row (A at the end) */
+    uint8_t row_offset;   /* Y at the end */
+    bool carry;           /* C at the end: bit 6 of the next kind */
+    uint8_t new_state;    /* the state after INC */
+} TimerAdvance;
+
+/* When the object's life timer runs out, four bytes of a row picked by its next kind are loaded and it moves on. */
+TimerAdvance AdvanceOnTimer(uint8_t slot);
 
 #endif

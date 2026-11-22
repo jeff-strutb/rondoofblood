@@ -1,6 +1,6 @@
 /*
  * The shared object pool's state helpers: what the stage overlays' object handlers call at the
- * head of a state, before they jump through the object's state table (the byte OBJ->f27a8 is the
+ * head of a state, before they jump through the object's state table (the byte OBJ->state is the
  * state, an index into a table of handlers).
  */
 #include "machine.h"
@@ -27,7 +27,7 @@ HurtCheck EnterHurtStateOnHit(uint8_t slot)
     HurtCheck result;
     uint8_t state, hit;
 
-    state = RD8(OBJ->f27a8[slot]);
+    state = RD8(OBJ->state[slot]);
     result.value = state;
     if (state == 0) {
         result.end = HURT_NOT_ACTIVE;
@@ -37,7 +37,7 @@ HurtCheck EnterHurtStateOnHit(uint8_t slot)
         result.end = HURT_STATE_PAST;
         return result;
     }
-    hit = RD8(OBJ->f33b0[slot]);
+    hit = RD8(OBJ->hit_taken[slot]);
     result.value = hit;
     if (hit == 0) {
         result.end = HURT_NOT_HIT;
@@ -47,7 +47,7 @@ HurtCheck EnterHurtStateOnHit(uint8_t slot)
         result.end = HURT_HIT_PAST;
         return result;
     }
-    WR8(OBJ->f27a8[slot], HIT_STATE);
+    WR8(OBJ->state[slot], HIT_STATE);
     result.end = HURT_ENTERED;
     return result;
 }
@@ -96,8 +96,8 @@ BlinkCheck SetBlinkFlash(uint8_t slot)
     BlinkCheck result;
     uint8_t timer, wave;
 
-    WR8(OBJ->f2b18[slot], 0);
-    timer = RD8(OBJ->f3a90[slot]);
+    WR8(OBJ->flash_flags[slot], 0);
+    timer = RD8(OBJ->timer[slot]);
     result.value = timer;
     if (timer < BLINK_LIMIT) {
         result.end = BLINK_TIMER_LOW;
@@ -109,7 +109,7 @@ BlinkCheck SetBlinkFlash(uint8_t slot)
         result.end = BLINK_WAVE_BIT;
         return result;
     }
-    WR8(OBJ->f2b18[slot], BLINK_FLAG);
+    WR8(OBJ->flash_flags[slot], BLINK_FLAG);
     result.end = BLINK_SET;
     return result;
 }
@@ -157,10 +157,10 @@ bool InitObjectFromRecord(uint8_t slot)
     jsr_pop();
     shared = RD8(OBJ->f2fe8[0]);
     WR8(OBJ->f2fe8[slot], shared);
-    WR8(OBJ->f3988[slot], 4);
-    WR8(OBJ->f3a38[slot], 4);
+    WR8(OBJ->hitbox_half_w[slot], 4);
+    WR8(OBJ->hitbox_half_h[slot], 4);
     WR8(OBJ->f3510[slot], 4);
-    WR8(OBJ->f34b8[slot], 0x60);
+    WR8(OBJ->life_timer[slot], 0x60);
     return carry;
 }
 
@@ -204,7 +204,7 @@ FallResult FallAndBounce(uint8_t slot)
     }
     answer = (uint8_t)(cpu.a & 0x01);
     if (answer != 0) {
-        INC8(OBJ->f27a8[slot]);
+        INC8(OBJ->state[slot]);
     }
     deadly = (uint8_t)(RD8(ZP->product.lo) & 0x10);
     result.probe_bit4 = deadly;
@@ -213,7 +213,7 @@ FallResult FallAndBounce(uint8_t slot)
     }
     WR8(ZP->temp00, 0);
     WR8(ZP->temp01, 1);
-    cpu.a = RD8(OBJ->f3568[slot]);
+    cpu.a = RD8(OBJ->angle_hi[slot]);
     if (call_frame(0xA4E4, abi_VecScaleByCosine)) {
         return result;
     }
@@ -223,12 +223,12 @@ FallResult FallAndBounce(uint8_t slot)
     WR8(OBJ->vx_lo[slot], product_mid);
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0x80);
-    angle_low = RD8(OBJ->f35c0[slot]);
+    angle_low = RD8(OBJ->angle_lo[slot]);
     sum = add_bytes(angle_low, 0x80, false);
-    WR8(OBJ->f35c0[slot], sum.value);
-    angle_high = RD8(OBJ->f3568[slot]);
+    WR8(OBJ->angle_lo[slot], sum.value);
+    angle_high = RD8(OBJ->angle_hi[slot]);
     sum = add_bytes(angle_high, 0x02, sum.carry);
-    WR8(OBJ->f3568[slot], sum.value);
+    WR8(OBJ->angle_hi[slot], sum.value);
     result.end = FALL_BOUNCED;
     result.angle_high = sum.value;
     result.carry = sum.carry;

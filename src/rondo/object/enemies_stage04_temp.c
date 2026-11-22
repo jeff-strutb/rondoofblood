@@ -1009,3 +1009,51 @@ void abi_ChargeWhenPlayerNear(void)
 {
     abi_ended(ChargeWhenPlayerNear(cpu.x));
 }
+
+/*
+ * @routine 07DB:67B TurnOnRandomBeatWalkA
+ * @run 70:B67B
+ * @stop B6AC
+ * WHAT IT DOES: A walk that turns on a random beat: at its first step it turns to the player's side,
+ * takes an X speed from a table at overlay address $B6AC (two bytes by side), picks life_timer
+ * at random from eight bytes at $B6B0, stops the animation and moves on; after that it runs
+ * TurnOnRandomBeatWalkFollowA.
+ * HOW: The shared body; the two tables lie between the two parts and stay data.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: first step: A the timer, N, Z from the new step, C and V from
+ * NextRandom, Y its index; later as TurnOnRandomBeatWalkFollowA.
+ */
+Ended TurnOnRandomBeatWalkA(uint8_t slot)
+{
+    uint8_t phase = RD8(OBJ->f2800[slot]);
+
+    if (phase != 0) {
+        return TurnOnRandomBeatWalkFollowA(slot);
+    }
+    return walk_on_random_beat_first(slot, 0xB67B, 0xB6AC, 0xB6B0);
+}
+
+void abi_TurnOnRandomBeatWalkA(void)
+{
+    abi_ended(TurnOnRandomBeatWalkA(cpu.x));
+}
+
+/*
+ * @routine 07DB:6B8 TurnOnRandomBeatWalkFollowA
+ * @run 70:B6B8
+ * WHAT IT DOES: The later steps of TurnOnRandomBeatWalkA: animates the object facing the player (list 2),
+ * counts life_timer down and moves it along X; at zero it enters state 5 with step 0.
+ * HOW: StepFramesFacingPlayer, a decrement, ApplyVelocityX as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as the animation step, the decrement and ApplyVelocityX leave them
+ * (A 5 and N, Z clear at zero).
+ */
+Ended TurnOnRandomBeatWalkFollowA(uint8_t slot)
+{
+    return walk_on_random_beat_follow(slot, 0xB6BD, StepFramesFacingPlayer);
+}
+
+void abi_TurnOnRandomBeatWalkFollowA(void)
+{
+    abi_ended(TurnOnRandomBeatWalkFollowA(cpu.x));
+}

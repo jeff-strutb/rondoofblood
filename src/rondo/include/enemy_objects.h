@@ -10,6 +10,7 @@
 #include "ram.h"
 #include "access.h"
 #include "routines.h"
+#include "front_end.h"
 
 /*
  * How a routine's last instructions left the registers and flags the caller can see: a plain
@@ -198,6 +199,14 @@ static inline void abi_sound_end(SoundEnd r)
 static inline Ended ended_of_sum(Sum sum)
 {
     return ended_with_overflow(ended_with_carry(ended_load(sum.value), sum.carry), sum.overflow);
+}
+
+/* HalveObjectVelocity: A, N and Z, C, and V when it set one. */
+static inline Ended ended_of_arith(ArithExit a)
+{
+    Ended e = ended_with_carry(ended_with_a(ended_nz(a.nz), a.a), a.carry);
+
+    return a.overflow_set ? ended_with_overflow(e, a.overflow) : e;
 }
 
 /* NextRandom: A the byte, N and Z from it, C and V from its last add. */
@@ -500,6 +509,93 @@ static inline RandomEnd pick_pair_at_random(uint8_t slot, uint16_t table, uint16
     return result;
 }
 
+/*
+ * The turn-around step three overlays share (see TurnAroundAndRecordFacing): the facing byte is
+ * kept, a random f3670 is made, a speed and turn picked, both speeds reversed and halved.
+ */
+static inline Ended turn_around_body(uint8_t slot, bool carry_in, Ended (*pick)(uint8_t), uint16_t base)
+{
+    uint8_t facing = RD8(OBJ->facing_left[slot]);
+    uint8_t step;
+    Sum sum;
+    Ended e;
+
+    WR8(OBJ->f3720[slot], facing);
+    jsr_push((uint16_t)(base + 9));
+    sum = PlayerDistanceSum(slot, carry_in);
+    jsr_pop();
+    WR8(OBJ->f3670[slot], (uint8_t)(sum.value & 0x0F));
+    e = ended_with_overflow(ended_with_carry(ended_load((uint8_t)(sum.value & 0x0F)), sum.carry), sum.overflow);
+    jsr_push((uint16_t)(base + 0x11));
+    e = ended_then(e, pick(slot));
+    jsr_pop();
+    jsr_push((uint16_t)(base + 0x14));
+    e = ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+    jsr_pop();
+    jsr_push((uint16_t)(base + 0x17));
+    e = ended_then(e, ended_of_sum(NegateVelocityY(slot)));
+    jsr_pop();
+    jsr_push((uint16_t)(base + 0x1A));
+    e = ended_then(e, ended_of_arith(HalveObjectVelocity(slot)));
+    jsr_pop();
+    WR8(OBJ->life_timer[slot], 0x0C);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    step = INC8(OBJ->f2800[slot]);
+    return ended_then(e, ended_with_a(ended_nz(step), 0x0C));
+}
+
+/* The first step of the walk-and-turn state three overlays share (see TurnOnRandomBeatWalkA). */
+static inline Ended walk_on_random_beat_first(uint8_t slot, uint16_t base, uint16_t speeds, uint16_t timers)
+{
+    uint8_t y, value, phase;
+    SideResult side;
+    RandomResult random;
+    Ended e;
+
+    jsr_push((uint16_t)(base + 8));
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    y = (uint8_t)((side.sides & 1) << 1);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(speeds + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(speeds + 1 + y)));
+    jsr_push((uint16_t)(base + 0x1B));
+    random = NextRandom();
+    jsr_pop();
+    y = (uint8_t)(random.value & 7);
+    value = rd8((uint16_t)(timers + y));
+    WR8(OBJ->life_timer[slot], value);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    INC8(OBJ->f3510[slot]);
+    phase = INC8(OBJ->f2800[slot]);
+    e = ended_with_y(ended_of_random(random), y);
+    return ended_then(e, ended_with_a(ended_nz(phase), value));
+}
+
+/* The later steps: animate facing the player (list 2), count the timer down and walk; at zero go to state 5. */
+static inline Ended walk_on_random_beat_follow(uint8_t slot, uint16_t ret_step, FrameStepEnd (*step)(uint8_t, uint8_t))
+{
+    uint8_t left;
+    FrameStepEnd frames;
+    AxisMove move;
+    Ended e;
+
+    jsr_push(ret_step);
+    frames = step(slot, 2);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 2), frames.end);
+    left = DEC8(OBJ->life_timer[slot]);
+    e = ended_then(e, ended_nz(left));
+    if (left != 0) {
+        move = ApplyVelocityX(slot);
+        return ended_then(e, ended_of_axis_move(move));
+    }
+    WR8(OBJ->state[slot], 5);
+    WR8(OBJ->f2800[slot], 0);
+    return ended_then(e, ended_load(5));
+}
+
 /* The object becomes `type` in state 0. */
 static inline Ended become_type(uint8_t slot, uint8_t type)
 {
@@ -562,6 +658,8 @@ ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot);
 Ended PickStateByPlayerDistance(uint8_t slot, bool carry_in);
 Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in);
 Ended ChargeWhenPlayerNear(uint8_t slot);
+Ended TurnOnRandomBeatWalkA(uint8_t slot);
+Ended TurnOnRandomBeatWalkFollowA(uint8_t slot);
 /* object/enemies_stage05_temp.c */
 Ended SelectRasterStage1(void);
 Ended SetHitboxDxFromFrame(uint8_t slot);
@@ -596,6 +694,8 @@ Ended StartThenBlinkAndExpire(uint8_t slot);
 Ended LeapAwayFromPlayerTable(uint8_t slot);
 Ended PickStateByPlayerDistanceB(uint8_t slot, bool carry_in);
 Ended PickSpeedAndTurnFromTableC(uint8_t slot);
+Ended TurnOnRandomBeatWalkB(uint8_t slot);
+Ended TurnOnRandomBeatWalkFollowB(uint8_t slot);
 /* object/enemies_stage07_temp.c */
 Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);
@@ -649,6 +749,8 @@ SideEnd FaceThePlayerInSomeStatesB(uint8_t slot);
 Ended AnimateAlongListC3C2(uint8_t slot);
 Ended SwingOnCosineB(uint8_t slot);
 Ended PickSpeedAndTurnFromTable(uint8_t slot);
+Ended TurnOnRandomBeatWalkC(uint8_t slot);
+Ended TurnOnRandomBeatWalkFollowC(uint8_t slot);
 /* object/state_countdown.c */
 uint8_t CountdownNextStepA(uint8_t slot);
 uint8_t CountdownNextStateA(uint8_t slot);

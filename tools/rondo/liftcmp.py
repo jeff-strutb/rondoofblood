@@ -303,12 +303,12 @@ def run_configs(name, rows_full):
     return found or None
 
 
-def resident_entries(configs, rows):
+def resident_entries(configs, rows, extra_discs=None):
     """[(mpr tuple, run address, disc offset)]: for each configuration, each routine entry (a disc location of a
     routine with C) the run map shows resident at a logical address under it."""
     cfgs, recs = load_runmap()
     wanted = {tuple(c) for c in (configs or [DEFAULT_MAP])}
-    entry_discs = {int(r[2]) for r in rows if r[5] == "0"}
+    entry_discs = {int(r[2]) for r in rows if r[5] == "0"} | (extra_discs or set())
     ids = {cid for cid, t in cfgs.items() if t in wanted}
     seen, out = set(), []
     for disc_off, logical, cfg in recs:
@@ -458,7 +458,16 @@ def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=()):
                 elif r not in have:
                     items.append((r, "abi_" + label))
                     have.add(r)
-    syms = sorted({x for _, x in items} | set(by_disc.values()))
+    pieces = {}
+    if through:
+        for key, label in through.items():
+            if key[0] != "C" and ("abi_" + label) in libsyms and int(key[0]) not in by_disc:
+                pieces.setdefault(int(key[0]), "abi_" + label)
+                r = key[1].rjust(4, "0")
+                if ("0", r) not in seen and ("1", r) not in seen:
+                    seen.add(("0", r))
+                    items.append((r, "abi_" + label))
+    syms = sorted({x for _, x in items} | set(by_disc.values()) | set(pieces.values()))
     with open(path, "w") as f:
         f.write("#include <stdint.h>\n#include <stdio.h>\n")
         f.write("typedef struct { uint16_t run; void (*abi)(void); } Dispatch;\n")
@@ -472,6 +481,10 @@ def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=()):
         for d, sym in sorted(by_disc.items()):
             f.write("    { %du, %s },\n" % (d, sym))
         f.write("    { 0, 0 }\n};\nconst unsigned disc_count = %d;\n" % len(by_disc))
+        f.write("const DiscDispatch piece_table[] = {\n")
+        for d, sym in sorted(pieces.items()):
+            f.write("    { %du, %s },\n" % (d, sym))
+        f.write("    { 0, 0 }\n};\nconst unsigned piece_count = %d;\n" % len(pieces))
         f.write("typedef struct { uint8_t m[5]; uint16_t run; uint32_t disc; } Resident;\nconst Resident resident_tab[] = {\n")
         for cfg, logical, d in resident:
             f.write("    { { %s }, 0x%04X, %du },\n" % (", ".join("0x" + c for c in cfg), logical, d))
@@ -732,7 +745,12 @@ def one(name, a, ctx):
     os.makedirs(work, exist_ok=True)
     disp = os.path.join(work, "dispatch.c")
     configs = run_configs(name, ctx["rows_full"])
-    resident = resident_entries(configs, ctx["rows"])
+    piece_discs = set()
+    if a.callees == "through":
+        for r in csv.DictReader(open(os.path.join((ctx["drafts"][0] if ctx["drafts"] else __import__("cdraft").current_cache()), "members.csv"))) if os.path.exists(os.path.join((ctx["drafts"][0] if ctx["drafts"] else __import__("cdraft").current_cache()), "members.csv")) else []:
+            if r["space"] == "D":
+                piece_discs.add(int(r["offset"]))
+    resident = resident_entries(configs, ctx["rows"], piece_discs)
     ndisp = build_dispatch(disp, ctx["rows"], objs, resident=resident)
     disp_d, libobj = disp, []
     if a.callees == "through":

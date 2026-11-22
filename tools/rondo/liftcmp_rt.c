@@ -41,6 +41,10 @@ extern const unsigned resident_count;
 typedef struct { uint32_t disc; void (*abi)(void); } DiscDispatch;
 extern const DiscDispatch disc_table[];
 extern const unsigned disc_count;
+/* the draft side only: pieces of code with no C of their own (the middle of another routine, a tail a draft jumps
+ * into) that the draft runs on into where the lifted C is one function */
+extern const DiscDispatch piece_table[];
+extern const unsigned piece_count;
 
 static uint8_t mem[65536];
 static uint8_t written[65536];
@@ -265,10 +269,14 @@ static void (*find_abi(uint16_t target))(void)
 {
     uint32_t d = resident_disc(target);
 
-    if (d != 0xFFFFFFFFu)
+    if (d != 0xFFFFFFFFu) {
         for (unsigned i = 0; i < disc_count; i++)
             if (disc_table[i].disc == d)
                 return disc_table[i].abi;
+        for (unsigned i = 0; i < piece_count; i++)
+            if (piece_table[i].disc == d)
+                return piece_table[i].abi;
+    }
     for (unsigned i = 0; i < dispatch_count; i++)
         if (dispatch_table[i].run == target)
             return dispatch_table[i].abi;

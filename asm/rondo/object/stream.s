@@ -469,7 +469,7 @@ StreamSpawnIfFree:
     ldx z:zTemp0B
     lda a:OBJ_2750,x
     beq StreamPlaceObject
-    jmp StreamPlaceObject_at0
+    jmp StreamSpawnEnd
 
 ; @routine 0047:004 StreamPlaceObject
 ; @run 6A:6004
@@ -483,7 +483,7 @@ StreamPlaceObject:
     sta a:OBJ_2750,x
     lda a:LevelAxis
     cmp #$01
-    beq StreamPlaceObject_at1
+    beq StreamPlaceObject_at0
     lda z:zTemp12
     sec
     sbc a:ScrollXLo
@@ -500,12 +500,12 @@ StreamPlaceObject:
     sta a:OBJ_Y_HI,x
     lda a:LevelAxis
     cmp #$02
-    beq StreamPlaceObject_at2
+    beq StreamPlaceObject_at1
     stz z:zTemp09
     lda a:ScrollYLo
-    bpl StreamPlaceObject_at3
+    bpl StreamPlaceObject_at2
     dec z:zTemp09
-StreamPlaceObject_at3:
+StreamPlaceObject_at2:
     lda a:OBJ_Y_LO,x
     sec
     sbc a:ScrollYLo
@@ -513,8 +513,8 @@ StreamPlaceObject_at3:
     lda a:OBJ_Y_HI,x
     sbc z:zTemp09
     sta a:OBJ_Y_HI,x
-    bra StreamPlaceObject_at2
-StreamPlaceObject_at1:
+    bra StreamPlaceObject_at1
+StreamPlaceObject_at0:
     lda z:zTemp12
     sec
     sbc a:ScrollYLo
@@ -529,14 +529,21 @@ StreamPlaceObject_at1:
     lda z:zTemp0A
     sbc a:ScrollXHiScreen
     sta a:OBJ_X_HI,x
-StreamPlaceObject_at2:
+StreamPlaceObject_at1:
     lda z:zTemp0D
     sta a:OBJ_3040,x
     lda z:zTemp0E
     sta a:OBJ_FLAGS_2F38,x
     lda z:zTemp0F
     sta a:OBJ_EVENT_ID,x
-StreamPlaceObject_at0:
+
+; @routine 0047:08A StreamSpawnEnd
+; @run 6A:608A
+; WHAT IT DOES: The end of the spawning record handlers: gives back the caller's X.
+; HOW: Pulls X, which the handler kept on the stack.
+; WAITS: no.
+; Entry: the caller's X on the stack. Exit: X that, N and Z from it. A, Y, C and V kept.
+StreamSpawnEnd:
     plx
     rts
 

@@ -163,6 +163,28 @@ def changed_routines(chash, top):
     return sorted(r for r, h in chash.own_hash.items() if old.get(r) != h)
 
 
+def landing_report(rec, chash, changed, rev, main):
+    """The routines whose own code changed with this landing, each with its verdict and, if it has a defect, the
+    first defect line, as lines to forward as they are. Also written to build/rondo/runner/landing-REV.txt."""
+    counts = records.a5_counts(rec, chash, main)
+    lines = [f"Landing {rev}: {len(changed)} routine(s) with changed code re-judged by A5"]
+    for r in changed:
+        t = counts.get(r)
+        if not t:
+            lines.append(f"  {r}: UNCOVERED (no counting script called it)")
+            continue
+        v = records.a5_verdict(t)
+        text = f"  {r}: {v}, {t['identical']} of {t['calls']} calls identical in {t['scripts']} script(s)"
+        if v == "DIVERGENT":
+            text += f"; {t['divergent']} divergent, {t['order_flags']} order-flagged; first: [{t['where']}] {t['detail']}"
+        elif v == "UNVERIFIED":
+            text += f"; {t['unverified']} call(s) not judged"
+        lines.append(text)
+    with open(os.path.join(main, "build", "rondo", "runner", f"landing-{rev}.txt"), "w") as f:
+        f.write("\n".join(lines) + "\n")
+    return lines
+
+
 def measure(tree, box, out, script, mode="both"):
     r = cpu_run(1, "2G", sys.executable, os.path.join(tree, "tools", "rondo", "oracle_io.py"), "job", tree,
                 script, os.path.join(out, script), box, mode, timeout=SCRIPT_TIMEOUT)
@@ -266,6 +288,9 @@ def cycle(main, opts):
         with open(os.path.join(b, "own.txt"), "w") as f:
             f.writelines(f"{r} {h}\n" for r, h in sorted(chash.own_hash.items()))
     records.write_views(rec, chash, ext, main)
+    if changed:
+        for line in landing_report(rec, chash, changed, rev, main):
+            log(line, b)
     reds = []
     for s in sorted(results):
         res = results[s]

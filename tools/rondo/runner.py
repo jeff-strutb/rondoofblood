@@ -14,6 +14,8 @@
              --commit         commit the records and ledgers to DIR's branch under the landing lock (off by
                               default until the state session has handed those files over)
              --norerun        do not rerun red scripts alone (when every script is expected red)
+             --draft-a5 FILE  with `served`: per-draft A5 verdicts (name, filed, calls, identical, divergent, unverified,
+                              order) measured elsewhere, instead of measuring the drafts here
              --a7             with `served`: build the served box and measure A7 on --scripts alone
              --workers N      scripts measured at once (default 8; each is one cpu-run claim)
 
@@ -33,6 +35,7 @@ A script run that fails (exit, timeout) leaves that script's old record in place
 Everything it makes is under build/rondo/runner/ in the main checkout.
 """
 import concurrent.futures
+import csv
 import datetime
 import fcntl
 import json
@@ -362,29 +365,37 @@ def served(main, opts):
     drafts = sv.read_drafts(cache)
     filed_of = {lab: n for n, labs in labels.items() for lab in labs}
     log(f"served: {rev}, draft cache {st}: {len(drafts)} drafts, {len(labels)} of {len(ext)} filed routines have one", b)
-    allbox = os.path.join(b, f"pcebox-alldrafts-{rev}-{st}")
-    if not os.path.exists(allbox):
-        dst = os.path.join(b, "tree-alldrafts")
-        d = sv.make_tree(tree, dst, cache, drafts, {r["name"] for r in drafts}, set(labels), filed_of)
-        ok, text = cpu_run_build(dst, d, allbox)
-        if not ok:
-            print("runner: the all-drafts box did not build:\n" + text)
-            return 1
     out = os.path.join(b, f"out-served-{rev}")
     shutil.rmtree(out, ignore_errors=True)
     draft_a5 = {}
-    for s in scripts:
-        res = measure(tree, allbox, os.path.join(out, "d5"), s, "a5")
-        if res.get("errors"):
-            print(f"runner: draft A5 of {s} failed: {res['errors']}")
-            return 1
-        for lab, v in res["a5"].items():
-            t = draft_a5.setdefault(lab, {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0, "order_flags": 0})
-            for k in t:
-                t[k] += v[k]
+    if opts.get("draft_a5"):
+        # per-draft verdicts measured elsewhere (the drafter's full A5 with every draft serving)
+        for r in csv.DictReader(open(opts["draft_a5"], newline="")):
+            draft_a5[r["name"]] = {"calls": int(r["calls"]), "identical": int(r["identical"]),
+                                   "divergent": int(r["divergent"]), "unverified": int(r["unverified"]),
+                                   "order_flags": int(r["order"])}
+        log(f"served: per-draft A5 from {opts['draft_a5']}: {len(draft_a5)} drafts", b)
+    else:
+        allbox = os.path.join(b, f"pcebox-alldrafts-{rev}-{st}")
+        if not os.path.exists(allbox):
+            dst = os.path.join(b, "tree-alldrafts")
+            d = sv.make_tree(tree, dst, cache, drafts, {r["name"] for r in drafts}, set(labels), filed_of)
+            ok, text = cpu_run_build(dst, d, allbox)
+            if not ok:
+                print("runner: the all-drafts box did not build:\n" + text)
+                return 1
+        for s in scripts:
+            res = measure(tree, allbox, os.path.join(out, "d5"), s, "d5")
+            if res.get("errors"):
+                print(f"runner: draft A5 of {s} failed: {res['errors']}")
+                return 1
+            for lab, v in res["a5"].items():
+                t = draft_a5.setdefault(lab, {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0, "order_flags": 0})
+                for k in t:
+                    t[k] += v[k]
     filed_a5 = records.a5_counts(rec, chash, main)
     plan = sv.plan(filed_a5, draft_a5, labels, drafts)
-    called = {lab for lab in draft_a5}
+    called = {lab for lab in draft_a5 if draft_a5[lab]["calls"]}
     tally = {}
     for lab in called:
         v = sv.verdict_of(draft_a5[lab])
@@ -447,7 +458,7 @@ def commit(main, rev, paths, n, reds, b):
 
 def parse(argv):
     opts = {"mode": argv[0] if argv else "", "main": TOP, "routines": [], "scripts": [], "sweep": False,
-            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False}
+            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False, "draft_a5": ""}
     i = 1
     while i < len(argv):
         a = argv[i]
@@ -459,6 +470,8 @@ def parse(argv):
             opts["scripts"] = argv[i + 1].split(","); i += 1
         elif a == "--workers":
             opts["workers"] = int(argv[i + 1]); i += 1
+        elif a == "--draft-a5":
+            opts["draft_a5"] = os.path.abspath(argv[i + 1]); i += 1
         elif a == "--a7":
             opts["a7"] = True
         elif a == "--norerun":

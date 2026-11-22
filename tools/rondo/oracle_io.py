@@ -82,6 +82,19 @@ def read_a5(out, script, stdout):
     return rows
 
 
+def read_tags(out, script):
+    """Per tag (a drafted routine's label too) the A5 counts of the script: the TAG lines of <script>.a5.txt, for a
+    box whose routines are not all in a5.csv (a5.csv lists the filed routines only)."""
+    rows = {}
+    path = os.path.join(out, "a5", script + ".a5.txt")
+    for line in open(path, encoding="ascii", errors="replace"):
+        f = line.split()
+        if f and f[0] == "TAG" and int(f[2]):
+            rows[f[1]] = dict(zip(("calls", "identical", "divergent", "unverified", "order_flags"), map(int, f[2:7])),
+                              detail="", defects={}, causes={})
+    return rows
+
+
 def read_a7_defects(out):
     d = {}
     path = os.path.join(out, "a7_defects.csv")
@@ -132,7 +145,7 @@ def job(tree, script, out, box, mode="both"):
     os.makedirs(out, exist_ok=True)
     result = {"script": script, "a5": {}, "a7": {}, "reach": {}, "a7_defects": {}, "secs": {"a5": 0, "a7": 0},
               "errors": []}
-    if mode in ("a5", "both"):
+    if mode in ("a5", "both", "d5"):
         t0 = time.time()
         r = run_oracle(tree, "a5", script, os.path.join(out, "a5run"), box)
         result["secs"]["a5"] = round(time.time() - t0, 1)
@@ -140,7 +153,8 @@ def job(tree, script, out, box, mode="both"):
         if r.returncode or bad:
             result["errors"].append("a5: " + (bad.group(0) if bad else r.stderr.strip()[-300:] or f"exit {r.returncode}"))
         else:
-            result["a5"] = read_a5(os.path.join(out, "a5run"), script, r.stdout)
+            result["a5"] = (read_tags if mode == "d5" else read_a5)(os.path.join(out, "a5run"), script) \
+                if mode == "d5" else read_a5(os.path.join(out, "a5run"), script, r.stdout)
     if mode in ("a7", "both"):
         t0 = time.time()
         r = run_oracle(tree, "a7", script, os.path.join(out, "a7run"), box)

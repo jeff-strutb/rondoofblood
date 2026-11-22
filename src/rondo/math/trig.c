@@ -7,6 +7,7 @@
  */
 #include "machine.h"
 #include "ram.h"
+#include "access.h"
 #include "common_objects.h"
 
 #define PRODUCT_MASK 0xFFFFFFu
@@ -508,49 +509,67 @@ void abi_TurnAngleToward(void)
  * WHAT IT DOES: Steps the game's random numbers and returns the next byte. The
  * frame interrupt also steps it once a frame, so it depends on time as well as
  * on calls.
- * HOW: A 32-bit counter generator: the state becomes state * $01010101 + 1,
- * each byte added into those above it, top byte first, then the 32-bit
- * increment. The top byte is the result.
- * Entry: nothing. Exit: A zRandom3, N and Z from it, C and V from the last add.
- * X and Y kept.
+ * HOW: A 32-bit counter generator: the state becomes state * $01010101 + 1. Each
+ * byte is added into those above it, the carry running on between the adds, top byte
+ * first, then the 32-bit increment, and the top byte is read again as the answer.
+ * WAITS: no.
+ * Entry: nothing, D clear. Exit: A zRandom3, N and Z from it, C and V from the last add (the
+ * top byte plus zRandom0 with the carry of the one before). X and Y kept. The increments
+ * past zRandom0 (when it wraps) ran in no script: the draft stops there, so liftcmp does not
+ * judge them; they wait for coverage (PROCEDURE section 6).
  */
-uint8_t NextRandom(void)
+RandomResult NextRandom(void)
 {
-    uint32_t state = (uint32_t)rd8(zRandom0) | ((uint32_t)rd8(zRandom1) << 8) |
-                     ((uint32_t)rd8(zRandom2) << 16) | ((uint32_t)rd8(zRandom3) << 24);
+    RandomResult result;
+    Sum sum;
+    uint8_t value, other;
 
-    state = state * 0x01010101u + 1u;
-    wr8(zRandom0, (uint8_t)state);
-    wr8(zRandom1, (uint8_t)(state >> 8));
-    wr8(zRandom2, (uint8_t)(state >> 16));
-    wr8(zRandom3, (uint8_t)(state >> 24));
-    return (uint8_t)(state >> 24);
+    value = RD8(ZP->random3);
+    other = RD8(ZP->random2);
+    sum = add_bytes(value, other, false);
+    WR8(ZP->random3, sum.value);
+    value = RD8(ZP->random2);
+    other = RD8(ZP->random1);
+    sum = add_bytes(value, other, false);
+    WR8(ZP->random2, sum.value);
+    value = RD8(ZP->random3);
+    other = RD8(ZP->random1);
+    sum = add_bytes(value, other, sum.carry);
+    WR8(ZP->random3, sum.value);
+    value = RD8(ZP->random1);
+    other = RD8(ZP->random0);
+    sum = add_bytes(value, other, false);
+    WR8(ZP->random1, sum.value);
+    value = RD8(ZP->random2);
+    other = RD8(ZP->random0);
+    sum = add_bytes(value, other, sum.carry);
+    WR8(ZP->random2, sum.value);
+    value = RD8(ZP->random3);
+    other = RD8(ZP->random0);
+    sum = add_bytes(value, other, sum.carry);
+    WR8(ZP->random3, sum.value);
+    if (INC8(ZP->random0) == 0) {
+        if (INC8(ZP->random1) == 0) {
+            if (INC8(ZP->random2) == 0) {
+                INC8(ZP->random3);
+            }
+        }
+    }
+    result.value = RD8(ZP->random3);
+    result.carry = sum.carry;
+    result.overflow = sum.overflow;
+    return result;
 }
 
-/* C and V are the top byte's last add, as the assembly's order of adds leaves them. */
-static Alu random_exit_shim(uint8_t state0, uint8_t state1, uint8_t state2, uint8_t state3,
-                            uint8_t result)
+void random_exit_shim(RandomResult result)
 {
-    uint8_t top = (uint8_t)(state3 + state2);
-    Alu middle = adc8(state2, state1, false);
-    Alu low;
-    Alu exit;
-
-    top = adc8(top, state1, middle.c).a;
-    low = adc8(state1, state0, false);
-    middle = adc8(middle.a, state0, low.c);
-    exit = adc8(top, state0, middle.c);
-    exit.a = result;
-    exit.nz = result;
-    return exit;
+    cpu.a = result.value;
+    abi_nz(result.value);
+    abi_flag(P_C, result.carry);
+    abi_flag(P_V, result.overflow);
 }
 
 void abi_NextRandom(void)
 {
-    uint8_t state0 = rd8(zRandom0);
-    uint8_t state1 = rd8(zRandom1);
-    uint8_t state2 = rd8(zRandom2);
-    uint8_t state3 = rd8(zRandom3);
-
-    abi_alu(random_exit_shim(state0, state1, state2, state3, NextRandom()));
+    random_exit_shim(NextRandom());
 }

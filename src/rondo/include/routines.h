@@ -605,7 +605,14 @@ void SelectVdcControl(void);
 uint8_t WriteScreenTiming(uint8_t index);
 uint8_t WriteBandScroll(uint8_t band);
 void ResetDisplayControl(void);
-uint8_t NextRandom(void);
+/* NextRandom: the byte, and the carry and overflow of the last add. */
+typedef struct { uint8_t value; bool carry; bool overflow; } RandomResult;
+RandomResult NextRandom(void);
+/* SideOfPlayer: the side bits, and the carry of the last compare when one was made. */
+typedef struct { uint8_t sides; bool carry_set; bool carry; } SideResult;
+SideResult SideOfPlayer(uint8_t object);
+void side_of_player_exit_shim(SideResult result);
+void random_exit_shim(RandomResult result);
 bool RasterStart(uint8_t *effect, uint8_t *last);
 void RasterInterrupt(void);
 uint8_t BitOfIndex(uint8_t index, uint8_t *byte);

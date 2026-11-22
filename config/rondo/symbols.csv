@@ -605,6 +605,15 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 3B00,abs,PaletteWork,32 bytes: a palette of 16 colours read from the VCE to be worked on
 3B20,abs,PaletteWorkSpare,the colour kept while a palette is rotated
 3B40,abs,StageMaskBuffer,128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask
+350E,abs,StageVar350E,the stage overlay's state, in the last two slots ($56, $57) of an object column: slot $56 a counter, slot $57 ($350F) the stage event code
+3566,abs,StageVar3566,the stage overlay's state in the last two slots of an object column ($3566 and $3567)
+35BE,abs,StageVar35BE,the stage overlay's state in the last two slots of an object column: $35BF a toggle
+3616,abs,StageVar3616,the stage overlay's state in the last two slots of an object column ($3616 and $3617)
+366E,abs,StageBlendOn,the stage overlay: nonzero blends two five-entry tile colour rows; $366F is set to 1 by the event code routine
+36C6,abs,StageBlendStep,the stage overlay's blend step, 0 to 5 (5 none); $36C7 keeps MPR5 across a stage routine
+371E,abs,StageVar371E,the stage overlay's state in the last two slots of an object column; $371F keeps MPR6 across a stage routine
+8E96,abs,StageTileVramAddress,the stage overlay's 8 VRAM addresses, a word each (low byte, high byte)
+C534,abs,StageTileRows,the stage overlay's rows of 5 tile colour bytes in the MPR6 bank MapStageBanks maps; the count of rows is not known yet
 9149,abs,StageMaskOffsets,the stage overlay's 8 offsets (00 01 20 21 40 41 60 61) of the mask buffer's cells one masking step touches; the same bytes at every copy of the overlay
 819F,abs,SpriteMirrorWidth,the 00D1 overlay's 2 widths a mirrored sprite's X offsets are taken from (bank 6C)
 81A1,abs,SpriteXMin,the 00D1 overlay's 2 lowest X values a sprite part is drawn at (bank 6C)

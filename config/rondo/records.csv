@@ -406,3 +406,14 @@ alias,ZeroPageRec,sprites_left,multiplier.hi,SpritesLeft
 # The word at $3EB8: the level's Y word that some routines copy to the scroll.
 record,LevelWord,aos,3EB8,1,2,LEVELW
 member,LevelWord,y,u16le,00,RasterWaterWanted|LevelYHi,
+
+# The stage overlay's state, kept in the last two slots ($56, $57) of seven object-table columns: not object data.
+# Columns $58 apart from $350E; each member is the column's slot $56 (index 0) and slot $57 (index 1).
+record,StageVars,soa,350E,2,212,STAGEVARS
+member,StageVars,state_350e,u8,0000,StageVar350E,
+member,StageVars,state_3566,u8,0058,StageVar3566,
+member,StageVars,state_35be,u8,00B0,StageVar35BE,
+member,StageVars,state_3616,u8,0108,StageVar3616,
+member,StageVars,blend_on,u8,0160,StageBlendOn,
+member,StageVars,blend_step,u8,01B8,StageBlendStep,
+member,StageVars,state_371e,u8,0210,StageVar371E,

@@ -125,3 +125,87 @@ BitMaskFromIndex_at0:
     bra BitMaskFromIndex_at0
 BitMaskFromIndex_out:
     rts
+
+; @routine 0519:329 StepReleaseOnHit
+; @run 70:A329
+; WHAT IT DOES: An object that sits until it is hit hard (a pending hit of 5 or more): then it
+; becomes the kind held in OBJ_3040, takes a timer of $10 and state 0, and starts the object
+; $9B in a free slot at its place.
+; HOW: State 0 loads the record and marks OBJ_2A68. Otherwise it steps its frames through the
+; table at $A365 and tests the hit. The record event and free-slot search are called
+; through their vectors; the start of the new object is a tail jump.
+; WAITS: no.
+; Entry: X object. Exit: as the last step left A and the flags; on the tail path as
+; StartObjectAtPlace leaves them.
+StepReleaseOnHit:
+    lda a:OBJ_27A8,x
+    bne StepReleaseOnHit_at1
+    jsr VecLoadObjectRecord
+    lda #$01
+    sta a:OBJ_2A68,x
+    rts
+StepReleaseOnHit_at1:
+    lda #$A3
+    sta z:zTemp11
+    lda #$65
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc StepReleaseOnHit_out
+    jsr VecRecordObjectEvent
+    lda a:OBJ_3040,x
+    sta a:OBJ_2750,x
+    lda #$10
+    sta a:OBJ_3A90,x
+    stz a:OBJ_27A8,x
+    jsr VecFindFreeSlotFrom50
+    bcc StepReleaseOnHit_out
+    lda #$9B
+    jmp VecStartObjectAtPlace
+StepReleaseOnHit_out:
+    rts
+
+; @routine 0519:36D StepFallingItem
+; @run 70:A36D
+; WHAT IT DOES: Drives an object of kind $9B or more (the kind less $9B picks its row): at
+; state 0 it loads its record and sets its Y speed from a two-byte table at $A3B1; afterwards
+; it moves by its Y speed, steps its frames through a table pointer at $A3B9 and is cleared
+; when its frames end.
+; HOW: See above. The record, velocity, frame step and clear are called through their
+; vectors; the clear is a tail jump.
+; WAITS: no.
+; Entry: X object. Exit: the set-up path leaves A the table byte, Y the offset.
+StepFallingItem:
+    lda a:OBJ_27A8,x
+    bne StepFallingItem_at1
+    jsr VecLoadObjectRecord
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda a:OBJ_2750,x
+    sec
+    sbc #$9B
+    asl a
+    tay
+    lda a:$A3B2,y
+    sta a:OBJ_VY_HI,x
+    lda a:$A3B1,y
+    sta a:OBJ_VY_LO,x
+    rts
+StepFallingItem_at1:
+    jsr VecApplyVelocityY
+    stz a:OBJ_2B18,x
+    lda a:OBJ_2750,x
+    sec
+    sbc #$9B
+    asl a
+    tay
+    lda a:$A3B9,y
+    sta z:zTemp10
+    lda a:$A3BA,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepFallingItem_out
+    jmp VecClearObject
+StepFallingItem_out:
+    rts

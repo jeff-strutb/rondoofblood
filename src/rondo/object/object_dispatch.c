@@ -277,3 +277,170 @@ void abi_BitMaskFromIndex(void)
     abi_nz(0);
     abi_flag(P_C, true);
 }
+
+/*
+ * @routine 0519:329 StepReleaseOnHit
+ * @run 70:A329
+ * WHAT IT DOES: An object that sits until it is hit hard (a pending hit of 5 or more): then it
+ * becomes the kind held in OBJ_3040, takes a timer of $10 and state 0, and starts the object
+ * $9B in a free slot at its place.
+ * HOW: State 0 loads the record and marks OBJ_2A68. Otherwise it steps its frames through the
+ * table at $A365 and tests the hit. The record event and free-slot search are called
+ * through their vectors; the start of the new object is a tail jump.
+ * Table read at a bare address until the typed data layer lands.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last step left A and the flags (see the wrapper); on the tail
+ * path as StartObjectAtPlace leaves them.
+ */
+ReleaseResult StepReleaseOnHit(uint8_t slot)
+{
+    ReleaseResult result = { RELEASE_STARTED_UP, 0 };
+    uint8_t state, hit, kind;
+
+    state = RD8(OBJ->f27a8[slot]);
+    if (state == 0) {
+        cpu.x = slot;
+        if (call_frame(0xA331, abi_VecLoadObjectRecord)) {
+            result.end = RELEASE_NO_SLOT;
+            return result;
+        }
+        WR8(OBJ->f2a68[slot], 1);
+        return result;
+    }
+    WR8(ZP->temp11, 0xA3);
+    WR8(ZP->temp10, 0x65);
+    cpu.x = slot;
+    if (call_frame(0xA342, abi_VecStepObjectFrames)) {
+        result.end = RELEASE_NO_SLOT;
+        return result;
+    }
+    hit = RD8(OBJ->f33b0[slot]);
+    if (hit < 5) {
+        result.end = RELEASE_WAITING;
+        result.hit = hit;
+        return result;
+    }
+    cpu.x = slot;
+    if (call_frame(0xA34C, abi_VecRecordObjectEvent)) {
+        result.end = RELEASE_NO_SLOT;
+        return result;
+    }
+    kind = RD8(OBJ->f3040[slot]);
+    WR8(OBJ->f2750[slot], kind);
+    WR8(OBJ->f3a90[slot], 0x10);
+    WR8(OBJ->f27a8[slot], 0);
+    cpu.x = slot;
+    cpu.a = 0x10;
+    if (call_frame(0xA35D, abi_VecFindFreeSlotFrom50)) {
+        result.end = RELEASE_NO_SLOT;
+        return result;
+    }
+    result.end = RELEASE_NO_SLOT;
+    if (!(cpu.p & P_C)) {
+        return result;
+    }
+    cpu.x = slot;
+    cpu.a = 0x9B;
+    abi_nz(0x9B);
+    abi_VecStartObjectAtPlace();
+    result.end = RELEASE_STARTED;
+    return result;
+}
+
+void abi_StepReleaseOnHit(void)
+{
+    ReleaseResult result = StepReleaseOnHit(cpu.x);
+
+    switch (result.end) {
+    case RELEASE_STARTED_UP:
+        cpu.a = 1;
+        abi_nz(1);
+        break;
+    case RELEASE_WAITING:
+        cpu.a = result.hit;
+        abi_nz((uint8_t)(result.hit - 5));
+        abi_flag(P_C, false);
+        break;
+    case RELEASE_NO_SLOT:
+    case RELEASE_STARTED:
+        break;
+    }
+}
+
+/*
+ * @routine 0519:36D StepFallingItem
+ * @run 70:A36D
+ * WHAT IT DOES: Drives an object of kind $9B or more (the kind less $9B picks its row): at
+ * state 0 it loads its record and sets its Y speed from a two-byte table at $A3B1; afterwards
+ * it moves by its Y speed, steps its frames through a table pointer at $A3B9 and is cleared
+ * when its frames end.
+ * HOW: See above. The record, velocity, frame step and clear are called through their
+ * vectors; the clear is a tail jump. Tables read at bare addresses until the typed data layer
+ * lands.
+ * WAITS: no.
+ * Entry: X object. Exit: see the wrapper (the set-up path leaves A the table byte, Y the offset).
+ */
+ItemResult StepFallingItem(uint8_t slot)
+{
+    ItemResult result = { ITEM_STEPPED, 0, 0, false };
+    uint8_t state, kind, shifted, index, table_lo, table_hi, value;
+
+    state = RD8(OBJ->f27a8[slot]);
+    if (state == 0) {
+        cpu.x = slot;
+        if (call_frame(0xA375, abi_VecLoadObjectRecord)) {
+            return result;
+        }
+        WR8(OBJ->f3408[slot], 0);
+        WR8(OBJ->f3460[slot], 0);
+        kind = RD8(OBJ->f2750[slot]);
+        shifted = (uint8_t)(kind - 0x9B);
+        index = (uint8_t)(shifted << 1);
+        value = rd8((uint16_t)(0xA3B2 + index));
+        WR8(OBJ->vy_hi[slot], value);
+        value = rd8((uint16_t)(0xA3B1 + index));
+        WR8(OBJ->vy_lo[slot], value);
+        result.end = ITEM_SET_UP;
+        result.table_index = index;
+        result.table_value = value;
+        result.carry = (shifted & 0x80) != 0;
+        return result;
+    }
+    cpu.x = slot;
+    if (call_frame(0xA393, abi_VecApplyVelocityY)) {
+        return result;
+    }
+    WR8(OBJ->f2b18[slot], 0);
+    kind = RD8(OBJ->f2750[slot]);
+    shifted = (uint8_t)(kind - 0x9B);
+    index = (uint8_t)(shifted << 1);
+    table_lo = rd8((uint16_t)(0xA3B9 + index));
+    WR8(ZP->temp10, table_lo);
+    table_hi = rd8((uint16_t)(0xA3BA + index));
+    WR8(ZP->temp11, table_hi);
+    cpu.x = slot;
+    cpu.y = index;
+    cpu.a = table_hi;
+    abi_nz(table_hi);
+    abi_flag(P_C, (shifted & 0x80) != 0);
+    if (call_frame(0xA3AB, abi_VecStepObjectFrames)) {
+        return result;
+    }
+    if (cpu.p & P_Z) {
+        abi_VecClearObject();
+        result.end = ITEM_CLEARED;
+    }
+    return result;
+}
+
+void abi_StepFallingItem(void)
+{
+    ItemResult result = StepFallingItem(cpu.x);
+
+    if (result.end == ITEM_SET_UP) {
+        cpu.a = result.table_value;
+        cpu.y = result.table_index;
+        abi_nz(result.table_value);
+        abi_flag(P_C, result.carry);
+    }
+}

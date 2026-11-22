@@ -92,6 +92,45 @@ FallResult FallAndBounce(uint8_t slot);
 /* 1 shifted left count times, as a byte. */
 uint8_t BitMaskFromIndex(uint8_t count);
 
+/* How StepReleaseOnHit ended. */
+typedef enum {
+    RELEASE_STARTED_UP,   /* state 0: the record was loaded */
+    RELEASE_WAITING,      /* the pending hit is under 5 */
+    RELEASE_NO_SLOT,      /* released, but no free slot was found */
+    RELEASE_STARTED       /* released: the new object was started (tail call) */
+} ReleaseEnd;
+
+typedef struct {
+    ReleaseEnd end;
+    uint8_t hit;          /* RELEASE_WAITING: the pending hit */
+} ReleaseResult;
+
+/* How StepFallingItem ended. */
+typedef enum {
+    ITEM_SET_UP,          /* state 0: the record was loaded and its speed set from a table */
+    ITEM_STEPPED,         /* moved and its frames stepped; still alive */
+    ITEM_CLEARED          /* its frames ran out: the object was cleared (tail call) */
+} ItemEnd;
+
+typedef struct {
+    ItemEnd end;
+    uint8_t table_index;  /* ITEM_SET_UP: the table offset used */
+    uint8_t table_value;  /* ITEM_SET_UP: the last byte read from the table */
+    bool carry;           /* ITEM_SET_UP: the shifted kind's carry */
+} ItemResult;
+
+/* An object waits for a hit of 5 or more, then replaces itself and starts the object $9B. */
+ReleaseResult StepReleaseOnHit(uint8_t slot);
+/* An object of kinds $9B and up: at state 0 its speed is read from a table, then it falls. */
+ItemResult StepFallingItem(uint8_t slot);
+
+void abi_VecStepObjectFrames(void);
+void abi_VecApplyVelocityY(void);
+void abi_VecClearObject(void);
+void abi_VecRecordObjectEvent(void);
+void abi_VecFindFreeSlotFrom50(void);
+void abi_VecStartObjectAtPlace(void);
+
 /* Not yet typed (register entries of routines that have C): the vector that goes to LoadObjectRecord (spawn.c), entered with X the object. */
 void abi_VecLoadObjectRecord(void);
 void abi_VecApplyVelocity(void);

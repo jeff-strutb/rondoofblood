@@ -23,33 +23,32 @@ enum {
 };
 
 /* |object - player| on one axis as a byte, or $FF if not in the first screen. */
-static PlayerDistance axis_distance(uint8_t object, uint16_t high_field, uint16_t low_field)
+static PlayerDistance axis_distance(uint8_t object, uint16_t high_column, uint16_t low_column)
 {
-    PlayerDistance d = { 0xFF, true, false };
+    PlayerDistance d = { 0xFF, true, false, 0, 0 };
+    uint8_t high = RD8_IDX(high_column, object);
+    uint8_t player_high = RD8_IDX(high_column, 0);
 
-    if ((rd8((uint16_t)(high_field + object)) | rd8(high_field)) == 0) {
-        uint8_t mine = rd8((uint16_t)(low_field + object));
-        uint8_t player = rd8(low_field);
-
+    if ((high | player_high) == 0) {
+        d.mine = RD8_IDX(low_column, object);
+        d.player = RD8_IDX(low_column, 0);
         d.far = false;
-        d.object_further = mine >= player;
-        d.distance = d.object_further ? (uint8_t)(mine - player) : (uint8_t)(player - mine);
+        d.object_further = d.mine >= d.player;
+        d.distance = d.object_further ? (uint8_t)(d.mine - d.player) : (uint8_t)(d.player - d.mine);
     }
     return d;
 }
 
 /* A and N and Z from the distance; C and V from the subtract, if one was made. */
-static void distance_exit_shim(PlayerDistance d, uint16_t low_field)
+void distance_exit_shim(PlayerDistance d)
 {
     cpu.a = d.distance;
     abi_nz(d.distance);
     if (!d.far) {
-        uint8_t mine = rd8((uint16_t)(low_field + cpu.x));
-        uint8_t player = rd8(low_field);
-        uint8_t difference = (uint8_t)(mine - player);
+        uint8_t difference = (uint8_t)(d.mine - d.player);
 
         abi_flag(P_C, d.object_further);
-        abi_flag(P_V, ((mine ^ player) & (mine ^ difference) & 0x80) != 0);
+        abi_flag(P_V, ((d.mine ^ d.player) & (d.mine ^ difference) & 0x80) != 0);
     }
 }
 
@@ -66,12 +65,12 @@ static void distance_exit_shim(PlayerDistance d, uint16_t low_field)
  */
 PlayerDistance DistanceXToPlayer(uint8_t object)
 {
-    return axis_distance(object, OBJ_X_HI, OBJ_X_LO);
+    return axis_distance(object, COL(OBJ->x_hi), COL(OBJ->x_lo));
 }
 
 void abi_DistanceXToPlayer(void)
 {
-    distance_exit_shim(DistanceXToPlayer(cpu.x), OBJ_X_LO);
+    distance_exit_shim(DistanceXToPlayer(cpu.x));
 }
 
 /*
@@ -85,12 +84,12 @@ void abi_DistanceXToPlayer(void)
  */
 PlayerDistance DistanceYToPlayer(uint8_t object)
 {
-    return axis_distance(object, OBJ_Y_HI, OBJ_Y_LO);
+    return axis_distance(object, COL(OBJ->y_hi), COL(OBJ->y_lo));
 }
 
 void abi_DistanceYToPlayer(void)
 {
-    distance_exit_shim(DistanceYToPlayer(cpu.x), OBJ_Y_LO);
+    distance_exit_shim(DistanceYToPlayer(cpu.x));
 }
 
 /*
@@ -159,17 +158,25 @@ void abi_SideOfPlayer(void)
  * @run 6A:63F6
  * WHAT IT DOES: Adds $38/256 pixel a frame to an object's Y speed, whatever it is.
  * HOW: An 8.8 add carried into the high byte by an increment.
- * Entry: X object. Exit: A the new low byte, C and V from its add, N and Z from it
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the new low byte, C and V from its add, N and Z from it
  * or, on a carry, from the new high byte. X and Y kept.
  */
-void ApplyGravityUnlimited(uint8_t object)
+GravityResult ApplyGravityUnlimited(uint8_t object)
 {
-    uint16_t lo = (uint16_t)(OBJ_VY_LO + object);
-    uint16_t hi = (uint16_t)(OBJ_VY_HI + object);
-    uint16_t speed = (uint16_t)((rd8(lo) | (rd8(hi) << 8)) + GRAVITY);
+    GravityResult result = { false, 0, 0, false, false, false };
+    uint8_t low = RD8(OBJ->vy_lo[object]);
+    Sum sum = add_bytes(low, GRAVITY, false);
 
-    wr8(lo, (uint8_t)speed);
-    wr8(hi, (uint8_t)(speed >> 8));
+    WR8(OBJ->vy_lo[object], sum.value);
+    result.gained = true;
+    result.low = sum.value;
+    result.carried = sum.carry;
+    result.overflow = sum.overflow;
+    if (sum.carry) {
+        result.high = INC8(OBJ->vy_hi[object]);
+    }
+    return result;
 }
 
 /*
@@ -179,50 +186,45 @@ void ApplyGravityUnlimited(uint8_t object)
  * until the speed reaches 7 pixels a frame.
  * HOW: Rising speeds always gain; falling speeds of 7 or more do not. Runs into
  * ApplyGravityUnlimited.
- * Entry: X object. Exit, at the limit: A the speed high, N and Z of A - 7, C 1.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit, at the limit: A the speed high, N and Z of A - 7, C 1.
  * Exit, gaining: as ApplyGravityUnlimited. X and Y kept.
- * Returns whether the speed gained.
  */
-bool ApplyGravity(uint8_t object)
+GravityResult ApplyGravity(uint8_t object)
 {
-    int8_t high = (int8_t)rd8((uint16_t)(OBJ_VY_HI + object));
+    uint8_t high = RD8(OBJ->vy_hi[object]);
+    GravityResult result = { false, 0, 0, false, false, false };
 
-    if (high >= FALL_LIMIT)
-        return false;
-    ApplyGravityUnlimited(object);
-    return true;
+    if ((high & 0x80) == 0 && high >= FALL_LIMIT) {
+        result.high = high;
+        return result;
+    }
+    return ApplyGravityUnlimited(object);
 }
 
 /* What the add, or at the limit the compare, leaves in A and the flags. V stands at the limit. */
-static void gravity_exit_shim(uint8_t object, bool gained)
+void gravity_exit_shim(GravityResult result)
 {
-    uint8_t high = rd8((uint16_t)(OBJ_VY_HI + object));
-
-    if (gained) {
-        uint8_t low = rd8((uint16_t)(OBJ_VY_LO + object));
-        uint8_t before = (uint8_t)(low - GRAVITY);
-        bool carried = low < GRAVITY;
-
-        cpu.a = low;
-        abi_nz(carried ? high : low);
-        abi_flag(P_C, carried);
-        abi_flag(P_V, (~(before ^ GRAVITY) & (before ^ low) & 0x80) != 0);
+    if (result.gained) {
+        cpu.a = result.low;
+        abi_nz(result.carried ? result.high : result.low);
+        abi_flag(P_C, result.carried);
+        abi_flag(P_V, result.overflow);
     } else {
-        cpu.a = high;
-        abi_nz((uint8_t)(high - FALL_LIMIT));
+        cpu.a = result.high;
+        abi_nz((uint8_t)(result.high - FALL_LIMIT));
         abi_flag(P_C, true);
     }
 }
 
 void abi_ApplyGravityUnlimited(void)
 {
-    ApplyGravityUnlimited(cpu.x);
-    gravity_exit_shim(cpu.x, true);
+    gravity_exit_shim(ApplyGravityUnlimited(cpu.x));
 }
 
 void abi_ApplyGravity(void)
 {
-    gravity_exit_shim(cpu.x, ApplyGravity(cpu.x));
+    gravity_exit_shim(ApplyGravity(cpu.x));
 }
 
 /*
@@ -231,6 +233,7 @@ void abi_ApplyGravity(void)
  * WHAT IT DOES: Reads the terrain around an object through the stage overlay's
  * first terrain lookup, which leaves its answer in TileHit.
  * HOW: Jumps to the overlay's vector.
+ * WAITS: no.
  * Entry: A probe height, X object. Exit: as the overlay leaves it.
  */
 void abi_LookUpTerrainBelow(void)
@@ -416,6 +419,7 @@ void probe_exit_shim(Probe p)
  * wall, bit 4 for deadly ground, which also throws the object.
  * HOW: The overlay's lookup fills TileHit and the depths; the floor half reads
  * three columns, the wall half the two on the side the object is moving to.
+ * WAITS: no.
  * Entry: A request, X object, zProduct1 probe height. Exit: A answer, N and Z from
  * it; Y, C and V as the path left them. Clobbers zTemp00, zTemp12, zProduct0.
  */
@@ -443,6 +447,7 @@ void abi_ProbeTerrain(void)
  * @run 6A:6282
  * WHAT IT DOES: ProbeTerrain, using the overlay's second lookup for the floor.
  * HOW: As ProbeTerrain.
+ * WAITS: no.
  * Entry and exit: as ProbeTerrain.
  */
 Probe ProbeTerrainAlt(uint8_t request, uint8_t object, uint8_t column)
@@ -470,6 +475,7 @@ void abi_ProbeTerrainAlt(void)
  * WHAT IT DOES: ProbeTerrainAlt looking at the first column only.
  * HOW: The overlay's second lookup, then one column of TileHit: deadly throws;
  * any floor bit is floor.
+ * WAITS: no.
  * Entry and exit: as ProbeTerrain.
  */
 Probe ProbeTerrainFrontColumn(uint8_t request, uint8_t object, uint8_t column)
@@ -501,7 +507,7 @@ void abi_ProbeTerrainFrontColumn(void)
 typedef struct {
     bool moved;
     AxisMove move;
-    bool gained;
+    GravityResult gravity;
 } MoverStart;
 
 /* How a mover went, for what the wrapper replays. */
@@ -522,7 +528,7 @@ static MoverStart mover_start(uint8_t height, uint8_t object)
     start.move = ApplyVelocity(object);
     wr8(WorkByteA, 0);
     wr8(WorkByteB, 0);
-    start.gained = ApplyGravity(object);
+    start.gravity = ApplyGravity(object);
     return start;
 }
 
@@ -531,7 +537,7 @@ static void mover_exit_shim(Mover mover, uint8_t carry_bit)
 {
     if (mover.start.moved) {
         axis_move_flags_shim(mover.start.move);
-        gravity_exit_shim(mover.object, mover.start.gained);
+        gravity_exit_shim(mover.start.gravity);
     }
     if (mover.floor_probed)
         probe_exit_shim(mover.floor);
@@ -548,6 +554,7 @@ static void mover_exit_shim(Mover mover, uint8_t carry_bit)
  * gravity, lands it on floor (stopping its fall) and pushes it out of walls.
  * HOW: ApplyVelocity, ApplyGravity; a floor probe only when not rising, then a
  * wall probe.
+ * WAITS: no.
  * Entry: A probe height, X object. Exit: A bit 0 landed, bit 1 walled; C 1 if
  * walled; N and Z from A. Y and V as the probes left them. X kept.
  */
@@ -612,6 +619,7 @@ static void land_with(Mover *mover, Probe (*probe)(uint8_t, uint8_t, uint8_t), u
  * the object itself.
  * HOW: Floor probe with the overlay's second lookup when not rising, then the
  * wall probe and the stop.
+ * WAITS: no.
  * Entry: X object, zProduct1 probe height, WorkByteA clear. Exit: A bit 0
  * landed, bit 1 walled; C 1 if landed; N and Z from A. Y and V as the probes left
  * them.
@@ -635,6 +643,7 @@ void abi_StopOnLandingNoMove(void)
  * WHAT IT DOES: One frame of a thrown object that stops dead where it lands: moves
  * it, applies gravity, and on landing zeroes all its speed.
  * HOW: The start of MoveAndLand, then runs into StopOnLandingNoMove.
+ * WAITS: no.
  * Entry: A probe height, X object. Exit: as StopOnLandingNoMove.
  */
 Mover StopOnLanding(uint8_t height, uint8_t object, uint8_t column)
@@ -656,6 +665,7 @@ void abi_StopOnLanding(void)
  * @run 6A:63AB
  * WHAT IT DOES: StopOnLanding, reading only the first column of floor.
  * HOW: The same start, ProbeTerrainFrontColumn for the floor, the same end.
+ * WAITS: no.
  * Entry: A probe height, X object. Exit: as StopOnLandingNoMove.
  */
 Mover StopOnLandingFrontColumn(uint8_t height, uint8_t object, uint8_t column)

@@ -400,6 +400,7 @@ void abi_ScrollSpeedsFromBands(void)
     Sum last = ScrollSpeedsFromBands();
 
     sum_exit_shim(last);
+    abi_nz(0xFF);
     cpu.x = 0xFF;
 }
 
@@ -489,6 +490,7 @@ void abi_CopyWordsToVdc(void)
     Sum last = CopyWordsToVdc(cpu.x);
 
     sum_exit_shim(last);
+    abi_nz(0);
     cpu.x = 0;
     cpu.y = 0x20;
 }

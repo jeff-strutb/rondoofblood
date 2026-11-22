@@ -41,6 +41,11 @@ Ended StartPieceStreamB(uint8_t slot, uint8_t y);
 Ended StartPieceStreamC(uint8_t slot);
 Ended StepFallingPieceStream(uint8_t slot);
 Ended StepPieceEmitter(uint8_t slot);
+Ended StartOnFirstState(uint8_t slot);
+Ended FallingDebris(uint8_t slot);
+Ended FlashByHeight(uint8_t slot);
+Ended StartWithEvent(uint8_t slot);
+Ended RaiseStateOnFlag(uint8_t slot);
 void StopVerticalSpeed(uint8_t slot);
 Jump JumpByStageStep(void);
 

@@ -1444,3 +1444,195 @@ void abi_StepPieceEmitter(void)
 {
     abi_ended(StepPieceEmitter(cpu.x));
 }
+
+/* RecordObjectEvent's exit: unmarked, A 0 and Z; else A the byte stored, Y its index, C whether the event is a multiple of 8. */
+static Ended ended_of_object_event(bool marked, uint8_t stored, uint8_t event, uint8_t byte)
+{
+    if (!marked) {
+        return ended_load(0);
+    }
+    return ended_with_carry(ended_with_y(ended_load(stored), byte), (event & 7) == 0);
+}
+
+/*
+ * @routine 072B:31B StartOnFirstState
+ * @run 70:B31B
+ * WHAT IT DOES: An object that only needs its record loaded: in state 0 it does LoadObjectRecord, otherwise nothing.
+ * HOW: A tail jump into LoadObjectRecord.
+ * WAITS: no.
+ * Entry: X object. Exit: state 0: as LoadObjectRecord; else A the state, N and Z from it.
+ */
+Ended StartOnFirstState(uint8_t slot)
+{
+    uint8_t state, nz, last;
+    bool carry;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        return ended_load(state);
+    }
+    last = LoadObjectRecord(slot, &nz, &carry);
+    return ended_of_record(last, nz, carry);
+}
+
+void abi_StartOnFirstState(void)
+{
+    abi_ended(StartOnFirstState(cpu.x));
+}
+
+/*
+ * @routine 072B:324 FallingDebris
+ * @run 70:B324
+ * WHAT IT DOES: A piece of debris: from state 0 it loads its record and takes frame $19 or $1A at random; later it
+ * falls under unlimited gravity and goes away once its Y high byte is not 0.
+ * HOW: NextRandom, ApplyGravityUnlimited, ApplyVelocityY, a tail jump into ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: state 0: A the frame, N and Z from it, C and V from the add; else the move's registers
+ * then the compare of the Y high byte.
+ */
+Ended FallingDebris(uint8_t slot)
+{
+    RandomResult random;
+    GravityResult gravity;
+    AxisMove move;
+    uint8_t state, nz, y_high;
+    bool carry;
+    Sum sum;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        jsr_push(0xB32C);
+        LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        jsr_push(0xB32F);
+        random = NextRandom();
+        jsr_pop();
+        sum = add_bytes((uint8_t)(random.value & 0x01), 0x19, false);
+        WR8(OBJ->frame[slot], sum.value);
+        return ended_with_y(of_sum(sum), 11);
+    }
+    jsr_push(0xB33B);
+    gravity = ApplyGravityUnlimited(slot);
+    jsr_pop();
+    jsr_push(0xB33E);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = ended_of_axis_move(move);
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_load(y_high));
+    if (y_high != 0) {
+        ClearObject(slot);
+    }
+    (void)gravity;
+    return e;
+}
+
+void abi_FallingDebris(void)
+{
+    abi_ended(FallingDebris(cpu.x));
+}
+
+/*
+ * @routine 072B:3A4 FlashByHeight
+ * @run 70:B3A4
+ * WHAT IT DOES: Sets the object's flash flag: $86 while slot $10's flash flag is $86; else, when slot $10 is in state 2,
+ * a byte of a table at $B3CB picked by the object's height in sixteens; else 0.
+ * HOW: Reads slot $10's flash flag and state, then the object's Y low byte shifted four times.
+ * WAITS: no.
+ * Entry: X object. Exit: A the byte stored, N and Z from it; Y the table index when read.
+ */
+Ended FlashByHeight(uint8_t slot)
+{
+    uint8_t flash, state, height, index, byte;
+    Ended e;
+
+    flash = RD8(OBJ->flash_flags[0x10]);
+    e = ended_compare(flash, 0x86);
+    if (flash == 0x86) {
+        WR8(OBJ->flash_flags[slot], 0x86);
+        return then(e, ended_load(0x86));
+    }
+    state = RD8(OBJ->state[0x10]);
+    e = then(e, ended_compare(state, 2));
+    if (state != 2) {
+        WR8(OBJ->flash_flags[slot], 0);
+        return e;
+    }
+    height = RD8(OBJ->y_lo[slot]);
+    index = (uint8_t)(height >> 4);
+    byte = rd8((uint16_t)(0xB3CB + index));
+    WR8(OBJ->flash_flags[slot], byte);
+    e = then(e, ended_with_carry(ended_with_y(ended_load(byte), index), (height & 0x08) != 0));
+    return e;
+}
+
+void abi_FlashByHeight(void)
+{
+    abi_ended(FlashByHeight(cpu.x));
+}
+
+/*
+ * @routine 072B:427 StartWithEvent
+ * @run 70:B427
+ * WHAT IT DOES: Loads the object's record and records its event (when it is one the save remembers).
+ * HOW: LoadObjectRecord, RecordObjectEvent.
+ * WAITS: no.
+ * Entry: X object. Exit: as RecordObjectEvent.
+ */
+Ended StartWithEvent(uint8_t slot)
+{
+    uint8_t nz, stored, event, byte;
+    bool carry, marked;
+
+    uint8_t last;
+
+    jsr_push(0xB42A);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    jsr_push(0xB42D);
+    marked = RecordObjectEvent(slot, &stored, &event, &byte);
+    jsr_pop();
+    return then(ended_of_record(last, nz, carry), ended_of_object_event(marked, stored, event, byte));
+}
+
+void abi_StartWithEvent(void)
+{
+    abi_ended(StartWithEvent(cpu.x));
+}
+
+/*
+ * @routine 072B:38D RaiseStateOnFlag
+ * @run 70:B38D
+ * WHAT IT DOES: When bit 7 of the object's status flags is set, an object in a state below 3 enters state 3 and
+ * clears OBJ_2800.
+ * HOW: Compares the state with 3.
+ * Untraced: every arm past the flag test (B394 to B39A) ran in no script.
+ * WAITS: no.
+ * Entry: X object. Exit: the last AND, compare or load.
+ */
+Ended RaiseStateOnFlag(uint8_t slot)
+{
+    uint8_t flags, state;
+    Ended e;
+
+    flags = RD8(OBJ->status_flags[slot]);
+    flags = (uint8_t)(flags & 0x80);
+    e = ended_load(flags);
+    if (flags == 0) {
+        return e;
+    }
+    state = RD8(OBJ->state[slot]);
+    e = then(e, ended_compare(state, 3));
+    if (state >= 3) {
+        return e;
+    }
+    WR8(OBJ->state[slot], 3);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(3));
+}
+
+void abi_RaiseStateOnFlag(void)
+{
+    abi_ended(RaiseStateOnFlag(cpu.x));
+}

@@ -435,6 +435,109 @@ FallingPieceMove_at0:
     lda a:OBJ_VY_LO,x
     sta z:zPushYLo
     rts
+; @routine 072B:31B StartOnFirstState
+; @run 70:B31B
+; WHAT IT DOES: An object that only needs its record loaded: in state 0 it does LoadObjectRecord, otherwise nothing.
+; HOW: A tail jump into LoadObjectRecord.
+; WAITS: no.
+; Entry: X object. Exit: state 0: as LoadObjectRecord; else A the state, N and Z from it.
+StartOnFirstState:
+    lda a:OBJ_27A8,x
+    bne StartOnFirstState_at0
+    jmp VecLoadObjectRecord
+StartOnFirstState_at0:
+    rts
+
+; @routine 072B:324 FallingDebris
+; @run 70:B324
+; WHAT IT DOES: A piece of debris: from state 0 it loads its record and takes frame $19 or $1A at random; later it
+; falls under unlimited gravity and goes away once its Y high byte is not 0.
+; HOW: NextRandom, ApplyGravityUnlimited, ApplyVelocityY, a tail jump into ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: state 0: A the frame, N and Z from it, C and V from the add; else the move's registers
+; then the compare of the Y high byte.
+FallingDebris:
+    lda a:OBJ_27A8,x
+    bne FallingDebris_at0
+    jsr VecLoadObjectRecord
+    jsr VecNextRandom
+    and #$01
+    clc
+    adc #$19
+    sta a:OBJ_2A68,x
+    rts
+FallingDebris_at0:
+    jsr VecApplyGravityUnlimited
+    jsr VecApplyVelocityY
+    lda a:OBJ_Y_HI,x
+    beq FallingDebris_at1
+    jmp VecClearObject
+FallingDebris_at1:
+    rts
+
+; @routine 072B:38D RaiseStateOnFlag
+; @run 70:B38D
+; WHAT IT DOES: When bit 7 of the object's status flags is set, an object in a state below 3 enters state 3 and
+; clears OBJ_2800.
+; HOW: Compares the state with 3.
+; Untraced: every arm past the flag test (B394 to B39A) ran in no script.
+; WAITS: no.
+; Entry: X object. Exit: the last AND, compare or load.
+RaiseStateOnFlag:
+    lda a:OBJ_31A0,x
+    and #$80
+    beq RaiseStateOnFlag_at0
+    lda a:OBJ_27A8,x
+    cmp #$03
+    bcs RaiseStateOnFlag_at0
+    lda #$03
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+RaiseStateOnFlag_at0:
+    rts
+
+; @routine 072B:3A4 FlashByHeight
+; @run 70:B3A4
+; WHAT IT DOES: Sets the object's flash flag: $86 while slot $10's flash flag is $86; else, when slot $10 is in state 2,
+; a byte of a table at $B3CB picked by the object's height in sixteens; else 0.
+; HOW: Reads slot $10's flash flag and state, then the object's Y low byte shifted four times.
+; WAITS: no.
+; Entry: X object. Exit: A the byte stored, N and Z from it; Y the table index when read.
+FlashByHeight:
+    lda a:$2B28
+    cmp #$86
+    beq FlashByHeight_at0
+    lda a:$27B8
+    cmp #$02
+    bne FlashByHeight_at1
+    lda a:OBJ_Y_LO,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    tay
+    lda a:$B3CB,y
+    sta a:OBJ_2B18,x
+    rts
+FlashByHeight_at1:
+    stz a:OBJ_2B18,x
+    rts
+FlashByHeight_at0:
+    lda #$86
+    sta a:OBJ_2B18,x
+    rts
+
+; @routine 072B:427 StartWithEvent
+; @run 70:B427
+; WHAT IT DOES: Loads the object's record and records its event (when it is one the save remembers).
+; HOW: LoadObjectRecord, RecordObjectEvent.
+; WAITS: no.
+; Entry: X object. Exit: as RecordObjectEvent.
+StartWithEvent:
+    jsr VecLoadObjectRecord
+    jsr VecRecordObjectEvent
+    rts
+
 ; @routine 072B:42E StartPieceChain
 ; @run 70:B42E
 ; WHAT IT DOES: Stops the object, clears four 192-byte work tables the overlay keeps at $B46E, $B52E,

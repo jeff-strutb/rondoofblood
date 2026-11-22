@@ -435,3 +435,487 @@ FallingPieceMove_at0:
     lda a:OBJ_VY_LO,x
     sta z:zPushYLo
     rts
+; @routine 072B:42E StartPieceChain
+; @run 70:B42E
+; WHAT IT DOES: Stops the object, clears four 192-byte work tables the overlay keeps at $B46E, $B52E,
+; $B5EE and $B6AE, then starts 22 objects of kind $25 in the slots after this one, each at this object's
+; place, each with its own number 0 to 21 in its life timer (the chain of pieces that follow it).
+; HOW: Clears the four speed bytes and OBJ_2FE8; a loop of 192 stores to each table; a loop of 22 of
+; ClearObjectInY and StartObjectAtPlace. The tables have no names yet.
+; WAITS: no.
+; Entry: X object. Exit: A 21, Y the slot plus 23, N 0, Z 1, C 1; V kept.
+StartPieceChain:
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    stz a:OBJ_2FE8,x
+    cla
+    cly
+StartPieceChain_at0:
+    sta a:$B46E,y
+    sta a:$B52E,y
+    sta a:$B5EE,y
+    sta a:$B6AE,y
+    iny
+    cpy #$C0
+    bcc StartPieceChain_at0
+    txa
+    tay
+    iny
+    lda #$16
+    sta z:zTemp00
+    stz z:zTemp01
+StartPieceChain_at1:
+    jsr VecClearObjectInY
+    lda #$25
+    jsr VecStartObjectAtPlace
+    lda z:zTemp01
+    sta a:OBJ_34B8,y
+    iny
+    inc z:zTemp01
+    dec z:zTemp00
+    bne StartPieceChain_at1
+    rts
+
+; @routine 072C:053 StartPieceStreamA
+; @run 70:B853
+; WHAT IT DOES: Starts a stream of pieces from one of two sides: sound $88, OBJ_3670 1, OBJ_3828 2, frame $10;
+; the side (OBJ_37D0) is a random bit and picks the start position from a table at $B894 (four bytes a side);
+; then StartPieceChain, OBJ_3778 0 and the next OBJ_2800 state.
+; HOW: SoundCommand, NextRandom, tables read from the disc (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: N and Z from the new state, C 1 from the chain's loop, V as the random's add left it.
+StartPieceStreamA:
+    lda #$88
+    jsr VecSoundCommand
+    lda #$01
+    sta a:OBJ_3670,x
+    lda #$02
+    sta a:OBJ_3828,x
+    lda #$10
+    sta a:OBJ_2A68,x
+    jsr VecNextRandom
+    and #$01
+    sta a:OBJ_37D0,x
+    asl a
+    asl a
+    tay
+    lda a:$B895,y
+    sta a:OBJ_X_HI,x
+    lda a:$B894,y
+    sta a:OBJ_X_LO,x
+    lda a:$B897,y
+    sta a:OBJ_Y_HI,x
+    lda a:$B896,y
+    sta a:OBJ_Y_LO,x
+    jsr StartPieceChain
+    stz a:OBJ_3778,x
+    inc a:OBJ_2800,x
+    rts
+
+; @routine 072C:09C OrbitingObject
+; @run 70:B89C
+; WHAT IT DOES: An object that circles: it shifts the others (ShiftObjectsX), sets its speed from its angle
+; (OBJ_3778) with a length of $0400, adds a drift word from the table at $B8E3 by its side (OBJ_37D0),
+; moves, turns its angle on by a byte from the table at $B8E7, and when its X high byte reaches $FE or 2
+; it clears its OBJ_2800 flag.
+; HOW: SetVelocityFromAngle, ApplyVelocity, tables from the disc (bank 70).
+; Untraced: one byte (the second compare's exit).
+; WAITS: no.
+; Entry: X object. Exit: A the X high byte, N, Z and C from the last compare, Y the side, V from the angle's add.
+OrbitingObject:
+    jsr ShiftObjectsX
+    stz z:zTemp00
+    lda #$04
+    sta z:zTemp01
+    lda a:OBJ_3778,x
+    jsr VecSetVelocityFromAngle
+    lda a:OBJ_37D0,x
+    asl a
+    tay
+    lda a:OBJ_VX_LO,x
+    clc
+    adc a:$B8E3,y
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_VX_HI,x
+    adc a:$B8E4,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocity
+    ldy a:OBJ_37D0,x
+    lda a:OBJ_3778,x
+    clc
+    adc a:$B8E7,y
+    sta a:OBJ_3778,x
+    lda a:OBJ_X_HI,x
+    cmp #$FE
+    beq OrbitingObject_at0
+    cmp #$02
+    beq OrbitingObject_at0
+    rts
+OrbitingObject_at0:
+    stz a:OBJ_2800,x
+    rts
+
+; @routine 072C:0E9 ShiftObjectsX
+; @run 70:B8E9
+; WHAT IT DOES: On every second frame of the object's life timer, moves every object slot from $10 to $26
+; along X by a signed 16-bit step from the table at $B912, picked by the object's OBJ_37D0 (0 or 1).
+; HOW: The table index is kept in X while the loop runs (X is pushed and pulled).
+; WAITS: no.
+; Entry: X object. Exit: odd timer: A 1, N 0, Z 0; else A the last high byte, Y $27, C 1, N and Z from X, V
+; from the last add.
+ShiftObjectsX:
+    lda a:OBJ_34B8,x
+    and #$01
+    bne ShiftObjectsX_at0
+    lda a:OBJ_37D0,x
+    asl a
+    phx
+    tax
+    ldy #$10
+ShiftObjectsX_at1:
+    lda a:OBJ_X_LO,y
+    clc
+    adc a:$B912,x
+    sta a:OBJ_X_LO,y
+    lda a:OBJ_X_HI,y
+    adc a:$B913,x
+    sta a:OBJ_X_HI,y
+    iny
+    cpy #$27
+    bcc ShiftObjectsX_at1
+    plx
+ShiftObjectsX_at0:
+    rts
+
+; @routine 072C:116 StartPieceStreamB
+; @run 70:B916
+; WHAT IT DOES: Starts a stream of pieces from the top: OBJ_3828 2, sound $89, animation reset, X 0 with a
+; random low byte, Y $0110, StartPieceChain, then random X and Y speeds from tables at $B970 and $B978 (two
+; bytes each, four of them) and the next OBJ_2800 state; when the object is on the player's left
+; (SideOfPlayer bit 0) its X speed is reversed.
+; HOW: SoundCommand, NextRandom three times, SideOfPlayer, NegateVelocityX.
+; WAITS: no.
+; Entry: X object. Exit: A the side bits (or the reversed speed's high byte), N and Z from it, C and V from the
+; reversal when made, else C from the side and V from the last random.
+StartPieceStreamB:
+    lda #$02
+    sta a:OBJ_3828,x
+    lda #$89
+    jsr VecSoundCommand
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    stz a:OBJ_X_HI,x
+    jsr VecNextRandom
+    sta a:OBJ_X_LO,x
+    lda #$01
+    sta a:OBJ_Y_HI,x
+    lda #$10
+    sta a:OBJ_Y_LO,x
+    jsr StartPieceChain
+    jsr VecNextRandom
+    and #$03
+    asl a
+    tay
+    lda a:$B971,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B970,y
+    sta a:OBJ_VX_LO,x
+    jsr VecNextRandom
+    and #$03
+    asl a
+    tay
+    lda a:$B979,y
+    sta a:OBJ_VY_HI,x
+    lda a:$B978,y
+    sta a:OBJ_VY_LO,x
+    inc a:OBJ_2800,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq StartPieceStreamB_at0
+    jsr VecNegateVelocityX
+StartPieceStreamB_at0:
+    rts
+
+; @routine 072C:180 StepFallingPieceStream
+; @run 70:B980
+; WHAT IT DOES: One frame of a falling piece stream: steps the animation list at $B9B3, sets the hitbox
+; flag by its direction, lifts the other objects (LiftObjectsBySlowFraction), adds $002C to its Y speed, moves,
+; and when its Y high byte reaches 8 clears its flash flag and OBJ_2800.
+; HOW: StepObjectFrames, HitboxByVerticalDirection, LiftObjectsBySlowFraction, ApplyVelocity.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: A the Y high byte, N, Z and C from its compare with 8,
+; V from the move; Y as the lift left it ($27).
+StepFallingPieceStream:
+    lda #$B3
+    sta z:zTemp10
+    lda #$B9
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jsr HitboxByVerticalDirection
+    jsr LiftObjectsBySlowFraction
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$2C
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_HI,x
+    cmp #$08
+    bne StepFallingPieceStream_at0
+    stz a:OBJ_2B18,x
+    stz a:OBJ_2800,x
+StepFallingPieceStream_at0:
+    rts
+
+; @routine 072C:1BE HitboxByVerticalDirection
+; @run 70:B9BE
+; WHAT IT DOES: Sets the object's hitbox flag from a two-byte table at $B9CD by whether it is moving up
+; (its Y speed's top bit): index 1 when rising, 0 otherwise.
+; HOW: Two ROLs take the top bit to bit 0; the table is read from the disc (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: A the table byte, Y the index, N and Z from A, C bit 6 of the Y speed.
+HitboxByVerticalDirection:
+    lda a:OBJ_VY_HI,x
+    rol a
+    rol a
+    and #$01
+    tay
+    lda a:$B9CD,y
+    sta a:OBJ_3250,x
+    rts
+
+; @routine 072C:1CF LiftObjectsBySlowFraction
+; @run 70:B9CF
+; WHAT IT DOES: For each object slot from $10 to $26, adds $E0 to this object's Y fraction and carries
+; the sum into that slot's Y position (low then high byte).
+; HOW: A loop of 23, the carry of each fraction add running through the two position adds.
+; WAITS: no.
+; Entry: X object. Exit: A the last high byte, Y $27, N 0, Z 1, C 1 from the loop's compare, V from the
+; last add.
+LiftObjectsBySlowFraction:
+    ldy #$10
+LiftObjectsBySlowFraction_at0:
+    lda a:OBJ_Y_FRAC,x
+    clc
+    adc #$E0
+    sta a:OBJ_Y_FRAC,x
+    lda a:OBJ_Y_LO,y
+    adc #$00
+    sta a:OBJ_Y_LO,y
+    lda a:OBJ_Y_HI,y
+    adc #$00
+    sta a:OBJ_Y_HI,y
+    iny
+    cpy #$27
+    bcc LiftObjectsBySlowFraction_at0
+    rts
+
+; @routine 072C:1F0 StartPieceStreamC
+; @run 70:B9F0
+; WHAT IT DOES: Starts a stream of pieces from the bottom: OBJ_3828 3, OBJ_3510 0, a random side (OBJ_37D0)
+; picks X from the table at $BA3E and the X speed from $BA40; Y is $0110; StartPieceChain; Y speed $F7;
+; frame $80, animation reset, OBJ_3670 2, OBJ_36C8 $30 and the next OBJ_2800 state.
+; HOW: NextRandom, tables from the disc (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: N and Z from the new state, C 1 from the chain's loop, V as the random's add left it.
+StartPieceStreamC:
+    lda #$03
+    sta a:OBJ_3828,x
+    stz a:OBJ_3510,x
+    jsr VecNextRandom
+    and #$01
+    sta a:OBJ_37D0,x
+    tay
+    lda a:RichterItemAttacks+6,y
+    sta a:OBJ_X_LO,x
+    stz a:OBJ_X_HI,x
+    lda #$01
+    sta a:OBJ_Y_HI,x
+    lda #$10
+    sta a:OBJ_Y_LO,x
+    jsr StartPieceChain
+    ldy a:OBJ_37D0,x
+    lda a:RichterItemAttacks+8,y
+    sta a:OBJ_VX_HI,x
+    lda #$F7
+    sta a:OBJ_VY_HI,x
+    lda #$80
+    sta a:OBJ_2A68,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$02
+    sta a:OBJ_3670,x
+    lda #$30
+    sta a:OBJ_36C8,x
+    inc a:OBJ_2800,x
+    rts
+
+; @routine 072C:242 AccelerateAndSway
+; @run 70:BA42
+; WHAT IT DOES: A thing that falls and sways: its Y speed gains $002C, it moves, its X speed gains a drift
+; word from the table at $BA7C by its side (OBJ_37D0); when its counter OBJ_36C8 runs out it takes
+; OBJ_3670 3 and moves on one OBJ_2800 state.
+; HOW: Adds, ApplyVelocity, DEC of the counter.
+; WAITS: no.
+; Entry: X object. Exit: counter not zero: N and Z from it, C and V from the X speed's add; zero: A 3, N and Z
+; from the new state.
+AccelerateAndSway:
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$2C
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    lda a:OBJ_37D0,x
+    asl a
+    tay
+    lda a:OBJ_VX_LO,x
+    clc
+    adc a:$BA7C,y
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_VX_HI,x
+    adc a:$BA7D,y
+    sta a:OBJ_VX_HI,x
+    dec a:OBJ_36C8,x
+    bne AccelerateAndSway_at0
+    lda #$03
+    sta a:OBJ_3670,x
+    inc a:OBJ_2800,x
+AccelerateAndSway_at0:
+    rts
+
+; @routine 072C:280 StepThenCount
+; @run 70:BA80
+; WHAT IT DOES: Steps the animation list at $BA96; when the list ends, sets the counter OBJ_36C8 to $80 and
+; moves on one OBJ_2800 state.
+; HOW: StepObjectFrames, then the stores.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: N and Z from the new state.
+StepThenCount:
+    lda #$96
+    sta z:zTemp10
+    lda #$BA
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepThenCount_at0
+    lda #$80
+    sta a:OBJ_36C8,x
+    inc a:OBJ_2800,x
+StepThenCount_at0:
+    rts
+
+; @routine 072C:29F StepPieceEmitter
+; @run 70:BA9F
+; WHAT IT DOES: An object that sheds pieces while it plays its animation (list $BAE6): when the list ends it
+; moves on one OBJ_2800 state; otherwise, every fourth frame of its life timer, once its animation step is
+; $10 or more, on frame $13 and while OBJ_3510 is under 4, it starts an object of kind $26 at its place in the
+; first free slot from $20, copies its facing and gives it the count OBJ_3510, which then goes up one.
+; HOW: StepObjectFrames, FindFreeSlotFrom20, StartObjectAtPlace.
+; Untraced: one byte.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: the last compare, load or INC.
+StepPieceEmitter:
+    lda #$E6
+    sta z:zTemp10
+    lda #$BA
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    beq StepPieceEmitter_at0
+    lda a:OBJ_34B8,x
+    and #$03
+    bne StepPieceEmitter_at1
+    lda a:OBJ_3408,x
+    cmp #$10
+    bcc StepPieceEmitter_at1
+    lda a:OBJ_2A68,x
+    cmp #$13
+    bne StepPieceEmitter_at1
+    lda a:OBJ_3510,x
+    cmp #$04
+    bcs StepPieceEmitter_at1
+    jsr VecFindFreeSlotFrom20
+    bcc StepPieceEmitter_at1
+    lda #$26
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    lda a:OBJ_3510,x
+    sta a:OBJ_34B8,y
+    inc a:OBJ_3510,x
+    rts
+StepPieceEmitter_at0:
+    inc a:OBJ_2800,x
+StepPieceEmitter_at1:
+    rts
+
+; @routine 072C:329 StepThenStop
+; @run 70:BB29
+; WHAT IT DOES: Steps the animation list at $BB45; when the list ends, sets OBJ_3670 to 4, stops the Y
+; speed and moves on one OBJ_2800 state.
+; HOW: StepObjectFrames, then the stores.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: A 4, N and Z from
+; the new state.
+StepThenStop:
+    lda #$45
+    sta z:zTemp10
+    lda #$BB
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepThenStop_at0
+    lda #$04
+    sta a:OBJ_3670,x
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    inc a:OBJ_2800,x
+StepThenStop_at0:
+    rts
+
+; @routine 072C:34C FallUntilLevel2
+; @run 70:BB4C
+; WHAT IT DOES: Applies gravity and moves the object down; when its Y high byte is 2 its OBJ_2800 is cleared.
+; HOW: ApplyGravity, ApplyVelocityY, a compare.
+; WAITS: no.
+; Entry: X object. Exit: A the Y high byte, N, Z and C of the compare with 2, V from the move.
+FallUntilLevel2:
+    jsr VecApplyGravity
+    jsr VecApplyVelocityY
+    lda a:OBJ_Y_HI,x
+    cmp #$02
+    bne FallUntilLevel2_at0
+    stz a:OBJ_2800,x
+FallUntilLevel2_at0:
+    rts
+
+; @routine 072C:5AB JumpByStageStep
+; @run 70:BDAB
+; WHAT IT DOES: Goes to the code a table at $BDBD names for the stage's step counter OBJ_3670 slot $10.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: nothing. Exit: as the code jumped to; A the high byte, Y the doubled step.
+JumpByStageStep:
+    lda a:$3680
+    asl a
+    tay
+    lda a:$BDBD,y
+    sta z:zTemp00
+    lda a:$BDBE,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 072C:6AE StopVerticalSpeed
+; @run 70:BEAE
+; WHAT IT DOES: Sets the object's Y speed to 0.
+; HOW: Two stores.
+; WAITS: no.
+; Entry: X object. Exit: all registers and flags kept.
+StopVerticalSpeed:
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    rts

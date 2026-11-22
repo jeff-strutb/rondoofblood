@@ -705,3 +705,742 @@ void abi_FallingPieceStep(void)
 {
     abi_ended(FallingPieceStep(cpu.x));
 }
+
+/*
+ * @routine 072C:1BE HitboxByVerticalDirection
+ * @run 70:B9BE
+ * WHAT IT DOES: Sets the object's hitbox flag from a two-byte table at $B9CD by whether it is moving up
+ * (its Y speed's top bit): index 1 when rising, 0 otherwise.
+ * HOW: Two ROLs take the top bit to bit 0; the table is read from the disc (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: A the table byte, Y the index, N and Z from A, C bit 6 of the Y speed.
+ */
+Ended HitboxByVerticalDirection(uint8_t slot)
+{
+    uint8_t speed, index, byte;
+    Ended e;
+
+    speed = RD8(OBJ->vy_hi[slot]);
+    index = (uint8_t)(speed >> 7);
+    byte = rd8((uint16_t)(0xB9CD + index));
+    WR8(OBJ->hitbox_on[slot], byte);
+    e = ended_with_y(ended_load(byte), index);
+    return ended_with_carry(e, (speed & 0x40) != 0);
+}
+
+void abi_HitboxByVerticalDirection(void)
+{
+    abi_ended(HitboxByVerticalDirection(cpu.x));
+}
+
+/*
+ * @routine 072C:1CF LiftObjectsBySlowFraction
+ * @run 70:B9CF
+ * WHAT IT DOES: For each object slot from $10 to $26, adds $E0 to this object's Y fraction and carries
+ * the sum into that slot's Y position (low then high byte).
+ * HOW: A loop of 23, the carry of each fraction add running through the two position adds.
+ * WAITS: no.
+ * Entry: X object. Exit: A the last high byte, Y $27, N 0, Z 1, C 1 from the loop's compare, V from the
+ * last add.
+ */
+Ended LiftObjectsBySlowFraction(uint8_t slot)
+{
+    uint8_t other, frac, low, high;
+    Sum sum, last = { 0, false, false };
+
+    for (other = 0x10; other < 0x27; other++) {
+        frac = RD8(OBJ->y_frac[slot]);
+        sum = add_bytes(frac, 0xE0, false);
+        WR8(OBJ->y_frac[slot], sum.value);
+        low = RD8(OBJ->y_lo[other]);
+        sum = add_bytes(low, 0, sum.carry);
+        WR8(OBJ->y_lo[other], sum.value);
+        high = RD8(OBJ->y_hi[other]);
+        last = add_bytes(high, 0, sum.carry);
+        WR8(OBJ->y_hi[other], last.value);
+    }
+    return then(of_sum(last), ended_with_carry(ended_with_y(ended_nz(0), 0x27), true));
+}
+
+void abi_LiftObjectsBySlowFraction(void)
+{
+    abi_ended(LiftObjectsBySlowFraction(cpu.x));
+}
+
+/*
+ * @routine 072C:0E9 ShiftObjectsX
+ * @run 70:B8E9
+ * WHAT IT DOES: On every second frame of the object's life timer, moves every object slot from $10 to $26
+ * along X by a signed 16-bit step from the table at $B912, picked by the object's OBJ_37D0 (0 or 1).
+ * HOW: The table index is kept in X while the loop runs (X is pushed and pulled).
+ * WAITS: no.
+ * Entry: X object. Exit: odd timer: A 1, N 0, Z 0; else A the last high byte, Y $27, C 1, N and Z from X, V
+ * from the last add.
+ */
+Ended ShiftObjectsX(uint8_t slot)
+{
+    uint8_t timer, side, index, other, low, high;
+    Sum sum, last = { 0, false, false };
+
+    timer = RD8(OBJ->life_timer[slot]);
+    timer = (uint8_t)(timer & 0x01);
+    if (timer != 0) {
+        return ended_load(timer);
+    }
+    side = RD8(OBJ->f37d0[slot]);
+    index = (uint8_t)(side << 1);
+    push8(slot);
+    for (other = 0x10; other < 0x27; other++) {
+        low = RD8(OBJ->x_lo[other]);
+        sum = add_bytes(low, rd8((uint16_t)(0xB912 + index)), false);
+        WR8(OBJ->x_lo[other], sum.value);
+        high = RD8(OBJ->x_hi[other]);
+        last = add_bytes(high, rd8((uint16_t)(0xB913 + index)), sum.carry);
+        WR8(OBJ->x_hi[other], last.value);
+    }
+    slot = pull8();
+    return then(of_sum(last), ended_with_carry(ended_with_y(ended_nz(slot), 0x27), true));
+}
+
+void abi_ShiftObjectsX(void)
+{
+    abi_ended(ShiftObjectsX(cpu.x));
+}
+
+/* The slot's X speed word with a signed table word added (low byte first). */
+static Sum speed_x_add(uint8_t slot, uint16_t table, uint8_t index)
+{
+    uint8_t low, high;
+    Sum sum;
+
+    low = RD8(OBJ->vx_lo[slot]);
+    sum = add_bytes(low, rd8((uint16_t)(table + index)), false);
+    WR8(OBJ->vx_lo[slot], sum.value);
+    high = RD8(OBJ->vx_hi[slot]);
+    sum = add_bytes(high, rd8((uint16_t)(table + 1 + index)), sum.carry);
+    WR8(OBJ->vx_hi[slot], sum.value);
+    return sum;
+}
+
+/*
+ * @routine 072C:09C OrbitingObject
+ * @run 70:B89C
+ * WHAT IT DOES: An object that circles: it shifts the others (ShiftObjectsX), sets its speed from its angle
+ * (OBJ_3778) with a length of $0400, adds a drift word from the table at $B8E3 by its side (OBJ_37D0),
+ * moves, turns its angle on by a byte from the table at $B8E7, and when its X high byte reaches $FE or 2
+ * it clears its OBJ_2800 flag.
+ * HOW: SetVelocityFromAngle, ApplyVelocity, tables from the disc (bank 70).
+ * Untraced: one byte (the second compare's exit).
+ * WAITS: no.
+ * Entry: X object. Exit: A the X high byte, N, Z and C from the last compare, Y the side, V from the angle's add.
+ */
+Ended OrbitingObject(uint8_t slot)
+{
+    uint8_t angle, side, index, step, x_high, turned;
+    AxisMove move;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xB89F);
+    ShiftObjectsX(slot);
+    jsr_pop();
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, 4);
+    angle = RD8(OBJ->f3778[slot]);
+    jsr_push(0xB8AB);
+    SetVelocityFromAngle(angle, slot);
+    jsr_pop();
+    side = RD8(OBJ->f37d0[slot]);
+    index = (uint8_t)(side << 1);
+    speed_x_add(slot, 0xB8E3, index);
+    jsr_push(0xB8C6);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    side = RD8(OBJ->f37d0[slot]);
+    angle = RD8(OBJ->f3778[slot]);
+    step = rd8((uint16_t)(0xB8E7 + side));
+    sum = add_bytes(angle, step, false);
+    WR8(OBJ->f3778[slot], sum.value);
+    e = ended_with_y(of_sum(sum), side);
+    x_high = RD8(OBJ->x_hi[slot]);
+    e = then(e, ended_compare(x_high, 0xFE));
+    if (x_high != 0xFE) {
+        e = then(e, ended_compare(x_high, 0x02));
+        if (x_high != 0x02) {
+            return e;
+        }
+    }
+    WR8(OBJ->f2800[slot], 0);
+    (void)turned;
+    (void)move;
+    return e;
+}
+
+void abi_OrbitingObject(void)
+{
+    abi_ended(OrbitingObject(cpu.x));
+}
+
+/*
+ * @routine 072C:242 AccelerateAndSway
+ * @run 70:BA42
+ * WHAT IT DOES: A thing that falls and sways: its Y speed gains $002C, it moves, its X speed gains a drift
+ * word from the table at $BA7C by its side (OBJ_37D0); when its counter OBJ_36C8 runs out it takes
+ * OBJ_3670 3 and moves on one OBJ_2800 state.
+ * HOW: Adds, ApplyVelocity, DEC of the counter.
+ * WAITS: no.
+ * Entry: X object. Exit: counter not zero: N and Z from it, C and V from the X speed's add; zero: A 3, N and Z
+ * from the new state.
+ */
+Ended AccelerateAndSway(uint8_t slot)
+{
+    uint8_t low, high, side, index, left, state;
+    AxisMove move;
+    Sum sum;
+    Ended e;
+
+    low = RD8(OBJ->vy_lo[slot]);
+    sum = add_bytes(low, 0x2C, false);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    high = RD8(OBJ->vy_hi[slot]);
+    sum = add_bytes(high, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    jsr_push(0xBA56);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    side = RD8(OBJ->f37d0[slot]);
+    index = (uint8_t)(side << 1);
+    sum = speed_x_add(slot, 0xBA7C, index);
+    e = ended_with_y(of_sum(sum), index);
+    left = DEC8(OBJ->f36c8[slot]);
+    e = then(e, ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    WR8(OBJ->f3670[slot], 3);
+    state = INC8(OBJ->f2800[slot]);
+    (void)move;
+    return then(e, ended_with_a(ended_nz(state), 3));
+}
+
+void abi_AccelerateAndSway(void)
+{
+    abi_ended(AccelerateAndSway(cpu.x));
+}
+
+/* The frame list steps a piece makes, with its list's address in zTemp10-11; the exit as the step left it. */
+static FrameStep step_list(uint8_t slot, uint8_t low, uint8_t high, uint16_t ret, uint8_t *y)
+{
+    FrameStep step;
+
+    WR8(ZP->temp10, low);
+    WR8(ZP->temp11, high);
+    jsr_push(ret);
+    step = StepObjectFrames(slot, y);
+    jsr_pop();
+    return step;
+}
+
+/*
+ * @routine 072C:280 StepThenCount
+ * @run 70:BA80
+ * WHAT IT DOES: Steps the animation list at $BA96; when the list ends, sets the counter OBJ_36C8 to $80 and
+ * moves on one OBJ_2800 state.
+ * HOW: StepObjectFrames, then the stores.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: N and Z from the new state.
+ */
+Ended StepThenCount(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0, state;
+    Ended e;
+
+    step = step_list(slot, 0x96, 0xBA, 0xBA8B, &y);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    WR8(OBJ->f36c8[slot], 0x80);
+    state = INC8(OBJ->f2800[slot]);
+    return then(e, ended_with_a(ended_nz(state), 0x80));
+}
+
+void abi_StepThenCount(void)
+{
+    abi_ended(StepThenCount(cpu.x));
+}
+
+/*
+ * @routine 072C:329 StepThenStop
+ * @run 70:BB29
+ * WHAT IT DOES: Steps the animation list at $BB45; when the list ends, sets OBJ_3670 to 4, stops the Y
+ * speed and moves on one OBJ_2800 state.
+ * HOW: StepObjectFrames, then the stores.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: A 4, N and Z from
+ * the new state.
+ */
+Ended StepThenStop(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0, state;
+    Ended e;
+
+    step = step_list(slot, 0x45, 0xBB, 0xBB34, &y);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    WR8(OBJ->f3670[slot], 4);
+    WR8(OBJ->vy_hi[slot], 0);
+    WR8(OBJ->vy_lo[slot], 0);
+    state = INC8(OBJ->f2800[slot]);
+    return then(e, ended_with_a(ended_nz(state), 4));
+}
+
+void abi_StepThenStop(void)
+{
+    abi_ended(StepThenStop(cpu.x));
+}
+
+/*
+ * @routine 072C:34C FallUntilLevel2
+ * @run 70:BB4C
+ * WHAT IT DOES: Applies gravity and moves the object down; when its Y high byte is 2 its OBJ_2800 is cleared.
+ * HOW: ApplyGravity, ApplyVelocityY, a compare.
+ * WAITS: no.
+ * Entry: X object. Exit: A the Y high byte, N, Z and C of the compare with 2, V from the move.
+ */
+Ended FallUntilLevel2(uint8_t slot)
+{
+    GravityResult gravity;
+    AxisMove move;
+    uint8_t y_high;
+    Ended e;
+
+    jsr_push(0xBB4F);
+    gravity = ApplyGravity(slot);
+    jsr_pop();
+    jsr_push(0xBB52);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = ended_of_axis_move(move);
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_compare(y_high, 2));
+    if (y_high == 2) {
+        WR8(OBJ->f2800[slot], 0);
+    }
+    (void)gravity;
+    return e;
+}
+
+void abi_FallUntilLevel2(void)
+{
+    abi_ended(FallUntilLevel2(cpu.x));
+}
+
+/*
+ * @routine 072C:6AE StopVerticalSpeed
+ * @run 70:BEAE
+ * WHAT IT DOES: Sets the object's Y speed to 0.
+ * HOW: Two stores.
+ * WAITS: no.
+ * Entry: X object. Exit: all registers and flags kept.
+ */
+void StopVerticalSpeed(uint8_t slot)
+{
+    WR8(OBJ->vy_hi[slot], 0);
+    WR8(OBJ->vy_lo[slot], 0);
+}
+
+void abi_StopVerticalSpeed(void)
+{
+    StopVerticalSpeed(cpu.x);
+}
+
+/*
+ * @routine 072C:5AB JumpByStageStep
+ * @run 70:BDAB
+ * WHAT IT DOES: Goes to the code a table at $BDBD names for the stage's step counter OBJ_3670 slot $10.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the code jumped to; A the high byte, Y the doubled step.
+ */
+Jump JumpByStageStep(void)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t step, index, low, high;
+
+    step = RD8(OBJ->f3670[0x10]);
+    index = (uint8_t)(step << 1);
+    low = rd8((uint16_t)(0xBDBD + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xBDBE + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (step & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStageStep(void)
+{
+    Jump jump = JumpByStageStep();
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 072B:42E StartPieceChain
+ * @run 70:B42E
+ * WHAT IT DOES: Stops the object, clears four 192-byte work tables the overlay keeps at $B46E, $B52E,
+ * $B5EE and $B6AE, then starts 22 objects of kind $25 in the slots after this one, each at this object's
+ * place, each with its own number 0 to 21 in its life timer (the chain of pieces that follow it).
+ * HOW: Clears the four speed bytes and OBJ_2FE8; a loop of 192 stores to each table; a loop of 22 of
+ * ClearObjectInY and StartObjectAtPlace. The tables have no names yet.
+ * WAITS: no.
+ * Entry: X object. Exit: A 21, Y the slot plus 23, N 0, Z 1, C 1; V kept.
+ */
+Ended StartPieceChain(uint8_t slot)
+{
+    uint8_t index, count, number, to, placed;
+
+    WR8(OBJ->vx_hi[slot], 0);
+    WR8(OBJ->vx_lo[slot], 0);
+    WR8(OBJ->vy_hi[slot], 0);
+    WR8(OBJ->vy_lo[slot], 0);
+    WR8(OBJ->f2fe8[slot], 0);
+    for (index = 0; index < 0xC0; index++) {
+        wr8((uint16_t)(0xB46E + index), 0);
+        wr8((uint16_t)(0xB52E + index), 0);
+        wr8((uint16_t)(0xB5EE + index), 0);
+        wr8((uint16_t)(0xB6AE + index), 0);
+    }
+    to = (uint8_t)(slot + 1);
+    count = 0x16;
+    WR8(ZP->temp00, count);
+    WR8(ZP->temp01, 0);
+    do {
+        jsr_push(0xB45C);
+        ClearObjectInY(to);
+        jsr_pop();
+        jsr_push(0xB461);
+        placed = StartObjectAtPlace(0x25, slot, to);
+        jsr_pop();
+        number = RD8(ZP->temp01);
+        WR8(OBJ->life_timer[to], number);
+        to++;
+        INC8(ZP->temp01);
+        count = DEC8(ZP->temp00);
+    } while (count != 0);
+    (void)placed;
+    return ended_with_carry(ended_with_y(ended_with_a(ended_nz(0), number), to), true);
+}
+
+void abi_StartPieceChain(void)
+{
+    abi_ended(StartPieceChain(cpu.x));
+}
+
+/*
+ * @routine 072C:053 StartPieceStreamA
+ * @run 70:B853
+ * WHAT IT DOES: Starts a stream of pieces from one of two sides: sound $88, OBJ_3670 1, OBJ_3828 2, frame $10;
+ * the side (OBJ_37D0) is a random bit and picks the start position from a table at $B894 (four bytes a side);
+ * then StartPieceChain, OBJ_3778 0 and the next OBJ_2800 state.
+ * HOW: SoundCommand, NextRandom, tables read from the disc (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: N and Z from the new state, C 1 from the chain's loop, V as the random's add left it.
+ */
+Ended StartPieceStreamA(uint8_t slot, uint8_t y)
+{
+    RandomResult random;
+    uint8_t side, index, byte, state;
+    Ended e;
+
+    jsr_push(0xB858);
+    SoundCommand(0x88, slot, y);
+    jsr_pop();
+    WR8(OBJ->f3670[slot], 1);
+    WR8(OBJ->f3828[slot], 2);
+    WR8(OBJ->frame[slot], 0x10);
+    jsr_push(0xB86A);
+    random = NextRandom();
+    jsr_pop();
+    e = ended_of_random(random);
+    side = (uint8_t)(random.value & 0x01);
+    WR8(OBJ->f37d0[slot], side);
+    index = (uint8_t)(side << 2);
+    e = then(e, ended_with_carry(ended_with_y(ended_load(index), index), false));
+    byte = rd8((uint16_t)(0xB895 + index));
+    WR8(OBJ->x_hi[slot], byte);
+    byte = rd8((uint16_t)(0xB894 + index));
+    WR8(OBJ->x_lo[slot], byte);
+    byte = rd8((uint16_t)(0xB897 + index));
+    WR8(OBJ->y_hi[slot], byte);
+    byte = rd8((uint16_t)(0xB896 + index));
+    WR8(OBJ->y_lo[slot], byte);
+    e = then(e, ended_with_y(ended_load(byte), index));
+    jsr_push(0xB88D);
+    e = then(e, StartPieceChain(slot));
+    jsr_pop();
+    WR8(OBJ->f3778[slot], 0);
+    state = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(state));
+}
+
+void abi_StartPieceStreamA(void)
+{
+    abi_ended(StartPieceStreamA(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 072C:116 StartPieceStreamB
+ * @run 70:B916
+ * WHAT IT DOES: Starts a stream of pieces from the top: OBJ_3828 2, sound $89, animation reset, X 0 with a
+ * random low byte, Y $0110, StartPieceChain, then random X and Y speeds from tables at $B970 and $B978 (two
+ * bytes each, four of them) and the next OBJ_2800 state; when the object is on the player's left
+ * (SideOfPlayer bit 0) its X speed is reversed.
+ * HOW: SoundCommand, NextRandom three times, SideOfPlayer, NegateVelocityX.
+ * WAITS: no.
+ * Entry: X object. Exit: A the side bits (or the reversed speed's high byte), N and Z from it, C and V from the
+ * reversal when made, else C from the side and V from the last random.
+ */
+Ended StartPieceStreamB(uint8_t slot, uint8_t y)
+{
+    RandomResult random;
+    SideResult side;
+    uint8_t picked, index, byte, bits, state;
+    Sum negated;
+    Ended e;
+
+    WR8(OBJ->f3828[slot], 2);
+    jsr_push(0xB920);
+    SoundCommand(0x89, slot, y);
+    jsr_pop();
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->x_hi[slot], 0);
+    jsr_push(0xB92C);
+    random = NextRandom();
+    jsr_pop();
+    WR8(OBJ->x_lo[slot], random.value);
+    WR8(OBJ->y_hi[slot], 1);
+    WR8(OBJ->y_lo[slot], 0x10);
+    jsr_push(0xB93C);
+    e = StartPieceChain(slot);
+    jsr_pop();
+    jsr_push(0xB93F);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    picked = (uint8_t)(random.value & 0x03);
+    index = (uint8_t)(picked << 1);
+    byte = rd8((uint16_t)(0xB971 + index));
+    WR8(OBJ->vx_hi[slot], byte);
+    byte = rd8((uint16_t)(0xB970 + index));
+    WR8(OBJ->vx_lo[slot], byte);
+    jsr_push(0xB952);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    picked = (uint8_t)(random.value & 0x03);
+    index = (uint8_t)(picked << 1);
+    byte = rd8((uint16_t)(0xB979 + index));
+    WR8(OBJ->vy_hi[slot], byte);
+    byte = rd8((uint16_t)(0xB978 + index));
+    WR8(OBJ->vy_lo[slot], byte);
+    e = then(e, ended_with_y(ended_load(byte), index));
+    state = INC8(OBJ->f2800[slot]);
+    e = then(e, ended_nz(state));
+    jsr_push(0xB968);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    e = then(e, ended_of_side(side));
+    bits = (uint8_t)(side.sides & 0x01);
+    e = then(e, ended_load(bits));
+    if (bits == 0) {
+        return e;
+    }
+    jsr_push(0xB96F);
+    negated = NegateVelocityX(slot);
+    jsr_pop();
+    return then(e, of_sum(negated));
+}
+
+void abi_StartPieceStreamB(void)
+{
+    abi_ended(StartPieceStreamB(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 072C:180 StepFallingPieceStream
+ * @run 70:B980
+ * WHAT IT DOES: One frame of a falling piece stream: steps the animation list at $B9B3, sets the hitbox
+ * flag by its direction, lifts the other objects (LiftObjectsBySlowFraction), adds $002C to its Y speed, moves,
+ * and when its Y high byte reaches 8 clears its flash flag and OBJ_2800.
+ * HOW: StepObjectFrames, HitboxByVerticalDirection, LiftObjectsBySlowFraction, ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: A the Y high byte, N, Z and C from its compare with 8,
+ * V from the move; Y as the lift left it ($27).
+ */
+Ended StepFallingPieceStream(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0, low, high, y_high;
+    AxisMove move;
+    Sum sum;
+    Ended e;
+
+    step = step_list(slot, 0xB3, 0xB9, 0xB98B, &y);
+    jsr_push(0xB98E);
+    e = HitboxByVerticalDirection(slot);
+    jsr_pop();
+    jsr_push(0xB991);
+    e = then(e, LiftObjectsBySlowFraction(slot));
+    jsr_pop();
+    low = RD8(OBJ->vy_lo[slot]);
+    sum = add_bytes(low, 0x2C, false);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    high = RD8(OBJ->vy_hi[slot]);
+    sum = add_bytes(high, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    jsr_push(0xB9A5);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_compare(y_high, 8));
+    if (y_high == 8) {
+        WR8(OBJ->flash_flags[slot], 0);
+        WR8(OBJ->f2800[slot], 0);
+    }
+    (void)step;
+    return e;
+}
+
+void abi_StepFallingPieceStream(void)
+{
+    abi_ended(StepFallingPieceStream(cpu.x));
+}
+
+/*
+ * @routine 072C:1F0 StartPieceStreamC
+ * @run 70:B9F0
+ * WHAT IT DOES: Starts a stream of pieces from the bottom: OBJ_3828 3, OBJ_3510 0, a random side (OBJ_37D0)
+ * picks X from the table at $BA3E and the X speed from $BA40; Y is $0110; StartPieceChain; Y speed $F7;
+ * frame $80, animation reset, OBJ_3670 2, OBJ_36C8 $30 and the next OBJ_2800 state.
+ * HOW: NextRandom, tables from the disc (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: N and Z from the new state, C 1 from the chain's loop, V as the random's add left it.
+ */
+Ended StartPieceStreamC(uint8_t slot)
+{
+    RandomResult random;
+    uint8_t side, byte, state;
+    Ended e;
+
+    WR8(OBJ->f3828[slot], 3);
+    WR8(OBJ->f3510[slot], 0);
+    jsr_push(0xB9FB);
+    random = NextRandom();
+    jsr_pop();
+    e = ended_of_random(random);
+    side = (uint8_t)(random.value & 0x01);
+    WR8(OBJ->f37d0[slot], side);
+    byte = rd8((uint16_t)(0xBA3E + side));
+    WR8(OBJ->x_lo[slot], byte);
+    WR8(OBJ->x_hi[slot], 0);
+    WR8(OBJ->y_hi[slot], 1);
+    WR8(OBJ->y_lo[slot], 0x10);
+    e = then(e, ended_with_y(ended_load(0x10), side));
+    jsr_push(0xBA17);
+    e = then(e, StartPieceChain(slot));
+    jsr_pop();
+    side = RD8(OBJ->f37d0[slot]);
+    byte = rd8((uint16_t)(0xBA40 + side));
+    WR8(OBJ->vx_hi[slot], byte);
+    WR8(OBJ->vy_hi[slot], 0xF7);
+    WR8(OBJ->frame[slot], 0x80);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->f3670[slot], 2);
+    WR8(OBJ->f36c8[slot], 0x30);
+    state = INC8(OBJ->f2800[slot]);
+    return then(e, ended_with_y(ended_with_a(ended_nz(state), 0x30), side));
+}
+
+void abi_StartPieceStreamC(void)
+{
+    abi_ended(StartPieceStreamC(cpu.x));
+}
+
+/*
+ * @routine 072C:29F StepPieceEmitter
+ * @run 70:BA9F
+ * WHAT IT DOES: An object that sheds pieces while it plays its animation (list $BAE6): when the list ends it
+ * moves on one OBJ_2800 state; otherwise, every fourth frame of its life timer, once its animation step is
+ * $10 or more, on frame $13 and while OBJ_3510 is under 4, it starts an object of kind $26 at its place in the
+ * first free slot from $20, copies its facing and gives it the count OBJ_3510, which then goes up one.
+ * HOW: StepObjectFrames, FindFreeSlotFrom20, StartObjectAtPlace.
+ * Untraced: one byte.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: the last compare, load or INC.
+ */
+Ended StepPieceEmitter(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0, timer, bits, anim, frame, count, last, found_slot, placed, facing, state;
+    bool found;
+    Ended e;
+
+    step = step_list(slot, 0xE6, 0xBA, 0xBAAA, &y);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step == FRAME_LIST_ENDED) {
+        state = INC8(OBJ->f2800[slot]);
+        return then(e, ended_nz(state));
+    }
+    timer = RD8(OBJ->life_timer[slot]);
+    bits = (uint8_t)(timer & 0x03);
+    e = then(e, ended_load(bits));
+    if (bits != 0) {
+        return e;
+    }
+    anim = RD8(OBJ->anim_step[slot]);
+    e = then(e, ended_compare(anim, 0x10));
+    if (anim < 0x10) {
+        return e;
+    }
+    frame = RD8(OBJ->frame[slot]);
+    e = then(e, ended_compare(frame, 0x13));
+    if (frame != 0x13) {
+        return e;
+    }
+    count = RD8(OBJ->f3510[slot]);
+    e = then(e, ended_compare(count, 4));
+    if (count >= 4) {
+        return e;
+    }
+    jsr_push(0xBACB);
+    found_slot = FindFreeSlotFrom20(&last, &found);
+    jsr_pop();
+    e = then(e, ended_with_carry(ended_with_y(ended_with_a(ended_nz(0), last), found_slot), found));
+    if (!found) {
+        return e;
+    }
+    jsr_push(0xBAD2);
+    placed = StartObjectAtPlace(0x26, slot, found_slot);
+    jsr_pop();
+    e = then(e, ended_load(placed));
+    facing = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->facing_left[found_slot], facing);
+    count = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->life_timer[found_slot], count);
+    count = INC8(OBJ->f3510[slot]);
+    return then(e, ended_nz(count));
+}
+
+void abi_StepPieceEmitter(void)
+{
+    abi_ended(StepPieceEmitter(cpu.x));
+}

@@ -122,7 +122,7 @@ typedef struct {
 } KindChange;
 
 /* The object turns into the kind a table names, thrown up at the player's place; a zero clears it. */
-KindChange ChangeKindFromTable(uint8_t slot);
+KindChange ChangeKindFromTable(uint8_t slot, uint8_t y);
 /* What AnimateKind88 left. */
 typedef struct {
     bool stepped;         /* the kind was $88 and its list was stepped */

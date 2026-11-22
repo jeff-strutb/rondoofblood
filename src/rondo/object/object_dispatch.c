@@ -497,18 +497,18 @@ void abi_StepFallingItem(void)
  * Tables are read from the disc (bank 70) by their addresses until the data layer names them; $3BD6
  * has no name yet (a row is requested).
  * WAITS: no.
- * Entry: X object. Exit: see the wrapper (cleared: A 0, Y the old zField93, C and V from the kind
+ * Entry: X object, Y pushed by the sound driver and pulled back. Exit: see the wrapper (cleared: A 0, Y the old zField93, C and V from the kind
  * less $80; changed: A the sideways speed's low byte, Y the facing's table index, C the facing's top
  * bit, V from the borrow into the Y position's high byte).
  */
-KindChange ChangeKindFromTable(uint8_t slot)
+KindChange ChangeKindFromTable(uint8_t slot, uint8_t y)
 {
     KindChange result;
     uint8_t old, kind, index, next, low, high, facing, byte;
     Sum sum, borrow;
 
     jsr_push(0xA5F4);
-    SoundCommand(0x0B, slot, 0);   /* X the object; Y: not worked out yet */
+    SoundCommand(0x0B, slot, y);
     jsr_pop();
     old = RD8(ZP->field93);
     push8(old);
@@ -556,7 +556,7 @@ KindChange ChangeKindFromTable(uint8_t slot)
 
 void abi_ChangeKindFromTable(void)
 {
-    KindChange result = ChangeKindFromTable(cpu.x);
+    KindChange result = ChangeKindFromTable(cpu.x, cpu.y);
 
     cpu.y = result.y;
     if (result.cleared) {

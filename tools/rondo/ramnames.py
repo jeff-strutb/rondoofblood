@@ -2,14 +2,24 @@
 """ramnames.py -- write the RAM and hardware names from config/rondo/symbols.csv.
 
 The one list of names, written as a C header and an assembler include so the
-two decompilations cannot name a byte differently.
+two decompilations cannot name a byte differently. The records file
+(config/rondo/records.csv, format in tools/rondo/typedrec.py) says which of
+those names are the fields of a record; from it the same run writes
+src/rondo/include/ramtypes.h, one struct per record, each member checked at
+compile time against its symbol's address. ram.h and ram.inc do not depend on
+the records file.
 
     python3 tools/rondo/ramnames.py
 """
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import typedrec  # noqa: E402
 
 TOP = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CSV = os.path.join(TOP, "config", "rondo", "symbols.csv")
+RECORDS = os.path.join(TOP, "config", "rondo", "records.csv")
 
 
 def load():
@@ -42,6 +52,19 @@ def main():
         with open(path, "w", encoding="ascii", newline="\n") as f:
             f.write("\n".join(lines) + ("\n" if lines[-1] else ""))
     print(f"{len(rows)} names")
+    symbols = [(addr + 0x2000 if kind == "zp" else addr, name) for addr, kind, name, note in rows]
+    try:
+        lines, report, claimed = typedrec.generate(RECORDS, symbols, {n for _, n in symbols},
+                                                   "RONDO_RAMTYPES_H", "ram.h",
+                                                   "tools/rondo/ramnames.py from config/rondo/records.csv and symbols.csv")
+    except typedrec.SpecError as e:
+        sys.exit(f"ramnames.py: {e}")
+    path = os.path.join(TOP, "src", "rondo", "include", "ramtypes.h")
+    with open(path, "w", encoding="ascii", newline="\n") as f:
+        f.write("\n".join(lines))
+    print(f"{len(claimed)} of {len(rows)} names are fields of a record; {len(rows) - len(claimed)} stay plain names")
+    for line in report:
+        print("  " + line)
 
 
 if __name__ == "__main__":

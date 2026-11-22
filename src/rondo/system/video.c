@@ -1,6 +1,7 @@
 /* The VDC: register selection, the display switch, scroll, reset. */
 #include "machine.h"
 #include "ram.h"
+#include "access.h"
 
 /* VDC registers. */
 enum {
@@ -222,6 +223,7 @@ void abi_ResetDisplayControl(void)
  * @run 69:42F9
  * WHAT IT DOES: Writes one raster band's background scroll to the VDC.
  * HOW: BXR then BYR, from the bands' parallel byte arrays.
+ * WAITS: no.
  * Entry: X band. Exit: A BYR's high byte, N and Z from it. X and Y kept.
  */
 uint8_t WriteBandScroll(uint8_t band)
@@ -231,17 +233,17 @@ uint8_t WriteBandScroll(uint8_t band)
     jsr_push(0x42FE);
     SelectVdcRegister(VDC_REG_BXR);
     jsr_pop();
-    byte = rd8((uint16_t)(ScrollBgxLo + band));
-    wr8(VDC_DATA_LO, byte);
-    byte = rd8((uint16_t)(ScrollBgxHi + band));
-    wr8(VDC_DATA_HI, byte);
+    byte = RD8(BANDS->bgx_lo[band]);
+    WR8(VDC->data_lo, byte);
+    byte = RD8(BANDS->bgx_hi[band]);
+    WR8(VDC->data_hi, byte);
     jsr_push(0x430F);
     SelectVdcRegister(VDC_REG_BYR);
     jsr_pop();
-    byte = rd8((uint16_t)(ScrollBgyLo + band));
-    wr8(VDC_DATA_LO, byte);
-    byte = rd8((uint16_t)(ScrollBgyHi + band));
-    wr8(VDC_DATA_HI, byte);
+    byte = RD8(BANDS->bgy_lo[band]);
+    WR8(VDC->data_lo, byte);
+    byte = RD8(BANDS->bgy_hi[band]);
+    WR8(VDC->data_hi, byte);
     return byte;
 }
 

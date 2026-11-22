@@ -897,7 +897,7 @@ TurnPress RichterTurnOnPress(void);
 /* A CD track played: its entry's address, and the BIOS's play tried until it succeeded. */
 enum { CD_PLAY_KEPT = 32 };
 
-typedef struct { uint16_t product; Sum high; } TrackEntry;
+typedef struct { MaMul8u mul; Sum high; } TrackEntry;
 
 typedef struct {
     uint8_t track;
@@ -960,7 +960,6 @@ typedef enum {
     DISC_SCENE_END
 } DiscCallKind;
 
-typedef struct { uint8_t al; uint8_t bl; uint16_t product; } DiscProduct;
 
 typedef struct {
     DiscCallKind kind;
@@ -971,7 +970,7 @@ typedef struct {
     union {
         uint8_t control;
         AdStat ad_stat;
-        DiscProduct mul;
+        MaMul8u mul;
         CdStat cd_stat;
         CdPause cd_pause;
         AdTrans ad_trans;

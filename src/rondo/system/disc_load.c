@@ -237,6 +237,12 @@ static Sum record_disc_address(void)
     return high;
 }
 
+/*
+ * The flags the game holds at its BIOS multiply: decimal and interrupt clear. The multiply keeps V only when
+ * its second byte is zero, and the game's sizes are not, so no other bit of them shows in what it leaves.
+ */
+enum { MUL_ENTRY_FLAGS = 0 };
+
 /* A record's address in zTemp00-01: the BIOS's multiply of index by size, plus the table. */
 static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size, uint16_t ret)
 {
@@ -246,10 +252,8 @@ static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size,
 
     wr8(zBiosAl, index);
     wr8(zBiosBl, size);
-    mul.as.mul.al = index;
-    mul.as.mul.bl = size;
     jsr_push(ret);
-    mul.as.mul.product = ma_mul8u(index, size);
+    mul.as.mul = ma_mul8u(size, MUL_ENTRY_FLAGS);
     jsr_pop();
     log_call(log, mul);
     low = add_bytes((uint8_t)table, rd8(zBiosCl), false);
@@ -477,9 +481,7 @@ static void disc_call_exit_shim(const DiscCall *call)
         abi_flag(P_V, call->sum.overflow);
         return;
     case DISC_MUL:
-        cpu.a = call->as.mul.bl;
-        abi_nz(call->as.mul.bl);
-        ma_mul8u_exit_shim(call->as.mul.al, call->as.mul.bl, call->as.mul.product);
+        ma_mul8u_exit_shim(call->as.mul);
         return;
     case DISC_CD_STAT:
         cpu.a = 0;
@@ -547,7 +549,7 @@ static TrackEntry track_entry(uint8_t track, uint16_t ret)
     wr8(zBiosAl, track);
     wr8(zBiosBl, CD_TRACK_ENTRY);
     jsr_push(ret);
-    entry.product = ma_mul8u(track, CD_TRACK_ENTRY);
+    entry.mul = ma_mul8u(CD_TRACK_ENTRY, MUL_ENTRY_FLAGS);
     jsr_pop();
     low = add_bytes((uint8_t)CdTrackTable, rd8(zBiosCl), false);
     wr8(zTemp00, low.value);
@@ -605,7 +607,7 @@ static void play_track_exit_shim(TrackPlay play)
     uint8_t y = play.y;
     unsigned first = play.tries > CD_PLAY_KEPT ? play.tries - CD_PLAY_KEPT : 0;
 
-    ma_mul8u_exit_shim(play.track, CD_TRACK_ENTRY, play.entry.product);
+    ma_mul8u_exit_shim(play.entry.mul);
     cpu.a = play.entry.high.value;
     abi_nz(play.entry.high.value);
     abi_flag(P_C, play.entry.high.carry);

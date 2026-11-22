@@ -156,6 +156,15 @@ void wait_interrupt(void)
     longjmp(case_end, 1);
 }
 
+/* A seeded byte can drive C or a draft out of range where the game never goes (an index past a table of handlers):
+ * the case ends there and is counted apart. */
+static void crashed(int sig)
+{
+    (void)sig;
+    printf("CRASHED\n");
+    longjmp(case_end, 1);
+}
+
 static void hung(int sig)
 {
     (void)sig;
@@ -331,6 +340,19 @@ int main(int argc, char **argv)
             struct itimerval t = { { 0, 0 }, { 0, 150000 } };
 
             signal(SIGALRM, hung);
+            {
+                static char altstack[1 << 16];
+                stack_t st = { altstack, 0, sizeof altstack };
+                struct sigaction sa;
+
+                sigaltstack(&st, 0);
+                memset(&sa, 0, sizeof sa);
+                sa.sa_handler = crashed;
+                sa.sa_flags = SA_ONSTACK | SA_NODEFER;
+                sigaction(SIGSEGV, &sa, 0);
+                sigaction(SIGBUS, &sa, 0);
+                sigaction(SIGFPE, &sa, 0);
+            }
             setitimer(ITIMER_REAL, &t, 0);
             ENTRY();
             end_line();

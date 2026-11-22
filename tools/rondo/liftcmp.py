@@ -675,7 +675,7 @@ def one(name, a, ctx):
         run_round(new_cases, str(rounds + 1))
         rounds += 1
     ignore = sum(FLAGBITS[ch] for ch in a.ignore_flags)
-    same, diffs, untraced, deep = [], [], [], []
+    same, diffs, untraced, deep, crashed = [], [], [], [], []
     raw_draft = logs["draft"]
     for side in ("draft", "lifted"):
         logs[side] = {k: [x for x in v if not x.startswith("#")] for k, v in logs[side].items()}
@@ -685,6 +685,9 @@ def one(name, a, ctx):
         dl, ll = logs["draft"].get(i, []), logs["lifted"].get(i, [])
         if any(x.startswith("UNTRACED") for x in dl):
             untraced.append(i)
+            continue
+        if any(x.startswith("CRASHED") for x in dl) or any(x.startswith("CRASHED") for x in ll):
+            crashed.append(i)
             continue
         if any(x.startswith("DEPTHLIMIT") for x in dl) or any(x.startswith("DEPTHLIMIT") for x in ll):
             deep.append(i)
@@ -700,6 +703,7 @@ def one(name, a, ctx):
                "THIN (%d of %d cases comparable, floor %d)" % (comparable, len(cases), floor) if comparable < floor else "OK")
     lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}, callees: {'the callees run as drafts against the lifted callers calls' if a.callees == 'through' else 'filed wrappers on both sides'}, {(str(len(configs)) + ' mapper configuration' + ('s' if len(configs) > 1 else '') + ' from the trace') if configs else 'no trace of it: default map'}): "
              f"{len(same)} match, {len(diffs)} differ, {len(untraced)} draft reached untraced bytes"
+             + (f", {len(crashed)} crashed on a seeded value out of the game's range, on {'both sides' if any('CRASHED' in x for x in logs['draft'].get(crashed[0], [])) and any('CRASHED' in x for x in logs['lifted'].get(crashed[0], [])) else 'the lifted side' if any('CRASHED' in x for x in logs['lifted'].get(crashed[0], [])) else 'the draft'} in the first (not compared)" if crashed else "")
              + (f", {len(deep)} reached the depth limit of 512 nested calls (not compared)" if deep else "")
              + (f" ({rounds} steering round{'s' if rounds != 1 else ''} added cases)" if rounds else "") + f" -> {verdict}"]
     if untraced and verdict not in ("OK", "DIFFERS") or (untraced and a.explain):

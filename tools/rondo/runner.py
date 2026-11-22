@@ -4,6 +4,8 @@
     python3 tools/rondo/runner.py once  [--main DIR] [options]    certify what main's tip needs, then stop
     python3 tools/rondo/runner.py watch [--main DIR] [options]    the same whenever the tip moves (every 60 s)
     python3 tools/rondo/runner.py plan  [--main DIR] [options]    print what would run and the time expected
+    python3 tools/rondo/runner.py commit [--main DIR]             commit the records, views and ledgers as they stand
+                                                                  in DIR (under the landing lock, explicit paths)
     options: --routines A,B   re-measure the scripts reaching these routines (after a checker change)
              --scripts a,b    re-measure these scripts
              --only           with --scripts: nothing else (a partial check; no ledger is written)
@@ -353,6 +355,12 @@ def parse(argv):
 
 def main():
     opts = parse(sys.argv[1:])
+    if opts["mode"] == "commit":
+        recs = records.Records(opts["main"]).scripts
+        srcs = sorted({r["source"] for r in recs.values()})
+        commit(opts["main"], srcs[-1] if srcs else "?", list(OWNED), len(recs), [],
+               os.path.join(opts["main"], "build", "rondo", "runner"))
+        return 0
     if opts["mode"] not in ("once", "watch", "plan"):
         print(__doc__)
         return 2

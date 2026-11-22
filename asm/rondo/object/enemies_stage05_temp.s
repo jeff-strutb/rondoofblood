@@ -119,6 +119,17 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0938:7F2 SelectRasterStage1
 ; @run 6F:BFF2
 ; WHAT IT DOES: Sets the stage value the raster effect tests to 1.
@@ -1041,4 +1052,108 @@ TurnOnRandomBeatWalkFollowB_done:
     lda #$05
     sta a:OBJ_27A8,x
     stz a:OBJ_2800,x
+    rts
+
+; @routine 093C:5C4 StartThenAnimateAndExpire
+; @run 70:BDC4
+; WHAT IT DOES: The first time (state 0) starts the object from its record, sets f2a10 to its
+; life_timer plus 3 and f3510 to $28. After that it animates along the list whose pointer its
+; life_timer picks (a table at overlay address $BDF8) and counts f3510 down; at zero the object
+; removes itself, otherwise it goes on as FollowParentYAndLeave.
+; HOW: LoadObjectRecord; StepObjectFrames; the last two as tail jumps.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the last step that ran left them.
+StartThenAnimateAndExpire:
+    lda a:OBJ_27A8,x
+    bne StartThenAnimateAndExpire_at0
+    jsr VecLoadObjectRecord
+    lda a:OBJ_34B8,x
+    clc
+    adc #$03
+    sta a:OBJ_2A10,x
+    lda #$28
+    sta a:OBJ_3510,x
+    rts
+StartThenAnimateAndExpire_at0:
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$BDF8,y
+    sta z:zTemp10
+    lda a:$BDF9,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    dec a:OBJ_3510,x
+    bne StartThenAnimateAndExpire_at1
+    jmp VecClearObject
+StartThenAnimateAndExpire_at1:
+    jmp FollowParentYAndLeave
+
+; @routine 093D:2FD StartAndMakeNeighbour
+; @run 71:C2FD
+; WHAT IT DOES: Starts the object from its record, empties the slot after it and starts an object
+; of type $2D there at its place, sets its own f3670 to 1 and its life_timer to $50.
+; HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A $50 and N, Z clear; C from the record; Y the neighbour's slot;
+; X kept.
+StartAndMakeNeighbour:
+    jsr VecLoadObjectRecord
+    txa
+    tay
+    iny
+    jsr VecClearObjectInY
+    lda #$2D
+    jsr VecStartObjectAtPlace
+    lda #$01
+    sta a:OBJ_3670,x
+    lda #$50
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 093D:51F SpawnShotFromFrame
+; @run 71:C51F
+; WHAT IT DOES: When the object's frame is $2B or more, starts an object of type $35 at its place
+; in a free slot from $30, facing as this one does, with this frame in its life_timer.
+; HOW: FindFreeSlotFrom30, StartObjectAtPlace, three copies.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the frame (the last byte copied), N, Z from it; C as the slot
+; search left it; Y the slot; X kept.
+SpawnShotFromFrame:
+    lda a:OBJ_2A68,x
+    cmp #$2B
+    bcc SpawnShotFromFrame_at0
+    jsr VecFindFreeSlotFrom30
+    bcc SpawnShotFromFrame_at0
+    lda #$35
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    lda a:OBJ_2A68,x
+    sta a:OBJ_34B8,y
+SpawnShotFromFrame_at0:
+    rts
+
+; @routine 093D:76B StartWithFrameAndFace
+; @run 71:C76B
+; @stop C787
+; WHAT IT DOES: The first time (state 0) starts the object from its record, gives it a frame from
+; a table at overlay address $C787 by its life_timer, and turns its X speed round when the player is
+; on its left; later states go on as CountdownThenFallOrBecomeType9B.
+; HOW: LoadObjectRecord, SideOfPlayer, NegateVelocityX.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the last call or test left them; Y the life_timer used as the
+; table index.
+StartWithFrameAndFace:
+    lda a:OBJ_27A8,x
+    bne CountdownThenFallOrBecomeType9B
+    jsr VecLoadObjectRecord
+    ldy a:OBJ_34B8,x
+    lda a:$C787,y
+    sta a:OBJ_2A68,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq StartWithFrameAndFace_at0
+    jsr VecNegateVelocityX
+StartWithFrameAndFace_at0:
     rts

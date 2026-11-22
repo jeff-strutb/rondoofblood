@@ -696,6 +696,10 @@ Ended PickStateByPlayerDistanceB(uint8_t slot, bool carry_in);
 Ended PickSpeedAndTurnFromTableC(uint8_t slot);
 Ended TurnOnRandomBeatWalkB(uint8_t slot);
 Ended TurnOnRandomBeatWalkFollowB(uint8_t slot);
+Ended SpawnShotFromFrame(uint8_t slot);
+Ended StartAndMakeNeighbour(uint8_t slot);
+Ended StartWithFrameAndFace(uint8_t slot);
+Ended StartThenAnimateAndExpire(uint8_t slot);
 /* object/enemies_stage07_temp.c */
 Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);

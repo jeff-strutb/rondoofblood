@@ -1338,3 +1338,194 @@ void abi_TurnOnRandomBeatWalkFollowB(void)
 {
     abi_ended(TurnOnRandomBeatWalkFollowB(cpu.x));
 }
+
+/*
+ * @routine 093D:51F SpawnShotFromFrame
+ * @run 71:C51F
+ * WHAT IT DOES: When the object's frame is $2B or more, starts an object of type $35 at its place
+ * in a free slot from $30, facing as this one does, with this frame in its life_timer.
+ * HOW: FindFreeSlotFrom30, StartObjectAtPlace, three copies.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the frame (the last byte copied), N, Z from it; C as the slot
+ * search left it; Y the slot; X kept.
+ */
+Ended SpawnShotFromFrame(uint8_t slot)
+{
+    uint8_t frame = RD8(OBJ->frame[slot]);
+    uint8_t found_slot, last, value;
+    bool found;
+    Ended e;
+
+    e = ended_compare(frame, 0x2B);
+    if (frame < 0x2B) {
+        return e;
+    }
+    jsr_push(0xC529);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+    if (!found) {
+        return e;
+    }
+    jsr_push(0xC530);
+    value = StartObjectAtPlace(0x35, slot, found_slot);
+    jsr_pop();
+    e = ended_then(e, ended_load(value));
+    value = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->facing_left[found_slot], value);
+    value = RD8(OBJ->frame[slot]);
+    WR8(OBJ->life_timer[found_slot], value);
+    return ended_then(e, ended_load(value));
+}
+
+void abi_SpawnShotFromFrame(void)
+{
+    abi_ended(SpawnShotFromFrame(cpu.x));
+}
+
+/*
+ * @routine 093D:2FD StartAndMakeNeighbour
+ * @run 71:C2FD
+ * WHAT IT DOES: Starts the object from its record, empties the slot after it and starts an object
+ * of type $2D there at its place, sets its own f3670 to 1 and its life_timer to $50.
+ * HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A $50 and N, Z clear; C from the record; Y the neighbour's slot;
+ * X kept.
+ */
+Ended StartAndMakeNeighbour(uint8_t slot)
+{
+    uint8_t nz, last, neighbour, value;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xC300);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    neighbour = (uint8_t)(slot + 1);
+    e = ended_then(e, ended_with_y(ended_nz(neighbour), neighbour));
+    jsr_push(0xC306);
+    ClearObjectInY(neighbour);
+    jsr_pop();
+    jsr_push(0xC30B);
+    value = StartObjectAtPlace(0x2D, slot, neighbour);
+    jsr_pop();
+    e = ended_then(e, ended_load(value));
+    WR8(OBJ->f3670[slot], 1);
+    WR8(OBJ->life_timer[slot], 0x50);
+    return ended_then(e, ended_load(0x50));
+}
+
+void abi_StartAndMakeNeighbour(void)
+{
+    abi_ended(StartAndMakeNeighbour(cpu.x));
+}
+
+/*
+ * @routine 093D:76B StartWithFrameAndFace
+ * @run 71:C76B
+ * @stop C787
+ * WHAT IT DOES: The first time (state 0) starts the object from its record, gives it a frame from
+ * a table at overlay address $C787 by its life_timer, and turns its X speed round when the player is
+ * on its left; later states go on as CountdownThenFallOrBecomeType9B.
+ * HOW: LoadObjectRecord, SideOfPlayer, NegateVelocityX.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as the last call or test left them; Y the life_timer used as the
+ * table index.
+ */
+Ended StartWithFrameAndFace(uint8_t slot)
+{
+    enum { FRAMES = 0xC787 };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t nz, last, y, value, bit;
+    bool carry;
+    SideResult side;
+    Ended e;
+
+    if (state != 0) {
+        return CountdownThenFallOrBecomeType9B(slot);
+    }
+    jsr_push(0xC773);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    y = RD8(OBJ->life_timer[slot]);
+    value = rd8((uint16_t)(FRAMES + y));
+    WR8(OBJ->frame[slot], value);
+    e = ended_then(e, ended_with_y(ended_load(value), y));
+    jsr_push(0xC77F);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(side.sides & 1);
+    e = ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+    if (bit == 0) {
+        return e;
+    }
+    jsr_push(0xC786);
+    e = ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+    jsr_pop();
+    return e;
+}
+
+void abi_StartWithFrameAndFace(void)
+{
+    abi_ended(StartWithFrameAndFace(cpu.x));
+}
+
+/*
+ * @routine 093C:5C4 StartThenAnimateAndExpire
+ * @run 70:BDC4
+ * WHAT IT DOES: The first time (state 0) starts the object from its record, sets f2a10 to its
+ * life_timer plus 3 and f3510 to $28. After that it animates along the list whose pointer its
+ * life_timer picks (a table at overlay address $BDF8) and counts f3510 down; at zero the object
+ * removes itself, otherwise it goes on as FollowParentYAndLeave.
+ * HOW: LoadObjectRecord; StepObjectFrames; the last two as tail jumps.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as the last step that ran left them.
+ */
+Ended StartThenAnimateAndExpire(uint8_t slot)
+{
+    enum { LISTS = 0xBDF8 };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t nz, last, timer, y, exit_y, left;
+    bool carry;
+    FrameStep step;
+    Sum sum;
+    Ended e;
+
+    if (state == 0) {
+        jsr_push(0xBDCC);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = ended_of_record(last, nz, carry);
+        timer = RD8(OBJ->life_timer[slot]);
+        sum = add_bytes(timer, 3, false);
+        WR8(OBJ->f2a10[slot], sum.value);
+        WR8(OBJ->f3510[slot], 0x28);
+        return ended_then(ended_then(e, ended_of_sum(sum)), ended_load(0x28));
+    }
+    timer = RD8(OBJ->life_timer[slot]);
+    y = (uint8_t)(timer << 1);
+    exit_y = y;
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + y)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + y)));
+    jsr_push(0xBDED);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_load(state), y), ended_of_frame_step(step, step != FRAME_HELD, exit_y));
+    left = RD8(OBJ->f3510[slot]);
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->f3510[slot], left);
+    e = ended_then(e, ended_nz(left));
+    if (left == 0) {
+        ClearObject(slot);
+        return e;
+    }
+    return ended_then(e, FollowParentYAndLeave(slot));
+}
+
+void abi_StartThenAnimateAndExpire(void)
+{
+    abi_ended(StartThenAnimateAndExpire(cpu.x));
+}

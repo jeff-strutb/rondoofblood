@@ -358,6 +358,70 @@ def write_cases(cases, path):
             f.write("\n")
 
 
+def nm_names(objs):
+    """(defined, undefined) symbol names over object files."""
+    defined, undefined = set(), set()
+    for o in objs:
+        for line in run(["nm", "-g", o]).stdout.splitlines():
+            parts = line.split()
+            if len(parts) == 3 and parts[1] in "TtWDdBbRrVv":
+                defined.add(parts[2])
+            elif len(parts) == 2 and parts[0] == "U":
+                undefined.add(parts[1])
+    return defined, undefined
+
+
+def warm_check(game_objs, cache):
+    """Links the game's C and the draft library with the runtime, every symbol required, so a helper they call that
+    the runtime lacks fails `--warm` by name (not a run of every routine later)."""
+    work = os.path.join(cache, "warm")
+    os.makedirs(work, exist_ok=True)
+    rt = os.path.join(work, "rt.o")
+    r = run(["cc", "-O1", "-w", "-fno-pie", "-DENTRY=draft_entry", "-I", os.path.join(TOP, "src", "rondo", "include"),
+             "-c", os.path.join(HERE, "liftcmp_rt.c"), "-o", rt])
+    if r.returncode:
+        raise SystemExit(f"liftcmp: the runtime does not compile:\n{r.stderr[-800:]}")
+    stub = os.path.join(work, "stub.c")
+    defined, undefined = nm_names(game_objs)
+    libs = []
+    try:
+        sys.path.insert(0, HERE)
+        import cdraft
+        if cdraft.current_cache():
+            libo, _, libsyms = draft_library([], cache)
+            libs = [libo]
+            d2, u2 = nm_names(libs)
+            defined |= d2
+            undefined |= u2
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"liftcmp: the drafts were not checked against the runtime: {e}")
+    # abi_ routines with no C, the draft entry and the dispatch tables, as a run defines them
+    with open(stub, "w") as f:
+        f.write("#include <stdint.h>\ntypedef struct { uint16_t run; void (*abi)(void); } Dispatch;\n"
+                "const Dispatch dispatch_table[] = { { 0, 0 } }; const unsigned dispatch_count = 0;\n"
+                "typedef struct { uint8_t m[5]; uint16_t run; uint32_t disc; } Resident;\n"
+                "const Resident resident_tab[] = { { { 0 }, 0, 0 } }; const unsigned resident_count = 0;\n"
+                "typedef struct { uint32_t disc; void (*abi)(void); } DiscDispatch;\n"
+                "const DiscDispatch disc_table[] = { { 0, 0 } }; const unsigned disc_count = 0;\nvoid draft_entry(void) {}\n")
+        for n in sorted(x for x in undefined - defined if x.startswith("abi_")):
+            f.write("void %s(void) {}\n" % n)
+    link(os.path.join(work, "warm.bin"), game_objs + libs + [rt, stub], [], [], None)
+
+
+def runtime_object(cache):
+    """The runtime compiled once for its symbol list."""
+    src = os.path.join(HERE, "liftcmp_rt.c")
+    obj = os.path.join(cache, "rt_names." + hashlib.sha1(open(src, "rb").read() + header_hash().encode()).hexdigest()[:12] + ".o")
+    if not os.path.exists(obj):
+        r = run(["cc", "-O1", "-w", "-fno-pie", "-DENTRY=draft_entry", "-I", os.path.join(TOP, "src", "rondo", "include"),
+                 "-c", src, "-o", obj])
+        if r.returncode:
+            raise SystemExit(f"liftcmp: the runtime does not compile:\n{r.stderr[-800:]}")
+    return obj
+
+
 def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=()):
     defined, undefined = set(), set()
     for o in objs:
@@ -367,9 +431,7 @@ def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=()):
                 defined.add(parts[2])
             elif len(parts) == 2 and parts[0] == "U":
                 undefined.add(parts[1])
-    provided = {"rd8", "wr8", "st0", "st1", "st2", "tam", "tma", "tai", "cli", "csl", "csh", "wait_interrupt", "cpu",
-                "call_original", "call_orig", "untraced", "hand_over", "__sanitizer_cov_trace_pc", "ENTRY", "resident_at"}
-    external = sorted(undefined - defined - provided)
+    external = sorted(n for n in undefined - defined if n.startswith("abi_"))
     seen, items, by_disc = set(), [], {}
     for run_addr, _len, disc, name, abi, rom in rows:
         if abi not in defined:
@@ -451,10 +513,14 @@ def draft_library(drafts_dirs, work_cache):
 
 
 def link(exe, objs, extra_srcs, defs, cache):
+    """Links with every symbol required: a helper the C or a draft calls and the runtime lacks fails here by name
+    (an abi_ routine with no C is defined as a logging stub by the dispatch file)."""
     r = run(["cc", "-O1", "-g1", "-w", "-no-pie", "-fno-pie", *defs, "-I", os.path.join(TOP, "src", "rondo", "include"),
-             "-I", os.path.join(TOP, "syscard", "include"), *objs, *extra_srcs, "-o", exe,
-             "-Wl,--unresolved-symbols=ignore-all"])
+             "-I", os.path.join(TOP, "syscard", "include"), *objs, *extra_srcs, "-o", exe])
     if r.returncode:
+        missing = sorted(set(re.findall(r"undefined reference to `([^']+)'", r.stderr)))
+        if missing:
+            raise SystemExit(f"liftcmp: the runtime (tools/rondo/liftcmp_rt.c) lacks {', '.join(missing)}, which the C or the draft call(s); add it there")
         raise SystemExit(f"liftcmp: link failed:\n{r.stderr[-1500:]}")
 
 
@@ -876,7 +942,8 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
         objs = dict(zip(sources, ex.map(lambda s: compile_obj(s, None, cache, hh), sources)))
     if a.warm:
-        print(f"liftcmp: {len(sources)} files compiled into {os.path.relpath(cache, TOP)}")
+        warm_check(list(objs.values()), cache)
+        print(f"liftcmp: {len(sources)} files compiled into {os.path.relpath(cache, TOP)}; the runtime defines every helper they call")
         return 0
     if not a.names and not a.file:
         ap.error("name a routine or give --file")

@@ -838,7 +838,8 @@ static ObjExit frame_list_then_cue(uint8_t list, uint8_t object)
     }
     frame = RD8(OBJ->frame[object]);
     if (frame == 0) {
-        result = object_exit(frame, frame);
+        result.exit.a = frame;
+        result.exit.nz = frame;
         result.exit.c = true;
         result.exit.c_kept = false;
         return result;
@@ -932,14 +933,16 @@ static ObjExit scroll_idle_cue(uint8_t list, uint8_t object)
     }
     frame = RD8(OBJ->frame[object]);
     if (frame == 0) {
-        result = object_exit(frame, frame);
+        result.exit.a = frame;
+        result.exit.nz = frame;
         result.exit.c = true;
         result.exit.c_kept = false;
         return result;
     }
     kind = RD8(SLOTS->kind[0]);
     if (kind != 0) {
-        result = object_exit(kind, kind);
+        result.exit.a = kind;
+        result.exit.nz = kind;
         result.exit.c = true;
         result.exit.c_kept = false;
         return result;
@@ -1239,6 +1242,8 @@ ObjExit DropAndShakeScreen(uint8_t object)
         jsr_pop();
         object = pull8();
         WR8(OBJ->f34b8[object], 0x10);
+        result.exit.y = 0x0A;
+        result.exit.y_kept = false;
         result.exit.a = 0x10;
         result.exit.nz = INC8(OBJ->state[object]);
         return result;
@@ -1525,6 +1530,8 @@ ObjExit IntroSceneObject(uint8_t object)
         result = object_exit(first, object);
         result.exit.x = object;
         result.exit.x_kept = false;
+        result.exit.y = 6;
+        result.exit.y_kept = false;
         return result;
     }
     rest = (uint8_t)(state - 1);

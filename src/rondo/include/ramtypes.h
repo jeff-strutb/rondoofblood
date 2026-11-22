@@ -790,4 +790,48 @@ _Static_assert(sizeof(StageWork) == 0x80, "StageWork size");
 _Static_assert(StageWork_BASE + offsetof(StageWork, mask_buffer) + 0 == StageMaskBuffer, "StageWork.mask_buffer is not at StageMaskBuffer");
 #define STAGEWORK ((StageWork *)StageWork_BASE)
 
+/* ScrollMain: parallel byte arrays at $3E00, 8 slots, 48 bytes */
+#define ScrollMain_BASE 0x3E00
+#define ScrollMain_COUNT 8
+typedef struct {
+    uint8_t x_frac[8]; /* ScrollXFrac */
+    uint8_t x_lo[8]; /* ScrollXLo */
+    uint8_t x_hi[8]; /* ScrollXHi */
+    uint8_t y_frac[8]; /* ScrollYFrac */
+    uint8_t y_lo[8]; /* ScrollYLo */
+    uint8_t y_hi[8]; /* ScrollYHi */
+} ScrollMain;
+_Static_assert(sizeof(ScrollMain) == 0x30, "ScrollMain size");
+_Static_assert(ScrollMain_BASE + offsetof(ScrollMain, x_frac) + 0 == ScrollXFrac, "ScrollMain.x_frac is not at ScrollXFrac");
+_Static_assert(ScrollMain_BASE + offsetof(ScrollMain, x_lo) + 0 == ScrollXLo, "ScrollMain.x_lo is not at ScrollXLo");
+_Static_assert(ScrollMain_BASE + offsetof(ScrollMain, x_hi) + 0 == ScrollXHi, "ScrollMain.x_hi is not at ScrollXHi");
+_Static_assert(ScrollMain_BASE + offsetof(ScrollMain, y_frac) + 0 == ScrollYFrac, "ScrollMain.y_frac is not at ScrollYFrac");
+_Static_assert(ScrollMain_BASE + offsetof(ScrollMain, y_lo) + 0 == ScrollYLo, "ScrollMain.y_lo is not at ScrollYLo");
+_Static_assert(ScrollMain_BASE + offsetof(ScrollMain, y_hi) + 0 == ScrollYHi, "ScrollMain.y_hi is not at ScrollYHi");
+#define SCROLL ((ScrollMain *)ScrollMain_BASE)
+
+/* ScrollEntries: parallel byte arrays at $3E6E, 8 slots, 64 bytes */
+#define ScrollEntries_BASE 0x3E6E
+#define ScrollEntries_COUNT 8
+typedef struct {
+    uint8_t step_y_lo[8]; /* ScrollStepYLo */
+    uint8_t step_y_hi[8]; /* ScrollStepYHi */
+    uint8_t step_x_lo[8]; /* ScrollStepXLo */
+    uint8_t step_x_hi[8]; /* ScrollStepXHi */
+    uint8_t y_hi_screen[8]; /* ScrollYHiScreen */
+    uint8_t x_hi_screen[8]; /* ScrollXHiScreen */
+    uint8_t speed_x[8]; /* ScrollSpeedX */
+    uint8_t speed_y[8]; /* ScrollSpeedY */
+} ScrollEntries;
+_Static_assert(sizeof(ScrollEntries) == 0x40, "ScrollEntries size");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_y_lo) + 0 == ScrollStepYLo, "ScrollEntries.step_y_lo is not at ScrollStepYLo");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_y_hi) + 0 == ScrollStepYHi, "ScrollEntries.step_y_hi is not at ScrollStepYHi");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_x_lo) + 0 == ScrollStepXLo, "ScrollEntries.step_x_lo is not at ScrollStepXLo");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_x_hi) + 0 == ScrollStepXHi, "ScrollEntries.step_x_hi is not at ScrollStepXHi");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, y_hi_screen) + 0 == ScrollYHiScreen, "ScrollEntries.y_hi_screen is not at ScrollYHiScreen");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, x_hi_screen) + 0 == ScrollXHiScreen, "ScrollEntries.x_hi_screen is not at ScrollXHiScreen");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, speed_x) + 0 == ScrollSpeedX, "ScrollEntries.speed_x is not at ScrollSpeedX");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, speed_y) + 0 == ScrollSpeedY, "ScrollEntries.speed_y is not at ScrollSpeedY");
+#define SCROLLE ((ScrollEntries *)ScrollEntries_BASE)
+
 #endif

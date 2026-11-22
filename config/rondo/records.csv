@@ -343,3 +343,24 @@ member,ListChannels,hold,u8,0018,ListChannelHold,
 # Work buffers.
 record,StageWork,aos,3B40,1,80,STAGEWORK
 member,StageWork,mask_buffer,u8[128],00,StageMaskBuffer,
+
+# The scroll the game sets, six columns of eight entries (3E00 to 3E2F), and the per-entry steps and limits, eight columns
+# of eight from 3E6E to 3EAD. The count of eight is the entries' (a routine indexes them by X or Y); it is shown for the four step
+# columns and assumed for the other columns by their eight-byte spacing.
+record,ScrollMain,soa,3E00,8,30,SCROLL
+member,ScrollMain,x_frac,u8,0000,ScrollXFrac,
+member,ScrollMain,x_lo,u8,0008,ScrollXLo,
+member,ScrollMain,x_hi,u8,0010,ScrollXHi,
+member,ScrollMain,y_frac,u8,0018,ScrollYFrac,
+member,ScrollMain,y_lo,u8,0020,ScrollYLo,
+member,ScrollMain,y_hi,u8,0028,ScrollYHi,
+
+record,ScrollEntries,soa,3E6E,8,40,SCROLLE
+member,ScrollEntries,step_y_lo,u8,0000,ScrollStepYLo,
+member,ScrollEntries,step_y_hi,u8,0008,ScrollStepYHi,
+member,ScrollEntries,step_x_lo,u8,0010,ScrollStepXLo,
+member,ScrollEntries,step_x_hi,u8,0018,ScrollStepXHi,
+member,ScrollEntries,y_hi_screen,u8,0020,ScrollYHiScreen,
+member,ScrollEntries,x_hi_screen,u8,0028,ScrollXHiScreen,
+member,ScrollEntries,speed_x,u8,0030,ScrollSpeedX,
+member,ScrollEntries,speed_y,u8,0038,ScrollSpeedY,

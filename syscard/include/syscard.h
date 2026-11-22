@@ -247,101 +247,26 @@ typedef struct {
     CdRetry retry;
 } CdSeek;
 
-/* What checking the backup memory's header found. */
+/*
+ * What a routine leaves in the registers and flags, for its exit shim: each register or flag it sets has its
+ * set_ flag, and one that is not set is left as the caller had it. nz is the value N and Z come from.
+ */
+typedef struct {
+    uint8_t a, x, y, nz;
+    bool c, v;
+    bool set_a, set_x, set_y, set_nz, set_c, set_v;
+} CardExit;
+
+/* What checking the backup memory's header found, and what it leaves in the registers. */
 typedef struct {
     bool formatted;
-    uint8_t read;
-    uint8_t expected;
-    uint8_t where;
+    CardExit exit;
 } BackupCheck;
 
-typedef struct {
-    BackupCheck check;
-    uint16_t room;
-    uint16_t after_header;
-} BackupFree;
-
-typedef struct {
-    uint8_t page;
-    uint8_t offset;
-    uint8_t pages_left;
-    bool whole;
-} BackupSize;
-
-typedef struct {
-    bool accepted;
-    uint8_t read;
-    uint8_t expected;
-    uint8_t where;
-    BackupSize size;
-} BackupFormat;
-
-/* What a look for a file found: where it stopped, and its last step through the list. */
-typedef struct {
-    bool found;
-    uint16_t file;
-    uint8_t window;
-    bool stepped;
-    uint16_t last_file;
-    uint16_t last_length;
-} BackupFind;
-
-uint8_t bm_map_name_window(void);
-uint16_t bm_count_down(void);
-BackupFind bm_find_file(void);
-void bm_open(void);
-void bm_close(void);
-BackupCheck bm_open_formatted(void);
-BackupFree bm_free(void);
-BackupFormat bm_format(void);
-
-/* A file's name and data summed as bm_sum_file sums them, with its last step. */
-typedef struct {
-    uint16_t sum;
-    uint16_t before_last;  /* the sum before the last byte was added */
-    uint8_t last_byte;
-    uint32_t bytes;        /* bytes summed: $10000 when the count started at zero */
-} BackupSum;
-
-/* Where a read or write of _CX bytes at offset _DX falls in the file at CardFileLo. */
-typedef struct {
-    uint16_t overrun;      /* bytes past the file's end, negative when it fits */
-    uint16_t data;         /* the file's address plus its header */
-    uint16_t offset;       /* _DX */
-} BackupSpan;
-
-/* Which way a move of bytes inside the backup memory went. */
-typedef struct {
-    bool forward;          /* from a source at or above its destination */
-    uint16_t source;
-    uint16_t destination;
-    uint16_t count;
-} BackupMoveWay;
-
-/* A copy between the caller's memory and the backup memory: the window and the bytes. */
-typedef struct {
-    uint8_t window;
-    uint8_t old_high;      /* the caller's pointer's high byte before it was rebased */
-    uint32_t bytes;
-} BackupCopy;
-
-/* What adding a file's header for a new name found. */
-typedef struct {
-    bool made;
-    uint16_t pointer;      /* CardCopyLo-Hi, compared with $10 */
-    uint16_t next_free;    /* where the file went */
-    BackupCopy copy;
-} BackupNewFile;
-
-typedef struct {
-    bool moved;            /* there were bytes to move */
-    BackupMoveWay way;
-} BackupMove;
-
-/* How bm_read, bm_write and bm_delete ended, and the values their exits show. */
+/* How a backup call ended, and the values its exit shows. */
 typedef enum {
     BM_ENDED_NOT_FORMATTED,
-    BM_ENDED_NOT_FOUND,     /* no such file, or no room for its header */
+    BM_ENDED_NOT_FOUND,     /* no such file, no room for its header, or a wrong password */
     BM_ENDED_NO_ROOM,       /* a write that would run past the memory's end */
     BM_ENDED_PAST_END,      /* a read starting at or past the file's end */
     BM_ENDED_DONE
@@ -349,36 +274,32 @@ typedef enum {
 
 typedef struct {
     BackupEnding ending;
-    uint8_t result;         /* what A gives: 0 done, 1 not found or no room, 2 bad checksum */
-    BackupCheck check;
-    BackupFind find;
-    BackupNewFile new_file;
-    BackupSpan span;
-    bool truncated;         /* a read cut short at the file's end */
-    uint16_t count_before;  /* the count it was cut from */
-    uint16_t count;         /* bytes copied */
-    BackupCopy copy;
-    BackupSum sum;
-    uint16_t end;           /* write: the memory's end, compared with the room needed */
-    uint16_t needed;
-    BackupMove move;
-    uint16_t next_free;     /* delete: before it was taken down */
-    uint16_t length;        /* delete: the file's length */
+    uint8_t result;         /* what A gives: 0 done, 1 not found, no room or a wrong password, 2 bad checksum, $FF not formatted */
+    CardExit exit;          /* X, Y, C and V as the call leaves them (A and N, Z come from result) */
 } BackupAccess;
 
-/* What bm_files found, and the values its exit shows. */
-typedef struct {
-    uint8_t result;          /* 0 named, 1 no such file, $FF not formatted */
-    BackupCheck check;
-    uint16_t file;           /* the file walked to */
-    uint16_t length;         /* its length word */
-    bool stepped;            /* a file was stepped past: the last step's add gives C and V */
-    uint16_t stepped_from;   /* the last file stepped past, and its length */
-    uint16_t stepped_length;
-    uint8_t window;          /* the saved MPR bm_map_name_window chose */
-} BackupFiles;
+typedef BackupAccess BackupFree;
+typedef BackupAccess BackupFormat;
+typedef BackupAccess BackupFiles;
 
-BackupFiles bm_files(void);
+uint8_t bm_open(uint8_t a);
+uint8_t bm_close(uint8_t a);
+BackupCheck bm_open_formatted(uint8_t a);
+uint8_t bm_count_down(void);
+CardExit bm_find_file(void);
+CardExit bm_sum_file(void);
+CardExit bm_place_span(void);
+CardExit bm_move_direction(void);
+CardExit bm_move(void);
+CardExit bm_copy_out(void);
+CardExit bm_copy_in(void);
+CardExit bm_new_file(void);
+BackupAccess bm_read(uint8_t a);
+BackupAccess bm_write(uint8_t a);
+BackupAccess bm_delete(uint8_t a);
+BackupAccess bm_free(uint8_t a);
+BackupAccess bm_format(uint8_t a);
+BackupAccess bm_files(uint8_t a);
 uint8_t bm_files_result(BackupFiles files);
 void bm_files_exit_shim(BackupFiles files);
 
@@ -553,7 +474,6 @@ void bm_delete_exit_shim(BackupAccess removal);
 uint8_t bm_delete_result(BackupAccess removal);
 void bm_free_exit_shim(BackupFree free_space);
 uint8_t bm_free_result(BackupFree free_space);
-uint16_t bm_free_bytes(BackupFree free_space);
 void bm_format_exit_shim(BackupFormat format);
 uint8_t bm_format_result(BackupFormat format);
 void cd_pause_exit_shim(CdPause pause);
@@ -673,16 +593,6 @@ typedef struct {
 
 ColorCommand ex_colorcmd(void);
 
-BackupSum bm_sum_file(void);
-BackupSpan bm_place_span(void);
-BackupMoveWay bm_move_direction(void);
-BackupMove bm_move(void);
-BackupCopy bm_copy_out(void);
-BackupCopy bm_copy_in(void);
-BackupNewFile bm_new_file(void);
-BackupAccess bm_read(void);
-BackupAccess bm_write(void);
-BackupAccess bm_delete(void);
 
 /* How ad_trans ended. */
 typedef struct {

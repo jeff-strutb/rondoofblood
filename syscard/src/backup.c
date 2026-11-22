@@ -1,229 +1,214 @@
-/* The backup memory: 2 KB of battery RAM in a bank of its own, opened by a port. */
+/*
+ * The backup memory: 2 KB of battery RAM in a bank of its own, opened by a port.
+ *
+ * Bytes named by address, not yet by field: CardByteCount and its high byte, CardSavedMprs, the backup
+ * memory's header, end, next free byte and first file, and the ROM tables BackupSignature and
+ * BackupFormatPassword. Their rows are asked of the typed access session; the zero page is typed.
+ */
 #include "card.h"
+#include "card_access.h"
 #include "syscard.h"
 
 enum {
     BACKUP_BANK = 0xF7, BACKUP_MPR = 0x10, BACKUP_OPEN = 0x80, MPR_COUNT = 8,
     BACKUP_SIGNATURE_BYTES = 4, BACKUP_PASSWORD_BYTES = 11, BACKUP_HEADER_BYTES = 0x12,
-    BACKUP_START_HI = 0x80, BACKUP_FIRST_FREE = 0x8010, BACKUP_MAX_PAGES = 0x20,
-    BM_BAD_PASSWORD = 1, BM_NOT_FORMATTED = 0xFF,
-    WINDOW_MPR_LOW = 0x20, WINDOW_MPR_HIGH = 0x40, WINDOW_OFFSET_BITS = 0x1F, WINDOW_BASE_HI = 0xA0,
-    FIRST_FILE_ADDRESS = 0x8010, FILE_SUM_AT = 2, FILE_NAME_AT = 4, FILE_NAME_BYTES = 12,
-    FILE_HEADER_BYTES = 0x10, FILE_END_BYTES = 2, BM_DONE = 0, BM_NO_FILE = 1, BM_BAD_SUM = 2,
-    VDC_REG_CR = 5, VDC_CR_VBLANK_IRQ = 0x08, VDC_STATUS_VBLANK = 0x20
+    BACKUP_START_HI = 0x80, BACKUP_FIRST_FILE_LO = 0x10, BACKUP_FIRST_FILE_HI = 0x80, BACKUP_MAX_PAGES = 0x20,
+    BM_NOT_FORMATTED = 0xFF, BM_BAD_PASSWORD = 1, WINDOW_MPR_LOW = 0x20, WINDOW_MPR_HIGH = 0x40,
+    WINDOW_OFFSET_BITS = 0x1F, WINDOW_BASE_HI = 0xA0, FILE_SUM_AT = 2, FILE_NAME_AT = 4, FILE_NAME_BYTES = 12,
+    FILE_HEADER_BYTES = 0x10, BM_DONE = 0, BM_NO_FILE = 1, BM_BAD_SUM = 2,
+    VDC_REG_CR = 5, VDC_CR_VBLANK_IRQ = 0x08, VDC_STATUS_VBLANK = 0x20, SUM_START = 4
 };
 
-/* Keeps every MPR, and maps the backup memory's bank at $8000. */
-static void map_backup_bank_shim(void)
+#define BC_LO CardByteCount
+#define BC_HI (CardByteCount + 1)
+#define END_LO BackupEnd
+#define END_HI (BackupEnd + 1)
+#define NEXT_LO BackupNextFree
+#define NEXT_HI (BackupNextFree + 1)
+
+/* A byte of memory changed in place, as INC and DEC do: read, then written. */
+static uint8_t increment(uint16_t at)
 {
-    for (unsigned i = 0; i < MPR_COUNT; i++)
-        wr8((uint16_t)(CardSavedMprs + i), tma((uint8_t)(1u << i)));
-    tam(BACKUP_MPR, BACKUP_BANK);
+    uint8_t value = (uint8_t)(rd8(at) + 1);
+
+    wr8(at, value);
+    return value;
 }
 
-/* Puts back every MPR. */
-static void unmap_backup_bank_shim(void)
+static uint8_t decrement(uint16_t at)
 {
-    for (unsigned i = 0; i < MPR_COUNT; i++)
-        tam((uint8_t)(1u << i), rd8((uint16_t)(CardSavedMprs + i)));
+    uint8_t value = (uint8_t)(rd8(at) - 1);
+
+    wr8(at, value);
+    return value;
 }
 
-/* Waits out a vertical blank with its interrupt on, so that none was lost. */
-static void wait_vblank_with_interrupt_shim(void)
+/* What a later step leaves over what an earlier one left: the registers and flags it sets win. */
+static CardExit exit_over(CardExit base, CardExit top)
 {
-    uint8_t control = rd8(CardVdcCrLo);
-
-    wr8(VdcAddress, VDC_REG_CR);
-    wr8(VdcDataLo, control | VDC_CR_VBLANK_IRQ);
-    while (rd8(VdcAddress) & VDC_STATUS_VBLANK)
-        ;
-    while (!(rd8(VdcAddress) & VDC_STATUS_VBLANK))
-        ;
-    wr8(VdcDataLo, control);
-    wr8(VdcAddress, rd8(CardVdcReg));
-}
-
-/* Bytes that take a zero and give it back: the memory's size, stopping at the first that will not. */
-static BackupSize measure_backup_memory(void)
-{
-    BackupSize size = { BACKUP_START_HI, 0, BACKUP_MAX_PAGES, true };
-
-    while (size.pages_left != 0 && size.whole) {
-        size.offset = 0;
-        do {
-            uint16_t at = (uint16_t)((size.page << 8) + size.offset);
-
-            wr8(at, 0);
-            size.whole = rd8(at) == 0;
-            if (size.whole)
-                size.offset++;
-        } while (size.whole && size.offset != 0);
-        if (size.whole) {
-            size.page++;
-            size.pages_left--;
-        }
+    if (top.set_a) {
+        base.a = top.a;
+        base.set_a = true;
     }
-    return size;
-}
-
-/* A new header: the signature, where the memory ends, and no files yet. */
-static void write_backup_header(BackupSize size)
-{
-    wr8(CardPointerLo, 0);
-    wr8(CardPointerHi, size.page);
-    wr8(BackupEnd, size.offset);
-    wr8((uint16_t)(BackupEnd + 1), size.page);
-    for (unsigned i = 0; i < BACKUP_SIGNATURE_BYTES; i++)
-        wr8((uint16_t)(BackupHeader + i), rd8((uint16_t)(BackupSignature + i)));
-    wr8(BackupNextFree, (uint8_t)BACKUP_FIRST_FREE);
-    wr8((uint16_t)(BackupNextFree + 1), (uint8_t)(BACKUP_FIRST_FREE >> 8));
-    wr8(BackupFirstFile, 0);
-    wr8((uint16_t)(BackupFirstFile + 1), 0);
+    if (top.set_x) {
+        base.x = top.x;
+        base.set_x = true;
+    }
+    if (top.set_y) {
+        base.y = top.y;
+        base.set_y = true;
+    }
+    if (top.set_nz) {
+        base.nz = top.nz;
+        base.set_nz = true;
+    }
+    if (top.set_c) {
+        base.c = top.c;
+        base.set_c = true;
+    }
+    if (top.set_v) {
+        base.v = top.v;
+        base.set_v = true;
+    }
+    return base;
 }
 
 /*
  * @card 00:FC49 bm_open
  * WHAT IT DOES: Opens the backup memory at $8000, keeping every MPR.
- * HOW: The eight MPRs go to CardSavedMprs, its bank to MPR4, slow speed, interrupts off, and
- * the unlock port.
- * Entry: nothing. Exit: A kept, N and Z from it, I set, the CPU on its slow clock. X, Y, C, V kept.
+ * HOW: A is pushed, the eight MPRs go to CardSavedMprs, its bank to MPR4, slow speed, interrupts
+ * off, the unlock port, and A is pulled.
+ * WAITS: no.
+ * Entry: A (only kept). Exit: A as given, N and Z from it, I set, the CPU on its slow clock. X, Y,
+ * C, V kept. Returns the A it pulled.
  */
-void bm_open(void)
+uint8_t bm_open(uint8_t a)
 {
-    map_backup_bank_shim();
+    push8(a);
+    for (unsigned i = 0; i < MPR_COUNT; i++) {
+        wr8((uint16_t)(CardSavedMprs + i), tma((uint8_t)(1u << i)));
+    }
+    tam(BACKUP_MPR, BACKUP_BANK);
     csl();
+    sei();
     wr8(BackupUnlock, BACKUP_OPEN);
+    return pull8();
 }
 
 void abi_bm_open(void)
 {
-    bm_open();
+    cpu.a = bm_open(cpu.a);
     abi_nz(cpu.a);
-    abi_flag(P_I, true);
 }
 
 /*
  * @card 00:FC7F bm_close
  * WHAT IT DOES: Closes the backup memory and puts back every MPR.
- * HOW: The eight MPRs back; a read of the status port locks it; full speed; then waits out a
- * vertical blank with its interrupt on, so that none was lost, and puts the VDC back.
- * Entry: nothing. Exit: A kept, N and Z from it, I clear, the CPU on its fast clock. X, Y, C, V
- * kept.
+ * HOW: A is pushed; the eight MPRs back; a read of the status port locks it; full speed; then waits
+ * out a vertical blank with its interrupt on, so that none was lost, and puts the VDC back; A is
+ * pulled and interrupts are allowed.
+ * WAITS: yes, for the vertical blank, polling the VDC's status with interrupts still off; the stack
+ * there is the caller's frames and A.
+ * Entry: A (only kept). Exit: A as given, N and Z from it, I clear, the CPU on its fast clock. X, Y,
+ * C, V kept. Returns the A it pulled.
  */
-void bm_close(void)
+uint8_t bm_close(uint8_t a)
 {
-    unmap_backup_bank_shim();
-    rd8(CdIrqStatus);
+    uint8_t control;
+
+    push8(a);
+    for (unsigned i = 0; i < MPR_COUNT; i++) {
+        uint8_t bank = rd8((uint16_t)(CardSavedMprs + i));
+
+        tam((uint8_t)(1u << i), bank);
+    }
+    (void)rd8(CdIrqStatus);
     csh();
-    wait_vblank_with_interrupt_shim();
+    wr8(VdcAddress, VDC_REG_CR);
+    control = RD8(CZP->vdc_cr.lo);
+    wr8(VdcDataLo, (uint8_t)(control | VDC_CR_VBLANK_IRQ));
+    while (rd8(VdcAddress) & VDC_STATUS_VBLANK) {
+    }
+    while (!(rd8(VdcAddress) & VDC_STATUS_VBLANK)) {
+    }
+    control = RD8(CZP->vdc_cr.lo);
+    wr8(VdcDataLo, control);
+    control = RD8(CZP->vdc_reg);
+    wr8(VdcAddress, control);
+    a = pull8();
+    cli();
+    return a;
 }
 
 void abi_bm_close(void)
 {
-    bm_close();
+    cpu.a = bm_close(cpu.a);
     abi_nz(cpu.a);
-    abi_flag(P_I, false);
 }
 
 /*
  * @card 00:FC32 bm_open_formatted
  * WHAT IT DOES: Opens the backup memory if it has been formatted; if not, closes it and has
  * its caller return $FF.
- * HOW: Compares the header's first four bytes with the signature, from the last.
- * Entry: nothing. Exit, formatted: A the first byte, N 1, Z 0, C 1, X $FF. Exit, not: its
- * caller's caller is next, A $FF, N 1, Z 0, X where it differed, C from that compare.
+ * HOW: Opens, then compares the header's first four bytes with the signature, from the last. On a
+ * mismatch it closes and drops its own return address with two pulls, so the RTS after them returns
+ * to its caller's caller: its caller must return at once and not pop the frame it pushed.
+ * WAITS: only through bm_close, on the not formatted path.
+ * Entry: A (only kept). Exit, formatted: A the first byte, N 1, Z 0, C 1, X $FF, I set. Exit, not: its
+ * caller's caller is next, A $FF, N 1, Z 0, X where it differed, C from that compare, I clear.
+ * Not run by any script: the not formatted path.
  */
-BackupCheck bm_open_formatted(void)
+BackupCheck bm_open_formatted(uint8_t a)
 {
-    BackupCheck check = { true, 0, 0, 0 };
+    BackupCheck check = { true, { 0 } };
+    uint8_t read = 0;
+    uint8_t expected = 0;
+    int x = BACKUP_SIGNATURE_BYTES - 1;
 
-    bm_open();
-    for (int i = BACKUP_SIGNATURE_BYTES - 1; i >= 0 && check.formatted; i--) {
-        check.read = rd8((uint16_t)(BackupHeader + i));
-        check.expected = rd8((uint16_t)(BackupSignature + i));
-        check.where = (uint8_t)i;
-        check.formatted = check.read == check.expected;
-    }
-    if (!check.formatted)
-        bm_close();
+    jsr_push(0xFC34);
+    (void)bm_open(a);
+    jsr_pop();
+    do {
+        read = rd8((uint16_t)(BackupHeader + x));
+        expected = rd8((uint16_t)(BackupSignature + x));
+        if (read != expected) {
+            jsr_push(0xFC44);
+            (void)bm_close(read);
+            jsr_pop();
+            (void)pull8();
+            (void)pull8();
+            check.formatted = false;
+            check.exit.a = BM_NOT_FORMATTED;
+            check.exit.x = (uint8_t)x;
+            check.exit.nz = BM_NOT_FORMATTED;
+            check.exit.c = read >= expected;
+            check.exit.set_a = check.exit.set_x = check.exit.set_nz = check.exit.set_c = true;
+            return check;
+        }
+        x--;
+    } while (x >= 0);
+    check.exit.a = read;
+    check.exit.x = 0xFF;
+    check.exit.nz = 0xFF;
+    check.exit.c = true;
+    check.exit.set_a = check.exit.set_x = check.exit.set_nz = check.exit.set_c = true;
     return check;
 }
 
 void abi_bm_open_formatted(void)
 {
-    BackupCheck check = bm_open_formatted();
+    BackupCheck check = bm_open_formatted(cpu.a);
 
-    abi_flag(P_C, check.read >= check.expected);
+    card_exit_apply(check.exit);
     abi_flag(P_I, check.formatted);
-    if (check.formatted) {
-        cpu.a = check.read;
-        cpu.x = 0xFF;
-        abi_nz(0xFF);
-    } else {
-        cpu.a = BM_NOT_FORMATTED;
-        cpu.x = check.where;
-        abi_nz(BM_NOT_FORMATTED);
-    }
 }
 
-static uint16_t backup_word(uint16_t lo)
-{
-    uint8_t low = rd8(lo);
-
-    return (uint16_t)(low | (rd8((uint16_t)(lo + 1)) << 8));
-}
-
-/*
- * The backup memory is not RAM to the oracles: its bytes are read and written in the order and
- * number the original reads and writes them, a byte at a time.
- */
-
-/* One word less another, read as a subtract reads them: both low bytes, then both high. */
-static uint16_t backup_difference(uint16_t from, uint16_t less)
-{
-    uint8_t from_low = rd8(from);
-    uint8_t less_low = rd8(less);
-    uint8_t from_high = rd8((uint16_t)(from + 1));
-    uint8_t less_high = rd8((uint16_t)(less + 1));
-
-    return (uint16_t)(((from_high << 8) | from_low) - ((less_high << 8) | less_low));
-}
-
-/* A word changed in place: its low byte read and written, then its high byte. */
-static void backup_word_add(uint16_t at, uint16_t value)
-{
-    uint8_t low = rd8(at);
-    unsigned carry = (low + (value & 0xFF)) >> 8;
-
-    wr8(at, (uint8_t)(low + value));
-    wr8((uint16_t)(at + 1), (uint8_t)(rd8((uint16_t)(at + 1)) + (value >> 8) + carry));
-}
-
-/* A word less the word at another address, in place, each byte read as it is needed. */
-static void backup_word_take(uint16_t at, uint16_t less_at)
-{
-    uint8_t low = rd8(at);
-    uint8_t less_low = rd8(less_at);
-    unsigned borrow = low < less_low;
-
-    wr8(at, (uint8_t)(low - less_low));
-    low = rd8((uint16_t)(at + 1));
-    wr8((uint16_t)(at + 1), (uint8_t)(low - rd8((uint16_t)(less_at + 1)) - borrow));
-}
-
-/* The answer goes in _CX. */
-static void give_free_bytes(uint16_t bytes)
-{
-    wr8(CardCl, (uint8_t)bytes);
-    wr8(CardCh, (uint8_t)(bytes >> 8));
-}
-
-/* Maps the two banks a caller's own pages were at into $A000-$DFFF. */
-static void map_window_banks_shim(uint8_t window)
-{
-    tam(WINDOW_MPR_LOW, rd8((uint16_t)(CardSavedMprs + window)));
-    tam(WINDOW_MPR_HIGH, rd8((uint16_t)(CardSavedMprs + 1 + window)));
-}
+/* Maps the two banks a caller's own pages were at into $A000-$DFFF, and moves its pointer there. */
+typedef struct {
+    uint8_t window;     /* the saved MPR chosen: the pointer's top three bits */
+    uint8_t high;       /* the pointer's new high byte */
+    bool bit4;          /* bit 4 of the pointer's old high byte */
+} BackupWindow;
 
 /*
  * @card 00:FD7B bm_map_name_window
@@ -231,72 +216,76 @@ static void map_window_banks_shim(uint8_t window)
  * memory was opened.
  * HOW: Its top three bits choose the saved MPR; the banks there and after it go at $A000, and
  * the pointer is rebased there.
+ * WAITS: no.
  * Entry: CardCopyLo-Hi. Exit: A the pointer's new high byte, N and Z from it, X the saved MPR,
- * C bit 4 of the old high byte. Y, V kept. Gives the saved MPR.
+ * C bit 4 of the old high byte. Y, V kept.
  */
-uint8_t bm_map_name_window(void)
+static BackupWindow bm_map_name_window(void)
 {
-    uint8_t high = rd8(CardCopyHi);
-    uint8_t window = high >> 5;
+    BackupWindow w;
+    uint8_t high = RD8(CZP->copy.hi);
+    uint8_t bank;
 
-    map_window_banks_shim(window);
-    wr8(CardCopyHi, (uint8_t)((high & WINDOW_OFFSET_BITS) | WINDOW_BASE_HI));
-    return window;
+    w.bit4 = (high & 0x10) != 0;
+    w.window = (uint8_t)(high >> 5);
+    bank = rd8((uint16_t)(CardSavedMprs + w.window));
+    tam(WINDOW_MPR_LOW, bank);
+    bank = rd8((uint16_t)(CardSavedMprs + 1 + w.window));
+    tam(WINDOW_MPR_HIGH, bank);
+    high = RD8(CZP->copy.hi);
+    w.high = (uint8_t)((high & WINDOW_OFFSET_BITS) | WINDOW_BASE_HI);
+    WR8(CZP->copy.hi, w.high);
+    return w;
 }
 
 void abi_bm_map_name_window(void)
 {
-    uint8_t high = rd8(CardCopyHi);
+    BackupWindow w = bm_map_name_window();
 
-    cpu.x = bm_map_name_window();
-    cpu.a = rd8(CardCopyHi);
-    abi_nz(cpu.a);
-    abi_flag(P_C, (high & 0x10) != 0);
+    cpu.x = w.window;
+    cpu.a = w.high;
+    abi_nz(w.high);
+    abi_flag(P_C, w.bit4);
+}
+
+/* The exit of a routine that ends having mapped a window: A, N, Z from the pointer, X, C. */
+static CardExit window_exit(BackupWindow w)
+{
+    CardExit e = { 0 };
+
+    e.a = e.nz = w.high;
+    e.x = w.window;
+    e.c = w.bit4;
+    e.set_a = e.set_nz = e.set_x = e.set_c = true;
+    return e;
 }
 
 /*
  * @card 00:FD97 bm_count_down
  * WHAT IT DOES: Takes one from the count of bytes left.
  * HOW: A 16-bit decrement of CardByteCount.
- * Entry: CardByteCount. Exit: A its two bytes ORed, N and Z from that. X, Y, C, V kept. Gives
- * what is left.
+ * WAITS: no.
+ * Entry: CardByteCount. Exit: A its two bytes ORed, N and Z from that. X, Y, C, V kept. Returns A.
+ * Not run by any script: a low byte of zero, which takes one from the high byte.
  */
-uint16_t bm_count_down(void)
+uint8_t bm_count_down(void)
 {
-    uint16_t left = (uint16_t)(backup_word(CardByteCount) - 1);
+    uint8_t low = rd8(BC_LO);
+    uint8_t high;
 
-    wr8(CardByteCount, (uint8_t)left);
-    wr8((uint16_t)(CardByteCount + 1), (uint8_t)(left >> 8));
-    return left;
+    if (low == 0) {
+        (void)decrement(BC_HI);
+    }
+    (void)decrement(BC_LO);
+    low = rd8(BC_LO);
+    high = rd8(BC_HI);
+    return (uint8_t)(low | high);
 }
 
 void abi_bm_count_down(void)
 {
-    uint16_t left = bm_count_down();
-
-    cpu.a = (uint8_t)left | (uint8_t)(left >> 8);
+    cpu.a = bm_count_down();
     abi_nz(cpu.a);
-}
-
-/* Whether the twelve bytes of a file's name at its offset are the name asked for. */
-static bool file_name_matches(uint16_t file, uint16_t name)
-{
-    for (unsigned i = 0; i < FILE_NAME_BYTES; i++)
-        if (rd8((uint16_t)(name + i)) != rd8((uint16_t)(file + FILE_NAME_AT + i)))
-            return false;
-    return true;
-}
-
-/* V as bm_find_file leaves it: from taking the name's offset off again, or from its last step. */
-static void abi_find_v_shim(BackupFind find)
-{
-    uint16_t compared_at = (uint16_t)(find.file + FILE_NAME_AT);
-    uint16_t reached = (uint16_t)(find.last_file + find.last_length);
-
-    if (find.found)
-        abi_flag(P_V, (compared_at >> 8) == 0x80 && (compared_at & 0xFF) < FILE_NAME_AT);
-    else if (find.stepped)
-        abi_flag(P_V, ((find.last_file ^ reached) & (find.last_length ^ reached) & 0x8000) != 0);
 }
 
 /*
@@ -304,116 +293,177 @@ static void abi_find_v_shim(BackupFind find)
  * WHAT IT DOES: Looks through the backup memory's files for the name at _AX.
  * HOW: Each file starts with its length; a length of zero ends the list. The name is compared
  * through the window, and the file reached is left in CardFileLo.
+ * WAITS: no.
  * Entry: _AX the name's address, backup memory open. Exit, found: C clear, A the file's high
  * byte, N and Z from it, Y $0C, V from taking the name's offset off again. Exit, not found: C
  * set, A 0, N 0, Z 1, Y 1, V from the last step, or kept if there were no files. X the saved MPR.
+ * Not run by any script: a name that does not match a file.
  */
-BackupFind bm_find_file(void)
+CardExit bm_find_file(void)
 {
-    BackupFind find = { false, FIRST_FILE_ADDRESS, 0, false, 0, 0 };
-    uint16_t name;
+    CardExit e = { 0 };
+    BackupWindow w;
+    uint8_t value;
 
-    wr8(CardCopyLo, rd8(CardAl));
-    wr8(CardCopyHi, rd8((uint16_t)(CardAl + 1)));
-    find.window = bm_map_name_window();
-    name = backup_word(CardCopyLo);
+    value = RD8(CZP->a.lo);
+    WR8(CZP->copy.lo, value);
+    value = RD8(CZP->a.hi);
+    WR8(CZP->copy.hi, value);
+    jsr_push(0xFBA1);
+    w = bm_map_name_window();
+    jsr_pop();
+    WR8(CZP->file.lo, BACKUP_FIRST_FILE_LO);
+    WR8(CZP->file.hi, BACKUP_FIRST_FILE_HI);
+    e.x = w.window;
+    e.set_x = true;
     for (;;) {
-        uint16_t length = backup_word(find.file);
+        uint8_t length_low = RD8_PTR(CZP->file.lo);
+        uint8_t length_high = RD8_PTR_Y(CZP->file.lo, 1);
+        Sum low;
+        Sum high;
+        uint8_t y = 0;
+        bool same = true;
 
-        if (length == 0)
-            break;
-        find.found = file_name_matches(find.file, name);
-        if (find.found)
-            break;
-        find.stepped = true;
-        find.last_file = find.file;
-        find.last_length = length;
-        find.file = (uint16_t)(find.file + length);
+        if ((uint8_t)(length_low | length_high) == 0) {
+            e.a = 0;
+            e.nz = 0;
+            e.y = 1;
+            e.c = true;
+            e.set_a = e.set_nz = e.set_y = e.set_c = true;
+            return e;
+        }
+        value = RD8(CZP->file.lo);
+        low = add8(value, FILE_NAME_AT, false);
+        WR8(CZP->file.lo, low.value);
+        value = RD8(CZP->file.hi);
+        high = add8(value, 0, low.carry);
+        WR8(CZP->file.hi, high.value);
+        do {
+            uint8_t wanted = RD8_PTR_Y(CZP->copy.lo, y);
+            uint8_t found = RD8_PTR_Y(CZP->file.lo, y);
+
+            if (wanted != found) {
+                same = false;
+                break;
+            }
+            y++;
+        } while (y < FILE_NAME_BYTES);
+        value = RD8(CZP->file.lo);
+        low = sub8(value, FILE_NAME_AT, true);
+        WR8(CZP->file.lo, low.value);
+        value = RD8(CZP->file.hi);
+        high = sub8(value, 0, low.carry);
+        WR8(CZP->file.hi, high.value);
+        if (same) {
+            e.a = e.nz = high.value;
+            e.y = y;
+            e.c = false;
+            e.v = high.overflow;
+            e.set_a = e.set_nz = e.set_y = e.set_c = e.set_v = true;
+            return e;
+        }
+        length_high = RD8_PTR_Y(CZP->file.lo, 1);
+        push8(length_high);
+        length_low = RD8_PTR(CZP->file.lo);
+        value = RD8(CZP->file.lo);
+        low = add8(length_low, value, false);
+        WR8(CZP->file.lo, low.value);
+        length_high = pull8();
+        value = RD8(CZP->file.hi);
+        high = add8(length_high, value, low.carry);
+        WR8(CZP->file.hi, high.value);
+        e.v = high.overflow;
+        e.set_v = true;
     }
-    wr8(CardFileLo, (uint8_t)find.file);
-    wr8(CardFileHi, (uint8_t)(find.file >> 8));
-    return find;
 }
 
 void abi_bm_find_file(void)
 {
-    BackupFind find = bm_find_file();
-
-    cpu.x = find.window;
-    abi_flag(P_C, !find.found);
-    if (find.found) {
-        cpu.a = (uint8_t)(find.file >> 8);
-        cpu.y = FILE_NAME_BYTES;
-        abi_nz(cpu.a);
-    } else {
-        cpu.a = 0;
-        cpu.y = 1;
-        abi_nz(0);
-    }
-    abi_find_v_shim(find);
+    card_exit_apply(bm_find_file());
 }
+
+/* Where the memory ended, as bm_format measured it. */
+typedef struct {
+    uint8_t page;
+    uint8_t offset;
+    uint8_t pages_left;
+    bool whole;
+} BackupSize;
 
 /*
  * @card 00:F858 bm_format
  * WHAT IT DOES: Formats the backup memory, given the password that guards it.
  * HOW: Compares eleven bytes with the password; measures how much RAM answers; writes the
  * header: signature, end, next free byte, and no files.
- * Entry: _AX the password's address. Exit, wrong password: A 1, N 0, Z 0, Y where it differed,
- * C from that compare. Exit: A 0, N 0, Z 1, X $FF, Y the bytes short of a page. V kept.
+ * WAITS: only through bm_close.
+ * Entry: _AX the password's address; A (only kept; opened with the password's first byte). Exit,
+ * wrong password: A 1, N 0, Z 0, Y where it differed, C from that compare. Exit: A 0, N 0, Z 1, X $FF,
+ * Y the bytes short of a page, C whether all of it answered, I clear. V kept.
+ * Not run by any script: the whole routine.
  */
-BackupFormat bm_format(void)
+BackupAccess bm_format(uint8_t a)
 {
-    BackupFormat format = { true, 0, 0, 0, { 0, 0, 0, false } };
-    uint16_t given = backup_word(CardAl);
+    BackupAccess format = { BM_ENDED_DONE, 0, { 0 } };
+    BackupSize size = { BACKUP_START_HI, 0, BACKUP_MAX_PAGES, true };
+    int y = BACKUP_PASSWORD_BYTES - 1;
+    uint8_t wanted = a;
+    uint8_t given;
+    uint8_t value;
 
-    for (int i = BACKUP_PASSWORD_BYTES - 1; i >= 0 && format.accepted; i--) {
-        format.expected = rd8((uint16_t)(BackupFormatPassword + i));
-        format.read = rd8((uint16_t)(given + i));
-        format.where = (uint8_t)i;
-        format.accepted = format.expected == format.read;
+    do {
+        wanted = rd8((uint16_t)(BackupFormatPassword + y));
+        given = RD8_PTR_Y(CZP->a.lo, (uint8_t)y);
+        if (wanted != given) {
+            format.ending = BM_ENDED_NOT_FOUND;
+            format.result = BM_BAD_PASSWORD;
+            format.exit.y = (uint8_t)y;
+            format.exit.c = wanted >= given;
+            format.exit.set_y = format.exit.set_c = true;
+            return format;
+        }
+        y--;
+    } while (y >= 0);
+    jsr_push(0xF867);
+    (void)bm_open(wanted);
+    jsr_pop();
+    WR8(CZP->pointer.hi, BACKUP_START_HI);
+    WR8(CZP->pointer.lo, 0);
+    do {
+        size.offset = 0;
+        do {
+            uint8_t check;
+
+            WR8_PTR_Y(CZP->pointer.lo, size.offset, 0);
+            check = RD8_PTR_Y(CZP->pointer.lo, size.offset);
+            if (check != 0) {
+                size.whole = false;
+                break;
+            }
+            size.offset++;
+        } while (size.offset != 0);
+        if (!size.whole) {
+            break;
+        }
+        (void)increment(ADDR_OF8(CZP->pointer.hi));
+        size.pages_left--;
+    } while (size.pages_left != 0);
+    wr8(END_LO, size.offset);
+    size.page = RD8(CZP->pointer.hi);
+    wr8(END_HI, size.page);
+    for (int x = BACKUP_SIGNATURE_BYTES - 1; x >= 0; x--) {
+        value = rd8((uint16_t)(BackupSignature + x));
+        wr8((uint16_t)(BackupHeader + x), value);
     }
-    if (!format.accepted)
-        return format;
-    bm_open();
-    format.size = measure_backup_memory();
-    write_backup_header(format.size);
-    bm_close();
+    wr8(NEXT_LO, BACKUP_FIRST_FILE_LO);
+    wr8(NEXT_HI, BACKUP_FIRST_FILE_HI);
+    wr8(BackupFirstFile, 0);
+    wr8((uint16_t)(BackupFirstFile + 1), 0);
+    (void)bm_close(BM_DONE);
+    format.exit.x = 0xFF;
+    format.exit.y = size.offset;
+    format.exit.c = size.whole;
+    format.exit.set_x = format.exit.set_y = format.exit.set_c = true;
     return format;
-}
-
-/* The A bm_format leaves: 0, or 1 for a wrong password. */
-uint8_t bm_format_result(BackupFormat format)
-{
-    return format.accepted ? 0 : BM_BAD_PASSWORD;
-}
-
-static void bm_format_registers_shim(BackupFormat format)
-{
-    if (!format.accepted) {
-        cpu.a = BM_BAD_PASSWORD;
-        cpu.y = format.where;
-        abi_nz(BM_BAD_PASSWORD);
-        abi_flag(P_C, format.expected >= format.read);
-        return;
-    }
-    cpu.a = 0;
-    cpu.x = 0xFF;
-    cpu.y = format.size.offset;
-    abi_nz(0);
-    abi_flag(P_C, format.size.whole);
-    abi_flag(P_I, false);
-}
-
-/* bm_format's exit, for its wrapper and for a caller's that ends in it. */
-void bm_format_exit_shim(BackupFormat format)
-{
-    bm_format_registers_shim(format);
-    cpu.a = bm_format_result(format);
-}
-
-void abi_bm_format(void)
-{
-    bm_format_exit_shim(bm_format());
 }
 
 /*
@@ -421,93 +471,53 @@ void abi_bm_format(void)
  * WHAT IT DOES: Gives how many bytes of the backup memory are free for another file.
  * HOW: Its end less its next free byte, less a file's header of $12 bytes, and zero if that
  * is below zero. The answer goes in _CX.
- * Entry: nothing. Exit: A 0, N 0, Z 1, X $FF, C and V from the subtract's high byte; or $FF as
- * bm_open_formatted if not formatted. Y kept.
+ * WAITS: only through bm_close.
+ * Entry: A (only kept). Exit: A 0, N 0, Z 1, X $FF, C and V from the subtract's high byte, I clear;
+ * or $FF as bm_open_formatted if not formatted. Y kept.
+ * Not run by any script: a result below zero, which puts zero in _CX.
  */
-BackupFree bm_free(void)
+BackupAccess bm_free(uint8_t a)
 {
-    BackupFree free_space = { 0 };
+    BackupAccess free_space = { BM_ENDED_DONE, 0, { 0 } };
+    BackupCheck check;
+    Sum low;
+    Sum high;
+    uint8_t value;
+    uint8_t other;
 
-    free_space.check = bm_open_formatted();
-    if (!free_space.check.formatted)
+    jsr_push(0xF8BB);
+    check = bm_open_formatted(a);
+    if (!check.formatted) {
+        free_space.ending = BM_ENDED_NOT_FORMATTED;
+        free_space.result = BM_NOT_FORMATTED;
+        free_space.exit = check.exit;
         return free_space;
-    free_space.room = backup_difference(BackupEnd, BackupNextFree);
-    free_space.after_header = (uint16_t)(free_space.room - BACKUP_HEADER_BYTES);
-    give_free_bytes((int16_t)free_space.after_header < 0 ? 0 : free_space.after_header);
-    bm_close();
-    return free_space;
-}
-
-/* The free bytes bm_free leaves in _CX: the room after a file's header, or 0. */
-uint16_t bm_free_bytes(BackupFree free_space)
-{
-    return (int16_t)free_space.after_header < 0 ? 0 : free_space.after_header;
-}
-
-/* The A bm_free leaves: 0, or $FF not formatted. */
-uint8_t bm_free_result(BackupFree free_space)
-{
-    return free_space.check.formatted ? 0 : BM_NOT_FORMATTED;
-}
-
-static void bm_free_registers_shim(BackupFree free_space)
-{
-    abi_flag(P_I, false);
-    if (!free_space.check.formatted) {
-        abi_flag(P_C, free_space.check.read >= free_space.check.expected);
-        cpu.a = BM_NOT_FORMATTED;
-        cpu.x = free_space.check.where;
-        abi_nz(BM_NOT_FORMATTED);
-        return;
     }
-    cpu.a = 0;
-    cpu.x = 0xFF;
-    abi_nz(0);
-    abi_flag(P_C, free_space.room >= BACKUP_HEADER_BYTES);
-    abi_flag(P_V, ((free_space.room ^ BACKUP_HEADER_BYTES) & (free_space.room ^ free_space.after_header) & 0x8000) != 0);
-}
-
-/* bm_free's exit, for its wrapper and for a caller's that ends in it. */
-void bm_free_exit_shim(BackupFree free_space)
-{
-    bm_free_registers_shim(free_space);
-    cpu.a = bm_free_result(free_space);
-}
-
-void abi_bm_free(void)
-{
-    bm_free_exit_shim(bm_free());
-}
-
-static void put_word(uint16_t lo, uint16_t value)
-{
-    wr8(lo, (uint8_t)value);
-    wr8((uint16_t)(lo + 1), (uint8_t)(value >> 8));
-}
-
-/* Whether an 8-bit add or subtract with its carry in leaves the signed range. */
-static bool add_overflows(uint8_t a, uint8_t b, bool carry)
-{
-    int r = (int8_t)a + (int8_t)b + (carry ? 1 : 0);
-
-    return r < -128 || r > 127;
-}
-
-static bool sub_overflows(uint8_t a, uint8_t b, bool borrow)
-{
-    int r = (int8_t)a - (int8_t)b - (borrow ? 1 : 0);
-
-    return r < -128 || r > 127;
-}
-
-/* The exit of a call that found the memory unformatted: as bm_open_formatted leaves it. */
-static void abi_not_formatted_shim(BackupCheck check)
-{
-    abi_flag(P_I, false);
-    abi_flag(P_C, check.read >= check.expected);
-    cpu.a = BM_NOT_FORMATTED;
-    cpu.x = check.where;
-    abi_nz(BM_NOT_FORMATTED);
+    jsr_pop();
+    value = rd8(END_LO);
+    other = rd8(NEXT_LO);
+    low = sub8(value, other, true);
+    WR8(CZP->c.lo, low.value);
+    value = rd8(END_HI);
+    other = rd8(NEXT_HI);
+    high = sub8(value, other, low.carry);
+    WR8(CZP->c.hi, high.value);
+    value = RD8(CZP->c.lo);
+    low = sub8(value, BACKUP_HEADER_BYTES, true);
+    WR8(CZP->c.lo, low.value);
+    value = RD8(CZP->c.hi);
+    high = sub8(value, 0, low.carry);
+    WR8(CZP->c.hi, high.value);
+    if (high.value & 0x80) {
+        WR8(CZP->c.lo, 0);
+        WR8(CZP->c.hi, 0);
+    }
+    (void)bm_close(BM_DONE);
+    free_space.exit = check.exit;
+    free_space.exit.c = high.carry;
+    free_space.exit.v = high.overflow;
+    free_space.exit.set_v = true;
+    return free_space;
 }
 
 /*
@@ -516,45 +526,63 @@ static void abi_not_formatted_shim(BackupCheck check)
  * HOW: Adds every byte after the length and checksum words into a 16-bit sum in CardCopyLo,
  * counting the file's length less four down in CardByteCount. A length of four sums $10000
  * bytes.
+ * WAITS: no.
  * Entry: CardFileLo. Exit: A 0, N 0, Z 1, Y the low byte of four plus the bytes summed, C and V
  * from the last add's high byte. X kept. CardPointerLo-Hi the file, its high byte moved on by
  * the pages crossed.
+ * Not run by any script: a file crossing a page of the memory.
  */
-BackupSum bm_sum_file(void)
+CardExit bm_sum_file(void)
 {
-    uint16_t file = backup_word(CardFileLo);
-    uint16_t count = (uint16_t)(backup_word(file) - FILE_NAME_AT);
-    BackupSum sum = { 0, 0, 0, count ? count : 0x10000u };
+    CardExit e = { 0 };
+    Sum low;
+    Sum high;
+    uint8_t value;
+    uint8_t y;
+    uint8_t left;
 
-    for (uint32_t i = 0; i < sum.bytes; i++) {
-        sum.last_byte = rd8((uint16_t)(file + FILE_NAME_AT + i));
-        sum.before_last = sum.sum;
-        sum.sum = (uint16_t)(sum.sum + sum.last_byte);
-    }
-    wr8(CardPointerLo, (uint8_t)file);
-    wr8(CardPointerHi, (uint8_t)((file >> 8) + ((FILE_NAME_AT + sum.bytes) >> 8)));
-    put_word(CardCopyLo, sum.sum);
-    put_word(CardByteCount, 0);
-    return sum;
+    value = RD8(CZP->file.lo);
+    WR8(CZP->pointer.lo, value);
+    value = RD8(CZP->file.hi);
+    WR8(CZP->pointer.hi, value);
+    value = RD8_PTR(CZP->pointer.lo);
+    low = sub8(value, SUM_START, true);
+    wr8(BC_LO, low.value);
+    value = RD8_PTR_Y(CZP->pointer.lo, 1);
+    high = sub8(value, 0, low.carry);
+    wr8(BC_HI, high.value);
+    WR8(CZP->copy.lo, 0);
+    WR8(CZP->copy.hi, 0);
+    y = SUM_START;
+    do {
+        uint8_t byte = RD8_PTR_Y(CZP->pointer.lo, y);
+
+        value = RD8(CZP->copy.lo);
+        low = add8(byte, value, false);
+        WR8(CZP->copy.lo, low.value);
+        value = RD8(CZP->copy.hi);
+        high = add8(0, value, low.carry);
+        WR8(CZP->copy.hi, high.value);
+        y++;
+        if (y == 0) {
+            (void)increment(ADDR_OF8(CZP->pointer.hi));
+        }
+        jsr_push(0xFC2F);
+        left = bm_count_down();
+        jsr_pop();
+    } while (left != 0);
+    e.a = 0;
+    e.nz = 0;
+    e.y = y;
+    e.c = high.carry;
+    e.v = high.overflow;
+    e.set_a = e.set_nz = e.set_y = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_bm_sum_file(void)
 {
-    BackupSum sum = bm_sum_file();
-
-    cpu.a = 0;
-    cpu.y = (uint8_t)(FILE_NAME_AT + sum.bytes);
-    abi_nz(0);
-    abi_flag(P_C, (uint32_t)sum.before_last + sum.last_byte > 0xFFFF);
-    abi_flag(P_V, sum.before_last < 0x8000 && sum.before_last + sum.last_byte >= 0x8000);
-}
-
-static void abi_span_flags_shim(BackupSpan span)
-{
-    bool low_carry = (span.offset & 0xFF) + (span.data & 0xFF) > 0xFF;
-
-    abi_flag(P_C, (uint32_t)span.offset + span.data > 0xFFFF);
-    abi_flag(P_V, add_overflows((uint8_t)(span.offset >> 8), (uint8_t)(span.data >> 8), low_carry));
+    card_exit_apply(bm_sum_file());
 }
 
 /*
@@ -562,47 +590,70 @@ static void abi_span_flags_shim(BackupSpan span)
  * WHAT IT DOES: Places a read or write of _CX bytes at offset _DX in the file at CardFileLo.
  * HOW: How far it runs past the file's end goes to CardCopyLo (negative when it fits), the
  * address in the file it starts at to CardPointerLo, and _CX to CardByteCount.
+ * WAITS: no.
  * Entry: _CX, _DX, CardFileLo. Exit: A the high byte of the overrun, N and Z from it, Y 1, C and V
  * from adding _DX to the file's data address. X kept.
  */
-BackupSpan bm_place_span(void)
+CardExit bm_place_span(void)
 {
-    uint16_t file = backup_word(CardFileLo);
-    uint16_t count = backup_word(CardCl);
-    BackupSpan span;
+    CardExit e = { 0 };
+    Sum low;
+    Sum high;
+    uint8_t value;
+    uint8_t other;
 
-    span.offset = backup_word(CardDl);
-    span.data = (uint16_t)(file + FILE_HEADER_BYTES);
-    span.overrun = (uint16_t)(span.offset + count + FILE_HEADER_BYTES - backup_word(file));
-    put_word(CardCopyLo, span.overrun);
-    put_word(CardPointerLo, (uint16_t)(span.data + span.offset));
-    put_word(CardByteCount, count);
-    return span;
+    value = RD8(CZP->d.lo);
+    other = RD8(CZP->c.lo);
+    low = add8(value, other, false);
+    WR8(CZP->copy.lo, low.value);
+    value = RD8(CZP->d.hi);
+    other = RD8(CZP->c.hi);
+    high = add8(value, other, low.carry);
+    WR8(CZP->copy.hi, high.value);
+    value = RD8(CZP->copy.lo);
+    low = add8(value, FILE_HEADER_BYTES, false);
+    WR8(CZP->copy.lo, low.value);
+    value = RD8(CZP->copy.hi);
+    high = add8(value, 0, low.carry);
+    WR8(CZP->copy.hi, high.value);
+    value = RD8(CZP->copy.lo);
+    other = RD8_PTR(CZP->file.lo);
+    low = sub8(value, other, true);
+    WR8(CZP->copy.lo, low.value);
+    value = RD8(CZP->copy.hi);
+    other = RD8_PTR_Y(CZP->file.lo, 1);
+    high = sub8(value, other, low.carry);
+    WR8(CZP->copy.hi, high.value);
+    value = RD8(CZP->file.lo);
+    low = add8(value, FILE_HEADER_BYTES, false);
+    WR8(CZP->pointer.lo, low.value);
+    value = RD8(CZP->file.hi);
+    high = add8(value, 0, low.carry);
+    WR8(CZP->pointer.hi, high.value);
+    value = RD8(CZP->d.lo);
+    other = RD8(CZP->pointer.lo);
+    low = add8(value, other, false);
+    WR8(CZP->pointer.lo, low.value);
+    value = RD8(CZP->d.hi);
+    other = RD8(CZP->pointer.hi);
+    high = add8(value, other, low.carry);
+    WR8(CZP->pointer.hi, high.value);
+    value = RD8(CZP->c.lo);
+    wr8(BC_LO, value);
+    value = RD8(CZP->c.hi);
+    wr8(BC_HI, value);
+    value = RD8(CZP->copy.hi);
+    e.a = e.nz = value;
+    e.y = 1;
+    e.c = high.carry;
+    e.v = high.overflow;
+    e.set_a = e.set_nz = e.set_y = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_bm_place_span(void)
 {
-    BackupSpan span = bm_place_span();
-
-    cpu.a = (uint8_t)(span.overrun >> 8);
-    cpu.y = 1;
-    abi_nz(cpu.a);
-    abi_span_flags_shim(span);
-}
-
-static void abi_move_way_flags_shim(BackupMoveWay way)
-{
-    if (way.forward) {
-        abi_flag(P_C, true);
-        abi_flag(P_V, sub_overflows((uint8_t)(way.source >> 8), (uint8_t)(way.destination >> 8),
-                                    (way.source & 0xFF) < (way.destination & 0xFF)));
-    } else {
-        uint16_t last = (uint16_t)(way.count - 1);
-
-        abi_flag(P_C, (uint32_t)way.destination + last > 0xFFFF);
-        abi_flag(P_V, add_overflows((uint8_t)(way.destination >> 8), (uint8_t)(last >> 8),
-                                    (way.destination & 0xFF) + (last & 0xFF) > 0xFF));
-    }
+    card_exit_apply(bm_place_span());
 }
 
 /*
@@ -611,43 +662,70 @@ static void abi_move_way_flags_shim(BackupMoveWay way)
  * itself is not spoiled.
  * HOW: A source at or above its destination goes first byte first. One below goes last byte
  * first: both pointers are moved on to their last byte.
+ * WAITS: no.
  * Entry: CardPointerLo the source, CardCopyLo the destination, CardByteCount the bytes.
  * Exit, forward: X 2, A the high bytes' difference, N 0, Z 0, C 1, V from that subtract.
  * Exit, backward: X 0, A the destination's new high byte, N 0, Z 1, C and V from moving it on.
  * Y kept.
+ * Not run by any script: the forward way.
  */
-BackupMoveWay bm_move_direction(void)
+CardExit bm_move_direction(void)
 {
-    BackupMoveWay way;
-    uint16_t last;
+    CardExit e = { 0 };
+    Sum low;
+    Sum high;
+    uint8_t value;
+    uint8_t other;
 
-    way.source = backup_word(CardPointerLo);
-    way.destination = backup_word(CardCopyLo);
-    way.count = backup_word(CardByteCount);
-    way.forward = way.source >= way.destination;
-    if (way.forward)
-        return way;
-    last = (uint16_t)(way.count - 1);
-    put_word(CardPointerLo, (uint16_t)(way.source + last));
-    put_word(CardCopyLo, (uint16_t)(way.destination + last));
-    return way;
+    value = RD8(CZP->pointer.lo);
+    other = RD8(CZP->copy.lo);
+    low = sub8(value, other, true);
+    value = RD8(CZP->pointer.hi);
+    other = RD8(CZP->copy.hi);
+    high = sub8(value, other, low.carry);
+    if (high.carry) {
+        e.a = high.value;
+        e.x = 2;
+        e.nz = 2;
+        e.c = true;
+        e.v = high.overflow;
+        e.set_a = e.set_x = e.set_nz = e.set_c = e.set_v = true;
+        return e;
+    }
+    jsr_push(0xFD4F);
+    (void)bm_count_down();
+    jsr_pop();
+    value = RD8(CZP->pointer.lo);
+    other = rd8(BC_LO);
+    low = add8(value, other, false);
+    WR8(CZP->pointer.lo, low.value);
+    value = RD8(CZP->pointer.hi);
+    other = rd8(BC_HI);
+    high = add8(value, other, low.carry);
+    WR8(CZP->pointer.hi, high.value);
+    value = RD8(CZP->copy.lo);
+    other = rd8(BC_LO);
+    low = add8(value, other, false);
+    WR8(CZP->copy.lo, low.value);
+    value = RD8(CZP->copy.hi);
+    other = rd8(BC_HI);
+    high = add8(value, other, low.carry);
+    WR8(CZP->copy.hi, high.value);
+    if (increment(BC_LO) == 0) {
+        (void)increment(BC_HI);
+    }
+    e.a = high.value;
+    e.x = 0;
+    e.nz = 0;
+    e.c = high.carry;
+    e.v = high.overflow;
+    e.set_a = e.set_x = e.set_nz = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_bm_move_direction(void)
 {
-    BackupMoveWay way = bm_move_direction();
-    uint16_t borrowed = (way.source & 0xFF) < (way.destination & 0xFF);
-
-    if (way.forward) {
-        cpu.x = 2;
-        cpu.a = (uint8_t)((way.source >> 8) - (way.destination >> 8) - borrowed);
-        abi_nz(2);
-    } else {
-        cpu.x = 0;
-        cpu.a = rd8(CardCopyHi);
-        abi_nz(0);
-    }
-    abi_move_way_flags_shim(way);
+    card_exit_apply(bm_move_direction());
 }
 
 /*
@@ -656,87 +734,75 @@ void abi_bm_move_direction(void)
  * file list at its next free byte.
  * HOW: bm_move_direction picks the way; bytes go one at a time, each pointer moved a page at a
  * time; then a zero length is written at the next free byte.
+ * WAITS: no.
  * Entry: CardPointerLo the source, CardCopyLo the destination, CardByteCount. Exit: A 0, Y 1, N
  * and Z from loading Y (CLA leaves them), CardPointerLo the next free byte. Nothing to
  * move: X, C, V kept. Else X, C and V as bm_move_direction leaves them.
+ * Not run by any script: the forward move.
  */
-BackupMove bm_move(void)
+CardExit bm_move(void)
 {
-    BackupMove move = { false, { false, 0, 0, 0 } };
-    uint16_t count = backup_word(CardByteCount);
-    uint16_t next_free;
+    CardExit e = { 0 };
+    uint8_t low = rd8(BC_LO);
+    uint8_t high = rd8(BC_HI);
+    uint8_t value;
 
-    if (count != 0) {
-        uint16_t from, to;
-        uint8_t pages;
+    if ((uint8_t)(low | high) != 0) {
+        CardExit way;
+        uint8_t y = 0;
+        uint8_t left;
 
-        move.moved = true;
-        move.way = bm_move_direction();
-        from = backup_word(CardPointerLo);
-        to = backup_word(CardCopyLo);
-        if (move.way.forward) {
-            for (uint16_t i = 0; i < count; i++)
-                wr8((uint16_t)(to + i), rd8((uint16_t)(from + i)));
-            pages = (uint8_t)(count >> 8);
-            wr8(CardCopyHi, (uint8_t)((to >> 8) + pages));
+        jsr_push(0xFCDE);
+        way = bm_move_direction();
+        jsr_pop();
+        e.x = way.x;
+        e.c = way.c;
+        e.v = way.v;
+        e.set_x = e.set_c = e.set_v = true;
+        if (way.x == 0) {
+            do {
+                value = RD8_PTR_Y(CZP->pointer.lo, y);
+                WR8_PTR_Y(CZP->copy.lo, y, value);
+                if (y == 0) {
+                    (void)decrement(ADDR_OF8(CZP->pointer.hi));
+                    (void)decrement(ADDR_OF8(CZP->copy.hi));
+                }
+                y--;
+                jsr_push(0xFCF1);
+                left = bm_count_down();
+                jsr_pop();
+            } while (left != 0);
         } else {
-            for (uint16_t i = 0; i < count; i++)
-                wr8((uint16_t)(to - i), rd8((uint16_t)(from - i)));
-            pages = (uint8_t)(((count - 1) >> 8) + 1);
-            wr8(CardCopyHi, (uint8_t)((to >> 8) - pages));
+            do {
+                value = RD8_PTR_Y(CZP->pointer.lo, y);
+                WR8_PTR_Y(CZP->copy.lo, y, value);
+                y++;
+                if (y == 0) {
+                    (void)increment(ADDR_OF8(CZP->pointer.hi));
+                    (void)increment(ADDR_OF8(CZP->copy.hi));
+                }
+                jsr_push(0xFD03);
+                left = bm_count_down();
+                jsr_pop();
+            } while (left != 0);
         }
-        put_word(CardByteCount, 0);
     }
-    next_free = backup_word(BackupNextFree);
-    put_word(CardPointerLo, next_free);
-    put_word(next_free, 0);
-    return move;
+    value = rd8(NEXT_LO);
+    WR8(CZP->pointer.lo, value);
+    value = rd8(NEXT_HI);
+    WR8(CZP->pointer.hi, value);
+    WR8_PTR(CZP->pointer.lo, 0);
+    WR8_PTR_Y(CZP->pointer.lo, 1, 0);
+    e.a = 0;
+    e.y = 1;
+    e.nz = 1;
+    e.set_a = e.set_y = e.set_nz = true;
+    return e;
 }
 
 void abi_bm_move(void)
 {
-    BackupMove move = bm_move();
-
-    cpu.a = 0;
-    cpu.y = 1;
-    abi_nz(1);
-    if (move.moved) {
-        cpu.x = move.way.forward ? 2 : 0;
-        abi_move_way_flags_shim(move.way);
-    }
-}
-
-/* Copies CardByteCount bytes between the backup memory and the caller's memory, through the window. */
-static BackupCopy copy_through_window(bool to_caller)
-{
-    BackupCopy copy;
-    uint16_t count = backup_word(CardByteCount);
-    uint16_t backup, caller;
-
-    copy.old_high = rd8(CardCopyHi);
-    copy.window = bm_map_name_window();
-    copy.bytes = count ? count : 0x10000u;
-    backup = backup_word(CardPointerLo);
-    caller = backup_word(CardCopyLo);
-    for (uint32_t i = 0; i < copy.bytes; i++) {
-        if (to_caller)
-            wr8((uint16_t)(caller + i), rd8((uint16_t)(backup + i)));
-        else
-            wr8((uint16_t)(backup + i), rd8((uint16_t)(caller + i)));
-    }
-    wr8(CardPointerHi, (uint8_t)((backup >> 8) + (copy.bytes >> 8)));
-    wr8(CardCopyHi, (uint8_t)((caller >> 8) + (copy.bytes >> 8)));
-    put_word(CardByteCount, 0);
-    return copy;
-}
-
-static void abi_copy_exit_shim(BackupCopy copy)
-{
-    cpu.a = 0;
-    cpu.x = copy.window;
-    cpu.y = (uint8_t)copy.bytes;
-    abi_nz(0);
-    abi_flag(P_C, (copy.old_high & 0x10) != 0);
+    card_exit_apply(bm_move());
 }
 
 /*
@@ -744,33 +810,89 @@ static void abi_copy_exit_shim(BackupCopy copy)
  * WHAT IT DOES: Copies bytes from the backup memory to the caller's memory.
  * HOW: The caller's pointer in CardCopyLo is put through the window, then CardByteCount bytes go
  * one at a time from CardPointerLo; a count of zero copies $10000.
+ * WAITS: no.
  * Entry: CardPointerLo, CardCopyLo, CardByteCount. Exit: A 0, N 0, Z 1, X the saved MPR, Y the
  * low byte of the count, C bit 4 of the caller's old high byte. V kept.
+ * Not run by any script: a copy crossing a page.
  */
-BackupCopy bm_copy_out(void)
+CardExit bm_copy_out(void)
 {
-    return copy_through_window(true);
+    CardExit e;
+    BackupWindow w;
+    uint8_t y = 0;
+    uint8_t left;
+    uint8_t value;
+
+    jsr_push(0xFD1A);
+    w = bm_map_name_window();
+    jsr_pop();
+    do {
+        value = RD8_PTR_Y(CZP->pointer.lo, y);
+        WR8_PTR_Y(CZP->copy.lo, y, value);
+        y++;
+        if (y == 0) {
+            (void)increment(ADDR_OF8(CZP->pointer.hi));
+            (void)increment(ADDR_OF8(CZP->copy.hi));
+        }
+        jsr_push(0xFD29);
+        left = bm_count_down();
+        jsr_pop();
+    } while (left != 0);
+    e = window_exit(w);
+    e.a = 0;
+    e.nz = 0;
+    e.y = y;
+    e.set_y = true;
+    return e;
 }
 
 void abi_bm_copy_out(void)
 {
-    abi_copy_exit_shim(bm_copy_out());
+    card_exit_apply(bm_copy_out());
 }
 
 /*
  * @card 00:FD2C bm_copy_in
  * WHAT IT DOES: Copies bytes from the caller's memory into the backup memory.
  * HOW: As bm_copy_out, the other way.
+ * WAITS: no.
  * Entry: CardPointerLo, CardCopyLo, CardByteCount. Exit: as bm_copy_out.
+ * Not run by any script: a copy crossing a page.
  */
-BackupCopy bm_copy_in(void)
+CardExit bm_copy_in(void)
 {
-    return copy_through_window(false);
+    CardExit e;
+    BackupWindow w;
+    uint8_t y = 0;
+    uint8_t left;
+    uint8_t value;
+
+    jsr_push(0xFD2F);
+    w = bm_map_name_window();
+    jsr_pop();
+    do {
+        value = RD8_PTR_Y(CZP->copy.lo, y);
+        WR8_PTR_Y(CZP->pointer.lo, y, value);
+        y++;
+        if (y == 0) {
+            (void)increment(ADDR_OF8(CZP->pointer.hi));
+            (void)increment(ADDR_OF8(CZP->copy.hi));
+        }
+        jsr_push(0xFD3E);
+        left = bm_count_down();
+        jsr_pop();
+    } while (left != 0);
+    e = window_exit(w);
+    e.a = 0;
+    e.nz = 0;
+    e.y = y;
+    e.set_y = true;
+    return e;
 }
 
 void abi_bm_copy_in(void)
 {
-    abi_copy_exit_shim(bm_copy_in());
+    card_exit_apply(bm_copy_in());
 }
 
 /*
@@ -779,77 +901,90 @@ void abi_bm_copy_in(void)
  * HOW: Works out the room left into CardPointerLo, but tests CardCopyLo-Hi against $10 instead,
  * which the name's pointer always passes. Then copies the twelve bytes of the name through the
  * window, moves the next free byte on by a header, and gives the file a length of $10.
+ * WAITS: no.
  * Entry: _AX the name, CardCopyLo-Hi. Exit, made: C clear, A 0, N 0, Z 1, Y 1, X the saved MPR, V
  * from moving the next free byte on. Exit, refused: C set, A the high byte of the test, N and Z
  * from it, V from it. X and Y kept.
+ * Not run by any script: the refused exit (no room).
  */
-BackupNewFile bm_new_file(void)
+CardExit bm_new_file(void)
 {
-    BackupNewFile made = { false, 0, 0, { 0, 0, 0 } };
-    uint16_t name_at, name;
+    CardExit e = { 0 };
+    Sum low;
+    Sum high;
+    BackupWindow w;
+    uint8_t value;
+    uint8_t other;
+    uint8_t y = 0;
 
-    made.next_free = backup_word(BackupNextFree);
-    put_word(CardFileLo, made.next_free);
-    put_word(CardPointerLo, (uint16_t)(backup_word(BackupEnd) - made.next_free));
-    made.pointer = backup_word(CardCopyLo);
-    made.made = made.pointer >= FILE_HEADER_BYTES;
-    if (!made.made)
-        return made;
-    name_at = (uint16_t)(made.next_free + FILE_NAME_AT);
-    put_word(CardPointerLo, name_at);
-    wr8(CardCopyLo, rd8(CardAl));
-    wr8(CardCopyHi, rd8(CardAh));
-    made.copy.old_high = rd8(CardAh);
-    made.copy.window = bm_map_name_window();
-    name = backup_word(CardCopyLo);
-    for (unsigned i = 0; i < FILE_NAME_BYTES; i++)
-        wr8((uint16_t)(name_at + i), rd8((uint16_t)(name + i)));
-    backup_word_add(BackupNextFree, FILE_HEADER_BYTES);
-    put_word(made.next_free, FILE_HEADER_BYTES);
-    return made;
-}
-
-/* The exit of bm_new_file's refusal, which bm_write passes on. */
-static void abi_new_file_refused_shim(BackupNewFile made)
-{
-    bool borrowed = (made.pointer & 0xFF) < FILE_HEADER_BYTES;
-
-    cpu.a = (uint8_t)((made.pointer >> 8) - borrowed);
-    abi_nz(cpu.a);
-    abi_flag(P_C, true);
-    abi_flag(P_V, sub_overflows((uint8_t)(made.pointer >> 8), 0, borrowed));
+    value = rd8(NEXT_LO);
+    WR8(CZP->file.lo, value);
+    value = rd8(NEXT_HI);
+    WR8(CZP->file.hi, value);
+    value = rd8(END_LO);
+    other = RD8(CZP->file.lo);
+    low = sub8(value, other, true);
+    WR8(CZP->pointer.lo, low.value);
+    value = rd8(END_HI);
+    other = RD8(CZP->file.hi);
+    high = sub8(value, other, low.carry);
+    WR8(CZP->pointer.hi, high.value);
+    value = RD8(CZP->copy.lo);
+    low = sub8(value, FILE_HEADER_BYTES, true);
+    value = RD8(CZP->copy.hi);
+    high = sub8(value, 0, low.carry);
+    if (!high.carry) {
+        e.a = e.nz = high.value;
+        e.c = true;
+        e.v = high.overflow;
+        e.set_a = e.set_nz = e.set_c = e.set_v = true;
+        return e;
+    }
+    value = RD8(CZP->file.lo);
+    low = add8(value, FILE_NAME_AT, false);
+    WR8(CZP->pointer.lo, low.value);
+    value = RD8(CZP->file.hi);
+    high = add8(value, 0, low.carry);
+    WR8(CZP->pointer.hi, high.value);
+    value = RD8(CZP->a.lo);
+    WR8(CZP->copy.lo, value);
+    value = RD8(CZP->a.hi);
+    WR8(CZP->copy.hi, value);
+    jsr_push(0xFB1D);
+    w = bm_map_name_window();
+    jsr_pop();
+    do {
+        value = RD8_PTR_Y(CZP->copy.lo, y);
+        WR8_PTR_Y(CZP->pointer.lo, y, value);
+        y++;
+    } while (y != FILE_NAME_BYTES);
+    value = rd8(NEXT_LO);
+    low = add8(value, FILE_HEADER_BYTES, false);
+    wr8(NEXT_LO, low.value);
+    value = rd8(NEXT_HI);
+    high = add8(value, 0, low.carry);
+    wr8(NEXT_HI, high.value);
+    WR8_PTR(CZP->file.lo, FILE_HEADER_BYTES);
+    WR8_PTR_Y(CZP->file.lo, 1, 0);
+    e.a = 0;
+    e.nz = 0;
+    e.x = w.window;
+    e.y = 1;
+    e.c = false;
+    e.v = high.overflow;
+    e.set_a = e.set_nz = e.set_x = e.set_y = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_bm_new_file(void)
 {
-    BackupNewFile made = bm_new_file();
-
-    if (!made.made) {
-        abi_new_file_refused_shim(made);
-        return;
-    }
-    cpu.a = 0;
-    cpu.x = made.copy.window;
-    cpu.y = 1;
-    abi_nz(0);
-    abi_flag(P_C, false);
-    abi_flag(P_V, add_overflows((uint8_t)(made.next_free >> 8), 0,
-                                (made.next_free & 0xFF) + FILE_HEADER_BYTES > 0xFF));
+    card_exit_apply(bm_new_file());
 }
 
-/* Whether _DX is at or past a file's length: its high byte is compared first, its low only if needed. */
-static bool offset_past_end(uint16_t file)
+/* The exit every public routine shares: A the result, N and Z from it, I clear, and what its last steps left. */
+static void access_exit(BackupAccess access)
 {
-    uint8_t length_high = rd8((uint16_t)(file + 1));
-
-    if (rd8(CardDh) != length_high)
-        return rd8(CardDh) > length_high;
-    return rd8(CardDl) >= rd8(file);
-}
-
-/* Every exit closes the memory: I clear, A the result, N and Z from it. */
-static void abi_access_result_shim(BackupAccess access)
-{
+    card_exit_apply(access.exit);
     abi_flag(P_I, false);
     cpu.a = access.result;
     abi_nz(access.result);
@@ -861,78 +996,130 @@ static void abi_access_result_shim(BackupAccess access)
  * HOW: Finds the file; refuses an offset at or past its end; sums the file against its
  * checksum; cuts the count at the file's end and gives it back in _CX; copies through the
  * window. A is 0, 1 for no such file, or 2 for a bad checksum (the bytes are still copied).
- * Entry: _AX, _BX, _CX, _DX. Exit: I clear, A the result, N and Z from it; not formatted, as
- * bm_open_formatted. No file: X the saved MPR, Y 1, C 1, V as bm_find_file. Offset past the end:
- * _CX 0, the same with A 0. Read: bytes copied, X the saved MPR, Y the count's low byte, C bit 4
- * of _BH; nothing copied, X as bm_find_file, Y 1, C from the cut or the place; V from the cut or
- * the place.
+ * WAITS: only through bm_close.
+ * Entry: _AX, _BX, _CX, _DX; A (only kept). Exit: I clear, A the result, N and Z from it; not
+ * formatted, as bm_open_formatted. No file: X the saved MPR, Y 1, C 1, V as bm_find_file. Offset
+ * past the end: _CX 0, A 0, Y 1, C 1, X and V as bm_find_file. Read: bytes copied, X the saved MPR,
+ * Y the count's low byte, C bit 4 of _BH; nothing copied, X as bm_find_file, Y 1, C from the cut or
+ * the place; V from the cut or the place.
+ * Not run by any script: an offset past the end, a bad checksum.
  */
-BackupAccess bm_read(void)
+BackupAccess bm_read(uint8_t a)
 {
-    BackupAccess read = { 0 };
-    bool bad_sum;
+    BackupAccess read = { BM_ENDED_DONE, 0, { 0 } };
+    BackupCheck check;
+    CardExit find;
+    CardExit span;
+    CardExit copied;
+    Sum low;
+    Sum high;
+    Sum cut_low;
+    Sum cut_high = { 0, false, false };
+    bool cut = false;
+    bool past_end;
+    uint8_t value;
+    uint8_t other;
+    uint8_t folded;
+    uint8_t length_high;
 
-    read.check = bm_open_formatted();
-    if (!read.check.formatted) {
+    jsr_push(0xF8E6);
+    check = bm_open_formatted(a);
+    if (!check.formatted) {
         read.ending = BM_ENDED_NOT_FORMATTED;
         read.result = BM_NOT_FORMATTED;
+        read.exit = check.exit;
         return read;
     }
-    read.find = bm_find_file();
-    if (!read.find.found) {
+    jsr_pop();
+    jsr_push(0xF8E9);
+    find = bm_find_file();
+    jsr_pop();
+    if (find.c) {
+        (void)bm_close(BM_NO_FILE);
         read.ending = BM_ENDED_NOT_FOUND;
         read.result = BM_NO_FILE;
-        bm_close();
+        read.exit = find;
         return read;
     }
-    if (offset_past_end(read.find.file)) {
-        put_word(CardCl, 0);
+    value = RD8(CZP->d.hi);
+    length_high = RD8_PTR_Y(CZP->file.lo, 1);
+    past_end = value >= length_high;
+    if (value == length_high) {
+        value = RD8(CZP->d.lo);
+        other = RD8_PTR(CZP->file.lo);
+        past_end = value >= other;
+    }
+    if (past_end) {
+        WR8(CZP->c.hi, 0);
+        WR8(CZP->c.lo, 0);
+        (void)bm_close(BM_DONE);
         read.ending = BM_ENDED_PAST_END;
         read.result = BM_DONE;
-        bm_close();
+        read.exit = find;
+        read.exit.y = 1;
+        read.exit.c = true;
+        read.exit.set_y = read.exit.set_c = true;
         return read;
     }
-    read.sum = bm_sum_file();
-    bad_sum = (uint16_t)(read.sum.sum + backup_word((uint16_t)(read.find.file + FILE_SUM_AT))) != 0;
-    read.span = bm_place_span();
-    read.count_before = backup_word(CardByteCount);
-    read.count = read.count_before;
-    read.truncated = (read.span.overrun & 0x8000) == 0;
-    if (read.truncated) {
-        read.count = (uint16_t)(read.count_before - read.span.overrun);
-        put_word(CardByteCount, read.count);
+    jsr_push(0xF8FC);
+    (void)bm_sum_file();
+    jsr_pop();
+    value = RD8_PTR_Y(CZP->file.lo, FILE_SUM_AT);
+    other = RD8(CZP->copy.lo);
+    low = add8(value, other, false);
+    WR8(CZP->copy.lo, low.value);
+    value = RD8_PTR_Y(CZP->file.lo, FILE_SUM_AT + 1);
+    other = RD8(CZP->copy.hi);
+    high = add8(value, other, low.carry);
+    other = RD8(CZP->copy.lo);
+    folded = (uint8_t)(high.value | other);
+    push8(folded);
+    jsr_push(0xF910);
+    span = bm_place_span();
+    jsr_pop();
+    if (!(span.nz & 0x80)) {
+        value = rd8(BC_LO);
+        other = RD8(CZP->copy.lo);
+        cut_low = sub8(value, other, true);
+        wr8(BC_LO, cut_low.value);
+        value = rd8(BC_HI);
+        other = RD8(CZP->copy.hi);
+        cut_high = sub8(value, other, cut_low.carry);
+        wr8(BC_HI, cut_high.value);
+        cut = true;
     }
-    put_word(CardCl, read.count);
-    if (read.count != 0) {
-        put_word(CardCopyLo, backup_word(CardBl));
-        read.copy = bm_copy_out();
+    value = rd8(BC_LO);
+    WR8(CZP->c.lo, value);
+    value = rd8(BC_HI);
+    WR8(CZP->c.hi, value);
+    other = rd8(BC_LO);
+    folded = (uint8_t)(value | other);
+    read.exit = find;
+    read.exit.c = cut ? cut_high.carry : span.c;
+    read.exit.v = cut ? cut_high.overflow : span.v;
+    read.exit.set_c = read.exit.set_v = true;
+    if (folded != 0) {
+        value = RD8(CZP->b.lo);
+        WR8(CZP->copy.lo, value);
+        value = RD8(CZP->b.hi);
+        WR8(CZP->copy.hi, value);
+        jsr_push(0xF93D);
+        copied = bm_copy_out();
+        jsr_pop();
+        read.exit.x = copied.x;
+        read.exit.y = copied.y;
+        read.exit.c = copied.c;
+        read.exit.set_x = read.exit.set_y = true;
+    } else {
+        read.exit.y = 1;
+        read.exit.set_y = true;
     }
-    read.ending = BM_ENDED_DONE;
-    read.result = bad_sum ? BM_BAD_SUM : BM_DONE;
-    bm_close();
+    folded = pull8();
+    read.result = folded != 0 ? BM_BAD_SUM : BM_DONE;
+    (void)bm_close(read.result);
     return read;
 }
 
-/* C and V from cutting a read at the file's end, or from placing it. */
-static void abi_cut_flags_shim(BackupAccess read)
-{
-    if (!read.truncated) {
-        abi_span_flags_shim(read.span);
-        return;
-    }
-    bool borrowed = (read.count_before & 0xFF) < (read.span.overrun & 0xFF);
-
-    abi_flag(P_C, read.count_before >= read.span.overrun);
-    abi_flag(P_V, sub_overflows((uint8_t)(read.count_before >> 8), (uint8_t)(read.span.overrun >> 8),
-                                borrowed));
-}
-
-void abi_bm_read(void)
-{
-    bm_read_exit_shim(bm_read());
-}
-
-/* bm_read's exit, for its wrapper and for a caller's that ends in it. */
 /* The A bm_read leaves: 0, 1 for no such file, 2 for a bad checksum, $FF not formatted. */
 uint8_t bm_read_result(BackupAccess read)
 {
@@ -945,35 +1132,15 @@ uint8_t bm_write_result(BackupAccess write)
     return write.result;
 }
 
-static void bm_read_registers_shim(BackupAccess read)
-{
-    if (read.ending == BM_ENDED_NOT_FORMATTED) {
-        abi_not_formatted_shim(read.check);
-        return;
-    }
-    abi_access_result_shim(read);
-    if (read.ending != BM_ENDED_DONE) {
-        cpu.x = read.find.window;
-        cpu.y = 1;
-        abi_flag(P_C, true);
-        abi_find_v_shim(read.find);
-        return;
-    }
-    abi_cut_flags_shim(read);
-    if (read.count != 0) {
-        cpu.x = read.copy.window;
-        cpu.y = (uint8_t)read.copy.bytes;
-        abi_flag(P_C, (read.copy.old_high & 0x10) != 0);
-    } else {
-        cpu.x = read.find.window;
-        cpu.y = 1;
-    }
-}
-
+/* bm_read's exit, for its wrapper and for a caller's that ends in it. */
 void bm_read_exit_shim(BackupAccess read)
 {
-    bm_read_registers_shim(read);
-    cpu.a = bm_read_result(read);
+    access_exit(read);
+}
+
+void abi_bm_read(void)
+{
+    bm_read_exit_shim(bm_read(cpu.a));
 }
 
 /*
@@ -983,110 +1150,175 @@ void bm_read_exit_shim(BackupAccess read)
  * HOW: A file that must grow moves every file after it up by the growth, if the memory has room
  * for that and a closing zero length; then the bytes are copied in through the window and the
  * file's checksum is made the negative of its sum.
- * Entry: _AX, _BX, _CX, _DX. Exit: I clear, A the result, N and Z from it; not formatted, as
- * bm_open_formatted. No room for a header: A 1, X as bm_find_file, Y 1, C, V as bm_new_file. No
- * room to grow: A 1, X the saved MPR, Y 1, C 0, V from that compare. Written: A 0, X the saved
- * MPR, Y 3, C and V from negating the sum's high byte.
+ * WAITS: only through bm_close.
+ * Entry: _AX, _BX, _CX, _DX; A (only kept). Exit: I clear, A the result, N and Z from it; not
+ * formatted, as bm_open_formatted. No room for a header: A 1, X as bm_find_file, Y 1, C, V as
+ * bm_new_file. No room to grow: A 1, X the saved MPR, Y 1, C 0, V from that compare. Written: A 0,
+ * X the saved MPR, Y 3, C and V from negating the sum's high byte.
+ * Not run by any script: a write that fits the file, a refused header, no room to grow.
  */
-BackupAccess bm_write(void)
+BackupAccess bm_write(uint8_t a)
 {
-    BackupAccess write = { 0 };
-    uint16_t file, sum;
+    BackupAccess write = { BM_ENDED_DONE, 0, { 0 } };
+    BackupCheck check;
+    CardExit find;
+    CardExit span;
+    CardExit made;
+    CardExit copied;
+    Sum low;
+    Sum high;
+    uint8_t value;
+    uint8_t other;
+    uint8_t window;
 
-    write.check = bm_open_formatted();
-    if (!write.check.formatted) {
+    jsr_push(0xF958);
+    check = bm_open_formatted(a);
+    if (!check.formatted) {
         write.ending = BM_ENDED_NOT_FORMATTED;
         write.result = BM_NOT_FORMATTED;
+        write.exit = check.exit;
         return write;
     }
-    write.find = bm_find_file();
-    if (!write.find.found) {
-        write.new_file = bm_new_file();
-        if (!write.new_file.made) {
+    jsr_pop();
+    jsr_push(0xF95B);
+    find = bm_find_file();
+    jsr_pop();
+    window = find.x;
+    if (find.c) {
+        jsr_push(0xF960);
+        made = bm_new_file();
+        jsr_pop();
+        if (made.c) {
+            write.exit = find;
+            write.exit.c = true;
+            write.exit.v = made.v;
+            write.exit.set_c = write.exit.set_v = true;
             write.ending = BM_ENDED_NOT_FOUND;
             write.result = BM_NO_FILE;
-            bm_close();
+            (void)bm_close(BM_NO_FILE);
             return write;
         }
+        window = made.x;
     }
-    file = backup_word(CardFileLo);
-    write.span = bm_place_span();
-    if ((write.span.overrun & 0x8000) == 0) {
-        uint16_t growth = write.span.overrun;
-        uint16_t next_free = (uint16_t)(backup_word(BackupNextFree) + growth);
-        uint16_t file_end;
-
-        put_word(CardByteCount, growth);
-        put_word(CardCopyLo, next_free);
-        write.end = backup_word(BackupEnd);
-        write.needed = (uint16_t)(next_free + FILE_END_BYTES);
-        put_word(CardPointerLo, write.needed);
-        if (write.end < write.needed) {
+    jsr_push(0xF968);
+    span = bm_place_span();
+    jsr_pop();
+    if (!(span.nz & 0x80)) {
+        value = RD8(CZP->copy.lo);
+        wr8(BC_LO, value);
+        value = RD8(CZP->copy.hi);
+        wr8(BC_HI, value);
+        value = rd8(NEXT_LO);
+        other = rd8(BC_LO);
+        low = add8(value, other, false);
+        WR8(CZP->copy.lo, low.value);
+        value = rd8(NEXT_HI);
+        other = rd8(BC_HI);
+        high = add8(value, other, low.carry);
+        WR8(CZP->copy.hi, high.value);
+        value = RD8(CZP->copy.lo);
+        low = add8(value, 2, false);
+        WR8(CZP->pointer.lo, low.value);
+        value = RD8(CZP->copy.hi);
+        high = add8(value, 0, low.carry);
+        WR8(CZP->pointer.hi, high.value);
+        value = rd8(END_LO);
+        other = RD8(CZP->pointer.lo);
+        low = sub8(value, other, true);
+        value = rd8(END_HI);
+        other = RD8(CZP->pointer.hi);
+        high = sub8(value, other, low.carry);
+        if (!high.carry) {
+            write.exit = span;
+            write.exit.x = window;
+            write.exit.c = false;
+            write.exit.v = high.overflow;
+            write.exit.set_x = write.exit.set_c = write.exit.set_v = true;
             write.ending = BM_ENDED_NO_ROOM;
             write.result = BM_NO_FILE;
-            bm_close();
+            (void)bm_close(BM_NO_FILE);
             return write;
         }
-        put_word(BackupNextFree, next_free);
-        file_end = (uint16_t)(file + backup_word(file));
-        backup_word_add(file, growth);
-        put_word(CardPointerLo, file_end);
-        put_word(CardCopyLo, (uint16_t)(file_end + growth));
-        put_word(CardByteCount, (uint16_t)(backup_word(BackupNextFree) - file_end));
-        write.move = bm_move();
-        write.span = bm_place_span();
+        value = RD8(CZP->copy.lo);
+        wr8(NEXT_LO, value);
+        value = RD8(CZP->copy.hi);
+        wr8(NEXT_HI, value);
+        value = RD8_PTR(CZP->file.lo);
+        other = RD8(CZP->file.lo);
+        low = add8(value, other, false);
+        WR8(CZP->copy.lo, low.value);
+        WR8(CZP->pointer.lo, low.value);
+        value = RD8_PTR_Y(CZP->file.lo, 1);
+        other = RD8(CZP->file.hi);
+        high = add8(value, other, low.carry);
+        WR8(CZP->copy.hi, high.value);
+        WR8(CZP->pointer.hi, high.value);
+        value = rd8(BC_LO);
+        other = RD8_PTR(CZP->file.lo);
+        low = add8(value, other, false);
+        WR8_PTR(CZP->file.lo, low.value);
+        value = rd8(BC_HI);
+        other = RD8_PTR_Y(CZP->file.lo, 1);
+        high = add8(value, other, low.carry);
+        WR8_PTR_Y(CZP->file.lo, 1, high.value);
+        value = rd8(BC_LO);
+        other = RD8(CZP->copy.lo);
+        low = add8(value, other, false);
+        WR8(CZP->copy.lo, low.value);
+        value = rd8(BC_HI);
+        other = RD8(CZP->copy.hi);
+        high = add8(value, other, low.carry);
+        WR8(CZP->copy.hi, high.value);
+        value = rd8(NEXT_LO);
+        other = RD8(CZP->pointer.lo);
+        low = sub8(value, other, true);
+        wr8(BC_LO, low.value);
+        value = rd8(NEXT_HI);
+        other = RD8(CZP->pointer.hi);
+        high = sub8(value, other, low.carry);
+        wr8(BC_HI, high.value);
+        jsr_push(0xF9F2);
+        (void)bm_move();
+        jsr_pop();
+        jsr_push(0xF9F5);
+        (void)bm_place_span();
+        jsr_pop();
     }
-    put_word(CardCopyLo, backup_word(CardBl));
-    write.copy = bm_copy_in();
-    write.sum = bm_sum_file();
-    sum = write.sum.sum;
-    put_word((uint16_t)(file + FILE_SUM_AT), (uint16_t)(0 - sum));
-    write.ending = BM_ENDED_DONE;
+    value = RD8(CZP->b.lo);
+    WR8(CZP->copy.lo, value);
+    value = RD8(CZP->b.hi);
+    WR8(CZP->copy.hi, value);
+    jsr_push(0xFA00);
+    copied = bm_copy_in();
+    jsr_pop();
+    jsr_push(0xFA03);
+    (void)bm_sum_file();
+    jsr_pop();
+    value = RD8(CZP->copy.lo);
+    low = sub8(0, value, true);
+    WR8_PTR_Y(CZP->file.lo, FILE_SUM_AT, low.value);
+    value = RD8(CZP->copy.hi);
+    high = sub8(0, value, low.carry);
+    WR8_PTR_Y(CZP->file.lo, FILE_SUM_AT + 1, high.value);
+    (void)bm_close(BM_DONE);
+    write.exit = copied;
+    write.exit.y = FILE_SUM_AT + 1;
+    write.exit.c = high.carry;
+    write.exit.v = high.overflow;
+    write.exit.set_c = write.exit.set_v = true;
     write.result = BM_DONE;
-    bm_close();
     return write;
+}
+
+/* bm_write's exit, for its wrapper and for a caller's that ends in it. */
+void bm_write_exit_shim(BackupAccess write)
+{
+    access_exit(write);
 }
 
 void abi_bm_write(void)
 {
-    bm_write_exit_shim(bm_write());
-}
-
-/* bm_write's exit, for its wrapper and for a caller's that ends in it. */
-static void bm_write_registers_shim(BackupAccess write)
-{
-    uint16_t sum = write.sum.sum;
-
-    if (write.ending == BM_ENDED_NOT_FORMATTED) {
-        abi_not_formatted_shim(write.check);
-        return;
-    }
-    if (write.ending == BM_ENDED_NOT_FOUND) {
-        abi_new_file_refused_shim(write.new_file);
-        cpu.x = write.find.window;
-        cpu.y = 1;
-        abi_access_result_shim(write);
-        return;
-    }
-    abi_access_result_shim(write);
-    if (write.ending == BM_ENDED_NO_ROOM) {
-        cpu.x = write.find.found ? write.find.window : write.new_file.copy.window;
-        cpu.y = 1;
-        abi_flag(P_C, false);
-        abi_flag(P_V, sub_overflows((uint8_t)(write.end >> 8), (uint8_t)(write.needed >> 8),
-                                    (write.end & 0xFF) < (write.needed & 0xFF)));
-        return;
-    }
-    cpu.x = write.copy.window;
-    cpu.y = 3;
-    abi_flag(P_C, sum == 0);
-    abi_flag(P_V, sub_overflows(0, (uint8_t)(sum >> 8), (sum & 0xFF) != 0));
-}
-
-void bm_write_exit_shim(BackupAccess write)
-{
-    bm_write_registers_shim(write);
-    cpu.a = bm_write_result(write);
+    bm_write_exit_shim(bm_write(cpu.a));
 }
 
 /*
@@ -1094,82 +1326,101 @@ void bm_write_exit_shim(BackupAccess write)
  * WHAT IT DOES: Deletes the backup file named by _AX.
  * HOW: Moves every file after it down over it, takes its length off the next free byte, and
  * marks the list's new end.
- * Entry: _AX. Exit: I clear, A the result, N and Z from it; not formatted, as bm_open_formatted.
- * No file: A 1, X the saved MPR, Y 1, C 1, V as bm_find_file. Deleted: A 0, Y 1; X, C and V as
- * bm_move leaves them, or, with nothing after it, X the saved MPR and C and V from taking the
- * length off.
+ * WAITS: only through bm_close.
+ * Entry: _AX; A (only kept). Exit: I clear, A the result, N and Z from it; not formatted, as
+ * bm_open_formatted. No file: A 1, X the saved MPR, Y 1, C 1, V as bm_find_file. Deleted: A 0, Y 1;
+ * X, C and V as bm_move leaves them, or, with nothing after it, X the saved MPR and C and V from
+ * taking the length off.
  */
-BackupAccess bm_delete(void)
+BackupAccess bm_delete(uint8_t a)
 {
-    BackupAccess removal = { 0 };
-    uint16_t following;
+    BackupAccess removal = { BM_ENDED_DONE, 0, { 0 } };
+    BackupCheck check;
+    CardExit find;
+    CardExit moved;
+    Sum low;
+    Sum high;
+    uint8_t value;
+    uint8_t other;
 
-    removal.check = bm_open_formatted();
-    if (!removal.check.formatted) {
+    jsr_push(0xFA1D);
+    check = bm_open_formatted(a);
+    if (!check.formatted) {
         removal.ending = BM_ENDED_NOT_FORMATTED;
         removal.result = BM_NOT_FORMATTED;
+        removal.exit = check.exit;
         return removal;
     }
-    removal.find = bm_find_file();
-    if (!removal.find.found) {
+    jsr_pop();
+    jsr_push(0xFA20);
+    find = bm_find_file();
+    jsr_pop();
+    if (find.c) {
+        (void)bm_close(BM_NO_FILE);
         removal.ending = BM_ENDED_NOT_FOUND;
         removal.result = BM_NO_FILE;
-        bm_close();
+        removal.exit = find;
         return removal;
     }
-    removal.length = backup_word(removal.find.file);
-    removal.next_free = backup_word(BackupNextFree);
-    following = (uint16_t)(removal.find.file + removal.length);
-    put_word(CardCopyLo, removal.find.file);
-    put_word(CardPointerLo, following);
-    put_word(CardByteCount, (uint16_t)(removal.next_free - following));
-    backup_word_take(BackupNextFree, removal.find.file);
-    removal.move = bm_move();
-    removal.ending = BM_ENDED_DONE;
+    value = RD8(CZP->file.lo);
+    WR8(CZP->copy.lo, value);
+    value = RD8(CZP->file.hi);
+    WR8(CZP->copy.hi, value);
+    value = RD8_PTR(CZP->file.lo);
+    wr8(BC_LO, value);
+    value = RD8_PTR_Y(CZP->file.lo, 1);
+    wr8(BC_HI, value);
+    value = RD8(CZP->file.lo);
+    other = rd8(BC_LO);
+    low = add8(value, other, false);
+    WR8(CZP->pointer.lo, low.value);
+    value = RD8(CZP->file.hi);
+    other = rd8(BC_HI);
+    high = add8(value, other, low.carry);
+    WR8(CZP->pointer.hi, high.value);
+    value = rd8(NEXT_LO);
+    other = RD8(CZP->pointer.lo);
+    low = sub8(value, other, true);
+    wr8(BC_LO, low.value);
+    value = rd8(NEXT_HI);
+    other = RD8(CZP->pointer.hi);
+    high = sub8(value, other, low.carry);
+    wr8(BC_HI, high.value);
+    value = rd8(NEXT_LO);
+    other = RD8_PTR(CZP->file.lo);
+    low = sub8(value, other, true);
+    wr8(NEXT_LO, low.value);
+    value = rd8(NEXT_HI);
+    other = RD8_PTR_Y(CZP->file.lo, 1);
+    high = sub8(value, other, low.carry);
+    wr8(NEXT_HI, high.value);
+    removal.exit = find;
+    removal.exit.c = high.carry;
+    removal.exit.v = high.overflow;
+    removal.exit.set_c = removal.exit.set_v = true;
+    jsr_push(0xFA6A);
+    moved = bm_move();
+    jsr_pop();
+    (void)bm_close(BM_DONE);
+    removal.exit = exit_over(removal.exit, moved);
     removal.result = BM_DONE;
-    bm_close();
     return removal;
-}
-
-/* The A bm_delete leaves: 0, 1 for no such file, $FF not formatted. */
-uint8_t bm_delete_result(BackupAccess removal)
-{
-    return removal.result;
-}
-
-static void bm_delete_registers_shim(BackupAccess removal)
-{
-    if (removal.ending == BM_ENDED_NOT_FORMATTED) {
-        abi_not_formatted_shim(removal.check);
-        return;
-    }
-    abi_access_result_shim(removal);
-    cpu.y = 1;
-    if (removal.ending == BM_ENDED_NOT_FOUND) {
-        cpu.x = removal.find.window;
-        abi_flag(P_C, true);
-        abi_find_v_shim(removal.find);
-    } else if (removal.move.moved) {
-        cpu.x = removal.move.way.forward ? 2 : 0;
-        abi_move_way_flags_shim(removal.move.way);
-    } else {
-        cpu.x = removal.find.window;
-        abi_flag(P_C, removal.next_free >= removal.length);
-        abi_flag(P_V, sub_overflows((uint8_t)(removal.next_free >> 8), (uint8_t)(removal.length >> 8),
-                                    (removal.next_free & 0xFF) < (removal.length & 0xFF)));
-    }
 }
 
 /* bm_delete's exit, for its wrapper and for a caller's that ends in it. */
 void bm_delete_exit_shim(BackupAccess removal)
 {
-    bm_delete_registers_shim(removal);
-    cpu.a = bm_delete_result(removal);
+    access_exit(removal);
+}
+
+uint8_t bm_delete_result(BackupAccess removal)
+{
+    return removal.result;
 }
 
 void abi_bm_delete(void)
 {
-    bm_delete_exit_shim(bm_delete());
+    bm_delete_exit_shim(bm_delete(cpu.a));
 }
 
 /*
@@ -1179,110 +1430,157 @@ void abi_bm_delete(void)
  * HOW: Walks the file list from $8010 by each file's length, counting the files in _AL and down
  * in CardByteCount; a length of zero ends the list. The file's twelve-byte name goes to _BX
  * through bm_map_name_window, then its length less its $10-byte header, low byte first.
- * Entry: _AL the file's number (0 walks to the 256th), _BX the buffer. Exit: I clear, A the
- * result, N and Z from it; not formatted, as bm_open_formatted. Named: A 0, X the saved MPR,
+ * WAITS: only through bm_close.
+ * Entry: _AL the file's number (0 walks to the 256th), _BX the buffer; A (only kept). Exit: I clear,
+ * A the result, N and Z from it; not formatted, as bm_open_formatted. Named: A 0, X the saved MPR,
  * Y $0D, C 1, V from moving CardFileLo on by 4 to the name. No such file: A 1, X $FF, Y 1, _AL
  * the files counted, C and V from the high byte of the last step past a file, or C 1 and V kept
  * if there was none.
+ * Not run by any script: everything after the check of the header.
  */
-BackupFiles bm_files(void)
+BackupAccess bm_files(uint8_t a)
 {
-    BackupFiles files = { 0 };
-    uint16_t file = FIRST_FILE_ADDRESS;
-    uint8_t left;
-    uint16_t name;
-    uint16_t buffer;
-    uint16_t data_bytes;
+    BackupAccess files = { BM_ENDED_DONE, 0, { 0 } };
+    BackupCheck check;
+    BackupWindow w;
+    Sum low;
+    Sum high;
+    uint8_t value;
+    uint8_t y;
+    uint8_t name_high;
 
-    files.check = bm_open_formatted();
-    if (!files.check.formatted) {
+    jsr_push(0xFA75);
+    check = bm_open_formatted(a);
+    if (!check.formatted) {
+        files.ending = BM_ENDED_NOT_FORMATTED;
         files.result = BM_NOT_FORMATTED;
+        files.exit = check.exit;
         return files;
     }
-    put_word(CardFileLo, file);
-    left = rd8(CardAl);
-    wr8(CardByteCount, left);
-    wr8(CardAl, 0);
+    jsr_pop();
+    files.exit = check.exit;
+    WR8(CZP->file.lo, BACKUP_FIRST_FILE_LO);
+    WR8(CZP->file.hi, BACKUP_FIRST_FILE_HI);
+    value = RD8(CZP->a.lo);
+    wr8(BC_LO, value);
+    WR8(CZP->a.lo, 0);
+    files.exit.y = 1;
+    files.exit.set_y = true;
     for (;;) {
-        uint8_t low = rd8(file);
-        uint8_t high = rd8((uint16_t)(file + 1));
+        uint8_t length_low = RD8_PTR(CZP->file.lo);
+        uint8_t length_high = RD8_PTR_Y(CZP->file.lo, 1);
 
-        if ((low | high) == 0) {
-            files.file = file;
+        if ((uint8_t)(length_low | length_high) == 0) {
+            (void)bm_close(BM_NO_FILE);
+            files.ending = BM_ENDED_NOT_FOUND;
             files.result = BM_NO_FILE;
-            bm_close();
             return files;
         }
-        wr8(CardAl, (uint8_t)(rd8(CardAl) + 1));
-        left--;
-        wr8(CardByteCount, left);
-        if (left == 0)
+        (void)increment(ADDR_OF8(CZP->a.lo));
+        if (decrement(BC_LO) == 0) {
             break;
-        high = rd8((uint16_t)(file + 1));
-        low = rd8(file);
-        files.stepped = true;
-        files.stepped_from = file;
-        files.stepped_length = (uint16_t)((high << 8) | low);
-        file = (uint16_t)(file + files.stepped_length);
-        put_word(CardFileLo, file);
+        }
+        length_high = RD8_PTR_Y(CZP->file.lo, 1);
+        push8(length_high);
+        length_low = RD8_PTR(CZP->file.lo);
+        value = RD8(CZP->file.lo);
+        low = add8(length_low, value, false);
+        WR8(CZP->file.lo, low.value);
+        length_high = pull8();
+        value = RD8(CZP->file.hi);
+        high = add8(length_high, value, low.carry);
+        WR8(CZP->file.hi, high.value);
+        files.exit.c = high.carry;
+        files.exit.v = high.overflow;
+        files.exit.set_c = files.exit.set_v = true;
     }
-    files.file = file;
-    files.length = backup_word(file);
-    data_bytes = (uint16_t)(files.length - FILE_HEADER_BYTES);
-    name = (uint16_t)(file + FILE_NAME_AT);
-    put_word(CardFileLo, name);
-    wr8(CardCopyLo, rd8(CardBl));
-    wr8(CardCopyHi, rd8(CardBh));
-    files.window = bm_map_name_window();
-    buffer = backup_word(CardCopyLo);
-    for (unsigned i = 0; i < FILE_NAME_BYTES; i++)
-        wr8((uint16_t)(buffer + i), rd8((uint16_t)(name + i)));
-    put_word((uint16_t)(buffer + FILE_NAME_BYTES), data_bytes);
+    value = RD8_PTR(CZP->file.lo);
+    low = sub8(value, FILE_HEADER_BYTES, true);
+    name_high = RD8_PTR_Y(CZP->file.lo, 1);
+    high = sub8(name_high, 0, low.carry);
+    push8(high.value);
+    push8(low.value);
+    value = RD8(CZP->file.lo);
+    low = add8(value, FILE_NAME_AT, false);
+    WR8(CZP->file.lo, low.value);
+    value = RD8(CZP->file.hi);
+    high = add8(value, 0, low.carry);
+    WR8(CZP->file.hi, high.value);
+    value = RD8(CZP->b.lo);
+    WR8(CZP->copy.lo, value);
+    value = RD8(CZP->b.hi);
+    WR8(CZP->copy.hi, value);
+    jsr_push(0xFAC8);
+    w = bm_map_name_window();
+    jsr_pop();
+    y = 0;
+    do {
+        value = RD8_PTR_Y(CZP->file.lo, y);
+        WR8_PTR_Y(CZP->copy.lo, y, value);
+        y++;
+    } while (y < FILE_NAME_BYTES);
+    value = pull8();
+    WR8_PTR_Y(CZP->copy.lo, y, value);
+    y++;
+    value = pull8();
+    WR8_PTR_Y(CZP->copy.lo, y, value);
+    (void)bm_close(BM_DONE);
+    files.exit.x = w.window;
+    files.exit.y = y;
+    files.exit.c = true;
+    files.exit.v = high.overflow;
+    files.exit.set_x = files.exit.set_y = files.exit.set_c = files.exit.set_v = true;
     files.result = BM_DONE;
-    bm_close();
     return files;
 }
 
-/* The A bm_files leaves: 0, 1 for no such file, $FF not formatted. */
+void bm_files_exit_shim(BackupFiles files)
+{
+    access_exit(files);
+}
+
 uint8_t bm_files_result(BackupFiles files)
 {
     return files.result;
 }
 
-static void bm_files_registers_shim(BackupFiles files)
-{
-    if (files.result == BM_NOT_FORMATTED) {
-        abi_not_formatted_shim(files.check);
-        return;
-    }
-    abi_flag(P_I, false);
-    abi_nz(files.result);
-    if (files.result == BM_DONE) {
-        cpu.x = files.window;
-        cpu.y = FILE_NAME_BYTES + 1;
-        abi_flag(P_C, true);
-        abi_flag(P_V, add_overflows((uint8_t)(files.file >> 8), 0, (files.file & 0xFF) + FILE_NAME_AT > 0xFF));
-        return;
-    }
-    cpu.x = 0xFF;
-    cpu.y = 1;
-    if (!files.stepped) {
-        abi_flag(P_C, true);
-        return;
-    }
-    abi_flag(P_C, (uint32_t)files.stepped_from + files.stepped_length > 0xFFFF);
-    abi_flag(P_V, add_overflows((uint8_t)(files.stepped_from >> 8), (uint8_t)(files.stepped_length >> 8),
-                                (files.stepped_from & 0xFF) + (files.stepped_length & 0xFF) > 0xFF));
-}
-
-/* bm_files's exit, for its wrapper and for a caller's that ends in it. */
-void bm_files_exit_shim(BackupFiles files)
-{
-    bm_files_registers_shim(files);
-    cpu.a = bm_files_result(files);
-}
-
 void abi_bm_files(void)
 {
-    bm_files_exit_shim(bm_files());
+    bm_files_exit_shim(bm_files(cpu.a));
+}
+
+/* bm_free's and bm_format's exits and results: A 0 or $FF not formatted (free); 0 or 1, a wrong password (format). */
+void bm_free_exit_shim(BackupFree free_space)
+{
+    access_exit(free_space);
+}
+
+uint8_t bm_free_result(BackupFree free_space)
+{
+    return free_space.result;
+}
+
+void abi_bm_free(void)
+{
+    bm_free_exit_shim(bm_free(cpu.a));
+}
+
+void bm_format_exit_shim(BackupFormat format)
+{
+    card_exit_apply(format.exit);
+    if (format.ending == BM_ENDED_DONE) {
+        abi_flag(P_I, false);
+    }
+    cpu.a = format.result;
+    abi_nz(format.result);
+}
+
+uint8_t bm_format_result(BackupFormat format)
+{
+    return format.result;
+}
+
+void abi_bm_format(void)
+{
+    bm_format_exit_shim(bm_format(cpu.a));
 }

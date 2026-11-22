@@ -52,7 +52,7 @@ static void backup_file_arguments(void)
 BackupAccess BackupRead(void)
 {
     backup_file_arguments();
-    return bm_read();
+    return bm_read(0);
 }
 
 void backup_read_exit_shim(BackupAccess read)
@@ -86,10 +86,10 @@ BackupWriteRun BackupWrite(void)
     wr8(zBiosAl, BACKUP_NAME_LO);
     wr8(zBiosAh, BACKUP_NAME_HI);
     jsr_push(0x6C4E);
-    run.removal = bm_delete();
+    run.removal = bm_delete(BACKUP_NAME_HI);
     jsr_pop();
     jsr_push(0x6C51);
-    run.free_space = bm_free();
+    run.free_space = bm_free(bm_delete_result(run.removal));
     jsr_pop();
     low = rd8(zBiosCl);
     high = rd8(zBiosCh);
@@ -98,7 +98,7 @@ BackupWriteRun BackupWrite(void)
     if (!run.fits)
         return run;
     backup_file_arguments();
-    run.write = bm_write();
+    run.write = bm_write(0);
     return run;
 }
 
@@ -142,7 +142,7 @@ BackupFormat BackupFormatMemory(void)
     wr8(zBiosAl, BACKUP_BLANK_LO);
     wr8(zBiosAh, BACKUP_BLANK_HI);
     jsr_push(0x6C85);
-    format = bm_format();
+    format = bm_format(BACKUP_BLANK_HI);
     jsr_pop();
     if (bm_format_result(format) != 0)
         for (;;)

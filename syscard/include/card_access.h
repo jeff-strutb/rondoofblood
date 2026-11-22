@@ -92,4 +92,13 @@
     do { uint32_t v_ = (value); WR8((field).hi, (uint8_t)(v_ >> 16)); WR8((field).mid, (uint8_t)(v_ >> 8)); \
          WR8((field).lo, (uint8_t)v_); } while (0)
 
+/*
+ * Through a zero-page pointer: LDA (zp), LDA (zp),Y, STA (zp), STA (zp),Y. The field is the pointer's low byte, its
+ * high byte is the next; both are read, low then high, every time, then the byte they point at.
+ */
+#define RD8_PTR(pointer_lo) rd8_zp_y(ADDR_OF8(pointer_lo), 0)
+#define RD8_PTR_Y(pointer_lo, y) rd8_zp_y(ADDR_OF8(pointer_lo), (y))
+#define WR8_PTR(pointer_lo, value) wr8_zp_y(ADDR_OF8(pointer_lo), 0, (value))
+#define WR8_PTR_Y(pointer_lo, y, value) wr8_zp_y(ADDR_OF8(pointer_lo), (y), (value))
+
 #endif

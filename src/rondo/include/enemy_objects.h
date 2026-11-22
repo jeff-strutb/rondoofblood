@@ -220,6 +220,24 @@ static inline Ended ended_of_distance(PlayerDistance d)
     return e;
 }
 
+/* How a routine that may play a sound on the first screen ended: the state before the call, the call, the rest. */
+typedef struct {
+    Ended before;
+    Ended end;
+    bool called;
+    SoundOnScreen sound;
+} ScreenSoundEnd;
+
+static inline void abi_screen_sound_end(ScreenSoundEnd r)
+{
+    abi_ended(r.before);
+    if (r.called) {
+        sound_if_on_first_screen_exit_shim(r.sound);
+    }
+    abi_ended(r.end);
+}
+
+
 /* A routine whose exit keeps what NextRandom left in C and V; the wrapper shows that first. */
 typedef struct {
     Ended end;
@@ -369,6 +387,24 @@ static inline Ended enter_state_if_flagged(uint8_t slot, uint8_t state)
 }
 
 /* PROTOTYPES BEGIN */
+/* object/enemies_common_temp.c */
+ScreenSoundEnd PlayHitSoundA(uint8_t slot);
+ScreenSoundEnd PlayHitSoundB(uint8_t slot);
+ScreenSoundEnd PlayHitSoundC(uint8_t slot);
+ScreenSoundEnd PlayHitSoundD(uint8_t slot);
+ScreenSoundEnd PlayHitSoundE(uint8_t slot);
+ScreenSoundEnd PlayHitSoundF(uint8_t slot);
+ScreenSoundEnd PlayHitSoundG(uint8_t slot);
+ScreenSoundEnd PlayHitSoundH(uint8_t slot);
+ScreenSoundEnd PlayHitSoundI(uint8_t slot);
+ScreenSoundEnd PlayHitSoundJ(uint8_t slot);
+ScreenSoundEnd PlayHitSoundK(uint8_t slot);
+ScreenSoundEnd PlayHitSoundL(uint8_t slot);
+Ended DropItemWhenHitA(uint8_t slot);
+Ended DropItemWhenHitB(uint8_t slot);
+Ended DropItemWhenHitC(uint8_t slot);
+Ended DropItemWhenHitD(uint8_t slot);
+Ended DropItemWhenHitE(uint8_t slot);
 /* object/enemies_stage04_temp.c */
 Ended ClampSpeedXToTwo(uint8_t slot);
 Ended ThrowUpward(uint8_t slot);

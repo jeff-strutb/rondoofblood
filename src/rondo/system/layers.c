@@ -173,18 +173,18 @@ void abi_ClearScrollSpeedsC(void)
  * Names: the source word has no name past its first byte (RasterWaterWanted holds it in the
  * symbols); an enum of this file stands for both bytes until the owner adds them.
  */
-void ScrollYFromLevelWord(void)
+uint8_t ScrollYFromLevelWord(void)
 {
     uint8_t low = rd8(ScrollYWantedLo);
     WR8(SCROLL->y_lo[0], low);
     uint8_t high = rd8(ScrollYWantedHi);
     WR8(SCROLL->y_hi[0], high);
-    cpu.a = high;
+    return high;
 }
 
 void abi_ScrollYFromLevelWord(void)
 {
-    ScrollYFromLevelWord();
+    cpu.a = ScrollYFromLevelWord();
     abi_nz(cpu.a);
 }
 

@@ -1,3 +1,19 @@
+; @routine 024E:687 SetStageTileVramAddress
+; @run 6B:8E87
+; WHAT IT DOES: Points the VDC's VRAM addresses at the tile row the stage's tile step names:
+; one of the eight words of StageTileVramAddress, picked by zTemp04 rounded down to even.
+; HOW: The word into SetVramAddresses, which this routine jumps to with no frame of its own.
+; WAITS: no.
+; Entry: zTemp04 the step. Exit: as SetVramAddresses. X and Y the address bytes.
+SetStageTileVramAddress:
+    lda z:zTemp04
+    and #$FE
+    tax
+    lda a:StageTileVramAddress,x
+    ldy a:StageTileVramAddress+1,x
+    tax
+    jmp SetVramAddresses
+
 ; @routine 024F:37D SetVramAddresses
 ; @run 6B:937D
 ; WHAT IT DOES: Points both of the VDC's VRAM addresses, the one it reads from and the one it
@@ -48,6 +64,22 @@ OrVramData:
     ora a:VDC_DATA_HI
     sta a:VDC_DATA_HI
     rts
+
+; @routine 05BE:687 SetStageTileVramAddressLong
+; @run 6B:8E87
+; WHAT IT DOES: SetStageTileVramAddress for the stages whose overlay has its SetVramAddresses at
+; $968F.
+; HOW: The same code, jumping to SetVramAddressesLong.
+; WAITS: no.
+; Entry: zTemp04 the step. Exit: as SetVramAddressesLong. X and Y the address bytes.
+SetStageTileVramAddressLong:
+    lda z:zTemp04
+    and #$FE
+    tax
+    lda a:StageTileVramAddress,x
+    ldy a:StageTileVramAddress+1,x
+    tax
+    jmp SetVramAddressesLong
 
 ; @routine 05BF:68F SetVramAddressesLong
 ; @run 6B:968F

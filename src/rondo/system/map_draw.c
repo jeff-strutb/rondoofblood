@@ -145,3 +145,81 @@ void abi_SetVramAddressesLong(void)
     cpu.a = 2;
     abi_nz(2);
 }
+
+/* The VRAM address the tile row step zTemp04 (rounded down to even) names: its two bytes, low then high. */
+typedef struct { uint8_t lo, hi; } VramAddress;
+
+static VramAddress stage_tile_address(void)
+{
+    VramAddress address;
+    uint8_t step = RD8(ZP->temp04);
+    uint8_t index = (uint8_t)(step & 0xFE);
+
+    address.lo = rd8((uint16_t)(StageTileVramAddress + index));
+    address.hi = rd8((uint16_t)(StageTileVramAddress + 1 + index));
+    return address;
+}
+
+/*
+ * @routine 024E:687 SetStageTileVramAddress
+ * @run 6B:8E87
+ * WHAT IT DOES: Points the VDC's VRAM addresses at the tile row the stage's tile step names:
+ * one of the eight words of StageTileVramAddress, picked by zTemp04 rounded down to even.
+ * HOW: The word into SetVramAddresses, which this routine jumps to with no frame of its own.
+ * WAITS: no.
+ * Entry: zTemp04 the step. Exit: as SetVramAddresses. X and Y the address bytes.
+ */
+static VramAddress set_stage_tile(void)
+{
+    VramAddress address = stage_tile_address();
+
+    SetVramAddresses(address.lo, address.hi);
+    return address;
+}
+
+void SetStageTileVramAddress(void)
+{
+    set_stage_tile();
+}
+
+void abi_SetStageTileVramAddress(void)
+{
+    VramAddress address = set_stage_tile();
+
+    cpu.x = address.lo;
+    cpu.y = address.hi;
+    cpu.a = 2;
+    abi_nz(2);
+}
+
+/*
+ * @routine 05BE:687 SetStageTileVramAddressLong
+ * @run 6B:8E87
+ * WHAT IT DOES: SetStageTileVramAddress for the stages whose overlay has its SetVramAddresses at
+ * $968F.
+ * HOW: The same code, jumping to SetVramAddressesLong.
+ * WAITS: no.
+ * Entry: zTemp04 the step. Exit: as SetVramAddressesLong. X and Y the address bytes.
+ */
+static VramAddress set_stage_tileLong(void)
+{
+    VramAddress address = stage_tile_address();
+
+    SetVramAddressesLong(address.lo, address.hi);
+    return address;
+}
+
+void SetStageTileVramAddressLong(void)
+{
+    set_stage_tileLong();
+}
+
+void abi_SetStageTileVramAddressLong(void)
+{
+    VramAddress address = set_stage_tileLong();
+
+    cpu.x = address.lo;
+    cpu.y = address.hi;
+    cpu.a = 2;
+    abi_nz(2);
+}

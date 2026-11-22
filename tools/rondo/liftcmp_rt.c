@@ -13,8 +13,8 @@
  * second read of the original shows), and a byte written reads back what was written.
  *
  * Input: the cases file named by argv[1], one case a line:
- *     ID SEED A X Y S P N [ADDR=VAL ...]
- * (hex), N memory overrides. Output on stdout, per case:
+ *     ID SEED A X Y S P M2 M3 M4 M5 M6 N [ADDR=VAL ...]
+ * (hex): the registers, the banks in MPR2 to MPR6 (MPR0 is $FF, MPR1 $F8, MPR7 $00), N memory overrides. Output on stdout, per case:
  *     CASE ID, then one line per event, then END with the registers, or UNTRACED ADDR when a draft reached bytes no
  *     script ran. When argv[2] is given, the coverage of the case is appended to that file as a line
  *     `ID PC PC ...` (return addresses of the compiler's block probes).
@@ -43,6 +43,7 @@ static unsigned stub_calls[65536];
 static jmp_buf case_end;
 static unsigned events;
 static int decimal_ok;
+static uint8_t mpr[8]; /* the mapper: MPR0 to MPR7, as the case sets them; tam writes them, tma reads them */
 static int depth;
 
 static uint64_t mix64(uint64_t x)
@@ -107,12 +108,22 @@ void wr8(uint16_t addr, uint8_t value)
 void st0(uint8_t v) { printf("ST0 %02X\n", v); }
 void st1(uint8_t v) { printf("ST1 %02X\n", v); }
 void st2(uint8_t v) { printf("ST2 %02X\n", v); }
-void tam(uint8_t mask, uint8_t bank) { printf("TAM %02X %02X\n", mask, bank); }
+void tam(uint8_t mask, uint8_t bank)
+{
+    for (int i = 0; i < 8; i++)
+        if (mask & (1 << i))
+            mpr[i] = bank;
+    printf("TAM %02X %02X\n", mask, bank);
+}
 
+/* TMA with several bits set gives the highest set bit's MPR, as the core does */
 uint8_t tma(uint8_t mask)
 {
-    uint8_t v = seeded(0x7A, mask, 2);
+    uint8_t v = 0;
 
+    for (int i = 0; i < 8; i++)
+        if (mask & (1 << i))
+            v = mpr[i];
     printf("TMA %02X %02X\n", mask, v);
     return v;
 }
@@ -260,12 +271,12 @@ int main(int argc, char **argv)
         cf = fopen(argv[2], "w");
     setvbuf(stdout, 0, _IOFBF, 1 << 16);
     while (fgets(line, sizeof line, in)) {
-        unsigned id, a, x, y, s, p, n;
+        unsigned id, a, x, y, s, p, n, m[5];
         unsigned long long sd;
         int off = 0, used;
         char *q = line;
 
-        if (sscanf(q, "%x %llx %x %x %x %x %x %u%n", &id, &sd, &a, &x, &y, &s, &p, &n, &used) < 8)
+        if (sscanf(q, "%x %llx %x %x %x %x %x %x %x %x %x %x %u%n", &id, &sd, &a, &x, &y, &s, &p, &m[0], &m[1], &m[2], &m[3], &m[4], &n, &used) < 13)
             continue;
         q += used;
         memset(mem, 0, sizeof mem);
@@ -286,6 +297,11 @@ int main(int argc, char **argv)
                 q += off;
             }
         }
+        mpr[0] = 0xFF;
+        mpr[1] = 0xF8;
+        for (int i = 0; i < 5; i++)
+            mpr[2 + i] = (uint8_t)m[i];
+        mpr[7] = 0x00;
         cpu.a = (uint8_t)a;
         cpu.x = (uint8_t)x;
         cpu.y = (uint8_t)y;

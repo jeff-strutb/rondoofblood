@@ -30,7 +30,7 @@ arm that is not proven: add a curated case for it.
 
 The entry contract. The cases assume what a routine's header says of its entry, not what the chip could be in: D clear
 (unless the routine's own assembly sets it, then it is set in the draft too), I clear, T and B clear, S in $90 to $F8,
-X below $58 in half the cases (an object or channel index), and stubs return N, V, Z and C only. `--decimal` runs decimal
+the banks as the trace saw the routine run (every mapper configuration it ran under; none traced: MPR2-3 $69/$6A, MPR4-6 $00; MPR0 $FF, MPR1 $F8, MPR7 $00), X below $58 in half the cases (an object or channel index), and stubs return N, V, Z and C only. `--decimal` runs decimal
 cases for a routine entered with D set or calling something that returns it set; `--irq` sets I in half the cases;
 the result line says which was run. Gate A5 judges the contract on real calls: a difference found here under a contract
 the game never meets is not a defect, and one the gate finds under real entry is not made up by passing here.
@@ -51,6 +51,7 @@ import hashlib
 import os
 import random
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -122,7 +123,7 @@ def hybrid_rows():
         r = run([sys.executable, "-I", os.path.join(HERE, "hybrid.py")], cwd=TOP)
         if r.returncode:
             raise SystemExit(f"liftcmp: hybrid.py failed:\n{(r.stdout + r.stderr)[-600:]}")
-    return re.findall(r'\{ 0x([0-9A-F]+), \d+, \d+, "(\w+)", (abi_\w+), \d+, 0x[0-9A-F]+, (\d) \},', open(p).read())
+    return re.findall(r'\{ 0x([0-9A-F]+), (\d+), (\d+), "(\w+)", (abi_\w+), \d+, 0x[0-9A-F]+, (\d) \},', open(p).read())
 
 
 def header_hash():
@@ -231,11 +232,47 @@ def parse_curated(path):
     return cases
 
 
-def make_cases(curated, n, seed, decimal=False, irq=False):
+DEFAULT_MAP = ("69", "6A", "00", "00", "00")
+
+
+def run_configs(name, rows_full):
+    """The mapper configurations the routine ran under, from the trace's run map (runmap.bin, mprcfg.csv):
+    [(mpr2..mpr6 as hex strings)], or None when no script ran it."""
+    row = [r for r in rows_full if r[3] == name]
+    if not row:
+        return None
+    run_addr, length, disc = int(row[0][0], 16), int(row[0][1]), int(row[0][2])
+    for base in (TOP, main_checkout()):
+        d = os.path.join(base, "build", "rondo", "trace")
+        if os.path.exists(os.path.join(d, "runmap.bin")) and os.path.exists(os.path.join(d, "mprcfg.csv")):
+            break
+    else:
+        return None
+    cfgs = {}
+    for line in open(os.path.join(d, "mprcfg.csv")).read().splitlines()[1:]:
+        f = line.split(",")
+        cfgs[int(f[0])] = tuple(f[1:6])
+    data = open(os.path.join(d, "runmap.bin"), "rb").read()
+    found = []
+    for i in range(0, len(data), 12):
+        disc_off, logical, bank, kind, cfg, _ = struct.unpack("<IHBBHH", data[i:i + 12])
+        if disc <= disc_off < disc + length and run_addr <= logical < run_addr + length and cfg in cfgs and cfgs[cfg] not in found:
+            found.append(cfgs[cfg])
+    return found or None
+
+
+def make_cases(curated, n, seed, decimal=False, irq=False, configs=None):
     rng = random.Random(seed)
-    cases = list(curated)
+    configs = configs or [DEFAULT_MAP]
+    cases = []
+    for c in curated:
+        for k, cfg in enumerate(configs):
+            cases.append(dict(c, mpr=cfg))
+    per = max(100, n // len(configs))
     edge = [0, 1, 2, 0x7F, 0x80, 0xFF, 0xFE, 0x0F, 0xF0]
-    for _ in range(n):
+    for k in range(per * len(configs)):
+        cfg = configs[k % len(configs)]
+
         def r8():
             return rng.choice(edge) if rng.random() < 0.5 else rng.randrange(256)
         # N, V, Z, C as the entry contract has them; D and I only when asked for (see the header)
@@ -245,7 +282,7 @@ def make_cases(curated, n, seed, decimal=False, irq=False):
         if irq and rng.random() < 0.5:
             p |= 0x04
         cases.append(dict(a=r8(), x=r8() if rng.random() < 0.5 else rng.randrange(0, 0x58), y=r8(), s=rng.randrange(0x90, 0xF9),
-                          p=p & 0xCF, mem=[], label="seed"))
+                          p=p & 0xCF, mem=[], label="seed", mpr=cfg))
     with_seed = []
     for i, c in enumerate(cases):
         c["seed"] = rng.getrandbits(48)
@@ -257,7 +294,8 @@ def make_cases(curated, n, seed, decimal=False, irq=False):
 def write_cases(cases, path):
     with open(path, "w") as f:
         for c in cases:
-            f.write("%X %X %X %X %X %X %X %d" % (c["id"], c["seed"], c["a"], c["x"], c["y"], c["s"], c["p"], len(c["mem"])))
+            f.write("%X %X %X %X %X %X %X %s %d" % (c["id"], c["seed"], c["a"], c["x"], c["y"], c["s"], c["p"],
+                                                      " ".join(c["mpr"]), len(c["mem"])))
             for a, v in c["mem"]:
                 f.write(" %04X=%02X" % (a, v))
             f.write("\n")
@@ -276,7 +314,7 @@ def build_dispatch(path, rows, objs):
                 "call_original", "call_orig", "untraced", "hand_over", "__sanitizer_cov_trace_pc", "ENTRY"}
     external = sorted(undefined - defined - provided)
     seen, items = set(), []
-    for run_addr, name, abi, rom in rows:
+    for run_addr, _len, _disc, name, abi, rom in rows:
         if rom == "0" and abi in defined and run_addr not in seen:
             seen.add(run_addr)
             items.append((run_addr, abi))
@@ -414,7 +452,8 @@ def one(name, a, ctx):
     draft_c = os.path.join(work, "draft_%s.c" % name)
     open(draft_c, "w").write('#include "machine.h"\n#include "ops6280.h"\n\n' + body)
     rt = os.path.join(HERE, "liftcmp_rt.c")
-    cases = make_cases(parse_curated(a.curated), a.cases, a.seed, a.decimal, a.irq)
+    configs = run_configs(name, ctx["rows_full"])
+    cases = make_cases(parse_curated(a.curated), a.cases, a.seed, a.decimal, a.irq, configs)
     cfile = os.path.join(work, "cases.txt")
     write_cases(cases, cfile)
     exes = {}
@@ -457,7 +496,7 @@ def one(name, a, ctx):
             same.append(i)
         else:
             diffs.append(i)
-    lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}): "
+    lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}, {(str(len(configs)) + ' mapper configuration' + ('s' if len(configs) > 1 else '') + ' from the trace') if configs else 'no trace of it: default map'}): "
              f"{len(same)} match, {len(diffs)} differ, {len(untraced)} draft reached untraced bytes"]
     for i in diffs[:a.show]:
         c = cases[i]
@@ -535,6 +574,7 @@ def main():
         ap.error("name a routine or give --file")
     drafts = find_drafts(a.drafts)
     ctx = dict(cache=cache, sources=sources, objs=objs, hh=hh, drafts=drafts, ops=None, rows=hybrid_rows())
+    ctx["rows_full"] = ctx["rows"]
     bad = 0
     names = list(a.names)
     if a.file:

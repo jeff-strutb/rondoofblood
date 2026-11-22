@@ -39,6 +39,8 @@ SCRIPTS = os.path.join(HERE, "scripts")
 OUT = os.environ.get("RONDO_ORACLE_OUT") or os.path.join(TOP, "build", "rondo", "oracle")
 TRACK = os.path.join(disc.OUT, "track02.bin")
 TIMEOUT = 1500
+DIAG_ENV = ("RONDO_KEEP", "RONDO_ONLY", "RONDO_KEEP_WAITS", "RONDO_PLACE", "RONDO_SKIPS", "RONDO_DUMP_FRAME", "RONDO_NOJUDGE",
+            "RONDO_LOG_HARD", "RONDO_JUDGE_CHECK", "RONDO_TRIM_NOJUDGE", "RONDO_TRACE_ENTRY", "RONDO_TRACE_PC")
 CAUSES = ["left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix"]
 KINDS = ["MOVED", "EXTRA", "MISSING", "VALUE", "STACK", "STATE", "REGS", "CALL", "INT"]
 
@@ -351,7 +353,7 @@ def run_a7(names):
         f.write("routine,swapped,ran_inside\n")
         for name in sorted(set(swapped) | set(ran_inside)):
             f.write(f"{name},{swapped.get(name, 0)},{ran_inside.get(name, 0)}\n")
-    diagnostic = any(os.environ.get(k) for k in ("RONDO_KEEP", "RONDO_ONLY", "RONDO_KEEP_WAITS", "RONDO_PLACE", "RONDO_SKIPS", "RONDO_DUMP_FRAME"))
+    diagnostic = any(os.environ.get(k) for k in DIAG_ENV)
     write_stamp("a7", not bad and not diagnostic and names == scripts_from([]))
     return 1 if bad else 0
 
@@ -388,7 +390,7 @@ def main():
         names = scripts_from(sys.argv[2:])
         totals, details, bad = run_a5(PCEBOX, "a5", names)
         status = report_a5(totals, details, bad)
-        write_stamp("a5", not bad and names == scripts_from([]))
+        write_stamp("a5", not bad and not any(os.environ.get(k) for k in DIAG_ENV) and names == scripts_from([]))
         return status
     if what == "a7":
         return run_a7(scripts_from(sys.argv[2:]))

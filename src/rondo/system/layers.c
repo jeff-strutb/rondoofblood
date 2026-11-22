@@ -90,7 +90,7 @@ void abi_HalveScrollStepFirstToSecond(void)
 enum { SCREEN_MAP_PAGE = 0x3D, SCREEN_MAP_ROW_SHIFT = 4 };
 /* Fields with no name yet (rows requested from the owner of the records): the scroll's second word
  * and the list's 16-bit counters. */
-enum { ScrollYWantedLo = 0x3EB8, ScrollYWantedHi = 0x3EB9, ListWordLo = 0x3CA0, ListWordHi = 0x3CA8 };
+enum { ScrollYWantedLo = 0x3EB8, ScrollYWantedHi = 0x3EB9 };
 
 static void clear_scroll_speeds(void)
 {

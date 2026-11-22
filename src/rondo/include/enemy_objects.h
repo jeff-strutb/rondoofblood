@@ -171,7 +171,6 @@ AxisMove ApplyVelocityX(uint8_t object);                                        
 AxisMove ApplyVelocityY(uint8_t object);                                          /* object/motion.c */
 uint8_t FindFreeSlotFrom30(uint8_t *exit_a, bool *found);                         /* object/spawn.c */
 
-void ApplyGravityUnlimited(uint8_t object);                                       /* object/sensing.c */
 
 /* A routine that may play a sound: what it ended with, and the call the wrapper must show the leak of. */
 typedef struct {

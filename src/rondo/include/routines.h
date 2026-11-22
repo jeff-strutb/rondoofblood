@@ -43,6 +43,8 @@ typedef struct {
     uint8_t distance;
     bool far;
     bool object_further;
+    uint8_t mine;       /* the object's low byte, when it was compared */
+    uint8_t player;     /* the player's low byte, when it was compared */
 } PlayerDistance;
 
 /*
@@ -650,6 +652,15 @@ uint8_t StartScriptSlotKind7(uint8_t script, uint8_t slot);
 void script_slot_exit_shim(uint8_t script);
 void sole_slot_exit_shim(SoleSlot result);
 PlayerDistance DistanceXToPlayer(uint8_t object);
+PlayerDistance DistanceYToPlayer(uint8_t object);
+void distance_exit_shim(PlayerDistance d);
+
+/* ApplyGravity and ApplyGravityUnlimited: whether the speed gained; the add's low byte, carry and overflow;
+ * the new high byte when it carried, else (not gained) the high byte read. */
+typedef struct { bool gained; uint8_t low; uint8_t high; bool carried; bool overflow; bool unused; } GravityResult;
+GravityResult ApplyGravityUnlimited(uint8_t object);
+GravityResult ApplyGravity(uint8_t object);
+void gravity_exit_shim(GravityResult result);
 void abi_SoundCommand(void);
 void PlayerAtRightEdge(void);
 void PlayerAtLeftEdge(void);

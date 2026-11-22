@@ -946,7 +946,9 @@ typedef struct {
     U16LE level_stream; /* LevelStreamLo +1 */
     uint8_t level_axis; /* LevelAxis */
     uint8_t event_flags[32]; /* EventFlags */
-    uint8_t _gap_0023[12]; /* no name yet: $26F3-$26FE */
+    uint8_t tile_hit[4]; /* TileHit */
+    uint8_t tile_depth_x[4]; /* TileDepthX */
+    uint8_t tile_depth_y[4]; /* TileDepthY */
     U16BE stream_count; /* WorkByteA +1 */
     U16LE stream_step; /* StreamStepLo +1 */
     uint8_t _gap_0033[63]; /* no name yet: $2703-$2741 */
@@ -959,6 +961,9 @@ _Static_assert(LevelState_BASE + offsetof(LevelState, level_stream) + 0 == Level
 _Static_assert(LevelState_BASE + offsetof(LevelState, level_stream) + 1 == LevelStreamHi, "LevelState.level_stream is not at LevelStreamHi");
 _Static_assert(LevelState_BASE + offsetof(LevelState, level_axis) + 0 == LevelAxis, "LevelState.level_axis is not at LevelAxis");
 _Static_assert(LevelState_BASE + offsetof(LevelState, event_flags) + 0 == EventFlags, "LevelState.event_flags is not at EventFlags");
+_Static_assert(LevelState_BASE + offsetof(LevelState, tile_hit) + 0 == TileHit, "LevelState.tile_hit is not at TileHit");
+_Static_assert(LevelState_BASE + offsetof(LevelState, tile_depth_x) + 0 == TileDepthX, "LevelState.tile_depth_x is not at TileDepthX");
+_Static_assert(LevelState_BASE + offsetof(LevelState, tile_depth_y) + 0 == TileDepthY, "LevelState.tile_depth_y is not at TileDepthY");
 _Static_assert(LevelState_BASE + offsetof(LevelState, stream_count) + 0 == WorkByteA, "LevelState.stream_count is not at WorkByteA");
 _Static_assert(LevelState_BASE + offsetof(LevelState, stream_count) + 1 == WorkByteB, "LevelState.stream_count is not at WorkByteB");
 _Static_assert(LevelState_BASE + offsetof(LevelState, stream_step) + 0 == StreamStepLo, "LevelState.stream_step is not at StreamStepLo");

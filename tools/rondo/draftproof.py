@@ -73,7 +73,7 @@ def main():
     a = ap.parse_args()
     names = [n for n in a.names.split(",") if n]
     cmd = [sys.executable, os.path.join(HERE, "cdraft.py"), "--out", a.gen]
-    cmd += ["--all"] if a.all else ["--as-filed", "--only", ",".join(names)]
+    cmd += ["--all"] if a.all else ["--fresh", "--as-filed", "--only", ",".join(names)]
     r = subprocess.run(cmd)
     if r.returncode:
         return r.returncode

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """cdraft.py -- draft C for every traced routine, instruction for instruction from its assembly.
 
-    cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py [--out DIR] [--only NAME,...] [--stats]
+    python3 tools/rondo/cdraft.py --only NAME[,NAME...] [--out DIR] [--as-filed]   from the cache, under a second, no slot
+    cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache                    build the cache (about a minute)
+    cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --fresh [--all|--only ...] generate without the cache
 
 A draft is register-shaped C: one statement of ops6280.h per instruction a script ran, on the
 register file `cpu`, so every access, push and pull is made where the assembly makes it, in its order.
@@ -22,6 +24,20 @@ One C function per (distinct content, run address); the name is the intake's lab
 content's lowest disc location (r0043_100, with _RRRR appended when a content ran at several
 addresses). Output (untracked, a function of the disc and the traces): DIR/drafts.c, DIR/drafts.csv
 (name, run, length, disc, abi) and DIR/report.csv.
+
+The cache. `--cache` writes every draft once into build/rondo/drafts/ of the MAIN checkout (one drafts.c, an
+index.csv of each routine's label, run address, length and line range in it, members.csv of every disc or card
+location and run address that holds each content, and stamp.txt). The cache is per checkout, but a worktree
+shares the main checkout's: lookups try the main checkout's cache first and use it when its stamp equals the
+stamp of the inputs this worktree sees (the disc image, the trace maps, cdraft.py, ops6280.h, intake.py,
+huc.py: a worktree that edits cdraft.py or ops6280.h has another stamp, so it uses a cache of its own in its
+own build/rondo/drafts/). The stamp hashes the sources' bytes and the big files' size and modification time.
+`--only NAME` takes NAME as an intake label (r0043_100) or as a filed routine's name: a filed name is resolved
+at lookup time from this tree's `@routine` and `@card` tags (disc location and run address) through
+members.csv, so a routine filed a minute ago needs no regeneration. A stale cache is rebuilt by `--cache`
+(a slot: run it under cpu-run); `--only` says so and exits 4 instead of taking a slot silently. In Python:
+`import cdraft; text = cdraft.fetch("Name", as_filed=True)` returns the compilable unit (the includes and the
+function, named abi_Name with as_filed, abi_<label> without) or raises KeyError.
 """
 import argparse
 import bisect
@@ -46,10 +62,26 @@ def intake_dir():
     return os.path.join(main, "tools", "rondo")
 
 
-sys.path.insert(0, intake_dir())
-import asmbuild  # noqa: E402
+sys.path.insert(0, HERE)
 import huc  # noqa: E402
-import intake  # noqa: E402
+
+
+class _Lazy:
+    """The intake and the assembly builder load the whole disc's traces: only a build imports them."""
+
+    def __init__(self, name):
+        self._n, self._m = name, None
+
+    def __getattr__(self, k):
+        if self._m is None:
+            import importlib
+            sys.path.insert(0, intake_dir())
+            self._m = importlib.import_module(self._n)
+        return getattr(self._m, k)
+
+
+asmbuild = _Lazy("asmbuild")
+intake = _Lazy("intake")
 
 OUT = os.path.join(TOP, "build", "rondo", "drafter", "gen")
 
@@ -379,6 +411,7 @@ def build_all(it, only=None, as_filed=False):
             d = Draft(g, b, fn if (as_filed and fn) else name)
             d.filed = fn
             d.rom = 0
+            d.members = [("D", p.lo) for p in g.members]
             d.body = d.text()
             drafts.append(d)
     return drafts, norun
@@ -452,6 +485,7 @@ def card_drafts(names, rows=None):
             continue
         d = Draft(g, run, name)
         d.filed, d.rom = (name if name in filed_names else ""), 1
+        d.members = [("C", p.lo) for p in g.members]
         if not names and name in filed_names:
             d.name = "card_" + name           # the hand-written abi_ of that name stays beside it
         d.body = d.text()
@@ -483,15 +517,32 @@ void untraced(uint16_t addr)
 
 def write(drafts, norun, out):
     os.makedirs(out, exist_ok=True)
+    index, members = [], []
     with open(os.path.join(out, "drafts.c"), "w", encoding="ascii", newline="\n") as f:
-        f.write("/* Drafted by tools/rondo/cdraft.py from the traced assembly: register-shaped C, a stepping stone. */\n")
-        f.write('#include "machine.h"\n#include "ops6280.h"\n\n')
+        head = ("/* Drafted by tools/rondo/cdraft.py from the traced assembly: register-shaped C, a stepping stone. */\n"
+                '#include "machine.h"\n#include "ops6280.h"\n\n')
+        f.write(head)
+        line = head.count("\n") + 1
         for d in drafts:
-            f.write("/* %s: run %04X, %d bytes, %d instructions, content of disc %04X:%03X */\n" % (
-                d.name, d.base, d.g.n, d.stat["instructions"], d.g.canon // 2048, d.g.canon % 2048))
-            f.write("void abi_%s(void)\n{\n%s\n}\n\n" % (d.name, d.body))
+            text = ("/* %s: run %04X, %d bytes, %d instructions, content of disc %04X:%03X */\n" % (
+                d.name, d.base, d.g.n, d.stat["instructions"], d.g.canon // 2048, d.g.canon % 2048) +
+                "void abi_%s(void)\n{\n%s\n}\n\n" % (d.name, d.body))
+            n = text.count("\n")
+            f.write(text)
+            index.append([d.name, "%04X" % d.base, d.g.n, d.g.canon, getattr(d, "rom", 0), line, line + n - 2])
+            for sp, lo in getattr(d, "members", []):
+                members.append([sp, lo, "%04X" % d.base, d.name])
+            line += n
     with open(os.path.join(out, "support.c"), "w", encoding="ascii", newline="\n") as f:
         f.write(SUPPORT)
+    with open(os.path.join(out, "index.csv"), "w", encoding="ascii", newline="\n") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["name", "run", "length", "disc", "rom", "first_line", "last_line"])
+        w.writerows(index)
+    with open(os.path.join(out, "members.csv"), "w", encoding="ascii", newline="\n") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["space", "offset", "run", "name"])
+        w.writerows(members)
     with open(os.path.join(out, "drafts.csv"), "w", encoding="ascii", newline="\n") as f:
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["name", "run", "length", "disc", "abi", "filed", "rom"])
@@ -513,14 +564,143 @@ def write(drafts, norun, out):
               tot["untraced_arm"], tot["fall_out"], tot["todo"], tot["inlined"]))
 
 
+def main_root():
+    common = subprocess.run(["git", "rev-parse", "--git-common-dir"], capture_output=True, text=True,
+                            cwd=TOP).stdout.strip()
+    return os.path.dirname(os.path.abspath(os.path.join(TOP, common)))
+
+
+def stamp():
+    """What the drafts are a function of: the sources' bytes and the big inputs' size and time."""
+    import hashlib
+    h = hashlib.sha1()
+    main = main_root()
+    for path in (os.path.join(HERE, "cdraft.py"), os.path.join(TOP, "src", "rondo", "include", "ops6280.h"),
+                 os.path.join(intake_dir(), "intake.py"), os.path.join(HERE, "huc.py")):
+        h.update(path.encode() if False else os.path.basename(path).encode())
+        h.update(open(path, "rb").read())
+    for path in (os.path.join(main, "build", "rondo", "disc", "track02.bin"),
+                 os.path.join(main, "build", "rondo", "system", "syscard3.pce"),
+                 os.path.join(main, "build", "rondo", "trace", "discmap.bin"),
+                 os.path.join(main, "build", "rondo", "trace", "runmap.bin"),
+                 os.path.join(main, "build", "rondo", "trace", "cardmap.bin")):
+        st = os.stat(path)
+        h.update(("%s %d %d" % (os.path.basename(path), st.st_size, st.st_mtime_ns)).encode())
+    return h.hexdigest()
+
+
+def cache_dirs():
+    return [os.path.join(main_root(), "build", "rondo", "drafts"), os.path.join(TOP, "build", "rondo", "drafts")]
+
+
+def current_cache():
+    """The first cache folder whose stamp equals the inputs' stamp, or None."""
+    want = stamp()
+    seen = set()
+    for d in cache_dirs():
+        if d in seen:
+            continue
+        seen.add(d)
+        try:
+            if open(os.path.join(d, "stamp.txt")).readline().strip() == want:
+                return d
+        except OSError:
+            pass
+    return None
+
+
+def build_cache(out):
+    disc, it = load()
+    drafts, norun = build_all(it, None, False)
+    drafts += card_drafts(None, it.rows_all)
+    tmp = out + ".new"
+    import shutil
+    shutil.rmtree(tmp, ignore_errors=True)
+    write(drafts, norun, tmp)
+    with open(os.path.join(tmp, "stamp.txt"), "w") as f:
+        f.write(stamp() + "\n%d drafts, built by tools/rondo/cdraft.py --cache\n" % len(drafts))
+    shutil.rmtree(out, ignore_errors=True)
+    os.rename(tmp, out)
+    return len(drafts)
+
+
+def resolve(cache, name):
+    """Index rows (a list) for a label or a filed routine's name."""
+    rows = {}
+    with open(os.path.join(cache, "index.csv"), newline="") as f:
+        for r in csv.DictReader(f):
+            rows.setdefault(r["name"], r)
+    if name in rows:
+        return [rows[name]]
+    keys = []
+    import asmfile
+    for r in asmfile.all_routines():
+        if r["name"] == name:
+            keys.append(("D", str(r["disc"]), "%04X" % r["run"]))
+    try:
+        import cardfile
+        for r in cardfile.routines():
+            if r["name"] == name:
+                keys.append(("C", str(r["disc"]), "%04X" % r["run"]))
+    except Exception:
+        pass
+    found = []
+    with open(os.path.join(cache, "members.csv"), newline="") as f:
+        for r in csv.DictReader(f):
+            if (r["space"], r["offset"], r["run"]) in keys and r["name"] in rows:
+                found.append(rows[r["name"]])
+    if not found:
+        raise KeyError("%s: no draft (not a label, not a filed routine with traced code at its run address)" % name)
+    return found
+
+
+def fetch(name, as_filed=False, cache=None):
+    """The compilable unit for one routine from the cache: the includes and its function."""
+    cache = cache or current_cache()
+    if not cache:
+        raise LookupError("the draft cache is stale or missing: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache")
+    lines = open(os.path.join(cache, "drafts.c")).read().split("\n")
+    out = ['#include "machine.h"', '#include "ops6280.h"', ""]
+    for r in resolve(cache, name):
+        text = "\n".join(lines[int(r["first_line"]) - 1:int(r["last_line"])])
+        if as_filed:
+            text = text.replace("void abi_%s(void)" % r["name"], "void abi_%s(void)" % name, 1)
+        out.append(text + "\n")
+    return "\n".join(out)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--only", default="")
     ap.add_argument("--as-filed", action="store_true")
     ap.add_argument("--all", action="store_true", help="every distinct content, disc and card, named by label")
+    ap.add_argument("--cache", action="store_true", help="build the cache in the main checkout (or this tree's own)")
+    ap.add_argument("--cache-dir", default="", help="with --cache: the folder to build into")
+    ap.add_argument("--fresh", action="store_true", help="generate without the cache")
     a = ap.parse_args()
     only = set(x for x in a.only.split(",") if x)
+    if a.cache:
+        out = a.cache_dir or (cache_dirs()[0] if TOP == main_root() else cache_dirs()[1])
+        print("cache: %d drafts in %s" % (build_cache(out), out))
+        return 0
+    if only and not a.fresh and not a.all:
+        cache = current_cache()
+        if not cache:
+            print("cdraft: the draft cache is stale or missing; build it: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache",
+                  file=sys.stderr)
+            return 4
+        os.makedirs(a.out, exist_ok=True)
+        text = "".join(fetch(n, a.as_filed, cache) + "\n" for n in sorted(only))
+        # one unit: the includes once
+        body = [ln for ln in text.split("\n") if not ln.startswith("#include")]
+        with open(os.path.join(a.out, "drafts.c"), "w") as f:
+            f.write('#include "machine.h"\n#include "ops6280.h"\n' + "\n".join(body))
+        import shutil
+        with open(os.path.join(a.out, "support.c"), "w") as f:
+            f.write(SUPPORT)
+        print("cdraft: %d routines from %s into %s" % (len(only), cache, a.out))
+        return 0
     disc, it = load()
     drafts, norun = build_all(it, only, a.as_filed)
     if a.as_filed and only:

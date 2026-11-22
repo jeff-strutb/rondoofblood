@@ -15,6 +15,7 @@
 #   6. then publishes the new traces and the re-merged code maps into main's build/rondo/trace, rebuilds the
 #      catalog there, and prints the merged code bytes before and after and any catalog entry that now
 #      falls inside a routine with C and has no tag (worklist.py --catalog).
+# The trace step and the runner refuse when main's core is older than the newest core patch (cpuguard.py core).
 # Every output goes to the landing worktree's own build/rondo/land-out. A refusal prints one line
 # "LAND REFUSED (rule): what to do" and exits non-zero.
 set -u
@@ -65,6 +66,7 @@ exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
   # the ones being traced, and the merged maps written into it cover all of them.
   S=$(python3 tools/rondo/landcheck.py scripts main) || exit 9
   if [ -n "$S" ]; then
+    P=$(python3 tools/rondo/cpuguard.py core "$M") || { echo "LAND REFUSED (trace): $P"; exit 9; }
     [ -x "$M/build/rondo/pcebox/pcebox" ] || { echo "LAND REFUSED (trace): main has no pcebox binary; run setup.sh pcebox in the main checkout"; exit 9; }
     T=$O/trace; rm -rf "$T"; mkdir -p "$T"
     for d in "$M"/build/rondo/trace/*/; do
@@ -85,8 +87,11 @@ exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
     python3 tools/rondo/landcheck.py image "$O" || exit 5
     python3 tools/rondo/landcheck.py link "$O" || exit 6
   fi
+  OLDMAIN=$(git -C "$M" rev-parse HEAD)
   git -C "$M" merge -q --ff-only "$BR" || { echo "LAND REFUSED (main): main could not fast-forward to $BR (main checkout has changes at those paths, or main moved); land again"; exit 7; }
   echo "LANDED $(git -C "$M" log --oneline -1)"
+  PP=$(git diff --name-only --diff-filter=ACMR "$OLDMAIN" HEAD -- tools/toolchains/patches/pce | tr "\n" " ")
+  [ -z "$PP" ] || echo "WARNING: this landing adds or changes core patch(es) $PP: main core is now out of date; rebuild it before the next measurement or trace: cpu-run -j 4 -m 6G -- sh setup.sh pce, then sh setup.sh pcebox, in $M"
   if [ -n "$S" ]; then
     TM=$M/build/rondo/trace
     for n in $S; do

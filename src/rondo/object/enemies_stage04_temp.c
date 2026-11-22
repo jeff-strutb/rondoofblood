@@ -803,3 +803,253 @@ void abi_BurstIntoSixPieces(void)
 {
     abi_ended(BurstIntoSixPieces(cpu.x));
 }
+
+/*
+ * @routine 07DB:632 SoundEveryFourthFrameB
+ * @run 70:B632
+ * WHAT IT DOES: Plays sound $22, on the first screen only, on the frames when the low two bits of
+ * the object's f3618 are zero.
+ * HOW: One test and SoundIfOnFirstScreen.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the masked bits and N, Z from them when no sound; else as
+ * SoundIfOnFirstScreen leaves it.
+ */
+ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot)
+{
+    ScreenSoundEnd result = { ended_kept(), ended_kept(), false, { 0 } };
+    uint8_t bits = RD8(OBJ->f3618[slot]);
+
+    bits = (uint8_t)(bits & 3);
+    if (bits != 0) {
+        result.before = ended_load(bits);
+        return result;
+    }
+    result.before = ended_load(0x22);
+    jsr_push(0xB63E);
+    result.sound = SoundIfOnFirstScreen(0x22, slot);
+    jsr_pop();
+    result.called = true;
+    return result;
+}
+
+void abi_SoundEveryFourthFrameB(void)
+{
+    abi_screen_sound_end(SoundEveryFourthFrameB(cpu.x));
+}
+
+/*
+ * @routine 07DB:311 BurstWhenFlaggedHit
+ * @run 70:B311
+ * WHAT IT DOES: When the object is not yet in state 6 and bit 7 of its status flags is set, plays
+ * sound $8B (first screen only), spawns its six pieces (SpawnSixPiecesA), stops its f3250 and its
+ * animation and enters state 6.
+ * HOW: Two tests, SoundIfOnFirstScreen, SpawnSixPiecesA.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A 6 and N, Z clear when it burst, C and V as the piece spawn left
+ * them; otherwise A, N, Z, C from the failing test; X kept; Y as the spawn left it.
+ */
+ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot)
+{
+    ScreenSoundEnd result = { ended_kept(), ended_kept(), false, { 0 } };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t flags, bit;
+    Ended e;
+
+    result.before = ended_compare(state, 6);
+    if (state == 6) {
+        return result;
+    }
+    flags = RD8(OBJ->status_flags[slot]);
+    bit = (uint8_t)(flags & 0x80);
+    result.before = ended_then(result.before, ended_load(bit));
+    if (bit == 0) {
+        return result;
+    }
+    result.before = ended_then(result.before, ended_load(0x8B));
+    jsr_push(0xB324);
+    result.sound = SoundIfOnFirstScreen(0x8B, slot);
+    jsr_pop();
+    result.called = true;
+    jsr_push(0xB327);
+    e = SpawnSixPiecesA(slot);
+    jsr_pop();
+    WR8(OBJ->hitbox_on[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->state[slot], 6);
+    result.end = ended_then(e, ended_load(6));
+    return result;
+}
+
+void abi_BurstWhenFlaggedHit(void)
+{
+    abi_screen_sound_end(BurstWhenFlaggedHit(cpu.x));
+}
+
+/*
+ * @routine 07DB:46E PickStateByPlayerDistance
+ * @run 70:B46E
+ * WHAT IT DOES: Clears the step byte, then: an object off the first screen across goes to state
+ * 3; one off it down goes to state 4; one on it takes a state from a table at overlay address
+ * $B494 indexed by the low nibble of PlayerDistanceSum.
+ * HOW: Two tests of the position's high bytes, then PlayerDistanceSum.
+ * WAITS: no.
+ * Entry: X object, C in (kept to the sum), D clear. Exit: A the state stored, N, Z from it; C and V
+ * from PlayerDistanceSum on the last path; Y the table index there. The second branch ran in no
+ * script: the draft stops there, so liftcmp does not judge it.
+ */
+Ended PickStateByPlayerDistance(uint8_t slot, bool carry_in)
+{
+    enum { TABLE = 0xB494 };
+    uint8_t high, y, value;
+    Sum sum;
+
+    WR8(OBJ->f2800[slot], 0);
+    high = RD8(OBJ->x_hi[slot]);
+    if (high != 0) {
+        WR8(OBJ->state[slot], 3);
+        return ended_load(3);
+    }
+    high = RD8(OBJ->y_hi[slot]);
+    if (high != 0) {
+        WR8(OBJ->state[slot], 4);
+        return ended_load(4);
+    }
+    jsr_push(0xB48A);
+    sum = PlayerDistanceSum(slot, carry_in);
+    jsr_pop();
+    y = (uint8_t)(sum.value & 0x0F);
+    value = rd8((uint16_t)(TABLE + y));
+    WR8(OBJ->state[slot], value);
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(value), sum.carry), sum.overflow), y);
+}
+
+void abi_PickStateByPlayerDistance(void)
+{
+    abi_ended(PickStateByPlayerDistance(cpu.x, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 07DB:568 AnimateMoveThenSetUpNextStep
+ * @run 70:B568
+ * WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+ * down; at zero it plays sound $8B (first screen only), picks a speed and turn
+ * (PickSpeedAndTurnFromTableB), sets f36c8 to $58 plus six bits of PlayerDistanceSum, stops its
+ * animation and advances its step.
+ * HOW: StepFramesFacingPlayer, ApplyVelocity, a decrement, then the calls named.
+ * WAITS: no.
+ * Entry: X object, C in (kept to the sum), D clear. Exit: while counting, N, Z from the timer, C and
+ * V from ApplyVelocity, Y as the animation step left it; at zero A the timer value, N, Z from the
+ * new step, C and V from the add of $58, Y from the speed pick.
+ */
+Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in)
+{
+    FrameStepEnd frames;
+    AxisMove move;
+    uint8_t left, step;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xB56D);
+    frames = StepFramesFacingPlayer(slot, 4);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 4), frames.end);
+    jsr_push(0xB570);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    left = RD8(OBJ->life_timer[slot]);
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->life_timer[slot], left);
+    e = ended_then(e, ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    jsr_push(0xB57A);
+    SoundIfOnFirstScreen(0x8B, slot);
+    jsr_pop();
+    jsr_push(0xB57D);
+    e = ended_then(e, PickSpeedAndTurnFromTableB(slot));
+    jsr_pop();
+    jsr_push(0xB580);
+    sum = PlayerDistanceSum(slot, ended_carry_or(e, carry_in));
+    jsr_pop();
+    sum = add_bytes((uint8_t)(sum.value & 0x3F), 0x58, false);
+    WR8(OBJ->f36c8[slot], sum.value);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    step = INC8(OBJ->f2800[slot]);
+    return ended_then(e, ended_with_a(ended_with_overflow(ended_with_carry(ended_nz(step), sum.carry),
+                                                          sum.overflow), sum.value));
+}
+
+void abi_AnimateMoveThenSetUpNextStep(void)
+{
+    abi_ended(AnimateMoveThenSetUpNextStep(cpu.x, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 07DB:398 ChargeWhenPlayerNear
+ * @run 70:B398
+ * WHAT IT DOES: Animates the object facing the player (list 0). When its next_kind bit 7 is
+ * clear and the player is under $68 pixels away along X, it stops its animation, keeps bit 7 of
+ * its flags, takes an X speed from a table by its facing (at overlay address $B3E7) and Y speed
+ * from a table by its next_kind (at $B3E9), sets f36c8 to $48 plus five bits of PlayerDistanceSum,
+ * enters state 4 with step 2.
+ * HOW: StepFramesFacingPlayer, DistanceXToPlayer, PlayerDistanceSum.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A 2 and N, Z clear, C and V from the add of $48 when it
+ * charged; else as the animation step, the next_kind test or the distance compare left them.
+ */
+Ended ChargeWhenPlayerNear(uint8_t slot)
+{
+    enum { X_SPEEDS = 0xB3E7, Y_SPEEDS = 0xB3E9 };
+    FrameStepEnd frames;
+    PlayerDistance distance;
+    uint8_t kind, flags, facing, y, value;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xB39C);
+    frames = StepFramesFacingPlayer(slot, 0);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 0), frames.end);
+    kind = RD8(OBJ->next_kind[slot]);
+    e = ended_then(e, ended_load(kind));
+    if ((kind & 0x80) != 0) {
+        return e;
+    }
+    jsr_push(0xB3A4);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x68));
+    if (distance.distance >= 0x68) {
+        return e;
+    }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    flags = RD8(OBJ->flags[slot]);
+    WR8(OBJ->flags[slot], (uint8_t)(flags & 0x80));
+    facing = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(X_SPEEDS + facing)));
+    kind = RD8(OBJ->next_kind[slot]);
+    y = (uint8_t)((kind >> 1) << 1);
+    WR8(OBJ->vy_lo[slot], rd8((uint16_t)(Y_SPEEDS + y)));
+    value = rd8((uint16_t)(Y_SPEEDS + 1 + y));
+    WR8(OBJ->vy_hi[slot], value);
+    jsr_push(0xB3D4);
+    sum = PlayerDistanceSum(slot, false);
+    jsr_pop();
+    sum = add_bytes((uint8_t)(sum.value & 0x1F), 0x48, false);
+    WR8(OBJ->f36c8[slot], sum.value);
+    WR8(OBJ->state[slot], 4);
+    WR8(OBJ->f2800[slot], 2);
+    e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_load(2), sum.carry),
+                                                       sum.overflow), y));
+    return e;
+}
+
+void abi_ChargeWhenPlayerNear(void)
+{
+    abi_ended(ChargeWhenPlayerNear(cpu.x));
+}

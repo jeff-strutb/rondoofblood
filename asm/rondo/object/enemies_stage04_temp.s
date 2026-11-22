@@ -52,6 +52,15 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 07DB:5FD ClampSpeedXToTwo
 ; @run 70:B5FD
 ; WHAT IT DOES: Keeps an object's X speed from passing 2 pixels a frame either way: a speed over
@@ -569,3 +578,156 @@ BurstIntoSixPieces_at1:
     bcc BurstIntoSixPieces_at1
 BurstIntoSixPieces_at0:
     jmp VecClearObject
+
+; @routine 07DB:311 BurstWhenFlaggedHit
+; @run 70:B311
+; WHAT IT DOES: When the object is not yet in state 6 and bit 7 of its status flags is set, plays
+; sound $8B (first screen only), spawns its six pieces (SpawnSixPiecesA), stops its f3250 and its
+; animation and enters state 6.
+; HOW: Two tests, SoundIfOnFirstScreen, SpawnSixPiecesA.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A 6 and N, Z clear when it burst, C and V as the piece spawn left
+; them; otherwise A, N, Z, C from the failing test; X kept; Y as the spawn left it.
+BurstWhenFlaggedHit:
+    lda a:OBJ_27A8,x
+    cmp #$06
+    beq BurstWhenFlaggedHit_at0
+    lda a:OBJ_31A0,x
+    and #$80
+    beq BurstWhenFlaggedHit_at0
+    lda #$8B
+    jsr VecSoundIfOnFirstScreen
+    jsr SpawnSixPiecesA
+    stz a:OBJ_3250,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$06
+    sta a:OBJ_27A8,x
+BurstWhenFlaggedHit_at0:
+    rts
+
+; @routine 07DB:398 ChargeWhenPlayerNear
+; @run 70:B398
+; WHAT IT DOES: Animates the object facing the player (list 0). When its next_kind bit 7 is
+; clear and the player is under $68 pixels away along X, it stops its animation, keeps bit 7 of
+; its flags, takes an X speed from a table by its facing (at overlay address $B3E7) and Y speed
+; from a table by its next_kind (at $B3E9), sets f36c8 to $48 plus five bits of PlayerDistanceSum,
+; enters state 4 with step 2.
+; HOW: StepFramesFacingPlayer, DistanceXToPlayer, PlayerDistanceSum.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A 2 and N, Z clear, C and V from the add of $48 when it
+; charged; else as the animation step, the next_kind test or the distance compare left them.
+ChargeWhenPlayerNear:
+    cly
+    jsr StepFramesFacingPlayer
+    lda a:OBJ_3040,x
+    bmi ChargeWhenPlayerNear_at0
+    jsr VecDistanceXToPlayer
+    cmp #$68
+    bcs ChargeWhenPlayerNear_at0
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda a:OBJ_FLAGS_2F38,x
+    and #$80
+    sta a:OBJ_FLAGS_2F38,x
+    ldy a:OBJ_2AC0,x
+    lda a:$B3E7,y
+    sta a:OBJ_VX_HI,x
+    lda a:OBJ_3040,x
+    lsr a
+    asl a
+    tay
+    lda a:$B3E9,y
+    sta a:OBJ_VY_LO,x
+    lda a:$B3EA,y
+    sta a:OBJ_VY_HI,x
+    jsr VecPlayerDistanceSum
+    and #$1F
+    clc
+    adc #$48
+    sta a:OBJ_36C8,x
+    lda #$04
+    sta a:OBJ_27A8,x
+    lda #$02
+    sta a:OBJ_2800,x
+ChargeWhenPlayerNear_at0:
+    rts
+
+; @routine 07DB:46E PickStateByPlayerDistance
+; @run 70:B46E
+; WHAT IT DOES: Clears the step byte, then: an object off the first screen across goes to state
+; 3; one off it down goes to state 4; one on it takes a state from a table at overlay address
+; $B494 indexed by the low nibble of PlayerDistanceSum.
+; HOW: Two tests of the position's high bytes, then PlayerDistanceSum.
+; WAITS: no.
+; Entry: X object, C in (kept to the sum), D clear. Exit: A the state stored, N, Z from it; C and V
+; from PlayerDistanceSum on the last path; Y the table index there. The second branch ran in no
+; script: the draft stops there, so liftcmp does not judge it.
+PickStateByPlayerDistance:
+    stz a:OBJ_2800,x
+    lda a:OBJ_X_HI,x
+    beq PickStateByPlayerDistance_at0
+    lda #$03
+    sta a:OBJ_27A8,x
+    rts
+PickStateByPlayerDistance_at0:
+    lda a:OBJ_Y_HI,x
+    beq PickStateByPlayerDistance_at1
+    lda #$04
+    sta a:OBJ_27A8,x
+    rts
+PickStateByPlayerDistance_at1:
+    jsr VecPlayerDistanceSum
+    and #$0F
+    tay
+    lda a:$B494,y
+    sta a:OBJ_27A8,x
+    rts
+
+; @routine 07DB:568 AnimateMoveThenSetUpNextStep
+; @run 70:B568
+; WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+; down; at zero it plays sound $8B (first screen only), picks a speed and turn
+; (PickSpeedAndTurnFromTableB), sets f36c8 to $58 plus six bits of PlayerDistanceSum, stops its
+; animation and advances its step.
+; HOW: StepFramesFacingPlayer, ApplyVelocity, a decrement, then the calls named.
+; WAITS: no.
+; Entry: X object, C in (kept to the sum), D clear. Exit: while counting, N, Z from the timer, C and
+; V from ApplyVelocity, Y as the animation step left it; at zero A the timer value, N, Z from the
+; new step, C and V from the add of $58, Y from the speed pick.
+AnimateMoveThenSetUpNextStep:
+    ldy #$04
+    jsr StepFramesFacingPlayer
+    jsr VecApplyVelocity
+    dec a:OBJ_34B8,x
+    bne AnimateMoveThenSetUpNextStep_at0
+    lda #$8B
+    jsr VecSoundIfOnFirstScreen
+    jsr PickSpeedAndTurnFromTableB
+    jsr VecPlayerDistanceSum
+    and #$3F
+    clc
+    adc #$58
+    sta a:OBJ_36C8,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+AnimateMoveThenSetUpNextStep_at0:
+    rts
+
+; @routine 07DB:632 SoundEveryFourthFrameB
+; @run 70:B632
+; WHAT IT DOES: Plays sound $22, on the first screen only, on the frames when the low two bits of
+; the object's f3618 are zero.
+; HOW: One test and SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the masked bits and N, Z from them when no sound; else as
+; SoundIfOnFirstScreen leaves it.
+SoundEveryFourthFrameB:
+    lda a:OBJ_3618,x
+    and #$03
+    bne SoundEveryFourthFrameB_at0
+    lda #$22
+    jsr VecSoundIfOnFirstScreen
+SoundEveryFourthFrameB_at0:
+    rts

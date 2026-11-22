@@ -105,6 +105,12 @@ static inline Ended ended_with_y(Ended e, uint8_t y)
     return e;
 }
 
+/* The C the state leaves, given the C the routine was entered with (it stands unless something set it). */
+static inline bool ended_carry_or(Ended e, bool entry)
+{
+    return e.c_set ? e.c : entry;
+}
+
 /* The abi_ wrappers' one place that meets the registers. */
 static inline void abi_ended(Ended e)
 {
@@ -422,6 +428,11 @@ Ended OrbitStepForward(uint8_t slot);
 Ended StartTypeAndLaunchUp(uint8_t slot, uint8_t fresh);
 Ended AnimateThenFireOrWait(uint8_t slot);
 Ended BurstIntoSixPieces(uint8_t slot);
+ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot);
+ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot);
+Ended PickStateByPlayerDistance(uint8_t slot, bool carry_in);
+Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in);
+Ended ChargeWhenPlayerNear(uint8_t slot);
 /* object/enemies_stage05_temp.c */
 Ended SelectRasterStage1(void);
 Ended SetHitboxDxFromFrame(uint8_t slot);

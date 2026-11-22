@@ -253,3 +253,181 @@ void abi_LoadRecordTimer50(void)
 {
     abi_ended(LoadRecordTimer50(cpu.x));
 }
+
+/*
+ * @routine 07DB:3ED StepFramesFacingPlayer
+ * @run 70:B3ED
+ * WHAT IT DOES: Steps the object's animation by one frame from the list whose pointer is the
+ * pair of bytes at overlay address $B409 plus Y, first turning the object to face the player
+ * (the facing byte takes bit 0 of the side the player is on) once the object is past state 1.
+ * HOW: SideOfPlayer, then the list pointer into zTemp10-11, then StepObjectFrames as a tail jump.
+ * WAITS: no.
+ * Entry: X object, Y the list's offset in the table. Exit: as StepObjectFrames (A $FF and C 1
+ * when the frame changed; A 0 and C 0 when the list ended; A $FF and C 0 when held; Y changed
+ * only in the first two cases); V and X kept. Clobbers zTemp00, zTemp10-11.
+ */
+FrameStepEnd StepFramesFacingPlayer(uint8_t slot, uint8_t index)
+{
+    enum { LISTS = 0xB409 };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t sides, exit_y = index;
+    FrameStepEnd result;
+
+    if (state >= 2) {
+        jsr_push(0xB3F7);
+        sides = SideOfPlayer(slot).sides;
+        jsr_pop();
+        WR8(OBJ->facing_left[slot], (uint8_t)(sides & 1));
+    }
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
+    result.step = StepObjectFrames(slot, &exit_y);
+    result.end = ended_of_frame_step(result.step, result.step != FRAME_HELD, exit_y);
+    return result;
+}
+
+void abi_StepFramesFacingPlayer(void)
+{
+    abi_ended(StepFramesFacingPlayer(cpu.x, cpu.y).end);
+}
+
+/*
+ * @routine 07DC:017 StepFramesFacingPlayerAlways
+ * @run 70:B817
+ * WHAT IT DOES: StepFramesFacingPlayer without the state test: the object always turns to face
+ * the player, and the animation list is the pair of bytes at overlay address $B82C plus Y.
+ * HOW: SideOfPlayer, the list pointer into zTemp10-11, then StepObjectFrames as a tail jump.
+ * WAITS: no.
+ * Entry, exit: as StepFramesFacingPlayer.
+ */
+FrameStepEnd StepFramesFacingPlayerAlways(uint8_t slot, uint8_t index)
+{
+    enum { LISTS = 0xB82C };
+    uint8_t sides, exit_y = index;
+    FrameStepEnd result;
+
+    jsr_push(0xB81A);
+    sides = SideOfPlayer(slot).sides;
+    jsr_pop();
+    WR8(OBJ->facing_left[slot], (uint8_t)(sides & 1));
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
+    result.step = StepObjectFrames(slot, &exit_y);
+    result.end = ended_of_frame_step(result.step, result.step != FRAME_HELD, exit_y);
+    return result;
+}
+
+void abi_StepFramesFacingPlayerAlways(void)
+{
+    abi_ended(StepFramesFacingPlayerAlways(cpu.x, cpu.y).end);
+}
+
+/*
+ * @routine 07DB:7F1 WalkWhileFrameChanges
+ * @run 70:B7F1
+ * WHAT IT DOES: Animates the object facing the player and, on the frames where the picture
+ * changed, gives it an X speed from a two byte table by its f3510 and moves it along X.
+ * HOW: StepFramesFacingPlayerAlways with Y 0; when it says the frame changed, the speed byte
+ * at overlay address $B804 plus f3510 goes to the X speed's high byte and ApplyVelocityX runs.
+ * WAITS: no.
+ * Entry: X object. Exit: after a change, as ApplyVelocityX; otherwise as the animation step
+ * (A $FF, C 0, or A 0, C 0). Clobbers zTemp00, zTemp10-11, zTemp-bytes of the move.
+ */
+Ended WalkWhileFrameChanges(uint8_t slot)
+{
+    enum { SPEEDS = 0xB804 };
+    FrameStepEnd step;
+    uint8_t phase;
+    AxisMove move;
+
+    jsr_push(0xB7F5);
+    step = StepFramesFacingPlayerAlways(slot, 0);
+    jsr_pop();
+    if (step.step != FRAME_CHANGED) {
+        return ended_then(ended_with_y(ended_kept(), 0), step.end);
+    }
+    phase = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + phase)));
+    jsr_push(0xB803);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    return ended_then(ended_then(step.end, ended_with_y(ended_kept(), phase)), ended_of_axis_move(move));
+}
+
+void abi_WalkWhileFrameChanges(void)
+{
+    abi_ended(WalkWhileFrameChanges(cpu.x));
+}
+
+/*
+ * @routine 07DB:6CE WaitThenState2
+ * @run 70:B6CE
+ * WHAT IT DOES: A two-step wait. First time through (step byte 0) it sets the object's f34b8
+ * timer to $1C and the step to 1. After that it animates the object facing the player with the
+ * list at index 2 and counts the timer down; at zero the object enters state 2.
+ * HOW: StepFramesFacingPlayer with Y 2, then a decrement of the timer.
+ * WAITS: no.
+ * Entry: X object. Exit: N, Z from the timer or A 2 at zero; C and Y as the animation step left
+ * them (Y 2 if it did not change it).
+ */
+Ended WaitThenState2(uint8_t slot)
+{
+    uint8_t step = RD8(OBJ->f2800[slot]);
+    uint8_t left;
+    FrameStepEnd frames;
+    Ended e;
+
+    if (step == 0) {
+        WR8(OBJ->life_timer[slot], 0x1C);
+        step = RD8(OBJ->f2800[slot]);
+        step = (uint8_t)(step + 1);
+        WR8(OBJ->f2800[slot], step);
+        return ended_with_a(ended_nz(step), 0x1C);
+    }
+    jsr_push(0xB6E1);
+    frames = StepFramesFacingPlayer(slot, 2);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 2), frames.end);
+    left = RD8(OBJ->life_timer[slot]);
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->life_timer[slot], left);
+    if (left != 0) {
+        return ended_then(e, ended_nz(left));
+    }
+    WR8(OBJ->state[slot], 2);
+    return ended_then(e, ended_load(2));
+}
+
+void abi_WaitThenState2(void)
+{
+    abi_ended(WaitThenState2(cpu.x));
+}
+
+/*
+ * @routine 07DB:6EC BecomeType9CWhenAnimationEnds
+ * @run 70:B6EC
+ * WHAT IT DOES: Animates the object (list 8, facing the player) and, when the animation list has
+ * ended, turns it into an object of type $9C in state 0.
+ * HOW: StepFramesFacingPlayer with Y 8; Z from it says the list ended.
+ * WAITS: no.
+ * Entry: X object. Exit: as the animation step, or A $9C and N set, Z clear (C and Y from the step).
+ */
+Ended BecomeType9CWhenAnimationEnds(uint8_t slot)
+{
+    FrameStepEnd frames;
+    Ended e;
+
+    jsr_push(0xB6F1);
+    frames = StepFramesFacingPlayer(slot, 8);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 8), frames.end);
+    if (frames.step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    return ended_then(e, become_type(slot, 0x9C));
+}
+
+void abi_BecomeType9CWhenAnimationEnds(void)
+{
+    abi_ended(BecomeType9CWhenAnimationEnds(cpu.x));
+}

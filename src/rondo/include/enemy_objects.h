@@ -169,7 +169,6 @@ static inline Ended ended_then(Ended before, Ended after)
  */
 typedef enum { FRAME_HELD, FRAME_CHANGED, FRAME_LIST_ENDED } FrameStep;          /* object/spawn.c */
 FrameStep StepObjectFrames(uint8_t object, uint8_t *exit_y);                      /* object/spawn.c */
-uint8_t SideOfPlayer(uint8_t object);                                             /* object/sensing.c */
 uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c);         /* object/spawn.c */
 AxisMove ApplyVelocityX(uint8_t object);                                          /* object/motion.c */
 AxisMove ApplyVelocityY(uint8_t object);                                          /* object/motion.c */
@@ -326,6 +325,11 @@ Ended CountdownStopThenState4(uint8_t slot);
 Ended RightOfObject4DWithin(uint8_t slot, uint8_t limit);
 Ended LoadRecordStartAngle40(uint8_t slot);
 Ended LoadRecordTimer50(uint8_t slot);
+FrameStepEnd StepFramesFacingPlayer(uint8_t slot, uint8_t index);
+FrameStepEnd StepFramesFacingPlayerAlways(uint8_t slot, uint8_t index);
+Ended WalkWhileFrameChanges(uint8_t slot);
+Ended WaitThenState2(uint8_t slot);
+Ended BecomeType9CWhenAnimationEnds(uint8_t slot);
 /* object/enemies_stage05_temp.c */
 Ended SelectRasterStage1(void);
 Ended SetHitboxDxFromFrame(uint8_t slot);

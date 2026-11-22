@@ -6,6 +6,7 @@
  */
 #include "machine.h"
 #include "ram.h"
+#include "access.h"
 #include "routines.h"
 #include "common_objects.h"
 
@@ -58,6 +59,7 @@ static void distance_exit_shim(PlayerDistance d, uint16_t low_field)
  * WHAT IT DOES: Gives how far an object is from the player along X, in pixels,
  * as a byte: $FF when either lies past the first 256 pixels.
  * HOW: The high bytes ORed must be zero; then the absolute low difference.
+ * WAITS: no.
  * Entry: X object. Exit: A distance, N and Z from it, C 1 if the object is the
  * further along, V from the subtract; when $FF, N 1, Z 0, C and V kept. X and Y
  * kept.
@@ -78,6 +80,7 @@ void abi_DistanceXToPlayer(void)
  * WHAT IT DOES: Gives how far an object is from the player along Y, as
  * DistanceXToPlayer does along X.
  * HOW: The same, on the Y position.
+ * WAITS: no.
  * Entry: X object. Exit: as DistanceXToPlayer.
  */
 PlayerDistance DistanceYToPlayer(uint8_t object)
@@ -90,12 +93,6 @@ void abi_DistanceYToPlayer(void)
     distance_exit_shim(DistanceYToPlayer(cpu.x), OBJ_Y_LO);
 }
 
-/* A high byte decides by its sign; zero compares the low byte with the player's. */
-static bool before_player(uint8_t high, uint8_t mine, uint8_t player)
-{
-    return high != 0 ? (high & 0x80) != 0 : mine < player;
-}
-
 /*
  * @routine 0047:2FB SideOfPlayer
  * @run 6A:62FB
@@ -103,31 +100,58 @@ static bool before_player(uint8_t high, uint8_t mine, uint8_t player)
  * is left of the player, bit 1 when above.
  * HOW: On each axis, a high byte of the object nonzero decides by its sign
  * (negative is before the player); zero compares the low byte with the player's.
- * The player's high byte is not looked at.
- * Entry: X object. Exit: A the bits, N and Z from it, C from the last compare
- * made, else kept. zTemp00 bit 0. X, Y and V kept.
+ * The player's high byte is not looked at. The bit for X goes to zTemp00, which is read
+ * back at the end.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the bits, N and Z from it, C from the last compare
+ * made (Y's when the Y high byte is zero, else X's when that is zero), else kept. zTemp00
+ * bit 0. X, Y and V kept.
  */
-uint8_t SideOfPlayer(uint8_t object)
+SideResult SideOfPlayer(uint8_t object)
 {
-    uint8_t sides = before_player(rd8((uint16_t)(OBJ_X_HI + object)),
-                                  rd8((uint16_t)(OBJ_X_LO + object)), rd8(OBJ_X_LO)) ? 1 : 0;
+    SideResult result = { 0, false, false };
+    uint8_t high, mine, player;
 
-    wr8(zTemp00, sides);
-    if (before_player(rd8((uint16_t)(OBJ_Y_HI + object)),
-                      rd8((uint16_t)(OBJ_Y_LO + object)), rd8(OBJ_Y_LO)))
-        sides |= 2;
-    return sides;
+    high = RD8(OBJ->x_hi[object]);
+    if (high == 0) {
+        mine = RD8(OBJ->x_lo[object]);
+        player = RD8(OBJ->x_lo[0]);
+        result.carry_set = true;
+        result.carry = mine >= player;
+        WR8(ZP->temp00, mine < player ? 1 : 0);
+    } else {
+        WR8(ZP->temp00, (high & 0x80) != 0 ? 1 : 0);
+    }
+    high = RD8(OBJ->y_hi[object]);
+    if (high == 0) {
+        mine = RD8(OBJ->y_lo[object]);
+        player = RD8(OBJ->y_lo[0]);
+        result.carry_set = true;
+        result.carry = mine >= player;
+        if (mine < player) {
+            result.sides = (uint8_t)(RD8(ZP->temp00) | 2);
+            return result;
+        }
+    } else if ((high & 0x80) != 0) {
+        result.sides = (uint8_t)(RD8(ZP->temp00) | 2);
+        return result;
+    }
+    result.sides = RD8(ZP->temp00);
+    return result;
 }
 
-/* C from the last compare the assembly made: an axis compares only if its high byte is 0. */
+void side_of_player_exit_shim(SideResult result)
+{
+    cpu.a = result.sides;
+    abi_nz(result.sides);
+    if (result.carry_set) {
+        abi_flag(P_C, result.carry);
+    }
+}
+
 void abi_SideOfPlayer(void)
 {
-    cpu.a = SideOfPlayer(cpu.x);
-    abi_nz(cpu.a);
-    if (rd8((uint16_t)(OBJ_Y_HI + cpu.x)) == 0)
-        abi_flag(P_C, rd8((uint16_t)(OBJ_Y_LO + cpu.x)) >= rd8(OBJ_Y_LO));
-    else if (rd8((uint16_t)(OBJ_X_HI + cpu.x)) == 0)
-        abi_flag(P_C, rd8((uint16_t)(OBJ_X_LO + cpu.x)) >= rd8(OBJ_X_LO));
+    side_of_player_exit_shim(SideOfPlayer(cpu.x));
 }
 
 /*

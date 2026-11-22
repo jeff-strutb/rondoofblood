@@ -188,6 +188,12 @@ static inline void abi_sound_end(SoundEnd r)
     abi_ended(r.end);
 }
 
+/* An add or subtract's result: A the byte, N and Z from it, C and V from the add. */
+static inline Ended ended_of_sum(Sum sum)
+{
+    return ended_with_overflow(ended_with_carry(ended_load(sum.value), sum.carry), sum.overflow);
+}
+
 /* NextRandom: A the byte, N and Z from it, C and V from its last add. */
 static inline Ended ended_of_random(RandomResult r)
 {
@@ -437,6 +443,15 @@ Ended EnterState7IfYHighOrFlagged(uint8_t slot);
 Ended NoOpStateB(void);
 Ended LaunchHopByFacing(uint8_t slot);
 Ended CountdownStopThenState2(uint8_t slot);
+FrameStepEnd StepFramesFacingPlayerD(uint8_t slot, uint8_t index);
+Ended WaitThenState2C(uint8_t slot);
+Ended BecomeType9CWhenAnimationEndsB(uint8_t slot);
+Ended LoadRecordStartAngle40B(uint8_t slot);
+Ended FrameOneBWhenFallingElseAnimate(uint8_t slot);
+SideEnd FaceThePlayerInSomeStatesB(uint8_t slot);
+Ended AnimateAlongListC3C2(uint8_t slot);
+Ended SwingOnCosineB(uint8_t slot);
+Ended PickSpeedAndTurnFromTable(uint8_t slot);
 /* object/state_countdown.c */
 uint8_t CountdownNextStepA(uint8_t slot);
 uint8_t CountdownNextStateA(uint8_t slot);

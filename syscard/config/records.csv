@@ -2,6 +2,7 @@
 # a row here and its row in symbols.csv are added together.
 
 record,CardZeroPage,aos,2000,1,100,CZP
+member,CardZeroPage,args,u8[8],F8,CardAl,
 member,CardZeroPage,zp_e6,u8,E6,CardZpE6,
 member,CardZeroPage,reset_mark,u8,E7,CardResetMark,
 member,CardZeroPage,pointer,u16le,EC,CardPointerLo|CardPointerHi,
@@ -10,10 +11,6 @@ member,CardZeroPage,file,u16le,F0,CardFileLo|CardFileHi,
 member,CardZeroPage,vdc_cr,u16le,F3,CardVdcCrLo|CardVdcCrHi,
 member,CardZeroPage,irq_flags,u8,F5,CardIrqFlags,
 member,CardZeroPage,vdc_reg,u8,F7,CardVdcReg,
-member,CardZeroPage,a,u16le,F8,CardAl|CardAh,
-member,CardZeroPage,b,u16le,FA,CardBl|CardBh,
-member,CardZeroPage,c,u16le,FC,CardCl|CardCh,
-member,CardZeroPage,d,u16le,FE,CardDl|CardDh,
 
 record,CardRam,aos,2200,1,100,CRAM
 member,CardRam,irq_vectors,u8,00,CardIrqVectors,
@@ -33,16 +30,16 @@ member,CardRam,screen_rows,u8,46,CardScreenRows,
 member,CardRam,cd_not_ready,u8,47,CardCdNotReady,
 member,CardRam,cd_no_wait,u8,48,CardCdNoWait,
 member,CardRam,rnd_seed,u8,49,CardRndSeed,
-member,CardRam,cd_command,u8,4C,CardCdCommand,
-member,CardRam,cd_result,u8,56,CardCdResult,
-member,CardRam,saved_args,u8,60,CardSavedArgs,
+member,CardRam,cd_command,u8[10],4C,CardCdCommand,
+member,CardRam,cd_result,u8[10],56,CardCdResult,
+member,CardRam,saved_args,u8[8],60,CardSavedArgs,
 member,CardRam,saved_mpr_bank,u8,68,CardSavedMprBank,
-member,CardRam,disc_first_track,u8,6A,CardDiscFirstTrack,
-member,CardRam,disc_length,u8,6C,CardDiscLength,
-member,CardRam,disc_end,u8,6F,CardDiscEnd,
+member,CardRam,disc_first_track,u8[2],6A,CardDiscFirstTrack,
+member,CardRam,disc_length,u8[3],6C,CardDiscLength,
+member,CardRam,disc_end,u8[3],6F,CardDiscEnd,
 member,CardRam,vram_pending,u8,72,CardVramPending,
 member,CardRam,cd_base_index,u8,73,CardCdBaseIndex,
-member,CardRam,cd_bases,u8,74,CardCdBases,
+member,CardRam,cd_bases,u8[6],74,CardCdBases,
 member,CardRam,bus_phase,u8,7A,CardBusPhase,
 member,CardRam,cd_status,u8,7B,CardCdStatus,
 member,CardRam,cd_sense,u8,7C,CardCdSense,
@@ -55,7 +52,7 @@ member,CardRam,block_stub,u8,86,CardBlockStub,
 member,CardRam,mpr_stub,u8,8E,CardMprStub,
 member,CardRam,mpr_stub_mask,u8,8F,CardMprStubMask,
 member,CardRam,mpr_stub_return,u8,90,CardMprStubReturn,
-member,CardRam,cd_failed_command,u8,91,CardCdFailedCommand,
+member,CardRam,cd_failed_command,u8[10],91,CardCdFailedCommand,
 member,CardRam,cd_timed_out,u8,9B,CardCdTimedOut,
 member,CardRam,cd_play_mode,u8,9C,CardCdPlayMode,
 member,CardRam,adpcm_step,u8,9D,CardAdpcmStep,
@@ -119,3 +116,9 @@ member,BackupMemory,first_file,u16le,10,BackupFirstFile|BackupFirstFileHi,
 record,CardRomTables,aos,F8A9,1,F,CROMT
 member,CardRomTables,signature,u8[4],00,BackupSignature,
 member,CardRomTables,format_password,u8[11],04,BackupFormatPassword,
+
+# The BIOS arguments _AX to _DX: eight bytes to a routine that walks them, four words to the rest.
+alias,CardZeroPage,a,args+0:u16le,CardAl
+alias,CardZeroPage,b,args+2:u16le,CardBl
+alias,CardZeroPage,c,args+4:u16le,CardCl
+alias,CardZeroPage,d,args+6:u16le,CardDl

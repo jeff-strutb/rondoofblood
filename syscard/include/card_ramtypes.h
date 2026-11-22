@@ -28,10 +28,7 @@ typedef struct {
     uint8_t irq_flags; /* CardIrqFlags */
     uint8_t _gap_00F6[1]; /* no name yet: $20F6-$20F6 */
     uint8_t vdc_reg; /* CardVdcReg */
-    U16LE a; /* CardAl +1 */
-    U16LE b; /* CardBl +1 */
-    U16LE c; /* CardCl +1 */
-    U16LE d; /* CardDl +1 */
+    union { uint8_t args[8]; struct { U16LE a; }; struct { uint8_t _pad_b[2]; U16LE b; }; struct { uint8_t _pad_c[4]; U16LE c; }; struct { uint8_t _pad_d[6]; U16LE d; }; }; /* CardAl */
 } CardZeroPage;
 _Static_assert(sizeof(CardZeroPage) == 0x100, "CardZeroPage size");
 _Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, zp_e6) + 0 == CardZpE6, "CardZeroPage.zp_e6 is not at CardZpE6");
@@ -46,14 +43,11 @@ _Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, vdc_cr) + 0 == CardVdc
 _Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, vdc_cr) + 1 == CardVdcCrHi, "CardZeroPage.vdc_cr is not at CardVdcCrHi");
 _Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, irq_flags) + 0 == CardIrqFlags, "CardZeroPage.irq_flags is not at CardIrqFlags");
 _Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, vdc_reg) + 0 == CardVdcReg, "CardZeroPage.vdc_reg is not at CardVdcReg");
-_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, a) + 0 == CardAl, "CardZeroPage.a is not at CardAl");
-_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, a) + 1 == CardAh, "CardZeroPage.a is not at CardAh");
-_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, b) + 0 == CardBl, "CardZeroPage.b is not at CardBl");
-_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, b) + 1 == CardBh, "CardZeroPage.b is not at CardBh");
-_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, c) + 0 == CardCl, "CardZeroPage.c is not at CardCl");
-_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, c) + 1 == CardCh, "CardZeroPage.c is not at CardCh");
-_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, d) + 0 == CardDl, "CardZeroPage.d is not at CardDl");
-_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, d) + 1 == CardDh, "CardZeroPage.d is not at CardDh");
+_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, args) + 0 == CardAl, "CardZeroPage.args is not at CardAl");
+_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, a) == CardAl, "CardZeroPage.a is not at CardAl");
+_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, b) == CardBl, "CardZeroPage.b is not at CardBl");
+_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, c) == CardCl, "CardZeroPage.c is not at CardCl");
+_Static_assert(CardZeroPage_BASE + offsetof(CardZeroPage, d) == CardDl, "CardZeroPage.d is not at CardDl");
 #define CZP ((CardZeroPage *)CardZeroPage_BASE)
 
 /* CardRam: one struct at $2200, 1 element(s), 256 bytes */
@@ -84,24 +78,17 @@ typedef struct {
     uint8_t cd_no_wait; /* CardCdNoWait */
     uint8_t rnd_seed; /* CardRndSeed */
     uint8_t _gap_004A[2]; /* no name yet: $224A-$224B */
-    uint8_t cd_command; /* CardCdCommand */
-    uint8_t _gap_004D[9]; /* no name yet: $224D-$2255 */
-    uint8_t cd_result; /* CardCdResult */
-    uint8_t _gap_0057[9]; /* no name yet: $2257-$225F */
-    uint8_t saved_args; /* CardSavedArgs */
-    uint8_t _gap_0061[7]; /* no name yet: $2261-$2267 */
+    uint8_t cd_command[10]; /* CardCdCommand */
+    uint8_t cd_result[10]; /* CardCdResult */
+    uint8_t saved_args[8]; /* CardSavedArgs */
     uint8_t saved_mpr_bank; /* CardSavedMprBank */
     uint8_t _gap_0069[1]; /* no name yet: $2269-$2269 */
-    uint8_t disc_first_track; /* CardDiscFirstTrack */
-    uint8_t _gap_006B[1]; /* no name yet: $226B-$226B */
-    uint8_t disc_length; /* CardDiscLength */
-    uint8_t _gap_006D[2]; /* no name yet: $226D-$226E */
-    uint8_t disc_end; /* CardDiscEnd */
-    uint8_t _gap_0070[2]; /* no name yet: $2270-$2271 */
+    uint8_t disc_first_track[2]; /* CardDiscFirstTrack */
+    uint8_t disc_length[3]; /* CardDiscLength */
+    uint8_t disc_end[3]; /* CardDiscEnd */
     uint8_t vram_pending; /* CardVramPending */
     uint8_t cd_base_index; /* CardCdBaseIndex */
-    uint8_t cd_bases; /* CardCdBases */
-    uint8_t _gap_0075[5]; /* no name yet: $2275-$2279 */
+    uint8_t cd_bases[6]; /* CardCdBases */
     uint8_t bus_phase; /* CardBusPhase */
     uint8_t cd_status; /* CardCdStatus */
     uint8_t cd_sense; /* CardCdSense */
@@ -117,8 +104,7 @@ typedef struct {
     uint8_t mpr_stub; /* CardMprStub */
     uint8_t mpr_stub_mask; /* CardMprStubMask */
     uint8_t mpr_stub_return; /* CardMprStubReturn */
-    uint8_t cd_failed_command; /* CardCdFailedCommand */
-    uint8_t _gap_0092[9]; /* no name yet: $2292-$229A */
+    uint8_t cd_failed_command[10]; /* CardCdFailedCommand */
     uint8_t cd_timed_out; /* CardCdTimedOut */
     uint8_t cd_play_mode; /* CardCdPlayMode */
     uint8_t adpcm_step; /* CardAdpcmStep */

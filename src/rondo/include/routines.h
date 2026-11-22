@@ -927,9 +927,6 @@ TrackPlay CdPlayAgain(uint8_t kept_x, uint8_t kept_y);
 TrackPlay CdPlayRepeat(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 
 /* The title: src/rondo/menu/title.c. */
-typedef struct { uint8_t tiles; Sum low; bool done; uint8_t step; } ScrollIn;
-typedef struct { bool rotated; uint8_t tick; uint8_t moved; uint8_t left; } Blink;
-typedef struct { Sum line; uint8_t step; } Wipe;
 typedef struct { CommandCall sound; uint8_t step; } LogoStart;
 
 typedef enum { LOGO_HOLDING, LOGO_SECOND, LOGO_SCRIPT_STARTED, LOGO_DONE, LOGO_ODD_FRAME, LOGO_THIRD } LogoHow;
@@ -945,22 +942,12 @@ typedef struct {
     uint8_t tick;
 } LogoFade;
 
-typedef struct { bool stepped; uint8_t count; Sum low; Sum high; bool ended; uint8_t step; } Cycle;
 
-uint8_t TitlePaletteRotate(uint8_t which);
-void palette_rotate_exit_shim(uint8_t moved);
-uint8_t TitleTileWrite(void);
-uint8_t TitleTileRows(void);
-void tile_rows_exit_shim(uint8_t last);
+/* menu/title.c: the sub-modes; each returns what it leaves in the registers (Exit, in front_end.h). */
 uint8_t TitleWait(void);
 uint8_t TitleEnd(void);
 void TitleLastScript(void);
-ScrollIn TitleScrollIn(void);
-Blink TitleBlink(void);
-Wipe TitleWipe(void);
 LogoStart TitleLogoStart(void);
-LogoFade TitleLogoFade(void);
-Cycle TitleCycle(void);
 
 /*
  * The disc loaders: each BIOS call they made, in order, with what the game loaded before it,

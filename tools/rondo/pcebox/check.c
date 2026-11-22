@@ -1169,6 +1169,8 @@ void wait_interrupt(void)
  * the C has not made (the JSR's pushes among them) are missing, and the C states them with call_orig.
  */
 static void original_at(uint16_t ret, uint16_t addr)
+static uint16_t tail_from;      /* call_original_at: where the tail jump came from */
+
 {
     uint64_t call = sp->cur, retidx;
     Ev ec;
@@ -1275,7 +1277,8 @@ static void original_at(uint16_t ret, uint16_t addr)
                 longjmp(c_abort, ABORT_END);
             }
             prev_op = ec.kind == K_JMP ? 0x4C : 0x20;
-            last_pc = rondo_tags[span->tag].run;     /* the jump comes from this routine, not from the code run before */
+            last_pc = tail_from ? tail_from : rondo_tags[span->tag].run;     /* the jump comes from this routine, not from the code run before */
+            tail_from = 0;
             scan = call + 1;
             c->abandoned = 1;
             swapcontext(&c->uc, &main_uc);
@@ -1389,6 +1392,15 @@ void hand_over(uint16_t addr)
 }
 
 void call_original(uint16_t addr)
+/* A tail jump from the instruction at `from`: that is where the original's jump came from, and the hook judges
+ * an arrival at a routine's first byte by it (a loop inside the routine, or an entry from other code). A draft
+ * that runs on into another piece inline can jump from an address outside its own routine's range. */
+void call_original_at(uint16_t from, uint16_t addr)
+{
+    tail_from = from;
+    original_at(0, addr);
+}
+
 {
     original_at(0, addr);
 }

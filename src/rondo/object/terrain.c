@@ -582,7 +582,7 @@ static bool run_tile_handler(uint16_t code, uint8_t tile, HandlerExit *out)
     }
 }
 
-static void tile_to_original_shim(uint8_t tile, uint8_t y, uint16_t code);
+static uint8_t tile_to_original_shim(uint8_t tile, uint8_t y, uint16_t code);
 
 /*
  * @routine 050F:67F TerrainTileRead
@@ -702,8 +702,7 @@ TileRead TerrainTileRead(void)
         read.kind = TILE_HANDLED;
         if (!run_tile_handler(code, attribute, &read.handler)) {
             read.kind = TILE_BY_ORIGINAL;
-            tile_to_original_shim(attribute, value, code);
-            read.attribute = cpu.a;
+            read.attribute = tile_to_original_shim(attribute, value, code);
         }
     }
     return read;
@@ -729,7 +728,7 @@ uint8_t tile_answer(TileRead read)
 }
 
 /* A handler's table entry that is not one of this code's: the original's code runs, entered as the jump leaves the registers. */
-static void tile_to_original_shim(uint8_t tile, uint8_t y, uint16_t code)
+static uint8_t tile_to_original_shim(uint8_t tile, uint8_t y, uint16_t code)
 {
     cpu.a = tile;
     cpu.y = y;
@@ -737,6 +736,7 @@ static void tile_to_original_shim(uint8_t tile, uint8_t y, uint16_t code)
     abi_flag(P_C, false);
     abi_flag(P_V, true);
     call_original(code);
+    return cpu.a;
 }
 
 /* A, Y, C and V as a read leaves them. The page's add sets V, and an empty page's is clear. */
@@ -784,6 +784,13 @@ void abi_TerrainTileRead(void)
     terrain_read_exit_shim(TerrainTileRead());
 }
 
+/* The overlay's own read, which has no C: its answer in A. */
+static uint8_t read_by_original_shim(void)
+{
+    call_original(FrameOverlay8006);
+    return cpu.a;
+}
+
 /*
  * The read at $8006 of whichever stage overlay is in RAM: this code, when the overlay holds it, else
  * the overlay's own, which has no C.
@@ -795,8 +802,7 @@ TileRead StageTileRead(void)
     if (resident_at(TILE_READ_RUN) == DISC(0x050F, 0x67F)) {
         return TerrainTileRead();
     }
-    call_original(FrameOverlay8006);
-    read.attribute = cpu.a;
+    read.attribute = read_by_original_shim();
     return read;
 }
 

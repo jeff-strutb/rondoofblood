@@ -5,8 +5,9 @@
                                    [--lifted FILE] [--ignore-flags NVDIZC] [--report DIR]
 
 NAME is a filed routine (its `abi_NAME` in src/rondo). The DRAFT is the proven side: the register-shaped C
-tools/rondo/cdraft.py wrote for that routine (DIR/drafts.csv names it in its `filed` column; DIR is the drafter's
-generated folder, found beside the checkout when not given). The C in the tree is the new side. Both are entered
+tools/rondo/cdraft.py wrote for that routine, taken from the draft cache (cdraft.fetch: build/rondo/drafts of the main
+checkout when its stamp matches, else this tree's own; a filed name is resolved from the tree's tags, so a routine filed a
+minute ago needs no fetch step). --drafts DIR names a folder with drafts.c and drafts.csv instead. The C in the tree is the new side. Both are entered
 the same way, through the register file with the same registers and flags, in a machine that logs everything
 (tools/rondo/liftcmp_rt.c), and for each case the whole log is compared: every read and write in order with its
 address and value, the VDC, MPR and clock instructions, every call the routine makes (the frame it pushes, the
@@ -71,36 +72,42 @@ def main_checkout():
 
 
 def find_drafts(given):
-    """The drafts folders to look in, newest first: the one given, else every `gen_all` or `gen` beside a work tree
-    that also holds ops6280.h (the main checkout's included)."""
+    """The folders to look in: the one given (a drafts.c with drafts.csv, the older form), else None for the draft cache."""
     if given:
+        if not (os.path.exists(os.path.join(given, "drafts.csv")) and os.path.exists(os.path.join(given, "drafts.c"))):
+            raise SystemExit(f"liftcmp: {given} has no drafts.c and drafts.csv")
         return [given]
-    r = run(["git", "-C", TOP, "worktree", "list", "--porcelain"])
-    trees = [l[9:] for l in r.stdout.splitlines() if l.startswith("worktree ")]
-    cands = []
-    for t in trees:
-        for sub in ("build/rondo/drafter/gen_all", "build/rondo/drafter/gen"):
-            c = os.path.join(t, sub)
-            if (os.path.exists(os.path.join(c, "drafts.csv")) and os.path.exists(os.path.join(c, "drafts.c"))
-                    and os.path.exists(os.path.join(t, "src", "rondo", "include", "ops6280.h"))):
-                cands.append(c)
-    cands.sort(key=lambda c: -os.path.getmtime(os.path.join(c, "drafts.csv")))
-    if not cands:
-        raise SystemExit("liftcmp: no drafts folder (drafts.c and drafts.csv) beside a tree with ops6280.h; pass --drafts DIR")
-    return cands
+    return []
 
 
 def find_ops(drafts_dir, given):
-    cands = [given] if given else [os.path.join(TOP, "src", "rondo", "include")]
-    if not given:
-        t = drafts_dir
-        for _ in range(5):
-            t = os.path.dirname(t)
-            cands.append(os.path.join(t, "src", "rondo", "include"))
-    for c in cands:
-        if os.path.exists(os.path.join(c, "ops6280.h")):
-            return c
-    raise SystemExit("liftcmp: ops6280.h not found; pass --ops DIR (the folder holding it)")
+    inc = given or os.path.join(TOP, "src", "rondo", "include")
+    if not os.path.exists(os.path.join(inc, "ops6280.h")):
+        raise SystemExit("liftcmp: ops6280.h not found in %s; pass --ops DIR" % inc)
+    return inc
+
+
+def cache_draft(name, run_addr):
+    """(row, body, count) for a filed routine from the drafter's cache (tools/rondo/cdraft.py), or None."""
+    sys.path.insert(0, HERE)
+    try:
+        import cdraft
+        text = cdraft.fetch(name, as_filed=True)
+    except KeyError:
+        return None
+    except LookupError as e:
+        raise SystemExit(f"liftcmp: {e}")
+    chunks = re.split(r"(?m)^(?=/\* \w+: run )", text)
+    chunks = [c for c in chunks if c.startswith("/* ") and ("void abi_%s(void)" % name) in c]
+    if not chunks:
+        return None
+    pick = chunks[0]
+    for c in chunks:
+        m = re.match(r"/\* (\w+): run ([0-9A-F]+)", c)
+        if m and run_addr is not None and int(m.group(2), 16) == run_addr:
+            pick = c
+    m = re.match(r"/\* (\w+): run ([0-9A-F]+)", pick)
+    return dict(name=m.group(1), run=m.group(2)), pick.replace("void abi_%s(void)" % name, "void draft_entry(void)", 1), len(chunks)
 
 
 def hybrid_rows():
@@ -384,16 +391,20 @@ def one(name, a, ctx):
     for s in ctx["sources"]:
         objs.append(ctx["objs"][s] if not (override and s == src) else compile_obj(s, override, ctx["cache"], ctx["hh"]))
     found = None
-    for d in ctx["drafts"]:
-        found = extract_draft(d, name)
-        if found:
-            ctx["drafts_used"], ctx["ops"] = d, find_ops(d, a.ops)
-            break
+    if ctx["drafts"]:
+        for d in ctx["drafts"]:
+            found = extract_draft(d, name)
+            if found:
+                break
+    else:
+        found = cache_draft(name, routine_tag(name)[1])
+    ctx["ops"] = find_ops(None, a.ops)
     if not found:
         disc, _ = routine_tag(name)
         label = ("r%04X_%03X" % divmod(disc, 2048)) if disc is not None else None
-        raise SystemExit(f"liftcmp: {name} has no draft in {', '.join(ctx['drafts'])}; "
-                         + (f"its disc location is {disc} ({label}): run `python3 tools/rondo/cdraft.py --only {label}` and pass --drafts with its folder"
+        raise SystemExit(f"liftcmp: {name} has no draft ({'in ' + ', '.join(ctx['drafts']) if ctx['drafts'] else 'not in the draft cache'}); "
+                         + (f"its disc location is {disc} ({label}); if the routine has traced code, rebuild the cache: "
+                            "cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache"
                             if label else "it has no @routine tag with a @run, so it cannot be looked up by location"))
     row, body, ndraft = found
     work = os.path.join(BUILD, "work", name)
@@ -495,7 +506,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("names", nargs="*")
     ap.add_argument("--file", help="a C file: every routine in it that has a draft, one line each")
-    ap.add_argument("--drafts")
+    ap.add_argument("--drafts", help="a folder with drafts.c and drafts.csv, in place of the draft cache (tools/rondo/cdraft.py --cache)")
     ap.add_argument("--ops")
     ap.add_argument("--cases", type=int, default=400)
     ap.add_argument("--seed", type=int, default=1)

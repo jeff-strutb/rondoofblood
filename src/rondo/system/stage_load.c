@@ -163,6 +163,7 @@ void abi_StageEnter(void)
  * with its music at once. Secret stages and stages $10 and $0C first copy VRAM to RAM.
  * HOW: StageScenes or, for bit 7, StageScenesSecret gives the scene by stage, through a pointer
  * in zTemp0A-0B; StageAdpcm and StageTrack, or their secret tables, give the ADPCM and the track.
+ * WAITS: yes, on the drive and the vertical blank, through the scene loads and CdSearchTrack; the stack there is the caller's return and the call frames.
  * Entry: nothing. Exit: as CdSearchTrack, entered with X the stage's index. Clobbers zTemp0A-0B.
  */
 StageLoadRun StageLoad(void)
@@ -211,7 +212,9 @@ StageLoadRun StageLoad(void)
     run.adpcm = AdpcmLoad(run.adpcm_sum.value);
     run.track_index = (uint8_t)(rd8(zStage) & STAGE_INDEX_MASK);
     run.track = rd8((uint16_t)((secret ? StageTrackSecret : StageTrack) + run.track_index));
-    run.search = CdSearchTrack(run.track);
+    /* Y as AdpcmLoad leaves it is what CdSearchTrack pushes: the registers are set for that call. */
+    adpcm_load_exit_shim(&run.adpcm);
+    run.search = CdSearchTrack(run.track, run.track_index, cpu.y);
     return run;
 }
 

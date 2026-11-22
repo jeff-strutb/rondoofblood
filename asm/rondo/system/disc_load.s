@@ -2,6 +2,7 @@
 ; @run 6A:6C24
 ; WHAT IT DOES: Reads the game's backup file to RAM at $7D00.
 ; HOW: The card's bm_read, with the file's name at $6C9A and $90 bytes.
+; WAITS: no. The card's bm_read is a tail jump.
 ; Entry: nothing. Exit: as bm_read, entered with A 0 and Z set.
 BackupRead:
     lda #$9A
@@ -25,6 +26,7 @@ BackupRead:
 ; WHAT IT DOES: Writes the game's backup file from $7D00, if there is room once the old
 ; one is gone.
 ; HOW: The card's bm_delete, its bm_free count compared with $0092, its bm_write.
+; WAITS: no.
 ; Entry: nothing. Exit, no room: A 1, N and Z from it, C and V from the compare's subtract, X
 ; and Y as bm_free left them. Exit: as bm_write, entered with A 0 and Z set.
 BackupWrite:
@@ -59,6 +61,7 @@ BackupWrite:
 ; @run 6A:6C7A
 ; WHAT IT DOES: Formats the backup memory; on failure the game stops at BackupFailed.
 ; HOW: The card's bm_format with the blank name at $6C8F; its answer goes to X.
+; WAITS: yes, only on failure: it then spins in BackupFailed with interrupts on; the stack there is the caller's return and this call's two bytes.
 ; Entry: nothing. Exit: as bm_format leaves them, with X its answer, N and Z from it.
 BackupFormat:
     lda #$8F
@@ -77,6 +80,7 @@ BackupFormat_at0:
 ; @run 6A:6C8C
 ; WHAT IT DOES: Where the game stops when the backup memory cannot be formatted.
 ; HOW: Jumps to itself; interrupts go on.
+; WAITS: yes, for ever: a jump to itself with interrupts on; the stack is the caller's return and its call frame.
 ; Entry: anything. Exit: none.
 BackupFailed:
     jmp BackupFailed
@@ -86,6 +90,7 @@ BackupFailed:
 ; WHAT IT DOES: Loads a sound into ADPCM memory from the disc, unless it is already there.
 ; HOW: Stops the ADPCM and waits on its status, waits for the drive, then the BIOS's ADPCM
 ; transfer from the sound's record in AdpcmRecords, until it answers zero.
+; WAITS: yes, on the drive: the ADPCM status and the card's drive and transfer calls are asked until they answer; the stack there is the caller's return, this call's two bytes and the pushed sound (1).
 ; Entry: A sound. Exit, already there: A kept, N 0, Z 1, C 1 from the compare. Exit: A zero,
 ; N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves them. The C replays the last 32
 ; of the BIOS's calls.
@@ -150,6 +155,7 @@ AdpcmLoad_at1:
 ; track's start taken off as a record's is.
 ; HOW: Waits for the drive; the address worked out a byte at a time from its constants; the
 ; BIOS's ADPCM transfer, until it answers zero.
+; WAITS: yes, on the drive: the card's drive and transfer calls are asked until they answer; the stack there is the caller's return and this call's two bytes.
 ; Entry: nothing. Exit: A zero, N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves
 ; them.
 AdpcmLoadFixed:
@@ -203,6 +209,7 @@ AdpcmLoadFixed_at0:
 ; WHAT IT DOES: Plays a sound straight from the disc as ADPCM.
 ; HOW: The sound's record, five bytes each in AdpcmStreamRecords; waits for the drive; the
 ; BIOS's continuous ADPCM play in mode $0E, until it answers zero.
+; WAITS: yes, on the drive: the card's drive and ADPCM play calls are asked until they answer; the stack there is the caller's return and this call's two bytes.
 ; Entry: A sound. Exit: A zero, N 0, Z 1, C 1; Y 4 unless the BIOS changed it; X and V as the
 ; BIOS leaves them.
 AdpcmPlayFromDisc:
@@ -260,6 +267,7 @@ AdpcmPlayFromDisc_at0:
 ; @run 6A:6F43
 ; WHAT IT DOES: Plays a CD track once.
 ; HOW: Mode $42 for the BIOS's play.
+; WAITS: yes, on the drive: the card's play is asked until it answers zero; the stack there is the caller's return, this call's two bytes and X and Y pushed (2).
 ; Entry: A track. Exit: A 0 from the BIOS's fade, C and V as its play left them, X and Y kept, N
 ; and Z from X. The BIOS's play is tried until it succeeds; the C replays the last 32 tries' exits.
 CdPlayOnce:
@@ -273,6 +281,7 @@ CdPlayOnce:
 ; @run 6A:6F4B
 ; WHAT IT DOES: Plays the last track again, repeating.
 ; HOW: zCdTrack into CdPlayRepeat.
+; WAITS: yes, as CdPlayOnce.
 ; Entry: nothing. Exit: as CdPlayRepeat.
 CdPlayAgain:
     lda z:zCdTrack
@@ -281,6 +290,7 @@ CdPlayAgain:
 ; @run 6A:6F4D
 ; WHAT IT DOES: Plays a CD track, repeating.
 ; HOW: Mode $41 for the BIOS's play.
+; WAITS: yes, as CdPlayOnce.
 ; Entry: A track. Exit: as CdPlayOnce.
 CdPlayRepeat:
     phx
@@ -338,6 +348,7 @@ CdPlayRepeat_at2:
 ; nothing.
 ; HOW: The track's entry in CdTrackTable; the BIOS's search from its first three bytes, until it
 ; answers zero.
+; WAITS: yes, on the drive: the card's search is asked until it answers zero; the stack there is the caller's return, this call's two bytes and X and Y pushed (2).
 ; Entry: A track. Exit, $FF: A kept, N 0, Z 1, C 1. Exit: A zero, X and Y kept, N and Z
 ; from X; C and V as the BIOS leaves them.
 CdSearchTrack:
@@ -381,6 +392,7 @@ CdSearchTrack_at0:
 ; the disc, and call the scene overlay, until an op it does not know ends it.
 ; HOW: The scene's record, five bytes each in SceneRecords, holds the disc address and at 3
 ; and 4 the list.
+; WAITS: yes, on the drive: through SceneReadSectors, and on the overlay calls; the stack there is the caller's return and this call's two bytes (and an overlay call's).
 ; Entry: A scene. Exit: A the last op, N and Z from comparing it with $80, C 1; X, Y and V as
 ; the last op left them. Clobbers zTemp00-02, zTemp08-09.
 LoadSceneScript:
@@ -517,6 +529,7 @@ LoadSceneScript_at14:
 ; HOW: The op indexes SceneReadDestinations; the op's second byte is the sector offset and its
 ; third the count; the BIOS's read, asked again until it answers zero, and each time the table
 ; is indexed by what A then holds.
+; WAITS: yes, on the drive: the card's read is asked until it answers zero; the stack there is the caller's return and this call's two bytes.
 ; Entry: A the op. Exit: as LoadSceneScript.
 SceneReadSectors:
     asl a
@@ -565,6 +578,7 @@ SceneReadSectors:
 ; WHAT IT DOES: Maps the scene overlay and runs its entry at $8006 with a pointer from
 ; SceneCallTable.
 ; HOW: The pointer goes to zProduct1-2, where that entry takes it; Y 0.
+; WAITS: depends on the overlay it runs (an original-code tail: a jump to $8006).
 ; Entry: X the table's offset. Exit: as the overlay leaves them.
 SceneCallOverlay:
     lda #$04

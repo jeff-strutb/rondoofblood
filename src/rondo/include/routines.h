@@ -868,15 +868,16 @@ typedef struct {
     uint8_t track;
     uint8_t mode;
     uint8_t dl;
+    uint8_t x, y;   /* X and Y as pulled back */
     TrackEntry entry;
     unsigned tries;
     uint8_t results[CD_PLAY_KEPT];
     CdPlay attempts[CD_PLAY_KEPT];
 } TrackPlay;
 
-TrackPlay CdPlayOnce(uint8_t track);
-TrackPlay CdPlayAgain(void);
-TrackPlay CdPlayRepeat(uint8_t track);
+TrackPlay CdPlayOnce(uint8_t track, uint8_t kept_x, uint8_t kept_y);
+TrackPlay CdPlayAgain(uint8_t kept_x, uint8_t kept_y);
+TrackPlay CdPlayRepeat(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 
 /* The title: src/rondo/menu/title.c. */
 typedef struct { uint8_t tiles; Sum low; bool done; uint8_t step; } ScrollIn;
@@ -954,12 +955,12 @@ typedef struct {
 } DiscLog;
 
 typedef struct { bool already; uint8_t sound; DiscLog log; } AdpcmLoadRun;
-typedef struct { bool skipped; DiscLog log; } TrackSearch;
+typedef struct { bool skipped; uint8_t x, y; DiscLog log; } TrackSearch;
 
 AdpcmLoadRun AdpcmLoad(uint8_t sound);
 DiscLog AdpcmLoadFixed(void);
 DiscLog AdpcmPlayFromDisc(uint8_t sound);
-TrackSearch CdSearchTrack(uint8_t track);
+TrackSearch CdSearchTrack(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 /* A scene overlay's entry run, and the bank add that mapped it, which leaves C and V for it. */
 typedef struct { Sum bank; uint8_t pointer_high; Cpu after; } SceneCall;
 SceneCall SceneCallOverlay(uint8_t offset);

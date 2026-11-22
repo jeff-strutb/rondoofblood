@@ -26,6 +26,9 @@
 #define zProduct2 0x2015 /* multiply result high */
 #define zMultiplierLo 0x2016 /* multiplier low */
 #define zMultiplierHi 0x2017 /* multiplier high */
+#define zField86 0x2086 /* the stage overlay's byte copied to zField83 (024E:02B) */
+#define zField87 0x2087 /* the blend row byte the stage overlay stores (050E:2A4) */
+#define zHitSlot 0x20DA /* the hit object's slot kept across a jump (024F:466) */
 #define SpriteFlipMask 0x2014 /* EmitObjectSprites' scratch: the object's flip bit; the same byte as zProduct1 */
 #define SpritePartsLeft 0x2016 /* EmitObjectSprites' scratch: parts of the sprite still to draw; the same byte as zMultiplierLo */
 #define SpritesLeft 0x2017 /* EmitObjectSprites' scratch: sprites still to draw; the same byte as zMultiplierHi */
@@ -87,6 +90,7 @@
 #define HitboxYLo 0x2720 /* per slot of 16: the hitbox centre's Y, low byte */
 #define HitboxHi 0x2730 /* per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset */
 #define LevelFullWalk 0x2744 /* set during a whole-screen stream walk */
+#define Field2742 0x2742 /* a stage overlay byte (six uses in 024F:67F); no meaning found yet */
 #define OBJ_2750 0x2750 /* object field not yet identified */
 #define OBJ_27A8 0x27A8 /* object field not yet identified */
 #define OBJ_2800 0x2800 /* object field not yet identified */
@@ -168,6 +172,7 @@
 #define ScrollBandFourth 0x3E4B /* the fourth of the six scroll bytes by band */
 #define ScrollBgyLo 0x3E54 /* BG Y values by raster band */
 #define ScrollBgyHi 0x3E5D /* BG Y values by raster band */
+#define Scroll3E66 0x3E66 /* a per-entry scroll column the stage overlay's camera uses; no meaning found yet */
 #define ScrollYHiScreen 0x3E8E /* scroll Y high of the level position */
 #define ScrollXHiScreen 0x3E96 /* scroll X high of the level position */
 #define ScrollSpeedX 0x3E9E /* scroll speed along X this frame */
@@ -598,6 +603,8 @@
 #define PaletteWork 0x3B00 /* 32 bytes: a palette of 16 colours read from the VCE to be worked on */
 #define PaletteWorkSpare 0x3B20 /* the colour kept while a palette is rotated */
 #define StageMaskBuffer 0x3B40 /* 128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask */
+#define StageHitReport 0x3BEB /* 4 bytes the stage overlay stores (024F:568): the stream count, then the hitbox X and Y of slot 3 */
+#define StageVramBuffer 0x3D00 /* the stage overlay's VRAM copy buffer, filled by one-byte index (up to 256 bytes) */
 #define StageVar350E 0x350E /* the stage overlay's state, in the last two slots ($56, $57) of an object column: slot $56 a counter, slot $57 ($350F) the stage event code */
 #define StageVar3566 0x3566 /* the stage overlay's state in the last two slots of an object column ($3566 and $3567) */
 #define StageVar35BE 0x35BE /* the stage overlay's state in the last two slots of an object column: $35BF a toggle */

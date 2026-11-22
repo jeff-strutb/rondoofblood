@@ -29,12 +29,12 @@ typedef struct {
     uint8_t temp07; /* zTemp07 */
     uint8_t temp08; /* zTemp08 */
     uint8_t temp09; /* zTemp09 */
-    uint8_t temp0_a; /* zTemp0A */
-    uint8_t temp0_b; /* zTemp0B */
-    uint8_t temp0_c; /* zTemp0C */
-    uint8_t temp0_d; /* zTemp0D */
-    uint8_t temp0_e; /* zTemp0E */
-    uint8_t temp0_f; /* zTemp0F */
+    union { uint8_t temp0a; uint8_t temp0_a; }; /* zTemp0A */
+    union { uint8_t temp0b; uint8_t temp0_b; }; /* zTemp0B */
+    union { uint8_t temp0c; uint8_t temp0_c; }; /* zTemp0C */
+    union { uint8_t temp0d; uint8_t temp0_d; }; /* zTemp0D */
+    union { uint8_t temp0e; uint8_t temp0_e; }; /* zTemp0E */
+    union { uint8_t temp0f; uint8_t temp0_f; }; /* zTemp0F */
     uint8_t temp10; /* zTemp10 */
     uint8_t temp11; /* zTemp11 */
     uint8_t temp12; /* zTemp12 */
@@ -96,14 +96,16 @@ typedef struct {
     uint8_t field83; /* zField83 */
     uint8_t _gap_0084[1]; /* no name yet: $2084-$2084 */
     uint8_t field85; /* zField85 */
-    uint8_t _gap_0086[3]; /* no name yet: $2086-$2088 */
+    uint8_t field86; /* zField86 */
+    uint8_t field87; /* zField87 */
+    uint8_t _gap_0088[1]; /* no name yet: $2088-$2088 */
     uint8_t field89; /* zField89 */
-    uint8_t field8_a; /* zField8A */
+    union { uint8_t field8a; uint8_t field8_a; }; /* zField8A */
     uint8_t wave_counter; /* zWaveCounter */
-    uint8_t field8_c; /* zField8C */
+    union { uint8_t field8c; uint8_t field8_c; }; /* zField8C */
     uint8_t stock; /* zStock */
-    uint8_t field8_e; /* zField8E */
-    uint8_t field8_f; /* zField8F */
+    union { uint8_t field8e; uint8_t field8_e; }; /* zField8E */
+    union { uint8_t field8f; uint8_t field8_f; }; /* zField8F */
     uint8_t field90; /* zField90 */
     uint8_t field91; /* zField91 */
     uint8_t field92; /* zField92 */
@@ -122,26 +124,26 @@ typedef struct {
     uint8_t character_loaded; /* zCharacterLoaded */
     uint8_t stage_requested; /* zStageRequested */
     uint8_t music_wanted; /* zMusicWanted */
-    uint8_t field_a3; /* zFieldA3 */
+    union { uint8_t fielda3; uint8_t field_a3; }; /* zFieldA3 */
     uint8_t _gap_00A4[28]; /* no name yet: $20A4-$20BF */
     uint8_t pad_held; /* zPadHeld */
     uint8_t pad_pressed; /* zPadPressed */
     uint8_t pad_previous; /* zPadPrevious */
     uint8_t _gap_00C3[1]; /* no name yet: $20C3-$20C3 */
-    uint8_t field_c4; /* zFieldC4 */
+    union { uint8_t fieldc4; uint8_t field_c4; }; /* zFieldC4 */
     uint8_t _gap_00C5[1]; /* no name yet: $20C5-$20C5 */
-    uint8_t field_c6; /* zFieldC6 */
+    union { uint8_t fieldc6; uint8_t field_c6; }; /* zFieldC6 */
     uint8_t _gap_00C7[2]; /* no name yet: $20C7-$20C8 */
     uint8_t player_push; /* zPlayerPush */
-    uint8_t field_ca; /* zFieldCA */
+    union { uint8_t fieldca; uint8_t field_ca; }; /* zFieldCA */
     uint8_t player_push_depth; /* zPlayerPushDepth */
     U16LE push_x; /* zPushXLo +1 */
     U16LE push_y; /* zPushYLo +1 */
     uint8_t _gap_00D0[3]; /* no name yet: $20D0-$20D2 */
-    uint8_t field_d3; /* zFieldD3 */
+    union { uint8_t fieldd3; uint8_t field_d3; }; /* zFieldD3 */
     uint8_t _gap_00D4[5]; /* no name yet: $20D4-$20D8 */
     uint8_t richter_object; /* zRichterObject */
-    uint8_t _gap_00DA[1]; /* no name yet: $20DA-$20DA */
+    uint8_t hit_slot; /* zHitSlot */
     uint8_t ram_base_bank; /* zRamBaseBank */
     uint8_t _gap_00DC[25]; /* no name yet: $20DC-$20F4 */
     uint8_t bios_irq_disable; /* BiosIrqDisable */
@@ -162,11 +164,17 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp06) + 0 == zTemp06, 
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp07) + 0 == zTemp07, "ZeroPageRec.temp07 is not at zTemp07");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp08) + 0 == zTemp08, "ZeroPageRec.temp08 is not at zTemp08");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp09) + 0 == zTemp09, "ZeroPageRec.temp09 is not at zTemp09");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0a) + 0 == zTemp0A, "ZeroPageRec.temp0a is not at zTemp0A");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0_a) + 0 == zTemp0A, "ZeroPageRec.temp0_a is not at zTemp0A");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0b) + 0 == zTemp0B, "ZeroPageRec.temp0b is not at zTemp0B");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0_b) + 0 == zTemp0B, "ZeroPageRec.temp0_b is not at zTemp0B");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0c) + 0 == zTemp0C, "ZeroPageRec.temp0c is not at zTemp0C");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0_c) + 0 == zTemp0C, "ZeroPageRec.temp0_c is not at zTemp0C");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0d) + 0 == zTemp0D, "ZeroPageRec.temp0d is not at zTemp0D");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0_d) + 0 == zTemp0D, "ZeroPageRec.temp0_d is not at zTemp0D");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0e) + 0 == zTemp0E, "ZeroPageRec.temp0e is not at zTemp0E");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0_e) + 0 == zTemp0E, "ZeroPageRec.temp0_e is not at zTemp0E");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0f) + 0 == zTemp0F, "ZeroPageRec.temp0f is not at zTemp0F");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp0_f) + 0 == zTemp0F, "ZeroPageRec.temp0_f is not at zTemp0F");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp10) + 0 == zTemp10, "ZeroPageRec.temp10 is not at zTemp10");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp11) + 0 == zTemp11, "ZeroPageRec.temp11 is not at zTemp11");
@@ -232,12 +240,18 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, stage) + 0 == zStage, "Z
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field82) + 0 == zField82, "ZeroPageRec.field82 is not at zField82");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field83) + 0 == zField83, "ZeroPageRec.field83 is not at zField83");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field85) + 0 == zField85, "ZeroPageRec.field85 is not at zField85");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field86) + 0 == zField86, "ZeroPageRec.field86 is not at zField86");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field87) + 0 == zField87, "ZeroPageRec.field87 is not at zField87");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field89) + 0 == zField89, "ZeroPageRec.field89 is not at zField89");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8a) + 0 == zField8A, "ZeroPageRec.field8a is not at zField8A");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_a) + 0 == zField8A, "ZeroPageRec.field8_a is not at zField8A");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wave_counter) + 0 == zWaveCounter, "ZeroPageRec.wave_counter is not at zWaveCounter");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8c) + 0 == zField8C, "ZeroPageRec.field8c is not at zField8C");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_c) + 0 == zField8C, "ZeroPageRec.field8_c is not at zField8C");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, stock) + 0 == zStock, "ZeroPageRec.stock is not at zStock");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8e) + 0 == zField8E, "ZeroPageRec.field8e is not at zField8E");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_e) + 0 == zField8E, "ZeroPageRec.field8_e is not at zField8E");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8f) + 0 == zField8F, "ZeroPageRec.field8f is not at zField8F");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_f) + 0 == zField8F, "ZeroPageRec.field8_f is not at zField8F");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field90) + 0 == zField90, "ZeroPageRec.field90 is not at zField90");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field91) + 0 == zField91, "ZeroPageRec.field91 is not at zField91");
@@ -256,21 +270,27 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, character) + 0 == zChara
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, character_loaded) + 0 == zCharacterLoaded, "ZeroPageRec.character_loaded is not at zCharacterLoaded");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, stage_requested) + 0 == zStageRequested, "ZeroPageRec.stage_requested is not at zStageRequested");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, music_wanted) + 0 == zMusicWanted, "ZeroPageRec.music_wanted is not at zMusicWanted");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fielda3) + 0 == zFieldA3, "ZeroPageRec.fielda3 is not at zFieldA3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field_a3) + 0 == zFieldA3, "ZeroPageRec.field_a3 is not at zFieldA3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, pad_held) + 0 == zPadHeld, "ZeroPageRec.pad_held is not at zPadHeld");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, pad_pressed) + 0 == zPadPressed, "ZeroPageRec.pad_pressed is not at zPadPressed");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, pad_previous) + 0 == zPadPrevious, "ZeroPageRec.pad_previous is not at zPadPrevious");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fieldc4) + 0 == zFieldC4, "ZeroPageRec.fieldc4 is not at zFieldC4");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field_c4) + 0 == zFieldC4, "ZeroPageRec.field_c4 is not at zFieldC4");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fieldc6) + 0 == zFieldC6, "ZeroPageRec.fieldc6 is not at zFieldC6");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field_c6) + 0 == zFieldC6, "ZeroPageRec.field_c6 is not at zFieldC6");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, player_push) + 0 == zPlayerPush, "ZeroPageRec.player_push is not at zPlayerPush");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fieldca) + 0 == zFieldCA, "ZeroPageRec.fieldca is not at zFieldCA");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field_ca) + 0 == zFieldCA, "ZeroPageRec.field_ca is not at zFieldCA");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, player_push_depth) + 0 == zPlayerPushDepth, "ZeroPageRec.player_push_depth is not at zPlayerPushDepth");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, push_x) + 0 == zPushXLo, "ZeroPageRec.push_x is not at zPushXLo");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, push_x) + 1 == zPushXHi, "ZeroPageRec.push_x is not at zPushXHi");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, push_y) + 0 == zPushYLo, "ZeroPageRec.push_y is not at zPushYLo");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, push_y) + 1 == zPushYHi, "ZeroPageRec.push_y is not at zPushYHi");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fieldd3) + 0 == zFieldD3, "ZeroPageRec.fieldd3 is not at zFieldD3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field_d3) + 0 == zFieldD3, "ZeroPageRec.field_d3 is not at zFieldD3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, richter_object) + 0 == zRichterObject, "ZeroPageRec.richter_object is not at zRichterObject");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, hit_slot) + 0 == zHitSlot, "ZeroPageRec.hit_slot is not at zHitSlot");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, ram_base_bank) + 0 == zRamBaseBank, "ZeroPageRec.ram_base_bank is not at zRamBaseBank");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, bios_irq_disable) + 0 == BiosIrqDisable, "ZeroPageRec.bios_irq_disable is not at BiosIrqDisable");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, bios_a) + 0 == zBiosAl, "ZeroPageRec.bios_a is not at zBiosAl");
@@ -509,13 +529,13 @@ typedef struct {
     uint8_t envelope_phase[8]; /* SoundEnvelopePhase */
     uint8_t envelope_timer[8]; /* SoundEnvelopeTimer */
     uint8_t envelope_level[8]; /* SoundEnvelopeLevel */
-    uint8_t channel25_b0[8]; /* SoundChannel25B0 */
+    union { uint8_t f25b0[8]; uint8_t channel25_b0[8]; }; /* SoundChannel25B0 */
     uint8_t channel_command[8]; /* SoundChannelCommand */
     uint8_t gate_set[8]; /* SoundGateSet */
     uint8_t volume_default[8]; /* SoundVolumeDefault */
     uint8_t return_lo[8]; /* SoundReturnLo */
     uint8_t return_hi[8]; /* SoundReturnHi */
-    uint8_t channel25_e0[8]; /* SoundChannel25E0 */
+    union { uint8_t f25e0[8]; uint8_t channel25_e0[8]; }; /* SoundChannel25E0 */
     uint8_t _gap_02F8[8]; /* no name yet: $25E8-$25EF */
     uint8_t channel_priority[8]; /* SoundChannelPriority */
 } SoundChannels;
@@ -608,12 +628,14 @@ _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, sustain_level) + 0 =
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, envelope_phase) + 0 == SoundEnvelopePhase, "SoundChannels.envelope_phase is not at SoundEnvelopePhase");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, envelope_timer) + 0 == SoundEnvelopeTimer, "SoundChannels.envelope_timer is not at SoundEnvelopeTimer");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, envelope_level) + 0 == SoundEnvelopeLevel, "SoundChannels.envelope_level is not at SoundEnvelopeLevel");
+_Static_assert(SoundChannels_BASE + offsetof(SoundChannels, f25b0) + 0 == SoundChannel25B0, "SoundChannels.f25b0 is not at SoundChannel25B0");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, channel25_b0) + 0 == SoundChannel25B0, "SoundChannels.channel25_b0 is not at SoundChannel25B0");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, channel_command) + 0 == SoundChannelCommand, "SoundChannels.channel_command is not at SoundChannelCommand");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, gate_set) + 0 == SoundGateSet, "SoundChannels.gate_set is not at SoundGateSet");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, volume_default) + 0 == SoundVolumeDefault, "SoundChannels.volume_default is not at SoundVolumeDefault");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, return_lo) + 0 == SoundReturnLo, "SoundChannels.return_lo is not at SoundReturnLo");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, return_hi) + 0 == SoundReturnHi, "SoundChannels.return_hi is not at SoundReturnHi");
+_Static_assert(SoundChannels_BASE + offsetof(SoundChannels, f25e0) + 0 == SoundChannel25E0, "SoundChannels.f25e0 is not at SoundChannel25E0");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, channel25_e0) + 0 == SoundChannel25E0, "SoundChannels.channel25_e0 is not at SoundChannel25E0");
 _Static_assert(SoundChannels_BASE + offsetof(SoundChannels, channel_priority) + 0 == SoundChannelPriority, "SoundChannels.channel_priority is not at SoundChannelPriority");
 #define SND ((SoundChannels *)SoundChannels_BASE)
@@ -838,10 +860,11 @@ _Static_assert(ScrollMain_BASE + offsetof(ScrollMain, y_lo) + 0 == ScrollYLo, "S
 _Static_assert(ScrollMain_BASE + offsetof(ScrollMain, y_hi) + 0 == ScrollYHi, "ScrollMain.y_hi is not at ScrollYHi");
 #define SCROLL ((ScrollMain *)ScrollMain_BASE)
 
-/* ScrollEntries: parallel byte arrays at $3E6E, 8 slots, 64 bytes */
-#define ScrollEntries_BASE 0x3E6E
+/* ScrollEntries: parallel byte arrays at $3E66, 8 slots, 72 bytes */
+#define ScrollEntries_BASE 0x3E66
 #define ScrollEntries_COUNT 8
 typedef struct {
+    uint8_t f3e66[8]; /* Scroll3E66 */
     uint8_t step_y_lo[8]; /* ScrollStepYLo */
     uint8_t step_y_hi[8]; /* ScrollStepYHi */
     uint8_t step_x_lo[8]; /* ScrollStepXLo */
@@ -851,7 +874,8 @@ typedef struct {
     uint8_t speed_x[8]; /* ScrollSpeedX */
     uint8_t speed_y[8]; /* ScrollSpeedY */
 } ScrollEntries;
-_Static_assert(sizeof(ScrollEntries) == 0x40, "ScrollEntries size");
+_Static_assert(sizeof(ScrollEntries) == 0x48, "ScrollEntries size");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, f3e66) + 0 == Scroll3E66, "ScrollEntries.f3e66 is not at Scroll3E66");
 _Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_y_lo) + 0 == ScrollStepYLo, "ScrollEntries.step_y_lo is not at ScrollStepYLo");
 _Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_y_hi) + 0 == ScrollStepYHi, "ScrollEntries.step_y_hi is not at ScrollStepYHi");
 _Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_x_lo) + 0 == ScrollStepXLo, "ScrollEntries.step_x_lo is not at ScrollStepXLo");
@@ -914,5 +938,82 @@ _Static_assert(StageVars_BASE + offsetof(StageVars, blend_on) + 0 == StageBlendO
 _Static_assert(StageVars_BASE + offsetof(StageVars, blend_step) + 0 == StageBlendStep, "StageVars.blend_step is not at StageBlendStep");
 _Static_assert(StageVars_BASE + offsetof(StageVars, state_371e) + 0 == StageVar371E, "StageVars.state_371e is not at StageVar371E");
 #define STAGEVARS ((StageVars *)StageVars_BASE)
+
+/* LevelState: one struct at $26D0, 1 element(s), 117 bytes */
+#define LevelState_BASE 0x26D0
+#define LevelState_COUNT 1
+typedef struct {
+    U16LE level_stream; /* LevelStreamLo +1 */
+    uint8_t level_axis; /* LevelAxis */
+    uint8_t event_flags[32]; /* EventFlags */
+    uint8_t _gap_0023[12]; /* no name yet: $26F3-$26FE */
+    U16BE stream_count; /* WorkByteA +1 */
+    U16LE stream_step; /* StreamStepLo +1 */
+    uint8_t _gap_0033[63]; /* no name yet: $2703-$2741 */
+    uint8_t field2742; /* Field2742 */
+    uint8_t _gap_0073[1]; /* no name yet: $2743-$2743 */
+    uint8_t full_walk; /* LevelFullWalk */
+} LevelState;
+_Static_assert(sizeof(LevelState) == 0x75, "LevelState size");
+_Static_assert(LevelState_BASE + offsetof(LevelState, level_stream) + 0 == LevelStreamLo, "LevelState.level_stream is not at LevelStreamLo");
+_Static_assert(LevelState_BASE + offsetof(LevelState, level_stream) + 1 == LevelStreamHi, "LevelState.level_stream is not at LevelStreamHi");
+_Static_assert(LevelState_BASE + offsetof(LevelState, level_axis) + 0 == LevelAxis, "LevelState.level_axis is not at LevelAxis");
+_Static_assert(LevelState_BASE + offsetof(LevelState, event_flags) + 0 == EventFlags, "LevelState.event_flags is not at EventFlags");
+_Static_assert(LevelState_BASE + offsetof(LevelState, stream_count) + 0 == WorkByteA, "LevelState.stream_count is not at WorkByteA");
+_Static_assert(LevelState_BASE + offsetof(LevelState, stream_count) + 1 == WorkByteB, "LevelState.stream_count is not at WorkByteB");
+_Static_assert(LevelState_BASE + offsetof(LevelState, stream_step) + 0 == StreamStepLo, "LevelState.stream_step is not at StreamStepLo");
+_Static_assert(LevelState_BASE + offsetof(LevelState, stream_step) + 1 == StreamStepHi, "LevelState.stream_step is not at StreamStepHi");
+_Static_assert(LevelState_BASE + offsetof(LevelState, field2742) + 0 == Field2742, "LevelState.field2742 is not at Field2742");
+_Static_assert(LevelState_BASE + offsetof(LevelState, full_walk) + 0 == LevelFullWalk, "LevelState.full_walk is not at LevelFullWalk");
+#define LEVEL ((LevelState *)LevelState_BASE)
+
+/* ScrollLimits: one struct at $3EB6, 1 element(s), 34 bytes */
+#define ScrollLimits_BASE 0x3EB6
+#define ScrollLimits_COUNT 1
+typedef struct {
+    uint8_t camera_mode; /* CameraMode */
+    uint8_t _gap_0001[4]; /* no name yet: $3EB7-$3EBA */
+    uint8_t scroll_y_offset; /* ScrollYOffset */
+    uint8_t raster_water_line; /* RasterWaterLine */
+    uint8_t _gap_0007[1]; /* no name yet: $3EBD-$3EBD */
+    uint8_t x_min_hi; /* ScrollXMinHi */
+    uint8_t _gap_0009[7]; /* no name yet: $3EBF-$3EC5 */
+    U16BE x_max; /* ScrollXMaxHi +1 */
+    uint8_t _gap_0012[6]; /* no name yet: $3EC8-$3ECD */
+    uint8_t y_min_hi; /* ScrollYMinHi */
+    uint8_t _gap_0019[7]; /* no name yet: $3ECF-$3ED5 */
+    U16BE y_max; /* ScrollYMaxHi +1 */
+} ScrollLimits;
+_Static_assert(sizeof(ScrollLimits) == 0x22, "ScrollLimits size");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, camera_mode) + 0 == CameraMode, "ScrollLimits.camera_mode is not at CameraMode");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, scroll_y_offset) + 0 == ScrollYOffset, "ScrollLimits.scroll_y_offset is not at ScrollYOffset");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, raster_water_line) + 0 == RasterWaterLine, "ScrollLimits.raster_water_line is not at RasterWaterLine");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, x_min_hi) + 0 == ScrollXMinHi, "ScrollLimits.x_min_hi is not at ScrollXMinHi");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, x_max) + 0 == ScrollXMaxHi, "ScrollLimits.x_max is not at ScrollXMaxHi");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, x_max) + 1 == ScrollXMaxLo, "ScrollLimits.x_max is not at ScrollXMaxLo");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, y_min_hi) + 0 == ScrollYMinHi, "ScrollLimits.y_min_hi is not at ScrollYMinHi");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, y_max) + 0 == ScrollYMaxHi, "ScrollLimits.y_max is not at ScrollYMaxHi");
+_Static_assert(ScrollLimits_BASE + offsetof(ScrollLimits, y_max) + 1 == ScrollYMaxLo, "ScrollLimits.y_max is not at ScrollYMaxLo");
+#define SCROLLLIM ((ScrollLimits *)ScrollLimits_BASE)
+
+/* StageHitRec: one struct at $3BEB, 1 element(s), 4 bytes */
+#define StageHitRec_BASE 0x3BEB
+#define StageHitRec_COUNT 1
+typedef struct {
+    uint8_t bytes[4]; /* StageHitReport */
+} StageHitRec;
+_Static_assert(sizeof(StageHitRec) == 0x4, "StageHitRec size");
+_Static_assert(StageHitRec_BASE + offsetof(StageHitRec, bytes) + 0 == StageHitReport, "StageHitRec.bytes is not at StageHitReport");
+#define STAGEHIT ((StageHitRec *)StageHitRec_BASE)
+
+/* StageVram: one struct at $3D00, 1 element(s), 256 bytes */
+#define StageVram_BASE 0x3D00
+#define StageVram_COUNT 1
+typedef struct {
+    uint8_t buffer[256]; /* StageVramBuffer */
+} StageVram;
+_Static_assert(sizeof(StageVram) == 0x100, "StageVram size");
+_Static_assert(StageVram_BASE + offsetof(StageVram, buffer) + 0 == StageVramBuffer, "StageVram.buffer is not at StageVramBuffer");
+#define STAGEVRAM ((StageVram *)StageVram_BASE)
 
 #endif

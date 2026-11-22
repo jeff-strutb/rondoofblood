@@ -24,6 +24,9 @@ addr,kind,name,note
 15,zp,zProduct2,multiply result high
 16,zp,zMultiplierLo,multiplier low
 17,zp,zMultiplierHi,multiplier high
+86,zp,zField86,the stage overlay's byte copied to zField83 (024E:02B)
+87,zp,zField87,the blend row byte the stage overlay stores (050E:2A4)
+DA,zp,zHitSlot,the hit object's slot kept across a jump (024F:466)
 14,zp,SpriteFlipMask,EmitObjectSprites' scratch: the object's flip bit; the same byte as zProduct1
 16,zp,SpritePartsLeft,EmitObjectSprites' scratch: parts of the sprite still to draw; the same byte as zMultiplierLo
 17,zp,SpritesLeft,EmitObjectSprites' scratch: sprites still to draw; the same byte as zMultiplierHi
@@ -89,6 +92,7 @@ E0A2,abs,BiosE0A2,called once at start
 2720,abs,HitboxYLo,per slot of 16: the hitbox centre's Y, low byte
 2730,abs,HitboxHi,per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset
 2744,abs,LevelFullWalk,set during a whole-screen stream walk
+2742,abs,Field2742,a stage overlay byte (six uses in 024F:67F); no meaning found yet
 2750,abs,OBJ_2750,object field not yet identified
 27A8,abs,OBJ_27A8,object field not yet identified
 2800,abs,OBJ_2800,object field not yet identified
@@ -170,6 +174,7 @@ E0A2,abs,BiosE0A2,called once at start
 3E4B,abs,ScrollBandFourth,the fourth of the six scroll bytes by band
 3E54,abs,ScrollBgyLo,BG Y values by raster band
 3E5D,abs,ScrollBgyHi,BG Y values by raster band
+3E66,abs,Scroll3E66,a per-entry scroll column the stage overlay's camera uses; no meaning found yet
 3E8E,abs,ScrollYHiScreen,scroll Y high of the level position
 3E96,abs,ScrollXHiScreen,scroll X high of the level position
 3E9E,abs,ScrollSpeedX,scroll speed along X this frame
@@ -605,6 +610,8 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 3B00,abs,PaletteWork,32 bytes: a palette of 16 colours read from the VCE to be worked on
 3B20,abs,PaletteWorkSpare,the colour kept while a palette is rotated
 3B40,abs,StageMaskBuffer,128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask
+3BEB,abs,StageHitReport,4 bytes the stage overlay stores (024F:568): the stream count, then the hitbox X and Y of slot 3
+3D00,abs,StageVramBuffer,the stage overlay's VRAM copy buffer, filled by one-byte index (up to 256 bytes)
 350E,abs,StageVar350E,the stage overlay's state, in the last two slots ($56, $57) of an object column: slot $56 a counter, slot $57 ($350F) the stage event code
 3566,abs,StageVar3566,the stage overlay's state in the last two slots of an object column ($3566 and $3567)
 35BE,abs,StageVar35BE,the stage overlay's state in the last two slots of an object column: $35BF a toggle

@@ -420,6 +420,10 @@ def one(name, a, ctx):
     rep = os.path.join(a.report, name + ".txt")
     os.makedirs(a.report, exist_ok=True)
     open(rep, "w").write("\n".join(lines + cover_lines) + "\n")
+    if a.quiet:
+        print(f"{name:32s} match {len(same):4d}  differ {len(diffs):4d}  untraced {len(untraced):4d}  unreached lines {miss:3d}  "
+              f"{'OK' if (not diffs and same) else 'DIFFERS' if diffs else 'NOTHING COMPARED'}")
+        return (not diffs) and bool(same), dict(same=len(same), diffs=len(diffs), untraced=len(untraced), unreached=miss, ndraft=ndraft)
     print("\n".join(lines))
     if cover_lines:
         print(f"  coverage: {cover_lines[0]}; {[l for l in cover_lines if l.startswith('draft ')][0]}; {miss} lines not reached; full report {os.path.relpath(rep, TOP)}")
@@ -436,6 +440,7 @@ def mask_p(line, ignore):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("names", nargs="*")
+    ap.add_argument("--file", help="a C file: every routine in it that has a draft, one line each")
     ap.add_argument("--drafts")
     ap.add_argument("--ops")
     ap.add_argument("--cases", type=int, default=400)
@@ -443,6 +448,7 @@ def main():
     ap.add_argument("--curated")
     ap.add_argument("--lifted", help="a C file to use in place of the tree's file for the routine")
     ap.add_argument("--ignore-flags", default="", help="flag letters not compared at exit (NVDIZC)")
+    ap.add_argument("--quiet", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--no-cover", action="store_true")
     ap.add_argument("--warm", action="store_true", help="compile the game's C into the cache and stop")
     ap.add_argument("--show", type=int, default=3)
@@ -458,12 +464,20 @@ def main():
     if a.warm:
         print(f"liftcmp: {len(sources)} files compiled into {os.path.relpath(cache, TOP)}")
         return 0
-    if not a.names:
-        ap.error("name a routine")
+    if not a.names and not a.file:
+        ap.error("name a routine or give --file")
     drafts = find_drafts(a.drafts)
     ctx = dict(cache=cache, sources=sources, objs=objs, hh=hh, drafts=drafts, ops=find_ops(drafts, a.ops), rows=hybrid_rows())
     bad = 0
-    for n in a.names:
+    names = list(a.names)
+    if a.file:
+        path = os.path.join(TOP, a.file) if not os.path.isabs(a.file) else a.file
+        have = {r["filed"] for r in csv.DictReader(open(os.path.join(drafts, "drafts.csv"))) if r["filed"]}
+        names += [n for n in re.findall(r"^void abi_(\w+)\(void\)\s*$", open(path).read(), re.M) if n in have]
+        a.quiet = True
+        a.show = 0
+        print(f"{a.file}: {len(names)} routines with a draft")
+    for n in names:
         ok, _ = one(n, a, ctx)
         bad += not ok
     return 1 if bad else 0

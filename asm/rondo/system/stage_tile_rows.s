@@ -167,3 +167,71 @@ BlendStageTileRows_at11:
     cpy #$05
     bne BlendStageTileRows_at12
     rts
+
+; @routine 024F:236 BlendStageRowChanges
+; @run 6B:9236
+; WHAT IT DOES: Blends the rows a byte changed: of the two bytes (the old in zBiosAl, the new in
+; A), for each nibble that differs, the old nibble's row is blended in at the step X (low
+; nibble) or the step after (high nibble).
+; HOW: The low nibbles are compared, and BlendStageTileRows called with the old low nibble as
+; the second row when they differ; then the same for the high nibbles one step on.
+; WAITS: no.
+; Entry: A the new byte, zBiosAl the old, X the step. Exit: A the high nibble when nothing
+; was blended last, else as BlendStageTileRows; X the step plus one or BlendStageTileRows's; N 0, Z 1,
+; C 1; Y 5 once a blend ran, else kept.
+BlendStageRowChanges:
+    phx
+    sta z:zBiosBl
+    lda z:zBiosAl
+    and #$0F
+    sta z:zBiosAh
+    lda z:zBiosBl
+    and #$0F
+    cmp z:zBiosAh
+    beq BlendStageRowChanges_at0
+    ldy z:zBiosAh
+    jsr BlendStageTileRows
+BlendStageRowChanges_at0:
+    lda z:zBiosAl
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta z:zBiosAh
+    lda z:zBiosBl
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    plx
+    inx
+    cmp z:zBiosAh
+    beq BlendStageRowChanges_at1
+    ldy z:zBiosAh
+    jsr BlendStageTileRows
+BlendStageRowChanges_at1:
+    rts
+
+; @routine 024F:266 BlendStageRowPair
+; @run 6B:9266
+; WHAT IT DOES: Blends the two rows a byte names: its low nibble's row at the step X, its high
+; nibble's row at the step after.
+; HOW: BlendStageTileRows for the low nibble, called, then the same for the high nibble with
+; the step one on, which this routine jumps to with no return of its own. The second row of
+; both blends is the one in Y at entry for the first and 5 for the second (BlendStageTileRows
+; leaves Y 5).
+; WAITS: no.
+; Entry: A the byte, X the step, Y the second row of the first blend. Exit: as BlendStageTileRows.
+BlendStageRowPair:
+    phx
+    pha
+    and #$0F
+    jsr BlendStageTileRows
+    pla
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    plx
+    inx
+    jmp BlendStageTileRows

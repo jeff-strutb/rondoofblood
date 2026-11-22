@@ -2559,6 +2559,10 @@ int check_exec(uint32_t pc)
         int irq_kind = prev_op == PREV_IRQ || (prev_is_entry() && entry_kind() == K_JMP && nchain && r.s == ichain[nchain - 1]);
 
         if (depth) {
+            /* A return that lands on a tagged routine's first byte is a return and an entry: the RET is logged
+             * before the CALL, or the call that returned there has no RET and looks as if it never came back. */
+            if (prev_op == 0x60 && tail_entry && jsrmark[(uint8_t)(r.s - 1)] == (uint16_t)pc)
+                marker(EV_RET, &r, 0, 0, 0);
             if (prev_is_entry() || prev_op == PREV_IRQ)
                 marker(EV_CALL, &r, prev_op == PREV_IRQ ? K_IRQ : entry_kind(), 0,
                        irq_kind ? irq_return(r.s) : stack_return(r.s));

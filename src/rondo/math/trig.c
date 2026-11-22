@@ -22,35 +22,6 @@ enum {
     ATAN_AXIS_MAX = 0x0F
 };
 
-/* The two velocities' 24-bit products, the top two bytes of each being the velocity. */
-typedef struct {
-    uint32_t x;
-    uint32_t y;
-} ScaledVector;
-
-/* How the first quadrant's angle folds into the vector's real quadrant. */
-typedef enum { FOLD_NONE, FOLD_MIRROR, FOLD_HALF_TURN, FOLD_NEGATE } AngleFold;
-
-typedef struct {
-    uint8_t angle;
-    uint8_t index;
-    uint8_t first_quadrant;
-    AngleFold fold;
-} AngleResult;
-
-static uint16_t trig_word(uint16_t lo, uint16_t hi)
-{
-    uint8_t low = rd8(lo);
-
-    return (uint16_t)(low | (rd8(hi) << 8));
-}
-
-static void trig_put_word(uint16_t lo, uint16_t hi, uint16_t value)
-{
-    wr8(lo, (uint8_t)value);
-    wr8(hi, (uint8_t)(value >> 8));
-}
-
 /*
  * @routine 0045:69A MultiplyBySineWord
  * @run 69:569A
@@ -260,239 +231,347 @@ void abi_SetVelocityFromAngle(void)
     scale_exit_shim(SetVelocityFromAngle(cpu.a, cpu.x));
 }
 
-/*
- * The direction of a vector. Both axes are made positive and shifted down together until
- * each fits four bits, which index the first quadrant's angles; the angle is then folded
- * by the signs. What is left of the axes stays in zTemp00-03.
- */
-static AngleResult angle_of_vector(uint16_t dx, uint16_t dy)
+/* Negates the 16-bit value at the two bytes, low byte first, the carry running into the high byte. */
+static void negate_temp_word(bool y_axis)
 {
-    bool x_negative = (dx & 0x8000) != 0;
-    bool y_negative = (dy & 0x8000) != 0;
-    AngleResult result;
+    uint8_t value;
+    Sum sum;
 
-    if (x_negative)
-        dx = (uint16_t)(0u - dx);
-    if (y_negative)
-        dy = (uint16_t)(0u - dy);
-    while ((dx | dy) > ATAN_AXIS_MAX) {
-        dx >>= 1;
-        dy >>= 1;
-    }
-    trig_put_word(zTemp00, zTemp01, dx);
-    trig_put_word(zTemp02, zTemp03, dy);
-    result.index = (uint8_t)((dy << 4) | dx);
-    result.first_quadrant = rd8((uint16_t)(AtanTable + result.index));
-    if (x_negative && y_negative) {
-        result.fold = FOLD_HALF_TURN;
-        result.angle = (uint8_t)(result.first_quadrant + HALF_TURN);
-    } else if (x_negative) {
-        result.fold = FOLD_MIRROR;
-        result.angle = (uint8_t)(HALF_TURN + 1 - result.first_quadrant);
-    } else if (y_negative) {
-        result.fold = FOLD_NEGATE;
-        result.angle = (uint8_t)(1 - result.first_quadrant);
+    if (!y_axis) {
+        value = RD8(ZP->temp00);
+        sum = add_bytes((uint8_t)(value ^ 0xFF), 0, true);
+        WR8(ZP->temp00, sum.value);
+        value = RD8(ZP->temp01);
+        sum = add_bytes((uint8_t)(value ^ 0xFF), 0, sum.carry);
+        WR8(ZP->temp01, sum.value);
     } else {
-        result.fold = FOLD_NONE;
-        result.angle = result.first_quadrant;
+        value = RD8(ZP->temp02);
+        sum = add_bytes((uint8_t)(value ^ 0xFF), 0, true);
+        WR8(ZP->temp02, sum.value);
+        value = RD8(ZP->temp03);
+        sum = add_bytes((uint8_t)(value ^ 0xFF), 0, sum.carry);
+        WR8(ZP->temp03, sum.value);
     }
+}
+
+/*
+ * @routine 0046:0B8 AngleOfFirstQuadrant
+ * @run 69:58B8
+ * WHAT IT DOES: The angle of a vector whose two axes (16-bit, zTemp00-01 across and zTemp02-03
+ * up) are both positive, within the first quarter turn.
+ * HOW: Both axes shift down together until the larger fits in a byte, then until both fit four
+ * bits (the counts kept in A), and the two nibbles index a table of angles at overlay address
+ * $58E7 (Y first, X in the low nibble).
+ * WAITS: no.
+ * Entry: zTemp00-03 the axes, D clear. Exit: A the angle, N and Z from it, C 0, V 1 (the
+ * BIT #$F0 leaves V set), Y the table index; zTemp00-03 shifted down.
+ */
+AngleExit AngleOfFirstQuadrant(void)
+{
+    AngleExit result = { 0, 0, false, true };
+    uint8_t high, counter, low;
+    bool carry;
+
+    high = RD8(ZP->temp01);
+    counter = (uint8_t)(high | RD8(ZP->temp03));
+    if (counter != 0) {
+        do {
+            carry = LSR8(ZP->temp01);
+            ROR8(ZP->temp00, carry);
+            carry = LSR8(ZP->temp03);
+            ROR8(ZP->temp02, carry);
+            counter = (uint8_t)(counter >> 1);
+        } while (counter != 0);
+    }
+    low = RD8(ZP->temp00);
+    counter = (uint8_t)(low | RD8(ZP->temp02));
+    while ((counter & 0xF0) != 0) {
+        LSR8(ZP->temp00);
+        LSR8(ZP->temp02);
+        counter = (uint8_t)(counter >> 1);
+    }
+    low = RD8(ZP->temp02);
+    result.y = (uint8_t)((uint8_t)(low << 4) | RD8(ZP->temp00));
+    result.a = rd8((uint16_t)(AtanTable + result.y));
     return result;
 }
 
-/*
- * The table read leaves C clear, the axes' last shift having moved out a zero, and V set,
- * by the BIT #$F0 on every path. The mirror's SBC #$80 and the half turn's ADC #$80 then
- * set both from the first quadrant's angle.
- */
-static Alu angle_exit_shim(AngleResult result)
+/* A the angle, N and Z from it, C and V as the last op left them, Y the table index when the core ran. */
+void angle_exit_shim(AngleExit result)
 {
-    Alu exit = { 0 };
-    bool high = result.first_quadrant >= 0x80;
-
-    exit.a = result.angle;
-    exit.nz = result.angle;
-    exit.v_set = true;
-    switch (result.fold) {
-    case FOLD_NONE:
-    case FOLD_NEGATE:
-        exit.c = false;
-        exit.v = true;
-        break;
-    case FOLD_MIRROR:
-        exit.c = high;
-        exit.v = !high;
-        break;
-    case FOLD_HALF_TURN:
-        exit.c = high;
-        exit.v = high;
-        break;
-    }
-    return exit;
+    cpu.a = result.a;
+    abi_nz(result.a);
+    abi_flag(P_C, result.c);
+    abi_flag(P_V, result.v);
+    cpu.y = result.y;
 }
 
-static void abi_angle(AngleResult result)
+void abi_AngleOfFirstQuadrant(void)
 {
-    abi_alu(angle_exit_shim(result));
-    cpu.y = result.index;
+    angle_exit_shim(AngleOfFirstQuadrant());
 }
 
 /*
  * @routine 0046:04F AngleFromDelta
  * @run 69:584F
- * WHAT IT DOES: Gives the direction of a 16-bit vector as an angle, 256 steps
- * to the turn.
- * HOW: By the signs of Y then X, makes both axes positive in RAM, reads the
- * first-quadrant angle and folds it into its real quadrant: X negative and Y
- * positive mirrors about a quarter turn, both negative adds a half turn, Y
- * negative alone negates.
+ * WHAT IT DOES: The angle of a vector from its signed 16-bit axes (zTemp00-01 across, zTemp02-03
+ * up): both are made positive, AngleOfFirstQuadrant gives the angle in the first quarter turn, and
+ * the signs fold it into its quarter.
+ * HOW: Tests the signs of the two high bytes; the negative axes are negated in place; the
+ * folds are: across negative, up positive: $81 minus the angle; both negative: the angle plus
+ * $80; across positive, up negative: 2 minus the angle (in bytes, $FF minus it plus 1 plus 1).
  * WAITS: no.
- * Entry: zTemp00-01 delta X, zTemp02-03 delta Y. Exit: A the angle, Y the
- * table index, N and Z from the last step, C and V as it left them. X kept.
- * Clobbers zTemp00-03.
+ * Entry: zTemp00-03 the axes, D clear. Exit: A the angle, N and Z from it, C and V as the last
+ * add or subtract (or the first quarter's: C 0, V 1) left them, Y the table index.
  */
-AngleResult AngleFromDelta(void)
+AngleExit AngleFromDelta(void)
 {
-    uint16_t dx = trig_word(zTemp00, zTemp01);
-    uint16_t dy = trig_word(zTemp02, zTemp03);
+    uint8_t y_high = RD8(ZP->temp03);
+    uint8_t x_high;
+    AngleExit core;
+    Sum sum;
 
-    return angle_of_vector(dx, dy);
+    if ((y_high & 0x80) == 0) {
+        x_high = RD8(ZP->temp01);
+        if ((x_high & 0x80) == 0) {
+            return AngleOfFirstQuadrant();
+        }
+        negate_temp_word(false);
+        jsr_push(0x586C);
+        core = AngleOfFirstQuadrant();
+        jsr_pop();
+        sum = add_bytes(core.a, 0x7F, true);
+        core.v = sum.overflow;
+        core.c = sum.carry;
+        core.a = (uint8_t)(((uint8_t)(core.a - 0x80) ^ 0xFF) + 2);
+        return core;
+    }
+    x_high = RD8(ZP->temp01);
+    if ((x_high & 0x80) == 0) {
+        negate_temp_word(true);
+        jsr_push(0x58B3);
+        core = AngleOfFirstQuadrant();
+        jsr_pop();
+        core.a = (uint8_t)((core.a ^ 0xFF) + 2);
+        return core;
+    }
+    negate_temp_word(false);
+    negate_temp_word(true);
+    jsr_push(0x589C);
+    core = AngleOfFirstQuadrant();
+    jsr_pop();
+    sum = add_bytes(core.a, 0x80, false);
+    core.a = sum.value;
+    core.c = sum.carry;
+    core.v = sum.overflow;
+    return core;
 }
 
 void abi_AngleFromDelta(void)
 {
-    abi_angle(AngleFromDelta());
-}
-
-static uint16_t trig_object_x(uint8_t object)
-{
-    return trig_word((uint16_t)(OBJ_X_LO + object), (uint16_t)(OBJ_X_HI + object));
-}
-
-static uint16_t trig_object_y(uint8_t object)
-{
-    return trig_word((uint16_t)(OBJ_Y_LO + object), (uint16_t)(OBJ_Y_HI + object));
-}
-
-/*
- * @routine 0045:7CF AngleToPoint
- * @run 69:57CF
- * WHAT IT DOES: Gives the direction from an object to a point.
- * HOW: Subtracts the object's position from the point, then AngleFromDelta.
- * WAITS: no.
- * Entry: X object, zTemp08-09 point X, zTemp0A-0B point Y. Exit: as
- * AngleFromDelta. Clobbers zTemp00-03.
- */
-AngleResult AngleToPoint(uint8_t object)
-{
-    uint16_t dx = (uint16_t)(trig_word(zTemp08, zTemp09) - trig_object_x(object));
-    uint16_t dy = (uint16_t)(trig_word(zTemp0A, zTemp0B) - trig_object_y(object));
-
-    return angle_of_vector(dx, dy);
-}
-
-void abi_AngleToPoint(void)
-{
-    abi_angle(AngleToPoint(cpu.x));
-}
-
-/*
- * @routine 0045:7EF AngleToPlayerOffset
- * @run 69:57EF
- * WHAT IT DOES: Gives the direction from an object to a point offset from the
- * player, object 0.
- * HOW: Subtracts the object's position from the player's, adds the offset, then
- * AngleFromDelta.
- * WAITS: no.
- * Entry: X object, zTemp08-09 offset X, zTemp0A-0B offset Y. Exit: as
- * AngleFromDelta. Clobbers zTemp00-03.
- */
-AngleResult AngleToPlayerOffset(uint8_t object)
-{
-    uint16_t dx = (uint16_t)(trig_object_x(0) - trig_object_x(object) + trig_word(zTemp08, zTemp09));
-    uint16_t dy = (uint16_t)(trig_object_y(0) - trig_object_y(object) + trig_word(zTemp0A, zTemp0B));
-
-    return angle_of_vector(dx, dy);
-}
-
-void abi_AngleToPlayerOffset(void)
-{
-    abi_angle(AngleToPlayerOffset(cpu.x));
+    angle_exit_shim(AngleFromDelta());
 }
 
 /*
  * @routine 0046:02D AngleToPlayer
  * @run 69:582D
- * WHAT IT DOES: Gives the direction from an object to the player, object 0.
- * HOW: Subtracts the object's position from the player's, then AngleFromDelta.
+ * WHAT IT DOES: The angle from an object to the player: the player's position minus the object's,
+ * each axis a 16-bit subtract, then AngleFromDelta.
+ * HOW: Four bytes subtracted with the carries running on; it runs into AngleFromDelta.
  * WAITS: no.
- * Entry: X object. Exit: as AngleFromDelta. Clobbers zTemp00-03.
+ * Entry: X object, D clear. Exit: as AngleFromDelta. Clobbers zTemp00-03.
  */
-AngleResult AngleToPlayer(uint8_t object)
+AngleExit AngleToPlayer(uint8_t object)
 {
-    uint16_t dx = (uint16_t)(trig_object_x(0) - trig_object_x(object));
-    uint16_t dy = (uint16_t)(trig_object_y(0) - trig_object_y(object));
+    uint8_t value, other;
+    Sum sum;
 
-    return angle_of_vector(dx, dy);
+    value = RD8(OBJ->x_lo[0]);
+    other = RD8(OBJ->x_lo[object]);
+    sum = add_bytes(value, (uint8_t)~other, true);
+    WR8(ZP->temp00, sum.value);
+    value = RD8(OBJ->x_hi[0]);
+    other = RD8(OBJ->x_hi[object]);
+    sum = add_bytes(value, (uint8_t)~other, sum.carry);
+    WR8(ZP->temp01, sum.value);
+    value = RD8(OBJ->y_lo[0]);
+    other = RD8(OBJ->y_lo[object]);
+    sum = add_bytes(value, (uint8_t)~other, true);
+    WR8(ZP->temp02, sum.value);
+    value = RD8(OBJ->y_hi[0]);
+    other = RD8(OBJ->y_hi[object]);
+    sum = add_bytes(value, (uint8_t)~other, sum.carry);
+    WR8(ZP->temp03, sum.value);
+    return AngleFromDelta();
 }
 
 void abi_AngleToPlayer(void)
 {
-    abi_angle(AngleToPlayer(cpu.x));
+    angle_exit_shim(AngleToPlayer(cpu.x));
 }
 
-/* The short way round is downward when the target is less than a half turn below. */
-static bool turn_goes_down(uint8_t now, uint8_t target)
+/*
+ * @routine 0045:7CF AngleToPoint
+ * @run 69:57CF
+ * WHAT IT DOES: The angle from an object to a point: the point's coordinates (zTemp08-0B) minus
+ * the object's, each axis a 16-bit subtract, then AngleFromDelta.
+ * HOW: As AngleToPlayer, with the point in place of the player; a branch into AngleFromDelta.
+ * WAITS: no.
+ * Entry: X object, zTemp08-0B the point, D clear. Exit: as AngleFromDelta. Clobbers zTemp00-03.
+ */
+AngleExit AngleToPoint(uint8_t object)
 {
-    return (uint8_t)(now - target) < HALF_TURN;
+    uint8_t value, other;
+    Sum sum;
+
+    value = RD8(ZP->temp08);
+    other = RD8(OBJ->x_lo[object]);
+    sum = add_bytes(value, (uint8_t)~other, true);
+    WR8(ZP->temp00, sum.value);
+    value = RD8(ZP->temp09);
+    other = RD8(OBJ->x_hi[object]);
+    sum = add_bytes(value, (uint8_t)~other, sum.carry);
+    WR8(ZP->temp01, sum.value);
+    value = RD8(ZP->temp0_a);
+    other = RD8(OBJ->y_lo[object]);
+    sum = add_bytes(value, (uint8_t)~other, true);
+    WR8(ZP->temp02, sum.value);
+    value = RD8(ZP->temp0_b);
+    other = RD8(OBJ->y_hi[object]);
+    sum = add_bytes(value, (uint8_t)~other, sum.carry);
+    WR8(ZP->temp03, sum.value);
+    return AngleFromDelta();
+}
+
+void abi_AngleToPoint(void)
+{
+    angle_exit_shim(AngleToPoint(cpu.x));
+}
+
+/*
+ * @routine 0045:7EF AngleToPlayerOffset
+ * @run 69:57EF
+ * WHAT IT DOES: The angle from an object to a point offset from the player: the player's position
+ * minus the object's, plus the offset in zTemp08-0B, each axis 16 bits, then AngleFromDelta.
+ * HOW: The four subtracts as AngleToPlayer, then the four adds of the offset; a branch into
+ * AngleFromDelta.
+ * WAITS: no.
+ * Entry: X object, zTemp08-0B the offset, D clear. Exit: as AngleFromDelta. Clobbers zTemp00-03.
+ */
+AngleExit AngleToPlayerOffset(uint8_t object)
+{
+    uint8_t value, other;
+    Sum sum;
+
+    value = RD8(OBJ->x_lo[0]);
+    other = RD8(OBJ->x_lo[object]);
+    sum = add_bytes(value, (uint8_t)~other, true);
+    WR8(ZP->temp00, sum.value);
+    value = RD8(OBJ->x_hi[0]);
+    other = RD8(OBJ->x_hi[object]);
+    sum = add_bytes(value, (uint8_t)~other, sum.carry);
+    WR8(ZP->temp01, sum.value);
+    value = RD8(OBJ->y_lo[0]);
+    other = RD8(OBJ->y_lo[object]);
+    sum = add_bytes(value, (uint8_t)~other, true);
+    WR8(ZP->temp02, sum.value);
+    value = RD8(OBJ->y_hi[0]);
+    other = RD8(OBJ->y_hi[object]);
+    sum = add_bytes(value, (uint8_t)~other, sum.carry);
+    WR8(ZP->temp03, sum.value);
+    value = RD8(ZP->temp00);
+    other = RD8(ZP->temp08);
+    sum = add_bytes(value, other, false);
+    WR8(ZP->temp00, sum.value);
+    value = RD8(ZP->temp01);
+    other = RD8(ZP->temp09);
+    sum = add_bytes(value, other, sum.carry);
+    WR8(ZP->temp01, sum.value);
+    value = RD8(ZP->temp02);
+    other = RD8(ZP->temp0_a);
+    sum = add_bytes(value, other, false);
+    WR8(ZP->temp02, sum.value);
+    value = RD8(ZP->temp03);
+    other = RD8(ZP->temp0_b);
+    sum = add_bytes(value, other, sum.carry);
+    WR8(ZP->temp03, sum.value);
+    return AngleFromDelta();
+}
+
+void abi_AngleToPlayerOffset(void)
+{
+    angle_exit_shim(AngleToPlayerOffset(cpu.x));
 }
 
 /*
  * @routine 0046:2D2 TurnAngleToward
  * @run 69:5AD2
  * WHAT IT DOES: Turns an angle one step toward a target, the short way round.
- * HOW: Equal angles stay. Otherwise compares them in the half of the circle
- * the current angle lies in, a half turn deciding which way is shorter, and
- * adds or subtracts the step. A step can overshoot the target: nothing here
- * clamps it.
+ * HOW: Equal angles stay. Otherwise compares them in the half of the circle the current angle
+ * lies in, a half turn deciding which way is shorter, and adds or subtracts the step. A step
+ * can overshoot the target: nothing here clamps it.
  * WAITS: no.
- * Entry: zTemp00 step, zTemp01 current, zTemp02 target. Exit: A the new angle,
- * N and Z from it, C and V from the step; on equal angles A current, N 0, Z 1,
- * C 1, V kept. X and Y kept.
+ * Entry: zTemp00 step, zTemp01 current, zTemp02 target, D clear. Exit: A the new angle, N and Z
+ * from it, C and V from the step; on equal angles A current, N 0, Z 1, C 1, V kept. X and Y
+ * kept.
  */
-uint8_t TurnAngleToward(void)
+TurnAngleResult TurnAngleToward(void)
 {
-    uint8_t step = rd8(zTemp00);
-    uint8_t now = rd8(zTemp01);
-    uint8_t target = rd8(zTemp02);
+    TurnAngleResult result = { 0, true, { 0, false, false } };
+    uint8_t now, target, shifted, step;
+    bool down;
 
-    if (now == target)
-        return now;
-    return (uint8_t)(turn_goes_down(now, target) ? now - step : now + step);
+    now = RD8(ZP->temp01);
+    target = RD8(ZP->temp02);
+    result.angle = now;
+    if (now == target) {
+        return result;
+    }
+    result.equal = false;
+    now = RD8(ZP->temp01);
+    if ((now & 0x80) != 0) {
+        target = RD8(ZP->temp02);
+        if (now < target) {
+            down = false;
+        } else {
+            shifted = (uint8_t)(now - 0x80);
+            target = RD8(ZP->temp02);
+            down = shifted < target;
+        }
+    } else {
+        target = RD8(ZP->temp02);
+        if (now >= target) {
+            down = true;
+        } else {
+            shifted = (uint8_t)(now + 0x80);
+            target = RD8(ZP->temp02);
+            down = shifted < target;
+        }
+    }
+    now = RD8(ZP->temp01);
+    step = RD8(ZP->temp00);
+    result.last = down ? add_bytes(now, (uint8_t)~step, true) : add_bytes(now, step, false);
+    return result;
 }
 
-static Alu turn_exit_shim(uint8_t step, uint8_t now, uint8_t target)
+/* Equal: A the angle, N 0, Z 1, C 1. Else A the new angle, N and Z from it, C and V from the step. */
+void turn_angle_exit_shim(TurnAngleResult result)
 {
-    Alu exit = alu_none();
-
-    if (now == target) {
-        exit.a = now;
-        exit.nz = 0;
-        exit.c = true;
-        exit.c_kept = false;
-        return exit;
+    if (result.equal) {
+        cpu.a = result.angle;
+        abi_nz(0);
+        abi_flag(P_C, true);
+        return;
     }
-    return turn_goes_down(now, target) ? sbc8(now, step, true) : adc8(now, step, false);
+    cpu.a = result.last.value;
+    abi_nz(result.last.value);
+    abi_flag(P_C, result.last.carry);
+    abi_flag(P_V, result.last.overflow);
 }
 
 void abi_TurnAngleToward(void)
 {
-    uint8_t step = rd8(zTemp00);
-    uint8_t now = rd8(zTemp01);
-    uint8_t target = rd8(zTemp02);
-    Alu exit = turn_exit_shim(step, now, target);
-
-    exit.a = TurnAngleToward();
-    abi_alu(exit);
+    turn_angle_exit_shim(TurnAngleToward());
 }
 
 /*

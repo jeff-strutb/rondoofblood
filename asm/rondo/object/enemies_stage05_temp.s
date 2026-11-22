@@ -75,6 +75,50 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0938:7F2 SelectRasterStage1
 ; @run 6F:BFF2
 ; WHAT IT DOES: Sets the stage value the raster effect tests to 1.
@@ -944,4 +988,57 @@ PickSpeedAndTurnFromTableC:
     beq PickSpeedAndTurnFromTableC_at0
     jmp VecNegateVelocityX
 PickSpeedAndTurnFromTableC_at0:
+    rts
+
+; @routine 093D:13E TurnOnRandomBeatWalkB
+; @run 71:C13E
+; @stop C16F
+; WHAT IT DOES: A walk that turns on a random beat: at its first step it turns to the player's side,
+; takes an X speed from a table at overlay address $C16F (two bytes by side), picks life_timer
+; at random from eight bytes at $C173, stops the animation and moves on; after that it runs
+; TurnOnRandomBeatWalkFollowB.
+; HOW: The shared body; the two tables lie between the two parts and stay data.
+; WAITS: no.
+; Entry: X object, D clear. Exit: first step: A the timer, N, Z from the new step, C and V from
+; NextRandom, Y its index; later as TurnOnRandomBeatWalkFollowB.
+TurnOnRandomBeatWalkB:
+    lda a:OBJ_2800,x
+    bne TurnOnRandomBeatWalkFollowB
+    jsr VecSideOfPlayer
+    and #$01
+    asl a
+    tay
+    lda a:$C16F,y
+    sta a:OBJ_VX_HI,x
+    lda a:$C16F+1,y
+    sta a:OBJ_VX_LO,x
+    jsr VecNextRandom
+    and #$07
+    tay
+    lda a:$C173,y
+    sta a:OBJ_34B8,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_3510,x
+    inc a:OBJ_2800,x
+    rts
+
+; @routine 093D:17B TurnOnRandomBeatWalkFollowB
+; @run 71:C17B
+; WHAT IT DOES: The later steps of TurnOnRandomBeatWalkB: animates the object facing the player (list 2),
+; counts life_timer down and moves it along X; at zero it enters state 5 with step 0.
+; HOW: StepFramesFacingPlayerC, a decrement, ApplyVelocityX as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the animation step, the decrement and ApplyVelocityX leave them
+; (A 5 and N, Z clear at zero).
+TurnOnRandomBeatWalkFollowB:
+    ldy #$02
+    jsr StepFramesFacingPlayerC
+    dec a:OBJ_34B8,x
+    beq TurnOnRandomBeatWalkFollowB_done
+    jmp VecApplyVelocityX
+TurnOnRandomBeatWalkFollowB_done:
+    lda #$05
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
     rts

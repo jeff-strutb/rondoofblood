@@ -61,6 +61,42 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 07DB:5FD ClampSpeedXToTwo
 ; @run 70:B5FD
 ; WHAT IT DOES: Keeps an object's X speed from passing 2 pixels a frame either way: a speed over
@@ -730,4 +766,57 @@ SoundEveryFourthFrameB:
     lda #$22
     jsr VecSoundIfOnFirstScreen
 SoundEveryFourthFrameB_at0:
+    rts
+
+; @routine 07DB:67B TurnOnRandomBeatWalkA
+; @run 70:B67B
+; @stop B6AC
+; WHAT IT DOES: A walk that turns on a random beat: at its first step it turns to the player's side,
+; takes an X speed from a table at overlay address $B6AC (two bytes by side), picks life_timer
+; at random from eight bytes at $B6B0, stops the animation and moves on; after that it runs
+; TurnOnRandomBeatWalkFollowA.
+; HOW: The shared body; the two tables lie between the two parts and stay data.
+; WAITS: no.
+; Entry: X object, D clear. Exit: first step: A the timer, N, Z from the new step, C and V from
+; NextRandom, Y its index; later as TurnOnRandomBeatWalkFollowA.
+TurnOnRandomBeatWalkA:
+    lda a:OBJ_2800,x
+    bne TurnOnRandomBeatWalkFollowA
+    jsr VecSideOfPlayer
+    and #$01
+    asl a
+    tay
+    lda a:$B6AC,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B6AC+1,y
+    sta a:OBJ_VX_LO,x
+    jsr VecNextRandom
+    and #$07
+    tay
+    lda a:$B6B0,y
+    sta a:OBJ_34B8,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_3510,x
+    inc a:OBJ_2800,x
+    rts
+
+; @routine 07DB:6B8 TurnOnRandomBeatWalkFollowA
+; @run 70:B6B8
+; WHAT IT DOES: The later steps of TurnOnRandomBeatWalkA: animates the object facing the player (list 2),
+; counts life_timer down and moves it along X; at zero it enters state 5 with step 0.
+; HOW: StepFramesFacingPlayer, a decrement, ApplyVelocityX as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the animation step, the decrement and ApplyVelocityX leave them
+; (A 5 and N, Z clear at zero).
+TurnOnRandomBeatWalkFollowA:
+    ldy #$02
+    jsr StepFramesFacingPlayer
+    dec a:OBJ_34B8,x
+    beq TurnOnRandomBeatWalkFollowA_done
+    jmp VecApplyVelocityX
+TurnOnRandomBeatWalkFollowA_done:
+    lda #$05
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
     rts

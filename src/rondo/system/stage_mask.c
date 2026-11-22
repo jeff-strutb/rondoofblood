@@ -28,7 +28,7 @@ static MaskExit mask_cells(uint8_t x, uint8_t y, uint16_t from)
         uint8_t cell;
         uint8_t mask;
 
-        offset = rd8((uint16_t)(StageMaskOffsets + step));
+        offset = TBL8(StageMaskOffsets, step);
         base = RD8(ZP->temp08);
         out.last = add_bytes(offset, base, false);
         cell = RD8(STAGEWORK->mask_buffer[(uint16_t)(out.last.value + from)]);

@@ -618,6 +618,18 @@ void ResetDisplayControl(void);
 /* NextRandom: the byte, and the carry and overflow of the last add. */
 typedef struct { uint8_t value; bool carry; bool overflow; } RandomResult;
 RandomResult NextRandom(void);
+/* math/trig.c: the angle routines' results. */
+typedef struct { uint8_t a; uint8_t y; bool c; bool v; } AngleExit;
+typedef struct { uint8_t angle; bool equal; Sum last; } TurnAngleResult;
+AngleExit AngleOfFirstQuadrant(void);
+AngleExit AngleFromDelta(void);
+AngleExit AngleToPlayer(uint8_t object);
+AngleExit AngleToPoint(uint8_t object);
+AngleExit AngleToPlayerOffset(uint8_t object);
+TurnAngleResult TurnAngleToward(void);
+void angle_exit_shim(AngleExit result);
+void turn_angle_exit_shim(TurnAngleResult result);
+
 /* math/trig.c: a multiply or a scale and what it leaves: A, N/Z source, C, and V when an add ran. */
 typedef struct { uint8_t a; uint8_t nz; bool carry; bool v_set; bool overflow; } ScaleResult;
 ScaleResult MultiplyBySineWord(void);

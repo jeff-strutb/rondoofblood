@@ -71,10 +71,15 @@ def main():
     out = ['#include <stdint.h>', 'typedef struct { uint16_t run; uint16_t len; uint32_t disc; '
            'const char *name; void (*abi)(void); int swappable; uint16_t ends; int rom; } Tag;']
     rows = []
+    serve = set()
+    if DRAFTS and os.path.exists(SERVE):
+        serve = {r["name"] for r in csv.DictReader(open(SERVE, newline=""))}
     bad = 0
     swappable = 0
     for i, r in enumerate(routines):
         abi = "abi_" + r["name"]
+        if r["name"] in serve:
+            continue
         if abi not in calls:
             print(f"{r['tag']} {r['name']}: no {abi}")
             bad += 1
@@ -87,6 +92,8 @@ def main():
         rows.append(f'    {{ 0x{r["run"]:04X}, {length}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x{r["ends"]:04X}, 0 }},')
     for r in cardfile.spans():
         abi = "abi_" + r["name"]
+        if r["name"] in serve:
+            continue
         if abi not in calls:
             print(f"{r['tag']} {r['name']}: no {abi}")
             bad += 1
@@ -96,9 +103,6 @@ def main():
         out.append(f"void {abi}(void);")
         rows.append(f'    {{ 0x{r["run"]:04X}, {r["length"]}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x0000, 1 }},')
     if DRAFTS:
-        serve = set()
-        if os.path.exists(SERVE):
-            serve = {r["name"] for r in csv.DictReader(open(SERVE, newline=""))}
         have = {r["name"] for r in routines if "abi_" + r["name"] in calls}
         have |= {r["name"] for r in cardfile.spans() if "abi_" + r["name"] in calls}
         taken = {m.group(1) for m in (re.search(r'"(\w+)", abi_', x) for x in rows) if m}
@@ -114,7 +118,7 @@ def main():
             ok = not reaches_original(abi, calls)
             swappable += ok
             out.append(f"void {abi}(void);")
-            rows.append(f'    {{ 0x{int(r["run"], 16):04X}, {r["length"]}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x0000, 0 }},')
+            rows.append(f'    {{ 0x{int(r["run"], 16):04X}, {r["length"]}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x0000, {int(r.get("rom") or 0)} }},')
             added += 1
         print(f"{added} drafted routines")
     out +=["const Tag rondo_tags[] = {"] + rows + ["};",

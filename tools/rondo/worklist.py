@@ -135,17 +135,25 @@ def a5_reason(name, st, reach_scripts):
 
 
 def a7_reason(name, st, ext):
-    e = st["a7"].get(name)
-    if not e:
-        return "no counting script ran its C in lockstep (not swapped, not run inside a swapped call)"
+    """Why a routine lacks A7. Per-routine A7 (epoch 2): the checker puts each access defect under the innermost
+    tagged routine, and a routine passes only when every script reaching it is IDENTICAL with its C in place and no
+    defect sits under it. Lockstep with the legacy C is red on every script, so nothing passes yet."""
     stats = records.a7_scripts(st["rec"], st["chash"], ext)
+    red = sorted(s for s, v in stats.items() if v != ("current", "IDENTICAL"))
+    lead = (f"A7 not passed: lockstep is not identical on {len(red)} of {len(stats)} scripts measured with the legacy C, "
+            "and a routine passes only when every script reaching it is identical with its C in place. ") if red else ""
+    e = st["a7"].get(name)
+    mine = sorted({r["script"] + " " + r["defects"] for r in st["rec"].a7 if r["routine"] == name and r.get("defects")})
+    under = f" Defects under it: {'; '.join(mine[:3])}." if mine else ""
+    if not e:
+        return lead + "No counting script ran its C in lockstep (not swapped, not run inside a swapped call)." + under
     bad = []
     for s in e[1]:
         status, verdict = stats.get(s, ("unmeasured", ""))
         row = st["rec"].scripts.get(s, {})
         bad.append(f"{s} ({status if status != 'current' else verdict}" +
                    (f": {row.get('detail', '')[:90]}" if row and status == "current" else "") + ")")
-    return "scripts reaching it not passing: " + "; ".join(bad)
+    return lead + "Scripts reaching it not passing: " + "; ".join(bad) + "." + under
 
 
 def part_routines(args, st, ext, maps, built, want):

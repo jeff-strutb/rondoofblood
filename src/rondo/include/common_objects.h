@@ -115,6 +115,11 @@ typedef struct {
     uint16_t push_before, push_amount;
 } Probe;
 
+/* object/sensing.c: the probes (carry_in is the C the caller left; it reaches the overlay's lookup). */
+Probe ProbeTerrain(uint8_t request, uint8_t object, uint8_t column, bool carry_in);
+Probe ProbeTerrainAlt(uint8_t request, uint8_t object, uint8_t column, bool carry_in);
+Probe ProbeTerrainFrontColumn(uint8_t request, uint8_t object, uint8_t column, bool carry_in);
+
 /* Exit shims exported from the files that define them, for callers' wrappers. */
 void probe_exit_shim(Probe p);  /* object/sensing.c */
 

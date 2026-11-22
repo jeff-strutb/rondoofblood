@@ -56,6 +56,7 @@ static uint8_t row_offset_for_column(void)
  * @run 6B:9752
  * WHAT IT DOES: A slope tile: moves the point's row by a table on its column.
  * HOW: TileStepsC by column, added to the row.
+ * WAITS: no.
  * Entry: zTemp00 column, zTemp02 row. Exit: as tile_handler_exit_shim for the tile in A.
  */
 void TileStepC(void)
@@ -68,6 +69,7 @@ void TileStepC(void)
  * @run 6B:975F
  * WHAT IT DOES: A slope tile: gives the point a new row from a table on its row and column.
  * HOW: TileRowsA, eight rows of eight.
+ * WAITS: no.
  * Entry and exit: as TileStepC.
  */
 void TileRowA(void)
@@ -80,6 +82,7 @@ void TileRowA(void)
  * @run 6B:9770
  * WHAT IT DOES: A slope tile: gives the point a new row from a table on its row and column.
  * HOW: TileRowsB, eight rows of eight.
+ * WAITS: no.
  * Entry and exit: as TileStepC.
  */
 void TileRowB(void)
@@ -93,6 +96,7 @@ void TileRowB(void)
  * WHAT IT DOES: The tiles $87-$8A: a step that differs between the tile's left and right
  * halves.
  * HOW: A pair of bytes in TileHalfStepsA by tile, the second for the right half.
+ * WAITS: no.
  * Entry: A tile, zTemp00 column, zTemp02 row. Exit: as TileStepC.
  */
 void TileHalfStepA(uint8_t tile)
@@ -107,6 +111,7 @@ void TileHalfStepA(uint8_t tile)
  * @run 6B:9795
  * WHAT IT DOES: The tiles $8C-$8F: as TileHalfStepA, the other way round.
  * HOW: A pair of bytes in TileHalfStepsB by tile, the second for the left half.
+ * WAITS: no.
  * Entry and exit: as TileHalfStepA.
  */
 void TileHalfStepB(uint8_t tile)
@@ -121,6 +126,7 @@ void TileHalfStepB(uint8_t tile)
  * @run 6B:97A9
  * WHAT IT DOES: The tiles $86 and $8B: the point's row one lower.
  * HOW: An increment.
+ * WAITS: no.
  * Entry: zTemp02 row. Exit: as TileStepC, Y, C and V kept.
  */
 void TileNudgeA(void)
@@ -133,6 +139,7 @@ void TileNudgeA(void)
  * @run 6B:97AE
  * WHAT IT DOES: A slope tile: moves the point's row by a table on its column.
  * HOW: TileStepsD by column, added to the row.
+ * WAITS: no.
  * Entry and exit: as TileStepC.
  */
 void TileStepD(void)
@@ -145,6 +152,7 @@ void TileStepD(void)
  * @run 6B:97BB
  * WHAT IT DOES: A slope tile: gives the point a new row from a table on its row and column.
  * HOW: TileRowsC, eight rows of eight.
+ * WAITS: no.
  * Entry and exit: as TileStepC.
  */
 void TileRowC(void)
@@ -157,6 +165,7 @@ void TileRowC(void)
  * @run 6B:97CC
  * WHAT IT DOES: A slope tile: gives the point a new row from a table on its row and column.
  * HOW: TileRowsD, eight rows of eight.
+ * WAITS: no.
  * Entry and exit: as TileStepC.
  */
 void TileRowD(void)
@@ -579,6 +588,7 @@ static void run_tile_handler(uint8_t tile)
  * HOW: The point plus the scroll gives the tile's place in the 64 by 128 background; its
  * entry is read from VRAM. The entry's low byte and a page by its high bits give the
  * attribute. Attributes $80-$9B go through a table of handlers.
+ * WAITS: no.
  * Entry: zTemp00-01 X, zTemp02-03 Y. Exit: A the answer, zTemp00 the column, zTemp02 the row.
  * X kept. Clobbers zTemp04-09.
  */
@@ -758,6 +768,7 @@ static uint16_t probe_columns(uint8_t probe)
  * attribute, and how far into the tile, for each. A column marked as absent reads as nothing.
  * HOW: The probe table gives each column's offsets from the object, and TerrainTileRead
  * reads there. Answers go to TileHit, TileDepthX and TileDepthY.
+ * WAITS: no.
  * Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
  * read or add. Clobbers zTemp00-0D.
  */
@@ -832,6 +843,7 @@ void abi_TerrainLookup(void)
  * pixels above it, and if that too is solid the floor bits come off the column's answer.
  * HOW: The same probe's offsets. The second add at $9657 goes back into the low byte of Y,
  * as the original has it, not the high.
+ * WAITS: no.
  * Entry and exit: as TerrainLookup.
  */
 LookupEnd TerrainLookupAlt(uint8_t probe, uint8_t object)
@@ -880,7 +892,7 @@ void abi_TerrainLookupAlt(void)
 }
 
 /* One call to another overlay's copy of a lookup, which has no C yet. */
-static LookupEnd original_lookup_shim(uint16_t vector, uint8_t probe, uint8_t object, uint8_t column)
+static LookupEnd original_lookup_shim(uint16_t vector, uint8_t probe, uint8_t object, uint8_t column, bool carry_in)
 {
     LookupEnd end = { true };
 
@@ -888,6 +900,7 @@ static LookupEnd original_lookup_shim(uint16_t vector, uint8_t probe, uint8_t ob
     abi_nz(probe);
     cpu.x = object;
     cpu.y = column;
+    abi_flag(P_C, carry_in);
     call_original(vector);
     end.column_after = cpu.y;
     return end;
@@ -897,23 +910,23 @@ static LookupEnd original_lookup_shim(uint16_t vector, uint8_t probe, uint8_t ob
  * The lookups at $800C and $800F of whichever stage overlay is in RAM. Y on entry is a column
  * only to another overlay's code, and all of this copy's leave it past their last column.
  */
-LookupEnd StageLookup(uint8_t probe, uint8_t object, uint8_t column)
+LookupEnd StageLookup(uint8_t probe, uint8_t object, uint8_t column, bool carry_in)
 {
     LookupEnd end;
 
     if (!terrain_family_resident())
-        return original_lookup_shim(OverlayTerrainLookup, probe, object, column);
+        return original_lookup_shim(OverlayTerrainLookup, probe, object, column, carry_in);
     end = TerrainLookup(probe, object);
     end.column_after = PROBE_COLUMNS * PROBE_COLUMN_BYTES;
     return end;
 }
 
-LookupEnd StageLookupAlt(uint8_t probe, uint8_t object, uint8_t column)
+LookupEnd StageLookupAlt(uint8_t probe, uint8_t object, uint8_t column, bool carry_in)
 {
     LookupEnd end;
 
     if (!terrain_family_resident())
-        return original_lookup_shim(OverlayTerrainLookupAlt, probe, object, column);
+        return original_lookup_shim(OverlayTerrainLookupAlt, probe, object, column, carry_in);
     end = TerrainLookupAlt(probe, object);
     end.column_after = PROBE_COLUMNS * PROBE_COLUMN_BYTES;
     return end;

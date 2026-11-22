@@ -1,27 +1,24 @@
 /* Object movement: velocity added to position, velocity turned round. */
 #include "machine.h"
 #include "ram.h"
+#include "access.h"
 #include "routines.h"
 
-/* One object's fields on one axis, as addresses. */
+/* One axis's fields in the object table: the column of each, kept as a base so one body serves X and Y. */
 typedef struct {
     uint16_t velocity_lo, velocity_hi, frac, low, high;
 } AxisFields;
 
-static AxisFields x_fields(uint8_t object)
+static AxisFields x_fields(void)
 {
-    AxisFields f = { (uint16_t)(OBJ_VX_LO + object), (uint16_t)(OBJ_VX_HI + object),
-                     (uint16_t)(OBJ_X_FRAC + object), (uint16_t)(OBJ_X_LO + object),
-                     (uint16_t)(OBJ_X_HI + object) };
+    AxisFields f = { COL(OBJ->vx_lo), COL(OBJ->vx_hi), COL(OBJ->x_frac), COL(OBJ->x_lo), COL(OBJ->x_hi) };
 
     return f;
 }
 
-static AxisFields y_fields(uint8_t object)
+static AxisFields y_fields(void)
 {
-    AxisFields f = { (uint16_t)(OBJ_VY_LO + object), (uint16_t)(OBJ_VY_HI + object),
-                     (uint16_t)(OBJ_Y_FRAC + object), (uint16_t)(OBJ_Y_LO + object),
-                     (uint16_t)(OBJ_Y_HI + object) };
+    AxisFields f = { COL(OBJ->vy_lo), COL(OBJ->vy_hi), COL(OBJ->y_frac), COL(OBJ->y_lo), COL(OBJ->y_hi) };
 
     return f;
 }
@@ -32,31 +29,32 @@ static AxisFields y_fields(uint8_t object)
  * for the add), and each position byte is read, added and stored before the next. zTemp10 is
  * left as the velocity's sign.
  */
-static AxisMove apply_axis(AxisFields f)
+static AxisMove apply_axis(AxisFields f, uint8_t object)
 {
     AxisMove move;
     uint8_t high_for_sign, low, high, frac, mid, top, sign;
     unsigned sum;
     uint8_t carry;
 
-    wr8(zTemp10, 0);
-    high_for_sign = rd8(f.velocity_hi);
-    if (high_for_sign & 0x80)
-        wr8(zTemp10, (uint8_t)(rd8(zTemp10) - 1));
-    low = rd8(f.velocity_lo);
-    frac = rd8(f.frac);
+    WR8(ZP->temp10, 0);
+    high_for_sign = RD8_IDX(f.velocity_hi, object);
+    if (high_for_sign & 0x80) {
+        DEC8(ZP->temp10);
+    }
+    low = RD8_IDX(f.velocity_lo, object);
+    frac = RD8_IDX(f.frac, object);
     sum = (unsigned)low + frac;
     carry = sum > 0xFF;
-    wr8(f.frac, (uint8_t)sum);
-    high = rd8(f.velocity_hi);
-    mid = rd8(f.low);
+    WR8_IDX(f.frac, object, (uint8_t)sum);
+    high = RD8_IDX(f.velocity_hi, object);
+    mid = RD8_IDX(f.low, object);
     sum = (unsigned)high + mid + carry;
     carry = sum > 0xFF;
-    wr8(f.low, (uint8_t)sum);
-    sign = rd8(zTemp10);
-    top = rd8(f.high);
+    WR8_IDX(f.low, object, (uint8_t)sum);
+    sign = RD8(ZP->temp10);
+    top = RD8_IDX(f.high, object);
     sum = (unsigned)sign + top + carry;
-    wr8(f.high, (uint8_t)sum);
+    WR8_IDX(f.high, object, (uint8_t)sum);
     move.velocity = (int16_t)(low | (high << 8));
     move.before = frac | ((uint32_t)mid << 8) | ((uint32_t)top << 16);
     return move;
@@ -88,12 +86,13 @@ static void axis_move_exit_shim(AxisMove move)
  * WHAT IT DOES: Moves an object along X by its X velocity.
  * HOW: See apply_axis. The bytes repeat the head of ApplyVelocity, as its own
  * entry that returns.
+ * WAITS: no.
  * Entry: X object. Exit: A the position's high byte, N, Z, C and V from its add.
  * X and Y kept. Clobbers zTemp10.
  */
 AxisMove ApplyVelocityX(uint8_t object)
 {
-    return apply_axis(x_fields(object));
+    return apply_axis(x_fields(), object);
 }
 
 void abi_ApplyVelocityX(void)
@@ -106,11 +105,12 @@ void abi_ApplyVelocityX(void)
  * @run 69:55F6
  * WHAT IT DOES: Moves an object along Y by its Y velocity.
  * HOW: See apply_axis.
+ * WAITS: no.
  * Entry: X object. Exit: as ApplyVelocityX. Clobbers zTemp10.
  */
 AxisMove ApplyVelocityY(uint8_t object)
 {
-    return apply_axis(y_fields(object));
+    return apply_axis(y_fields(), object);
 }
 
 void abi_ApplyVelocityY(void)

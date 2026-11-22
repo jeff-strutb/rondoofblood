@@ -52,6 +52,42 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 08 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 08 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0D5B:200 SetPhase2
 ; @run 70:B200
 ; WHAT IT DOES: Sets the object's f34b8 to 2, the phase SetSpeedFromPhaseTable reads.
@@ -297,4 +333,107 @@ PickPhaseAtRandomB:
 PickPhaseAtRandomB_at0:
     lda #$01
     sta a:OBJ_34B8,x
+    rts
+
+; @routine 0D5E:15C StartWithTimerByNextKind
+; @run 71:C95C
+; WHAT IT DOES: Starts the object from its record, sets its life_timer from a table at overlay
+; address $C96F by its next_kind, and clears f3510 and f3568.
+; HOW: LoadObjectRecord, one table read.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the timer, N, Z from it; C from the record; Y the next_kind.
+StartWithTimerByNextKind:
+    jsr VecLoadObjectRecord
+    ldy a:OBJ_3040,x
+    lda a:$C96F,y
+    sta a:OBJ_34B8,x
+    stz a:OBJ_3510,x
+    stz a:OBJ_3568,x
+    rts
+
+; @routine 0D5E:18F WalkWhileFrameChangesC
+; @run 71:C98F
+; WHAT IT DOES: Animates the object facing the player and, on the frames where the picture
+; changed, gives it an X speed from a table at overlay address $C9A2 by its f3510 and moves it.
+; HOW: StepFramesFacingPlayerE with Y 0, then ApplyVelocityX.
+; WAITS: no.
+; Entry, exit: as WalkWhileFrameChanges.
+WalkWhileFrameChangesC:
+    cly
+    jsr StepFramesFacingPlayerE
+    bcc WalkWhileFrameChangesC_at0
+    ldy a:OBJ_3510,x
+    lda a:$C9A2,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+WalkWhileFrameChangesC_at0:
+    rts
+
+; @routine 0D5E:1A4 StepFramesFacingPlayerE
+; @run 71:C9A4
+; WHAT IT DOES: Turns the object to face the player and steps its animation along the list whose
+; pointer is the pair of bytes at overlay address $C9B9 plus Y.
+; HOW: SideOfPlayer, the pointer into zTemp10-11, then StepObjectFrames as a tail jump.
+; WAITS: no.
+; Entry: X object, Y the list's offset, D clear. Exit: as StepObjectFrames. Clobbers zTemp00,
+; zTemp10-11.
+StepFramesFacingPlayerE:
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    lda a:$C9B9,y
+    sta z:zTemp10
+    lda a:$C9BA,y
+    sta z:zTemp11
+    jmp VecStepObjectFrames
+
+; @routine 0D5E:4B0 StartWithFrameByNextKind
+; @run 71:CCB0
+; WHAT IT DOES: Starts the object from its record, clears f3568, and gives it a frame from a two
+; byte table at overlay address $CCC7 by bit 4 of its next_kind.
+; HOW: LoadObjectRecord, one table read.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the frame, N, Z from it; C bit 3 of next_kind; Y 0 or 1.
+StartWithFrameByNextKind:
+    jsr VecLoadObjectRecord
+    stz a:OBJ_3568,x
+    lda a:OBJ_3040,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$01
+    tay
+    lda a:$CCC7,y
+    sta a:OBJ_2A68,x
+    rts
+
+; @routine 0D5E:4EC AnimateByKindThenNextState
+; @run 71:CCEC
+; WHAT IT DOES: Animates the object along one of two lists (pointers at overlay address $CD0F)
+; picked by bit 4 of its next_kind; when the list has ended it sets f3250 to 2 and moves the
+; object on to its next state.
+; HOW: StepObjectFrames.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as StepObjectFrames, or at the end A 2 and N, Z from the new
+; state. Clobbers zTemp10-11.
+AnimateByKindThenNextState:
+    lda a:OBJ_3040,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$01
+    asl a
+    tay
+    lda a:$CD0F,y
+    sta z:zTemp10
+    lda a:$CD10,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne AnimateByKindThenNextState_at0
+    lda #$02
+    sta a:OBJ_3250,x
+    inc a:OBJ_27A8,x
+AnimateByKindThenNextState_at0:
     rts

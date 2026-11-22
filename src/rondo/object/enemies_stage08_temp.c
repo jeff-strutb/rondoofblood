@@ -422,3 +422,175 @@ void abi_PickPhaseAtRandomB(void)
 {
     abi_ended(PickPhaseAtRandomB(cpu.x));
 }
+
+/*
+ * @routine 0D5E:15C StartWithTimerByNextKind
+ * @run 71:C95C
+ * WHAT IT DOES: Starts the object from its record, sets its life_timer from a table at overlay
+ * address $C96F by its next_kind, and clears f3510 and f3568.
+ * HOW: LoadObjectRecord, one table read.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the timer, N, Z from it; C from the record; Y the next_kind.
+ */
+Ended StartWithTimerByNextKind(uint8_t slot)
+{
+    enum { TABLE = 0xC96F };
+    uint8_t nz, last, kind, value;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xC95F);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    kind = RD8(OBJ->next_kind[slot]);
+    value = rd8((uint16_t)(TABLE + kind));
+    WR8(OBJ->life_timer[slot], value);
+    WR8(OBJ->f3510[slot], 0);
+    WR8(OBJ->f3568[slot], 0);
+    return ended_then(e, ended_with_y(ended_load(value), kind));
+}
+
+void abi_StartWithTimerByNextKind(void)
+{
+    abi_ended(StartWithTimerByNextKind(cpu.x));
+}
+
+/*
+ * @routine 0D5E:4B0 StartWithFrameByNextKind
+ * @run 71:CCB0
+ * WHAT IT DOES: Starts the object from its record, clears f3568, and gives it a frame from a two
+ * byte table at overlay address $CCC7 by bit 4 of its next_kind.
+ * HOW: LoadObjectRecord, one table read.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the frame, N, Z from it; C bit 3 of next_kind; Y 0 or 1.
+ */
+Ended StartWithFrameByNextKind(uint8_t slot)
+{
+    enum { TABLE = 0xCCC7 };
+    uint8_t nz, last, kind, y, value;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xCCB3);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->f3568[slot], 0);
+    kind = RD8(OBJ->next_kind[slot]);
+    y = (uint8_t)((kind >> 4) & 1);
+    value = rd8((uint16_t)(TABLE + y));
+    WR8(OBJ->frame[slot], value);
+    return ended_then(e, ended_with_y(ended_with_carry(ended_load(value), (kind & 8) != 0), y));
+}
+
+void abi_StartWithFrameByNextKind(void)
+{
+    abi_ended(StartWithFrameByNextKind(cpu.x));
+}
+
+/*
+ * @routine 0D5E:4EC AnimateByKindThenNextState
+ * @run 71:CCEC
+ * WHAT IT DOES: Animates the object along one of two lists (pointers at overlay address $CD0F)
+ * picked by bit 4 of its next_kind; when the list has ended it sets f3250 to 2 and moves the
+ * object on to its next state.
+ * HOW: StepObjectFrames.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as StepObjectFrames, or at the end A 2 and N, Z from the new
+ * state. Clobbers zTemp10-11.
+ */
+Ended AnimateByKindThenNextState(uint8_t slot)
+{
+    enum { LISTS = 0xCD0F };
+    uint8_t kind = RD8(OBJ->next_kind[slot]);
+    uint8_t y = (uint8_t)(((kind >> 4) & 1) << 1);
+    uint8_t exit_y = y, state;
+    FrameStep step;
+    Ended e;
+
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + y)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + y)));
+    jsr_push(0xCD04);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), y), ended_of_frame_step(step, step != FRAME_HELD, exit_y));
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    WR8(OBJ->hitbox_on[slot], 2);
+    state = INC8(OBJ->state[slot]);
+    return ended_then(e, ended_with_a(ended_nz(state), 2));
+}
+
+void abi_AnimateByKindThenNextState(void)
+{
+    abi_ended(AnimateByKindThenNextState(cpu.x));
+}
+
+/*
+ * @routine 0D5E:1A4 StepFramesFacingPlayerE
+ * @run 71:C9A4
+ * WHAT IT DOES: Turns the object to face the player and steps its animation along the list whose
+ * pointer is the pair of bytes at overlay address $C9B9 plus Y.
+ * HOW: SideOfPlayer, the pointer into zTemp10-11, then StepObjectFrames as a tail jump.
+ * WAITS: no.
+ * Entry: X object, Y the list's offset, D clear. Exit: as StepObjectFrames. Clobbers zTemp00,
+ * zTemp10-11.
+ */
+FrameStepEnd StepFramesFacingPlayerE(uint8_t slot, uint8_t index)
+{
+    enum { LISTS = 0xC9B9 };
+    uint8_t sides, exit_y = index;
+    FrameStepEnd result;
+
+    jsr_push(0xC9A7);
+    sides = SideOfPlayer(slot).sides;
+    jsr_pop();
+    WR8(OBJ->facing_left[slot], (uint8_t)(sides & 1));
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
+    result.step = StepObjectFrames(slot, &exit_y);
+    result.end = ended_of_frame_step(result.step, result.step != FRAME_HELD, exit_y);
+    return result;
+}
+
+void abi_StepFramesFacingPlayerE(void)
+{
+    abi_ended(StepFramesFacingPlayerE(cpu.x, cpu.y).end);
+}
+
+/*
+ * @routine 0D5E:18F WalkWhileFrameChangesC
+ * @run 71:C98F
+ * WHAT IT DOES: Animates the object facing the player and, on the frames where the picture
+ * changed, gives it an X speed from a table at overlay address $C9A2 by its f3510 and moves it.
+ * HOW: StepFramesFacingPlayerE with Y 0, then ApplyVelocityX.
+ * WAITS: no.
+ * Entry, exit: as WalkWhileFrameChanges.
+ */
+Ended WalkWhileFrameChangesC(uint8_t slot)
+{
+    enum { SPEEDS = 0xC9A2 };
+    FrameStepEnd step;
+    uint8_t phase;
+    AxisMove move;
+
+    jsr_push(0xC993);
+    step = StepFramesFacingPlayerE(slot, 0);
+    jsr_pop();
+    if (step.step != FRAME_CHANGED) {
+        return ended_then(ended_with_y(ended_kept(), 0), step.end);
+    }
+    phase = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + phase)));
+    jsr_push(0xC9A1);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    return ended_then(ended_then(step.end, ended_with_y(ended_kept(), phase)), ended_of_axis_move(move));
+}
+
+void abi_WalkWhileFrameChangesC(void)
+{
+    abi_ended(WalkWhileFrameChangesC(cpu.x));
+}

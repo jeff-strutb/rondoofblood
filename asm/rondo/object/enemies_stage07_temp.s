@@ -31,6 +31,28 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 07 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 07 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0BFB:3DC EnterState4IfFlagged
 ; @run 70:B3DC
 ; WHAT IT DOES: Sends the object to state 4 when bit 7 of its status flags is set.
@@ -211,4 +233,143 @@ StartThenAnimate_at0:
     lda #$BC
     sta z:zTemp10
     jsr VecStepObjectFrames
+    rts
+
+; @routine 0BFC:247 RemoveFirstFreeSlotFrom1C
+; @run 70:BA47
+; WHAT IT DOES: Finds the first empty object slot from $1C to $1F and empties it fully (it is
+; already empty; this is the slot search's tail without its start), carry set when it found one.
+; HOW: A loop on the type byte; ClearObjectInY through its vector.
+; WAITS: no.
+; Entry: nothing, D clear. Exit: found: C 1, Y the slot, A 0, N 0, Z 1; none: C 0, Y $20, A the
+; last type, N 0, Z 1. X kept.
+RemoveFirstFreeSlotFrom1C:
+    ldy #$1C
+RemoveFirstFreeSlotFrom1C_at1:
+    lda a:OBJ_2750,y
+    beq RemoveFirstFreeSlotFrom1C_at0
+    iny
+    cpy #$20
+    bcc RemoveFirstFreeSlotFrom1C_at1
+    clc
+    rts
+RemoveFirstFreeSlotFrom1C_at0:
+    jsr VecClearObjectInY
+    sec
+    rts
+
+; @routine 0BFC:27C SpawnPiecesWhenFlaggedHit
+; @run 70:BA7C
+; WHAT IT DOES: When the object is past state 0 and bit 7 of its status flags is set, spawns its
+; eight pieces (SpawnEightPiecesType37) and enters state 4.
+; HOW: Two tests, then the spawn.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A 4 and N, Z clear, C, V and Y as the spawn left them; or A, N,
+; Z from the failing test.
+SpawnPiecesWhenFlaggedHit:
+    lda a:OBJ_27A8,x
+    beq SpawnPiecesWhenFlaggedHit_at0
+    lda a:OBJ_31A0,x
+    and #$80
+    beq SpawnPiecesWhenFlaggedHit_at0
+    jsr SpawnEightPiecesType37
+    lda #$04
+    sta a:OBJ_27A8,x
+SpawnPiecesWhenFlaggedHit_at0:
+    rts
+
+; @routine 0BFC:291 SpawnEightPiecesType37
+; @run 70:BA91
+; WHAT IT DOES: Starts up to eight objects of type $37 at the object's place, each in a free slot
+; from $30, each with its piece number in life_timer.
+; HOW: A loop over pieces 0 to 7 (kept in zHitSlot): FindFreeSlotFrom30, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, D clear. Exit: after eight pieces A the last piece number, N, Z, C from the
+; compare of Y with 8, Y 8; when no slot was free as FindFreeSlotFrom30 left it. X kept.
+SpawnEightPiecesType37:
+    cly
+SpawnEightPiecesType37_at1:
+    sty z:zHitSlot
+    jsr VecFindFreeSlotFrom30
+    bcc SpawnEightPiecesType37_at0
+    lda #$37
+    jsr VecStartObjectAtPlace
+    lda z:zHitSlot
+    sta a:OBJ_34B8,y
+    ldy z:zHitSlot
+    iny
+    cpy #$08
+    bcc SpawnEightPiecesType37_at1
+SpawnEightPiecesType37_at0:
+    rts
+
+; @routine 0BFC:395 AnimateThenRemove
+; @run 70:BB95
+; WHAT IT DOES: Animates the object along the list at overlay address $BBA6; when the list has
+; ended the object removes itself.
+; HOW: StepObjectFrames; ClearObject as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as StepObjectFrames. Clobbers zTemp10-11.
+AnimateThenRemove:
+    lda #$A6
+    sta z:zTemp10
+    lda #$BB
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne AnimateThenRemove_at0
+    jmp VecClearObject
+AnimateThenRemove_at0:
+    rts
+
+; @routine 0BFC:3BC StartWithRecordTableRow
+; @run 70:BBBC
+; @stop BBF5
+; WHAT IT DOES: The first time (state 0) starts the object from its record and gives it a row of
+; a table at overlay address $BBF5 (eight bytes, picked by its life_timer): a first Y speed (the
+; object is moved once by it), its frame, and its X and Y speeds. Past state 0 it runs
+; FallAndLeaveWhenLow, which it jumps to.
+; HOW: LoadObjectRecord; the row offset is kept on the stack across ApplyVelocityY.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the last row byte, N, Z from it, C and V from ApplyVelocityY,
+; Y the row offset; past state 0 as FallAndLeaveWhenLow.
+StartWithRecordTableRow:
+    lda a:OBJ_27A8,x
+    bne FallAndLeaveWhenLow
+    jsr VecLoadObjectRecord
+    lda a:OBJ_34B8,x
+    asl a
+    asl a
+    asl a
+    tay
+    phy
+    lda a:$BBF5,y
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    ply
+    lda a:$BBF6,y
+    sta a:OBJ_2A68,x
+    lda a:$BBF8,y
+    sta a:OBJ_VX_HI,x
+    lda a:$BBF7,y
+    sta a:OBJ_VX_LO,x
+    lda a:$BBFA,y
+    sta a:OBJ_VY_HI,x
+    lda a:$BBF9,y
+    sta a:OBJ_VY_LO,x
+    rts
+
+; @routine 0BFC:435 FallAndLeaveWhenLow
+; @run 70:BC35
+; WHAT IT DOES: Pulls the object down with gravity, moves it, and removes it when its Y high
+; byte is not zero (it has fallen off the screen).
+; HOW: ApplyGravityUnlimited, ApplyVelocity, a test; ClearObject as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the Y high byte, N, Z from it; C and V from ApplyVelocity.
+FallAndLeaveWhenLow:
+    jsr VecApplyGravityUnlimited
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_HI,x
+    beq FallAndLeaveWhenLow_at0
+    jmp VecClearObject
+FallAndLeaveWhenLow_at0:
     rts

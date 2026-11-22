@@ -185,15 +185,19 @@ void abi_ModeDoneAdd(void)
 Exit ScriptAdvance(void)
 {
     Exit exit;
-    Alu sum;
-    uint8_t command, length, low;
+    uint8_t command, length, low, sum_value;
+    bool sum_carry, sum_overflow;
+    unsigned total;
 
     command = RD8_PTR(ZP->SCRIPT_PTR);
     length = rd8((uint16_t)(SCRIPT_LENGTHS + command));
     low = RD8(ZP->SCRIPT_PTR);
-    sum = adc8(length, low, false);
-    WR8(ZP->SCRIPT_PTR, sum.a);
-    if (sum.c) {
+    total = (unsigned)length + low;
+    sum_value = (uint8_t)total;
+    sum_carry = total > 0xFF;
+    sum_overflow = ((length ^ sum_value) & (low ^ sum_value) & 0x80) != 0;
+    WR8(ZP->SCRIPT_PTR, sum_value);
+    if (sum_carry) {
         INC8(ZP->SCRIPT_PTR_HI);
     }
     exit = ScriptStep();
@@ -202,7 +206,7 @@ Exit ScriptAdvance(void)
         exit.x_kept = false;
     }
     if (!exit.v_set) {
-        exit.v = sum.v;
+        exit.v = sum_overflow;
         exit.v_set = true;
     }
     return exit;
@@ -225,6 +229,16 @@ void abi_ScriptAdvance(void)
  * Entry: nothing. Exit, a time byte differs: A that byte, N, Z and C from comparing it, Y 1 or 2,
  * X kept. Otherwise as the handler leaves them.
  */
+/* The registers a command handler outside C is entered with: A and X the doubled command, Y 3. */
+static void script_tail_shim(uint8_t index, uint8_t command)
+{
+    cpu.a = index;
+    cpu.x = index;
+    cpu.y = 3;
+    abi_nz(3);                      /* LDY #3 set N and Z last; C is the doubling's */
+    abi_flag(P_C, (command & 0x80) != 0);
+}
+
 Exit ScriptStep(void)
 {
     Exit exit = { 0 };
@@ -274,11 +288,7 @@ Exit ScriptStep(void)
     default:
         break;
     }
-    cpu.a = index;
-    cpu.x = index;
-    cpu.y = 3;
-    abi_nz(3);                      /* LDY #3 set N and Z last; C is the doubling's */
-    abi_flag(P_C, (command & 0x80) != 0);
+    script_tail_shim(index, command);
     call_original(target);
     exit.from_cpu = true;
     return exit;

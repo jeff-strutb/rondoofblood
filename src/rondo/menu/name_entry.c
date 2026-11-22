@@ -25,16 +25,17 @@
 NameExit ShowNameCursor(void)
 {
     NameExit result;
-    uint8_t position;
-    Alu place;
+    uint8_t position, place;
+    unsigned total;
 
     result.full = false;
     jsr_push(0x9608);
     SelectVramWriteAddress();
     jsr_pop();
     position = rd8(NAME_POS);
-    place = adc8(position, 0xD0, false);
-    WR8(VDC->data_lo, place.a);
+    total = (unsigned)position + 0xD0;
+    place = (uint8_t)total;
+    WR8(VDC->data_lo, place);
     st2(0x00);
     jsr_push(0x9616);
     SelectVramData();
@@ -43,8 +44,8 @@ NameExit ShowNameCursor(void)
     st2(0x10);
     result.y = rd8(NAME_POS);
     wr8((uint16_t)(NAME_CHARS + result.y), 0x20);
-    result.carry = place.c;
-    result.overflow = place.v;
+    result.carry = total > 0xFF;
+    result.overflow = ((position ^ place) & (0xD0 ^ place) & 0x80) != 0;
     result.a = 0x20;
     return result;
 }
@@ -72,15 +73,14 @@ void abi_ShowNameCursor(void)
  */
 NameExit NameBackspace(void)
 {
-    uint8_t position, count;
-    Alu place;
+    uint8_t position, count, place;
 
     jsr_push(0x9626);
     SelectVramWriteAddress();
     jsr_pop();
     position = rd8(NAME_POS);
-    place = adc8(position, 0xD0, false);
-    WR8(VDC->data_lo, place.a);
+    place = (uint8_t)(position + 0xD0);
+    WR8(VDC->data_lo, place);
     st2(0x00);
     jsr_push(0x9634);
     SelectVramData();
@@ -122,18 +122,18 @@ void abi_NameBackspace(void)
 NameExit NameTypeCharacter(void)
 {
     NameExit result;
-    uint8_t position, row, column, character, count;
+    uint8_t position, row, column, character, count, place, grid, grid_base;
+    bool shifted_out, grid_overflow;
+    unsigned total;
 
     result.full = false;
-    Alu place, grid;
-    bool shifted_out;
 
     jsr_push(0x95D5);
     SelectVramWriteAddress();
     jsr_pop();
     position = rd8(NAME_POS);
-    place = adc8(position, 0xD0, false);
-    WR8(VDC->data_lo, place.a);
+    place = (uint8_t)(position + 0xD0);
+    WR8(VDC->data_lo, place);
     st2(0x00);
     jsr_push(0x95E3);
     SelectVramData();
@@ -141,8 +141,11 @@ NameExit NameTypeCharacter(void)
     row = RD8(OBJ->f3618[2]);
     shifted_out = (row & 0x20) != 0;
     column = RD8(OBJ->f34b8[2]);
-    grid = adc8((uint8_t)(row << 3), column, shifted_out);
-    character = rd8((uint16_t)(NAME_GRID + grid.a));
+    grid_base = (uint8_t)(row << 3);
+    total = (unsigned)grid_base + column + (shifted_out ? 1 : 0);
+    grid = (uint8_t)total;
+    grid_overflow = ((grid_base ^ grid) & (column ^ grid) & 0x80) != 0;
+    character = rd8((uint16_t)(NAME_GRID + grid));
     WR8(VDC->data_lo, character);
     result.y = rd8(NAME_POS);
     wr8((uint16_t)(NAME_CHARS + result.y), character);
@@ -154,7 +157,7 @@ NameExit NameTypeCharacter(void)
         result.full = true;
         result.a = count;
         result.carry = true;
-        result.overflow = grid.v;
+        result.overflow = grid_overflow;
         return result;
     }
     return ShowNameCursor();

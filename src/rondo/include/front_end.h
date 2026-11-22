@@ -40,6 +40,22 @@ static inline void exit_shim(Exit e)
     }
 }
 
+/* What an arithmetic routine leaves: A, the value N and Z come from, C, and V when it sets one. */
+typedef struct {
+    uint8_t a, nz;
+    bool carry, overflow, overflow_set;
+} ArithExit;
+
+static inline void arith_exit_shim(ArithExit e)
+{
+    cpu.a = e.a;
+    abi_nz(e.nz);
+    abi_flag(P_C, e.carry);
+    if (e.overflow_set) {
+        abi_flag(P_V, e.overflow);
+    }
+}
+
 /* A value and the carry a routine leaves with it. */
 typedef struct {
     uint8_t value;
@@ -196,8 +212,8 @@ SlotFlags SlotClearedFlags(void);
 SlotFound SlotLastClearedFlag(void);
 SlotCopy SlotToWorkArea(void);
 uint8_t PadRepeatUpdate(void);
-Alu DrawSelectedFileDigit(void);
-Alu DrawCursorRowDigit(void);
+ArithExit DrawSelectedFileDigit(void);
+ArithExit DrawCursorRowDigit(void);
 void abi_WriteHexByteTiles(void);
 void abi_WriteLowDigitTile(void);
 void abi_WriteDigitTile(void);
@@ -225,13 +241,13 @@ uint8_t MenuStepAdvance(void);
 void SetMenuPage(uint8_t page);
 uint8_t MenuPageAdvance(void);
 ValueCarry ObjectFrameFromTick(uint8_t object);
-Alu HalveObjectVelocity(uint8_t object);
+ArithExit HalveObjectVelocity(uint8_t object);
 CursorTarget SetCursorTarget(uint8_t object);
 CursorTarget SetCursorTargets(void);
 CursorTarget SetCursorValue(uint8_t value);
 CursorTarget PlaceCursorObject(uint8_t value, uint8_t object);
 CursorTarget PlaceCursorObjects(uint8_t value);
-Alu ShiftObjectsByScrollChange(void);
+ArithExit ShiftObjectsByScrollChange(void);
 void abi_SetMenuStep(void);
 void abi_MenuStepAdvance(void);
 void abi_SetMenuPage(void);

@@ -50,24 +50,24 @@ enum { ZpFlipMask = 0x2014, ZpPartsLeft = 0x2016, ZpSpritesLeft = 0x2017 };
 SpriteExit EmitObjectSprites(uint8_t object)
 {
     SpriteExit out = { 0 };
-    Alu sum;
+    Sum sum;
     uint8_t value, x = object, y;
     bool carry, overflow;
 
     value = RD8(OBJ->y_lo[object]);
-    sum = adc8(value, SPRITE_Y_BIAS, false);
-    WR8(ZP->temp08, sum.a);
+    sum = add_bytes(value, SPRITE_Y_BIAS, false);
+    WR8(ZP->temp08, sum.value);
     value = RD8(OBJ->y_hi[object]);
-    sum = adc8(value, 0, sum.c);
-    WR8(ZP->temp09, sum.a);
+    sum = add_bytes(value, 0, sum.carry);
+    WR8(ZP->temp09, sum.value);
     value = RD8(OBJ->x_lo[object]);
-    sum = adc8(value, SPRITE_X_BIAS, false);
-    WR8(ZP->temp0_a, sum.a);
+    sum = add_bytes(value, SPRITE_X_BIAS, false);
+    WR8(ZP->temp0_a, sum.value);
     value = RD8(OBJ->x_hi[object]);
-    sum = adc8(value, 0, sum.c);
-    WR8(ZP->temp0_b, sum.a);
-    carry = sum.c;
-    overflow = sum.v;
+    sum = add_bytes(value, 0, sum.carry);
+    WR8(ZP->temp0_b, sum.value);
+    carry = sum.carry;
+    overflow = sum.overflow;
     value = RD8(OBJ->f2ac0[object]);
     WR8(ZP->temp0_d, value);
     value = RD8(OBJ->f2fe8[object]);
@@ -125,20 +125,20 @@ SpriteExit EmitObjectSprites(uint8_t object)
             DEC8(ZP->temp06);
         }
         edge = RD8(ZP->temp08);
-        sum = adc8(value, edge, false);
-        WR8(ZP->temp07, sum.a);
+        sum = add_bytes(value, edge, false);
+        WR8(ZP->temp07, sum.value);
         hi = RD8(ZP->temp06);
         edge = RD8(ZP->temp09);
-        sum = adc8(hi, edge, sum.c);
-        WR8(ZP->temp06, sum.a);
-        carry = sum.c;
-        overflow = sum.v;
-        if (sum.a != 0) {
-            if (sum.a & 0x80) {
+        sum = add_bytes(hi, edge, sum.carry);
+        WR8(ZP->temp06, sum.value);
+        carry = sum.carry;
+        overflow = sum.overflow;
+        if (sum.value != 0) {
+            if (sum.value & 0x80) {
                 shown = false;
             } else {
                 carry = true;
-                if (sum.a != 1) {
+                if (sum.value != 1) {
                     shown = false;
                 } else {
                     lo = RD8(ZP->temp07);
@@ -160,10 +160,10 @@ SpriteExit EmitObjectSprites(uint8_t object)
                 WR8(ZP->temp00, (uint8_t)(value ^ 0x08));
                 value = rd8((uint16_t)(SPRITE_X_WIDE_MIRROR + x));
                 edge = RD8_PTR_Y(ZP->temp10, y);
-                sum = sbc8(value, edge, true);
-                value = sum.a;
-                carry = sum.c;
-                overflow = sum.v;
+                sum = sub_bytes(value, edge, true);
+                value = sum.value;
+                carry = sum.carry;
+                overflow = sum.overflow;
             } else {
                 value = RD8_PTR_Y(ZP->temp10, y);
             }
@@ -171,22 +171,22 @@ SpriteExit EmitObjectSprites(uint8_t object)
                 DEC8(ZP->temp04);
             }
             edge = RD8(ZP->temp0_a);
-            sum = adc8(value, edge, false);
-            WR8(ZP->temp05, sum.a);
+            sum = add_bytes(value, edge, false);
+            WR8(ZP->temp05, sum.value);
             hi = RD8(ZP->temp04);
             edge = RD8(ZP->temp0_b);
-            sum = adc8(hi, edge, sum.c);
-            WR8(ZP->temp04, sum.a);
-            carry = sum.c;
-            overflow = sum.v;
-            if (sum.a == 0) {
+            sum = add_bytes(hi, edge, sum.carry);
+            WR8(ZP->temp04, sum.value);
+            carry = sum.carry;
+            overflow = sum.overflow;
+            if (sum.value == 0) {
                 lo = RD8(ZP->temp05);
                 edge = rd8((uint16_t)(SPRITE_X_MIN + x));
                 carry = lo >= edge;
                 if (!carry) {
                     shown = false;
                 }
-            } else if (sum.a & 0x80) {
+            } else if (sum.value & 0x80) {
                 shown = false;
             } else {
                 hi = RD8(ZP->temp04);
@@ -217,10 +217,10 @@ SpriteExit EmitObjectSprites(uint8_t object)
                 } else if (value & 0x40) {
                     value = RD8_PTR_Y(ZP->temp10, y);
                     edge = RD8(ZP->temp0_f);
-                    sum = adc8(value, edge, false);
-                    value = (uint8_t)(sum.a & 0x8F);
-                    carry = sum.c;
-                    overflow = sum.v;
+                    sum = add_bytes(value, edge, false);
+                    value = (uint8_t)(sum.value & 0x8F);
+                    carry = sum.carry;
+                    overflow = sum.overflow;
                 } else {
                     value = RD8_PTR_Y(ZP->temp10, y);
                     value = (uint8_t)(value & 0x8F);
@@ -255,20 +255,20 @@ SpriteExit EmitObjectSprites(uint8_t object)
             }
         }
         value = RD8(ZP->temp10);
-        sum = adc8(5, value, false);
-        WR8(ZP->temp10, sum.a);
-        if (sum.c) {
+        sum = add_bytes(5, value, false);
+        WR8(ZP->temp10, sum.value);
+        if (sum.carry) {
             INC8(ZP->temp11);
         }
         value = rd8(ZpPartsLeft);
         wr8(ZpPartsLeft, (uint8_t)(value - 1));
         if ((uint8_t)(value - 1) == 0) {
-            out.a = sum.a;
+            out.a = sum.value;
             out.x = x;
             out.y = y;
             out.nz = P_Z;
-            out.c = sum.c;
-            out.v = sum.v;
+            out.c = sum.carry;
+            out.v = sum.overflow;
             return out;
         }
     }

@@ -5,41 +5,42 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "machine.h"
+#include "routines.h"
 
 bool CopyTileBlockToVram(uint8_t block, bool carry_in);
 void abi_CopyTileBlockToVram(void);
 
-Alu SelectBlockTablesA(uint8_t index);
+Sum SelectBlockTablesA(uint8_t index);
 void abi_SelectBlockTablesA(void);
-Alu SelectBlockTablesB(uint8_t index);
+Sum SelectBlockTablesB(uint8_t index);
 void abi_SelectBlockTablesB(void);
-Alu SelectBlockTablesC(uint8_t index);
+Sum SelectBlockTablesC(uint8_t index);
 void abi_SelectBlockTablesC(void);
-Alu SelectBlockTablesD(uint8_t index);
+Sum SelectBlockTablesD(uint8_t index);
 void abi_SelectBlockTablesD(void);
-Alu SelectBlockTablesE(uint8_t index);
+Sum SelectBlockTablesE(uint8_t index);
 void abi_SelectBlockTablesE(void);
-Alu SelectBlockTablesF(uint8_t index);
+Sum SelectBlockTablesF(uint8_t index);
 void abi_SelectBlockTablesF(void);
-Alu SelectBlockTablesG(uint8_t index);
+Sum SelectBlockTablesG(uint8_t index);
 void abi_SelectBlockTablesG(void);
-Alu SelectBlockTablesH(uint8_t index);
+Sum SelectBlockTablesH(uint8_t index);
 void abi_SelectBlockTablesH(void);
-Alu SelectBlockTablesI(uint8_t index);
+Sum SelectBlockTablesI(uint8_t index);
 void abi_SelectBlockTablesI(void);
-Alu SelectBlockTablesJ(uint8_t index);
+Sum SelectBlockTablesJ(uint8_t index);
 void abi_SelectBlockTablesJ(void);
-Alu SelectBlockTablesK(uint8_t index);
+Sum SelectBlockTablesK(uint8_t index);
 void abi_SelectBlockTablesK(void);
-Alu SelectBlockTablesL(uint8_t index);
+Sum SelectBlockTablesL(uint8_t index);
 void abi_SelectBlockTablesL(void);
-Alu SelectBlockTablesM(uint8_t index);
+Sum SelectBlockTablesM(uint8_t index);
 void abi_SelectBlockTablesM(void);
-Alu SelectBlockTablesN(uint8_t index);
+Sum SelectBlockTablesN(uint8_t index);
 void abi_SelectBlockTablesN(void);
-Alu SelectBlockTablesO(uint8_t index);
+Sum SelectBlockTablesO(uint8_t index);
 void abi_SelectBlockTablesO(void);
-Alu SelectBlockTablesP(uint8_t index);
+Sum SelectBlockTablesP(uint8_t index);
 void abi_SelectBlockTablesP(void);
 
 #endif

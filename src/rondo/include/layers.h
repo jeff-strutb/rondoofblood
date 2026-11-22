@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "machine.h"
+#include "routines.h"
 
 /* What HalveScrollStep leaves in A and C: the low byte it wrote, and the bit shifted out of it. */
 typedef struct {
@@ -24,12 +25,12 @@ void ClearScrollSpeeds(void);
 void ClearScrollSpeedsB(void);
 void ClearScrollSpeedsC(void);
 uint8_t ScrollYFromLevelWord(void);
-Alu AddToListWord(uint8_t amount, uint8_t entry);
+Sum AddToListWord(uint8_t amount, uint8_t entry);
 uint8_t ScreenMapOfEntry(uint8_t entry);
 uint8_t ScreenMapOfEntryB(uint8_t entry);
 uint8_t ScreenMapAt(uint8_t row);
 uint8_t ScreenMapAtB(uint8_t row);
-Alu ScrollXAddWrap(uint8_t amount, uint8_t entry);
+Sum ScrollXAddWrap(uint8_t amount, uint8_t entry);
 
 void abi_ClearScrollSpeeds(void);
 void abi_ClearScrollSpeedsB(void);
@@ -51,18 +52,18 @@ typedef struct {
 
 /* What AdvanceScroll leaves: the last add (A, N, Z, C, V) and the step's sign, which is Y. */
 typedef struct {
-    Alu sum;
+    Sum sum;
     uint8_t sign;
 } AdvanceResult;
 
-Alu ScrollSpeedsFromBands(void);
+Sum ScrollSpeedsFromBands(void);
 BitmapBit BitmapBitShifted(uint8_t x, uint8_t y);
-Alu CopyWordsToVdc(uint8_t blocks);
-Alu ScrollXPlusOffset(uint8_t entry, uint8_t index);
-Alu ScrollXPlusOffsetB(uint8_t entry, uint8_t index);
-Alu ScrollXPlusOffsetC(uint8_t entry, uint8_t index);
-Alu ScrollYPlusOffset(uint8_t entry, uint8_t index);
-Alu ScrollYPlusOffsetB(uint8_t entry, uint8_t index);
+Sum CopyWordsToVdc(uint8_t blocks);
+Sum ScrollXPlusOffset(uint8_t entry, uint8_t index);
+Sum ScrollXPlusOffsetB(uint8_t entry, uint8_t index);
+Sum ScrollXPlusOffsetC(uint8_t entry, uint8_t index);
+Sum ScrollYPlusOffset(uint8_t entry, uint8_t index);
+Sum ScrollYPlusOffsetB(uint8_t entry, uint8_t index);
 AdvanceResult AdvanceScrollX(uint8_t entry);
 AdvanceResult AdvanceScrollXB(uint8_t entry);
 AdvanceResult AdvanceScrollXC(uint8_t entry);

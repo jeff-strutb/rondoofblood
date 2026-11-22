@@ -34,6 +34,24 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 07DB:5FD ClampSpeedXToTwo
 ; @run 70:B5FD
 ; WHAT IT DOES: Keeps an object's X speed from passing 2 pixels a frame either way: a speed over
@@ -308,3 +326,246 @@ StepFramesFacingPlayerAlways_at1:
     sta z:zTemp11
     jmp VecStepObjectFrames
 
+; @routine 07DB:336 SpawnSixPiecesA
+; @run 70:B336
+; WHAT IT DOES: Starts up to six objects of type $21 at the object's place, each from a free slot
+; from $30, giving each its life_timer, f3510 and speeds from a four byte entry of a table at
+; overlay address $B36C.
+; HOW: A loop over pieces 0 to 5 (kept in zHitSlot, the object in zRichterObject while the
+; table is read): FindFreeSlotFrom30, StartObjectAtPlace, the four stores; it stops when no slot
+; is free.
+; WAITS: no.
+; Entry: X object, D clear. Exit: after six pieces A the last speed byte, N, Z, C from the compare
+; of Y with 6, Y 6; when no slot was free as FindFreeSlotFrom30 left it. X kept. Clobbers
+; zHitSlot, zRichterObject, zTemp10-11 (record reads), and the stage's cleared slots.
+SpawnSixPiecesA:
+    cly
+SpawnSixPiecesA_at1:
+    sty z:zHitSlot
+    jsr VecFindFreeSlotFrom30
+    bcc SpawnSixPiecesA_at0
+    lda #$21
+    jsr VecStartObjectAtPlace
+    stx z:zRichterObject
+    lda z:zHitSlot
+    asl a
+    asl a
+    tax
+    lda a:$B36C,x
+    sta a:OBJ_34B8,y
+    lda a:$B36D,x
+    sta a:OBJ_3510,y
+    lda a:$B36E,x
+    sta a:OBJ_VX_HI,y
+    lda a:$B36F,x
+    sta a:OBJ_VY_HI,y
+    ldx z:zRichterObject
+    ldy z:zHitSlot
+    iny
+    cpy #$06
+    bcc SpawnSixPiecesA_at1
+SpawnSixPiecesA_at0:
+    rts
+
+; @routine 07DB:384 LoadRecordFacingAndRandomFrame
+; @run 70:B384
+; WHAT IT DOES: Starts the object from its record, makes its facing bit 0 of its next_kind, and
+; gives its animation step a random value from 0 to 15.
+; HOW: LoadObjectRecord, NextRandom masked to a nibble.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the random nibble, N, Z from it; C and V from NextRandom's
+; last add; Y 11; X kept.
+LoadRecordFacingAndRandomFrame:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_3040,x
+    and #$01
+    sta a:OBJ_2AC0,x
+    jsr VecNextRandom
+    and #$0F
+    sta a:OBJ_3408,x
+    rts
+
+; @routine 07DB:4E7 PickSpeedAndTurnFromTableB
+; @run 70:B4E7
+; WHAT IT DOES: PickSpeedAndTurnFromTable in this stage's overlay: sets the object's X and Y
+; speeds from a table of four byte entries (at overlay address $B513) by its f3670, adds one to
+; f3510, and reverses its X speed when the player is on its left.
+; HOW: SideOfPlayer; NegateVelocityX as a tail jump.
+; WAITS: no.
+; Entry, exit: as PickSpeedAndTurnFromTable.
+PickSpeedAndTurnFromTableB:
+    lda a:OBJ_3670,x
+    asl a
+    asl a
+    tay
+    lda a:$B514,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B513,y
+    sta a:OBJ_VX_LO,x
+    lda a:$B516,y
+    sta a:OBJ_VY_HI,x
+    lda a:$B515,y
+    sta a:OBJ_VY_LO,x
+    inc a:OBJ_3510,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq PickSpeedAndTurnFromTableB_at0
+    jmp VecNegateVelocityX
+PickSpeedAndTurnFromTableB_at0:
+    rts
+
+; @routine 07DB:73B OrbitStepBack
+; @run 70:B73B
+; WHAT IT DOES: Moves the object on a circle: its velocity from the angle in angle_hi at speed
+; 1.0 (SetVelocityFromAngle), moves it, and turns the angle back by 4; when the angle reaches
+; $E0 it is set to $40 and the object moves on to its next state.
+; HOW: zTemp00-01 = $0100, SetVelocityFromAngle, ApplyVelocity, a subtract.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C from the compare with $E0, or A $40 and N, Z from the
+; new state; V from the subtract; X, Y kept (Y 0 from the scale).
+OrbitStepBack:
+    stz z:zTemp00
+    lda #$01
+    sta z:zTemp01
+    lda a:OBJ_3568,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    lda a:OBJ_3568,x
+    sec
+    sbc #$04
+    sta a:OBJ_3568,x
+    cmp #$E0
+    bne OrbitStepBack_at0
+    lda #$40
+    sta a:OBJ_3568,x
+    inc a:OBJ_27A8,x
+OrbitStepBack_at0:
+    rts
+
+; @routine 07DB:760 OrbitStepForward
+; @run 70:B760
+; WHAT IT DOES: OrbitStepBack the other way: the angle turns on by 4; at $A0 it is set to $40
+; and the object goes back one state.
+; HOW: As OrbitStepBack with an add and a decrement.
+; WAITS: no.
+; Entry, exit: as OrbitStepBack, the compare being with $A0.
+OrbitStepForward:
+    stz z:zTemp00
+    lda #$01
+    sta z:zTemp01
+    lda a:OBJ_3568,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    lda a:OBJ_3568,x
+    clc
+    adc #$04
+    sta a:OBJ_3568,x
+    cmp #$A0
+    bne OrbitStepForward_at0
+    lda #$40
+    sta a:OBJ_3568,x
+    dec a:OBJ_27A8,x
+OrbitStepForward_at0:
+    rts
+
+; @routine 07DF:331 StartTypeAndLaunchUp
+; @run 71:D331
+; WHAT IT DOES: Starts a new object of type $9C where this one is (the new slot is in Y), gives
+; it a Y speed of -$10 high byte ($F0) and moves it once by it.
+; HOW: StartObjectAtPlace, a store through Y, then ApplyVelocityY on the new object (X and Y
+; swapped around it), and its Y speed high byte cleared again.
+; WAITS: no.
+; Entry: X object, Y new slot, D clear. Exit: A, N, Z, C, V from ApplyVelocityY; X and Y kept.
+StartTypeAndLaunchUp:
+    lda #$9C
+    jsr VecStartObjectAtPlace
+    lda #$F0
+    sta a:OBJ_VY_HI,y
+    sxy
+    jsr VecApplyVelocityY
+    stz a:OBJ_VY_HI,x
+    sxy
+    rts
+
+; @routine 07DC:0C8 AnimateThenFireOrWait
+; @run 70:B8C8
+; WHAT IT DOES: Animates the object facing the player (list 2). When the list has ended it
+; stops the animation, enters state 3, counts f3568 up and sets its life_timer from a four byte
+; table at overlay address $B806 by f3568's low two bits. When the frame changed to $32 it starts
+; an object of type $23 at its place in a free slot from $30.
+; HOW: StepFramesFacingPlayerAlways; FindFreeSlotFrom30; StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the last step that ran (the animation step, a compare, the
+; slot search or the start); Y 2, the table index, or the slot.
+AnimateThenFireOrWait:
+    ldy #$02
+    jsr StepFramesFacingPlayerAlways
+    beq AnimateThenFireOrWait_at0
+    bcc AnimateThenFireOrWait_at1
+    lda a:OBJ_2A68,x
+    cmp #$32
+    bne AnimateThenFireOrWait_at1
+    jsr VecFindFreeSlotFrom30
+    bcc AnimateThenFireOrWait_at1
+    lda #$23
+    jsr VecStartObjectAtPlace
+    rts
+AnimateThenFireOrWait_at0:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    inc a:OBJ_3568,x
+    lda a:OBJ_3568,x
+    and #$03
+    tay
+    lda a:$B806,y
+    sta a:OBJ_34B8,x
+AnimateThenFireOrWait_at1:
+    rts
+
+; @routine 07DC:16B BurstIntoSixPieces
+; @run 70:B96B
+; WHAT IT DOES: Replaces the object by up to six objects of type $24 started at its place in free
+; slots from $30, each facing as this one does and with its life_timer, f3510 and both speed
+; bytes pairs from an eight byte entry of a table at overlay address $B9B6; then removes the
+; object.
+; HOW: A loop over pieces 0 to 5 as SpawnSixPiecesA; ClearObject as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the last compare of the piece count (C 1, Z 1, A the last
+; speed byte), or as FindFreeSlotFrom30 left it when no slot was free; Y 6 or $40; X kept.
+BurstIntoSixPieces:
+    cly
+BurstIntoSixPieces_at1:
+    sty z:zHitSlot
+    jsr VecFindFreeSlotFrom30
+    bcc BurstIntoSixPieces_at0
+    lda #$24
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    stx z:zRichterObject
+    lda z:zHitSlot
+    asl a
+    asl a
+    asl a
+    tax
+    lda a:$B9B6,x
+    sta a:OBJ_34B8,y
+    lda a:$B9B7,x
+    sta a:OBJ_3510,y
+    lda a:$B9B8,x
+    sta a:OBJ_VX_HI,y
+    lda a:$B9B9,x
+    sta a:OBJ_VX_LO,y
+    lda a:$B9BA,x
+    sta a:OBJ_VY_HI,y
+    lda a:$B9BB,x
+    sta a:OBJ_VY_LO,y
+    ldx z:zRichterObject
+    ldy z:zHitSlot
+    iny
+    cpy #$06
+    bcc BurstIntoSixPieces_at1
+BurstIntoSixPieces_at0:
+    jmp VecClearObject

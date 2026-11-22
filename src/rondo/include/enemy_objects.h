@@ -238,6 +238,12 @@ static inline void abi_screen_sound_end(ScreenSoundEnd r)
 }
 
 
+/* FindFreeSlotFrom20, 30 and 50: A the last type read, N 0, Z 1, C found, Y the slot. */
+static inline Ended ended_of_find_slot(uint8_t slot, uint8_t last, bool found)
+{
+    return ended_with_carry(ended_with_y(ended_with_a(ended_nz(0), last), slot), found);
+}
+
 /* A routine whose exit keeps what NextRandom left in C and V; the wrapper shows that first. */
 typedef struct {
     Ended end;
@@ -408,6 +414,14 @@ FrameStepEnd StepFramesFacingPlayerAlways(uint8_t slot, uint8_t index);
 Ended WalkWhileFrameChanges(uint8_t slot);
 Ended WaitThenState2(uint8_t slot);
 Ended BecomeType9CWhenAnimationEnds(uint8_t slot);
+Ended LoadRecordFacingAndRandomFrame(uint8_t slot);
+Ended PickSpeedAndTurnFromTableB(uint8_t slot);
+Ended SpawnSixPiecesA(uint8_t slot);
+Ended OrbitStepBack(uint8_t slot);
+Ended OrbitStepForward(uint8_t slot);
+Ended StartTypeAndLaunchUp(uint8_t slot, uint8_t fresh);
+Ended AnimateThenFireOrWait(uint8_t slot);
+Ended BurstIntoSixPieces(uint8_t slot);
 /* object/enemies_stage05_temp.c */
 Ended SelectRasterStage1(void);
 Ended SetHitboxDxFromFrame(uint8_t slot);

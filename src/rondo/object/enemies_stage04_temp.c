@@ -431,3 +431,375 @@ void abi_BecomeType9CWhenAnimationEnds(void)
 {
     abi_ended(BecomeType9CWhenAnimationEnds(cpu.x));
 }
+
+/*
+ * @routine 07DB:384 LoadRecordFacingAndRandomFrame
+ * @run 70:B384
+ * WHAT IT DOES: Starts the object from its record, makes its facing bit 0 of its next_kind, and
+ * gives its animation step a random value from 0 to 15.
+ * HOW: LoadObjectRecord, NextRandom masked to a nibble.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the random nibble, N, Z from it; C and V from NextRandom's
+ * last add; Y 11; X kept.
+ */
+Ended LoadRecordFacingAndRandomFrame(uint8_t slot)
+{
+    uint8_t nz, last, kind, bits;
+    bool carry;
+    RandomResult random;
+    Ended e;
+
+    jsr_push(0xB387);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    kind = RD8(OBJ->next_kind[slot]);
+    WR8(OBJ->facing_left[slot], (uint8_t)(kind & 1));
+    jsr_push(0xB392);
+    random = NextRandom();
+    jsr_pop();
+    bits = (uint8_t)(random.value & 0x0F);
+    WR8(OBJ->anim_step[slot], bits);
+    return ended_then(ended_then(e, ended_of_random(random)), ended_load(bits));
+}
+
+void abi_LoadRecordFacingAndRandomFrame(void)
+{
+    abi_ended(LoadRecordFacingAndRandomFrame(cpu.x));
+}
+
+/*
+ * @routine 07DB:4E7 PickSpeedAndTurnFromTableB
+ * @run 70:B4E7
+ * WHAT IT DOES: PickSpeedAndTurnFromTable in this stage's overlay: sets the object's X and Y
+ * speeds from a table of four byte entries (at overlay address $B513) by its f3670, adds one to
+ * f3510, and reverses its X speed when the player is on its left.
+ * HOW: SideOfPlayer; NegateVelocityX as a tail jump.
+ * WAITS: no.
+ * Entry, exit: as PickSpeedAndTurnFromTable.
+ */
+Ended PickSpeedAndTurnFromTableB(uint8_t slot)
+{
+    enum { ENTRIES = 0xB513 };
+    uint8_t row = RD8(OBJ->f3670[slot]);
+    uint8_t y = (uint8_t)(row << 2);
+    uint8_t value, bit;
+    SideResult side;
+    Ended e;
+
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(ENTRIES + 1 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(ENTRIES + y)));
+    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(ENTRIES + 3 + y)));
+    value = rd8((uint16_t)(ENTRIES + 2 + y));
+    WR8(OBJ->vy_lo[slot], value);
+    e = ended_with_y(ended_with_carry(ended_load(value), (row & 0x40) != 0), y);
+    value = INC8(OBJ->f3510[slot]);
+    e = ended_then(e, ended_nz(value));
+    jsr_push(0xB50B);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(side.sides & 1);
+    e = ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+    if (bit == 0) {
+        return e;
+    }
+    return ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+}
+
+void abi_PickSpeedAndTurnFromTableB(void)
+{
+    abi_ended(PickSpeedAndTurnFromTableB(cpu.x));
+}
+
+/*
+ * @routine 07DB:336 SpawnSixPiecesA
+ * @run 70:B336
+ * WHAT IT DOES: Starts up to six objects of type $21 at the object's place, each from a free slot
+ * from $30, giving each its life_timer, f3510 and speeds from a four byte entry of a table at
+ * overlay address $B36C.
+ * HOW: A loop over pieces 0 to 5 (kept in zHitSlot, the object in zRichterObject while the
+ * table is read): FindFreeSlotFrom30, StartObjectAtPlace, the four stores; it stops when no slot
+ * is free.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: after six pieces A the last speed byte, N, Z, C from the compare
+ * of Y with 6, Y 6; when no slot was free as FindFreeSlotFrom30 left it. X kept. Clobbers
+ * zHitSlot, zRichterObject, zTemp10-11 (record reads), and the stage's cleared slots.
+ */
+Ended SpawnSixPiecesA(uint8_t slot)
+{
+    enum { TABLE = 0xB36C, TYPE = 0x21 };
+    uint8_t piece = 0, found_slot, last, row, value;
+    bool found;
+    Ended e = ended_with_y(ended_kept(), 0);
+
+    do {
+        WR8(ZP->hit_slot, piece);
+        jsr_push(0xB33C);
+        found_slot = FindFreeSlotFrom30(&last, &found);
+        jsr_pop();
+        e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+        if (!found) {
+            return e;
+        }
+        jsr_push(0xB343);
+        StartObjectAtPlace(TYPE, slot, found_slot);
+        jsr_pop();
+        WR8(ZP->richter_object, slot);
+        row = (uint8_t)(RD8(ZP->hit_slot) << 2);
+        value = rd8((uint16_t)(TABLE + row));
+        WR8(OBJ->life_timer[found_slot], value);
+        value = rd8((uint16_t)(TABLE + 1 + row));
+        WR8(OBJ->f3510[found_slot], value);
+        value = rd8((uint16_t)(TABLE + 2 + row));
+        WR8(OBJ->vx_hi[found_slot], value);
+        value = rd8((uint16_t)(TABLE + 3 + row));
+        WR8(OBJ->vy_hi[found_slot], value);
+        slot = RD8(ZP->richter_object);
+        piece = RD8(ZP->hit_slot);
+        piece++;
+        e = ended_with_y(ended_with_carry(ended_with_a(ended_nz((uint8_t)(piece - 6)), value), piece >= 6), piece);
+    } while (piece < 6);
+    return e;
+}
+
+void abi_SpawnSixPiecesA(void)
+{
+    abi_ended(SpawnSixPiecesA(cpu.x));
+}
+
+/*
+ * @routine 07DB:73B OrbitStepBack
+ * @run 70:B73B
+ * WHAT IT DOES: Moves the object on a circle: its velocity from the angle in angle_hi at speed
+ * 1.0 (SetVelocityFromAngle), moves it, and turns the angle back by 4; when the angle reaches
+ * $E0 it is set to $40 and the object moves on to its next state.
+ * HOW: zTemp00-01 = $0100, SetVelocityFromAngle, ApplyVelocity, a subtract.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C from the compare with $E0, or A $40 and N, Z from the
+ * new state; V from the subtract; X, Y kept (Y 0 from the scale).
+ */
+Ended OrbitStepBack(uint8_t slot)
+{
+    uint8_t angle, state;
+    Sum sum;
+    Ended e;
+
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, 1);
+    angle = RD8(OBJ->angle_hi[slot]);
+    jsr_push(0xB747);
+    SetVelocityFromAngle(angle, slot);
+    jsr_pop();
+    jsr_push(0xB74A);
+    ApplyVelocity(slot);
+    jsr_pop();
+    angle = RD8(OBJ->angle_hi[slot]);
+    sum = add_bytes(angle, 0xFB, true);
+    WR8(OBJ->angle_hi[slot], sum.value);
+    e = ended_with_y(ended_with_overflow(ended_compare(sum.value, 0xE0), sum.overflow), 0);
+    if (sum.value != 0xE0) {
+        return e;
+    }
+    WR8(OBJ->angle_hi[slot], 0x40);
+    state = INC8(OBJ->state[slot]);
+    return ended_then(e, ended_with_a(ended_nz(state), 0x40));
+}
+
+void abi_OrbitStepBack(void)
+{
+    abi_ended(OrbitStepBack(cpu.x));
+}
+
+/*
+ * @routine 07DB:760 OrbitStepForward
+ * @run 70:B760
+ * WHAT IT DOES: OrbitStepBack the other way: the angle turns on by 4; at $A0 it is set to $40
+ * and the object goes back one state.
+ * HOW: As OrbitStepBack with an add and a decrement.
+ * WAITS: no.
+ * Entry, exit: as OrbitStepBack, the compare being with $A0.
+ */
+Ended OrbitStepForward(uint8_t slot)
+{
+    uint8_t angle, state;
+    Sum sum;
+    Ended e;
+
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, 1);
+    angle = RD8(OBJ->angle_hi[slot]);
+    jsr_push(0xB76C);
+    SetVelocityFromAngle(angle, slot);
+    jsr_pop();
+    jsr_push(0xB76F);
+    ApplyVelocity(slot);
+    jsr_pop();
+    angle = RD8(OBJ->angle_hi[slot]);
+    sum = add_bytes(angle, 4, false);
+    WR8(OBJ->angle_hi[slot], sum.value);
+    e = ended_with_y(ended_with_overflow(ended_compare(sum.value, 0xA0), sum.overflow), 0);
+    if (sum.value != 0xA0) {
+        return e;
+    }
+    WR8(OBJ->angle_hi[slot], 0x40);
+    state = DEC8(OBJ->state[slot]);
+    return ended_then(e, ended_with_a(ended_nz(state), 0x40));
+}
+
+void abi_OrbitStepForward(void)
+{
+    abi_ended(OrbitStepForward(cpu.x));
+}
+
+/*
+ * @routine 07DF:331 StartTypeAndLaunchUp
+ * @run 71:D331
+ * WHAT IT DOES: Starts a new object of type $9C where this one is (the new slot is in Y), gives
+ * it a Y speed of -$10 high byte ($F0) and moves it once by it.
+ * HOW: StartObjectAtPlace, a store through Y, then ApplyVelocityY on the new object (X and Y
+ * swapped around it), and its Y speed high byte cleared again.
+ * WAITS: no.
+ * Entry: X object, Y new slot, D clear. Exit: A, N, Z, C, V from ApplyVelocityY; X and Y kept.
+ */
+Ended StartTypeAndLaunchUp(uint8_t slot, uint8_t fresh)
+{
+    AxisMove move;
+
+    jsr_push(0xD336);
+    StartObjectAtPlace(0x9C, slot, fresh);
+    jsr_pop();
+    WR8(OBJ->vy_hi[fresh], 0xF0);
+    jsr_push(0xD33F);
+    move = ApplyVelocityY(fresh);
+    jsr_pop();
+    WR8(OBJ->vy_hi[fresh], 0);
+    return ended_of_axis_move(move);
+}
+
+void abi_StartTypeAndLaunchUp(void)
+{
+    abi_ended(StartTypeAndLaunchUp(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 07DC:0C8 AnimateThenFireOrWait
+ * @run 70:B8C8
+ * WHAT IT DOES: Animates the object facing the player (list 2). When the list has ended it
+ * stops the animation, enters state 3, counts f3568 up and sets its life_timer from a four byte
+ * table at overlay address $B806 by f3568's low two bits. When the frame changed to $32 it starts
+ * an object of type $23 at its place in a free slot from $30.
+ * HOW: StepFramesFacingPlayerAlways; FindFreeSlotFrom30; StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as the last step that ran (the animation step, a compare, the
+ * slot search or the start); Y 2, the table index, or the slot.
+ */
+Ended AnimateThenFireOrWait(uint8_t slot)
+{
+    enum { TABLE = 0xB806 };
+    FrameStepEnd frames;
+    uint8_t frame, count, y, value, found_slot, last;
+    bool found;
+    Ended e;
+
+    jsr_push(0xB8CD);
+    frames = StepFramesFacingPlayerAlways(slot, 2);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 2), frames.end);
+    if (frames.step == FRAME_LIST_ENDED) {
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 3);
+        INC8(OBJ->f3568[slot]);
+        count = RD8(OBJ->f3568[slot]);
+        y = (uint8_t)(count & 3);
+        value = rd8((uint16_t)(TABLE + y));
+        WR8(OBJ->life_timer[slot], value);
+        return ended_then(e, ended_with_y(ended_load(value), y));
+    }
+    if (frames.step != FRAME_CHANGED) {
+        return e;
+    }
+    frame = RD8(OBJ->frame[slot]);
+    e = ended_then(e, ended_compare(frame, 0x32));
+    if (frame != 0x32) {
+        return e;
+    }
+    jsr_push(0xB8DB);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+    if (!found) {
+        return e;
+    }
+    jsr_push(0xB8E2);
+    value = StartObjectAtPlace(0x23, slot, found_slot);
+    jsr_pop();
+    return ended_then(e, ended_load(value));
+}
+
+void abi_AnimateThenFireOrWait(void)
+{
+    abi_ended(AnimateThenFireOrWait(cpu.x));
+}
+
+/*
+ * @routine 07DC:16B BurstIntoSixPieces
+ * @run 70:B96B
+ * WHAT IT DOES: Replaces the object by up to six objects of type $24 started at its place in free
+ * slots from $30, each facing as this one does and with its life_timer, f3510 and both speed
+ * bytes pairs from an eight byte entry of a table at overlay address $B9B6; then removes the
+ * object.
+ * HOW: A loop over pieces 0 to 5 as SpawnSixPiecesA; ClearObject as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as the last compare of the piece count (C 1, Z 1, A the last
+ * speed byte), or as FindFreeSlotFrom30 left it when no slot was free; Y 6 or $40; X kept.
+ */
+Ended BurstIntoSixPieces(uint8_t slot)
+{
+    enum { TABLE = 0xB9B6, TYPE = 0x24 };
+    uint8_t piece = 0, found_slot, last, row, value;
+    bool found;
+    Ended e = ended_with_y(ended_kept(), 0);
+
+    do {
+        WR8(ZP->hit_slot, piece);
+        jsr_push(0xB971);
+        found_slot = FindFreeSlotFrom30(&last, &found);
+        jsr_pop();
+        e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+        if (!found) {
+            ClearObject(slot);
+            return e;
+        }
+        jsr_push(0xB978);
+        StartObjectAtPlace(TYPE, slot, found_slot);
+        jsr_pop();
+        value = RD8(OBJ->facing_left[slot]);
+        WR8(OBJ->facing_left[found_slot], value);
+        WR8(ZP->richter_object, slot);
+        row = (uint8_t)(RD8(ZP->hit_slot) << 3);
+        value = rd8((uint16_t)(TABLE + row));
+        WR8(OBJ->life_timer[found_slot], value);
+        value = rd8((uint16_t)(TABLE + 1 + row));
+        WR8(OBJ->f3510[found_slot], value);
+        value = rd8((uint16_t)(TABLE + 2 + row));
+        WR8(OBJ->vx_hi[found_slot], value);
+        value = rd8((uint16_t)(TABLE + 3 + row));
+        WR8(OBJ->vx_lo[found_slot], value);
+        value = rd8((uint16_t)(TABLE + 4 + row));
+        WR8(OBJ->vy_hi[found_slot], value);
+        value = rd8((uint16_t)(TABLE + 5 + row));
+        WR8(OBJ->vy_lo[found_slot], value);
+        slot = RD8(ZP->richter_object);
+        piece = RD8(ZP->hit_slot);
+        piece++;
+        e = ended_with_y(ended_with_carry(ended_with_a(ended_nz((uint8_t)(piece - 6)), value), piece >= 6), piece);
+    } while (piece < 6);
+    ClearObject(slot);
+    return e;
+}
+
+void abi_BurstIntoSixPieces(void)
+{
+    abi_ended(BurstIntoSixPieces(cpu.x));
+}

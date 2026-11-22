@@ -169,10 +169,13 @@ once known). M is the main checkout, W your worktree. Run from W.
 
        cpu-run -j 1 -m 3G -- python3 tools/rondo/asmbuild.py --raw build/rondo/raw
 
-   Read its draft too. The intake's `@run` bank may read `??`: take it
-   from the trace's run map (`runmap.bin`, `mprcfg.csv`), never from a
-   guess. Write down what the routine does. A piece that another routine
-   falls into is one routine with it: lift the group together.
+   Read its draft too. The intake header gives `@run BB:AAAA` from the
+   trace's run map (from a47053d): use it as printed, never a guess. Write
+   down what the routine does. `build/rondo/raw/fragments.csv` in the main
+   checkout lists every piece that another piece falls or branches into,
+   with the whole routine it belongs to and that routine's pieces: a
+   fragment is lifted as part of its whole routine, never alone, and a
+   piece with an entry of its own stays a named entry into it.
 2. Write the C in your lot's file and its header; file the assembly in the
    same-named `.s`, the `@routine` tag at the routine's first disc byte.
    `asmfile.py` drafts it, and leaves a bare address where a byte has no

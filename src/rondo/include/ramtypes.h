@@ -284,14 +284,14 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, bios_d) + 1 == zBiosDh, 
 #define ObjectTable_BASE 0x2750
 #define ObjectTable_COUNT 88
 typedef struct {
-    uint8_t f2750[88]; /* OBJ_2750 */
-    uint8_t f27a8[88]; /* OBJ_27A8 */
+    union { uint8_t kind[88]; uint8_t f2750[88]; }; /* OBJ_2750 */
+    union { uint8_t state[88]; uint8_t f27a8[88]; }; /* OBJ_27A8 */
     uint8_t f2800[88]; /* OBJ_2800 */
     uint8_t _gap_0108[440]; /* no name yet: $2858-$2A0F */
     uint8_t f2a10[88]; /* OBJ_2A10 */
     union { uint8_t frame[88]; uint8_t f2a68[88]; }; /* OBJ_2A68 */
     union { uint8_t facing_left[88]; uint8_t f2ac0[88]; }; /* OBJ_2AC0 */
-    uint8_t f2b18[88]; /* OBJ_2B18 */
+    union { uint8_t flash_flags[88]; uint8_t f2b18[88]; }; /* OBJ_2B18 */
     uint8_t x_hi[88]; /* OBJ_X_HI */
     uint8_t x_lo[88]; /* OBJ_X_LO */
     uint8_t x_frac[88]; /* OBJ_X_FRAC */
@@ -306,23 +306,23 @@ typedef struct {
     uint8_t flags[88]; /* OBJ_FLAGS_2F38 */
     uint8_t f2f90[88]; /* OBJ_2F90 */
     uint8_t f2fe8[88]; /* OBJ_2FE8 */
-    uint8_t f3040[88]; /* OBJ_3040 */
+    union { uint8_t next_kind[88]; uint8_t f3040[88]; }; /* OBJ_3040 */
     uint8_t event_id[88]; /* OBJ_EVENT_ID */
     uint8_t f30f0[88]; /* OBJ_30F0 */
     uint8_t f3148[88]; /* OBJ_3148 */
-    uint8_t f31a0[88]; /* OBJ_31A0 */
+    union { uint8_t status_flags[88]; uint8_t f31a0[88]; }; /* OBJ_31A0 */
     uint8_t f31f8[88]; /* OBJ_31F8 */
     union { uint8_t hitbox_on[88]; uint8_t f3250[88]; }; /* OBJ_3250 */
     uint8_t f32a8[88]; /* OBJ_32A8 */
     uint8_t f3300[88]; /* OBJ_3300 */
     uint8_t f3358[88]; /* OBJ_3358 */
-    uint8_t f33b0[88]; /* OBJ_33B0 */
-    uint8_t f3408[88]; /* OBJ_3408 */
-    uint8_t f3460[88]; /* OBJ_3460 */
-    uint8_t f34b8[88]; /* OBJ_34B8 */
+    union { uint8_t hit_taken[88]; uint8_t f33b0[88]; }; /* OBJ_33B0 */
+    union { uint8_t anim_step[88]; uint8_t f3408[88]; }; /* OBJ_3408 */
+    union { uint8_t anim_timer[88]; uint8_t f3460[88]; }; /* OBJ_3460 */
+    union { uint8_t life_timer[88]; uint8_t f34b8[88]; }; /* OBJ_34B8 */
     uint8_t f3510[88]; /* OBJ_3510 */
-    uint8_t f3568[88]; /* OBJ_3568 */
-    uint8_t f35c0[88]; /* OBJ_35C0 */
+    union { uint8_t angle_hi[88]; uint8_t f3568[88]; }; /* OBJ_3568 */
+    union { uint8_t angle_lo[88]; uint8_t f35c0[88]; }; /* OBJ_35C0 */
     uint8_t f3618[88]; /* OBJ_3618 */
     uint8_t f3670[88]; /* OBJ_3670 */
     uint8_t f36c8[88]; /* OBJ_36C8 */
@@ -336,10 +336,12 @@ typedef struct {
     union { uint8_t hitbox_half_w[88]; uint8_t f3988[88]; }; /* OBJ_3988 */
     union { uint8_t hitbox_dy[88]; uint8_t f39e0[88]; }; /* OBJ_39E0 */
     union { uint8_t hitbox_half_h[88]; uint8_t f3a38[88]; }; /* OBJ_3A38 */
-    uint8_t f3a90[88]; /* OBJ_3A90 */
+    union { uint8_t timer[88]; uint8_t f3a90[88]; }; /* OBJ_3A90 */
 } ObjectTable;
 _Static_assert(sizeof(ObjectTable) == 0x1398, "ObjectTable size");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, kind) + 0 == OBJ_2750, "ObjectTable.kind is not at OBJ_2750");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2750) + 0 == OBJ_2750, "ObjectTable.f2750 is not at OBJ_2750");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, state) + 0 == OBJ_27A8, "ObjectTable.state is not at OBJ_27A8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f27a8) + 0 == OBJ_27A8, "ObjectTable.f27a8 is not at OBJ_27A8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2800) + 0 == OBJ_2800, "ObjectTable.f2800 is not at OBJ_2800");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2a10) + 0 == OBJ_2A10, "ObjectTable.f2a10 is not at OBJ_2A10");
@@ -347,6 +349,7 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, frame) + 0 == OBJ_2A68, 
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2a68) + 0 == OBJ_2A68, "ObjectTable.f2a68 is not at OBJ_2A68");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, facing_left) + 0 == OBJ_2AC0, "ObjectTable.facing_left is not at OBJ_2AC0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2ac0) + 0 == OBJ_2AC0, "ObjectTable.f2ac0 is not at OBJ_2AC0");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, flash_flags) + 0 == OBJ_2B18, "ObjectTable.flash_flags is not at OBJ_2B18");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2b18) + 0 == OBJ_2B18, "ObjectTable.f2b18 is not at OBJ_2B18");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, x_hi) + 0 == OBJ_X_HI, "ObjectTable.x_hi is not at OBJ_X_HI");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, x_lo) + 0 == OBJ_X_LO, "ObjectTable.x_lo is not at OBJ_X_LO");
@@ -362,10 +365,12 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fields_2ee0) + 0 == OBJ_
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, flags) + 0 == OBJ_FLAGS_2F38, "ObjectTable.flags is not at OBJ_FLAGS_2F38");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2f90) + 0 == OBJ_2F90, "ObjectTable.f2f90 is not at OBJ_2F90");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2fe8) + 0 == OBJ_2FE8, "ObjectTable.f2fe8 is not at OBJ_2FE8");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, next_kind) + 0 == OBJ_3040, "ObjectTable.next_kind is not at OBJ_3040");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3040) + 0 == OBJ_3040, "ObjectTable.f3040 is not at OBJ_3040");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, event_id) + 0 == OBJ_EVENT_ID, "ObjectTable.event_id is not at OBJ_EVENT_ID");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f30f0) + 0 == OBJ_30F0, "ObjectTable.f30f0 is not at OBJ_30F0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3148) + 0 == OBJ_3148, "ObjectTable.f3148 is not at OBJ_3148");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, status_flags) + 0 == OBJ_31A0, "ObjectTable.status_flags is not at OBJ_31A0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f31a0) + 0 == OBJ_31A0, "ObjectTable.f31a0 is not at OBJ_31A0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f31f8) + 0 == OBJ_31F8, "ObjectTable.f31f8 is not at OBJ_31F8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hitbox_on) + 0 == OBJ_3250, "ObjectTable.hitbox_on is not at OBJ_3250");
@@ -373,12 +378,18 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3250) + 0 == OBJ_3250, 
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f32a8) + 0 == OBJ_32A8, "ObjectTable.f32a8 is not at OBJ_32A8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3300) + 0 == OBJ_3300, "ObjectTable.f3300 is not at OBJ_3300");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3358) + 0 == OBJ_3358, "ObjectTable.f3358 is not at OBJ_3358");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hit_taken) + 0 == OBJ_33B0, "ObjectTable.hit_taken is not at OBJ_33B0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f33b0) + 0 == OBJ_33B0, "ObjectTable.f33b0 is not at OBJ_33B0");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, anim_step) + 0 == OBJ_3408, "ObjectTable.anim_step is not at OBJ_3408");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3408) + 0 == OBJ_3408, "ObjectTable.f3408 is not at OBJ_3408");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, anim_timer) + 0 == OBJ_3460, "ObjectTable.anim_timer is not at OBJ_3460");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3460) + 0 == OBJ_3460, "ObjectTable.f3460 is not at OBJ_3460");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, life_timer) + 0 == OBJ_34B8, "ObjectTable.life_timer is not at OBJ_34B8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f34b8) + 0 == OBJ_34B8, "ObjectTable.f34b8 is not at OBJ_34B8");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3510) + 0 == OBJ_3510, "ObjectTable.f3510 is not at OBJ_3510");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, angle_hi) + 0 == OBJ_3568, "ObjectTable.angle_hi is not at OBJ_3568");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3568) + 0 == OBJ_3568, "ObjectTable.f3568 is not at OBJ_3568");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, angle_lo) + 0 == OBJ_35C0, "ObjectTable.angle_lo is not at OBJ_35C0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f35c0) + 0 == OBJ_35C0, "ObjectTable.f35c0 is not at OBJ_35C0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3618) + 0 == OBJ_3618, "ObjectTable.f3618 is not at OBJ_3618");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3670) + 0 == OBJ_3670, "ObjectTable.f3670 is not at OBJ_3670");
@@ -397,6 +408,7 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hitbox_dy) + 0 == OBJ_39
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f39e0) + 0 == OBJ_39E0, "ObjectTable.f39e0 is not at OBJ_39E0");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hitbox_half_h) + 0 == OBJ_3A38, "ObjectTable.hitbox_half_h is not at OBJ_3A38");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3a38) + 0 == OBJ_3A38, "ObjectTable.f3a38 is not at OBJ_3A38");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, timer) + 0 == OBJ_3A90, "ObjectTable.timer is not at OBJ_3A90");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3a90) + 0 == OBJ_3A90, "ObjectTable.f3a90 is not at OBJ_3A90");
 #define OBJ ((ObjectTable *)ObjectTable_BASE)
 

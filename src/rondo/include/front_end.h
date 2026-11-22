@@ -245,7 +245,50 @@ void abi_PlaceCursorObject(void);
 void abi_PlaceCursorObjects(void);
 void abi_ShiftObjectsByScrollChange(void);
 
+/* Defined elsewhere, typed, and not declared in routines.h. */
+void ClearScreenState(void);                          /* system/video.c */
+
+/* Placeholders for the scene script (menu/attract.c): its tables of command lengths and handlers
+ * and the title's "save read" byte. */
+#define SCRIPT_LENGTHS 0x87F0
+#define SCRIPT_COMMANDS 0x8827
+#define TITLE_SAVE_READ 0x3F83
+
 /* menu/attract.c */
+Exit ScriptAdvance(void);
+Exit ScriptStep(void);
+Exit ScriptSaveReadAndState(void);
+Exit ScriptSound(void);
+Exit ScriptStartListAndClear(void);
+Exit ScriptStartList(void);
+Exit ScriptStartSlotKind1(void);
+Exit ScriptStartSlotKind2(void);
+Exit ScriptStartSlotKind3(void);
+Exit ScriptPlayTrack(uint8_t doubled_command);
+Exit ScriptPlaceObject(uint8_t object, uint8_t y);
+Exit ScriptPlaceObjectState(void);
+Exit ScriptPlaceObjectKind2(void);
+Exit ScriptPlaceObjectFrame(void);
+Exit ScriptPlaceTitleObjectA(void);
+Exit ScriptPlaceTitleObjectB(void);
+Exit AttractHoldBeforeEnd(void);
+void abi_ScriptAdvance(void);
+void abi_ScriptStep(void);
+void abi_ScriptSaveReadAndState(void);
+void abi_ScriptSound(void);
+void abi_ScriptStartListAndClear(void);
+void abi_ScriptStartList(void);
+void abi_ScriptStartSlotKind1(void);
+void abi_ScriptStartSlotKind2(void);
+void abi_ScriptStartSlotKind3(void);
+void abi_ScriptPlayTrack(void);
+void abi_ScriptPlaceObject(void);
+void abi_ScriptPlaceObjectState(void);
+void abi_ScriptPlaceObjectKind2(void);
+void abi_ScriptPlaceObjectFrame(void);
+void abi_ScriptPlaceTitleObjectA(void);
+void abi_ScriptPlaceTitleObjectB(void);
+void abi_AttractHoldBeforeEnd(void);
 uint8_t AttractBegin(void);
 uint8_t ModeDoneAdd(void);
 void abi_AttractBegin(void);

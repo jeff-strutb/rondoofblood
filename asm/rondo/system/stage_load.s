@@ -136,6 +136,7 @@ StageEnter_at12:
 ; with its music at once. Secret stages and stages $10 and $0C first copy VRAM to RAM.
 ; HOW: StageScenes or, for bit 7, StageScenesSecret gives the scene by stage, through a pointer
 ; in zTemp0A-0B; StageAdpcm and StageTrack, or their secret tables, give the ADPCM and the track.
+; WAITS: yes, on the drive and the vertical blank, through the scene loads and CdSearchTrack; the stack there is the caller's return and the call frames.
 ; Entry: nothing. Exit: as CdSearchTrack, entered with X the stage's index. Clobbers zTemp0A-0B.
 StageLoad:
     lda z:zStage

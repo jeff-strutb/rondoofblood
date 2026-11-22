@@ -33,6 +33,7 @@ enum {
  * @run 6A:6C24
  * WHAT IT DOES: Reads the game's backup file to RAM at $7D00.
  * HOW: The card's bm_read, with the file's name at $6C9A and $90 bytes.
+ * WAITS: no. The card's bm_read is a tail jump.
  * Entry: nothing. Exit: as bm_read, entered with A 0 and Z set.
  */
 /* The BIOS's arguments for the game's backup file: its name, $7D00, $90 bytes, from the start. */
@@ -72,6 +73,7 @@ void abi_BackupRead(void)
  * WHAT IT DOES: Writes the game's backup file from $7D00, if there is room once the old
  * one is gone.
  * HOW: The card's bm_delete, its bm_free count compared with $0092, its bm_write.
+ * WAITS: no.
  * Entry: nothing. Exit, no room: A 1, N and Z from it, C and V from the compare's subtract, X
  * and Y as bm_free left them. Exit: as bm_write, entered with A 0 and Z set.
  */
@@ -79,11 +81,19 @@ BackupWriteRun BackupWrite(void)
 {
     BackupWriteRun run;
 
+    uint8_t low, high;
+
     wr8(zBiosAl, BACKUP_NAME_LO);
     wr8(zBiosAh, BACKUP_NAME_HI);
+    jsr_push(0x6C4E);
     run.removal = bm_delete();
+    jsr_pop();
+    jsr_push(0x6C51);
     run.free_space = bm_free();
-    run.room = sub_bytes(rd8(zBiosCh), 0, rd8(zBiosCl) >= BACKUP_FREE_NEEDED);
+    jsr_pop();
+    low = rd8(zBiosCl);
+    high = rd8(zBiosCh);
+    run.room = sub_bytes(high, 0, low >= BACKUP_FREE_NEEDED);
     run.fits = !(run.room.value & 0x80);
     if (!run.fits)
         return run;
@@ -122,6 +132,7 @@ void abi_BackupWrite(void)
  * @run 6A:6C7A
  * WHAT IT DOES: Formats the backup memory; on failure the game stops at BackupFailed.
  * HOW: The card's bm_format with the blank name at $6C8F; its answer goes to X.
+ * WAITS: yes, only on failure: it then spins in BackupFailed with interrupts on; the stack there is the caller's return and this call's two bytes.
  * Entry: nothing. Exit: as bm_format leaves them, with X its answer, N and Z from it.
  */
 BackupFormat BackupFormatMemory(void)
@@ -130,7 +141,9 @@ BackupFormat BackupFormatMemory(void)
 
     wr8(zBiosAl, BACKUP_BLANK_LO);
     wr8(zBiosAh, BACKUP_BLANK_HI);
+    jsr_push(0x6C85);
     format = bm_format();
+    jsr_pop();
     if (bm_format_result(format) != 0)
         for (;;)
             wait_interrupt();
@@ -151,6 +164,7 @@ void abi_BackupFormat(void)
  * @run 6A:6C8C
  * WHAT IT DOES: Where the game stops when the backup memory cannot be formatted.
  * HOW: Jumps to itself; interrupts go on.
+ * WAITS: yes, for ever: a jump to itself with interrupts on; the stack is the caller's return and its call frame.
  * Entry: anything. Exit: none.
  */
 void abi_BackupFailed(void)
@@ -184,19 +198,23 @@ static void log_sum(DiscLog *log, Sum sum)
 }
 
 /* Waits for the drive: asks whether it is busy, and pauses it until it says it has stopped. */
-static void wait_drive_idle(DiscLog *log)
+static void wait_drive_idle(DiscLog *log, uint16_t ret_stat, uint16_t ret_pause)
 {
     for (;;) {
         DiscCall stat = disc_call(DISC_CD_STAT);
 
+        jsr_push(ret_stat);
         stat.as.cd_stat = cd_stat(0);
+        jsr_pop();
         log_call(log, stat);
         if (cd_stat_result(stat.as.cd_stat) == 0)
             return;
         for (;;) {
             DiscCall pause = disc_call(DISC_CD_PAUSE);
 
+            jsr_push(ret_pause);
             pause.as.cd_pause = cd_pause();
+            jsr_pop();
             log_call(log, pause);
             if (cd_pause_result(pause.as.cd_pause) == 0)
                 break;
@@ -220,7 +238,7 @@ static Sum record_disc_address(void)
 }
 
 /* A record's address in zTemp00-01: the BIOS's multiply of index by size, plus the table. */
-static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size)
+static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size, uint16_t ret)
 {
     DiscCall mul = disc_call(DISC_MUL);
     Sum low;
@@ -230,7 +248,9 @@ static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size)
     wr8(zBiosBl, size);
     mul.as.mul.al = index;
     mul.as.mul.bl = size;
+    jsr_push(ret);
     mul.as.mul.product = ma_mul8u(index, size);
+    jsr_pop();
     log_call(log, mul);
     low = add_bytes((uint8_t)table, rd8(zBiosCl), false);
     wr8(zTemp00, low.value);
@@ -240,7 +260,7 @@ static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size)
 }
 
 /* The BIOS's ADPCM transfer of _AL sectors from the address in _CL, _CH, _DL to ADPCM 0. */
-static AdTrans adpcm_transfer(DiscLog *log, uint8_t sectors, Sum last)
+static AdTrans adpcm_transfer(DiscLog *log, uint8_t sectors, Sum last, uint16_t ret)
 {
     DiscCall trans = disc_call(DISC_AD_TRANS);
 
@@ -251,7 +271,9 @@ static AdTrans adpcm_transfer(DiscLog *log, uint8_t sectors, Sum last)
     trans.given = sectors;
     trans.summed = true;
     trans.sum = last;
+    jsr_push(ret);
     trans.as.ad_trans = ad_trans();
+    jsr_pop();
     log_call(log, trans);
     return trans.as.ad_trans;
 }
@@ -262,6 +284,7 @@ static AdTrans adpcm_transfer(DiscLog *log, uint8_t sectors, Sum last)
  * WHAT IT DOES: Loads a sound into ADPCM memory from the disc, unless it is already there.
  * HOW: Stops the ADPCM and waits on its status, waits for the drive, then the BIOS's ADPCM
  * transfer from the sound's record in AdpcmRecords, until it answers zero.
+ * WAITS: yes, on the drive: the ADPCM status and the card's drive and transfer calls are asked until they answer; the stack there is the caller's return, this call's two bytes and the pushed sound (1).
  * Entry: A sound. Exit, already there: A kept, N 0, Z 1, C 1 from the compare. Exit: A zero,
  * N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves them. The C replays the last 32
  * of the BIOS's calls.
@@ -279,13 +302,19 @@ AdpcmLoadRun AdpcmLoad(uint8_t sound)
     if (run.already)
         return run;
     wr8(zMusicWanted, sound);
+    push8(sound);
+    jsr_push(0x6E4D);
     stop.as.control = ad_stop();
+    jsr_pop();
     log_call(&run.log, stop);
     do {
         stat = disc_call(DISC_AD_STAT);
+        jsr_push(0x6E50);
         stat.as.ad_stat = ad_stat();
+        jsr_pop();
         log_call(&run.log, stat);
     } while (stat.as.ad_stat.playing != 0);
+    sound = pull8();
     low = add_bytes((uint8_t)(sound << 2), (uint8_t)AdpcmRecords, false);
     wr8(zTemp00, low.value);
     low = add_bytes(0, (uint8_t)(AdpcmRecords >> 8), low.carry);
@@ -294,9 +323,9 @@ AdpcmLoadRun AdpcmLoad(uint8_t sound)
     for (;;) {
         Sum last;
 
-        wait_drive_idle(&run.log);
+        wait_drive_idle(&run.log, 0x6E64, 0x6E6B);
         last = record_disc_address();
-        if (ad_trans_result(adpcm_transfer(&run.log, rd8_zp_y(zTemp00, 3), last)) == 0)
+        if (ad_trans_result(adpcm_transfer(&run.log, rd8_zp_y(zTemp00, 3), last, 0x6E95)) == 0)
             break;
     }
     wr8(BiosAdpcmBusy, 0);
@@ -328,6 +357,7 @@ void abi_AdpcmLoad(void)
  * track's start taken off as a record's is.
  * HOW: Waits for the drive; the address worked out a byte at a time from its constants; the
  * BIOS's ADPCM transfer, until it answers zero.
+ * WAITS: yes, on the drive: the card's drive and transfer calls are asked until they answer; the stack there is the caller's return and this call's two bytes.
  * Entry: nothing. Exit: A zero, N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves
  * them.
  */
@@ -341,7 +371,7 @@ DiscLog AdpcmLoadFixed(void)
         Sum middle;
         Sum high;
 
-        wait_drive_idle(&log);
+        wait_drive_idle(&log, 0x6EA1, 0x6EA8);
         low = sub_bytes((uint8_t)FIXED_ADPCM_ADDRESS, (uint8_t)TRACK_START, true);
         wr8(zBiosDl, low.value);
         middle = sub_bytes((uint8_t)(FIXED_ADPCM_ADDRESS >> 8), (uint8_t)(TRACK_START >> 8),
@@ -356,7 +386,7 @@ DiscLog AdpcmLoadFixed(void)
         wr8(zBiosCh, middle.value);
         high = add_bytes(0, rd8(zBiosCl), middle.carry);
         wr8(zBiosCl, high.value);
-        if (ad_trans_result(adpcm_transfer(&log, FIXED_ADPCM_SECTORS, high)) == 0)
+        if (ad_trans_result(adpcm_transfer(&log, FIXED_ADPCM_SECTORS, high, 0x6EE3)) == 0)
             break;
     }
     wr8(BiosAdpcmBusy, 0);
@@ -376,6 +406,7 @@ void abi_AdpcmLoadFixed(void)
  * WHAT IT DOES: Plays a sound straight from the disc as ADPCM.
  * HOW: The sound's record, five bytes each in AdpcmStreamRecords; waits for the drive; the
  * BIOS's continuous ADPCM play in mode $0E, until it answers zero.
+ * WAITS: yes, on the drive: the card's drive and ADPCM play calls are asked until they answer; the stack there is the caller's return and this call's two bytes.
  * Entry: A sound. Exit: A zero, N 0, Z 1, C 1; Y 4 unless the BIOS changed it; X and V as the
  * BIOS leaves them.
  */
@@ -384,11 +415,11 @@ DiscLog AdpcmPlayFromDisc(uint8_t sound)
     DiscLog log;
 
     log.count = 0;
-    record_at(&log, AdpcmStreamRecords, sound, STREAM_RECORD_BYTES);
+    record_at(&log, AdpcmStreamRecords, sound, STREAM_RECORD_BYTES, 0x6EF4);
     for (;;) {
         DiscCall play = disc_call(DISC_AD_CPLAY);
 
-        wait_drive_idle(&log);
+        wait_drive_idle(&log, 0x6F05, 0x6F0C);
         play.summed = true;
         play.sum = record_disc_address();
         wr8(zBiosAl, rd8_zp_y(zTemp00, 3));
@@ -396,7 +427,9 @@ DiscLog AdpcmPlayFromDisc(uint8_t sound)
         wr8(zBiosBl, 0);
         wr8(zBiosDh, CPLAY_MODE);
         play.given = CPLAY_MODE;
+        jsr_push(0x6F3B);
         play.as.ad_cplay = ad_cplay();
+        jsr_pop();
         log_call(&log, play);
         if (ad_cplay_result(play.as.ad_cplay) == 0)
             break;
@@ -506,14 +539,16 @@ void disc_log_exit_shim(const DiscLog *log)
 }
 
 /* The track's entry in CdTrackTable, through zTemp00 and 01, from the BIOS's multiply. */
-static TrackEntry track_entry(uint8_t track)
+static TrackEntry track_entry(uint8_t track, uint16_t ret)
 {
     TrackEntry entry;
     Sum low;
 
     wr8(zBiosAl, track);
     wr8(zBiosBl, CD_TRACK_ENTRY);
+    jsr_push(ret);
     entry.product = ma_mul8u(track, CD_TRACK_ENTRY);
+    jsr_pop();
     low = add_bytes((uint8_t)CdTrackTable, rd8(zBiosCl), false);
     wr8(zTemp00, low.value);
     entry.high = add_bytes((uint8_t)(CdTrackTable >> 8), rd8(zBiosCh), low.carry);
@@ -522,16 +557,18 @@ static TrackEntry track_entry(uint8_t track)
 }
 
 /* A track played in the mode given until the BIOS's play succeeds, then the CD's fade off. */
-static TrackPlay play_track(uint8_t track, uint8_t mode)
+static TrackPlay play_track(uint8_t track, uint8_t mode, uint8_t kept_x, uint8_t kept_y)
 {
     TrackPlay play;
     uint8_t result;
 
+    push8(kept_x);
+    push8(kept_y);
     wr8(zCdPlayMode, mode);
     wr8(zCdTrack, track);
     play.track = track;
     play.mode = mode;
-    play.entry = track_entry(track);
+    play.entry = track_entry(track, 0x6F5E);
     play.tries = 0;
     do {
         CdPlay tried;
@@ -545,21 +582,27 @@ static TrackPlay play_track(uint8_t track, uint8_t mode)
         wr8(zBiosCh, rd8_zp_y(zTemp00, 4));
         play.dl = rd8_zp_y(zTemp00, 5);
         wr8(zBiosDl, play.dl);
+        jsr_push(0x6F94);
         tried = cd_play();
+        jsr_pop();
         result = cd_play_result(tried);
         play.results[play.tries % CD_PLAY_KEPT] = result;
         play.attempts[play.tries % CD_PLAY_KEPT] = tried;
         play.tries++;
     } while (result != 0);
+    jsr_push(0x6F9B);
     cd_fade(0);
+    jsr_pop();
+    play.y = pull8();
+    play.x = pull8();
     return play;
 }
 
 /* As the BIOS's calls leave the registers, then X and Y back as they came, N and Z from X. */
 static void play_track_exit_shim(TrackPlay play)
 {
-    uint8_t x = cpu.x;
-    uint8_t y = cpu.y;
+    uint8_t x = play.x;
+    uint8_t y = play.y;
     unsigned first = play.tries > CD_PLAY_KEPT ? play.tries - CD_PLAY_KEPT : 0;
 
     ma_mul8u_exit_shim(play.track, CD_TRACK_ENTRY, play.entry.product);
@@ -586,17 +629,18 @@ static void play_track_exit_shim(TrackPlay play)
  * @run 6A:6F43
  * WHAT IT DOES: Plays a CD track once.
  * HOW: Mode $42 for the BIOS's play.
+ * WAITS: yes, on the drive: the card's play is asked until it answers zero; the stack there is the caller's return, this call's two bytes and X and Y pushed (2).
  * Entry: A track. Exit: A 0 from the BIOS's fade, C and V as its play left them, X and Y kept, N
  * and Z from X. The BIOS's play is tried until it succeeds; the C replays the last 32 tries' exits.
  */
-TrackPlay CdPlayOnce(uint8_t track)
+TrackPlay CdPlayOnce(uint8_t track, uint8_t kept_x, uint8_t kept_y)
 {
-    return play_track(track, CD_PLAY_ONCE);
+    return play_track(track, CD_PLAY_ONCE, kept_x, kept_y);
 }
 
 void abi_CdPlayOnce(void)
 {
-    play_track_exit_shim(CdPlayOnce(cpu.a));
+    play_track_exit_shim(CdPlayOnce(cpu.a, cpu.x, cpu.y));
 }
 
 /*
@@ -604,16 +648,19 @@ void abi_CdPlayOnce(void)
  * @run 6A:6F4B
  * WHAT IT DOES: Plays the last track again, repeating.
  * HOW: zCdTrack into CdPlayRepeat.
+ * WAITS: yes, as CdPlayOnce.
  * Entry: nothing. Exit: as CdPlayRepeat.
  */
-TrackPlay CdPlayAgain(void)
+TrackPlay CdPlayAgain(uint8_t kept_x, uint8_t kept_y)
 {
-    return play_track(rd8(zCdTrack), CD_PLAY_REPEAT);
+    uint8_t track = rd8(zCdTrack);
+
+    return play_track(track, CD_PLAY_REPEAT, kept_x, kept_y);
 }
 
 void abi_CdPlayAgain(void)
 {
-    play_track_exit_shim(CdPlayAgain());
+    play_track_exit_shim(CdPlayAgain(cpu.x, cpu.y));
 }
 
 /*
@@ -621,16 +668,17 @@ void abi_CdPlayAgain(void)
  * @run 6A:6F4D
  * WHAT IT DOES: Plays a CD track, repeating.
  * HOW: Mode $41 for the BIOS's play.
+ * WAITS: yes, as CdPlayOnce.
  * Entry: A track. Exit: as CdPlayOnce.
  */
-TrackPlay CdPlayRepeat(uint8_t track)
+TrackPlay CdPlayRepeat(uint8_t track, uint8_t kept_x, uint8_t kept_y)
 {
-    return play_track(track, CD_PLAY_REPEAT);
+    return play_track(track, CD_PLAY_REPEAT, kept_x, kept_y);
 }
 
 void abi_CdPlayRepeat(void)
 {
-    play_track_exit_shim(CdPlayRepeat(cpu.a));
+    play_track_exit_shim(CdPlayRepeat(cpu.a, cpu.x, cpu.y));
 }
 
 /*
@@ -640,10 +688,11 @@ void abi_CdPlayRepeat(void)
  * nothing.
  * HOW: The track's entry in CdTrackTable; the BIOS's search from its first three bytes, until it
  * answers zero.
+ * WAITS: yes, on the drive: the card's search is asked until it answers zero; the stack there is the caller's return, this call's two bytes and X and Y pushed (2).
  * Entry: A track. Exit, $FF: A kept, N 0, Z 1, C 1. Exit: A zero, X and Y kept, N and Z
  * from X; C and V as the BIOS leaves them.
  */
-TrackSearch CdSearchTrack(uint8_t track)
+TrackSearch CdSearchTrack(uint8_t track, uint8_t kept_x, uint8_t kept_y)
 {
     TrackSearch search;
 
@@ -651,8 +700,10 @@ TrackSearch CdSearchTrack(uint8_t track)
     search.skipped = track == NO_TRACK;
     if (search.skipped)
         return search;
+    push8(kept_x);
+    push8(kept_y);
     wr8(zCdTrack, track);
-    record_at(&search.log, CdTrackTable, track, CD_TRACK_ENTRY);
+    record_at(&search.log, CdTrackTable, track, CD_TRACK_ENTRY, 0x6FAF);
     for (;;) {
         DiscCall seek = disc_call(DISC_CD_SEARCH);
 
@@ -661,19 +712,23 @@ TrackSearch CdSearchTrack(uint8_t track)
         wr8(zBiosAh, rd8_zp_y(zTemp00, 1));
         seek.given = rd8_zp_y(zTemp00, 2);
         wr8(zBiosBl, seek.given);
+        jsr_push(0x6FD2);
         seek.as.cd_search = cd_search();
+        jsr_pop();
         log_call(&search.log, seek);
         if (cd_search_result(seek.as.cd_search) == 0)
             break;
     }
+    search.y = pull8();
+    search.x = pull8();
     return search;
 }
 
 /* CdSearchTrack's exit, from the registers it was entered with. */
 void track_search_exit_shim(const TrackSearch *search)
 {
-    uint8_t x = cpu.x;
-    uint8_t y = cpu.y;
+    uint8_t x = search->x;
+    uint8_t y = search->y;
 
     if (search->skipped) {
         abi_nz(0);
@@ -688,7 +743,7 @@ void track_search_exit_shim(const TrackSearch *search)
 
 void abi_CdSearchTrack(void)
 {
-    TrackSearch search = CdSearchTrack(cpu.a);
+    TrackSearch search = CdSearchTrack(cpu.a, cpu.x, cpu.y);
 
     track_search_exit_shim(&search);
 }
@@ -712,6 +767,7 @@ static Cpu scene_overlay_shim(uint8_t offset, uint8_t pointer_high, Sum bank)
  * WHAT IT DOES: Maps the scene overlay and runs its entry at $8006 with a pointer from
  * SceneCallTable.
  * HOW: The pointer goes to zProduct1-2, where that entry takes it; Y 0.
+ * WAITS: depends on the overlay it runs (an original-code tail: a jump to $8006).
  * Entry: X the table's offset. Exit: as the overlay leaves them.
  */
 SceneCall SceneCallOverlay(uint8_t offset)
@@ -732,12 +788,30 @@ void abi_SceneCallOverlay(void)
     cpu = SceneCallOverlay(cpu.x).after;
 }
 
-static void log_overlay(DiscLog *log, uint8_t offset)
+static void log_overlay(DiscLog *log, uint8_t offset, uint16_t ret)
 {
     DiscCall call = disc_call(DISC_OVERLAY);
 
+    jsr_push(ret);
     call.as.after = SceneCallOverlay(offset).after;
+    jsr_pop();
     log_call(log, call);
+}
+
+/* TII: Y, A and X pushed, the bytes moved a pair of reads and writes at a time, then pulled. */
+static void block_move_tii(uint16_t src, uint16_t dst, uint16_t len, uint8_t a, uint8_t x, uint8_t y)
+{
+    push8(y);
+    push8(a);
+    push8(x);
+    for (uint16_t i = 0; i < len; i++) {
+        uint8_t byte = rd8((uint16_t)(src + i));
+
+        wr8((uint16_t)(dst + i), byte);
+    }
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
 }
 
 /* The list moves on by the op's length; the add's high byte stays in A. */
@@ -780,11 +854,15 @@ static void scene_read(DiscLog *log, uint8_t op)
         Sum middle;
         uint8_t entry = (uint8_t)(index << 1);
 
+        uint8_t first, other;
+
         wr8(zBiosBl, rd8((uint16_t)(SceneReadDestinations + entry)));
         wr8(zBiosBh, rd8((uint16_t)(SceneReadDestinations + 1 + entry)));
         record_disc_address();
         wr8(zBiosDh, 1);
-        low = add_bytes(rd8_zp_y(zTemp08, 1), rd8(zBiosDl), false);
+        first = rd8_zp_y(zTemp08, 1);
+        other = rd8(zBiosDl);
+        low = add_bytes(first, other, false);
         wr8(zBiosDl, low.value);
         middle = add_bytes(0, rd8(zBiosCh), low.carry);
         wr8(zBiosCh, middle.value);
@@ -793,7 +871,9 @@ static void scene_read(DiscLog *log, uint8_t op)
         read.summed = true;
         read.given = rd8_zp_y(zTemp08, 2);
         wr8(zBiosAl, read.given);
+        jsr_push(0x70F2);
         read.as.cd_read = cd_read();
+        jsr_pop();
         log_call(log, read);
         index = cd_read_result(read.as.cd_read);
         if (index == 0)
@@ -812,8 +892,11 @@ static void scene_ops(DiscLog *log)
         DiscCall step;
 
         if (op == OP_BANKS) {
-            for (uint8_t i = 0; i < 3; i++)
-                tam(mprs[i], (uint8_t)(rd8_zp_y(zTemp08, (uint8_t)(i + 1)) + rd8(zRamBaseBank)));
+            for (uint8_t i = 0; i < 3; i++) {
+                uint8_t bank = rd8_zp_y(zTemp08, (uint8_t)(i + 1));
+
+                tam(mprs[i], (uint8_t)(bank + rd8(zRamBaseBank)));
+            }
             log_call(log, disc_call(DISC_SCENE_BANKS));
             scene_next(log, SCENE_BANKS_BYTES);
         } else if (!(op & 0x80)) {
@@ -826,19 +909,21 @@ static void scene_ops(DiscLog *log)
             wr8(zTemp09, step.given);
             log_call(log, step);
         } else if (op == OP_CALL_ONE) {
-            log_overlay(log, SCENE_CALL_ONE);
+            log_overlay(log, SCENE_CALL_ONE, 0x70AC);
             scene_next(log, 1);
         } else if (op == OP_CALL_BY_SCENE) {
-            log_overlay(log, scene_call_offset(rd8(zTemp02)));
+            log_overlay(log, scene_call_offset(rd8(zTemp02)), 0x70AC);
             scene_next(log, 1);
         } else if (op == OP_COPY_TILES) {
-            tam(MPR5, (uint8_t)(SCENE_OVERLAY_BANK + rd8(zRamBaseBank)));
-            for (uint16_t i = 0; i < SCENE_TILE_BYTES; i++)
-                wr8((uint16_t)(SCENE_TILES_TO + i), rd8((uint16_t)(SCENE_TILES_FROM + i)));
+            uint8_t bank = (uint8_t)(SCENE_OVERLAY_BANK + rd8(zRamBaseBank));
+
+            tam(MPR5, bank);
+            disc_log_exit_shim(log);    /* X and Y as the original has them: the TII pushes them */
+            block_move_tii(SCENE_TILES_FROM, SCENE_TILES_TO, SCENE_TILE_BYTES, bank, cpu.x, cpu.y);
             scene_next(log, 1);
         } else if (op == OP_CALL_TWO) {
-            log_overlay(log, SCENE_CALL_FIRST);
-            log_overlay(log, SCENE_CALL_SECOND);
+            log_overlay(log, SCENE_CALL_FIRST, 0x7064);
+            log_overlay(log, SCENE_CALL_SECOND, 0x7069);
             scene_next(log, 1);
         } else {
             step = disc_call(DISC_SCENE_END);
@@ -857,6 +942,7 @@ static void scene_ops(DiscLog *log)
  * HOW: The op indexes SceneReadDestinations; the op's second byte is the sector offset and its
  * third the count; the BIOS's read, asked again until it answers zero, and each time the table
  * is indexed by what A then holds.
+ * WAITS: yes, on the drive: the card's read is asked until it answers zero; the stack there is the caller's return and this call's two bytes.
  * Entry: A the op. Exit: as LoadSceneScript.
  */
 DiscLog SceneReadSectors(uint8_t op)
@@ -883,6 +969,7 @@ void abi_SceneReadSectors(void)
  * the disc, and call the scene overlay, until an op it does not know ends it.
  * HOW: The scene's record, five bytes each in SceneRecords, holds the disc address and at 3
  * and 4 the list.
+ * WAITS: yes, on the drive: through SceneReadSectors, and on the overlay calls; the stack there is the caller's return and this call's two bytes (and an overlay call's).
  * Entry: A scene. Exit: A the last op, N and Z from comparing it with $80, C 1; X, Y and V as
  * the last op left them. Clobbers zTemp00-02, zTemp08-09.
  */
@@ -892,7 +979,7 @@ DiscLog LoadSceneScript(uint8_t scene)
 
     log.count = 0;
     wr8(zTemp02, scene);
-    record_at(&log, SceneRecords, scene, SCENE_RECORD_BYTES);
+    record_at(&log, SceneRecords, scene, SCENE_RECORD_BYTES, 0x6FE3);
     wr8(zTemp08, rd8_zp_y(zTemp00, 3));
     wr8(zTemp09, rd8_zp_y(zTemp00, 4));
     scene_ops(&log);

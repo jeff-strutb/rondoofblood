@@ -51,44 +51,6 @@ static void trig_put_word(uint16_t lo, uint16_t hi, uint16_t value)
     wr8(hi, (uint8_t)(value >> 8));
 }
 
-static void put_product(uint32_t product)
-{
-    wr8(zProduct0, (uint8_t)product);
-    wr8(zProduct1, (uint8_t)(product >> 8));
-    wr8(zProduct2, (uint8_t)(product >> 16));
-}
-
-/*
- * What the assembly leaves after the multiply. The last add was the highest multiplier bit
- * set, so its operands, and V, follow from the value, the word and the product. C is the
- * top bit the last round shifted out of the copy, bit 15 of the value. N and Z are the
- * round counter's, at zero.
- */
-static Alu multiply_exit_shim(uint16_t value, uint16_t word, uint32_t product)
-{
-    Alu exit = alu_none();
-    unsigned bits = word & MULTIPLIER_BITS;
-
-    exit.a = (uint8_t)(value >> 8);
-    exit.nz = 0;
-    exit.c = (value & 0x8000) != 0;
-    exit.c_kept = false;
-    if (bits != 0) {
-        unsigned top = MULTIPLY_ROUNDS - 1;
-        uint32_t added;
-        uint32_t before;
-
-        while (!(bits & (1u << top)))
-            top--;
-        added = (uint32_t)value << top;
-        before = (product - added) & PRODUCT_MASK;
-        exit.a = (uint8_t)(product >> 16);
-        exit.v = (~(before ^ added) & (before ^ product) & PRODUCT_TOP) != 0;
-        exit.v_set = true;
-    }
-    return exit;
-}
-
 /*
  * @routine 0045:69A MultiplyBySineWord
  * @run 69:569A
@@ -97,48 +59,109 @@ static Alu multiply_exit_shim(uint16_t value, uint16_t word, uint32_t product)
  * the product is the value scaled by that sine as 8.8.
  * HOW: Shift and add, nine rounds: the multiplier shifts right through RAM, a
  * 24-bit copy of the value in zTemp10-12 shifts left, and each bit shifted out
- * set adds the copy to the product.
- * Entry: zTemp00-01 value, zMultiplierLo-Hi word. Exit: A the last byte
+ * set adds the copy to the product, byte by byte with the carry running on.
+ * WAITS: no.
+ * Entry: zTemp00-01 value, zMultiplierLo-Hi word, D clear. Exit: A the last byte
  * loaded (the top of the product if any bit was set, else zTemp01), Y 0, N 0,
  * Z 1, C the top bit shifted out of zTemp12, V from the last add if any.
  * X kept. Clobbers zTemp10-12, zMultiplierLo-Hi.
  */
-uint32_t MultiplyBySineWord(void)
+ScaleResult MultiplyBySineWord(void)
 {
-    uint32_t shifted = trig_word(zTemp00, zTemp01);
-    uint16_t multiplier = trig_word(zMultiplierLo, zMultiplierHi);
-    uint32_t product = 0;
+    ScaleResult result = { 0, 0, false, false, false };
+    uint8_t value, operand;
+    bool bit, carry;
+    Sum sum;
 
+    WR8(ZP->product.lo, 0);
+    WR8(ZP->product.mid, 0);
+    WR8(ZP->product.hi, 0);
+    value = RD8(ZP->temp00);
+    WR8(ZP->temp10, value);
+    value = RD8(ZP->temp01);
+    WR8(ZP->temp11, value);
+    result.a = value;
+    WR8(ZP->temp12, 0);
     for (int round = 0; round < MULTIPLY_ROUNDS; round++) {
-        if (multiplier & 1)
-            product += shifted;
-        multiplier >>= 1;
-        shifted <<= 1;
+        bit = LSR8(ZP->multiplier.hi);
+        bit = ROR8(ZP->multiplier.lo, bit);
+        if (bit) {
+            value = RD8(ZP->product.lo);
+            operand = RD8(ZP->temp10);
+            sum = add_bytes(value, operand, false);
+            WR8(ZP->product.lo, sum.value);
+            value = RD8(ZP->product.mid);
+            operand = RD8(ZP->temp11);
+            sum = add_bytes(value, operand, sum.carry);
+            WR8(ZP->product.mid, sum.value);
+            value = RD8(ZP->product.hi);
+            operand = RD8(ZP->temp12);
+            sum = add_bytes(value, operand, sum.carry);
+            WR8(ZP->product.hi, sum.value);
+            result.a = sum.value;
+            result.v_set = true;
+            result.overflow = sum.overflow;
+        }
+        carry = ASL8(ZP->temp10);
+        carry = ROL8(ZP->temp11, carry);
+        carry = ROL8(ZP->temp12, carry);
+        result.carry = carry;
     }
-    product &= PRODUCT_MASK;
-    put_product(product);
-    wr8(zTemp10, (uint8_t)shifted);
-    wr8(zTemp11, (uint8_t)(shifted >> 8));
-    wr8(zTemp12, (uint8_t)(shifted >> 16));
-    trig_put_word(zMultiplierLo, zMultiplierHi, multiplier);
-    return product;
+    return result;
+}
+
+/* A the multiply's last byte, N 0, Z 1, C, V if an add ran, Y 0. */
+void scale_exit_shim(ScaleResult result)
+{
+    cpu.a = result.a;
+    abi_nz(result.nz);
+    abi_flag(P_C, result.carry);
+    if (result.v_set) {
+        abi_flag(P_V, result.overflow);
+    }
+    cpu.y = 0;
 }
 
 void abi_MultiplyBySineWord(void)
 {
-    uint16_t value = trig_word(zTemp00, zTemp01);
-    uint16_t word = trig_word(zMultiplierLo, zMultiplierHi);
-
-    abi_alu(multiply_exit_shim(value, word, MultiplyBySineWord()));
-    cpu.y = 0;
+    scale_exit_shim(MultiplyBySineWord());
 }
 
-/* The half wave's word for an angle: the angle's sign is not part of the index. */
-static uint16_t sine_word(uint8_t angle)
+/*
+ * The half wave's word for an angle goes to the multiplier (the angle doubled, its bit 7 out
+ * as the sign), then the multiply runs; the return address of its call is given.
+ */
+static ScaleResult scale_by_sine_body(uint8_t angle)
 {
     uint8_t index = (uint8_t)(angle << 1);
+    bool negative = (angle & ANGLE_NEGATIVE) != 0;
+    ScaleResult result;
+    Sum sum;
+    uint8_t value;
 
-    return trig_word((uint16_t)(SineTable + index), (uint16_t)(SineTable + 1 + index));
+    WR8(ZP->multiplier.lo, rd8((uint16_t)(SineTable + index)));
+    WR8(ZP->multiplier.hi, rd8((uint16_t)(SineTable + 1 + index)));
+    jsr_push(negative ? 0x5680 : 0x5671);
+    result = MultiplyBySineWord();
+    jsr_pop();
+    if (!negative) {
+        return result;
+    }
+    value = RD8(ZP->product.lo);
+    sum = add_bytes((uint8_t)(value ^ 0xFF), 0, true);
+    WR8(ZP->product.lo, sum.value);
+    value = RD8(ZP->product.mid);
+    sum = add_bytes((uint8_t)(value ^ 0xFF), 0, sum.carry);
+    WR8(ZP->product.mid, sum.value);
+    value = RD8(ZP->product.hi);
+    sum = add_bytes((uint8_t)(value ^ 0xFF), 0, sum.carry);
+    WR8(ZP->product.hi, sum.value);
+    result.a = sum.value;
+    result.nz = sum.value;
+    result.carry = sum.carry;
+    result.v_set = true;
+    result.overflow = sum.overflow;
+    return result;
 }
 
 /*
@@ -149,47 +172,19 @@ static uint16_t sine_word(uint8_t angle)
  * HOW: Doubles the angle for a word index: bit 7 goes out as the sign, the
  * rest indexes the half wave in SineTable. Multiplies, and for the negative
  * half takes the two's complement of the 24-bit product.
- * Entry: A angle, zTemp00-01 value. Exit: zProduct0-2 result; A, N, Z, C and V
+ * WAITS: no.
+ * Entry: A angle, zTemp00-01 value, D clear. Exit: zProduct0-2 result; A, N, Z, C and V
  * from the multiply, or from the complement's last add when negative; Y 0.
  * X kept. Clobbers zTemp10-12, zMultiplierLo-Hi.
  */
-uint32_t ScaleBySine(uint8_t angle)
+ScaleResult ScaleBySine(uint8_t angle)
 {
-    uint32_t product;
-
-    trig_put_word(zMultiplierLo, zMultiplierHi, sine_word(angle));
-    product = MultiplyBySineWord();
-    if (angle & ANGLE_NEGATIVE) {
-        product = (0u - product) & PRODUCT_MASK;
-        put_product(product);
-    }
-    return product;
-}
-
-/* The complement's last add carries only out of zero, and overflows only on $800000. */
-static Alu scale_exit_shim(uint8_t angle, uint16_t value, uint32_t result)
-{
-    bool negative = (angle & ANGLE_NEGATIVE) != 0;
-    uint32_t magnitude = negative ? (0u - result) & PRODUCT_MASK : result;
-    Alu exit = multiply_exit_shim(value, sine_word(angle), magnitude);
-
-    if (negative) {
-        exit.a = (uint8_t)(result >> 16);
-        exit.nz = exit.a;
-        exit.c = magnitude == 0;
-        exit.v = magnitude == PRODUCT_TOP;
-        exit.v_set = true;
-    }
-    return exit;
+    return scale_by_sine_body(angle);
 }
 
 void abi_ScaleBySine(void)
 {
-    uint8_t angle = cpu.a;
-    uint16_t value = trig_word(zTemp00, zTemp01);
-
-    abi_alu(scale_exit_shim(angle, value, ScaleBySine(angle)));
-    cpu.y = 0;
+    scale_exit_shim(ScaleBySine(cpu.a));
 }
 
 /*
@@ -198,33 +193,24 @@ void abi_ScaleBySine(void)
  * WHAT IT DOES: Scales the value in zTemp00 by the cosine of an angle.
  * HOW: A quarter turn added to the angle, then ScaleBySine, which it runs into.
  * WAITS: no.
- * Entry: A angle, zTemp00-01 value. Exit: as ScaleBySine; V from the angle's
+ * Entry: A angle, zTemp00-01 value, D clear. Exit: as ScaleBySine; V from the angle's
  * add when no later add set it.
  */
-uint32_t ScaleByCosine(uint8_t angle)
+ScaleResult ScaleByCosine(uint8_t angle)
 {
-    return ScaleBySine((uint8_t)(angle + QUARTER_TURN));
-}
+    uint8_t turned = (uint8_t)(angle + QUARTER_TURN);
+    ScaleResult result = scale_by_sine_body(turned);
 
-/* Adding $40 overflows only from $40-$7F. */
-Alu cosine_exit_shim(uint8_t angle, uint16_t value, uint32_t result)
-{
-    Alu exit = scale_exit_shim((uint8_t)(angle + QUARTER_TURN), value, result);
-
-    if (!exit.v_set) {
-        exit.v = (angle & 0xC0) == QUARTER_TURN;
-        exit.v_set = true;
+    if (!result.v_set) {
+        result.v_set = true;
+        result.overflow = add_bytes(angle, QUARTER_TURN, false).overflow;
     }
-    return exit;
+    return result;
 }
 
 void abi_ScaleByCosine(void)
 {
-    uint8_t angle = cpu.a;
-    uint16_t value = trig_word(zTemp00, zTemp01);
-
-    abi_alu(cosine_exit_shim(angle, value, ScaleByCosine(angle)));
-    cpu.y = 0;
+    scale_exit_shim(ScaleByCosine(cpu.a));
 }
 
 /*
@@ -232,45 +218,46 @@ void abi_ScaleByCosine(void)
  * @run 69:5640
  * WHAT IT DOES: Points an object along an angle at a given speed: its X
  * velocity becomes speed times cosine, its Y velocity speed times sine.
- * HOW: ScaleByCosine and ScaleBySine in turn, taking the top two bytes of each
- * product as an 8.8 velocity.
- * Entry: A angle, X object, zTemp00-01 speed. Exit: A the Y velocity's low
- * byte, N and Z from it, C and V from the sine, Y 0. X kept. Clobbers zTemp10-12,
- * zProduct0-2, zMultiplierLo-Hi.
+ * HOW: Keeps the angle on the stack, ScaleByCosine and ScaleBySine in turn, taking the top
+ * two bytes of each product as an 8.8 velocity.
+ * WAITS: no.
+ * Entry: A angle, X object, zTemp00-01 speed, D clear. Exit: A the Y velocity's low
+ * byte, N and Z from it, C and V from the sine (V from the cosine if the sine set none), Y 0.
+ * X kept. Clobbers zTemp10-12, zProduct0-2, zMultiplierLo-Hi.
  */
-ScaledVector SetVelocityFromAngle(uint8_t angle, uint8_t object)
+ScaleResult SetVelocityFromAngle(uint8_t angle, uint8_t object)
 {
-    ScaledVector scaled;
+    ScaleResult cosine, sine;
+    uint8_t byte;
 
-    scaled.x = ScaleByCosine(angle);
-    wr8((uint16_t)(OBJ_VX_HI + object), (uint8_t)(scaled.x >> 16));
-    wr8((uint16_t)(OBJ_VX_LO + object), (uint8_t)(scaled.x >> 8));
-    scaled.y = ScaleBySine(angle);
-    wr8((uint16_t)(OBJ_VY_HI + object), (uint8_t)(scaled.y >> 16));
-    wr8((uint16_t)(OBJ_VY_LO + object), (uint8_t)(scaled.y >> 8));
-    return scaled;
-}
-
-/* The cosine's V stands when the sine set none. */
-static Alu velocity_exit_shim(uint8_t angle, uint16_t speed, ScaledVector scaled)
-{
-    Alu exit = scale_exit_shim(angle, speed, scaled.y);
-
-    if (!exit.v_set)
-        exit.v = cosine_exit_shim(angle, speed, scaled.x).v;
-    exit.v_set = true;
-    exit.a = (uint8_t)(scaled.y >> 8);
-    exit.nz = exit.a;
-    return exit;
+    push8(angle);
+    jsr_push(0x5644);
+    cosine = ScaleByCosine(angle);
+    jsr_pop();
+    byte = RD8(ZP->product.hi);
+    WR8(OBJ->vx_hi[object], byte);
+    byte = RD8(ZP->product.mid);
+    WR8(OBJ->vx_lo[object], byte);
+    angle = pull8();
+    jsr_push(0x5652);
+    sine = ScaleBySine(angle);
+    jsr_pop();
+    byte = RD8(ZP->product.hi);
+    WR8(OBJ->vy_hi[object], byte);
+    byte = RD8(ZP->product.mid);
+    WR8(OBJ->vy_lo[object], byte);
+    sine.a = byte;
+    sine.nz = byte;
+    if (!sine.v_set) {
+        sine.v_set = true;
+        sine.overflow = cosine.overflow;
+    }
+    return sine;
 }
 
 void abi_SetVelocityFromAngle(void)
 {
-    uint8_t angle = cpu.a;
-    uint16_t speed = trig_word(zTemp00, zTemp01);
-
-    abi_alu(velocity_exit_shim(angle, speed, SetVelocityFromAngle(angle, cpu.x)));
-    cpu.y = 0;
+    scale_exit_shim(SetVelocityFromAngle(cpu.a, cpu.x));
 }
 
 /*
@@ -358,6 +345,7 @@ static void abi_angle(AngleResult result)
  * first-quadrant angle and folds it into its real quadrant: X negative and Y
  * positive mirrors about a quarter turn, both negative adds a half turn, Y
  * negative alone negates.
+ * WAITS: no.
  * Entry: zTemp00-01 delta X, zTemp02-03 delta Y. Exit: A the angle, Y the
  * table index, N and Z from the last step, C and V as it left them. X kept.
  * Clobbers zTemp00-03.
@@ -390,6 +378,7 @@ static uint16_t trig_object_y(uint8_t object)
  * @run 69:57CF
  * WHAT IT DOES: Gives the direction from an object to a point.
  * HOW: Subtracts the object's position from the point, then AngleFromDelta.
+ * WAITS: no.
  * Entry: X object, zTemp08-09 point X, zTemp0A-0B point Y. Exit: as
  * AngleFromDelta. Clobbers zTemp00-03.
  */
@@ -413,6 +402,7 @@ void abi_AngleToPoint(void)
  * player, object 0.
  * HOW: Subtracts the object's position from the player's, adds the offset, then
  * AngleFromDelta.
+ * WAITS: no.
  * Entry: X object, zTemp08-09 offset X, zTemp0A-0B offset Y. Exit: as
  * AngleFromDelta. Clobbers zTemp00-03.
  */
@@ -434,6 +424,7 @@ void abi_AngleToPlayerOffset(void)
  * @run 69:582D
  * WHAT IT DOES: Gives the direction from an object to the player, object 0.
  * HOW: Subtracts the object's position from the player's, then AngleFromDelta.
+ * WAITS: no.
  * Entry: X object. Exit: as AngleFromDelta. Clobbers zTemp00-03.
  */
 AngleResult AngleToPlayer(uint8_t object)
@@ -463,6 +454,7 @@ static bool turn_goes_down(uint8_t now, uint8_t target)
  * the current angle lies in, a half turn deciding which way is shorter, and
  * adds or subtracts the step. A step can overshoot the target: nothing here
  * clamps it.
+ * WAITS: no.
  * Entry: zTemp00 step, zTemp01 current, zTemp02 target. Exit: A the new angle,
  * N and Z from it, C and V from the step; on equal angles A current, N 0, Z 1,
  * C 1, V kept. X and Y kept.

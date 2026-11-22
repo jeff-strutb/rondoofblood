@@ -146,9 +146,9 @@ void abi_ObjectFrameFromTick(void)
  * Entry: X the object. Exit: A the Y speed's high byte shifted left once, N and Z from the Y
  * speed's new low byte, C the bit it lost. X and Y kept.
  */
-Alu HalveObjectVelocity(uint8_t object)
+ArithExit HalveObjectVelocity(uint8_t object)
 {
-    Alu result = alu_none();
+    ArithExit result = { 0 };
     uint8_t high, old, shifted;
     bool carry;
 
@@ -164,14 +164,13 @@ Alu HalveObjectVelocity(uint8_t object)
     shifted = (uint8_t)((old >> 1) | (carry ? 0x80 : 0));
     WR8(OBJ->vy_lo[object], shifted);
     result.nz = shifted;
-    result.c = (old & 0x01) != 0;
-    result.c_kept = false;
+    result.carry = (old & 0x01) != 0;
     return result;
 }
 
 void abi_HalveObjectVelocity(void)
 {
-    abi_alu(HalveObjectVelocity(cpu.x));
+    arith_exit_shim(HalveObjectVelocity(cpu.x));
 }
 
 /*
@@ -351,38 +350,49 @@ void abi_PlaceCursorObjects(void)
  * WAITS: no.
  * Entry: nothing. Exit: A the last high byte sum, V from that sum, X $40, Z and C set, N clear.
  */
-Alu ShiftObjectsByScrollChange(void)
+ArithExit ShiftObjectsByScrollChange(void)
 {
-    Alu low, high, step;
-    uint8_t object, value, shift;
+    ArithExit result = { 0 };
+    uint8_t object, value, shift, low_diff, high_diff, low_sum, high_sum;
+    bool low_ok, low_carried, high_carried;
+    unsigned total;
 
     value = RD8(SCROLLE->speed_x[0]);
     shift = RD8(SCROLL->x_lo[0]);
-    low = sbc8(value, shift, true);
-    WR8(SCROLLE->speed_x[0], low.a);
+    low_diff = (uint8_t)(value - shift);
+    low_ok = value >= shift;                    /* no borrow */
+    WR8(SCROLLE->speed_x[0], low_diff);
     value = RD8(SCROLLE->speed_y[0]);
     shift = RD8(SCROLL->x_hi[0]);
-    high = sbc8(value, shift, low.c);
-    WR8(SCROLLE->speed_y[0], high.a);
-    step = alu_none();
+    high_diff = (uint8_t)(value - shift - (low_ok ? 0 : 1));
+    WR8(SCROLLE->speed_y[0], high_diff);
+    high_sum = 0;
     for (object = 0x10; object != 0x40; object++) {
         value = RD8(OBJ->x_lo[object]);
         shift = RD8(SCROLLE->speed_x[0]);
-        low = adc8(value, shift, false);
-        WR8(OBJ->x_lo[object], low.a);
+        total = (unsigned)value + shift;
+        low_sum = (uint8_t)total;
+        low_carried = total > 0xFF;
+        WR8(OBJ->x_lo[object], low_sum);
         value = RD8(OBJ->x_hi[object]);
         shift = RD8(SCROLLE->speed_y[0]);
-        step = adc8(value, shift, low.c);
-        WR8(OBJ->x_hi[object], step.a);
+        total = (unsigned)value + shift + (low_carried ? 1 : 0);
+        high_sum = (uint8_t)total;
+        high_carried = total > 0xFF;
+        WR8(OBJ->x_hi[object], high_sum);
+        result.overflow = (((value ^ high_sum) & (shift ^ high_sum) & 0x80) != 0);
     }
-    step.nz = 0;
-    step.c = true;
-    return step;
+    (void)high_carried;
+    result.a = high_sum;
+    result.nz = 0;
+    result.carry = true;
+    result.overflow_set = true;
+    return result;
 }
 
 void abi_ShiftObjectsByScrollChange(void)
 {
-    abi_alu(ShiftObjectsByScrollChange());
+    arith_exit_shim(ShiftObjectsByScrollChange());
     cpu.x = 0x40;
 }
 
@@ -667,6 +677,22 @@ void abi_WriteDigitTile(void)
     abi_nz(tile);
 }
 
+/* A decimal add of two bytes as the CPU does it with D set: the digits added with their carries. */
+static uint8_t bcd_add(uint8_t a, uint8_t b, bool carry_in, bool *carry_out)
+{
+    unsigned total = (a & 0x0Fu) + (b & 0x0Fu) + (carry_in ? 1u : 0u);
+
+    if (total >= 0x0A) {
+        total += 0x06;
+    }
+    total += (a & 0xF0u) + (b & 0xF0u);
+    if (total >= 0xA0) {
+        total += 0x60;
+    }
+    *carry_out = (total & 0xFF00u) != 0;
+    return (uint8_t)total;
+}
+
 /*
  * @routine 00DE:216 SlotCompletionPercent
  * @run 6F:AA16
@@ -689,8 +715,8 @@ SlotSum SlotCompletionPercent(uint8_t slot)
 {
     SlotSum result;
     CountBits count;
-    Alu sum;
-    uint8_t offset, value, other, left, again;
+    uint8_t offset, value, other, left, again, sum_value;
+    bool sum_carry;
 
     offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
     value = rd8((uint16_t)(SAVE_FILE + offset));
@@ -699,8 +725,8 @@ SlotSum SlotCompletionPercent(uint8_t slot)
     jsr_pop();
     WR8(ZP->temp08, count.count);
     other = RD8(ZP->temp08);
-    sum = adc8_bcd(count.count, other, false);
-    WR8(ZP->temp08, sum.a);
+    sum_value = bcd_add(count.count, other, false, &sum_carry);
+    WR8(ZP->temp08, sum_value);
     WR8(ZP->temp09, 0);
     WR8(ZP->temp0_a, 5);
     do {
@@ -716,17 +742,17 @@ SlotSum SlotCompletionPercent(uint8_t slot)
                 value = RD8(ZP->temp0_b);
             }
             other = RD8(ZP->temp08);
-            sum = adc8_bcd(value, other, false);
-            WR8(ZP->temp08, sum.a);
+            sum_value = bcd_add(value, other, false, &sum_carry);
+            WR8(ZP->temp08, sum_value);
             other = RD8(ZP->temp09);
-            sum = adc8_bcd(0, other, sum.c);
-            WR8(ZP->temp09, sum.a);
+            sum_value = bcd_add(0, other, sum_carry, &sum_carry);
+            WR8(ZP->temp09, sum_value);
         }
         offset++;
         left = DEC8(ZP->temp0_a);
     } while (left != 0);
-    result.a = sum.a;
-    result.carry = sum.c;
+    result.a = sum_value;
+    result.carry = sum_carry;
     result.x = offset;
     result.y = count.count;
     return result;
@@ -761,18 +787,19 @@ SlotFlags SlotClearedFlags(void)
 {
     SlotFlags result;
     uint8_t item, slot, offset, index, first, second, masked, flag;
-    Alu add;
+    unsigned total;
 
     masked = 0;
     index = 0;
-    add = alu_none();
+    result.v = false;
     for (item = 0; item != 13; item++) {
         wr8((uint16_t)(CLEARED_FLAGS + item), 0);
         slot = RD8(ZP->save_slot);
         offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
         first = rd8((uint16_t)(CLEARED_TABLE_OFFSETS + item));
-        add = adc8(offset, first, false);
-        index = add.a;
+        total = (unsigned)offset + first;
+        index = (uint8_t)total;
+        result.v = ((offset ^ index) & (first ^ index) & 0x80) != 0;
         first = rd8((uint16_t)(SAVE_FILE + 0x01 + index));
         second = rd8((uint16_t)(SAVE_FILE + 0x06 + index));
         masked = (uint8_t)(first | second);
@@ -786,7 +813,6 @@ SlotFlags SlotClearedFlags(void)
     wr8((uint16_t)(CLEARED_FLAGS + 13), 0);
     result.a = masked;
     result.y = index;
-    result.v = add.v;
     return result;
 }
 
@@ -977,10 +1003,16 @@ void abi_PadRepeatUpdate(void)
 }
 
 /* The digit tile both draw: the value plus $10 to the VDC's data port, the palette byte after it. */
-static Alu draw_menu_digit(uint8_t value)
+static ArithExit draw_menu_digit(uint8_t value)
 {
-    Alu sum = adc8(value, 0x10, false);
+    ArithExit sum = { 0 };
+    unsigned total = (unsigned)value + 0x10;
 
+    sum.a = (uint8_t)total;
+    sum.nz = sum.a;
+    sum.carry = total > 0xFF;
+    sum.overflow = ((value ^ sum.a) & (0x10 ^ sum.a) & 0x80) != 0;
+    sum.overflow_set = true;
     WR8(VDC->data_lo, sum.a);
     st2(0x11);
     return sum;
@@ -995,7 +1027,7 @@ static Alu draw_menu_digit(uint8_t value)
  * WAITS: no.
  * Entry: nothing. Exit: A the value plus $10, N, Z, C and V from that add; X and Y kept.
  */
-Alu DrawSelectedFileDigit(void)
+ArithExit DrawSelectedFileDigit(void)
 {
     jsr_push(0x98CF);
     SelectVramWriteAddress();
@@ -1010,10 +1042,7 @@ Alu DrawSelectedFileDigit(void)
 
 void abi_DrawSelectedFileDigit(void)
 {
-    Alu result = DrawSelectedFileDigit();
-
-    cpu.a = result.a;
-    abi_alu(result);
+    arith_exit_shim(DrawSelectedFileDigit());
 }
 
 /*
@@ -1025,7 +1054,7 @@ void abi_DrawSelectedFileDigit(void)
  * WAITS: no.
  * Entry: nothing. Exit: as DrawSelectedFileDigit.
  */
-Alu DrawCursorRowDigit(void)
+ArithExit DrawCursorRowDigit(void)
 {
     jsr_push(0x98E5);
     SelectVramWriteAddress();
@@ -1040,10 +1069,7 @@ Alu DrawCursorRowDigit(void)
 
 void abi_DrawCursorRowDigit(void)
 {
-    Alu result = DrawCursorRowDigit();
-
-    cpu.a = result.a;
-    abi_alu(result);
+    arith_exit_shim(DrawCursorRowDigit());
 }
 
 /*
@@ -1369,8 +1395,7 @@ Exit DrawSlotPercent(uint8_t row, uint8_t kept_x)
 {
     Exit exit = { 0 };
     SlotSum sum;
-    Alu minus;
-    uint8_t index, slot, value, high;
+    uint8_t index, slot, value, high, before;
     bool v_set = false, v = false;
 
     push8(kept_x);
@@ -1378,10 +1403,10 @@ Exit DrawSlotPercent(uint8_t row, uint8_t kept_x)
     index = (uint8_t)(row << 1);
     row = pull8();
     while (row >= 3) {
-        minus = sbc8(row, 3, true);
-        row = minus.a;
+        before = row;
+        row = (uint8_t)(row - 3);
         v_set = true;
-        v = minus.v;
+        v = ((before ^ 3) & (before ^ row) & 0x80) != 0;
     }
     slot = row;
     jsr_push(0xA817);
@@ -1522,9 +1547,9 @@ void abi_ShiftGlyphBufferRight(void)
 Exit SetGlyphVramPlace(uint8_t glyph, uint8_t object)
 {
     Exit exit = { 0 };
-    Alu add_low, add_more, add_high;
-    uint8_t index, kind, base, low, high, carry_in;
-    bool carry;
+    uint8_t index, kind, base, low, high, carry_in, sum_low, sum_more, sum_high;
+    bool carry, more_carried, high_carried, high_overflow;
+    unsigned total;
 
     WR8(ZP->temp00, 0);
     carry = (glyph & 0x01) != 0;
@@ -1544,16 +1569,22 @@ Exit SetGlyphVramPlace(uint8_t glyph, uint8_t object)
     jsr_pop();
     base = rd8((uint16_t)(GLYPH_PLACES + index));
     low = RD8(ZP->bios_a.lo);
-    add_low = adc8(base, low, false);
+    total = (unsigned)base + low;
+    sum_low = (uint8_t)total;                   /* its carry is dropped, as the original's CLC does */
     high = RD8(ZP->temp00);
-    add_more = adc8(add_low.a, high, false);
-    WR8(ZP->temp02, add_more.a);
-    WR8(VDC->data_lo, add_more.a);
+    total = (unsigned)sum_low + high;
+    sum_more = (uint8_t)total;
+    more_carried = total > 0xFF;
+    WR8(ZP->temp02, sum_more);
+    WR8(VDC->data_lo, sum_more);
     base = rd8((uint16_t)(GLYPH_PLACES + 1 + index));
     carry_in = RD8(ZP->temp01);
-    add_high = adc8(base, carry_in, add_more.c);
-    WR8(ZP->temp03, add_high.a);
-    WR8(VDC->data_hi, add_high.a);
+    total = (unsigned)base + carry_in + (more_carried ? 1 : 0);
+    sum_high = (uint8_t)total;
+    high_carried = total > 0xFF;
+    high_overflow = ((base ^ sum_high) & (carry_in ^ sum_high) & 0x80) != 0;
+    WR8(ZP->temp03, sum_high);
+    WR8(VDC->data_hi, sum_high);
     jsr_push(0xA1D6);
     SelectVramReadAddress();
     jsr_pop();
@@ -1565,8 +1596,8 @@ Exit SetGlyphVramPlace(uint8_t glyph, uint8_t object)
     exit.a = 2;
     exit.y = index;
     exit.nz = 2;
-    exit.c = add_high.c;
-    exit.v = add_high.v;
+    exit.c = high_carried;
+    exit.v = high_overflow;
     exit.v_set = true;
     exit.x_kept = true;
     return exit;
@@ -1881,6 +1912,15 @@ void abi_GlideObjectDown(void)
  * WAITS: no.
  * Entry: X the object. Exit: as the handler chosen.
  */
+/* The registers a pass outside C is entered with: A the table's high byte, Y its index. */
+static void glyph_tail_shim(uint8_t value, uint8_t index)
+{
+    cpu.a = value;
+    cpu.y = index;
+    abi_nz(value);
+    abi_flag(P_C, false);
+}
+
 Exit GlyphPassByStep(uint8_t object)
 {
     uint8_t step, index, value;
@@ -1903,10 +1943,7 @@ Exit GlyphPassByStep(uint8_t object)
     if (target == 0xA14C) {
         return OverlayGlyphPassBoth(object);
     }
-    cpu.a = value;
-    cpu.y = index;
-    abi_nz(value);
-    abi_flag(P_C, false);
+    glyph_tail_shim(value, index);
     call_original(target);
     exit.from_cpu = true;
     return exit;
@@ -1933,8 +1970,9 @@ void abi_GlyphPassByStep(void)
 Exit PlaceObjectList(uint8_t list)
 {
     Exit exit = { 0 };
-    Alu sum;
-    uint8_t index, slot, value, low, y;
+    uint8_t index, slot, value, low, y, sum_value;
+    bool sum_carry, sum_overflow;
+    unsigned total;
 
     index = (uint8_t)(list << 1);
     value = rd8((uint16_t)(OBJECT_LISTS + index));
@@ -1946,9 +1984,12 @@ Exit PlaceObjectList(uint8_t list)
     value = RD8_PTR_Y(ZP->temp00, y);
     WR8(ZP->temp08, value);
     low = RD8(ZP->temp00);
-    sum = adc8(low, 2, false);
-    WR8(ZP->temp00, sum.a);
-    if (sum.c) {
+    total = (unsigned)low + 2;
+    sum_value = (uint8_t)total;
+    sum_carry = total > 0xFF;
+    sum_overflow = ((low ^ sum_value) & (2 ^ sum_value) & 0x80) != 0;
+    WR8(ZP->temp00, sum_value);
+    if (sum_carry) {
         INC8(ZP->temp01);
     }
     for (;;) {
@@ -1970,9 +2011,12 @@ Exit PlaceObjectList(uint8_t list)
         WR8(OBJ->f2a68[slot], value);
         WR8(OBJ->f2a10[slot], 4);
         low = RD8(ZP->temp00);
-        sum = adc8(low, 3, false);
-        WR8(ZP->temp00, sum.a);
-        if (sum.c) {
+        total = (unsigned)low + 3;
+        sum_value = (uint8_t)total;
+        sum_carry = total > 0xFF;
+        sum_overflow = ((low ^ sum_value) & (3 ^ sum_value) & 0x80) != 0;
+        WR8(ZP->temp00, sum_value);
+        if (sum_carry) {
             INC8(ZP->temp01);
         }
         slot++;
@@ -1981,8 +2025,8 @@ Exit PlaceObjectList(uint8_t list)
     exit.x = slot;
     exit.y = y;
     exit.nz = 0;
-    exit.c = sum.c;
-    exit.v = sum.v;
+    exit.c = sum_carry;
+    exit.v = sum_overflow;
     exit.v_set = true;
     return exit;
 }
@@ -2008,8 +2052,7 @@ void abi_PlaceObjectList(void)
 Exit DrawSlotName(uint8_t row, uint8_t kept_x)
 {
     Exit exit = { 0 };
-    Alu minus;
-    uint8_t index, slot, value, offset, count;
+    uint8_t index, slot, value, offset, count, before;
     bool v_set = false, v = false;
 
     push8(kept_x);
@@ -2017,10 +2060,10 @@ Exit DrawSlotName(uint8_t row, uint8_t kept_x)
     index = (uint8_t)(row << 1);
     row = pull8();
     while (row >= 3) {
-        minus = sbc8(row, 3, true);
-        row = minus.a;
+        before = row;
+        row = (uint8_t)(row - 3);
         v_set = true;
-        v = minus.v;
+        v = ((before ^ 3) & (before ^ row) & 0x80) != 0;
     }
     slot = row;
     jsr_push(0xA7E3);
@@ -2191,26 +2234,28 @@ void abi_DrawSlotDetails(void)
 GlideExit GlideCursorObject(uint8_t object)
 {
     GlideExit result = { 0 };
-    Alu diff;
     ValueCarry turned;
-    uint8_t flag, target, place, velocity, frame, index;
+    uint8_t flag, target, place, velocity, frame, index, diff_value;
+    bool diff_carry;
     bool carry;
 
     flag = RD8(OBJ->f3510[object]);
     if (flag != 0) {
         target = RD8(OBJ->f3568[object]);
         place = RD8(OBJ->x_lo[object]);
-        diff = sbc8(target, place, true);
-        velocity = (uint8_t)(((diff.c ? 0x80 : 0) | (diff.a >> 1)) ^ 0x80);
-        carry = (diff.a & 0x01) != 0;
+        diff_value = (uint8_t)(target - place);
+        diff_carry = target >= place;
+        velocity = (uint8_t)(((diff_carry ? 0x80 : 0) | (diff_value >> 1)) ^ 0x80);
+        carry = (diff_value & 0x01) != 0;
         WR8(OBJ->vx_hi[object], velocity);
         WR8(OBJ->vx_lo[object], 0);
         ROR8(OBJ->vx_lo[object], carry);
         target = RD8(OBJ->f35c0[object]);
         place = RD8(OBJ->y_lo[object]);
-        diff = sbc8(target, place, true);
-        velocity = (uint8_t)(((diff.c ? 0x80 : 0) | (diff.a >> 1)) ^ 0x80);
-        carry = (diff.a & 0x01) != 0;
+        diff_value = (uint8_t)(target - place);
+        diff_carry = target >= place;
+        velocity = (uint8_t)(((diff_carry ? 0x80 : 0) | (diff_value >> 1)) ^ 0x80);
+        carry = (diff_value & 0x01) != 0;
         WR8(OBJ->vy_hi[object], velocity);
         WR8(OBJ->vy_lo[object], 0);
         ROR8(OBJ->vy_lo[object], carry);
@@ -2320,9 +2365,9 @@ void abi_GlideCursorObjects(void)
 GlideExit JitterCursorObject(uint8_t object)
 {
     GlideExit result = { 0 };
-    Alu diff, aim;
     ValueCarry turned;
-    uint8_t flag, target, place, velocity, random;
+    uint8_t flag, target, place, velocity, random, aim_value, diff_value;
+    bool diff_carry;
     bool carry;
 
     flag = RD8(OBJ->f3510[object]);
@@ -2330,26 +2375,28 @@ GlideExit JitterCursorObject(uint8_t object)
         jsr_push(0x9D65);
         random = NextRandom().value;
         jsr_pop();
-        aim = sbc8((uint8_t)(random & 0x0F), 8, true);
+        aim_value = (uint8_t)((random & 0x0F) - 8);
         target = RD8(OBJ->f3568[object]);
-        aim = adc8(aim.a, target, false);
+        aim_value = (uint8_t)(aim_value + target);
         place = RD8(OBJ->x_lo[object]);
-        diff = sbc8(aim.a, place, true);
-        velocity = (uint8_t)(((diff.c ? 0x80 : 0) | (diff.a >> 1)) ^ 0x80);
-        carry = (diff.a & 0x01) != 0;
+        diff_value = (uint8_t)(aim_value - place);
+        diff_carry = aim_value >= place;
+        velocity = (uint8_t)(((diff_carry ? 0x80 : 0) | (diff_value >> 1)) ^ 0x80);
+        carry = (diff_value & 0x01) != 0;
         WR8(OBJ->vx_hi[object], velocity);
         WR8(OBJ->vx_lo[object], 0);
         ROR8(OBJ->vx_lo[object], carry);
         jsr_push(0x9D81);
         random = NextRandom().value;
         jsr_pop();
-        aim = sbc8((uint8_t)(random & 0x0F), 8, true);
+        aim_value = (uint8_t)((random & 0x0F) - 8);
         target = RD8(OBJ->f35c0[object]);
-        aim = adc8(aim.a, target, false);
+        aim_value = (uint8_t)(aim_value + target);
         place = RD8(OBJ->y_lo[object]);
-        diff = sbc8(aim.a, place, true);
-        velocity = (uint8_t)(((diff.c ? 0x80 : 0) | (diff.a >> 1)) ^ 0x80);
-        carry = (diff.a & 0x01) != 0;
+        diff_value = (uint8_t)(aim_value - place);
+        diff_carry = aim_value >= place;
+        velocity = (uint8_t)(((diff_carry ? 0x80 : 0) | (diff_value >> 1)) ^ 0x80);
+        carry = (diff_value & 0x01) != 0;
         WR8(OBJ->vy_hi[object], velocity);
         WR8(OBJ->vy_lo[object], 0);
         ROR8(OBJ->vy_lo[object], carry);

@@ -2,7 +2,7 @@
  * Loading from the disc through the System Card's BIOS, and the backup file. A record
  * holds a disc address as the BIOS wants it, with the disc's offset to the track taken
  * off ($000F32). The BIOS answers in A and is asked again until it answers zero; every
- * call sees A, X, Y and the flags, so they are kept in an Alu and in cpu.
+ * call sees A, X, Y and the flags, so a loader returns the BIOS calls it made and its exit shim replays them.
  */
 #include "machine.h"
 #include "ram.h"
@@ -800,6 +800,14 @@ static void log_overlay(DiscLog *log, uint8_t offset, uint16_t ret)
     log_call(log, call);
 }
 
+/* X and Y as the original has them after the calls so far: the log replayed. */
+static void scene_registers_shim(const DiscLog *log, uint8_t *x, uint8_t *y)
+{
+    disc_log_exit_shim(log);
+    *x = cpu.x;
+    *y = cpu.y;
+}
+
 /* TII: Y, A and X pushed, the bytes moved a pair of reads and writes at a time, then pulled. */
 static void block_move_tii(uint16_t src, uint16_t dst, uint16_t len, uint8_t a, uint8_t x, uint8_t y)
 {
@@ -918,10 +926,11 @@ static void scene_ops(DiscLog *log)
             scene_next(log, 1);
         } else if (op == OP_COPY_TILES) {
             uint8_t bank = (uint8_t)(SCENE_OVERLAY_BANK + rd8(zRamBaseBank));
+            uint8_t held_x, held_y;
 
             tam(MPR5, bank);
-            disc_log_exit_shim(log);    /* X and Y as the original has them: the TII pushes them */
-            block_move_tii(SCENE_TILES_FROM, SCENE_TILES_TO, SCENE_TILE_BYTES, bank, cpu.x, cpu.y);
+            scene_registers_shim(log, &held_x, &held_y);    /* the TII pushes them */
+            block_move_tii(SCENE_TILES_FROM, SCENE_TILES_TO, SCENE_TILE_BYTES, bank, held_x, held_y);
             scene_next(log, 1);
         } else if (op == OP_CALL_TWO) {
             log_overlay(log, SCENE_CALL_FIRST, 0x7064);

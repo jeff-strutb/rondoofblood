@@ -67,11 +67,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--names", default="")
     ap.add_argument("--all", action="store_true", help="every content drafted, drafts serve every routine")
+    ap.add_argument("--hand", action="store_true", help="no drafts: this tree's own C, built the same way (the comparison run)")
     ap.add_argument("--tree", default=os.path.join(BUILD, "tree"))
     ap.add_argument("--gen", default=os.path.join(BUILD, "gen_proof"))
     ap.add_argument("--box", default=os.path.join(BUILD, "pcebox"))
     a = ap.parse_args()
     names = [n for n in a.names.split(",") if n]
+    if a.hand:
+        sync(a.tree)
+        b = subprocess.run(["sh", os.path.join(a.tree, "setup.sh"), "pcebox"], env=dict(os.environ, RONDO_BOX=a.box),
+                           capture_output=True, text=True)
+        errs = [ln for ln in (b.stdout + b.stderr).splitlines() if "error" in ln or "undefined" in ln]
+        print("\n".join(errs[:20]))
+        return b.returncode
     cmd = [sys.executable, os.path.join(HERE, "cdraft.py"), "--out", a.gen]
     cmd += ["--all"] if a.all else ["--fresh", "--as-filed", "--only", ",".join(names)]
     r = subprocess.run(cmd)

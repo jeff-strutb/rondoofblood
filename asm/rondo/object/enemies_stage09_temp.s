@@ -1,0 +1,463 @@
+; @routine 09EA:55A FaceByCue
+; @run 70:AD5A
+; WHAT IT DOES: While the screen is not scrolling along X, and in a state the table at $AD70 marks, the object
+; faces the way the player is (bit 0 of SideOfPlayer into its facing).
+; HOW: Reads ScrollSpeedX and the table by state, then SideOfPlayer.
+; WAITS: no.
+; Entry: X object. Exit: A and N, Z from the last load or AND; Y the state when the table was read.
+FaceByCue:
+    lda a:ScrollSpeedX
+    bne FaceByCue_at0
+    ldy a:OBJ_27A8,x
+    lda a:$AD70,y
+    beq FaceByCue_at0
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+FaceByCue_at0:
+    rts
+
+; @routine 09EA:664 StartTwinSpawner
+; @run 70:AE64
+; WHAT IT DOES: Loads the object's record, clears OBJ_3618, sets its wait to $60 and sets bit 2 of zField8E; then
+; clears objects $11 and $12 and starts a kind $22 and a kind $27 at this object's place in them.
+; HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace; the last is a tail jump.
+; WAITS: no.
+; Entry: X object. Exit: A the last byte copied, N and Z from it, Y $12, C from the record.
+StartTwinSpawner:
+    jsr VecLoadObjectRecord
+    stz a:OBJ_3618,x
+    lda #$60
+    sta a:OBJ_3510,x
+    lda z:zField8E
+    ora #$04
+    sta z:zField8E
+    ldy #$11
+    jsr VecClearObjectInY
+    lda #$22
+    jsr VecStartObjectAtPlace
+    ldy #$12
+    jsr VecClearObjectInY
+    lda #$27
+    jmp VecStartObjectAtPlace
+
+; @routine 09EA:689 WalkTowardPlayer
+; @run 70:AE89
+; WHAT IT DOES: PickNextAction and WalkSideways, then the facing byte becomes the walk direction and, if the player is
+; within $40 along X, the object enters state 2.
+; HOW: DistanceXToPlayer.
+; Untraced: the state 2 arm (AE9C).
+; WAITS: no.
+; Entry: X object. Exit: the last compare, A the distance.
+WalkTowardPlayer:
+    jsr PickNextAction
+    jsr WalkSideways
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_3568,x
+    jsr VecDistanceXToPlayer
+    cmp #$40
+    bcs WalkTowardPlayer_at0
+    lda #$02
+    sta a:OBJ_27A8,x
+WalkTowardPlayer_at0:
+    rts
+
+; @routine 09EA:6A2 WalkSideways
+; @run 70:AEA2
+; WHAT IT DOES: Steps the walk animation (list $AEC3), sets the X speed to $FFC0 (left), reverses it when the object's
+; direction byte OBJ_3568 is set, and moves with WalkAndTurnAtEdges.
+; HOW: StepObjectFrames, NegateVelocityX, WalkAndTurnAtEdges.
+; WAITS: no.
+; Entry: X object. Exit: as WalkAndTurnAtEdges.
+WalkSideways:
+    lda #$C3
+    sta z:zTemp10
+    lda #$AE
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    lda #$C0
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_3568,x
+    beq WalkSideways_at0
+    jsr VecNegateVelocityX
+WalkSideways_at0:
+    jsr WalkAndTurnAtEdges
+    rts
+
+; @routine 09EA:6CC WalkAndTurnAtEdges
+; @run 70:AECC
+; WHAT IT DOES: Moves the object along X; when its X plus the scroll reaches an edge (page 3 from $30, or any other
+; page below $48) it turns round: the X speed is reversed and the move made again.
+; HOW: ApplyVelocityX, the add of ScrollXLo and ScrollXHiScreen, then the compare; the turn is NegateVelocityX and a
+; tail jump into ApplyVelocityX.
+; Untraced: both arms that turn, and the page 3 branch (AEE9 and AEEF).
+; WAITS: no.
+; Entry: X object. Exit: no turn: A the low byte, N, Z, C from its compare; turn: as ApplyVelocityX.
+WalkAndTurnAtEdges:
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    clc
+    adc a:ScrollXLo
+    sta z:zTemp00
+    lda a:OBJ_X_HI,x
+    adc a:ScrollXHiScreen
+    cmp #$03
+    beq WalkAndTurnAtEdges_at0
+    lda z:zTemp00
+    cmp #$48
+    bcc WalkAndTurnAtEdges_at1
+WalkAndTurnAtEdges_at2:
+    rts
+WalkAndTurnAtEdges_at0:
+    lda z:zTemp00
+    cmp #$30
+    bcc WalkAndTurnAtEdges_at2
+WalkAndTurnAtEdges_at1:
+    jsr VecNegateVelocityX
+    jmp VecApplyVelocityX
+
+; @routine 09EA:6F5 PickNextAction
+; @run 70:AEF5
+; WHAT IT DOES: While its wait OBJ_3510 runs, counts it down. At zero it picks a random state (from the pair of bytes
+; at $AF28), plays the sound the pair's second byte names, resets its animation and picks a new wait from the table
+; at $AF24 by a random 0 to 3.
+; HOW: NextRandom twice, SoundCommand.
+; WAITS: no.
+; Entry: X object, Y kept unless the picks set it. Exit: waiting: A the old wait, N and Z from the new; else A the
+; new wait, Y its index, C and V from the second random.
+PickNextAction:
+    lda a:OBJ_3510,x
+    beq PickNextAction_at0
+    dec a:OBJ_3510,x
+    rts
+PickNextAction_at0:
+    jsr VecNextRandom
+    and #$01
+    asl a
+    tay
+    lda a:$AF28,y
+    sta a:OBJ_27A8,x
+    lda a:$AF29,y
+    jsr VecSoundCommand
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    jsr VecNextRandom
+    and #$03
+    tay
+    lda a:$AF24,y
+    sta a:OBJ_3510,x
+    rts
+; @routine 09EA:792 PlayCueOnFrame
+; @run 70:AF92
+; @stop AFB9
+; WHAT IT DOES: An object showing frame 8 or $0A starts a script when its animation timer equals one of the cue
+; counts in a table at $AFB9 (frame 8: the first eight; frame $0A: the next fourteen); the script is $80 plus the
+; cue's index.
+; HOW: A scan of the table with the timer, ending in StartCueScript.
+; Untraced: the table (AFB9 to AFCF) is data the traced run only read.
+; WAITS: no.
+; Entry: X object. Exit: no cue: A and flags of the last compare; cue: as StartCueScript.
+PlayCueOnFrame:
+    lda a:OBJ_2A68,x
+    cmp #$08
+    beq PlayCueOnFrame_at0
+    cmp #$0A
+    beq PlayCueOnFrame_at1
+    rts
+PlayCueOnFrame_at0:
+    cly
+    lda #$08
+    sta z:zTemp00
+    bra PlayCueOnFrame_at2
+PlayCueOnFrame_at1:
+    ldy #$08
+    lda #$16
+    sta z:zTemp00
+PlayCueOnFrame_at2:
+    lda a:OBJ_3460,x
+    cmp a:$AFB9,y
+    beq StartCueScript
+    iny
+    cpy z:zTemp00
+    bcc PlayCueOnFrame_at2
+    rts
+
+; @routine 09EA:7D0 StartCueScript
+; @run 70:AFD0
+; WHAT IT DOES: Starts the script slot 5 with the script $80 plus Y (the last part of PlayCueOnFrame).
+; HOW: X is pushed and pulled around StartScriptSlotKind4.
+; WAITS: no.
+; Entry: X object, Y the cue's index. Exit: A and Y the script, N and Z from X, C and V from the add of $80.
+StartCueScript:
+    phx
+    tya
+    clc
+    adc #$80
+    ldx #$05
+    jsr VecStartScriptSlotKind4
+    plx
+    rts
+
+; @routine 09EA:7DC StepFlyingCue
+; @run 70:AFDC
+; WHAT IT DOES: Steps the animation list at $AFFE; when it ends the object enters state 2; on a new frame, at animation
+; step $1A, sound $1A plays.
+; HOW: StepObjectFrames, SoundCommand.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+StepFlyingCue:
+    lda #$AF
+    sta z:zTemp11
+    lda #$FE
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    beq StepFlyingCue_at1
+    bcc StepFlyingCue_at2
+    lda a:OBJ_3408,x
+    cmp #$1A
+    bne StepFlyingCue_at2
+    lda #$1A
+StepFlyingCue_at0:
+    jsr VecSoundCommand
+    rts
+StepFlyingCue_at1:
+    lda #$02
+    sta a:OBJ_27A8,x
+StepFlyingCue_at2:
+    rts
+; @routine 09EB:03B StepThenQuarterWait
+; @run 70:B03B
+; WHAT IT DOES: Steps the animation list at $B060; when it ends the object's wait OBJ_3510 is quartered, it enters state 2
+; and its timer is raised to at least 3.
+; HOW: StepObjectFrames, two LSRs of memory, a compare.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: the last compare or load.
+StepThenQuarterWait:
+    lda #$B0
+    sta z:zTemp11
+    lda #$60
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    bne StepThenQuarterWait_at0
+    lsr a:OBJ_3510,x
+    lsr a:OBJ_3510,x
+    lda #$02
+    sta a:OBJ_27A8,x
+    lda a:OBJ_3A90,x
+    cmp #$03
+    bcs StepThenQuarterWait_at0
+    lda #$03
+    sta a:OBJ_3A90,x
+StepThenQuarterWait_at0:
+    rts
+
+; @routine 09EB:067 StartShotRing
+; @run 70:B067
+; WHAT IT DOES: Clears objects $11 and $12, starts ten objects of kind $28 at this object's place in slots $18 to $27, each
+; with this object's facing; then resets the animation, puts the object off the left of the screen (X from $C0 less the scroll,
+; Y $FFC0), stops it and enters its next state.
+; HOW: ClearObjectInY and StartObjectAtPlace in a loop.
+; WAITS: no.
+; Entry: X object. Exit: A $C0, Y $28, N and Z from the new state, C and V from the subtract of the scroll.
+StartShotRing:
+    ldy #$11
+    jsr VecClearObjectInY
+    iny
+    jsr VecClearObjectInY
+    ldy #$18
+StartShotRing_at0:
+    jsr VecClearObjectInY
+    lda #$28
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    iny
+    cpy #$28
+    bcc StartShotRing_at0
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    stz a:OBJ_X_HI,x
+    lda #$C0
+    sec
+    sbc a:ScrollXLo
+    sta a:OBJ_X_LO,x
+    lda #$FF
+    sta a:OBJ_Y_HI,x
+    lda #$C0
+    sta a:OBJ_Y_LO,x
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    stz a:OBJ_2A68,x
+    inc a:OBJ_27A8,x
+    rts
+
+; @routine 09EB:0AE EnterStateWhenSlotClear
+; @run 70:B0AE
+; WHAT IT DOES: The object enters its next state once object $26's kind is 0 (the one it waits for is gone).
+; HOW: A read of that kind and an INC.
+; WAITS: no.
+; Entry: X object. Exit: A the kind read, N and Z from it or from the new state.
+EnterStateWhenSlotClear:
+    lda a:$2776
+    bne EnterStateWhenSlotClear_at0
+    inc a:OBJ_27A8,x
+EnterStateWhenSlotClear_at0:
+    rts
+
+; @routine 09EB:0B7 BurstOnLanding
+; @run 70:B0B7
+; WHAT IT DOES: A thing that falls (list $B101, unlimited gravity) and bursts when it reaches Y $0040 on the first page: sound
+; $A1, script slot 3 started, kind $29 objects started in slots $12 to $19, a sideways speed of $0140 and the next state.
+; HOW: StepObjectFrames, ApplyGravityUnlimited, ApplyVelocityY, SoundCommand, StartSoleScriptSlot, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+BurstOnLanding:
+    lda #$B1
+    sta z:zTemp11
+    lda #$01
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    jsr VecApplyGravityUnlimited
+    jsr VecApplyVelocityY
+    lda a:OBJ_Y_HI,x
+    bne BurstOnLanding_at0
+    lda a:OBJ_Y_LO,x
+    cmp #$40
+    bcc BurstOnLanding_at0
+    lda #$A1
+    jsr VecSoundCommand
+    phx
+    cla
+    ldx #$03
+    jsr VecStartSoleScriptSlot
+    plx
+    ldy #$12
+BurstOnLanding_at1:
+    lda #$29
+    jsr VecStartObjectAtPlace
+    iny
+    cpy #$1A
+    bcc BurstOnLanding_at1
+    lda #$01
+    sta a:OBJ_VX_HI,x
+    lda #$40
+    sta a:OBJ_VX_LO,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_27A8,x
+BurstOnLanding_at0:
+    rts
+
+; @routine 09EB:16F InWindowRange
+; @run 70:B16F
+; WHAT IT DOES: Says whether the object is inside the page range the stage keeps its things alive in: the object's X plus the scroll,
+; high byte 3 or more with the low byte $C0 or more, or high byte 1 with the low byte under $C0.
+; HOW: The add of ScrollXLo and ScrollXHiScreen and two compares.
+; WAITS: no.
+; Entry: X object. Exit: C set when inside; A the last load, N and Z from the last compare, V from the add.
+InWindowRange:
+    lda a:OBJ_X_LO,x
+    clc
+    adc a:ScrollXLo
+    sta z:zTemp00
+    lda a:OBJ_X_HI,x
+    adc a:ScrollXHiScreen
+    cmp #$03
+    bcs InWindowRange_at0
+    cmp #$01
+    bne InWindowRange_at1
+    lda z:zTemp00
+    cmp #$C0
+    bcs InWindowRange_at1
+InWindowRange_at2:
+    sec
+    rts
+InWindowRange_at0:
+    lda z:zTemp00
+    cmp #$C0
+    bcs InWindowRange_at2
+InWindowRange_at1:
+    clc
+    rts
+
+; @routine 09EB:196 StartSplitterHigh
+; @run 70:B196
+; WHAT IT DOES: Starts a falling splitter at Y low $48: its X speed is picked from a table at $B1BF by two bits of the
+; player's distance sum, OBJ_3670 is cleared, OBJ_2800 moves on, and when the object is on the player's left its X speed is
+; reversed.
+; HOW: PlayerDistanceSum, SideOfPlayer, NegateVelocityX.
+; Untraced: the reversal (B1BB).
+; WAITS: no.
+; Entry: X object, C passed to PlayerDistanceSum. Exit: the last load, AND or subtract.
+StartSplitterHigh:
+    jsr VecPlayerDistanceSum
+    and #$03
+    asl a
+    tay
+    lda a:$B1C0,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B1BF,y
+    sta a:OBJ_VX_LO,x
+    lda #$48
+    sta a:OBJ_Y_LO,x
+    stz a:OBJ_3670,x
+    inc a:OBJ_2800,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq StartSplitterHigh_at0
+    jsr VecNegateVelocityX
+StartSplitterHigh_at0:
+    rts
+
+; @routine 09EB:1E8 StartSplitterLow
+; @run 70:B1E8
+; WHAT IT DOES: StartSplitterHigh with the Y low byte $58.
+; HOW: As StartSplitterHigh.
+; Untraced: the reversal (B20D).
+; WAITS: no.
+; Entry and exit: as StartSplitterHigh.
+StartSplitterLow:
+    jsr VecPlayerDistanceSum
+    and #$03
+    asl a
+    tay
+    lda a:$B1C0,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B1BF,y
+    sta a:OBJ_VX_LO,x
+    lda #$58
+    sta a:OBJ_Y_LO,x
+    stz a:OBJ_3670,x
+    inc a:OBJ_2800,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq StartSplitterLow_at0
+    jsr VecNegateVelocityX
+StartSplitterLow_at0:
+    rts
+
+; @routine 09EB:21A MaybeShootAhead
+; @run 70:B21A
+; WHAT IT DOES: Every 32nd count of the object's OBJ_35C0, with a chance of three in four, starts a kind $2A object at its place in
+; the first free slot from $30 and gives it the object's facing.
+; HOW: NextRandom, FindFreeSlotFrom30, StartObjectAtPlace.
+; Untraced: one byte.
+; WAITS: no.
+; Entry: X object. Exit: the last load, AND or INC.
+MaybeShootAhead:
+    lda a:OBJ_35C0,x
+    and #$1F
+    bne MaybeShootAhead_at0
+    jsr VecNextRandom
+    and #$03
+    beq MaybeShootAhead_at0
+    jsr VecFindFreeSlotFrom30
+    bcc MaybeShootAhead_at0
+    lda #$2A
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+MaybeShootAhead_at0:
+    rts

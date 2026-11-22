@@ -49,4 +49,35 @@ Ended RaiseStateOnFlag(uint8_t slot);
 void StopVerticalSpeed(uint8_t slot);
 Jump JumpByStageStep(void);
 
+/* object/enemies_stage09_temp.c */
+Ended FaceByCue(uint8_t slot);
+Ended WalkAndTurnAtEdges(uint8_t slot);
+Ended WalkSideways(uint8_t slot);
+Ended PickNextAction(uint8_t slot);
+Ended WalkTowardPlayer(uint8_t slot);
+
+Ended StartCueScript(uint8_t slot, uint8_t y);
+Ended PlayCueOnFrame(uint8_t slot);
+SoundEnd StepFlyingCue(uint8_t slot, uint8_t y);
+Ended StartTwinSpawner(uint8_t slot);
+
+Ended StepThenQuarterWait(uint8_t slot);
+Ended StartShotRing(uint8_t slot);
+Ended EnterStateWhenSlotClear(uint8_t slot);
+SoundEnd BurstOnLanding(uint8_t slot, uint8_t y);
+Ended StartSplitterHigh(uint8_t slot, bool carry_in);
+Ended StartSplitterLow(uint8_t slot, bool carry_in);
+Ended MaybeShootAhead(uint8_t slot);
+
+/* Whether an object is inside a window, and what the routine left. */
+typedef struct {
+    bool in_view;
+    Ended end;
+} ViewTest;
+ViewTest InWindowRange(uint8_t slot);
+
+/* A memory shift right in one read and one write: the value written, and the bit shifted out in `carry_var`. */
+#define LSR8_VALUE(field, carry_var) \
+    RMW8(field, old_s, ((carry_var) = (old_s & 1) != 0, old_s >> 1))
+
 #endif

@@ -66,10 +66,8 @@ member,CardRam,adpcm_active,u8,A5,CardAdpcmActive,
 member,CardRam,adpcm_length,u8,A6,CardAdpcmLength,
 member,CardRam,adpcm_address,u8,A8,CardAdpcmAddress,
 member,CardRam,adpcm_rate,u8,AA,CardAdpcmRate,
-member,CardRam,byte_count,u8,B3,CardByteCount,
-member,CardRam,saved_mprs,u8,B5,CardSavedMprs,
-member,CardRam,font_saved_mprs,u8,B8,CardFontSavedMprs,
-member,CardRam,saved_mpr6,u8,BB,CardSavedMpr6,
+member,CardRam,byte_count,u16le,B3,CardByteCount|CardByteCountHi,
+member,CardRam,saved_mprs,u8[8],B5,CardSavedMprs,
 member,CardRam,font_shift,u8,BD,CardFontShift,
 member,CardRam,ad_trans_sent,u8,C1,CardAdTransSent,
 member,CardRam,ad_trans_step,u8,C2,CardAdTransStep,
@@ -105,3 +103,19 @@ member,CardCdUnit,adpcm_status,u8,0C,AdpcmStatus,
 member,CardCdUnit,adpcm_control,u8,0D,AdpcmControl,
 member,CardCdUnit,adpcm_rate,u8,0E,AdpcmRate,
 member,CardCdUnit,fade,u8,0F,CdFade,
+
+# font.c and math.c name parts of the eight saved MPRs for their own use; the same bytes.
+alias,CardRam,font_saved_mprs,saved_mprs+3[2],CardFontSavedMprs
+alias,CardRam,saved_mpr6,saved_mprs+6,CardSavedMpr6
+
+# The backup memory, bank $F7, seen at $8000 while the card maps it to MPR4: 2 KB.
+record,BackupMemory,aos,8000,1,800,CBM
+member,BackupMemory,header,u8[4],00,BackupHeader,
+member,BackupMemory,end,u16le,04,BackupEnd|BackupEndHi,
+member,BackupMemory,next_free,u16le,06,BackupNextFree|BackupNextFreeHi,
+member,BackupMemory,first_file,u16le,10,BackupFirstFile|BackupFirstFileHi,
+
+# The card's ROM tables, bank 0 at $E000 (read only).
+record,CardRomTables,aos,F8A9,1,F,CROMT
+member,CardRomTables,signature,u8[4],00,BackupSignature,
+member,CardRomTables,format_password,u8[11],04,BackupFormatPassword,

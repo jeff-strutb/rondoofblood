@@ -132,14 +132,8 @@ typedef struct {
     uint8_t _gap_00A9[1]; /* no name yet: $22A9-$22A9 */
     uint8_t adpcm_rate; /* CardAdpcmRate */
     uint8_t _gap_00AB[8]; /* no name yet: $22AB-$22B2 */
-    uint8_t byte_count; /* CardByteCount */
-    uint8_t _gap_00B4[1]; /* no name yet: $22B4-$22B4 */
-    uint8_t saved_mprs; /* CardSavedMprs */
-    uint8_t _gap_00B6[2]; /* no name yet: $22B6-$22B7 */
-    uint8_t font_saved_mprs; /* CardFontSavedMprs */
-    uint8_t _gap_00B9[2]; /* no name yet: $22B9-$22BA */
-    uint8_t saved_mpr6; /* CardSavedMpr6 */
-    uint8_t _gap_00BC[1]; /* no name yet: $22BC-$22BC */
+    U16LE byte_count; /* CardByteCount +1 */
+    union { uint8_t saved_mprs[8]; struct { uint8_t _pad_font_saved_mprs[3]; uint8_t font_saved_mprs[2]; }; struct { uint8_t _pad_saved_mpr6[6]; uint8_t saved_mpr6; }; }; /* CardSavedMprs */
     uint8_t font_shift; /* CardFontShift */
     uint8_t _gap_00BE[3]; /* no name yet: $22BE-$22C0 */
     uint8_t ad_trans_sent; /* CardAdTransSent */
@@ -200,9 +194,10 @@ _Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_length) + 0 == CardAdpcmLe
 _Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_address) + 0 == CardAdpcmAddress, "CardRam.adpcm_address is not at CardAdpcmAddress");
 _Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_rate) + 0 == CardAdpcmRate, "CardRam.adpcm_rate is not at CardAdpcmRate");
 _Static_assert(CardRam_BASE + offsetof(CardRam, byte_count) + 0 == CardByteCount, "CardRam.byte_count is not at CardByteCount");
+_Static_assert(CardRam_BASE + offsetof(CardRam, byte_count) + 1 == CardByteCountHi, "CardRam.byte_count is not at CardByteCountHi");
 _Static_assert(CardRam_BASE + offsetof(CardRam, saved_mprs) + 0 == CardSavedMprs, "CardRam.saved_mprs is not at CardSavedMprs");
-_Static_assert(CardRam_BASE + offsetof(CardRam, font_saved_mprs) + 0 == CardFontSavedMprs, "CardRam.font_saved_mprs is not at CardFontSavedMprs");
-_Static_assert(CardRam_BASE + offsetof(CardRam, saved_mpr6) + 0 == CardSavedMpr6, "CardRam.saved_mpr6 is not at CardSavedMpr6");
+_Static_assert(CardRam_BASE + offsetof(CardRam, font_saved_mprs) == CardFontSavedMprs, "CardRam.font_saved_mprs is not at CardFontSavedMprs");
+_Static_assert(CardRam_BASE + offsetof(CardRam, saved_mpr6) == CardSavedMpr6, "CardRam.saved_mpr6 is not at CardSavedMpr6");
 _Static_assert(CardRam_BASE + offsetof(CardRam, font_shift) + 0 == CardFontShift, "CardRam.font_shift is not at CardFontShift");
 _Static_assert(CardRam_BASE + offsetof(CardRam, ad_trans_sent) + 0 == CardAdTransSent, "CardRam.ad_trans_sent is not at CardAdTransSent");
 _Static_assert(CardRam_BASE + offsetof(CardRam, ad_trans_step) + 0 == CardAdTransStep, "CardRam.ad_trans_step is not at CardAdTransStep");
@@ -282,5 +277,38 @@ _Static_assert(CardCdUnit_BASE + offsetof(CardCdUnit, adpcm_control) + 0 == Adpc
 _Static_assert(CardCdUnit_BASE + offsetof(CardCdUnit, adpcm_rate) + 0 == AdpcmRate, "CardCdUnit.adpcm_rate is not at AdpcmRate");
 _Static_assert(CardCdUnit_BASE + offsetof(CardCdUnit, fade) + 0 == CdFade, "CardCdUnit.fade is not at CdFade");
 #define CCDU ((CardCdUnit *)CardCdUnit_BASE)
+
+/* BackupMemory: one struct at $8000, 1 element(s), 2048 bytes */
+#define BackupMemory_BASE 0x8000
+#define BackupMemory_COUNT 1
+typedef struct {
+    uint8_t header[4]; /* BackupHeader */
+    U16LE end; /* BackupEnd +1 */
+    U16LE next_free; /* BackupNextFree +1 */
+    uint8_t _gap_0008[8]; /* no name yet: $8008-$800F */
+    U16LE first_file; /* BackupFirstFile +1 */
+    uint8_t _gap_0012[2030]; /* no name yet: $8012-$87FF */
+} BackupMemory;
+_Static_assert(sizeof(BackupMemory) == 0x800, "BackupMemory size");
+_Static_assert(BackupMemory_BASE + offsetof(BackupMemory, header) + 0 == BackupHeader, "BackupMemory.header is not at BackupHeader");
+_Static_assert(BackupMemory_BASE + offsetof(BackupMemory, end) + 0 == BackupEnd, "BackupMemory.end is not at BackupEnd");
+_Static_assert(BackupMemory_BASE + offsetof(BackupMemory, end) + 1 == BackupEndHi, "BackupMemory.end is not at BackupEndHi");
+_Static_assert(BackupMemory_BASE + offsetof(BackupMemory, next_free) + 0 == BackupNextFree, "BackupMemory.next_free is not at BackupNextFree");
+_Static_assert(BackupMemory_BASE + offsetof(BackupMemory, next_free) + 1 == BackupNextFreeHi, "BackupMemory.next_free is not at BackupNextFreeHi");
+_Static_assert(BackupMemory_BASE + offsetof(BackupMemory, first_file) + 0 == BackupFirstFile, "BackupMemory.first_file is not at BackupFirstFile");
+_Static_assert(BackupMemory_BASE + offsetof(BackupMemory, first_file) + 1 == BackupFirstFileHi, "BackupMemory.first_file is not at BackupFirstFileHi");
+#define CBM ((BackupMemory *)BackupMemory_BASE)
+
+/* CardRomTables: one struct at $F8A9, 1 element(s), 15 bytes */
+#define CardRomTables_BASE 0xF8A9
+#define CardRomTables_COUNT 1
+typedef struct {
+    uint8_t signature[4]; /* BackupSignature */
+    uint8_t format_password[11]; /* BackupFormatPassword */
+} CardRomTables;
+_Static_assert(sizeof(CardRomTables) == 0xF, "CardRomTables size");
+_Static_assert(CardRomTables_BASE + offsetof(CardRomTables, signature) + 0 == BackupSignature, "CardRomTables.signature is not at BackupSignature");
+_Static_assert(CardRomTables_BASE + offsetof(CardRomTables, format_password) + 0 == BackupFormatPassword, "CardRomTables.format_password is not at BackupFormatPassword");
+#define CROMT ((CardRomTables *)CardRomTables_BASE)
 
 #endif

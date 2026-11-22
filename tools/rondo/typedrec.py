@@ -29,7 +29,9 @@ Records file (ASCII, one row a line, `#` starts a comment, numbers in hex as in 
         A second name for a member, kept while code still uses the old one: both names are the same bytes (an
         anonymous union in the struct), and both are checked against the symbol. Drop the row when the last user moves.
         TARGET may be MEMBER.SUB (SUB one of lo, mid, hi) to name one byte of a wide member: a scratch byte another
-        routine uses under its own name. SYMBOL is then the symbol of that byte, and is checked against its address.
+        routine uses under its own name; or MEMBER+N or MEMBER+N[K], the byte (or K bytes) at offset N of an array
+        member (a u8[N] array two routines see differently). SYMBOL is then the symbol of that byte, and is checked
+        against its address.
 
 A row that disagrees with the symbols, two members that overlap, a symbol claimed twice, a name used
 twice, or a type that collides with a symbol makes the generator fail with the row's line.
@@ -226,7 +228,7 @@ def generate(path, symbols, taken_names, guard, include, origin):
             else:
                 aliases.append((s, f"{rname}.{owner['name']}"))
         for al in member_aliases:
-            if al["rec"] == rname and al["member"].split(".")[0] not in names:
+            if al["rec"] == rname and re.split(r"[.+]", al["member"])[0] not in names:
                 raise SpecError(f"{al['where']}: alias of {al['member']}, which is not a member of {rname}")
         # The struct.
         out.append(f"/* {rname}: {'parallel byte arrays' if soa else 'one struct'} at ${r['base']:04X}, "
@@ -253,25 +255,35 @@ def generate(path, symbols, taken_names, guard, include, origin):
             else:
                 decl = f"uint8_t {m['name']}"
             subs = []
-            for al in [x for x in member_aliases if x["rec"] == rname and x["member"].split(".")[0] == m["name"]]:
+            for al in [x for x in member_aliases if x["rec"] == rname and re.split(r"[.+]", x["member"])[0] == m["name"]]:
                 if not IDENT.match(al["alias"]) or al["alias"] in names or al["alias"] == m["name"]:
                     raise SpecError(f"{al['where']}: alias {al['alias']} is not a free name")
                 names.add(al["alias"])
                 m.setdefault("aliasnames", []).append(al["alias"])
-                if "." in al["member"]:
-                    sub = al["member"].split(".")[1]
-                    if m["shape"] != "wide" or sub not in WIDE[m["type"]][1]:
-                        raise SpecError(f"{al['where']}: {m['name']} has no byte {sub}")
-                    idx = WIDE[m["type"]][1].index(sub)
+                tm = re.match(r"^\w+(?:\.(\w+)|\+(\d+)(?:\[(\d+)\])?)?$", al["member"])
+                if tm is None:
+                    raise SpecError(f"{al['where']}: cannot read alias target {al['member']}")
+                if tm.group(1) or tm.group(2) is not None:
+                    if tm.group(1):
+                        if m["shape"] != "wide" or tm.group(1) not in WIDE[m["type"]][1]:
+                            raise SpecError(f"{al['where']}: {m['name']} has no byte {tm.group(1)}")
+                        idx, cnt = WIDE[m["type"]][1].index(tm.group(1)), 0
+                    else:
+                        if m["shape"] != "array":
+                            raise SpecError(f"{al['where']}: {m['name']} is not an array")
+                        idx, cnt = int(tm.group(2)), int(tm.group(3) or 0)
+                        if idx + max(cnt, 1) > m["w"]:
+                            raise SpecError(f"{al['where']}: {al['member']} runs past {m['name']}'s {m['w']} bytes")
                     if al["symbol"]:
                         if al["symbol"] not in addr_of:
                             raise SpecError(f"{al['where']}: no symbol {al['symbol']}")
                         want = r["base"] + m["offset"] + idx
                         if addr_of[al["symbol"]] != want:
-                            raise SpecError(f"{al['where']}: {al['symbol']} is at {addr_of[al['symbol']]:04X}, byte {sub} of "
+                            raise SpecError(f"{al['where']}: {al['symbol']} is at {addr_of[al['symbol']]:04X}, {al['member']} of "
                                             f"{rname}.{m['name']} is at {want:04X}")
                         claimed[al["symbol"]] = f"{rname}.{al['alias']}"
-                    subs.append("struct { %suint8_t %s; }" % (("uint8_t _pad_%s[%d]; " % (al["alias"], idx)) if idx else "", al["alias"]))
+                    sub_decl = "uint8_t %s%s" % (al["alias"], ("[%d]" % cnt) if cnt else "")
+                    subs.append("struct { %s%s; }" % (("uint8_t _pad_%s[%d]; " % (al["alias"], idx)) if idx else "", sub_decl))
                     m.setdefault("aliassyms", []).append((al["alias"], al["symbol"]))
                 else:
                     decl = "union { %s; %s; }" % (decl, decl.replace(m["name"], al["alias"], 1))

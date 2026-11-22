@@ -49,14 +49,18 @@ EF,zp,CardCopyHi,the second pointer the card keeps for itself
 F0,zp,CardFileLo,the backup file the card is at
 F1,zp,CardFileHi,the backup file the card is at
 22B3,abs,CardByteCount,bytes left of a backup copy or sum
+22B4,abs,CardByteCountHi,the high byte of the count of bytes left of a backup copy or sum
 EC,zp,CardPointerLo,a pointer the card keeps for itself
 ED,zp,CardPointerHi,a pointer the card keeps for itself
 1807,abs,BackupUnlock,opens the backup memory: the same port as CdSubcode
 22B5,abs,CardSavedMprs,the eight MPRs while backup memory is open
 8000,abs,BackupHeader,the backup memory's header
 8004,abs,BackupEnd,where the backup memory ends
+8005,abs,BackupEndHi,the high byte of where the backup memory ends
 8006,abs,BackupNextFree,where its next free byte is
+8007,abs,BackupNextFreeHi,the high byte of where its next free byte is
 8010,abs,BackupFirstFile,its first file
+8011,abs,BackupFirstFileHi,the high byte of its first file's place
 F8A9,abs,BackupSignature,HUBM: what a formatted header starts with
 F8AD,abs,BackupFormatPassword,what bm_format must be handed
 180A,abs,AdpcmData,the ADPCM unit's data port

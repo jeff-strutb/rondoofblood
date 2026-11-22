@@ -52,14 +52,18 @@
 #define CardFileLo 0x20F0 /* the backup file the card is at */
 #define CardFileHi 0x20F1 /* the backup file the card is at */
 #define CardByteCount 0x22B3 /* bytes left of a backup copy or sum */
+#define CardByteCountHi 0x22B4 /* the high byte of the count of bytes left of a backup copy or sum */
 #define CardPointerLo 0x20EC /* a pointer the card keeps for itself */
 #define CardPointerHi 0x20ED /* a pointer the card keeps for itself */
 #define BackupUnlock 0x1807 /* opens the backup memory: the same port as CdSubcode */
 #define CardSavedMprs 0x22B5 /* the eight MPRs while backup memory is open */
 #define BackupHeader 0x8000 /* the backup memory's header */
 #define BackupEnd 0x8004 /* where the backup memory ends */
+#define BackupEndHi 0x8005 /* the high byte of where the backup memory ends */
 #define BackupNextFree 0x8006 /* where its next free byte is */
+#define BackupNextFreeHi 0x8007 /* the high byte of where its next free byte is */
 #define BackupFirstFile 0x8010 /* its first file */
+#define BackupFirstFileHi 0x8011 /* the high byte of its first file's place */
 #define BackupSignature 0xF8A9 /* HUBM: what a formatted header starts with */
 #define BackupFormatPassword 0xF8AD /* what bm_format must be handed */
 #define AdpcmData 0x180A /* the ADPCM unit's data port */

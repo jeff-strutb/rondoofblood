@@ -633,6 +633,8 @@ def near_diff(g, first):
 
 
 def headers(out, es, scripts, names):
+    out.frag = fragments(out)
+    out.frag_by_lo = {r["lo"]: r for r in out.frag}
     callers = collections.defaultdict(set)
     callees = collections.defaultdict(set)
     for kind, src, dst in es:
@@ -666,6 +668,13 @@ def headers(out, es, scripts, names):
                      ("  (inferred from the neighbouring routine on the disc)" if g.inferred else "") +
                      (f"  (also seen at {', '.join(f'{r:04X}' for r in other)})" if other else "") +
                      (f"  (assembled at ${g.org:04X})" if g.run is None else ""))
+        for p in g.members:
+            fr = out.frag_by_lo.get(p.lo)
+            if fr and fr["disposition"]:
+                lines.append(f"; {fr['disposition']} {fr['whole_routine']} ({fr['whole_start']}, {fr['whole_pieces']} pieces, "
+                             f"{fr['whole_bytes']} B): " + ("lift it with the whole routine" if fr["disposition"].startswith("part")
+                                                           else "lift it with the whole routine; this is one of its entries"))
+                break
         lines.append(f"; size {g.n} B, run by a script {g.opc_run} B, untraced {g.n - g.opc_run} B; entered by "
                      + ", ".join(ent))
         for nm, bag in (("callers", callers[g]), ("callees", callees[g])):
@@ -758,7 +767,10 @@ def fragments(out):
         rows.append({"piece": u["tag"], "label": u["label"], "name": u["name"], "bytes": u["hi"] - u["lo"],
                      "entry": u["entry"], "role": role, "linked_from_previous": link.get(i, ""),
                      "whole_routine": h["name"] or h["label"], "whole_start": h["tag"], "whole_pieces": sizes[head[i]],
-                     "whole_bytes": totals[head[i]]})
+                     "whole_bytes": totals[head[i]],
+                     "disposition": ("" if role != "fragment" else "part of the routine (no entry of its own)"
+                                     if set(u["entry"].split("/")) <= {"orphan", "fragment"} else
+                                     "alternate entry of the routine"), "lo": u["lo"]})
     return rows
 
 
@@ -806,9 +818,11 @@ def write_files(out, path):
                 f.write("\n".join(out.hdr[g]) + "\n" + "\n".join(g.lines) + "\n\n")
                 for p in g.members:
                     near = f"N{g.near[0]:04d}" if g.near else ""
+                    fr = out.frag_by_lo.get(p.lo)
+                    part = f"{fr['disposition']}: {fr['whole_routine']}" if fr and fr["disposition"] else ""
                     rows.append((tag(p.lo), label(g.canon), tag(g.canon), g.n, g.opc_run, "/".join(sorted(p.kinds)),
-                                 f"{g.org:04X}" if g.run is not None else "", near, name))
-    fr = fragments(out)
+                                 f"{g.org:04X}" if g.run is not None else "", near, name, part))
+    fr = [{k: v for k, v in r.items() if k != "lo"} for r in out.frag]
     with open(os.path.join(path, "fragments.csv"), "w", encoding="ascii", newline="\n") as f:
         w = csv.DictWriter(f, fieldnames=list(fr[0]), lineterminator="\n")
         w.writeheader()
@@ -820,9 +834,31 @@ def write_files(out, path):
             w.writerow([label(g.canon), tag(g.canon), f"{o:03X}", name, cause, opd, g.notes.get(o, "")])
     with open(os.path.join(path, "index.csv"), "w", encoding="ascii", newline="\n") as f:
         w = csv.writer(f, lineterminator="\n")
-        w.writerow(["where", "group", "canonical", "bytes", "bytes_run", "entry", "run", "near", "file"])
+        w.writerow(["where", "group", "canonical", "bytes", "bytes_run", "entry", "run", "near", "file", "part_of"])
         w.writerows(sorted(rows))
     return len(files)
+
+
+def annotate_catalog(out):
+    """routines.csv gains an entry_of column: a catalog row that is an alternate entry of a whole routine (a piece
+    with its own call, jump, table or interrupt entry that another piece's flow or branch also reaches) names that
+    routine. Rows, spans and bytes are unchanged; callers count a routine as a row with no entry_of."""
+    path = os.path.join(TOP, "build", "rondo", "routines.csv")
+    if not os.path.exists(path):
+        return 0, 0
+    alt = {r["lo"]: r["whole_routine"] for r in out.frag if r["disposition"].startswith("alternate")}
+    rows = list(csv.DictReader(open(path, newline="")))
+    n = 0
+    for r in rows:
+        r["entry_of"] = ""
+        if r["space"] == "D" and int(r["offset"], 16) in alt:
+            r["entry_of"] = alt[int(r["offset"], 16)]
+            n += 1
+    with open(path, "w", newline="\n", encoding="ascii") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+    return len(rows), n
 
 
 def summary(out, filed_n=0):
@@ -869,7 +905,12 @@ def main():
     scripts, names = script_runs(out.groups)
     headers(out, es, scripts, names)
     n = write_files(out, path)
+    total, alt = annotate_catalog(out) if path == RAW else (0, 0)
     print(summary(out))
+    if total:
+        merged = sum(1 for r in out.frag if r["disposition"].startswith("part"))
+        print(f"  catalog: {total} rows, {alt} of them alternate entries of a whole routine, {total - alt} routines; "
+              f"{merged} orphan pieces are parts of a routine, not routines")
     print(f"  {n} files and index.csv in {path}")
     return 0
 

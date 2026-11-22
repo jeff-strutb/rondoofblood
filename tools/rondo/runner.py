@@ -10,6 +10,7 @@
              --sweep          every script: the whole-game run, only when asked
              --commit         commit the records and ledgers to DIR's branch under the landing lock (off by
                               default until the state session has handed those files over)
+             --norerun        do not rerun red scripts alone (when every script is expected red)
              --workers N      scripts measured at once (default 8; each is one cpu-run claim)
 
 What it does for main's tip (design: build/rondo/pipeline/DESIGN.md, the rule: records.py):
@@ -243,7 +244,7 @@ def cycle(main, opts):
             log(f"  measured {res['script']}: " + ("FAILED " + "; ".join(res["errors"]) if res.get("errors") else
                 f"A7 {res['a7']['verdict']}, {len(res['a5'])} routines called"), b)
     for s in sorted(results):
-        if red(results[s]):
+        if red(results[s]) and not opts["norerun"]:
             log(f"  {s} is red: rerun alone", b)
             second = measure(tree, box, out, s)
             flipped = not red(second) if not second.get("errors") else False
@@ -324,7 +325,7 @@ def commit(main, rev, paths, n, reds, b):
 
 def parse(argv):
     opts = {"mode": argv[0] if argv else "", "main": TOP, "routines": [], "scripts": [], "sweep": False,
-            "commit": False, "workers": 8, "only": False}
+            "commit": False, "workers": 8, "only": False, "norerun": False}
     i = 1
     while i < len(argv):
         a = argv[i]
@@ -336,6 +337,8 @@ def parse(argv):
             opts["scripts"] = argv[i + 1].split(","); i += 1
         elif a == "--workers":
             opts["workers"] = int(argv[i + 1]); i += 1
+        elif a == "--norerun":
+            opts["norerun"] = True
         elif a == "--only":
             opts["only"] = True
         elif a == "--sweep":

@@ -270,6 +270,24 @@ void abi_ScreenMapAt(void)
 }
 
 /*
+ * @routine 10C6:272 ScreenMapAtB
+ * @run 6F:AA72
+ * WHAT IT DOES: ScreenMapAt, as the stage at 1081 has it, run at $AA72.
+ * HOW: The same bytes as ScreenMapAt at another run address; its C is screen_map_at.
+ * WAITS: no.
+ * Entry, exit: as ScreenMapAt.
+ */
+uint8_t ScreenMapAtB(uint8_t row)
+{
+    return screen_map_at(row);
+}
+
+void abi_ScreenMapAtB(void)
+{
+    screen_map_exit_shim(ScreenMapAtB(cpu.a));
+}
+
+/*
  * @routine 0515:6DA ScreenMapOfEntry
  * @run 6F:A6DA
  * WHAT IT DOES: Reads the level map's byte for the screen entry X of the scroll stands on.
@@ -303,24 +321,6 @@ uint8_t ScreenMapOfEntryB(uint8_t entry)
 void abi_ScreenMapOfEntryB(void)
 {
     screen_map_exit_shim(ScreenMapOfEntryB(cpu.x));
-}
-
-/*
- * @routine 12D6:263 ScreenMapOfEntryC
- * @run 6F:A6DA
- * WHAT IT DOES: ScreenMapOfEntry, as the stage at 1291 has its own copy of it.
- * HOW: The same body, shared through screen_map_of_entry.
- * WAITS: no.
- * Entry, exit: as ScreenMapOfEntry.
- */
-uint8_t ScreenMapOfEntryC(uint8_t entry)
-{
-    return screen_map_of_entry(entry);
-}
-
-void abi_ScreenMapOfEntryC(void)
-{
-    screen_map_exit_shim(ScreenMapOfEntryC(cpu.x));
 }
 
 /*

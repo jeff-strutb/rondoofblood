@@ -137,17 +137,6 @@ ScreenMapOfEntryB:
     sta z:zTemp00
     lda a:ScrollYHiScreen,x
 
-; @routine 12D6:263 ScreenMapOfEntryC
-; @run 6F:A6DA
-; WHAT IT DOES: ScreenMapOfEntry, as the stage at 1291 has its own copy of it.
-; HOW: The same body, shared through screen_map_of_entry.
-; WAITS: no.
-; Entry, exit: as ScreenMapOfEntry.
-ScreenMapOfEntryC:
-    lda a:ScrollXHiScreen,x
-    sta z:zTemp00
-    lda a:ScrollYHiScreen,x
-
 ; @routine 0255:6E2 ScreenMapAt
 ; @run 6F:A6E2
 ; WHAT IT DOES: Reads the level map's byte for the screen at row A, column zTemp00.
@@ -567,3 +556,24 @@ AdvanceScrollYB:
     and #$0F
     sta a:ScrollYHiScreen,x
     rts
+
+; @routine 10C6:272 ScreenMapAtB
+; @run 6F:AA72
+; WHAT IT DOES: ScreenMapAt, as the stage at 1081 has it, run at $AA72.
+; HOW: The same bytes as ScreenMapAt at another run address; its C is screen_map_at.
+; WAITS: no.
+; Entry, exit: as ScreenMapAt.
+ScreenMapAtB:
+    asl a
+    asl a
+    asl a
+    asl a
+    ora z:zTemp00
+    clc
+    adc #$00
+    sta z:zTemp00
+    lda #$3D
+    sta z:zTemp01
+    lda (zTemp00)
+    rts
+

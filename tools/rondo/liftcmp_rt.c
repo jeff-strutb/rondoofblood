@@ -34,6 +34,13 @@ void ENTRY(void);
 typedef struct { uint16_t run; void (*abi)(void); } Dispatch;
 extern const Dispatch dispatch_table[];
 extern const unsigned dispatch_count;
+/* what the mapper has at an address: with MPR2 to MPR6 as given, the routine whose entry (a disc location) is there */
+typedef struct { uint8_t m[5]; uint16_t run; uint32_t disc; } Resident;
+extern const Resident resident_tab[];
+extern const unsigned resident_count;
+typedef struct { uint32_t disc; void (*abi)(void); } DiscDispatch;
+extern const DiscDispatch disc_table[];
+extern const unsigned disc_count;
 
 static uint8_t mem[65536];
 static uint8_t written[65536];
@@ -43,6 +50,7 @@ static unsigned stub_calls[65536];
 static jmp_buf case_end;
 static unsigned events;
 static int decimal_ok;
+static uint8_t *card_rom; /* the System Card's 256 KB, when the harness has it: banks $00 to $1F read as its bytes */
 static uint8_t mpr[8]; /* the mapper: MPR0 to MPR7, as the case sets them; tam writes them, tma reads them */
 static int depth;
 
@@ -102,6 +110,8 @@ uint8_t rd8(uint16_t addr)
             reads[addr]++;
     } else if (written[addr]) {
         v = mem[addr];
+    } else if (card_rom && mpr[addr >> 13] < 0x20) {
+        v = card_rom[((unsigned)mpr[addr >> 13] << 13) | (addr & 0x1FFF)];
     } else {
         v = seeded(addr, 0, 1);
     }
@@ -188,8 +198,47 @@ void tai(uint16_t src, uint16_t dst, uint16_t len)
     cpu.y = pull8();
 }
 
+/* The disc location of the routine resident at a run address under the present mapper, or 0xFFFFFFFF. */
+static uint32_t resident_disc(uint16_t target)
+{
+    for (unsigned i = 0; i < resident_count; i++)
+        if (resident_tab[i].run == target && memcmp(resident_tab[i].m, mpr + 2, 5) == 0)
+            return resident_tab[i].disc;
+    return 0xFFFFFFFFu;
+}
+
+/*
+ * resident_at: the machine layer's question, not an access. The disc location (DISC(sector, offset) when machine.h has
+ * that macro) of the routine with C that is resident at the run address, 0 when none; answered from the case's mapper
+ * and the trace's run map, the same way the dispatch of a call finds its callee, so both sides see the same piece.
+ */
+uint32_t resident_at(uint16_t run_address)
+{
+    uint32_t d = resident_disc(run_address);
+    uint32_t r = 0;
+
+    if (d != 0xFFFFFFFFu)
+        for (unsigned i = 0; i < disc_count; i++)
+            if (disc_table[i].disc == d) {
+#ifdef DISC
+                r = DISC(d / 2048, d % 2048);
+#else
+                r = ((d / 2048) << 16) | (d % 2048);
+#endif
+                break;
+            }
+    printf("#RES %04X %u\n", run_address, (unsigned)(r ? d : 0));
+    return r;
+}
+
 static void (*find_abi(uint16_t target))(void)
 {
+    uint32_t d = resident_disc(target);
+
+    if (d != 0xFFFFFFFFu)
+        for (unsigned i = 0; i < disc_count; i++)
+            if (disc_table[i].disc == d)
+                return disc_table[i].abi;
     for (unsigned i = 0; i < dispatch_count; i++)
         if (dispatch_table[i].run == target)
             return dispatch_table[i].abi;
@@ -291,6 +340,18 @@ int main(int argc, char **argv)
 
     if (argc < 2)
         return 2;
+    if (getenv("LIFTCMP_CARDROM")) {
+        FILE *rf = fopen(getenv("LIFTCMP_CARDROM"), "rb");
+
+        if (rf) {
+            card_rom = malloc(262144);
+            if (card_rom && fread(card_rom, 1, 262144, rf) != 262144) {
+                free(card_rom);
+                card_rom = 0;
+            }
+            fclose(rf);
+        }
+    }
     decimal_ok = getenv("LIFTCMP_DECIMAL") && getenv("LIFTCMP_DECIMAL")[0] == '1';
     in = fopen(argv[1], "r");
     if (!in)

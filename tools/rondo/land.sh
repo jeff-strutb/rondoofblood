@@ -1,8 +1,9 @@
 #!/bin/sh
 # land.sh WORKTREE: land a writer's finished batch on main, one landing at a time.
 #
-# Takes one cpu-run slot first, then the landing lock (build/rondo/land.lock in the main checkout:
-# the runner, the state session and the master commit to main under the same lock), then:
+# Takes the landing lock first (build/rondo/land.lock in the main checkout: the runner, the state session and the
+# master commit to main under the same lock), then the cpu-run slots (1 to 4, never more), so a landing waiting
+# behind the lock holds no slot and a wide claim never sits at the head of the queue while it waits; then:
 #   1. refuses uncommitted changes in asm, src, syscard, tools (untracked files count);
 #   2. rebases the worktree's branch on main (a conflict aborts the rebase and refuses);
 #   3. when asm, src, syscard or tools differ from main: assembles all filed assembly in place and
@@ -40,8 +41,8 @@ NS=$(git -C "$W" diff --name-only --diff-filter=ACMR "$(git -C "$W" merge-base m
 MEM=$((1 + 2 * NS))
 [ "$MEM" -ge 3 ] || MEM=3
 export M W BR O CR
-echo "land: queued for one CPU slot and the landing lock; other sessions' jobs and landings go first, so this can wait minutes though the work itself takes about 15 s (cpu-run prints its queue state; this is not a hang)"
-exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
+echo "land: waiting for the landing lock (no CPU slot is held meanwhile), then for its CPU slot(s); the work itself takes about 15 s (cpu-run prints its queue state; this is not a hang)"
+exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
   cd "$W" || exit 2
   D=$(git status --porcelain --untracked-files=all -- asm src syscard tools ":(exclude)tools/toolchains")
   [ -z "$D" ] || { echo "LAND REFUSED (dirty): uncommitted changes in the worktree, commit or drop them: $(echo "$D" | head -5 | tr "\n" ";")"; exit 3; }

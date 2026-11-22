@@ -134,6 +134,7 @@ typedef struct {
     uint64_t arrive_nonres;  /* a tagged address entered by JSR or JMP while its bytes are not resident (not opened) */
     uint64_t runaway;        /* the C ran past its access or write budget (counted divergent) */
     uint64_t prefix;         /* open at the script's end: its accesses judged as far as the log goes */
+    uint64_t noreturn;       /* A5: a call the original's record shows did not return inside the call: judged up to it, its exit not compared */
     uint64_t kept;           /* hybrid: entered by the original's code, not swapped (a diagnostic run) */
 } Stat;
 
@@ -1024,13 +1025,18 @@ uint8_t tma(uint8_t mpr_bit)
 
 void tam(uint8_t mpr_bits, uint8_t bank)
 {
-    uint8_t v[8];
+    uint8_t v[8], now[8];
+    int changes;
 
     mprs_now(v);
+    memcpy(now, v, 8);
     for (unsigned i = 0; i < 8; i++)
         if (mpr_bits & (1u << i))
             v[i] = bank;
-    if (sp)
+    /* The record logs a mapping only when it changes (sync_state): a TAM that maps what is already mapped is no
+     * event on either side. */
+    changes = memcmp(now, v, 8) != 0;
+    if (sp && changes)
         place(sp, EV_STATE, 0, v, mode == MODE_HYBRID ? chk_get_speed() : c_speed);
     for (unsigned i = 0; i < 8; i++)
         if (mpr_bits & (1u << i)) {
@@ -1072,7 +1078,8 @@ static void set_speed(uint8_t fast)
     uint8_t v[8];
 
     mprs_now(v);
-    if (sp)
+    /* As for TAM: a clock change that changes nothing is no event on either side. */
+    if (sp && fast != (mode == MODE_HYBRID ? chk_get_speed() : c_speed))
         place(sp, EV_STATE, 0, v, fast);
     if (mode == MODE_HYBRID)
         chk_set_speed(fast);
@@ -1162,6 +1169,8 @@ void wait_interrupt(void)
  * original made the call at a CALL event of the call's stream; the counted events before it that
  * the C has not made (the JSR's pushes among them) are missing, and the C states them with call_orig.
  */
+static uint16_t tail_from;      /* call_original_at: where the tail jump came from */
+
 static void original_at(uint16_t ret, uint16_t addr)
 {
     uint64_t call = sp->cur, retidx;
@@ -1233,7 +1242,7 @@ static void original_at(uint16_t ret, uint16_t addr)
     for (retidx = call + 1;; retidx++) {
         Ev *x = sev(span, retidx, &nest);
 
-        if (!x || (x->type == EV_RET && x->s == (uint8_t)(ec.s + 2)))
+        if (!x || (x->type == EV_RET && x->s == (uint8_t)(ec.s + 2) && (!ret || x->pc == ret)))
             break;
     }
     noreturn = retidx >= span->end || !evp(retidx);
@@ -1256,6 +1265,10 @@ static void original_at(uint16_t ret, uint16_t addr)
                 mshadow[i] = (uint8_t)chk_mpr(i);
             c_speed = chk_get_speed();
             span->cur = span->end;
+            if (ret) {      /* a call the original never came back from: the C's code after it is not the original's */
+                stats[span->tag].noreturn++;
+                longjmp(c_abort, ABORT_END);
+            }
             return;
         }
         {
@@ -1265,7 +1278,8 @@ static void original_at(uint16_t ret, uint16_t addr)
             pace_to(ec.clock);
             chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, addr);
             prev_op = ec.kind == K_JMP ? 0x4C : 0x20;
-            last_pc = rondo_tags[span->tag].run;     /* the jump comes from this routine, not from the code run before */
+            last_pc = tail_from ? tail_from : rondo_tags[span->tag].run;     /* the jump comes from this routine, not from the code run before */
+            tail_from = 0;
             scan = call + 1;
             c->abandoned = 1;
             swapcontext(&c->uc, &main_uc);
@@ -1328,6 +1342,23 @@ static void original_at(uint16_t ret, uint16_t addr)
             cpu.y = y;
             cpu.p = p;
         }
+        /* An interrupt the core took at the place the C waits to resume at (check_irq counted it as `natural`) can sit
+         * in the record before the callee's RET: the callee's return and the interrupt at its return address come
+         * in that order. It is then part of the stretch just run on the live machine, not an interrupt a later
+         * access of the C will pass: take it off the count, or the next interrupt the C passes is thought to have
+         * been taken already. */
+        for (uint64_t k = call + 1; k < retidx && top && top->natural > 0; k++) {
+            Ev *x = evp(k);
+
+            if (x && x->type == EV_INT) {
+                uint64_t r2 = section_end(span, k);
+
+                top->natural--;
+                if (r2 == NO_RETURN)
+                    break;
+                k = r2;
+            }
+        }
         span->cur = retidx + 1;
         span->nest = nest;
         scan = retidx + 1;
@@ -1359,6 +1390,15 @@ void hand_over(uint16_t addr)
         c->abandoned = 1;
         swapcontext(&c->uc, &main_uc);
     }
+}
+
+/* A tail jump from the instruction at `from`: that is where the original's jump came from, and the hook judges
+ * an arrival at a routine's first byte by it (a loop inside the routine, or an entry from other code). A draft
+ * that runs on into another piece inline can jump from an address outside its own routine's range. */
+void call_original_at(uint16_t from, uint16_t addr)
+{
+    tail_from = from;
+    original_at(0, addr);
 }
 
 void call_original(uint16_t addr)
@@ -2651,6 +2691,18 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
         }
         fprintf(stderr, "\n");
     }
+    if (getenv("RONDO_FRAME_TRACE") && frame >= strtoul(getenv("RONDO_FRAME_TRACE"), NULL, 10) && mode != MODE_A5) {
+        fprintf(stderr, "FT %lu %s PC %04X A%02X X%02X Y%02X S%02X P%02X clock %llu:", frame,
+                mode == MODE_RECORD ? "rec" : "hyb", pc, a, x, y, s, p, (unsigned long long)chk_ts_abs());
+        if (mode == MODE_RECORD) {
+            for (int i = 0; i < depth; i++)
+                fprintf(stderr, " %s", frames[i].tag->name);
+        } else {
+            for (Ctx *c = top; c; c = c->below)
+                fprintf(stderr, " %s%s", rondo_tags[c->tag].name, c->parked ? "(p)" : "");
+        }
+        fprintf(stderr, "\n");
+    }
     for (unsigned b = 0x68; b <= 0x87; b++)
         if (ram_bank[b])
             hash = hash_bytes(hash, ram_bank[b], 8192);
@@ -2799,12 +2851,12 @@ void check_finish(void)
                     (unsigned long long)s->unverified, (unsigned long long)s->order);
             for (int k = 0; k < NKIND; k++)
                 fprintf(report, " %llu", (unsigned long long)s->kind[k]);
-            /* Causes: left, log, depth, computed, arrive_branch, arrive_nonres, runaway, prefix */
-            fprintf(report, " %llu %llu %llu %llu %llu %llu %llu %llu\n", (unsigned long long)s->unv_left,
+            /* Causes: left, log, depth, computed, arrive_branch, arrive_nonres, runaway, prefix, noreturn */
+            fprintf(report, " %llu %llu %llu %llu %llu %llu %llu %llu %llu\n", (unsigned long long)s->unv_left,
                     (unsigned long long)s->unv_log, (unsigned long long)s->unv_depth,
                     (unsigned long long)s->unv_computed, (unsigned long long)s->arrive_branch,
                     (unsigned long long)s->arrive_nonres, (unsigned long long)s->runaway,
-                    (unsigned long long)s->prefix);
+                    (unsigned long long)s->prefix, (unsigned long long)s->noreturn);
         }
         fclose(report);
     } else if (mode == MODE_RECORD) {

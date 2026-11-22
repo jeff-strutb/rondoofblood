@@ -922,3 +922,121 @@ void abi_VramCommandsRepeat(void)
 {
     vram_exit_shim(commands_exit_shim(VramCommandsRepeat(cpu.a, cpu.y, entry_carry_shim(), entry_overflow_shim())));
 }
+
+/*
+ * A palette in blocks: the list at zp $00 and Y gives the VCE's colour address, then a pointer (zp $02) to the blocks:
+ * a count, then for each block a byte of ninth bits and eight colours' low bytes, nine bytes a block. Each colour goes
+ * to the VCE's data port as a word, the low byte and a high byte of one bit taken from the ninth bits, top first.
+ */
+static PaletteLoad load_packed_palette(uint8_t y)
+{
+    PaletteLoad out;
+    Sum sum = { 0 };
+    uint8_t value, left;
+
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(VCE->addr_lo, value);
+    y++;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(VCE->addr_hi, value);
+    y++;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(ZP->temp02, value);
+    y++;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(ZP->temp03, value);
+    value = RD8_PTR(ZP->temp02);
+    WR8(ZP->temp05, value);
+    for (;;) {
+        y = 1;
+        value = RD8_PTR_Y(ZP->temp02, y);
+        WR8(ZP->temp04, value);
+        do {
+            bool bit;
+
+            y++;
+            value = RD8_PTR_Y(ZP->temp02, y);
+            WR8(VCE->data_lo, value);
+            bit = ASL8(ZP->temp04);
+            WR8(VCE->data_hi, bit ? 1 : 0);
+        } while (y < 9);
+        value = RD8(ZP->temp02);
+        sum = add_bytes(value, 9, false);
+        WR8(ZP->temp02, sum.value);
+        if (sum.carry) {
+            INC8(ZP->temp03);
+        }
+        left = DEC8(ZP->temp05);
+        if (left & 0x80) {
+            break;
+        }
+    }
+    out.sum = sum;
+    out.left = left;
+    return out;
+}
+
+static void palette_load_exit_shim(PaletteLoad load)
+{
+    cpu.a = load.sum.value;
+    cpu.y = 9;
+    abi_nz(load.left);
+    abi_flag(P_C, load.sum.carry);
+    abi_flag(P_V, load.sum.overflow);
+}
+
+/*
+ * @routine 0251:4BF LoadPackedPalette
+ * @run 6C:84BF
+ * WHAT IT DOES: Loads a packed palette into the VCE from a list: the colour address, a pointer to the blocks, then the
+ * colours, eight a block with their ninth bits in the block's first byte.
+ * HOW: load_packed_palette.
+ * WAITS: no.
+ * Entry: zp $00 the list, Y its place in it. Exit: A the last block pointer's low byte, Y 9, N and Z from the block
+ * count's last value, C and V from the pointer's add. X kept.
+ */
+PaletteLoad LoadPackedPalette(uint8_t y)
+{
+    return load_packed_palette(y);
+}
+
+void abi_LoadPackedPalette(void)
+{
+    palette_load_exit_shim(LoadPackedPalette(cpu.y));
+}
+
+/*
+ * @routine 00C5:580 LoadPackedPaletteB
+ * @run 6C:8580
+ * WHAT IT DOES: LoadPackedPalette, as the 00C5 overlay has it at $8580.
+ * HOW: The same bytes at another run address; load_packed_palette.
+ * WAITS: no.
+ * Entry, exit: as LoadPackedPalette.
+ */
+PaletteLoad LoadPackedPaletteB(uint8_t y)
+{
+    return load_packed_palette(y);
+}
+
+void abi_LoadPackedPaletteB(void)
+{
+    palette_load_exit_shim(LoadPackedPaletteB(cpu.y));
+}
+
+/*
+ * @routine 0111:4CE LoadPackedPaletteC
+ * @run 6C:84CE
+ * WHAT IT DOES: LoadPackedPalette, as the 0111 overlay has it at $84CE.
+ * HOW: The same bytes at another run address; load_packed_palette.
+ * WAITS: no.
+ * Entry, exit: as LoadPackedPalette.
+ */
+PaletteLoad LoadPackedPaletteC(uint8_t y)
+{
+    return load_packed_palette(y);
+}
+
+void abi_LoadPackedPaletteC(void)
+{
+    palette_load_exit_shim(LoadPackedPaletteC(cpu.y));
+}

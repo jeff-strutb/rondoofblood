@@ -152,6 +152,7 @@ def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
     disc, dm: track 02's user data and the merged code map. rows, es: catalog.build()'s.
     """
     out = Intake()
+    out.filed, out.disc = filed, disc
     nd = len(disc)
     used = bytearray(nd)
     rows = [r for r in rows if r["space"] == "D"]
@@ -688,6 +689,79 @@ def headers(out, es, scripts, names):
         out.hdr[g] = lines
 
 
+def fragments(out):
+    """The pieces that are only part of a routine: [(unit, role, link, head)] for every unit on the disc (intake
+    piece or filed routine) that is linked to an earlier one. A unit flows into the contiguous one after it when its
+    last traced instruction is not a terminator (rts, rti, jmp, bra, brk: falls through), and a unit is entered by
+    a branch of the nearest earlier unit (within 64 bytes, so over untraced bytes) whose branch lands inside it. A chain of linked units is one routine cut by where a trace entered it: its first
+    unit is the head, the others fragments. Units not linked to the one before them but entered by an orphan run
+    (no call, jump, table or interrupt, a return or a computed jump) are listed as `entry only` - not merged."""
+    units = []
+    for p in out.pieces_in:
+        g = p.group
+        n = p.hi - p.lo
+        last = next((it for it in reversed(g.items) if it[0] == "i"), None)
+        tail = g.items[-1] if g.items else None
+        falls = bool(tail and tail[0] == "i" and tail[3] not in huc.ENDS)
+        beyond = []
+        for it in g.items:
+            if it[0] == "i" and it[4] in ("rel", "zrel"):
+                dispb = g.content[it[1] + it[2] - 1]
+                tgt = it[1] + it[2] + (dispb - 256 if dispb & 0x80 else dispb)
+                if tgt >= n:
+                    beyond.append(p.lo + tgt)
+        units.append({"lo": p.lo, "hi": p.hi, "label": label(g.canon, 0) if p is g.members[0] else label(g.canon),
+                      "name": "", "entry": "/".join(sorted(p.kinds)),
+                      "falls": falls, "beyond": beyond, "src": "intake", "tag": tag(p.lo), "run": g.run})
+    for f in out.filed:
+        lo, hi = f["disc"], f["disc"] + f["end"]
+        body = [ln.split(";")[0].split() for ln in f["text"].split("\n") if ln.startswith("    ")]
+        last = body[-1][0] if body and body[-1] else None
+        units.append({"lo": lo, "hi": hi, "label": f["name"], "name": f["name"], "entry": "filed",
+                      "falls": last is not None and last not in huc.ENDS, "beyond": [], "src": "filed",
+                      "tag": tag(lo), "run": f["run"]})
+    units.sort(key=lambda u: u["lo"])
+    parent, link = {}, {}           # index of the unit that flows or branches into this one, and how
+    for i, b in enumerate(units):
+        if b["src"] == "filed":
+            continue                    # a filed routine is whole by definition; only intake pieces are fragments
+        for j in range(i - 1, max(-1, i - 40), -1):
+            a = units[j]
+            if b["lo"] - a["hi"] > 64:
+                break
+            how = []
+            if a["hi"] == b["lo"] and a["falls"]:
+                how.append("falls through")
+            if any(b["lo"] <= t < b["hi"] for t in a["beyond"]):
+                how.append("branches into")
+            if how:
+                parent[i], link[i] = j, " and ".join(how)
+                break
+    rows = []
+    head = {}
+    for i, u in enumerate(units):
+        head[i] = head[parent[i]] if i in parent else i
+    sizes = collections.Counter(head.values())
+    totals = collections.Counter()
+    for i, u in enumerate(units):
+        totals[head[i]] += u["hi"] - u["lo"]
+    for i, u in enumerate(units):
+        h = units[head[i]]
+        if sizes[head[i]] > 1:
+            role = "head" if head[i] == i else "fragment"
+            if head[i] == i and u["src"] == "intake" and set(u["entry"].split("/")) <= {"orphan", "fragment"}:
+                role = "head (itself entered only by an orphan run)"
+        elif u["src"] == "intake" and set(u["entry"].split("/")) <= {"orphan", "fragment"}:
+            role = "entry only"
+        else:
+            continue
+        rows.append({"piece": u["tag"], "label": u["label"], "name": u["name"], "bytes": u["hi"] - u["lo"],
+                     "entry": u["entry"], "role": role, "linked_from_previous": link.get(i, ""),
+                     "whole_routine": h["name"] or h["label"], "whole_start": h["tag"], "whole_pieces": sizes[head[i]],
+                     "whole_bytes": totals[head[i]]})
+    return rows
+
+
 def group_bank(g):
     """(bank, base, why not): the most common (bank, base address) the group's copies' executed bytes started at, from
     the run map; at the group's run address when it has one. A group no call reached has no run address of its own:
@@ -734,6 +808,11 @@ def write_files(out, path):
                     near = f"N{g.near[0]:04d}" if g.near else ""
                     rows.append((tag(p.lo), label(g.canon), tag(g.canon), g.n, g.opc_run, "/".join(sorted(p.kinds)),
                                  f"{g.org:04X}" if g.run is not None else "", near, name))
+    fr = fragments(out)
+    with open(os.path.join(path, "fragments.csv"), "w", encoding="ascii", newline="\n") as f:
+        w = csv.DictWriter(f, fieldnames=list(fr[0]), lineterminator="\n")
+        w.writeheader()
+        w.writerows(fr)
     with open(os.path.join(path, "unresolved.csv"), "w", encoding="ascii", newline="\n") as f:
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["group", "location", "offset", "instruction", "cause", "operand", "candidates"])

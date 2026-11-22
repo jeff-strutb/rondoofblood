@@ -236,6 +236,7 @@ IgnoredInterrupt:
 ; sound are kept up, and the game's logic loses the frame.
 ; HOW: Rewrites the raster line, the display control and the first band's scroll
 ; from their RAM copies, ticks the sound driver, and joins FrameInterrupt's exit.
+; WAITS: no, apart from the original code it calls (the frame overlay's two entries).
 ; Entry: from FrameInterrupt, its saves on the stack. Exit: through its RTI.
 LateFrame:
     lda z:zVdcCrLo

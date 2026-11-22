@@ -112,6 +112,7 @@ ModeAttract_at2:
 ; WHAT IT DOES: Mode 3: a demo's title frames; Run or the overlay's end stops the demo,
 ; fades the CD and goes to mode 8.
 ; HOW: The card's joypad byte, the overlay's frame, a sound fade, the card's cd_fade.
+; WAITS: yes, through ResetGameState (the vertical blank); the stack there is the mode loop's return and the call's frame.
 ; Entry: nothing. Exit: as what ran last.
 ModeAttractPlay:
     lda a:BiosJoyTrigger
@@ -682,6 +683,7 @@ ResetScoreCounters:
 ; WHAT IT DOES: Fades the CD out, unless zField8E says a stage's track goes on, and stops
 ; the sound.
 ; HOW: Bits 3 and 4 of zField8E; the card's cd_fade; SoundCommand.
+; WAITS: no.
 ; Entry: nothing. Exit: as SoundCommand.
 FadeAndStopSound:
     lda z:zField8E

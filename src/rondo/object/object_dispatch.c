@@ -487,7 +487,7 @@ KindChange ChangeKindFromTable(uint8_t slot)
     Sum sum, borrow;
 
     jsr_push(0xA5F4);
-    SoundCommand(0x0B);
+    SoundCommand(0x0B, slot, 0);   /* X the object; Y: not worked out yet */
     jsr_pop();
     old = RD8(ZP->field93);
     push8(old);

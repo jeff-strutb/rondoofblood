@@ -274,7 +274,7 @@ void ClearScreenState(void);                          /* system/video.c */
 Exit ScriptAdvance(void);
 Exit ScriptStep(void);
 Exit ScriptSaveReadAndState(void);
-Exit ScriptSound(void);
+Exit ScriptSound(uint8_t doubled_command);
 Exit ScriptStartListAndClear(void);
 Exit ScriptStartList(void);
 Exit ScriptStartSlotKind1(void);

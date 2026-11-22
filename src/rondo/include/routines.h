@@ -231,11 +231,11 @@ typedef struct { bool looked; uint8_t effect; } ChannelRelease;
 /* A product of the driver's shift and add, with the last add's high byte and overflow. */
 typedef struct { uint16_t value; bool added; uint8_t high; bool overflow; } SoundProduct;
 
-void SoundSilenceAll(void);
+void SoundSilenceAll(uint8_t kept_x);
 void SoundVolumeFull(void);
 void SoundStartEnvelope(uint8_t channel);
 ChannelRelease SoundSilenceChannel(uint8_t channel);
-SoundProduct SoundMultiply(uint8_t a, uint8_t y);
+SoundProduct SoundMultiply(uint8_t a, uint8_t y, uint8_t kept_x);
 SoundProduct SoundMultiplyNibble(uint8_t a, uint8_t y);
 uint8_t SoundReadPair(uint8_t channel);
 void sound_pointer_step(void);
@@ -793,7 +793,7 @@ typedef struct {
     uint8_t channels_before;
 } DriverCommand;
 
-DriverCommand SoundDriverCommand(uint8_t command);
+DriverCommand SoundDriverCommand(uint8_t command, uint8_t kept_x, uint8_t kept_y);
 void driver_command_exit_shim(DriverCommand taken);
 
 typedef enum { PAUSE_SAME, PAUSE_ON, PAUSE_OFF } PauseHow;
@@ -810,7 +810,7 @@ typedef struct {
     uint8_t on_before_five;
 } PauseCheck;
 
-PauseCheck SoundCheckPause(void);
+PauseCheck SoundCheckPause(uint8_t kept_x, uint8_t kept_y);
 void pause_check_exit_shim(PauseCheck check);
 
 /* A frame of the driver: what ran, and what each call it made did, channel by channel. */
@@ -837,7 +837,7 @@ typedef struct {
     ChannelTick channel[8];
 } DriverTick;
 
-DriverTick SoundDriverTick(void);
+DriverTick SoundDriverTick(uint8_t kept_a, uint8_t kept_x, uint8_t kept_y);
 void driver_tick_exit_shim(DriverTick tick);
 
 /* The kernel's calls into the driver: the add that mapped it, the MPR4 bank given back, and the driver's work. */
@@ -847,12 +847,12 @@ typedef struct { bool taken; Sum bank; uint8_t mpr4; DriverCommand command; } Co
 
 StopCall SoundStopAll(uint8_t kept_x, uint8_t kept_y);
 void stop_call_exit_shim(StopCall call);
-TickCall SoundFrameTick(void);
-CommandCall SoundCommand(uint8_t command);
+TickCall SoundFrameTick(uint8_t kept_x, uint8_t kept_y);
+CommandCall SoundCommand(uint8_t command, uint8_t kept_x, uint8_t kept_y);
 void sound_command_exit_shim(uint8_t command, CommandCall call);
 /* SoundIfOnFirstScreen (object/camera.c): the command pulled back, and whether it went to SoundCommand. */
 typedef struct { bool played; uint8_t command; CommandCall call; } SoundOnScreen;
-SoundOnScreen SoundIfOnFirstScreen(uint8_t command, uint8_t object);
+SoundOnScreen SoundIfOnFirstScreen(uint8_t command, uint8_t object, uint8_t kept_y);
 void sound_if_on_first_screen_exit_shim(SoundOnScreen result);
 
 /* An attack started: its animation, its kind, and the whip's sound or the item and its slot. */

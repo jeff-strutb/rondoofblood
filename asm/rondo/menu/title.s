@@ -66,6 +66,7 @@ TitleWipe_at1:
 ; @run 6B:80C6
 ; WHAT IT DOES: Starts the logo: three waits of 10, script 1 on slot 0, and music $55.
 ; HOW: zWaitTimer, zWaitTimer2 and zWaitTimer3; StartScriptSlotKind1; SoundCommand.
+; WAITS: no.
 ; Entry: nothing. Exit: as SoundCommand after the script's start, with N and Z from the new
 ; sub-mode.
 TitleLogoStart:

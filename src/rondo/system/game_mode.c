@@ -432,6 +432,7 @@ void abi_ModeAttract(void)
  * WHAT IT DOES: Mode 3: a demo's title frames; Run or the overlay's end stops the demo,
  * fades the CD and goes to mode 8.
  * HOW: The card's joypad byte, the overlay's frame, a sound fade, the card's cd_fade.
+ * WAITS: yes, through ResetGameState (the vertical blank); the stack there is the mode loop's return and the call's frame.
  * Entry: nothing. Exit: as what ran last.
  */
 typedef struct {
@@ -452,7 +453,7 @@ AttractPlayRun ModeAttractPlay(void)
             return run;
     }
     wr8(zGameRunning, 0);
-    run.sound = SoundCommand(SOUND_FADE);
+    run.sound = SoundCommand(SOUND_FADE, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
     cd_fade(CD_FADE_OUT);
     wr8(zWaitTimer, GAME_OVER_WAIT);
     ResetGameState();
@@ -1534,6 +1535,7 @@ void abi_ResetScoreCounters(void)
  * WHAT IT DOES: Fades the CD out, unless zField8E says a stage's track goes on, and stops
  * the sound.
  * HOW: Bits 3 and 4 of zField8E; the card's cd_fade; SoundCommand.
+ * WAITS: no.
  * Entry: nothing. Exit: as SoundCommand.
  */
 typedef struct { uint8_t keep; CommandCall sound; } FadeStop;
@@ -1545,7 +1547,7 @@ FadeStop FadeAndStopSound(void)
     run.keep = rd8(zField8E) & SOUND_KEEP_TRACK;
     if (run.keep == 0)
         cd_fade(CD_FADE_OUT);
-    run.sound = SoundCommand(SOUND_STOP);
+    run.sound = SoundCommand(SOUND_STOP, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
     return run;
 }
 

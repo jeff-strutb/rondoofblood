@@ -264,6 +264,7 @@ SoundSilenceChannel_at1:
 ; @run 75:8F46
 ; WHAT IT DOES: Multiplies two bytes into a word in zSoundWordLo and zSoundWordHi.
 ; HOW: Eight steps of shift and add, the multiplier from zSoundScratch.
+; WAITS: no.
 ; Entry: A and Y the bytes. Exit: X and Y kept, N and Z from X; C clear; A the product's high
 ; byte as of the last add, V from that add, or A and V kept when A was 0.
 SoundMultiply:
@@ -492,6 +493,7 @@ SoundWaveAddress:
 ; WHAT IT DOES: A signed offset into zSoundWordLo and Hi: an entry of SoundOffsetTable times the
 ; channel's SoundVibratoDepth, negated when bit 6 of the byte is set.
 ; HOW: The byte's low six bits pick the entry; SoundMultiply.
+; WAITS: no.
 ; Entry: A the byte, X channel. Exit: Y the scale; X kept. Positive, as SoundMultiply. Negative, A
 ; the word's high byte, N, Z, C and V from subtracting it from 0 with the low byte's borrow.
 SoundScaledOffset:
@@ -774,6 +776,7 @@ SoundLoadWave_at0:
 ; instead. Channels 4 and 5 are left alone while an effect plays on them.
 ; HOW: SoundPeriods by note; the fine part times the step, SoundMultiply, its high byte off the
 ; period; noise off for a tone. Noise takes the note less one, its low five bits.
+; WAITS: no.
 ; Entry: A the fine part, X channel, Y note. Exit: X kept. Left alone, A and Y kept, N and V the
 ; effect's bits 7 and 6, Z and C clear. Noise, A the noise byte, N and Z from it, C set, Y the
 ; note less one. Tone, A the period's high byte, N, Z, C and V from its subtract, Y twice the
@@ -824,6 +827,7 @@ SoundSetFrequency_at2:
 ; playing, the LFO off.
 ; HOW: SoundChannel25B0, SoundChannelCommand and SoundChannelPriority cleared by channel;
 ; SoundSilenceAll.
+; WAITS: no.
 ; Entry: nothing. Exit: A, X, Y and V kept; N and Z from X; C set by the loop's last compare.
 SoundInit:
     phx
@@ -852,6 +856,7 @@ SoundInit_at0:
 ; WHAT IT DOES: Stops everything: no command or priority on any channel, no fade, nothing
 ; playing, the PSG silent, noise and the LFO off.
 ; HOW: The channels from 7 down; SoundSilenceAll.
+; WAITS: no.
 ; Entry: nothing. Exit: X $FF, N set, Z clear. A, Y, C and V kept.
 SoundDriverStopAll:
     ldx #$07
@@ -2032,6 +2037,7 @@ SoundReadSequence_at2:
 ; length of 1, the slide, envelope, loops and returns cleared, the volume base $1F, the pan 8,
 ; the tempo 1 with its phase full so the first frame ticks.
 ; HOW: Each field by channel cleared or set; SoundSetPan.
+; WAITS: no.
 ; Entry: X channel. Exit: A 1, N and Z from it. X, Y, C and V kept.
 SoundStartChannel:
     stz a:SoundModulationMaskLo,x
@@ -2172,6 +2178,7 @@ SoundVoiceAddressBack_at1:
 ; SoundVoicesSecond by the command, six bytes a voice, through zSoundTableLo and Hi; ad_stop,
 ; ad_stat; the voice into zBiosBl to zBiosDh; SoundVoiceAddressBack for character 1;
 ; KernelAdpcmPlay. Bit 0 of SoundVoiceFlags marks a voice waiting.
+; WAITS: no.
 ; Entry: from SoundDriverCommand, SoundCommandIn the command. Exit, at the command's shared end,
 ; as the last of those calls left them, then: dropped, A 0, Z set, N and C clear; waiting, A the
 ; flags with bit 0, N and Z from them, C set; played, Z and C set, N clear.
@@ -2287,6 +2294,7 @@ SoundCommandEnd:
 ; HOW: SoundInCommand set while it works; SoundCommandIn keeps the command; SoundEffectTable, three
 ; bytes an effect, through zSoundTableLo and Hi; SoundChannelPriority, SoundChannelCommand and
 ; zSoundChannelsOn by channel; SoundReadPair, SoundStartChannel, SoundVolumeFull.
+; WAITS: no.
 ; Entry: A command. Exit: X and Y kept, N and Z from X; A, C and V as the command's path left them.
 SoundDriverCommand:
     phx
@@ -2451,6 +2459,7 @@ SoundDriverCommand_at17:
 ; music's waveforms back, the main volume full.
 ; HOW: Bit 0 of zPaused against SoundPaused; SoundSilenceAll, ad_stop, SoundDriverCommand; or
 ; SoundLoadWave on 4 and 5 and SoundVolumeFull.
+; WAITS: no.
 ; Entry: nothing. Exit: unchanged, A the bit, Z and C set, N clear. Paused, as SoundDriverCommand.
 ; Going on, as SoundVolumeFull after SoundLoadWave on channel 5, X 5. Y kept.
 SoundCheckPause:
@@ -2498,6 +2507,7 @@ SoundCheckPause_at1:
 ; from its set's table, SoundVoiceAddressBack and KernelAdpcmPlay; SoundFading and SoundFadeStep,
 ; $14 its end; zSoundChannelBit walks zSoundChannelsOn; channels 6 and 7 select PSG channels 4 and
 ; 5; SoundChannelTick.
+; WAITS: no.
 ; Entry: frame interrupt. Exit: A, X and Y kept, N and Z from A; C set, and C and V kept if a
 ; command was going in; otherwise V as the last call left it.
 SoundDriverTick:

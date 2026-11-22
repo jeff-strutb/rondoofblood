@@ -58,6 +58,7 @@ static void clear_raster_enable(void)
  * sound are kept up, and the game's logic loses the frame.
  * HOW: Rewrites the raster line, the display control and the first band's scroll
  * from their RAM copies, ticks the sound driver, and joins FrameInterrupt's exit.
+ * WAITS: no, apart from the original code it calls (the frame overlay's two entries).
  * Entry: from FrameInterrupt, its saves on the stack. Exit: through its RTI.
  */
 static void late_frame(void)
@@ -74,7 +75,7 @@ static void late_frame(void)
     byte = rd8(VdcCrShadow);
     wr8(VDC_DATA_LO, (uint8_t)(byte | CR_VBLANK_ENABLE));
     WriteBandScroll(0);
-    SoundFrameTick();
+    SoundFrameTick(0, 0);   /* X and Y: this call site's registers are not worked out yet */
 }
 
 /* A frame on time: video, then the game's logic with interrupts on. */
@@ -131,7 +132,7 @@ static void full_frame(void)
     map_from_base(MPR6, 0x0C);
     call_original(FrameOverlay8003);
     call_original(FrameOverlay8000);
-    SoundFrameTick();
+    SoundFrameTick(0, 0);   /* X and Y: this call site's registers are not worked out yet */
     call_original(BiosE063);
     NextRandom();
     map_from_base(MPR4, 0x03);

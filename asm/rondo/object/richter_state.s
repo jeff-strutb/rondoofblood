@@ -388,6 +388,7 @@ RichterDyingStep_at0:
 ; WHAT IT DOES: Starts the player's death: no health, the timer, the state, the music out
 ; and the death's sound.
 ; HOW: FadeAndStopSound, then SoundCommand $60.
+; WAITS: no.
 ; Entry: nothing. Exit: as SoundCommand.
 RichterDie:
     stz z:zPlayerHealth
@@ -887,6 +888,7 @@ RichterStopMoving:
 ; @run 6D:A4C6
 ; WHAT IT DOES: Stops the player along X.
 ; HOW: Zeroes the speed.
+; WAITS: no.
 ; Entry: nothing. Exit: all registers and flags kept.
 RichterStopX:
     stz a:OBJ_VX_LO
@@ -1103,6 +1105,7 @@ RichterUpWhipRight_at0:
 ; WHAT IT DOES: Hurt jump: state 3, step 2, the jump's speeds, a long hit timer, animation
 ; $23, its sound, and a reaction by zField93. Item $05 goes to RichterItemCrashFive.
 ; HOW: Table by zField93, 0 to 8; the C takes anything past 8 as 8. SoundCommand $65.
+; WAITS: no.
 ; Entry: nothing. Exit: item 5 first, as RichterItemCrashFive. Otherwise as the reaction, after
 ; A and X twice the item, N and Z from it, C its bit 7, Y as the animation and V as the sound left
 ; them.
@@ -1159,6 +1162,7 @@ RichterReactFillB:
 ; WHAT IT DOES: Item $05's crash, from a hurt jump: no speed, animation $2A, its sound,
 ; state 0, step 2, its timer.
 ; HOW: The fields in turn.
+; WAITS: no.
 ; Entry: nothing. Exit: A $60, N and Z from it; C and V as SoundCommand left them.
 RichterItemCrashFive:
     jsr RichterStopMoving
@@ -1865,6 +1869,7 @@ RichterCrashFrame:
 ; wears off, the flashing scripts at set marks, and his hit timer and flash back to 1 at the end.
 ; HOW: PlayerInvincibleTimer; zWaveCounter's low two bits pick the frame. The marks and their
 ; scripts are two tables of six. OBJ_3460 $80 holds hits off; OBJ_3828 2 while it runs.
+; WAITS: no.
 ; Entry: nothing. Exit: off, A 0, Z set. Not this frame, A the frame's bits, N and Z from them.
 ; Otherwise X, Y, C and V as a sound command left them, C from comparing A with $10 when the
 ; second sound was dropped or not made. Ended, A 1, N and Z clear. A mark, as

@@ -185,6 +185,11 @@ def game_sources():
     return out
 
 
+def card_sources():
+    root = os.path.join(TOP, "syscard", "src")
+    return [os.path.join(root, f) for f in sorted(os.listdir(root)) if f.endswith(".c")] if os.path.isdir(root) else []
+
+
 def find_source(name, sources):
     pat = re.compile(r"^void abi_%s\(void\)\s*$" % re.escape(name), re.M)
     for s in sources:
@@ -259,6 +264,30 @@ def parse_curated(path):
 DEFAULT_MAP = ("69", "6A", "00", "00", "00")
 
 
+_RUNMAP = {}
+
+
+def load_runmap():
+    """(the trace folder's {config id: (mpr2..mpr6)}, [(disc offset, logical address, config id)]), read once."""
+    if "v" in _RUNMAP:
+        return _RUNMAP["v"]
+    for base in (TOP, main_checkout()):
+        d = os.path.join(base, "build", "rondo", "trace")
+        if os.path.exists(os.path.join(d, "runmap.bin")) and os.path.exists(os.path.join(d, "mprcfg.csv")):
+            break
+    else:
+        _RUNMAP["v"] = ({}, [])
+        return _RUNMAP["v"]
+    cfgs = {}
+    for line in open(os.path.join(d, "mprcfg.csv")).read().splitlines()[1:]:
+        f = line.split(",")
+        cfgs[int(f[0])] = tuple(f[1:6])
+    data = open(os.path.join(d, "runmap.bin"), "rb").read()
+    recs = [(disc_off, logical, cfg) for disc_off, logical, bank, kind, cfg, _ in struct.iter_unpack("<IHBBHH", data)]
+    _RUNMAP["v"] = (cfgs, recs)
+    return _RUNMAP["v"]
+
+
 def run_configs(name, rows_full):
     """The mapper configurations the routine ran under, from the trace's run map (runmap.bin, mprcfg.csv):
     [(mpr2..mpr6 as hex strings)], or None when no script ran it."""
@@ -266,23 +295,27 @@ def run_configs(name, rows_full):
     if not row:
         return None
     run_addr, length, disc = int(row[0][0], 16), int(row[0][1]), int(row[0][2])
-    for base in (TOP, main_checkout()):
-        d = os.path.join(base, "build", "rondo", "trace")
-        if os.path.exists(os.path.join(d, "runmap.bin")) and os.path.exists(os.path.join(d, "mprcfg.csv")):
-            break
-    else:
-        return None
-    cfgs = {}
-    for line in open(os.path.join(d, "mprcfg.csv")).read().splitlines()[1:]:
-        f = line.split(",")
-        cfgs[int(f[0])] = tuple(f[1:6])
-    data = open(os.path.join(d, "runmap.bin"), "rb").read()
+    cfgs, recs = load_runmap()
     found = []
-    for i in range(0, len(data), 12):
-        disc_off, logical, bank, kind, cfg, _ = struct.unpack("<IHBBHH", data[i:i + 12])
+    for disc_off, logical, cfg in recs:
         if disc <= disc_off < disc + length and run_addr <= logical < run_addr + length and cfg in cfgs and cfgs[cfg] not in found:
             found.append(cfgs[cfg])
     return found or None
+
+
+def resident_entries(configs, rows):
+    """[(mpr tuple, run address, disc offset)]: for each configuration, each routine entry (a disc location of a
+    routine with C) the run map shows resident at a logical address under it."""
+    cfgs, recs = load_runmap()
+    wanted = {tuple(c) for c in (configs or [DEFAULT_MAP])}
+    entry_discs = {int(r[2]) for r in rows if r[5] == "0"}
+    ids = {cid for cid, t in cfgs.items() if t in wanted}
+    seen, out = set(), []
+    for disc_off, logical, cfg in recs:
+        if cfg in ids and disc_off in entry_discs and (cfg, logical, disc_off) not in seen:
+            seen.add((cfg, logical, disc_off))
+            out.append((cfgs[cfg], logical, disc_off))
+    return out
 
 
 def make_cases(curated, n, seed, decimal=False, irq=False, configs=None):
@@ -325,7 +358,7 @@ def write_cases(cases, path):
             f.write("\n")
 
 
-def build_dispatch(path, rows, objs, through=None, libsyms=()):
+def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=()):
     defined, undefined = set(), set()
     for o in objs:
         for line in run(["nm", "-g", o]).stdout.splitlines():
@@ -335,27 +368,54 @@ def build_dispatch(path, rows, objs, through=None, libsyms=()):
             elif len(parts) == 2 and parts[0] == "U":
                 undefined.add(parts[1])
     provided = {"rd8", "wr8", "st0", "st1", "st2", "tam", "tma", "tai", "cli", "csl", "csh", "wait_interrupt", "cpu",
-                "call_original", "call_orig", "untraced", "hand_over", "__sanitizer_cov_trace_pc", "ENTRY"}
+                "call_original", "call_orig", "untraced", "hand_over", "__sanitizer_cov_trace_pc", "ENTRY", "resident_at"}
     external = sorted(undefined - defined - provided)
-    seen, items = set(), []
+    seen, items, by_disc = set(), [], {}
     for run_addr, _len, disc, name, abi, rom in rows:
-        if rom == "0" and abi in defined and run_addr not in seen:
-            seen.add(run_addr)
-            label = through.get((disc, run_addr.upper().lstrip("0") or "0")) if through else None
-            if label and ("abi_" + label) in libsyms:
-                items.append((run_addr, "abi_" + label))
-            else:
-                items.append((run_addr, abi))
+        if abi not in defined:
+            continue
+        key = (disc, run_addr.upper().lstrip("0") or "0")
+        label = None
+        if through:
+            label = through.get(("C",) + key if rom == "1" else key)
+        sym = ("abi_" + label) if label and ("abi_" + label) in libsyms else abi
+        if rom == "0" and int(disc) not in by_disc:
+            by_disc[int(disc)] = sym
+        if (rom, run_addr) not in seen:
+            seen.add((rom, run_addr))
+            items.append((run_addr, sym))
+    if through:
+        # the card's jump table and every other card entry that has a draft: the draft side runs it across the boundary
+        have = {r for r, _ in items}
+        idx = {r: k for k, (r, _) in enumerate(items)}
+        for key, label in through.items():
+            if key[0] == "C" and ("abi_" + label) in libsyms:
+                r = key[2].rjust(4, "0")
+                if r in idx:
+                    items[idx[r]] = (r, "abi_" + label)
+                elif r not in have:
+                    items.append((r, "abi_" + label))
+                    have.add(r)
+    syms = sorted({x for _, x in items} | set(by_disc.values()))
     with open(path, "w") as f:
-        f.write("#include <stdint.h>\ntypedef struct { uint16_t run; void (*abi)(void); } Dispatch;\n")
-        for _, abi in items:
-            f.write("void %s(void);\n" % abi)
+        f.write("#include <stdint.h>\n#include <stdio.h>\n")
+        f.write("typedef struct { uint16_t run; void (*abi)(void); } Dispatch;\n")
+        for sym in syms:
+            f.write("void %s(void);\n" % sym)
         f.write("const Dispatch dispatch_table[] = {\n")
-        for run_addr, abi in items:
-            f.write("    { 0x%s, %s },\n" % (run_addr, abi))
+        for run_addr, sym in items:
+            f.write("    { 0x%s, %s },\n" % (run_addr, sym))
         f.write("    { 0, 0 }\n};\nconst unsigned dispatch_count = %d;\n" % len(items))
-        # code with no C here (the System Card's, for one): a call to it is logged and does nothing
-        f.write("#include <stdio.h>\nvoid rt_event(void);\n")
+        f.write("typedef struct { uint32_t disc; void (*abi)(void); } DiscDispatch;\nconst DiscDispatch disc_table[] = {\n")
+        for d, sym in sorted(by_disc.items()):
+            f.write("    { %du, %s },\n" % (d, sym))
+        f.write("    { 0, 0 }\n};\nconst unsigned disc_count = %d;\n" % len(by_disc))
+        f.write("typedef struct { uint8_t m[5]; uint16_t run; uint32_t disc; } Resident;\nconst Resident resident_tab[] = {\n")
+        for cfg, logical, d in resident:
+            f.write("    { { %s }, 0x%04X, %du },\n" % (", ".join("0x" + c for c in cfg), logical, d))
+        f.write("    { { 0 }, 0, 0 }\n};\nconst unsigned resident_count = %d;\n" % len(resident))
+        # code with no C here: a call to it is logged and does nothing
+        f.write("void rt_event(void);\n")
         for name in external:
             f.write('void %s(void) { rt_event(); printf("EXT %s\\n"); }\n' % (name, name))
     return len(items)
@@ -377,8 +437,8 @@ def draft_library(drafts_dirs, work_cache):
             raise SystemExit("liftcmp: the draft cache is stale or missing: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache")
         members = {}
         for r in csv.DictReader(open(os.path.join(d, "members.csv"))):
-            if r["space"] == "D":
-                members.setdefault((r["offset"], r["run"].upper().lstrip("0") or "0"), r["name"])
+            key = (r["offset"], r["run"].upper().lstrip("0") or "0")
+            members.setdefault(("C",) + key if r["space"] == "C" else key, r["name"])
     src = os.path.join(d, "drafts.c")
     key = hashlib.sha1(open(src, "rb").read() + header_hash().encode()).hexdigest()[:16]
     obj = os.path.join(work_cache, "drafts_lib." + key + ".o")
@@ -605,17 +665,18 @@ def one(name, a, ctx):
     work = os.path.join(BUILD, "work", name)
     os.makedirs(work, exist_ok=True)
     disp = os.path.join(work, "dispatch.c")
-    ndisp = build_dispatch(disp, ctx["rows"], objs)
+    configs = run_configs(name, ctx["rows_full"])
+    resident = resident_entries(configs, ctx["rows"])
+    ndisp = build_dispatch(disp, ctx["rows"], objs, resident=resident)
     disp_d, libobj = disp, []
     if a.callees == "through":
         libo, members, libsyms = draft_library(ctx["drafts"], ctx["cache"])
         disp_d = os.path.join(work, "dispatch_draft.c")
-        build_dispatch(disp_d, ctx["rows"], objs, members, libsyms)
+        build_dispatch(disp_d, ctx["rows"], objs, members, libsyms, resident)
         libobj = [libo]
     draft_c = os.path.join(work, "draft_%s.c" % name)
     open(draft_c, "w").write('#include "machine.h"\n#include "ops6280.h"\n\n' + body)
     rt = os.path.join(HERE, "liftcmp_rt.c")
-    configs = run_configs(name, ctx["rows_full"])
     cases = make_cases(parse_curated(a.curated), a.cases, a.seed, a.decimal, a.irq, configs)
     cfile = os.path.join(work, "cases.txt")
     write_cases(cases, cfile)
@@ -643,6 +704,11 @@ def one(name, a, ctx):
     link(os.path.join(work, "draft.bin"), objs + [dobj, rtobj["draft"], dispobj_d] + libobj, [], [], None)
     logs, covs = {"lifted": {}, "draft": {}}, {}
     envv = dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0")
+    for base in (TOP, main_checkout()):
+        rom = os.path.join(base, "build", "rondo", "system", "syscard3.pce")
+        if os.path.exists(rom):
+            envv["LIFTCMP_CARDROM"] = rom
+            break
     base_cases = len(cases)
     floor = a.floor if a.floor else max(1, (base_cases + 3) // 4)
 
@@ -677,6 +743,7 @@ def one(name, a, ctx):
     ignore = sum(FLAGBITS[ch] for ch in a.ignore_flags)
     same, diffs, untraced, deep, crashed = [], [], [], [], []
     raw_draft = logs["draft"]
+    raw_lifted = logs["lifted"]
     for side in ("draft", "lifted"):
         logs[side] = {k: [x for x in v if not x.startswith("#")] for k, v in logs[side].items()}
     names_by_run = {r[0].lstrip("0").upper() or "0": r[3] for r in ctx["rows"]}
@@ -699,6 +766,14 @@ def one(name, a, ctx):
         else:
             diffs.append(i)
     comparable = len(same) + len(diffs)
+    # what the case's mapper had resident where the routine asked (resident_at), and where the run stopped at a wait
+    res = {}
+    for i, v in raw_lifted.items():
+        for x in {x for x in v if x.startswith("#RES")}:
+            _, ad, d = x.split()
+            res.setdefault(ad, {}).setdefault(int(d), set()).add(i)
+    waits = sum(1 for i in same + diffs if any(x == "WAIT" for x in logs["draft"].get(i, [])))
+    hung = sum(1 for i in same + diffs if any(x == "HUNG" for x in logs["draft"].get(i, [])))
     verdict = ("DIFFERS" if diffs else "NOT CHECKED" if comparable == 0 else
                "THIN (%d of %d cases comparable, floor %d)" % (comparable, len(cases), floor) if comparable < floor else "OK")
     lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}, callees: {'the callees run as drafts against the lifted callers calls' if a.callees == 'through' else 'filed wrappers on both sides'}, {(str(len(configs)) + ' mapper configuration' + ('s' if len(configs) > 1 else '') + ' from the trace') if configs else 'no trace of it: default map'}): "
@@ -706,6 +781,11 @@ def one(name, a, ctx):
              + (f", {len(crashed)} crashed on a seeded value out of the game's range, on {'both sides' if any('CRASHED' in x for x in logs['draft'].get(crashed[0], [])) and any('CRASHED' in x for x in logs['lifted'].get(crashed[0], [])) else 'the lifted side' if any('CRASHED' in x for x in logs['lifted'].get(crashed[0], [])) else 'the draft'} in the first (not compared)" if crashed else "")
              + (f", {len(deep)} reached the depth limit of 512 nested calls (not compared)" if deep else "")
              + (f" ({rounds} steering round{'s' if rounds != 1 else ''} added cases)" if rounds else "") + f" -> {verdict}"]
+    for ad, byd in sorted(res.items()):
+        lines.append("  resident_at($%s) in the cases: " % ad + ", ".join(
+            ("nothing resident" if d == 0 else "%04X:%03X" % divmod(d, 2048)) + " in %d" % len(cs) for d, cs in sorted(byd.items())))
+    if waits or hung:
+        lines.append(f"  {waits} compared cases ended at a wait for an interrupt (compared up to it), {hung} at a spin on hardware that never ended (compared to the time limit)")
     if untraced and verdict not in ("OK", "DIFFERS") or (untraced and a.explain):
         lines += explain_untraced(cases, untraced, logs["draft"], raw_draft, open(draft_c).read())
     for i in diffs[:a.show]:
@@ -790,7 +870,7 @@ def main():
     a = ap.parse_args()
     os.makedirs(os.path.join(BUILD, "obj"), exist_ok=True)
     cache = os.path.join(BUILD, "obj")
-    sources = game_sources()
+    sources = game_sources() + card_sources()
     hh = header_hash()
     jobs = int(os.environ.get("CPU_RUN_JOBS") or 1)
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:

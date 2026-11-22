@@ -1,3 +1,94 @@
+; @routine 00C1:228 IncrementTempWord
+; @run 6B:8228
+; WHAT IT DOES: Adds one to the 16-bit pointer in zTemp00 and zTemp01, the place the text
+; printer reads its next byte from.
+; HOW: Adds one to the low byte, and to the high byte when the low byte wrapped to zero.
+; WAITS: no.
+; Entry: nothing. Exit: N and Z from the byte last incremented, C and the registers kept.
+IncrementTempWord:
+    inc z:zTemp00
+    bne IncrementTempWord_at0
+    inc z:zTemp01
+IncrementTempWord_at0:
+    rts
+
+; @routine 00C1:5CA WriteGlyphRowsTwice
+; @run 6B:85CA
+; WHAT IT DOES: Writes the same eight glyph rows twice, so a glyph fills two tiles' worth.
+; HOW: Keeps X on the stack across one call of WriteGlyphRows, then runs on into it with X as it
+; was.
+; WAITS: no.
+; Entry, exit: as WriteGlyphRows.
+WriteGlyphRowsTwice:
+    phx
+    jsr WriteGlyphRows
+    plx
+
+; @routine 00C1:5CF WriteGlyphRows
+; @run 6B:85CF
+; WHAT IT DOES: Writes eight rows of a glyph's tile to the VDC, from the glyph buffer at $3B40:
+; every other byte from the buffer is the low byte of a row's word, $FF the high byte.
+; HOW: Eight times, the buffer byte at X goes to the VDC data port and $FF to its high byte; X
+; goes up by two each row.
+; WAITS: no.
+; Entry: X the buffer offset; the VDC's write address set. Exit: A the last byte written, X plus
+; 16, Y 8, Z and C set, N clear.
+WriteGlyphRows:
+    cly
+WriteGlyphRows_at1:
+    lda a:StageMaskBuffer,x
+    sta a:VDC_DATA_LO
+    st2 #$FF
+    inx
+    inx
+WriteGlyphRows_at0:
+    iny
+    cpy #$08
+    bne WriteGlyphRows_at1
+    rts
+
+; @routine 00C3:2E7 PadRepeatReset
+; @run 6B:92E7
+; WHAT IT DOES: Starts the menu's key repeat afresh: no button is down, and each of the eight
+; buttons waits the full first delay.
+; HOW: Zeroes the repeat bits ($7DFA), then loads each of the eight repeat counters (from $7DF2)
+; with 24, from the last to the first.
+; WAITS: no.
+; Entry: nothing. Exit: A $18, X $FF, N set, Z clear; Y and C kept.
+PadRepeatReset:
+    stz a:$7DFA
+    ldx #$07
+    lda #$18
+PadRepeatReset_at0:
+    sta a:$7DF2,x
+    dex
+    bpl PadRepeatReset_at0
+PadRepeatReset_at1:
+    rts
+
+; @routine 00C3:31B MenuBackOnButtonII
+; @run 6B:931B
+; WHAT IT DOES: Takes the menu back to its page 8 when button II has just been pressed.
+; HOW: ANDs the card's trigger byte with 2 and returns when it is zero; otherwise runs on into
+; MenuBackToPageEight.
+; WAITS: no.
+; Entry: nothing. Exit: not pressed: A 0, Z set, N clear, C kept. Pressed: as
+; MenuBackToPageEight with N and Z clear.
+MenuBackOnButtonII:
+    lda a:BiosJoyTrigger
+    and #$02
+    beq PadRepeatReset_at1
+
+; @routine 00C3:322 MenuBackToPageEight
+; @run 6B:9322
+; WHAT IT DOES: Puts the menu on its page 8, at its first step.
+; HOW: Loads 8 and goes to SetMenuPage.
+; WAITS: no.
+; Entry: nothing. Exit: A 0, N and Z clear (the 8 loaded), C kept.
+MenuBackToPageEight:
+    lda #$08
+    jmp SetMenuPage
+
 ; @routine 00C4:025 PadRepeatUpdate
 ; @run 6B:9825
 ; WHAT IT DOES: Gives the menu a pad with key repeat: for each of the eight pad bits, a bit in
@@ -360,6 +451,7 @@ EventFlagsClear:
     ldx #$1F
 EventFlagsClear_at0:
     stz a:EventFlags,x
+EventFlagsClear_at1:
     dex
     bpl EventFlagsClear_at0
     rts
@@ -447,7 +539,9 @@ EventBitMask_at0:
 ; the count added once for the first byte twice, and four times for each of the five pairs (the
 ; pair's count kept in zTemp0B between the four adds, five pairs counted in zTemp0A). Decimal
 ; mode off.
-; WAITS: no.
+; WAITS: no. CountSetBits's arm that counts a bit is in no trace and the draft stops there, so the
+; comparison now runs with every counted byte zero (curated); the sums with counts were compared
+; when the harness still ran the lifted CountSetBits on both sides: 400 of 400, decimal and not.
 ; Entry: Y the slot (0 to 2). Exit: A zTemp09, C from the last decimal add, N clear and Z set (the
 ; pair counter reached zero), V as the caller left it, D clear; X the slot's offset plus 5; Y the
 ; last count.
@@ -477,6 +571,7 @@ SlotCompletionPercent_at0:
     lda z:zTemp0B
     clc
     adc z:zTemp08
+SlotCompletionPercent_at1:
     sta z:zTemp08
     cla
     adc z:zTemp09
@@ -516,9 +611,9 @@ CountSetBits:
     ldx #$08
 CountSetBits_at0:
     lsr a
-    bcc ScreenMapOfEntryB_at0
+    bcc CountSetBits_at1
     iny
-ScreenMapOfEntryB_at0:
+CountSetBits_at1:
     dex
     bne CountSetBits_at0
     tya

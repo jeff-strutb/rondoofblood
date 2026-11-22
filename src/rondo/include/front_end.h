@@ -54,8 +54,41 @@ typedef struct { uint8_t a; uint8_t x; } SlotCopy;
 #define PAD_REPEAT_BITS 0x7DFA
 #define SELECTED_FILE 0x7DF1
 #define CURSOR_ROW 0x7DFF
+#define GLYPH_BUFFER 0x3B40
+
+/* menu/name_entry.c: what the name menu leaves, and its placeholders. */
+typedef struct { uint8_t a; uint8_t y; bool carry; bool overflow; bool full; } NameExit;
+typedef struct { uint8_t y; bool carry; } NameCursorExit;
+#define NAME_POS 0x7DE8
+#define NAME_CHARS 0x7DE9
+#define NAME_LENGTH 8
+#define NAME_GRID 0x9645
+#define NAME_ROW_PLACES 0x969E
+#define NAME_COLUMN_PLACES 0x9696
+NameExit ShowNameCursor(void);
+NameExit NameBackspace(void);
+NameExit NameTypeCharacter(void);
+NameCursorExit NameCursorTarget(uint8_t object);
+void abi_ShowNameCursor(void);
+void abi_NameBackspace(void);
+void abi_NameTypeCharacter(void);
+void abi_NameCursorTarget(void);
+
+typedef struct { uint8_t a; uint8_t x; } GlyphRows;
 
 /* menu/file_select.c */
+void PadRepeatReset(void);
+bool MenuBackOnButtonII(void);
+void MenuBackToPageEight(void);
+uint8_t IncrementTempWord(void);
+GlyphRows WriteGlyphRows(uint8_t offset);
+GlyphRows WriteGlyphRowsTwice(uint8_t offset);
+void abi_PadRepeatReset(void);
+void abi_MenuBackOnButtonII(void);
+void abi_MenuBackToPageEight(void);
+void abi_IncrementTempWord(void);
+void abi_WriteGlyphRows(void);
+void abi_WriteGlyphRowsTwice(void);
 void WriteHexByteTiles(uint8_t byte);
 void WriteLowDigitTile(uint8_t value);
 void WriteDigitTile(uint8_t digit);
@@ -114,6 +147,10 @@ void abi_PlaceCursorObjects(void);
 void abi_ShiftObjectsByScrollChange(void);
 
 /* menu/attract.c */
+uint8_t AttractBegin(void);
+uint8_t ModeDoneAdd(void);
+void abi_AttractBegin(void);
+void abi_ModeDoneAdd(void);
 uint8_t AttractFrameTick(void);
 /* What AttractEndCountdown ends on: the byte its flags come from, and whether it reset the game state. */
 typedef struct {

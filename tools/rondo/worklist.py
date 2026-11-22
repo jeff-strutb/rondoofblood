@@ -223,7 +223,7 @@ def part_catalog(cat):
             continue
         for lo, hi, name in spans:
             if lo < key[1] < hi:
-                print(f"{r['where']} ({r['entry']}, {r['bytes']} B) falls inside {name} ({lo // 2048:04X}:{lo % 2048:03X}+{hi - lo})")
+                print(f"{r['where']} ({r['entry']}, {r['bytes']} B{', an entry of routine ' + r['entry_of'] if r.get('entry_of') else ''}) falls inside {name} ({lo // 2048:04X}:{lo % 2048:03X}+{hi - lo})")
                 n += 1
                 break
     print(f"{n} such entries")
@@ -238,7 +238,7 @@ def part_nocode(args, cat):
     calls = catalog.callees(cat, catalog.edges(), catalog.CALLS)
     ready = sorted((r["bytes"], r["where"], key[0], len(calls[key])) for key, r in cat.items()
                    if key not in done and not (args.space and key[0] != args.space) and r["bytes"]
-                   and r["bytes_run"] == r["bytes"] and not (calls[key] - done))
+                   and r["bytes_run"] == r["bytes"] and not (calls[key] - done) and not r.get("entry_of"))
     for n, where, space, k in ready[:args.limit]:
         print(f"{space} {where:10} {n:5} B  calls {k}")
     print(f"{len(ready)} ready, {sum(r[0] for r in ready)} B")

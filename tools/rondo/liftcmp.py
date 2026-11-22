@@ -14,8 +14,11 @@ address and value, the VDC, MPR and clock instructions, every call the routine m
 callee and the registers it is entered with) and the registers and flags it leaves.
 
 Cases. N seeded cases (default 400): entry A, X, Y, S and flags from edge-biased values; a memory image whose
-unwritten bytes read as a value fixed by the seed, the address and how many times it has been read, in one of
-three flavours (any byte, edge values, small values); a byte written reads back. The curated file adds cases a
+unwritten bytes read as a value fixed by the seed and the address, in one of three flavours (any byte, edge values,
+small values); a byte written reads back, and a second read of a byte nobody wrote gives the same value, as memory does.
+Hardware is what the checker counts as hardware: an address whose MPR holds the I/O bank ($FF), normally $0000 to
+$1FFF; there a second read can differ, so a port's value also depends on how often it has been read, and a write to a
+port is not read back. Everything else (work RAM and the stack at $2000 to $3FFF, the banks mapped at $4000 up) is memory. The curated file adds cases a
 writer wants, one a line: `a=3 x=5 y=0 s=F0 p=NZC mem:2B70=80 mem:3040+5=01` (hex; p a set of flag letters or a
 hex byte; +N is an offset from the address); they run first and are named by line.
 

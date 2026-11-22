@@ -9,8 +9,8 @@
  * the two see the same machine.
  *
  * Memory is a 64 KB image, empty at the start of each case: a byte not yet written reads as a value fixed by the
- * case's seed, the address and how many times it has been read since (so a value kept in a C variable across a
- * second read of the original shows), and a byte written reads back what was written.
+ * case's seed and the address, and a byte written reads back what was written; hardware ports (the addresses mapped to
+ * the I/O bank) read a value that also depends on how many times they have been read. See rd8.
  *
  * Input: the cases file named by argv[1], one case a line:
  *     ID SEED A X Y S P M2 M3 M4 M5 M6 N [ADDR=VAL ...]
@@ -81,17 +81,29 @@ void rt_event(void)
     }
 }
 
+/*
+ * Memory and hardware, split as the checker splits them (check.c): an address whose MPR holds the I/O bank ($FF) is
+ * hardware, the rest (work RAM, the stack page, the banks of RAM and ROM) is memory.
+ * Memory reads back the same byte until a write changes it: the value of an unwritten byte is fixed by the case's
+ * seed and the address alone, and a byte written reads back what was written, each side seeing its own writes.
+ * Hardware reads can differ from one read to the next (a status port), so an unwritten port reads a value that also
+ * depends on how many times it has been read, and a write to a port is never read back.
+ */
+static int is_hardware(uint16_t addr) { return mpr[addr >> 13] == 0xFF; }
+
 uint8_t rd8(uint16_t addr)
 {
     uint8_t v;
 
     rt_event();
-    if (written[addr]) {
-        v = mem[addr];
-    } else {
+    if (is_hardware(addr)) {
         v = seeded(addr, reads[addr], 1);
         if (reads[addr] != 255)
             reads[addr]++;
+    } else if (written[addr]) {
+        v = mem[addr];
+    } else {
+        v = seeded(addr, 0, 1);
     }
     printf("R %04X %02X\n", addr, v);
     return v;

@@ -58,6 +58,14 @@ void tai(uint16_t src, uint16_t dst, uint16_t len);
 void call_original(uint16_t addr);
 void call_orig(uint16_t ret, uint16_t addr);
 void cli(void);                           /* CLI: interrupts on */
+/*
+ * resident_at(run): which routine is loaded at a run address. Returns the disc location (DISC(sector, offset)) of the
+ * tagged routine whose bytes are resident there under the current mapping, 0 if none. It is not an access of the
+ * original and is never placed or counted: it exists so that C can name an overlay's routine (a callee that is one of
+ * several variants at the same address) and call it as an ordinary typed call. A port sets it when an overlay loads.
+ */
+#define DISC(sector, offset) ((uint32_t)(sector) * 2048u + (uint32_t)(offset))
+uint32_t resident_at(uint16_t run_address);
 /* A wait the original spins on with no data access (a jump or branch to itself): returns once the
  * interrupt the original took there has run. A spin that reads memory is a loop of reads in the C. */
 void wait_interrupt(void);

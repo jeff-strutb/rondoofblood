@@ -146,6 +146,7 @@ static Stat *stats;
 static int16_t *tag_at;     /* run address to the first tag index there, or -1 */
 static int16_t *tag_next;   /* the next tag with the same run address (another overlay's bytes), or -1 */
 static int tag_resident(const Tag *t);
+static unsigned res_mpr(unsigned i);
 
 /* The tag at a run address: the first whose bytes are resident, else the first. */
 static int tag_pick(unsigned pc)
@@ -842,6 +843,9 @@ static void frame_pass(Span *s, uint64_t idx, unsigned pulls)
         return;
     memcpy(&c->wait_clock, e->mpr, 8);
     c->wait_frame = e->addr;
+    if (getenv("RONDO_DIAG_RESUME"))
+        fprintf(stderr, "DIAGFRAME frame %lu event %llu wait_frame %lu in %s S%02X pulls %u\n", cur_frame,
+                (unsigned long long)idx, c->wait_frame, rondo_tags[c->tag].name, cpu.s, pulls);
     chk_get_regs(&a, &x, &y, &st, &p, &pc);
     /* pulls: the bytes of its return address the original's RTS or RTI had taken when the frame ended. */
     chk_set_regs(cpu.a, cpu.x, cpu.y, (uint8_t)(cpu.s + pulls), (uint8_t)(cpu.p | P_I), pc);
@@ -1066,6 +1070,22 @@ void tai(uint16_t src, uint16_t dst, uint16_t len)
     cpu.x = pull8();
     cpu.a = pull8();
     cpu.y = pull8();
+}
+
+/*
+ * resident_at(run): the disc location (DISC(sector, offset)) of the tagged routine whose bytes are resident at that
+ * run address under the mapping the caller sees (A5: the C's own, against the call's rewound memory; lockstep and the
+ * record: the live core's), or 0. It reads the routine table and nothing else: no access of the original is made, so
+ * none is placed or counted. It exists so that C can name an overlay's routine: where one address holds one of several
+ * variants, C asks which, and calls that one. A port sets the answer when an overlay loads.
+ */
+uint32_t resident_at(uint16_t run)
+{
+    int i = tag_pick(run);
+
+    if (i < 0 || rondo_tags[i].rom || !tag_resident(&rondo_tags[i]))
+        return 0;
+    return rondo_tags[i].disc;
 }
 
 void cli(void)
@@ -1399,6 +1419,18 @@ void call_original_at(uint16_t from, uint16_t addr)
 {
     tail_from = from;
     original_at(0, addr);
+}
+
+/*
+ * leave_original(addr): the C set S outright (TXS): the call's frame is gone, and the code after it is not the call's.
+ * The record closes the call as left. In lockstep the original runs on from addr as a tail jump does; in A5 the
+ * call is judged as left by the stack (unverified) and the C returns.
+ */
+void leave_original(uint16_t addr)
+{
+    if (mode == MODE_A5)
+        return;
+    hand_over(addr);
 }
 
 void call_original(uint16_t addr)
@@ -1895,6 +1927,9 @@ static uint8_t *final_val;
 static uint32_t *final_stamp;
 static uint32_t stamp;
 
+static uint64_t probe_calls, probe_bad;
+static uint32_t probe_seen[2];     /* the two variants a probe saw first */
+
 static void judge(Frame *f, const Regs *r)
 {
     const int prefix = r == NULL;           /* open at the script's end */
@@ -1957,6 +1992,22 @@ static void judge(Frame *f, const Regs *r)
     why[0] = 0;
     exit_regs_a5 = r;
     prefix_mode = prefix;
+    if (getenv("RONDO_PROBE_RESIDENT") && f->tag->run == (uint16_t)strtoul(getenv("RONDO_PROBE_RESIDENT"), NULL, 16)) {
+        /* The check of resident_at in A5: at the call's entry, against its rewound memory and its mapping, it must name
+         * the routine the record opened here. */
+        uint32_t got = resident_at(f->tag->run);
+
+        probe_calls++;
+        if (got != (f->tag->rom ? 0 : f->tag->disc)) {
+            probe_bad++;
+            fprintf(stderr, "PROBE %04X: %s call: resident_at gives %u, the record's call is of %u\n", f->tag->run,
+                    f->tag->name, got, f->tag->disc);
+        } else if (probe_seen[0] != got && probe_seen[1] != got && probe_seen[1] == 0 && probe_seen[0] != 0) {
+            probe_seen[1] = got;
+        } else if (!probe_seen[0]) {
+            probe_seen[0] = got;
+        }
+    }
     reason = setjmp(c_abort);
     if (reason == 0) {
         f->tag->abi();
@@ -2115,6 +2166,12 @@ static int kept_by_name(int index)
     return 0;
 }
 
+/* The mapping a residency test reads: the live core's, except while A5 runs a C, whose own mapping (after its TAMs) it is. */
+static unsigned res_mpr(unsigned i)
+{
+    return mode == MODE_A5 && sp ? mshadow[i] : chk_mpr(i);
+}
+
 static int tag_resident(const Tag *t)
 {
     /* A card routine is in ROM: it is resident when its bank is mapped at its address. */
@@ -2122,14 +2179,14 @@ static int tag_resident(const Tag *t)
         for (unsigned i = 0; i < t->len; i++) {
             uint16_t logical = (uint16_t)(t->run + i);
 
-            if (chk_mpr(logical >> 13) != (t->disc + i) >> 13)
+            if (res_mpr(logical >> 13) != (t->disc + i) >> 13)
                 return 0;
         }
         return 1;
     }
     for (unsigned i = 0; i < t->len; i++) {
         uint16_t logical = (uint16_t)(t->run + i);
-        uint32_t p = canon(((uint32_t)chk_mpr(logical >> 13) << 13) | (logical & 0x1FFF));
+        uint32_t p = canon(((uint32_t)res_mpr(logical >> 13) << 13) | (logical & 0x1FFF));
         const uint8_t *b = rom_bank[p >> 13];
 
         if (!b || b[p & 0x1FFF] != user[t->disc + i])
@@ -2194,6 +2251,9 @@ static void co_main(void)
 
 static void hy_switch_in(Ctx *c)
 {
+    if (getenv("RONDO_DIAG_CTX"))
+        fprintf(stderr, "CTX frame %lu switch in %s resume %04X S%02X\n", cur_frame, rondo_tags[c->tag].name, c->resume_pc,
+                c->resume_s);
     c->parked = 0;
     sp = &c->span;
     cur_fs = c->fs;
@@ -2263,6 +2323,8 @@ static int hy_after(void)
         return owed > 0 ? (int)(owed > 0x7FFFFFFF ? 0x7FFFFFFF : owed) : 1;
     }
     if (c && c->abandoned) {
+        if (getenv("RONDO_DIAG_CTX"))
+            fprintf(stderr, "CTX frame %lu abandoned %s\n", cur_frame, rondo_tags[c->tag].name);
         top = c->below;
         c->abandoned = 0;
         c->below = free_ctx;
@@ -2271,6 +2333,8 @@ static int hy_after(void)
         return hook_again();     /* the hook must see the first instruction of the code jumped to */
     }
     if (c && c->done) {
+        if (getenv("RONDO_DIAG_CTX"))
+            fprintf(stderr, "CTX frame %lu done %s\n", cur_frame, rondo_tags[c->tag].name);
         top = c->below;
         ret = hy_finish(c);
         c->below = free_ctx;
@@ -2561,6 +2625,9 @@ int check_exec(uint32_t pc)
             hy_switch_in(top);
             return hy_after();
         }
+        if (getenv("RONDO_DIAG_RESUME") && top && top->parked && pc == top->resume_pc)
+            fprintf(stderr, "DIAGRESUME frame %lu %s pc %04X S%02X resume_s %02X prev_op %X wait_frame %lu\n", cur_frame,
+                    rondo_tags[top->tag].name, (unsigned)pc, r.s, top->resume_s, prev_op, top->wait_frame);
         if (top && top->parked && (prev_op == 0x60 || prev_op == 0x40) && pc == top->resume_pc &&
             r.s == top->resume_s) {
             if (prev_op == 0x40 && nipend && ipend[nipend - 1].resume == pc && ipend[nipend - 1].s == r.s)
@@ -2858,6 +2925,9 @@ void check_finish(void)
                     (unsigned long long)s->arrive_nonres, (unsigned long long)s->runaway,
                     (unsigned long long)s->prefix, (unsigned long long)s->noreturn);
         }
+        if (probe_calls)
+            fprintf(report, "PROBE resident_at: %llu calls, %llu differ, variants seen %u and %u\n",
+                    (unsigned long long)probe_calls, (unsigned long long)probe_bad, probe_seen[0], probe_seen[1]);
         fclose(report);
     } else if (mode == MODE_RECORD) {
         Ev e;

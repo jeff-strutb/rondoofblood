@@ -106,3 +106,23 @@ it is judged only as the prefix of the call a script makes through the game.
 
 Frame hashes cover RAM, the stack above S, and the picture; the stack at and below S is not state. Timing is not judged
 except that interrupts are dispatched where the original took them and frames end where the original's did.
+
+## What C may ask of the machine layer besides accesses
+
+`resident_at(run_address)` (machine.h; check.c) returns the disc location, as `DISC(sector, offset)` (sector * 2048 + offset),
+of the tagged routine whose bytes are resident at that run address under the current mapping, 0 if none (and 0 for a System
+Card routine). It exists so that C can name an overlay's routine: where one address holds one of several variants (024E:687 or
+05BE:687 at 8E87, depending on the stage group), the C asks which is loaded and makes an ordinary typed call to that variant.
+It is NOT an access of the original (the original reads nothing to know what is loaded): it is never placed, never counted, never
+a defect. It uses the residency test of the routine table (`tag_pick`): in A5 against the call's rewound memory and the C's own
+mapping (after its TAMs), in lockstep and the record against the live core. A port sets its answer when an overlay loads.
+`RONDO_PROBE_RESIDENT=ADDR` (A5, a diagnostic): at each call of a routine at ADDR, `resident_at(ADDR)` must name the routine the
+record opened; the A5 report ends with `PROBE resident_at: <calls> calls, <n> differ, variants seen <a> and <b>`.
+
+`leave_original(addr)` (ops6280.h): the drafted C set S outright (TXS), so the call's frame is gone; in lockstep the original
+runs on from addr, in A5 the C returns and the call is judged as left (unverified).
+
+Diagnostics of the lockstep (they make the run a diagnostic: no verdict): `RONDO_FRAME_TRACE=N` prints, from frame N, each
+side's registers, clock and open (record) or parked (hybrid) calls at every frame end; `RONDO_DIAG_RESUME=1` prints each time
+the core reaches a parked C's resume address (its S and the one expected) and each park for a frame end; `RONDO_DIAG_CTX=1`
+prints each time a C is switched in, abandoned or finished.

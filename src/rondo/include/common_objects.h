@@ -144,4 +144,49 @@ typedef struct {
 /* When the object's life timer runs out, four bytes of a row picked by its next kind are loaded and it moves on. */
 TimerAdvance AdvanceOnTimer(uint8_t slot);
 
+/* What LaunchOnTimer left. */
+typedef struct {
+    bool waiting;         /* the timer has not run out */
+    uint8_t timer;        /* the timer after its DEC */
+    uint8_t loaded;       /* the last table byte (A at the end) */
+    uint8_t row_offset;   /* Y at the end */
+    bool carry;           /* C at the end: bit 7 of the next kind */
+    bool overflow;        /* V: the add of $12 to the next kind overflowed */
+    uint8_t new_state;    /* the state after INC */
+} Launch;
+
+/* When the life timer runs out, the object shows its next kind's frame, takes its two speeds from a table and moves on. */
+Launch LaunchOnTimer(uint8_t slot);
+
+/* What SetHitboxFromFrameFive left. */
+typedef struct {
+    uint8_t last;         /* the last byte loaded (A) */
+    uint8_t offset;       /* Y */
+    bool carry;           /* C: the last shift's carry */
+    bool overflow;        /* V: the frame less 5 overflowed */
+} HitboxRow;
+
+/* The hitbox is loaded from the four-byte row of the object's frame less 5. */
+HitboxRow SetHitboxFromFrameFive(uint8_t slot);
+
+/* How EnterStateFiveOnPlayerState9 ended. */
+typedef enum { FIVE_PLAYER_NOT_9, FIVE_NOT_STATE_3, FIVE_ENTERED } FiveEnd;
+typedef struct {
+    FiveEnd end;
+    uint8_t value;        /* the state last compared */
+} FiveResult;
+
+/* An object in state 3 while the player (slot 0) is in state 9 enters state 5, facing right and with its frame list restarted. */
+FiveResult EnterStateFiveOnPlayerState9(uint8_t slot);
+
+/* What StopAndPickPhase left. */
+typedef struct {
+    uint8_t loaded;       /* the table byte (A) */
+    uint8_t index;        /* Y */
+    uint8_t new_phase;    /* the phase counter after INC */
+} PhasePick;
+
+/* The object's speeds are cleared and its pose is picked by a counter that wraps through eight table bytes. */
+PhasePick StopAndPickPhase(uint8_t slot);
+
 #endif

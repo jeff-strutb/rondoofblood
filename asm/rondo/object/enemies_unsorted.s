@@ -115,3 +115,103 @@ AdvanceOnTimer:
     inc a:OBJ_27A8,x
 AdvanceOnTimer_out:
     rts
+
+; @routine 09EB:578 LaunchOnTimer
+; @run 70:B578
+; WHAT IT DOES: Counts an object's life timer down; when it runs out the object shows frame
+; next kind + $12, takes its two high speed bytes (X and Y) from a two-byte table row of its
+; next kind, and moves to its next state.
+; HOW: DEC of the timer in memory; on zero, the add, the row at $B59B + 2 * next kind.
+; WAITS: no.
+; Entry: X object. Exit: timer left: A kept, N and Z from the new timer. Moved on: A the second
+; table byte, Y the row offset, N and Z from the new state, C bit 7 of the next kind, V from
+; the add of $12. X kept. D clear.
+LaunchOnTimer:
+    dec a:OBJ_34B8,x
+    bne LaunchOnTimer_out
+    lda a:OBJ_3040,x
+    clc
+    adc #$12
+    sta a:OBJ_2A68,x
+    lda a:OBJ_3040,x
+    asl a
+    tay
+    lda a:$B59B,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B59C,y
+    sta a:OBJ_VY_HI,x
+    inc a:OBJ_27A8,x
+LaunchOnTimer_out:
+    rts
+
+; @routine 09EA:60E SetHitboxFromFrameFive
+; @run 70:AE0E
+; WHAT IT DOES: Loads an object's hitbox (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the
+; four-byte row at $BC13 picked by its frame less 5.
+; HOW: Four loads from the row.
+; WAITS: no.
+; Entry: X object. Exit: A the last byte, N and Z from it, Y the row offset, C the last shift's
+; carry, V from the frame subtract. X kept. D clear.
+SetHitboxFromFrameFive:
+    lda a:OBJ_2A68,x
+    sec
+    sbc #$05
+    asl a
+    asl a
+    tay
+    lda a:$BC13,y
+    sta a:OBJ_3930,x
+    lda a:$BC14,y
+    sta a:OBJ_39E0,x
+    lda a:$BC15,y
+    sta a:OBJ_3988,x
+    lda a:$BC16,y
+    sta a:OBJ_3A38,x
+    rts
+
+; @routine 0CAB:240 EnterStateFiveOnPlayerState9
+; @run 70:B240
+; WHAT IT DOES: When the player (slot 0) is in state 9 and the object is in state 3, turns the
+; object to face right, restarts its frame list, clears OBJ_2800 and moves it to state 5.
+; HOW: Two compares, then the stores.
+; WAITS: no.
+; Entry: X object. Exit: A and flags as the last compare or load left them. X and Y kept.
+; D clear.
+EnterStateFiveOnPlayerState9:
+    lda a:OBJ_27A8
+    cmp #$09
+    bne EnterStateFiveOnPlayerState9_out
+    lda a:OBJ_27A8,x
+    cmp #$03
+    bne EnterStateFiveOnPlayerState9_out
+    stz a:OBJ_2AC0,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$05
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+EnterStateFiveOnPlayerState9_out:
+    rts
+
+; @routine 072C:02C StopAndPickPhase
+; @run 70:B82C
+; WHAT IT DOES: Stops an object (clears OBJ_3670 and its four speed bytes), then sets OBJ_2800
+; from a table of eight bytes at $B84B picked by the low three bits of a counter, OBJ_3720,
+; which it then advances.
+; HOW: Five clears, a table read, an INC in memory.
+; WAITS: no.
+; Entry: X object. Exit: A the table byte, Y its index, N and Z from the counter's new value.
+; X kept. D clear.
+StopAndPickPhase:
+    stz a:OBJ_3670,x
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    lda a:OBJ_3720,x
+    and #$07
+    tay
+    lda a:$B84B,y
+    sta a:OBJ_2800,x
+    inc a:OBJ_3720,x
+    rts

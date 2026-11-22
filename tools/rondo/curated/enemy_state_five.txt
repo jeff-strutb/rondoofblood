@@ -1,0 +1,2 @@
+a=00 x=05 y=00 s=F0 p=Z mem:27A8=09 mem:27AD=03
+a=00 x=05 y=00 s=F0 p=Z mem:27A8=09 mem:27AD=04

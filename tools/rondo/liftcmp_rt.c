@@ -194,9 +194,11 @@ static void enter(uint16_t target, int tail)
 
     if (abi && depth < 8) {
         /* C in the tree: it runs, on both sides, and its accesses are in the log as they are made */
+        printf("#IN %04X\n", target);
         depth++;
         abi();
         depth--;
+        printf("#OUT %04X\n", target);
     } else {
         printf("%s %04X A=%02X X=%02X Y=%02X P=%02X S=%02X\n", tail ? "TAIL" : "CALL", target, cpu.a, cpu.x, cpu.y, cpu.p, cpu.s);
         stub_routine(target);

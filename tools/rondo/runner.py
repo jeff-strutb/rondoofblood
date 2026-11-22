@@ -95,6 +95,10 @@ def prepare(main, rev, b, d):
     r = cpu_run(1, "2G", "env", "RONDO_BOX=" + box, "sh", os.path.join(tree, "setup.sh"), "pcebox")
     if r.returncode:
         raise SystemExit(f"pcebox build of {rev} failed:\n{(r.stdout + r.stderr)[-800:]}")
+    gen = os.path.join(tree, "build", "rondo", "pcebox")      # setup.sh puts a private build's generated files beside the binary
+    os.makedirs(gen, exist_ok=True)
+    for f in ("hybrid_table.c", "opclass.h"):
+        shutil.copy(os.path.join(box + ".gen", f), os.path.join(gen, f))
     out = os.path.join(tree, "chash.txt")
     r = cpu_run(2, "3G", sys.executable, os.path.join(tree, "tools", "rondo", "compiled.py"), "--tree", tree,
                 "--out", out)

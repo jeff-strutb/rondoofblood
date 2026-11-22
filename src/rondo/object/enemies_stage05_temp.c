@@ -989,3 +989,304 @@ void abi_ChooseNextMoveWhenFacingAway(void)
 {
     abi_ended(ChooseNextMoveWhenFacingAway(cpu.x));
 }
+
+/*
+ * @routine 093C:1E4 CountTimerPairDownOrRepick
+ * @run 70:B9E4
+ * WHAT IT DOES: Counts the sixteen bit timer (f3510 low, life_timer high) down by one; when it is
+ * already zero, picks new timers at random (PickTimersAtRandom), stops the animation and enters
+ * state 2.
+ * HOW: The two bytes are ORed to test for zero; the decrement is a subtract with the borrow carried.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the new high byte and N, Z from it, C and V from the borrow
+ * subtract; or A 2 and N, Z clear with C, V and Y as the random pick left them.
+ */
+Ended CountTimerPairDownOrRepick(uint8_t slot)
+{
+    uint8_t high = RD8(OBJ->life_timer[slot]);
+    uint8_t low = (uint8_t)(high | RD8(OBJ->f3510[slot]));
+    RandomEnd picked;
+    Sum sum;
+
+    if (low == 0) {
+        jsr_push(0xB9EF);
+        picked = PickTimersAtRandom(slot);
+        jsr_pop();
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 2);
+        return ended_then(ended_then(ended_of_random(picked.random), picked.end), ended_load(2));
+    }
+    low = RD8(OBJ->f3510[slot]);
+    sum = add_bytes(low, 0xFE, true);
+    WR8(OBJ->f3510[slot], sum.value);
+    high = RD8(OBJ->life_timer[slot]);
+    sum = add_bytes(high, 0xFF, sum.carry);
+    WR8(OBJ->life_timer[slot], sum.value);
+    return ended_of_sum(sum);
+}
+
+void abi_CountTimerPairDownOrRepick(void)
+{
+    abi_ended(CountTimerPairDownOrRepick(cpu.x));
+}
+
+/*
+ * @routine 093C:20D CountAnglePairDownOrRepick
+ * @run 70:BA0D
+ * WHAT IT DOES: On the first screen across only: counts the sixteen bit value f35c0 (low) and
+ * f3568 (high) down by one; when it is already zero, picks a new angle at random
+ * (PickAngleAtRandom), stops the animation, clears the step and enters state 3.
+ * HOW: As CountTimerPairDownOrRepick.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as CountTimerPairDownOrRepick, or A the X high byte and N, Z from
+ * it when off the first screen.
+ */
+Ended CountAnglePairDownOrRepick(uint8_t slot)
+{
+    uint8_t high = RD8(OBJ->x_hi[slot]);
+    uint8_t value, low;
+    RandomEnd picked;
+    Sum sum;
+
+    if (high != 0) {
+        return ended_load(high);
+    }
+    value = RD8(OBJ->f3568[slot]);
+    value = (uint8_t)(value | RD8(OBJ->f35c0[slot]));
+    if (value == 0) {
+        jsr_push(0xBA1D);
+        picked = PickAngleAtRandom(slot);
+        jsr_pop();
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->state[slot], 3);
+        return ended_then(ended_then(ended_of_random(picked.random), picked.end), ended_load(3));
+    }
+    low = RD8(OBJ->f35c0[slot]);
+    sum = add_bytes(low, 0xFE, true);
+    WR8(OBJ->f35c0[slot], sum.value);
+    high = RD8(OBJ->f3568[slot]);
+    sum = add_bytes(high, 0xFF, sum.carry);
+    WR8(OBJ->f3568[slot], sum.value);
+    return ended_of_sum(sum);
+}
+
+void abi_CountAnglePairDownOrRepick(void)
+{
+    abi_ended(CountAnglePairDownOrRepick(cpu.x));
+}
+
+/*
+ * @routine 093C:54C AnimateHitboxThenExpire
+ * @run 70:BD4C
+ * WHAT IT DOES: Animates the object along the list at overlay address $BD63, sets its hit
+ * rectangle from the frame (SetHitboxFromFrameRows), and counts f3510 down; at zero the object
+ * removes itself.
+ * HOW: StepObjectFrames, SetHitboxFromFrameRows, a decrement, ClearObject as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: N, Z from the timer; A, C, V, Y as SetHitboxFromFrameRows left
+ * them; X kept. Clobbers zTemp10-11.
+ */
+Ended AnimateHitboxThenExpire(uint8_t slot)
+{
+    uint8_t exit_y = 0, left;
+    FrameStep step;
+    Ended e;
+
+    WR8(ZP->temp11, 0xBD);
+    WR8(ZP->temp10, 0x63);
+    jsr_push(0xBD57);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+    jsr_push(0xBD5A);
+    e = ended_then(e, SetHitboxFromFrameRows(slot));
+    jsr_pop();
+    left = RD8(OBJ->f3510[slot]);
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->f3510[slot], left);
+    e = ended_then(e, ended_nz(left));
+    if (left == 0) {
+        ClearObject(slot);
+    }
+    return e;
+}
+
+void abi_AnimateHitboxThenExpire(void)
+{
+    abi_ended(AnimateHitboxThenExpire(cpu.x));
+}
+
+/*
+ * @routine 093D:33A WalkWhileFrameChangesB
+ * @run 71:C33A
+ * WHAT IT DOES: Animates the object along the list whose pointer is the pair of bytes at overlay
+ * address $C356 plus Y and, on the frames where the picture changed, gives it an X speed from a
+ * table at $C35A by its f3510 and moves it along X.
+ * HOW: StepObjectFrames, then ApplyVelocityX.
+ * WAITS: no.
+ * Entry: X object, Y the list's offset, D clear. Exit: after a change as ApplyVelocityX, Y f3510;
+ * otherwise as StepObjectFrames; X kept. Clobbers zTemp10-11.
+ */
+Ended WalkWhileFrameChangesB(uint8_t slot, uint8_t index)
+{
+    enum { LISTS = 0xC356, SPEEDS = 0xC35A };
+    uint8_t exit_y = index, phase;
+    FrameStep step;
+    AxisMove move;
+    Ended e;
+
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
+    jsr_push(0xC347);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+    if (step != FRAME_CHANGED) {
+        return e;
+    }
+    phase = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + phase)));
+    jsr_push(0xC355);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    return ended_then(ended_then(e, ended_with_y(ended_kept(), phase)), ended_of_axis_move(move));
+}
+
+void abi_WalkWhileFrameChangesB(void)
+{
+    abi_ended(WalkWhileFrameChangesB(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 093D:7A0 StartThenBlinkAndExpire
+ * @run 71:C7A0
+ * WHAT IT DOES: The first time (state 0) starts the object from its record and sets f3510 to
+ * $10. After that it counts f3510 down, removing the object at zero; otherwise it shows frame 0,
+ * or its life_timer as the frame on every fourth count.
+ * HOW: LoadObjectRecord; a decrement; ClearObject as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as the last store, load, AND or decrement left them; Y 11 after
+ * the record start.
+ */
+Ended StartThenBlinkAndExpire(uint8_t slot)
+{
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t left, bits, value, nz, last;
+    bool carry;
+    Ended e;
+
+    if (state == 0) {
+        jsr_push(0xC7A8);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->f3510[slot], 0x10);
+        return ended_then(ended_of_record(last, nz, carry), ended_load(0x10));
+    }
+    left = RD8(OBJ->f3510[slot]);
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->f3510[slot], left);
+    e = ended_then(ended_load(state), ended_nz(left));
+    if (left == 0) {
+        ClearObject(slot);
+        return e;
+    }
+    WR8(OBJ->frame[slot], 0);
+    value = RD8(OBJ->f3510[slot]);
+    bits = (uint8_t)(value & 3);
+    e = ended_then(e, ended_load(bits));
+    if (bits == 0) {
+        value = RD8(OBJ->life_timer[slot]);
+        WR8(OBJ->frame[slot], value);
+        e = ended_then(e, ended_load(value));
+    }
+    return e;
+}
+
+void abi_StartThenBlinkAndExpire(void)
+{
+    abi_ended(StartThenBlinkAndExpire(cpu.x));
+}
+
+/*
+ * @routine 093D:53D LeapAwayFromPlayerTable
+ * @run 71:C53D
+ * WHAT IT DOES: Advances the step and launches the object: its X speed from a table at overlay
+ * address $C569 by the player's distance in 32 pixel steps, Y speed -4.5 ($FB80); when its
+ * f3510 is not zero the X speed is then reversed.
+ * HOW: DistanceXToPlayer shifted to five bits and doubled, NegateVelocityX.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z from f3510 (when zero) or the negated speed's high byte
+ * with C and V from its add; Y the table offset.
+ */
+Ended LeapAwayFromPlayerTable(uint8_t slot)
+{
+    enum { TABLE = 0xC569 };
+    PlayerDistance distance;
+    uint8_t y, flag;
+    Ended e;
+
+    INC8(OBJ->f2800[slot]);
+    jsr_push(0xC543);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    y = (uint8_t)((distance.distance >> 5) << 1);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(TABLE + 1 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(TABLE + y)));
+    WR8(OBJ->vy_hi[slot], 0xFB);
+    WR8(OBJ->vy_lo[slot], 0x80);
+    flag = RD8(OBJ->f3510[slot]);
+    e = ended_then(ended_of_distance(distance), ended_with_y(ended_with_carry(ended_load(flag), false), y));
+    if (flag == 0) {
+        return e;
+    }
+    jsr_push(0xC568);
+    e = ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+    jsr_pop();
+    return e;
+}
+
+void abi_LeapAwayFromPlayerTable(void)
+{
+    abi_ended(LeapAwayFromPlayerTable(cpu.x));
+}
+
+/*
+ * @routine 093C:731 PickStateByPlayerDistanceB
+ * @run 70:BF31
+ * WHAT IT DOES: PickStateByPlayerDistance in this stage's overlay, with its state table at
+ * overlay address $BF57.
+ * HOW: The shared body.
+ * WAITS: no.
+ * Entry, exit: as PickStateByPlayerDistance.
+ */
+Ended PickStateByPlayerDistanceB(uint8_t slot, bool carry_in)
+{
+    return pick_state_by_distance(slot, carry_in, 0xBF57, 0xBF4D);
+}
+
+void abi_PickStateByPlayerDistanceB(void)
+{
+    abi_ended(PickStateByPlayerDistanceB(cpu.x, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 093C:7AA PickSpeedAndTurnFromTableC
+ * @run 70:BFAA
+ * WHAT IT DOES: PickSpeedAndTurnFromTable in this stage's overlay, with its table at overlay
+ * address $BFD6.
+ * HOW: The shared body.
+ * WAITS: no.
+ * Entry, exit: as PickSpeedAndTurnFromTable.
+ */
+Ended PickSpeedAndTurnFromTableC(uint8_t slot)
+{
+    return pick_speed_and_turn(slot, 0xBFD6, 0xBFCE);
+}
+
+void abi_PickSpeedAndTurnFromTableC(void)
+{
+    abi_ended(PickSpeedAndTurnFromTableC(cpu.x));
+}

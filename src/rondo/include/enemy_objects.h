@@ -377,6 +377,61 @@ static inline Ended hop_from_index(uint8_t slot, uint8_t index, uint16_t table, 
     return ended_with_y(ended_with_a(ended_nz(step), 8), facing);
 }
 
+
+/* The speed-and-turn body three overlays share: see PickSpeedAndTurnFromTable. */
+static inline Ended pick_speed_and_turn(uint8_t slot, uint16_t entries, uint16_t ret_side)
+{
+    uint8_t row = RD8(OBJ->f3670[slot]);
+    uint8_t y = (uint8_t)(row << 2);
+    uint8_t value, bit;
+    SideResult side;
+    Ended e;
+
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(entries + 1 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(entries + y)));
+    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(entries + 3 + y)));
+    value = rd8((uint16_t)(entries + 2 + y));
+    WR8(OBJ->vy_lo[slot], value);
+    e = ended_with_y(ended_with_carry(ended_load(value), (row & 0x40) != 0), y);
+    value = INC8(OBJ->f3510[slot]);
+    e = ended_then(e, ended_nz(value));
+    jsr_push(ret_side);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(side.sides & 1);
+    e = ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+    if (bit == 0) {
+        return e;
+    }
+    return ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+}
+
+/* The state pick three overlays share: see PickStateByPlayerDistance. */
+static inline Ended pick_state_by_distance(uint8_t slot, bool carry_in, uint16_t table, uint16_t ret_sum)
+{
+    uint8_t high, y, value;
+    Sum sum;
+
+    WR8(OBJ->f2800[slot], 0);
+    high = RD8(OBJ->x_hi[slot]);
+    if (high != 0) {
+        WR8(OBJ->state[slot], 3);
+        return ended_load(3);
+    }
+    high = RD8(OBJ->y_hi[slot]);
+    if (high != 0) {
+        WR8(OBJ->state[slot], 4);
+        return ended_load(4);
+    }
+    jsr_push(ret_sum);
+    sum = PlayerDistanceSum(slot, carry_in);
+    jsr_pop();
+    y = (uint8_t)(sum.value & 0x0F);
+    value = rd8((uint16_t)(table + y));
+    WR8(OBJ->state[slot], value);
+    return ended_with_y(ended_of_sum((Sum){ value, sum.carry, sum.overflow }), y);
+}
+
 /* The object becomes `type` in state 0. */
 static inline Ended become_type(uint8_t slot, uint8_t type)
 {
@@ -459,6 +514,14 @@ Ended ShowOnScreenAndWrapX(uint8_t slot);
 Ended StartChargeWhenPlayerNear(uint8_t slot);
 Ended WaitThenState2B(uint8_t slot);
 Ended ChooseNextMoveWhenFacingAway(uint8_t slot);
+Ended CountTimerPairDownOrRepick(uint8_t slot);
+Ended CountAnglePairDownOrRepick(uint8_t slot);
+Ended AnimateHitboxThenExpire(uint8_t slot);
+Ended WalkWhileFrameChangesB(uint8_t slot, uint8_t index);
+Ended StartThenBlinkAndExpire(uint8_t slot);
+Ended LeapAwayFromPlayerTable(uint8_t slot);
+Ended PickStateByPlayerDistanceB(uint8_t slot, bool carry_in);
+Ended PickSpeedAndTurnFromTableC(uint8_t slot);
 /* object/enemies_stage07_temp.c */
 Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);

@@ -480,30 +480,7 @@ void abi_LoadRecordFacingAndRandomFrame(void)
  */
 Ended PickSpeedAndTurnFromTableB(uint8_t slot)
 {
-    enum { ENTRIES = 0xB513 };
-    uint8_t row = RD8(OBJ->f3670[slot]);
-    uint8_t y = (uint8_t)(row << 2);
-    uint8_t value, bit;
-    SideResult side;
-    Ended e;
-
-    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(ENTRIES + 1 + y)));
-    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(ENTRIES + y)));
-    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(ENTRIES + 3 + y)));
-    value = rd8((uint16_t)(ENTRIES + 2 + y));
-    WR8(OBJ->vy_lo[slot], value);
-    e = ended_with_y(ended_with_carry(ended_load(value), (row & 0x40) != 0), y);
-    value = INC8(OBJ->f3510[slot]);
-    e = ended_then(e, ended_nz(value));
-    jsr_push(0xB50B);
-    side = SideOfPlayer(slot);
-    jsr_pop();
-    bit = (uint8_t)(side.sides & 1);
-    e = ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
-    if (bit == 0) {
-        return e;
-    }
-    return ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+    return pick_speed_and_turn(slot, 0xB513, 0xB50B);
 }
 
 void abi_PickSpeedAndTurnFromTableB(void)
@@ -900,28 +877,7 @@ void abi_BurstWhenFlaggedHit(void)
  */
 Ended PickStateByPlayerDistance(uint8_t slot, bool carry_in)
 {
-    enum { TABLE = 0xB494 };
-    uint8_t high, y, value;
-    Sum sum;
-
-    WR8(OBJ->f2800[slot], 0);
-    high = RD8(OBJ->x_hi[slot]);
-    if (high != 0) {
-        WR8(OBJ->state[slot], 3);
-        return ended_load(3);
-    }
-    high = RD8(OBJ->y_hi[slot]);
-    if (high != 0) {
-        WR8(OBJ->state[slot], 4);
-        return ended_load(4);
-    }
-    jsr_push(0xB48A);
-    sum = PlayerDistanceSum(slot, carry_in);
-    jsr_pop();
-    y = (uint8_t)(sum.value & 0x0F);
-    value = rd8((uint16_t)(TABLE + y));
-    WR8(OBJ->state[slot], value);
-    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(value), sum.carry), sum.overflow), y);
+    return pick_state_by_distance(slot, carry_in, 0xB494, 0xB48A);
 }
 
 void abi_PickStateByPlayerDistance(void)

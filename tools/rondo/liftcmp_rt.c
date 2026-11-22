@@ -130,12 +130,30 @@ void wr8(uint16_t addr, uint8_t value)
 void st0(uint8_t v) { printf("ST0 %02X\n", v); }
 void st1(uint8_t v) { printf("ST1 %02X\n", v); }
 void st2(uint8_t v) { printf("ST2 %02X\n", v); }
+/*
+ * What the checker judges of the mapper and the clock (check.c): one event, "MPR or clock change", placed when the MPRs
+ * or the speed are not what they were; a TAM that maps what is mapped, a CSL or CSH that changes nothing, a TMA (a
+ * read of the mapper) and a CLI or SEI (a flag of P, not an access) are no event on either side. The log says the same.
+ */
+static uint8_t speed = 1;
+
+static void state_line(void)
+{
+    printf("STATE %02X %02X %02X %02X %02X %02X %02X %02X speed %u\n", mpr[0], mpr[1], mpr[2], mpr[3], mpr[4], mpr[5],
+           mpr[6], mpr[7], speed);
+}
+
 void tam(uint8_t mask, uint8_t bank)
 {
+    int changed = 0;
+
     for (int i = 0; i < 8; i++)
-        if (mask & (1 << i))
+        if ((mask & (1 << i)) && mpr[i] != bank) {
             mpr[i] = bank;
-    printf("TAM %02X %02X\n", mask, bank);
+            changed = 1;
+        }
+    if (changed)
+        state_line();
 }
 
 /* TMA with several bits set gives the highest set bit's MPR, as the core does */
@@ -146,13 +164,25 @@ uint8_t tma(uint8_t mask)
     for (int i = 0; i < 8; i++)
         if (mask & (1 << i))
             v = mpr[i];
-    printf("TMA %02X %02X\n", mask, v);
     return v;
 }
 
-void cli(void) { printf("CLI\n"); }
-void csl(void) { printf("CSL\n"); }
-void csh(void) { printf("CSH\n"); }
+void cli(void) {}
+void csl(void)
+{
+    if (speed != 0) {
+        speed = 0;
+        state_line();
+    }
+}
+
+void csh(void)
+{
+    if (speed != 1) {
+        speed = 1;
+        state_line();
+    }
+}
 static void end_line(void)
 {
     printf("END A=%02X X=%02X Y=%02X S=%02X P=%02X\n", cpu.a, cpu.x, cpu.y, cpu.s, cpu.p);
@@ -398,6 +428,7 @@ int main(int argc, char **argv)
         for (int i = 0; i < 5; i++)
             mpr[2 + i] = (uint8_t)m[i];
         mpr[7] = 0x00;
+        speed = 1;
         cpu.a = (uint8_t)a;
         cpu.x = (uint8_t)x;
         cpu.y = (uint8_t)y;

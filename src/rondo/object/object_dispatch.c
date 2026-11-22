@@ -906,7 +906,7 @@ void jump_shim(Ended end, uint16_t target)
  */
 Jump JumpByKindTable(uint8_t slot)
 {
-    Jump jump;
+    Jump jump = { { 0 }, 0, false };
     uint8_t kind, index, low, high;
     Sum diff;
 
@@ -920,6 +920,7 @@ Jump JumpByKindTable(uint8_t slot)
     jump.end = ended_with_y(ended_load(high), index);
     jump.end = ended_with_carry(ended_with_overflow(jump.end, diff.overflow), (diff.value & 0x80) != 0);
     jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    jump.jumps = true;
     return jump;
 }
 
@@ -1128,4 +1129,251 @@ uint8_t ClearWhenCountEnds(uint8_t slot)
 void abi_ClearWhenCountEnds(void)
 {
     abi_nz(ClearWhenCountEnds(cpu.x));
+}
+
+/*
+ * The body of the kind dispatch every overlay carries (its copies differ only in the address of the
+ * table): an object with a kind goes to the code the table names for its kind less one; kind 0 does
+ * nothing.
+ */
+static Jump dispatch_by_kind(uint8_t slot, uint16_t table)
+{
+    Jump jump = { { 0 }, 0, false };
+    uint8_t kind, less, index, low, high;
+
+    kind = RD8(OBJ->kind[slot]);
+    if (kind == 0) {
+        jump.end = ended_load(0);
+        return jump;
+    }
+    less = (uint8_t)(kind - 1);
+    index = (uint8_t)(less << 1);
+    low = rd8((uint16_t)(table + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(table + 1 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (less & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    jump.jumps = true;
+    return jump;
+}
+
+/* The jump of a dispatch: the registers it leaves, and the code if there is one. */
+void dispatch_exit_shim(Jump jump)
+{
+    if (jump.jumps) {
+        jump_shim(jump.end, jump.target);
+    } else {
+        abi_ended(jump.end);
+    }
+}
+
+/*
+ * @routine 0259:313 DispatchByKind0259
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AB3A holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0259's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind0259(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAB3A);
+}
+
+void abi_DispatchByKind0259(void)
+{
+    dispatch_exit_shim(DispatchByKind0259(cpu.x));
+}
+
+/*
+ * @routine 07D9:313 DispatchByKind07D9
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AA72 holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 07D9's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind07D9(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAA72);
+}
+
+void abi_DispatchByKind07D9(void)
+{
+    dispatch_exit_shim(DispatchByKind07D9(cpu.x));
+}
+
+/*
+ * @routine 0889:313 DispatchByKind0889
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AA35 holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0889's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind0889(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAA35);
+}
+
+void abi_DispatchByKind0889(void)
+{
+    dispatch_exit_shim(DispatchByKind0889(cpu.x));
+}
+
+/*
+ * @routine 0A99:313 DispatchByKind0A99
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AB77 holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0A99's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind0A99(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAB77);
+}
+
+void abi_DispatchByKind0A99(void)
+{
+    dispatch_exit_shim(DispatchByKind0A99(cpu.x));
+}
+
+/*
+ * @routine 0CA9:313 DispatchByKind0CA9
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AB9D holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0CA9's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind0CA9(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAB9D);
+}
+
+void abi_DispatchByKind0CA9(void)
+{
+    dispatch_exit_shim(DispatchByKind0CA9(cpu.x));
+}
+
+/*
+ * @routine 0E09:313 DispatchByKind0E09
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AAAA holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0E09's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind0E09(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAAAA);
+}
+
+void abi_DispatchByKind0E09(void)
+{
+    dispatch_exit_shim(DispatchByKind0E09(cpu.x));
+}
+
+/*
+ * @routine 10C9:313 DispatchByKind10C9
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AB4A holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 10C9's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind10C9(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAB4A);
+}
+
+void abi_DispatchByKind10C9(void)
+{
+    dispatch_exit_shim(DispatchByKind10C9(cpu.x));
+}
+
+/*
+ * @routine 12D9:313 DispatchByKind12D9
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $ABAF holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 12D9's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind12D9(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xABAF);
+}
+
+void abi_DispatchByKind12D9(void)
+{
+    dispatch_exit_shim(DispatchByKind12D9(cpu.x));
+}
+
+/*
+ * @routine 16C9:313 DispatchByKind16C9
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AB0D holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 16C9's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind16C9(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAB0D);
+}
+
+void abi_DispatchByKind16C9(void)
+{
+    dispatch_exit_shim(DispatchByKind16C9(cpu.x));
+}
+
+/*
+ * @routine 18D9:313 DispatchByKind18D9
+ * @run 70:A313
+ * WHAT IT DOES: Sends an object to the code its kind names: the table at $AAD5 holds one address per
+ * kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 18D9's copy.
+ * HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+ * zTemp00-01.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+ * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+ */
+Jump DispatchByKind18D9(uint8_t slot)
+{
+    return dispatch_by_kind(slot, 0xAAD5);
+}
+
+void abi_DispatchByKind18D9(void)
+{
+    dispatch_exit_shim(DispatchByKind18D9(cpu.x));
 }

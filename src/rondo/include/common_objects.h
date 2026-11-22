@@ -181,9 +181,22 @@ void floor_fall_exit_shim(FloorFall fall);
 typedef struct {
     Ended end;
     uint16_t target;
+    bool jumps;           /* false: nothing is jumped to (the end is the whole exit) */
 } Jump;
 void jump_shim(Ended end, uint16_t target);
 Jump JumpByKindTable(uint8_t slot);
+void dispatch_exit_shim(Jump jump);
+Jump DispatchByKind0259(uint8_t slot);
+Jump DispatchByKind07D9(uint8_t slot);
+Jump DispatchByKind0889(uint8_t slot);
+Jump DispatchByKind0A99(uint8_t slot);
+Jump DispatchByKind0CA9(uint8_t slot);
+Jump DispatchByKind0E09(uint8_t slot);
+Jump DispatchByKind10C9(uint8_t slot);
+Jump DispatchByKind12D9(uint8_t slot);
+Jump DispatchByKind16C9(uint8_t slot);
+Jump DispatchByKind18D9(uint8_t slot);
+
 
 /* One frame of a common object: its three checks and the jump to its state's handler. */
 typedef struct {

@@ -7,8 +7,6 @@
 
 enum { MASK_STEPS = 8 };
 
-typedef struct { uint8_t a; Sum last; } MaskExit;
-
 /*
  * Eight cells of the buffer, at the table's offsets from a row base, each ANDed with the
  * mask in zTemp00: from the buffer at `from` cells further on (a copy) or from itself.
@@ -60,9 +58,9 @@ static void show_mask_exit(MaskExit out, uint8_t x)
  * Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last
  * cell written, N and Z from X, C and V from the last offset add. X and Y kept.
  */
-void MaskStageRowCopy(uint8_t x, uint8_t y)
+MaskExit MaskStageRowCopy(uint8_t x, uint8_t y)
 {
-    mask_cells(x, y, 2);
+    return mask_cells(x, y, 2);
 }
 
 void abi_MaskStageRowCopy(void)
@@ -82,9 +80,9 @@ void abi_MaskStageRowCopy(void)
  * Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: as
  * MaskStageRowCopy.
  */
-void MaskStageRow(uint8_t x, uint8_t y)
+MaskExit MaskStageRow(uint8_t x, uint8_t y)
 {
-    mask_cells(x, y, 0);
+    return mask_cells(x, y, 0);
 }
 
 void abi_MaskStageRow(void)

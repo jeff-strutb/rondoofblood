@@ -740,4 +740,44 @@ _Static_assert(BiosState_BASE + offsetof(BiosState, screen) + 0 == BiosScreenLo,
 _Static_assert(BiosState_BASE + offsetof(BiosState, screen) + 1 == BiosScreenHi, "BiosState.screen is not at BiosScreenHi");
 #define BIOS ((BiosState *)BiosState_BASE)
 
+/* ScriptSlots: parallel byte arrays at $3C00, 12 slots, 96 bytes */
+#define ScriptSlots_BASE 0x3C00
+#define ScriptSlots_COUNT 12
+typedef struct {
+    uint8_t kind[12]; /* ScriptSlotKind */
+    uint8_t script[12]; /* ScriptSlotScript */
+    uint8_t f18[12]; /* ScriptSlotField18 */
+    uint8_t f24[12]; /* ScriptSlotField24 */
+    uint8_t timer[12]; /* ScriptSlotTimer */
+    uint8_t f3c[12]; /* ScriptSlotField3C */
+    uint8_t f48[12]; /* ScriptSlotField48 */
+    uint8_t f54[12]; /* ScriptSlotField54 */
+} ScriptSlots;
+_Static_assert(sizeof(ScriptSlots) == 0x60, "ScriptSlots size");
+_Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, kind) + 0 == ScriptSlotKind, "ScriptSlots.kind is not at ScriptSlotKind");
+_Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, script) + 0 == ScriptSlotScript, "ScriptSlots.script is not at ScriptSlotScript");
+_Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, f18) + 0 == ScriptSlotField18, "ScriptSlots.f18 is not at ScriptSlotField18");
+_Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, f24) + 0 == ScriptSlotField24, "ScriptSlots.f24 is not at ScriptSlotField24");
+_Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, timer) + 0 == ScriptSlotTimer, "ScriptSlots.timer is not at ScriptSlotTimer");
+_Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, f3c) + 0 == ScriptSlotField3C, "ScriptSlots.f3c is not at ScriptSlotField3C");
+_Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, f48) + 0 == ScriptSlotField48, "ScriptSlots.f48 is not at ScriptSlotField48");
+_Static_assert(ScriptSlots_BASE + offsetof(ScriptSlots, f54) + 0 == ScriptSlotField54, "ScriptSlots.f54 is not at ScriptSlotField54");
+#define SLOTS ((ScriptSlots *)ScriptSlots_BASE)
+
+/* ListChannels: parallel byte arrays at $3C80, 8 slots, 32 bytes */
+#define ListChannels_BASE 0x3C80
+#define ListChannels_COUNT 8
+typedef struct {
+    uint8_t kind[8]; /* ListChannelKind */
+    uint8_t list[8]; /* ListChannelList */
+    uint8_t place[8]; /* ListChannelPlace */
+    uint8_t hold[8]; /* ListChannelHold */
+} ListChannels;
+_Static_assert(sizeof(ListChannels) == 0x20, "ListChannels size");
+_Static_assert(ListChannels_BASE + offsetof(ListChannels, kind) + 0 == ListChannelKind, "ListChannels.kind is not at ListChannelKind");
+_Static_assert(ListChannels_BASE + offsetof(ListChannels, list) + 0 == ListChannelList, "ListChannels.list is not at ListChannelList");
+_Static_assert(ListChannels_BASE + offsetof(ListChannels, place) + 0 == ListChannelPlace, "ListChannels.place is not at ListChannelPlace");
+_Static_assert(ListChannels_BASE + offsetof(ListChannels, hold) + 0 == ListChannelHold, "ListChannels.hold is not at ListChannelHold");
+#define LCH ((ListChannels *)ListChannels_BASE)
+
 #endif

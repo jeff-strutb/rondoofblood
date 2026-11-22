@@ -321,3 +321,21 @@ member,CdPorts,adpcm_rate,u8,0E,AdpcmRate,
 # The System Card's own RAM that the game sets.
 record,BiosState,aos,2214,1,2,BIOS
 member,BiosState,screen,u16le,00,BiosScreenLo|BiosScreenHi,
+
+# The script slots: eight columns of twelve (channels.c clears them 12 bytes apart up to +$54), 3C00 to 3C5F.
+record,ScriptSlots,soa,3C00,C,60,SLOTS
+member,ScriptSlots,kind,u8,0000,ScriptSlotKind,
+member,ScriptSlots,script,u8,000C,ScriptSlotScript,
+member,ScriptSlots,f18,u8,0018,ScriptSlotField18,
+member,ScriptSlots,f24,u8,0024,ScriptSlotField24,
+member,ScriptSlots,timer,u8,0030,ScriptSlotTimer,
+member,ScriptSlots,f3c,u8,003C,ScriptSlotField3C,
+member,ScriptSlots,f48,u8,0048,ScriptSlotField48,
+member,ScriptSlots,f54,u8,0054,ScriptSlotField54,
+
+# The list channels: four columns of eight, 3C80 to 3C9F.
+record,ListChannels,soa,3C80,8,20,LCH
+member,ListChannels,kind,u8,0000,ListChannelKind,
+member,ListChannels,list,u8,0008,ListChannelList,
+member,ListChannels,place,u8,0010,ListChannelPlace,
+member,ListChannels,hold,u8,0018,ListChannelHold,

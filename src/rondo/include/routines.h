@@ -598,6 +598,7 @@ void columns_exit_shim(ColumnsEnd end);
 AxisMove ApplyVelocity(uint8_t object);
 uint8_t axis_move_flags_shim(AxisMove move);
 void ClearObject(uint8_t object);
+void ClearObjectInY(uint8_t object);
 void SelectVdcRegister(uint8_t reg);
 void SelectVramWriteAddress(void);
 void SelectVramData(void);
@@ -628,6 +629,10 @@ uint8_t CopyObjectPlaceBack(uint8_t from, uint8_t to);
 void copy_place_exit_shim(uint8_t last);
 FrameStep StepObjectFrames(uint8_t object, uint8_t *exit_y);
 void step_frames_exit_shim(FrameStep step, uint8_t y);
+uint8_t FindFreeSlotFrom30(uint8_t *exit_a, bool *found);
+uint8_t FindFreeSlotFrom20(uint8_t *exit_a, bool *found);
+uint8_t FindFreeSlotFrom50(uint8_t *exit_a, bool *found);
+void find_slot_exit_shim(uint8_t slot, uint8_t last_type, bool found);
 /* SideOfPlayer: the side bits, and the carry of the last compare when one was made. */
 typedef struct { uint8_t sides; bool carry_set; bool carry; } SideResult;
 SideResult SideOfPlayer(uint8_t object);

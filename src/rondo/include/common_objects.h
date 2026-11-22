@@ -117,7 +117,6 @@ typedef struct {
 
 /* Exit shims exported from the files that define them, for callers' wrappers. */
 void probe_exit_shim(Probe p);  /* object/sensing.c */
-Alu cosine_exit_shim(uint8_t angle, uint16_t value, uint32_t result);  /* math/trig.c */
 
 /* What TurnAngleBack left. */
 typedef struct {

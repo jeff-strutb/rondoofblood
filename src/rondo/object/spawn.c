@@ -230,10 +230,12 @@ static uint8_t find_free_slot(uint8_t slot, uint8_t end, uint8_t *exit_a, bool *
     uint8_t type;
 
     do {
-        type = rd8((uint16_t)(OBJ_2750 + slot));
+        type = RD8(OBJ->kind[slot]);
         *exit_a = type;
         if (type == 0) {
-            ClearObject(slot);
+            jsr_push(0x63D9);
+            ClearObjectInY(slot);
+            jsr_pop();
             *found = true;
             return slot;
         }
@@ -243,20 +245,22 @@ static uint8_t find_free_slot(uint8_t slot, uint8_t end, uint8_t *exit_a, bool *
     return slot;
 }
 
-static void abi_exit_slot(uint8_t slot, uint8_t a, bool found)
+/* Y the slot (or the end of the range), A the last type read, N 0, Z 1, C found. */
+void find_slot_exit_shim(uint8_t slot, uint8_t last_type, bool found)
 {
     cpu.y = slot;
-    cpu.a = a;
+    cpu.a = last_type;
+    abi_nz(0);
     abi_flag(P_C, found);
-    abi_nz(found ? a : 0);
 }
 
 /*
  * @routine 0047:3C8 FindFreeSlotFrom30
  * @run 6A:63C8
  * WHAT IT DOES: Finds an empty object slot from $30 to $3F and empties it fully.
- * HOW: The first with a zero type gets ClearObject.
- * Entry: nothing. Exit: found, C 1, Y the slot, A 0, N 0, Z 1. None, C 0, Y $40, A
+ * HOW: The first with a zero type gets ClearObjectInY (through its vector).
+ * WAITS: no.
+ * Entry: nothing, D clear. Exit: found, C 1, Y the slot, A 0, N 0, Z 1. None, C 0, Y $40, A
  * the last type, N 0, Z 1. X and V kept.
  */
 uint8_t FindFreeSlotFrom30(uint8_t *exit_a, bool *found)
@@ -270,14 +274,15 @@ void abi_FindFreeSlotFrom30(void)
     bool found;
     uint8_t slot = FindFreeSlotFrom30(&a, &found);
 
-    abi_exit_slot(slot, a, found);
+    find_slot_exit_shim(slot, a, found);
 }
 
 /*
  * @routine 0047:3DB FindFreeSlotFrom20
  * @run 6A:63DB
  * WHAT IT DOES: Finds an empty object slot from $20 to $3F and empties it fully.
- * HOW: As FindFreeSlotFrom30, starting lower.
+ * HOW: As FindFreeSlotFrom30, starting lower (it jumps into its loop).
+ * WAITS: no.
  * Entry and exit: as FindFreeSlotFrom30.
  */
 uint8_t FindFreeSlotFrom20(uint8_t *exit_a, bool *found)
@@ -291,15 +296,18 @@ void abi_FindFreeSlotFrom20(void)
     bool found;
     uint8_t slot = FindFreeSlotFrom20(&a, &found);
 
-    abi_exit_slot(slot, a, found);
+    find_slot_exit_shim(slot, a, found);
 }
 
 /*
  * @routine 0047:3DF FindFreeSlotFrom50
  * @run 6A:63DF
  * WHAT IT DOES: Finds an empty object slot from $50 to $53 and empties it fully.
- * HOW: As FindFreeSlotFrom30, in its own loop.
- * Entry: nothing. Exit: as FindFreeSlotFrom30, with Y $54 for none.
+ * HOW: As FindFreeSlotFrom30, in its own loop that shares the found tail. The loop's later
+ * rounds and the none-found exit ran in no script: the draft stops there, so liftcmp judges only
+ * the slots it reaches; the rest waits for coverage (PROCEDURE section 6).
+ * WAITS: no.
+ * Entry: nothing, D clear. Exit: as FindFreeSlotFrom30, with Y $54 for none.
  */
 uint8_t FindFreeSlotFrom50(uint8_t *exit_a, bool *found)
 {
@@ -312,5 +320,5 @@ void abi_FindFreeSlotFrom50(void)
     bool found;
     uint8_t slot = FindFreeSlotFrom50(&a, &found);
 
-    abi_exit_slot(slot, a, found);
+    find_slot_exit_shim(slot, a, found);
 }

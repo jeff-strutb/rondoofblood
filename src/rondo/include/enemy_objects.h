@@ -169,7 +169,6 @@ static inline Ended ended_then(Ended before, Ended after)
  */
 AxisMove ApplyVelocityX(uint8_t object);                                          /* object/motion.c */
 AxisMove ApplyVelocityY(uint8_t object);                                          /* object/motion.c */
-uint8_t FindFreeSlotFrom30(uint8_t *exit_a, bool *found);                         /* object/spawn.c */
 
 
 /* A routine that may play a sound: what it ended with, and the call the wrapper must show the leak of. */

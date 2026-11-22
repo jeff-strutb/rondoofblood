@@ -277,3 +277,173 @@ void abi_BitMaskFromIndex(void)
     abi_nz(0);
     abi_flag(P_C, true);
 }
+
+/*
+ * @routine 0519:329 StepReleaseOnHit
+ * @run 70:A329
+ * WHAT IT DOES: An object that waits to be hit. It starts from its record; each frame after, it
+ * steps its animation list (the list at $A365); once it has taken a hit of 5 or more it records
+ * the event, takes its next kind and a timer of $10, goes back to state 0, and starts an object of
+ * kind $9B at its place in the first free slot from $50 to $53.
+ * HOW: LoadObjectRecord and a frame of 1 on state 0; else StepObjectFrames with the list's pointer
+ * put in zTemp10-11, then the hit byte compared with 5. The spawn is a tail jump into
+ * StartObjectAtPlace. The list is read from the disc's table at $A365 by the step (bank 70).
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper (started: A 1, C from
+ * the record; stepped: A the hit byte, C clear and N, Z from hit less 5; no slot: as
+ * FindFreeSlotFrom50; spawned: as StartObjectAtPlace with the slot found in Y).
+ */
+ReleaseResult StepReleaseOnHit(uint8_t slot, uint8_t y)
+{
+    ReleaseResult result = { RELEASE_STEPPED, false, y, 0, 0, 0, 0 };
+    uint8_t state, hit, kind, found_slot;
+    bool found;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        uint8_t nz;
+
+        jsr_push(0xA331);
+        LoadObjectRecord(slot, &nz, &result.carry);
+        jsr_pop();
+        WR8(OBJ->frame[slot], 1);
+        result.end = RELEASE_STARTED;
+        return result;
+    }
+    WR8(ZP->temp11, 0xA3);
+    WR8(ZP->temp10, 0x65);
+    jsr_push(0xA342);
+    StepObjectFrames(slot, &result.y);
+    jsr_pop();
+    hit = RD8(OBJ->hit_taken[slot]);
+    result.hit = hit;
+    if (hit < 5) {
+        return result;
+    }
+    {
+        uint8_t stored, event, byte;
+
+        jsr_push(0xA34C);
+        RecordObjectEvent(slot, &stored, &event, &byte);
+        jsr_pop();
+    }
+    kind = RD8(OBJ->next_kind[slot]);
+    WR8(OBJ->kind[slot], kind);
+    WR8(OBJ->timer[slot], 0x10);
+    WR8(OBJ->state[slot], 0);
+    jsr_push(0xA35D);
+    found_slot = FindFreeSlotFrom50(&result.last_type, &found);
+    jsr_pop();
+    result.slot = found_slot;
+    if (!found) {
+        result.end = RELEASE_NO_SLOT;
+        return result;
+    }
+    result.placed = StartObjectAtPlace(0x9B, slot, found_slot);
+    result.end = RELEASE_SPAWNED;
+    return result;
+}
+
+void abi_StepReleaseOnHit(void)
+{
+    ReleaseResult result = StepReleaseOnHit(cpu.x, cpu.y);
+
+    switch (result.end) {
+    case RELEASE_STARTED:
+        cpu.y = 11;
+        cpu.a = 1;
+        abi_nz(1);
+        abi_flag(P_C, result.carry);
+        break;
+    case RELEASE_STEPPED:
+        cpu.y = result.y;
+        cpu.a = result.hit;
+        abi_nz((uint8_t)(result.hit - 5));
+        abi_flag(P_C, false);
+        break;
+    case RELEASE_NO_SLOT:
+        find_slot_exit_shim(result.slot, result.last_type, false);
+        break;
+    case RELEASE_SPAWNED:
+        find_slot_exit_shim(result.slot, result.last_type, true);
+        copy_place_exit_shim(result.placed);
+        break;
+    }
+}
+
+/*
+ * @routine 0519:36D StepFallingItem
+ * @run 70:A36D
+ * WHAT IT DOES: A small thing that falls and then goes away. It starts from its record with its
+ * speed set from a two-byte row of the table at $A3B1 picked by its kind less $9B; each frame after,
+ * it moves down by its Y speed, clears its flash flag and steps the animation list the second table
+ * ($A3B9, by the same index) names; when the list ends the object is cleared.
+ * HOW: ApplyVelocityY, then StepObjectFrames with zTemp10-11 loaded from the table (bank 70); the
+ * clear is a tail jump into ClearObject, which leaves every register as it was.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper (started: A the speed's low
+ * byte, Y the table index, C bit 7 of kind less $9B; else as StepObjectFrames).
+ */
+FallingItem StepFallingItem(uint8_t slot, uint8_t y)
+{
+    FallingItem result = { false, FRAME_HELD, y, 0, false };
+    uint8_t state, kind, diff, index, byte;
+    Sum sum;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        uint8_t nz;
+        bool carry;
+
+        jsr_push(0xA375);
+        LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        kind = RD8(OBJ->kind[slot]);
+        sum = sub_bytes(kind, 0x9B, true);
+        diff = sum.value;
+        index = (uint8_t)(diff << 1);
+        result.carry = (diff & 0x80) != 0;
+        byte = rd8((uint16_t)(0xA3B2 + index));
+        WR8(OBJ->vy_hi[slot], byte);
+        byte = rd8((uint16_t)(0xA3B1 + index));
+        WR8(OBJ->vy_lo[slot], byte);
+        result.started = true;
+        result.y = index;
+        result.last = byte;
+        return result;
+    }
+    jsr_push(0xA393);
+    ApplyVelocityY(slot);
+    jsr_pop();
+    WR8(OBJ->flash_flags[slot], 0);
+    kind = RD8(OBJ->kind[slot]);
+    sum = sub_bytes(kind, 0x9B, true);
+    index = (uint8_t)(sum.value << 1);
+    byte = rd8((uint16_t)(0xA3B9 + index));
+    WR8(ZP->temp10, byte);
+    byte = rd8((uint16_t)(0xA3BA + index));
+    WR8(ZP->temp11, byte);
+    jsr_push(0xA3AB);
+    result.step = StepObjectFrames(slot, &result.y);
+    jsr_pop();
+    if (result.step == FRAME_LIST_ENDED) {
+        ClearObject(slot);
+    }
+    return result;
+}
+
+void abi_StepFallingItem(void)
+{
+    FallingItem result = StepFallingItem(cpu.x, cpu.y);
+
+    if (result.started) {
+        cpu.y = result.y;
+        cpu.a = result.last;
+        abi_nz(result.last);
+        abi_flag(P_C, result.carry);
+    } else {
+        step_frames_exit_shim(result.step, result.y);
+    }
+}

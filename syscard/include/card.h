@@ -24,6 +24,9 @@ enum { P_C = 0x01, P_Z = 0x02, P_I = 0x04, P_D = 0x08, P_B = 0x10, P_T = 0x20, P
 
 uint8_t rd8(uint16_t addr);
 void wr8(uint16_t addr, uint8_t value);
+void st0(uint8_t value);
+void st1(uint8_t value);
+void st2(uint8_t value);
 uint8_t tma(uint8_t mpr_bit);
 void tam(uint8_t mpr_bits, uint8_t bank);
 void cli(void);

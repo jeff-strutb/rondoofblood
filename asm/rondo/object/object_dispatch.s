@@ -1,3 +1,26 @@
+; @routine 0259:313 DispatchByKind0259
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AB3A holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0259's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind0259:
+    lda a:OBJ_2750,x
+    beq DispatchByKind0259_at0
+    dec a
+    asl a
+    tay
+    lda a:$AB3A,y
+    sta z:zTemp00
+    lda a:$AB3B,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind0259_at0:
+    rts
+
 ; @routine 0519:329 StepReleaseOnHit
 ; @run 70:A329
 ; WHAT IT DOES: An object that waits to be hit. It starts from its record; each frame after, it
@@ -561,4 +584,210 @@ ClearWhenCountEnds:
     bne ClearWhenCountEnds_at0
     jmp VecClearObject
 ClearWhenCountEnds_at0:
+    rts
+; @routine 07D9:313 DispatchByKind07D9
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AA72 holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 07D9's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind07D9:
+    lda a:OBJ_2750,x
+    beq DispatchByKind07D9_at0
+    dec a
+    asl a
+    tay
+    lda a:$AA72,y
+    sta z:zTemp00
+    lda a:$AA73,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind07D9_at0:
+    rts
+
+; @routine 0889:313 DispatchByKind0889
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AA35 holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0889's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind0889:
+    lda a:OBJ_2750,x
+    beq DispatchByKind0889_at0
+    dec a
+    asl a
+    tay
+    lda a:$AA35,y
+    sta z:zTemp00
+    lda a:$AA36,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind0889_at0:
+    rts
+
+; @routine 0A99:313 DispatchByKind0A99
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AB77 holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0A99's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind0A99:
+    lda a:OBJ_2750,x
+    beq DispatchByKind0A99_at0
+    dec a
+    asl a
+    tay
+    lda a:$AB77,y
+    sta z:zTemp00
+    lda a:$AB78,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind0A99_at0:
+    rts
+
+; @routine 0CA9:313 DispatchByKind0CA9
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AB9D holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0CA9's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind0CA9:
+    lda a:OBJ_2750,x
+    beq DispatchByKind0CA9_at0
+    dec a
+    asl a
+    tay
+    lda a:$AB9D,y
+    sta z:zTemp00
+    lda a:$AB9E,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind0CA9_at0:
+    rts
+
+; @routine 0E09:313 DispatchByKind0E09
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AAAA holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 0E09's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind0E09:
+    lda a:OBJ_2750,x
+    beq DispatchByKind0E09_at0
+    dec a
+    asl a
+    tay
+    lda a:$AAAA,y
+    sta z:zTemp00
+    lda a:$AAAB,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind0E09_at0:
+    rts
+
+; @routine 10C9:313 DispatchByKind10C9
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AB4A holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 10C9's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind10C9:
+    lda a:OBJ_2750,x
+    beq DispatchByKind10C9_at0
+    dec a
+    asl a
+    tay
+    lda a:$AB4A,y
+    sta z:zTemp00
+    lda a:$AB4B,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind10C9_at0:
+    rts
+
+; @routine 12D9:313 DispatchByKind12D9
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $ABAF holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 12D9's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind12D9:
+    lda a:OBJ_2750,x
+    beq DispatchByKind12D9_at0
+    dec a
+    asl a
+    tay
+    lda a:$ABAF,y
+    sta z:zTemp00
+    lda a:$ABB0,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind12D9_at0:
+    rts
+
+; @routine 16C9:313 DispatchByKind16C9
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AB0D holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 16C9's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind16C9:
+    lda a:OBJ_2750,x
+    beq DispatchByKind16C9_at0
+    dec a
+    asl a
+    tay
+    lda a:$AB0D,y
+    sta z:zTemp00
+    lda a:$AB0E,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind16C9_at0:
+    rts
+
+; @routine 18D9:313 DispatchByKind18D9
+; @run 70:A313
+; WHAT IT DOES: Sends an object to the code its kind names: the table at $AAD5 holds one address per
+; kind, kind 1 first. Kind 0 does nothing (that arm, the byte at A328, ran in no script). This is the overlay at sector 18D9's copy.
+; HOW: dispatch_by_kind with this overlay's table (read from the disc, bank 70); the jump goes through
+; zTemp00-01.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
+; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+DispatchByKind18D9:
+    lda a:OBJ_2750,x
+    beq DispatchByKind18D9_at0
+    dec a
+    asl a
+    tay
+    lda a:$AAD5,y
+    sta z:zTemp00
+    lda a:$AAD6,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+DispatchByKind18D9_at0:
     rts

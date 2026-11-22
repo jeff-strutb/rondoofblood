@@ -600,6 +600,16 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 3B20,abs,PaletteWorkSpare,the colour kept while a palette is rotated
 3B40,abs,StageMaskBuffer,128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask
 9149,abs,StageMaskOffsets,the stage overlay's 8 offsets (00 01 20 21 40 41 60 61) of the mask buffer's cells one masking step touches; the same bytes at every copy of the overlay
+93D0,abs,StageSpawnSlot,by spawn row of 8 in the stage overlay: the object slot to clear and fill
+93D8,abs,StageSpawnFrame,by spawn row of 8 in the stage overlay: stored to the object's 2A68 field (its frame)
+93E0,abs,StageSpawnKind,by spawn row of 8 in the stage overlay: stored to the object's 2A10 field
+93E8,abs,StageSpawnXLo,by spawn row of 8 in the stage overlay: stored to the object's X low
+93F0,abs,StageSpawnYLo,by spawn row of 8 in the stage overlay: stored to the object's Y low
+96E2,abs,StageSpawnSlotB,by spawn row of 8 in the stage overlay (the other stage group's): the object slot to clear and fill
+96EA,abs,StageSpawnFrameB,by spawn row of 8 in the stage overlay (the other stage group's): stored to the object's 2A68 field (its frame)
+96F2,abs,StageSpawnKindB,by spawn row of 8 in the stage overlay (the other stage group's): stored to the object's 2A10 field
+96FA,abs,StageSpawnXLoB,by spawn row of 8 in the stage overlay (the other stage group's): stored to the object's X low
+9702,abs,StageSpawnYLoB,by spawn row of 8 in the stage overlay (the other stage group's): stored to the object's Y low
 3F83,abs,TitleSaveRead,1 once the title has read the backup file
 3F84,abs,TitleSeen,1 once the title has run to its end; then Run skips it
 802E,abs,TitleSteps,the title's handlers by sub-mode, a word each

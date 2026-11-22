@@ -593,6 +593,16 @@
 #define PaletteWorkSpare 0x3B20 /* the colour kept while a palette is rotated */
 #define StageMaskBuffer 0x3B40 /* 128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask */
 #define StageMaskOffsets 0x9149 /* the stage overlay's 8 offsets (00 01 20 21 40 41 60 61) of the mask buffer's cells one masking step touches; the same bytes at every copy of the overlay */
+#define StageSpawnSlot 0x93D0 /* by spawn row of 8 in the stage overlay: the object slot to clear and fill */
+#define StageSpawnFrame 0x93D8 /* by spawn row of 8 in the stage overlay: stored to the object's 2A68 field (its frame) */
+#define StageSpawnKind 0x93E0 /* by spawn row of 8 in the stage overlay: stored to the object's 2A10 field */
+#define StageSpawnXLo 0x93E8 /* by spawn row of 8 in the stage overlay: stored to the object's X low */
+#define StageSpawnYLo 0x93F0 /* by spawn row of 8 in the stage overlay: stored to the object's Y low */
+#define StageSpawnSlotB 0x96E2 /* by spawn row of 8 in the stage overlay (the other stage group's): the object slot to clear and fill */
+#define StageSpawnFrameB 0x96EA /* by spawn row of 8 in the stage overlay (the other stage group's): stored to the object's 2A68 field (its frame) */
+#define StageSpawnKindB 0x96F2 /* by spawn row of 8 in the stage overlay (the other stage group's): stored to the object's 2A10 field */
+#define StageSpawnXLoB 0x96FA /* by spawn row of 8 in the stage overlay (the other stage group's): stored to the object's X low */
+#define StageSpawnYLoB 0x9702 /* by spawn row of 8 in the stage overlay (the other stage group's): stored to the object's Y low */
 #define TitleSaveRead 0x3F83 /* 1 once the title has read the backup file */
 #define TitleSeen 0x3F84 /* 1 once the title has run to its end; then Run skips it */
 #define TitleSteps 0x802E /* the title's handlers by sub-mode, a word each */

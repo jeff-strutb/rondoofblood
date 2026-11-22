@@ -204,7 +204,12 @@ static void enter(uint16_t target, int tail)
 {
     void (*abi)(void) = find_abi(target);
 
-    if (abi && depth < 8) {
+    if (abi && depth >= 512) {
+        /* the checker allows nesting to 512: a chain longer than that, or a runaway, ends the case */
+        printf("DEPTHLIMIT\n");
+        longjmp(case_end, 1);
+    }
+    if (abi) {
         /* C in the tree: it runs, on both sides, and its accesses are in the log as they are made */
         printf("#IN %04X\n", target);
         depth++;

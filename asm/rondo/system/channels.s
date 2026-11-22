@@ -2,6 +2,7 @@
 ; @run 69:5506
 ; WHAT IT DOES: Stops every list channel and everything kept after them.
 ; HOW: Block-fills $3C80 up with zero.
+; WAITS: no.
 ; Entry: nothing. Exit: all registers and flags kept.
 ClearListChannels:
     tai KernelZeros,ListChannelKind,ListChannelClearEnd-ListChannelKind
@@ -11,6 +12,7 @@ ClearListChannels:
 ; @run 69:550E
 ; WHAT IT DOES: Starts list channel 0 as kind 1.
 ; HOW: Sets X to 0 and runs into StartListChannelKind1.
+; WAITS: no.
 ; Entry: A list. Exit: A 1, N 0, Z 0, X 0. Y kept.
 StartListChannel0Kind1:
     clx
@@ -19,6 +21,7 @@ StartListChannel0Kind1:
 ; @run 69:550F
 ; WHAT IT DOES: Starts a list channel as kind 1.
 ; HOW: Stores the list, then the kind, and clears its place and hold.
+; WAITS: no.
 ; Entry: A list, X channel. Exit: A 1, N 0, Z 0. X and Y kept.
 StartListChannelKind1:
     sta a:ListChannelList,x
@@ -33,6 +36,7 @@ StartListChannelKind1_at0:
 ; @run 69:551E
 ; WHAT IT DOES: Starts list channel 0 as kind 2.
 ; HOW: Sets X to 0 and runs into StartListChannelKind2.
+; WAITS: no.
 ; Entry: A list. Exit: A 2, N 0, Z 0, X 0. Y kept.
 StartListChannel0Kind2:
     clx
@@ -41,6 +45,7 @@ StartListChannel0Kind2:
 ; @run 69:551F
 ; WHAT IT DOES: Starts a list channel as kind 2.
 ; HOW: Stores the list, then the kind, and clears its place and hold.
+; WAITS: no.
 ; Entry: A list, X channel. Exit: A 2, N 0, Z 0. X and Y kept.
 StartListChannelKind2:
     sta a:ListChannelList,x
@@ -51,6 +56,7 @@ StartListChannelKind2:
 ; @run 69:5526
 ; WHAT IT DOES: Starts a list channel as kind 3.
 ; HOW: Stores the list, then the kind, and clears its place and hold.
+; WAITS: no.
 ; Entry: A list, X channel. Exit: A 3, N 0, Z 0. X and Y kept.
 StartListChannelKind3:
     sta a:ListChannelList,x
@@ -61,6 +67,7 @@ StartListChannelKind3:
 ; @run 69:552D
 ; WHAT IT DOES: Starts script slot 0 as kind 1.
 ; HOW: Sets X to 0 and runs into StartScriptSlotKind1.
+; WAITS: no.
 ; Entry: A script. Exit: A and Y the script, X 0, N and Z from it.
 StartScriptSlot0Kind1:
     clx
@@ -68,7 +75,8 @@ StartScriptSlot0Kind1:
 ; @routine 0045:52E StartScriptSlotKind1
 ; @run 69:552E
 ; WHAT IT DOES: Starts a script slot as kind 1.
-; HOW: Empties it, stores the kind and the script.
+; HOW: Keeps the script in Y, empties the slot, stores the kind and the script.
+; WAITS: no.
 ; Entry: A script, X slot. Exit: A and Y the script, N and Z from it. X kept.
 StartScriptSlotKind1:
     tay
@@ -84,6 +92,7 @@ StartScriptSlotKind1_at0:
 ; @run 69:553B
 ; WHAT IT DOES: Starts script slot 0 as kind 2.
 ; HOW: Sets X to 0 and runs into StartScriptSlotKind2.
+; WAITS: no.
 ; Entry: A script. Exit: A and Y the script, X 0, N and Z from it.
 StartScriptSlot0Kind2:
     clx
@@ -91,7 +100,8 @@ StartScriptSlot0Kind2:
 ; @routine 0045:53C StartScriptSlotKind2
 ; @run 69:553C
 ; WHAT IT DOES: Starts a script slot as kind 2.
-; HOW: Empties it, stores the kind and the script.
+; HOW: Keeps the script in Y, empties the slot, stores the kind and the script.
+; WAITS: no.
 ; Entry: A script, X slot. Exit: A and Y the script, N and Z from it. X kept.
 StartScriptSlotKind2:
     tay
@@ -103,6 +113,7 @@ StartScriptSlotKind2:
 ; @run 69:5543
 ; WHAT IT DOES: Starts script slot 0 as kind 3.
 ; HOW: Sets X to 0 and runs into StartScriptSlotKind3.
+; WAITS: no.
 ; Entry: A script. Exit: A and Y the script, X 0, N and Z from it.
 StartScriptSlot0Kind3:
     clx
@@ -110,7 +121,8 @@ StartScriptSlot0Kind3:
 ; @routine 0045:544 StartScriptSlotKind3
 ; @run 69:5544
 ; WHAT IT DOES: Starts a script slot as kind 3.
-; HOW: Empties it, stores the kind and the script.
+; HOW: Keeps the script in Y, empties the slot, stores the kind and the script.
+; WAITS: no.
 ; Entry: A script, X slot. Exit: A and Y the script, N and Z from it. X kept.
 StartScriptSlotKind3:
     tay
@@ -121,7 +133,8 @@ StartScriptSlotKind3:
 ; @routine 0045:54B StartScriptSlotKind4
 ; @run 69:554B
 ; WHAT IT DOES: Starts a script slot as kind 4.
-; HOW: Empties it, stores the kind and the script.
+; HOW: Keeps the script in Y, empties the slot, stores the kind and the script.
+; WAITS: no.
 ; Entry: A script, X slot. Exit: A and Y the script, N and Z from it. X kept.
 StartScriptSlotKind4:
     tay
@@ -132,7 +145,11 @@ StartScriptSlotKind4:
 ; @routine 0045:552 StartSoleScriptSlot
 ; @run 69:5552
 ; WHAT IT DOES: Starts a script slot as kind 5, unless slot 3 is in use: says which.
-; HOW: Slot 3's kind nonzero refuses. Otherwise empties the slot and starts it.
+; HOW: Keeps the script in Y. Slot 3's kind nonzero refuses. Otherwise empties the slot and
+; calls the end that stores the kind and the script (the draft stubs that call, since the end is
+; the middle of StartScriptSlotKind1 and has no routine of its own, so liftcmp cannot compare
+; past it: its first difference is the draft's CALL to $5533 against the end's two writes).
+; WAITS: no.
 ; Entry: A script, X slot. Exit, started: A the script, N and Z from it, C 1.
 ; Refused: A slot 3's kind, N and Z from it, C 0. Y the script, X kept, either way.
 StartSoleScriptSlot:
@@ -152,6 +169,7 @@ StartSoleScriptSlot_at0:
 ; @run 69:5562
 ; WHAT IT DOES: Starts a script slot as kind 6, keeping Y.
 ; HOW: Empties it, then the kind and, from what it finds in Y, the script.
+; WAITS: no.
 ; Entry: X slot, Y script. Exit: A and Y the script, N and Z from it. X kept.
 StartScriptSlotKind6:
     bsr ClearScriptSlot
@@ -162,6 +180,7 @@ StartScriptSlotKind6:
 ; @run 69:5568
 ; WHAT IT DOES: Starts a script slot as kind 7, keeping Y.
 ; HOW: Empties it, then the kind and, from what it finds in Y, the script.
+; WAITS: no.
 ; Entry: X slot, Y script. Exit: A and Y the script, N and Z from it. X kept.
 StartScriptSlotKind7:
     bsr ClearScriptSlot
@@ -172,6 +191,7 @@ StartScriptSlotKind7:
 ; @run 69:556E
 ; WHAT IT DOES: Empties a script slot.
 ; HOW: Zeroes its first eight fields, 12 bytes apart.
+; WAITS: no.
 ; Entry: X slot. Exit: all registers and flags kept.
 ClearScriptSlot:
     stz a:ScriptSlotKind,x

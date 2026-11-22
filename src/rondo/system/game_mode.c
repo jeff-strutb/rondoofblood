@@ -751,6 +751,7 @@ void abi_SaveScore(void)
  * except on the bonus stage, which marks it and, unless the save slot's flag is set,
  * loads the ending's scenes and goes to mode 9.
  * HOW: Compares zStage; StageClearBit in StagesVisited; the save's flag at SaveBonusSeen.
+ * WAITS: yes, through ResetGameState (the vertical blank), the scene loads (the drive); the stack there is the mode loop's return and the call frames.
  * Entry: from ModeStage. Exit: as what ran last.
  */
 typedef struct {
@@ -782,7 +783,7 @@ StageDoneRun ModeStageDone(void)
     }
     run.mark = mark_stage(StagesVisited);
     ResetGameState();
-    run.stop = SoundStopAll();
+    run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */
     run.slot = rd8(zSaveSlot);
     if (!(run.slot & 0x80)) {
         run.saved = true;
@@ -1259,11 +1260,12 @@ void abi_ModeDead(void)
  * WHAT IT DOES: Mode 8: waits out zWaitTimer, stops the sound, and goes back to the title;
  * with bit 4 of zModeEvents, to the stage's load from the start.
  * HOW: Counts down; SoundStopAll; ModeBackToTitle.
+ * WAITS: yes, through ModeBackToTitle (ResetGameState and the title's loads); the stack there is the mode loop's return and the call frames.
  * Entry: nothing. Exit: on waiting, A kept, N and Z from the count; else as what ran last.
  */
 typedef struct { uint8_t timer; StopCall stop; bool restart; BackToTitleRun title; } GameOverRun;
 
-GameOverRun ModeGameOverWait(void)
+GameOverRun ModeGameOverWait(uint8_t x, uint8_t y)
 {
     GameOverRun run;
 
@@ -1271,7 +1273,7 @@ GameOverRun ModeGameOverWait(void)
     wr8(zWaitTimer, run.timer);
     if (run.timer != 0)
         return run;
-    run.stop = SoundStopAll();
+    run.stop = SoundStopAll(x, y);
     run.restart = (rd8(zModeEvents) & EVENT_CONTINUE) != 0;
     if (!run.restart) {
         run.title = ModeBackToTitle();
@@ -1287,7 +1289,7 @@ GameOverRun ModeGameOverWait(void)
 
 void abi_ModeGameOverWait(void)
 {
-    GameOverRun run = ModeGameOverWait();
+    GameOverRun run = ModeGameOverWait(cpu.x, cpu.y);
 
     abi_nz(run.timer);
     if (run.timer != 0)

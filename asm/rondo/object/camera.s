@@ -27,9 +27,11 @@ PlayerDistanceSum:
 ; @routine 0047:589 SoundIfOnFirstScreen
 ; @run 6A:6589
 ; WHAT IT DOES: Plays a sound if the object is on the first screen across and down.
-; HOW: The high bytes of its position ORed must be zero, then SoundCommand.
-; Entry: A command, X object. Exit, not played: A kept, N and Z from it. Exit, played:
-; as SoundCommand.
+; HOW: Keeps the command on the stack, reads the object's two position high bytes and returns
+; if their OR is not zero; otherwise pulls the command and goes to SoundCommand.
+; WAITS: no.
+; Entry: A command, X object. Exit, not played: A the command, N and Z from it, C and V kept.
+; Exit, played: as SoundCommand with the command's flags.
 SoundIfOnFirstScreen:
     pha
     lda a:OBJ_X_HI,x

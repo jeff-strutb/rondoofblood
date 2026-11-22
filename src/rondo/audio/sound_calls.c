@@ -33,41 +33,52 @@ static void driver_entry_shim(uint8_t a, Sum bank)
  * WHAT IT DOES: Stops every sound channel.
  * HOW: Maps the driver's banks, calls its stop entry, restores the banks from
  * the stack.
- * Entry: nothing. Exit: A the bank restored to MPR4, X and Y kept, N and Z from
- * X, C and V as the driver left them.
+ * WAITS: no.
+ * Entry: X and Y are pushed first and pulled last (a typed caller passes its own). Exit: A the
+ * bank restored to MPR4, X and Y kept, N and Z from X, C and V as the driver left them. liftcmp
+ * agrees for the first 32 accesses; its first difference is inside SoundDriverStopAll (the
+ * driver's own call frames).
  */
-StopCall SoundStopAll(void)
+StopCall SoundStopAll(uint8_t kept_x, uint8_t kept_y)
 {
     StopCall call;
-    uint8_t mpr5;
-    uint8_t mpr6;
+    uint8_t mpr4, mpr5, mpr6;
 
-    call.mpr4 = tma(MPR4);
+    push8(kept_x);
+    push8(kept_y);
+    mpr4 = tma(MPR4);
+    push8(mpr4);
     mpr5 = tma(MPR5);
+    push8(mpr5);
     mpr6 = tma(MPR6);
+    push8(mpr6);
     call.bank = map_sound_banks();
+    jsr_push(0x435A);
     SoundDriverStopAll();
+    jsr_pop();
+    mpr6 = pull8();
     tam(MPR6, mpr6);
+    mpr5 = pull8();
     tam(MPR5, mpr5);
+    call.mpr4 = pull8();
     tam(MPR4, call.mpr4);
+    call.y = pull8();
+    call.x = pull8();
     return call;
 }
 
 void stop_call_exit_shim(StopCall call)
 {
-    uint8_t x = cpu.x;
-    uint8_t y = cpu.y;
-
     driver_entry_shim((uint8_t)(call.bank.value + 2), call.bank);
     cpu.a = call.mpr4;
-    cpu.x = x;
-    cpu.y = y;
-    abi_nz(x);
+    cpu.x = call.x;
+    cpu.y = call.y;
+    abi_nz(call.x);
 }
 
 void abi_SoundStopAll(void)
 {
-    stop_call_exit_shim(SoundStopAll());
+    stop_call_exit_shim(SoundStopAll(cpu.x, cpu.y));
 }
 
 /*
@@ -77,26 +88,34 @@ void abi_SoundStopAll(void)
  * in from the main program at this moment.
  * HOW: zSoundBusy nonzero returns. Otherwise sets it, maps the driver's banks,
  * calls its tick, restores the banks and clears it.
+ * WAITS: no.
  * Entry: frame interrupt. Exit: busy, A zSoundBusy, N and Z from it. Else A the
  * bank restored to MPR4, N and Z from it; X, Y, C and V as the driver left them.
  */
 TickCall SoundFrameTick(void)
 {
     TickCall call;
-    uint8_t mpr5;
-    uint8_t mpr6;
+    uint8_t mpr4, mpr5, mpr6;
 
     call.busy = rd8(zSoundBusy);
     if (call.busy != 0)
         return call;
     wr8(zSoundBusy, SOUND_CALL_BUSY);
-    call.mpr4 = tma(MPR4);
+    mpr4 = tma(MPR4);
+    push8(mpr4);
     mpr5 = tma(MPR5);
+    push8(mpr5);
     mpr6 = tma(MPR6);
+    push8(mpr6);
     call.bank = map_sound_banks();
+    jsr_push(0x4387);
     call.tick = SoundDriverTick();
+    jsr_pop();
+    mpr6 = pull8();
     tam(MPR6, mpr6);
+    mpr5 = pull8();
     tam(MPR5, mpr5);
+    call.mpr4 = pull8();
     tam(MPR4, call.mpr4);
     wr8(zSoundBusy, 0);
     return call;
@@ -126,6 +145,7 @@ void abi_SoundFrameTick(void)
  * HOW: Bit 7 of zSoundBusy set returns. Otherwise sets it, which also holds off
  * the frame tick; keeps the three MPRs in RAM, maps the driver and calls its
  * command entry with the command in A.
+ * WAITS: no.
  * Entry: A command. Exit, dropped: A kept, N and V bits 7 and 6 of zSoundBusy,
  * Z from A and it. Exit, taken: A the MPR4 bank restored, N and Z from it; X, Y,
  * C and V as the driver left them.
@@ -140,12 +160,16 @@ CommandCall SoundCommand(uint8_t command)
         call.mpr4 = byte;
         return call;
     }
+    push8(command);
     wr8(zSoundBusy, SOUND_CALL_BUSY);
     wr8(SavedMprA, tma(MPR4));
     wr8(SavedMprB, tma(MPR5));
     wr8(SavedMprC, tma(MPR6));
     call.bank = map_sound_banks();
+    command = pull8();
+    jsr_push(0x43BC);
     call.command = SoundDriverCommand(command);
+    jsr_pop();
     tam(MPR6, rd8(SavedMprC));
     tam(MPR5, rd8(SavedMprB));
     call.mpr4 = rd8(SavedMprA);

@@ -163,21 +163,34 @@ def measure(tree, box, out, script):
 
 
 def red(res):
+    """A script with a result is red when its A7 is not identical or A5 found a defect (a divergent or
+    order-flagged call): the script is then run again alone."""
     return bool(res.get("errors")) is False and (
-        res["a7"].get("verdict") != "IDENTICAL" or any(v["divergent"] for v in res["a5"].values()))
+        res["a7"].get("verdict") != "IDENTICAL" or any(v["divergent"] or v["order_flags"] for v in res["a5"].values()))
+
+
+def pack(d):
+    """{KIND: n} as 'KIND=n;KIND=n' (only the non-zero ones)."""
+    return ";".join(f"{k}={n}" for k, n in sorted(d.items()) if n)
 
 
 def store(rec, res, rev, chash, ext, top):
     s = res["script"]
+    ep = records.epoch(top)
     a5 = [{"script": s, "routine": r, **{k: v[k] for k in ("calls", "identical", "divergent", "unverified",
-           "order_flags")}, "chash": "", "detail": v["detail"], "epoch": records.epoch(top),
-           "source": rev}
+           "order_flags")}, "chash": "", "detail": v["detail"], "epoch": ep, "source": rev,
+           "defects": pack(v.get("defects", {})), "causes": pack(v.get("causes", {}))}
           for r, v in sorted(res["a5"].items())]
-    a7 = [{"script": s, "routine": r, "swapped": v[0], "ran_inside": v[1], "chash": "",
-           "epoch": records.epoch(top)} for r, v in sorted(res["reach"].items())]
+    defects = res.get("a7_defects", {})
+    a7 = [{"script": s, "routine": r, "swapped": res["reach"].get(r, [0, 0])[0],
+           "ran_inside": res["reach"].get(r, [0, 0])[1], "chash": "", "epoch": ep, "defects": pack(defects.get(r, {}))}
+          for r in sorted(set(res["reach"]) | set(defects))]
+    f = res["a7"]["fields"]
     row = {"script": s, "script_hash": records.script_hash(s, top), "verdict": res["a7"]["verdict"],
            "detail": res["a7"]["detail"], "a5_secs": res["secs"]["a5"], "a7_secs": res["secs"]["a7"],
-           "world": "", "epoch": records.epoch(top), "source": rev}
+           "world": "", "epoch": ep, "source": rev, "a7_code": res["a7"]["code"],
+           "a7_frames": f"{f['compared']}/{f['expected']}", "a7_defects": f["defects"],
+           "a7_open": f"{f['parked']}/{f['kept']}/{f['unreached']}/{f['unopened']}"}
     rec.replace_script(s, row, a5, a7)
     for x in a5 + a7:                       # the key needs the script's stored rows and verdict, so after
         x["chash"] = records.row_key(s, x["routine"], chash, rec, top) or "noc"
@@ -246,8 +259,8 @@ def cycle(main, opts):
             continue
         if res["a7"]["verdict"] != "IDENTICAL":
             reds.append(f"{rev} A7 {s}: {res['a7']['detail']}")
-        reds += [f"{rev} A5 {s} {r}: {v['divergent']} divergent of {v['calls']}: {v['detail']}"
-                 for r, v in sorted(res["a5"].items()) if v["divergent"]]
+        reds += [f"{rev} A5 {s} {r}: {v['divergent']} divergent, {v['order_flags']} order of {v['calls']}: {v['detail']}"
+                 for r, v in sorted(res["a5"].items()) if v["divergent"] or v["order_flags"]]
     with open(os.path.join(b, "reds.txt"), "a") as f:
         f.writelines(x + "\n" for x in reds)
     for x in reds:

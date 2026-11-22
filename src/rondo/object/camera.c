@@ -114,45 +114,55 @@ static Alu right_move_exit_shim(RightMoveResult move)
 /*
  * @routine 0047:557 PlayerDistanceSum
  * @run 6A:6557
- * WHAT IT DOES: Takes the distance to the player and adds and subtracts fifteen bytes
- * of the object fields to it. What the sum means is not known yet.
- * HOW: A carry chain through all of them, set once before the last.
- * Entry: X object. Exit: A the sum, N, Z, C and V from the last subtract. X and Y kept.
+ * WHAT IT DOES: Takes the distance to the player and adds and subtracts fourteen bytes
+ * of fixed object slots to it, then takes off the player's f2f90. What the sum means is not
+ * known yet.
+ * HOW: A carry chain through all of them: it starts as DistanceXToPlayer's carry (the caller's
+ * when the distance is $FF), and a SEC comes before the last subtract.
+ * WAITS: no.
+ * Entry: X object, C in (kept through a far distance), D clear. Exit: A the sum, N, Z, C and V
+ * from the last subtract. X and Y kept.
  */
-uint8_t PlayerDistanceSum(uint8_t object, bool carry_in)
+Sum PlayerDistanceSum(uint8_t object, bool carry_in)
 {
-    static const struct { uint16_t field; bool subtract; } terms[] = {
-        { OBJ_3408 + 0x10, false }, { OBJ_3460 + 0x20, false }, { OBJ_Y_LO + 0x11, false },
-        { OBJ_X_FRAC + 0x12, true }, { OBJ_Y_LO + 0x13, true }, { OBJ_X_LO + 0x14, false },
-        { OBJ_2750 + 0x15, false }, { OBJ_2750 + 0x16, true }, { OBJ_X_FRAC + 0x17, true },
-        { OBJ_Y_LO + 0x30, false }, { OBJ_2750 + 0x31, false }, { OBJ_X_LO + 0x32, true },
-        { OBJ_Y_LO + 0x33, true }, { OBJ_FIELDS_2EE0, false }
-    };
-    PlayerDistance distance = DistanceXToPlayer(object);
-    bool carry = distance.far ? carry_in : distance.object_further;
-    unsigned sum = distance.distance;
+    PlayerDistance distance;
+    Sum sum;
 
-    for (unsigned i = 0; i < sizeof terms / sizeof terms[0]; i++) {
-        unsigned term = rd8(terms[i].field);
-
-        sum = terms[i].subtract ? sum - term - (carry ? 0u : 1u) : sum + term + (carry ? 1u : 0u);
-        carry = terms[i].subtract ? sum <= 0xFF : sum > 0xFF;
-        sum &= 0xFF;
-    }
-    return (uint8_t)(sum - rd8(OBJ_2F90));
+    jsr_push(0x655A);
+    distance = DistanceXToPlayer(object);
+    jsr_pop();
+    sum.value = distance.distance;
+    sum.carry = distance.far ? carry_in : distance.object_further;
+    sum.overflow = false;
+    sum = add_bytes(sum.value, RD8(OBJ->anim_step[0x10]), sum.carry);
+    sum = add_bytes(sum.value, RD8(OBJ->anim_timer[0x20]), sum.carry);
+    sum = add_bytes(sum.value, RD8(OBJ->y_lo[0x11]), sum.carry);
+    sum = add_bytes(sum.value, (uint8_t)~RD8(OBJ->x_frac[0x12]), sum.carry);
+    sum = add_bytes(sum.value, (uint8_t)~RD8(OBJ->y_lo[0x13]), sum.carry);
+    sum = add_bytes(sum.value, RD8(OBJ->x_lo[0x14]), sum.carry);
+    sum = add_bytes(sum.value, RD8(OBJ->kind[0x15]), sum.carry);
+    sum = add_bytes(sum.value, (uint8_t)~RD8(OBJ->kind[0x16]), sum.carry);
+    sum = add_bytes(sum.value, (uint8_t)~RD8(OBJ->x_frac[0x17]), sum.carry);
+    sum = add_bytes(sum.value, RD8(OBJ->y_lo[0x30]), sum.carry);
+    sum = add_bytes(sum.value, RD8(OBJ->kind[0x31]), sum.carry);
+    sum = add_bytes(sum.value, (uint8_t)~RD8(OBJ->x_lo[0x32]), sum.carry);
+    sum = add_bytes(sum.value, (uint8_t)~RD8(OBJ->y_lo[0x33]), sum.carry);
+    sum = add_bytes(sum.value, RD8(OBJ->fields_2ee0[0]), sum.carry);
+    return add_bytes(sum.value, (uint8_t)~RD8(OBJ->f2f90[0]), true);
 }
 
-/* A, N, Z, C and V are the last subtract's, worked back from its result. */
+/* A the sum, N and Z from it, C and V from the last subtract. */
+void distance_sum_exit_shim(Sum last)
+{
+    cpu.a = last.value;
+    abi_nz(last.value);
+    abi_flag(P_C, last.carry);
+    abi_flag(P_V, last.overflow);
+}
+
 void abi_PlayerDistanceSum(void)
 {
-    uint8_t result = PlayerDistanceSum(cpu.x, (cpu.p & P_C) != 0);
-    uint8_t term = rd8(OBJ_2F90);
-    uint8_t before = (uint8_t)(result + term);
-
-    cpu.a = result;
-    abi_nz(result);
-    abi_flag(P_C, before >= term);
-    abi_flag(P_V, ((before ^ term) & (before ^ result) & 0x80) != 0);
+    distance_sum_exit_shim(PlayerDistanceSum(cpu.x, (cpu.p & P_C) != 0));
 }
 
 /*

@@ -478,6 +478,106 @@ def coverage(label, exe, covfile, source_base, source_text, ids_ok):
     return out, len(unreached)
 
 
+def fixed_bits(untraced_vals, traced_vals):
+    """{bit: value a traced case has} for each bit that is the same in every untraced case and differs in some traced one."""
+    fix = {}
+    if not untraced_vals or not traced_vals:
+        return fix
+    for bit in range(8):
+        u = {(v >> bit) & 1 for v in untraced_vals}
+        t = {(v >> bit) & 1 for v in traced_vals}
+        if len(u) == 1 and (t - u):
+            fix[bit] = sorted(t - u)[0]
+    return fix
+
+
+def steer_cases(cases, untraced_ids, draft_logs, floor, rng_seed):
+    """More cases for a draft that keeps reaching bytes no script ran: clones of the cases that did, with the byte the
+    draft read last before the untraced arm, and the entry register that is the same in all of them, changed to what a
+    case that stayed on traced code had."""
+    rng = random.Random(rng_seed)
+    by_id = {c["id"]: c for c in cases}
+    last = {}
+    traced_vals = {}
+    for c in cases:
+        log = draft_logs.get(c["id"], [])
+        if any(x.startswith("UNTRACED") for x in log):
+            reads = [x for x in log if x.startswith("R ")]
+            if reads:
+                ad, v = reads[-1].split()[1:3]
+                last.setdefault(ad, set()).add(v)
+        else:
+            for x in log:
+                if x.startswith("R "):
+                    ad, v = x.split()[1:3]
+                    traced_vals.setdefault(ad, set()).add(v)
+    regs = {}
+    tr = [c for c in cases if c["id"] not in set(untraced_ids)]
+    for r in ("a", "x", "y"):
+        fix = fixed_bits([by_id[i][r] for i in untraced_ids], [c[r] for c in tr])
+        if fix:
+            regs[r] = fix
+    out = []
+    for n in range(max(floor * 2, 40)):
+        src = by_id[untraced_ids[n % len(untraced_ids)]]
+        c = dict(src, mem=list(src["mem"]), seed=rng.getrandbits(48), label="steered")
+        for r, fix in regs.items():
+            for bit, val in fix.items():
+                c[r] = (c[r] & ~(1 << bit) & 0xFF) | (val << bit)
+        for ad, stuck in last.items():
+            choices = sorted(traced_vals.get(ad, set()) - stuck) or [("%02X" % rng.choice([0, 1, 2, 0x7F, 0x80, 0xFF]))]
+            v = rng.choice(choices)
+            if v not in stuck or len(choices) == 1:
+                c["mem"].append((int(ad, 16), int(v, 16)))
+        out.append(c)
+    return out
+
+
+def explain_untraced(cases, untraced_ids, draft_logs, raw_draft, draft_text):
+    """Lines saying what steers the draft into the bytes no script ran, for a writer's curated cases."""
+    by_id = {c["id"]: c for c in cases}
+    where = {}
+    for i in untraced_ids:
+        log = draft_logs[i]
+        at = [x for x in log if x.startswith("UNTRACED")][0].split()[1]
+        reads = [x for x in log if x.startswith("R ")]
+        where.setdefault(at, []).append((i, reads[-1].split()[1:3] if reads else None))
+    traced = [c for c in cases if c["id"] not in set(untraced_ids)]
+    out = []
+    dl = draft_text.splitlines()
+    for at, items in sorted(where.items(), key=lambda kv: -len(kv[1])):
+        out.append(f"  untraced arm ${at}: reached by {len(items)} cases, for instance {[i for i, _ in items[:4]]}")
+        for k, line in enumerate(dl):
+            if "untraced(0x%s)" % at in line:
+                ctx = [x.strip() for x in dl[max(0, k - 3):k + 1] if x.strip() and not x.strip().startswith("L0")]
+                out.append("    the draft: " + " ; ".join(ctx)[:300])
+                prev = [x for x in dl[max(0, k - 2):k] if "goto" in x and "/*" in x]
+                if prev:
+                    m = re.search(r"/\* ([0-9A-F]{4}) (\w+) \*/", prev[-1])
+                    if m:
+                        out.append(f"    every traced run took the branch at ${m.group(1)} ({m.group(2)}) and went on; this arm is the way it was never taken: "
+                                   "make that condition false (the flags from the instructions above it)")
+                break
+        lastr = {}
+        for i, r in items:
+            if r:
+                lastr.setdefault(r[0], set()).add(r[1])
+        for ad, vals in sorted(lastr.items(), key=lambda kv: kv[0])[:3]:
+            t = set()
+            for c in traced:
+                for x in draft_logs.get(c["id"], []):
+                    if x.startswith("R " + ad + " "):
+                        t.add(x.split()[2])
+            out.append(f"    the last read before it: ${ad} gave {sorted(vals)[:6]}{' ...' if len(vals) > 6 else ''}; cases that stayed on traced code read there: {sorted(t)[:6] or 'nothing (never read on a traced path)'}")
+        for r in ("a", "x", "y"):
+            fix = fixed_bits([by_id[i][r] for i, _ in items], [c[r] for c in traced])
+            if fix:
+                out.append(f"    entry {r.upper()}: " + ", ".join(f"bit {b} is {1 - v} in every one of them, and {v} in cases that stayed on traced code" for b, v in sorted(fix.items())))
+        if items and any(r for _, r in items):
+            out.append("    write a curated case: mem:ADDR=VAL for the byte above (a value a traced case read), then run it with --curated FILE")
+    return out
+
+
 def one(name, a, ctx):
     os.makedirs(ctx["cache"], exist_ok=True)
     src = find_source(name, ctx["sources"])
@@ -541,14 +641,39 @@ def one(name, a, ctx):
         run(["cc", "-O1", "-w", "-fno-pie", "-c", disp_d, "-o", dispobj_d])
     link(os.path.join(work, "lifted.bin"), objs + [rtobj["lifted"], dispobj], [], [], None)
     link(os.path.join(work, "draft.bin"), objs + [dobj, rtobj["draft"], dispobj_d] + libobj, [], [], None)
-    logs, covs = {}, {}
-    for side in ("lifted", "draft"):
-        covf = os.path.join(work, side + ".cov")
-        r = run([os.path.join(work, side + ".bin"), cfile, covf], timeout=60, env=dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0"))
-        if r.returncode:
-            raise SystemExit(f"liftcmp: the {side} side exited {r.returncode}:\n{r.stderr[-400:]}")
-        logs[side] = split_log(r.stdout)
-        covs[side] = covf
+    logs, covs = {"lifted": {}, "draft": {}}, {}
+    envv = dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0")
+    base_cases = len(cases)
+    floor = a.floor if a.floor else max(1, (base_cases + 3) // 4)
+
+    def run_round(cs, tag):
+        cf = os.path.join(work, "cases_%s.txt" % tag)
+        write_cases(cs, cf)
+        for side in ("lifted", "draft"):
+            covf = os.path.join(work, "%s_%s.cov" % (side, tag))
+            r = run([os.path.join(work, side + ".bin"), cf, covf], timeout=120, env=envv)
+            if r.returncode:
+                raise SystemExit(f"liftcmp: the {side} side exited {r.returncode}:\n{r.stderr[-400:]}")
+            logs[side].update(split_log(r.stdout))
+            with open(os.path.join(work, side + ".cov"), "a" if tag != "0" else "w") as out:
+                out.write(open(covf).read())
+            covs[side] = os.path.join(work, side + ".cov")
+
+    run_round(cases, "0")
+    rounds = 0
+    while a.steer and rounds < 2:
+        un = [c["id"] for c in cases if any(x.startswith("UNTRACED") for x in logs["draft"].get(c["id"], []))]
+        if len(cases) - len(un) >= floor or not un:
+            break
+        new_cases = steer_cases(cases, un, logs["draft"], floor, rng_seed=a.seed + 1000 + rounds)
+        if not new_cases:
+            break
+        for c in new_cases:
+            c["id"] = len(cases)
+            cases.append(c)
+            # (ids are positions in `cases`)
+        run_round(new_cases, str(rounds + 1))
+        rounds += 1
     ignore = sum(FLAGBITS[ch] for ch in a.ignore_flags)
     same, diffs, untraced = [], [], []
     raw_draft = logs["draft"]
@@ -567,8 +692,14 @@ def one(name, a, ctx):
             same.append(i)
         else:
             diffs.append(i)
+    comparable = len(same) + len(diffs)
+    verdict = ("DIFFERS" if diffs else "NOT CHECKED" if comparable == 0 else
+               "THIN (%d of %d cases comparable, floor %d)" % (comparable, len(cases), floor) if comparable < floor else "OK")
     lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}, callees: {'the callees run as drafts against the lifted callers calls' if a.callees == 'through' else 'filed wrappers on both sides'}, {(str(len(configs)) + ' mapper configuration' + ('s' if len(configs) > 1 else '') + ' from the trace') if configs else 'no trace of it: default map'}): "
-             f"{len(same)} match, {len(diffs)} differ, {len(untraced)} draft reached untraced bytes"]
+             f"{len(same)} match, {len(diffs)} differ, {len(untraced)} draft reached untraced bytes"
+             + (f" ({rounds} steering round{'s' if rounds != 1 else ''} added cases)" if rounds else "") + f" -> {verdict}"]
+    if untraced and verdict not in ("OK", "DIFFERS") or (untraced and a.explain):
+        lines += explain_untraced(cases, untraced, logs["draft"], raw_draft, open(draft_c).read())
     for i in diffs[:a.show]:
         c = cases[i]
         dl, ll = logs["draft"][i], logs["lifted"][i]
@@ -611,12 +742,12 @@ def one(name, a, ctx):
     open(rep, "w").write("\n".join(lines + cover_lines) + "\n")
     if a.quiet:
         print(f"{name:32s} match {len(same):4d}  differ {len(diffs):4d}  untraced {len(untraced):4d}  unreached lines {miss:3d}  "
-              f"{'OK' if (not diffs and same) else 'DIFFERS' if diffs else 'NOTHING COMPARED'}")
-        return (not diffs) and bool(same), dict(same=len(same), diffs=len(diffs), untraced=len(untraced), unreached=miss, ndraft=ndraft)
+              f"{verdict}")
+        return verdict == "OK", dict(same=len(same), diffs=len(diffs), untraced=len(untraced), unreached=miss, ndraft=ndraft)
     print("\n".join(lines))
     if cover_lines:
         print(f"  coverage: {cover_lines[0]}; {[l for l in cover_lines if l.startswith('draft ')][0]}; {miss} lines not reached; full report {os.path.relpath(rep, TOP)}")
-    return (not diffs) and bool(same), dict(same=len(same), diffs=len(diffs), untraced=len(untraced), unreached=miss, ndraft=ndraft)
+    return verdict == "OK", dict(same=len(same), diffs=len(diffs), untraced=len(untraced), unreached=miss, ndraft=ndraft)
 
 
 def mask_p(line, ignore):
@@ -637,6 +768,9 @@ def main():
     ap.add_argument("--curated")
     ap.add_argument("--lifted", help="a C file to use in place of the tree's file for the routine")
     ap.add_argument("--callees", choices=("through", "wrappers"), default="through", help="through: the callees run as their drafts on the draft side and as the typed C the lifted caller calls on the other (default); wrappers: the callees run as their filed abi_ wrappers on both sides")
+    ap.add_argument("--floor", type=int, default=0, help="fewer comparable cases than this is THIN (default: a quarter of the seeded cases)")
+    ap.add_argument("--no-steer", dest="steer", action="store_false", help="do not add cases that steer the draft away from bytes no script ran")
+    ap.add_argument("--explain", action="store_true", help="say what steers into the untraced arms even when enough cases compare")
     ap.add_argument("--decimal", action="store_true", help="decimal cases: D set at entry in half the cases and in the P a stub returns")
     ap.add_argument("--irq", action="store_true", help="I set at entry in half the cases")
     ap.add_argument("--ignore-flags", default="", help="flag letters not compared at exit (NVDIZC)")

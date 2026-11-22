@@ -3,6 +3,13 @@
 #include "ram.h"
 #include "access.h"
 #include "layer_draw.h"
+#include "routines.h"
+
+/* The N and Z bits of P for a value. */
+static uint8_t nz_bits(uint8_t value)
+{
+    return (uint8_t)(((value & 0x80) ? P_N : 0) | (value == 0 ? P_Z : 0));
+}
 
 /* The sprite table the VDC is writing (word 0 Y, 1 X, 2 pattern, 3 attributes), the parts' limits. */
 enum {
@@ -93,7 +100,7 @@ SpriteExit EmitObjectSprites(uint8_t object)
         out.a = 0;
         out.x = object;
         out.y = y;
-        out.nz = 0;
+        out.nz = P_Z;
         out.c = carry;
         out.v = overflow;
         return out;
@@ -240,7 +247,7 @@ SpriteExit EmitObjectSprites(uint8_t object)
                 if ((uint8_t)(value - 1) & 0x80) {
                     out.x = x;
                     out.y = y;
-                    out.nz = (uint8_t)(value - 1);
+                    out.nz = nz_bits((uint8_t)(value - 1));
                     out.c = carry;
                     out.v = overflow;
                     return out;
@@ -259,7 +266,7 @@ SpriteExit EmitObjectSprites(uint8_t object)
             out.a = sum.a;
             out.x = x;
             out.y = y;
-            out.nz = 0;
+            out.nz = P_Z;
             out.c = sum.c;
             out.v = sum.v;
             return out;
@@ -274,10 +281,181 @@ void abi_EmitObjectSprites(void)
     cpu.a = out.a;
     cpu.x = out.x;
     cpu.y = out.y;
-    abi_nz(out.nz);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | out.nz);
     abi_flag(P_C, out.c);
     abi_flag(P_V, out.v);
     if (out.tail) {
         call_original(TAIL_NO_PARTS);
     }
+}
+
+/* The object order list of each stage's section (word per stage value, in the 00D1 overlay), the sprite count. */
+enum {
+    OBJECT_LIST_TABLE = 0x81B5, OBJECT_COUNT = 0x58, SPRITE_BUDGET = 0x3F, SPRITE_WORDS = 4,
+    OBJECT_LIST_FLAG = 0x10, ZpObjectsLeft = 0x2015, ZpListHigh = 0x2013, ZpListIndex = 0x20DA,
+    MAPPED_OBJECT_ACTIVE = 1
+};
+
+/* The no-parts tail runs original code at $819E, which ends in the RTS that takes the frame EmitObjectSprites was called under. */
+static SpriteExit no_parts_shim(SpriteExit in)
+{
+    SpriteExit out = { 0 };
+
+    cpu.a = in.a;
+    cpu.x = in.x;
+    cpu.y = in.y;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | in.nz);
+    abi_flag(P_C, in.c);
+    abi_flag(P_V, in.v);
+    call_original(TAIL_NO_PARTS);
+    out.a = cpu.a;
+    out.x = cpu.x;
+    out.y = cpu.y;
+    out.nz = (uint8_t)(cpu.p & (P_N | P_Z));
+    out.c = (cpu.p & P_C) != 0;
+    out.v = (cpu.p & P_V) != 0;
+    return out;
+}
+
+/* The stack as it stands after the call's return address was pushed, to tell a callee that dropped it. */
+static uint8_t frame_mark_shim(void)
+{
+    return cpu.s;
+}
+
+/* The pop of a call's return address, unless the callee's RTS already took it (original code does). */
+static void frame_return_shim(uint8_t mark)
+{
+    if (cpu.s == mark) {
+        jsr_pop();
+    }
+}
+
+/*
+ * @routine 00D1:000 WriteObjectSprites
+ * @run 6C:8000
+ * WHAT IT DOES: Fills the VDC's sprite table for the frame: every object in the section's list that
+ * has a frame and shows this frame is written by EmitObjectSprites, and the room left in the
+ * table is cleared.
+ * HOW: Selects the VRAM write address and data port (the sprite table is at VRAM $1000, as its
+ * address words $0000 and $1000 say). The section's list of 88 object slots (its place in the
+ * overlay by the stage value) is walked; an object counts when its frame is not zero and, for one
+ * whose palette byte has bit 4 set, only on the frames its slot's parity matches. A call that runs
+ * out of room ends the walk at once. What is left of the 63 sprites' room is cleared with zero words.
+ * WAITS: no.
+ * Entry: nothing (the frame interrupt calls it with the overlay mapped). Exit: A, X, Y, N, Z, C and V as
+ * the last step leaves them (ObjectSpritesExit).
+ * Names: the scratch zero page bytes ($13, $15, $17, $DA) and the overlay's table are by address
+ * until the owner adds them.
+ */
+ObjectSpritesExit WriteObjectSprites(bool carry, bool overflow)
+{
+    ObjectSpritesExit out = { 0 };
+    SpriteExit emitted;
+    uint8_t a = 0, x, y, object, value, tick, mark;
+    bool shows;
+
+    jsr_push(0x8003);
+    SelectVdcControl();
+    jsr_pop();
+    st2(0x00);
+    jsr_push(0x8008);
+    SelectVramWriteAddress();
+    jsr_pop();
+    st1(0x00);
+    st2(0x10);
+    jsr_push(0x800F);
+    SelectVramData();
+    jsr_pop();
+    wr8(ZpSpritesLeft, SPRITE_BUDGET);
+    wr8(ZpObjectsLeft, OBJECT_COUNT);
+    value = RD8(ZP->raster_stage);
+    y = (uint8_t)(value << 1);
+    value = rd8((uint16_t)(OBJECT_LIST_TABLE + y));
+    WR8(ZP->temp12, value);
+    value = rd8((uint16_t)(OBJECT_LIST_TABLE + 1 + y));
+    wr8(ZpListHigh, value);
+    y = 0;
+    for (;;) {
+        object = RD8_PTR_Y(ZP->temp12, y);
+        y++;
+        wr8(ZpListIndex, y);
+        a = RD8(OBJ->f2a68[object]);
+        shows = false;
+        if (a != 0) {
+            a = RD8(OBJ->f2b18[object]);
+            a = (uint8_t)(a & OBJECT_LIST_FLAG);
+            shows = true;
+            if (a != 0) {
+                tick = RD8(ZP->frame_tick);
+                a = (uint8_t)((object ^ tick) & 1);
+                shows = a != 0;
+            }
+        }
+        if (shows) {
+            WR8(ZP->richter_object, object);
+            jsr_push(0x8043);
+            mark = frame_mark_shim();
+            emitted = EmitObjectSprites(object);
+            if (emitted.tail) {
+                emitted = no_parts_shim(emitted);
+            }
+            frame_return_shim(mark);
+            a = emitted.a;
+            carry = emitted.c;
+            overflow = emitted.v;
+            if (emitted.nz & P_N) {
+                out.a = emitted.a;
+                out.x = emitted.x;
+                out.y = emitted.y;
+                out.nz = emitted.nz;
+                out.c = carry;
+                out.v = overflow;
+                return out;
+            }
+            x = RD8(ZP->richter_object);
+        }
+        y = rd8(ZpListIndex);
+        {
+            uint8_t left = rd8(ZpObjectsLeft);
+
+            wr8(ZpObjectsLeft, (uint8_t)(left - 1));
+            if ((uint8_t)(left - 1) != 0) {
+                continue;
+            }
+        }
+        break;
+    }
+    x = rd8(ZpSpritesLeft);
+    if (x != 0) {
+        for (;;) {
+            for (int word = 0; word < SPRITE_WORDS; word++) {
+                st1(0x00);
+                st2(0x00);
+            }
+            x--;
+            if (x & 0x80) {
+                break;
+            }
+        }
+    }
+    out.a = a;
+    out.x = x;
+    out.y = y;
+    out.nz = nz_bits(x);
+    out.c = carry;
+    out.v = overflow;
+    return out;
+}
+
+void abi_WriteObjectSprites(void)
+{
+    ObjectSpritesExit out = WriteObjectSprites((cpu.p & P_C) != 0, (cpu.p & P_V) != 0);
+
+    cpu.a = out.a;
+    cpu.x = out.x;
+    cpu.y = out.y;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | out.nz);
+    abi_flag(P_C, out.c);
+    abi_flag(P_V, out.v);
 }

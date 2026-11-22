@@ -199,3 +199,77 @@ EmitObjectSprites_at19:
     jmp EmitObjectSprites_at2
 EmitObjectSprites_at18:
     rts
+
+; @routine 00D1:000 WriteObjectSprites
+; @run 6C:8000
+; WHAT IT DOES: Fills the VDC's sprite table for the frame: every object in the section's list that
+; has a frame and shows this frame is written by EmitObjectSprites, and the room left in the
+; table is cleared.
+; HOW: Selects the VRAM write address and data port (the sprite table is at VRAM $1000, as its
+; address words $0000 and $1000 say). The section's list of 88 object slots (its place in the
+; overlay by the stage value) is walked; an object counts when its frame is not zero and, for one
+; whose palette byte has bit 4 set, only on the frames its slot's parity matches. A call that runs
+; out of room ends the walk at once. What is left of the 63 sprites' room is cleared with zero words.
+; WAITS: no.
+; Entry: nothing (the frame interrupt calls it with the overlay mapped). Exit: A, X, Y, N, Z, C and V as
+; the last step leaves them (ObjectSpritesExit).
+; Names: the scratch zero page bytes ($13, $15, $17, $DA) and the overlay's table are by address
+; until the owner adds them.
+WriteObjectSprites:
+    jsr VecSelectVdcControl
+    st2 #$00
+    jsr VecSelectVramWriteAddress
+    st1 #$00
+    st2 #$10
+    jsr VecSelectVramData
+    lda #$3F
+    sta z:zMultiplierHi
+    lda #$58
+    sta z:zProduct2
+    lda z:zRasterStage
+    asl a
+    tay
+    lda a:$81B5,y
+    sta z:zTemp12
+    lda a:$81B6,y
+    sta z:zProduct0
+    cly
+WriteObjectSprites_at0:
+    lda (zTemp12),y
+    tax
+    iny
+    sty z:$DA
+    lda a:OBJ_2A68,x
+    beq WriteObjectSprites_at2
+    lda a:OBJ_2B18,x
+    and #$10
+    beq WriteObjectSprites_at1
+    txa
+    eor z:zFrameTick
+    and #$01
+    beq WriteObjectSprites_at2
+WriteObjectSprites_at1:
+    stx z:zRichterObject
+    bsr EmitObjectSprites
+    bmi WriteObjectSprites_at5
+    ldx z:zRichterObject
+WriteObjectSprites_at2:
+    ldy z:$DA
+    inx
+    dec z:zProduct2
+    bne WriteObjectSprites_at0
+    ldx z:zMultiplierHi
+    beq WriteObjectSprites_at5
+WriteObjectSprites_at3:
+    st1 #$00
+    st2 #$00
+    st1 #$00
+    st2 #$00
+    st1 #$00
+    st2 #$00
+    st1 #$00
+    st2 #$00
+    dex
+    bpl WriteObjectSprites_at3
+WriteObjectSprites_at5:
+    rts

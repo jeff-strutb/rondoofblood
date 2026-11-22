@@ -43,57 +43,6 @@ BlinkCheck SetBlinkFlash(uint8_t slot);
 /* An object's record is loaded, then its player-shared byte and timers are set (see the routine). */
 bool InitObjectFromRecord(uint8_t slot);
 
-/* How FallAndBounce ended. */
-typedef enum {
-    FALL_DEADLY_GROUND,   /* the probe reported deadly ground (bit 4): nothing more done */
-    FALL_BOUNCED          /* the bounce was set up */
-} FallEnd;
-
-typedef struct {
-    FallEnd end;
-    uint8_t probe_bit4;   /* FALL_DEADLY_GROUND: the answer ANDed with $10 */
-    uint8_t angle_high;   /* FALL_BOUNCED: the object's angle high byte as stored */
-    bool carry;           /* FALL_BOUNCED: the last add's carry out */
-    bool overflow;        /* FALL_BOUNCED: the last add's signed overflow */
-} FallResult;
-
-/* The object moves, and on landing enters its next state; off deadly ground it bounces away. */
-FallResult FallAndBounce(uint8_t slot);
-/* 1 shifted left count times, as a byte. */
-uint8_t BitMaskFromIndex(uint8_t count);
-
-/* Not yet typed (register entries of routines that have C): the vector that goes to LoadObjectRecord (spawn.c), entered with X the object. */
-/* Typed callees defined elsewhere, not declared in routines.h. */
-uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c);  /* object/spawn.c */
-void abi_VecApplyVelocity(void);
-void abi_VecProbeTerrain(void);
-void abi_VecScaleByCosine(void);
-
-/* How EnterStateFourOnFlag ended. */
-typedef enum { STATE4_ALREADY, STATE4_NO_FLAG, STATE4_ENTERED } State4End;
-typedef struct {
-    State4End end;
-    bool above;           /* the state was above 4 (its compare's carry) */
-} State4Result;
-
-/* An object not yet in state 4 whose OBJ_31A0 bit 7 is set restarts its animation in state 4. */
-State4Result EnterStateFourOnFlag(uint8_t slot);
-
-/* How a table lookup by animation frame ended: what the wrapper needs of the last values. */
-typedef struct {
-    bool none;            /* the frame has no entry: the offsets were cleared */
-    uint8_t frame_index;  /* the frame less 1 (Y at that point) */
-    bool frame_zero;      /* the frame itself was 0: no table was read */
-    uint8_t last;         /* the last byte loaded into A */
-    uint8_t table_offset; /* Y at the end */
-    bool carry;           /* C at the end */
-    bool overflow;        /* V: the frame's subtract of 1 overflowed (only frame $80) */
-} FrameLookup;
-
-/* An object's four hitbox are loaded from the table row picked by its animation frame. */
-FrameLookup SetHitboxFromFrame(uint8_t slot);
-
-
 /* Moved unchanged from object/sensing.c, which still includes this header. */
 /* What was done about a wall. */
 typedef enum { NO_PUSH, PUSHED_RIGHT, PUSHED_LEFT } WallPushed;
@@ -122,6 +71,88 @@ Probe ProbeTerrainFrontColumn(uint8_t request, uint8_t object, uint8_t column, b
 
 /* Exit shims exported from the files that define them, for callers' wrappers. */
 void probe_exit_shim(Probe p);  /* object/sensing.c */
+
+/* What FallAndBounce did: the probe it made, the deadly bit, and when it bounced, the last add. */
+typedef struct {
+    bool bounced;         /* false: the ground was deadly and nothing more was done */
+    Probe probe;
+    uint8_t deadly;       /* the probe's byte ANDed with $10 */
+    Sum angle;            /* the add that turned the angle on (when bounced) */
+} FallResult;
+
+/* The object moves, and on landing enters its next state; off deadly ground it bounces away. */
+FallResult FallAndBounce(uint8_t slot, uint8_t column);
+
+/* How StepReleaseOnHit ended. */
+typedef enum { RELEASE_STARTED, RELEASE_STEPPED, RELEASE_NO_SLOT, RELEASE_SPAWNED } ReleaseEnd;
+typedef struct {
+    ReleaseEnd end;
+    bool carry;           /* STARTED: the record's carry */
+    uint8_t y;            /* Y as the step left it */
+    uint8_t hit;          /* the hit byte compared */
+    uint8_t slot;         /* the slot the search ended on */
+    uint8_t last_type;    /* the last type the search read */
+    uint8_t placed;       /* SPAWNED: the byte the place copy ended on */
+} ReleaseResult;
+
+/* An object that waits to be hit: on a hit of 5 or more it records the event and spawns a kind $9B beside it. */
+ReleaseResult StepReleaseOnHit(uint8_t slot, uint8_t y);
+
+/* What StepFallingItem left. */
+typedef struct {
+    bool started;         /* the object had no state: it was started from its record */
+    FrameStep step;       /* else the animation's step */
+    uint8_t y;            /* Y as it ends */
+    uint8_t last;         /* started: the last table byte (A) */
+    bool carry;           /* started: C */
+    bool overflow;        /* V: the kind less $9B */
+} FallingItem;
+
+/* A thing that falls, with its own animation, then clears itself when the list ends. */
+FallingItem StepFallingItem(uint8_t slot, uint8_t y);
+/* What ChangeKindFromTable left. */
+typedef struct {
+    bool cleared;         /* the new kind was 0: the object was cleared */
+    Sum table;            /* the kind less $80 */
+    uint8_t y;            /* Y as it ends */
+    uint8_t last;         /* the sideways speed's low byte (A when changed) */
+    bool carry;           /* changed: the facing's top bit */
+    Sum borrow;           /* changed: the Y position's high byte's subtract */
+} KindChange;
+
+/* The object turns into the kind a table names, thrown up at the player's place; a zero clears it. */
+KindChange ChangeKindFromTable(uint8_t slot);
+/* 1 shifted left count times, as a byte. */
+uint8_t BitMaskFromIndex(uint8_t count);
+
+/* Not yet typed (register entries of routines that have C): the vector that goes to LoadObjectRecord (spawn.c), entered with X the object. */
+/* Typed callees defined elsewhere, not declared in routines.h. */
+uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c);  /* object/spawn.c */
+
+/* How EnterStateFourOnFlag ended. */
+typedef enum { STATE4_ALREADY, STATE4_NO_FLAG, STATE4_ENTERED } State4End;
+typedef struct {
+    State4End end;
+    bool above;           /* the state was above 4 (its compare's carry) */
+} State4Result;
+
+/* An object not yet in state 4 whose OBJ_31A0 bit 7 is set restarts its animation in state 4. */
+State4Result EnterStateFourOnFlag(uint8_t slot);
+
+/* How a table lookup by animation frame ended: what the wrapper needs of the last values. */
+typedef struct {
+    bool none;            /* the frame has no entry: the offsets were cleared */
+    uint8_t frame_index;  /* the frame less 1 (Y at that point) */
+    bool frame_zero;      /* the frame itself was 0: no table was read */
+    uint8_t last;         /* the last byte loaded into A */
+    uint8_t table_offset; /* Y at the end */
+    bool carry;           /* C at the end */
+    bool overflow;        /* V: the frame's subtract of 1 overflowed (only frame $80) */
+} FrameLookup;
+
+/* An object's four hitbox are loaded from the table row picked by its animation frame. */
+FrameLookup SetHitboxFromFrame(uint8_t slot);
+
 
 /* What TurnAngleBack left. */
 typedef struct {

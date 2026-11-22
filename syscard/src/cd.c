@@ -1,68 +1,67 @@
-/* The BIOS's CD entries. */
+/*
+ * The BIOS's CD entries: the command and result buffers, the saved arguments, the base added to a disc address.
+ *
+ * Bytes named by address, not yet by field: the command and result buffers, the saved arguments, the base
+ * table; their array rows are asked of the typed access session. The rest is typed.
+ */
 #include "card.h"
+#include "card_access.h"
 #include "syscard.h"
 
 enum {
     CD_FADE_BITS = 0x0F, CD_COMMAND_BYTES = 10, CD_RESULT_BYTES = 10,
-    CD_STATUS_SUBCODE = 0x10, CD_STATUS_PCM_MORE = 0x02
+    CD_STATUS_SUBCODE = 0x10, CD_STATUS_PCM_MORE = 0x02, ARG_LAST = 7, PCM_PAUSE = 0x1B,
+    VRAM_PENDING = 1, COPY_BYTES = 3, BASE_STRIDE_PLUS = 2
 };
+
+#define CMD(i) ((uint16_t)(CardCdCommand + (i)))
+#define RESULT(i) ((uint16_t)(CardCdResult + (i)))
+#define SAVED(i) ((uint16_t)(CardSavedArgs + (i)))
+#define ARG(i) ((uint16_t)(0x2000 + (uint8_t)(0xF8 + (i))))
+#define BASES(i) ((uint16_t)(CardCdBases + (i)))
 
 /*
  * @card 00:F0EE clear_cd_command
  * WHAT IT DOES: Clears the CD command being built, past its first byte.
- * HOW: Zeroes bytes 1 to 9.
- * Entry: nothing. Exit: N and Z from X. A, X, Y, C, V kept.
+ * HOW: X is pushed, bytes 9 down to 1 are zeroed, X is pulled.
+ * WAITS: no.
+ * Entry: X (only kept: it goes on the stack and comes back). Exit: N and Z from X. A, X, Y, C, V kept.
  */
-void clear_cd_command(void)
+void clear_cd_command(uint8_t x)
 {
-    for (unsigned i = 1; i < CD_COMMAND_BYTES; i++)
-        wr8((uint16_t)(CardCdCommand + i), 0);
+    push8(x);
+    for (unsigned i = CD_COMMAND_BYTES - 1; i != 0; i--) {
+        wr8(CMD(i), 0);
+    }
+    (void)pull8();
 }
 
 void abi_clear_cd_command(void)
 {
-    clear_cd_command();
+    clear_cd_command(cpu.x);
     abi_nz(cpu.x);
 }
 
 /*
  * @card 00:F0F9 clear_cd_result
  * WHAT IT DOES: Clears what the drive last answered.
- * HOW: Zeroes all ten bytes.
- * Entry: nothing. Exit: N and Z from X. A, X, Y, C, V kept.
+ * HOW: X is pushed, all ten bytes are zeroed from the last, X is pulled.
+ * WAITS: no.
+ * Entry: X (only kept). Exit: N and Z from X. A, X, Y, C, V kept.
  */
-void clear_cd_result(void)
+void clear_cd_result(uint8_t x)
 {
-    for (unsigned i = 0; i < CD_RESULT_BYTES; i++)
-        wr8((uint16_t)(CardCdResult + i), 0);
+    push8(x);
+    for (int i = CD_RESULT_BYTES - 1; i >= 0; i--) {
+        wr8(RESULT((unsigned)i), 0);
+    }
+    (void)pull8();
 }
 
 void abi_clear_cd_result(void)
 {
-    clear_cd_result();
+    clear_cd_result(cpu.x);
     abi_nz(cpu.x);
-}
-
-/* A disc address in _CL, _CH, _DL, high byte first; the table holds them the same way. */
-static uint32_t card_disc_address(void)
-{
-    uint32_t address = (uint32_t)rd8(CardCl) << 16;
-
-    address |= (uint32_t)rd8(CardCh) << 8;
-    return address | rd8(CardDl);
-}
-
-static uint8_t cd_base_offset(void)
-{
-    return (uint8_t)(rd8(CardCdBaseIndex) * 3);
-}
-
-static uint32_t cd_base_at(uint8_t offset)
-{
-    uint32_t base = (uint32_t)rd8((uint16_t)(CardCdBases + offset)) << 16;
-
-    base |= (uint32_t)rd8((uint16_t)(CardCdBases + 1 + offset)) << 8;
-    return base | rd8((uint16_t)(CardCdBases + 2 + offset));
 }
 
 /*
@@ -70,83 +69,97 @@ static uint32_t cd_base_at(uint8_t offset)
  * WHAT IT DOES: Adds the base the caller chose to a disc address.
  * HOW: The base table, three bytes an entry, by CardCdBaseIndex; a 24-bit add into _CL, _CH
  * and _DL.
+ * WAITS: no.
  * Entry: _CL, _CH, _DL. Exit: A the sum's top byte, N, Z, C, V from its add, Y the table's
  * offset. X kept.
  */
-CdBaseSum add_cd_base(void)
+CardExit add_cd_base(void)
 {
-    CdBaseSum added;
-    uint32_t sum;
+    CardExit e = { 0 };
+    Sum low;
+    Sum middle;
+    Sum high;
+    uint8_t index = RD8(CRAM->cd_base_index);
+    uint8_t twice = (uint8_t)(index << 1);
+    uint8_t again = RD8(CRAM->cd_base_index);
+    uint8_t y = add8(twice, again, false).value;
+    uint8_t value;
+    uint8_t base;
 
-    added.offset = cd_base_offset();
-    added.address = card_disc_address();
-    added.base = cd_base_at(added.offset);
-    sum = added.address + added.base;
-    wr8(CardDl, (uint8_t)sum);
-    wr8(CardCh, (uint8_t)(sum >> 8));
-    wr8(CardCl, (uint8_t)(sum >> 16));
-    return added;
-}
-
-/* Whether the top byte's add overflowed, with what carried out of the two below it. */
-bool cd_base_sum_overflowed(CdBaseSum added)
-{
-    uint8_t a = (uint8_t)(added.address >> 16);
-    uint8_t b = (uint8_t)(added.base >> 16);
-    unsigned carry = ((added.address & 0xFFFF) + (added.base & 0xFFFF)) >> 16;
-    unsigned sum = (unsigned)a + b + carry;
-
-    return (~(a ^ b) & (a ^ sum) & 0x80) != 0;
+    value = RD8(CZP->d.lo);
+    base = rd8(BASES(2u + y));
+    low = add8(value, base, false);
+    WR8(CZP->d.lo, low.value);
+    value = RD8(CZP->c.hi);
+    base = rd8(BASES(1u + y));
+    middle = add8(value, base, low.carry);
+    WR8(CZP->c.hi, middle.value);
+    value = RD8(CZP->c.lo);
+    base = rd8(BASES(y));
+    high = add8(value, base, middle.carry);
+    WR8(CZP->c.lo, high.value);
+    e.a = e.nz = high.value;
+    e.y = y;
+    e.c = high.carry;
+    e.v = high.overflow;
+    e.set_a = e.set_nz = e.set_y = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_add_cd_base(void)
 {
-    CdBaseSum added = add_cd_base();
-    uint8_t a = (uint8_t)(added.address >> 16);
-    uint8_t b = (uint8_t)(added.base >> 16);
-    unsigned carry = ((added.address & 0xFFFF) + (added.base & 0xFFFF)) >> 16;
-    unsigned sum = (unsigned)a + b + carry;
-
-    cpu.a = (uint8_t)sum;
-    cpu.y = added.offset;
-    abi_nz((uint8_t)sum);
-    abi_flag(P_C, sum > 0xFF);
-    abi_flag(P_V, cd_base_sum_overflowed(added));
+    card_exit_apply(add_cd_base());
 }
 
 /*
  * @card 00:F309 save_card_args
  * WHAT IT DOES: Keeps _AX to _DX across a command that uses them.
- * HOW: Copies the eight bytes to CardSavedArgs.
- * Entry: nothing. Exit: N and Z from X. A, X, Y, C, V kept.
+ * HOW: X and A are pushed, the eight bytes go to CardSavedArgs from the last, A and X are pulled.
+ * WAITS: no.
+ * Entry: A and X (only kept). Exit: N and Z from X. A, X, Y, C, V kept.
  */
-void save_card_args(void)
+void save_card_args(uint8_t a, uint8_t x)
 {
-    for (unsigned i = 0; i < CARD_ARG_BYTES; i++)
-        wr8((uint16_t)(CardSavedArgs + i), rd8((uint16_t)(CardArgs + i)));
+    push8(x);
+    push8(a);
+    for (int i = ARG_LAST; i >= 0; i--) {
+        uint8_t value = rd8(ARG(i));
+
+        wr8(SAVED((unsigned)i), value);
+    }
+    (void)pull8();
+    (void)pull8();
 }
 
 void abi_save_card_args(void)
 {
-    save_card_args();
+    save_card_args(cpu.a, cpu.x);
     abi_nz(cpu.x);
 }
 
 /*
  * @card 00:F318 restore_card_args
  * WHAT IT DOES: Puts back what save_card_args kept.
- * HOW: Copies the eight bytes back.
- * Entry: nothing. Exit: N and Z from X. A, X, Y, C, V kept.
+ * HOW: As save_card_args, the eight bytes the other way.
+ * WAITS: no.
+ * Entry: A and X (only kept). Exit: N and Z from X. A, X, Y, C, V kept.
  */
-void restore_card_args(void)
+void restore_card_args(uint8_t a, uint8_t x)
 {
-    for (unsigned i = 0; i < CARD_ARG_BYTES; i++)
-        wr8((uint16_t)(CardArgs + i), rd8((uint16_t)(CardSavedArgs + i)));
+    push8(x);
+    push8(a);
+    for (int i = ARG_LAST; i >= 0; i--) {
+        uint8_t value = rd8(SAVED((unsigned)i));
+
+        wr8(ARG(i), value);
+    }
+    (void)pull8();
+    (void)pull8();
 }
 
 void abi_restore_card_args(void)
 {
-    restore_card_args();
+    restore_card_args(cpu.a, cpu.x);
     abi_nz(cpu.x);
 }
 
@@ -154,58 +167,58 @@ void abi_restore_card_args(void)
  * @card 00:F327 copy_args_to_command
  * WHAT IT DOES: Puts a three-byte argument into the CD command being built.
  * HOW: Three bytes from _AL plus an offset to the command plus another.
+ * WAITS: no.
  * Entry: X the argument's offset, Y the command's. Exit: A the last byte, N and Z from it. X,
  * Y, C, V kept.
  */
-uint8_t copy_args_to_command(uint8_t from, uint8_t to)
+uint8_t copy_args_to_command(uint8_t x, uint8_t y)
 {
-    uint8_t byte = 0;
+    uint8_t value = 0;
 
-    for (unsigned i = 0; i < 3; i++) {
-        /* A zero-page index wraps inside zero page. */
-        byte = rd8((uint16_t)(0x2000 + (uint8_t)(0xF8 + from + i)));
-        wr8((uint16_t)(CardCdCommand + to + i), byte);
+    for (unsigned i = 0; i < COPY_BYTES; i++) {
+        value = rd8(ARG(x + i));
+        wr8(CMD((unsigned)y + i), value);
     }
-    return byte;
+    return value;
 }
 
 void abi_copy_args_to_command(void)
 {
-    uint8_t last = copy_args_to_command(cpu.x, cpu.y);
-
-    cpu.a = last;
-    abi_nz(last);
+    cpu.a = copy_args_to_command(cpu.x, cpu.y);
+    abi_nz(cpu.a);
 }
 
 /*
  * @card 00:F337 write_vram_word_pending
  * WHAT IT DOES: Writes _BX to the VDC's data port, and marks that it was written.
- * HOW: CardVramPending 1, then the two bytes.
+ * HOW: CardVramPending 1, then the two bytes, each read just before it is written.
+ * WAITS: no.
  * Entry: _BX. Exit: A _BH, N and Z from it. X, Y, C, V kept.
  */
 uint8_t write_vram_word_pending(void)
 {
-    uint8_t low = rd8(CardBl);
-    uint8_t high = rd8((uint16_t)(CardBl + 1));
+    uint8_t low;
+    uint8_t high;
 
-    wr8(CardVramPending, 1);
+    WR8(CRAM->vram_pending, VRAM_PENDING);
+    low = RD8(CZP->b.lo);
     wr8(VdcDataLo, low);
+    high = RD8(CZP->b.hi);
     wr8(VdcDataHi, high);
     return high;
 }
 
 void abi_write_vram_word_pending(void)
 {
-    uint8_t high = write_vram_word_pending();
-
-    cpu.a = high;
-    abi_nz(high);
+    cpu.a = write_vram_word_pending();
+    abi_nz(cpu.a);
 }
 
 /*
  * @card 00:F354 cd_subrd
  * WHAT IT DOES: Reads a subcode byte, if one is waiting.
  * HOW: Bit 4 of the status port; the byte comes from $1807 and is kept in CardSubcodeByte.
+ * WAITS: no.
  * Entry: nothing. Exit, one read: A the byte, N and Z from it, C clear, V bit 6 of the status.
  * Exit, none: C set, Z set, N and V bits 7 and 6 of the status, A kept. X, Y kept.
  */
@@ -213,16 +226,17 @@ CdSubcodeRead cd_subrd(void)
 {
     CdSubcodeRead read = { false, 0, 0 };
 
-    read.status = rd8(CdIrqStatus);
+    read.status = RD8(CCDU->irq_status);
     if (read.status & CD_STATUS_SUBCODE) {
-        read.byte = rd8(CdSubcode);
-        wr8(CardSubcodeByte, read.byte);
+        read.byte = RD8(CCDU->subcode);
+        WR8(CRAM->subcode_byte, read.byte);
         read.ready = true;
     }
     return read;
 }
 
-static void cd_subrd_exit_shim(CdSubcodeRead read)
+/* cd_subrd's exit, for its wrapper and for a caller's that ends in it. */
+void cd_subrd_exit_shim(CdSubcodeRead read)
 {
     abi_flag(P_V, (read.status & 0x40) != 0);
     abi_flag(P_C, !read.ready);
@@ -245,15 +259,26 @@ void abi_cd_subrd(void)
  * WHAT IT DOES: Puts the CD unit in a known state at boot: reset, its interrupts off, no fade,
  * ADPCM reset, and any waiting subcode byte taken.
  * HOW: cd_reset, then the interrupt enables and the fade port cleared, ad_reset, cd_subrd.
+ * WAITS: no.
  * Entry: nothing. Exit: X 0, Y 0; A, N, Z, C and V as cd_subrd leaves them, A $6F if no byte.
+ * Not run by any script and with no draft: no unit call reaches it; its calls are framed as the assembly makes them.
  */
 CdSubcodeRead reset_cd_unit(void)
 {
-    cd_reset();
-    wr8(CdIrqControl, 0);
-    wr8(CdFade, 0);
-    ad_reset();
-    return cd_subrd();
+    CdSubcodeRead read;
+
+    jsr_push(0xCB57);
+    (void)cd_reset();
+    jsr_pop();
+    WR8(CCDU->irq_control, 0);
+    WR8(CCDU->fade, 0);
+    jsr_push(0xCB60);
+    (void)ad_reset();
+    jsr_pop();
+    jsr_push(0xCB63);
+    read = cd_subrd();
+    jsr_pop();
+    return read;
 }
 
 void abi_reset_cd_unit(void)
@@ -271,17 +296,21 @@ void abi_reset_cd_unit(void)
  * WHAT IT DOES: Latches a CD audio sample and reads it.
  * HOW: A write to the latch port, a pause for it that the C does not state, then its two
  * bytes and the status port's bit 1.
+ * WAITS: no.
  * Entry: A what goes to the latch. Exit: X the low byte, Y the high, A the bit, N 0, Z from
  * it, C clear. V kept.
+ * Not run by any script.
  */
 CdPcmRead cd_pcmrd(uint8_t latch)
 {
     CdPcmRead read;
+    uint8_t status;
 
-    wr8(CdPcmLatch, latch);
-    read.low = rd8(CdPcmLatch);
-    read.high = rd8(CdPcmHigh);
-    read.more = (rd8(CdIrqStatus) & CD_STATUS_PCM_MORE) >> 1;
+    WR8(CCDU->pcm_latch, latch);
+    read.low = RD8(CCDU->pcm_latch);
+    read.high = RD8(CCDU->pcm_high);
+    status = RD8(CCDU->irq_status);
+    read.more = (uint8_t)((status & CD_STATUS_PCM_MORE) >> 1);
     return read;
 }
 
@@ -300,26 +329,25 @@ void abi_cd_pcmrd(void)
  * @card 00:F379 cd_fade
  * WHAT IT DOES: Starts or stops the CD and ADPCM volume fade.
  * HOW: The low nibble of the type goes to the fade port.
+ * WAITS: no.
  * Entry: A type. Exit: A the nibble, N and Z from it. X, Y, C, V kept.
  */
-void cd_fade(uint8_t type)
+uint8_t cd_fade(uint8_t type)
 {
-    wr8(CdFade, type & CD_FADE_BITS);
+    uint8_t nibble = (uint8_t)(type & CD_FADE_BITS);
+
+    WR8(CCDU->fade, nibble);
+    return nibble;
 }
 
 void abi_cd_fade(void)
 {
-    uint8_t given = cpu.a;
-
-    cd_fade(given);
-    cd_fade_exit_shim(given);
+    cd_fade_exit_shim(cd_fade(cpu.a));
 }
 
-/* cd_fade's exit, for its wrapper and for a caller's that ends in it: given the A it was called with. */
-void cd_fade_exit_shim(uint8_t given)
+/* cd_fade's exit, for its wrapper and for a caller's that ends in it: the nibble it returned. */
+void cd_fade_exit_shim(uint8_t nibble)
 {
-    uint8_t nibble = given & CD_FADE_BITS;
-
     cpu.a = nibble;
     abi_nz(nibble);
 }

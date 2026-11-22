@@ -188,6 +188,19 @@ static DiscCall disc_call(DiscCallKind kind)
     return call;
 }
 
+/* X as the logged calls leave it, from the X it had before the first: what the next call pushes. */
+static uint8_t log_x(const DiscLog *log, uint8_t entry_x)
+{
+    Cpu saved = cpu;
+    uint8_t x;
+
+    cpu.x = entry_x;
+    disc_log_exit_shim(log);
+    x = cpu.x;
+    cpu = saved;
+    return x;
+}
+
 /* An address's last add, which leaves its byte in A and its carry and overflow. */
 static void log_sum(DiscLog *log, Sum sum)
 {
@@ -198,13 +211,13 @@ static void log_sum(DiscLog *log, Sum sum)
 }
 
 /* Waits for the drive: asks whether it is busy, and pauses it until it says it has stopped. */
-static void wait_drive_idle(DiscLog *log, uint16_t ret_stat, uint16_t ret_pause)
+static void wait_drive_idle(DiscLog *log, uint8_t entry_x, uint16_t ret_stat, uint16_t ret_pause)
 {
     for (;;) {
         DiscCall stat = disc_call(DISC_CD_STAT);
 
         jsr_push(ret_stat);
-        stat.as.cd_stat = cd_stat(0);
+        stat.as.cd_stat = cd_stat(0, log_x(log, entry_x));
         jsr_pop();
         log_call(log, stat);
         if (cd_stat_result(stat.as.cd_stat) == 0)
@@ -213,7 +226,7 @@ static void wait_drive_idle(DiscLog *log, uint16_t ret_stat, uint16_t ret_pause)
             DiscCall pause = disc_call(DISC_CD_PAUSE);
 
             jsr_push(ret_pause);
-            pause.as.cd_pause = cd_pause();
+            pause.as.cd_pause = cd_pause(log_x(log, entry_x));
             jsr_pop();
             log_call(log, pause);
             if (cd_pause_result(pause.as.cd_pause) == 0)
@@ -264,7 +277,7 @@ static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size,
 }
 
 /* The BIOS's ADPCM transfer of _AL sectors from the address in _CL, _CH, _DL to ADPCM 0. */
-static AdTrans adpcm_transfer(DiscLog *log, uint8_t sectors, Sum last, uint16_t ret)
+static AdTrans adpcm_transfer(DiscLog *log, uint8_t entry_x, uint8_t sectors, Sum last, uint16_t ret)
 {
     DiscCall trans = disc_call(DISC_AD_TRANS);
 
@@ -276,7 +289,7 @@ static AdTrans adpcm_transfer(DiscLog *log, uint8_t sectors, Sum last, uint16_t 
     trans.summed = true;
     trans.sum = last;
     jsr_push(ret);
-    trans.as.ad_trans = ad_trans();
+    trans.as.ad_trans = ad_trans(sectors, log_x(log, entry_x));
     jsr_pop();
     log_call(log, trans);
     return trans.as.ad_trans;
@@ -327,9 +340,9 @@ AdpcmLoadRun AdpcmLoad(uint8_t sound)
     for (;;) {
         Sum last;
 
-        wait_drive_idle(&run.log, 0x6E64, 0x6E6B);
+        wait_drive_idle(&run.log, 0, 0x6E64, 0x6E6B);
         last = record_disc_address();
-        if (ad_trans_result(adpcm_transfer(&run.log, rd8_zp_y(zTemp00, 3), last, 0x6E95)) == 0)
+        if (ad_trans_result(adpcm_transfer(&run.log, 0, rd8_zp_y(zTemp00, 3), last, 0x6E95)) == 0)
             break;
     }
     wr8(BiosAdpcmBusy, 0);
@@ -365,7 +378,7 @@ void abi_AdpcmLoad(void)
  * Entry: nothing. Exit: A zero, N 0, Z 1, C 1; X, Y and V as the BIOS's last transfer leaves
  * them.
  */
-DiscLog AdpcmLoadFixed(void)
+DiscLog AdpcmLoadFixed(uint8_t entry_x)
 {
     DiscLog log;
 
@@ -375,7 +388,7 @@ DiscLog AdpcmLoadFixed(void)
         Sum middle;
         Sum high;
 
-        wait_drive_idle(&log, 0x6EA1, 0x6EA8);
+        wait_drive_idle(&log, entry_x, 0x6EA1, 0x6EA8);
         low = sub_bytes((uint8_t)FIXED_ADPCM_ADDRESS, (uint8_t)TRACK_START, true);
         wr8(zBiosDl, low.value);
         middle = sub_bytes((uint8_t)(FIXED_ADPCM_ADDRESS >> 8), (uint8_t)(TRACK_START >> 8),
@@ -390,7 +403,7 @@ DiscLog AdpcmLoadFixed(void)
         wr8(zBiosCh, middle.value);
         high = add_bytes(0, rd8(zBiosCl), middle.carry);
         wr8(zBiosCl, high.value);
-        if (ad_trans_result(adpcm_transfer(&log, FIXED_ADPCM_SECTORS, high, 0x6EE3)) == 0)
+        if (ad_trans_result(adpcm_transfer(&log, entry_x, FIXED_ADPCM_SECTORS, high, 0x6EE3)) == 0)
             break;
     }
     wr8(BiosAdpcmBusy, 0);
@@ -399,7 +412,7 @@ DiscLog AdpcmLoadFixed(void)
 
 void abi_AdpcmLoadFixed(void)
 {
-    DiscLog log = AdpcmLoadFixed();
+    DiscLog log = AdpcmLoadFixed(cpu.x);
 
     disc_log_exit_shim(&log);
 }
@@ -423,7 +436,7 @@ DiscLog AdpcmPlayFromDisc(uint8_t sound)
     for (;;) {
         DiscCall play = disc_call(DISC_AD_CPLAY);
 
-        wait_drive_idle(&log, 0x6F05, 0x6F0C);
+        wait_drive_idle(&log, 0, 0x6F05, 0x6F0C);
         play.summed = true;
         play.sum = record_disc_address();
         wr8(zBiosAl, rd8_zp_y(zTemp00, 3));
@@ -432,7 +445,7 @@ DiscLog AdpcmPlayFromDisc(uint8_t sound)
         wr8(zBiosDh, CPLAY_MODE);
         play.given = CPLAY_MODE;
         jsr_push(0x6F3B);
-        play.as.ad_cplay = ad_cplay();
+        play.as.ad_cplay = ad_cplay(CPLAY_MODE, log_x(&log, 0));
         jsr_pop();
         log_call(&log, play);
         if (ad_cplay_result(play.as.ad_cplay) == 0)
@@ -585,7 +598,7 @@ static TrackPlay play_track(uint8_t track, uint8_t mode, uint8_t kept_x, uint8_t
         play.dl = rd8_zp_y(zTemp00, 5);
         wr8(zBiosDl, play.dl);
         jsr_push(0x6F94);
-        tried = cd_play();
+        tried = cd_play(play.dl, play.tries == 0 ? (uint8_t)(play.entry.mul.product >> 8) : play.results[(play.tries - 1) % CD_PLAY_KEPT]);
         jsr_pop();
         result = cd_play_result(tried);
         play.results[play.tries % CD_PLAY_KEPT] = result;
@@ -715,7 +728,7 @@ TrackSearch CdSearchTrack(uint8_t track, uint8_t kept_x, uint8_t kept_y)
         seek.given = rd8_zp_y(zTemp00, 2);
         wr8(zBiosBl, seek.given);
         jsr_push(0x6FD2);
-        seek.as.cd_search = cd_search();
+        seek.as.cd_search = cd_search(seek.given, log_x(&search.log, 0));
         jsr_pop();
         log_call(&search.log, seek);
         if (cd_search_result(seek.as.cd_search) == 0)
@@ -874,7 +887,7 @@ static void scene_read(DiscLog *log, uint8_t op)
         read.given = rd8_zp_y(zTemp08, 2);
         wr8(zBiosAl, read.given);
         jsr_push(0x70F2);
-        read.as.cd_read = cd_read();
+        read.as.cd_read = cd_read(read.given, log_x(log, 0));
         jsr_pop();
         log_call(log, read);
         index = cd_read_result(read.as.cd_read);

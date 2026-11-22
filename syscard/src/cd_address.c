@@ -4,50 +4,25 @@
  * in _AL, _AH, _BL, the term being added in CardPointerLo, CardPointerHi, CardCopyLo.
  */
 #include "card.h"
+#include "card_access.h"
 #include "syscard.h"
 
-enum {
-    FRAMES_PER_SECOND = 75, SECONDS_PER_MINUTE = 60, LEAD_IN_FRAMES = 150,
-    LBA_MASK = 0xFFFFFF, LBA_TOP_BIT = 0x800000, MSF_BYTES = 3
-};
+enum { LEAD_IN_FRAMES = 0x96, RESULT_BYTES = 3 };
 
-static uint32_t read_three(uint16_t high)
-{
-    uint8_t top = rd8(high);
-    uint8_t middle = rd8((uint16_t)(high + 1));
-
-    return ((uint32_t)top << 16) | ((uint32_t)middle << 8) | rd8((uint16_t)(high + 2));
-}
-
-static void write_three(uint16_t high, uint32_t value)
-{
-    wr8(high, (uint8_t)(value >> 16));
-    wr8((uint16_t)(high + 1), (uint8_t)(value >> 8));
-    wr8((uint16_t)(high + 2), (uint8_t)value);
-}
-
-/* The exit of an add: A the sum's high byte; N, Z, C and V from adding the high bytes. */
-void abi_lba_add_exit_shim(LbaAdd add)
-{
-    uint32_t sum = (add.before + add.term) & LBA_MASK;
-    bool carry_in = (add.before & 0xFFFF) + (add.term & 0xFFFF) > 0xFFFF;
-    int top = (int8_t)(add.before >> 16) + (int8_t)(add.term >> 16) + (carry_in ? 1 : 0);
-
-    cpu.a = (uint8_t)(sum >> 16);
-    abi_nz(cpu.a);
-    abi_flag(P_C, add.before + add.term > LBA_MASK);
-    abi_flag(P_V, top < -128 || top > 127);
-}
+#define RESULT(i) ((uint16_t)(CardCdResult + (i)))
 
 /*
  * @card 01:CC97 lba_load_term
  * WHAT IT DOES: Makes a byte the term to add.
  * HOW: The byte to the term's low byte, its upper two bytes cleared.
+ * WAITS: no.
  * Entry: A. Exit: all registers and flags kept.
  */
 void lba_load_term(uint8_t value)
 {
-    write_three(CardPointerLo, value);
+    WR8(CZP->copy.lo, value);
+    WR8(CZP->pointer.hi, 0);
+    WR8(CZP->pointer.lo, 0);
 }
 
 void abi_lba_load_term(void)
@@ -59,63 +34,116 @@ void abi_lba_load_term(void)
  * @card 01:CC7A lba_double_term
  * WHAT IT DOES: Doubles the term.
  * HOW: A shift left through its three bytes.
+ * WAITS: no.
  * Entry: the term. Exit: C its old top bit, N its new top bit, Z if its new high byte is zero.
- * A, X, Y, V kept. Gives the old top bit.
+ * A, X, Y, V kept.
  */
-bool lba_double_term(void)
+CardExit lba_double_term(void)
 {
-    uint32_t term = read_three(CardPointerLo);
+    CardExit e = { 0 };
+    uint8_t value;
+    bool carry;
+    uint8_t result;
 
-    write_three(CardPointerLo, (term << 1) & LBA_MASK);
-    return (term & LBA_TOP_BIT) != 0;
+    value = RD8(CZP->copy.lo);
+    carry = (value & 0x80) != 0;
+    WR8(CZP->copy.lo, (uint8_t)(value << 1));
+    value = RD8(CZP->pointer.hi);
+    result = (uint8_t)((value << 1) | (carry ? 1 : 0));
+    carry = (value & 0x80) != 0;
+    WR8(CZP->pointer.hi, result);
+    value = RD8(CZP->pointer.lo);
+    result = (uint8_t)((value << 1) | (carry ? 1 : 0));
+    carry = (value & 0x80) != 0;
+    WR8(CZP->pointer.lo, result);
+    e.nz = result;
+    e.c = carry;
+    e.set_nz = e.set_c = true;
+    return e;
 }
 
 void abi_lba_double_term(void)
 {
-    bool out = lba_double_term();
-    uint8_t high = rd8(CardPointerLo);
-
-    abi_flag(P_C, out);
-    abi_nz(high);
+    card_exit_apply(lba_double_term());
 }
 
 /*
  * @card 01:CC83 lba_add_term
  * WHAT IT DOES: Adds the term to the sum.
  * HOW: A three-byte add, low byte first.
+ * WAITS: no.
  * Entry: the sum, the term. Exit: A the sum's high byte, N, Z, C and V from adding the high
  * bytes. X, Y kept.
  */
-LbaAdd lba_add_term(void)
+CardExit lba_add_term(void)
 {
-    LbaAdd add;
+    CardExit e = { 0 };
+    Sum low;
+    Sum middle;
+    Sum high;
+    uint8_t value;
+    uint8_t term;
 
-    add.before = read_three(CardAl);
-    add.term = read_three(CardPointerLo);
-    write_three(CardAl, (add.before + add.term) & LBA_MASK);
-    return add;
+    value = RD8(CZP->b.lo);
+    term = RD8(CZP->copy.lo);
+    low = add8(value, term, false);
+    WR8(CZP->b.lo, low.value);
+    value = RD8(CZP->a.hi);
+    term = RD8(CZP->pointer.hi);
+    middle = add8(value, term, low.carry);
+    WR8(CZP->a.hi, middle.value);
+    value = RD8(CZP->a.lo);
+    term = RD8(CZP->pointer.lo);
+    high = add8(value, term, middle.carry);
+    WR8(CZP->a.lo, high.value);
+    e.a = e.nz = high.value;
+    e.c = high.carry;
+    e.v = high.overflow;
+    e.set_a = e.set_nz = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_lba_add_term(void)
 {
-    abi_lba_add_exit_shim(lba_add_term());
+    card_exit_apply(lba_add_term());
 }
 
 /*
  * @card 01:CC81 lba_double_and_add
  * WHAT IT DOES: Doubles the term, then adds it to the sum.
- * HOW: lba_double_term, then lba_add_term.
+ * HOW: lba_double_term, then lba_add_term, which it runs into.
+ * WAITS: no.
  * Entry: the sum, the term. Exit: as lba_add_term.
  */
-LbaAdd lba_double_and_add(void)
+CardExit lba_double_and_add(void)
 {
-    lba_double_term();
+    jsr_push(0xCC83);
+    (void)lba_double_term();
+    jsr_pop();
     return lba_add_term();
 }
 
 void abi_lba_double_and_add(void)
 {
-    abi_lba_add_exit_shim(lba_double_and_add());
+    card_exit_apply(lba_double_and_add());
+}
+
+/* A call of lba_double_term or lba_double_and_add: the frame is the one the assembly's BSR makes. */
+static void lba_double(uint16_t ret)
+{
+    jsr_push(ret);
+    (void)lba_double_term();
+    jsr_pop();
+}
+
+static CardExit lba_double_add(uint16_t ret)
+{
+    CardExit e;
+
+    jsr_push(ret);
+    e = lba_double_and_add();
+    jsr_pop();
+    return e;
 }
 
 /*
@@ -125,28 +153,69 @@ void abi_lba_double_and_add(void)
  * HOW: Each byte goes to binary in place (ex_bcdbin, which leaves a bad byte as it was); then
  * ((minutes times 60 plus seconds) times 75 plus frames) less 150, the frames before sector 0,
  * by shifts and adds of the term in CardPointerLo, in 24 bits.
- * Entry: CardCdResult. Exit: A the high byte, N, Z, C and V from adding the last term's high
- * byte. X, Y kept. The term is left as the frames less 150.
+ * WAITS: no.
+ * Entry: CardCdResult; X (pushed by ex_bcdbin). Exit: A the high byte, N, Z, C and V from adding the
+ * last term's high byte. X, Y kept. The term is left as the frames less 150.
  */
-LbaAdd msf_to_lba(void)
+CardExit msf_to_lba(uint8_t x)
 {
-    uint8_t msf[MSF_BYTES];
-    uint32_t seconds;
-    LbaAdd add;
+    CardExit e;
+    BcdConvert converted;
+    Sum low;
+    Sum middle;
+    uint8_t value;
+    uint16_t rets[3] = { 0xCC1D, 0xCC26, 0xCC2F };
 
-    for (unsigned i = 0; i < MSF_BYTES; i++) {
-        msf[i] = ex_bcdbin(rd8((uint16_t)(CardCdResult + i))).value;
-        wr8((uint16_t)(CardCdResult + i), msf[i]);
+    for (unsigned i = 0; i < RESULT_BYTES; i++) {
+        value = rd8(RESULT(i));
+        jsr_push(rets[i]);
+        converted = ex_bcdbin(value, x);
+        jsr_pop();
+        wr8(RESULT(i), converted.value);
     }
-    seconds = (uint32_t)msf[0] * SECONDS_PER_MINUTE + msf[1];
-    add.before = (seconds * FRAMES_PER_SECOND) & LBA_MASK;
-    add.term = ((uint32_t)msf[2] - LEAD_IN_FRAMES) & LBA_MASK;
-    write_three(CardPointerLo, add.term);
-    write_three(CardAl, (add.before + add.term) & LBA_MASK);
-    return add;
+    WR8(CZP->a.lo, 0);
+    WR8(CZP->a.hi, 0);
+    WR8(CZP->b.lo, 0);
+    value = rd8(RESULT(0));
+    jsr_push(0xCC3D);
+    lba_load_term(value);
+    jsr_pop();
+    lba_double(0xCC3F);
+    (void)lba_double_add(0xCC41);
+    (void)lba_double_add(0xCC43);
+    (void)lba_double_add(0xCC45);
+    (void)lba_double_add(0xCC47);
+    value = rd8(RESULT(1));
+    jsr_push(0xCC4C);
+    lba_load_term(value);
+    jsr_pop();
+    jsr_push(0xCC4E);
+    (void)lba_add_term();
+    jsr_pop();
+    value = RD8(CZP->a.lo);
+    WR8(CZP->pointer.lo, value);
+    value = RD8(CZP->a.hi);
+    WR8(CZP->pointer.hi, value);
+    value = RD8(CZP->b.lo);
+    WR8(CZP->copy.lo, value);
+    (void)lba_double_add(0xCC5C);
+    lba_double(0xCC5E);
+    (void)lba_double_add(0xCC60);
+    lba_double(0xCC62);
+    lba_double(0xCC64);
+    (void)lba_double_add(0xCC66);
+    value = rd8(RESULT(2));
+    low = sub8(value, LEAD_IN_FRAMES, true);
+    WR8(CZP->copy.lo, low.value);
+    middle = sub8(0, 0, low.carry);
+    WR8(CZP->pointer.hi, middle.value);
+    middle = sub8(0, 0, middle.carry);
+    WR8(CZP->pointer.lo, middle.value);
+    e = lba_add_term();
+    return e;
 }
 
 void abi_msf_to_lba(void)
 {
-    abi_lba_add_exit_shim(msf_to_lba());
+    card_exit_apply(msf_to_lba(cpu.x));
 }

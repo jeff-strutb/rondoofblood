@@ -180,7 +180,8 @@ static ScreensLoad load_screens(void)
     load.a = LoadSceneScript(SCENE_SCREENS_A);
     load.b = LoadSceneScript(SCENE_SCREENS_B);
     load.c = LoadSceneScript(SCENE_SCREENS_C);
-    load.fixed = AdpcmLoadFixed();
+    disc_log_exit_shim(&load.c);
+    load.fixed = AdpcmLoadFixed(cpu.x);
     return load;
 }
 

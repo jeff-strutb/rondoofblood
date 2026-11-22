@@ -992,7 +992,7 @@ typedef struct { bool already; uint8_t sound; DiscLog log; } AdpcmLoadRun;
 typedef struct { bool skipped; uint8_t x, y; DiscLog log; } TrackSearch;
 
 AdpcmLoadRun AdpcmLoad(uint8_t sound);
-DiscLog AdpcmLoadFixed(void);
+DiscLog AdpcmLoadFixed(uint8_t entry_x);
 DiscLog AdpcmPlayFromDisc(uint8_t sound);
 TrackSearch CdSearchTrack(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 /* A scene overlay's entry run, and the bank add that mapped it, which leaves C and V for it. */

@@ -977,12 +977,15 @@ static void mprs_now(uint8_t *v)
 uint8_t tma(uint8_t mpr_bit)
 {
     uint8_t v[8];
+    uint8_t a = 0;
 
     mprs_now(v);
+    /* TMA with several bits set: the core loads A from each in turn, so the highest set bit's bank is the result
+     * (huc6280.cpp, the TMA macro); no bit set leaves A as it was, which the C's caller sees as 0 here. */
     for (unsigned i = 0; i < 8; i++)
         if (mpr_bit & (1u << i))
-            return v[i];
-    return 0;
+            a = v[i];
+    return a;
 }
 
 void tam(uint8_t mpr_bits, uint8_t bank)

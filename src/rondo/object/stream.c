@@ -281,6 +281,25 @@ static void placed_exit_shim(PlaceExit out)
     abi_flag(P_V, out.last.overflow);
 }
 
+/*
+ * @routine 0047:08A StreamSpawnEnd
+ * @run 6A:608A
+ * WHAT IT DOES: The end of the spawning record handlers: gives back the caller's X.
+ * HOW: Pulls X, which the handler kept on the stack.
+ * WAITS: no.
+ * Entry: the caller's X on the stack. Exit: X that, N and Z from it. A, Y, C and V kept.
+ */
+uint8_t StreamSpawnEnd(void)
+{
+    return pull8();
+}
+
+void abi_StreamSpawnEnd(void)
+{
+    cpu.x = StreamSpawnEnd();
+    abi_nz(cpu.x);
+}
+
 /* Whether a spawn placed its object, and what the exit then needs. */
 typedef struct {
     bool placed;
@@ -312,7 +331,7 @@ Spawn StreamSpawnIfFree(uint8_t x)
         spawn.placed = true;
         spawn.place = place_new_object(slot);
     }
-    spawn.x = pull8();
+    spawn.x = StreamSpawnEnd();
     return spawn;
 }
 
@@ -341,7 +360,7 @@ Spawn StreamPlaceObject(uint8_t slot)
     Spawn spawn = { true, 0, 0, { 0, { 0, false, false }, false } };
 
     spawn.place = place_new_object(slot);
-    spawn.x = pull8();
+    spawn.x = StreamSpawnEnd();
     return spawn;
 }
 
@@ -536,8 +555,10 @@ Spawn StreamSpawnIfOther(uint8_t x)
     }
     if (spawn.placed) {
         spawn.place = place_new_object(slot);
+        spawn.x = StreamSpawnEnd();
+    } else {
+        spawn.x = pull8();
     }
-    spawn.x = pull8();
     return spawn;
 }
 
@@ -804,6 +825,7 @@ typedef struct {
     bool distance_v;       /* V of the last StreamDistance */
     uint8_t cmp_a, cmp_b;  /* the compare the walk ended on */
     Sum last;              /* the last add or subtract of an end that leaves its C and V */
+    uint8_t x;             /* X as the last handler left it (original code may change it) */
 } StreamWalk;
 
 /* The record pointer moves on one record, the stream position and the record's position follow. */
@@ -867,7 +889,9 @@ static Sum end_forward(void)
  */
 StreamWalk StreamWalkForward(uint8_t x)
 {
-    StreamWalk walk = { WALK_STOPPED_HIGH, false, false, 0, 0, { 0, false, false } };
+    StreamWalk walk = { WALK_STOPPED_HIGH, false, false, 0, 0, { 0, false, false }, 0 };
+
+    walk.x = x;
 
     for (;;) {
         DistanceExit dist;
@@ -886,6 +910,7 @@ StreamWalk StreamWalkForward(uint8_t x)
             if (mid < range) {
                 jsr_push(0x5EDC);
                 x = RunStreamRecord(x);
+                walk.x = x;
                 jsr_pop();
                 step_forward();
                 walk.stepped = true;
@@ -979,7 +1004,9 @@ void abi_StreamWalkForward(void)
  */
 StreamWalk StreamWalkBack(uint8_t x)
 {
-    StreamWalk walk = { WALK_STOPPED_HIGH, false, false, 0, 0, { 0, false, false } };
+    StreamWalk walk = { WALK_STOPPED_HIGH, false, false, 0, 0, { 0, false, false }, 0 };
+
+    walk.x = x;
 
     for (;;) {
         DistanceExit dist;
@@ -999,6 +1026,7 @@ StreamWalk StreamWalkBack(uint8_t x)
             if (mid < range) {
                 jsr_push(0x5F54);
                 x = RunStreamRecord(x);
+                walk.x = x;
                 jsr_pop();
                 step = true;
             }
@@ -1076,8 +1104,9 @@ void abi_StreamWalkBack(void)
  * count, X the caller's. Exit: A 0, N 0, Z 1, C from the count's borrow, V from the last
  * subtract, Y as the last walk left it. X kept.
  */
-static Sum stream_walk_lines(uint8_t x)
+static Sum stream_walk_lines(uint8_t *xp)
 {
+    uint8_t x = *xp;
     Sum count_hi;
 
     do {
@@ -1090,13 +1119,19 @@ static Sum stream_walk_lines(uint8_t x)
         walk_start();
         step_lo = RD8(LEVEL->stream_step.lo);
         if (step_lo & 0x80) {
+            StreamWalk walk;
+
             jsr_push(0x5E08);
-            StreamWalkBack(x);
+            walk = StreamWalkBack(x);
             jsr_pop();
+            x = walk.x;
         } else {
+            StreamWalk walk;
+
             jsr_push(0x5E03);
-            StreamWalkForward(x);
+            walk = StreamWalkForward(x);
             jsr_pop();
+            x = walk.x;
         }
         byte = RD8(ZP->temp04);
         step_lo = RD8(LEVEL->stream_step.lo);
@@ -1118,12 +1153,13 @@ static Sum stream_walk_lines(uint8_t x)
             break;
         }
     } while (1);
+    *xp = x;
     return count_hi;
 }
 
 void StreamWalkLines(uint8_t x)
 {
-    stream_walk_lines(x);
+    stream_walk_lines(&x);
 }
 
 /* The count ended by going from 1 to 0: A is the ORA's result, 0; every walk leaves Y 1. */
@@ -1138,11 +1174,15 @@ static void lines_exit_shim(Sum count)
 
 void abi_StreamWalkLines(void)
 {
-    lines_exit_shim(stream_walk_lines(cpu.x));
+    {
+        uint8_t x = cpu.x;
+
+        lines_exit_shim(stream_walk_lines(&x));
+    }
 }
 
 /* One walk of a full pass, from the scroll, one line in range at a time. */
-static Sum walk_full_span(uint8_t x, uint8_t step_lo, uint8_t step_hi, bool vertical, uint8_t count_hi,
+static Sum walk_full_span(uint8_t *x, uint8_t step_lo, uint8_t step_hi, bool vertical, uint8_t count_hi,
                           uint16_t ret)
 {
     uint8_t byte;
@@ -1175,7 +1215,7 @@ static Sum walk_full_span(uint8_t x, uint8_t step_lo, uint8_t step_hi, bool vert
  * Entry: LevelAxis, X the caller's. Exit: as StreamWalkLines; the flag down.
  * Clobbers zTemp04-06.
  */
-static Sum stream_full_walk(uint8_t x)
+static Sum stream_full_walk(uint8_t *x)
 {
     uint8_t axis = RD8(LEVEL->level_axis);
     bool vertical = axis == AXIS_VERTICAL;
@@ -1190,12 +1230,16 @@ static Sum stream_full_walk(uint8_t x)
 
 void StreamFullWalk(uint8_t x)
 {
-    stream_full_walk(x);
+    stream_full_walk(&x);
 }
 
 void abi_StreamFullWalk(void)
 {
-    lines_exit_shim(stream_full_walk(cpu.x));
+    {
+        uint8_t x = cpu.x;
+
+        lines_exit_shim(stream_full_walk(&x));
+    }
 }
 
 /* The scroll's position and speed on one axis, read where the edge walks read them. */
@@ -1244,7 +1288,7 @@ static StreamWalk edge_walk_back(uint8_t x, bool vertical)
     high = scroll_high(vertical);
     hi = add_bytes(high, 0xFF, lo.carry);
     if (hi.value & 0x80) {
-        StreamWalk before_start = { EDGE_BEFORE_START, false, false, 0, 0, hi };
+        StreamWalk before_start = { EDGE_BEFORE_START, false, false, 0, 0, hi, x };
 
         return before_start;
     }
@@ -1346,7 +1390,7 @@ StreamWalk StreamScrollStep(uint8_t x)
     uint8_t axis;
     bool vertical;
     uint8_t speed;
-    StreamWalk none = { STEP_NO_SPEED, false, false, 0, 0, { 0, false, false } };
+    StreamWalk none = { STEP_NO_SPEED, false, false, 0, 0, { 0, false, false }, x };
 
     walk_start();
     axis = RD8(LEVEL->level_axis);

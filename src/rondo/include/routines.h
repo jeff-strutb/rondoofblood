@@ -77,8 +77,8 @@ typedef struct {
     uint8_t column_after;
 } LookupEnd;
 
-LookupEnd StageLookup(uint8_t probe, uint8_t object, uint8_t column);
-LookupEnd StageLookupAlt(uint8_t probe, uint8_t object, uint8_t column);
+LookupEnd StageLookup(uint8_t probe, uint8_t object, uint8_t column, bool carry_in);
+LookupEnd StageLookupAlt(uint8_t probe, uint8_t object, uint8_t column, bool carry_in);
 void lookup_exit_shim(LookupEnd end);
 
 /* How the player overlay's wall probe ended. *_BY_ORIGINAL: another overlay answered. */

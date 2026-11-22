@@ -319,7 +319,50 @@ void abi_TitleWipe(void);
 void abi_TitleLogoFade(void);
 void abi_TitleCycle(void);
 
+/* What a scene object handler leaves: the registers, and the move whose C and V it may end with. */
+typedef struct { Exit exit; AxisMove move; bool moved; } ObjExit;
+#define FRAME_LISTS 0x8EED
+#define DEBRIS_TABLE 0x8BFE
+
 /* menu/attract.c */
+ObjExit ObjectFrameList(uint8_t list, uint8_t object);
+ObjExit PlayFrameListOnce(uint8_t object);
+ObjExit AnimateAndCueSeven(uint8_t object);
+ObjExit AnimateList1AndCueSeven(uint8_t object);
+ObjExit AnimateAndCueNine(uint8_t object);
+ObjExit AnimateList9AndCueNine(uint8_t object);
+ObjExit BlinkScrollFlag(uint8_t object);
+ObjExit MirrorVramBlock(uint8_t object);
+ObjExit NudgeScrollIn(uint8_t object);
+void abi_AnimateAndCueNine(void);
+void abi_AnimateList9AndCueNine(void);
+void abi_BlinkScrollFlag(void);
+void abi_MirrorVramBlock(void);
+void abi_NudgeScrollIn(void);
+ObjExit DropAndShakeScreen(uint8_t object);
+ObjExit ScatterDebris(uint8_t kept_x);
+void abi_DropAndShakeScreen(void);
+void abi_ScatterDebris(void);
+ObjExit BreakApartOnFrame(uint8_t object);
+ObjExit FallAndClear(uint8_t object);
+ObjExit IntroSceneObject(uint8_t object);
+void abi_BreakApartOnFrame(void);
+void abi_FallAndClear(void);
+void abi_IntroSceneObject(void);
+ObjExit RiseAndFallObject(uint8_t object);
+ObjExit DriftAndClearObject(uint8_t object);
+ObjExit SplitScreenObject(uint8_t object);
+ObjExit FlingObjectRight(uint8_t object);
+ObjExit FlingObjectLeft(uint8_t object);
+void abi_RiseAndFallObject(void);
+void abi_DriftAndClearObject(void);
+void abi_SplitScreenObject(void);
+void abi_FlingObjectRight(void);
+void abi_FlingObjectLeft(void);
+void abi_ObjectFrameList(void);
+void abi_PlayFrameListOnce(void);
+void abi_AnimateAndCueSeven(void);
+void abi_AnimateList1AndCueSeven(void);
 Exit ScriptAdvance(void);
 Exit ScriptStep(void);
 Exit ScriptSaveReadAndState(void);

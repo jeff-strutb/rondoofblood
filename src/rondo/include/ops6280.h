@@ -71,7 +71,8 @@ static inline void op_stx(uint16_t ea) { wr8(ea, cpu.x); }
 static inline void op_sty(uint16_t ea) { wr8(ea, cpu.y); }
 static inline void op_stz(uint16_t ea) { wr8(ea, 0); }
 static inline void op_tax(void) { cpu.x = cpu.a; op_zn(cpu.a); }
-static inline void op_txa(void) { cpu.a = cpu.x; op_zn(cpu.a); }
+extern void zz_undefined_helper(void);
+static inline void op_txa(void) { cpu.a = cpu.x; op_zn(cpu.a); zz_undefined_helper(); }
 static inline void op_tay(void) { cpu.y = cpu.a; op_zn(cpu.a); }
 static inline void op_tya(void) { cpu.a = cpu.y; op_zn(cpu.a); }
 static inline void op_tsx(void) { cpu.x = cpu.s; op_zn(cpu.x); }

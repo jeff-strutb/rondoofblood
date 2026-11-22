@@ -96,6 +96,8 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
     rm -rf "$CP"
     echo "core patches: all $(ls tools/toolchains/patches/pce/*.patch | wc -l) apply in order on a clean copy of the pinned source"
   fi
+  # The ledger own proper-C check on every routine: one that was proper must stay proper, a new one must be proper.
+  python3 tools/rondo/landcheck.py proper main || exit 12
   if git diff --quiet main HEAD -- asm src syscard tools; then
     echo "decomp tree identical to main: image and link checks skipped"
   else

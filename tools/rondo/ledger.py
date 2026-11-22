@@ -63,12 +63,19 @@ BAD = (("cpu", re.compile(r"\bcpu\.")), ("alu helper", re.compile(r"\balu_\w+\s*
 WRAPPER_MAX_LINES = 14
 
 
-def functions():
-    """Every C function: its signature and body, comments out, by name."""
+def source_texts():
+    """(path, text) of every C file the ledger reads, from this tree."""
+    return [(path, open(path, encoding="utf-8").read()) for path in
+            glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True) +
+            glob.glob(os.path.join(TOP, "syscard", "src", "*.c"))]
+
+
+def functions(sources=None):
+    """Every C function: its signature and body, comments out, by name. sources: (path, text) pairs, by default
+    this tree's files (landcheck.py passes main's too, to compare)."""
     found = {}
-    for path in (glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True) +
-                 glob.glob(os.path.join(TOP, "syscard", "src", "*.c"))):
-        text = re.sub(r"/\*.*?\*/", "", open(path, encoding="utf-8").read(), flags=re.S)
+    for path, raw in (source_texts() if sources is None else sources):
+        text = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
         for m in FUNC.finditer(text):
             depth, i = 1, m.end()
             while depth and i < len(text):
@@ -76,6 +83,15 @@ def functions():
                 i += 1
             found[m.group(1)] = text[m.start():i]
     return found
+
+
+def tagged_names(sources):
+    """Names of the routines with a tag (@routine SSSS:OOO name, @card BB:AAAA name) in these sources."""
+    out = set()
+    for _, text in sources:
+        out |= set(re.findall(r"@routine\s+[0-9A-Fa-f]{4}:[0-9A-Fa-f]{3}\s+(\w+)", text))
+        out |= set(re.findall(r"@card\s+[0-9A-Fa-f]{2}:[0-9A-Fa-f]{4}\s+(\w+)", text))
+    return out
 
 
 def proper_c_faults(name, funcs):

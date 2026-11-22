@@ -48,7 +48,7 @@ SetBlinkFlash_out:
 ; its timer to $60.
 ; HOW: Calls LoadObjectRecord through its vector (which keeps X), then stores each byte.
 ; WAITS: no.
-; Entry: X object. Exit: A $60 and flags from that load; X kept; Y as LoadObjectRecord left it.
+; Entry: X object. Exit: A $60, N and Z from it, C as LoadObjectRecord left it; Y 11; X kept. D clear.
 InitObjectFromRecord:
     jsr VecLoadObjectRecord
     lda a:OBJ_2FE8

@@ -5,6 +5,7 @@
 ; main stage leads to its secret version, and a secret to the next stage on. Some stages
 ; go elsewhere when they end, and stage 2 goes back to the title's load. Then StageLoad.
 ; HOW: Keeps the request in zStageRequested; zField8A says how the stage starts.
+; WAITS: yes, through ResetGameState (the vertical blank) and StageLoad (the drive); the stack there is the mode loop's return and the call frames.
 ; Entry: nothing. Exit: as StageLoad, or as AdpcmLoad back at the title's load.
 StageEnter:
     stz z:zField80

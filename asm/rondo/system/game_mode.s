@@ -202,6 +202,7 @@ ModeStageLoadContinue:
 ; except on the bonus stage, which marks it and, unless the save slot's flag is set,
 ; loads the ending's scenes and goes to mode 9.
 ; HOW: Compares zStage; StageClearBit in StagesVisited; the save's flag at SaveBonusSeen.
+; WAITS: yes, through ResetGameState (the vertical blank), the scene loads (the drive); the stack there is the mode loop's return and the call frames.
 ; Entry: from ModeStage. Exit: as what ran last.
 ModeStageDone:
     lda z:zStage
@@ -541,6 +542,7 @@ SaveScore_at2:
 ; WHAT IT DOES: Mode 8: waits out zWaitTimer, stops the sound, and goes back to the title;
 ; with bit 4 of zModeEvents, to the stage's load from the start.
 ; HOW: Counts down; SoundStopAll; ModeBackToTitle.
+; WAITS: yes, through ModeBackToTitle (ResetGameState and the title's loads); the stack there is the mode loop's return and the call frames.
 ; Entry: nothing. Exit: on waiting, A kept, N and Z from the count; else as what ran last.
 ModeGameOverWait:
     dec z:zWaitTimer

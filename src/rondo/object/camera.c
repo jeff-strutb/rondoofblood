@@ -13,6 +13,7 @@
  */
 #include "machine.h"
 #include "ram.h"
+#include "access.h"
 #include "routines.h"
 
 enum {
@@ -158,25 +159,43 @@ void abi_PlayerDistanceSum(void)
  * @routine 0047:589 SoundIfOnFirstScreen
  * @run 6A:6589
  * WHAT IT DOES: Plays a sound if the object is on the first screen across and down.
- * HOW: The high bytes of its position ORed must be zero, then SoundCommand.
- * Entry: A command, X object. Exit, not played: A kept, N and Z from it. Exit, played:
- * as SoundCommand.
+ * HOW: Keeps the command on the stack, reads the object's two position high bytes and returns
+ * if their OR is not zero; otherwise pulls the command and goes to SoundCommand.
+ * WAITS: no.
+ * Entry: A command, X object. Exit, not played: A the command, N and Z from it, C and V kept.
+ * Exit, played: as SoundCommand with the command's flags.
  */
-bool ObjectOnFirstScreen(uint8_t object)
+SoundOnScreen SoundIfOnFirstScreen(uint8_t command, uint8_t object)
 {
-    uint8_t x_high = rd8((uint16_t)(OBJ_X_HI + object));
-    uint8_t y_high = rd8((uint16_t)(OBJ_Y_HI + object));
+    SoundOnScreen result = { 0 };
+    uint8_t x_high, y_high;
 
-    return (x_high | y_high) == 0;
+    push8(command);
+    x_high = RD8(OBJ->x_hi[object]);
+    y_high = RD8(OBJ->y_hi[object]);
+    result.command = pull8();
+    if ((uint8_t)(x_high | y_high) != 0) {
+        return result;
+    }
+    result.played = true;
+    result.call = SoundCommand(result.command);
+    return result;
+}
+
+void sound_if_on_first_screen_exit_shim(SoundOnScreen result)
+{
+    if (!result.played) {
+        cpu.a = result.command;
+        abi_nz(result.command);
+        return;
+    }
+    abi_nz(result.command);
+    sound_command_exit_shim(result.command, result.call);
 }
 
 void abi_SoundIfOnFirstScreen(void)
 {
-    bool on_first = ObjectOnFirstScreen(cpu.x);
-
-    abi_nz(cpu.a);
-    if (on_first)
-        abi_SoundCommand();
+    sound_if_on_first_screen_exit_shim(SoundIfOnFirstScreen(cpu.a, cpu.x));
 }
 
 /*

@@ -73,6 +73,7 @@ static bool stage_redirect(StageEnterRun *run, uint8_t stage)
  * main stage leads to its secret version, and a secret to the next stage on. Some stages
  * go elsewhere when they end, and stage 2 goes back to the title's load. Then StageLoad.
  * HOW: Keeps the request in zStageRequested; zField8A says how the stage starts.
+ * WAITS: yes, through ResetGameState (the vertical blank) and StageLoad (the drive); the stack there is the mode loop's return and the call frames.
  * Entry: nothing. Exit: as StageLoad, or as AdpcmLoad back at the title's load.
  */
 StageEnterRun StageEnter(void)
@@ -95,7 +96,7 @@ StageEnterRun StageEnter(void)
     wr8(zField95, 5);
     wr8(zField8C, (uint8_t)(rd8(zField8C) & 0x7F));
     ResetGameState();
-    run.stop = SoundStopAll();
+    run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */
     wr8(zStageRequested, rd8(zStage));
     if (rd8(zStageRequested) & STAGE_RESTART_BIT) {
         wr8(zStage, (uint8_t)(rd8(zStage) & ~STAGE_RESTART_BIT));

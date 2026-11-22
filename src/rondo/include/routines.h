@@ -627,10 +627,28 @@ bool RasterStart(uint8_t *effect, uint8_t *last);
 void RasterInterrupt(void);
 uint8_t BitOfIndex(uint8_t index, uint8_t *byte);
 uint8_t RecordEvent(uint8_t event, uint8_t *byte);
-void StartScriptSlotKind1(uint8_t script, uint8_t slot);
-void StartScriptSlotKind2(uint8_t script, uint8_t slot);
-void StartListChannelKind2(uint8_t list, uint8_t channel);
-void StartListChannelKind3(uint8_t list, uint8_t channel);
+/* system/channels.c: each returns what it leaves in A (the kind, or the script); its exit shim applies it. */
+typedef struct { uint8_t script; uint8_t busy_kind; bool started; } SoleSlot;
+void ClearListChannels(void);
+uint8_t StartListChannel0Kind1(uint8_t list);
+uint8_t StartListChannelKind1(uint8_t list, uint8_t channel);
+uint8_t StartListChannel0Kind2(uint8_t list);
+uint8_t StartListChannelKind2(uint8_t list, uint8_t channel);
+uint8_t StartListChannelKind3(uint8_t list, uint8_t channel);
+void list_channel_exit_shim(uint8_t kind);
+void ClearScriptSlot(uint8_t slot);
+uint8_t StartScriptSlot0Kind1(uint8_t script);
+uint8_t StartScriptSlotKind1(uint8_t script, uint8_t slot);
+uint8_t StartScriptSlot0Kind2(uint8_t script);
+uint8_t StartScriptSlotKind2(uint8_t script, uint8_t slot);
+uint8_t StartScriptSlot0Kind3(uint8_t script);
+uint8_t StartScriptSlotKind3(uint8_t script, uint8_t slot);
+uint8_t StartScriptSlotKind4(uint8_t script, uint8_t slot);
+SoleSlot StartSoleScriptSlot(uint8_t script, uint8_t slot);
+uint8_t StartScriptSlotKind6(uint8_t script, uint8_t slot);
+uint8_t StartScriptSlotKind7(uint8_t script, uint8_t slot);
+void script_slot_exit_shim(uint8_t script);
+void sole_slot_exit_shim(SoleSlot result);
 PlayerDistance DistanceXToPlayer(uint8_t object);
 void abi_SoundCommand(void);
 void PlayerAtRightEdge(void);
@@ -776,15 +794,19 @@ DriverTick SoundDriverTick(void);
 void driver_tick_exit_shim(DriverTick tick);
 
 /* The kernel's calls into the driver: the add that mapped it, the MPR4 bank given back, and the driver's work. */
-typedef struct { Sum bank; uint8_t mpr4; } StopCall;
+typedef struct { Sum bank; uint8_t mpr4; uint8_t x; uint8_t y; } StopCall;
 typedef struct { uint8_t busy; Sum bank; uint8_t mpr4; DriverTick tick; } TickCall;
 typedef struct { bool taken; Sum bank; uint8_t mpr4; DriverCommand command; } CommandCall;
 
-StopCall SoundStopAll(void);
+StopCall SoundStopAll(uint8_t kept_x, uint8_t kept_y);
 void stop_call_exit_shim(StopCall call);
 TickCall SoundFrameTick(void);
 CommandCall SoundCommand(uint8_t command);
 void sound_command_exit_shim(uint8_t command, CommandCall call);
+/* SoundIfOnFirstScreen (object/camera.c): the command pulled back, and whether it went to SoundCommand. */
+typedef struct { bool played; uint8_t command; CommandCall call; } SoundOnScreen;
+SoundOnScreen SoundIfOnFirstScreen(uint8_t command, uint8_t object);
+void sound_if_on_first_screen_exit_shim(SoundOnScreen result);
 
 /* An attack started: its animation, its kind, and the whip's sound or the item and its slot. */
 typedef struct {

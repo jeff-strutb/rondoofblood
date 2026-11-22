@@ -3,8 +3,11 @@
 ; WHAT IT DOES: Stops every sound channel.
 ; HOW: Maps the driver's banks, calls its stop entry, restores the banks from
 ; the stack.
-; Entry: nothing. Exit: A the bank restored to MPR4, X and Y kept, N and Z from
-; X, C and V as the driver left them.
+; WAITS: no.
+; Entry: X and Y are pushed first and pulled last (a typed caller passes its own). Exit: A the
+; bank restored to MPR4, X and Y kept, N and Z from X, C and V as the driver left them. liftcmp
+; agrees for the first 32 accesses; its first difference is inside SoundDriverStopAll (the
+; driver's own call frames).
 SoundStopAll:
     phx
     phy
@@ -39,6 +42,7 @@ SoundStopAll:
 ; in from the main program at this moment.
 ; HOW: zSoundBusy nonzero returns. Otherwise sets it, maps the driver's banks,
 ; calls its tick, restores the banks and clears it.
+; WAITS: no.
 ; Entry: frame interrupt. Exit: busy, A zSoundBusy, N and Z from it. Else A the
 ; bank restored to MPR4, N and Z from it; X, Y, C and V as the driver left them.
 SoundFrameTick:
@@ -79,6 +83,7 @@ SoundFrameTick_at0:
 ; HOW: Bit 7 of zSoundBusy set returns. Otherwise sets it, which also holds off
 ; the frame tick; keeps the three MPRs in RAM, maps the driver and calls its
 ; command entry with the command in A.
+; WAITS: no.
 ; Entry: A command. Exit, dropped: A kept, N and V bits 7 and 6 of zSoundBusy,
 ; Z from A and it. Exit, taken: A the MPR4 bank restored, N and Z from it; X, Y,
 ; C and V as the driver left them.

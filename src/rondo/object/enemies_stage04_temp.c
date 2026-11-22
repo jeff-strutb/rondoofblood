@@ -826,7 +826,7 @@ ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot)
     }
     result.before = ended_load(0x22);
     jsr_push(0xB63E);
-    result.sound = SoundIfOnFirstScreen(0x22, slot);
+    result.sound = SoundIfOnFirstScreen(0x22, slot, 0);   /* Y: not worked out yet */
     jsr_pop();
     result.called = true;
     return result;
@@ -867,7 +867,7 @@ ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot)
     }
     result.before = ended_then(result.before, ended_load(0x8B));
     jsr_push(0xB324);
-    result.sound = SoundIfOnFirstScreen(0x8B, slot);
+    result.sound = SoundIfOnFirstScreen(0x8B, slot, 0);   /* Y: not worked out yet */
     jsr_pop();
     result.called = true;
     jsr_push(0xB327);
@@ -966,7 +966,7 @@ Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in)
         return e;
     }
     jsr_push(0xB57A);
-    SoundIfOnFirstScreen(0x8B, slot);
+    SoundIfOnFirstScreen(0x8B, slot, 0);   /* Y: not worked out yet */
     jsr_pop();
     jsr_push(0xB57D);
     e = ended_then(e, PickSpeedAndTurnFromTableB(slot));

@@ -1,0 +1,2 @@
+# SixteenBitTimerToState8: state 5, the sixteen bit timer at 1, so it runs out
+a=0 x=0 y=0 s=F0 p=0 mem:27A8=05 mem:35C0=01 mem:3568=00

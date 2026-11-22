@@ -692,3 +692,226 @@ SelectBlockTablesP_at0:
     sta z:zTemp05
     rts
 
+; @routine 00C5:151 VramListFromIndex
+; @run 6C:8151
+; WHAT IT DOES: Runs the VRAM list whose number is in A: the overlay's table of lists gives its pointer.
+; HOW: An entry into the list loop (vram_list): A doubled indexes the table at $9802, the pointer goes
+; to zp $14, Y 0, and the loop runs on at VramListRun. A number of $80 or more branches to $8142
+; (untraced), which reads a table at $8360 the same way.
+; WAITS: no.
+; Entry: A the list number. Exit: as VramListRun.
+; Untraced: the branch to $8142 (the bytes of $8142 to $8150 are not in this routine).
+VramListFromIndex:
+    bmi *-15
+    asl a
+    tay
+    lda a:$9802
+    sta z:$F8
+    lda a:$9803
+    sta z:$F9
+    lda ($F8),y
+    sta z:$14
+    iny
+    lda ($F8),y
+    sta z:$15
+    cly
+
+; @routine 00C5:169 VramListRun
+; @run 6C:8169
+; WHAT IT DOES: Runs the VRAM list at zp $14, Y its place: each entry maps its tile bank, sets the VRAM
+; write address, and copies words or runs a stream of commands, until the list's $FF.
+; HOW: The list loop, vram_list. The bank byte $28 to $2F is lowered by $18 unless the idle flag's bit 0
+; is set, and a zero one becomes $31 when it is (untraced).
+; WAITS: no.
+; Entry: zp $14 the list, Y the place in it. Exit: A $FF, C and Z set, N clear, X and Y and V as the last
+; entry leaves them.
+; Untraced: the bank $31 replacement.
+VramListRun:
+    lda ($14),y
+    cmp #$FF
+    bne VramListRun_at0
+    rts
+VramListRun_at0:
+    cmp #$00
+    bne VramListRun_at1
+    bbr0 zIdleFlag,VramListRun_at1
+    lda #$31
+VramListRun_at1:
+    cmp #$28
+    bcc VramListRun_at2
+    cmp #$30
+    bcs VramListRun_at2
+    bbs0 zIdleFlag,VramListRun_at2
+    sec
+    sbc #$18
+VramListRun_at2:
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    inc a
+    tam #$40
+    iny
+    lda ($14),y
+    sta z:zTemp11
+    iny
+    jsr VecClearVdcControlHigh
+    jsr VecSelectVramWriteAddress
+    lda ($14),y
+    iny
+    sta z:zMultiplierLo
+    sta a:VDC_DATA_LO
+    lda ($14),y
+    iny
+    sta z:zMultiplierHi
+    sta a:VDC_DATA_HI
+    lda ($14),y
+    sta z:zTemp12
+    iny
+    lda ($14),y
+    sta z:zProduct0
+    iny
+    jsr VecSelectVramData
+    lda z:zTemp11
+    bmi VramListRun_at3
+    phy
+    bsr VramCommandsFetch
+    ply
+    bra VramListRun
+VramListRun_at3:
+    lda ($14),y
+    iny
+    tax
+    phy
+    jsr CopyWordsToVdc
+    ply
+    bra VramListRun
+
+; @routine 00C5:1CD VramCommandsFetch
+; @run 6C:81CD
+; WHAT IT DOES: Runs one stream of VRAM commands from the pointer in zp $12: counted words, a word repeated, pairs
+; of a byte and a fixed byte, a new write address (absolute, or added to the last), until $FF.
+; HOW: An entry into the command loop (vram_commands), at its first fetch. The commands that run on from the
+; overlay's other entries (VramCommandsRepeat and its two inside) are cases of the same loop.
+; WAITS: no.
+; Entry: zp $12 the stream. Exit: A $FF, C and Z set, N clear, Y the index of the $FF, V from the last add.
+; Untraced: the command $FD (set the write address).
+VramCommandsFetch:
+    cly
+    lda (zTemp12),y
+    bne VramCommandsFetch_at0
+    jmp a:VramCommandsRepeat_pairs
+VramCommandsFetch_at0:
+    bmi VramCommandsFetch_at1
+    jmp a:VramCommandsRepeat
+VramCommandsFetch_at1:
+    cmp #$FF
+    bne VramCommandsFetch_at2
+    rts
+VramCommandsFetch_at2:
+    cmp #$FE
+    bne VramCommandsFetch_at3
+    jmp a:VramCommandsRepeat_address_add
+VramCommandsFetch_at3:
+    cmp #$FD
+    bne VramCommandsFetch_at4
+    jmp a:VramCommandsRepeat_address
+VramCommandsFetch_at4:
+    and #$7F
+    sta z:zTemp08
+VramCommandsFetch_at5:
+    iny
+    lda (zTemp12),y
+    sta a:VDC_DATA_LO
+    iny
+    lda (zTemp12),y
+    sta a:VDC_DATA_HI
+    dec z:zTemp08
+    bne VramCommandsFetch_at5
+
+; @routine 00C5:201 VramCommandsNext
+; @run 6C:8201
+; WHAT IT DOES: Goes on to the next command of the stream: the pointer moves past this one's bytes.
+; HOW: An entry into the command loop (vram_commands), at its advance.
+; WAITS: no.
+; Entry: Y the index of the command's last byte, zp $12 the stream. Exit: as VramCommandsFetch.
+VramCommandsNext:
+    iny
+    tya
+    clc
+    adc z:zTemp12
+    sta z:zTemp12
+    bcc VramCommandsNext_at0
+    inc z:zProduct0
+VramCommandsNext_at0:
+    bra VramCommandsFetch
+
+; @routine 00C5:20E VramCommandsRepeat
+; @run 6C:820E
+; WHAT IT DOES: The commands from $820E on: a counted word written again and again, and the stream's other
+; forms (pairs, the address commands).
+; HOW: An entry into the command loop (vram_commands), at the repeat command with A its count; the pairs
+; command at $822B, the address-add at $8247 and the address set at $8266 are its cases.
+; WAITS: no.
+; Entry: A the count, Y the index of the command, zp $12 the stream. Exit: as VramCommandsFetch.
+; Untraced: the $8266 command.
+VramCommandsRepeat:
+    iny
+    sta z:zTemp08
+    lda (zTemp12),y
+    sta z:zTemp09
+    iny
+    lda (zTemp12),y
+    sta z:zTemp0A
+VramCommandsRepeat_at0:
+    lda z:zTemp09
+    sta a:VDC_DATA_LO
+    lda z:zTemp0A
+    sta a:VDC_DATA_HI
+    dec z:zTemp08
+    bne VramCommandsRepeat_at0
+    jmp a:VramCommandsNext
+VramCommandsRepeat_pairs:
+    iny
+    lda (zTemp12),y
+    sta z:zTemp08
+    iny
+    lda (zTemp12),y
+    sta z:zTemp09
+VramCommandsRepeat_at1:
+    iny
+    lda (zTemp12),y
+    sta a:VDC_DATA_LO
+    lda z:zTemp09
+    sta a:VDC_DATA_HI
+    dec z:zTemp08
+    bne VramCommandsRepeat_at1
+    jmp a:VramCommandsNext
+VramCommandsRepeat_address_add:
+    iny
+    jsr VecSelectVramWriteAddress
+    lda (zTemp12),y
+    clc
+    adc z:zMultiplierLo
+    sta a:VDC_DATA_LO
+    iny
+    lda (zTemp12),y
+    adc z:zMultiplierHi
+    bbs0 zTemp11,VramCommandsRepeat_at2
+    and #$0F
+VramCommandsRepeat_at2:
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    jmp a:VramCommandsNext
+VramCommandsRepeat_address:
+    iny
+    jsr VecSelectVramWriteAddress
+    lda (zTemp12),y
+    sta z:zMultiplierLo
+    sta a:VDC_DATA_LO
+    iny
+    lda (zTemp12),y
+    sta z:zMultiplierHi
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    jmp a:VramCommandsNext
+

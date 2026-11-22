@@ -42,4 +42,45 @@ void abi_ScreenMapOfEntryC(void);
 void abi_ScreenMapAt(void);
 void abi_ScrollXAddWrap(void);
 
+
+/* What BitmapBitShifted leaves: A, X and Y, and the bit in the carry. */
+typedef struct {
+    uint8_t a, x, y;
+    bool carry;
+} BitmapBit;
+
+/* What AdvanceScroll leaves: the last add (A, N, Z, C, V) and the step's sign, which is Y. */
+typedef struct {
+    Alu sum;
+    uint8_t sign;
+} AdvanceResult;
+
+Alu ScrollSpeedsFromBands(void);
+BitmapBit BitmapBitShifted(uint8_t x, uint8_t y);
+Alu CopyWordsToVdc(uint8_t blocks);
+Alu ScrollXPlusOffset(uint8_t entry, uint8_t index);
+Alu ScrollXPlusOffsetB(uint8_t entry, uint8_t index);
+Alu ScrollXPlusOffsetC(uint8_t entry, uint8_t index);
+Alu ScrollYPlusOffset(uint8_t entry, uint8_t index);
+Alu ScrollYPlusOffsetB(uint8_t entry, uint8_t index);
+AdvanceResult AdvanceScrollX(uint8_t entry);
+AdvanceResult AdvanceScrollXB(uint8_t entry);
+AdvanceResult AdvanceScrollXC(uint8_t entry);
+AdvanceResult AdvanceScrollY(uint8_t entry);
+AdvanceResult AdvanceScrollYB(uint8_t entry);
+
+void abi_ScrollSpeedsFromBands(void);
+void abi_BitmapBitShifted(void);
+void abi_CopyWordsToVdc(void);
+void abi_ScrollXPlusOffset(void);
+void abi_ScrollXPlusOffsetB(void);
+void abi_ScrollXPlusOffsetC(void);
+void abi_ScrollYPlusOffset(void);
+void abi_ScrollYPlusOffsetB(void);
+void abi_AdvanceScrollX(void);
+void abi_AdvanceScrollXB(void);
+void abi_AdvanceScrollXC(void);
+void abi_AdvanceScrollY(void);
+void abi_AdvanceScrollYB(void);
+
 #endif

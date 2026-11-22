@@ -11,6 +11,8 @@
 #   4. when the landing adds or changes a file in tools/rondo/scripts, traces those scripts (and the ones
 #      including a changed include file) into a private copy of the trace folder, one cpu-run slot each, up to
 #      4: a failed or inconsistent trace refuses the landing here, before main is touched;
+#      (before 5: a landing that changes tools/toolchains/patches/pce applies the whole patch set, in order, to a
+#      clean copy of the pinned core source and is refused if any patch fails)
 #   5. fast-forwards main to the branch;
 #   6. then publishes the new traces and the re-merged code maps into main's build/rondo/trace, rebuilds the
 #      catalog there, and prints the merged code bytes before and after and any catalog entry that now
@@ -80,6 +82,18 @@ exec "$CR" -j "$NS" -m "${MEM}G" -- flock "$M/build/rondo/land.lock" sh -c '
     A=$(python3 tools/rondo/landcheck.py code "$T/discmap.bin")
     echo "traced $S into a private folder: $(grep "^merged:" "$O/trace.log")"
     if [ -L "$W/build/rondo/trace" ]; then ln -sfn "$T" "$W/build/rondo/trace"; fi    # the intake in the checks below sees the new traces
+  fi
+  # A landing that touches the core patches: the whole set must apply, in order, on a clean copy of the pinned source.
+  if ! git diff --quiet main HEAD -- tools/toolchains/patches/pce; then
+    PIN=$(sed -n "s/^PCE_PIN=\([0-9a-f]*\).*/\1/p" setup.sh)
+    CP=$O/patchcheck; rm -rf "$CP"
+    { [ -n "$PIN" ] && [ -d "$M/tools/toolchains/src/pce/.git" ] && git clone -q --no-checkout "$M/tools/toolchains/src/pce" "$CP" && git -C "$CP" checkout -q "$PIN"; } 2>"$O/patchcheck.log" \
+      || { echo "LAND REFUSED (patches): could not make a clean copy of the pinned core source ($PIN) from main: $(tail -1 "$O/patchcheck.log")"; exit 11; }
+    for q in tools/toolchains/patches/pce/*.patch; do
+      git -C "$CP" apply "$W/$q" 2>"$O/patchcheck.log" || { echo "LAND REFUSED (patches): $(basename "$q") does not apply on the pinned core source after the patches before it: $(head -2 "$O/patchcheck.log" | tr "\n" " ")"; rm -rf "$CP"; exit 11; }
+    done
+    rm -rf "$CP"
+    echo "core patches: all $(ls tools/toolchains/patches/pce/*.patch | wc -l) apply in order on a clean copy of the pinned source"
   fi
   if git diff --quiet main HEAD -- asm src syscard tools; then
     echo "decomp tree identical to main: image and link checks skipped"

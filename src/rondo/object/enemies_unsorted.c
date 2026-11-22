@@ -77,7 +77,7 @@ void abi_EnterStateFourOnFlag(void)
  */
 FrameLookup SetHitOffsetsFromFrame(uint8_t slot)
 {
-    FrameLookup result = { true, 0, false, 0, 0, false };
+    FrameLookup result = { true, 0, false, 0, 0, false, false };
     uint8_t frame, row, offset, value, shifted;
 
     frame = RD8(OBJ->f2a68[slot]);
@@ -85,6 +85,7 @@ FrameLookup SetHitOffsetsFromFrame(uint8_t slot)
         result.frame_zero = true;
     } else {
         result.frame_index = (uint8_t)(frame - 1);
+        result.overflow = sub_bytes(frame, 1, true).overflow;
         row = rd8((uint16_t)(0xB292 + result.frame_index));
         result.last = row;
         if (row != 0) {
@@ -120,8 +121,10 @@ void abi_SetHitOffsetsFromFrame(void)
         if (!result.frame_zero) {
             cpu.y = result.frame_index;
             abi_flag(P_C, true);
+            abi_flag(P_V, result.overflow);
         }
     } else {
+        abi_flag(P_V, result.overflow);
         cpu.a = result.last;
         cpu.y = result.table_offset;
         abi_nz(result.last);

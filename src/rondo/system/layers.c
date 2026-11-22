@@ -12,6 +12,15 @@ static void halved_exit_shim(ScrollStepHalved halved)
     abi_flag(P_C, halved.carry);
 }
 
+/* The exit of a routine whose last act was an add or subtract: A, N and Z from its value, C and V from it. */
+static void sum_exit_shim(Sum sum)
+{
+    cpu.a = sum.value;
+    abi_nz(sum.value);
+    abi_flag(P_C, sum.carry);
+    abi_flag(P_V, sum.overflow);
+}
+
 /*
  * @routine 0515:132 HalveScrollStep
  * @run 6F:A132
@@ -197,21 +206,21 @@ void abi_ScrollYFromLevelWord(void)
  * Entry: A the amount, X the entry. Exit: A the high byte, N Z C V from its add. X, Y kept.
  * Names: the two columns ($3CA0, $3CA8) have no name yet, so the enum of this file gives them.
  */
-Alu AddToListWord(uint8_t amount, uint8_t entry)
+Sum AddToListWord(uint8_t amount, uint8_t entry)
 {
     uint8_t low = rd8((uint16_t)(ListWordLo + entry));
-    Alu sum = adc8(amount, low, false);
+    Sum sum = add_bytes(amount, low, false);
 
-    wr8((uint16_t)(ListWordLo + entry), sum.a);
+    wr8((uint16_t)(ListWordLo + entry), sum.value);
     uint8_t high = rd8((uint16_t)(ListWordHi + entry));
-    sum = adc8(0, high, sum.c);
-    wr8((uint16_t)(ListWordHi + entry), sum.a);
+    sum = add_bytes(0, high, sum.carry);
+    wr8((uint16_t)(ListWordHi + entry), sum.value);
     return sum;
 }
 
 void abi_AddToListWord(void)
 {
-    abi_alu(AddToListWord(cpu.a, cpu.x));
+    sum_exit_shim(AddToListWord(cpu.a, cpu.x));
 }
 
 /*
@@ -334,26 +343,25 @@ void abi_ScreenMapOfEntryB(void)
  * Entry: A the amount, X the entry. Exit: A the screen written, N and Z from it, C and V from the
  * add of $FE. X, Y kept.
  */
-Alu ScrollXAddWrap(uint8_t amount, uint8_t entry)
+Sum ScrollXAddWrap(uint8_t amount, uint8_t entry)
 {
     uint8_t low = RD8(SCROLL->x_lo[entry]);
-    Alu sum = adc8(amount, low, false);
+    Sum sum = add_bytes(amount, low, false);
     uint8_t screen;
-    Alu moved;
+    Sum moved;
 
-    WR8(SCROLL->x_lo[entry], sum.a);
+    WR8(SCROLL->x_lo[entry], sum.value);
     screen = RD8(SCROLLE->x_hi_screen[entry]);
-    moved = adc8(screen, 0xFE, sum.c);
-    moved.a = (uint8_t)(moved.a & 0x0F);
-    moved.nz = moved.a;
-    WR8(SCROLLE->x_hi_screen[entry], moved.a);
-    WR8(SCROLL->x_hi[entry], moved.a);
+    moved = add_bytes(screen, 0xFE, sum.carry);
+    moved.value = (uint8_t)(moved.value & 0x0F);
+    WR8(SCROLLE->x_hi_screen[entry], moved.value);
+    WR8(SCROLL->x_hi[entry], moved.value);
     return moved;
 }
 
 void abi_ScrollXAddWrap(void)
 {
-    abi_alu(ScrollXAddWrap(cpu.a, cpu.x));
+    sum_exit_shim(ScrollXAddWrap(cpu.a, cpu.x));
 }
 
 /* Fields with no name yet (rows requested): the scroll's offset switch, and the list pointer's high byte. */
@@ -369,30 +377,29 @@ enum { ScrollOffsetSwitch = 0x3EBA, ZpWordsHigh = 0x2013 };
  * WAITS: no.
  * Entry: nothing. Exit: A the last Y speed, X $FF, N set, Z clear, C and V from its subtract. Y kept.
  */
-Alu ScrollSpeedsFromBands(void)
+Sum ScrollSpeedsFromBands(void)
 {
-    Alu difference = { 0 };
+    Sum difference = { 0 };
 
     for (int entry = 7; entry >= 0; entry--) {
         uint8_t position = RD8(SCROLL->x_lo[entry]);
         uint8_t band = RD8(BANDS->bgx_lo[entry]);
 
-        difference = sbc8(position, band, true);
-        WR8(SCROLLE->speed_x[entry], difference.a);
+        difference = sub_bytes(position, band, true);
+        WR8(SCROLLE->speed_x[entry], difference.value);
         position = RD8(SCROLL->y_lo[entry]);
         band = RD8(BANDS->bgy_lo[entry]);
-        difference = sbc8(position, band, true);
-        WR8(SCROLLE->speed_y[entry], difference.a);
+        difference = sub_bytes(position, band, true);
+        WR8(SCROLLE->speed_y[entry], difference.value);
     }
     return difference;
 }
 
 void abi_ScrollSpeedsFromBands(void)
 {
-    Alu last = ScrollSpeedsFromBands();
+    Sum last = ScrollSpeedsFromBands();
 
-    last.nz = 0xFF;
-    abi_alu(last);
+    sum_exit_shim(last);
     cpu.x = 0xFF;
 }
 
@@ -451,9 +458,9 @@ void abi_BitmapBitShifted(void)
  * pointer's high byte, X 0, Y $20, Z set, C and V from that last add.
  * Names: the pointer's high byte ($2013) is by address until the records name it.
  */
-Alu CopyWordsToVdc(uint8_t blocks)
+Sum CopyWordsToVdc(uint8_t blocks)
 {
-    Alu sum = { 0 };
+    Sum sum = { 0 };
     uint8_t y, byte, pointer;
 
     do {
@@ -467,11 +474,11 @@ Alu CopyWordsToVdc(uint8_t blocks)
             y++;
         } while (y != 0x20);
         pointer = RD8(ZP->temp12);
-        sum = adc8(0x20, pointer, false);
-        WR8(ZP->temp12, sum.a);
+        sum = add_bytes(0x20, pointer, false);
+        WR8(ZP->temp12, sum.value);
         pointer = rd8(ZpWordsHigh);
-        sum = adc8(0, pointer, sum.c);
-        wr8(ZpWordsHigh, sum.a);
+        sum = add_bytes(0, pointer, sum.carry);
+        wr8(ZpWordsHigh, sum.value);
         blocks--;
     } while (blocks != 0);
     return sum;
@@ -479,10 +486,9 @@ Alu CopyWordsToVdc(uint8_t blocks)
 
 void abi_CopyWordsToVdc(void)
 {
-    Alu last = CopyWordsToVdc(cpu.x);
+    Sum last = CopyWordsToVdc(cpu.x);
 
-    last.nz = 0;
-    abi_alu(last);
+    sum_exit_shim(last);
     cpu.x = 0;
     cpu.y = 0x20;
 }
@@ -492,10 +498,10 @@ typedef struct {
     uint16_t low_column, screen_column, table, destination;
 } ScrollOffsetShape;
 
-static Alu scroll_plus_offset(uint8_t entry, uint8_t index, ScrollOffsetShape shape)
+static Sum scroll_plus_offset(uint8_t entry, uint8_t index, ScrollOffsetShape shape)
 {
     uint8_t position, offset, screen;
-    Alu sum;
+    Sum sum;
 
     position = rd8(ScrollOffsetSwitch);
     if (position != 0) {
@@ -505,14 +511,13 @@ static Alu scroll_plus_offset(uint8_t entry, uint8_t index, ScrollOffsetShape sh
         position = RD8_IDX(shape.low_column, entry);
         offset = rd8((uint16_t)(shape.table + index));
     }
-    sum = adc8(position, offset, false);
-    WR8_IDX(shape.destination, 0, sum.a);
+    sum = add_bytes(position, offset, false);
+    WR8_IDX(shape.destination, 0, sum.value);
     screen = RD8_IDX(shape.screen_column, entry);
     offset = rd8((uint16_t)(shape.table + 2 + index));
-    sum = adc8(screen, offset, sum.c);
-    sum.a = (uint8_t)(sum.a & 0x0F);
-    sum.nz = sum.a;
-    WR8_IDX(shape.destination, 1, sum.a);
+    sum = add_bytes(screen, offset, sum.carry);
+    sum.value = (uint8_t)(sum.value & 0x0F);
+    WR8_IDX(shape.destination, 1, sum.value);
     return sum;
 }
 
@@ -542,14 +547,14 @@ static ScrollOffsetShape y_offset_shape(uint16_t table)
  * its add. X and Y kept. The switch's arm is untraced (00C5 bytes $5..$D of this routine).
  * Names: the switch is by address until the records name it.
  */
-Alu ScrollXPlusOffset(uint8_t entry, uint8_t index)
+Sum ScrollXPlusOffset(uint8_t entry, uint8_t index)
 {
     return scroll_plus_offset(entry, index, x_offset_shape(0xA780));
 }
 
 void abi_ScrollXPlusOffset(void)
 {
-    abi_alu(ScrollXPlusOffset(cpu.x, cpu.y));
+    sum_exit_shim(ScrollXPlusOffset(cpu.x, cpu.y));
 }
 
 /*
@@ -560,14 +565,14 @@ void abi_ScrollXPlusOffset(void)
  * WAITS: no.
  * Entry, exit: as ScrollXPlusOffset.
  */
-Alu ScrollXPlusOffsetB(uint8_t entry, uint8_t index)
+Sum ScrollXPlusOffsetB(uint8_t entry, uint8_t index)
 {
     return scroll_plus_offset(entry, index, x_offset_shape(0xAB10));
 }
 
 void abi_ScrollXPlusOffsetB(void)
 {
-    abi_alu(ScrollXPlusOffsetB(cpu.x, cpu.y));
+    sum_exit_shim(ScrollXPlusOffsetB(cpu.x, cpu.y));
 }
 
 /*
@@ -578,14 +583,14 @@ void abi_ScrollXPlusOffsetB(void)
  * WAITS: no.
  * Entry, exit: as ScrollXPlusOffset.
  */
-Alu ScrollXPlusOffsetC(uint8_t entry, uint8_t index)
+Sum ScrollXPlusOffsetC(uint8_t entry, uint8_t index)
 {
     return scroll_plus_offset(entry, index, x_offset_shape(0xAB09));
 }
 
 void abi_ScrollXPlusOffsetC(void)
 {
-    abi_alu(ScrollXPlusOffsetC(cpu.x, cpu.y));
+    sum_exit_shim(ScrollXPlusOffsetC(cpu.x, cpu.y));
 }
 
 /*
@@ -597,14 +602,14 @@ void abi_ScrollXPlusOffsetC(void)
  * WAITS: no.
  * Entry, exit: as ScrollXPlusOffset.
  */
-Alu ScrollYPlusOffset(uint8_t entry, uint8_t index)
+Sum ScrollYPlusOffset(uint8_t entry, uint8_t index)
 {
     return scroll_plus_offset(entry, index, y_offset_shape(0xA780));
 }
 
 void abi_ScrollYPlusOffset(void)
 {
-    abi_alu(ScrollYPlusOffset(cpu.x, cpu.y));
+    sum_exit_shim(ScrollYPlusOffset(cpu.x, cpu.y));
 }
 
 /*
@@ -615,14 +620,14 @@ void abi_ScrollYPlusOffset(void)
  * WAITS: no.
  * Entry, exit: as ScrollXPlusOffset.
  */
-Alu ScrollYPlusOffsetB(uint8_t entry, uint8_t index)
+Sum ScrollYPlusOffsetB(uint8_t entry, uint8_t index)
 {
     return scroll_plus_offset(entry, index, y_offset_shape(0xAB10));
 }
 
 void abi_ScrollYPlusOffsetB(void)
 {
-    abi_alu(ScrollYPlusOffsetB(cpu.x, cpu.y));
+    sum_exit_shim(ScrollYPlusOffsetB(cpu.x, cpu.y));
 }
 
 /* One axis of the scroll and its step, as columns of entries. */
@@ -656,31 +661,30 @@ static AdvanceResult advance_scroll(uint8_t entry, AdvanceShape shape)
 {
     AdvanceResult result;
     uint8_t high, low, step, sign, spread;
-    Alu sum;
+    Sum sum;
 
     high = RD8_IDX(shape.step_high, entry);
     sign = (uint8_t)(high >> 7);
     step = RD8_IDX(shape.step_low, entry);
     low = RD8_IDX(shape.fraction, entry);
-    sum = adc8(step, low, false);
-    WR8_IDX(shape.fraction, entry, sum.a);
+    sum = add_bytes(step, low, false);
+    WR8_IDX(shape.fraction, entry, sum.value);
     high = RD8_IDX(shape.step_high, entry);
     low = RD8_IDX(shape.low, entry);
-    sum = adc8(high, low, sum.c);
-    WR8_IDX(shape.low, entry, sum.a);
+    sum = add_bytes(high, low, sum.carry);
+    WR8_IDX(shape.low, entry, sum.value);
     spread = rd8((uint16_t)(shape.table + sign));
-    sum = adc8(0, spread, sum.c);
-    spread = sum.a;
+    sum = add_bytes(0, spread, sum.carry);
+    spread = sum.value;
     push8(spread);
     high = RD8_IDX(shape.high, entry);
-    sum = adc8(spread, high, false);
-    WR8_IDX(shape.high, entry, sum.a);
+    sum = add_bytes(spread, high, false);
+    WR8_IDX(shape.high, entry, sum.value);
     spread = pull8();
     low = RD8_IDX(shape.screen, entry);
-    sum = adc8(spread, low, false);
-    sum.a = (uint8_t)(sum.a & 0x0F);
-    sum.nz = sum.a;
-    WR8_IDX(shape.screen, entry, sum.a);
+    sum = add_bytes(spread, low, false);
+    sum.value = (uint8_t)(sum.value & 0x0F);
+    WR8_IDX(shape.screen, entry, sum.value);
     result.sum = sum;
     result.sign = sign;
     return result;
@@ -756,7 +760,7 @@ AdvanceResult AdvanceScrollYB(uint8_t entry)
 static void advance_exit_shim(AdvanceResult result)
 {
     cpu.y = result.sign;
-    abi_alu(result.sum);
+    sum_exit_shim(result.sum);
 }
 
 void abi_AdvanceScrollX(void)

@@ -80,6 +80,9 @@
 #define WorkByteB 0x2700 /* shared work byte: walled answer; stream count low */
 #define StreamStepLo 0x2701 /* stream walk step low */
 #define StreamStepHi 0x2702 /* stream walk step high */
+#define HitboxXLo 0x2710 /* per slot of 16: the hitbox centre's X, low byte: the object's X low plus the hitbox X offset */
+#define HitboxYLo 0x2720 /* per slot of 16: the hitbox centre's Y, low byte */
+#define HitboxHi 0x2730 /* per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset */
 #define LevelFullWalk 0x2744 /* set during a whole-screen stream walk */
 #define OBJ_2750 0x2750 /* object field not yet identified */
 #define OBJ_27A8 0x27A8 /* object field not yet identified */
@@ -589,6 +592,7 @@
 #define PaletteWork 0x3B00 /* 32 bytes: a palette of 16 colours read from the VCE to be worked on */
 #define PaletteWorkSpare 0x3B20 /* the colour kept while a palette is rotated */
 #define StageMaskBuffer 0x3B40 /* 128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask */
+#define StageMaskOffsets 0x9149 /* the stage overlay's 8 offsets (00 01 20 21 40 41 60 61) of the mask buffer's cells one masking step touches; the same bytes at every copy of the overlay */
 #define TitleSaveRead 0x3F83 /* 1 once the title has read the backup file */
 #define TitleSeen 0x3F84 /* 1 once the title has run to its end; then Run skips it */
 #define TitleSteps 0x802E /* the title's handlers by sub-mode, a word each */

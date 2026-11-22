@@ -1342,6 +1342,23 @@ static void original_at(uint16_t ret, uint16_t addr)
         span->nest = nest;
         scan = retidx + 1;
     }
+        /* An interrupt the core took at the place the C waits to resume at (check_irq counted it as `natural`) can sit
+         * in the record before the callee's RET: the callee's return and the interrupt at its return address come
+         * in that order. It is then part of the stretch just run on the live machine, not an interrupt a later
+         * access of the C will pass: take it off the count, or the next interrupt the C passes is thought to have
+         * been taken already. */
+        for (uint64_t k = call + 1; k < retidx && top && top->natural > 0; k++) {
+            Ev *x = evp(k);
+
+            if (x && x->type == EV_INT) {
+                uint64_t r2 = section_end(span, k);
+
+                top->natural--;
+                if (r2 == NO_RETURN)
+                    break;
+                k = r2;
+            }
+        }
 }
 
 /*

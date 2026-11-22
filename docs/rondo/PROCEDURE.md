@@ -203,6 +203,11 @@ once known). M is the main checkout, W your worktree. Run from W.
    `--decimal` or `--irq`). To read one draft: `python3
    tools/rondo/cdraft.py --only NAME --out DIR`. If the cache is stale the
    tool exits 4 and names the command to rebuild it.
+   A line reading NOT CHECKED or THIN is never a pass: add curated cases
+   that stay on traced code (a file under `tools/rondo/curated/`), and use
+   `--cases N` when a curated set is small by design. A routine's body
+   uses no `Alu`, `adc8`, `sbc8`, `cpu.` or `goto`: the landing refuses a
+   routine that fails the ledger's proper-C check.
 5. Optional, and required when the draft is not judged identical or the
    harness cannot model the routine (banks, interrupts): gate A5 on the
    one shortest script that runs it (the intake header's "run by" line),
@@ -214,6 +219,8 @@ once known). M is the main checkout, W your worktree. Run from W.
 
    Read your routines' rows in `a5.csv` there; the report's lines about
    other routines are the whole hybrid's, not yours.
+   The box embeds the C: rerun `setup.sh pcebox` after any C change,
+   before `oracle.py`.
 6. Commit with explicit paths, then land. `land.sh` takes its own slot and
    waits in the queue itself, printing a line while it waits: do not wrap
    it in `cpu-run`. A slot wait is not a hang.

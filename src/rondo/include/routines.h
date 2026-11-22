@@ -53,6 +53,18 @@ typedef struct {
  */
 typedef enum { TILE_EMPTY_PAGE, TILE_PLAIN, TILE_PAST_HANDLED, TILE_HANDLED, TILE_BY_ORIGINAL } TileKind;
 
+/*
+ * What a tile handler leaves besides the new row in zTemp02: A is always $81. Y and the carry and
+ * overflow of its last add or subtract, where it makes one.
+ */
+typedef struct {
+    bool y_set;
+    uint8_t y;
+    bool flags_set;
+    bool carry;
+    bool overflow;
+} HandlerExit;
+
 typedef struct {
     TileKind kind;
     uint8_t attribute;  /* the byte read from the page */
@@ -60,6 +72,7 @@ typedef struct {
     uint8_t high;       /* the tile's high bits, which pick the page */
     uint8_t column;     /* the point's pixel across the tile */
     uint8_t row;        /* the point's pixel down the tile */
+    HandlerExit handler; /* what the tile's handler left, when it ran */
 } TileRead;
 
 TileRead StageTileRead(void);

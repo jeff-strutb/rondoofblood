@@ -25,9 +25,11 @@ Records file (ASCII, one row a line, `#` starts a comment, numbers in hex as in 
             its first byte's symbol. Every member names at least one symbol: a field the assembly
             names is a field of a record, and the other way round.
 
-    alias,RECORD,ALIAS,MEMBER,NOTE
+    alias,RECORD,ALIAS,TARGET,SYMBOL
         A second name for a member, kept while code still uses the old one: both names are the same bytes (an
         anonymous union in the struct), and both are checked against the symbol. Drop the row when the last user moves.
+        TARGET may be MEMBER.SUB (SUB one of lo, mid, hi) to name one byte of a wide member: a scratch byte another
+        routine uses under its own name. SYMBOL is then the symbol of that byte, and is checked against its address.
 
 A row that disagrees with the symbols, two members that overlap, a symbol claimed twice, a name used
 twice, or a type that collides with a symbol makes the generator fail with the row's line.
@@ -92,8 +94,8 @@ def load_spec(path):
             elif kind == "alias":
                 p = rest.split(",", 3)
                 if len(p) != 4:
-                    raise SpecError(f"{where}: alias needs RECORD,ALIAS,MEMBER,NOTE")
-                aliases.append(dict(rec=p[0], alias=p[1], member=p[2], line=n, where=where))
+                    raise SpecError(f"{where}: alias needs RECORD,ALIAS,TARGET,SYMBOL")
+                aliases.append(dict(rec=p[0], alias=p[1], member=p[2], symbol=p[3].strip(), line=n, where=where))
             else:
                 raise SpecError(f"{where}: unknown row kind {kind!r}")
     return records, bits, members, aliases
@@ -211,7 +213,7 @@ def generate(path, symbols, taken_names, guard, include, origin):
         aliases, inside_gap = [], 0
         lo_all, hi_all = r["base"], r["base"] + r["size"]
         for a, s in all_syms:
-            if not (lo_all <= a < hi_all) or s in claimed:
+            if not (lo_all <= a < hi_all) or s in claimed or s in {x["symbol"] for x in member_aliases if x["symbol"]}:
                 continue
             owner = None
             for m in ms:
@@ -224,7 +226,7 @@ def generate(path, symbols, taken_names, guard, include, origin):
             else:
                 aliases.append((s, f"{rname}.{owner['name']}"))
         for al in member_aliases:
-            if al["rec"] == rname and al["member"] not in names:
+            if al["rec"] == rname and al["member"].split(".")[0] not in names:
                 raise SpecError(f"{al['where']}: alias of {al['member']}, which is not a member of {rname}")
         # The struct.
         out.append(f"/* {rname}: {'parallel byte arrays' if soa else 'one struct'} at ${r['base']:04X}, "
@@ -250,12 +252,33 @@ def generate(path, symbols, taken_names, guard, include, origin):
                 decl = f"int8_t {m['name']}"
             else:
                 decl = f"uint8_t {m['name']}"
-            for al in [x for x in member_aliases if x["rec"] == rname and x["member"] == m["name"]]:
+            subs = []
+            for al in [x for x in member_aliases if x["rec"] == rname and x["member"].split(".")[0] == m["name"]]:
                 if not IDENT.match(al["alias"]) or al["alias"] in names or al["alias"] == m["name"]:
                     raise SpecError(f"{al['where']}: alias {al['alias']} is not a free name")
                 names.add(al["alias"])
-                decl = "union { %s; %s; }" % (decl, decl.replace(m["name"], al["alias"], 1))
                 m.setdefault("aliasnames", []).append(al["alias"])
+                if "." in al["member"]:
+                    sub = al["member"].split(".")[1]
+                    if m["shape"] != "wide" or sub not in WIDE[m["type"]][1]:
+                        raise SpecError(f"{al['where']}: {m['name']} has no byte {sub}")
+                    idx = WIDE[m["type"]][1].index(sub)
+                    if al["symbol"]:
+                        if al["symbol"] not in addr_of:
+                            raise SpecError(f"{al['where']}: no symbol {al['symbol']}")
+                        want = r["base"] + m["offset"] + idx
+                        if addr_of[al["symbol"]] != want:
+                            raise SpecError(f"{al['where']}: {al['symbol']} is at {addr_of[al['symbol']]:04X}, byte {sub} of "
+                                            f"{rname}.{m['name']} is at {want:04X}")
+                        claimed[al["symbol"]] = f"{rname}.{al['alias']}"
+                    subs.append("struct { %suint8_t %s; }" % (("uint8_t _pad_%s[%d]; " % (al["alias"], idx)) if idx else "", al["alias"]))
+                    m.setdefault("aliassyms", []).append((al["alias"], al["symbol"]))
+                else:
+                    decl = "union { %s; %s; }" % (decl, decl.replace(m["name"], al["alias"], 1))
+                    if al["symbol"]:
+                        m.setdefault("aliassyms", []).append((al["alias"], al["symbol"]))
+            if subs:
+                decl = "union { %s; %s; }" % (decl, "; ".join(subs))
             note = m["note"].strip()
             tail = f" /* {m['syms'][0]}{(' +' + str(len(m['syms']) - 1)) if len(m['syms']) > 1 else ''}"
             tail += (": " + note if note else "") + " */"
@@ -270,9 +293,13 @@ def generate(path, symbols, taken_names, guard, include, origin):
         out.append(f"_Static_assert(sizeof({rname}) == 0x{r['size']:X}, \"{rname} size\");")
         for m in ms:
             for i, s in enumerate(m["syms"]):
-                for nm in [m["name"]] + m.get("aliasnames", []):
+                for nm in [m["name"]] + [a for a in m.get("aliasnames", []) if a not in [x for x, _ in m.get("aliassyms", [])]]:
                     out.append(f"_Static_assert({rname}_BASE + offsetof({rname}, {nm}) + {i} == {s}, "
                                f"\"{rname}.{nm} is not at {s}\");")
+                for nm, sy in m.get("aliassyms", []):
+                    if i == 0 and sy:
+                        out.append(f"_Static_assert({rname}_BASE + offsetof({rname}, {nm}) == {sy}, "
+                                   f"\"{rname}.{nm} is not at {sy}\");")
         out.append(f"#define {r['ptr']} (({rname} *){rname}_BASE)")
         out.append("")
         nsym = sum(len(m["syms"]) for m in ms)

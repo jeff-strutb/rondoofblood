@@ -26,6 +26,9 @@
 #define zProduct2 0x2015 /* multiply result high */
 #define zMultiplierLo 0x2016 /* multiplier low */
 #define zMultiplierHi 0x2017 /* multiplier high */
+#define SpriteFlipMask 0x2014 /* EmitObjectSprites' scratch: the object's flip bit; the same byte as zProduct1 */
+#define SpritePartsLeft 0x2016 /* EmitObjectSprites' scratch: parts of the sprite still to draw; the same byte as zMultiplierLo */
+#define SpritesLeft 0x2017 /* EmitObjectSprites' scratch: sprites still to draw; the same byte as zMultiplierHi */
 #define zRandom0 0x2020 /* generator state low */
 #define zRandom1 0x2021 /* generator state */
 #define zRandom2 0x2022 /* generator state */
@@ -151,6 +154,8 @@
 #define ListChannelList 0x3C88 /* list channel list by channel */
 #define ListChannelPlace 0x3C90 /* list channel position by channel */
 #define ListChannelHold 0x3C98 /* list channel hold timer by channel */
+#define ListWordLo 0x3CA0 /* the list channels' word, low byte, by channel (AddToListWord adds a byte with carry) */
+#define ListWordHi 0x3CA8 /* the list channels' word, high byte, by channel */
 #define ScrollXFrac 0x3E00 /* the scroll along X: fraction; the first of the six scroll bytes the game sets */
 #define ScrollXLo 0x3E08 /* scroll X the game wants low */
 #define ScrollXHi 0x3E10 /* scroll X the game wants high */
@@ -170,6 +175,7 @@
 #define ScrollYOffset 0x3EBB /* fixed Y offset of a horizontal level */
 #define RasterWaterWanted 0x3EB8 /* the water line the game wants */
 #define RasterWaterLine 0x3EBC /* the water line this frame */
+#define LevelYHi 0x3EB9 /* the high byte of the word at $3EB8 that ScrollYFromLevelWord copies to the scroll (ScrollYLo, ScrollYHi); $3EB8 is also named RasterWaterWanted */
 #define SavedMprA 0x3F0C /* MPR4 kept across a sound call */
 #define SavedMprB 0x3F0D /* MPR5 kept across a sound call */
 #define SavedMprC 0x3F0E /* MPR6 kept across a sound call */
@@ -593,6 +599,9 @@
 #define PaletteWorkSpare 0x3B20 /* the colour kept while a palette is rotated */
 #define StageMaskBuffer 0x3B40 /* 128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask */
 #define StageMaskOffsets 0x9149 /* the stage overlay's 8 offsets (00 01 20 21 40 41 60 61) of the mask buffer's cells one masking step touches; the same bytes at every copy of the overlay */
+#define SpriteMirrorWidth 0x819F /* the 00D1 overlay's 2 widths a mirrored sprite's X offsets are taken from (bank 6C) */
+#define SpriteXMin 0x81A1 /* the 00D1 overlay's 2 lowest X values a sprite part is drawn at (bank 6C) */
+#define SpriteSetTable 0x81A3 /* the 00D1 overlay's table of sprite sets, a word per set: the frame pointers' table (bank 6C) */
 #define StageSpawnSlot 0x93D0 /* by spawn row of 8 in the stage overlay: the object slot to clear and fill */
 #define StageSpawnFrame 0x93D8 /* by spawn row of 8 in the stage overlay: stored to the object's 2A68 field (its frame) */
 #define StageSpawnKind 0x93E0 /* by spawn row of 8 in the stage overlay: stored to the object's 2A10 field */

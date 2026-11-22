@@ -109,6 +109,16 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
   [ -z "$PP" ] || echo "WARNING: this landing adds or changes core patch(es) $PP: main core is now out of date; rebuild it before the next measurement or trace: cpu-run -j 4 -m 6G -- sh setup.sh pce, then sh setup.sh pcebox, in $M"
   (cd "$M" && python3 tools/rondo/intake.py > "$O/intake.out" 2> "$O/intake.err") \
     || echo "WARNING: the raw intake (build/rondo/raw, with bank, unresolved.csv and fragments.csv) was not refreshed: $(tail -1 "$O/intake.err")"
+  # the draft cache of main (cdraft.py --cache) is stamped on the disc image, the merged trace map, cdraft.py, ops6280.h,
+  # intake.py and huc.py: when a landing changes one of them it is stale and the liftcmp of every writer would rebuild
+  # its own or stop (exit 4), so it is rebuilt here, one slot, a warning (not an undo) if that fails.
+  if ! (cd "$M" && python3 -c "import sys; sys.path.insert(0, \"tools/rondo\"); import cdraft; sys.exit(0 if cdraft.current_cache() else 1)") 2>/dev/null; then
+    if (cd "$M" && python3 tools/rondo/cdraft.py --cache > "$O/cdraft.out" 2> "$O/cdraft.err"); then
+      echo "draft cache of main rebuilt (its stamp no longer matched the inputs): $(tail -1 "$O/cdraft.out")"
+    else
+      echo "WARNING: main draft cache is stale and could not be rebuilt: $(tail -1 "$O/cdraft.err")"
+    fi
+  fi
   if [ -n "$S" ]; then
     TM=$M/build/rondo/trace
     for n in $S; do

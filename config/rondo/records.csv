@@ -339,3 +339,7 @@ member,ListChannels,kind,u8,0000,ListChannelKind,
 member,ListChannels,list,u8,0008,ListChannelList,
 member,ListChannels,place,u8,0010,ListChannelPlace,
 member,ListChannels,hold,u8,0018,ListChannelHold,
+
+# Work buffers.
+record,StageWork,aos,3B40,1,80,STAGEWORK
+member,StageWork,mask_buffer,u8[128],00,StageMaskBuffer,

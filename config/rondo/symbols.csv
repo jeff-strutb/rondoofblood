@@ -595,6 +595,7 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 7B,zp,zWaitTimer4,frames left in a fourth wait
 3B00,abs,PaletteWork,32 bytes: a palette of 16 colours read from the VCE to be worked on
 3B20,abs,PaletteWorkSpare,the colour kept while a palette is rotated
+3B40,abs,StageMaskBuffer,128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask
 3F83,abs,TitleSaveRead,1 once the title has read the backup file
 3F84,abs,TitleSeen,1 once the title has run to its end; then Run skips it
 802E,abs,TitleSteps,the title's handlers by sub-mode, a word each

@@ -9,6 +9,7 @@
 ; made positive and compared against the height band above and below the top; the first match decides
 ; the side. The paths that ran in no script: the player a character other than 0 (width less 4, A$AA3E),
 ; the push depth when the width is 3 or more on the left side (AAF8) and on the right (AB0A).
+; Curated cases: tools/rondo/curated/contact_with_player.txt (traced arms; 737 of 1240 cases checked, none differ).
 ; WAITS: no.
 ; Entry: X object, zTemp08 width, zTemp09 height. Exit: C set when standing on it; A and N, Z as the last
 ; load or compare left them; V as the last add or subtract.

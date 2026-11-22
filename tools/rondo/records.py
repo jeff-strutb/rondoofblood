@@ -3,13 +3,22 @@
 The records (config/rondo/runs/) are written by runner.py and read by ledger.py, worklist.py and
 whatif.py. Nothing else writes them.
 
-  scripts.csv  script, script_hash, verdict, detail, a5_secs, a7_secs, world, source
-                 one row per script measured: its A7 verdict, the hash of its text, and `world`, the
-                 hash of (routine, compiled hash) over the routines it reaches when it was measured
-  a5.csv       script, routine, calls, identical, divergent, unverified, order_flags, chash, detail, source
-                 A5's counts for each routine the script called (rows with no call are not kept)
-  a7.csv       script, routine, swapped, ran_inside, chash
-                 the routines whose C ran in the script's lockstep run
+  scripts.csv  script, script_hash, verdict, detail, a5_secs, a7_secs, world, epoch, source,
+               a7_code, a7_frames, a7_defects, a7_open
+                 one row per script measured: its A7 verdict (IDENTICAL, DIVERGENT, DEFECTS, STOPPED or
+                 NOTVERDICT, from the hybrid line's "first differing" code a7_code: -1, a frame, -2, -3, -5),
+                 the hash of its text, and `world`, the hash of (routine, compiled hash) over the routines it
+                 reaches when it was measured; a7_frames "compared/expected", a7_defects the access defects,
+                 a7_open "parked/kept/unreached/unopened arrivals". A diagnostic run (-4) is never stored.
+  a5.csv       script, routine, calls, identical, divergent, unverified, order_flags, chash, detail, epoch,
+               source, defects, causes
+                 A5's counts for each routine the script called (rows with no call are not kept); defects
+                 "MOVED=3;EXTRA=1" (the nine access defect kinds), causes "left=1;prefix=2" (calls not judged
+                 or set aside, by cause); a routine with any call not judged is not identical
+  a7.csv       script, routine, swapped, ran_inside, chash, epoch, defects
+                 the routines whose C ran in the script's lockstep run; defects "KIND=n;..." the access defects
+                 the checker put under the routine as the innermost tagged one (a routine with any defect has
+                 not passed A7)
 
 When a record stops counting (the whole rule):
   * an A5 row counts for a routine while the routine's compiled hash (compiled.py) equals the row's
@@ -54,10 +63,11 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
-SCRIPTS_FIELDS = ["script", "script_hash", "verdict", "detail", "a5_secs", "a7_secs", "world", "epoch", "source"]
+SCRIPTS_FIELDS = ["script", "script_hash", "verdict", "detail", "a5_secs", "a7_secs", "world", "epoch", "source",
+                  "a7_code", "a7_frames", "a7_defects", "a7_open"]
 A5_FIELDS = ["script", "routine", "calls", "identical", "divergent", "unverified", "order_flags", "chash",
-             "detail", "epoch", "source"]
-A7_FIELDS = ["script", "routine", "swapped", "ran_inside", "chash", "epoch"]
+             "detail", "epoch", "source", "defects", "causes"]
+A7_FIELDS = ["script", "routine", "swapped", "ran_inside", "chash", "epoch", "defects"]
 
 
 def epoch(top=TOP):
@@ -163,10 +173,11 @@ def reached(script, extents, rec, top=TOP):
 
 
 def strict_routines(script, rec):
-    """Routines with a divergent A5 row in the script: they keep the closure rule. (An unverified row is a
+    """Routines with a divergent or order-flagged A5 row in the script (both are defects found): they keep
+    the closure rule. (An unverified row is a
     call A5 could not compare, not a defect found: the script's A7 run still covers it, so it stays relaxed.
     Every script has hundreds of them; counting them would put every closure back.)"""
-    return {r["routine"] for r in rec.a5 if r["script"] == script and int(r["divergent"])}
+    return {r["routine"] for r in rec.a5 if r["script"] == script and (int(r["divergent"]) or int(r["order_flags"]))}
 
 
 def owned_by_reached(script, chash, extents, rec, top=TOP):
@@ -236,6 +247,13 @@ def complete(rec, top=TOP):
             or rec.scripts[s].get("epoch") != epoch(top)]
 
 
+def a5_verdict(t):
+    """The checker's rule (oracle.py): any divergent or order-flagged call is DIVERGENT; a routine with any call
+    not judged, or none identical, is UNVERIFIED, never IDENTICAL."""
+    return ("UNCOVERED" if not t["calls"] else "DIVERGENT" if int(t["divergent"]) or int(t["order_flags"]) else
+            "UNVERIFIED" if int(t["unverified"]) or not int(t["identical"]) else "IDENTICAL")
+
+
 def a5_counts(rec, chash, top=TOP):
     """Per routine, A5's counts summed over the scripts whose row still counts, and the first detail."""
     out = {}
@@ -250,7 +268,7 @@ def a5_counts(rec, chash, top=TOP):
         for k in ("calls", "identical", "divergent", "unverified", "order_flags"):
             t[k] += int(r[k])
         t["scripts"] += 1
-        if int(r["divergent"]) and not t["detail"]:
+        if (int(r["divergent"]) or int(r["order_flags"])) and not t["detail"]:
             t["detail"], t["where"] = r["detail"], s
     return out
 
@@ -269,12 +287,17 @@ def a7_routines(rec, chash, extents, top=TOP):
         if r.get("epoch") == epoch(top) and stats.get(r["script"], ("", ""))[0] == "current" \
                 and row_counts(r, chash, rec, top) and (int(r["swapped"]) or int(r["ran_inside"])):
             ran[r["routine"]] = ran.get(r["routine"], 0) + 1
+    defective = {}
+    for r in rec.a7:
+        if r.get("epoch") == epoch(top) and r.get("defects") and stats.get(r["script"], ("", ""))[0] == "current":
+            defective.setdefault(r["routine"], set()).add(r["script"])
     out = {}
     for routine, n in ran.items():
         failing = [s in stats and (stats[s] != ("current", "IDENTICAL")) and s or None
                    for s in script_names(top) if reach(s, routine, extents, rec, top)]
-        out[routine] = (n, sorted({s for s in failing if s} | {s for s in script_names(top) if s not in stats and
-                                                           reach(s, routine, extents, rec, top)}))
+        out[routine] = (n, sorted({s for s in failing if s} | defective.get(routine, set()) |
+                                  {s for s in script_names(top) if s not in stats and
+                                   reach(s, routine, extents, rec, top)}))
     return out
 
 
@@ -296,8 +319,7 @@ def write_views(rec, chash, ext, top=TOP):
                 f.seek(disc)
                 ran = sum(1 for b in f.read(length) if b & 3)
         t = counts.get(name, {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0, "order_flags": 0})
-        v = ("UNCOVERED" if not t["calls"] else "DIVERGENT" if t["divergent"] else
-             "UNVERIFIED" if not t["identical"] else "IDENTICAL")
+        v = a5_verdict(t)
         rows.append({"routine": name, "card": rom, "bytes": length, "bytes_run": ran, "calls": t["calls"],
                      "identical": t["identical"], "divergent": t["divergent"], "unverified": t["unverified"],
                      "order_flags": t["order_flags"], "verdict": v, "source": src})

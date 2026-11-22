@@ -110,13 +110,21 @@ void abi_SelectVramData(void)
  * @routine 0046:36C ClearVdcControlHigh
  * @run 69:5B6C
  * WHAT IT DOES: Zeroes the high byte of the VDC's control register.
- * HOW: Selects the register and writes zero to its high data port.
+ * HOW: Keeps a zero on the stack across the call that selects the register, then writes it to
+ * the high data port.
+ * WAITS: no.
  * Entry: nothing. Exit: A 0, N 0, Z 1. X and Y kept.
  */
 void ClearVdcControlHigh(void)
 {
+    uint8_t zero = 0;
+
+    push8(zero);
+    jsr_push(0x5B70);
     SelectVdcControl();
-    wr8(VDC_DATA_HI, 0);
+    jsr_pop();
+    zero = pull8();
+    wr8(VDC_DATA_HI, zero);
 }
 
 void abi_ClearVdcControlHigh(void)
@@ -135,6 +143,7 @@ void abi_ClearVdcControlHigh(void)
  * seen vblank; then clears the frame's raster effect and writes the control
  * value the game wants, with its sprite and background enables off, without
  * changing what the game wants.
+ * WAITS: yes, until the frame interrupt sees vblank (the stack holds the return address only).
  * Entry: interrupts on. Exit: A the value written, N and Z from it. X and Y
  * kept.
  */
@@ -166,13 +175,16 @@ void abi_WaitVblankDisplayOff(void)
  * @run 69:43EE
  * WHAT IT DOES: Writes the VDC control value the game wants.
  * HOW: Selects the register and writes both bytes.
+ * WAITS: no.
  * Entry: nothing. Exit: A the high byte, N and Z from it. X and Y kept.
  */
 uint8_t WriteVdcControl(void)
 {
     uint8_t byte;
 
+    jsr_push(0x43F1);
     SelectVdcControl();
+    jsr_pop();
     byte = rd8(zVdcCrLo);
     wr8(VDC_DATA_LO, byte);
     byte = rd8(zVdcCrHi);
@@ -194,11 +206,14 @@ void abi_WriteVdcControl(void)
  * raster effect, and a four frame delay. Only the interrupt enable reaches the
  * VDC now; the frame interrupt turns the display on when the delay runs out.
  * HOW: Writes $C8 as the wanted value and its low nibble to the VDC.
+ * WAITS: no.
  * Entry: nothing. Exit: A 4, N 0, Z 0. X and Y kept.
  */
 void ResetDisplayControl(void)
 {
+    jsr_push(0x42D7);
     SelectVdcControl();
+    jsr_pop();
     wr8(zVdcCrLo, 0xC8);
     wr8(VDC_DATA_LO, 0xC8 & 0x0F);
     wr8(zVdcCrHi, 0);
@@ -258,18 +273,23 @@ void abi_WriteBandScroll(void)
  * @run 69:431C
  * WHAT IT DOES: Sets the VDC's horizontal timing for a screen width.
  * HOW: HSR and HDR, each a word from a table by timing index times two.
+ * WAITS: no.
  * Entry: Y index. Exit: A HDR's high byte, N and Z from it. X and Y kept.
  */
 uint8_t WriteScreenTiming(uint8_t index)
 {
     uint8_t byte;
 
+    jsr_push(0x4321);
     SelectVdcRegister(VDC_REG_HSR);
+    jsr_pop();
     byte = rd8((uint16_t)(VdcHsrTable + index));
     wr8(VDC_DATA_LO, byte);
     byte = rd8((uint16_t)(VdcHsrTable + 1 + index));
     wr8(VDC_DATA_HI, byte);
+    jsr_push(0x4332);
     SelectVdcRegister(VDC_REG_HDR);
+    jsr_pop();
     byte = rd8((uint16_t)(VdcHdrTable + index));
     wr8(VDC_DATA_LO, byte);
     byte = rd8((uint16_t)(VdcHdrTable + 1 + index));
@@ -283,6 +303,13 @@ void abi_WriteScreenTiming(void)
     abi_nz(cpu.a);
 }
 
+/* A block move saves and puts back Y, A and X on the stack: the A it saves is the last one loaded. */
+static void tai_with_a_shim(uint8_t a, uint16_t source, uint16_t destination, uint16_t length)
+{
+    cpu.a = a;
+    tai(source, destination, length);
+}
+
 /*
  * @routine 0046:3A0 ClearScreenState
  * @run 69:5BA0
@@ -291,20 +318,29 @@ void abi_WriteScreenTiming(void)
  * with the blank tile.
  * HOW: Waits for vblank with the display off, block-fills $3E00 with zero, sets
  * the VRAM write address to 0 and writes tile $0110 $1000 times.
+ * WAITS: yes, through WaitVblankDisplayOff, which spins until the frame interrupt sees vblank; the stack there holds this routine's return address and the JSR frame.
  * Entry: interrupts on. Exit: A 2, X 0, Y $FF, N 1, Z 0.
  */
 void ClearScreenState(void)
 {
+    jsr_push(0x5BA3);
     WaitVblankDisplayOff();
+    jsr_pop();
     wr8(zDisplayDelay, 4);
     wr8(zRasterEffect, 0);
     wr8(zVideoMode, 0);
-    tai(KernelZeros, ScrollXFrac, 0x00EE);
+    tai_with_a_shim(4, KernelZeros, ScrollXFrac, 0x00EE);
+    jsr_push(0x5BB5);
     ClearVdcControlHigh();
+    jsr_pop();
+    jsr_push(0x5BB8);
     SelectVramWriteAddress();
+    jsr_pop();
     st1(0);
     st2(0);
+    jsr_push(0x5BBF);
     SelectVramData();
+    jsr_pop();
     for (int count = 0; count < 0x1000; count++) {
         st1(VRAM_BLANK_TILE_LO);
         st2(VRAM_BLANK_TILE_HI);
@@ -327,11 +363,14 @@ void abi_ClearScreenState(void)
  * black, the level pointer and all game RAM zero, then a blank screen.
  * HOW: Waits for vblank with the display off, zeroes colours 0 and $100,
  * block-fills $26D0 and $26F3 up with zero, then runs into ClearScreenState.
+ * WAITS: yes, through WaitVblankDisplayOff, which spins until the frame interrupt sees vblank; the stack there holds this routine's return address and the JSR frame.
  * Entry: interrupts on. Exit: as ClearScreenState.
  */
 void ResetGameState(void)
 {
+    jsr_push(0x5B78);
     WaitVblankDisplayOff();
+    jsr_pop();
     wr8(VCE_ADDR_LO, 0);
     wr8(VCE_ADDR_HI, 0);
     wr8(VCE_DATA_LO, 0);
@@ -340,8 +379,8 @@ void ResetGameState(void)
     wr8(VCE_ADDR_HI, 1);
     wr8(VCE_DATA_LO, 0);
     wr8(VCE_DATA_HI, 0);
-    tai(KernelZeros, LevelStreamLo, 0x0003);
-    tai(KernelZeros, GameRamStart, 0x164D);
+    tai_with_a_shim(1, KernelZeros, LevelStreamLo, 0x0003);
+    tai_with_a_shim(1, KernelZeros, GameRamStart, 0x164D);
     ClearScreenState();
 }
 

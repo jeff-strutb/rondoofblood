@@ -34,6 +34,24 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 08 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0D5B:200 SetPhase2
 ; @run 70:B200
 ; WHAT IT DOES: Sets the object's f34b8 to 2, the phase SetSpeedFromPhaseTable reads.
@@ -173,4 +191,110 @@ SetHitboxFromFrameRowsB:
     lda a:$CF15,y
     sta a:OBJ_3A38,x
 SetHitboxFromFrameRowsB_at0:
+    rts
+
+; @routine 0D5B:12B StartFacingPlayerThenCheck
+; @run 70:B12B
+; WHAT IT DOES: Starts the object from its record, turns it to face the player, sets f3510 to
+; $18, and, when its next_kind is 1, either removes the object (the player under $20 pixels
+; away along X) or sends it to state 6.
+; HOW: LoadObjectRecord, SideOfPlayer, DistanceXToPlayer, ClearObject as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C from the last compare or load; V from the
+; distance's subtract on the near path; Y 11 (the record); X kept. Clobbers zTemp00, zTemp10-11.
+StartFacingPlayerThenCheck:
+    jsr VecLoadObjectRecord
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    lda #$18
+    sta a:OBJ_3510,x
+    lda a:OBJ_3040,x
+    cmp #$01
+    bne StartFacingPlayerThenCheck_at0
+    jsr VecDistanceXToPlayer
+    cmp #$20
+    bcs StartFacingPlayerThenCheck_at1
+    jmp VecClearObject
+StartFacingPlayerThenCheck_at1:
+    lda #$06
+    sta a:OBJ_27A8,x
+StartFacingPlayerThenCheck_at0:
+    rts
+
+; @routine 0D5B:152 AnimateThenCountToState3
+; @run 70:B152
+; WHAT IT DOES: Unless the object in slot $54 is showing frame 4, animates the object along the
+; list at overlay address $B17B and, when its next_kind is not $FF and its X high byte is zero,
+; counts f3510 down; at zero it enters state 3.
+; HOW: StepObjectFrames, then the tests in that order, each stopping at the first that fails.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C from the last compare, load or decrement; Y as the
+; animation step left it; X and V kept. Clobbers zTemp10-11.
+AnimateThenCountToState3:
+    lda a:$2ABC
+    cmp #$04
+    beq AnimateThenCountToState3_at0
+    lda #$B1
+    sta z:zTemp11
+    lda #$7B
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda a:OBJ_3040,x
+    cmp #$FF
+    beq AnimateThenCountToState3_at0
+    lda a:OBJ_X_HI,x
+    bne AnimateThenCountToState3_at0
+    dec a:OBJ_3510,x
+    bne AnimateThenCountToState3_at0
+    lda #$03
+    sta a:OBJ_27A8,x
+AnimateThenCountToState3_at0:
+    rts
+
+; @routine 0D5B:1CE PickPhaseAtRandomA
+; @run 70:B1CE
+; WHAT IT DOES: Picks the object's phase (the f34b8 byte SetSpeedFromPhaseTable reads) from a
+; random number's low three bits: 0 and 1 give phase 3, 2 gives phase 2, 3 gives phase 1, any
+; other gives phase 0.
+; HOW: NextRandom, compares, and a tail into SetPhase3 or SetPhase2.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the phase (or the masked number for phase 0), N, Z from it; C
+; from the last compare (V from the random number's add).
+PickPhaseAtRandomA:
+    jsr VecNextRandom
+    and #$07
+    cmp #$02
+    bcc SetPhase3
+    cmp #$02
+    beq SetPhase2
+    cmp #$03
+    beq PickPhaseAtRandomB_at0
+PickPhaseAtRandomA_at0:
+    stz a:OBJ_34B8,x
+    rts
+
+; @routine 0D5B:1E3 PickPhaseAtRandomB
+; @run 70:B1E3
+; WHAT IT DOES: Picks the object's phase from a random number's low three bits: 0 gives phase 3,
+; 1 gives phase 2, 2 gives phase 0, 3 to 7 give phase 1 when the object faces the way the player
+; does and phase 0 when not.
+; HOW: NextRandom, compares, and a tail into SetPhase3 or SetPhase2.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the phase (or the facing difference), N, Z from it; C from the
+; last compare (V from the random number's add).
+PickPhaseAtRandomB:
+    jsr VecNextRandom
+    and #$07
+    beq SetPhase3
+    cmp #$01
+    beq SetPhase2
+    cmp #$02
+    beq PickPhaseAtRandomA_at0
+    lda a:OBJ_2AC0,x
+    eor a:OBJ_2AC0
+    bne PickPhaseAtRandomA_at0
+PickPhaseAtRandomB_at0:
+    lda #$01
+    sta a:OBJ_34B8,x
     rts

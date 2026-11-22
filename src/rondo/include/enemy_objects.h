@@ -412,6 +412,10 @@ Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);
 Ended SetHitboxSizeFromFrame(uint8_t slot);
 Ended ChangeToType9C(uint8_t slot);
+Ended EnterNextStateWhenPlayerNear(uint8_t slot);
+Ended SwingOnCosine(uint8_t slot);
+Ended AnimateThenFrameRecord(uint8_t slot);
+Ended StartThenAnimate(uint8_t slot);
 /* object/enemies_stage08_temp.c */
 Ended SetPhase2(uint8_t slot);
 Ended SetPhase3(uint8_t slot);
@@ -421,6 +425,10 @@ Ended EnterState6IfFlaggedB(uint8_t slot);
 Ended AdvanceState(uint8_t slot);
 Ended EnterState3WithTallHitbox(uint8_t slot);
 Ended SetHitboxFromFrameRowsB(uint8_t slot);
+Ended StartFacingPlayerThenCheck(uint8_t slot);
+Ended AnimateThenCountToState3(uint8_t slot);
+Ended PickPhaseAtRandomA(uint8_t slot);
+Ended PickPhaseAtRandomB(uint8_t slot);
 /* object/enemies_stage0b_temp.c */
 Ended CountdownThenState4B(uint8_t slot);
 Ended ChangeToType9BB(uint8_t slot);

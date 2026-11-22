@@ -20,6 +20,17 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 07 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0BFB:3DC EnterState4IfFlagged
 ; @run 70:B3DC
 ; WHAT IT DOES: Sends the object to state 4 when bit 7 of its status flags is set.
@@ -104,4 +115,100 @@ ChangeToType9C:
     sta a:OBJ_2750,x
 ChangeToType9C_at0:
     stz a:OBJ_27A8,x
+    rts
+
+; @routine 0BFB:3E9 EnterNextStateWhenPlayerNear
+; @run 70:B3E9
+; WHAT IT DOES: When the player is nearer along X than the distance in the object's next_kind byte,
+; sets f3250 to 2 and life_timer to $20 and moves the object on to its next state.
+; HOW: DistanceXToPlayer compared with next_kind (read once).
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the compare left them (V from the distance's subtract), or
+; A $20 and N, Z from the new state; X, Y kept.
+EnterNextStateWhenPlayerNear:
+    jsr VecDistanceXToPlayer
+    cmp a:OBJ_3040,x
+    bcs EnterNextStateWhenPlayerNear_at0
+    lda #$02
+    sta a:OBJ_3250,x
+    lda #$20
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+EnterNextStateWhenPlayerNear_at0:
+    rts
+
+; @routine 0BFC:1C6 SwingOnCosine
+; @run 70:B9C6
+; WHAT IT DOES: Animates the object along the list at overlay address $B9F6, gives it a Y speed
+; of its life_timer's angle's cosine (speed 1.0), moves it, and turns life_timer on by 2.
+; HOW: StepObjectFrames, ScaleByCosine with zTemp00-01 set to 256, ApplyVelocity.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the new life_timer, N, Z, C and V from the add of 2; Y 0.
+; Clobbers zTemp00-01, zTemp10-12, zProduct0-2, zMultiplierLo-Hi.
+SwingOnCosine:
+    lda #$F6
+    sta z:zTemp10
+    lda #$B9
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    lda #$00
+    sta z:zTemp00
+    lda #$01
+    sta z:zTemp01
+    lda a:OBJ_34B8,x
+    jsr VecScaleByCosine
+    lda z:zProduct2
+    sta a:OBJ_VY_HI,x
+    lda z:SpriteFlipMask
+    sta a:OBJ_VY_LO,x
+    jsr VecApplyVelocity
+    lda a:OBJ_34B8,x
+    clc
+    adc #$02
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 0BFC:330 AnimateThenFrameRecord
+; @run 70:BB30
+; WHAT IT DOES: Animates the object along the list at overlay address $BB4B; when the list has
+; ended, sets f3358 to 2 and f3300 to $0E and moves the object on to its next state.
+; HOW: StepObjectFrames; its result says the list ended.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as StepObjectFrames, or at the end A $0E and N, Z from the new
+; state; X kept. Clobbers zTemp10-11.
+AnimateThenFrameRecord:
+    lda #$4B
+    sta z:zTemp10
+    lda #$BB
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne AnimateThenFrameRecord_at0
+    lda #$02
+    sta a:OBJ_3358,x
+    lda #$0E
+    sta a:OBJ_3300,x
+    inc a:OBJ_27A8,x
+AnimateThenFrameRecord_at0:
+    rts
+
+; @routine 0BFF:1A3 StartThenAnimate
+; @run 71:D1A3
+; WHAT IT DOES: The first time the object runs (state 0), starts it from its record and sets its
+; f2a10 to 6. Every time, it animates it along the list at overlay address $D1BC.
+; HOW: LoadObjectRecord when the state is 0, then StepObjectFrames as the last call.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as StepObjectFrames (Y 11 from the record start when the
+; animation does not change it); X and V kept. (A JSR then RTS, not a tail jump.) Clobbers zTemp10-11.
+StartThenAnimate:
+    lda a:OBJ_27A8,x
+    bne StartThenAnimate_at0
+    jsr VecLoadObjectRecord
+    lda #$06
+    sta a:OBJ_2A10,x
+StartThenAnimate_at0:
+    lda #$D1
+    sta z:zTemp11
+    lda #$BC
+    sta z:zTemp10
+    jsr VecStepObjectFrames
     rts

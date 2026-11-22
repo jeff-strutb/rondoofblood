@@ -598,6 +598,15 @@
 #define PaletteWork 0x3B00 /* 32 bytes: a palette of 16 colours read from the VCE to be worked on */
 #define PaletteWorkSpare 0x3B20 /* the colour kept while a palette is rotated */
 #define StageMaskBuffer 0x3B40 /* 128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask */
+#define StageVar350E 0x350E /* the stage overlay's state, in the last two slots ($56, $57) of an object column: slot $56 a counter, slot $57 ($350F) the stage event code */
+#define StageVar3566 0x3566 /* the stage overlay's state in the last two slots of an object column ($3566 and $3567) */
+#define StageVar35BE 0x35BE /* the stage overlay's state in the last two slots of an object column: $35BF a toggle */
+#define StageVar3616 0x3616 /* the stage overlay's state in the last two slots of an object column ($3616 and $3617) */
+#define StageBlendOn 0x366E /* the stage overlay: nonzero blends two five-entry tile colour rows; $366F is set to 1 by the event code routine */
+#define StageBlendStep 0x36C6 /* the stage overlay's blend step, 0 to 5 (5 none); $36C7 keeps MPR5 across a stage routine */
+#define StageVar371E 0x371E /* the stage overlay's state in the last two slots of an object column; $371F keeps MPR6 across a stage routine */
+#define StageTileVramAddress 0x8E96 /* the stage overlay's 8 VRAM addresses, a word each (low byte, high byte) */
+#define StageTileRows 0xC534 /* the stage overlay's rows of 5 tile colour bytes in the MPR6 bank MapStageBanks maps; the count of rows is not known yet */
 #define StageMaskOffsets 0x9149 /* the stage overlay's 8 offsets (00 01 20 21 40 41 60 61) of the mask buffer's cells one masking step touches; the same bytes at every copy of the overlay */
 #define SpriteMirrorWidth 0x819F /* the 00D1 overlay's 2 widths a mirrored sprite's X offsets are taken from (bank 6C) */
 #define SpriteXMin 0x81A1 /* the 00D1 overlay's 2 lowest X values a sprite part is drawn at (bank 6C) */

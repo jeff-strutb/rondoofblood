@@ -7,6 +7,7 @@
 #include "machine.h"
 #include "ram.h"
 #include "routines.h"
+#include "common_objects.h"
 
 /* Bits of a terrain probe's request and of its answer. */
 enum {
@@ -226,26 +227,6 @@ void abi_LookUpTerrainBelowAlt(void)
     lookup_exit_shim(StageLookupAlt(cpu.a, cpu.x, cpu.y));
 }
 
-/* What was done about a wall. */
-typedef enum { NO_PUSH, PUSHED_RIGHT, PUSHED_LEFT } WallPushed;
-
-/* How a probe went, step by step, for what the wrapper replays. */
-typedef struct {
-    uint8_t object;
-    uint8_t column;
-    uint8_t answer;
-    bool floor_asked;
-    LookupEnd floor;
-    bool scanned;
-    uint8_t scanned_to;
-    bool lifted;
-    uint16_t lift_before, lift_amount;
-    bool wall_asked;
-    LookupEnd wall;
-    WallPushed pushed;
-    uint16_t push_before, push_amount;
-} Probe;
-
 static void add_to_answer(uint8_t bits)
 {
     wr8(zProduct0, (uint8_t)(rd8(zProduct0) | bits));
@@ -374,7 +355,7 @@ static void word_subtract_shim(uint16_t before, uint16_t amount)
 }
 
 /* Registers and flags as a probe's steps leave them, in the assembly's order. */
-static void probe_exit_shim(Probe p)
+void probe_exit_shim(Probe p)
 {
     if (p.floor_asked) {
         lookup_exit_shim(p.floor);

@@ -7,6 +7,7 @@
  */
 #include "machine.h"
 #include "ram.h"
+#include "common_objects.h"
 
 #define PRODUCT_MASK 0xFFFFFFu
 #define PRODUCT_TOP 0x800000u
@@ -204,7 +205,7 @@ uint32_t ScaleByCosine(uint8_t angle)
 }
 
 /* Adding $40 overflows only from $40-$7F. */
-static Alu cosine_exit_shim(uint8_t angle, uint16_t value, uint32_t result)
+Alu cosine_exit_shim(uint8_t angle, uint16_t value, uint32_t result)
 {
     Alu exit = scale_exit_shim((uint8_t)(angle + QUARTER_TURN), value, result);
 

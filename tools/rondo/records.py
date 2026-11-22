@@ -71,13 +71,13 @@ A7_FIELDS = ["script", "routine", "swapped", "ran_inside", "chash", "epoch", "de
 
 
 def epoch(top=TOP):
-    """The gate epoch: the first number in config/rondo/runs/epoch.txt. It moves only by a commit to that
+    """The gate epoch: the first number of the last line in config/rondo/runs/epoch.txt. It moves only by a commit to that
     file that says why (the gates were replaced by ones that prove more); never because a file changed."""
     path = os.path.join(runs_dir(top), "epoch.txt")
-    for line in open(path):
-        if line.strip() and not line.startswith("#"):
-            return line.split()[0]
-    raise SystemExit(f"{path}: no epoch number")
+    found = [line.split()[0] for line in open(path) if line.strip() and not line.startswith("#")]
+    if not found:
+        raise SystemExit(f"{path}: no epoch number")
+    return found[-1]               # the file lists every epoch with its reason, oldest first: the current one is the last
 
 
 def runs_dir(top=TOP):

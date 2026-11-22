@@ -1220,3 +1220,955 @@ void abi_WriteGlyphRowsTwice(void)
     abi_nz(0);
     abi_flag(P_C, true);
 }
+
+/*
+ * @routine 00DE:05D BlankTextRow
+ * @run 6F:A85D
+ * WHAT IT DOES: Blanks a row of eight tiles of the menu's text: each tile's number becomes $3D
+ * and its palette byte stays.
+ * HOW: The row number doubled picks the row's VRAM address from a table, which is set as both
+ * the write and the read address; eight times the tile's low byte is read, $3D is written in its
+ * place, the high byte is read and written back.
+ * WAITS: no.
+ * Entry: A the row, X kept on the stack across it (a typed caller passes its own). Exit: A the
+ * last high byte, Y the row doubled, X kept with N and Z from it (the PLX), C set.
+ */
+Exit BlankTextRow(uint8_t row, uint8_t kept_x)
+{
+    Exit exit = { 0 };
+    uint8_t index, value, count;
+
+    push8(kept_x);
+    index = (uint8_t)(row << 1);
+    jsr_push(0xA863);
+    SelectVramWriteAddress();
+    jsr_pop();
+    value = rd8((uint16_t)(TEXT_ROW_ADDRESSES + index));
+    WR8(VDC->data_lo, value);
+    value = rd8((uint16_t)(TEXT_ROW_ADDRESSES + 1 + index));
+    WR8(VDC->data_hi, value);
+    jsr_push(0xA872);
+    SelectVramReadAddress();
+    jsr_pop();
+    value = rd8((uint16_t)(TEXT_ROW_ADDRESSES + index));
+    WR8(VDC->data_lo, value);
+    value = rd8((uint16_t)(TEXT_ROW_ADDRESSES + 1 + index));
+    WR8(VDC->data_hi, value);
+    jsr_push(0xA881);
+    SelectVramData();
+    jsr_pop();
+    value = 0;
+    for (count = 0; count != 8; count++) {
+        RD8(VDC->data_lo);
+        st1(0x3D);
+        value = RD8(VDC->data_hi);
+        WR8(VDC->data_hi, value);
+    }
+    exit.a = value;
+    exit.y = index;
+    exit.x = pull8();
+    exit.nz = exit.x;
+    exit.c = true;
+    exit.v_set = false;
+    return exit;
+}
+
+void abi_BlankTextRow(void)
+{
+    exit_shim(BlankTextRow(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 00DE:0B2 RecolorTextRun
+ * @run 6F:A8B2
+ * WHAT IT DOES: Gives a run of the menu's text a palette: from the row's VRAM address on, each tile
+ * that has a number is rewritten with the palette byte, until a tile whose high nibble is 3 ends
+ * the run; tiles whose high nibble is 0 are rewritten as they are.
+ * HOW: The palette byte is looked up by Y and kept in $F8. The row (doubled) picks the VRAM
+ * address, set as read and write address. Each pass reads a word, keeps its high byte in $F9, and
+ * writes the word back with its own high byte, or with $F8 as the high byte, or stops.
+ * WAITS: no.
+ * Entry: A the row, Y the palette index. Exit: A $30, Y the last tile's low byte, Z and C set, N
+ * clear; X kept. Clobbers zBiosAl and zBiosAh.
+ */
+Exit RecolorTextRun(uint8_t row, uint8_t palette_index)
+{
+    Exit exit = { 0 };
+    uint8_t value, index, low, high, masked, kept;
+
+    push8(row);
+    value = rd8((uint16_t)(TEXT_PALETTES + palette_index));
+    WR8(ZP->bios_a.lo, value);
+    row = pull8();
+    index = (uint8_t)(row << 1);
+    jsr_push(0xA8BE);
+    SelectVramReadAddress();
+    jsr_pop();
+    value = rd8((uint16_t)(TEXT_COLOR_ADDRESSES + index));
+    WR8(VDC->data_lo, value);
+    value = rd8((uint16_t)(TEXT_COLOR_ADDRESSES + 1 + index));
+    WR8(VDC->data_hi, value);
+    jsr_push(0xA8CD);
+    SelectVramWriteAddress();
+    jsr_pop();
+    value = rd8((uint16_t)(TEXT_COLOR_ADDRESSES + index));
+    WR8(VDC->data_lo, value);
+    value = rd8((uint16_t)(TEXT_COLOR_ADDRESSES + 1 + index));
+    WR8(VDC->data_hi, value);
+    jsr_push(0xA8DC);
+    SelectVramData();
+    jsr_pop();
+    for (;;) {
+        low = RD8(VDC->data_lo);
+        high = RD8(VDC->data_hi);
+        WR8(ZP->bios_a.hi, high);
+        masked = (uint8_t)(high & 0xF0);
+        if (masked == 0) {
+            kept = RD8(ZP->bios_a.hi);
+            WR8(VDC->data_lo, low);
+            WR8(VDC->data_hi, kept);
+            continue;
+        }
+        if (masked == 0x30) {
+            break;
+        }
+        kept = RD8(ZP->bios_a.lo);
+        WR8(VDC->data_lo, low);
+        WR8(VDC->data_hi, kept);
+    }
+    exit.a = 0x30;
+    exit.y = low;
+    exit.nz = 0;
+    exit.c = true;
+    exit.v_set = false;
+    exit.x = 0;
+    exit.x_kept = true;
+    return exit;
+}
+
+void abi_RecolorTextRun(void)
+{
+    exit_shim(RecolorTextRun(cpu.a, cpu.y));
+}
+
+/*
+ * @routine 00DE:006 DrawSlotPercent
+ * @run 6F:A806
+ * WHAT IT DOES: Writes the completion of a save slot as a number of up to three digits at the
+ * place the menu has for the row: "100" or a blank and two digits.
+ * HOW: The row is kept doubled (the place table's index) and reduced by repeated subtraction of 3
+ * to the slot (0 to 2); the VRAM write address is set from the table, SlotCompletionPercent
+ * works the number out in zTemp08 and zTemp09, and a 1 digit tile, or a blank tile, and the low
+ * byte as two hex digits are written.
+ * WAITS: no.
+ * Entry: A the row, X kept on the stack across it (a typed caller passes its own). Exit: A the
+ * last digit tile, N and Z from X, C bit 3 of the low byte written, V as the last subtraction left it
+ * (kept when the row is under 3), X kept, Y the slot.
+ */
+Exit DrawSlotPercent(uint8_t row, uint8_t kept_x)
+{
+    Exit exit = { 0 };
+    SlotSum sum;
+    Alu minus;
+    uint8_t index, slot, value, high;
+    bool v_set = false, v = false;
+
+    push8(kept_x);
+    push8(row);
+    index = (uint8_t)(row << 1);
+    row = pull8();
+    while (row >= 3) {
+        minus = sbc8(row, 3, true);
+        row = minus.a;
+        v_set = true;
+        v = minus.v;
+    }
+    slot = row;
+    jsr_push(0xA817);
+    SelectVramWriteAddress();
+    jsr_pop();
+    value = rd8((uint16_t)(PERCENT_ADDRESSES + index));
+    WR8(VDC->data_lo, value);
+    value = rd8((uint16_t)(PERCENT_ADDRESSES + 1 + index));
+    WR8(VDC->data_hi, value);
+    jsr_push(0xA826);
+    SelectVramData();
+    jsr_pop();
+    push8(index);
+    push8(slot);
+    jsr_push(0xA82C);
+    sum = SlotCompletionPercent(slot);
+    jsr_pop();
+    exit.y = pull8();
+    exit.x = pull8();
+    high = RD8(ZP->temp09);
+    if (high != 0) {
+        jsr_push(0xA837);
+        WriteDigitTile(1);
+        jsr_pop();
+        value = 0;
+    } else {
+        st1(0x20);
+        st2(0x11);
+        value = RD8(ZP->temp08);
+    }
+    jsr_push(0xA843);
+    WriteHexByteTiles(value);
+    jsr_pop();
+    exit.a = (uint8_t)((value & 0x0F) | 0x10);
+    exit.c = (value & 0x08) != 0;
+    exit.x = pull8();
+    exit.nz = exit.x;
+    exit.v = v;
+    exit.v_set = v_set;
+    return exit;
+}
+
+void abi_DrawSlotPercent(void)
+{
+    exit_shim(DrawSlotPercent(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 00DD:133 OrBufferIntoVramLow
+ * @run 6F:A133
+ * WHAT IT DOES: Merges the glyph buffer into the VRAM words from the read address on: the low
+ * byte of each of 16 words has the buffer's bytes ORed in (every other byte, from $3B40).
+ * HOW: Sixteen times the low byte is read, ORed with the buffer byte and written, then the high
+ * byte is read and written back.
+ * WAITS: no.
+ * Entry: X kept on the stack across it (a typed caller passes its own); the VDC's read and write
+ * addresses set. Exit: A the last high byte, X kept with N and Z from it, C set.
+ */
+Exit OrBufferIntoVramLow(uint8_t kept_x)
+{
+    Exit exit = { 0 };
+    uint8_t offset, low, high, byte;
+
+    push8(kept_x);
+    high = 0;
+    for (offset = 0; offset != 0x20; offset = (uint8_t)(offset + 2)) {
+        low = RD8(VDC->data_lo);
+        byte = rd8((uint16_t)(GLYPH_BUFFER + offset));
+        WR8(VDC->data_lo, (uint8_t)(low | byte));
+        high = RD8(VDC->data_hi);
+        WR8(VDC->data_hi, high);
+    }
+    exit.a = high;
+    exit.x = pull8();
+    exit.nz = exit.x;
+    exit.c = true;
+    exit.v_set = false;
+    exit.y_kept = true;
+    return exit;
+}
+
+void abi_OrBufferIntoVramLow(void)
+{
+    exit_shim(OrBufferIntoVramLow(cpu.x));
+}
+
+/*
+ * @routine 00DD:17B ShiftGlyphBufferRight
+ * @run 6F:A17B
+ * WHAT IT DOES: Shifts the glyph buffer's twelve words right by one bit, to move a glyph a pixel
+ * along, and sets the column offset zTemp08 to $10.
+ * HOW: Twelve times the high byte (at $3B44) is shifted right and the carry rotated into the low
+ * byte after it; then $10 is stored in zTemp08.
+ * WAITS: no.
+ * Entry: X kept on the stack across it (a typed caller passes its own). Exit: A $10, N and Z
+ * clear, C set; X kept.
+ */
+Exit ShiftGlyphBufferRight(uint8_t kept_x)
+{
+    Exit exit = { 0 };
+    uint8_t offset;
+    bool carry;
+
+    push8(kept_x);
+    for (offset = 0; offset != 0x18; offset = (uint8_t)(offset + 2)) {
+        carry = lsr_mem((uint16_t)(GLYPH_BUFFER + 4 + offset));
+        ror_mem((uint16_t)(GLYPH_BUFFER + 5 + offset), carry);
+    }
+    exit.x = pull8();
+    WR8(ZP->temp08, 0x10);
+    exit.a = 0x10;
+    exit.nz = 0x10;
+    exit.c = true;
+    exit.v_set = false;
+    exit.y_kept = true;
+    return exit;
+}
+
+void abi_ShiftGlyphBufferRight(void)
+{
+    exit_shim(ShiftGlyphBufferRight(cpu.x));
+}
+
+/*
+ * @routine 00DD:1A3 SetGlyphVramPlace
+ * @run 6F:A1A3
+ * WHAT IT DOES: Points the VDC's read and write addresses at a glyph's place in VRAM: the
+ * object's base place (from a table by the object's kind), plus the column offset zBiosAl, plus
+ * the glyph number times 64 (with the half-column in zTemp08 ORed in).
+ * HOW: The glyph number is shifted right twice into zTemp01 with the two bits shifted out kept
+ * as the top of zTemp00, which zTemp08 is ORed into. The base place is added to zBiosAl and
+ * zTemp00 (the carry of the first add is dropped, as in the original) and zTemp01, written to the
+ * write address, and then the same word to the read address; the data port is selected.
+ * WAITS: no.
+ * Entry: A the glyph number, X the object, zBiosAl, zTemp08. Exit: A 2, N and Z clear, C and V from
+ * the high byte add, Y the kind doubled; X kept. Clobbers zTemp00 to zTemp03.
+ */
+Exit SetGlyphVramPlace(uint8_t glyph, uint8_t object)
+{
+    Exit exit = { 0 };
+    Alu add_low, add_more, add_high;
+    uint8_t index, kind, base, low, high, carry_in;
+    bool carry;
+
+    WR8(ZP->temp00, 0);
+    carry = (glyph & 0x01) != 0;
+    glyph = (uint8_t)(glyph >> 1);
+    ROR8(ZP->temp00, carry);
+    carry = (glyph & 0x01) != 0;
+    glyph = (uint8_t)(glyph >> 1);
+    ROR8(ZP->temp00, carry);
+    WR8(ZP->temp01, glyph);
+    low = RD8(ZP->temp00);
+    high = RD8(ZP->temp08);
+    WR8(ZP->temp00, (uint8_t)(low | high));
+    kind = RD8(OBJ->f3040[object]);
+    index = (uint8_t)(kind << 1);
+    jsr_push(0xA1BB);
+    SelectVramWriteAddress();
+    jsr_pop();
+    base = rd8((uint16_t)(GLYPH_PLACES + index));
+    low = RD8(ZP->bios_a.lo);
+    add_low = adc8(base, low, false);
+    high = RD8(ZP->temp00);
+    add_more = adc8(add_low.a, high, false);
+    WR8(ZP->temp02, add_more.a);
+    WR8(VDC->data_lo, add_more.a);
+    base = rd8((uint16_t)(GLYPH_PLACES + 1 + index));
+    carry_in = RD8(ZP->temp01);
+    add_high = adc8(base, carry_in, add_more.c);
+    WR8(ZP->temp03, add_high.a);
+    WR8(VDC->data_hi, add_high.a);
+    jsr_push(0xA1D6);
+    SelectVramReadAddress();
+    jsr_pop();
+    low = RD8(ZP->temp02);
+    WR8(VDC->data_lo, low);
+    high = RD8(ZP->temp03);
+    WR8(VDC->data_hi, high);
+    SelectVramData();
+    exit.a = 2;
+    exit.y = index;
+    exit.nz = 2;
+    exit.c = add_high.c;
+    exit.v = add_high.v;
+    exit.v_set = true;
+    exit.x_kept = true;
+    return exit;
+}
+
+void abi_SetGlyphVramPlace(void)
+{
+    exit_shim(SetGlyphVramPlace(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 00DD:104 OverlayGlyphRows
+ * @run 6F:A104
+ * WHAT IT DOES: Draws a glyph into the tiles of an object's row by overlaying it on what is in
+ * VRAM: two places one glyph number apart are set, the first has the glyph buffer's low bytes
+ * ORed in, the second its high bytes.
+ * HOW: The object's step (OBJ->f35c0) picks a glyph number from a table. SetGlyphVramPlace for
+ * it, OrBufferIntoVramLow, then SetGlyphVramPlace for the number plus one and a loop of 16 words
+ * that reads each word, writes it back and ORs the buffer's odd bytes (from $3B41) into the high
+ * byte.
+ * WAITS: no.
+ * Entry: X the object. Exit: A the last high byte written, X kept (N and Z from it), C set, Y the
+ * object's kind doubled, V from SetGlyphVramPlace.
+ */
+Exit OverlayGlyphRows(uint8_t object)
+{
+    Exit exit = { 0 };
+    Exit place;
+    uint8_t step, glyph, offset, low, high, byte;
+
+    step = RD8(OBJ->f35c0[object]);
+    glyph = rd8((uint16_t)(GLYPH_NUMBERS + step));
+    jsr_push(0xA10D);
+    SetGlyphVramPlace(glyph, object);
+    jsr_pop();
+    jsr_push(0xA110);
+    OrBufferIntoVramLow(object);
+    jsr_pop();
+    step = RD8(OBJ->f35c0[object]);
+    glyph = rd8((uint16_t)(GLYPH_NUMBERS + step));
+    glyph = (uint8_t)(glyph + 1);
+    jsr_push(0xA11A);
+    place = SetGlyphVramPlace(glyph, object);
+    jsr_pop();
+    push8(object);
+    high = 0;
+    for (offset = 0; offset != 0x20; offset = (uint8_t)(offset + 2)) {
+        low = RD8(VDC->data_lo);
+        WR8(VDC->data_lo, low);
+        high = RD8(VDC->data_hi);
+        byte = rd8((uint16_t)(GLYPH_BUFFER + 1 + offset));
+        high = (uint8_t)(high | byte);
+        WR8(VDC->data_hi, high);
+    }
+    exit.a = high;
+    exit.x = pull8();
+    exit.y = place.y;
+    exit.nz = exit.x;
+    exit.c = true;
+    exit.v = place.v;
+    exit.v_set = true;
+    return exit;
+}
+
+void abi_OverlayGlyphRows(void)
+{
+    exit_shim(OverlayGlyphRows(cpu.x));
+}
+
+/*
+ * @routine 00DD:0FA OverlayGlyphPass
+ * @run 6F:A0FA
+ * WHAT IT DOES: One pass of the object's glyph draw: OverlayGlyphRows with the column offset 0,
+ * then the glyph buffer shifted right a bit and OverlayGlyphRows again with the offset 1.
+ * HOW: Sets zBiosAl to 0, calls OverlayGlyphRows, adds one to zBiosAl, calls
+ * ShiftGlyphBufferRight, and runs on into OverlayGlyphRows.
+ * WAITS: no.
+ * Entry: X the object. Exit: as OverlayGlyphRows.
+ */
+Exit OverlayGlyphPass(uint8_t object)
+{
+    WR8(ZP->bios_a.lo, 0);
+    jsr_push(0xA0FF);
+    OverlayGlyphRows(object);
+    jsr_pop();
+    INC8(ZP->bios_a.lo);
+    jsr_push(0xA104);
+    ShiftGlyphBufferRight(object);
+    jsr_pop();
+    return OverlayGlyphRows(object);
+}
+
+void abi_OverlayGlyphPass(void)
+{
+    exit_shim(OverlayGlyphPass(cpu.x));
+}
+
+/*
+ * @routine 00DD:156 OverlayGlyphRowsBoth
+ * @run 6F:A156
+ * WHAT IT DOES: Draws a glyph into the tiles of an object's row by overlaying it on what is in
+ * VRAM, both bytes of each word: the low bytes from the buffer's even bytes and the high bytes
+ * from the odd ones.
+ * HOW: The object's step (OBJ->f35c0) picks a glyph number from a table, SetGlyphVramPlace sets the
+ * place, then 16 words are read and written back with the buffer ORed in.
+ * WAITS: no.
+ * Entry: X the object. Exit: A the last high byte written, X kept (N and Z from it), C set, Y the
+ * object's kind doubled, V from SetGlyphVramPlace.
+ */
+Exit OverlayGlyphRowsBoth(uint8_t object)
+{
+    Exit exit = { 0 };
+    Exit place;
+    uint8_t step, glyph, offset, low, high, byte;
+
+    step = RD8(OBJ->f35c0[object]);
+    glyph = rd8((uint16_t)(GLYPH_NUMBERS + step));
+    jsr_push(0xA15F);
+    place = SetGlyphVramPlace(glyph, object);
+    jsr_pop();
+    push8(object);
+    high = 0;
+    for (offset = 0; offset != 0x20; offset = (uint8_t)(offset + 2)) {
+        low = RD8(VDC->data_lo);
+        byte = rd8((uint16_t)(GLYPH_BUFFER + 1 + offset));
+        WR8(VDC->data_lo, (uint8_t)(low | byte));
+        high = RD8(VDC->data_hi);
+        byte = rd8((uint16_t)(GLYPH_BUFFER + offset));
+        WR8(VDC->data_hi, (uint8_t)(high | byte));
+    }
+    exit.a = (uint8_t)(high | byte);
+    exit.x = pull8();
+    exit.y = place.y;
+    exit.nz = exit.x;
+    exit.c = true;
+    exit.v = place.v;
+    exit.v_set = true;
+    return exit;
+}
+
+void abi_OverlayGlyphRowsBoth(void)
+{
+    exit_shim(OverlayGlyphRowsBoth(cpu.x));
+}
+
+/*
+ * @routine 00DD:14C OverlayGlyphPassBoth
+ * @run 6F:A14C
+ * WHAT IT DOES: One pass of the object's glyph draw with both bytes overlaid: as OverlayGlyphPass
+ * with OverlayGlyphRowsBoth in place of OverlayGlyphRows.
+ * HOW: Sets zBiosAl to 0, calls OverlayGlyphRowsBoth, adds one to zBiosAl, calls
+ * ShiftGlyphBufferRight, and runs on into OverlayGlyphRowsBoth.
+ * WAITS: no.
+ * Entry: X the object. Exit: as OverlayGlyphRowsBoth.
+ */
+Exit OverlayGlyphPassBoth(uint8_t object)
+{
+    WR8(ZP->bios_a.lo, 0);
+    jsr_push(0xA151);
+    OverlayGlyphRowsBoth(object);
+    jsr_pop();
+    INC8(ZP->bios_a.lo);
+    jsr_push(0xA156);
+    ShiftGlyphBufferRight(object);
+    jsr_pop();
+    return OverlayGlyphRowsBoth(object);
+}
+
+void abi_OverlayGlyphPassBoth(void)
+{
+    exit_shim(OverlayGlyphPassBoth(cpu.x));
+}
+
+/*
+ * @routine 00DD:01C ClearVramBlock
+ * @run 6F:A01C
+ * WHAT IT DOES: Blanks 1024 words of VRAM at the place the object's kind names, and moves the
+ * object on to its next state.
+ * HOW: The kind doubled picks the place from a table, set as the write address; $0000 is
+ * written 1024 times (four rounds of 256) and the object's state (OBJ->f27a8) goes up by one.
+ * WAITS: no.
+ * Entry: X the object. Exit: A 4, X kept, N and Z from the new state, C bit 7 of the kind, Y the
+ * kind doubled. Clobbers zTemp00.
+ */
+Exit ClearVramBlock(uint8_t object)
+{
+    Exit exit = { 0 };
+    uint8_t kind, index, value, rounds, count, state;
+
+    kind = RD8(OBJ->f3040[object]);
+    index = (uint8_t)(kind << 1);
+    jsr_push(0xA024);
+    SelectVramWriteAddress();
+    jsr_pop();
+    value = rd8((uint16_t)(GLYPH_PLACES + index));
+    WR8(VDC->data_lo, value);
+    value = rd8((uint16_t)(GLYPH_PLACES + 1 + index));
+    WR8(VDC->data_hi, value);
+    jsr_push(0xA033);
+    SelectVramData();
+    jsr_pop();
+    push8(object);
+    WR8(ZP->temp00, 4);
+    count = 0;
+    do {
+        do {
+            st1(0x00);
+            st2(0x00);
+            count = (uint8_t)(count - 1);
+        } while (count != 0);
+        rounds = DEC8(ZP->temp00);
+    } while (rounds != 0);
+    object = pull8();
+    state = INC8(OBJ->f27a8[object]);
+    exit.a = 4;
+    exit.x_kept = true;
+    exit.y = index;
+    exit.nz = state;
+    exit.c = (kind & 0x80) != 0;
+    return exit;
+}
+
+void abi_ClearVramBlock(void)
+{
+    exit_shim(ClearVramBlock(cpu.x));
+}
+
+/*
+ * @routine 00DD:1E3 GlideObjectUp
+ * @run 6F:A1E3
+ * WHAT IT DOES: One frame of a short slide: on every other frame the object moves up one pixel
+ * (its Y goes down by one), the step counter counts down, and at zero the object goes on to its
+ * next state.
+ * HOW: The counter (OBJ->f35c0) read and shifted right gives the odd or even frame; on an even
+ * one OBJ->y_lo is decremented; the counter is decremented and at zero OBJ->f27a8 is incremented.
+ * WAITS: no.
+ * Entry: X the object. Exit: A the counter shifted right, X kept, C the counter's bit 0, N and Z
+ * from the counter after the decrement (from the new state when it reached zero).
+ */
+Exit GlideObjectUp(uint8_t object)
+{
+    Exit exit = { 0 };
+    uint8_t counter, left, state;
+
+    counter = RD8(OBJ->f35c0[object]);
+    exit.c = (counter & 0x01) != 0;
+    exit.a = (uint8_t)(counter >> 1);
+    if (!exit.c) {
+        DEC8(OBJ->y_lo[object]);
+    }
+    left = DEC8(OBJ->f35c0[object]);
+    exit.nz = left;
+    if (left == 0) {
+        state = INC8(OBJ->f27a8[object]);
+        exit.nz = state;
+    }
+    exit.x_kept = true;
+    exit.y_kept = true;
+    return exit;
+}
+
+void abi_GlideObjectUp(void)
+{
+    exit_shim(GlideObjectUp(cpu.x));
+}
+
+/*
+ * @routine 00DD:215 GlideObjectDown
+ * @run 6F:A215
+ * WHAT IT DOES: One frame of a short slide down: on every other frame the object moves down one
+ * pixel, the step counter counts down, and at zero the object is cleared away.
+ * HOW: The counter (OBJ->f35c0) read and shifted right gives the odd or even frame; on an even
+ * one OBJ->y_lo is incremented; the counter is decremented and at zero ClearObject empties the
+ * slot.
+ * WAITS: no.
+ * Entry: X the object. Exit: A the counter shifted right, X kept, C the counter's bit 0, N and Z
+ * from the counter after the decrement, Y kept.
+ */
+Exit GlideObjectDown(uint8_t object)
+{
+    Exit exit = { 0 };
+    uint8_t counter, left;
+
+    counter = RD8(OBJ->f35c0[object]);
+    exit.c = (counter & 0x01) != 0;
+    exit.a = (uint8_t)(counter >> 1);
+    if (!exit.c) {
+        INC8(OBJ->y_lo[object]);
+    }
+    left = DEC8(OBJ->f35c0[object]);
+    exit.nz = left;
+    exit.x_kept = true;
+    exit.y_kept = true;
+    if (left == 0) {
+        ClearObject(object);
+    }
+    return exit;
+}
+
+void abi_GlideObjectDown(void)
+{
+    exit_shim(GlideObjectDown(cpu.x));
+}
+
+/*
+ * @routine 00DD:0DC GlyphPassByStep
+ * @run 6F:A0DC
+ * WHAT IT DOES: Chooses how the object's glyph is drawn this step: the object's step (OBJ->f35c0)
+ * low two bits pick OverlayGlyphPass (steps 0 and 3) or OverlayGlyphPassBoth (steps 1 and 2).
+ * HOW: The two bits doubled index a table of handler addresses; the address goes to zTemp00 and
+ * zTemp01 and is jumped through; zTemp08 is cleared first.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the handler chosen.
+ */
+Exit GlyphPassByStep(uint8_t object)
+{
+    uint8_t step, index, value;
+    uint16_t target;
+    Exit exit = { 0 };
+
+    step = RD8(OBJ->f35c0[object]);
+    index = (uint8_t)((step & 0x03) << 1);
+    value = rd8((uint16_t)(GLYPH_PASSES + index));
+    WR8(ZP->temp00, value);
+    value = rd8((uint16_t)(GLYPH_PASSES + 1 + index));
+    WR8(ZP->temp01, value);
+    /* the two addresses in the table are the two typed passes; a jump to any other is entered with
+     * the registers as the original has them at its JMP */
+    WR8(ZP->temp08, 0);
+    target = RD16_LH2(ZP->temp00, ZP->temp01);
+    if (target == 0xA0FA) {
+        return OverlayGlyphPass(object);
+    }
+    if (target == 0xA14C) {
+        return OverlayGlyphPassBoth(object);
+    }
+    cpu.a = value;
+    cpu.y = index;
+    abi_nz(value);
+    abi_flag(P_C, false);
+    call_original(target);
+    exit.from_cpu = true;
+    return exit;
+}
+
+void abi_GlyphPassByStep(void)
+{
+    exit_shim(GlyphPassByStep(cpu.x));
+}
+
+/*
+ * @routine 00DD:50A PlaceObjectList
+ * @run 6F:A50A
+ * WHAT IT DOES: Puts a list of scene objects on the screen: each is cleared and given a place and
+ * a picture frame, all the same X high byte, in consecutive slots from the one the list names.
+ * HOW: A (doubled) picks the list's address from a table. The list's first byte is the first slot
+ * (kept in X), its second the common X high byte (in zTemp08); then entries of three bytes (X low,
+ * Y low, frame) until an X low of zero. The pointer is zTemp00 and zTemp01; ClearObject empties
+ * each slot, whose kind of picture (OBJ->f2a10) is set to 4.
+ * WAITS: no.
+ * Entry: A the list. Exit: A 0, Z set, N clear; X the slot after the last placed; Y 2 (1 for an
+ * empty list); C and V from the last pointer add.
+ */
+Exit PlaceObjectList(uint8_t list)
+{
+    Exit exit = { 0 };
+    Alu sum;
+    uint8_t index, slot, value, low, y;
+
+    index = (uint8_t)(list << 1);
+    value = rd8((uint16_t)(OBJECT_LISTS + index));
+    WR8(ZP->temp00, value);
+    value = rd8((uint16_t)(OBJECT_LISTS + 1 + index));
+    WR8(ZP->temp01, value);
+    slot = RD8_PTR(ZP->temp00);
+    y = 1;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(ZP->temp08, value);
+    low = RD8(ZP->temp00);
+    sum = adc8(low, 2, false);
+    WR8(ZP->temp00, sum.a);
+    if (sum.c) {
+        INC8(ZP->temp01);
+    }
+    for (;;) {
+        jsr_push(0xA52D);
+        ClearObject(slot);
+        jsr_pop();
+        value = RD8_PTR(ZP->temp00);
+        if (value == 0) {
+            break;
+        }
+        WR8(OBJ->x_lo[slot], value);
+        value = RD8(ZP->temp08);
+        WR8(OBJ->x_hi[slot], value);
+        y = 1;
+        value = RD8_PTR_Y(ZP->temp00, y);
+        WR8(OBJ->y_lo[slot], value);
+        y = 2;
+        value = RD8_PTR_Y(ZP->temp00, y);
+        WR8(OBJ->f2a68[slot], value);
+        WR8(OBJ->f2a10[slot], 4);
+        low = RD8(ZP->temp00);
+        sum = adc8(low, 3, false);
+        WR8(ZP->temp00, sum.a);
+        if (sum.c) {
+            INC8(ZP->temp01);
+        }
+        slot++;
+    }
+    exit.a = 0;
+    exit.x = slot;
+    exit.y = y;
+    exit.nz = 0;
+    exit.c = sum.c;
+    exit.v = sum.v;
+    exit.v_set = true;
+    return exit;
+}
+
+void abi_PlaceObjectList(void)
+{
+    exit_shim(PlaceObjectList(cpu.a));
+}
+
+/*
+ * @routine 00DD:7D2 DrawSlotName
+ * @run 6F:A7D2
+ * WHAT IT DOES: Writes the eight characters of a save slot's name to the screen at the place the
+ * menu has for the row.
+ * HOW: The row (doubled) picks the place from a table; the row is reduced by repeated subtraction
+ * of 3 to the slot; the VDC's write address is set; the eight characters from the slot's name
+ * (at $15 into the slot) go out as tiles with palette 1.
+ * WAITS: no.
+ * Entry: A the row, X kept on the stack across it (a typed caller passes its own). Exit: A the
+ * last character, Y the slot's offset plus 8, X kept (N and Z from it), C set, V as the last
+ * subtraction left it (kept when the row is under 3).
+ */
+Exit DrawSlotName(uint8_t row, uint8_t kept_x)
+{
+    Exit exit = { 0 };
+    Alu minus;
+    uint8_t index, slot, value, offset, count;
+    bool v_set = false, v = false;
+
+    push8(kept_x);
+    push8(row);
+    index = (uint8_t)(row << 1);
+    row = pull8();
+    while (row >= 3) {
+        minus = sbc8(row, 3, true);
+        row = minus.a;
+        v_set = true;
+        v = minus.v;
+    }
+    slot = row;
+    jsr_push(0xA7E3);
+    SelectVramWriteAddress();
+    jsr_pop();
+    value = rd8((uint16_t)(TEXT_ROW_ADDRESSES + index));
+    WR8(VDC->data_lo, value);
+    value = rd8((uint16_t)(TEXT_ROW_ADDRESSES + 1 + index));
+    WR8(VDC->data_hi, value);
+    jsr_push(0xA7F2);
+    SelectVramData();
+    jsr_pop();
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    for (count = 0; count != 8; count++) {
+        value = rd8((uint16_t)(SAVE_FILE + 0x15 + offset));
+        WR8(VDC->data_lo, value);
+        st2(0x11);
+        offset++;
+    }
+    exit.a = value;
+    exit.y = offset;
+    exit.x = pull8();
+    exit.nz = exit.x;
+    exit.c = true;
+    exit.v = v;
+    exit.v_set = v_set;
+    return exit;
+}
+
+void abi_DrawSlotName(void)
+{
+    exit_shim(DrawSlotName(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 00DE:183 DrawSlotContinuesAndFace
+ * @run 6F:A983
+ * WHAT IT DOES: Writes the chosen save slot's continues left (two digits, from its $1D and $1E
+ * bytes) at the screen place $06AD, and the character's face tile pair, at $0229.
+ * HOW: The write address is set to $06AD; the byte at $1E goes out as one digit and the byte at $1D
+ * as two; the write address is set to $0229 and the character (at $7DE3 up, by the slot) picks a
+ * pair of tile numbers from a table, written with palette 1.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the second tile number, X the slot's offset, Y the table index, N and Z
+ * from A, C bit 7 of the character.
+ */
+Exit DrawSlotContinuesAndFace(void)
+{
+    Exit exit = { 0 };
+    uint8_t slot, offset, value, face, index;
+
+    jsr_push(0xA986);
+    SelectVramWriteAddress();
+    jsr_pop();
+    st1(0xAD);
+    st2(0x06);
+    jsr_push(0xA98D);
+    SelectVramData();
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    value = rd8((uint16_t)(SAVE_FILE + 0x1E + offset));
+    jsr_push(0xA997);
+    WriteLowDigitTile(value);
+    jsr_pop();
+    value = rd8((uint16_t)(SAVE_FILE + 0x1D + offset));
+    jsr_push(0xA99C);
+    WriteHexByteTiles(value);
+    jsr_pop();
+    jsr_push(0xA99F);
+    SelectVramWriteAddress();
+    jsr_pop();
+    st1(0x29);
+    st2(0x02);
+    jsr_push(0xA9A6);
+    SelectVramData();
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    face = rd8((uint16_t)(SLOT_FACES + slot));
+    index = (uint8_t)(face << 1);
+    value = rd8((uint16_t)(FACE_TILES + index));
+    WR8(VDC->data_lo, value);
+    st2(0x11);
+    value = rd8((uint16_t)(FACE_TILES + 1 + index));
+    WR8(VDC->data_lo, value);
+    st2(0x11);
+    exit.a = value;
+    exit.x = offset;
+    exit.y = index;
+    exit.nz = value;
+    exit.c = (face & 0x80) != 0;
+    return exit;
+}
+
+void abi_DrawSlotContinuesAndFace(void)
+{
+    exit_shim(DrawSlotContinuesAndFace());
+}
+
+/*
+ * @routine 00DE:153 DrawSlotDetails
+ * @run 6F:A953
+ * WHAT IT DOES: Writes the chosen save slot's continues and face (DrawSlotContinuesAndFace) and
+ * its score total, six digits, at the screen place $022E.
+ * HOW: DrawSlotContinuesAndFace; the write address set to $022E; the three score bytes (at $1F to
+ * $21 into the slot, highest first) as hex digit pairs, the last by running on into
+ * WriteHexByteTiles.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the last digit tile, N and Z from it, C bit 3 of the last score byte, X the
+ * slot's offset, Y the slot.
+ */
+Exit DrawSlotDetails(void)
+{
+    Exit exit = { 0 };
+    uint8_t slot, offset, value;
+
+    jsr_push(0xA955);
+    DrawSlotContinuesAndFace();
+    jsr_pop();
+    jsr_push(0xA958);
+    SelectVramWriteAddress();
+    jsr_pop();
+    st1(0x2E);
+    st2(0x02);
+    jsr_push(0xA95F);
+    SelectVramData();
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    value = rd8((uint16_t)(SAVE_FILE + 0x21 + offset));
+    jsr_push(0xA969);
+    WriteHexByteTiles(value);
+    jsr_pop();
+    value = rd8((uint16_t)(SAVE_FILE + 0x20 + offset));
+    jsr_push(0xA96E);
+    WriteHexByteTiles(value);
+    jsr_pop();
+    value = rd8((uint16_t)(SAVE_FILE + 0x1F + offset));
+    WriteHexByteTiles(value);
+    exit.a = (uint8_t)((value & 0x0F) | 0x10);
+    exit.x = offset;
+    exit.y = slot;
+    exit.nz = exit.a;
+    exit.c = (value & 0x08) != 0;
+    return exit;
+}
+
+void abi_DrawSlotDetails(void)
+{
+    exit_shim(DrawSlotDetails());
+}

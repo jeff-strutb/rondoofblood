@@ -35,16 +35,15 @@ WriteGlyphRowsTwice:
 ; 16, Y 8, Z and C set, N clear.
 WriteGlyphRows:
     cly
-WriteGlyphRows_at1:
+WriteGlyphRows_at0:
     lda a:StageMaskBuffer,x
     sta a:VDC_DATA_LO
     st2 #$FF
     inx
     inx
-WriteGlyphRows_at0:
     iny
     cpy #$08
-    bne WriteGlyphRows_at1
+    bne WriteGlyphRows_at0
     rts
 
 ; @routine 00C3:2E7 PadRepeatReset
@@ -366,6 +365,345 @@ SetMenuStep:
     sta z:zField80
     rts
 
+; @routine 00DD:01C ClearVramBlock
+; @run 6F:A01C
+; WHAT IT DOES: Blanks 1024 words of VRAM at the place the object's kind names, and moves the
+; object on to its next state.
+; HOW: The kind doubled picks the place from a table, set as the write address; $0000 is
+; written 1024 times (four rounds of 256) and the object's state (OBJ->f27a8) goes up by one.
+; WAITS: no.
+; Entry: X the object. Exit: A 4, X kept, N and Z from the new state, C bit 7 of the kind, Y the
+; kind doubled. Clobbers zTemp00.
+ClearVramBlock:
+    lda a:OBJ_3040,x
+    asl a
+    tay
+    jsr VecSelectVramWriteAddress
+    lda a:$A500,y
+    sta a:VDC_DATA_LO
+    lda a:$A501,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    phx
+    lda #$04
+    sta z:zTemp00
+    clx
+ClearVramBlock_at0:
+    st1 #$00
+    st2 #$00
+    dex
+    bne ClearVramBlock_at0
+    dec z:zTemp00
+    bne ClearVramBlock_at0
+    plx
+    inc a:OBJ_27A8,x
+    rts
+
+; @routine 00DD:0DC GlyphPassByStep
+; @run 6F:A0DC
+; WHAT IT DOES: Chooses how the object's glyph is drawn this step: the object's step (OBJ->f35c0)
+; low two bits pick OverlayGlyphPass (steps 0 and 3) or OverlayGlyphPassBoth (steps 1 and 2).
+; HOW: The two bits doubled index a table of handler addresses; the address goes to zTemp00 and
+; zTemp01 and is jumped through; zTemp08 is cleared first.
+; WAITS: no.
+; Entry: X the object. Exit: as the handler chosen.
+GlyphPassByStep:
+    lda a:OBJ_35C0,x
+    and #$03
+    asl a
+    tay
+    lda a:$A0F2,y
+    sta z:zTemp00
+    lda a:$A0F3,y
+    sta z:zTemp01
+    stz z:zTemp08
+    jmp (ZeroPage)
+
+; @routine 00DD:0FA OverlayGlyphPass
+; @run 6F:A0FA
+; WHAT IT DOES: One pass of the object's glyph draw: OverlayGlyphRows with the column offset 0,
+; then the glyph buffer shifted right a bit and OverlayGlyphRows again with the offset 1.
+; HOW: Sets zBiosAl to 0, calls OverlayGlyphRows, adds one to zBiosAl, calls
+; ShiftGlyphBufferRight, and runs on into OverlayGlyphRows.
+; WAITS: no.
+; Entry: X the object. Exit: as OverlayGlyphRows.
+OverlayGlyphPass:
+    stz z:zBiosAl
+    jsr OverlayGlyphRows
+    inc z:zBiosAl
+    jsr ShiftGlyphBufferRight
+
+; @routine 00DD:104 OverlayGlyphRows
+; @run 6F:A104
+; WHAT IT DOES: Draws a glyph into the tiles of an object's row by overlaying it on what is in
+; VRAM: two places one glyph number apart are set, the first has the glyph buffer's low bytes
+; ORed in, the second its high bytes.
+; HOW: The object's step (OBJ->f35c0) picks a glyph number from a table. SetGlyphVramPlace for
+; it, OrBufferIntoVramLow, then SetGlyphVramPlace for the number plus one and a loop of 16 words
+; that reads each word, writes it back and ORs the buffer's odd bytes (from $3B41) into the high
+; byte.
+; WAITS: no.
+; Entry: X the object. Exit: A the last high byte written, X kept (N and Z from it), C set, Y the
+; object's kind doubled, V from SetGlyphVramPlace.
+OverlayGlyphRows:
+    ldy a:OBJ_35C0,x
+    lda a:$A18F,y
+    jsr SetGlyphVramPlace
+    jsr OrBufferIntoVramLow
+    ldy a:OBJ_35C0,x
+    lda a:$A18F,y
+    inc a
+    jsr SetGlyphVramPlace
+    phx
+    clx
+OverlayGlyphRows_at0:
+    lda a:VDC_DATA_LO
+    sta a:VDC_DATA_LO
+    lda a:VDC_DATA_HI
+    ora a:StageMaskBuffer+1,x
+    sta a:VDC_DATA_HI
+    inx
+    inx
+    cpx #$20
+    bne OverlayGlyphRows_at0
+    plx
+    rts
+
+; @routine 00DD:133 OrBufferIntoVramLow
+; @run 6F:A133
+; WHAT IT DOES: Merges the glyph buffer into the VRAM words from the read address on: the low
+; byte of each of 16 words has the buffer's bytes ORed in (every other byte, from $3B40).
+; HOW: Sixteen times the low byte is read, ORed with the buffer byte and written, then the high
+; byte is read and written back.
+; WAITS: no.
+; Entry: X kept on the stack across it (a typed caller passes its own); the VDC's read and write
+; addresses set. Exit: A the last high byte, X kept with N and Z from it, C set.
+OrBufferIntoVramLow:
+    phx
+    clx
+OrBufferIntoVramLow_at0:
+    lda a:VDC_DATA_LO
+    ora a:StageMaskBuffer,x
+    sta a:VDC_DATA_LO
+    lda a:VDC_DATA_HI
+    sta a:VDC_DATA_HI
+    inx
+    inx
+    cpx #$20
+    bne OrBufferIntoVramLow_at0
+    plx
+    rts
+
+; @routine 00DD:14C OverlayGlyphPassBoth
+; @run 6F:A14C
+; WHAT IT DOES: One pass of the object's glyph draw with both bytes overlaid: as OverlayGlyphPass
+; with OverlayGlyphRowsBoth in place of OverlayGlyphRows.
+; HOW: Sets zBiosAl to 0, calls OverlayGlyphRowsBoth, adds one to zBiosAl, calls
+; ShiftGlyphBufferRight, and runs on into OverlayGlyphRowsBoth.
+; WAITS: no.
+; Entry: X the object. Exit: as OverlayGlyphRowsBoth.
+OverlayGlyphPassBoth:
+    stz z:zBiosAl
+    jsr OverlayGlyphRowsBoth
+    inc z:zBiosAl
+    jsr ShiftGlyphBufferRight
+
+; @routine 00DD:156 OverlayGlyphRowsBoth
+; @run 6F:A156
+; WHAT IT DOES: Draws a glyph into the tiles of an object's row by overlaying it on what is in
+; VRAM, both bytes of each word: the low bytes from the buffer's even bytes and the high bytes
+; from the odd ones.
+; HOW: The object's step (OBJ->f35c0) picks a glyph number from a table, SetGlyphVramPlace sets the
+; place, then 16 words are read and written back with the buffer ORed in.
+; WAITS: no.
+; Entry: X the object. Exit: A the last high byte written, X kept (N and Z from it), C set, Y the
+; object's kind doubled, V from SetGlyphVramPlace.
+OverlayGlyphRowsBoth:
+    ldy a:OBJ_35C0,x
+    lda a:$A18F,y
+    jsr SetGlyphVramPlace
+    phx
+    clx
+OverlayGlyphRowsBoth_at0:
+    lda a:VDC_DATA_LO
+    ora a:StageMaskBuffer+1,x
+    sta a:VDC_DATA_LO
+    lda a:VDC_DATA_HI
+    ora a:StageMaskBuffer,x
+    sta a:VDC_DATA_HI
+    inx
+    inx
+    cpx #$20
+    bne OverlayGlyphRowsBoth_at0
+    plx
+    rts
+
+; @routine 00DD:17B ShiftGlyphBufferRight
+; @run 6F:A17B
+; WHAT IT DOES: Shifts the glyph buffer's twelve words right by one bit, to move a glyph a pixel
+; along, and sets the column offset zTemp08 to $10.
+; HOW: Twelve times the high byte (at $3B44) is shifted right and the carry rotated into the low
+; byte after it; then $10 is stored in zTemp08.
+; WAITS: no.
+; Entry: X kept on the stack across it (a typed caller passes its own). Exit: A $10, N and Z
+; clear, C set; X kept.
+ShiftGlyphBufferRight:
+    phx
+    clx
+ShiftGlyphBufferRight_at0:
+    lsr a:StageMaskBuffer+4,x
+    ror a:StageMaskBuffer+5,x
+    inx
+    inx
+    cpx #$18
+    bne ShiftGlyphBufferRight_at0
+    plx
+    lda #$10
+    sta z:zTemp08
+    rts
+
+; @routine 00DD:1A3 SetGlyphVramPlace
+; @run 6F:A1A3
+; WHAT IT DOES: Points the VDC's read and write addresses at a glyph's place in VRAM: the
+; object's base place (from a table by the object's kind), plus the column offset zBiosAl, plus
+; the glyph number times 64 (with the half-column in zTemp08 ORed in).
+; HOW: The glyph number is shifted right twice into zTemp01 with the two bits shifted out kept
+; as the top of zTemp00, which zTemp08 is ORed into. The base place is added to zBiosAl and
+; zTemp00 (the carry of the first add is dropped, as in the original) and zTemp01, written to the
+; write address, and then the same word to the read address; the data port is selected.
+; WAITS: no.
+; Entry: A the glyph number, X the object, zBiosAl, zTemp08. Exit: A 2, N and Z clear, C and V from
+; the high byte add, Y the kind doubled; X kept. Clobbers zTemp00 to zTemp03.
+SetGlyphVramPlace:
+    stz z:zTemp00
+    lsr a
+    ror z:zTemp00
+    lsr a
+    ror z:zTemp00
+    sta z:zTemp01
+    lda z:zTemp00
+    ora z:zTemp08
+    sta z:zTemp00
+    lda a:OBJ_3040,x
+    asl a
+    tay
+    jsr VecSelectVramWriteAddress
+    lda a:$A500,y
+    clc
+    adc z:zBiosAl
+    clc
+    adc z:zTemp00
+    sta z:zTemp02
+    sta a:VDC_DATA_LO
+    lda a:$A501,y
+    adc z:zTemp01
+    sta z:zTemp03
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramReadAddress
+    lda z:zTemp02
+    sta a:VDC_DATA_LO
+    lda z:zTemp03
+    sta a:VDC_DATA_HI
+    jmp VecSelectVramData
+
+; @routine 00DD:1E3 GlideObjectUp
+; @run 6F:A1E3
+; WHAT IT DOES: One frame of a short slide: on every other frame the object moves up one pixel
+; (its Y goes down by one), the step counter counts down, and at zero the object goes on to its
+; next state.
+; HOW: The counter (OBJ->f35c0) read and shifted right gives the odd or even frame; on an even
+; one OBJ->y_lo is decremented; the counter is decremented and at zero OBJ->f27a8 is incremented.
+; WAITS: no.
+; Entry: X the object. Exit: A the counter shifted right, X kept, C the counter's bit 0, N and Z
+; from the counter after the decrement (from the new state when it reached zero).
+GlideObjectUp:
+    lda a:OBJ_35C0,x
+    lsr a
+    bcs GlideObjectUp_at0
+    dec a:OBJ_Y_LO,x
+GlideObjectUp_at0:
+    dec a:OBJ_35C0,x
+    bne GlideObjectUp_at1
+    inc a:OBJ_27A8,x
+GlideObjectUp_at1:
+    rts
+
+; @routine 00DD:215 GlideObjectDown
+; @run 6F:A215
+; WHAT IT DOES: One frame of a short slide down: on every other frame the object moves down one
+; pixel, the step counter counts down, and at zero the object is cleared away.
+; HOW: The counter (OBJ->f35c0) read and shifted right gives the odd or even frame; on an even
+; one OBJ->y_lo is incremented; the counter is decremented and at zero ClearObject empties the
+; slot.
+; WAITS: no.
+; Entry: X the object. Exit: A the counter shifted right, X kept, C the counter's bit 0, N and Z
+; from the counter after the decrement, Y kept.
+GlideObjectDown:
+    lda a:OBJ_35C0,x
+    lsr a
+    bcs GlideObjectDown_at0
+    inc a:OBJ_Y_LO,x
+GlideObjectDown_at0:
+    dec a:OBJ_35C0,x
+    bne $A214
+    jmp VecClearObject
+
+; @routine 00DD:50A PlaceObjectList
+; @run 6F:A50A
+; WHAT IT DOES: Puts a list of scene objects on the screen: each is cleared and given a place and
+; a picture frame, all the same X high byte, in consecutive slots from the one the list names.
+; HOW: A (doubled) picks the list's address from a table. The list's first byte is the first slot
+; (kept in X), its second the common X high byte (in zTemp08); then entries of three bytes (X low,
+; Y low, frame) until an X low of zero. The pointer is zTemp00 and zTemp01; ClearObject empties
+; each slot, whose kind of picture (OBJ->f2a10) is set to 4.
+; WAITS: no.
+; Entry: A the list. Exit: A 0, Z set, N clear; X the slot after the last placed; Y 2 (1 for an
+; empty list); C and V from the last pointer add.
+PlaceObjectList:
+    asl a
+    tay
+    lda a:$A55A,y
+    sta z:zTemp00
+    lda a:$A55B,y
+    sta z:zTemp01
+    lda (zTemp00)
+    tax
+    ldy #$01
+    lda (zTemp00),y
+    sta z:zTemp08
+    lda z:zTemp00
+    clc
+    adc #$02
+    sta z:zTemp00
+    bcc PlaceObjectList_at0
+    inc z:zTemp01
+PlaceObjectList_at0:
+    jsr VecClearObject
+    lda (zTemp00)
+    beq PlaceObjectList_at1
+    sta a:OBJ_X_LO,x
+    lda z:zTemp08
+    sta a:OBJ_X_HI,x
+    ldy #$01
+    lda (zTemp00),y
+    sta a:OBJ_Y_LO,x
+    iny
+    lda (zTemp00),y
+    sta a:OBJ_2A68,x
+    lda #$04
+    sta a:OBJ_2A10,x
+    lda z:zTemp00
+    clc
+    adc #$03
+    sta z:zTemp00
+    bcc PlaceObjectList_at2
+    inc z:zTemp01
+PlaceObjectList_at2:
+    inx
+    bra PlaceObjectList_at0
+PlaceObjectList_at1:
+    rts
+
 ; @routine 00DD:699 SlotToWorkArea
 ; @run 6F:A699
 ; WHAT IT DOES: Copies the chosen save slot's bytes that the file menu shows into a work area
@@ -400,6 +738,211 @@ SlotToWorkArea_at0:
     cpy #$05
     bne SlotToWorkArea_at0
     rts
+
+; @routine 00DD:7D2 DrawSlotName
+; @run 6F:A7D2
+; WHAT IT DOES: Writes the eight characters of a save slot's name to the screen at the place the
+; menu has for the row.
+; HOW: The row (doubled) picks the place from a table; the row is reduced by repeated subtraction
+; of 3 to the slot; the VDC's write address is set; the eight characters from the slot's name
+; (at $15 into the slot) go out as tiles with palette 1.
+; WAITS: no.
+; Entry: A the row, X kept on the stack across it (a typed caller passes its own). Exit: A the
+; last character, Y the slot's offset plus 8, X kept (N and Z from it), C set, V as the last
+; subtraction left it (kept when the row is under 3).
+DrawSlotName:
+    phx
+    pha
+    asl a
+    tay
+    pla
+DrawSlotName_at1:
+    cmp #$03
+    bcc DrawSlotName_at0
+    sbc #$03
+    bra DrawSlotName_at1
+DrawSlotName_at0:
+    tax
+    jsr VecSelectVramWriteAddress
+    lda a:$A894,y
+    sta a:VDC_DATA_LO
+    lda a:$A895,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    ldy a:$9252,x
+    clx
+DrawSlotName_at2:
+    lda a:$7D15,y
+    sta a:VDC_DATA_LO
+    st2 #$11
+    iny
+    inx
+    cpx #$08
+    bne DrawSlotName_at2
+    plx
+    rts
+
+; @routine 00DE:006 DrawSlotPercent
+; @run 6F:A806
+; WHAT IT DOES: Writes the completion of a save slot as a number of up to three digits at the
+; place the menu has for the row: "100" or a blank and two digits.
+; HOW: The row is kept doubled (the place table's index) and reduced by repeated subtraction of 3
+; to the slot (0 to 2); the VRAM write address is set from the table, SlotCompletionPercent
+; works the number out in zTemp08 and zTemp09, and a 1 digit tile, or a blank tile, and the low
+; byte as two hex digits are written.
+; WAITS: no.
+; Entry: A the row, X kept on the stack across it (a typed caller passes its own). Exit: A the
+; last digit tile, N and Z from X, C bit 3 of the low byte written, V as the last subtraction left it
+; (kept when the row is under 3), X kept, Y the slot.
+DrawSlotPercent:
+    phx
+    pha
+    asl a
+    tay
+    pla
+DrawSlotPercent_at1:
+    cmp #$03
+    bcc DrawSlotPercent_at0
+    sbc #$03
+    bra DrawSlotPercent_at1
+DrawSlotPercent_at0:
+    tax
+    jsr VecSelectVramWriteAddress
+    lda a:$A845,y
+    sta a:VDC_DATA_LO
+    lda a:$A846,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    sxy
+    phx
+    phy
+    jsr SlotCompletionPercent
+    ply
+    plx
+    lda z:zTemp09
+    beq DrawSlotPercent_at2
+    lda #$01
+    jsr WriteDigitTile
+    cla
+    bra DrawSlotPercent_at3
+DrawSlotPercent_at2:
+    st1 #$20
+    st2 #$11
+    lda z:zTemp08
+DrawSlotPercent_at3:
+    jsr WriteHexByteTiles
+    plx
+    rts
+
+; @routine 00DE:05D BlankTextRow
+; @run 6F:A85D
+; WHAT IT DOES: Blanks a row of eight tiles of the menu's text: each tile's number becomes $3D
+; and its palette byte stays.
+; HOW: The row number doubled picks the row's VRAM address from a table, which is set as both
+; the write and the read address; eight times the tile's low byte is read, $3D is written in its
+; place, the high byte is read and written back.
+; WAITS: no.
+; Entry: A the row, X kept on the stack across it (a typed caller passes its own). Exit: A the
+; last high byte, Y the row doubled, X kept with N and Z from it (the PLX), C set.
+BlankTextRow:
+    phx
+    asl a
+    tay
+    jsr VecSelectVramWriteAddress
+    lda a:$A894,y
+    sta a:VDC_DATA_LO
+    lda a:$A895,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramReadAddress
+    lda a:$A894,y
+    sta a:VDC_DATA_LO
+    lda a:$A895,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    clx
+BlankTextRow_at0:
+    lda a:VDC_DATA_LO
+    st1 #$3D
+    lda a:VDC_DATA_HI
+    sta a:VDC_DATA_HI
+    inx
+    cpx #$08
+    bne BlankTextRow_at0
+    plx
+    rts
+
+; @routine 00DE:0B2 RecolorTextRun
+; @run 6F:A8B2
+; WHAT IT DOES: Gives a run of the menu's text a palette: from the row's VRAM address on, each tile
+; that has a number is rewritten with the palette byte, until a tile whose high nibble is 3 ends
+; the run; tiles whose high nibble is 0 are rewritten as they are.
+; HOW: The palette byte is looked up by Y and kept in $F8. The row (doubled) picks the VRAM
+; address, set as read and write address. Each pass reads a word, keeps its high byte in $F9, and
+; writes the word back with its own high byte, or with $F8 as the high byte, or stops.
+; WAITS: no.
+; Entry: A the row, Y the palette index. Exit: A $30, Y the last tile's low byte, Z and C set, N
+; clear; X kept. Clobbers zBiosAl and zBiosAh.
+RecolorTextRun:
+    pha
+    lda a:$A91B,y
+    sta z:zBiosAl
+    pla
+    asl a
+    tay
+    jsr VecSelectVramReadAddress
+    lda a:$A901,y
+    sta a:VDC_DATA_LO
+    lda a:$A902,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramWriteAddress
+    lda a:$A901,y
+    sta a:VDC_DATA_LO
+    lda a:$A902,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    bra RecolorTextRun_at0
+RecolorTextRun_at1:
+    lda z:zBiosAh
+    sty a:VDC_DATA_LO
+    sta a:VDC_DATA_HI
+RecolorTextRun_at0:
+    ldy a:VDC_DATA_LO
+    lda a:VDC_DATA_HI
+    sta z:zBiosAh
+    and #$F0
+    beq RecolorTextRun_at1
+    cmp #$30
+    beq RecolorTextRun_at2
+    lda z:zBiosAl
+    sty a:VDC_DATA_LO
+    sta a:VDC_DATA_HI
+    bra RecolorTextRun_at0
+RecolorTextRun_at2:
+    rts
+
+; @routine 00DE:153 DrawSlotDetails
+; @run 6F:A953
+; WHAT IT DOES: Writes the chosen save slot's continues and face (DrawSlotContinuesAndFace) and
+; its score total, six digits, at the screen place $022E.
+; HOW: DrawSlotContinuesAndFace; the write address set to $022E; the three score bytes (at $1F to
+; $21 into the slot, highest first) as hex digit pairs, the last by running on into
+; WriteHexByteTiles.
+; WAITS: no.
+; Entry: nothing. Exit: A the last digit tile, N and Z from it, C bit 3 of the last score byte, X the
+; slot's offset, Y the slot.
+DrawSlotDetails:
+    bsr DrawSlotContinuesAndFace
+    jsr VecSelectVramWriteAddress
+    st1 #$2E
+    st2 #$02
+    jsr VecSelectVramData
+    ldy z:zSaveSlot
+    ldx a:$9252,y
+    lda a:SaveScoreTotal+2,x
+    bsr WriteHexByteTiles
+    lda a:SaveScoreTotal+1,x
+    bsr WriteHexByteTiles
+    lda a:SaveScoreTotal,x
 
 ; @routine 00DE:171 WriteHexByteTiles
 ; @run 6F:A971
@@ -437,6 +980,43 @@ WriteLowDigitTile:
 ; Exit: A the value ORed with $10, N and Z from it, C kept, X and Y kept.
 WriteDigitTile:
     ora #$10
+    sta a:VDC_DATA_LO
+    st2 #$11
+    rts
+
+; @routine 00DE:183 DrawSlotContinuesAndFace
+; @run 6F:A983
+; WHAT IT DOES: Writes the chosen save slot's continues left (two digits, from its $1D and $1E
+; bytes) at the screen place $06AD, and the character's face tile pair, at $0229.
+; HOW: The write address is set to $06AD; the byte at $1E goes out as one digit and the byte at $1D
+; as two; the write address is set to $0229 and the character (at $7DE3 up, by the slot) picks a
+; pair of tile numbers from a table, written with palette 1.
+; WAITS: no.
+; Entry: nothing. Exit: A the second tile number, X the slot's offset, Y the table index, N and Z
+; from A, C bit 7 of the character.
+DrawSlotContinuesAndFace:
+    jsr VecSelectVramWriteAddress
+    st1 #$AD
+    st2 #$06
+    jsr VecSelectVramData
+    ldy z:zSaveSlot
+    ldx a:$9252,y
+    lda a:SaveContinues+1,x
+    bsr WriteLowDigitTile
+    lda a:SaveContinues,x
+    bsr WriteHexByteTiles
+    jsr VecSelectVramWriteAddress
+    st1 #$29
+    st2 #$02
+    jsr VecSelectVramData
+    ldy z:zSaveSlot
+    lda a:$7DE3,y
+    asl a
+    tay
+    lda a:$A9BE,y
+    sta a:VDC_DATA_LO
+    st2 #$11
+    lda a:$A9BF,y
     sta a:VDC_DATA_LO
     st2 #$11
     rts
@@ -571,7 +1151,6 @@ SlotCompletionPercent_at0:
     lda z:zTemp0B
     clc
     adc z:zTemp08
-SlotCompletionPercent_at1:
     sta z:zTemp08
     cla
     adc z:zTemp09
@@ -609,13 +1188,13 @@ CountSetBits:
     cly
     phx
     ldx #$08
-CountSetBits_at0:
-    lsr a
-    bcc CountSetBits_at1
-    iny
 CountSetBits_at1:
+    lsr a
+    bcc CountSetBits_at0
+    iny
+CountSetBits_at0:
     dex
-    bne CountSetBits_at0
+    bne CountSetBits_at1
     tya
     plx
     rts

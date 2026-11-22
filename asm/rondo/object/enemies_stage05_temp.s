@@ -53,6 +53,28 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0938:7F2 SelectRasterStage1
 ; @run 6F:BFF2
 ; WHAT IT DOES: Sets the stage value the raster effect tests to 1.
@@ -696,4 +718,230 @@ WaitThenState2B_at0:
     lda #$02
     sta a:OBJ_27A8,x
 WaitThenState2B_at1:
+    rts
+
+; @routine 093C:1E4 CountTimerPairDownOrRepick
+; @run 70:B9E4
+; WHAT IT DOES: Counts the sixteen bit timer (f3510 low, life_timer high) down by one; when it is
+; already zero, picks new timers at random (PickTimersAtRandom), stops the animation and enters
+; state 2.
+; HOW: The two bytes are ORed to test for zero; the decrement is a subtract with the borrow carried.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the new high byte and N, Z from it, C and V from the borrow
+; subtract; or A 2 and N, Z clear with C, V and Y as the random pick left them.
+CountTimerPairDownOrRepick:
+    lda a:OBJ_34B8,x
+    ora a:OBJ_3510,x
+    bne CountTimerPairDownOrRepick_at0
+    jsr PickTimersAtRandom
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$02
+    sta a:OBJ_27A8,x
+    rts
+CountTimerPairDownOrRepick_at0:
+    lda a:OBJ_3510,x
+    sec
+    sbc #$01
+    sta a:OBJ_3510,x
+    lda a:OBJ_34B8,x
+    sbc #$00
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 093C:20D CountAnglePairDownOrRepick
+; @run 70:BA0D
+; WHAT IT DOES: On the first screen across only: counts the sixteen bit value f35c0 (low) and
+; f3568 (high) down by one; when it is already zero, picks a new angle at random
+; (PickAngleAtRandom), stops the animation, clears the step and enters state 3.
+; HOW: As CountTimerPairDownOrRepick.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as CountTimerPairDownOrRepick, or A the X high byte and N, Z from
+; it when off the first screen.
+CountAnglePairDownOrRepick:
+    lda a:OBJ_X_HI,x
+    bne CountAnglePairDownOrRepick_at0
+    lda a:OBJ_3568,x
+    ora a:OBJ_35C0,x
+    bne CountAnglePairDownOrRepick_at1
+    jsr PickAngleAtRandom
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    stz a:OBJ_2800,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    rts
+CountAnglePairDownOrRepick_at1:
+    lda a:OBJ_35C0,x
+    sec
+    sbc #$01
+    sta a:OBJ_35C0,x
+    lda a:OBJ_3568,x
+    sbc #$00
+    sta a:OBJ_3568,x
+CountAnglePairDownOrRepick_at0:
+    rts
+
+; @routine 093C:54C AnimateHitboxThenExpire
+; @run 70:BD4C
+; WHAT IT DOES: Animates the object along the list at overlay address $BD63, sets its hit
+; rectangle from the frame (SetHitboxFromFrameRows), and counts f3510 down; at zero the object
+; removes itself.
+; HOW: StepObjectFrames, SetHitboxFromFrameRows, a decrement, ClearObject as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: N, Z from the timer; A, C, V, Y as SetHitboxFromFrameRows left
+; them; X kept. Clobbers zTemp10-11.
+AnimateHitboxThenExpire:
+    lda #$BD
+    sta z:zTemp11
+    lda #$63
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    jsr SetHitboxFromFrameRows
+    dec a:OBJ_3510,x
+    bne AnimateHitboxThenExpire_at0
+    jmp VecClearObject
+AnimateHitboxThenExpire_at0:
+    rts
+
+; @routine 093D:33A WalkWhileFrameChangesB
+; @run 71:C33A
+; WHAT IT DOES: Animates the object along the list whose pointer is the pair of bytes at overlay
+; address $C356 plus Y and, on the frames where the picture changed, gives it an X speed from a
+; table at $C35A by its f3510 and moves it along X.
+; HOW: StepObjectFrames, then ApplyVelocityX.
+; WAITS: no.
+; Entry: X object, Y the list's offset, D clear. Exit: after a change as ApplyVelocityX, Y f3510;
+; otherwise as StepObjectFrames; X kept. Clobbers zTemp10-11.
+WalkWhileFrameChangesB:
+    lda a:$C356,y
+    sta z:zTemp10
+    lda a:$C357,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bcc WalkWhileFrameChangesB_at0
+    ldy a:OBJ_3510,x
+    lda a:$C35A,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+WalkWhileFrameChangesB_at0:
+    rts
+
+; @routine 093D:53D LeapAwayFromPlayerTable
+; @run 71:C53D
+; WHAT IT DOES: Advances the step and launches the object: its X speed from a table at overlay
+; address $C569 by the player's distance in 32 pixel steps, Y speed -4.5 ($FB80); when its
+; f3510 is not zero the X speed is then reversed.
+; HOW: DistanceXToPlayer shifted to five bits and doubled, NegateVelocityX.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z from f3510 (when zero) or the negated speed's high byte
+; with C and V from its add; Y the table offset.
+LeapAwayFromPlayerTable:
+    inc a:OBJ_2800,x
+    jsr VecDistanceXToPlayer
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    asl a
+    tay
+    lda a:$C56A,y
+    sta a:OBJ_VX_HI,x
+    lda a:$C569,y
+    sta a:OBJ_VX_LO,x
+    lda #$FB
+    sta a:OBJ_VY_HI,x
+    lda #$80
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_3510,x
+    beq LeapAwayFromPlayerTable_at0
+    jsr VecNegateVelocityX
+LeapAwayFromPlayerTable_at0:
+    rts
+
+; @routine 093D:7A0 StartThenBlinkAndExpire
+; @run 71:C7A0
+; WHAT IT DOES: The first time (state 0) starts the object from its record and sets f3510 to
+; $10. After that it counts f3510 down, removing the object at zero; otherwise it shows frame 0,
+; or its life_timer as the frame on every fourth count.
+; HOW: LoadObjectRecord; a decrement; ClearObject as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the last store, load, AND or decrement left them; Y 11 after
+; the record start.
+StartThenBlinkAndExpire:
+    lda a:OBJ_27A8,x
+    bne StartThenBlinkAndExpire_at0
+    jsr VecLoadObjectRecord
+    lda #$10
+    sta a:OBJ_3510,x
+    rts
+StartThenBlinkAndExpire_at0:
+    dec a:OBJ_3510,x
+    bne StartThenBlinkAndExpire_at1
+    jmp VecClearObject
+StartThenBlinkAndExpire_at1:
+    stz a:OBJ_2A68,x
+    lda a:OBJ_3510,x
+    and #$03
+    bne StartThenBlinkAndExpire_at2
+    lda a:OBJ_34B8,x
+    sta a:OBJ_2A68,x
+StartThenBlinkAndExpire_at2:
+    rts
+
+; @routine 093C:731 PickStateByPlayerDistanceB
+; @run 70:BF31
+; WHAT IT DOES: PickStateByPlayerDistance in this stage's overlay, with its state table at
+; overlay address $BF57.
+; HOW: The shared body.
+; WAITS: no.
+; Entry, exit: as PickStateByPlayerDistance.
+PickStateByPlayerDistanceB:
+    stz a:OBJ_2800,x
+    lda a:OBJ_X_HI,x
+    beq PickStateByPlayerDistanceB_at0
+    lda #$03
+    sta a:OBJ_27A8,x
+    rts
+PickStateByPlayerDistanceB_at0:
+    lda a:OBJ_Y_HI,x
+    beq PickStateByPlayerDistanceB_at1
+    lda #$04
+    sta a:OBJ_27A8,x
+    rts
+PickStateByPlayerDistanceB_at1:
+    jsr VecPlayerDistanceSum
+    and #$0F
+    tay
+    lda a:$BF57,y
+    sta a:OBJ_27A8,x
+    rts
+
+; @routine 093C:7AA PickSpeedAndTurnFromTableC
+; @run 70:BFAA
+; WHAT IT DOES: PickSpeedAndTurnFromTable in this stage's overlay, with its table at overlay
+; address $BFD6.
+; HOW: The shared body.
+; WAITS: no.
+; Entry, exit: as PickSpeedAndTurnFromTable.
+PickSpeedAndTurnFromTableC:
+    lda a:OBJ_3670,x
+    asl a
+    asl a
+    tay
+    lda a:$BFD7,y
+    sta a:OBJ_VX_HI,x
+    lda a:$BFD6,y
+    sta a:OBJ_VX_LO,x
+    lda a:$BFD9,y
+    sta a:OBJ_VY_HI,x
+    lda a:$BFD8,y
+    sta a:OBJ_VY_LO,x
+    inc a:OBJ_3510,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq PickSpeedAndTurnFromTableC_at0
+    jmp VecNegateVelocityX
+PickSpeedAndTurnFromTableC_at0:
     rts

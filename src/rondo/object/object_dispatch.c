@@ -8,6 +8,7 @@
 #include "access.h"
 #include "routines.h"
 #include "common_objects.h"
+#include "enemy_objects.h"
 
 enum { HIT_STATE = 5, HIT_LIMIT = 5, BLINK_LIMIT = 0x18, BLINK_FLAG = 0x86, BLINK_WAVE_MASK = 0x02 };
 
@@ -52,10 +53,9 @@ HurtCheck EnterHurtStateOnHit(uint8_t slot)
     return result;
 }
 
-void abi_EnterHurtStateOnHit(void)
+/* A and flags as the hurt check's last compare or load left them. */
+void hurt_exit_shim(HurtCheck result)
 {
-    HurtCheck result = EnterHurtStateOnHit(cpu.x);
-
     switch (result.end) {
     case HURT_NOT_ACTIVE:
         cpu.a = 0;
@@ -78,6 +78,11 @@ void abi_EnterHurtStateOnHit(void)
         abi_flag(P_C, false);
         break;
     }
+}
+
+void abi_EnterHurtStateOnHit(void)
+{
+    hurt_exit_shim(EnterHurtStateOnHit(cpu.x));
 }
 
 /*
@@ -114,10 +119,9 @@ BlinkCheck SetBlinkFlash(uint8_t slot)
     return result;
 }
 
-void abi_SetBlinkFlash(void)
+/* A and flags as the blink check's last compare, AND or load left them. */
+void blink_exit_shim(BlinkCheck result)
 {
-    BlinkCheck result = SetBlinkFlash(cpu.x);
-
     switch (result.end) {
     case BLINK_TIMER_LOW:
         cpu.a = result.value;
@@ -135,6 +139,11 @@ void abi_SetBlinkFlash(void)
         abi_flag(P_C, true);
         break;
     }
+}
+
+void abi_SetBlinkFlash(void)
+{
+    blink_exit_shim(SetBlinkFlash(cpu.x));
 }
 
 /*
@@ -183,43 +192,15 @@ static bool axis_carry(AxisMove move)
 }
 
 /*
- * @routine 0519:4BD FallAndBounce
- * @run 70:A4BD
- * WHAT IT DOES: Moves an object by its velocity and asks the ground under it; on floor the
- * object enters its next state. Unless the ground is deadly, the object's X speed is set
- * from its angle (the full cosine) and its Y speed to $80, and its angle is turned on by
- * $0280.
- * HOW: Calls ApplyVelocity and ProbeTerrain (floor, height 0, with the carry ApplyVelocity
- * left), then ScaleByCosine with a multiplier of 256; the angle is the two bytes OBJ_35C0 (low)
- * and OBJ_3568 (high).
- * WAITS: no.
- * Entry: X object, Y the probe's column. Exit: A and flags from the last AND or add (see the
- * wrapper); X kept; Y as ScaleByCosine left it. D clear.
+ * The second half of FallAndBounce (from $A4D6), which 0519:519 also branches into: the object's X
+ * speed is the cosine of its angle, its Y speed $0080, and its angle turns on by $0280. Returns the
+ * add of the angle's high byte, which is what the caller's exit shows; Y is left 0 by the scale.
  */
-FallResult FallAndBounce(uint8_t slot, uint8_t column)
+Sum BounceFromAngle(uint8_t slot)
 {
-    FallResult result;
-    AxisMove move;
-    uint8_t deadly, angle, product_hi, product_mid, angle_low, angle_high;
+    uint8_t angle, product_hi, product_mid, angle_low, angle_high;
     Sum sum;
 
-    jsr_push(0xA4C0);
-    move = ApplyVelocity(slot);
-    jsr_pop();
-    WR8(ZP->product.mid, 0);
-    jsr_push(0xA4C9);
-    result.probe = ProbeTerrain(1, slot, column, axis_carry(move));
-    jsr_pop();
-    if ((result.probe.answer & 0x01) != 0) {
-        INC8(OBJ->state[slot]);
-    }
-    deadly = RD8(ZP->product.lo);
-    deadly = (uint8_t)(deadly & 0x10);
-    result.deadly = deadly;
-    if (deadly != 0) {
-        result.bounced = false;
-        return result;
-    }
     WR8(ZP->temp00, 0);
     WR8(ZP->temp01, 1);
     angle = RD8(OBJ->angle_hi[slot]);
@@ -238,8 +219,48 @@ FallResult FallAndBounce(uint8_t slot, uint8_t column)
     angle_high = RD8(OBJ->angle_hi[slot]);
     sum = add_bytes(angle_high, 0x02, sum.carry);
     WR8(OBJ->angle_hi[slot], sum.value);
+    return sum;
+}
+
+/*
+ * @routine 0519:4BD FallAndBounce
+ * @run 70:A4BD
+ * WHAT IT DOES: Moves an object by its velocity and asks the ground under it; on floor the
+ * object enters its next state. Unless the ground is deadly, the object's X speed is set
+ * from its angle (the full cosine) and its Y speed to $80, and its angle is turned on by
+ * $0280.
+ * HOW: Calls ApplyVelocity and ProbeTerrain (floor, height 0, with the carry ApplyVelocity
+ * left), then ScaleByCosine with a multiplier of 256; the angle is the two bytes OBJ_35C0 (low)
+ * and OBJ_3568 (high).
+ * WAITS: no.
+ * Entry: X object, Y the probe's column. Exit: A and flags from the last AND or add (see the
+ * wrapper); X kept; Y as ScaleByCosine left it. D clear.
+ */
+FallResult FallAndBounce(uint8_t slot, uint8_t column)
+{
+    FallResult result;
+    AxisMove move;
+    uint8_t deadly;
+
+    jsr_push(0xA4C0);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    WR8(ZP->product.mid, 0);
+    jsr_push(0xA4C9);
+    result.probe = ProbeTerrain(1, slot, column, axis_carry(move));
+    jsr_pop();
+    if ((result.probe.answer & 0x01) != 0) {
+        INC8(OBJ->state[slot]);
+    }
+    deadly = RD8(ZP->product.lo);
+    deadly = (uint8_t)(deadly & 0x10);
+    result.deadly = deadly;
+    if (deadly != 0) {
+        result.bounced = false;
+        return result;
+    }
+    result.angle = BounceFromAngle(slot);
     result.bounced = true;
-    result.angle = sum;
     return result;
 }
 
@@ -584,10 +605,9 @@ Kind88Step AnimateKind88(uint8_t slot, uint8_t y)
     return result;
 }
 
-void abi_AnimateKind88(void)
+/* A the kind compared or the frame copied, with the flags of that compare or load; Y and C as the step left them. */
+void kind88_exit_shim(Kind88Step result)
 {
-    Kind88Step result = AnimateKind88(cpu.x, cpu.y);
-
     cpu.a = result.value;
     if (!result.stepped) {
         abi_nz((uint8_t)(result.value - 0x88));
@@ -597,6 +617,11 @@ void abi_AnimateKind88(void)
     cpu.y = result.y;
     abi_nz(result.value);
     abi_flag(P_C, result.step == FRAME_CHANGED);
+}
+
+void abi_AnimateKind88(void)
+{
+    kind88_exit_shim(AnimateKind88(cpu.x, cpu.y));
 }
 
 /*
@@ -716,4 +741,391 @@ void abi_ClearOnLanding(void)
     }
     cpu.a = result.frame;
     abi_nz(result.state);
+}
+
+/* A fall's exit: the probe's registers when it was asked, then what the routine's own instructions changed. */
+void floor_fall_exit_shim(FloorFall fall)
+{
+    if (fall.probed) {
+        probe_exit_shim(fall.probe);
+    }
+    abi_ended(fall.end);
+}
+
+/*
+ * @routine 0519:519 FallUntilFloor
+ * @run 70:A519
+ * WHAT IT DOES: One frame of an object that drops until it finds floor. Only while the object is on
+ * the first screen down (its Y high byte 0) it asks the floor with a probe height of 0; deadly ground
+ * (bit 4) ends the frame by moving it down with ApplyVelocityY; when the probe does not report floor
+ * (bit 0) the object is moved on both axes and bounces off by its angle (the bounce the second half of
+ * FallAndBounce makes).
+ * HOW: ProbeTerrain with the carry and column the caller left. The deadly arm is a tail jump into
+ * ApplyVelocityY; the not-floor arm calls ApplyVelocity and branches into FallAndBounce at $A4D6.
+ * Untraced: the deadly arm and the not-floor arm (A52B, A534) ran in no script.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column, C passed to the lookup. Exit: see the wrapper.
+ */
+FloorFall FallUntilFloor(uint8_t slot, uint8_t column, bool carry_in)
+{
+    FloorFall fall = { false, { 0 }, { 0 } };
+    uint8_t y_high, masked, floor;
+    AxisMove move;
+    Sum bounce;
+
+    y_high = RD8(OBJ->y_hi[slot]);
+    if (y_high != 0) {
+        fall.end = ended_load(y_high);
+        return fall;
+    }
+    WR8(ZP->product.mid, 0);
+    jsr_push(0xA527);
+    fall.probe = ProbeTerrain(1, slot, column, carry_in);
+    jsr_pop();
+    fall.probed = true;
+    masked = (uint8_t)(fall.probe.answer & 0x10);
+    fall.end = ended_load(masked);
+    if (masked != 0) {
+        move = ApplyVelocityY(slot);
+        fall.end = ended_of_axis_move(move);
+        return fall;
+    }
+    floor = RD8(ZP->product.lo);
+    masked = (uint8_t)(floor & 0x01);
+    fall.end = ended_load(masked);
+    if (masked != 0) {
+        return fall;
+    }
+    jsr_push(0xA537);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    bounce = BounceFromAngle(slot);
+    fall.end = ended_with_y(ended_with_overflow(ended_with_carry(ended_load(bounce.value), bounce.carry),
+                                                bounce.overflow), 0);
+    (void)move;
+    return fall;
+}
+
+void abi_FallUntilFloor(void)
+{
+    floor_fall_exit_shim(FallUntilFloor(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 0519:508 FallThenWait
+ * @run 70:A508
+ * WHAT IT DOES: A falling object's wait: it falls as FallUntilFloor does, and counts its life timer
+ * down; at zero the timer becomes $40 and the object moves on one state.
+ * HOW: FallUntilFloor, then DEC of the timer.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column, C passed on. Exit: see the wrapper (the fall's registers,
+ * then the timer's N and Z; at zero A $40 and N, Z from the new state).
+ */
+FloorFall FallThenWait(uint8_t slot, uint8_t column, bool carry_in)
+{
+    FloorFall fall;
+    uint8_t left, state;
+
+    jsr_push(0xA50B);
+    fall = FallUntilFloor(slot, column, carry_in);
+    jsr_pop();
+    left = DEC8(OBJ->life_timer[slot]);
+    if (left != 0) {
+        fall.end = ended_then(fall.end, ended_nz(left));
+        return fall;
+    }
+    WR8(OBJ->life_timer[slot], 0x40);
+    state = INC8(OBJ->state[slot]);
+    fall.end = ended_then(fall.end, ended_with_a(ended_nz(state), 0x40));
+    return fall;
+}
+
+void abi_FallThenWait(void)
+{
+    floor_fall_exit_shim(FallThenWait(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 0519:53A FallThenClear
+ * @run 70:A53A
+ * WHAT IT DOES: A falling object that goes away: it falls as FallUntilFloor does and counts its life
+ * timer down; at zero the object is cleared. Until then its frame is 0, and it shows the frame in
+ * OBJ_3510 on the beats where bit 1 of the timer is set (a flicker).
+ * HOW: FallUntilFloor, DEC of the timer; the clear is a tail jump into ClearObject.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column, C passed on. Exit: see the wrapper.
+ */
+FloorFall FallThenClear(uint8_t slot, uint8_t column, bool carry_in)
+{
+    FloorFall fall;
+    uint8_t left, timer, bit, frame;
+
+    jsr_push(0xA53D);
+    fall = FallUntilFloor(slot, column, carry_in);
+    jsr_pop();
+    left = DEC8(OBJ->life_timer[slot]);
+    if (left == 0) {
+        ClearObject(slot);
+        fall.end = ended_then(fall.end, ended_nz(left));
+        return fall;
+    }
+    WR8(OBJ->frame[slot], 0);
+    timer = RD8(OBJ->life_timer[slot]);
+    bit = (uint8_t)(timer & 0x02);
+    fall.end = ended_then(fall.end, ended_load(bit));
+    if (bit == 0) {
+        return fall;
+    }
+    frame = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->frame[slot], frame);
+    fall.end = ended_then(fall.end, ended_load(frame));
+    return fall;
+}
+
+void abi_FallThenClear(void)
+{
+    floor_fall_exit_shim(FallThenClear(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}
+
+/* The jump a table handler ends with: the registers it leaves, then the code run as the original. */
+void jump_shim(Ended end, uint16_t target)
+{
+    abi_ended(end);
+    call_original(target);
+}
+
+/*
+ * @routine 0519:556 JumpByKindTable
+ * @run 70:A556
+ * WHAT IT DOES: Goes to the code a table at $A56B names for the object's kind less $83 (the handler
+ * of that kind's state).
+ * HOW: Reads the table's two bytes into zTemp00-01 and jumps through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the table's high byte, Y the index, N and Z from A,
+ * C and V from the kind's subtract and shift.
+ */
+Jump JumpByKindTable(uint8_t slot)
+{
+    Jump jump;
+    uint8_t kind, index, low, high;
+    Sum diff;
+
+    kind = RD8(OBJ->kind[slot]);
+    diff = sub_bytes(kind, 0x83, true);
+    index = (uint8_t)(diff.value << 1);
+    low = rd8((uint16_t)(0xA56B + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xA56C + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_y(ended_load(high), index);
+    jump.end = ended_with_carry(ended_with_overflow(jump.end, diff.overflow), (diff.value & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByKindTable(void)
+{
+    Jump jump = JumpByKindTable(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 0519:703 RunObjectState
+ * @run 70:A703
+ * WHAT IT DOES: One frame of a common object: animates kind $88, takes a pending hit, blinks, then
+ * runs the handler of the object's state from the table at $A71E.
+ * HOW: AnimateKind88, EnterHurtStateOnHit, SetBlinkFlash, then the state doubled indexes the table
+ * (read into zTemp00-01 and jumped through).
+ * WAITS: no.
+ * Entry: X object, Y kept unless AnimateKind88 sets it. Exit: as the handler leaves it; at the jump A
+ * is the table's high byte, Y the state doubled, N and Z from A, C and V as SetBlinkFlash and the
+ * earlier calls left them.
+ */
+StateRun RunObjectState(uint8_t slot, uint8_t y)
+{
+    StateRun run;
+    uint8_t state, index, low, high;
+
+    jsr_push(0xA706);
+    run.kind88 = AnimateKind88(slot, y);
+    jsr_pop();
+    jsr_push(0xA709);
+    run.hurt = EnterHurtStateOnHit(slot);
+    jsr_pop();
+    jsr_push(0xA70C);
+    run.blink = SetBlinkFlash(slot);
+    jsr_pop();
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xA71E + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xA71F + index));
+    WR8(ZP->temp01, high);
+    run.end = ended_with_y(ended_load(high), index);
+    run.end = ended_with_carry(run.end, (state & 0x80) != 0);
+    run.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return run;
+}
+
+void abi_RunObjectState(void)
+{
+    StateRun run = RunObjectState(cpu.x, cpu.y);
+
+    kind88_exit_shim(run.kind88);
+    hurt_exit_shim(run.hurt);
+    blink_exit_shim(run.blink);
+    jump_shim(run.end, run.target);
+}
+
+/*
+ * @routine 051A:180 DropOffScreen
+ * @run 70:A980
+ * WHAT IT DOES: A thrown object's frame: when it is below the first screen (Y high byte above 0 and
+ * not negative) it is cleared; otherwise gravity takes its speed up and it moves by its velocity.
+ * HOW: The clear and the move are tail jumps (ClearObject, ApplyVelocity); gravity is
+ * ApplyGravityUnlimited.
+ * WAITS: no.
+ * Entry: X object. Exit: cleared: A the Y high byte, N and Z from it; else as ApplyVelocity.
+ */
+ThrowStep DropOffScreen(uint8_t slot)
+{
+    ThrowStep step = { false, { 0 }, { 0 } };
+    uint8_t y_high;
+    AxisMove move;
+
+    y_high = RD8(OBJ->y_hi[slot]);
+    if (y_high != 0 && (y_high & 0x80) == 0) {
+        ClearObject(slot);
+        step.end = ended_load(y_high);
+        return step;
+    }
+    jsr_push(0xA98D);
+    step.gravity = ApplyGravityUnlimited(slot);
+    jsr_pop();
+    step.gravity_run = true;
+    move = ApplyVelocity(slot);
+    step.end = ended_of_axis_move(move);
+    return step;
+}
+
+void throw_step_exit_shim(ThrowStep step)
+{
+    if (step.gravity_run) {
+        gravity_exit_shim(step.gravity);
+    }
+    abi_ended(step.end);
+}
+
+void abi_DropOffScreen(void)
+{
+    throw_step_exit_shim(DropOffScreen(cpu.x));
+}
+
+/*
+ * @routine 051A:12E StartThrownItem
+ * @run 70:A92E
+ * @stop A95E
+ * WHAT IT DOES: A thrown item: from state 0 it loads its record, takes its frame from a table by its
+ * life timer and its speeds from a four-byte row of the table at $A95E picked by OBJ_3510; in any other
+ * state it goes on as DropOffScreen.
+ * HOW: Tables read from the disc (bank 70) by address; the other states are a tail branch into
+ * DropOffScreen.
+ * WAITS: no.
+ * Entry: X object. Exit: started: A the last speed byte, Y the row's start, C bit 6 of OBJ_3510, N and
+ * Z from A; else as DropOffScreen.
+ */
+ThrowStep StartThrownItem(uint8_t slot)
+{
+    ThrowStep step = { false, { 0 }, { 0 } };
+    uint8_t state, timer, frame, row, index, byte, last, nz;
+    bool carry;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        return DropOffScreen(slot);
+    }
+    jsr_push(0xA936);
+    LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    timer = RD8(OBJ->life_timer[slot]);
+    frame = rd8((uint16_t)(0xA97E + timer));
+    WR8(OBJ->frame[slot], frame);
+    row = RD8(OBJ->f3510[slot]);
+    index = (uint8_t)(row << 2);
+    byte = rd8((uint16_t)(0xA95F + index));
+    WR8(OBJ->vx_hi[slot], byte);
+    byte = rd8((uint16_t)(0xA95E + index));
+    WR8(OBJ->vx_lo[slot], byte);
+    byte = rd8((uint16_t)(0xA961 + index));
+    WR8(OBJ->vy_hi[slot], byte);
+    last = rd8((uint16_t)(0xA960 + index));
+    WR8(OBJ->vy_lo[slot], last);
+    step.end = ended_with_carry(ended_with_y(ended_load(last), index), (row & 0x40) != 0);
+    return step;
+}
+
+void abi_StartThrownItem(void)
+{
+    throw_step_exit_shim(StartThrownItem(cpu.x));
+}
+
+/*
+ * @routine 051A:1EB FallThenState
+ * @run 70:A9EB
+ * WHAT IT DOES: Moves an object down by its Y speed; OBJ_3510 counts down and at zero becomes $10
+ * while the object moves on one state.
+ * HOW: ApplyVelocityY, then DEC of OBJ_3510.
+ * WAITS: no.
+ * Entry: X object. Exit: the move's registers, then N and Z of the count; at zero A $10 and N, Z of
+ * the new state.
+ */
+ThrowStep FallThenState(uint8_t slot)
+{
+    ThrowStep step = { false, { 0 }, { 0 } };
+    AxisMove move;
+    uint8_t left, state;
+
+    jsr_push(0xA9EE);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    step.end = ended_of_axis_move(move);
+    left = DEC8(OBJ->f3510[slot]);
+    if (left != 0) {
+        step.end = ended_then(step.end, ended_nz(left));
+        return step;
+    }
+    WR8(OBJ->f3510[slot], 0x10);
+    state = INC8(OBJ->state[slot]);
+    step.end = ended_then(step.end, ended_with_a(ended_nz(state), 0x10));
+    return step;
+}
+
+void abi_FallThenState(void)
+{
+    throw_step_exit_shim(FallThenState(cpu.x));
+}
+
+/*
+ * @routine 051A:1FC ClearWhenCountEnds
+ * @run 70:A9FC
+ * WHAT IT DOES: OBJ_3510 counts down; at zero the object is cleared.
+ * HOW: DEC; the clear is a tail jump into ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: N and Z of the count; A, Y and the rest kept.
+ */
+uint8_t ClearWhenCountEnds(uint8_t slot)
+{
+    uint8_t left;
+
+    left = DEC8(OBJ->f3510[slot]);
+    if (left == 0) {
+        ClearObject(slot);
+    }
+    return left;
+}
+
+void abi_ClearWhenCountEnds(void)
+{
+    abi_nz(ClearWhenCountEnds(cpu.x));
 }

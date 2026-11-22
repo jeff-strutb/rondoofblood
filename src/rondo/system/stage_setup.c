@@ -6,7 +6,6 @@
 #include "stage_map.h"
 
 enum {
-    STAGE_STATE_SLOT = 0x56, SAVED_MPR_SLOT = 0x57,
     MPR5 = 0x20, MPR6 = 0x40, STAGE_BANK_OFFSET = 0x10
 };
 
@@ -15,18 +14,17 @@ enum {
  * @run 6B:919F
  * WHAT IT DOES: Zeroes four of the stage's state bytes, the ones a stage restart or its
  * start-of-stage handler clears together.
- * HOW: Four stores of zero, each into slot $56 of one column of the object table (columns
- * $34B8, $3510, $3568 and $3670). The columns are the object table's, the use is the stage
- * overlay's own; the field names are the table's until the typed layer names them.
+ * HOW: Four stores of zero, into the stage overlay's state bytes (StageVar350E, StageVar3566,
+ * StageVar35BE and the blend step).
  * WAITS: no.
  * Entry: nothing. Exit: A, X, Y and flags kept.
  */
 void ClearStageStateBytes(void)
 {
-    WR8(OBJ->f34b8[STAGE_STATE_SLOT], 0);
-    WR8(OBJ->f3510[STAGE_STATE_SLOT], 0);
-    WR8(OBJ->f3568[STAGE_STATE_SLOT], 0);
-    WR8(OBJ->f3670[STAGE_STATE_SLOT], 0);
+    WR8(STAGEVARS->state_350e[0], 0);
+    WR8(STAGEVARS->state_3566[0], 0);
+    WR8(STAGEVARS->state_35be[0], 0);
+    WR8(STAGEVARS->blend_step[0], 0);
 }
 
 void abi_ClearStageStateBytes(void)
@@ -77,8 +75,7 @@ void abi_MapStageBanks(void)
  * @routine 024F:33F SaveAndMapStageBanks
  * @run 6B:933F
  * WHAT IT DOES: Keeps the banks in MPR5 and MPR6 and then maps the stage's two banks there.
- * HOW: Each MPR into its saved byte (slot $57 of columns $3670 and $36C8 of the object
- * table, the stage's own use), then MapStageBanks, which this routine runs on into with no
+ * HOW: Each MPR into its saved byte (the second bytes of the blend step's and StageVar371E's columns), then MapStageBanks, which this routine runs on into with no
  * return of its own. RestoreStageBanks puts the saved ones back.
  * WAITS: no.
  * Entry: nothing. Exit: as MapStageBanks.
@@ -88,9 +85,9 @@ static Sum save_and_map_stage_banks(void)
     uint8_t bank;
 
     bank = tma(MPR5);
-    WR8(OBJ->f3670[SAVED_MPR_SLOT], bank);
+    WR8(STAGEVARS->blend_step[1], bank);
     bank = tma(MPR6);
-    WR8(OBJ->f36c8[SAVED_MPR_SLOT], bank);
+    WR8(STAGEVARS->state_371e[1], bank);
     return map_stage_banks();
 }
 
@@ -108,7 +105,7 @@ void abi_SaveAndMapStageBanks(void)
  * @routine 024F:354 RestoreStageBanks
  * @run 6B:9354
  * WHAT IT DOES: Puts back the banks SaveAndMapStageBanks kept in MPR5 and MPR6.
- * HOW: MPR6 from the byte at slot $57 of column $36C8, then MPR5 from slot $57 of $3670.
+ * HOW: MPR6 from the byte at the second byte of the StageVar371E column, then MPR5 from the blend step's second byte.
  * WAITS: no.
  * Entry: nothing. Exit: A the MPR5 bank, N and Z from it. X and Y kept.
  */
@@ -116,9 +113,9 @@ uint8_t RestoreStageBanks(void)
 {
     uint8_t bank;
 
-    bank = RD8(OBJ->f36c8[SAVED_MPR_SLOT]);
+    bank = RD8(STAGEVARS->state_371e[1]);
     tam(MPR6, bank);
-    bank = RD8(OBJ->f3670[SAVED_MPR_SLOT]);
+    bank = RD8(STAGEVARS->blend_step[1]);
     tam(MPR5, bank);
     return bank;
 }

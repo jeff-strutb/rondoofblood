@@ -42,6 +42,7 @@ static uint64_t seed;
 static unsigned stub_calls[65536];
 static jmp_buf case_end;
 static unsigned events;
+static int decimal_ok;
 static int depth;
 
 static uint64_t mix64(uint64_t x)
@@ -172,7 +173,7 @@ static void stub_routine(uint16_t target)
     cpu.a = seeded(target, n, 11);
     cpu.x = seeded(target, n, 12);
     cpu.y = seeded(target, n, 13);
-    cpu.p = (uint8_t)(seeded(target, n, 14) & (P_N | P_V | P_D | P_Z | P_C));
+    cpu.p = (uint8_t)(seeded(target, n, 14) & (P_N | P_V | P_Z | P_C | (decimal_ok ? P_D : 0)));
     printf("STUB %04X -> A=%02X X=%02X Y=%02X P=%02X\n", target, cpu.a, cpu.x, cpu.y, cpu.p);
 }
 
@@ -251,6 +252,7 @@ int main(int argc, char **argv)
 
     if (argc < 2)
         return 2;
+    decimal_ok = getenv("LIFTCMP_DECIMAL") && getenv("LIFTCMP_DECIMAL")[0] == '1';
     in = fopen(argv[1], "r");
     if (!in)
         return 2;

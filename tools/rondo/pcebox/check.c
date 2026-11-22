@@ -1025,13 +1025,17 @@ uint8_t tma(uint8_t mpr_bit)
 
 void tam(uint8_t mpr_bits, uint8_t bank)
 {
-    uint8_t v[8];
+    uint8_t v[8], now[8];
+    int changes;
 
     mprs_now(v);
     for (unsigned i = 0; i < 8; i++)
         if (mpr_bits & (1u << i))
             v[i] = bank;
-    if (sp)
+    /* The record logs a mapping only when it changes (sync_state): a TAM that maps what is already mapped is no
+     * event on either side. */
+    changes = memcmp(now, v, 8) != 0;
+    if (sp && changes)
         place(sp, EV_STATE, 0, v, mode == MODE_HYBRID ? chk_get_speed() : c_speed);
     for (unsigned i = 0; i < 8; i++)
         if (mpr_bits & (1u << i)) {
@@ -1073,7 +1077,8 @@ static void set_speed(uint8_t fast)
     uint8_t v[8];
 
     mprs_now(v);
-    if (sp)
+    /* As for TAM: a clock change that changes nothing is no event on either side. */
+    if (sp && fast != (mode == MODE_HYBRID ? chk_get_speed() : c_speed))
         place(sp, EV_STATE, 0, v, fast);
     if (mode == MODE_HYBRID)
         chk_set_speed(fast);

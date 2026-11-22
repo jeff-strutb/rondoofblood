@@ -79,37 +79,66 @@ def span(buf, routine, next_disc):
 
 
 class Namer:
-    """Names for addresses, from the list and from the routines being filed."""
+    """Names for addresses, from the list and from the routines being filed.
+
+    Overlays share run addresses: two routines of different overlays can run at the same address. A label belongs
+    to the routine whose own span holds the target (a branch inside a routine is a label of that routine), and a
+    call or jump to a routine's entry takes the name of the nearest routine on the disc among those with that run
+    address (an overlay's neighbours are contiguous on the disc). Only a target no routine of the branching one's
+    own span holds, and that exactly one routine's span holds, is labelled inside that other routine."""
 
     def __init__(self, routines, spans):
         self.zp, self.abs = {}, {}
         for addr, kind, name, _ in ramnames.load():
             (self.zp if kind == "zp" else self.abs)[addr] = name
         self.table = sorted(self.abs)
-        self.entry = {r["run"]: r["name"] for r in routines}
-        for addr, name in list(self.abs.items()):
-            self.entry.setdefault(addr, name) if addr >= 0x8000 else None
-        self.owner = {}
+        self.entries = {}
         for r in routines:
-            for ins in spans[r["name"]]:
-                self.owner[ins[0]] = r["name"]
+            self.entries.setdefault(r["run"], []).append(r)
+        self.ram_entry = {addr: name for addr, name in self.abs.items() if addr >= 0x8000 and addr not in self.entries}
+        self.own = {r["name"]: {ins[0] for ins in spans[r["name"]]} for r in routines}
+        self.owners = {}
+        for r in routines:
+            for a in self.own[r["name"]]:
+                self.owners.setdefault(a, []).append(r["name"])
+        self.cur = None
+        self.disc = {r["name"]: r["disc"] for r in routines}
         self.labels = {}
+        self.count = {}
         for r in routines:
             for pc, _, _, mode, _, target in spans[r["name"]]:
                 if mode in ("rel", "zrel") or target is not None:
-                    if target in self.owner and target not in self.entry:
-                        self.labels.setdefault(target, self._label(target))
+                    if target in self.entries or target in self.ram_entry:
+                        continue
+                    owner = self.owner_of(r["name"], target)
+                    if owner and (owner, target) not in self.labels:
+                        self.labels[(owner, target)] = f"{owner}_at{self.count.get(owner, 0)}"
+                        self.count[owner] = self.count.get(owner, 0) + 1
 
-    def _label(self, target):
-        return f"{self.owner[target]}_at{sum(1 for t in self.labels if self.owner[t] == self.owner[target])}"
+    def owner_of(self, cur, target):
+        """The routine a label at target belongs to, seen from routine cur."""
+        if target in self.own.get(cur, ()):
+            return cur
+        found = self.owners.get(target, [])
+        return found[0] if len(found) == 1 else None
+
+    def entry_name(self, addr):
+        found = self.entries.get(addr)
+        if not found:
+            return self.ram_entry.get(addr)
+        if len(found) > 1 and self.cur in self.disc:
+            found = sorted(found, key=lambda r: abs(r["disc"] - self.disc[self.cur]))
+        return found[0]["name"]
 
     def zero(self, addr):
         return self.zp.get(addr, f"${addr:02X}")
 
     def code(self, addr):
-        if addr in self.entry:
-            return self.entry[addr]
-        return self.labels.get(addr) or self.abs.get(addr) or f"${addr:04X}"
+        name = self.entry_name(addr)
+        if name:
+            return name
+        owner = self.owner_of(self.cur, addr)
+        return (owner and self.labels.get((owner, addr))) or self.abs.get(addr) or f"${addr:04X}"
 
     def data(self, addr):
         if addr in self.abs:
@@ -180,9 +209,10 @@ def main():
         for r in group:
             out += [";" + (" " + ln if ln else "") for ln in r["header"]]
             out.append(f"{r['name']}:")
+            names.cur = r["name"]
             for ins in spans[r["name"]]:
-                if ins[0] in names.labels:
-                    out.append(f"{names.labels[ins[0]]}:")
+                if (r["name"], ins[0]) in names.labels:
+                    out.append(f"{names.labels[(r['name'], ins[0])]}:")
                 out.append("    " + operand(ins, names))
             out.append("")
         with open(out_path, "w", encoding="ascii", newline="\n") as f:

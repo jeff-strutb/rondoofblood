@@ -522,6 +522,13 @@ void aim_bx_at_vram_port(void);
 uint8_t ad_read_byte(void);
 uint8_t write_vram_word_pending(void);
 
+/* ma_mul8u's result: the product, and the A and flags it pulled back (the product's low byte, the flags as pushed). */
+typedef struct {
+    uint16_t product;
+    uint8_t a;
+    uint8_t flags;
+} MaMul8u;
+
 /*
  * The exits of ad_play, ad_stat and ad_stop: the registers and flags each leaves, for its abi_
  * wrapper and for a caller's wrapper whose routine ends in it. They touch the CPU, so only abi_
@@ -533,7 +540,7 @@ void ad_stop_exit_shim(uint8_t control);
 void cd_play_exit_shim(CdPlay play);
 void cd_read_exit_shim(CdRead read);
 void cd_fade_exit_shim(uint8_t given);
-void ma_mul8u_exit_shim(uint8_t al, uint8_t bl, uint16_t product);
+void ma_mul8u_exit_shim(MaMul8u result);
 void bm_read_exit_shim(BackupAccess read);
 void bm_write_exit_shim(BackupAccess write);
 
@@ -754,7 +761,7 @@ uint8_t cd_ack_pulse(void);
 CdReset cd_reset(void);
 CdSubcodeRead cd_subrd(void);
 CdPcmRead cd_pcmrd(uint8_t latch);
-uint16_t ma_mul8u(uint8_t al, uint8_t bl);
+MaMul8u ma_mul8u(uint8_t a, uint8_t flags);
 void cd_fade(uint8_t type);
 uint8_t ad_stop(void);
 AdStat ad_stat(void);

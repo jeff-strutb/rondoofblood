@@ -7,6 +7,36 @@
 #define RONDO_COMMON_OBJECTS_H
 
 #include "machine.h"
+#include "routines.h"
+
+/*
+ * An ADC as the processor does it: in decimal mode (D set in the P the caller left) the add is
+ * BCD and V is not touched. Used where a routine adds after a call, whose exit flags the
+ * original's ADC honours. overflow_set is false when V is to be left as it stands.
+ */
+static inline Sum add_bytes_in_mode(uint8_t a, uint8_t b, bool carry_in, bool *overflow_set)
+{
+    Sum sum;
+
+    if (cpu.p & P_D) {
+        unsigned total = (a & 0x0Fu) + (b & 0x0Fu) + (carry_in ? 1u : 0u);
+
+        if (total >= 0x0A) {
+            total += 0x06;
+        }
+        total += (a & 0xF0u) + (b & 0xF0u);
+        if (total >= 0xA0) {
+            total += 0x60;
+        }
+        sum.value = (uint8_t)total;
+        sum.carry = (total & 0xFF00u) != 0;
+        sum.overflow = false;
+        *overflow_set = false;
+        return sum;
+    }
+    *overflow_set = true;
+    return add_bytes(a, b, carry_in);
+}
 
 /* How EnterHurtStateOnHit ended. */
 typedef enum {
@@ -42,7 +72,30 @@ BlinkCheck SetBlinkFlash(uint8_t slot);
 /* An object's record is loaded, then its player-shared byte and timers are set (see the routine). */
 void InitObjectFromRecord(uint8_t slot);
 
-/* Not yet typed: the vector that goes to LoadObjectRecord (spawn.c), entered with X the object. */
+/* How FallAndBounce ended. */
+typedef enum {
+    FALL_DEADLY_GROUND,   /* the probe reported deadly ground (bit 4): nothing more done */
+    FALL_BOUNCED          /* the bounce was set up */
+} FallEnd;
+
+typedef struct {
+    FallEnd end;
+    uint8_t probe_bit4;   /* FALL_DEADLY_GROUND: the answer ANDed with $10 */
+    uint8_t angle_high;   /* FALL_BOUNCED: the object's angle high byte as stored */
+    bool carry;           /* FALL_BOUNCED: the last add's carry out */
+    bool overflow;        /* FALL_BOUNCED: the last add's signed overflow */
+    bool overflow_set;    /* FALL_BOUNCED: false when the add was decimal and left V alone */
+} FallResult;
+
+/* The object moves, and on landing enters its next state; off deadly ground it bounces away. */
+FallResult FallAndBounce(uint8_t slot);
+/* 1 shifted left count times, as a byte. */
+uint8_t BitMaskFromIndex(uint8_t count);
+
+/* Not yet typed (register entries of routines that have C): the vector that goes to LoadObjectRecord (spawn.c), entered with X the object. */
 void abi_VecLoadObjectRecord(void);
+void abi_VecApplyVelocity(void);
+void abi_VecProbeTerrain(void);
+void abi_VecScaleByCosine(void);
 
 #endif

@@ -13,7 +13,7 @@ enum { HIT_STATE = 5, HIT_LIMIT = 5, BLINK_LIMIT = 0x18, BLINK_FLAG = 0x86, BLIN
 
 /*
  * @routine 0519:46A EnterHurtStateOnHit
- * @run 69:A46A
+ * @run 70:A46A
  * WHAT IT DOES: Sends an object that is in one of its first four states and has taken a hit
  * of 1 to 4 into state 5, the state its handler table uses for being hurt.
  * HOW: Reads the state and the hit byte, each once, and writes the state only when both are
@@ -82,7 +82,7 @@ void abi_EnterHurtStateOnHit(void)
 
 /*
  * @routine 0519:74E SetBlinkFlash
- * @run 69:A74E
+ * @run 70:A74E
  * WHAT IT DOES: Sets an object's flash flag (the palette flash its sprite shows) to $86 on
  * alternate beats of the wave counter once its timer has reached $18, and to 0 otherwise.
  * HOW: Clears the flag first, then reads the timer and, if it is $18 or more and bit 1 of the
@@ -139,7 +139,7 @@ void abi_SetBlinkFlash(void)
 
 /*
  * @routine 0519:482 InitObjectFromRecord
- * @run 69:A482
+ * @run 70:A482
  * WHAT IT DOES: Starts a newly placed object: loads its record, copies slot 0's byte of the
  * OBJ_2FE8 column into the object's, sets two of its counters and its animation delay to 4, and
  * its timer to $60.
@@ -168,4 +168,112 @@ void abi_InitObjectFromRecord(void)
     InitObjectFromRecord(cpu.x);
     cpu.a = 0x60;
     abi_nz(0x60);
+}
+
+/*
+ * @routine 0519:4BD FallAndBounce
+ * @run 70:A4BD
+ * WHAT IT DOES: Moves an object by its velocity and asks the ground under it; on floor the
+ * object enters its next state. Unless the ground is deadly, the object's X speed is set
+ * from its angle (the full cosine) and its Y speed to $80, and its angle is turned on by
+ * $0280.
+ * HOW: Calls ApplyVelocity and ProbeTerrain (floor, height 0), then ScaleByCosine with a
+ * multiplier of 256; the angle is the two bytes OBJ_35C0 (low) and OBJ_3568 (high).
+ * WAITS: no.
+ * Entry: X object. Exit: A and flags from the last AND or add (see the wrapper); X kept; Y as
+ * ScaleByCosine left it.
+ */
+FallResult FallAndBounce(uint8_t slot)
+{
+    FallResult result = { FALL_DEADLY_GROUND, 0, 0, false, false, false };
+    bool overflow_set;
+    uint8_t answer, deadly, angle_low, angle_high, product_hi, product_mid;
+    Sum sum;
+
+    cpu.x = slot;
+    if (call_frame(0xA4C0, abi_VecApplyVelocity)) {
+        return result;
+    }
+    WR8(ZP->product.mid, 0);
+    cpu.a = 1;
+    if (call_frame(0xA4C9, abi_VecProbeTerrain)) {
+        return result;
+    }
+    answer = (uint8_t)(cpu.a & 0x01);
+    if (answer != 0) {
+        INC8(OBJ->f27a8[slot]);
+    }
+    deadly = (uint8_t)(RD8(ZP->product.lo) & 0x10);
+    result.probe_bit4 = deadly;
+    if (deadly != 0) {
+        return result;
+    }
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, 1);
+    cpu.a = RD8(OBJ->f3568[slot]);
+    if (call_frame(0xA4E4, abi_VecScaleByCosine)) {
+        return result;
+    }
+    product_hi = RD8(ZP->product.hi);
+    WR8(OBJ->vx_hi[slot], product_hi);
+    product_mid = RD8(ZP->product.mid);
+    WR8(OBJ->vx_lo[slot], product_mid);
+    WR8(OBJ->vy_hi[slot], 0);
+    WR8(OBJ->vy_lo[slot], 0x80);
+    angle_low = RD8(OBJ->f35c0[slot]);
+    sum = add_bytes_in_mode(angle_low, 0x80, false, &overflow_set);
+    WR8(OBJ->f35c0[slot], sum.value);
+    angle_high = RD8(OBJ->f3568[slot]);
+    sum = add_bytes_in_mode(angle_high, 0x02, sum.carry, &overflow_set);
+    WR8(OBJ->f3568[slot], sum.value);
+    result.end = FALL_BOUNCED;
+    result.angle_high = sum.value;
+    result.carry = sum.carry;
+    result.overflow = sum.overflow;
+    result.overflow_set = overflow_set;
+    return result;
+}
+
+void abi_FallAndBounce(void)
+{
+    FallResult result = FallAndBounce(cpu.x);
+
+    if (result.end == FALL_DEADLY_GROUND) {
+        cpu.a = result.probe_bit4;
+        abi_nz(result.probe_bit4);
+    } else {
+        cpu.a = result.angle_high;
+        abi_nz(result.angle_high);
+        abi_flag(P_C, result.carry);
+        if (result.overflow_set) {
+            abi_flag(P_V, result.overflow);
+        }
+    }
+}
+
+/*
+ * @routine 051A:055 BitMaskFromIndex
+ * @run 70:A855
+ * WHAT IT DOES: Gives the byte with only bit Y set (1 shifted left Y times; 0 if Y is 8 or more).
+ * HOW: Shifts a 1 left, counting Y down to 0.
+ * WAITS: no.
+ * Entry: Y the bit number. Exit: A the mask; Y 0; Z and C set, N clear (the last compare).
+ */
+uint8_t BitMaskFromIndex(uint8_t count)
+{
+    uint8_t mask = 1;
+
+    while (count != 0) {
+        mask = (uint8_t)(mask << 1);
+        count--;
+    }
+    return mask;
+}
+
+void abi_BitMaskFromIndex(void)
+{
+    cpu.a = BitMaskFromIndex(cpu.y);
+    cpu.y = 0;
+    abi_nz(0);
+    abi_flag(P_C, true);
 }

@@ -479,6 +479,24 @@ static int same_state(const Ev *e, const uint8_t *mpr, uint8_t speed)
 }
 
 /*
+ * A5: a poke of the script that landed while the call was open is a write by something outside the program, at a
+ * place in the original's sequence. The C's memory takes it when the C's accesses pass that place, so a byte the
+ * C wrote before it and the script then overwrote ends as the original's did. It is no write of either side: it
+ * is not placed, not counted, and not undone as the C's.
+ */
+static void apply_pokes(uint64_t from, uint64_t to)
+{
+    if (mode != MODE_A5)
+        return;
+    for (uint64_t k = from; k < to; k++) {
+        Ev *e = evp(k);
+
+        if (e && is_poke(e))
+            ram_bank[e->addr >> 13][e->addr & 0x1FFF] = e->val;
+    }
+}
+
+/*
  * Places a counted access of the C: the index of the event it matches, or -1 when the original made
  * no such access before a barrier. Interrupts passed on the way are delivered before it returns.
  * A match that is not the next counted event is a MOVED defect; none at all is EXTRA.
@@ -586,6 +604,7 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
                 phys, (long long)found, (unsigned long long)from, (unsigned long long)ints[0]);
         skip_frame = (unsigned long)-1;
     }
+    apply_pokes(from, (uint64_t)found);
     s->cur = (uint64_t)found + 1;
     s->nest = nest;
     for (unsigned i = 0; i < nints; i++) {
@@ -1901,6 +1920,7 @@ static void judge(Frame *f, const Regs *r)
     reason = setjmp(c_abort);
     if (reason == 0) {
         f->tag->abi();
+        apply_pokes(span.cur, end);
         if (!prefix)
             span_finish(&span);
     }

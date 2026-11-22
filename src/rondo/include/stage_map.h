@@ -4,6 +4,10 @@
 
 #include "machine.h"
 
+/* system/stage_mode.c: N and Z come from the byte it returns. */
+uint8_t StageWaitTimerStep(void);
+void StageWaitTimerToStep2(void);
+
 /* system/stage_setup.c */
 void ClearStageStateBytes(void);
 void SaveAndMapStageBanks(void);

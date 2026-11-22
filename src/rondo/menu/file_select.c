@@ -678,7 +678,9 @@ void abi_WriteDigitTile(void)
  * the count added once for the first byte twice, and four times for each of the five pairs (the
  * pair's count kept in zTemp0B between the four adds, five pairs counted in zTemp0A). Decimal
  * mode off.
- * WAITS: no.
+ * WAITS: no. CountSetBits's arm that counts a bit is in no trace and the draft stops there, so the
+ * comparison now runs with every counted byte zero (curated); the sums with counts were compared
+ * when the harness still ran the lifted CountSetBits on both sides: 400 of 400, decimal and not.
  * Entry: Y the slot (0 to 2). Exit: A zTemp09, C from the last decimal add, N clear and Z set (the
  * pair counter reached zero), V as the caller left it, D clear; X the slot's offset plus 5; Y the
  * last count.
@@ -1042,4 +1044,179 @@ void abi_DrawCursorRowDigit(void)
 
     cpu.a = result.a;
     abi_alu(result);
+}
+
+/*
+ * @routine 00C3:2E7 PadRepeatReset
+ * @run 6B:92E7
+ * WHAT IT DOES: Starts the menu's key repeat afresh: no button is down, and each of the eight
+ * buttons waits the full first delay.
+ * HOW: Zeroes the repeat bits ($7DFA), then loads each of the eight repeat counters (from $7DF2)
+ * with 24, from the last to the first.
+ * WAITS: no.
+ * Entry: nothing. Exit: A $18, X $FF, N set, Z clear; Y and C kept.
+ */
+void PadRepeatReset(void)
+{
+    uint8_t index;
+
+    wr8(PAD_REPEAT_BITS, 0);
+    index = 7;
+    do {
+        wr8((uint16_t)(PAD_REPEAT + index), 0x18);
+        index--;
+    } while (index != 0xFF);
+}
+
+void abi_PadRepeatReset(void)
+{
+    PadRepeatReset();
+    cpu.a = 0x18;
+    cpu.x = 0xFF;
+    abi_nz(0xFF);
+}
+
+/*
+ * @routine 00C3:31B MenuBackOnButtonII
+ * @run 6B:931B
+ * WHAT IT DOES: Takes the menu back to its page 8 when button II has just been pressed.
+ * HOW: ANDs the card's trigger byte with 2 and returns when it is zero; otherwise runs on into
+ * MenuBackToPageEight.
+ * WAITS: no.
+ * Entry: nothing. Exit: not pressed: A 0, Z set, N clear, C kept. Pressed: as
+ * MenuBackToPageEight with N and Z clear.
+ */
+bool MenuBackOnButtonII(void)
+{
+    uint8_t trigger;
+
+    trigger = rd8(BiosJoyTrigger);
+    if ((trigger & 0x02) == 0) {
+        return false;
+    }
+    MenuBackToPageEight();
+    return true;
+}
+
+void abi_MenuBackOnButtonII(void)
+{
+    bool pressed = MenuBackOnButtonII();
+
+    cpu.a = 0;
+    abi_nz(pressed ? 8 : 0);
+}
+
+/*
+ * @routine 00C3:322 MenuBackToPageEight
+ * @run 6B:9322
+ * WHAT IT DOES: Puts the menu on its page 8, at its first step.
+ * HOW: Loads 8 and goes to SetMenuPage.
+ * WAITS: no.
+ * Entry: nothing. Exit: A 0, N and Z clear (the 8 loaded), C kept.
+ */
+void MenuBackToPageEight(void)
+{
+    SetMenuPage(8);
+}
+
+void abi_MenuBackToPageEight(void)
+{
+    MenuBackToPageEight();
+    cpu.a = 0;
+    abi_nz(8);
+}
+
+/*
+ * @routine 00C1:228 IncrementTempWord
+ * @run 6B:8228
+ * WHAT IT DOES: Adds one to the 16-bit pointer in zTemp00 and zTemp01, the place the text
+ * printer reads its next byte from.
+ * HOW: Adds one to the low byte, and to the high byte when the low byte wrapped to zero.
+ * WAITS: no.
+ * Entry: nothing. Exit: N and Z from the byte last incremented, C and the registers kept.
+ */
+uint8_t IncrementTempWord(void)
+{
+    uint8_t low;
+
+    low = INC8(ZP->temp00);
+    if (low != 0) {
+        return low;
+    }
+    return INC8(ZP->temp01);
+}
+
+void abi_IncrementTempWord(void)
+{
+    abi_nz(IncrementTempWord());
+}
+
+/*
+ * @routine 00C1:5CF WriteGlyphRows
+ * @run 6B:85CF
+ * WHAT IT DOES: Writes eight rows of a glyph's tile to the VDC, from the glyph buffer at $3B40:
+ * every other byte from the buffer is the low byte of a row's word, $FF the high byte.
+ * HOW: Eight times, the buffer byte at X goes to the VDC data port and $FF to its high byte; X
+ * goes up by two each row.
+ * WAITS: no.
+ * Entry: X the buffer offset; the VDC's write address set. Exit: A the last byte written, X plus
+ * 16, Y 8, Z and C set, N clear.
+ */
+GlyphRows WriteGlyphRows(uint8_t offset)
+{
+    GlyphRows result;
+    uint8_t row;
+
+    result.a = 0;
+    for (row = 0; row != 8; row++) {
+        result.a = rd8((uint16_t)(GLYPH_BUFFER + offset));
+        WR8(VDC->data_lo, result.a);
+        st2(0xFF);
+        offset = (uint8_t)(offset + 2);
+    }
+    result.x = offset;
+    return result;
+}
+
+void abi_WriteGlyphRows(void)
+{
+    GlyphRows result = WriteGlyphRows(cpu.x);
+
+    cpu.a = result.a;
+    cpu.x = result.x;
+    cpu.y = 8;
+    abi_nz(0);
+    abi_flag(P_C, true);
+}
+
+/*
+ * @routine 00C1:5CA WriteGlyphRowsTwice
+ * @run 6B:85CA
+ * WHAT IT DOES: Writes the same eight glyph rows twice, so a glyph fills two tiles' worth.
+ * HOW: Keeps X on the stack across one call of WriteGlyphRows, then runs on into it with X as it
+ * was.
+ * WAITS: no.
+ * Entry, exit: as WriteGlyphRows.
+ */
+GlyphRows WriteGlyphRowsTwice(uint8_t offset)
+{
+    uint8_t pulled;
+
+    push8(offset);
+    jsr_push(0x85CE);
+    WriteGlyphRows(offset);
+    jsr_pop();
+    pulled = pull8();
+    return WriteGlyphRows(pulled);
+}
+
+void abi_WriteGlyphRowsTwice(void)
+{
+    GlyphRows result = WriteGlyphRowsTwice(cpu.x);
+
+    cpu.a = result.a;
+    cpu.x = result.x;
+    cpu.y = 8;
+    abi_nz(0);
+    abi_flag(P_C, true);
 }

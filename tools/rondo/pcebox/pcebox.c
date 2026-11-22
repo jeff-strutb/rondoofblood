@@ -83,6 +83,7 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
                             int has_p, uint8_t p);
 int check_tag_run(const char *name);
 void check_where(const char *text);
+void check_poke(uint32_t phys, uint8_t old, uint8_t value);
 int check_init(int which, const char *path, const char *user_path);
 void check_finish(void);
 void check_rd(uint32_t phys, uint8_t v, int kind);
@@ -347,6 +348,8 @@ static int poke_bank(unsigned bank, unsigned off, unsigned value)
     uint8_t *p = (uint8_t *)core_bank(bank);
     if (!p || !((bank >= 0x68 && bank <= 0x87) || (bank >= 0xF8 && bank <= 0xFB)))
         return 1;
+    if (check_mode == 1 || check_mode == 2)
+        check_poke((uint32_t)bank << 13 | off, p[off], (uint8_t)value);
     p[off] = (uint8_t)value;
     if (trace_user)
         trace_poke((uint32_t)bank << 13 | off);
@@ -362,6 +365,8 @@ static int poke(unsigned addr, unsigned value)
     uint8_t *p = (uint8_t *)core_bank(bank);
     if (!p || !((bank >= 0x68 && bank <= 0x87) || (bank >= 0xF8 && bank <= 0xFB)))
         return 1;
+    if (check_mode == 1 || check_mode == 2)
+        check_poke((uint32_t)bank << 13 | (addr & 0x1FFF), p[addr & 0x1FFF], (uint8_t)value);
     p[addr & 0x1FFF] = (uint8_t)value;
     if (trace_user)
         trace_poke((uint32_t)bank << 13 | (addr & 0x1FFF));

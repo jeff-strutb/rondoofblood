@@ -95,15 +95,24 @@ typedef struct {
 } Ev;
 
 static int is_marker(int t) { return t >= EV_STATE; }
-static int is_counted(int t) { return t == EV_R || t == EV_W || t == EV_HWR || t == EV_HWW || t == EV_STATE; }
-static int is_noise(int t) { return t == EV_ROMR || t == EV_RTPULL; }
+/* A poke of the script is a write the C does not make, by something outside the program: kind 1 on a W event.
+ * It is in the stream so that rewinding RAM and putting it forward again keeps it, and is never counted. */
+static int is_poke(const Ev *e) { return e->type == EV_W && e->kind == 1; }
+static int is_counted(const Ev *e)
+{
+    int t = e->type;
+
+    return (t == EV_R || t == EV_W || t == EV_HWR || t == EV_HWW || t == EV_STATE) && !is_poke(e);
+}
+static int is_noise(const Ev *e) { return e->type == EV_ROMR || e->type == EV_RTPULL || is_poke(e); }
 
 #define PFLAGS 0xCF
 #define PREV_IRQ 0x100
 #define PREV_UNIT 0x101
 #define FRAMES 512
 #define LOG_START (1u << 22)
-#define LOG_HARD (1u << 24)
+static uint64_t log_hard_events = 1u << 24;      /* RONDO_LOG_HARD overrides, for finding a fault */
+#define LOG_HARD log_hard_events
 #define C_MAX (1u << 20)
 #define UNIT_MARK 0x0001
 
@@ -466,7 +475,7 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
             hit_end = 1;
             break;
         }
-        if (is_noise(e->type))
+        if (is_noise(e))
             continue;
         if (e->type == EV_INT) {
             uint64_t r = section_end(s, j);
@@ -497,7 +506,7 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
             /* The original called code the C has not: the C must say so (call_original) first. */
             break;
         }
-        if (!is_counted(e->type))
+        if (!is_counted(e))
             continue;
         if (first < 0)
             first = (int64_t)j;
@@ -582,7 +591,7 @@ static void span_finish(Span *s)
             j = r;
         } else if (e->type == EV_FRAME && mode == MODE_HYBRID) {
             frame_pass(s, j, pulls);
-        } else if (is_counted(e->type) && !reported) {
+        } else if (is_counted(e) && !reported) {
             defect(D_MISSING, "the original's %s at access %llu of the call is not made", describe(e, b, sizeof b),
                    (unsigned long long)(j - s->start));
             reported = 1;
@@ -1034,7 +1043,7 @@ void wait_interrupt(void)
     }
     stats[sp->tag].waits++;
     nest = sp->nest;
-    for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e->type) && e->type != EV_INT; j++)
+    for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e) && e->type != EV_INT; j++)
         if (e->type == EV_FRAME && mode == MODE_HYBRID)
             frame_pass(sp, j, 0);
     if (!e && mode == MODE_HYBRID && at_eof) {
@@ -1144,7 +1153,7 @@ static void original_at(uint16_t ret, uint16_t addr)
             frame_pass(span, k, 0);
             continue;
         }
-        if (is_counted(x->type)) {
+        if (is_counted(x)) {
             defect(D_MISSING, "before the call to %04X the original's %s is not made", addr, describe(x, b, sizeof b));
             break;
         }
@@ -1364,13 +1373,16 @@ static void judge(Frame *f, const Regs *r);
  */
 static void trim_log(void)
 {
+    if (getenv("RONDO_TRIM_TRACE"))
+        fprintf(stderr, "TRIM frame %lu wn %llu depth %d top %s\n", cur_frame, (unsigned long long)wn, depth, rondo_tags[frames[0].tag_index].name);
     uint64_t base;
 
     if (!depth) {
         wn = 0;
         return;
     }
-    judge(&frames[0], NULL);
+    if (!getenv("RONDO_TRIM_NOJUDGE"))
+        judge(&frames[0], NULL);
     stats[frames[0].tag_index].unv_log++;
     base = depth > 1 ? frames[1].start : wn;
     memmove(win, win + base, (wn - base) * sizeof *win);
@@ -1755,7 +1767,13 @@ static uint32_t stamp;
 static void judge(Frame *f, const Regs *r)
 {
     const int prefix = r == NULL;           /* open at the script's end */
+
+    if (getenv("RONDO_NOJUDGE")) {          /* a bisect switch for finding a fault of the checker's own: nothing is run */
+        stats[f->tag_index].calls++;
+        return;
+    }
     Stat *s = &stats[f->tag_index];
+    static uint8_t *snap;
     int reason;
     char diff[400] = "";
     size_t dl = 0;
@@ -1765,6 +1783,14 @@ static void judge(Frame *f, const Regs *r)
     int fsn0 = 1;
 
     s->calls++;
+    if (prefix && getenv("RONDO_JUDGE_CHECK")) {
+        if (!snap)
+            snap = malloc(33u * 8192);
+        for (unsigned b = 0x68; b <= 0x87; b++)
+            if (ram_bank[b])
+                memcpy(snap + (b - 0x68) * 8192, ram_bank[b], 8192);
+        memcpy(snap + 32u * 8192, ram_bank[0xF8], 8192);
+    }
     if (!final_val) {
         final_val = malloc(1u << 21);
         final_stamp = calloc(1u << 21, sizeof *final_stamp);
@@ -1879,6 +1905,23 @@ static void judge(Frame *f, const Regs *r)
     for (uint64_t i = f->start; i < end; i++)
         if (win[i].type == EV_W)
             ram_bank[win[i].addr >> 13][win[i].addr & 0x1FFF] = win[i].val;
+    if (prefix && getenv("RONDO_JUDGE_CHECK")) {
+        unsigned shown = 0;
+
+        for (unsigned b = 0x68; b <= 0x88 && shown < 6; b++) {
+            const uint8_t *now = b == 0x88 ? ram_bank[0xF8] : ram_bank[b];
+
+            if (now)
+                for (unsigned i = 0; i < 8192 && shown < 6; i++)
+                    if (now[i] != snap[(b == 0x88 ? 32u : b - 0x68) * 8192 + i]) {
+                        fprintf(stderr, "JUDGE CHANGED RAM frame %lu %s%s bank %02X off %04X was %02X now %02X (log %llu..%llu, cw %u)\n",
+                                cur_frame, f->tag->name, prefix ? " prefix" : "", b == 0x88 ? 0xF8 : b, i,
+                                snap[(b == 0x88 ? 32u : b - 0x68) * 8192 + i], now[i], (unsigned long long)f->start,
+                                (unsigned long long)end, cwn);
+                        shown++;
+                    }
+        }
+    }
     sp = NULL;
     cur_fs = NULL;
     cur_fsn = NULL;
@@ -2295,6 +2338,25 @@ static void boundary(const Regs *r)
     }
 }
 
+/*
+ * The script wrote a byte of RAM (poke, or the M= of a unit call) between frames. If a call is open the write is in
+ * the stream, so a call that stays open across it can be rewound and put forward without losing it.
+ */
+void check_poke(uint32_t phys, uint8_t old, uint8_t value)
+{
+    Ev e;
+
+    if (!depth || (mode != MODE_A5 && mode != MODE_RECORD) || !is_ram(canon(phys)))
+        return;
+    memset(&e, 0, sizeof e);
+    e.type = EV_W;
+    e.kind = 1;
+    e.addr = canon(phys);
+    e.val = value;
+    e.old = old;
+    log_event(&e);
+}
+
 /* The run address of a routine by name, or -1. */
 int check_tag_run(const char *name)
 {
@@ -2336,6 +2398,15 @@ int check_exec(uint32_t pc)
     last_pc = (uint16_t)pc;
     computed_entry = prev_op == 0x60 && tag_at[pc & 0xFFFF] >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
     classify_arrival(tag_at[pc & 0xFFFF], (uint16_t)pc);
+    if (getenv("RONDO_TRACE_PC") && pc == strtoul(getenv("RONDO_TRACE_PC"), NULL, 16))
+        fprintf(stderr, "PC %04X frame %lu S%02X prev_op %X before %04X mpr2 %02X tag %d resident %d\n", (unsigned)pc,
+                cur_frame, r.s, prev_op, before_pc, chk_mpr(2), tag_at[pc & 0xFFFF],
+                tag_at[pc & 0xFFFF] >= 0 ? tag_resident(&rondo_tags[tag_at[pc & 0xFFFF]]) : -1);
+    if (getenv("RONDO_TRACE_ENTRY") && tag_at[pc & 0xFFFF] >= 0 &&
+        strstr(getenv("RONDO_TRACE_ENTRY"), rondo_tags[tag_at[pc & 0xFFFF]].name) && mode != MODE_HYBRID)
+        fprintf(stderr, "ENTRY frame %lu %s pc %04X S%02X prev_op %X before %04X computed %d tail %d self %d depth %d\n",
+                cur_frame, rondo_tags[tag_at[pc & 0xFFFF]].name, (unsigned)pc, r.s, prev_op, before_pc, computed_entry,
+                tail_entry, self_jump, depth);
     if (unit.active && unit.entered && ++unit.count > 2000000) {
         /* A crafted state that runs data as code or loops for ever is not a valid script. */
         fprintf(stderr, "check: a unit call ran over 2,000,000 instructions: not a valid script\n");
@@ -2445,13 +2516,14 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
     uint16_t pc;
 
     cur_frame = frame;
-    if (mode != MODE_RECORD && mode != MODE_HYBRID)
+    if (mode != MODE_RECORD && mode != MODE_HYBRID && !(mode == MODE_A5 && dump_frame && frame == dump_frame))
         return;
     if (dump_frame && frame == dump_frame) {
         char name[4200];
         FILE *d;
 
-        snprintf(name, sizeof name, "%s.%s.ram", check_path, mode == MODE_RECORD ? "record" : "hybrid");
+        snprintf(name, sizeof name, "%s.%s.ram", check_path,
+                 mode == MODE_RECORD ? "record" : mode == MODE_A5 ? "a5" : "hybrid");
         d = fopen(name, "wb");
         for (unsigned b = 0x68; b <= 0x87 && d; b++)
             if (ram_bank[b])
@@ -2461,6 +2533,8 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
             fclose(d);
         }
     }
+    if (mode == MODE_A5)
+        return;
     chk_get_regs(&a, &x, &y, &s, &p, &pc);
     if (dump_frame && frame == dump_frame) {
         fprintf(stderr, "FRAME %lu %s: PC %04X A%02X X%02X Y%02X S%02X P%02X", frame,
@@ -2536,6 +2610,8 @@ int check_init(int which, const char *path, const char *user_path)
     check_path = path;
     if (getenv("RONDO_DUMP_FRAME"))
         dump_frame = strtoul(getenv("RONDO_DUMP_FRAME"), NULL, 10);
+    if (getenv("RONDO_LOG_HARD"))
+        log_hard_events = strtoull(getenv("RONDO_LOG_HARD"), NULL, 10);
     if (getenv("RONDO_PLACE")) {
         unsigned long lo = 0, hi = 0;
 

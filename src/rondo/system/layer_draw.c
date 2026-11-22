@@ -22,7 +22,7 @@ enum { ZpFlipMask = 0x2014, ZpPartsLeft = 0x2016, ZpSpritesLeft = 0x2017 };
 
 /*
  * @routine 00D1:066 EmitObjectSprites
- * @run 6C:8066
+ * @run 72:8066
  * WHAT IT DOES: Writes the sprites of one object into the VDC's sprite table, a part at a
  * time, leaving out the parts off the screen, until the object's parts or the frame's room
  * for sprites run out.
@@ -333,7 +333,7 @@ static void frame_return_shim(uint8_t mark)
 
 /*
  * @routine 00D1:000 WriteObjectSprites
- * @run 6C:8000
+ * @run 72:8000
  * WHAT IT DOES: Fills the VDC's sprite table for the frame: every object in the section's list that
  * has a frame and shows this frame is written by EmitObjectSprites, and the room left in the
  * table is cleared.

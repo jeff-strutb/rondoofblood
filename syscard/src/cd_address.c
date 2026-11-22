@@ -9,7 +9,6 @@
 
 enum { LEAD_IN_FRAMES = 0x96, RESULT_BYTES = 3 };
 
-#define RESULT(i) ((uint16_t)(CardCdResult + (i)))
 
 /*
  * @card 01:CC97 lba_load_term
@@ -167,16 +166,16 @@ CardExit msf_to_lba(uint8_t x)
     uint16_t rets[3] = { 0xCC1D, 0xCC26, 0xCC2F };
 
     for (unsigned i = 0; i < RESULT_BYTES; i++) {
-        value = rd8(RESULT(i));
+        value = RD8_IDX(COL(CRAM->cd_result), i);
         jsr_push(rets[i]);
         converted = ex_bcdbin(value, x);
         jsr_pop();
-        wr8(RESULT(i), converted.value);
+        WR8_IDX(COL(CRAM->cd_result), i, converted.value);
     }
     WR8(CZP->a.lo, 0);
     WR8(CZP->a.hi, 0);
     WR8(CZP->b.lo, 0);
-    value = rd8(RESULT(0));
+    value = RD8_IDX(COL(CRAM->cd_result), 0);
     jsr_push(0xCC3D);
     lba_load_term(value);
     jsr_pop();
@@ -185,7 +184,7 @@ CardExit msf_to_lba(uint8_t x)
     (void)lba_double_add(0xCC43);
     (void)lba_double_add(0xCC45);
     (void)lba_double_add(0xCC47);
-    value = rd8(RESULT(1));
+    value = RD8_IDX(COL(CRAM->cd_result), 1);
     jsr_push(0xCC4C);
     lba_load_term(value);
     jsr_pop();
@@ -204,7 +203,7 @@ CardExit msf_to_lba(uint8_t x)
     lba_double(0xCC62);
     lba_double(0xCC64);
     (void)lba_double_add(0xCC66);
-    value = rd8(RESULT(2));
+    value = RD8_IDX(COL(CRAM->cd_result), 2);
     low = sub8(value, LEAD_IN_FRAMES, true);
     WR8(CZP->copy.lo, low.value);
     middle = sub8(0, 0, low.carry);

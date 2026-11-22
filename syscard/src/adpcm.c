@@ -57,7 +57,7 @@ AdStat ad_stat(void)
 
     stat.busy = rd8(AdpcmStatus) & AD_STATUS_BUSY;
     if (stat.busy == 0)
-        stat.busy = rd8(CdIrqStatus) & CD_IRQ_ADPCM_HALF;
+        stat.busy = RD8(CCDU->irq_status) & CD_IRQ_ADPCM_HALF;
     stat.playing = rd8(AdpcmControl) & AD_CONTROL_PLAYING;
     if (stat.playing == 0)
         stat.playing = rd8(AdpcmStatus) & AD_STATUS_PLAYING;
@@ -217,7 +217,7 @@ static bool count_down_ax(void)
 static void select_vdc(uint8_t reg)
 {
     wr8(CardVdcReg, reg);
-    wr8(VdcAddress, reg);
+    WR8(CVDC->addr, reg);
 }
 
 /* The MPR stub the card builds in RAM: TMA or TAM with the mask, then RTS. */
@@ -602,19 +602,19 @@ CardExit ad_trans_begin(void)
         e.set_c = e.set_n = e.set_v = e.set_z = true;
         return e;
     }
-    WR8(CRAM->cd_command, AD_TRANS_COMMAND_READ);
+    WR8_IDX(COL(CRAM->cd_command), 0, AD_TRANS_COMMAND_READ);
     jsr_push(0xF741);
     added = add_cd_base();
     jsr_pop();
     value = RD8(CZP->c.lo);
-    wr8((uint16_t)(CardCdCommand + 1), value);
+    WR8_IDX(COL(CRAM->cd_command), 1, value);
     value = RD8(CZP->c.hi);
-    wr8((uint16_t)(CardCdCommand + 2), value);
+    WR8_IDX(COL(CRAM->cd_command), 2, value);
     value = RD8(CZP->d.lo);
-    wr8((uint16_t)(CardCdCommand + 3), value);
+    WR8_IDX(COL(CRAM->cd_command), 3, value);
     value = RD8(CZP->a.lo);
-    wr8((uint16_t)(CardCdCommand + 4), value);
-    wr8((uint16_t)(CardCdCommand + 5), 0);
+    WR8_IDX(COL(CRAM->cd_command), 4, value);
+    WR8_IDX(COL(CRAM->cd_command), 5, 0);
     value = RD8(CZP->b.lo);
     WR8(CRAM->adpcm_address, value);
     value = RD8(CZP->b.hi);
@@ -730,11 +730,11 @@ CardExit ad_cplay(uint8_t a, uint8_t x)
     value = RD8(CZP->b.lo);
     wr8((uint16_t)(CardAdpcmSectorsLeft + 2), value);
     value = RD8(CZP->d.lo);
-    base = rd8((uint16_t)(CardCdBases + 2));
+    base = RD8_IDX(COL(CRAM->cd_bases), 2);
     low = add8(value, base, false);
     wr8((uint16_t)(CardAdpcmNextSector + 2), low.value);
     value = RD8(CZP->c.hi);
-    base = rd8((uint16_t)(CardCdBases + 1));
+    base = RD8_IDX(COL(CRAM->cd_bases), 1);
     middle = add8(value, base, low.carry);
     wr8((uint16_t)(CardAdpcmNextSector + 1), middle.value);
     value = RD8(CZP->c.lo);

@@ -32,9 +32,6 @@ enum {
     BLOCK_PAGES = 8, VRAM_BLOCK_PAGES = 4, MPR_LIMIT = 7
 };
 
-#define CMD(i) ((uint16_t)(CardCdCommand + (i)))
-#define RESULT(i) ((uint16_t)(CardCdResult + (i)))
-#define FAILED(i) ((uint16_t)(CardCdFailedCommand + (i)))
 
 /* A register set, with N and Z from it, as LDA, LDX and LDY leave it. */
 static void ex_a(CardExit *r, uint8_t v)
@@ -290,7 +287,7 @@ CardExit cd_send_command(void)
     for (;;) {
         phase = read_bus_phase();
         if (phase == PHASE_COMMAND) {
-            uint8_t byte = rd8(CMD(x));
+            uint8_t byte = RD8_IDX(COL(CRAM->cd_command), x);
 
             x++;
             WR8(CCDU->data, byte);
@@ -315,10 +312,10 @@ CardExit cd_send_command(void)
         e.set_a = e.set_nz = e.set_c = true;
         return e;
     }
-    command = RD8(CRAM->cd_command);
+    command = RD8_IDX(COL(CRAM->cd_command), 0);
     carry = command >= COMMAND_NO_WAIT;
     if (command == COMMAND_NO_WAIT) {
-        uint8_t sub = rd8(CMD(1));
+        uint8_t sub = RD8_IDX(COL(CRAM->cd_command), 1);
 
         if (sub == 1 || sub == 2) {
             e.a = sub;
@@ -602,8 +599,8 @@ CardExit cd_request_sense(uint8_t x)
     jsr_push(0xF059);
     clear_cd_command(x);
     jsr_pop();
-    WR8(CRAM->cd_command, COMMAND_REQUEST_SENSE);
-    wr8(CMD(4), SENSE_BYTES);
+    WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_REQUEST_SENSE);
+    WR8_IDX(COL(CRAM->cd_command), 4, SENSE_BYTES);
     jsr_push(0xF066);
     step = cd_send_command();
     jsr_pop();
@@ -625,9 +622,9 @@ CardExit cd_request_sense(uint8_t x)
     status = r.a;
     push8(status);
     if (status == 0) {
-        value = rd8(RESULT(2));
+        value = RD8_IDX(COL(CRAM->cd_result), 2);
         WR8(CRAM->cd_sense_key, value);
-        value = rd8(RESULT(9));
+        value = RD8_IDX(COL(CRAM->cd_result), 9);
         WR8(CRAM->cd_sense, value);
     }
     r.a = pull8();
@@ -668,8 +665,8 @@ CardExit cd_retry_after_error(uint8_t error, uint8_t x)
 
             y = SENSE_BYTES - 1;
             do {
-                byte = rd8(CMD((unsigned)y));
-                wr8(FAILED((unsigned)y), byte);
+                byte = RD8_IDX(COL(CRAM->cd_command), (unsigned)y);
+                WR8_IDX(COL(CRAM->cd_failed_command), (unsigned)y, byte);
                 y--;
             } while (y >= 0);
             r.y = 0xFF;
@@ -725,7 +722,7 @@ CardExit cd_test_unit(uint8_t x)
     jsr_push(0xF093);
     clear_cd_command(x);
     jsr_pop();
-    WR8(CRAM->cd_command, COMMAND_TEST_UNIT);
+    WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_TEST_UNIT);
     jsr_push(0xF09B);
     step = cd_send_command();
     jsr_pop();
@@ -801,8 +798,8 @@ CardExit cd_subq(uint8_t a, uint8_t x)
         jsr_push(0xEFC5);
         clear_cd_command(r.x);
         jsr_pop();
-        WR8(CRAM->cd_command, COMMAND_SUBQ);
-        wr8(CMD(1), SENSE_BYTES);
+        WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_SUBQ);
+        WR8_IDX(COL(CRAM->cd_command), 1, SENSE_BYTES);
         jsr_push(0xEFD2);
         step = cd_send_command();
         jsr_pop();
@@ -864,11 +861,11 @@ CardExit cd_dinfo(uint8_t a, uint8_t x)
         jsr_push(0xEFF7);
         clear_cd_command(r.x);
         jsr_pop();
-        WR8(CRAM->cd_command, COMMAND_DINFO);
+        WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_DINFO);
         value = RD8(CZP->a.lo);
-        wr8(CMD(1), value);
+        WR8_IDX(COL(CRAM->cd_command), 1, value);
         value = RD8(CZP->a.hi);
-        wr8(CMD(2), value);
+        WR8_IDX(COL(CRAM->cd_command), 2, value);
         jsr_push(0xF009);
         step = cd_send_command();
         jsr_pop();
@@ -936,7 +933,7 @@ CardExit cd_pause(uint8_t x)
         step = cd_subq(0x22, r.x);
         jsr_pop();
         r = card_exit_over(r, step);
-        first = rd8(RESULT(0));
+        first = RD8_IDX(COL(CRAM->cd_result), 0);
         compare_a(&r, first, 0);
         if (first != 0) {
             r.a = 0;
@@ -946,7 +943,7 @@ CardExit cd_pause(uint8_t x)
         jsr_push(0xEFAA);
         clear_cd_command(r.x);
         jsr_pop();
-        WR8(CRAM->cd_command, COMMAND_PAUSE);
+        WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_PAUSE);
         jsr_push(0xEFB2);
         step = cd_send_command();
         jsr_pop();
@@ -1000,10 +997,10 @@ CardExit cd_search(uint8_t a, uint8_t x)
         jsr_push(0xEF3A);
         clear_cd_command(r.x);
         jsr_pop();
-        WR8(CRAM->cd_command, COMMAND_SEARCH);
+        WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_SEARCH);
         mode = RD8(CZP->b.hi);
         kind = (uint8_t)(mode & SEARCH_KIND_BITS);
-        wr8(CMD(9), kind);
+        WR8_IDX(COL(CRAM->cd_command), 9, kind);
         r.a = kind;
         r.nz = kind;
         r.set_a = r.set_nz = true;
@@ -1038,7 +1035,7 @@ CardExit cd_search(uint8_t a, uint8_t x)
         r.x = mode;
         r.set_x = true;
         WR8(CRAM->cd_no_wait, (uint8_t)(mode & 1));
-        wr8(CMD(1), (uint8_t)((mode & SEARCH_SIDE_BITS) >> 1));
+        WR8_IDX(COL(CRAM->cd_command), 1, (uint8_t)((mode & SEARCH_SIDE_BITS) >> 1));
         jsr_push(0xEF70);
         step = cd_send_command();
         jsr_pop();
@@ -1119,24 +1116,24 @@ CardExit disc_end_minus_one_frame(uint8_t a)
     bool carry;
 
     push8(a);
-    value = rd8((uint16_t)(CardDiscEnd + 2));
+    value = RD8_IDX(COL(CRAM->disc_end), 2);
     step = sub8_decimal(value, 1, true);
-    wr8((uint16_t)(CardDiscEnd + 2), step.value);
+    WR8_IDX(COL(CRAM->disc_end), 2, step.value);
     carry = step.value >= FRAMES_LIMIT;
     if (!carry) {
         carry = step.value >= FRAMES_LIMIT;
     }
     if (step.value >= FRAMES_LIMIT) {
-        wr8((uint16_t)(CardDiscEnd + 2), CD_LAST_FRAME);
-        value = rd8((uint16_t)(CardDiscEnd + 1));
+        WR8_IDX(COL(CRAM->disc_end), 2, CD_LAST_FRAME);
+        value = RD8_IDX(COL(CRAM->disc_end), 1);
         step = sub8_decimal(value, 1, true);
-        wr8((uint16_t)(CardDiscEnd + 1), step.value);
+        WR8_IDX(COL(CRAM->disc_end), 1, step.value);
         carry = step.value >= SECONDS_LIMIT;
         if (step.value >= SECONDS_LIMIT) {
-            wr8((uint16_t)(CardDiscEnd + 1), CD_LAST_SECOND);
-            value = rd8(CardDiscEnd);
+            WR8_IDX(COL(CRAM->disc_end), 1, CD_LAST_SECOND);
+            value = RD8_IDX(COL(CRAM->disc_end), 0);
             step = sub8_decimal(value, 1, true);
-            wr8(CardDiscEnd, step.value);
+            WR8_IDX(COL(CRAM->disc_end), 0, step.value);
             carry = step.carry;
         }
     }
@@ -1211,8 +1208,8 @@ CardExit cd_play(uint8_t a, uint8_t x)
                 WR8(CZP->a.hi, 0);
                 WR8(CZP->b.lo, 0);
             }
-            wr8(CMD(9), kind);
-            WR8(CRAM->cd_command, COMMAND_SEARCH);
+            WR8_IDX(COL(CRAM->cd_command), 9, kind);
+            WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_SEARCH);
             mode = RD8(CZP->b.hi);
             if (mode == 0) {
                 copy_args(&r, 0, 3, 0xEE38);
@@ -1256,12 +1253,12 @@ CardExit cd_play(uint8_t a, uint8_t x)
         jsr_push(0xEE60);
         clear_cd_command(r.x);
         jsr_pop();
-        WR8(CRAM->cd_command, COMMAND_PLAY);
+        WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_PLAY);
         value = RD8(CZP->d.hi);
-        wr8(CMD(1), (uint8_t)(value & PLAY_MODE_BITS));
+        WR8_IDX(COL(CRAM->cd_command), 1, (uint8_t)(value & PLAY_MODE_BITS));
         value = RD8(CZP->d.hi);
         kind = (uint8_t)(value & SEARCH_KIND_BITS);
-        wr8(CMD(9), kind);
+        WR8_IDX(COL(CRAM->cd_command), 9, kind);
         ex_a(&r, kind);
         if (kind == 0) {
             copy_args(&r, 4, 3, 0xEE7C);
@@ -1272,19 +1269,19 @@ CardExit cd_play(uint8_t a, uint8_t x)
 
                 compare_a(&r, kind, PLAY_KIND_DISC_END);
                 for (unsigned i = 0; i < 3; i++) {
-                    byte = rd8((uint16_t)(CardDiscLength + i));
-                    wr8((uint16_t)(CardDiscEnd + i), byte);
+                    byte = RD8_IDX(COL(CRAM->disc_length), i);
+                    WR8_IDX(COL(CRAM->disc_end), i, byte);
                 }
                 jsr_push(0xEEA7);
                 end = disc_end_minus_one_frame(byte);
                 jsr_pop();
                 r = card_exit_over(r, end);
                 for (unsigned i = 0; i < 3; i++) {
-                    byte = rd8((uint16_t)(CardDiscEnd + i));
-                    wr8(CMD(2 + i), byte);
+                    byte = RD8_IDX(COL(CRAM->disc_end), i);
+                    WR8_IDX(COL(CRAM->cd_command), 2 + i, byte);
                 }
                 ex_a(&r, PLAY_KIND_TIME);
-                wr8(CMD(9), PLAY_KIND_TIME);
+                WR8_IDX(COL(CRAM->cd_command), 9, PLAY_KIND_TIME);
             } else {
                 compare_a(&r, kind, PLAY_KIND_DISC_END);
                 compare_a(&r, kind, SEARCH_KIND_TRACK);
@@ -1301,7 +1298,7 @@ CardExit cd_play(uint8_t a, uint8_t x)
         r = card_exit_over(r, step);
         compare_a(&r, r.a, PHASE_STATUS);
         if (r.a != PHASE_STATUS) {
-            value = rd8(CMD(1));
+            value = RD8_IDX(COL(CRAM->cd_command), 1);
             ex_a(&r, value);
             compare_a(&r, value, PLAY_MODE_KEEP_LAST);
             if (value == PLAY_MODE_KEEP_LAST) {
@@ -1326,7 +1323,7 @@ CardExit cd_play(uint8_t a, uint8_t x)
                 return r;
             }
         }
-        value = rd8(CMD(1));
+        value = RD8_IDX(COL(CRAM->cd_command), 1);
         ex_a(&r, value);
         compare_a(&r, value, PLAY_MODE_KEEP_LAST);
         if (value == PLAY_MODE_KEEP_LAST) {
@@ -1737,7 +1734,7 @@ CardExit cd_read(uint8_t a, uint8_t x)
         bool retry = false;
 
         do_clear(&r, 0xEC0E);
-        WR8(CRAM->cd_command, COMMAND_READ);
+        WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_READ);
         jsr_push(0xEC16);
         step = add_cd_base();
         jsr_pop();
@@ -1766,7 +1763,7 @@ CardExit cd_read(uint8_t a, uint8_t x)
                 ex_a(&r, READ_BAD_REQUEST);
                 return r;
             }
-            wr8(CMD(4), sectors);
+            WR8_IDX(COL(CRAM->cd_command), 4, sectors);
             do_send(&r, 0xEC51);
             compare_a(&r, r.a, PHASE_DATA_IN);
             if (r.a == PHASE_DATA_IN) {
@@ -1806,7 +1803,7 @@ CardExit cd_read(uint8_t a, uint8_t x)
                 ex_a(&r, READ_BAD_REQUEST);
                 return r;
             }
-            wr8(CMD(4), value);
+            WR8_IDX(COL(CRAM->cd_command), 4, value);
             do_send(&r, 0xEC83);
             compare_a(&r, r.a, PHASE_DATA_IN);
             if (r.a == PHASE_DATA_IN) {
@@ -1855,7 +1852,7 @@ CardExit cd_read(uint8_t a, uint8_t x)
                 ex_a(&r, READ_BAD_REQUEST);
                 return r;
             }
-            wr8(CMD(4), sectors);
+            WR8_IDX(COL(CRAM->cd_command), 4, sectors);
             do_send(&r, 0xECC9);
             compare_a(&r, r.a, PHASE_DATA_IN);
             if (r.a == PHASE_DATA_IN) {
@@ -1911,15 +1908,15 @@ CardExit cd_read(uint8_t a, uint8_t x)
                 mask = (uint8_t)(mask << 1);
             }
             r.x = 0;
-            wr8(CardMprStubMask, mask);
-            wr8(CardMprStub, MPR_STUB_TMA);
-            wr8(CardMprStubReturn, MPR_STUB_RTS);
+            WR8(CRAM->mpr_stub_mask, mask);
+            WR8(CRAM->mpr_stub, MPR_STUB_TMA);
+            WR8(CRAM->mpr_stub_return, MPR_STUB_RTS);
             ex_a(&r, stub_tma(mask, 0xED25));
             WR8(CRAM->saved_mpr_bank, r.a);
             value = RD8(CZP->b.lo);
             WR8(CZP->d.lo, value);
             value = RD8(CZP->a.lo);
-            wr8(CMD(4), value);
+            WR8_IDX(COL(CRAM->cd_command), 4, value);
             sectors = (uint8_t)(value >> 2);
             WR8(CRAM->cd_sectors, sectors);
             value = RD8(CZP->a.lo);
@@ -1945,7 +1942,7 @@ CardExit cd_read(uint8_t a, uint8_t x)
                 value = RD8(CZP->d.hi);
                 WR8(CZP->b.hi, (uint8_t)(value << 5));
                 WR8(CZP->b.lo, 0);
-                wr8(CardMprStub, MPR_STUB_TAM);
+                WR8(CRAM->mpr_stub, MPR_STUB_TAM);
                 value = RD8(CZP->d.lo);
                 ex_a(&r, value);
                 stub_tam(mask, value, 0xED72);
@@ -1976,7 +1973,7 @@ CardExit cd_read(uint8_t a, uint8_t x)
             if (!retry) {
                 value = r.a;
                 push8(value);
-                wr8(CardMprStub, MPR_STUB_TAM);
+                WR8(CRAM->mpr_stub, MPR_STUB_TAM);
                 ex_a(&r, RD8(CRAM->saved_mpr_bank));
                 stub_tam(mask, r.a, 0xED9D);
                 r.a = pull8();
@@ -2021,13 +2018,13 @@ CardExit cd_seek(uint8_t a, uint8_t x)
     jsr_pop();
     for (;;) {
         do_clear(&r, 0xEDD4);
-        WR8(CRAM->cd_command, COMMAND_READ);
+        WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_READ);
         jsr_push(0xEDDC);
         step = add_cd_base();
         jsr_pop();
         r = card_exit_over(r, step);
         copy_args(&r, 4, 1, 0xEDE3);
-        wr8(CMD(4), 1);
+        WR8_IDX(COL(CRAM->cd_command), 4, 1);
         ex_a(&r, 1);
         do_send(&r, 0xEDEB);
         compare_a(&r, r.a, PHASE_DATA_IN);
@@ -2082,10 +2079,10 @@ CardExit cd_contnts(uint8_t a, uint8_t x)
     if (r.a != 0) {
         return r;
     }
-    value = rd8(RESULT(0));
-    wr8(CardDiscFirstTrack, value);
-    value = rd8(RESULT(1));
-    wr8((uint16_t)(CardDiscFirstTrack + 1), value);
+    value = RD8_IDX(COL(CRAM->cd_result), 0);
+    WR8_IDX(COL(CRAM->disc_first_track), 0, value);
+    value = RD8_IDX(COL(CRAM->cd_result), 1);
+    WR8_IDX(COL(CRAM->disc_first_track), 1, value);
     WR8(CZP->a.lo, 1);
     WR8(CZP->b.lo, 0x56);
     WR8(CZP->b.hi, 0x22);
@@ -2098,8 +2095,8 @@ CardExit cd_contnts(uint8_t a, uint8_t x)
     }
     push8(r.a);
     for (unsigned i = 0; i < 3; i++) {
-        value = rd8(RESULT(i));
-        wr8((uint16_t)(CardDiscLength + i), value);
+        value = RD8_IDX(COL(CRAM->cd_result), i);
+        WR8_IDX(COL(CRAM->disc_length), i, value);
     }
     r.a = pull8();
     return r;
@@ -2160,14 +2157,14 @@ CardExit ad_trans(uint8_t a, uint8_t x)
             (void)held;
         }
         do_clear(&r, 0xF3B4);
-        WR8(CRAM->cd_command, COMMAND_READ);
+        WR8_IDX(COL(CRAM->cd_command), 0, COMMAND_READ);
         jsr_push(0xF3BC);
         step = add_cd_base();
         jsr_pop();
         r = card_exit_over(r, step);
         copy_args(&r, 4, 1, 0xF3C3);
         value = RD8(CZP->a.lo);
-        wr8(CMD(4), value);
+        WR8_IDX(COL(CRAM->cd_command), 4, value);
         do_send(&r, 0xF3CB);
         WR8(CCDU->adpcm_dma, AD_DMA_FROM_CD);
         do {
@@ -2225,19 +2222,19 @@ CardExit cd_base(uint8_t a, uint8_t x)
         mode = RD8(CZP->b.hi);
         if (mode & 0x40) {
             value = RD8(CZP->a.lo);
-            wr8(RESULT(0), value);
+            WR8_IDX(COL(CRAM->cd_result), 0, value);
             value = RD8(CZP->a.hi);
-            wr8(RESULT(1), value);
+            WR8_IDX(COL(CRAM->cd_result), 1, value);
             value = RD8(CZP->b.lo);
-            wr8(RESULT(2), value);
+            WR8_IDX(COL(CRAM->cd_result), 2, value);
         } else {
             value = RD8(CZP->a.lo);
             WR8(CZP->a.hi, value);
             WR8(CZP->a.lo, 2);
-            WR8(CZP->b.lo, (uint8_t)CardCdResult);
-            WR8(CZP->b.hi, (uint8_t)(CardCdResult >> 8));
+            WR8(CZP->b.lo, (uint8_t)ADDR_OF(CRAM->cd_result[0]));
+            WR8(CZP->b.hi, (uint8_t)(ADDR_OF(CRAM->cd_result[0]) >> 8));
             jsr_push(0xEBA9);
-            r = card_exit_over(r, cd_dinfo(CardCdResult >> 8, r.x));
+            r = card_exit_over(r, cd_dinfo((uint8_t)(ADDR_OF(CRAM->cd_result[0]) >> 8), r.x));
             jsr_pop();
         }
         held = tma(MPR6);
@@ -2253,21 +2250,21 @@ CardExit cd_base(uint8_t a, uint8_t x)
     flags = RD8(CZP->c.lo);
     if (!(flags & 0x02)) {
         value = RD8(CZP->a.lo);
-        wr8(CardCdBases, value);
+        WR8_IDX(COL(CRAM->cd_bases), 0, value);
         value = RD8(CZP->a.hi);
-        wr8((uint16_t)(CardCdBases + 1), value);
+        WR8_IDX(COL(CRAM->cd_bases), 1, value);
         value = RD8(CZP->b.lo);
-        wr8((uint16_t)(CardCdBases + 2), value);
+        WR8_IDX(COL(CRAM->cd_bases), 2, value);
         ex_a(&r, value);
     }
     flags = RD8(CZP->c.lo);
     if (!(flags & 0x01)) {
         value = RD8(CZP->a.lo);
-        wr8((uint16_t)(CardCdBases + 3), value);
+        WR8_IDX(COL(CRAM->cd_bases), 3, value);
         value = RD8(CZP->a.hi);
-        wr8((uint16_t)(CardCdBases + 4), value);
+        WR8_IDX(COL(CRAM->cd_bases), 4, value);
         value = RD8(CZP->b.lo);
-        wr8((uint16_t)(CardCdBases + 5), value);
+        WR8_IDX(COL(CRAM->cd_bases), 5, value);
         ex_a(&r, value);
     }
     return r;

@@ -14,11 +14,7 @@ enum {
     VRAM_PENDING = 1, COPY_BYTES = 3, BASE_STRIDE_PLUS = 2
 };
 
-#define CMD(i) ((uint16_t)(CardCdCommand + (i)))
-#define RESULT(i) ((uint16_t)(CardCdResult + (i)))
-#define SAVED(i) ((uint16_t)(CardSavedArgs + (i)))
 #define ARG(i) ((uint16_t)(0x2000 + (uint8_t)(0xF8 + (i))))
-#define BASES(i) ((uint16_t)(CardCdBases + (i)))
 
 /*
  * @card 00:F0EE clear_cd_command
@@ -31,7 +27,7 @@ void clear_cd_command(uint8_t x)
 {
     push8(x);
     for (unsigned i = CD_COMMAND_BYTES - 1; i != 0; i--) {
-        wr8(CMD(i), 0);
+        WR8_IDX(COL(CRAM->cd_command), i, 0);
     }
     (void)pull8();
 }
@@ -53,7 +49,7 @@ void clear_cd_result(uint8_t x)
 {
     push8(x);
     for (int i = CD_RESULT_BYTES - 1; i >= 0; i--) {
-        wr8(RESULT((unsigned)i), 0);
+        WR8_IDX(COL(CRAM->cd_result), (unsigned)i, 0);
     }
     (void)pull8();
 }
@@ -87,15 +83,15 @@ CardExit add_cd_base(void)
     uint8_t base;
 
     value = RD8(CZP->d.lo);
-    base = rd8(BASES(2u + y));
+    base = RD8_IDX(COL(CRAM->cd_bases), 2u + y);
     low = add8(value, base, false);
     WR8(CZP->d.lo, low.value);
     value = RD8(CZP->c.hi);
-    base = rd8(BASES(1u + y));
+    base = RD8_IDX(COL(CRAM->cd_bases), 1u + y);
     middle = add8(value, base, low.carry);
     WR8(CZP->c.hi, middle.value);
     value = RD8(CZP->c.lo);
-    base = rd8(BASES(y));
+    base = RD8_IDX(COL(CRAM->cd_bases), y);
     high = add8(value, base, middle.carry);
     WR8(CZP->c.lo, high.value);
     e.a = e.nz = high.value;
@@ -123,9 +119,9 @@ void save_card_args(uint8_t a, uint8_t x)
     push8(x);
     push8(a);
     for (int i = ARG_LAST; i >= 0; i--) {
-        uint8_t value = rd8(ARG(i));
+        uint8_t value = RD8_IDX(COL(CZP->args), i);
 
-        wr8(SAVED((unsigned)i), value);
+        WR8_IDX(COL(CRAM->saved_args), (unsigned)i, value);
     }
     (void)pull8();
     (void)pull8();
@@ -149,9 +145,9 @@ void restore_card_args(uint8_t a, uint8_t x)
     push8(x);
     push8(a);
     for (int i = ARG_LAST; i >= 0; i--) {
-        uint8_t value = rd8(SAVED((unsigned)i));
+        uint8_t value = RD8_IDX(COL(CRAM->saved_args), (unsigned)i);
 
-        wr8(ARG(i), value);
+        WR8_IDX(COL(CZP->args), i, value);
     }
     (void)pull8();
     (void)pull8();
@@ -176,8 +172,8 @@ uint8_t copy_args_to_command(uint8_t x, uint8_t y)
     uint8_t value = 0;
 
     for (unsigned i = 0; i < COPY_BYTES; i++) {
-        value = rd8(ARG(x + i));
-        wr8(CMD((unsigned)y + i), value);
+        value = rd8(ARG(x + i));    /* a zero page index wraps inside the page: no typed column wraps */
+        WR8_IDX(COL(CRAM->cd_command), (unsigned)y + i, value);
     }
     return value;
 }
@@ -202,9 +198,9 @@ uint8_t write_vram_word_pending(void)
 
     WR8(CRAM->vram_pending, VRAM_PENDING);
     low = RD8(CZP->b.lo);
-    wr8(VdcDataLo, low);
+    WR8(CVDC->data_lo, low);
     high = RD8(CZP->b.hi);
-    wr8(VdcDataHi, high);
+    WR8(CVDC->data_hi, high);
     return high;
 }
 

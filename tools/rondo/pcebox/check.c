@@ -440,7 +440,9 @@ static uint64_t section_end(Span *s, uint64_t i)
         else if (e->type == EV_CLOSE && open-- == 0 && mode != MODE_A5)
             return e->kind == CL_LEFT ? k : NO_RETURN;    /* a call left open at the record's end closes there */
     }
-    return NO_RETURN;
+    /* A5, judging a call still open at the end of the log: the handler had not returned either, and what the
+     * call did so far is all that is judged. */
+    return mode == MODE_A5 && prefix_mode ? s->end : NO_RETURN;
 }
 
 static int same_state(const Ev *e, const uint8_t *mpr, uint8_t speed)

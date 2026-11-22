@@ -41,6 +41,10 @@ extern const unsigned resident_count;
 typedef struct { uint32_t disc; void (*abi)(void); } DiscDispatch;
 extern const DiscDispatch disc_table[];
 extern const unsigned disc_count;
+/* the draft side only: pieces of code with no C of their own (the middle of another routine, a tail a draft jumps
+ * into) that the draft runs on into where the lifted C is one function */
+extern const DiscDispatch piece_table[];
+extern const unsigned piece_count;
 
 static uint8_t mem[65536];
 static uint8_t written[65536];
@@ -265,10 +269,14 @@ static void (*find_abi(uint16_t target))(void)
 {
     uint32_t d = resident_disc(target);
 
-    if (d != 0xFFFFFFFFu)
+    if (d != 0xFFFFFFFFu) {
         for (unsigned i = 0; i < disc_count; i++)
             if (disc_table[i].disc == d)
                 return disc_table[i].abi;
+        for (unsigned i = 0; i < piece_count; i++)
+            if (piece_table[i].disc == d)
+                return piece_table[i].abi;
+    }
     for (unsigned i = 0; i < dispatch_count; i++)
         if (dispatch_table[i].run == target)
             return dispatch_table[i].abi;
@@ -315,6 +323,15 @@ void call_original(uint16_t target)
 {
     enter(target, 1);
 }
+
+/*
+ * leave_original(addr): the draft set S outright (a TXS), so the call's frame is gone and what follows is not the call's.
+ * As in A5 (check.c) the C returns right after it and the call is judged up to here: nothing to do in the runtime.
+ */
+void leave_original(uint16_t addr) { (void)addr; }
+
+/* The draft sets this before each instruction (the pc of the instruction it stands for); the runtime ignores it. */
+uint16_t rondo_pc;
 
 /* A tail jump that says where it came from (the checker's entry test uses the origin; the comparison does not). */
 void call_original_at(uint16_t from, uint16_t addr)

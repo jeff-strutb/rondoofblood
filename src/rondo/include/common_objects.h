@@ -122,6 +122,39 @@ typedef struct {
 
 /* The object turns into the kind a table names, thrown up at the player's place; a zero clears it. */
 KindChange ChangeKindFromTable(uint8_t slot);
+/* What AnimateKind88 left. */
+typedef struct {
+    bool stepped;         /* the kind was $88 and its list was stepped */
+    uint8_t value;        /* the kind compared, or the frame copied */
+    uint8_t y;            /* Y as it ends */
+    FrameStep step;
+} Kind88Step;
+
+/* An object of kind $88 steps its animation list and keeps the frame in OBJ_3510. */
+Kind88Step AnimateKind88(uint8_t slot, uint8_t y);
+
+/* What StartKindFromCharacter left: the table byte, its index and the add that made it. */
+typedef struct {
+    uint8_t last;
+    uint8_t index;
+    Sum sum;
+} KindStart;
+
+/* An object's kind is settled, its record loaded, and OBJ_3510 set from a table by kind and character. */
+KindStart StartKindFromCharacter(uint8_t slot);
+
+/* What ClearOnLanding did. */
+typedef struct {
+    bool probed;          /* the object was not rising: the floor was asked */
+    bool cleared;         /* the probe said floor: the object was cleared */
+    Probe probe;
+    uint8_t frame;        /* not cleared: the frame taken from OBJ_3510 */
+    uint8_t state;        /* not cleared: the new state */
+} LandClear;
+
+/* A falling object that is cleared when the floor is reached, else moves on a state. */
+LandClear ClearOnLanding(uint8_t slot, uint8_t column, bool carry_in);
+
 /* 1 shifted left count times, as a byte. */
 uint8_t BitMaskFromIndex(uint8_t count);
 

@@ -43,12 +43,12 @@ def run_oracle(tree, what, script, out, box):
 
 KINDS = ("MOVED", "EXTRA", "MISSING", "VALUE", "STACK", "STATE", "REGS", "CALL", "INT")
 CAUSES = ("left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix")
-LABELS = (("swapped", r"(\d+) swapped"), ("compared", r"frames compared (\d+)"), ("identical", r"identical (\d+)"),
-          ("code", r"first differing (-?\d+)"), ("defects", r"access defects (\d+)"),
-          ("interrupts", r"interrupts inside (\d+)"), ("originals", r"original calls (\d+)"),
-          ("waits", r"waits (\d+)"), ("expected", r"frames expected (\d+)"), ("parked", r"parked (\d+)"),
-          ("kept", r"kept (\d+)"), ("unreached", r"unreached (\d+)"), ("unopened", r"unopened arrivals (\d+)"),
-          ("diagnostic", r"diagnostic (\d+)"))
+LABELS = (("swapped", r"(-?\d+) swapped"), ("compared", r"frames compared (-?\d+)"), ("identical", r"identical (-?\d+)"),
+          ("code", r"first differing (-?\d+)"), ("defects", r"access defects (-?\d+)"),
+          ("interrupts", r"interrupts inside (-?\d+)"), ("originals", r"original calls (-?\d+)"),
+          ("waits", r"waits (-?\d+)"), ("expected", r"frames expected (-?\d+)"), ("parked", r"parked (-?\d+)"),
+          ("kept", r"kept (-?\d+)"), ("unreached", r"unreached (-?\d+)"), ("unopened", r"unopened arrivals (-?\d+)"),
+          ("diagnostic", r"diagnostic (-?\d+)"))
 
 
 def read_a5(out, script, stdout):
@@ -111,7 +111,7 @@ def read_a7(out, script, stdout):
     if verdict == "IDENTICAL" and not (f["compared"] == f["expected"] == f["identical"] and not f["defects"]
                                        and not f["unreached"] and not f["unopened"]):
         raise ValueError("code -1 but the line's own counts do not say identical: " + line[:200])
-    note = f"{f['compared']} of {f['expected']} frames compared, {f['identical']} identical"
+    note = f"{f['compared']} of {f['expected'] if f['expected'] >= 0 else 'unknown'} frames compared, {f['identical']} identical"
     if verdict == "DIVERGENT":
         note = f"first differing frame {code}; " + note
     detail = f"{verdict}: {note}; access defects {f['defects']}; parked {f['parked']}, kept {f['kept']}, " \

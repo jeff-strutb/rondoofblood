@@ -588,6 +588,7 @@
 #define zWaitTimer4 0x207B /* frames left in a fourth wait */
 #define PaletteWork 0x3B00 /* 32 bytes: a palette of 16 colours read from the VCE to be worked on */
 #define PaletteWorkSpare 0x3B20 /* the colour kept while a palette is rotated */
+#define StageMaskBuffer 0x3B40 /* 128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask */
 #define TitleSaveRead 0x3F83 /* 1 once the title has read the backup file */
 #define TitleSeen 0x3F84 /* 1 once the title has run to its end; then Run skips it */
 #define TitleSteps 0x802E /* the title's handlers by sub-mode, a word each */

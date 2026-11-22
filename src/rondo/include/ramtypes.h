@@ -780,4 +780,14 @@ _Static_assert(ListChannels_BASE + offsetof(ListChannels, place) + 0 == ListChan
 _Static_assert(ListChannels_BASE + offsetof(ListChannels, hold) + 0 == ListChannelHold, "ListChannels.hold is not at ListChannelHold");
 #define LCH ((ListChannels *)ListChannels_BASE)
 
+/* StageWork: one struct at $3B40, 1 element(s), 128 bytes */
+#define StageWork_BASE 0x3B40
+#define StageWork_COUNT 1
+typedef struct {
+    uint8_t mask_buffer[128]; /* StageMaskBuffer */
+} StageWork;
+_Static_assert(sizeof(StageWork) == 0x80, "StageWork size");
+_Static_assert(StageWork_BASE + offsetof(StageWork, mask_buffer) + 0 == StageMaskBuffer, "StageWork.mask_buffer is not at StageMaskBuffer");
+#define STAGEWORK ((StageWork *)StageWork_BASE)
+
 #endif

@@ -1,0 +1,2 @@
+name,len,elem,readers,note,bank,disc,copies,reads,status
+StageMaskOffsets,8,u8,MaskStageRowCopy|MaskStageRow,the 8 offsets of a masking step,6B,127949,1,3,SETTLED

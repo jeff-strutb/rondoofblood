@@ -22,6 +22,7 @@
 
 #include "machine.h"
 #include "ramtypes.h"
+#include "tables.h"
 
 /* The original address of a field. Not a read. */
 #define ADDR_OF(field) ((uint16_t)(uintptr_t) & (field))
@@ -105,5 +106,22 @@
 #define RD8_PTR(pointer_lo) rd8_zp(ADDR_OF8(pointer_lo))
 #define RD8_PTR_Y(pointer_lo, y) rd8_zp_y(ADDR_OF8(pointer_lo), (y))
 #define WR8_PTR_Y(pointer_lo, y, value) wr8_zp_y(ADDR_OF8(pointer_lo), (y), (value))
+
+/*
+ * A disc table (config/rondo/tables.csv, settled from the traces by tools/rondo/tables.py): data in code or in a block
+ * the loader brought in. TBL8 reads the byte at a byte index; TBL16_LH and TBL16_HL read the element at an element index
+ * of a word table, low byte first or high byte first (the order is the assembly's, as for RD16_LH). Each is the same
+ * checked read as rd8 of the table's address plus the index. A table no script has read in one bank has no
+ * NAME_TBL in tables.h, and using it here is a compile error: a reader exists only for a table the traces settled.
+ */
+#define TBL8(name, index) rd8((uint16_t)(name##_TBL + (index)))
+#define TBL16_LH(name, index) \
+    ({ (void)sizeof(char[name##_TBL_ELEM == 2 ? 1 : -1]); uint16_t at_ = (uint16_t)(2 * (index)); \
+       uint8_t lo_ = rd8((uint16_t)(name##_TBL + at_)); uint8_t hi_ = rd8((uint16_t)(name##_TBL + at_ + 1)); \
+       (uint16_t)(lo_ | (hi_ << 8)); })
+#define TBL16_HL(name, index) \
+    ({ (void)sizeof(char[name##_TBL_ELEM == 2 ? 1 : -1]); uint16_t at_ = (uint16_t)(2 * (index)); \
+       uint8_t hi_ = rd8((uint16_t)(name##_TBL + at_ + 1)); uint8_t lo_ = rd8((uint16_t)(name##_TBL + at_)); \
+       (uint16_t)(lo_ | (hi_ << 8)); })
 
 #endif

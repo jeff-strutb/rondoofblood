@@ -29,8 +29,8 @@ Records file (ASCII, one row a line, `#` starts a comment, numbers in hex as in 
         A second name for a member, kept while code still uses the old one: both names are the same bytes (an
         anonymous union in the struct), and both are checked against the symbol. Drop the row when the last user moves.
         TARGET may be MEMBER.SUB (SUB one of lo, mid, hi) to name one byte of a wide member: a scratch byte another
-        routine uses under its own name; or MEMBER+N or MEMBER+N[K], the byte (or K bytes) at offset N of an array
-        member (a u8[N] array two routines see differently). SYMBOL is then the symbol of that byte, and is checked
+        routine uses under its own name; or MEMBER+N, MEMBER+N[K] or MEMBER+N:TYPE, the byte, K bytes or a wide value (u16le and so on) at offset N
+        of an array member (a u8[N] array two routines see differently). SYMBOL is then the symbol of that byte, and is checked
         against its address.
 
 A row that disagrees with the symbols, two members that overlap, a symbol claimed twice, a name used
@@ -260,7 +260,7 @@ def generate(path, symbols, taken_names, guard, include, origin):
                     raise SpecError(f"{al['where']}: alias {al['alias']} is not a free name")
                 names.add(al["alias"])
                 m.setdefault("aliasnames", []).append(al["alias"])
-                tm = re.match(r"^\w+(?:\.(\w+)|\+(\d+)(?:\[(\d+)\])?)?$", al["member"])
+                tm = re.match(r"^\w+(?:\.(\w+)|\+(\d+)(?:\[(\d+)\])?(?::(\w+))?)?$", al["member"])
                 if tm is None:
                     raise SpecError(f"{al['where']}: cannot read alias target {al['member']}")
                 if tm.group(1) or tm.group(2) is not None:
@@ -272,7 +272,10 @@ def generate(path, symbols, taken_names, guard, include, origin):
                         if m["shape"] != "array":
                             raise SpecError(f"{al['where']}: {m['name']} is not an array")
                         idx, cnt = int(tm.group(2)), int(tm.group(3) or 0)
-                        if idx + max(cnt, 1) > m["w"]:
+                        wt = tm.group(4)
+                        if wt and wt not in WIDE:
+                            raise SpecError(f"{al['where']}: {wt} is not a wide type")
+                        if idx + (len(WIDE[wt][1]) if wt else max(cnt, 1)) > m["w"]:
                             raise SpecError(f"{al['where']}: {al['member']} runs past {m['name']}'s {m['w']} bytes")
                     if al["symbol"]:
                         if al["symbol"] not in addr_of:
@@ -282,7 +285,7 @@ def generate(path, symbols, taken_names, guard, include, origin):
                             raise SpecError(f"{al['where']}: {al['symbol']} is at {addr_of[al['symbol']]:04X}, {al['member']} of "
                                             f"{rname}.{m['name']} is at {want:04X}")
                         claimed[al["symbol"]] = f"{rname}.{al['alias']}"
-                    sub_decl = "uint8_t %s%s" % (al["alias"], ("[%d]" % cnt) if cnt else "")
+                    sub_decl = ("%s %s" % (WIDE[wt][0], al["alias"])) if tm.group(4) else "uint8_t %s%s" % (al["alias"], ("[%d]" % cnt) if cnt else "")
                     subs.append("struct { %s%s; }" % (("uint8_t _pad_%s[%d]; " % (al["alias"], idx)) if idx else "", sub_decl))
                     m.setdefault("aliassyms", []).append((al["alias"], al["symbol"]))
                 else:

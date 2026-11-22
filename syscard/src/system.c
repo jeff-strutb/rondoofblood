@@ -1,5 +1,6 @@
 /* The BIOS's system entries. */
 #include "card.h"
+#include "card_access.h"
 #include "syscard.h"
 
 enum {
@@ -56,31 +57,59 @@ void abi_ex_memopen(void)
     }
 }
 
+/* What ex_setvec leaves: the flags it pulled, and X unless the vector was the soft reset's. */
+typedef struct {
+    uint8_t flags;
+    bool sets_x;
+    uint8_t x;
+} SetVec;
+
 /*
  * @card 00:F034 ex_setvec
  * WHAT IT DOES: Sets an interrupt handler the card calls.
- * HOW: A word in the table at $2200 by which; which 6 is the soft reset's, kept apart.
- * Entry: A which, X and Y the address. Exit: flags as they were, A and Y kept; X the
+ * HOW: The flags are pushed and interrupts held off; a word goes in the table at $2200 by which, through
+ * A, Y and X pushed and pulled; which 6 is the soft reset's, kept apart; the flags are pulled.
+ * WAITS: no.
+ * Entry: A which, X and Y the address; the flags (pushed). Exit: flags as pushed, A and Y kept; X the
  * table's offset of the high byte unless which is 6.
  */
-void ex_setvec(uint8_t which, uint8_t low, uint8_t high)
+SetVec ex_setvec(uint8_t which, uint8_t low, uint8_t high, uint8_t flags)
 {
-    uint8_t offset = (uint8_t)(which << 1);
+    SetVec out = { 0, false, 0 };
+    uint8_t offset;
+    uint8_t value;
 
+    push8(php_byte(flags));
+    sei();
     if (which == VECTOR_SOFT_RESET) {
-        wr8(CardSoftResetLo, low);
-        wr8(CardSoftResetHi, high);
-        return;
+        WR8(CRAM->soft_reset.lo, low);
+        WR8(CRAM->soft_reset.hi, high);
+    } else {
+        push8(which);
+        push8(high);
+        push8(low);
+        offset = (uint8_t)(which << 1);
+        value = pull8();
+        WR8_IDX(ADDR_OF8(CRAM->irq_vectors), offset, value);
+        offset++;
+        value = pull8();
+        WR8_IDX(ADDR_OF8(CRAM->irq_vectors), offset, value);
+        (void)pull8();
+        out.sets_x = true;
+        out.x = offset;
     }
-    wr8((uint16_t)(CardIrqVectors + offset), low);
-    wr8((uint16_t)(CardIrqVectors + (uint8_t)(offset + 1)), high);
+    out.flags = pull8();
+    return out;
 }
 
 void abi_ex_setvec(void)
 {
-    ex_setvec(cpu.a, cpu.x, cpu.y);
-    if (cpu.a != VECTOR_SOFT_RESET)
-        cpu.x = (uint8_t)((uint8_t)(cpu.a << 1) + 1);
+    SetVec out = ex_setvec(cpu.a, cpu.x, cpu.y, cpu.p);
+
+    cpu.p = out.flags;
+    if (out.sets_x) {
+        cpu.x = out.x;
+    }
 }
 
 /*
@@ -142,26 +171,40 @@ enum {
  * handlers to the card's default at $E8E2.
  * HOW: Writes the reset vector and CardResetMark, then the first handler, and a block move
  * repeats its two bytes over the other five.
- * Entry: nothing. Exit: A $E8, N 1, Z 0. X, Y, C, V kept.
+ * WAITS: no.
+ * Entry: nothing; X, Y (pushed by the block move; A is the default handler's high byte then). Exit: A $E8,
+ * N 1, Z 0. X, Y, C, V kept.
  */
-void init_card_vectors(void)
+CardExit init_card_vectors(uint8_t x, uint8_t y)
 {
-    wr8(CardSoftResetLo, (uint8_t)SOFT_RESET_ENTRY);
-    wr8(CardSoftResetHi, (uint8_t)(SOFT_RESET_ENTRY >> 8));
-    wr8(CardResetMark, RESET_MARK);
-    wr8(CardZpE6, 0);
-    for (unsigned i = 0; i < IRQ_VECTOR_COUNT; i++) {
-        wr8((uint16_t)(CardIrqVectors + 2 * i), (uint8_t)DEFAULT_IRQ_HANDLER);
-        wr8((uint16_t)(CardIrqVectors + 2 * i + 1), (uint8_t)(DEFAULT_IRQ_HANDLER >> 8));
+    CardExit e = { 0 };
+
+    WR8(CRAM->soft_reset.lo, (uint8_t)SOFT_RESET_ENTRY);
+    WR8(CRAM->soft_reset.hi, (uint8_t)(SOFT_RESET_ENTRY >> 8));
+    WR8(CZP->reset_mark, RESET_MARK);
+    WR8(CZP->zp_e6, 0);
+    WR8_IDX(ADDR_OF8(CRAM->irq_vectors), 0, (uint8_t)DEFAULT_IRQ_HANDLER);
+    WR8_IDX(ADDR_OF8(CRAM->irq_vectors), 1, (uint8_t)(DEFAULT_IRQ_HANDLER >> 8));
+    push8(y);
+    push8((uint8_t)(DEFAULT_IRQ_HANDLER >> 8));
+    push8(x);
+    for (unsigned i = 0; i < 10; i++) {
+        uint8_t byte = RD8_IDX(ADDR_OF8(CRAM->irq_vectors), i & 1);
+
+        WR8_IDX(ADDR_OF8(CRAM->irq_vectors), 2 + i, byte);
     }
-    wr8(CardIrqFlags, 0);
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
+    WR8(CZP->irq_flags, 0);
+    e.a = e.nz = (uint8_t)(DEFAULT_IRQ_HANDLER >> 8);
+    e.set_a = e.set_nz = true;
+    return e;
 }
 
 void abi_init_card_vectors(void)
 {
-    init_card_vectors();
-    cpu.a = (uint8_t)(DEFAULT_IRQ_HANDLER >> 8);
-    abi_nz(cpu.a);
+    card_exit_apply(init_card_vectors(cpu.x, cpu.y));
 }
 
 enum { RND_FEEDBACK_BIT = 6 };

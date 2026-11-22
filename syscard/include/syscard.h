@@ -126,36 +126,15 @@ BackupAccess bm_files(uint8_t a);
 uint8_t bm_files_result(BackupFiles files);
 void bm_files_exit_shim(BackupFiles files);
 
-/* How ex_scrmod set the screen, and the values its exit shows. */
-typedef struct {
-    bool accepted;            /* false: the fallback mode was set instead */
-    uint8_t columns;
-    uint8_t width_register;   /* the memory width register ex_dotmod left */
-    uint8_t dot_bits;         /* what ex_dotmod was given */
-    uint8_t end_inverse;      /* the horizontal end's inverse, before its base was added */
-    uint8_t end_base;
-} ScreenMode;
 
-/* What setting the vertical display left. */
-typedef struct {
-    uint8_t rows_dots;        /* the rows times eight, as a byte */
-    uint8_t vce;              /* what went to the VCE */
-} ScreenRows;
 
-ScreenRows set_screen_rows(void);
-ScreenMode ex_scrmod(uint8_t mode, uint8_t columns, uint8_t rows);
-ScreenMode ex_scrmod_fallback(void);
-void ex_satclr(void);
+CardExit set_screen_rows(void);
+CardExit ex_scrmod(uint8_t mode, uint8_t columns, uint8_t rows);
+CardExit ex_scrmod_fallback(void);
+CardExit ex_satclr(void);
 
-/* What ex_sprput did. */
-typedef struct {
-    bool put;           /* false: the table already held 64 sprites */
-    uint8_t count;      /* CardSatFlag as it was read */
-    uint16_t sat;       /* CardSatAddress */
-    uint8_t last;       /* the last byte written to the VDC */
-} SpritePut;
 
-SpritePut ex_sprput(void);
+CardExit ex_sprput(uint8_t y);
 
 /* A byte from ex_rnd, and the bit its last shift carried out. */
 typedef struct {
@@ -190,36 +169,24 @@ typedef struct {
 
 CardVersion ex_getver(void);
 uint8_t map_boot_ram(void);
-void init_card_vectors(void);
+CardExit init_card_vectors(uint8_t x, uint8_t y);
 CdSubcodeRead reset_cd_unit(void);
 void cd_subrd_exit_shim(CdSubcodeRead read);
 
-void clear_vram(void);
-uint8_t load_font(void);
-uint8_t boot_display(void);
+CardExit clear_vram(void);
+CardExit load_font(void);
+CardExit boot_display(void);
 
-/* What a run of print_text's list did: where its end mark was, and the last text placed. */
-typedef struct {
-    uint8_t end;
-    bool placed;
-    uint8_t column;
-    uint8_t row;
-} TextRun;
 
-uint16_t text_cursor(uint8_t column, uint8_t row);
-TextRun print_text(void);
-TextRun print_text_run(uint8_t index);
+CardExit text_cursor(uint8_t column, uint8_t row);
+CardExit print_text(void);
+CardExit print_text_run(uint8_t y);
 
 /* What the start screen ended with: run (with the drive's test) or select, and any wait. */
 enum { START_RUN = 0, START_SELECT = 1 };
 
-typedef struct {
-    uint8_t choice;
-    CdStat drive;
-    bool waited;
-} StartScreen;
 
-StartScreen start_screen(void);
+CardExit start_screen(void);
 uint8_t ad_reset(void);
 AdPlay ad_play(void);
 /* What ad_read did, and what its exit shows. */
@@ -327,33 +294,27 @@ CardExit msf_to_lba(uint8_t x);
 
 CardExit cd_base(uint8_t a, uint8_t x);
 
-/* What ex_vsync did: returned at once, or waited for the frame count to move. */
-typedef struct {
-    bool waited;
-    uint8_t before;
-    uint8_t after;
-} VsyncWait;
 
-uint8_t ex_imode(uint8_t mode);
-uint8_t ex_vmode(void);
-uint8_t ex_hmode(void);
-VsyncWait ex_vsync(void);
-uint8_t ex_rcron(void);
-uint8_t ex_rcroff(void);
-uint8_t ex_irqon(void);
-uint8_t ex_irqoff(void);
+CardExit ex_imode(uint8_t mode);
+CardExit ex_vmode(void);
+CardExit ex_hmode(void);
+CardExit ex_vsync(void);
+CardExit ex_rcron(void);
+CardExit ex_rcroff(void);
+CardExit ex_irqon(void);
+CardExit ex_irqoff(void);
 void ex_bgon(void);
 void ex_bgoff(void);
 void ex_spron(void);
 void ex_sproff(void);
 void ex_dspon(void);
 void ex_dspoff(void);
-uint8_t ex_dmamod(uint8_t mode);
-uint8_t ex_sprdma(void);
-void ex_setrcr(uint8_t low, uint8_t high);
-void ex_setred(uint8_t low, uint8_t high);
-void ex_setwrt(uint8_t low, uint8_t high);
-uint8_t ex_setdma(void);
+CardExit ex_dmamod(uint8_t mode);
+CardExit ex_sprdma(void);
+CardExit ex_setrcr(uint8_t a, uint8_t x);
+CardExit ex_setred(uint8_t a, uint8_t x);
+CardExit ex_setwrt(uint8_t a, uint8_t x);
+CardExit ex_setdma(void);
 
 /* Where sjis_to_font_index gave up, if it did. */
 typedef enum {
@@ -391,14 +352,8 @@ void expand_12dot_glyph(void);
 FontGet ex_getfnt(void);
 void ex_getfnt_exit_shim(FontGet get);
 
-/* What ex_colorcmd moved: the command, and each set's count of 16-colour palettes. */
-typedef struct {
-    uint8_t command;
-    uint8_t background_sets;
-    uint8_t sprite_sets;
-} ColorCommand;
 
-ColorCommand ex_colorcmd(void);
+CardExit ex_colorcmd(uint8_t x, uint8_t y);
 
 
 AdTrans ad_trans(uint8_t a, uint8_t x);
@@ -465,11 +420,10 @@ MaMul8u ma_mul8u(uint8_t a, uint8_t flags);
 uint8_t cd_fade(uint8_t type);
 uint8_t ad_stop(void);
 AdStat ad_stat(void);
-uint8_t ex_scrsiz(uint8_t size);
-void ex_scrsiz_exit_shim(uint8_t given, uint8_t width);
-uint8_t ex_dotmod(uint8_t mode);
+CardExit ex_scrsiz(uint8_t size);
+void ex_scrsiz_exit_shim(CardExit e);
+CardExit ex_dotmod(uint8_t mode);
 MemOpen ex_memopen(void);
-void ex_setvec(uint8_t which, uint8_t low, uint8_t high);
 
 uint8_t cd_ack_on(void);
 uint8_t cd_ack_off(void);

@@ -263,11 +263,12 @@ void abi_FrameModeDispatch(void)
  * WHAT IT DOES: Mode 0: the boot overlay's frame, then the display off, the screen size
  * set and on to the title; a negative zModeDone goes on to the title's sub-mode 3.
  * HOW: Overlay frame, WaitVblankDisplayOff, the card's ex_scrsiz, SetGameMode.
+ * WAITS: yes, for the vertical blank, through WaitVblankDisplayOff; the stack there is the caller's return and this call's two bytes.
  * Entry: nothing. Exit, the overlay not done: as it leaves them, with A zModeDone, N and Z
  * from it. Exit: A zModeDone, or 3 if it was negative; N and Z from A; X zModeDone; Y and C as
  * ex_scrsiz leaves them; V as the overlay left it.
  */
-typedef struct { OverlayFrame frame; uint8_t control; uint8_t width; uint8_t done_again; } BootRun;
+typedef struct { OverlayFrame frame; uint8_t control; CardExit width; uint8_t done_again; } BootRun;
 
 BootRun ModeBoot(void)
 {
@@ -278,7 +279,9 @@ BootRun ModeBoot(void)
         return run;
     run.control = WaitVblankDisplayOff();
     wr8(zDisplayDelay, BOOT_DISPLAY_DELAY);
+    jsr_push(0x5138);
     run.width = ex_scrsiz(SCREEN_SIZE);
+    jsr_pop();
     wr8(zStage, 0);
     wr8(zCharacterLoaded, 0xFF);
     wr8(zCharacter, 0);
@@ -298,7 +301,7 @@ void abi_ModeBoot(void)
         return;
     load_shim(run.control);
     load_shim(SCREEN_SIZE);
-    ex_scrsiz_exit_shim(SCREEN_SIZE, run.width);
+    ex_scrsiz_exit_shim(run.width);
     cpu.x = run.done_again;
     load_shim(run.done_again & 0x80 ? BOOT_SUB_MODE : run.done_again);
 }

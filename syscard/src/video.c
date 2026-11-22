@@ -1,524 +1,571 @@
-/* The BIOS's video setters. */
+/*
+ * The BIOS's video setters: the VDC's registers through its address port, the memory width, the display
+ * size, the sprite table, the palettes.
+ *
+ * A routine's registers and flags at its exit are a CardExit (syscard.h). The VDC's register select is
+ * written to the zero page copy and to the port, each time. Bytes named by address, not yet by field: the
+ * sprite buffer, the palette sets' counts and the colour read stub in ROM.
+ */
 #include "card.h"
+#include "card_access.h"
 #include "syscard.h"
 
 enum {
-    VDC_REG_MWR = 0x09,
-    MWR_SIZE_BITS = 0x70, MWR_DOT_BITS = 0x8F, SCREEN_SIZE_MASK = 0x07
+    VDC_REG_MAWR = 0x00, VDC_REG_VWR = 0x02, VDC_REG_CR = 0x05, VDC_REG_RCR = 0x06, VDC_REG_BXR = 0x07,
+    VDC_REG_MWR = 0x09, VDC_REG_HSR = 0x0A, VDC_REG_HDR = 0x0B, VDC_REG_VPR = 0x0C, VDC_REG_VDW = 0x0D,
+    VDC_REG_VCR = 0x0E, VDC_REG_DCR = 0x0F, VDC_REG_SOUR = 0x10, VDC_REG_DESR = 0x11, VDC_REG_LENR = 0x12,
+    VDC_REG_SATB = 0x13,
+    MWR_SIZE_BITS = 0x70, MWR_DOT_BITS = 0x8F, SCREEN_SIZE_MASK = 0x07, SIZE_SHIFT = 4,
+    CR_BIT_RC = 2, CR_BIT_VBLANK = 3, CR_BIT_SPRITES = 6, CR_BIT_BACKGROUND = 7, CRHI_BIT_3 = 3, CRHI_BIT_4 = 4,
+    IRQ_FLAG_FRAME = 1, SAT_SPRITES = 0x40, SPRITE_BYTES = 8, SAT_ENTRY_SHIFT = 2, DCR_MASK = 0x1F,
+    SCRMOD_FALLBACK_COLUMNS = 0x20, SCRMOD_FALLBACK_ROWS = 0x1E, ROWS_MIN = 0x0A, ROWS_LIMIT = 0x1F,
+    COLUMNS_LOW_MIN = 0x0A, COLUMNS_LOW_LIMIT = 0x23, COLUMNS_HIGH_MIN = 0x10, COLUMNS_HIGH_LIMIT = 0x2D,
+    MODE_KEEP_BITS = 0x05, MODE_HIGH_BIT = 0x01, MODE_VCE_FLIP = 0x04
 };
 
-/* Sets the bits of the VDC's memory width register, and keeps a copy. */
-static uint8_t set_memory_width(uint8_t keep, uint8_t bits)
-{
-    uint8_t width = (uint8_t)((rd8(CardVdcMwr) & keep) | bits);
+#define STUB(i) ((uint16_t)(CardBlockStub + (i)))
 
-    wr8(CardVdcMwr, width);
-    wr8(CardVdcReg, VDC_REG_MWR);
-    wr8(VdcAddress, VDC_REG_MWR);
-    wr8(VdcDataLo, width);
-    return width;
+/* ex_scrmod and its siblings select a VDC register by writing it to the zero page copy and to the port. */
+static void select_vdc_register(uint8_t reg)
+{
+    WR8(CZP->vdc_reg, reg);
+    WR8(CVDC->addr, reg);
 }
 
-static uint8_t size_bits(uint8_t size)
+/* RMB and SMB on a zero page byte: one read, one write. */
+static void clear_zp_bit(uint16_t at, unsigned bit)
 {
-    return (uint8_t)((size & SCREEN_SIZE_MASK) << 4);
+    uint8_t value = rd8(at);
+
+    wr8(at, (uint8_t)(value & ~(1u << bit)));
+}
+
+static void set_zp_bit(uint16_t at, unsigned bit)
+{
+    uint8_t value = rd8(at);
+
+    wr8(at, (uint8_t)(value | (1u << bit)));
+}
+
+static CardExit exit_a(uint8_t a)
+{
+    CardExit e = { 0 };
+
+    e.a = e.nz = a;
+    e.set_a = e.set_nz = true;
+    return e;
+}
+
+/* The memory width register's bits kept, and its new ones: the register, then its copy at the port. */
+static CardExit set_memory_width(uint8_t keep, uint8_t bits)
+{
+    CardExit e;
+    uint8_t value;
+    uint8_t width;
+
+    value = RD8(CRAM->vdc_mwr);
+    WR8(CRAM->vdc_mwr, (uint8_t)(value & keep));
+    value = RD8(CRAM->vdc_mwr);
+    WR8(CRAM->vdc_mwr, (uint8_t)(bits | value));
+    select_vdc_register(VDC_REG_MWR);
+    width = RD8(CRAM->vdc_mwr);
+    WR8(CVDC->data_lo, width);
+    e = exit_a(width);
+    e.y = bits;
+    e.set_y = true;
+    return e;
 }
 
 /*
  * @card 00:E267 ex_scrsiz
  * WHAT IT DOES: Sets the size of the background map.
  * HOW: The size's three bits go to bits 4-6 of the memory width register.
+ * WAITS: no.
  * Entry: A size. Exit: A the register, N and Z from it, Y the bits, C clear. X and V kept.
  */
-uint8_t ex_scrsiz(uint8_t size)
+CardExit ex_scrsiz(uint8_t size)
 {
-    return set_memory_width(MWR_DOT_BITS, size_bits(size));
+    CardExit e = set_memory_width(MWR_DOT_BITS, (uint8_t)((size & SCREEN_SIZE_MASK) << SIZE_SHIFT));
+
+    e.c = false;
+    e.set_c = true;
+    return e;
+}
+
+/* ex_scrsiz's exit, for its wrapper and for a caller's that ends in it. */
+void ex_scrsiz_exit_shim(CardExit e)
+{
+    card_exit_apply(e);
 }
 
 void abi_ex_scrsiz(void)
 {
-    uint8_t given = cpu.a;
-
-    ex_scrsiz_exit_shim(given, ex_scrsiz(given));
-}
-
-/* ex_scrsiz's exit, for its wrapper and for a caller's that ends in it: the size given, and what it returned. */
-void ex_scrsiz_exit_shim(uint8_t given, uint8_t width)
-{
-    cpu.a = width;
-    cpu.y = size_bits(given);
-    abi_nz(width);
-    abi_flag(P_C, false);
+    ex_scrsiz_exit_shim(ex_scrsiz(cpu.a));
 }
 
 /*
  * @card 00:E272 ex_dotmod
  * WHAT IT DOES: Sets the VRAM dot width and sprite width of the memory width register.
  * HOW: The mode's bits outside the map size go to the register.
+ * WAITS: no.
  * Entry: A mode. Exit: A the register, N and Z from it, Y the bits. X, C, V kept.
  */
-uint8_t ex_dotmod(uint8_t mode)
+CardExit ex_dotmod(uint8_t mode)
 {
-    return set_memory_width(MWR_SIZE_BITS, mode & MWR_DOT_BITS);
+    return set_memory_width(MWR_SIZE_BITS, (uint8_t)(mode & MWR_DOT_BITS));
 }
 
 void abi_ex_dotmod(void)
 {
-    uint8_t bits = cpu.a & MWR_DOT_BITS;
-    uint8_t width = ex_dotmod(cpu.a);
-
-    cpu.a = width;
-    cpu.y = bits;
-    abi_nz(width);
-}
-
-enum {
-    VDC_REG_MAWR = 0x00, VDC_REG_VWR = 0x02,
-    VDC_REG_HSR = 0x0A, VDC_REG_HDR = 0x0B, VDC_REG_VSR = 0x0C, VDC_REG_VDR = 0x0D,
-    VDC_REG_VCR = 0x0E,
-    SCREEN_MODE_BITS = 0x05, SCREEN_WIDE = 0x01, VCE_CLOCK_FLIP = 0x04,
-    HSYNC_WIDTH_NARROW = 0x02, HSYNC_WIDTH_WIDE = 0x03,
-    HSTART_NARROW = 0x13, HSTART_WIDE = 0x19, HEND_NARROW = 0x27, HEND_WIDE = 0x35,
-    DOTS_NARROW = 0x00, DOTS_WIDE = 0x0A,
-    VSYNC_WIDTH = 0x02, VSTART_BASE = 0x87, VEND_BASE = 0x7E,
-    ROWS_MIN = 0x0A, ROWS_LIMIT = 0x1F,
-    COLUMNS_MIN_NARROW = 0x0A, COLUMNS_LIMIT_NARROW = 0x23,
-    COLUMNS_MIN_WIDE = 0x10, COLUMNS_LIMIT_WIDE = 0x2D,
-    FALLBACK_COLUMNS = 0x20, FALLBACK_ROWS = 0x1E, SCRMOD_FAILED = 0x01,
-    SAT_WORDS = 0x100
-};
-
-/* Selects a VDC register, keeping a copy of the choice. */
-static void select_vdc_register(uint8_t reg)
-{
-    wr8(CardVdcReg, reg);
-    wr8(VdcAddress, reg);
-}
-
-static void set_vdc_register(uint8_t reg, uint8_t low, uint8_t high)
-{
-    select_vdc_register(reg);
-    wr8(VdcDataLo, low);
-    wr8(VdcDataHi, high);
+    card_exit_apply(ex_dotmod(cpu.a));
 }
 
 /*
  * @card 00:E341 set_screen_rows
- * WHAT IT DOES: Sets the VDC's vertical display for CardScreenRows rows of tiles, and the VCE's
- * dot clock from CardScreenMode.
- * HOW: Vertical sync two lines wide, the display starting $87 less half the rows' lines, the
- * display rows times eight lines tall, its end at $7E plus half the lines (the shift's carry is
- * the one, as the lines are always a multiple of eight); then the mode with
- * bit 2 flipped goes to the VCE.
+ * WHAT IT DOES: Sets the vertical display: the rows of tiles in CardScreenRows times eight lines,
+ * and the colour clock from CardScreenMode.
+ * HOW: The VDC's vertical display start, height and end registers; the end at $7E plus half the lines,
+ * the carry of the halving being the one; then the mode with bit 2 flipped goes to the VCE.
+ * WAITS: no.
  * Entry: CardScreenRows, CardScreenMode. Exit: A what went to the VCE, N and Z from it, X the
  * lines less one, C and V from adding the end's base. Y kept.
  */
-ScreenRows set_screen_rows(void)
+CardExit set_screen_rows(void)
 {
-    ScreenRows set;
-    uint8_t lines_less_one, half;
+    CardExit e = { 0 };
+    Sum start;
+    Sum end;
+    uint8_t rows;
+    uint8_t lines;
+    uint8_t last;
+    uint8_t mode;
+    bool shifted;
 
-    set.rows_dots = (uint8_t)(rd8(CardScreenRows) << 3);
-    lines_less_one = (uint8_t)(set.rows_dots - 1);
-    set_vdc_register(VDC_REG_VSR, VSYNC_WIDTH, (uint8_t)(VSTART_BASE - (set.rows_dots >> 1)));
-    set_vdc_register(VDC_REG_VDR, lines_less_one, 0);
-    half = (uint8_t)((uint8_t)(set.rows_dots + 1) >> 1);
-    set_vdc_register(VDC_REG_VCR, (uint8_t)(half + VEND_BASE), 0);
-    set.vce = rd8(CardScreenMode) ^ VCE_CLOCK_FLIP;
-    wr8(VceControl, set.vce);
-    return set;
+    select_vdc_register(VDC_REG_VPR);
+    st1(2);
+    rows = RD8(CRAM->screen_rows);
+    lines = (uint8_t)(rows << 3);
+    last = (uint8_t)(lines - 1);
+    start = add8((uint8_t)(~(lines >> 1)), 0x88, false);
+    WR8(CVDC->data_hi, start.value);
+    select_vdc_register(VDC_REG_VDW);
+    WR8(CVDC->data_lo, last);
+    st2(0);
+    select_vdc_register(VDC_REG_VCR);
+    shifted = (uint8_t)(last + 2) & 1;
+    end = add8((uint8_t)((uint8_t)(last + 2) >> 1), 0x7D, shifted);
+    WR8(CVDC->data_lo, end.value);
+    st2(0);
+    mode = RD8(CRAM->screen_mode);
+    WR8(CVCE->control, (uint8_t)(mode ^ MODE_VCE_FLIP));
+    e.a = e.nz = (uint8_t)(mode ^ MODE_VCE_FLIP);
+    e.x = last;
+    e.c = end.carry;
+    e.v = end.overflow;
+    e.set_a = e.set_nz = e.set_x = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_set_screen_rows(void)
 {
-    ScreenRows set = set_screen_rows();
-    uint8_t half = (uint8_t)((uint8_t)(set.rows_dots + 1) >> 1);
-    int end = (int8_t)half + VEND_BASE;
-
-    cpu.a = set.vce;
-    cpu.x = (uint8_t)(set.rows_dots - 1);
-    abi_nz(set.vce);
-    abi_flag(P_C, half + VEND_BASE > 0xFF);
-    abi_flag(P_V, end > 127);
+    card_exit_apply(set_screen_rows());
 }
 
 /*
  * @card 00:E29D ex_scrmod
- * WHAT IT DOES: Sets the screen's size and dot clock: A the mode (bit 0 wide, bit 2 the dot
- * clock), X the columns of tiles, Y the rows.
- * HOW: Keeps the three; refuses rows outside $0A-$1E, or columns outside $0A-$22 ($10-$2C
- * wide), by setting the fallback mode instead; sets the vertical display, then the horizontal
- * sync, start, width and end, and the memory width register's dot width.
+ * WHAT IT DOES: Sets the screen mode: bit 0 of A the wide dot clock, bit 2 the colour clock, X the
+ * columns of tiles, Y the rows.
+ * HOW: Refuses a size the VDC cannot show (rows under 10 or over 30, columns by the clock) by setting the
+ * fallback mode instead; sets the vertical display, then the horizontal sync, start, width and end, and the
+ * memory width register's dot width.
+ * WAITS: no.
  * Entry: A, X, Y. Exit, set: C clear, A the memory width register, N and Z from it, X the
  * columns less one, Y the dot bits, V from adding the end's base. Refused: as ex_scrmod_fallback.
  */
-ScreenMode ex_scrmod(uint8_t mode, uint8_t columns, uint8_t rows)
+CardExit ex_scrmod(uint8_t mode, uint8_t columns, uint8_t rows)
 {
-    ScreenMode set = { true, columns, 0, DOTS_NARROW, 0, HEND_NARROW };
-    bool wide = (mode & SCREEN_WIDE) != 0;
-    uint8_t start;
+    CardExit e;
+    uint8_t value;
+    uint8_t first_columns;
+    Sum start;
+    Sum width;
+    Sum end;
+    bool high_clock;
 
-    wr8(CardScreenMode, mode & SCREEN_MODE_BITS);
-    wr8(CardScreenColumns, columns);
-    wr8(CardScreenRows, rows);
-    if (rows < ROWS_MIN || rows >= ROWS_LIMIT)
+    WR8(CRAM->screen_mode, mode);
+    WR8(CRAM->screen_mode, (uint8_t)(mode & MODE_KEEP_BITS));
+    WR8(CRAM->screen_columns, columns);
+    WR8(CRAM->screen_rows, rows);
+    value = RD8(CRAM->screen_rows);
+    if (value < ROWS_MIN || value >= ROWS_LIMIT) {
         return ex_scrmod_fallback();
-    if (wide ? columns < COLUMNS_MIN_WIDE || columns >= COLUMNS_LIMIT_WIDE
-             : columns < COLUMNS_MIN_NARROW || columns >= COLUMNS_LIMIT_NARROW)
+    }
+    value = RD8(CRAM->screen_mode);
+    high_clock = (value & MODE_HIGH_BIT) != 0;
+    value = RD8(CRAM->screen_columns);
+    if (value < (high_clock ? COLUMNS_HIGH_MIN : COLUMNS_LOW_MIN) ||
+        value >= (high_clock ? COLUMNS_HIGH_LIMIT : COLUMNS_LOW_LIMIT)) {
         return ex_scrmod_fallback();
-    set_screen_rows();
-    start = (uint8_t)((wide ? HSTART_WIDE : HSTART_NARROW) - 1 - (columns >> 1));
-    set_vdc_register(VDC_REG_HSR, wide ? HSYNC_WIDTH_WIDE : HSYNC_WIDTH_NARROW, start);
-    set.end_inverse = (uint8_t)~(uint8_t)(start + columns);
-    set.end_base = wide ? HEND_WIDE : HEND_NARROW;
-    set_vdc_register(VDC_REG_HDR, (uint8_t)(columns - 1), (uint8_t)(set.end_inverse + set.end_base));
-    set.dot_bits = wide ? DOTS_WIDE : DOTS_NARROW;
-    set.width_register = ex_dotmod(set.dot_bits);
-    return set;
-}
-
-static void abi_scrmod_exit_shim(ScreenMode set)
-{
-    int sum = (int8_t)set.end_inverse + (int8_t)set.end_base;
-
-    cpu.x = (uint8_t)(set.columns - 1);
-    cpu.y = set.dot_bits;
-    abi_flag(P_V, sum < -128 || sum > 127);
+    }
+    jsr_push(high_clock ? 0xE30B : 0xE2C9);
+    (void)set_screen_rows();
+    jsr_pop();
+    select_vdc_register(VDC_REG_HSR);
+    st1(high_clock ? 3 : 2);
+    first_columns = RD8(CRAM->screen_columns);
+    start = add8((uint8_t)~(first_columns >> 1), high_clock ? 0x19 : 0x13, false);
+    WR8(CVDC->data_hi, start.value);
+    value = RD8(CRAM->screen_columns);
+    width = add8(start.value, value, false);
+    select_vdc_register(VDC_REG_HDR);
+    WR8(CVDC->data_lo, (uint8_t)(first_columns - 1));
+    end = add8((uint8_t)~width.value, high_clock ? 0x35 : 0x27, false);
+    WR8(CVDC->data_hi, end.value);
+    jsr_push(high_clock ? 0xE33F : 0xE2FC);
+    e = ex_dotmod(high_clock ? 0x0A : 0);
+    jsr_pop();
+    e.x = (uint8_t)(first_columns - 1);
+    e.c = false;
+    e.v = end.overflow;
+    e.set_x = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_ex_scrmod(void)
 {
-    ScreenMode set = ex_scrmod(cpu.a, cpu.x, cpu.y);
-
-    abi_scrmod_exit_shim(set);
-    if (set.accepted) {
-        cpu.a = set.width_register;
-        abi_nz(set.width_register);
-        abi_flag(P_C, false);
-    } else {
-        cpu.a = SCRMOD_FAILED;
-        abi_nz(SCRMOD_FAILED);
-        abi_flag(P_C, true);
-    }
+    card_exit_apply(ex_scrmod(cpu.a, cpu.x, cpu.y));
 }
 
 /*
  * @card 00:E292 ex_scrmod_fallback
- * WHAT IT DOES: Where ex_scrmod refuses a size: sets 32 columns by 30 rows, narrow, and fails.
- * HOW: Calls ex_scrmod with mode 0, $20 columns and $1E rows, then gives 1 with C set.
+ * WHAT IT DOES: The screen mode ex_scrmod sets when it is given one it cannot: 32 columns, 30 rows.
+ * HOW: ex_scrmod with A 0, X $20, Y $1E.
+ * WAITS: no.
  * Entry: nothing. Exit: A 1, N 0, Z 0, C set, X $1F, Y 0, V as ex_scrmod leaves it.
  */
-ScreenMode ex_scrmod_fallback(void)
+CardExit ex_scrmod_fallback(void)
 {
-    ScreenMode set = ex_scrmod(0, FALLBACK_COLUMNS, FALLBACK_ROWS);
+    CardExit e;
 
-    set.accepted = false;
-    return set;
+    jsr_push(0xE299);
+    e = ex_scrmod(0, SCRMOD_FALLBACK_COLUMNS, SCRMOD_FALLBACK_ROWS);
+    jsr_pop();
+    e.a = 1;
+    e.nz = 1;
+    e.c = true;
+    e.set_a = e.set_nz = e.set_c = true;
+    return e;
 }
 
 void abi_ex_scrmod_fallback(void)
 {
-    ScreenMode set = ex_scrmod_fallback();
-
-    abi_scrmod_exit_shim(set);
-    cpu.a = SCRMOD_FAILED;
-    abi_nz(SCRMOD_FAILED);
-    abi_flag(P_C, true);
+    card_exit_apply(ex_scrmod_fallback());
 }
 
 /*
  * @card 00:E5DA ex_satclr
- * WHAT IT DOES: Clears the sprite table in VRAM.
- * HOW: Sets the VDC's write address to CardSatAddress and writes 256 words of zero, then
- * clears CardSatFlag.
+ * WHAT IT DOES: Clears the sprite attribute table in VRAM: 256 words of zero from CardSatAddress, and
+ * CardSatFlag.
+ * HOW: The write address to the table's, then 256 words through the data port.
+ * WAITS: no.
  * Entry: CardSatAddress. Exit: A 2, X 0, N 0, Z 1. Y, C, V kept.
  */
-void ex_satclr(void)
+CardExit ex_satclr(void)
 {
-    set_vdc_register(VDC_REG_MAWR, rd8(CardSatAddress), rd8((uint16_t)(CardSatAddress + 1)));
+    CardExit e = { 0 };
+    uint8_t value;
+
+    select_vdc_register(VDC_REG_MAWR);
+    value = RD8(CRAM->sat_address);
+    WR8(CVDC->data_lo, value);
+    value = rd8((uint16_t)(CardSatAddress + 1));
+    WR8(CVDC->data_hi, value);
     select_vdc_register(VDC_REG_VWR);
-    for (unsigned i = 0; i < SAT_WORDS; i++) {
-        wr8(VdcDataLo, 0);
-        wr8(VdcDataHi, 0);
+    for (unsigned i = 0; i < 256; i++) {
+        st1(0);
+        st2(0);
     }
-    wr8(CardSatFlag, 0);
+    WR8(CRAM->sat_flag, 0);
+    e.a = VDC_REG_VWR;
+    e.x = 0;
+    e.nz = 0;
+    e.set_a = e.set_x = e.set_nz = true;
+    return e;
 }
 
 void abi_ex_satclr(void)
 {
-    ex_satclr();
-    cpu.a = VDC_REG_VWR;
-    cpu.x = 0;
-    abi_nz(0);
+    card_exit_apply(ex_satclr());
 }
-
-enum { SAT_SPRITES = 0x40, SPRITE_BYTES = 8, SPRITE_WORDS_SHIFT = 2 };
 
 /*
  * @card 00:E63C ex_sprput
- * WHAT IT DOES: Puts the sprite in CardSprite into the next of the sprite table's 64 entries in
- * VRAM, and counts it.
- * HOW: CardSatFlag counts the sprites put since ex_satclr; at 64 nothing is done. The write
- * address is CardSatAddress plus four words for each sprite put, then the sprite's four words
- * go out.
- * Entry: CardSprite, CardSatFlag, CardSatAddress. Exit: C 1; X, Y kept. Put: A the sprite's
- * last byte, N and Z from Y, V from adding the low byte's carry to the table's high byte. Full:
- * A the count, N and Z from it less $40, V kept.
+ * WHAT IT DOES: Adds the sprite in CardSprite to the sprite attribute table, if it holds fewer than 64.
+ * HOW: Writes its eight bytes at CardSatAddress plus four times the count, and counts it.
+ * WAITS: no.
+ * Entry: CardSprite, Y (pushed). Exit, full: A the count, N and Z from its compare with 64, C set. Put: A the
+ * last byte, N and Z from Y, C set. X, V kept.
+ * Not run by any script.
  */
-SpritePut ex_sprput(void)
+CardExit ex_sprput(uint8_t y)
 {
-    SpritePut put = { false, rd8(CardSatFlag), 0, 0 };
-    uint16_t at;
+    CardExit e = { 0 };
+    uint8_t count = RD8(CRAM->sat_flag);
+    uint8_t value;
+    Sum low;
+    Sum high;
+    unsigned i;
 
-    if (put.count >= SAT_SPRITES)
-        return put;
-    put.put = true;
-    put.sat = (uint16_t)(rd8(CardSatAddress) | (rd8((uint16_t)(CardSatAddress + 1)) << 8));
-    at = (uint16_t)(put.sat + (put.count << SPRITE_WORDS_SHIFT));
-    set_vdc_register(VDC_REG_MAWR, (uint8_t)at, (uint8_t)(at >> 8));
-    select_vdc_register(VDC_REG_VWR);
-    for (unsigned i = 0; i < SPRITE_BYTES; i += 2) {
-        wr8(VdcDataLo, rd8((uint16_t)(CardSprite + i)));
-        put.last = rd8((uint16_t)(CardSprite + i + 1));
-        wr8(VdcDataHi, put.last);
+    e.a = count;
+    e.nz = (uint8_t)(count - SAT_SPRITES);
+    e.c = count >= SAT_SPRITES;
+    e.set_a = e.set_nz = e.set_c = true;
+    if (count >= SAT_SPRITES) {
+        return e;
     }
-    wr8(CardSatFlag, (uint8_t)(put.count + 1));
-    return put;
+    push8(y);
+    select_vdc_register(VDC_REG_MAWR);
+    count = RD8(CRAM->sat_flag);
+    value = RD8(CRAM->sat_address);
+    low = add8((uint8_t)(count << SAT_ENTRY_SHIFT), value, false);
+    WR8(CVDC->data_lo, low.value);
+    value = rd8((uint16_t)(CardSatAddress + 1));
+    high = add8(value, 0, low.carry);
+    WR8(CVDC->data_hi, high.value);
+    select_vdc_register(VDC_REG_VWR);
+    for (i = 0; i < SPRITE_BYTES; i += 2) {
+        value = rd8((uint16_t)(CardSprite + i));
+        WR8(CVDC->data_lo, value);
+        value = rd8((uint16_t)(CardSprite + i + 1));
+        WR8(CVDC->data_hi, value);
+    }
+    (void)INC8(CRAM->sat_flag);
+    y = pull8();
+    e.a = value;
+    e.nz = y;
+    e.c = true;
+    return e;
 }
 
 void abi_ex_sprput(void)
 {
-    SpritePut put = ex_sprput();
+    card_exit_apply(ex_sprput(cpu.y));
+}
 
-    abi_flag(P_C, true);
-    if (!put.put) {
-        cpu.a = put.count;
-        abi_nz((uint8_t)(put.count - SAT_SPRITES));
-        return;
+/* The VDC control register's low or high byte put out through the port, after the bits changed. */
+static CardExit control_out(uint16_t select_reg, bool high)
+{
+    uint8_t value;
+
+    select_vdc_register((uint8_t)select_reg);
+    if (high) {
+        value = RD8(CZP->vdc_cr.hi);
+        WR8(CVDC->data_hi, value);
+    } else {
+        value = RD8(CZP->vdc_cr.lo);
+        WR8(CVDC->data_lo, value);
     }
-    cpu.a = put.last;
-    abi_nz(cpu.y);
-    abi_flag(P_V, (put.sat >> 8) == 0x7F && (put.sat & 0xFF) + (put.count << SPRITE_WORDS_SHIFT) > 0xFF);
-}
-
-enum {
-    VDC_REG_CONTROL = 0x05, VDC_REG_RCR = 0x06, VDC_REG_MARR = 0x01, VDC_REG_DCR = 0x0F,
-    VDC_REG_SATB = 0x13, VDC_REG_SOUR = 0x10, VDC_REG_DESR = 0x11, VDC_REG_LENR = 0x12,
-    CR_HIGH_INCREMENT = 0x18, CR_HIGH_INCREMENT_32 = 0x08, CR_HIGH_INCREMENT_64 = 0x10,
-    MWR_HEIGHT_BITS = 0x30,
-    CR_RASTER_IRQ = 0x04, CR_VBLANK_IRQ = 0x08, CR_SPRITES = 0x40, CR_BACKGROUND = 0x80,
-    DCR_BITS = 0x1F, IRQ_NO_VSYNC_WAIT = 0x02
-};
-
-/* The control register's high byte from its copy. */
-static uint8_t write_control_high(void)
-{
-    uint8_t high;
-
-    select_vdc_register(VDC_REG_CONTROL);
-    high = rd8(CardVdcCrHi);
-    wr8(VdcDataHi, high);
-    return high;
-}
-
-/* The control register's low byte from its copy. */
-static uint8_t write_control_low(void)
-{
-    uint8_t low;
-
-    select_vdc_register(VDC_REG_CONTROL);
-    low = rd8(CardVdcCrLo);
-    wr8(VdcDataLo, low);
-    return low;
-}
-
-static void set_increment(uint8_t bits)
-{
-    wr8(CardVdcCrHi, (uint8_t)((rd8(CardVdcCrHi) & ~CR_HIGH_INCREMENT) | bits));
-}
-
-static void change_control_low(uint8_t set, uint8_t clear)
-{
-    wr8(CardVdcCrLo, (uint8_t)((rd8(CardVdcCrLo) & ~clear) | set));
-}
-
-/* A or N and Z from what was written: the exit of the setters that write the register. */
-static void abi_written_shim(uint8_t written)
-{
-    cpu.a = written;
-    abi_nz(written);
+    return exit_a(value);
 }
 
 /*
  * @card 00:E382 ex_imode
- * WHAT IT DOES: Sets how far the VDC's VRAM address steps after each access: A 0 to 3 for 1,
- * 32, 64 or 128 words.
- * HOW: The two bits go to bits 3 and 4 of the control register's high byte, kept in
- * CardVdcCrHi, which is then written.
- * Entry: A. Exit: A the high byte, N and Z from it. X, Y, C, V kept.
+ * WHAT IT DOES: Sets how far the VRAM address moves after an access: 1, 32, 64 or 128 words.
+ * HOW: Bits 3 and 4 of the control register's high byte are cleared and set from A's bits 0-1, then the
+ * register is written.
+ * WAITS: no.
+ * Entry: A mode. Exit: A the high byte, N and Z from it. X, Y, C, V kept.
+ * Not run by any script.
  */
-uint8_t ex_imode(uint8_t mode)
+CardExit ex_imode(uint8_t mode)
 {
-    set_increment((uint8_t)((mode << 3) & CR_HIGH_INCREMENT));
-    return write_control_high();
+    uint8_t value;
+
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.hi), CRHI_BIT_3);
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.hi), CRHI_BIT_4);
+    value = RD8(CZP->vdc_cr.hi);
+    WR8(CZP->vdc_cr.hi, (uint8_t)(((uint8_t)(mode << 3) & 0x18) | value));
+    return control_out(VDC_REG_CR, true);
 }
 
 void abi_ex_imode(void)
 {
-    abi_written_shim(ex_imode(cpu.a));
+    card_exit_apply(ex_imode(cpu.a));
 }
 
 /*
  * @card 00:E391 ex_vmode
- * WHAT IT DOES: Steps the VRAM address by one column of the background map: 32 words if the map
- * is 32 tiles wide, else 64.
- * HOW: Reads the map's width from CardVdcMwr. (Its test of bit 0 after keeping bits 4 and 5 can
- * never be true.)
- * Entry: nothing. Exit: as ex_imode.
+ * WHAT IT DOES: Sets the control register's increment to suit a vertical map.
+ * HOW: Bit 3 set, then bit 4 and bit 3 by the memory width register.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the high byte, N and Z from it. X, Y, C, V kept.
+ * Not run by any script.
  */
-uint8_t ex_vmode(void)
+CardExit ex_vmode(void)
 {
-    set_increment((rd8(CardVdcMwr) & MWR_HEIGHT_BITS) ? CR_HIGH_INCREMENT_64 : CR_HIGH_INCREMENT_32);
-    return write_control_high();
+    uint8_t value;
+
+    set_zp_bit(ADDR_OF8(CZP->vdc_cr.hi), CRHI_BIT_3);
+    value = RD8(CRAM->vdc_mwr);
+    if ((value & 0x30) == 0) {
+        clear_zp_bit(ADDR_OF8(CZP->vdc_cr.hi), CRHI_BIT_4);
+    } else {
+        set_zp_bit(ADDR_OF8(CZP->vdc_cr.hi), CRHI_BIT_4);
+        clear_zp_bit(ADDR_OF8(CZP->vdc_cr.hi), CRHI_BIT_3);
+    }
+    return control_out(VDC_REG_CR, true);
 }
 
 void abi_ex_vmode(void)
 {
-    abi_written_shim(ex_vmode());
+    card_exit_apply(ex_vmode());
 }
 
 /*
  * @card 00:E3A4 ex_hmode
- * WHAT IT DOES: Steps the VRAM address by one word after each access.
- * HOW: Clears both step bits, then writes the high byte.
- * Entry: nothing. Exit: as ex_imode.
+ * WHAT IT DOES: Sets the control register's increment to one word, for a horizontal map.
+ * HOW: Bits 3 and 4 of the high byte cleared, then the register written.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the high byte, N and Z from it. X, Y, C, V kept.
  */
-uint8_t ex_hmode(void)
+CardExit ex_hmode(void)
 {
-    set_increment(0);
-    return write_control_high();
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.hi), CRHI_BIT_3);
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.hi), CRHI_BIT_4);
+    return control_out(VDC_REG_CR, true);
 }
 
 void abi_ex_hmode(void)
 {
-    abi_written_shim(ex_hmode());
+    card_exit_apply(ex_hmode());
 }
 
 /*
  * @card 00:E3B5 ex_vsync
- * WHAT IT DOES: Waits for the next vertical blank, unless bit 1 of CardIrqFlags says not to.
- * HOW: Enables interrupts, turns on the VDC's vertical blank interrupt if it was off, then
- * waits for CardFrameTick to change.
- * Entry: nothing. Exit, no wait: everything kept. Waited: I clear, A the count it waited on, Z 0,
- * N and C from comparing it with the new one. X, Y, V kept.
+ * WHAT IT DOES: Waits for the next frame's interrupt, turning the vertical blank interrupt on if it is off.
+ * HOW: Does nothing if bit 1 of CardIrqFlags is set. Else interrupts on, ex_irqon if the vertical blank
+ * interrupt is off, then waits for CardFrameTick to change.
+ * WAITS: yes, for the frame count the interrupt keeps; the stack there is the caller's frame.
+ * Entry: nothing. Exit: A the count as first read, N, Z, C from its compare with the next value; X, Y, V kept.
  */
-VsyncWait ex_vsync(void)
+CardExit ex_vsync(void)
 {
-    VsyncWait wait = { false, 0, 0 };
+    CardExit e = { 0 };
+    uint8_t flags = RD8(CZP->irq_flags);
+    uint8_t value;
+    uint8_t first;
+    uint8_t now;
 
-    if (rd8(CardIrqFlags) & IRQ_NO_VSYNC_WAIT)
-        return wait;
+    if (flags & (1u << IRQ_FLAG_FRAME)) {
+        return e;
+    }
     cli();
-    if (!(rd8(CardVdcCrLo) & CR_VBLANK_IRQ))
-        ex_irqon();
-    wait.waited = true;
-    wait.before = rd8(CardFrameTick);
-    do
-        wait.after = rd8(CardFrameTick);
-    while (wait.after == wait.before);
-    return wait;
+    value = RD8(CZP->vdc_cr.lo);
+    if (!(value & (1u << CR_BIT_VBLANK))) {
+        jsr_push(0xE3BE);
+        (void)ex_irqon();
+        jsr_pop();
+    }
+    first = RD8(CRAM->frame_tick);
+    do {
+        now = RD8(CRAM->frame_tick);
+    } while (now == first);
+    e.a = first;
+    e.nz = (uint8_t)(first - now);
+    e.c = first >= now;
+    e.set_a = e.set_nz = e.set_c = true;
+    return e;
 }
 
 void abi_ex_vsync(void)
 {
-    VsyncWait wait = ex_vsync();
-
-    if (!wait.waited)
-        return;
-    cpu.a = wait.before;
-    abi_nz((uint8_t)(wait.before - wait.after));
-    abi_flag(P_C, wait.before >= wait.after);
-    abi_flag(P_I, false);
+    card_exit_apply(ex_vsync());
 }
 
 /*
  * @card 00:E3C7 ex_rcron
- * WHAT IT DOES: Turns on the VDC's raster compare interrupt.
- * HOW: Sets bit 2 of CardVdcCrLo and writes the control register's low byte.
+ * WHAT IT DOES: Turns the raster compare interrupt on.
+ * HOW: Bit 2 of the control register's low byte set, then the register written.
+ * WAITS: no.
  * Entry: nothing. Exit: A the low byte, N and Z from it. X, Y, C, V kept.
+ * Not run by any script.
  */
-uint8_t ex_rcron(void)
+CardExit ex_rcron(void)
 {
-    change_control_low(CR_RASTER_IRQ, 0);
-    return write_control_low();
+    set_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_RC);
+    return control_out(VDC_REG_CR, false);
 }
 
 void abi_ex_rcron(void)
 {
-    abi_written_shim(ex_rcron());
+    card_exit_apply(ex_rcron());
 }
 
 /*
  * @card 00:E3CB ex_rcroff
- * WHAT IT DOES: Turns off the VDC's raster compare interrupt.
- * HOW: As ex_rcron, clearing the bit.
- * Entry: nothing. Exit: as ex_rcron.
+ * WHAT IT DOES: Turns the raster compare interrupt off.
+ * HOW: Bit 2 of the control register's low byte cleared, then the register written.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the low byte, N and Z from it. X, Y, C, V kept.
+ * Not run by any script.
  */
-uint8_t ex_rcroff(void)
+CardExit ex_rcroff(void)
 {
-    change_control_low(0, CR_RASTER_IRQ);
-    return write_control_low();
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_RC);
+    return control_out(VDC_REG_CR, false);
 }
 
 void abi_ex_rcroff(void)
 {
-    abi_written_shim(ex_rcroff());
+    card_exit_apply(ex_rcroff());
 }
 
 /*
  * @card 00:E3CF ex_irqon
- * WHAT IT DOES: Turns on the VDC's vertical blank interrupt.
- * HOW: As ex_rcron, with bit 3.
- * Entry: nothing. Exit: as ex_rcron.
+ * WHAT IT DOES: Turns the vertical blank interrupt on.
+ * HOW: Bit 3 of the control register's low byte set, then the register written.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the low byte, N and Z from it. X, Y, C, V kept.
  */
-uint8_t ex_irqon(void)
+CardExit ex_irqon(void)
 {
-    change_control_low(CR_VBLANK_IRQ, 0);
-    return write_control_low();
+    set_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_VBLANK);
+    return control_out(VDC_REG_CR, false);
 }
 
 void abi_ex_irqon(void)
 {
-    abi_written_shim(ex_irqon());
+    card_exit_apply(ex_irqon());
 }
 
 /*
  * @card 00:E3D3 ex_irqoff
- * WHAT IT DOES: Turns off the VDC's vertical blank interrupt.
- * HOW: As ex_rcroff, with bit 3.
- * Entry: nothing. Exit: as ex_rcron.
+ * WHAT IT DOES: Turns the vertical blank interrupt off.
+ * HOW: Bit 3 of the control register's low byte cleared, then the register written.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the low byte, N and Z from it. X, Y, C, V kept.
  */
-uint8_t ex_irqoff(void)
+CardExit ex_irqoff(void)
 {
-    change_control_low(0, CR_VBLANK_IRQ);
-    return write_control_low();
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_VBLANK);
+    return control_out(VDC_REG_CR, false);
 }
 
 void abi_ex_irqoff(void)
 {
-    abi_written_shim(ex_irqoff());
+    card_exit_apply(ex_irqoff());
 }
 
 /*
  * @card 00:E3E2 ex_bgon
- * WHAT IT DOES: Asks for the background to be shown, from the next time the control register's
- * low byte is written.
- * HOW: Sets bit 7 of CardVdcCrLo.
- * Entry: nothing. Exit: everything kept.
+ * WHAT IT DOES: Turns the background on, at the next control register write.
+ * HOW: Bit 7 of the control register's low byte set.
+ * WAITS: no.
+ * Entry: nothing. Exit: all registers and flags kept.
  */
 void ex_bgon(void)
 {
-    change_control_low(CR_BACKGROUND, 0);
+    set_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_BACKGROUND);
 }
 
 void abi_ex_bgon(void)
@@ -528,13 +575,15 @@ void abi_ex_bgon(void)
 
 /*
  * @card 00:E3E5 ex_bgoff
- * WHAT IT DOES: Asks for the background to be hidden, as ex_bgon.
- * HOW: Clears bit 7 of CardVdcCrLo.
- * Entry: nothing. Exit: everything kept.
+ * WHAT IT DOES: Turns the background off, at the next control register write.
+ * HOW: Bit 7 of the control register's low byte cleared.
+ * WAITS: no.
+ * Entry: nothing. Exit: all registers and flags kept.
+ * Not run by any script.
  */
 void ex_bgoff(void)
 {
-    change_control_low(0, CR_BACKGROUND);
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_BACKGROUND);
 }
 
 void abi_ex_bgoff(void)
@@ -544,13 +593,15 @@ void abi_ex_bgoff(void)
 
 /*
  * @card 00:E3E8 ex_spron
- * WHAT IT DOES: Asks for sprites to be shown, as ex_bgon.
- * HOW: Sets bit 6 of CardVdcCrLo.
- * Entry: nothing. Exit: everything kept.
+ * WHAT IT DOES: Turns the sprites on, at the next control register write.
+ * HOW: Bit 6 of the control register's low byte set.
+ * WAITS: no.
+ * Entry: nothing. Exit: all registers and flags kept.
+ * Not run by any script.
  */
 void ex_spron(void)
 {
-    change_control_low(CR_SPRITES, 0);
+    set_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_SPRITES);
 }
 
 void abi_ex_spron(void)
@@ -560,13 +611,15 @@ void abi_ex_spron(void)
 
 /*
  * @card 00:E3EB ex_sproff
- * WHAT IT DOES: Asks for sprites to be hidden, as ex_bgon.
- * HOW: Clears bit 6 of CardVdcCrLo.
- * Entry: nothing. Exit: everything kept.
+ * WHAT IT DOES: Turns the sprites off, at the next control register write.
+ * HOW: Bit 6 of the control register's low byte cleared.
+ * WAITS: no.
+ * Entry: nothing. Exit: all registers and flags kept.
+ * Not run by any script.
  */
 void ex_sproff(void)
 {
-    change_control_low(0, CR_SPRITES);
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_SPRITES);
 }
 
 void abi_ex_sproff(void)
@@ -576,13 +629,16 @@ void abi_ex_sproff(void)
 
 /*
  * @card 00:E3EE ex_dspon
- * WHAT IT DOES: Asks for the background and sprites to be shown, as ex_bgon.
- * HOW: Sets bits 6 and 7 of CardVdcCrLo.
- * Entry: nothing. Exit: everything kept.
+ * WHAT IT DOES: Turns the sprites and the background on, at the next control register write.
+ * HOW: Bits 6 and 7 of the control register's low byte set.
+ * WAITS: no.
+ * Entry: nothing. Exit: all registers and flags kept.
+ * Not run by any script.
  */
 void ex_dspon(void)
 {
-    change_control_low(CR_SPRITES | CR_BACKGROUND, 0);
+    set_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_SPRITES);
+    set_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_BACKGROUND);
 }
 
 void abi_ex_dspon(void)
@@ -592,13 +648,16 @@ void abi_ex_dspon(void)
 
 /*
  * @card 00:E3F3 ex_dspoff
- * WHAT IT DOES: Asks for the background and sprites to be hidden, as ex_bgon.
- * HOW: Clears bits 6 and 7 of CardVdcCrLo.
- * Entry: nothing. Exit: everything kept.
+ * WHAT IT DOES: Turns the sprites and the background off, at the next control register write.
+ * HOW: Bits 6 and 7 of the control register's low byte cleared.
+ * WAITS: no.
+ * Entry: nothing. Exit: all registers and flags kept.
+ * Not run by any script.
  */
 void ex_dspoff(void)
 {
-    change_control_low(0, CR_SPRITES | CR_BACKGROUND);
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_SPRITES);
+    clear_zp_bit(ADDR_OF8(CZP->vdc_cr.lo), CR_BIT_BACKGROUND);
 }
 
 void abi_ex_dspoff(void)
@@ -608,145 +667,212 @@ void abi_ex_dspoff(void)
 
 /*
  * @card 00:E3F8 ex_dmamod
- * WHAT IT DOES: Sets the VDC's DMA control register.
- * HOW: Its five bits of A to CardVdcDcr, which goes to the register's low byte.
- * Entry: A. Exit: A the bits, N and Z from them. X, Y, C, V kept.
+ * WHAT IT DOES: Sets the VDC's DMA control register from the low five bits of A, and keeps them.
+ * HOW: CardVdcDcr, then the register select and the value to the port.
+ * WAITS: no.
+ * Entry: A. Exit: A the register, N and Z from it. X, Y, C, V kept.
  */
-uint8_t ex_dmamod(uint8_t mode)
+CardExit ex_dmamod(uint8_t mode)
 {
-    wr8(CardVdcDcr, mode & DCR_BITS);
+    uint8_t value;
+
+    WR8(CRAM->vdc_dcr, (uint8_t)(mode & DCR_MASK));
     select_vdc_register(VDC_REG_DCR);
-    wr8(VdcDataLo, rd8(CardVdcDcr));
-    return rd8(CardVdcDcr);
+    value = RD8(CRAM->vdc_dcr);
+    WR8(CVDC->data_lo, value);
+    return exit_a(value);
 }
 
 void abi_ex_dmamod(void)
 {
-    abi_written_shim(ex_dmamod(cpu.a));
+    card_exit_apply(ex_dmamod(cpu.a));
 }
 
 /*
  * @card 00:E40B ex_sprdma
- * WHAT IT DOES: Has the VDC copy the sprite table from VRAM at the next vertical blank.
- * HOW: CardSatAddress to the VDC's sprite table address register.
+ * WHAT IT DOES: Gives the VDC the sprite attribute table's address for its DMA.
+ * HOW: The register select, then CardSatAddress's two bytes to the port.
+ * WAITS: no.
  * Entry: CardSatAddress. Exit: A its high byte, N and Z from it. X, Y, C, V kept.
  */
-uint8_t ex_sprdma(void)
+CardExit ex_sprdma(void)
 {
-    set_vdc_register(VDC_REG_SATB, rd8(CardSatAddress), rd8((uint16_t)(CardSatAddress + 1)));
-    return rd8((uint16_t)(CardSatAddress + 1));
+    uint8_t value;
+
+    select_vdc_register(VDC_REG_SATB);
+    value = RD8(CRAM->sat_address);
+    WR8(CVDC->data_lo, value);
+    value = rd8((uint16_t)(CardSatAddress + 1));
+    WR8(CVDC->data_hi, value);
+    return exit_a(value);
 }
 
 void abi_ex_sprdma(void)
 {
-    abi_written_shim(ex_sprdma());
+    card_exit_apply(ex_sprdma());
 }
 
 /*
  * @card 00:E41F ex_setrcr
- * WHAT IT DOES: Sets the raster line the VDC interrupts at: A low, X high.
- * HOW: The two bytes to the raster compare register.
- * Entry: A, X. Exit: N and Z from A. A, X, Y, C, V kept.
+ * WHAT IT DOES: Sets the raster compare register to A and X.
+ * HOW: A is pushed, the register selected, A pulled and written, then X.
+ * WAITS: no.
+ * Entry: A low, X high. Exit: A as given, N and Z from it. X, Y, C, V kept.
+ * Not run by any script.
  */
-void ex_setrcr(uint8_t low, uint8_t high)
+CardExit ex_setrcr(uint8_t a, uint8_t x)
 {
-    set_vdc_register(VDC_REG_RCR, low, high);
+    push8(a);
+    select_vdc_register(VDC_REG_RCR);
+    a = pull8();
+    WR8(CVDC->data_lo, a);
+    WR8(CVDC->data_hi, x);
+    return exit_a(a);
 }
 
 void abi_ex_setrcr(void)
 {
-    ex_setrcr(cpu.a, cpu.x);
-    abi_nz(cpu.a);
+    card_exit_apply(ex_setrcr(cpu.a, cpu.x));
 }
 
 /*
  * @card 00:E42F ex_setred
- * WHAT IT DOES: Sets the VRAM address to read from, A low, X high, and selects the data port.
- * HOW: The address to the read address register, then the data register selected.
- * Entry: A, X. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
+ * WHAT IT DOES: Sets the VRAM read address to A and X, and leaves the VRAM data register selected.
+ * HOW: A is pushed, the read register selected, A pulled and written, X, then the data register selected.
+ * WAITS: no.
+ * Entry: A low, X high. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
+ * Not run by any script.
  */
-void ex_setred(uint8_t low, uint8_t high)
+CardExit ex_setred(uint8_t a, uint8_t x)
 {
-    set_vdc_register(VDC_REG_MARR, low, high);
+    push8(a);
+    select_vdc_register(0x01);
+    a = pull8();
+    WR8(CVDC->data_lo, a);
+    WR8(CVDC->data_hi, x);
     select_vdc_register(VDC_REG_VWR);
+    return exit_a(VDC_REG_VWR);
 }
 
 void abi_ex_setred(void)
 {
-    ex_setred(cpu.a, cpu.x);
-    abi_written_shim(VDC_REG_VWR);
+    card_exit_apply(ex_setred(cpu.a, cpu.x));
 }
 
 /*
  * @card 00:E446 ex_setwrt
- * WHAT IT DOES: Sets the VRAM address to write to, A low, X high, and selects the data port.
- * HOW: As ex_setred, with the write address register.
- * Entry: A, X. Exit: as ex_setred.
+ * WHAT IT DOES: Sets the VRAM write address to A and X, and leaves the VRAM data register selected.
+ * HOW: A is pushed, the write register selected, A pulled and written, X, then the data register selected.
+ * WAITS: no.
+ * Entry: A low, X high. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
+ * Not run by any script.
  */
-void ex_setwrt(uint8_t low, uint8_t high)
+CardExit ex_setwrt(uint8_t a, uint8_t x)
 {
-    set_vdc_register(VDC_REG_MAWR, low, high);
+    push8(a);
+    select_vdc_register(VDC_REG_MAWR);
+    a = pull8();
+    WR8(CVDC->data_lo, a);
+    WR8(CVDC->data_hi, x);
     select_vdc_register(VDC_REG_VWR);
+    return exit_a(VDC_REG_VWR);
 }
 
 void abi_ex_setwrt(void)
 {
-    ex_setwrt(cpu.a, cpu.x);
-    abi_written_shim(VDC_REG_VWR);
+    card_exit_apply(ex_setwrt(cpu.a, cpu.x));
 }
 
 /*
  * @card 00:E45D ex_setdma
- * WHAT IT DOES: Sets up a VRAM to VRAM copy: _BX the source, _DX the destination, _CX the length.
- * HOW: The three to the VDC's DMA registers, then the register that was selected is selected
- * again.
- * Entry: _BX, _CX, _DX. Exit: A the register selected, N and Z from it. X, Y, C, V kept.
+ * WHAT IT DOES: Starts a VRAM to VRAM DMA: _BX the source, _DX the destination, _CX the length.
+ * HOW: The register select is kept on the stack; the three registers are set; the select is put back.
+ * WAITS: no.
+ * Entry: _BX, _CX, _DX. Exit: A the register select it kept, N and Z from it. X, Y, C, V kept.
+ * Not run by any script.
  */
-uint8_t ex_setdma(void)
+CardExit ex_setdma(void)
 {
-    uint8_t selected = rd8(CardVdcReg);
+    uint8_t value;
 
-    set_vdc_register(VDC_REG_SOUR, rd8(CardBl), rd8(CardBh));
-    set_vdc_register(VDC_REG_DESR, rd8(CardDl), rd8(CardDh));
-    set_vdc_register(VDC_REG_LENR, rd8(CardCl), rd8(CardCh));
-    select_vdc_register(selected);
-    return selected;
+    value = RD8(CZP->vdc_reg);
+    push8(value);
+    select_vdc_register(VDC_REG_SOUR);
+    value = RD8(CZP->b.lo);
+    WR8(CVDC->data_lo, value);
+    value = RD8(CZP->b.hi);
+    WR8(CVDC->data_hi, value);
+    select_vdc_register(VDC_REG_DESR);
+    value = RD8(CZP->d.lo);
+    WR8(CVDC->data_lo, value);
+    value = RD8(CZP->d.hi);
+    WR8(CVDC->data_hi, value);
+    select_vdc_register(VDC_REG_LENR);
+    value = RD8(CZP->c.lo);
+    WR8(CVDC->data_lo, value);
+    value = RD8(CZP->c.hi);
+    WR8(CVDC->data_hi, value);
+    value = pull8();
+    select_vdc_register(value);
+    return exit_a(value);
 }
 
 void abi_ex_setdma(void)
 {
-    abi_written_shim(ex_setdma());
+    card_exit_apply(ex_setdma());
 }
-
-enum {
-    CLEAR_TILE = 0x0200, CLEAR_WORDS = 0x1000, FONT_VRAM = 0x2000, FONT_GLYPHS = 0x100,
-    FONT_ROWS = 8, FONT_PASSES = 2, FONT_GLYPH_ROM = 0xC000,
-    PICTURE_BANK = 0x16, PICTURE_AT = 0x8000, PICTURE_BYTES = 0x2000, MPR4 = 0x10, MPR5 = 0x20
-};
 
 /*
  * @card 01:CBF0 clear_vram
- * WHAT IT DOES: Fills the first 4K words of VRAM, where the background map lies, with tile $200.
- * HOW: The write address to 0, then $0200 written 4,096 times.
- * Entry: nothing. Exit: A 2, X 0, Y 0, N 0, Z 1. C, V kept.
+ * WHAT IT DOES: Fills VRAM with the blank tile: $4000 words of $0200.
+ * HOW: The write address to 0, the data register selected, then the word $0200 sixteen thousand times.
+ * WAITS: no.
+ * Entry: bank 1 at $C000. Exit: X 0, Y 0, A 2, N 0, Z 0, C, V kept.
  */
-void clear_vram(void)
+CardExit clear_vram(void)
 {
-    set_vdc_register(VDC_REG_MAWR, 0, 0);
+    CardExit e = { 0 };
+
+    select_vdc_register(VDC_REG_MAWR);
+    st1(0);
+    st2(0);
     select_vdc_register(VDC_REG_VWR);
-    for (unsigned i = 0; i < CLEAR_WORDS; i++) {
-        wr8(VdcDataLo, (uint8_t)CLEAR_TILE);
-        wr8(VdcDataHi, (uint8_t)(CLEAR_TILE >> 8));
+    for (unsigned i = 0; i < 64u * 64u; i++) {
+        WR8(CVDC->data_lo, 0);
+        WR8(CVDC->data_hi, 2);
     }
+    e.a = 2;
+    e.x = 0;
+    e.y = 0;
+    e.nz = 0;
+    e.set_a = e.set_x = e.set_y = e.set_nz = true;
+    return e;
 }
 
 void abi_clear_vram(void)
 {
-    clear_vram();
-    cpu.a = (uint8_t)(CLEAR_TILE >> 8);
-    cpu.x = 0;
-    cpu.y = 0;
-    abi_nz(0);
+    card_exit_apply(clear_vram());
+}
+
+enum {
+    FONT_VRAM_LO = 0x00, FONT_VRAM_HI = 0x20, FONT_ROM_HI = 0xC0, FONT_ROWS = 8, FONT_PASSES = 2,
+    PICTURE_BANK = 0x16, PICTURE_BYTES = 0x2000, MPR_BANK4 = 0x10, MPR_BANK5 = 0x20
+};
+
+/* The block moves the CPU makes: TIA, TAI and TII push Y, A and X, move the bytes, and pull them back. */
+static void block_move_tia(uint16_t src, uint16_t dst, uint16_t len, uint8_t a, uint8_t x, uint8_t y)
+{
+    push8(y);
+    push8(a);
+    push8(x);
+    for (uint16_t i = 0; i < len; i++) {
+        uint8_t byte = rd8((uint16_t)(src + i));
+
+        wr8((uint16_t)(dst + (i & 1)), byte);
+    }
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
 }
 
 /*
@@ -755,85 +881,144 @@ void abi_clear_vram(void)
  * HOW: 256 one-plane glyphs of eight rows from $C000 in bank 1, each row written as both bytes
  * of a word, twice over, for 16 words a tile; then banks $16 and $17 mapped at $8000 for a block
  * move of $2000 bytes to the data port, and the MPRs put back.
+ * WAITS: no.
  * Entry: bank 1 at $C000. Exit: A what MPR4 held, N and Z from it, X 0, Y 8, C 0, V 0.
  * CardPointerLo-Hi $C800, CardCopyLo 0.
  */
-uint8_t load_font(void)
+CardExit load_font(void)
 {
-    uint16_t glyph = FONT_GLYPH_ROM;
-    uint8_t saved4, saved5;
+    CardExit e = { 0 };
+    uint8_t value;
+    uint8_t bank4;
+    uint8_t bank5;
+    Sum sum;
+    uint8_t y = 0;
 
-    set_vdc_register(VDC_REG_MAWR, (uint8_t)FONT_VRAM, (uint8_t)(FONT_VRAM >> 8));
+    select_vdc_register(VDC_REG_MAWR);
+    st1(FONT_VRAM_LO);
+    st2(FONT_VRAM_HI);
     select_vdc_register(VDC_REG_VWR);
-    for (unsigned g = 0; g < FONT_GLYPHS; g++, glyph = (uint16_t)(glyph + FONT_ROWS)) {
+    WR8(CZP->pointer.lo, 0);
+    WR8(CZP->pointer.hi, FONT_ROM_HI);
+    WR8(CZP->copy.lo, 0);
+    do {
         for (unsigned pass = 0; pass < FONT_PASSES; pass++) {
-            for (unsigned row = 0; row < FONT_ROWS; row++) {
-                uint8_t bits = rd8((uint16_t)(glyph + row));
-
-                wr8(VdcDataLo, bits);
-                wr8(VdcDataHi, bits);
-            }
+            y = 0;
+            do {
+                value = RD8_PTR_Y(CZP->pointer.lo, y);
+                WR8(CVDC->data_lo, value);
+                WR8(CVDC->data_hi, value);
+                y++;
+            } while (y < FONT_ROWS);
         }
-    }
-    wr8(CardPointerLo, (uint8_t)glyph);
-    wr8(CardPointerHi, (uint8_t)(glyph >> 8));
-    wr8(CardCopyLo, 0);
-    saved4 = tma(MPR4);
-    saved5 = tma(MPR5);
-    tam(MPR4, PICTURE_BANK);
-    tam(MPR5, PICTURE_BANK + 1);
-    for (unsigned i = 0; i < PICTURE_BYTES; i++)
-        wr8((i & 1) ? VdcDataHi : VdcDataLo, rd8((uint16_t)(PICTURE_AT + i)));
-    tam(MPR5, saved5);
-    tam(MPR4, saved4);
-    return saved4;
+        value = RD8(CZP->pointer.lo);
+        sum = add8(value, FONT_ROWS, false);
+        WR8(CZP->pointer.lo, sum.value);
+        value = RD8(CZP->pointer.hi);
+        sum = add8(value, 0, sum.carry);
+        WR8(CZP->pointer.hi, sum.value);
+    } while (DEC8(CZP->copy.lo) != 0);
+    bank4 = tma(MPR_BANK4);
+    push8(bank4);
+    bank5 = tma(MPR_BANK5);
+    push8(bank5);
+    tam(MPR_BANK4, PICTURE_BANK);
+    tam(MPR_BANK5, PICTURE_BANK + 1);
+    block_move_tia(Mpr4Window, VdcDataLo, PICTURE_BYTES, PICTURE_BANK + 1, 0, FONT_ROWS);
+    value = pull8();
+    tam(MPR_BANK5, value);
+    value = pull8();
+    tam(MPR_BANK4, value);
+    e.a = e.nz = value;
+    e.x = 0;
+    e.y = FONT_ROWS;
+    e.c = sum.carry;
+    e.v = sum.overflow;
+    e.set_a = e.set_nz = e.set_x = e.set_y = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_load_font(void)
 {
-    cpu.a = load_font();
-    cpu.x = 0;
-    cpu.y = FONT_ROWS;
-    abi_nz(cpu.a);
-    abi_flag(P_C, false);
-    abi_flag(P_V, false);
+    card_exit_apply(load_font());
 }
 
 enum {
-    COLOR_READ_BACK = 0x01, COLOR_SET_BYTES_SHIFT = 5, SPRITE_PALETTE_HIGH = 0x01,
-    STUB_TIA = 0xE3, STUB_RTS = 0x60, STUB_SOURCE = 1, STUB_DESTINATION = 3, STUB_LENGTH = 5,
-    STUB_RETURN = 7, COLOR_STUB_HEAD = 3
+    COLOR_READ_BACK = 0x01, STUB_TIA = 0xE3, STUB_RTS = 0x60, STUB_SOURCE = 1, STUB_DESTINATION = 3,
+    STUB_LENGTH_LOW = 5, STUB_LENGTH_HIGH = 6, STUB_RETURN = 7, COLOR_STUB_HEAD = 3, SPRITE_PALETTES = 1,
+    COLOR_SET_COUNT_AT = 2, COLOR_SET_SHIFT_LOW = 4, STUB_PORT_HIGH = 4, VCE_PORT_LOW = 4
 };
 
-static void put_stub_word(unsigned at, uint16_t value)
+/* One set of palettes, to the VCE or back, as the BIOS's stub does it: the registers the block moves push are
+ * A (the length's low byte), X and Y as they came. */
+static CardExit move_color_set(uint16_t set, uint8_t palette_high, bool read_back, uint16_t ret_stub,
+                               uint8_t x, uint8_t y, bool *moved_any)
 {
-    wr8((uint16_t)(CardBlockStub + at), (uint8_t)value);
-    wr8((uint16_t)(CardBlockStub + at + 1), (uint8_t)(value >> 8));
-}
+    CardExit e = { 0 };
+    uint8_t count = rd8((uint16_t)(set + COLOR_SET_COUNT_AT));
+    uint8_t carry_low;
+    uint8_t carry_high;
+    uint8_t value;
+    uint8_t length_low;
+    uint8_t length_high;
+    uint8_t memory_low;
+    uint8_t memory_high;
+    uint16_t memory;
 
-static uint16_t word_at(uint16_t at)
-{
-    return (uint16_t)(rd8(at) | (rd8((uint16_t)(at + 1)) << 8));
-}
-
-/* One set of palettes, to the VCE or back: the length into the stub, the VCE's address, the move. */
-static void move_colors(uint16_t set, uint8_t palette_high, bool read_back)
-{
-    uint16_t bytes = (uint16_t)(rd8((uint16_t)(set + 2)) << COLOR_SET_BYTES_SHIFT);
-    uint16_t memory = word_at(set);
-
-    put_stub_word(STUB_LENGTH, bytes);
-    put_stub_word(read_back ? STUB_DESTINATION : STUB_SOURCE, memory);
-    wr8(VceAddressLo, 0);
-    wr8(VceAddressHi, palette_high);
-    for (uint16_t i = 0; i < bytes; i++) {
-        uint16_t port = (i & 1) ? VceDataHi : VceDataLo;
-
-        if (read_back)
-            wr8((uint16_t)(memory + i), rd8(port));
-        else
-            wr8(port, rd8((uint16_t)(memory + i)));
+    e.a = e.nz = count;
+    e.set_a = e.set_nz = true;
+    if (count == 0) {
+        return e;
     }
+    wr8(STUB(STUB_LENGTH_HIGH), 0);
+    carry_low = (count >> 4) & 1;
+    value = rd8(STUB(STUB_LENGTH_HIGH));
+    length_high = (uint8_t)((value << 1) | carry_low);
+    wr8(STUB(STUB_LENGTH_HIGH), length_high);
+    carry_high = (count >> 3) & 1;
+    length_low = (uint8_t)(count << 5);
+    value = rd8(STUB(STUB_LENGTH_HIGH));
+    length_high = (uint8_t)((value << 1) | carry_high);
+    wr8(STUB(STUB_LENGTH_HIGH), length_high);
+    wr8(STUB(STUB_LENGTH_LOW), length_low);
+    push8(y);
+    push8(length_low);
+    push8(x);
+    memory_low = rd8(set);
+    wr8(STUB(read_back ? STUB_DESTINATION : STUB_SOURCE), memory_low);
+    memory_high = rd8((uint16_t)(set + 1));
+    wr8(STUB((read_back ? STUB_DESTINATION : STUB_SOURCE) + 1), memory_high);
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
+    WR8(CVCE->addr_lo, 0);
+    WR8(CVCE->addr_hi, palette_high);
+    memory = (uint16_t)(memory_low | (memory_high << 8));
+    jsr_push(ret_stub);
+    if (read_back) {
+        push8(y);
+        push8(length_low);
+        push8(x);
+        for (uint16_t i = 0; i < (uint16_t)(length_low | (length_high << 8)); i++) {
+            uint8_t byte = rd8((uint16_t)(0x0404 + (i & 1)));
+
+            wr8((uint16_t)(memory + i), byte);
+        }
+        (void)pull8();
+        (void)pull8();
+        (void)pull8();
+    } else {
+        block_move_tia(memory, VceDataLo, (uint16_t)(length_low | (length_high << 8)), length_low, x, y);
+    }
+    jsr_pop();
+    e.c = false;
+    e.set_c = true;
+    if (palette_high != 0) {
+        e.a = palette_high;
+        e.nz = palette_high;
+    }
+    *moved_any = true;
+    return e;
 }
 
 /*
@@ -842,51 +1027,54 @@ static void move_colors(uint16_t set, uint8_t palette_high, bool read_back)
  * background and sprite colours to the VCE, or with bit 0 reads them back into memory.
  * HOW: Writes a block move in RAM at CardBlockStub (TIA to the colour data port, or TAI from it)
  * and runs it once for each set whose count is not zero: the background's at colour 0, the
- * sprites' at colour $100, 32 bytes a 16-colour palette. The C makes the moves itself. Then it
- * clears the command.
- * Entry: CardColorCommand, CardColorBackground, CardColorSprites. Exit, no command: A 0, N 0, Z 1.
- * Sprites moved: A 1, the VCE address's high byte it last loaded, N 0, Z 0, C 0. Sprites skipped:
- * A 0, N 0, Z 1, C 0 if the background moved, else as it was. X, Y, V kept.
+ * sprites' at colour $100, 32 bytes a 16-colour palette. Then it clears the command.
+ * WAITS: no.
+ * Entry: CardColorCommand, CardColorBackground, CardColorSprites; X, Y (pushed by the block moves). Exit, no
+ * command: A 0, N 0, Z 1. Sprites moved: A 1, the VCE address's high byte it last loaded, N 0, Z 0, C 0. Sprites
+ * skipped: A 0, N 0, Z 1, C 0 if the background moved, else as it was. X, Y, V kept.
  */
-ColorCommand ex_colorcmd(void)
+CardExit ex_colorcmd(uint8_t x, uint8_t y)
 {
-    ColorCommand done;
+    CardExit e = { 0 };
+    CardExit step;
+    uint8_t command = RD8(CRAM->color_command);
     bool read_back;
+    bool moved = false;
 
-    done.command = rd8(CardColorCommand);
-    done.background_sets = rd8((uint16_t)(CardColorBackground + 2));
-    done.sprite_sets = rd8((uint16_t)(CardColorSprites + 2));
-    if (done.command == 0)
-        return done;
-    read_back = (done.command & COLOR_READ_BACK) != 0;
-    if (read_back) {
-        for (unsigned i = 0; i < COLOR_STUB_HEAD; i++)
-            wr8((uint16_t)(CardBlockStub + i), rd8((uint16_t)(ColorReadStub + i)));
-    } else {
-        wr8(CardBlockStub, STUB_TIA);
-        put_stub_word(STUB_DESTINATION, VceDataLo);
+    e.a = e.nz = command;
+    e.set_a = e.set_nz = true;
+    if (command == 0) {
+        return e;
     }
-    wr8((uint16_t)(CardBlockStub + STUB_RETURN), STUB_RTS);
-    if (done.background_sets != 0)
-        move_colors(CardColorBackground, 0, read_back);
-    if (done.sprite_sets != 0)
-        move_colors(CardColorSprites, SPRITE_PALETTE_HIGH, read_back);
-    wr8(CardColorCommand, 0);
-    return done;
+    read_back = (command & COLOR_READ_BACK) != 0;
+    if (!read_back) {
+        wr8(STUB(0), STUB_TIA);
+        wr8(STUB(STUB_DESTINATION), VCE_PORT_LOW);
+        wr8(STUB(STUB_DESTINATION + 1), STUB_PORT_HIGH);
+    } else {
+        push8(y);
+        push8(command & COLOR_READ_BACK);
+        push8(x);
+        for (unsigned i = 0; i < COLOR_STUB_HEAD; i++) {
+            uint8_t byte = rd8((uint16_t)(ColorReadStub + i));
+
+            wr8(STUB(i), byte);
+        }
+        (void)pull8();
+        (void)pull8();
+        (void)pull8();
+    }
+    wr8(STUB(STUB_RETURN), STUB_RTS);
+    step = move_color_set(CardColorBackground, 0, read_back, read_back ? 0xE5AB : 0xE54D, x, y, &moved);
+    e = card_exit_over(e, step);
+    step = move_color_set((uint16_t)CardColorSprites, SPRITE_PALETTES, read_back, read_back ? 0xE5D3 : 0xE575, x, y,
+                          &moved);
+    e = card_exit_over(e, step);
+    WR8(CRAM->color_command, 0);
+    return e;
 }
 
 void abi_ex_colorcmd(void)
 {
-    ColorCommand done = ex_colorcmd();
-
-    if (done.command == 0 || done.sprite_sets == 0) {
-        cpu.a = 0;
-        abi_nz(0);
-        if (done.command != 0 && done.background_sets != 0)
-            abi_flag(P_C, false);
-        return;
-    }
-    cpu.a = SPRITE_PALETTE_HIGH;
-    abi_nz(SPRITE_PALETTE_HIGH);
-    abi_flag(P_C, false);
+    card_exit_apply(ex_colorcmd(cpu.x, cpu.y));
 }

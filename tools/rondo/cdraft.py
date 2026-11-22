@@ -148,11 +148,13 @@ class Draft:
         self.segs.append(sg)
         return sg
 
-    def tail(self, addr):
+    def tail(self, addr, frompc):
+        """A tail jump: the instruction at frompc makes it. The hybrid needs that address (the code a branch runs
+        on into can be a piece inlined from another routine, outside this routine's own range)."""
         self.stat["tail"] += 1
-        return "{ call_original(0x%04X); return; }" % addr
+        return "{ call_original_at(0x%04X, 0x%04X); return; }" % (frompc, addr)
 
-    def jump_to(self, seg, addr, branch):
+    def jump_to(self, seg, addr, branch, frompc):
         """C that goes to run address addr: a label in this piece, the piece a branch runs on into (its code
         is part of this function: the C makes every access itself, no hand-off), or a tail jump to a routine
         entry (a JMP: the original's record has the entry)."""
@@ -168,7 +170,7 @@ class Draft:
             if r:
                 g2, off2 = r
                 if off2 == 0 and Draft.has_row(g2, (addr - off2) & 0xFFFF):
-                    return self.tail(addr)      # a routine's own start: the original enters it (a call event), its C is its own call
+                    return self.tail(addr, frompc)      # a routine's own start: the original enters it (a call event), its C is its own call
                 if off2 in g2.istart:
                     s2 = self.seg_for(g2, (addr - off2) & 0xFFFF)
                     if s2:
@@ -177,7 +179,7 @@ class Draft:
                 else:
                     self.stat["untraced_arm"] += 1
                     return "untraced(0x%04X);" % addr
-        return self.tail(addr)
+        return self.tail(addr, frompc)
 
     def step(self, seg, idx):
         g, base = seg.g, seg.base
@@ -207,14 +209,14 @@ class Draft:
         if name[:3] in ("bbr", "bbs"):
             disp = c[o + ln - 1]
             disp = disp - 256 if disp & 0x80 else disp
-            return "if (op_%s(%s, 0x%02X)) { %s }" % (name[:3], name[3], ops[0], self.jump_to(seg, (nxt + disp) & 0xFFFF, True))
+            return "if (op_%s(%s, 0x%02X)) { %s }" % (name[:3], name[3], ops[0], self.jump_to(seg, (nxt + disp) & 0xFFFF, True, pc))
         if name in COND:
             disp = c[o + ln - 1]
             disp = disp - 256 if disp & 0x80 else disp
             if name == "bra" and ((nxt + disp) & 0xFFFF) == pc:
                 self.stat["wait"] += 1
                 return "for (;;) wait_interrupt();  /* a branch to itself */"
-            go = self.jump_to(seg, (nxt + disp) & 0xFFFF, True)
+            go = self.jump_to(seg, (nxt + disp) & 0xFFFF, True, pc)
             return go if name == "bra" else "if (%s) { %s }" % (COND[name], go)
         if name in ("jsr", "bsr"):
             if name == "jsr":
@@ -229,7 +231,7 @@ class Draft:
                 if ops[0] == pc:
                     self.stat["wait"] += 1
                     return "for (;;) wait_interrupt();  /* a jump to itself */"
-                return self.jump_to(seg, ops[0], False)
+                return self.jump_to(seg, ops[0], False, pc)
             ea = "0x%04X" % ops[0] if mode == "ind" else "ea_abx(0x%04X)" % ops[0]
             self.stat["computed"] += 1
             return "{ uint16_t t_ = op_jmp_ptr(%s); call_original(t_); return; }" % ea
@@ -276,7 +278,7 @@ class Draft:
         last = g.items[-1]
         tail = None
         if last[0] == "i" and last[3] not in huc.ENDS:
-            tail = self.jump_to(seg, (base + g.n) & 0xFFFF, True)
+            tail = self.jump_to(seg, (base + g.n) & 0xFFFF, True, (base + last[1]) & 0xFFFF)
             self.stat["fall_out"] += 1
         self.bodies[seg.k] = (body, tail)
 
@@ -320,10 +322,10 @@ def run_bases(it):
 
 def my_filed(disc):
     """This tree's filed routines (asmfile's tags) as the intake takes them: disc, length, run, name."""
-    sys.path.insert(0, HERE)
-    import asmfile
     if os.environ.get("CDRAFT_TEST_NO_FILED"):       # the control: with no filed routine at all the drafts' bodies must not change
         return []
+    sys.path.insert(0, HERE)
+    import asmfile
     routines = asmfile.all_routines()
     out = []
     for i, r in enumerate(routines):
@@ -451,9 +453,9 @@ def card_drafts(names, rows=None):
     todo = []
     cpieces = []
     for lo, hi, run, name in sorted(pieces):
+        name = filed_at.get((lo, run), name)      # a label: the filed name of the routine that starts here
         pc = intake.Piece(lo, hi, "card", ())
         g = intake.Group([pc], bytes(rom[lo:hi]))
-        name = filed_at.get((lo, run), name)      # a label: the filed name of the routine that starts here
         intake.decode_group(g, cm)
         pc.group = g
         cpieces.append(pc)
@@ -552,22 +554,58 @@ def main_root():
     return os.path.dirname(os.path.abspath(os.path.join(TOP, common)))
 
 
-def stamp():
-    """What the drafts are a function of: the sources' bytes and the big inputs' size and time."""
+def _sha(path, memo):
+    """sha1 of a file's bytes. The memo (path, size, mtime -> sha1) only saves time: a changed mtime with the same
+    bytes gives the same hash, so the stamp itself depends on content alone."""
     import hashlib
+    st = os.stat(path)
+    key = "%s|%d|%d" % (os.path.realpath(path), st.st_size, st.st_mtime_ns)
+    if key in memo:
+        return memo[key]
     h = hashlib.sha1()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    memo[key] = h.hexdigest()
+    return memo[key]
+
+
+def stamp():
+    """What the drafts are a function of, by content: the disc image, the card image, the merged code maps and
+    every script's edges (intake.load reads them), and the sources that cut and write a draft. No path, time or
+    commit takes part: a worktree whose inputs hold the same bytes has the same stamp as the main checkout."""
+    import glob
+    import hashlib
     main = main_root()
+    memo_path = os.path.join(main, "build", "rondo", "drafts.hashes")
+    memo = {}
+    try:
+        for ln in open(memo_path):
+            k, _, v = ln.rstrip("\n").rpartition(" ")
+            memo[k] = v
+    except OSError:
+        pass
+    before = len(memo)
+    h = hashlib.sha1()
     for path in (os.path.join(HERE, "cdraft.py"), os.path.join(TOP, "src", "rondo", "include", "ops6280.h"),
-                 os.path.join(intake_dir(), "intake.py"), os.path.join(HERE, "huc.py")):
-        h.update(path.encode() if False else os.path.basename(path).encode())
-        h.update(open(path, "rb").read())
-    for path in (os.path.join(main, "build", "rondo", "disc", "track02.bin"),
-                 os.path.join(main, "build", "rondo", "system", "syscard3.pce"),
-                 os.path.join(main, "build", "rondo", "trace", "discmap.bin"),
-                 os.path.join(main, "build", "rondo", "trace", "runmap.bin"),
-                 os.path.join(main, "build", "rondo", "trace", "cardmap.bin")):
-        st = os.stat(path)
-        h.update(("%s %d %d" % (os.path.basename(path), st.st_size, st.st_mtime_ns)).encode())
+                 os.path.join(intake_dir(), "intake.py"), os.path.join(intake_dir(), "catalog.py"),
+                 os.path.join(HERE, "huc.py")):
+        h.update(os.path.basename(path).encode() + b"\0" + open(path, "rb").read())
+    big = [os.path.join(main, "build", "rondo", "disc", "track02.bin"),
+           os.path.join(main, "build", "rondo", "system", "syscard3.pce")]
+    big += [os.path.join(main, "build", "rondo", "trace", n) for n in ("discmap.bin", "runmap.bin", "cardmap.bin")]
+    big += sorted(glob.glob(os.path.join(main, "build", "rondo", "trace", "*", "edges.csv")))
+    for path in big:
+        h.update(os.path.relpath(path, main).encode() + b"\0" + _sha(path, memo).encode())
+    if len(memo) != before:
+        try:
+            os.makedirs(os.path.dirname(memo_path), exist_ok=True)
+            with open(memo_path + ".tmp", "w") as f:
+                for k, v in sorted(memo.items()):
+                    f.write("%s %s\n" % (k, v))
+            os.replace(memo_path + ".tmp", memo_path)
+        except OSError:
+            pass
     return h.hexdigest()
 
 

@@ -145,29 +145,33 @@ void abi_SetBlinkFlash(void)
  * its timer to $60.
  * HOW: Calls LoadObjectRecord through its vector (which keeps X), then stores each byte.
  * WAITS: no.
- * Entry: X object. Exit: A $60 and flags from that load; X kept; Y as LoadObjectRecord left it.
+ * Entry: X object. Exit: A $60, N and Z from it, C as LoadObjectRecord left it; Y 11; X kept. D clear.
  */
-void InitObjectFromRecord(uint8_t slot)
+bool InitObjectFromRecord(uint8_t slot)
 {
-    uint8_t shared;
+    uint8_t shared, nz;
+    bool carry;
 
-    cpu.x = slot;
-    if (call_frame(0xA485, abi_VecLoadObjectRecord)) {
-        return;
-    }
+    jsr_push(0xA485);
+    LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
     shared = RD8(OBJ->f2fe8[0]);
     WR8(OBJ->f2fe8[slot], shared);
     WR8(OBJ->f3988[slot], 4);
     WR8(OBJ->f3a38[slot], 4);
     WR8(OBJ->f3510[slot], 4);
     WR8(OBJ->f34b8[slot], 0x60);
+    return carry;
 }
 
 void abi_InitObjectFromRecord(void)
 {
-    InitObjectFromRecord(cpu.x);
+    bool carry = InitObjectFromRecord(cpu.x);
+
     cpu.a = 0x60;
+    cpu.y = 11;
     abi_nz(0x60);
+    abi_flag(P_C, carry);
 }
 
 /*
@@ -181,12 +185,11 @@ void abi_InitObjectFromRecord(void)
  * multiplier of 256; the angle is the two bytes OBJ_35C0 (low) and OBJ_3568 (high).
  * WAITS: no.
  * Entry: X object. Exit: A and flags from the last AND or add (see the wrapper); X kept; Y as
- * ScaleByCosine left it.
+ * ScaleByCosine left it. D clear.
  */
 FallResult FallAndBounce(uint8_t slot)
 {
-    FallResult result = { FALL_DEADLY_GROUND, 0, 0, false, false, false };
-    bool overflow_set;
+    FallResult result = { FALL_DEADLY_GROUND, 0, 0, false, false };
     uint8_t answer, deadly, angle_low, angle_high, product_hi, product_mid;
     Sum sum;
 
@@ -221,16 +224,15 @@ FallResult FallAndBounce(uint8_t slot)
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0x80);
     angle_low = RD8(OBJ->f35c0[slot]);
-    sum = add_bytes_in_mode(angle_low, 0x80, false, &overflow_set);
+    sum = add_bytes(angle_low, 0x80, false);
     WR8(OBJ->f35c0[slot], sum.value);
     angle_high = RD8(OBJ->f3568[slot]);
-    sum = add_bytes_in_mode(angle_high, 0x02, sum.carry, &overflow_set);
+    sum = add_bytes(angle_high, 0x02, sum.carry);
     WR8(OBJ->f3568[slot], sum.value);
     result.end = FALL_BOUNCED;
     result.angle_high = sum.value;
     result.carry = sum.carry;
     result.overflow = sum.overflow;
-    result.overflow_set = overflow_set;
     return result;
 }
 
@@ -245,9 +247,7 @@ void abi_FallAndBounce(void)
         cpu.a = result.angle_high;
         abi_nz(result.angle_high);
         abi_flag(P_C, result.carry);
-        if (result.overflow_set) {
-            abi_flag(P_V, result.overflow);
-        }
+        abi_flag(P_V, result.overflow);
     }
 }
 

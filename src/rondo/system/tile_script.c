@@ -5,6 +5,7 @@
  */
 #include "machine.h"
 #include "ram.h"
+#include "access.h"
 #include "routines.h"
 
 enum {
@@ -20,18 +21,10 @@ typedef struct {
     uint8_t last_op;      /* the last op that counted or set the attribute, or TILE_OP_END */
     uint8_t jump_low;     /* the low byte of the last jump */
     bool stepped_line;
-    uint16_t line_start;  /* where the last line step went */
+    bool line_overflow;   /* V from the last line step's high byte add */
 } TileRun;
 
 static TileRun run_tile_script(void);
-
-/* A line step adds to the high byte with its carry: V is overflow from $7F to $80. */
-static bool line_step_overflowed_shim(uint16_t line_start)
-{
-    uint16_t before = (uint16_t)(line_start - TILES_PER_LINE);
-
-    return (before >> 8) == 0x7F && (line_start >> 8) == 0x80;
-}
 
 /* Y as the last op left it: a count run down to zero, a shifted nibble or a jump's low. */
 static uint8_t tile_run_y_shim(TileRun run, uint8_t y_before)
@@ -55,7 +48,7 @@ static void abi_exit_tile_run(TileRun run, uint8_t y_before)
     abi_nz(0);
     abi_flag(P_C, true);
     if (run.stepped_line)
-        abi_flag(P_V, line_step_overflowed_shim(run.line_start));
+        abi_flag(P_V, run.line_overflow);
 }
 
 /*
@@ -63,17 +56,16 @@ static void abi_exit_tile_run(TileRun run, uint8_t y_before)
  * @run 6A:6550
  * WHAT IT DOES: Moves the script pointer on one byte.
  * HOW: A 16-bit increment in zero page.
+ * WAITS: no.
  * Entry: zTemp02-03 pointer. Exit: N and Z from the last byte stepped. A, X, Y, C,
  * V kept.
  */
 uint8_t AdvanceTileScript(void)
 {
-    uint8_t low = (uint8_t)(rd8(zTemp02) + 1);
+    uint8_t low = INC8(ZP->temp02);
 
-    wr8(zTemp02, low);
     if (low == 0) {
-        low = (uint8_t)(rd8(zTemp03) + 1);
-        wr8(zTemp03, low);
+        low = INC8(ZP->temp03);
     }
     return low;
 }
@@ -83,35 +75,30 @@ void abi_AdvanceTileScript(void)
     abi_nz(AdvanceTileScript());
 }
 
-/* The next byte of the script, stepping past it. */
-static uint8_t next_script_byte(void)
-{
-    uint8_t byte = rd8_zp(zTemp02);
-
-    AdvanceTileScript();
-    return byte;
-}
-
 /*
  * @routine 0047:513 WriteTile
  * @run 6A:6513
  * WHAT IT DOES: Writes one tile to VRAM.
- * HOW: The tile as the low byte, zTemp04 as the attribute byte.
+ * HOW: The tile as the low byte, zTemp04 as the attribute byte. The tile is kept on the
+ * stack while it is written.
+ * WAITS: no.
  * Entry: A tile, VDC on its data port. Exit: A kept, N and Z from it. X, Y, C, V
  * kept.
  */
-void WriteTile(uint8_t tile)
+uint8_t WriteTile(uint8_t tile)
 {
     uint8_t attribute;
 
-    wr8(VDC_DATA_LO, tile);
-    attribute = rd8(zTemp04);
-    wr8(VDC_DATA_HI, attribute);
+    push8(tile);
+    WR8(VDC->data_lo, tile);
+    attribute = RD8(ZP->temp04);
+    WR8(VDC->data_hi, attribute);
+    return pull8();
 }
 
 void abi_WriteTile(void)
 {
-    WriteTile(cpu.a);
+    cpu.a = WriteTile(cpu.a);
     abi_nz(cpu.a);
 }
 
@@ -120,12 +107,17 @@ void abi_WriteTile(void)
  * @run 6A:6509
  * WHAT IT DOES: Writes a tile and gives the next one up.
  * HOW: WriteTile, then adds one.
+ * WAITS: no.
  * Entry: A tile. Exit: A plus one, N and Z from it. X, Y, C, V kept.
  */
 uint8_t WriteTileAscending(uint8_t tile)
 {
-    WriteTile(tile);
-    return (uint8_t)(tile + 1);
+    uint8_t written;
+
+    jsr_push(0x650C);
+    written = WriteTile(tile);
+    jsr_pop();
+    return (uint8_t)(written + 1);
 }
 
 void abi_WriteTileAscending(void)
@@ -139,12 +131,17 @@ void abi_WriteTileAscending(void)
  * @run 6A:650E
  * WHAT IT DOES: Writes a tile and gives the next one down.
  * HOW: WriteTile, then subtracts one.
+ * WAITS: no.
  * Entry: A tile. Exit: A minus one, N and Z from it. X, Y, C, V kept.
  */
 uint8_t WriteTileDescending(uint8_t tile)
 {
-    WriteTile(tile);
-    return (uint8_t)(tile - 1);
+    uint8_t written;
+
+    jsr_push(0x6511);
+    written = WriteTile(tile);
+    jsr_pop();
+    return (uint8_t)(written - 1);
 }
 
 void abi_WriteTileDescending(void)
@@ -158,22 +155,30 @@ void abi_WriteTileDescending(void)
  * @run 6A:651E
  * WHAT IT DOES: Takes a VRAM address from the script and readies writes there.
  * HOW: Writes it to the write address register, keeps it in zTemp00-01 as the
- * line's start, and selects the data port.
+ * line's start, and selects the data port, which this routine runs on into with no
+ * return of its own.
+ * WAITS: no.
  * Entry: zTemp02-03 pointer. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
  */
 void SetVramFromScript(void)
 {
     uint8_t byte;
 
+    jsr_push(0x6521);
     SelectVramWriteAddress();
-    byte = rd8_zp(zTemp02);
-    wr8(VDC_DATA_LO, byte);
-    wr8(zTemp00, byte);
+    jsr_pop();
+    byte = RD8_PTR(ZP->temp02);
+    WR8(VDC->data_lo, byte);
+    WR8(ZP->temp00, byte);
+    jsr_push(0x652B);
     AdvanceTileScript();
-    byte = rd8_zp(zTemp02);
-    wr8(VDC_DATA_HI, byte);
-    wr8(zTemp01, byte);
+    jsr_pop();
+    byte = RD8_PTR(ZP->temp02);
+    WR8(VDC->data_hi, byte);
+    WR8(ZP->temp01, byte);
+    jsr_push(0x6535);
     AdvanceTileScript();
+    jsr_pop();
     SelectVramData();
 }
 
@@ -184,53 +189,79 @@ void abi_SetVramFromScript(void)
     abi_nz(2);
 }
 
+/* A line step's exit: the start it set, and the carry and overflow of its high byte add. */
+typedef struct { uint16_t start; Sum high; } LineStep;
+
 /*
  * @routine 0047:538 NextVramLine
  * @run 6A:6538
  * WHAT IT DOES: Moves drawing down to the start of the next background line, $40
  * tiles on from the line's start.
  * HOW: Adds $40 to the start kept in zTemp00-01, writes it to the write address
- * register and selects the data port.
- * Entry: zTemp00-01 line start. Exit: A 2, N 0, Z 0, C and V from the sum. X and Y
- * kept.
+ * register and selects the data port, which this routine runs on into with no return
+ * of its own.
+ * WAITS: no.
+ * Entry: zTemp00-01 line start. Exit: A 2, N 0, Z 0, C and V from the high byte's add.
+ * X and Y kept.
  */
-uint16_t NextVramLine(void)
+static LineStep next_vram_line(void)
 {
-    uint8_t low = rd8(zTemp00);
-    uint16_t start = (uint16_t)(low | (rd8(zTemp01) << 8));
+    LineStep step;
+    Sum low;
+    uint8_t byte;
 
-    start = (uint16_t)(start + TILES_PER_LINE);
+    jsr_push(0x653B);
     SelectVramWriteAddress();
-    wr8(zTemp00, (uint8_t)start);
-    wr8(VDC_DATA_LO, (uint8_t)start);
-    wr8(zTemp01, (uint8_t)(start >> 8));
-    wr8(VDC_DATA_HI, (uint8_t)(start >> 8));
+    jsr_pop();
+    byte = RD8(ZP->temp00);
+    low = add_bytes(byte, TILES_PER_LINE, false);
+    WR8(ZP->temp00, low.value);
+    WR8(VDC->data_lo, low.value);
+    byte = RD8(ZP->temp01);
+    step.high = add_bytes(0, byte, low.carry);
+    WR8(ZP->temp01, step.high.value);
+    WR8(VDC->data_hi, step.high.value);
     SelectVramData();
-    return start;
+    step.start = (uint16_t)(low.value | (step.high.value << 8));
+    return step;
 }
 
-/* The carry out is of the high byte: only $FFxx wrapping to $00xx. */
-static Alu next_line_exit_shim(uint16_t start)
+uint16_t NextVramLine(void)
 {
-    Alu exit = { 0 };
-    uint16_t before = (uint16_t)(start - TILES_PER_LINE);
-
-    exit.a = VDC_DATA_PORT_SELECTED;
-    exit.nz = VDC_DATA_PORT_SELECTED;
-    exit.c = (before >> 8) == 0xFF && (start >> 8) == 0x00;
-    exit.v = line_step_overflowed_shim(start);
-    exit.v_set = true;
-    return exit;
+    return next_vram_line().start;
 }
 
 void abi_NextVramLine(void)
 {
-    abi_alu(next_line_exit_shim(NextVramLine()));
+    LineStep step = next_vram_line();
+
+    cpu.a = VDC_DATA_PORT_SELECTED;
+    abi_nz(VDC_DATA_PORT_SELECTED);
+    abi_flag(P_C, step.high.carry);
+    abi_flag(P_V, step.high.overflow);
 }
 
+/* The attribute byte's two halves, each stored, then read back and joined, as the script ops do it. */
 static void set_attribute_high(uint8_t op)
 {
-    wr8(zTemp04, (uint8_t)((op << 4) | (rd8(zTemp04) & 0x0F)));
+    uint8_t shifted = (uint8_t)(op << 4);
+    uint8_t byte;
+
+    byte = RD8(ZP->temp04);
+    WR8(ZP->temp04, (uint8_t)(byte & 0x0F));
+    byte = RD8(ZP->temp04);
+    WR8(ZP->temp04, (uint8_t)(shifted | byte));
+}
+
+static void set_attribute_low(uint8_t op)
+{
+    uint8_t nibble = (uint8_t)(op & 0x0F);
+    uint8_t byte;
+
+    byte = RD8(ZP->temp04);
+    WR8(ZP->temp04, (uint8_t)(byte & 0xF0));
+    byte = RD8(ZP->temp04);
+    WR8(ZP->temp04, (uint8_t)(nibble | byte));
 }
 
 /*
@@ -238,7 +269,9 @@ static void set_attribute_high(uint8_t op)
  * @run 6A:6405
  * WHAT IT DOES: Script ops $C0-$CF: sets the high nibble of the tile attribute, the
  * palette.
- * HOW: The op's low nibble shifted up, ORed with the attribute's low nibble.
+ * HOW: The op's low nibble shifted up, ORed with the attribute's low nibble. Then on
+ * into RunTileScript.
+ * WAITS: no.
  * Entry: A op. Exit: back to the loop, with Y the shifted nibble.
  */
 void abi_TileOpAttributeHigh(void)
@@ -247,17 +280,14 @@ void abi_TileOpAttributeHigh(void)
     abi_exit_tile_run(run_tile_script(), (uint8_t)(cpu.a << 4));
 }
 
-static void set_attribute_low(uint8_t op)
-{
-    wr8(zTemp04, (uint8_t)((op & 0x0F) | (rd8(zTemp04) & 0xF0)));
-}
-
 /*
  * @routine 0047:417 TileOpAttributeLow
  * @run 6A:6417
  * WHAT IT DOES: Script ops $D0-$FD not otherwise taken: sets the low nibble of the
  * tile attribute, the high bits of the tile number.
- * HOW: The op's low nibble ORed with the attribute's high nibble.
+ * HOW: The op's low nibble ORed with the attribute's high nibble. Then on into
+ * RunTileScript.
+ * WAITS: no.
  * Entry: A op. Exit: back to the loop, with Y the nibble.
  */
 void abi_TileOpAttributeLow(void)
@@ -271,29 +301,40 @@ void abi_TileOpAttributeLow(void)
  * @run 6A:6420
  * WHAT IT DOES: Ends a tile script: op $FF.
  * HOW: Returns.
+ * WAITS: no.
  * Entry: nothing. Exit: everything kept.
  */
 void abi_TileScriptReturn(void)
 {
 }
 
-/* Runs of tiles, value in the next script byte, counts in the op's low bits. */
+/* The count of a run of tiles and the op's calls' return addresses differ per entry; each run is its own. */
 static void run_repeated(uint8_t count)
 {
-    uint8_t tile = next_script_byte();
+    uint8_t tile = RD8_PTR(ZP->temp02);
 
+    jsr_push(0x64EF);
+    AdvanceTileScript();
+    jsr_pop();
     do {
+        jsr_push(0x64F2);
         WriteTile(tile);
+        jsr_pop();
         count--;
     } while (count != 0);
 }
 
 static void run_ascending(uint8_t count)
 {
-    uint8_t tile = next_script_byte();
+    uint8_t tile = RD8_PTR(ZP->temp02);
 
+    jsr_push(0x6500);
+    AdvanceTileScript();
+    jsr_pop();
     do {
+        jsr_push(0x6503);
         tile = WriteTileAscending(tile);
+        jsr_pop();
         count--;
     } while (count != 0);
 }
@@ -301,27 +342,66 @@ static void run_ascending(uint8_t count)
 static void run_literal(uint8_t count)
 {
     do {
-        uint8_t tile = next_script_byte();
+        uint8_t tile = RD8_PTR(ZP->temp02);
 
+        jsr_push(0x64B5);
+        AdvanceTileScript();
+        jsr_pop();
+        jsr_push(0x64B8);
         WriteTile(tile);
+        jsr_pop();
         count--;
     } while (count != 0);
 }
 
-/* Alternating up and down, for two-tile patterns. A count of zero runs 256. */
-static void run_alternating(uint8_t count, bool up_first)
+/* Alternating up then down, for two-tile patterns. A count of zero runs 256. */
+static void run_alternating_up(uint8_t count)
 {
-    uint8_t tile = next_script_byte();
+    uint8_t tile = RD8_PTR(ZP->temp02);
 
+    jsr_push(0x6429);
+    AdvanceTileScript();
+    jsr_pop();
     for (;;) {
-        tile = up_first ? WriteTileAscending(tile) : WriteTileDescending(tile);
+        jsr_push(0x642C);
+        tile = WriteTileAscending(tile);
+        jsr_pop();
         count--;
-        if (count == 0)
+        if (count == 0) {
             return;
-        tile = up_first ? WriteTileDescending(tile) : WriteTileAscending(tile);
+        }
+        jsr_push(0x6432);
+        tile = WriteTileDescending(tile);
+        jsr_pop();
         count--;
-        if (count == 0)
+        if (count == 0) {
             return;
+        }
+    }
+}
+
+static void run_alternating_down(uint8_t count)
+{
+    uint8_t tile = RD8_PTR(ZP->temp02);
+
+    jsr_push(0x643F);
+    AdvanceTileScript();
+    jsr_pop();
+    for (;;) {
+        jsr_push(0x6442);
+        tile = WriteTileDescending(tile);
+        jsr_pop();
+        count--;
+        if (count == 0) {
+            return;
+        }
+        jsr_push(0x6448);
+        tile = WriteTileAscending(tile);
+        jsr_pop();
+        count--;
+        if (count == 0) {
+            return;
+        }
     }
 }
 
@@ -330,12 +410,14 @@ static void run_alternating(uint8_t count, bool up_first)
  * @run 6A:6421
  * WHAT IT DOES: Script ops $40-$5F: a run of tiles alternating up and back, for a
  * two-tile pattern.
- * HOW: Next byte the first tile; WriteTileAscending, WriteTileDescending in turn.
+ * HOW: Next byte the first tile; WriteTileAscending, WriteTileDescending in turn. Then on
+ * into RunTileScript.
+ * WAITS: no.
  * Entry: A op. Exit: back to the loop, with Y 0.
  */
 void abi_TileOpAlternateUp(void)
 {
-    run_alternating(cpu.a & 0x1F, true);
+    run_alternating_up(cpu.a & 0x1F);
     abi_exit_tile_run(run_tile_script(), 0);
 }
 
@@ -343,12 +425,14 @@ void abi_TileOpAlternateUp(void)
  * @routine 0047:437 TileOpAlternateDown
  * @run 6A:6437
  * WHAT IT DOES: Script ops $60-$7F: a run of tiles alternating down and back.
- * HOW: Next byte the first tile; WriteTileDescending, WriteTileAscending in turn.
+ * HOW: Next byte the first tile; WriteTileDescending, WriteTileAscending in turn. Then
+ * on into RunTileScript.
+ * WAITS: no.
  * Entry: A op. Exit: back to the loop, with Y 0.
  */
 void abi_TileOpAlternateDown(void)
 {
-    run_alternating(cpu.a & 0x1F, false);
+    run_alternating_down(cpu.a & 0x1F);
     abi_exit_tile_run(run_tile_script(), 0);
 }
 
@@ -361,48 +445,66 @@ void abi_TileOpAlternateDown(void)
  * rest of $D0-$FD the attribute's low nibble.
  * HOW: Reads an op, compares it down through the ranges in the order above from
  * the top, and does it.
+ * WAITS: no.
  * Entry: zTemp02-03 the script, VDC on its data port, zTemp04 the attribute. Exit:
  * A $FF, N 0, Z 1, C 1, Y as the last op left it, V from the last line step. X
  * kept. Clobbers zTemp00-01, zTemp04.
  */
 static TileRun run_tile_script(void)
 {
-    TileRun run = { TILE_OP_END, 0, false, 0 };
+    TileRun run = { TILE_OP_END, 0, false, false };
 
     for (;;) {
-        uint8_t op = next_script_byte();
+        uint8_t op = RD8_PTR(ZP->temp02);
 
-        if (op == TILE_OP_END)
+        jsr_push(0x647B);
+        AdvanceTileScript();
+        jsr_pop();
+        if (op == TILE_OP_END) {
             return run;
+        }
         if (op == TILE_OP_SET_ADDRESS) {
+            jsr_push(0x64E0);
             SetVramFromScript();
+            jsr_pop();
             continue;
         }
         if (op == TILE_OP_NEXT_LINE) {
-            run.line_start = NextVramLine();
+            LineStep step;
+
+            jsr_push(0x64E5);
+            step = next_vram_line();
+            jsr_pop();
             run.stepped_line = true;
+            run.line_overflow = step.high.overflow;
             continue;
         }
         if (op == TILE_OP_LITERAL_WORD) {
-            uint8_t byte = rd8_zp(zTemp02);
+            uint8_t byte = RD8_PTR(ZP->temp02);
 
-            wr8(VDC_DATA_LO, byte);
+            WR8(VDC->data_lo, byte);
+            jsr_push(0x64D3);
             AdvanceTileScript();
-            byte = rd8_zp(zTemp02);
-            wr8(VDC_DATA_HI, byte);
+            jsr_pop();
+            byte = RD8_PTR(ZP->temp02);
+            WR8(VDC->data_hi, byte);
+            jsr_push(0x64DB);
             AdvanceTileScript();
+            jsr_pop();
             continue;
         }
         run.last_op = op;
         if (op == TILE_OP_JUMP) {
-            uint8_t low = rd8_zp(zTemp02);
+            uint8_t low = RD8_PTR(ZP->temp02);
             uint8_t high;
 
             run.jump_low = low;
+            jsr_push(0x64C3);
             AdvanceTileScript();
-            high = rd8_zp(zTemp02);
-            wr8(zTemp02, low);
-            wr8(zTemp03, high);
+            jsr_pop();
+            high = RD8_PTR(ZP->temp02);
+            WR8(ZP->temp02, low);
+            WR8(ZP->temp03, high);
         } else if (op >= TILE_OP_ATTRIBUTE_LOW) {
             set_attribute_low(op);
         } else if (op >= TILE_OP_PALETTE) {
@@ -412,9 +514,9 @@ static TileRun run_tile_script(void)
         } else if (op < TILE_OP_ASCENDING) {
             run_ascending(op & 0x1F);
         } else if (op < TILE_OP_ALTERNATE_UP) {
-            run_alternating(op & 0x1F, true);
+            run_alternating_up(op & 0x1F);
         } else if (op < TILE_OP_ALTERNATE_DOWN) {
-            run_alternating(op & 0x1F, false);
+            run_alternating_down(op & 0x1F);
         } else {
             run_literal(op & 0x3F);
         }
@@ -428,40 +530,47 @@ void abi_RunTileScript(void)
     abi_exit_tile_run(run_tile_script(), y_before);
 }
 
-static uint16_t tile_pointer_at(uint16_t address)
-{
-    uint8_t low = rd8(address);
-
-    return (uint16_t)(low | (rd8((uint16_t)(address + 1)) << 8));
-}
-
-static void tile_pointer_to(uint16_t lo, uint16_t hi, uint16_t pointer)
-{
-    wr8(lo, (uint8_t)pointer);
-    wr8(hi, (uint8_t)(pointer >> 8));
-}
-
 /*
  * @routine 0047:44D DrawTileScript
  * @run 6A:644D
  * WHAT IT DOES: Draws one of the stage's tile scripts: a group and an item within it.
  * HOW: The overlay's pointer at OverlayTileScripts leads to a table of groups, each
  * a table of scripts. Clears the VDC's high control byte, takes the address from
- * the script and runs it.
+ * the script and runs it. The item is kept on the stack meanwhile.
+ * WAITS: no.
  * Entry: A item, Y group, stage overlay mapped, zTemp04 the attribute. Exit: as
  * RunTileScript. Clobbers zTemp00-03, zTemp08-09.
+ * The overlay's pointer is read by its old name: it has no record.
  */
 static TileRun draw_tile_script(uint8_t item, uint8_t group)
 {
-    uint16_t groups = tile_pointer_at(OverlayTileScripts);
-    uint16_t items = tile_pointer_at((uint16_t)(groups + (uint8_t)(group << 1)));
-    uint16_t script = tile_pointer_at((uint16_t)(items + (uint8_t)(item << 1)));
+    uint8_t byte;
+    uint8_t y;
 
-    tile_pointer_to(zTemp08, zTemp09, groups);
-    tile_pointer_to(zTemp00, zTemp01, items);
-    tile_pointer_to(zTemp02, zTemp03, script);
+    push8(item);
+    byte = rd8(OverlayTileScripts);
+    WR8(ZP->temp08, byte);
+    byte = rd8((uint16_t)(OverlayTileScripts + 1));
+    WR8(ZP->temp09, byte);
+    y = (uint8_t)(group << 1);
+    byte = RD8_PTR_Y(ZP->temp08, y);
+    WR8(ZP->temp00, byte);
+    y = (uint8_t)(y + 1);
+    byte = RD8_PTR_Y(ZP->temp08, y);
+    WR8(ZP->temp01, byte);
+    item = pull8();
+    y = (uint8_t)(item << 1);
+    byte = RD8_PTR_Y(ZP->temp00, y);
+    WR8(ZP->temp02, byte);
+    y = (uint8_t)(y + 1);
+    byte = RD8_PTR_Y(ZP->temp00, y);
+    WR8(ZP->temp03, byte);
+    jsr_push(0x6473);
     ClearVdcControlHigh();
+    jsr_pop();
+    jsr_push(0x6476);
     SetVramFromScript();
+    jsr_pop();
     return run_tile_script();
 }
 

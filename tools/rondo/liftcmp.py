@@ -89,17 +89,35 @@ def find_ops(drafts_dir, given):
 
 
 def cache_draft(name, run_addr):
-    """(row, body, count) for a filed routine from the drafter's cache (tools/rondo/cdraft.py), or None."""
+    """(row, body, count) for a filed routine from the drafter's cache (tools/rondo/cdraft.py), or None.
+
+    A filed name the drafter's own lookup knows (an asm routine) is fetched by name. Any other, a routine only the C
+    knows or a copy of a content filed at another disc location, is found through the cache's members.csv: the
+    draft that serves this disc location at this run address (else at any run address, the first)."""
     sys.path.insert(0, HERE)
     try:
         import cdraft
+    except Exception as e:
+        raise SystemExit(f"liftcmp: cannot import cdraft.py: {e}")
+    label = name
+    try:
         text = cdraft.fetch(name, as_filed=True)
     except KeyError:
-        return None
+        disc, tag_run = routine_tag(name)
+        cache = cdraft.current_cache()
+        if disc is None or not cache:
+            return None
+        members = [r for r in csv.DictReader(open(os.path.join(cache, "members.csv"))) if r["space"] == "D" and r["offset"] == str(disc)]
+        same = [r for r in members if tag_run is not None and int(r["run"], 16) == tag_run]
+        pick = (same or members or [None])[0]
+        if pick is None:
+            return None
+        label = pick["name"]
+        text = cdraft.fetch(label, as_filed=True)
     except LookupError as e:
         raise SystemExit(f"liftcmp: {e}")
     chunks = re.split(r"(?m)^(?=/\* \w+: run )", text)
-    chunks = [c for c in chunks if c.startswith("/* ") and ("void abi_%s(void)" % name) in c]
+    chunks = [c for c in chunks if c.startswith("/* ") and ("void abi_%s(void)" % label) in c]
     if not chunks:
         return None
     pick = chunks[0]
@@ -108,7 +126,7 @@ def cache_draft(name, run_addr):
         if m and run_addr is not None and int(m.group(2), 16) == run_addr:
             pick = c
     m = re.match(r"/\* (\w+): run ([0-9A-F]+)", pick)
-    return dict(name=m.group(1), run=m.group(2)), pick.replace("void abi_%s(void)" % name, "void draft_entry(void)", 1), len(chunks)
+    return dict(name=m.group(1), run=m.group(2)), pick.replace("void abi_%s(void)" % label, "void draft_entry(void)", 1), len(chunks)
 
 
 def hybrid_rows():

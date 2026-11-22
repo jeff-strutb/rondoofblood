@@ -19,9 +19,12 @@ three flavours (any byte, edge values, small values); a byte written reads back.
 writer wants, one a line: `a=3 x=5 y=0 s=F0 p=NZC mem:2B70=80 mem:3040+5=01` (hex; p a set of flag letters or a
 hex byte; +N is an offset from the address); they run first and are named by line.
 
-Other routines. A call into a routine that has C in the tree runs that C, on both sides (so the callee's accesses are
-in both logs); a call into code with no C is a stub that returns seeded A, X, Y and flags and logs the call. A routine
-is therefore compared with what it calls held equal, as A5 judges it, not with its callees' own correctness.
+Other routines. By default (--callees through) a call is compared through: the draft side runs the callee's DRAFT, its
+real accesses, and the lifted side runs the callee's C as the caller calls it (the typed function between the frame
+helpers, or its abi_ wrapper where the caller calls that), and the whole sequence including the callee's is compared, so
+a callee that omits or reorders an access shows at its caller. With --callees wrappers both sides run the callee's filed
+abi_ wrapper: the callee is held equal and the routine is compared alone. A call into code with no C is a stub that
+returns seeded A, X, Y and flags and logs the call, on both sides in either mode.
 A draft that reaches bytes no script ran ends its case (UNTRACED): that case proves nothing and is counted apart.
 
 Coverage. Both sides are built with the compiler's block probes; the report says which lines of the lifted file and
@@ -319,7 +322,7 @@ def write_cases(cases, path):
             f.write("\n")
 
 
-def build_dispatch(path, rows, objs):
+def build_dispatch(path, rows, objs, through=None, libsyms=()):
     defined, undefined = set(), set()
     for o in objs:
         for line in run(["nm", "-g", o]).stdout.splitlines():
@@ -332,10 +335,14 @@ def build_dispatch(path, rows, objs):
                 "call_original", "call_orig", "untraced", "hand_over", "__sanitizer_cov_trace_pc", "ENTRY"}
     external = sorted(undefined - defined - provided)
     seen, items = set(), []
-    for run_addr, _len, _disc, name, abi, rom in rows:
+    for run_addr, _len, disc, name, abi, rom in rows:
         if rom == "0" and abi in defined and run_addr not in seen:
             seen.add(run_addr)
-            items.append((run_addr, abi))
+            label = through.get((disc, run_addr.upper().lstrip("0") or "0")) if through else None
+            if label and ("abi_" + label) in libsyms:
+                items.append((run_addr, "abi_" + label))
+            else:
+                items.append((run_addr, abi))
     with open(path, "w") as f:
         f.write("#include <stdint.h>\ntypedef struct { uint16_t run; void (*abi)(void); } Dispatch;\n")
         for _, abi in items:
@@ -349,6 +356,35 @@ def build_dispatch(path, rows, objs):
         for name in external:
             f.write('void %s(void) { rt_event(); printf("EXT %s\\n"); }\n' % (name, name))
     return len(items)
+
+
+def draft_library(drafts_dirs, work_cache):
+    """(object of every draft as C, {(disc, run): label}, the symbols it defines) for the callees' side of the comparison."""
+    sys.path.insert(0, HERE)
+    if drafts_dirs:
+        d = drafts_dirs[0]
+        members = {}
+        for r in csv.DictReader(open(os.path.join(d, "drafts.csv"))):
+            if not int(r.get("rom") or 0):
+                members[(r["disc"], r["run"].upper().lstrip("0") or "0")] = r["name"]
+    else:
+        import cdraft
+        d = cdraft.current_cache()
+        if not d:
+            raise SystemExit("liftcmp: the draft cache is stale or missing: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache")
+        members = {}
+        for r in csv.DictReader(open(os.path.join(d, "members.csv"))):
+            if r["space"] == "D":
+                members.setdefault((r["offset"], r["run"].upper().lstrip("0") or "0"), r["name"])
+    src = os.path.join(d, "drafts.c")
+    key = hashlib.sha1(open(src, "rb").read() + header_hash().encode()).hexdigest()[:16]
+    obj = os.path.join(work_cache, "drafts_lib." + key + ".o")
+    if not os.path.exists(obj):
+        r = run(["cc", "-O0", "-w", "-fno-pie", "-I", os.path.join(TOP, "src", "rondo", "include"), "-c", src, "-o", obj])
+        if r.returncode:
+            raise SystemExit(f"liftcmp: the drafts do not compile:\n{r.stderr[-800:]}")
+    syms = {l.split()[2] for l in run(["nm", "-g", "--defined-only", obj]).stdout.splitlines() if len(l.split()) == 3}
+    return obj, members, syms
 
 
 def link(exe, objs, extra_srcs, defs, cache):
@@ -467,6 +503,12 @@ def one(name, a, ctx):
     os.makedirs(work, exist_ok=True)
     disp = os.path.join(work, "dispatch.c")
     ndisp = build_dispatch(disp, ctx["rows"], objs)
+    disp_d, libobj = disp, []
+    if a.callees == "through":
+        libo, members, libsyms = draft_library(ctx["drafts"], ctx["cache"])
+        disp_d = os.path.join(work, "dispatch_draft.c")
+        build_dispatch(disp_d, ctx["rows"], objs, members, libsyms)
+        libobj = [libo]
     draft_c = os.path.join(work, "draft_%s.c" % name)
     open(draft_c, "w").write('#include "machine.h"\n#include "ops6280.h"\n\n' + body)
     rt = os.path.join(HERE, "liftcmp_rt.c")
@@ -490,8 +532,12 @@ def one(name, a, ctx):
         rtobj[side] = ro
     dispobj = os.path.join(work, "dispatch.o")
     run(["cc", "-O1", "-w", "-fno-pie", "-c", disp, "-o", dispobj])
+    dispobj_d = dispobj
+    if disp_d != disp:
+        dispobj_d = os.path.join(work, "dispatch_draft.o")
+        run(["cc", "-O1", "-w", "-fno-pie", "-c", disp_d, "-o", dispobj_d])
     link(os.path.join(work, "lifted.bin"), objs + [rtobj["lifted"], dispobj], [], [], None)
-    link(os.path.join(work, "draft.bin"), objs + [dobj, rtobj["draft"], dispobj], [], [], None)
+    link(os.path.join(work, "draft.bin"), objs + [dobj, rtobj["draft"], dispobj_d] + libobj, [], [], None)
     logs, covs = {}, {}
     for side in ("lifted", "draft"):
         covf = os.path.join(work, side + ".cov")
@@ -502,6 +548,10 @@ def one(name, a, ctx):
         covs[side] = covf
     ignore = sum(FLAGBITS[ch] for ch in a.ignore_flags)
     same, diffs, untraced = [], [], []
+    raw_draft = logs["draft"]
+    for side in ("draft", "lifted"):
+        logs[side] = {k: [x for x in v if not x.startswith("#")] for k, v in logs[side].items()}
+    names_by_run = {r[0].lstrip("0").upper() or "0": r[3] for r in ctx["rows"]}
     for c in cases:
         i = c["id"]
         dl, ll = logs["draft"].get(i, []), logs["lifted"].get(i, [])
@@ -514,7 +564,7 @@ def one(name, a, ctx):
             same.append(i)
         else:
             diffs.append(i)
-    lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}, {(str(len(configs)) + ' mapper configuration' + ('s' if len(configs) > 1 else '') + ' from the trace') if configs else 'no trace of it: default map'}): "
+    lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}, callees: {'the callees run as drafts against the lifted callers calls' if a.callees == 'through' else 'filed wrappers on both sides'}, {(str(len(configs)) + ' mapper configuration' + ('s' if len(configs) > 1 else '') + ' from the trace') if configs else 'no trace of it: default map'}): "
              f"{len(same)} match, {len(diffs)} differ, {len(untraced)} draft reached untraced bytes"]
     for i in diffs[:a.show]:
         c = cases[i]
@@ -524,7 +574,21 @@ def one(name, a, ctx):
             k += 1
         lines.append(f"  case {i} ({c['label']}): A={c['a']:02X} X={c['x']:02X} Y={c['y']:02X} S={c['s']:02X} P={c['p']:02X} seed {c['seed']:X}"
                      f"{' mem ' + ' '.join('%04X=%02X' % m for m in c['mem']) if c['mem'] else ''}")
-        lines.append(f"    the first {k} events agree; then")
+        inside, seen = [], 0
+        for x in raw_draft[i]:
+            if x.startswith("#"):
+                if x.startswith("#IN"):
+                    inside.append(x.split()[1])
+                elif inside:
+                    inside.pop()
+            else:
+                if seen == k:
+                    break
+                seen += 1
+        where = ""
+        if inside:
+            where = " inside callee " + " > ".join("%s (%s)" % (names_by_run.get(a.lstrip("0").upper() or "0", "?"), a) for a in inside)
+        lines.append(f"    the first {k} events agree; then (the draft's side{where or ' is in the routine itself'})")
         lines.append(f"    draft : {' | '.join(dl[k:k + 3]) or '(nothing)'}")
         lines.append(f"    lifted: {' | '.join(ll[k:k + 3]) or '(nothing)'}")
     if len(diffs) > a.show:
@@ -569,6 +633,7 @@ def main():
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--curated")
     ap.add_argument("--lifted", help="a C file to use in place of the tree's file for the routine")
+    ap.add_argument("--callees", choices=("through", "wrappers"), default="through", help="through: the callees run as their drafts on the draft side and as the typed C the lifted caller calls on the other (default); wrappers: the callees run as their filed abi_ wrappers on both sides")
     ap.add_argument("--decimal", action="store_true", help="decimal cases: D set at entry in half the cases and in the P a stub returns")
     ap.add_argument("--irq", action="store_true", help="I set at entry in half the cases")
     ap.add_argument("--ignore-flags", default="", help="flag letters not compared at exit (NVDIZC)")

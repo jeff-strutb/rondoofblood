@@ -1,6 +1,7 @@
 /* Map drawing: the VDC's data port as a word to mask in place. */
 #include "machine.h"
 #include "access.h"
+#include "routines.h"
 #include "stage_map.h"
 
 /*
@@ -84,4 +85,63 @@ void abi_AndVramDataLong(void)
 void abi_OrVramDataLong(void)
 {
     abi_OrVramData();
+}
+
+/* Both VRAM addresses, read then write, set to one word; the data port selected. */
+static void set_vram_addresses(uint8_t lo, uint8_t hi, uint16_t first_ret, uint16_t second_ret)
+{
+    jsr_push(first_ret);
+    SelectVramReadAddress();
+    jsr_pop();
+    WR8(VDC->data_lo, lo);
+    WR8(VDC->data_hi, hi);
+    jsr_push(second_ret);
+    SelectVramWriteAddress();
+    jsr_pop();
+    WR8(VDC->data_lo, lo);
+    WR8(VDC->data_hi, hi);
+    SelectVramData();
+}
+
+/*
+ * @routine 024F:37D SetVramAddresses
+ * @run 6B:937D
+ * WHAT IT DOES: Points both of the VDC's VRAM addresses, the one it reads from and the one it
+ * writes to, at the same word, and selects the data port, so a word can be read and written
+ * back in place (AndVramData, OrVramData).
+ * HOW: Read address register, then X and Y into the data port; the write address register the
+ * same; then the data port register, which this routine runs on into with no return of its own.
+ * WAITS: no.
+ * Entry: X low byte, Y high byte of the VRAM address. Exit: A 2, N 0, Z 0. X and Y kept.
+ */
+void SetVramAddresses(uint8_t lo, uint8_t hi)
+{
+    set_vram_addresses(lo, hi, 0x9380, 0x9389);
+}
+
+void abi_SetVramAddresses(void)
+{
+    SetVramAddresses(cpu.x, cpu.y);
+    cpu.a = 2;
+    abi_nz(2);
+}
+
+/*
+ * @routine 05BF:68F SetVramAddressesLong
+ * @run 6B:968F
+ * WHAT IT DOES: SetVramAddresses, as the stages whose overlay runs it at $968F have it.
+ * HOW: The same code at another run address, so its two calls return to $9692 and $969B.
+ * WAITS: no.
+ * Entry: X low byte, Y high byte of the VRAM address. Exit: as SetVramAddresses.
+ */
+void SetVramAddressesLong(uint8_t lo, uint8_t hi)
+{
+    set_vram_addresses(lo, hi, 0x9692, 0x969B);
+}
+
+void abi_SetVramAddressesLong(void)
+{
+    SetVramAddressesLong(cpu.x, cpu.y);
+    cpu.a = 2;
+    abi_nz(2);
 }

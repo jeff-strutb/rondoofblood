@@ -1,3 +1,21 @@
+; @routine 024F:37D SetVramAddresses
+; @run 6B:937D
+; WHAT IT DOES: Points both of the VDC's VRAM addresses, the one it reads from and the one it
+; writes to, at the same word, and selects the data port, so a word can be read and written
+; back in place (AndVramData, OrVramData).
+; HOW: Read address register, then X and Y into the data port; the write address register the
+; same; then the data port register, which this routine runs on into with no return of its own.
+; WAITS: no.
+; Entry: X low byte, Y high byte of the VRAM address. Exit: A 2, N 0, Z 0. X and Y kept.
+SetVramAddresses:
+    jsr VecSelectVramReadAddress
+    stx a:VDC_DATA_LO
+    sty a:VDC_DATA_HI
+    jsr VecSelectVramWriteAddress
+    stx a:VDC_DATA_LO
+    sty a:VDC_DATA_HI
+    jmp VecSelectVramData
+
 ; @routine 024F:392 AndVramData
 ; @run 6B:9392
 ; WHAT IT DOES: Clears bits of the VRAM word under the VDC's address: the word the caller
@@ -30,6 +48,21 @@ OrVramData:
     ora a:VDC_DATA_HI
     sta a:VDC_DATA_HI
     rts
+
+; @routine 05BF:68F SetVramAddressesLong
+; @run 6B:968F
+; WHAT IT DOES: SetVramAddresses, as the stages whose overlay runs it at $968F have it.
+; HOW: The same code at another run address, so its two calls return to $9692 and $969B.
+; WAITS: no.
+; Entry: X low byte, Y high byte of the VRAM address. Exit: as SetVramAddresses.
+SetVramAddressesLong:
+    jsr VecSelectVramReadAddress
+    stx a:VDC_DATA_LO
+    sty a:VDC_DATA_HI
+    jsr VecSelectVramWriteAddress
+    stx a:VDC_DATA_LO
+    sty a:VDC_DATA_HI
+    jmp VecSelectVramData
 
 ; @routine 05BF:6A4 AndVramDataLong
 ; @run 6B:96A4

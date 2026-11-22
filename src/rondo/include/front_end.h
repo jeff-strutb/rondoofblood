@@ -270,6 +270,55 @@ void ClearScreenState(void);                          /* system/video.c */
 #define SCRIPT_COMMANDS 0x8827
 #define TITLE_SAVE_READ 0x3F83
 
+/* Block moves with the registers the CPU pushes: TAI and TIA push Y, A and X and pull them back. */
+static inline void block_move_tai(uint16_t src, uint16_t dst, uint16_t len, uint8_t a, uint8_t x, uint8_t y)
+{
+    push8(y);
+    push8(a);
+    push8(x);
+    for (uint16_t i = 0; i < len; i++) {
+        uint8_t byte = rd8((uint16_t)(src + (i & 1)));
+
+        wr8((uint16_t)(dst + i), byte);
+    }
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
+}
+
+static inline void block_move_tia(uint16_t src, uint16_t dst, uint16_t len, uint8_t a, uint8_t x, uint8_t y)
+{
+    push8(y);
+    push8(a);
+    push8(x);
+    for (uint16_t i = 0; i < len; i++) {
+        uint8_t byte = rd8((uint16_t)(src + i));
+
+        wr8((uint16_t)(dst + (i & 1)), byte);
+    }
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
+}
+
+/* menu/title.c */
+Exit TitlePaletteRotate(uint8_t which, uint8_t kept_y);
+Exit TitleTileWrite(void);
+Exit TitleTileRows(void);
+Exit TitleScrollIn(void);
+Exit TitleBlink(uint8_t kept_y);
+Exit TitleWipe(void);
+Exit TitleLogoFade(uint8_t kept_y);
+Exit TitleCycle(void);
+void abi_TitlePaletteRotate(void);
+void abi_TitleTileWrite(void);
+void abi_TitleTileRows(void);
+void abi_TitleScrollIn(void);
+void abi_TitleBlink(void);
+void abi_TitleWipe(void);
+void abi_TitleLogoFade(void);
+void abi_TitleCycle(void);
+
 /* menu/attract.c */
 Exit ScriptAdvance(void);
 Exit ScriptStep(void);

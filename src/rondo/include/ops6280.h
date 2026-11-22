@@ -377,6 +377,8 @@ static inline uint16_t op_jmp_ptr(uint16_t a)
  */
 void untraced(uint16_t addr);
 void hand_over(uint16_t addr);
+/* The routine left its frame (it set S outright): in lockstep the original runs on from addr; in A5 it returns. */
+void leave_original(uint16_t addr);
 /* A tail jump (a JMP, a branch or a fall-through out of the routine) made by the instruction at from. */
 void call_original_at(uint16_t from, uint16_t addr);
 

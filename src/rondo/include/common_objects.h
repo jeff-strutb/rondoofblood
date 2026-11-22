@@ -69,4 +69,27 @@ void abi_VecApplyVelocity(void);
 void abi_VecProbeTerrain(void);
 void abi_VecScaleByCosine(void);
 
+/* How EnterStateFourOnFlag ended. */
+typedef enum { STATE4_ALREADY, STATE4_NO_FLAG, STATE4_ENTERED } State4End;
+typedef struct {
+    State4End end;
+    bool above;           /* the state was above 4 (its compare's carry) */
+} State4Result;
+
+/* An object not yet in state 4 whose OBJ_31A0 bit 7 is set restarts its animation in state 4. */
+State4Result EnterStateFourOnFlag(uint8_t slot);
+
+/* How a table lookup by animation frame ended: what the wrapper needs of the last values. */
+typedef struct {
+    bool none;            /* the frame has no entry: the offsets were cleared */
+    uint8_t frame_index;  /* the frame less 1 (Y at that point) */
+    bool frame_zero;      /* the frame itself was 0: no table was read */
+    uint8_t last;         /* the last byte loaded into A */
+    uint8_t table_offset; /* Y at the end */
+    bool carry;           /* C at the end */
+} FrameLookup;
+
+/* An object's four hit offsets are loaded from the table row picked by its animation frame. */
+FrameLookup SetHitOffsetsFromFrame(uint8_t slot);
+
 #endif

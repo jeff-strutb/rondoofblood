@@ -93,4 +93,30 @@ typedef struct {
 /* An object's four hit offsets are loaded from the table row picked by its animation frame. */
 FrameLookup SetHitOffsetsFromFrame(uint8_t slot);
 
+
+/* Moved unchanged from object/sensing.c, which still includes this header. */
+/* What was done about a wall. */
+typedef enum { NO_PUSH, PUSHED_RIGHT, PUSHED_LEFT } WallPushed;
+
+/* How a probe went, step by step, for what the wrapper replays. */
+typedef struct {
+    uint8_t object;
+    uint8_t column;
+    uint8_t answer;
+    bool floor_asked;
+    LookupEnd floor;
+    bool scanned;
+    uint8_t scanned_to;
+    bool lifted;
+    uint16_t lift_before, lift_amount;
+    bool wall_asked;
+    LookupEnd wall;
+    WallPushed pushed;
+    uint16_t push_before, push_amount;
+} Probe;
+
+/* Exit shims exported from the files that define them, for callers' wrappers. */
+void probe_exit_shim(Probe p);  /* object/sensing.c */
+Alu cosine_exit_shim(uint8_t angle, uint16_t value, uint32_t result);  /* math/trig.c */
+
 #endif

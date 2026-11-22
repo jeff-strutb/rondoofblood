@@ -2172,3 +2172,423 @@ void abi_DrawSlotDetails(void)
 {
     exit_shim(DrawSlotDetails());
 }
+
+/*
+ * @routine 00C4:4F4 GlideCursorObject
+ * @run 6B:9CF4
+ * WHAT IT DOES: Moves a cursor object a quarter of the way to its target each frame, and
+ * stops it there; shows its picture frame while it is moving, or the frame that turns with the
+ * tick once it has arrived.
+ * HOW: If OBJ->f3510 says it is moving, the speed on each axis is set to half the distance to the
+ * target (a 9-bit difference rotated down, its sign flipped), halved again by
+ * HalveObjectVelocity, and ApplyVelocity moves it. The picture frame comes from a table by
+ * whether it is below $B0 and whether the object is 3 or 4; when both places match the target
+ * the moving flag clears. A frame of 1 to 8 is turned by ObjectFrameFromTick.
+ * WAITS: no.
+ * Entry: X the object. Exit: A, N, Z and C as the frame turn or its compare leaves them (V from
+ * the move when it moved); Y the table index when it moved; X kept.
+ */
+GlideExit GlideCursorObject(uint8_t object)
+{
+    GlideExit result = { 0 };
+    Alu diff;
+    ValueCarry turned;
+    uint8_t flag, target, place, velocity, frame, index;
+    bool carry;
+
+    flag = RD8(OBJ->f3510[object]);
+    if (flag != 0) {
+        target = RD8(OBJ->f3568[object]);
+        place = RD8(OBJ->x_lo[object]);
+        diff = sbc8(target, place, true);
+        velocity = (uint8_t)(((diff.c ? 0x80 : 0) | (diff.a >> 1)) ^ 0x80);
+        carry = (diff.a & 0x01) != 0;
+        WR8(OBJ->vx_hi[object], velocity);
+        WR8(OBJ->vx_lo[object], 0);
+        ROR8(OBJ->vx_lo[object], carry);
+        target = RD8(OBJ->f35c0[object]);
+        place = RD8(OBJ->y_lo[object]);
+        diff = sbc8(target, place, true);
+        velocity = (uint8_t)(((diff.c ? 0x80 : 0) | (diff.a >> 1)) ^ 0x80);
+        carry = (diff.a & 0x01) != 0;
+        WR8(OBJ->vy_hi[object], velocity);
+        WR8(OBJ->vy_lo[object], 0);
+        ROR8(OBJ->vy_lo[object], carry);
+        jsr_push(0x9D22);
+        HalveObjectVelocity(object);
+        jsr_pop();
+        jsr_push(0x9D25);
+        result.move = ApplyVelocity(object);
+        jsr_pop();
+        result.moved = true;
+        place = RD8(OBJ->y_lo[object]);
+        index = (uint8_t)(((place >= 0xB0) ? 2 : 0) | ((object >= 3) ? 1 : 0));
+        frame = rd8((uint16_t)(CURSOR_FRAMES + index));
+        WR8(OBJ->f2a68[object], frame);
+        result.exit.y = index;
+        place = RD8(OBJ->x_lo[object]);
+        target = RD8(OBJ->f3568[object]);
+        if (place == target) {
+            place = RD8(OBJ->y_lo[object]);
+            target = RD8(OBJ->f35c0[object]);
+            if (place == target) {
+                WR8(OBJ->f3510[object], 0);
+            }
+        }
+    }
+    frame = RD8(OBJ->f2a68[object]);
+    frame = (uint8_t)(frame - 1);
+    if (frame >= 8) {
+        result.exit.a = frame;
+        result.exit.nz = (uint8_t)(frame - 8);
+        result.exit.c = true;
+    } else {
+        result.exit.nz = (uint8_t)(frame - 8);
+        result.exit.c = false;
+        jsr_push(0x9D54);
+        turned = ObjectFrameFromTick(object);
+        jsr_pop();
+        result.exit.a = turned.value;
+        result.exit.nz = turned.value;
+        result.exit.c = turned.carry;
+    }
+    result.exit.x_kept = true;
+    result.exit.y_kept = !result.moved;
+    return result;
+}
+
+void abi_GlideCursorObject(void)
+{
+    GlideExit result = GlideCursorObject(cpu.x);
+
+    if (result.moved) {
+        axis_move_flags_shim(result.move);
+    }
+    exit_shim(result.exit);
+}
+
+/*
+ * @routine 00C4:4EF GlideCursorObjects
+ * @run 6B:9CEF
+ * WHAT IT DOES: GlideCursorObject for the two name cursor objects, 2 and then 3.
+ * HOW: A call for object 2; the INX after it runs on into GlideCursorObject for 3.
+ * WAITS: no.
+ * Entry: nothing. Exit: as GlideCursorObject for object 3, X 3.
+ */
+GlideExit GlideCursorObjects(void)
+{
+    GlideExit first;
+    GlideExit second;
+
+    jsr_push(0x9CF3);
+    first = GlideCursorObject(2);
+    jsr_pop();
+    second = GlideCursorObject(3);
+    if (!second.moved && first.moved) {
+        /* what the second leaves alone stays as the first left it: its move's V, and Y */
+        second.move = first.move;
+        second.moved = true;
+        second.exit.y = first.exit.y;
+        second.exit.y_kept = false;
+    }
+    return second;
+}
+
+void abi_GlideCursorObjects(void)
+{
+    GlideExit result = GlideCursorObjects();
+
+    if (result.moved) {
+        axis_move_flags_shim(result.move);
+    }
+    exit_shim(result.exit);
+    cpu.x = 3;
+}
+
+/*
+ * @routine 00C4:55D JitterCursorObject
+ * @run 6B:9D5D
+ * WHAT IT DOES: GlideCursorObject's way of moving, aimed at a point a few pixels off the
+ * target, chosen at random on each axis each frame, so the cursor looks to shake as it
+ * settles; its picture frame always turns with the tick.
+ * HOW: As GlideCursorObject, with the target on each axis moved by a random number from -8 to 7
+ * (NextRandom, masked with $0F, less 8); no table frame; at the end it goes to
+ * ObjectFrameFromTick.
+ * WAITS: no.
+ * Entry: X the object. Exit: as ObjectFrameFromTick; V from the move when it moved; X kept.
+ */
+GlideExit JitterCursorObject(uint8_t object)
+{
+    GlideExit result = { 0 };
+    Alu diff, aim;
+    ValueCarry turned;
+    uint8_t flag, target, place, velocity, random;
+    bool carry;
+
+    flag = RD8(OBJ->f3510[object]);
+    if (flag != 0) {
+        jsr_push(0x9D65);
+        random = NextRandom().value;
+        jsr_pop();
+        aim = sbc8((uint8_t)(random & 0x0F), 8, true);
+        target = RD8(OBJ->f3568[object]);
+        aim = adc8(aim.a, target, false);
+        place = RD8(OBJ->x_lo[object]);
+        diff = sbc8(aim.a, place, true);
+        velocity = (uint8_t)(((diff.c ? 0x80 : 0) | (diff.a >> 1)) ^ 0x80);
+        carry = (diff.a & 0x01) != 0;
+        WR8(OBJ->vx_hi[object], velocity);
+        WR8(OBJ->vx_lo[object], 0);
+        ROR8(OBJ->vx_lo[object], carry);
+        jsr_push(0x9D81);
+        random = NextRandom().value;
+        jsr_pop();
+        aim = sbc8((uint8_t)(random & 0x0F), 8, true);
+        target = RD8(OBJ->f35c0[object]);
+        aim = adc8(aim.a, target, false);
+        place = RD8(OBJ->y_lo[object]);
+        diff = sbc8(aim.a, place, true);
+        velocity = (uint8_t)(((diff.c ? 0x80 : 0) | (diff.a >> 1)) ^ 0x80);
+        carry = (diff.a & 0x01) != 0;
+        WR8(OBJ->vy_hi[object], velocity);
+        WR8(OBJ->vy_lo[object], 0);
+        ROR8(OBJ->vy_lo[object], carry);
+        jsr_push(0x9D9D);
+        HalveObjectVelocity(object);
+        jsr_pop();
+        jsr_push(0x9DA0);
+        result.move = ApplyVelocity(object);
+        jsr_pop();
+        result.moved = true;
+        place = RD8(OBJ->x_lo[object]);
+        target = RD8(OBJ->f3568[object]);
+        if (place == target) {
+            place = RD8(OBJ->y_lo[object]);
+            target = RD8(OBJ->f35c0[object]);
+            if (place == target) {
+                WR8(OBJ->f3510[object], 0);
+            }
+        }
+    }
+    turned = ObjectFrameFromTick(object);
+    result.exit.a = turned.value;
+    result.exit.nz = turned.value;
+    result.exit.c = turned.carry;
+    result.exit.x_kept = true;
+    result.exit.y_kept = true;
+    return result;
+}
+
+void abi_JitterCursorObject(void)
+{
+    GlideExit result = JitterCursorObject(cpu.x);
+
+    if (result.moved) {
+        axis_move_flags_shim(result.move);
+    }
+    exit_shim(result.exit);
+}
+
+/*
+ * @routine 00C4:559 JitterCursorObjects
+ * @run 6B:9D59
+ * WHAT IT DOES: JitterCursorObject for both cursor objects, 0 then 1.
+ * HOW: A call for object 0; the INX after it runs on into JitterCursorObject for 1.
+ * WAITS: no.
+ * Entry: nothing. Exit: as JitterCursorObject for object 1, X 1.
+ */
+GlideExit JitterCursorObjects(void)
+{
+    GlideExit first;
+    GlideExit second;
+
+    jsr_push(0x9D5C);
+    first = JitterCursorObject(0);
+    jsr_pop();
+    second = JitterCursorObject(1);
+    if (!second.moved && first.moved) {
+        second.move = first.move;
+        second.moved = true;
+    }
+    return second;
+}
+
+void abi_JitterCursorObjects(void)
+{
+    GlideExit result = JitterCursorObjects();
+
+    if (result.moved) {
+        axis_move_flags_shim(result.move);
+    }
+    exit_shim(result.exit);
+    cpu.x = 1;
+}
+
+/*
+ * @routine 00C4:473 CursorMoveByPad
+ * @run 6B:9C73
+ * WHAT IT DOES: Moves the menu cursor up or down by the pad's new presses, wrapping within the
+ * menu's first and last item, and over the items that cannot be picked: item $14 when the file
+ * has no data (bit 0 of its first byte clear), item $15 when $7DDB is not zero.
+ * HOW: Up or down (the trigger byte's bits $10 and $40) takes one from or adds one to the cursor
+ * value (OBJ->f34b8 of object 0); at the first item's edge it wraps to the last (tables by
+ * menu, the first items at $9CBE, the last at $9CC4); SetCursorValue sends the cursors there.
+ * The arms that wrap at an edge and that skip an item are in no script's trace (the draft stops there).
+ * An item that cannot be picked repeats the move. The Y the callee leaves is the table
+ * index of the cursor, and it is that Y the original's next pass indexes the tables with.
+ * WAITS: no.
+ * Entry: Y the menu (the table index). Exit: as the last test left them: A 0 (no press, or the
+ * last test was $7DDB), or the value tested last; X 1 (kept when no press moved the cursor), Y
+ * the table index SetCursorValue left (kept when none).
+ */
+PadMoveExit CursorMoveByPad(uint8_t menu)
+{
+    PadMoveExit result = { 0 };
+    CursorTarget target;
+    uint8_t trigger, pressed, value, slot, offset, first, blocked, save;
+    uint8_t y = menu;
+    bool c_known = false;
+    bool c = false;
+
+    for (;;) {
+        trigger = rd8(BiosJoyTrigger);
+        pressed = (uint8_t)(trigger & 0x50);
+        if (pressed == 0) {
+            result.exit.a = 0;
+            result.exit.nz = 0;
+            result.exit.c = c;
+            result.exit.c_kept = !c_known;
+            break;
+        }
+        pressed = (uint8_t)(pressed & 0x40);
+        value = RD8(OBJ->f34b8[0]);
+        if (pressed == 0) {
+            value = (uint8_t)(value - 1);
+            first = rd8((uint16_t)(CURSOR_FIRST_ITEMS + y));
+            if (value == first) {
+                value = rd8((uint16_t)(CURSOR_LAST_ITEMS + y));
+                value = (uint8_t)(value - 1);
+            }
+        } else {
+            value = (uint8_t)(value + 1);
+            first = rd8((uint16_t)(CURSOR_LAST_ITEMS + y));
+            if (value == first) {
+                value = rd8((uint16_t)(CURSOR_FIRST_ITEMS + y));
+                value = (uint8_t)(value + 1);
+            }
+        }
+        jsr_push(0x9C9D);
+        target = SetCursorValue(value);
+        jsr_pop();
+        y = target.index;
+        result.moved = true;
+        result.x = 1;
+        value = RD8(OBJ->f34b8[0]);
+        c = value >= 0x14;
+        c_known = true;
+        result.exit.a = value;
+        result.exit.nz = (uint8_t)(value - 0x14);
+        if (value == 0x14) {
+            push8(y);
+            slot = RD8(ZP->save_slot);
+            offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+            save = rd8((uint16_t)(SAVE_FILE + offset));
+            y = pull8();
+            result.x = offset;
+            result.exit.a = (uint8_t)(save >> 1);
+            result.exit.nz = (uint8_t)(save >> 1);
+            result.exit.c = (save & 0x01) != 0;
+            c = result.exit.c;
+            if (!result.exit.c) {
+                continue;
+            }
+            value = RD8(OBJ->f34b8[0]);
+            c = value >= 0x15;
+            result.exit.a = value;
+            result.exit.nz = (uint8_t)(value - 0x15);
+        } else {
+            value = RD8(OBJ->f34b8[0]);
+            c = value >= 0x15;
+            result.exit.a = value;
+            result.exit.nz = (uint8_t)(value - 0x15);
+        }
+        if (value != 0x15) {
+            result.exit.c = c;
+            break;
+        }
+        blocked = rd8(MENU_BLOCKED);
+        result.exit.a = blocked;
+        result.exit.nz = blocked;
+        result.exit.c = true;
+        if (blocked != 0) {
+            continue;
+        }
+        break;
+    }
+    result.exit.y = y;
+    return result;
+}
+
+void abi_CursorMoveByPad(void)
+{
+    PadMoveExit result = CursorMoveByPad(cpu.y);
+
+    if (result.moved) {
+        cpu.x = result.x;
+    }
+    cpu.y = result.exit.y;
+    cpu.a = result.exit.a;
+    abi_nz(result.exit.nz);
+    if (!result.exit.c_kept) {
+        abi_flag(P_C, result.exit.c);
+    }
+}
+
+/*
+ * @routine 00E0:3DF StartScriptSlotKind6B
+ * @run 6F:BBDF
+ * WHAT IT DOES: Starts a script on a script slot as kind 6.
+ * HOW: ClearScriptSlot, then the slot's kind and script bytes. The body is that of
+ * StartScriptSlotKind6 in the kernel (near copy). liftcmp compares nothing past its first call: the
+ * draft stubs the call to the copy of ClearScriptSlot at $BBF1.
+ * WAITS: no.
+ * Entry: X the slot, Y the script. Exit: A the script, N and Z from it; X and Y kept.
+ */
+uint8_t StartScriptSlotKind6B(uint8_t script, uint8_t slot)
+{
+    jsr_push(0xBBE1);
+    ClearScriptSlot(slot);
+    jsr_pop();
+    WR8(SLOTS->kind[slot], 6);
+    WR8(SLOTS->script[slot], script);
+    return script;
+}
+
+void abi_StartScriptSlotKind6B(void)
+{
+    script_slot_exit_shim(StartScriptSlotKind6B(cpu.y, cpu.x));
+}
+
+/*
+ * @routine 00E0:3E5 StartScriptSlotKind7B
+ * @run 6F:BBE5
+ * WHAT IT DOES: Starts a script on a script slot as kind 7.
+ * HOW: ClearScriptSlot, then the slot's kind and script bytes. Near copy of the kernel's
+ * StartScriptSlotKind7; the draft stubs the call to the copy of ClearScriptSlot at $BBF1.
+ * WAITS: no.
+ * Entry: X the slot, Y the script. Exit: A the script, N and Z from it; X and Y kept.
+ */
+uint8_t StartScriptSlotKind7B(uint8_t script, uint8_t slot)
+{
+    jsr_push(0xBBE7);
+    ClearScriptSlot(slot);
+    jsr_pop();
+    WR8(SLOTS->kind[slot], 7);
+    WR8(SLOTS->script[slot], script);
+    return script;
+}
+
+void abi_StartScriptSlotKind7B(void)
+{
+    script_slot_exit_shim(StartScriptSlotKind7B(cpu.y, cpu.x));
+}

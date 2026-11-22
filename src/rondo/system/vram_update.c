@@ -5,6 +5,95 @@
 #include "routines.h"
 #include "vram_update.h"
 
+/* The block graphics sit at $C000, 32 bytes a block; MPR6 holds their bank. */
+enum { BLOCK_BANK_OFFSET = 0x0B, BLOCK_SOURCE_PAGE = 0xC0, BLOCK_WORDS = 16, ROW_WORDS = 4, VRAM_ROW_STEP = 0x40,
+       MPR6 = 0x40, ZpBlockSourceHigh = 0x2013, ZpWordsDone = 0x2017 };
+
+/*
+ * @routine 0255:000 CopyTileBlockToVram
+ * @run 6F:A000
+ * WHAT IT DOES: Copies one 4 by 4 tile block's sixteen words to the VRAM, four to a row, from the
+ * block graphics, starting at the VRAM address in zTemp10 and going down a row (64 words) after each four.
+ * HOW: Maps the block bank into MPR6, makes the source pointer from the block number (32 bytes a
+ * block from $C000), and for each row selects the VRAM write address, writes the address, selects
+ * the data port and writes four words.
+ * WAITS: no.
+ * Entry: A the block number, carry the add into the bank (ADC #0 first), zTemp10 the VRAM address.
+ * Exit: A $10, Z set, C set, N clear, Y $20, V from the last high byte add; X kept.
+ * Names: zp $13, $17 (the pointer's high byte and the count) are by address until the records name them.
+ */
+bool CopyTileBlockToVram(uint8_t block, bool carry_in)
+{
+    uint8_t a = block, base, high, low_word, y, count;
+    Alu sum;
+    bool carry_bit;
+
+    push8(a);
+    sum = adc8(BLOCK_BANK_OFFSET, 0, carry_in);
+    base = RD8(ZP->ram_base_bank);
+    sum = adc8(sum.a, base, false);
+    tam(MPR6, sum.a);
+    a = pull8();
+    wr8(ZpBlockSourceHigh, 0);
+    for (int shift = 0; shift < 5; shift++) {
+        carry_bit = (a & 0x80) != 0;
+        a = (uint8_t)(a << 1);
+        rol_mem(ZpBlockSourceHigh, carry_bit);
+    }
+    sum = adc8(a, 0, false);
+    WR8(ZP->temp12, sum.a);
+    high = rd8(ZpBlockSourceHigh);
+    sum = adc8(high, BLOCK_SOURCE_PAGE, sum.c);
+    wr8(ZpBlockSourceHigh, sum.a);
+    jsr_push(0xA02A);
+    ClearVdcControlHigh();
+    jsr_pop();
+    wr8(ZpWordsDone, 0);
+    y = 0;
+    do {
+        jsr_push(0xA030);
+        SelectVramWriteAddress();
+        jsr_pop();
+        low_word = RD8(ZP->temp10);
+        WR8(VDC->data_lo, low_word);
+        low_word = RD8(ZP->temp11);
+        WR8(VDC->data_hi, low_word);
+        jsr_push(0xA03D);
+        SelectVramData();
+        jsr_pop();
+        do {
+            low_word = RD8_PTR_Y(ZP->temp12, y);
+            WR8(VDC->data_lo, low_word);
+            y++;
+            low_word = RD8_PTR_Y(ZP->temp12, y);
+            WR8(VDC->data_hi, low_word);
+            y++;
+            count = rd8(ZpWordsDone);
+            wr8(ZpWordsDone, (uint8_t)(count + 1));
+            count = rd8(ZpWordsDone);
+        } while ((count & (ROW_WORDS - 1)) != 0);
+        low_word = RD8(ZP->temp10);
+        sum = adc8(VRAM_ROW_STEP, low_word, false);
+        WR8(ZP->temp10, sum.a);
+        high = RD8(ZP->temp11);
+        sum = adc8(0, high, sum.c);
+        WR8(ZP->temp11, (uint8_t)(sum.a & 0x0F));
+        count = rd8(ZpWordsDone);
+    } while (count != BLOCK_WORDS);
+    return sum.v;
+}
+
+void abi_CopyTileBlockToVram(void)
+{
+    bool overflow = CopyTileBlockToVram(cpu.a, (cpu.p & P_C) != 0);
+
+    cpu.a = BLOCK_WORDS;
+    cpu.y = 0x20;
+    abi_nz(0);
+    abi_flag(P_C, true);
+    abi_flag(P_V, overflow);
+}
+
 /* Tile block tables: the pointers a stage's block index selects, two tables of its overlay. */
 typedef struct {
     uint16_t first, second;

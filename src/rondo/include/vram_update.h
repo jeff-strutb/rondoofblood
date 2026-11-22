@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include "machine.h"
 
+bool CopyTileBlockToVram(uint8_t block, bool carry_in);
+void abi_CopyTileBlockToVram(void);
+
 Alu SelectBlockTablesA(uint8_t index);
 void abi_SelectBlockTablesA(void);
 Alu SelectBlockTablesB(uint8_t index);

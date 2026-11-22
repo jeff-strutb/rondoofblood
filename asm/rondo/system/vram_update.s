@@ -1,3 +1,73 @@
+; @routine 0255:000 CopyTileBlockToVram
+; @run 6F:A000
+; WHAT IT DOES: Copies one 4 by 4 tile block's sixteen words to the VRAM, four to a row, from the
+; block graphics, starting at the VRAM address in zTemp10 and going down a row (64 words) after each four.
+; HOW: Maps the block bank into MPR6, makes the source pointer from the block number (32 bytes a
+; block from $C000), and for each row selects the VRAM write address, writes the address, selects
+; the data port and writes four words.
+; WAITS: no.
+; Entry: A the block number, carry the add into the bank (ADC #0 first), zTemp10 the VRAM address.
+; Exit: A $10, Z set, C set, N clear, Y $20, V from the last high byte add; X kept.
+; Names: zp $13, $17 (the pointer's high byte and the count) are by address until the records name them.
+CopyTileBlockToVram:
+    pha
+    lda #$0B
+    adc #$00
+    clc
+    adc z:zRamBaseBank
+    tam #$40
+    pla
+    stz z:zProduct0
+    asl a
+    rol z:zProduct0
+    asl a
+    rol z:zProduct0
+    asl a
+    rol z:zProduct0
+    asl a
+    rol z:zProduct0
+    asl a
+    rol z:zProduct0
+    clc
+    adc #$00
+    sta z:zTemp12
+    lda z:zProduct0
+    adc #$C0
+    sta z:zProduct0
+    jsr VecClearVdcControlHigh
+    stz z:zMultiplierHi
+    cly
+CopyTileBlockToVram_at0:
+    jsr VecSelectVramWriteAddress
+    lda z:zTemp10
+    sta a:VDC_DATA_LO
+    lda z:zTemp11
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+CopyTileBlockToVram_at1:
+    lda (zTemp12),y
+    sta a:VDC_DATA_LO
+    iny
+    lda (zTemp12),y
+    sta a:VDC_DATA_HI
+    iny
+    inc z:zMultiplierHi
+    lda z:zMultiplierHi
+    and #$03
+    bne CopyTileBlockToVram_at1
+    lda #$40
+    clc
+    adc z:zTemp10
+    sta z:zTemp10
+    lda #$00
+    adc z:zTemp11
+    and #$0F
+    sta z:zTemp11
+    lda z:zMultiplierHi
+    cmp #$10
+    bne CopyTileBlockToVram_at0
+    rts
+
 ; @routine 0256:00F SelectBlockTablesA
 ; @run 6F:A80F
 ; WHAT IT DOES: Selects the tile block's two tables for the block index in A: zTemp0C the first

@@ -6,6 +6,8 @@
     python3 tools/rondo/landcheck.py scripts BASE     the scripts this tree changes against BASE that need a trace:
                                                       added or changed, or including a changed include file
     python3 tools/rondo/landcheck.py code FILE        bytes the code map FILE marks as run
+    python3 tools/rondo/landcheck.py proper BASE      the ledger's proper-C check on every routine, here against BASE:
+                                                      refuse a routine that was proper and is not, or is new and is not
 
 Run from the tree being checked (its own tools/rondo/landcheck.py), so every output lands in that
 tree's own build/rondo and OUTDIR; nothing is shared with another tree. One line per refusal, exit 1.
@@ -117,14 +119,44 @@ def scripts(base):
     return 0
 
 
+def proper(base):
+    """ledger.py's own proper_c_faults on every tagged routine here and in BASE (git): a routine that was proper and
+    now has a fault, or is new and has one, refuses the landing; one that failed before and still fails is counted."""
+    import ledger
+    here = sorted(ledger.source_texts())          # same order on both sides: a name defined twice is judged alike
+    listed = subprocess.run(["git", "ls-tree", "-r", "--name-only", base, "--", "src/rondo", "syscard/src"],
+                            cwd=TOP, capture_output=True, text=True).stdout.split()
+    before = [(p, subprocess.run(["git", "show", f"{base}:{p}"], cwd=TOP, capture_output=True, text=True).stdout)
+              for p in listed if p.endswith(".c")]
+    before.sort()
+    f_now, f_old = ledger.functions(here), ledger.functions(before)
+    names_now, names_old = ledger.tagged_names(here), ledger.tagged_names(before)
+    worse, still = [], 0
+    for name in sorted(names_now):
+        now = ledger.proper_c_faults(name, f_now)
+        if not now:
+            continue
+        old = ledger.proper_c_faults(name, f_old) if name in names_old else None
+        if old:
+            still += 1
+        else:
+            worse.append(f"{name}: {'new routine' if old is None else 'was proper'}, now {'; '.join(now)}")
+    if worse:
+        print("LAND REFUSED (proper C): " + " | ".join(worse[:6]) + (f" | +{len(worse) - 6} more" if len(worse) > 6 else "")
+              + ": use typed C (no cpu., Alu, adc8, sbc8, alu helpers, call_with, call_abi, goto)")
+        return 1
+    print(f"proper C: no routine got worse; {still} routine(s) were failing before and still fail (allowed)")
+    return 0
+
+
 def code(path):
     print(sum(1 for b in open(path, "rb").read() if b & 3) if os.path.exists(path) else 0)
     return 0
 
 
 def main():
-    if len(sys.argv) == 3 and sys.argv[1] in ("scripts", "code"):
-        return {"scripts": scripts, "code": code}[sys.argv[1]](sys.argv[2])
+    if len(sys.argv) == 3 and sys.argv[1] in ("scripts", "code", "proper"):
+        return {"scripts": scripts, "code": code, "proper": proper}[sys.argv[1]](sys.argv[2])
     if len(sys.argv) == 3 and sys.argv[1] in ("image", "link"):
         return {"image": image, "link": link}[sys.argv[1]](sys.argv[2])
     print(__doc__)

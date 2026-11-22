@@ -94,7 +94,12 @@ def main():
         os.makedirs(d, exist_ok=True)
         for f in ("drafts.c", "support.c", "drafts.csv"):
             shutil.copy(os.path.join(a.gen, f), os.path.join(d, f))
-        filed = sorted({row["filed"] for row in csv.DictReader(open(os.path.join(a.gen, "drafts.csv"))) if row["filed"]})
+        # every filed routine, with or without a draft that starts where it does: a filed routine that starts in the
+        # middle of a draft's piece has no draft of its own, and leaving its hand C tagged would mix the two
+        sys.path.insert(0, HERE)
+        import asmfile
+        import cardfile
+        filed = sorted({r["name"] for r in asmfile.all_routines()} | {r["name"] for r in cardfile.routines()})
         os.makedirs(os.path.join(a.tree, "config", "rondo"), exist_ok=True)
         with open(os.path.join(a.tree, "config", "rondo", "serve_drafts.csv"), "w") as f:
             f.write("name\n" + "\n".join(filed) + "\n")

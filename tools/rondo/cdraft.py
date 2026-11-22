@@ -198,6 +198,11 @@ class Draft:
             if mode == "acc":
                 return "OP_ACC(%s);" % RMW_F[name]
             return "OP_MEM(%s, %s);" % (RMW_F[name], addr_expr(mode, ops))
+        if name == "txs":
+            # S is set outright: the routine's frame is gone and what follows is not this call's. The hybrid hands
+            # the rest to the original here; A5 and the record end the C (the call is judged as left by the stack).
+            self.stat["left"] += 1
+            return "op_txs(); leave_original(0x%04X); return;" % nxt
         if name in IMPLIED:
             return "op_%s();" % name
         if name == "nop":
@@ -415,12 +420,18 @@ def card_drafts(names, rows=None):
     used = bytearray(len(rom))
     pieces = []                                   # (lo, hi, run, name)
     norun = 0
+    # Where a bank of the card sits in the logical space: from the catalog rows that have a run address (the
+    # traces', never a filed tag's); bank 0 sits at $E000. A row with no run address takes its bank's.
+    base = {0: 0xE000}
+    for r in rows or []:
+        if r["space"] == "C" and r["run"]:
+            base.setdefault(int(r["offset"], 16) >> 13, (int(r["run"], 16) - (int(r["offset"], 16) & 0x1FFF)) & 0xFFFF)
     for r in sorted((r for r in (rows or []) if r["space"] == "C"), key=lambda r: int(r["offset"], 16)):
         lo, n = int(r["offset"], 16), int(r["bytes"])
         if r["run"]:
             run = int(r["run"], 16)
-        elif lo < 0x2000:
-            run = 0xE000 + lo                  # bank 0 sits at $E000
+        elif (lo >> 13) in base:
+            run = (base[lo >> 13] + (lo & 0x1FFF)) & 0xFFFF
         else:
             norun += 1
             continue
@@ -442,8 +453,8 @@ def card_drafts(names, rows=None):
             e = o
             while e < len(rom) and (cm[e] & 3) and not used[e]:
                 e += 1
-            if o < 0x2000:
-                pieces.append((o, e, 0xE000 + o, "c%05X" % o))
+            if (o >> 13) in base:
+                pieces.append((o, e, (base[o >> 13] + (o & 0x1FFF)) & 0xFFFF, "c%05X" % o))
             else:
                 skipped += 1
             o = e

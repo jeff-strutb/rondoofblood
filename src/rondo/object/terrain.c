@@ -805,11 +805,11 @@ static void store_column(uint8_t column, uint8_t answer)
 {
     uint8_t value;
 
-    wr8((uint16_t)(TileHit + column), answer);
+    WR8(LEVEL->tile_hit[column], answer);
     value = RD8(ZP->temp00);
-    wr8((uint16_t)(TileDepthX + column), value);
+    WR8(LEVEL->tile_depth_x[column], value);
     value = RD8(ZP->temp02);
-    wr8((uint16_t)(TileDepthY + column), value);
+    WR8(LEVEL->tile_depth_y[column], value);
 }
 
 /*
@@ -942,7 +942,7 @@ static LookupEnd lookup_alt_columns(uint8_t probe, uint8_t object, uint16_t tabl
 
         push8(y);
         column = RD8(ZP->temp0a);
-        hit = rd8((uint16_t)(TileHit + column));
+        hit = RD8(LEVEL->tile_hit[column]);
         y = pull8();
         wanted = (uint8_t)(hit & HIT_NEEDS_SECOND_LOOK);
         if ((wanted & HIT_SECOND_LOOK_SKIP) != 0 || wanted == 0) {
@@ -992,8 +992,8 @@ static LookupEnd lookup_alt_columns(uint8_t probe, uint8_t object, uint16_t tabl
             column = RD8(ZP->temp0a);
             if ((tile_answer(read) & SECOND_LOOK_SOLID) != 0) {
                 column = RD8(ZP->temp0a);
-                hit = rd8((uint16_t)(TileHit + column));
-                wr8((uint16_t)(TileHit + column), (uint8_t)(hit & HIT_CLEARED_BY_SECOND_LOOK));
+                hit = RD8(LEVEL->tile_hit[column]);
+                WR8(LEVEL->tile_hit[column], (uint8_t)(hit & HIT_CLEARED_BY_SECOND_LOOK));
             }
             y = pull8();
         }

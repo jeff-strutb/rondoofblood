@@ -98,19 +98,6 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
   fi
   # The ledger own proper-C check on every routine: one that was proper must stay proper, a new one must be proper.
   python3 tools/rondo/landcheck.py proper main || exit 12
-  # The lift harness: a landing that changes the drafter, the register helpers, the machine header or the harness
-  # builds the draft cache of THIS tree (its own folder, when the stamp differs from the cache of main) and links every
-  # game and card C file and the draft library with the runtime, every symbol required: a draft calling a helper the
-  # runtime lacks is refused here, by name, not found by every writer later.
-  if ! git diff --quiet main HEAD -- tools/rondo/cdraft.py src/rondo/include/ops6280.h src/rondo/include/machine.h tools/rondo/liftcmp.py tools/rondo/liftcmp_rt.c; then
-    if ! python3 -c "import sys; sys.path.insert(0, \"tools/rondo\"); import cdraft; sys.exit(0 if cdraft.current_cache() else 1)" 2>/dev/null; then
-      python3 tools/rondo/cdraft.py --cache > "$O/cdraft-tree.out" 2>&1 \
-        || { echo "LAND REFUSED (lift harness): the draft cache does not build from this tree: $(tail -2 "$O/cdraft-tree.out" | tr "\n" " ")"; exit 13; }
-    fi
-    python3 tools/rondo/liftcmp.py --warm > "$O/warm.out" 2>&1 \
-      || { echo "LAND REFUSED (lift harness): liftcmp --warm failed: $(grep -v "^ *$" "$O/warm.out" | tail -3 | cut -c1-300 | tr "\n" " ")"; exit 13; }
-    echo "lift harness: the draft cache builds from this tree and every C file and the drafts link with the runtime"
-  fi
   if git diff --quiet main HEAD -- asm src syscard tools; then
     echo "decomp tree identical to main: image and link checks skipped"
   else

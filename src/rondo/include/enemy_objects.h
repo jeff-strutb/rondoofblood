@@ -432,74 +432,6 @@ static inline Ended pick_state_by_distance(uint8_t slot, bool carry_in, uint16_t
     return ended_with_y(ended_of_sum((Sum){ value, sum.carry, sum.overflow }), y);
 }
 
-/* Turns the object to face the player in the states a table names: see FaceThePlayerInSomeStates. */
-static inline SideEnd face_player_in_states(uint8_t slot, uint16_t table, uint16_t ret)
-{
-    SideEnd result = { ended_kept(), false, { 0, false, false } };
-    uint8_t state = RD8(OBJ->state[slot]);
-    uint8_t entry = rd8((uint16_t)(table + state));
-    uint8_t bit;
-
-    result.end = ended_with_y(ended_load(entry), state);
-    if (entry == 0) {
-        return result;
-    }
-    jsr_push(ret);
-    result.side = SideOfPlayer(slot);
-    jsr_pop();
-    result.side_used = true;
-    bit = (uint8_t)(result.side.sides & 1);
-    WR8(OBJ->facing_left[slot], bit);
-    result.end = ended_with_y(ended_load(bit), state);
-    return result;
-}
-
-/* Moves the object by a velocity built from its next_kind and clears the speeds: see ThrowByNextKind. */
-static inline Ended throw_by_next_kind(uint8_t slot, uint16_t speeds, uint16_t ret)
-{
-    uint8_t kind = RD8(OBJ->next_kind[slot]);
-    uint8_t index = (uint8_t)(kind & 1);
-    uint8_t shifted;
-    AxisMove move;
-
-    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(speeds + index)));
-    kind = RD8(OBJ->next_kind[slot]);
-    shifted = (uint8_t)(kind << 4);
-    WR8(OBJ->vy_hi[slot], (uint8_t)((uint8_t)(shifted ^ 0xFF) + 1));
-    jsr_push(ret);
-    move = ApplyVelocity(slot);
-    jsr_pop();
-    WR8(OBJ->vx_hi[slot], 0);
-    WR8(OBJ->vy_hi[slot], 0);
-    return ended_then(ended_with_y(ended_kept(), index), ended_of_axis_move(move));
-}
-
-/* Picks a pair of bytes from a table at random: see PickTimersAtRandom. */
-static inline RandomEnd pick_pair_at_random(uint8_t slot, uint16_t table, uint16_t ret, bool angle)
-{
-    RandomEnd result = { ended_kept(), true, { 0, false, false } };
-    uint8_t y, value;
-
-    jsr_push(ret);
-    result.random = NextRandom();
-    jsr_pop();
-    y = (uint8_t)((result.random.value & 3) << 1);
-    value = rd8((uint16_t)(table + y));
-    if (angle) {
-        WR8(OBJ->f35c0[slot], value);
-    } else {
-        WR8(OBJ->f3510[slot], value);
-    }
-    value = rd8((uint16_t)(table + 1 + y));
-    if (angle) {
-        WR8(OBJ->f3568[slot], value);
-    } else {
-        WR8(OBJ->life_timer[slot], value);
-    }
-    result.end = ended_with_y(ended_with_carry(ended_load(value), false), y);
-    return result;
-}
-
 /* The object becomes `type` in state 0. */
 static inline Ended become_type(uint8_t slot, uint8_t type)
 {
@@ -528,12 +460,6 @@ Ended DropItemWhenHitB(uint8_t slot);
 Ended DropItemWhenHitC(uint8_t slot);
 Ended DropItemWhenHitD(uint8_t slot);
 Ended DropItemWhenHitE(uint8_t slot);
-SideEnd FaceThePlayerInSomeStatesC(uint8_t slot);
-SideEnd FaceThePlayerInSomeStatesD(uint8_t slot);
-Ended ThrowByNextKindB(uint8_t slot);
-RandomEnd PickTimersAtRandomB(uint8_t slot);
-RandomEnd PickAngleAtRandomB(uint8_t slot);
-Ended WalkWhileFrameChangesD(uint8_t slot, uint8_t index);
 /* object/enemies_stage04_temp.c */
 Ended ClampSpeedXToTwo(uint8_t slot);
 Ended ThrowUpward(uint8_t slot);

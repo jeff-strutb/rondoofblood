@@ -25,14 +25,14 @@ enum { BLOCK_BANK_OFFSET = 0x0B, BLOCK_SOURCE_PAGE = 0xC0, BLOCK_WORDS = 16, ROW
 bool CopyTileBlockToVram(uint8_t block, bool carry_in)
 {
     uint8_t a = block, base, high, low_word, y, count;
-    Sum sum;
+    Alu sum;
     bool carry_bit;
 
     push8(a);
-    sum = add_bytes(BLOCK_BANK_OFFSET, 0, carry_in);
+    sum = adc8(BLOCK_BANK_OFFSET, 0, carry_in);
     base = RD8(ZP->ram_base_bank);
-    sum = add_bytes(sum.value, base, false);
-    tam(MPR6, sum.value);
+    sum = adc8(sum.a, base, false);
+    tam(MPR6, sum.a);
     a = pull8();
     wr8(ZpBlockSourceHigh, 0);
     for (int shift = 0; shift < 5; shift++) {
@@ -40,11 +40,11 @@ bool CopyTileBlockToVram(uint8_t block, bool carry_in)
         a = (uint8_t)(a << 1);
         rol_mem(ZpBlockSourceHigh, carry_bit);
     }
-    sum = add_bytes(a, 0, false);
-    WR8(ZP->temp12, sum.value);
+    sum = adc8(a, 0, false);
+    WR8(ZP->temp12, sum.a);
     high = rd8(ZpBlockSourceHigh);
-    sum = add_bytes(high, BLOCK_SOURCE_PAGE, sum.carry);
-    wr8(ZpBlockSourceHigh, sum.value);
+    sum = adc8(high, BLOCK_SOURCE_PAGE, sum.c);
+    wr8(ZpBlockSourceHigh, sum.a);
     jsr_push(0xA02A);
     ClearVdcControlHigh();
     jsr_pop();
@@ -73,14 +73,14 @@ bool CopyTileBlockToVram(uint8_t block, bool carry_in)
             count = rd8(ZpWordsDone);
         } while ((count & (ROW_WORDS - 1)) != 0);
         low_word = RD8(ZP->temp10);
-        sum = add_bytes(VRAM_ROW_STEP, low_word, false);
-        WR8(ZP->temp10, sum.value);
+        sum = adc8(VRAM_ROW_STEP, low_word, false);
+        WR8(ZP->temp10, sum.a);
         high = RD8(ZP->temp11);
-        sum = add_bytes(0, high, sum.carry);
-        WR8(ZP->temp11, (uint8_t)(sum.value & 0x0F));
+        sum = adc8(0, high, sum.c);
+        WR8(ZP->temp11, (uint8_t)(sum.a & 0x0F));
         count = rd8(ZpWordsDone);
     } while (count != BLOCK_WORDS);
-    return sum.overflow;
+    return sum.v;
 }
 
 void abi_CopyTileBlockToVram(void)
@@ -104,10 +104,10 @@ typedef struct {
  * each a 16-bit shift left of the index and an add of the stage's table. The index is kept on the
  * stack across the first. The result is the second pointer's high byte, as the last add leaves it.
  */
-static Sum select_block_tables(uint8_t index, BlockTables tables)
+static Alu select_block_tables(uint8_t index, BlockTables tables)
 {
     uint8_t a = index, high, carry_bit;
-    Sum sum;
+    Alu sum;
 
     push8(a);
     WR8(ZP->temp0_d, 0);
@@ -116,11 +116,11 @@ static Sum select_block_tables(uint8_t index, BlockTables tables)
         a = (uint8_t)(a << 1);
         ROL8(ZP->temp0_d, carry_bit != 0);
     }
-    sum = add_bytes(a, (uint8_t)tables.first, false);
-    WR8(ZP->temp0_c, sum.value);
+    sum = adc8(a, (uint8_t)tables.first, false);
+    WR8(ZP->temp0_c, sum.a);
     high = RD8(ZP->temp0_d);
-    sum = add_bytes(high, (uint8_t)(tables.first >> 8), sum.carry);
-    WR8(ZP->temp0_d, sum.value);
+    sum = adc8(high, (uint8_t)(tables.first >> 8), sum.c);
+    WR8(ZP->temp0_d, sum.a);
     a = pull8();
     WR8(ZP->temp05, 0);
     for (int shift = 0; shift < 6; shift++) {
@@ -128,20 +128,17 @@ static Sum select_block_tables(uint8_t index, BlockTables tables)
         a = (uint8_t)(a << 1);
         ROL8(ZP->temp05, carry_bit != 0);
     }
-    sum = add_bytes(a, (uint8_t)tables.second, false);
-    WR8(ZP->temp04, sum.value);
+    sum = adc8(a, (uint8_t)tables.second, false);
+    WR8(ZP->temp04, sum.a);
     high = RD8(ZP->temp05);
-    sum = add_bytes(high, (uint8_t)(tables.second >> 8), sum.carry);
-    WR8(ZP->temp05, sum.value);
+    sum = adc8(high, (uint8_t)(tables.second >> 8), sum.c);
+    WR8(ZP->temp05, sum.a);
     return sum;
 }
 
-static void block_tables_exit_shim(Sum sum)
+static void block_tables_exit_shim(Alu sum)
 {
-    cpu.a = sum.value;
-    abi_nz(sum.value);
-    abi_flag(P_C, sum.carry);
-    abi_flag(P_V, sum.overflow);
+    abi_alu(sum);
     cpu.y = 0;
 }
 /*
@@ -154,7 +151,7 @@ static void block_tables_exit_shim(Sum sum)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesA(uint8_t index)
+Alu SelectBlockTablesA(uint8_t index)
 {
     BlockTables tables = { 0xAAAC, 0xA9EC };
 
@@ -176,7 +173,7 @@ void abi_SelectBlockTablesA(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesB(uint8_t index)
+Alu SelectBlockTablesB(uint8_t index)
 {
     BlockTables tables = { 0xAFEC, 0xA9EC };
 
@@ -198,7 +195,7 @@ void abi_SelectBlockTablesB(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesC(uint8_t index)
+Alu SelectBlockTablesC(uint8_t index)
 {
     BlockTables tables = { 0xAAEC, 0xA9EC };
 
@@ -220,7 +217,7 @@ void abi_SelectBlockTablesC(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesD(uint8_t index)
+Alu SelectBlockTablesD(uint8_t index)
 {
     BlockTables tables = { 0xAB2C, 0xA9EC };
 
@@ -242,7 +239,7 @@ void abi_SelectBlockTablesD(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesE(uint8_t index)
+Alu SelectBlockTablesE(uint8_t index)
 {
     BlockTables tables = { 0xB3AC, 0xA9EC };
 
@@ -264,7 +261,7 @@ void abi_SelectBlockTablesE(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesF(uint8_t index)
+Alu SelectBlockTablesF(uint8_t index)
 {
     BlockTables tables = { 0xB4AC, 0xA9EC };
 
@@ -286,7 +283,7 @@ void abi_SelectBlockTablesF(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesG(uint8_t index)
+Alu SelectBlockTablesG(uint8_t index)
 {
     BlockTables tables = { 0xB5AC, 0xA9EC };
 
@@ -308,7 +305,7 @@ void abi_SelectBlockTablesG(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesH(uint8_t index)
+Alu SelectBlockTablesH(uint8_t index)
 {
     BlockTables tables = { 0xB02C, 0xA9EC };
 
@@ -330,7 +327,7 @@ void abi_SelectBlockTablesH(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesI(uint8_t index)
+Alu SelectBlockTablesI(uint8_t index)
 {
     BlockTables tables = { 0xB6AC, 0xA9EC };
 
@@ -352,7 +349,7 @@ void abi_SelectBlockTablesI(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesJ(uint8_t index)
+Alu SelectBlockTablesJ(uint8_t index)
 {
     BlockTables tables = { 0xB4EC, 0xA9EC };
 
@@ -374,7 +371,7 @@ void abi_SelectBlockTablesJ(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesK(uint8_t index)
+Alu SelectBlockTablesK(uint8_t index)
 {
     BlockTables tables = { 0xB2EC, 0xA9EC };
 
@@ -396,7 +393,7 @@ void abi_SelectBlockTablesK(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesL(uint8_t index)
+Alu SelectBlockTablesL(uint8_t index)
 {
     BlockTables tables = { 0xB03C, 0xAD7C };
 
@@ -418,7 +415,7 @@ void abi_SelectBlockTablesL(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesM(uint8_t index)
+Alu SelectBlockTablesM(uint8_t index)
 {
     BlockTables tables = { 0xB5EC, 0xA9EC };
 
@@ -440,7 +437,7 @@ void abi_SelectBlockTablesM(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesN(uint8_t index)
+Alu SelectBlockTablesN(uint8_t index)
 {
     BlockTables tables = { 0xAEF5, 0xAD75 };
 
@@ -462,7 +459,7 @@ void abi_SelectBlockTablesN(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesO(uint8_t index)
+Alu SelectBlockTablesO(uint8_t index)
 {
     BlockTables tables = { 0xB1EC, 0xA9EC };
 
@@ -484,7 +481,7 @@ void abi_SelectBlockTablesO(void)
  * Entry: A the block index. Exit: A the second pointer's high byte, N Z C V from its add, Y 0, X kept.
  * Clobbers zTemp0C, zTemp0D, zTemp04 and zTemp05.
  */
-Sum SelectBlockTablesP(uint8_t index)
+Alu SelectBlockTablesP(uint8_t index)
 {
     BlockTables tables = { 0xAC6C, 0xA9EC };
 

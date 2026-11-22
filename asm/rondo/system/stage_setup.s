@@ -58,6 +58,28 @@ RestoreStageBanks:
     tam #$20
     rts
 
+; @routine 024F:3B0 SpawnStageObject
+; @run 6B:93B0
+; WHAT IT DOES: Puts a new object in the slot a row of the stage's spawn tables names: the
+; slot is emptied, then given the row's frame, kind and X and Y low bytes.
+; HOW: The five tables are read by the row, X; the slot comes from the first. The other stage
+; group's copy, SpawnStageObjectLong, reads its own tables.
+; WAITS: no.
+; Entry: X the row, 0 to 7. Exit: A the Y low byte given, N and Z from it, Y the slot, X kept.
+SpawnStageObject:
+    lda a:StageSpawnSlot,x
+    tay
+    jsr VecClearObjectInY
+    lda a:StageSpawnFrame,x
+    sta a:OBJ_2A68,y
+    lda a:StageSpawnKind,x
+    sta a:OBJ_2A10,y
+    lda a:StageSpawnXLo,x
+    sta a:OBJ_X_LO,y
+    lda a:StageSpawnYLo,x
+    sta a:OBJ_Y_LO,y
+    rts
+
 ; @routine 05BF:651 SaveAndMapStageBanksLong
 ; @run 6B:9651
 ; WHAT IT DOES: SaveAndMapStageBanks, as the stages whose overlay runs it at $9651 have it.
@@ -98,4 +120,25 @@ RestoreStageBanksLong:
     lda a:OBJ_3670+$57
     tam #$20
 RestoreStageBanksLong_at0:
+    rts
+
+; @routine 05BF:6C2 SpawnStageObjectLong
+; @run 6B:96C2
+; WHAT IT DOES: SpawnStageObject for the other stage group, which keeps its spawn tables at
+; $96E2 to $9702.
+; HOW: The same code with its own tables.
+; WAITS: no.
+; Entry: X the row, 0 to 7. Exit: as SpawnStageObject.
+SpawnStageObjectLong:
+    lda a:StageSpawnSlotB,x
+    tay
+    jsr VecClearObjectInY
+    lda a:StageSpawnFrameB,x
+    sta a:OBJ_2A68,y
+    lda a:StageSpawnKindB,x
+    sta a:OBJ_2A10,y
+    lda a:StageSpawnXLoB,x
+    sta a:OBJ_X_LO,y
+    lda a:StageSpawnYLoB,x
+    sta a:OBJ_Y_LO,y
     rts

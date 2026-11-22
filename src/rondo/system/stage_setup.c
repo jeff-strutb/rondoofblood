@@ -2,6 +2,7 @@
 #include "machine.h"
 #include "access.h"
 #include "routines.h"
+#include "ram.h"
 #include "stage_map.h"
 
 enum {
@@ -166,4 +167,78 @@ void abi_MapStageBanksLong(void)
 void abi_RestoreStageBanksLong(void)
 {
     abi_RestoreStageBanks();
+}
+
+typedef struct { uint16_t slot, frame, kind, x_lo, y_lo; } SpawnTables;
+
+/* A row of a stage's spawn tables: the object it names is emptied and given its frame, kind and position low bytes. */
+static SpawnedObject spawn_from_row(uint8_t row, const SpawnTables *t, uint16_t ret)
+{
+    SpawnedObject out;
+    uint8_t byte;
+
+    out.slot = rd8((uint16_t)(t->slot + row));
+    jsr_push(ret);
+    ClearObject(out.slot);
+    jsr_pop();
+    byte = rd8((uint16_t)(t->frame + row));
+    WR8(OBJ->frame[out.slot], byte);
+    byte = rd8((uint16_t)(t->kind + row));
+    WR8(OBJ->f2a10[out.slot], byte);
+    byte = rd8((uint16_t)(t->x_lo + row));
+    WR8(OBJ->x_lo[out.slot], byte);
+    byte = rd8((uint16_t)(t->y_lo + row));
+    WR8(OBJ->y_lo[out.slot], byte);
+    out.y_lo = byte;
+    return out;
+}
+
+static const SpawnTables spawn_a = { StageSpawnSlot, StageSpawnFrame, StageSpawnKind, StageSpawnXLo, StageSpawnYLo };
+static const SpawnTables spawn_b = { StageSpawnSlotB, StageSpawnFrameB, StageSpawnKindB, StageSpawnXLoB, StageSpawnYLoB };
+
+/*
+ * @routine 024F:3B0 SpawnStageObject
+ * @run 6B:93B0
+ * WHAT IT DOES: Puts a new object in the slot a row of the stage's spawn tables names: the
+ * slot is emptied, then given the row's frame, kind and X and Y low bytes.
+ * HOW: The five tables are read by the row, X; the slot comes from the first. The other stage
+ * group's copy, SpawnStageObjectLong, reads its own tables.
+ * WAITS: no.
+ * Entry: X the row, 0 to 7. Exit: A the Y low byte given, N and Z from it, Y the slot, X kept.
+ */
+SpawnedObject SpawnStageObject(uint8_t row)
+{
+    return spawn_from_row(row, &spawn_a, 0x93B7);
+}
+
+void abi_SpawnStageObject(void)
+{
+    SpawnedObject out = SpawnStageObject(cpu.x);
+
+    cpu.a = out.y_lo;
+    cpu.y = out.slot;
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 05BF:6C2 SpawnStageObjectLong
+ * @run 6B:96C2
+ * WHAT IT DOES: SpawnStageObject for the other stage group, which keeps its spawn tables at
+ * $96E2 to $9702.
+ * HOW: The same code with its own tables.
+ * WAITS: no.
+ * Entry: X the row, 0 to 7. Exit: as SpawnStageObject.
+ */
+SpawnedObject SpawnStageObjectLong(uint8_t row)
+{
+    return spawn_from_row(row, &spawn_b, 0x96C9);
+}
+
+void abi_SpawnStageObjectLong(void)
+{
+    SpawnedObject out = SpawnStageObjectLong(cpu.x);
+
+    cpu.a = out.y_lo;
+    cpu.y = out.slot;
+    abi_nz(cpu.a);
 }

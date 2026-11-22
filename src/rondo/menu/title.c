@@ -429,6 +429,7 @@ Exit TitleLogoFade(uint8_t kept_y)
         DEC8(ZP->wait_timer2);
         WR8(ZP->wait_timer4, 3);
         exit.a = 3;
+        exit.a_kept = false;
         exit.nz = 3;
         return exit;
     }
@@ -437,12 +438,14 @@ Exit TitleLogoFade(uint8_t kept_y)
     if (hold != 0) {
         left = DEC8(ZP->wait_timer4);
         exit.a = hold;
+        exit.a_kept = false;
         exit.nz = left;
         if (left != 0) {
             return exit;
         }
         StartScriptSlot0Kind1(2);
         exit.a = 2;
+        exit.a_kept = false;
         exit.x = 0;
         exit.x_kept = false;
         exit.y = 2;
@@ -454,12 +457,14 @@ Exit TitleLogoFade(uint8_t kept_y)
     if (count & 0x80) {
         WR8(ZP->wait_timer4, 1);
         exit.a = 1;
+        exit.a_kept = false;
         exit.nz = next_step();
         return exit;
     }
     tick = RD8(ZP->frame_tick);
     if (tick & 0x01) {
         exit.a = 0;
+        exit.a_kept = false;
         exit.nz = 0;
         return exit;
     }
@@ -467,6 +472,10 @@ Exit TitleLogoFade(uint8_t kept_y)
     jsr_push(0x8110);
     exit = TitlePaletteRotate(LOGO_PALETTE_C, kept_y);
     jsr_pop();
+    if (exit.a_kept) {
+        exit.a = 0;
+        exit.a_kept = false;
+    }
     return exit;
 }
 

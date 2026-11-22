@@ -3165,6 +3165,7 @@ void abi_SoundStartChannel(void)
  * volume full.
  * HOW: zSoundChannelsOn gets the six channels' bits; SoundMusicTable by the command less $55 gives
  * the list, through zSoundTableLo and Hi; SoundReadPair and SoundStartChannel for each.
+ * WAITS: no.
  * Entry: from SoundDriverCommand, SoundCommandIn the command. Exit, at the command's shared
  * end: A $FF, N set, Z clear, X 6, Y 1, C set, V from the table address's add.
  */
@@ -3182,11 +3183,17 @@ uint8_t SoundStartMusic(void)
     wr8(zSoundWordHi, rd8_zp_y(zSoundTableLo, 1));
     for (uint8_t channel = 0; channel < PSG_CHANNELS; channel++) {
         wr8((uint16_t)(SoundChannelCommand + channel), rd8(SoundCommandIn));
+        jsr_push(0xB3DF);
         SoundReadPair(channel);
+        jsr_pop();
+        jsr_push(0xB3E2);
         SoundStartChannel(channel);
+        jsr_pop();
     }
     wr8(SoundFading, 0);
+    jsr_push(0xB3ED);
     SoundVolumeFull();
+    jsr_pop();
     return command;
 }
 
@@ -3289,7 +3296,9 @@ VoiceStart SoundStartVoice(void)
     VoiceStart voice;
     uint16_t table;
 
+    jsr_push(0xB3F3);
     voice.stat_before = ad_stat();
+    jsr_pop();
     if (voice.stat_before.playing == 0 && !(rd8(SoundVoiceFlags) & VOICE_WAITING))
         wr8(SoundVoicePriority, 0);
     voice.command = rd8(SoundCommandIn);
@@ -3297,15 +3306,17 @@ VoiceStart SoundStartVoice(void)
                    !((uint8_t)((rd8(zStage) & 0x7F) - VOICE_SECOND_STAGES) & 0x80);
     if (voice.second) {
         wr8(SoundVoiceFlags, (uint8_t)(rd8(SoundVoiceFlags) | VOICE_SECOND_SET));
-        voice.index = (uint8_t)(voice.command - VOICE_SECOND_FIRST);
+        voice.index = (uint8_t)(rd8(SoundCommandIn) - VOICE_SECOND_FIRST);
         table = SoundVoicesSecond;
     } else {
         wr8(SoundVoiceFlags, (uint8_t)(rd8(SoundVoiceFlags) & ~VOICE_SECOND_SET));
-        voice.index = (uint8_t)(voice.command - VOICE_SET_FIRST);
+        voice.index = (uint8_t)(rd8(SoundCommandIn) - VOICE_SET_FIRST);
         table = SoundVoicesFirst;
     }
     wr8(SoundVoiceIndex, voice.index);
-    voice.product = SoundMultiply(voice.index, VOICE_ENTRY, 0);  /* X: not worked out yet */
+    jsr_push(voice.second ? 0xB44B : 0xB426);
+    voice.product = SoundMultiply(voice.index, VOICE_ENTRY, voice.stat_before.busy);
+    jsr_pop();
     voice.table_low = add_bytes(rd8(zSoundWordLo), (uint8_t)table, false);
     wr8(zSoundTableLo, voice.table_low.value);
     voice.table_high = add_bytes(rd8(zSoundWordHi), (uint8_t)(table >> 8), voice.table_low.carry);
@@ -3320,8 +3331,12 @@ VoiceStart SoundStartVoice(void)
         voice.priority = rd8(SoundVoicePriority);
     }
     wr8(SoundVoicePriority, voice.priority);
+    jsr_push(0xB46D);
     voice.stop = ad_stop();
+    jsr_pop();
+    jsr_push(0xB470);
     voice.stat = ad_stat();
+    jsr_pop();
     if (voice.stat.playing != 0) {
         voice.flags = (uint8_t)(rd8(SoundVoiceFlags) | VOICE_WAITING);
         wr8(SoundVoiceFlags, voice.flags);
@@ -3335,9 +3350,14 @@ VoiceStart SoundStartVoice(void)
     wr8(zBiosDh, rd8_zp_y(zSoundTableLo, 5));
     wr8(zBiosDl, 0);
     voice.moved_back = (rd8(zCharacter) & 1) != 0;
-    if (voice.moved_back)
+    if (voice.moved_back) {
+        jsr_push(0xB4A3);
         voice.back = SoundVoiceAddressBack();
+        jsr_pop();
+    }
+    jsr_push(0xB4A6);
     voice.play = KernelAdpcmPlay();
+    jsr_pop();
     if (!kernel_play_started(voice.play)) {
         voice.flags = (uint8_t)(rd8(SoundVoiceFlags) | VOICE_WAITING);
         wr8(SoundVoiceFlags, voice.flags);

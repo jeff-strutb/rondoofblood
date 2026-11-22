@@ -2106,6 +2106,7 @@ SoundStartChannel:
 ; volume full.
 ; HOW: zSoundChannelsOn gets the six channels' bits; SoundMusicTable by the command less $55 gives
 ; the list, through zSoundTableLo and Hi; SoundReadPair and SoundStartChannel for each.
+; WAITS: no.
 ; Entry: from SoundDriverCommand, SoundCommandIn the command. Exit, at the command's shared
 ; end: A $FF, N set, Z clear, X 6, Y 1, C set, V from the table address's add.
 SoundStartMusic:

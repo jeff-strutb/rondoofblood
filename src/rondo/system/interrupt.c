@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "ram.h"
+#include "access.h"
 #include "routines.h"
 
 enum {
@@ -215,6 +216,8 @@ void abi_IgnoredInterrupt(void)
  * display services and the sound driver, sets the display and first palette, installs
  * the interrupts, and then idles forever, the game running from the frame interrupt.
  * HOW: Block fills of zero page and game RAM, then BIOS and kernel calls in order.
+ * WAITS: KernelIdle, a jump to itself, entered by this routine's last JMP; this routine has
+ * pushed nothing there, so the stack is as the loader left it.
  * Entry: from the loader, zRamBaseBank set, MPR2-3 the kernel. Exit: never.
  */
 void KernelStart(void)
@@ -222,8 +225,8 @@ void KernelStart(void)
     uint8_t base;
     Alu sum;
 
-    tai(KernelZeros, ZeroPage, zRamBaseBank - zTemp00);
-    tai(KernelZeros, SoundCommandIn, KERNEL_RUN - SoundCommandIn);
+    tai(KernelZeros, ADDR_OF(ZP->temp00), ADDR_OF(ZP->ram_base_bank) - ADDR_OF(ZP->temp00));
+    tai(KernelZeros, ADDR_OF(SNDS->command_in), KERNEL_RUN - ADDR_OF(SNDS->command_in));
     /* The calls below are made to code with no typed C yet, each with the registers and flags the assembly has
      * at its JSR (call_orig); SelectVdcRegister is typed C and is called with its frame. */
     cpu.a = 0;
@@ -233,13 +236,12 @@ void KernelStart(void)
     call_orig(0x410F, 0xE06F);                      /* ex_scrmod */
     cpu.a = 0;
     call_orig(0x4113, 0xE06C);                      /* ex_dotmod */
-    wr8(BiosScreenLo, 0);
-    wr8(BiosScreenHi, 0x10);
+    WR16_LH(BIOS->screen, 0x1000);
     cpu.a = 0x10;
     abi_nz(0x10);
     call_orig(0x411E, 0xE0A2);                      /* ex_satclr */
-    wr8(zGameMode, 0);
-    sum = adc8(0x0D, rd8(zRamBaseBank), false);
+    WR8(ZP->game_mode, 0);
+    sum = adc8(0x0D, RD8(ZP->ram_base_bank), false);
     base = sum.a;
     tam(MPR4, base);
     tam(MPR5, (uint8_t)(base + 1));
@@ -254,7 +256,7 @@ void KernelStart(void)
     jsr_push(0x413A);
     SelectVdcRegister(0x0D);
     jsr_pop();
-    wr8(VDC_DATA_LO, 0xE0);
+    WR8(VDC->data_lo, 0xE0);
     cpu.a = SCENE_MENU_A;
     abi_nz(SCENE_MENU_A);
     call_orig(0x4144, 0x6FD8);                      /* LoadSceneScript */
@@ -264,7 +266,7 @@ void KernelStart(void)
     cpu.a = ADPCM_MENU;
     abi_nz(ADPCM_MENU);
     call_orig(0x414E, 0x6E43);                      /* AdpcmLoad */
-    wr8(zMusicWanted, 0xFF);
+    WR8(ZP->music_wanted, 0xFF);
     cpu.a = VECTOR_VDC;
     cpu.x = (uint8_t)FRAME_INTERRUPT_RUN;
     cpu.y = (uint8_t)(FRAME_INTERRUPT_RUN >> 8);
@@ -275,8 +277,8 @@ void KernelStart(void)
     cpu.y = (uint8_t)(IGNORED_INTERRUPT_RUN >> 8);
     abi_nz(cpu.y);
     call_orig(0x4164, 0xE05D);
-    wr8(BiosIrqDisable, 0x06);
-    sum = adc8(0x03, rd8(zRamBaseBank), false);
+    WR8(ZP->bios_irq_disable, 0x06);
+    sum = adc8(0x03, RD8(ZP->ram_base_bank), false);
     tam(MPR4, sum.a);
     wr8(zIdleFlag, 0);
     abi_KernelIdle();                               /* JMP KernelIdle */

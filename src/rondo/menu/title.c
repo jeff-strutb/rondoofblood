@@ -329,6 +329,7 @@ void abi_TitleWipe(void)
  * @run 6B:80C6
  * WHAT IT DOES: Starts the logo: three waits of 10, script 1 on slot 0, and music $55.
  * HOW: zWaitTimer, zWaitTimer2 and zWaitTimer3; StartScriptSlotKind1; SoundCommand.
+ * WAITS: no.
  * Entry: nothing. Exit: as SoundCommand after the script's start, with N and Z from the new
  * sub-mode.
  */
@@ -340,7 +341,7 @@ LogoStart TitleLogoStart(void)
     wr8(zWaitTimer2, LOGO_WAITS);
     wr8(zWaitTimer3, LOGO_WAITS);
     StartScriptSlotKind1(LOGO_SCRIPT, 0);
-    start.sound = SoundCommand(LOGO_SOUND);
+    start.sound = SoundCommand(LOGO_SOUND, 0, 1);   /* X 0 and Y 1 as StartScriptSlot0Kind1 leaves them */
     start.step = next_step();
     return start;
 }

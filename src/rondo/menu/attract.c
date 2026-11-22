@@ -284,7 +284,7 @@ Exit ScriptStep(void)
     case 0x8847: return ScriptSaveReadAndState();
     case 0x8866: return ScriptStartList();
     case 0x88A2: return ScriptPlaceObjectKind2();
-    case 0x8852: return ScriptSound();
+    case 0x8852: return ScriptSound(index);
     default:
         break;
     }
@@ -328,20 +328,20 @@ void abi_ScriptSaveReadAndState(void)
  * WAITS: no.
  * Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
  */
-Exit ScriptSound(void)
+Exit ScriptSound(uint8_t doubled_command)
 {
     uint8_t sound;
 
     sound = RD8_PTR_Y(ZP->SCRIPT_PTR, 3);
     jsr_push(0x8857);
-    SoundCommand(sound);
+    SoundCommand(sound, doubled_command, 3);
     jsr_pop();
     return ScriptAdvance();
 }
 
 void abi_ScriptSound(void)
 {
-    exit_shim(ScriptSound());
+    exit_shim(ScriptSound(cpu.x));
 }
 
 /*

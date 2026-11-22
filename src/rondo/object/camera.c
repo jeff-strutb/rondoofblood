@@ -175,7 +175,7 @@ void abi_PlayerDistanceSum(void)
  * Entry: A command, X object. Exit, not played: A the command, N and Z from it, C and V kept.
  * Exit, played: as SoundCommand with the command's flags.
  */
-SoundOnScreen SoundIfOnFirstScreen(uint8_t command, uint8_t object)
+SoundOnScreen SoundIfOnFirstScreen(uint8_t command, uint8_t object, uint8_t kept_y)
 {
     SoundOnScreen result = { 0 };
     uint8_t x_high, y_high;
@@ -188,7 +188,7 @@ SoundOnScreen SoundIfOnFirstScreen(uint8_t command, uint8_t object)
         return result;
     }
     result.played = true;
-    result.call = SoundCommand(result.command);
+    result.call = SoundCommand(result.command, object, kept_y);
     return result;
 }
 
@@ -205,7 +205,7 @@ void sound_if_on_first_screen_exit_shim(SoundOnScreen result)
 
 void abi_SoundIfOnFirstScreen(void)
 {
-    sound_if_on_first_screen_exit_shim(SoundIfOnFirstScreen(cpu.a, cpu.x));
+    sound_if_on_first_screen_exit_shim(SoundIfOnFirstScreen(cpu.a, cpu.x, cpu.y));
 }
 
 /*

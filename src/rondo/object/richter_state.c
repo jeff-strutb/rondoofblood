@@ -1099,6 +1099,7 @@ static void fade_and_stop_sound_shim(void)
  * WHAT IT DOES: Starts the player's death: no health, the timer, the state, the music out
  * and the death's sound.
  * HOW: FadeAndStopSound, then SoundCommand $60.
+ * WAITS: no.
  * Entry: nothing. Exit: as SoundCommand with $60.
  */
 Death RichterDie(void)
@@ -1111,7 +1112,7 @@ Death RichterDie(void)
     RichterStopX();
     wr8(OBJ_27A8, STATE_DYING);
     fade_and_stop_sound_shim();
-    death.sound = SoundCommand(SOUND_DEATH);
+    death.sound = SoundCommand(SOUND_DEATH, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
     return death;
 }
 
@@ -1317,7 +1318,7 @@ static void out_of_health(StateFrame *f)
     wr8(zSubStep, LIFE_LOST_SUB_STEP);
     wr8(PlayerByte3BD7, 0);
     f->how = FRAME_LIFE_LOST;
-    f->sound = SoundCommand(SOUND_LIFE_LOST);
+    f->sound = SoundCommand(SOUND_LIFE_LOST, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
 }
 
 /*
@@ -2283,6 +2284,7 @@ void abi_RichterStopMoving(void)
  * @run 6D:A4C6
  * WHAT IT DOES: Stops the player along X.
  * HOW: Zeroes the speed.
+ * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
 void RichterStopX(void)
@@ -2307,7 +2309,7 @@ static AttackStart attack_with_animation(uint8_t animation)
     if (attack.kind == 0) {
         RichterClearWhip();
         wr8(OBJ_2750 + OBJECT_WHIP, 1);
-        attack.sound = SoundCommand(SOUND_WHIP);
+        attack.sound = SoundCommand(SOUND_WHIP, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
         return attack;
     }
     attack.item = rd8(zField93);
@@ -2704,6 +2706,7 @@ static void react_slot_5(uint8_t kind)
  * WHAT IT DOES: Hurt jump: state 3, step 2, the jump's speeds, a long hit timer, animation
  * $23, its sound, and a reaction by zField93. Item $05 goes to RichterItemCrashFive.
  * HOW: Table by zField93, 0 to 8; the C takes anything past 8 as 8. SoundCommand $65.
+ * WAITS: no.
  * Entry: nothing. Exit: item 5 first, as RichterItemCrashFive. Otherwise as the reaction, after
  * A and X twice the item, N and Z from it, C its bit 7, Y as the animation and V as the sound left
  * them.
@@ -2725,7 +2728,7 @@ HurtAir RichterToHurtAir(void)
     wr8(OBJ_3460, HURT_TIMER);
     wr8(OBJ_3250, 0);
     hurt.animation = RichterSetAnimation(ANIM_HURT_AIR);
-    hurt.sound = SoundCommand(SOUND_HURT);
+    hurt.sound = SoundCommand(SOUND_HURT, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
     hurt.item = rd8(zField93);
     entry = (uint16_t)(HitReactionHandlers + (uint8_t)(hurt.item << 1));
     rd8(entry);
@@ -2834,6 +2837,7 @@ void abi_RichterReactFillB(void)
  * WHAT IT DOES: Item $05's crash, from a hurt jump: no speed, animation $2A, its sound,
  * state 0, step 2, its timer.
  * HOW: The fields in turn.
+ * WAITS: no.
  * Entry: nothing. Exit: A $60, N and Z from it; C and V as SoundCommand left them.
  */
 CrashFive RichterItemCrashFive(void)
@@ -2842,7 +2846,7 @@ CrashFive RichterItemCrashFive(void)
 
     RichterStopMoving();
     crash.animation = RichterSetAnimation(ANIM_CRASH_FIVE);
-    crash.sound = SoundCommand(SOUND_HURT);
+    crash.sound = SoundCommand(SOUND_HURT, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
     set_state(STATE_STAND, 2);
     wr8(OBJ_30F0, CRASH_FIVE_TIMER);
     return crash;
@@ -4153,6 +4157,7 @@ void abi_RichterMoveStopped(void)
  * wears off, the flashing scripts at set marks, and his hit timer and flash back to 1 at the end.
  * HOW: PlayerInvincibleTimer; zWaveCounter's low two bits pick the frame. The marks and their
  * scripts are two tables of six. OBJ_3460 $80 holds hits off; OBJ_3828 2 while it runs.
+ * WAITS: no.
  * Entry: nothing. Exit: off, A 0, Z set. Not this frame, A the frame's bits, N and Z from them.
  * Otherwise X, Y, C and V as a sound command left them, C from comparing A with $10 when the
  * second sound was dropped or not made. Ended, A 1, N and Z clear. A mark, as
@@ -4177,12 +4182,12 @@ InvincibleTick RichterInvincibleTick(void)
     tick.compared = rd8(PlayerInvincibleTimer);
     if (tick.compared == INVINCIBLE_START) {
         tick.first_sound = true;
-        tick.first = SoundCommand(SOUND_INVINCIBLE_START);
+        tick.first = SoundCommand(SOUND_INVINCIBLE_START, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
         tick.compared = tick.first.taken ? tick.first.mpr4 : SOUND_INVINCIBLE_START;
     }
     if (tick.compared == INVINCIBLE_ENDING) {
         tick.second_sound = true;
-        tick.second = SoundCommand(SOUND_INVINCIBLE_ENDING);
+        tick.second = SoundCommand(SOUND_INVINCIBLE_ENDING, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
     }
     tick.value = (uint8_t)(rd8(PlayerInvincibleTimer) - 1);
     wr8(PlayerInvincibleTimer, tick.value);

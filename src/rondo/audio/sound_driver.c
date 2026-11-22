@@ -10,6 +10,7 @@
 #include "machine.h"
 #include "ram.h"
 #include "syscard.h"
+#include "access.h"
 #include "routines.h"
 
 enum {
@@ -46,21 +47,25 @@ static bool effect_holds(uint8_t channel, uint8_t *effect)
  * @run 75:8E14
  * WHAT IT DOES: Turns every PSG channel off, and the main volume down.
  * HOW: Selects channels 5 down to 0 and clears each one's control; then the main volume.
- * Entry: nothing. Exit: A, X, Y, C and V kept; N and Z from X. zSoundChannel 0.
+ * WAITS: no.
+ * Entry: X kept on the stack across it (a typed caller passes its own). Exit: A, X, Y, C and V kept;
+ * N and Z from X. zSoundChannel 0.
  */
-void SoundSilenceAll(void)
+void SoundSilenceAll(uint8_t kept_x)
 {
+    push8(kept_x);
     for (int channel = PSG_CHANNELS - 1; channel >= 0; channel--) {
         wr8(zSoundChannel, (uint8_t)channel);
         wr8(PsgSelect, (uint8_t)channel);
         wr8(PsgControl, 0);
     }
     wr8(PsgMainVolume, 0);
+    (void)pull8();
 }
 
 void abi_SoundSilenceAll(void)
 {
-    SoundSilenceAll();
+    SoundSilenceAll(cpu.x);
     abi_nz(cpu.x);
 }
 
@@ -174,17 +179,48 @@ static void abi_exit_product(SoundProduct product, uint8_t before)
  * @run 75:8F46
  * WHAT IT DOES: Multiplies two bytes into a word in zSoundWordLo and zSoundWordHi.
  * HOW: Eight steps of shift and add, the multiplier from zSoundScratch.
+ * WAITS: no.
  * Entry: A and Y the bytes. Exit: X and Y kept, N and Z from X; C clear; A the product's high
  * byte as of the last add, V from that add, or A and V kept when A was 0.
  */
-SoundProduct SoundMultiply(uint8_t a, uint8_t y)
+SoundProduct SoundMultiply(uint8_t a, uint8_t y, uint8_t kept_x)
 {
-    return shift_add(a, 8, y);
+    SoundProduct product = { 0, false, 0, false };
+    uint8_t step, low, high, new_low, new_high;
+    uint16_t word = 0;
+    bool carry;
+
+    push8(kept_x);
+    WR8(ZP->sound_scratch, a);
+    WR8(ZP->sound_word.lo, 0);
+    WR8(ZP->sound_word.hi, 0);
+    for (step = 0; step != 8; step++) {
+        carry = ASL8(ZP->sound_word.lo);
+        ROL8(ZP->sound_word.hi, carry);
+        word = (uint16_t)(word << 1);
+        carry = ASL8(ZP->sound_scratch);
+        if (carry) {
+            low = RD8(ZP->sound_word.lo);
+            new_low = (uint8_t)(low + y);
+            WR8(ZP->sound_word.lo, new_low);
+            carry = (unsigned)low + y > 0xFF;
+            high = RD8(ZP->sound_word.hi);
+            new_high = (uint8_t)(high + (carry ? 1 : 0));
+            WR8(ZP->sound_word.hi, new_high);
+            word = (uint16_t)(word + y);
+            product.added = true;
+            product.high = new_high;
+            product.overflow = high == 0x7F && new_high == 0x80;
+        }
+    }
+    product.value = word;
+    (void)pull8();
+    return product;
 }
 
 void abi_SoundMultiply(void)
 {
-    abi_exit_product(SoundMultiply(cpu.a, cpu.y), cpu.a);
+    abi_exit_product(SoundMultiply(cpu.a, cpu.y, cpu.x), cpu.a);
 }
 
 /*
@@ -961,6 +997,7 @@ void abi_SoundEnvelopeStep(void)
  * WHAT IT DOES: A signed offset into zSoundWordLo and Hi: an entry of SoundOffsetTable times the
  * channel's SoundVibratoDepth, negated when bit 6 of the byte is set.
  * HOW: The byte's low six bits pick the entry; SoundMultiply.
+ * WAITS: no.
  * Entry: A the byte, X channel. Exit: Y the scale; X kept. Positive, as SoundMultiply. Negative, A
  * the word's high byte, N, Z, C and V from subtracting it from 0 with the low byte's borrow.
  */
@@ -971,7 +1008,7 @@ ScaledOffset SoundScaledOffset(uint8_t byte, uint8_t channel)
 
     offset.negative = entry >= OFFSET_NEGATIVE;
     offset.scale = rd8((uint16_t)(SoundVibratoDepth + channel));
-    offset.product = SoundMultiply(rd8((uint16_t)(SoundOffsetTable + (entry & 0x3F))), offset.scale);
+    offset.product = SoundMultiply(rd8((uint16_t)(SoundOffsetTable + (entry & 0x3F))), offset.scale, channel);
     if (offset.negative) {
         uint16_t word = (uint16_t)(0 - offset.product.value);
 
@@ -1187,6 +1224,7 @@ void abi_SoundSetLength(void)
  * instead. Channels 4 and 5 are left alone while an effect plays on them.
  * HOW: SoundPeriods by note; the fine part times the step, SoundMultiply, its high byte off the
  * period; noise off for a tone. Noise takes the note less one, its low five bits.
+ * WAITS: no.
  * Entry: A the fine part, X channel, Y note. Exit: X kept. Left alone, A and Y kept, N and V the
  * effect's bits 7 and 6, Z and C clear. Noise, A the noise byte, N and Z from it, C set, Y the
  * note less one. Tone, A the period's high byte, N, Z, C and V from its subtract, Y twice the
@@ -1212,7 +1250,7 @@ FrequencySet SoundSetFrequency(uint8_t fine, uint8_t channel, uint8_t note)
         return set;
     }
     step = (uint8_t)(rd8(entry) - rd8((uint16_t)(entry + 2)));
-    SoundMultiply(step, rd8(zSoundFine));
+    SoundMultiply(step, rd8(zSoundFine), 0);  /* X: not worked out yet */
     wr8(PsgNoise, 0);
     period = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
     set.high_before = (uint8_t)(period >> 8);
@@ -1333,6 +1371,7 @@ void abi_SoundLoadWave(void)
  * playing, the LFO off.
  * HOW: SoundChannel25B0, SoundChannelCommand and SoundChannelPriority cleared by channel;
  * SoundSilenceAll.
+ * WAITS: no.
  * Entry: nothing. Exit: A, X, Y and V kept; N and Z from X; C set by the loop's last compare.
  */
 void SoundInit(void)
@@ -1344,7 +1383,7 @@ void SoundInit(void)
         wr8((uint16_t)(SoundChannelPriority + channel), 0);
         wr8(zSoundAltBalance, 0);
     }
-    SoundSilenceAll();
+    SoundSilenceAll(SOUND_CHANNELS);       /* X as the loop leaves it */
     wr8(SoundFading, 0);
     wr8(zSoundChannelsOn, 0);
     wr8(PsgLfoFreq, 0);
@@ -1364,6 +1403,7 @@ void abi_SoundInit(void)
  * WHAT IT DOES: Stops everything: no command or priority on any channel, no fade, nothing
  * playing, the PSG silent, noise and the LFO off.
  * HOW: The channels from 7 down; SoundSilenceAll.
+ * WAITS: no.
  * Entry: nothing. Exit: X $FF, N set, Z clear. A, Y, C and V kept.
  */
 void SoundDriverStopAll(void)
@@ -1374,7 +1414,9 @@ void SoundDriverStopAll(void)
     }
     wr8(SoundFading, 0);
     wr8(zSoundChannelsOn, 0);
-    SoundSilenceAll();
+    jsr_push(0xB26D);
+    SoundSilenceAll(0xFF);                 /* X as the loop leaves it */
+    jsr_pop();
     wr8(PsgNoise, 0);
     wr8(PsgLfoControl, 0);
 }
@@ -3068,6 +3110,7 @@ void abi_SoundChannelTick(void)
  * length of 1, the slide, envelope, loops and returns cleared, the volume base $1F, the pan 8,
  * the tempo 1 with its phase full so the first frame ticks.
  * HOW: Each field by channel cleared or set; SoundSetPan.
+ * WAITS: no.
  * Entry: X channel. Exit: A 1, N and Z from it. X, Y, C and V kept.
  */
 void SoundStartChannel(uint8_t channel)
@@ -3096,7 +3139,9 @@ void SoundStartChannel(uint8_t channel)
     for (unsigned i = 0; i < sizeof cleared_next / sizeof cleared_next[0]; i++)
         wr8((uint16_t)(cleared_next[i] + channel), 0);
     wr8((uint16_t)(SoundVolumeBase + channel), CHANNEL_VOLUME_START);
+    jsr_push(0x856C);
     SoundSetPan(channel, CHANNEL_PAN_START);
+    jsr_pop();
     wr8((uint16_t)(SoundTempoPhase + channel), TEMPO_FULL);
     wr8((uint16_t)(SoundDecayRate + channel), 0);
     wr8((uint16_t)(SoundReleaseRate + channel), 0);
@@ -3234,6 +3279,7 @@ static bool kernel_play_started(KernelPlay play)
  * SoundVoicesSecond by the command, six bytes a voice, through zSoundTableLo and Hi; ad_stop,
  * ad_stat; the voice into zBiosBl to zBiosDh; SoundVoiceAddressBack for character 1;
  * KernelAdpcmPlay. Bit 0 of SoundVoiceFlags marks a voice waiting.
+ * WAITS: no.
  * Entry: from SoundDriverCommand, SoundCommandIn the command. Exit, at the command's shared end,
  * as the last of those calls left them, then: dropped, A 0, Z set, N and C clear; waiting, A the
  * flags with bit 0, N and Z from them, C set; played, Z and C set, N clear.
@@ -3259,7 +3305,7 @@ VoiceStart SoundStartVoice(void)
         table = SoundVoicesFirst;
     }
     wr8(SoundVoiceIndex, voice.index);
-    voice.product = SoundMultiply(voice.index, VOICE_ENTRY);
+    voice.product = SoundMultiply(voice.index, VOICE_ENTRY, 0);  /* X: not worked out yet */
     voice.table_low = add_bytes(rd8(zSoundWordLo), (uint8_t)table, false);
     wr8(zSoundTableLo, voice.table_low.value);
     voice.table_high = add_bytes(rd8(zSoundWordHi), (uint8_t)(table >> 8), voice.table_low.carry);
@@ -3345,11 +3391,17 @@ void abi_SoundStartVoice(void)
 }
 
 /* An effect's entry: its priority, with zSoundTableLo and Hi at it. */
-static EffectEntry effect_entry(uint8_t command)
+static EffectEntry effect_entry(uint16_t ret, uint8_t channel, uint8_t held_y)
 {
     EffectEntry entry;
+    uint8_t command;
 
-    entry.product = SoundMultiply(command, EFFECT_ENTRY);
+    push8(held_y);
+    command = rd8(SoundCommandIn);
+    jsr_push(ret);
+    entry.product = SoundMultiply(command, EFFECT_ENTRY, channel);
+    jsr_pop();
+    (void)pull8();
     entry.low = add_bytes(rd8(zSoundWordLo), (uint8_t)SoundEffectTable, false);
     wr8(zSoundTableLo, entry.low.value);
     entry.high = add_bytes(rd8(zSoundWordHi), (uint8_t)(SoundEffectTable >> 8), entry.low.carry);
@@ -3359,26 +3411,43 @@ static EffectEntry effect_entry(uint8_t command)
 }
 
 /* An effect's sequence started on a channel from its entry. */
-static void start_effect_channel(uint8_t channel)
+static void start_effect_channel(uint8_t channel, uint16_t ret_read, uint16_t ret_start)
 {
+    jsr_push(ret_read);
     SoundReadPair(channel);
+    jsr_pop();
+    jsr_push(ret_start);
     SoundStartChannel(channel);
+    jsr_pop();
 }
 
 /* An effect on one channel: 7 when it is free or plays this one, 6 when 6 does, else by weight. */
 static DriverHow start_effect(uint8_t command, DriverCommand *taken)
 {
+    uint8_t held_y;
     uint8_t channel = EFFECT_CHANNEL_B;
-    uint8_t playing = rd8(SoundChannelCommand + EFFECT_CHANNEL_B);
+    uint8_t asked, playing, again, other, weight_a, weight_b;
 
     (void)command;
-    if (playing != 0 && rd8(SoundCommandIn) != rd8(SoundChannelCommand + EFFECT_CHANNEL_B)) {
-        if (rd8(SoundCommandIn) == rd8(SoundChannelCommand + EFFECT_CHANNEL_A))
-            channel = EFFECT_CHANNEL_A;
-        else if (rd8(SoundChannel25F6) < rd8(SoundChannel25F7))
-            channel = EFFECT_CHANNEL_A;
+    asked = rd8(SoundCommandIn);
+    playing = rd8(SoundChannelCommand + EFFECT_CHANNEL_B);     /* TST */
+    if (playing != 0) {
+        again = rd8(SoundChannelCommand + EFFECT_CHANNEL_B);   /* CMP */
+        if (asked != again) {
+            other = rd8(SoundChannelCommand + EFFECT_CHANNEL_A);
+            if (asked == other) {
+                channel = EFFECT_CHANNEL_A;
+            } else {
+                weight_a = rd8(SoundChannel25F6);
+                weight_b = rd8(SoundChannel25F7);
+                if (weight_a < weight_b) {
+                    channel = EFFECT_CHANNEL_A;
+                }
+            }
+        }
     }
-    taken->entry = effect_entry(rd8(SoundCommandIn));
+    held_y = channel == EFFECT_CHANNEL_B ? 0x80 : 0x40;
+    taken->entry = effect_entry(0xB31C, channel, held_y);
     if (taken->entry.priority < rd8((uint16_t)(SoundChannelPriority + channel)))
         return DRIVER_EFFECT_LOW;
     wr8((uint16_t)(SoundChannelPriority + channel), taken->entry.priority);
@@ -3387,19 +3456,23 @@ static DriverHow start_effect(uint8_t command, DriverCommand *taken)
     wr8((uint16_t)(SoundChannelCommand + channel), rd8(SoundCommandIn));
     wr8(zSoundWordLo, rd8_zp_y(zSoundTableLo, 1));
     wr8(zSoundWordHi, rd8_zp_y(zSoundTableLo, 2));
-    start_effect_channel(channel);
+    start_effect_channel(channel, 0xB34E, 0xB351);
+    jsr_push(0xB354);
     SoundVolumeFull();
+    jsr_pop();
     return DRIVER_EFFECT;
 }
 
 /* An effect on both channels, from $3D: its priority weighed against the lighter channel's. */
-static DriverHow start_effect_pair(uint8_t command, DriverCommand *taken)
+static DriverHow start_effect_pair(uint8_t command, DriverCommand *taken, uint8_t kept_y)
 {
-    uint8_t channel = rd8(SoundChannel25F6) >= rd8(SoundChannel25F7) ? EFFECT_CHANNEL_A : EFFECT_CHANNEL_B;
+    uint8_t weight_a = rd8(SoundChannel25F6);
+    uint8_t weight_b = rd8(SoundChannel25F7);
+    uint8_t channel = weight_a >= weight_b ? EFFECT_CHANNEL_A : EFFECT_CHANNEL_B;
     uint8_t played;
 
     (void)command;
-    taken->entry = effect_entry(rd8(SoundCommandIn));
+    taken->entry = effect_entry(0xB36B, channel, kept_y);
     if (taken->entry.priority < rd8((uint16_t)(SoundChannelPriority + channel)))
         return DRIVER_EFFECT_LOW;
     wr8(SoundChannelPriority + EFFECT_CHANNEL_A, taken->entry.priority);
@@ -3411,9 +3484,11 @@ static DriverHow start_effect_pair(uint8_t command, DriverCommand *taken)
     wr8(SoundChannelCommand + EFFECT_CHANNEL_B, played);
     wr8(zSoundWordLo, rd8_zp_y(zSoundTableLo, 1));
     wr8(zSoundWordHi, rd8_zp_y(zSoundTableLo, 2));
-    start_effect_channel(EFFECT_CHANNEL_A);
-    start_effect_channel(EFFECT_CHANNEL_B);
+    start_effect_channel(EFFECT_CHANNEL_A, 0xB3A6, 0xB3A9);
+    start_effect_channel(EFFECT_CHANNEL_B, 0xB3AD, 0xB3B0);
+    jsr_push(0xB3B3);
     SoundVolumeFull();
+    jsr_pop();
     return DRIVER_EFFECT;
 }
 
@@ -3427,21 +3502,28 @@ static DriverHow start_effect_pair(uint8_t command, DriverCommand *taken)
  * HOW: SoundInCommand set while it works; SoundCommandIn keeps the command; SoundEffectTable, three
  * bytes an effect, through zSoundTableLo and Hi; SoundChannelPriority, SoundChannelCommand and
  * zSoundChannelsOn by channel; SoundReadPair, SoundStartChannel, SoundVolumeFull.
+ * WAITS: no.
  * Entry: A command. Exit: X and Y kept, N and Z from X; A, C and V as the command's path left them.
  */
-DriverCommand SoundDriverCommand(uint8_t command)
+DriverCommand SoundDriverCommand(uint8_t command, uint8_t kept_x, uint8_t kept_y)
 {
     DriverCommand taken;
 
+    push8(kept_x);
+    push8(kept_y);
     wr8(SoundInCommand, 1);
     taken.command = command;
     switch (command) {
     case COMMAND_STOP:
+        jsr_push(0xB292);
         SoundDriverStopAll();
+        jsr_pop();
         taken.how = DRIVER_STOPPED;
         break;
     case COMMAND_FADE:
+        jsr_push(0xB29C);
         taken.fade = SoundStartFade();
+        jsr_pop();
         taken.how = DRIVER_FADING;
         break;
     case COMMAND_ALT_BALANCE:
@@ -3458,10 +3540,13 @@ DriverCommand SoundDriverCommand(uint8_t command)
         taken.how = DRIVER_MUSIC;
         break;
     default:
+        push8(command);
         if (rd8(SoundCommandIn) == COMMAND_EXCLUSIVE && (rd8(zSoundChannelsOn) & 1)) {
+            (void)pull8();
             taken.how = DRIVER_HELD;
             break;
         }
+        command = pull8();
         wr8(SoundCommandIn, command);
         if (command >= COMMAND_VOICES) {
             taken.voice = SoundStartVoice();
@@ -3470,12 +3555,14 @@ DriverCommand SoundDriverCommand(uint8_t command)
             taken.music = SoundStartMusic();
             taken.how = DRIVER_MUSIC;
         } else if (command >= COMMAND_PAIRED) {
-            taken.how = start_effect_pair(command, &taken);
+            taken.how = start_effect_pair(command, &taken, kept_y);
         } else {
             taken.how = start_effect(command, &taken);
         }
         break;
     }
+    kept_y = pull8();
+    kept_x = pull8();
     wr8(SoundInCommand, 0);
     return taken;
 }
@@ -3524,18 +3611,23 @@ void driver_command_exit_shim(DriverCommand taken)
 
 void abi_SoundDriverCommand(void)
 {
-    driver_command_exit_shim(SoundDriverCommand(cpu.a));
+    driver_command_exit_shim(SoundDriverCommand(cpu.a, cpu.x, cpu.y));
 }
 
 /* A channel shared with an effect given back to its music: selected, its effect off, its wave. */
-static WaveLoad give_back_channel(uint8_t channel, uint8_t bit, uint16_t weight)
+static WaveLoad give_back_channel(uint8_t channel, uint8_t bit, uint16_t weight, uint16_t ret)
 {
+    WaveLoad loaded;
+
     wr8(PsgSelect, channel);
     wr8(zSoundChannel, channel);
     wr8((uint16_t)(SoundChannelCommand + channel + EFFECT_CHANNEL_OFFSET), 0);
     wr8(zSoundChannelsOn, (uint8_t)(rd8(zSoundChannelsOn) & ~bit));
     wr8(weight, 0);
-    return SoundLoadWave(rd8((uint16_t)(SoundChannelWave + channel)), channel);
+    jsr_push(ret);
+    loaded = SoundLoadWave(rd8((uint16_t)(SoundChannelWave + channel)), channel);
+    jsr_pop();
+    return loaded;
 }
 
 /*
@@ -3546,10 +3638,11 @@ static WaveLoad give_back_channel(uint8_t channel, uint8_t bit, uint16_t weight)
  * music's waveforms back, the main volume full.
  * HOW: Bit 0 of zPaused against SoundPaused; SoundSilenceAll, ad_stop, SoundDriverCommand; or
  * SoundLoadWave on 4 and 5 and SoundVolumeFull.
+ * WAITS: no.
  * Entry: nothing. Exit: unchanged, A the bit, Z and C set, N clear. Paused, as SoundDriverCommand.
  * Going on, as SoundVolumeFull after SoundLoadWave on channel 5, X 5. Y kept.
  */
-PauseCheck SoundCheckPause(void)
+PauseCheck SoundCheckPause(uint8_t kept_x, uint8_t kept_y)
 {
     PauseCheck check;
 
@@ -3560,16 +3653,22 @@ PauseCheck SoundCheckPause(void)
     }
     wr8(SoundPaused, check.bit);
     if (check.bit != 0) {
-        SoundSilenceAll();
+        jsr_push(0xB4E7);
+        SoundSilenceAll(kept_x);
+        jsr_pop();
+        jsr_push(0xB4EA);
         check.stop = ad_stop();
-        check.command = SoundDriverCommand(PAUSE_EFFECT);
+        jsr_pop();
+        jsr_push(0xB4EF);
+        check.command = SoundDriverCommand(PAUSE_EFFECT, kept_x, kept_y);
+        jsr_pop();
         check.how = PAUSE_ON;
         return check;
     }
-    check.four = give_back_channel(EFFECT_SHARED_FIRST, 0x40, SoundChannel25F6);
+    check.four = give_back_channel(EFFECT_SHARED_FIRST, 0x40, SoundChannel25F6, 0xB507);
     check.wave_five = rd8((uint16_t)(SoundChannelWave + EFFECT_SHARED_FIRST + 1));
     check.on_before_five = rd8(zSoundChannelsOn);
-    check.five = give_back_channel(EFFECT_SHARED_FIRST + 1, 0x80, SoundChannel25F7);
+    check.five = give_back_channel(EFFECT_SHARED_FIRST + 1, 0x80, SoundChannel25F7, 0xB51E);
     SoundVolumeFull();
     check.how = PAUSE_OFF;
     return check;
@@ -3600,7 +3699,7 @@ void pause_check_exit_shim(PauseCheck check)
 
 void abi_SoundCheckPause(void)
 {
-    pause_check_exit_shim(SoundCheckPause());
+    pause_check_exit_shim(SoundCheckPause(cpu.x, cpu.y));
 }
 
 /* The waiting voice played, if the unit is free. */
@@ -3608,7 +3707,9 @@ static void play_waiting_voice(DriverTick *tick)
 {
     uint16_t table = (rd8(SoundVoiceFlags) & VOICE_SECOND_SET) ? SoundVoicesSecond : SoundVoicesFirst;
 
-    tick->product = SoundMultiply(rd8(SoundVoiceIndex), VOICE_ENTRY);
+    jsr_push((rd8(SoundVoiceFlags) & VOICE_SECOND_SET) ? 0xB58E : 0xB577);
+    tick->product = SoundMultiply(rd8(SoundVoiceIndex), VOICE_ENTRY, tick->stat_again.busy);
+    jsr_pop();
     tick->table_low = add_bytes(rd8(zSoundWordLo), (uint8_t)table, false);
     wr8(zSoundTableLo, tick->table_low.value);
     tick->table_high = add_bytes(rd8(zSoundWordHi), (uint8_t)(table >> 8), tick->table_low.carry);
@@ -3621,8 +3722,14 @@ static void play_waiting_voice(DriverTick *tick)
     wr8(zBiosDl, 0);
     tick->moved_back = (rd8(zCharacter) & 1) != 0;
     if (tick->moved_back)
+    {
+        jsr_push(0xB5C0);
         tick->back = SoundVoiceAddressBack();
+        jsr_pop();
+    }
+    jsr_push(0xB5C3);
     tick->play = KernelAdpcmPlay();
+    jsr_pop();
     tick->played = kernel_play_started(tick->play);
     if (tick->played)
         wr8(SoundVoiceFlags, 0);
@@ -3647,7 +3754,9 @@ static void fade_step(DriverTick *tick)
     for (int channel = PSG_CHANNELS - 1; channel >= 0; channel--) {
         wr8(zSoundChannel, (uint8_t)channel);
         wr8(PsgSelect, (uint8_t)channel);
+        jsr_push(0xB5F3);
         tick->faded[channel] = SoundSilenceChannel((uint8_t)channel);
+        jsr_pop();
     }
     tick->fade_ended = true;
     tick->on_before_fade = rd8(zSoundChannelsOn);
@@ -3657,16 +3766,20 @@ static void fade_step(DriverTick *tick)
 /* Each playing channel's frame, from the first given, its PSG channel selected first. */
 static void run_channels(DriverTick *tick, uint8_t first, uint8_t bit)
 {
-    wr8(zSoundChannelBit, bit);
+    wr8(zSoundChannelBit, first == 0 ? 0 : bit);
     for (uint8_t channel = first; channel < SOUND_CHANNELS; channel++) {
-        if (channel != first)
-            wr8(zSoundChannelBit, (uint8_t)(rd8(zSoundChannelBit) << 1));
+        if (first == 0)
+            rol_mem(zSoundChannelBit, channel == 0);
+        else if (channel != first)
+            rol_mem(zSoundChannelBit, false);
         wr8(zSoundChannel, channel);
         tick->ticked[channel] = (rd8(zSoundChannelBit) & rd8(zSoundChannelsOn)) != 0;
         if (!tick->ticked[channel])
             continue;
         wr8(PsgSelect, channel >= EFFECT_SHARED_END ? (uint8_t)(channel - EFFECT_CHANNEL_OFFSET) : channel);
+        jsr_push(0xB61B);
         tick->channel[channel] = SoundChannelTick(channel);
+        jsr_pop();
     }
     if (rd8(zSoundChannelsOn) == 0)
         wr8(PsgMainVolume, 0);
@@ -3684,35 +3797,56 @@ static void run_channels(DriverTick *tick, uint8_t first, uint8_t bit)
  * from its set's table, SoundVoiceAddressBack and KernelAdpcmPlay; SoundFading and SoundFadeStep,
  * $14 its end; zSoundChannelBit walks zSoundChannelsOn; channels 6 and 7 select PSG channels 4 and
  * 5; SoundChannelTick.
+ * WAITS: no.
  * Entry: frame interrupt. Exit: A, X and Y kept, N and Z from A; C set, and C and V kept if a
  * command was going in; otherwise V as the last call left it.
  */
-DriverTick SoundDriverTick(void)
+DriverTick SoundDriverTick(uint8_t kept_a, uint8_t kept_x, uint8_t kept_y)
 {
     DriverTick tick;
 
+    push8(kept_a);
+    push8(kept_x);
+    push8(kept_y);
     tick.ran = rd8(SoundInCommand) == 0;
-    if (!tick.ran)
+    if (!tick.ran) {
+        (void)pull8();
+        (void)pull8();
+        (void)pull8();
         return tick;
+    }
     wr8(SoundInCommand, (uint8_t)(rd8(SoundInCommand) + 1));
-    tick.pause = SoundCheckPause();
+    jsr_push(0xB532);
+    tick.pause = SoundCheckPause(kept_x, kept_y);
+    jsr_pop();
     tick.paused = rd8(SoundPaused) != 0;
     tick.fade_ended = false;
     tick.voice_waited = false;
     tick.stop_ran = false;
+    jsr_push(tick.paused ? 0xB53A : 0xB54D);
     tick.stat = ad_stat();
+    jsr_pop();
     if (tick.paused) {
         if (tick.stat.playing != 0) {
+            jsr_push(0xB541);
             tick.stop = ad_stop();
+            jsr_pop();
             tick.stop_ran = true;
         }
         run_channels(&tick, EFFECT_CHANNEL_A, 0x40);
+        (void)pull8();
+        (void)pull8();
+        (void)pull8();
         return tick;
     }
     if (tick.stat.playing == 0 && (rd8(SoundVoiceFlags) & VOICE_WAITING)) {
+        jsr_push(0xB55E);
         tick.stop = ad_stop();
+        jsr_pop();
         tick.stop_ran = true;
+        jsr_push(0xB561);
         tick.stat_again = ad_stat();
+        jsr_pop();
         if (tick.stat_again.playing == 0) {
             tick.voice_waited = true;
             play_waiting_voice(&tick);
@@ -3720,6 +3854,9 @@ DriverTick SoundDriverTick(void)
     }
     fade_step(&tick);
     run_channels(&tick, 0, 1);
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
     return tick;
 }
 
@@ -3769,5 +3906,5 @@ void driver_tick_exit_shim(DriverTick tick)
 
 void abi_SoundDriverTick(void)
 {
-    driver_tick_exit_shim(SoundDriverTick());
+    driver_tick_exit_shim(SoundDriverTick(cpu.a, cpu.x, cpu.y));
 }

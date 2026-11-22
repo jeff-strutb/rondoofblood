@@ -92,7 +92,7 @@ void abi_SoundStopAll(void)
  * Entry: frame interrupt. Exit: busy, A zSoundBusy, N and Z from it. Else A the
  * bank restored to MPR4, N and Z from it; X, Y, C and V as the driver left them.
  */
-TickCall SoundFrameTick(void)
+TickCall SoundFrameTick(uint8_t kept_x, uint8_t kept_y)
 {
     TickCall call;
     uint8_t mpr4, mpr5, mpr6;
@@ -109,7 +109,7 @@ TickCall SoundFrameTick(void)
     push8(mpr6);
     call.bank = map_sound_banks();
     jsr_push(0x4387);
-    call.tick = SoundDriverTick();
+    call.tick = SoundDriverTick((uint8_t)(call.bank.value + 2), kept_x, kept_y);
     jsr_pop();
     mpr6 = pull8();
     tam(MPR6, mpr6);
@@ -123,7 +123,7 @@ TickCall SoundFrameTick(void)
 
 void abi_SoundFrameTick(void)
 {
-    TickCall call = SoundFrameTick();
+    TickCall call = SoundFrameTick(cpu.x, cpu.y);
 
     if (call.busy != 0) {
         cpu.a = call.busy;
@@ -150,7 +150,7 @@ void abi_SoundFrameTick(void)
  * Z from A and it. Exit, taken: A the MPR4 bank restored, N and Z from it; X, Y,
  * C and V as the driver left them.
  */
-CommandCall SoundCommand(uint8_t command)
+CommandCall SoundCommand(uint8_t command, uint8_t kept_x, uint8_t kept_y)
 {
     CommandCall call;
     uint8_t byte = rd8(zSoundBusy);
@@ -168,7 +168,7 @@ CommandCall SoundCommand(uint8_t command)
     call.bank = map_sound_banks();
     command = pull8();
     jsr_push(0x43BC);
-    call.command = SoundDriverCommand(command);
+    call.command = SoundDriverCommand(command, kept_x, kept_y);
     jsr_pop();
     tam(MPR6, rd8(SavedMprC));
     tam(MPR5, rd8(SavedMprB));
@@ -196,5 +196,5 @@ void abi_SoundCommand(void)
 {
     uint8_t command = cpu.a;
 
-    sound_command_exit_shim(command, SoundCommand(command));
+    sound_command_exit_shim(command, SoundCommand(command, cpu.x, cpu.y));
 }

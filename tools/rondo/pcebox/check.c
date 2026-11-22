@@ -1276,6 +1276,33 @@ static void original_at(uint16_t ret, uint16_t addr)
     }
 }
 
+/*
+ * hand_over(addr): a drafted routine reached bytes no script ran (a branch arm or a fall-through). The C
+ * ends here and the original runs on from addr with the registers as cpu holds them and S as the C's pushes
+ * and pulls left it (so the original sees the stack it would have had); its RTS returns to the routine's
+ * caller. A5 has nothing to compare it with: the call is DIVERGENT, naming the address. The hybrid hands
+ * the machine over as a tail jump does and counts it.
+ */
+void hand_over(uint16_t addr)
+{
+    if (!sp)
+        stop_run(3, "hand_over outside a swapped call");
+    if (mode == MODE_A5) {
+        snprintf(why, sizeof why, "the C reached %04X, bytes no script ran", addr);
+        longjmp(c_abort, ABORT_DIVERGED);
+    }
+    {
+        Ctx *c = top;
+
+        stats[sp->tag].originals++;
+        chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, addr);
+        prev_op = 0;
+        scan = sp->cur;
+        c->abandoned = 1;
+        swapcontext(&c->uc, &main_uc);
+    }
+}
+
 void call_original(uint16_t addr)
 {
     original_at(0, addr);

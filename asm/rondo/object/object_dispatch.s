@@ -203,6 +203,98 @@ FallAndBounce_at0:
 FallAndBounce_out:
     rts
 
+; @routine 0519:508 FallThenWait
+; @run 70:A508
+; WHAT IT DOES: A falling object's wait: it falls as FallUntilFloor does, and counts its life timer
+; down; at zero the timer becomes $40 and the object moves on one state.
+; HOW: FallUntilFloor, then DEC of the timer.
+; WAITS: no.
+; Entry: X object, Y the probe's column, C passed on. Exit: see the wrapper (the fall's registers,
+; then the timer's N and Z; at zero A $40 and N, Z from the new state).
+FallThenWait:
+    jsr FallUntilFloor
+    dec a:OBJ_34B8,x
+    bne FallThenWait_at0
+    lda #$40
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+FallThenWait_at0:
+    rts
+
+; @routine 0519:519 FallUntilFloor
+; @run 70:A519
+; WHAT IT DOES: One frame of an object that drops until it finds floor. Only while the object is on
+; the first screen down (its Y high byte 0) it asks the floor with a probe height of 0; deadly ground
+; (bit 4) ends the frame by moving it down with ApplyVelocityY; when the probe does not report floor
+; (bit 0) the object is moved on both axes and bounces off by its angle (the bounce the second half of
+; FallAndBounce makes).
+; HOW: ProbeTerrain with the carry and column the caller left. The deadly arm is a tail jump into
+; ApplyVelocityY; the not-floor arm calls ApplyVelocity and branches into FallAndBounce at $A4D6.
+; Untraced: the deadly arm and the not-floor arm (A52B, A534) ran in no script.
+; WAITS: no.
+; Entry: X object, Y the probe's column, C passed to the lookup. Exit: see the wrapper.
+FallUntilFloor:
+    lda a:OBJ_Y_HI,x
+    bne FallUntilFloor_at0
+    lda #$00
+    sta z:SpriteFlipMask
+    lda #$01
+    jsr VecProbeTerrain
+    and #$10
+    beq FallUntilFloor_at1
+    jmp VecApplyVelocityY
+FallUntilFloor_at1:
+    lda z:zProduct0
+    and #$01
+    bne FallUntilFloor_at0
+    jsr VecApplyVelocity
+    bra $A4D6
+FallUntilFloor_at0:
+    rts
+
+; @routine 0519:53A FallThenClear
+; @run 70:A53A
+; WHAT IT DOES: A falling object that goes away: it falls as FallUntilFloor does and counts its life
+; timer down; at zero the object is cleared. Until then its frame is 0, and it shows the frame in
+; OBJ_3510 on the beats where bit 1 of the timer is set (a flicker).
+; HOW: FallUntilFloor, DEC of the timer; the clear is a tail jump into ClearObject.
+; WAITS: no.
+; Entry: X object, Y the probe's column, C passed on. Exit: see the wrapper.
+FallThenClear:
+    jsr FallUntilFloor
+    dec a:OBJ_34B8,x
+    bne FallThenClear_at0
+    jmp VecClearObject
+FallThenClear_at0:
+    stz a:OBJ_2A68,x
+    lda a:OBJ_34B8,x
+    and #$02
+    beq FallThenClear_at1
+    lda a:OBJ_3510,x
+    sta a:OBJ_2A68,x
+FallThenClear_at1:
+    rts
+
+; @routine 0519:556 JumpByKindTable
+; @run 70:A556
+; WHAT IT DOES: Goes to the code a table at $A56B names for the object's kind less $83 (the handler
+; of that kind's state).
+; HOW: Reads the table's two bytes into zTemp00-01 and jumps through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the table's high byte, Y the index, N and Z from A,
+; C and V from the kind's subtract and shift.
+JumpByKindTable:
+    lda a:OBJ_2750,x
+    sec
+    sbc #$83
+    asl a
+    tay
+    lda a:$A56B,y
+    sta z:zTemp00
+    lda a:$A56C,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
 ; @routine 0519:5EF ChangeKindFromTable
 ; @run 70:A5EF
 ; WHAT IT DOES: An object changes into another kind. Sound $0B plays, the player's byte at $3BD6
@@ -264,6 +356,29 @@ ChangeKindFromTable_at0:
     lda a:$A671,y
     sta a:OBJ_VX_LO,x
     rts
+
+; @routine 0519:703 RunObjectState
+; @run 70:A703
+; WHAT IT DOES: One frame of a common object: animates kind $88, takes a pending hit, blinks, then
+; runs the handler of the object's state from the table at $A71E.
+; HOW: AnimateKind88, EnterHurtStateOnHit, SetBlinkFlash, then the state doubled indexes the table
+; (read into zTemp00-01 and jumped through).
+; WAITS: no.
+; Entry: X object, Y kept unless AnimateKind88 sets it. Exit: as the handler leaves it; at the jump A
+; is the table's high byte, Y the state doubled, N and Z from A, C and V as SetBlinkFlash and the
+; earlier calls left them.
+RunObjectState:
+    jsr AnimateKind88
+    jsr EnterHurtStateOnHit
+    jsr SetBlinkFlash
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$A71E,y
+    sta z:zTemp00
+    lda a:$A71F,y
+    sta z:zTemp01
+    jmp (ZeroPage)
 
 ; @routine 0519:72C AnimateKind88
 ; @run 70:A72C
@@ -367,4 +482,83 @@ BitMaskFromIndex_at0:
     dey
     bra BitMaskFromIndex_at0
 BitMaskFromIndex_out:
+    rts
+; @routine 051A:12E StartThrownItem
+; @run 70:A92E
+; @stop A95E
+; WHAT IT DOES: A thrown item: from state 0 it loads its record, takes its frame from a table by its
+; life timer and its speeds from a four-byte row of the table at $A95E picked by OBJ_3510; in any other
+; state it goes on as DropOffScreen.
+; HOW: Tables read from the disc (bank 70) by address; the other states are a tail branch into
+; DropOffScreen.
+; WAITS: no.
+; Entry: X object. Exit: started: A the last speed byte, Y the row's start, C bit 6 of OBJ_3510, N and
+; Z from A; else as DropOffScreen.
+StartThrownItem:
+    lda a:OBJ_27A8,x
+    bne DropOffScreen
+    jsr VecLoadObjectRecord
+    ldy a:OBJ_34B8,x
+    lda a:$A97E,y
+    sta a:OBJ_2A68,x
+    lda a:OBJ_3510,x
+    asl a
+    asl a
+    tay
+    lda a:$A95F,y
+    sta a:OBJ_VX_HI,x
+    lda a:$A95E,y
+    sta a:OBJ_VX_LO,x
+    lda a:$A961,y
+    sta a:OBJ_VY_HI,x
+    lda a:$A960,y
+    sta a:OBJ_VY_LO,x
+    rts
+
+; @routine 051A:180 DropOffScreen
+; @run 70:A980
+; WHAT IT DOES: A thrown object's frame: when it is below the first screen (Y high byte above 0 and
+; not negative) it is cleared; otherwise gravity takes its speed up and it moves by its velocity.
+; HOW: The clear and the move are tail jumps (ClearObject, ApplyVelocity); gravity is
+; ApplyGravityUnlimited.
+; WAITS: no.
+; Entry: X object. Exit: cleared: A the Y high byte, N and Z from it; else as ApplyVelocity.
+DropOffScreen:
+    lda a:OBJ_Y_HI,x
+    beq DropOffScreen_at0
+    bmi DropOffScreen_at0
+    jmp VecClearObject
+DropOffScreen_at0:
+    jsr VecApplyGravityUnlimited
+    jmp VecApplyVelocity
+
+; @routine 051A:1EB FallThenState
+; @run 70:A9EB
+; WHAT IT DOES: Moves an object down by its Y speed; OBJ_3510 counts down and at zero becomes $10
+; while the object moves on one state.
+; HOW: ApplyVelocityY, then DEC of OBJ_3510.
+; WAITS: no.
+; Entry: X object. Exit: the move's registers, then N and Z of the count; at zero A $10 and N, Z of
+; the new state.
+FallThenState:
+    jsr VecApplyVelocityY
+    dec a:OBJ_3510,x
+    bne FallThenState_at0
+    lda #$10
+    sta a:OBJ_3510,x
+    inc a:OBJ_27A8,x
+FallThenState_at0:
+    rts
+
+; @routine 051A:1FC ClearWhenCountEnds
+; @run 70:A9FC
+; WHAT IT DOES: OBJ_3510 counts down; at zero the object is cleared.
+; HOW: DEC; the clear is a tail jump into ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: N and Z of the count; A, Y and the rest kept.
+ClearWhenCountEnds:
+    dec a:OBJ_3510,x
+    bne ClearWhenCountEnds_at0
+    jmp VecClearObject
+ClearWhenCountEnds_at0:
     rts

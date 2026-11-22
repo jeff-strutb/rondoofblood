@@ -8,6 +8,7 @@
 
 #include "machine.h"
 #include "routines.h"
+#include "enemy_objects.h"
 
 /* How EnterHurtStateOnHit ended. */
 typedef enum {
@@ -155,6 +156,56 @@ typedef struct {
 /* A falling object that is cleared when the floor is reached, else moves on a state. */
 LandClear ClearOnLanding(uint8_t slot, uint8_t column, bool carry_in);
 
+/* The second half of FallAndBounce, which others branch into: the cosine bounce; the angle's last add. */
+Sum BounceFromAngle(uint8_t slot);
+void hurt_exit_shim(HurtCheck result);
+void blink_exit_shim(BlinkCheck result);
+void kind88_exit_shim(Kind88Step result);
+
+/* A fall's result: whether the floor was asked, the probe, and what the routine's own instructions left. */
+typedef struct {
+    bool probed;
+    Probe probe;
+    Ended end;
+} FloorFall;
+
+/* An object that falls until it finds floor (one frame). */
+FloorFall FallUntilFloor(uint8_t slot, uint8_t column, bool carry_in);
+/* It falls, and when its life timer runs out it waits $40 and moves on one state. */
+FloorFall FallThenWait(uint8_t slot, uint8_t column, bool carry_in);
+/* It falls, and when its life timer runs out it is cleared; until then it flickers. */
+FloorFall FallThenClear(uint8_t slot, uint8_t column, bool carry_in);
+void floor_fall_exit_shim(FloorFall fall);
+
+/* A jump a table handler makes: the registers it leaves and the code it goes to. */
+typedef struct {
+    Ended end;
+    uint16_t target;
+} Jump;
+void jump_shim(Ended end, uint16_t target);
+Jump JumpByKindTable(uint8_t slot);
+
+/* One frame of a common object: its three checks and the jump to its state's handler. */
+typedef struct {
+    Kind88Step kind88;
+    HurtCheck hurt;
+    BlinkCheck blink;
+    Ended end;
+    uint16_t target;
+} StateRun;
+StateRun RunObjectState(uint8_t slot, uint8_t y);
+
+/* A thrown thing's frame: whether gravity ran, and what the routine left. */
+typedef struct {
+    bool gravity_run;
+    GravityResult gravity;
+    Ended end;
+} ThrowStep;
+ThrowStep DropOffScreen(uint8_t slot);
+ThrowStep StartThrownItem(uint8_t slot);
+ThrowStep FallThenState(uint8_t slot);
+void throw_step_exit_shim(ThrowStep step);
+uint8_t ClearWhenCountEnds(uint8_t slot);
 /* 1 shifted left count times, as a byte. */
 uint8_t BitMaskFromIndex(uint8_t count);
 

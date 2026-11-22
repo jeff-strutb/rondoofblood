@@ -4,9 +4,9 @@ VecResetGameState,0043:006,3,T2,1,1,1,1,0,0,0,,bd0948215b87
 VecClearScreenState,0043:009,3,T2,1,1,1,1,0,0,0,,4bdcd9420946
 VecStartListChannel0Kind2,0043:00C,3,T2,1,1,1,1,1,0,0,,083177a03620
 VecStartListChannelKind2,0043:00F,3,T2,1,1,1,1,1,0,0,,33c6d59b9e80
-VecStartScriptSlot0Kind1,0043:012,3,T2,1,1,1,1,0,0,0,,4fc6c77747c7
-VecStartScriptSlotKind1,0043:015,3,T2,1,1,1,1,0,0,0,,7a04660a5196
-VecStartScriptSlotKind4,0043:018,3,T2,1,1,1,1,0,0,0,,1b7b9fbe5700
+VecStartScriptSlot0Kind1,0043:012,3,T2,1,1,1,1,1,0,0,,4fc6c77747c7
+VecStartScriptSlotKind1,0043:015,3,T2,1,1,1,1,1,0,0,,7a04660a5196
+VecStartScriptSlotKind4,0043:018,3,T2,1,1,1,1,1,0,0,,1b7b9fbe5700
 VecSoundCommand,0043:01B,3,T2,1,1,1,1,0,0,0,,9b79089eca30
 VecSoundStopAll,0043:01E,3,T2,1,1,1,1,0,0,0,,3290cdebb6e1
 VecSelectVramWriteAddress,0043:021,3,T2,1,1,1,1,1,0,0,,1446ab66fab3
@@ -14,38 +14,38 @@ VecSelectVramReadAddress,0043:024,3,T2,1,1,1,1,1,0,0,,6861adf9add9
 VecSelectVramData,0043:027,3,T2,1,1,1,1,1,0,0,,a8d5cddf4a3f
 VecSelectVdcControl,0043:02A,3,T2,1,1,1,1,1,0,0,,b5b65f203ece
 VecClearVdcControlHigh,0043:02D,3,T2,1,1,1,1,0,0,0,,5ba3a911088b
-VecStartScriptSlot0Kind2,0043:030,3,T2,1,1,1,1,0,0,0,,1adcf5fac64c
-VecStartScriptSlotKind2,0043:033,3,T2,1,1,1,1,0,0,0,,cb9584365bcd
-VecStartScriptSlot0Kind3,0043:036,3,T2,1,1,1,1,0,0,0,,815a3aa2fb5f
-VecStartScriptSlotKind3,0043:039,3,T2,1,1,1,1,0,0,0,,b278184015ac
+VecStartScriptSlot0Kind2,0043:030,3,T2,1,1,1,1,1,0,0,,1adcf5fac64c
+VecStartScriptSlotKind2,0043:033,3,T2,1,1,1,1,1,0,0,,cb9584365bcd
+VecStartScriptSlot0Kind3,0043:036,3,T2,1,1,1,1,1,0,0,,815a3aa2fb5f
+VecStartScriptSlotKind3,0043:039,3,T2,1,1,1,1,1,0,0,,b278184015ac
 VecStartListChannelKind3,0043:03C,3,T2,1,1,1,1,1,0,0,,d8658049a4e8
 VecClearListChannels,0043:03F,3,T2,1,1,1,1,1,0,0,,135b95decf6d
 VecStartSoleScriptSlot,0043:042,3,T2,1,1,1,1,0,0,0,,bf0b32e89568
 VecApplyVelocity,0043:045,3,T2,1,1,1,1,1,0,0,,d81d0a8cf1fb
-VecSetVelocityFromAngle,0043:048,3,T2,1,1,1,1,0,0,0,,838bb9f4daee
+VecSetVelocityFromAngle,0043:048,3,T2,1,1,1,1,1,0,0,,838bb9f4daee
 VecAngleToPlayer,0043:04B,3,T2,1,1,1,1,0,0,0,,346ace9bf9dc
 VecAngleFromDelta,0043:04E,3,T2,1,1,1,0,0,0,,,0819d67e5658
-VecNextRandom,0043:051,3,T2,1,1,1,1,0,0,0,,f944dbe53b5f
+VecNextRandom,0043:051,3,T2,1,1,1,1,1,0,0,,f944dbe53b5f
 VecClearObject,0043:054,3,T2,1,1,1,1,1,0,0,,6bacbcf20117
-VecClearEnemySlots,0043:057,3,T2,1,1,1,1,0,0,0,,059f801573e9
+VecClearEnemySlots,0043:057,3,T2,1,1,1,1,1,0,0,,059f801573e9
 VecClearObjectExceptPlace,0043:05A,3,T2,1,1,1,0,0,0,,,f383d8cce5cb
-VecClearObjectInY,0043:05D,3,T2,1,1,1,1,0,0,0,,df782c81ef3f
+VecClearObjectInY,0043:05D,3,T2,1,1,1,1,1,0,0,,df782c81ef3f
 VecApplyVelocityX,0043:060,3,T2,1,1,1,1,1,0,0,,5643afc398c2
 VecApplyVelocityY,0043:063,3,T2,1,1,1,1,1,0,0,,5f86dc8471d1
-VecScaleBySine,0043:066,3,T2,1,1,1,1,0,0,0,,821d9a87fead
-VecScaleByCosine,0043:069,3,T2,1,1,1,1,0,0,0,,ce481da7df31
+VecScaleBySine,0043:066,3,T2,1,1,1,1,1,0,0,,821d9a87fead
+VecScaleByCosine,0043:069,3,T2,1,1,1,1,1,0,0,,ce481da7df31
 VecTurnAngleToward,0043:06C,3,T2,1,1,1,1,0,0,0,,cf0ace878ac4
 VecRecordObjectEvent,0043:06F,3,T2,1,1,1,1,1,0,0,,1b4da89eeb94
-VecRecordEvent,0043:072,3,T2,1,1,1,1,0,0,0,,7167a44b95df
-VecBitOfIndex,0043:075,3,T2,1,1,1,1,0,0,0,,610e64587abc
+VecRecordEvent,0043:072,3,T2,1,1,1,1,1,0,0,,7167a44b95df
+VecBitOfIndex,0043:075,3,T2,1,1,1,1,1,0,0,,610e64587abc
 VecClearScriptSlot,0043:078,3,T2,1,1,1,0,0,0,,,e4f1b7ffccd2
 VecCdPlayAgain,0043:07B,3,T2,1,1,1,1,0,0,0,,7b0dbdd263d6
-VecNegateVelocityX,0043:07E,3,T2,1,1,1,1,0,0,0,,eae8d31aad26
-VecNegateVelocityY,0043:081,3,T2,1,1,1,1,0,0,0,,98c580f1a5b4
+VecNegateVelocityX,0043:07E,3,T2,1,1,1,1,1,0,0,,eae8d31aad26
+VecNegateVelocityY,0043:081,3,T2,1,1,1,1,1,0,0,,98c580f1a5b4
 VecFadeAndStopSound,0043:084,3,T2,1,1,1,1,0,0,0,,bd2e33693a68
 VecStopSound,0043:087,3,T2,1,1,1,1,0,0,0,,df06f4900f31
 VecAddScoreByte,0043:08A,3,T2,1,1,1,0,0,0,,,fa30ded2eb46
-VecAddScoreWord,0043:08D,3,T2,1,1,1,1,0,0,0,,31336b256636
+VecAddScoreWord,0043:08D,3,T2,1,1,1,1,1,0,0,,31336b256636
 VecAdpcmLoad,0043:090,3,T2,1,1,1,0,0,0,,,e3540f6129b3
 VecStreamFullWalk,0043:093,3,T2,1,1,1,1,0,0,0,,872d67c775de
 VecStreamScrollStep,0043:096,3,T2,1,1,1,1,0,0,0,,aaeb7ebe8811
@@ -53,23 +53,23 @@ VecAngleToPlayerOffset,0043:099,3,T2,1,1,1,1,0,0,0,,82ada3b8ae21
 VecAngleToPoint,0043:09C,3,T2,1,1,1,1,0,0,0,,333c87c14af0
 VecStartObjectAtPlace,0043:09F,3,T2,1,1,1,1,1,0,0,,5bed5d81d1f6
 VecCopyObjectPlace,0043:0A2,3,T2,1,1,1,1,1,0,0,,835d70182520
-VecCopyObjectPlaceBack,0043:0A5,3,T2,1,1,1,1,0,0,0,,608627c70ca6
+VecCopyObjectPlaceBack,0043:0A5,3,T2,1,1,1,1,1,0,0,,608627c70ca6
 VecStepObjectFrames,0043:0A8,3,T2,1,1,1,1,1,0,0,,a1e060849e55
 VecProbeTerrain,0043:0AB,3,T2,1,1,1,1,0,0,0,,bc48e96122bc
 VecDistanceXToPlayer,0043:0AE,3,T2,1,1,1,1,1,0,0,,de000f3a68e8
 VecDistanceYToPlayer,0043:0B1,3,T2,1,1,1,1,1,0,0,,442d27307d77
-VecSideOfPlayer,0043:0B4,3,T2,1,1,1,1,0,0,0,,050ecf8625c7
+VecSideOfPlayer,0043:0B4,3,T2,1,1,1,1,1,0,0,,050ecf8625c7
 VecMoveAndLand,0043:0B7,3,T2,1,1,1,1,0,0,0,,e928fc38d1c1
 VecStopOnLanding,0043:0BA,3,T2,1,1,1,1,0,0,0,,b4abe6e1017a
 VecStopOnLandingFrontColumn,0043:0BD,3,T2,1,1,1,1,0,0,0,,6ef1c19a3c21
 VecFindFreeSlotFrom30,0043:0C0,3,T2,1,1,1,1,1,0,0,,898645b4b27d
 VecFindFreeSlotFrom20,0043:0C3,3,T2,1,1,1,1,1,0,0,,b7b054befc2e
-VecFindFreeSlotFrom50,0043:0C6,3,T2,1,1,1,1,0,0,0,,dec794a4e58e
+VecFindFreeSlotFrom50,0043:0C6,3,T2,1,1,1,1,1,0,0,,dec794a4e58e
 VecDrawTileScript,0043:0C9,3,T2,1,1,1,1,0,0,0,,f6d06e78e100
-VecApplyGravity,0043:0CC,3,T2,1,1,1,1,0,0,0,,947cfb24dbe2
-VecApplyGravityUnlimited,0043:0CF,3,T2,1,1,1,1,0,0,0,,a2d22f23c8a9
+VecApplyGravity,0043:0CC,3,T2,1,1,1,1,1,0,0,,947cfb24dbe2
+VecApplyGravityUnlimited,0043:0CF,3,T2,1,1,1,1,1,0,0,,a2d22f23c8a9
 VecLoadObjectRecord,0043:0D2,3,T2,1,1,1,1,1,0,0,,8c0ea382dcbb
-VecPlayerDistanceSum,0043:0D5,3,T2,1,1,1,1,0,0,0,,c6c449693449
+VecPlayerDistanceSum,0043:0D5,3,T2,1,1,1,1,1,0,0,,c6c449693449
 VecPlayerAndCameraFrame,0043:0D8,3,T2,1,1,1,1,0,0,0,,666f61ae918d
 VecPlayerWallLeft,0043:0DB,3,T2,1,1,1,0,0,0,,,e4fbe73a5b6a
 VecPlayerWallRight,0043:0DE,3,T2,1,1,1,0,0,0,,,257b5f10ad6f
@@ -80,7 +80,7 @@ VecBackupWrite,0043:0EA,3,T2,1,1,1,1,0,0,0,,53c94f501778
 VecBackupFormat,0043:0ED,3,T2,1,1,1,0,0,0,,,03079dc03e54
 VecAdpcmPlayFromDisc,0043:0F0,3,T2,1,1,1,0,0,0,,,e4c21914f01d
 VecStopOnLandingNoMove,0043:0F3,3,T2,1,1,1,0,0,0,,,ddd6d12a5e08
-VecSoundIfOnFirstScreen,0043:0F6,3,T2,1,1,1,1,0,0,0,,ca60962d1884
+VecSoundIfOnFirstScreen,0043:0F6,3,T2,1,1,1,1,1,0,0,,ca60962d1884
 KernelStart,0043:0F9,123,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; cpu,b007eeffe2c1
 KernelIdle,0043:174,3,T2,1,1,1,1,1,0,0,,47c9dd9430be
 FrameInterrupt,0043:177,288,T2,1,1,1,0,0,0,0,,bce38c9fa4bc
@@ -89,9 +89,9 @@ LateFrame,0043:298,60,T2,1,1,1,1,0,0,28978,,60232317f998
 ResetDisplayControl,0043:2D4,37,T2,1,1,1,1,0,0,0,,b9795d5bae8d
 WriteBandScroll,0043:2F9,35,T2,1,1,1,1,1,0,0,,0f1c5528c6d6
 WriteScreenTiming,0043:31C,35,T2,1,1,1,1,0,0,0,,d622d5d61dd0
-SoundStopAll,0043:33F,39,T2,1,1,1,1,0,0,0,,3181b45283a0
-SoundFrameTick,0043:366,45,T2,1,1,1,0,0,0,0,,284181b12f9b
-SoundCommand,0043:393,59,T2,1,1,1,0,0,0,0,,702a0473e4f6
+SoundStopAll,0043:33F,39,T2,1,1,1,1,0,0,0,,5902b1beacb7
+SoundFrameTick,0043:366,45,T2,1,1,1,0,0,0,0,,029d81d8ce35
+SoundCommand,0043:393,59,T2,1,1,1,0,0,0,0,,518faa790ad0
 WaitVblankDisplayOff,0043:3D8,22,T2,1,1,1,1,1,0,0,,a4cb563bc697
 WriteVdcControl,0043:3EE,14,T2,1,1,1,0,0,0,,,8ff9d4c6adb4
 RasterStart,0043:3FC,8,T2,1,1,1,1,1,0,0,,63027eee330e
@@ -145,72 +145,72 @@ RasterBandThenLine,0045:0F0,21,T2,1,1,1,1,0,0,0,,8dfc3f92c29d
 FrameModeDispatch,0045:105,9,T2,1,1,1,1,0,0,0,,4f577ce892df
 ModeBoot,0045:124,43,T2,1,1,1,0,0,0,0,,a549a1c6352e
 ModeLogo,0045:14F,15,T2,1,1,1,1,0,0,0,,c485050dde59
-ModeAttract,0045:15E,84,T2,1,1,1,0,0,0,0,,71896c9f6067
+ModeAttract,0045:15E,84,T2,0,1,1,0,0,0,0,cpu,71896c9f6067
 ModeAttractPlay,0045:1B6,39,T2,1,1,1,0,0,0,0,,55d85d3c95af
-ModeStageLoad,0045:1DD,19,T2,1,1,1,0,0,0,0,,635815836cd8
-StageEnterNext,0045:1F0,9,T2,1,1,1,1,0,0,0,,ae10f80d0fd6
-ModeStageLoadScreens,0045:1F9,30,T2,1,1,1,1,0,0,0,,4d8ec9c7edad
-ModeStageLoadContinue,0045:217,18,T2,1,1,1,0,0,0,,,b447f3377fb1
-ModeStageDone,0045:229,60,T2,1,1,1,0,1,0,0,,2f1ab8ca51ae
-ModeStage,0045:265,153,T2,1,1,1,0,0,0,0,,1b77a88a74e6
-ModeStageCleared,0045:2FE,8,T2,1,1,1,1,0,0,0,,fd7978055def
-StageClearedNext,0045:306,31,T2,1,1,1,0,0,0,0,,fbb4570df9ca
+ModeStageLoad,0045:1DD,19,T2,0,1,1,0,0,0,0,cpu,635815836cd8
+StageEnterNext,0045:1F0,9,T2,0,1,1,1,0,0,0,cpu,ae10f80d0fd6
+ModeStageLoadScreens,0045:1F9,30,T2,0,1,1,1,0,0,0,cpu,4d8ec9c7edad
+ModeStageLoadContinue,0045:217,18,T2,0,1,1,0,0,0,,cpu,b447f3377fb1
+ModeStageDone,0045:229,60,T2,0,1,1,0,1,0,0,cpu,d1e5f2d014ce
+ModeStage,0045:265,153,T2,0,1,1,0,0,0,0,cpu,1b77a88a74e6
+ModeStageCleared,0045:2FE,8,T2,0,1,1,1,0,0,0,cpu,fd7978055def
+StageClearedNext,0045:306,31,T2,0,1,1,0,0,0,0,cpu,fbb4570df9ca
 StageClearBit,0045:325,41,T2,1,1,1,0,0,0,0,,4d54cee36045
-ModeDead,0045:34E,105,T2,1,1,1,0,0,0,0,,f6df52481f9a
-ModeBackToTitle,0045:3B7,29,T2,1,1,1,1,0,0,0,,7c4e7bbc0e90
+ModeDead,0045:34E,105,T2,0,1,1,0,0,0,0,cpu,f6df52481f9a
+ModeBackToTitle,0045:3B7,29,T2,0,1,1,1,0,0,0,cpu,7c4e7bbc0e90
 SaveProgress,0045:3D7,10,T2,1,1,1,1,0,0,0,,2b6df7c0f409
 SaveScore,0045:3E1,81,T2,1,1,1,0,0,0,0,,a5c59590a082
-ModeGameOverWait,0045:432,28,T2,1,1,1,0,0,0,0,,52f43550a215
-ModeScreen,0045:44E,76,T2,1,1,1,0,0,0,,,c041e3f507d8
-ModeEnding,0045:49A,29,T2,1,1,1,1,0,0,0,,f1a151e8d2d0
+ModeGameOverWait,0045:432,28,T2,0,1,1,0,0,0,0,cpu,ca6c95cab137
+ModeScreen,0045:44E,76,T2,0,1,1,0,0,0,,cpu,c041e3f507d8
+ModeEnding,0045:49A,29,T2,0,1,1,1,0,0,0,cpu,f1a151e8d2d0
 NextGameMode,0045:4B7,3,T2,1,1,1,1,1,0,0,,55cd2e98ccad
 SetGameMode,0045:4BA,7,T2,1,1,1,1,1,0,0,,adec68690fbc
 NextSubMode,0045:4C1,8,T2,1,1,1,0,0,0,,,04a04b603173
 ResetScoreCounters,0045:4C9,17,T2,1,1,1,1,1,0,0,,0236a73f6029
-ClearListChannels,0045:506,8,T2,1,1,1,1,1,0,0,,8b5e17ae6dd7
-StartListChannel0Kind1,0045:50E,1,T2,1,1,1,0,0,0,,,675bdfa03854
-StartListChannelKind1,0045:50F,15,T2,1,1,1,0,0,0,,,119202e26d0a
-StartListChannel0Kind2,0045:51E,1,T2,1,1,1,1,1,0,0,,7e77c5024c0d
-StartListChannelKind2,0045:51F,7,T2,1,1,1,1,1,0,0,,a6e234cc26af
-StartListChannelKind3,0045:526,7,T2,1,1,1,1,1,0,0,,fa5669335f57
-StartScriptSlot0Kind1,0045:52D,1,T2,1,1,1,1,0,0,0,,01ed18215274
-StartScriptSlotKind1,0045:52E,13,T2,1,1,1,1,0,0,0,,77d7a95e12de
-StartScriptSlot0Kind2,0045:53B,1,T2,1,1,1,1,0,0,0,,7a14edc21da5
-StartScriptSlotKind2,0045:53C,7,T2,1,1,1,1,0,0,0,,ac2d2b34572c
-StartScriptSlot0Kind3,0045:543,1,T2,1,1,1,1,0,0,0,,f9aa7c9f736a
-StartScriptSlotKind3,0045:544,7,T2,1,1,1,1,0,0,0,,5ce2cd6adfe3
-StartScriptSlotKind4,0045:54B,7,T2,1,1,1,1,0,0,0,,ce2526dadf77
-StartSoleScriptSlot,0045:552,16,T2,1,1,1,0,0,0,0,,e8917e71338b
-StartScriptSlotKind6,0045:562,6,T2,1,1,1,1,0,0,0,,79bba87c4d19
-StartScriptSlotKind7,0045:568,6,T2,1,1,1,1,0,0,0,,1f134ca56c70
-ClearScriptSlot,0045:56E,25,T2,1,1,1,1,1,0,0,,b3cf21534195
+ClearListChannels,0045:506,8,T2,1,1,1,1,1,0,0,,a7a718c0facb
+StartListChannel0Kind1,0045:50E,1,T2,1,1,1,0,0,0,,,7c1d01ea45f4
+StartListChannelKind1,0045:50F,15,T2,1,1,1,0,0,0,,,69498e8ce234
+StartListChannel0Kind2,0045:51E,1,T2,1,1,1,1,1,0,0,,dddd80a09ed8
+StartListChannelKind2,0045:51F,7,T2,1,1,1,1,1,0,0,,d1031f4e0270
+StartListChannelKind3,0045:526,7,T2,1,1,1,1,1,0,0,,f69fadcaf64b
+StartScriptSlot0Kind1,0045:52D,1,T2,1,1,1,1,1,0,0,,ac85ff68dc37
+StartScriptSlotKind1,0045:52E,13,T2,1,1,1,1,1,0,0,,8a753417b0a5
+StartScriptSlot0Kind2,0045:53B,1,T2,1,1,1,1,1,0,0,,120980191290
+StartScriptSlotKind2,0045:53C,7,T2,1,1,1,1,1,0,0,,dc1ffd2f27b6
+StartScriptSlot0Kind3,0045:543,1,T2,1,1,1,1,1,0,0,,80611cda9eee
+StartScriptSlotKind3,0045:544,7,T2,1,1,1,1,1,0,0,,9f159b965016
+StartScriptSlotKind4,0045:54B,7,T2,1,1,1,1,1,0,0,,67b0dc9f4271
+StartSoleScriptSlot,0045:552,16,T2,1,1,1,0,0,0,0,,42987386b273
+StartScriptSlotKind6,0045:562,6,T2,1,1,1,1,1,0,0,,684de27ab976
+StartScriptSlotKind7,0045:568,6,T2,1,1,1,1,1,0,0,,21358a6d78f9
+ClearScriptSlot,0045:56E,25,T2,1,1,1,1,1,0,0,,5a071ef5285a
 FadeAndStopSound,0045:587,11,T2,1,1,1,1,0,0,0,,a2a86e2b4d2d
 StopSound,0045:592,5,T2,1,1,1,1,0,0,0,,66c06a2983d2
-AddScoreByte,0045:597,13,T2,1,1,1,0,0,0,,,f637572cd92d
-AddScoreWord,0045:5A4,46,T2,1,1,1,0,0,0,0,,69732ca7eeb1
+AddScoreByte,0045:597,13,T2,1,1,1,0,0,0,,,2b2fa9e1d8ad
+AddScoreWord,0045:5A4,46,T2,1,1,1,0,1,0,0,,cc65aa87990e
 ApplyVelocity,0045:5D2,36,T2,1,1,1,1,1,0,0,,b2812dec56e2
 ApplyVelocityY,0045:5F6,37,T2,1,1,1,1,1,0,0,,afd6919a1e8b
 ApplyVelocityX,0045:61B,37,T2,1,1,1,1,1,0,0,,aaf4c8a39ee3
-SetVelocityFromAngle,0045:640,29,T2,1,1,1,1,0,0,0,,88d02c5e51dd
-ScaleByCosine,0045:65D,3,T2,1,1,1,1,0,0,0,,36923ee44ab7
-ScaleBySine,0045:660,58,T2,1,1,1,1,0,0,0,,55130b94e471
-MultiplyBySineWord,0045:69A,53,T2,1,1,1,1,0,0,0,,7d681f095ce2
+SetVelocityFromAngle,0045:640,29,T2,1,1,1,1,1,0,0,,2a0428703e10
+ScaleByCosine,0045:65D,3,T2,1,1,1,1,1,0,0,,8e9c89390b7f
+ScaleBySine,0045:660,58,T2,1,1,1,1,1,0,0,,b1472df15b48
+MultiplyBySineWord,0045:69A,53,T2,1,1,1,1,1,0,0,,f8bc51674ebe
 AngleToPoint,0045:7CF,32,T2,1,1,1,1,0,0,0,,68dad498b658
 AngleToPlayerOffset,0045:7EF,62,T2,1,1,1,1,0,0,0,,3435fe77c5a9
 AngleToPlayer,0046:02D,34,T2,1,1,1,1,0,0,0,,be5279aa41d1
 AngleFromDelta,0046:04F,152,T2,1,1,1,0,0,0,0,,a5627908797f
-ClearObjectInY,0046:1E7,6,T2,1,1,1,1,0,0,0,,508a6b9f40ba
-ClearObject,0046:1ED,30,T2,1,1,1,1,1,0,0,,41c1fd3c0206
-ClearObjectExceptPlace,0046:20B,130,T2,1,1,1,1,1,0,0,,f25f483fc7f6
-ClearEnemySlots,0046:28D,13,T2,1,1,1,1,0,0,0,,0104d92eeb07
-NextRandom,0046:29A,56,T2,1,1,1,0,0,0,0,,386be29841b9
+ClearObjectInY,0046:1E7,6,T2,1,1,1,1,1,0,0,,2316c6c7951e
+ClearObject,0046:1ED,30,T2,1,1,1,1,1,0,0,,e472e9ebabaf
+ClearObjectExceptPlace,0046:20B,130,T2,1,1,1,1,1,0,0,,8d1ee0144a9a
+ClearEnemySlots,0046:28D,13,T2,1,1,1,1,1,0,0,,d3295f78edc0
+NextRandom,0046:29A,56,T2,1,1,1,0,1,0,0,,31990ee4038f
 TurnAngleToward,0046:2D2,49,T2,1,1,1,1,0,0,0,,a8044b721fa2
-BitOfIndex,0046:303,22,T2,1,1,1,1,0,0,0,,89d4fb88265a
-RecordObjectEvent,0046:319,10,T2,1,1,1,1,1,0,0,,9a19e61c6ac3
-RecordEvent,0046:323,10,T2,1,1,1,1,0,0,0,,ea45dffd31fa
-NegateVelocityX,0046:32D,22,T2,1,1,1,1,0,0,0,,7ecdb10172c3
-NegateVelocityY,0046:343,22,T2,1,1,1,1,0,0,0,,453976e8c173
-SelectVramData,0046:359,4,T2,1,1,1,1,0,0,0,,5023a736bf68
+BitOfIndex,0046:303,22,T2,1,1,1,1,1,0,0,,24a24139b98b
+RecordObjectEvent,0046:319,10,T2,1,1,1,1,1,0,0,,15b748e3c678
+RecordEvent,0046:323,10,T2,1,1,1,1,1,0,0,,7f4ae46fa27f
+NegateVelocityX,0046:32D,22,T2,1,1,1,1,1,0,0,,7c1b16e0da3a
+NegateVelocityY,0046:343,22,T2,1,1,1,1,1,0,0,,aff25df41141
+SelectVramData,0046:359,4,T2,1,1,1,1,1,0,0,,5023a736bf68
 SelectVramReadAddress,0046:35D,4,T2,1,1,1,1,1,0,0,,de58f0c65ca0
 SelectVramWriteAddress,0046:361,3,T2,1,1,1,1,1,0,0,,9ebe5d205c7e
 SelectVdcControl,0046:364,2,T2,1,1,1,1,1,0,0,,2f1f8cd4cc61
@@ -222,64 +222,64 @@ CardIsVersionOne,0046:4C6,8,T2,1,1,1,0,0,0,0,,a523d272259b
 KernelAdpcmPlay,0046:4CE,67,T2,1,1,1,0,0,0,0,,2cbeb024218f
 KernelAdpcmStat,0046:511,26,T2,1,1,1,0,0,0,,,454a4d059306
 KernelAdpcmLatchWrite,0046:52B,19,T2,1,1,1,0,0,0,,,c489a9fc36fd
-StreamFullWalk,0046:53E,169,T2,1,1,1,1,0,0,0,,586d52aa1d69
-StreamWalkLines,0046:5E7,71,T2,1,1,1,1,0,0,0,,2e98e84766fc
-StreamScrollStep,0046:62E,54,T2,1,1,1,1,0,0,0,,4d58a12d587f
-StreamEdgeRight,0046:664,23,T2,1,1,1,1,0,0,0,,95b6f6d1c92d
-StreamEdgeLeft,0046:67B,29,T2,1,1,1,1,0,0,0,,c47d9bfe29b7
-StreamEdgeDown,0046:698,23,T2,1,1,1,1,0,0,0,,caeba3ddd93a
-StreamEdgeUp,0046:6AF,29,T2,1,1,1,1,0,0,0,,f960c46f40cc
-StreamWalkForward,0046:6CC,87,T2,1,1,1,1,0,0,0,,54a7fe98980f
+StreamFullWalk,0046:53E,169,T2,0,1,1,1,0,0,0,cpu,586d52aa1d69
+StreamWalkLines,0046:5E7,71,T2,0,1,1,1,0,0,0,cpu,2e98e84766fc
+StreamScrollStep,0046:62E,54,T2,0,1,1,1,0,0,0,cpu,4d58a12d587f
+StreamEdgeRight,0046:664,23,T2,0,1,1,1,0,0,0,cpu,95b6f6d1c92d
+StreamEdgeLeft,0046:67B,29,T2,0,1,1,1,0,0,0,cpu,c47d9bfe29b7
+StreamEdgeDown,0046:698,23,T2,0,1,1,1,0,0,0,cpu,caeba3ddd93a
+StreamEdgeUp,0046:6AF,29,T2,0,1,1,1,0,0,0,cpu,f960c46f40cc
+StreamWalkForward,0046:6CC,87,T2,0,1,1,1,0,0,0,cpu,54a7fe98980f
 StreamDistance,0046:723,33,T2,1,1,1,1,0,0,0,,138418342aba
-StreamWalkBack,0046:744,97,T2,1,1,1,0,0,0,0,,fb196fd9a9ea
-RunStreamRecord,0046:7A5,70,T2,1,1,1,1,0,0,0,,3cb0d0740f08
+StreamWalkBack,0046:744,97,T2,0,1,1,0,0,0,0,cpu,fb196fd9a9ea
+RunStreamRecord,0046:7A5,70,T2,0,1,1,1,0,0,0,cpu,3cb0d0740f08
 StreamSpawnIfFree,0046:7F9,11,T2,1,1,1,1,0,0,0,,027b9ec33a5e
 StreamPlaceObject,0047:004,136,T2,1,1,1,0,0,0,0,,18a49698dde1
-StreamStartScript,0047:08C,9,T2,1,1,1,1,0,0,0,,5bd9c15f71fa
-RecordIfMarked,0047:095,10,T2,1,1,1,1,0,0,0,,cf5fc9774289
-StreamStartListKind2,0047:09F,17,T2,1,1,1,1,0,0,0,,755a08765460
-StreamStartListKind3,0047:0B0,11,T2,1,1,1,1,0,0,0,,eaccd96c2538
-StreamClearObject,0047:0BB,9,T2,1,1,1,0,0,0,,,7dab9fad0d5b
+StreamStartScript,0047:08C,9,T2,0,1,1,1,0,0,0,cpu,5bd9c15f71fa
+RecordIfMarked,0047:095,10,T2,0,1,1,1,0,0,0,cpu,2c0b5e3c60c2
+StreamStartListKind2,0047:09F,17,T2,0,1,1,1,0,0,0,cpu,755a08765460
+StreamStartListKind3,0047:0B0,11,T2,0,1,1,1,0,0,0,cpu,eaccd96c2538
+StreamClearObject,0047:0BB,9,T2,0,1,1,0,0,0,,cpu,7dab9fad0d5b
 StreamSpawnIfOther,0047:0C4,23,T2,1,1,1,1,0,0,0,,0dc4d598d477
-StreamCallOverlay,0047:0DB,8,T2,1,1,1,1,0,0,0,,d05615cc0d67
+StreamCallOverlay,0047:0DB,8,T2,0,1,1,1,0,0,0,cpu,d05615cc0d67
 JumpThroughRecord,0047:0E3,3,T2,1,1,1,1,1,0,0,,55c467f87755
-LoadObjectRecord,0047:0E6,118,T2,1,1,1,1,1,0,0,,001db8333dce
-StartObjectAtPlace,0047:15C,3,T2,1,1,1,1,1,0,0,,b8f7abbe8b95
-CopyObjectPlace,0047:15F,37,T2,1,1,1,1,1,0,0,,1ac087669737
-CopyObjectPlaceBack,0047:184,6,T2,1,1,1,1,0,0,0,,1d978d92938f
-StepObjectFrames,0047:18A,50,T2,1,1,1,1,1,0,0,,396af59062c3
+LoadObjectRecord,0047:0E6,118,T2,1,1,1,1,1,0,0,,bf01e4e0aeb9
+StartObjectAtPlace,0047:15C,3,T2,1,1,1,1,1,0,0,,b239650b37f9
+CopyObjectPlace,0047:15F,37,T2,1,1,1,1,1,0,0,,f178cda5c5d0
+CopyObjectPlaceBack,0047:184,6,T2,1,1,1,1,1,0,0,,1ca9e672b234
+StepObjectFrames,0047:18A,50,T2,1,1,1,1,1,0,0,,b87884c657cf
 ProbeTerrain,0047:1BC,198,T2,1,1,1,0,0,0,0,,d1f8c4bf9a07
 ProbeTerrainAlt,0047:282,19,T2,1,1,1,0,0,0,0,,31cbe3579153
 ProbeTerrainFrontColumn,0047:295,40,T2,1,1,1,0,0,0,0,,d8e5c5ce8778
 LookUpTerrainBelow,0047:2BD,3,T2,1,1,1,1,0,0,0,,ef0997abcd68
 LookUpTerrainBelowAlt,0047:2C0,3,T2,1,1,1,1,0,0,0,,0651eff20fd5
-DistanceXToPlayer,0047:2CB,24,T2,1,1,1,1,1,0,0,,120637475d89
-DistanceYToPlayer,0047:2E3,24,T2,1,1,1,1,1,0,0,,b886ba4d4812
-SideOfPlayer,0047:2FB,50,T2,1,1,1,1,0,0,0,,4ab2652475e2
+DistanceXToPlayer,0047:2CB,24,T2,1,1,1,1,1,0,0,,ff5b472985db
+DistanceYToPlayer,0047:2E3,24,T2,1,1,1,1,1,0,0,,0a2d78ebe313
+SideOfPlayer,0047:2FB,50,T2,1,1,1,1,1,0,0,,891d199410f3
 MoveAndLand,0047:32D,58,T2,1,1,1,0,0,0,0,,c1d338c473ec
 StopOnLanding,0047:367,14,T2,1,1,1,1,0,0,0,,379c037e5ed4
 StopOnLandingNoMove,0047:375,54,T2,1,1,1,1,0,0,0,,eef6f7d2e156
 StopOnLandingFrontColumn,0047:3AB,29,T2,1,1,1,1,0,0,0,,ad3c017fc771
-FindFreeSlotFrom30,0047:3C8,19,T2,1,1,1,1,1,0,0,,5bbcd8a2298c
-FindFreeSlotFrom20,0047:3DB,4,T2,1,1,1,1,1,0,0,,2e6da9041479
-FindFreeSlotFrom50,0047:3DF,14,T2,1,1,1,0,0,0,0,,d6b7f46df2b9
-ApplyGravity,0047:3ED,9,T2,1,1,1,1,0,0,0,,5fc01c16c20f
-ApplyGravityUnlimited,0047:3F6,15,T2,1,1,1,1,0,0,0,,8c0310a3a32c
-TileOpAttributeHigh,0047:405,18,T2,1,1,1,1,0,0,0,,c1f090504b42
-TileOpAttributeLow,0047:417,9,T2,1,1,1,1,0,0,0,,7f01066160df
+FindFreeSlotFrom30,0047:3C8,19,T2,1,1,1,1,1,0,0,,0c653d7a1baa
+FindFreeSlotFrom20,0047:3DB,4,T2,1,1,1,1,1,0,0,,1fa2c9839077
+FindFreeSlotFrom50,0047:3DF,14,T2,1,1,1,0,1,0,0,,fb79acc51c18
+ApplyGravity,0047:3ED,9,T2,1,1,1,1,1,0,0,,1dbd2c473610
+ApplyGravityUnlimited,0047:3F6,15,T2,1,1,1,1,1,0,0,,c80967630336
+TileOpAttributeHigh,0047:405,18,T2,1,1,1,1,1,0,0,,c1f090504b42
+TileOpAttributeLow,0047:417,9,T2,1,1,1,1,1,0,0,,7f01066160df
 TileScriptReturn,0047:420,1,T2,1,1,1,1,1,0,0,,2d412acd6f51
-TileOpAlternateUp,0047:421,22,T2,1,1,1,1,0,0,0,,2740776d9986
-TileOpAlternateDown,0047:437,22,T2,1,1,1,1,0,0,0,,2c45a31920c3
+TileOpAlternateUp,0047:421,22,T2,1,1,1,1,1,0,0,,3ef36cdb87a7
+TileOpAlternateDown,0047:437,22,T2,1,1,1,1,1,0,0,,0863462290e5
 DrawTileScript,0047:44D,41,T2,1,1,1,1,0,0,0,,00cd6407df78
-RunTileScript,0047:476,147,T2,1,1,1,1,0,0,0,,908a4bde79cf
-WriteTileAscending,0047:509,5,T2,1,1,1,1,0,0,0,,5cebce3ace98
-WriteTileDescending,0047:50E,5,T2,1,1,1,1,0,0,0,,a0d61013edc5
-WriteTile,0047:513,11,T2,1,1,1,1,0,0,0,,b2dd9efb03d8
-SetVramFromScript,0047:51E,26,T2,1,1,1,1,0,0,0,,de4a2d4bb19c
-NextVramLine,0047:538,24,T2,1,1,1,1,0,0,0,,6ee1247f7a77
-AdvanceTileScript,0047:550,7,T2,1,1,1,1,1,0,0,,81e24374cbce
-PlayerDistanceSum,0047:557,50,T2,1,1,0,1,0,0,0,,91baf23c0628
-SoundIfOnFirstScreen,0047:589,15,T2,1,1,1,1,0,0,0,,a36aa5b80ac8
+RunTileScript,0047:476,147,T2,1,1,1,1,1,0,0,,908a4bde79cf
+WriteTileAscending,0047:509,5,T2,1,1,1,1,1,0,0,,ecfcc889edcc
+WriteTileDescending,0047:50E,5,T2,1,1,1,1,1,0,0,,3a75f0941c14
+WriteTile,0047:513,11,T2,1,1,1,1,1,0,0,,eeedaa1d7e74
+SetVramFromScript,0047:51E,26,T2,1,1,1,1,1,0,0,,e57cd0dd7125
+NextVramLine,0047:538,24,T2,1,1,1,1,1,0,0,,d949c0784b20
+AdvanceTileScript,0047:550,7,T2,1,1,1,1,1,0,0,,e4aa9063c54c
+PlayerDistanceSum,0047:557,50,T2,1,1,0,1,1,0,0,,2a0292b030f9
+SoundIfOnFirstScreen,0047:589,15,T2,1,1,1,1,1,0,0,,7a341e2a2166
 StopPlayerX,0047:598,7,T2,1,1,1,1,1,0,0,,4ca1b8ae4eb4
 MovePlayerX,0047:59F,20,T2,1,1,1,0,0,0,,,4e0cbd59e300
 MovePlayerY,0047:5B3,52,T2,1,1,1,0,0,0,0,,3d25febab7de
@@ -319,21 +319,21 @@ PlayerAtTop,0048:35B,10,T2,1,1,1,0,0,0,,,4e77a764cf98
 PlayerYFromNext,0048:365,11,T2,1,1,1,1,0,0,0,,5c1911a235e2
 MovePlayerUp,0048:370,180,T2,1,1,1,0,0,0,0,,c2310a08f49d
 BackupRead,0048:424,31,T2,1,1,1,1,0,0,0,,e917ba30a495
-BackupWrite,0048:443,55,T2,1,1,1,0,0,0,0,,cc7225ac6bbc
+BackupWrite,0048:443,55,T2,1,1,1,0,0,0,0,,8384e62853a7
 BackupFormat,0048:47A,18,T2,1,1,1,0,0,0,,,5ce1e01ad6ce
 BackupFailed,0048:48C,3,T2,1,1,1,0,0,0,,,20c6b4cf2343
-StageEnter,0048:4A6,214,T2,1,1,1,0,0,0,0,,29ceb0c04c38
-StageLoad,0048:57C,142,T2,1,1,1,1,0,0,0,,a6562ad8f966
+StageEnter,0048:4A6,214,T2,0,1,1,0,0,0,0,cpu,d9aa2b33fc27
+StageLoad,0048:57C,142,T2,0,1,1,1,0,0,0,cpu,42b6cb6e39fc
 SaveVramToRam,0048:60A,57,T2,1,1,1,1,0,0,0,,e6eb491846fd
-AdpcmLoad,0048:643,90,T2,1,1,1,0,1,0,0,,212bf0cc235a
-AdpcmLoadFixed,0048:69D,78,T2,1,1,1,0,0,0,0,,41b0ed71facc
-AdpcmPlayFromDisc,0048:6EB,88,T2,1,1,1,0,0,0,,,81553fc54032
-CdPlayOnce,0048:743,8,T2,1,1,1,1,0,0,0,,2da6a7e86a5c
-CdPlayAgain,0048:74B,2,T2,1,1,1,1,0,0,0,,6cba22733f23
-CdPlayRepeat,0048:74D,81,T2,1,1,1,0,0,0,0,,040061fb7af6
-CdSearchTrack,0048:79E,58,T2,1,1,1,0,1,0,0,,1027fe7f5b14
-LoadSceneScript,0048:7D8,217,T2,1,1,0,0,0,0,0,,f07381887442
-SceneReadSectors,0049:0B1,73,T2,1,1,1,0,0,0,0,,67379060bf0c
+AdpcmLoad,0048:643,90,T2,1,1,1,0,1,0,0,,ab4f87ac583b
+AdpcmLoadFixed,0048:69D,78,T2,1,1,1,0,0,0,0,,23fa9b807555
+AdpcmPlayFromDisc,0048:6EB,88,T2,1,1,1,0,0,0,,,927f478a588e
+CdPlayOnce,0048:743,8,T2,1,1,1,1,0,0,0,,b1bbfd262557
+CdPlayAgain,0048:74B,2,T2,1,1,1,1,0,0,0,,0e749e8d5abe
+CdPlayRepeat,0048:74D,81,T2,1,1,1,0,0,0,0,,e933b8ef22b5
+CdSearchTrack,0048:79E,58,T2,1,1,1,0,1,0,0,,2a64c4fe9ad8
+LoadSceneScript,0048:7D8,217,T2,0,1,0,0,0,0,0,cpu,76cf834df92f
+SceneReadSectors,0049:0B1,73,T2,0,1,1,0,0,0,0,cpu,67379060bf0c
 SceneCallOverlay,0049:100,21,T2,1,1,1,1,1,0,0,,046612d37bda
 SoundStartChannel,004D:4EE,164,T2,1,1,1,1,0,0,0,,4a4b3e5caa92
 SoundChannelTick,004D:592,95,T2,1,1,1,0,1,0,0,,e0965460dc3b
@@ -417,12 +417,84 @@ TitleWipe,00C1:0AF,23,T2,1,1,1,1,1,0,0,,833a68b27472
 TitleLogoStart,00C1:0C6,21,T2,1,1,1,1,0,0,0,,0aaa9c40aeb5
 TitleLogoFade,00C1:0DB,54,T2,1,1,1,1,1,0,0,,3d9679973574
 TitleCycle,00C1:111,95,T2,1,1,1,1,0,0,0,,e726680a549d
-TitleLastScript,00C1:170,10,T2,1,1,1,1,0,0,0,,e18d961b1cfb
+TitleLastScript,00C1:170,10,T2,1,1,1,1,1,0,0,,e18d961b1cfb
 TitleEnd,00C1:17A,8,T2,1,1,1,1,0,0,0,,ac4d0bb06491
 TitleWait,00C1:182,7,T2,1,1,1,1,1,0,0,,2da5e0b0e24a
 TitlePaletteRotate,00C1:189,65,T2,1,1,1,1,0,0,0,,f9f065ac1f81
 TitleTileRows,00C1:1CA,36,T2,1,1,1,1,0,0,0,,32c2e7ea27e3
 TitleTileWrite,00C1:1EE,10,T2,1,1,1,1,0,0,0,,664619a47b31
+IncrementTempWord,00C1:228,7,T2,1,1,1,1,1,0,0,,bb01adce6f1b
+ModeDoneAdd,00C1:265,3,T2,1,1,1,1,1,0,0,,8b85b43db490
+WriteGlyphRowsTwice,00C1:5CA,5,T2,1,1,1,1,1,0,0,,55f19a550842
+WriteGlyphRows,00C1:5CF,17,T2,1,1,1,1,1,0,0,,25d73df8f40a
+AttractBegin,00C1:71A,20,T2,1,1,0,1,0,0,0,,61c93acff66e
+AttractFrameTick,00C1:7CC,7,T2,1,1,1,1,1,0,0,,7bf4b1ce0f3d
+AttractEndCountdown,00C1:7D3,10,T2,1,1,1,1,1,0,0,,a804ab7de300
+ClearAllObjects,00C2:0F7,10,T2,1,1,1,1,1,0,0,,184a74fd7fd2
+PadRepeatReset,00C3:2E7,14,T2,1,1,0,1,1,0,0,,f33fd6a1e955
+MenuBackOnButtonII,00C3:31B,7,T2,1,1,1,1,1,0,0,,077eea6bdd2f
+MenuBackToPageEight,00C3:322,5,T2,1,1,1,1,1,0,0,,5ccb9c8cc67b
+NameTypeCharacter,00C3:5D2,51,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,93850ddfa018
+ShowNameCursor,00C3:605,30,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,daa69600dd3a
+NameBackspace,00C3:623,34,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,a30baa28899b
+NameCursorTarget,00C3:665,49,T2,1,1,0,1,1,0,0,,f36839f5ac31
+PadRepeatUpdate,00C4:025,51,T2,1,1,0,0,1,0,0,,675ce546dff0
+DrawSelectedFileDigit,00C4:0CC,22,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,dfd4eac96786
+DrawCursorRowDigit,00C4:0E2,15,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,55a41c471e2f
+ShiftObjectsByScrollChange,00C4:3F6,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; alu helper,6fd4031a1d51
+SetCursorValue,00C4:46A,9,T2,1,1,1,1,1,0,0,,c81ff443874e
+CursorMoveByPad,00C4:473,75,T2,1,1,0,0,1,0,0,,c8a071af2040
+PlaceCursorObjects,00C4:4CA,6,T2,1,1,1,1,1,0,0,,6a727fbffe1c
+PlaceCursorObject,00C4:4D0,31,T2,1,1,0,1,1,0,0,,50572c908c86
+GlideCursorObjects,00C4:4EF,5,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; alu helper,67092ffc0ffc
+GlideCursorObject,00C4:4F4,97,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8; alu helper,1545a8fe85bd
+JitterCursorObjects,00C4:559,4,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; alu helper,459ead9111e3
+JitterCursorObject,00C4:55D,89,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8; alu helper,29013452029f
+SetCursorTargets,00C4:5B6,4,T2,1,1,1,1,1,0,0,,7fbe5e2a197d
+SetCursorTarget,00C4:5BA,26,T2,1,1,0,1,1,0,0,,52ea8600ab9a
+HalveObjectVelocity,00C4:5D4,21,T2,0,1,1,1,1,0,0,Alu; alu helper,bf0b3b1db140
+ObjectFrameFromTick,00C4:5E9,11,T2,1,1,1,1,1,0,0,,f302f25f12f2
+MenuPageAdvance,00C4:602,3,T2,1,1,1,1,1,0,0,,eb7c7b80882f
+SetMenuPage,00C4:605,5,T2,1,1,1,1,1,0,0,,e145f1ceda8d
+MenuStepAdvance,00C4:60A,3,T2,1,1,1,1,1,0,0,,98c0bf4e1995
+SetMenuStep,00C4:60D,3,T2,1,1,1,1,1,0,0,,c73dfcce5df8
+AddToListWord,00C5:133,15,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,04f0f773cba9
+CopyWordsToVdc,00C5:27F,32,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,9f8619e4ac48
+WriteObjectSprites,00D1:000,102,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,394b4ea19a01
+EmitObjectSprites,00D1:066,313,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,0c9878c80d82
+ClearVramBlock,00DD:01C,45,T2,1,1,0,1,1,0,0,,4d259cc2df7c
+GlyphPassByStep,00DD:0DC,22,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8; cpu,561818fd2366
+OverlayGlyphPass,00DD:0FA,10,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,7b7d596e2e3c
+OverlayGlyphRows,00DD:104,47,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,5e5c98dd2825
+OrBufferIntoVramLow,00DD:133,25,T2,1,1,1,1,1,0,0,,a1688c903b3b
+OverlayGlyphPassBoth,00DD:14C,10,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,b6492df1fe53
+OverlayGlyphRowsBoth,00DD:156,37,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,4b8b02fcabe0
+ShiftGlyphBufferRight,00DD:17B,20,T2,1,1,1,1,1,0,0,,02898f0f75b5
+SetGlyphVramPlace,00DD:1A3,64,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,481697aad71a
+GlideObjectUp,00DD:1E3,18,T2,1,1,1,1,1,0,0,,064b325c970c
+GlideObjectDown,00DD:215,17,T2,1,1,0,1,1,0,0,,ed0833d5954e
+PlaceObjectList,00DD:50A,80,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,05ff8d59b592
+SlotToWorkArea,00DD:699,55,T2,1,1,0,1,1,0,0,,227a2437b3af
+DrawSlotName,00DD:7D2,52,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,6cdc4a70e3a3
+DrawSlotPercent,00DE:006,63,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,9987797b7ad8
+BlankTextRow,00DE:05D,55,T2,1,1,0,1,1,0,0,,e8453ec0a72e
+RecolorTextRun,00DE:0B2,79,T2,1,1,0,1,1,0,0,,965643c72d59
+DrawSlotDetails,00DE:153,30,T2,1,1,0,1,1,0,0,,c710fbd02ebc
+WriteHexByteTiles,00DE:171,8,T2,1,1,1,1,1,0,0,,beade413c79f
+WriteLowDigitTile,00DE:179,2,T2,1,1,1,1,1,0,0,,9f1993e5f872
+WriteDigitTile,00DE:17B,8,T2,1,1,1,1,1,0,0,,823e475daf67
+DrawSlotContinuesAndFace,00DE:183,59,T2,1,1,0,1,1,0,0,,32a13e1aa5b5
+EventFlagsClear,00DE:1D8,9,T2,1,1,1,1,1,0,0,,efa0312cd263
+EventBitClear,00DE:1E1,13,T2,1,1,1,1,1,0,0,,e3aec7e9b6d9
+EventBitSet,00DE:1EE,11,T2,1,1,1,1,1,0,0,,e0cdac1f6dd6
+EventBitTest,00DE:1F9,8,T2,1,1,1,1,1,0,0,,396e6a2d90e0
+EventBitMask,00DE:201,21,T2,1,1,1,1,1,0,0,,c3f68cb35f09
+SlotCompletionPercent,00DE:216,87,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,9720a3f1b595
+CountSetBits,00DE:26D,14,T2,1,1,1,0,1,0,0,,19b615e83ebf
+SlotLastClearedFlag,00DE:7A3,14,T2,0,1,1,0,1,0,0,Alu; adc8/sbc8; alu helper,153a3bbc9cbb
+SlotClearedFlags,00DE:7B1,37,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8; alu helper,2546064e2225
+StartScriptSlotKind6B,00E0:3DF,6,T2,1,1,0,1,0,0,0,,23e2ffd0c30e
+StartScriptSlotKind7B,00E0:3E5,37,T2,1,1,1,1,0,0,0,,a40b6ffbf94f
 RichterVecFrame,01B9:000,3,T2,1,1,1,1,0,0,0,,f85a1b3cddcd
 RichterVecStart,01B9:003,3,T2,1,1,1,1,0,0,0,,334402df0dc1
 RichterVecApplyMove,01B9:006,3,T2,1,1,1,1,1,0,0,,a4e3266e199c
@@ -454,7 +526,7 @@ RichterDie,01B9:1A4,26,T2,1,1,1,1,0,0,0,,848207a40bd5
 RichterStateFrame,01B9:1BE,192,T2,1,1,1,0,0,0,0,,06fca68cdae8
 RichterOutOfHealth,01B9:298,26,T2,1,1,1,0,0,0,0,,346f08f862c7
 RichterHitReact,01B9:2B2,37,T2,1,1,1,1,0,0,0,,ba2c189297bd
-RichterStartHitScript,01B9:2D7,5,T2,1,1,1,1,0,0,0,,c7b1a99fe487
+RichterStartHitScript,01B9:2D7,5,T2,1,1,1,1,1,0,0,,c7b1a99fe487
 RichterTurnOnPress,01B9:2E4,25,T2,1,1,1,1,1,0,0,,30a055f02145
 RichterStandStep1,01B9:2FD,79,T2,1,1,0,0,0,0,0,,9ee316dbaa64
 RichterClearWhip,01B9:34C,5,T2,1,1,1,1,1,0,0,,e3c561149d6f
@@ -464,7 +536,7 @@ RichterStepIndex,01B9:3D0,6,T2,1,1,1,1,1,0,0,,8d0a72b34f92
 RichterStateStand,01B9:3D6,5,T2,1,1,1,1,0,0,0,,f3939476804a
 RichterStandStep0,01B9:3E1,97,T2,1,1,1,1,0,0,0,,f890afdf1ba9
 RichterStartWalk,01B9:442,42,T2,1,1,1,1,0,0,0,,e45c4e25c995
-RichterSpeedWalk,01B9:46C,18,T2,1,1,1,1,1,0,0,,afb2389222c4
+RichterSpeedWalk,01B9:46C,18,T2,1,1,1,1,0,0,0,,afb2389222c4
 RichterSpeedJump,01B9:47E,18,T2,1,1,1,1,1,0,0,,ef345df66d1f
 RichterSpeedBackstep,01B9:494,18,T2,1,1,1,1,1,0,0,,82dc1ed4639a
 RichterCrouch,01B9:4AE,18,T2,1,1,1,1,0,0,0,,3ffe4b35feaf
@@ -578,12 +650,29 @@ RichterObjectHitboxOff,01C0:51B,4,T2,1,1,1,1,1,0,0,,5acf59ed92a7
 RichterObjectHitboxOn,01C0:51F,5,T2,1,1,1,1,1,0,0,,691a7fb82a20
 RichterObjectHitboxByFrame,01C0:524,6,T2,1,1,1,1,1,0,0,,6e1bffc62c58
 RichterObjectHitboxFrom,01C0:52A,30,T2,1,1,1,1,1,0,0,,005fc9c24868
-ClearStageStateBytes,024F:19F,13,T2,1,1,0,1,1,0,0,,7b1b1a2387c1
-SaveAndMapStageBanks,024F:33F,10,T2,0,1,0,1,1,0,0,cpu,bec9b8786555
+StageWaitTimerStep,024E:023,8,T2,1,1,1,1,1,0,0,,7bd325f108cb
+SetStageTileVramAddress,024E:687,15,T2,1,1,1,1,1,0,0,,4325936eac58
+MaskStageRowCopy,024F:113,27,T2,0,1,1,1,1,0,0,cpu,ed279d3ce3d0
+MaskStageRow,024F:12E,27,T2,0,1,1,1,1,0,0,cpu,b350738bc339
+ClearStageStateBytes,024F:19F,13,T2,1,1,1,1,1,0,0,,c282ba531f90
+SaveAndMapStageBanks,024F:33F,10,T2,0,1,1,1,1,0,0,cpu,bec9b8786555
 MapStageBanks,024F:349,11,T2,0,1,1,1,1,0,0,cpu,47a4db35a652
-RestoreStageBanks,024F:354,11,T2,1,1,0,1,1,0,0,,89f9df7de727
+RestoreStageBanks,024F:354,11,T2,1,1,1,1,1,0,0,,7fceb90cf197
+SetVramAddresses,024F:37D,21,T2,1,1,1,1,1,0,0,,baf456f35e19
 AndVramData,024F:392,15,T2,1,1,1,1,1,0,0,,67ed0aa44653
 OrVramData,024F:3A1,15,T2,1,1,1,1,1,0,0,,e9f97418f83f
+SpawnStageObject,024F:3B0,32,T2,1,1,1,1,0,0,0,,2a53fbb8fcc2
+ComputeHitboxPositions,024F:413,83,T2,1,1,1,1,1,0,0,,73269973e267
+ClearScrollSpeeds,0255:067,12,T2,1,1,1,1,1,0,0,,59b452365b1e
+ScrollSpeedsFromBands,0255:073,26,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,1a314da5709c
+ScrollYFromLevelWord,0255:122,13,T2,1,1,0,1,1,0,0,,3bcc0baf0117
+ScreenMapAt,0255:6E2,18,T2,1,1,1,1,1,0,0,,4c6794e01d85
+AdvanceScrollX,0255:6F4,51,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,1257c147908a
+ScrollXPlusOffset,0255:75C,34,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,57888826dd5e
+SelectBlockTablesA,0256:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,0905c21371e3
+BitmapBitShifted,0256:078,26,T2,1,1,1,1,1,0,0,,870532129a07
+ScrollXAddWrap,0256:180,21,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,7c5f9c5c6b64
+StageWaitTimerToStep2,050E:019,10,T2,1,1,1,1,1,0,0,,cf51a1093865
 TerrainLookup,050F:5AB,96,T2,1,1,1,0,0,0,0,,262275c0fa2b
 TerrainLookupAlt,050F:60B,116,T2,1,1,1,0,0,0,0,,0a702bb56fd9
 TerrainTileRead,050F:67F,155,T2,1,1,1,0,0,0,0,,1164b6008f32
@@ -609,15 +698,141 @@ TileLift3,0510:19D,10,T2,1,1,1,0,0,0,,,fd10f1375dfd
 TileLift2,0510:1A7,10,T2,1,1,1,0,0,0,,,e2d74d42364c
 TileLift1,0510:1B1,10,T2,1,1,1,0,0,0,,,4e26f398a0d4
 HalveScrollStepFirstToSecond,0515:12F,3,T2,1,1,1,1,1,0,0,,571aa6c88501
-HalveScrollStep,0515:132,19,T2,1,1,1,1,1,0,0,,dcc5decb516d
-EnterHurtStateOnHit,0519:46A,24,T2,1,1,1,0,1,0,0,,16f288c1bacf
-InitObjectFromRecord,0519:482,28,T2,0,1,1,1,1,0,0,cpu,9f4cba4b2c73
-FallAndBounce,0519:4BD,75,T2,0,1,1,0,0,0,0,cpu,8d48054b9b49
-SetBlinkFlash,0519:74E,22,T2,1,1,1,1,1,0,0,,75e6d9651876
+HalveScrollStep,0515:132,19,T2,1,1,1,1,1,0,0,,def86d5a069e
+ScreenMapOfEntry,0515:6DA,26,T2,1,1,1,1,1,0,0,,e3503363a32e
+SelectBlockTablesB,0516:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,399fdb77c898
+EnterHurtStateOnHit,0519:46A,24,T2,1,1,1,0,1,0,0,,020b70315caf
+InitObjectFromRecord,0519:482,28,T2,1,1,1,1,1,0,0,,9bc42c06c267
+FallAndBounce,0519:4BD,75,T2,0,1,1,0,0,0,0,cpu,bea0c1e18553
+SetBlinkFlash,0519:74E,22,T2,1,1,1,1,1,0,0,,2921eb2809a6
 BitMaskFromIndex,051A:055,11,T2,1,1,1,1,1,0,0,,9be8276e5fea
-SaveAndMapStageBanksLong,05BF:651,10,T2,1,1,0,1,1,0,0,,647881dcaa3d
+CountdownNextStepA,051B:526,9,T2,1,1,1,1,1,0,0,,38421fb72259
+SetStageTileVramAddressLong,05BE:687,15,T2,1,1,1,1,1,0,0,,b1c971f2365a
+SaveAndMapStageBanksLong,05BF:651,10,T2,1,1,1,1,1,0,0,,647881dcaa3d
 MapStageBanksLong,05BF:65B,11,T2,1,1,1,1,1,0,0,,c728ee4c6400
-RestoreStageBanksLong,05BF:666,11,T2,1,1,0,1,1,0,0,,bf70aa5f44c1
+RestoreStageBanksLong,05BF:666,11,T2,1,1,1,1,1,0,0,,bf70aa5f44c1
+SetVramAddressesLong,05BF:68F,21,T2,1,1,1,1,1,0,0,,c3dee5b1932d
 AndVramDataLong,05BF:6A4,15,T2,1,1,1,1,1,0,0,,7778ef401858
 OrVramDataLong,05BF:6B3,15,T2,1,1,1,1,1,0,0,,ea86e9c7cf35
+SpawnStageObjectLong,05BF:6C2,32,T2,1,1,1,1,0,0,0,,deabeee2db22
+ComputeHitboxPositionsLong,05BF:725,83,T2,1,1,1,1,1,0,0,,1e94d5873975
+SelectBlockTablesC,05C6:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,7824840ccb40
+CountdownNextStateA,05CB:209,9,T2,1,1,1,1,1,0,0,,0c99a163e391
+AdvanceScrollY,0725:729,51,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,7785c227114d
+SelectBlockTablesD,0726:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,73cb03e63fc5
+ScrollYPlusOffset,0726:092,34,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,6594b29dca52
+StopAndPickPhase,072C:02C,31,T2,1,1,0,1,1,0,0,,d0d8641b8a15
 HalveScrollStepFromFirst,07D5:131,20,T2,1,1,1,1,1,0,0,,8b9b460a6154
+SelectBlockTablesE,07D6:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,e14f7aad8bfc
+StepFramesFacingPlayer,07DB:3ED,28,T2,1,1,0,1,1,0,0,,723df1ae63a1
+ClampSpeedXToTwo,07DB:5FD,37,T2,1,1,1,1,1,0,0,,53f808ebbe5d
+ThrowUpward,07DB:622,16,T2,1,1,1,1,1,0,0,,b4f84fede5f1
+WaitThenState2,07DB:6CE,30,T2,1,1,1,1,1,0,0,,6af7abbe3fb7
+BecomeType9CWhenAnimationEnds,07DB:6EC,16,T2,1,1,1,1,1,0,0,,5019f1580a14
+CountdownThenState4,07DB:71B,11,T2,1,1,1,1,1,0,0,,cea23c098042
+LoadRecordStartAngle40,07DB:726,12,T2,1,1,1,1,1,0,0,,49aaf8cf04bf
+CountdownNextStateB,07DB:732,9,T2,1,1,1,1,1,0,0,,cd6a79e0cadd
+ChangeToType9B,07DB:785,9,T2,1,1,1,1,1,0,0,,9ce3f9f82507
+EnterState6IfFlagged,07DB:7B1,13,T2,1,1,1,1,1,0,0,,11b3d6026971
+LoadRecordTimer50,07DB:7BE,9,T2,1,1,1,1,1,0,0,,9f692a1e6efc
+WalkWhileFrameChanges,07DB:7F1,19,T2,1,1,0,1,1,0,0,,aeebbcb94df6
+StepFramesFacingPlayerAlways,07DC:017,21,T2,1,1,0,1,1,0,0,,2c40fe51f325
+CountdownStopThenState4,07DC:09D,17,T2,1,1,1,1,1,0,0,,a7fe25ae9268
+RightOfObject4DWithin,07DF:349,36,T2,1,1,0,0,1,0,0,,d5f3b69e0c1b
+SelectBlockTablesF,0936:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,49afe7d58eb0
+SelectRasterStage1,0938:7F2,5,T2,1,1,1,1,1,0,0,,4d97303fdcf2
+StartWithFrame1A,093B:0F6,14,T2,1,1,1,1,1,0,0,,f205c5934f25
+ShowOnScreenAndWrapX,093B:4C3,98,T2,1,1,1,0,1,0,0,,c1feaf6eadc6
+EnterStateFourOnFlag,093C:068,26,T2,1,1,1,1,1,0,0,,a537b7741044
+SetHitboxDxFromFrame,093C:10A,30,T2,1,1,0,1,1,0,0,,fd20255839c9
+ThrowByNextKind,093C:180,35,T2,1,1,0,1,1,0,0,,623dbbdc5e4f
+PickTimersAtRandom,093C:1A5,20,T2,1,1,0,1,1,0,0,,d680e28ff2de
+PickAngleAtRandom,093C:1C1,20,T2,1,1,0,1,1,0,0,,f94b39ae70a3
+AnimateThenState1,093C:23E,31,T2,1,1,0,1,1,0,0,,3b53e2c617f1
+ChooseNextMoveWhenFacingAway,093C:28D,72,T2,1,1,0,1,1,0,0,,b0afb7b97e19
+AnimateThenNextStep,093C:338,28,T2,1,1,1,1,1,0,0,,e50740ac988d
+PhaseTimerToState1,093C:374,38,T2,1,1,1,1,1,0,0,,34d5c7b7c127
+FollowParentYAndLeave,093C:48F,20,T2,1,1,1,1,1,0,0,,38ba87d3b7c0
+AnimateMoveAndSag,093C:4A3,46,T2,1,1,0,0,1,0,0,,6531f3e7d4d9
+SetHitboxFromFrameRows,093C:586,34,T2,1,1,0,1,1,0,0,,3a61aabe1463
+StartChargeWhenPlayerNear,093C:6AB,60,T2,1,1,1,1,1,0,0,,fe954995115e
+StepFramesFacingPlayerC,093C:6E9,21,T2,1,1,0,1,1,0,0,,bd87dae5c543
+WaitThenState2B,093D:191,30,T2,1,1,1,1,1,0,0,,34ead5a7bbb7
+FaceThePlayerInSomeStates,093D:282,17,T2,1,1,0,1,1,0,0,,0f8fe60aad4a
+EnterState7OnFlagOrYSignChange,093D:2B7,32,T2,1,1,1,0,1,0,0,,597c8ac4e9ab
+SetHitboxFromFrameRowsIndirect,093D:2D7,38,T2,1,1,0,1,1,0,0,,f13443cd882d
+LaunchHopByF3510,093D:43A,34,T2,1,1,0,1,1,0,0,,f556403f0fd9
+CountdownNextStepB,093D:45E,9,T2,1,1,1,1,1,0,0,,9e7119272a73
+NextPhaseAtRandom,093D:4AB,35,T2,1,1,0,1,1,0,0,,7219ddf8592d
+AnimateThenNextStepB,093D:579,23,T2,1,1,1,1,1,0,0,,4707f2fd9a4d
+CountdownStopThenState3,093D:5C3,17,T2,1,1,1,1,1,0,0,,f22f6ec8f769
+CountdownThenFallOrBecomeType9B,093D:78C,20,T2,1,1,1,1,1,0,0,,4fac934a3eee
+SetHitboxFromFrameFive,09EA:60E,34,T2,1,1,0,1,1,0,0,,50549772ed0d
+LaunchOnTimer,09EB:578,35,T2,1,1,0,1,1,0,0,,3fb318541a1c
+AdvanceOnTimer,09EB:5ED,39,T2,1,1,0,1,1,0,0,,754d461b7f92
+CountdownNextStateC,09EC:011,9,T2,1,1,1,1,1,0,0,,177a511c4600
+SelectBlockTablesG,0A96:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,ddd7f1139a2c
+SelectBlockTablesH,0BF6:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,3f47716f3f05
+EnterState4IfFlagged,0BFB:3DC,13,T2,1,1,1,0,1,0,0,,13b215161fb8
+EnterNextStateWhenPlayerNear,0BFB:3E9,22,T2,1,1,1,0,1,0,0,,a4e0953c8ac7
+ScrollNotAtRightEnd,0BFC:141,30,T2,1,1,1,0,1,0,0,,3ab49cb3c409
+SwingOnCosine,0BFC:1C6,48,T2,1,1,1,1,1,0,0,,ec0966b079e6
+SetHitboxSizeFromFrame,0BFC:2AB,30,T2,1,1,0,1,1,0,0,,bb69e088d65d
+AnimateThenFrameRecord,0BFC:330,27,T2,1,1,1,1,1,0,0,,e30382673495
+ChangeToType9C,0BFC:3B3,9,T2,1,1,1,1,1,0,0,,dbbb1447f71d
+StartThenAnimate,0BFF:1A3,25,T2,1,1,1,1,1,0,0,,9efb1c683e8c
+EnterStateFiveOnPlayerState9,0CAB:240,32,T2,1,1,1,1,1,0,0,,f8787bbe6422
+SetHitboxFromFrame,0CAB:260,50,T2,1,1,0,1,1,0,0,,8ba8c62c898a
+TurnAngleBack,0CAB:3B9,39,T2,1,1,1,1,1,0,0,,0db13d638ef6
+CountdownNextStateD,0CAC:6FA,9,T2,1,1,1,1,1,0,0,,3f954abcfc0e
+SelectBlockTablesI,0D56:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,c33bef76a273
+StartFacingPlayerThenCheck,0D5B:12B,39,T2,1,1,1,0,1,0,0,,85fbbef0f276
+AnimateThenCountToState3,0D5B:152,41,T2,1,1,0,0,1,0,0,,b7aaa80d23e2
+PickPhaseAtRandomA,0D5B:1CE,21,T2,1,1,1,1,1,0,0,,f59308816701
+PickPhaseAtRandomB,0D5B:1E3,29,T2,1,1,1,1,1,0,0,,157488b52ef8
+SetPhase2,0D5B:200,6,T2,1,1,1,1,1,0,0,,48068cbe4d7a
+SetPhase3,0D5B:206,6,T2,1,1,1,1,1,0,0,,875de0aba8cd
+SetPhase4,0D5B:20C,6,T2,1,1,1,1,1,0,0,,ffdc23d4cc50
+SetSpeedFromPhaseTable,0D5B:212,45,T2,1,1,0,1,1,0,0,,420e337b7063
+EnterState6IfFlaggedB,0D5E:14F,13,T2,1,1,1,0,1,0,0,,48abbf8bd7af
+AdvanceState,0D5E:171,4,T2,1,1,1,1,1,0,0,,153f15de9dc6
+EnterState3WithTallHitbox,0D5E:6A6,30,T2,1,1,1,1,1,0,0,,44c3917196cd
+SetHitboxFromFrameRowsB,0D5E:6EE,36,T2,1,1,0,1,1,0,0,,fdf937efa211
+SelectBlockTablesJ,0EB6:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,5aa5bd1270ab
+SelectBlockTablesK,1016:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,6cbc99229a4e
+ClearScrollSpeedsB,10C5:3F7,12,T2,1,1,1,1,1,0,0,,5be21307fb51
+ScreenMapOfEntryB,10C6:26A,26,T2,1,1,1,1,1,0,0,,f00c84af6903
+AdvanceScrollXB,10C6:284,51,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,d9b8d9778e67
+AdvanceScrollYB,10C6:2B9,51,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,c7c37919279e
+ScrollXPlusOffsetB,10C6:2EC,34,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,cffdd0e8bdb7
+SelectBlockTablesL,10C6:39F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,d9160612e8d2
+ScrollYPlusOffsetB,10C6:422,34,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,f7f756fa43ac
+SelectBlockTablesM,1176:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,178661338f7b
+StepFramesFacingPlayerD,117B:5F5,21,T2,1,1,0,1,1,0,0,,3c38abfcf4e8
+PickSpeedAndTurnFromTable,117B:6B6,44,T2,1,1,0,0,1,0,0,,af8d9fcc49ab
+WaitThenState2C,117C:09D,30,T2,1,1,1,1,1,0,0,,5e08c060fb9c
+BecomeType9CWhenAnimationEndsB,117C:0BB,16,T2,1,1,1,1,1,0,0,,514a90c527a7
+CountdownThenState4B,117C:0EA,11,T2,1,1,1,1,1,0,0,,0dacbcf3efee
+LoadRecordStartAngle40B,117C:0F5,12,T2,1,1,1,1,1,0,0,,d7d4744c04e9
+CountdownNextStateE,117C:101,9,T2,1,1,1,1,1,0,0,,1eed2db3ce77
+ChangeToType9BB,117C:154,9,T2,1,1,1,1,1,0,0,,6f821c9f8d40
+SixteenBitTimerToState8,117C:1C7,35,T2,1,1,1,1,1,0,0,,47c372aecd96
+FrameOneBWhenFallingElseAnimate,117C:3B1,22,T2,1,1,1,1,1,0,0,,45434d446a66
+NoOpStateA,117C:46E,1,T2,1,1,1,1,1,0,0,,203a75424e0e
+SetXSpeedFromFacing,117C:4ED,18,T2,1,1,0,1,1,0,0,,025317b22003
+FaceThePlayerInSomeStatesB,117C:684,17,T2,1,1,1,1,1,0,0,,31ad0685578e
+EnterState6WhenHitHard,117C:69D,28,T2,1,1,1,0,1,0,0,,038a585bd787
+EnterState7IfYHighOrFlagged,117C:6B9,18,T2,1,1,1,0,1,0,0,,647b5ded2cb5
+NoOpStateB,117C:7C5,1,T2,1,1,1,1,1,0,0,,a21bfc7c0004
+LaunchHopByFacing,117C:7FC,34,T2,1,1,0,1,1,0,0,,f9c0e1328f52
+CountdownNextStepC,117D:020,9,T2,1,1,1,1,1,0,0,,c53d52dbf697
+CountdownStopThenState2,117D:041,17,T2,1,1,1,1,1,0,0,,511f025d734b
+AnimateAlongListC3C2,117D:3B6,12,T2,1,1,1,1,1,0,0,,d77ef11ae08c
+SwingOnCosineB,117D:41F,37,T2,1,1,1,1,1,0,0,,9f0e73ddb113
+ClearScrollSpeedsC,12D5:3F0,12,T2,1,1,1,1,1,0,0,,f16ceab88e2d
+ScreenMapOfEntryC,12D6:263,26,T2,1,1,1,1,0,0,,,46f70e28ef03
+AdvanceScrollXC,12D6:27D,51,T2,0,1,0,1,1,0,0,Alu; adc8/sbc8,ca9e2b6b62f7
+ScrollXPlusOffsetC,12D6:2E5,34,T2,0,1,0,0,1,0,0,Alu; adc8/sbc8,066570317c6b
+SelectBlockTablesN,12D6:398,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,e194aadac9e0
+SelectBlockTablesO,1616:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,e832b6b7332d
+SelectBlockTablesP,18D6:00F,46,T2,0,1,1,1,1,0,0,Alu; adc8/sbc8,b1db6faeb8fd

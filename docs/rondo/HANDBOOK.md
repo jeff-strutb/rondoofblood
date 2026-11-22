@@ -160,6 +160,46 @@ it. New findings go here when they are made.
   wrapper. Register-shaped C is a stepping stone, never counted as
   decompiled.
 
+## What the gates do not prove (epoch 2, from 2f0b1e2)
+
+The checker's own list, kept so nobody reads a pass as more than it is.
+`tools/rondo/pcebox/REPORT_FORMAT.md` has the fields each is counted in.
+
+- **Judged on a prefix only:** a call still open when the script ends, or
+  whose log filled (16.7 M events). Nothing after that point is compared;
+  it is counted under `prefix`. A routine that never returns (the kernel's
+  start, an idle spin) is judged only this way, and cannot be a unit call.
+- **Never judged:** a call left by a longer route than RTS or RTI (a
+  frame dropped through TXS) is counted `left` and is UNVERIFIED:
+  LateFrame today. A routine that drops its return address with two pulls
+  is judged.
+- **Dummy reads.** The core makes data reads the program does not ask for
+  in some instruction forms. Only the forms the proven routines use have
+  been shown to match; a form no proven routine uses could show an extra
+  read that is the core's, not the C's.
+- **Timing is not the standard.** The hybrid charges the original's clocks
+  at each hardware access and at a call's end, and eight cycles for an
+  interrupt's entry. A handler entered at another clock speed than the
+  code it interrupted is untested.
+- **No planted control** for three fixes: an interrupt landing between a
+  JSR and its callee's first instruction; a routine called from another's
+  C that tail-jumps into original code; more than 256 interrupts passed in
+  one placement.
+- **Backup memory** ($F7) is hardware to A5 and the record, and read live
+  by the hybrid: a byte a script pokes there must be poked in every run,
+  which `poke F7:OFFSET VALUE` does. Writes to ROM banks are not logged.
+- **A diagnostic run is never a verdict.** Any of the `RONDO_` diagnostic
+  switches gives verdict -4 and no stamp.
+- **An identical script** needs every frame the record made compared, no
+  access defect, no call parked beyond the record's own open calls, no
+  call of the record unreached. Otherwise the verdict is -2 to -5.
+- **Under load:** six lockstep pairs queued together all finished; six
+  truly at once on an idle machine is not shown.
+- A lost poke once made A5 change the game it was judging (a call judged
+  as a prefix rewound RAM and replayed it without the poked byte). A poke
+  is now an event of its own. Compare A5's RAM with the record's at a late
+  frame whenever the judge's rewind changes.
+
 - Routines are named by disc location, `@routine SSSS:OOO`, with
   `@run BB:AAAA` for where they execute: overlays reuse run addresses, a
   disc location is unique. The pre-commit hook enforces both.

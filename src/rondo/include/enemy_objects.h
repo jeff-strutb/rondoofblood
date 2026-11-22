@@ -191,6 +191,62 @@ static inline void abi_sound_end(SoundEnd r)
     abi_ended(r.end);
 }
 
+/* NextRandom: A the byte, N and Z from it, C and V from its last add. */
+static inline Ended ended_of_random(RandomResult r)
+{
+    return ended_with_overflow(ended_with_carry(ended_load(r.value), r.carry), r.overflow);
+}
+
+/* SideOfPlayer: A the side bits, N and Z from them, C from the last compare when one ran. */
+static inline Ended ended_of_side(SideResult r)
+{
+    Ended e = ended_load(r.sides);
+
+    return r.carry_set ? ended_with_carry(e, r.carry) : e;
+}
+
+/* DistanceXToPlayer and DistanceYToPlayer: A the distance; C and V from the subtract when near. */
+static inline Ended ended_of_distance(PlayerDistance d)
+{
+    Ended e = ended_load(d.distance);
+
+    if (!d.far) {
+        e = ended_with_carry(e, d.object_further);
+        e = ended_with_overflow(e, sub_overflow(d.mine, d.player, (uint8_t)(d.mine - d.player)));
+    }
+    return e;
+}
+
+/* A routine whose exit keeps what NextRandom left in C and V; the wrapper shows that first. */
+typedef struct {
+    Ended end;
+    bool random_used;
+    RandomResult random;
+} RandomEnd;
+
+static inline void abi_random_end(RandomEnd r)
+{
+    if (r.random_used) {
+        random_exit_shim(r.random);
+    }
+    abi_ended(r.end);
+}
+
+/* The same for SideOfPlayer's carry. */
+typedef struct {
+    Ended end;
+    bool side_used;
+    SideResult side;
+} SideEnd;
+
+static inline void abi_side_end(SideEnd r)
+{
+    if (r.side_used) {
+        side_of_player_exit_shim(r.side);
+    }
+    abi_ended(r.end);
+}
+
 /* StepObjectFrames: A $FF and C 1 when the frame changed, A 0 and C 0 when the list ended, A $FF and C 0 when held. */
 static inline Ended ended_of_frame_step(FrameStep step, bool y_changed, uint8_t y)
 {
@@ -340,6 +396,17 @@ Ended AnimateThenState1(uint8_t slot);
 Ended AnimateThenNextStep(uint8_t slot);
 Ended FollowParentYAndLeave(uint8_t slot);
 Ended AnimateThenNextStepB(uint8_t slot);
+Ended CountdownThenFallOrBecomeType9B(uint8_t slot);
+RandomEnd PickTimersAtRandom(uint8_t slot);
+RandomEnd PickAngleAtRandom(uint8_t slot);
+Ended AnimateMoveAndSag(uint8_t slot);
+FrameStepEnd StepFramesFacingPlayerC(uint8_t slot, uint8_t index);
+SideEnd FaceThePlayerInSomeStates(uint8_t slot);
+Ended NextPhaseAtRandom(uint8_t slot);
+Ended ShowOnScreenAndWrapX(uint8_t slot);
+Ended StartChargeWhenPlayerNear(uint8_t slot);
+Ended WaitThenState2B(uint8_t slot);
+Ended ChooseNextMoveWhenFacingAway(uint8_t slot);
 /* object/enemies_stage07_temp.c */
 Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);

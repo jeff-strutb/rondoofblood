@@ -31,6 +31,28 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0938:7F2 SelectRasterStage1
 ; @run 6F:BFF2
 ; WHAT IT DOES: Sets the stage value the raster effect tests to 1.
@@ -353,4 +375,325 @@ AnimateThenNextStepB:
     stz a:OBJ_3460,x
     inc a:OBJ_2800,x
 AnimateThenNextStepB_at0:
+    rts
+
+; @routine 093D:78C CountdownThenFallOrBecomeType9B
+; @run 71:C78C
+; WHAT IT DOES: Counts the object's f3510 down; while it runs, pulls the object down with gravity
+; and moves it by its velocity; at zero it turns into an object of type $9B in state 0.
+; HOW: ApplyGravityUnlimited, then ApplyVelocity as a tail jump.
+; WAITS: no.
+; Entry: X object. Exit: as ApplyVelocity while counting; at zero A $9B, N set, Z clear (C, V
+; kept); X and Y kept. Clobbers zTemp10.
+CountdownThenFallOrBecomeType9B:
+    dec a:OBJ_3510,x
+    bne CountdownThenFallOrBecomeType9B_at0
+    lda #$9B
+    sta a:OBJ_2750,x
+    stz a:OBJ_27A8,x
+    rts
+CountdownThenFallOrBecomeType9B_at0:
+    jsr VecApplyGravityUnlimited
+    jmp VecApplyVelocity
+
+; @routine 093C:1A5 PickTimersAtRandom
+; @run 70:B9A5
+; WHAT IT DOES: Gives the object a pair of timers (f3510 and life_timer) from a table of four
+; pairs, the pair picked by a random number.
+; HOW: NextRandom, two bits of it doubled into an index into the table at overlay address $B9B9.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the second timer, N and Z from it; C 0 (the doubling); V as
+; NextRandom's last add left it; Y the table offset; X kept.
+PickTimersAtRandom:
+    jsr VecNextRandom
+    and #$03
+    asl a
+    tay
+    lda a:$B9B9,y
+    sta a:OBJ_3510,x
+    lda a:$B9BA,y
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 093C:1C1 PickAngleAtRandom
+; @run 70:B9C1
+; WHAT IT DOES: Gives the object an angle (f35c0 and f3568) from a table of four pairs, the pair
+; picked by a random number.
+; HOW: As PickTimersAtRandom, with the table at overlay address $B9D5.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as PickTimersAtRandom.
+PickAngleAtRandom:
+    jsr VecNextRandom
+    and #$03
+    asl a
+    tay
+    lda a:$B9D5,y
+    sta a:OBJ_35C0,x
+    lda a:$B9D6,y
+    sta a:OBJ_3568,x
+    rts
+
+; @routine 093C:4A3 AnimateMoveAndSag
+; @run 70:BCA3
+; WHAT IT DOES: Steps the object's animation along the list its life_timer picks (a table of
+; pointers at overlay address $BCD1), moves it by its velocity, and while life_timer is 1 adds
+; $18/256 to its Y speed.
+; HOW: StepObjectFrames, ApplyVelocity, then a 16-bit add through the Y speed bytes.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C from the compare with 1, or from the last add
+; (the Y speed's high byte); V from ApplyVelocity or that add; Y the list's offset unless the
+; animation step changed it; X kept. Clobbers zTemp10-11.
+AnimateMoveAndSag:
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$BCD1,y
+    sta z:zTemp10
+    lda a:$BCD2,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jsr VecApplyVelocity
+    lda a:OBJ_34B8,x
+    cmp #$01
+    bne AnimateMoveAndSag_at0
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$18
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+AnimateMoveAndSag_at0:
+    rts
+
+; @routine 093C:6E9 StepFramesFacingPlayerC
+; @run 70:BEE9
+; WHAT IT DOES: Turns the object to face the player and steps its animation along the list whose
+; pointer is the pair of bytes at overlay address $BEFE plus Y.
+; HOW: SideOfPlayer, the pointer into zTemp10-11, then StepObjectFrames as a tail jump.
+; WAITS: no.
+; Entry: X object, Y the list's offset, D clear. Exit: as StepObjectFrames. Clobbers zTemp00,
+; zTemp10-11.
+StepFramesFacingPlayerC:
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    lda a:$BEFE,y
+    sta z:zTemp10
+    lda a:$BEFF,y
+    sta z:zTemp11
+    jmp VecStepObjectFrames
+
+; @routine 093D:282 FaceThePlayerInSomeStates
+; @run 71:C282
+; WHAT IT DOES: Turns the object to face the player when a table at overlay address $C293 says its
+; state is one that does.
+; HOW: Reads the table by the state byte; non-zero runs SideOfPlayer into the facing byte.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the table byte or the side bit; N, Z from it; C from
+; SideOfPlayer's last compare when it ran; Y the state; X kept. Clobbers zTemp00.
+FaceThePlayerInSomeStates:
+    ldy a:OBJ_27A8,x
+    lda a:$C293,y
+    beq FaceThePlayerInSomeStates_at0
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+FaceThePlayerInSomeStates_at0:
+    rts
+
+; @routine 093D:4AB NextPhaseAtRandom
+; @run 71:C4AB
+; WHAT IT DOES: Steps the object to its next phase: counts f3568 up, sets life_timer from a four
+; byte table by it, turns f3510 to the side the player is on, and picks a step byte of 1 or 2 at
+; random.
+; HOW: A table at overlay address $C4CE, SideOfPlayer, NextRandom.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the new step byte, N and Z from it, C and V clear; Y the table
+; offset; X kept. Clobbers zTemp00.
+NextPhaseAtRandom:
+    inc a:OBJ_3568,x
+    lda a:OBJ_3568,x
+    and #$03
+    tay
+    lda a:$C4CE,y
+    sta a:OBJ_34B8,x
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_3510,x
+    jsr VecNextRandom
+    and #$01
+    clc
+    adc #$01
+    sta a:OBJ_2800,x
+    rts
+
+; @routine 093B:4C3 ShowOnScreenAndWrapX
+; @run 70:B4C3
+; WHAT IT DOES: The first time the object runs (state 0) starts it from its record. After that
+; it sets frame 2, hides it (frame 0) when its screen X is past the first seven screens and
+; the low sum is negative, and, while the scroll moves, wraps the object's X by $80 across the
+; page boundary at either end of the level (X high $FF with low under $E0 to high 1, or high 1
+; with low from $20 up to high $FF), by the scroll's direction.
+; HOW: Adds the scroll's X low and screen to the object's X; tests ScrollSpeedX's sign.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as LoadObjectRecord in state 0; otherwise A, N, Z, C and V
+; from the last compare, load or add; X, Y kept. Clobbers zTemp00 (in states but 0).
+ShowOnScreenAndWrapX:
+    lda a:OBJ_27A8,x
+    bne ShowOnScreenAndWrapX_at0
+    jmp VecLoadObjectRecord
+ShowOnScreenAndWrapX_at0:
+    lda #$02
+    sta a:OBJ_2A68,x
+    lda a:OBJ_X_LO,x
+    clc
+    adc a:ScrollXLo
+    sta z:zTemp00
+    lda a:OBJ_X_HI,x
+    adc a:ScrollXHiScreen
+    cmp #$07
+    bcc ShowOnScreenAndWrapX_at1
+    lda z:zTemp00
+    bpl ShowOnScreenAndWrapX_at1
+    stz a:OBJ_2A68,x
+ShowOnScreenAndWrapX_at1:
+    lda a:ScrollSpeedX
+    beq ShowOnScreenAndWrapX_at2
+    bmi ShowOnScreenAndWrapX_at3
+    lda a:OBJ_X_HI,x
+    cmp #$FF
+    bne ShowOnScreenAndWrapX_at2
+    lda a:OBJ_X_LO,x
+    cmp #$E0
+    bcs ShowOnScreenAndWrapX_at2
+    clc
+    adc #$80
+    sta a:OBJ_X_LO,x
+    lda #$01
+    sta a:OBJ_X_HI,x
+ShowOnScreenAndWrapX_at2:
+    rts
+ShowOnScreenAndWrapX_at3:
+    lda a:OBJ_X_HI,x
+    cmp #$01
+    bne ShowOnScreenAndWrapX_at2
+    lda a:OBJ_X_LO,x
+    cmp #$20
+    bcc ShowOnScreenAndWrapX_at2
+    clc
+    adc #$80
+    sta a:OBJ_X_LO,x
+    lda #$FF
+    sta a:OBJ_X_HI,x
+    rts
+
+; @routine 093C:28D ChooseNextMoveWhenFacingAway
+; @run 70:BA8D
+; WHAT IT DOES: When the side the player is on matches the object's facing (compared with bit 0
+; of f3618), picks a phase and timer at random from two tables and advances the step; otherwise it
+; enters state 1.
+; HOW: SideOfPlayer; NextRandom twice; tables at overlay addresses $BAD5, $BAE5 and $BAF1.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the last byte loaded, N and Z from the step byte's new
+; value (when picking); C and V from the second add; Y the last table index; X kept. Clobbers
+; zTemp00, zTemp08.
+ChooseNextMoveWhenFacingAway:
+    lda a:OBJ_2AC0,x
+    eor a:OBJ_3618,x
+    and #$01
+    sta z:zTemp08
+    jsr VecSideOfPlayer
+    and #$01
+    cmp z:zTemp08
+    beq ChooseNextMoveWhenFacingAway_at0
+    lda #$01
+    sta a:OBJ_27A8,x
+    rts
+ChooseNextMoveWhenFacingAway_at0:
+    jsr VecNextRandom
+    and #$0F
+    tay
+    lda a:$BAD5,y
+    sta a:OBJ_3670,x
+    asl a
+    asl a
+    sta z:zTemp00
+    jsr VecNextRandom
+    and #$03
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$BAE5,y
+    sta a:OBJ_3720,x
+    lda a:OBJ_3618,x
+    and #$01
+    tay
+    lda a:$BAF1,y
+    sta a:OBJ_36C8,x
+    inc a:OBJ_2800,x
+    rts
+
+; @routine 093C:6AB StartChargeWhenPlayerNear
+; @run 70:BEAB
+; WHAT IT DOES: Animates the object facing the player; while the object is on the first screen
+; and under $78 pixels from the player along X, it stops its animation, keeps only bit 7 of its
+; flags, sets its Y speed's high byte to 3, picks a timer ($44 plus 7 random bits) in f36c8 and
+; enters state 4 with step 2.
+; HOW: StepFramesFacingPlayerC (Y 0), the high bytes ORed, DistanceXToPlayer, NextRandom.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A 2 and N, Z clear, C 0, V from the add of the timer when it
+; started; otherwise as the last compare, OR or animation step left them; Y 0 or as the step
+; left it; X kept.
+StartChargeWhenPlayerNear:
+    cly
+    jsr StepFramesFacingPlayerC
+    lda a:OBJ_X_HI,x
+    ora a:OBJ_Y_HI,x
+    bne StartChargeWhenPlayerNear_at0
+    jsr VecDistanceXToPlayer
+    cmp #$78
+    bcs StartChargeWhenPlayerNear_at0
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda a:OBJ_FLAGS_2F38,x
+    and #$80
+    sta a:OBJ_FLAGS_2F38,x
+    lda #$03
+    sta a:OBJ_VY_HI,x
+    jsr VecNextRandom
+    and #$7F
+    clc
+    adc #$44
+    sta a:OBJ_36C8,x
+    lda #$04
+    sta a:OBJ_27A8,x
+    lda #$02
+    sta a:OBJ_2800,x
+StartChargeWhenPlayerNear_at0:
+    rts
+
+; @routine 093D:191 WaitThenState2B
+; @run 71:C191
+; WHAT IT DOES: A two-step wait like WaitThenState2: the first pass sets f34b8 to $1C and the step
+; to 1; later passes animate the object facing the player (list index 2) and count the timer down;
+; at zero the object enters state 2.
+; HOW: StepFramesFacingPlayerC with Y 2, then a decrement.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as WaitThenState2.
+WaitThenState2B:
+    lda a:OBJ_2800,x
+    bne WaitThenState2B_at0
+    lda #$1C
+    sta a:OBJ_34B8,x
+    inc a:OBJ_2800,x
+    rts
+WaitThenState2B_at0:
+    ldy #$02
+    jsr StepFramesFacingPlayerC
+    dec a:OBJ_34B8,x
+    bne WaitThenState2B_at1
+    lda #$02
+    sta a:OBJ_27A8,x
+WaitThenState2B_at1:
     rts

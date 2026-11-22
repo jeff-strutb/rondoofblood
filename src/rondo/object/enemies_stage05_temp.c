@@ -475,3 +475,517 @@ void abi_AnimateThenNextStepB(void)
 {
     abi_ended(AnimateThenNextStepB(cpu.x));
 }
+
+/*
+ * @routine 093D:78C CountdownThenFallOrBecomeType9B
+ * @run 71:C78C
+ * WHAT IT DOES: Counts the object's f3510 down; while it runs, pulls the object down with gravity
+ * and moves it by its velocity; at zero it turns into an object of type $9B in state 0.
+ * HOW: ApplyGravityUnlimited, then ApplyVelocity as a tail jump.
+ * WAITS: no.
+ * Entry: X object. Exit: as ApplyVelocity while counting; at zero A $9B, N set, Z clear (C, V
+ * kept); X and Y kept. Clobbers zTemp10.
+ */
+Ended CountdownThenFallOrBecomeType9B(uint8_t slot)
+{
+    uint8_t left = RD8(OBJ->f3510[slot]);
+    AxisMove move;
+
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->f3510[slot], left);
+    if (left == 0) {
+        return become_type(slot, 0x9B);
+    }
+    jsr_push(0xC79D);
+    ApplyGravityUnlimited(slot);
+    jsr_pop();
+    move = ApplyVelocity(slot);
+    return ended_of_axis_move(move);
+}
+
+void abi_CountdownThenFallOrBecomeType9B(void)
+{
+    abi_ended(CountdownThenFallOrBecomeType9B(cpu.x));
+}
+
+/*
+ * @routine 093C:1A5 PickTimersAtRandom
+ * @run 70:B9A5
+ * WHAT IT DOES: Gives the object a pair of timers (f3510 and life_timer) from a table of four
+ * pairs, the pair picked by a random number.
+ * HOW: NextRandom, two bits of it doubled into an index into the table at overlay address $B9B9.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the second timer, N and Z from it; C 0 (the doubling); V as
+ * NextRandom's last add left it; Y the table offset; X kept.
+ */
+RandomEnd PickTimersAtRandom(uint8_t slot)
+{
+    enum { TABLE = 0xB9B9 };
+    RandomEnd result = { ended_kept(), true, { 0, false, false } };
+    uint8_t bits, y, value;
+
+    jsr_push(0xB9A8);
+    result.random = NextRandom();
+    jsr_pop();
+    bits = (uint8_t)(result.random.value & 3);
+    y = (uint8_t)(bits << 1);
+    value = rd8((uint16_t)(TABLE + y));
+    WR8(OBJ->f3510[slot], value);
+    value = rd8((uint16_t)(TABLE + 1 + y));
+    WR8(OBJ->life_timer[slot], value);
+    result.end = ended_with_y(ended_with_carry(ended_load(value), false), y);
+    return result;
+}
+
+void abi_PickTimersAtRandom(void)
+{
+    abi_random_end(PickTimersAtRandom(cpu.x));
+}
+
+/*
+ * @routine 093C:1C1 PickAngleAtRandom
+ * @run 70:B9C1
+ * WHAT IT DOES: Gives the object an angle (f35c0 and f3568) from a table of four pairs, the pair
+ * picked by a random number.
+ * HOW: As PickTimersAtRandom, with the table at overlay address $B9D5.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as PickTimersAtRandom.
+ */
+RandomEnd PickAngleAtRandom(uint8_t slot)
+{
+    enum { TABLE = 0xB9D5 };
+    RandomEnd result = { ended_kept(), true, { 0, false, false } };
+    uint8_t bits, y, value;
+
+    jsr_push(0xB9C4);
+    result.random = NextRandom();
+    jsr_pop();
+    bits = (uint8_t)(result.random.value & 3);
+    y = (uint8_t)(bits << 1);
+    value = rd8((uint16_t)(TABLE + y));
+    WR8(OBJ->f35c0[slot], value);
+    value = rd8((uint16_t)(TABLE + 1 + y));
+    WR8(OBJ->f3568[slot], value);
+    result.end = ended_with_y(ended_with_carry(ended_load(value), false), y);
+    return result;
+}
+
+void abi_PickAngleAtRandom(void)
+{
+    abi_random_end(PickAngleAtRandom(cpu.x));
+}
+
+/*
+ * @routine 093C:4A3 AnimateMoveAndSag
+ * @run 70:BCA3
+ * WHAT IT DOES: Steps the object's animation along the list its life_timer picks (a table of
+ * pointers at overlay address $BCD1), moves it by its velocity, and while life_timer is 1 adds
+ * $18/256 to its Y speed.
+ * HOW: StepObjectFrames, ApplyVelocity, then a 16-bit add through the Y speed bytes.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C from the compare with 1, or from the last add
+ * (the Y speed's high byte); V from ApplyVelocity or that add; Y the list's offset unless the
+ * animation step changed it; X kept. Clobbers zTemp10-11.
+ */
+Ended AnimateMoveAndSag(uint8_t slot)
+{
+    enum { LISTS = 0xBCD1 };
+    uint8_t timer = RD8(OBJ->life_timer[slot]);
+    uint8_t y = (uint8_t)(timer << 1);
+    uint8_t exit_y = y, value;
+    FrameStep step;
+    AxisMove move;
+    Ended e;
+    Sum sum;
+
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + y)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + y)));
+    jsr_push(0xBCB5);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), y), ended_of_frame_step(step, step != FRAME_HELD, exit_y));
+    jsr_push(0xBCB8);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    timer = RD8(OBJ->life_timer[slot]);
+    e = ended_then(e, ended_compare(timer, 1));
+    if (timer != 1) {
+        return e;
+    }
+    value = RD8(OBJ->vy_lo[slot]);
+    sum = add_bytes(value, 0x18, false);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    value = RD8(OBJ->vy_hi[slot]);
+    sum = add_bytes(value, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    return ended_then(e, ended_with_overflow(ended_with_carry(ended_load(sum.value), sum.carry), sum.overflow));
+}
+
+void abi_AnimateMoveAndSag(void)
+{
+    abi_ended(AnimateMoveAndSag(cpu.x));
+}
+
+/*
+ * @routine 093C:6E9 StepFramesFacingPlayerC
+ * @run 70:BEE9
+ * WHAT IT DOES: Turns the object to face the player and steps its animation along the list whose
+ * pointer is the pair of bytes at overlay address $BEFE plus Y.
+ * HOW: SideOfPlayer, the pointer into zTemp10-11, then StepObjectFrames as a tail jump.
+ * WAITS: no.
+ * Entry: X object, Y the list's offset, D clear. Exit: as StepObjectFrames. Clobbers zTemp00,
+ * zTemp10-11.
+ */
+FrameStepEnd StepFramesFacingPlayerC(uint8_t slot, uint8_t index)
+{
+    enum { LISTS = 0xBEFE };
+    uint8_t sides, exit_y = index;
+    FrameStepEnd result;
+
+    jsr_push(0xBEEC);
+    sides = SideOfPlayer(slot).sides;
+    jsr_pop();
+    WR8(OBJ->facing_left[slot], (uint8_t)(sides & 1));
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
+    result.step = StepObjectFrames(slot, &exit_y);
+    result.end = ended_of_frame_step(result.step, result.step != FRAME_HELD, exit_y);
+    return result;
+}
+
+void abi_StepFramesFacingPlayerC(void)
+{
+    abi_ended(StepFramesFacingPlayerC(cpu.x, cpu.y).end);
+}
+
+/*
+ * @routine 093D:282 FaceThePlayerInSomeStates
+ * @run 71:C282
+ * WHAT IT DOES: Turns the object to face the player when a table at overlay address $C293 says its
+ * state is one that does.
+ * HOW: Reads the table by the state byte; non-zero runs SideOfPlayer into the facing byte.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the table byte or the side bit; N, Z from it; C from
+ * SideOfPlayer's last compare when it ran; Y the state; X kept. Clobbers zTemp00.
+ */
+SideEnd FaceThePlayerInSomeStates(uint8_t slot)
+{
+    enum { TABLE = 0xC293 };
+    SideEnd result = { ended_kept(), false, { 0, false, false } };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t entry = rd8((uint16_t)(TABLE + state));
+    uint8_t bit;
+
+    result.end = ended_with_y(ended_load(entry), state);
+    if (entry == 0) {
+        return result;
+    }
+    jsr_push(0xC28D);
+    result.side = SideOfPlayer(slot);
+    jsr_pop();
+    result.side_used = true;
+    bit = (uint8_t)(result.side.sides & 1);
+    WR8(OBJ->facing_left[slot], bit);
+    result.end = ended_with_y(ended_load(bit), state);
+    return result;
+}
+
+void abi_FaceThePlayerInSomeStates(void)
+{
+    abi_side_end(FaceThePlayerInSomeStates(cpu.x));
+}
+
+/*
+ * @routine 093D:4AB NextPhaseAtRandom
+ * @run 71:C4AB
+ * WHAT IT DOES: Steps the object to its next phase: counts f3568 up, sets life_timer from a four
+ * byte table by it, turns f3510 to the side the player is on, and picks a step byte of 1 or 2 at
+ * random.
+ * HOW: A table at overlay address $C4CE, SideOfPlayer, NextRandom.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the new step byte, N and Z from it, C and V clear; Y the table
+ * offset; X kept. Clobbers zTemp00.
+ */
+Ended NextPhaseAtRandom(uint8_t slot)
+{
+    enum { TABLE = 0xC4CE };
+    uint8_t phase, y, side, bits, step;
+    RandomResult random;
+
+    INC8(OBJ->f3568[slot]);
+    phase = RD8(OBJ->f3568[slot]);
+    y = (uint8_t)(phase & 3);
+    WR8(OBJ->life_timer[slot], rd8((uint16_t)(TABLE + y)));
+    jsr_push(0xC4BD);
+    side = SideOfPlayer(slot).sides;
+    jsr_pop();
+    WR8(OBJ->f3510[slot], (uint8_t)(side & 1));
+    jsr_push(0xC4C5);
+    random = NextRandom();
+    jsr_pop();
+    bits = (uint8_t)(random.value & 1);
+    step = (uint8_t)(bits + 1);
+    WR8(OBJ->f2800[slot], step);
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(step), false), false), y);
+}
+
+void abi_NextPhaseAtRandom(void)
+{
+    abi_ended(NextPhaseAtRandom(cpu.x));
+}
+
+/*
+ * @routine 093B:4C3 ShowOnScreenAndWrapX
+ * @run 70:B4C3
+ * WHAT IT DOES: The first time the object runs (state 0) starts it from its record. After that
+ * it sets frame 2, hides it (frame 0) when its screen X is past the first seven screens and
+ * the low sum is negative, and, while the scroll moves, wraps the object's X by $80 across the
+ * page boundary at either end of the level (X high $FF with low under $E0 to high 1, or high 1
+ * with low from $20 up to high $FF), by the scroll's direction.
+ * HOW: Adds the scroll's X low and screen to the object's X; tests ScrollSpeedX's sign.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as LoadObjectRecord in state 0; otherwise A, N, Z, C and V
+ * from the last compare, load or add; X, Y kept. Clobbers zTemp00 (in states but 0).
+ */
+Ended ShowOnScreenAndWrapX(uint8_t slot)
+{
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t low, high, scroll_low, scroll_high, held, speed, nz, last;
+    bool carry;
+    Sum sum, sum2;
+    Ended e;
+
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return ended_of_record(last, nz, carry);
+    }
+    WR8(OBJ->frame[slot], 2);
+    low = RD8(OBJ->x_lo[slot]);
+    scroll_low = RD8(SCROLL->x_lo[0]);
+    sum = add_bytes(low, scroll_low, false);
+    WR8(ZP->temp00, sum.value);
+    high = RD8(OBJ->x_hi[slot]);
+    scroll_high = RD8(SCROLLE->x_hi_screen[0]);
+    sum2 = add_bytes(high, scroll_high, sum.carry);
+    e = ended_with_overflow(ended_compare(sum2.value, 7), sum2.overflow);
+    if (sum2.value >= 7) {
+        held = RD8(ZP->temp00);
+        e = ended_then(e, ended_load(held));
+        if ((held & 0x80) != 0) {
+            WR8(OBJ->frame[slot], 0);
+        }
+    }
+    speed = RD8(SCROLLE->speed_x[0]);
+    e = ended_then(e, ended_load(speed));
+    if (speed == 0) {
+        return e;
+    }
+    if ((speed & 0x80) == 0) {
+        high = RD8(OBJ->x_hi[slot]);
+        e = ended_then(e, ended_compare(high, 0xFF));
+        if (high != 0xFF) {
+            return e;
+        }
+        low = RD8(OBJ->x_lo[slot]);
+        e = ended_then(e, ended_compare(low, 0xE0));
+        if (low >= 0xE0) {
+            return e;
+        }
+        sum = add_bytes(low, 0x80, false);
+        WR8(OBJ->x_lo[slot], sum.value);
+        WR8(OBJ->x_hi[slot], 1);
+        return ended_then(e, ended_with_overflow(ended_with_carry(ended_load(1), sum.carry), sum.overflow));
+    }
+    high = RD8(OBJ->x_hi[slot]);
+    e = ended_then(e, ended_compare(high, 1));
+    if (high != 1) {
+        return e;
+    }
+    low = RD8(OBJ->x_lo[slot]);
+    e = ended_then(e, ended_compare(low, 0x20));
+    if (low < 0x20) {
+        return e;
+    }
+    sum = add_bytes(low, 0x80, false);
+    WR8(OBJ->x_lo[slot], sum.value);
+    WR8(OBJ->x_hi[slot], 0xFF);
+    return ended_then(e, ended_with_overflow(ended_with_carry(ended_load(0xFF), sum.carry), sum.overflow));
+}
+
+void abi_ShowOnScreenAndWrapX(void)
+{
+    abi_ended(ShowOnScreenAndWrapX(cpu.x));
+}
+
+/*
+ * @routine 093C:6AB StartChargeWhenPlayerNear
+ * @run 70:BEAB
+ * WHAT IT DOES: Animates the object facing the player; while the object is on the first screen
+ * and under $78 pixels from the player along X, it stops its animation, keeps only bit 7 of its
+ * flags, sets its Y speed's high byte to 3, picks a timer ($44 plus 7 random bits) in f36c8 and
+ * enters state 4 with step 2.
+ * HOW: StepFramesFacingPlayerC (Y 0), the high bytes ORed, DistanceXToPlayer, NextRandom.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A 2 and N, Z clear, C 0, V from the add of the timer when it
+ * started; otherwise as the last compare, OR or animation step left them; Y 0 or as the step
+ * left it; X kept.
+ */
+Ended StartChargeWhenPlayerNear(uint8_t slot)
+{
+    FrameStepEnd frames;
+    PlayerDistance distance;
+    RandomResult random;
+    uint8_t high, y_high, flags, timer;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xBEAF);
+    frames = StepFramesFacingPlayerC(slot, 0);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 0), frames.end);
+    high = RD8(OBJ->x_hi[slot]);
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = ended_then(e, ended_load((uint8_t)(high | y_high)));
+    if ((high | y_high) != 0) {
+        return e;
+    }
+    jsr_push(0xBEBA);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_distance(distance));
+    e = ended_then(e, ended_compare(distance.distance, 0x78));
+    if (distance.distance >= 0x78) {
+        return e;
+    }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    flags = RD8(OBJ->flags[slot]);
+    WR8(OBJ->flags[slot], (uint8_t)(flags & 0x80));
+    WR8(OBJ->vy_hi[slot], 3);
+    jsr_push(0xBED4);
+    random = NextRandom();
+    jsr_pop();
+    e = ended_then(e, ended_of_random(random));
+    timer = (uint8_t)(random.value & 0x7F);
+    sum = add_bytes(timer, 0x44, false);
+    WR8(OBJ->f36c8[slot], sum.value);
+    WR8(OBJ->state[slot], 4);
+    WR8(OBJ->f2800[slot], 2);
+    e = ended_then(e, ended_with_overflow(ended_with_carry(ended_load(sum.value), false), sum.overflow));
+    return ended_then(e, ended_load(2));
+}
+
+void abi_StartChargeWhenPlayerNear(void)
+{
+    abi_ended(StartChargeWhenPlayerNear(cpu.x));
+}
+
+/*
+ * @routine 093D:191 WaitThenState2B
+ * @run 71:C191
+ * WHAT IT DOES: A two-step wait like WaitThenState2: the first pass sets f34b8 to $1C and the step
+ * to 1; later passes animate the object facing the player (list index 2) and count the timer down;
+ * at zero the object enters state 2.
+ * HOW: StepFramesFacingPlayerC with Y 2, then a decrement.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as WaitThenState2.
+ */
+Ended WaitThenState2B(uint8_t slot)
+{
+    uint8_t step = RD8(OBJ->f2800[slot]);
+    uint8_t left;
+    FrameStepEnd frames;
+    Ended e;
+
+    if (step == 0) {
+        WR8(OBJ->life_timer[slot], 0x1C);
+        step = RD8(OBJ->f2800[slot]);
+        step = (uint8_t)(step + 1);
+        WR8(OBJ->f2800[slot], step);
+        return ended_with_a(ended_nz(step), 0x1C);
+    }
+    jsr_push(0xC1A4);
+    frames = StepFramesFacingPlayerC(slot, 2);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 2), frames.end);
+    left = RD8(OBJ->life_timer[slot]);
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->life_timer[slot], left);
+    if (left != 0) {
+        return ended_then(e, ended_nz(left));
+    }
+    WR8(OBJ->state[slot], 2);
+    return ended_then(e, ended_load(2));
+}
+
+void abi_WaitThenState2B(void)
+{
+    abi_ended(WaitThenState2B(cpu.x));
+}
+
+/*
+ * @routine 093C:28D ChooseNextMoveWhenFacingAway
+ * @run 70:BA8D
+ * WHAT IT DOES: When the side the player is on matches the object's facing (compared with bit 0
+ * of f3618), picks a phase and timer at random from two tables and advances the step; otherwise it
+ * enters state 1.
+ * HOW: SideOfPlayer; NextRandom twice; tables at overlay addresses $BAD5, $BAE5 and $BAF1.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the last byte loaded, N and Z from the step byte's new
+ * value (when picking); C and V from the second add; Y the last table index; X kept. Clobbers
+ * zTemp00, zTemp08.
+ */
+Ended ChooseNextMoveWhenFacingAway(uint8_t slot)
+{
+    enum { PHASES = 0xBAD5, TIMERS = 0xBAE5, PIECES = 0xBAF1 };
+    uint8_t facing = RD8(OBJ->facing_left[slot]);
+    uint8_t count = RD8(OBJ->f3618[slot]);
+    uint8_t mine = (uint8_t)((facing ^ count) & 1);
+    uint8_t side, theirs, y, phase, shifted, value, step;
+    SideResult sides;
+    RandomResult random;
+    Sum sum;
+    Ended e;
+
+    WR8(ZP->temp08, mine);
+    jsr_push(0xBA9A);
+    sides = SideOfPlayer(slot);
+    jsr_pop();
+    side = sides.sides;
+    theirs = (uint8_t)(side & 1);
+    e = ended_then(ended_of_side(sides), ended_load(theirs));
+    e = ended_then(e, ended_compare(theirs, RD8(ZP->temp08)));
+    if (theirs != mine) {
+        WR8(OBJ->state[slot], 1);
+        return ended_then(e, ended_load(1));
+    }
+    jsr_push(0xBAA9);
+    random = NextRandom();
+    jsr_pop();
+    y = (uint8_t)(random.value & 0x0F);
+    phase = rd8((uint16_t)(PHASES + y));
+    WR8(OBJ->f3670[slot], phase);
+    shifted = (uint8_t)(phase << 2);
+    WR8(ZP->temp00, shifted);
+    jsr_push(0xBAB9);
+    random = NextRandom();
+    jsr_pop();
+    value = RD8(ZP->temp00);
+    sum = add_bytes((uint8_t)(random.value & 3), value, false);
+    y = sum.value;
+    value = rd8((uint16_t)(TIMERS + y));
+    WR8(OBJ->f3720[slot], value);
+    count = RD8(OBJ->f3618[slot]);
+    y = (uint8_t)(count & 1);
+    value = rd8((uint16_t)(PIECES + y));
+    WR8(OBJ->f36c8[slot], value);
+    step = INC8(OBJ->f2800[slot]);
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(step), value),
+                                                             sum.carry), sum.overflow), y);
+}
+
+void abi_ChooseNextMoveWhenFacingAway(void)
+{
+    abi_ended(ChooseNextMoveWhenFacingAway(cpu.x));
+}

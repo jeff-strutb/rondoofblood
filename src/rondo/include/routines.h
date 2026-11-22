@@ -610,6 +610,14 @@ void ResetDisplayControl(void);
 /* NextRandom: the byte, and the carry and overflow of the last add. */
 typedef struct { uint8_t value; bool carry; bool overflow; } RandomResult;
 RandomResult NextRandom(void);
+/* math/trig.c: a multiply or a scale and what it leaves: A, N/Z source, C, and V when an add ran. */
+typedef struct { uint8_t a; uint8_t nz; bool carry; bool v_set; bool overflow; } ScaleResult;
+ScaleResult MultiplyBySineWord(void);
+ScaleResult ScaleBySine(uint8_t angle);
+ScaleResult ScaleByCosine(uint8_t angle);
+ScaleResult SetVelocityFromAngle(uint8_t angle, uint8_t object);
+void scale_exit_shim(ScaleResult result);
+
 /* object/spawn.c: the record start, the place copies, the animation step. */
 typedef enum { FRAME_HELD, FRAME_CHANGED, FRAME_LIST_ENDED } FrameStep;
 uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c);

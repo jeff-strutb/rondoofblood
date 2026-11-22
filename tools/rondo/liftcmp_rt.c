@@ -286,6 +286,13 @@ void call_original(uint16_t target)
     enter(target, 1);
 }
 
+/* A tail jump that says where it came from (the checker's entry test uses the origin; the comparison does not). */
+void call_original_at(uint16_t from, uint16_t addr)
+{
+    (void)from;
+    enter(addr, 1);
+}
+
 /* JSR: the return address less one is pushed, the routine runs, the frame is popped. */
 void call_orig(uint16_t ret, uint16_t target)
 {

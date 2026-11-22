@@ -2,3 +2,4 @@
 # that prove more (A5/A7 lockstep with interrupts inside C, access order, stack). Every record row
 # stores it; a row of another epoch counts for nothing.
 1 old A5 and A7: calls that took an interrupt or crossed a frame were not judged, no access order
+2 A5 and A7 rebuilt (check.c): every work RAM, hardware, stack, MPR and clock access judged in the original's order and number, per call (A5) and in lockstep (A7); interrupts dispatched inside the C where the original took them, frame ends inside calls, calls into original code, waits, return frames and the block move's own accesses; calls entered by branch, fall-through or RTS opened; a routine with any call not judged is not IDENTICAL; A7 identical only with every frame compared and nothing left over, a diagnostic run never

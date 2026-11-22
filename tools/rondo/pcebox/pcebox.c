@@ -83,6 +83,7 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
                             int has_p, uint8_t p);
 int check_tag_run(const char *name);
 void check_where(const char *text);
+int check_unit_active(void);
 void check_poke(uint32_t phys, uint8_t old, uint8_t value);
 int check_init(int which, const char *path, const char *user_path);
 void check_finish(void);
@@ -517,6 +518,17 @@ static int run_script(const char *script, int depth)
                 fclose(s);
                 return 2;
             }
+            /* The call runs in the frames that follow; one more frame after it, so it is judged and compared as a piece
+             * of its own, and a call that has not returned within 60 frames is not a valid script. */
+            run(1);
+            for (int n = 0; check_unit_active() && n < 60; n++)
+                run(1);
+            if (check_unit_active()) {
+                fprintf(stderr, "pcebox: %s:%d: call: the routine did not return within 61 frames\n", script, ln);
+                fclose(s);
+                return 2;
+            }
+            run(1);
         } else {
             fprintf(stderr, "pcebox: %s:%d: bad command\n", script, ln);
             fclose(s);

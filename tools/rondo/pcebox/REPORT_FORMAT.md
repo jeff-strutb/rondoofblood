@@ -87,6 +87,15 @@ of that script ("record exit N", "hybrid exit N", "timed out after 1500 s"); a f
 (`routine,kind,defects` per innermost routine), and prints `<script>: <summary line>` per script. A routine's A7 passes when
 no script has a `DEFECT` for it, every script that reaches it is IDENTICAL (`-1`) and it was swapped in at least one.
 
+## Unit calls and pokes in scripts
+
+`call NAME|ADDR [A=hh] [X=hh] [Y=hh] [P=hh] [M=aaaa:hh,...]` runs a routine from its own first byte (any other address is
+refused, exit 2), then runs frames until it returns (at most 61, else exit 2) and one frame more, so each call is a piece
+with frames compared after it. `poke ADDR VALUE` writes a logical address; `poke BANK:OFFSET VALUE` a byte of a physical
+bank (F7 is the backup memory, offsets 0 to 7FF; RAM banks 68-87 and F8-FB also). All between frames, in every run alike.
+Known limits: a unit call of a routine that never returns (KernelStart, an idle spin) is not possible (the guards stop it);
+it is judged only as the prefix of the call a script makes through the game.
+
 ## Not in the format
 
 Frame hashes cover RAM, the stack above S, and the picture; the stack at and below S is not state. Timing is not judged

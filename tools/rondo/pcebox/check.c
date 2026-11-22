@@ -2359,6 +2359,12 @@ void check_poke(uint32_t phys, uint8_t old, uint8_t value)
     log_event(&e);
 }
 
+/* Is a unit call still on its way (between its entry and its return)? */
+int check_unit_active(void)
+{
+    return unit.active;
+}
+
 /* The run address of a routine by name, or -1. */
 int check_tag_run(const char *name)
 {

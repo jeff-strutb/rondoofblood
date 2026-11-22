@@ -240,3 +240,203 @@ void abi_AdvanceOnTimer(void)
         abi_flag(P_C, result.carry);
     }
 }
+
+/*
+ * @routine 09EB:578 LaunchOnTimer
+ * @run 70:B578
+ * WHAT IT DOES: Counts an object's life timer down; when it runs out the object shows frame
+ * next kind + $12, takes its two high speed bytes (X and Y) from a two-byte table row of its
+ * next kind, and moves to its next state.
+ * HOW: DEC of the timer in memory; on zero, the add, the row at $B59B + 2 * next kind. Table
+ * read at a bare address until the typed data layer lands.
+ * WAITS: no.
+ * Entry: X object. Exit: timer left: A kept, N and Z from the new timer. Moved on: A the second
+ * table byte, Y the row offset, N and Z from the new state, C bit 7 of the next kind, V from
+ * the add of $12. X kept. D clear.
+ */
+Launch LaunchOnTimer(uint8_t slot)
+{
+    Launch result = { true, 0, 0, 0, false, false, 0 };
+    uint8_t kind, offset, value;
+    Sum sum;
+
+    result.timer = DEC8(OBJ->life_timer[slot]);
+    if (result.timer != 0) {
+        return result;
+    }
+    kind = RD8(OBJ->next_kind[slot]);
+    sum = add_bytes(kind, 0x12, false);
+    WR8(OBJ->frame[slot], sum.value);
+    kind = RD8(OBJ->next_kind[slot]);
+    result.carry = (kind & 0x80) != 0;
+    offset = (uint8_t)(kind << 1);
+    value = rd8((uint16_t)(0xB59B + offset));
+    WR8(OBJ->vx_hi[slot], value);
+    value = rd8((uint16_t)(0xB59C + offset));
+    WR8(OBJ->vy_hi[slot], value);
+    result.new_state = INC8(OBJ->state[slot]);
+    result.waiting = false;
+    result.loaded = value;
+    result.row_offset = offset;
+    result.overflow = sum.overflow;
+    return result;
+}
+
+void abi_LaunchOnTimer(void)
+{
+    Launch result = LaunchOnTimer(cpu.x);
+
+    if (result.waiting) {
+        abi_nz(result.timer);
+    } else {
+        cpu.a = result.loaded;
+        cpu.y = result.row_offset;
+        abi_nz(result.new_state);
+        abi_flag(P_C, result.carry);
+        abi_flag(P_V, result.overflow);
+    }
+}
+
+/*
+ * @routine 09EA:60E SetHitboxFromFrameFive
+ * @run 70:AE0E
+ * WHAT IT DOES: Loads an object's hitbox (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the
+ * four-byte row at $BC13 picked by its frame less 5.
+ * HOW: Four loads from the row. Table read at a bare address until the typed data layer lands.
+ * WAITS: no.
+ * Entry: X object. Exit: A the last byte, N and Z from it, Y the row offset, C the last shift's
+ * carry, V from the frame subtract. X kept. D clear.
+ */
+HitboxRow SetHitboxFromFrameFive(uint8_t slot)
+{
+    HitboxRow result;
+    uint8_t frame, row, value;
+    Sum sum;
+
+    frame = RD8(OBJ->frame[slot]);
+    sum = sub_bytes(frame, 5, true);
+    row = sum.value;
+    result.carry = (row & 0x40) != 0;
+    result.overflow = sum.overflow;
+    result.offset = (uint8_t)(row << 2);
+    value = rd8((uint16_t)(0xBC13 + result.offset));
+    WR8(OBJ->hitbox_dx[slot], value);
+    value = rd8((uint16_t)(0xBC14 + result.offset));
+    WR8(OBJ->hitbox_dy[slot], value);
+    value = rd8((uint16_t)(0xBC15 + result.offset));
+    WR8(OBJ->hitbox_half_w[slot], value);
+    value = rd8((uint16_t)(0xBC16 + result.offset));
+    WR8(OBJ->hitbox_half_h[slot], value);
+    result.last = value;
+    return result;
+}
+
+void abi_SetHitboxFromFrameFive(void)
+{
+    HitboxRow result = SetHitboxFromFrameFive(cpu.x);
+
+    cpu.a = result.last;
+    cpu.y = result.offset;
+    abi_nz(result.last);
+    abi_flag(P_C, result.carry);
+    abi_flag(P_V, result.overflow);
+}
+
+/*
+ * @routine 0CAB:240 EnterStateFiveOnPlayerState9
+ * @run 70:B240
+ * WHAT IT DOES: When the player (slot 0) is in state 9 and the object is in state 3, turns the
+ * object to face right, restarts its frame list, clears OBJ_2800 and moves it to state 5.
+ * HOW: Two compares, then the stores. Random cases never reach the stores: the curated cases
+ * of tools/rondo/curated/enemy_state_five.txt do (liftcmp --curated).
+ * WAITS: no.
+ * Entry: X object. Exit: A and flags as the last compare or load left them (see the wrapper).
+ * X and Y kept. D clear.
+ */
+FiveResult EnterStateFiveOnPlayerState9(uint8_t slot)
+{
+    FiveResult result = { FIVE_PLAYER_NOT_9, 0 };
+    uint8_t state;
+
+    state = RD8(OBJ->state[0]);
+    result.value = state;
+    if (state != 9) {
+        return result;
+    }
+    state = RD8(OBJ->state[slot]);
+    result.value = state;
+    if (state != 3) {
+        result.end = FIVE_NOT_STATE_3;
+        return result;
+    }
+    WR8(OBJ->facing_left[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->state[slot], 5);
+    WR8(OBJ->f2800[slot], 0);
+    result.end = FIVE_ENTERED;
+    return result;
+}
+
+void abi_EnterStateFiveOnPlayerState9(void)
+{
+    FiveResult result = EnterStateFiveOnPlayerState9(cpu.x);
+
+    switch (result.end) {
+    case FIVE_PLAYER_NOT_9:
+        cpu.a = result.value;
+        abi_nz((uint8_t)(result.value - 9));
+        abi_flag(P_C, result.value >= 9);
+        break;
+    case FIVE_NOT_STATE_3:
+        cpu.a = result.value;
+        abi_nz((uint8_t)(result.value - 3));
+        abi_flag(P_C, result.value >= 3);
+        break;
+    case FIVE_ENTERED:
+        cpu.a = 5;
+        abi_nz(5);
+        abi_flag(P_C, true);
+        break;
+    }
+}
+
+/*
+ * @routine 072C:02C StopAndPickPhase
+ * @run 70:B82C
+ * WHAT IT DOES: Stops an object (clears OBJ_3670 and its four speed bytes), then sets OBJ_2800
+ * from a table of eight bytes at $B84B picked by the low three bits of a counter, OBJ_3720,
+ * which it then advances.
+ * HOW: Five clears, a table read, an INC in memory. Table read at a bare address until the typed
+ * data layer lands.
+ * WAITS: no.
+ * Entry: X object. Exit: A the table byte, Y its index, N and Z from the counter's new value.
+ * X kept. D clear.
+ */
+PhasePick StopAndPickPhase(uint8_t slot)
+{
+    PhasePick result;
+    uint8_t counter, value;
+
+    WR8(OBJ->f3670[slot], 0);
+    WR8(OBJ->vx_hi[slot], 0);
+    WR8(OBJ->vx_lo[slot], 0);
+    WR8(OBJ->vy_hi[slot], 0);
+    WR8(OBJ->vy_lo[slot], 0);
+    counter = RD8(OBJ->f3720[slot]);
+    result.index = (uint8_t)(counter & 0x07);
+    value = rd8((uint16_t)(0xB84B + result.index));
+    WR8(OBJ->f2800[slot], value);
+    result.new_phase = INC8(OBJ->f3720[slot]);
+    result.loaded = value;
+    return result;
+}
+
+void abi_StopAndPickPhase(void)
+{
+    PhasePick result = StopAndPickPhase(cpu.x);
+
+    cpu.a = result.loaded;
+    cpu.y = result.index;
+    abi_nz(result.new_phase);
+}

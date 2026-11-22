@@ -127,32 +127,36 @@ def read_a7(out, script, stdout):
     return verdict, code, detail, f, reach
 
 
-def job(tree, script, out, box):
+def job(tree, script, out, box, mode="both"):
+    """mode a5, a7 or both: a box with drafts serving is measured in one gate at a time."""
     os.makedirs(out, exist_ok=True)
-    result = {"script": script, "a5": {}, "a7": {}, "reach": {}, "a7_defects": {}, "secs": {}, "errors": []}
-    t0 = time.time()
-    r = run_oracle(tree, "a5", script, os.path.join(out, "a5run"), box)
-    result["secs"]["a5"] = round(time.time() - t0, 1)
-    bad = re.search(rf"^{script}: (exit|timed out).*$", r.stdout, re.M)
-    if r.returncode or bad:
-        result["errors"].append("a5: " + (bad.group(0) if bad else r.stderr.strip()[-300:] or f"exit {r.returncode}"))
-    else:
-        result["a5"] = read_a5(os.path.join(out, "a5run"), script, r.stdout)
-    t0 = time.time()
-    r = run_oracle(tree, "a7", script, os.path.join(out, "a7run"), box)
-    result["secs"]["a7"] = round(time.time() - t0, 1)
-    hard = re.search(rf"^{script}: (record exit|hybrid exit|timed out).*$", r.stdout, re.M)
-    open(os.path.join(out, "a7.stdout.txt"), "w").write(r.stdout)
-    if hard:
-        result["errors"].append("a7: " + hard.group(0))
-    else:
-        try:
-            verdict, code, detail, fields, reach = read_a7(os.path.join(out, "a7run"), script, r.stdout)
-            result["a7"] = {"verdict": verdict, "code": code, "detail": detail, "fields": fields}
-            result["reach"] = reach
-            result["a7_defects"] = read_a7_defects(os.path.join(out, "a7run"))
-        except ValueError as e:
-            result["errors"].append("a7: " + str(e) + (" " + r.stderr.strip()[-200:] if r.stderr.strip() else ""))
+    result = {"script": script, "a5": {}, "a7": {}, "reach": {}, "a7_defects": {}, "secs": {"a5": 0, "a7": 0},
+              "errors": []}
+    if mode in ("a5", "both"):
+        t0 = time.time()
+        r = run_oracle(tree, "a5", script, os.path.join(out, "a5run"), box)
+        result["secs"]["a5"] = round(time.time() - t0, 1)
+        bad = re.search(rf"^{script}: (exit|timed out).*$", r.stdout, re.M)
+        if r.returncode or bad:
+            result["errors"].append("a5: " + (bad.group(0) if bad else r.stderr.strip()[-300:] or f"exit {r.returncode}"))
+        else:
+            result["a5"] = read_a5(os.path.join(out, "a5run"), script, r.stdout)
+    if mode in ("a7", "both"):
+        t0 = time.time()
+        r = run_oracle(tree, "a7", script, os.path.join(out, "a7run"), box)
+        result["secs"]["a7"] = round(time.time() - t0, 1)
+        hard = re.search(rf"^{script}: (record exit|hybrid exit|timed out).*$", r.stdout, re.M)
+        open(os.path.join(out, "a7.stdout.txt"), "w").write(r.stdout)
+        if hard:
+            result["errors"].append("a7: " + hard.group(0))
+        else:
+            try:
+                verdict, code, detail, fields, reach = read_a7(os.path.join(out, "a7run"), script, r.stdout)
+                result["a7"] = {"verdict": verdict, "code": code, "detail": detail, "fields": fields}
+                result["reach"] = reach
+                result["a7_defects"] = read_a7_defects(os.path.join(out, "a7run"))
+            except ValueError as e:
+                result["errors"].append("a7: " + str(e) + (" " + r.stderr.strip()[-200:] if r.stderr.strip() else ""))
     json.dump(result, open(os.path.join(out, "result.json"), "w"), indent=1)
     print(f"{script}: a5 {result['secs']['a5']} s, a7 {result['secs']['a7']} s, "
           f"{'errors: ' + '; '.join(result['errors']) if result['errors'] else 'ok'}")
@@ -161,9 +165,9 @@ def job(tree, script, out, box):
 
 def main():
     cpuguard.require("oracle_io.py", jobs=1, mem="2G")
-    if len(sys.argv) == 6 and sys.argv[1] == "job":
+    if len(sys.argv) in (6, 7) and sys.argv[1] == "job":
         return job(os.path.abspath(sys.argv[2]), sys.argv[3], os.path.abspath(sys.argv[4]),
-                   os.path.abspath(sys.argv[5]))
+                   os.path.abspath(sys.argv[5]), sys.argv[6] if len(sys.argv) == 7 else "both")
     print(__doc__)
     return 2
 

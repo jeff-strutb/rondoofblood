@@ -4,6 +4,7 @@
     python3 tools/rondo/runner.py once  [--main DIR] [options]    certify what main's tip needs, then stop
     python3 tools/rondo/runner.py watch [--main DIR] [options]    the same whenever the tip moves (every 60 s)
     python3 tools/rondo/runner.py plan  [--main DIR] [options]    print what would run and the time expected
+    python3 tools/rondo/runner.py served [--main DIR] --scripts a [--a7]   drafts in place of failing routines (served.py)
     python3 tools/rondo/runner.py commit [--main DIR]             commit the records, views and ledgers as they stand
                                                                   in DIR (under the landing lock, explicit paths)
     options: --routines A,B   re-measure the scripts reaching these routines (after a checker change)
@@ -13,6 +14,7 @@
              --commit         commit the records and ledgers to DIR's branch under the landing lock (off by
                               default until the state session has handed those files over)
              --norerun        do not rerun red scripts alone (when every script is expected red)
+             --a7             with `served`: build the served box and measure A7 on --scripts alone
              --workers N      scripts measured at once (default 8; each is one cpu-run claim)
 
 What it does for main's tip (design: build/rondo/pipeline/DESIGN.md, the rule: records.py):
@@ -95,9 +97,10 @@ def prepare(main, rev, b, d):
     """The private tree, its own pcebox, and the compiled hashes: (tree, box, chash, extents)."""
     tree = export(main, rev, b)
     box = os.path.join(b, "pcebox-" + rev)
-    r = cpu_run(1, "2G", "env", "RONDO_BOX=" + box, "sh", os.path.join(tree, "setup.sh"), "pcebox")
-    if r.returncode:
-        raise SystemExit(f"pcebox build of {rev} failed:\n{(r.stdout + r.stderr)[-800:]}")
+    if not os.path.exists(box) or not os.path.exists(box + ".gen"):      # a box of this revision is reused
+        r = cpu_run(1, "2G", "env", "RONDO_BOX=" + box, "sh", os.path.join(tree, "setup.sh"), "pcebox")
+        if r.returncode:
+            raise SystemExit(f"pcebox build of {rev} failed:\n{(r.stdout + r.stderr)[-800:]}")
     gen = os.path.join(tree, "build", "rondo", "pcebox")      # setup.sh puts a private build's generated files beside the binary
     os.makedirs(gen, exist_ok=True)
     for f in ("hybrid_table.c", "opclass.h"):
@@ -160,9 +163,9 @@ def changed_routines(chash, top):
     return sorted(r for r, h in chash.own_hash.items() if old.get(r) != h)
 
 
-def measure(tree, box, out, script):
+def measure(tree, box, out, script, mode="both"):
     r = cpu_run(1, "2G", sys.executable, os.path.join(tree, "tools", "rondo", "oracle_io.py"), "job", tree,
-                script, os.path.join(out, script), box, timeout=SCRIPT_TIMEOUT)
+                script, os.path.join(out, script), box, mode, timeout=SCRIPT_TIMEOUT)
     path = os.path.join(out, script, "result.json")
     if not os.path.exists(path):
         return {"script": script, "errors": ["no result: " + (r.stdout + r.stderr).strip()[-300:]]}
@@ -311,6 +314,98 @@ def cycle(main, opts):
     return 1 if failed else 0
 
 
+def served(main, opts):
+    """Drafts serving in place of failing routines: the draft A5 on the given scripts, the serve plan from the
+    stored records, and (with --a7) the served box and A7 on those scripts alone. Writes no record."""
+    import served as sv
+    b = os.path.join(main, "build", "rondo", "runner")
+    os.makedirs(b, exist_ok=True)
+    problem = cpuguard.core_problem(main)
+    if problem:
+        print("runner: REFUSED: " + problem)
+        return 3
+    cache = sv.cache_dir(main)
+    if not cache:
+        print("runner: REFUSED: the draft cache is stale or missing: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache")
+        return 3
+    rev = git(main, "rev-parse", "--short=7", "HEAD").stdout.strip()
+    tree, box, chash, ext = prepare(main, rev, b, b)
+    rec = records.Records(main)
+    scripts = opts["scripts"] or ["boot"]
+    st = sv.stamp(cache)
+    labels = sv.filed_labels(cache, sorted(ext))
+    drafts = sv.read_drafts(cache)
+    filed_of = {lab: n for n, labs in labels.items() for lab in labs}
+    log(f"served: {rev}, draft cache {st}: {len(drafts)} drafts, {len(labels)} of {len(ext)} filed routines have one", b)
+    allbox = os.path.join(b, f"pcebox-alldrafts-{rev}-{st}")
+    if not os.path.exists(allbox):
+        dst = os.path.join(b, "tree-alldrafts")
+        d = sv.make_tree(tree, dst, cache, drafts, {r["name"] for r in drafts}, set(labels), filed_of)
+        ok, text = cpu_run_build(dst, d, allbox)
+        if not ok:
+            print("runner: the all-drafts box did not build:\n" + text)
+            return 1
+    out = os.path.join(b, f"out-served-{rev}")
+    shutil.rmtree(out, ignore_errors=True)
+    draft_a5 = {}
+    for s in scripts:
+        res = measure(tree, allbox, os.path.join(out, "d5"), s, "a5")
+        if res.get("errors"):
+            print(f"runner: draft A5 of {s} failed: {res['errors']}")
+            return 1
+        for lab, v in res["a5"].items():
+            t = draft_a5.setdefault(lab, {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0, "order_flags": 0})
+            for k in t:
+                t[k] += v[k]
+    filed_a5 = records.a5_counts(rec, chash, main)
+    plan = sv.plan(filed_a5, draft_a5, labels, drafts)
+    called = {lab for lab in draft_a5}
+    tally = {}
+    for lab in called:
+        v = sv.verdict_of(draft_a5[lab])
+        tally[v] = tally.get(v, 0) + 1
+    log(f"served: draft A5 on {','.join(scripts)}: {len(called)} drafts called: {tally}", b)
+    log(f"served: plan: {len(plan['keep'])} filed routines keep their C, {len(plan['serve'])} filed routines served by a "
+        f"draft, {len(plan['free'])} drafts with no filed C serve, {len(plan['original'])} left as original code", b)
+    for name, why in plan["original"][:40]:
+        if name in filed_a5 or name in draft_a5:
+            log(f"  original: {name}: {why}", b)
+    if not opts.get("a7"):
+        return 0
+    keep = {lab for labs in plan["serve"].values() for lab in labs} | set(plan["free"])
+    names = set(plan["serve"]) | {n for n, _ in plan["original"] if n in labels}
+    dst = os.path.join(b, "tree-served")
+    d = sv.make_tree(tree, dst, cache, drafts, keep, names, filed_of)
+    os.makedirs(out, exist_ok=True)
+    sv.write_serve_list(os.path.join(out, "serve_drafts.csv"), names)
+    sbox = os.path.join(b, f"pcebox-served-{rev}")
+    if os.path.exists(sbox):
+        os.remove(sbox)
+    ok, text = cpu_run_build(dst, d, sbox)
+    if not ok:
+        print("runner: the served box did not build:\n" + text)
+        return 1
+    for s in scripts:
+        res = measure(tree, sbox, os.path.join(out, "a7"), s, "a7")
+        if res.get("errors"):
+            log(f"served: A7 of {s} FAILED {res['errors']}", b)
+            continue
+        log(f"served: A7 of {s}: {res['a7']['verdict']}: {res['a7']['detail']}", b)
+        bad = sorted(((sum(k.values()), r, k) for r, k in res["a7_defects"].items()), reverse=True)[:8]
+        for n, r, k in bad:
+            log(f"  defects under {filed_of.get(r, r)} ({r}): {k}", b)
+    return 0
+
+
+def cpu_run_build(tree, draftdir, box):
+    r = cpu_run(1, "3G", "env", "RONDO_BOX=" + box, "RONDO_DRAFTS=" + draftdir, "sh", os.path.join(tree, "setup.sh"), "pcebox")
+    if r.returncode or not os.path.exists(box):
+        text = r.stdout + r.stderr
+        errs = [ln for ln in text.splitlines() if "error" in ln or "undefined" in ln]
+        return False, "\n".join(errs[:20]) or text[-600:]
+    return True, ""
+
+
 def commit(main, rev, paths, n, reds, b):
     dirty = git(main, "status", "--porcelain", "--", *paths).stdout
     if not dirty.strip():
@@ -327,7 +422,7 @@ def commit(main, rev, paths, n, reds, b):
 
 def parse(argv):
     opts = {"mode": argv[0] if argv else "", "main": TOP, "routines": [], "scripts": [], "sweep": False,
-            "commit": False, "workers": 8, "only": False, "norerun": False}
+            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False}
     i = 1
     while i < len(argv):
         a = argv[i]
@@ -339,6 +434,8 @@ def parse(argv):
             opts["scripts"] = argv[i + 1].split(","); i += 1
         elif a == "--workers":
             opts["workers"] = int(argv[i + 1]); i += 1
+        elif a == "--a7":
+            opts["a7"] = True
         elif a == "--norerun":
             opts["norerun"] = True
         elif a == "--only":
@@ -355,6 +452,8 @@ def parse(argv):
 
 def main():
     opts = parse(sys.argv[1:])
+    if opts["mode"] == "served":
+        return served(opts["main"], opts)
     if opts["mode"] == "commit":
         recs = records.Records(opts["main"]).scripts
         srcs = sorted({r["source"] for r in recs.values()})

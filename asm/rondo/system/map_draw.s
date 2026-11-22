@@ -30,3 +30,33 @@ OrVramData:
     ora a:VDC_DATA_HI
     sta a:VDC_DATA_HI
     rts
+
+; @routine 05BF:6A4 AndVramDataLong
+; @run 6B:96A4
+; WHAT IT DOES: AndVramData, as the stages whose overlay runs it at $96A4 have it.
+; HOW: The same bytes as AndVramData at another run address. Its C is AndVramData.
+; WAITS: no.
+; Entry: X low mask, Y high mask. Exit: as AndVramData.
+AndVramDataLong:
+    txa
+    and a:VDC_DATA_LO
+    sta a:VDC_DATA_LO
+    tya
+    and a:VDC_DATA_HI
+    sta a:VDC_DATA_HI
+    rts
+
+; @routine 05BF:6B3 OrVramDataLong
+; @run 6B:96B3
+; WHAT IT DOES: OrVramData, as the stages whose overlay runs it at $96B3 have it.
+; HOW: The same bytes as OrVramData at another run address. Its C is OrVramData.
+; WAITS: no.
+; Entry: X low mask, Y high mask. Exit: as OrVramData.
+OrVramDataLong:
+    txa
+    ora a:VDC_DATA_LO
+    sta a:VDC_DATA_LO
+    tya
+    ora a:VDC_DATA_HI
+    sta a:VDC_DATA_HI
+    rts

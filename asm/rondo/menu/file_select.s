@@ -212,6 +212,62 @@ SetCursorValue:
     sta a:OBJ_34B8+1
     jmp SetCursorTargets
 
+; @routine 00C4:473 CursorMoveByPad
+; @run 6B:9C73
+; WHAT IT DOES: Moves the menu cursor up or down by the pad's new presses, wrapping within the
+; menu's first and last item, and over the items that cannot be picked: item $14 when the file
+; has no data (bit 0 of its first byte clear), item $15 when $7DDB is not zero.
+; HOW: Up or down (the trigger byte's bits $10 and $40) takes one from or adds one to the cursor
+; value (OBJ->f34b8 of object 0); at the first item's edge it wraps to the last (tables by
+; menu, the first items at $9CBE, the last at $9CC4); SetCursorValue sends the cursors there.
+; The arms that wrap at an edge and that skip an item are in no script's trace (the draft stops there).
+; An item that cannot be picked repeats the move. The Y the callee leaves is the table
+; index of the cursor, and it is that Y the original's next pass indexes the tables with.
+; WAITS: no.
+; Entry: Y the menu (the table index). Exit: as the last test left them: A 0 (no press, or the
+; last test was $7DDB), or the value tested last; X 1 (kept when no press moved the cursor), Y
+; the table index SetCursorValue left (kept when none).
+CursorMoveByPad:
+    lda a:BiosJoyTrigger
+    and #$50
+    beq CursorMoveByPad_at0
+    and #$40
+    bne CursorMoveByPad_at1
+    lda a:OBJ_34B8
+    dec a
+    cmp a:$9CBE,y
+    bne CursorMoveByPad_at2
+    lda a:$9CC4,y
+    dec a
+    bra CursorMoveByPad_at2
+CursorMoveByPad_at1:
+    lda a:OBJ_34B8
+    inc a
+    cmp a:$9CC4,y
+    bne CursorMoveByPad_at2
+    lda a:$9CBE,y
+    inc a
+CursorMoveByPad_at2:
+    jsr SetCursorValue
+    lda a:OBJ_34B8
+    cmp #$14
+    bne CursorMoveByPad_at3
+    phy
+    ldy z:zSaveSlot
+    ldx a:$9252,y
+    lda a:SaveBuffer,x
+    ply
+    lsr a
+    bcc CursorMoveByPad
+CursorMoveByPad_at3:
+    lda a:OBJ_34B8
+    cmp #$15
+    bne CursorMoveByPad_at0
+    lda a:$7DDB
+    bne CursorMoveByPad
+CursorMoveByPad_at0:
+    rts
+
 ; @routine 00C4:4CA PlaceCursorObjects
 ; @run 6B:9CCA
 ; WHAT IT DOES: PlaceCursorObject for both cursor objects, 0 then 1, with the same value.
@@ -251,6 +307,138 @@ PlaceCursorObject:
     lda a:$AD20,y
     sta a:OBJ_Y_LO,x
     rts
+
+; @routine 00C4:4EF GlideCursorObjects
+; @run 6B:9CEF
+; WHAT IT DOES: GlideCursorObject for the two name cursor objects, 2 and then 3.
+; HOW: A call for object 2; the INX after it runs on into GlideCursorObject for 3.
+; WAITS: no.
+; Entry: nothing. Exit: as GlideCursorObject for object 3, X 3.
+GlideCursorObjects:
+    ldx #$02
+    bsr GlideCursorObject
+    inx
+
+; @routine 00C4:4F4 GlideCursorObject
+; @run 6B:9CF4
+; WHAT IT DOES: Moves a cursor object a quarter of the way to its target each frame, and
+; stops it there; shows its picture frame while it is moving, or the frame that turns with the
+; tick once it has arrived.
+; HOW: If OBJ->f3510 says it is moving, the speed on each axis is set to half the distance to the
+; target (a 9-bit difference rotated down, its sign flipped), halved again by
+; HalveObjectVelocity, and ApplyVelocity moves it. The picture frame comes from a table by
+; whether it is below $B0 and whether the object is 3 or 4; when both places match the target
+; the moving flag clears. A frame of 1 to 8 is turned by ObjectFrameFromTick.
+; WAITS: no.
+; Entry: X the object. Exit: A, N, Z and C as the frame turn or its compare leaves them (V from
+; the move when it moved); Y the table index when it moved; X kept.
+GlideCursorObject:
+    lda a:OBJ_3510,x
+    beq GlideCursorObject_at0
+    lda a:OBJ_3568,x
+    sec
+    sbc a:OBJ_X_LO,x
+    ror a
+    eor #$80
+    sta a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    ror a:OBJ_VX_LO,x
+    lda a:OBJ_35C0,x
+    sec
+    sbc a:OBJ_Y_LO,x
+    ror a
+    eor #$80
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    ror a:OBJ_VY_LO,x
+    jsr HalveObjectVelocity
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$B0
+    cla
+    rol a
+    cpx #$03
+    rol a
+    tay
+    lda a:$9D55,y
+    sta a:OBJ_2A68,x
+    lda a:OBJ_X_LO,x
+    cmp a:OBJ_3568,x
+    bne GlideCursorObject_at0
+    lda a:OBJ_Y_LO,x
+    cmp a:OBJ_35C0,x
+    bne GlideCursorObject_at0
+    stz a:OBJ_3510,x
+GlideCursorObject_at0:
+    lda a:OBJ_2A68,x
+    dec a
+    cmp #$08
+    bcs GlideCursorObject_at1
+    jsr ObjectFrameFromTick
+GlideCursorObject_at1:
+    rts
+
+; @routine 00C4:559 JitterCursorObjects
+; @run 6B:9D59
+; WHAT IT DOES: JitterCursorObject for both cursor objects, 0 then 1.
+; HOW: A call for object 0; the INX after it runs on into JitterCursorObject for 1.
+; WAITS: no.
+; Entry: nothing. Exit: as JitterCursorObject for object 1, X 1.
+JitterCursorObjects:
+    clx
+    bsr JitterCursorObject
+    inx
+
+; @routine 00C4:55D JitterCursorObject
+; @run 6B:9D5D
+; WHAT IT DOES: GlideCursorObject's way of moving, aimed at a point a few pixels off the
+; target, chosen at random on each axis each frame, so the cursor looks to shake as it
+; settles; its picture frame always turns with the tick.
+; HOW: As GlideCursorObject, with the target on each axis moved by a random number from -8 to 7
+; (NextRandom, masked with $0F, less 8); no table frame; at the end it goes to
+; ObjectFrameFromTick.
+; WAITS: no.
+; Entry: X the object. Exit: as ObjectFrameFromTick; V from the move when it moved; X kept.
+JitterCursorObject:
+    lda a:OBJ_3510,x
+    beq JitterCursorObject_at0
+    jsr VecNextRandom
+    and #$0F
+    sec
+    sbc #$08
+    clc
+    adc a:OBJ_3568,x
+    sec
+    sbc a:OBJ_X_LO,x
+    ror a
+    eor #$80
+    sta a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    ror a:OBJ_VX_LO,x
+    jsr VecNextRandom
+    and #$0F
+    sec
+    sbc #$08
+    clc
+    adc a:OBJ_35C0,x
+    sec
+    sbc a:OBJ_Y_LO,x
+    ror a
+    eor #$80
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    ror a:OBJ_VY_LO,x
+    jsr HalveObjectVelocity
+    jsr VecApplyVelocity
+    lda a:OBJ_X_LO,x
+    cmp a:OBJ_3568,x
+    bne JitterCursorObject_at0
+    lda a:OBJ_Y_LO,x
+    cmp a:OBJ_35C0,x
+    bne JitterCursorObject_at0
+    stz a:OBJ_3510,x
+JitterCursorObject_at0:
+    jmp ObjectFrameFromTick
 
 ; @routine 00C4:5B6 SetCursorTargets
 ; @run 6B:9DB6
@@ -1251,4 +1439,43 @@ SlotClearedFlags_at0:
     cpx #$0D
     bne SlotClearedFlags_at1
     stz a:ListChannelClearEnd+1,x
+    rts
+
+; @routine 00E0:3DF StartScriptSlotKind6B
+; @run 6F:BBDF
+; WHAT IT DOES: Starts a script on a script slot as kind 6.
+; HOW: ClearScriptSlot, then the slot's kind and script bytes. The body is that of
+; StartScriptSlotKind6 in the kernel (near copy). liftcmp compares nothing past its first call: the
+; draft stubs the call to the copy of ClearScriptSlot at $BBF1.
+; WAITS: no.
+; Entry: X the slot, Y the script. Exit: A the script, N and Z from it; X and Y kept.
+StartScriptSlotKind6B:
+    bsr $BBF1
+    lda #$06
+    bra StartScriptSlotKind7B_at0
+
+; @routine 00E0:3E5 StartScriptSlotKind7B
+; @run 6F:BBE5
+; WHAT IT DOES: Starts a script on a script slot as kind 7.
+; HOW: ClearScriptSlot, then the slot's kind and script bytes. Near copy of the kernel's
+; StartScriptSlotKind7; the draft stubs the call to the copy of ClearScriptSlot at $BBF1.
+; WAITS: no.
+; Entry: X the slot, Y the script. Exit: A the script, N and Z from it; X and Y kept.
+StartScriptSlotKind7B:
+    bsr StartScriptSlotKind7B_at1
+    lda #$07
+StartScriptSlotKind7B_at0:
+    sta a:ScriptSlotKind,x
+    tya
+    sta a:ScriptSlotScript,x
+    rts
+StartScriptSlotKind7B_at1:
+    stz a:ScriptSlotKind,x
+    stz a:ScriptSlotScript,x
+    stz a:ScriptSlotField18,x
+    stz a:ScriptSlotField24,x
+    stz a:ScriptSlotTimer,x
+    stz a:ScriptSlotField3C,x
+    stz a:ScriptSlotField48,x
+    stz a:ScriptSlotField54,x
     rts

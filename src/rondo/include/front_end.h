@@ -14,7 +14,7 @@ void ClearObject(uint8_t object);                    /* object/lifecycle.c */
  * value N and Z come from, C, V when it sets V, and a flag for each register it leaves as it was. */
 typedef struct {
     uint8_t a, x, y, nz;
-    bool c, v, v_set, a_kept, x_kept, y_kept, from_cpu;
+    bool c, v, v_set, a_kept, x_kept, y_kept, c_kept, from_cpu;
 } Exit;
 
 static inline void exit_shim(Exit e)
@@ -32,7 +32,9 @@ static inline void exit_shim(Exit e)
         cpu.y = e.y;
     }
     abi_nz(e.nz);
-    abi_flag(P_C, e.c);
+    if (!e.c_kept) {
+        abi_flag(P_C, e.c);
+    }
     if (e.v_set) {
         abi_flag(P_V, e.v);
     }
@@ -114,7 +116,30 @@ void abi_NameCursorTarget(void);
 
 typedef struct { uint8_t a; uint8_t x; } GlyphRows;
 
+/* What a cursor glide leaves, and the move whose V it ends with. */
+typedef struct { Exit exit; AxisMove move; bool moved; } GlideExit;
+/* What CursorMoveByPad leaves; moved says X (1 or the slot's offset) was set. */
+typedef struct { Exit exit; uint8_t x; bool moved; } PadMoveExit;
+#define CURSOR_FRAMES 0x9D55
+#define CURSOR_FIRST_ITEMS 0x9CBE
+#define CURSOR_LAST_ITEMS 0x9CC4
+#define MENU_BLOCKED 0x7DDB
+
 /* menu/file_select.c */
+GlideExit GlideCursorObject(uint8_t object);
+GlideExit GlideCursorObjects(void);
+GlideExit JitterCursorObject(uint8_t object);
+GlideExit JitterCursorObjects(void);
+PadMoveExit CursorMoveByPad(uint8_t menu);
+uint8_t StartScriptSlotKind6B(uint8_t script, uint8_t slot);
+uint8_t StartScriptSlotKind7B(uint8_t script, uint8_t slot);
+void abi_GlideCursorObject(void);
+void abi_GlideCursorObjects(void);
+void abi_JitterCursorObject(void);
+void abi_JitterCursorObjects(void);
+void abi_CursorMoveByPad(void);
+void abi_StartScriptSlotKind6B(void);
+void abi_StartScriptSlotKind7B(void);
 Exit BlankTextRow(uint8_t row, uint8_t kept_x);
 Exit RecolorTextRun(uint8_t row, uint8_t palette_index);
 Exit DrawSlotPercent(uint8_t row, uint8_t kept_x);

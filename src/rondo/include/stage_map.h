@@ -23,7 +23,11 @@ void SetVramAddresses(uint8_t lo, uint8_t hi);
 void SetVramAddressesLong(uint8_t lo, uint8_t hi);
 void SetStageTileVramAddress(void);
 void SetStageTileVramAddressLong(void);
-uint8_t BlendStageTileRows(uint8_t phase, uint8_t row_a, uint8_t row_b);
+/* What a blend leaves: A, X and the overflow; Y is 5, N 0, Z 1, C 1. */
+typedef struct { uint8_t a; uint8_t x; bool v; } TileRowsExit;
+TileRowsExit BlendStageTileRows(uint8_t phase, uint8_t row_a, uint8_t row_b);
+TileRowsExit BlendStageRowPair(uint8_t x, uint8_t a, uint8_t y);
+TileRowsExit BlendStageRowChanges(uint8_t x, uint8_t new_byte);
 uint8_t AndVramData(uint8_t lo_mask, uint8_t hi_mask);
 uint8_t OrVramData(uint8_t lo_mask, uint8_t hi_mask);
 

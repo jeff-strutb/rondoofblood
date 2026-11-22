@@ -193,3 +193,63 @@ void abi_RightOfObject4DWithin(void)
 {
     abi_ended(RightOfObject4DWithin(cpu.x, cpu.a));
 }
+
+/*
+ * @routine 07DB:726 LoadRecordStartAngle40
+ * @run 70:B726
+ * WHAT IT DOES: Starts an object from its record, moves it by its velocity, and sets its angle's
+ * high byte to $40.
+ * HOW: LoadObjectRecord, ApplyVelocity, one store.
+ * WAITS: no.
+ * Entry: X object. Exit: A $40, N and Z clear; C and V from ApplyVelocity's add; Y 11; X kept.
+ */
+Ended LoadRecordStartAngle40(uint8_t slot)
+{
+    uint8_t nz, last;
+    bool carry;
+    AxisMove move;
+    Ended e;
+
+    jsr_push(0xB729);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    jsr_push(0xB72C);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    WR8(OBJ->angle_hi[slot], 0x40);
+    return ended_then(e, ended_load(0x40));
+}
+
+void abi_LoadRecordStartAngle40(void)
+{
+    abi_ended(LoadRecordStartAngle40(cpu.x));
+}
+
+/*
+ * @routine 07DB:7BE LoadRecordTimer50
+ * @run 70:B7BE
+ * WHAT IT DOES: Starts an object from its record and sets its f34b8 timer to $50.
+ * HOW: LoadObjectRecord, one store.
+ * WAITS: no.
+ * Entry: X object. Exit: A $50, N and Z clear; C from the record; Y 11; X and V kept.
+ */
+Ended LoadRecordTimer50(uint8_t slot)
+{
+    uint8_t nz, last;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xB7C1);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->life_timer[slot], 0x50);
+    return ended_then(e, ended_load(0x50));
+}
+
+void abi_LoadRecordTimer50(void)
+{
+    abi_ended(LoadRecordTimer50(cpu.x));
+}

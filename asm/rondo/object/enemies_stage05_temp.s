@@ -20,6 +20,17 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0938:7F2 SelectRasterStage1
 ; @run 6F:BFF2
 ; WHAT IT DOES: Sets the stage value the raster effect tests to 1.
@@ -204,4 +215,142 @@ CountdownStopThenState3:
     lda #$03
     sta a:OBJ_27A8,x
 CountdownStopThenState3_at0:
+    rts
+
+; @routine 093B:0F6 StartWithFrame1A
+; @run 70:B0F6
+; WHAT IT DOES: The first time the object runs (state 0), starts it from its record and gives it
+; frame $1A; later states leave it alone.
+; HOW: Tests the state, then LoadObjectRecord and one store.
+; WAITS: no.
+; Entry: X object. Exit: A the state, or $1A after the start; N, Z from it; C and Y from the
+; record load when it ran; X and V kept.
+StartWithFrame1A:
+    lda a:OBJ_27A8,x
+    bne StartWithFrame1A_at0
+    jsr VecLoadObjectRecord
+    lda #$1A
+    sta a:OBJ_2A68,x
+StartWithFrame1A_at0:
+    rts
+
+; @routine 093C:180 ThrowByNextKind
+; @run 70:B980
+; WHAT IT DOES: Moves the object one step along a velocity built from its f3040 byte (bit 0 picks
+; the X speed from a two byte table, the low nibble times $10, negated, is the Y speed), then
+; clears both speeds again.
+; HOW: The table is at overlay address $B9A3. ApplyVelocity moves it between the two sets of
+; stores.
+; WAITS: no.
+; Entry: X object. Exit: A, N, Z, C and V from ApplyVelocity's add; Y bit 0 of f3040; X kept.
+; Clobbers zTemp10.
+ThrowByNextKind:
+    lda a:OBJ_3040,x
+    and #$01
+    tay
+    lda a:$B9A3,y
+    sta a:OBJ_VX_HI,x
+    lda a:OBJ_3040,x
+    asl a
+    asl a
+    asl a
+    asl a
+    eor #$FF
+    inc a
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VY_HI,x
+    rts
+
+; @routine 093C:23E AnimateThenState1
+; @run 70:BA3E
+; WHAT IT DOES: Steps the object's animation along one of two lists picked by bit 0 of its f3618;
+; when the list has ended, adds one to f3618 and sends the object to state 1.
+; HOW: The two list pointers are at overlay address $BA5D. StepObjectFrames's result says whether
+; the list ended.
+; WAITS: no.
+; Entry: X object. Exit: as StepObjectFrames (Y the list's offset when the step did not change
+; it); when the list ended, A 1, N clear, Z clear. X and V kept. Clobbers zTemp10-11.
+AnimateThenState1:
+    lda a:OBJ_3618,x
+    and #$01
+    asl a
+    tay
+    lda a:$BA5D,y
+    sta z:zTemp10
+    lda a:$BA5E,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne AnimateThenState1_at0
+    inc a:OBJ_3618,x
+    lda #$01
+    sta a:OBJ_27A8,x
+AnimateThenState1_at0:
+    rts
+
+; @routine 093C:338 AnimateThenNextStep
+; @run 70:BB38
+; WHAT IT DOES: Steps the object's animation along the list that its f3670 and f36c8 pick (two
+; pointers a table row, f3670 times two plus f36c8 as the byte offset); when the list has ended
+; the step byte goes up by one.
+; HOW: The pointers are at overlay address $BB54. V is left by the offset's add.
+; WAITS: no.
+; Entry: X object. Exit: as StepObjectFrames, and when the list ended N, Z from the new step byte
+; with A 0; V from the offset's add; Y the offset when the step did not change it. Clobbers
+; zTemp10-11.
+AnimateThenNextStep:
+    lda a:OBJ_3670,x
+    asl a
+    clc
+    adc a:OBJ_36C8,x
+    tay
+    lda a:RichterColumnOffsets+7,y
+    sta z:zTemp10
+    lda a:RichterColumnOffsets+8,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne AnimateThenNextStep_at0
+    inc a:OBJ_2800,x
+AnimateThenNextStep_at0:
+    rts
+
+; @routine 093C:48F FollowParentYAndLeave
+; @run 70:BC8F
+; WHAT IT DOES: Copies the Y position's middle byte of the object whose slot is in this object's
+; f3568 (its parent) into this object's, and removes this object when the parent is in state 4.
+; HOW: ClearObject as a tail jump.
+; WAITS: no.
+; Entry: X object. Exit: A the parent's state, N, Z, C from its compare with 4; Y the parent's
+; slot; X and V kept.
+FollowParentYAndLeave:
+    ldy a:OBJ_3568,x
+    lda a:OBJ_Y_LO,y
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_27A8,y
+    cmp #$04
+    bne FollowParentYAndLeave_at0
+    jmp VecClearObject
+FollowParentYAndLeave_at0:
+    rts
+
+; @routine 093D:579 AnimateThenNextStepB
+; @run 71:C579
+; WHAT IT DOES: Steps the object's animation along the list at overlay address $C590; when the list
+; has ended, restarts it and adds one to the step byte.
+; HOW: The list pointer goes into zTemp10-11; StepObjectFrames says whether the list ended.
+; WAITS: no.
+; Entry: X object. Exit: as StepObjectFrames, and at the end N, Z from the new step byte; A 0;
+; X and V kept. Clobbers zTemp10-11.
+AnimateThenNextStepB:
+    lda #$C5
+    sta z:zTemp11
+    lda #$90
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    bne AnimateThenNextStepB_at0
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+AnimateThenNextStepB_at0:
     rts

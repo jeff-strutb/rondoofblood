@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "ram.h"
 #include "access.h"
+#include "routines.h"
 
 /*
  * How a routine's last instructions left the registers and flags the caller can see: a plain
@@ -135,6 +136,108 @@ static inline bool sub_overflow(uint8_t a, uint8_t b, uint8_t result)
     return (((a ^ b) & (a ^ result)) & 0x80) != 0;
 }
 
+
+/* The exit state of what was before, with every field the later instruction set put over it. */
+static inline Ended ended_then(Ended before, Ended after)
+{
+    if (after.a_set) {
+        before.a_set = true;
+        before.a = after.a;
+    }
+    if (after.nz_set) {
+        before.nz_set = true;
+        before.nz = after.nz;
+    }
+    if (after.c_set) {
+        before.c_set = true;
+        before.c = after.c;
+    }
+    if (after.v_set) {
+        before.v_set = true;
+        before.v = after.v;
+    }
+    if (after.y_set) {
+        before.y_set = true;
+        before.y = after.y;
+    }
+    return before;
+}
+
+/*
+ * Callees that are typed C elsewhere and that no header declares. The defining file is named; each
+ * ended_ builder below gives the state its abi_ wrapper leaves, from the typed result alone.
+ */
+typedef enum { FRAME_HELD, FRAME_CHANGED, FRAME_LIST_ENDED } FrameStep;          /* object/spawn.c */
+FrameStep StepObjectFrames(uint8_t object, uint8_t *exit_y);                      /* object/spawn.c */
+uint8_t SideOfPlayer(uint8_t object);                                             /* object/sensing.c */
+uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c);         /* object/spawn.c */
+AxisMove ApplyVelocityX(uint8_t object);                                          /* object/motion.c */
+AxisMove ApplyVelocityY(uint8_t object);                                          /* object/motion.c */
+uint8_t StartObjectAtPlace(uint8_t type, uint8_t from, uint8_t to);               /* object/spawn.c */
+uint8_t FindFreeSlotFrom30(uint8_t *exit_a, bool *found);                         /* object/spawn.c */
+
+void ApplyGravityUnlimited(uint8_t object);                                       /* object/sensing.c */
+
+/* A routine that may play a sound: what it ended with, and the call the wrapper must show the leak of. */
+typedef struct {
+    Ended before;   /* what the instructions before the call left (the A that holds the command) */
+    Ended end;
+    bool sounded;
+    uint8_t command;
+    CommandCall call;
+} SoundEnd;
+
+/* The wrapper of such a routine: the sound call's flags first, then what the routine's own instructions changed. */
+static inline void abi_sound_end(SoundEnd r)
+{
+    if (r.sounded) {
+        abi_ended(r.before);
+        sound_command_exit_shim(r.command, r.call);
+    }
+    abi_ended(r.end);
+}
+
+/* StepObjectFrames: A $FF and C 1 when the frame changed, A 0 and C 0 when the list ended, A $FF and C 0 when held. */
+static inline Ended ended_of_frame_step(FrameStep step, bool y_changed, uint8_t y)
+{
+    Ended e = ended_load(step == FRAME_LIST_ENDED ? 0x00 : 0xFF);
+
+    e = ended_with_carry(e, step == FRAME_CHANGED);
+    if (y_changed) {
+        e = ended_with_y(e, y);
+    }
+    return e;
+}
+
+/* ApplyVelocity, ApplyVelocityX and ApplyVelocityY: A the position's high byte, N, Z, C and V from its add. */
+static inline Ended ended_of_axis_move(AxisMove move)
+{
+    uint32_t added = (uint32_t)(int32_t)move.velocity & 0xFFFFFF;
+    uint32_t sum = move.before + added;
+    uint8_t sign = (uint8_t)(added >> 16);
+    uint8_t high = (uint8_t)(move.before >> 16);
+    uint8_t result = (uint8_t)(sum >> 16);
+    Ended e = ended_load(result);
+
+    e = ended_with_carry(e, sum > 0xFFFFFF);
+    return ended_with_overflow(e, (~(sign ^ high) & (sign ^ result) & 0x80) != 0);
+}
+
+/* LoadObjectRecord: A the record's last byte, Y 11, N and Z from the new state, C from the record. */
+static inline Ended ended_of_record(uint8_t last, uint8_t nz, bool carry)
+{
+    Ended e = ended_with_y(ended_load(last), 11);
+
+    e.nz = nz;
+    return ended_with_carry(e, carry);
+}
+
+/* How a routine that steps the animation ended: what the step did and the state it leaves. */
+typedef struct {
+    FrameStep step;
+    Ended end;
+} FrameStepEnd;
+
 /*
  * Bodies several stage files share (one C body for every near copy). Each takes the object's
  * slot and says how it ended.
@@ -221,6 +324,8 @@ Ended ChangeToType9B(uint8_t slot);
 Ended EnterState6IfFlagged(uint8_t slot);
 Ended CountdownStopThenState4(uint8_t slot);
 Ended RightOfObject4DWithin(uint8_t slot, uint8_t limit);
+Ended LoadRecordStartAngle40(uint8_t slot);
+Ended LoadRecordTimer50(uint8_t slot);
 /* object/enemies_stage05_temp.c */
 Ended SelectRasterStage1(void);
 Ended SetHitboxDxFromFrame(uint8_t slot);
@@ -230,6 +335,12 @@ Ended EnterState7OnFlagOrYSignChange(uint8_t slot);
 Ended SetHitboxFromFrameRowsIndirect(uint8_t slot);
 Ended LaunchHopByF3510(uint8_t slot);
 Ended CountdownStopThenState3(uint8_t slot);
+Ended StartWithFrame1A(uint8_t slot);
+Ended ThrowByNextKind(uint8_t slot);
+Ended AnimateThenState1(uint8_t slot);
+Ended AnimateThenNextStep(uint8_t slot);
+Ended FollowParentYAndLeave(uint8_t slot);
+Ended AnimateThenNextStepB(uint8_t slot);
 /* object/enemies_stage07_temp.c */
 Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);

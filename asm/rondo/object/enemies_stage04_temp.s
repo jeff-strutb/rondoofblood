@@ -16,6 +16,15 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 07DB:5FD ClampSpeedXToTwo
 ; @run 70:B5FD
 ; WHAT IT DOES: Keeps an object's X speed from passing 2 pixels a frame either way: a speed over
@@ -153,4 +162,31 @@ RightOfObject4DWithin:
     rts
 RightOfObject4DWithin_at0:
     clc
+    rts
+
+; @routine 07DB:726 LoadRecordStartAngle40
+; @run 70:B726
+; WHAT IT DOES: Starts an object from its record, moves it by its velocity, and sets its angle's
+; high byte to $40.
+; HOW: LoadObjectRecord, ApplyVelocity, one store.
+; WAITS: no.
+; Entry: X object. Exit: A $40, N and Z clear; C and V from ApplyVelocity's add; Y 11; X kept.
+LoadRecordStartAngle40:
+    jsr VecLoadObjectRecord
+    jsr VecApplyVelocity
+LoadRecordStartAngle40_at0:
+    lda #$40
+    sta a:OBJ_3568,x
+    rts
+
+; @routine 07DB:7BE LoadRecordTimer50
+; @run 70:B7BE
+; WHAT IT DOES: Starts an object from its record and sets its f34b8 timer to $50.
+; HOW: LoadObjectRecord, one store.
+; WAITS: no.
+; Entry: X object. Exit: A $50, N and Z clear; C from the record; Y 11; X and V kept.
+LoadRecordTimer50:
+    jsr VecLoadObjectRecord
+    lda #$50
+    sta a:OBJ_34B8,x
     rts

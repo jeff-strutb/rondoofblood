@@ -101,4 +101,27 @@
 #define WR8_PTR(pointer_lo, value) wr8_zp_y(ADDR_OF8(pointer_lo), 0, (value))
 #define WR8_PTR_Y(pointer_lo, y, value) wr8_zp_y(ADDR_OF8(pointer_lo), (y), (value))
 
+/*
+ * TSB and TRB on a port or a byte of memory: one read, then one write of the value with the mask's bits set or
+ * cleared. They give the byte they read, from which N, V (bits 7 and 6) and Z (the AND with the mask) come.
+ */
+static inline uint8_t tsb8(uint16_t addr, uint8_t mask)
+{
+    uint8_t old = rd8(addr);
+
+    wr8(addr, (uint8_t)(old | mask));
+    return old;
+}
+
+static inline uint8_t trb8(uint16_t addr, uint8_t mask)
+{
+    uint8_t old = rd8(addr);
+
+    wr8(addr, (uint8_t)(old & ~mask));
+    return old;
+}
+
+#define TSB8(field, mask) tsb8(ADDR_OF8(field), (mask))
+#define TRB8(field, mask) trb8(ADDR_OF8(field), (mask))
+
 #endif

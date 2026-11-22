@@ -41,7 +41,7 @@ TRACK = os.path.join(disc.OUT, "track02.bin")
 TIMEOUT = 1500
 DIAG_ENV = ("RONDO_KEEP", "RONDO_ONLY", "RONDO_KEEP_WAITS", "RONDO_PLACE", "RONDO_SKIPS", "RONDO_DUMP_FRAME", "RONDO_NOJUDGE",
             "RONDO_LOG_HARD", "RONDO_JUDGE_CHECK", "RONDO_TRIM_NOJUDGE", "RONDO_TRACE_ENTRY", "RONDO_TRACE_PC")
-CAUSES = ["left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix"]
+CAUSES = ["left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix", "noreturn"]
 KINDS = ["MOVED", "EXTRA", "MISSING", "VALUE", "STACK", "STATE", "REGS", "CALL", "INT"]
 
 
@@ -224,6 +224,15 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
         f.write("routine," + ",".join(KINDS + CAUSES) + "\n")
         for name in sorted(CAUSE_TOTALS):
             f.write(name + "," + ",".join(str(n) for n in CAUSE_TOTALS[name]) + "\n")
+    # A routine every call of which ended at a callee the original did not return from is judged on a prefix only.
+    with open(os.path.join(OUT, "a5_prefix_only.csv" if csv_name == "a5.csv" else "a5_prefix_only_" + csv_name), "w",
+              newline="\n") as f:
+        f.write("routine,calls,ended_noreturn\n")
+        for name in sorted(CAUSE_TOTALS):
+            calls = totals.get(name, [0])[0]
+            nr = CAUSE_TOTALS[name][len(KINDS) + CAUSES.index("noreturn")]
+            if calls and nr == calls:
+                f.write("%s,%d,%d\n" % (name, calls, nr))
     sums = [sum(v[i] for v in CAUSE_TOTALS.values()) for i in range(len(KINDS) + len(CAUSES))]
     print("calls not judged or set aside, by cause: " + ", ".join(
         f"{n} {s}" for n, s in zip(KINDS + CAUSES, sums) if n in CAUSES and s))

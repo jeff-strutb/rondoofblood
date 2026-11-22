@@ -134,6 +134,7 @@ typedef struct {
     uint64_t arrive_nonres;  /* a tagged address entered by JSR or JMP while its bytes are not resident (not opened) */
     uint64_t runaway;        /* the C ran past its access or write budget (counted divergent) */
     uint64_t prefix;         /* open at the script's end: its accesses judged as far as the log goes */
+    uint64_t noreturn;       /* A5: a call the original's record shows did not return inside the call: judged up to it, its exit not compared */
     uint64_t kept;           /* hybrid: entered by the original's code, not swapped (a diagnostic run) */
 } Stat;
 
@@ -1233,7 +1234,7 @@ static void original_at(uint16_t ret, uint16_t addr)
     for (retidx = call + 1;; retidx++) {
         Ev *x = sev(span, retidx, &nest);
 
-        if (!x || (x->type == EV_RET && x->s == (uint8_t)(ec.s + 2)))
+        if (!x || (x->type == EV_RET && x->s == (uint8_t)(ec.s + 2) && (!ret || x->pc == ret)))
             break;
     }
     noreturn = retidx >= span->end || !evp(retidx);
@@ -1264,6 +1265,10 @@ static void original_at(uint16_t ret, uint16_t addr)
             stats[span->tag].originals++;
             pace_to(ec.clock);
             chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, addr);
+            if (ret) {      /* a call the original never came back from: the C's code after it is not the original's */
+                stats[span->tag].noreturn++;
+                longjmp(c_abort, ABORT_END);
+            }
             prev_op = ec.kind == K_JMP ? 0x4C : 0x20;
             last_pc = rondo_tags[span->tag].run;     /* the jump comes from this routine, not from the code run before */
             scan = call + 1;
@@ -2799,12 +2804,12 @@ void check_finish(void)
                     (unsigned long long)s->unverified, (unsigned long long)s->order);
             for (int k = 0; k < NKIND; k++)
                 fprintf(report, " %llu", (unsigned long long)s->kind[k]);
-            /* Causes: left, log, depth, computed, arrive_branch, arrive_nonres, runaway, prefix */
-            fprintf(report, " %llu %llu %llu %llu %llu %llu %llu %llu\n", (unsigned long long)s->unv_left,
+            /* Causes: left, log, depth, computed, arrive_branch, arrive_nonres, runaway, prefix, noreturn */
+            fprintf(report, " %llu %llu %llu %llu %llu %llu %llu %llu %llu\n", (unsigned long long)s->unv_left,
                     (unsigned long long)s->unv_log, (unsigned long long)s->unv_depth,
                     (unsigned long long)s->unv_computed, (unsigned long long)s->arrive_branch,
                     (unsigned long long)s->arrive_nonres, (unsigned long long)s->runaway,
-                    (unsigned long long)s->prefix);
+                    (unsigned long long)s->prefix, (unsigned long long)s->noreturn);
         }
         fclose(report);
     } else if (mode == MODE_RECORD) {

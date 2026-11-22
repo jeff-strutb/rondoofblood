@@ -42,7 +42,7 @@ def run_oracle(tree, what, script, out, box):
 
 
 KINDS = ("MOVED", "EXTRA", "MISSING", "VALUE", "STACK", "STATE", "REGS", "CALL", "INT")
-CAUSES = ("left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix")
+CAUSES = ("left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix", "noreturn")
 LABELS = (("swapped", r"(-?\d+) swapped"), ("compared", r"frames compared (-?\d+)"), ("identical", r"identical (-?\d+)"),
           ("code", r"first differing (-?\d+)"), ("defects", r"access defects (-?\d+)"),
           ("interrupts", r"interrupts inside (-?\d+)"), ("originals", r"original calls (-?\d+)"),

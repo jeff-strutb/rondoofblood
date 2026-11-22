@@ -1,3 +1,85 @@
+; @routine 00C4:025 PadRepeatUpdate
+; @run 6B:9825
+; WHAT IT DOES: Gives the menu a pad with key repeat: for each of the eight pad bits, a bit in
+; $7DFA that is set on the frame the button goes down and then every 12 frames after 24 held.
+; HOW: The new presses (the card's trigger byte) and the held bits (the card's pad byte) are
+; shifted out a bit at a time. A new press loads the bit's counter (the eight bytes from $7DF2)
+; with 24 and sets the bit. A held button counts the counter down; at zero it loads 12 and sets
+; the bit. A released button clears the counter. Each bit is rotated into $7DFA, so that button 0
+; ends on bit 0.
+; WAITS: no. The arm that reloads a counter that has run down to zero (LDA #$0C) is in no script's
+; trace: the draft stops there, so the comparison does not reach it.
+; Entry: nothing. Exit: A the last value the counter loop loaded (24, 12, 0, or the held byte if
+; no counter was loaded), X 8, Z and C set, N clear. Clobbers zTemp00 and zTemp01.
+PadRepeatUpdate:
+    lda a:BiosJoyTrigger
+    sta z:zTemp00
+    lda a:BiosPadState
+    sta z:zTemp01
+    clx
+PadRepeatUpdate_at4:
+    lsr z:zTemp00
+    bcc PadRepeatUpdate_at0
+    lda #$18
+    lsr z:zTemp01
+    sec
+    bra PadRepeatUpdate_at1
+PadRepeatUpdate_at0:
+    lsr z:zTemp01
+    bcc PadRepeatUpdate_at2
+    dec a:$7DF2,x
+    clc
+    bne PadRepeatUpdate_at3
+    lda #$0C
+    sec
+    bra PadRepeatUpdate_at1
+PadRepeatUpdate_at2:
+    cla
+    clc
+PadRepeatUpdate_at1:
+    sta a:$7DF2,x
+PadRepeatUpdate_at3:
+    ror a:$7DFA
+    inx
+    cpx #$08
+    bne PadRepeatUpdate_at4
+    rts
+
+; @routine 00C4:0CC DrawSelectedFileDigit
+; @run 6B:98CC
+; WHAT IT DOES: Draws the number of the selected file as a digit tile at the screen place $00CE.
+; HOW: Sets the VDC's write address to $00CE and writes the digit tile for the value in $7DF1
+; (its value plus $10, palette 1).
+; WAITS: no.
+; Entry: nothing. Exit: A the value plus $10, N, Z, C and V from that add; X and Y kept.
+DrawSelectedFileDigit:
+    jsr VecSelectVramWriteAddress
+    st1 #$CE
+    st2 #$00
+    jsr VecSelectVramData
+    lda a:$7DF1
+DrawSelectedFileDigit_at0:
+    clc
+    adc #$10
+    sta a:VDC_DATA_LO
+    st2 #$11
+    rts
+
+; @routine 00C4:0E2 DrawCursorRowDigit
+; @run 6B:98E2
+; WHAT IT DOES: Draws the number of the cursor's row as a digit tile at the screen place $012B.
+; HOW: Sets the VDC's write address to $012B and runs into DrawSelectedFileDigit's last
+; part with the value in $7DFF.
+; WAITS: no.
+; Entry: nothing. Exit: as DrawSelectedFileDigit.
+DrawCursorRowDigit:
+    jsr VecSelectVramWriteAddress
+    st1 #$2B
+    st2 #$01
+    jsr VecSelectVramData
+    lda a:$7DFF
+    bra DrawSelectedFileDigit_at0
+
 ; @routine 00C4:3F6 ShiftObjectsByScrollChange
 ; @run 6B:9BF6
 ; WHAT IT DOES: Moves the menu's objects 16 to 63 sideways by what the menu's scroll has moved
@@ -191,4 +273,308 @@ MenuStepAdvance:
 ; Entry: A the step. Exit: A and the flags kept.
 SetMenuStep:
     sta z:zField80
+    rts
+
+; @routine 00DD:699 SlotToWorkArea
+; @run 6F:A699
+; WHAT IT DOES: Copies the chosen save slot's bytes that the file menu shows into a work area
+; ($3F40 up): the first byte, the two at $1D and $1E, and four groups of five bytes (at $01,
+; $06, $0B and $10) as four runs of five.
+; HOW: The slot's offset into the backup file comes from a table; the three single bytes are
+; copied, then a loop of five takes one byte from each of the four groups at a time.
+; WAITS: no.
+; Entry: nothing. Exit: A the last byte copied, X the slot offset plus 5, Y 5, Z and C set, N
+; clear.
+SlotToWorkArea:
+    ldy z:zSaveSlot
+    ldx a:$9252,y
+    lda a:SaveBuffer,x
+    sta a:ProgressCharacter
+    lda a:SaveContinues,x
+    sta a:ContinuesLo
+    lda a:SaveContinues+1,x
+    sta a:ContinuesHi
+    cly
+SlotToWorkArea_at0:
+    lda a:SaveBuffer+1,x
+    sta a:StagesReached,y
+    lda a:SaveBuffer+6,x
+    sta a:StagesReached+5,y
+    lda a:$7D0B,x
+    sta a:StagesVisited,y
+    lda a:$7D10,x
+    sta a:StagesVisited+5,y
+    inx
+    iny
+    cpy #$05
+    bne SlotToWorkArea_at0
+    rts
+
+; @routine 00DE:171 WriteHexByteTiles
+; @run 6F:A971
+; WHAT IT DOES: Writes a byte to the screen as two hex digit tiles, high digit first.
+; HOW: Keeps A on the stack, writes the high nibble as a digit tile, pulls A and runs on into
+; WriteDigitTile for the low nibble.
+; WAITS: no.
+; Entry: A the byte; the VDC's write address set. Exit: A the low digit's tile number, the flags as the last OR left them (N and Z clear), C bit 3 of the byte (the last
+; shift's); X and Y kept.
+WriteHexByteTiles:
+    pha
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    bsr WriteDigitTile
+    pla
+
+; @routine 00DE:179 WriteLowDigitTile
+; @run 6F:A979
+; WHAT IT DOES: Writes the low nibble of A to the screen as a digit tile.
+; HOW: Masks A with $0F and runs on into WriteDigitTile.
+; WAITS: no.
+; Entry: A the value; the VDC's write address set. Exit: as WriteDigitTile.
+WriteLowDigitTile:
+    and #$0F
+
+; @routine 00DE:17B WriteDigitTile
+; @run 6F:A97B
+; WHAT IT DOES: Writes one digit tile to the screen: the digit's tile number is $10 over the
+; digit, with palette 1 in the high byte.
+; HOW: ORs $10 into A, writes it to the VDC's data port and then $11 to its high byte.
+; WAITS: no.
+; Entry: A the digit (0 to $F, or any value to be ORed with $10); the VDC's write address set.
+; Exit: A the value ORed with $10, N and Z from it, C kept, X and Y kept.
+WriteDigitTile:
+    ora #$10
+    sta a:VDC_DATA_LO
+    st2 #$11
+    rts
+
+; @routine 00DE:1D8 EventFlagsClear
+; @run 6F:A9D8
+; WHAT IT DOES: Forgets every event: the 32 bytes of event flags go to zero.
+; HOW: A loop from byte 31 down to 0.
+; WAITS: no.
+; Entry: nothing. Exit: X $FF, N set, Z clear; A, Y and C kept.
+EventFlagsClear:
+    ldx #$1F
+EventFlagsClear_at0:
+    stz a:EventFlags,x
+    dex
+    bpl EventFlagsClear_at0
+    rts
+
+; @routine 00DE:1E1 EventBitClear
+; @run 6F:A9E1
+; WHAT IT DOES: Takes one event out of the flags the save remembers.
+; HOW: EventBitMask gives the byte and bit; the byte is read, ANDed with the bit's complement and
+; written back.
+; WAITS: no.
+; Entry: A the event number. Exit: A the byte written, N and Z from it, C clear, Y the flag byte
+; index; X kept.
+EventBitClear:
+    bsr EventBitMask
+    eor #$FF
+    sxy
+    and a:EventFlags,x
+    sta a:EventFlags,x
+    sxy
+    rts
+
+; @routine 00DE:1EE EventBitSet
+; @run 6F:A9EE
+; WHAT IT DOES: Puts one event into the flags the save remembers.
+; HOW: EventBitMask gives the byte and bit; the byte is read, ORed with the bit and written back.
+; WAITS: no.
+; Entry: A the event number. Exit: as EventBitClear.
+EventBitSet:
+    bsr EventBitMask
+    sxy
+    ora a:EventFlags,x
+    sta a:EventFlags,x
+    sxy
+    rts
+
+; @routine 00DE:1F9 EventBitTest
+; @run 6F:A9F9
+; WHAT IT DOES: Tells whether one event is in the flags the save remembers.
+; HOW: EventBitMask gives the byte and bit; the byte is read and ANDed with the bit.
+; WAITS: no.
+; Entry: A the event number. Exit: A the bit if the event is set, else 0, N and Z from it, C
+; clear, Y the flag byte index; X kept.
+EventBitTest:
+    bsr EventBitMask
+    sxy
+    and a:EventFlags,x
+    sxy
+    rts
+
+; @routine 00DE:201 EventBitMask
+; @run 6F:AA01
+; WHAT IT DOES: Turns an event number into the byte of the event flags that holds it and the bit
+; in that byte.
+; HOW: The number is kept on the stack while its byte (over 8) is worked out, then pulled; the bit
+; is 1 shifted left by the number's low three bits. The original counts the shifts down in $FE (one more than the bits, then built one place too
+; high and rotated back so that 7 ends on $80); the counter is left at zero.
+; WAITS: no.
+; Entry: A the event number. Exit: A the bit, N and Z from it, C clear, Y the byte; X kept;
+; zBiosDl zero.
+EventBitMask:
+    pha
+    lsr a
+    lsr a
+    lsr a
+    tay
+    pla
+    and #$07
+    sta z:zBiosDl
+    inc z:zBiosDl
+    lda #$01
+EventBitMask_at0:
+    asl a
+    dec z:zBiosDl
+    bne EventBitMask_at0
+    ror a
+    rts
+
+; @routine 00DE:216 SlotCompletionPercent
+; @run 6F:AA16
+; WHAT IT DOES: Works out how complete a save slot is, as a decimal number for the file menu: two
+; for each bit set in the slot's first byte, and four for each bit set in the OR of its five
+; pairs of bytes at offsets $0B and $10.
+; HOW: Decimal mode on. The slot's offset into the backup file is read from a table; each byte's
+; set bits are counted by CountSetBits; the sum is built in zTemp08 (low) and zTemp09 (high) with
+; the count added once for the first byte twice, and four times for each of the five pairs (the
+; pair's count kept in zTemp0B between the four adds, five pairs counted in zTemp0A). Decimal
+; mode off.
+; WAITS: no.
+; Entry: Y the slot (0 to 2). Exit: A zTemp09, C from the last decimal add, N clear and Z set (the
+; pair counter reached zero), V as the caller left it, D clear; X the slot's offset plus 5; Y the
+; last count.
+SlotCompletionPercent:
+    sed
+    ldx a:$9252,y
+    lda a:SaveBuffer,x
+    jsr CountSetBits
+    sta z:zTemp08
+    clc
+    adc z:zTemp08
+    sta z:zTemp08
+    stz z:zTemp09
+    lda #$05
+    sta z:zTemp0A
+SlotCompletionPercent_at0:
+    lda a:$7D0B,x
+    ora a:$7D10,x
+    jsr CountSetBits
+    sta z:zTemp0B
+    clc
+    adc z:zTemp08
+    sta z:zTemp08
+    cla
+    adc z:zTemp09
+    sta z:zTemp09
+    lda z:zTemp0B
+    clc
+    adc z:zTemp08
+    sta z:zTemp08
+    cla
+    adc z:zTemp09
+    sta z:zTemp09
+    lda z:zTemp0B
+    clc
+    adc z:zTemp08
+    sta z:zTemp08
+    cla
+    adc z:zTemp09
+    sta z:zTemp09
+    lda z:zTemp0B
+    clc
+    adc z:zTemp08
+    sta z:zTemp08
+    cla
+    adc z:zTemp09
+    sta z:zTemp09
+    inx
+    dec z:zTemp0A
+    bne SlotCompletionPercent_at0
+    cld
+    rts
+
+; @routine 00DE:26D CountSetBits
+; @run 6F:AA6D
+; WHAT IT DOES: Counts the bits set in a byte.
+; HOW: Shifts the byte right eight times, counting each carry out.
+; WAITS: no. The arm that counts a set bit (an INY) is in no script's trace: the draft stops
+; there, so the comparison does not reach it.
+; Entry: A the byte, X kept on the stack across it (a typed caller passes its own X). Exit: A and
+; Y the count, N and Z from X (the PLX that gives it back is the last to set them), C the byte's
+; bit 7; X kept.
+CountSetBits:
+    cly
+    phx
+    ldx #$08
+CountSetBits_at0:
+    lsr a
+    bcc ScreenMapOfEntryB_at0
+    iny
+ScreenMapOfEntryB_at0:
+    dex
+    bne CountSetBits_at0
+    tya
+    plx
+    rts
+
+; @routine 00DE:7A3 SlotLastClearedFlag
+; @run 6F:AFA3
+; WHAT IT DOES: Finds the highest of the 13 things SlotClearedFlags marks that the chosen slot
+; has, or 0 if it has none.
+; HOW: SlotClearedFlags, then a scan of its bytes from the 13th down for the first that is not
+; zero.
+; WAITS: no.
+; Entry: nothing. Exit: X the number found (0 to 12; 0 too when none), A the byte read last (zero when
+; none), N and Z from the read (from the last decrement of X when none), C set, V from
+; SlotClearedFlags; Y as it left it.
+SlotLastClearedFlag:
+    bsr SlotClearedFlags
+    ldx #$0C
+SlotLastClearedFlag_at1:
+    lda a:ListChannelClearEnd+1,x
+    bne SlotLastClearedFlag_at0
+    dex
+    bpl SlotLastClearedFlag_at1
+    clx
+SlotLastClearedFlag_at0:
+    rts
+
+; @routine 00DE:7B1 SlotClearedFlags
+; @run 6F:AFB1
+; WHAT IT DOES: For the chosen save slot, marks which of 13 things it has: a byte for each, in a
+; list that ends in a zero byte, set when the slot has any of the bits a table names for it.
+; HOW: For each of the 13, clears its byte, reads the two slot bytes the table's offset names (at
+; $01 and $06 into the slot), ORs them, ANDs the table's mask and adds one to the byte if
+; anything is left; then clears the byte after the last.
+; WAITS: no. The arm that adds one to a byte (an INC) is in no script's trace: the draft stops
+; there, so the comparison does not reach it (it is compared with every mask zero).
+; Entry: nothing. Exit: A the last AND, X 13, Y the last slot byte index, Z and C set, N clear, V
+; from the last offset add (the slot's offset plus the table's).
+SlotClearedFlags:
+    clx
+SlotClearedFlags_at1:
+    stz a:ListChannelClearEnd+1,x
+    ldy z:zSaveSlot
+    lda a:$9252,y
+    clc
+    adc a:$AFD6,x
+    tay
+    lda a:SaveBuffer+1,y
+    ora a:SaveBuffer+6,y
+    and a:$AFE3,x
+    beq SlotClearedFlags_at0
+    inc a:ListChannelClearEnd+1,x
+SlotClearedFlags_at0:
+    inx
+    cpx #$0D
+    bne SlotClearedFlags_at1
+    stz a:ListChannelClearEnd+1,x
     rts

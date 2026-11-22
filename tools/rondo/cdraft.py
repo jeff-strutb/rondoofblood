@@ -322,6 +322,8 @@ def my_filed(disc):
     """This tree's filed routines (asmfile's tags) as the intake takes them: disc, length, run, name."""
     sys.path.insert(0, HERE)
     import asmfile
+    if os.environ.get("CDRAFT_TEST_NO_FILED"):       # the control: with no filed routine at all the drafts' bodies must not change
+        return []
     routines = asmfile.all_routines()
     out = []
     for i, r in enumerate(routines):
@@ -333,35 +335,15 @@ def my_filed(disc):
 
 
 def load():
-    """Every piece of traced code, filed ranges included, grouped by content: (disc, intake)."""
+    """Every piece of traced code, grouped by content: (disc, intake). The pieces are cut from the traces and the
+    catalog alone: no filed routine's span or tag takes part in the cut, so filing a routine (or filing it short)
+    never changes any draft. The filed routines (this tree's @routine tags) only give names, matched by disc
+    location and run address (it.filed)."""
     disc = open(asmbuild.TRACK, "rb").read()
     data = intake.load()
     dm, rows, es = data[1], data[2], data[3]
-    filed = my_filed(disc)
-    it = intake.build(filed, disc, dm, rows, es, log=lambda *a: None)
-    # the filed ranges and their exact copies are not in the intake's pieces: group them with the rest
-    by = {}
-    for g in it.groups:
-        by[g.content if g.n >= intake.SMALL else (g.content, g.canon & 0x1FFF)] = g
-    extra = [(f["disc"], f["disc"] + f["end"], f) for f in filed] + [(s, s + f["end"], f) for s, f in it.filed_copies]
-    for lo, hi, f in extra:
-        c = bytes(disc[lo:hi])
-        k = c if len(c) >= intake.SMALL else (c, lo & 0x1FFF)
-        piece = intake.Piece(lo, hi, "filed", ())
-        if k in by:
-            g = by[k]
-            g.members = sorted(g.members + [piece], key=lambda q: q.lo)
-            g.canon = g.members[0].lo
-        else:
-            g = intake.Group([piece], c)
-            intake.decode_group(g, dm)
-            by[k] = g
-            it.groups.append(g)
-        piece.group = g
-        it.pieces_in.append(piece)
-    it.pieces_in.sort(key=lambda q: q.lo)
-    it.groups.sort(key=lambda g: g.canon)
-    it.filed = filed
+    it = intake.build([], disc, dm, rows, es, log=lambda *a: None)
+    it.filed = my_filed(disc)
     it.rows_all = rows
     return disc, it
 
@@ -425,13 +407,12 @@ def card_drafts(names, rows=None):
     import cardfile
     rom = open(cardfile.IMAGE, "rb").read()
     cm = open(os.path.join(intake.TRACE, "cardmap.bin"), "rb").read()
-    filed_names = {r["name"] for r in cardfile.spans()}
+    filed_at = {} if os.environ.get("CDRAFT_TEST_NO_FILED") else \
+        {(r["disc"], r["run"]): r["name"] for r in cardfile.spans()}      # names only, never a cut
+    filed_names = set(filed_at.values())
     used = bytearray(len(rom))
     pieces = []                                   # (lo, hi, run, name)
     norun = 0
-    for r in cardfile.spans():
-        pieces.append((r["disc"], r["disc"] + r["length"], r["run"], r["name"]))
-        used[r["disc"]:r["disc"] + r["length"]] = b"\x01" * r["length"]
     for r in sorted((r for r in (rows or []) if r["space"] == "C"), key=lambda r: int(r["offset"], 16)):
         lo, n = int(r["offset"], 16), int(r["bytes"])
         if r["run"]:
@@ -472,6 +453,7 @@ def card_drafts(names, rows=None):
     for lo, hi, run, name in sorted(pieces):
         pc = intake.Piece(lo, hi, "card", ())
         g = intake.Group([pc], bytes(rom[lo:hi]))
+        name = filed_at.get((lo, run), name)      # a label: the filed name of the routine that starts here
         intake.decode_group(g, cm)
         pc.group = g
         cpieces.append(pc)

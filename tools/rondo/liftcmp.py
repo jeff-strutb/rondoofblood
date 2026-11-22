@@ -27,6 +27,13 @@ Coverage. Both sides are built with the compiler's block probes; the report says
 of the draft no case reached, and for each line reached by three cases or fewer, which. A line no case reached is an
 arm that is not proven: add a curated case for it.
 
+The entry contract. The cases assume what a routine's header says of its entry, not what the chip could be in: D clear
+(unless the routine's own assembly sets it, then it is set in the draft too), I clear, T and B clear, S in $90 to $F8,
+X below $58 in half the cases (an object or channel index), and stubs return N, V, Z and C only. `--decimal` runs decimal
+cases for a routine entered with D set or calling something that returns it set; `--irq` sets I in half the cases;
+the result line says which was run. Gate A5 judges the contract on real calls: a difference found here under a contract
+the game never meets is not a defect, and one the gate finds under real entry is not made up by passing here.
+
 What it does not do: it runs no emulator and no interrupt; a routine that waits is judged up to its wait; timing
 is not modelled. It is a check on a lift, not a replacement for the gates.
 
@@ -63,22 +70,24 @@ def main_checkout():
     return os.path.dirname(r.stdout.strip()) if r.returncode == 0 else TOP
 
 
-def find_drafts(given, ops_given=None):
-    """The drafts folder: the one given, else the newest `gen_all` beside a work tree that also holds ops6280.h."""
-    cands = [given] if given else []
-    if not given:
-        r = run(["git", "-C", TOP, "worktree", "list", "--porcelain"])
-        trees = [l[9:] for l in r.stdout.splitlines() if l.startswith("worktree ")]
-        for t in trees:
-            for sub in ("build/rondo/drafter/gen_all", "build/rondo/drafter/gen"):
-                c = os.path.join(t, sub)
-                if os.path.exists(os.path.join(c, "drafts.csv")) and os.path.exists(os.path.join(t, "src", "rondo", "include", "ops6280.h")):
-                    cands.append(c)
-        cands.sort(key=lambda c: -os.path.getmtime(os.path.join(c, "drafts.csv")))
-    for c in cands:
-        if os.path.exists(os.path.join(c, "drafts.csv")) and os.path.exists(os.path.join(c, "drafts.c")):
-            return c
-    raise SystemExit("liftcmp: no drafts folder (drafts.c and drafts.csv) beside a tree with ops6280.h; pass --drafts DIR")
+def find_drafts(given):
+    """The drafts folders to look in, newest first: the one given, else every `gen_all` or `gen` beside a work tree
+    that also holds ops6280.h (the main checkout's included)."""
+    if given:
+        return [given]
+    r = run(["git", "-C", TOP, "worktree", "list", "--porcelain"])
+    trees = [l[9:] for l in r.stdout.splitlines() if l.startswith("worktree ")]
+    cands = []
+    for t in trees:
+        for sub in ("build/rondo/drafter/gen_all", "build/rondo/drafter/gen"):
+            c = os.path.join(t, sub)
+            if (os.path.exists(os.path.join(c, "drafts.csv")) and os.path.exists(os.path.join(c, "drafts.c"))
+                    and os.path.exists(os.path.join(t, "src", "rondo", "include", "ops6280.h"))):
+                cands.append(c)
+    cands.sort(key=lambda c: -os.path.getmtime(os.path.join(c, "drafts.csv")))
+    if not cands:
+        raise SystemExit("liftcmp: no drafts folder (drafts.c and drafts.csv) beside a tree with ops6280.h; pass --drafts DIR")
+    return cands
 
 
 def find_ops(drafts_dir, given):
@@ -95,12 +104,18 @@ def find_ops(drafts_dir, given):
 
 
 def hybrid_rows():
-    for base in (TOP, main_checkout()):
-        p = os.path.join(base, "build", "rondo", "pcebox", "hybrid_table.c")
-        if os.path.exists(p):
-            text = open(p).read()
-            return re.findall(r'\{ 0x([0-9A-F]+), \d+, \d+, "(\w+)", (abi_\w+), \d+, 0x[0-9A-F]+, (\d) \},', text)
-    raise SystemExit("liftcmp: no build/rondo/pcebox/hybrid_table.c (setup.sh pcebox writes it)")
+    """The routine table of this tree (hybrid.py, 0.1 s): regenerated here when missing or older than any C file."""
+    p = os.path.join(TOP, "build", "rondo", "pcebox", "hybrid_table.c")
+    newest = 0
+    for dp, _, fs in os.walk(os.path.join(TOP, "src")):
+        newest = max([newest] + [os.path.getmtime(os.path.join(dp, f)) for f in fs if f.endswith((".c", ".h"))])
+    for dp, _, fs in os.walk(os.path.join(TOP, "syscard", "src")):
+        newest = max([newest] + [os.path.getmtime(os.path.join(dp, f)) for f in fs if f.endswith(".c")])
+    if not os.path.exists(p) or os.path.getmtime(p) < newest:
+        r = run([sys.executable, "-I", os.path.join(HERE, "hybrid.py")], cwd=TOP)
+        if r.returncode:
+            raise SystemExit(f"liftcmp: hybrid.py failed:\n{(r.stdout + r.stderr)[-600:]}")
+    return re.findall(r'\{ 0x([0-9A-F]+), \d+, \d+, "(\w+)", (abi_\w+), \d+, 0x[0-9A-F]+, (\d) \},', open(p).read())
 
 
 def header_hash():
@@ -146,10 +161,34 @@ def find_source(name, sources):
     raise SystemExit(f"liftcmp: no `void abi_{name}(void)` in src/rondo")
 
 
+def routine_tag(name):
+    """(disc byte offset, run address) of a filed routine from its `@routine SSSS:OOO NAME` and `@run BB:AAAA` tags."""
+    pat = re.compile(r"@routine\s+([0-9A-Fa-f]+):([0-9A-Fa-f]+)\s+%s\b[^\n]*\n(?:[^\n]*\n){0,2}?[^\n]*@run\s+[0-9A-Fa-f]+:([0-9A-Fa-f]+)" % re.escape(name))
+    roots = [os.path.join(TOP, "src", "rondo"), os.path.join(TOP, "syscard", "src")]
+    for root in roots:
+        for dp, _, fs in os.walk(root):
+            for f in fs:
+                if f.endswith(".c"):
+                    m = pat.search(open(os.path.join(dp, f)).read())
+                    if m:
+                        return int(m.group(1), 16) * 2048 + int(m.group(2), 16), int(m.group(3), 16)
+    return None, None
+
+
 def extract_draft(drafts_dir, name):
-    rows = [r for r in csv.DictReader(open(os.path.join(drafts_dir, "drafts.csv"))) if r["filed"] == name]
+    allrows = list(csv.DictReader(open(os.path.join(drafts_dir, "drafts.csv"))))
+    rows = [r for r in allrows if r.get("filed") == name]
+    how = "by its filed name"
     if not rows:
-        raise SystemExit(f"liftcmp: {name} has no draft in {drafts_dir}/drafts.csv")
+        disc, run_addr = routine_tag(name)
+        if disc is not None:
+            rows = [r for r in allrows if r.get("disc") == str(disc) and not int(r.get("rom") or 0)]
+            if len(rows) > 1:
+                same = [r for r in rows if int(r["run"], 16) == run_addr]
+                rows = same or rows
+            how = "by its disc location %d (@routine tag)" % disc
+    if not rows:
+        return None
     row = rows[0]
     text = open(os.path.join(drafts_dir, "drafts.c")).read()
     m = re.search(r"^/\* %s: run .*?(?=^/\* \w+: run |\Z)" % re.escape(row["name"]), text, re.S | re.M)
@@ -185,17 +224,20 @@ def parse_curated(path):
     return cases
 
 
-def make_cases(curated, n, seed):
+def make_cases(curated, n, seed, decimal=False, irq=False):
     rng = random.Random(seed)
     cases = list(curated)
     edge = [0, 1, 2, 0x7F, 0x80, 0xFF, 0xFE, 0x0F, 0xF0]
     for _ in range(n):
         def r8():
             return rng.choice(edge) if rng.random() < 0.5 else rng.randrange(256)
-        p = rng.choice([0, 1, 2, 3, 0x40, 0x80, 0x82, 0xC3]) | (rng.getrandbits(6) & 0x07)
-        if rng.random() < 0.9:
-            p &= ~0x08
-        cases.append(dict(a=r8(), x=r8() if rng.random() < 0.5 else rng.randrange(0, 0x58), y=r8(), s=rng.randrange(0x30, 0xF1),
+        # N, V, Z, C as the entry contract has them; D and I only when asked for (see the header)
+        p = rng.choice([0, 1, 2, 3, 0x40, 0x80, 0x82, 0xC3]) | (rng.getrandbits(2) & 0x03)
+        if decimal and rng.random() < 0.5:
+            p |= 0x08
+        if irq and rng.random() < 0.5:
+            p |= 0x04
+        cases.append(dict(a=r8(), x=r8() if rng.random() < 0.5 else rng.randrange(0, 0x58), y=r8(), s=rng.randrange(0x90, 0xF9),
                           p=p & 0xCF, mem=[], label="seed"))
     with_seed = []
     for i, c in enumerate(cases):
@@ -341,7 +383,19 @@ def one(name, a, ctx):
     objs = []
     for s in ctx["sources"]:
         objs.append(ctx["objs"][s] if not (override and s == src) else compile_obj(s, override, ctx["cache"], ctx["hh"]))
-    row, body, ndraft = extract_draft(ctx["drafts"], name)
+    found = None
+    for d in ctx["drafts"]:
+        found = extract_draft(d, name)
+        if found:
+            ctx["drafts_used"], ctx["ops"] = d, find_ops(d, a.ops)
+            break
+    if not found:
+        disc, _ = routine_tag(name)
+        label = ("r%04X_%03X" % divmod(disc, 2048)) if disc is not None else None
+        raise SystemExit(f"liftcmp: {name} has no draft in {', '.join(ctx['drafts'])}; "
+                         + (f"its disc location is {disc} ({label}): run `python3 tools/rondo/cdraft.py --only {label}` and pass --drafts with its folder"
+                            if label else "it has no @routine tag with a @run, so it cannot be looked up by location"))
+    row, body, ndraft = found
     work = os.path.join(BUILD, "work", name)
     os.makedirs(work, exist_ok=True)
     disp = os.path.join(work, "dispatch.c")
@@ -349,7 +403,7 @@ def one(name, a, ctx):
     draft_c = os.path.join(work, "draft_%s.c" % name)
     open(draft_c, "w").write('#include "machine.h"\n#include "ops6280.h"\n\n' + body)
     rt = os.path.join(HERE, "liftcmp_rt.c")
-    cases = make_cases(parse_curated(a.curated), a.cases, a.seed)
+    cases = make_cases(parse_curated(a.curated), a.cases, a.seed, a.decimal, a.irq)
     cfile = os.path.join(work, "cases.txt")
     write_cases(cases, cfile)
     exes = {}
@@ -373,7 +427,7 @@ def one(name, a, ctx):
     logs, covs = {}, {}
     for side in ("lifted", "draft"):
         covf = os.path.join(work, side + ".cov")
-        r = run([os.path.join(work, side + ".bin"), cfile, covf], timeout=60)
+        r = run([os.path.join(work, side + ".bin"), cfile, covf], timeout=60, env=dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0"))
         if r.returncode:
             raise SystemExit(f"liftcmp: the {side} side exited {r.returncode}:\n{r.stderr[-400:]}")
         logs[side] = split_log(r.stdout)
@@ -392,7 +446,7 @@ def one(name, a, ctx):
             same.append(i)
         else:
             diffs.append(i)
-    lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated): "
+    lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}): "
              f"{len(same)} match, {len(diffs)} differ, {len(untraced)} draft reached untraced bytes"]
     for i in diffs[:a.show]:
         c = cases[i]
@@ -447,6 +501,8 @@ def main():
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--curated")
     ap.add_argument("--lifted", help="a C file to use in place of the tree's file for the routine")
+    ap.add_argument("--decimal", action="store_true", help="decimal cases: D set at entry in half the cases and in the P a stub returns")
+    ap.add_argument("--irq", action="store_true", help="I set at entry in half the cases")
     ap.add_argument("--ignore-flags", default="", help="flag letters not compared at exit (NVDIZC)")
     ap.add_argument("--quiet", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--no-cover", action="store_true")
@@ -467,18 +523,23 @@ def main():
     if not a.names and not a.file:
         ap.error("name a routine or give --file")
     drafts = find_drafts(a.drafts)
-    ctx = dict(cache=cache, sources=sources, objs=objs, hh=hh, drafts=drafts, ops=find_ops(drafts, a.ops), rows=hybrid_rows())
+    ctx = dict(cache=cache, sources=sources, objs=objs, hh=hh, drafts=drafts, ops=None, rows=hybrid_rows())
     bad = 0
     names = list(a.names)
     if a.file:
         path = os.path.join(TOP, a.file) if not os.path.isabs(a.file) else a.file
-        have = {r["filed"] for r in csv.DictReader(open(os.path.join(drafts, "drafts.csv"))) if r["filed"]}
-        names += [n for n in re.findall(r"^void abi_(\w+)\(void\)\s*$", open(path).read(), re.M) if n in have]
+        names += re.findall(r"^void abi_(\w+)\(void\)\s*$", open(path).read(), re.M)
         a.quiet = True
         a.show = 0
         print(f"{a.file}: {len(names)} routines with a draft")
     for n in names:
-        ok, _ = one(n, a, ctx)
+        try:
+            ok, _ = one(n, a, ctx)
+        except SystemExit as e:
+            if not a.file or "has no draft" not in str(e):
+                raise
+            print(f"{n:32s} {str(e)[len('liftcmp: ' + n + ' '):][:200]}")
+            continue
         bad += not ok
     return 1 if bad else 0
 

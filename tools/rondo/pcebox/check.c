@@ -301,6 +301,8 @@ typedef struct {
 
 #define SPAN_OPEN UINT64_MAX
 
+static uint16_t last_pc, before_pc;   /* the PC of the last instruction the hook saw, and the one before the arrival */
+
 static Ev *evp(uint64_t i);
 
 /*
@@ -328,6 +330,16 @@ static Ev *sev(Span *s, uint64_t j, int *nest)
 }
 
 static Span *sp;                       /* the span whose C is running */
+
+/* The record ends inside this call: at its end, or at the CLOSE that flushes a call the script left open. */
+static int record_ends_here(const Span *s)
+{
+    Ev *c;
+
+    if (at_eof)
+        return 1;
+    return s->end != SPAN_OPEN && (c = evp(s->end)) && c->type == EV_CLOSE && c->kind == CL_LEFT;
+}
 enum { ABORT_NONE, ABORT_DIVERGED, ABORT_RUNAWAY, ABORT_END };
 static int prefix_mode;                /* A5: judging a call open at the script's end: the log ending is not a defect */
 static jmp_buf c_abort;
@@ -365,6 +377,7 @@ static void defect(int kind, const char *fmt, ...)
 
 void check_finish(void);
 static void stop_context(uint64_t from);
+static void park_forever(void);
 static unsigned long extra_run;
 static const char *stopped_why;
 
@@ -520,6 +533,8 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
         if (!hw && type != EV_STATE && (e->type == EV_HWR || e->type == EV_HWW || e->type == EV_STATE))
             break;
     }
+    if (found < 0 && hit_end && first < 0 && mode == MODE_HYBRID && sp == s && record_ends_here(s))
+        park_forever();
     if (found >= 0) {
         extra_run = 0;
     } else if (mode == MODE_HYBRID && ++extra_run > 200000) {
@@ -768,6 +783,7 @@ static void hy_int_pass(Span *s, uint64_t i, uint64_t r)
     chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(ev.s - 2)), (uint8_t)(ev.p & ~P_B));
     chk_set_regs(ev.a, ev.x, ev.y, (uint8_t)(ev.s - 3), (uint8_t)((ev.p | P_I) & ~(P_T | P_D)), handler);
     prev_op = PREV_IRQ;
+    last_pc = 0xFFFF;
     scan = entry_idx + 1;
     cpu_run_until(ev.pc, ev.s);
     scan = r + 1;
@@ -1034,6 +1050,27 @@ void csh(void) { set_speed(1); }
  * wait_interrupt: the original spins with no data access (a jump or branch to itself) until an
  * interrupt. The next counted event of the span must be that interrupt's; it is delivered here.
  */
+/*
+ * The record ends inside this call (the script ended there): the C parks and is never resumed, the script's last
+ * frames going on with it parked as the original's did.
+ */
+static void park_forever(void)
+{
+    Ctx *c = top;
+    uint8_t a, x, y, st, p;
+    uint16_t pc;
+
+    c->wait_frame = (unsigned long)-1;
+    c->wait_clock = hybrid_clock_now() + 1;
+    chk_get_regs(&a, &x, &y, &st, &p, &pc);
+    chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, (uint8_t)(cpu.p | P_I), pc);
+    c->parked = 1;
+    c->saved_cpu = cpu;
+    swapcontext(&c->uc, &main_uc);
+    for (;;)
+        ;
+}
+
 void wait_interrupt(void)
 {
     uint64_t j;
@@ -1048,23 +1085,8 @@ void wait_interrupt(void)
     for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e) && e->type != EV_INT; j++)
         if (e->type == EV_FRAME && mode == MODE_HYBRID)
             frame_pass(sp, j, 0);
-    if (!e && mode == MODE_HYBRID && at_eof) {
-        /* The record ends here, in this wait: the script's last frames go on with the call parked, as the
-         * original's did (the idle spin runs nothing the C makes). It is never resumed. */
-        Ctx *c = top;
-        uint8_t a, x, y, st, p;
-        uint16_t pc;
-
-        c->wait_frame = (unsigned long)-1;
-        c->wait_clock = hybrid_clock_now() + 1;
-        chk_get_regs(&a, &x, &y, &st, &p, &pc);
-        chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, (uint8_t)(cpu.p | P_I), pc);
-        c->parked = 1;
-        c->saved_cpu = cpu;
-        swapcontext(&c->uc, &main_uc);
-        for (;;)
-            ;
-    }
+    if (!e && mode == MODE_HYBRID && record_ends_here(sp))
+        park_forever();
     if (!e || e->type != EV_INT) {
         if (mode == MODE_A5) {
             if (!e && prefix_mode)
@@ -1206,6 +1228,7 @@ static void original_at(uint16_t ret, uint16_t addr)
             pace_to(ec.clock);
             chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, addr);
             prev_op = ec.kind == K_JMP ? 0x4C : 0x20;
+            last_pc = rondo_tags[span->tag].run;     /* the jump comes from this routine, not from the code run before */
             scan = call + 1;
             c->abandoned = 1;
             swapcontext(&c->uc, &main_uc);
@@ -1255,6 +1278,7 @@ static void original_at(uint16_t ret, uint16_t addr)
         stats[span->tag].originals++;
         chk_set_regs(cpu.a, cpu.x, cpu.y, s0, cpu.p, addr);
         prev_op = 0x20;
+        last_pc = rondo_tags[span->tag].run;
         scan = call + 1;
         cpu_run_until(back, (uint8_t)(s0 + 2));
         {
@@ -1519,7 +1543,6 @@ static int nchain;
  * interrupted instruction was is kept with the PC and S the handler returns to, and put back when it returns,
  * so the call is opened and the return marked as if the interrupt had not come between.
  */
-static uint16_t last_pc, before_pc;   /* the PC of the last instruction the hook saw, and the one before the arrival */
 static struct { uint16_t resume; uint8_t s; int prev; uint16_t from; } ipend[FRAMES];
 static int nipend;
 
@@ -1552,6 +1575,8 @@ void check_irq(void)
     }
     ipend[nipend].resume = r.pc;
     ipend[nipend].s = r.s;
+    if (getenv("RONDO_TRACE_ENTRY") && mode == MODE_HYBRID)
+        fprintf(stderr, "IRQ frame %lu pc %04X S%02X prev_op %X top %s\n", cur_frame, r.pc, r.s, prev_op, top ? rondo_tags[top->tag].name : "-");
     ipend[nipend].from = last_pc;
     ipend[nipend++].prev = prev_op;
     if (mode == MODE_HYBRID && top && top->parked && !top->wait_frame && r.pc == top->resume_pc &&
@@ -2110,6 +2135,7 @@ static int hy_finish(Ctx *c)
     }
     chk_set_regs(cpu.a, cpu.x, cpu.y, ns, p, pc);
     prev_op = c->kind == K_IRQ ? 0x40 : 0x60;
+    last_pc = 0xFFFF;
     scan = c->span.end + 1;
     return owed > 0 ? (int)(owed > 0x7FFFFFFF ? 0x7FFFFFFF : owed) : 1;
 }
@@ -2452,8 +2478,8 @@ int check_exec(uint32_t pc)
         }
         index = tag_at[pc & 0xFFFF];
         if (getenv("RONDO_TRACE_ENTRY") && index >= 0 && strstr(getenv("RONDO_TRACE_ENTRY"), rondo_tags[index].name))
-            fprintf(stderr, "ENTRY frame %lu %s pc %04X S%02X prev_op %X entry %d resident %d kept %d scan %llu top %s\n",
-                    cur_frame, rondo_tags[index].name, (unsigned)pc, r.s, prev_op, prev_is_entry(),
+            fprintf(stderr, "ENTRY frame %lu %s pc %04X S%02X prev_op %X before %04X self %d tail %d comp %d entry %d resident %d kept %d scan %llu top %s\n",
+                    cur_frame, rondo_tags[index].name, (unsigned)pc, r.s, prev_op, before_pc, self_jump, tail_entry, computed_entry, prev_is_entry(),
                     tag_resident(&rondo_tags[index]), kept_by_name(index), (unsigned long long)scan,
                     top ? rondo_tags[top->tag].name : "-");
         if (index >= 0)

@@ -222,7 +222,7 @@ static void show_text(uint16_t list)
  */
 StartScreen start_screen(void)
 {
-    StartScreen screen = { .choice = START_RUN, .drive = { .tested = true }, .waited = false };
+    StartScreen screen = { .choice = START_RUN, .waited = false };
 
     for (;;) {
         MemOpen open;
@@ -261,8 +261,8 @@ StartScreen start_screen(void)
         for (;;) {
             uint8_t error;
 
-            screen.drive.test = cd_test_unit();
-            if (!screen.drive.test.failed)
+            screen.drive = cd_test_unit(PROMPT_COLUMN);
+            if (!screen.drive.c)
                 return screen;
             error = cd_stat_result(screen.drive);
             if (error == CD_NO_DISC) {

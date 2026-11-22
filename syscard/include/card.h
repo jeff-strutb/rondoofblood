@@ -129,6 +129,52 @@ static inline void abi_nz(uint8_t v)
 }
 
 /* CardExit, the registers and flags a routine leaves, is in syscard.h; this sets them for an exit shim. */
+/* What a later step leaves over what an earlier one left: the registers and flags it sets win. */
+static inline CardExit card_exit_over(CardExit base, CardExit top)
+{
+    if (top.set_a) {
+        base.a = top.a;
+        base.set_a = true;
+    }
+    if (top.set_x) {
+        base.x = top.x;
+        base.set_x = true;
+    }
+    if (top.set_y) {
+        base.y = top.y;
+        base.set_y = true;
+    }
+    if (top.set_nz) {
+        base.nz = top.nz;
+        base.set_nz = true;
+        base.set_n = base.set_z = false;
+    } else if (top.set_n || top.set_z) {
+        if (base.set_nz) {
+            base.n = (base.nz & 0x80) != 0;
+            base.z = base.nz == 0;
+            base.set_n = base.set_z = true;
+            base.set_nz = false;
+        }
+        if (top.set_n) {
+            base.n = top.n;
+            base.set_n = true;
+        }
+        if (top.set_z) {
+            base.z = top.z;
+            base.set_z = true;
+        }
+    }
+    if (top.set_c) {
+        base.c = top.c;
+        base.set_c = true;
+    }
+    if (top.set_v) {
+        base.v = top.v;
+        base.set_v = true;
+    }
+    return base;
+}
+
 static inline void card_exit_apply(CardExit e)
 {
     if (e.set_a) {
@@ -143,6 +189,12 @@ static inline void card_exit_apply(CardExit e)
     if (e.set_nz) {
         abi_flag(P_N, (e.nz & 0x80) != 0);
         abi_flag(P_Z, e.nz == 0);
+    }
+    if (e.set_n) {
+        abi_flag(P_N, e.n);
+    }
+    if (e.set_z) {
+        abi_flag(P_Z, e.z);
     }
     if (e.set_c) {
         abi_flag(P_C, e.c);

@@ -29,6 +29,7 @@ import collections
 import csv
 import os
 import re
+import struct
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -120,6 +121,28 @@ def decode_group(g, dm):
 
 class Intake:
     pass
+
+
+def run_banks(pieces):
+    """Per piece, the physical banks its executed bytes ran in: p.banks = Counter of (bank of the piece's first byte,
+    base address of the piece's first byte). runmap.bin holds, per executed disc byte, the logical address it was
+    fetched at and the bank mapped there; a byte past an 8 KB window boundary ran in the next bank, so each vote is
+    moved back to the bank the piece starts in. No run map: every piece has an empty vote."""
+    for p in pieces:
+        p.banks = collections.Counter()
+    path = os.path.join(TRACE, "runmap.bin")
+    if not os.path.exists(path):
+        return
+    rm = open(path, "rb").read()
+    los = [p.lo for p in pieces]
+    for i in range(len(rm) // 12):
+        d, lg, bank, kind = struct.unpack_from("<IHBB", rm, i * 12)
+        k = bisect.bisect_right(los, d) - 1
+        if k < 0 or d >= pieces[k].hi:
+            continue
+        p = pieces[k]
+        base = (lg - (d - p.lo)) & 0xFFFF
+        p.banks[((bank - ((lg >> 13) - (base >> 13))) & 0xFF, base)] += 1
 
 
 def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
@@ -214,6 +237,7 @@ def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
     used = None
     pieces.sort(key=lambda p: p.lo)
     out.orphans, out.orphan_bytes = orphans, orphan_b
+    run_banks(pieces)
 
     # how each piece is entered, from the edges (catalog.py's single label depends on set order when a routine is
     # entered in two ways, so it is not used)
@@ -274,6 +298,18 @@ def build(filed, disc, dm, rows, es, scripts=None, control=None, log=print):
                     break
         if not changed:
             break
+    # the run map is the address the bytes ran at: it replaces a neighbour's inference and gives a group no call
+    # reached its address (a branch to a routine placed at another address than it ran at cannot be tied)
+    for g in groups:
+        votes = collections.Counter()
+        for p in g.members:
+            for (bank, base), n in p.banks.items():
+                votes[base] += n
+        if votes:
+            top = min(votes, key=lambda b: (-votes[b], b))
+            if top != g.run:
+                g.run = g.org = top
+                g.inferred = False
     out.inferred = sum(1 for g in groups if g.inferred)
     out.small_split = sum(len(v) - 1 for c, v in plain.items() if len(c) < SMALL and len(v) > 1) - \
         sum(len(g.members) - 1 for g in groups if g.n < SMALL)
@@ -617,10 +653,18 @@ def headers(out, es, scripts, names):
                  f"{g.n} B, {g.opc_run} B run ----"]
         for i, p in enumerate(g.members):
             lines.append(f"; @routine {tag(p.lo)}" + ("" if i == 0 else "  (exact copy)"))
-        lines.append("; @run ??:" + (f"{g.run:04X}" if g.run is not None else "????") +
+        bank, base, why = group_bank(g)
+        out.stats[bank_key(why)] = out.stats.get(bank_key(why), 0) + 1
+        out.stats["run address from the run map, not from a call"] = out.stats.get(
+            "run address from the run map, not from a call", 0) + (1 if g.run is None and bank is not None else 0)
+        lines.append("; @run " + (f"{bank:02X}" if bank is not None else "??") + ":" +
+                     (f"{base:04X}" if base is not None else "????") +
+                     (f"  (bank: {why})" if bank is None else "") +
+                     ("  (run address and bank from the run map)" if g.run is None and bank is not None else
+                      "  (the run map puts it at this address, not at the inferred one)" if bank is not None and base != g.run else "") +
                      ("  (inferred from the neighbouring routine on the disc)" if g.inferred else "") +
                      (f"  (also seen at {', '.join(f'{r:04X}' for r in other)})" if other else "") +
-                     (f"  (no run address known; assembled at ${g.org:04X})" if g.run is None else ""))
+                     (f"  (assembled at ${g.org:04X})" if g.run is None else ""))
         lines.append(f"; size {g.n} B, run by a script {g.opc_run} B, untraced {g.n - g.opc_run} B; entered by "
                      + ", ".join(ent))
         for nm, bag in (("callers", callers[g]), ("callees", callees[g])):
@@ -644,6 +688,30 @@ def headers(out, es, scripts, names):
         out.hdr[g] = lines
 
 
+def group_bank(g):
+    """(bank, base, why not): the most common (bank, base address) the group's copies' executed bytes started at, from
+    the run map; at the group's run address when it has one. A group no call reached has no run address of its own:
+    the run map's most common base is printed for it, and the assembly keeps its .org."""
+    votes = collections.Counter()
+    for p in g.members:
+        for (bank, base), n in p.banks.items():
+            votes[(bank, base)] += n
+    if not votes:
+        return None, g.run, "no byte of it in the run map"
+    if g.run is not None:
+        mine = {k: n for k, n in votes.items() if k[1] == g.run}
+        if not mine:        # the run address was inferred from a neighbour and the run map disagrees: it is right
+            top = min(votes, key=lambda k: (-votes[k], k))
+            return top[0], top[1], ""
+        return min(mine, key=lambda k: (-mine[k], k))[0], g.run, ""
+    top = min(votes, key=lambda k: (-votes[k], k))
+    return top[0], top[1], ""
+
+
+def bank_key(why):
+    return "run bank known" if not why else "run bank unknown: " + why
+
+
 def write_files(out, path):
     os.makedirs(path, exist_ok=True)
     for f in os.listdir(path):
@@ -658,7 +726,8 @@ def write_files(out, path):
             f.write(f"; raw intake: routines whose canonical location is in sectors "
                     f"{k * PER_FILE:04X}-{k * PER_FILE + PER_FILE - 1:04X}. Generated by tools/rondo/intake.py;\n"
                     f"; never edit. To file a routine, copy its block to asm/rondo/<area>/ (see PROCEDURE).\n"
-                    f"; In @run the bank is ?? until the trace records it; fill it from the loader when filing.\n\n")
+                    f"; @run BB:AAAA: the bank is the physical bank the trace saw the routine's first byte fetched from "
+                    f"(runmap.bin); ?? says why not.\n\n")
             for g in gs:
                 f.write("\n".join(out.hdr[g]) + "\n" + "\n".join(g.lines) + "\n\n")
                 for p in g.members:

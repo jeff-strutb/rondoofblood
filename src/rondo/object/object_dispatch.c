@@ -550,3 +550,170 @@ void abi_ChangeKindFromTable(void)
         abi_flag(P_V, result.borrow.overflow);
     }
 }
+
+/*
+ * @routine 0519:72C AnimateKind88
+ * @run 70:A72C
+ * WHAT IT DOES: For an object of kind $88 only: steps its animation list (at $A745) and keeps the
+ * frame it shows in OBJ_3510. Any other kind is left alone.
+ * HOW: Compares the kind with $88; then StepObjectFrames with the list's pointer in zTemp10-11 and a
+ * copy of the frame byte.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: other kind: A the kind, flags of its compare
+ * with $88; kind $88: A the frame, N and Z from it, C as the step left it (changed), Y as it left it.
+ */
+Kind88Step AnimateKind88(uint8_t slot, uint8_t y)
+{
+    Kind88Step result = { false, 0, y, FRAME_HELD };
+    uint8_t kind, frame;
+
+    kind = RD8(OBJ->kind[slot]);
+    result.value = kind;
+    if (kind != 0x88) {
+        return result;
+    }
+    WR8(ZP->temp11, 0xA7);
+    WR8(ZP->temp10, 0x45);
+    jsr_push(0xA73E);
+    result.step = StepObjectFrames(slot, &result.y);
+    jsr_pop();
+    frame = RD8(OBJ->frame[slot]);
+    WR8(OBJ->f3510[slot], frame);
+    result.value = frame;
+    result.stepped = true;
+    return result;
+}
+
+void abi_AnimateKind88(void)
+{
+    Kind88Step result = AnimateKind88(cpu.x, cpu.y);
+
+    cpu.a = result.value;
+    if (!result.stepped) {
+        abi_nz((uint8_t)(result.value - 0x88));
+        abi_flag(P_C, result.value >= 0x88);
+        return;
+    }
+    cpu.y = result.y;
+    abi_nz(result.value);
+    abi_flag(P_C, result.step == FRAME_CHANGED);
+}
+
+/*
+ * @routine 0519:764 StartKindFromCharacter
+ * @run 70:A764
+ * WHAT IT DOES: Starts an object whose kind is a pair: a kind $93 with zField90 set becomes kind $84,
+ * and an object whose kind is already the one the table at $A668 gives for zField93 becomes $84; then
+ * the record is loaded, slot 0's byte of the OBJ_2FE8 column is copied into the object's, and OBJ_3510
+ * is set from the table at $A79E, row of two bytes by the kind less $84, the second by which character
+ * plays.
+ * HOW: Compares and, on equality, stores kind $84; LoadObjectRecord; the row by an add with the
+ * character.
+ * Untraced: the two arms that store $84 (the bytes at A76B and A77E) ran in no script.
+ * WAITS: no.
+ * Entry: X object. Exit: A the table byte, N and Z from it, C and V from the add of the character,
+ * Y the table index.
+ */
+KindStart StartKindFromCharacter(uint8_t slot)
+{
+    KindStart result;
+    uint8_t kind, flag, field93, wanted, shared, character, index, byte, nz;
+    bool carry;
+    Sum diff, sum;
+
+    kind = RD8(OBJ->kind[slot]);
+    if (kind == 0x93) {
+        flag = RD8(ZP->field90);
+        if (flag != 0) {
+            WR8(OBJ->kind[slot], 0x84);
+        }
+    }
+    field93 = RD8(ZP->field93);
+    wanted = rd8((uint16_t)(0xA668 + field93));
+    kind = RD8(OBJ->kind[slot]);
+    if (wanted == kind) {
+        WR8(OBJ->kind[slot], 0x84);
+    }
+    jsr_push(0xA786);
+    LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    shared = RD8(OBJ->f2fe8[0]);
+    WR8(OBJ->f2fe8[slot], shared);
+    kind = RD8(OBJ->kind[slot]);
+    diff = sub_bytes(kind, 0x84, true);
+    index = (uint8_t)(diff.value << 1);
+    character = RD8(ZP->character);
+    sum = add_bytes(index, character, false);
+    byte = rd8((uint16_t)(0xA79E + sum.value));
+    WR8(OBJ->f3510[slot], byte);
+    result.last = byte;
+    result.index = sum.value;
+    result.sum = sum;
+    return result;
+}
+
+void abi_StartKindFromCharacter(void)
+{
+    KindStart result = StartKindFromCharacter(cpu.x);
+
+    cpu.a = result.last;
+    cpu.y = result.index;
+    abi_nz(result.last);
+    abi_flag(P_C, result.sum.carry);
+    abi_flag(P_V, result.sum.overflow);
+}
+
+/*
+ * @routine 0519:49E ClearOnLanding
+ * @run 70:A49E
+ * WHAT IT DOES: One frame of an object that falls away: while it is not rising (its Y speed's top bit
+ * clear) it asks the floor with a probe height of 2 and, if the probe says floor, the object is cleared.
+ * Otherwise it takes its frame from OBJ_3510 and moves on one state.
+ * HOW: ProbeTerrain with the carry and column the caller left; the clear is a tail jump into
+ * ClearObject.
+ * Untraced: the arm that clears (the jump at A4B0) ran in no script.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column, C passed to the lookup. Exit: cleared: as the probe left it,
+ * A 1; else A the frame, N and Z from the new state, C and V as the probe or entry left them.
+ */
+LandClear ClearOnLanding(uint8_t slot, uint8_t column, bool carry_in)
+{
+    LandClear result = { false, false };
+    uint8_t speed, frame, landed;
+
+    speed = RD8(OBJ->vy_hi[slot]);
+    if ((speed & 0x80) == 0) {
+        WR8(ZP->product.mid, 2);
+        jsr_push(0xA4AC);
+        result.probe = ProbeTerrain(1, slot, column, carry_in);
+        jsr_pop();
+        result.probed = true;
+        landed = (uint8_t)(result.probe.answer & 0x01);
+        if (landed != 0) {
+            ClearObject(slot);
+            result.cleared = true;
+            return result;
+        }
+    }
+    frame = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->frame[slot], frame);
+    result.frame = frame;
+    result.state = INC8(OBJ->state[slot]);
+    return result;
+}
+
+void abi_ClearOnLanding(void)
+{
+    LandClear result = ClearOnLanding(cpu.x, cpu.y, (cpu.p & P_C) != 0);
+
+    if (result.probed) {
+        probe_exit_shim(result.probe);
+    }
+    if (result.cleared) {
+        cpu.a = 1;
+        abi_nz(1);
+        return;
+    }
+    cpu.a = result.frame;
+    abi_nz(result.state);
+}

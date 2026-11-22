@@ -129,6 +129,33 @@ InitObjectFromRecord:
     sta a:OBJ_34B8,x
     rts
 
+; @routine 0519:49E ClearOnLanding
+; @run 70:A49E
+; WHAT IT DOES: One frame of an object that falls away: while it is not rising (its Y speed's top bit
+; clear) it asks the floor with a probe height of 2 and, if the probe says floor, the object is cleared.
+; Otherwise it takes its frame from OBJ_3510 and moves on one state.
+; HOW: ProbeTerrain with the carry and column the caller left; the clear is a tail jump into
+; ClearObject.
+; Untraced: the arm that clears (the jump at A4B0) ran in no script.
+; WAITS: no.
+; Entry: X object, Y the probe's column, C passed to the lookup. Exit: cleared: as the probe left it,
+; A 1; else A the frame, N and Z from the new state, C and V as the probe or entry left them.
+ClearOnLanding:
+    lda a:OBJ_VY_HI,x
+    bmi ClearOnLanding_at0
+    lda #$02
+    sta z:SpriteFlipMask
+    lda #$01
+    jsr VecProbeTerrain
+    and #$01
+    beq ClearOnLanding_at0
+    jmp VecClearObject
+ClearOnLanding_at0:
+    lda a:OBJ_3510,x
+    sta a:OBJ_2A68,x
+    inc a:OBJ_27A8,x
+    rts
+
 ; @routine 0519:4BD FallAndBounce
 ; @run 70:A4BD
 ; WHAT IT DOES: Moves an object by its velocity and asks the ground under it; on floor the
@@ -238,6 +265,29 @@ ChangeKindFromTable_at0:
     sta a:OBJ_VX_LO,x
     rts
 
+; @routine 0519:72C AnimateKind88
+; @run 70:A72C
+; WHAT IT DOES: For an object of kind $88 only: steps its animation list (at $A745) and keeps the
+; frame it shows in OBJ_3510. Any other kind is left alone.
+; HOW: Compares the kind with $88; then StepObjectFrames with the list's pointer in zTemp10-11 and a
+; copy of the frame byte.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: other kind: A the kind, flags of its compare
+; with $88; kind $88: A the frame, N and Z from it, C as the step left it (changed), Y as it left it.
+AnimateKind88:
+    lda a:OBJ_2750,x
+    cmp #$88
+    bne AnimateKind88_at0
+    lda #$A7
+    sta z:zTemp11
+    lda #$45
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda a:OBJ_2A68,x
+    sta a:OBJ_3510,x
+AnimateKind88_at0:
+    rts
+
 ; @routine 0519:74E SetBlinkFlash
 ; @run 70:A74E
 ; WHAT IT DOES: Sets an object's flash flag (the palette flash its sprite shows) to $86 on
@@ -257,6 +307,49 @@ SetBlinkFlash:
     lda #$86
     sta a:OBJ_2B18,x
 SetBlinkFlash_out:
+    rts
+
+; @routine 0519:764 StartKindFromCharacter
+; @run 70:A764
+; WHAT IT DOES: Starts an object whose kind is a pair: a kind $93 with zField90 set becomes kind $84,
+; and an object whose kind is already the one the table at $A668 gives for zField93 becomes $84; then
+; the record is loaded, slot 0's byte of the OBJ_2FE8 column is copied into the object's, and OBJ_3510
+; is set from the table at $A79E, row of two bytes by the kind less $84, the second by which character
+; plays.
+; HOW: Compares and, on equality, stores kind $84; LoadObjectRecord; the row by an add with the
+; character.
+; Untraced: the two arms that store $84 (the bytes at A76B and A77E) ran in no script.
+; WAITS: no.
+; Entry: X object. Exit: A the table byte, N and Z from it, C and V from the add of the character,
+; Y the table index.
+StartKindFromCharacter:
+    lda a:OBJ_2750,x
+    cmp #$93
+    bne StartKindFromCharacter_at0
+    lda z:zField90
+    beq StartKindFromCharacter_at0
+    lda #$84
+    sta a:OBJ_2750,x
+StartKindFromCharacter_at0:
+    ldy z:zField93
+    lda a:$A668,y
+    cmp a:OBJ_2750,x
+    bne StartKindFromCharacter_at1
+    lda #$84
+    sta a:OBJ_2750,x
+StartKindFromCharacter_at1:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_2FE8
+    sta a:OBJ_2FE8,x
+    lda a:OBJ_2750,x
+    sec
+    sbc #$84
+    asl a
+    clc
+    adc z:zCharacter
+    tay
+    lda a:$A79E,y
+    sta a:OBJ_3510,x
     rts
 
 ; @routine 051A:055 BitMaskFromIndex

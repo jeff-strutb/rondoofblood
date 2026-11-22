@@ -4,6 +4,7 @@
 #include "access.h"
 #include "routines.h"
 #include "vram_update.h"
+#include "layers.h"
 
 /* The block graphics sit at $C000, 32 bytes a block; MPR6 holds their bank. */
 enum { BLOCK_BANK_OFFSET = 0x0B, BLOCK_SOURCE_PAGE = 0xC0, BLOCK_WORDS = 16, ROW_WORDS = 4, VRAM_ROW_STEP = 0x40,
@@ -496,3 +497,428 @@ void abi_SelectBlockTablesP(void)
     block_tables_exit_shim(SelectBlockTablesP(cpu.a));
 }
 
+
+/* The VRAM lists of the 00C5 overlay: a list of entries (a tile bank, a VRAM address, a source), each either a block of
+ * words copied to the VDC or a stream of commands that fill, repeat and move the write address. One loop in two
+ * levels (vram_list for the entries, vram_commands for a stream); each piece the original enters from outside is
+ * an entry of it. Fields with no name yet (rows requested): zero page $13 to $17, $F8 and $F9, $9802 (the overlay's
+ * table of lists), $8360 (the table the untraced index path reads). */
+enum {
+    ZpStreamHigh = 0x2013, ZpListLow = 0x2014, ZpListHigh = 0x2015, ZpAddressLow = 0x2016, ZpAddressHigh = 0x2017,
+    ZpTablePointer = 0x20F8, ListTableWord = 0x9802, MPR5 = 0x20, STREAM_END = 0xFF, STREAM_ADDRESS_ADD = 0xFE,
+    STREAM_ADDRESS = 0xFD, LIST_END = 0xFF, LIST_BANK_FIRST = 0x28, LIST_BANK_LAST = 0x30, LIST_BANK_SHIFT = 0x18,
+    LIST_BANK_REPLACEMENT = 0x31, STREAM_FORM_WORDS = 0x80
+};
+
+typedef enum {
+    VRAM_COMMAND_NEXT,          /* 00C5:201 */
+    VRAM_COMMAND_FETCH,         /* 00C5:1CD */
+    VRAM_COMMAND_REPEAT,        /* 00C5:20E */
+    VRAM_COMMAND_PAIRS,         /* 00C5:22B, inside 20E */
+    VRAM_COMMAND_ADDRESS_ADD,   /* 00C5:247, inside 20E */
+    VRAM_COMMAND_ADDRESS        /* 00C5:266, inside 20E */
+} VramCommand;
+
+/* A word write to the VDC's data port: low half, then high half. */
+static void put_word(uint8_t low, uint8_t high)
+{
+    WR8(VDC->data_lo, low);
+    WR8(VDC->data_hi, high);
+}
+
+/*
+ * One stream of commands, from the command at `first` (the others are what the stream's commands jump to), with
+ * Y the stream's index and A, as the entry at 20E and 22B has it, the command byte. A stream ends at $FF with
+ * A $FF, C and Z set; the registers and V are the last step's.
+ */
+static VramExit vram_commands(VramCommand first, uint8_t a, uint8_t y, bool carry, bool overflow)
+{
+    VramCommand state = first;
+    VramExit out = { 0 };
+    Sum sum;
+    uint8_t value, count, other;
+
+    for (;;) {
+        switch (state) {
+        case VRAM_COMMAND_NEXT:
+            y++;
+            value = RD8(ZP->temp12);
+            sum = add_bytes(y, value, false);
+            WR8(ZP->temp12, sum.value);
+            a = sum.value;
+            carry = sum.carry;
+            overflow = sum.overflow;
+            if (sum.carry) {
+                count = rd8(ZpStreamHigh);
+                wr8(ZpStreamHigh, (uint8_t)(count + 1));
+            }
+            state = VRAM_COMMAND_FETCH;
+            break;
+        case VRAM_COMMAND_FETCH:
+            y = 0;
+            a = RD8_PTR_Y(ZP->temp12, y);
+            if (a == 0) {
+                state = VRAM_COMMAND_PAIRS;
+            } else if (!(a & 0x80)) {
+                state = VRAM_COMMAND_REPEAT;
+            } else if (a == STREAM_END) {
+                out.a = a;
+                out.y = y;
+                out.carry = true;
+                out.overflow = overflow;
+                return out;
+            } else if (a == STREAM_ADDRESS_ADD) {
+                state = VRAM_COMMAND_ADDRESS_ADD;
+            } else if (a == STREAM_ADDRESS) {
+                state = VRAM_COMMAND_ADDRESS;
+            } else {
+                a = (uint8_t)(a & 0x7F);
+                WR8(ZP->temp08, a);
+                do {
+                    y++;
+                    value = RD8_PTR_Y(ZP->temp12, y);
+                    WR8(VDC->data_lo, value);
+                    y++;
+                    value = RD8_PTR_Y(ZP->temp12, y);
+                    WR8(VDC->data_hi, value);
+                    count = DEC8(ZP->temp08);
+                } while (count != 0);
+                state = VRAM_COMMAND_NEXT;
+            }
+            break;
+        case VRAM_COMMAND_REPEAT:
+            y++;
+            WR8(ZP->temp08, a);
+            value = RD8_PTR_Y(ZP->temp12, y);
+            WR8(ZP->temp09, value);
+            y++;
+            value = RD8_PTR_Y(ZP->temp12, y);
+            WR8(ZP->temp0_a, value);
+            do {
+                value = RD8(ZP->temp09);
+                WR8(VDC->data_lo, value);
+                other = RD8(ZP->temp0_a);
+                WR8(VDC->data_hi, other);
+                count = DEC8(ZP->temp08);
+            } while (count != 0);
+            state = VRAM_COMMAND_NEXT;
+            break;
+        case VRAM_COMMAND_PAIRS:
+            y++;
+            value = RD8_PTR_Y(ZP->temp12, y);
+            WR8(ZP->temp08, value);
+            y++;
+            value = RD8_PTR_Y(ZP->temp12, y);
+            WR8(ZP->temp09, value);
+            do {
+                y++;
+                value = RD8_PTR_Y(ZP->temp12, y);
+                WR8(VDC->data_lo, value);
+                other = RD8(ZP->temp09);
+                WR8(VDC->data_hi, other);
+                count = DEC8(ZP->temp08);
+            } while (count != 0);
+            state = VRAM_COMMAND_NEXT;
+            break;
+        case VRAM_COMMAND_ADDRESS_ADD:
+            y++;
+            jsr_push(0x824B);
+            SelectVramWriteAddress();
+            jsr_pop();
+            value = RD8_PTR_Y(ZP->temp12, y);
+            other = rd8(ZpAddressLow);
+            sum = add_bytes(value, other, false);
+            WR8(VDC->data_lo, sum.value);
+            y++;
+            value = RD8_PTR_Y(ZP->temp12, y);
+            other = rd8(ZpAddressHigh);
+            sum = add_bytes(value, other, sum.carry);
+            carry = sum.carry;
+            overflow = sum.overflow;
+            value = sum.value;
+            other = RD8(ZP->temp11);
+            if (!(other & 1)) {
+                value = (uint8_t)(value & 0x0F);
+            }
+            WR8(VDC->data_hi, value);
+            jsr_push(0x8263);
+            SelectVramData();
+            jsr_pop();
+            state = VRAM_COMMAND_NEXT;
+            break;
+        case VRAM_COMMAND_ADDRESS:
+            y++;
+            jsr_push(0x826A);
+            SelectVramWriteAddress();
+            jsr_pop();
+            value = RD8_PTR_Y(ZP->temp12, y);
+            wr8(ZpAddressLow, value);
+            WR8(VDC->data_lo, value);
+            y++;
+            value = RD8_PTR_Y(ZP->temp12, y);
+            wr8(ZpAddressHigh, value);
+            WR8(VDC->data_hi, value);
+            jsr_push(0x827C);
+            SelectVramData();
+            jsr_pop();
+            state = VRAM_COMMAND_NEXT;
+            break;
+        }
+    }
+}
+
+/*
+ * The list loop: entries of a list read through the pointer in zp $14, each naming a tile bank (mapped
+ * from the base bank), a VRAM address, a source and a form, until the list's $FF.
+ */
+static VramExit vram_list(uint8_t a, uint8_t x, uint8_t y, bool carry, bool overflow)
+{
+    VramExit out = { 0 };
+    VramExit stream;
+    Sum sum;
+    uint8_t value, bank, flags, saved_y;
+
+    for (;;) {
+        a = rd8_zp_y(ZpListLow, y);
+        if (a == LIST_END) {
+            out.a = a;
+            out.x = x;
+            out.y = y;
+            out.carry = true;
+            out.overflow = overflow;
+            return out;
+        }
+        carry = true;
+        if (a == 0) {
+            value = RD8(ZP->idle_flag);
+            if (value & 1) {
+                a = LIST_BANK_REPLACEMENT;
+            }
+        }
+        carry = a >= LIST_BANK_FIRST;
+        if (a >= LIST_BANK_FIRST) {
+            carry = a >= LIST_BANK_LAST;
+            if (a < LIST_BANK_LAST) {
+                value = RD8(ZP->idle_flag);
+                if (!(value & 1)) {
+                    sum = sub_bytes(a, LIST_BANK_SHIFT, true);
+                    a = sum.value;
+                    carry = sum.carry;
+                    overflow = sum.overflow;
+                }
+            }
+        }
+        value = RD8(ZP->ram_base_bank);
+        sum = add_bytes(a, value, false);
+        carry = sum.carry;
+        overflow = sum.overflow;
+        bank = sum.value;
+        tam(MPR5, bank);
+        tam(MPR6, (uint8_t)(bank + 1));
+        a = (uint8_t)(bank + 1);
+        y++;
+        flags = rd8_zp_y(ZpListLow, y);
+        WR8(ZP->temp11, flags);
+        y++;
+        jsr_push(0x8198);
+        ClearVdcControlHigh();
+        jsr_pop();
+        jsr_push(0x819B);
+        SelectVramWriteAddress();
+        jsr_pop();
+        value = rd8_zp_y(ZpListLow, y);
+        y++;
+        wr8(ZpAddressLow, value);
+        WR8(VDC->data_lo, value);
+        value = rd8_zp_y(ZpListLow, y);
+        y++;
+        wr8(ZpAddressHigh, value);
+        WR8(VDC->data_hi, value);
+        value = rd8_zp_y(ZpListLow, y);
+        WR8(ZP->temp12, value);
+        y++;
+        value = rd8_zp_y(ZpListLow, y);
+        wr8(ZpStreamHigh, value);
+        y++;
+        jsr_push(0x81B8);
+        SelectVramData();
+        jsr_pop();
+        flags = RD8(ZP->temp11);
+        a = flags;
+        if (flags & STREAM_FORM_WORDS) {
+            a = rd8_zp_y(ZpListLow, y);
+            y++;
+            x = a;
+            push8(y);
+            jsr_push(0x81CA);
+            sum = CopyWordsToVdc(x);
+            jsr_pop();
+            x = 0;
+            a = sum.value;
+            carry = sum.carry;
+            overflow = sum.overflow;
+            y = pull8();
+        } else {
+            push8(y);
+            jsr_push(0x81BF);
+            stream = vram_commands(VRAM_COMMAND_FETCH, a, y, carry, overflow);
+            jsr_pop();
+            a = stream.a;
+            carry = stream.carry;
+            overflow = stream.overflow;
+            saved_y = pull8();
+            y = saved_y;
+        }
+    }
+}
+
+static void vram_exit_shim(VramExit out)
+{
+    cpu.a = out.a;
+    cpu.x = out.x;
+    cpu.y = out.y;
+    abi_nz(0);                      /* every exit is the CMP #$FF that matched */
+    abi_flag(P_C, out.carry);
+    abi_flag(P_V, out.overflow);
+}
+
+/* Live registers and flags of an entry, as its wrapper meets them. */
+static bool entry_carry_shim(void)
+{
+    return (cpu.p & P_C) != 0;
+}
+
+static bool entry_overflow_shim(void)
+{
+    return (cpu.p & P_V) != 0;
+}
+
+/*
+ * @routine 00C5:151 VramListFromIndex
+ * @run 6C:8151
+ * WHAT IT DOES: Runs the VRAM list whose number is in A: the overlay's table of lists gives its pointer.
+ * HOW: An entry into the list loop (vram_list): A doubled indexes the table at $9802, the pointer goes
+ * to zp $14, Y 0, and the loop runs on at VramListRun. A number of $80 or more branches to $8142
+ * (untraced), which reads a table at $8360 the same way.
+ * WAITS: no.
+ * Entry: A the list number. Exit: as VramListRun.
+ * Untraced: the branch to $8142 (the bytes of $8142 to $8150 are not in this routine).
+ */
+VramExit VramListFromIndex(uint8_t a, uint8_t x, bool carry, bool overflow)
+{
+    uint8_t y, value;
+
+    if (a & 0x80) {
+        y = (uint8_t)(a << 1);
+        value = rd8((uint16_t)(0x8360 + y));
+        wr8(ZpListLow, value);
+        value = rd8((uint16_t)(0x8361 + y));
+        wr8(ZpListHigh, value);
+        return vram_list(a, x, 0, (a & 0x80) != 0, overflow);
+    }
+    y = (uint8_t)(a << 1);
+    carry = (a & 0x80) != 0;
+    value = rd8(ListTableWord);
+    wr8(ZpTablePointer, value);
+    value = rd8(ListTableWord + 1);
+    wr8(ZpTablePointer + 1, value);
+    value = rd8_zp_y(ZpTablePointer, y);
+    wr8(ZpListLow, value);
+    y++;
+    value = rd8_zp_y(ZpTablePointer, y);
+    wr8(ZpListHigh, value);
+    return vram_list(value, x, 0, carry, overflow);
+}
+
+void abi_VramListFromIndex(void)
+{
+    vram_exit_shim(VramListFromIndex(cpu.a, cpu.x, entry_carry_shim(), entry_overflow_shim()));
+}
+
+/*
+ * @routine 00C5:169 VramListRun
+ * @run 6C:8169
+ * WHAT IT DOES: Runs the VRAM list at zp $14, Y its place: each entry maps its tile bank, sets the VRAM
+ * write address, and copies words or runs a stream of commands, until the list's $FF.
+ * HOW: The list loop, vram_list. The bank byte $28 to $2F is lowered by $18 unless the idle flag's bit 0
+ * is set, and a zero one becomes $31 when it is (untraced).
+ * WAITS: no.
+ * Entry: zp $14 the list, Y the place in it. Exit: A $FF, C and Z set, N clear, X and Y and V as the last
+ * entry leaves them.
+ * Untraced: the bank $31 replacement.
+ */
+VramExit VramListRun(uint8_t x, uint8_t y, bool carry, bool overflow)
+{
+    return vram_list(0, x, y, carry, overflow);
+}
+
+void abi_VramListRun(void)
+{
+    vram_exit_shim(VramListRun(cpu.x, cpu.y, entry_carry_shim(), entry_overflow_shim()));
+}
+
+/*
+ * @routine 00C5:1CD VramCommandsFetch
+ * @run 6C:81CD
+ * WHAT IT DOES: Runs one stream of VRAM commands from the pointer in zp $12: counted words, a word repeated, pairs
+ * of a byte and a fixed byte, a new write address (absolute, or added to the last), until $FF.
+ * HOW: An entry into the command loop (vram_commands), at its first fetch. The commands that run on from the
+ * overlay's other entries (VramCommandsRepeat and its two inside) are cases of the same loop.
+ * WAITS: no.
+ * Entry: zp $12 the stream. Exit: A $FF, C and Z set, N clear, Y the index of the $FF, V from the last add.
+ * Untraced: the command $FD (set the write address).
+ */
+VramExit VramCommandsFetch(bool carry, bool overflow)
+{
+    return vram_commands(VRAM_COMMAND_FETCH, 0, 0, carry, overflow);
+}
+
+static VramExit commands_exit_shim(VramExit out)
+{
+    out.x = cpu.x;
+    return out;
+}
+
+void abi_VramCommandsFetch(void)
+{
+    vram_exit_shim(commands_exit_shim(VramCommandsFetch(entry_carry_shim(), entry_overflow_shim())));
+}
+
+/*
+ * @routine 00C5:201 VramCommandsNext
+ * @run 6C:8201
+ * WHAT IT DOES: Goes on to the next command of the stream: the pointer moves past this one's bytes.
+ * HOW: An entry into the command loop (vram_commands), at its advance.
+ * WAITS: no.
+ * Entry: Y the index of the command's last byte, zp $12 the stream. Exit: as VramCommandsFetch.
+ */
+VramExit VramCommandsNext(uint8_t y, bool carry, bool overflow)
+{
+    return vram_commands(VRAM_COMMAND_NEXT, 0, y, carry, overflow);
+}
+
+void abi_VramCommandsNext(void)
+{
+    vram_exit_shim(commands_exit_shim(VramCommandsNext(cpu.y, entry_carry_shim(), entry_overflow_shim())));
+}
+
+/*
+ * @routine 00C5:20E VramCommandsRepeat
+ * @run 6C:820E
+ * WHAT IT DOES: The commands from $820E on: a counted word written again and again, and the stream's other
+ * forms (pairs, the address commands).
+ * HOW: An entry into the command loop (vram_commands), at the repeat command with A its count; the pairs
+ * command at $822B, the address-add at $8247 and the address set at $8266 are its cases.
+ * WAITS: no.
+ * Entry: A the count, Y the index of the command, zp $12 the stream. Exit: as VramCommandsFetch.
+ * Untraced: the $8266 command.
+ */
+VramExit VramCommandsRepeat(uint8_t a, uint8_t y, bool carry, bool overflow)
+{
+    return vram_commands(VRAM_COMMAND_REPEAT, a, y, carry, overflow);
+}
+
+void abi_VramCommandsRepeat(void)
+{
+    vram_exit_shim(commands_exit_shim(VramCommandsRepeat(cpu.a, cpu.y, entry_carry_shim(), entry_overflow_shim())));
+}

@@ -43,4 +43,22 @@ void abi_SelectBlockTablesO(void);
 Sum SelectBlockTablesP(uint8_t index);
 void abi_SelectBlockTablesP(void);
 
+
+/* What the VRAM list routines leave: A, X, Y, C and V (N clear and Z set when the A is $FF). */
+typedef struct {
+    uint8_t a, x, y;
+    bool carry, overflow;
+} VramExit;
+
+VramExit VramListFromIndex(uint8_t a, uint8_t x, bool carry, bool overflow);
+VramExit VramListRun(uint8_t x, uint8_t y, bool carry, bool overflow);
+VramExit VramCommandsFetch(bool carry, bool overflow);
+VramExit VramCommandsNext(uint8_t y, bool carry, bool overflow);
+VramExit VramCommandsRepeat(uint8_t a, uint8_t y, bool carry, bool overflow);
+void abi_VramListFromIndex(void);
+void abi_VramListRun(void);
+void abi_VramCommandsFetch(void);
+void abi_VramCommandsNext(void);
+void abi_VramCommandsRepeat(void);
+
 #endif

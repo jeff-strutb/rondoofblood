@@ -93,6 +93,7 @@ class Seg:
 
 
 class Draft:
+    has_row = staticmethod(lambda g, base: True)   # does (group, run address) have a tag row of its own
     resolve = None          # (group, offset relative to its start) -> (group, offset) or None, set by build_all
     MAXSEG = 8
 
@@ -134,6 +135,8 @@ class Draft:
             r = Draft.resolve(seg.g, rel)
             if r:
                 g2, off2 = r
+                if off2 == 0 and Draft.has_row(g2, (addr - off2) & 0xFFFF):
+                    return self.tail(addr)      # a routine's own start: the original enters it (a call event), its C is its own call
                 if off2 in g2.istart:
                     s2 = self.seg_for(g2, (addr - off2) & 0xFFFF)
                     if s2:
@@ -357,6 +360,8 @@ def build_all(it, only=None, as_filed=False):
     location and run address takes the filed routine's name, to stand in for its hand-written C."""
     Draft.resolve = staticmethod(make_resolver(it))
     bases = run_bases(it)
+    gb = {id(g): set().union(*[bases.get(p.lo, set()) for p in g.members]) for g in it.groups}
+    Draft.has_row = staticmethod(lambda g, base: base in gb.get(id(g), ()))
     filed_at = {(f["disc"], f["run"]): f["name"] for f in it.filed}
     drafts = []
     norun = 0
@@ -441,6 +446,7 @@ def card_drafts(names, rows=None):
     class CardIt:
         pieces_in = cpieces
     Draft.resolve = staticmethod(make_resolver(CardIt))
+    Draft.has_row = staticmethod(lambda g, base: True)
     for g, run, name in todo:
         if names and name not in names:
             continue

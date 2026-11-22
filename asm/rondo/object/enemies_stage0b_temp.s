@@ -20,6 +20,17 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 117C:0EA CountdownThenState4B
 ; @run 70:B8EA
 ; WHAT IT DOES: The same as CountdownThenState4, at this overlay's copy of it.
@@ -192,4 +203,187 @@ CountdownStopThenState2_at0:
     lda #$02
     sta a:OBJ_27A8,x
 CountdownStopThenState2_at1:
+    rts
+
+; @routine 117B:5F5 StepFramesFacingPlayerD
+; @run 70:B5F5
+; WHAT IT DOES: Turns the object to face the player and steps its animation along the list whose
+; pointer is the pair of bytes at overlay address $B60A plus Y (StepFramesFacingPlayerC in this
+; stage's overlay).
+; HOW: SideOfPlayer, the pointer into zTemp10-11, then StepObjectFrames as a tail jump.
+; WAITS: no.
+; Entry: X object, Y the list's offset, D clear. Exit: as StepObjectFrames. Clobbers zTemp00,
+; zTemp10-11.
+StepFramesFacingPlayerD:
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    lda a:$B60A,y
+    sta z:zTemp10
+    lda a:$B60B,y
+    sta z:zTemp11
+    jmp VecStepObjectFrames
+
+; @routine 117B:6B6 PickSpeedAndTurnFromTable
+; @run 70:B6B6
+; WHAT IT DOES: Sets the object's X and Y speeds from a table of four byte entries by its f3670,
+; adds one to f3510, and reverses its X speed when the player is on its left.
+; HOW: The table is at overlay address $B6E2 (X low, X high, Y low, Y high; loads run high byte
+; first); SideOfPlayer; NegateVelocityX as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the side bit (0) or the new X speed's high byte after the
+; negate, N, Z, C and V from it; Y the entry's offset; X kept. Clobbers zTemp00.
+PickSpeedAndTurnFromTable:
+    lda a:OBJ_3670,x
+    asl a
+    asl a
+    tay
+    lda a:$B6E3,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B6E2,y
+    sta a:OBJ_VX_LO,x
+    lda a:$B6E5,y
+    sta a:OBJ_VY_HI,x
+    lda a:$B6E4,y
+    sta a:OBJ_VY_LO,x
+    inc a:OBJ_3510,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq PickSpeedAndTurnFromTable_at0
+    jmp VecNegateVelocityX
+PickSpeedAndTurnFromTable_at0:
+    rts
+
+; @routine 117C:09D WaitThenState2C
+; @run 70:B89D
+; WHAT IT DOES: A two-step wait like WaitThenState2: the first pass sets f34b8 to $1C and the step
+; to 1; later passes animate the object facing the player (list index 2) and count the timer down;
+; at zero the object enters state 2.
+; HOW: StepFramesFacingPlayerD with Y 2, then a decrement.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as WaitThenState2.
+WaitThenState2C:
+    lda a:OBJ_2800,x
+    bne WaitThenState2C_at0
+    lda #$1C
+    sta a:OBJ_34B8,x
+    inc a:OBJ_2800,x
+    rts
+WaitThenState2C_at0:
+    ldy #$02
+    jsr StepFramesFacingPlayerD
+    dec a:OBJ_34B8,x
+    bne WaitThenState2C_at1
+    lda #$02
+    sta a:OBJ_27A8,x
+WaitThenState2C_at1:
+    rts
+
+; @routine 117C:0BB BecomeType9CWhenAnimationEndsB
+; @run 70:B8BB
+; WHAT IT DOES: Animates the object (list 8, facing the player) and, when the animation list has
+; ended, turns it into an object of type $9C in state 0.
+; HOW: StepFramesFacingPlayerD with Y 8; the list ending decides.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as BecomeType9CWhenAnimationEnds.
+BecomeType9CWhenAnimationEndsB:
+    ldy #$08
+    jsr StepFramesFacingPlayerD
+    bne BecomeType9CWhenAnimationEndsB_at0
+    lda #$9C
+    sta a:OBJ_2750,x
+    stz a:OBJ_27A8,x
+BecomeType9CWhenAnimationEndsB_at0:
+    rts
+
+; @routine 117C:0F5 LoadRecordStartAngle40B
+; @run 70:B8F5
+; WHAT IT DOES: LoadRecordStartAngle40, in this stage's overlay: starts the object from its record,
+; moves it by its velocity, and sets its angle's high byte to $40.
+; HOW: LoadObjectRecord, ApplyVelocity, one store.
+; WAITS: no.
+; Entry, exit: as LoadRecordStartAngle40.
+LoadRecordStartAngle40B:
+    jsr VecLoadObjectRecord
+    jsr VecApplyVelocity
+    lda #$40
+    sta a:OBJ_3568,x
+    rts
+
+; @routine 117C:3B1 FrameOneBWhenFallingElseAnimate
+; @run 70:BBB1
+; WHAT IT DOES: An object that is not rising (Y speed high byte positive) takes frame $1B; one
+; that is rising animates along the list at overlay address $BBC7.
+; HOW: Tests the speed's sign; StepObjectFrames as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A $1B and N, Z from it when falling; else as StepObjectFrames.
+; Clobbers zTemp10-11.
+FrameOneBWhenFallingElseAnimate:
+    lda a:OBJ_VY_HI,x
+    bmi FrameOneBWhenFallingElseAnimate_at0
+    lda #$1B
+    sta a:OBJ_2A68,x
+    rts
+FrameOneBWhenFallingElseAnimate_at0:
+    lda #$C7
+    sta z:zTemp10
+    lda #$BB
+    sta z:zTemp11
+    jmp VecStepObjectFrames
+
+; @routine 117C:684 FaceThePlayerInSomeStatesB
+; @run 70:BE84
+; WHAT IT DOES: FaceThePlayerInSomeStates in this stage's overlay: turns the object to face the
+; player when a table at overlay address $BE95 says its state is one that does.
+; HOW: As FaceThePlayerInSomeStates.
+; WAITS: no.
+; Entry, exit: as FaceThePlayerInSomeStates.
+FaceThePlayerInSomeStatesB:
+    ldy a:OBJ_27A8,x
+    lda a:AnimationSounds+7,y
+    beq FaceThePlayerInSomeStatesB_at0
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+FaceThePlayerInSomeStatesB_at0:
+    rts
+
+; @routine 117D:3B6 AnimateAlongListC3C2
+; @run 71:C3B6
+; WHAT IT DOES: Steps the object's animation along the list at overlay address $C3C2.
+; HOW: The pointer into zTemp10-11, then StepObjectFrames (a call, then a return).
+; WAITS: no.
+; Entry: X object, D clear. Exit: as StepObjectFrames. Clobbers zTemp10-11.
+AnimateAlongListC3C2:
+    lda #$C2
+    sta z:zTemp10
+    lda #$C3
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    rts
+
+; @routine 117D:41F SwingOnCosineB
+; @run 71:C41F
+; WHAT IT DOES: Gives the object a Y speed of its life_timer's angle's cosine (speed $00A0),
+; moves it, and turns life_timer on by 2.
+; HOW: ScaleByCosine with zTemp00-01 set to $00A0, ApplyVelocity.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the new life_timer, N, Z, C and V from the add of 2; Y 0.
+; Clobbers zTemp00-01, zTemp10-12, zProduct0-2, zMultiplierLo-Hi.
+SwingOnCosineB:
+    lda #$A0
+    sta z:zTemp00
+    lda #$00
+    sta z:zTemp01
+    lda a:OBJ_34B8,x
+    jsr VecScaleByCosine
+    lda z:zProduct2
+    sta a:OBJ_VY_HI,x
+    lda z:SpriteFlipMask
+    sta a:OBJ_VY_LO,x
+    jsr VecApplyVelocity
+    lda a:OBJ_34B8,x
+    clc
+    adc #$02
+    sta a:OBJ_34B8,x
     rts

@@ -261,3 +261,317 @@ void abi_CountdownStopThenState2(void)
 {
     abi_ended(CountdownStopThenState2(cpu.x));
 }
+
+/*
+ * @routine 117B:5F5 StepFramesFacingPlayerD
+ * @run 70:B5F5
+ * WHAT IT DOES: Turns the object to face the player and steps its animation along the list whose
+ * pointer is the pair of bytes at overlay address $B60A plus Y (StepFramesFacingPlayerC in this
+ * stage's overlay).
+ * HOW: SideOfPlayer, the pointer into zTemp10-11, then StepObjectFrames as a tail jump.
+ * WAITS: no.
+ * Entry: X object, Y the list's offset, D clear. Exit: as StepObjectFrames. Clobbers zTemp00,
+ * zTemp10-11.
+ */
+FrameStepEnd StepFramesFacingPlayerD(uint8_t slot, uint8_t index)
+{
+    enum { LISTS = 0xB60A };
+    uint8_t sides, exit_y = index;
+    FrameStepEnd result;
+
+    jsr_push(0xB5F8);
+    sides = SideOfPlayer(slot).sides;
+    jsr_pop();
+    WR8(OBJ->facing_left[slot], (uint8_t)(sides & 1));
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
+    result.step = StepObjectFrames(slot, &exit_y);
+    result.end = ended_of_frame_step(result.step, result.step != FRAME_HELD, exit_y);
+    return result;
+}
+
+void abi_StepFramesFacingPlayerD(void)
+{
+    abi_ended(StepFramesFacingPlayerD(cpu.x, cpu.y).end);
+}
+
+/*
+ * @routine 117C:09D WaitThenState2C
+ * @run 70:B89D
+ * WHAT IT DOES: A two-step wait like WaitThenState2: the first pass sets f34b8 to $1C and the step
+ * to 1; later passes animate the object facing the player (list index 2) and count the timer down;
+ * at zero the object enters state 2.
+ * HOW: StepFramesFacingPlayerD with Y 2, then a decrement.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as WaitThenState2.
+ */
+Ended WaitThenState2C(uint8_t slot)
+{
+    uint8_t step = RD8(OBJ->f2800[slot]);
+    uint8_t left;
+    FrameStepEnd frames;
+    Ended e;
+
+    if (step == 0) {
+        WR8(OBJ->life_timer[slot], 0x1C);
+        step = RD8(OBJ->f2800[slot]);
+        step = (uint8_t)(step + 1);
+        WR8(OBJ->f2800[slot], step);
+        return ended_with_a(ended_nz(step), 0x1C);
+    }
+    jsr_push(0xB8B0);
+    frames = StepFramesFacingPlayerD(slot, 2);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 2), frames.end);
+    left = RD8(OBJ->life_timer[slot]);
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->life_timer[slot], left);
+    if (left != 0) {
+        return ended_then(e, ended_nz(left));
+    }
+    WR8(OBJ->state[slot], 2);
+    return ended_then(e, ended_load(2));
+}
+
+void abi_WaitThenState2C(void)
+{
+    abi_ended(WaitThenState2C(cpu.x));
+}
+
+/*
+ * @routine 117C:0BB BecomeType9CWhenAnimationEndsB
+ * @run 70:B8BB
+ * WHAT IT DOES: Animates the object (list 8, facing the player) and, when the animation list has
+ * ended, turns it into an object of type $9C in state 0.
+ * HOW: StepFramesFacingPlayerD with Y 8; the list ending decides.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as BecomeType9CWhenAnimationEnds.
+ */
+Ended BecomeType9CWhenAnimationEndsB(uint8_t slot)
+{
+    FrameStepEnd frames;
+    Ended e;
+
+    jsr_push(0xB8C0);
+    frames = StepFramesFacingPlayerD(slot, 8);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 8), frames.end);
+    if (frames.step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    return ended_then(e, become_type(slot, 0x9C));
+}
+
+void abi_BecomeType9CWhenAnimationEndsB(void)
+{
+    abi_ended(BecomeType9CWhenAnimationEndsB(cpu.x));
+}
+
+/*
+ * @routine 117C:0F5 LoadRecordStartAngle40B
+ * @run 70:B8F5
+ * WHAT IT DOES: LoadRecordStartAngle40, in this stage's overlay: starts the object from its record,
+ * moves it by its velocity, and sets its angle's high byte to $40.
+ * HOW: LoadObjectRecord, ApplyVelocity, one store.
+ * WAITS: no.
+ * Entry, exit: as LoadRecordStartAngle40.
+ */
+Ended LoadRecordStartAngle40B(uint8_t slot)
+{
+    uint8_t nz, last;
+    bool carry;
+    AxisMove move;
+    Ended e;
+
+    jsr_push(0xB8F8);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    jsr_push(0xB8FB);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    WR8(OBJ->angle_hi[slot], 0x40);
+    return ended_then(e, ended_load(0x40));
+}
+
+void abi_LoadRecordStartAngle40B(void)
+{
+    abi_ended(LoadRecordStartAngle40B(cpu.x));
+}
+
+/*
+ * @routine 117C:3B1 FrameOneBWhenFallingElseAnimate
+ * @run 70:BBB1
+ * WHAT IT DOES: An object that is not rising (Y speed high byte positive) takes frame $1B; one
+ * that is rising animates along the list at overlay address $BBC7.
+ * HOW: Tests the speed's sign; StepObjectFrames as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A $1B and N, Z from it when falling; else as StepObjectFrames.
+ * Clobbers zTemp10-11.
+ */
+Ended FrameOneBWhenFallingElseAnimate(uint8_t slot)
+{
+    uint8_t speed = RD8(OBJ->vy_hi[slot]);
+    uint8_t exit_y = 0;
+    FrameStep step;
+
+    if ((speed & 0x80) == 0) {
+        WR8(OBJ->frame[slot], 0x1B);
+        return ended_load(0x1B);
+    }
+    WR8(ZP->temp10, 0xC7);
+    WR8(ZP->temp11, 0xBB);
+    step = StepObjectFrames(slot, &exit_y);
+    return ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+}
+
+void abi_FrameOneBWhenFallingElseAnimate(void)
+{
+    abi_ended(FrameOneBWhenFallingElseAnimate(cpu.x));
+}
+
+/*
+ * @routine 117C:684 FaceThePlayerInSomeStatesB
+ * @run 70:BE84
+ * WHAT IT DOES: FaceThePlayerInSomeStates in this stage's overlay: turns the object to face the
+ * player when a table at overlay address $BE95 says its state is one that does.
+ * HOW: As FaceThePlayerInSomeStates.
+ * WAITS: no.
+ * Entry, exit: as FaceThePlayerInSomeStates.
+ */
+SideEnd FaceThePlayerInSomeStatesB(uint8_t slot)
+{
+    enum { TABLE = 0xBE95 };
+    SideEnd result = { ended_kept(), false, { 0, false, false } };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t entry = rd8((uint16_t)(TABLE + state));
+    uint8_t bit;
+
+    result.end = ended_with_y(ended_load(entry), state);
+    if (entry == 0) {
+        return result;
+    }
+    jsr_push(0xBE8F);
+    result.side = SideOfPlayer(slot);
+    jsr_pop();
+    result.side_used = true;
+    bit = (uint8_t)(result.side.sides & 1);
+    WR8(OBJ->facing_left[slot], bit);
+    result.end = ended_with_y(ended_load(bit), state);
+    return result;
+}
+
+void abi_FaceThePlayerInSomeStatesB(void)
+{
+    abi_side_end(FaceThePlayerInSomeStatesB(cpu.x));
+}
+
+/*
+ * @routine 117D:3B6 AnimateAlongListC3C2
+ * @run 71:C3B6
+ * WHAT IT DOES: Steps the object's animation along the list at overlay address $C3C2.
+ * HOW: The pointer into zTemp10-11, then StepObjectFrames (a call, then a return).
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as StepObjectFrames. Clobbers zTemp10-11.
+ */
+Ended AnimateAlongListC3C2(uint8_t slot)
+{
+    uint8_t exit_y = 0;
+    FrameStep step;
+
+    WR8(ZP->temp10, 0xC2);
+    WR8(ZP->temp11, 0xC3);
+    jsr_push(0xC3C1);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    return ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+}
+
+void abi_AnimateAlongListC3C2(void)
+{
+    abi_ended(AnimateAlongListC3C2(cpu.x));
+}
+
+/*
+ * @routine 117D:41F SwingOnCosineB
+ * @run 71:C41F
+ * WHAT IT DOES: Gives the object a Y speed of its life_timer's angle's cosine (speed $00A0),
+ * moves it, and turns life_timer on by 2.
+ * HOW: ScaleByCosine with zTemp00-01 set to $00A0, ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the new life_timer, N, Z, C and V from the add of 2; Y 0.
+ * Clobbers zTemp00-01, zTemp10-12, zProduct0-2, zMultiplierLo-Hi.
+ */
+Ended SwingOnCosineB(uint8_t slot)
+{
+    uint8_t angle, value;
+    Sum sum;
+
+    WR8(ZP->temp00, 0xA0);
+    WR8(ZP->temp01, 0);
+    angle = RD8(OBJ->life_timer[slot]);
+    jsr_push(0xC42D);
+    ScaleByCosine(angle);
+    jsr_pop();
+    value = RD8(ZP->product.hi);
+    WR8(OBJ->vy_hi[slot], value);
+    value = RD8(ZP->product.mid);
+    WR8(OBJ->vy_lo[slot], value);
+    jsr_push(0xC43A);
+    ApplyVelocity(slot);
+    jsr_pop();
+    angle = RD8(OBJ->life_timer[slot]);
+    sum = add_bytes(angle, 2, false);
+    WR8(OBJ->life_timer[slot], sum.value);
+    return ended_with_y(ended_of_sum(sum), 0);
+}
+
+void abi_SwingOnCosineB(void)
+{
+    abi_ended(SwingOnCosineB(cpu.x));
+}
+
+/*
+ * @routine 117B:6B6 PickSpeedAndTurnFromTable
+ * @run 70:B6B6
+ * WHAT IT DOES: Sets the object's X and Y speeds from a table of four byte entries by its f3670,
+ * adds one to f3510, and reverses its X speed when the player is on its left.
+ * HOW: The table is at overlay address $B6E2 (X low, X high, Y low, Y high; loads run high byte
+ * first); SideOfPlayer; NegateVelocityX as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the side bit (0) or the new X speed's high byte after the
+ * negate, N, Z, C and V from it; Y the entry's offset; X kept. Clobbers zTemp00.
+ */
+Ended PickSpeedAndTurnFromTable(uint8_t slot)
+{
+    enum { ENTRIES = 0xB6E2 };
+    uint8_t row = RD8(OBJ->f3670[slot]);
+    uint8_t y = (uint8_t)(row << 2);
+    uint8_t value, bit;
+    SideResult side;
+    Ended e;
+
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(ENTRIES + 1 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(ENTRIES + y)));
+    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(ENTRIES + 3 + y)));
+    value = rd8((uint16_t)(ENTRIES + 2 + y));
+    WR8(OBJ->vy_lo[slot], value);
+    e = ended_with_y(ended_with_carry(ended_load(value), (row & 0x40) != 0), y);
+    value = INC8(OBJ->f3510[slot]);
+    e = ended_then(e, ended_nz(value));
+    jsr_push(0xB6DA);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(side.sides & 1);
+    e = ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+    if (bit == 0) {
+        return e;
+    }
+    return ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+}
+
+void abi_PickSpeedAndTurnFromTable(void)
+{
+    abi_ended(PickSpeedAndTurnFromTable(cpu.x));
+}

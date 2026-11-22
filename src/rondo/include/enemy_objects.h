@@ -388,18 +388,6 @@ static inline Ended enter_state_if_flagged(uint8_t slot, uint8_t state)
 
 /* PROTOTYPES BEGIN */
 /* object/enemies_common_temp.c */
-ScreenSoundEnd PlayHitSoundA(uint8_t slot);
-ScreenSoundEnd PlayHitSoundB(uint8_t slot);
-ScreenSoundEnd PlayHitSoundC(uint8_t slot);
-ScreenSoundEnd PlayHitSoundD(uint8_t slot);
-ScreenSoundEnd PlayHitSoundE(uint8_t slot);
-ScreenSoundEnd PlayHitSoundF(uint8_t slot);
-ScreenSoundEnd PlayHitSoundG(uint8_t slot);
-ScreenSoundEnd PlayHitSoundH(uint8_t slot);
-ScreenSoundEnd PlayHitSoundI(uint8_t slot);
-ScreenSoundEnd PlayHitSoundJ(uint8_t slot);
-ScreenSoundEnd PlayHitSoundK(uint8_t slot);
-ScreenSoundEnd PlayHitSoundL(uint8_t slot);
 Ended DropItemWhenHitA(uint8_t slot);
 Ended DropItemWhenHitB(uint8_t slot);
 Ended DropItemWhenHitC(uint8_t slot);

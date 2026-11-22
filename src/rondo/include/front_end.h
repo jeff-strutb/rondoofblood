@@ -10,6 +10,34 @@
 /* Defined elsewhere, typed, and not declared in routines.h. */
 void ClearObject(uint8_t object);                    /* object/lifecycle.c */
 
+/* What a routine leaves in the registers and flags, for its abi_ wrapper: the registers it sets, the
+ * value N and Z come from, C, V when it sets V, and a flag for each register it leaves as it was. */
+typedef struct {
+    uint8_t a, x, y, nz;
+    bool c, v, v_set, a_kept, x_kept, y_kept, from_cpu;
+} Exit;
+
+static inline void exit_shim(Exit e)
+{
+    if (e.from_cpu) {
+        return;
+    }
+    if (!e.a_kept) {
+        cpu.a = e.a;
+    }
+    if (!e.x_kept) {
+        cpu.x = e.x;
+    }
+    if (!e.y_kept) {
+        cpu.y = e.y;
+    }
+    abi_nz(e.nz);
+    abi_flag(P_C, e.c);
+    if (e.v_set) {
+        abi_flag(P_V, e.v);
+    }
+}
+
 /* A value and the carry a routine leaves with it. */
 typedef struct {
     uint8_t value;
@@ -55,6 +83,16 @@ typedef struct { uint8_t a; uint8_t x; } SlotCopy;
 #define SELECTED_FILE 0x7DF1
 #define CURSOR_ROW 0x7DFF
 #define GLYPH_BUFFER 0x3B40
+#define TEXT_ROW_ADDRESSES 0xA894
+#define TEXT_PALETTES 0xA91B
+#define TEXT_COLOR_ADDRESSES 0xA901
+#define PERCENT_ADDRESSES 0xA845
+#define GLYPH_PLACES 0xA500
+#define GLYPH_NUMBERS 0xA18F
+#define GLYPH_PASSES 0xA0F2
+#define OBJECT_LISTS 0xA55A
+#define SLOT_FACES 0x7DE3
+#define FACE_TILES 0xA9BE
 
 /* menu/name_entry.c: what the name menu leaves, and its placeholders. */
 typedef struct { uint8_t a; uint8_t y; bool carry; bool overflow; bool full; } NameExit;
@@ -77,6 +115,42 @@ void abi_NameCursorTarget(void);
 typedef struct { uint8_t a; uint8_t x; } GlyphRows;
 
 /* menu/file_select.c */
+Exit BlankTextRow(uint8_t row, uint8_t kept_x);
+Exit RecolorTextRun(uint8_t row, uint8_t palette_index);
+Exit DrawSlotPercent(uint8_t row, uint8_t kept_x);
+Exit OrBufferIntoVramLow(uint8_t kept_x);
+Exit ShiftGlyphBufferRight(uint8_t kept_x);
+Exit SetGlyphVramPlace(uint8_t glyph, uint8_t object);
+Exit OverlayGlyphRows(uint8_t object);
+Exit OverlayGlyphPass(uint8_t object);
+Exit OverlayGlyphRowsBoth(uint8_t object);
+Exit OverlayGlyphPassBoth(uint8_t object);
+Exit ClearVramBlock(uint8_t object);
+Exit GlideObjectUp(uint8_t object);
+Exit GlideObjectDown(uint8_t object);
+Exit GlyphPassByStep(uint8_t object);
+Exit PlaceObjectList(uint8_t list);
+Exit DrawSlotName(uint8_t row, uint8_t kept_x);
+Exit DrawSlotContinuesAndFace(void);
+Exit DrawSlotDetails(void);
+void abi_BlankTextRow(void);
+void abi_RecolorTextRun(void);
+void abi_DrawSlotPercent(void);
+void abi_OrBufferIntoVramLow(void);
+void abi_ShiftGlyphBufferRight(void);
+void abi_SetGlyphVramPlace(void);
+void abi_OverlayGlyphRows(void);
+void abi_OverlayGlyphPass(void);
+void abi_OverlayGlyphRowsBoth(void);
+void abi_OverlayGlyphPassBoth(void);
+void abi_ClearVramBlock(void);
+void abi_GlideObjectUp(void);
+void abi_GlideObjectDown(void);
+void abi_GlyphPassByStep(void);
+void abi_PlaceObjectList(void);
+void abi_DrawSlotName(void);
+void abi_DrawSlotContinuesAndFace(void);
+void abi_DrawSlotDetails(void);
 void PadRepeatReset(void);
 bool MenuBackOnButtonII(void);
 void MenuBackToPageEight(void);

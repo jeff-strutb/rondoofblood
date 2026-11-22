@@ -186,19 +186,20 @@ once known). M is the main checkout, W your worktree. Run from W.
    Required: 0 differing bytes, and in `build/rondo/asm/coverage.csv` (it
    holds totals) `source_filed` up by the routines you filed and
    `source_filed_copy` up by their copies.
-4. Fetch the drafts under the routines' new names, then compare:
+4. Compare with the drafts. The main checkout keeps every draft in a cache
+   (`build/rondo/drafts/`, from 9dc013b) and `liftcmp` finds a routine's
+   draft by its disc location, so a filed name works at once, with no
+   fetch and no slot:
 
-       python3 tools/rondo/hybrid.py
-       cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --out build/rondo/drafter/gen --only rSSSS_OOO,...
-       python3 tools/rondo/liftcmp.py --drafts build/rondo/drafter/gen NAME ...
-       python3 tools/rondo/liftcmp.py --drafts build/rondo/drafter/gen --file src/rondo/<area>/<file>.c
+       python3 tools/rondo/liftcmp.py NAME ...
+       python3 tools/rondo/liftcmp.py --file src/rondo/<area>/<file>.c
 
-   `hybrid.py` and `liftcmp` need no slot (seconds). The `--only` names are
-   the intake's own labels. A draft made before the routine was filed does
-   not know its name: that is the "has no draft" message, and why the
-   fetch comes after filing. Required: every case matches and every line
-   is reached, or the missed arm is named in the header and given a
-   curated case.
+   Required: every case matches and every line is reached, or the missed
+   arm is named in the header and given a curated case. The cases assume
+   the entry contract (decimal and interrupt flags clear unless you pass
+   `--decimal` or `--irq`). To read one draft: `python3
+   tools/rondo/cdraft.py --only NAME --out DIR`. If the cache is stale the
+   tool exits 4 and names the command to rebuild it.
 5. Optional, and required when the draft is not judged identical or the
    harness cannot model the routine (banks, interrupts): gate A5 on the
    one shortest script that runs it (the intake header's "run by" line),

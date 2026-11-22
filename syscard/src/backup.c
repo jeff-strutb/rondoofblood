@@ -1,9 +1,7 @@
 /*
  * The backup memory: 2 KB of battery RAM in a bank of its own, opened by a port.
  *
- * Bytes named by address, not yet by field: CardByteCount and its high byte, CardSavedMprs, the backup
- * memory's header, end, next free byte and first file, and the ROM tables BackupSignature and
- * BackupFormatPassword. Their rows are asked of the typed access session; the zero page is typed.
+ * Every byte is a field of a record: the zero page, the card's RAM, the backup memory and the ROM tables.
  */
 #include "card.h"
 #include "card_access.h"
@@ -18,30 +16,6 @@ enum {
     FILE_HEADER_BYTES = 0x10, BM_DONE = 0, BM_NO_FILE = 1, BM_BAD_SUM = 2,
     VDC_REG_CR = 5, VDC_CR_VBLANK_IRQ = 0x08, VDC_STATUS_VBLANK = 0x20, SUM_START = 4
 };
-
-#define BC_LO CardByteCount
-#define BC_HI (CardByteCount + 1)
-#define END_LO BackupEnd
-#define END_HI (BackupEnd + 1)
-#define NEXT_LO BackupNextFree
-#define NEXT_HI (BackupNextFree + 1)
-
-/* A byte of memory changed in place, as INC and DEC do: read, then written. */
-static uint8_t increment(uint16_t at)
-{
-    uint8_t value = (uint8_t)(rd8(at) + 1);
-
-    wr8(at, value);
-    return value;
-}
-
-static uint8_t decrement(uint16_t at)
-{
-    uint8_t value = (uint8_t)(rd8(at) - 1);
-
-    wr8(at, value);
-    return value;
-}
 
 /* What a later step leaves over what an earlier one left: the registers and flags it sets win. */
 static CardExit exit_over(CardExit base, CardExit top)
@@ -86,12 +60,12 @@ uint8_t bm_open(uint8_t a)
 {
     push8(a);
     for (unsigned i = 0; i < MPR_COUNT; i++) {
-        wr8((uint16_t)(CardSavedMprs + i), tma((uint8_t)(1u << i)));
+        WR8_IDX(COL(CRAM->saved_mprs), i, tma((uint8_t)(1u << i)));
     }
     tam(BACKUP_MPR, BACKUP_BANK);
     csl();
     sei();
-    wr8(BackupUnlock, BACKUP_OPEN);
+    WR8(CCDU->subcode, BACKUP_OPEN);
     return pull8();
 }
 
@@ -118,23 +92,23 @@ uint8_t bm_close(uint8_t a)
 
     push8(a);
     for (unsigned i = 0; i < MPR_COUNT; i++) {
-        uint8_t bank = rd8((uint16_t)(CardSavedMprs + i));
+        uint8_t bank = RD8_IDX(COL(CRAM->saved_mprs), i);
 
         tam((uint8_t)(1u << i), bank);
     }
-    (void)rd8(CdIrqStatus);
+    (void)RD8(CCDU->irq_status);
     csh();
-    wr8(VdcAddress, VDC_REG_CR);
+    WR8(CVDC->addr, VDC_REG_CR);
     control = RD8(CZP->vdc_cr.lo);
-    wr8(VdcDataLo, (uint8_t)(control | VDC_CR_VBLANK_IRQ));
-    while (rd8(VdcAddress) & VDC_STATUS_VBLANK) {
+    WR8(CVDC->data_lo, (uint8_t)(control | VDC_CR_VBLANK_IRQ));
+    while (RD8(CVDC->addr) & VDC_STATUS_VBLANK) {
     }
-    while (!(rd8(VdcAddress) & VDC_STATUS_VBLANK)) {
+    while (!(RD8(CVDC->addr) & VDC_STATUS_VBLANK)) {
     }
     control = RD8(CZP->vdc_cr.lo);
-    wr8(VdcDataLo, control);
+    WR8(CVDC->data_lo, control);
     control = RD8(CZP->vdc_reg);
-    wr8(VdcAddress, control);
+    WR8(CVDC->addr, control);
     a = pull8();
     cli();
     return a;
@@ -169,8 +143,8 @@ BackupCheck bm_open_formatted(uint8_t a)
     (void)bm_open(a);
     jsr_pop();
     do {
-        read = rd8((uint16_t)(BackupHeader + x));
-        expected = rd8((uint16_t)(BackupSignature + x));
+        read = RD8_IDX(COL(CBM->header), x);
+        expected = RD8_IDX(COL(CROMT->signature), x);
         if (read != expected) {
             jsr_push(0xFC44);
             (void)bm_close(read);
@@ -228,9 +202,9 @@ static BackupWindow bm_map_name_window(void)
 
     w.bit4 = (high & 0x10) != 0;
     w.window = (uint8_t)(high >> 5);
-    bank = rd8((uint16_t)(CardSavedMprs + w.window));
+    bank = RD8_IDX(COL(CRAM->saved_mprs), w.window);
     tam(WINDOW_MPR_LOW, bank);
-    bank = rd8((uint16_t)(CardSavedMprs + 1 + w.window));
+    bank = RD8_IDX(COL(CRAM->saved_mprs), 1 + w.window);
     tam(WINDOW_MPR_HIGH, bank);
     high = RD8(CZP->copy.hi);
     w.high = (uint8_t)((high & WINDOW_OFFSET_BITS) | WINDOW_BASE_HI);
@@ -270,15 +244,15 @@ static CardExit window_exit(BackupWindow w)
  */
 uint8_t bm_count_down(void)
 {
-    uint8_t low = rd8(BC_LO);
+    uint8_t low = RD8(CRAM->byte_count.lo);
     uint8_t high;
 
     if (low == 0) {
-        (void)decrement(BC_HI);
+        (void)DEC8(CRAM->byte_count.hi);
     }
-    (void)decrement(BC_LO);
-    low = rd8(BC_LO);
-    high = rd8(BC_HI);
+    (void)DEC8(CRAM->byte_count.lo);
+    low = RD8(CRAM->byte_count.lo);
+    high = RD8(CRAM->byte_count.hi);
     return (uint8_t)(low | high);
 }
 
@@ -411,7 +385,7 @@ BackupAccess bm_format(uint8_t a)
     uint8_t value;
 
     do {
-        wanted = rd8((uint16_t)(BackupFormatPassword + y));
+        wanted = RD8_IDX(COL(CROMT->format_password), y);
         given = RD8_PTR_Y(CZP->a.lo, (uint8_t)y);
         if (wanted != given) {
             format.ending = BM_ENDED_NOT_FOUND;
@@ -444,20 +418,20 @@ BackupAccess bm_format(uint8_t a)
         if (!size.whole) {
             break;
         }
-        (void)increment(ADDR_OF8(CZP->pointer.hi));
+        (void)INC8(CZP->pointer.hi);
         size.pages_left--;
     } while (size.pages_left != 0);
-    wr8(END_LO, size.offset);
+    WR8(CBM->end.lo, size.offset);
     size.page = RD8(CZP->pointer.hi);
-    wr8(END_HI, size.page);
+    WR8(CBM->end.hi, size.page);
     for (int x = BACKUP_SIGNATURE_BYTES - 1; x >= 0; x--) {
-        value = rd8((uint16_t)(BackupSignature + x));
-        wr8((uint16_t)(BackupHeader + x), value);
+        value = RD8_IDX(COL(CROMT->signature), x);
+        WR8_IDX(COL(CBM->header), x, value);
     }
-    wr8(NEXT_LO, BACKUP_FIRST_FILE_LO);
-    wr8(NEXT_HI, BACKUP_FIRST_FILE_HI);
-    wr8(BackupFirstFile, 0);
-    wr8((uint16_t)(BackupFirstFile + 1), 0);
+    WR8(CBM->next_free.lo, BACKUP_FIRST_FILE_LO);
+    WR8(CBM->next_free.hi, BACKUP_FIRST_FILE_HI);
+    WR8(CBM->first_file.lo, 0);
+    WR8(CBM->first_file.hi, 0);
     (void)bm_close(BM_DONE);
     format.exit.x = 0xFF;
     format.exit.y = size.offset;
@@ -494,12 +468,12 @@ BackupAccess bm_free(uint8_t a)
         return free_space;
     }
     jsr_pop();
-    value = rd8(END_LO);
-    other = rd8(NEXT_LO);
+    value = RD8(CBM->end.lo);
+    other = RD8(CBM->next_free.lo);
     low = sub8(value, other, true);
     WR8(CZP->c.lo, low.value);
-    value = rd8(END_HI);
-    other = rd8(NEXT_HI);
+    value = RD8(CBM->end.hi);
+    other = RD8(CBM->next_free.hi);
     high = sub8(value, other, low.carry);
     WR8(CZP->c.hi, high.value);
     value = RD8(CZP->c.lo);
@@ -547,10 +521,10 @@ CardExit bm_sum_file(void)
     WR8(CZP->pointer.hi, value);
     value = RD8_PTR(CZP->pointer.lo);
     low = sub8(value, SUM_START, true);
-    wr8(BC_LO, low.value);
+    WR8(CRAM->byte_count.lo, low.value);
     value = RD8_PTR_Y(CZP->pointer.lo, 1);
     high = sub8(value, 0, low.carry);
-    wr8(BC_HI, high.value);
+    WR8(CRAM->byte_count.hi, high.value);
     WR8(CZP->copy.lo, 0);
     WR8(CZP->copy.hi, 0);
     y = SUM_START;
@@ -565,7 +539,7 @@ CardExit bm_sum_file(void)
         WR8(CZP->copy.hi, high.value);
         y++;
         if (y == 0) {
-            (void)increment(ADDR_OF8(CZP->pointer.hi));
+            (void)INC8(CZP->pointer.hi);
         }
         jsr_push(0xFC2F);
         left = bm_count_down();
@@ -639,9 +613,9 @@ CardExit bm_place_span(void)
     high = add8(value, other, low.carry);
     WR8(CZP->pointer.hi, high.value);
     value = RD8(CZP->c.lo);
-    wr8(BC_LO, value);
+    WR8(CRAM->byte_count.lo, value);
     value = RD8(CZP->c.hi);
-    wr8(BC_HI, value);
+    WR8(CRAM->byte_count.hi, value);
     value = RD8(CZP->copy.hi);
     e.a = e.nz = value;
     e.y = 1;
@@ -696,23 +670,23 @@ CardExit bm_move_direction(void)
     (void)bm_count_down();
     jsr_pop();
     value = RD8(CZP->pointer.lo);
-    other = rd8(BC_LO);
+    other = RD8(CRAM->byte_count.lo);
     low = add8(value, other, false);
     WR8(CZP->pointer.lo, low.value);
     value = RD8(CZP->pointer.hi);
-    other = rd8(BC_HI);
+    other = RD8(CRAM->byte_count.hi);
     high = add8(value, other, low.carry);
     WR8(CZP->pointer.hi, high.value);
     value = RD8(CZP->copy.lo);
-    other = rd8(BC_LO);
+    other = RD8(CRAM->byte_count.lo);
     low = add8(value, other, false);
     WR8(CZP->copy.lo, low.value);
     value = RD8(CZP->copy.hi);
-    other = rd8(BC_HI);
+    other = RD8(CRAM->byte_count.hi);
     high = add8(value, other, low.carry);
     WR8(CZP->copy.hi, high.value);
-    if (increment(BC_LO) == 0) {
-        (void)increment(BC_HI);
+    if (INC8(CRAM->byte_count.lo) == 0) {
+        (void)INC8(CRAM->byte_count.hi);
     }
     e.a = high.value;
     e.x = 0;
@@ -743,8 +717,8 @@ void abi_bm_move_direction(void)
 CardExit bm_move(void)
 {
     CardExit e = { 0 };
-    uint8_t low = rd8(BC_LO);
-    uint8_t high = rd8(BC_HI);
+    uint8_t low = RD8(CRAM->byte_count.lo);
+    uint8_t high = RD8(CRAM->byte_count.hi);
     uint8_t value;
 
     if ((uint8_t)(low | high) != 0) {
@@ -764,8 +738,8 @@ CardExit bm_move(void)
                 value = RD8_PTR_Y(CZP->pointer.lo, y);
                 WR8_PTR_Y(CZP->copy.lo, y, value);
                 if (y == 0) {
-                    (void)decrement(ADDR_OF8(CZP->pointer.hi));
-                    (void)decrement(ADDR_OF8(CZP->copy.hi));
+                    (void)DEC8(CZP->pointer.hi);
+                    (void)DEC8(CZP->copy.hi);
                 }
                 y--;
                 jsr_push(0xFCF1);
@@ -778,8 +752,8 @@ CardExit bm_move(void)
                 WR8_PTR_Y(CZP->copy.lo, y, value);
                 y++;
                 if (y == 0) {
-                    (void)increment(ADDR_OF8(CZP->pointer.hi));
-                    (void)increment(ADDR_OF8(CZP->copy.hi));
+                    (void)INC8(CZP->pointer.hi);
+                    (void)INC8(CZP->copy.hi);
                 }
                 jsr_push(0xFD03);
                 left = bm_count_down();
@@ -787,9 +761,9 @@ CardExit bm_move(void)
             } while (left != 0);
         }
     }
-    value = rd8(NEXT_LO);
+    value = RD8(CBM->next_free.lo);
     WR8(CZP->pointer.lo, value);
-    value = rd8(NEXT_HI);
+    value = RD8(CBM->next_free.hi);
     WR8(CZP->pointer.hi, value);
     WR8_PTR(CZP->pointer.lo, 0);
     WR8_PTR_Y(CZP->pointer.lo, 1, 0);
@@ -831,8 +805,8 @@ CardExit bm_copy_out(void)
         WR8_PTR_Y(CZP->copy.lo, y, value);
         y++;
         if (y == 0) {
-            (void)increment(ADDR_OF8(CZP->pointer.hi));
-            (void)increment(ADDR_OF8(CZP->copy.hi));
+            (void)INC8(CZP->pointer.hi);
+            (void)INC8(CZP->copy.hi);
         }
         jsr_push(0xFD29);
         left = bm_count_down();
@@ -875,8 +849,8 @@ CardExit bm_copy_in(void)
         WR8_PTR_Y(CZP->pointer.lo, y, value);
         y++;
         if (y == 0) {
-            (void)increment(ADDR_OF8(CZP->pointer.hi));
-            (void)increment(ADDR_OF8(CZP->copy.hi));
+            (void)INC8(CZP->pointer.hi);
+            (void)INC8(CZP->copy.hi);
         }
         jsr_push(0xFD3E);
         left = bm_count_down();
@@ -917,15 +891,15 @@ CardExit bm_new_file(void)
     uint8_t other;
     uint8_t y = 0;
 
-    value = rd8(NEXT_LO);
+    value = RD8(CBM->next_free.lo);
     WR8(CZP->file.lo, value);
-    value = rd8(NEXT_HI);
+    value = RD8(CBM->next_free.hi);
     WR8(CZP->file.hi, value);
-    value = rd8(END_LO);
+    value = RD8(CBM->end.lo);
     other = RD8(CZP->file.lo);
     low = sub8(value, other, true);
     WR8(CZP->pointer.lo, low.value);
-    value = rd8(END_HI);
+    value = RD8(CBM->end.hi);
     other = RD8(CZP->file.hi);
     high = sub8(value, other, low.carry);
     WR8(CZP->pointer.hi, high.value);
@@ -958,12 +932,12 @@ CardExit bm_new_file(void)
         WR8_PTR_Y(CZP->pointer.lo, y, value);
         y++;
     } while (y != FILE_NAME_BYTES);
-    value = rd8(NEXT_LO);
+    value = RD8(CBM->next_free.lo);
     low = add8(value, FILE_HEADER_BYTES, false);
-    wr8(NEXT_LO, low.value);
-    value = rd8(NEXT_HI);
+    WR8(CBM->next_free.lo, low.value);
+    value = RD8(CBM->next_free.hi);
     high = add8(value, 0, low.carry);
-    wr8(NEXT_HI, high.value);
+    WR8(CBM->next_free.hi, high.value);
     WR8_PTR(CZP->file.lo, FILE_HEADER_BYTES);
     WR8_PTR_Y(CZP->file.lo, 1, 0);
     e.a = 0;
@@ -1078,21 +1052,21 @@ BackupAccess bm_read(uint8_t a)
     span = bm_place_span();
     jsr_pop();
     if (!(span.nz & 0x80)) {
-        value = rd8(BC_LO);
+        value = RD8(CRAM->byte_count.lo);
         other = RD8(CZP->copy.lo);
         cut_low = sub8(value, other, true);
-        wr8(BC_LO, cut_low.value);
-        value = rd8(BC_HI);
+        WR8(CRAM->byte_count.lo, cut_low.value);
+        value = RD8(CRAM->byte_count.hi);
         other = RD8(CZP->copy.hi);
         cut_high = sub8(value, other, cut_low.carry);
-        wr8(BC_HI, cut_high.value);
+        WR8(CRAM->byte_count.hi, cut_high.value);
         cut = true;
     }
-    value = rd8(BC_LO);
+    value = RD8(CRAM->byte_count.lo);
     WR8(CZP->c.lo, value);
-    value = rd8(BC_HI);
+    value = RD8(CRAM->byte_count.hi);
     WR8(CZP->c.hi, value);
-    other = rd8(BC_LO);
+    other = RD8(CRAM->byte_count.lo);
     folded = (uint8_t)(value | other);
     read.exit = find;
     read.exit.c = cut ? cut_high.carry : span.c;
@@ -1205,15 +1179,15 @@ BackupAccess bm_write(uint8_t a)
     jsr_pop();
     if (!(span.nz & 0x80)) {
         value = RD8(CZP->copy.lo);
-        wr8(BC_LO, value);
+        WR8(CRAM->byte_count.lo, value);
         value = RD8(CZP->copy.hi);
-        wr8(BC_HI, value);
-        value = rd8(NEXT_LO);
-        other = rd8(BC_LO);
+        WR8(CRAM->byte_count.hi, value);
+        value = RD8(CBM->next_free.lo);
+        other = RD8(CRAM->byte_count.lo);
         low = add8(value, other, false);
         WR8(CZP->copy.lo, low.value);
-        value = rd8(NEXT_HI);
-        other = rd8(BC_HI);
+        value = RD8(CBM->next_free.hi);
+        other = RD8(CRAM->byte_count.hi);
         high = add8(value, other, low.carry);
         WR8(CZP->copy.hi, high.value);
         value = RD8(CZP->copy.lo);
@@ -1222,10 +1196,10 @@ BackupAccess bm_write(uint8_t a)
         value = RD8(CZP->copy.hi);
         high = add8(value, 0, low.carry);
         WR8(CZP->pointer.hi, high.value);
-        value = rd8(END_LO);
+        value = RD8(CBM->end.lo);
         other = RD8(CZP->pointer.lo);
         low = sub8(value, other, true);
-        value = rd8(END_HI);
+        value = RD8(CBM->end.hi);
         other = RD8(CZP->pointer.hi);
         high = sub8(value, other, low.carry);
         if (!high.carry) {
@@ -1240,9 +1214,9 @@ BackupAccess bm_write(uint8_t a)
             return write;
         }
         value = RD8(CZP->copy.lo);
-        wr8(NEXT_LO, value);
+        WR8(CBM->next_free.lo, value);
         value = RD8(CZP->copy.hi);
-        wr8(NEXT_HI, value);
+        WR8(CBM->next_free.hi, value);
         value = RD8_PTR(CZP->file.lo);
         other = RD8(CZP->file.lo);
         low = add8(value, other, false);
@@ -1253,30 +1227,30 @@ BackupAccess bm_write(uint8_t a)
         high = add8(value, other, low.carry);
         WR8(CZP->copy.hi, high.value);
         WR8(CZP->pointer.hi, high.value);
-        value = rd8(BC_LO);
+        value = RD8(CRAM->byte_count.lo);
         other = RD8_PTR(CZP->file.lo);
         low = add8(value, other, false);
         WR8_PTR(CZP->file.lo, low.value);
-        value = rd8(BC_HI);
+        value = RD8(CRAM->byte_count.hi);
         other = RD8_PTR_Y(CZP->file.lo, 1);
         high = add8(value, other, low.carry);
         WR8_PTR_Y(CZP->file.lo, 1, high.value);
-        value = rd8(BC_LO);
+        value = RD8(CRAM->byte_count.lo);
         other = RD8(CZP->copy.lo);
         low = add8(value, other, false);
         WR8(CZP->copy.lo, low.value);
-        value = rd8(BC_HI);
+        value = RD8(CRAM->byte_count.hi);
         other = RD8(CZP->copy.hi);
         high = add8(value, other, low.carry);
         WR8(CZP->copy.hi, high.value);
-        value = rd8(NEXT_LO);
+        value = RD8(CBM->next_free.lo);
         other = RD8(CZP->pointer.lo);
         low = sub8(value, other, true);
-        wr8(BC_LO, low.value);
-        value = rd8(NEXT_HI);
+        WR8(CRAM->byte_count.lo, low.value);
+        value = RD8(CBM->next_free.hi);
         other = RD8(CZP->pointer.hi);
         high = sub8(value, other, low.carry);
-        wr8(BC_HI, high.value);
+        WR8(CRAM->byte_count.hi, high.value);
         jsr_push(0xF9F2);
         (void)bm_move();
         jsr_pop();
@@ -1367,33 +1341,33 @@ BackupAccess bm_delete(uint8_t a)
     value = RD8(CZP->file.hi);
     WR8(CZP->copy.hi, value);
     value = RD8_PTR(CZP->file.lo);
-    wr8(BC_LO, value);
+    WR8(CRAM->byte_count.lo, value);
     value = RD8_PTR_Y(CZP->file.lo, 1);
-    wr8(BC_HI, value);
+    WR8(CRAM->byte_count.hi, value);
     value = RD8(CZP->file.lo);
-    other = rd8(BC_LO);
+    other = RD8(CRAM->byte_count.lo);
     low = add8(value, other, false);
     WR8(CZP->pointer.lo, low.value);
     value = RD8(CZP->file.hi);
-    other = rd8(BC_HI);
+    other = RD8(CRAM->byte_count.hi);
     high = add8(value, other, low.carry);
     WR8(CZP->pointer.hi, high.value);
-    value = rd8(NEXT_LO);
+    value = RD8(CBM->next_free.lo);
     other = RD8(CZP->pointer.lo);
     low = sub8(value, other, true);
-    wr8(BC_LO, low.value);
-    value = rd8(NEXT_HI);
+    WR8(CRAM->byte_count.lo, low.value);
+    value = RD8(CBM->next_free.hi);
     other = RD8(CZP->pointer.hi);
     high = sub8(value, other, low.carry);
-    wr8(BC_HI, high.value);
-    value = rd8(NEXT_LO);
+    WR8(CRAM->byte_count.hi, high.value);
+    value = RD8(CBM->next_free.lo);
     other = RD8_PTR(CZP->file.lo);
     low = sub8(value, other, true);
-    wr8(NEXT_LO, low.value);
-    value = rd8(NEXT_HI);
+    WR8(CBM->next_free.lo, low.value);
+    value = RD8(CBM->next_free.hi);
     other = RD8_PTR_Y(CZP->file.lo, 1);
     high = sub8(value, other, low.carry);
-    wr8(NEXT_HI, high.value);
+    WR8(CBM->next_free.hi, high.value);
     removal.exit = find;
     removal.exit.c = high.carry;
     removal.exit.v = high.overflow;
@@ -1462,7 +1436,7 @@ BackupAccess bm_files(uint8_t a)
     WR8(CZP->file.lo, BACKUP_FIRST_FILE_LO);
     WR8(CZP->file.hi, BACKUP_FIRST_FILE_HI);
     value = RD8(CZP->a.lo);
-    wr8(BC_LO, value);
+    WR8(CRAM->byte_count.lo, value);
     WR8(CZP->a.lo, 0);
     files.exit.y = 1;
     files.exit.set_y = true;
@@ -1476,8 +1450,8 @@ BackupAccess bm_files(uint8_t a)
             files.result = BM_NO_FILE;
             return files;
         }
-        (void)increment(ADDR_OF8(CZP->a.lo));
-        if (decrement(BC_LO) == 0) {
+        (void)INC8(CZP->a.lo);
+        if (DEC8(CRAM->byte_count.lo) == 0) {
             break;
         }
         length_high = RD8_PTR_Y(CZP->file.lo, 1);

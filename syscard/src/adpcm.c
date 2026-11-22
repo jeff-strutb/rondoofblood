@@ -1,5 +1,6 @@
 /* The BIOS's ADPCM entries. */
 #include "card.h"
+#include "card_access.h"
 #include "syscard.h"
 
 enum {
@@ -56,7 +57,7 @@ AdStat ad_stat(void)
 
     stat.busy = rd8(AdpcmStatus) & AD_STATUS_BUSY;
     if (stat.busy == 0)
-        stat.busy = rd8(CdIrqStatus) & CD_IRQ_ADPCM_HALF;
+        stat.busy = RD8(CCDU->irq_status) & CD_IRQ_ADPCM_HALF;
     stat.playing = rd8(AdpcmControl) & AD_CONTROL_PLAYING;
     if (stat.playing == 0)
         stat.playing = rd8(AdpcmStatus) & AD_STATUS_PLAYING;
@@ -216,7 +217,7 @@ static bool count_down_ax(void)
 static void select_vdc(uint8_t reg)
 {
     wr8(CardVdcReg, reg);
-    wr8(VdcAddress, reg);
+    WR8(CVDC->addr, reg);
 }
 
 /* The MPR stub the card builds in RAM: TMA or TAM with the mask, then RTS. */
@@ -568,7 +569,10 @@ void abi_ad_write(void)
     ad_write_exit_shim(ad_write());
 }
 
-enum { AD_TRANS_COMMAND_READ = 0x08, AD_TRANS_FIRST_STEP = 1 };
+enum {
+    AD_TRANS_COMMAND_READ = 0x08, AD_TRANS_FIRST_STEP = 1, CPLAY_STEP = 0x20, CPLAY_LENGTH_ALL = 0xFF,
+    CPLAY_IRQ_BITS = 0x0C
+};
 
 /*
  * @card 00:F730 ad_trans_begin
@@ -577,62 +581,58 @@ enum { AD_TRANS_COMMAND_READ = 0x08, AD_TRANS_FIRST_STEP = 1 };
  * carry out a step a call. Returns at once; refused while a transfer from the CD runs.
  * HOW: Builds command 8 in CardCdCommand without clearing it first (bytes 6 to 9 stay as they
  * were), keeps _BX, and sets ad_trans_step's first step.
+ * WAITS: no.
  * Entry: _AL, _BX, _CL, _CH, _DL. Exit, refused: C 1, N and V bits 7 and 6 of the transfer port,
  * Z 0; A, X, Y kept. Set up: A 1, N 0, Z 0, C 0, V from the base's add, Y the base's offset; X
  * kept. _CL, _CH, _DL left as the sector plus the base.
  */
-AdTransBegin ad_trans_begin(void)
+CardExit ad_trans_begin(void)
 {
-    AdTransBegin begin = { 0 };
+    CardExit e = { 0 };
+    CardExit added;
+    uint8_t held;
+    uint8_t value;
 
-    begin.dma_port = rd8(AdpcmDma);
-    begin.refused = (begin.dma_port & AD_DMA_BITS) != 0;
-    if (begin.refused)
-        return begin;
-    wr8(CardCdCommand, AD_TRANS_COMMAND_READ);
-    begin.added = add_cd_base();
-    wr8((uint16_t)(CardCdCommand + 1), rd8(CardCl));
-    wr8((uint16_t)(CardCdCommand + 2), rd8(CardCh));
-    wr8((uint16_t)(CardCdCommand + 3), rd8(CardDl));
-    wr8((uint16_t)(CardCdCommand + 4), rd8(CardAl));
-    wr8((uint16_t)(CardCdCommand + 5), 0);
-    wr8(CardAdTransAddress, rd8(CardBl));
-    wr8((uint16_t)(CardAdTransAddress + 1), rd8(CardBh));
-    wr8(CardAdTransSent, 0);
-    wr8(CardAdTransStep, AD_TRANS_FIRST_STEP);
-    return begin;
-}
-
-static void ad_trans_begin_exit_shim(AdTransBegin begin)
-{
-    abi_flag(P_C, begin.refused);
-    if (begin.refused) {
-        abi_flag(P_N, (begin.dma_port & 0x80) != 0);
-        abi_flag(P_V, (begin.dma_port & 0x40) != 0);
-        abi_flag(P_Z, false);
-        return;
+    held = RD8(CCDU->adpcm_dma);
+    if (held & AD_DMA_BITS) {
+        e.c = true;
+        e.n = (held & 0x80) != 0;
+        e.v = (held & 0x40) != 0;
+        e.z = false;
+        e.set_c = e.set_n = e.set_v = e.set_z = true;
+        return e;
     }
-    cpu.a = AD_TRANS_FIRST_STEP;
-    cpu.y = begin.added.offset;
-    abi_nz(AD_TRANS_FIRST_STEP);
-    abi_flag(P_V, cd_base_sum_overflowed(begin.added));
+    WR8_IDX(COL(CRAM->cd_command), 0, AD_TRANS_COMMAND_READ);
+    jsr_push(0xF741);
+    added = add_cd_base();
+    jsr_pop();
+    value = RD8(CZP->c.lo);
+    WR8_IDX(COL(CRAM->cd_command), 1, value);
+    value = RD8(CZP->c.hi);
+    WR8_IDX(COL(CRAM->cd_command), 2, value);
+    value = RD8(CZP->d.lo);
+    WR8_IDX(COL(CRAM->cd_command), 3, value);
+    value = RD8(CZP->a.lo);
+    WR8_IDX(COL(CRAM->cd_command), 4, value);
+    WR8_IDX(COL(CRAM->cd_command), 5, 0);
+    value = RD8(CZP->b.lo);
+    WR8(CRAM->adpcm_address, value);
+    value = RD8(CZP->b.hi);
+    wr8((uint16_t)(CardAdpcmAddress + 1), value);
+    WR8(CRAM->ad_trans_sent, 0);
+    WR8(CRAM->ad_trans_step, AD_TRANS_FIRST_STEP);
+    e.a = AD_TRANS_FIRST_STEP;
+    e.nz = AD_TRANS_FIRST_STEP;
+    e.y = added.y;
+    e.c = false;
+    e.v = added.v;
+    e.set_a = e.set_nz = e.set_y = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_ad_trans_begin(void)
 {
-    ad_trans_begin_exit_shim(ad_trans_begin());
-}
-
-enum {
-    CPLAY_STEP = 0x20, CPLAY_LENGTH_ALL = 0xFF, CPLAY_IRQ_BITS = 0x0C, SECTOR_BYTES_MASK = 0xFFFFFF
-};
-
-static uint32_t read_sector_high_first(uint16_t at)
-{
-    uint8_t high = rd8(at);
-    uint8_t middle = rd8((uint16_t)(at + 1));
-
-    return ((uint32_t)high << 16) | ((uint32_t)middle << 8) | rd8((uint16_t)(at + 2));
+    card_exit_apply(ad_trans_begin());
 }
 
 /*
@@ -641,46 +641,49 @@ static uint32_t read_sector_high_first(uint16_t at)
  * on, the sectors left down.
  * HOW: A three-byte add to CardAdpcmNextSector (high first) and a three-byte subtract from
  * CardAdpcmSectorsLeft (low first).
+ * WAITS: no.
  * Entry: CardAdpcmStep. Exit: A the high byte of what is left, N and Z from it, C clear if the
  * subtract went below zero, V from its high byte. X, Y kept.
  */
-CplayStep cplay_advance(void)
+CardExit cplay_advance(void)
 {
-    CplayStep step;
-    uint32_t next, left;
+    CardExit e = { 0 };
+    Sum low;
+    Sum middle;
+    Sum high;
+    uint8_t value;
+    uint8_t step;
 
-    step.step = rd8(CardAdpcmStep);
-    next = (read_sector_high_first(CardAdpcmNextSector) + step.step) & SECTOR_BYTES_MASK;
-    wr8(CardAdpcmNextSector, (uint8_t)(next >> 16));
-    wr8((uint16_t)(CardAdpcmNextSector + 1), (uint8_t)(next >> 8));
-    wr8((uint16_t)(CardAdpcmNextSector + 2), (uint8_t)next);
-    step.left_before = (uint32_t)rd8(CardAdpcmSectorsLeft) |
-                       ((uint32_t)rd8((uint16_t)(CardAdpcmSectorsLeft + 1)) << 8) |
-                       ((uint32_t)rd8((uint16_t)(CardAdpcmSectorsLeft + 2)) << 16);
-    left = (step.left_before - step.step) & SECTOR_BYTES_MASK;
-    wr8(CardAdpcmSectorsLeft, (uint8_t)left);
-    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), (uint8_t)(left >> 8));
-    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), (uint8_t)(left >> 16));
-    return step;
-}
-
-/* C and V as cplay_advance's subtract leaves them. */
-static void abi_cplay_step_flags_shim(CplayStep step)
-{
-    bool borrow_into_high = (step.left_before & 0xFFFF) < step.step;
-    int high = (int8_t)(step.left_before >> 16) - (borrow_into_high ? 1 : 0);
-
-    abi_flag(P_C, step.left_before >= step.step);
-    abi_flag(P_V, high < -128);
+    value = rd8((uint16_t)(CardAdpcmNextSector + 2));
+    step = RD8(CRAM->adpcm_step);
+    low = add8(value, step, false);
+    wr8((uint16_t)(CardAdpcmNextSector + 2), low.value);
+    value = rd8((uint16_t)(CardAdpcmNextSector + 1));
+    middle = add8(value, 0, low.carry);
+    wr8((uint16_t)(CardAdpcmNextSector + 1), middle.value);
+    value = rd8(CardAdpcmNextSector);
+    high = add8(value, 0, middle.carry);
+    wr8(CardAdpcmNextSector, high.value);
+    value = rd8(CardAdpcmSectorsLeft);
+    step = RD8(CRAM->adpcm_step);
+    low = sub8(value, step, true);
+    wr8(CardAdpcmSectorsLeft, low.value);
+    value = rd8((uint16_t)(CardAdpcmSectorsLeft + 1));
+    middle = sub8(value, 0, low.carry);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), middle.value);
+    value = rd8((uint16_t)(CardAdpcmSectorsLeft + 2));
+    high = sub8(value, 0, middle.carry);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), high.value);
+    e.a = e.nz = high.value;
+    e.c = high.carry;
+    e.v = high.overflow;
+    e.set_a = e.set_nz = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_cplay_advance(void)
 {
-    CplayStep step = cplay_advance();
-
-    cpu.a = rd8((uint16_t)(CardAdpcmSectorsLeft + 2));
-    abi_nz(cpu.a);
-    abi_cplay_step_flags_shim(step);
+    card_exit_apply(cplay_advance());
 }
 
 /*
@@ -691,104 +694,123 @@ void abi_cplay_advance(void)
  * sets the rate, loads the first $20 sectors into ADPCM memory from 0 with ad_trans, moves the
  * counts on by them, makes the length all of memory, and starts the unit with its half-way and
  * end interrupts, which carry on the play.
- * Entry: _AX, _BL, _CL, _CH, _DL, _DH. Exit: busy, as ad_stat; bad rate, A _DH and C set; a
- * failed load, as ad_trans with C set; started, A 0, N 0, Z 0, X and Y as ad_trans left them.
+ * WAITS: only through ad_trans.
+ * Entry: _AX, _BL, _CL, _CH, _DL, _DH; A, X (pushed in ad_trans). Exit: busy, as ad_stat; bad rate, A _DH
+ * and C set; a failed load, as ad_trans with C set; started, A 0, N 0, Z 0, X and Y as ad_trans left them.
  * _AL, _BX and _DH changed.
  */
-AdCplay ad_cplay(void)
+CardExit ad_cplay(uint8_t a, uint8_t x)
 {
-    AdCplay play = { 0 };
-    uint32_t sector, base;
+    CardExit r = { 0 };
+    AdStat stat;
+    Sum low;
+    Sum middle;
+    Sum high;
+    uint8_t value;
+    uint8_t base;
+    uint8_t rate;
+    uint8_t held;
 
-    play.stat = ad_stat();
-    if (play.stat.playing != 0) {
-        play.how = AD_CPLAY_BUSY;
-        return play;
+    r.a = a;
+    r.x = x;
+    jsr_push(0xF622);
+    stat = ad_stat();
+    jsr_pop();
+    r.x = stat.busy;
+    r.a = stat.playing;
+    r.nz = stat.playing;
+    r.set_x = r.set_a = r.set_nz = true;
+    if (stat.playing != 0) {
+        return r;
     }
-    wr8(CardAdpcmSectorsLeft, rd8(CardAl));
-    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), rd8(CardAh));
-    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), rd8(CardBl));
-    sector = ((uint32_t)rd8(CardCl) << 16) | ((uint32_t)rd8(CardCh) << 8) | rd8(CardDl);
-    base = read_sector_high_first(CardCdBases);
-    sector = (sector + base) & SECTOR_BYTES_MASK;
-    wr8(CardAdpcmNextSector, (uint8_t)(sector >> 16));
-    wr8((uint16_t)(CardAdpcmNextSector + 1), (uint8_t)(sector >> 8));
-    wr8((uint16_t)(CardAdpcmNextSector + 2), (uint8_t)sector);
-    play.reset_enables = ad_reset();
-    play.rate = rd8(CardDh);
-    if (play.rate >= AD_RATE_LIMIT) {
-        play.how = AD_CPLAY_BAD_RATE;
-        return play;
+    value = RD8(CZP->a.lo);
+    wr8(CardAdpcmSectorsLeft, value);
+    value = RD8(CZP->a.hi);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), value);
+    value = RD8(CZP->b.lo);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), value);
+    value = RD8(CZP->d.lo);
+    base = RD8_IDX(COL(CRAM->cd_bases), 2);
+    low = add8(value, base, false);
+    wr8((uint16_t)(CardAdpcmNextSector + 2), low.value);
+    value = RD8(CZP->c.hi);
+    base = RD8_IDX(COL(CRAM->cd_bases), 1);
+    middle = add8(value, base, low.carry);
+    wr8((uint16_t)(CardAdpcmNextSector + 1), middle.value);
+    value = RD8(CZP->c.lo);
+    base = rd8(CardCdBases);
+    high = add8(value, base, middle.carry);
+    wr8(CardAdpcmNextSector, high.value);
+    r.a = high.value;
+    r.nz = high.value;
+    r.c = high.carry;
+    r.v = high.overflow;
+    r.set_c = r.set_v = true;
+    jsr_push(0xF64F);
+    held = ad_reset();
+    jsr_pop();
+    r.a = 0x6F;
+    r.n = (held & 0x80) != 0;
+    r.v = (held & 0x40) != 0;
+    r.z = (held & ~0x6F) == 0;
+    r.set_n = r.set_z = true;
+    r.set_nz = false;
+    rate = RD8(CZP->d.hi);
+    r.a = rate;
+    r.nz = (uint8_t)(rate - AD_RATE_LIMIT);
+    r.c = rate >= AD_RATE_LIMIT;
+    r.set_nz = true;
+    r.set_n = r.set_z = false;
+    if (rate >= AD_RATE_LIMIT) {
+        return r;
     }
-    wr8(AdpcmRate, play.rate);
-    wr8(CardAl, CPLAY_STEP);
-    wr8(CardDh, 0);
-    wr8(CardBl, 0);
-    wr8(CardBh, 0);
-    play.trans = ad_trans();
-    if (ad_trans_result(play.trans) != 0) {
-        play.how = AD_CPLAY_TRANSFER_FAILED;
-        return play;
+    WR8(CCDU->adpcm_rate, rate);
+    WR8(CZP->a.lo, CPLAY_STEP);
+    WR8(CZP->d.hi, 0);
+    WR8(CZP->b.lo, 0);
+    WR8(CZP->b.hi, 0);
+    jsr_push(0xF667);
+    r = card_exit_over(r, ad_trans(0, r.x));
+    jsr_pop();
+    r.nz = r.a;
+    r.c = true;
+    r.set_nz = r.set_c = true;
+    if (r.a != 0) {
+        return r;
     }
-    wr8(CardAdpcmStep, CPLAY_STEP);
-    play.step = cplay_advance();
-    wr8(AdpcmAddressLo, CPLAY_LENGTH_ALL);
-    wr8(AdpcmAddressHi, CPLAY_LENGTH_ALL);
-    ad_latch_length();
-    wr8(CardAdpcmActive, 0);
-    play.irq_before = rd8(CdIrqControl);
-    wr8(CdIrqControl, play.irq_before | CPLAY_IRQ_BITS);
-    wr8(AdpcmControl, AD_CONTROL_PLAY_BITS);
-    play.how = AD_CPLAY_STARTED;
-    return play;
-}
-
-/* The A ad_cplay leaves: 0 started, what ad_stat gave if busy, _DH for a bad rate, or ad_trans's error. */
-uint8_t ad_cplay_result(AdCplay play)
-{
-    switch (play.how) {
-    case AD_CPLAY_BUSY:
-        return play.stat.playing;
-    case AD_CPLAY_BAD_RATE:
-        return play.rate;
-    case AD_CPLAY_TRANSFER_FAILED:
-        return ad_trans_result(play.trans);
-    default:
-        return 0;
-    }
-}
-
-/* ad_cplay's exit, for its wrapper and for a caller's that ends in it. */
-void ad_cplay_exit_shim(AdCplay play)
-{
-    uint8_t a = ad_cplay_result(play);
-
-    switch (play.how) {
-    case AD_CPLAY_BUSY:
-        ad_stat_exit_shim(play.stat);
-        return;
-    case AD_CPLAY_BAD_RATE:
-        cpu.x = play.stat.busy;
-        abi_nz((uint8_t)(a - AD_RATE_LIMIT));
-        abi_flag(P_C, true);
-        abi_flag(P_V, (play.reset_enables & 0x40) != 0);
-        break;
-    case AD_CPLAY_TRANSFER_FAILED:
-        ad_trans_exit_shim(play.trans);
-        abi_nz(a);
-        abi_flag(P_C, true);
-        break;
-    default:
-        ad_trans_exit_shim(play.trans);
-        abi_nz(AD_CONTROL_PLAY_BITS);
-        abi_cplay_step_flags_shim(play.step);
-        abi_flag(P_V, (play.irq_before & 0x40) != 0);
-        break;
-    }
-    cpu.a = a;
+    WR8(CRAM->adpcm_step, CPLAY_STEP);
+    jsr_push(0xF672);
+    r = card_exit_over(r, cplay_advance());
+    jsr_pop();
+    WR8(CCDU->data_auto, CPLAY_LENGTH_ALL);
+    WR8(CCDU->adpcm_address_hi, CPLAY_LENGTH_ALL);
+    jsr_push(0xF67D);
+    (void)ad_latch_length();
+    jsr_pop();
+    WR8(CRAM->adpcm_active, 0);
+    held = TSB8(CCDU->irq_control, CPLAY_IRQ_BITS);
+    r.n = (held & 0x80) != 0;
+    r.v = (held & 0x40) != 0;
+    r.z = false;
+    r.set_n = r.set_v = r.set_z = true;
+    r.set_nz = false;
+    WR8(CCDU->adpcm_control, AD_CONTROL_PLAY_BITS);
+    r.a = 0;
+    return r;
 }
 
 void abi_ad_cplay(void)
 {
-    ad_cplay_exit_shim(ad_cplay());
+    card_exit_apply(ad_cplay(cpu.a, cpu.x));
+}
+
+/* The A ad_cplay leaves, and its exit: the call's CardExit. */
+uint8_t ad_cplay_result(AdCplay play)
+{
+    return play.a;
+}
+
+void ad_cplay_exit_shim(AdCplay play)
+{
+    card_exit_apply(play);
 }

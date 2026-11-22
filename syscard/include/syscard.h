@@ -36,216 +36,28 @@ typedef struct {
     uint8_t more;
 } CdPcmRead;
 
-/* The reset port before cd_reset's pulse, and what it was left holding. */
-typedef struct {
-    uint8_t before;
-    uint8_t after;
-} CdReset;
 
-/* How sending a command ended, and the values it worked with. */
-typedef enum {
-    CD_SENT_PENDING,   /* something else is running: it does not wait on the drive */
-    CD_SENT_NO_WAIT,   /* a command that does not wait on the drive */
-    CD_SENT_ANSWERED,  /* the drive's phase moved on */
-    CD_SENT_TIMED_OUT
-} CdSentHow;
 
-typedef struct {
-    CdSentHow how;
-    uint8_t sent;        /* command bytes taken by the drive */
-    uint8_t pending;     /* what said something else is running */
-    uint8_t flag_byte;   /* the port last tested or changed: its bits 7 and 6 */
-    uint8_t phase;       /* the phase that ended the wait */
-    uint8_t first_tick;  /* the frame count when the wait began */
-    uint8_t last_tick;   /* and when it last looked */
-    bool waited_again;
-} CdSent;
 
-/* The status byte a command ended with, and the bus's last state. */
-typedef struct {
-    uint8_t status;
-    uint8_t last_bus;
-} CdStatusRead;
 
-/* How finishing a command ended. */
-typedef struct {
-    bool timed_out;
-    CdReset reset;
-    CdStatusRead read;
-} CdFinish;
 
-/* What reading bytes from the drive saw. */
-typedef struct {
-    bool acked;            /* a byte was taken */
-    uint8_t last_control;  /* the control port at the last acknowledge */
-    uint8_t answer;        /* the phase at the end, its answer bits */
-    bool drained;          /* the drive had more than was asked for */
-    bool drained_block;    /* and a block of it was read and dropped */
-} CdDataIn;
 
-/* A command from sending it to taking its status. */
-typedef struct {
-    CdSent sent;
-    bool read_data;
-    CdDataIn data;
-    CdFinish finish;
-} CdExchange;
 
-/* What the BIOS decided about a failed command. */
-typedef struct {
-    bool give_up;
-    uint8_t error;
-    bool asked;      /* the error was one that asks the drive why */
-    uint8_t sense;
-    CdExchange sense_exchange;
-    uint8_t sense_status;
-} CdRetry;
 
-/* What testing the unit found. */
-typedef struct {
-    CdExchange exchange;
-    uint8_t status;
-    bool failed;
-    CdRetry retry;
-} CdTest;
 
-/* What cd_stat found: its own read of the bus, or a test of the unit. */
-typedef struct {
-    bool tested;
-    uint8_t busy;
-    CdTest test;
-} CdStat;
 
-/* What an earlier failed try left behind, the last that mattered. */
-typedef enum { CD_LEFT_NOTHING, CD_LEFT_CLEARED, CD_LEFT_ASKED } CdLeftOver;
 
-/* A command tried until it worked or the BIOS gave up: the last try's story. */
-typedef struct {
-    CdExchange exchange;
-    uint8_t status;
-    bool failed;
-    CdRetry retry;
-    CdLeftOver left_over;
-} CdAttempt;
 
-/* What cd_contnts gathered: it stops at the first answer that failed. */
-typedef struct {
-    CdAttempt attempt;
-} CdContents;
 
-/* What cd_pause found and did. */
-typedef struct {
-    CdAttempt subq;
-    uint8_t playing;
-    bool told_to_pause;
-    CdExchange pause;
-    uint8_t status;
-    bool failed;
-    CdRetry retry;
-} CdPause;
 
-/* How cd_search ended: left running on an interrupt, or tried to its end. */
-typedef struct {
-    bool on_interrupt;
-    CdSent sent;
-    uint8_t irq_control;
-    uint8_t copied_to;
-    CdAttempt attempt;
-} CdSearch;
 
-/* How taking a frame off the disc's end went. */
-typedef struct {
-    bool borrowed_minute;
-    bool unused;
-    uint8_t minutes_before;
-} DiscEndStep;
 
-/* How cd_play ended, and the values it worked with. */
-typedef enum {
-    CD_PLAY_FINISHED,
-    CD_PLAY_GAVE_UP_SEARCHING,
-    CD_PLAY_SEEK_ONLY,
-    CD_PLAY_RETURNED,
-    CD_PLAY_ON_INTERRUPT
-} CdPlayHow;
 
-typedef struct {
-    CdPlayHow how;
-    uint8_t start_mode;
-    bool searched;
-    CdAttempt search;
-    CdSent sent;
-    uint8_t sub;
-    uint8_t irq_control;
-    CdFinish finish;
-    uint8_t status;
-    bool failed;
-    CdRetry retry;
-    CdLeftOver left_over;
-} CdPlay;
 
-/* How a block read to memory ended. */
-typedef struct {
-    bool at_status;
-    bool moved;
-    uint8_t phase;
-    uint8_t pages_left;
-    uint8_t page_offset;
-} CdBlockRead;
 
-/* How a read to VRAM ended. */
-typedef struct {
-    CdDataIn in;
-    bool at_status;
-    bool moved;
-    bool counted;
-    uint16_t count_before;
-    uint8_t pages_left;
-    uint8_t words_left;
-} CdVramRead;
 
-/* What adding a disc base worked with. */
-typedef struct {
-    uint32_t address;
-    uint32_t base;
-    uint8_t offset;
-} CdBaseSum;
 
-/* How cd_read ended, and the values it worked with. */
-typedef struct {
-    bool bad_request;
-    bool mapped;
-    bool again;
-    uint8_t mode;
-    uint8_t count;
-    uint16_t bytes_asked;
-    CdBaseSum added;
-    CdSent sent;
-    bool to_memory;
-    CdBlockRead block;
-    bool dropped;
-    bool to_vram;
-    bool vram_slow;
-    CdVramRead vram;
-    bool moved_through_bank;
-    uint8_t pages_left;
-    uint8_t page_offset;
-    CdFinish finish;
-    uint8_t status;
-    bool failed;
-    CdRetry retry;
-} CdRead;
 
-/* How cd_seek ended: its last try. */
-typedef struct {
-    CdSent sent;
-    bool drained;   /* the drive offered the sector's data, and it was thrown away */
-    bool dropped;   /* a block of it was read */
-    CdFinish finish;
-    uint8_t status;
-    bool failed;
-    CdRetry retry;
-} CdSeek;
 
 /*
  * What a routine leaves in the registers and flags, for its exit shim: each register or flag it sets has its
@@ -254,8 +66,19 @@ typedef struct {
 typedef struct {
     uint8_t a, x, y, nz;
     bool c, v;
-    bool set_a, set_x, set_y, set_nz, set_c, set_v;
+    bool n, z;      /* N and Z on their own, for what a TSB, TRB or TST leaves: from the byte, not from a result */
+    bool set_a, set_x, set_y, set_nz, set_c, set_v, set_n, set_z;
 } CardExit;
+
+/* The CD calls the game makes keep the registers and flags they leave, as a CardExit; A is the call's answer. */
+typedef CardExit CdPlay;
+typedef CardExit CdRead;
+typedef CardExit CdSearch;
+typedef CardExit CdStat;
+typedef CardExit CdPause;
+typedef CardExit CdSeek;
+typedef CardExit AdTrans;
+
 
 /* What checking the backup memory's header found, and what it leaves in the registers. */
 typedef struct {
@@ -369,6 +192,8 @@ CardVersion ex_getver(void);
 uint8_t map_boot_ram(void);
 void init_card_vectors(void);
 CdSubcodeRead reset_cd_unit(void);
+void cd_subrd_exit_shim(CdSubcodeRead read);
+
 void clear_vram(void);
 uint8_t load_font(void);
 uint8_t boot_display(void);
@@ -431,14 +256,8 @@ typedef struct {
 AdWrite ad_write(void);
 void ad_write_exit_shim(AdWrite write);
 
-/* What ad_trans_begin did. */
-typedef struct {
-    bool refused;
-    uint8_t dma_port;     /* the transfer port as it read it */
-    CdBaseSum added;
-} AdTransBegin;
 
-AdTransBegin ad_trans_begin(void);
+CardExit ad_trans_begin(void);
 void aim_bx_at_vram_port(void);
 uint8_t ad_read_byte(void);
 uint8_t write_vram_word_pending(void);
@@ -460,7 +279,7 @@ void ad_stat_exit_shim(AdStat stat);
 void ad_stop_exit_shim(uint8_t control);
 void cd_play_exit_shim(CdPlay play);
 void cd_read_exit_shim(CdRead read);
-void cd_fade_exit_shim(uint8_t given);
+void cd_fade_exit_shim(uint8_t nibble);
 void ma_mul8u_exit_shim(MaMul8u result);
 void bm_read_exit_shim(BackupAccess read);
 void bm_write_exit_shim(BackupAccess write);
@@ -477,6 +296,8 @@ uint8_t bm_free_result(BackupFree free_space);
 void bm_format_exit_shim(BackupFormat format);
 uint8_t bm_format_result(BackupFormat format);
 void cd_pause_exit_shim(CdPause pause);
+void cd_seek_exit_shim(CdSeek seek);
+uint8_t cd_seek_result(CdSeek seek);
 uint8_t cd_pause_result(CdPause pause);
 void cd_search_exit_shim(CdSearch search);
 uint8_t cd_search_result(CdSearch search);
@@ -493,32 +314,18 @@ typedef struct {
     uint8_t tens;       /* ex_bcdbin: the high digit, or ten times it once it was checked */
 } BcdConvert;
 
-BcdConvert ex_bcdbin(uint8_t bcd);
-BcdConvert ex_binbcd(uint8_t value);
+BcdConvert ex_bcdbin(uint8_t bcd, uint8_t x);
+BcdConvert ex_binbcd(uint8_t value, uint8_t x);
 
-/* The last add of a sector number's terms, which the exit's flags come from. */
-typedef struct {
-    uint32_t before;    /* the sum before it, 24 bits */
-    uint32_t term;      /* what was added, 24 bits */
-} LbaAdd;
 
 void lba_load_term(uint8_t value);
-bool lba_double_term(void);
-LbaAdd lba_add_term(void);
-LbaAdd lba_double_and_add(void);
-LbaAdd msf_to_lba(void);
+CardExit lba_double_term(void);
+CardExit lba_add_term(void);
+CardExit lba_double_and_add(void);
+CardExit msf_to_lba(uint8_t x);
 
-/* How cd_base read the base it was given, and what its exit shows. */
-typedef struct {
-    bool converted;      /* a position or a track was made into a sector number */
-    bool from_track;     /* the position came from the table of contents */
-    CdAttempt dinfo;
-    LbaAdd add;
-    uint8_t saved_mpr6;  /* what MPR6 held while bank 1 was mapped */
-    uint8_t which;       /* _CL: bit 1 keeps the first base, bit 0 the second */
-} CdBase;
 
-CdBase cd_base(void);
+CardExit cd_base(uint8_t a, uint8_t x);
 
 /* What ex_vsync did: returned at once, or waited for the frame count to move. */
 typedef struct {
@@ -594,17 +401,7 @@ typedef struct {
 ColorCommand ex_colorcmd(void);
 
 
-/* How ad_trans ended. */
-typedef struct {
-    bool refused;
-    uint8_t busy_port;
-    CdExchange exchange;
-    uint8_t status;
-    bool failed;
-    CdRetry retry;
-} AdTrans;
-
-AdTrans ad_trans(void);
+AdTrans ad_trans(uint8_t a, uint8_t x);
 void ad_trans_exit_shim(AdTrans trans);
 uint8_t ad_trans_result(AdTrans trans);
 /* What one step of continuous ADPCM play did to its counts. */
@@ -616,18 +413,10 @@ typedef struct {
 /* How ad_cplay ended. */
 typedef enum { AD_CPLAY_BUSY, AD_CPLAY_BAD_RATE, AD_CPLAY_TRANSFER_FAILED, AD_CPLAY_STARTED } AdCplayHow;
 
-typedef struct {
-    AdCplayHow how;
-    AdStat stat;
-    uint8_t reset_enables;  /* the CD unit's interrupt enables as ad_reset found them */
-    uint8_t rate;
-    AdTrans trans;
-    CplayStep step;
-    uint8_t irq_before;
-} AdCplay;
+typedef CardExit AdCplay;
 
-CplayStep cplay_advance(void);
-AdCplay ad_cplay(void);
+CardExit cplay_advance(void);
+AdCplay ad_cplay(uint8_t a, uint8_t x);
 uint8_t ad_cplay_result(AdCplay play);
 void ad_cplay_exit_shim(AdCplay play);
 void ad_set_address(uint8_t low, uint8_t high);
@@ -635,44 +424,45 @@ uint8_t ad_latch_read_address(void);
 uint8_t ad_latch_write_address(void);
 uint8_t ad_latch_length(void);
 uint8_t ad_read_byte(void);
-CdBaseSum add_cd_base(void);
-bool cd_base_sum_overflowed(CdBaseSum added);
+CardExit add_cd_base(void);
 uint8_t write_vram_word_pending(void);
-CdRead cd_read(void);
-CdSeek cd_seek(void);
+CdRead cd_read(uint8_t a, uint8_t x);
+CdSeek cd_seek(uint8_t a, uint8_t x);
 uint8_t cd_seek_result(CdSeek seek);
 void cd_seek_exit_shim(CdSeek seek);
-CdBlockRead cd_read_to_memory(void);
-CdVramRead cd_read_to_vram_fast(void);
-CdVramRead cd_read_to_vram_slow(void);
-uint8_t cd_bytes_to_sectors(void);
-DiscEndStep disc_end_minus_one_frame(void);
-CdPlay cd_play(void);
-CdAttempt cd_subq(void);
-CdAttempt cd_dinfo(void);
-CdContents cd_contnts(void);
-CdPause cd_pause(void);
-CdSearch cd_search(void);
-void clear_cd_command(void);
-void clear_cd_result(void);
-void save_card_args(void);
-void restore_card_args(void);
+CardExit cd_read_to_memory(void);
+CardExit cd_read_to_vram_fast(void);
+CardExit cd_read_to_vram_slow(void);
+CardExit cd_bytes_to_sectors(void);
+CardExit disc_end_minus_one_frame(uint8_t a);
+CdPlay cd_play(uint8_t a, uint8_t x);
+CardExit cd_subq(uint8_t a, uint8_t x);
+CardExit cd_dinfo(uint8_t a, uint8_t x);
+CardExit cd_contnts(uint8_t a, uint8_t x);
+CdPause cd_pause(uint8_t x);
+CdSearch cd_search(uint8_t a, uint8_t x);
+void clear_cd_command(uint8_t x);
+void clear_cd_result(uint8_t x);
+void save_card_args(uint8_t a, uint8_t x);
+void restore_card_args(uint8_t a, uint8_t x);
 uint8_t copy_args_to_command(uint8_t from, uint8_t to);
-bool cd_drop_extra_data(void);
-CdTest cd_test_unit(void);
-CdDataIn cd_read_data_in(void);
-uint8_t cd_request_sense(CdExchange *exchange);
-CdRetry cd_retry_after_error(uint8_t error);
-CdStat cd_stat(uint8_t what);
-CdSent cd_send_command(void);
-CdStatusRead cd_read_status(void);
-CdFinish cd_finish_command(void);
+CardExit cd_drop_extra_data(void);
+CardExit cd_test_unit(uint8_t x);
+CardExit cd_read_data_in(void);
+CardExit cd_request_sense(uint8_t x);
+CardExit cd_retry_after_error(uint8_t error, uint8_t x);
+CdStat cd_stat(uint8_t what, uint8_t x);
+CardExit cd_send_command(void);
+CardExit cd_read_status(void);
+CardExit cd_finish_command(void);
 uint8_t cd_ack_pulse(void);
-CdReset cd_reset(void);
+uint8_t cd_ack_on(void);
+uint8_t cd_ack_off(void);
+CardExit cd_reset(void);
 CdSubcodeRead cd_subrd(void);
 CdPcmRead cd_pcmrd(uint8_t latch);
 MaMul8u ma_mul8u(uint8_t a, uint8_t flags);
-void cd_fade(uint8_t type);
+uint8_t cd_fade(uint8_t type);
 uint8_t ad_stop(void);
 AdStat ad_stat(void);
 uint8_t ex_scrsiz(uint8_t size);

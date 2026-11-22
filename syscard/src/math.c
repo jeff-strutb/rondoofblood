@@ -190,36 +190,46 @@ enum { BCD_DIGIT_LIMIT = 0x0A, BCD_HIGH_LIMIT = 0xA0, BCD_LOW_DIGIT = 0x0F, BCD_
 /*
  * @card 00:E600 ex_bcdbin
  * WHAT IT DOES: Turns a two-digit BCD byte into binary.
- * HOW: Ten times the high digit, made as twice it plus eight times it in CardPointerLo, plus the
- * low digit. A digit of ten or more gives the byte back unchanged, with C set.
- * Entry: A. Exit: A the result, C clear, V clear; or A as given, C set, and V kept if the high
+ * HOW: X is pushed; ten times the high digit, made as twice it plus eight times it in CardPointerLo, plus the
+ * low digit; X is pulled. A digit of ten or more gives the byte back unchanged, with C set.
+ * WAITS: no.
+ * Entry: A; X (only kept). Exit: A the result, C clear, V clear; or A as given, C set, and V kept if the high
  * digit was bad, clear if the low one was. N and Z from X, which is kept.
  */
-BcdConvert ex_bcdbin(uint8_t bcd)
+BcdConvert ex_bcdbin(uint8_t bcd, uint8_t x)
 {
     BcdConvert out = { false, bcd, 0 };
+    uint8_t tens;
 
-    if ((bcd & BCD_HIGH_DIGIT) >= BCD_HIGH_LIMIT)
-        return out;
-    out.tens = (uint8_t)(((bcd & BCD_HIGH_DIGIT) >> 1) + ((bcd & BCD_HIGH_DIGIT) >> 3));
-    wr8(CardPointerLo, out.tens);
-    if ((bcd & BCD_LOW_DIGIT) >= BCD_DIGIT_LIMIT)
-        return out;
-    out.converted = true;
-    out.value = (uint8_t)(out.tens + (bcd & BCD_LOW_DIGIT));
+    push8(x);
+    if ((bcd & BCD_HIGH_DIGIT) < BCD_HIGH_LIMIT) {
+        tens = (uint8_t)((bcd & BCD_HIGH_DIGIT) >> 1);
+        WR8(CZP->pointer.lo, tens);
+        tens = (uint8_t)(((tens >> 1) >> 1) + RD8(CZP->pointer.lo));
+        WR8(CZP->pointer.lo, tens);
+        out.tens = tens;
+        if ((bcd & BCD_LOW_DIGIT) < BCD_DIGIT_LIMIT) {
+            uint8_t sum = (uint8_t)((bcd & BCD_LOW_DIGIT) + RD8(CZP->pointer.lo));
+
+            out.converted = true;
+            out.value = sum;
+        }
+    }
+    (void)pull8();
     return out;
 }
 
 void abi_ex_bcdbin(void)
 {
-    uint8_t high_bad = (cpu.a & BCD_HIGH_DIGIT) >= BCD_HIGH_LIMIT;
-    BcdConvert out = ex_bcdbin(cpu.a);
+    bool high_bad = (cpu.a & BCD_HIGH_DIGIT) >= BCD_HIGH_LIMIT;
+    BcdConvert out = ex_bcdbin(cpu.a, cpu.x);
 
     cpu.a = out.value;
     abi_nz(cpu.x);
     abi_flag(P_C, !out.converted);
-    if (!high_bad)
+    if (!high_bad) {
         abi_flag(P_V, false);
+    }
 }
 
 /*
@@ -227,28 +237,34 @@ void abi_ex_bcdbin(void)
  * WHAT IT DOES: Turns a binary byte below 100 into two BCD digits.
  * HOW: Takes tens off counting them, then puts the count in the high digit; the units go
  * through CardPointerLo. 100 or more gives the byte back with C set.
- * Entry: A. Exit: A the result, C clear, V clear, N and Z from X, which is kept. 100 or more: A
- * kept, C set, N and Z from A less 100. V kept.
+ * WAITS: no.
+ * Entry: A; X (pushed below 100, and kept). Exit: A the result, C clear, V clear, N and Z from X, which is
+ * kept. 100 or more: A kept, C set, N and Z from A less 100. V kept.
+ * Not run by any script.
  */
-BcdConvert ex_binbcd(uint8_t value)
+BcdConvert ex_binbcd(uint8_t value, uint8_t x)
 {
     BcdConvert out = { false, value, 0 };
     uint8_t units;
 
-    if (value >= BINBCD_LIMIT)
+    if (value >= BINBCD_LIMIT) {
         return out;
+    }
+    push8(x);
     out.tens = value / 10;
     units = value % 10;
-    wr8(CardPointerLo, units);
+    WR8(CZP->pointer.lo, units);
+    (void)RD8(CZP->pointer.lo);
     out.converted = true;
     out.value = (uint8_t)((out.tens << 4) | units);
+    (void)pull8();
     return out;
 }
 
 void abi_ex_binbcd(void)
 {
     uint8_t given = cpu.a;
-    BcdConvert out = ex_binbcd(given);
+    BcdConvert out = ex_binbcd(given, cpu.x);
 
     cpu.a = out.value;
     abi_flag(P_C, !out.converted);

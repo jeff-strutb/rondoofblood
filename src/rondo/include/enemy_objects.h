@@ -531,6 +531,12 @@ Ended EnterNextStateWhenPlayerNear(uint8_t slot);
 Ended SwingOnCosine(uint8_t slot);
 Ended AnimateThenFrameRecord(uint8_t slot);
 Ended StartThenAnimate(uint8_t slot);
+Ended StartWithRecordTableRow(uint8_t slot);
+Ended FallAndLeaveWhenLow(uint8_t slot);
+Ended AnimateThenRemove(uint8_t slot);
+Ended RemoveFirstFreeSlotFrom1C(void);
+Ended SpawnEightPiecesType37(uint8_t slot);
+Ended SpawnPiecesWhenFlaggedHit(uint8_t slot);
 /* object/enemies_stage08_temp.c */
 Ended SetPhase2(uint8_t slot);
 Ended SetPhase3(uint8_t slot);
@@ -544,6 +550,11 @@ Ended StartFacingPlayerThenCheck(uint8_t slot);
 Ended AnimateThenCountToState3(uint8_t slot);
 Ended PickPhaseAtRandomA(uint8_t slot);
 Ended PickPhaseAtRandomB(uint8_t slot);
+Ended StartWithTimerByNextKind(uint8_t slot);
+Ended StartWithFrameByNextKind(uint8_t slot);
+Ended AnimateByKindThenNextState(uint8_t slot);
+FrameStepEnd StepFramesFacingPlayerE(uint8_t slot, uint8_t index);
+Ended WalkWhileFrameChangesC(uint8_t slot);
 /* object/enemies_stage0b_temp.c */
 Ended CountdownThenState4B(uint8_t slot);
 Ended ChangeToType9BB(uint8_t slot);

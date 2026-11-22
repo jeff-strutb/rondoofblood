@@ -123,6 +123,7 @@ void abi_ApplyVelocityY(void)
  * @run 69:55D2
  * WHAT IT DOES: Moves an object by its velocity on both axes.
  * HOW: X, then runs into ApplyVelocityY.
+ * WAITS: no.
  * Entry: X object. Exit: as ApplyVelocityY. Clobbers zTemp10.
  */
 AxisMove ApplyVelocity(uint8_t object)
@@ -136,39 +137,41 @@ void abi_ApplyVelocity(void)
     axis_move_exit_shim(ApplyVelocity(cpu.x));
 }
 
-/* A velocity word replaced by its negative, which is returned. */
-static uint16_t negate_velocity(uint16_t lo, uint16_t hi)
+/* A velocity word replaced by its negative: the low byte's add first, its carry into the high byte's. */
+static Sum negate_velocity(uint16_t lo_column, uint16_t hi_column, uint8_t object)
 {
-    uint16_t word = (uint16_t)(rd8(lo) | (rd8(hi) << 8));
-    uint16_t negated = (uint16_t)(0u - word);
+    uint8_t value;
+    Sum sum;
 
-    wr8(lo, (uint8_t)negated);
-    wr8(hi, (uint8_t)(negated >> 8));
-    return negated;
+    value = RD8_IDX(lo_column, object);
+    sum = add_bytes((uint8_t)(value ^ 0xFF), 0, true);
+    WR8_IDX(lo_column, object, sum.value);
+    value = RD8_IDX(hi_column, object);
+    sum = add_bytes((uint8_t)(value ^ 0xFF), 0, sum.carry);
+    WR8_IDX(hi_column, object, sum.value);
+    return sum;
 }
 
-/*
- * The high byte's add leaves A and the flags. Its carry comes only from zero, and it
- * overflows only on $8000: the two words that are their own negatives.
- */
-static void negate_exit_shim(uint16_t negated)
+/* A the new high byte, N and Z from it, C and V from its add. */
+void negate_exit_shim(Sum last)
 {
-    cpu.a = (uint8_t)(negated >> 8);
-    abi_nz(cpu.a);
-    abi_flag(P_C, negated == 0);
-    abi_flag(P_V, negated == 0x8000);
+    cpu.a = last.value;
+    abi_nz(last.value);
+    abi_flag(P_C, last.carry);
+    abi_flag(P_V, last.overflow);
 }
 
 /*
  * @routine 0046:32D NegateVelocityX
  * @run 69:5B2D
  * WHAT IT DOES: Reverses an object's X velocity.
- * HOW: Two's complement of the word, low byte first.
- * Entry: X object. Exit: A the high byte, N, Z, C and V from its add. X and Y kept.
+ * HOW: Two's complement of the word, low byte first, the carry carried into the high byte.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the high byte, N, Z, C and V from its add. X and Y kept.
  */
-uint16_t NegateVelocityX(uint8_t object)
+Sum NegateVelocityX(uint8_t object)
 {
-    return negate_velocity((uint16_t)(OBJ_VX_LO + object), (uint16_t)(OBJ_VX_HI + object));
+    return negate_velocity(COL(OBJ->vx_lo), COL(OBJ->vx_hi), object);
 }
 
 void abi_NegateVelocityX(void)
@@ -180,12 +183,13 @@ void abi_NegateVelocityX(void)
  * @routine 0046:343 NegateVelocityY
  * @run 69:5B43
  * WHAT IT DOES: Reverses an object's Y velocity.
- * HOW: Two's complement of the word, low byte first.
- * Entry: X object. Exit: as NegateVelocityX.
+ * HOW: Two's complement of the word, low byte first, the carry carried into the high byte.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as NegateVelocityX.
  */
-uint16_t NegateVelocityY(uint8_t object)
+Sum NegateVelocityY(uint8_t object)
 {
-    return negate_velocity((uint16_t)(OBJ_VY_LO + object), (uint16_t)(OBJ_VY_HI + object));
+    return negate_velocity(COL(OBJ->vy_lo), COL(OBJ->vy_hi), object);
 }
 
 void abi_NegateVelocityY(void)

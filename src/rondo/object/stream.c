@@ -132,6 +132,7 @@ typedef struct {
  * WHAT IT DOES: The end of the record handlers: if this record's flags ask for it,
  * marks its event.
  * HOW: Bit 7 of zTemp0E, event in zTemp0F.
+ * WAITS: no.
  * Entry: zTemp0E, zTemp0F. Exit: unmarked, A zTemp0E, N and Z from it, C, Y kept.
  * Else as RecordEvent. X and V kept.
  */
@@ -141,7 +142,7 @@ MarkedEvent RecordIfMarked(void)
 
     if (rd8(zTemp0E) & OBJECT_MARKED) {
         e.recorded = true;
-        e.mask = RecordEvent(rd8(zTemp0F), &e.byte);
+        e.mask = RecordEvent(rd8(zTemp0F), cpu.x, &e.byte);
     }
     return e;
 }
@@ -432,6 +433,7 @@ void abi_StreamCallOverlay(void)
  * @run 6A:60E3
  * WHAT IT DOES: The jump StreamCallOverlay reaches a record's code by.
  * HOW: JMP [zTemp09].
+ * WAITS: no.
  * Entry: zTemp09-0A code. Exit: as that code leaves it.
  */
 void abi_JumpThroughRecord(void)
@@ -453,7 +455,7 @@ static uint8_t load_record(uint8_t *byte)
     wr8(zTemp0D, rd8((uint16_t)(record + 7)));
     wr8(zTemp0E, rd8((uint16_t)(record + 8)));
     wr8(zTemp0F, rd8((uint16_t)(record + 9)));
-    mask = BitOfIndex(rd8(zTemp0F), byte);
+    mask = BitOfIndex(rd8(zTemp0F), cpu.x, byte);
     return (uint8_t)(mask & rd8((uint16_t)(EventFlags + *byte)));
 }
 

@@ -167,8 +167,6 @@ static inline Ended ended_then(Ended before, Ended after)
  * Callees that are typed C elsewhere and that no header declares. The defining file is named; each
  * ended_ builder below gives the state its abi_ wrapper leaves, from the typed result alone.
  */
-AxisMove ApplyVelocityX(uint8_t object);                                          /* object/motion.c */
-AxisMove ApplyVelocityY(uint8_t object);                                          /* object/motion.c */
 
 
 /* A routine that may play a sound: what it ended with, and the call the wrapper must show the leak of. */

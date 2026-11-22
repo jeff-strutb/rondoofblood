@@ -220,3 +220,205 @@ void abi_SetHitboxFromFrameRowsB(void)
 {
     abi_ended(SetHitboxFromFrameRowsB(cpu.x));
 }
+
+/*
+ * @routine 0D5B:12B StartFacingPlayerThenCheck
+ * @run 70:B12B
+ * WHAT IT DOES: Starts the object from its record, turns it to face the player, sets f3510 to
+ * $18, and, when its next_kind is 1, either removes the object (the player under $20 pixels
+ * away along X) or sends it to state 6.
+ * HOW: LoadObjectRecord, SideOfPlayer, DistanceXToPlayer, ClearObject as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C from the last compare or load; V from the
+ * distance's subtract on the near path; Y 11 (the record); X kept. Clobbers zTemp00, zTemp10-11.
+ */
+Ended StartFacingPlayerThenCheck(uint8_t slot)
+{
+    uint8_t nz, last, bit, kind;
+    bool carry;
+    SideResult sides;
+    PlayerDistance distance;
+    Ended e;
+
+    jsr_push(0xB12E);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    jsr_push(0xB131);
+    sides = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(sides.sides & 1);
+    e = ended_then(e, ended_then(ended_of_side(sides), ended_load(bit)));
+    WR8(OBJ->facing_left[slot], bit);
+    WR8(OBJ->f3510[slot], 0x18);
+    e = ended_then(e, ended_load(0x18));
+    kind = RD8(OBJ->next_kind[slot]);
+    e = ended_then(e, ended_compare(kind, 1));
+    if (kind != 1) {
+        return e;
+    }
+    jsr_push(0xB145);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_distance(distance));
+    e = ended_then(e, ended_compare(distance.distance, 0x20));
+    if (distance.distance < 0x20) {
+        ClearObject(slot);
+        return e;
+    }
+    WR8(OBJ->state[slot], 6);
+    return ended_then(e, ended_load(6));
+}
+
+void abi_StartFacingPlayerThenCheck(void)
+{
+    abi_ended(StartFacingPlayerThenCheck(cpu.x));
+}
+
+/*
+ * @routine 0D5B:152 AnimateThenCountToState3
+ * @run 70:B152
+ * WHAT IT DOES: Unless the object in slot $54 is showing frame 4, animates the object along the
+ * list at overlay address $B17B and, when its next_kind is not $FF and its X high byte is zero,
+ * counts f3510 down; at zero it enters state 3.
+ * HOW: StepObjectFrames, then the tests in that order, each stopping at the first that fails.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C from the last compare, load or decrement; Y as the
+ * animation step left it; X and V kept. Clobbers zTemp10-11.
+ */
+Ended AnimateThenCountToState3(uint8_t slot)
+{
+    uint8_t frame = RD8(OBJ->frame[0x54]);
+    uint8_t exit_y = 0, kind, high, left;
+    FrameStep step;
+    Ended e;
+
+    e = ended_compare(frame, 4);
+    if (frame == 4) {
+        return e;
+    }
+    WR8(ZP->temp11, 0xB1);
+    WR8(ZP->temp10, 0x7B);
+    jsr_push(0xB164);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_then(e, ended_of_frame_step(step, step != FRAME_HELD, exit_y));
+    kind = RD8(OBJ->next_kind[slot]);
+    e = ended_then(e, ended_compare(kind, 0xFF));
+    if (kind == 0xFF) {
+        return e;
+    }
+    high = RD8(OBJ->x_hi[slot]);
+    e = ended_then(e, ended_load(high));
+    if (high != 0) {
+        return e;
+    }
+    left = RD8(OBJ->f3510[slot]);
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->f3510[slot], left);
+    e = ended_then(e, ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    WR8(OBJ->state[slot], 3);
+    return ended_then(e, ended_load(3));
+}
+
+void abi_AnimateThenCountToState3(void)
+{
+    abi_ended(AnimateThenCountToState3(cpu.x));
+}
+
+/*
+ * @routine 0D5B:1CE PickPhaseAtRandomA
+ * @run 70:B1CE
+ * WHAT IT DOES: Picks the object's phase (the f34b8 byte SetSpeedFromPhaseTable reads) from a
+ * random number's low three bits: 0 and 1 give phase 3, 2 gives phase 2, 3 gives phase 1, any
+ * other gives phase 0.
+ * HOW: NextRandom, compares, and a tail into SetPhase3 or SetPhase2.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the phase (or the masked number for phase 0), N, Z from it; C
+ * from the last compare (V from the random number's add).
+ */
+Ended PickPhaseAtRandomA(uint8_t slot)
+{
+    RandomResult random;
+    uint8_t bits;
+    Ended e;
+
+    jsr_push(0xB1D1);
+    random = NextRandom();
+    jsr_pop();
+    bits = (uint8_t)(random.value & 7);
+    e = ended_then(ended_of_random(random), ended_load(bits));
+    e = ended_then(e, ended_compare(bits, 2));
+    if (bits < 2) {
+        return ended_then(e, SetPhase3(slot));
+    }
+    if (bits == 2) {
+        return ended_then(e, SetPhase2(slot));
+    }
+    e = ended_then(e, ended_compare(bits, 3));
+    if (bits == 3) {
+        WR8(OBJ->life_timer[slot], 1);
+        return ended_then(e, ended_load(1));
+    }
+    WR8(OBJ->life_timer[slot], 0);
+    return e;
+}
+
+void abi_PickPhaseAtRandomA(void)
+{
+    abi_ended(PickPhaseAtRandomA(cpu.x));
+}
+
+/*
+ * @routine 0D5B:1E3 PickPhaseAtRandomB
+ * @run 70:B1E3
+ * WHAT IT DOES: Picks the object's phase from a random number's low three bits: 0 gives phase 3,
+ * 1 gives phase 2, 2 gives phase 0, 3 to 7 give phase 1 when the object faces the way the player
+ * does and phase 0 when not.
+ * HOW: NextRandom, compares, and a tail into SetPhase3 or SetPhase2.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the phase (or the facing difference), N, Z from it; C from the
+ * last compare (V from the random number's add).
+ */
+Ended PickPhaseAtRandomB(uint8_t slot)
+{
+    RandomResult random;
+    uint8_t bits, mine, theirs, difference;
+    Ended e;
+
+    jsr_push(0xB1E6);
+    random = NextRandom();
+    jsr_pop();
+    bits = (uint8_t)(random.value & 7);
+    e = ended_then(ended_of_random(random), ended_load(bits));
+    if (bits == 0) {
+        return ended_then(e, SetPhase3(slot));
+    }
+    e = ended_then(e, ended_compare(bits, 1));
+    if (bits == 1) {
+        return ended_then(e, SetPhase2(slot));
+    }
+    e = ended_then(e, ended_compare(bits, 2));
+    if (bits == 2) {
+        WR8(OBJ->life_timer[slot], 0);
+        return e;
+    }
+    mine = RD8(OBJ->facing_left[slot]);
+    theirs = RD8(OBJ->facing_left[0]);
+    difference = (uint8_t)(mine ^ theirs);
+    e = ended_then(e, ended_load(difference));
+    if (difference != 0) {
+        WR8(OBJ->life_timer[slot], 0);
+        return e;
+    }
+    WR8(OBJ->life_timer[slot], 1);
+    return ended_then(e, ended_load(1));
+}
+
+void abi_PickPhaseAtRandomB(void)
+{
+    abi_ended(PickPhaseAtRandomB(cpu.x));
+}

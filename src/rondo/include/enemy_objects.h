@@ -167,12 +167,8 @@ static inline Ended ended_then(Ended before, Ended after)
  * Callees that are typed C elsewhere and that no header declares. The defining file is named; each
  * ended_ builder below gives the state its abi_ wrapper leaves, from the typed result alone.
  */
-typedef enum { FRAME_HELD, FRAME_CHANGED, FRAME_LIST_ENDED } FrameStep;          /* object/spawn.c */
-FrameStep StepObjectFrames(uint8_t object, uint8_t *exit_y);                      /* object/spawn.c */
-uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c);         /* object/spawn.c */
 AxisMove ApplyVelocityX(uint8_t object);                                          /* object/motion.c */
 AxisMove ApplyVelocityY(uint8_t object);                                          /* object/motion.c */
-uint8_t StartObjectAtPlace(uint8_t type, uint8_t from, uint8_t to);               /* object/spawn.c */
 uint8_t FindFreeSlotFrom30(uint8_t *exit_a, bool *found);                         /* object/spawn.c */
 
 void ApplyGravityUnlimited(uint8_t object);                                       /* object/sensing.c */

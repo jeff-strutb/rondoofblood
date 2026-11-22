@@ -608,6 +608,16 @@ void ResetDisplayControl(void);
 /* NextRandom: the byte, and the carry and overflow of the last add. */
 typedef struct { uint8_t value; bool carry; bool overflow; } RandomResult;
 RandomResult NextRandom(void);
+/* object/spawn.c: the record start, the place copies, the animation step. */
+typedef enum { FRAME_HELD, FRAME_CHANGED, FRAME_LIST_ENDED } FrameStep;
+uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c);
+void load_record_exit_shim(uint8_t last, uint8_t state, bool carry);
+uint8_t CopyObjectPlace(uint8_t from, uint8_t to);
+uint8_t StartObjectAtPlace(uint8_t type, uint8_t from, uint8_t to);
+uint8_t CopyObjectPlaceBack(uint8_t from, uint8_t to);
+void copy_place_exit_shim(uint8_t last);
+FrameStep StepObjectFrames(uint8_t object, uint8_t *exit_y);
+void step_frames_exit_shim(FrameStep step, uint8_t y);
 /* SideOfPlayer: the side bits, and the carry of the last compare when one was made. */
 typedef struct { uint8_t sides; bool carry_set; bool carry; } SideResult;
 SideResult SideOfPlayer(uint8_t object);

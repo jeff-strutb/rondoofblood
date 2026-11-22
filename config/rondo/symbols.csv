@@ -82,6 +82,9 @@ E0A2,abs,BiosE0A2,called once at start
 2700,abs,WorkByteB,shared work byte: walled answer; stream count low
 2701,abs,StreamStepLo,stream walk step low
 2702,abs,StreamStepHi,stream walk step high
+2710,abs,HitboxXLo,per slot of 16: the hitbox centre's X, low byte: the object's X low plus the hitbox X offset
+2720,abs,HitboxYLo,per slot of 16: the hitbox centre's Y, low byte
+2730,abs,HitboxHi,per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset
 2744,abs,LevelFullWalk,set during a whole-screen stream walk
 2750,abs,OBJ_2750,object field not yet identified
 27A8,abs,OBJ_27A8,object field not yet identified
@@ -596,6 +599,7 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 3B00,abs,PaletteWork,32 bytes: a palette of 16 colours read from the VCE to be worked on
 3B20,abs,PaletteWorkSpare,the colour kept while a palette is rotated
 3B40,abs,StageMaskBuffer,128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask
+9149,abs,StageMaskOffsets,the stage overlay's 8 offsets (00 01 20 21 40 41 60 61) of the mask buffer's cells one masking step touches; the same bytes at every copy of the overlay
 3F83,abs,TitleSaveRead,1 once the title has read the backup file
 3F84,abs,TitleSeen,1 once the title has run to its end; then Run skips it
 802E,abs,TitleSteps,the title's handlers by sub-mode, a word each

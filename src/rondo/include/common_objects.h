@@ -87,6 +87,7 @@ typedef struct {
     uint8_t last;         /* the last byte loaded into A */
     uint8_t table_offset; /* Y at the end */
     bool carry;           /* C at the end */
+    bool overflow;        /* V: the frame's subtract of 1 overflowed (only frame $80) */
 } FrameLookup;
 
 /* An object's four hit offsets are loaded from the table row picked by its animation frame. */

@@ -176,7 +176,7 @@ static SpawnedObject spawn_from_row(uint8_t row, const SpawnTables *t, uint16_t 
 
     out.slot = rd8((uint16_t)(t->slot + row));
     jsr_push(ret);
-    ClearObject(out.slot);
+    ClearObjectInY(out.slot);
     jsr_pop();
     byte = rd8((uint16_t)(t->frame + row));
     WR8(OBJ->frame[out.slot], byte);

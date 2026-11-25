@@ -22,6 +22,26 @@ CountThenSpawnInState2_at1:
 CountThenSpawnInState2_at0:
     rts
 
+; @routine 16CB:1F4 StateFiveOnStatusBit7
+; @run 70:B1F4
+; WHAT IT DOES: An object in a state under 5 whose OBJ_31A0 has bit 7 set goes to state 5, clears OBJ_2800 and OBJ_3250. (The part after the test ran in no script; it is written from the bytes.)
+; HOW: A test, a compare, three stores.
+; WAITS: no.
+; Entry: X object. Exit: the test, the compare, or A 5.
+StateFiveOnStatusBit7:
+    lda a:OBJ_31A0,x
+    and #$80
+    beq StateFiveOnStatusBit7_at0
+    lda a:OBJ_27A8,x
+    cmp #$05
+    bcs StateFiveOnStatusBit7_at0
+    lda #$05
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+    stz a:OBJ_3250,x
+StateFiveOnStatusBit7_at0:
+    rts
+
 ; @routine 16CB:20E LoadThenStartRise
 ; @run 70:B20E
 ; WHAT IT DOES: Loads the object's record, sets its flip byte (OBJ_2FE8) to $80, its Y speed to $FE80 and OBJ_3720 to $E0.

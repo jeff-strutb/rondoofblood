@@ -5,9 +5,10 @@
  * and sets the line of the next, or runs out of bands. Band 8 of the scroll tables
  * is the working band most effects build their next scroll in.
  *
- * Every handler ends on the frame interrupt's exit, which pulls every register
- * and returns from the interrupt: registers and flags are dead there, only memory
- * and hardware are visible, so no handler has a wrapper's exit state.
+ * Every handler ends on the frame interrupt's exit (its tag says @ends 4287), which pulls
+ * every register and returns from the interrupt. Each routine returns the registers and flags
+ * it holds at that jump, from the assembly path by path; its abi_ wrapper puts them in the
+ * registers.
  *
  * Each call into WriteBandScroll and the VDC selects is framed as the original's
  * JSR is: the return address goes on the stack for the callee's own pushes to land
@@ -23,12 +24,67 @@ enum {
     PALETTE_SAVED_COLOURS = 0x0F, COLOUR_FILL = 0x07, COLOUR_SPRITE_BANK = 0x01
 };
 
-/* JSR WriteBandScroll, JSR SelectVdcRegister and JSR SelectVdcControl, each framed. */
-static void write_band_at(uint16_t ret, uint8_t band)
+/*
+ * What a handler holds when it jumps to the frame interrupt's exit: the registers and the flags. Registers
+ * are dead there (the exit pulls them), but the jump is judged on them, so each path says what it holds.
+ * Held is what a path keeps of its entry: X, Y, and the carry and overflow.
+ */
+typedef struct {
+    uint8_t x, y;
+    bool c, v;
+} Held;
+
+typedef struct {
+    uint8_t a, x, y, nz;
+    bool c, v;
+} Exit;
+
+static Held held_in(void)
 {
+    Held h = { cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0 };
+
+    return h;
+}
+
+static uint8_t nz_of(uint8_t value)
+{
+    return (uint8_t)((value & P_N) | (value == 0 ? P_Z : 0));
+}
+
+static Exit exit_of(uint8_t a, uint8_t x, uint8_t y, bool c, bool v)
+{
+    Exit e = { a, x, y, nz_of(a), c, v };
+
+    return e;
+}
+
+/* Interrupts on, and the path's registers as the exit leaves them: for a path to return. */
+static Exit finish(Exit e)
+{
+    cli();
+    return e;
+}
+
+/* The wrapper's: what the path holds goes into the registers the original has at the jump to the exit. */
+static void exit_regs(Exit e)
+{
+    cpu.a = e.a;
+    cpu.x = e.x;
+    cpu.y = e.y;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | e.nz);
+    abi_flag(P_C, e.c);
+    abi_flag(P_V, e.v);
+}
+
+/* JSR WriteBandScroll, JSR SelectVdcRegister and JSR SelectVdcControl, each framed. */
+static uint8_t write_band_at(uint16_t ret, uint8_t band)
+{
+    uint8_t a;
+
     jsr_push(ret);
-    WriteBandScroll(band);
+    a = WriteBandScroll(band);
     jsr_pop();
+    return a;
 }
 
 static void select_at(uint16_t ret, uint8_t reg)
@@ -46,22 +102,24 @@ static void select_control_at(uint16_t ret)
 }
 
 /* The background's enable in the VDC's control, off or on. */
-static void background_off_at(uint16_t ret)
+static uint8_t background_off_at(uint16_t ret)
 {
     uint8_t control;
 
     select_control_at(ret);
     control = (uint8_t)(RD8(ZP->vdc_cr.lo) & CR_BG_OFF_MASK);
     WR8(VDC->data_lo, control);
+    return control;
 }
 
-static void background_on_at(uint16_t ret)
+static uint8_t background_on_at(uint16_t ret)
 {
     uint8_t control;
 
     select_control_at(ret);
     control = (uint8_t)(RD8(ZP->vdc_cr.lo) | CR_BG_ON);
     WR8(VDC->data_lo, control);
+    return control;
 }
 
 /* The working band takes another band's X scroll, low then high. */
@@ -86,7 +144,7 @@ static void next_step(void)
  * the sum written, then the high read with the carry added and written. The byte is the original's
  * table by step, or a constant.
  */
-static void work_y_from_plus(uint8_t band, uint8_t add)
+static Sum work_y_from_plus(uint8_t band, uint8_t add)
 {
     Sum low = add_bytes(RD8(BANDS->bgy_lo[band]), add, false);
     Sum high;
@@ -94,10 +152,11 @@ static void work_y_from_plus(uint8_t band, uint8_t add)
     WR8(BANDS->bgy_lo[WORK_BAND], low.value);
     high = add_bytes(0, RD8(BANDS->bgy_hi[band]), low.carry);
     WR8(BANDS->bgy_hi[WORK_BAND], high.value);
+    return high;
 }
 
 /* The same with the byte read from a table between the low's read and its write. */
-static void work_y_from_plus_table(uint8_t band, uint16_t table, uint8_t index)
+static Sum work_y_from_plus_table(uint8_t band, uint16_t table, uint8_t index)
 {
     uint8_t low_byte = RD8(BANDS->bgy_lo[band]);
     Sum low = add_bytes(low_byte, rd8((uint16_t)(table + index)), false);
@@ -106,10 +165,11 @@ static void work_y_from_plus_table(uint8_t band, uint16_t table, uint8_t index)
     WR8(BANDS->bgy_lo[WORK_BAND], low.value);
     high = add_bytes(0, RD8(BANDS->bgy_hi[band]), low.carry);
     WR8(BANDS->bgy_hi[WORK_BAND], high.value);
+    return high;
 }
 
 /* The same with a word of the table: its low byte on the low, its high on the high. */
-static void work_y_from_plus_word(uint8_t band, uint16_t table, uint8_t index)
+static Sum work_y_from_plus_word(uint8_t band, uint16_t table, uint8_t index)
 {
     uint8_t low_byte = RD8(BANDS->bgy_lo[band]);
     Sum low = add_bytes(low_byte, rd8((uint16_t)(table + index)), false);
@@ -120,6 +180,7 @@ static void work_y_from_plus_word(uint8_t band, uint16_t table, uint8_t index)
     high_byte = RD8(BANDS->bgy_hi[band]);
     high = add_bytes(high_byte, rd8((uint16_t)(table + 1 + index)), low.carry);
     WR8(BANDS->bgy_hi[WORK_BAND], high.value);
+    return high;
 }
 
 /* The working band's Y low then high, as a stored constant. */
@@ -130,7 +191,7 @@ static void work_y_set(uint8_t low, uint8_t high)
 }
 
 /* The compare line as the original's tail writes it: A plus $40 low, the carry into the high. */
-static void line_word_of(uint8_t line)
+static Sum line_word_of(uint8_t line)
 {
     Sum low = add_bytes(0x40, line, false);
     Sum high;
@@ -138,58 +199,62 @@ static void line_word_of(uint8_t line)
     WR8(VDC->data_lo, low.value);
     high = add_bytes(0, 0, low.carry);
     WR8(VDC->data_hi, high.value);
+    return high;
 }
 
-/* The shared tail of the single-byte lines: A plus $40 low, a zero high, and the interrupt on. */
-static void line_byte_tail(uint8_t line)
+/* The shared tail of the single-byte lines: A plus $40 low and a zero high. */
+static Sum line_byte_tail(uint8_t line)
 {
     Sum low = add_bytes(line, RCR_BASE, false);
 
     WR8(VDC->data_lo, low.value);
     st2(0);
-    cli();
+    return low;
 }
 
 /* The working band's scroll is written, the step counted, and the compare register selected. */
 static void write_work_then_select(uint16_t write_ret, uint16_t select_ret)
 {
-    write_band_at(write_ret, WORK_BAND);
+    (void)write_band_at(write_ret, WORK_BAND);
     next_step();
     select_at(select_ret, VDC_REG_RCR);
 }
 
 /*
  * The middle steps of the many-band effects: the working band takes a band chosen by a table by
- * step, its Y moved on by a second table, and the next line comes from a third.
+ * step, its Y moved on by a second table, and the next line comes from a third. They leave A the
+ * line's high byte (the carry into it), X 8, Y the step, and nothing carried.
  */
-static void band_table_step(uint8_t step, uint16_t bands, uint16_t y_adds, uint16_t lines,
+static Exit band_table_step(uint8_t step, uint16_t bands, uint16_t y_adds, uint16_t lines,
                             uint16_t write_ret, uint16_t select_ret)
 {
     uint8_t band = rd8((uint16_t)(bands + step));
     uint8_t line;
+    Sum high;
 
     work_x_from(band);
-    work_y_from_plus_table(band, y_adds, step);
+    (void)work_y_from_plus_table(band, y_adds, step);
     write_work_then_select(write_ret, select_ret);
     line = rd8((uint16_t)(lines + step));
-    line_word_of(line);
-    cli();
+    high = line_word_of(line);
+    return finish(exit_of(high.value, WORK_BAND, step, high.carry, high.overflow));
 }
 
-/* The same with the second table in words, for Y moves past one byte. */
-static void band_table_step_word(uint8_t step, uint16_t bands, uint16_t y_adds, uint16_t lines,
+/* The same with the second table in words, for Y moves past one byte: Y is the doubled step halved again. */
+static Exit band_table_step_word(uint8_t step, uint16_t bands, uint16_t y_adds, uint16_t lines,
                                  uint16_t write_ret, uint16_t select_ret)
 {
     uint8_t band = rd8((uint16_t)(bands + step));
     uint8_t index = (uint8_t)(step << 1);
     uint8_t line;
+    Sum high;
 
     work_x_from(band);
-    work_y_from_plus_word(band, y_adds, index);
+    (void)work_y_from_plus_word(band, y_adds, index);
     write_work_then_select(write_ret, select_ret);
     line = rd8((uint16_t)(lines + step));
-    line_word_of(line);
-    cli();
+    high = line_word_of(line);
+    return finish(exit_of(high.value, WORK_BAND, (uint8_t)(index >> 1), high.carry, high.overflow));
 }
 
 /* A table by a count of the frame's, over eight, plus the step: where a wave starts. */
@@ -245,15 +310,16 @@ void abi_RasterDone(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEndBand1(void)
+Exit RasterEndBand1(Held h)
 {
-    write_band_at(0x452E, 1);
-    cli();
+    uint8_t a = write_band_at(0x452E, 1);
+
+    return finish(exit_of(a, 1, h.y, h.c, h.v));
 }
 
 void abi_RasterEndBand1(void)
 {
-    RasterEndBand1();
+    exit_regs(RasterEndBand1(held_in()));
 }
 
 /*
@@ -266,19 +332,20 @@ void abi_RasterEndBand1(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEndWorkBand(void)
+Exit RasterEndWorkBand(Held h)
 {
-    write_band_at(0x452E, WORK_BAND);
-    cli();
+    uint8_t a = write_band_at(0x452E, WORK_BAND);
+
+    return finish(exit_of(a, WORK_BAND, h.y, h.c, h.v));
 }
 
 void abi_RasterEndWorkBand(void)
 {
-    RasterEndWorkBand();
+    exit_regs(RasterEndWorkBand(held_in()));
 }
 
 /* The body RasterSetNextLine and RasterBandThenLine share: the step counted, the compare line from the stack. */
-static void line_from_stack(void)
+static Exit line_from_stack(uint8_t x, Held h)
 {
     uint8_t line;
 
@@ -287,7 +354,7 @@ static void line_from_stack(void)
     line = pull8();
     WR8(VDC->data_lo, line);
     st2(0);
-    cli();
+    return finish(exit_of(line, x, h.y, h.c, h.v));
 }
 
 /*
@@ -300,15 +367,15 @@ static void line_from_stack(void)
  * WAITS: no.
  * Entry: A line. Exit: to the frame interrupt's exit.
  */
-void RasterSetNextLine(uint8_t line)
+Exit RasterSetNextLine(uint8_t line, Held h)
 {
     push8(line);
-    line_from_stack();
+    return line_from_stack(h.x, h);
 }
 
 void abi_RasterSetNextLine(void)
 {
-    RasterSetNextLine(cpu.a);
+    exit_regs(RasterSetNextLine(cpu.a, held_in()));
 }
 
 /*
@@ -321,16 +388,16 @@ void abi_RasterSetNextLine(void)
  * WAITS: no.
  * Entry: X band, A line. Exit: to the frame interrupt's exit.
  */
-void RasterBandThenLine(uint8_t band, uint8_t line)
+Exit RasterBandThenLine(uint8_t band, uint8_t line, Held h)
 {
     push8(line);
-    write_band_at(0x50F4, band);
-    line_from_stack();
+    (void)write_band_at(0x50F4, band);
+    return line_from_stack(band, h);
 }
 
 void abi_RasterBandThenLine(void)
 {
-    RasterBandThenLine(cpu.x, cpu.a);
+    exit_regs(RasterBandThenLine(cpu.x, cpu.a, held_in()));
 }
 
 /*
@@ -342,24 +409,23 @@ void abi_RasterBandThenLine(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect2(void)
+Exit RasterEffect2(Held h)
 {
     uint8_t byte;
 
     if (rd8(RasterStep) == 0) {
-        RasterBandThenLine(1, 0xBF);
-        return;
+        return RasterBandThenLine(1, 0xBF, h);
     }
     work_x_from(0);
     byte = RD8(BANDS->bgy_hi[0]);
     WR8(BANDS->bgy_hi[WORK_BAND], byte);
     WR8(BANDS->bgy_lo[WORK_BAND], 0x7F);
-    RasterEndWorkBand();
+    return RasterEndWorkBand(h);
 }
 
 void abi_RasterEffect2(void)
 {
-    RasterEffect2();
+    exit_regs(RasterEffect2(held_in()));
 }
 
 /*
@@ -373,31 +439,32 @@ void abi_RasterEffect2(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect3(void)
+Exit RasterEffect3(Held h)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
+    Sum line;
 
     if (step == 0) {
         byte = (uint8_t)(RD8(BANDS->bgy_lo[3]) >> 1);
         WR8(BANDS->bgy_lo[WORK_BAND], byte);
-        byte = sub_bytes(0xAF, RD8(BANDS->bgy_lo[WORK_BAND]), true).value;
-        RasterBandThenLine(1, byte);
-    } else if (step == 1) {
-        work_x_from(2);
-        work_y_from_plus(2, 0x6F);
-        byte = sub_bytes(0xFF, RD8(BANDS->bgy_lo[3]), true).value;
-        RasterBandThenLine(WORK_BAND, byte);
-    } else {
-        work_x_from(0);
-        WR8(BANDS->bgy_lo[WORK_BAND], 0xBF);
-        RasterEndWorkBand();
+        line = sub_bytes(0xAF, RD8(BANDS->bgy_lo[WORK_BAND]), true);
+        return RasterBandThenLine(1, line.value, (Held){ h.x, h.y, line.carry, line.overflow });
     }
+    if (step == 1) {
+        work_x_from(2);
+        (void)work_y_from_plus(2, 0x6F);
+        line = sub_bytes(0xFF, RD8(BANDS->bgy_lo[3]), true);
+        return RasterBandThenLine(WORK_BAND, line.value, (Held){ h.x, h.y, line.carry, line.overflow });
+    }
+    work_x_from(0);
+    WR8(BANDS->bgy_lo[WORK_BAND], 0xBF);
+    return RasterEndWorkBand(h);
 }
 
 void abi_RasterEffect3(void)
 {
-    RasterEffect3();
+    exit_regs(RasterEffect3(held_in()));
 }
 
 /*
@@ -409,7 +476,7 @@ void abi_RasterEffect3(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect4(void)
+Exit RasterEffect4(Held h)
 {
     uint8_t byte;
 
@@ -418,12 +485,12 @@ void RasterEffect4(void)
     WR8(BANDS->bgy_lo[WORK_BAND], byte);
     byte = RD8(BANDS->bgy_hi[1]);
     WR8(BANDS->bgy_hi[WORK_BAND], byte);
-    RasterEndWorkBand();
+    return RasterEndWorkBand(h);
 }
 
 void abi_RasterEffect4(void)
 {
-    RasterEffect4();
+    exit_regs(RasterEffect4(held_in()));
 }
 
 /*
@@ -435,30 +502,32 @@ void abi_RasterEffect4(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect5(void)
+Exit RasterEffect5(Held h)
 {
     uint8_t step = rd8(RasterStep);
+    Sum high;
 
     if (step == 0) {
-        RasterBandThenLine(1, 0x5F);
-    } else if (step == 1) {
-        work_x_from(2);
-        work_y_from_plus(2, 0x1F);
-        RasterBandThenLine(WORK_BAND, 0x7F);
-    } else if (step == 2) {
-        work_x_from(1);
-        work_y_from_plus(1, 0x3F);
-        RasterBandThenLine(WORK_BAND, 0xFF);
-    } else {
-        work_x_from(0);
-        work_y_from_plus(0, 0xBF);
-        RasterEndWorkBand();
+        return RasterBandThenLine(1, 0x5F, h);
     }
+    if (step == 1) {
+        work_x_from(2);
+        high = work_y_from_plus(2, 0x1F);
+        return RasterBandThenLine(WORK_BAND, 0x7F, (Held){ h.x, h.y, high.carry, high.overflow });
+    }
+    if (step == 2) {
+        work_x_from(1);
+        high = work_y_from_plus(1, 0x3F);
+        return RasterBandThenLine(WORK_BAND, 0xFF, (Held){ h.x, h.y, high.carry, high.overflow });
+    }
+    work_x_from(0);
+    high = work_y_from_plus(0, 0xBF);
+    return RasterEndWorkBand((Held){ h.x, h.y, high.carry, high.overflow });
 }
 
 void abi_RasterEffect5(void)
 {
-    RasterEffect5();
+    exit_regs(RasterEffect5(held_in()));
 }
 
 /*
@@ -470,24 +539,24 @@ void abi_RasterEffect5(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect6(void)
+Exit RasterEffect6(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        RasterBandThenLine(4, 0x67);
-    } else if (step == 6) {
+        return RasterBandThenLine(4, 0x67, h);
+    }
+    if (step == 6) {
         work_x_from(1);
         WR8(BANDS->bgy_lo[WORK_BAND], 0xDB);
-        RasterEndWorkBand();
-    } else {
-        band_table_step(step, Effect6Bands, Effect6YAdds, Effect6Lines, 0x468D, 0x4695);
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
+    return band_table_step(step, Effect6Bands, Effect6YAdds, Effect6Lines, 0x468D, 0x4695);
 }
 
 void abi_RasterEffect6(void)
 {
-    RasterEffect6();
+    exit_regs(RasterEffect6(held_in()));
 }
 
 /*
@@ -499,24 +568,24 @@ void abi_RasterEffect6(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect7(void)
+Exit RasterEffect7(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        RasterBandThenLine(4, 0x67);
-    } else if (step == 6) {
+        return RasterBandThenLine(4, 0x67, h);
+    }
+    if (step == 6) {
         work_x_from(1);
         work_y_set(0x1B, 0x01);
-        RasterEndWorkBand();
-    } else {
-        band_table_step_word(step, Effect6Bands, Effect7YAdds, Effect6Lines, 0x4709, 0x4714);
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
+    return band_table_step_word(step, Effect6Bands, Effect7YAdds, Effect6Lines, 0x4709, 0x4714);
 }
 
 void abi_RasterEffect7(void)
 {
-    RasterEffect7();
+    exit_regs(RasterEffect7(held_in()));
 }
 
 /*
@@ -528,15 +597,15 @@ void abi_RasterEffect7(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect8Step4(void)
+Exit RasterEffect8Step4(Held h)
 {
-    background_off_at(0x4733);
-    RasterSetNextLine(0xE0);
+    (void)background_off_at(0x4733);
+    return RasterSetNextLine(0xE0, h);
 }
 
 void abi_RasterEffect8Step4(void)
 {
-    RasterEffect8Step4();
+    exit_regs(RasterEffect8Step4(held_in()));
 }
 
 /*
@@ -549,17 +618,17 @@ void abi_RasterEffect8Step4(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect8Step0(void)
+Exit RasterEffect8Step0(Held h)
 {
     INC8(BANDS->bgy_hi[5]);
-    write_band_at(0x4747, 5);
+    (void)write_band_at(0x4747, 5);
     DEC8(BANDS->bgy_hi[5]);
-    RasterSetNextLine(0x5F);
+    return RasterSetNextLine(0x5F, (Held){ 5, h.y, h.c, h.v });
 }
 
 void abi_RasterEffect8Step0(void)
 {
-    RasterEffect8Step0();
+    exit_regs(RasterEffect8Step0(held_in()));
 }
 
 /*
@@ -571,38 +640,40 @@ void abi_RasterEffect8Step0(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect8Step3(void)
+Exit RasterEffect8Step3(Held h)
 {
     work_x_from(0);
     work_y_set(0x6F, 0);
-    RasterBandThenLine(WORK_BAND, 0xDF);
+    return RasterBandThenLine(WORK_BAND, 0xDF, h);
 }
 
 void abi_RasterEffect8Step3(void)
 {
-    RasterEffect8Step3();
+    exit_regs(RasterEffect8Step3(held_in()));
 }
 
-/* Colours $101-$10F back from where the step below kept them. */
-static void restore_saved_colours(void)
+/* Colours $101-$10F back from where the step below kept them. Leaves A the last byte read, X 0. */
+static Exit restore_saved_colours(Held h)
 {
+    uint8_t byte = 0;
+
     select_sprite_palette();
     for (uint8_t colour = PALETTE_SAVED_COLOURS; colour != 0; colour--) {
-        uint8_t byte = rd8((uint16_t)(SavedColoursLo + colour));
-
+        byte = rd8((uint16_t)(SavedColoursLo + colour));
         WR8(VCE->data_lo, byte);
         byte = rd8((uint16_t)(SavedColoursHi + colour));
         WR8(VCE->data_hi, byte);
     }
-    cli();
+    return finish(exit_of(byte, 0, h.y, h.c, h.v));
 }
 
 /*
  * Colours $101-$10F kept in RAM and replaced by one flat colour, sprites to flicker
  * dark, for the rest of the frame's bands; then a compare at line $121 to put them
- * back. The background's enable follows the frame's count, every other frame.
+ * back. The background's enable follows the frame's count, every other frame. Leaves A 6,
+ * X the frame count's low bit.
  */
-static void flatten_colours(void)
+static Exit flatten_colours(Held h)
 {
     uint8_t which;
     uint8_t control;
@@ -629,7 +700,7 @@ static void flatten_colours(void)
     select_at(0x482C, VDC_REG_RCR);
     st1(0x21);
     st2(0x01);
-    cli();
+    return finish(exit_of(VDC_REG_RCR, which, h.y, h.c, h.v));
 }
 
 /*
@@ -643,45 +714,50 @@ static void flatten_colours(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect8(void)
+Exit RasterEffect8(Held h)
 {
     uint8_t step = rd8(RasterStep);
+    Held carried = { h.x, h.y, true, h.v };
 
-    if (step == 0)
-        RasterEffect8Step0();
-    else if (step < 3)
-        band_table_step_word(step, Effect8Bands, Effect8YAdds, Effect8Lines, 0x47C5, 0x47D0);
-    else if (step == 3)
-        RasterEffect8Step3();
-    else if (step == 4)
-        RasterEffect8Step4();
-    else if (step == 5)
-        flatten_colours();
-    else
-        restore_saved_colours();
+    if (step == 0) {
+        return RasterEffect8Step0(h);
+    }
+    if (step < 3) {
+        return band_table_step_word(step, Effect8Bands, Effect8YAdds, Effect8Lines, 0x47C5, 0x47D0);
+    }
+    if (step == 3) {
+        return RasterEffect8Step3(carried);
+    }
+    if (step == 4) {
+        return RasterEffect8Step4(carried);
+    }
+    if (step == 5) {
+        return flatten_colours(carried);
+    }
+    return restore_saved_colours(carried);
 }
 
 void abi_RasterEffect8(void)
 {
-    RasterEffect8();
+    exit_regs(RasterEffect8(held_in()));
 }
 
 /* Effects 9 and 10: two bands of a three-step split, the last at a fixed Y. */
-static void three_step_split(uint8_t line0, uint8_t y1, uint8_t line1, uint8_t y2)
+static Exit three_step_split(Held h, uint8_t line0, uint8_t y1, uint8_t line1, uint8_t y2)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        RasterBandThenLine(0, line0);
-    } else if (step == 1) {
+        return RasterBandThenLine(0, line0, h);
+    }
+    if (step == 1) {
         work_x_from(1);
         work_y_set(y1, 0x01);
-        RasterBandThenLine(WORK_BAND, line1);
-    } else {
-        work_x_from(0);
-        work_y_set(y2, 0);
-        RasterEndWorkBand();
+        return RasterBandThenLine(WORK_BAND, line1, h);
     }
+    work_x_from(0);
+    work_y_set(y2, 0);
+    return RasterEndWorkBand(h);
 }
 
 /*
@@ -693,14 +769,14 @@ static void three_step_split(uint8_t line0, uint8_t y1, uint8_t line1, uint8_t y
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect9(void)
+Exit RasterEffect9(Held h)
 {
-    three_step_split(0x7F, 0x3F, 0xBF, 0x7F);
+    return three_step_split(h, 0x7F, 0x3F, 0xBF, 0x7F);
 }
 
 void abi_RasterEffect9(void)
 {
-    RasterEffect9();
+    exit_regs(RasterEffect9(held_in()));
 }
 
 /*
@@ -712,14 +788,14 @@ void abi_RasterEffect9(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect10(void)
+Exit RasterEffect10(Held h)
 {
-    three_step_split(0x9F, 0x5F, 0xDF, 0x9F);
+    return three_step_split(h, 0x9F, 0x5F, 0xDF, 0x9F);
 }
 
 void abi_RasterEffect10(void)
 {
-    RasterEffect10();
+    exit_regs(RasterEffect10(held_in()));
 }
 
 /*
@@ -731,15 +807,16 @@ void abi_RasterEffect10(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect11(void)
+Exit RasterEffect11(Held h)
 {
-    background_off_at(0x48C4);
-    cli();
+    uint8_t control = background_off_at(0x48C4);
+
+    return finish(exit_of(control, h.x, h.y, h.c, h.v));
 }
 
 void abi_RasterEffect11(void)
 {
-    RasterEffect11();
+    exit_regs(RasterEffect11(held_in()));
 }
 
 /*
@@ -751,24 +828,24 @@ void abi_RasterEffect11(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect12(void)
+Exit RasterEffect12(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        RasterBandThenLine(2, 0x7F);
-    } else if (step == 4) {
+        return RasterBandThenLine(2, 0x7F, h);
+    }
+    if (step == 4) {
         work_x_from(5);
         WR8(BANDS->bgy_lo[WORK_BAND], 0xB8);
-        RasterEndWorkBand();
-    } else {
-        band_table_step(step, Effect12Bands, Effect12YAdds, Effect12Lines, 0x4918, 0x4920);
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
+    return band_table_step(step, Effect12Bands, Effect12YAdds, Effect12Lines, 0x4918, 0x4920);
 }
 
 void abi_RasterEffect12(void)
 {
-    RasterEffect12();
+    exit_regs(RasterEffect12(held_in()));
 }
 
 /*
@@ -781,30 +858,34 @@ void abi_RasterEffect12(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect13(void)
+Exit RasterEffect13(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
         INC8(BANDS->bgy_hi[4]);
-        write_band_at(0x4972, 4);
+        (void)write_band_at(0x4972, 4);
         DEC8(BANDS->bgy_hi[4]);
-        RasterSetNextLine(0x5F);
-    } else if (step == 5) {
+        return RasterSetNextLine(0x5F, (Held){ 4, h.y, h.c, h.v });
+    }
+    if (step == 5) {
+        uint8_t a;
+
         work_x_from(0);
         WR8(BANDS->bgy_lo[WORK_BAND], 0xCF);
-        write_band_at(0x4958, WORK_BAND);
-        if (RD8(SCROLL->x_lo[7]) != 0)
-            background_off_at(0x4960);
-        cli();
-    } else {
-        band_table_step_word(step, Effect13Bands, Effect13YAdds, Effect13Lines, 0x49A4, 0x49AF);
+        (void)write_band_at(0x4958, WORK_BAND);
+        a = RD8(SCROLL->x_lo[7]);
+        if (a != 0) {
+            a = background_off_at(0x4960);
+        }
+        return finish(exit_of(a, WORK_BAND, h.y, true, h.v));
     }
+    return band_table_step_word(step, Effect13Bands, Effect13YAdds, Effect13Lines, 0x49A4, 0x49AF);
 }
 
 void abi_RasterEffect13(void)
 {
-    RasterEffect13();
+    exit_regs(RasterEffect13(held_in()));
 }
 
 /*
@@ -817,32 +898,33 @@ void abi_RasterEffect13(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect14(void)
+Exit RasterEffect14(Held h)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
 
     if (step == 0) {
-        RasterBandThenLine(4, 0x6F);
-    } else if (step == 2) {
-        flatten_colours();
-    } else if (step == 3) {
-        restore_saved_colours();
-    } else {
-        work_x_from(0);
-        byte = RD8(BANDS->bgy_hi[0]);
-        WR8(BANDS->bgy_hi[WORK_BAND], byte);
-        WR8(BANDS->bgy_lo[WORK_BAND], 0x2F);
-        write_work_then_select(0x49FA, 0x4A02);
-        st1(0x11);
-        st2(0x01);
-        cli();
+        return RasterBandThenLine(4, 0x6F, h);
     }
+    if (step == 2) {
+        return flatten_colours((Held){ h.x, h.y, true, h.v });
+    }
+    if (step == 3) {
+        return restore_saved_colours((Held){ h.x, h.y, true, h.v });
+    }
+    work_x_from(0);
+    byte = RD8(BANDS->bgy_hi[0]);
+    WR8(BANDS->bgy_hi[WORK_BAND], byte);
+    WR8(BANDS->bgy_lo[WORK_BAND], 0x2F);
+    write_work_then_select(0x49FA, 0x4A02);
+    st1(0x11);
+    st2(0x01);
+    return finish(exit_of(VDC_REG_RCR, WORK_BAND, h.y, step >= 3, h.v));
 }
 
 void abi_RasterEffect14(void)
 {
-    RasterEffect14();
+    exit_regs(RasterEffect14(held_in()));
 }
 
 /*
@@ -856,22 +938,20 @@ void abi_RasterEffect14(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect15(void)
+Exit RasterEffect15(Held h)
 {
     uint8_t step = rd8(RasterStep);
-    uint8_t byte;
+    Sum line;
 
     if (step == 0) {
-        byte = sub_bytes(0xCF, rd8(RasterWaterLine), true).value;
-        RasterBandThenLine(2, byte);
-        return;
+        line = sub_bytes(0xCF, rd8(RasterWaterLine), true);
+        return RasterBandThenLine(2, line.value, (Held){ h.x, h.y, line.carry, line.overflow });
     }
     if (step >= 0x15) {
         work_x_from(0);
         WR8(BANDS->bgy_hi[WORK_BAND], 0x01);
         WR8(BANDS->bgy_lo[WORK_BAND], 0xB7);
-        RasterEndWorkBand();
-        return;
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
     {
         /* The step here is 1 to $14: two lines a step down from band 1, a byte that wraps. */
@@ -879,34 +959,32 @@ void RasterEffect15(void)
         Sum first = add_bytes(doubled, RD8(BANDS->bgy_lo[1]), false);
         Sum low = add_bytes(first.value, 0x8F, false);
         Sum high;
+        Sum sum;
         uint8_t wave;
+        uint8_t byte;
 
         WR8(BANDS->bgy_lo[WORK_BAND], low.value);
         high = add_bytes(0, RD8(BANDS->bgy_hi[1]), low.carry);
         WR8(BANDS->bgy_hi[WORK_BAND], high.value);
         wave = wave_index(RD8(ZP->frame_tick), 3);
         work_x_band1_plus_wave(WaterWave, wave);
-        write_band_at(0x4A7D, WORK_BAND);
+        (void)write_band_at(0x4A7D, WORK_BAND);
         select_at(0x4A82, VDC_REG_RCR);
         byte = (uint8_t)(rd8(RasterStep) << 1);
         WR8(BANDS->bgy_lo[WORK_BAND], byte);
-        {
-            Sum line = sub_bytes(0xCF, rd8(RasterWaterLine), true);
-            Sum sum = add_bytes(line.value, RD8(BANDS->bgy_lo[WORK_BAND]), false);
-            Sum top;
-
-            WR8(VDC->data_lo, sum.value);
-            top = add_bytes(0, 0, sum.carry);
-            WR8(VDC->data_hi, top.value);
-        }
+        line = sub_bytes(0xCF, rd8(RasterWaterLine), true);
+        sum = add_bytes(line.value, RD8(BANDS->bgy_lo[WORK_BAND]), false);
+        WR8(VDC->data_lo, sum.value);
+        high = add_bytes(0, 0, sum.carry);
+        WR8(VDC->data_hi, high.value);
         next_step();
-        cli();
+        return finish(exit_of(high.value, WORK_BAND, wave, false, sum.overflow));
     }
 }
 
 void abi_RasterEffect15(void)
 {
-    RasterEffect15();
+    exit_regs(RasterEffect15(held_in()));
 }
 
 /*
@@ -918,24 +996,24 @@ void abi_RasterEffect15(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect16(void)
+Exit RasterEffect16(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        RasterBandThenLine(5, 0x57);
-    } else if (step == 5) {
+        return RasterBandThenLine(5, 0x57, h);
+    }
+    if (step == 5) {
         work_x_from(1);
         WR8(BANDS->bgy_lo[WORK_BAND], 0xBF);
-        RasterEndWorkBand();
-    } else {
-        band_table_step(step, Effect16Bands, Effect16YAdds, Effect16Lines, 0x4AFB, 0x4B03);
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
+    return band_table_step(step, Effect16Bands, Effect16YAdds, Effect16Lines, 0x4AFB, 0x4B03);
 }
 
 void abi_RasterEffect16(void)
 {
-    RasterEffect16();
+    exit_regs(RasterEffect16(held_in()));
 }
 
 /*
@@ -947,24 +1025,24 @@ void abi_RasterEffect16(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect17(void)
+Exit RasterEffect17(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        RasterBandThenLine(4, 0x67);
-    } else if (step == 5) {
+        return RasterBandThenLine(4, 0x67, h);
+    }
+    if (step == 5) {
         work_x_from(2);
         WR8(BANDS->bgy_lo[WORK_BAND], 0xD7);
-        RasterEndWorkBand();
-    } else {
-        band_table_step(step, Effect17Bands, Effect17YAdds, Effect17Lines, 0x4B6B, 0x4B73);
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
+    return band_table_step(step, Effect17Bands, Effect17YAdds, Effect17Lines, 0x4B6B, 0x4B73);
 }
 
 void abi_RasterEffect17(void)
 {
-    RasterEffect17();
+    exit_regs(RasterEffect17(held_in()));
 }
 
 /* Band 0's X low with X high 1, at Y $168: the fixed band of effect 18. */
@@ -989,18 +1067,23 @@ static void effect18_work_band(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect18(void)
+Exit RasterEffect18(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
+        Sum line;
+
         effect18_work_band();
         write_work_then_select(0x4BC9, 0x4BD1);
-        line_byte_tail(RD8(BANDS->bgy_lo[2]));
-    } else if (step == 1) {
+        line = line_byte_tail(RD8(BANDS->bgy_lo[2]));
+        return finish(exit_of(line.value, WORK_BAND, h.y, line.carry, line.overflow));
+    }
+    if (step == 1) {
         uint8_t byte = RD8(BANDS->bgx_lo[0]);
         Sum low;
         Sum high;
+        Sum line;
 
         WR8(BANDS->bgx_lo[1], byte);
         byte = RD8(BANDS->bgx_hi[0]);
@@ -1010,24 +1093,20 @@ void RasterEffect18(void)
         WR8(BANDS->bgy_lo[1], low.value);
         high = add_bytes(0, 0, low.carry);
         WR8(BANDS->bgy_hi[1], high.value);
-        write_band_at(0x4BF8, 1);
+        (void)write_band_at(0x4BF8, 1);
         next_step();
         select_at(0x4C00, VDC_REG_RCR);
-        {
-            Sum line = sub_bytes(0xE0, RD8(BANDS->bgy_lo[2]), true);
-
-            line_word_of(line.value);
-        }
-        cli();
-    } else {
-        effect18_work_band();
-        RasterEndWorkBand();
+        line = sub_bytes(0xE0, RD8(BANDS->bgy_lo[2]), true);
+        high = line_word_of(line.value);
+        return finish(exit_of(high.value, 1, h.y, high.carry, high.overflow));
     }
+    effect18_work_band();
+    return RasterEndWorkBand(h);
 }
 
 void abi_RasterEffect18(void)
 {
-    RasterEffect18();
+    exit_regs(RasterEffect18(held_in()));
 }
 
 /*
@@ -1041,34 +1120,41 @@ void abi_RasterEffect18(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect19(void)
+Exit RasterEffect19(Held h)
 {
     uint8_t step = rd8(RasterStep);
+    Sum line;
 
     if (step == 0) {
-        write_band_at(0x4C38, 0);
-        background_off_at(0x4C3B);
+        (void)write_band_at(0x4C38, 0);
+        (void)background_off_at(0x4C3B);
         next_step();
         select_at(0x4C4A, VDC_REG_RCR);
-        line_byte_tail(RD8(BANDS->bgy_lo[5]));
-    } else if (step == 1) {
-        write_band_at(0x4C55, 1);
-        background_on_at(0x4C58);
+        line = line_byte_tail(RD8(BANDS->bgy_lo[5]));
+        return finish(exit_of(line.value, 0, h.y, line.carry, line.overflow));
+    }
+    if (step == 1) {
+        (void)write_band_at(0x4C55, 1);
+        (void)background_on_at(0x4C58);
         next_step();
         select_at(0x4C67, VDC_REG_RCR);
-        line_word_of(RD8(BANDS->bgy_lo[6]));
-        cli();
-    } else {
-        if (RD8(BANDS->bgy_hi[6]) == 0)
-            background_off_at(0x4C25);
-        write_band_at(0x4C31, 2);
-        cli();
+        line = line_word_of(RD8(BANDS->bgy_lo[6]));
+        return finish(exit_of(line.value, 1, h.y, line.carry, line.overflow));
+    }
+    {
+        uint8_t a;
+
+        if (RD8(BANDS->bgy_hi[6]) == 0) {
+            (void)background_off_at(0x4C25);
+        }
+        a = write_band_at(0x4C31, 2);
+        return finish(exit_of(a, 2, h.y, h.c, h.v));
     }
 }
 
 void abi_RasterEffect19(void)
 {
-    RasterEffect19();
+    exit_regs(RasterEffect19(held_in()));
 }
 
 /*
@@ -1082,63 +1168,78 @@ void abi_RasterEffect19(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect20(void)
+Exit RasterEffect20(Held h)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t line;
+    Sum sum;
 
     if (step == 0) {
-        write_band_at(0x4C9E, 3);
+        (void)write_band_at(0x4C9E, 3);
         next_step();
         select_at(0x4CA6, VDC_REG_RCR);
         line = RD8(BANDS->bgy_lo[5]);
-        if (line >= 0x60)
+        if (line >= 0x60) {
             line = 0x5F;
-        else
+        } else {
             next_step();
-        line_byte_tail(line);
-    } else if (step == 1) {
-        write_band_at(0x4CBB, 0);
+        }
+        sum = line_byte_tail(line);
+        return finish(exit_of(sum.value, 3, h.y, sum.carry, sum.overflow));
+    }
+    if (step == 1) {
+        (void)write_band_at(0x4CBB, 0);
         line = RD8(BANDS->bgy_lo[5]);
         if (line >= 0x77) {
             wr8(RasterStep, 4);
             select_at(0x4CDA, VDC_REG_RCR);
-            line_byte_tail(0xA7);
+            sum = line_byte_tail(0xA7);
         } else {
             next_step();
             select_at(0x4CCA, VDC_REG_RCR);
-            line_byte_tail(RD8(BANDS->bgy_lo[5]));
+            sum = line_byte_tail(RD8(BANDS->bgy_lo[5]));
         }
-    } else if (step == 2) {
-        write_band_at(0x4D07, 1);
-        background_off_at(0x4D0A);
+        return finish(exit_of(sum.value, 0, h.y, sum.carry, sum.overflow));
+    }
+    if (step == 2) {
+        (void)write_band_at(0x4D07, 1);
+        (void)background_off_at(0x4D0A);
         next_step();
         select_at(0x4D19, VDC_REG_RCR);
         line = RD8(BANDS->bgy_lo[6]);
         if (line == 0xBF) {
-            cli();
-        } else {
-            if (line >= 0xA7)
-                next_step();
-            line_byte_tail(line);
+            Exit equal = exit_of(0xBF, 1, h.y, true, h.v);
+
+            equal.nz = P_Z;
+            return finish(equal);
         }
-    } else if (step == 3) {
-        write_band_at(0x4CE4, 6);
-        background_on_at(0x4CE7);
+        if (line >= 0xA7) {
+            next_step();
+        }
+        sum = line_byte_tail(line);
+        return finish(exit_of(sum.value, 1, h.y, sum.carry, sum.overflow));
+    }
+    if (step == 3) {
+        (void)write_band_at(0x4CE4, 6);
+        (void)background_on_at(0x4CE7);
         next_step();
         select_at(0x4CF6, VDC_REG_RCR);
         line = RD8(BANDS->bgy_lo[6]);
-        line_byte_tail(line >= 0xA8 ? line : 0xA7);
-    } else {
-        background_on_at(0x4C8A);
-        write_band_at(0x4C96, 4);
-        cli();
+        sum = line_byte_tail(line >= 0xA8 ? line : 0xA7);
+        return finish(exit_of(sum.value, 6, h.y, sum.carry, sum.overflow));
+    }
+    {
+        uint8_t a;
+
+        (void)background_on_at(0x4C8A);
+        a = write_band_at(0x4C96, 4);
+        return finish(exit_of(a, 4, h.y, h.c, h.v));
     }
 }
 
 void abi_RasterEffect20(void)
 {
-    RasterEffect20();
+    exit_regs(RasterEffect20(held_in()));
 }
 
 /*
@@ -1151,35 +1252,42 @@ void abi_RasterEffect20(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect21(void)
+Exit RasterEffect21(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        RasterBandThenLine(2, 0x7F);
-    } else if (step == 1) {
-        RasterBandThenLine(1, 0x87);
-    } else if (step == 2) {
-        RasterBandThenLine(3, 0xFF);
-    } else if (step == 3) {
+        return RasterBandThenLine(2, 0x7F, h);
+    }
+    if (step == 1) {
+        return RasterBandThenLine(1, 0x87, h);
+    }
+    if (step == 2) {
+        return RasterBandThenLine(3, 0xFF, h);
+    }
+    if (step == 3) {
         work_x_from(0);
         work_y_set(0xBF, 0);
         write_work_then_select(0x4D95, 0x4D9D);
         st1(0x07);
         st2(0x01);
-        cli();
-    } else {
-        if (RD8(ZP->raster_stage) == 3)
-            background_off_at(0x4D49);
+        return finish(exit_of(VDC_REG_RCR, WORK_BAND, h.y, h.c, h.v));
+    }
+    {
+        uint8_t stage = RD8(ZP->raster_stage);
+
+        if (stage == 3) {
+            (void)background_off_at(0x4D49);
+        }
         work_x_from(0);
         work_y_set(0xC7, 0);
-        RasterEndWorkBand();
+        return RasterEndWorkBand((Held){ h.x, h.y, stage >= 3, h.v });
     }
 }
 
 void abi_RasterEffect21(void)
 {
-    RasterEffect21();
+    exit_regs(RasterEffect21(held_in()));
 }
 
 /*
@@ -1191,27 +1299,31 @@ void abi_RasterEffect21(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect22(void)
+Exit RasterEffect22(Held h)
 {
     if (rd8(RasterStep) == 0) {
         work_y_set(0x10, 0x01);
         work_x_from(2);
-        RasterBandThenLine(WORK_BAND, 0x67);
-    } else {
+        return RasterBandThenLine(WORK_BAND, 0x67, h);
+    }
+    {
+        Sum low;
+
         work_x_from(0);
-        WR8(BANDS->bgy_lo[WORK_BAND], add_bytes(0x27, RD8(BANDS->bgy_lo[0]), false).value);
+        low = add_bytes(0x27, RD8(BANDS->bgy_lo[0]), false);
+        WR8(BANDS->bgy_lo[WORK_BAND], low.value);
         WR8(BANDS->bgy_hi[WORK_BAND], 0);
-        RasterEndWorkBand();
+        return RasterEndWorkBand((Held){ h.x, h.y, low.carry, low.overflow });
     }
 }
 
 void abi_RasterEffect22(void)
 {
-    RasterEffect22();
+    exit_regs(RasterEffect22(held_in()));
 }
 
 /* Effects 23 and 29: flatten the colours and restore them, after a first line. */
-static void flatten_after_line(uint8_t first_line, uint16_t select_ret)
+static Exit flatten_after_line(Held h, uint8_t first_line, uint16_t select_ret)
 {
     uint8_t step = rd8(RasterStep);
 
@@ -1220,12 +1332,12 @@ static void flatten_after_line(uint8_t first_line, uint16_t select_ret)
         select_at(select_ret, VDC_REG_RCR);
         st1(first_line);
         st2(0x01);
-        cli();
-    } else if (step == 1) {
-        flatten_colours();
-    } else {
-        restore_saved_colours();
+        return finish(exit_of(VDC_REG_RCR, h.x, h.y, h.c, h.v));
     }
+    if (step == 1) {
+        return flatten_colours(h);
+    }
+    return restore_saved_colours(h);
 }
 
 /*
@@ -1238,14 +1350,14 @@ static void flatten_after_line(uint8_t first_line, uint16_t select_ret)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect23(void)
+Exit RasterEffect23(Held h)
 {
-    flatten_after_line(0x01, 0x4DF7);
+    return flatten_after_line(h, 0x01, 0x4DF7);
 }
 
 void abi_RasterEffect23(void)
 {
-    RasterEffect23();
+    exit_regs(RasterEffect23(held_in()));
 }
 
 /*
@@ -1258,17 +1370,17 @@ void abi_RasterEffect23(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect25(void)
+Exit RasterEffect25(Held h)
 {
-    if (rd8(RasterStep) == 0)
-        flatten_colours();
-    else
-        restore_saved_colours();
+    if (rd8(RasterStep) == 0) {
+        return flatten_colours(h);
+    }
+    return restore_saved_colours(h);
 }
 
 void abi_RasterEffect25(void)
 {
-    RasterEffect25();
+    exit_regs(RasterEffect25(held_in()));
 }
 
 /*
@@ -1281,14 +1393,14 @@ void abi_RasterEffect25(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect29(void)
+Exit RasterEffect29(Held h)
 {
-    flatten_after_line(0x18, 0x4E1F);
+    return flatten_after_line(h, 0x18, 0x4E1F);
 }
 
 void abi_RasterEffect29(void)
 {
-    RasterEffect29();
+    exit_regs(RasterEffect29(held_in()));
 }
 
 /*
@@ -1303,19 +1415,17 @@ void abi_RasterEffect29(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect24(void)
+Exit RasterEffect24(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
         WR8(BANDS->bgx_lo[2], 0xFF);
         WR8(BANDS->bgx_hi[2], 0);
-        RasterBandThenLine(0, 0xFF);
-        return;
+        return RasterBandThenLine(0, 0xFF, h);
     }
     if (step >= 0x11) {
-        RasterEndBand1();
-        return;
+        return RasterEndBand1((Held){ h.x, h.y, true, h.v });
     }
     {
         /* The step here is 1 to $10, so doubling it one less carries nothing. */
@@ -1331,7 +1441,7 @@ void RasterEffect24(void)
         counter = RD8(ZP->wave_counter);
         wave = wave_index(counter, 3);
         work_x_band1_plus_wave(DeepWave, wave);
-        write_band_at(0x4E65, WORK_BAND);
+        (void)write_band_at(0x4E65, WORK_BAND);
         select_at(0x4E6A, VDC_REG_RCR);
         counter = RD8(ZP->wave_counter);
         beat = (uint8_t)((uint8_t)(add_bytes((uint8_t)(counter >> 3), rd8(RasterStep), false).value >> 3) & 1);
@@ -1342,32 +1452,32 @@ void RasterEffect24(void)
         WR8(BANDS->bgx_hi[2], high.value);
         WR8(VDC->data_hi, high.value);
         next_step();
-        cli();
+        return finish(exit_of(high.value, WORK_BAND, wave, high.carry, high.overflow));
     }
 }
 
 void abi_RasterEffect24(void)
 {
-    RasterEffect24();
+    exit_regs(RasterEffect24(held_in()));
 }
 
 /*
  * Effects 26 and 27: a table of bands in RAM, each marked: bit 7 clear stands still, set
  * follows the deep wave. Each step is a line or eight apart.
  */
-static void marked_band_step(uint8_t limit, uint8_t shift, uint16_t write_ret, uint16_t select_ret)
+static Exit marked_band_step(Held h, uint8_t limit, uint8_t shift, uint16_t write_ret, uint16_t select_ret)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t mark;
     uint8_t byte;
+    Sum low;
+    Sum high;
 
     if (step == 0) {
-        RasterBandThenLine(0, 0x41);
-        return;
+        return RasterBandThenLine(0, 0x41, h);
     }
     if (step >= limit) {
-        RasterEndBand1();
-        return;
+        return RasterEndBand1((Held){ h.x, h.y, true, h.v });
     }
     step = rd8(RasterStep);
     byte = (uint8_t)(((uint8_t)(step - 1) << shift) + 1);
@@ -1391,18 +1501,14 @@ static void marked_band_step(uint8_t limit, uint8_t shift, uint16_t write_ret, u
     }
     mark = (uint8_t)(rd8((uint16_t)(RasterMarks + step)) & 0x7F);
     WR8(BANDS->bgx_lo[WORK_BAND], add_bytes(mark, RD8(BANDS->bgx_lo[WORK_BAND]), false).value);
-    write_band_at(write_ret, WORK_BAND);
+    (void)write_band_at(write_ret, WORK_BAND);
     select_at(select_ret, VDC_REG_RCR);
-    {
-        Sum low = add_bytes((uint8_t)(rd8(RasterStep) << shift), 0x41, false);
-        Sum high;
-
-        WR8(VDC->data_lo, low.value);
-        high = add_bytes(0, 0, low.carry);
-        WR8(VDC->data_hi, high.value);
-    }
+    low = add_bytes((uint8_t)(rd8(RasterStep) << shift), 0x41, false);
+    WR8(VDC->data_lo, low.value);
+    high = add_bytes(0, 0, low.carry);
+    WR8(VDC->data_hi, high.value);
     next_step();
-    cli();
+    return finish(exit_of(high.value, WORK_BAND, step, false, low.overflow));
 }
 
 /*
@@ -1414,14 +1520,14 @@ static void marked_band_step(uint8_t limit, uint8_t shift, uint16_t write_ret, u
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect26(void)
+Exit RasterEffect26(Held h)
 {
-    marked_band_step(0x71, 1, 0x4F06, 0x4F0B);
+    return marked_band_step(h, 0x71, 1, 0x4F06, 0x4F0B);
 }
 
 void abi_RasterEffect26(void)
 {
-    RasterEffect26();
+    exit_regs(RasterEffect26(held_in()));
 }
 
 /*
@@ -1433,14 +1539,14 @@ void abi_RasterEffect26(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect27(void)
+Exit RasterEffect27(Held h)
 {
-    marked_band_step(0x1D, 3, 0x4F7E, 0x4F83);
+    return marked_band_step(h, 0x1D, 3, 0x4F7E, 0x4F83);
 }
 
 void abi_RasterEffect27(void)
 {
-    RasterEffect27();
+    exit_regs(RasterEffect27(held_in()));
 }
 
 /*
@@ -1454,20 +1560,20 @@ void abi_RasterEffect27(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect28(void)
+Exit RasterEffect28(Held h)
 {
     uint8_t step = rd8(RasterStep);
     uint8_t byte;
+    Sum low;
+    Sum high;
 
     if (step == 0) {
-        RasterBandThenLine(3, 0xA7);
-        return;
+        return RasterBandThenLine(3, 0xA7, h);
     }
     if (step >= 0x0C) {
         work_x_from(0);
         work_y_set(0x7F, 0);
-        RasterEndWorkBand();
-        return;
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
     byte = add_bytes((uint8_t)(rd8(RasterStep) << 1), 0x67, false).value;
     WR8(BANDS->bgy_lo[WORK_BAND], byte);
@@ -1484,30 +1590,25 @@ void RasterEffect28(void)
     byte = (uint8_t)(add_bytes(byte, rd8(RasterStep), false).value >> 1);
     if ((byte & 0x0F) == 0) {
         uint8_t random = (uint8_t)(RD8(ZP->random3) & 1);
-        Sum low = add_bytes(add_bytes(random, 1, false).value, RD8(BANDS->bgx_lo[WORK_BAND]), false);
-        Sum high;
 
+        low = add_bytes(add_bytes(random, 1, false).value, RD8(BANDS->bgx_lo[WORK_BAND]), false);
         WR8(BANDS->bgx_lo[WORK_BAND], low.value);
         high = add_bytes(0, RD8(BANDS->bgx_hi[WORK_BAND]), low.carry);
         WR8(BANDS->bgx_hi[WORK_BAND], high.value);
     }
-    write_band_at(0x5013, WORK_BAND);
+    (void)write_band_at(0x5013, WORK_BAND);
     select_at(0x5018, VDC_REG_RCR);
-    {
-        Sum low = add_bytes((uint8_t)(rd8(RasterStep) << 1), 0xA9, false);
-        Sum high;
-
-        WR8(VDC->data_lo, low.value);
-        high = add_bytes(0, 0, low.carry);
-        WR8(VDC->data_hi, high.value);
-    }
+    low = add_bytes((uint8_t)(rd8(RasterStep) << 1), 0xA9, false);
+    WR8(VDC->data_lo, low.value);
+    high = add_bytes(0, 0, low.carry);
+    WR8(VDC->data_hi, high.value);
     next_step();
-    cli();
+    return finish(exit_of(high.value, WORK_BAND, h.y, false, low.overflow));
 }
 
 void abi_RasterEffect28(void)
 {
-    RasterEffect28();
+    exit_regs(RasterEffect28(held_in()));
 }
 
 /*
@@ -1519,24 +1620,24 @@ void abi_RasterEffect28(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect30(void)
+Exit RasterEffect30(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        RasterBandThenLine(1, 0x8F);
-    } else if (step == 4) {
+        return RasterBandThenLine(1, 0x8F, h);
+    }
+    if (step == 4) {
         work_x_from(0);
         work_y_set(0xAF, 0);
-        RasterEndWorkBand();
-    } else {
-        band_table_step(step, Effect30Bands, Effect30YAdds, Effect30Lines, 0x507A, 0x5082);
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
+    return band_table_step(step, Effect30Bands, Effect30YAdds, Effect30Lines, 0x507A, 0x5082);
 }
 
 void abi_RasterEffect30(void)
 {
-    RasterEffect30();
+    exit_regs(RasterEffect30(held_in()));
 }
 
 /*
@@ -1549,31 +1650,31 @@ void abi_RasterEffect30(void)
  * WAITS: no.
  * Entry: raster interrupt. Exit: to the frame interrupt's exit.
  */
-void RasterEffect31(void)
+Exit RasterEffect31(Held h)
 {
     uint8_t step = rd8(RasterStep);
 
     if (step == 0) {
-        background_off_at(0x50BE);
+        (void)background_off_at(0x50BE);
         next_step();
         select_at(0x50CD, VDC_REG_RCR);
         WR8(VDC->data_lo, 0x57);
         st2(0);
-        cli();
-    } else if (step == 2) {
+        return finish(exit_of(0x57, h.x, h.y, h.c, h.v));
+    }
+    if (step == 2) {
         work_x_from(0);
         work_y_set(0xA7, 0);
-        RasterEndWorkBand();
-    } else {
-        background_on_at(0x50DA);
-        WR8(BANDS->bgy_lo[1], 0x17);
-        RasterBandThenLine(1, 0xE7);
+        return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
+    (void)background_on_at(0x50DA);
+    WR8(BANDS->bgy_lo[1], 0x17);
+    return RasterBandThenLine(1, 0xE7, (Held){ h.x, h.y, step >= 2, h.v });
 }
 
 void abi_RasterEffect31(void)
 {
-    RasterEffect31();
+    exit_regs(RasterEffect31(held_in()));
 }
 
 /*
@@ -1586,10 +1687,19 @@ void abi_RasterEffect31(void)
  * Entry: from FrameInterrupt, the effect below 32, which is all the table holds. Exit:
  * to its exit.
  */
+/* The handler is entered with A and X the effect doubled and the carry the effect's top bit, N and Z from A. */
+static void dispatch_registers_shim(uint8_t effect, uint8_t index)
+{
+    cpu.a = index;
+    cpu.x = index;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | nz_of(index));
+    abi_flag(P_C, (effect & 0x80) != 0);
+}
+
 void RasterInterrupt(void)
 {
     static void (*const effects[])(void) = {
-        abi_RasterDone, RasterEndBand1, abi_RasterEffect2, abi_RasterEffect3,
+        abi_RasterDone, abi_RasterEndBand1, abi_RasterEffect2, abi_RasterEffect3,
         abi_RasterEffect4, abi_RasterEffect5, abi_RasterEffect6, abi_RasterEffect7,
         abi_RasterEffect8, abi_RasterEffect9, abi_RasterEffect10, abi_RasterEffect11,
         abi_RasterEffect12, abi_RasterEffect13, abi_RasterEffect14, abi_RasterEffect15,
@@ -1603,6 +1713,7 @@ void RasterInterrupt(void)
 
     (void)rd8((uint16_t)(RasterEffects + index));
     (void)rd8((uint16_t)(RasterEffects + 1 + index));
+    dispatch_registers_shim(effect, index);
     effects[effect]();
 }
 

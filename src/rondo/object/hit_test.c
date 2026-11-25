@@ -248,11 +248,14 @@ static StageExit hit_test(uint8_t x, uint16_t table, uint16_t store, uint16_t re
     WR8(ZP->temp01, a);
     y = RD8(ZP->hit_slot);
     handler = RD16_LH2(ZP->temp00, ZP->temp01);
-    if (handler == store) {
-        return HitStoreHandler(x, y);
-    }
-    if (handler == report) {
-        return HitReportHandler(x, y);
+    if (handler == store || handler == report) {
+        StageExit done = handler == store ? HitStoreHandler(x, y) : HitReportHandler(x, y);
+
+        done.y = y;
+        done.c = c;
+        done.v = v;
+        done.set = EXIT_Y | EXIT_C | EXIT_V;
+        return done;
     }
     return original_handler_shim(handler, a, x, y, c, v);
 }

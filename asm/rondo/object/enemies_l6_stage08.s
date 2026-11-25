@@ -202,6 +202,47 @@ FallAndBlinkThenClear_at0:
 FallAndBlinkThenClear_at1:
     rts
 
+; @routine 088A:699 LoadThenStartFiveFromTable
+; @run 70:AE99
+; WHAT IT DOES: Loads the object's record, clears OBJ_3778 and its Y speed, sets OBJ_34B8 to $30 and bit 2 of zField8E, copies its X and Y low bytes into all 64 entries of the two tables at $BB66 and $BBA6, then clears the objects in slots $11 to $15 and starts in each an object whose kind the table at $AEDA gives, at this object's place.
+; HOW: LoadObjectRecord, two loops, ClearObjectInY, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object. Exit: the last compare of Y with $16.
+LoadThenStartFiveFromTable:
+    jsr VecLoadObjectRecord
+    stz a:OBJ_3778,x
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    lda #$30
+    sta a:OBJ_34B8,x
+    lda z:zField8E
+    ora #$04
+    sta z:zField8E
+    cly
+LoadThenStartFiveFromTable_at0:
+    lda a:OBJ_X_LO,x
+    sta a:RichterWallPushBits+1,y
+    lda a:OBJ_Y_LO,x
+    sta a:$BBA6,y
+    iny
+    cpy #$40
+    bcc LoadThenStartFiveFromTable_at0
+    ldy #$11
+LoadThenStartFiveFromTable_at1:
+    jsr VecClearObjectInY
+    phy
+    tya
+    sec
+    sbc #$11
+    tay
+    lda a:$AEDA,y
+    ply
+    jsr VecStartObjectAtPlace
+    iny
+    cpy #$16
+    bcc LoadThenStartFiveFromTable_at1
+    rts
+
 ; @routine 088A:71E PlaySoundTwo
 ; @run 70:AF1E
 ; WHAT IT DOES: Plays sound 2.

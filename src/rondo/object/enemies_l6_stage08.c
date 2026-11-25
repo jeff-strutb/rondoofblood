@@ -707,3 +707,51 @@ void abi_StartThenWaitForField83(void)
 {
     abi_ended(StartThenWaitForField83(cpu.x));
 }
+
+/*
+ * @routine 088A:699 LoadThenStartFiveFromTable
+ * @run 70:AE99
+ * WHAT IT DOES: Loads the object's record, clears OBJ_3778 and its Y speed, sets OBJ_34B8 to $30 and bit 2 of zField8E, copies its X and Y low bytes into all 64 entries of the two tables at $BB66 and $BBA6, then clears the objects in slots $11 to $15 and starts in each an object whose kind the table at $AEDA gives, at this object's place.
+ * HOW: LoadObjectRecord, two loops, ClearObjectInY, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare of Y with $16.
+ */
+Ended LoadThenStartFiveFromTable(uint8_t slot)
+{
+    uint8_t nz, last, flags, y, kind, placed = 0;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xAE9C);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->f3778[slot], 0);
+    WR8(OBJ->vy_hi[slot], 0);
+    WR8(OBJ->vy_lo[slot], 0);
+    WR8(OBJ->f34b8[slot], 0x30);
+    flags = (uint8_t)(RD8(ZP->field8e) | 0x04);
+    WR8(ZP->field8e, flags);
+    for (y = 0; y < 0x40; y++) {
+        wr8((uint16_t)(0xBB66 + y), RD8(OBJ->x_lo[slot]));
+        wr8((uint16_t)(0xBBA6 + y), RD8(OBJ->y_lo[slot]));
+    }
+    for (y = 0x11; y < 0x16; y++) {
+        jsr_push(0xAEC7);
+        ClearObjectInY(y);
+        jsr_pop();
+        push8(y);
+        kind = rd8((uint16_t)(0xAEDA + (y - 0x11)));
+        y = pull8();
+        jsr_push(0xAED4);
+        placed = StartObjectAtPlace(kind, slot, y);
+        jsr_pop();
+    }
+    e = then(e, ended_load(flags));
+    return then(e, ended_with_overflow(ended_with_y(ended_with_a(ended_with_carry(ended_nz(0), true), placed), 0x16), false));
+}
+
+void abi_LoadThenStartFiveFromTable(void)
+{
+    abi_ended(LoadThenStartFiveFromTable(cpu.x));
+}

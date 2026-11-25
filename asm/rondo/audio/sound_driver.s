@@ -379,6 +379,51 @@ SoundSetPan_at0:
 ;
 ;
 ;
+; The sound driver: the PSG's six channels, music and effects, loaded with the kernel's second
+; block at sectors $4D to $56 and mapped at $8000-$DFFF (banks $75 to $77) only while the kernel
+; calls it. Channels 0 to 5 are the PSG's; the driver keeps eight, and its channels 6 and 7 are
+; effects that take over PSG channels 4 and 5.
+;
+; A body returns plain values; its wrapper works out what the assembly leaves in the registers
+; and flags.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
 ; @routine 004E:614 SoundSilenceAll
 ; @run 75:8E14
 ; WHAT IT DOES: Turns every PSG channel off, and the main volume down.
@@ -928,7 +973,13 @@ SoundSetControl_at1:
 ; reset, the 32 samples written. $FF loads none, and channels 4 and 5 are left alone while an
 ; effect plays on them.
 ; HOW: SoundWaveAddress, then the RAM block-move stub at $22E7 built as a TIN of 32 bytes to
-; PsgWaveData and called.
+; PsgWaveData and called. The bytes that run as original code are those eight, $22E7 to $22EE
+; (TIN $D3, source, destination, length, RTS $60), which this routine writes into work RAM itself:
+; they have no disc origin, so no @routine can own them, and the checker hands a call into them
+; to the original (the C's own imitation of the 32 reads and writes of the move was reported as
+; EXTRA accesses by gate A5 on sound_test, the original's call giving the same accesses itself).
+; The C writes the eight bytes, pushes the return frame and the registers and flags the assembly
+; holds, and calls the stub through block_move_stub_shim (call_orig).
 ; WAITS: no.
 ; Entry: A waveform, X channel. Exit: X and Y kept. $FF, A $FF, Z and C set, N clear, V kept.
 ; Left alone, A kept, N and V the effect's bits 7 and 6, Z and C clear. Loaded, A $60, N and Z
@@ -1530,6 +1581,7 @@ SoundCommandWave:
 ; @run 75:8B09
 ; WHAT IT DOES: Command $E3: the channel's pan, unless it is 0.
 ; HOW: SoundSetPan.
+; WAITS: no.
 ; Entry: X channel. Exit: A the pan, N and Z from it. X, Y, C and V kept.
 SoundCommandPan:
     lda a:SoundCommandArgs
@@ -1541,6 +1593,7 @@ SoundCommandPan:
 ; WHAT IT DOES: Command $F8: a pan slide by a step toward a target pan, down when the target is
 ; below the pan as set.
 ; HOW: SoundPanStepLo and Hi, SoundPanTarget against SoundPanSet.
+; WAITS: no.
 ; Entry: X channel. Exit: X and Y kept. Up, A the target, N and Z from comparing it, C set, V
 ; kept. Down, A the step made negative, N set, Z clear, C and V from negating it.
 SoundCommandPanSlide:
@@ -1599,6 +1652,7 @@ SoundCommandVibratoGrow:
 ; @run 75:8B6E
 ; WHAT IT DOES: Command $E5: the modulation's speed and its two masks, from the start.
 ; HOW: SoundModulationSpeed, SoundModulationMaskHi and Lo; the phase cleared.
+; WAITS: no.
 ; Entry: X channel. Exit: A the low mask, N and Z from it. X, Y, C and V kept.
 SoundCommandModulation:
     lda a:SoundCommandArgs
@@ -1797,6 +1851,7 @@ SoundCommandTremolo:
 ; WHAT IT DOES: Command $EE: the channel's volume, 0 to $0F, as the slide's attenuation $0F less
 ; it, with no fraction.
 ; HOW: SoundSlideHi, SoundSlideLo cleared.
+; WAITS: no.
 ; Entry: X channel. Exit: A the attenuation, N, Z, C and V from its subtract. X and Y kept.
 SoundCommandVolume:
     lda #$0F
@@ -1811,6 +1866,7 @@ SoundCommandVolume:
 ; WHAT IT DOES: Command $EF: a volume slide by a step to a target volume, as the attenuation $0F
 ; less it; down in attenuation when the target is below the slide's.
 ; HOW: SoundSlideStepLo and Hi, SoundSlideTarget against SoundSlideHi.
+; WAITS: no.
 ; Entry: X channel. Exit: as SoundCommandPanSlide, with V from the target's subtract when up.
 SoundCommandVolumeSlide:
     lda a:SoundCommandArgs
@@ -1891,6 +1947,7 @@ SoundCommandRepeatMark:
 ; goes back to the mark, playing the section again; the third goes back to where the second was,
 ; and the next pass goes on again.
 ; HOW: SoundRepeatState 0, 1 and 2; SoundRepeatReturnLo and Hi.
+; WAITS: no.
 ; Entry: X channel. Exit: X, Y, C and V kept. First, A 0, N and Z from the state 1. Second and
 ; third, A the high byte of where it goes, N and Z from it. Past 2, A the state less 2, N and Z
 ; from it.
@@ -1928,6 +1985,7 @@ SoundCommandRepeat_at1:
 ; WHAT IT DOES: Command $FA: the channel's envelope: its attack from a preset, its decay and
 ; release rates from the tens and units of the second argument, its sustain level.
 ; HOW: SoundAttackPresets by the first; SoundRatePresets by the second's tens and units.
+; WAITS: no.
 ; Entry: X channel. Exit: A the sustain level, N and Z from it, Y the units, C clear, V from the
 ; last subtract of ten if there was one. X kept.
 SoundCommandEnvelope:
@@ -2060,6 +2118,7 @@ SoundCommandReturn_at0:
 ; HOW: SoundTempo, or $FF when SoundFullTempo's bit 0 is set, onto SoundTempoPhase; SoundChannel2550
 ; says a rest; SoundNoteLength; SoundReadSequence; the channel's bit in zSoundChannelBit taken
 ; out of zSoundChannelsOn.
+; WAITS: no.
 ; Entry: X channel. Exit: as the last call left them; a rest's tick or between ticks while
 ; resting, A SoundChannel2550 with the tempo's add in C and V; switched off, A the channel's bit,
 ; Z if no other bit is on, N and V the playing bits 7 and 6 before.
@@ -2149,6 +2208,7 @@ SoundGateStep_at1:
 ; note, after its delay, over its frames, from the pitch now; it is taken and the glide aimed.
 ; HOW: SoundPeekCommand; SoundSequenceFromWord takes it; SoundGlideDelay and SoundGlideFrames; the
 ; note with the transpose, less one with a negative fine tune; SoundGlideSetup with the fine tune.
+; WAITS: no.
 ; Entry: X channel. Exit: X kept. Gliding, A the frames, N and Z from them. Not $F3, as
 ; SoundPeekCommand, with A the command, N, Z and C from comparing it with $F3. Taken, as
 ; SoundGlideSetup, with A the fine tune, Y the note and C from adding the transpose where it
@@ -2185,6 +2245,7 @@ SoundGlideLookahead_at0:
 ; HOW: SoundReadCommand; the handlers through SoundCommandHandlers, each pushed and returned to,
 ; coming back to read again with X from zSoundChannel; $E0 SoundRest, $E1 SoundSetLength, a note
 ; SoundStartNote with SoundGateSet and SoundVolumeDefault; SoundSaveSequence.
+; WAITS: no.
 ; Entry: X channel. Exit: ended, C set, and as SoundCommandReturn left them on its way out.
 ; Otherwise A the place's high byte, N and Z from it, C clear, X the channel, Y and V as the last
 ; command left them.

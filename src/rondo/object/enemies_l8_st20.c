@@ -102,7 +102,7 @@ void abi_FaceThePlayerByStateTableB(void)
  */
 Ended MaybeDropItemByPlayerDistance(uint8_t slot)
 {
-    uint8_t hits, bits, level, row, threshold, item, found_slot, last, placed, value;
+    uint8_t hits, raw, bits, level, row, threshold, item, found_slot, last, placed, value;
     bool found;
     RandomResult random;
     Sum sum, joined;
@@ -113,9 +113,9 @@ Ended MaybeDropItemByPlayerDistance(uint8_t slot)
     if (hits < 5) {
         return e;
     }
-    bits = RD8(OBJ->f31f8[slot]);
-    bits = (uint8_t)((bits >> 2) & 0x07);
-    e = then(e, ended_load(bits));
+    raw = RD8(OBJ->f31f8[slot]);
+    bits = (uint8_t)((raw >> 2) & 0x07);
+    e = then(e, ended_with_carry(ended_load(bits), ((raw >> 1) & 0x01) != 0));
     if (bits == 0) {
         return e;
     }

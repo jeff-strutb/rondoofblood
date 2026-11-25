@@ -105,6 +105,133 @@ EndingModeDoneBack:
     dec z:zModeDone
     rts
 
+; @routine 010D:090 EndingCommandStartList
+; @run 6B:8090
+; WHAT IT DOES: A script command: starts list channel 0 with the operand's list, clears the screen's state and all the object slots, and
+; clears the scroll block again.
+; HOW: StartListChannel0Kind2, ClearScreenState, EndingClearObjects, a TAI from $4003 to $3E00; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandStartList:
+    lda ($7E),y
+    jsr VecStartListChannel0Kind2
+    jsr VecClearScreenState
+    jsr EndingClearObjects
+    tai KernelZeros,ScrollXFrac,$00EE
+    bra EndingScriptAdvance
+
+; @routine 010D:0AB EndingCommandStartScript1
+; @run 6B:80AB
+; WHAT IT DOES: A script command: starts script slot 0 as kind 1 with the operand's script.
+; HOW: StartScriptSlot0Kind1; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandStartScript1:
+    lda ($7E),y
+    jsr VecStartScriptSlot0Kind1
+    bra EndingScriptAdvance
+
+; @routine 010D:0B2 EndingCommandStartScript2
+; @run 6B:80B2
+; WHAT IT DOES: A script command: starts script slot 0 as kind 2 with the operand's script.
+; HOW: StartScriptSlot0Kind2; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandStartScript2:
+    lda ($7E),y
+    jsr VecStartScriptSlot0Kind2
+    jmp EndingScriptAdvance
+
+; @routine 010D:0C5 EndingCommandCdPlay
+; @run 6B:80C5
+; WHAT IT DOES: A script command: plays the CD track the operand names, once.
+; HOW: CdPlayOnce; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, X the doubled command, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandCdPlay:
+    lda ($7E),y
+    jsr VecCdPlayOnce
+    jmp EndingScriptAdvance
+
+; @routine 010D:0CD EndingCommandPlaceKind
+; @run 6B:80CD
+; WHAT IT DOES: A script command: places an object (empties it and gives it the four place bytes) and sets its kind from the byte after.
+; HOW: ScriptPlaceObject; one store; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandPlaceKind:
+    lda ($7E),y
+    tax
+    jsr AddToListWord_at0
+    iny
+    lda ($7E),y
+    sta a:OBJ_2750,x
+    jmp EndingScriptAdvance
+
+; @routine 010D:0DC EndingCommandPlaceNext
+; @run 6B:80DC
+; WHAT IT DOES: A script command: places an object, sets its next kind and picture kind from the two bytes after, and its kind to 2.
+; HOW: ScriptPlaceObject; three stores; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandPlaceNext:
+    lda ($7E),y
+    tax
+    jsr AddToListWord_at0
+    iny
+    lda ($7E),y
+    sta a:OBJ_3040,x
+    iny
+    lda ($7E),y
+    sta a:OBJ_2A10,x
+    lda #$02
+    sta a:OBJ_2750,x
+    jmp EndingScriptAdvance
+
+; @routine 010D:0F6 EndingCommandPlaceFrame
+; @run 6B:80F6
+; WHAT IT DOES: A script command: places an object and sets its frame and picture kind from the two bytes after.
+; HOW: ScriptPlaceObject; two stores; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandPlaceFrame:
+    lda ($7E),y
+    tax
+    jsr AddToListWord_at0
+    iny
+    lda ($7E),y
+    sta a:OBJ_2A68,x
+    iny
+    lda ($7E),y
+    sta a:OBJ_2A10,x
+    jmp EndingScriptAdvance
+
+; @routine 010D:10B EndingCommandPlaceTimed
+; @run 6B:810B
+; WHAT IT DOES: A script command: places an object and sets its frame, picture kind, next kind and hold from the four bytes after, and its kind to 3.
+; HOW: ScriptPlaceObject; five stores; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandPlaceTimed:
+    lda ($7E),y
+    tax
+    jsr AddToListWord_at0
+    iny
+    lda ($7E),y
+    sta a:OBJ_2A68,x
+    iny
+    lda ($7E),y
+    sta a:OBJ_2A10,x
+    iny
+    lda ($7E),y
+    sta a:OBJ_3040,x
+    iny
+    lda ($7E),y
+    sta a:OBJ_34B8,x
+    lda #$03
+    sta a:OBJ_2750,x
+    jmp EndingScriptAdvance
+
 ; @routine 010D:131 EndingClearObjects
 ; @run 6B:8131
 ; WHAT IT DOES: Empties all 88 object slots.
@@ -119,6 +246,44 @@ EndingClearObjects_at0:
     cpx #$58
     bne EndingClearObjects_at0
     rts
+
+; @routine 010D:1A5 EndingCommandLoadBanks
+; @run 6B:81A5
+; WHAT IT DOES: A script command: reads four banks of the ADPCM memory into the RAM banks at MPR5 and MPR6, one after another.
+; HOW: For each of four numbers the two banks are mapped, the ADPCM address and the length set, and ad_read called; back to EndingScriptAdvance.
+; WAITS: yes, through ad_read, which waits for the ADPCM to be idle.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandLoadBanks:
+    stz z:zTemp00
+EndingCommandLoadBanks_at0:
+    lda z:zTemp00
+    asl a
+    clc
+    adc #$10
+    adc z:zRamBaseBank
+    tam #$20
+    inc a
+    tam #$40
+    stz z:zBiosCl
+    lda z:zTemp00
+    clc
+    ror a
+    ror a
+    ror a
+    sta z:zBiosCh
+    stz z:zBiosDh
+    stz z:zBiosBl
+    lda #$A0
+    sta z:zBiosBh
+    stz z:zBiosAl
+    lda #$40
+    sta z:zBiosAh
+    jsr $E036
+    inc z:zTemp00
+    lda z:zTemp00
+    cmp #$04
+    bne EndingCommandLoadBanks_at0
+    jmp EndingScriptAdvance
 
 ; @routine 010D:1DA EndingObjectsStep
 ; @run 6B:81DA

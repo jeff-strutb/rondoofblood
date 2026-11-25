@@ -545,6 +545,8 @@ Ended DrawStepCountThenClear(uint8_t slot);
 Ended StateFiveOnStatusBit7(uint8_t slot);
 SoundEnd CountThenSoleScriptAndSound(uint8_t slot);
 Ended StartScriptWhenCountInTable(uint8_t slot);
+Ended LoadThenStartTwoScripts(uint8_t slot);
+Ended SpawnInFreeSlotEvery30(uint8_t slot);
 SoundEnd SoundThenAimRandomLength(uint8_t slot, uint8_t y_entry);
 Ended CountThenSpawnInState2(uint8_t slot);
 SoundEnd WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry);

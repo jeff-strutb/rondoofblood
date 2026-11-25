@@ -1,3 +1,25 @@
+; @routine 10CB:28D LoadThenStartTwoScripts
+; @run 70:B28D
+; WHAT IT DOES: Loads the object's record, puts it at Y $FFC0 and starts the scripts $82 in slot 5 and $AF in slot 8.
+; HOW: LoadObjectRecord, StartScriptSlotKind1 twice.
+; WAITS: no.
+; Entry: X object. Exit: A and Y the last script, N and Z from the object index.
+LoadThenStartTwoScripts:
+    jsr VecLoadObjectRecord
+    lda #$FF
+    sta a:OBJ_Y_HI,x
+    lda #$C0
+    sta a:OBJ_Y_LO,x
+    phx
+    lda #$82
+    ldx #$05
+    jsr VecStartScriptSlotKind1
+    lda #$AF
+    ldx #$08
+    jsr VecStartScriptSlotKind1
+    plx
+    rts
+
 ; @routine 10CB:2CB ClearSlot4EUnlessCamera18
 ; @run 70:B2CB
 ; WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_3510 to $40 and goes on to the next OBJ_2800.
@@ -149,6 +171,33 @@ RiseThenCueMusic:
     inc a:OBJ_27A8,x
     stz a:OBJ_2800,x
 RiseThenCueMusic_at0:
+    rts
+
+; @routine 10CB:5AB SpawnInFreeSlotEvery30
+; @run 70:B5AB
+; WHAT IT DOES: Counts OBJ_37D0 down; at zero it sets it to $1E, looks for an empty slot from $18 to $1F, clears it and starts a kind $26 object there at this object's place.
+; HOW: DEC, a search loop, ClearObjectInY, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object. Exit: the count, the compare, or the start's registers.
+SpawnInFreeSlotEvery30:
+    lda a:OBJ_37D0,x
+    beq SpawnInFreeSlotEvery30_at0
+    dec a:OBJ_37D0,x
+    rts
+SpawnInFreeSlotEvery30_at0:
+    lda #$1E
+    sta a:OBJ_37D0,x
+    ldy #$18
+    lda a:OBJ_2750,y
+    beq SpawnInFreeSlotEvery30_at1
+    iny
+    cpy #$20
+    bcc RiseUntilAboveGround
+    rts
+SpawnInFreeSlotEvery30_at1:
+    jsr VecClearObjectInY
+    lda #$26
+    jsr VecStartObjectAtPlace
     rts
 
 ; @routine 10CB:680 StepListB697ThenStopY

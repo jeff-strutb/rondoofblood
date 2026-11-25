@@ -677,3 +677,88 @@ void abi_RiseThenCueMusic(void)
     }
     abi_ended(r.end);
 }
+
+/*
+ * @routine 10CB:28D LoadThenStartTwoScripts
+ * @run 70:B28D
+ * WHAT IT DOES: Loads the object's record, puts it at Y $FFC0 and starts the scripts $82 in slot 5 and $AF in slot 8.
+ * HOW: LoadObjectRecord, StartScriptSlotKind1 twice.
+ * WAITS: no.
+ * Entry: X object. Exit: A and Y the last script, N and Z from the object index.
+ */
+Ended LoadThenStartTwoScripts(uint8_t slot)
+{
+    uint8_t nz, last, script;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xB290);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->y_hi[slot], 0xFF);
+    WR8(OBJ->y_lo[slot], 0xC0);
+    push8(slot);
+    e = then(e, ended_load(0xC0));
+    jsr_push(0xB2A2);
+    script = StartScriptSlotKind1(0x82, 5);
+    jsr_pop();
+    e = then(e, ended_with_y(ended_load(script), script));
+    jsr_push(0xB2A9);
+    script = StartScriptSlotKind1(0xAF, 8);
+    jsr_pop();
+    e = then(e, ended_with_y(ended_load(script), script));
+    slot = pull8();
+    return then(e, ended_nz(slot));
+}
+
+void abi_LoadThenStartTwoScripts(void)
+{
+    abi_ended(LoadThenStartTwoScripts(cpu.x));
+}
+
+/*
+ * @routine 10CB:5AB SpawnInFreeSlotEvery30
+ * @run 70:B5AB
+ * WHAT IT DOES: Counts OBJ_37D0 down; at zero it sets it to $1E, looks for an empty slot from $18 to $1F, clears it and starts a kind $26 object there at this object's place.
+ * HOW: DEC, a search loop, ClearObjectInY, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object. Exit: the count, the compare, or the start's registers.
+ */
+Ended SpawnInFreeSlotEvery30(uint8_t slot)
+{
+    uint8_t count, y, kind, placed;
+    Ended e;
+
+    count = RD8(OBJ->f37d0[slot]);
+    e = ended_load(count);
+    if (count != 0) {
+        count = DEC8(OBJ->f37d0[slot]);
+        return then(e, ended_nz(count));
+    }
+    WR8(OBJ->f37d0[slot], 0x1E);
+    e = then(e, ended_load(0x1E));
+    for (y = 0x18;; y++) {
+        kind = rd8((uint16_t)(0x2750 + y));
+        e = then(then(e, ended_with_y(ended_nz(0x18), y)), ended_load(kind));
+        if (kind == 0) {
+            break;
+        }
+        e = then(e, ended_with_y(ended_with_carry(ended_nz((uint8_t)(y + 1 - 0x20)), (y + 1) >= 0x20), (uint8_t)(y + 1)));
+        if ((y + 1) >= 0x20) {
+            return e;
+        }
+    }
+    jsr_push(0xB5C9);
+    ClearObjectInY(y);
+    jsr_pop();
+    jsr_push(0xB5CE);
+    placed = StartObjectAtPlace(0x26, slot, y);
+    jsr_pop();
+    return then(then(e, ended_load(0x26)), ended_with_y(ended_load(placed), y));
+}
+
+void abi_SpawnInFreeSlotEvery30(void)
+{
+    abi_ended(SpawnInFreeSlotEvery30(cpu.x));
+}

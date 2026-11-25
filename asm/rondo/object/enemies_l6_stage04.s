@@ -457,6 +457,42 @@ LandThenFaceAndRun_at0:
 LoadRecordB04:
     jsr VecLoadObjectRecord
     rts
+; @routine 051B:76E FollowBlockWhileState5
+; @run 70:B76E
+; WHAT IT DOES: When the object before this one in the table is not in state 5 it sets bit 7 of OBJ_31A0 and stops. Otherwise it takes that object's place (CopyObjectPlaceBack), sets its speed to $0C00 in X and $E400 in Y (X $F600 and Y $DC00 and the next state when the object before it has frame $15), moves once and clears the speeds. (The first part ran in no script; it is written from the bytes.)
+; HOW: CopyObjectPlaceBack, stores, ApplyVelocity.
+; WAITS: no.
+; Entry: X object. Exit: the last clear (all registers as ApplyVelocity left them but A, N and Z).
+FollowBlockWhileState5:
+    lda a:$27A7,x
+    cmp #$05
+    beq FollowBlockWhileState5_at0
+    lda a:OBJ_31A0,x
+    ora #$80
+    sta a:OBJ_31A0,x
+    rts
+FollowBlockWhileState5_at0:
+    txa
+    tay
+    dey
+    jsr VecCopyObjectPlaceBack
+    lda #$0C
+    sta a:OBJ_VX_HI,x
+    lda #$E4
+    sta a:OBJ_VY_HI,x
+    lda a:$2A67,x
+    cmp #$15
+    bne SoundCommandLengths
+    lda #$F6
+    sta a:OBJ_VX_HI,x
+    lda #$DC
+    sta a:OBJ_VY_HI,x
+    inc a:OBJ_27A8,x
+    jsr VecApplyVelocity
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VY_HI,x
+    rts
+
 ; @routine 051B:7AC StartJumpUpLeft
 ; @run 70:B7AC
 ; WHAT IT DOES: Sets the object's speed to $FE80 in X and $FC80 in Y (high bytes $FE and $FC) and goes on to the next state.

@@ -49,6 +49,25 @@ LoadThenSpawn24:
     lda #$24
     jmp VecStartObjectAtPlace
 
+; @routine 0E0B:184 FallThenStopForRaster
+; @run 70:B184
+; WHAT IT DOES: Moves the object along Y by its speed and counts OBJ_34B8 down; at zero it clears the raster effect and its argument, clears the object's Y speed and goes
+; on to the next OBJ_2800.
+; HOW: ApplyVelocityY, DEC, stores, INC.
+; WAITS: no.
+; Entry: X object. Exit: the count, or the new OBJ_2800's N and Z.
+FallThenStopForRaster:
+    jsr VecApplyVelocityY
+    dec a:OBJ_34B8,x
+    bne FallThenStopForRaster_at0
+    stz z:zRasterArg
+    stz z:zRasterEffect
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    inc a:OBJ_2800,x
+FallThenStopForRaster_at0:
+    rts
+
 ; @routine 0E0B:5DD NextPhaseUnlessKind25
 ; @run 70:B5DD
 ; WHAT IT DOES: Goes on to the next OBJ_2800 unless the object in slot $50 is of kind $25.
@@ -61,6 +80,24 @@ NextPhaseUnlessKind25:
     beq NextPhaseUnlessKind25_at0
     inc a:OBJ_2800,x
 NextPhaseUnlessKind25_at0:
+    rts
+
+; @routine 0E0B:5E8 StepListB5FEToState4
+; @run 70:B5E8
+; WHAT IT DOES: Steps the animation list at $B5FE; when it ends, the object goes to state 4 and OBJ_2800 0.
+; HOW: StepObjectFrames, then stores and an increment.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or A 4 when the list ended.
+StepListB5FEToState4:
+    lda #$FE
+    sta z:zTemp10
+    lda #$B5
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne ClampSpeedXToTwo
+    lda #$04
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
     rts
 
 ; @routine 12DF:038 RandomTimerC0

@@ -172,3 +172,72 @@ void abi_LoadThenSpawn24(void)
 {
     abi_ended(LoadThenSpawn24(cpu.x));
 }
+
+/*
+ * @routine 0E0B:5E8 StepListB5FEToState4
+ * @run 70:B5E8
+ * WHAT IT DOES: Steps the animation list at $B5FE; when it ends, the object goes to state 4 and OBJ_2800 0.
+ * HOW: StepObjectFrames, then stores and an increment.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or A 4 when the list ended.
+ */
+Ended StepListB5FEToState4(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    uint8_t y = y_entry;
+    Ended e;
+
+    WR8(ZP->temp10, 0xFE);
+    WR8(ZP->temp11, 0xB5);
+    jsr_push(0xB5F3);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    WR8(OBJ->state[slot], 4);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(4));
+}
+
+void abi_StepListB5FEToState4(void)
+{
+    abi_ended(StepListB5FEToState4(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0E0B:184 FallThenStopForRaster
+ * @run 70:B184
+ * WHAT IT DOES: Moves the object along Y by its speed and counts OBJ_34B8 down; at zero it clears the raster effect and its argument, clears the object's Y speed and goes
+ * on to the next OBJ_2800.
+ * HOW: ApplyVelocityY, DEC, stores, INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the count, or the new OBJ_2800's N and Z.
+ */
+Ended FallThenStopForRaster(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t left, phase;
+    Ended e;
+
+    jsr_push(0xB187);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    left = DEC8(OBJ->f34b8[slot]);
+    e = then(ended_of_axis_move(move), ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    WR8(ZP->raster_arg, 0);
+    WR8(ZP->raster_effect, 0);
+    WR8(OBJ->vy_hi[slot], 0);
+    WR8(OBJ->vy_lo[slot], 0);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(phase));
+}
+
+void abi_FallThenStopForRaster(void)
+{
+    abi_ended(FallThenStopForRaster(cpu.x));
+}

@@ -222,3 +222,133 @@ void abi_DrawTileScriptByHighBits(void)
 {
     abi_ended(DrawTileScriptByHighBits(cpu.x));
 }
+
+/*
+ * @routine 051B:368 StepListB37FThenNext
+ * @run 70:B368
+ * WHAT IT DOES: Steps the animation list at $B37F; when it ends, the object's animation step and timer are cleared and it goes to the next OBJ_2800.
+ * HOW: StepObjectFrames, then stores and an increment.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+ */
+Ended StepListB37FThenNext(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    uint8_t y = y_entry;
+    Ended e;
+
+    WR8(ZP->temp10, 0x7F);
+    WR8(ZP->temp11, 0xB3);
+    jsr_push(0xB373);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    uint8_t phase;
+
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(phase));
+}
+
+void abi_StepListB37FThenNext(void)
+{
+    abi_ended(StepListB37FThenNext(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 051B:30D StateSixOnStatusBit7
+ * @run 70:B30D
+ * WHAT IT DOES: An object in a state under 6 whose OBJ_31A0 has bit 7 set goes to state 6 and clears OBJ_2800.
+ * HOW: A compare, a test, two stores.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare, the test, or A 6.
+ */
+Ended StateSixOnStatusBit7(uint8_t slot)
+{
+    uint8_t state, status;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_compare(state, 6);
+    if (state >= 6) {
+        return e;
+    }
+    status = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    e = then(e, ended_load(status));
+    if (status == 0) {
+        return e;
+    }
+    WR8(OBJ->state[slot], 6);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(6));
+}
+
+void abi_StateSixOnStatusBit7(void)
+{
+    abi_ended(StateSixOnStatusBit7(cpu.x));
+}
+
+/*
+ * @routine 051B:7AC StartJumpUpLeft
+ * @run 70:B7AC
+ * WHAT IT DOES: Sets the object's speed to $FE80 in X and $FC80 in Y (high bytes $FE and $FC) and goes on to the next state.
+ * HOW: Stores and an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: A $80, N and Z from the new state.
+ */
+Ended StartJumpUpLeft(uint8_t slot)
+{
+    uint8_t state;
+
+    WR8(OBJ->vx_hi[slot], 0xFE);
+    WR8(OBJ->vx_lo[slot], 0x80);
+    WR8(OBJ->vy_hi[slot], 0xFC);
+    WR8(OBJ->vy_lo[slot], 0x80);
+    state = INC8(OBJ->state[slot]);
+    return then(ended_load(0x80), ended_nz(state));
+}
+
+void abi_StartJumpUpLeft(void)
+{
+    abi_ended(StartJumpUpLeft(cpu.x));
+}
+
+/*
+ * @routine 051B:135 StepListByTimerWithGravity
+ * @run 70:B135
+ * WHAT IT DOES: Steps the animation list the table at $B14D gives for OBJ_34B8, applies gravity without a limit and moves the object.
+ * HOW: Two table reads (bank 70), StepObjectFrames, ApplyGravityUnlimited, a tail jump into ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object, Y overwritten. Exit: as ApplyVelocity, Y as the step left it.
+ */
+Ended StepListByTimerWithGravity(uint8_t slot)
+{
+    FrameStep step;
+    GravityResult gravity;
+    AxisMove move;
+    uint8_t index, y;
+
+    index = (uint8_t)(RD8(OBJ->f34b8[slot]) << 1);
+    y = index;
+    WR8(ZP->temp10, rd8((uint16_t)(0xB14D + y)));
+    WR8(ZP->temp11, rd8((uint16_t)(0xB14E + y)));
+    jsr_push(0xB147);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    jsr_push(0xB14A);
+    gravity = ApplyGravityUnlimited(slot);
+    jsr_pop();
+    move = ApplyVelocity(slot);
+    (void)step;
+    (void)gravity;
+    return ended_with_y(ended_of_axis_move(move), y);
+}
+
+void abi_StepListByTimerWithGravity(void)
+{
+    abi_ended(StepListByTimerWithGravity(cpu.x));
+}

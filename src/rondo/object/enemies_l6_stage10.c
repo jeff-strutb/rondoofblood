@@ -71,3 +71,39 @@ void abi_ClearSlot4EUnlessCamera18(void)
 {
     abi_ended(ClearSlot4EUnlessCamera18(cpu.x));
 }
+
+/*
+ * @routine 10CB:680 StepListB697ThenStopY
+ * @run 70:B680
+ * WHAT IT DOES: Steps the animation list at $B697; when it ends, the object's Y speed is cleared and it goes to the next OBJ_2800.
+ * HOW: StepObjectFrames, then stores and an increment.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+ */
+Ended StepListB697ThenStopY(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    uint8_t y = y_entry;
+    Ended e;
+
+    WR8(ZP->temp10, 0x97);
+    WR8(ZP->temp11, 0xB6);
+    jsr_push(0xB68B);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    uint8_t phase;
+
+    WR8(OBJ->vy_hi[slot], 0);
+    WR8(OBJ->vy_lo[slot], 0);
+    phase = INC8(OBJ->f2800[slot]);
+    return ended_then(e, ended_nz(phase));
+}
+
+void abi_StepListB697ThenStopY(void)
+{
+    abi_ended(StepListB697ThenStopY(cpu.x, cpu.y));
+}

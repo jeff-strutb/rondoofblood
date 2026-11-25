@@ -16,6 +16,25 @@ ClearSlot4EUnlessCamera18:
 ClearSlot4EUnlessCamera18_at0:
     rts
 
+; @routine 10CB:680 StepListB697ThenStopY
+; @run 70:B680
+; WHAT IT DOES: Steps the animation list at $B697; when it ends, the object's Y speed is cleared and it goes to the next OBJ_2800.
+; HOW: StepObjectFrames, then stores and an increment.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+StepListB697ThenStopY:
+    lda #$97
+    sta z:zTemp10
+    lda #$B6
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepListB697ThenStopY_at0
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    inc a:OBJ_2800,x
+StepListB697ThenStopY_at0:
+    rts
+
 ; @routine 10CD:181 StepListC192ThenClear
 ; @run 71:C181
 ; WHAT IT DOES: Steps the animation list at $C192; when it ends the object is cleared.

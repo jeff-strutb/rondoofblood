@@ -1,3 +1,112 @@
+; @routine 072A:01D TilePieceObject072A
+; @run 70:A81D
+; @stop A855
+; WHAT IT DOES: A piece of the scenery drawn from a tile script. In state 0 the object is cleared when the bit its OBJ_3040 names is set in zField8F; otherwise it loads
+; its record, takes OBJ_3510 as OBJ_3040 times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
+; OBJ_34B8) names. In later states TilePieceInRange072A.
+; HOW: BitMaskFromIndex, ClearObject, LoadObjectRecord, DrawTileScript.
+; WAITS: no.
+; Entry: X object. Exit: as the draw, as ClearObject, or as TilePieceInRange072A.
+TilePieceObject072A:
+    lda a:OBJ_27A8,x
+    bne TilePieceInRange072A
+    ldy a:OBJ_3040,x
+    jsr BitMaskFromIndex072A
+    and z:zField8F
+    beq TilePieceObject072A_at0
+    jmp VecClearObject
+TilePieceObject072A_at0:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_3040,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta a:OBJ_3510,x
+    tay
+    lda a:$AE95,y
+    sta a:OBJ_3988,x
+    lda a:$AE96,y
+    sta a:OBJ_3A38,x
+    lda a:$AE97,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    rts
+
+; @routine 072A:055 BitMaskFromIndex072A
+; @run 70:A855
+; WHAT IT DOES: Gives the byte with only bit Y set (1 shifted left Y times; 0 if Y is 8 or more). This is the overlay at sector 072A's copy of BitMaskFromIndex.
+; HOW: BitMaskFromIndex.
+; WAITS: no.
+; Entry: Y the bit number. Exit: A the mask; Y 0; Z and C set, N clear.
+BitMaskFromIndex072A:
+    lda #$01
+BitMaskFromIndex072A_at1:
+    cpy #$00
+    beq BitMaskFromIndex072A_at0
+    asl a
+    dey
+    bra BitMaskFromIndex072A_at1
+BitMaskFromIndex072A_at0:
+    rts
+
+; @routine 072A:060 TilePieceInRange072A
+; @run 70:A860
+; WHAT IT DOES: Decides from the object's position whether its piece is drawn: with a high X it is; with high X 0 and high Y 0 it goes straight on to the table entry
+; (DrawTilePiece072A from $A890); high Y $FF draws it from low Y $C0 up, high Y 1 up to low Y $3F, and any other high Y not at all.
+; HOW: Compares of the position bytes, then DrawTilePiece072A or its second part.
+; WAITS: no.
+; Entry: X object. Exit: not drawn: the last compare; else as DrawTilePiece072A.
+TilePieceInRange072A:
+    lda a:OBJ_X_HI,x
+    bne DrawTilePiece072A
+    lda a:OBJ_Y_HI,x
+    beq $A890
+    cmp #$FF
+    beq TilePieceInRange072A_at0
+    cmp #$01
+    bne $A8ED
+    lda a:OBJ_Y_LO,x
+    cmp #$40
+    bcc DrawTilePiece072A
+    rts
+TilePieceInRange072A_at0:
+    lda a:OBJ_Y_LO,x
+    cmp #$C0
+    bcs DrawTilePiece072A
+    rts
+
+; @routine 072A:082 DrawTilePiece072A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: Draws the object's tile script (the item the table at $AE97 gives by OBJ_3510, plus OBJ_34B8), then looks in the table at $AEA4 (the row $AE98 gives
+; by OBJ_3510, plus OBJ_33B0) and goes on to the code at $A8A8 when the entry is not zero, else to the return at $A8ED (072A:0ED).
+; HOW: DrawTileScript, a table read (bank 70), then a tail jump into the original bytes at $A8A8 (never run in a script).
+; WAITS: no.
+; Entry: X object. Exit: entry zero: as the table read; else the jump's.
+DrawTilePiece072A:
+    ldy a:OBJ_3510,x
+    lda a:$AE97,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:$AE98,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AEA4,y
+    beq $A8ED
+
 ; @routine 072A:235 ContactWithPlayer
 ; @run 70:AA35
 ; WHAT IT DOES: Tests whether the object, a block that carries or bars the player, touches the player

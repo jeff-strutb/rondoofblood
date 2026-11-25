@@ -447,6 +447,10 @@ SoundEnd StepShootOnCue(uint8_t slot, uint8_t y);
     RMW8(field, old_s, ((carry_var) = (old_s & 1) != 0, old_s >> 1))
 
 Ended RunObjects(uint8_t entry_x);
+uint8_t BitMaskFromIndex072A(uint8_t count);
+Jump TilePieceObject072A(uint8_t slot);
+Jump TilePieceInRange072A(uint8_t slot);
+Jump DrawTilePiece072A(uint8_t slot);
 
 /* object/enemies_l6_*.c: lot L6 */
 Ended LoadRecordA04(uint8_t slot);

@@ -2354,3 +2354,211 @@ void abi_RunDriftObject(void)
 {
     RunDriftObject(cpu.x);
 }
+
+/* The exit of a routine that ends in a jump or in a return: the jump's target when it jumps. */
+static void abi_jump_exit(Jump jump)
+{
+    if (jump.jumps) {
+        jump_shim(jump.end, jump.target);
+    } else {
+        abi_ended(jump.end);
+    }
+}
+
+/* The part of DrawTilePiece072A from $A890 on, which the position test at $A860 also reaches: the table entry at $AEA4 decides whether the code at $A8A8 runs. */
+static Jump piece_table_entry(uint8_t slot, Ended e)
+{
+    Sum sum;
+    uint8_t y, temp, row, offset, entry;
+    Jump jump = { ended_kept(), 0, false };
+
+    temp = RD8(OBJ->f33b0[slot]);
+    e = then(e, ended_load(temp));
+    WR8(ZP->temp00, temp);
+    y = RD8(OBJ->f3510[slot]);
+    e = then(e, ended_with_y(ended_nz(y), y));
+    row = rd8((uint16_t)(0xAE98 + y));
+    e = then(e, ended_load(row));
+    offset = (uint8_t)(row << 4);
+    e = then(e, ended_with_carry(ended_load(offset), (row & 0x10) != 0));
+    sum = add_bytes(offset, RD8(ZP->temp00), false);
+    e = then(e, of_sum(sum));
+    y = sum.value;
+    e = then(e, ended_with_y(ended_nz(y), y));
+    entry = rd8((uint16_t)(0xAEA4 + y));
+    e = then(e, ended_load(entry));
+    jump.end = e;
+    jump.target = entry != 0 ? 0xA8A8 : 0xA8ED;
+    jump.jumps = true;
+    return jump;
+}
+
+/*
+ * @routine 072A:055 BitMaskFromIndex072A
+ * @run 70:A855
+ * WHAT IT DOES: Gives the byte with only bit Y set (1 shifted left Y times; 0 if Y is 8 or more). This is the overlay at sector 072A's copy of BitMaskFromIndex.
+ * HOW: BitMaskFromIndex.
+ * WAITS: no.
+ * Entry: Y the bit number. Exit: A the mask; Y 0; Z and C set, N clear.
+ */
+uint8_t BitMaskFromIndex072A(uint8_t count)
+{
+    return BitMaskFromIndex(count);
+}
+
+void abi_BitMaskFromIndex(void);
+
+void abi_BitMaskFromIndex072A(void)
+{
+    abi_BitMaskFromIndex();
+}
+
+/*
+ * @routine 072A:082 DrawTilePiece072A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: Draws the object's tile script (the item the table at $AE97 gives by OBJ_3510, plus OBJ_34B8), then looks in the table at $AEA4 (the row $AE98 gives
+ * by OBJ_3510, plus OBJ_33B0) and goes on to the code at $A8A8 when the entry is not zero, else to the return at $A8ED (072A:0ED).
+ * HOW: DrawTileScript, a table read (bank 70), then a tail jump into the original bytes at $A8A8 (never run in a script).
+ * WAITS: no.
+ * Entry: X object. Exit: entry zero: as the table read; else the jump's.
+ */
+Jump DrawTilePiece072A(uint8_t slot)
+{
+    TileRun run;
+    Sum sum;
+    uint8_t y, item;
+    Ended e;
+
+    y = RD8(OBJ->f3510[slot]);
+    item = rd8((uint16_t)(0xAE97 + y));
+    sum = add_bytes(item, RD8(OBJ->f34b8[slot]), false);
+    item = sum.value;
+    jsr_push(0xA890);
+    run = DrawTileScript(item, 0);
+    jsr_pop();
+    e = then(then(ended_with_y(ended_nz(y), y), of_sum(sum)), ended_of_tile_run(run, item));
+    return piece_table_entry(slot, e);
+}
+
+void abi_DrawTilePiece072A(void)
+{
+    abi_jump_exit(DrawTilePiece072A(cpu.x));
+}
+
+/*
+ * @routine 072A:060 TilePieceInRange072A
+ * @run 70:A860
+ * WHAT IT DOES: Decides from the object's position whether its piece is drawn: with a high X it is; with high X 0 and high Y 0 it goes straight on to the table entry
+ * (DrawTilePiece072A from $A890); high Y $FF draws it from low Y $C0 up, high Y 1 up to low Y $3F, and any other high Y not at all.
+ * HOW: Compares of the position bytes, then DrawTilePiece072A or its second part.
+ * WAITS: no.
+ * Entry: X object. Exit: not drawn: the last compare; else as DrawTilePiece072A.
+ */
+Jump TilePieceInRange072A(uint8_t slot)
+{
+    uint8_t high, low;
+    Jump jump = { ended_kept(), 0, false };
+    Ended e;
+
+    high = RD8(OBJ->x_hi[slot]);
+    e = ended_load(high);
+    if (high == 0) {
+        high = RD8(OBJ->y_hi[slot]);
+        e = then(e, ended_load(high));
+        if (high == 0) {
+            return piece_table_entry(slot, e);
+        }
+        e = then(e, ended_compare(high, 0xFF));
+        if (high == 0xFF) {
+            low = RD8(OBJ->y_lo[slot]);
+            e = then(e, ended_load(low));
+            e = then(e, ended_compare(low, 0xC0));
+            if (low < 0xC0) {
+                jump.end = e;
+                return jump;
+            }
+        } else {
+            e = then(e, ended_compare(high, 0x01));
+            if (high != 1) {
+                jump.end = e;
+                jump.target = 0xA8ED;
+                jump.jumps = true;
+                return jump;
+            }
+            low = RD8(OBJ->y_lo[slot]);
+            e = then(e, ended_load(low));
+            e = then(e, ended_compare(low, 0x40));
+            if (low >= 0x40) {
+                jump.end = e;
+                return jump;
+            }
+        }
+    }
+    return DrawTilePiece072A(slot);
+}
+
+void abi_TilePieceInRange072A(void)
+{
+    abi_jump_exit(TilePieceInRange072A(cpu.x));
+}
+
+/*
+ * @routine 072A:01D TilePieceObject072A
+ * @run 70:A81D
+ * @stop A855
+ * WHAT IT DOES: A piece of the scenery drawn from a tile script. In state 0 the object is cleared when the bit its OBJ_3040 names is set in zField8F; otherwise it loads
+ * its record, takes OBJ_3510 as OBJ_3040 times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
+ * OBJ_34B8) names. In later states TilePieceInRange072A.
+ * HOW: BitMaskFromIndex, ClearObject, LoadObjectRecord, DrawTileScript.
+ * WAITS: no.
+ * Entry: X object. Exit: as the draw, as ClearObject, or as TilePieceInRange072A.
+ */
+Jump TilePieceObject072A(uint8_t slot)
+{
+    TileRun run;
+    Sum sum;
+    uint8_t state, y, mask, field, last, nz, index, item;
+    bool carry;
+    Jump jump = { ended_kept(), 0, false };
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        return TilePieceInRange072A(slot);
+    }
+    y = RD8(OBJ->f3040[slot]);
+    jsr_push(0xA828);
+    mask = BitMaskFromIndex072A(y);
+    jsr_pop();
+    field = RD8(ZP->field8f);
+    e = ended_with_carry(ended_with_y(ended_load((uint8_t)(mask & field)), 0), true);
+    if ((mask & field) != 0) {
+        ClearObject(slot);
+        jump.end = e;
+        return jump;
+    }
+    jsr_push(0xA832);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    index = RD8(OBJ->f3040[slot]);
+    index = (uint8_t)(index << 4);
+    WR8(OBJ->f3510[slot], index);
+    y = index;
+    WR8(OBJ->f3988[slot], rd8((uint16_t)(0xAE95 + y)));
+    WR8(OBJ->f3a38[slot], rd8((uint16_t)(0xAE96 + y)));
+    item = rd8((uint16_t)(0xAE97 + y));
+    sum = add_bytes(item, RD8(OBJ->f34b8[slot]), false);
+    item = sum.value;
+    jsr_push(0xA854);
+    run = DrawTileScript(item, 0);
+    jsr_pop();
+    jump.end = then(of_sum(sum), ended_of_tile_run(run, item));
+    return jump;
+}
+
+void abi_TilePieceObject072A(void)
+{
+    abi_jump_exit(TilePieceObject072A(cpu.x));
+}

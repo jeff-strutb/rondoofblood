@@ -571,6 +571,33 @@ BurstOnLanding_at1:
 BurstOnLanding_at0:
     rts
 
+; @routine 09EB:108 StepFacingAndJump
+; @run 70:B108
+; WHAT IT DOES: Steps the animation list at $B13B, sets the facing flag OBJ_2AC0 from the sign of the X speed's high byte (1 when it is not negative) and goes on to the code a table at $B131 names for OBJ_2800.
+; HOW: StepObjectFrames, two rotates through the carry the step leaves, a table jump.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+StepFacingAndJump:
+    lda #$B1
+    sta z:zTemp11
+    lda #$3B
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda a:OBJ_VX_HI,x
+    rol a
+    rol a
+    and #$01
+    eor #$01
+    sta a:OBJ_2AC0,x
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$B131,y
+    sta z:zTemp00
+    lda a:$B132,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
 ; @routine 09EB:14A MoveThenPick
 ; @run 70:B14A
 ; WHAT IT DOES: Moves the object along X, then PickGroundSpeedInWindow.
@@ -740,6 +767,29 @@ MaybeShootAhead:
     sta a:OBJ_2AC0,y
 MaybeShootAhead_at0:
     rts
+; @routine 09EB:4FF PickWaterOnTenth
+; @run 70:B4FF
+; WHAT IT DOES: Runs the code the state table names (JumpByStateTableE); then, for object $10 in a state of 2 or more, picks the water level (PickWaterLevel), sets PlayerByte3BF0 to 2 and gives
+; object 0 the angle word $0003 (OBJ_3510 3, OBJ_3568 0).
+; HOW: JumpByStateTableE, PickWaterLevel.
+; WAITS: no.
+; Entry: X object. Exit: the compare of X with $10, of the state with 2, or the last store's load.
+PickWaterOnTenth:
+    jsr JumpByStateTableE
+    cpx #$10
+    bne PickWaterOnTenth_at0
+    lda a:OBJ_27A8,x
+    cmp #$02
+    bcc PickWaterOnTenth_at0
+    jsr PickWaterLevel
+    lda #$02
+    sta a:PlayerByte3BF0
+    lda #$03
+    sta a:OBJ_3510
+    stz a:OBJ_3568
+PickWaterOnTenth_at0:
+    rts
+
 ; @routine 09EB:51E PickWaterLevel
 ; @run 70:B51E
 ; WHAT IT DOES: Sets the water the stage wants (RasterWaterWanted and LevelYHi) to a two-byte pair from a table at $B531 picked by

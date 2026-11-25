@@ -1,0 +1,8 @@
+a=00 x=10 y=00 s=F0 p= mem:27B8=00
+a=00 x=10 y=00 s=F0 p= mem:27B8=01
+a=00 x=10 y=00 s=F0 p= mem:27B8=02
+a=00 x=10 y=00 s=F0 p= mem:27B8=03
+a=00 x=10 y=00 s=F0 p= mem:27B8=04
+a=00 x=10 y=00 s=F0 p= mem:27B8=05
+a=00 x=10 y=00 s=F0 p= mem:27B8=06
+a=00 x=10 y=00 s=F0 p= mem:27B8=07

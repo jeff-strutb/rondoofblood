@@ -2662,3 +2662,95 @@ void abi_HitRowByKindAndHits(void)
 {
     abi_ended(HitRowByKindAndHits(cpu.x));
 }
+
+/*
+ * @routine 09EB:108 StepFacingAndJump
+ * @run 70:B108
+ * WHAT IT DOES: Steps the animation list at $B13B, sets the facing flag OBJ_2AC0 from the sign of the X speed's high byte (1 when it is not negative) and goes on to the code a table at $B131 names for OBJ_2800.
+ * HOW: StepObjectFrames, two rotates through the carry the step leaves, a table jump.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+ */
+Jump StepFacingAndJump(uint8_t slot, Ended *before)
+{
+    FrameStep step;
+    Jump jump = { { 0 }, 0, true };
+    uint8_t y, speed, bit, phase, index, low, high;
+    Ended e;
+
+    WR8(ZP->temp11, 0xB1);
+    WR8(ZP->temp10, 0x3B);
+    jsr_push(0xB113);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, true, y);
+    speed = RD8(OBJ->vx_hi[slot]);
+    bit = (uint8_t)(((speed >> 7) ^ 1) & 1);
+    e = then(e, ended_with_carry(ended_nz((uint8_t)(bit ^ 1)), (speed & 0x40) != 0));
+    e = then(e, ended_nz(bit));
+    WR8(OBJ->facing_left[slot], bit);
+    phase = RD8(OBJ->f2800[slot]);
+    index = (uint8_t)(phase << 1);
+    e = then(e, ended_with_carry(ended_with_y(ended_load(index), index), (phase & 0x80) != 0));
+    low = rd8((uint16_t)(0xB131 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB132 + index));
+    WR8(ZP->temp01, high);
+    *before = e;
+    jump.end = ended_load(high);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_StepFacingAndJump(void)
+{
+    Ended before;
+    Jump jump = StepFacingAndJump(cpu.x, &before);
+
+    abi_ended(before);
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 09EB:4FF PickWaterOnTenth
+ * @run 70:B4FF
+ * WHAT IT DOES: Runs the code the state table names (JumpByStateTableE); then, for object $10 in a state of 2 or more, picks the water level (PickWaterLevel), sets PlayerByte3BF0 to 2 and gives
+ * object 0 the angle word $0003 (OBJ_3510 3, OBJ_3568 0).
+ * HOW: JumpByStateTableE, PickWaterLevel.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare of X with $10, of the state with 2, or the last store's load.
+ */
+Ended PickWaterOnTenth(uint8_t slot)
+{
+    Jump jump;
+    uint8_t state;
+    Ended e;
+
+    jsr_push(0xB502);
+    jump = JumpByStateTableE(slot);
+    e = jump.end;
+    sync(&e);
+    slot = enter_handler(slot, jump);
+    jsr_pop();
+    e = then(e, cpy(slot, 0x10));
+    if (slot != 0x10) {
+        return e;
+    }
+    state = RD8(OBJ->state[slot]);
+    e = then(e, ended_compare(state, 2));
+    if (state < 2) {
+        return e;
+    }
+    jsr_push(0xB510);
+    e = then(e, PickWaterLevel());
+    jsr_pop();
+    wr8(PlayerByte3BF0, 2);
+    WR8(OBJ->f3510[0], 3);
+    WR8(OBJ->angle_hi[0], 0);
+    return then(e, ended_load(3));
+}
+
+void abi_PickWaterOnTenth(void)
+{
+    abi_ended(PickWaterOnTenth(cpu.x));
+}

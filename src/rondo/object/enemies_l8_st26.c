@@ -389,3 +389,175 @@ void abi_CountDownThenStartPieceInSlots18To1B(void)
 {
     abi_ended(CountDownThenStartPieceInSlots18To1B(cpu.x));
 }
+
+/* TurnAngleToward's exit (turn_angle_exit_shim): equal gives the angle with Z set and C set, else the last add. */
+static Ended ended_of_turn_angle(TurnAngleResult r)
+{
+    if (r.equal) {
+        return ended_with_carry(ended_with_a(ended_nz(0), r.angle), true);
+    }
+    return ended_of_sum(r.last);
+}
+
+/*
+ * @routine 101B:2EB ChaseWanderingPointWithSpeedRamp
+ * @run 70:B2EB
+ * WHAT IT DOES: In state 0 loads the record, sets bit 4 of the flash flags and places the object at X $0020, Y $0110. Later it steps the list at $B3E3, runs SettleWhenLowOnFirstRow, faces the player, and every $30 to $6F frames (OBJ_3618) picks one of eight offsets (OBJ_35C0, table at $B406) around the player as its target. It moves by the speed made from the angle OBJ_34B8 and the length OBJ_3510:OBJ_3568, turns the angle two steps toward the target and speeds up by 8 when the angle is within 3 of it (slowing by $10 when it is not and it is going faster than $50).
+ * HOW: LoadObjectRecord, StepObjectFrames, SettleWhenLowOnFirstRow, SideOfPlayer, NextRandom, SetVelocityFromAngle, ApplyVelocity, AngleToPoint, TurnAngleToward, 16-bit adds in memory.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+ */
+Ended ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t state, last, nz, y = y_entry, value, facing, wait, pick, angle, kind, scale_hi, scale_lo, index, near, high, low;
+    bool carry;
+    FrameStep step;
+    SideResult side;
+    RandomResult random;
+    ScaleResult scale;
+    AxisMove move;
+    AngleExit toward;
+    TurnAngleResult turn;
+    Sum sum, diff;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        jsr_push(0xB2F3);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = then(e, ended_of_record(last, nz, carry));
+        value = RD8(OBJ->flash_flags[slot]);
+        value = (uint8_t)(value | 0x10);
+        WR8(OBJ->flash_flags[slot], value);
+        e = then(e, ended_load(value));
+        WR8(OBJ->x_hi[slot], 0);
+        WR8(OBJ->x_lo[slot], 0x20);
+        WR8(OBJ->y_hi[slot], 1);
+        WR8(OBJ->y_lo[slot], 0x10);
+        return then(e, ended_load(0x10));
+    }
+    e = then(e, l8_step_list(slot, 0xB3E3, 0xB319, false, &y, &step));
+    jsr_push(0xB31C);
+    e = then(e, SettleWhenLowOnFirstRow(slot));
+    jsr_pop();
+    jsr_push(0xB31F);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    e = then(e, ended_of_side(side));
+    facing = side.sides & 0x01;
+    e = then(e, ended_load(facing));
+    WR8(OBJ->facing_left[slot], facing);
+    wait = RD8(OBJ->f3618[slot]);
+    e = then(e, ended_load(wait));
+    if (wait == 0) {
+        jsr_push(0xB32C);
+        random = NextRandom();
+        jsr_pop();
+        e = then(e, ended_of_random(random));
+        sum = add_bytes((uint8_t)(random.value & 0x3F), 0x30, false);
+        WR8(OBJ->f3618[slot], sum.value);
+        e = then(e, ended_of_sum(sum));
+        jsr_push(0xB337);
+        random = NextRandom();
+        jsr_pop();
+        e = then(e, ended_of_random(random));
+        pick = random.value & 0x07;
+        WR8(OBJ->f35c0[slot], pick);
+        e = then(e, ended_load(pick));
+    }
+    e = then(e, ended_nz(DEC8(OBJ->f3618[slot])));
+    scale_lo = RD8(OBJ->f3568[slot]);
+    WR8(ZP->temp00, scale_lo);
+    scale_hi = RD8(OBJ->f3510[slot]);
+    WR8(ZP->temp01, scale_hi);
+    angle = RD8(OBJ->f34b8[slot]);
+    e = then(e, ended_load(angle));
+    jsr_push(0xB34F);
+    scale = SetVelocityFromAngle(angle, slot);
+    jsr_pop();
+    e = then(e, l8_of_scale(scale));
+    jsr_push(0xB352);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    kind = RD8(OBJ->f35c0[slot]);
+    index = (uint8_t)(kind << 2);
+    y = index;
+    e = then(e, ended_with_y(ended_with_carry(ended_load(index), (uint8_t)(kind << 1) >= 0x80), y));
+    value = RD8(OBJ->x_lo[0]);
+    sum = add_bytes(value, rd8((uint16_t)(0xB406 + y)), false);
+    WR8(ZP->temp08, sum.value);
+    value = RD8(OBJ->x_hi[0]);
+    sum = add_bytes(value, rd8((uint16_t)(0xB407 + y)), sum.carry);
+    WR8(ZP->temp09, sum.value);
+    value = RD8(OBJ->y_lo[0]);
+    sum = add_bytes(value, rd8((uint16_t)(0xB408 + y)), false);
+    WR8(ZP->temp0a, sum.value);
+    value = RD8(OBJ->y_hi[0]);
+    sum = add_bytes(value, rd8((uint16_t)(0xB409 + y)), sum.carry);
+    WR8(ZP->temp0b, sum.value);
+    e = then(e, ended_of_sum(sum));
+    jsr_push(0xB37D);
+    toward = AngleToPoint(slot);
+    jsr_pop();
+    e = then(e, l8_of_angle(toward));
+    WR8(ZP->temp02, toward.a);
+    WR8(ZP->temp00, 2);
+    angle = RD8(OBJ->f34b8[slot]);
+    WR8(ZP->temp01, angle);
+    e = then(e, ended_load(angle));
+    jsr_push(0xB38B);
+    turn = TurnAngleToward();
+    jsr_pop();
+    e = then(e, ended_of_turn_angle(turn));
+    value = (uint8_t)((turn.equal ? turn.angle : turn.last.value) & 0xFE);
+    WR8(OBJ->f34b8[slot], value);
+    e = then(e, ended_load(value));
+    diff = sub_bytes(value, RD8(ZP->temp02), true);
+    sum = add_bytes(diff.value, 4, false);
+    e = then(then(e, ended_of_sum(diff)), ended_compare(sum.value, 8));
+    near = (uint8_t)(sum.value < 8);
+    if (!near) {
+        high = RD8(OBJ->f3510[slot]);
+        e = then(e, ended_load(high));
+        if (high == 0) {
+            low = RD8(OBJ->f3568[slot]);
+            e = then(e, ended_compare(low, 0x50));
+            if (low < 0x50) {
+                return e;
+            }
+        }
+        low = RD8(OBJ->f3568[slot]);
+        diff = sub_bytes(low, 0x10, true);
+        WR8(OBJ->f3568[slot], diff.value);
+        high = RD8(OBJ->f3510[slot]);
+        diff = sub_bytes(high, 0, diff.carry);
+        WR8(OBJ->f3510[slot], diff.value);
+        return then(e, ended_of_sum(diff));
+    }
+    high = RD8(OBJ->f3510[slot]);
+    e = then(e, ended_compare(high, 1));
+    if (high >= 1) {
+        low = RD8(OBJ->f3568[slot]);
+        e = then(e, ended_compare(low, 0x10));
+        if (low >= 0x10) {
+            WR8(OBJ->f3510[slot], 1);
+            WR8(OBJ->f3568[slot], 0x10);
+            return then(e, ended_load(0x10));
+        }
+    }
+    low = RD8(OBJ->f3568[slot]);
+    sum = add_bytes(low, 8, false);
+    WR8(OBJ->f3568[slot], sum.value);
+    high = RD8(OBJ->f3510[slot]);
+    sum = add_bytes(high, 0, sum.carry);
+    WR8(OBJ->f3510[slot], sum.value);
+    return then(e, ended_of_sum(sum));
+}
+
+void abi_ChaseWanderingPointWithSpeedRamp(void)
+{
+    abi_ended(ChaseWanderingPointWithSpeedRamp(cpu.x, cpu.y));
+}

@@ -95,6 +95,126 @@ CountDownThenStartPieceInSlots18To1B_at2:
     sta a:OBJ_3510,x
     rts
 
+; @routine 101B:2EB ChaseWanderingPointWithSpeedRamp
+; @run 70:B2EB
+; WHAT IT DOES: In state 0 loads the record, sets bit 4 of the flash flags and places the object at X $0020, Y $0110. Later it steps the list at $B3E3, runs SettleWhenLowOnFirstRow, faces the player, and every $30 to $6F frames (OBJ_3618) picks one of eight offsets (OBJ_35C0, table at $B406) around the player as its target. It moves by the speed made from the angle OBJ_34B8 and the length OBJ_3510:OBJ_3568, turns the angle two steps toward the target and speeds up by 8 when the angle is within 3 of it (slowing by $10 when it is not and it is going faster than $50).
+; HOW: LoadObjectRecord, StepObjectFrames, SettleWhenLowOnFirstRow, SideOfPlayer, NextRandom, SetVelocityFromAngle, ApplyVelocity, AngleToPoint, TurnAngleToward, 16-bit adds in memory.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+ChaseWanderingPointWithSpeedRamp:
+    lda a:OBJ_27A8,x
+    bne ChaseWanderingPointWithSpeedRamp_at0
+    jsr VecLoadObjectRecord
+    lda a:OBJ_2B18,x
+    ora #$10
+    sta a:OBJ_2B18,x
+    stz a:OBJ_X_HI,x
+    lda #$20
+    sta a:OBJ_X_LO,x
+    lda #$01
+    sta a:OBJ_Y_HI,x
+    lda #$10
+    sta a:OBJ_Y_LO,x
+    rts
+ChaseWanderingPointWithSpeedRamp_at0:
+    lda #$E3
+    sta z:zTemp10
+    lda #$B3
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jsr SettleWhenLowOnFirstRow
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    lda a:OBJ_3618,x
+    bne ChaseWanderingPointWithSpeedRamp_at1
+    jsr VecNextRandom
+    and #$3F
+    clc
+    adc #$30
+    sta a:OBJ_3618,x
+    jsr VecNextRandom
+    and #$07
+    sta a:OBJ_35C0,x
+ChaseWanderingPointWithSpeedRamp_at1:
+    dec a:OBJ_3618,x
+    lda a:OBJ_3568,x
+    sta z:zTemp00
+    lda a:OBJ_3510,x
+    sta z:zTemp01
+    lda a:OBJ_34B8,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    lda a:OBJ_35C0,x
+    asl a
+    asl a
+    tay
+    lda a:OBJ_X_LO
+    clc
+    adc a:$B406,y
+    sta z:zTemp08
+    lda a:OBJ_X_HI
+    adc a:$B407,y
+    sta z:zTemp09
+    lda a:OBJ_Y_LO
+    clc
+    adc a:$B408,y
+    sta z:zTemp0A
+    lda a:OBJ_Y_HI
+    adc a:$B409,y
+    sta z:zTemp0B
+    jsr VecAngleToPoint
+    sta z:zTemp02
+    lda #$02
+    sta z:zTemp00
+    lda a:OBJ_34B8,x
+    sta z:zTemp01
+    jsr VecTurnAngleToward
+    and #$FE
+    sta a:OBJ_34B8,x
+    sec
+    sbc z:zTemp02
+    clc
+    adc #$04
+    cmp #$08
+    bcs ChaseWanderingPointWithSpeedRamp_at2
+    lda a:OBJ_3510,x
+    cmp #$01
+    bcc ChaseWanderingPointWithSpeedRamp_at3
+    lda a:OBJ_3568,x
+    cmp #$10
+    bcc ChaseWanderingPointWithSpeedRamp_at3
+    lda #$01
+    sta a:OBJ_3510,x
+    lda #$10
+    sta a:OBJ_3568,x
+    rts
+ChaseWanderingPointWithSpeedRamp_at3:
+    lda a:OBJ_3568,x
+    clc
+    adc #$08
+    sta a:OBJ_3568,x
+    lda a:OBJ_3510,x
+    adc #$00
+    sta a:OBJ_3510,x
+ChaseWanderingPointWithSpeedRamp_at5:
+    rts
+ChaseWanderingPointWithSpeedRamp_at2:
+    lda a:OBJ_3510,x
+    bne ChaseWanderingPointWithSpeedRamp_at4
+    lda a:OBJ_3568,x
+    cmp #$50
+    bcc ChaseWanderingPointWithSpeedRamp_at5
+ChaseWanderingPointWithSpeedRamp_at4:
+    lda a:OBJ_3568,x
+    sec
+    sbc #$10
+    sta a:OBJ_3568,x
+    lda a:OBJ_3510,x
+    sbc #$00
+    sta a:OBJ_3510,x
+    rts
+
 ; @routine 101B:426 SettleWhenLowOnFirstRow
 ; @run 70:B426
 ; WHAT IT DOES: When OBJ_3670 and the Y high byte are both 0 and the Y low byte is below $D0, sets OBJ_3670 1 and clears the flash flags.

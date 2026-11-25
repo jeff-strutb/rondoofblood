@@ -37,6 +37,7 @@ import catalog  # noqa: E402
 import ledger  # noqa: E402
 import records  # noqa: E402
 
+CONFIG_DIR = os.path.join(TOP, "config", "rondo")
 GATES = ("proper_c", "gate_0", "gate_c", "gate_a5", "gate_a7")
 
 
@@ -145,6 +146,12 @@ def a7_reason(name, st, ext):
     e = st["a7"].get(name)
     mine = sorted({r["script"] + " " + r["defects"] for r in st["rec"].a7 if r["routine"] == name and r.get("defects")})
     under = f" Defects under it: {'; '.join(mine[:3])}." if mine else ""
+    lp = os.path.join(CONFIG_DIR, "lockstep_defects.csv")
+    if os.path.exists(lp):
+        ls = [f"{r['script']} with {r['mode']} serving: {r['kinds']}" for r in records.read(lp)
+              if r["routine"] == name and r["mode"] != "serve-all"]
+        if ls:
+            under += " LOCKSTEP DEFECT (its C in place): " + "; ".join(ls[:3]) + "."
     if not e:
         return lead + "No counting script ran its C in lockstep (not swapped, not run inside a swapped call)." + under
     bad = []

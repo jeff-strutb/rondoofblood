@@ -57,7 +57,8 @@ import records  # noqa: E402
 LINKS = ("references", "tools/toolchains/src", "tools/toolchains/cc65", "tools/toolchains/pce",
          "build/rondo/disc", "build/rondo/system", "build/rondo/trace")
 OWNED = ("config/rondo/runs", "config/rondo/gate_a5.csv", "config/rondo/gate_a7.csv",
-         "config/rondo/gate_a7_routines.csv", "docs/rondo/ledger.csv", "syscard/ledger.csv", "config/rondo/drafted.csv")
+         "config/rondo/gate_a7_routines.csv", "docs/rondo/ledger.csv", "syscard/ledger.csv", "config/rondo/drafted.csv",
+         "config/rondo/lockstep_defects.csv")
 SCRIPT_TIMEOUT = 7200
 GUESS = 150.0          # seconds of A5 plus A7 for a script never measured: play_s0_r1 took 123 s and attract_82 174 s
 
@@ -369,7 +370,8 @@ def served(main, opts):
     drafts = sv.read_drafts(cache)
     filed_of = {lab: n for n, labs in labels.items() for lab in labs}
     log(f"served: {rev}, draft cache {st}: {len(drafts)} drafts, {len(labels)} of {len(ext)} filed routines have one", b)
-    out = os.path.join(b, f"out-served-{rev}")
+    mode = "proper" if opts.get("proper") else "serve-all" if opts.get("serve_all") else "mix"
+    out = os.path.join(b, f"out-served-{rev}-{mode}")
     shutil.rmtree(out, ignore_errors=True)
     draft_a5 = {}
     if opts.get("draft_a5"):
@@ -457,6 +459,14 @@ def served(main, opts):
             log(f"served: A7 of {s} FAILED {res['errors']}", b)
             continue
         log(f"served: A7 of {s}: {res['a7']['verdict']}: {res['a7']['detail']}", b)
+        f = res["a7"]["fields"]
+        log(f"served: A7 of {s} ({mode}) counts: {f['swapped']} swapped, {f['compared']} frames compared, {f['identical']} identical, "
+            f"{f['defects']} access defects, parked {f['parked']}, unreached {f['unreached']}", b)
+        path = os.path.join(main, "config", "rondo", "lockstep_defects.csv")
+        old_rows = [r for r in records.read(path) if not (r["script"] == s and r["mode"] == mode)]
+        new_rows = [{"script": s, "mode": mode, "routine": r, "kinds": pack(k), "defects": sum(k.values()), "source": rev}
+                    for r, k in sorted(res["a7_defects"].items(), key=lambda kv: -sum(kv[1].values()))]
+        records.write(path, ["script", "mode", "routine", "kinds", "defects", "source"], old_rows + new_rows)
         bad = sorted(((sum(k.values()), r, k) for r, k in res["a7_defects"].items()), reverse=True)[:8]
         for n, r, k in bad:
             log(f"  defects under {filed_of.get(r, r)} ({r}): {k}", b)

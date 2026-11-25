@@ -2095,3 +2095,194 @@ void abi_FallStepAndLeave(void)
 {
     abi_ended(FallStepAndLeave(cpu.x));
 }
+
+/*
+ * @routine 093C:082 TouchesPlayerMark
+ * @run 70:B882
+ * WHAT IT DOES: Says, with C, whether a mark applies to the object: false (C clear) when the object has no state or is in state 4 or the player byte PlayerByte3BD8 is 0;
+ * otherwise a table byte decides: with the player byte 2 the table at $A166, else the table at $A146, indexed by the wave counter's low three bits plus $18; a nonzero
+ * byte (zero for the first table) says yes (C set).
+ * HOW: Compares and a table read (bank 70).
+ * Untraced: the player byte 2 arm (B88E to B89A).
+ * WAITS: no.
+ * Entry: X object. Exit: C the answer; A and N, Z as the last load or compare left them.
+ */
+ViewTest TouchesPlayerMark(uint8_t slot)
+{
+    ViewTest r = { false, { 0 } };
+    uint8_t state, mode, wave, index, byte;
+    Sum sum;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        r.end = then(e, ended_with_carry(ended_kept(), false));
+        return r;
+    }
+    e = then(e, ended_compare(state, 4));
+    if (state == 4) {
+        r.end = then(e, ended_with_carry(ended_kept(), false));
+        return r;
+    }
+    mode = rd8(PlayerByte3BD8);
+    e = then(e, ended_load(mode));
+    if (mode == 0) {
+        r.end = then(e, ended_with_carry(ended_kept(), false));
+        return r;
+    }
+    e = then(e, ended_compare(mode, 2));
+    wave = RD8(ZP->wave_counter);
+    wave = (uint8_t)(wave & 0x07);
+    e = then(e, ended_load(wave));
+    sum = add_bytes(wave, 0x18, false);
+    e = then(e, of_sum(sum));
+    index = sum.value;
+    e = then(e, ended_with_y(ended_kept(), index));
+    if (mode == 2) {
+        byte = rd8((uint16_t)(0xA166 + index));
+        e = then(e, ended_load(byte));
+        if (byte == 0) {
+            r.end = then(e, ended_with_carry(ended_kept(), false));
+            return r;
+        }
+        r.in_view = true;
+        r.end = then(e, ended_with_carry(ended_kept(), true));
+        return r;
+    }
+    byte = rd8((uint16_t)(0xA146 + index));
+    e = then(e, ended_load(byte));
+    r.in_view = byte != 0;
+    r.end = then(e, ended_with_carry(ended_kept(), r.in_view));
+    return r;
+}
+
+void abi_TouchesPlayerMark(void)
+{
+    abi_ended(TouchesPlayerMark(cpu.x).end);
+}
+
+/*
+ * @routine 093C:1DD CountBothPairs
+ * @run 70:B9DD
+ * WHAT IT DOES: Runs CountTimerPairDownOrRepick and CountAnglePairDownOrRepick.
+ * HOW: Two calls.
+ * WAITS: no.
+ * Entry: X object. Exit: as the second, over the first's.
+ */
+Ended CountBothPairs(uint8_t slot)
+{
+    Ended e;
+
+    jsr_push(0xB9E0);
+    e = CountTimerPairDownOrRepick(slot);
+    jsr_pop();
+    jsr_push(0xB9E3);
+    e = then(e, CountAnglePairDownOrRepick(slot));
+    jsr_pop();
+    return e;
+}
+
+void abi_CountBothPairs(void)
+{
+    abi_ended(CountBothPairs(cpu.x));
+}
+
+/*
+ * @routine 09E9:6B0 HealAndClear
+ * @run 70:A6B0
+ * WHAT IT DOES: An item that heals: the player's health goes up $28 (to at most $5C) and the item is cleared; when the health is already $5C the object instead plays sound $0B
+ * and becomes a kind $9F in state 0 with a timer of 3.
+ * HOW: A compare, an add, a tail jump into ClearObject.
+ * Untraced: the full-health arm (A6B6) and the cap (A6D4).
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare, add or load.
+ */
+SoundEnd HealAndClear(uint8_t slot, uint8_t y)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t health;
+    Sum sum;
+    Ended e;
+
+    health = RD8(ZP->player_health);
+    e = ended_compare(health, 0x5C);
+    if (health == 0x5C) {
+        r.before = then(e, ended_load(0x0B));
+        r.sounded = true;
+        r.command = 0x0B;
+        jsr_push(0xA6BB);
+        r.call = SoundCommand(0x0B, slot, y);
+        jsr_pop();
+        WR8(OBJ->kind[slot], 0x9F);
+        WR8(OBJ->life_timer[slot], 3);
+        WR8(OBJ->state[slot], 0);
+        r.end = ended_load(0);
+        return r;
+    }
+    health = RD8(ZP->player_health);
+    sum = add_bytes(health, 0x28, false);
+    WR8(ZP->player_health, sum.value);
+    e = then(e, of_sum(sum));
+    e = then(e, ended_compare(sum.value, 0x5C));
+    if (sum.value >= 0x5C) {
+        WR8(ZP->player_health, 0x5C);
+        e = then(e, ended_load(0x5C));
+    }
+    ClearObject(slot);
+    r.end = e;
+    return r;
+}
+
+void abi_HealAndClear(void)
+{
+    abi_sound_end(HealAndClear(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 09EB:6CD StartOnPlayerAnimation
+ * @run 70:B6CD
+ * WHAT IT DOES: In state 0 loads the object's record and sets its hitbox offsets to $15 and $14; later it takes the place and facing of slot $10 and steps the animation list that
+ * a table at $B707 names for slot $10's state (the list index from the table at $B6FF).
+ * HOW: LoadObjectRecord, CopyObjectPlaceBack, table reads (bank 70), a tail jump into StepObjectFrames.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: state 0: A $14 from the store; else as StepObjectFrames.
+ */
+Ended StartOnPlayerAnimation(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t state, nz, last, placed, facing, lead, row, y;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        jsr_push(0xB6D5);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->hitbox_dx[slot], 0x15);
+        WR8(OBJ->hitbox_dy[slot], 0x14);
+        return then(ended_of_record(last, nz, carry), ended_load(0x14));
+    }
+    jsr_push(0xB6E5);
+    placed = CopyObjectPlaceBack(0x10, slot);
+    jsr_pop();
+    e = ended_with_y(ended_load(placed), 0x10);
+    facing = RD8(OBJ->facing_left[0x10]);
+    WR8(OBJ->facing_left[slot], facing);
+    e = then(e, ended_load(facing));
+    lead = RD8(OBJ->state[0x10]);
+    row = rd8((uint16_t)(0xB6FF + lead));
+    e = then(e, ended_with_y(ended_load(row), lead));
+    y = row;
+    e = then(e, ended_with_y(ended_kept(), y));
+    WR8(ZP->temp10, rd8((uint16_t)(0xB707 + row)));
+    WR8(ZP->temp11, rd8((uint16_t)(0xB708 + row)));
+    step = StepObjectFrames(slot, &y);
+    return then(e, ended_of_frame_step(step, true, y));
+}
+
+void abi_StartOnPlayerAnimation(void)
+{
+    abi_ended(StartOnPlayerAnimation(cpu.x));
+}

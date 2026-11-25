@@ -81,8 +81,11 @@ static inline void push8(uint8_t value)
 
 static inline uint8_t pull8(void)
 {
-    cpu.s = (uint8_t)(cpu.s + 1);
-    return rd8((uint16_t)(0x2100 + cpu.s));
+    uint8_t s = (uint8_t)(cpu.s + 1);
+    uint8_t v = rd8((uint16_t)(0x2100 + s));      /* the access first: the checker may hand the call to the original here */
+
+    cpu.s = s;
+    return v;
 }
 
 /*

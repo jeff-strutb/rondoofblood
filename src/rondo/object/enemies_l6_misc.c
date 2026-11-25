@@ -660,3 +660,78 @@ void abi_StepListB53CToState5(void)
 {
     abi_ended(StepListB53CToState5(cpu.x, cpu.y));
 }
+
+/* TurnAngleToward's exit (turn_angle_exit_shim): equal gives the angle with Z set and C set, else the last add. */
+static Ended ended_of_turn(TurnAngleResult r)
+{
+    if (r.equal) {
+        return ended_with_carry(ended_with_a(ended_nz(0), r.angle), true);
+    }
+    return ended_of_sum(r.last);
+}
+
+/*
+ * @routine 0E0C:1C2 TurnTowardPlayerAndMove
+ * @run 70:B9C2
+ * WHAT IT DOES: Runs TurnTowardPlayerOrStepList, sets the object's speed from its angle OBJ_34B8 with length $01C0 and moves it, then turns the angle toward the angle to the player (step 2) with the low bit cleared; counts OBJ_3510 down and at zero sets it to $F0 and goes on to the next state.
+ * HOW: TurnTowardPlayerOrStepList, SetVelocityFromAngle, ApplyVelocity, AngleToPlayer, TurnAngleToward, DEC, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: the count, or the new state's N and Z (A $F0).
+ */
+Ended TurnTowardPlayerAndMove(uint8_t slot, uint8_t y_entry)
+{
+    ScaleResult scale;
+    AxisMove move;
+    AngleExit angle;
+    TurnAngleResult turn;
+    uint8_t angle_byte, left, state;
+    Ended e;
+
+    jsr_push(0xB9C5);
+    e = TurnTowardPlayerOrStepList(slot, y_entry);
+    jsr_pop();
+    WR8(ZP->temp00, 0xC0);
+    WR8(ZP->temp01, 0x01);
+    angle_byte = RD8(OBJ->f34b8[slot]);
+    e = then(then(e, ended_load(0x01)), ended_load(angle_byte));
+    jsr_push(0xB9D3);
+    scale = SetVelocityFromAngle(angle_byte, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    jsr_push(0xB9D6);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    jsr_push(0xB9D9);
+    angle = AngleToPlayer(slot);
+    jsr_pop();
+    e = then(e, ended_of_angle(angle));
+    WR8(ZP->temp02, angle.a);
+    WR8(ZP->temp00, 0x02);
+    angle_byte = RD8(OBJ->f34b8[slot]);
+    WR8(ZP->temp01, angle_byte);
+    e = then(then(e, ended_load(0x02)), ended_load(angle_byte));
+    jsr_push(0xB9E7);
+    turn = TurnAngleToward();
+    jsr_pop();
+    e = then(e, ended_of_turn(turn));
+    angle_byte = (uint8_t)(turn.angle & 0xFE);
+    if (!turn.equal) {
+        angle_byte = (uint8_t)(turn.last.value & 0xFE);
+    }
+    e = then(e, ended_load(angle_byte));
+    WR8(OBJ->f34b8[slot], angle_byte);
+    left = DEC8(OBJ->f3510[slot]);
+    e = then(e, ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    WR8(OBJ->f3510[slot], 0xF0);
+    state = INC8(OBJ->state[slot]);
+    return then(then(e, ended_load(0xF0)), ended_nz(state));
+}
+
+void abi_TurnTowardPlayerAndMove(void)
+{
+    abi_ended(TurnTowardPlayerAndMove(cpu.x, cpu.y));
+}

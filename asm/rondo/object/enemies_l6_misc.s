@@ -289,6 +289,38 @@ StepListB9B7ThenAimAtPlayer:
 StepListB9B7ThenAimAtPlayer_at0:
     rts
 
+; @routine 0E0C:1C2 TurnTowardPlayerAndMove
+; @run 70:B9C2
+; WHAT IT DOES: Runs TurnTowardPlayerOrStepList, sets the object's speed from its angle OBJ_34B8 with length $01C0 and moves it, then turns the angle toward the angle to the player (step 2) with the low bit cleared; counts OBJ_3510 down and at zero sets it to $F0 and goes on to the next state.
+; HOW: TurnTowardPlayerOrStepList, SetVelocityFromAngle, ApplyVelocity, AngleToPlayer, TurnAngleToward, DEC, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: the count, or the new state's N and Z (A $F0).
+TurnTowardPlayerAndMove:
+    jsr TurnTowardPlayerOrStepList
+    lda #$C0
+    sta z:zTemp00
+    lda #$01
+    sta z:zTemp01
+    lda a:OBJ_34B8,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    jsr VecAngleToPlayer
+    sta z:zTemp02
+    lda #$02
+    sta z:zTemp00
+    lda a:OBJ_34B8,x
+    sta z:zTemp01
+    jsr VecTurnAngleToward
+    and #$FE
+    sta a:OBJ_34B8,x
+    dec a:OBJ_3510,x
+    bne TurnTowardPlayerAndMove_at0
+    lda #$F0
+    sta a:OBJ_3510,x
+    inc a:OBJ_27A8,x
+TurnTowardPlayerAndMove_at0:
+    rts
+
 ; @routine 0E0C:201 TurnTowardPlayerOrStepList
 ; @run 70:BA01
 ; WHAT IT DOES: While OBJ_3568 counts down the object waits, turning round when it reaches zero. At zero it compares its facing with the player's side: when they differ it sets OBJ_3568 to 5 and frame $2C, otherwise it steps the animation list at $B9FA.

@@ -525,6 +525,7 @@ Ended WalkWhileNearPlayer(uint8_t slot, uint8_t y_entry);
 Ended LoadThenFallAndFlash(uint8_t slot);
 Ended LoadThenSpawnWhileScrolling(uint8_t slot);
 Ended SpawnPointFromTables(uint8_t slot);
+Ended TurnTowardPlayerAndMove(uint8_t slot, uint8_t y_entry);
 Ended FollowSlot10WithHitBox(uint8_t slot);
 Ended SpeedFromRandomRow(uint8_t slot);
 Ended SetHitBoxFromFrameTable(uint8_t slot);

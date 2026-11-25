@@ -152,4 +152,29 @@ StageScrollEnd StageScrollStepResident(uint8_t x);
 /* system/stage_frame.c: the frame set-up's end; leaves what RunObjects leaves. */
 void StepScrollAndRunObjects(uint8_t x);
 
+/* system/stage_objects.c: sets a stage's objects up and runs the first frame; leaves what RunObjects leaves. */
+void SetUpStageObjects(uint8_t x);
+void SetUpStageObjectsB(uint8_t x);
+void SetUpStageObjectsC(uint8_t x);
+void SetUpStageObjectsD(uint8_t x);
+void SetUpStageObjectsE(uint8_t x);
+void SetUpStageObjectsF(uint8_t x);
+void SetUpStageObjectsG(uint8_t x);
+void SetUpStageObjectsH(uint8_t x);
+void SetUpStageObjectsI(uint8_t x);
+void SetUpStageObjectsJ(uint8_t x);
+void SetUpStageObjectsK(uint8_t x);
+void SetUpStageObjectsL(uint8_t x);
+void SetUpStageObjectsM(uint8_t x);
+void SetUpStageObjectsN(uint8_t x);
+void SetUpStageObjectsO(uint8_t x);
+void SetUpStageObjectsP(uint8_t x);
+void SetUpStageObjectsQ(uint8_t x);
+void SetUpStageObjectsR(uint8_t x);
+void SetUpStageObjectsS(uint8_t x);
+void SetUpStageObjectsT(uint8_t x);
+void SetUpStageObjectsU(uint8_t x);
+void SetUpStageObjectsV(uint8_t x);
+void SetUpStageObjectsW(uint8_t x);
+
 #endif

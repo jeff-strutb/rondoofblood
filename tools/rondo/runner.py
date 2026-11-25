@@ -388,8 +388,9 @@ def served(main, opts):
             if not ok:
                 print("runner: the all-drafts box did not build:\n" + text)
                 return 1
-        for s in scripts:
-            res = measure(tree, allbox, os.path.join(out, "d5"), s, "d5")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(opts["workers"], len(scripts)))) as ex:
+            results_d5 = list(ex.map(lambda s: measure(tree, allbox, os.path.join(out, "d5"), s, "d5"), scripts))
+        for s, res in zip(scripts, results_d5):
             if res.get("errors"):
                 print(f"runner: draft A5 of {s} failed: {res['errors']}")
                 return 1

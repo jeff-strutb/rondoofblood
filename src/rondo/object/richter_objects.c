@@ -375,23 +375,45 @@ void abi_RichterObjectCharge(void)
  */
 Sum RichterObjectAtPlayer(uint8_t object)
 {
-    int16_t across = (int16_t)(int8_t)rd8(zTemp04);
-    int16_t down = (int16_t)(int8_t)rd8(zTemp06);
-    Sum low;
+    uint8_t value, base;
+    Sum sum;
 
-    if (rd8((uint16_t)(OBJ_2AC0 + object)) != 0)
-        across = (int16_t)-across;
-    wr8(zTemp04, (uint8_t)across);
-    wr8(zTemp05, (uint8_t)((uint16_t)across >> 8));
-    wr8(zTemp07, (uint8_t)((uint16_t)down >> 8));
-    low = add_bytes(rd8(OBJ_X_LO + PLAYER), (uint8_t)across, false);
-    wr8((uint16_t)(OBJ_X_LO + object), low.value);
-    wr8((uint16_t)(OBJ_X_HI + object), add_bytes(rd8(OBJ_X_HI + PLAYER), (uint8_t)((uint16_t)across >> 8), low.carry).value);
-    low = add_bytes(rd8(OBJ_Y_LO + PLAYER), (uint8_t)down, false);
-    wr8((uint16_t)(OBJ_Y_LO + object), low.value);
-    low = add_bytes(rd8(OBJ_Y_HI + PLAYER), (uint8_t)((uint16_t)down >> 8), low.carry);
-    wr8((uint16_t)(OBJ_Y_HI + object), low.value);
-    return low;
+    WR8(ZP->temp05, 0);
+    WR8(ZP->temp07, 0);
+    value = RD8(ZP->temp04);
+    if (value & 0x80) {
+        DEC8(ZP->temp05);
+    }
+    value = RD8(ZP->temp06);
+    if (value & 0x80) {
+        DEC8(ZP->temp07);
+    }
+    value = RD8(OBJ->facing_left[object]);
+    if (value != 0) {
+        value = RD8(ZP->temp04);
+        sum = sub_bytes(0, value, true);
+        WR8(ZP->temp04, sum.value);
+        value = RD8(ZP->temp05);
+        sum = sub_bytes(0, value, sum.carry);
+        WR8(ZP->temp05, sum.value);
+    }
+    base = RD8(OBJ->x_lo[0]);
+    value = RD8(ZP->temp04);
+    sum = add_bytes(base, value, false);
+    WR8(OBJ->x_lo[object], sum.value);
+    base = RD8(OBJ->x_hi[0]);
+    value = RD8(ZP->temp05);
+    sum = add_bytes(base, value, sum.carry);
+    WR8(OBJ->x_hi[object], sum.value);
+    base = RD8(OBJ->y_lo[0]);
+    value = RD8(ZP->temp06);
+    sum = add_bytes(base, value, false);
+    WR8(OBJ->y_lo[object], sum.value);
+    base = RD8(OBJ->y_hi[0]);
+    value = RD8(ZP->temp07);
+    sum = add_bytes(base, value, sum.carry);
+    WR8(OBJ->y_hi[object], sum.value);
+    return sum;
 }
 
 void abi_RichterObjectAtPlayer(void)

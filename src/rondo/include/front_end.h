@@ -477,5 +477,9 @@ ObjExit EndingStartScript18(uint8_t object, uint8_t entry_a);
 ObjExit EndingScrollSlide(uint8_t object);
 ObjExit EndingSplitScrolls(uint8_t object, uint8_t entry_a);
 ObjExit EndingScrollsOn(uint8_t object, uint8_t entry_a);
+ObjExit EndingRiseFrame31(uint8_t object);
+ObjExit EndingRiseFrame32A(uint8_t object);
+ObjExit EndingRiseFrame32B(uint8_t object);
+ObjExit EndingRiseWithList(uint8_t object);
 
 #endif

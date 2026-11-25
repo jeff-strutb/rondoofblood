@@ -840,3 +840,222 @@ void abi_EndingScrollsOn(void)
 {
     object_exit_shim(EndingScrollsOn(cpu.x, cpu.a));
 }
+
+/* A move laid under an exit: its V (and its C where the exit keeps C) come out as the move left them. */
+static ObjExit under_move(ObjExit result, AxisMove move)
+{
+    result.move = move;
+    result.moved = true;
+    return result;
+}
+
+/* The tail of three handlers that rise: after a move, the Y low byte is compared and the state moves on at the mark. */
+static ObjExit rise_to(uint8_t object, AxisMove move, uint8_t mark)
+{
+    ObjExit result;
+    uint8_t low = RD8(OBJ->y_lo[object]);
+
+    result = with_carry(object_exit(low, (uint8_t)(low - mark)), low >= mark);
+    result = under_move(result, move);
+    if (low == mark) {
+        result.exit.nz = INC8(OBJ->state[object]);
+    }
+    return result;
+}
+
+/* The first state of the rising handlers: the picture, a hold, and the speed's high byte counted down by 2. */
+static void rise_start(uint8_t object)
+{
+    WR8(OBJ->sprite_set[object], 3);
+}
+
+/*
+ * @routine 010D:720 EndingRiseFrame31
+ * @run 6B:8720
+ * WHAT IT DOES: An object handler of three stages: shows picture kind 3 and frame $31, slows its upward speed by 2 and holds
+ * $B0 frames; then waits the hold out; then moves until its Y low byte is $48 and moves to the next state.
+ * HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingRiseFrame31(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state;
+    AxisMove move;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        rise_start(object);
+        WR8(OBJ->frame[object], 0x31);
+        DEC8(OBJ->vy_hi[object]);
+        DEC8(OBJ->vy_hi[object]);
+        WR8(OBJ->life_timer[object], 0xB0);
+        return object_exit(0xB0, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        result = object_exit(0, 0);
+        jsr_push(0x8744);
+        result.exit.nz = EndingHoldTimer(object);
+        if (result.exit.nz != 0) {
+            return result;
+        }
+        jsr_pop();
+        result.exit.nz = INC8(OBJ->state[object]);
+        return result;
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    jsr_push(0x874E);
+    move = ApplyVelocity(object);
+    jsr_pop();
+    return rise_to(object, move, 0x48);
+}
+
+void abi_EndingRiseFrame31(void)
+{
+    object_exit_shim(EndingRiseFrame31(cpu.x));
+}
+
+/* The two handlers that start a fall: stage 0 sets speed and hold, stage 1 the hold and frame $32, stage 2 the move to a mark. */
+static ObjExit rise_frame32(uint8_t object, uint8_t hold, uint8_t shift, uint16_t hold_ret, uint16_t move_ret)
+{
+    ObjExit result;
+    uint8_t state, value, sum;
+    AxisMove move;
+    unsigned total;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        rise_start(object);
+        WR8(OBJ->vy_lo[object], 0x60);
+        DEC8(OBJ->vy_hi[object]);
+        DEC8(OBJ->vy_hi[object]);
+        WR8(OBJ->life_timer[object], hold);
+        value = rd8((uint16_t)(0x345F + object));
+        total = (unsigned)value + shift;
+        sum = (uint8_t)total;
+        wr8((uint16_t)(0x345F + object), sum);
+        result = with_carry(object_exit(sum, 0), total > 0xFF);
+        result.exit.v = ((value ^ sum) & (shift ^ sum) & 0x80) != 0;
+        result.exit.v_set = true;
+        result.exit.nz = INC8(OBJ->state[object]);
+        return result;
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        result = object_exit(0, 0);
+        jsr_push(hold_ret);
+        result.exit.nz = EndingHoldTimer(object);
+        if (result.exit.nz != 0) {
+            return result;
+        }
+        jsr_pop();
+        WR8(OBJ->frame[object], 0x32);
+        return object_exit(0x32, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    jsr_push(move_ret);
+    move = ApplyVelocity(object);
+    jsr_pop();
+    return rise_to(object, move, 0x60);
+}
+
+/*
+ * @routine 010D:759 EndingRiseFrame32A
+ * @run 6B:8759
+ * WHAT IT DOES: An object handler of three stages: shows picture kind 3, sets its downward speed $60 and slows its upward speed
+ * by 2, holds $90 frames and adds $10 to the byte at $345F plus its number; then waits the hold out and shows frame $32; then
+ * moves until its Y low byte is $60 and moves to the next state.
+ * HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingRiseFrame32A(uint8_t object)
+{
+    return rise_frame32(object, 0x90, 0x10, 0x8786, 0x8795);
+}
+
+void abi_EndingRiseFrame32A(void)
+{
+    object_exit_shim(EndingRiseFrame32A(cpu.x));
+}
+
+/*
+ * @routine 010D:7D6 EndingRiseFrame32B
+ * @run 6B:87D6
+ * WHAT IT DOES: As EndingRiseFrame32A, holding $A0 frames and adding $20.
+ * HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingRiseFrame32B(uint8_t object)
+{
+    return rise_frame32(object, 0xA0, 0x20, 0x8803, 0x8812);
+}
+
+void abi_EndingRiseFrame32B(void)
+{
+    object_exit_shim(EndingRiseFrame32B(cpu.x));
+}
+
+/*
+ * @routine 010D:7A0 EndingRiseWithList
+ * @run 6B:87A0
+ * WHAT IT DOES: An object handler of three stages: shows picture kind 3, slows its upward speed by 1 and holds $80 frames; then
+ * waits the hold out; then plays the ending's list 7 and moves until its Y low byte is $68 and moves to the next state.
+ * HOW: OBJ->state; EndingHoldTimer; EndingFrameList; ApplyVelocity.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingRiseWithList(uint8_t object)
+{
+    ObjExit result, list;
+    uint8_t state;
+    AxisMove move;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        rise_start(object);
+        DEC8(OBJ->vy_hi[object]);
+        WR8(OBJ->life_timer[object], 0x80);
+        return object_exit(0x80, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        result = object_exit(0, 0);
+        jsr_push(0x87BC);
+        result.exit.nz = EndingHoldTimer(object);
+        if (result.exit.nz != 0) {
+            return result;
+        }
+        jsr_pop();
+        result.exit.nz = INC8(OBJ->state[object]);
+        return result;
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    jsr_push(0x87C8);
+    list = EndingFrameList(7, object);
+    jsr_pop();
+    jsr_push(0x87CB);
+    move = ApplyVelocity(object);
+    jsr_pop();
+    result = rise_to(object, move, 0x68);
+    result.exit.y = list.exit.y;
+    result.exit.y_kept = false;
+    return result;
+}
+
+void abi_EndingRiseWithList(void)
+{
+    object_exit_shim(EndingRiseWithList(cpu.x));
+}

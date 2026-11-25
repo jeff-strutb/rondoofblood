@@ -504,5 +504,10 @@ ObjExit EndingDispatchKind(uint8_t kind, uint8_t object);
 Exit EndingObjectsStep(void);
 Exit EndingFrame(void);
 Exit EndingStep(uint8_t kept_y);
+Exit EndingEffectList(uint8_t slot);
+Exit EndingEffectFade(uint8_t slot);
+Exit EndingEffectDispatch(uint8_t type, uint8_t slot);
+Exit EndingEffectStep(void);
+Exit EndingEffectEntry(void);
 
 #endif

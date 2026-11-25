@@ -188,4 +188,8 @@ Ended HitDamage10C9(uint8_t slot);
 Ended HitDamage1179(uint8_t slot);
 Ended HitDamage16C9(uint8_t slot);
 
+/* object/enemies_l8_st14.c */
+Ended LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+Ended LoadRecordRandomLiftThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+
 #endif

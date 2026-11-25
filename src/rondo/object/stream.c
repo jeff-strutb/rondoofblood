@@ -810,23 +810,7 @@ void abi_RunStreamRecord(void)
 }
 
 /* How a walk ended. */
-typedef enum {
-    WALK_STOPPED_HIGH,     /* the record's high byte differs from the position's */
-    WALK_STOPPED_LOW,      /* the high bytes matched; the low bytes decided */
-    WALK_END_MARK,
-    WALK_BEFORE_START,     /* backward: the record stepped to has its top bit set */
-    EDGE_BEFORE_START,     /* the edge lies before the level's start: no walk made */
-    STEP_NO_SPEED          /* the scroll did not move: no walk made */
-} WalkEnd;
-
-typedef struct {
-    WalkEnd how;
-    bool stepped;          /* a record was stepped to, which leaves Y 1 */
-    bool distance_v;       /* V of the last StreamDistance */
-    uint8_t cmp_a, cmp_b;  /* the compare the walk ended on */
-    Sum last;              /* the last add or subtract of an end that leaves its C and V */
-    uint8_t x;             /* X as the last handler left it (original code may change it) */
-} StreamWalk;
+/* StreamWalkEnd and StreamWalk are in routines.h: what a stream walk ends on. */
 
 /* The record pointer moves on one record, the stream position and the record's position follow. */
 static void step_forward(void)
@@ -952,7 +936,7 @@ StreamWalk StreamWalkForward(uint8_t x)
 }
 
 /* A, the flags and Y as a walk leaves them. V is StreamDistance's until an end changes it. */
-static void walk_exit_shim(StreamWalk walk)
+void stream_walk_exit_shim(StreamWalk walk)
 {
     if (walk.stepped) {
         cpu.y = 1;
@@ -987,7 +971,7 @@ static void walk_exit_shim(StreamWalk walk)
 
 void abi_StreamWalkForward(void)
 {
-    walk_exit_shim(StreamWalkForward(cpu.x));
+    stream_walk_exit_shim(StreamWalkForward(cpu.x));
 }
 
 /*
@@ -1090,7 +1074,7 @@ StreamWalk StreamWalkBack(uint8_t x)
 
 void abi_StreamWalkBack(void)
 {
-    walk_exit_shim(StreamWalkBack(cpu.x));
+    stream_walk_exit_shim(StreamWalkBack(cpu.x));
 }
 
 /*
@@ -1314,7 +1298,7 @@ StreamWalk StreamEdgeRight(uint8_t x)
 
 void abi_StreamEdgeRight(void)
 {
-    walk_exit_shim(StreamEdgeRight(cpu.x));
+    stream_walk_exit_shim(StreamEdgeRight(cpu.x));
 }
 
 /*
@@ -1334,7 +1318,7 @@ StreamWalk StreamEdgeLeft(uint8_t x)
 
 void abi_StreamEdgeLeft(void)
 {
-    walk_exit_shim(StreamEdgeLeft(cpu.x));
+    stream_walk_exit_shim(StreamEdgeLeft(cpu.x));
 }
 
 /*
@@ -1352,7 +1336,7 @@ StreamWalk StreamEdgeDown(uint8_t x)
 
 void abi_StreamEdgeDown(void)
 {
-    walk_exit_shim(StreamEdgeDown(cpu.x));
+    stream_walk_exit_shim(StreamEdgeDown(cpu.x));
 }
 
 /*
@@ -1371,7 +1355,7 @@ StreamWalk StreamEdgeUp(uint8_t x)
 
 void abi_StreamEdgeUp(void)
 {
-    walk_exit_shim(StreamEdgeUp(cpu.x));
+    stream_walk_exit_shim(StreamEdgeUp(cpu.x));
 }
 
 /*
@@ -1411,5 +1395,5 @@ void abi_StreamScrollStep(void)
     uint8_t x = cpu.x;
 
     cpu.y = 1;
-    walk_exit_shim(StreamScrollStep(x));
+    stream_walk_exit_shim(StreamScrollStep(x));
 }

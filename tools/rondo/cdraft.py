@@ -129,8 +129,12 @@ class Draft:
     resolve = None          # (group, offset relative to its start) -> (group, offset) or None, set by build_all
     MAXSEG = 8
 
-    def __init__(self, g, base, name):
+    def __init__(self, g, base, name, whole=()):
         self.g, self.base, self.name = g, base, name
+        self.whole = set(whole)
+        self.whole_span = (0, 0)           # (id(group), run base) of every piece of a whole routine (--whole), else empty
+        if self.whole:
+            self.MAXSEG = 64
         self.segs = [Seg(0, g, base)]
         self.stat = collections.Counter()
 
@@ -154,6 +158,20 @@ class Draft:
         self.stat["tail"] += 1
         return "{ call_original_at(0x%04X, 0x%04X); return; }" % (frompc, addr)
 
+    def whole_at(self, seg, rel):
+        """A whole routine sits at one disc position: where a branch lands is read there (a content with copies elsewhere
+        resolves differently at each copy, so the group-wide resolver would give none)."""
+        lo = self.whole_lo.get((id(seg.g), seg.base))
+        if lo is None:
+            return None
+        los = self.whole_los
+        d = lo + rel
+        k = bisect.bisect_right(los, d) - 1
+        if k < 0 or d >= self.whole_pieces_in[k].hi:
+            return None
+        q = self.whole_pieces_in[k]
+        return (q.group, d - q.lo)
+
     def jump_to(self, seg, addr, branch, frompc):
         """C that goes to run address addr: a label in this piece, the piece a branch runs on into (its code
         is part of this function: the C makes every access itself, no hand-off), or a tail jump to a routine
@@ -164,12 +182,15 @@ class Draft:
                 return "goto %s;" % self.label(seg, off)
             self.stat["untraced_arm"] += 1
             return "untraced(0x%04X);" % addr
-        if branch and Draft.resolve:
+        if (branch or self.whole) and Draft.resolve:
             rel = off if off < 0x8000 else off - 0x10000
-            r = Draft.resolve(seg.g, rel)
+            r = self.whole_at(seg, rel) if self.whole else Draft.resolve(seg.g, rel)
             if r:
                 g2, off2 = r
-                if off2 == 0 and Draft.has_row(g2, (addr - off2) & 0xFFFF):
+                mine = (id(g2), (addr - off2) & 0xFFFF) in self.whole    # inside a piece of this whole routine
+                if not branch and not mine:
+                    return self.tail(addr, frompc)      # a jump out of the routine
+                if off2 == 0 and not mine and Draft.has_row(g2, (addr - off2) & 0xFFFF):
                     return self.tail(addr, frompc)      # a routine's own start: the original enters it (a call event), its C is its own call
                 if off2 in g2.istart:
                     s2 = self.seg_for(g2, (addr - off2) & 0xFFFF)
@@ -179,6 +200,9 @@ class Draft:
                 else:
                     self.stat["untraced_arm"] += 1
                     return "untraced(0x%04X);" % addr
+        if self.whole and self.whole_span[0] <= addr < self.whole_span[1]:
+            self.stat["untraced_arm"] += 1      # between the routine's pieces: bytes no script ran
+            return "untraced(0x%04X);" % addr
         return self.tail(addr, frompc)
 
     def step(self, seg, idx):
@@ -404,6 +428,70 @@ def build_all(it, only=None, as_filed=False):
             d.body = d.text()
             drafts.append(d)
     return drafts, norun
+
+
+def whole_pieces(loc):
+    """The pieces of the whole routine headed at loc ("SSSS:OOO", sector:offset in hex): the intake's fragments.csv
+    (whole_start = loc), as disc positions, head first."""
+    path = os.path.join(intake.RAW, "fragments.csv")
+    if not os.path.exists(path):
+        path = os.path.join(main_root(), "build", "rondo", "raw", "fragments.csv")
+    rows = [r for r in csv.DictReader(open(path)) if r["whole_start"].upper() == loc.upper()]
+    if not rows:
+        raise SystemExit("cdraft: no whole routine starts at %s in %s" % (loc, path))
+    out = []
+    for r in rows:
+        sec, off = r["piece"].split(":")
+        out.append(int(sec, 16) * 2048 + int(off, 16))
+    head = int(loc.split(":")[0], 16) * 2048 + int(loc.split(":")[1], 16)
+    return head, sorted(set(out))
+
+
+def build_whole(it, loc, as_filed=False):
+    """One draft of a whole routine: every piece whose start is in the routine (fragments.csv), inlined into one
+    function; a branch or jump to another piece's start is a goto, not a tail. Named as the head piece's draft is
+    (its label, or its filed name with as_filed), at the head's run address; the other pieces run at the head's
+    run address plus their disc distance (checked against the run map)."""
+    Draft.resolve = staticmethod(make_resolver(it))
+    bases = run_bases(it)
+    gb = {id(g): set().union(*[bases.get(p.lo, set()) for p in g.members]) for g in it.groups}
+    Draft.has_row = staticmethod(lambda g, base: base in gb.get(id(g), ()))
+    head, los = whole_pieces(loc)
+    byLo = {p.lo: p for p in it.pieces_in}
+    if head not in byLo:
+        raise SystemExit("cdraft: no piece at %s" % loc)
+    hp = byLo[head]
+    hbases = sorted(bases.get(hp.lo, ()))
+    if not hbases:
+        raise SystemExit("cdraft: the head piece %s has no run address in the run map" % loc)
+    filed_at = {(f["disc"], f["run"]): f["name"] for f in it.filed}
+    drafts = []
+    for b in hbases:
+        pieces = []
+        for lo in los:
+            p = byLo.get(lo)
+            if p is None:
+                raise SystemExit("cdraft: no piece at disc %X" % lo)
+            pb = (b + (lo - head)) & 0xFFFF
+            if lo != head and pb not in bases.get(lo, ()):
+                print("cdraft: piece at disc %X: run address %04X from the head's, the run map has %s" % (
+                    lo, pb, ",".join("%04X" % x for x in sorted(bases.get(lo, ()))) or "none"), file=sys.stderr)
+            pieces.append((p.group, pb))
+        fn = filed_at.get((hp.lo, b))
+        name = intake.label(hp.group.canon) + ("" if len(hbases) == 1 else "_%04X" % b)
+        d = Draft(hp.group, b, fn if (as_filed and fn) else name, whole=[(id(g), pb) for g, pb in pieces])
+        d.filed = fn
+        d.rom = 0
+        d.members = [("D", head)]
+        d.whole_lo = {(id(g), pb): lo for (g, pb), lo in zip(pieces, los)}
+        d.whole_span = (min(pb for g, pb in pieces), max((pb + g.n) & 0xFFFF or 0x10000 for g, pb in pieces))
+        d.whole_pieces_in = it.pieces_in
+        d.whole_los = [q.lo for q in it.pieces_in]
+        for g, pb in pieces:
+            d.seg_for(g, pb)
+        d.body = d.text()
+        drafts.append(d)
+    return drafts
 
 
 def card_drafts(names, rows=None):
@@ -709,6 +797,8 @@ def main():
     ap.add_argument("--cache", action="store_true", help="build the cache in the main checkout (or this tree's own)")
     ap.add_argument("--cache-dir", default="", help="with --cache: the folder to build into")
     ap.add_argument("--fresh", action="store_true", help="generate without the cache")
+    ap.add_argument("--whole", default="", help="SSSS:OOO, the head of a whole routine (build/rondo/raw/fragments.csv): one draft with every "
+                    "piece of it inlined, written to --out (liftcmp.py --drafts reads it); the cache is not touched")
     a = ap.parse_args()
     only = set(x for x in a.only.split(",") if x)
     if a.cache:
@@ -731,6 +821,11 @@ def main():
         with open(os.path.join(a.out, "support.c"), "w") as f:
             f.write(SUPPORT)
         print("cdraft: %d routines from %s into %s" % (len(only), cache, a.out))
+        return 0
+    if a.whole:
+        disc, it = load()
+        drafts = build_whole(it, a.whole, a.as_filed)
+        write(drafts, 0, a.out)
         return 0
     disc, it = load()
     drafts, norun = build_all(it, only, a.as_filed)

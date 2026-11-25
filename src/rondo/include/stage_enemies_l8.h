@@ -296,4 +296,19 @@ Ended FacePlayerThenPickPhase(uint8_t slot);
 SoundEnd LeapByPlayerDistance(uint8_t slot, uint8_t y_entry);
 Ended CountDownThenClearPhase(uint8_t slot);
 
+/* object/enemies_l8_st21.c */
+Ended LoadRecordSplitIntoFourAndClear(uint8_t slot);
+Ended LoadRecordThenFollowScroll(uint8_t slot);
+Ended StartPieceWithSpeedFromTable(uint8_t slot);
+Ended LoadRecordFlipByPlayerThenFall(uint8_t slot);
+Ended LoadRecordThenClearAtSubStep3(uint8_t slot);
+SoundEnd SoundWhenHurtThenFlag(uint8_t slot, uint8_t y_entry);
+SoundEnd SoundAndState6WhenFlagged(uint8_t slot, uint8_t y_entry);
+Ended LoadRecordFrame0D(uint8_t slot);
+Ended ClearFourAtScreen2(uint8_t slot);
+Ended MoveUpUntilY40(uint8_t slot);
+Ended CountDownThenCopyPhase(uint8_t slot);
+Ended ResetPieceAndAdvance(uint8_t slot);
+SoundEnd BreakIntoPiecesAtFifthHit(uint8_t slot, uint8_t y_entry);
+
 #endif

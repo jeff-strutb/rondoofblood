@@ -241,3 +241,38 @@ void abi_FallThenStopForRaster(void)
 {
     abi_ended(FallThenStopForRaster(cpu.x));
 }
+
+/*
+ * @routine 0E0C:128 LoadThenRiseFast
+ * @run 70:B928
+ * WHAT IT DOES: Loads the object's record, moves it up once by a Y speed high of $D8, then sets OBJ_3510 to $30 and the Y speed to $FA00.
+ * HOW: LoadObjectRecord, ApplyVelocityY, stores.
+ * WAITS: no.
+ * Entry: X object. Exit: A 0, Z set.
+ */
+Ended LoadThenRiseFast(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t nz, last;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xB92B);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->vy_hi[slot], 0xD8);
+    jsr_push(0xB933);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = then(then(e, ended_load(0xD8)), ended_of_axis_move(move));
+    WR8(OBJ->f3510[slot], 0x30);
+    WR8(OBJ->vy_hi[slot], 0xFA);
+    WR8(OBJ->vy_lo[slot], 0);
+    return then(e, ended_load(0));
+}
+
+void abi_LoadThenRiseFast(void)
+{
+    abi_ended(LoadThenRiseFast(cpu.x));
+}

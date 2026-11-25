@@ -100,6 +100,25 @@ StepListB5FEToState4:
     stz a:OBJ_2800,x
     rts
 
+; @routine 0E0C:128 LoadThenRiseFast
+; @run 70:B928
+; WHAT IT DOES: Loads the object's record, moves it up once by a Y speed high of $D8, then sets OBJ_3510 to $30 and the Y speed to $FA00.
+; HOW: LoadObjectRecord, ApplyVelocityY, stores.
+; WAITS: no.
+; Entry: X object. Exit: A 0, Z set.
+LoadThenRiseFast:
+    jsr VecLoadObjectRecord
+    lda #$D8
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    lda #$30
+    sta a:OBJ_3510,x
+    lda #$FA
+    sta a:OBJ_VY_HI,x
+    lda #$00
+    sta a:OBJ_VY_LO,x
+    rts
+
 ; @routine 12DF:038 RandomTimerC0
 ; @run 71:D038
 ; WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number with bits 6 and 7 set.

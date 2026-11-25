@@ -308,3 +308,76 @@ void abi_StartFallWithFrame21(void)
 {
     abi_ended(StartFallWithFrame21(cpu.x));
 }
+
+/*
+ * @routine 088B:240 SpeedBySideOfScreen
+ * @run 70:B240
+ * WHAT IT DOES: Sets OBJ_3510 to 2, takes the X speed high from the two-byte table at $B259 by bit 7 of the object's X low and clears the X speed low, then moves the object.
+ * HOW: Two ROLs, a table read (bank 70), a tail jump into ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object, C passed into the first ROL. Exit: as ApplyVelocity, Y the table index.
+ */
+Ended SpeedBySideOfScreen(uint8_t slot, bool carry_in)
+{
+    AxisMove move;
+    uint8_t low, first, second, index, speed;
+    bool carry_one, carry_two;
+
+    WR8(OBJ->f3510[slot], 2);
+    low = RD8(OBJ->x_lo[slot]);
+    first = (uint8_t)((low << 1) | (carry_in ? 1 : 0));
+    carry_one = (low & 0x80) != 0;
+    second = (uint8_t)((first << 1) | (carry_one ? 1 : 0));
+    carry_two = (first & 0x80) != 0;
+    (void)carry_two;
+    index = (uint8_t)(second & 0x01);
+    speed = rd8((uint16_t)(0xB259 + index));
+    WR8(OBJ->vx_hi[slot], speed);
+    WR8(OBJ->vx_lo[slot], 0);
+    move = ApplyVelocity(slot);
+    return ended_with_y(ended_of_axis_move(move), index);
+}
+
+void abi_SpeedBySideOfScreen(void)
+{
+    abi_ended(SpeedBySideOfScreen(cpu.x, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 088A:359 StartThenFallAlongList
+ * @run 70:AB59
+ * WHAT IT DOES: In state 0 loads the object's record. Later it steps the animation list at $AB72, applies gravity without a limit and moves the object.
+ * HOW: LoadObjectRecord, StepObjectFrames, ApplyGravityUnlimited, ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: state 0: as LoadObjectRecord; else as ApplyVelocity.
+ */
+Ended StartThenFallAlongList(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    GravityResult gravity;
+    AxisMove move;
+    uint8_t state, nz, last, y = y_entry;
+    bool carry;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return then(ended_load(state), ended_of_record(last, nz, carry));
+    }
+    WR8(ZP->temp11, 0xAB);
+    WR8(ZP->temp10, 0x72);
+    jsr_push(0xAB6C);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    jsr_push(0xAB6F);
+    gravity = ApplyGravityUnlimited(slot);
+    jsr_pop();
+    move = ApplyVelocity(slot);
+    (void)gravity;
+    return then(then(ended_load(state), ended_of_frame_step(step, step != FRAME_HELD, y)), ended_with_y(ended_of_axis_move(move), y));
+}
+
+void abi_StartThenFallAlongList(void)
+{
+    abi_ended(StartThenFallAlongList(cpu.x, cpu.y));
+}

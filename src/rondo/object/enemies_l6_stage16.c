@@ -77,3 +77,37 @@ void abi_LoadThenStartRise(void)
 {
     abi_ended(LoadThenStartRise(cpu.x));
 }
+
+/*
+ * @routine 16CB:24C ClearSlotsWhenScrollZero
+ * @run 70:B24C
+ * WHAT IT DOES: When the level's X position high byte and the scroll X low are both zero, clears the objects in slots $11 to $4E, sets OBJ_34B8 to $60 and goes on to the next OBJ_2800.
+ * HOW: Two reads, a loop of ClearObjectInY, a store, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the OR, or the new OBJ_2800's N and Z.
+ */
+Ended ClearSlotsWhenScrollZero(uint8_t slot)
+{
+    uint8_t high, low, y, phase;
+    Ended e;
+
+    high = rd8(ScrollXHiScreen);
+    low = rd8(ScrollXLo);
+    e = ended_load((uint8_t)(high | low));
+    if ((high | low) != 0) {
+        return e;
+    }
+    for (y = 0x11; y < 0x4F; y++) {
+        jsr_push(0xB259);
+        ClearObjectInY(y);
+        jsr_pop();
+    }
+    WR8(OBJ->f34b8[slot], 0x60);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(then(e, ended_with_y(ended_with_carry(ended_nz(0), true), 0x4F)), then(ended_load(0x60), ended_nz(phase)));
+}
+
+void abi_ClearSlotsWhenScrollZero(void)
+{
+    abi_ended(ClearSlotsWhenScrollZero(cpu.x));
+}

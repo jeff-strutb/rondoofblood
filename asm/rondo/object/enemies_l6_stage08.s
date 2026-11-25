@@ -23,6 +23,25 @@ NextStateOnScrollY:
 NextStateOnScrollY_at0:
     rts
 
+; @routine 088A:359 StartThenFallAlongList
+; @run 70:AB59
+; WHAT IT DOES: In state 0 loads the object's record. Later it steps the animation list at $AB72, applies gravity without a limit and moves the object.
+; HOW: LoadObjectRecord, StepObjectFrames, ApplyGravityUnlimited, ApplyVelocity.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: state 0: as LoadObjectRecord; else as ApplyVelocity.
+StartThenFallAlongList:
+    lda a:OBJ_27A8,x
+    bne StartThenFallAlongList_at0
+    jmp VecLoadObjectRecord
+StartThenFallAlongList_at0:
+    lda #$AB
+    sta z:zTemp11
+    lda #$72
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    jsr VecApplyGravityUnlimited
+    jmp VecApplyVelocity
+
 ; @routine 088A:41E StartListSoundThenSpawn20
 ; @run 70:AC1E
 ; WHAT IT DOES: Starts the script list $83 on channel 4, starts a kind $20 object in slot $10 at this object's place and clears this object.
@@ -133,6 +152,25 @@ FallBackInState9:
     lda #$09
     sta a:OBJ_27A8,x
     jmp VecNegateVelocityY
+
+; @routine 088B:240 SpeedBySideOfScreen
+; @run 70:B240
+; WHAT IT DOES: Sets OBJ_3510 to 2, takes the X speed high from the two-byte table at $B259 by bit 7 of the object's X low and clears the X speed low, then moves the object.
+; HOW: Two ROLs, a table read (bank 70), a tail jump into ApplyVelocity.
+; WAITS: no.
+; Entry: X object, C passed into the first ROL. Exit: as ApplyVelocity, Y the table index.
+SpeedBySideOfScreen:
+    lda #$02
+    sta a:OBJ_3510,x
+    lda a:OBJ_X_LO,x
+    rol a
+    rol a
+    and #$01
+    tay
+    lda a:$B259,y
+    sta a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    jmp VecApplyVelocity
 
 ; @routine 088B:6C5 ClearFrame
 ; @run 70:B6C5

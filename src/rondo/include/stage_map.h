@@ -46,4 +46,29 @@ typedef struct { uint8_t slot; uint8_t y_lo; } SpawnedObject;
 SpawnedObject SpawnStageObject(uint8_t row);
 SpawnedObject SpawnStageObjectLong(uint8_t row);
 
+/* system/stage_vram_runs.c: where the walk stopped: X the buffer index, Y the list position (A $FF, N 0, Z 1, C 1). */
+typedef struct { uint8_t x; uint8_t y; } StageRunsEnd;
+StageRunsEnd ExpandStageVramRuns(void);
+StageRunsEnd ExpandStageVramRunsB(void);
+StageRunsEnd ExpandStageVramRunsC(void);
+StageRunsEnd ExpandStageVramRunsD(void);
+StageRunsEnd ExpandStageVramRunsE(void);
+StageRunsEnd ExpandStageVramRunsF(void);
+StageRunsEnd ExpandStageVramRunsG(void);
+StageRunsEnd ExpandStageVramRunsH(void);
+StageRunsEnd ExpandStageVramRunsI(void);
+StageRunsEnd ExpandStageVramRunsJ(void);
+StageRunsEnd ExpandStageVramRunsK(void);
+StageRunsEnd ExpandStageVramRunsL(void);
+StageRunsEnd ExpandStageVramRunsM(void);
+StageRunsEnd ExpandStageVramRunsN(void);
+StageRunsEnd ExpandStageVramRunsO(void);
+StageRunsEnd ExpandStageVramRunsP(void);
+StageRunsEnd ExpandStageVramRunsQ(void);
+StageRunsEnd ExpandStageVramRunsR(void);
+StageRunsEnd ExpandStageVramRunsS(void);
+StageRunsEnd ExpandStageVramRunsT(void);
+StageRunsEnd ExpandStageVramRunsU(void);
+StageRunsEnd ExpandStageVramRunsV(void);
+
 #endif

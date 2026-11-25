@@ -387,6 +387,8 @@
 #define AnimationSounds 0xBE8E /* the list to start by animation */
 #define AnimationHitboxIndex 0xBF08 /* hitbox index by animation */
 #define AnimationHitbox 0xBF84 /* hitbox of four bytes */
+#define StageClearBitLo 0x9327 /* 16 bytes by stage index: the low byte of the stage's bit in the cleared word (StageClearBit) */
+#define StageClearBitHi 0x932F /* 16 bytes by stage index: the high byte of the stage's bit in the cleared word (StageClearBit) */
 #define TileHandlers 0x971A /* the stage overlay's handlers for attributes $80-$9B */
 #define TileHalfStepsA 0x97DD /* steps for tiles $87-$8A by half of the tile */
 #define TileHalfStepsB 0x97E5 /* steps for tiles $8C-$8F by half of the tile */

@@ -469,3 +469,13 @@ record,StageHitRec,aos,3BEB,1,4,STAGEHIT
 member,StageHitRec,bytes,u8[4],0000,StageHitReport,
 record,StageVram,aos,3D00,1,100,STAGEVRAM
 member,StageVram,buffer,u8[256],0000,StageVramBuffer,
+record,RasterState,aos,3F30,1,4,RASTERST
+member,RasterState,vdc_cr_shadow,u8,0000,VdcCrShadow,
+member,RasterState,effect_now,u8,0001,RasterEffectNow,
+member,RasterState,line,u8,0002,RasterLine,
+member,RasterState,step,u8,0003,RasterStep,
+record,RasterMarkTable,soa,3F8F,11,11,RMARKS
+member,RasterMarkTable,mark,u8,0000,RasterMarks,
+record,SavedColours,soa,3C60,10,20,SAVCOL
+member,SavedColours,lo,u8,0000,SavedColoursLo,
+member,SavedColours,hi,u8,0010,SavedColoursHi,

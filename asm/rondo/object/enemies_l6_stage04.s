@@ -26,6 +26,30 @@ LoadRecordA04:
     jsr VecLoadObjectRecord
     rts
 
+; @routine 051B:241 StartPhaseWhenScrolled
+; @run 70:B241
+; WHAT IT DOES: Once the level's X position high byte is 3 or more it clears the object in slot $41, clears the wave counter, sets OBJ_34B8 to $5B, sets bit 1 of the hit attack flags and zTemp $3C to 1, and goes on to the next state.
+; HOW: A compare, ClearObjectInY, stores, an INC.
+; WAITS: no.
+; Entry: X object. Exit: the compare, or the new state's N and Z (A 1).
+StartPhaseWhenScrolled:
+    lda a:ScrollXHiScreen
+    cmp #$03
+    bcc StartPhaseWhenScrolled_at0
+    ldy #$41
+    jsr VecClearObjectInY
+    stz z:zWaveCounter
+    lda #$5B
+    sta a:OBJ_34B8,x
+    lda a:HitAttackFlags
+    ora #$02
+    sta a:HitAttackFlags
+    lda #$01
+    sta z:$3C
+    inc a:OBJ_27A8,x
+StartPhaseWhenScrolled_at0:
+    rts
+
 ; @routine 051B:30D StateSixOnStatusBit7
 ; @run 70:B30D
 ; WHAT IT DOES: An object in a state under 6 whose OBJ_31A0 has bit 7 set goes to state 6 and clears OBJ_2800.
@@ -115,6 +139,30 @@ StartPieceAtNextSlot:
     lda #$32
     jsr VecStartObjectAtPlace
     inc a:OBJ_2800,x
+    rts
+
+; @routine 051B:648 StepListB66BToState2
+; @run 70:B648
+; WHAT IT DOES: Steps the animation list at $B66B; when it ends the object gets an X speed of $FEE0, clears OBJ_35C0 and OBJ_2800 and goes to state 2.
+; HOW: StepObjectFrames, stores.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or A 2 when the list ended.
+StepListB66BToState2:
+    lda #$6B
+    sta z:zTemp10
+    lda #$B6
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepListB66BToState2_at0
+    lda #$FE
+    sta a:OBJ_VX_HI,x
+    lda #$E0
+    sta a:OBJ_VX_LO,x
+    stz a:OBJ_35C0,x
+    lda #$02
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+StepListB66BToState2_at0:
     rts
 
 ; @routine 051B:690 DrawTileScriptByHighBits

@@ -10,6 +10,11 @@
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
 
+static Ended then(Ended e, Ended next)
+{
+    return ended_then(e, next);
+}
+
 /*
  * @routine 10CD:181 StepListC192ThenClear
  * @run 71:C181
@@ -100,10 +105,50 @@ Ended StepListB697ThenStopY(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0);
     phase = INC8(OBJ->f2800[slot]);
-    return ended_then(e, ended_nz(phase));
+    return then(e, ended_nz(phase));
 }
 
 void abi_StepListB697ThenStopY(void)
 {
     abi_ended(StepListB697ThenStopY(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 10CD:334 StartFirstObjectWhenCamera2
+ * @run 71:C334
+ * WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_2800 are both 0, it sets that object's OBJ_3510 to $40 and OBJ_3568 to $10 and this object goes to the next state.
+ * HOW: Compares and stores, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare or load, or the new state's N and Z (A $10).
+ */
+Ended StartFirstObjectWhenCamera2(uint8_t slot)
+{
+    uint8_t high, low, first, phase, state;
+    Ended e;
+
+    high = rd8(ScrollYHiScreen);
+    e = ended_compare(high, 2);
+    if (high != 2) {
+        return e;
+    }
+    low = RD8(SCROLL->y_lo[0]);
+    e = then(e, ended_compare(low, 0x30));
+    if (low >= 0x30) {
+        return e;
+    }
+    first = RD8(OBJ->state[0]);
+    phase = RD8(OBJ->f2800[0]);
+    e = then(e, ended_load((uint8_t)(first | phase)));
+    if ((first | phase) != 0) {
+        return e;
+    }
+    WR8(OBJ->f3510[0], 0x40);
+    WR8(OBJ->f3568[0], 0x10);
+    state = INC8(OBJ->state[slot]);
+    return then(then(e, ended_load(0x10)), ended_nz(state));
+}
+
+void abi_StartFirstObjectWhenCamera2(void)
+{
+    abi_ended(StartFirstObjectWhenCamera2(cpu.x));
 }

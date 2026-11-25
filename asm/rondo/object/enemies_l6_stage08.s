@@ -103,6 +103,30 @@ StartListSoundThenSpawn20:
     jsr VecStartObjectAtPlace
     jmp VecClearObject
 
+; @routine 088A:4FC LoadThenSpeedFromTable
+; @run 70:ACFC
+; WHAT IT DOES: Loads the object's record, takes its X speed from the two-byte entries of the table at $AD21 by OBJ_34B8, its timer from the table at $AD29 and its frame as OBJ_34B8 plus $47.
+; HOW: LoadObjectRecord, table reads (bank 70), an add.
+; WAITS: no.
+; Entry: X object. Exit: A the frame, N, Z, C and V from the add; Y OBJ_34B8.
+LoadThenSpeedFromTable:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$AD22,y
+    sta a:OBJ_VX_HI,x
+    lda a:$AD21,y
+    sta a:OBJ_VX_LO,x
+    ldy a:OBJ_34B8,x
+    lda a:$AD29,y
+    sta a:OBJ_3510,x
+    tya
+    clc
+    adc #$47
+    sta a:OBJ_2A68,x
+    rts
+
 ; @routine 088A:52D CountThenNextStateF3510
 ; @run 70:AD2D
 ; WHAT IT DOES: Counts OBJ_3510 down; at zero it sets it to $30 and goes on to the next state.

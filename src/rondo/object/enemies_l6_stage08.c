@@ -507,3 +507,40 @@ void abi_FallAndBlinkThenClear(void)
 {
     abi_ended(FallAndBlinkThenClear(cpu.x));
 }
+
+/*
+ * @routine 088A:4FC LoadThenSpeedFromTable
+ * @run 70:ACFC
+ * WHAT IT DOES: Loads the object's record, takes its X speed from the two-byte entries of the table at $AD21 by OBJ_34B8, its timer from the table at $AD29 and its frame as OBJ_34B8 plus $47.
+ * HOW: LoadObjectRecord, table reads (bank 70), an add.
+ * WAITS: no.
+ * Entry: X object. Exit: A the frame, N, Z, C and V from the add; Y OBJ_34B8.
+ */
+Ended LoadThenSpeedFromTable(uint8_t slot)
+{
+    uint8_t nz, last, index, y;
+    bool carry;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xACFF);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    index = RD8(OBJ->f34b8[slot]);
+    y = (uint8_t)(index << 1);
+    e = then(e, ended_with_carry(ended_with_y(ended_load(y), y), (index & 0x80) != 0));
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xAD22 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xAD21 + y)));
+    y = RD8(OBJ->f34b8[slot]);
+    e = then(e, ended_with_y(ended_nz(y), y));
+    WR8(OBJ->f3510[slot], rd8((uint16_t)(0xAD29 + y)));
+    sum = add_bytes(y, 0x47, false);
+    WR8(OBJ->frame[slot], sum.value);
+    return then(e, ended_of_sum(sum));
+}
+
+void abi_LoadThenSpeedFromTable(void)
+{
+    abi_ended(LoadThenSpeedFromTable(cpu.x));
+}

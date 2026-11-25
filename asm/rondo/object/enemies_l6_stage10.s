@@ -50,3 +50,26 @@ StepListC192ThenClear:
     bne WaitThenState2B
     jmp VecClearObject
     rts
+; @routine 10CD:334 StartFirstObjectWhenCamera2
+; @run 71:C334
+; WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_2800 are both 0, it sets that object's OBJ_3510 to $40 and OBJ_3568 to $10 and this object goes to the next state.
+; HOW: Compares and stores, an INC.
+; WAITS: no.
+; Entry: X object. Exit: the last compare or load, or the new state's N and Z (A $10).
+StartFirstObjectWhenCamera2:
+    lda a:ScrollYHiScreen
+    cmp #$02
+    bne StartFirstObjectWhenCamera2_at0
+    lda a:ScrollYLo
+    cmp #$30
+    bcs StartFirstObjectWhenCamera2_at0
+    lda a:OBJ_27A8
+    ora a:OBJ_2800
+    bne StartFirstObjectWhenCamera2_at0
+    lda #$40
+    sta a:OBJ_3510
+    lda #$10
+    sta a:OBJ_3568
+    inc a:OBJ_27A8,x
+StartFirstObjectWhenCamera2_at0:
+    rts

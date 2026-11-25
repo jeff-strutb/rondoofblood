@@ -68,6 +68,33 @@ FallThenStopForRaster:
 FallThenStopForRaster_at0:
     rts
 
+; @routine 0E0B:237 StepListB25CThenStartList
+; @run 70:B237
+; WHAT IT DOES: Steps the animation list at $B25C; when it ends it starts the script list $82 on channel 5, sets bit 2 of zField8E, sets OBJ_3250 to 2 and goes on to the next state.
+; HOW: StepObjectFrames, StartListChannelKind2, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z when the list ended.
+StepListB25CThenStartList:
+    lda #$5C
+    sta z:zTemp10
+    lda #$B2
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepListB25CThenStartList_at0
+    phx
+    lda #$82
+    ldx #$05
+    jsr VecStartListChannelKind2
+    plx
+    lda z:zField8E
+    ora #$04
+    sta z:zField8E
+    lda #$02
+    sta a:OBJ_3250,x
+    inc a:OBJ_27A8,x
+StepListB25CThenStartList_at0:
+    rts
+
 ; @routine 0E0B:34D CountDownThenState6
 ; @run 70:B34D
 ; WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_2800 and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.

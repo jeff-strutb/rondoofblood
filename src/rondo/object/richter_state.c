@@ -347,8 +347,8 @@ typedef struct {
     uint8_t blinking, state, count, pressed, counted;
     uint8_t y_high_late, handler_state;
 } StateFrame;
-Death RichterDie(void);
-StateFrame RichterStateFrame(void);
+Death RichterDie(uint8_t x, uint8_t y);
+StateFrame RichterStateFrame(uint8_t x, uint8_t y);
 StateFrame RichterOutOfHealth(void);
 void death_exit_shim(Death death);
 void dying_exit_shim(DyingStep step);
@@ -376,7 +376,7 @@ typedef struct {
     uint8_t forced_left; PushHit push; StateFrame state; bool sounded; uint8_t animation;
     uint8_t index; uint8_t last;
 } Frame;
-Frame RichterFrame(void);
+Frame RichterFrame(uint8_t x, uint8_t y);
 void abi_RichterFrame(void);
 void abi_RichterApplyMoveAndPush(void);
 void abi_RichterStart(void);
@@ -667,7 +667,7 @@ void abi_RichterApplyMoveAndPushGoTo(void)
  * of the hitbox index; Y and V as RichterAnimationSound left them on a change, else as the
  * state's frame did.
  */
-Frame RichterFrame(void)
+Frame RichterFrame(uint8_t x, uint8_t y)
 {
     Frame frame = { 0 };
     uint8_t before;
@@ -699,7 +699,7 @@ Frame RichterFrame(void)
     /* Original code runs inside the state's frame, from the registers the push check left. */
     push_hit_exit_shim(frame.push);
     jsr_push(0xA07D);
-    frame.state = RichterStateFrame();
+    frame.state = RichterStateFrame(x, y);
     jsr_pop();
     jsr_push(0xA080);
     RichterCheckTurnWindow();
@@ -725,7 +725,7 @@ Frame RichterFrame(void)
 
 void abi_RichterFrame(void)
 {
-    Frame frame = RichterFrame();
+    Frame frame = RichterFrame(cpu.x, cpu.y);
 
     state_frame_exit_shim(frame.state);
     if (frame.sounded)
@@ -1187,17 +1187,23 @@ static void fade_and_stop_sound_shim(void)
  * WAITS: no.
  * Entry: nothing. Exit: as SoundCommand with $60.
  */
-Death RichterDie(void)
+Death RichterDie(uint8_t x, uint8_t y)
 {
     Death death;
+    uint8_t value;
 
-    wr8(zPlayerHealth, 0);
-    wr8(PlayerDying, (uint8_t)(rd8(PlayerDying) + 1));
+    WR8(ZP->player_health, 0);
+    value = rd8(PlayerDying);
+    wr8(PlayerDying, (uint8_t)(value + 1));
     wr8(PlayerDyingTimer, DEATH_TIMER);
+    jsr_push(0xA1B1);
     RichterStopX();
-    wr8(OBJ_27A8, STATE_DYING);
+    jsr_pop();
+    WR8(OBJ->state[0], STATE_DYING);
+    jsr_push(0xA1B9);
     fade_and_stop_sound_shim();
-    death.sound = SoundCommand(SOUND_DEATH, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+    jsr_pop();
+    death.sound = SoundCommand(SOUND_DEATH, x, y);
     return death;
 }
 
@@ -1210,7 +1216,7 @@ void death_exit_shim(Death death)
 
 void abi_RichterDie(void)
 {
-    death_exit_shim(RichterDie());
+    death_exit_shim(RichterDie(cpu.x, cpu.y));
 }
 
 /* Off the bottom by the low byte: its compare with $FF set C, which the fade's original code keeps. */
@@ -1421,7 +1427,7 @@ static void out_of_health(StateFrame *f)
  * eight, A the count, N, Z and C from comparing it with 8. Otherwise as the state's handler.
  * In each, the registers the earlier steps left where the last step keeps them.
  */
-StateFrame RichterStateFrame(void)
+StateFrame RichterStateFrame(uint8_t x, uint8_t y)
 {
     StateFrame f = { 0 };
 
@@ -1435,7 +1441,7 @@ StateFrame RichterStateFrame(void)
     if (!(f.y_high & 0x80) && (f.y_high == 1 || rd8(OBJ_Y_LO) == 0xFF)) {
         below_map_flags_shim(f.y_high != 1);
         f.how = FRAME_DIED;
-        f.death = RichterDie();
+        f.death = RichterDie(x, y);
         return f;
     }
     f.tick = RichterInvincibleTick();
@@ -1503,7 +1509,7 @@ void state_frame_exit_shim(StateFrame f)
 
 void abi_RichterStateFrame(void)
 {
-    state_frame_exit_shim(RichterStateFrame());
+    state_frame_exit_shim(RichterStateFrame(cpu.x, cpu.y));
 }
 
 /*

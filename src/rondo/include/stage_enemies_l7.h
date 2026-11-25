@@ -446,6 +446,8 @@ SoundEnd StepShootOnCue(uint8_t slot, uint8_t y);
 #define LSR8_VALUE(field, carry_var) \
     RMW8(field, old_s, ((carry_var) = (old_s & 1) != 0, old_s >> 1))
 
+Ended RunObjects(uint8_t entry_x);
+
 /* object/enemies_l6_*.c: lot L6 */
 Ended LoadRecordA04(uint8_t slot);
 Ended LoadRecordB04(uint8_t slot);

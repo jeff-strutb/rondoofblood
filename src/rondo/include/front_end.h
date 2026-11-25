@@ -456,7 +456,7 @@ void abi_DrawGlyphText(void);
 uint8_t EndingFrameTick(void);
 uint8_t EndingModeDoneBack(void);
 void EndingNothing(void);
-bool EndingHoldTimer(uint8_t object);
+uint8_t EndingHoldTimer(uint8_t object);
 Exit EndingScrollBack8(void);
 Exit EndingScrollSlots(void);
 ObjExit EndingFrameList(uint8_t list, uint8_t object);
@@ -464,5 +464,18 @@ ObjExit EndingClearAfterScrollX(uint8_t object);
 ObjExit EndingClearAfterScrollY(uint8_t object);
 ObjExit EndingScrollRunUp(uint8_t object);
 ObjExit EndingScrollPull(uint8_t object);
+ObjExit EndingPlayList10(uint8_t object);
+ObjExit EndingPlayList0F(uint8_t object);
+ObjExit EndingPlayList0EThenClear(uint8_t object);
+ObjExit EndingRiseToY40(uint8_t object);
+ObjExit EndingScrollWindowA(uint8_t object);
+ObjExit EndingScrollWindowB(uint8_t object);
+ObjExit EndingScrollWindowHold(uint8_t object);
+ObjExit EndingScrollWindowSteps(uint8_t object);
+ObjExit EndingStartList3(uint8_t object, uint8_t entry_a);
+ObjExit EndingStartScript18(uint8_t object, uint8_t entry_a);
+ObjExit EndingScrollSlide(uint8_t object);
+ObjExit EndingSplitScrolls(uint8_t object, uint8_t entry_a);
+ObjExit EndingScrollsOn(uint8_t object, uint8_t entry_a);
 
 #endif

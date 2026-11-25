@@ -314,6 +314,7 @@ typedef struct {
 
 typedef struct {
     YEnd how;
+    uint8_t vy_hi;
     PlayerYMove move;
     FloorProbe floor;
 } YMove;
@@ -642,17 +643,23 @@ void abi_ScrollStepXFromPlayer(void)
  * WHAT IT DOES: Moves the player along Y if it has a Y speed, and when that speed is
  * downward asks the player overlay about the floor.
  * HOW: MovePlayerY, then the overlay's floor entry on the way down.
+ * WAITS: no.
  * Entry: nothing. Exit, not moving: A zero, Z set. Exit, moving up: A the speed's high
  * byte, C and V from MovePlayerY. Exit, moving down: as the overlay leaves them.
  */
 YMove MovePlayerYIfMoving(void)
 {
     YMove move = { Y_NOT_MOVING };
+    uint8_t vy_lo = rd8(OBJ_VY_LO);
+    uint8_t vy_hi = rd8(OBJ_VY_HI);
 
-    if ((rd8(OBJ_VY_LO) | rd8(OBJ_VY_HI)) == 0)
+    if ((vy_lo | vy_hi) == 0)
         return move;
+    jsr_push(0x65FF);
     move.move = MovePlayerY();
-    if (rd8(OBJ_VY_HI) & 0x80) {
+    jsr_pop();
+    move.vy_hi = rd8(OBJ_VY_HI);
+    if (move.vy_hi & 0x80) {
         move.how = Y_UP;
         return move;
     }
@@ -670,7 +677,7 @@ static void y_move_exit_shim(YMove move)
         return;
     }
     abi_alu(move_y_exit_shim(move.move));
-    cpu.a = rd8(OBJ_VY_HI);
+    cpu.a = move.vy_hi;
     abi_nz(cpu.a);
     if (move.how == Y_DOWN)
         floor_exit_shim(move.floor);

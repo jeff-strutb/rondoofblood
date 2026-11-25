@@ -228,4 +228,18 @@ Ended StepSideToSideWithCenterCheck(uint8_t slot, uint8_t y_entry);
 SoundEnd StepListThenSoundAndSpawn(uint8_t slot, uint8_t y_entry);
 SoundEnd StepListThenBurstAtFrame14(uint8_t slot, uint8_t y_entry);
 
+/* object/enemies_l8_st16.c */
+Ended LoadRecordLaunchByFacing(uint8_t slot);
+Ended StepListBounceOffFloorAtRandom(uint8_t slot, uint8_t y_entry);
+Ended StepListFallThenLandOrClear(uint8_t slot, uint8_t y_entry);
+Ended StepListThenClearWhenEnded(uint8_t slot, uint8_t y_entry);
+Jump CountFramesThenRunByState(uint8_t slot);
+Ended LoadRecordLaunchSideways(uint8_t slot);
+Ended StepListFallThenTurnToPlayer(uint8_t slot, uint8_t y_entry);
+SoundEnd SoundAndSpawnEveryFourthFrame(uint8_t slot, uint8_t y_entry);
+SoundEnd StepListSpawnAndMoveXOrClear(uint8_t slot, uint8_t y_entry);
+Ended ClearIfAboveOrFall(uint8_t slot);
+Ended LoadRecordRandomFlingOrFall(uint8_t slot);
+SoundEnd LoadRecordThenClearEnemiesAtScreen2(uint8_t slot, uint8_t y_entry);
+
 #endif

@@ -218,7 +218,6 @@ AnimationStep RichterAnimationTick(void);
 AnimationStep RichterSetAnimation(uint8_t animation);
 void animation_exit_shim(AnimationStep result);
 void RichterClearPadOverrides(void);
-void RichterFaceByPad(void);
 typedef enum { CRASH_NO_PRESS, CRASH_ITEM_OUT, CRASH_TOO_FEW_HEARTS, CRASH_STARTED } CrashHow;
 
 /* What RichterTryItemCrash did, with what its exit leaves in the registers. */

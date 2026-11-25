@@ -23,6 +23,7 @@ typedef struct {
     bool tst;
     uint8_t memory;
     bool zero;
+    bool v_only;     /* a load after the TST set N and Z: only V stands from it */
 } EndedTst;
 
 /* A body's exit state with the X it leaves. */
@@ -33,14 +34,14 @@ typedef struct {
 
 static inline EndedTst ended_tst_none(Ended end)
 {
-    EndedTst r = { end, false, 0, false };
+    EndedTst r = { end, false, 0, false, false };
 
     return r;
 }
 
 static inline EndedTst ended_tst(Ended before, uint8_t memory, uint8_t mask)
 {
-    EndedTst r = { before, true, memory, (memory & mask) == 0 };
+    EndedTst r = { before, true, memory, (memory & mask) == 0, false };
 
     return r;
 }
@@ -49,9 +50,11 @@ static inline void abi_ended_tst(EndedTst r)
 {
     abi_ended(r.end);
     if (r.tst) {
-        abi_flag(P_N, (r.memory & 0x80) != 0);
+        if (!r.v_only) {
+            abi_flag(P_N, (r.memory & 0x80) != 0);
+            abi_flag(P_Z, r.zero);
+        }
         abi_flag(P_V, (r.memory & 0x40) != 0);
-        abi_flag(P_Z, r.zero);
     }
 }
 
@@ -66,5 +69,11 @@ Ended TileLift2At9CB9(void);
 Ended TileLift1At9CC3(void);
 Ended TileHalfStepAAt9A93(uint8_t tile);
 Ended TileHalfStepBAt9AA7(uint8_t tile);
+
+/* object/player_input.c */
+typedef struct { Ended end; bool x_set; uint8_t x; } TurnWindow;
+Ended RichterFaceByPad(void);
+TurnWindow RichterCheckTurnWindow(void);
+EndedX RichterCheckItemHearts(void);
 
 #endif

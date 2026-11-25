@@ -9,6 +9,8 @@
 #include "ram.h"
 #include "routines.h"
 #include "access.h"
+#include "enemy_objects.h"
+#include "player_objects.h"
 
 enum {
     PAD_LEFT_OR_RIGHT = 0xA0, PAD_RIGHT_ONLY = 0x20, PAD_TURBO_BIT = 0x01, PAD_ORDINARY_BITS = 0xFE,
@@ -35,24 +37,31 @@ static ItemUse item_not_used(ItemUse use, ItemUseHow how);
  */
 uint8_t RichterReadPad(void)
 {
-    uint8_t before = rd8(zPadHeld);
-    uint8_t oldest = rd8(PadHistory + 2);
-    uint8_t second = rd8(PadHistory + 1);
-    uint8_t third = rd8(PadHistory);
-    uint8_t held = rd8(BiosPadState);
-    uint8_t steady;
-    uint8_t pressed;
+    uint8_t held, previous, pressed, history, steady;
 
-    wr8(zPadPrevious, before);
-    wr8(PadHistory + 3, oldest);
-    wr8(PadHistory + 2, second);
-    wr8(PadHistory + 1, third);
+    previous = RD8(ZP->pad_held);
+    WR8(ZP->pad_previous, previous);
+    history = rd8(PadHistory + 2);
+    wr8(PadHistory + 3, history);
+    history = rd8(PadHistory + 1);
+    wr8(PadHistory + 2, history);
+    history = rd8(PadHistory);
+    wr8(PadHistory + 1, history);
+    held = rd8(BiosPadState);
     wr8(PadHistory, held);
-    wr8(zPadHeld, held);
-    steady = (uint8_t)((held ^ oldest) & second & third & held & PAD_TURBO_BIT);
-    wr8(zTemp00, steady);
-    pressed = (uint8_t)(((held ^ before) & held & PAD_ORDINARY_BITS) | steady);
-    wr8(zPadPressed, pressed);
+    WR8(ZP->pad_held, held);
+    steady = (uint8_t)(held ^ rd8(PadHistory + 3));
+    steady = (uint8_t)(steady & rd8(PadHistory + 2));
+    steady = (uint8_t)(steady & rd8(PadHistory + 1));
+    steady = (uint8_t)(steady & rd8(PadHistory));
+    steady = (uint8_t)(steady & PAD_TURBO_BIT);
+    WR8(ZP->temp00, steady);
+    pressed = RD8(ZP->pad_held);
+    pressed = (uint8_t)(pressed ^ RD8(ZP->pad_previous));
+    pressed = (uint8_t)(pressed & RD8(ZP->pad_held));
+    pressed = (uint8_t)(pressed & PAD_ORDINARY_BITS);
+    pressed = (uint8_t)(pressed | RD8(ZP->temp00));
+    WR8(ZP->pad_pressed, pressed);
     return pressed;
 }
 
@@ -314,29 +323,39 @@ void abi_RichterSetAnimation(void)
  * Entry: nothing. Exit: A the last read, N and Z from it; X the state if it went that far. Y,
  * C and V kept.
  */
-void RichterCheckTurnWindow(void)
+TurnWindow RichterCheckTurnWindow(void)
 {
-    wr8(PlayerByte3BD7, 0);
-    if (rd8(OBJ_2800) == 0) {
-        bool faces_left = rd8(OBJ_2AC0) != 0;
-        bool on_right = (rd8(OBJ_X_LO) & 0x80) != 0;
+    TurnWindow r = { ended_kept(), false, 0 };
+    uint8_t value, facing, x_lo;
 
-        wr8(PlayerByte3BD7, rd8((uint16_t)(RichterTurnStates + rd8(OBJ_27A8))));
-        if (faces_left == on_right)
-            wr8(PlayerByte3BD7, 0);
+    wr8(PlayerByte3BD7, 0);
+    value = RD8(OBJ->f2800[0]);
+    if (value != 0) {
+        r.end = ended_load(value);
+        return r;
     }
+    r.x_set = true;
+    r.x = RD8(OBJ->state[0]);
+    value = rd8((uint16_t)(RichterTurnStates + r.x));
+    wr8(PlayerByte3BD7, value);
+    r.end = ended_load(value);
+    facing = RD8(OBJ->facing_left[0]);
+    x_lo = RD8(OBJ->x_lo[0]);
+    r.end = ended_load(x_lo);
+    if ((facing == 0) != ((x_lo & 0x80) != 0)) {
+        wr8(PlayerByte3BD7, 0);
+    }
+    return r;
 }
 
 void abi_RichterCheckTurnWindow(void)
 {
-    RichterCheckTurnWindow();
-    if (rd8(OBJ_2800) == 0) {
-        cpu.x = rd8(OBJ_27A8);
-        cpu.a = rd8(OBJ_X_LO);
-    } else {
-        cpu.a = rd8(OBJ_2800);
+    TurnWindow r = RichterCheckTurnWindow();
+
+    abi_ended(r.end);
+    if (r.x_set) {
+        cpu.x = r.x;
     }
-    abi_nz(cpu.a);
 }
 
 /*
@@ -348,29 +367,25 @@ void abi_RichterCheckTurnWindow(void)
  * Entry: nothing. Exit: A the bits looked at last; N and Z from them, or from the facing when it
  * turns left. X, Y, C and V kept.
  */
-void RichterFaceByPad(void)
+Ended RichterFaceByPad(void)
 {
-    uint8_t held = rd8(zPadHeld);
+    uint8_t held = RD8(ZP->pad_held);
+    uint8_t turn = (uint8_t)(held & PAD_LEFT_OR_RIGHT);
 
-    if (held & PAD_LEFT_OR_RIGHT)
-        wr8(OBJ_2AC0, (held & PAD_RIGHT_ONLY) ? 0 : 1);
-}
-
-/* Facing left ends on the INC that sets the facing to 1: N and Z from that, A still 0. */
-static void face_exit_shim(uint8_t held)
-{
-    bool turned_left = (held & PAD_LEFT_OR_RIGHT) != 0 && !(held & PAD_RIGHT_ONLY);
-
-    cpu.a = (held & PAD_LEFT_OR_RIGHT) ? (uint8_t)(held & PAD_RIGHT_ONLY) : 0;
-    abi_nz(turned_left ? 1 : cpu.a);
+    if (turn == 0) {
+        return ended_load(turn);
+    }
+    WR8(OBJ->facing_left[0], 0);
+    turn = (uint8_t)(turn & PAD_RIGHT_ONLY);
+    if (turn != 0) {
+        return ended_load(turn);
+    }
+    return ended_with_a(ended_nz(INC8(OBJ->facing_left[0])), 0);
 }
 
 void abi_RichterFaceByPad(void)
 {
-    uint8_t held = rd8(zPadHeld);
-
-    RichterFaceByPad();
-    face_exit_shim(held);
+    abi_ended(RichterFaceByPad());
 }
 
 /*
@@ -382,25 +397,23 @@ void abi_RichterFaceByPad(void)
  * Entry: nothing. Exit: Z from the test, N and V bits 7 and 6 of the presses; A 4 if pressed.
  * X, Y and C kept.
  */
-void RichterNoteItemPress(void)
+EndedTst RichterNoteItemPress(void)
 {
-    if (rd8(zPadPressed) & PAD_SELECT_BIT)
-        wr8(PadForcedPress, ITEM_REQUEST);
+    uint8_t pressed = RD8(ZP->pad_pressed);
+    EndedTst r;
+
+    if ((pressed & PAD_SELECT_BIT) == 0) {
+        return ended_tst(ended_kept(), pressed, PAD_SELECT_BIT);
+    }
+    wr8(PadForcedPress, ITEM_REQUEST);
+    r = ended_tst(ended_load(ITEM_REQUEST), pressed, PAD_SELECT_BIT);
+    r.v_only = true;
+    return r;
 }
 
 void abi_RichterNoteItemPress(void)
 {
-    uint8_t pressed = rd8(zPadPressed);
-
-    RichterNoteItemPress();
-    abi_flag(P_V, (pressed & 0x40) != 0);
-    if (pressed & PAD_SELECT_BIT) {
-        cpu.a = ITEM_REQUEST;
-        abi_nz(ITEM_REQUEST);
-    } else {
-        abi_nz(0);
-        abi_flag(P_N, (pressed & 0x80) != 0);
-    }
+    abi_ended_tst(RichterNoteItemPress());
 }
 
 /*
@@ -412,29 +425,31 @@ void abi_RichterNoteItemPress(void)
  * Entry: nothing. Exit: X the item; A the hearts, N, Z and C from the compare, or A $0F. Y and
  * V kept.
  */
-void RichterCheckItemHearts(void)
+EndedX RichterCheckItemHearts(void)
 {
-    uint8_t cost = rd8((uint16_t)(RichterItemCosts + rd8(zField93)));
+    EndedX r;
+    uint8_t item, hearts, cost;
 
-    wr8(RichterItemReady, rd8(zField94) >= cost ? ITEM_READY : 0);
+    wr8(RichterItemReady, 0);
+    item = RD8(ZP->field93);
+    hearts = RD8(ZP->field94);
+    cost = rd8((uint16_t)(RichterItemCosts + item));
+    r.x = item;
+    r.end = ended_compare(hearts, cost);
+    if (hearts >= cost) {
+        wr8(RichterItemReady, ITEM_READY);
+        r.end = ended_load(ITEM_READY);
+        r.end = ended_with_carry(r.end, true);
+    }
+    return r;
 }
 
 void abi_RichterCheckItemHearts(void)
 {
-    uint8_t item = rd8(zField93);
-    uint8_t hearts = rd8(zField94);
-    uint8_t cost = rd8((uint16_t)(RichterItemCosts + item));
+    EndedX r = RichterCheckItemHearts();
 
-    RichterCheckItemHearts();
-    cpu.x = item;
-    abi_flag(P_C, hearts >= cost);
-    if (hearts >= cost) {
-        cpu.a = ITEM_READY;
-        abi_nz(ITEM_READY);
-    } else {
-        cpu.a = hearts;
-        abi_nz((uint8_t)(hearts - cost));
-    }
+    abi_ended(r.end);
+    cpu.x = r.x;
 }
 
 /* Hearts less a cost, in BCD, as the processor's decimal subtract with no borrow in gives it. */
@@ -871,8 +886,19 @@ void abi_RichterUseItemEight(void)
  */
 uint8_t RichterLatchButtons(void)
 {
-    uint8_t latched = (uint8_t)(rd8(PadForcedPressB) | (rd8(zPadPressed) & 3));
+    uint8_t latched, pressed, held;
 
+    pressed = RD8(ZP->pad_pressed);
+    pressed = (uint8_t)(pressed & ITEM_USE_PRESS);
+    jsr_push(0xB90F);
+    held = rd8(PadForcedPressB);
+    latched = (uint8_t)(held | pressed);
+    wr8(PadForcedPressB, latched);
+    jsr_pop();
+    pressed = RD8(ZP->pad_pressed);
+    pressed = (uint8_t)(pressed & PAD_TURBO_BIT);
+    held = rd8(PadForcedPressB);
+    latched = (uint8_t)(held | pressed);
     wr8(PadForcedPressB, latched);
     return latched;
 }

@@ -12,6 +12,8 @@
 #include "ram.h"
 #include "routines.h"
 #include "access.h"
+#include "enemy_objects.h"
+#include "player_objects.h"
 
 /* The overlay's routines with no C yet. */
 enum {
@@ -283,7 +285,6 @@ void crouch_exit_shim(CrouchStep c);
 void crouch_state_exit_shim(CrouchState st);
 static AttackStart attack_with_animation(uint8_t animation);
 static void stand_handler_shim(uint8_t step, uint16_t handler);
-void RichterFaceByPad(void);
 static FacingSpeed speed_by_facing(uint16_t table);
 static void abi_exit_speed(FacingSpeed set);
 void abi_RichterAnimationSound(void);
@@ -356,8 +357,6 @@ void abi_RichterStateStand(void);
 void abi_RichterStateWalk(void);
 void abi_RichterStateCrouch(void);
 uint8_t RichterReadPad(void);
-void RichterCheckTurnWindow(void);
-void RichterCheckItemHearts(void);
 void invincible_exit_shim(InvincibleTick tick);
 void move_push_exit_shim(MovePush move);
 void columns_exit_shim(ColumnsEnd end);

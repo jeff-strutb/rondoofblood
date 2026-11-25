@@ -94,6 +94,34 @@ StateSixOnStatusBit7:
 StateSixOnStatusBit7_at0:
     rts
 
+; @routine 051B:324 LoadThenStateByKindByte
+; @run 70:B324
+; WHAT IT DOES: Loads the object's record and sets OBJ_2800 to 1; then by OBJ_3040: zero leaves it; positive goes to state 5 with OBJ_2800 0; negative clears OBJ_3250 and bit 6 of OBJ_30F0 and goes to state 4 with OBJ_2800 0.
+; HOW: LoadObjectRecord, tests, stores.
+; WAITS: no.
+; Entry: X object. Exit: A the state, or OBJ_3040 when zero.
+LoadThenStateByKindByte:
+    jsr VecLoadObjectRecord
+    lda #$01
+    sta a:OBJ_2800,x
+    lda a:OBJ_3040,x
+    beq LoadThenStateByKindByte_at0
+    bmi LoadThenStateByKindByte_at1
+    lda #$05
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+LoadThenStateByKindByte_at0:
+    rts
+LoadThenStateByKindByte_at1:
+    stz a:OBJ_3250,x
+    lda a:OBJ_30F0,x
+    and #$BF
+    sta a:OBJ_30F0,x
+    lda #$04
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+    rts
+
 ; @routine 051B:368 StepListB37FThenNext
 ; @run 70:B368
 ; WHAT IT DOES: Steps the animation list at $B37F; when it ends, the object's animation step and timer are cleared and it goes to the next OBJ_2800.

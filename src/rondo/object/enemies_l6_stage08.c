@@ -544,3 +544,78 @@ void abi_LoadThenSpeedFromTable(void)
 {
     abi_ended(LoadThenSpeedFromTable(cpu.x));
 }
+
+/*
+ * @routine 088B:6C9 PlaceFromTableCopySlot10
+ * @run 70:B6C9
+ * WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B736 names by OBJ_3510, copies the sprite set, frame and facing of the object in slot $10 and sets its flash flags to $10.
+ * HOW: Table reads (bank 70), copies.
+ * WAITS: no.
+ * Entry: X object. Exit: A $10, N and Z from it; Y the row.
+ */
+Ended PlaceFromTableCopySlot10(uint8_t slot)
+{
+    uint8_t index, row;
+    Ended e;
+
+    index = RD8(OBJ->f3510[slot]);
+    row = rd8((uint16_t)(0xB736 + index));
+    e = then(ended_with_y(ended_nz(index), index), ended_with_y(ended_load(row), row));
+    WR8(OBJ->x_lo[slot], rd8((uint16_t)(0xBB66 + row)));
+    WR8(OBJ->y_lo[slot], rd8((uint16_t)(0xBBA6 + row)));
+    WR8(OBJ->sprite_set[slot], RD8(OBJ->sprite_set[0x10]));
+    WR8(OBJ->frame[slot], RD8(OBJ->frame[0x10]));
+    WR8(OBJ->facing_left[slot], RD8(OBJ->facing_left[0x10]));
+    WR8(OBJ->flash_flags[slot], 0x10);
+    return then(e, ended_load(0x10));
+}
+
+void abi_PlaceFromTableCopySlot10(void)
+{
+    abi_ended(PlaceFromTableCopySlot10(cpu.x));
+}
+
+/*
+ * @routine 088A:4B9 StartThreeNumberedObjects
+ * @run 70:ACB9
+ * WHAT IT DOES: Clears the objects in slots $16 to $18, starts a kind $28 object in each at the place of the object in slot $3E, gives each sprite set 7, its number (0 to 2) as OBJ_34B8 and the frame number plus $47, and then clears the object in slot $3E.
+ * HOW: A loop of ClearObjectInY and StartObjectAtPlace, ClearObject.
+ * WAITS: no.
+ * Entry: X object (kept). Exit: the last compare of Y with $19; A the last frame.
+ */
+Ended StartThreeNumberedObjects(uint8_t slot)
+{
+    Sum frame;
+    uint8_t y, number;
+    Ended e = ended_kept();
+
+    push8(slot);
+    WR8(ZP->temp00, 0);
+    for (y = 0x16; y < 0x19; y++) {
+        jsr_push(0xACC3);
+        ClearObjectInY(y);
+        jsr_pop();
+        jsr_push(0xACC8);
+        StartObjectAtPlace(0x28, 0x3E, y);
+        jsr_pop();
+        WR8(OBJ->sprite_set[y], 7);
+        number = RD8(ZP->temp00);
+        WR8(OBJ->f34b8[y], number);
+        frame = add_bytes(number, 0x47, false);
+        WR8(OBJ->frame[y], frame.value);
+        INC8(ZP->temp00);
+        e = then(ended_of_sum(frame), ended_with_y(ended_with_carry(ended_nz((uint8_t)(y + 1 - 0x19)), (uint8_t)(y + 1) >= 0x19), (uint8_t)(y + 1)));
+    }
+    jsr_push(0xACE2);
+    ClearObject(0x3E);
+    jsr_pop();
+    slot = pull8();
+    return then(e, ended_nz(slot));
+}
+
+void abi_StartThreeNumberedObjects(void)
+{
+    uint8_t slot = cpu.x;
+
+    abi_ended(StartThreeNumberedObjects(slot));
+}

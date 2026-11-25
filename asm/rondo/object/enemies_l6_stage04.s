@@ -547,3 +547,54 @@ RandomTimer10:
     adc #$10
     sta a:OBJ_34B8,x
     rts
+; @routine 051E:115 SpawnPointFromTables
+; @run 71:C915
+; WHAT IT DOES: Counts OBJ_34B8 down; at zero it gives itself a new timer (RandomTimer10), finds a free slot from $30 and there starts a kind $AF object with this object's OBJ_3040, placed from the table at $C99A by that byte and OBJ_3510's low three bits (four bytes a row: X low, X high, Y low, Y high; the X and Y low plus a random 0 to 7), and OBJ_3510 low two bits; then counts OBJ_3510 up.
+; HOW: RandomTimer10, FindFreeSlotFrom30, table reads (bank 70), NextRandom twice.
+; WAITS: no.
+; Entry: X object. Exit: the new OBJ_3510's N and Z, Y the new slot; or the count.
+SpawnPointFromTables:
+    dec a:OBJ_34B8,x
+    bne SpawnPointFromTables_at0
+    bsr RandomTimer10
+    jsr VecFindFreeSlotFrom30
+    bcc SpawnPointFromTables_at0
+    lda #$AF
+    sta a:OBJ_2750,y
+    phx
+    lda a:OBJ_3040,x
+    sta a:OBJ_3040,y
+    sta z:zTemp10
+    lda a:OBJ_3510,x
+    and #$07
+    asl a
+    asl a
+    ldx z:zTemp10
+    clc
+    adc a:$C97A,x
+    tax
+    lda a:$CA99,x
+    sta a:OBJ_X_LO,y
+    lda a:$CA9A,x
+    sta a:OBJ_X_HI,y
+    lda a:$CA9B,x
+    sta a:OBJ_Y_LO,y
+    lda a:$CA9C,x
+    sta a:OBJ_Y_HI,y
+    plx
+    jsr VecNextRandom
+    and #$07
+    clc
+    adc a:OBJ_X_LO,y
+    sta a:OBJ_X_LO,y
+    jsr VecNextRandom
+    and #$07
+    clc
+    adc a:OBJ_Y_LO,y
+    sta a:OBJ_Y_LO,y
+    lda a:OBJ_3510,x
+    and #$03
+    sta a:OBJ_3510,y
+    inc a:OBJ_3510,x
+SpawnPointFromTables_at0:
+    rts

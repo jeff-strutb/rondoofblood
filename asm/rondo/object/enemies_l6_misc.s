@@ -277,6 +277,66 @@ TurnTowardPlayerOrStepList_at1:
     jsr VecStepObjectFrames
     rts
 
+; @routine 0E0C:412 CopyPlaceAndHitBoxOfSlot10
+; @run 70:BC12
+; WHAT IT DOES: In state 0 loads the object's record. Later it takes the place of the object in slot $10 and its facing; if that object's OBJ_3250 is not zero it takes the hit box (four bytes a row from the table at $C024, the row being that object's frame less one; the half width plus 8), else it clears its half width and half height.
+; HOW: LoadObjectRecord, CopyObjectPlaceBack, a pointer built in zTemp00-01, four reads through it.
+; WAITS: no.
+; Entry: X object. Exit: see the code: the last read or the clears.
+CopyPlaceAndHitBoxOfSlot10:
+    lda a:OBJ_27A8,x
+    bne CopyPlaceAndHitBoxOfSlot10_at0
+    jmp VecLoadObjectRecord
+CopyPlaceAndHitBoxOfSlot10_at0:
+    ldy #$10
+    jsr VecCopyObjectPlaceBack
+    lda a:$2AD0
+    sta a:OBJ_2AC0,x
+    lda a:$3260
+    beq CopyPlaceAndHitBoxOfSlot10_at1
+    lda #$24
+    sta z:zTemp00
+    lda #$C0
+    sta z:zTemp01
+    lda a:$2A78
+    sec
+    sbc #$01
+    asl a
+    sta z:zTemp02
+    lda z:zTemp00
+    clc
+    adc z:zTemp02
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$00
+    sta z:zTemp01
+    lda z:zTemp00
+    clc
+    adc z:zTemp02
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$00
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    sta a:OBJ_3930,x
+    iny
+    lda (zTemp00),y
+    sta a:OBJ_39E0,x
+    iny
+    lda (zTemp00),y
+    clc
+    adc #$08
+    sta a:OBJ_3988,x
+    iny
+    lda (zTemp00),y
+    sta a:OBJ_3A38,x
+    rts
+CopyPlaceAndHitBoxOfSlot10_at1:
+    stz a:OBJ_3988,x
+    stz a:OBJ_3A38,x
+    rts
+
 ; @routine 12DF:038 RandomTimerC0
 ; @run 71:D038
 ; WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number with bits 6 and 7 set.

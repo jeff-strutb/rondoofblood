@@ -168,6 +168,62 @@ StartKindFromTableAtSlot16:
     sta a:OBJ_34B8,x
     inc a:OBJ_2800,x
     rts
+; @routine 16CB:5A8 JumpAwayThenLand
+; @run 70:B5A8
+; WHAT IT DOES: OBJ_2800 0: clears OBJ_3250, faces the player's side (bit 0 of SideOfPlayer), takes its X speed from the table at $B619 by that side and gets a Y speed of $FC00. Later it moves, adds $0020 to its Y speed, and once it falls (Y speed high not negative) to a Y low of $94 or more it stops at $94, sets OBJ_3250 to 2, turns round, flips bit 1 of OBJ_3618, halves OBJ_3720 twice and goes to state 2 with OBJ_2800 0.
+; HOW: SideOfPlayer, table reads (bank 70), ApplyVelocity, a 16-bit add, stores.
+; WAITS: no.
+; Entry: X object. Exit: the last test or store.
+JumpAwayThenLand:
+    lda a:OBJ_2800,x
+    bne JumpAwayThenLand_at0
+    stz a:OBJ_3250,x
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    asl a
+    tay
+    tay
+    lda a:$B61A,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B619,y
+    sta a:OBJ_VX_LO,x
+    lda #$FC
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    inc a:OBJ_2800,x
+    rts
+JumpAwayThenLand_at0:
+    jsr VecApplyVelocity
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$20
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    bmi JumpAwayThenLand_at1
+    lda a:OBJ_Y_LO,x
+    cmp #$94
+    bcc JumpAwayThenLand_at1
+    lda #$94
+    sta a:OBJ_Y_LO,x
+    lda #$02
+    sta a:OBJ_3250,x
+    lda a:OBJ_2AC0,x
+    eor #$01
+    sta a:OBJ_2AC0,x
+    lda a:OBJ_3618,x
+    eor #$02
+    sta a:OBJ_3618,x
+    lsr a:OBJ_3720,x
+    lsr a:OBJ_3720,x
+    lda #$02
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+JumpAwayThenLand_at1:
+    rts
+
 ; @routine 16CB:782 LoadThenPlaceAtLeft
 ; @run 70:B782
 ; WHAT IT DOES: Loads the object's record, sets the raster effect to $0B with argument $BF, puts the object at X $0010, Y $00F6 and sets OBJ_34B8 to $40.

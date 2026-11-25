@@ -328,3 +328,74 @@ void abi_LoadThenPlaceAtLeft(void)
 {
     abi_ended(LoadThenPlaceAtLeft(cpu.x));
 }
+
+/*
+ * @routine 16CB:5A8 JumpAwayThenLand
+ * @run 70:B5A8
+ * WHAT IT DOES: OBJ_2800 0: clears OBJ_3250, faces the player's side (bit 0 of SideOfPlayer), takes its X speed from the table at $B619 by that side and gets a Y speed of $FC00. Later it moves, adds $0020 to its Y speed, and once it falls (Y speed high not negative) to a Y low of $94 or more it stops at $94, sets OBJ_3250 to 2, turns round, flips bit 1 of OBJ_3618, halves OBJ_3720 twice and goes to state 2 with OBJ_2800 0.
+ * HOW: SideOfPlayer, table reads (bank 70), ApplyVelocity, a 16-bit add, stores.
+ * WAITS: no.
+ * Entry: X object. Exit: the last test or store.
+ */
+Ended JumpAwayThenLand(uint8_t slot)
+{
+    SideResult side;
+    AxisMove move;
+    Sum low, high;
+    uint8_t phase, bits, y, position, value;
+    bool carry = false;
+    Ended e;
+
+    phase = RD8(OBJ->f2800[slot]);
+    e = ended_load(phase);
+    if (phase == 0) {
+        WR8(OBJ->hitbox_on[slot], 0);
+        jsr_push(0xB5B3);
+        side = SideOfPlayer(slot);
+        jsr_pop();
+        bits = (uint8_t)(side.sides & 0x01);
+        WR8(OBJ->facing_left[slot], bits);
+        y = (uint8_t)(bits << 1);
+        WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB61A + y)));
+        WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xB619 + y)));
+        WR8(OBJ->vy_hi[slot], 0xFC);
+        WR8(OBJ->vy_lo[slot], 0);
+        value = INC8(OBJ->f2800[slot]);
+        e = then(then(e, ended_of_side(side)), ended_load(bits));
+        e = then(e, ended_with_carry(ended_with_y(ended_load(y), y), false));
+        return then(then(e, ended_load(0xFC)), ended_nz(value));
+    }
+    jsr_push(0xB5D6);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    low = add_bytes(RD8(OBJ->vy_lo[slot]), 0x20, false);
+    WR8(OBJ->vy_lo[slot], low.value);
+    high = add_bytes(RD8(OBJ->vy_hi[slot]), 0, low.carry);
+    WR8(OBJ->vy_hi[slot], high.value);
+    e = then(then(then(e, ended_of_axis_move(move)), ended_of_sum(low)), ended_of_sum(high));
+    if ((high.value & 0x80) != 0) {
+        return e;
+    }
+    position = RD8(OBJ->y_lo[slot]);
+    e = then(e, ended_compare(position, 0x94));
+    if (position < 0x94) {
+        return e;
+    }
+    WR8(OBJ->y_lo[slot], 0x94);
+    WR8(OBJ->hitbox_on[slot], 2);
+    value = (uint8_t)(RD8(OBJ->facing_left[slot]) ^ 0x01);
+    WR8(OBJ->facing_left[slot], value);
+    value = (uint8_t)(RD8(OBJ->f3618[slot]) ^ 0x02);
+    WR8(OBJ->f3618[slot], value);
+    e = then(then(e, ended_load(0x94)), ended_load(value));
+    value = LSR8_VALUE(OBJ->f3720[slot], carry);
+    value = LSR8_VALUE(OBJ->f3720[slot], carry);
+    WR8(OBJ->state[slot], 2);
+    WR8(OBJ->f2800[slot], 0);
+    return then(then(e, ended_with_carry(ended_nz(value), carry)), ended_load(2));
+}
+
+void abi_JumpAwayThenLand(void)
+{
+    abi_ended(JumpAwayThenLand(cpu.x));
+}

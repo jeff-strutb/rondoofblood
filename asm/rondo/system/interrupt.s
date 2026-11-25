@@ -75,6 +75,7 @@ KernelIdle:
 ; running, only video and sound are kept up, and the frame is dropped.
 ; HOW: Saves everything including three MPRs and the selected VDC register, reads
 ; the VDC's status to zVdcStatus, and branches on its bits.
+; WAITS: no, apart from the original code it calls.
 ; Entry: interrupt. Exit: RTI; every register, flag, MPR and the VDC selection as
 ; they were. Clobbers what the frame's work does.
 FrameInterrupt:
@@ -95,7 +96,7 @@ FrameInterrupt:
     jmp RasterInterrupt
 FrameInterrupt_at0:
     bbs5 zVdcStatus,FrameInterrupt_at1
-    jmp FrameInterrupt_at2
+    jmp FrameInterruptExit
 FrameInterrupt_at1:
     cli
     inc z:zFrameCount
@@ -206,10 +207,20 @@ FrameInterrupt_at5:
     stz z:zFrameBusy
     stz z:zSoundBusy
     lda a:ScreenWideFlag
-    beq FrameInterrupt_at2
+    beq FrameInterruptExit
     ldy #$02
     jsr WriteScreenTiming
-FrameInterrupt_at2:
+
+; @routine 0043:287 FrameInterruptExit
+; @run 69:4287
+; WHAT IT DOES: The frame interrupt's exit: puts back what it saved, the VDC's selected register, three
+; MPRs and the registers, ready for the RTI that follows (IgnoredInterrupt's).
+; HOW: Pulls the register number and selects it again, pulls MPR6, MPR5 and MPR4 into the mapper, then
+; Y, X and A.
+; WAITS: no.
+; Entry: from FrameInterrupt, from every raster handler and from LateFrame, with the stack as
+; FrameInterrupt left it. Exit: A, X and Y the interrupted code's, N and Z from A, into the RTI.
+FrameInterruptExit:
     pla
     jsr SelectVdcRegister
     pla
@@ -265,4 +276,4 @@ LateFrame_at0:
     clx
     jsr WriteBandScroll
     jsr SoundFrameTick
-    bra FrameInterrupt_at2
+    bra FrameInterruptExit

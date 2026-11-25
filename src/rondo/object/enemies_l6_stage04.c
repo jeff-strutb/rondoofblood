@@ -504,3 +504,42 @@ void abi_StartPhaseWhenScrolled(void)
 {
     abi_ended(StartPhaseWhenScrolled(cpu.x));
 }
+
+/*
+ * @routine 051B:0FE LoadOrFallAlongListByTimer
+ * @run 70:B0FE
+ * @stop B125
+ * WHAT IT DOES: In state 0 loads the object's record and takes its two speeds from the four-byte rows of the table at $B125 by OBJ_34B8. Later it goes on as StepListByTimerWithGravity.
+ * HOW: LoadObjectRecord, table reads (bank 70); a tail jump into StepListByTimerWithGravity.
+ * WAITS: no.
+ * Entry: X object. Exit: state 0: the last table byte, Y the row; else as StepListByTimerWithGravity.
+ */
+Ended LoadOrFallAlongListByTimer(uint8_t slot)
+{
+    uint8_t state, nz, last, timer, y;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        return then(ended_load(state), StepListByTimerWithGravity(slot));
+    }
+    jsr_push(0xB106);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = then(ended_load(state), ended_of_record(last, nz, carry));
+    timer = RD8(OBJ->f34b8[slot]);
+    y = (uint8_t)(timer << 2);
+    e = then(e, ended_with_carry(ended_with_y(ended_load((uint8_t)(timer << 2)), y), (timer & 0x40) != 0));
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB126 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xB125 + y)));
+    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(0xB128 + y)));
+    last = rd8((uint16_t)(0xB127 + y));
+    WR8(OBJ->vy_lo[slot], last);
+    return then(e, ended_load(last));
+}
+
+void abi_LoadOrFallAlongListByTimer(void)
+{
+    abi_ended(LoadOrFallAlongListByTimer(cpu.x));
+}

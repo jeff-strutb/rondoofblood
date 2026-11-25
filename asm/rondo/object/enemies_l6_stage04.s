@@ -1,3 +1,28 @@
+; @routine 051B:0FE LoadOrFallAlongListByTimer
+; @run 70:B0FE
+; @stop B125
+; WHAT IT DOES: In state 0 loads the object's record and takes its two speeds from the four-byte rows of the table at $B125 by OBJ_34B8. Later it goes on as StepListByTimerWithGravity.
+; HOW: LoadObjectRecord, table reads (bank 70); a tail jump into StepListByTimerWithGravity.
+; WAITS: no.
+; Entry: X object. Exit: state 0: the last table byte, Y the row; else as StepListByTimerWithGravity.
+LoadOrFallAlongListByTimer:
+    lda a:OBJ_27A8,x
+    bne StepListByTimerWithGravity
+    jsr VecLoadObjectRecord
+    lda a:OBJ_34B8,x
+    asl a
+    asl a
+    tay
+    lda a:$B126,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B125,y
+    sta a:OBJ_VX_LO,x
+    lda a:$B128,y
+    sta a:OBJ_VY_HI,x
+    lda a:$B127,y
+    sta a:OBJ_VY_LO,x
+    rts
+
 ; @routine 051B:135 StepListByTimerWithGravity
 ; @run 70:B135
 ; WHAT IT DOES: Steps the animation list the table at $B14D gives for OBJ_34B8, applies gravity without a limit and moves the object.

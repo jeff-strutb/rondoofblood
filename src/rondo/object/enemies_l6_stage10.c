@@ -152,3 +152,45 @@ void abi_StartFirstObjectWhenCamera2(void)
 {
     abi_ended(StartFirstObjectWhenCamera2(cpu.x));
 }
+
+/*
+ * @routine 10CB:702 StepListB728ThenRiseSlowly
+ * @run 70:B702
+ * WHAT IT DOES: Steps the animation list at $B728; while it runs the object moves and its Y speed loses $0010 a frame; when it ends the object goes to the next OBJ_2800.
+ * HOW: StepObjectFrames, ApplyVelocity, a 16-bit subtract, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the subtract's, or the new OBJ_2800's N and Z.
+ */
+Ended StepListB728ThenRiseSlowly(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    AxisMove move;
+    Sum low, high;
+    uint8_t y = y_entry, phase;
+    Ended e;
+
+    WR8(ZP->temp10, 0x28);
+    WR8(ZP->temp11, 0xB7);
+    jsr_push(0xB70D);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step == FRAME_LIST_ENDED) {
+        phase = INC8(OBJ->f2800[slot]);
+        return then(e, ended_nz(phase));
+    }
+    jsr_push(0xB712);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    low = sub_bytes(RD8(OBJ->vy_lo[slot]), 0x10, true);
+    WR8(OBJ->vy_lo[slot], low.value);
+    high = sub_bytes(RD8(OBJ->vy_hi[slot]), 0x00, low.carry);
+    WR8(OBJ->vy_hi[slot], high.value);
+    return then(then(e, ended_of_sum(low)), ended_of_sum(high));
+}
+
+void abi_StepListB728ThenRiseSlowly(void)
+{
+    abi_ended(StepListB728ThenRiseSlowly(cpu.x, cpu.y));
+}

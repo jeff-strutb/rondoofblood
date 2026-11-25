@@ -60,6 +60,29 @@ StepListB36AThenCount:
 StepListB36AThenCount_at0:
     rts
 
+; @routine 16CB:3C8 CountThenJumpRight
+; @run 70:B3C8
+; WHAT IT DOES: Sets the object's frame to 1 and counts OBJ_34B8 down; at zero it gives the object an X speed high of $12 and a Y speed high of $E0, moves it once, clears its animation step and timer, sets frame 3 and goes on to the next OBJ_2800.
+; HOW: DEC, stores, ApplyVelocity, INC.
+; WAITS: no.
+; Entry: X object. Exit: the count, or the new OBJ_2800's N and Z (A 3).
+CountThenJumpRight:
+    lda #$01
+    sta a:OBJ_2A68,x
+    dec a:OBJ_34B8,x
+    bne StepFramesFacingPlayer
+    lda #$12
+    sta a:OBJ_VX_HI,x
+    lda #$E0
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$03
+    sta a:OBJ_2A68,x
+    inc a:OBJ_2800,x
+    rts
+
 ; @routine 16CB:3EE StepListB404ThenTimer
 ; @run 70:B3EE
 ; WHAT IT DOES: Steps the animation list at $B404; when it ends, OBJ_34B8 becomes $48 and the object goes to the next OBJ_2800.

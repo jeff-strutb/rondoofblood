@@ -35,6 +35,32 @@ StepListB697ThenStopY:
 StepListB697ThenStopY_at0:
     rts
 
+; @routine 10CB:702 StepListB728ThenRiseSlowly
+; @run 70:B702
+; WHAT IT DOES: Steps the animation list at $B728; while it runs the object moves and its Y speed loses $0010 a frame; when it ends the object goes to the next OBJ_2800.
+; HOW: StepObjectFrames, ApplyVelocity, a 16-bit subtract, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the subtract's, or the new OBJ_2800's N and Z.
+StepListB728ThenRiseSlowly:
+    lda #$28
+    sta z:zTemp10
+    lda #$B7
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    beq StepListB728ThenRiseSlowly_at0
+    jsr VecApplyVelocity
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$10
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    rts
+StepListB728ThenRiseSlowly_at0:
+    inc a:OBJ_2800,x
+    rts
+
 ; @routine 10CD:181 StepListC192ThenClear
 ; @run 71:C181
 ; WHAT IT DOES: Steps the animation list at $C192; when it ends the object is cleared.

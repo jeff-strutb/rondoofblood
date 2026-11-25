@@ -187,3 +187,42 @@ void abi_StartKindFromTableAtSlot16(void)
 {
     abi_ended(StartKindFromTableAtSlot16(cpu.x));
 }
+
+/*
+ * @routine 16CB:3C8 CountThenJumpRight
+ * @run 70:B3C8
+ * WHAT IT DOES: Sets the object's frame to 1 and counts OBJ_34B8 down; at zero it gives the object an X speed high of $12 and a Y speed high of $E0, moves it once, clears its animation step and timer, sets frame 3 and goes on to the next OBJ_2800.
+ * HOW: DEC, stores, ApplyVelocity, INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the count, or the new OBJ_2800's N and Z (A 3).
+ */
+Ended CountThenJumpRight(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t left, phase;
+    Ended e;
+
+    WR8(OBJ->frame[slot], 1);
+    left = DEC8(OBJ->f34b8[slot]);
+    e = then(ended_load(1), ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    WR8(OBJ->vx_hi[slot], 0x12);
+    WR8(OBJ->vy_hi[slot], 0xE0);
+    e = then(e, ended_load(0xE0));
+    jsr_push(0xB3DF);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->frame[slot], 3);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(then(e, ended_load(3)), ended_nz(phase));
+}
+
+void abi_CountThenJumpRight(void)
+{
+    abi_ended(CountThenJumpRight(cpu.x));
+}

@@ -566,3 +566,56 @@ void abi_StartLeapWhenHurtAnswerYes(void)
 {
     abi_ended(StartLeapWhenHurtAnswerYes(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0EBE:768 StepListByPhaseThenLand
+ * @run 71:CF68
+ * WHAT IT DOES: Steps the animation list that the table at $CFA7 names for OBJ_3568 and asks StopOnLanding with a probe height of 8; while it falls the Y speed loses $0014 a frame; on landing it clears the animation, sets frame $45 and OBJ_3510 8 and goes to the next OBJ_2800.
+ * HOW: StepObjectFrames, StopOnLanding, a 16-bit subtract in memory, stores, an INC.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column unless the step sets it, C passed on. Exit: the mover's registers, then the landing's or the subtract's.
+ */
+LandWait StepListByPhaseThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry)
+{
+    LandWait wait = { true, { 0 }, { 0 } };
+    uint8_t phase, y, lo, hi, value;
+    FrameStep step;
+    Sum diff;
+    Ended e;
+
+    (void)y_entry;
+    phase = RD8(OBJ->f3568[slot]);
+    y = (uint8_t)(phase << 1);
+    lo = rd8((uint16_t)(0xCFA7 + y));
+    WR8(ZP->temp10, lo);
+    hi = rd8((uint16_t)(0xCFA8 + y));
+    WR8(ZP->temp11, hi);
+    jsr_push(0xCF7A);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    jsr_push(0xCF7F);
+    wait.mover = StopOnLanding(8, slot, y, ended_carry_or(e, carry_entry));
+    jsr_pop();
+    if (!mover_landed(wait.mover)) {
+        value = RD8(OBJ->vy_lo[slot]);
+        diff = sub_bytes(value, 0x14, true);
+        WR8(OBJ->vy_lo[slot], diff.value);
+        value = RD8(OBJ->vy_hi[slot]);
+        diff = sub_bytes(value, 0, diff.carry);
+        WR8(OBJ->vy_hi[slot], diff.value);
+        wait.end = ended_of_sum(diff);
+        return wait;
+    }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->frame[slot], 0x45);
+    WR8(OBJ->f3510[slot], 8);
+    wait.end = then(ended_load(8), ended_nz(INC8(OBJ->f2800[slot])));
+    return wait;
+}
+
+void abi_StepListByPhaseThenLand(void)
+{
+    land_wait_exit_shim(StepListByPhaseThenLand(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}

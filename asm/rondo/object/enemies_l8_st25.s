@@ -1,3 +1,39 @@
+; @routine 0EBE:768 StepListByPhaseThenLand
+; @run 71:CF68
+; WHAT IT DOES: Steps the animation list that the table at $CFA7 names for OBJ_3568 and asks StopOnLanding with a probe height of 8; while it falls the Y speed loses $0014 a frame; on landing it clears the animation, sets frame $45 and OBJ_3510 8 and goes to the next OBJ_2800.
+; HOW: StepObjectFrames, StopOnLanding, a 16-bit subtract in memory, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y the probe's column unless the step sets it, C passed on. Exit: the mover's registers, then the landing's or the subtract's.
+StepListByPhaseThenLand:
+    lda a:OBJ_3568,x
+    asl a
+    tay
+    lda a:$CFA7,y
+    sta z:zTemp10
+    lda a:$CFA8,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    lda #$08
+    jsr VecStopOnLanding
+    bcs StepListByPhaseThenLand_at0
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$14
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    rts
+StepListByPhaseThenLand_at0:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$45
+    sta a:OBJ_2A68,x
+    lda #$08
+    sta a:OBJ_3510,x
+    inc a:OBJ_2800,x
+    rts
+
 ; @routine 0F6C:0D5 SpawnFlashingPieceWhenRising
 ; @run 70:B8D5
 ; WHAT IT DOES: A rising object (Y speed high bit clear) shows flash flags $10; every fourth frame it starts an object of type $9B in a free slot of $20 to $3F, with Y speed $0800 (moved once) and an X speed from the table at $B90D by its own OBJ_3040 (moved once) and flash flags $10.

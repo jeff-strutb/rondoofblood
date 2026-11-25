@@ -329,6 +329,7 @@ typedef struct {
     WallProbe second;
     uint8_t amount;
     uint8_t position;
+    uint8_t index;
 } WallPush;
 
 /* Which way the player's speed or push asked it to go. */
@@ -1053,38 +1054,67 @@ void abi_CameraModeFollow(void)
  * HOW: Y 0 on the wall entry; on a wall, zTemp00 is the depth. In player state 3 the
  * player only stops, when not rising. The second question is Y 1 with the position moved
  * and zPlayerPush clear; if there is a wall there too, the position goes back.
+ * WAITS: no.
  * Entry: cpu flags current. Exit, no wall: A and flags as the overlay left them, Z set.
  * Exit, wall: A 1, N and Z from it.
  */
 /* After a wall: stop only, or push back unless that passes the edge or meets another wall. */
-static void push_from_wall(WallPush *push, uint8_t amount, uint8_t other_side)
+/* The frames of the calls a wall push makes, as the assembly returns from them. */
+typedef struct { uint16_t stop_first, stop_second, wall_second, edge; } PushFrames;
+
+static const PushFrames push_frames_right = { 0x67D0, 0x67EC, 0x67F3, 0x6800 };
+static const PushFrames push_frames_left = { 0x690B, 0x6927, 0x692E, 0x693B };
+
+static void push_from_wall(WallPush *push, const PushFrames *frames, uint8_t other_side)
 {
+    uint8_t amount;
     uint8_t moved;
+    uint8_t kept;
+    uint8_t answer;
 
     if (rd8(OBJ_27A8) == PLAYER_STATE_NO_WALL_PUSH) {
-        if (!(rd8(OBJ_VY_HI) & 0x80))
+        if (!(rd8(OBJ_VY_HI) & 0x80)) {
+            jsr_push(frames->stop_first);
             StopPlayerX();
+            jsr_pop();
+        }
         push->how = WALL_STOPPED_ONLY;
         return;
+    }
+    if (push->leftward) {
+        push->index = rd8(zTemp00);
+        amount = rd8((uint16_t)(WallLeftPush + push->index));
+    } else {
+        amount = (uint8_t)(0u - rd8(zTemp00));
     }
     push->amount = amount;
     push->position = rd8(OBJ_X_LO);
     moved = (uint8_t)(amount + push->position);
     if (push->leftward ? moved >= PLAYER_MAX_X : moved < PLAYER_MIN_X) {
+        jsr_push(frames->edge);
         if (push->leftward)
             PlayerAtRightEdge();
         else
             PlayerAtLeftEdge();
+        jsr_pop();
         push->how = WALL_PAST_EDGE;
         return;
     }
+    kept = rd8(OBJ_X_LO);
+    push8(kept);
     wr8(OBJ_X_LO, moved);
     wr8(OBJ_X_FRAC, 0);
+    jsr_push(frames->stop_second);
     StopPlayerX();
+    jsr_pop();
     wr8(zPlayerPush, 0);
+    jsr_push(frames->wall_second);
     push->second = PlayerWall(other_side);
-    if (wall_answer(push->second) != 0)
-        wr8(OBJ_X_LO, push->position);
+    jsr_pop();
+    kept = pull8();
+    answer = wall_answer(push->second);
+    if (answer != 0)
+        wr8(OBJ_X_LO, kept);
     push->how = WALL_PUSHED_BACK;
 }
 
@@ -1103,7 +1133,7 @@ static void wall_push_exit_shim(WallPush push)
         abi_flag(P_C, push.leftward);
         abi_flag(P_V, add8_overflows(push.amount, push.position));
         if (push.leftward)
-            cpu.x = rd8(zTemp00);
+            cpu.x = push.index;
         break;
     default:
         cpu.y = push.leftward ? 0 : 1;
@@ -1119,9 +1149,11 @@ WallPush PlayerWallRight(void)
 {
     WallPush push = { WALL_NOT_THERE };
 
+    jsr_push(0x67BF);
     push.first = PlayerWall(0);
+    jsr_pop();
     if (wall_found(push.first))
-        push_from_wall(&push, (uint8_t)(0u - rd8(zTemp00)), 1);
+        push_from_wall(&push, &push_frames_right, 1);
     return push;
 }
 
@@ -1524,15 +1556,18 @@ void abi_CompareScrollWithRightLimit(void)
  * out of one: right by a table on how deep it went, but not into another wall the
  * overlay finds there, and not past the right edge.
  * HOW: As PlayerWallRight, with Y 1 then Y 0.
+ * WAITS: no.
  * Entry: cpu flags current. Exit: as PlayerWallRight.
  */
 WallPush PlayerWallLeft(void)
 {
     WallPush push = { WALL_NOT_THERE, true };
 
+    jsr_push(0x68FA);
     push.first = PlayerWall(1);
+    jsr_pop();
     if (wall_found(push.first))
-        push_from_wall(&push, rd8((uint16_t)(WallLeftPush + rd8(zTemp00))), 0);
+        push_from_wall(&push, &push_frames_left, 0);
     return push;
 }
 

@@ -1007,3 +1007,51 @@ void abi_SetFirstObjectTimersThenCount(void)
 {
     abi_ended(SetFirstObjectTimersThenCount(cpu.x));
 }
+
+/*
+ * @routine 051B:76E FollowBlockWhileState5
+ * @run 70:B76E
+ * WHAT IT DOES: When the object before this one in the table is not in state 5 it sets bit 7 of OBJ_31A0 and stops. Otherwise it takes that object's place (CopyObjectPlaceBack), sets its speed to $0C00 in X and $E400 in Y (X $F600 and Y $DC00 and the next state when the object before it has frame $15), moves once and clears the speeds. (The first part ran in no script; it is written from the bytes.)
+ * HOW: CopyObjectPlaceBack, stores, ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object. Exit: the last clear (all registers as ApplyVelocity left them but A, N and Z).
+ */
+Ended FollowBlockWhileState5(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t before, status, last, frame, state;
+    Ended e;
+
+    before = rd8((uint16_t)(0x27A7 + slot));
+    e = then(ended_load(before), ended_compare(before, 5));
+    if (before != 5) {
+        status = (uint8_t)(RD8(OBJ->status_flags[slot]) | 0x80);
+        WR8(OBJ->status_flags[slot], status);
+        return then(e, ended_load(status));
+    }
+    jsr_push(0xB784);
+    last = CopyObjectPlaceBack((uint8_t)(slot - 1), slot);
+    jsr_pop();
+    e = then(e, ended_with_y(ended_load(last), (uint8_t)(slot - 1)));
+    WR8(OBJ->vx_hi[slot], 0x0C);
+    WR8(OBJ->vy_hi[slot], 0xE4);
+    frame = rd8((uint16_t)(0x2A67 + slot));
+    e = then(then(e, ended_load(0xE4)), then(ended_load(frame), ended_compare(frame, 0x15)));
+    if (frame == 0x15) {
+        WR8(OBJ->vx_hi[slot], 0xF6);
+        WR8(OBJ->vy_hi[slot], 0xDC);
+        state = INC8(OBJ->state[slot]);
+        e = then(then(e, ended_load(0xDC)), ended_nz(state));
+    }
+    jsr_push(0xB7A5);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    WR8(OBJ->vx_hi[slot], 0);
+    WR8(OBJ->vy_hi[slot], 0);
+    return then(e, ended_of_axis_move(move));
+}
+
+void abi_FollowBlockWhileState5(void)
+{
+    abi_ended(FollowBlockWhileState5(cpu.x));
+}

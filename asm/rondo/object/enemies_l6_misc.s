@@ -68,6 +68,28 @@ FallThenStopForRaster:
 FallThenStopForRaster_at0:
     rts
 
+; @routine 0E0B:34D CountDownThenState6
+; @run 70:B34D
+; WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_2800 and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.
+; HOW: DEC, stores, a table read (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: the count; at zero, the table byte as loaded (Y its index).
+CountDownThenState6:
+    lda a:OBJ_3618,x
+    beq CountDownThenState6_at0
+    dec a:OBJ_3618,x
+    rts
+CountDownThenState6_at0:
+    lda #$06
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+    lda a:OBJ_35C0,x
+    and #$03
+    tay
+    lda a:$B36B,y
+    sta a:OBJ_3618,x
+    rts
+
 ; @routine 0E0B:5DD NextPhaseUnlessKind25
 ; @run 70:B5DD
 ; WHAT IT DOES: Goes on to the next OBJ_2800 unless the object in slot $50 is of kind $25.

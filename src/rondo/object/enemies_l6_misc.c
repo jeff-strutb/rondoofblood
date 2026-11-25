@@ -276,3 +276,35 @@ void abi_LoadThenRiseFast(void)
 {
     abi_ended(LoadThenRiseFast(cpu.x));
 }
+
+/*
+ * @routine 0E0B:34D CountDownThenState6
+ * @run 70:B34D
+ * WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_2800 and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.
+ * HOW: DEC, stores, a table read (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: the count; at zero, the table byte as loaded (Y its index).
+ */
+Ended CountDownThenState6(uint8_t slot)
+{
+    uint8_t count, index, value;
+    Ended e;
+
+    count = RD8(OBJ->f3618[slot]);
+    e = ended_load(count);
+    if (count != 0) {
+        count = DEC8(OBJ->f3618[slot]);
+        return then(e, ended_nz(count));
+    }
+    WR8(OBJ->state[slot], 6);
+    WR8(OBJ->f2800[slot], 0);
+    index = (uint8_t)(RD8(OBJ->angle_lo[slot]) & 0x03);
+    value = rd8((uint16_t)(0xB36B + index));
+    WR8(OBJ->f3618[slot], value);
+    return then(e, ended_with_y(ended_load(value), index));
+}
+
+void abi_CountDownThenState6(void)
+{
+    abi_ended(CountDownThenState6(cpu.x));
+}

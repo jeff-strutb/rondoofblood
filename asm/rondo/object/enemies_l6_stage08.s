@@ -42,6 +42,50 @@ StartThenFallAlongList_at0:
     jsr VecApplyGravityUnlimited
     jmp VecApplyVelocity
 
+; @routine 088A:39B FrameBySideThenTimerOnScroll
+; @run 70:AB9B
+; WHAT IT DOES: Sets the object's frame to $25 when its X low is under $C0, else 0; once the scroll's Y high byte is not zero it sets OBJ_34B8 to $C0 and goes on to the next state.
+; HOW: Stores, compares, an INC.
+; WAITS: no.
+; Entry: X object. Exit: the scroll's load, or the new state's N and Z (A $C0).
+FrameBySideThenTimerOnScroll:
+    stz a:OBJ_2A68,x
+    lda a:OBJ_X_LO,x
+    cmp #$C0
+    bcs FrameBySideThenTimerOnScroll_at0
+    lda #$25
+    sta a:OBJ_2A68,x
+FrameBySideThenTimerOnScroll_at0:
+    lda a:ScrollYHi
+    beq FrameBySideThenTimerOnScroll_at1
+    lda #$C0
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+FrameBySideThenTimerOnScroll_at1:
+    rts
+
+; @routine 088A:400 StepListACB2ThenNextOnScreen
+; @run 70:AC00
+; WHAT IT DOES: Steps the animation list at $ACB2, moves the object along Y and goes on to the next state once its Y position is on the first screen (high byte not zero and low byte under $C0).
+; HOW: StepObjectFrames, ApplyVelocityY, compares, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the last compare or load, or the new state's N and Z.
+StepListACB2ThenNextOnScreen:
+    lda #$B2
+    sta z:zTemp10
+    lda #$AC
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jsr VecApplyVelocityY
+    lda a:OBJ_Y_HI,x
+    beq StepListACB2ThenNextOnScreen_at0
+    lda a:OBJ_Y_LO,x
+    cmp #$C0
+    bcs StepListACB2ThenNextOnScreen_at0
+    inc a:OBJ_27A8,x
+StepListACB2ThenNextOnScreen_at0:
+    rts
+
 ; @routine 088A:41E StartListSoundThenSpawn20
 ; @run 70:AC1E
 ; WHAT IT DOES: Starts the script list $83 on channel 4, starts a kind $20 object in slot $10 at this object's place and clears this object.

@@ -64,6 +64,29 @@ StepListB37FThenNext:
 StepListB37FThenNext_at0:
     rts
 
+; @routine 051B:3C3 StepListB37FUnlessFar
+; @run 70:B3C3
+; WHAT IT DOES: When the object's X high byte is not zero, or when the animation list at $B37F ends, clears its animation step and timer, goes on to the next state and clears OBJ_2800.
+; HOW: StepObjectFrames, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the test or the step, or the new state's N and Z.
+StepListB37FUnlessFar:
+    lda a:OBJ_X_HI,x
+    bne StepListB37FUnlessFar_at0
+    lda #$7F
+    sta z:zTemp10
+    lda #$B3
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepListB37FUnlessFar_at1
+StepListB37FUnlessFar_at0:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+StepListB37FUnlessFar_at1:
+    rts
+
 ; @routine 051B:4BF SetHitBox0C18
 ; @run 70:B4BF
 ; WHAT IT DOES: Sets the object's hit box: X offset 0, half width $0C, half height $18.
@@ -110,6 +133,28 @@ DrawTileScriptByHighBits:
     cly
     jsr VecDrawTileScript
     inc a:OBJ_2800,x
+    rts
+
+; @routine 051B:6ED StartFourPiecesWithCount
+; @run 70:B6ED
+; WHAT IT DOES: Starts up to four kind $33 objects at this object's place, each in a free slot from $30, and gives each its number (0 to 3) as OBJ_34B8.
+; HOW: A loop of FindFreeSlotFrom30, StartObjectAtPlace and a counter in zTemp00.
+; WAITS: no.
+; Entry: X object. Exit: the last compare, or as FindFreeSlotFrom30 when no slot was free.
+StartFourPiecesWithCount:
+    stz z:zTemp00
+StartFourPiecesWithCount_at1:
+    jsr VecFindFreeSlotFrom30
+    bcc StartFourPiecesWithCount_at0
+    lda #$33
+    jsr VecStartObjectAtPlace
+    lda z:zTemp00
+    sta a:OBJ_34B8,y
+    inc z:zTemp00
+    lda z:zTemp00
+    cmp #$04
+    bcc StartFourPiecesWithCount_at1
+StartFourPiecesWithCount_at0:
     rts
 
 ; @routine 051B:76A LoadRecordB04

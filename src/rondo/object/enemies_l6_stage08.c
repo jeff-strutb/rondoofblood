@@ -381,3 +381,82 @@ void abi_StartThenFallAlongList(void)
 {
     abi_ended(StartThenFallAlongList(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 088A:39B FrameBySideThenTimerOnScroll
+ * @run 70:AB9B
+ * WHAT IT DOES: Sets the object's frame to $25 when its X low is under $C0, else 0; once the scroll's Y high byte is not zero it sets OBJ_34B8 to $C0 and goes on to the next state.
+ * HOW: Stores, compares, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the scroll's load, or the new state's N and Z (A $C0).
+ */
+Ended FrameBySideThenTimerOnScroll(uint8_t slot)
+{
+    uint8_t low, high, state;
+    Ended e;
+
+    WR8(OBJ->frame[slot], 0);
+    low = RD8(OBJ->x_lo[slot]);
+    e = ended_compare(low, 0xC0);
+    if (low < 0xC0) {
+        WR8(OBJ->frame[slot], 0x25);
+        e = then(e, ended_load(0x25));
+    }
+    high = RD8(SCROLL->y_hi[0]);
+    e = then(e, ended_load(high));
+    if (high == 0) {
+        return e;
+    }
+    WR8(OBJ->f34b8[slot], 0xC0);
+    state = INC8(OBJ->state[slot]);
+    return then(then(e, ended_load(0xC0)), ended_nz(state));
+}
+
+void abi_FrameBySideThenTimerOnScroll(void)
+{
+    abi_ended(FrameBySideThenTimerOnScroll(cpu.x));
+}
+
+/*
+ * @routine 088A:400 StepListACB2ThenNextOnScreen
+ * @run 70:AC00
+ * WHAT IT DOES: Steps the animation list at $ACB2, moves the object along Y and goes on to the next state once its Y position is on the first screen (high byte not zero and low byte under $C0).
+ * HOW: StepObjectFrames, ApplyVelocityY, compares, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the last compare or load, or the new state's N and Z.
+ */
+Ended StepListACB2ThenNextOnScreen(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    AxisMove move;
+    uint8_t y = y_entry, high, low, state;
+    Ended e;
+
+    WR8(ZP->temp10, 0xB2);
+    WR8(ZP->temp11, 0xAC);
+    jsr_push(0xAC0B);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    jsr_push(0xAC0E);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_load(high));
+    if (high == 0) {
+        return e;
+    }
+    low = RD8(OBJ->y_lo[slot]);
+    e = then(e, ended_compare(low, 0xC0));
+    if (low >= 0xC0) {
+        return e;
+    }
+    state = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(state));
+}
+
+void abi_StepListACB2ThenNextOnScreen(void)
+{
+    abi_ended(StepListACB2ThenNextOnScreen(cpu.x, cpu.y));
+}

@@ -352,3 +352,82 @@ void abi_StepListByTimerWithGravity(void)
 {
     abi_ended(StepListByTimerWithGravity(cpu.x));
 }
+
+/*
+ * @routine 051B:3C3 StepListB37FUnlessFar
+ * @run 70:B3C3
+ * WHAT IT DOES: When the object's X high byte is not zero, or when the animation list at $B37F ends, clears its animation step and timer, goes on to the next state and clears OBJ_2800.
+ * HOW: StepObjectFrames, stores, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the test or the step, or the new state's N and Z.
+ */
+Ended StepListB37FUnlessFar(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    uint8_t y = y_entry, high, state;
+    Ended e;
+
+    high = RD8(OBJ->x_hi[slot]);
+    e = ended_load(high);
+    if (high == 0) {
+        WR8(ZP->temp10, 0x7F);
+        WR8(ZP->temp11, 0xB3);
+        jsr_push(0xB3D3);
+        step = StepObjectFrames(slot, &y);
+        jsr_pop();
+        e = then(e, ended_of_frame_step(step, step != FRAME_HELD, y));
+        if (step != FRAME_LIST_ENDED) {
+            return e;
+        }
+    }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    state = INC8(OBJ->state[slot]);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_nz(state));
+}
+
+void abi_StepListB37FUnlessFar(void)
+{
+    abi_ended(StepListB37FUnlessFar(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 051B:6ED StartFourPiecesWithCount
+ * @run 70:B6ED
+ * WHAT IT DOES: Starts up to four kind $33 objects at this object's place, each in a free slot from $30, and gives each its number (0 to 3) as OBJ_34B8.
+ * HOW: A loop of FindFreeSlotFrom30, StartObjectAtPlace and a counter in zTemp00.
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare, or as FindFreeSlotFrom30 when no slot was free.
+ */
+Ended StartFourPiecesWithCount(uint8_t slot)
+{
+    uint8_t count, found_slot, last;
+    bool found;
+    Ended e = ended_kept();
+
+    WR8(ZP->temp00, 0);
+    do {
+        jsr_push(0xB6F2);
+        found_slot = FindFreeSlotFrom30(&last, &found);
+        jsr_pop();
+        e = then(e, ended_of_find_slot(found_slot, last, found));
+        if (!found) {
+            return e;
+        }
+        jsr_push(0xB6F9);
+        StartObjectAtPlace(0x33, slot, found_slot);
+        jsr_pop();
+        count = RD8(ZP->temp00);
+        WR8(OBJ->f34b8[found_slot], count);
+        INC8(ZP->temp00);
+        count = RD8(ZP->temp00);
+        e = then(e, ended_with_a(ended_compare(count, 4), count));
+    } while (count < 4);
+    return e;
+}
+
+void abi_StartFourPiecesWithCount(void)
+{
+    abi_ended(StartFourPiecesWithCount(cpu.x));
+}

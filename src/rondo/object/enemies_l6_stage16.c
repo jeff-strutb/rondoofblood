@@ -111,3 +111,79 @@ void abi_ClearSlotsWhenScrollZero(void)
 {
     abi_ended(ClearSlotsWhenScrollZero(cpu.x));
 }
+
+/*
+ * @routine 16CB:2F6 StepListB36AThenCount
+ * @run 70:B2F6
+ * WHAT IT DOES: Steps the animation list at $B36A and moves the object along Y; counts OBJ_34B8 down and at zero clears OBJ_2FE8, sets OBJ_3510 to $40 and goes on to the next OBJ_2800.
+ * HOW: StepObjectFrames, ApplyVelocityY, DEC, stores, INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the count, or the new OBJ_2800's N and Z (A $40).
+ */
+Ended StepListB36AThenCount(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    AxisMove move;
+    uint8_t y = y_entry, left, phase;
+    Ended e;
+
+    WR8(ZP->temp10, 0x6A);
+    WR8(ZP->temp11, 0xB3);
+    jsr_push(0xB301);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    jsr_push(0xB304);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    left = DEC8(OBJ->f34b8[slot]);
+    e = then(then(e, ended_of_axis_move(move)), ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    WR8(OBJ->sprite_flip[slot], 0);
+    WR8(OBJ->f3510[slot], 0x40);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(then(e, ended_load(0x40)), ended_nz(phase));
+}
+
+void abi_StepListB36AThenCount(void)
+{
+    abi_ended(StepListB36AThenCount(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 16CB:54F StartKindFromTableAtSlot16
+ * @run 70:B54F
+ * WHAT IT DOES: Takes a kind from the table at $B56B by OBJ_3618, clears the object in slot $16, starts an object of that kind there at this object's place, counts OBJ_3618 up, sets OBJ_34B8 to $40 and goes on to the next OBJ_2800.
+ * HOW: A table read (bank 70), ClearObjectInY, StartObjectAtPlace, two INCs.
+ * WAITS: no.
+ * Entry: X object. Exit: A $40, Y $16, N and Z from the new OBJ_2800.
+ */
+Ended StartKindFromTableAtSlot16(uint8_t slot)
+{
+    uint8_t index, kind, phase;
+    Ended e;
+
+    index = RD8(OBJ->f3618[slot]);
+    kind = rd8((uint16_t)(0xB56B + index));
+    e = ended_with_y(ended_load(kind), index);
+    push8(kind);
+    jsr_push(0xB55B);
+    ClearObjectInY(0x16);
+    jsr_pop();
+    kind = pull8();
+    e = then(e, ended_with_y(ended_load(kind), 0x16));
+    jsr_push(0xB55F);
+    StartObjectAtPlace(kind, slot, 0x16);
+    jsr_pop();
+    INC8(OBJ->f3618[slot]);
+    WR8(OBJ->f34b8[slot], 0x40);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(then(e, ended_load(0x40)), ended_nz(phase));
+}
+
+void abi_StartKindFromTableAtSlot16(void)
+{
+    abi_ended(StartKindFromTableAtSlot16(cpu.x));
+}

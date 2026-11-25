@@ -73,6 +73,36 @@ Probe ProbeTerrainFrontColumn(uint8_t request, uint8_t object, uint8_t column, b
 /* Exit shims exported from the files that define them, for callers' wrappers. */
 void probe_exit_shim(Probe p);  /* object/sensing.c */
 
+/* How a mover's start went: the move and whether gravity gained. */
+typedef struct {
+    bool moved;
+    AxisMove move;
+    GravityResult gravity;
+} MoverStart;
+
+/* How a mover went, for what the wrapper replays. */
+typedef struct {
+    uint8_t object;
+    MoverStart start;
+    bool floor_probed;
+    Probe floor;
+    Probe wall;
+    uint8_t hits;
+} Mover;
+
+/* object/sensing.c: the movers (carry_in is the C the caller left; it reaches the overlay's lookup). */
+Mover MoveAndLand(uint8_t height, uint8_t object, uint8_t column, bool carry_in);
+Mover StopOnLanding(uint8_t height, uint8_t object, uint8_t column, bool carry_in);
+Mover StopOnLandingNoMove(uint8_t object, uint8_t column, bool carry_in);
+Mover StopOnLandingFrontColumn(uint8_t height, uint8_t object, uint8_t column, bool carry_in);
+
+/* A mover's hits byte: bit 0 landed, bit 1 walled. */
+static inline bool mover_landed(Mover m) { return (m.hits & 0x01) != 0; }
+static inline bool mover_walled(Mover m) { return (m.hits & 0x02) != 0; }
+
+/* A mover's exit as the wrapper replays it: carry_bit is the hits bit C reports (0x01 landed, 0x02 walled). */
+void mover_exit_shim(Mover mover, uint8_t carry_bit);  /* object/sensing.c */
+
 /* What FallAndBounce did: the probe it made, the deadly bit, and when it bounced, the last add. */
 typedef struct {
     bool bounced;         /* false: the ground was deadly and nothing more was done */

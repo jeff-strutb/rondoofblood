@@ -29,6 +29,7 @@
  */
 #define _GNU_SOURCE
 #include <dlfcn.h>
+#include <errno.h>
 #include <setjmp.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -134,6 +135,7 @@ typedef struct {
     uint64_t arrive_nonres;  /* a tagged address entered by JSR or JMP while its bytes are not resident (not opened) */
     uint64_t runaway;        /* the C ran past its access or write budget (counted divergent) */
     uint64_t prefix;         /* open at the script's end: its accesses judged as far as the log goes */
+    uint64_t dispatch;       /* the C ended by an RTS that jumps to an address the routine pushed (the RTS-as-jump trick): judged up to there */
     uint64_t noreturn;       /* A5: a call the original's record shows did not return inside the call: judged up to it, its exit not compared */
     uint64_t kept;           /* hybrid: entered by the original's code, not swapped (a diagnostic run) */
 } Stat;
@@ -269,6 +271,9 @@ static int fetch_one(void)
         return 0;
     if (!wire_read(in, &e)) {
         at_eof = 1;
+        if (getenv("RONDO_DIAG_CTX"))
+            fprintf(stderr, "ATEOF frame %lu window %llu..%llu feof %d ferror %d errno %d\n", cur_frame,
+                    (unsigned long long)wbase, (unsigned long long)(wbase + wn), feof(in), ferror(in), errno);
         return 0;
     }
     if (e.type == EV_END) {
@@ -395,6 +400,8 @@ static void defect(int kind, const char *fmt, ...)
 void check_finish(void);
 static void stop_context(uint64_t from);
 static void park_forever(void);
+uint16_t rondo_pc;
+void hand_over(uint16_t addr);
 static unsigned long extra_run;
 static const char *stopped_why;
 
@@ -568,8 +575,23 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
         if (!hw && type != EV_STATE && (e->type == EV_HWR || e->type == EV_HWW || e->type == EV_STATE))
             break;
     }
-    if (found < 0 && hit_end && first < 0 && mode == MODE_HYBRID && sp == s && record_ends_here(s))
+    if (getenv("RONDO_DIAG_CTX") && found < 0 && mode == MODE_HYBRID)
+        fprintf(stderr, "PLACEFAIL frame %lu in %s: type %d phys %06X hit_end %d first %lld at_eof %d s->end %llu cur %llu rondo_pc %04X ends_here %d\n",
+                cur_frame, rondo_tags[s->tag].name, type, phys, hit_end, (long long)first, (int)at_eof,
+                (unsigned long long)s->end, (unsigned long long)s->cur, rondo_pc, record_ends_here(s));
+    if (found < 0 && hit_end && first < 0 && mode == MODE_HYBRID && sp == s && record_ends_here(s)) {
+        /* The original's call ended here (left by the stack: it pulled past its own return address) while the C goes on:
+         * the C hands the machine to the original at the instruction it is at, whose access it has not made. Only the
+         * script's end parks the C for good. */
+        /* The call was closed as left in the record: that is the case for the hand-over, whether or not the reader has
+         * since read the stream to its end (the read-ahead of a scan can: at_eof says the READER is at the end, not
+         * that this call is). Only a call the record never closes, in a stream that ended, parks for good. */
+        Ev *closing = s->end != SPAN_OPEN ? evp(s->end) : NULL;
+
+        if (rondo_pc && closing && closing->type == EV_CLOSE && closing->kind == CL_LEFT)
+            hand_over(rondo_pc);
         park_forever();
+    }
     if (found >= 0) {
         extra_run = 0;
     } else if (mode == MODE_HYBRID && ++extra_run > 200000) {
@@ -619,6 +641,17 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
 }
 
 /* A call's end: what the original did that the C did not is missing; interrupts left are delivered. */
+/* Did the C end by an RTS that does not return to its caller? It pushed more than it pulled, so the address the RTS pops is
+ * one it pushed itself: a jump (a table dispatch), after which the original's call goes on in other routines. */
+static int ends_by_dispatch(uint8_t entry_s, int is_irq, const Tag *t)
+{
+    uint8_t below = (uint8_t)(entry_s - cpu.s);
+
+    return !is_irq && !t->ends && below >= 1 && below < 0x80;
+}
+
+static void span_finish_to_call(Span *s);
+
 static void span_finish(Span *s)
 {
     int reported = 0;
@@ -653,6 +686,41 @@ static void span_finish(Span *s)
     if (s->end == SPAN_OPEN)
         s->end = wbase + wn;
     s->cur = s->end;
+}
+
+/* As span_finish, for a call that ended by dispatch: what is left up to the arrival at the dispatched address (where the
+ * record's next call begins) is passed or reported; the rest of the span belongs to the dispatched routines. */
+static void span_finish_to_call(Span *s)
+{
+    int reported = 0;
+    int nest = s->nest;
+    unsigned pulls = 0;
+    uint64_t j;
+
+    for (j = s->cur;; j++) {
+        Ev *e = sev(s, j, &nest);
+        char b[96];
+
+        if (!e || e->type == EV_CALL || e->type == EV_OPEN)
+            break;
+        if (e->type == EV_RTPULL)
+            pulls++;
+        if (e->type == EV_INT) {
+            uint64_t r = section_end(s, j);
+
+            if (r == NO_RETURN)
+                break;
+            int_pass(s, j, r);
+            j = r;
+        } else if (e->type == EV_FRAME && mode == MODE_HYBRID) {
+            frame_pass(s, j, pulls);
+        } else if (is_counted(e) && !reported) {
+            defect(D_MISSING, "the original's %s at access %llu of the call is not made", describe(e, b, sizeof b),
+                   (unsigned long long)(j - s->start));
+            reported = 1;
+        }
+    }
+    s->cur = j;
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -727,7 +795,7 @@ typedef struct Ctx {
     uint8_t entry_s;
     uint64_t open_i, close_i;
     Cpu saved_cpu;
-    int parked, done, abandoned, natural;
+    int parked, done, abandoned, natural, dispatch;
     uint16_t resume_pc;
     uint8_t resume_s;
     unsigned long wait_frame;      /* parked until the core has ended this frame */
@@ -2012,6 +2080,10 @@ static void judge(Frame *f, const Regs *r)
     if (reason == 0) {
         f->tag->abi();
         apply_pokes(span.cur, end);
+        if (!prefix && ends_by_dispatch(f->regs.s, f->kind == K_IRQ, f->tag)) {
+            s->dispatch++;
+            longjmp(c_abort, ABORT_END);       /* the original's call goes on in the routines it jumped to: judged up to here */
+        }
         if (!prefix)
             span_finish(&span);
     }
@@ -2243,7 +2315,13 @@ static void co_main(void)
     blame_tag = c->tag;
     in_swap = c->tag;
     rondo_tags[c->tag].abi();
-    span_finish(&c->span);
+    if (ends_by_dispatch(c->entry_s, c->kind == K_IRQ, &rondo_tags[c->tag])) {
+        c->dispatch = 1;
+        stats[c->tag].dispatch++;
+        span_finish_to_call(&c->span);
+    } else {
+        span_finish(&c->span);
+    }
     in_swap = -1;
     c->done = 1;
     swapcontext(&c->uc, &main_uc);
@@ -2284,6 +2362,19 @@ static int hy_finish(Ctx *c)
         pc = (uint16_t)((chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s + 1))) |
                          (chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s + 2))) << 8)) + 1);
         ns = (uint8_t)(s + 2);
+    }
+    if (c->dispatch) {
+        /* The RTS jumps to an address the routine pushed: the original's call goes on in the routines that address
+         * begins, whose arrivals the hook will match; the call is judged up to here, and time is paced to the arrival. */
+        Ev *next = evp(c->span.cur);
+
+        owed = next && (next->type == EV_CALL || next->type == EV_OPEN) && next->clock
+                   ? (int64_t)next->clock - (int64_t)hybrid_clock_now() : 1;
+        chk_set_regs(cpu.a, cpu.x, cpu.y, ns, p, pc);
+        prev_op = 0x60;
+        last_pc = 0xFFFF;
+        scan = c->span.cur;
+        return owed > 0 ? (int)(owed > 0x7FFFFFFF ? 0x7FFFFFFF : owed) : 1;
     }
     if (close && close->type == EV_CLOSE) {
         blame_tag = c->tag;
@@ -2429,7 +2520,7 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
     c->open_i = i;
     c->entry_s = r->s;
     recent_tags[recent_n++ % 16] = index;
-    c->done = c->parked = c->abandoned = 0;
+    c->done = c->parked = c->abandoned = c->dispatch = 0;
     c->fsn = 0;
     c->below = top;
     top = c;
@@ -2918,12 +3009,12 @@ void check_finish(void)
                     (unsigned long long)s->unverified, (unsigned long long)s->order);
             for (int k = 0; k < NKIND; k++)
                 fprintf(report, " %llu", (unsigned long long)s->kind[k]);
-            /* Causes: left, log, depth, computed, arrive_branch, arrive_nonres, runaway, prefix, noreturn */
-            fprintf(report, " %llu %llu %llu %llu %llu %llu %llu %llu %llu\n", (unsigned long long)s->unv_left,
+            /* Causes: left, log, depth, computed, arrive_branch, arrive_nonres, runaway, prefix, noreturn, dispatch */
+            fprintf(report, " %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu\n", (unsigned long long)s->unv_left,
                     (unsigned long long)s->unv_log, (unsigned long long)s->unv_depth,
                     (unsigned long long)s->unv_computed, (unsigned long long)s->arrive_branch,
                     (unsigned long long)s->arrive_nonres, (unsigned long long)s->runaway,
-                    (unsigned long long)s->prefix, (unsigned long long)s->noreturn);
+                    (unsigned long long)s->prefix, (unsigned long long)s->noreturn, (unsigned long long)s->dispatch);
         }
         if (probe_calls)
             fprintf(report, "PROBE resident_at: %llu calls, %llu differ, variants seen %u and %u\n",

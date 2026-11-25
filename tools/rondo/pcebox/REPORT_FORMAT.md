@@ -44,7 +44,7 @@ of that script ("record exit N", "hybrid exit N", "timed out after 1500 s"); a f
   Verdict lines: `<routine> DIVERGENT call <n>: <text>` (registers, flags, MPR, CPU clock or RAM differ at the end, or
   hardware not in the original's place, or the C ran away) and `<routine> UNVERIFIED call <n>: <text>`.
 - `TAG <routine> <calls> <identical> <divergent> <unverified> <order>` then nine defect counts in the order
-  MOVED EXTRA MISSING VALUE STACK STATE REGS CALL INT (every defect, so a cascade counts many), then nine cause counts:
+  MOVED EXTRA MISSING VALUE STACK STATE REGS CALL INT (every defect, so a cascade counts many), then ten cause counts:
   `left` (left by a longer route than RTS or RTI: unverified), `log` (calls whose log filled: judged as a prefix),
   `depth` (nested deeper than 512: unverified), `computed` (unused, 0), `arrive_branch` (a branch back into the routine's own
   first byte, information), `arrive_nonres` (entered while another overlay's bytes were there, information), `runaway`
@@ -53,7 +53,11 @@ of that script ("record exit N", "hybrid exit N", "timed out after 1500 s"); a f
   frame (`call_orig`) that the original's record shows did not come back inside the call: no RET at the callee's stack
   level to the return address the C stated. The C is judged up to that call and its exit is not compared, since the
   original left another way; counted in `identical` or `order`, never hidden: a callee that is not the one the original
-  called is still a CALL defect, "made no such call", and a return to another address is not a return).
+  called is still a CALL defect, "made no such call", and a return to another address is not a return), `dispatch` (a call
+  that ended by an RTS that jumps to an address the routine pushed itself: its S at the end is below its entry S, so
+  the address is not its caller's. The original's call goes on in the routines that address begins (the record opens them
+  as calls of their own, nested in this one's span): the C is judged up to its RTS, its exit and the rest of the span are
+  not compared; in lockstep the call is finished there and the arrivals of the dispatched routines are matched one by one).
   `order` counts calls with an access defect and no other fault. `calls = identical + divergent + unverified + order`.
 
 `oracle.py a5` writes, in `$RONDO_ORACLE_OUT`:
@@ -61,10 +65,10 @@ of that script ("record exit N", "hybrid exit N", "timed out after 1500 s"); a f
 - `a5.csv` and `card_a5.csv`: `routine,bytes,bytes_run,calls,identical,divergent,unverified,order_flags,verdict`. Verdict:
   `UNCOVERED` (no call), `DIVERGENT` (any divergent or order call), `UNVERIFIED` (any unverified call, or none identical),
   else `IDENTICAL`. A routine with one call not judged is not IDENTICAL. (Columns are those `gate.py` reads; unchanged.)
-- `a5_causes.csv`: `routine,MOVED,EXTRA,MISSING,VALUE,STACK,STATE,REGS,CALL,INT,left,log,depth,computed,arrive_branch,arrive_nonres,runaway,prefix,noreturn`,
+- `a5_causes.csv`: `routine,MOVED,EXTRA,MISSING,VALUE,STACK,STATE,REGS,CALL,INT,left,log,depth,computed,arrive_branch,arrive_nonres,runaway,prefix,noreturn,dispatch`,
   summed over the scripts (and `a5_causes_card_a5.csv` for the card).
 - `a5_prefix_only.csv`: `routine,calls,ended_noreturn`: the routines every call of which ended at a callee the original
-  did not return from, so that they were judged on a prefix only (the worklist shows them).
+  did not return from, or dispatched by RTS, so that they were judged on a prefix only (the worklist shows them).
 - stdout: `<script>: done` or `<script>: exit N: ...`, then `routine verdicts`, `bytes by verdict`, `calls`, a line
   `calls not judged or set aside, by cause`, per-routine example lines, the UNVERIFIED and UNCOVERED name lists.
 

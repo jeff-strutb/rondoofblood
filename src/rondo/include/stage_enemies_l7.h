@@ -518,6 +518,7 @@ Ended StartThreeNumberedObjects(uint8_t slot);
 Ended PlaceFromTableThenStepList(uint8_t slot);
 Ended LoadThenSinkAlongList(uint8_t slot, uint8_t y_entry);
 Ended LoadThenStartFiveFromTable(uint8_t slot);
+Ended SetHitBoxFromTable(uint8_t slot);
 Ended StartThenWaitForField83(uint8_t slot);
 Ended TurnTowardPlayerOrStepList(uint8_t slot, uint8_t y_entry);
 Ended StepListC103ThenPickAim(uint8_t slot, uint8_t y_entry);

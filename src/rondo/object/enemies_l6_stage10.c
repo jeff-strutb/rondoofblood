@@ -381,3 +381,57 @@ void abi_RiseThenPlaceAndDrop(void)
 {
     abi_ended(RiseThenPlaceAndDrop(cpu.x));
 }
+
+/*
+ * @routine 10CB:415 RiseThenPlaceWithSound
+ * @run 70:B415
+ * WHAT IT DOES: Moves the object along Y by its speed and takes $0010 off its Y speed. When its Y high byte is $FE it sends sound $E7, sets its flags to $80, frame $1D, puts it at X $0000, Y $FFE0, gives it X speed $0400 and Y speed $0600 (high bytes) and goes on to the next OBJ_2800.
+ * HOW: ApplyVelocityY, a 16-bit subtract, SoundCommand, stores, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
+ */
+SoundEnd RiseThenPlaceWithSound(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    AxisMove move;
+    Sum low, high;
+    uint8_t position, phase;
+    Ended e;
+
+    jsr_push(0xB418);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    low = sub_bytes(RD8(OBJ->vy_lo[slot]), 0x10, true);
+    WR8(OBJ->vy_lo[slot], low.value);
+    high = sub_bytes(RD8(OBJ->vy_hi[slot]), 0x00, low.carry);
+    WR8(OBJ->vy_hi[slot], high.value);
+    e = then(then(ended_of_axis_move(move), ended_of_sum(low)), ended_of_sum(high));
+    position = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_compare(position, 0xFE));
+    if (position != 0xFE) {
+        r.end = e;
+        return r;
+    }
+    r.before = then(e, ended_load(0xE7));
+    r.sounded = true;
+    r.command = 0xE7;
+    jsr_push(0xB435);
+    r.call = SoundCommand(0xE7, slot, y_entry);
+    jsr_pop();
+    WR8(OBJ->flags[slot], 0x80);
+    WR8(OBJ->frame[slot], 0x1D);
+    WR8(OBJ->x_hi[slot], 0);
+    WR8(OBJ->x_lo[slot], 0);
+    WR8(OBJ->y_hi[slot], 0xFF);
+    WR8(OBJ->y_lo[slot], 0xE0);
+    WR8(OBJ->vy_hi[slot], 6);
+    WR8(OBJ->vx_hi[slot], 4);
+    phase = INC8(OBJ->f2800[slot]);
+    r.end = then(ended_load(4), ended_nz(phase));
+    return r;
+}
+
+void abi_RiseThenPlaceWithSound(void)
+{
+    abi_sound_end(RiseThenPlaceWithSound(cpu.x, cpu.y));
+}

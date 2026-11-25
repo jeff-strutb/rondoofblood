@@ -528,3 +528,131 @@ void abi_PulseWaterLevelAndScatter(void)
 {
     abi_double_sound(pulse_water_level_and_scatter(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0B4A:79D LoadRecordThenWatchThenDropTwice
+ * @run 70:AF9D
+ * WHAT IT DOES: In state 0 loads the record. State 1 looks for an object of kind $24 in slots $10 to $2E; when it is in frame $11, at X low $B8 or more on the first screen, and the player's X low is $C0 or more, the object goes to state 2. State 2: its Y speed gains $0020 a frame and it moves; at Y low $BC it stops, takes Y speed high $FE, plays sound $2C and goes to state 3. State 3 does the same fall until its Y high byte is not 0, then goes to state 4.
+ * HOW: LoadObjectRecord, a search, compares, 16-bit adds in memory, ApplyVelocity, SoundCommand.
+ * WAITS: no.
+ * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
+ */
+SoundEnd LoadRecordThenWatchThenDropTwice(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t state, last, nz, y, kind, value, ground, high;
+    bool carry;
+    AxisMove move;
+    Sum sum;
+    SoundEnd r = l8_sound_none(ended_kept());
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        r.end = then(e, ended_of_record(last, nz, carry));
+        return r;
+    }
+    e = then(e, ended_load((uint8_t)(state - 1)));
+    if (state == 1) {
+        for (y = 0x10;;) {
+            kind = RD8(OBJ->kind[y]);
+            e = then(e, ended_with_y(ended_compare(kind, 0x24), y));
+            if (kind == 0x24) {
+                break;
+            }
+            y++;
+            e = then(e, ended_with_y(l8_compare_y(y, 0x2F), y));
+            if (y == 0x2F) {
+                r.end = e;
+                return r;
+            }
+        }
+        value = RD8(OBJ->frame[y]);
+        e = then(e, ended_compare(value, 0x11));
+        if (value != 0x11) {
+            r.end = e;
+            return r;
+        }
+        value = RD8(OBJ->x_lo[y]);
+        e = then(e, ended_compare(value, 0xB8));
+        if (value < 0xB8) {
+            r.end = e;
+            return r;
+        }
+        high = RD8(OBJ->x_hi[y]);
+        e = then(e, ended_load(high));
+        if (high != 0) {
+            r.end = e;
+            return r;
+        }
+        value = RD8(OBJ->x_lo[0]);
+        e = then(e, ended_compare(value, 0xC0));
+        if (value < 0xC0) {
+            r.end = e;
+            return r;
+        }
+        r.end = then(e, ended_nz(INC8(OBJ->state[slot])));
+        return r;
+    }
+    e = then(e, ended_load((uint8_t)(state - 2)));
+    if (state == 2) {
+        value = RD8(OBJ->vy_lo[slot]);
+        sum = add_bytes(value, 0x20, false);
+        WR8(OBJ->vy_lo[slot], sum.value);
+        e = then(e, ended_of_sum(sum));
+        if (sum.carry) {
+            e = then(e, ended_nz(INC8(OBJ->vy_hi[slot])));
+        }
+        jsr_push(0xAFCB);
+        move = ApplyVelocity(slot);
+        jsr_pop();
+        e = then(e, ended_of_axis_move(move));
+        ground = RD8(OBJ->y_lo[slot]);
+        e = then(e, ended_compare(ground, 0xBC));
+        if (ground < 0xBC) {
+            r.end = e;
+            return r;
+        }
+        WR8(OBJ->vy_lo[slot], 0);
+        WR8(OBJ->vy_hi[slot], 0xFE);
+        e = then(e, ended_load(0xFE));
+        r.sounded = true;
+        r.command = 0x2C;
+        r.before = then(e, ended_load(0x2C));
+        jsr_push(0xAFDF);
+        r.call = SoundCommand(0x2C, slot, y_entry);
+        jsr_pop();
+        r.end = ended_nz(INC8(OBJ->state[slot]));
+        return r;
+    }
+    e = then(e, ended_load((uint8_t)(state - 3)));
+    if (state != 3) {
+        r.end = e;
+        return r;
+    }
+    value = RD8(OBJ->vy_lo[slot]);
+    sum = add_bytes(value, 0x20, false);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    e = then(e, ended_of_sum(sum));
+    if (sum.carry) {
+        e = then(e, ended_nz(INC8(OBJ->vy_hi[slot])));
+    }
+    jsr_push(0xAFF7);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_load(high));
+    if (high == 0) {
+        r.end = e;
+        return r;
+    }
+    r.end = then(e, ended_nz(INC8(OBJ->state[slot])));
+    return r;
+}
+
+void abi_LoadRecordThenWatchThenDropTwice(void)
+{
+    abi_sound_end(LoadRecordThenWatchThenDropTwice(cpu.x, cpu.y));
+}

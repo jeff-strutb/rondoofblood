@@ -285,3 +285,77 @@ ClearWhenHurtThenWait_at1:
     lda #$5C
     sta z:zPlayerHealth
     jmp VecClearObject
+
+; @routine 0B4A:79D LoadRecordThenWatchThenDropTwice
+; @run 70:AF9D
+; WHAT IT DOES: In state 0 loads the record. State 1 looks for an object of kind $24 in slots $10 to $2E; when it is in frame $11, at X low $B8 or more on the first screen, and the player's X low is $C0 or more, the object goes to state 2. State 2: its Y speed gains $0020 a frame and it moves; at Y low $BC it stops, takes Y speed high $FE, plays sound $2C and goes to state 3. State 3 does the same fall until its Y high byte is not 0, then goes to state 4.
+; HOW: LoadObjectRecord, a search, compares, 16-bit adds in memory, ApplyVelocity, SoundCommand.
+; WAITS: no.
+; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
+LoadRecordThenWatchThenDropTwice:
+    lda a:OBJ_27A8,x
+    bne LoadRecordThenWatchThenDropTwice_at0
+    jmp VecLoadObjectRecord
+LoadRecordThenWatchThenDropTwice_at0:
+    dec a
+    bne LoadRecordThenWatchThenDropTwice_at1
+    ldy #$10
+LoadRecordThenWatchThenDropTwice_at3:
+    lda a:OBJ_2750,y
+    cmp #$24
+    beq LoadRecordThenWatchThenDropTwice_at2
+    iny
+    cpy #$2F
+    bne LoadRecordThenWatchThenDropTwice_at3
+LoadRecordThenWatchThenDropTwice_at6:
+    rts
+LoadRecordThenWatchThenDropTwice_at1:
+    dec a
+    bne LoadRecordThenWatchThenDropTwice_at4
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$20
+    sta a:OBJ_VY_LO,x
+    bcc LoadRecordThenWatchThenDropTwice_at5
+    inc a:OBJ_VY_HI,x
+LoadRecordThenWatchThenDropTwice_at5:
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$BC
+    bcc LoadRecordThenWatchThenDropTwice_at6
+    stz a:OBJ_VY_LO,x
+    lda #$FE
+    sta a:OBJ_VY_HI,x
+    lda #$2C
+    jsr VecSoundCommand
+    inc a:OBJ_27A8,x
+    rts
+LoadRecordThenWatchThenDropTwice_at4:
+    dec a
+    bne LoadRecordThenWatchThenDropTwice_at6
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$20
+    sta a:OBJ_VY_LO,x
+    bcc LoadRecordThenWatchThenDropTwice_at7
+    inc a:OBJ_VY_HI,x
+LoadRecordThenWatchThenDropTwice_at7:
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_HI,x
+    beq LoadRecordThenWatchThenDropTwice_at6
+    inc a:OBJ_27A8,x
+    rts
+LoadRecordThenWatchThenDropTwice_at2:
+    lda a:OBJ_2A68,y
+    cmp #$11
+    bne LoadRecordThenWatchThenDropTwice_at6
+    lda a:OBJ_X_LO,y
+    cmp #$B8
+    bcc LoadRecordThenWatchThenDropTwice_at6
+    lda a:OBJ_X_HI,y
+    bne LoadRecordThenWatchThenDropTwice_at6
+    lda a:OBJ_X_LO
+    cmp #$C0
+    bcc LoadRecordThenWatchThenDropTwice_at6
+    inc a:OBJ_27A8,x
+    rts

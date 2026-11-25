@@ -114,7 +114,13 @@ typedef struct {
     TileRead last;
     uint8_t row;
     uint8_t below;
+    uint8_t a;        /* the last column's X, which A holds at the end */
+    uint8_t index;    /* the last column's offset index, Y when no read was made */
+    bool v;           /* V from the last row add */
 } ColumnsEnd;
+
+/* A column's offset across: the table byte, its index, and the carry and overflow of the index's add. */
+typedef struct { uint8_t value; uint8_t index; bool carry; bool overflow; } ColumnOffset;
 
 /* How the check for a floor came out, and by which test. */
 typedef enum {
@@ -125,6 +131,8 @@ typedef struct {
     FloorCheck how;
     uint8_t column;
     uint8_t push_before;
+    uint8_t a;            /* the A the check ends with when it found a floor: the push's field CA or its Y high */
+    uint8_t field_ca;     /* zFieldCA as the check read it */
 } FloorResult;
 
 /* How the player overlay's floor probe ended. */
@@ -143,6 +151,10 @@ typedef struct {
     uint8_t row;
     uint16_t y;
     uint16_t depth;
+    uint8_t index;        /* the column's offset index, Y when no read was made */
+    bool probe_v;         /* V of the row add */
+    bool lift_c, lift_v;  /* C and V of the lift's high subtract */
+    uint8_t push;         /* zPlayerPush as the end read it */
 } FloorProbe;
 
 /* What a step of an animation did. */
@@ -245,7 +257,7 @@ void item_use_exit_shim(ItemUse use);
 ColumnsEnd RichterReadColumns(void);
 TileRead RichterReadAbove(uint8_t row, bool on_the_map);
 void read_above_exit_shim(TileRead read, bool on_the_map);
-uint8_t RichterColumnOffset(uint8_t column);
+ColumnOffset RichterColumnOffset(uint8_t column);
 ColumnLift RichterLiftByColumn(uint8_t column);
 void column_lift_exit_shim(ColumnLift lift);
 LadderCheck RichterLadderCheck(void);
@@ -1099,6 +1111,8 @@ typedef struct {
     TileRead last;
     uint8_t answer;
     uint8_t row;
+    uint8_t index;
+    bool v;
 } LowColumns;
 
 /* How a read of one column ended, for what the wrapper leaves. */
@@ -1108,7 +1122,10 @@ typedef struct {
     uint8_t below;
     bool read_made;
     TileRead read;
+    uint8_t index;
+    bool v;
 } ColumnRead;
+typedef struct { int column; uint8_t bits; } BlockedColumns;
 
 /* How a fall-through check ended. */
 typedef struct {

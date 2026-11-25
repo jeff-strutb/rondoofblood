@@ -1,2 +1,21 @@
 name,len,elem,readers,note,bank,disc,copies,reads,status
 StageMaskOffsets,8,u8,MaskStageRowCopy|MaskStageRow,the 8 offsets of a masking step,6B,127949,1,3,SETTLED
+Effect6Bands,6,u8,RasterEffect6|RasterEffect7,band by step; the symbol is one before the first element (index 1 to 5),69,21EA6,1,2,SETTLED
+Effect6YAdds,6,u8,RasterEffect6,Y offset by step; index 1 to 5,69,21EAB,1,2,SETTLED
+Effect6Lines,6,u8,RasterEffect6|RasterEffect7,next line by step; index 1 to 5,69,21EB0,1,3,SETTLED
+Effect8YAdds,5,u16le,RasterEffect8,Y offset words by step,69,22033,1,4,SETTLED
+Effect8Lines,3,u8,RasterEffect8,next line by step,69,22038,1,2,SETTLED
+FlickerMasks,2,u8,RasterEffect8,VDC control mask by odd or even frame,69,2203B,1,1,SETTLED
+Effect12Bands,4,u8,RasterEffect12,band by step; index 1 to 3,69,22131,1,1,SETTLED
+Effect12Lines,4,u8,RasterEffect12,next line by step,69,22135,1,2,SETTLED
+Effect13Bands,5,u8,RasterEffect13,band by step; index 1 to 4,69,221C0,1,1,SETTLED
+Effect13YAdds,9,u16le,RasterEffect13,Y offset words by step,69,221C3,1,8,SETTLED
+Effect13Lines,5,u8,RasterEffect13,next line by step,69,221CC,1,2,SETTLED
+Effect16Bands,5,u8,RasterEffect16,band by step; index 1 to 4,69,22314,1,1,SETTLED
+Effect16YAdds,5,u8,RasterEffect16,Y offset by step,69,22318,1,2,SETTLED
+Effect16Lines,5,u8,RasterEffect16,next line by step,69,2231C,1,2,SETTLED
+Effect17Bands,5,u8,RasterEffect17,band by step; index 1 to 4,69,22384,1,1,SETTLED
+Effect17Lines,5,u8,RasterEffect17,next line by step,69,2238A,1,2,SETTLED
+DeepWave,16,u16le,RasterEffect24,X offset words by wave phase,69,226A0,1,16,SETTLED
+RasterEffects,58,u16le,RasterInterrupt,the effect handlers' addresses by raster effect,69,21CE9,1,24,SETTLED
+RasterStartEntries,147,u16le,RasterStart|CopyBands4Down|CopyBands3Down,band copy entry by raster effect,69,21C04,1,26,SETTLED

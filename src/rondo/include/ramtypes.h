@@ -1021,4 +1021,42 @@ _Static_assert(sizeof(StageVram) == 0x100, "StageVram size");
 _Static_assert(StageVram_BASE + offsetof(StageVram, buffer) + 0 == StageVramBuffer, "StageVram.buffer is not at StageVramBuffer");
 #define STAGEVRAM ((StageVram *)StageVram_BASE)
 
+/* RasterState: one struct at $3F30, 1 element(s), 4 bytes */
+#define RasterState_BASE 0x3F30
+#define RasterState_COUNT 1
+typedef struct {
+    uint8_t vdc_cr_shadow; /* VdcCrShadow */
+    uint8_t effect_now; /* RasterEffectNow */
+    uint8_t line; /* RasterLine */
+    uint8_t step; /* RasterStep */
+} RasterState;
+_Static_assert(sizeof(RasterState) == 0x4, "RasterState size");
+_Static_assert(RasterState_BASE + offsetof(RasterState, vdc_cr_shadow) + 0 == VdcCrShadow, "RasterState.vdc_cr_shadow is not at VdcCrShadow");
+_Static_assert(RasterState_BASE + offsetof(RasterState, effect_now) + 0 == RasterEffectNow, "RasterState.effect_now is not at RasterEffectNow");
+_Static_assert(RasterState_BASE + offsetof(RasterState, line) + 0 == RasterLine, "RasterState.line is not at RasterLine");
+_Static_assert(RasterState_BASE + offsetof(RasterState, step) + 0 == RasterStep, "RasterState.step is not at RasterStep");
+#define RASTERST ((RasterState *)RasterState_BASE)
+
+/* RasterMarkTable: parallel byte arrays at $3F8F, 17 slots, 17 bytes */
+#define RasterMarkTable_BASE 0x3F8F
+#define RasterMarkTable_COUNT 17
+typedef struct {
+    uint8_t mark[17]; /* RasterMarks */
+} RasterMarkTable;
+_Static_assert(sizeof(RasterMarkTable) == 0x11, "RasterMarkTable size");
+_Static_assert(RasterMarkTable_BASE + offsetof(RasterMarkTable, mark) + 0 == RasterMarks, "RasterMarkTable.mark is not at RasterMarks");
+#define RMARKS ((RasterMarkTable *)RasterMarkTable_BASE)
+
+/* SavedColours: parallel byte arrays at $3C60, 16 slots, 32 bytes */
+#define SavedColours_BASE 0x3C60
+#define SavedColours_COUNT 16
+typedef struct {
+    uint8_t lo[16]; /* SavedColoursLo */
+    uint8_t hi[16]; /* SavedColoursHi */
+} SavedColours;
+_Static_assert(sizeof(SavedColours) == 0x20, "SavedColours size");
+_Static_assert(SavedColours_BASE + offsetof(SavedColours, lo) + 0 == SavedColoursLo, "SavedColours.lo is not at SavedColoursLo");
+_Static_assert(SavedColours_BASE + offsetof(SavedColours, hi) + 0 == SavedColoursHi, "SavedColours.hi is not at SavedColoursHi");
+#define SAVCOL ((SavedColours *)SavedColours_BASE)
+
 #endif

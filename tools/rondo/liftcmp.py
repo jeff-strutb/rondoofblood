@@ -902,7 +902,8 @@ def one(name, a, ctx):
             res.setdefault(ad, {}).setdefault(int(d), set()).add(i)
     waits = sum(1 for i in same + diffs if any(x == "WAIT" for x in logs["draft"].get(i, [])))
     hung = sum(1 for i in same + diffs if any(x == "HUNG" for x in logs["draft"].get(i, [])))
-    verdict = ("DIFFERS" if diffs else "NOT CHECKED" if comparable == 0 else
+    verdict = ("DIFFERS" if diffs else "CRASHED (%d cases ended in a crash: a seeded value drove the C or the draft out of range; not a pass)" % len(crashed) if crashed else
+               "NOT CHECKED" if comparable == 0 else
                "THIN (%d of %d cases comparable, floor %d)" % (comparable, len(cases), floor) if comparable < floor else "OK")
     lines = [f"{name}: draft {row['name']} (run {row['run']}), {len(cases)} cases ({len(parse_curated(a.curated))} curated, {'decimal cases: D set in entry and stubs' if a.decimal else 'D clear'}, callees: {'the callees run as drafts against the lifted callers calls' if a.callees == 'through' else 'filed wrappers on both sides'}, {(str(len(configs)) + ' mapper configuration' + ('s' if len(configs) > 1 else '') + ' from the trace') if configs else 'no trace of it: default map'}): "
              f"{len(same)} match, {len(diffs)} differ, {len(untraced)} draft reached untraced bytes"

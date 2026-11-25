@@ -24,6 +24,7 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 
 #include "machine.h"
@@ -215,9 +216,12 @@ void wait_interrupt(void)
 
 /* A seeded byte can drive C or a draft out of range where the game never goes (an index past a table of handlers):
  * the case ends there and is counted apart. */
+static int dirty; /* a crash or a hang ran code out of range: later cases run in a fresh process */
+
 static void crashed(int sig)
 {
     (void)sig;
+    dirty = 1;
     printf("CRASHED\n");
     longjmp(case_end, 1);
 }
@@ -225,6 +229,7 @@ static void crashed(int sig)
 static void hung(int sig)
 {
     (void)sig;
+    dirty = 1;
     printf("HUNG\n");
     longjmp(case_end, 1);
 }
@@ -418,6 +423,8 @@ void __sanitizer_cov_trace_pc(void)
 
 int main(int argc, char **argv)
 {
+    int skip = 0, consumed = 0;
+
     FILE *in, *cf = 0;
     char line[4096];
 
@@ -441,10 +448,14 @@ int main(int argc, char **argv)
     in = fopen(argv[1], "r");
     if (!in)
         return 2;
+    if (getenv("LIFTCMP_SKIP"))
+        skip = atoi(getenv("LIFTCMP_SKIP"));
     if (argc > 2)
-        cf = fopen(argv[2], "w");
+        cf = fopen(argv[2], skip ? "a" : "w");
     setvbuf(stdout, 0, _IOFBF, 1 << 16);
     while (fgets(line, sizeof line, in)) {
+        if (consumed++ < skip)
+            continue;
         unsigned id, a, x, y, s, p, n, m[5];
         unsigned long long sd;
         int off = 0, used;
@@ -518,6 +529,18 @@ int main(int argc, char **argv)
             for (unsigned i = 0; i < cov_n; i++)
                 fprintf(cf, " %lx", (unsigned long)cov[i]);
             fprintf(cf, "\n");
+        }
+        if (dirty) {
+            /* the crashed or hung case may have written anywhere: the rest run in a fresh process */
+            char num[32];
+
+            fflush(stdout);
+            if (cf)
+                fflush(cf);
+            snprintf(num, sizeof num, "%d", consumed);
+            setenv("LIFTCMP_SKIP", num, 1);
+            execv("/proc/self/exe", argv);
+            return 3;
         }
     }
     fflush(stdout);

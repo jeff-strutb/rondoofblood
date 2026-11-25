@@ -370,3 +370,108 @@ void abi_LoadRecordFrameByKindThenFall(void)
 {
     abi_sound_end(LoadRecordFrameByKindThenFall(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0F6B:45D StepListThenStartFivePieces
+ * @run 70:B45D
+ * WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_3040, sets frame 2 and OBJ_3510 $C0 and goes to the next state.
+ * HOW: StepListByNumberTable, a loop of ClearObjectInY and StartObjectAtPlace, a counter in zTemp00.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+ */
+Ended StepListThenStartFivePieces(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t y, number, placed;
+    Ended e;
+
+    jsr_push(0xB460);
+    e = StepListByNumberTable(slot, y_entry);
+    jsr_pop();
+    if (e.a != 0) {
+        return e;
+    }
+    WR8(ZP->temp00, 0);
+    y = 0x11;
+    do {
+        jsr_push(0xB469);
+        ClearObjectInY(y);
+        jsr_pop();
+        jsr_push(0xB46E);
+        placed = StartObjectAtPlace(0xA9, slot, y);
+        jsr_pop();
+        number = RD8(ZP->temp00);
+        WR8(OBJ->f3040[y], number);
+        INC8(ZP->temp00);
+        y++;
+        e = then(e, ended_with_y(ended_with_a(l8_compare_y(y, 0x16), placed), y));
+        (void)placed;
+    } while (y != 0x16);
+    WR8(OBJ->frame[slot], 2);
+    WR8(OBJ->f3510[slot], 0xC0);
+    e = then(e, ended_load(0xC0));
+    return then(e, ended_nz(INC8(OBJ->state[slot])));
+}
+
+void abi_StepListThenStartFivePieces(void)
+{
+    abi_ended(StepListThenStartFivePieces(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0F6B:4C9 StepListThenRunPhaseTable
+ * @run 70:B4C9
+ * WHAT IT DOES: Runs StepListByNumberTable and counts OBJ_3568 down; at zero tries StartPieceABInFreeSlot and, when it started one, keeps OBJ_2800 in OBJ_38D8, clears it, sets OBJ_3510 $40 and takes OBJ_3568 from OBJ_35C0. Then runs the code the table at $B501 names for OBJ_2800 (50B, 51C, 52F, 59E, 5B1).
+ * HOW: Two calls, a table of two bytes to zTemp00-01, a jump through them.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+ */
+Jump StepListThenRunPhaseTable(uint8_t slot, uint8_t y_entry)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t timer, now, phase, index, low, high, value;
+    Ended e, started;
+
+    jsr_push(0xB4CC);
+    e = StepListByNumberTable(slot, y_entry);
+    jsr_pop();
+    timer = RD8(OBJ->f3568[slot]);
+    e = then(e, ended_load(timer));
+    now = timer;
+    if (timer != 0) {
+        now = DEC8(OBJ->f3568[slot]);
+        e = then(e, ended_nz(now));
+    }
+    if (now == 0) {
+        jsr_push(0xB4D9);
+        started = StartPieceABInFreeSlot(slot);
+        jsr_pop();
+        e = then(e, started);
+        if (started.c) {
+            value = RD8(OBJ->f2800[slot]);
+            WR8(OBJ->f38d8[slot], value);
+            WR8(OBJ->f2800[slot], 0);
+            WR8(OBJ->f3510[slot], 0x40);
+            e = then(e, ended_load(0x40));
+            value = RD8(OBJ->f35c0[slot]);
+            WR8(OBJ->f3568[slot], value);
+            e = then(e, ended_load(value));
+        }
+    }
+    phase = RD8(OBJ->f2800[slot]);
+    index = (uint8_t)(phase << 1);
+    e = then(e, ended_with_y(ended_with_carry(ended_load(index), phase >= 0x80), index));
+    low = rd8((uint16_t)(0xB501 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB502 + index));
+    WR8(ZP->temp01, high);
+    jump.end = then(e, ended_load(high));
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_StepListThenRunPhaseTable(void)
+{
+    Jump jump = StepListThenRunPhaseTable(cpu.x, cpu.y);
+
+    jump_shim(jump.end, jump.target);
+}

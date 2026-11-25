@@ -8,6 +8,7 @@
 #include "machine.h"
 #include "ram.h"
 #include "routines.h"
+#include "access.h"
 
 enum {
     PAD_LEFT_OR_RIGHT = 0xA0, PAD_RIGHT_ONLY = 0x20, PAD_TURBO_BIT = 0x01, PAD_ORDINARY_BITS = 0xFE,
@@ -28,6 +29,7 @@ static ItemUse item_not_used(ItemUse use, ItemUseHow how);
  * WHAT IT DOES: Reads the pad for the frame: what is held, and what is newly pressed. Bit 0
  * counts as pressed only when held for three frames after being up, which steadies it.
  * HOW: The last four frames of the pad are kept in PadHistory.
+ * WAITS: no.
  * Entry: nothing. Exit: A the new presses, N and Z from them. X, Y, C and V kept. Clobbers
  * zTemp00.
  */
@@ -65,6 +67,7 @@ void abi_RichterReadPad(void)
  * @run 6D:B64C
  * WHAT IT DOES: Clears the four bytes that force the pad.
  * HOW: Stores zero.
+ * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
 void RichterClearPadOverrides(void)
@@ -78,29 +81,98 @@ void abi_RichterClearPadOverrides(void)
     RichterClearPadOverrides();
 }
 
+/* The exit state of an animation routine as the assembly leaves it. */
+static AnimationStep animation_exit(uint8_t a, uint8_t nz, bool c, bool y_set, uint8_t y)
+{
+    AnimationStep r = { FRAME_STOPPED, false, false, 0, 0, true, a, nz, c, y_set, y };
+
+    return r;
+}
+
+/*
+ * The part of the animation code the others call (01BB:69C, no tag of its own): points zTemp00-01 at the list of the
+ * animation in play and gives Y twice the step. A is that doubled step and C its bit 7 when it returns.
+ */
+static uint8_t animation_list_and_step(bool *carry)
+{
+    uint8_t animation = RD8(OBJ->fields_2ee0[0]);
+    uint8_t doubled = (uint8_t)(animation << 1);
+    uint8_t step;
+
+    WR8(ZP->temp00, rd8((uint16_t)(AnimationLists + doubled)));
+    WR8(ZP->temp01, rd8((uint16_t)(AnimationLists + 1 + doubled)));
+    step = RD8(OBJ->flags[0]);
+    *carry = (step & 0x80) != 0;
+    return (uint8_t)(step << 1);
+}
+
+/* The entry of the step in play: how long, then which frame; a mark of $FE starts the list over. */
+static AnimationStep animation_read_entry(void)
+{
+    AnimationStep result;
+    bool carry;
+    uint8_t y, time, frame;
+
+    for (;;) {
+        jsr_push(0xB683);
+        y = animation_list_and_step(&carry);
+        jsr_pop();
+        time = RD8_PTR_Y(ZP->temp00, y);
+        WR8(OBJ->f2f90[0], time);
+        if (time == ANIMATION_STOPPED) {
+            result = animation_exit(ANIMATION_STOPPED, 0, true, true, y);
+            result.how = FRAME_END_MARK;
+            result.step = (uint8_t)(y >> 1);
+            return result;
+        }
+        if (time != ANIMATION_LOOPS) {
+            break;
+        }
+        WR8(OBJ->flags[0], 0);
+    }
+    y++;
+    frame = RD8_PTR_Y(ZP->temp00, y);
+    WR8(OBJ->frame[0], frame);
+    result = animation_exit(frame, frame, false, true, y);
+    result.how = FRAME_SHOWN;
+    result.frame = frame;
+    result.step = (uint8_t)((y - 1) >> 1);
+    return result;
+}
+
 /*
  * @routine 01BB:659 RichterAnimationWait
  * @run 6D:B659
  * WHAT IT DOES: Steps the animation and, unless it has ended, returns to its caller's caller, so
  * the caller's own work waits for the end.
- * HOW: RichterAnimationRunning; the assembly drops the return address.
+ * HOW: RichterAnimationRunning; the assembly drops the return address with two pulls.
+ * WAITS: no.
  * Entry: nothing. Exit, ended: as RichterAnimationRunning. Otherwise the caller's return address
- * is gone, A its high byte, N and Z from it.
+ * is gone, A its high byte, N and Z from it; its caller then ends at once.
  */
-static void drop_return_shim(void)
+AnimationWaitEnd RichterAnimationWait(void)
 {
-    cpu.a = rd8((uint16_t)(0x2100 + (uint8_t)(cpu.s + 2)));
-    cpu.s = (uint8_t)(cpu.s + 2);
-    abi_nz(cpu.a);
+    AnimationWaitEnd r = { { FRAME_STOPPED }, false, 0 };
+
+    jsr_push(0xB65B);
+    r.step = RichterAnimationRunning();
+    jsr_pop();
+    if (r.step.nz == 0) {
+        return r;
+    }
+    pull8();
+    r.high = pull8();
+    r.dropped = true;
+    r.step.a = r.high;
+    r.step.nz = r.high;
+    return r;
 }
 
 void abi_RichterAnimationWait(void)
 {
-    AnimationStep step = RichterAnimationRunning();
+    AnimationWaitEnd r = RichterAnimationWait();
 
-    animation_running_exit_shim(step);
-    if (rd8(OBJ_2F90) != ANIMATION_STOPPED)
-        drop_return_shim();
+    animation_exit_shim(r.step);
 }
 
 /*
@@ -108,64 +180,30 @@ void abi_RichterAnimationWait(void)
  * @run 6D:B660
  * WHAT IT DOES: Steps the animation; a caller looks at whether it has ended.
  * HOW: RichterAnimationTick, then the timer against $FF.
+ * WAITS: no.
  * Entry: nothing. Exit: A the timer, N, Z and C from comparing it with $FF. Y as the tick. X and V
  * kept. Clobbers zTemp00-01.
  */
 AnimationStep RichterAnimationRunning(void)
 {
-    return RichterAnimationTick();
+    AnimationStep tick;
+    uint8_t time;
+
+    jsr_push(0xB663);
+    tick = RichterAnimationTick();
+    jsr_pop();
+    time = RD8(OBJ->f2f90[0]);
+    return animation_exit(time, (uint8_t)(time - ANIMATION_STOPPED), time >= ANIMATION_STOPPED, tick.y_set, tick.y);
 }
 
 void animation_running_exit_shim(AnimationStep step)
 {
-    uint8_t time = rd8(OBJ_2F90);
-
     animation_exit_shim(step);
-    cpu.a = time;
-    abi_nz((uint8_t)(time - ANIMATION_STOPPED));
-    abi_flag(P_C, time == ANIMATION_STOPPED);
 }
 
 void abi_RichterAnimationRunning(void)
 {
-    animation_running_exit_shim(RichterAnimationRunning());
-}
-
-/* The list of the animation in play, with zTemp00-01 left pointing at it as the original does. */
-static uint16_t animation_list(void)
-{
-    uint16_t entry = (uint16_t)(AnimationLists + (uint8_t)(rd8(OBJ_FIELDS_2EE0) << 1));
-    uint16_t list = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
-
-    wr8(zTemp00, (uint8_t)list);
-    wr8(zTemp01, (uint8_t)(list >> 8));
-    return list;
-}
-
-/* The list's entry at this step: how long, then which frame. A mark of $FE starts it over. */
-static AnimationStep animation_read_entry(AnimationStep result)
-{
-    for (;;) {
-        uint16_t list = animation_list();
-        uint8_t step = rd8(OBJ_FLAGS_2F38);
-        uint8_t time;
-
-        result.step = step;
-        time = rd8((uint16_t)(list + (uint8_t)(step << 1)));
-        wr8(OBJ_2F90, time);
-        if (time == ANIMATION_STOPPED) {
-            result.how = FRAME_END_MARK;
-            return result;
-        }
-        if (time != ANIMATION_LOOPS) {
-            result.frame = rd8((uint16_t)(list + (uint8_t)((step << 1) + 1)));
-            wr8(OBJ_2A68, result.frame);
-            result.how = FRAME_SHOWN;
-            return result;
-        }
-        wr8(OBJ_FLAGS_2F38, 0);
-        result.looped = true;
-    }
+    animation_exit_shim(RichterAnimationRunning());
 }
 
 /*
@@ -174,38 +212,52 @@ static AnimationStep animation_read_entry(AnimationStep result)
  * WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.
  * A timer of $FF means the animation has stopped.
  * HOW: The timer in OBJ_2F90, the step in OBJ_FLAGS_2F38, the frame shown in OBJ_2A68.
+ * WAITS: no.
  * Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
  * from what was read. X and V kept. Clobbers zTemp00-01.
  */
 AnimationStep RichterAnimationTick(void)
 {
-    AnimationStep result = { FRAME_STOPPED };
-    uint8_t time = rd8(OBJ_2F90);
+    AnimationStep result;
+    uint8_t time = RD8(OBJ->f2f90[0]);
+    uint8_t left, y, frame;
+    bool carry;
 
-    if (time == ANIMATION_STOPPED)
-        return result;
-    wr8(OBJ_2F90, (uint8_t)(time - 1));
-    if (time == 1) {
-        wr8(OBJ_FLAGS_2F38, (uint8_t)(rd8(OBJ_FLAGS_2F38) + 1));
-        return animation_read_entry(result);
+    if (time == ANIMATION_STOPPED) {
+        return animation_exit(ANIMATION_STOPPED, 0, true, false, 0);
     }
-    {
-        uint16_t list = animation_list();
-        uint8_t step = rd8(OBJ_FLAGS_2F38);
-
-        result.step = step;
-        result.same_frame = true;
-        result.frame = rd8((uint16_t)(list + (uint8_t)((step << 1) + 1)));
-        wr8(OBJ_2A68, result.frame);
-        result.how = FRAME_SHOWN;
-        return result;
+    left = DEC8(OBJ->f2f90[0]);
+    if (left == 0) {
+        INC8(OBJ->flags[0]);
+        return animation_read_entry();
     }
+    jsr_push(0xB695);
+    y = animation_list_and_step(&carry);
+    jsr_pop();
+    y++;
+    frame = RD8_PTR_Y(ZP->temp00, y);
+    WR8(OBJ->frame[0], frame);
+    result = animation_exit(frame, frame, carry, true, y);
+    result.how = FRAME_SHOWN;
+    result.same_frame = true;
+    result.frame = frame;
+    result.step = (uint8_t)((y - 1) >> 1);
+    return result;
 }
 
 void animation_exit_shim(AnimationStep result)
 {
     uint8_t doubled = (uint8_t)(result.step << 1);
 
+    if (result.exact) {
+        cpu.a = result.a;
+        abi_nz(result.nz);
+        abi_flag(P_C, result.c);
+        if (result.y_set) {
+            cpu.y = result.y;
+        }
+        return;
+    }
     switch (result.how) {
     case FRAME_STOPPED:
         cpu.a = ANIMATION_STOPPED;
@@ -237,15 +289,14 @@ void abi_RichterAnimationTick(void)
  * @run 6D:B67B
  * WHAT IT DOES: Starts an animation from its first step.
  * HOW: The animation into OBJ_FIELDS_2EE0, step zero, and its first entry read.
+ * WAITS: no.
  * Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
  */
 AnimationStep RichterSetAnimation(uint8_t animation)
 {
-    AnimationStep result = { FRAME_STOPPED };
-
-    wr8(OBJ_FIELDS_2EE0, animation);
-    wr8(OBJ_FLAGS_2F38, 0);
-    return animation_read_entry(result);
+    WR8(OBJ->fields_2ee0[0], animation);
+    WR8(OBJ->flags[0], 0);
+    return animation_read_entry();
 }
 
 void abi_RichterSetAnimation(void)
@@ -259,6 +310,7 @@ void abi_RichterSetAnimation(void)
  * WHAT IT DOES: Says whether the state in play lets him turn at the screen's middle: a table
  * by state, in the first step only, and only on the side of the middle he faces away from.
  * HOW: PlayerByte3BD7 is the answer.
+ * WAITS: no.
  * Entry: nothing. Exit: A the last read, N and Z from it; X the state if it went that far. Y,
  * C and V kept.
  */
@@ -292,6 +344,7 @@ void abi_RichterCheckTurnWindow(void)
  * @run 6D:B7CA
  * WHAT IT DOES: Turns him to face the way the pad holds, left or right; with neither, as he is.
  * HOW: Bits 7 and 5 of zPadHeld, and facing in OBJ_2AC0: 0 for right, 1 for left.
+ * WAITS: no.
  * Entry: nothing. Exit: A the bits looked at last; N and Z from them, or from the facing when it
  * turns left. X, Y, C and V kept.
  */
@@ -325,6 +378,7 @@ void abi_RichterFaceByPad(void)
  * @run 6D:B7DD
  * WHAT IT DOES: Notes that the item button was pressed this frame.
  * HOW: Bit 2 of zPadPressed sets RichterItemRequest to 4.
+ * WAITS: no.
  * Entry: nothing. Exit: Z from the test, N and V bits 7 and 6 of the presses; A 4 if pressed.
  * X, Y and C kept.
  */
@@ -354,6 +408,7 @@ void abi_RichterNoteItemPress(void)
  * @run 6D:B7E9
  * WHAT IT DOES: Says whether he has the hearts the item in hand costs.
  * HOW: zHearts against a table by item, in BCD; RichterItemReady is $0F if so, else 0.
+ * WAITS: no.
  * Entry: nothing. Exit: X the item; A the hearts, N, Z and C from the compare, or A $0F. Y and
  * V kept.
  */
@@ -404,6 +459,7 @@ static uint8_t bcd_subtract(uint8_t hearts, uint8_t cost)
  * pays the hearts. Says whether it started; when it does not, the forced press is dropped.
  * HOW: Bit 2 of zPadPressed; OBJ_2750 of slots 3 to 15 all empty; RichterItemCosts in BCD, then
  * RichterItemCrashLists and RichterItemCrashScripts by item, 0 for none, on channel and slot 6.
+ * WAITS: no.
  * Entry: nothing. Exit: V bit 6 of the presses. Started: C set, A the hearts left, N and Z from
  * them, X the item, Y the script if one started. Not started, C clear and: no press, N bit 7 of
  * the presses, Z set, A, X, Y kept; an item out, A its OBJ_2750, N and Z from it, X its slot;
@@ -425,8 +481,11 @@ ItemCrash RichterTryItemCrash(void)
         }
     }
     if (crash.pressed & PAD_SELECT_BIT && crash.how != CRASH_ITEM_OUT) {
-        for (uint8_t slot = ITEM_SLOT_END - 1; slot >= ITEM_FIRST_SLOT; slot--)
+        for (uint8_t slot = ITEM_SLOT_END - 1; slot >= ITEM_FIRST_SLOT; slot--) {
+            jsr_push(0xB811);
             ClearObject(slot);
+            jsr_pop();
+        }
         crash.item = rd8(zField93);
         crash.hearts = rd8(zField94);
         crash.cost = rd8((uint16_t)(RichterItemCosts + crash.item));
@@ -437,12 +496,18 @@ ItemCrash RichterTryItemCrash(void)
         return crash;
     }
     list = rd8((uint16_t)(RichterItemCrashLists + crash.item));
-    if (list != 0)
+    if (list != 0) {
+        jsr_push(0xB830);
         StartListChannelKind2(list, ITEM_CRASH_CHANNEL);
+        jsr_pop();
+    }
     wr8(PlayerByte3BD6, 0);
     crash.script = rd8((uint16_t)(RichterItemCrashScripts + crash.item));
-    if (crash.script != 0)
+    if (crash.script != 0) {
+        jsr_push(0xB83F);
         StartScriptSlotKind1(crash.script, ITEM_CRASH_SLOT);
+        jsr_pop();
+    }
     crash.hearts = bcd_subtract(rd8(zField94), crash.cost);
     wr8(zField94, crash.hearts);
     return crash;
@@ -491,6 +556,7 @@ void abi_RichterTryItemCrash(void)
  * HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, RichterItemUseCosts by item, then the jump
  * through RichterItemUseHandlers: items 0 and 1 attack with the whip. zField93 is 0 to 8; the
  * C takes anything past 8 as the whip.
+ * WAITS: no.
  * Entry: nothing. Exit: no press, C clear and all else kept. Otherwise C set, V and Y kept
  * except as a handler leaves Y, and: not held, A 0, N and Z from it; too few hearts, A the
  * hearts, X the item, N and Z from comparing them; items 0 and 1, A and X twice the item, N and
@@ -639,6 +705,7 @@ static void start_item(ItemUse *use, uint8_t list, uint8_t script)
  * needs more hearts, and a fourth is refused. Then the item's attack, and its hearts paid.
  * HOW: PlayerByte3BD6 marks the first throw. The items fly in slots 5, 8 and 11; with one out
  * the hearts must reach RichterItemSecondCosts, with two RichterItemThirdCosts.
+ * WAITS: no.
  * Entry: X twice the item. Exit: as RichterUseItem.
  */
 ItemUse RichterUseThrownItem(uint8_t item)
@@ -684,6 +751,7 @@ void abi_RichterUseThrownItem(void)
  * WHAT IT DOES: Item 6: only with no item out; the first use starts sound list $54 and script 7.
  * Then the item's attack, and its hearts paid.
  * HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+ * WAITS: no.
  * Entry: X twice the item. Exit: as RichterUseItem.
  */
 ItemUse RichterUseItemSix(uint8_t item)
@@ -710,6 +778,7 @@ void abi_RichterUseItemSix(void)
  * WHAT IT DOES: Item 7: used while one of slots 5, 8 and 11 is free; then the item's attack, and
  * its hearts paid. With all three taken, the whip.
  * HOW: OBJ_2750 of each slot in turn.
+ * WAITS: no.
  * Entry: X twice the item. Exit: as RichterUseItem.
  */
 ItemUse RichterUseItemSeven(uint8_t item)
@@ -734,6 +803,7 @@ void abi_RichterUseItemSeven(void)
  * @run 6D:B9DF
  * WHAT IT DOES: Finds the first of slots 5 to 15 with an object in it.
  * HOW: OBJ_2750 of each.
+ * WAITS: no.
  * Entry: nothing. Exit: Y the slot, or $10; A its OBJ_2750, or 0. Found: N and Z from A, C kept
  * if it was slot 5, else clear. None: Z and C set, N clear. X and V kept.
  */
@@ -770,6 +840,7 @@ void abi_RichterFindItemOut(void)
  * WHAT IT DOES: Item 8: only with no item out; the first use starts sound list $53 and script
  * $15. Then the item's attack, and its hearts paid.
  * HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+ * WAITS: no.
  * Entry: X twice the item. Exit: as RichterUseItem.
  */
 ItemUse RichterUseItemEight(uint8_t item)
@@ -795,6 +866,7 @@ void abi_RichterUseItemEight(void)
  * @run 6D:B909
  * WHAT IT DOES: Keeps the jump and attack presses until a state acts on them.
  * HOW: Bits 1 and 0 of zPadPressed ORed into RichterButtonsLatched.
+ * WAITS: no.
  * Entry: nothing. Exit: A what is latched, N and Z from it. X, Y, C and V kept.
  */
 uint8_t RichterLatchButtons(void)

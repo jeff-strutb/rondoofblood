@@ -478,3 +478,144 @@ void abi_HopBetweenSidesWithBox(void)
 {
     abi_ended(HopBetweenSidesWithBox(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0EBD:2A7 SpawnerByKindAndScreen
+ * @run 71:C2A7
+ * WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_34B8 down; then by OBJ_3040: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_3568 below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_35C0 with one random number to 3 in OBJ_3670, and waits $F0.
+ * HOW: LoadObjectRecord, searches of the slot kinds, StartObjectAtPlace, ClearObjectInY, NextRandom, FindFreeSlotFrom30.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
+ */
+Ended SpawnerByKindAndScreen(uint8_t slot)
+{
+    uint8_t state, last, nz, frame, timer, kind, screen, y, placed, found_slot, count, random_bits, aim, joined;
+    bool carry, found;
+    RandomResult random;
+    Sum sum;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return then(e, ended_of_record(last, nz, carry));
+    }
+    frame = RD8(OBJ->frame[0x54]);
+    e = then(e, ended_compare(frame, 4));
+    if (frame == 4) {
+        return e;
+    }
+    timer = RD8(OBJ->f34b8[slot]);
+    e = then(e, ended_load(timer));
+    if (timer != 0) {
+        return then(e, ended_nz(DEC8(OBJ->f34b8[slot])));
+    }
+    kind = RD8(OBJ->f3040[slot]);
+    e = then(e, ended_load(kind));
+    if (kind == 0) {
+        screen = RD8(SCROLLE->x_hi_screen[0]);
+        e = then(e, ended_compare(screen, 2));
+        if (screen < 2) {
+            return e;
+        }
+        e = then(e, ended_compare(screen, 3));
+        if (screen == 3) {
+            return e;
+        }
+        e = then(e, ended_compare(screen, 5));
+        if (screen >= 5) {
+            return e;
+        }
+        for (y = 0x1A;;) {
+            kind = RD8(OBJ->kind[y]);
+            e = then(e, ended_with_y(ended_load(kind), y));
+            if (kind == 0) {
+                break;
+            }
+            y = (uint8_t)(y + 2);
+            e = then(e, ended_with_y(l8_compare_y(y, 0x20), y));
+            if (y >= 0x20) {
+                return e;
+            }
+        }
+        jsr_push(0xC2E6);
+        placed = StartObjectAtPlace(0x2C, slot, y);
+        jsr_pop();
+        e = then(e, ended_load(placed));
+        jsr_push(0xC2E9);
+        random = NextRandom();
+        jsr_pop();
+        e = then(e, ended_of_random(random));
+        sum = add_bytes((uint8_t)(random.value & 0x3F), 0x50, false);
+        WR8(OBJ->f34b8[slot], sum.value);
+        return then(e, ended_of_sum(sum));
+    }
+    e = then(e, ended_compare(kind, 2));
+    if (kind == 2) {
+        jsr_push(0xC344);
+        found_slot = FindFreeSlotFrom30(&last, &found);
+        jsr_pop();
+        e = then(e, ended_of_find_slot(found_slot, last, found));
+        if (!found) {
+            return e;
+        }
+        jsr_push(0xC34B);
+        placed = StartObjectAtPlace(0xCB, slot, found_slot);
+        jsr_pop();
+        WR8(OBJ->f34b8[slot], 0x80);
+        return then(then(e, ended_load(placed)), ended_load(0x80));
+    }
+    aim = RD8(OBJ->f3568[slot]);
+    e = then(e, ended_compare(aim, 0x80));
+    if (aim >= 0x80) {
+        return e;
+    }
+    for (y = 0x20;;) {
+        joined = RD8(OBJ->kind[y]);
+        joined = (uint8_t)(joined | RD8(OBJ->kind[y + 1]));
+        joined = (uint8_t)(joined | RD8(OBJ->kind[y + 2]));
+        joined = (uint8_t)(joined | RD8(OBJ->kind[y + 3]));
+        e = then(e, ended_with_y(ended_load(joined), y));
+        if (joined == 0) {
+            break;
+        }
+        y = (uint8_t)(y + 4);
+        e = then(e, ended_with_y(l8_compare_y(y, 0x40), y));
+        if (y >= 0x40) {
+            return e;
+        }
+    }
+    push8(y);
+    jsr_push(0xC31A);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    random_bits = random.value & 0x03;
+    WR8(ZP->temp01, random_bits);
+    y = pull8();
+    WR8(ZP->temp00, 4);
+    do {
+        jsr_push(0xC326);
+        ClearObjectInY(y);
+        jsr_pop();
+        jsr_push(0xC32B);
+        placed = StartObjectAtPlace(0x49, slot, y);
+        jsr_pop();
+        count = RD8(ZP->temp00);
+        WR8(OBJ->f35c0[y], (uint8_t)(count - 1));
+        random_bits = RD8(ZP->temp01);
+        WR8(OBJ->f3670[y], random_bits);
+        y++;
+        count = DEC8(ZP->temp00);
+        e = then(e, ended_with_y(ended_nz(count), y));
+        (void)placed;
+    } while (count != 0);
+    WR8(OBJ->f34b8[slot], 0xF0);
+    return then(e, ended_load(0xF0));
+}
+
+void abi_SpawnerByKindAndScreen(void)
+{
+    abi_ended(SpawnerByKindAndScreen(cpu.x));
+}

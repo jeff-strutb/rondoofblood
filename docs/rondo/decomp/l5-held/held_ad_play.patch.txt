@@ -1,0 +1,61 @@
+diff --git a/syscard/src/adpcm.c b/syscard/src/adpcm.c
+index 587b2ef..869ae97 100644
+--- a/syscard/src/adpcm.c
++++ b/syscard/src/adpcm.c
+@@ -113,9 +113,15 @@ void abi_ad_reset(void)
+     abi_flag(P_Z, (enables & ~AD_RESET_IRQ_BITS) == 0);
+ }
+ 
+-static void latch_word(uint16_t at)
++static uint16_t latch_word(uint16_t at, uint16_t ret)
+ {
+-    ad_set_address(rd8(at), rd8((uint16_t)(at + 1)));
++    uint8_t low = rd8(at);
++    uint8_t high = rd8((uint16_t)(at + 1));
++
++    jsr_push(ret);
++    ad_set_address(low, high);
++    jsr_pop();
++    return (uint16_t)(low | (high << 8));
+ }
+ 
+ /*
+@@ -134,12 +140,17 @@ AdPlay ad_play(void)
+     AdPlay play = { AD_PLAY_BUSY, { 0, 0 }, 0, 0, 0, 0 };
+     uint8_t mode;
+ 
++    jsr_push(0xF5C9);
+     play.stat = ad_stat();
++    jsr_pop();
+     if (play.stat.playing != 0)
+         return play;
+     mode = rd8(CardDl);
+     wr8(CardAdpcmActive, mode & AD_PLAY_REPEAT_BIT);
++    mode = rd8(CardDl);
+     if ((mode & AD_PLAY_MODE_BITS) == 0) {
++        uint16_t length;
++
+         wr8(CardAdpcmAddress, rd8(CardBl));
+         wr8((uint16_t)(CardAdpcmAddress + 1), rd8(CardBh));
+         wr8(CardAdpcmLength, rd8(CardAl));
+@@ -150,12 +161,16 @@ AdPlay ad_play(void)
+             return play;
+         }
+         wr8(CardAdpcmRate, play.rate);
+-        latch_word(CardAdpcmAddress);
++        (void)latch_word(CardAdpcmAddress, 0xF5FE);
++        jsr_push(0xF601);
+         ad_latch_read_address();
+-        latch_word(CardAdpcmLength);
++        jsr_pop();
++        length = latch_word(CardAdpcmLength, 0xF60A);
++        jsr_push(0xF60D);
+         ad_latch_length();
+-        play.length_low = rd8(CardAdpcmLength);
+-        play.length_high = rd8((uint16_t)(CardAdpcmLength + 1));
++        jsr_pop();
++        play.length_low = (uint8_t)length;
++        play.length_high = (uint8_t)(length >> 8);
+         wr8(AdpcmRate, rd8(CardAdpcmRate));
+         play.how = AD_PLAY_STARTED;
+     } else {

@@ -11,7 +11,7 @@ void StageWaitTimerToStep2(void);
 
 /* system/stage_setup.c */
 void ClearStageStateBytes(void);
-void SaveAndMapStageBanks(void);
+Sum SaveAndMapStageBanks(void);  /* the add that mapped the second bank: C and V at exit */
 void MapStageBanks(void);
 uint8_t RestoreStageBanks(void);
 

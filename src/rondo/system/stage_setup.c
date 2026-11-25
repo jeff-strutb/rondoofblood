@@ -91,9 +91,9 @@ static Sum save_and_map_stage_banks(void)
     return map_stage_banks();
 }
 
-void SaveAndMapStageBanks(void)
+Sum SaveAndMapStageBanks(void)
 {
-    save_and_map_stage_banks();
+    return save_and_map_stage_banks();
 }
 
 void abi_SaveAndMapStageBanks(void)

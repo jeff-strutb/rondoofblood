@@ -86,6 +86,7 @@ ShowEnd FollowPathB(uint8_t slot, uint8_t y);
 SoundEnd StartDriftingPiece(uint8_t slot, uint8_t y);
 BurstTail DropAndBurst(uint8_t slot, uint8_t y);
 Ended StepFallAfterFour(uint8_t slot);
+Ended BlendStageRowsOfPlayer(uint8_t slot, uint8_t y);
 Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
 
 /* Whether an object is inside a window, and what the routine left. */

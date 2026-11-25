@@ -149,5 +149,24 @@ Ended MoveXUntilPastLeftEdge(uint8_t slot);
 Ended CountDownThenClearAndAdvanceSlot10(uint8_t slot);
 SoundEnd SoundWhenHurtInStatesOneToThree(uint8_t slot, uint8_t y_entry);
 Ended LoadRecordAimAtPlayer(uint8_t slot);
+Ended NearObject19(uint8_t slot);
+Ended StartRiseAndSpawnRing(uint8_t slot);
+Ended SpawnRingOfSeven(uint8_t slot);
+Ended FallAlongListUntilGround(uint8_t slot, uint8_t y_entry);
+Ended StepListCCThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+Ended LoadRecordThrowByNumber(uint8_t slot);
+Ended FallThenTurnAtTimerEnd(uint8_t slot);
+Ended StepListCBThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+Ended FollowObject19ThenStepListByMode(uint8_t slot, uint8_t y_entry);
+Ended StartScriptByWaveBit(uint8_t slot);
+SoundEnd LoadRecordWithSound1C(uint8_t slot);
+Ended FollowObject19ThenLaunch(uint8_t slot);
+Ended SpawnType30EveryFourthFrame(uint8_t slot);
+Ended StepListThenSpawnUntilHurt(uint8_t slot, uint8_t y_entry);
+SoundEnd SpawnType2FAtWaveMarks(uint8_t slot, uint8_t y_entry);
+SoundEnd StepListSlowSideways(uint8_t slot, uint8_t y_entry);
+Ended StepListThenCountdownNextState(uint8_t slot, uint8_t y_entry);
+SoundEnd StepListThenSound43AtZero(uint8_t slot, uint8_t y_entry);
+Ended SeekObject19ThenHitAndClear(uint8_t slot, uint8_t y_entry);
 
 #endif

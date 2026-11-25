@@ -289,6 +289,37 @@ StepListB53CToState5:
     stz a:OBJ_2800,x
     rts
 
+; @routine 0E0B:579 SpawnOnTimerInTable
+; @run 70:B579
+; WHAT IT DOES: When OBJ_3408 is 6 and OBJ_3460 equals one of the three bytes at $B5A5 it finds a free slot from $30, sends sound $48 and starts a kind $27 object there at its place with its facing.
+; HOW: A search loop, FindFreeSlotFrom30, SoundCommand, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, Y kept for the sound's push only when the search ran. Exit: see the wrapper.
+SpawnOnTimerInTable:
+    lda a:OBJ_3408,x
+    cmp #$06
+    bne SpawnOnTimerInTable_at0
+    cly
+SpawnOnTimerInTable_at2:
+    lda a:OBJ_3460,x
+    cmp a:$B5A5,y
+    beq SpawnOnTimerInTable_at1
+    iny
+    cpy #$03
+    bcc SpawnOnTimerInTable_at2
+    rts
+SpawnOnTimerInTable_at1:
+    jsr VecFindFreeSlotFrom30
+    bcc SpawnOnTimerInTable_at0
+    lda #$48
+    jsr VecSoundCommand
+    lda #$27
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+SpawnOnTimerInTable_at0:
+    rts
+
 ; @routine 0E0B:5DD NextPhaseUnlessKind25
 ; @run 70:B5DD
 ; WHAT IT DOES: Goes on to the next OBJ_2800 unless the object in slot $50 is of kind $25.

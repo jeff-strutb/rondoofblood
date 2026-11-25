@@ -53,4 +53,16 @@ static inline void abi_ended_tst(EndedTst r)
     }
 }
 
+/* object/player_leaves.c: the tile handlers of the stage overlays that hold their own tile read at $9991 */
+Ended TileNudgeAt9C82(void);
+Ended TileLift7At9C87(void);
+Ended TileLift6At9C91(void);
+Ended TileLift5At9C9B(void);
+Ended TileLift4At9CA5(void);
+Ended TileLift3At9CAF(void);
+Ended TileLift2At9CB9(void);
+Ended TileLift1At9CC3(void);
+Ended TileHalfStepAAt9A93(uint8_t tile);
+Ended TileHalfStepBAt9AA7(uint8_t tile);
+
 #endif

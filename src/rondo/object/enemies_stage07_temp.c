@@ -512,3 +512,209 @@ void abi_SpawnPiecesWhenFlaggedHit(void)
 {
     abi_ended(SpawnPiecesWhenFlaggedHit(cpu.x));
 }
+
+/*
+ * @routine 0BFC:2E3 StartAtRandomSpeedTowardPlayer
+ * @run 70:BAE3
+ * WHAT IT DOES: Loads the record, gives the object an X speed (high byte) from a table at overlay address $BB20
+ * by three bits of PlayerDistanceSum and moves it along X. When the player is nearer than $18 along X it removes
+ * itself; otherwise it takes a speed from a table of word pairs at $BB28 by two bits of PlayerDistanceSum, faces
+ * the player's side (bit 0 of SideOfPlayer into facing_left) and reverses its speed when that bit is set.
+ * HOW: LoadObjectRecord, PlayerDistanceSum twice, ApplyVelocityX, DistanceXToPlayer, SideOfPlayer, NegateVelocityX.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: removed: A the distance, N, Z, C from its compare with $18; otherwise
+ * A, N, Z, C, V from NegateVelocityX when it ran, else A the side bit and N, Z from it.
+ */
+Ended StartAtRandomSpeedTowardPlayer(uint8_t slot)
+{
+    uint8_t last, nz, y, value, bit;
+    bool carry;
+    Sum sum;
+    AxisMove move;
+    PlayerDistance distance;
+    SideResult side;
+    Ended e;
+
+    jsr_push(0xBAE6);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    jsr_push(0xBAE9);
+    sum = PlayerDistanceSum(slot, carry);
+    jsr_pop();
+    y = (uint8_t)(sum.value & 7);
+    value = rd8((uint16_t)(0xBB20 + y));
+    WR8(OBJ->vx_hi[slot], value);
+    e = ended_then(e, ended_with_overflow(ended_with_carry(ended_with_y(ended_load(value), y), sum.carry),
+                                          sum.overflow));
+    jsr_push(0xBAF5);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    jsr_push(0xBAF8);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x18));
+    if (distance.distance < 0x18) {
+        ClearObject(slot);
+        return e;
+    }
+    jsr_push(0xBB02);
+    sum = PlayerDistanceSum(slot, true);
+    jsr_pop();
+    y = (uint8_t)((sum.value & 3) << 1);
+    value = rd8((uint16_t)(0xBB29 + y));
+    WR8(OBJ->vx_hi[slot], value);
+    value = rd8((uint16_t)(0xBB28 + y));
+    WR8(OBJ->vx_lo[slot], value);
+    e = ended_then(e, ended_with_overflow(ended_with_carry(ended_with_y(ended_load(value), y), false),
+                                          sum.overflow));
+    jsr_push(0xBB15);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(side.sides & 1);
+    WR8(OBJ->facing_left[slot], bit);
+    e = ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+    if (bit != 0) {
+        jsr_push(0xBB1F);
+        e = ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+        jsr_pop();
+    }
+    return e;
+}
+
+void abi_StartAtRandomSpeedTowardPlayer(void)
+{
+    abi_ended(StartAtRandomSpeedTowardPlayer(cpu.x));
+}
+
+/*
+ * @routine 0BFC:1FF CountTimerPairDownThenSpawn36
+ * @run 70:B9FF
+ * WHAT IT DOES: In state 0 it loads its record. Later it counts the sixteen bit value life_timer (high) and
+ * f3510 (low) down; when it is zero it frees the first empty slot of $1C to $1F, starts an object of type $36
+ * there at its place and sets the pair again from a table of word pairs at overlay address $BA3F by two bits of
+ * PlayerDistanceSum.
+ * HOW: RemoveFirstFreeSlotFrom1C, StartObjectAtPlace, PlayerDistanceSum. The arm with no empty slot ran in no
+ * script: the draft stops there, so liftcmp does not judge it.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: state 0: as LoadObjectRecord; counting: A the new high byte and N, Z, C, V from
+ * the borrow subtract; when none of the four slots is empty, as RemoveFirstFreeSlotFrom1C; otherwise A the low
+ * byte set, N, Z from it, C and V from the sum, Y the table index.
+ */
+Ended CountTimerPairDownThenSpawn36(uint8_t slot)
+{
+    uint8_t last, nz, pair, low, high, y, value;
+    bool carry;
+    Sum sum;
+    Ended e, freed;
+
+    if (RD8(OBJ->state[slot]) == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return ended_of_record(last, nz, carry);
+    }
+    pair = RD8(OBJ->life_timer[slot]);
+    pair = (uint8_t)(pair | RD8(OBJ->f3510[slot]));
+    e = ended_load(pair);
+    if (pair != 0) {
+        low = RD8(OBJ->f3510[slot]);
+        sum = sub_bytes(low, 1, true);
+        WR8(OBJ->f3510[slot], sum.value);
+        high = RD8(OBJ->life_timer[slot]);
+        sum = sub_bytes(high, 0, sum.carry);
+        WR8(OBJ->life_timer[slot], sum.value);
+        return ended_of_sum(sum);
+    }
+    jsr_push(0xBA24);
+    freed = RemoveFirstFreeSlotFrom1C();
+    jsr_pop();
+    e = ended_then(e, freed);
+    if (!freed.c) {
+        return e;
+    }
+    jsr_push(0xBA2B);
+    StartObjectAtPlace(0x36, slot, freed.y);
+    jsr_pop();
+    jsr_push(0xBA2E);
+    sum = PlayerDistanceSum(slot, true);
+    jsr_pop();
+    y = (uint8_t)((sum.value & 3) << 1);
+    WR8(OBJ->life_timer[slot], rd8((uint16_t)(0xBA40 + y)));
+    value = rd8((uint16_t)(0xBA3F + y));
+    WR8(OBJ->f3510[slot], value);
+    return ended_then(e, ended_with_overflow(ended_with_carry(ended_with_y(ended_load(value), y), false),
+                                             sum.overflow));
+}
+
+void abi_CountTimerPairDownThenSpawn36(void)
+{
+    abi_ended(CountTimerPairDownThenSpawn36(cpu.x));
+}
+
+/*
+ * @routine 0BFC:15F StartFromScreenEdgeByScroll
+ * @run 70:B95F
+ * WHAT IT DOES: Loads the record, then puts the object at one edge of the screen heading across it: on the left
+ * edge (X $FFE0, speed $0140, facing left set) when the player's X low byte is $C0 or more, or between $40 and
+ * $BF when the scroll is not at its right end or the player faces left; otherwise on the right (X $0120, speed
+ * -$0140). Its Y is the player's, thrown up at -$1000 and moved once, kept at $30 or more.
+ * HOW: LoadObjectRecord, ScrollNotAtRightEnd, ApplyVelocityY.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A $30 and N, Z clear when the player's Y low byte is below $30; otherwise A the
+ * player's Y low byte, N, Z, C from its compare with $30; V from ApplyVelocityY; Y 11.
+ */
+Ended StartFromScreenEdgeByScroll(uint8_t slot)
+{
+    uint8_t last, nz, player_x, player_y;
+    bool carry, left;
+    AxisMove move;
+    Ended e, scroll;
+
+    jsr_push(0xB962);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    player_x = RD8(OBJ->x_lo[0]);
+    left = false;
+    if (player_x >= 0x40) {
+        if (player_x >= 0xC0) {
+            left = true;
+        } else {
+            jsr_push(0xB96F);
+            scroll = ScrollNotAtRightEnd();
+            jsr_pop();
+            left = !scroll.c || RD8(OBJ->facing_left[0]) != 0;
+        }
+    }
+    if (left) {
+        WR8(OBJ->facing_left[slot], 1);
+        WR8(OBJ->x_hi[slot], 0xFF);
+        WR8(OBJ->x_lo[slot], 0xE0);
+        WR8(OBJ->vx_hi[slot], 1);
+        WR8(OBJ->vx_lo[slot], 0x40);
+    } else {
+        WR8(OBJ->x_hi[slot], 1);
+        WR8(OBJ->x_lo[slot], 0x20);
+        WR8(OBJ->vx_hi[slot], 0xFE);
+        WR8(OBJ->vx_lo[slot], 0xC0);
+    }
+    WR8(OBJ->y_hi[slot], RD8(OBJ->y_hi[0]));
+    WR8(OBJ->y_lo[slot], RD8(OBJ->y_lo[0]));
+    WR8(OBJ->vy_hi[slot], 0xF0);
+    jsr_push(0xB9B9);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = ended_of_axis_move(move);
+    player_y = RD8(OBJ->y_lo[0]);
+    e = ended_then(e, ended_compare(player_y, 0x30));
+    if (player_y < 0x30) {
+        WR8(OBJ->y_lo[slot], 0x30);
+        e = ended_then(e, ended_load(0x30));
+    }
+    return ended_then(ended_with_y(ended_kept(), 11), e);
+}
+
+void abi_StartFromScreenEdgeByScroll(void)
+{
+    abi_ended(StartFromScreenEdgeByScroll(cpu.x));
+}

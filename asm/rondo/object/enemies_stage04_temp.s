@@ -97,6 +97,42 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 04 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 07DB:5FD ClampSpeedXToTwo
 ; @run 70:B5FD
 ; WHAT IT DOES: Keeps an object's X speed from passing 2 pixels a frame either way: a speed over
@@ -820,3 +856,108 @@ TurnOnRandomBeatWalkFollowA_done:
     sta a:OBJ_27A8,x
     stz a:OBJ_2800,x
     rts
+
+; @routine 07DC:250 FallAnimatedThenBecomeKind9B
+; @run 70:BA50
+; WHAT IT DOES: In state 0 it loads its record and, when the player is on its left (bit 0 of
+; SideOfPlayer), reverses its X speed. In any other state it counts f3510 down; at zero it becomes
+; kind $9B in state 0. Until then it steps the frame list picked by life_timer from a table at
+; overlay address $BA89 (two bytes each), applies gravity without a limit and moves.
+; HOW: LoadObjectRecord, SideOfPlayer, NegateVelocityX; or a decrement; or StepObjectFrames,
+; ApplyGravityUnlimited and ApplyVelocity as a tail jump. The reversal ran in no script: the draft
+; stops there, so liftcmp does not judge it.
+; WAITS: no.
+; Entry: X object, D clear. Exit: state 0: as LoadObjectRecord, then SideOfPlayer's bit, and the
+; reversal's add when it ran; counting out: A, N, Z from the decrement (A 0); moving: A, N, Z, C
+; and V from ApplyVelocity, Y from the frame step.
+FallAnimatedThenBecomeKind9B:
+    lda a:OBJ_27A8,x
+    bne FallAnimatedThenBecomeKind9B_at0
+    jsr VecLoadObjectRecord
+    jsr VecSideOfPlayer
+    and #$01
+    beq FallAnimatedThenBecomeKind9B_at1
+    jsr VecNegateVelocityX
+FallAnimatedThenBecomeKind9B_at1:
+    rts
+FallAnimatedThenBecomeKind9B_at0:
+    dec a:OBJ_3510,x
+    bne FallAnimatedThenBecomeKind9B_at2
+    lda #$9B
+    sta a:OBJ_2750,x
+    stz a:OBJ_27A8,x
+    rts
+FallAnimatedThenBecomeKind9B_at2:
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$BA89,y
+    sta z:zTemp10
+    lda a:$BA8A,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jsr VecApplyGravityUnlimited
+    jmp VecApplyVelocity
+
+; @routine 07DC:1E6 StartLobTowardPlayer
+; @run 70:B9E6
+; @stop BA21
+; WHAT IT DOES: In state 0 it loads its record and throws itself on an arc toward the player: an X speed from a
+; table of word pairs at overlay address $BA21 by the player's distance along X (a pair per 32 pixels), the Y speed
+; -$0480, reversed in X when the player is on its left. In any other state it runs StepLobArc.
+; HOW: LoadObjectRecord, ApplyVelocityY, DistanceXToPlayer, SideOfPlayer, NegateVelocityX; the table lies between
+; the two parts and stays data. The reversal ran in no script: the draft stops there, so liftcmp does not judge it.
+; WAITS: no.
+; Entry: X object, Y kept to the frame step, D clear. Exit: state 0: A the Y speed's low byte or the reversal's, N, Z
+; from it, C from the table shift, V from the distance, Y the table index; later as StepLobArc.
+StartLobTowardPlayer:
+    lda a:OBJ_27A8,x
+    bne StepLobArc
+    jsr VecLoadObjectRecord
+    lda #$F0
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    jsr VecDistanceXToPlayer
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    asl a
+    tay
+    lda a:RichterItemUseCosts+5,y
+    sta a:OBJ_VX_HI,x
+    lda a:RichterItemUseCosts+4,y
+    sta a:OBJ_VX_LO,x
+    lda #$FB
+    sta a:OBJ_VY_HI,x
+    lda #$80
+    sta a:OBJ_VY_LO,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq StartLobTowardPlayer_at0
+    jsr VecNegateVelocityX
+StartLobTowardPlayer_at0:
+    rts
+
+; @routine 07DC:231 StepLobArc
+; @run 70:BA31
+; WHAT IT DOES: The later frames of the arc: steps the frame list at overlay address $B848, makes the Y speed
+; grow by $24 and moves the object.
+; HOW: StepObjectFrames, a sixteen bit add, ApplyVelocity as a tail jump.
+; WAITS: no.
+; Entry: X object, Y kept by the step, D clear. Exit: A, N, Z, C, V from ApplyVelocity; Y the step's.
+StepLobArc:
+    lda #$B8
+    sta z:zTemp11
+    lda #$48
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$24
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    jmp VecApplyVelocity

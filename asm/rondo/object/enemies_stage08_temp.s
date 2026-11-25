@@ -88,6 +88,42 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 08 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 08 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0D5B:200 SetPhase2
 ; @run 70:B200
 ; WHAT IT DOES: Sets the object's f34b8 to 2, the phase SetSpeedFromPhaseTable reads.
@@ -437,3 +473,103 @@ AnimateByKindThenNextState:
     inc a:OBJ_27A8,x
 AnimateByKindThenNextState_at0:
     rts
+
+; @routine 0D5E:286 AnimateAndSpawnThenPause
+; @run 71:CA86
+; WHAT IT DOES: While its next_kind is not 0, or the player is within $70 along X, it animates facing the player
+; (list 2) and, on the frame change to frame $6B, starts an object of type $41 at its place from a free slot from
+; $30. When the list ends, or the player is farther away with next_kind 0, it stops its animation, enters state 3 and
+; takes a life_timer from a table at overlay address $CAC7 by two bits of f3568, which it counts up.
+; HOW: DistanceXToPlayer, StepFramesFacingPlayerE, FindFreeSlotFrom30, StartObjectAtPlace as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: after a spawn as StartObjectAtPlace left them; pausing: A the timer, N, Z from it,
+; Y the table index; otherwise the failing test or the step's flags.
+AnimateAndSpawnThenPause:
+    lda a:OBJ_3040,x
+    bne AnimateAndSpawnThenPause_at0
+    jsr VecDistanceXToPlayer
+    cmp #$70
+    bcs AnimateAndSpawnThenPause_at1
+AnimateAndSpawnThenPause_at0:
+    ldy #$02
+    jsr StepFramesFacingPlayerE
+    beq AnimateAndSpawnThenPause_at1
+    bcc AnimateAndSpawnThenPause_at2
+    lda a:OBJ_2A68,x
+    cmp #$6B
+    bne AnimateAndSpawnThenPause_at2
+    jsr VecFindFreeSlotFrom30
+    bcc AnimateAndSpawnThenPause_at2
+    lda #$41
+    jmp VecStartObjectAtPlace
+AnimateAndSpawnThenPause_at1:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    inc a:OBJ_3568,x
+    lda a:OBJ_3568,x
+    and #$03
+    tay
+    lda a:$CAC7,y
+    sta a:OBJ_34B8,x
+AnimateAndSpawnThenPause_at2:
+    rts
+
+; @routine 0D5E:3B2 StartLobTowardPlayerB
+; @run 71:CBB2
+; @stop CBED
+; WHAT IT DOES: StartLobTowardPlayer in this stage's overlay, with its table at overlay address $CBED.
+; HOW: The shared body.
+; WAITS: no.
+; Entry, exit: as StartLobTowardPlayer.
+StartLobTowardPlayerB:
+    lda a:OBJ_27A8,x
+    bne StepLobArcB
+    jsr VecLoadObjectRecord
+    lda #$F0
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    jsr VecDistanceXToPlayer
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    asl a
+    tay
+    lda a:$CBEE,y
+    sta a:OBJ_VX_HI,x
+    lda a:$CBED,y
+    sta a:OBJ_VX_LO,x
+    lda #$FB
+    sta a:OBJ_VY_HI,x
+    lda #$80
+    sta a:OBJ_VY_LO,x
+    jsr VecSideOfPlayer
+    and #$01
+    beq StartLobTowardPlayerB_at0
+    jsr VecNegateVelocityX
+StartLobTowardPlayerB_at0:
+    rts
+
+; @routine 0D5E:3FD StepLobArcB
+; @run 71:CBFD
+; WHAT IT DOES: StepLobArc with the frame list at overlay address $C9EF.
+; HOW: The shared body.
+; WAITS: no.
+; Entry, exit: as StepLobArc.
+StepLobArcB:
+    lda #$C9
+    sta z:zTemp11
+    lda #$EF
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$24
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    jmp VecApplyVelocity

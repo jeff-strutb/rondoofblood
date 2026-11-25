@@ -53,6 +53,61 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 07 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 07 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 07 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 07 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 07 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0BFB:3DC EnterState4IfFlagged
 ; @run 70:B3DC
 ; WHAT IT DOES: Sends the object to state 4 when bit 7 of its status flags is set.
@@ -372,4 +427,142 @@ FallAndLeaveWhenLow:
     beq FallAndLeaveWhenLow_at0
     jmp VecClearObject
 FallAndLeaveWhenLow_at0:
+    rts
+
+; @routine 0BFC:1FF CountTimerPairDownThenSpawn36
+; @run 70:B9FF
+; WHAT IT DOES: In state 0 it loads its record. Later it counts the sixteen bit value life_timer (high) and
+; f3510 (low) down; when it is zero it frees the first empty slot of $1C to $1F, starts an object of type $36
+; there at its place and sets the pair again from a table of word pairs at overlay address $BA3F by two bits of
+; PlayerDistanceSum.
+; HOW: RemoveFirstFreeSlotFrom1C, StartObjectAtPlace, PlayerDistanceSum. The arm with no empty slot ran in no
+; script: the draft stops there, so liftcmp does not judge it.
+; WAITS: no.
+; Entry: X object, D clear. Exit: state 0: as LoadObjectRecord; counting: A the new high byte and N, Z, C, V from
+; the borrow subtract; when none of the four slots is empty, as RemoveFirstFreeSlotFrom1C; otherwise A the low
+; byte set, N, Z from it, C and V from the sum, Y the table index.
+CountTimerPairDownThenSpawn36:
+    lda a:OBJ_27A8,x
+    bne CountTimerPairDownThenSpawn36_at0
+    jmp VecLoadObjectRecord
+CountTimerPairDownThenSpawn36_at0:
+    lda a:OBJ_34B8,x
+    ora a:OBJ_3510,x
+    beq CountTimerPairDownThenSpawn36_at1
+    lda a:OBJ_3510,x
+    sec
+    sbc #$01
+    sta a:OBJ_3510,x
+    lda a:OBJ_34B8,x
+    sbc #$00
+    sta a:OBJ_34B8,x
+    rts
+CountTimerPairDownThenSpawn36_at1:
+    jsr RemoveFirstFreeSlotFrom1C
+    bcc AnimateThenState1
+    lda #$36
+    jsr VecStartObjectAtPlace
+    jsr VecPlayerDistanceSum
+    and #$03
+    asl a
+    tay
+    lda a:RichterItemAttacks+8,y
+    sta a:OBJ_34B8,x
+    lda a:RichterItemAttacks+7,y
+    sta a:OBJ_3510,x
+    rts
+
+; @routine 0BFC:2E3 StartAtRandomSpeedTowardPlayer
+; @run 70:BAE3
+; WHAT IT DOES: Loads the record, gives the object an X speed (high byte) from a table at overlay address $BB20
+; by three bits of PlayerDistanceSum and moves it along X. When the player is nearer than $18 along X it removes
+; itself; otherwise it takes a speed from a table of word pairs at $BB28 by two bits of PlayerDistanceSum, faces
+; the player's side (bit 0 of SideOfPlayer into facing_left) and reverses its speed when that bit is set.
+; HOW: LoadObjectRecord, PlayerDistanceSum twice, ApplyVelocityX, DistanceXToPlayer, SideOfPlayer, NegateVelocityX.
+; WAITS: no.
+; Entry: X object, D clear. Exit: removed: A the distance, N, Z, C from its compare with $18; otherwise
+; A, N, Z, C, V from NegateVelocityX when it ran, else A the side bit and N, Z from it.
+StartAtRandomSpeedTowardPlayer:
+    jsr VecLoadObjectRecord
+    jsr VecPlayerDistanceSum
+    and #$07
+    tay
+    lda a:$BB20,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    jsr VecDistanceXToPlayer
+    cmp #$18
+    bcs RichterLowColumnsBlocked
+    jmp VecClearObject
+    jsr VecPlayerDistanceSum
+    and #$03
+    asl a
+    tay
+    lda a:$BB29,y
+    sta a:OBJ_VX_HI,x
+    lda a:$BB28,y
+    sta a:OBJ_VX_LO,x
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    beq StartAtRandomSpeedTowardPlayer_at0
+    jsr VecNegateVelocityX
+StartAtRandomSpeedTowardPlayer_at0:
+    rts
+
+; @routine 0BFC:15F StartFromScreenEdgeByScroll
+; @run 70:B95F
+; WHAT IT DOES: Loads the record, then puts the object at one edge of the screen heading across it: on the left
+; edge (X $FFE0, speed $0140, facing left set) when the player's X low byte is $C0 or more, or between $40 and
+; $BF when the scroll is not at its right end or the player faces left; otherwise on the right (X $0120, speed
+; -$0140). Its Y is the player's, thrown up at -$1000 and moved once, kept at $30 or more.
+; HOW: LoadObjectRecord, ScrollNotAtRightEnd, ApplyVelocityY.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A $30 and N, Z clear when the player's Y low byte is below $30; otherwise A the
+; player's Y low byte, N, Z, C from its compare with $30; V from ApplyVelocityY; Y 11.
+StartFromScreenEdgeByScroll:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_X_LO
+    cmp #$40
+    bcc StartFromScreenEdgeByScroll_at0
+    cmp #$C0
+    bcs StartFromScreenEdgeByScroll_at1
+    bsr ScrollNotAtRightEnd
+    bcc StartFromScreenEdgeByScroll_at1
+    lda a:OBJ_2AC0
+    beq StartFromScreenEdgeByScroll_at0
+StartFromScreenEdgeByScroll_at1:
+    lda #$01
+    sta a:OBJ_2AC0,x
+    lda #$FF
+    sta a:OBJ_X_HI,x
+    lda #$E0
+    sta a:OBJ_X_LO,x
+    lda #$01
+    sta a:OBJ_VX_HI,x
+    lda #$40
+    sta a:OBJ_VX_LO,x
+    bra PickTimersAtRandom
+StartFromScreenEdgeByScroll_at0:
+    lda #$01
+    sta a:OBJ_X_HI,x
+    lda #$20
+    sta a:OBJ_X_LO,x
+    lda #$FE
+    sta a:OBJ_VX_HI,x
+    lda #$C0
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_Y_HI
+    sta a:OBJ_Y_HI,x
+    lda a:OBJ_Y_LO
+    sta a:OBJ_Y_LO,x
+    lda #$F0
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    lda a:OBJ_Y_LO
+    cmp #$30
+    bcs StartFromScreenEdgeByScroll_at2
+    lda #$30
+    sta a:OBJ_Y_LO,x
+StartFromScreenEdgeByScroll_at2:
     rts

@@ -504,39 +504,7 @@ void abi_PickSpeedAndTurnFromTableB(void)
  */
 Ended SpawnSixPiecesA(uint8_t slot)
 {
-    enum { TABLE = 0xB36C, TYPE = 0x21 };
-    uint8_t piece = 0, found_slot, last, row, value;
-    bool found;
-    Ended e = ended_with_y(ended_kept(), 0);
-
-    do {
-        WR8(ZP->hit_slot, piece);
-        jsr_push(0xB33C);
-        found_slot = FindFreeSlotFrom30(&last, &found);
-        jsr_pop();
-        e = ended_then(e, ended_of_find_slot(found_slot, last, found));
-        if (!found) {
-            return e;
-        }
-        jsr_push(0xB343);
-        StartObjectAtPlace(TYPE, slot, found_slot);
-        jsr_pop();
-        WR8(ZP->richter_object, slot);
-        row = (uint8_t)(RD8(ZP->hit_slot) << 2);
-        value = rd8((uint16_t)(TABLE + row));
-        WR8(OBJ->life_timer[found_slot], value);
-        value = rd8((uint16_t)(TABLE + 1 + row));
-        WR8(OBJ->f3510[found_slot], value);
-        value = rd8((uint16_t)(TABLE + 2 + row));
-        WR8(OBJ->vx_hi[found_slot], value);
-        value = rd8((uint16_t)(TABLE + 3 + row));
-        WR8(OBJ->vy_hi[found_slot], value);
-        slot = RD8(ZP->richter_object);
-        piece = RD8(ZP->hit_slot);
-        piece++;
-        e = ended_with_y(ended_with_carry(ended_with_a(ended_nz((uint8_t)(piece - 6)), value), piece >= 6), piece);
-    } while (piece < 6);
-    return e;
+    return spawn_six_pieces(slot, 0x21, 0xB36C, 0xB33C, 0xB343);
 }
 
 void abi_SpawnSixPiecesA(void)
@@ -1056,4 +1024,121 @@ Ended TurnOnRandomBeatWalkFollowA(uint8_t slot)
 void abi_TurnOnRandomBeatWalkFollowA(void)
 {
     abi_ended(TurnOnRandomBeatWalkFollowA(cpu.x));
+}
+
+/*
+ * @routine 07DC:250 FallAnimatedThenBecomeKind9B
+ * @run 70:BA50
+ * WHAT IT DOES: In state 0 it loads its record and, when the player is on its left (bit 0 of
+ * SideOfPlayer), reverses its X speed. In any other state it counts f3510 down; at zero it becomes
+ * kind $9B in state 0. Until then it steps the frame list picked by life_timer from a table at
+ * overlay address $BA89 (two bytes each), applies gravity without a limit and moves.
+ * HOW: LoadObjectRecord, SideOfPlayer, NegateVelocityX; or a decrement; or StepObjectFrames,
+ * ApplyGravityUnlimited and ApplyVelocity as a tail jump. The reversal ran in no script: the draft
+ * stops there, so liftcmp does not judge it.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: state 0: as LoadObjectRecord, then SideOfPlayer's bit, and the
+ * reversal's add when it ran; counting out: A, N, Z from the decrement (A 0); moving: A, N, Z, C
+ * and V from ApplyVelocity, Y from the frame step.
+ */
+Ended FallAnimatedThenBecomeKind9B(uint8_t slot)
+{
+    enum { LISTS = 0xBA89 };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t last, nz, left, index, exit_y, bit;
+    bool carry;
+    SideResult side;
+    FrameStep step;
+    AxisMove move;
+    Ended e;
+
+    if (state == 0) {
+        jsr_push(0xBA58);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = ended_of_record(last, nz, carry);
+        jsr_push(0xBA5B);
+        side = SideOfPlayer(slot);
+        jsr_pop();
+        bit = (uint8_t)(side.sides & 1);
+        e = ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+        if (bit != 0) {
+            jsr_push(0xBA62);
+            e = ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+            jsr_pop();
+        }
+        return e;
+    }
+    left = (uint8_t)(RD8(OBJ->f3510[slot]) - 1);
+    WR8(OBJ->f3510[slot], left);
+    e = ended_nz(left);
+    if (left == 0) {
+        WR8(OBJ->kind[slot], 0x9B);
+        WR8(OBJ->state[slot], 0);
+        return ended_then(e, ended_load(0x9B));
+    }
+    index = (uint8_t)(RD8(OBJ->life_timer[slot]) << 1);
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
+    exit_y = index;
+    jsr_push(0xBA83);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    jsr_push(0xBA86);
+    ApplyGravityUnlimited(slot);
+    jsr_pop();
+    move = ApplyVelocity(slot);
+    return ended_then(ended_with_y(ended_kept(), exit_y), ended_of_axis_move(move));
+}
+
+void abi_FallAnimatedThenBecomeKind9B(void)
+{
+    abi_ended(FallAnimatedThenBecomeKind9B(cpu.x));
+}
+
+/*
+ * @routine 07DC:1E6 StartLobTowardPlayer
+ * @run 70:B9E6
+ * @stop BA21
+ * WHAT IT DOES: In state 0 it loads its record and throws itself on an arc toward the player: an X speed from a
+ * table of word pairs at overlay address $BA21 by the player's distance along X (a pair per 32 pixels), the Y speed
+ * -$0480, reversed in X when the player is on its left. In any other state it runs StepLobArc.
+ * HOW: LoadObjectRecord, ApplyVelocityY, DistanceXToPlayer, SideOfPlayer, NegateVelocityX; the table lies between
+ * the two parts and stays data. The reversal ran in no script: the draft stops there, so liftcmp does not judge it.
+ * WAITS: no.
+ * Entry: X object, Y kept to the frame step, D clear. Exit: state 0: A the Y speed's low byte or the reversal's, N, Z
+ * from it, C from the table shift, V from the distance, Y the table index; later as StepLobArc.
+ */
+Ended StartLobTowardPlayer(uint8_t slot, uint8_t entry_y)
+{
+    static const uint16_t RETURNS[5] = { 0xB9EE, 0xB9F6, 0xB9F9, 0xBA19, 0xBA20 };
+
+    if (RD8(OBJ->state[slot]) != 0) {
+        return StepLobArc(slot, entry_y);
+    }
+    return start_lob(slot, 0xBA21, RETURNS);
+}
+
+void abi_StartLobTowardPlayer(void)
+{
+    abi_ended(StartLobTowardPlayer(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 07DC:231 StepLobArc
+ * @run 70:BA31
+ * WHAT IT DOES: The later frames of the arc: steps the frame list at overlay address $B848, makes the Y speed
+ * grow by $24 and moves the object.
+ * HOW: StepObjectFrames, a sixteen bit add, ApplyVelocity as a tail jump.
+ * WAITS: no.
+ * Entry: X object, Y kept by the step, D clear. Exit: A, N, Z, C, V from ApplyVelocity; Y the step's.
+ */
+Ended StepLobArc(uint8_t slot, uint8_t entry_y)
+{
+    return step_lob_arc(slot, entry_y, 0xB848, 0xBA3C);
+}
+
+void abi_StepLobArc(void)
+{
+    abi_ended(StepLobArc(cpu.x, cpu.y));
 }

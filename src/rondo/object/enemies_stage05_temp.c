@@ -1583,24 +1583,451 @@ void abi_CountdownSoundThenNextState(void)
  */
 SoundEnd SoundEveryFourthFrame(uint8_t slot, uint8_t entry_y)
 {
-    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
-    uint8_t bits = RD8(OBJ->f3618[slot]);
-
-    bits = (uint8_t)(bits & 3);
-    if (bits != 0) {
-        result.end = ended_load(bits);
-        return result;
-    }
-    result.sounded = true;
-    result.command = 0x22;
-    result.before = ended_load(0x22);
-    jsr_push(0xC101);
-    result.call = SoundCommand(0x22, slot, entry_y);
-    jsr_pop();
-    return result;
+    return sound_every_fourth_frame(slot, entry_y, 0xC101);
 }
 
 void abi_SoundEveryFourthFrame(void)
 {
     abi_sound_end(SoundEveryFourthFrame(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 093C:474 CountdownSoundThenFollowParent
+ * @run 70:BC74
+ * WHAT IT DOES: Counts f3510 down; at zero it plays sound $25, sets f3250 to 2, stops its
+ * animation and advances its step. Then, every frame, it goes on as FollowParentYAndLeave.
+ * HOW: A decrement, SoundCommand, FollowParentYAndLeave as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as FollowParentYAndLeave.
+ */
+SoundEnd CountdownSoundThenFollowParent(uint8_t slot, uint8_t entry_y)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    uint8_t left = (uint8_t)(RD8(OBJ->f3510[slot]) - 1);
+    uint8_t step;
+    Ended e;
+
+    WR8(OBJ->f3510[slot], left);
+    e = ended_nz(left);
+    if (left == 0) {
+        result.sounded = true;
+        result.command = 0x25;
+        result.before = ended_then(e, ended_load(0x25));
+        jsr_push(0xBC7E);
+        result.call = SoundCommand(0x25, slot, entry_y);
+        jsr_pop();
+        WR8(OBJ->f3250[slot], 2);
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        step = INC8(OBJ->state[slot]);
+        e = ended_nz(step);
+    }
+    result.end = ended_then(e, FollowParentYAndLeave(slot));
+    return result;
+}
+
+void abi_CountdownSoundThenFollowParent(void)
+{
+    abi_sound_end(CountdownSoundThenFollowParent(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 093C:39A AnimateThenNumberGroupAndLeave
+ * @run 70:BB9A
+ * WHAT IT DOES: Steps the frame list picked by bit 0 of f3618 (two pointers at overlay address
+ * $BBE5). When the list has ended it numbers the group it belongs to: from the slot in f37d0 up to
+ * f3828, each object of kind $26 below state 4 gets its place in the group in next_kind and the
+ * group's first slot in f37d0. Then it removes itself.
+ * HOW: StepObjectFrames, a loop over the slots, ClearObject.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: when the list went on, as StepObjectFrames; when it ended, A, N, Z,
+ * C from the loop's last compare and Y the end slot (X kept); clobbers zTemp00, zTemp01, zTemp03.
+ */
+Ended AnimateThenNumberGroupAndLeave(uint8_t slot)
+{
+    enum { LISTS = 0xBBE5 };
+    uint8_t index = (uint8_t)((RD8(OBJ->f3618[slot]) & 1) << 1);
+    uint8_t exit_y = index;
+    uint8_t y, end, count, held;
+    FrameStep step;
+    Ended e;
+
+    WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
+    jsr_push(0xBBAE);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), index), ended_of_frame_step(step, step != FRAME_HELD, exit_y));
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    y = RD8(OBJ->f37d0[slot]);
+    WR8(ZP->temp00, 0);
+    held = RD8(OBJ->f3828[slot]);
+    WR8(ZP->temp01, held);
+    end = INC8(ZP->temp01);
+    do {
+        held = RD8(OBJ->kind[y]);
+        if (held == 0x26) {
+            held = RD8(OBJ->state[y]);
+            if (held < 4) {
+                count = RD8(ZP->temp00);
+                if (count == 0) {
+                    WR8(ZP->temp03, y);
+                }
+                count = RD8(ZP->temp00);
+                WR8(OBJ->next_kind[y], count);
+                held = RD8(ZP->temp03);
+                WR8(OBJ->f37d0[y], held);
+                count = RD8(ZP->temp00);
+                WR8(ZP->temp00, (uint8_t)(count + 1));
+            }
+        }
+        y++;
+        end = RD8(ZP->temp01);
+    } while (y < end);
+    e = ended_with_a(ended_with_y(ended_compare(y, end), y), held);
+    jsr_push(0xBBE4);
+    ClearObject(slot);
+    jsr_pop();
+    return e;
+}
+
+void abi_AnimateThenNumberGroupAndLeave(void)
+{
+    abi_ended(AnimateThenNumberGroupAndLeave(cpu.x));
+}
+
+/*
+ * @routine 093D:6A4 FollowPreviousPieceB
+ * @run 71:C6A4
+ * WHAT IT DOES: FollowPreviousPiece with the frame base $27 and its row table at overlay address $C71B.
+ * HOW: The shared body.
+ * WAITS: no.
+ * Entry, exit: as FollowPreviousPiece.
+ */
+Ended FollowPreviousPieceB(uint8_t slot)
+{
+    return follow_previous_piece(slot, 0x27, 0xC71B, 0xC6B2);
+}
+
+void abi_FollowPreviousPieceB(void)
+{
+    abi_ended(FollowPreviousPieceB(cpu.x));
+}
+
+/*
+ * @routine 093D:02B AnimateMoveThenSetUpAtRandom
+ * @run 71:C02B
+ * WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+ * down; at zero it plays sound $93, picks a speed and turn (PickSpeedAndTurnFromTableC), sets
+ * f36c8 to $18 plus seven random bits, stops its animation and advances its step.
+ * HOW: StepFramesFacingPlayerC, ApplyVelocity, a decrement, then the calls named.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: while counting, N, Z from the timer, C and V from ApplyVelocity,
+ * Y as the animation step left it; at zero A the timer value, N, Z from the new step, C and V from
+ * the add of $18.
+ */
+SoundEnd AnimateMoveThenSetUpAtRandom(uint8_t slot)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    FrameStepEnd frames;
+    AxisMove move;
+    RandomResult random;
+    uint8_t left, step;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xC030);
+    frames = StepFramesFacingPlayerC(slot, 4);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 4), frames.end);
+    jsr_push(0xC033);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    left = (uint8_t)(RD8(OBJ->life_timer[slot]) - 1);
+    WR8(OBJ->life_timer[slot], left);
+    e = ended_then(e, ended_nz(left));
+    result.end = e;
+    if (left != 0) {
+        return result;
+    }
+    result.sounded = true;
+    result.command = 0x93;
+    result.before = ended_then(e, ended_load(0x93));
+    jsr_push(0xC03D);
+    result.call = SoundCommand(0x93, slot, ended_y_or(e, 0));
+    jsr_pop();
+    jsr_push(0xC040);
+    e = PickSpeedAndTurnFromTableC(slot);
+    jsr_pop();
+    jsr_push(0xC043);
+    random = NextRandom();
+    jsr_pop();
+    e = ended_then(e, ended_of_random(random));
+    sum = add_bytes((uint8_t)(random.value & 0x7F), 0x18, false);
+    WR8(OBJ->f36c8[slot], sum.value);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    step = INC8(OBJ->f2800[slot]);
+    result.end = ended_then(e, ended_with_a(ended_with_overflow(ended_with_carry(ended_nz(step), sum.carry),
+                                                                sum.overflow), sum.value));
+    return result;
+}
+
+void abi_AnimateMoveThenSetUpAtRandom(void)
+{
+    abi_sound_end(AnimateMoveThenSetUpAtRandom(cpu.x));
+}
+
+/*
+ * @routine 093C:417 StartSidewaysAndSpawn29
+ * @run 70:BC17
+ * WHAT IT DOES: Loads the record, sets f3510 to $28, reverses its X speed when it faces left, moves along X
+ * and takes its speeds from a table of eight-byte rows at overlay address $BC64 (X high, X low, Y high, Y low
+ * pairs by facing) picked by life_timer; then starts an object of type $29 at its place from a free slot from
+ * $50, which takes its f3568.
+ * HOW: LoadObjectRecord, NegateVelocityX, ApplyVelocityX, FindFreeSlotFrom50, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the copied f3568 and N, Z from it, C 1, Y the new slot, V from the table
+ * index add; with no free slot, as FindFreeSlotFrom50 left them.
+ */
+Ended StartSidewaysAndSpawn29(uint8_t slot)
+{
+    uint8_t last, nz, facing, y, value, found_slot, found_last;
+    bool carry, found;
+    AxisMove move;
+    Sum index;
+    Ended e;
+
+    jsr_push(0xBC1A);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    WR8(OBJ->f3510[slot], 0x28);
+    facing = RD8(OBJ->facing_left[slot]);
+    if (facing != 0) {
+        jsr_push(0xBC27);
+        NegateVelocityX(slot);
+        jsr_pop();
+    }
+    jsr_push(0xBC2A);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    WR8(ZP->temp00, (uint8_t)(RD8(OBJ->life_timer[slot]) << 3));
+    facing = RD8(OBJ->facing_left[slot]);
+    index = add_bytes((uint8_t)(facing << 2), RD8(ZP->temp00), false);
+    y = index.value;
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xBC65 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xBC64 + y)));
+    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(0xBC67 + y)));
+    value = rd8((uint16_t)(0xBC66 + y));
+    WR8(OBJ->vy_lo[slot], value);
+    jsr_push(0xBC56);
+    found_slot = FindFreeSlotFrom50(&found_last, &found);
+    jsr_pop();
+    e = ended_then(ended_with_overflow(ended_kept(), index.overflow), ended_of_find_slot(found_slot, found_last, found));
+    if (!found) {
+        return e;
+    }
+    jsr_push(0xBC5D);
+    StartObjectAtPlace(0x29, slot, found_slot);
+    jsr_pop();
+    value = RD8(OBJ->f3568[slot]);
+    WR8(OBJ->f3568[found_slot], value);
+    return ended_then(e, ended_load(value));
+}
+
+void abi_StartSidewaysAndSpawn29(void)
+{
+    abi_ended(StartSidewaysAndSpawn29(cpu.x));
+}
+
+/*
+ * @routine 093C:4FD StartSidewaysAndSpawn29B
+ * @run 70:BCFD
+ * WHAT IT DOES: Loads the record, sets f3510 to $40, reverses its X speed when it faces left and moves along X;
+ * starts an object of type $29 at its place from a free slot from $50 (when there is one), with life_timer 1 and
+ * this object's f3568; then takes an X speed (high byte) from a table at overlay address $BD32 by its facing and
+ * moves along X again.
+ * HOW: LoadObjectRecord, NegateVelocityX, ApplyVelocityX, FindFreeSlotFrom50, StartObjectAtPlace, ApplyVelocityX.
+ * The reversal ran in no script: the draft stops there, so liftcmp does not judge it.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C, V from the last ApplyVelocityX; Y the facing.
+ */
+Ended StartSidewaysAndSpawn29B(uint8_t slot)
+{
+    uint8_t last, nz, facing, found_slot, found_last, value;
+    bool carry, found;
+    AxisMove move;
+
+    jsr_push(0xBD00);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    WR8(OBJ->f3510[slot], 0x40);
+    facing = RD8(OBJ->facing_left[slot]);
+    if (facing != 0) {
+        jsr_push(0xBD0D);
+        NegateVelocityX(slot);
+        jsr_pop();
+    }
+    jsr_push(0xBD10);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    jsr_push(0xBD13);
+    found_slot = FindFreeSlotFrom50(&found_last, &found);
+    jsr_pop();
+    if (found) {
+        jsr_push(0xBD1A);
+        StartObjectAtPlace(0x29, slot, found_slot);
+        jsr_pop();
+        WR8(OBJ->life_timer[found_slot], 1);
+        value = RD8(OBJ->f3568[slot]);
+        WR8(OBJ->f3568[found_slot], value);
+    }
+    facing = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xBD32 + facing)));
+    jsr_push(0xBD31);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    return ended_then(ended_with_y(ended_kept(), facing), ended_of_axis_move(move));
+}
+
+void abi_StartSidewaysAndSpawn29B(void)
+{
+    abi_ended(StartSidewaysAndSpawn29B(cpu.x));
+}
+
+/*
+ * @routine 093D:619 BurstIntoEightPieces
+ * @run 71:C619
+ * WHAT IT DOES: Empties the slot after its own, then starts up to eight objects of type $34 at its place, each from
+ * a free slot from $30, with its facing and, from a table of six-byte rows at overlay address $C674 by the piece
+ * number, its life_timer, f3510, X speed and Y speed; it stops at the first piece that finds no slot. Then it becomes
+ * kind $9C in state 0.
+ * HOW: ClearObjectInY, a loop of FindFreeSlotFrom30 and StartObjectAtPlace; the piece number is kept in zHitSlot and
+ * the object in zRichterObject while the table is read.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A $9C, N set, Z clear; C and Y from the last compare or slot search.
+ */
+Ended BurstIntoEightPieces(uint8_t slot)
+{
+    uint8_t y = (uint8_t)(slot + 1);
+    uint8_t piece = 0, found_slot, last, twice, row, value;
+    bool found;
+    Sum index;
+    Ended e = ended_with_y(ended_kept(), y);
+
+    jsr_push(0xC61F);
+    ClearObjectInY(y);
+    jsr_pop();
+    for (;;) {
+        WR8(ZP->hit_slot, piece);
+        jsr_push(0xC625);
+        found_slot = FindFreeSlotFrom30(&last, &found);
+        jsr_pop();
+        e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+        if (!found) {
+            break;
+        }
+        jsr_push(0xC62C);
+        StartObjectAtPlace(0x34, slot, found_slot);
+        jsr_pop();
+        WR8(OBJ->facing_left[found_slot], RD8(OBJ->facing_left[slot]));
+        WR8(ZP->richter_object, slot);
+        twice = (uint8_t)(RD8(ZP->hit_slot) << 1);
+        WR8(ZP->temp00, twice);
+        index = add_bytes((uint8_t)(twice << 1), RD8(ZP->temp00), false);
+        row = index.value;
+        WR8(OBJ->life_timer[found_slot], rd8((uint16_t)(0xC674 + row)));
+        WR8(OBJ->f3510[found_slot], rd8((uint16_t)(0xC675 + row)));
+        WR8(OBJ->vx_hi[found_slot], rd8((uint16_t)(0xC676 + row)));
+        WR8(OBJ->vx_lo[found_slot], rd8((uint16_t)(0xC677 + row)));
+        WR8(OBJ->vy_hi[found_slot], rd8((uint16_t)(0xC678 + row)));
+        value = rd8((uint16_t)(0xC679 + row));
+        WR8(OBJ->vy_lo[found_slot], value);
+        slot = RD8(ZP->richter_object);
+        piece = RD8(ZP->hit_slot);
+        piece++;
+        e = ended_with_overflow(ended_with_y(ended_with_carry(ended_compare(piece, 8), piece >= 8), piece), index.overflow);
+        if (piece >= 8) {
+            break;
+        }
+    }
+    WR8(OBJ->kind[slot], 0x9C);
+    WR8(OBJ->state[slot], 0);
+    return ended_then(e, ended_load(0x9C));
+}
+
+void abi_BurstIntoEightPieces(void)
+{
+    abi_ended(BurstIntoEightPieces(cpu.x));
+}
+
+/*
+ * @routine 093C:12E StartGroupThenThrow
+ * @run 70:B92E
+ * WHAT IT DOES: Loads the record. When bit 7 of next_kind is clear, next_kind is the number of followers: it
+ * starts that many objects of type $26 in the slots after its own, each numbered from $81 in next_kind and
+ * given this object's slot in f37d0 and the group's last slot in f3828 (this object's f37d0 is its own slot,
+ * f3828 its slot plus the count). Then it clears bit 7 of next_kind, faces opposite to bit 0 of it, and runs
+ * ThrowByNextKind, PickTimersAtRandom and PickAngleAtRandom.
+ * HOW: LoadObjectRecord, a loop of ClearObjectInY and StartObjectAtPlace, then the three calls.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as PickAngleAtRandom.
+ */
+RandomEnd StartGroupThenThrow(uint8_t slot)
+{
+    uint8_t last, nz, count, y, mark, value, left;
+    bool carry;
+    Sum sum;
+    RandomEnd picked;
+
+    jsr_push(0xB931);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    count = RD8(OBJ->next_kind[slot]);
+    if ((count & 0x80) == 0) {
+        WR8(OBJ->f37d0[slot], slot);
+        count = RD8(OBJ->next_kind[slot]);
+        sum = add_bytes(slot, count, false);
+        WR8(OBJ->f3828[slot], sum.value);
+        y = (uint8_t)(slot + 1);
+        WR8(ZP->temp00, 0x81);
+        do {
+            jsr_push(0xB94B);
+            ClearObjectInY(y);
+            jsr_pop();
+            jsr_push(0xB950);
+            StartObjectAtPlace(0x26, slot, y);
+            jsr_pop();
+            mark = RD8(ZP->temp00);
+            WR8(OBJ->next_kind[y], mark);
+            WR8(OBJ->f37d0[y], slot);
+            value = RD8(OBJ->f3828[slot]);
+            WR8(OBJ->f3828[y], value);
+            INC8(ZP->temp00);
+            y++;
+            left = DEC8(OBJ->next_kind[slot]);
+        } while (left != 0);
+    }
+    count = RD8(OBJ->next_kind[slot]);
+    count = (uint8_t)(count & 0x7F);
+    WR8(OBJ->next_kind[slot], count);
+    WR8(OBJ->facing_left[slot], (uint8_t)((count & 1) ^ 1));
+    jsr_push(0xB979);
+    ThrowByNextKind(slot);
+    jsr_pop();
+    jsr_push(0xB97C);
+    PickTimersAtRandom(slot);
+    jsr_pop();
+    jsr_push(0xB97F);
+    picked = PickAngleAtRandom(slot);
+    jsr_pop();
+    return picked;
+}
+
+void abi_StartGroupThenThrow(void)
+{
+    abi_random_end(StartGroupThenThrow(cpu.x));
 }

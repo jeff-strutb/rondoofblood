@@ -372,6 +372,224 @@ static inline Ended countdown_stop_then_state(uint8_t slot, uint16_t timer, uint
 }
 
 /*
+ * Up to six objects of a type started at the object's place, each from a free slot from $30, each given a
+ * life_timer, f3510 and speeds from a four byte entry of a table: the body SpawnSixPiecesA and B share.
+ */
+static inline Ended spawn_six_pieces(uint8_t slot, uint8_t type, uint16_t table, uint16_t ret_find, uint16_t ret_start)
+{
+    uint8_t piece = 0, found_slot, last, row, value;
+    bool found;
+    Ended e = ended_with_y(ended_kept(), 0);
+
+    do {
+        WR8(ZP->hit_slot, piece);
+        jsr_push(ret_find);
+        found_slot = FindFreeSlotFrom30(&last, &found);
+        jsr_pop();
+        e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+        if (!found) {
+            return e;
+        }
+        jsr_push(ret_start);
+        StartObjectAtPlace(type, slot, found_slot);
+        jsr_pop();
+        WR8(ZP->richter_object, slot);
+        row = (uint8_t)(RD8(ZP->hit_slot) << 2);
+        value = rd8((uint16_t)(table + row));
+        WR8(OBJ->life_timer[found_slot], value);
+        value = rd8((uint16_t)(table + 1 + row));
+        WR8(OBJ->f3510[found_slot], value);
+        value = rd8((uint16_t)(table + 2 + row));
+        WR8(OBJ->vx_hi[found_slot], value);
+        value = rd8((uint16_t)(table + 3 + row));
+        WR8(OBJ->vy_hi[found_slot], value);
+        slot = RD8(ZP->richter_object);
+        piece = RD8(ZP->hit_slot);
+        piece++;
+        e = ended_with_y(ended_with_carry(ended_with_a(ended_nz((uint8_t)(piece - 6)), value), piece >= 6), piece);
+    } while (piece < 6);
+    return e;
+}
+
+/* Sound $22 when the low two bits of the object's f3618 are zero: the body SoundEveryFourthFrame and its copy share. */
+static inline SoundEnd sound_every_fourth_frame(uint8_t slot, uint8_t entry_y, uint16_t ret)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    uint8_t bits = RD8(OBJ->f3618[slot]);
+
+    bits = (uint8_t)(bits & 3);
+    if (bits != 0) {
+        result.end = ended_load(bits);
+        return result;
+    }
+    result.sounded = true;
+    result.command = 0x22;
+    result.before = ended_load(0x22);
+    jsr_push(ret);
+    result.call = SoundCommand(0x22, slot, entry_y);
+    jsr_pop();
+    return result;
+}
+
+/*
+ * A hit that has set bit 7 of the status flags sends an object below a state into a tumble: its f3250 and animation
+ * stopped, sprite set 3, frame 0, speed -$0102 upward (both bytes $FE) and the state given. The body 117C:1EA and
+ * 1173:26A share.
+ */
+static inline Ended knock_up_when_flagged(uint8_t slot, uint8_t below, uint8_t state)
+{
+    uint8_t bit = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    uint8_t now;
+    Ended e = ended_load(bit);
+
+    if (bit == 0) {
+        return e;
+    }
+    now = RD8(OBJ->state[slot]);
+    e = ended_compare(now, below);
+    if (now >= below) {
+        return e;
+    }
+    WR8(OBJ->hitbox_on[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->f2a10[slot], 3);
+    WR8(OBJ->frame[slot], 0);
+    WR8(OBJ->vy_hi[slot], 0xFE);
+    WR8(OBJ->vy_lo[slot], 0xFE);
+    WR8(OBJ->state[slot], state);
+    return ended_then(e, ended_load(state));
+}
+
+/*
+ * A piece that follows the object one slot before it: in state 0 it loads its record; later it takes the place of
+ * slot less 1, its f3250 from there, a hit rectangle from a table of four byte rows picked by that object's frame
+ * less a base, and its facing. The body 117D:277 and 093D:6A4 share.
+ */
+static inline Ended follow_previous_piece(uint8_t slot, uint8_t base, uint16_t table, uint16_t ret_copy)
+{
+    uint8_t previous = (uint8_t)(slot - 1);
+    uint8_t last, nz, placed, value, row;
+    bool carry;
+    Sum frame;
+    Ended e;
+
+    if (RD8(OBJ->state[slot]) == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return ended_of_record(last, nz, carry);
+    }
+    e = ended_with_a(ended_with_y(ended_nz(previous), previous), slot);
+    jsr_push(ret_copy);
+    placed = CopyObjectPlaceBack(previous, slot);
+    jsr_pop();
+    e = ended_then(e, ended_load(placed));
+    value = RD8(OBJ->hitbox_on[slot - 1]);
+    WR8(OBJ->hitbox_on[slot], value);
+    frame = sub_bytes(RD8(OBJ->frame[slot - 1]), base, true);
+    row = frame.value < 0x13 ? frame.value : 0x13;
+    row = (uint8_t)(row << 2);
+    WR8(OBJ->hitbox_dx[slot], rd8((uint16_t)(table + row)));
+    WR8(OBJ->hitbox_dy[slot], rd8((uint16_t)(table + 1 + row)));
+    WR8(OBJ->hitbox_half_w[slot], rd8((uint16_t)(table + 2 + row)));
+    value = rd8((uint16_t)(table + 3 + row));
+    WR8(OBJ->hitbox_half_h[slot], value);
+    value = RD8(OBJ->facing_left[slot - 1]);
+    WR8(OBJ->facing_left[slot], value);
+    e = ended_with_overflow(ended_with_carry(ended_with_y(ended_load(value), row), false), frame.overflow);
+    return e;
+}
+
+/*
+ * An object throws itself on an arc toward the player: loads its record, an upward speed, a horizontal speed from a
+ * table of word pairs by the player's distance along X (a pair per 32 pixels), then the arc's start speed, reversed
+ * when the player is on its left. The body of StartLobTowardPlayer and its copy.
+ */
+static inline Ended start_lob(uint8_t slot, uint16_t table, const uint16_t ret[5])
+{
+    uint8_t last, nz, y, value, bit;
+    bool carry;
+    AxisMove move;
+    PlayerDistance distance;
+    SideResult side;
+    Ended e;
+
+    jsr_push(ret[0]);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->vy_hi[slot], 0xF0);
+    e = ended_then(e, ended_load(0xF0));
+    jsr_push(ret[1]);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    jsr_push(ret[2]);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_distance(distance));
+    y = (uint8_t)((distance.distance >> 5) << 1);
+    value = rd8((uint16_t)(table + 1 + y));
+    WR8(OBJ->vx_hi[slot], value);
+    value = rd8((uint16_t)(table + y));
+    WR8(OBJ->vx_lo[slot], value);
+    e = ended_then(e, ended_with_y(ended_with_carry(ended_load(value), false), y));
+    WR8(OBJ->vy_hi[slot], 0xFB);
+    WR8(OBJ->vy_lo[slot], 0x80);
+    e = ended_then(e, ended_load(0x80));
+    jsr_push(ret[3]);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(side.sides & 1);
+    e = ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+    if (bit != 0) {
+        jsr_push(ret[4]);
+        e = ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+        jsr_pop();
+    }
+    return e;
+}
+
+/* The arc's later frames: the frame list steps, the Y speed grows by $24 and the object moves. */
+static inline Ended step_lob_arc(uint8_t slot, uint8_t entry_y, uint16_t list, uint16_t ret_step)
+{
+    uint8_t exit_y = entry_y;
+    FrameStep step;
+    AxisMove move;
+    Sum low, high;
+    Ended e;
+
+    WR8(ZP->temp11, (uint8_t)(list >> 8));
+    WR8(ZP->temp10, (uint8_t)list);
+    jsr_push(ret_step);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+    low = add_bytes(RD8(OBJ->vy_lo[slot]), 0x24, false);
+    WR8(OBJ->vy_lo[slot], low.value);
+    high = add_bytes(RD8(OBJ->vy_hi[slot]), 0, low.carry);
+    WR8(OBJ->vy_hi[slot], high.value);
+    move = ApplyVelocity(slot);
+    return ended_then(e, ended_of_axis_move(move));
+}
+
+/* What a sound-playing routine leaves when instructions before its sound call (and after it) are put around the call. */
+static inline SoundEnd sound_end_after(Ended e, SoundEnd s)
+{
+    if (s.sounded) {
+        s.before = ended_then(e, s.before);
+    } else {
+        s.end = ended_then(e, s.end);
+    }
+    return s;
+}
+
+static inline SoundEnd sound_end_then(SoundEnd s, Ended rest)
+{
+    s.end = ended_then(s.end, rest);
+    return s;
+}
+
+/*
  * A hop: X speed from a byte table by an index the caller read (which way the object faces), Y speed -3.00, the frame, f35c0
  * set to 8 and the step byte advanced. Returns N, Z from the step; A 8; Y the index byte.
  */
@@ -683,6 +901,9 @@ Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in, uint8_t entry_y)
 Ended ChargeWhenPlayerNear(uint8_t slot);
 Ended TurnOnRandomBeatWalkA(uint8_t slot);
 Ended TurnOnRandomBeatWalkFollowA(uint8_t slot);
+Ended FallAnimatedThenBecomeKind9B(uint8_t slot);
+Ended StartLobTowardPlayer(uint8_t slot, uint8_t entry_y);
+Ended StepLobArc(uint8_t slot, uint8_t entry_y);
 /* object/enemies_stage05_temp.c */
 Ended SelectRasterStage1(void);
 Ended SetHitboxDxFromFrame(uint8_t slot);
@@ -725,6 +946,14 @@ Ended StartWithFrameAndFace(uint8_t slot);
 Ended StartThenAnimateAndExpire(uint8_t slot);
 SoundEnd CountdownSoundThenNextState(uint8_t slot, uint8_t entry_y);
 SoundEnd SoundEveryFourthFrame(uint8_t slot, uint8_t entry_y);
+SoundEnd CountdownSoundThenFollowParent(uint8_t slot, uint8_t entry_y);
+Ended AnimateThenNumberGroupAndLeave(uint8_t slot);
+Ended FollowPreviousPieceB(uint8_t slot);
+SoundEnd AnimateMoveThenSetUpAtRandom(uint8_t slot);
+Ended StartSidewaysAndSpawn29(uint8_t slot);
+Ended StartSidewaysAndSpawn29B(uint8_t slot);
+Ended BurstIntoEightPieces(uint8_t slot);
+RandomEnd StartGroupThenThrow(uint8_t slot);
 /* object/enemies_stage07_temp.c */
 Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);
@@ -740,6 +969,9 @@ Ended AnimateThenRemove(uint8_t slot);
 Ended RemoveFirstFreeSlotFrom1C(void);
 Ended SpawnEightPiecesType37(uint8_t slot);
 Ended SpawnPiecesWhenFlaggedHit(uint8_t slot);
+Ended StartAtRandomSpeedTowardPlayer(uint8_t slot);
+Ended CountTimerPairDownThenSpawn36(uint8_t slot);
+Ended StartFromScreenEdgeByScroll(uint8_t slot);
 /* object/enemies_stage08_temp.c */
 Ended SetPhase2(uint8_t slot);
 Ended SetPhase3(uint8_t slot);
@@ -758,6 +990,9 @@ Ended StartWithFrameByNextKind(uint8_t slot);
 Ended AnimateByKindThenNextState(uint8_t slot);
 FrameStepEnd StepFramesFacingPlayerE(uint8_t slot, uint8_t index);
 Ended WalkWhileFrameChangesC(uint8_t slot);
+Ended AnimateAndSpawnThenPause(uint8_t slot);
+Ended StartLobTowardPlayerB(uint8_t slot, uint8_t entry_y);
+Ended StepLobArcB(uint8_t slot, uint8_t entry_y);
 /* object/enemies_stage0b_temp.c */
 Ended CountdownThenState4B(uint8_t slot);
 Ended ChangeToType9BB(uint8_t slot);
@@ -786,6 +1021,23 @@ Ended EnterNextStateWhenHitOrPlayerNear(uint8_t slot);
 Ended PlaceAtRandomOnEdge(uint8_t slot);
 Ended StartFlyerAtRandom(uint8_t slot);
 Ended SwoopOnCosineC(uint8_t slot);
+Ended SpawnSixPiecesB(uint8_t slot);
+SoundEnd BurstWhenFlaggedHitB(uint8_t slot, uint8_t entry_y);
+SoundEnd SoundEveryFourthFrameC(uint8_t slot, uint8_t entry_y);
+Ended StartFromScreenEdgeByPlayer(uint8_t slot);
+Ended PickStateByPlayerDistanceC(uint8_t slot, bool carry_in);
+Ended SpawnType2AThenRestartTimer(uint8_t slot);
+Ended StartPieceInSlotsFrom28(uint8_t slot);
+Ended KnockedUpWhenHit(uint8_t slot);
+Ended KnockedUpWhenHitB(uint8_t slot);
+Ended SetHitboxFromFrameRowsC(uint8_t slot);
+Ended FollowPreviousPiece(uint8_t slot);
+SoundEnd AnimateMoveThenSetUpNextStepB(uint8_t slot, bool carry_in);
+Ended LoadObjectRecordFromTable(uint8_t slot);
+SoundEnd LaunchWithSoundThenDrift(uint8_t slot, uint8_t entry_y);
+Ended SwingOnCosineThenLeapAtPlayer(uint8_t slot, uint8_t entry_y);
+Ended StartAtRandomSpeedAndHeight(uint8_t slot);
+Ended ChargeWhenPlayerNearB(uint8_t slot);
 /* object/state_countdown.c */
 uint8_t CountdownNextStepA(uint8_t slot);
 uint8_t CountdownNextStateA(uint8_t slot);

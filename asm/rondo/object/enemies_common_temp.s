@@ -909,3 +909,210 @@ PlayHitSoundL:
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundL_at0:
     rts
+
+; @routine 0259:2C5 DropItemWhenHitF
+; @run 70:A2C5
+; WHAT IT DOES: When the object has taken a hit of 5 or more and its f31f8 bits 2 to 4 are not
+; zero, may drop an item: a random number under the limit in a table at overlay address $ABC6
+; (indexed by those bits minus one) picks the chance; the item comes from a table at $ABCE,
+; indexed by the player distance sum's low nibble plus the bits minus one times $10; it starts in
+; a free slot from $30 at the object's place. Every stage overlay has its own copy and tables.
+; HOW: NextRandom, PlayerDistanceSum, FindFreeSlotFrom30, StartObjectAtPlace. The arms the draft
+; reaches as untraced bytes (most of the cases here) are NOT CHECKED; they wait for coverage
+; (PROCEDURE section 6).
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
+; free slot (or the table index); X kept. Clobbers zTemp00.
+DropItemWhenHitF:
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc RichterStandStep1
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    and #$07
+    beq RichterStandStep1
+    dec a
+    tay
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    jsr VecNextRandom
+    cmp a:$ABC6,y
+    bcs RichterStandStep1
+    jsr VecPlayerDistanceSum
+    and #$0F
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$ABCE,y
+    sta z:zTemp00
+    jsr VecFindFreeSlotFrom30
+    bcc RichterStandStep1
+    lda z:zTemp00
+    jsr VecStartObjectAtPlace
+    rts
+
+; @routine 09E9:2C5 DropItemWhenHitG
+; @run 70:A2C5
+; WHAT IT DOES: When the object has taken a hit of 5 or more and its f31f8 bits 2 to 4 are not
+; zero, may drop an item: a random number under the limit in a table at overlay address $ABEF
+; (indexed by those bits minus one) picks the chance; the item comes from a table at $ABF7,
+; indexed by the player distance sum's low nibble plus the bits minus one times $10; it starts in
+; a free slot from $30 at the object's place. Every stage overlay has its own copy and tables.
+; HOW: NextRandom, PlayerDistanceSum, FindFreeSlotFrom30, StartObjectAtPlace. The arms the draft
+; reaches as untraced bytes (most of the cases here) are NOT CHECKED; they wait for coverage
+; (PROCEDURE section 6).
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
+; free slot (or the table index); X kept. Clobbers zTemp00.
+DropItemWhenHitG:
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc RichterStandStep1
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    and #$07
+    beq RichterStandStep1
+    dec a
+    tay
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    jsr VecNextRandom
+    cmp a:$ABEF,y
+    bcs RichterStandStep1
+    jsr VecPlayerDistanceSum
+    and #$0F
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$ABF7,y
+    sta z:zTemp00
+    jsr VecFindFreeSlotFrom30
+    bcc RichterStandStep1
+    lda z:zTemp00
+    jsr VecStartObjectAtPlace
+    rts
+
+; @routine 0A99:2C5 DropItemWhenHitH
+; @run 70:A2C5
+; WHAT IT DOES: When the object has taken a hit of 5 or more and its f31f8 bits 2 to 4 are not
+; zero, may drop an item: a random number under the limit in a table at overlay address $AC44
+; (indexed by those bits minus one) picks the chance; the item comes from a table at $AC4C,
+; indexed by the player distance sum's low nibble plus the bits minus one times $10; it starts in
+; a free slot from $30 at the object's place. Every stage overlay has its own copy and tables.
+; HOW: NextRandom, PlayerDistanceSum, FindFreeSlotFrom30, StartObjectAtPlace. The arms the draft
+; reaches as untraced bytes (most of the cases here) are NOT CHECKED; they wait for coverage
+; (PROCEDURE section 6).
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
+; free slot (or the table index); X kept. Clobbers zTemp00.
+DropItemWhenHitH:
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc RichterStandStep1
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    and #$07
+    beq RichterStandStep1
+    dec a
+    tay
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    jsr VecNextRandom
+    cmp a:$AC44,y
+    bcs RichterStandStep1
+    jsr VecPlayerDistanceSum
+    and #$0F
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AC4C,y
+    sta z:zTemp00
+    jsr VecFindFreeSlotFrom30
+    bcc RichterStandStep1
+    lda z:zTemp00
+    jsr VecStartObjectAtPlace
+    rts
+
+; @routine 0A99:2FE PlayHitSoundM
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC7C, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundM:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundM_at0
+    dec a
+    tay
+    lda a:$AC7C,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundM_at0:
+    rts
+
+; @routine 0CA9:2C5 DropItemWhenHitI
+; @run 70:A2C5
+; WHAT IT DOES: When the object has taken a hit of 5 or more and its f31f8 bits 2 to 4 are not
+; zero, may drop an item: a random number under the limit in a table at overlay address $AC3C
+; (indexed by those bits minus one) picks the chance; the item comes from a table at $AC44,
+; indexed by the player distance sum's low nibble plus the bits minus one times $10; it starts in
+; a free slot from $30 at the object's place. Every stage overlay has its own copy and tables.
+; HOW: NextRandom, PlayerDistanceSum, FindFreeSlotFrom30, StartObjectAtPlace. The arms the draft
+; reaches as untraced bytes (most of the cases here) are NOT CHECKED; they wait for coverage
+; (PROCEDURE section 6).
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
+; free slot (or the table index); X kept. Clobbers zTemp00.
+DropItemWhenHitI:
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc RichterStandStep1
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    and #$07
+    beq RichterStandStep1
+    dec a
+    tay
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    jsr VecNextRandom
+    cmp a:$AC3C,y
+    bcs RichterStandStep1
+    jsr VecPlayerDistanceSum
+    and #$0F
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AC44,y
+    sta z:zTemp00
+    jsr VecFindFreeSlotFrom30
+    bcc RichterStandStep1
+    lda z:zTemp00
+    jsr VecStartObjectAtPlace
+    rts
+

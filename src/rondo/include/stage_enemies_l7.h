@@ -86,8 +86,56 @@ ShowEnd FollowPathB(uint8_t slot, uint8_t y);
 SoundEnd StartDriftingPiece(uint8_t slot, uint8_t y);
 BurstTail DropAndBurst(uint8_t slot, uint8_t y);
 Ended StepFallAfterFour(uint8_t slot);
+Ended HitDamage(uint8_t slot);
+SoundEnd ScoreForKind(uint8_t slot, uint8_t y);
+Ended BlendStockRows(uint8_t slot, uint8_t y);
+SoundEnd GiveExtraLife(uint8_t slot, uint8_t y);
 Ended BlendStageRowsOfPlayer(uint8_t slot, uint8_t y);
 Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
+
+/* An exit built from several callees' exits in order: each step is a plain exit, a sound call's, or a first-screen sound's. */
+typedef enum { STEP_ENDED, STEP_SOUND_END, STEP_SCREEN_END } StepKind;
+typedef struct {
+    StepKind kind;
+    Ended e;
+    SoundEnd s;
+    ScreenSoundEnd c;
+} ExitStep;
+typedef struct {
+    ExitStep step[12];
+    unsigned count;
+} ExitChain;
+static inline void chain_ended(ExitChain *c, Ended e)
+{
+    ExitStep st = { STEP_ENDED, e, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } } };
+
+    c->step[c->count++] = st;
+}
+static inline void chain_sound(ExitChain *c, SoundEnd s)
+{
+    ExitStep st = { STEP_SOUND_END, { 0 }, s, { { 0 }, { 0 }, false, { 0 } } };
+
+    c->step[c->count++] = st;
+}
+static inline void chain_screen(ExitChain *c, ScreenSoundEnd s)
+{
+    ExitStep st = { STEP_SCREEN_END, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, s };
+
+    c->step[c->count++] = st;
+}
+static inline void abi_chain(const ExitChain *c)
+{
+    for (unsigned i = 0; i < c->count; i++) {
+        if (c->step[i].kind == STEP_ENDED) {
+            abi_ended(c->step[i].e);
+        } else if (c->step[i].kind == STEP_SOUND_END) {
+            abi_sound_end(c->step[i].s);
+        } else {
+            abi_screen_sound_end(c->step[i].c);
+        }
+    }
+}
+ExitChain ObjectHit(uint8_t slot, uint8_t y);
 
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {

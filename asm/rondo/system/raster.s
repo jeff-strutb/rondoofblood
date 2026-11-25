@@ -154,7 +154,7 @@ RasterEndBand1_at0:
 ; Entry: from a raster effect. Exit: to that exit.
 RasterDone:
     cli
-    jmp FrameInterrupt_at2
+    jmp FrameInterruptExit
 
 ; @routine 0043:532 RasterEndWorkBand
 ; @run 69:4532

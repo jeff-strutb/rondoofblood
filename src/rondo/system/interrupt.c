@@ -218,6 +218,53 @@ static void full_frame(uint8_t kept_x)
     }
 }
 
+/* The registers the exit pulls, as the interrupted code had them. */
+typedef struct {
+    uint8_t a, x, y;
+} Saved;
+
+/*
+ * @routine 0043:287 FrameInterruptExit
+ * @run 69:4287
+ * WHAT IT DOES: The frame interrupt's exit: puts back what it saved, the VDC's selected register, three
+ * MPRs and the registers, ready for the RTI that follows (IgnoredInterrupt's).
+ * HOW: Pulls the register number and selects it again, pulls MPR6, MPR5 and MPR4 into the mapper, then
+ * Y, X and A.
+ * WAITS: no.
+ * Entry: from FrameInterrupt, from every raster handler and from LateFrame, with the stack as
+ * FrameInterrupt left it. Exit: A, X and Y the interrupted code's, N and Z from A, into the RTI.
+ */
+Saved FrameInterruptExit(void)
+{
+    Saved saved;
+    uint8_t reg = pull8();
+    uint8_t mpr;
+
+    jsr_push(0x428B);
+    SelectVdcRegister(reg);
+    jsr_pop();
+    mpr = pull8();
+    tam(MPR6, mpr);
+    mpr = pull8();
+    tam(MPR5, mpr);
+    mpr = pull8();
+    tam(MPR4, mpr);
+    saved.y = pull8();
+    saved.x = pull8();
+    saved.a = pull8();
+    return saved;
+}
+
+void abi_FrameInterruptExit(void)
+{
+    Saved saved = FrameInterruptExit();
+
+    cpu.a = saved.a;
+    cpu.x = saved.x;
+    cpu.y = saved.y;
+    abi_nz(saved.a);
+}
+
 /*
  * @routine 0043:177 FrameInterrupt
  * @run 69:4177
@@ -236,6 +283,7 @@ static void full_frame(uint8_t kept_x)
 void FrameInterrupt(uint8_t a, uint8_t x, uint8_t y)
 {
     uint8_t mpr4, mpr5, mpr6, reg, status, byte;
+    Saved saved;
 
     push8(a);
     push8(x);
@@ -267,19 +315,10 @@ void FrameInterrupt(uint8_t a, uint8_t x, uint8_t y)
             }
         }
     }
-    reg = pull8();
-    jsr_push(0x428B);
-    SelectVdcRegister(reg);
-    jsr_pop();
-    mpr6 = pull8();
-    tam(MPR6, mpr6);
-    mpr5 = pull8();
-    tam(MPR5, mpr5);
-    mpr4 = pull8();
-    tam(MPR4, mpr4);
-    y = pull8();
-    x = pull8();
-    a = pull8();
+    saved = FrameInterruptExit();
+    y = saved.y;
+    x = saved.x;
+    a = saved.a;
 }
 
 void abi_FrameInterrupt(void)

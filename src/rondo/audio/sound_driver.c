@@ -3220,6 +3220,7 @@ void abi_SoundGateStep(void)
  * note, after its delay, over its frames, from the pitch now; it is taken and the glide aimed.
  * HOW: SoundPeekCommand; SoundSequenceFromWord takes it; SoundGlideDelay and SoundGlideFrames; the
  * note with the transpose, less one with a negative fine tune; SoundGlideSetup with the fine tune.
+ * WAITS: no.
  * Entry: X channel. Exit: X kept. Gliding, A the frames, N and Z from them. Not $F3, as
  * SoundPeekCommand, with A the command, N, Z and C from comparing it with $F3. Taken, as
  * SoundGlideSetup, with A the fine tune, Y the note and C from adding the transpose where it
@@ -3228,27 +3229,38 @@ void abi_SoundGateStep(void)
 Lookahead SoundGlideLookahead(uint8_t channel)
 {
     Lookahead look = { LOOK_GLIDING, 0, { { LENGTH_ONE, 0, 0, 0 }, 0, 0 }, 0, 0, false, { false, false, { false, 0, 0, false, false, 0 }, 0, 0 } };
+    uint8_t a, transpose;
     Sum note;
 
     look.value = rd8((uint16_t)(SoundGlideFrames + channel));
     if (look.value != 0)
         return look;
+    jsr_push(0x8931);
     look.peek = SoundPeekCommand(channel);
+    jsr_pop();
     look.value = rd8(SoundCommandByte);
     look.how = LOOK_OTHER;
     if (look.value != SEQUENCE_GLIDE_TO)
         return look;
     look.how = LOOK_TAKEN;
-    SoundSequenceFromWord();
-    set_from(SoundGlideDelay, channel, 0);
-    set_from(SoundGlideFrames, channel, 1);
-    note = add_bytes(argument(2), rd8((uint16_t)(SoundTranspose + channel)), false);
+    jsr_push(0x893B);
+    (void)SoundSequenceFromWord();
+    jsr_pop();
+    a = rd8(SoundCommandArgs);
+    wr8((uint16_t)(SoundGlideDelay + channel), a);
+    a = rd8(SoundCommandArgs + 1);
+    wr8((uint16_t)(SoundGlideFrames + channel), a);
+    a = rd8(SoundCommandArgs + 2);
+    transpose = rd8((uint16_t)(SoundTranspose + channel));
+    note = add_bytes(a, transpose, false);
     look.carry = note.carry;
     look.note = note.value;
     look.fine = rd8((uint16_t)(SoundFineTune + channel));
     if (look.fine & 0x80)
         look.note = (uint8_t)(look.note - 1);
+    jsr_push(0x8958);
     look.glide = SoundGlideSetup(look.fine, look.note, channel);
+    jsr_pop();
     return look;
 }
 

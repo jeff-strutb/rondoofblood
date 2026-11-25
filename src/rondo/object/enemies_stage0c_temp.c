@@ -528,3 +528,469 @@ void abi_StartThreeShots(void)
 {
     abi_ended(StartThreeShots(cpu.x));
 }
+
+/* The step all the shot throwers share when their list ends: a kind $28 object in slot $12 at this object's place. */
+static Ended spawn_shot(uint8_t slot, uint16_t ret_clear, uint16_t ret_start, int timer, bool timer_first)
+{
+    uint8_t placed, facing, state;
+    Ended e;
+
+    jsr_push(ret_clear);
+    ClearObjectInY(0x12);
+    jsr_pop();
+    jsr_push(ret_start);
+    placed = StartObjectAtPlace(0x28, slot, 0x12);
+    jsr_pop();
+    e = ended_with_y(ended_load(placed), 0x12);
+    if (timer_first && timer >= 0) {
+        WR8(OBJ->life_timer[0x12], (uint8_t)timer);
+        e = then(e, ended_load((uint8_t)timer));
+    }
+    facing = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->facing_left[0x12], facing);
+    e = then(e, ended_load(facing));
+    state = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(state));
+}
+
+/*
+ * @routine 0CAB:666 StepThenThrowShot
+ * @run 70:B666
+ * WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with its facing and moves OBJ_2800 on.
+ * HOW: StepObjectFrames, ClearObjectInY, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+ */
+Ended StepThenThrowShot(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0;
+    Ended e;
+
+    step = step_list(slot, 0xB582, 0xB671, &y, false);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    return then(e, spawn_shot(slot, 0xB678, 0xB67D, -1, false));
+}
+
+void abi_StepThenThrowShot(void)
+{
+    abi_ended(StepThenThrowShot(cpu.x));
+}
+
+/*
+ * @routine 0CAB:6F3 StepThenThrowSlowShot
+ * @run 70:B6F3
+ * WHAT IT DOES: As StepThenThrowShot, but the shot's timer is 2.
+ * HOW: StepObjectFrames, ClearObjectInY, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry and exit: as StepThenThrowShot.
+ */
+Ended StepThenThrowSlowShot(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0;
+    Ended e;
+
+    step = step_list(slot, 0xB582, 0xB6FE, &y, false);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    return then(e, spawn_shot(slot, 0xB705, 0xB70A, 2, true));
+}
+
+void abi_StepThenThrowSlowShot(void)
+{
+    abi_ended(StepThenThrowSlowShot(cpu.x));
+}
+
+/* The step several objects share when their list ends: frame 1, state 3, OBJ_2800 cleared. */
+static Ended step_then_rest(uint8_t slot, uint16_t list, uint16_t ret, bool frame_one)
+{
+    FrameStep step;
+    uint8_t y = 0;
+    Ended e;
+
+    step = step_list(slot, list, ret, &y, false);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    WR8(OBJ->frame[slot], frame_one ? 1 : 0);
+    WR8(OBJ->state[slot], 3);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(3));
+}
+
+/*
+ * @routine 0CAB:640 StepThenRest
+ * @run 70:B640
+ * WHAT IT DOES: Steps the animation list at $B65B; when it ends the object shows frame 1, enters state 3 and clears OBJ_2800.
+ * HOW: StepObjectFrames and three stores.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: A 3.
+ */
+Ended StepThenRest(uint8_t slot)
+{
+    return step_then_rest(slot, 0xB65B, 0xB64B, true);
+}
+
+void abi_StepThenRest(void)
+{
+    abi_ended(StepThenRest(cpu.x));
+}
+
+/*
+ * @routine 0CAB:7A9 StepThenRestB
+ * @run 70:B7A9
+ * WHAT IT DOES: As StepThenRest with the list at $B7C4.
+ * HOW: As StepThenRest.
+ * WAITS: no.
+ * Entry and exit: as StepThenRest.
+ */
+Ended StepThenRestB(uint8_t slot)
+{
+    return step_then_rest(slot, 0xB7C4, 0xB7B4, true);
+}
+
+void abi_StepThenRestB(void)
+{
+    abi_ended(StepThenRestB(cpu.x));
+}
+
+/*
+ * @routine 0CAB:5CD StepThenWaitLonger
+ * @run 70:B5CD
+ * WHAT IT DOES: Steps the animation list at $B5E6; when it ends the object's frame is 0, its timer $30 and OBJ_2800 goes on.
+ * HOW: StepObjectFrames and stores.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+ */
+Ended StepThenWaitLonger(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0, state;
+    Ended e;
+
+    step = step_list(slot, 0xB5E6, 0xB5D8, &y, false);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    WR8(OBJ->frame[slot], 0);
+    WR8(OBJ->life_timer[slot], 0x30);
+    state = INC8(OBJ->f2800[slot]);
+    return then(e, ended_with_a(ended_nz(state), 0x30));
+}
+
+void abi_StepThenWaitLonger(void)
+{
+    abi_ended(StepThenWaitLonger(cpu.x));
+}
+
+/*
+ * @routine 0CAB:62B StartTwoPieces
+ * @run 70:B62B
+ * WHAT IT DOES: Starts up to two kind $29 objects at this object's place in free slots from $20 (each only if a slot is free).
+ * HOW: FindFreeSlotFrom20 and StartObjectAtPlace, twice.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last search or start.
+ */
+Ended StartTwoPieces(uint8_t slot)
+{
+    uint8_t last, found_slot, placed, round;
+    bool found;
+    Ended e = ended_kept();
+
+    for (round = 0; round < 2; round++) {
+        jsr_push(round == 0 ? 0xB62E : 0xB638);
+        found_slot = FindFreeSlotFrom20(&last, &found);
+        jsr_pop();
+        e = ended_with_carry(ended_with_y(ended_with_a(ended_nz(0), last), found_slot), found);
+        if (!found) {
+            return e;
+        }
+        jsr_push(round == 0 ? 0xB635 : 0xB63F);
+        placed = StartObjectAtPlace(0x29, slot, found_slot);
+        jsr_pop();
+        e = then(e, ended_load(placed));
+    }
+    return e;
+}
+
+void abi_StartTwoPieces(void)
+{
+    abi_ended(StartTwoPieces(cpu.x));
+}
+
+/*
+ * @routine 0CAB:69A SinkToLimit
+ * @run 70:B69A
+ * WHAT IT DOES: Takes 3 off the object's Y low byte while it is $30 or more.
+ * HOW: A compare and a subtract.
+ * WAITS: no.
+ * Entry: X object. Exit: under $30: the compare's flags; else the subtract's.
+ */
+Ended SinkToLimit(uint8_t slot)
+{
+    uint8_t low;
+    Sum sum;
+    Ended e;
+
+    low = RD8(OBJ->y_lo[slot]);
+    e = ended_compare(low, 0x30);
+    if (low < 0x30) {
+        return e;
+    }
+    low = RD8(OBJ->y_lo[slot]);
+    sum = sub_bytes(low, 3, true);
+    WR8(OBJ->y_lo[slot], sum.value);
+    return then(e, of_sum(sum));
+}
+
+void abi_SinkToLimit(void)
+{
+    abi_ended(SinkToLimit(cpu.x));
+}
+
+/*
+ * @routine 0CAB:687 SinkWhenPartnerGone
+ * @run 70:B687
+ * WHAT IT DOES: When slot $12's kind is not $28 the object sinks (SinkToLimit), its timer becomes $30 and OBJ_2800 moves on.
+ * HOW: A compare, SinkToLimit, two stores.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare's flags, or N and Z of the new OBJ_2800.
+ */
+Ended SinkWhenPartnerGone(uint8_t slot)
+{
+    uint8_t kind, state;
+    Ended e;
+
+    kind = RD8(OBJ->kind[0x12]);
+    e = ended_compare(kind, 0x28);
+    if (kind == 0x28) {
+        return e;
+    }
+    jsr_push(0xB691);
+    e = then(e, SinkToLimit(slot));
+    jsr_pop();
+    WR8(OBJ->life_timer[slot], 0x30);
+    e = then(e, ended_load(0x30));
+    state = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(state));
+}
+
+void abi_SinkWhenPartnerGone(void)
+{
+    abi_ended(SinkWhenPartnerGone(cpu.x));
+}
+
+/*
+ * @routine 0CAB:719 SetLongWait
+ * @run 70:B719
+ * WHAT IT DOES: Sets the object's timer to $40 and moves OBJ_2800 on.
+ * HOW: A store and an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: N and Z from the new OBJ_2800, A $40.
+ */
+Ended SetLongWait(uint8_t slot)
+{
+    uint8_t state;
+
+    WR8(OBJ->life_timer[slot], 0x40);
+    state = INC8(OBJ->f2800[slot]);
+    return ended_with_a(ended_nz(state), 0x40);
+}
+
+void abi_SetLongWait(void)
+{
+    abi_ended(SetLongWait(cpu.x));
+}
+
+/*
+ * @routine 0CAB:738 DropShotWhenSlotFree
+ * @run 70:B738
+ * WHAT IT DOES: Every 16th count of OBJ_3618, searches slots $30 to $35 for a free one and starts a kind $2A object there at its place.
+ * HOW: A search by kind, ClearObjectInY, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare or load.
+ */
+Ended DropShotWhenSlotFree(uint8_t slot)
+{
+    uint8_t phase, to, kind, placed;
+    Ended e;
+
+    phase = RD8(OBJ->f3618[slot]);
+    phase = (uint8_t)(phase & 0x0F);
+    e = ended_load(phase);
+    if (phase != 0) {
+        return e;
+    }
+    to = 0x30;
+    e = then(e, ended_with_y(ended_nz(to), to));
+    for (;;) {
+        kind = RD8(OBJ->kind[to]);
+        e = then(e, ended_load(kind));
+        if (kind == 0) {
+            break;
+        }
+        to++;
+        e = then(e, ended_with_y(ended_nz(to), to));
+        e = then(e, cpy(to, 0x36));
+        if (to >= 0x36) {
+            return e;
+        }
+    }
+    jsr_push(0xB74F);
+    ClearObjectInY(to);
+    jsr_pop();
+    jsr_push(0xB754);
+    placed = StartObjectAtPlace(0x2A, slot, to);
+    jsr_pop();
+    return then(e, ended_load(placed));
+}
+
+void abi_DropShotWhenSlotFree(void)
+{
+    abi_ended(DropShotWhenSlotFree(cpu.x));
+}
+
+/*
+ * @routine 0CAB:722 SinkThenRestart
+ * @run 70:B722
+ * WHAT IT DOES: Drops a shot when a slot is free (DropShotWhenSlotFree), counts its timer down and at zero shows frame 1, enters state 3 and clears OBJ_2800.
+ * HOW: DropShotWhenSlotFree, DEC, three stores.
+ * WAITS: no.
+ * Entry: X object. Exit: the count's N and Z, or A 3 at zero.
+ */
+Ended SinkThenRestart(uint8_t slot)
+{
+    uint8_t left;
+    Ended e;
+
+    jsr_push(0xB725);
+    e = DropShotWhenSlotFree(slot);
+    jsr_pop();
+    left = DEC8(OBJ->life_timer[slot]);
+    e = then(e, ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    WR8(OBJ->frame[slot], 1);
+    WR8(OBJ->state[slot], 3);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(3));
+}
+
+void abi_SinkThenRestart(void)
+{
+    abi_ended(SinkThenRestart(cpu.x));
+}
+
+/*
+ * @routine 0CAB:6C4 ShootEveryFourth
+ * @run 70:B6C4
+ * WHAT IT DOES: Every fourth count of OBJ_3618, while Y is under $A0, starts a kind $27 object at its place in the first free slot from $20 (sound $26 first), with the
+ * object's facing and its OBJ_3778 count (low three bits) as its next kind; the count goes up.
+ * HOW: FindFreeSlotFrom20, SoundCommand, StartObjectAtPlace.
+ * Untraced: two bytes.
+ * WAITS: no.
+ * Entry: X object, Y pushed by the sound driver. Exit: see the wrapper.
+ */
+SoundEnd ShootEveryFourth(uint8_t slot, uint8_t y)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t phase, y_low, last, found_slot, placed, facing, count, state;
+    bool found;
+    Ended e;
+
+    phase = RD8(OBJ->f3618[slot]);
+    phase = (uint8_t)(phase & 0x03);
+    e = ended_load(phase);
+    r.end = e;
+    if (phase != 0) {
+        return r;
+    }
+    y_low = RD8(OBJ->y_lo[slot]);
+    e = then(e, ended_compare(y_low, 0xA0));
+    r.end = e;
+    if (y_low >= 0xA0) {
+        return r;
+    }
+    jsr_push(0xB6D5);
+    found_slot = FindFreeSlotFrom20(&last, &found);
+    jsr_pop();
+    e = then(e, ended_with_carry(ended_with_y(ended_with_a(ended_nz(0), last), found_slot), found));
+    r.end = e;
+    if (!found) {
+        return r;
+    }
+    r.before = then(e, ended_load(0x26));
+    r.sounded = true;
+    r.command = 0x26;
+    jsr_push(0xB6DC);
+    r.call = SoundCommand(0x26, slot, found_slot);
+    jsr_pop();
+    jsr_push(0xB6E1);
+    placed = StartObjectAtPlace(0x27, slot, found_slot);
+    jsr_pop();
+    e = ended_load(placed);
+    facing = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->facing_left[found_slot], facing);
+    e = then(e, ended_load(facing));
+    count = RD8(OBJ->f3778[slot]);
+    count = (uint8_t)(count & 0x07);
+    WR8(OBJ->next_kind[found_slot], count);
+    e = then(e, ended_load(count));
+    state = INC8(OBJ->f3778[slot]);
+    r.end = then(e, ended_nz(state));
+    return r;
+}
+
+void abi_ShootEveryFourth(void)
+{
+    abi_sound_end(ShootEveryFourth(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0CAB:6AB SinkAndShootThenRestart
+ * @run 70:B6AB
+ * WHAT IT DOES: ShootEveryFourth and SinkToLimit; the timer counts down and at zero the object shows frame 1, enters state 3 and clears OBJ_2800.
+ * HOW: The two calls, a DEC and three stores.
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ */
+ShootTail SinkAndShootThenRestart(uint8_t slot, uint8_t y)
+{
+    ShootTail r;
+    uint8_t left;
+    Ended e;
+
+    jsr_push(0xB6AE);
+    r.shoot = ShootEveryFourth(slot, y);
+    jsr_pop();
+    jsr_push(0xB6B1);
+    e = SinkToLimit(slot);
+    jsr_pop();
+    left = DEC8(OBJ->life_timer[slot]);
+    e = then(e, ended_nz(left));
+    if (left == 0) {
+        WR8(OBJ->frame[slot], 1);
+        WR8(OBJ->state[slot], 3);
+        WR8(OBJ->f2800[slot], 0);
+        e = then(e, ended_load(3));
+    }
+    r.tail = e;
+    return r;
+}
+
+void abi_SinkAndShootThenRestart(void)
+{
+    ShootTail r = SinkAndShootThenRestart(cpu.x, cpu.y);
+
+    abi_sound_end(r.shoot);
+    abi_ended(r.tail);
+}

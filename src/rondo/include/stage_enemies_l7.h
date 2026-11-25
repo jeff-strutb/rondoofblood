@@ -226,6 +226,23 @@ typedef struct {
     CommandCall call;
     Ended end;
 } CueEnd;
+typedef struct {
+    SoundEnd shoot;
+    Ended tail;
+} ShootTail;
+Ended StepThenThrowShot(uint8_t slot);
+Ended StepThenThrowSlowShot(uint8_t slot);
+Ended StepThenRest(uint8_t slot);
+Ended StepThenRestB(uint8_t slot);
+Ended StepThenWaitLonger(uint8_t slot);
+Ended StartTwoPieces(uint8_t slot);
+Ended SinkToLimit(uint8_t slot);
+Ended SinkWhenPartnerGone(uint8_t slot);
+Ended SetLongWait(uint8_t slot);
+Ended DropShotWhenSlotFree(uint8_t slot);
+Ended SinkThenRestart(uint8_t slot);
+SoundEnd ShootEveryFourth(uint8_t slot, uint8_t y);
+ShootTail SinkAndShootThenRestart(uint8_t slot, uint8_t y);
 Ended FallingWithGravity(uint8_t slot);
 Ended AimAtPlayerThenArm(uint8_t slot);
 ViewTest InsideScreenBox(uint8_t slot);

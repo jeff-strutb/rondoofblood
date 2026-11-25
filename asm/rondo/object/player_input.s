@@ -3,6 +3,7 @@
 ; WHAT IT DOES: Reads the pad for the frame: what is held, and what is newly pressed. Bit 0
 ; counts as pressed only when held for three frames after being up, which steadies it.
 ; HOW: The last four frames of the pad are kept in PadHistory.
+; WAITS: no.
 ; Entry: nothing. Exit: A the new presses, N and Z from them. X, Y, C and V kept. Clobbers
 ; zTemp00.
 RichterReadPad:
@@ -35,6 +36,7 @@ RichterReadPad:
 ; @run 6D:B64C
 ; WHAT IT DOES: Clears the four bytes that force the pad.
 ; HOW: Stores zero.
+; WAITS: no.
 ; Entry: nothing. Exit: all registers and flags kept.
 RichterClearPadOverrides:
     stz a:PadOverrides
@@ -47,9 +49,10 @@ RichterClearPadOverrides:
 ; @run 6D:B659
 ; WHAT IT DOES: Steps the animation and, unless it has ended, returns to its caller's caller, so
 ; the caller's own work waits for the end.
-; HOW: RichterAnimationRunning; the assembly drops the return address.
+; HOW: RichterAnimationRunning; the assembly drops the return address with two pulls.
+; WAITS: no.
 ; Entry: nothing. Exit, ended: as RichterAnimationRunning. Otherwise the caller's return address
-; is gone, A its high byte, N and Z from it.
+; is gone, A its high byte, N and Z from it; its caller then ends at once.
 RichterAnimationWait:
     bsr RichterAnimationRunning
     beq RichterAnimationWait_at0
@@ -62,6 +65,7 @@ RichterAnimationWait_at0:
 ; @run 6D:B660
 ; WHAT IT DOES: Steps the animation; a caller looks at whether it has ended.
 ; HOW: RichterAnimationTick, then the timer against $FF.
+; WAITS: no.
 ; Entry: nothing. Exit: A the timer, N, Z and C from comparing it with $FF. Y as the tick. X and V
 ; kept. Clobbers zTemp00-01.
 RichterAnimationRunning:
@@ -75,6 +79,7 @@ RichterAnimationRunning:
 ; WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.
 ; A timer of $FF means the animation has stopped.
 ; HOW: The timer in OBJ_2F90, the step in OBJ_FLAGS_2F38, the frame shown in OBJ_2A68.
+; WAITS: no.
 ; Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
 ; from what was read. X and V kept. Clobbers zTemp00-01.
 RichterAnimationTick:
@@ -84,38 +89,37 @@ RichterAnimationTick:
     rts
 RichterAnimationTick_at0:
     dec a:OBJ_2F90
-    bne RichterSetAnimation_at0
+    bne $B693
     inc a:OBJ_FLAGS_2F38
-    bra RichterSetAnimation_at1
+    bra $B681
 
 ; @routine 01BB:67B RichterSetAnimation
 ; @run 6D:B67B
 ; WHAT IT DOES: Starts an animation from its first step.
 ; HOW: The animation into OBJ_FIELDS_2EE0, step zero, and its first entry read.
+; WAITS: no.
 ; Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
 RichterSetAnimation:
     sta a:OBJ_FIELDS_2EE0
-RichterSetAnimation_at4:
+RichterSetAnimation_at2:
     stz a:OBJ_FLAGS_2F38
-RichterSetAnimation_at1:
-    bsr RichterSetAnimation_at2
+    bsr RichterSetAnimation_at0
     lda (zTemp00),y
     sta a:OBJ_2F90
     cmp #$FF
-    bne RichterSetAnimation_at3
+    bne RichterSetAnimation_at1
     rts
-RichterSetAnimation_at3:
+RichterSetAnimation_at1:
     cmp #$FE
-    beq RichterSetAnimation_at4
-    bra RichterSetAnimation_at5
-RichterSetAnimation_at0:
-    bsr RichterSetAnimation_at2
-RichterSetAnimation_at5:
+    beq RichterSetAnimation_at2
+    bra RichterSetAnimation_at3
+    bsr RichterSetAnimation_at0
+RichterSetAnimation_at3:
     iny
     lda (zTemp00),y
     sta a:OBJ_2A68
     rts
-RichterSetAnimation_at2:
+RichterSetAnimation_at0:
     lda a:OBJ_FIELDS_2EE0
     asl a
     tay
@@ -133,6 +137,7 @@ RichterSetAnimation_at2:
 ; WHAT IT DOES: Says whether the state in play lets him turn at the screen's middle: a table
 ; by state, in the first step only, and only on the side of the middle he faces away from.
 ; HOW: PlayerByte3BD7 is the answer.
+; WAITS: no.
 ; Entry: nothing. Exit: A the last read, N and Z from it; X the state if it went that far. Y,
 ; C and V kept.
 RichterCheckTurnWindow:
@@ -161,6 +166,7 @@ RichterCheckTurnWindow_at2:
 ; @run 6D:B7CA
 ; WHAT IT DOES: Turns him to face the way the pad holds, left or right; with neither, as he is.
 ; HOW: Bits 7 and 5 of zPadHeld, and facing in OBJ_2AC0: 0 for right, 1 for left.
+; WAITS: no.
 ; Entry: nothing. Exit: A the bits looked at last; N and Z from them, or from the facing when it
 ; turns left. X, Y, C and V kept.
 RichterFaceByPad:
@@ -181,6 +187,7 @@ RichterFaceByPad_at1:
 ; @run 6D:B7DD
 ; WHAT IT DOES: Notes that the item button was pressed this frame.
 ; HOW: Bit 2 of zPadPressed sets RichterItemRequest to 4.
+; WAITS: no.
 ; Entry: nothing. Exit: Z from the test, N and V bits 7 and 6 of the presses; A 4 if pressed.
 ; X, Y and C kept.
 RichterNoteItemPress:
@@ -196,6 +203,7 @@ RichterNoteItemPress_at0:
 ; @run 6D:B7E9
 ; WHAT IT DOES: Says whether he has the hearts the item in hand costs.
 ; HOW: zHearts against a table by item, in BCD; RichterItemReady is $0F if so, else 0.
+; WAITS: no.
 ; Entry: nothing. Exit: X the item; A the hearts, N, Z and C from the compare, or A $0F. Y and
 ; V kept.
 RichterCheckItemHearts:
@@ -217,6 +225,7 @@ RichterCheckItemHearts_at0:
 ; pays the hearts. Says whether it started; when it does not, the forced press is dropped.
 ; HOW: Bit 2 of zPadPressed; OBJ_2750 of slots 3 to 15 all empty; RichterItemCosts in BCD, then
 ; RichterItemCrashLists and RichterItemCrashScripts by item, 0 for none, on channel and slot 6.
+; WAITS: no.
 ; Entry: nothing. Exit: V bit 6 of the presses. Started: C set, A the hearts left, N and Z from
 ; them, X the item, Y the script if one started. Not started, C clear and: no press, N bit 7 of
 ; the presses, Z set, A, X, Y kept; an item out, A its OBJ_2750, N and Z from it, X its slot;
@@ -269,6 +278,23 @@ RichterTryItemCrash_at5:
     sec
     rts
 
+; @routine 01BB:909 RichterLatchButtons
+; @run 6D:B909
+; WHAT IT DOES: Keeps the jump and attack presses until a state acts on them.
+; HOW: Bits 1 and 0 of zPadPressed ORed into RichterButtonsLatched.
+; WAITS: no.
+; Entry: nothing. Exit: A what is latched, N and Z from it. X, Y, C and V kept.
+RichterLatchButtons:
+    lda z:zPadPressed
+    and #$02
+    bsr RichterLatchButtons_at0
+    lda z:zPadPressed
+    and #$01
+RichterLatchButtons_at0:
+    ora a:PadForcedPressB
+    sta a:PadForcedPressB
+    rts
+
 ; @routine 01BC:129 RichterUseItem
 ; @run 6D:B929
 ; WHAT IT DOES: Using the item in hand: on the use press with the use direction held and the
@@ -277,27 +303,27 @@ RichterTryItemCrash_at5:
 ; HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, RichterItemUseCosts by item, then the jump
 ; through RichterItemUseHandlers: items 0 and 1 attack with the whip. zField93 is 0 to 8; the
 ; C takes anything past 8 as the whip.
+; WAITS: no.
 ; Entry: nothing. Exit: no press, C clear and all else kept. Otherwise C set, V and Y kept
 ; except as a handler leaves Y, and: not held, A 0, N and Z from it; too few hearts, A the
 ; hearts, X the item, N and Z from comparing them; items 0 and 1, A and X twice the item, N and
 ; Z from it; as the handler otherwise.
 RichterUseItem:
-    bbs1 zPadPressed,RichterUseItem_at0
+    bbs1 zPadPressed,StartGroupThenThrow
     clc
     rts
-RichterUseItem_at0:
     lda z:zPadHeld
     and #$10
-    beq RichterUseItem_at1
+    beq RichterUseItem_at0
     ldx z:zField93
     lda z:zField94
     cmp a:RichterItemUseCosts,x
-    bcs RichterUseItem_at2
-RichterUseItem_at1:
+    bcs RichterUseItem_at1
+RichterUseItem_at0:
     stz a:PlayerByte3BD5
     sec
     rts
-RichterUseItem_at2:
+RichterUseItem_at1:
     lda z:zField93
     asl a
     tax
@@ -310,12 +336,13 @@ RichterUseItem_at2:
 ; needs more hearts, and a fourth is refused. Then the item's attack, and its hearts paid.
 ; HOW: PlayerByte3BD6 marks the first throw. The items fly in slots 5, 8 and 11; with one out
 ; the hearts must reach RichterItemSecondCosts, with two RichterItemThirdCosts.
+; WAITS: no.
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseThrownItem:
     lda a:PlayerByte3BD6
     beq RichterUseThrownItem_at0
     jsr RichterFindItemOut
-    bne RichterUseItem_at1
+    bne $B93D
     ldx z:zField93
     lda a:RichterItemUseLists,x
     ldx #$06
@@ -332,14 +359,14 @@ RichterUseThrownItem_at0:
     ldx z:zField93
     lda z:zField94
     cmp a:RichterItemSecondCosts,x
-    bcc RichterUseItem_at1
+    bcc $B93D
     lda a:OBJ_2750+8
     beq RichterUseThrownItem_at1
     lda z:zField94
     cmp a:RichterItemThirdCosts,x
-    bcc RichterUseItem_at1
-    lda a:OBJ_2750+11
-    bne RichterUseItem_at1
+    bcc $B93D
+    lda a:$275B
+    bne $B93D
 RichterUseThrownItem_at1:
     ldx z:zField93
     lda a:RichterItemAttacks,x
@@ -358,10 +385,11 @@ RichterUseThrownItem_at1:
 ; WHAT IT DOES: Item 6: only with no item out; the first use starts sound list $54 and script 7.
 ; Then the item's attack, and its hearts paid.
 ; HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+; WAITS: no.
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseItemSix:
     bsr RichterFindItemOut
-    bne RichterUseItem_at1
+    bne $B93D
     lda a:PlayerByte3BD6
     beq RichterUseItemSix_at0
     lda #$54
@@ -372,27 +400,29 @@ RichterUseItemSix:
     jsr VecStartScriptSlotKind1
     stz a:PlayerByte3BD6
 RichterUseItemSix_at0:
-    bra RichterUseThrownItem_at1
+    bra $B99D
 
 ; @routine 01BC:1CD RichterUseItemSeven
 ; @run 6D:B9CD
 ; WHAT IT DOES: Item 7: used while one of slots 5, 8 and 11 is free; then the item's attack, and
 ; its hearts paid. With all three taken, the whip.
 ; HOW: OBJ_2750 of each slot in turn.
+; WAITS: no.
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseItemSeven:
     lda a:OBJ_2750+5
-    beq RichterUseThrownItem_at1
+    beq $B99D
     lda a:OBJ_2750+8
-    beq RichterUseThrownItem_at1
-    lda a:OBJ_2750+11
-    beq RichterUseThrownItem_at1
-    jmp RichterUseItem_at1
+    beq $B99D
+    lda a:$275B
+    beq $B99D
+    jmp $B93D
 
 ; @routine 01BC:1DF RichterFindItemOut
 ; @run 6D:B9DF
 ; WHAT IT DOES: Finds the first of slots 5 to 15 with an object in it.
 ; HOW: OBJ_2750 of each.
+; WAITS: no.
 ; Entry: nothing. Exit: Y the slot, or $10; A its OBJ_2750, or 0. Found: N and Z from A, C kept
 ; if it was slot 5, else clear. None: Z and C set, N clear. X and V kept.
 RichterFindItemOut:
@@ -411,14 +441,15 @@ RichterFindItemOut_at0:
 ; WHAT IT DOES: Item 8: only with no item out; the first use starts sound list $53 and script
 ; $15. Then the item's attack, and its hearts paid.
 ; HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+; WAITS: no.
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseItemEight:
     bsr RichterFindItemOut
     beq RichterUseItemEight_at0
-    jmp RichterUseItem_at1
+    jmp $B93D
 RichterUseItemEight_at0:
     lda a:PlayerByte3BD6
-    beq RichterUseItemSix_at0
+    beq $B9CB
     lda #$53
     ldx #$06
     jsr VecStartListChannelKind2
@@ -426,20 +457,4 @@ RichterUseItemEight_at0:
     ldx #$06
     jsr VecStartScriptSlotKind1
     stz a:PlayerByte3BD6
-    bra RichterUseThrownItem_at1
-
-; @routine 01BB:909 RichterLatchButtons
-; @run 6D:B909
-; WHAT IT DOES: Keeps the jump and attack presses until a state acts on them.
-; HOW: Bits 1 and 0 of zPadPressed ORed into RichterButtonsLatched.
-; Entry: nothing. Exit: A what is latched, N and Z from it. X, Y, C and V kept.
-RichterLatchButtons:
-    lda z:zPadPressed
-    and #$02
-    bsr RichterLatchButtons_at0
-    lda z:zPadPressed
-    and #$01
-RichterLatchButtons_at0:
-    ora a:PadForcedPressB
-    sta a:PadForcedPressB
-    rts
+    bra $B99D

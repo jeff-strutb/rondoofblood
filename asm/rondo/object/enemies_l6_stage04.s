@@ -305,6 +305,70 @@ StepListB37FUnlessFar_at0:
 StepListB37FUnlessFar_at1:
     rts
 
+; @routine 051B:3E2 WalkTurnOrJumpOnLanding
+; @run 70:B3E2
+; WHAT IT DOES: When OBJ_3568's low five bits are zero and the player is within $24 along X and $1C along Y, the object faces the player's side (bit 0 of SideOfPlayer) in OBJ_35C0, clears its animation step and timer and goes to state 3. Otherwise it steps the animation list at $B45E and, on a changed frame, asks MoveAndLand with a probe height of 4: a wall hit gives it a Y speed of $FC80 and X speed of $FF00 and state 1; a floor stop clears its speeds; both clear the animation step and timer, with OBJ_2800 0 or 1.
+; HOW: DistanceXToPlayer, DistanceYToPlayer, SideOfPlayer, StepObjectFrames, MoveAndLand, stores.
+; WAITS: no.
+; Entry: X object, Y the column kept unless the step sets it. Exit: see the wrapper.
+WalkTurnOrJumpOnLanding:
+    lda a:OBJ_3568,x
+    and #$1F
+    bne WalkTurnOrJumpOnLanding_at0
+    jsr VecDistanceXToPlayer
+    cmp #$24
+    bcs WalkTurnOrJumpOnLanding_at0
+    jsr VecDistanceYToPlayer
+    cmp #$1C
+    bcs WalkTurnOrJumpOnLanding_at0
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_35C0,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    rts
+WalkTurnOrJumpOnLanding_at0:
+    lda #$5E
+    sta z:zTemp10
+    lda #$B4
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bcc WalkTurnOrJumpOnLanding_at1
+    lda #$04
+    jsr VecMoveAndLand
+    bcs WalkTurnOrJumpOnLanding_at2
+    and #$01
+    beq WalkTurnOrJumpOnLanding_at3
+WalkTurnOrJumpOnLanding_at1:
+    rts
+WalkTurnOrJumpOnLanding_at2:
+    lda #$FC
+    sta a:OBJ_VY_HI,x
+    lda #$80
+    sta a:OBJ_VY_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    lda #$00
+    sta a:OBJ_VX_LO,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$01
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+    rts
+WalkTurnOrJumpOnLanding_at3:
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$01
+    sta a:OBJ_27A8,x
+    lda #$01
+    sta a:OBJ_2800,x
+    rts
+
 ; @routine 051B:4BF SetHitBox0C18
 ; @run 70:B4BF
 ; WHAT IT DOES: Sets the object's hit box: X offset 0, half width $0C, half height $18.

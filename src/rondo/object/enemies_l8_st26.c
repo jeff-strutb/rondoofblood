@@ -313,3 +313,79 @@ void abi_LoadRecordAtX80(void)
 {
     abi_ended(LoadRecordAtX80(cpu.x));
 }
+
+/*
+ * @routine 101B:296 CountDownThenStartPieceInSlots18To1B
+ * @run 70:B296
+ * WHAT IT DOES: In state 0 loads the record. Later, once the player's screen position (OBJ_X_LO of slot 0 plus the scroll) is past page 4, it counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero it clears the first empty slot of $18 to $1B and starts an object of type $28 there at its place with OBJ_34B8 1 and OBJ_3510 $20.
+ * HOW: LoadObjectRecord, a 16-bit add and subtract, a search, ClearObjectInY, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last instruction that ran. The exit when no slot is empty ran in no script.
+ */
+Ended CountDownThenStartPieceInSlots18To1B(uint8_t slot)
+{
+    uint8_t state, last, nz, low, scroll, page, high, timer, y, kind, placed;
+    bool carry;
+    Sum sum, diff;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return then(e, ended_of_record(last, nz, carry));
+    }
+    low = RD8(OBJ->x_lo[0]);
+    scroll = RD8(SCROLL->x_lo[0]);
+    sum = add_bytes(low, scroll, false);
+    WR8(ZP->temp00, sum.value);
+    e = then(e, ended_of_sum(sum));
+    high = RD8(OBJ->x_hi[0]);
+    scroll = RD8(SCROLLE->x_hi_screen[0]);
+    sum = add_bytes(high, scroll, sum.carry);
+    page = sum.value;
+    e = then(then(e, ended_of_sum(sum)), ended_compare(page, 4));
+    if (page < 4) {
+        return e;
+    }
+    high = RD8(OBJ->f34b8[slot]);
+    timer = RD8(OBJ->f3510[slot]);
+    e = then(e, ended_load((uint8_t)(high | timer)));
+    if ((high | timer) != 0) {
+        timer = RD8(OBJ->f3510[slot]);
+        diff = sub_bytes(timer, 1, true);
+        WR8(OBJ->f3510[slot], diff.value);
+        high = RD8(OBJ->f34b8[slot]);
+        diff = sub_bytes(high, 0, diff.carry);
+        WR8(OBJ->f34b8[slot], diff.value);
+        return then(e, ended_of_sum(diff));
+    }
+    y = 0x18;
+    for (;;) {
+        kind = RD8(OBJ->kind[y]);
+        e = then(e, ended_with_y(ended_load(kind), y));
+        if (kind == 0) {
+            break;
+        }
+        y++;
+        e = then(e, ended_with_y(l8_compare_y(y, 0x1C), y));
+        if (y >= 0x1C) {
+            return e;
+        }
+    }
+    jsr_push(0xB2DB);
+    ClearObjectInY(y);
+    jsr_pop();
+    jsr_push(0xB2E0);
+    placed = StartObjectAtPlace(0x28, slot, y);
+    jsr_pop();
+    WR8(OBJ->f34b8[slot], 1);
+    WR8(OBJ->f3510[slot], 0x20);
+    (void)placed;
+    return then(e, ended_load(0x20));
+}
+
+void abi_CountDownThenStartPieceInSlots18To1B(void)
+{
+    abi_ended(CountDownThenStartPieceInSlots18To1B(cpu.x));
+}

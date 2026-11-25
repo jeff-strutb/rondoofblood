@@ -460,3 +460,50 @@ void abi_StepListACB2ThenNextOnScreen(void)
 {
     abi_ended(StepListACB2ThenNextOnScreen(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 088A:53B FallAndBlinkThenClear
+ * @run 70:AD3B
+ * WHAT IT DOES: Adds $0008 to the object's Y speed and moves the object. Its frame is 0, or on every other frame of the wave counter OBJ_34B8 plus $47. Counts OBJ_3510 down and clears the object at zero.
+ * HOW: A 16-bit add, ApplyVelocity, a test of zTemp wave bit 0, an add, DEC, ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: the count, or as ClearObject.
+ */
+Ended FallAndBlinkThenClear(uint8_t slot)
+{
+    AxisMove move;
+    Sum low, high, frame;
+    uint8_t wave, left;
+    Ended e;
+
+    low = add_bytes(RD8(OBJ->vy_lo[slot]), 0x08, false);
+    WR8(OBJ->vy_lo[slot], low.value);
+    high = add_bytes(RD8(OBJ->vy_hi[slot]), 0x00, low.carry);
+    WR8(OBJ->vy_hi[slot], high.value);
+    e = ended_of_sum(high);
+    jsr_push(0xAD4F);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    WR8(OBJ->frame[slot], 0);
+    wave = (uint8_t)(RD8(ZP->wave_counter) & 0x01);
+    e = then(e, ended_load(wave));
+    if (wave != 0) {
+        frame = add_bytes(RD8(OBJ->f34b8[slot]), 0x47, false);
+        WR8(OBJ->frame[slot], frame.value);
+        e = then(e, ended_of_sum(frame));
+    }
+    left = DEC8(OBJ->f3510[slot]);
+    e = then(e, ended_nz(left));
+    if (left == 0) {
+        jsr_push(0xAD69);
+        ClearObject(slot);
+        jsr_pop();
+    }
+    return e;
+}
+
+void abi_FallAndBlinkThenClear(void)
+{
+    abi_ended(FallAndBlinkThenClear(cpu.x));
+}

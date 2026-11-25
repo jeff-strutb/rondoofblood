@@ -15,6 +15,20 @@ static Ended then(Ended e, Ended next)
     return ended_then(e, next);
 }
 
+/* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
+static Ended ended_of_scale(ScaleResult r)
+{
+    Ended e = ended_with_y(ended_with_carry(ended_with_a(ended_nz(r.nz), r.a), r.carry), 0);
+
+    return r.v_set ? ended_with_overflow(e, r.overflow) : e;
+}
+
+/* AngleToPlayer's exit: A, N, Z, C, V and Y. */
+static Ended ended_of_angle(AngleExit r)
+{
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(r.a), r.c), r.v), r.y);
+}
+
 /*
  * @routine 072C:5A7 LoadRecordA06
  * @run 70:BDA7
@@ -307,4 +321,54 @@ Ended CountDownThenState6(uint8_t slot)
 void abi_CountDownThenState6(void)
 {
     abi_ended(CountDownThenState6(cpu.x));
+}
+
+/*
+ * @routine 0E0C:187 StepListB9B7ThenAimAtPlayer
+ * @run 70:B987
+ * WHAT IT DOES: Steps the animation list at $B9B7; when it ends the object takes the angle to the player as OBJ_34B8, sets its speed along it with length $0180, clears its animation step and timer, sets OBJ_3510 to $C0 and goes on to the next state.
+ * HOW: StepObjectFrames, AngleToPlayer, SetVelocityFromAngle, stores, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A $C0) when the list ended.
+ */
+Ended StepListB9B7ThenAimAtPlayer(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    AngleExit angle;
+    ScaleResult scale;
+    uint8_t y = y_entry, byte, state;
+    Ended e;
+
+    WR8(ZP->temp10, 0xB7);
+    WR8(ZP->temp11, 0xB9);
+    jsr_push(0xB992);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    jsr_push(0xB997);
+    angle = AngleToPlayer(slot);
+    jsr_pop();
+    e = then(e, ended_of_angle(angle));
+    WR8(OBJ->f34b8[slot], angle.a);
+    WR8(ZP->temp00, 0x80);
+    WR8(ZP->temp01, 0x01);
+    byte = RD8(OBJ->f34b8[slot]);
+    e = then(e, ended_load(byte));
+    jsr_push(0xB9A8);
+    scale = SetVelocityFromAngle(byte, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->f3510[slot], 0xC0);
+    state = INC8(OBJ->state[slot]);
+    return then(then(e, ended_load(0xC0)), ended_nz(state));
+}
+
+void abi_StepListB9B7ThenAimAtPlayer(void)
+{
+    abi_ended(StepListB9B7ThenAimAtPlayer(cpu.x, cpu.y));
 }

@@ -499,6 +499,8 @@ Ended StartFourPiecesWithCount(uint8_t slot);
 Ended CountDownThenState6(uint8_t slot);
 Ended StepListB36AThenCount(uint8_t slot, uint8_t y_entry);
 Ended StartKindFromTableAtSlot16(uint8_t slot);
+Ended FallAndBlinkThenClear(uint8_t slot);
+Ended StepListB9B7ThenAimAtPlayer(uint8_t slot, uint8_t y_entry);
 Ended StartJumpUpLeft(uint8_t slot);
 Ended FallThenStopForRaster(uint8_t slot);
 Jump JumpByPhaseTable072C004(uint8_t slot);

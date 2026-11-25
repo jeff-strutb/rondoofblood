@@ -141,6 +141,35 @@ LoadThenRiseFast:
     sta a:OBJ_VY_LO,x
     rts
 
+; @routine 0E0C:187 StepListB9B7ThenAimAtPlayer
+; @run 70:B987
+; WHAT IT DOES: Steps the animation list at $B9B7; when it ends the object takes the angle to the player as OBJ_34B8, sets its speed along it with length $0180, clears its animation step and timer, sets OBJ_3510 to $C0 and goes on to the next state.
+; HOW: StepObjectFrames, AngleToPlayer, SetVelocityFromAngle, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A $C0) when the list ended.
+StepListB9B7ThenAimAtPlayer:
+    lda #$B7
+    sta z:zTemp10
+    lda #$B9
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepListB9B7ThenAimAtPlayer_at0
+    jsr VecAngleToPlayer
+    sta a:OBJ_34B8,x
+    lda #$80
+    sta z:zTemp00
+    lda #$01
+    sta z:zTemp01
+    lda a:OBJ_34B8,x
+    jsr VecSetVelocityFromAngle
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$C0
+    sta a:OBJ_3510,x
+    inc a:OBJ_27A8,x
+StepListB9B7ThenAimAtPlayer_at0:
+    rts
+
 ; @routine 12DF:038 RandomTimerC0
 ; @run 71:D038
 ; WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number with bits 6 and 7 set.

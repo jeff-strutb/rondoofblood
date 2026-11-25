@@ -118,6 +118,36 @@ CountThenNextStateF3510:
 CountThenNextStateF3510_at0:
     rts
 
+; @routine 088A:53B FallAndBlinkThenClear
+; @run 70:AD3B
+; WHAT IT DOES: Adds $0008 to the object's Y speed and moves the object. Its frame is 0, or on every other frame of the wave counter OBJ_34B8 plus $47. Counts OBJ_3510 down and clears the object at zero.
+; HOW: A 16-bit add, ApplyVelocity, a test of zTemp wave bit 0, an add, DEC, ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: the count, or as ClearObject.
+FallAndBlinkThenClear:
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$08
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    stz a:OBJ_2A68,x
+    lda z:zWaveCounter
+    and #$01
+    beq FallAndBlinkThenClear_at0
+    lda a:OBJ_34B8,x
+    clc
+    adc #$47
+    sta a:OBJ_2A68,x
+FallAndBlinkThenClear_at0:
+    dec a:OBJ_3510,x
+    bne FallAndBlinkThenClear_at1
+    jsr VecClearObject
+FallAndBlinkThenClear_at1:
+    rts
+
 ; @routine 088A:71E PlaySoundTwo
 ; @run 70:AF1E
 ; WHAT IT DOES: Plays sound 2.

@@ -110,6 +110,47 @@ RiseThenPlaceWithSound:
 RiseThenPlaceWithSound_at0:
     rts
 
+; @routine 10CB:45F RiseThenCueMusic
+; @run 70:B45F
+; WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_3250 to 2, clears its animation step and timer, goes on to the next state and clears OBJ_2800.
+; HOW: ApplyVelocity, a 16-bit subtract, StepObjectFrames, SoundCommand, CdPlayAgain, stores.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+RiseThenCueMusic:
+    jsr VecApplyVelocity
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$30
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    bpl RiseThenCueMusic_at0
+    lda #$AA
+    sta z:zTemp10
+    lda #$B4
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne RiseThenCueMusic_at0
+    smb4 z:zField8E
+    lda #$FF
+    jsr VecSoundCommand
+    rmb3 z:zField8E
+    rmb4 z:zField8E
+    jsr VecCdPlayAgain
+    lda z:zField8E
+    ora #$04
+    sta z:zField8E
+    stz z:zRasterStage
+    lda #$02
+    sta a:OBJ_3250,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+RiseThenCueMusic_at0:
+    rts
+
 ; @routine 10CB:680 StepListB697ThenStopY
 ; @run 70:B680
 ; WHAT IT DOES: Steps the animation list at $B697; when it ends, the object's Y speed is cleared and it goes to the next OBJ_2800.

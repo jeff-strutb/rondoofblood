@@ -527,6 +527,17 @@ Ended LoadThenSpawnWhileScrolling(uint8_t slot);
 Ended SpawnPointFromTables(uint8_t slot);
 Ended JumpAwayThenLand(uint8_t slot);
 Ended StateSevenOnStatusBit7(uint8_t slot);
+/* What a routine that sends a sound and then plays the music again leaves, in the order of its calls. */
+typedef struct {
+    Ended pre;
+    bool sounded;
+    uint8_t command;
+    CommandCall call;
+    bool played;
+    TrackPlay track;
+    Ended end;
+} SoundPlayEnd;
+SoundPlayEnd RiseThenCueMusic(uint8_t slot, uint8_t y_entry);
 SoundEnd LoadThenStepListBreakAtFive(uint8_t slot, uint8_t y_entry);
 Ended FollowBlockWhileState5(uint8_t slot);
 Ended StateFiveOnStatusBit7(uint8_t slot);

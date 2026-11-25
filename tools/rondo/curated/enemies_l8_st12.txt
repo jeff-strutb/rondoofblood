@@ -1,0 +1,29 @@
+# StepVerticalScrollTable: the table index 9, where OBJ_3568 wraps to 0.
+a=00 x=05 y=00 s=F0 p= mem:3568+5=09 mem:3E21=10 mem:3E29=01
+a=00 x=05 y=00 s=F0 p= mem:3568+5=09 mem:3E21=00 mem:3E29=00
+a=00 x=05 y=00 s=F0 p= mem:3568+5=01 mem:3E21=00 mem:3E29=00
+# the start by a random number: OBJ_3568 0, the scroll byte ScrollXLo+5 0, the generator in several states.
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=79 mem:21=42 mem:22=BD mem:23=F2
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=21 mem:21=06 mem:22=F0 mem:23=84
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=77 mem:21=62 mem:22=F0 mem:23=F3
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=CB mem:21=4D mem:22=76 mem:23=4D
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=C7 mem:21=07 mem:22=20 mem:23=51
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=15 mem:21=9A mem:22=0F mem:23=89
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=F2 mem:21=C6 mem:22=DA mem:23=CA
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=E3 mem:21=44 mem:22=BB mem:23=31
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=12 mem:21=45 mem:22=FD mem:23=6F
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=84 mem:21=DF mem:22=9A mem:23=D7
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=C5 mem:21=B3 mem:22=D0 mem:23=76
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=AC mem:21=0E mem:22=8F mem:23=53
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=A7 mem:21=35 mem:22=6C mem:23=88
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=91 mem:21=3F mem:22=20 mem:23=F6
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=F7 mem:21=2D mem:22=B0 mem:23=22
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=D2 mem:21=4D mem:22=0A mem:23=96
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=DA mem:21=D4 mem:22=3C mem:23=16
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=17 mem:21=C1 mem:22=A9 mem:23=8E
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=78 mem:21=12 mem:22=9E mem:23=03
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=27 mem:21=37 mem:22=10 mem:23=65
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=D0 mem:21=95 mem:22=86 mem:23=4F
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=15 mem:21=AD mem:22=A0 mem:23=B8
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=46 mem:21=C1 mem:22=C0 mem:23=EB
+a=00 x=05 y=00 s=F0 p= mem:3568+5=00 mem:3E0D=00 mem:20=C5 mem:21=34 mem:22=8A mem:23=DC

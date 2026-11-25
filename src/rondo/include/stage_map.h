@@ -27,7 +27,9 @@ void SetStageTileVramAddressLong(void);
 typedef struct { uint8_t a; uint8_t x; bool v; } TileRowsExit;
 TileRowsExit BlendStageTileRows(uint8_t phase, uint8_t row_a, uint8_t row_b);
 TileRowsExit BlendStageRowPair(uint8_t x, uint8_t a, uint8_t y);
-TileRowsExit BlendStageRowChanges(uint8_t x, uint8_t new_byte);
+/* What a changes blend leaves: A and X; Y 5 and V from the blend only when y_set and v_set. */
+typedef struct { uint8_t a; uint8_t x; bool y_set; bool v_set; bool v; } RowChangesExit;
+RowChangesExit BlendStageRowChanges(uint8_t x, uint8_t new_byte);
 uint8_t AndVramData(uint8_t lo_mask, uint8_t hi_mask);
 uint8_t OrVramData(uint8_t lo_mask, uint8_t hi_mask);
 
@@ -183,5 +185,14 @@ StageSpawnEnd SpawnStageObjectsRows01(void);
 StageSpawnEnd SpawnStageObjectsRows01Long(void);
 StageSpawnEnd SpawnStageObjectsRows34(void);
 StageSpawnEnd SpawnStageObjectsRows34Long(void);
+
+/* system/stage_blend_steps.c: A the restored bank, C and V as left, Y 5 once a blend ran. */
+typedef struct { uint8_t a; bool c; bool v; bool y_set; } BlendStepEnd;
+BlendStepEnd BlendStageStockRows(uint8_t x, uint8_t y);
+BlendStepEnd BlendStageStockRowsLong(uint8_t x, uint8_t y);
+BlendStepEnd BlendStageScoreAddRows(uint8_t x, uint8_t y);
+BlendStepEnd BlendStageScoreAddRowsLong(uint8_t x, uint8_t y);
+BlendStepEnd BlendStageScoreRows(uint8_t x);
+BlendStepEnd BlendStageScoreRowsLong(uint8_t x);
 
 #endif

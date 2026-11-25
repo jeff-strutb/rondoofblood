@@ -1626,24 +1626,27 @@ void abi_ResetScoreCounters(void)
  * the sound.
  * HOW: Bits 3 and 4 of zField8E; the card's cd_fade; SoundCommand.
  * WAITS: no.
- * Entry: nothing. Exit: as SoundCommand.
+ * Entry: X and Y are the caller's; cd_fade leaves them, SoundCommand keeps them. Exit: as SoundCommand.
  */
 typedef struct { uint8_t keep; CommandCall sound; } FadeStop;
 
-FadeStop FadeAndStopSound(void)
+FadeStop FadeAndStopSound(uint8_t kept_x, uint8_t kept_y)
 {
     FadeStop run;
 
     run.keep = rd8(zField8E) & SOUND_KEEP_TRACK;
-    if (run.keep == 0)
+    if (run.keep == 0) {
+        jsr_push(0x5592);
         cd_fade(CD_FADE_OUT);
-    run.sound = SoundCommand(SOUND_STOP, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+        jsr_pop();
+    }
+    run.sound = SoundCommand(SOUND_STOP, kept_x, kept_y);
     return run;
 }
 
 void abi_FadeAndStopSound(void)
 {
-    FadeStop run = FadeAndStopSound();
+    FadeStop run = FadeAndStopSound(cpu.x, cpu.y);
 
     load_shim(run.keep);
     if (run.keep == 0) {

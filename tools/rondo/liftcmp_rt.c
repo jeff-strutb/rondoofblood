@@ -43,7 +43,8 @@ extern const DiscDispatch disc_table[];
 extern const unsigned disc_count;
 /* the draft side only: pieces of code with no C of their own (the middle of another routine, a tail a draft jumps
  * into) that the draft runs on into where the lifted C is one function */
-extern const DiscDispatch piece_table[];
+typedef struct { uint32_t disc; uint16_t run; void (*abi)(void); } PieceDispatch;
+extern const PieceDispatch piece_table[];
 extern const unsigned piece_count;
 
 static uint8_t mem[65536];
@@ -270,12 +271,17 @@ static void (*find_abi(uint16_t target))(void)
     uint32_t d = resident_disc(target);
 
     if (d != 0xFFFFFFFFu) {
+        /* the case's mapper says what is there. The draft side: the draft of that disc place as it runs at this address
+         * (the same bytes often run at several addresses, and a draft's baked addresses are of one of them); then the
+         * routine with C; else code we have no C or draft for (a stub), never another overlay's routine at the same
+         * run address */
+        for (unsigned i = 0; i < piece_count; i++)
+            if (piece_table[i].disc == d && piece_table[i].run == target)
+                return piece_table[i].abi;
         for (unsigned i = 0; i < disc_count; i++)
             if (disc_table[i].disc == d)
                 return disc_table[i].abi;
-        for (unsigned i = 0; i < piece_count; i++)
-            if (piece_table[i].disc == d)
-                return piece_table[i].abi;
+        return 0;
     }
     for (unsigned i = 0; i < dispatch_count; i++)
         if (dispatch_table[i].run == target)

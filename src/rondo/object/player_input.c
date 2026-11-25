@@ -676,9 +676,12 @@ static ItemUse item_not_used(ItemUse use, ItemUseHow how)
 static ItemUse item_used(ItemUse use)
 {
     use.how = USE_STARTED;
+    use.item = RD8(ZP->field93);
     wr8(PlayerByte3BD5, rd8((uint16_t)(RichterItemAttacks + use.item)));
-    use.hearts = bcd_subtract(rd8(zField94), rd8((uint16_t)(RichterItemUseCosts + use.item)));
-    wr8(zField94, use.hearts);
+    use.hearts = RD8(ZP->field94);
+    use.cost = rd8((uint16_t)(RichterItemUseCosts + use.item));
+    use.hearts = bcd_subtract(use.hearts, use.cost);
+    WR8(ZP->field94, use.hearts);
     return use;
 }
 
@@ -693,9 +696,13 @@ static ItemUse item_handler(uint8_t item)
 }
 
 /* The scan for an item out, which a handler stops on. */
-static bool item_out(ItemUse *use)
+static bool item_out(ItemUse *use, uint16_t ret)
 {
-    ItemScan scan = RichterFindItemOut();
+    ItemScan scan;
+
+    jsr_push(ret);
+    scan = RichterFindItemOut();
+    jsr_pop();
 
     use->scanned = true;
     use->slot = scan.slot;
@@ -704,10 +711,14 @@ static bool item_out(ItemUse *use)
 }
 
 /* A start of the item's sound and script on channel and slot 6, as the first of its throws. */
-static void start_item(ItemUse *use, uint8_t list, uint8_t script)
+static void start_item(ItemUse *use, uint8_t list, uint8_t script, uint16_t ret_list, uint16_t ret_script)
 {
+    jsr_push(ret_list);
     StartListChannelKind2(list, ITEM_CRASH_CHANNEL);
+    jsr_pop();
+    jsr_push(ret_script);
     StartScriptSlotKind1(script, ITEM_CRASH_SLOT);
+    jsr_pop();
     use->script = script;
     use->script_started = true;
 }
@@ -728,16 +739,24 @@ ItemUse RichterUseThrownItem(uint8_t item)
     ItemUse use = item_handler(item);
 
     if (rd8(PlayerByte3BD6) != 0) {
-        if (item_out(&use))
+        if (item_out(&use, 0xB963))
             return item_not_used(use, USE_ITEM_OUT);
+        use.item = RD8(ZP->field93);
+        jsr_push(0xB96F);
         StartListChannelKind2(rd8((uint16_t)(RichterItemUseLists + use.item)), ITEM_CRASH_CHANNEL);
+        jsr_pop();
         wr8(PlayerByte3BD6, 0);
+        use.item = RD8(ZP->field93);
         use.script = rd8((uint16_t)(RichterItemUseScripts + use.item));
+        jsr_push(0xB97C);
         StartScriptSlotKind1(use.script, ITEM_CRASH_SLOT);
+        jsr_pop();
         use.script_started = true;
     }
     use.by_index = false;
+    use.item = RD8(ZP->field93);
     if (rd8(OBJ_2750 + ITEM_SLOT_A) != 0) {
+        use.item = RD8(ZP->field93);
         use.hearts = rd8(zField94);
         use.cost = rd8((uint16_t)(RichterItemSecondCosts + use.item));
         if (use.hearts < use.cost)
@@ -773,10 +792,10 @@ ItemUse RichterUseItemSix(uint8_t item)
 {
     ItemUse use = item_handler(item);
 
-    if (item_out(&use))
+    if (item_out(&use, 0xB9B3))
         return item_not_used(use, USE_ITEM_OUT);
     if (rd8(PlayerByte3BD6) != 0) {
-        start_item(&use, ITEM_SIX_LIST, ITEM_SIX_SCRIPT);
+        start_item(&use, ITEM_SIX_LIST, ITEM_SIX_SCRIPT, 0xB9C1, 0xB9C8);
         wr8(PlayerByte3BD6, 0);
     }
     return item_used(use);
@@ -862,10 +881,10 @@ ItemUse RichterUseItemEight(uint8_t item)
 {
     ItemUse use = item_handler(item);
 
-    if (item_out(&use))
+    if (item_out(&use, 0xB9EE))
         return item_not_used(use, USE_ITEM_OUT);
     if (rd8(PlayerByte3BD6) != 0) {
-        start_item(&use, ITEM_EIGHT_LIST, ITEM_EIGHT_SCRIPT);
+        start_item(&use, ITEM_EIGHT_LIST, ITEM_EIGHT_SCRIPT, 0xB9FF, 0xBA06);
         wr8(PlayerByte3BD6, 0);
     }
     return item_used(use);

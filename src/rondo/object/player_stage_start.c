@@ -1,0 +1,453 @@
+/*
+ * The first routine of each overlay's start, lot L2: 23 copies that differ only in the address they leave in the pointer
+ * at $207E (the overlay's own table). While the game runs (zGameRunning not zero) the routine clears the random bytes,
+ * a work byte, a flag and four bytes of an unnamed block, then sets the pointer.
+ *
+ * The stores run only while the game runs. Twelve of the 23 copies have their stores untraced (no script ran them with the
+ * game running), so their drafts stop there (liftcmp counts 360 untraced cases and one unreached line each): the shared body is
+ * compared in the eleven whose stores a script ran, and the two immediates of each copy are the disc's bytes 21 and 25.
+ *
+ * Bytes $207C to $207F have no names yet: they keep the old address form (rows asked of the typed access owner).
+ */
+#include "machine.h"
+#include "ram.h"
+#include "access.h"
+#include "routines.h"
+#include "enemy_objects.h"
+
+enum { STAGE_POINTER_LO = 0x207E, STAGE_POINTER_HI = 0x207F, STAGE_CLEAR_7C = 0x207C, STAGE_CLEAR_7D = 0x207D };
+
+/* The one test of zGameRunning, and when the game runs the stores: the Ended the routine leaves. */
+static Ended reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
+{
+    uint8_t running = RD8(ZP->game_running);
+
+    if (running == 0) {
+        return ended_load(running);
+    }
+    WR8(ZP->random0, 0);
+    WR8(ZP->random1, 0);
+    WR8(ZP->random2, 0);
+    WR8(ZP->random3, 0);
+    WR8(ZP->wave_counter, 0);
+    WR8(ZP->frame_tick, 0);
+    wr8(STAGE_CLEAR_7C, 0);
+    wr8(STAGE_CLEAR_7D, 0);
+    wr8(STAGE_POINTER_LO, pointer_lo);
+    wr8(STAGE_POINTER_HI, pointer_hi);
+    return ended_load(pointer_hi);
+}
+
+/*
+ * @routine 024D:0CB ResetStageVariables024D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $C20D.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C2 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables024D(void)
+{
+    return reset_stage_variables(0x0d, 0xc2);
+}
+
+void abi_ResetStageVariables024D(void)
+{
+    abi_ended(ResetStageVariables024D());
+}
+
+/*
+ * @routine 050D:0CB ResetStageVariables050D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $CE66.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $CE and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables050D(void)
+{
+    return reset_stage_variables(0x66, 0xce);
+}
+
+void abi_ResetStageVariables050D(void)
+{
+    abi_ended(ResetStageVariables050D());
+}
+
+/*
+ * @routine 05BD:0CB ResetStageVariables05BD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $BE15.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $BE and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables05BD(void)
+{
+    return reset_stage_variables(0x15, 0xbe);
+}
+
+void abi_ResetStageVariables05BD(void)
+{
+    abi_ended(ResetStageVariables05BD());
+}
+
+/*
+ * @routine 071D:0CB ResetStageVariables071D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $C24E.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C2 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables071D(void)
+{
+    return reset_stage_variables(0x4e, 0xc2);
+}
+
+void abi_ResetStageVariables071D(void)
+{
+    abi_ended(ResetStageVariables071D());
+}
+
+/*
+ * @routine 07CD:0CB ResetStageVariables07CD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $DC50.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DC and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables07CD(void)
+{
+    return reset_stage_variables(0x50, 0xdc);
+}
+
+void abi_ResetStageVariables07CD(void)
+{
+    abi_ended(ResetStageVariables07CD());
+}
+
+/*
+ * @routine 087D:0CB ResetStageVariables087D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $C3AA.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C3 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables087D(void)
+{
+    return reset_stage_variables(0xaa, 0xc3);
+}
+
+void abi_ResetStageVariables087D(void)
+{
+    abi_ended(ResetStageVariables087D());
+}
+
+/*
+ * @routine 092D:0CB ResetStageVariables092D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $DB8F.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DB and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables092D(void)
+{
+    return reset_stage_variables(0x8f, 0xdb);
+}
+
+void abi_ResetStageVariables092D(void)
+{
+    abi_ended(ResetStageVariables092D());
+}
+
+/*
+ * @routine 09DD:0CB ResetStageVariables09DD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $C274.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C2 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables09DD(void)
+{
+    return reset_stage_variables(0x74, 0xc2);
+}
+
+void abi_ResetStageVariables09DD(void)
+{
+    abi_ended(ResetStageVariables09DD());
+}
+
+/*
+ * @routine 0A8D:0CB ResetStageVariables0A8D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $DDD7.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DD and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables0A8D(void)
+{
+    return reset_stage_variables(0xd7, 0xdd);
+}
+
+void abi_ResetStageVariables0A8D(void)
+{
+    abi_ended(ResetStageVariables0A8D());
+}
+
+/*
+ * @routine 0B3D:0CB ResetStageVariables0B3D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $D46F.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D4 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables0B3D(void)
+{
+    return reset_stage_variables(0x6f, 0xd4);
+}
+
+void abi_ResetStageVariables0B3D(void)
+{
+    abi_ended(ResetStageVariables0B3D());
+}
+
+/*
+ * @routine 0BED:0CB ResetStageVariables0BED
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $DA06.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DA and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables0BED(void)
+{
+    return reset_stage_variables(0x06, 0xda);
+}
+
+void abi_ResetStageVariables0BED(void)
+{
+    abi_ended(ResetStageVariables0BED());
+}
+
+/*
+ * @routine 0C9D:0CB ResetStageVariables0C9D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $C31A.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C3 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables0C9D(void)
+{
+    return reset_stage_variables(0x1a, 0xc3);
+}
+
+void abi_ResetStageVariables0C9D(void)
+{
+    abi_ended(ResetStageVariables0C9D());
+}
+
+/*
+ * @routine 0D4D:0CB ResetStageVariables0D4D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $D937.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D9 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables0D4D(void)
+{
+    return reset_stage_variables(0x37, 0xd9);
+}
+
+void abi_ResetStageVariables0D4D(void)
+{
+    abi_ended(ResetStageVariables0D4D());
+}
+
+/*
+ * @routine 0DFD:0CB ResetStageVariables0DFD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $C15C.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C1 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables0DFD(void)
+{
+    return reset_stage_variables(0x5c, 0xc1);
+}
+
+void abi_ResetStageVariables0DFD(void)
+{
+    abi_ended(ResetStageVariables0DFD());
+}
+
+/*
+ * @routine 0EAD:0CB ResetStageVariables0EAD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $B389.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $B3 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables0EAD(void)
+{
+    return reset_stage_variables(0x89, 0xb3);
+}
+
+void abi_ResetStageVariables0EAD(void)
+{
+    abi_ended(ResetStageVariables0EAD());
+}
+
+/*
+ * @routine 0F5D:0CB ResetStageVariables0F5D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $B1F3.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $B1 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables0F5D(void)
+{
+    return reset_stage_variables(0xf3, 0xb1);
+}
+
+void abi_ResetStageVariables0F5D(void)
+{
+    abi_ended(ResetStageVariables0F5D());
+}
+
+/*
+ * @routine 100D:0CB ResetStageVariables100D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $D556.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D5 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables100D(void)
+{
+    return reset_stage_variables(0x56, 0xd5);
+}
+
+void abi_ResetStageVariables100D(void)
+{
+    abi_ended(ResetStageVariables100D());
+}
+
+/*
+ * @routine 10BD:0CB ResetStageVariables10BD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $C58C.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C5 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables10BD(void)
+{
+    return reset_stage_variables(0x8c, 0xc5);
+}
+
+void abi_ResetStageVariables10BD(void)
+{
+    abi_ended(ResetStageVariables10BD());
+}
+
+/*
+ * @routine 116D:0CB ResetStageVariables116D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $DB63.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DB and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables116D(void)
+{
+    return reset_stage_variables(0x63, 0xdb);
+}
+
+void abi_ResetStageVariables116D(void)
+{
+    abi_ended(ResetStageVariables116D());
+}
+
+/*
+ * @routine 12CD:0CB ResetStageVariables12CD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $D25A.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D2 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables12CD(void)
+{
+    return reset_stage_variables(0x5a, 0xd2);
+}
+
+void abi_ResetStageVariables12CD(void)
+{
+    abi_ended(ResetStageVariables12CD());
+}
+
+/*
+ * @routine 160D:0CB ResetStageVariables160D
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $D916.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D9 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables160D(void)
+{
+    return reset_stage_variables(0x16, 0xd9);
+}
+
+void abi_ResetStageVariables160D(void)
+{
+    abi_ended(ResetStageVariables160D());
+}
+
+/*
+ * @routine 16BD:0CB ResetStageVariables16BD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $BF26.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $BF and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables16BD(void)
+{
+    return reset_stage_variables(0x26, 0xbf);
+}
+
+void abi_ResetStageVariables16BD(void)
+{
+    abi_ended(ResetStageVariables16BD());
+}
+
+/*
+ * @routine 18CD:0CB ResetStageVariables18CD
+ * @run 6B:80CB
+ * WHAT IT DOES: While the game runs, clears the random bytes, the work bytes zWaveCounter and zFrameTick and $207C-$207D, and points $207E at $C373.
+ * HOW: One test of zGameRunning, then the stores; the shared body is reset_stage_variables.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C3 and N set. X, Y, C, V kept.
+ */
+Ended ResetStageVariables18CD(void)
+{
+    return reset_stage_variables(0x73, 0xc3);
+}
+
+void abi_ResetStageVariables18CD(void)
+{
+    abi_ended(ResetStageVariables18CD());
+}

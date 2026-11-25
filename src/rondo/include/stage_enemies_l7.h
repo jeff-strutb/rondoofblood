@@ -516,6 +516,7 @@ Ended LoadThenRandomPlace(uint8_t slot);
 Ended PlaceFromTableCopySlot10(uint8_t slot);
 Ended StartThreeNumberedObjects(uint8_t slot);
 Ended PlaceFromTableThenStepList(uint8_t slot);
+Ended LoadThenSinkAlongList(uint8_t slot, uint8_t y_entry);
 Ended StartThenWaitForField83(uint8_t slot);
 Ended TurnTowardPlayerOrStepList(uint8_t slot, uint8_t y_entry);
 Ended StepListC103ThenPickAim(uint8_t slot, uint8_t y_entry);

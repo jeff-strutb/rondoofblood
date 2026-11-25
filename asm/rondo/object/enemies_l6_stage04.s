@@ -398,6 +398,42 @@ CopyScrollToTimer:
     sta a:OBJ_34B8,x
     rts
 
+; @routine 051E:090 LoadThenSinkAlongList
+; @run 71:C890
+; WHAT IT DOES: In state 0 loads the object's record, sets OBJ_2FE8 to $80, keeps its Y low in OBJ_34B8 and gives OBJ_3408 a random $00 to $0F. Each frame it adds $FE80 to its Y position (fraction and low byte) and steps the animation list at $C8D0; when the list ends it puts its Y low back from OBJ_34B8.
+; HOW: LoadObjectRecord, NextRandom, a 16-bit add, StepObjectFrames.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or the load of OBJ_34B8 when the list ended.
+LoadThenSinkAlongList:
+    lda a:OBJ_27A8,x
+    bne LoadThenSinkAlongList_at0
+    jsr VecLoadObjectRecord
+    lda #$80
+    sta a:OBJ_2FE8,x
+    lda a:OBJ_Y_LO,x
+    sta a:OBJ_34B8,x
+    jsr VecNextRandom
+    and #$0F
+    sta a:OBJ_3408,x
+LoadThenSinkAlongList_at0:
+    lda a:OBJ_Y_FRAC,x
+    clc
+    adc #$80
+    sta a:OBJ_Y_FRAC,x
+    lda a:OBJ_Y_LO,x
+    adc #$FE
+    sta a:OBJ_Y_LO,x
+    lda #$D0
+    sta z:zTemp10
+    lda #$C8
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne LoadThenSinkAlongList_at1
+    lda a:OBJ_34B8,x
+    sta a:OBJ_Y_LO,x
+LoadThenSinkAlongList_at1:
+    rts
+
 ; @routine 051E:109 RandomTimer10
 ; @run 71:C909
 ; WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number from 0 to 15 plus 16.

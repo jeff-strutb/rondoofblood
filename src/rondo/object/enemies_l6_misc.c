@@ -57,3 +57,56 @@ void abi_ClearHitsTaken(void)
 {
     abi_ended(ClearHitsTaken(cpu.x));
 }
+
+/*
+ * @routine 12DF:038 RandomTimerC0
+ * @run 71:D038
+ * WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number with bits 6 and 7 set.
+ * HOW: NextRandom.
+ * WAITS: no.
+ * Entry: X object. Exit: A the timer, N set, Z clear; C and V from the random number.
+ */
+Ended RandomTimerC0(uint8_t slot)
+{
+    RandomResult random;
+    uint8_t value;
+
+    jsr_push(0xD03B);
+    random = NextRandom();
+    jsr_pop();
+    value = (uint8_t)(random.value | 0xC0);
+    WR8(OBJ->f34b8[slot], value);
+    return then(ended_of_random(random), ended_load(value));
+}
+
+void abi_RandomTimerC0(void)
+{
+    abi_ended(RandomTimerC0(cpu.x));
+}
+
+/*
+ * @routine 0E0B:5DD NextPhaseUnlessKind25
+ * @run 70:B5DD
+ * WHAT IT DOES: Goes on to the next OBJ_2800 unless the object in slot $50 is of kind $25.
+ * HOW: A compare and an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z.
+ */
+Ended NextPhaseUnlessKind25(uint8_t slot)
+{
+    uint8_t kind, phase;
+    Ended e;
+
+    kind = RD8(OBJ->kind[0x50]);
+    e = ended_compare(kind, 0x25);
+    if (kind == 0x25) {
+        return e;
+    }
+    phase = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(phase));
+}
+
+void abi_NextPhaseUnlessKind25(void)
+{
+    abi_ended(NextPhaseUnlessKind25(cpu.x));
+}

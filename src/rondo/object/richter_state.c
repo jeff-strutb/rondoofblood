@@ -314,7 +314,7 @@ typedef struct {
     InvincibleHow how; uint8_t value; uint8_t compared; bool first_sound; bool second_sound;
     CommandCall first; CommandCall second; uint8_t mark;
 } InvincibleTick;
-InvincibleTick RichterInvincibleTick(void);
+InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y);
 /* The death started: the sound command it ends with. */
 typedef struct { CommandCall sound; } Death;
 typedef enum {
@@ -349,7 +349,7 @@ typedef struct {
 } StateFrame;
 Death RichterDie(uint8_t x, uint8_t y);
 StateFrame RichterStateFrame(uint8_t x, uint8_t y);
-StateFrame RichterOutOfHealth(void);
+StateFrame RichterOutOfHealth(uint8_t x, uint8_t y);
 void death_exit_shim(Death death);
 void dying_exit_shim(DyingStep step);
 void state_frame_exit_shim(StateFrame f);
@@ -1396,7 +1396,7 @@ static void hit_taken(StateFrame *f)
 }
 
 /* No health left: one point back with PlayerByte3BF7 at 1, or the life is lost. */
-static void out_of_health(StateFrame *f)
+static void out_of_health(StateFrame *f, uint8_t x, uint8_t y)
 {
     wr8(zPlayerHealth, 0);
     f->out_of_health = true;
@@ -1409,7 +1409,7 @@ static void out_of_health(StateFrame *f)
     wr8(zSubStep, LIFE_LOST_SUB_STEP);
     wr8(PlayerByte3BD7, 0);
     f->how = FRAME_LIFE_LOST;
-    f->sound = SoundCommand(SOUND_LIFE_LOST, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+    f->sound = SoundCommand(SOUND_LIFE_LOST, x, y);
 }
 
 /*
@@ -1444,7 +1444,7 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
         f.death = RichterDie(x, y);
         return f;
     }
-    f.tick = RichterInvincibleTick();
+    f.tick = RichterInvincibleTick(x, y);
     f.hit_timer = rd8(OBJ_3460);
     if (f.hit_timer != 0) {
         wr8(OBJ_33B0, 0);
@@ -1478,7 +1478,7 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
     f.health = sub_bytes(rd8(zPlayerHealth), rd8(OBJ_32A8), true);
     wr8(zPlayerHealth, f.health.value);
     if (!f.health.carry || f.health.value == 0)
-        out_of_health(&f);
+        out_of_health(&f, x, y);
     else
         hit_taken(&f);
     return f;
@@ -1521,18 +1521,18 @@ void abi_RichterStateFrame(void)
  * WAITS: no.
  * Entry: nothing. Exit: as RichterStateFrame from the health on.
  */
-StateFrame RichterOutOfHealth(void)
+StateFrame RichterOutOfHealth(uint8_t x, uint8_t y)
 {
     StateFrame f = { 0 };
 
     f.entered_out_of_health = true;
-    out_of_health(&f);
+    out_of_health(&f, x, y);
     return f;
 }
 
 void abi_RichterOutOfHealth(void)
 {
-    state_frame_exit_shim(RichterOutOfHealth());
+    state_frame_exit_shim(RichterOutOfHealth(cpu.x, cpu.y));
 }
 
 /*
@@ -2160,7 +2160,7 @@ StandStep RichterStandStep0(void)
     st.reached = STAND_ITEM_CRASH;
     if (st.crash.how == CRASH_STARTED) {
         st.how = STAND_CRASHED;
-        st.hurt = RichterToHurtAir();
+        st.hurt = RichterToHurtAir(0, 0);   /* X and Y of the calling state: passed when that state is re-lifted */
         return st;
     }
     jsr_push(0xA402);
@@ -2448,13 +2448,17 @@ static AttackStart attack_with_animation(uint8_t animation)
 {
     AttackStart attack;
 
+    jsr_push(0xA4E7);
     attack.animation = RichterSetAnimation(animation);
+    jsr_pop();
     wr8(OBJ_2800, 1);
     attack.kind = rd8(PlayerByte3BD5);
     if (attack.kind == 0) {
+        jsr_push(0xA4F4);
         RichterClearWhip();
+        jsr_pop();
         wr8(OBJ_2750 + OBJECT_WHIP, 1);
-        attack.sound = SoundCommand(SOUND_WHIP, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+        attack.sound = SoundCommand(SOUND_WHIP, OBJECT_WHIP, attack.animation.y);
         return attack;
     }
     attack.item = rd8(zField93);
@@ -2464,7 +2468,9 @@ static AttackStart attack_with_animation(uint8_t animation)
         attack.tested_b = rd8(OBJ_2750 + ITEM_SLOT_B);
         attack.slot = attack.tested_b == 0 ? ITEM_SLOT_B : ITEM_SLOT_C;
     }
+    jsr_push(0xA50B);
     ClearObject(attack.slot);
+    jsr_pop();
     wr8((uint16_t)(OBJ_2750 + attack.slot), attack.item);
     return attack;
 }
@@ -2481,12 +2487,21 @@ static AttackStart attack_with_animation(uint8_t animation)
  */
 AttackStart RichterAttack(void)
 {
+    uint8_t kind;
+
+    jsr_push(0xA4D0);
     RichterPadOverridesOff();
+    jsr_pop();
     wr8(PlayerByte3BE1, 0);
+    jsr_push(0xA4D6);
     RichterFaceByPad();
-    wr8(OBJ_27A8, STATE_STAND);
+    jsr_pop();
+    WR8(OBJ->state[0], STATE_STAND);
+    jsr_push(0xA4DE);
     RichterStopMoving();
-    return attack_with_animation(rd8((uint16_t)(LandAnimations + rd8(PlayerByte3BD5))));
+    jsr_pop();
+    kind = rd8(PlayerByte3BD5);
+    return attack_with_animation(rd8((uint16_t)(LandAnimations + kind)));
 }
 
 /* The whip's sound's exit after X 3; or the item in A and X its slot, N, Z and V from the last test. */
@@ -2612,7 +2627,7 @@ LedgeHurt RichterLedgeHurtA(void)
     jsr_push(0xA557);
     hurt.nudge = RichterNudgeA();
     jsr_pop();
-    hurt.hurt = RichterToHurtAir();
+    hurt.hurt = RichterToHurtAir(0, 0);   /* X and Y of the calling state: passed when that state is re-lifted */
     return hurt;
 }
 
@@ -2652,7 +2667,7 @@ LedgeHurt RichterLedgeHurtB(void)
     jsr_push(0xA566);
     hurt.nudge = RichterNudgeB();
     jsr_pop();
-    hurt.hurt = RichterToHurtAir();
+    hurt.hurt = RichterToHurtAir(0, 0);   /* X and Y of the calling state: passed when that state is re-lifted */
     return hurt;
 }
 
@@ -2888,7 +2903,7 @@ static void react_slot_5(uint8_t kind)
  * them.
  * @stop A621
  */
-HurtAir RichterToHurtAir(void)
+HurtAir RichterToHurtAir(uint8_t x, uint8_t y)
 {
     HurtAir hurt;
     uint16_t entry;
@@ -2898,7 +2913,7 @@ HurtAir RichterToHurtAir(void)
     jsr_pop();
     hurt.crash = rd8(zField93) == ITEM_CRASH_FIVE;
     if (hurt.crash) {
-        hurt.crash_five = RichterItemCrashFive();
+        hurt.crash_five = RichterItemCrashFive(x, y);
         return hurt;
     }
     set_state(STATE_AIR, 2);
@@ -2911,7 +2926,7 @@ HurtAir RichterToHurtAir(void)
     hurt.animation = RichterSetAnimation(ANIM_HURT_AIR);
     jsr_pop();
     jsr_push(0xA61A);
-    hurt.sound = SoundCommand(SOUND_HURT, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+    hurt.sound = SoundCommand(SOUND_HURT, x, hurt.animation.y);
     jsr_pop();
     hurt.item = rd8(zField93);
     entry = (uint16_t)(HitReactionHandlers + (uint8_t)(hurt.item << 1));
@@ -2923,7 +2938,7 @@ HurtAir RichterToHurtAir(void)
     case 2: RichterReactFillB(); break;
     case 3: RichterReact12(); break;
     case 4: RichterReactE(); break;
-    case ITEM_CRASH_FIVE: hurt.crash_five = RichterItemCrashFive(); break;
+    case ITEM_CRASH_FIVE: hurt.crash_five = RichterItemCrashFive(x, y); break;
     case 6: RichterReact10(); break;
     case 7: RichterReact11(); break;
     default: RichterReact13(); break;
@@ -2963,7 +2978,7 @@ void hurt_air_exit_shim(HurtAir hurt)
 
 void abi_RichterToHurtAir(void)
 {
-    hurt_air_exit_shim(RichterToHurtAir());
+    hurt_air_exit_shim(RichterToHurtAir(cpu.x, cpu.y));
 }
 
 /* Item 5's ledge crash: the animation's exit, A $60; or the nudge's exit, then the hurt jump's. */
@@ -3026,7 +3041,7 @@ void abi_RichterReactFillB(void)
  * WAITS: no.
  * Entry: nothing. Exit: A $60, N and Z from it; C and V as SoundCommand left them.
  */
-CrashFive RichterItemCrashFive(void)
+CrashFive RichterItemCrashFive(uint8_t x, uint8_t y)
 {
     CrashFive crash;
 
@@ -3037,7 +3052,7 @@ CrashFive RichterItemCrashFive(void)
     crash.animation = RichterSetAnimation(ANIM_CRASH_FIVE);
     jsr_pop();
     jsr_push(0xA651);
-    crash.sound = SoundCommand(SOUND_HURT, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+    crash.sound = SoundCommand(SOUND_HURT, x, crash.animation.y);
     jsr_pop();
     set_state(STATE_STAND, 2);
     wr8(OBJ_30F0, CRASH_FIVE_TIMER);
@@ -3055,7 +3070,7 @@ void crash_five_exit_shim(CrashFive crash)
 
 void abi_RichterItemCrashFive(void)
 {
-    crash_five_exit_shim(RichterItemCrashFive());
+    crash_five_exit_shim(RichterItemCrashFive(cpu.x, cpu.y));
 }
 
 /*
@@ -3430,7 +3445,7 @@ WalkStep RichterStateWalk(void)
     w.reached = STAND_ITEM_CRASH;
     if (w.crash.how == CRASH_STARTED) {
         w.how = WALK_CRASHED;
-        w.hurt = RichterToHurtAir();
+        w.hurt = RichterToHurtAir(0, 0);   /* X and Y of the calling state: passed when that state is re-lifted */
         return w;
     }
     jsr_push(0xA765);
@@ -3872,7 +3887,7 @@ static CrouchStep crouch_jumps(CrouchStep c)
 static CrouchStep crouch_crashes(CrouchStep c)
 {
     c.how = CROUCH_CRASHED;
-    c.hurt = RichterToHurtAir();
+    c.hurt = RichterToHurtAir(0, 0);   /* X and Y of the calling state: passed when that state is re-lifted */
     return c;
 }
 
@@ -4442,7 +4457,7 @@ void abi_RichterMoveStopped(void)
  * second sound was dropped or not made. Ended, A 1, N and Z clear. A mark, as
  * RichterStartHitScript with its script, C set. No mark, A the timer, Y 6, Z and C set, N clear.
  */
-InvincibleTick RichterInvincibleTick(void)
+InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y)
 {
     InvincibleTick tick = { INVINCIBLE_OFF, 0, 0, false, false, { 0 }, { 0 }, 0 };
 
@@ -4462,14 +4477,14 @@ InvincibleTick RichterInvincibleTick(void)
     if (tick.compared == INVINCIBLE_START) {
         tick.first_sound = true;
         jsr_push(0xB766);
-        tick.first = SoundCommand(SOUND_INVINCIBLE_START, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+        tick.first = SoundCommand(SOUND_INVINCIBLE_START, x, y);
         jsr_pop();
         tick.compared = tick.first.taken ? tick.first.mpr4 : SOUND_INVINCIBLE_START;
     }
     if (tick.compared == INVINCIBLE_ENDING) {
         tick.second_sound = true;
         jsr_push(0xB76F);
-        tick.second = SoundCommand(SOUND_INVINCIBLE_ENDING, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+        tick.second = SoundCommand(SOUND_INVINCIBLE_ENDING, x, y);
         jsr_pop();
     }
     tick.value = (uint8_t)(rd8(PlayerInvincibleTimer) - 1);
@@ -4523,5 +4538,5 @@ void invincible_exit_shim(InvincibleTick tick)
 
 void abi_RichterInvincibleTick(void)
 {
-    invincible_exit_shim(RichterInvincibleTick());
+    invincible_exit_shim(RichterInvincibleTick(cpu.x, cpu.y));
 }

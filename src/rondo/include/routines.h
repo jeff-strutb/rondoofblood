@@ -916,9 +916,9 @@ typedef struct {
     uint8_t item;
 } HurtAir;
 
-CrashFive RichterItemCrashFive(void);
+CrashFive RichterItemCrashFive(uint8_t x, uint8_t y);
 void crash_five_exit_shim(CrashFive crash);
-HurtAir RichterToHurtAir(void);
+HurtAir RichterToHurtAir(uint8_t x, uint8_t y);
 void RichterReactFillD(void);
 void RichterReactFillB(void);
 void RichterReactE(void);

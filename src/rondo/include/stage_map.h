@@ -147,5 +147,9 @@ StageStartEnd StartStageListsT(void);
 StageStartEnd StartStageListsU(void);
 StageStartEnd StartStageListsV(void);
 StageStartEnd StartStageListsW(void);
+StageScrollEnd StageScrollStepResident(uint8_t x);
+
+/* system/stage_frame.c: the frame set-up's end; leaves what RunObjects leaves. */
+void StepScrollAndRunObjects(uint8_t x);
 
 #endif

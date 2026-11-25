@@ -1125,3 +1125,65 @@ void abi_JumpByStateTable0F6B3EC(void)
 
     jump_shim(jump.end, jump.target);
 }
+
+/*
+ * @routine 0F6C:3C0 JumpByStateTable0F6C3C0
+ * @run 70:BBC0
+ * WHAT IT DOES: Goes to the code a table at $BBD2 names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTable0F6C3C0(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xBBD2 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xBBD3 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTable0F6C3C0(void)
+{
+    Jump jump = JumpByStateTable0F6C3C0(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 05CB:1CF JumpByStateTable05CB1CF
+ * @run 70:B1CF
+ * WHAT IT DOES: Goes to the code a table at $B1E1 names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTable05CB1CF(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xB1E1 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB1E2 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTable05CB1CF(void)
+{
+    Jump jump = JumpByStateTable05CB1CF(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}

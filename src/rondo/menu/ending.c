@@ -3005,6 +3005,13 @@ void abi_EndingEffectDispatch(void)
     exit_shim(EndingEffectDispatch(cpu.a, cpu.x));
 }
 
+/* The registers the type 5 effect is entered with: X 3, C the compare's. */
+static void effect_type5_shim(bool carry)
+{
+    cpu.x = 3;
+    abi_flag(P_C, carry);
+}
+
 /* The end of the loop over the slots when the last handler ran as original code: X $FF from the DEX. */
 static void effect_loop_end_shim(bool a_loaded)
 {
@@ -3059,8 +3066,7 @@ Exit EndingEffectStep(void)
     c = type >= 5;
     c_set = true;
     if (type == 5) {
-        cpu_entry_shim(3, 3, 0, c);
-        cpu.x = 3;
+        effect_type5_shim(c);
         call_original(0x856F);
         exit.from_cpu = true;
         return exit;

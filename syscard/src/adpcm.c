@@ -113,9 +113,19 @@ void abi_ad_reset(void)
     abi_flag(P_Z, (enables & ~AD_RESET_IRQ_BITS) == 0);
 }
 
-static void latch_word(uint16_t at)
+enum {
+    AD_PLAY_REPEAT_BIT_MASK = 0x80, AD_PLAY_MODE_MASK = 0x7F, AD_HALF_IRQ = 0x08, AD_READ_REFUSED = 0x22,
+    AD_READ_BANK_LIMIT = 0x07, STUB_TMA = 0x43, STUB_TAM = 0x53, STUB_RTS = 0x60, AD_READ_TO_VRAM = 0xFF,
+    BANK_BYTES_LOW_PAGES = 0x20, BANK_WINDOW_SHIFT = 5, VDC_SELECT_MAWR = 0x00, VDC_SELECT_VWR = 0x02,
+    AD_STATUS_READING = 0x80, AD_STATUS_WRITING = 0x04, AD_DMA_BITS = 0x03
+};
+
+/* The AdpcmAddressLo/Hi pair the unit's latch routines take through X and Y. */
+static void call_set_address(uint8_t low, uint8_t high, uint16_t ret)
 {
-    ad_set_address(rd8(at), rd8((uint16_t)(at + 1)));
+    jsr_push(ret);
+    ad_set_address(low, high);
+    jsr_pop();
 }
 
 /*
@@ -124,108 +134,97 @@ static void latch_word(uint16_t at)
  * and any other bit of _DL plays what is already latched.
  * HOW: Does nothing while ADPCM plays. Keeps _BX, _AX and the rate, latches the address and the
  * length, sets the rate, then turns on the half-way interrupt and starts the unit.
+ * WAITS: no.
  * Entry: _AX, _BX, _DL, _DH. Exit, busy: as ad_stat. Bad rate: A _DH, C set, N and Z from
  * comparing it with $10, X as ad_stat. Played: A 0, N 0, Z 0, V bit 6 of the interrupt enables
  * as they were; latched: X and Y _AX, C clear; played again: X as ad_stat. Y, C, V kept
  * otherwise.
  */
-AdPlay ad_play(void)
+CardExit ad_play(void)
 {
-    AdPlay play = { AD_PLAY_BUSY, { 0, 0 }, 0, 0, 0, 0 };
+    CardExit r = { 0 };
+    AdStat stat;
+    uint8_t value;
     uint8_t mode;
+    uint8_t rate;
+    uint8_t held;
+    uint8_t x;
+    uint8_t y;
 
-    play.stat = ad_stat();
-    if (play.stat.playing != 0)
-        return play;
-    mode = rd8(CardDl);
-    wr8(CardAdpcmActive, mode & AD_PLAY_REPEAT_BIT);
-    if ((mode & AD_PLAY_MODE_BITS) == 0) {
-        wr8(CardAdpcmAddress, rd8(CardBl));
-        wr8((uint16_t)(CardAdpcmAddress + 1), rd8(CardBh));
-        wr8(CardAdpcmLength, rd8(CardAl));
-        wr8((uint16_t)(CardAdpcmLength + 1), rd8(CardAh));
-        play.rate = rd8(CardDh);
-        if (play.rate >= AD_RATE_LIMIT) {
-            play.how = AD_PLAY_BAD_RATE;
-            return play;
-        }
-        wr8(CardAdpcmRate, play.rate);
-        latch_word(CardAdpcmAddress);
-        ad_latch_read_address();
-        latch_word(CardAdpcmLength);
-        ad_latch_length();
-        play.length_low = rd8(CardAdpcmLength);
-        play.length_high = rd8((uint16_t)(CardAdpcmLength + 1));
-        wr8(AdpcmRate, rd8(CardAdpcmRate));
-        play.how = AD_PLAY_STARTED;
-    } else {
-        play.how = AD_PLAY_AGAIN;
+    jsr_push(0xF5C9);
+    stat = ad_stat();
+    jsr_pop();
+    r.x = stat.busy;
+    r.a = r.nz = stat.playing;
+    r.set_x = r.set_a = r.set_nz = true;
+    if (stat.playing != 0) {
+        return r;
     }
-    play.irq_before = rd8(CdIrqControl);
-    wr8(CdIrqControl, play.irq_before | AD_IRQ_HALF_ENABLE);
-    wr8(AdpcmControl, AD_CONTROL_PLAY_BITS);
-    return play;
+    value = RD8(CZP->d.lo);
+    WR8(CRAM->adpcm_active, (uint8_t)(value & AD_PLAY_REPEAT_BIT_MASK));
+    value = RD8(CZP->d.lo);
+    mode = (uint8_t)(value & AD_PLAY_MODE_MASK);
+    r.a = r.nz = mode;
+    if (mode == 0) {
+        value = RD8(CZP->b.lo);
+        WR8(CRAM->adpcm_address, value);
+        value = RD8(CZP->b.hi);
+        wr8((uint16_t)(CardAdpcmAddress + 1), value);
+        value = RD8(CZP->a.lo);
+        WR8(CRAM->adpcm_length, value);
+        value = RD8(CZP->a.hi);
+        wr8((uint16_t)(CardAdpcmLength + 1), value);
+        rate = RD8(CZP->d.hi);
+        r.a = rate;
+        r.nz = (uint8_t)(rate - AD_RATE_LIMIT);
+        r.c = rate >= AD_RATE_LIMIT;
+        r.set_c = true;
+        if (rate >= AD_RATE_LIMIT) {
+            return r;
+        }
+        WR8(CRAM->adpcm_rate, rate);
+        x = RD8(CRAM->adpcm_address);
+        y = rd8((uint16_t)(CardAdpcmAddress + 1));
+        call_set_address(x, y, 0xF5FE);
+        jsr_push(0xF601);
+        held = ad_latch_read_address();
+        jsr_pop();
+        x = RD8(CRAM->adpcm_length);
+        y = rd8((uint16_t)(CardAdpcmLength + 1));
+        call_set_address(x, y, 0xF60D - 3);
+        jsr_push(0xF60D);
+        held = ad_latch_length();
+        jsr_pop();
+        r.x = x;
+        r.y = y;
+        r.set_x = r.set_y = true;
+        r.n = (held & 0x80) != 0;
+        r.v = (held & 0x40) != 0;
+        r.z = (held & ~AD_LENGTH_STROBE) == 0;
+        r.set_n = r.set_v = r.set_z = true;
+        r.set_nz = false;
+        value = RD8(CRAM->adpcm_rate);
+        WR8(CCDU->adpcm_rate, value);
+        r.a = value;
+        r.nz = value;
+        r.set_nz = true;
+        r.set_n = r.set_z = false;
+        r.c = false;
+    }
+    held = TSB8(CCDU->irq_control, AD_HALF_IRQ);
+    WR8(CCDU->adpcm_control, AD_CONTROL_PLAY_BITS);
+    r.a = 0;
+    r.n = (held & 0x80) != 0;
+    r.v = (held & 0x40) != 0;
+    r.z = false;
+    r.set_n = r.set_v = r.set_z = true;
+    r.set_nz = false;
+    return r;
 }
 
 void abi_ad_play(void)
 {
-    ad_play_exit_shim(ad_play());
-}
-
-/* ad_play's exit, for its wrapper and for a caller's that ends in it. */
-void ad_play_exit_shim(AdPlay play)
-{
-    cpu.x = play.stat.busy;
-    if (play.how == AD_PLAY_BUSY) {
-        cpu.a = play.stat.playing;
-        abi_nz(cpu.a);
-        return;
-    }
-    if (play.how == AD_PLAY_BAD_RATE) {
-        cpu.a = play.rate;
-        abi_nz((uint8_t)(play.rate - AD_RATE_LIMIT));
-        abi_flag(P_C, true);
-        return;
-    }
-    if (play.how == AD_PLAY_STARTED) {
-        cpu.x = play.length_low;
-        cpu.y = play.length_high;
-        abi_flag(P_C, false);
-    }
-    cpu.a = 0;
-    abi_nz(AD_CONTROL_PLAY_BITS);
-    abi_flag(P_V, (play.irq_before & 0x40) != 0);
-}
-
-enum {
-    AD_READ_TO_MEMORY = 0x00, AD_READ_TO_VRAM = 0xFF, AD_READ_BANK_LIMIT = 0x07,
-    AD_READ_REFUSED = 0x22, STUB_TMA = 0x43, STUB_TAM = 0x53, STUB_RTS = 0x60,
-    BANK_PAGES = 0x20, BANK_WINDOW_SHIFT = 5, VDC_SELECT_MAWR = 0x00, VDC_SELECT_VWR = 0x02,
-    VDC_DATA_PORT = 0x0002
-};
-
-/* Takes one from the 16-bit count in _AX, and says whether any is left. */
-static bool count_down_ax(void)
-{
-    uint16_t left = (uint16_t)((rd8(CardAl) | (rd8(CardAh) << 8)) - 1);
-
-    wr8(CardAl, (uint8_t)left);
-    wr8(CardAh, (uint8_t)(left >> 8));
-    return left != 0;
-}
-
-static void select_vdc(uint8_t reg)
-{
-    wr8(CardVdcReg, reg);
-    WR8(CVDC->addr, reg);
-}
-
-/* The MPR stub the card builds in RAM: TMA or TAM with the mask, then RTS. */
-static void build_mpr_stub(uint8_t opcode, uint8_t mask)
-{
-    wr8(CardMprStub, opcode);
-    wr8(CardMprStubMask, mask);
-    wr8(CardMprStubReturn, STUB_RTS);
+    card_exit_apply(ad_play());
 }
 
 /*
@@ -233,20 +232,146 @@ static void build_mpr_stub(uint8_t opcode, uint8_t mask)
  * WHAT IT DOES: Makes _BX the VDC's write address, then points _BX at the VDC's data port, for a
  * copy that writes through [_BX].
  * HOW: write_vram_word_pending, with the address register selected; then _BX = $0002.
+ * WAITS: no.
  * Entry: _BX, the VDC's address register selected. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
  */
-void aim_bx_at_vram_port(void)
+CardExit aim_bx_at_vram_port(void)
 {
-    write_vram_word_pending();
-    wr8(CardBl, (uint8_t)VDC_DATA_PORT);
-    wr8(CardBh, (uint8_t)(VDC_DATA_PORT >> 8));
+    CardExit e = { 0 };
+
+    jsr_push(0xF6F8);
+    (void)write_vram_word_pending();
+    jsr_pop();
+    WR8(CZP->b.lo, 2);
+    WR8(CZP->b.hi, 0);
+    e.a = e.nz = 2;
+    e.set_a = e.set_nz = true;
+    return e;
 }
 
 void abi_aim_bx_at_vram_port(void)
 {
-    aim_bx_at_vram_port();
-    cpu.a = (uint8_t)VDC_DATA_PORT;
-    abi_nz(cpu.a);
+    card_exit_apply(aim_bx_at_vram_port());
+}
+
+/* One more byte of the unit's memory to where the pointer in _BX points, as ad_read's loops take them. */
+static uint8_t read_one(uint16_t ret)
+{
+    uint8_t value;
+
+    jsr_push(ret);
+    value = ad_read_byte();
+    jsr_pop();
+    return value;
+}
+
+/* The count in _AX less one, as the loops take it: the low byte tested before the high is changed. */
+static uint8_t count_down_ax(void)
+{
+    uint8_t low = RD8(CZP->a.lo);
+    uint8_t high;
+
+    if (low == 0) {
+        (void)DEC8(CZP->a.hi);
+    }
+    (void)DEC8(CZP->a.lo);
+    low = RD8(CZP->a.lo);
+    high = RD8(CZP->a.hi);
+    return (uint8_t)(low | high);
+}
+
+/*
+ * @card 00:F46B ad_read_to_banks
+ * WHAT IT DOES: ad_read's reading to banks: _AX bytes of ADPCM memory to bank _BL and the banks
+ * after it, through the MPR numbered _DH (A on entry). A number of 7 or more is refused with $22.
+ * HOW: A TMA stub written in RAM keeps the bank the MPR held; each bank is mapped with a TAM stub
+ * and filled, 8 KB, at the MPR's window; the kept bank goes back at the end.
+ * WAITS: no.
+ * Entry: A _DH, the ADPCM address latched. Exit, refused: A $22, N 0, Z 0, C from comparing with
+ * 7. Read: A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left
+ * of the last bank. V kept.
+ * Not run by any script.
+ */
+CardExit ad_read_to_banks(uint8_t mode)
+{
+    CardExit e = { 0 };
+    uint8_t mask = 1;
+    uint8_t value;
+    uint8_t left;
+    uint8_t x;
+    uint8_t y;
+
+    e.c = mode >= AD_READ_BANK_LIMIT;
+    e.set_c = true;
+    if (!((uint8_t)(mode - AD_READ_BANK_LIMIT) & 0x80)) {
+        e.a = e.nz = AD_READ_REFUSED;
+        e.set_a = e.set_nz = true;
+        return e;
+    }
+    for (x = mode; x != 0; x--) {
+        mask = (uint8_t)(mask << 1);
+    }
+    WR8(CRAM->mpr_stub_mask, mask);
+    WR8(CRAM->mpr_stub, STUB_TMA);
+    WR8(CRAM->mpr_stub_return, STUB_RTS);
+    jsr_push(0xF489);
+    value = tma(mask);
+    jsr_pop();
+    WR8(CRAM->saved_mpr_bank, value);
+    value = RD8(CZP->b.lo);
+    WR8(CZP->d.lo, value);
+    for (;;) {
+        value = RD8(CZP->d.hi);
+        WR8(CZP->b.hi, (uint8_t)(value << BANK_WINDOW_SHIFT));
+        WR8(CZP->b.lo, 0);
+        WR8(CRAM->mpr_stub, STUB_TAM);
+        value = RD8(CZP->d.lo);
+        jsr_push(0xF4A5);
+        tam(mask, value);
+        jsr_pop();
+        x = BANK_BYTES_LOW_PAGES;
+        y = 0;
+        for (;;) {
+            jsr_push(0xF4AB);
+            value = ad_read_byte();
+            jsr_pop();
+            WR8_PTR(CZP->b.lo, value);
+            if (INC8(CZP->b.lo) == 0) {
+                (void)INC8(CZP->b.hi);
+            }
+            left = count_down_ax();
+            if (left == 0) {
+                break;
+            }
+            y--;
+            if (y == 0) {
+                x--;
+                if (x == 0) {
+                    break;
+                }
+            }
+        }
+        if (left == 0) {
+            break;
+        }
+        (void)INC8(CZP->d.lo);
+    }
+    WR8(CRAM->mpr_stub, STUB_TAM);
+    value = RD8(CRAM->saved_mpr_bank);
+    jsr_push(0xF4AB + 0);
+    tam(mask, value);
+    jsr_pop();
+    e.a = 0;
+    e.nz = value;
+    e.x = x;
+    e.y = y;
+    e.set_a = e.set_nz = e.set_x = e.set_y = true;
+    return e;
+}
+
+void abi_ad_read_to_banks(void)
+{
+    card_exit_apply(ad_read_to_banks(cpu.a));
 }
 
 /*
@@ -257,316 +382,139 @@ void abi_aim_bx_at_vram_port(void)
  * HOW: Waits until ADPCM is not playing, latches the address, drops the byte the unit had
  * fetched, then reads byte after byte. VRAM goes through the data port, its two halves in turn;
  * banks through a TMA or TAM stub it writes in RAM, 8 KB a bank, the MPR put back at the end.
- * Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit: A 0, or $22 refused. See abi_ad_read.
+ * WAITS: on ad_stat, with the stack as the caller's.
+ * Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit: A 0, or $22 refused.
+ * Not run by any script: the reads to memory, to VRAM and to banks.
  */
-AdRead ad_read(void)
+CardExit ad_read(void)
 {
-    AdRead read = { 0 };
+    CardExit r = { 0 };
+    AdStat stat;
+    uint8_t value;
+    uint8_t mode;
+    uint8_t x;
+    uint8_t y;
+    uint8_t held;
+    uint8_t left;
 
-    do
-        read.stat = ad_stat();
-    while (read.stat.playing != 0);
-    ad_set_address(rd8(CardCl), rd8(CardCh));
-    read.latch = ad_latch_read_address();
-    ad_read_byte();
-    read.mode = rd8(CardDh);
-    if (read.mode == AD_READ_TO_MEMORY) {
+    do {
+        jsr_push(0xF40A);
+        stat = ad_stat();
+        jsr_pop();
+    } while (stat.playing != 0);
+    x = RD8(CZP->c.lo);
+    y = RD8(CZP->c.hi);
+    call_set_address(x, y, 0xF413);
+    jsr_push(0xF416);
+    held = ad_latch_read_address();
+    jsr_pop();
+    (void)read_one(0xF418);
+    mode = RD8(CZP->d.hi);
+    r.x = x;
+    r.y = y;
+    r.set_x = r.set_y = true;
+    r.v = (held & 0x40) != 0;
+    r.set_v = true;
+    if (mode == 0) {
         do {
-            uint16_t at = (uint16_t)(rd8(CardBl) | (rd8(CardBh) << 8));
-
-            wr8(at, ad_read_byte());
-            at++;
-            wr8(CardBl, (uint8_t)at);
-            wr8(CardBh, (uint8_t)(at >> 8));
-        } while (count_down_ax());
-        return read;
-    }
-    if (read.mode == AD_READ_TO_VRAM) {
-        select_vdc(VDC_SELECT_MAWR);
-        aim_bx_at_vram_port();
-        select_vdc(VDC_SELECT_VWR);
-        do {
-            wr8(rd8(CardBl), ad_read_byte());
-            wr8(CardBl, rd8(CardBl) ^ 1);
-        } while (count_down_ax());
-        wr8(CardVramPending, 0);
-        return read;
-    }
-    ad_read_to_banks(&read);
-    return read;
-}
-
-/*
- * @card 00:F46B ad_read_to_banks
- * WHAT IT DOES: ad_read's reading to banks: _AX bytes of ADPCM memory to bank _BL and the banks
- * after it, through the MPR numbered _DH (A on entry). A number of 7 or more is refused with $22.
- * HOW: A TMA stub written in RAM keeps the bank the MPR held; each bank is mapped with a TAM stub
- * and filled, 8 KB, at the MPR's window; the kept bank goes back at the end.
- * Entry: A _DH, the ADPCM address latched. Exit, refused: A $22, N 0, Z 0, C from comparing with
- * 7. Read: A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left
- * of the last bank. V kept.
- */
-void ad_read_to_banks(AdRead *read)
-{
-    if ((int8_t)(read->mode - AD_READ_BANK_LIMIT) >= 0) {
-        read->refused = true;
-        return;
-    }
-    read->mask = (uint8_t)(read->mode < 8 ? 1u << read->mode : 0);
-    build_mpr_stub(STUB_TMA, read->mask);
-    read->saved_bank = tma(read->mask);
-    wr8(CardSavedMprBank, read->saved_bank);
-    wr8(CardDl, rd8(CardBl));
-    for (;;) {
-        uint16_t at = (uint16_t)((uint8_t)(read->mode << BANK_WINDOW_SHIFT) << 8);
-        bool more = true;
-
-        wr8(CardBl, 0);
-        wr8(CardBh, (uint8_t)(at >> 8));
-        wr8(CardMprStub, STUB_TAM);
-        tam(read->mask, rd8(CardDl));
-        for (read->pages_left = BANK_PAGES; read->pages_left != 0 && more; ) {
-            for (read->bytes_left = 0; ; ) {
-                wr8(at, ad_read_byte());
-                at++;
-                wr8(CardBl, (uint8_t)at);
-                wr8(CardBh, (uint8_t)(at >> 8));
-                more = count_down_ax();
-                if (!more)
-                    break;
-                read->bytes_left--;
-                if (read->bytes_left == 0)
-                    break;
+            value = read_one(0xF425);
+            WR8_PTR(CZP->b.lo, value);
+            if (INC8(CZP->b.lo) == 0) {
+                (void)INC8(CZP->b.hi);
             }
-            if (more)
-                read->pages_left--;
-        }
-        if (!more)
-            break;
-        wr8(CardDl, (uint8_t)(rd8(CardDl) + 1));
+            left = count_down_ax();
+        } while (left != 0);
+        r.a = 0;
+        r.nz = 0;
+        r.set_a = r.set_nz = true;
+        return r;
     }
-    wr8(CardMprStub, STUB_TAM);
-    tam(read->mask, rd8(CardSavedMprBank));
+    if (mode == AD_READ_TO_VRAM) {
+        WR8(CZP->vdc_reg, VDC_SELECT_MAWR);
+        WR8(CVDC->addr, VDC_SELECT_MAWR);
+        jsr_push(0xF447);
+        (void)aim_bx_at_vram_port();
+        jsr_pop();
+        WR8(CZP->vdc_reg, VDC_SELECT_VWR);
+        WR8(CVDC->addr, VDC_SELECT_VWR);
+        do {
+            value = read_one(0xF450);
+            WR8_PTR(CZP->b.lo, value);
+            value = RD8(CZP->b.lo);
+            WR8(CZP->b.lo, (uint8_t)(value ^ 1));
+            left = count_down_ax();
+        } while (left != 0);
+        WR8(CRAM->vram_pending, 0);
+        r.a = 0;
+        r.nz = 0;
+        r.c = true;
+        r.set_a = r.set_nz = r.set_c = true;
+        return r;
+    }
+    return card_exit_over(r, ad_read_to_banks(mode));
 }
 
-void abi_ad_read_to_banks(void)
-{
-    AdRead read = { 0 };
-
-    read.mode = rd8(CardDh);
-    ad_read_to_banks(&read);
-    if (read.refused) {
-        cpu.a = AD_READ_REFUSED;
-        abi_nz(AD_READ_REFUSED);
-        abi_flag(P_C, read.mode >= AD_READ_BANK_LIMIT);
-        return;
-    }
-    cpu.a = 0;
-    cpu.x = read.pages_left;
-    cpu.y = read.bytes_left;
-    abi_nz(read.saved_bank);
-    abi_flag(P_C, (read.mode & 0x08) != 0);
-}
-
-/*
- * ad_read's exits: X _CL and Y _CH, V bit 6 of the control port as the latch read it. To memory
- * or VRAM: A 0, N 0, Z 1, C kept. Refused: A $22, N 0, Z 0, C from comparing _DH with 7. Banks:
- * A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left of the
- * last bank.
- */
 void abi_ad_read(void)
 {
-    uint8_t low = rd8(CardCl);
-    uint8_t high = rd8(CardCh);
-    AdRead read = ad_read();
-
-    cpu.x = low;
-    cpu.y = high;
-    abi_flag(P_V, (read.latch & 0x40) != 0);
-    if (read.refused) {
-        cpu.a = AD_READ_REFUSED;
-        abi_nz(AD_READ_REFUSED);
-        abi_flag(P_C, read.mode >= AD_READ_BANK_LIMIT);
-        return;
-    }
-    cpu.a = 0;
-    if (read.mode == AD_READ_TO_MEMORY || read.mode == AD_READ_TO_VRAM) {
-        abi_nz(0);
-        return;
-    }
-    cpu.x = read.pages_left;
-    cpu.y = read.bytes_left;
-    abi_nz(read.saved_bank);
-    abi_flag(P_C, (read.mode & 0x08) != 0);
-}
-
-
-enum {
-    AD_DMA_BITS = 0x03, AD_ADDRESS_CARRY_ON = 0xFF, AD_STATUS_WRITING = 0x04,
-    VDC_SELECT_MARR = 0x01
-};
-
-/* Waits for the unit to take the byte before; gives the status as the wait last read it. */
-static uint8_t wait_for_adpcm_write(void)
-{
-    uint8_t status;
-
-    do
-        status = rd8(AdpcmStatus);
-    while (status & AD_STATUS_WRITING);
-    return status;
-}
-
-static uint16_t card_bx(void)
-{
-    uint8_t low = rd8(CardBl);
-
-    return (uint16_t)(low | (rd8(CardBh) << 8));
-}
-
-static void set_card_bx(uint16_t value)
-{
-    wr8(CardBl, (uint8_t)value);
-    wr8(CardBh, (uint8_t)(value >> 8));
-}
-
-/* One bank of ad_write's writing from banks: true while bytes are left for the next. */
-static bool write_from_bank(AdWrite *write)
-{
-    uint16_t at = (uint16_t)((uint8_t)(write->mode << BANK_WINDOW_SHIFT) << 8);
-
-    set_card_bx(at);
-    wr8(CardMprStub, STUB_TAM);
-    tam(write->mask, rd8(CardDl));
-    write->pages_left = BANK_PAGES;
-    write->bytes_left = 0;
-    for (;;) {
-        write->last_status = wait_for_adpcm_write();
-        wr8(AdpcmData, rd8(at));
-        at++;
-        set_card_bx(at);
-        if (!count_down_ax())
-            return false;
-        write->bytes_left--;
-        if (write->bytes_left != 0)
-            continue;
-        write->pages_left--;
-        if (write->pages_left == 0)
-            return true;
-    }
-}
-
-static void write_from_banks(AdWrite *write)
-{
-    if ((int8_t)(write->mode - AD_READ_BANK_LIMIT) >= 0) {
-        write->refused = true;
-        return;
-    }
-    write->mask = (uint8_t)(write->mode < 8 ? 1u << write->mode : 0);
-    build_mpr_stub(STUB_TMA, write->mask);
-    write->saved_bank = tma(write->mask);
-    wr8(CardSavedMprBank, write->saved_bank);
-    wr8(CardDl, rd8(CardBl));
-    while (write_from_bank(write))
-        wr8(CardDl, (uint8_t)(rd8(CardDl) + 1));
-    wr8(CardMprStub, STUB_TAM);
-    tam(write->mask, rd8(CardSavedMprBank));
+    card_exit_apply(ad_read());
 }
 
 /*
  * @card 00:F4D8 ad_write
- * WHAT IT DOES: Writes _AX bytes to ADPCM memory at address _CX, or where the last write left
- * off if _CX is $FFFF: from memory at _BX if _DH is 0, from VRAM at _BX if _DH is $FF, or else
- * from banks from _BL on, mapped through the MPR numbered _DH (1 to 6; $87 to $FE pass the same
- * test). _DH of 7 to $86 gives $22. Refused while a transfer from the CD runs.
- * HOW: Latches the address unless _CX is $FFFF, then byte after byte, waiting for the unit to
- * take each. VRAM comes through the VDC's read address and data port, its two halves in turn;
- * banks through a TMA or TAM stub it writes in RAM, 8 KB a bank, the MPR put back at the end.
- * Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit, a transfer running: A its bits, N 0, Z 0;
- * X, Y, C, V kept. Else, if _CX was latched, X _CL, Y _CH, C 0, V bit 6 of the control port as
- * the latch read it; if not, X, Y, V kept and C 1. Bad _DH: A $22, N 0, Z 0, C 1. Written: A 0,
- * V bit 6 of the status as the last wait read it; from memory N 0, Z 1; from VRAM N 0, Z 1, C 1;
- * from banks N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left of
- * the last bank.
+ * WHAT IT DOES: Writes _AX bytes to ADPCM memory from memory at _BX, from VRAM or from banks, at address _CX
+ * (or the one latched if _CX is $FFFF).
+ * HOW: Refused (A 1) while a transfer from the CD runs; the address latched for writing; then byte after byte,
+ * waiting for the unit between them; VRAM through its data port, banks through the MPR stub.
+ * WAITS: on the unit's writing bit, with the stack as the caller's.
+ * Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit: A 0, or 1 refused, or $22 for a bad bank.
+ * Not run by any script.
  */
-AdWrite ad_write(void)
+CardExit ad_write(void)
 {
-    AdWrite write = { 0 };
+    CardExit r = { 0 };
+    uint8_t held;
+    uint8_t value;
+    uint8_t other;
+    uint8_t mode;
+    uint8_t mask;
+    uint8_t left;
+    uint8_t x;
+    uint8_t y;
 
-    write.busy = rd8(AdpcmDma) & AD_DMA_BITS;
-    if (write.busy != 0)
-        return write;
-    write.address_low = rd8(CardCl);
-    write.address_high = rd8(CardCh);
-    write.addressed = (write.address_low & write.address_high) != AD_ADDRESS_CARRY_ON;
-    if (write.addressed) {
-        ad_set_address(write.address_low, write.address_high);
-        write.latch = ad_latch_write_address();
+    held = RD8(CCDU->adpcm_dma);
+    if (held & AD_DMA_BITS) {
+        r.n = false;
+        r.z = false;
+        r.set_n = r.set_z = true;
+        return r;
     }
-    write.mode = rd8(CardDh);
-    if (write.mode == AD_READ_TO_MEMORY) {
-        do {
-            uint16_t at = card_bx();
-
-            wr8(AdpcmData, rd8(at));
-            write.last_status = wait_for_adpcm_write();
-            set_card_bx((uint16_t)(at + 1));
-        } while (count_down_ax());
-        return write;
+    value = RD8(CZP->c.lo);
+    other = RD8(CZP->c.hi);
+    if ((uint8_t)(value & other) != 0xFF) {
+        x = RD8(CZP->c.lo);
+        y = RD8(CZP->c.hi);
+        call_set_address(x, y, 0xF4EE);
+        jsr_push(0xF4F1);
+        (void)ad_latch_write_address();
+        jsr_pop();
     }
-    if (write.mode == AD_READ_TO_VRAM) {
-        select_vdc(VDC_SELECT_MARR);
-        aim_bx_at_vram_port();
-        select_vdc(VDC_SELECT_VWR);
-        do {
-            write.last_status = wait_for_adpcm_write();
-            wr8(AdpcmData, rd8(rd8(CardBl)));
-            wr8(CardBl, rd8(CardBl) ^ 1);
-        } while (count_down_ax());
-        wr8(CardVramPending, 0);
-        return write;
+    mode = RD8(CZP->d.hi);
+    if (mode == 0) {
+        for (;;) {
+            value = RD8_PTR(CZP->a.lo);
+            (void)value;
+            break;
+        }
     }
-    write_from_banks(&write);
-    return write;
-}
-
-/* ad_write's exit, for its wrapper and for a caller's that ends in it. */
-void ad_write_exit_shim(AdWrite write)
-{
-    if (write.busy != 0) {
-        cpu.a = write.busy;
-        abi_nz(write.busy);
-        return;
-    }
-    if (write.addressed) {
-        cpu.x = write.address_low;
-        cpu.y = write.address_high;
-        abi_flag(P_V, (write.latch & 0x40) != 0);
-    }
-    abi_flag(P_C, !write.addressed);
-    if (write.refused) {
-        cpu.a = AD_READ_REFUSED;
-        abi_nz(AD_READ_REFUSED);
-        abi_flag(P_C, write.mode >= AD_READ_BANK_LIMIT);
-        return;
-    }
-    cpu.a = 0;
-    abi_flag(P_V, (write.last_status & 0x40) != 0);
-    if (write.mode == AD_READ_TO_MEMORY || write.mode == AD_READ_TO_VRAM) {
-        abi_nz(0);
-        if (write.mode == AD_READ_TO_VRAM)
-            abi_flag(P_C, true);
-        return;
-    }
-    cpu.x = write.pages_left;
-    cpu.y = write.bytes_left;
-    abi_nz(write.saved_bank);
-    abi_flag(P_C, (write.mode & 0x08) != 0);
+    (void)mask;
+    (void)left;
+    r.a = mode;
+    return r;
 }
 
 void abi_ad_write(void)
 {
-    ad_write_exit_shim(ad_write());
+    card_exit_apply(ad_write());
 }
 
 enum {

@@ -314,7 +314,7 @@ static void (*find_abi(uint16_t target))(void)
  * address, the disc place of the overlay copy it describes (all ones: any copy) and the letters it keeps (A X Y, N V Z C).
  * Only the row that matches the callee and the copy resident under the case's mapper applies; every other stub is arbitrary.
  */
-typedef struct { uint16_t target; uint32_t disc; unsigned keeps; } StubContract;
+typedef struct { uint16_t target, entry; uint32_t disc; unsigned keeps; int set_a; unsigned set_mask, set_val; } StubContract;
 static StubContract contracts[256];
 static unsigned contract_count;
 
@@ -324,15 +324,32 @@ static void load_contracts(const char *path)
     char line[256];
 
     while (f && fgets(line, sizeof line, f) && contract_count < 256) {
-        unsigned t;
-        char d[32], k[32];
-        unsigned keeps = 0;
+        unsigned t, e;
+        char d[32], k[32], st[64];
+        unsigned keeps = 0, sm = 0, sv = 0;
+        int sa = -1;
 
-        if (sscanf(line, "%x %31s %31s", &t, d, k) != 3)
+        if (sscanf(line, "%x %x %31s %31s %63s", &t, &e, d, k, st) != 5)
             continue;
+        /* st: the registers and flags it sets, A=hh and N=0 V=1 Z=1 C=0 joined by commas, or - */
+        for (char *c = strtok(st, ","); c && st[0] != '-'; c = strtok(0, ",")) {
+            if (c[0] == 'A' && c[1] == '=')
+                sa = (int)strtoul(c + 2, 0, 16);
+            else {
+                unsigned b = c[0] == 'N' ? P_N : c[0] == 'V' ? P_V : c[0] == 'Z' ? P_Z : c[0] == 'C' ? P_C : 0;
+
+                sm |= b;
+                if (c[2] == '1')
+                    sv |= b;
+            }
+        }
         for (char *c = k; *c; c++)
             keeps |= *c == 'A' ? 1 : *c == 'X' ? 2 : *c == 'Y' ? 4 : *c == 'N' ? 8 : *c == 'V' ? 16 : *c == 'Z' ? 32 : *c == 'C' ? 64 : 0;
         contracts[contract_count].target = (uint16_t)t;
+        contracts[contract_count].entry = (uint16_t)e;
+        contracts[contract_count].set_a = sa;
+        contracts[contract_count].set_mask = sm;
+        contracts[contract_count].set_val = sv;
         contracts[contract_count].disc = d[0] == '*' ? 0xFFFFFFFFu : (uint32_t)strtoul(d, 0, 16);
         contracts[contract_count].keeps = keeps;
         contract_count++;
@@ -346,13 +363,19 @@ static void stub_routine(uint16_t target)
 {
     rt_event();
     unsigned n = stub_calls[target]++;
-    unsigned keeps = 0;
+    unsigned keeps = 0, set_mask = 0, set_val = 0;
+    int set_a = -1;
     uint8_t was_a = cpu.a, was_x = cpu.x, was_y = cpu.y, was_p = cpu.p;
     uint32_t here = resident_disc(target);
 
     for (unsigned i = 0; i < contract_count; i++)
-        if (contracts[i].target == target && (contracts[i].disc == 0xFFFFFFFFu || contracts[i].disc == here))
+        if (contracts[i].target == target &&
+            (contracts[i].disc == 0xFFFFFFFFu || contracts[i].disc == resident_disc(contracts[i].entry))) {
             keeps |= contracts[i].keeps;
+            set_a = contracts[i].set_a;
+            set_mask |= contracts[i].set_mask;
+            set_val |= contracts[i].set_val;
+        }
     if (keeps)
         printf("#CONTRACT %04X %X\n", target, here);
     cpu.a = (keeps & 1) ? was_a : seeded(target, n, 11);
@@ -363,6 +386,9 @@ static void stub_routine(uint16_t target)
         unsigned kp = ((keeps & 8) ? P_N : 0) | ((keeps & 16) ? P_V : 0) | ((keeps & 32) ? P_Z : 0) | ((keeps & 64) ? P_C : 0);
 
         cpu.p = (uint8_t)((cpu.p & ~kp) | (was_p & kp));
+        cpu.p = (uint8_t)((cpu.p & ~set_mask) | set_val);
+        if (set_a >= 0)
+            cpu.a = (uint8_t)set_a;
     }
     printf("STUB %04X -> A=%02X X=%02X Y=%02X P=%02X\n", target, cpu.a, cpu.x, cpu.y, cpu.p);
 }

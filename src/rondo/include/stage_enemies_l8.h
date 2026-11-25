@@ -243,4 +243,25 @@ Ended LoadRecordRandomFlingOrFall(uint8_t slot);
 SoundEnd LoadRecordThenClearEnemiesAtScreen2(uint8_t slot, uint8_t y_entry);
 Ended LoadRecordThenFollowOrHomeIn(uint8_t slot);
 
+/* object/enemies_l8_st17.c */
+Ended StartRingOfPieces(uint8_t slot);
+Ended LoadRecordFlingThenFall(uint8_t slot);
+Ended LoadRecordFacingLeftRising(uint8_t slot);
+SoundEnd SoundBAAtScreen2(uint8_t slot, uint8_t y_entry);
+Ended LoadRecordThenDrawTileScript2(uint8_t slot);
+Ended ScatterPiecesDownward(uint8_t slot);
+SoundEnd ClearWhenHurtThenWait(uint8_t slot, uint8_t y_entry);
+SoundEnd DrawTileScriptStepsThenScatter(uint8_t slot, uint8_t y_entry);
+
+/* object/enemies_l8_st18.c */
+Ended CountDownOrPickNextTimer(uint8_t slot);
+Ended StepListThenPickStateByLuck(uint8_t slot, uint8_t y_entry);
+SoundEnd StepListThenLeapByDistance(uint8_t slot, uint8_t y_entry);
+Ended CountDownThenState5(uint8_t slot);
+SoundEnd SoundAndTileWriteAtFrame24(uint8_t slot, uint8_t y_entry);
+SoundEnd SoundAndSpawnFiveAtFrame27(uint8_t slot, uint8_t y_entry);
+Ended StepListThenState5(uint8_t slot, uint8_t y_entry);
+SoundEnd SoundThenLeapByFacing(uint8_t slot, uint8_t y_entry);
+SoundEnd MaybeSound19AndSpawnPiece(uint8_t slot, uint8_t number, uint8_t y_entry);
+
 #endif

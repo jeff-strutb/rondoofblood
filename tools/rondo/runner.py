@@ -61,7 +61,8 @@ LINKS = ("references", "tools/toolchains/src", "tools/toolchains/cc65", "tools/t
          "build/rondo/disc", "build/rondo/system", "build/rondo/trace")
 OWNED = ("config/rondo/runs", "config/rondo/gate_a5.csv", "config/rondo/gate_a7.csv",
          "config/rondo/gate_a7_routines.csv", "docs/rondo/ledger.csv", "syscard/ledger.csv", "config/rondo/drafted.csv",
-         "config/rondo/lockstep_defects.csv")
+         "config/rondo/lockstep_defects.csv", "config/rondo/lockstep_held.csv",
+         "config/rondo/certification_queue.csv")
 SCRIPT_TIMEOUT = 7200
 GUESS = 150.0          # seconds of A5 plus A7 for a script never measured: play_s0_r1 took 123 s and attract_82 174 s
 

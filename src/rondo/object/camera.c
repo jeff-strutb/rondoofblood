@@ -304,8 +304,17 @@ DownMove MovePlayerDown(void);
 typedef enum { Y_NOT_MOVING, Y_UP, Y_DOWN } YEnd;
 
 typedef struct {
+    uint8_t sign;
+    uint8_t high;
+    uint8_t result;
+    uint8_t a;
+    bool carry_in;
+    bool carry;
+} PlayerYMove;
+
+typedef struct {
     YEnd how;
-    AxisMove move;
+    PlayerYMove move;
     FloorProbe floor;
 } YMove;
 
@@ -544,38 +553,57 @@ void abi_MovePlayerX(void)
  * this section does not let it leave.
  * HOW: A 16.8 add with the speed's sign in the high byte. A negative result with
  * PlayerMayLeaveTop clear becomes zero.
+ * WAITS: no.
  * Entry: nothing. Exit: A the position's high byte, or PlayerMayLeaveTop if it was read;
  * N and Z from A, C and V from the add. X and Y kept.
  */
-AxisMove MovePlayerY(void)
+PlayerYMove MovePlayerY(void)
 {
-    AxisMove move;
-    uint32_t after;
+    PlayerYMove result;
+    uint8_t vel_lo = rd8(OBJ_VY_LO);
+    uint8_t frac = rd8(OBJ_Y_FRAC);
+    uint8_t vel_hi;
+    uint8_t lo;
+    uint8_t sign;
+    uint8_t hi;
+    unsigned sum;
 
-    move.velocity = (int16_t)read16(OBJ_VY_LO, OBJ_VY_HI);
-    move.before = read16(OBJ_Y_FRAC, OBJ_Y_LO) | ((uint32_t)rd8(OBJ_Y_HI) << 16);
-    after = move.before + (uint32_t)(int32_t)move.velocity;
-    write16(OBJ_Y_FRAC, OBJ_Y_LO, (uint16_t)after);
-    wr8(OBJ_Y_HI, (uint8_t)(after >> 16));
-    if ((after & 0x800000) && rd8(PlayerMayLeaveTop) == 0)
-        PlayerAtTop();
-    return move;
+    sum = (unsigned)vel_lo + frac;
+    wr8(OBJ_Y_FRAC, (uint8_t)sum);
+    vel_hi = rd8(OBJ_VY_HI);
+    lo = rd8(OBJ_Y_LO);
+    sum = (unsigned)vel_hi + lo + (sum >> 8);
+    wr8(OBJ_Y_LO, (uint8_t)sum);
+    sign = (rd8(OBJ_VY_HI) & 0x80) ? 0xFF : 0x00;
+    hi = rd8(OBJ_Y_HI);
+    result.carry_in = (sum >> 8) != 0;
+    result.sign = sign;
+    result.high = hi;
+    sum = (unsigned)sign + hi + result.carry_in;
+    result.result = (uint8_t)sum;
+    result.carry = sum > 0xFF;
+    wr8(OBJ_Y_HI, result.result);
+    result.a = result.result;
+    if (result.result & 0x80) {
+        result.a = rd8(PlayerMayLeaveTop);
+        if (result.a == 0) {
+            wr8(OBJ_Y_LO, 0);
+            wr8(OBJ_Y_HI, 0);
+            wr8(OBJ_Y_FRAC, 0);
+        }
+    }
+    return result;
 }
 
 /* C and V from the high byte's add; A that byte, or PlayerMayLeaveTop if it was read. */
-static Alu move_y_exit_shim(AxisMove move)
+static Alu move_y_exit_shim(PlayerYMove move)
 {
-    uint32_t added = (uint32_t)(int32_t)move.velocity & 0xFFFFFF;
-    uint32_t sum = move.before + added;
-    uint8_t sign = (uint8_t)(added >> 16);
-    uint8_t high = (uint8_t)(move.before >> 16);
-    uint8_t result = (uint8_t)(sum >> 16);
     Alu exit = { 0 };
 
-    exit.a = (result & 0x80) ? rd8(PlayerMayLeaveTop) : result;
+    exit.a = move.a;
     exit.nz = exit.a;
-    exit.c = sum > 0xFFFFFF;
-    exit.v = (~(sign ^ high) & (sign ^ result) & 0x80) != 0;
+    exit.c = move.carry;
+    exit.v = (~(move.sign ^ move.high) & (move.sign ^ move.result) & 0x80) != 0;
     exit.v_set = true;
     return exit;
 }
@@ -1752,18 +1780,22 @@ void abi_PlayerXOnScreen(void)
  * @run 6A:6A88
  * WHAT IT DOES: Accepts the Y position worked out in zTemp04-06, with its high byte.
  * HOW: Copies it to the position.
+ * WAITS: no.
  * Entry: zTemp04-06. Exit: A the high byte, N and Z from it. X, Y, C, V kept.
  */
-void PlayerYFromNextWord(void)
+uint8_t PlayerYFromNextWord(void)
 {
+    uint8_t high;
+
     position_from_next(&axis_y);
-    wr8(OBJ_Y_HI, rd8(zTemp06));
+    high = rd8(zTemp06);
+    wr8(OBJ_Y_HI, high);
+    return high;
 }
 
 void abi_PlayerYFromNextWord(void)
 {
-    PlayerYFromNextWord();
-    cpu.a = rd8(zTemp06);
+    cpu.a = PlayerYFromNextWord();
     abi_nz(cpu.a);
 }
 

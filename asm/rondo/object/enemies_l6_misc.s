@@ -115,6 +115,29 @@ FallThenStopForRaster:
 FallThenStopForRaster_at0:
     rts
 
+; @routine 0E0B:19A StepListB1BAThenSound
+; @run 70:B19A
+; WHAT IT DOES: Steps the animation list at $B1BA; when it ends it sends sound $46, sets sprite set 4 and frame 1 and goes on to the next OBJ_2800.
+; HOW: StepObjectFrames, SoundCommand, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+StepListB1BAThenSound:
+    lda #$BA
+    sta z:zTemp10
+    lda #$B1
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepListB1BAThenSound_at0
+    lda #$46
+    jsr VecSoundCommand
+    lda #$04
+    sta a:OBJ_2A10,x
+    lda #$01
+    sta a:OBJ_2A68,x
+    inc a:OBJ_2800,x
+StepListB1BAThenSound_at0:
+    rts
+
 ; @routine 0E0B:237 StepListB25CThenStartList
 ; @run 70:B237
 ; WHAT IT DOES: Steps the animation list at $B25C; when it ends it starts the script list $82 on channel 5, sets bit 2 of zField8E, sets OBJ_3250 to 2 and goes on to the next state.

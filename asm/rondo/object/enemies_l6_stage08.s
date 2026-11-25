@@ -300,6 +300,23 @@ StartFallWithFrame21:
     inc a:OBJ_2800,x
     rts
 
+; @routine 088B:098 FallThenSoundAtPeak
+; @run 70:B098
+; WHAT IT DOES: Applies gravity and moves the object; once its Y speed high byte is not negative it sends sound $9A and goes on to the next OBJ_2800.
+; HOW: ApplyGravity, ApplyVelocity, SoundCommand, an INC.
+; WAITS: no.
+; Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
+FallThenSoundAtPeak:
+    jsr VecApplyGravity
+    jsr VecApplyVelocity
+    lda a:OBJ_VY_HI,x
+    bmi FallThenSoundAtPeak_at0
+    lda #$9A
+    jsr VecSoundCommand
+    inc a:OBJ_2800,x
+FallThenSoundAtPeak_at0:
+    rts
+
 ; @routine 088B:21D TurnAroundInState9
 ; @run 70:B21D
 ; WHAT IT DOES: Sets the object's state to 9 and reverses its X speed (a tail jump into NegateVelocityX).

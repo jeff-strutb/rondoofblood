@@ -755,3 +755,48 @@ void abi_LoadThenStartFiveFromTable(void)
 {
     abi_ended(LoadThenStartFiveFromTable(cpu.x));
 }
+
+/*
+ * @routine 088B:098 FallThenSoundAtPeak
+ * @run 70:B098
+ * WHAT IT DOES: Applies gravity and moves the object; once its Y speed high byte is not negative it sends sound $9A and goes on to the next OBJ_2800.
+ * HOW: ApplyGravity, ApplyVelocity, SoundCommand, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
+ */
+SoundEnd FallThenSoundAtPeak(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    GravityResult gravity;
+    AxisMove move;
+    uint8_t speed, phase;
+    Ended e;
+
+    jsr_push(0xB09B);
+    gravity = ApplyGravity(slot);
+    jsr_pop();
+    jsr_push(0xB09E);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    (void)gravity;
+    speed = RD8(OBJ->vy_hi[slot]);
+    e = then(then(ended_of_axis_move(move), ended_load(speed)), ended_kept());
+    if ((speed & 0x80) != 0) {
+        r.end = e;
+        return r;
+    }
+    r.before = then(e, ended_load(0x9A));
+    r.sounded = true;
+    r.command = 0x9A;
+    jsr_push(0xB0A8);
+    r.call = SoundCommand(0x9A, slot, y_entry);
+    jsr_pop();
+    phase = INC8(OBJ->f2800[slot]);
+    r.end = ended_nz(phase);
+    return r;
+}
+
+void abi_FallThenSoundAtPeak(void)
+{
+    abi_sound_end(FallThenSoundAtPeak(cpu.x, cpu.y));
+}

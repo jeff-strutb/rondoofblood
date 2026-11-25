@@ -580,3 +580,46 @@ void abi_CopyPlaceAndHitBoxOfSlot10(void)
 {
     abi_ended(CopyPlaceAndHitBoxOfSlot10(cpu.x));
 }
+
+/*
+ * @routine 0E0B:19A StepListB1BAThenSound
+ * @run 70:B19A
+ * WHAT IT DOES: Steps the animation list at $B1BA; when it ends it sends sound $46, sets sprite set 4 and frame 1 and goes on to the next OBJ_2800.
+ * HOW: StepObjectFrames, SoundCommand, stores, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+ */
+SoundEnd StepListB1BAThenSound(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    FrameStep step;
+    uint8_t y = y_entry, phase;
+    Ended e;
+
+    WR8(ZP->temp10, 0xBA);
+    WR8(ZP->temp11, 0xB1);
+    jsr_push(0xB1A5);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        r.end = e;
+        return r;
+    }
+    r.before = then(e, ended_load(0x46));
+    r.sounded = true;
+    r.command = 0x46;
+    jsr_push(0xB1AC);
+    r.call = SoundCommand(0x46, slot, y);
+    jsr_pop();
+    WR8(OBJ->sprite_set[slot], 4);
+    WR8(OBJ->frame[slot], 1);
+    phase = INC8(OBJ->f2800[slot]);
+    r.end = then(ended_load(1), ended_nz(phase));
+    return r;
+}
+
+void abi_StepListB1BAThenSound(void)
+{
+    abi_sound_end(StepListB1BAThenSound(cpu.x, cpu.y));
+}

@@ -685,3 +685,188 @@ void abi_TileHalfStepBAt9AA7(void)
 {
     abi_ended(TileHalfStepBAt9AA7(cpu.a));
 }
+
+/*
+ * @routine 01BE:567 MoveObjectUpBySigned
+ * @run 6E:CD67
+ * WHAT IT DOES: Moves the object up the screen by the signed amount in zTemp02: its Y position less the amount,
+ * sign extended into the high byte.
+ * HOW: A 16-bit subtract of zTemp02, read again for the low byte; the high byte takes the borrow, less 1 more when the
+ * amount is negative ($FF subtracted). The negative arm is untraced (137 of 400 cases reach it, and the draft stops
+ * there) and is written from the disc's bytes.
+ * WAITS: no.
+ * Entry: X object, zTemp02 the amount. Exit: A the Y high byte stored, N, Z, C, V from its subtract. X, Y kept.
+ */
+Ended MoveObjectUpBySigned(uint8_t slot)
+{
+    uint8_t amount = RD8(ZP->temp02);
+    uint8_t high_operand = (amount & 0x80) ? 0xFF : 0x00;
+    uint8_t y_low = RD8(OBJ->y_lo[slot]);
+    uint8_t taken = RD8(ZP->temp02);
+    Sum low, high;
+
+    low = sub_bytes(y_low, taken, true);
+    WR8(OBJ->y_lo[slot], low.value);
+    high = sub_bytes(RD8(OBJ->y_hi[slot]), high_operand, low.carry);
+    WR8(OBJ->y_hi[slot], high.value);
+    return ended_of_sum(high);
+}
+
+void abi_MoveObjectUpBySigned(void)
+{
+    abi_ended(MoveObjectUpBySigned(cpu.x));
+}
+
+/*
+ * @routine 0720:4ED LoadRecordThenFrameByKind
+ * @run 6B:9CED
+ * WHAT IT DOES: Loads the object's record, then gives it frame 0 or 1 of a two byte table by bit 0 of its next kind.
+ * HOW: LoadObjectRecord, OBJ_3040 and 1, the table at $9CFD; falls into the RTS at $9CFC's neighbour.
+ * WAITS: no.
+ * Entry: X object. Exit: A the frame, N and Z from it, Y the index, C from the load of the record. X kept.
+ */
+Ended LoadRecordThenFrameByKind(uint8_t slot)
+{
+    uint8_t last, nz, kind, index, frame;
+    bool carry;
+    Ended e;
+
+    jsr_push(0x9CF0);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    kind = RD8(OBJ->next_kind[slot]);
+    index = (uint8_t)(kind & 1);
+    frame = rd8((uint16_t)(0x9CFD + index));
+    WR8(OBJ->frame[slot], frame);
+    return ended_then(e, ended_with_y(ended_load(frame), index));
+}
+
+void abi_LoadRecordThenFrameByKind(void)
+{
+    abi_ended(LoadRecordThenFrameByKind(cpu.x));
+}
+
+/*
+ * @routine 0E00:092 StoreHitFromTable
+ * @run 6B:9892
+ * WHAT IT DOES: Gives the object's hit timer OBJ_33B0 the byte of OBJ_3828 at the slot in Y.
+ * HOW: One read, one write.
+ * WAITS: no.
+ * Entry: X object, Y the slot. Exit: A the byte, N and Z from it.
+ */
+Ended StoreHitFromTable(uint8_t slot, uint8_t y)
+{
+    uint8_t value = RD8(OBJ->f3828[y]);
+
+    WR8(OBJ->hit_taken[slot], value);
+    return ended_load(value);
+}
+
+void abi_StoreHitFromTable(void)
+{
+    abi_ended(StoreHitFromTable(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0E00:07A ReportHitToStage
+ * @run 6B:987A
+ * WHAT IT DOES: Copies the stream count's two bytes and the hitbox X and Y of slot 3 to the stage's four byte report,
+ * then gives the object's hit timer its byte.
+ * HOW: Four read and write pairs, then goes on to StoreHitFromTable.
+ * WAITS: no.
+ * Entry: X object, Y the slot. Exit: as StoreHitFromTable.
+ */
+Ended ReportHitToStage(uint8_t slot, uint8_t y)
+{
+    uint8_t value;
+
+    value = rd8(WorkByteA);
+    wr8(StageHitReport, value);
+    value = rd8(WorkByteB);
+    wr8(StageHitReport + 1, value);
+    value = RD8(HITBOX->x_lo[3]);
+    wr8(StageHitReport + 2, value);
+    value = RD8(HITBOX->y_lo[3]);
+    wr8(StageHitReport + 3, value);
+    return StoreHitFromTable(slot, y);
+}
+
+void abi_ReportHitToStage(void)
+{
+    abi_ended(ReportHitToStage(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0720:076 ReportHitUnlessTwo
+ * @run 6B:9876
+ * WHAT IT DOES: Reports the hit to the stage unless the kind just stored in OBJ_38D8 is 2.
+ * HOW: CMP #2 on A; equal returns, otherwise goes on to ReportHitToStage.
+ * WAITS: no.
+ * Entry: A the kind, X object, Y the slot. Exit: equal: A and N, Z, C from the compare; otherwise as StoreHitFromTable.
+ */
+Ended ReportHitUnlessTwo(uint8_t kind, uint8_t slot, uint8_t y)
+{
+    Ended e = ended_compare(kind, 2);
+
+    if (kind == 2) {
+        return e;
+    }
+    return ended_then(e, ReportHitToStage(slot, y));
+}
+
+void abi_ReportHitUnlessTwo(void)
+{
+    abi_ended(ReportHitUnlessTwo(cpu.a, cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0720:099 HitKindFromBit1
+ * @run 6B:9899
+ * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 1 of the object's OBJ_3148, then reports the hit.
+ * HOW: AND #2, LSR, INC, one store, then ReportHitUnlessTwo.
+ * WAITS: no.
+ * Entry: X object, Y the slot. Exit: as ReportHitUnlessTwo.
+ */
+Ended HitKindFromBit1(uint8_t slot, uint8_t y)
+{
+    uint8_t flags = RD8(OBJ->f3148[slot]);
+    uint8_t kind = (uint8_t)(((flags & 2) >> 1) + 1);
+
+    WR8(OBJ->f38d8[y], kind);
+    return ReportHitUnlessTwo(kind, slot, y);
+}
+
+void abi_HitKindFromBit1(void)
+{
+    abi_ended(HitKindFromBit1(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 05C0:0A5 HitKindFromBit7
+ * @run 6B:98A5
+ * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_3148; kind 2 also sets the
+ * slot's OBJ_3828 to 5; then reports the hit.
+ * HOW: AND #$80 rotated twice, AND #1, INC, one store, CMP #2; the report as ReportHitToStage.
+ * WAITS: no.
+ * Entry: X object, Y the slot. Exit: as StoreHitFromTable.
+ */
+Ended HitKindFromBit7(uint8_t slot, uint8_t y)
+{
+    uint8_t flags = RD8(OBJ->f3148[slot]);
+    uint8_t kind = (uint8_t)((((flags & 0x80) ? 1 : 0)) + 1);
+    Ended e;
+
+    WR8(OBJ->f38d8[y], kind);
+    e = ended_compare(kind, 2);
+    if (kind == 2) {
+        WR8(OBJ->f3828[y], 5);
+        e = ended_load(5);
+    }
+    return ended_then(e, ReportHitToStage(slot, y));
+}
+
+void abi_HitKindFromBit7(void)
+{
+    abi_ended(HitKindFromBit7(cpu.x, cpu.y));
+}

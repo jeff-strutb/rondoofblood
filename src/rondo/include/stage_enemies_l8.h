@@ -374,5 +374,6 @@ Ended BossFrameRoutines(uint8_t slot, uint8_t y_entry);
 Ended HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry);
 Ended BossFrameRoutinesB(uint8_t slot, uint8_t y_entry);
 Ended SpawnRowsWhenScrollAtZero(uint8_t slot);
+Ended CountDownThenStartPieceInSlots18To1B(uint8_t slot);
 
 #endif

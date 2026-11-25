@@ -46,6 +46,55 @@ MaybeDropItemByPlayerDistance1019:
     jsr VecStartObjectAtPlace
     rts
 
+; @routine 101B:296 CountDownThenStartPieceInSlots18To1B
+; @run 70:B296
+; WHAT IT DOES: In state 0 loads the record. Later, once the player's screen position (OBJ_X_LO of slot 0 plus the scroll) is past page 4, it counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero it clears the first empty slot of $18 to $1B and starts an object of type $28 there at its place with OBJ_34B8 1 and OBJ_3510 $20.
+; HOW: LoadObjectRecord, a 16-bit add and subtract, a search, ClearObjectInY, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object. Exit: as the last instruction that ran. The exit when no slot is empty ran in no script.
+CountDownThenStartPieceInSlots18To1B:
+    lda a:OBJ_27A8,x
+    bne CountDownThenStartPieceInSlots18To1B_at0
+    jmp VecLoadObjectRecord
+CountDownThenStartPieceInSlots18To1B_at0:
+    lda a:OBJ_X_LO
+    clc
+    adc a:ScrollXLo
+    sta z:zTemp00
+    lda a:OBJ_X_HI
+    adc a:ScrollXHiScreen
+    cmp #$04
+    bcc CountDownThenStartPieceInSlots18To1B_at1
+    lda a:OBJ_34B8,x
+    ora a:OBJ_3510,x
+    beq ClearSlot4EUnlessCamera18
+    lda a:OBJ_3510,x
+    sec
+    sbc #$01
+    sta a:OBJ_3510,x
+    lda a:OBJ_34B8,x
+    sbc #$00
+    sta a:OBJ_34B8,x
+    rts
+    ldy #$18
+CountDownThenStartPieceInSlots18To1B_at3:
+    lda a:OBJ_2750,y
+    beq CountDownThenStartPieceInSlots18To1B_at2
+    iny
+    cpy #$1C
+    bcc CountDownThenStartPieceInSlots18To1B_at3
+CountDownThenStartPieceInSlots18To1B_at1:
+    rts
+CountDownThenStartPieceInSlots18To1B_at2:
+    jsr VecClearObjectInY
+    lda #$28
+    jsr VecStartObjectAtPlace
+    lda #$01
+    sta a:OBJ_34B8,x
+    lda #$20
+    sta a:OBJ_3510,x
+    rts
+
 ; @routine 101B:426 SettleWhenLowOnFirstRow
 ; @run 70:B426
 ; WHAT IT DOES: When OBJ_3670 and the Y high byte are both 0 and the Y low byte is below $D0, sets OBJ_3670 1 and clears the flash flags.

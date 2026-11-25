@@ -449,6 +449,7 @@ SoundEnd StepShootOnCue(uint8_t slot, uint8_t y);
 Ended RunObjects(uint8_t entry_x);
 uint8_t BitMaskFromIndex072A(uint8_t count);
 Jump TilePieceObject072A(uint8_t slot);
+Jump ShatterOnHits(uint8_t slot);
 Jump TilePieceInRange072A(uint8_t slot);
 Jump DrawTilePiece072A(uint8_t slot);
 

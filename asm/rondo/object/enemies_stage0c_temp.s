@@ -1384,6 +1384,61 @@ OrbitThenLeave:
 OrbitThenLeave_at0:
     rts
 
+; @routine 0CAD:0BC ShatterOnHits
+; @run 71:C0BC
+; @stop C11F
+; WHAT IT DOES: An object that breaks into a piece when hit often. State 0 loads its record and sets sprite set 6, frame 1 and X speed high 4. Once its hits taken reach 5 it
+; records its event, takes a kind from the table at $C160 by the player's stock (at most 4), clears its state, speeds and parts, sets Y speed high $FB and its timer
+; to $16 and starts a kind $9B object at its place from a free slot from $50. Before that it steps the part list (StepPartList) in state 1 and
+; goes on at $C11F once the scroll X low is $80 or more; other states go on at $C135 (neither ever ran in a script).
+; HOW: LoadObjectRecord, RecordObjectEvent, FindFreeSlotFrom50, StartObjectAtPlace, StepPartList.
+; WAITS: no.
+; Entry: X object. Exit: see the wrapper.
+ShatterOnHits:
+    lda a:OBJ_27A8,x
+    bne ShatterOnHits_at0
+    jsr VecLoadObjectRecord
+    lda #$06
+    sta a:OBJ_2A10,x
+    lda #$01
+    sta a:OBJ_2A68,x
+    lda #$04
+    sta a:OBJ_VX_HI,x
+    rts
+ShatterOnHits_at0:
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc ShatterOnHits_at1
+    jsr VecRecordObjectEvent
+    ldy z:zStock
+    cpy #$04
+    bcc ShatterOnHits_at2
+    ldy #$04
+ShatterOnHits_at2:
+    lda a:$C160,y
+    sta a:OBJ_2750,x
+    stz a:OBJ_27A8,x
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$FB
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    lda #$16
+    sta a:OBJ_3A90,x
+    jsr VecFindFreeSlotFrom50
+    bcc DoNothing
+    lda #$9B
+    jmp VecStartObjectAtPlace
+ShatterOnHits_at1:
+    lda a:OBJ_27A8,x
+    dec a
+    bne $C135
+    bsr StepPartList
+    lda a:ScrollXLo
+    bpl DoNothing
+
 ; @routine 0CAD:12A StepPartList
 ; @run 71:C12A
 ; WHAT IT DOES: Steps the animation list at $C196.

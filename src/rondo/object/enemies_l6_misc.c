@@ -1006,3 +1006,98 @@ void abi_LandThenNextState(void)
 {
     land_wait_exit_shim(LandThenNextState(cpu.x, cpu.y, (cpu.p & P_C) != 0));
 }
+
+/*
+ * @routine 0E0C:045 LoadThenSwingAndDrop
+ * @run 70:B845
+ * @stop B8C0
+ * WHAT IT DOES: In state 0 loads the object's record, puts it at Y low $F0, gives it the X speed high the table at $B86D names by its facing, moves it along X, takes the other X speed high from the table at $B86F and sets OBJ_34B8 to $80. Later it sets its Y speed from the cosine of OBJ_34B8 with length $0C00, moves along Y, adds 8 to OBJ_34B8 and, when that carries, restarts it at $80, puts the object at Y low $F0, moves along X, counts OBJ_3510 up and clears the object at 5 or sets its Y position from the table at $B8C0.
+ * HOW: LoadObjectRecord, ApplyVelocityX, ScaleByCosine, ApplyVelocityY, table reads (bank 70), ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: the last instruction's registers.
+ */
+Ended LoadThenSwingAndDrop(uint8_t slot)
+{
+    ScaleResult scale;
+    AxisMove move;
+    Sum sum;
+    uint8_t state, nz, last, y, value, angle, count;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        jsr_push(0xB84D);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = then(e, ended_of_record(last, nz, carry));
+        WR8(OBJ->y_lo[slot], 0xF0);
+        y = RD8(OBJ->facing_left[slot]);
+        value = rd8((uint16_t)(0xB86D + y));
+        WR8(OBJ->vx_hi[slot], value);
+        e = then(then(then(e, ended_load(0xF0)), ended_with_y(ended_nz(y), y)), ended_load(value));
+        jsr_push(0xB85E);
+        move = ApplyVelocityX(slot);
+        jsr_pop();
+        e = then(e, ended_of_axis_move(move));
+        y = RD8(OBJ->facing_left[slot]);
+        value = rd8((uint16_t)(0xB86F + y));
+        WR8(OBJ->vx_hi[slot], value);
+        WR8(OBJ->f34b8[slot], 0x80);
+        return then(then(then(e, ended_with_y(ended_nz(y), y)), ended_load(value)), ended_load(0x80));
+    }
+    e = then(e, ended_load(0));
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, 0x0C);
+    angle = RD8(OBJ->f34b8[slot]);
+    e = then(then(e, ended_load(0x0C)), ended_load(angle));
+    jsr_push(0xB87F);
+    scale = ScaleByCosine(angle);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    value = rd8(zProduct2);
+    WR8(OBJ->vy_hi[slot], value);
+    e = then(e, ended_load(value));
+    value = rd8(zProduct1);
+    WR8(OBJ->vy_lo[slot], value);
+    e = then(e, ended_load(value));
+    jsr_push(0xB88C);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    value = RD8(OBJ->f34b8[slot]);
+    sum = add_bytes(value, 0x08, false);
+    WR8(OBJ->f34b8[slot], sum.value);
+    e = then(then(e, ended_load(value)), ended_of_sum(sum));
+    if (!sum.carry) {
+        return e;
+    }
+    WR8(OBJ->f34b8[slot], 0x80);
+    WR8(OBJ->y_lo[slot], 0xF0);
+    e = then(then(e, ended_load(0x80)), ended_load(0xF0));
+    jsr_push(0xB8A4);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    INC8(OBJ->f3510[slot]);
+    count = RD8(OBJ->f3510[slot]);
+    e = then(then(e, ended_load(count)), ended_compare(count, 5));
+    if (count >= 5) {
+        ClearObject(slot);
+        return e;
+    }
+    y = (uint8_t)(count << 1);
+    e = then(e, ended_with_carry(ended_with_y(ended_load(y), y), false));
+    value = rd8((uint16_t)(0xB8C0 + y));
+    WR8(OBJ->y_lo[slot], value);
+    e = then(e, ended_load(value));
+    value = rd8((uint16_t)(0xB8C1 + y));
+    WR8(OBJ->y_hi[slot], value);
+    return then(e, ended_load(value));
+}
+
+void abi_LoadThenSwingAndDrop(void)
+{
+    abi_ended(LoadThenSwingAndDrop(cpu.x));
+}

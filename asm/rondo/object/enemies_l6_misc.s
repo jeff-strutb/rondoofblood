@@ -391,6 +391,33 @@ StepListB5FEToState4:
     stz a:OBJ_2800,x
     rts
 
+; @routine 0E0C:045 LoadThenSwingAndDrop
+; @run 70:B845
+; @stop B8C0
+; WHAT IT DOES: In state 0 loads the object's record, puts it at Y low $F0, gives it the X speed high the table at $B86D names by its facing, moves it along X, takes the other X speed high from the table at $B86F and sets OBJ_34B8 to $80. Later it sets its Y speed from the cosine of OBJ_34B8 with length $0C00, moves along Y, adds 8 to OBJ_34B8 and, when that carries, restarts it at $80, puts the object at Y low $F0, moves along X, counts OBJ_3510 up and clears the object at 5 or sets its Y position from the table at $B8C0.
+; HOW: LoadObjectRecord, ApplyVelocityX, ScaleByCosine, ApplyVelocityY, table reads (bank 70), ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: the last instruction's registers.
+LoadThenSwingAndDrop:
+    lda a:OBJ_27A8,x
+    bne $B871
+    jsr VecLoadObjectRecord
+    lda #$F0
+    sta a:OBJ_Y_LO,x
+    ldy a:OBJ_2AC0,x
+    lda a:$B86D,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    ldy a:OBJ_2AC0,x
+    lda a:$B86F,y
+    sta a:OBJ_VX_HI,x
+    lda #$80
+    sta a:OBJ_34B8,x
+    rts
+    cpx #$20
+    cpx a:$A914
+    brk
+
 ; @routine 0E0C:128 LoadThenRiseFast
 ; @run 70:B928
 ; WHAT IT DOES: Loads the object's record, moves it up once by a Y speed high of $D8, then sets OBJ_3510 to $30 and the Y speed to $FA00.

@@ -936,8 +936,11 @@ void abi_RichterJumpPressed(void)
  */
 FootingCheck RichterHasNoFooting(void)
 {
-    FootingCheck footing = { RichterFloorCheck() };
+    FootingCheck footing = { { FLOOR_NONE } };
 
+    jsr_push(0xB888);
+    footing.check = RichterFloorCheck();
+    jsr_pop();
     if (footing.check.how == FLOOR_NONE) {
         footing.no_floor = true;
         return footing;
@@ -966,16 +969,39 @@ void abi_RichterHasNoFooting(void)
     footing_exit_shim(RichterHasNoFooting());
 }
 
-/* The point this far under him at his own X. Returns whether it is on the first page down. */
-static bool set_ladder_point(uint16_t reach)
+/* The point zTemp10-11 under him at his own X (a local subroutine of the ladder check): the high byte of the add. */
+static Sum ladder_point(void)
 {
-    uint16_t y = (uint16_t)((rd8(OBJ_Y_LO) | (rd8(OBJ_Y_HI) << 8)) + reach);
+    uint8_t value, base;
+    Sum low, high;
 
-    wr8(zTemp00, rd8(OBJ_X_LO));
-    wr8(zTemp01, 0);
-    wr8(zTemp02, (uint8_t)y);
-    wr8(zTemp03, (uint8_t)(y >> 8));
-    return (y >> 8) == 0;
+    value = RD8(OBJ->x_lo[0]);
+    WR8(ZP->temp00, value);
+    WR8(ZP->temp01, 0);
+    base = RD8(OBJ->y_lo[0]);
+    value = RD8(ZP->temp10);
+    low = add_bytes(base, value, false);
+    WR8(ZP->temp02, low.value);
+    base = RD8(OBJ->y_hi[0]);
+    value = RD8(ZP->temp11);
+    high = add_bytes(base, value, low.carry);
+    WR8(ZP->temp03, high.value);
+    return high;
+}
+
+/* The overlay's read may run its own code: it is entered with that add's A and flags (X and Y as they stand). */
+static void ladder_entry_shim(Sum high)
+{
+    read_entry_kept_shim(high);
+}
+
+static LadderCheck ladder_end(LadderCheck check, LadderEnd how, uint8_t a, uint8_t nz, bool carry)
+{
+    check.how = how;
+    check.a = a;
+    check.nz = nz;
+    check.c = carry;
+    return check;
 }
 
 /*
@@ -991,50 +1017,76 @@ static bool set_ladder_point(uint16_t reach)
 LadderCheck RichterLadderCheck(void)
 {
     LadderCheck check = { LADDER_CAMERA_NO };
-    uint8_t mode = rd8(CameraMode);
+    uint8_t value, answer;
+    Sum high, step;
 
-    if (mode == CAMERA_NO_LADDER)
-        return check;
-    if (mode == CAMERA_LADDER) {
-        check.how = LADDER_CAMERA_YES;
-        return check;
+    value = rd8(CameraMode);
+    if (value == CAMERA_NO_LADDER) {
+        return ladder_end(check, LADDER_CAMERA_NO, value, 0, false);
     }
-    if (rd8(OBJ_Y_HI) != 0) {
-        check.how = LADDER_OFF_SCREEN;
-        return check;
+    value = rd8(CameraMode);
+    if (value == CAMERA_LADDER) {
+        return ladder_end(check, LADDER_CAMERA_YES, value, 0, true);
     }
-    if (rd8(OBJ_Y_LO) >= LADDER_LOWEST_Y) {
-        check.how = LADDER_TOO_LOW;
-        return check;
+    value = RD8(OBJ->y_hi[0]);
+    if (value != 0) {
+        return ladder_end(check, LADDER_OFF_SCREEN, value, value, false);
     }
-    for (check.reach = LADDER_FIRST_REACH;; check.reach = (uint16_t)(check.reach + LADDER_STEP)) {
-        wr8(zTemp10, (uint8_t)check.reach);
-        wr8(zTemp11, 0);
-        if (check.reach > 0xFF) {
-            check.how = LADDER_REACH_OUT;
-            return check;
+    value = RD8(OBJ->y_lo[0]);
+    if (value >= LADDER_LOWEST_Y) {
+        return ladder_end(check, LADDER_TOO_LOW, value, (uint8_t)(value - LADDER_LOWEST_Y), false);
+    }
+    WR8(ZP->temp10, LADDER_FIRST_REACH);
+    WR8(ZP->temp11, 0);
+    jsr_push(0xB8B5);
+    high = ladder_point();
+    jsr_pop();
+    for (bool first = true;; first = false) {
+        if (high.value != 0) {
+            check.v_set = true;
+            check.v = high.overflow;
+            return ladder_end(check, LADDER_OFF_PAGE, high.value, high.value, false);
         }
-        if (!set_ladder_point(check.reach)) {
-            check.how = LADDER_OFF_PAGE;
-            return check;
-        }
+        ladder_entry_shim(high);
+        jsr_push(first ? 0xB8BA : 0xB8C7);
         check.last = StageTileRead();
+        jsr_pop();
         check.any_read = true;
-        if (tile_answer(check.last) & TILE_SOLID_BIT)
+        answer = (uint8_t)(tile_answer(check.last) & TILE_SOLID_BIT);
+        if (answer != 0) {
+            if (first) {
+                return ladder_end(check, LADDER_BLOCKED, answer, answer, false);
+            }
             break;
+        }
+        value = RD8(ZP->temp10);
+        step = add_bytes(LADDER_STEP, value, false);
+        WR8(ZP->temp10, step.value);
+        if (step.carry) {
+            check.v_set = true;
+            check.v = step.overflow;
+            return ladder_end(check, LADDER_REACH_OUT, step.value, step.value, false);
+        }
+        jsr_push(0xB8C2);
+        high = ladder_point();
+        jsr_pop();
     }
-    if (check.reach == LADDER_FIRST_REACH) {
-        check.how = LADDER_BLOCKED;
-        return check;
-    }
-    check.reach = (uint16_t)(check.reach - LADDER_STEP);
-    wr8(zTemp10, (uint8_t)check.reach);
-    wr8(zTemp11, (uint8_t)(check.reach >> 8));
-    set_ladder_point(check.reach);
+    value = RD8(ZP->temp10);
+    step = add_bytes(0xF8, value, false);
+    WR8(ZP->temp10, step.value);
+    value = RD8(ZP->temp11);
+    high = add_bytes(0xFF, value, step.carry);
+    WR8(ZP->temp11, high.value);
+    jsr_push(0xB8E5);
+    high = ladder_point();
+    jsr_pop();
+    ladder_entry_shim(high);
+    jsr_push(0xB8E8);
     check.last = StageTileRead();
-    check.answer = tile_answer(check.last) & TILE_LADDER_BITS;
-    check.how = LADDER_ANSWERED;
-    return check;
+    jsr_pop();
+    answer = (uint8_t)(tile_answer(check.last) & TILE_LADDER_BITS);
+    check.answer = answer;
+    return ladder_end(check, LADDER_ANSWERED, answer, answer, answer == 0);
 }
 
 bool ladder_found(LadderCheck check)
@@ -1044,54 +1096,15 @@ bool ladder_found(LadderCheck check)
 
 void ladder_exit_shim(LadderCheck check)
 {
-    uint8_t y_low = rd8(OBJ_Y_LO);
-
-    if (check.any_read)
+    if (check.any_read) {
         terrain_read_exit_shim(check.last);
-    switch (check.how) {
-    case LADDER_CAMERA_NO:
-        cpu.a = CAMERA_NO_LADDER;
-        abi_nz(0);
-        abi_flag(P_C, false);
-        break;
-    case LADDER_CAMERA_YES:
-        cpu.a = CAMERA_LADDER;
-        abi_nz(0);
-        abi_flag(P_C, true);
-        break;
-    case LADDER_OFF_SCREEN:
-        cpu.a = rd8(OBJ_Y_HI);
-        abi_nz(cpu.a);
-        abi_flag(P_C, false);
-        break;
-    case LADDER_TOO_LOW:
-        cpu.a = y_low;
-        abi_nz((uint8_t)(y_low - LADDER_LOWEST_Y));
-        abi_flag(P_C, false);
-        break;
-    case LADDER_OFF_PAGE:
-        cpu.a = rd8(zTemp03);
-        abi_nz(cpu.a);
-        abi_flag(P_C, false);
-        abi_flag(P_V, cpu.a == 0x80);
-        break;
-    case LADDER_BLOCKED:
-        cpu.a = TILE_SOLID_BIT;
-        abi_nz(cpu.a);
-        abi_flag(P_C, false);
-        break;
-    case LADDER_REACH_OUT:
-        cpu.a = (uint8_t)check.reach;
-        abi_nz(cpu.a);
-        abi_flag(P_C, false);
-        abi_flag(P_V, false);
-        break;
-    case LADDER_ANSWERED:
-        cpu.a = check.answer;
-        abi_nz(cpu.a);
-        abi_flag(P_C, check.answer == 0);
-        break;
     }
+    if (check.v_set) {
+        abi_flag(P_V, check.v);
+    }
+    cpu.a = check.a;
+    abi_nz(check.nz);
+    abi_flag(P_C, check.c);
 }
 
 void abi_RichterLadderCheck(void)
@@ -1118,8 +1131,11 @@ typedef struct {
  */
 JumpOrClimb RichterJumpOrClimb(void)
 {
-    JumpOrClimb result = { RichterJumpPressed() };
+    JumpOrClimb result = { false };
 
+    jsr_push(0xB871);
+    result.pressed = RichterJumpPressed();
+    jsr_pop();
     if (result.pressed) {
         wr8(PadForcedPressB, 0);
         result.held = rd8(zPadHeld);
@@ -1251,28 +1267,43 @@ void abi_RichterLedgeCheck(void)
 ColumnLift RichterLiftByColumn(uint8_t column)
 {
     uint16_t depth_field = (uint16_t)(RichterColumnRow + column);
-    ColumnLift lift;
-    uint16_t lifted;
+    ColumnLift lift = { false, 0, 0, 0, false, false };
+    uint8_t value, y_lo, y_hi;
+    Sum low, high;
 
-    lift.depth = (uint16_t)(int16_t)(int8_t)rd8(depth_field);
-    lift.y = (uint16_t)(rd8(OBJ_Y_LO) | (rd8(OBJ_Y_HI) << 8));
-    lifted = (uint16_t)(lift.y - lift.depth);
-    wr8(zTemp10, (uint8_t)(lift.depth >> 8));
-    lift.off_the_top = (lifted & 0x8000) != 0;
-    wr8(OBJ_Y_LO, lift.off_the_top ? FLOOR_TOP_OF_MAP : (uint8_t)lifted);
-    wr8(OBJ_Y_HI, lift.off_the_top ? 0 : (uint8_t)(lifted >> 8));
+    WR8(ZP->temp10, 0);
+    value = rd8(depth_field);
+    if (value & 0x80) {
+        DEC8(ZP->temp10);
+    }
+    y_lo = RD8(OBJ->y_lo[0]);
+    value = rd8(depth_field);
+    low = sub_bytes(y_lo, value, true);
+    WR8(OBJ->y_lo[0], low.value);
+    y_hi = RD8(OBJ->y_hi[0]);
+    value = RD8(ZP->temp10);
+    high = sub_bytes(y_hi, value, low.carry);
+    WR8(OBJ->y_hi[0], high.value);
+    lift.c = high.carry;
+    lift.v = high.overflow;
+    if (high.value & 0x80) {
+        WR8(OBJ->y_lo[0], FLOOR_TOP_OF_MAP);
+        WR8(OBJ->y_hi[0], 0);
+        lift.off_the_top = true;
+        lift.a = FLOOR_TOP_OF_MAP;
+    } else {
+        lift.a = high.value;
+    }
     wr8(depth_field, 0);
     return lift;
 }
 
 void column_lift_exit_shim(ColumnLift lift)
 {
-    uint16_t lifted = (uint16_t)(lift.y - lift.depth);
-
-    cpu.a = lift.off_the_top ? FLOOR_TOP_OF_MAP : (uint8_t)(lifted >> 8);
+    cpu.a = lift.a;
     abi_nz(cpu.a);
-    abi_flag(P_C, lift.y >= lift.depth);
-    abi_flag(P_V, ((lift.y ^ lift.depth) & (lift.y ^ lifted) & 0x8000) != 0);
+    abi_flag(P_C, lift.c);
+    abi_flag(P_V, lift.v);
 }
 
 void abi_RichterLiftByColumn(void)
@@ -1290,8 +1321,11 @@ void abi_RichterLiftByColumn(void)
  */
 LandingLift RichterLandOnFloor(void)
 {
-    LandingLift landing = { RichterFloorCheck() };
+    LandingLift landing = { { FLOOR_NONE } };
 
+    jsr_push(0xBA7D);
+    landing.check = RichterFloorCheck();
+    jsr_pop();
     if (landing.check.how == FLOOR_NONE)
         return landing;
     landing.lifted = true;

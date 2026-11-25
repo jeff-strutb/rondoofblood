@@ -9,6 +9,7 @@
 #include "common_objects.h"
 #include "enemy_objects.h"
 #include "stage_enemies_l8.h"
+#include "front_end.h"
 
 static Ended then(Ended e, Ended next)
 {
@@ -308,4 +309,92 @@ Ended HoldScrollStepThenNextState(uint8_t slot)
 void abi_HoldScrollStepThenNextState(void)
 {
     abi_ended(HoldScrollStepThenNextState(cpu.x));
+}
+
+/* LoadRecordOrStartStageWith's result: the exit before the track call, whether the music was restarted and the call. */
+typedef struct {
+    Ended pre;
+    bool played;
+    TrackPlay track;
+} StartBossEnd;
+
+/*
+ * @routine 025A:730 StartBossWhenStageC0OrLoad
+ * @run 70:AF30
+ * WHAT IT DOES: Sets the fixed fields (SetBossFixedFields). When the requested stage zStageRequested is $C0 it starts list $84 on channel 0 and script $8E in slot 5, clears the enemy slots, clears the frames of slots $56 and $57, starts five objects of type $2B from the slots 0 to 4 into free slots of $30 to $3F (OBJ_3040 the number), advances ScrollXHi+1 and plays the track again (CdPlayAgain). Otherwise it loads the object's record, sets OBJ_34B8 $80 and advances ScrollXHi+1.
+ * HOW: SetBossFixedFields, StartListChannelKind2, StartScriptSlotKind1, ClearEnemySlots, a loop of FindFreeSlotFrom30 and StartObjectAtPlace, CdPlayAgain, LoadObjectRecord.
+ * WAITS: no. (CdPlayAgain starts a disc command; it does not wait.)
+ * Entry: X object, Y kept for the track call. Exit: as the last instruction that ran. The $C0 arm ran in no script; the draft stops there and the arm is written from the decoded bytes.
+ */
+void ClearEnemySlots(uint8_t entry_x);  /* object/lifecycle.c */
+
+static StartBossEnd start_boss_when_stage_c0(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t stage, last, nz, x, found_slot, placed;
+    bool carry, found;
+    StartBossEnd r;
+    Ended e;
+
+    r.played = false;
+    jsr_push(0xAF33);
+    e = SetBossFixedFields();
+    jsr_pop();
+    stage = RD8(ZP->stage_requested);
+    e = then(e, ended_compare(stage, 0xC0));
+    if (stage != 0xC0) {
+        jsr_push(0xAF6D);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = then(e, ended_of_record(last, nz, carry));
+        WR8(OBJ->f34b8[slot], 0x80);
+        e = then(e, ended_load(0x80));
+        r.pre = then(e, ended_nz(INC8(SCROLL->x_hi[1])));
+        return r;
+    }
+    push8(slot);
+    jsr_push(0xAF40);
+    StartListChannelKind2(0x84, 0);
+    jsr_pop();
+    jsr_push(0xAF47);
+    StartScriptSlotKind1(0x8E, 5);
+    jsr_pop();
+    jsr_push(0xAF4A);
+    ClearEnemySlots(5);
+    jsr_pop();
+    WR8(OBJ->frame[0x56], 0);
+    WR8(OBJ->frame[0x57], 0);
+    for (x = 0; x != 5; x++) {
+        jsr_push(0xAF54);
+        found_slot = FindFreeSlotFrom30(&last, &found);
+        jsr_pop();
+        jsr_push(0xAF59);
+        placed = StartObjectAtPlace(0x2B, x, found_slot);
+        jsr_pop();
+        WR8(OBJ->f3040[found_slot], x);
+        (void)placed;
+    }
+    slot = pull8();
+    e = then(then(e, ended_with_y(l8_compare_y(5, 5), 0)), ended_nz(slot));
+    e = then(e, ended_nz(INC8(SCROLL->x_hi[1])));
+    jsr_push(0xAF69);
+    r.track = CdPlayAgain(slot, y_entry);
+    jsr_pop();
+    r.played = true;
+    r.pre = e;
+    return r;
+}
+
+Ended StartBossWhenStageC0OrLoad(uint8_t slot, uint8_t y_entry)
+{
+    return start_boss_when_stage_c0(slot, y_entry).pre;
+}
+
+void abi_StartBossWhenStageC0OrLoad(void)
+{
+    StartBossEnd r = start_boss_when_stage_c0(cpu.x, cpu.y);
+
+    abi_ended(r.pre);
+    if (r.played) {
+        play_track_exit_shim(r.track);
+    }
 }

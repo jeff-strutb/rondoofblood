@@ -58,6 +58,48 @@ SetBossFixedFields:
     sta a:OBJ_3568
     rts
 
+; @routine 025A:730 StartBossWhenStageC0OrLoad
+; @run 70:AF30
+; WHAT IT DOES: Sets the fixed fields (SetBossFixedFields). When the requested stage zStageRequested is $C0 it starts list $84 on channel 0 and script $8E in slot 5, clears the enemy slots, clears the frames of slots $56 and $57, starts five objects of type $2B from the slots 0 to 4 into free slots of $30 to $3F (OBJ_3040 the number), advances ScrollXHi+1 and plays the track again (CdPlayAgain). Otherwise it loads the object's record, sets OBJ_34B8 $80 and advances ScrollXHi+1.
+; HOW: SetBossFixedFields, StartListChannelKind2, StartScriptSlotKind1, ClearEnemySlots, a loop of FindFreeSlotFrom30 and StartObjectAtPlace, CdPlayAgain, LoadObjectRecord.
+; WAITS: no. (CdPlayAgain starts a disc command; it does not wait.)
+; Entry: X object, Y kept for the track call. Exit: as the last instruction that ran. The $C0 arm ran in no script; the draft stops there and the arm is written from the decoded bytes.
+StartBossWhenStageC0OrLoad:
+    jsr SetBossFixedFields
+    lda z:zStageRequested
+    cmp #$C0
+    bne StartBossWhenStageC0OrLoad_at0
+    phx
+    clx
+    lda #$84
+    jsr VecStartListChannelKind2
+    ldx #$05
+    lda #$8E
+    jsr VecStartScriptSlotKind1
+    jsr VecClearEnemySlots
+    stz a:$2ABE
+    stz a:$2ABF
+    clx
+StartBossWhenStageC0OrLoad_at1:
+    jsr VecFindFreeSlotFrom30
+    lda #$2B
+    jsr VecStartObjectAtPlace
+    txa
+    sta a:OBJ_3040,y
+    inx
+    cpx #$05
+    bne StartBossWhenStageC0OrLoad_at1
+    plx
+    inc a:ScrollXHi+1
+    jsr VecCdPlayAgain
+    rts
+StartBossWhenStageC0OrLoad_at0:
+    jsr VecLoadObjectRecord
+    lda #$80
+    sta a:OBJ_34B8,x
+    inc a:ScrollXHi+1
+    rts
+
 ; @routine 025A:776 CountdownThenNextState
 ; @run 70:AF76
 ; WHAT IT DOES: Sets the fixed fields; counts the object's OBJ_34B8 down; at zero clears it and goes to the next state; before that it may spawn a piece.
@@ -98,7 +140,7 @@ SpawnPiece21Mask1F:
 ; Entry: A the mask, X object. Exit: the AND, or the start's A and N, Z with Y and C from the slot search.
 SpawnPiece21UnlessMasked:
     and a:ScrollXLo+5
-    bne HoldScrollStepThenNextState_at0
+    bne $AFDD
     jsr VecFindFreeSlotFrom30
     lda #$21
     jmp VecStartObjectAtPlace
@@ -120,10 +162,10 @@ CountdownThenSpawnPieces_at0:
     lda a:ScrollXLo+5
     and #$7F
     cmp #$40
-    bne HoldScrollStepThenNextState_at0
+    bne $AFDD
     jsr VecNextRandom
     and #$03
-    bne HoldScrollStepThenNextState_at0
+    bne $AFDD
     jsr VecFindFreeSlotFrom30
     lda #$21
     jsr VecStartObjectAtPlace
@@ -143,12 +185,11 @@ HoldScrollStepThenNextState:
     stz a:ScrollStepXHi+1
     lda a:ScrollXHi+1
     inc a
-    bne HoldScrollStepThenNextState_at1
+    bne HoldScrollStepThenNextState_at0
     lda a:ScrollXLo+1
     cmp #$80
     beq SetTimerThenNextState
-HoldScrollStepThenNextState_at1:
-    dec a:ScrollStepXHi+1
-    dec a:ScrollStepXHi+1
 HoldScrollStepThenNextState_at0:
+    dec a:ScrollStepXHi+1
+    dec a:ScrollStepXHi+1
     rts

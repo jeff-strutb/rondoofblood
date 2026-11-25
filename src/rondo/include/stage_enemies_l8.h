@@ -21,6 +21,15 @@ static inline Ended l8_of_angle(AngleExit r)
     return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(r.a), r.c), r.v), r.y);
 }
 
+/* ApplyGravity and ApplyGravityUnlimited as gravity_exit_shim leaves the registers. */
+static inline Ended l8_of_gravity(GravityResult g)
+{
+    if (g.gained) {
+        return ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(g.carried ? g.high : g.low), g.low), g.carried), g.overflow);
+    }
+    return ended_with_carry(ended_with_a(ended_nz((uint8_t)(g.high - 7)), g.high), true);
+}
+
 /* A script slot start: A and Y the script, N and Z from it. */
 static inline Ended l8_of_script(uint8_t script)
 {
@@ -310,5 +319,14 @@ Ended MoveUpUntilY40(uint8_t slot);
 Ended CountDownThenCopyPhase(uint8_t slot);
 Ended ResetPieceAndAdvance(uint8_t slot);
 SoundEnd BreakIntoPiecesAtFifthHit(uint8_t slot, uint8_t y_entry);
+
+/* object/enemies_l8_st22.c */
+Ended OrbitCosineSineThenSettle(uint8_t slot);
+Ended ResetOrbitAndAdvance(uint8_t slot);
+Ended OrbitWithRisingSineThenSettle(uint8_t slot);
+Ended StepListByNumberTable(uint8_t slot, uint8_t y_entry);
+Ended ClearAnimationThenStepListByNumber(uint8_t slot, uint8_t y_entry);
+Ended StartPieceABInFreeSlot(uint8_t slot);
+SoundEnd LoadRecordFrameByKindThenFall(uint8_t slot, uint8_t y_entry);
 
 #endif

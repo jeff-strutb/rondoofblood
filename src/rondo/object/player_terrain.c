@@ -54,6 +54,10 @@ TileRead RichterReadAbove(uint8_t row, bool on_the_map)
     if (high != 0)
         return read_point_or_nothing(true);
     wr8(zTemp01, 0);
+    cpu.a = 0; /* the read may run the overlay's own code, entered with the add's A and flags */
+    abi_nz(0);
+    abi_flag(P_C, on_the_map);
+    abi_flag(P_V, false);
     return read_point_or_nothing(false);
 }
 
@@ -71,6 +75,9 @@ static void read_or_nothing_exit_shim(TileRead read, bool read_made)
 
 void read_above_exit_shim(TileRead read, bool on_the_map)
 {
+    if (on_the_map && read.kind == TILE_BY_ORIGINAL) {
+        return;
+    }
     abi_flag(P_V, false);
     abi_flag(P_C, on_the_map);
     if (!on_the_map)

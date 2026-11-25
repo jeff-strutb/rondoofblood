@@ -3,6 +3,7 @@
 ; WHAT IT DOES: Says whether one column of terrain, $0E below Richter, is solid to stand on:
 ; a tile with bit 7 set does not count.
 ; HOW: Bit 0 of the answer, unless bit 7 is set.
+; WAITS: no.
 ; Entry: X column. Exit: A the answer, N and Z from it. X kept; Y, C and V from the read.
 RichterSolidUnderColumn:
     jsr RichterColumnOffset
@@ -23,6 +24,7 @@ RichterSolidUnderColumn_at0:
 ; @run 6D:AA48
 ; WHAT IT DOES: Reads the terrain straight under his feet, $1E below his position.
 ; HOW: His own X with no column's offset.
+; WAITS: no.
 ; Entry: nothing. Exit: as the read.
 RichterReadUnderFeet:
     lda a:OBJ_X_LO
@@ -37,6 +39,7 @@ RichterReadUnderFeet:
 ; WHAT IT DOES: Reads the terrain at a row that may lie above the map: a row off the top
 ; reads as nothing.
 ; HOW: The row's add, with its carry, decides the point's Y high byte; only zero is read.
+; WAITS: no.
 ; Entry: A row, C its add's carry: set while the row stays on the map. zTemp00 X. Exit: as the
 ; read, or A 0 with N and Z from the add.
 RichterReadAbove:
@@ -44,20 +47,20 @@ RichterReadAbove:
     cla
     adc #$FF
     sta z:zTemp03
-    bne RichterReadBelow_at0
-    bra RichterReadBelow_at1
+    bne $B6E8
+    bra $B6E3
 
 ; @routine 01BB:6DD RichterReadBelow
 ; @run 6D:B6DD
 ; WHAT IT DOES: Reads the terrain at a row on the first screen down: a row past it reads as
 ; nothing.
 ; HOW: The carry from the row's add says it passed; otherwise X and Y high bytes are zero.
+; WAITS: no.
 ; Entry: A row, C its add's carry, zTemp00 X. Exit: as the read, or A 0 with N, Z, C and V kept.
 RichterReadBelow:
     sta z:zTemp02
     bcs RichterReadBelow_at0
     stz z:zTemp03
-RichterReadBelow_at1:
     stz z:zTemp01
     jmp FrameOverlay8006
 RichterReadBelow_at0:
@@ -68,28 +71,31 @@ RichterReadBelow_at0:
 ; @run 6D:B6EA
 ; WHAT IT DOES: Reads the terrain at a row, the Y high byte taken from Richter's own.
 ; HOW: His Y high byte plus the carry from the row's add.
+; WAITS: no.
 ; Entry: A row, C its add's carry, zTemp00 X. Exit: as the read.
 RichterReadOnScreen:
     sta z:zTemp02
     cla
     adc a:OBJ_Y_HI
     sta z:zTemp03
-    bra RichterReadBelow_at1
+    bra $B6E3
 
 ; @routine 01BB:6F4 RichterReadIfOnPage
 ; @run 6D:B6F4
 ; WHAT IT DOES: Reads the terrain at the point in zTemp00-03, unless the Y high byte just
 ; added is not zero.
 ; HOW: Tests what the caller's add left.
+; WAITS: no.
 ; Entry: Z from that byte, zTemp00-03 the point. Exit: as the read, or A 0 with N and Z kept.
 RichterReadIfOnPage:
-    bne RichterReadBelow_at0
+    bne $B6E8
     jmp FrameOverlay8006
 
 ; @routine 01BB:6F9 RichterColumnOffset
 ; @run 6D:B6F9
 ; WHAT IT DOES: Gives how far across a probe's column lies, by column and facing.
 ; HOW: A table of pairs, one for each way he faces.
+; WAITS: no.
 ; Entry: X column. Exit: A the offset, N and Z from it, Y its index, C and V from the index's
 ; add. X kept.
 RichterColumnOffset:
@@ -105,12 +111,12 @@ RichterColumnOffset:
 ; @run 6D:B868
 ; WHAT IT DOES: Says whether up is held.
 ; HOW: Bit 6 of zPadHeld.
+; WAITS: no.
 ; Entry: nothing. Exit: C the answer. All else kept.
 RichterUpHeld:
-    bbs6 zPadHeld,RichterUpHeld_at0
+    bbs6 zPadHeld,StartChainLink
     clc
     rts
-RichterUpHeld_at0:
     sec
     rts
 
@@ -119,26 +125,27 @@ RichterUpHeld_at0:
 ; WHAT IT DOES: Says whether jump was pressed and he may act on it: with up held, only if there
 ; is a ladder to take.
 ; HOW: RichterJumpPressed, then RichterLadderCheck when up is held; the latched buttons clear.
+; WAITS: no.
 ; Entry: nothing. Exit: C the answer, with what the last step left.
 RichterJumpOrClimb:
     bsr RichterJumpPressed
-    bcc RichterJumpPressed_at0
+    bcc $B881
     stz a:PadForcedPressB
     tst #$40,z:zPadHeld
-    beq RichterJumpPressed_at1
+    beq RichterJumpPressed_at0
     jmp RichterLadderCheck
 
 ; @routine 01BC:07E RichterJumpPressed
 ; @run 6D:B87E
 ; WHAT IT DOES: Says whether the jump button was newly pressed.
 ; HOW: Bit 0 of zPadPressed.
+; WAITS: no.
 ; Entry: nothing. Exit: C the answer. All else kept.
 RichterJumpPressed:
-    bbs0 zPadPressed,RichterJumpPressed_at1
-RichterJumpPressed_at0:
+    bbs0 zPadPressed,RichterJumpPressed_at0
     clc
     rts
-RichterJumpPressed_at1:
+RichterJumpPressed_at0:
     sec
     rts
 
@@ -147,6 +154,7 @@ RichterJumpPressed_at1:
 ; WHAT IT DOES: Says whether Richter has nothing to stand on: no floor found, or the column
 ; found is not solid under him.
 ; HOW: RichterFloorCheck, then RichterSolidUnderColumn.
+; WAITS: no.
 ; Entry: nothing. Exit: C the answer; A, X, Y and V as the last step left them.
 RichterHasNoFooting:
     jsr RichterFloorCheck
@@ -165,6 +173,7 @@ RichterHasNoFooting_at1:
 ; WHAT IT DOES: Says whether there is something to climb down from here: looks downward from
 ; $18 below him, a tile at a time, for the first solid tile with one of bits 0 or 2 above it.
 ; HOW: The section's camera mode settles it in two cases; low on the screen it cannot be.
+; WAITS: no.
 ; Entry: nothing. Exit: C the answer. A, Y and V as the last step left them. X kept. Clobbers
 ; zTemp00-03, zTemp10-11.
 RichterLadderCheck:
@@ -239,43 +248,43 @@ RichterLadderCheck_at2:
 ; on, unless a push holds him. zTemp01 says which: 0 low, 1 high.
 ; HOW: RichterLowColumnsBlocked with down held, RichterColumnsBlocked with up held; bit $20 of
 ; the tile counts whatever the pad.
+; WAITS: no.
 ; Entry: nothing. Exit: C the answer, with what the last step left.
 RichterLedgeCheck:
     tst #$01,z:zPlayerPush
     bne RichterLedgeCheck_at0
-    bsr RichterLedgeCheck_at1
-    bcs RichterLedgeCheck_at2
-    bsr RichterLedgeCheck_at3
-    bcs RichterLedgeCheck_at2
+    bsr FallAnimatedThenBecomeKind9B
+    bcs RichterLedgeCheck_at1
+    bsr RichterLedgeCheck_at2
+    bcs RichterLedgeCheck_at1
 RichterLedgeCheck_at0:
     clc
     rts
-RichterLedgeCheck_at1:
     jsr RichterLowColumnsBlocked
     beq RichterLedgeCheck_at0
     and #$20
-    beq RichterLedgeCheck_at4
+    beq RichterLedgeCheck_at3
     cpx #$02
-    bne RichterLedgeCheck_at5
-RichterLedgeCheck_at4:
+    bne RichterLedgeCheck_at4
+RichterLedgeCheck_at3:
     bbr4 zPadHeld,RichterLedgeCheck_at0
-RichterLedgeCheck_at5:
+RichterLedgeCheck_at4:
     stz z:zTemp01
     sec
     rts
-RichterLedgeCheck_at3:
+RichterLedgeCheck_at2:
     jsr RichterColumnsBlocked
     beq RichterLedgeCheck_at0
     and #$20
-    beq RichterLedgeCheck_at6
+    beq RichterLedgeCheck_at5
     cpx #$02
-    bne RichterLedgeCheck_at7
-RichterLedgeCheck_at6:
+    bne RichterLedgeCheck_at6
+RichterLedgeCheck_at5:
     bbr6 zPadHeld,RichterLedgeCheck_at0
-RichterLedgeCheck_at7:
+RichterLedgeCheck_at6:
     lda #$01
     sta z:zTemp01
-RichterLedgeCheck_at2:
+RichterLedgeCheck_at1:
     sec
     rts
 
@@ -283,6 +292,7 @@ RichterLedgeCheck_at2:
 ; @run 6D:BA7A
 ; WHAT IT DOES: If there is a floor under him, lifts him out of it.
 ; HOW: RichterFloorCheck, then runs on into RichterLiftByColumn.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterLiftByColumn, or as RichterFloorCheck with no floor.
 RichterLandOnFloor:
     jsr RichterFloorCheck
@@ -294,6 +304,7 @@ RichterLandOnFloor:
 ; WHAT IT DOES: Lifts him out of the floor by how deep this column read, and not above the top
 ; of the map.
 ; HOW: The depth in RichterColumnRow, signed, which is cleared.
+; WAITS: no.
 ; Entry: X column. Exit: A his Y high byte, or 2 at the top; N and Z from it; C and V from the
 ; subtract. X and Y kept. Clobbers zTemp10.
 RichterLiftByColumn:
@@ -323,6 +334,7 @@ RichterLiftByColumn_at1:
 ; @run 6D:BAAD
 ; WHAT IT DOES: Says whether either of the first two columns read holds a blocking tile.
 ; HOW: Bits $24 of RichterColumnHit.
+; WAITS: no.
 ; Entry: nothing. Exit: at one, A those bits, X the column; else A 0, X 2, C 1, Z 1. V and,
 ; at one, C kept. Y kept.
 RichterColumnsBlocked:
@@ -344,11 +356,12 @@ RichterColumnsBlocked_at0:
 ; its depth cleared, as the floor check finds one.
 ; HOW: Sits before RichterFloorCheck, which branches back to it, and goes on into its found
 ; floor's end.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterFloorCheck finding a floor at column 0.
 RichterFloorOddScreen:
     clx
     stz a:RichterColumnRow,x
-    bra RichterFloorCheck_at0
+    bra $BAE1
 
 ; @routine 01BC:2C2 RichterFloorCheck
 ; @run 6D:BAC2
@@ -356,6 +369,7 @@ RichterFloorOddScreen:
 ; odd screens across, always at the first, with its depth cleared. A push that was already
 ; carrying him counts as floor too.
 ; HOW: Bits $81 of the first three columns, but bit 7 alone counts only for the first.
+; WAITS: no.
 ; Entry: nothing. Exit: C the answer, X the column. A, N, Z and V as the path left them.
 RichterFloorCheck:
     lda a:OBJ_X_HI
@@ -404,6 +418,7 @@ RichterFloorCheck_at2:
 ; @run 6D:BAFF
 ; WHAT IT DOES: Reads the two columns lowest under Richter and says whether either blocks.
 ; HOW: Each is read $12 below him, and bits $24 of the answer tell.
+; WAITS: no.
 ; Entry: nothing. Exit: at one, A those bits, X the column; else A 0, X 2, C 1, Z 1. Y and V
 ; from the last read.
 RichterLowColumnsBlocked:
@@ -430,11 +445,12 @@ RichterLowColumnsBlocked_at0:
 ; @run 6D:BB1D
 ; WHAT IT DOES: Reads the five columns of terrain at his waist.
 ; HOW: As RichterReadColumns, $0B below his position.
+; WAITS: no.
 ; Entry and exit: as RichterReadColumns.
 RichterReadColumnsHigh:
     lda #$0B
     sta z:zTemp10
-    bra RichterReadColumns_at0
+    bra $BB27
 
 ; @routine 01BC:323 RichterReadColumns
 ; @run 6D:BB23
@@ -442,14 +458,14 @@ RichterReadColumnsHigh:
 ; look at: the step the overlay makes after he has moved.
 ; HOW: Each column's answer, row and X go to RichterColumnHit, RichterColumnRow and
 ; RichterColumnX.
+; WAITS: no.
 ; Entry: nothing. Exit: A the last column's X, X 5, N 0, Z 1, C 1, Y and V from the last read,
 ; or its row's add if that passed the screen. Clobbers zTemp00-03, zTemp10.
 RichterReadColumns:
     lda #$16
     sta z:zTemp10
-RichterReadColumns_at0:
     clx
-RichterReadColumns_at1:
+RichterReadColumns_at0:
     jsr RichterColumnOffset
     clc
     adc a:OBJ_X_LO
@@ -465,7 +481,7 @@ RichterReadColumns_at1:
     sta a:RichterColumnX,x
     inx
     cpx #$05
-    bne RichterReadColumns_at1
+    bne RichterReadColumns_at0
     rts
 
 ; @routine 01BC:367 RichterWallPushed
@@ -473,6 +489,7 @@ RichterReadColumns_at1:
 ; WHAT IT DOES: The wall probe's answer when a push holds him against that side: a wall as
 ; deep as the push says.
 ; HOW: zPlayerPushDepth to zTemp00. Sits before RichterWall, which branches back to it.
+; WAITS: no.
 ; Entry: nothing. Exit: A 2, N and Z clear. X, Y, C and V kept.
 RichterWallPushed:
     lda z:zPlayerPushDepth
@@ -486,6 +503,7 @@ RichterWallPushed:
 ; him that way counts as a wall, and otherwise up to six points down his side are read,
 ; fewer when he crouches or is in the air.
 ; HOW: The reach by side, then each column's height added to his position.
+; WAITS: no.
 ; Entry: Y side. Exit: A 2 with N 0, Z 0 at a wall, zTemp00 how deep; else Z set. Other
 ; registers and flags as the last step left them.
 RichterWall:
@@ -538,6 +556,7 @@ RichterWall_at2:
 ; WHAT IT DOES: Asks whether Richter stands on a floor, and lifts him out of it: by how deep
 ; the column read, but not above the top of the map. A push from below does not count.
 ; HOW: RichterReadColumns and RichterFloorCheck, then the column once more $0E below him.
+; WAITS: no.
 ; Entry: X kept unless a column was found. Exit: A 1 and N 0, Z 0 on a floor, else A 0, Z set.
 ; C from the lift, V as the last step left it. Clobbers zTemp00-03, zTemp10.
 RichterFloor:

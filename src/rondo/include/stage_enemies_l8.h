@@ -331,4 +331,7 @@ SoundEnd LoadRecordFrameByKindThenFall(uint8_t slot, uint8_t y_entry);
 Ended StepListThenStartFivePieces(uint8_t slot, uint8_t y_entry);
 Jump StepListThenRunPhaseTable(uint8_t slot, uint8_t y_entry);
 
+/* object/enemies_l8_st23.c */
+SoundEnd ThrownPieceThenScatterAndLeave(uint8_t slot, uint8_t y_entry);
+
 #endif

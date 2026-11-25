@@ -340,6 +340,62 @@ ChooseNextMove_at0:
 ChooseNextMove_at1:
     rts
 
+; @routine 0A9D:22A StepAndLunge
+; @run 71:C22A
+; WHAT IT DOES: Steps the animation list at $C260; when it ends the object resets its animation and enters state 4; on the new frame 7 it plays sound $1F
+; (on the first screen), takes an X speed from a table at $C25E by its facing and moves with BounceWithHeight4.
+; HOW: StepObjectFrames, SoundIfOnFirstScreen, BounceWithHeight4.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+StepAndLunge:
+    lda #$C2
+    sta z:zTemp11
+    lda #$60
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    beq StepAndLunge_at0
+    bcc StepAndLunge_at1
+    lda a:OBJ_2A68,x
+    cmp #$07
+    bne StepAndLunge_at1
+    lda #$1F
+    jsr VecSoundIfOnFirstScreen
+    ldy a:OBJ_2AC0,x
+    lda a:$C25E,y
+    sta a:OBJ_VX_HI,x
+    jsr BounceWithHeight4
+StepAndLunge_at1:
+    rts
+StepAndLunge_at0:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$04
+    sta a:OBJ_27A8,x
+    rts
+
+; @routine 0A9D:269 WalkThenTurn
+; @run 71:C269
+; WHAT IT DOES: Walks by phase 2, takes its facing as its direction, runs TurnWhenWaitEnds, and when the player is $48 or more away along X resets its
+; animation and enters state 3.
+; HOW: WalkByPhase, TurnWhenWaitEnds, DistanceXToPlayer.
+; WAITS: no.
+; Entry: X object, Y the probe's column. Exit: the walk's, then the last compare or load.
+WalkThenTurn:
+    lda #$02
+    jsr WalkByPhase
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_3618,x
+    jsr TurnWhenWaitEnds
+    jsr VecDistanceXToPlayer
+    cmp #$48
+    bcc WalkThenTurn_at0
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$03
+    sta a:OBJ_27A8,x
+WalkThenTurn_at0:
+    rts
+
 ; @routine 0A9D:28A TurnWhenWaitEnds
 ; @run 71:C28A
 ; WHAT IT DOES: Counts the angle byte down; at zero resets the animation, takes OBJ_3670 from the player's side (bit 1, vertical) and enters state 8.
@@ -425,6 +481,59 @@ StepWithArmor:
 StepWithArmor_at0:
     rts
 
+; @routine 0A9D:366 StepAndPounce
+; @run 71:C366
+; WHAT IT DOES: Sets OBJ_3359 3 and steps the animation list at $C3C5; when it ends OBJ_3359 becomes 2, the animation resets and the object enters state 4; on
+; the new frame $0E it plays sound $1A; on frames $0C and $0D it takes an X speed from a table at $C3BD by the frame and its facing and moves with
+; BounceWithHeight4.
+; HOW: StepObjectFrames, SoundIfOnFirstScreen, BounceWithHeight4.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+StepAndPounce:
+    lda #$03
+    sta a:OBJ_3358+1,x
+    lda #$C3
+    sta z:zTemp11
+    lda #$C5
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    beq StepAndPounce_at0
+    bcc StepAndPounce_at1
+    lda a:OBJ_2A68,x
+    cmp #$0E
+    bne StepAndPounce_at2
+    lda #$1A
+    jsr VecSoundIfOnFirstScreen
+StepAndPounce_at2:
+    lda a:OBJ_2A68,x
+    sec
+    sbc #$0C
+    cmp #$02
+    bcs StepAndPounce_at1
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_2AC0,x
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$C3BE,y
+    sta a:OBJ_VX_HI,x
+    lda a:$C3BD,y
+    sta a:OBJ_VX_LO,x
+    jsr BounceWithHeight4
+StepAndPounce_at1:
+    rts
+StepAndPounce_at0:
+    lda #$02
+    sta a:OBJ_3358+1,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$04
+    sta a:OBJ_27A8,x
+    rts
+
 ; @routine 0A9D:3DA FlashAndCount
 ; @run 71:C3DA
 ; @stop C401
@@ -485,6 +594,58 @@ ShootArrow:
     sxy
     ldx z:zRichterObject
     rts
+; @routine 0A9D:453 FollowPartner
+; @run 71:C453
+; WHAT IT DOES: In state 0 loads the object's record; later, when it has taken a hit of 2 or more it plays sound $12 and sets its timer to 5; it takes the place of the
+; object before it, sets its hitbox from a four-byte row of the table at $C4AA by that object's frame less 1, copies its facing and hitbox flag, and is cleared
+; if the object before it is not kind $24.
+; HOW: LoadObjectRecord (a tail jump), SoundIfOnFirstScreen, CopyObjectPlaceBack, table reads (bank 71), ClearObject.
+; Untraced: the clear (C4A6).
+; Curated cases: tools/rondo/curated/follow_partner.txt (the traced arms with the partner of kind $24).
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+FollowPartner:
+    lda a:OBJ_27A8,x
+    bne FollowPartner_at0
+    jmp VecLoadObjectRecord
+FollowPartner_at0:
+    lda a:OBJ_33B0,x
+    cmp #$02
+    bcc FollowPartner_at1
+    lda #$12
+    jsr VecSoundIfOnFirstScreen
+    lda #$05
+    sta a:OBJ_3A90,x
+FollowPartner_at1:
+    txa
+    tay
+    dey
+    jsr VecCopyObjectPlaceBack
+    lda a:$2A67,x
+    sec
+    sbc #$01
+    asl a
+    asl a
+    tay
+    lda a:$C4AA,y
+    sta a:OBJ_3930,x
+    lda a:$C4AB,y
+    sta a:OBJ_39E0,x
+    lda a:$C4AC,y
+    sta a:OBJ_3988,x
+    lda a:$C4AD,y
+    sta a:OBJ_3A38,x
+    lda a:$2ABF,x
+    sta a:OBJ_2AC0,x
+    lda a:$324F,x
+    sta a:OBJ_3250,x
+    lda a:$274F,x
+    cmp #$24
+    beq FollowPartner_at2
+    jmp VecClearObject
+FollowPartner_at2:
+    rts
+
 ; @routine 0A9E:4C3 HopAndSettle
 ; @run 71:CCC3
 ; WHAT IT DOES: An object with a state and on the first screen row is lifted by sixteen times its next kind, moved by its Y speed, given gravity and asked for

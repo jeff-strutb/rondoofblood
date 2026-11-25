@@ -1294,3 +1294,255 @@ void abi_ChasePlayerB(void)
 {
     chase_exit_shim(ChasePlayerB(cpu.x, cpu.y, (cpu.p & P_C) != 0));
 }
+
+/*
+ * @routine 0A9D:22A StepAndLunge
+ * @run 71:C22A
+ * WHAT IT DOES: Steps the animation list at $C260; when it ends the object resets its animation and enters state 4; on the new frame 7 it plays sound $1F
+ * (on the first screen), takes an X speed from a table at $C25E by its facing and moves with BounceWithHeight4.
+ * HOW: StepObjectFrames, SoundIfOnFirstScreen, BounceWithHeight4.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+ */
+StepBounce StepAndLunge(uint8_t slot, uint8_t y)
+{
+    StepBounce r = { { 0 }, false, { 0 } };
+    FrameStep step;
+    uint8_t frame, facing, byte;
+
+    step = step_list(slot, 0xC260, 0xC235, &y, true);
+    r.pre = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step == FRAME_LIST_ENDED) {
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 4);
+        r.pre = then(r.pre, ended_load(4));
+        return r;
+    }
+    if (step != FRAME_CHANGED) {
+        return r;
+    }
+    frame = RD8(OBJ->frame[slot]);
+    r.pre = then(r.pre, ended_compare(frame, 7));
+    if (frame != 7) {
+        return r;
+    }
+    jsr_push(0xC245);
+    SoundIfOnFirstScreen(0x1F, slot, y);
+    jsr_pop();
+    facing = RD8(OBJ->facing_left[slot]);
+    byte = rd8((uint16_t)(0xC25E + facing));
+    WR8(OBJ->vx_hi[slot], byte);
+    jsr_push(0xC251);
+    r.turn = BounceWithHeight4(slot, facing);
+    jsr_pop();
+    r.bounced = true;
+    return r;
+}
+
+/* A stepping routine that may end in the bounce: what came before, then the bounce's exit. */
+void step_bounce_exit_shim(StepBounce r)
+{
+    abi_ended(r.pre);
+    if (r.bounced) {
+        bounce_exit_shim(r.turn);
+    }
+}
+
+void abi_StepAndLunge(void)
+{
+    step_bounce_exit_shim(StepAndLunge(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0A9D:366 StepAndPounce
+ * @run 71:C366
+ * WHAT IT DOES: Sets OBJ_3359 3 and steps the animation list at $C3C5; when it ends OBJ_3359 becomes 2, the animation resets and the object enters state 4; on
+ * the new frame $0E it plays sound $1A; on frames $0C and $0D it takes an X speed from a table at $C3BD by the frame and its facing and moves with
+ * BounceWithHeight4.
+ * HOW: StepObjectFrames, SoundIfOnFirstScreen, BounceWithHeight4.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+ */
+StepBounce StepAndPounce(uint8_t slot, uint8_t y)
+{
+    StepBounce r = { { 0 }, false, { 0 } };
+    FrameStep step;
+    uint8_t frame, facing, index, byte;
+    Sum diff;
+    Ended e;
+
+    WR8_IDX((uint16_t)(COL(OBJ->f3358) + 1), slot, 3);
+    step = step_list(slot, 0xC3C5, 0xC376, &y, true);
+    r.pre = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step == FRAME_LIST_ENDED) {
+        WR8_IDX((uint16_t)(COL(OBJ->f3358) + 1), slot, 2);
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 4);
+        r.pre = then(r.pre, ended_load(4));
+        return r;
+    }
+    if (step != FRAME_CHANGED) {
+        return r;
+    }
+    frame = RD8(OBJ->frame[slot]);
+    e = then(r.pre, ended_compare(frame, 0x0E));
+    if (frame == 0x0E) {
+        jsr_push(0xC386);
+        SoundIfOnFirstScreen(0x1A, slot, y);
+        jsr_pop();
+        e = then(e, ended_load(0x1A));
+    }
+    frame = RD8(OBJ->frame[slot]);
+    diff = sub_bytes(frame, 0x0C, true);
+    e = then(e, of_sum(diff));
+    e = then(e, ended_compare(diff.value, 2));
+    r.pre = e;
+    if (diff.value >= 2) {
+        return r;
+    }
+    index = (uint8_t)(diff.value << 2);
+    WR8(ZP->temp00, index);
+    e = then(e, ended_with_carry(ended_load(index), false));
+    facing = RD8(OBJ->facing_left[slot]);
+    index = (uint8_t)((facing << 1) + RD8(ZP->temp00));
+    byte = rd8((uint16_t)(0xC3BE + index));
+    WR8(OBJ->vx_hi[slot], byte);
+    byte = rd8((uint16_t)(0xC3BD + index));
+    WR8(OBJ->vx_lo[slot], byte);
+    jsr_push(0xC3AB);
+    r.turn = BounceWithHeight4(slot, index);
+    jsr_pop();
+    r.bounced = true;
+    return r;
+}
+
+void abi_StepAndPounce(void)
+{
+    step_bounce_exit_shim(StepAndPounce(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0A9D:269 WalkThenTurn
+ * @run 71:C269
+ * WHAT IT DOES: Walks by phase 2, takes its facing as its direction, runs TurnWhenWaitEnds, and when the player is $48 or more away along X resets its
+ * animation and enters state 3.
+ * HOW: WalkByPhase, TurnWhenWaitEnds, DistanceXToPlayer.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column. Exit: the walk's, then the last compare or load.
+ */
+AttackWalk WalkThenTurn(uint8_t slot, uint8_t column)
+{
+    AttackWalk r;
+    PlayerDistance distance;
+    uint8_t facing;
+    Ended e;
+
+    jsr_push(0xC26E);
+    r.walk = WalkByPhase(slot, 2, column);
+    jsr_pop();
+    facing = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->f3618[slot], facing);
+    e = ended_load(facing);
+    jsr_push(0xC277);
+    e = then(e, TurnWhenWaitEnds(slot));
+    jsr_pop();
+    jsr_push(0xC27A);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = then(e, ended_of_distance(distance));
+    e = then(e, ended_compare(distance.distance, 0x48));
+    if (distance.distance >= 0x48) {
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 3);
+        e = then(e, ended_load(3));
+    }
+    r.rest = e;
+    return r;
+}
+
+void abi_WalkThenTurn(void)
+{
+    attack_walk_exit_shim(WalkThenTurn(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0A9D:453 FollowPartner
+ * @run 71:C453
+ * WHAT IT DOES: In state 0 loads the object's record; later, when it has taken a hit of 2 or more it plays sound $12 and sets its timer to 5; it takes the place of the
+ * object before it, sets its hitbox from a four-byte row of the table at $C4AA by that object's frame less 1, copies its facing and hitbox flag, and is cleared
+ * if the object before it is not kind $24.
+ * HOW: LoadObjectRecord (a tail jump), SoundIfOnFirstScreen, CopyObjectPlaceBack, table reads (bank 71), ClearObject.
+ * Untraced: the clear (C4A6).
+ * Curated cases: tools/rondo/curated/follow_partner.txt (the traced arms with the partner of kind $24).
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+ */
+FollowEnd FollowPartner(uint8_t slot, uint8_t y)
+{
+    FollowEnd r = { { 0 }, { 0 }, false, { 0 }, { 0 } };
+    uint8_t state, nz, last, hit, before, frame, index, byte, kind, placed;
+    bool carry;
+    Sum diff;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        r.end = ended_of_record(last, nz, carry);
+        return r;
+    }
+    hit = RD8(OBJ->hit_taken[slot]);
+    e = ended_compare(hit, 2);
+    if (hit >= 2) {
+        e = then(e, ended_load(0x12));
+        r.before = e;
+        jsr_push(0xC467);
+        r.sound = SoundIfOnFirstScreen(0x12, slot, y);
+        jsr_pop();
+        r.called = true;
+        WR8(OBJ->timer[slot], 5);
+        e = ended_kept();
+    }
+    before = (uint8_t)(slot - 1);
+    jsr_push(0xC472);
+    placed = CopyObjectPlaceBack(before, slot);
+    jsr_pop();
+    e = then(e, ended_with_y(ended_load(placed), before));
+    frame = RD8_IDX((uint16_t)(COL(OBJ->frame) - 1), slot);
+    diff = sub_bytes(frame, 1, true);
+    index = (uint8_t)(diff.value << 2);
+    e = then(e, ended_with_y(ended_with_carry(of_sum(diff), (diff.value & 0x40) != 0), index));
+    byte = rd8((uint16_t)(0xC4AA + index));
+    WR8(OBJ->hitbox_dx[slot], byte);
+    byte = rd8((uint16_t)(0xC4AB + index));
+    WR8(OBJ->hitbox_dy[slot], byte);
+    byte = rd8((uint16_t)(0xC4AC + index));
+    WR8(OBJ->hitbox_half_w[slot], byte);
+    byte = rd8((uint16_t)(0xC4AD + index));
+    WR8(OBJ->hitbox_half_h[slot], byte);
+    byte = RD8_IDX((uint16_t)(COL(OBJ->facing_left) - 1), slot);
+    WR8(OBJ->facing_left[slot], byte);
+    byte = RD8_IDX((uint16_t)(COL(OBJ->hitbox_on) - 1), slot);
+    WR8(OBJ->hitbox_on[slot], byte);
+    kind = RD8_IDX((uint16_t)(COL(OBJ->kind) - 1), slot);
+    e = then(e, ended_compare(kind, 0x24));
+    if (kind != 0x24) {
+        ClearObject(slot);
+    }
+    r.end = e;
+    return r;
+}
+
+void abi_FollowPartner(void)
+{
+    FollowEnd r = FollowPartner(cpu.x, cpu.y);
+
+    abi_ended(r.before);
+    if (r.called) {
+        sound_if_on_first_screen_exit_shim(r.sound);
+    }
+    abi_ended(r.end);
+}

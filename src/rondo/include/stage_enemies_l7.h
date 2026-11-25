@@ -192,6 +192,23 @@ ChaseEnd ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in);
 void bounce_exit_shim(TurnEnd r);
 void walk_phase_exit_shim(WalkEnd r);
 
+typedef struct {
+    Ended pre;
+    bool bounced;
+    TurnEnd turn;
+} StepBounce;
+typedef struct {
+    Ended before;
+    Ended end;
+    bool called;
+    SoundOnScreen sound;
+    Ended unused;
+} FollowEnd;
+StepBounce StepAndLunge(uint8_t slot, uint8_t y);
+StepBounce StepAndPounce(uint8_t slot, uint8_t y);
+AttackWalk WalkThenTurn(uint8_t slot, uint8_t column);
+FollowEnd FollowPartner(uint8_t slot, uint8_t y);
+
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {
     bool in_view;

@@ -9,6 +9,7 @@
 #include "routines.h"
 #include "common_objects.h"
 #include "enemy_objects.h"
+#include "stage_enemies_l7.h"
 
 enum { HIT_STATE = 5, HIT_LIMIT = 5, BLINK_LIMIT = 0x18, BLINK_FLAG = 0x86, BLINK_WAVE_MASK = 0x02 };
 
@@ -1505,4 +1506,136 @@ LandWait LandThenClear(uint8_t slot, uint8_t column, bool carry_in)
 void abi_LandThenClear(void)
 {
     land_wait_exit_shim(LandThenClear(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}
+
+/* Two packed decimal digits and a carry, as the HuC6280 adds them in decimal mode. */
+static uint8_t add_decimal(uint8_t a, uint8_t b, bool *carry)
+{
+    unsigned sum = (a & 0x0Fu) + (b & 0x0Fu) + (*carry ? 1u : 0u);
+
+    if (sum >= 0x0A) {
+        sum += 0x06;
+    }
+    sum += (a & 0xF0u) + (b & 0xF0u);
+    if (sum >= 0xA0) {
+        sum += 0x60;
+    }
+    *carry = (sum & 0xFF00u) != 0;
+    return (uint8_t)sum;
+}
+
+/*
+ * @routine 0519:58D CollectHearts
+ * @run 70:A58D
+ * WHAT IT DOES: A heart item taken: plays the sound a table at $A5B0 names for its kind less $83, adds the hearts a table at $A5B2 gives to the player's hearts (zField94, decimal, at
+ * most 99), blends the stage rows (BlendStageRowsOfPlayer) and clears the item.
+ * HOW: SoundCommand, a decimal add, BlendStageRowsOfPlayer, a tail jump into ClearObject.
+ * Untraced: the carry out of the decimal add (the cap of 99, A5A5).
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: as BlendStageRowsOfPlayer.
+ */
+SoundEnd CollectHearts(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t kind, index, command, hearts, add;
+    bool carry;
+    Sum diff;
+    Ended e;
+
+    kind = RD8(OBJ->kind[slot]);
+    diff = sub_bytes(kind, 0x83, true);
+    index = diff.value;
+    command = rd8((uint16_t)(0xA5B0 + index));
+    e = ended_then(ended_of_sum(diff), ended_with_y(ended_load(command), index));
+    r.before = e;
+    r.sounded = true;
+    r.command = command;
+    jsr_push(0xA59A);
+    r.call = SoundCommand(command, slot, index);
+    jsr_pop();
+    hearts = RD8(ZP->field94);
+    add = rd8((uint16_t)(0xA5B2 + index));
+    carry = false;
+    hearts = add_decimal(hearts, add, &carry);
+    WR8(ZP->field94, hearts);
+    e = ended_with_carry(ended_load(hearts), carry);
+    if (carry) {
+        WR8(ZP->field94, 0x99);
+        e = ended_then(e, ended_load(0x99));
+    }
+    r.end = e;
+    jsr_push(0xA5AD);
+    r.end = ended_then(e, BlendStageRowsOfPlayer(slot, index));
+    jsr_pop();
+    ClearObject(slot);
+    (void)y_entry;
+    return r;
+}
+
+void abi_CollectHearts(void)
+{
+    abi_sound_end(CollectHearts(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0519:5B4 CollectScoreItem
+ * @run 70:A5B4
+ * WHAT IT DOES: A score item taken: plays sound $0B, adds the points a table at $A5EB gives (decimal, the two bytes zScoreAddLo and zScoreAddHi, at most 9999) for its kind less $85,
+ * blends the stage rows, and the item turns into a kind $9F that waits the number of beats its first byte said ($34B8 timer) in state 0.
+ * HOW: SoundCommand, a decimal add through the two bytes, BlendStageRowsOfPlayer with Y kept on the stack.
+ * Untraced: the carry out of the add (the cap of 9999, A5D4).
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: A $9F, N set, Z clear; C and V as the blend left them.
+ */
+SoundEnd CollectScoreItem(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t kind, index, low, high, add, previous;
+    bool carry;
+    Sum diff;
+    Ended e;
+
+    r.before = ended_load(0x0B);
+    r.sounded = true;
+    r.command = 0x0B;
+    jsr_push(0xA5B9);
+    r.call = SoundCommand(0x0B, slot, y_entry);
+    jsr_pop();
+    kind = RD8(OBJ->kind[slot]);
+    diff = sub_bytes(kind, 0x85, true);
+    index = diff.value;
+    e = ended_then(ended_of_sum(diff), ended_with_y(ended_kept(), index));
+    low = RD8(ZP->score_add.lo);
+    WR8(ZP->temp10, low);
+    e = ended_then(e, ended_load(low));
+    add = rd8((uint16_t)(0xA5EB + index));
+    carry = false;
+    low = add_decimal(low, add, &carry);
+    WR8(ZP->score_add.lo, low);
+    e = ended_then(e, ended_with_carry(ended_load(low), carry));
+    high = RD8(ZP->score_add.hi);
+    high = add_decimal(high, 0, &carry);
+    WR8(ZP->score_add.hi, high);
+    e = ended_then(e, ended_with_carry(ended_load(high), carry));
+    if (carry) {
+        WR8(ZP->score_add.lo, 0x99);
+        WR8(ZP->score_add.hi, 0x99);
+        e = ended_then(e, ended_load(0x99));
+    }
+    push8(index);
+    jsr_push(0xA5DE);
+    e = ended_then(e, BlendStageRowsOfPlayer(slot, index));
+    jsr_pop();
+    previous = pull8();
+    e = ended_then(e, ended_load(previous));
+    WR8(OBJ->life_timer[slot], previous);
+    WR8(OBJ->kind[slot], 0x9F);
+    WR8(OBJ->state[slot], 0);
+    r.end = ended_then(e, ended_load(0x9F));
+    return r;
+}
+
+void abi_CollectScoreItem(void)
+{
+    abi_sound_end(CollectScoreItem(cpu.x, cpu.y));
 }

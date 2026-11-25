@@ -318,6 +318,73 @@ JumpByKindTable:
     sta z:zTemp01
     jmp (ZeroPage)
 
+; @routine 0519:58D CollectHearts
+; @run 70:A58D
+; WHAT IT DOES: A heart item taken: plays the sound a table at $A5B0 names for its kind less $83, adds the hearts a table at $A5B2 gives to the player's hearts (zField94, decimal, at
+; most 99), blends the stage rows (BlendStageRowsOfPlayer) and clears the item.
+; HOW: SoundCommand, a decimal add, BlendStageRowsOfPlayer, a tail jump into ClearObject.
+; Untraced: the carry out of the decimal add (the cap of 99, A5A5).
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: as BlendStageRowsOfPlayer.
+CollectHearts:
+    lda a:OBJ_2750,x
+    sec
+    sbc #$83
+    tay
+    lda a:$A5B0,y
+    jsr VecSoundCommand
+    sed
+    lda z:zField94
+    clc
+    adc a:$A5B2,y
+    sta z:zField94
+    bcc CollectHearts_at0
+    lda #$99
+    sta z:zField94
+CollectHearts_at0:
+    cld
+    jsr BlendStageRowsOfPlayer
+    jmp VecClearObject
+
+; @routine 0519:5B4 CollectScoreItem
+; @run 70:A5B4
+; WHAT IT DOES: A score item taken: plays sound $0B, adds the points a table at $A5EB gives (decimal, the two bytes zScoreAddLo and zScoreAddHi, at most 9999) for its kind less $85,
+; blends the stage rows, and the item turns into a kind $9F that waits the number of beats its first byte said ($34B8 timer) in state 0.
+; HOW: SoundCommand, a decimal add through the two bytes, BlendStageRowsOfPlayer with Y kept on the stack.
+; Untraced: the carry out of the add (the cap of 9999, A5D4).
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: A $9F, N set, Z clear; C and V as the blend left them.
+CollectScoreItem:
+    lda #$0B
+    jsr VecSoundCommand
+    lda a:OBJ_2750,x
+    sec
+    sbc #$85
+    tay
+    sed
+    lda z:zScoreAddLo
+    sta z:zTemp10
+    clc
+    adc a:$A5EB,y
+    sta z:zScoreAddLo
+    lda z:zScoreAddHi
+    adc #$00
+    sta z:zScoreAddHi
+    cld
+    bcc CollectScoreItem_at0
+    lda #$99
+    sta z:zScoreAddLo
+    sta z:zScoreAddHi
+CollectScoreItem_at0:
+    phy
+    jsr BlendStageRowsOfPlayer
+    pla
+    sta a:OBJ_34B8,x
+    lda #$9F
+    sta a:OBJ_2750,x
+    stz a:OBJ_27A8,x
+    rts
+
 ; @routine 0519:5EF ChangeKindFromTable
 ; @run 70:A5EF
 ; WHAT IT DOES: An object changes into another kind. Sound $0B plays, the player's byte at $3BD6

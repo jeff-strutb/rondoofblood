@@ -41,7 +41,7 @@ TRACK = os.path.join(disc.OUT, "track02.bin")
 TIMEOUT = 1500
 DIAG_ENV = ("RONDO_KEEP", "RONDO_ONLY", "RONDO_KEEP_WAITS", "RONDO_PLACE", "RONDO_SKIPS", "RONDO_DUMP_FRAME", "RONDO_NOJUDGE",
             "RONDO_LOG_HARD", "RONDO_JUDGE_CHECK", "RONDO_TRIM_NOJUDGE", "RONDO_TRACE_ENTRY", "RONDO_TRACE_PC")
-CAUSES = ["left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix", "noreturn"]
+CAUSES = ["left", "log", "depth", "computed", "arrive_branch", "arrive_nonres", "runaway", "prefix", "noreturn", "dispatch"]
 KINDS = ["MOVED", "EXTRA", "MISSING", "VALUE", "STACK", "STATE", "REGS", "CALL", "INT"]
 
 
@@ -230,7 +230,7 @@ def report_a5(totals, details, bad, csv_name="a5.csv"):
         f.write("routine,calls,ended_noreturn\n")
         for name in sorted(CAUSE_TOTALS):
             calls = totals.get(name, [0])[0]
-            nr = CAUSE_TOTALS[name][len(KINDS) + CAUSES.index("noreturn")]
+            nr = sum(CAUSE_TOTALS[name][len(KINDS) + CAUSES.index(k)] for k in ("noreturn", "dispatch"))
             if calls and nr == calls:
                 f.write("%s,%d,%d\n" % (name, calls, nr))
     sums = [sum(v[i] for v in CAUSE_TOTALS.values()) for i in range(len(KINDS) + len(CAUSES))]

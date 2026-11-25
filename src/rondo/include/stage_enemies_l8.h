@@ -344,4 +344,17 @@ Ended SpinThenCountPhaseDown(uint8_t slot, uint8_t y_entry);
 Ended SpinThenCountWordDown(uint8_t slot, uint8_t y_entry);
 ExitChain CountDownThenDrawAndSpawnRing(uint8_t slot, uint8_t y_entry);
 
+/* object/enemies_l8_st25.c */
+Ended StepListByNumberTableC585(uint8_t slot, uint8_t y_entry);
+Ended ClearAnimationThenStepListC585(uint8_t slot, uint8_t y_entry);
+Ended ToggleFacing(uint8_t slot);
+SoundEnd LoadRecordOrBurstWhenFlagged(uint8_t slot, uint8_t y_entry);
+Ended SpawnFlashingPieceWhenRising(uint8_t slot);
+Ended CountDownThenClearOnTimer(uint8_t slot);
+SoundEnd FlashWhenHurtThenSound(uint8_t slot, uint8_t y_entry);
+Ended EnterState0EWhenFlagged(uint8_t slot);
+Ended LoadRecordFrame24(uint8_t slot);
+Ended StartTimerWhenSlot10Ready(uint8_t slot);
+Ended HurtOnceThenAnswerYes(uint8_t slot, uint8_t y_entry);
+
 #endif

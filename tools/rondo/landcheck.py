@@ -154,7 +154,36 @@ def code(path):
     return 0
 
 
+def merge(trace):
+    """Refuse a landing whose tree's scripts do not give the shared merged map: the merge in TRACE (main's
+    build/rondo/trace) must be the OR of the traces of this tree's scripts, as intake.py and progress.py require. A
+    script traced into the shared folder by anything but a landing (an unlanded script) breaks every writer."""
+    names = sorted(os.path.splitext(f)[0] for f in os.listdir(os.path.join(TOP, "tools", "rondo", "scripts"))
+                   if f.endswith(".txt") and not f.startswith("_"))
+    for m in ("discmap.bin", "cardmap.bin"):
+        mp = os.path.join(trace, m)
+        if not os.path.exists(mp):
+            continue
+        acc, missing = 0, []
+        for n in names:
+            p = os.path.join(trace, n, m)
+            if os.path.exists(p):
+                acc |= int.from_bytes(open(p, "rb").read(), "little")
+            else:
+                missing.append(n)
+        if missing:
+            print(f"the shared trace has no {m} for: {' '.join(missing)}")
+            return 1
+        if acc != int.from_bytes(open(mp, "rb").read(), "little"):
+            print(f"the shared {m} is not the OR of this tree's scripts' traces (a script traced into it that is not "
+                  f"landed, or a script of this tree not merged): rerun trace.py from the main checkout")
+            return 1
+    return 0
+
+
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == "merge":
+        return merge(sys.argv[2])
     if len(sys.argv) == 3 and sys.argv[1] in ("scripts", "code", "proper"):
         return {"scripts": scripts, "code": code, "proper": proper}[sys.argv[1]](sys.argv[2])
     if len(sys.argv) == 3 and sys.argv[1] in ("image", "link"):

@@ -186,6 +186,8 @@ typedef struct {
     bool off_the_top;
     uint16_t y;
     uint16_t depth;
+    uint8_t a;
+    bool c, v;
 } ColumnLift;
 
 /* How the ladder check ended. */
@@ -200,6 +202,11 @@ typedef struct {
     bool any_read;
     TileRead last;
     uint8_t answer;
+    uint8_t a;          /* the exit state: A, N and Z from nz, C, and V when v_set */
+    uint8_t nz;
+    bool c;
+    bool v_set;
+    bool v;
 } LadderCheck;
 
 AnimationStep RichterAnimationRunning(void);

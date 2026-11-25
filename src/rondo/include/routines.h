@@ -406,7 +406,7 @@ void SoundDriverStopAll(void);
 void wave_load_exit_shim(WaveLoad load, uint8_t wave);
 
 /* A slide started: down or up, its target and what it was compared with, the step made negative. */
-typedef struct { bool down; uint8_t aim; uint8_t from; uint8_t step; } SlideStart;
+typedef struct { bool down; uint8_t aim; uint8_t from; uint8_t step; bool aim_set; bool aim_overflow; } SlideStart;
 
 /* A loop's arrays by channel: where it starts, its passes, and the volume and detune it adds. */
 typedef struct {
@@ -445,7 +445,7 @@ uint8_t SoundCommandTempo(uint8_t channel);
 uint8_t SoundCommandTempoSlide(uint8_t channel);
 uint8_t SoundCommandTranspose(uint8_t channel);
 uint8_t SoundCommandTremolo(uint8_t channel);
-uint8_t SoundCommandVolume(uint8_t channel);
+Sum SoundCommandVolume(uint8_t channel);
 SlideStart SoundCommandVolumeSlide(uint8_t channel);
 uint8_t SoundCommandGlideFromLast(uint8_t channel);
 uint8_t SoundCommandGlideFromBelow(uint8_t channel);

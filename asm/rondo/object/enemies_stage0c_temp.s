@@ -1,3 +1,40 @@
+; @routine 0CAB:147 StartTileScriptByKind
+; @run 70:B147
+; WHAT IT DOES: Loads the object's record and sets its timer from a table at $B15D by its next kind; for kind 0 it draws the tile script 6 of group 0 (DrawTileScript).
+; HOW: LoadObjectRecord, a table read (bank 70), DrawTileScript.
+; WAITS: no.
+; Entry: X object. Exit: kind 0: as DrawTileScript's; else the compare with 0.
+StartTileScriptByKind:
+    jsr VecLoadObjectRecord
+    ldy a:OBJ_3040,x
+    lda a:$B15D,y
+    sta a:OBJ_34B8,x
+    cpy #$00
+    bne StartTileScriptByKind_at0
+    lda #$06
+    jsr VecDrawTileScript
+StartTileScriptByKind_at0:
+    rts
+
+; @routine 0CAB:161 CountThenTileScript
+; @run 70:B161
+; WHAT IT DOES: Counts the object's timer down; at zero it draws the tile script of group 0 numbered the next kind plus 7 (DrawTileScript) and goes on to the next state.
+; HOW: DEC, DrawTileScript, INC.
+; WAITS: no.
+; Entry: X object. Exit: the count; at zero, the state's count.
+CountThenTileScript:
+    dec a:OBJ_34B8,x
+    bne CountThenTileScript_at0
+    lda a:OBJ_3040,x
+    clc
+    adc #$06
+    inc a
+    cly
+    jsr VecDrawTileScript
+    inc a:OBJ_27A8,x
+CountThenTileScript_at0:
+    rts
+
 ; @routine 0CAB:175 FallingWithGravity
 ; @run 70:B175
 ; WHAT IT DOES: Steps the animation list at $B187, applies unlimited gravity and moves the object.

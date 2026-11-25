@@ -949,6 +949,7 @@ typedef struct {
 } TileRun;
 TileRun DrawTileScript(uint8_t item, uint8_t group);
 void abi_exit_tile_run(TileRun run, uint8_t y_before);
+uint8_t tile_run_y_shim(TileRun run, uint8_t y_before);
 TrackPlay CdPlayRepeat(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 
 /* The title: src/rondo/menu/title.c. */

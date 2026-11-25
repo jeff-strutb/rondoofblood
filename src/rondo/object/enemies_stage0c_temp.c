@@ -2367,3 +2367,83 @@ void abi_LaunchThenFall(void)
 {
     abi_sound_end(LaunchThenFall(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0CAB:147 StartTileScriptByKind
+ * @run 70:B147
+ * WHAT IT DOES: Loads the object's record and sets its timer from a table at $B15D by its next kind; for kind 0 it draws the tile script 6 of group 0 (DrawTileScript).
+ * HOW: LoadObjectRecord, a table read (bank 70), DrawTileScript.
+ * WAITS: no.
+ * Entry: X object. Exit: kind 0: as DrawTileScript's; else the compare with 0.
+ */
+Ended StartTileScriptByKind(uint8_t slot)
+{
+    TileRun run;
+    uint8_t nz, last, kind, timer;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xB14A);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    kind = RD8(OBJ->next_kind[slot]);
+    e = then(e, ended_with_y(ended_nz(kind), kind));
+    timer = rd8((uint16_t)(0xB15D + kind));
+    WR8(OBJ->life_timer[slot], timer);
+    e = then(e, ended_load(timer));
+    e = then(e, cpy(kind, 0));
+    if (kind != 0) {
+        return e;
+    }
+    e = then(e, ended_load(6));
+    jsr_push(0xB15C);
+    run = DrawTileScript(6, 0);
+    jsr_pop();
+    return then(e, ended_of_tile_run(run, 6));
+}
+
+void abi_StartTileScriptByKind(void)
+{
+    abi_ended(StartTileScriptByKind(cpu.x));
+}
+
+/*
+ * @routine 0CAB:161 CountThenTileScript
+ * @run 70:B161
+ * WHAT IT DOES: Counts the object's timer down; at zero it draws the tile script of group 0 numbered the next kind plus 7 (DrawTileScript) and goes on to the next state.
+ * HOW: DEC, DrawTileScript, INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the count; at zero, the state's count.
+ */
+Ended CountThenTileScript(uint8_t slot)
+{
+    TileRun run;
+    Sum sum;
+    uint8_t left, kind, item, state;
+    Ended e;
+
+    left = DEC8(OBJ->life_timer[slot]);
+    e = ended_nz(left);
+    if (left != 0) {
+        return e;
+    }
+    kind = RD8(OBJ->next_kind[slot]);
+    e = then(e, ended_load(kind));
+    sum = add_bytes(kind, 6, false);
+    e = then(e, of_sum(sum));
+    item = (uint8_t)(sum.value + 1);
+    e = then(e, ended_nz(item));
+    e = then(e, ended_with_y(ended_kept(), 0));
+    jsr_push(0xB171);
+    run = DrawTileScript(item, 0);
+    jsr_pop();
+    e = then(e, ended_of_tile_run(run, item));
+    state = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(state));
+}
+
+void abi_CountThenTileScript(void)
+{
+    abi_ended(CountThenTileScript(cpu.x));
+}

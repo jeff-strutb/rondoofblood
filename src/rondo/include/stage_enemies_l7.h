@@ -382,6 +382,8 @@ Ended StartFromTable(uint8_t slot);
 Jump SlideTurnByTable(uint8_t slot, Ended *before);
 Ended MoveAlongAndSlow(uint8_t slot);
 SoundEnd LaunchThenFall(uint8_t slot, uint8_t y_entry);
+Ended StartTileScriptByKind(uint8_t slot);
+Ended CountThenTileScript(uint8_t slot);
 Ended TrackPointOrLand(uint8_t slot);
 Ended TrackThenAimAtPlayer(uint8_t slot);
 Ended OrbitThenLeave(uint8_t slot);
@@ -431,5 +433,14 @@ SoundEnd StepShootOnCue(uint8_t slot, uint8_t y);
 /* A memory shift right in one read and one write: the value written, and the bit shifted out in `carry_var`. */
 #define LSR8_VALUE(field, carry_var) \
     RMW8(field, old_s, ((carry_var) = (old_s & 1) != 0, old_s >> 1))
+
+/* What DrawTileScript called with the item (and the group's Y) leaves: A $FF, the compare's N clear and Z set, C set, Y as the last op left it, and V when a line step ran. */
+static inline Ended ended_of_tile_run(TileRun run, uint8_t item)
+{
+    Ended e = ended_with_a(ended_nz(0), 0xFF);
+
+    e = ended_with_carry(ended_with_y(e, tile_run_y_shim(run, (uint8_t)((uint8_t)(item << 1) + 1))), true);
+    return run.stepped_line ? ended_with_overflow(e, run.line_overflow) : e;
+}
 
 #endif

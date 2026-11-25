@@ -19,7 +19,7 @@ enum {
 static TileRun run_tile_script(void);
 
 /* Y as the last op left it: a count run down to zero, a shifted nibble or a jump's low. */
-static uint8_t tile_run_y_shim(TileRun run, uint8_t y_before)
+uint8_t tile_run_y_shim(TileRun run, uint8_t y_before)
 {
     if (run.last_op == TILE_OP_END)
         return y_before;

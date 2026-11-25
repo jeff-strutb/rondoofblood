@@ -1680,3 +1680,209 @@ void abi_JumpByStateTable(void)
 
     jump_shim(jump.end, jump.target);
 }
+
+/*
+ * @routine 09EC:090 ChainCountdown
+ * @run 70:B890
+ * WHAT IT DOES: A link of the chain follows the one before it (ChainFollowsPrevious); its timer counts down and at zero it enters its next state.
+ * HOW: ChainFollowsPrevious, DEC, INC.
+ * WAITS: no.
+ * Entry: X object. Exit: as ChainFollowsPrevious, then N and Z of the count or of the new state.
+ */
+Ended ChainCountdown(uint8_t slot)
+{
+    uint8_t left, state;
+    Ended e;
+
+    jsr_push(0xB893);
+    e = ChainFollowsPrevious(slot);
+    jsr_pop();
+    left = DEC8(OBJ->life_timer[slot]);
+    e = then(e, ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    state = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(state));
+}
+
+void abi_ChainCountdown(void)
+{
+    abi_ended(ChainCountdown(cpu.x));
+}
+
+/*
+ * @routine 09EC:09C ChainSwings
+ * @run 70:B89C
+ * WHAT IT DOES: A link follows the one before it, takes slot $10's facing, and swings: the cosine of its angle OBJ_35C0 (multiplier $0200) is added to OBJ_3568 and OBJ_3510 as
+ * a 16-bit pair, and a 16-bit step from a table at $B8E4 (by OBJ_3670 and 7) is added to OBJ_3618 and OBJ_35C0; a carry out of that goes up one on OBJ_3670.
+ * HOW: ChainFollowsPrevious, ScaleByCosine, table reads (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: the last add or INC.
+ */
+Ended ChainSwings(uint8_t slot)
+{
+    uint8_t facing, angle, low, high, phase, index, step, next;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xB89F);
+    e = ChainFollowsPrevious(slot);
+    jsr_pop();
+    facing = RD8(OBJ->facing_left[0x10]);
+    WR8(OBJ->facing_left[slot], facing);
+    e = then(e, ended_load(facing));
+    WR8(ZP->temp01, 2);
+    WR8(ZP->temp00, 0);
+    angle = RD8(OBJ->angle_lo[slot]);
+    jsr_push(0xB8B3);
+    ScaleByCosine(angle);
+    jsr_pop();
+    e = then(e, ended_with_y(ended_load(0), 0));
+    low = RD8(OBJ->angle_hi[slot]);
+    sum = add_bytes(low, RD8(ZP->product.mid), false);
+    WR8(OBJ->angle_hi[slot], sum.value);
+    high = RD8(OBJ->f3510[slot]);
+    sum = add_bytes(high, RD8(ZP->product.hi), sum.carry);
+    WR8(OBJ->f3510[slot], sum.value);
+    e = of_sum(sum);
+    phase = RD8(OBJ->f3670[slot]);
+    phase = (uint8_t)(phase & 0x07);
+    index = (uint8_t)(phase << 1);
+    e = then(e, ended_with_y(ended_with_carry(ended_load(index), false), index));
+    step = RD8(OBJ->f3618[slot]);
+    sum = add_bytes(step, rd8((uint16_t)(0xB8E4 + index)), false);
+    WR8(OBJ->f3618[slot], sum.value);
+    e = then(e, of_sum(sum));
+    low = RD8(OBJ->angle_lo[slot]);
+    sum = add_bytes(low, rd8((uint16_t)(0xB8E5 + index)), sum.carry);
+    WR8(OBJ->angle_lo[slot], sum.value);
+    e = then(e, of_sum(sum));
+    if (!sum.carry) {
+        return e;
+    }
+    next = INC8(OBJ->f3670[slot]);
+    return then(e, ended_nz(next));
+}
+
+void abi_ChainSwings(void)
+{
+    abi_ended(ChainSwings(cpu.x));
+}
+
+/*
+ * @routine 09EA:72C WalkAndPick
+ * @run 70:AF2C
+ * WHAT IT DOES: WalkSideways; the walk direction OBJ_3568 becomes the facing turned round; when the player is $80 or more away along X the object enters state 1; then
+ * PickNextAction (a tail jump).
+ * HOW: WalkSideways, DistanceXToPlayer, PickNextAction.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: as PickNextAction.
+ */
+Ended WalkAndPick(uint8_t slot)
+{
+    PlayerDistance distance;
+    uint8_t facing;
+    Ended e;
+
+    jsr_push(0xAF2F);
+    e = WalkSideways(slot);
+    jsr_pop();
+    facing = RD8(OBJ->facing_left[slot]);
+    facing = (uint8_t)(facing ^ 0x01);
+    WR8(OBJ->angle_hi[slot], facing);
+    e = then(e, ended_load(facing));
+    jsr_push(0xAF3A);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = then(e, ended_of_distance(distance));
+    e = then(e, ended_compare(distance.distance, 0x80));
+    if (distance.distance >= 0x80) {
+        WR8(OBJ->state[slot], 1);
+        e = then(e, ended_load(1));
+    }
+    return then(e, PickNextAction(slot));
+}
+
+void abi_WalkAndPick(void)
+{
+    abi_ended(WalkAndPick(cpu.x));
+}
+
+/*
+ * @routine 09EA:746 StepShootOnCue
+ * @run 70:AF46
+ * WHAT IT DOES: Steps the animation list at $AF89; when it ends the object enters state 2; on a new frame with animation step 3 it plays sound $26; then PlayCueOnFrame runs;
+ * on frame $0A with OBJ_35C0's low three bits clear it starts a kind $24 object at its place in the first free slot from $30, facing as it does.
+ * HOW: StepObjectFrames, SoundCommand, PlayCueOnFrame, FindFreeSlotFrom30, StartObjectAtPlace.
+ * Untraced: one byte.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+ */
+SoundEnd StepShootOnCue(uint8_t slot, uint8_t y)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    FrameStep step;
+    uint8_t anim, frame, bits, last, found_slot, placed, facing;
+    bool found;
+    Ended e;
+
+    step = step_list(slot, 0xAF89, 0xAF51, &y, true);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    r.end = e;
+    if (step == FRAME_LIST_ENDED) {
+        WR8(OBJ->state[slot], 2);
+        r.end = then(e, ended_load(2));
+        return r;
+    }
+    if (step == FRAME_CHANGED) {
+        anim = RD8(OBJ->anim_step[slot]);
+        e = then(e, ended_compare(anim, 3));
+        if (anim == 3) {
+            r.before = then(e, ended_load(0x26));
+            r.sounded = true;
+            r.command = 0x26;
+            jsr_push(0xAF61);
+            r.call = SoundCommand(0x26, slot, y);
+            jsr_pop();
+            e = ended_kept();
+        }
+    }
+    jsr_push(0xAF64);
+    e = then(e, PlayCueOnFrame(slot));
+    jsr_pop();
+    frame = RD8(OBJ->frame[slot]);
+    e = then(e, ended_compare(frame, 0x0A));
+    if (frame != 0x0A) {
+        r.end = e;
+        return r;
+    }
+    bits = RD8(OBJ->angle_lo[slot]);
+    bits = (uint8_t)(bits & 0x07);
+    e = then(e, ended_load(bits));
+    if (bits != 0) {
+        r.end = e;
+        return r;
+    }
+    jsr_push(0xAF75);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = then(e, ended_with_carry(ended_with_y(ended_with_a(ended_nz(0), last), found_slot), found));
+    if (!found) {
+        r.end = e;
+        return r;
+    }
+    jsr_push(0xAF7C);
+    placed = StartObjectAtPlace(0x24, slot, found_slot);
+    jsr_pop();
+    e = then(e, ended_load(placed));
+    facing = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->facing_left[found_slot], facing);
+    r.end = then(e, ended_load(facing));
+    return r;
+}
+
+void abi_StepShootOnCue(void)
+{
+    abi_sound_end(StepShootOnCue(cpu.x, cpu.y));
+}

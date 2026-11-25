@@ -273,6 +273,11 @@ Ended SlideAngleDown(uint8_t slot);
 Ended SlideAngleUp(uint8_t slot);
 
 
+Ended ChainCountdown(uint8_t slot);
+Ended ChainSwings(uint8_t slot);
+Ended WalkAndPick(uint8_t slot);
+SoundEnd StepShootOnCue(uint8_t slot, uint8_t y);
+
 /* A memory shift right in one read and one write: the value written, and the bit shifted out in `carry_var`. */
 #define LSR8_VALUE(field, carry_var) \
     RMW8(field, old_s, ((carry_var) = (old_s & 1) != 0, old_s >> 1))

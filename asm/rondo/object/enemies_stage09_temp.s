@@ -149,6 +149,68 @@ PickNextAction_at0:
     lda a:$AF24,y
     sta a:OBJ_3510,x
     rts
+; @routine 09EA:72C WalkAndPick
+; @run 70:AF2C
+; WHAT IT DOES: WalkSideways; the walk direction OBJ_3568 becomes the facing turned round; when the player is $80 or more away along X the object enters state 1; then
+; PickNextAction (a tail jump).
+; HOW: WalkSideways, DistanceXToPlayer, PickNextAction.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: as PickNextAction.
+WalkAndPick:
+    jsr WalkSideways
+    lda a:OBJ_2AC0,x
+    eor #$01
+    sta a:OBJ_3568,x
+    jsr VecDistanceXToPlayer
+    cmp #$80
+    bcc WalkAndPick_at0
+    lda #$01
+    sta a:OBJ_27A8,x
+WalkAndPick_at0:
+    jmp PickNextAction
+
+; @routine 09EA:746 StepShootOnCue
+; @run 70:AF46
+; WHAT IT DOES: Steps the animation list at $AF89; when it ends the object enters state 2; on a new frame with animation step 3 it plays sound $26; then PlayCueOnFrame runs;
+; on frame $0A with OBJ_35C0's low three bits clear it starts a kind $24 object at its place in the first free slot from $30, facing as it does.
+; HOW: StepObjectFrames, SoundCommand, PlayCueOnFrame, FindFreeSlotFrom30, StartObjectAtPlace.
+; Untraced: one byte.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+StepShootOnCue:
+    lda #$AF
+    sta z:zTemp11
+    lda #$89
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    beq StepShootOnCue_at0
+    bcc StepShootOnCue_at1
+    lda a:OBJ_3408,x
+    cmp #$03
+    bne StepShootOnCue_at1
+    lda #$26
+    jsr VecSoundCommand
+StepShootOnCue_at1:
+    jsr PlayCueOnFrame
+    lda a:OBJ_2A68,x
+    cmp #$0A
+    bne StepShootOnCue_at2
+    lda a:OBJ_35C0,x
+    and #$07
+    bne StepShootOnCue_at2
+    jsr VecFindFreeSlotFrom30
+    bcc StepShootOnCue_at2
+    lda #$24
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    rts
+StepShootOnCue_at0:
+    lda #$02
+    sta a:OBJ_27A8,x
+StepShootOnCue_at2:
+    rts
+
 ; @routine 09EA:792 PlayCueOnFrame
 ; @run 70:AF92
 ; @stop AFB9
@@ -653,6 +715,60 @@ StartChainLink:
     cpx #$19
     bne TurnOnRandomBeatWalkFollowC
     inc a:OBJ_2A68,x
+    rts
+
+; @routine 09EC:090 ChainCountdown
+; @run 70:B890
+; WHAT IT DOES: A link of the chain follows the one before it (ChainFollowsPrevious); its timer counts down and at zero it enters its next state.
+; HOW: ChainFollowsPrevious, DEC, INC.
+; WAITS: no.
+; Entry: X object. Exit: as ChainFollowsPrevious, then N and Z of the count or of the new state.
+ChainCountdown:
+    jsr ChainFollowsPrevious
+    dec a:OBJ_34B8,x
+    bne ChainCountdown_at0
+    inc a:OBJ_27A8,x
+ChainCountdown_at0:
+    rts
+
+; @routine 09EC:09C ChainSwings
+; @run 70:B89C
+; WHAT IT DOES: A link follows the one before it, takes slot $10's facing, and swings: the cosine of its angle OBJ_35C0 (multiplier $0200) is added to OBJ_3568 and OBJ_3510 as
+; a 16-bit pair, and a 16-bit step from a table at $B8E4 (by OBJ_3670 and 7) is added to OBJ_3618 and OBJ_35C0; a carry out of that goes up one on OBJ_3670.
+; HOW: ChainFollowsPrevious, ScaleByCosine, table reads (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: the last add or INC.
+ChainSwings:
+    jsr ChainFollowsPrevious
+    lda a:$2AD0
+    sta a:OBJ_2AC0,x
+    lda #$02
+    sta z:zTemp01
+    lda #$00
+    sta z:zTemp00
+    lda a:OBJ_35C0,x
+    jsr VecScaleByCosine
+    lda a:OBJ_3568,x
+    clc
+    adc z:SpriteFlipMask
+    sta a:OBJ_3568,x
+    lda a:OBJ_3510,x
+    adc z:zProduct2
+    sta a:OBJ_3510,x
+    lda a:OBJ_3670,x
+    and #$07
+    asl a
+    tay
+    lda a:OBJ_3618,x
+    clc
+    adc a:$B8E4,y
+    sta a:OBJ_3618,x
+    lda a:OBJ_35C0,x
+    adc a:$B8E5,y
+    sta a:OBJ_35C0,x
+    bcc ChainSwings_at0
+    inc a:OBJ_3670,x
+ChainSwings_at0:
     rts
 
 ; @routine 09EC:0F4 ChainFollowsPrevious

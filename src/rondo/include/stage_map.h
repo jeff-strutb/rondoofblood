@@ -189,9 +189,7 @@ StageSpawnEnd SpawnStageObjectsRows34Long(void);
 /* system/stage_blend_steps.c: A the restored bank, C and V as left, Y 5 once a blend ran. */
 typedef struct { uint8_t a; bool c; bool v; bool y_set; } BlendStepEnd;
 BlendStepEnd BlendStageStockRows(uint8_t x, uint8_t y);
-BlendStepEnd BlendStageStockRowsLong(uint8_t x, uint8_t y);
 BlendStepEnd BlendStageScoreAddRows(uint8_t x, uint8_t y);
-BlendStepEnd BlendStageScoreAddRowsLong(uint8_t x, uint8_t y);
 BlendStepEnd BlendStageScoreRows(uint8_t x);
 BlendStepEnd BlendStageScoreRowsLong(uint8_t x);
 

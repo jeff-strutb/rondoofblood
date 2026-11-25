@@ -122,24 +122,6 @@ BlendStageScoreRows_at1:
 BlendStageScoreRows_at0:
     jmp RestoreStageBanks
 
-; @routine 05BF:151 BlendStageStockRowsLong
-; @run 6B:9151
-; WHAT IT DOES: The same code for the other stage group, which keeps its bank routines at $9651 and $9666.
-; HOW: The same code, calling the bank routines at their other run addresses.
-; WAITS: no.
-; Entry: X kept on the stack, Y the second row of the first blend. Exit: A the bank restored, N and Z from it, C and V as the steps left them, Y 5 once a blend ran,
-; else kept; X kept.
-BlendStageStockRowsLong:
-
-; @routine 05BF:181 BlendStageScoreAddRowsLong
-; @run 6B:9181
-; WHAT IT DOES: The same code for the other stage group, which keeps its bank routines at $9651 and $9666.
-; HOW: The same code, calling the bank routines at their other run addresses.
-; WAITS: no.
-; Entry: X kept on the stack, Y the second row of the first blend. Exit: A the bank restored, N and Z from it, C and V as the steps left them, Y 5 once a blend ran,
-; else kept; X kept.
-BlendStageScoreAddRowsLong:
-
 ; @routine 05BF:1AC BlendStageScoreRowsLong
 ; @run 6B:91AC
 ; WHAT IT DOES: The same code for the other stage group, which keeps its bank routines at $9651 and $9666.

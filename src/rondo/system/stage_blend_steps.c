@@ -255,25 +255,6 @@ void abi_BlendStageStockRows(void)
 }
 
 /*
- * @routine 05BF:151 BlendStageStockRowsLong
- * @run 6B:9151
- * WHAT IT DOES: The same code for the other stage group, which keeps its bank routines at $9651 and $9666.
- * HOW: The same code, calling the bank routines at their other run addresses.
- * WAITS: no.
- * Entry: X kept on the stack, Y the second row of the first blend. Exit: A the bank restored, N and Z from it, C and V as the steps left them, Y 5 once a blend ran,
- * else kept; X kept.
- */
-BlendStepEnd BlendStageStockRowsLong(uint8_t x, uint8_t y)
-{
-    return blend_stock_rows(x, y);
-}
-
-void abi_BlendStageStockRowsLong(void)
-{
-    step_exit_shim(BlendStageStockRowsLong(cpu.x, cpu.y));
-}
-
-/*
  * @routine 024F:181 BlendStageScoreAddRows
  * @run 6B:9181
  * WHAT IT DOES: Blends the two bytes of the score being added into the stage (steps 3 and 5), when no blend is running.
@@ -290,25 +271,6 @@ BlendStepEnd BlendStageScoreAddRows(uint8_t x, uint8_t y)
 void abi_BlendStageScoreAddRows(void)
 {
     step_exit_shim(BlendStageScoreAddRows(cpu.x, cpu.y));
-}
-
-/*
- * @routine 05BF:181 BlendStageScoreAddRowsLong
- * @run 6B:9181
- * WHAT IT DOES: The same code for the other stage group, which keeps its bank routines at $9651 and $9666.
- * HOW: The same code, calling the bank routines at their other run addresses.
- * WAITS: no.
- * Entry: X kept on the stack, Y the second row of the first blend. Exit: A the bank restored, N and Z from it, C and V as the steps left them, Y 5 once a blend ran,
- * else kept; X kept.
- */
-BlendStepEnd BlendStageScoreAddRowsLong(uint8_t x, uint8_t y)
-{
-    return blend_score_add_rows(x, y);
-}
-
-void abi_BlendStageScoreAddRowsLong(void)
-{
-    step_exit_shim(BlendStageScoreAddRowsLong(cpu.x, cpu.y));
 }
 
 /*

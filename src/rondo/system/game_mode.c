@@ -277,7 +277,9 @@ BootRun ModeBoot(void)
     run.frame = overlay_frame(FrameOverlay8000, 0x5127);
     if (run.frame.done == 0)
         return run;
+    jsr_push(0x512F);
     run.control = WaitVblankDisplayOff();
+    jsr_pop();
     wr8(zDisplayDelay, BOOT_DISPLAY_DELAY);
     jsr_push(0x5138);
     run.width = ex_scrsiz(SCREEN_SIZE);
@@ -286,7 +288,9 @@ BootRun ModeBoot(void)
     wr8(zCharacterLoaded, 0xFF);
     wr8(zCharacter, 0);
     run.done_again = rd8(zModeDone);
+    jsr_push(0x5147);
     SetGameMode(MODE_TITLE);
+    jsr_pop();
     if (run.done_again & 0x80)
         wr8(zGameSubMode, BOOT_SUB_MODE);
     return run;

@@ -14,6 +14,8 @@ AnimationStep RichterStand(void);
 /* object/player_terrain.c: the registers a read under his feet leaves */
 void under_feet_exit_shim(ColumnRead one);
 TileRead RichterReadOnScreen(uint8_t row, bool carry);
+/* object/player_tile_probe.c */
+TileRead ProbeTileRead9991(void);
 
 /* A body's exit state, and a TST after it: N and V are the memory's bits 7 and 6, Z from the mask. */
 typedef struct {

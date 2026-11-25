@@ -35,6 +35,15 @@ void stage_exit_shim(StageExit end)
     }
 }
 
+/* The registers and flags original code or a wrapper left in cpu, as an exit that sets them all. */
+StageExit stage_exit_from_cpu_shim(void)
+{
+    StageExit end = { cpu.a, cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0, 0, EXIT_X | EXIT_Y | EXIT_C | EXIT_V };
+
+    end.nz = (cpu.p & P_Z) != 0 ? 0 : ((cpu.p & P_N) != 0 ? 0x80 : 0x01);
+    return end;
+}
+
 static StageExit exit_of_step(BlendStepEnd step)
 {
     StageExit end = { step.a, 0, ROW_ENTRIES, step.c, step.v, step.a, EXIT_C | EXIT_V };

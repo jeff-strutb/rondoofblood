@@ -42,8 +42,15 @@ MaskExit MaskStageRowCopy(uint8_t x, uint8_t y);
 MaskExit MaskStageRow(uint8_t x, uint8_t y);
 
 /* system/stage_vram_mask.c: A at exit (the first byte of the mask buffer). */
-uint8_t MaskVramRowsRandom(void);
-uint8_t MaskVramRowsRandomLong(void);
+/* What the routine leaves at its end: A and the carry and overflow if a masking set them; Y 0 or the row count. */
+typedef struct {
+    uint8_t a;
+    bool flags_from_mask;
+    Sum mask;
+    uint8_t y;
+} VramMaskExit;
+VramMaskExit MaskVramRowsRandom(void);
+VramMaskExit MaskVramRowsRandomLong(void);
 
 /* system/stage_setup.c: the slot the object went to, and the Y low it was given (A at exit). */
 typedef struct { uint8_t slot; uint8_t y_lo; } SpawnedObject;
@@ -199,6 +206,7 @@ BlendStepEnd BlendStageScoreRowsLong(uint8_t x);
 enum { EXIT_X = 1, EXIT_Y = 2, EXIT_C = 4, EXIT_V = 8, EXIT_CPU = 16 };
 typedef struct { uint8_t a; uint8_t x; uint8_t y; bool c; bool v; uint8_t nz; uint8_t set; } StageExit;
 void stage_exit_shim(StageExit end);
+StageExit stage_exit_from_cpu_shim(void);
 StageExit StepStageSequence(uint8_t x, uint8_t y);
 
 StageExit StageScriptByWave(void);
@@ -214,5 +222,8 @@ StageExit HitStoreHandler(uint8_t x, uint8_t y);
 StageExit HitReportHandler(uint8_t x, uint8_t y);
 StageExit HitTestAllObjects(uint8_t x);
 StageExit HitTestAllObjectsLong(uint8_t x);
+
+/* object/stage_ending.c: one step of the stage's ending effect. */
+StageExit StepStageEnding(uint8_t x, uint8_t y);
 
 #endif

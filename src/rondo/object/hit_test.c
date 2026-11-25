@@ -300,15 +300,6 @@ void abi_HitTestObjectLong(void)
     stage_exit_shim(HitTestObjectLong(cpu.x));
 }
 
-/* The registers original code left, as an exit. */
-static StageExit exit_from_cpu_shim(void)
-{
-    StageExit end = { cpu.a, cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0, 0, EXIT_X | EXIT_Y | EXIT_C | EXIT_V };
-
-    end.nz = (cpu.p & P_Z) != 0 ? 0 : ((cpu.p & P_N) != 0 ? 0x80 : 0x01);
-    return end;
-}
-
 enum { LAST_OBJECT = 0x57, FIRST_OBJECT = 0x10 };
 
 /*
@@ -340,7 +331,7 @@ static StageExit hit_test_all(uint8_t entry_x, StageExit (*test)(uint8_t x), uin
         step = test(x);
         jsr_pop();
         if ((step.set & EXIT_CPU) != 0) {
-            step = exit_from_cpu_shim();
+            step = stage_exit_from_cpu_shim();
         }
         a = step.a;
         if ((step.set & EXIT_X) != 0) {

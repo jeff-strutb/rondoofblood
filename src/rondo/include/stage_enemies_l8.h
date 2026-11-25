@@ -369,4 +369,10 @@ Ended CapPlayerXOnScreen1(uint8_t slot);
 Ended LoadRecordThenDriftAndCount(uint8_t slot);
 Ended LoadRecordAtX80(uint8_t slot);
 
+/* object/enemies_l8_st27.c */
+Ended BossFrameRoutines(uint8_t slot, uint8_t y_entry);
+Ended HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry);
+Ended BossFrameRoutinesB(uint8_t slot, uint8_t y_entry);
+Ended SpawnRowsWhenScrollAtZero(uint8_t slot);
+
 #endif

@@ -1639,3 +1639,64 @@ void abi_CollectScoreItem(void)
 {
     abi_sound_end(CollectScoreItem(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 051A:1A8 StartScorePickup
+ * @run 70:A9A8
+ * WHAT IT DOES: Loads the object's record, clears its facing and adds the score a table at $A9E1 gives for its timer (two bytes of BCD); when that carries over
+ * the mark the score tests for it the player gets an extra life (GiveExtraLife). The frame comes from a table at $A9DC by the timer, the angle OBJ_3510 is $18 and the Y speed $FE00.
+ * HOW: LoadObjectRecord, AddScoreWord, GiveExtraLife, table reads (bank 70).
+ * Untraced: the extra life (A9C2).
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ */
+SoundEnd StartScorePickup(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    SoundEnd life;
+    uint8_t nz, last, timer, index, changed, y, frame;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xA9AB);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->facing_left[slot], 0);
+    timer = RD8(OBJ->life_timer[slot]);
+    index = (uint8_t)(timer << 1);
+    e = ended_then(e, ended_with_carry(ended_with_y(ended_load(index), index), (timer & 0x80) != 0));
+    WR8(ZP->temp00, rd8((uint16_t)(0xA9E1 + index)));
+    WR8(ZP->temp01, rd8((uint16_t)(0xA9E2 + index)));
+    jsr_push(0xA9C0);
+    changed = AddScoreWord();
+    jsr_pop();
+    e = ended_then(e, ended_with_carry(ended_load(changed), changed != 0));
+    if (changed != 0) {
+        jsr_push(0xA9C5);
+        life = GiveExtraLife(slot, y_entry);
+        jsr_pop();
+        r.before = ended_then(e, life.before);
+        r.sounded = life.sounded;
+        r.command = life.command;
+        r.call = life.call;
+        e = life.end;
+    }
+    y = RD8(OBJ->life_timer[slot]);
+    e = ended_then(e, ended_with_y(ended_nz(y), y));
+    frame = rd8((uint16_t)(0xA9DC + y));
+    WR8(OBJ->frame[slot], frame);
+    e = ended_then(e, ended_load(frame));
+    WR8(OBJ->f3510[slot], 0x18);
+    e = ended_then(e, ended_load(0x18));
+    WR8(OBJ->vy_hi[slot], 0xFE);
+    e = ended_then(e, ended_load(0xFE));
+    WR8(OBJ->vy_lo[slot], 0);
+    r.end = e;
+    return r;
+}
+
+void abi_StartScorePickup(void)
+{
+    abi_sound_end(StartScorePickup(cpu.x, cpu.y));
+}

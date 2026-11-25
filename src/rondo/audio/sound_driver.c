@@ -1406,7 +1406,13 @@ static void block_move_stub_shim(uint16_t ret, uint8_t a, uint8_t x, uint8_t y, 
  * reset, the 32 samples written. $FF loads none, and channels 4 and 5 are left alone while an
  * effect plays on them.
  * HOW: SoundWaveAddress, then the RAM block-move stub at $22E7 built as a TIN of 32 bytes to
- * PsgWaveData and called.
+ * PsgWaveData and called. The bytes that run as original code are those eight, $22E7 to $22EE
+ * (TIN $D3, source, destination, length, RTS $60), which this routine writes into work RAM itself:
+ * they have no disc origin, so no @routine can own them, and the checker hands a call into them
+ * to the original (the C's own imitation of the 32 reads and writes of the move was reported as
+ * EXTRA accesses by gate A5 on sound_test, the original's call giving the same accesses itself).
+ * The C writes the eight bytes, pushes the return frame and the registers and flags the assembly
+ * holds, and calls the stub through block_move_stub_shim (call_orig).
  * WAITS: no.
  * Entry: A waveform, X channel. Exit: X and Y kept. $FF, A $FF, Z and C set, N clear, V kept.
  * Left alone, A kept, N and V the effect's bits 7 and 6, Z and C clear. Loaded, A $60, N and Z

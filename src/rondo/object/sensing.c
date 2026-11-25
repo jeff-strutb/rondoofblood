@@ -354,8 +354,8 @@ Probe ProbeWalls(uint8_t object, uint8_t column, bool carry_in)
         if ((request & PROBE_WALL_PUSH) != 0) {
             if (y < COLUMNS_ON_LEFT) {
                 depth = rd8((uint16_t)(TileDepthX + y));
-                amount = rd8((uint16_t)(WallPushTable + depth));
                 low = RD8(OBJ->x_lo[p.object]);
+                amount = rd8((uint16_t)(WallPushTable + depth));
                 sum = add_bytes(low, amount, false);
                 WR8(OBJ->x_lo[p.object], sum.value);
                 p.column = depth;
@@ -482,13 +482,12 @@ static void word_subtract_shim(uint16_t before, uint16_t amount)
 /* Registers and flags as a probe's steps leave them, in the assembly's order. */
 void probe_exit_shim(Probe p)
 {
-    if (p.floor_asked) {
+    if (p.floor_asked)
         lookup_exit_shim(p.floor);
-        if (p.scanned && p.scanned_to > 0)
-            abi_flag(P_C, p.scanned_to >= FLOOR_COLUMNS);
-        if (p.lifted)
-            word_subtract_shim(p.lift_before, p.lift_amount);
-    }
+    if (p.scanned && p.scanned_to > 0)
+        abi_flag(P_C, p.scanned_to >= FLOOR_COLUMNS);
+    if (p.lifted)
+        word_subtract_shim(p.lift_before, p.lift_amount);
     if (p.wall_asked) {
         lookup_exit_shim(p.wall);
         if (p.pushed == PUSHED_RIGHT) {
@@ -616,23 +615,6 @@ void abi_ProbeTerrainFrontColumn(void)
     probe_exit_shim(ProbeTerrainFrontColumn(cpu.a, cpu.x, cpu.y, (cpu.p & P_C) != 0));
 }
 
-/* How a mover's start went: the move and whether gravity gained. */
-typedef struct {
-    bool moved;
-    AxisMove move;
-    GravityResult gravity;
-} MoverStart;
-
-/* How a mover went, for what the wrapper replays. */
-typedef struct {
-    uint8_t object;
-    MoverStart start;
-    bool floor_probed;
-    Probe floor;
-    Probe wall;
-    uint8_t hits;
-} Mover;
-
 /* The carry a lookup leaves: set when the typed lookup ran, kept when another overlay's code answered. */
 static bool lookup_carry(LookupEnd end, bool before)
 {
@@ -644,12 +626,12 @@ static bool probe_carry_out(Probe p, bool carry)
 {
     if (p.floor_asked) {
         carry = lookup_carry(p.floor, carry);
-        if (p.scanned && p.scanned_to > 0) {
-            carry = p.scanned_to >= FLOOR_COLUMNS;
-        }
-        if (p.lifted) {
-            carry = p.lift_before >= p.lift_amount;
-        }
+    }
+    if (p.scanned && p.scanned_to > 0) {
+        carry = p.scanned_to >= FLOOR_COLUMNS;
+    }
+    if (p.lifted) {
+        carry = p.lift_before >= p.lift_amount;
     }
     if (p.wall_asked) {
         carry = lookup_carry(p.wall, carry);
@@ -685,7 +667,7 @@ static MoverStart mover_start(uint8_t object, uint16_t ret_velocity, uint16_t re
 }
 
 /* A the hits, and C says the bit asked about is among them. X and Y as the last probe left them. */
-static void mover_exit_shim(Mover mover, uint8_t carry_bit)
+void mover_exit_shim(Mover mover, uint8_t carry_bit)
 {
     if (mover.start.moved) {
         axis_move_flags_shim(mover.start.move);

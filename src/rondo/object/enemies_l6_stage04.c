@@ -543,3 +543,87 @@ void abi_LoadOrFallAlongListByTimer(void)
 {
     abi_ended(LoadOrFallAlongListByTimer(cpu.x));
 }
+
+/*
+ * @routine 051B:392 StepListB3B8ThenLand
+ * @run 70:B392
+ * WHAT IT DOES: Steps the animation list at $B3B8, then asks StopOnLanding with a probe height of 4; on landing the object gets an X speed of $FEE0, clears its animation step and timer and goes to the next OBJ_2800.
+ * HOW: StepObjectFrames, StopOnLanding, stores, an INC.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column kept unless the step sets it, C passed on. Exit: the mover's registers, then the new OBJ_2800's N and Z when landed.
+ */
+LandWait StepListB3B8ThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry)
+{
+    LandWait wait = { true, { 0 }, { 0 } };
+    FrameStep step;
+    uint8_t y = y_entry, phase;
+    Ended e;
+
+    WR8(ZP->temp10, 0xB8);
+    WR8(ZP->temp11, 0xB3);
+    jsr_push(0xB39D);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    jsr_push(0xB3A2);
+    wait.mover = StopOnLanding(4, slot, y, ended_carry_or(e, carry_entry));
+    jsr_pop();
+    if (!mover_landed(wait.mover)) {
+        return wait;
+    }
+    WR8(OBJ->vx_hi[slot], 0xFE);
+    WR8(OBJ->vx_lo[slot], 0xE0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    phase = INC8(OBJ->f2800[slot]);
+    wait.end = then(ended_load(0xE0), ended_nz(phase));
+    return wait;
+}
+
+void abi_StepListB3B8ThenLand(void)
+{
+    land_wait_exit_shim(StepListB3B8ThenLand(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 051B:707 LandThenFaceAndRun
+ * @run 70:B707
+ * WHAT IT DOES: Asks StopOnLanding with a probe height of 4; on landing the object faces the player (bit 0 of SideOfPlayer), takes an X speed from the table at $B3BF by that side, clears OBJ_35C0 and OBJ_2800 and goes to state 2.
+ * HOW: StopOnLanding, SideOfPlayer, table reads (bank 70), stores.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column, C passed on. Exit: the mover's registers, then A 2 when landed.
+ */
+LandWait LandThenFaceAndRun(uint8_t slot, uint8_t column, bool carry_in)
+{
+    LandWait wait = { true, { 0 }, { 0 } };
+    SideResult side;
+    uint8_t bits, y;
+    Ended e;
+
+    jsr_push(0xB70C);
+    wait.mover = StopOnLanding(4, slot, column, carry_in);
+    jsr_pop();
+    if (!mover_landed(wait.mover)) {
+        return wait;
+    }
+    jsr_push(0xB711);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bits = (uint8_t)(side.sides & 0x01);
+    WR8(OBJ->facing_left[slot], bits);
+    y = (uint8_t)(bits << 1);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB3C0 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xB3BF + y)));
+    WR8(OBJ->angle_lo[slot], 0);
+    WR8(OBJ->state[slot], 2);
+    WR8(OBJ->f2800[slot], 0);
+    e = then(ended_of_side(side), ended_load(bits));
+    e = then(e, ended_with_carry(ended_with_y(ended_load(y), y), false));
+    wait.end = then(e, ended_load(2));
+    return wait;
+}
+
+void abi_LandThenFaceAndRun(void)
+{
+    land_wait_exit_shim(LandThenFaceAndRun(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}

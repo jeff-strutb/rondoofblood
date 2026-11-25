@@ -2264,10 +2264,9 @@ WaveLoad SoundCommandWave(uint8_t channel, uint8_t kept_y)
 
 void abi_SoundCommandWave(void)
 {
-    uint8_t wave = argument(0);
+    WaveLoad load = SoundCommandWave(cpu.x, cpu.y);
 
-    cpu.a = wave;
-    wave_load_exit_shim(SoundCommandWave(cpu.x, cpu.y), wave);
+    wave_load_exit_shim(load, load.wave);
 }
 
 /*
@@ -2275,6 +2274,7 @@ void abi_SoundCommandWave(void)
  * @run 75:8B09
  * WHAT IT DOES: Command $E3: the channel's pan, unless it is 0.
  * HOW: SoundSetPan.
+ * WAITS: no.
  * Entry: X channel. Exit: A the pan, N and Z from it. X, Y, C and V kept.
  */
 uint8_t SoundCommandPan(uint8_t channel)
@@ -2293,25 +2293,36 @@ void abi_SoundCommandPan(void)
 
 /* A slide's start toward a target: up by the step, or down by it when the target is below. */
 static SlideStart start_slide(uint8_t channel, uint16_t step_lo, uint16_t step_hi, uint16_t target,
-                              uint16_t from, uint8_t step, uint8_t aim)
+                              uint16_t from, bool volume)
 {
-    SlideStart start = { false, 0, 0, 0 };
+    SlideStart start = { false, 0, 0, 0, false, false };
+    uint8_t step, aim, hi;
+    Sum sum;
 
+    step = argument(0);
     wr8((uint16_t)(step_lo + channel), step);
     wr8((uint16_t)(step_hi + channel), 0);
+    aim = argument(1);
+    if (volume) {
+        sum = sub_bytes(VOLUME_STEPS, aim, true);
+        aim = sum.value;
+        start.aim_set = true;
+        start.aim_overflow = sum.overflow;
+    }
     wr8((uint16_t)(target + channel), aim);
     start.aim = aim;
     start.from = rd8((uint16_t)(from + channel));
     if (aim >= start.from)
         return start;
     start.down = true;
-    start.step = (uint8_t)(0 - argument(0));
+    step = argument(0);
+    start.step = (uint8_t)(0 - step);
     wr8((uint16_t)(step_lo + channel), start.step);
-    wr8((uint16_t)(step_hi + channel), (uint8_t)(rd8((uint16_t)(step_hi + channel)) - 1));
+    hi = rd8((uint16_t)(step_hi + channel));
+    wr8((uint16_t)(step_hi + channel), (uint8_t)(hi - 1));
     return start;
 }
 
-/* Up, A the target with the compare's flags; down, A the step, C and V from negating it, N set. */
 static void abi_exit_slide_start(SlideStart start)
 {
     if (!start.down) {
@@ -2332,13 +2343,13 @@ static void abi_exit_slide_start(SlideStart start)
  * WHAT IT DOES: Command $F8: a pan slide by a step toward a target pan, down when the target is
  * below the pan as set.
  * HOW: SoundPanStepLo and Hi, SoundPanTarget against SoundPanSet.
+ * WAITS: no.
  * Entry: X channel. Exit: X and Y kept. Up, A the target, N and Z from comparing it, C set, V
  * kept. Down, A the step made negative, N set, Z clear, C and V from negating it.
  */
 SlideStart SoundCommandPanSlide(uint8_t channel)
 {
-    return start_slide(channel, SoundPanStepLo, SoundPanStepHi, SoundPanTarget, SoundPanSet,
-                       argument(0), argument(1));
+    return start_slide(channel, SoundPanStepLo, SoundPanStepHi, SoundPanTarget, SoundPanSet, false);
 }
 
 void abi_SoundCommandPanSlide(void)
@@ -2644,26 +2655,26 @@ void abi_SoundCommandTremolo(void)
  * WHAT IT DOES: Command $EE: the channel's volume, 0 to $0F, as the slide's attenuation $0F less
  * it, with no fraction.
  * HOW: SoundSlideHi, SoundSlideLo cleared.
+ * WAITS: no.
  * Entry: X channel. Exit: A the attenuation, N, Z, C and V from its subtract. X and Y kept.
  */
-uint8_t SoundCommandVolume(uint8_t channel)
+Sum SoundCommandVolume(uint8_t channel)
 {
-    uint8_t attenuation = (uint8_t)(VOLUME_STEPS - argument(0));
+    Sum attenuation = sub_bytes(VOLUME_STEPS, argument(0), true);
 
-    wr8((uint16_t)(SoundSlideHi + channel), attenuation);
+    wr8((uint16_t)(SoundSlideHi + channel), attenuation.value);
     wr8((uint16_t)(SoundSlideLo + channel), 0);
     return attenuation;
 }
 
 void abi_SoundCommandVolume(void)
 {
-    uint8_t volume = argument(0);
-    Sum sum = sub_bytes(VOLUME_STEPS, volume, true);
+    Sum attenuation = SoundCommandVolume(cpu.x);
 
-    cpu.a = SoundCommandVolume(cpu.x);
-    abi_nz(cpu.a);
-    abi_flag(P_C, sum.carry);
-    abi_flag(P_V, sum.overflow);
+    cpu.a = attenuation.value;
+    abi_nz(attenuation.value);
+    abi_flag(P_C, attenuation.carry);
+    abi_flag(P_V, attenuation.overflow);
 }
 
 /*
@@ -2672,20 +2683,20 @@ void abi_SoundCommandVolume(void)
  * WHAT IT DOES: Command $EF: a volume slide by a step to a target volume, as the attenuation $0F
  * less it; down in attenuation when the target is below the slide's.
  * HOW: SoundSlideStepLo and Hi, SoundSlideTarget against SoundSlideHi.
+ * WAITS: no.
  * Entry: X channel. Exit: as SoundCommandPanSlide, with V from the target's subtract when up.
  */
 SlideStart SoundCommandVolumeSlide(uint8_t channel)
 {
-    return start_slide(channel, SoundSlideStepLo, SoundSlideStepHi, SoundSlideTarget, SoundSlideHi,
-                       argument(0), (uint8_t)(VOLUME_STEPS - argument(1)));
+    return start_slide(channel, SoundSlideStepLo, SoundSlideStepHi, SoundSlideTarget, SoundSlideHi, true);
 }
 
 void abi_SoundCommandVolumeSlide(void)
 {
-    Sum aim = sub_bytes(VOLUME_STEPS, argument(1), true);
+    SlideStart start = SoundCommandVolumeSlide(cpu.x);
 
-    abi_flag(P_V, aim.overflow);
-    abi_exit_slide_start(SoundCommandVolumeSlide(cpu.x));
+    abi_flag(P_V, start.aim_overflow);
+    abi_exit_slide_start(start);
 }
 
 /*
@@ -2830,28 +2841,36 @@ void abi_SoundCommandRepeat(void)
  * WHAT IT DOES: Command $FA: the channel's envelope: its attack from a preset, its decay and
  * release rates from the tens and units of the second argument, its sustain level.
  * HOW: SoundAttackPresets by the first; SoundRatePresets by the second's tens and units.
+ * WAITS: no.
  * Entry: X channel. Exit: A the sustain level, N and Z from it, Y the units, C clear, V from the
  * last subtract of ten if there was one. X kept.
  */
 Envelope SoundCommandEnvelope(uint8_t channel)
 {
     Envelope envelope = { 0, 0, 0, false, false };
-    uint8_t preset = (uint8_t)(argument(0) << 1);
-    uint8_t rate = argument(1);
+    uint8_t a, y, rate;
+    Sum less;
 
-    wr8((uint16_t)(SoundAttackRate + channel), rd8((uint16_t)(SoundAttackPresets + preset)));
-    wr8((uint16_t)(SoundAttackLevel + channel), rd8((uint16_t)(SoundAttackPresets + (uint8_t)(preset + 1))));
+    a = argument(0);
+    y = (uint8_t)(a << 1);
+    wr8((uint16_t)(SoundAttackRate + channel), rd8((uint16_t)(SoundAttackPresets + y)));
+    y = (uint8_t)(y + 1);
+    wr8((uint16_t)(SoundAttackLevel + channel), rd8((uint16_t)(SoundAttackPresets + y)));
+    rate = argument(1);
+    y = 0;
     while (rate >= RATE_TENS) {
-        Sum less = sub_bytes(rate, RATE_TENS, true);
-
+        less = sub_bytes(rate, RATE_TENS, true);
         envelope.subtracted = true;
         envelope.overflow = less.overflow;
         rate = less.value;
-        envelope.tens++;
+        y++;
     }
-    envelope.units = rate;
-    wr8((uint16_t)(SoundDecayRate + channel), rd8((uint16_t)(SoundRatePresets + envelope.tens)));
-    wr8((uint16_t)(SoundReleaseRate + channel), rd8((uint16_t)(SoundRatePresets + envelope.units)));
+    envelope.tens = y;
+    push8(rate);
+    wr8((uint16_t)(SoundDecayRate + channel), rd8((uint16_t)(SoundRatePresets + y)));
+    y = pull8();
+    envelope.units = y;
+    wr8((uint16_t)(SoundReleaseRate + channel), rd8((uint16_t)(SoundRatePresets + y)));
     envelope.sustain = set_from(SoundSustainLevel, channel, 2);
     return envelope;
 }

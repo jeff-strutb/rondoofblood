@@ -426,6 +426,7 @@ static struct {
 static uint64_t held_ints, held_not;
 static unsigned hold_acc;     /* data accesses the core made under the hold */
 void hold_prepare(Span *s, const Ev *closing);
+int hold_arm(uint64_t end_idx, int tag);
 void hand_over(uint16_t addr);
 static unsigned long extra_run;
 static const char *stopped_why;
@@ -1004,6 +1005,16 @@ static unsigned hy_bank_phys(uint16_t addr, uint32_t *phys)
     return *phys >> 13;
 }
 
+int enters(uint16_t addr)
+{
+    int r = tag_pick(addr) >= 0;
+
+    if (!r && getenv("RONDO_DIAG_CTX") && mode != MODE_RECORD)
+        fprintf(stderr, "ENTERS no tag at %04X frame %lu mode %d top %s\n", addr, cur_frame, mode,
+                mode == MODE_HYBRID && top ? rondo_tags[top->tag].name : "-");
+    return r;
+}
+
 /* An instruction byte the routine patched (the operand of its own code in RAM): read as the CPU fetches it, no access. */
 uint8_t code8(uint16_t addr)
 {
@@ -1380,6 +1391,12 @@ static void original_at(uint16_t ret, uint16_t addr)
         }
     }
     if (!found) {
+        if (getenv("RONDO_DIAG_CTX") && mode == MODE_HYBRID) {
+            int ti = tag_pick(addr);
+
+            fprintf(stderr, "  NOCALL tag at %04X: index %d %s resident %d\n", addr, ti, ti >= 0 ? rondo_tags[ti].name : "-",
+                    ti >= 0 ? tag_resident(&rondo_tags[ti]) : -1);
+        }
         if (getenv("RONDO_DIAG_CTX") && mode == MODE_HYBRID)
             for (uint64_t k = sp->cur; k < sp->cur + 16; k++) {
                 Ev *x = evp(k);
@@ -1599,22 +1616,18 @@ void hand_over(uint16_t addr)
 
 /* At a left hand-over: the C's registers against the original's at the close (when the C is at the PC the original
  * left at), and the interrupt that follows the close in the record, if the next event after the close markers is one. */
-void hold_prepare(Span *s, const Ev *closing)
+/* The interrupt the record has right after the close at end_idx (past the other closes and MPR changes), if any: armed as the
+ * hold, 1; else 0. */
+int hold_arm(uint64_t end_idx, int tag)
 {
     uint64_t k;
     Ev *x;
 
     hold.active = 0;
-    if (closing->pc == rondo_pc && (cpu.a != closing->a || cpu.x != closing->x || cpu.y != closing->y || cpu.s != closing->s ||
-                                    ((cpu.p ^ closing->p) & PFLAGS)))
-        defect(D_REGS, "at the hand-over at %04X the C has A%02X X%02X Y%02X S%02X P%02X, the original A%02X X%02X Y%02X S%02X P%02X",
-               rondo_pc, cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, closing->a, closing->x, closing->y, closing->s, closing->p);
-    for (k = s->end + 1; (x = evp(k)) && (x->type == EV_CLOSE || x->type == EV_STATE); k++)
+    for (k = end_idx + 1; (x = evp(k)) && (x->type == EV_CLOSE || x->type == EV_STATE); k++)
         ;
-    if (!x || x->type != EV_INT) {
-        held_not++;
-        return;
-    }
+    if (!x || x->type != EV_INT)
+        return 0;
     hold.ev = *x;
     hold.handler = 0;
     for (uint64_t j = k + 1; j < k + 64 && (x = evp(j)); j++)
@@ -1623,14 +1636,24 @@ void hold_prepare(Span *s, const Ev *closing)
             hold.entry_idx = j;
             break;
         }
-    if (!hold.handler) {
-        held_not++;
-        return;
-    }
-    hold.tag = s->tag;
+    if (!hold.handler)
+        return 0;
+    hold.tag = tag;
     hold.n = 0;
     hold_acc = 0;
     hold.active = 1;
+    return 1;
+}
+
+void hold_prepare(Span *s, const Ev *closing)
+{
+    hold.active = 0;
+    if (closing->pc == rondo_pc && (cpu.a != closing->a || cpu.x != closing->x || cpu.y != closing->y || cpu.s != closing->s ||
+                                    ((cpu.p ^ closing->p) & PFLAGS)))
+        defect(D_REGS, "at the hand-over at %04X the C has A%02X X%02X Y%02X S%02X P%02X, the original A%02X X%02X Y%02X S%02X P%02X",
+               rondo_pc, cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, closing->a, closing->x, closing->y, closing->s, closing->p);
+    if (!hold_arm(s->end, s->tag))
+        held_not++;
 }
 
 /* A tail jump from the instruction at `from`: that is where the original's jump came from, and the hook judges

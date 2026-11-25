@@ -670,3 +670,61 @@ void abi_LoadThenStateByKindByte(void)
 {
     abi_ended(LoadThenStateByKindByte(cpu.x));
 }
+
+/*
+ * @routine 051E:090 LoadThenSinkAlongList
+ * @run 71:C890
+ * WHAT IT DOES: In state 0 loads the object's record, sets OBJ_2FE8 to $80, keeps its Y low in OBJ_34B8 and gives OBJ_3408 a random $00 to $0F. Each frame it adds $FE80 to its Y position (fraction and low byte) and steps the animation list at $C8D0; when the list ends it puts its Y low back from OBJ_34B8.
+ * HOW: LoadObjectRecord, NextRandom, a 16-bit add, StepObjectFrames.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or the load of OBJ_34B8 when the list ended.
+ */
+Ended LoadThenSinkAlongList(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    RandomResult random;
+    Sum low, high;
+    uint8_t state, nz, last, value, y = y_entry;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        jsr_push(0xC898);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = then(e, ended_of_record(last, nz, carry));
+        WR8(OBJ->sprite_flip[slot], 0x80);
+        value = RD8(OBJ->y_lo[slot]);
+        WR8(OBJ->f34b8[slot], value);
+        e = then(then(e, ended_load(0x80)), ended_load(value));
+        jsr_push(0xC8A6);
+        random = NextRandom();
+        jsr_pop();
+        WR8(OBJ->anim_step[slot], (uint8_t)(random.value & 0x0F));
+        e = then(then(e, ended_of_random(random)), ended_load((uint8_t)(random.value & 0x0F)));
+    }
+    low = add_bytes(RD8(OBJ->y_frac[slot]), 0x80, false);
+    WR8(OBJ->y_frac[slot], low.value);
+    high = add_bytes(RD8(OBJ->y_lo[slot]), 0xFE, low.carry);
+    WR8(OBJ->y_lo[slot], high.value);
+    e = then(then(e, ended_of_sum(low)), ended_of_sum(high));
+    WR8(ZP->temp10, 0xD0);
+    WR8(ZP->temp11, 0xC8);
+    jsr_push(0xC8C7);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(then(e, ended_load(0xC8)), ended_of_frame_step(step, step != FRAME_HELD, y));
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    value = RD8(OBJ->f34b8[slot]);
+    WR8(OBJ->y_lo[slot], value);
+    return then(e, ended_load(value));
+}
+
+void abi_LoadThenSinkAlongList(void)
+{
+    abi_ended(LoadThenSinkAlongList(cpu.x, cpu.y));
+}

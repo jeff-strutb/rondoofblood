@@ -526,6 +526,7 @@ Ended LoadThenFallAndFlash(uint8_t slot);
 Ended LoadThenSpawnWhileScrolling(uint8_t slot);
 Ended SpawnPointFromTables(uint8_t slot);
 Ended JumpAwayThenLand(uint8_t slot);
+SoundEnd WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry);
 Ended LoadThenScatterAlongList(uint8_t slot, uint8_t y_entry);
 Ended TurnTowardPlayerAndMove(uint8_t slot, uint8_t y_entry);
 Ended FollowSlot10WithHitBox(uint8_t slot);

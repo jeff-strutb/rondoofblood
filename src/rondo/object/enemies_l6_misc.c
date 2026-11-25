@@ -735,3 +735,100 @@ void abi_TurnTowardPlayerAndMove(void)
 {
     abi_ended(TurnTowardPlayerAndMove(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 051F:454 WaitForPressThenAnimate
+ * @run 71:D454
+ * WHAT IT DOES: In state 0 loads the object's record and sets sprite set 6. Later, with OBJ_2800 0, it waits until the first object is at Y low $AA and X low $CC to $D3 and the pad's new presses have bit 4; then it moves to the next OBJ_2800, clears its animation step and timer and takes the first object's X low and Y low plus $D8 as its place. With OBJ_2800 not 0 it sets the first object's OBJ_3510 to $C0 and OBJ_3568 to $10 and steps the animation list at $D443; sound $3B when a frame changes; when the list ends it clears OBJ_2800, its frame and the first object's OBJ_3510.
+ * HOW: LoadObjectRecord, StepObjectFrames, SoundCommand, stores.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+ */
+SoundEnd WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    FrameStep step;
+    Sum sum;
+    uint8_t state, nz, last, phase, value, y = y_entry;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        jsr_push(0xD45C);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->sprite_set[slot], 6);
+        r.end = then(then(e, ended_of_record(last, nz, carry)), ended_load(6));
+        return r;
+    }
+    phase = RD8(OBJ->f2800[slot]);
+    e = then(e, ended_load(phase));
+    if (phase == 0) {
+        value = RD8(OBJ->y_lo[0]);
+        e = then(e, ended_compare(value, 0xAA));
+        if (value != 0xAA) {
+            r.end = e;
+            return r;
+        }
+        value = RD8(OBJ->x_lo[0]);
+        e = then(e, ended_compare(value, 0xD4));
+        if (value >= 0xD4) {
+            r.end = e;
+            return r;
+        }
+        value = RD8(OBJ->x_lo[0]);
+        e = then(e, ended_compare(value, 0xCC));
+        if (value < 0xCC) {
+            r.end = e;
+            return r;
+        }
+        value = (uint8_t)(RD8(ZP->pad_pressed) & 0x10);
+        e = then(e, ended_load(value));
+        if (value == 0) {
+            r.end = e;
+            return r;
+        }
+        INC8(OBJ->f2800[slot]);
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        value = RD8(OBJ->x_lo[0]);
+        WR8(OBJ->x_lo[slot], value);
+        sum = add_bytes(RD8(OBJ->y_lo[0]), 0xD8, false);
+        WR8(OBJ->y_lo[slot], sum.value);
+        r.end = then(then(e, ended_load(value)), ended_of_sum(sum));
+        return r;
+    }
+    WR8(OBJ->f3510[0], 0xC0);
+    WR8(OBJ->f3568[0], 0x10);
+    WR8(ZP->temp10, 0x43);
+    WR8(ZP->temp11, 0xD4);
+    jsr_push(0xD4B0);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(then(then(e, ended_load(0x10)), ended_load(0xD4)), ended_of_frame_step(step, step != FRAME_HELD, y));
+    if (step == FRAME_LIST_ENDED) {
+        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->frame[slot], 0);
+        WR8(OBJ->f3510[0], 0);
+        r.end = then(e, ended_load(0));
+        return r;
+    }
+    if (step != FRAME_CHANGED) {
+        r.end = e;
+        return r;
+    }
+    r.before = then(e, ended_load(0x3B));
+    r.sounded = true;
+    r.command = 0x3B;
+    jsr_push(0xD4C3);
+    r.call = SoundCommand(0x3B, slot, y);
+    jsr_pop();
+    return r;
+}
+
+void abi_WaitForPressThenAnimate(void)
+{
+    abi_sound_end(WaitForPressThenAnimate(cpu.x, cpu.y));
+}

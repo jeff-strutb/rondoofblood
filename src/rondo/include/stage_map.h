@@ -226,4 +226,7 @@ StageExit HitTestAllObjectsLong(uint8_t x);
 /* object/stage_ending.c: one step of the stage's ending effect. */
 StageExit StepStageEnding(uint8_t x, uint8_t y);
 
+/* system/stage_main.c: one frame of the stage. */
+StageExit RunStageFrame(uint8_t x, uint8_t y);
+
 #endif

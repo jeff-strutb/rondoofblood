@@ -1041,3 +1041,105 @@ void abi_DrawStepCountThenClear(void)
 {
     abi_ended(DrawStepCountThenClear(cpu.x));
 }
+
+/*
+ * @routine 088B:0AC StepListIndex0AThenSpawn
+ * @run 70:B0AC
+ * WHAT IT DOES: Steps the animation list StepListByIndex088A gives for index $0A. When the list ends it clears its animation step and timer and goes to state 2. While it runs, on a changed frame $24 it starts a kind $23 object in a free slot from $30 at its place.
+ * HOW: StepListByIndex088A, FindFreeSlotFrom30, StartObjectAtPlace, stores.
+ * WAITS: no.
+ * Entry: X object. Exit: the step's, the compare, or the start's registers.
+ */
+Ended StepListIndex0AThenSpawn(uint8_t slot)
+{
+    Ended step, e;
+    uint8_t frame, found_slot, last, placed;
+    bool found;
+
+    e = ended_with_y(ended_nz(0x0A), 0x0A);
+    jsr_push(0xB0B1);
+    step = StepListByIndex088A(slot, 0x0A);
+    jsr_pop();
+    e = then(e, step);
+    if (step.nz == 0) {
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 2);
+        return then(e, ended_load(2));
+    }
+    if (!step.c) {
+        return e;
+    }
+    frame = RD8(OBJ->frame[slot]);
+    e = then(then(e, ended_load(frame)), ended_compare(frame, 0x24));
+    if (frame != 0x24) {
+        return e;
+    }
+    jsr_push(0xB0BF);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = then(e, ended_of_find_slot(found_slot, last, found));
+    if (!found) {
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 2);
+        return then(e, ended_load(2));
+    }
+    jsr_push(0xB0C6);
+    placed = StartObjectAtPlace(0x23, slot, found_slot);
+    jsr_pop();
+    return then(then(e, ended_load(0x23)), ended_with_y(ended_load(placed), found_slot));
+}
+
+void abi_StepListIndex0AThenSpawn(void)
+{
+    abi_ended(StepListIndex0AThenSpawn(cpu.x));
+}
+
+/*
+ * @routine 088B:044 CheckPlayerThenStepListIndex08
+ * @run 70:B044
+ * WHAT IT DOES: With OBJ_2800 0 it goes on to OBJ_2800 1 and, when the player is $50 or more away along X, goes to state 6. Later it steps the animation list StepListByIndex088A gives for index 8 and when that ends clears its animation step and timer and goes to state 5. (The state 6 arm ran in no script; it is written from the decoded bytes.)
+ * HOW: DistanceXToPlayer, StepListByIndex088A, stores.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare, the step's, or A 5 / 6.
+ */
+Ended CheckPlayerThenStepListIndex08(uint8_t slot)
+{
+    PlayerDistance distance;
+    Ended step, e;
+    uint8_t phase;
+
+    phase = RD8(OBJ->f2800[slot]);
+    e = ended_load(phase);
+    if (phase == 0) {
+        phase = INC8(OBJ->f2800[slot]);
+        jsr_push(0xB04F);
+        distance = DistanceXToPlayer(slot);
+        jsr_pop();
+        e = then(then(e, ended_nz(phase)), ended_of_distance(distance));
+        e = then(e, ended_compare(distance.distance, 0x50));
+        if (distance.distance < 0x50) {
+            return e;
+        }
+        WR8(OBJ->state[slot], 6);
+        return then(e, ended_load(6));
+    }
+    e = then(e, ended_with_y(ended_nz(8), 8));
+    jsr_push(0xB05E);
+    step = StepListByIndex088A(slot, 8);
+    jsr_pop();
+    e = then(e, step);
+    if (step.nz != 0) {
+        return e;
+    }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->state[slot], 5);
+    return then(e, ended_load(5));
+}
+
+void abi_CheckPlayerThenStepListIndex08(void)
+{
+    abi_ended(CheckPlayerThenStepListIndex08(cpu.x));
+}

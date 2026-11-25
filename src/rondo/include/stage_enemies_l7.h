@@ -541,6 +541,8 @@ typedef struct {
 SoundPlayEnd RiseThenCueMusic(uint8_t slot, uint8_t y_entry);
 SoundEnd LoadThenStepListBreakAtFive(uint8_t slot, uint8_t y_entry);
 Ended FollowBlockWhileState5(uint8_t slot);
+Ended StepListIndex0AThenSpawn(uint8_t slot);
+Ended CheckPlayerThenStepListIndex08(uint8_t slot);
 Ended DrawStepCountThenClear(uint8_t slot);
 Ended StateFiveOnStatusBit7(uint8_t slot);
 SoundEnd CountThenSoleScriptAndSound(uint8_t slot);

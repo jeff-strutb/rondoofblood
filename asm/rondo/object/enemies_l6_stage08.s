@@ -336,6 +336,34 @@ StepListByIndex088A:
     sta z:zTemp11
     jmp VecStepObjectFrames
 
+; @routine 088B:044 CheckPlayerThenStepListIndex08
+; @run 70:B044
+; WHAT IT DOES: With OBJ_2800 0 it goes on to OBJ_2800 1 and, when the player is $50 or more away along X, goes to state 6. Later it steps the animation list StepListByIndex088A gives for index 8 and when that ends clears its animation step and timer and goes to state 5. (The state 6 arm ran in no script; it is written from the decoded bytes.)
+; HOW: DistanceXToPlayer, StepListByIndex088A, stores.
+; WAITS: no.
+; Entry: X object. Exit: the compare, the step's, or A 5 / 6.
+CheckPlayerThenStepListIndex08:
+    lda a:OBJ_2800,x
+    bne CheckPlayerThenStepListIndex08_at0
+    inc a:OBJ_2800,x
+    jsr VecDistanceXToPlayer
+    cmp #$50
+    bcc CheckPlayerThenStepListIndex08_at1
+    lda #$06
+    sta a:OBJ_27A8,x
+CheckPlayerThenStepListIndex08_at1:
+    rts
+CheckPlayerThenStepListIndex08_at0:
+    ldy #$08
+    jsr StepListByIndex088A
+    bne CheckPlayerThenStepListIndex08_at2
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$05
+    sta a:OBJ_27A8,x
+CheckPlayerThenStepListIndex08_at2:
+    rts
+
 ; @routine 088B:084 StartFallWithFrame21
 ; @run 70:B084
 ; WHAT IT DOES: Zeroes the object's X speed, sets its Y speed high to $FD and its frame to $21 and goes on to the next OBJ_2800.
@@ -367,6 +395,33 @@ FallThenSoundAtPeak:
     jsr VecSoundCommand
     inc a:OBJ_2800,x
 FallThenSoundAtPeak_at0:
+    rts
+
+; @routine 088B:0AC StepListIndex0AThenSpawn
+; @run 70:B0AC
+; WHAT IT DOES: Steps the animation list StepListByIndex088A gives for index $0A. When the list ends it clears its animation step and timer and goes to state 2. While it runs, on a changed frame $24 it starts a kind $23 object in a free slot from $30 at its place.
+; HOW: StepListByIndex088A, FindFreeSlotFrom30, StartObjectAtPlace, stores.
+; WAITS: no.
+; Entry: X object. Exit: the step's, the compare, or the start's registers.
+StepListIndex0AThenSpawn:
+    ldy #$0A
+    jsr StepListByIndex088A
+    beq StepListIndex0AThenSpawn_at0
+    bcc StepListIndex0AThenSpawn_at1
+    lda a:OBJ_2A68,x
+    cmp #$24
+    bne StepListIndex0AThenSpawn_at1
+    jsr VecFindFreeSlotFrom30
+    bcc StepListIndex0AThenSpawn_at0
+    lda #$23
+    jsr VecStartObjectAtPlace
+    rts
+StepListIndex0AThenSpawn_at0:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$02
+    sta a:OBJ_27A8,x
+StepListIndex0AThenSpawn_at1:
     rts
 
 ; @routine 088B:0E8 SpeedFromRandomRow

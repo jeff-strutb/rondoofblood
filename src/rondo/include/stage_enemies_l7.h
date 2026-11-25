@@ -541,6 +541,7 @@ typedef struct {
 SoundPlayEnd RiseThenCueMusic(uint8_t slot, uint8_t y_entry);
 SoundEnd LoadThenStepListBreakAtFive(uint8_t slot, uint8_t y_entry);
 Ended FollowBlockWhileState5(uint8_t slot);
+Ended LoadThenBreakIntoThrownPiece(uint8_t slot, uint8_t y_entry);
 Ended StepListIndex0AThenSpawn(uint8_t slot);
 Ended LoadThenSwingAndDrop(uint8_t slot);
 /* A routine that may ask MoveAndLand: what it left before, the mover, what its instructions left after. */

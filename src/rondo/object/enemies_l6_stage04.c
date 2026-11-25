@@ -1233,3 +1233,76 @@ void abi_WalkTurnOrJumpOnLanding(void)
     }
     abi_ended(r.end);
 }
+
+/*
+ * @routine 051A:7C5 LoadThenBreakIntoThrownPiece
+ * @run 70:AFC5
+ * @stop B018
+ * WHAT IT DOES: In state 0 loads the object's record and sets sprite set 7, frame 1 and half height $16. Later it steps the animation list at $B018; once its hits taken reach 5 it records its event, becomes the kind in OBJ_3040 with OBJ_3A90 $10 and state 0 and starts a kind $9C object in a free slot from $50 at its place, with Y speed $FA00 for one move along Y.
+ * HOW: LoadObjectRecord, StepObjectFrames, RecordObjectEvent, FindFreeSlotFrom50, StartObjectAtPlace, ApplyVelocityY.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the last move, or the records' registers.
+ */
+Ended LoadThenBreakIntoThrownPiece(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    AxisMove move;
+    uint8_t state, nz, last, hits, stored, event, byte, kind, found_slot, found_last, y = y_entry;
+    bool carry, marked, found;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        jsr_push(0xAFCD);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->sprite_set[slot], 7);
+        WR8(OBJ->frame[slot], 1);
+        WR8(OBJ->hitbox_half_h[slot], 0x16);
+        return then(then(e, ended_of_record(last, nz, carry)), ended_load(0x16));
+    }
+    WR8(ZP->temp11, 0xB0);
+    WR8(ZP->temp10, 0x18);
+    jsr_push(0xAFE8);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(then(then(e, ended_load(0xB0)), ended_load(0x18)), ended_of_frame_step(step, step != FRAME_HELD, y));
+    hits = RD8(OBJ->hit_taken[slot]);
+    e = then(then(e, ended_load(hits)), ended_compare(hits, 5));
+    if (hits < 5) {
+        return e;
+    }
+    jsr_push(0xAFF2);
+    marked = RecordObjectEvent(slot, &stored, &event, &byte);
+    jsr_pop();
+    e = ended_of_object_event(marked, stored, event, byte);
+    kind = RD8(OBJ->f3040[slot]);
+    WR8(OBJ->kind[slot], kind);
+    WR8(OBJ->timer[slot], 0x10);
+    WR8(OBJ->state[slot], 0);
+    e = then(then(e, ended_load(kind)), ended_load(0x10));
+    jsr_push(0xB003);
+    found_slot = FindFreeSlotFrom50(&found_last, &found);
+    jsr_pop();
+    e = then(e, ended_of_find_slot(found_slot, found_last, found));
+    if (!found) {
+        return e;
+    }
+    jsr_push(0xB00A);
+    last = StartObjectAtPlace(0x9C, slot, found_slot);
+    jsr_pop();
+    WR8(OBJ->vy_hi[found_slot], 0xFA);
+    e = then(then(e, ended_load(0x9C)), ended_with_y(ended_load(last), found_slot));
+    e = then(e, ended_load(0xFA));
+    jsr_push(0xB013);
+    move = ApplyVelocityY(found_slot);
+    jsr_pop();
+    WR8(OBJ->vy_hi[found_slot], 0);
+    return then(e, ended_of_axis_move(move));
+}
+
+void abi_LoadThenBreakIntoThrownPiece(void)
+{
+    abi_ended(LoadThenBreakIntoThrownPiece(cpu.x, cpu.y));
+}

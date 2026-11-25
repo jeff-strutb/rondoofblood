@@ -207,6 +207,11 @@ enum { EXIT_X = 1, EXIT_Y = 2, EXIT_C = 4, EXIT_V = 8, EXIT_CPU = 16 };
 typedef struct { uint8_t a; uint8_t x; uint8_t y; bool c; bool v; uint8_t nz; uint8_t set; } StageExit;
 void stage_exit_shim(StageExit end);
 StageExit stage_exit_from_cpu_shim(void);
+/* The registers and flags a stage routine holds while it calls pieces that take them from the machine. */
+typedef struct { uint8_t a; uint8_t x; uint8_t y; bool c; bool v; uint8_t nz; } StageRegs;
+StageRegs stage_regs_after(StageExit end, StageRegs before);
+void stage_regs_load_shim(StageRegs r);
+StageRegs stage_regs_from_cpu_shim(StageRegs before);
 StageExit StepStageSequence(uint8_t x, uint8_t y);
 
 StageExit StageScriptByWave(void);
@@ -253,5 +258,12 @@ StageExit LoadStageEntryT(void);
 StageExit LoadStageEntryU(void);
 StageExit LoadStageEntryV(void);
 StageExit LoadStageEntryW(void);
+
+StageExit LoadStageEntryResident(void);
+
+/* system/stage_init.c: starts a stage. */
+StageExit InitStage(uint8_t x, uint8_t y);
+StageExit InitStageB(uint8_t x, uint8_t y);
+StageExit InitStageC(uint8_t x, uint8_t y);
 
 #endif

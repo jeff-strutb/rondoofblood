@@ -1652,6 +1652,16 @@ void hold_prepare(Span *s, const Ev *closing)
                                     ((cpu.p ^ closing->p) & PFLAGS)))
         defect(D_REGS, "at the hand-over at %04X the C has A%02X X%02X Y%02X S%02X P%02X, the original A%02X X%02X Y%02X S%02X P%02X",
                rondo_pc, cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, closing->a, closing->x, closing->y, closing->s, closing->p);
+    /* The C is where the original was when the call was closed as left, so the core is too: at the close's clock, not the
+     * clock of the last access the C paced to (the instructions the C ran since took no time). From there the original's
+     * own timing takes the core to what comes next (an interrupt is taken where the original took it). */
+    if (closing->pc == rondo_pc) {
+        if (closing->clock >= hybrid_clock_now())
+            pace_to(closing->clock);
+        else
+            defect(D_INT, "at the hand-over at %04X the core's clock is %llu clocks past the original's", rondo_pc,
+                   (unsigned long long)(hybrid_clock_now() - closing->clock));
+    }
     if (!hold_arm(s->end, s->tag))
         held_not++;
 }

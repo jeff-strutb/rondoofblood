@@ -600,3 +600,288 @@ void abi_TurnOnRandomBeatWalkFollowC(void)
 {
     abi_ended(TurnOnRandomBeatWalkFollowC(cpu.x));
 }
+
+/*
+ * @routine 117C:609 FlashFallAnimateThenRemove
+ * @run 70:BE09
+ * WHAT IT DOES: Sets the object's flash flags to $8B, moves it along Y, and animates it along the list
+ * at overlay address $BE22; when the list has ended the object removes itself.
+ * HOW: ApplyVelocityY, StepObjectFrames; ClearObject as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as StepObjectFrames, V from ApplyVelocityY. Clobbers zTemp10-11.
+ */
+Ended FlashFallAnimateThenRemove(uint8_t slot)
+{
+    uint8_t exit_y = 0;
+    AxisMove move;
+    FrameStep step;
+    Ended e;
+
+    WR8(OBJ->flash_flags[slot], 0x8B);
+    jsr_push(0xBE11);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    WR8(ZP->temp10, 0x22);
+    WR8(ZP->temp11, 0xBE);
+    jsr_push(0xBE1C);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_then(ended_of_axis_move(move), ended_of_frame_step(step, step != FRAME_HELD, exit_y));
+    if (step == FRAME_LIST_ENDED) {
+        ClearObject(slot);
+    }
+    return e;
+}
+
+void abi_FlashFallAnimateThenRemove(void)
+{
+    abi_ended(FlashFallAnimateThenRemove(cpu.x));
+}
+
+/*
+ * @routine 117C:6F1 StartAndMakeNeighbourB
+ * @run 70:BEF1
+ * WHAT IT DOES: Starts the object from its record, empties the slot after it and starts an object
+ * of type $2C there at its place, and sets its own life_timer to $50.
+ * HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A $50 and N, Z clear; C from the record; Y the neighbour's slot.
+ */
+Ended StartAndMakeNeighbourB(uint8_t slot)
+{
+    uint8_t nz, last, neighbour, value;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xBEF4);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    neighbour = (uint8_t)(slot + 1);
+    e = ended_then(e, ended_with_y(ended_nz(neighbour), neighbour));
+    jsr_push(0xBEFA);
+    ClearObjectInY(neighbour);
+    jsr_pop();
+    jsr_push(0xBEFF);
+    value = StartObjectAtPlace(0x2C, slot, neighbour);
+    jsr_pop();
+    e = ended_then(e, ended_load(value));
+    WR8(OBJ->life_timer[slot], 0x50);
+    return ended_then(e, ended_load(0x50));
+}
+
+void abi_StartAndMakeNeighbourB(void)
+{
+    abi_ended(StartAndMakeNeighbourB(cpu.x));
+}
+
+/*
+ * @routine 117C:705 EnterNextStateWhenHitOrPlayerNear
+ * @run 70:BF05
+ * WHAT IT DOES: When the object has taken a hit, or the player is within $68 pixels along X and $18
+ * along Y, sets f3670 to 1 and moves the object on to its next state.
+ * HOW: DistanceXToPlayer and DistanceYToPlayer compared.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C from the last test; V from the last distance;
+ * or A 1 and N, Z from the new state.
+ */
+Ended EnterNextStateWhenHitOrPlayerNear(uint8_t slot)
+{
+    uint8_t hit = RD8(OBJ->hit_taken[slot]);
+    PlayerDistance distance;
+    uint8_t state;
+    Ended e = ended_load(hit);
+
+    if (hit == 0) {
+        jsr_push(0xBF0D);
+        distance = DistanceXToPlayer(slot);
+        jsr_pop();
+        e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x68));
+        if (distance.distance >= 0x68) {
+            return e;
+        }
+        jsr_push(0xBF14);
+        distance = DistanceYToPlayer(slot);
+        jsr_pop();
+        e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x18));
+        if (distance.distance >= 0x18) {
+            return e;
+        }
+    }
+    WR8(OBJ->f3670[slot], 1);
+    state = INC8(OBJ->state[slot]);
+    return ended_then(e, ended_with_a(ended_nz(state), 1));
+}
+
+void abi_EnterNextStateWhenHitOrPlayerNear(void)
+{
+    abi_ended(EnterNextStateWhenHitOrPlayerNear(cpu.x));
+}
+
+/*
+ * @routine 117C:251 PlaceAtRandomOnEdge
+ * @run 70:BA51
+ * WHAT IT DOES: Puts the object at a random place chosen from a table of position pairs at overlay
+ * address $BA8A: the row group depends on which way the scroll moves (zTemp00 $10, $20 moving right,
+ * 0 moving left), the row on three random bits; its Y low byte comes from four bytes at $BABA by two
+ * more random bits; its Y high byte is cleared.
+ * HOW: NextRandom twice.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the Y byte, N, Z from it; C, V from the second NextRandom;
+ * Y its index. Clobbers zTemp00.
+ */
+Ended PlaceAtRandomOnEdge(uint8_t slot)
+{
+    enum { PLACES = 0xBA8A, HEIGHTS = 0xBABA };
+    uint8_t speed, group, row, y, value;
+    RandomResult random;
+    Sum sum;
+
+    WR8(ZP->temp00, 0x10);
+    speed = RD8(SCROLLE->speed_x[0]);
+    if (speed != 0) {
+        if ((speed & 0x80) != 0) {
+            WR8(ZP->temp00, 0);
+        } else {
+            WR8(ZP->temp00, 0x20);
+        }
+    }
+    jsr_push(0xBA67);
+    random = NextRandom();
+    jsr_pop();
+    row = (uint8_t)((random.value & 7) << 1);
+    group = RD8(ZP->temp00);
+    sum = add_bytes(row, group, false);
+    y = sum.value;
+    WR8(OBJ->x_hi[slot], rd8((uint16_t)(PLACES + 1 + y)));
+    WR8(OBJ->x_lo[slot], rd8((uint16_t)(PLACES + y)));
+    WR8(OBJ->y_hi[slot], 0);
+    jsr_push(0xBA80);
+    random = NextRandom();
+    jsr_pop();
+    y = (uint8_t)(random.value & 3);
+    value = rd8((uint16_t)(HEIGHTS + y));
+    WR8(OBJ->y_lo[slot], value);
+    return ended_with_y(ended_then(ended_of_random(random), ended_load(value)), y);
+}
+
+void abi_PlaceAtRandomOnEdge(void)
+{
+    abi_ended(PlaceAtRandomOnEdge(cpu.x));
+}
+
+/*
+ * @routine 117C:219 StartFlyerAtRandom
+ * @run 70:BA19
+ * WHAT IT DOES: Starts the object from its record with flash flags $8F, places it at random
+ * (PlaceAtRandomOnEdge), gives it a random f36c8 and a f35c0 from four bytes at overlay address
+ * $BA49 by two random bits, turns it to face the player and gives it a Y speed of $FF40.
+ * HOW: LoadObjectRecord, PlaceAtRandomOnEdge, NextRandom twice, SideOfPlayer.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A $40 and N, Z clear; C from the side compare; V from the
+ * random numbers; Y the table index.
+ */
+Ended StartFlyerAtRandom(uint8_t slot)
+{
+    enum { TABLE = 0xBA49 };
+    uint8_t nz, last, y, value;
+    bool carry;
+    RandomResult random;
+    SideResult side;
+    Ended e;
+
+    jsr_push(0xBA1C);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->flash_flags[slot], 0x8F);
+    e = ended_then(e, ended_load(0x8F));
+    jsr_push(0xBA24);
+    e = ended_then(e, PlaceAtRandomOnEdge(slot));
+    jsr_pop();
+    jsr_push(0xBA27);
+    random = NextRandom();
+    jsr_pop();
+    WR8(OBJ->f36c8[slot], random.value);
+    e = ended_then(e, ended_of_random(random));
+    jsr_push(0xBA2D);
+    random = NextRandom();
+    jsr_pop();
+    y = (uint8_t)(random.value & 3);
+    value = rd8((uint16_t)(TABLE + y));
+    WR8(OBJ->f35c0[slot], value);
+    e = ended_then(ended_then(e, ended_of_random(random)), ended_with_y(ended_load(value), y));
+    jsr_push(0xBA39);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    WR8(OBJ->facing_left[slot], (uint8_t)(side.sides & 1));
+    e = ended_then(ended_then(e, ended_of_side(side)), ended_load((uint8_t)(side.sides & 1)));
+    WR8(OBJ->vy_hi[slot], 0xFF);
+    WR8(OBJ->vy_lo[slot], 0x40);
+    return ended_then(e, ended_load(0x40));
+}
+
+void abi_StartFlyerAtRandom(void)
+{
+    abi_ended(StartFlyerAtRandom(cpu.x));
+}
+
+/*
+ * @routine 117C:2BE SwoopOnCosineC
+ * @run 70:BABE
+ * WHAT IT DOES: Unless the object in slot $54 shows frame 4: gives the object an X speed of
+ * its f36c8's angle's cosine (speed $00A0), moves it along X, advances f36c8, moves it by its
+ * velocity, and when it is on the first screen down and under $E0 moves it on a state.
+ * HOW: ScaleByCosine, ApplyVelocityX, ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as the last test, add or compare left them; Y 0 after the scale.
+ */
+Ended SwoopOnCosineC(uint8_t slot)
+{
+    uint8_t frame = RD8(OBJ->frame[0x54]);
+    uint8_t angle, value, high, low, state;
+    AxisMove move;
+    Ended e;
+
+    e = ended_compare(frame, 4);
+    if (frame == 4) {
+        return e;
+    }
+    WR8(ZP->temp00, 0xA0);
+    WR8(ZP->temp01, 0);
+    angle = RD8(OBJ->f36c8[slot]);
+    jsr_push(0xBAD3);
+    ScaleByCosine(angle);
+    jsr_pop();
+    value = RD8(ZP->product.hi);
+    WR8(OBJ->vx_hi[slot], value);
+    value = RD8(ZP->product.mid);
+    WR8(OBJ->vx_lo[slot], value);
+    jsr_push(0xBAE0);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    e = ended_with_y(ended_of_axis_move(move), 0);
+    value = INC8(OBJ->f36c8[slot]);
+    e = ended_then(e, ended_nz(value));
+    jsr_push(0xBAE6);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    high = RD8(OBJ->y_hi[slot]);
+    e = ended_then(e, ended_load(high));
+    if (high != 0) {
+        return e;
+    }
+    low = RD8(OBJ->y_lo[slot]);
+    e = ended_then(e, ended_compare(low, 0xE0));
+    if (low >= 0xE0) {
+        return e;
+    }
+    state = INC8(OBJ->state[slot]);
+    return ended_then(e, ended_nz(state));
+}
+
+void abi_SwoopOnCosineC(void)
+{
+    abi_ended(SwoopOnCosineC(cpu.x));
+}

@@ -964,6 +964,19 @@ static unsigned hy_bank_phys(uint16_t addr, uint32_t *phys)
     return *phys >> 13;
 }
 
+/* An instruction byte the routine patched (the operand of its own code in RAM): read as the CPU fetches it, no access. */
+uint8_t code8(uint16_t addr)
+{
+    uint32_t p;
+
+    if (mode == MODE_HYBRID)
+        return chk_bus_rd(addr);
+    p = a5_phys(addr);
+    if (is_rom(p))
+        return rom_bank[p >> 13][p & 0x1FFF];
+    return is_ram(p) ? ram_bank[p >> 13][p & 0x1FFF] : 0xFF;
+}
+
 uint8_t rd8(uint16_t addr)
 {
     uint32_t p;

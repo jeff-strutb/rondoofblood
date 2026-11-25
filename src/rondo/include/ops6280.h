@@ -24,6 +24,15 @@
 
 /* ---- flags ---- */
 
+/* The operand bytes of an instruction a routine patches in RAM are read at run time, as the CPU fetches them. */
+static inline uint16_t code16(uint16_t addr)
+{
+    uint8_t lo = code8(addr);
+    uint8_t hi = code8((uint16_t)(addr + 1));
+
+    return (uint16_t)(lo | (hi << 8));
+}
+
 static inline uint8_t zn_bits(uint8_t v)
 {
     return v == 0 ? P_Z : (uint8_t)(v & P_N);

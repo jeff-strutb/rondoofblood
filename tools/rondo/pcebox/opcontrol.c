@@ -51,6 +51,14 @@ static uint8_t pat_ram(unsigned off) { return (uint8_t)(off * 29 + (off >> 8) * 
 
 static uint32_t key(uint16_t a) { return ((uint32_t)mpr[a >> 13] << 13) | (a & 0x1FFF); }
 
+uint8_t code8(uint16_t a)
+{
+    uint32_t k = key(a);
+    unsigned bank = k >> 13;
+
+    return bank >= 0xF8 && bank <= 0xFB ? mram[k & 0x1FFF] : bank < 0x80 ? pat_rom(bank, k & 0x1FFF) : 0xFF;
+}
+
 uint8_t rd8(uint16_t a)
 {
     uint32_t k = key(a);

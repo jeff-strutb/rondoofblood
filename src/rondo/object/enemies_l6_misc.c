@@ -465,3 +465,53 @@ void abi_TurnTowardPlayerOrStepList(void)
 {
     abi_ended(TurnTowardPlayerOrStepList(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0E0B:0C2 SetHitBoxFromTable
+ * @run 70:B0C2
+ * WHAT IT DOES: When OBJ_3250 is not zero, takes the object's hit box (four bytes: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the table at $BEEC, four bytes a row, the row being the frame less one.
+ * HOW: A pointer built in zTemp00-01 by two adds of twice the row, four reads through it.
+ * WAITS: no.
+ * Entry: X object. Exit: A the last byte read, Y 3; or the test of OBJ_3250.
+ */
+Ended SetHitBoxFromTable(uint8_t slot)
+{
+    Sum row, sum;
+    uint8_t on, twice, y, value, low;
+    bool carry;
+    Ended e;
+
+    on = RD8(OBJ->hitbox_on[slot]);
+    e = ended_load(on);
+    if (on == 0) {
+        return e;
+    }
+    WR8(ZP->temp00, 0xEC);
+    WR8(ZP->temp01, 0xBE);
+    row = sub_bytes(RD8(OBJ->frame[slot]), 1, true);
+    twice = (uint8_t)(row.value << 1);
+    WR8(ZP->temp02, twice);
+    for (y = 0; y < 2; y++) {
+        low = RD8(ZP->temp00);
+        sum = add_bytes(low, RD8(ZP->temp02), false);
+        WR8(ZP->temp00, sum.value);
+        carry = sum.carry;
+        low = RD8(ZP->temp01);
+        sum = add_bytes(low, 0, carry);
+        WR8(ZP->temp01, sum.value);
+    }
+    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 0));
+    WR8(OBJ->hitbox_dx[slot], value);
+    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 1));
+    WR8(OBJ->hitbox_dy[slot], value);
+    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 2));
+    WR8(OBJ->hitbox_half_w[slot], value);
+    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 3));
+    WR8(OBJ->hitbox_half_h[slot], value);
+    return then(ended_of_sum(sum), ended_with_y(ended_load(value), 3));
+}
+
+void abi_SetHitBoxFromTable(void)
+{
+    abi_ended(SetHitBoxFromTable(cpu.x));
+}

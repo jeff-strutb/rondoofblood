@@ -34,6 +34,53 @@ HalveDirectionWhenHurt:
 HalveDirectionWhenHurt_at0:
     rts
 
+; @routine 0E0B:0C2 SetHitBoxFromTable
+; @run 70:B0C2
+; WHAT IT DOES: When OBJ_3250 is not zero, takes the object's hit box (four bytes: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the table at $BEEC, four bytes a row, the row being the frame less one.
+; HOW: A pointer built in zTemp00-01 by two adds of twice the row, four reads through it.
+; WAITS: no.
+; Entry: X object. Exit: A the last byte read, Y 3; or the test of OBJ_3250.
+SetHitBoxFromTable:
+    lda a:OBJ_3250,x
+    beq SetHitBoxFromTable_at0
+    lda #$EC
+    sta z:zTemp00
+    lda #$BE
+    sta z:zTemp01
+    lda a:OBJ_2A68,x
+    sec
+    sbc #$01
+    asl a
+    sta z:zTemp02
+    lda z:zTemp00
+    clc
+    adc z:zTemp02
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$00
+    sta z:zTemp01
+    lda z:zTemp00
+    clc
+    adc z:zTemp02
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$00
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    sta a:OBJ_3930,x
+    iny
+    lda (zTemp00),y
+    sta a:OBJ_39E0,x
+    iny
+    lda (zTemp00),y
+    sta a:OBJ_3988,x
+    iny
+    lda (zTemp00),y
+    sta a:OBJ_3A38,x
+SetHitBoxFromTable_at0:
+    rts
+
 ; @routine 0E0B:10B LoadThenSpawn24
 ; @run 70:B10B
 ; WHAT IT DOES: Loads the object's record, sets OBJ_3618 to $80, clears the object in slot $11 and starts a kind $24 object there at this object's place.

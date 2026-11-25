@@ -224,6 +224,68 @@ JumpAwayThenLand_at0:
 JumpAwayThenLand_at1:
     rts
 
+; @routine 16CB:6EC LoadThenScatterAlongList
+; @run 70:B6EC
+; WHAT IT DOES: In state 0 loads the object's record, sets flash flags $10, gives it a random X speed high of -8 to 7 and Y speed high of -16 to -1, moves it once, then overwrites the speeds from the two tables at $B73F and $B747 by random rows and clears its animation step and timer. Later it steps the animation list at $B763, clears the object when it ends and otherwise moves it along Y.
+; HOW: LoadObjectRecord, NextRandom four times, ApplyVelocity, table reads (bank 70), StepObjectFrames, ApplyVelocityY, ClearObject.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the last instruction's registers.
+LoadThenScatterAlongList:
+    lda a:OBJ_27A8,x
+    bne $B74F
+    jsr VecLoadObjectRecord
+    lda #$10
+    sta a:OBJ_2B18,x
+    jsr VecNextRandom
+    and #$0F
+    sec
+    sbc #$08
+    sta a:OBJ_VX_HI,x
+    jsr VecNextRandom
+    and #$0F
+    sec
+    sbc #$10
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    jsr VecNextRandom
+    and #$03
+    asl a
+    tay
+    lda a:$B740,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B73F,y
+    sta a:OBJ_VX_LO,x
+    jsr VecNextRandom
+    and #$03
+    asl a
+    tay
+    lda a:$B748,y
+    sta a:OBJ_VY_HI,x
+    lda a:$B747,y
+    sta a:OBJ_VY_LO,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    rts
+    rti
+    brk
+    cpy #$00
+    bra SoundCommandJump
+    brk
+    ora (zTemp00,x)
+    inc a:$FD80,x
+    bra $B74C
+    rti
+    inc a:$63A9,x
+    sta z:zTemp10
+    lda #$B7
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne LoadThenScatterAlongList_at0
+    jmp VecClearObject
+LoadThenScatterAlongList_at0:
+    jsr VecApplyVelocityY
+    rts
+
 ; @routine 16CB:782 LoadThenPlaceAtLeft
 ; @run 70:B782
 ; WHAT IT DOES: Loads the object's record, sets the raster effect to $0B with argument $BF, puts the object at X $0010, Y $00F6 and sets OBJ_34B8 to $40.

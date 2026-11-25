@@ -105,7 +105,7 @@ void abi_ScoreForKind(void)
  */
 ExitChain ObjectHit(uint8_t slot, uint8_t y)
 {
-    ExitChain c = { { { STEP_ENDED, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } } } }, 0 };
+    ExitChain c = { { { STEP_ENDED, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } }, { 0 } } }, 0 };
     uint8_t status, bits, flash, t, attack, flags, hp, hit, damage, state, command, kind;
     uint8_t stored, event, byte, last;
     bool marked, found;
@@ -117,7 +117,7 @@ ExitChain ObjectHit(uint8_t slot, uint8_t y)
     Ended drop;
     uint8_t number;
     bool record_now = false;
-    ExitStep st = { STEP_ENDED, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } } };
+    ExitStep st = { STEP_ENDED, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } }, { 0 } };
 
     (void)last;
     (void)found;

@@ -1769,3 +1769,99 @@ void abi_CountThenCue(void)
     abi_ended(r.end);
 }
 
+
+/*
+ * @routine 0CAC:4EB BounceSparkOffWalls
+ * @run 70:BCEB
+ * WHAT IT DOES: Steps the animation list at $BD51; an object not on the first Y page is cleared; its hitbox half height comes from a table at $BD78 by the frame less $17; it moves, $0008 is added to
+ * its Y speed (gravity), and it asks the terrain: a wall (request $22, height 4) halves its X speed and reverses it (the shift of the 16-bit speed through the carry, then NegateVelocityX); else a floor
+ * (request 9) stops its X speed, sets its timer to $40 and moves OBJ_2800 on.
+ * HOW: StepObjectFrames, ApplyVelocity, ProbeTerrain twice, table read (bank 70), a tail jump into NegateVelocityX or ClearObject.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: see abi_chain.
+ */
+ExitChain BounceSparkOffWalls(uint8_t slot, bool carry_in)
+{
+    ExitChain c = { { { STEP_ENDED, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } }, { 0 } } }, 0 };
+    FrameStep step;
+    AxisMove move;
+    Probe probe;
+    uint8_t y = 0, y_high, frame, byte, low, high, hit, speed;
+    bool carry;
+    Sum index, sum;
+    Ended e;
+
+    step = step_list(slot, 0xBD51, 0xBCF6, &y, false);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_load(y_high));
+    if (y_high != 0) {
+        ClearObject(slot);
+        chain_ended(&c, e);
+        return c;
+    }
+    frame = RD8(OBJ->frame[slot]);
+    index = sub_bytes(frame, 0x17, true);
+    y = index.value;
+    e = then(then(e, of_sum(index)), ended_with_y(ended_kept(), y));
+    byte = rd8((uint16_t)(0xBD78 + y));
+    WR8(OBJ->hitbox_half_h[slot], byte);
+    e = then(e, ended_load(byte));
+    jsr_push(0xBD0E);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    low = RD8(OBJ->vy_lo[slot]);
+    sum = add_bytes(low, 8, false);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    e = then(e, of_sum(sum));
+    high = RD8(OBJ->vy_hi[slot]);
+    sum = add_bytes(high, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    e = then(e, of_sum(sum));
+    WR8(ZP->product.mid, 4);
+    carry = e.c_set ? e.c : carry_in;
+    chain_ended(&c, e);
+    jsr_push(0xBD28);
+    probe = ProbeTerrain(0x22, slot, y, carry);
+    jsr_pop();
+    chain_probe(&c, probe);
+    carry = probe_carry_out(probe, carry);
+    hit = (uint8_t)(probe.answer & 0x02);
+    e = ended_load(hit);
+    if (hit != 0) {
+        speed = RD8(OBJ->vx_hi[slot]);
+        e = then(e, ended_with_carry(ended_load((uint8_t)(speed << 1)), (speed & 0x80) != 0));
+        carry = ROR8(OBJ->vx_hi[slot], (speed & 0x80) != 0);
+        e = then(e, ended_with_carry(ended_kept(), carry));
+        carry = ROR8(OBJ->vx_lo[slot], carry);
+        e = then(e, ended_with_carry(ended_kept(), carry));
+        chain_ended(&c, e);
+        chain_ended(&c, of_sum(NegateVelocityX(slot)));
+        return c;
+    }
+    chain_ended(&c, e);
+    jsr_push(0xBD3E);
+    probe = ProbeTerrain(9, slot, probe.column, carry);
+    jsr_pop();
+    chain_probe(&c, probe);
+    hit = (uint8_t)(probe.answer & 0x01);
+    e = ended_load(hit);
+    if (hit != 0) {
+        WR8(OBJ->vx_hi[slot], 0);
+        WR8(OBJ->vx_lo[slot], 0);
+        WR8(OBJ->life_timer[slot], 0x40);
+        e = then(e, ended_load(0x40));
+        hit = INC8(OBJ->state[slot]);
+        e = then(e, ended_nz(hit));
+    }
+    chain_ended(&c, e);
+    return c;
+}
+
+void abi_BounceSparkOffWalls(void)
+{
+    ExitChain c = BounceSparkOffWalls(cpu.x, (cpu.p & P_C) != 0);
+
+    abi_chain(&c);
+}

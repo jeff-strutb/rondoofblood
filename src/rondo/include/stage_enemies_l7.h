@@ -113,12 +113,13 @@ Ended BlendStageRowsOfPlayer(uint8_t slot, uint8_t y);
 Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
 
 /* An exit built from several callees' exits in order: each step is a plain exit, a sound call's, or a first-screen sound's. */
-typedef enum { STEP_ENDED, STEP_SOUND_END, STEP_SCREEN_END } StepKind;
+typedef enum { STEP_ENDED, STEP_SOUND_END, STEP_SCREEN_END, STEP_PROBE } StepKind;
 typedef struct {
     StepKind kind;
     Ended e;
     SoundEnd s;
     ScreenSoundEnd c;
+    Probe p;
 } ExitStep;
 typedef struct {
     ExitStep step[12];
@@ -126,19 +127,25 @@ typedef struct {
 } ExitChain;
 static inline void chain_ended(ExitChain *c, Ended e)
 {
-    ExitStep st = { STEP_ENDED, e, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } } };
+    ExitStep st = { STEP_ENDED, e, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } }, { 0 } };
 
     c->step[c->count++] = st;
 }
 static inline void chain_sound(ExitChain *c, SoundEnd s)
 {
-    ExitStep st = { STEP_SOUND_END, { 0 }, s, { { 0 }, { 0 }, false, { 0 } } };
+    ExitStep st = { STEP_SOUND_END, { 0 }, s, { { 0 }, { 0 }, false, { 0 } }, { 0 } };
 
     c->step[c->count++] = st;
 }
 static inline void chain_screen(ExitChain *c, ScreenSoundEnd s)
 {
-    ExitStep st = { STEP_SCREEN_END, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, s };
+    ExitStep st = { STEP_SCREEN_END, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, s, { 0 } };
+
+    c->step[c->count++] = st;
+}
+static inline void chain_probe(ExitChain *c, Probe p)
+{
+    ExitStep st = { STEP_PROBE, { 0 }, { { 0 }, { 0 }, false, 0, { 0 } }, { { 0 }, { 0 }, false, { 0 } }, p };
 
     c->step[c->count++] = st;
 }
@@ -149,12 +156,15 @@ static inline void abi_chain(const ExitChain *c)
             abi_ended(c->step[i].e);
         } else if (c->step[i].kind == STEP_SOUND_END) {
             abi_sound_end(c->step[i].s);
+        } else if (c->step[i].kind == STEP_PROBE) {
+            probe_exit_shim(c->step[i].p);
         } else {
             abi_screen_sound_end(c->step[i].c);
         }
     }
 }
 ExitChain ObjectHit(uint8_t slot, uint8_t y);
+ExitChain BounceSparkOffWalls(uint8_t slot, bool carry_in);
 
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {

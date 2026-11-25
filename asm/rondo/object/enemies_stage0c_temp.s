@@ -831,6 +831,62 @@ StartThrownPiece:
 StartThrownPiece_at0:
     rts
 
+; @routine 0CAC:4EB BounceSparkOffWalls
+; @run 70:BCEB
+; WHAT IT DOES: Steps the animation list at $BD51; an object not on the first Y page is cleared; its hitbox half height comes from a table at $BD78 by the frame less $17; it moves, $0008 is added to
+; its Y speed (gravity), and it asks the terrain: a wall (request $22, height 4) halves its X speed and reverses it (the shift of the 16-bit speed through the carry, then NegateVelocityX); else a floor
+; (request 9) stops its X speed, sets its timer to $40 and moves OBJ_2800 on.
+; HOW: StepObjectFrames, ApplyVelocity, ProbeTerrain twice, table read (bank 70), a tail jump into NegateVelocityX or ClearObject.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: see abi_chain.
+BounceSparkOffWalls:
+    lda #$51
+    sta z:zTemp10
+    lda #$BD
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    lda a:OBJ_Y_HI,x
+    beq BounceSparkOffWalls_at0
+    jmp VecClearObject
+BounceSparkOffWalls_at0:
+    lda a:OBJ_2A68,x
+    sec
+    sbc #$17
+    tay
+    lda a:$BD78,y
+    sta a:OBJ_3A38,x
+    jsr VecApplyVelocity
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$08
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    lda #$04
+    sta z:SpriteFlipMask
+    lda #$22
+    jsr VecProbeTerrain
+    and #$02
+    beq BounceSparkOffWalls_at1
+    lda a:OBJ_VX_HI,x
+    asl a
+    ror a:OBJ_VX_HI,x
+    ror a:OBJ_VX_LO,x
+    jmp VecNegateVelocityX
+BounceSparkOffWalls_at1:
+    lda #$09
+    jsr VecProbeTerrain
+    and #$01
+    beq BounceSparkOffWalls_at2
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    lda #$40
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+BounceSparkOffWalls_at2:
+    rts
+
 ; @routine 0CAC:57C StepCountClear
 ; @run 70:BD7C
 ; WHAT IT DOES: Steps the animation list at $BD51; counts the object's timer down and clears it at zero; until then its hitbox half height comes from a table at $BD78 by the

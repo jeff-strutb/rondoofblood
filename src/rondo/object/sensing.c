@@ -309,7 +309,7 @@ static void probe_deadly_hit(uint8_t object)
 
 /* The C a probe leaves, worked out as probe_exit_shim sets it, from the C it was entered with. */
 static bool lookup_carry(LookupEnd end, bool before);
-static bool probe_carry_out(Probe p, bool carry);
+bool probe_carry_out(Probe p, bool carry);
 
 /*
  * @routine 0047:225 ProbeWalls
@@ -622,7 +622,7 @@ static bool lookup_carry(LookupEnd end, bool before)
 }
 
 /* The C a probe leaves, worked out as probe_exit_shim sets it, from the C it was entered with. */
-static bool probe_carry_out(Probe p, bool carry)
+bool probe_carry_out(Probe p, bool carry)
 {
     if (p.floor_asked) {
         carry = lookup_carry(p.floor, carry);

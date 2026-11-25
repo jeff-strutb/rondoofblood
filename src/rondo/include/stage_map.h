@@ -177,4 +177,11 @@ void SetUpStageObjectsU(uint8_t x);
 void SetUpStageObjectsV(uint8_t x);
 void SetUpStageObjectsW(uint8_t x);
 
+/* system/stage_spawn.c: A, X and Y the pair leaves; ran false when nothing was done. */
+typedef struct { uint8_t a; uint8_t x; uint8_t y; bool ran; } StageSpawnEnd;
+StageSpawnEnd SpawnStageObjectsRows01(void);
+StageSpawnEnd SpawnStageObjectsRows01Long(void);
+StageSpawnEnd SpawnStageObjectsRows34(void);
+StageSpawnEnd SpawnStageObjectsRows34Long(void);
+
 #endif

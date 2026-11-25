@@ -16,6 +16,61 @@ ClearSlot4EUnlessCamera18:
 ClearSlot4EUnlessCamera18_at0:
     rts
 
+; @routine 10CB:2E0 CountThenSoleScriptAndSound
+; @run 70:B2E0
+; WHAT IT DOES: Counts OBJ_3510 down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_3510 to $60 and zTemp $9E to 4 and goes on to the next OBJ_2800.
+; HOW: DEC, StartSoleScriptSlot, SoundCommand, stores, an INC.
+; WAITS: no.
+; Entry: X object. Exit: see the wrapper.
+CountThenSoleScriptAndSound:
+    dec a:OBJ_3510,x
+    bne CountThenSoleScriptAndSound_at0
+    phx
+    cla
+    ldx #$03
+    jsr VecStartSoleScriptSlot
+    plx
+    lda #$E4
+    jsr VecSoundCommand
+    lda #$81
+    sta a:OBJ_FLAGS_2F38,x
+    lda #$60
+    sta a:OBJ_3510,x
+    lda #$04
+    sta z:zRasterStage
+    inc a:OBJ_2800,x
+CountThenSoleScriptAndSound_at0:
+    rts
+
+; @routine 10CB:3ED StartScriptWhenCountInTable
+; @run 70:B3ED
+; WHAT IT DOES: While OBJ_3568 is not negative it counts it up and looks its old value up in the eight-byte table at $B40D; when found at index n it starts script $98 plus n in slot 5.
+; HOW: A search loop, StartScriptSlotKind1.
+; WAITS: no.
+; Entry: X object. Exit: the compare, or the script start's registers.
+StartScriptWhenCountInTable:
+    lda a:OBJ_3568,x
+    bmi StartScriptWhenCountInTable_at0
+    inc a:OBJ_3568,x
+    cly
+StartScriptWhenCountInTable_at2:
+    cmp a:$B40D,y
+    beq StartScriptWhenCountInTable_at1
+    iny
+    cpy #$08
+    bcc StartScriptWhenCountInTable_at2
+StartScriptWhenCountInTable_at0:
+    rts
+StartScriptWhenCountInTable_at1:
+    tya
+    clc
+    adc #$98
+    phx
+    ldx #$05
+    jsr VecStartScriptSlotKind1
+    plx
+    rts
+
 ; @routine 10CB:415 RiseThenPlaceWithSound
 ; @run 70:B415
 ; WHAT IT DOES: Moves the object along Y by its speed and takes $0010 off its Y speed. When its Y high byte is $FE it sends sound $E7, sets its flags to $81, frame $1D, puts it at X $0000, Y $FFE0, gives it X speed $0400 and Y speed $0600 (high bytes) and goes on to the next OBJ_2800.

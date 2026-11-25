@@ -15,6 +15,14 @@ static Ended then(Ended e, Ended next)
     return ended_then(e, next);
 }
 
+/* StartSoleScriptSlot's exit: Y the script, A the script when started else the busy kind, N and Z from A, C started. */
+static Ended ended_of_sole(SoleSlot sole)
+{
+    uint8_t a = sole.started ? sole.script : sole.busy_kind;
+
+    return ended_with_carry(ended_with_y(ended_load(a), sole.script), sole.started);
+}
+
 /* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
 static Ended ended_of_scale(ScaleResult r)
 {
@@ -493,4 +501,98 @@ Ended LoadThenFallAndFlash(uint8_t slot)
 void abi_LoadThenFallAndFlash(void)
 {
     abi_ended(LoadThenFallAndFlash(cpu.x));
+}
+
+/*
+ * @routine 10CB:2E0 CountThenSoleScriptAndSound
+ * @run 70:B2E0
+ * WHAT IT DOES: Counts OBJ_3510 down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_3510 to $60 and zTemp $9E to 4 and goes on to the next OBJ_2800.
+ * HOW: DEC, StartSoleScriptSlot, SoundCommand, stores, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: see the wrapper.
+ */
+SoundEnd CountThenSoleScriptAndSound(uint8_t slot)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    SoleSlot sole;
+    uint8_t left, phase;
+    Ended e;
+
+    left = DEC8(OBJ->f3510[slot]);
+    e = ended_nz(left);
+    if (left != 0) {
+        r.end = e;
+        return r;
+    }
+    push8(slot);
+    e = then(e, ended_load(0));
+    jsr_push(0xB2EC);
+    sole = StartSoleScriptSlot(0, 3);
+    jsr_pop();
+    slot = pull8();
+    e = then(then(e, ended_of_sole(sole)), ended_nz(slot));
+    r.before = then(e, ended_load(0xE4));
+    r.sounded = true;
+    r.command = 0xE4;
+    jsr_push(0xB2F2);
+    r.call = SoundCommand(0xE4, slot, sole.script);
+    jsr_pop();
+    WR8(OBJ->flags[slot], 0x81);
+    WR8(OBJ->f3510[slot], 0x60);
+    wr8(0x209E, 4);
+    phase = INC8(OBJ->f2800[slot]);
+    r.end = then(ended_load(4), ended_nz(phase));
+    return r;
+}
+
+void abi_CountThenSoleScriptAndSound(void)
+{
+    abi_sound_end(CountThenSoleScriptAndSound(cpu.x));
+}
+
+/*
+ * @routine 10CB:3ED StartScriptWhenCountInTable
+ * @run 70:B3ED
+ * WHAT IT DOES: While OBJ_3568 is not negative it counts it up and looks its old value up in the eight-byte table at $B40D; when found at index n it starts script $98 plus n in slot 5.
+ * HOW: A search loop, StartScriptSlotKind1.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare, or the script start's registers.
+ */
+Ended StartScriptWhenCountInTable(uint8_t slot)
+{
+    uint8_t count, y, script, entry;
+    Sum sum;
+    Ended e;
+
+    count = RD8(OBJ->f3568[slot]);
+    e = ended_load(count);
+    if ((count & 0x80) != 0) {
+        return e;
+    }
+    INC8(OBJ->f3568[slot]);
+    for (y = 0; y < 8; y++) {
+        entry = rd8((uint16_t)(0xB40D + y));
+        e = then(e, ended_compare(count, entry));
+        if (count == entry) {
+            break;
+        }
+        e = then(e, ended_with_y(ended_with_carry(ended_nz((uint8_t)(y + 1 - 8)), (y + 1) >= 8), (uint8_t)(y + 1)));
+    }
+    if (y >= 8) {
+        return e;
+    }
+    e = then(e, ended_with_y(ended_load(y), y));
+    sum = add_bytes(y, 0x98, false);
+    e = then(e, ended_of_sum(sum));
+    push8(slot);
+    jsr_push(0xB40B);
+    script = StartScriptSlotKind1(sum.value, 5);
+    jsr_pop();
+    slot = pull8();
+    return then(then(e, ended_with_y(ended_load(script), script)), ended_nz(slot));
+}
+
+void abi_StartScriptWhenCountInTable(void)
+{
+    abi_ended(StartScriptWhenCountInTable(cpu.x));
 }

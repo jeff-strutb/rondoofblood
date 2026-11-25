@@ -314,9 +314,17 @@ static void stub_routine(uint16_t target)
     printf("STUB %04X -> A=%02X X=%02X Y=%02X P=%02X\n", target, cpu.a, cpu.x, cpu.y, cpu.p);
 }
 
+/* @ends: the routine's tag says where it hands on (its tail jump out of the routine into code another routine owns).
+ * The lifted C stops with the registers it holds there; the draft is stopped at the same place, so the two are judged
+ * up to the jump and by A, X, Y, S and P at it (the END line). */
+static int ends_addr = -1;
+
 static void enter(uint16_t target, int tail)
 {
     void (*abi)(void) = find_abi(target);
+
+    if (tail && depth == 0 && (int)target == ends_addr)
+        return;
 
     if (abi && depth >= 512) {
         /* the checker allows nesting to 512: a chain longer than that, or a runaway, ends the case */
@@ -424,6 +432,8 @@ int main(int argc, char **argv)
             fclose(rf);
         }
     }
+    if (getenv("LIFTCMP_ENDS") && getenv("LIFTCMP_ENDS")[0])
+        ends_addr = (int)strtol(getenv("LIFTCMP_ENDS"), 0, 16);
     decimal_ok = getenv("LIFTCMP_DECIMAL") && getenv("LIFTCMP_DECIMAL")[0] == '1';
     in = fopen(argv[1], "r");
     if (!in)

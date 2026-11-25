@@ -480,3 +480,48 @@ void abi_LoadThenScatterAlongList(void)
 {
     abi_ended(LoadThenScatterAlongList(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 16CB:175 CountThenSpawnInState2
+ * @run 70:B175
+ * WHAT IT DOES: In state 2 counts OBJ_3880 down; at zero it sets it to $22 and starts a kind $28 object in a free slot from $30 at this object's place.
+ * HOW: DEC, FindFreeSlotFrom30, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare, the count, or the start's registers.
+ */
+Ended CountThenSpawnInState2(uint8_t slot)
+{
+    uint8_t state, count, found_slot, last, placed;
+    bool found;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = then(ended_load(state), ended_compare(state, 2));
+    if (state != 2) {
+        return e;
+    }
+    count = RD8(OBJ->f3880[slot]);
+    e = then(e, ended_load(count));
+    if (count != 0) {
+        count = DEC8(OBJ->f3880[slot]);
+        return then(e, ended_nz(count));
+    }
+    WR8(OBJ->f3880[slot], 0x22);
+    e = then(e, ended_load(0x22));
+    jsr_push(0xB18D);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = then(e, ended_of_find_slot(found_slot, last, found));
+    if (!found) {
+        return e;
+    }
+    jsr_push(0xB194);
+    placed = StartObjectAtPlace(0x28, slot, found_slot);
+    jsr_pop();
+    return then(then(e, ended_load(0x28)), ended_with_y(ended_load(placed), found_slot));
+}
+
+void abi_CountThenSpawnInState2(void)
+{
+    abi_ended(CountThenSpawnInState2(cpu.x));
+}

@@ -403,6 +403,30 @@ SpeedBySideOfScreen:
     stz a:OBJ_VX_LO,x
     jmp VecApplyVelocity
 
+; @routine 088B:285 SoundThenAimRandomLength
+; @run 70:B285
+; WHAT IT DOES: Sends sound $2B, then sets the object's speed along the angle to the player with a length from a table at $B2A7 by a random 0 to 3, and goes on to the next OBJ_2800.
+; HOW: SoundCommand, AngleToPlayer, NextRandom, SetVelocityFromAngle, an INC.
+; WAITS: no.
+; Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
+SoundThenAimRandomLength:
+    lda #$2B
+    jsr VecSoundCommand
+    jsr VecAngleToPlayer
+    pha
+    jsr VecNextRandom
+    and #$03
+    asl a
+    tay
+    lda a:$B2A7,y
+    sta z:zTemp00
+    lda a:$B2A8,y
+    sta z:zTemp01
+    pla
+    jsr VecSetVelocityFromAngle
+    inc a:OBJ_2800,x
+    rts
+
 ; @routine 088B:6C5 ClearFrame
 ; @run 70:B6C5
 ; WHAT IT DOES: Sets the object's frame to 0.

@@ -75,6 +75,59 @@ StartPhaseWhenScrolled:
 StartPhaseWhenScrolled_at0:
     rts
 
+; @routine 051B:286 LoadThenSpawnWhileScrolling
+; @run 70:B286
+; WHAT IT DOES: In state 0 loads the object's record and looks for a free pair of slots. Later, while the screen scrolls right, it counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero it looks in slots $30, $32 and $34 for one whose two kind bytes are zero, clears that object, starts a kind $22 object there at its place and sets its timer from a four-entry table at $B2DF by a random number.
+; HOW: LoadObjectRecord, a 16-bit subtract, a search loop, ClearObjectInY, StartObjectAtPlace, NextRandom.
+; WAITS: no.
+; Entry: X object. Exit: the last test or load.
+LoadThenSpawnWhileScrolling:
+    lda a:OBJ_27A8,x
+    bne LoadThenSpawnWhileScrolling_at0
+    jsr VecLoadObjectRecord
+    bra LoadThenSpawnWhileScrolling_at1
+    rts
+LoadThenSpawnWhileScrolling_at0:
+    lda a:ScrollSpeedX
+    beq LoadThenSpawnWhileScrolling_at2
+    bmi LoadThenSpawnWhileScrolling_at2
+    lda a:OBJ_34B8,x
+    ora a:OBJ_3510,x
+    beq LoadThenSpawnWhileScrolling_at1
+    lda a:OBJ_3510,x
+    sec
+    sbc #$01
+    sta a:OBJ_3510,x
+    lda a:OBJ_34B8,x
+    sbc #$00
+    sta a:OBJ_34B8,x
+    rts
+LoadThenSpawnWhileScrolling_at1:
+    ldy #$30
+LoadThenSpawnWhileScrolling_at4:
+    lda a:OBJ_2750,y
+    ora a:OBJ_2750+1,y
+    beq LoadThenSpawnWhileScrolling_at3
+    iny
+    iny
+    cpy #$36
+    bcc LoadThenSpawnWhileScrolling_at4
+    rts
+LoadThenSpawnWhileScrolling_at3:
+    jsr VecClearObjectInY
+    lda #$22
+    jsr VecStartObjectAtPlace
+    jsr VecNextRandom
+    and #$03
+    asl a
+    tay
+    lda a:$B2DF,y
+    sta a:OBJ_3510,x
+    lda a:$B2E0,y
+    sta a:OBJ_34B8,x
+LoadThenSpawnWhileScrolling_at2:
+    rts
+
 ; @routine 051B:30D StateSixOnStatusBit7
 ; @run 70:B30D
 ; WHAT IT DOES: An object in a state under 6 whose OBJ_31A0 has bit 7 set goes to state 6 and clears OBJ_2800.

@@ -135,10 +135,7 @@ static void work_x_from(uint8_t band)
 /* INC RasterStep: its N and Z are the new step's, which the paths that end on it hold. */
 static uint8_t next_step(void)
 {
-    uint8_t step = (uint8_t)(rd8(RasterStep) + 1);
-
-    wr8(RasterStep, step);
-    return step;
+    return INC8(RASTERST->step);
 }
 
 /*
@@ -153,34 +150,6 @@ static Sum work_y_from_plus(uint8_t band, uint8_t add)
 
     WR8(BANDS->bgy_lo[WORK_BAND], low.value);
     high = add_bytes(0, RD8(BANDS->bgy_hi[band]), low.carry);
-    WR8(BANDS->bgy_hi[WORK_BAND], high.value);
-    return high;
-}
-
-/* The same with the byte read from a table between the low's read and its write. */
-static Sum work_y_from_plus_table(uint8_t band, uint16_t table, uint8_t index)
-{
-    uint8_t low_byte = RD8(BANDS->bgy_lo[band]);
-    Sum low = add_bytes(low_byte, rd8((uint16_t)(table + index)), false);
-    Sum high;
-
-    WR8(BANDS->bgy_lo[WORK_BAND], low.value);
-    high = add_bytes(0, RD8(BANDS->bgy_hi[band]), low.carry);
-    WR8(BANDS->bgy_hi[WORK_BAND], high.value);
-    return high;
-}
-
-/* The same with a word of the table: its low byte on the low, its high on the high. */
-static Sum work_y_from_plus_word(uint8_t band, uint16_t table, uint8_t index)
-{
-    uint8_t low_byte = RD8(BANDS->bgy_lo[band]);
-    Sum low = add_bytes(low_byte, rd8((uint16_t)(table + index)), false);
-    Sum high;
-    uint8_t high_byte;
-
-    WR8(BANDS->bgy_lo[WORK_BAND], low.value);
-    high_byte = RD8(BANDS->bgy_hi[band]);
-    high = add_bytes(high_byte, rd8((uint16_t)(table + 1 + index)), low.carry);
     WR8(BANDS->bgy_hi[WORK_BAND], high.value);
     return high;
 }
@@ -222,64 +191,211 @@ static void write_work_then_select(uint16_t write_ret, uint16_t select_ret)
     select_at(select_ret, VDC_REG_RCR);
 }
 
+/* Each table's read: by the disc table the traces settled, or by its named address where none did. The index may reach past a byte: a word's high byte. */
+typedef uint8_t (*TableRead)(uint16_t index);
+
+static uint8_t read_Effect6Bands(uint16_t index)
+{
+    return TBL8(Effect6Bands, index);
+}
+
+static uint8_t read_Effect6YAdds(uint16_t index)
+{
+    return TBL8(Effect6YAdds, index);
+}
+
+static uint8_t read_Effect6Lines(uint16_t index)
+{
+    return TBL8(Effect6Lines, index);
+}
+
+static uint8_t read_Effect8YAdds(uint16_t index)
+{
+    return TBL8(Effect8YAdds, index);
+}
+
+static uint8_t read_Effect8Lines(uint16_t index)
+{
+    return TBL8(Effect8Lines, index);
+}
+
+static uint8_t read_Effect12Bands(uint16_t index)
+{
+    return TBL8(Effect12Bands, index);
+}
+
+static uint8_t read_Effect12Lines(uint16_t index)
+{
+    return TBL8(Effect12Lines, index);
+}
+
+static uint8_t read_Effect13Bands(uint16_t index)
+{
+    return TBL8(Effect13Bands, index);
+}
+
+static uint8_t read_Effect13YAdds(uint16_t index)
+{
+    return TBL8(Effect13YAdds, index);
+}
+
+static uint8_t read_Effect13Lines(uint16_t index)
+{
+    return TBL8(Effect13Lines, index);
+}
+
+static uint8_t read_Effect16Bands(uint16_t index)
+{
+    return TBL8(Effect16Bands, index);
+}
+
+static uint8_t read_Effect16YAdds(uint16_t index)
+{
+    return TBL8(Effect16YAdds, index);
+}
+
+static uint8_t read_Effect16Lines(uint16_t index)
+{
+    return TBL8(Effect16Lines, index);
+}
+
+static uint8_t read_Effect17Bands(uint16_t index)
+{
+    return TBL8(Effect17Bands, index);
+}
+
+static uint8_t read_Effect17Lines(uint16_t index)
+{
+    return TBL8(Effect17Lines, index);
+}
+
+static uint8_t read_DeepWave(uint16_t index)
+{
+    return TBL8(DeepWave, index);
+}
+
+static uint8_t read_Effect7YAdds(uint16_t index)
+{
+    return rd8((uint16_t)(Effect7YAdds + index));
+}
+
+static uint8_t read_Effect8Bands(uint16_t index)
+{
+    return rd8((uint16_t)(Effect8Bands + index));
+}
+
+static uint8_t read_Effect12YAdds(uint16_t index)
+{
+    return rd8((uint16_t)(Effect12YAdds + index));
+}
+
+static uint8_t read_Effect17YAdds(uint16_t index)
+{
+    return rd8((uint16_t)(Effect17YAdds + index));
+}
+
+static uint8_t read_Effect30Bands(uint16_t index)
+{
+    return rd8((uint16_t)(Effect30Bands + index));
+}
+
+static uint8_t read_Effect30YAdds(uint16_t index)
+{
+    return rd8((uint16_t)(Effect30YAdds + index));
+}
+
+static uint8_t read_Effect30Lines(uint16_t index)
+{
+    return rd8((uint16_t)(Effect30Lines + index));
+}
+
+static uint8_t read_WaterWave(uint16_t index)
+{
+    return rd8((uint16_t)(WaterWave + index));
+}
+
 /*
  * The middle steps of the many-band effects: the working band takes a band chosen by a table by
- * step, its Y moved on by a second table, and the next line comes from a third. They leave A the
- * line's high byte (the carry into it), X 8, Y the step, and nothing carried.
+ * step, its Y moved on by a second table, and the next line comes from a third. The reads are in
+ * the original's order: the band, the byte added to Y's low between its read and its write, the
+ * line. They leave A the line's high byte (the carry into it), X 8, Y the step, and nothing carried.
  */
-static Exit band_table_step(uint8_t step, uint16_t bands, uint16_t y_adds, uint16_t lines,
+static Exit band_table_step(uint8_t step, TableRead bands, TableRead y_adds, TableRead lines,
                             uint16_t write_ret, uint16_t select_ret)
 {
-    uint8_t band = rd8((uint16_t)(bands + step));
+    uint8_t band = bands(step);
+    uint8_t low_byte;
+    uint8_t add;
     uint8_t line;
+    Sum low;
     Sum high;
 
     work_x_from(band);
-    (void)work_y_from_plus_table(band, y_adds, step);
+    low_byte = RD8(BANDS->bgy_lo[band]);
+    add = y_adds(step);
+    low = add_bytes(low_byte, add, false);
+    WR8(BANDS->bgy_lo[WORK_BAND], low.value);
+    high = add_bytes(0, RD8(BANDS->bgy_hi[band]), low.carry);
+    WR8(BANDS->bgy_hi[WORK_BAND], high.value);
     write_work_then_select(write_ret, select_ret);
-    line = rd8((uint16_t)(lines + step));
+    line = lines(step);
     high = line_word_of(line);
     return finish(exit_of(high.value, WORK_BAND, step, high.carry, high.overflow));
 }
 
-/* The same with the second table in words, for Y moves past one byte: Y is the doubled step halved again, so the line table is read by the step's low seven bits. */
-static Exit band_table_step_word(uint8_t step, uint16_t bands, uint16_t y_adds, uint16_t lines,
+/*
+ * The same with the second table in words, for Y moves past one byte. The doubled step is an
+ * eight-bit Y, so the second and third tables are read by the step's low seven bits; Y after the
+ * call is that index again.
+ */
+static Exit band_table_step_word(uint8_t step, TableRead bands, TableRead y_adds, TableRead lines,
                                  uint16_t write_ret, uint16_t select_ret)
 {
-    uint8_t band = rd8((uint16_t)(bands + step));
+    uint8_t band = bands(step);
     uint8_t index = (uint8_t)(step << 1);
+    uint8_t low_byte;
+    uint8_t high_byte;
+    uint8_t add;
     uint8_t line;
+    Sum low;
     Sum high;
 
     work_x_from(band);
-    (void)work_y_from_plus_word(band, y_adds, index);
+    low_byte = RD8(BANDS->bgy_lo[band]);
+    add = y_adds(index);
+    low = add_bytes(low_byte, add, false);
+    WR8(BANDS->bgy_lo[WORK_BAND], low.value);
+    high_byte = RD8(BANDS->bgy_hi[band]);
+    add = y_adds((uint16_t)(index + 1));
+    high = add_bytes(high_byte, add, low.carry);
+    WR8(BANDS->bgy_hi[WORK_BAND], high.value);
     write_work_then_select(write_ret, select_ret);
-    line = rd8((uint16_t)(lines + (index >> 1)));
+    line = lines((uint8_t)(index >> 1));
     high = line_word_of(line);
     return finish(exit_of(high.value, WORK_BAND, (uint8_t)(index >> 1), high.carry, high.overflow));
+}
+
+/* The working band's X is band 1's, moved by a word of a wave table. */
+static void work_x_band1_plus_wave(TableRead wave, uint8_t index)
+{
+    uint8_t low_byte = wave(index);
+    Sum low = add_bytes(low_byte, RD8(BANDS->bgx_lo[1]), false);
+    Sum high;
+    uint8_t high_byte;
+
+    WR8(BANDS->bgx_lo[WORK_BAND], low.value);
+    high_byte = wave((uint16_t)(index + 1));
+    high = add_bytes(high_byte, RD8(BANDS->bgx_hi[1]), low.carry);
+    WR8(BANDS->bgx_hi[WORK_BAND], high.value);
 }
 
 /* A table by a count of the frame's, over eight, plus the step: where a wave starts. */
 static uint8_t wave_index(uint8_t counter, uint8_t shift)
 {
     uint8_t byte = (uint8_t)(counter >> shift);
-    Sum sum = add_bytes(byte, rd8(RasterStep), false);
+    Sum sum = add_bytes(byte, RD8(RASTERST->step), false);
 
     return (uint8_t)((sum.value & 7) << 1);
-}
-
-/* The working band's X is band 1's, moved by a word of a wave table. */
-static void work_x_band1_plus_wave(uint16_t wave, uint8_t index)
-{
-    uint8_t low_byte = rd8((uint16_t)(wave + index));
-    Sum low = add_bytes(low_byte, RD8(BANDS->bgx_lo[1]), false);
-    Sum high;
-    uint8_t high_byte;
-
-    WR8(BANDS->bgx_lo[WORK_BAND], low.value);
-    high_byte = rd8((uint16_t)(wave + 1 + index));
-    high = add_bytes(high_byte, RD8(BANDS->bgx_hi[1]), low.carry);
-    WR8(BANDS->bgx_hi[WORK_BAND], high.value);
 }
 
 /* Colours $101-$10F: the VCE's address pointed at the sprite palette's second bank. */
@@ -415,7 +531,7 @@ Exit RasterEffect2(Held h)
 {
     uint8_t byte;
 
-    if (rd8(RasterStep) == 0) {
+    if (RD8(RASTERST->step) == 0) {
         return RasterBandThenLine(1, 0xBF, h);
     }
     work_x_from(0);
@@ -443,7 +559,7 @@ void abi_RasterEffect2(void)
  */
 Exit RasterEffect3(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     uint8_t byte;
     Sum line;
 
@@ -506,7 +622,7 @@ void abi_RasterEffect4(void)
  */
 Exit RasterEffect5(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     Sum high;
 
     if (step == 0) {
@@ -543,7 +659,7 @@ void abi_RasterEffect5(void)
  */
 Exit RasterEffect6(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         return RasterBandThenLine(4, 0x67, h);
@@ -553,7 +669,7 @@ Exit RasterEffect6(Held h)
         WR8(BANDS->bgy_lo[WORK_BAND], 0xDB);
         return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
-    return band_table_step(step, Effect6Bands, Effect6YAdds, Effect6Lines, 0x468D, 0x4695);
+    return band_table_step(step, read_Effect6Bands, read_Effect6YAdds, read_Effect6Lines, 0x468D, 0x4695);
 }
 
 void abi_RasterEffect6(void)
@@ -572,7 +688,7 @@ void abi_RasterEffect6(void)
  */
 Exit RasterEffect7(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         return RasterBandThenLine(4, 0x67, h);
@@ -582,7 +698,7 @@ Exit RasterEffect7(Held h)
         work_y_set(0x1B, 0x01);
         return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
-    return band_table_step_word(step, Effect6Bands, Effect7YAdds, Effect6Lines, 0x4709, 0x4714);
+    return band_table_step_word(step, read_Effect6Bands, read_Effect7YAdds, read_Effect6Lines, 0x4709, 0x4714);
 }
 
 void abi_RasterEffect7(void)
@@ -661,9 +777,9 @@ static Exit restore_saved_colours(Held h)
 
     select_sprite_palette();
     for (uint8_t colour = PALETTE_SAVED_COLOURS; colour != 0; colour--) {
-        byte = rd8((uint16_t)(SavedColoursLo + colour));
+        byte = RD8(SAVCOL->lo[colour]);
         WR8(VCE->data_lo, byte);
-        byte = rd8((uint16_t)(SavedColoursHi + colour));
+        byte = RD8(SAVCOL->hi[colour]);
         WR8(VCE->data_hi, byte);
     }
     {
@@ -689,9 +805,9 @@ static Exit flatten_colours(Held h)
     for (uint8_t colour = PALETTE_SAVED_COLOURS; colour != 0; colour--) {
         uint8_t byte = RD8(VCE->data_lo);
 
-        wr8((uint16_t)(SavedColoursLo + colour), byte);
+        WR8(SAVCOL->lo[colour], byte);
         byte = RD8(VCE->data_hi);
-        wr8((uint16_t)(SavedColoursHi + colour), byte);
+        WR8(SAVCOL->hi[colour], byte);
     }
     select_sprite_palette();
     for (uint8_t colour = PALETTE_SAVED_COLOURS; colour != 0; colour--) {
@@ -701,7 +817,7 @@ static Exit flatten_colours(Held h)
     select_control_at(0x4817);
     which = (uint8_t)(RD8(ZP->frame_count) & 1);
     control = RD8(ZP->vdc_cr.lo);
-    control = (uint8_t)(control & rd8((uint16_t)(FlickerMasks + which)));
+    control = (uint8_t)(control & TBL8(FlickerMasks, which));
     WR8(VDC->data_lo, control);
     next_step();
     select_at(0x482C, VDC_REG_RCR);
@@ -723,14 +839,14 @@ static Exit flatten_colours(Held h)
  */
 Exit RasterEffect8(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     Held carried = { h.x, h.y, true, h.v };
 
     if (step == 0) {
         return RasterEffect8Step0(h);
     }
     if (step < 3) {
-        return band_table_step_word(step, Effect8Bands, Effect8YAdds, Effect8Lines, 0x47C5, 0x47D0);
+        return band_table_step_word(step, read_Effect8Bands, read_Effect8YAdds, read_Effect8Lines, 0x47C5, 0x47D0);
     }
     if (step == 3) {
         return RasterEffect8Step3(carried);
@@ -752,7 +868,7 @@ void abi_RasterEffect8(void)
 /* Effects 9 and 10: two bands of a three-step split, the last at a fixed Y. */
 static Exit three_step_split(Held h, uint8_t line0, uint8_t y1, uint8_t line1, uint8_t y2)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         return RasterBandThenLine(0, line0, h);
@@ -837,7 +953,7 @@ void abi_RasterEffect11(void)
  */
 Exit RasterEffect12(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         return RasterBandThenLine(2, 0x7F, h);
@@ -847,7 +963,7 @@ Exit RasterEffect12(Held h)
         WR8(BANDS->bgy_lo[WORK_BAND], 0xB8);
         return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
-    return band_table_step(step, Effect12Bands, Effect12YAdds, Effect12Lines, 0x4918, 0x4920);
+    return band_table_step(step, read_Effect12Bands, read_Effect12YAdds, read_Effect12Lines, 0x4918, 0x4920);
 }
 
 void abi_RasterEffect12(void)
@@ -867,7 +983,7 @@ void abi_RasterEffect12(void)
  */
 Exit RasterEffect13(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         INC8(BANDS->bgy_hi[4]);
@@ -887,7 +1003,7 @@ Exit RasterEffect13(Held h)
         }
         return finish(exit_of(a, WORK_BAND, h.y, true, h.v));
     }
-    return band_table_step_word(step, Effect13Bands, Effect13YAdds, Effect13Lines, 0x49A4, 0x49AF);
+    return band_table_step_word(step, read_Effect13Bands, read_Effect13YAdds, read_Effect13Lines, 0x49A4, 0x49AF);
 }
 
 void abi_RasterEffect13(void)
@@ -907,7 +1023,7 @@ void abi_RasterEffect13(void)
  */
 Exit RasterEffect14(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     uint8_t byte;
 
     if (step == 0) {
@@ -947,11 +1063,11 @@ void abi_RasterEffect14(void)
  */
 Exit RasterEffect15(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     Sum line;
 
     if (step == 0) {
-        line = sub_bytes(0xCF, rd8(RasterWaterLine), true);
+        line = sub_bytes(0xCF, RD8(SCROLLLIM->raster_water_line), true);
         return RasterBandThenLine(2, line.value, (Held){ h.x, h.y, line.carry, line.overflow });
     }
     if (step >= 0x15) {
@@ -962,7 +1078,7 @@ Exit RasterEffect15(Held h)
     }
     {
         /* The step here is 1 to $14: two lines a step down from band 1, a byte that wraps. */
-        uint8_t doubled = (uint8_t)((uint8_t)(rd8(RasterStep) - 1) << 1);
+        uint8_t doubled = (uint8_t)((uint8_t)(RD8(RASTERST->step) - 1) << 1);
         Sum first = add_bytes(doubled, RD8(BANDS->bgy_lo[1]), false);
         Sum low = add_bytes(first.value, 0x8F, false);
         Sum high;
@@ -974,12 +1090,12 @@ Exit RasterEffect15(Held h)
         high = add_bytes(0, RD8(BANDS->bgy_hi[1]), low.carry);
         WR8(BANDS->bgy_hi[WORK_BAND], high.value);
         wave = wave_index(RD8(ZP->frame_tick), 3);
-        work_x_band1_plus_wave(WaterWave, wave);
+        work_x_band1_plus_wave(read_WaterWave, wave);
         (void)write_band_at(0x4A7D, WORK_BAND);
         select_at(0x4A82, VDC_REG_RCR);
-        byte = (uint8_t)(rd8(RasterStep) << 1);
+        byte = (uint8_t)(RD8(RASTERST->step) << 1);
         WR8(BANDS->bgy_lo[WORK_BAND], byte);
-        line = sub_bytes(0xCF, rd8(RasterWaterLine), true);
+        line = sub_bytes(0xCF, RD8(SCROLLLIM->raster_water_line), true);
         sum = add_bytes(line.value, RD8(BANDS->bgy_lo[WORK_BAND]), false);
         WR8(VDC->data_lo, sum.value);
         high = add_bytes(0, 0, sum.carry);
@@ -1009,7 +1125,7 @@ void abi_RasterEffect15(void)
  */
 Exit RasterEffect16(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         return RasterBandThenLine(5, 0x57, h);
@@ -1019,7 +1135,7 @@ Exit RasterEffect16(Held h)
         WR8(BANDS->bgy_lo[WORK_BAND], 0xBF);
         return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
-    return band_table_step(step, Effect16Bands, Effect16YAdds, Effect16Lines, 0x4AFB, 0x4B03);
+    return band_table_step(step, read_Effect16Bands, read_Effect16YAdds, read_Effect16Lines, 0x4AFB, 0x4B03);
 }
 
 void abi_RasterEffect16(void)
@@ -1038,7 +1154,7 @@ void abi_RasterEffect16(void)
  */
 Exit RasterEffect17(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         return RasterBandThenLine(4, 0x67, h);
@@ -1048,7 +1164,7 @@ Exit RasterEffect17(Held h)
         WR8(BANDS->bgy_lo[WORK_BAND], 0xD7);
         return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
-    return band_table_step(step, Effect17Bands, Effect17YAdds, Effect17Lines, 0x4B6B, 0x4B73);
+    return band_table_step(step, read_Effect17Bands, read_Effect17YAdds, read_Effect17Lines, 0x4B6B, 0x4B73);
 }
 
 void abi_RasterEffect17(void)
@@ -1080,7 +1196,7 @@ static void effect18_work_band(void)
  */
 Exit RasterEffect18(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         Sum line;
@@ -1133,7 +1249,7 @@ void abi_RasterEffect18(void)
  */
 Exit RasterEffect19(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     Sum line;
 
     if (step == 0) {
@@ -1181,7 +1297,7 @@ void abi_RasterEffect19(void)
  */
 Exit RasterEffect20(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     uint8_t line;
     Sum sum;
 
@@ -1202,7 +1318,7 @@ Exit RasterEffect20(Held h)
         (void)write_band_at(0x4CBB, 0);
         line = RD8(BANDS->bgy_lo[5]);
         if (line >= 0x77) {
-            wr8(RasterStep, 4);
+            WR8(RASTERST->step, 4);
             select_at(0x4CDA, VDC_REG_RCR);
             sum = line_byte_tail(0xA7);
         } else {
@@ -1265,7 +1381,7 @@ void abi_RasterEffect20(void)
  */
 Exit RasterEffect21(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         return RasterBandThenLine(2, 0x7F, h);
@@ -1312,7 +1428,7 @@ void abi_RasterEffect21(void)
  */
 Exit RasterEffect22(Held h)
 {
-    if (rd8(RasterStep) == 0) {
+    if (RD8(RASTERST->step) == 0) {
         work_y_set(0x10, 0x01);
         work_x_from(2);
         return RasterBandThenLine(WORK_BAND, 0x67, h);
@@ -1336,7 +1452,7 @@ void abi_RasterEffect22(void)
 /* Effects 23 and 29: flatten the colours and restore them, after a first line. */
 static Exit flatten_after_line(Held h, uint8_t first_line, uint16_t select_ret)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         next_step();
@@ -1383,7 +1499,7 @@ void abi_RasterEffect23(void)
  */
 Exit RasterEffect25(Held h)
 {
-    if (rd8(RasterStep) == 0) {
+    if (RD8(RASTERST->step) == 0) {
         return flatten_colours(h);
     }
     return restore_saved_colours(h);
@@ -1428,7 +1544,7 @@ void abi_RasterEffect29(void)
  */
 Exit RasterEffect24(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         WR8(BANDS->bgx_lo[2], 0xFF);
@@ -1440,7 +1556,7 @@ Exit RasterEffect24(Held h)
     }
     {
         /* The step here is 1 to $10, so doubling it one less carries nothing. */
-        uint8_t doubled = (uint8_t)((uint8_t)(rd8(RasterStep) - 1) << 1);
+        uint8_t doubled = (uint8_t)((uint8_t)(RD8(RASTERST->step) - 1) << 1);
         uint8_t wave;
         uint8_t beat;
         uint8_t counter;
@@ -1451,11 +1567,11 @@ Exit RasterEffect24(Held h)
         WR8(BANDS->bgy_hi[WORK_BAND], 0);
         counter = RD8(ZP->wave_counter);
         wave = wave_index(counter, 3);
-        work_x_band1_plus_wave(DeepWave, wave);
+        work_x_band1_plus_wave(read_DeepWave, wave);
         (void)write_band_at(0x4E65, WORK_BAND);
         select_at(0x4E6A, VDC_REG_RCR);
         counter = RD8(ZP->wave_counter);
-        beat = (uint8_t)((uint8_t)(add_bytes((uint8_t)(counter >> 3), rd8(RasterStep), false).value >> 3) & 1);
+        beat = (uint8_t)((uint8_t)(add_bytes((uint8_t)(counter >> 3), RD8(RASTERST->step), false).value >> 3) & 1);
         low = add_bytes(add_bytes(beat, 2, false).value, RD8(BANDS->bgx_lo[2]), false);
         WR8(BANDS->bgx_lo[2], low.value);
         WR8(VDC->data_lo, low.value);
@@ -1482,7 +1598,7 @@ void abi_RasterEffect24(void)
  */
 static Exit marked_band_step(Held h, uint8_t limit, uint8_t shift, uint16_t write_ret, uint16_t select_ret)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     uint8_t mark;
     uint8_t byte;
     Sum low;
@@ -1494,10 +1610,10 @@ static Exit marked_band_step(Held h, uint8_t limit, uint8_t shift, uint16_t writ
     if (step >= limit) {
         return RasterEndBand1((Held){ h.x, h.y, true, h.v });
     }
-    step = rd8(RasterStep);
+    step = RD8(RASTERST->step);
     byte = (uint8_t)(((uint8_t)(step - 1) << shift) + 1);
     WR8(BANDS->bgy_lo[WORK_BAND], byte);
-    mark = rd8((uint16_t)(RasterMarks + step));
+    mark = RD8(RMARKS->mark[step]);
     if (!(mark & 0x80)) {
         WR8(BANDS->bgx_lo[WORK_BAND], 0);
         WR8(BANDS->bgy_hi[WORK_BAND], 0);
@@ -1508,17 +1624,17 @@ static Exit marked_band_step(Held h, uint8_t limit, uint8_t shift, uint16_t writ
 
         WR8(BANDS->bgy_hi[WORK_BAND], 0x01);
         counter = RD8(ZP->wave_counter);
-        index = (uint8_t)((add_bytes((uint8_t)(counter >> 2), rd8(RasterStep), false).value & 7) << 1);
-        byte = rd8((uint16_t)(DeepWave + index));
+        index = (uint8_t)((add_bytes((uint8_t)(counter >> 2), RD8(RASTERST->step), false).value & 7) << 1);
+        byte = TBL8(DeepWave, index);
         WR8(BANDS->bgx_lo[WORK_BAND], byte);
-        byte = rd8((uint16_t)(DeepWave + 1 + index));
+        byte = TBL8(DeepWave, index + 1);
         WR8(BANDS->bgx_hi[WORK_BAND], byte);
     }
-    mark = (uint8_t)(rd8((uint16_t)(RasterMarks + step)) & 0x7F);
+    mark = (uint8_t)(RD8(RMARKS->mark[step]) & 0x7F);
     WR8(BANDS->bgx_lo[WORK_BAND], add_bytes(mark, RD8(BANDS->bgx_lo[WORK_BAND]), false).value);
     (void)write_band_at(write_ret, WORK_BAND);
     select_at(select_ret, VDC_REG_RCR);
-    low = add_bytes((uint8_t)(rd8(RasterStep) << shift), 0x41, false);
+    low = add_bytes((uint8_t)(RD8(RASTERST->step) << shift), 0x41, false);
     WR8(VDC->data_lo, low.value);
     high = add_bytes(0, 0, low.carry);
     WR8(VDC->data_hi, high.value);
@@ -1581,7 +1697,7 @@ void abi_RasterEffect27(void)
  */
 Exit RasterEffect28(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
     uint8_t byte;
     Sum low;
     Sum high;
@@ -1594,9 +1710,9 @@ Exit RasterEffect28(Held h)
         work_y_set(0x7F, 0);
         return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
-    byte = add_bytes((uint8_t)(rd8(RasterStep) << 1), 0x67, false).value;
+    byte = add_bytes((uint8_t)(RD8(RASTERST->step) << 1), 0x67, false).value;
     WR8(BANDS->bgy_lo[WORK_BAND], byte);
-    if (rd8(RasterStep) == 1) {
+    if (RD8(RASTERST->step) == 1) {
         DEC8(BANDS->bgy_lo[WORK_BAND]);
         DEC8(BANDS->bgy_lo[WORK_BAND]);
     }
@@ -1606,7 +1722,7 @@ Exit RasterEffect28(Held h)
     byte = RD8(BANDS->bgx_hi[3]);
     WR8(BANDS->bgx_hi[WORK_BAND], byte);
     byte = (uint8_t)(RD8(ZP->frame_tick) >> 3);
-    byte = (uint8_t)(add_bytes(byte, rd8(RasterStep), false).value >> 1);
+    byte = (uint8_t)(add_bytes(byte, RD8(RASTERST->step), false).value >> 1);
     if ((byte & 0x0F) == 0) {
         uint8_t random = (uint8_t)(RD8(ZP->random3) & 1);
 
@@ -1617,7 +1733,7 @@ Exit RasterEffect28(Held h)
     }
     (void)write_band_at(0x5013, WORK_BAND);
     select_at(0x5018, VDC_REG_RCR);
-    low = add_bytes((uint8_t)(rd8(RasterStep) << 1), 0xA9, false);
+    low = add_bytes((uint8_t)(RD8(RASTERST->step) << 1), 0xA9, false);
     WR8(VDC->data_lo, low.value);
     high = add_bytes(0, 0, low.carry);
     WR8(VDC->data_hi, high.value);
@@ -1645,7 +1761,7 @@ void abi_RasterEffect28(void)
  */
 Exit RasterEffect30(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         return RasterBandThenLine(1, 0x8F, h);
@@ -1655,7 +1771,7 @@ Exit RasterEffect30(Held h)
         work_y_set(0xAF, 0);
         return RasterEndWorkBand((Held){ h.x, h.y, true, h.v });
     }
-    return band_table_step(step, Effect30Bands, Effect30YAdds, Effect30Lines, 0x507A, 0x5082);
+    return band_table_step(step, read_Effect30Bands, read_Effect30YAdds, read_Effect30Lines, 0x507A, 0x5082);
 }
 
 void abi_RasterEffect30(void)
@@ -1675,7 +1791,7 @@ void abi_RasterEffect30(void)
  */
 Exit RasterEffect31(Held h)
 {
-    uint8_t step = rd8(RasterStep);
+    uint8_t step = RD8(RASTERST->step);
 
     if (step == 0) {
         (void)background_off_at(0x50BE);
@@ -1731,11 +1847,11 @@ void RasterInterrupt(void)
         abi_RasterEffect24, abi_RasterEffect25, abi_RasterEffect26, abi_RasterEffect27,
         abi_RasterEffect28, abi_RasterEffect29, abi_RasterEffect30, abi_RasterEffect31
     };
-    uint8_t effect = rd8(RasterEffectNow);
+    uint8_t effect = RD8(RASTERST->effect_now);
     uint8_t index = (uint8_t)(effect << 1);
 
-    (void)rd8((uint16_t)(RasterEffects + index));
-    (void)rd8((uint16_t)(RasterEffects + 1 + index));
+    (void)TBL8(RasterEffects, index);
+    (void)TBL8(RasterEffects, index + 1);
     dispatch_registers_shim(effect, index);
     effects[effect]();
 }
@@ -1745,33 +1861,53 @@ void abi_RasterInterrupt(void)
     RasterInterrupt();
 }
 
-/* The band tables' columns copied at the frame's start, from the entry's row down. */
-static const struct { uint16_t from, to; } band_copies[] = {
-    { ScrollXLo + 7, ScrollBgxLo + 7 }, { ScrollXLo + 6, ScrollBgxLo + 6 },
-    { ScrollXHi + 6, ScrollBgxHi + 6 }, { ScrollYLo + 6, ScrollBgyLo + 6 },
-    { ScrollYHi + 6, ScrollBgyHi + 6 }, { ScrollXLo + 5, ScrollBgxLo + 5 },
-    { ScrollXHi + 5, ScrollBgxHi + 5 }, { ScrollYLo + 5, ScrollBgyLo + 5 },
-    { ScrollYHi + 5, ScrollBgyHi + 5 }, { ScrollXLo + 4, ScrollBgxLo + 4 },
-    { ScrollXHi + 4, ScrollBgxHi + 4 }, { ScrollYLo + 4, ScrollBgyLo + 4 },
-    { ScrollYHi + 4, ScrollBgyHi + 4 }, { ScrollXLo + 3, ScrollBgxLo + 3 },
-    { ScrollXHi + 3, ScrollBgxHi + 3 }, { ScrollYLo + 3, ScrollBgyLo + 3 },
-    { ScrollYHi + 3, ScrollBgyHi + 3 }, { RasterWaterWanted, RasterWaterLine },
-    { ScrollXLo + 2, ScrollBgxLo + 2 }, { ScrollXHi + 2, ScrollBgxHi + 2 },
-    { ScrollYLo + 2, ScrollBgyLo + 2 }, { ScrollYHi + 2, ScrollBgyHi + 2 },
-    { ScrollXLo + 1, ScrollBgxLo + 1 }, { ScrollXHi + 1, ScrollBgxHi + 1 },
-    { ScrollYLo + 1, ScrollBgyLo + 1 }, { ScrollYHi + 1, ScrollBgyHi + 1 }
+/* The band tables' columns copied at the frame's start, from the entry's row down: each row a byte of the game's scroll to the frame's. */
+#define BAND_COPY_ROWS(X) \
+    X(SCROLL->x_lo[7], BANDS->bgx_lo[7]) \
+    X(SCROLL->x_lo[6], BANDS->bgx_lo[6]) \
+    X(SCROLL->x_hi[6], BANDS->bgx_hi[6]) \
+    X(SCROLL->y_lo[6], BANDS->bgy_lo[6]) \
+    X(SCROLL->y_hi[6], BANDS->bgy_hi[6]) \
+    X(SCROLL->x_lo[5], BANDS->bgx_lo[5]) \
+    X(SCROLL->x_hi[5], BANDS->bgx_hi[5]) \
+    X(SCROLL->y_lo[5], BANDS->bgy_lo[5]) \
+    X(SCROLL->y_hi[5], BANDS->bgy_hi[5]) \
+    X(SCROLL->x_lo[4], BANDS->bgx_lo[4]) \
+    X(SCROLL->x_hi[4], BANDS->bgx_hi[4]) \
+    X(SCROLL->y_lo[4], BANDS->bgy_lo[4]) \
+    X(SCROLL->y_hi[4], BANDS->bgy_hi[4]) \
+    X(SCROLL->x_lo[3], BANDS->bgx_lo[3]) \
+    X(SCROLL->x_hi[3], BANDS->bgx_hi[3]) \
+    X(SCROLL->y_lo[3], BANDS->bgy_lo[3]) \
+    X(SCROLL->y_hi[3], BANDS->bgy_hi[3]) \
+    X(LEVELW->y.lo, SCROLLLIM->raster_water_line) \
+    X(SCROLL->x_lo[2], BANDS->bgx_lo[2]) \
+    X(SCROLL->x_hi[2], BANDS->bgx_hi[2]) \
+    X(SCROLL->y_lo[2], BANDS->bgy_lo[2]) \
+    X(SCROLL->y_hi[2], BANDS->bgy_hi[2]) \
+    X(SCROLL->x_lo[1], BANDS->bgx_lo[1]) \
+    X(SCROLL->x_hi[1], BANDS->bgx_hi[1]) \
+    X(SCROLL->y_lo[1], BANDS->bgy_lo[1]) \
+    X(SCROLL->y_hi[1], BANDS->bgy_hi[1])
+enum {
+#define COUNT_ROW(from, to) +1
+    BAND_COPIES = 0 BAND_COPY_ROWS(COUNT_ROW)
+#undef COUNT_ROW
 };
-enum { BAND_COPIES = sizeof band_copies / sizeof band_copies[0] };
 
 /* Returns whether anything was copied, and the last byte if so. */
 static bool copy_band_columns(unsigned first, uint8_t *last)
 {
-    for (unsigned i = first; i < BAND_COPIES; i++) {
-        uint8_t byte = rd8(band_copies[i].from);
+    unsigned row = 0;
 
-        wr8(band_copies[i].to, byte);
-        *last = byte;
+#define COPY_ROW(from, to) \
+    if (row++ >= first) { \
+        uint8_t byte = RD8(from); \
+        WR8(to, byte); \
+        *last = byte; \
     }
+    BAND_COPY_ROWS(COPY_ROW);
+#undef COPY_ROW
     return first < BAND_COPIES;
 }
 
@@ -1906,11 +2042,11 @@ bool RasterStart(uint8_t *effect_out, uint8_t *last)
     static const uint8_t first_row[] = {
         BAND_COPIES, 22, 22, 15, 22, 13, 1, 1, 1, 22, 22, BAND_COPIES, 1, 0, 9, 17, 1, 1, 17, 1, 1, 9, 17, BAND_COPIES, 17, BAND_COPIES, BAND_COPIES, BAND_COPIES, 13, BAND_COPIES, 9, 17
     };
-    uint8_t effect = rd8(RasterEffectNow);
+    uint8_t effect = RD8(RASTERST->effect_now);
     uint8_t index = (uint8_t)(effect << 1);
 
-    (void)rd8((uint16_t)(RasterStartEntries + index));
-    (void)rd8((uint16_t)(RasterStartEntries + 1 + index));
+    (void)TBL8(RasterStartEntries, index);
+    (void)TBL8(RasterStartEntries, index + 1);
     *effect_out = effect;
     return copy_band_columns(first_row[effect], last);
 }

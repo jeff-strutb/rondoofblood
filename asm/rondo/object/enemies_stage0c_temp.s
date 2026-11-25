@@ -98,6 +98,46 @@ CountThenCue:
 CountThenCue_at0:
     rts
 
+; @routine 0CAB:339 SlideTurnByTable
+; @run 70:B339
+; WHAT IT DOES: Steps the animation list at $B3E0, sets the object's Y to $0070 and its Y speed to the cosine of the angle OBJ_3510 scaled by the 16-bit
+; length OBJ_3568:OBJ_35C0, moves it in Y, turns the angle half a circle, and runs the code a table at $B383 names for OBJ_2800 (SlideAngleDown,
+; SlideAngleUp, TurnAngleBack).
+; HOW: StepObjectFrames, ScaleByCosine, ApplyVelocityY, then a jump through the table.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; Y the doubled OBJ_2800.
+SlideTurnByTable:
+    lda #$E0
+    sta z:zTemp10
+    lda #$B3
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    stz a:OBJ_Y_HI,x
+    lda #$70
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_35C0,x
+    sta z:zTemp00
+    lda a:OBJ_3568,x
+    sta z:zTemp01
+    lda a:OBJ_3510,x
+    jsr VecScaleByCosine
+    lda z:zProduct2
+    sta a:OBJ_VY_HI,x
+    lda z:SpriteFlipMask
+    sta a:OBJ_VY_LO,x
+    jsr VecApplyVelocityY
+    lda a:OBJ_3510,x
+    eor #$80
+    sta a:OBJ_3510,x
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$B383,y
+    sta z:zTemp00
+    lda a:$B384,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
 ; @routine 0CAB:389 SlideAngleDown
 ; @run 70:B389
 ; WHAT IT DOES: Takes one off the 16-bit angle word (OBJ_3568 high, OBJ_35C0 low, in steps of $0100 less 0 on the low byte as the code subtracts $0100); when the high byte
@@ -163,6 +203,49 @@ AimAtPlayerThenArm_at0:
     sta a:OBJ_35C0,x
     inc a:OBJ_3670,x
     inc a:OBJ_2800,x
+    rts
+
+; @routine 0CAB:457 MoveAlongAndSlow
+; @run 70:B457
+; WHAT IT DOES: Moves the object along its angle OBJ_3510 by the 16-bit length OBJ_3568:OBJ_35C0. Outside the screen box (InsideScreenBox) it clears OBJ_3670
+; and OBJ_2800 and stops. Inside, it takes a byte of a table at $B4A0 (picked by OBJ_3670 and 7) off the length, and when the length runs out
+; it sets the timer from a table at $B4A8 picked at random and goes on to the next OBJ_2800.
+; HOW: SetVelocityFromAngle, ApplyVelocity, InsideScreenBox, a 16-bit subtract, NextRandom, table reads (bank 70).
+; Untraced: the outside arm (B46F).
+; WAITS: no.
+; Entry: X object. Exit: the last count, subtract or load.
+MoveAlongAndSlow:
+    lda a:OBJ_35C0,x
+    sta z:zTemp00
+    lda a:OBJ_3568,x
+    sta z:zTemp01
+    lda a:OBJ_3510,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    jsr InsideScreenBox
+    bcc MoveAlongAndSlow_at0
+    stz a:OBJ_3670,x
+    stz a:OBJ_2800,x
+    rts
+MoveAlongAndSlow_at0:
+    lda a:OBJ_3670,x
+    and #$07
+    tay
+    lda a:OBJ_35C0,x
+    sec
+    sbc a:$B4A0,y
+    sta a:OBJ_35C0,x
+    lda a:OBJ_3568,x
+    sbc #$00
+    sta a:OBJ_3568,x
+    bcs MoveAlongAndSlow_at1
+    jsr VecNextRandom
+    and #$03
+    tay
+    lda a:$B4A8,y
+    sta a:OBJ_34B8,x
+    inc a:OBJ_2800,x
+MoveAlongAndSlow_at1:
     rts
 
 ; @routine 0CAB:4AC InsideScreenBox
@@ -603,6 +686,61 @@ StepThenRestB:
     stz a:OBJ_2800,x
 StepThenRestB_at0:
     rts
+; @routine 0CAB:7CD LaunchThenFall
+; @run 70:B7CD
+; WHAT IT DOES: State 0: plays sound $C0, quarters OBJ_36C8, takes the angle to the player plus $80 as the object's angle with the length $0080 and goes on to the next
+; OBJ_2800. Later: when it has been hit five times (OBJ_33B0) it sets OBJ_2EE0 to 3, its state to 4 and OBJ_2800 to 9; else it moves and steps the animation list at $B829, and when the
+; list ends it sets its frame to 1, its state to 3 and OBJ_2800 to 0.
+; HOW: SoundCommand, LSR (twice), AngleToPlayer, SetVelocityFromAngle, ApplyVelocity, StepObjectFrames.
+; Untraced: the hit arm (B7FB to B80A).
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: see abi_sound_end.
+LaunchThenFall:
+    lda a:OBJ_2800,x
+    bne LaunchThenFall_at0
+    lda #$C0
+    jsr VecSoundCommand
+    lsr a:OBJ_36C8,x
+    lsr a:OBJ_36C8,x
+    jsr VecAngleToPlayer
+    clc
+    adc #$80
+    pha
+    lda #$80
+    sta z:zTemp00
+    lda #$00
+    sta z:zTemp01
+    pla
+    jsr VecSetVelocityFromAngle
+    inc a:OBJ_2800,x
+    rts
+LaunchThenFall_at0:
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc LaunchThenFall_at1
+    lda #$03
+    sta a:OBJ_FIELDS_2EE0,x
+    lda #$04
+    sta a:OBJ_27A8,x
+    lda #$09
+    sta a:OBJ_2800,x
+    rts
+LaunchThenFall_at1:
+    jsr VecApplyVelocity
+    lda #$29
+    sta z:zTemp10
+    lda #$B8
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne LaunchThenFall_at2
+    lda #$01
+    sta a:OBJ_2A68,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+LaunchThenFall_at2:
+    rts
+
 ; @routine 0CAC:282 FollowAndFacePlayer
 ; @run 70:BA82
 ; WHAT IT DOES: In state 0 loads the object's record; later it sets its frame to 0 and, when a table at $BAAF by slot $10's frame says so, copies slot $10's flash flag, takes

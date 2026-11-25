@@ -2138,3 +2138,232 @@ void abi_OrbitThenLeave(void)
 {
     abi_ended(OrbitThenLeave(cpu.x));
 }
+
+/*
+ * @routine 0CAB:339 SlideTurnByTable
+ * @run 70:B339
+ * WHAT IT DOES: Steps the animation list at $B3E0, sets the object's Y to $0070 and its Y speed to the cosine of the angle OBJ_3510 scaled by the 16-bit
+ * length OBJ_3568:OBJ_35C0, moves it in Y, turns the angle half a circle, and runs the code a table at $B383 names for OBJ_2800 (SlideAngleDown,
+ * SlideAngleUp, TurnAngleBack).
+ * HOW: StepObjectFrames, ScaleByCosine, ApplyVelocityY, then a jump through the table.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; Y the doubled OBJ_2800.
+ */
+Jump SlideTurnByTable(uint8_t slot, Ended *before)
+{
+    FrameStep step;
+    ScaleResult scale;
+    AxisMove move;
+    Jump jump = { { 0 }, 0, true };
+    uint8_t y, byte, state, index, low, high;
+    Ended e;
+
+    step = step_list(slot, 0xB3E0, 0xB344, &y, false);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    WR8(OBJ->y_hi[slot], 0);
+    WR8(OBJ->y_lo[slot], 0x70);
+    byte = RD8(OBJ->angle_lo[slot]);
+    WR8(ZP->temp00, byte);
+    byte = RD8(OBJ->angle_hi[slot]);
+    WR8(ZP->temp01, byte);
+    byte = RD8(OBJ->f3510[slot]);
+    e = then(e, ended_load(byte));
+    jsr_push(0xB35C);
+    scale = ScaleByCosine(byte);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    byte = RD8(ZP->product.hi);
+    WR8(OBJ->vy_hi[slot], byte);
+    byte = RD8(ZP->product.mid);
+    WR8(OBJ->vy_lo[slot], byte);
+    e = then(e, ended_load(byte));
+    jsr_push(0xB369);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    byte = RD8(OBJ->f3510[slot]);
+    byte = (uint8_t)(byte ^ 0x80);
+    e = then(e, ended_load(byte));
+    WR8(OBJ->f3510[slot], byte);
+    state = RD8(OBJ->f2800[slot]);
+    index = (uint8_t)(state << 1);
+    e = then(e, ended_with_carry(ended_with_y(ended_load(index), index), (state & 0x80) != 0));
+    low = rd8((uint16_t)(0xB383 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB384 + index));
+    WR8(ZP->temp01, high);
+    *before = e;
+    jump.end = ended_load(high);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_SlideTurnByTable(void)
+{
+    Ended before;
+    Jump jump = SlideTurnByTable(cpu.x, &before);
+
+    abi_ended(before);
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 0CAB:457 MoveAlongAndSlow
+ * @run 70:B457
+ * WHAT IT DOES: Moves the object along its angle OBJ_3510 by the 16-bit length OBJ_3568:OBJ_35C0. Outside the screen box (InsideScreenBox) it clears OBJ_3670
+ * and OBJ_2800 and stops. Inside, it takes a byte of a table at $B4A0 (picked by OBJ_3670 and 7) off the length, and when the length runs out
+ * it sets the timer from a table at $B4A8 picked at random and goes on to the next OBJ_2800.
+ * HOW: SetVelocityFromAngle, ApplyVelocity, InsideScreenBox, a 16-bit subtract, NextRandom, table reads (bank 70).
+ * Untraced: the outside arm (B46F).
+ * WAITS: no.
+ * Entry: X object. Exit: the last count, subtract or load.
+ */
+Ended MoveAlongAndSlow(uint8_t slot)
+{
+    ScaleResult scale;
+    AxisMove move;
+    ViewTest view;
+    RandomResult random;
+    Sum sum;
+    uint8_t byte, index, count, pick;
+    Ended e;
+
+    byte = RD8(OBJ->angle_lo[slot]);
+    WR8(ZP->temp00, byte);
+    byte = RD8(OBJ->angle_hi[slot]);
+    WR8(ZP->temp01, byte);
+    byte = RD8(OBJ->f3510[slot]);
+    e = ended_load(byte);
+    jsr_push(0xB467);
+    scale = SetVelocityFromAngle(byte, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    jsr_push(0xB46A);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    jsr_push(0xB46D);
+    view = InsideScreenBox(slot);
+    jsr_pop();
+    e = then(e, view.end);
+    if (!view.in_view) {
+        WR8(OBJ->f3670[slot], 0);
+        WR8(OBJ->f2800[slot], 0);
+        return e;
+    }
+    byte = RD8(OBJ->f3670[slot]);
+    index = (uint8_t)(byte & 0x07);
+    e = then(e, ended_with_y(ended_load(index), index));
+    byte = RD8(OBJ->angle_lo[slot]);
+    sum = sub_bytes(byte, rd8((uint16_t)(0xB4A0 + index)), true);
+    WR8(OBJ->angle_lo[slot], sum.value);
+    e = then(e, of_sum(sum));
+    byte = RD8(OBJ->angle_hi[slot]);
+    sum = sub_bytes(byte, 0, sum.carry);
+    WR8(OBJ->angle_hi[slot], sum.value);
+    e = then(e, of_sum(sum));
+    if (sum.carry) {
+        return e;
+    }
+    jsr_push(0xB493);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    pick = (uint8_t)(random.value & 0x03);
+    e = then(e, ended_with_y(ended_load(pick), pick));
+    byte = rd8((uint16_t)(0xB4A8 + pick));
+    WR8(OBJ->life_timer[slot], byte);
+    e = then(e, ended_load(byte));
+    count = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(count));
+}
+
+void abi_MoveAlongAndSlow(void)
+{
+    abi_ended(MoveAlongAndSlow(cpu.x));
+}
+
+/*
+ * @routine 0CAB:7CD LaunchThenFall
+ * @run 70:B7CD
+ * WHAT IT DOES: State 0: plays sound $C0, quarters OBJ_36C8, takes the angle to the player plus $80 as the object's angle with the length $0080 and goes on to the next
+ * OBJ_2800. Later: when it has been hit five times (OBJ_33B0) it sets OBJ_2EE0 to 3, its state to 4 and OBJ_2800 to 9; else it moves and steps the animation list at $B829, and when the
+ * list ends it sets its frame to 1, its state to 3 and OBJ_2800 to 0.
+ * HOW: SoundCommand, LSR (twice), AngleToPlayer, SetVelocityFromAngle, ApplyVelocity, StepObjectFrames.
+ * Untraced: the hit arm (B7FB to B80A).
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see abi_sound_end.
+ */
+SoundEnd LaunchThenFall(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    AngleExit angle;
+    ScaleResult scale;
+    AxisMove move;
+    FrameStep step;
+    Sum sum;
+    uint8_t phase, byte, hits, y, shifted, count;
+    bool bit;
+    Ended e;
+
+    phase = RD8(OBJ->f2800[slot]);
+    e = ended_load(phase);
+    if (phase == 0) {
+        r.before = then(e, ended_load(0xC0));
+        r.sounded = true;
+        r.command = 0xC0;
+        jsr_push(0xB7D7);
+        r.call = SoundCommand(0xC0, slot, y_entry);
+        jsr_pop();
+        shifted = LSR8_VALUE(OBJ->f36c8[slot], bit);
+        shifted = LSR8_VALUE(OBJ->f36c8[slot], bit);
+        e = ended_with_carry(ended_nz(shifted), bit);
+        jsr_push(0xB7E0);
+        angle = AngleToPlayer(slot);
+        jsr_pop();
+        e = then(e, ended_of_angle(angle));
+        sum = add_bytes(angle.a, 0x80, false);
+        e = then(e, of_sum(sum));
+        push8(sum.value);
+        WR8(ZP->temp00, 0x80);
+        WR8(ZP->temp01, 0);
+        byte = pull8();
+        e = then(e, ended_load(byte));
+        jsr_push(0xB7F0);
+        scale = SetVelocityFromAngle(byte, slot);
+        jsr_pop();
+        e = then(e, ended_of_scale(scale));
+        count = INC8(OBJ->f2800[slot]);
+        r.end = then(e, ended_nz(count));
+        return r;
+    }
+    hits = RD8(OBJ->hit_taken[slot]);
+    e = then(e, ended_compare(hits, 5));
+    if (hits >= 5) {
+        WR8(OBJ->fields_2ee0[slot], 3);
+        WR8(OBJ->state[slot], 4);
+        WR8(OBJ->f2800[slot], 9);
+        r.end = then(e, ended_load(9));
+        return r;
+    }
+    jsr_push(0xB80E);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    step = step_list(slot, 0xB829, 0xB819, &y, false);
+    e = then(e, ended_of_frame_step(step, step != FRAME_HELD, y));
+    if (step != FRAME_LIST_ENDED) {
+        r.end = e;
+        return r;
+    }
+    WR8(OBJ->frame[slot], 1);
+    WR8(OBJ->state[slot], 3);
+    WR8(OBJ->f2800[slot], 0);
+    r.end = then(e, ended_load(3));
+    return r;
+}
+
+void abi_LaunchThenFall(void)
+{
+    abi_sound_end(LaunchThenFall(cpu.x, cpu.y));
+}

@@ -686,6 +686,38 @@ DropOffScreen_at0:
     jsr VecApplyGravityUnlimited
     jmp VecApplyVelocity
 
+; @routine 051A:1A8 StartScorePickup
+; @run 70:A9A8
+; WHAT IT DOES: Loads the object's record, clears its facing and adds the score a table at $A9E1 gives for its timer (two bytes of BCD); when that carries over
+; the mark the score tests for it the player gets an extra life (GiveExtraLife). The frame comes from a table at $A9DC by the timer, the angle OBJ_3510 is $18 and the Y speed $FE00.
+; HOW: LoadObjectRecord, AddScoreWord, GiveExtraLife, table reads (bank 70).
+; Untraced: the extra life (A9C2).
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+StartScorePickup:
+    jsr VecLoadObjectRecord
+    stz a:OBJ_2AC0,x
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$A9E1,y
+    sta z:zTemp00
+    lda a:$A9E2,y
+    sta z:zTemp01
+    jsr VecAddScoreWord
+    bcc StartScorePickup_at0
+    jsr GiveExtraLife
+StartScorePickup_at0:
+    ldy a:OBJ_34B8,x
+    lda a:$A9DC,y
+    sta a:OBJ_2A68,x
+    lda #$18
+    sta a:OBJ_3510,x
+    lda #$FE
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    rts
+
 ; @routine 051A:1EB FallThenState
 ; @run 70:A9EB
 ; WHAT IT DOES: Moves an object down by its Y speed; OBJ_3510 counts down and at zero becomes $10

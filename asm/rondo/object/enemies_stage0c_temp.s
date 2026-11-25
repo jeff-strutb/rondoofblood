@@ -51,6 +51,32 @@ FallingWithGravity:
     jsr VecApplyVelocity
     rts
 
+; @routine 0CAB:18E StepWithGuardTable
+; @run 70:B18E
+; WHAT IT DOES: One frame of an object with the guard states: OBJ_3618 goes up, StartWhenHurt, EnterStateSevenOnFlag, EnterStateFiveOnPlayerState9 and SetHitboxFromFrame run, then
+; the code the state table at $B2F4 names (JumpByStateTableD); afterwards a sound list from a table at $B1B3 by the frame, when not 0, starts on channel 5 (StartListChannelKind2, list plus $81).
+; HOW: INC, five calls, a call through the state table, a table read (bank 70), StartListChannelKind2.
+; WAITS: no.
+; Entry: X object. Exit: the list start's, or the table load's.
+StepWithGuardTable:
+    inc a:OBJ_3618,x
+    jsr StartWhenHurt
+    jsr EnterStateSevenOnFlag
+    jsr EnterStateFiveOnPlayerState9
+    jsr SetHitboxFromFrame
+    jsr JumpByStateTableD
+    ldy a:OBJ_2A68,x
+    lda a:$B1B3,y
+    beq StepWithGuardTable_at0
+    phx
+    clc
+    adc #$81
+    ldx #$05
+    jsr VecStartListChannelKind2
+    plx
+StepWithGuardTable_at0:
+    rts
+
 ; @routine 0CAB:203 StartWhenHurt
 ; @run 70:B203
 ; WHAT IT DOES: An object in state 3 that has taken a hit of 5 or more resets its animation, enters state 6 and clears OBJ_2800.
@@ -94,6 +120,22 @@ EnterStateSevenOnFlag:
     stz a:OBJ_2800,x
 EnterStateSevenOnFlag_at0:
     rts
+
+; @routine 0CAB:2E2 JumpByStateTableD
+; @run 70:B2E2
+; WHAT IT DOES: Goes to the code a table at $B2F4 names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTableD:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$B2F4,y
+    sta z:zTemp00
+    lda a:$B2F5,y
+    sta z:zTemp01
+    jmp (ZeroPage)
 
 ; @routine 0CAB:304 StartWithGuard
 ; @run 70:B304
@@ -214,6 +256,46 @@ SlideAngleUp:
     inc a:OBJ_2800,x
 SlideAngleUp_at0:
     rts
+; @routine 0CAB:3E5 StepPhaseThenPause
+; @run 70:B3E5
+; WHAT IT DOES: Runs the code OBJ_2800 names (JumpByPhaseTable); afterwards a pause counter OBJ_36C8 counts down, and at zero it is set from a table at $B406 picked at random, the state is 4
+; and OBJ_2800 is 0.
+; HOW: JumpByPhaseTable, NextRandom, a table read (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: the count; at zero, the OBJ_2800 clear.
+StepPhaseThenPause:
+    jsr JumpByPhaseTable
+    lda a:OBJ_36C8,x
+    beq StepPhaseThenPause_at0
+    dec a:OBJ_36C8,x
+    rts
+StepPhaseThenPause_at0:
+    jsr VecNextRandom
+    and #$03
+    tay
+    lda a:$B406,y
+    sta a:OBJ_36C8,x
+    lda #$04
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+    rts
+
+; @routine 0CAB:40A JumpByPhaseTable
+; @run 70:B40A
+; WHAT IT DOES: Goes to the code a table at $B41C names for OBJ_2800.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+JumpByPhaseTable:
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$B41C,y
+    sta z:zTemp00
+    lda a:$B41D,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
 ; @routine 0CAB:422 AimAtPlayerThenArm
 ; @run 70:B422
 ; WHAT IT DOES: Takes OBJ_3510 as the angle to the player (a random one on three counts out of four, by OBJ_3670 and 3), sets the angle word from a table at $B44F by

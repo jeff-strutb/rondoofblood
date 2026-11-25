@@ -2447,3 +2447,203 @@ void abi_CountThenTileScript(void)
 {
     abi_ended(CountThenTileScript(cpu.x));
 }
+
+/*
+ * @routine 0CAB:2E2 JumpByStateTableD
+ * @run 70:B2E2
+ * WHAT IT DOES: Goes to the code a table at $B2F4 names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTableD(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xB2F4 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB2F5 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTableD(void)
+{
+    Jump jump = JumpByStateTableD(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 0CAB:40A JumpByPhaseTable
+ * @run 70:B40A
+ * WHAT IT DOES: Goes to the code a table at $B41C names for OBJ_2800.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+ */
+Jump JumpByPhaseTable(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t phase, index, low, high;
+
+    phase = RD8(OBJ->f2800[slot]);
+    index = (uint8_t)(phase << 1);
+    low = rd8((uint16_t)(0xB41C + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB41D + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (phase & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByPhaseTable(void)
+{
+    Jump jump = JumpByPhaseTable(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/* SetHitboxFromFrame's exit, as its wrapper leaves it. */
+static Ended ended_of_frame_lookup(FrameLookup r)
+{
+    Ended e;
+
+    if (r.none) {
+        e = ended_load(0);
+        if (!r.frame_zero) {
+            e = ended_with_overflow(ended_with_carry(ended_with_y(e, r.frame_index), true), r.overflow);
+        }
+        return e;
+    }
+    e = ended_with_carry(ended_with_y(ended_load(r.last), r.table_offset), r.carry);
+    return ended_with_overflow(e, r.overflow);
+}
+
+/* EnterStateFiveOnPlayerState9's exit, as its wrapper leaves it. */
+static Ended ended_of_five(FiveResult r)
+{
+    switch (r.end) {
+    case FIVE_PLAYER_NOT_9:
+        return ended_with_carry(ended_with_a(ended_nz((uint8_t)(r.value - 9)), r.value), r.value >= 9);
+    case FIVE_NOT_STATE_3:
+        return ended_with_carry(ended_with_a(ended_nz((uint8_t)(r.value - 3)), r.value), r.value >= 3);
+    default:
+        return ended_with_carry(ended_load(5), true);
+    }
+}
+
+/*
+ * @routine 0CAB:18E StepWithGuardTable
+ * @run 70:B18E
+ * WHAT IT DOES: One frame of an object with the guard states: OBJ_3618 goes up, StartWhenHurt, EnterStateSevenOnFlag, EnterStateFiveOnPlayerState9 and SetHitboxFromFrame run, then
+ * the code the state table at $B2F4 names (JumpByStateTableD); afterwards a sound list from a table at $B1B3 by the frame, when not 0, starts on channel 5 (StartListChannelKind2, list plus $81).
+ * HOW: INC, five calls, a call through the state table, a table read (bank 70), StartListChannelKind2.
+ * WAITS: no.
+ * Entry: X object. Exit: the list start's, or the table load's.
+ */
+Ended StepWithGuardTable(uint8_t slot)
+{
+    FrameLookup lookup;
+    FiveResult five;
+    Jump jump;
+    Sum sum;
+    uint8_t count, frame, list, kind;
+    Ended e;
+
+    count = INC8(OBJ->f3618[slot]);
+    e = ended_nz(count);
+    jsr_push(0xB194);
+    e = then(e, StartWhenHurt(slot));
+    jsr_pop();
+    jsr_push(0xB197);
+    e = then(e, EnterStateSevenOnFlag(slot));
+    jsr_pop();
+    jsr_push(0xB19A);
+    five = EnterStateFiveOnPlayerState9(slot);
+    jsr_pop();
+    e = then(e, ended_of_five(five));
+    jsr_push(0xB19D);
+    lookup = SetHitboxFromFrame(slot);
+    jsr_pop();
+    e = then(e, ended_of_frame_lookup(lookup));
+    jsr_push(0xB1A0);
+    jump = JumpByStateTableD(slot);
+    e = then(e, jump.end);
+    sync(&e);
+    slot = enter_handler(slot, jump);
+    jsr_pop();
+    frame = RD8(OBJ->frame[slot]);
+    list = rd8((uint16_t)(0xB1B3 + frame));
+    e = then(e, ended_with_y(ended_load(list), frame));
+    if (list == 0) {
+        return e;
+    }
+    push8(slot);
+    sum = add_bytes(list, 0x81, false);
+    e = then(e, of_sum(sum));
+    jsr_push(0xB1B1);
+    kind = StartListChannelKind2(sum.value, 5);
+    jsr_pop();
+    e = then(e, ended_load(kind));
+    slot = pull8();
+    return then(e, ended_nz(slot));
+}
+
+void abi_StepWithGuardTable(void)
+{
+    abi_ended(StepWithGuardTable(cpu.x));
+}
+
+/*
+ * @routine 0CAB:3E5 StepPhaseThenPause
+ * @run 70:B3E5
+ * WHAT IT DOES: Runs the code OBJ_2800 names (JumpByPhaseTable); afterwards a pause counter OBJ_36C8 counts down, and at zero it is set from a table at $B406 picked at random, the state is 4
+ * and OBJ_2800 is 0.
+ * HOW: JumpByPhaseTable, NextRandom, a table read (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: the count; at zero, the OBJ_2800 clear.
+ */
+Ended StepPhaseThenPause(uint8_t slot)
+{
+    Jump jump;
+    RandomResult random;
+    uint8_t count, pick, byte;
+    Ended e;
+
+    jsr_push(0xB3E8);
+    jump = JumpByPhaseTable(slot);
+    e = jump.end;
+    sync(&e);
+    slot = enter_handler(slot, jump);
+    jsr_pop();
+    count = RD8(OBJ->f36c8[slot]);
+    e = then(e, ended_load(count));
+    if (count != 0) {
+        count = DEC8(OBJ->f36c8[slot]);
+        return then(e, ended_nz(count));
+    }
+    jsr_push(0xB3F4);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    pick = (uint8_t)(random.value & 0x03);
+    e = then(e, ended_with_y(ended_load(pick), pick));
+    byte = rd8((uint16_t)(0xB406 + pick));
+    WR8(OBJ->f36c8[slot], byte);
+    e = then(e, ended_load(byte));
+    WR8(OBJ->state[slot], 4);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(4));
+}
+
+void abi_StepPhaseThenPause(void)
+{
+    abi_ended(StepPhaseThenPause(cpu.x));
+}

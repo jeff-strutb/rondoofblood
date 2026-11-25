@@ -2449,3 +2449,94 @@ void abi_FinalSpinAndEnd(void)
 {
     FinalSpinAndEnd(cpu.x);
 }
+
+/*
+ * @routine 09EB:752 StepFallingSpark
+ * @run 70:B752
+ * WHAT IT DOES: Steps the animation list at $B781; when it ends the object is cleared; otherwise it moves, takes $0018 off its Y speed and, from frame $10, turns its hitbox off (the part of the
+ * routine at $B725 that comes after its table).
+ * HOW: StepObjectFrames, ApplyVelocity, a 16-bit subtract, a tail jump into ClearObject.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: ended: as the step; else the last compare or subtract.
+ */
+Ended StepFallingSpark(uint8_t slot)
+{
+    FrameStep step;
+    AxisMove move;
+    uint8_t y = 0, low, high, frame;
+    Sum sum;
+    Ended e;
+
+    step = step_list(slot, 0xB781, 0xB75D, &y, true);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step == FRAME_LIST_ENDED) {
+        ClearObject(slot);
+        return e;
+    }
+    jsr_push(0xB765);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    low = RD8(OBJ->vy_lo[slot]);
+    sum = sub_bytes(low, 0x18, true);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    e = ended_then(e, ended_of_sum(sum));
+    high = RD8(OBJ->vy_hi[slot]);
+    sum = sub_bytes(high, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    e = ended_then(e, ended_of_sum(sum));
+    frame = RD8(OBJ->frame[slot]);
+    e = ended_then(e, ended_compare(frame, 0x10));
+    if (frame >= 0x10) {
+        WR8(OBJ->hitbox_on[slot], 0);
+    }
+    return e;
+}
+
+void abi_StepFallingSpark(void)
+{
+    abi_ended(StepFallingSpark(cpu.x));
+}
+
+/*
+ * @routine 09EB:725 StartFallingSpark09
+ * @run 70:B725
+ * @stop B74E
+ * WHAT IT DOES: In state 0 loads the object's record, sets its hitbox offsets to $E0 and $F8, takes its X speed from a table at $B74E by its facing and a Y speed of 3; in any other state it
+ * goes on as StepFallingSpark (the code after the table).
+ * HOW: LoadObjectRecord and stores, table reads (bank 70).
+ * Untraced: the table (B74E to B751).
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: state 0: A 3, Y the facing doubled; else as StepFallingSpark.
+ */
+Ended StartFallingSpark09(uint8_t slot)
+{
+    uint8_t state, nz, last, facing, index, byte;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        return StepFallingSpark(slot);
+    }
+    jsr_push(0xB72D);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->hitbox_dx[slot], 0xE0);
+    WR8(OBJ->hitbox_dy[slot], 0xF8);
+    facing = RD8(OBJ->facing_left[slot]);
+    index = (uint8_t)(facing << 1);
+    e = ended_then(e, ended_with_y(ended_with_carry(ended_load(index), (facing & 0x80) != 0), index));
+    byte = rd8((uint16_t)(0xB74F + index));
+    WR8(OBJ->vx_hi[slot], byte);
+    byte = rd8((uint16_t)(0xB74E + index));
+    WR8(OBJ->vx_lo[slot], byte);
+    WR8(OBJ->vy_hi[slot], 3);
+    return ended_then(e, ended_load(3));
+}
+
+void abi_StartFallingSpark09(void)
+{
+    abi_ended(StartFallingSpark09(cpu.x));
+}

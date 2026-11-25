@@ -863,6 +863,65 @@ StartOnPlayerAnimation_at0:
     sta z:zTemp11
     jmp VecStepObjectFrames
 
+; @routine 09EB:725 StartFallingSpark09
+; @run 70:B725
+; @stop B74E
+; WHAT IT DOES: In state 0 loads the object's record, sets its hitbox offsets to $E0 and $F8, takes its X speed from a table at $B74E by its facing and a Y speed of 3; in any other state it
+; goes on as StepFallingSpark (the code after the table).
+; HOW: LoadObjectRecord and stores, table reads (bank 70).
+; Untraced: the table (B74E to B751).
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: state 0: A 3, Y the facing doubled; else as StepFallingSpark.
+StartFallingSpark09:
+    lda a:OBJ_27A8,x
+    bne StepFallingSpark
+    jsr VecLoadObjectRecord
+    lda #$E0
+    sta a:OBJ_3930,x
+    lda #$F8
+    sta a:OBJ_39E0,x
+    lda a:OBJ_2AC0,x
+    asl a
+    tay
+    lda a:$B74F,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B74E,y
+    sta a:OBJ_VX_LO,x
+    lda #$03
+    sta a:OBJ_VY_HI,x
+    rts
+
+; @routine 09EB:752 StepFallingSpark
+; @run 70:B752
+; WHAT IT DOES: Steps the animation list at $B781; when it ends the object is cleared; otherwise it moves, takes $0018 off its Y speed and, from frame $10, turns its hitbox off (the part of the
+; routine at $B725 that comes after its table).
+; HOW: StepObjectFrames, ApplyVelocity, a 16-bit subtract, a tail jump into ClearObject.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: ended: as the step; else the last compare or subtract.
+StepFallingSpark:
+    lda #$B7
+    sta z:zTemp11
+    lda #$81
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    bne StepFallingSpark_at0
+    jmp VecClearObject
+StepFallingSpark_at0:
+    jsr VecApplyVelocity
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$18
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    lda a:OBJ_2A68,x
+    cmp #$10
+    bcc StepFallingSpark_at1
+    stz a:OBJ_3250,x
+StepFallingSpark_at1:
+    rts
+
 ; @routine 09EB:7A4 FollowPlayerHitbox
 ; @run 70:B7A4
 ; WHAT IT DOES: In state 0 loads the object's record; later it takes the player's place and sets its hitbox from a four-byte row of the

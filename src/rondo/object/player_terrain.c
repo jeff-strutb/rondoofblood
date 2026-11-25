@@ -27,6 +27,19 @@ enum {
 FloorResult RichterFloorOddScreen(void);
 void RichterWallPushed(void);
 static void floor_clears_push(FloorResult *result);
+static void read_entry_kept_shim(Sum row);
+
+/* The wall probe holds the side in Y throughout; a read leaves Y as it leaves it. */
+static void wall_side_shim(uint8_t side)
+{
+    cpu.y = side;
+}
+
+static void wall_entry_shim(Sum high, uint8_t column)
+{
+    cpu.x = column;
+    read_entry_kept_shim(high);
+}
 static void read_entry_shim(Sum row, uint8_t x, uint8_t y);
 
 /* The point's X and Y high byte are set, or zero: a read of the point or no answer. */
@@ -251,6 +264,7 @@ WallProbe RichterWall(uint8_t side)
         return probe;
     }
     reach = rd8((uint16_t)(RichterWallReach + side));
+    wall_side_shim(side);
     WR8(ZP->temp10, reach);
     state = RD8(OBJ->state[0]);
     column = state == STATE_IN_AIR || state == STATE_FALLING ? WALL_FIRST_COLUMN_IN_AIR :
@@ -270,7 +284,7 @@ WallProbe RichterWall(uint8_t side)
         WR8(ZP->temp03, high.value);
         probe.v = high.overflow;
         probe.read_made = high.value == 0;
-        read_entry_shim(high, probe.column, side);
+        wall_entry_shim(high, probe.column);
         jsr_push(0xBBAF);
         read = RichterReadIfOnPage(probe.read_made);
         jsr_pop();
@@ -770,8 +784,10 @@ void floor_exit_shim(FloorProbe probe)
         abi_nz(0);
         return;
     }
-    columns_exit_shim(probe.columns);
-    floor_check_exit_shim(probe.check);
+    if (!(probe.read_made && probe.read.kind == TILE_BY_ORIGINAL)) {
+        columns_exit_shim(probe.columns);
+        floor_check_exit_shim(probe.check);
+    }
     if (probe.how == FLOOR_NOTHING_UNDER) {
         cpu.a = 0;
         abi_nz(0);
@@ -958,7 +974,9 @@ FootingCheck RichterHasNoFooting(void)
 
 void footing_exit_shim(FootingCheck footing)
 {
-    floor_check_exit_shim(footing.check);
+    if (!(footing.read_made && footing.under.read_made && footing.under.read.kind == TILE_BY_ORIGINAL)) {
+        floor_check_exit_shim(footing.check);
+    }
     if (footing.read_made) {
         column_read_exit_shim(footing.under);
         cpu.a = solid_answer(footing.under);

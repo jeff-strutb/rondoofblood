@@ -116,19 +116,18 @@ void abi_EndingNothing(void)
  * HOW: OBJ->life_timer counted down; when it is not zero the return address of the call is pulled off the
  * stack (two PLA) before the RTS.
  * WAITS: no.
- * Entry: X the object, the caller's frame on the stack. Exit: N and Z from the timer, Z set when it has run out;
- * A, X, Y and C kept.
+ * Entry: X the object, the caller's frame on the stack. Exit: N and Z from the timer (it returns the timer), Z set when
+ * it has run out; A, X, Y and C kept.
  */
-bool EndingHoldTimer(uint8_t object)
+uint8_t EndingHoldTimer(uint8_t object)
 {
     uint8_t left = DEC8(OBJ->life_timer[object]);
 
     if (left != 0) {
         (void)pull8();
         (void)pull8();
-        return false;
     }
-    return true;
+    return left;
 }
 
 void abi_EndingHoldTimer(void)
@@ -174,7 +173,7 @@ void abi_EndingScrollBack8(void)
 
 /*
  * @routine 010E:0EF EndingScrollSlots
- * @run 6B:80EF
+ * @run 6B:88EF
  * WHAT IT DOES: Moves the scroll slots 3 and 4 on: 4 added to the low X of slot 3, 8 to the low X of slot 4.
  * HOW: Two adds.
  * WAITS: no.
@@ -204,7 +203,7 @@ void abi_EndingScrollSlots(void)
 
 /*
  * @routine 010E:1F6 EndingFrameList
- * @run 6B:81F6
+ * @run 6B:89F6
  * WHAT IT DOES: Steps an object's animation along the list the ending's table names: the list's address is
  * read from the table at $8A05 by A, and StepObjectFrames runs on it.
  * HOW: A doubled indexes the table; its two bytes go to zTemp10 and zTemp11; StepObjectFrames as a tail jump.
@@ -360,4 +359,484 @@ ObjExit EndingScrollPull(uint8_t object)
 void abi_EndingScrollPull(void)
 {
     object_exit_shim(EndingScrollPull(cpu.x));
+}
+
+/* The animation handlers of two stages: the first stage shows picture kind 3 and moves on; the second waits
+ * (A the state less 1 and 2 as each test leaves it); the third plays a list of the ending's table until it ends. */
+static ObjExit play_list_once(uint8_t object, uint8_t list_number, uint16_t ret)
+{
+    ObjExit list;
+    uint8_t state;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(OBJ->sprite_set[object], 3);
+        return object_exit(3, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        return object_exit(0, 0);
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    jsr_push(ret);
+    list = EndingFrameList(list_number, object);
+    jsr_pop();
+    if (list.exit.a != 0) {
+        return list;
+    }
+    list.exit.nz = INC8(OBJ->state[object]);
+    return list;
+}
+
+/*
+ * @routine 010D:418 EndingPlayList10
+ * @run 6B:8418
+ * WHAT IT DOES: An object handler: shows picture kind 3, waits a frame, then plays the ending's list $10 until it
+ * ends and moves to the next state.
+ * HOW: OBJ->state and OBJ->sprite_set; EndingFrameList.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingPlayList10(uint8_t object)
+{
+    return play_list_once(object, 0x10, 0x8432);
+}
+
+void abi_EndingPlayList10(void)
+{
+    object_exit_shim(EndingPlayList10(cpu.x));
+}
+
+/*
+ * @routine 010D:4BE EndingPlayList0F
+ * @run 6B:84BE
+ * WHAT IT DOES: As EndingPlayList10, with the ending's list $0F.
+ * HOW: OBJ->state and OBJ->sprite_set; EndingFrameList.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingPlayList0F(uint8_t object)
+{
+    return play_list_once(object, 0x0F, 0x84D8);
+}
+
+void abi_EndingPlayList0F(void)
+{
+    object_exit_shim(EndingPlayList0F(cpu.x));
+}
+
+/*
+ * @routine 010D:50C EndingPlayList0EThenClear
+ * @run 6B:850C
+ * WHAT IT DOES: An object handler: shows picture kind 3, waits a frame, then plays the ending's list $0E until it
+ * ends and clears the object.
+ * HOW: OBJ->state and OBJ->sprite_set; EndingFrameList; ClearObject as a tail jump.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingPlayList0EThenClear(uint8_t object)
+{
+    ObjExit list;
+    uint8_t state;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(OBJ->sprite_set[object], 3);
+        return object_exit(3, INC8(OBJ->state[object]));
+    }
+    if (state == 1) {
+        return object_exit(0, 0);
+    }
+    jsr_push(0x8523);
+    list = EndingFrameList(0x0E, object);
+    jsr_pop();
+    if (list.exit.a != 0) {
+        return list;
+    }
+    ClearObject(object);
+    return list;
+}
+
+void abi_EndingPlayList0EThenClear(void)
+{
+    object_exit_shim(EndingPlayList0EThenClear(cpu.x));
+}
+
+/*
+ * @routine 010D:4DE EndingRiseToY40
+ * @run 6B:84DE
+ * WHAT IT DOES: An object handler: shows picture kind 3, waits a frame, then shows frame $0D and moves the object up
+ * a line each frame until its Y low byte is $40, then sets flash flags $8D and moves to the next state.
+ * HOW: OBJ->state, OBJ->sprite_set, OBJ->frame, OBJ->y_lo and OBJ->flash_flags.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingRiseToY40(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, low;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(OBJ->sprite_set[object], 3);
+        return object_exit(3, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        return object_exit(0, 0);
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    WR8(OBJ->frame[object], 0x0D);
+    DEC8(OBJ->y_lo[object]);
+    low = RD8(OBJ->y_lo[object]);
+    result = with_carry(object_exit(low, (uint8_t)(low - 0x40)), low >= 0x40);
+    if (low != 0x40) {
+        return result;
+    }
+    WR8(OBJ->flash_flags[object], 0x8D);
+    result.exit.a = 0x8D;
+    result.exit.nz = INC8(OBJ->state[object]);
+    return result;
+}
+
+void abi_EndingRiseToY40(void)
+{
+    object_exit_shim(EndingRiseToY40(cpu.x));
+}
+
+/* The scene's raster effect $13 and two pairs of scroll Y values, the first state of four handlers. */
+static void raster_and_scroll(uint8_t first, uint8_t second)
+{
+    WR8(ZP->raster_effect, 0x13);
+    WR8(SCROLL->y_lo[5], first);
+    WR8(SCROLL->y_lo[1], first);
+    WR8(SCROLL->y_lo[6], second);
+    WR8(SCROLL->y_lo[2], second);
+}
+
+/*
+ * @routine 010D:484 EndingScrollWindowA
+ * @run 6B:8484
+ * WHAT IT DOES: An object handler: in its first state starts the raster effect $13 and sets scroll slots 1 and 5 to Y
+ * $1F and 2 and 6 to $BF, then moves to the next state.
+ * HOW: OBJ->state; ZP->raster_effect; SCROLL->y_lo.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollWindowA(uint8_t object)
+{
+    uint8_t state = RD8(OBJ->state[object]);
+
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    raster_and_scroll(0x1F, 0xBF);
+    return object_exit(0xBF, INC8(OBJ->state[object]));
+}
+
+void abi_EndingScrollWindowA(void)
+{
+    object_exit_shim(EndingScrollWindowA(cpu.x));
+}
+
+/*
+ * @routine 010D:4A1 EndingScrollWindowB
+ * @run 6B:84A1
+ * WHAT IT DOES: As EndingScrollWindowA with the Y values $27 and $C7.
+ * HOW: OBJ->state; ZP->raster_effect; SCROLL->y_lo.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollWindowB(uint8_t object)
+{
+    uint8_t state = RD8(OBJ->state[object]);
+
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    raster_and_scroll(0x27, 0xC7);
+    return object_exit(0xC7, INC8(OBJ->state[object]));
+}
+
+void abi_EndingScrollWindowB(void)
+{
+    object_exit_shim(EndingScrollWindowB(cpu.x));
+}
+
+/*
+ * @routine 010D:548 EndingScrollWindowHold
+ * @run 6B:8548
+ * WHAT IT DOES: An object handler: starts the raster effect $13, sets scroll slots 1 and 5 to Y $0F and 2 and 6 to $6F,
+ * holds the object for $40 frames and moves to the next state.
+ * HOW: ZP->raster_effect; SCROLL->y_lo; OBJ->life_timer.
+ * WAITS: no.
+ * Entry: X the object. Exit: A $40, N and Z from the new state; C and the registers kept.
+ */
+ObjExit EndingScrollWindowHold(uint8_t object)
+{
+    raster_and_scroll(0x0F, 0x6F);
+    WR8(OBJ->life_timer[object], 0x40);
+    return object_exit(0x40, INC8(OBJ->state[object]));
+}
+
+void abi_EndingScrollWindowHold(void)
+{
+    object_exit_shim(EndingScrollWindowHold(cpu.x));
+}
+
+/*
+ * @routine 010D:438 EndingScrollWindowSteps
+ * @run 6B:8438
+ * WHAT IT DOES: An object handler of four states: the first starts the raster effect $13, sets scroll slots 1 and 5 to Y
+ * $1F and 2 and 6 to $AF and holds the object $20 frames; the second waits the hold out; the third moves on; the
+ * fourth moves scroll slot 1's X on by 4 a frame and, when it wraps to 0, moves the first object and scroll slot 1's
+ * X high byte on and the object to its next state.
+ * HOW: OBJ->state; EndingHoldTimer; SCROLL->x_lo and x_hi.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollWindowSteps(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, low, sum;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        raster_and_scroll(0x1F, 0xAF);
+        WR8(OBJ->life_timer[object], 0x20);
+        return object_exit(0x20, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        result = object_exit(0, 0);
+        jsr_push(0x8460);
+        result.exit.nz = EndingHoldTimer(object);
+        if (result.exit.nz != 0) {
+            return result;
+        }
+        jsr_pop();
+        result.exit.nz = INC8(OBJ->state[object]);
+        return result;
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        return object_exit(0, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    low = RD8(SCROLL->x_lo[1]);
+    sum = (uint8_t)(low + 4);
+    WR8(SCROLL->x_lo[1], sum);
+    result = with_carry(object_exit(sum, sum), (unsigned)low + 4 > 0xFF);
+    result.exit.v = ((low ^ sum) & (4 ^ sum) & 0x80) != 0;
+    result.exit.v_set = true;
+    if (sum != 0) {
+        return result;
+    }
+    INC8(OBJ->state[0]);
+    INC8(SCROLL->x_hi[1]);
+    result.exit.nz = INC8(OBJ->state[object]);
+    return result;
+}
+
+void abi_EndingScrollWindowSteps(void)
+{
+    object_exit_shim(EndingScrollWindowSteps(cpu.x));
+}
+
+/*
+ * @routine 010D:565 EndingStartList3
+ * @run 6B:8565
+ * WHAT IT DOES: An object handler: once its hold has run out starts list 0 on channel 7 as kind 3, holds the object $20
+ * frames and moves to the next state.
+ * HOW: EndingHoldTimer (which returns to the dispatch while the hold lasts); StartListChannelKind3; OBJ->life_timer.
+ * WAITS: no.
+ * Entry: X the object, A as the dispatch left it. Exit: A $20, N and Z from the new state; C and the registers kept.
+ * While the hold lasts: A kept, N and Z from the timer.
+ */
+ObjExit EndingStartList3(uint8_t object, uint8_t entry_a)
+{
+    ObjExit result = object_exit(entry_a, 0);
+
+    jsr_push(0x8568);
+    result.exit.nz = EndingHoldTimer(object);
+    if (result.exit.nz != 0) {
+        return result;
+    }
+    jsr_pop();
+    push8(object);
+    jsr_push(0x856F);
+    (void)StartListChannelKind3(0, 7);
+    jsr_pop();
+    (void)pull8();
+    WR8(OBJ->life_timer[object], 0x20);
+    return object_exit(0x20, INC8(OBJ->state[object]));
+}
+
+void abi_EndingStartList3(void)
+{
+    object_exit_shim(EndingStartList3(cpu.x, cpu.a));
+}
+
+/*
+ * @routine 010D:579 EndingStartScript18
+ * @run 6B:8579
+ * WHAT IT DOES: An object handler: once its hold has run out starts script $18 on slot 7 as kind 1 and moves object 2's frame,
+ * object 3's X, scroll slot 2's X high byte and low byte, and the object's state on.
+ * HOW: EndingHoldTimer; StartScriptSlotKind1; five counts.
+ * WAITS: no.
+ * Entry: X the object, A as the dispatch left it. Exit: A and Y $18, N and Z from the new state; C and X kept.
+ * While the hold lasts: A kept, N and Z from the timer.
+ */
+ObjExit EndingStartScript18(uint8_t object, uint8_t entry_a)
+{
+    ObjExit result = object_exit(entry_a, 0);
+
+    jsr_push(0x857C);
+    result.exit.nz = EndingHoldTimer(object);
+    if (result.exit.nz != 0) {
+        return result;
+    }
+    jsr_pop();
+    push8(object);
+    jsr_push(0x8584);
+    (void)StartScriptSlotKind1(0x18, 7);
+    jsr_pop();
+    (void)pull8();
+    INC8(OBJ->frame[2]);
+    INC8(OBJ->x_lo[3]);
+    INC8(OBJ->x_lo[3]);
+    INC8(SCROLL->x_hi[2]);
+    DEC8(SCROLL->x_lo[2]);
+    result = object_exit(0x18, INC8(OBJ->state[object]));
+    result.exit.y = 0x18;
+    result.exit.y_kept = false;
+    return result;
+}
+
+void abi_EndingStartScript18(void)
+{
+    object_exit_shim(EndingStartScript18(cpu.x, cpu.a));
+}
+
+/*
+ * @routine 010D:598 EndingScrollSlide
+ * @run 6B:8598
+ * WHAT IT DOES: An object handler: takes 4 off scroll slot 2's X low byte; while the result is $80 or more it is stored and
+ * nothing else happens; below that it counts scroll slot 6's Y high byte up, holds the object $30 frames, counts object
+ * 4's state, starts script $17 on slot 7 as kind 1, moves the object on and stores $80.
+ * HOW: SCROLL->x_lo; StartScriptSlotKind1.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollSlide(uint8_t object)
+{
+    ObjExit result;
+    uint8_t low, diff;
+    bool overflow;
+
+    low = RD8(SCROLL->x_lo[2]);
+    diff = (uint8_t)(low - 4);
+    overflow = ((low ^ 4) & (low ^ diff) & 0x80) != 0;
+    result = with_carry(object_exit(diff, (uint8_t)(diff - 0x80)), diff >= 0x80);
+    result.exit.v = overflow;
+    result.exit.v_set = true;
+    if (diff >= 0x80) {
+        WR8(SCROLL->x_lo[2], diff);
+        return result;
+    }
+    INC8(SCROLL->y_hi[6]);
+    WR8(OBJ->life_timer[object], 0x30);
+    INC8(OBJ->state[4]);
+    push8(object);
+    jsr_push(0x85B5);
+    (void)StartScriptSlotKind1(0x17, 7);
+    jsr_pop();
+    (void)pull8();
+    result.exit.a = 0x80;
+    result.exit.y = 0x17;
+    result.exit.y_kept = false;
+    result.exit.nz = INC8(OBJ->state[object]);
+    WR8(SCROLL->x_lo[2], 0x80);
+    return result;
+}
+
+void abi_EndingScrollSlide(void)
+{
+    object_exit_shim(EndingScrollSlide(cpu.x));
+}
+
+/*
+ * @routine 010D:5BF EndingSplitScrolls
+ * @run 6B:85BF
+ * WHAT IT DOES: An object handler: once its hold has run out resets scroll slots 2 and 6 and moves slots 1 and 2's Y high bytes on,
+ * sets slot 2's Y low byte to $6F, holds the object $20 frames and moves objects 1 and this one to their next states.
+ * HOW: EndingHoldTimer; stores and counts on SCROLL.
+ * WAITS: no.
+ * Entry: X the object, A as the dispatch left it. Exit: A $20, N and Z from the new state; C and the registers kept.
+ * While the hold lasts: A kept, N and Z from the timer.
+ */
+ObjExit EndingSplitScrolls(uint8_t object, uint8_t entry_a)
+{
+    ObjExit result = object_exit(entry_a, 0);
+
+    jsr_push(0x85C2);
+    result.exit.nz = EndingHoldTimer(object);
+    if (result.exit.nz != 0) {
+        return result;
+    }
+    jsr_pop();
+    WR8(SCROLL->y_hi[6], 0);
+    INC8(SCROLL->y_hi[1]);
+    INC8(SCROLL->y_hi[2]);
+    WR8(SCROLL->y_lo[2], 0x6F);
+    WR8(SCROLL->x_hi[2], 0);
+    WR8(SCROLL->x_lo[2], 0);
+    WR8(OBJ->life_timer[object], 0x20);
+    INC8(OBJ->state[1]);
+    return object_exit(0x20, INC8(OBJ->state[object]));
+}
+
+void abi_EndingSplitScrolls(void)
+{
+    object_exit_shim(EndingSplitScrolls(cpu.x, cpu.a));
+}
+
+/*
+ * @routine 010D:5E2 EndingScrollsOn
+ * @run 6B:85E2
+ * WHAT IT DOES: An object handler: once its hold has run out counts scroll slot 6's Y high byte and slot 2's X high byte up,
+ * counts object 6's state and moves this object to its next state.
+ * HOW: EndingHoldTimer; four counts.
+ * WAITS: no.
+ * Entry: X the object, A as the dispatch left it. Exit: A kept, N and Z from the new state; C and the registers kept.
+ */
+ObjExit EndingScrollsOn(uint8_t object, uint8_t entry_a)
+{
+    ObjExit result = object_exit(entry_a, 0);
+
+    jsr_push(0x85E5);
+    result.exit.nz = EndingHoldTimer(object);
+    if (result.exit.nz != 0) {
+        return result;
+    }
+    jsr_pop();
+    INC8(SCROLL->y_hi[6]);
+    INC8(SCROLL->x_hi[2]);
+    INC8(OBJ->state[6]);
+    result.exit.nz = INC8(OBJ->state[object]);
+    return result;
+}
+
+void abi_EndingScrollsOn(void)
+{
+    object_exit_shim(EndingScrollsOn(cpu.x, cpu.a));
 }

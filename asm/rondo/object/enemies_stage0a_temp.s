@@ -107,6 +107,60 @@ StopWhenLanded:
 StopWhenLanded_at0:
     rts
 
+; @routine 0A9D:0A0 WalkAndAttackA
+; @run 71:C0A0
+; WHAT IT DOES: WalkByPhase 0 and ChooseAttackByDistance; the object faces its walking direction, counts OBJ_3510 down and at zero resets it to $B0
+; and turns the direction round.
+; HOW: attack_walk with phase 0.
+; WAITS: no.
+; Entry: X object, Y the probe's column. Exit: see attack_walk_exit_shim.
+WalkAndAttackA:
+    cla
+    jsr WalkByPhase
+    jsr ChooseAttackByDistance
+    lda a:OBJ_3618,x
+    sta a:OBJ_2AC0,x
+    dec a:OBJ_3510,x
+    bne WalkAndAttackA_at0
+    lda #$B0
+    sta a:OBJ_3510,x
+    lda a:OBJ_3618,x
+    eor #$01
+    sta a:OBJ_3618,x
+WalkAndAttackA_at0:
+    rts
+
+; @routine 0A9D:0C0 WalkByPhase
+; @run 71:C0C0
+; WHAT IT DOES: A walking step for the phase in A (0 to 3): the phase times four picks an animation list pointer and a speed word from the table at $C0ED;
+; the list is stepped; when a new frame comes the object slows toward the player (SlowToPlayer), turns its speed round when its direction byte OBJ_3618 says,
+; and moves with BounceWithHeight4.
+; HOW: StepObjectFrames, SlowToPlayer, NegateVelocityX, BounceWithHeight4.
+; WAITS: no.
+; Entry: X object, A the phase, Y the probe's column. Exit: the step's flags when no new frame; else as BounceAtWalls.
+WalkByPhase:
+    asl a
+    asl a
+    tay
+    lda a:$C0ED,y
+    sta z:zTemp10
+    lda a:$C0EE,y
+    sta z:zTemp11
+    lda a:$C0EF,y
+    sta a:OBJ_VX_LO,x
+    lda a:$C0F0,y
+    sta a:OBJ_VX_HI,x
+    jsr VecStepObjectFrames
+    bcc WalkByPhase_at0
+    jsr SlowToPlayer
+    lda a:OBJ_3618,x
+    beq WalkByPhase_at1
+    jsr VecNegateVelocityX
+WalkByPhase_at1:
+    jsr BounceWithHeight4
+WalkByPhase_at0:
+    rts
+
 ; @routine 0A9D:113 SlowToPlayer
 ; @run 71:C113
 ; WHAT IT DOES: When the player is within 5 along X, the object's X speed becomes that distance and its direction byte OBJ_3618 the
@@ -125,6 +179,18 @@ SlowToPlayer:
     eor #$01
     sta a:OBJ_3618,x
 SlowToPlayer_at0:
+    rts
+
+; @routine 0A9D:12B BounceWithHeight4
+; @run 71:C12B
+; WHAT IT DOES: BounceAtWalls with a probe height of 4.
+; HOW: A store into zProduct1, then the call.
+; WAITS: no.
+; Entry: X object, Y the probe's column. Exit: as BounceAtWalls.
+BounceWithHeight4:
+    lda #$04
+    sta z:SpriteFlipMask
+    jsr BounceAtWalls
     rts
 
 ; @routine 0A9D:133 ChooseAttackByDistance
@@ -157,6 +223,78 @@ ChooseAttackByDistance_at0:
     sta a:OBJ_27A8,x
 ChooseAttackByDistance_at1:
     rts
+
+; @routine 0A9D:163 WalkAndAttackB
+; @run 71:C163
+; WHAT IT DOES: As WalkAndAttackA with phase 3.
+; HOW: attack_walk with phase 3.
+; WAITS: no.
+; Entry and exit: as WalkAndAttackA.
+WalkAndAttackB:
+    lda #$03
+    jsr WalkByPhase
+    jsr ChooseAttackByDistance
+    lda a:OBJ_3618,x
+    sta a:OBJ_2AC0,x
+    dec a:OBJ_3510,x
+    bne WalkAndAttackB_at0
+    lda #$B0
+    sta a:OBJ_3510,x
+    lda a:OBJ_3618,x
+    eor #$01
+    sta a:OBJ_3618,x
+WalkAndAttackB_at0:
+    rts
+
+; @routine 0A9D:184 ChasePlayerA
+; @run 71:C184
+; WHAT IT DOES: Enters state 5 when the player is within $64 along X, walks (phase 1), takes its facing as its direction, chooses its next move, and goes to state 3
+; when the player is $40 or more away vertically.
+; HOW: DistanceXToPlayer, WalkByPhase, ChooseNextMove, DistanceYToPlayer.
+; WAITS: no.
+; Entry: X object, Y the probe's column, C passed on. Exit: see chase_exit_shim.
+ChasePlayerA:
+    jsr VecDistanceXToPlayer
+    cmp #$64
+    bcs ChasePlayerA_at0
+    lda #$05
+    sta a:OBJ_27A8,x
+ChasePlayerA_at0:
+    lda #$01
+    jsr WalkByPhase
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_3618,x
+    jsr ChooseNextMove
+    jsr VecDistanceYToPlayer
+    cmp #$40
+    bcc ChasePlayerA_at1
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$03
+    sta a:OBJ_27A8,x
+ChasePlayerA_at1:
+    rts
+
+; @routine 0A9D:1B1 ChasePlayerB
+; @run 71:C1B1
+; WHAT IT DOES: As ChasePlayerA, but it enters state 4 when the player is $78 or more away along X and its direction is its facing turned round.
+; HOW: As ChasePlayerA.
+; WAITS: no.
+; Entry and exit: as ChasePlayerA.
+ChasePlayerB:
+    jsr VecDistanceXToPlayer
+    cmp #$78
+    bcc ChasePlayerB_at0
+    lda #$04
+    sta a:OBJ_27A8,x
+ChasePlayerB_at0:
+    lda #$01
+    jsr WalkByPhase
+    lda a:OBJ_2AC0,x
+    eor #$01
+    sta a:OBJ_3618,x
+    jsr ChooseNextMove
+    bra $C19E
 
 ; @routine 0A9D:1CF ChooseNextMove
 ; @run 71:C1CF

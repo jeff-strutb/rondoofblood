@@ -168,6 +168,30 @@ typedef struct {
 } TurnEnd;
 TurnEnd BounceAtWalls(uint8_t slot, uint8_t column);
 
+typedef struct {
+    Ended pre;
+    bool walked;
+    TurnEnd turn;
+} WalkEnd;
+typedef struct {
+    WalkEnd walk;
+    Ended rest;
+} AttackWalk;
+typedef struct {
+    Ended head;
+    WalkEnd walk;
+    Ended mid;
+    Ended tail;
+} ChaseEnd;
+TurnEnd BounceWithHeight4(uint8_t slot, uint8_t column);
+WalkEnd WalkByPhase(uint8_t slot, uint8_t phase, uint8_t column);
+AttackWalk WalkAndAttackA(uint8_t slot, uint8_t column);
+AttackWalk WalkAndAttackB(uint8_t slot, uint8_t column);
+ChaseEnd ChasePlayerA(uint8_t slot, uint8_t column, bool carry_in);
+ChaseEnd ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in);
+void bounce_exit_shim(TurnEnd r);
+void walk_phase_exit_shim(WalkEnd r);
+
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {
     bool in_view;

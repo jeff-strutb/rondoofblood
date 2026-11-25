@@ -1001,10 +1001,9 @@ TurnEnd BounceAtWalls(uint8_t slot, uint8_t column)
     return r;
 }
 
-void abi_BounceAtWalls(void)
+/* BounceAtWalls's exit, in the order its instructions leave it. */
+void bounce_exit_shim(TurnEnd r)
 {
-    TurnEnd r = BounceAtWalls(cpu.x, cpu.y);
-
     abi_ended(r.e0);
     probe_exit_shim(r.probe1);
     abi_ended(r.e1);
@@ -1015,4 +1014,283 @@ void abi_BounceAtWalls(void)
     if (r.turned) {
         abi_ended(r.e3);
     }
+}
+
+/* The carry BounceAtWalls leaves: set when it turned round. */
+static bool turn_carry(TurnEnd r)
+{
+    return r.turned;
+}
+
+void abi_BounceAtWalls(void)
+{
+    bounce_exit_shim(BounceAtWalls(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0A9D:12B BounceWithHeight4
+ * @run 71:C12B
+ * WHAT IT DOES: BounceAtWalls with a probe height of 4.
+ * HOW: A store into zProduct1, then the call.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column. Exit: as BounceAtWalls.
+ */
+TurnEnd BounceWithHeight4(uint8_t slot, uint8_t column)
+{
+    TurnEnd r;
+
+    WR8(ZP->product.mid, 4);
+    jsr_push(0xC132);
+    r = BounceAtWalls(slot, column);
+    jsr_pop();
+    return r;
+}
+
+void abi_BounceWithHeight4(void)
+{
+    bounce_exit_shim(BounceWithHeight4(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0A9D:0C0 WalkByPhase
+ * @run 71:C0C0
+ * WHAT IT DOES: A walking step for the phase in A (0 to 3): the phase times four picks an animation list pointer and a speed word from the table at $C0ED;
+ * the list is stepped; when a new frame comes the object slows toward the player (SlowToPlayer), turns its speed round when its direction byte OBJ_3618 says,
+ * and moves with BounceWithHeight4.
+ * HOW: StepObjectFrames, SlowToPlayer, NegateVelocityX, BounceWithHeight4.
+ * WAITS: no.
+ * Entry: X object, A the phase, Y the probe's column. Exit: the step's flags when no new frame; else as BounceAtWalls.
+ */
+WalkEnd WalkByPhase(uint8_t slot, uint8_t phase, uint8_t column)
+{
+    WalkEnd r = { { 0 }, false, { 0 } };
+    FrameStep step;
+    uint8_t index, byte, y, direction;
+    Ended e;
+
+    index = (uint8_t)(phase << 2);
+    byte = rd8((uint16_t)(0xC0ED + index));
+    WR8(ZP->temp10, byte);
+    byte = rd8((uint16_t)(0xC0EE + index));
+    WR8(ZP->temp11, byte);
+    byte = rd8((uint16_t)(0xC0EF + index));
+    WR8(OBJ->vx_lo[slot], byte);
+    byte = rd8((uint16_t)(0xC0F0 + index));
+    WR8(OBJ->vx_hi[slot], byte);
+    y = index;
+    jsr_push(0xC0DC);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    r.pre = ended_of_frame_step(step, true, y);
+    if (step != FRAME_CHANGED) {
+        return r;
+    }
+    e = r.pre;
+    jsr_push(0xC0E1);
+    e = then(e, SlowToPlayer(slot));
+    jsr_pop();
+    direction = RD8(OBJ->f3618[slot]);
+    e = then(e, ended_load(direction));
+    r.pre = e;
+    if (direction != 0) {
+        jsr_push(0xC0E9);
+        NegateVelocityX(slot);
+        jsr_pop();
+        r.pre = then(e, ended_with_carry(ended_kept(), false));
+    }
+    jsr_push(0xC0EC);
+    r.turn = BounceWithHeight4(slot, column);
+    jsr_pop();
+    r.walked = true;
+    return r;
+}
+
+/* A walk's exit: what came before, then BounceAtWalls's. */
+void walk_phase_exit_shim(WalkEnd r)
+{
+    abi_ended(r.pre);
+    if (r.walked) {
+        bounce_exit_shim(r.turn);
+    }
+}
+
+void abi_WalkByPhase(void)
+{
+    walk_phase_exit_shim(WalkByPhase(cpu.x, cpu.a, cpu.y));
+}
+
+/* The two attack walkers share their tail: choose an attack, copy the direction to the facing, count down and flip the direction at zero. */
+static AttackWalk attack_walk(uint8_t slot, uint8_t phase, uint8_t column, uint16_t ret_walk, uint16_t ret_choose)
+{
+    AttackWalk r;
+    uint8_t direction, left;
+    Ended e;
+
+    jsr_push(ret_walk);
+    r.walk = WalkByPhase(slot, phase, column);
+    jsr_pop();
+    jsr_push(ret_choose);
+    e = ChooseAttackByDistance(slot);
+    jsr_pop();
+    direction = RD8(OBJ->f3618[slot]);
+    WR8(OBJ->facing_left[slot], direction);
+    e = then(e, ended_load(direction));
+    left = DEC8(OBJ->f3510[slot]);
+    e = then(e, ended_nz(left));
+    if (left == 0) {
+        WR8(OBJ->f3510[slot], 0xB0);
+        direction = RD8(OBJ->f3618[slot]);
+        direction = (uint8_t)(direction ^ 0x01);
+        WR8(OBJ->f3618[slot], direction);
+        e = then(e, ended_load(direction));
+    }
+    r.rest = e;
+    return r;
+}
+
+void attack_walk_exit_shim(AttackWalk r)
+{
+    walk_phase_exit_shim(r.walk);
+    abi_ended(r.rest);
+}
+
+/*
+ * @routine 0A9D:0A0 WalkAndAttackA
+ * @run 71:C0A0
+ * WHAT IT DOES: WalkByPhase 0 and ChooseAttackByDistance; the object faces its walking direction, counts OBJ_3510 down and at zero resets it to $B0
+ * and turns the direction round.
+ * HOW: attack_walk with phase 0.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column. Exit: see attack_walk_exit_shim.
+ */
+AttackWalk WalkAndAttackA(uint8_t slot, uint8_t column)
+{
+    return attack_walk(slot, 0, column, 0xC0A4, 0xC0A7);
+}
+
+void abi_WalkAndAttackA(void)
+{
+    attack_walk_exit_shim(WalkAndAttackA(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0A9D:163 WalkAndAttackB
+ * @run 71:C163
+ * WHAT IT DOES: As WalkAndAttackA with phase 3.
+ * HOW: attack_walk with phase 3.
+ * WAITS: no.
+ * Entry and exit: as WalkAndAttackA.
+ */
+AttackWalk WalkAndAttackB(uint8_t slot, uint8_t column)
+{
+    return attack_walk(slot, 3, column, 0xC168, 0xC16B);
+}
+
+void abi_WalkAndAttackB(void)
+{
+    attack_walk_exit_shim(WalkAndAttackB(cpu.x, cpu.y));
+}
+
+/* The part of the chasers the second one branches into: the object is sent to state 3 when the player is $40 or more away vertically. */
+static ChaseEnd chase_tail(uint8_t slot)
+{
+    ChaseEnd r = { { 0 }, { 0 }, { 0 } };
+    PlayerDistance distance;
+    Ended e;
+
+    jsr_push(0xC1A1);
+    distance = DistanceYToPlayer(slot);
+    jsr_pop();
+    e = then(ended_of_distance(distance), ended_compare(distance.distance, 0x40));
+    if (distance.distance < 0x40) {
+        r.tail = e;
+        return r;
+    }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->state[slot], 3);
+    r.tail = then(e, ended_load(3));
+    return r;
+}
+
+/* The chasers' exit: the distance check, the walk, the move choice, then the tail. */
+void chase_exit_shim(ChaseEnd r)
+{
+    abi_ended(r.head);
+    walk_phase_exit_shim(r.walk);
+    abi_ended(r.mid);
+    abi_ended(r.tail);
+}
+
+/* Both chasers: set a state when the player is near, walk, choose the next move, then the shared tail. */
+static ChaseEnd chase(uint8_t slot, uint8_t column, bool carry_in, bool far_when_ge, uint8_t limit, uint8_t near_state, bool invert,
+                      uint16_t ret_distance, uint16_t ret_walk, uint16_t ret_move)
+{
+    ChaseEnd r;
+    PlayerDistance distance;
+    uint8_t facing;
+    Ended e;
+    ChaseEnd tail;
+
+    jsr_push(ret_distance);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = then(ended_of_distance(distance), ended_compare(distance.distance, limit));
+    if (far_when_ge ? distance.distance >= limit : distance.distance < limit) {
+        WR8(OBJ->state[slot], near_state);
+        e = then(e, ended_load(near_state));
+    }
+    r.head = e;
+    jsr_push(ret_walk);
+    r.walk = WalkByPhase(slot, 1, column);
+    jsr_pop();
+    facing = RD8(OBJ->facing_left[slot]);
+    if (invert) {
+        facing = (uint8_t)(facing ^ 0x01);
+    }
+    WR8(OBJ->f3618[slot], facing);
+    r.mid = ended_load(facing);
+    jsr_push(ret_move);
+    r.mid = then(r.mid, ChooseNextMove(slot, carry_in));
+    jsr_pop();
+    tail = chase_tail(slot);
+    r.tail = tail.tail;
+    return r;
+}
+
+/*
+ * @routine 0A9D:184 ChasePlayerA
+ * @run 71:C184
+ * WHAT IT DOES: Enters state 5 when the player is within $64 along X, walks (phase 1), takes its facing as its direction, chooses its next move, and goes to state 3
+ * when the player is $40 or more away vertically.
+ * HOW: DistanceXToPlayer, WalkByPhase, ChooseNextMove, DistanceYToPlayer.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column, C passed on. Exit: see chase_exit_shim.
+ */
+ChaseEnd ChasePlayerA(uint8_t slot, uint8_t column, bool carry_in)
+{
+    return chase(slot, column, carry_in, false, 0x64, 5, false, 0xC187, 0xC195, 0xC19E);
+}
+
+void abi_ChasePlayerA(void)
+{
+    chase_exit_shim(ChasePlayerA(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 0A9D:1B1 ChasePlayerB
+ * @run 71:C1B1
+ * WHAT IT DOES: As ChasePlayerA, but it enters state 4 when the player is $78 or more away along X and its direction is its facing turned round.
+ * HOW: As ChasePlayerA.
+ * WAITS: no.
+ * Entry and exit: as ChasePlayerA.
+ */
+ChaseEnd ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in)
+{
+    return chase(slot, column, carry_in, true, 0x78, 4, true, 0xC1B4, 0xC1C2, 0xC1CD);
+}
+
+void abi_ChasePlayerB(void)
+{
+    chase_exit_shim(ChasePlayerB(cpu.x, cpu.y, (cpu.p & P_C) != 0));
 }

@@ -1,0 +1,6 @@
+# liftcmp stub contracts: a callee with no C whose registers or flags are known. Never global: a row applies to one run address
+# (target, hex) and, when place is SECTOR:OFFSET (hex, as in a @routine tag), only while that overlay copy is the one resident
+# under the case's mapper; place * is every copy. keeps = letters of A X Y N V Z C the callee leaves as the call left them;
+# every other register and flag stays arbitrary. evidence = the instruction(s) and the trace or A5 record that show it; a row
+# without it is refused. The report names every contract a run used as an ASSUMPTION.
+target,place,keeps,evidence

@@ -745,6 +745,32 @@ def explain_untraced(cases, untraced_ids, draft_logs, raw_draft, draft_text):
     return out
 
 
+STUBS = os.path.join(HERE, "stubs.csv")
+
+
+def stub_contracts():
+    """The rows of tools/rondo/stubs.csv: target (hex run address), place (SECTOR:OFFSET of the overlay copy, or *), keeps
+    (letters of A X Y N V Z C), evidence (the instruction and trace that show it). Returns [(target, disc offset or None,
+    keeps, evidence)]; a row with no evidence, or a letter that is not a register or flag, is refused."""
+    rows = []
+    if not os.path.exists(STUBS):
+        return rows
+    for r in csv.DictReader(l for l in open(STUBS, encoding="utf-8") if l.strip() and not l.startswith("#")):
+        t, place, keeps, ev = r["target"].strip(), r["place"].strip(), r["keeps"].strip(), r["evidence"].strip()
+        if not ev or not keeps or any(c not in "AXYNVZC" for c in keeps):
+            raise SystemExit(f"liftcmp: stubs.csv row {t} {place}: it needs its keeps (letters of AXYNVZC) and its evidence")
+        disc = None if place == "*" else int(place.split(":")[0], 16) * 2048 + int(place.split(":")[1], 16)
+        rows.append((int(t, 16), disc, keeps, ev))
+    return rows
+
+
+def write_stub_file(path):
+    with open(path, "w") as f:
+        for t, d, k, _ in stub_contracts():
+            f.write("%04X %s %s\n" % (t, "*" if d is None else "%X" % d, k))
+    return path
+
+
 def routine_ends(path, name):
     """The @ends address (hex) in the routine's tag block, or '' when it has none."""
     for block in re.findall(r"/\*.*?\*/", open(path, encoding="utf-8").read(), re.S):
@@ -831,7 +857,8 @@ def one(name, a, ctx):
     link(os.path.join(work, "lifted.bin"), objs + [rtobj["lifted"], dispobj] + libobj, [], [], None)
     link(os.path.join(work, "draft.bin"), objs + [dobj, rtobj["draft"], dispobj_d] + libobj, [], [], None)
     logs, covs = {"lifted": {}, "draft": {}}, {}
-    envv = dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0", LIFTCMP_ENDS=routine_ends(src, name))
+    envv = dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0", LIFTCMP_ENDS=routine_ends(src, name),
+                LIFTCMP_STUBS=write_stub_file(os.path.join(work, "stubs.txt")))
     for base in (TOP, main_checkout()):
         rom = os.path.join(base, "build", "rondo", "system", "syscard3.pce")
         if os.path.exists(rom):
@@ -954,12 +981,23 @@ def one(name, a, ctx):
                           os.path.basename(draft_c), open(draft_c).read(), ok_ids)
         cover_lines = cl + cd
         miss = m1 + m2
+    used = set()
+    for v in list(raw_lifted.values()) + list(raw_draft.values()):
+        for x in v:
+            if x.startswith("#CONTRACT"):
+                used.add(x.split()[1])
+    assumed = []
+    for t, d, k, ev in stub_contracts():
+        if "%04X" % t in used:
+            assumed.append(f"ASSUMPTION: the callee at ${t:04X} ({'any copy' if d is None else 'the copy at disc %X' % d}) has no C; its stub keeps {k} "
+                           f"as the call left it ({ev})")
+    lines = lines[:1] + assumed + lines[1:]
     rep = os.path.join(a.report, name + ".txt")
     os.makedirs(a.report, exist_ok=True)
     open(rep, "w").write("\n".join(lines + cover_lines) + "\n")
     if a.quiet:
         print(f"{name:32s} match {len(same):4d}  differ {len(diffs):4d}  untraced {len(untraced):4d}  unreached lines {miss:3d}  "
-              f"{verdict}")
+              f"{verdict}" + (" [assumes stub contract: " + ", ".join(sorted(used)) + "]" if used else ""))
         return verdict == "OK", dict(same=len(same), diffs=len(diffs), untraced=len(untraced), unreached=miss, ndraft=ndraft)
     print("\n".join(lines))
     if cover_lines:

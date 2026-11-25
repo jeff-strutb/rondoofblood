@@ -41,6 +41,35 @@ BossFrameRoutines:
     jsr JumpByStateTable025B545
     rts
 
+; @routine 05CB:13F BossFrameRoutinesC
+; @run 70:B13F
+; WHAT IT DOES: One frame of the boss of overlay 05CB: counts OBJ_34B8 up, runs FlagThenHitsCompare, EnterState5WhenFlagged and the code the state table names (JumpByStateTable05CB1CF); then, when OBJ_35C0 and the frame are not 0, starts the list that the table at $B169 names for the frame less 1 (plus $81) on channel 5.
+; HOW: An INC, three calls, a table read, StartListChannelKind2 between a PHX and a PLX.
+; WAITS: no.
+; Entry: X object. Exit: as the last instruction that ran.
+BossFrameRoutinesC:
+    inc a:OBJ_34B8,x
+    jsr FlagThenHitsCompare
+    jsr EnterState5WhenFlagged
+    jsr JumpByStateTable05CB1CF
+    lda a:OBJ_35C0,x
+    bne BossFrameRoutinesC_at0
+    lda a:OBJ_2A68,x
+    beq BossFrameRoutinesC_at0
+    sec
+    sbc #$01
+    tay
+    lda a:$B169,y
+    beq BossFrameRoutinesC_at0
+    phx
+    clc
+    adc #$81
+    ldx #$05
+    jsr VecStartListChannelKind2
+    plx
+BossFrameRoutinesC_at0:
+    rts
+
 ; @routine 0B4B:556 BossFrameRoutinesB
 ; @run 70:B556
 ; WHAT IT DOES: One frame of the boss of overlay 0B4B: counts OBJ_3618 up, runs FaceThePlayerByStateTable, StateTableHurtFlag, EnterState0FWhenFlagged, HitBoxByFrameTable and the code the state table names (JumpByStateTable0B4B64C); then, when OBJ_3670 is set, starts the list $83 plus the frame less 1 on channel 5.
@@ -79,3 +108,34 @@ HurtSoundsThenRunTable:
     bsr SoundAndState6WhenFlagged
     bsr JumpByStateTable0F6B3EC
     rts
+
+; @routine 0F6C:39C BossFrameRoutinesD
+; @run 70:B39C
+; WHAT IT DOES: One frame of the boss of overlay 0F6C: runs EnterState0EWhenFlagged and FlashWhenHurtThenSound, the code the state table names (JumpByStateTable0F6C3C0) and, in the states the table at $BBB0 marks, the code at $C523.
+; HOW: Three calls, a table read, a call into the original code.
+; WAITS: no.
+; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The call into $C523 ran in no script; the draft stops there.
+BossFrameRoutinesD:
+    jsr EnterState0EWhenFlagged
+    jsr FlashWhenHurtThenSound
+    bsr SoundAndState6WhenFlagged
+    ldy a:OBJ_27A8,x
+    lda a:$BBB0,y
+    beq BossFrameRoutinesD_at0
+    jsr $C523
+BossFrameRoutinesD_at0:
+    rts
+    brk
+    brk
+    brk
+    brk
+    brk
+    brk
+    brk
+    brk
+    brk
+    brk
+    ora (zTemp01,x)
+    ora (zTemp00,x)
+    brk
+    brk

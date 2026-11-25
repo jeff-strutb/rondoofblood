@@ -38,3 +38,4 @@ Each routine below has C written from the decoded bytes for the arm named; `lift
 | 161B:126 | SpawnerWithScrollGates | states 1 and later (all arms) | unit call with X a slot, state 1 with OBJ_3040 0 and not 0; later states with OBJ_3040 0 and the scroll bytes 3E96/3E08 at the window edges, and with OBJ_3040 not 0 and 3E8E below 2, 3E20 below $D0 |
 | 0EBD:2A7 | SpawnerByKindAndScreen | everything past state 0 | unit call with X a slot, state 1, frame[$54] not 4, OBJ_34B8 0, then OBJ_3040 0 (scroll 3E96 2 or 4), 2, and 1 (OBJ_3568 below $80, empty slots from $20) |
 | 025A:730 | StartBossWhenStageC0OrLoad | zStageRequested = $C0 | unit call with X a slot and zStageRequested $C0 |
+| 0F6C:39C | BossFrameRoutinesD | the call into $C523 | unit call with X a slot, state with a nonzero byte in the table at $BBB0 (states 10 to 12) |

@@ -276,6 +276,99 @@ CapPlayerXOnScreen1:
 CapPlayerXOnScreen1_at0:
     rts
 
+; @routine 161B:126 SpawnerWithScrollGates
+; @run 70:B126
+; WHAT IT DOES: In state 0 loads the record. State 1 starts list $8D on channel 3 when OBJ_3040 is not 0 and goes on. Later it runs CapPlayerXOnScreen1 when OBJ_3040 is 0, waits OBJ_34B8 down, then with OBJ_3040 0 and the scroll in the right window starts an object of type $2C in a free slot of $1A to $1F numbered by OBJ_3510 (which counts up) and takes a random wait of $80 to $BF; with OBJ_3040 not 0 and the scroll's Y in range clears and starts an object of type $55 in the first free slot of $11 to $1F and waits $D0.
+; HOW: LoadObjectRecord, StartListChannelKind2, CapPlayerXOnScreen1, searches of the slot kinds, StartObjectAtPlace, NextRandom, ClearObjectInY.
+; WAITS: no.
+; Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
+SpawnerWithScrollGates:
+    lda a:OBJ_27A8,x
+    bne JumpByStateTable0CAB12F
+    jsr VecLoadObjectRecord
+    rts
+    dec a
+    bne SpawnerWithScrollGates_at0
+    lda a:OBJ_3040,x
+    beq SpawnerWithScrollGates_at1
+    phx
+    lda #$8D
+    ldx #$03
+    jsr VecStartListChannelKind2
+    plx
+SpawnerWithScrollGates_at1:
+    inc a:OBJ_27A8,x
+    rts
+SpawnerWithScrollGates_at0:
+    lda a:OBJ_3040,x
+    bne MoveAndWrapDriftA
+    jsr CapPlayerXOnScreen1
+    lda a:OBJ_34B8,x
+    beq SpawnerWithScrollGates_at2
+    dec a:OBJ_34B8,x
+    rts
+SpawnerWithScrollGates_at2:
+    ldy #$1A
+SpawnerWithScrollGates_at4:
+    lda a:OBJ_2750,y
+    beq SpawnerWithScrollGates_at3
+    iny
+    cpy #$20
+    bcc SpawnerWithScrollGates_at4
+    rts
+SpawnerWithScrollGates_at3:
+    lda a:OBJ_3040,x
+    bne SpawnerWithScrollGates_at5
+    lda a:ScrollXHiScreen
+    cmp #$09
+    bcc SpawnerWithScrollGates_at6
+    bne SpawnerWithScrollGates_at7
+    lda a:ScrollXLo
+    cmp #$20
+    bcc SpawnerWithScrollGates_at8
+    rts
+SpawnerWithScrollGates_at6:
+    cmp #$01
+    bne SpawnerWithScrollGates_at8
+    lda a:ScrollXLo
+    cmp #$A0
+    bcc SpawnerWithScrollGates_at7
+SpawnerWithScrollGates_at8:
+    lda #$2C
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_3510,x
+    sta a:OBJ_3040,y
+    inc a:OBJ_3510,x
+    jsr VecNextRandom
+    and #$3F
+    clc
+    adc #$80
+    sta a:OBJ_34B8,x
+SpawnerWithScrollGates_at7:
+    rts
+SpawnerWithScrollGates_at5:
+    lda a:ScrollYHiScreen
+    cmp #$02
+    bcs SpawnerWithScrollGates_at9
+    lda a:ScrollYLo
+    cmp #$D0
+    bcs SpawnerWithScrollGates_at9
+    ldy #$11
+SpawnerWithScrollGates_at10:
+    lda a:OBJ_2750,y
+    beq EnterState5WhenFlagged
+    iny
+    cpy #$20
+    bcc SpawnerWithScrollGates_at10
+    rts
+    jsr VecClearObjectInY
+    lda #$55
+    jsr VecStartObjectAtPlace
+    lda #$D0
+    sta a:OBJ_34B8,x
+SpawnerWithScrollGates_at9:
+    rts
+
 ; @routine 161E:617 LoadRecordThenDriftAndCount
 ; @run 71:CE17
 ; WHAT IT DOES: In state 0 loads the record, sets sprite set 6, frame $45, OBJ_3510 $10 and the speeds' low bytes 1. In state 1 it moves, counts OBJ_34B8 down through $FF and then OBJ_3510; when that goes below 0 it goes to the next state.

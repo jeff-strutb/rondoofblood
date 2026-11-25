@@ -803,3 +803,82 @@ void abi_WalkWhileNearPlayer(void)
 {
     abi_ended(WalkWhileNearPlayer(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 051B:286 LoadThenSpawnWhileScrolling
+ * @run 70:B286
+ * WHAT IT DOES: In state 0 loads the object's record and looks for a free pair of slots. Later, while the screen scrolls right, it counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero it looks in slots $30, $32 and $34 for one whose two kind bytes are zero, clears that object, starts a kind $22 object there at its place and sets its timer from a four-entry table at $B2DF by a random number.
+ * HOW: LoadObjectRecord, a 16-bit subtract, a search loop, ClearObjectInY, StartObjectAtPlace, NextRandom.
+ * WAITS: no.
+ * Entry: X object. Exit: the last test or load.
+ */
+Ended LoadThenSpawnWhileScrolling(uint8_t slot)
+{
+    RandomResult random;
+    Sum low, high;
+    uint8_t state, nz, last, speed, high_byte, low_byte, y, kinds, index, value;
+    bool carry, search = false;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        jsr_push(0xB28E);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = then(e, ended_of_record(last, nz, carry));
+        search = true;
+    } else {
+        speed = rd8(ScrollSpeedX);
+        e = then(e, ended_load(speed));
+        if (speed == 0 || (speed & 0x80) != 0) {
+            return e;
+        }
+        high_byte = RD8(OBJ->f34b8[slot]);
+        low_byte = RD8(OBJ->f3510[slot]);
+        e = then(e, ended_load((uint8_t)(high_byte | low_byte)));
+        if ((high_byte | low_byte) == 0) {
+            search = true;
+        } else {
+            low = sub_bytes(RD8(OBJ->f3510[slot]), 1, true);
+            WR8(OBJ->f3510[slot], low.value);
+            high = sub_bytes(RD8(OBJ->f34b8[slot]), 0, low.carry);
+            WR8(OBJ->f34b8[slot], high.value);
+            return then(e, ended_of_sum(high));
+        }
+    }
+    (void)search;
+    for (y = 0x30;; y = (uint8_t)(y + 2)) {
+        kinds = rd8((uint16_t)(0x2750 + y));
+        kinds = (uint8_t)(kinds | rd8((uint16_t)(0x2751 + y)));
+        e = then(e, ended_load(kinds));
+        if (kinds == 0) {
+            break;
+        }
+        e = then(e, ended_with_y(ended_with_carry(ended_nz((uint8_t)(y + 2 - 0x36)), (uint8_t)(y + 2) >= 0x36), (uint8_t)(y + 2)));
+        if ((uint8_t)(y + 2) >= 0x36) {
+            return e;
+        }
+    }
+    jsr_push(0xB2C6);
+    ClearObjectInY(y);
+    jsr_pop();
+    jsr_push(0xB2CB);
+    StartObjectAtPlace(0x22, slot, y);
+    jsr_pop();
+    jsr_push(0xB2CE);
+    random = NextRandom();
+    jsr_pop();
+    index = (uint8_t)((random.value & 0x03) << 1);
+    e = then(then(e, ended_of_random(random)), ended_with_y(ended_load((uint8_t)(random.value & 0x03)), index));
+    value = rd8((uint16_t)(0xB2DF + index));
+    WR8(OBJ->f3510[slot], value);
+    value = rd8((uint16_t)(0xB2E0 + index));
+    WR8(OBJ->f34b8[slot], value);
+    return then(e, ended_load(value));
+}
+
+void abi_LoadThenSpawnWhileScrolling(void)
+{
+    abi_ended(LoadThenSpawnWhileScrolling(cpu.x));
+}

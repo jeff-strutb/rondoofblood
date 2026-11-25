@@ -20,6 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import asmfile  # noqa: E402
+import cardfile  # noqa: E402
 import records  # noqa: E402
 
 HELD = os.path.join(TOP, "config", "rondo", "lockstep_held.csv")
@@ -36,17 +37,19 @@ def main():
     info = {}
     for i, r in enumerate(routines):
         nxt = routines[i + 1]["disc"] if i + 1 < len(routines) else len(buf)
-        info[r["name"]] = (r["disc"], sum(ins[1] for ins in asmfile.span(buf, r, nxt)))
+        info[r["name"]] = ("discmap.bin", r["disc"], sum(ins[1] for ins in asmfile.span(buf, r, nxt)))
+    for r in cardfile.spans():
+        info[r["name"]] = ("cardmap.bin", r["disc"], r["length"])
     scripts = records.script_names(TOP)
-    maps = {s: open(os.path.join(TOP, "build", "rondo", "trace", s, "discmap.bin"), "rb").read() for s in scripts
-            if os.path.exists(os.path.join(TOP, "build", "rondo", "trace", s, "discmap.bin"))}
+    maps = {(s, m): open(os.path.join(TOP, "build", "rondo", "trace", s, m), "rb").read() for s in scripts
+            for m in ("discmap.bin", "cardmap.bin") if os.path.exists(os.path.join(TOP, "build", "rondo", "trace", s, m))}
     done_scripts = sorted({r["script"] for r in held})
     rows, certified, cert_bytes, held_bytes = [], 0, 0, 0
     for name, v in sorted(by_routine.items()):
-        disc, length = info.get(name, (None, 0))
+        kind, disc, length = info.get(name, (None, None, 0))
         if disc is None:
             continue
-        reaching = [s for s, m in maps.items() if any(b & 3 for b in m[disc:disc + length])]
+        reaching = [s for (s, mk), m in maps.items() if mk == kind and any(b & 3 for b in m[disc:disc + length])]
         passed = sorted(set(reaching) & v["scripts"])
         missing = sorted(set(reaching) - v["scripts"])
         n = int(v["bytes"] or length)

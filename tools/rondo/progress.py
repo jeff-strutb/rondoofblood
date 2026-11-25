@@ -77,6 +77,9 @@ def distinct_routines_floor(merged):
     return sum(len(g) for g in groups.values()) + outside, sum(1 for v in merged if v & 3)
 
 
+NOGATE = []
+
+
 def floors():
     """(game bytes by distinct whole routines, card bytes, game bytes by disc location) the scripts ran,
     from each script's own maps OR-ed together, after checking that every script has a result and the
@@ -88,8 +91,9 @@ def floors():
     if "--print" not in sys.argv[1:]:         # --print writes nothing, so it may look at an unfinished state
         a7 = {r["script"]: r["verdict"] for r in csv.DictReader(open(GATE_A7, newline=""))}
         nogate = [n for n in names if not a7.get(n)]
-        if nogate:
+        if nogate and not os.path.exists(os.path.join(TOP, "config", "rondo", "sweep_partial.txt")):
             refuse("no gate A7 result for " + ", ".join(nogate))
+        NOGATE[:] = nogate        # a sweep in progress names them in the README instead of refusing
         dirty = [l[3:] for l in git("status", "--porcelain", "--untracked-files=no").splitlines()
                  if l[3:] not in OUTPUTS]
         if dirty:
@@ -294,12 +298,16 @@ def main():
                  f"for every routine that fails the proper-C check or a defect ({', '.join(hc[0])}). A routine is T3 only "
                  f"when every script that reaches it is identical with its C in place: {hc[3]} routines meet that so far "
                  f"({hc[4]:,} B); the rest wait for the scripts listed in `config/rondo/certification_queue.csv`.") if hc else ""
+    sweep_path = os.path.join(TOP, "config", "rondo", "sweep_partial.txt")
+    sweep_line = open(sweep_path).read().strip() if os.path.exists(sweep_path) else ""
     block = "\n".join([
         START,
         "![Progress against the traced floor of the game's code](docs/rondo/progress.svg)",
         "",
         f"Measured on `{head}`: gate records from {', '.join('`' + g + '`' for g in gates)}, "
-        f"every one of the {n_scripts} scripts traced and with a gate A7 result.",
+        f"every one of the {n_scripts} scripts traced"
+        + (f"; no gate A7 result yet for {', '.join(NOGATE)} (the sweep below is running)." if NOGATE
+           else " and with a gate A7 result."),
         "",
         f"**Denominator: {denom}.**",
         "",
@@ -334,6 +342,8 @@ def main():
         a5_line,
         "",
         filed_line,
+        "",
+        sweep_line,
         "",
         held_line,
         "",

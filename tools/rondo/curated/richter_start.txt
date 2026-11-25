@@ -1,0 +1,12 @@
+a=20 x=10 y=00 s=F0 p= mem:208A=00 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=20 x=10 y=05 s=F0 p= mem:208A=00 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=20 x=10 y=FE s=F0 p= mem:208A=00 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=21 x=11 y=00 s=F0 p=C mem:208A=01 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=21 x=11 y=05 s=F0 p=C mem:208A=01 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=21 x=11 y=FE s=F0 p=C mem:208A=01 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=22 x=12 y=00 s=F0 p=NZ mem:208A=02 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=22 x=12 y=05 s=F0 p=NZ mem:208A=02 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=22 x=12 y=FE s=F0 p=NZ mem:208A=02 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=23 x=13 y=00 s=F0 p= mem:208A=03 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=23 x=13 y=05 s=F0 p= mem:208A=03 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1
+a=23 x=13 y=FE s=F0 p= mem:208A=03 mem:A116=4A mem:A117=A1 mem:A118=50 mem:A119=A1 mem:A11A=67 mem:A11B=A1 mem:A11C=54 mem:A11D=A1

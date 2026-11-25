@@ -55,7 +55,7 @@ import records  # noqa: E402
 LINKS = ("references", "tools/toolchains/src", "tools/toolchains/cc65", "tools/toolchains/pce",
          "build/rondo/disc", "build/rondo/system", "build/rondo/trace")
 OWNED = ("config/rondo/runs", "config/rondo/gate_a5.csv", "config/rondo/gate_a7.csv",
-         "config/rondo/gate_a7_routines.csv", "docs/rondo/ledger.csv", "syscard/ledger.csv")
+         "config/rondo/gate_a7_routines.csv", "docs/rondo/ledger.csv", "syscard/ledger.csv", "config/rondo/drafted.csv")
 SCRIPT_TIMEOUT = 7200
 GUESS = 150.0          # seconds of A5 plus A7 for a script never measured: play_s0_r1 took 123 s and attract_82 174 s
 
@@ -334,7 +334,7 @@ def cycle(main, opts):
                 ok = False
                 break
         if ok:
-            for item in OWNED[4:]:
+            for item in OWNED[4:6]:
                 shutil.copy(os.path.join(tree, item), os.path.join(main, item))
             wrote = list(OWNED)
     if opts["commit"]:
@@ -360,6 +360,8 @@ def served(main, opts):
     tree, box, chash, ext = prepare(main, rev, b, b)
     rec = records.Records(main)
     scripts = opts["scripts"] or ["boot"]
+    if scripts == ["all"]:
+        scripts = records.script_names(main)
     st = sv.stamp(cache)
     labels = sv.filed_labels(cache, sorted(ext))
     drafts = sv.read_drafts(cache)
@@ -393,6 +395,17 @@ def served(main, opts):
                 t = draft_a5.setdefault(lab, {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0, "order_flags": 0})
                 for k in t:
                     t[k] += v[k]
+    if scripts == records.script_names(main) and not opts.get("draft_a5"):
+        # every script measured: the drafted count the README prints (config/rondo/drafted.csv, tracked)
+        import datetime
+        rom = {r["name"]: r.get("rom", "0") for r in drafts}
+        ident = {lab for lab, t in draft_a5.items() if sv.verdict_of(t) == "IDENTICAL"}
+        with open(os.path.join(main, "config", "rondo", "drafted.csv"), "w", newline="\n") as f:
+            w = csv.writer(f, lineterminator="\n")
+            w.writerow(["measured_on", "drafts", "identical", "identical_game", "identical_card", "source"])
+            w.writerow([datetime.date.today(), len(drafts), len(ident), sum(1 for x in ident if rom.get(x) != "1"),
+                        sum(1 for x in ident if rom.get(x) == "1"),
+                        f"the runner's A5 of every draft serving, over all {len(scripts)} scripts, at {rev}"])
     filed_a5 = records.a5_counts(rec, chash, main)
     plan = sv.plan(filed_a5, draft_a5, labels, drafts)
     called = {lab for lab in draft_a5 if draft_a5[lab]["calls"]}

@@ -21,6 +21,15 @@ static Ended of_sum(Sum sum)
     return ended_of_sum(sum);
 }
 
+/* RecordObjectEvent's exit: unmarked, A 0 and Z; else A the byte stored, Y its index, C whether the event is a multiple of 8. */
+static Ended ended_of_object_event_stage(bool marked, uint8_t stored, uint8_t event, uint8_t byte)
+{
+    if (!marked) {
+        return ended_load(0);
+    }
+    return ended_with_carry(ended_with_y(ended_load(stored), byte), (event & 7) == 0);
+}
+
 /* AngleToPlayer's exit: A, N, Z, C, V and Y. */
 static Ended ended_of_angle(AngleExit r)
 {
@@ -993,4 +1002,162 @@ void abi_SinkAndShootThenRestart(void)
 
     abi_sound_end(r.shoot);
     abi_ended(r.tail);
+}
+
+/*
+ * @routine 0CAB:5F1 FlickerAndStartPieces
+ * @run 70:B5F1
+ * WHAT IT DOES: Counts the object's timer down; while it runs it starts up to two pieces (StartTwoPieces) and, when the timer is $18, moves the object to a random
+ * place (X and Y low bytes from a table at $B623, high bytes 0); at zero OBJ_2800 moves on.
+ * HOW: DEC, StartTwoPieces, NextRandom twice, table reads (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare, load or INC.
+ */
+Ended FlickerAndStartPieces(uint8_t slot)
+{
+    RandomResult random;
+    uint8_t left, timer, pick, byte, state;
+    Ended e;
+
+    left = DEC8(OBJ->life_timer[slot]);
+    e = ended_nz(left);
+    if (left == 0) {
+        state = INC8(OBJ->f2800[slot]);
+        return then(e, ended_nz(state));
+    }
+    jsr_push(0xB5F9);
+    e = then(e, StartTwoPieces(slot));
+    jsr_pop();
+    timer = RD8(OBJ->life_timer[slot]);
+    e = then(e, ended_compare(timer, 0x18));
+    if (timer != 0x18) {
+        return e;
+    }
+    WR8(OBJ->x_hi[slot], 0);
+    jsr_push(0xB606);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    pick = (uint8_t)(random.value & 0x07);
+    e = then(e, ended_with_y(ended_load(pick), pick));
+    byte = rd8((uint16_t)(0xB623 + pick));
+    WR8(OBJ->x_lo[slot], byte);
+    e = then(e, ended_load(byte));
+    WR8(OBJ->y_hi[slot], 0);
+    jsr_push(0xB615);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    pick = (uint8_t)(random.value & 0x07);
+    e = then(e, ended_with_y(ended_load(pick), pick));
+    byte = rd8((uint16_t)(0xB623 + pick));
+    WR8(OBJ->y_lo[slot], byte);
+    return then(e, ended_load(byte));
+}
+
+void abi_FlickerAndStartPieces(void)
+{
+    abi_ended(FlickerAndStartPieces(cpu.x));
+}
+
+/*
+ * @routine 0CAD:12A StepPartList
+ * @run 71:C12A
+ * WHAT IT DOES: Steps the animation list at $C196.
+ * HOW: The list's address goes to zTemp10-11; a tail jump into StepObjectFrames.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as StepObjectFrames.
+ */
+Ended StepPartList(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0;
+
+    WR8(ZP->temp10, 0x96);
+    WR8(ZP->temp11, 0xC1);
+    step = StepObjectFrames(slot, &y);
+    return ended_of_frame_step(step, step != FRAME_HELD, y);
+}
+
+void abi_StepPartList(void)
+{
+    abi_ended(StepPartList(cpu.x));
+}
+
+/*
+ * @routine 0CAD:15F DoNothing
+ * @run 71:C15F
+ * WHAT IT DOES: Returns at once (a state handler that has nothing to do).
+ * HOW: RTS.
+ * WAITS: no.
+ * Entry: nothing. Exit: every register and flag kept.
+ */
+void DoNothing(void)
+{
+}
+
+void abi_DoNothing(void)
+{
+    DoNothing();
+}
+
+/*
+ * @routine 0CAD:165 WatchVramForMark
+ * @run 71:C165
+ * WHAT IT DOES: In state 0 loads the object's record and sets its sprite set to 6 and its frame to 7. Each frame it reads the VDC's video RAM at $05FB and, unless the
+ * word is a $43 byte, records the object's event and clears the object.
+ * HOW: LoadObjectRecord, SelectVramReadAddress, two data writes, SelectVramData, two reads of the VDC's data port, RecordObjectEvent, ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: see the wrapper.
+ */
+VramWatch WatchVramForMark(uint8_t slot)
+{
+    VramWatch r = { { 0 }, false, 0, 0, { 0 }, false, 0, 0 };
+    uint8_t state, nz, last, low, high, stored, event, byte;
+    bool carry, marked;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        jsr_push(0xC16D);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->sprite_set[slot], 6);
+        WR8(OBJ->frame[slot], 7);
+        r.start = then(ended_of_record(last, nz, carry), ended_load(7));
+    }
+    jsr_push(0xC17A);
+    SelectVramReadAddress();
+    jsr_pop();
+    st1(0xFB);
+    st2(0x05);
+    jsr_push(0xC181);
+    SelectVramData();
+    jsr_pop();
+    low = RD8(VDC->data_lo);
+    high = RD8(VDC->data_hi);
+    r.low = low;
+    r.high = high;
+    r.read = then(ended_load(low), ended_with_y(ended_kept(), high));
+    r.read = then(r.read, ended_compare(low, 0x43));
+    if (low == 0x43) {
+        return r;
+    }
+    jsr_push(0xC18E);
+    marked = RecordObjectEvent(slot, &stored, &event, &byte);
+    jsr_pop();
+    r.event = ended_of_object_event_stage(marked, stored, event, byte);
+    ClearObject(slot);
+    r.cleared = true;
+    return r;
+}
+
+void abi_WatchVramForMark(void)
+{
+    VramWatch r = WatchVramForMark(cpu.x);
+
+    abi_ended(r.start);
+    abi_ended(r.read);
+    if (r.cleared) {
+        abi_ended(r.event);
+    }
 }

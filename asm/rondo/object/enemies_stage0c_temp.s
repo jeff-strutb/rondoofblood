@@ -290,6 +290,37 @@ StepThenWaitLonger:
 StepThenWaitLonger_at0:
     rts
 
+; @routine 0CAB:5F1 FlickerAndStartPieces
+; @run 70:B5F1
+; WHAT IT DOES: Counts the object's timer down; while it runs it starts up to two pieces (StartTwoPieces) and, when the timer is $18, moves the object to a random
+; place (X and Y low bytes from a table at $B623, high bytes 0); at zero OBJ_2800 moves on.
+; HOW: DEC, StartTwoPieces, NextRandom twice, table reads (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: the last compare, load or INC.
+FlickerAndStartPieces:
+    dec a:OBJ_34B8,x
+    beq FlickerAndStartPieces_at0
+    jsr StartTwoPieces
+    lda a:OBJ_34B8,x
+    cmp #$18
+    bne ThrowUpward
+    stz a:OBJ_X_HI,x
+    jsr VecNextRandom
+    and #$07
+    tay
+    lda a:$B623,y
+    sta a:OBJ_X_LO,x
+    stz a:OBJ_Y_HI,x
+    jsr VecNextRandom
+    and #$07
+    tay
+    lda a:$B623,y
+    sta a:OBJ_Y_LO,x
+    rts
+FlickerAndStartPieces_at0:
+    inc a:OBJ_2800,x
+    rts
+
 ; @routine 0CAB:62B StartTwoPieces
 ; @run 70:B62B
 ; WHAT IT DOES: Starts up to two kind $29 objects at this object's place in free slots from $20 (each only if a slot is free).
@@ -535,3 +566,51 @@ StepThenRestB:
     stz a:OBJ_2800,x
 StepThenRestB_at0:
     rts
+; @routine 0CAD:12A StepPartList
+; @run 71:C12A
+; WHAT IT DOES: Steps the animation list at $C196.
+; HOW: The list's address goes to zTemp10-11; a tail jump into StepObjectFrames.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as StepObjectFrames.
+StepPartList:
+    lda #$96
+    sta z:zTemp10
+    lda #$C1
+    sta z:zTemp11
+    jmp VecStepObjectFrames
+
+; @routine 0CAD:15F DoNothing
+; @run 71:C15F
+; WHAT IT DOES: Returns at once (a state handler that has nothing to do).
+; HOW: RTS.
+; WAITS: no.
+; Entry: nothing. Exit: every register and flag kept.
+DoNothing:
+    rts
+
+; @routine 0CAD:165 WatchVramForMark
+; @run 71:C165
+; WHAT IT DOES: In state 0 loads the object's record and sets its sprite set to 6 and its frame to 7. Each frame it reads the VDC's video RAM at $05FB and, unless the
+; word is a $43 byte, records the object's event and clears the object.
+; HOW: LoadObjectRecord, SelectVramReadAddress, two data writes, SelectVramData, two reads of the VDC's data port, RecordObjectEvent, ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: see the wrapper.
+WatchVramForMark:
+    lda a:OBJ_27A8,x
+    bne WatchVramForMark_at0
+    jsr VecLoadObjectRecord
+    lda #$06
+    sta a:OBJ_2A10,x
+    lda #$07
+    sta a:OBJ_2A68,x
+WatchVramForMark_at0:
+    jsr VecSelectVramReadAddress
+    st1 #$FB
+    st2 #$05
+    jsr VecSelectVramData
+    lda a:VDC_DATA_LO
+    ldy a:VDC_DATA_HI
+    cmp #$43
+    beq DoNothing
+    jsr VecRecordObjectEvent
+    jmp VecClearObject

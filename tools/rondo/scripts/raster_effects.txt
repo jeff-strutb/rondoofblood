@@ -1,6 +1,10 @@
 # Coverage poke, not play (PROCEDURE section 6, step 2): in Stage 0 the raster effect the frame asks for (zRasterEffect, $2045)
 # is poked to each of the effects 1 to 31, the table's whole range, 40 frames each. Effects 2, 4, 5, 7, 9, 10, 15, 22, 25, 26, 27, 29, 30 and
 # 31 are run by no other script; the rest are here so A5 judges every handler on one short script.
+# Who stores the effect number (a static search of the filed asm and the intake for stores to zero page $45): constants 1 (TitleSetUp),
+# $0B (stage 16's LoadThenPlaceAtLeft and 0E0B), $12 and 0 (SplitScreenObject), $13 (010D routines), $14 (010E:087), $1C (10CD:358), and
+# in each stage's area setup (024E:152 and its 22 copies) a byte of the stage's own area table, indexed by zero page $83. No script has
+# played the areas whose table byte is 2, 4, 5, 7, 9, 10, 15, 22, 25, 26, 27, 29, 30 or 31, so the poke stands in for those areas.
 include _newgame.txt
 wait 600
 poke 2045 01

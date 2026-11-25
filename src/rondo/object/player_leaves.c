@@ -13,12 +13,7 @@
 #include "access.h"
 #include "routines.h"
 #include "enemy_objects.h"
-
-/* A body's result and the X it leaves. */
-typedef struct {
-    Ended end;
-    uint8_t x;
-} EndedX;
+#include "player_objects.h"
 
 enum { TILE_HANDLED_A = 0x81, STAGE_TABLE_9C20 = 0x9C20, VY_TABLE = 0xBFCB, VX_TABLE = 0xBFEC };
 
@@ -411,4 +406,282 @@ Ended NegateVelocityXIfFacingLeft(uint8_t slot)
 void abi_NegateVelocityXIfFacingLeft(void)
 {
     abi_ended(NegateVelocityXIfFacingLeft(cpu.x));
+}
+
+/*
+ * @routine 01BB:1AA CountDownThenStand
+ * @run 6D:B1AA
+ * WHAT IT DOES: Counts the player's timer in OBJ_2F90 down; when it reaches zero he stands.
+ * HOW: DEC of the byte; zero goes on to RichterStand, any other value returns.
+ * WAITS: no.
+ * Entry: nothing. Exit: counting on, N and Z from the new value; at zero as RichterStand.
+ * Checked with --callees wrappers: RichterStand's earlier C differs from its draft in the call frames of its own calls.
+ */
+typedef struct {
+    uint8_t value;
+    bool stands;
+    AnimationStep stand;
+} CountDown;
+
+CountDown CountDownThenStand(void)
+{
+    CountDown r = { 0, false, { FRAME_STOPPED, false, false, 0, 0 } };
+
+    r.value = DEC8(OBJ->f2f90[0]);
+    if (r.value == 0) {
+        r.stands = true;
+        r.stand = RichterStand();
+    }
+    return r;
+}
+
+void abi_CountDownThenStand(void)
+{
+    CountDown r = CountDownThenStand();
+
+    abi_nz(r.value);
+    if (r.stands) {
+        animation_exit_shim(r.stand);
+    }
+}
+
+/*
+ * @routine 01BE:174 ClearObjectIfOffRange
+ * @run 6E:C974
+ * WHAT IT DOES: Empties the object when it is off the map above or below, or far to the side.
+ * HOW: Y high must be zero; X high zero keeps it; otherwise X low from $40 up to $BF empties it.
+ * WAITS: no.
+ * Entry: X object. Exit: kept: A the last byte read, N, Z, C from the last compare; emptied: as the load or compare
+ * before the jump (ClearObject keeps every register).
+ */
+Ended ClearObjectIfOffRange(uint8_t slot)
+{
+    uint8_t value = RD8(OBJ->y_hi[slot]);
+    Ended e = ended_load(value);
+
+    if (value == 0) {
+        value = RD8(OBJ->x_hi[slot]);
+        e = ended_load(value);
+        if (value == 0) {
+            return e;
+        }
+        value = RD8(OBJ->x_lo[slot]);
+        e = ended_compare(value, 0x40);
+        if (value < 0x40) {
+            return e;
+        }
+        e = ended_compare(value, 0xC0);
+        if (value >= 0xC0) {
+            return e;
+        }
+    }
+    ClearObject(slot);
+    return e;
+}
+
+void abi_ClearObjectIfOffRange(void)
+{
+    abi_ended(ClearObjectIfOffRange(cpu.x));
+}
+
+/*
+ * @routine 01C0:129 ClearObjectInYAndCopyPlace
+ * @run 6E:D929
+ * WHAT IT DOES: Empties the object in Y, then gives it the position of the object in X.
+ * HOW: ClearObjectInY, then four byte copies: X low, X high, Y low, Y high.
+ * WAITS: no.
+ * Entry: X the source object, Y the one to empty. Exit: A the last byte copied, N and Z from it. X, Y, C, V kept.
+ */
+Ended ClearObjectInYAndCopyPlace(uint8_t source, uint8_t target)
+{
+    uint8_t value;
+
+    jsr_push(0xD92C);
+    ClearObjectInY(target);
+    jsr_pop();
+    value = RD8(OBJ->x_lo[source]);
+    WR8(OBJ->x_lo[target], value);
+    value = RD8(OBJ->x_hi[source]);
+    WR8(OBJ->x_hi[target], value);
+    value = RD8(OBJ->y_lo[source]);
+    WR8(OBJ->y_lo[target], value);
+    value = RD8(OBJ->y_hi[source]);
+    WR8(OBJ->y_hi[target], value);
+    return ended_load(value);
+}
+
+void abi_ClearObjectInYAndCopyPlace(void)
+{
+    abi_ended(ClearObjectInYAndCopyPlace(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 01BB:0A0 RichterTurnOnPad
+ * @run 6D:B0A0
+ * WHAT IT DOES: Turns the player round when the pad says so: facing right and the pad's bit 7 held turns him left,
+ * facing left and bit 5 held turns him right; the state then takes the next one from a table.
+ * HOW: OBJ_2AC0 is the facing; a TST of zPadHeld; the state less 5 indexes the table at $B03B.
+ * WAITS: no.
+ * Entry: nothing. Exit: no turn: A the facing, N, V, Z from the TST. A turn: A the new state, N and Z from it, Y the
+ * old state less 5, C and V from that subtract.
+ */
+EndedTst RichterTurnOnPad(void)
+{
+    uint8_t facing = RD8(OBJ->facing_left[0]);
+    uint8_t pad;
+    uint8_t state;
+    Sum sum;
+    uint8_t value;
+    Ended e = ended_load(facing);
+
+    if (facing == 0) {
+        pad = RD8(ZP->pad_held);
+        if ((pad & 0x80) == 0) {
+            return ended_tst(e, pad, 0x80);
+        }
+        INC8(OBJ->facing_left[0]);
+    } else {
+        pad = RD8(ZP->pad_held);
+        if ((pad & 0x20) == 0) {
+            return ended_tst(e, pad, 0x20);
+        }
+        WR8(OBJ->facing_left[0], 0);
+    }
+    state = RD8(OBJ->state[0]);
+    sum = sub_bytes(state, 5, true);
+    value = rd8((uint16_t)(0xB03B + sum.value));
+    WR8(OBJ->state[0], value);
+    e = ended_with_y(ended_with_overflow(ended_with_carry(ended_load(value), sum.carry), sum.overflow), sum.value);
+    return ended_tst_none(e);
+}
+
+void abi_RichterTurnOnPad(void)
+{
+    abi_ended_tst(RichterTurnOnPad());
+}
+
+/*
+ * @routine 09EB:559 LoadRecordThenRecordEvent
+ * @run 70:B559
+ * WHAT IT DOES: Loads the object's record, then marks its event when it is one the save remembers.
+ * HOW: LoadObjectRecord, then goes on to RecordObjectEvent.
+ * WAITS: no.
+ * Entry: X object. Exit: as RecordObjectEvent.
+ */
+Ended LoadRecordThenRecordEvent(uint8_t slot)
+{
+    uint8_t last, nz, stored, event, byte;
+    bool carry;
+    bool marked;
+    Ended e;
+
+    jsr_push(0xB55C);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    marked = RecordObjectEvent(slot, &stored, &event, &byte);
+    if (!marked) {
+        return ended_then(e, ended_load(0));
+    }
+    return ended_then(e, ended_with_carry(ended_with_y(ended_load(stored), byte), (event & 7) == 0));
+}
+
+void abi_LoadRecordThenRecordEvent(void)
+{
+    abi_ended(LoadRecordThenRecordEvent(cpu.x));
+}
+
+/*
+ * @routine 01BB:79E RichterReadAtOffset
+ * @run 6D:B79E
+ * WHAT IT DOES: Reads the terrain at a point offset from the player's own X and Y low bytes by a pair from a table.
+ * HOW: X low plus the table's byte at $B7B1+Y into zTemp00; Y low plus the one at $B7B2+Y becomes the row, its carry
+ * the Y high's; goes on to RichterReadOnScreen.
+ * WAITS: no.
+ * Entry: Y the table's offset. Exit: as RichterReadOnScreen.
+ * Checked with --callees wrappers; no case reaches the read's own code, so the read made by C is not reached.
+ */
+typedef struct {
+    Sum row;
+    TileRead read;
+} OffsetRead;
+
+OffsetRead RichterReadAtOffset(uint8_t offset)
+{
+    OffsetRead r;
+    uint8_t x_lo = RD8(OBJ->x_lo[0]);
+    Sum column = add_bytes(x_lo, rd8((uint16_t)(0xB7B1 + offset)), false);
+    uint8_t y_lo;
+
+    WR8(ZP->temp00, column.value);
+    y_lo = RD8(OBJ->y_lo[0]);
+    r.row = add_bytes(y_lo, rd8((uint16_t)(0xB7B2 + offset)), false);
+    abi_ended(ended_of_sum(r.row)); /* the read may run the overlay's own code, entered with this add's A and flags */
+    r.read = RichterReadOnScreen(r.row.value, r.row.carry);
+    return r;
+}
+
+void abi_RichterReadAtOffset(void)
+{
+    OffsetRead r = RichterReadAtOffset(cpu.y);
+
+    if (r.read.kind != TILE_BY_ORIGINAL) {
+        abi_ended(ended_of_sum(r.row));
+    }
+    terrain_read_exit_shim(r.read);
+}
+
+/* A tile's step from a table by the tile and the half of it the point lies in: the shared body. */
+static Ended tile_half_step(uint16_t table, uint8_t first_tile, uint8_t tile, bool right_for_bit)
+{
+    uint8_t index = (uint8_t)((uint8_t)(tile - first_tile) << 1);
+    uint8_t column = RD8(ZP->temp00);
+    uint8_t step;
+    uint8_t row;
+    Sum sum;
+
+    if (((column & 4) != 0) == right_for_bit) {
+        index++;
+    }
+    step = rd8((uint16_t)(table + index));
+    row = RD8(ZP->temp02);
+    sum = add_bytes(step, row, false);
+    WR8(ZP->temp02, sum.value);
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(TILE_HANDLED_A), sum.carry), sum.overflow), index);
+}
+
+/*
+ * @routine 10C0:293 TileHalfStepAAt9A93
+ * @run 6B:9A93
+ * WHAT IT DOES: The tiles $83 and up of this overlay: a step of the row that differs between the tile's halves.
+ * HOW: A pair of bytes in the table at $9AEF by tile, the second for the right half.
+ * WAITS: no.
+ * Entry: A tile, zTemp00 column, zTemp02 row. Exit: A $81; Y the index; C and V from the add.
+ */
+Ended TileHalfStepAAt9A93(uint8_t tile)
+{
+    return tile_half_step(0x9AEF, 0x83, tile, true);
+}
+
+void abi_TileHalfStepAAt9A93(void)
+{
+    abi_ended(TileHalfStepAAt9A93(cpu.a));
+}
+
+/*
+ * @routine 10C0:2A7 TileHalfStepBAt9AA7
+ * @run 6B:9AA7
+ * WHAT IT DOES: The tiles $8C and up of this overlay: as TileHalfStepAAt9A93, the other way round.
+ * HOW: A pair of bytes in the table at $9AF7 by tile, the second for the left half.
+ * WAITS: no.
+ * Entry and exit: as TileHalfStepAAt9A93.
+ */
+Ended TileHalfStepBAt9AA7(uint8_t tile)
+{
+    return tile_half_step(0x9AF7, 0x8C, tile, false);
+}
+
+void abi_TileHalfStepBAt9AA7(void)
+{
+    abi_ended(TileHalfStepBAt9AA7(cpu.a));
 }

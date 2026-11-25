@@ -42,6 +42,7 @@ enum {
 
 /* The bus and the instructions that have no C form. */
 uint8_t rd8(uint16_t addr);
+int enters(uint16_t addr);                /* does the original enter a routine at addr: a tagged routine resident there (a branch or jump to its first byte is a call of its own, else the code is part of the one running) */
 uint8_t code8(uint16_t addr);             /* a byte of the instruction stream (the operand of code the routine patches in RAM): read with no access event */
 void wr8(uint16_t addr, uint8_t value);
 void st0(uint8_t value);                  /* ST0: VDC address port, past the MPRs */

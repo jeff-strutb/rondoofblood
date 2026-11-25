@@ -160,11 +160,16 @@ class Draft:
         self.segs.append(sg)
         return sg
 
-    def tail(self, addr, frompc):
+    def tail(self, addr, frompc, branch=False):
         """A tail jump: the instruction at frompc makes it. The hybrid needs that address (the code a branch runs
-        on into can be a piece inlined from another routine, outside this routine's own range)."""
+        on into can be a piece inlined from another routine, outside this routine's own range). A JMP always is a
+        call event of the record (an entry instruction); a branch or a fall-through is one only when a tagged routine
+        is at the address, else the code is part of the routine running: the rest is the original's from addr."""
         self.stat["tail"] += 1
-        return "{ call_original_at(0x%04X, 0x%04X); return; }" % (frompc, addr)
+        if not branch:
+            return "{ call_original_at(0x%04X, 0x%04X); return; }" % (frompc, addr)
+        return "{ if (enters(0x%04X)) { call_original_at(0x%04X, 0x%04X); return; } leave_original(0x%04X); return; }" % (
+            addr, frompc, addr, addr)
 
     def smod(self, seg, pc, ln):
         """Does a store of this draft hit a byte of the instruction at pc (ln bytes)?"""
@@ -214,9 +219,17 @@ class Draft:
                 g2, off2 = r
                 mine = (id(g2), (addr - off2) & 0xFFFF) in self.whole    # inside a piece of this whole routine
                 if not branch and not mine:
-                    return self.tail(addr, frompc)      # a jump out of the routine
+                    return self.tail(addr, frompc, branch)      # a jump out of the routine
                 if off2 == 0 and not mine and Draft.has_row(g2, (addr - off2) & 0xFFFF):
-                    return self.tail(addr, frompc)      # a routine's own start: the original enters it (a call event), its C is its own call
+                    # A routine's own start: when a routine is resident there the original enters it (a call event, its C
+                    # is its own call). When none is (another bank is mapped, so its row's bytes are not there) the
+                    # original goes on in the code that is: the piece is run inline here (the record has no call).
+                    s2 = self.seg_for(g2, (addr - off2) & 0xFFFF)
+                    if s2:
+                        self.stat["conditional_tail"] += 1
+                        return "if (enters(0x%04X)) { call_original_at(0x%04X, 0x%04X); return; } goto %s;" % (
+                            addr, frompc, addr, self.label(s2, 0))
+                    return self.tail(addr, frompc, branch)
                 if off2 in g2.istart:
                     s2 = self.seg_for(g2, (addr - off2) & 0xFFFF)
                     if s2:
@@ -228,7 +241,7 @@ class Draft:
         if self.whole and self.whole_span[0] <= addr < self.whole_span[1]:
             self.stat["untraced_arm"] += 1      # between the routine's pieces: bytes no script ran
             return "untraced(0x%04X);" % addr
-        return self.tail(addr, frompc)
+        return self.tail(addr, frompc, branch)
 
     def step(self, seg, idx):
         g, base = seg.g, seg.base

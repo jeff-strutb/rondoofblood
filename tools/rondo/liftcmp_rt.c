@@ -105,6 +105,9 @@ void rt_event(void)
  */
 static int is_hardware(uint16_t addr) { return mpr[addr >> 13] == 0xFF; }
 
+/* Whether the original enters a routine at addr: the comparison treats every jump to a routine's first byte as that. */
+int enters(uint16_t addr) { (void)addr; return 1; }
+
 /* An instruction byte: the value rd8 would give, with no event and no change to the read counts. */
 uint8_t code8(uint16_t addr)
 {

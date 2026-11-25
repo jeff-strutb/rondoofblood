@@ -383,5 +383,6 @@ Ended ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry);
 Ended SpawnerWithScrollGates(uint8_t slot);
 Ended SpawnerByKindAndScreen(uint8_t slot);
 Ended StartBossWhenStageC0OrLoad(uint8_t slot, uint8_t y_entry);
+Ended StepScrollThenMoveOrFadeOut(uint8_t slot);
 
 #endif

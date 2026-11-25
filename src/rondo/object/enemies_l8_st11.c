@@ -398,3 +398,119 @@ void abi_StartBossWhenStageC0OrLoad(void)
         play_track_exit_shim(r.track);
     }
 }
+
+/* The exit before the card's volume fade and the fade's nibble. */
+typedef struct {
+    Ended pre;
+    bool faded;
+    uint8_t nibble;
+} FadeEnd;
+
+/*
+ * @routine 025A:7DE StepScrollThenMoveOrFadeOut
+ * @run 70:AFDE
+ * WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_2800 and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_3040 by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_3040 and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_3040, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
+ * HOW: StepVerticalScrollTable, tests, 16-bit adds in memory, ClearObjectInY, cd_fade (the card's volume fade), a tail jump into SetTimerThenNextState.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last instruction that ran; with the fade, as cd_fade leaves them. The byte at $3BC3 and $3BF0 keep their address form until they have names. The OBJ_3670 not 0 arm ran in no script; the draft stops there.
+ */
+static FadeEnd step_scroll_then_move_or_fade_out(uint8_t slot)
+{
+    uint8_t value, target, high, kind_hi, line, y, scroll;
+    Sum sum, diff;
+    FadeEnd r;
+    Ended e;
+
+    r.faded = false;
+    r.nibble = 0;
+    jsr_push(0xAFE1);
+    e = StepVerticalScrollTable(slot);
+    jsr_pop();
+    value = RD8(OBJ->state[0]);
+    high = RD8(OBJ->f2800[0]);
+    value = (uint8_t)(value | high);
+    e = then(e, ended_load(value));
+    r.pre = e;
+    if (value != 0) {
+        return r;
+    }
+    value = RD8(OBJ->vy_hi[0]);
+    e = then(e, ended_load(value));
+    r.pre = e;
+    if (value != 0) {
+        return r;
+    }
+    value = rd8(0x3BC3);
+    e = then(e, ended_load(value));
+    r.pre = e;
+    if (value == 0) {
+        return r;
+    }
+    line = RD8(OBJ->f3670[slot]);
+    e = then(e, ended_load(line));
+    if (line == 0) {
+        push8(slot);
+        target = RD8(OBJ->f3040[slot]);
+        value = RD8(OBJ->vx_lo[target]);
+        sum = add_bytes(0x10, value, false);
+        WR8(OBJ->vx_lo[target], sum.value);
+        high = RD8(OBJ->vx_hi[target]);
+        sum = add_bytes(0, high, sum.carry);
+        WR8(OBJ->vx_hi[target], sum.value);
+        high = RD8(OBJ->vx_hi[target]);
+        diff = sub_bytes(0, high, true);
+        WR8(SCROLLE->step_x_hi[1], diff.value);
+        slot = pull8();
+        e = then(e, ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(slot), diff.value), diff.carry), diff.overflow));
+        WR8(OBJ->f3510[0], 0x10);
+        wr8(0x3BF0, 2);
+        WR8(OBJ->f3568[0], 0);
+        e = then(e, ended_load(2));
+        y = RD8(OBJ->f3040[slot]);
+        value = RD8(OBJ->sprite_set[0]);
+        WR8(OBJ->sprite_set[y], value);
+        value = RD8(OBJ->frame[0]);
+        WR8(OBJ->frame[y], value);
+        value = RD8(OBJ->facing_left[0]);
+        WR8(OBJ->facing_left[y], value);
+        WR8(OBJ->frame[0], 0);
+        scroll = RD8(SCROLL->x_hi[1]);
+        e = then(e, ended_with_y(ended_load(0x40), y));
+        e = then(e, ended_with_y(ended_nz((uint8_t)(scroll + 2)), (uint8_t)(scroll + 2)));
+        if ((uint8_t)(scroll + 2) != 0) {
+            r.pre = e;
+            return r;
+        }
+        r.pre = then(e, SetTimerThenNextState(slot, 0x40));
+        return r;
+    }
+    WR8(OBJ->f3670[slot], 0);
+    y = RD8(OBJ->f3040[slot]);
+    jsr_push(0xB051);
+    ClearObjectInY(y);
+    jsr_pop();
+    WR8(OBJ->kind[y], 0x31);
+    WR8(OBJ->f3510[0], 0x10);
+    wr8(0x3BF0, 2);
+    WR8(OBJ->f3568[0], 0);
+    kind_hi = 0x0C;
+    r.pre = then(e, ended_with_y(ended_load(0x0C), y));
+    r.faded = true;
+    r.nibble = cd_fade(kind_hi);
+    return r;
+}
+
+Ended StepScrollThenMoveOrFadeOut(uint8_t slot)
+{
+    return step_scroll_then_move_or_fade_out(slot).pre;
+}
+
+void abi_StepScrollThenMoveOrFadeOut(void)
+{
+    FadeEnd r = step_scroll_then_move_or_fade_out(cpu.x);
+
+    abi_ended(r.pre);
+    if (r.faded) {
+        cd_fade_exit_shim(r.nibble);
+    }
+}

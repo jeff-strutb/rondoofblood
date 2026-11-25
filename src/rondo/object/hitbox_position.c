@@ -76,22 +76,23 @@ static uint8_t hitbox_loop(bool *v_seen, bool *v)
     return a;
 }
 
-uint8_t ComputeHitboxPositions(void)
+HitboxEnd ComputeHitboxPositions(void)
 {
-    bool v_seen = false;
-    bool v = false;
+    HitboxEnd end;
 
-    return hitbox_loop(&v_seen, &v);
+    end.v_seen = false;
+    end.v = false;
+    end.a = hitbox_loop(&end.v_seen, &end.v);
+    return end;
 }
 
 void abi_ComputeHitboxPositions(void)
 {
-    bool v_seen = false;
-    bool v = false;
+    HitboxEnd end = ComputeHitboxPositions();
 
-    cpu.a = hitbox_loop(&v_seen, &v);
-    if (v_seen) {
-        abi_flag(P_V, v);
+    cpu.a = end.a;
+    if (end.v_seen) {
+        abi_flag(P_V, end.v);
     }
     cpu.x = HITBOX_SLOTS;
     abi_flag(P_N, false);

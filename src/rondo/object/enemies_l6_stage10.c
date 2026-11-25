@@ -15,6 +15,14 @@ static Ended then(Ended e, Ended next)
     return ended_then(e, next);
 }
 
+/* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
+static Ended ended_of_scale(ScaleResult r)
+{
+    Ended e = ended_with_y(ended_with_carry(ended_with_a(ended_nz(r.nz), r.a), r.carry), 0);
+
+    return r.v_set ? ended_with_overflow(e, r.overflow) : e;
+}
+
 /* AngleToPlayer's exit: A, N, Z, C, V and Y. */
 static Ended ended_of_angle(AngleExit r)
 {
@@ -262,4 +270,67 @@ Ended StepListC103ThenPickAim(uint8_t slot, uint8_t y_entry)
 void abi_StepListC103ThenPickAim(void)
 {
     abi_ended(StepListC103ThenPickAim(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 10CD:126 StepListC170ThenMoveAlongAngle
+ * @run 71:C126
+ * WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_34B8 with the length OBJ_3510:OBJ_3568, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_31A0 has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
+ * HOW: StepObjectFrames, SetVelocityFromAngle, ApplyVelocity, a 16-bit add, stores, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the last test, or the new state's N and Z.
+ */
+Ended StepListC170ThenMoveAlongAngle(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    ScaleResult scale;
+    AxisMove move;
+    Sum low, high;
+    uint8_t y = y_entry, value, first, state, status;
+    Ended e;
+
+    WR8(ZP->temp10, 0x70);
+    WR8(ZP->temp11, 0xC1);
+    jsr_push(0xC131);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    value = RD8(OBJ->f3568[slot]);
+    WR8(ZP->temp00, value);
+    value = RD8(OBJ->f3510[slot]);
+    WR8(ZP->temp01, value);
+    value = RD8(OBJ->f34b8[slot]);
+    e = then(e, ended_load(value));
+    jsr_push(0xC141);
+    scale = SetVelocityFromAngle(value, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    jsr_push(0xC144);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    low = add_bytes(RD8(OBJ->f3568[slot]), 0x0C, false);
+    WR8(OBJ->f3568[slot], low.value);
+    high = add_bytes(RD8(OBJ->f3510[slot]), 0, low.carry);
+    WR8(OBJ->f3510[slot], high.value);
+    e = then(then(e, ended_of_sum(low)), ended_of_sum(high));
+    first = RD8(OBJ->state[0x10]);
+    e = then(e, ended_compare(first, 6));
+    if (first < 6) {
+        status = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+        e = then(e, ended_load(status));
+        if (status == 0) {
+            return e;
+        }
+    }
+    wr8((uint16_t)(0x0002 + slot), 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    state = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(state));
+}
+
+void abi_StepListC170ThenMoveAlongAngle(void)
+{
+    abi_ended(StepListC170ThenMoveAlongAngle(cpu.x, cpu.y));
 }

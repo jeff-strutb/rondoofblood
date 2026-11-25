@@ -527,6 +527,7 @@ Ended LoadThenSpawnWhileScrolling(uint8_t slot);
 Ended SpawnPointFromTables(uint8_t slot);
 Ended JumpAwayThenLand(uint8_t slot);
 Ended StateSevenOnStatusBit7(uint8_t slot);
+SoundEnd LoadThenStepListBreakAtFive(uint8_t slot, uint8_t y_entry);
 Ended FollowBlockWhileState5(uint8_t slot);
 Ended StateFiveOnStatusBit7(uint8_t slot);
 SoundEnd CountThenSoleScriptAndSound(uint8_t slot);

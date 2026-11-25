@@ -399,3 +399,84 @@ void abi_JumpAwayThenLand(void)
 {
     abi_ended(JumpAwayThenLand(cpu.x));
 }
+
+/*
+ * @routine 16CB:6EC LoadThenScatterAlongList
+ * @run 70:B6EC
+ * WHAT IT DOES: In state 0 loads the object's record, sets flash flags $10, gives it a random X speed high of -8 to 7 and Y speed high of -16 to -1, moves it once, then overwrites the speeds from the two tables at $B73F and $B747 by random rows and clears its animation step and timer. Later it steps the animation list at $B763, clears the object when it ends and otherwise moves it along Y.
+ * HOW: LoadObjectRecord, NextRandom four times, ApplyVelocity, table reads (bank 70), StepObjectFrames, ApplyVelocityY, ClearObject.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the last instruction's registers.
+ */
+Ended LoadThenScatterAlongList(uint8_t slot, uint8_t y_entry)
+{
+    RandomResult random;
+    FrameStep step;
+    AxisMove move;
+    Sum sum;
+    uint8_t state, nz, last, y = y_entry, index, value;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        WR8(ZP->temp10, 0x63);
+        WR8(ZP->temp11, 0xB7);
+        jsr_push(0xB75A);
+        step = StepObjectFrames(slot, &y);
+        jsr_pop();
+        e = then(ended_load(state), ended_of_frame_step(step, step != FRAME_HELD, y));
+        if (step == FRAME_LIST_ENDED) {
+            ClearObject(slot);
+            return e;
+        }
+        jsr_push(0xB762);
+        move = ApplyVelocityY(slot);
+        jsr_pop();
+        return then(e, ended_of_axis_move(move));
+    }
+    jsr_push(0xB6F4);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = then(ended_load(state), ended_of_record(last, nz, carry));
+    WR8(OBJ->flash_flags[slot], 0x10);
+    jsr_push(0xB6FC);
+    random = NextRandom();
+    jsr_pop();
+    sum = sub_bytes((uint8_t)(random.value & 0x0F), 0x08, true);
+    WR8(OBJ->vx_hi[slot], sum.value);
+    e = then(then(e, ended_load(0x10)), ended_of_random(random));
+    jsr_push(0xB707);
+    random = NextRandom();
+    jsr_pop();
+    sum = sub_bytes((uint8_t)(random.value & 0x0F), 0x10, true);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    e = then(then(e, ended_of_random(random)), ended_of_sum(sum));
+    jsr_push(0xB712);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    jsr_push(0xB715);
+    random = NextRandom();
+    jsr_pop();
+    index = (uint8_t)((random.value & 0x03) << 1);
+    e = then(then(e, ended_of_random(random)), ended_with_carry(ended_with_y(ended_load((uint8_t)(random.value & 0x03)), index), false));
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB740 + index)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xB73F + index)));
+    jsr_push(0xB728);
+    random = NextRandom();
+    jsr_pop();
+    index = (uint8_t)((random.value & 0x03) << 1);
+    e = then(then(e, ended_of_random(random)), ended_with_carry(ended_with_y(ended_load((uint8_t)(random.value & 0x03)), index), false));
+    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(0xB748 + index)));
+    value = rd8((uint16_t)(0xB747 + index));
+    WR8(OBJ->vy_lo[slot], value);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    return then(e, ended_load(value));
+}
+
+void abi_LoadThenScatterAlongList(void)
+{
+    abi_ended(LoadThenScatterAlongList(cpu.x, cpu.y));
+}

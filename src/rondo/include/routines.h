@@ -938,6 +938,15 @@ typedef struct {
 TrackPlay CdPlayOnce(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 TrackPlay CdPlayAgain(uint8_t kept_x, uint8_t kept_y);
 void play_track_exit_shim(TrackPlay play);
+/* system/tile_script.c: what a tile script's run did last, and DrawTileScript with the exit its callers keep. */
+typedef struct {
+    uint8_t last_op;      /* the last op that counted or set the attribute, or $FF */
+    uint8_t jump_low;     /* the low byte of the last jump */
+    bool stepped_line;
+    bool line_overflow;   /* V from the last line step's high byte add */
+} TileRun;
+TileRun DrawTileScript(uint8_t item, uint8_t group);
+void abi_exit_tile_run(TileRun run, uint8_t y_before);
 TrackPlay CdPlayRepeat(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 
 /* The title: src/rondo/menu/title.c. */

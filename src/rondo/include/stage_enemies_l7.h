@@ -49,6 +49,8 @@ Ended RaiseStateOnFlag(uint8_t slot);
 void StopVerticalSpeed(uint8_t slot);
 Jump JumpByStageStep(void);
 
+Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
+
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {
     bool in_view;

@@ -16,14 +16,6 @@ enum {
     TILES_PER_LINE = 0x40, VDC_DATA_PORT_SELECTED = 2
 };
 
-/* What a script's run did last, for what its caller is left with. */
-typedef struct {
-    uint8_t last_op;      /* the last op that counted or set the attribute, or TILE_OP_END */
-    uint8_t jump_low;     /* the low byte of the last jump */
-    bool stepped_line;
-    bool line_overflow;   /* V from the last line step's high byte add */
-} TileRun;
-
 static TileRun run_tile_script(void);
 
 /* Y as the last op left it: a count run down to zero, a shifted nibble or a jump's low. */
@@ -41,7 +33,7 @@ static uint8_t tile_run_y_shim(TileRun run, uint8_t y_before)
 }
 
 /* Every way out of the interpreter: the compare with $FF, and Y and V as the ops left them. */
-static void abi_exit_tile_run(TileRun run, uint8_t y_before)
+void abi_exit_tile_run(TileRun run, uint8_t y_before)
 {
     cpu.a = TILE_OP_END;
     cpu.y = tile_run_y_shim(run, y_before);
@@ -542,7 +534,7 @@ void abi_RunTileScript(void)
  * RunTileScript. Clobbers zTemp00-03, zTemp08-09.
  * The overlay's pointer is read by its old name: it has no record.
  */
-static TileRun draw_tile_script(uint8_t item, uint8_t group)
+TileRun DrawTileScript(uint8_t item, uint8_t group)
 {
     uint8_t byte;
     uint8_t y;
@@ -579,5 +571,5 @@ void abi_DrawTileScript(void)
     uint8_t item = cpu.a;
     uint8_t group = cpu.y;
 
-    abi_exit_tile_run(draw_tile_script(item, group), (uint8_t)((uint8_t)(item << 1) + 1));
+    abi_exit_tile_run(DrawTileScript(item, group), (uint8_t)((uint8_t)(item << 1) + 1));
 }

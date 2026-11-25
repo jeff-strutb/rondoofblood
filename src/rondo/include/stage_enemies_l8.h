@@ -334,4 +334,14 @@ Jump StepListThenRunPhaseTable(uint8_t slot, uint8_t y_entry);
 /* object/enemies_l8_st23.c */
 SoundEnd ThrownPieceThenScatterAndLeave(uint8_t slot, uint8_t y_entry);
 
+/* object/enemies_l8_st24.c */
+Ended StartChannel81OnceThenStepScrollTable(uint8_t slot);
+Ended NextStateThenStepScrollTable(uint8_t slot);
+SoundEnd StepListMarksThenSound74AtC8(uint8_t slot, uint8_t y_entry);
+Ended SpinThenCountDownToState(uint8_t slot, uint8_t y_entry);
+Ended SpinThenCountDownToPhase80(uint8_t slot, uint8_t y_entry);
+Ended SpinThenCountPhaseDown(uint8_t slot, uint8_t y_entry);
+Ended SpinThenCountWordDown(uint8_t slot, uint8_t y_entry);
+ExitChain CountDownThenDrawAndSpawnRing(uint8_t slot, uint8_t y_entry);
+
 #endif

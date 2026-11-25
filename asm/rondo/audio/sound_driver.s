@@ -26,6 +26,7 @@ SoundSaveSequence:
 ; @run 75:8607
 ; WHAT IT DOES: Moves the place in the sequence to the address in zSoundWordLo and Hi.
 ; HOW: Two bytes copied.
+; WAITS: no.
 ; Entry: nothing. Exit: A the address's high byte, N and Z from it. X, Y, C and V kept.
 SoundSequenceFromWord:
     lda z:zSoundWordLo
@@ -38,6 +39,7 @@ SoundSequenceFromWord:
 ; @run 75:8743
 ; WHAT IT DOES: Moves a channel's slide on by its step, until its high byte reaches the target.
 ; HOW: SoundSlideStepLo and Hi onto SoundSlideLo and Hi; SoundSlideTarget.
+; WAITS: no.
 ; Entry: X channel. Exit: X and Y kept. No slide, A 0, Z set, N clear, C and V kept. At the
 ; target, A the high byte, Z and C set, N clear, V kept. Moved, A the high byte, N, Z, C and V
 ; from its add.
@@ -66,6 +68,7 @@ SoundSlideStep_at0:
 ; @run 75:87CC
 ; WHAT IT DOES: Moves a channel's pan on by its step, until it reaches the target.
 ; HOW: SoundPanStepLo and Hi onto SoundPanLo and SoundPan; SoundPanTarget.
+; WAITS: no.
 ; Entry: X channel. Exit: as SoundSlideStep.
 SoundPanSlideStep:
     lda a:SoundPanStepLo,x
@@ -153,6 +156,7 @@ SoundRampStep_at0:
 ; when it gets there.
 ; HOW: SoundTempoSlideBy added to or taken from SoundTempoLo, carrying into SoundTempo;
 ; SoundTempoTarget.
+; WAITS: no.
 ; Entry: X channel. Exit: X and Y kept. No step, A 0, Z set, N clear. There, A the target, Z and
 ; C set, N clear. Moved, A the fraction, C and V from its add or subtract, N and Z from it, or
 ; from the value when that carried into it.
@@ -195,11 +199,58 @@ SoundSetPan:
 SoundSetPan_at0:
     rts
 
+; The sound driver: the PSG's six channels, music and effects, loaded with the kernel's second
+; block at sectors $4D to $56 and mapped at $8000-$DFFF (banks $75 to $77) only while the kernel
+; calls it. Channels 0 to 5 are the PSG's; the driver keeps eight, and its channels 6 and 7 are
+; effects that take over PSG channels 4 and 5.
+;
+; A body returns plain values; its wrapper works out what the assembly leaves in the registers
+; and flags.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
 ; @routine 004E:614 SoundSilenceAll
 ; @run 75:8E14
 ; WHAT IT DOES: Turns every PSG channel off, and the main volume down.
 ; HOW: Selects channels 5 down to 0 and clears each one's control; then the main volume.
-; Entry: nothing. Exit: A, X, Y, C and V kept; N and Z from X. zSoundChannel 0.
+; WAITS: no.
+; Entry: X kept on the stack across it (a typed caller passes its own). Exit: A, X, Y, C and V kept;
+; N and Z from X. zSoundChannel 0.
 SoundSilenceAll:
     phx
     ldx #$05
@@ -227,6 +278,7 @@ SoundVolumeFull:
 ; @run 75:8E2D
 ; WHAT IT DOES: Starts a channel's envelope from its first phase.
 ; HOW: SoundEnvelopePhase 1.
+; WAITS: no.
 ; Entry: X channel. Exit: A, X, Y, C and V kept; N and Z from A.
 SoundStartEnvelope:
     pha
@@ -240,6 +292,7 @@ SoundStartEnvelope:
 ; WHAT IT DOES: Silences a channel: its envelope's level to $1F and its phase off, and the PSG
 ; channel's control and balance cleared, unless it is 4 or 5 and an effect plays on it.
 ; HOW: The PSG channel is the one already selected.
+; WAITS: no.
 ; Entry: X channel. Exit: A, X and Y kept; N and Z from A; C set if the channel is 6 or more; V
 ; bit 6 of the effect's command when channel 4 or 5, else kept.
 SoundSilenceChannel:
@@ -295,6 +348,7 @@ SoundMultiply_at0:
 ; @run 75:8F68
 ; WHAT IT DOES: Multiplies the low nibble of A by Y into zSoundWordLo and zSoundWordHi.
 ; HOW: A shifted up four places, then four steps of shift and add.
+; WAITS: no.
 ; Entry: A and Y. Exit: as SoundMultiply, with A 0 when the nibble was 0.
 SoundMultiplyNibble:
     phx
@@ -345,6 +399,7 @@ SoundStartFade_at0:
 ; WHAT IT DOES: Reads a sequence's address for a channel: the next two bytes, its place low and
 ; high.
 ; HOW: Through the pointer in zSoundWordLo and zSoundWordHi, moved on past them.
+; WAITS: no.
 ; Entry: X channel. Exit: A the second byte; N and Z from the pointer's low byte, or its high
 ; when the low wrapped to 0. X, Y, C and V kept.
 SoundReadPair:
@@ -472,6 +527,7 @@ SoundCommandLength_at3:
 ; @run 76:B721
 ; WHAT IT DOES: Points the block-move stub's source at a waveform: 32 bytes each from $BD11.
 ; HOW: The waveform times 32, plus $BD11, into BlockMoveSourceLo and Hi.
+; WAITS: no.
 ; Entry: A waveform. Exit: A the address's high byte, N, Z, C and V from adding it. X and Y kept.
 SoundWaveAddress:
     stz a:BlockMoveSourceLo
@@ -533,6 +589,7 @@ SoundScaledOffset_at1:
 ; HOW: SoundEnvelopePhase, SoundEnvelopeTimer and SoundEnvelopeLevel by channel, with the rates
 ; and levels set for it. The release compares A, which is 0 there, with $1F, so it never stops
 ; itself.
+; WAITS: no.
 ; Entry: X channel. Exit: X, Y and V kept. Off, A $FF, N set, Z clear. Past the release, A the
 ; phase less 4, N and Z from it. Timer still running, A 0, N and Z from the timer. Timer set, A
 ; the frames it was set to, N and Z from them; C from comparing the level with the sustain in the
@@ -603,6 +660,7 @@ SoundEnvelopeStep_at0:
 ; envelope, the slide, the ramp and what is given, less the fade on the six PSG channels, plus
 ; the two additions; below 0 it is 0, above $1F it is $1F.
 ; HOW: zSoundWordLo holds what is given; SoundEnvelopeStep; SoundSetControl.
+; WAITS: no.
 ; Entry: A what to take off, X channel. Exit: as SoundSetControl, with A the volume when left
 ; alone.
 SoundApplyVolume:
@@ -643,6 +701,7 @@ SoundApplyVolume_at2:
 ; gate and no volume.
 ; HOW: SoundChannel2550 1, SoundSilenceChannel; the length into SoundChannelDefaultArg and
 ; SoundNoteLength.
+; WAITS: no.
 ; Entry: X channel. Exit: A the length, N and Z from it; C and V as SoundSilenceChannel. X and Y
 ; kept.
 SoundRest:
@@ -663,6 +722,7 @@ SoundRest:
 ; that many sixteenths of the length, at least one frame; a gate of 0 sounds the whole length.
 ; HOW: SoundNoteLength and SoundChannelDefaultArg, SoundGate and SoundGateSet;
 ; SoundMultiplyNibble, its product shifted down four places, into SoundGateTimer.
+; WAITS: no.
 ; Entry: X channel. Exit: A the gate timer, N and Z from it. No gate, C, V and Y kept. Otherwise
 ; Y the length, C bit 3 of the product, V as SoundMultiplyNibble. X kept.
 SoundSetLength:
@@ -734,6 +794,7 @@ SoundSetControl_at1:
 ; effect plays on them.
 ; HOW: SoundWaveAddress, then the RAM block-move stub at $22E7 built as a TIN of 32 bytes to
 ; PsgWaveData and called.
+; WAITS: no.
 ; Entry: A waveform, X channel. Exit: X and Y kept. $FF, A $FF, Z and C set, N clear, V kept.
 ; Left alone, A kept, N and V the effect's bits 7 and 6, Z and C clear. Loaded, A $60, N and Z
 ; clear, C and V as SoundWaveAddress.
@@ -929,6 +990,7 @@ SoundVolumeTick_at0:
 ; modulation; then the PSG frequency for the pitch with those offsets.
 ; HOW: SoundGlide*, SoundVibrato* and SoundModulate by channel; zSoundScratch counts what
 ; changed; SoundSetFrequency with the fine part and the note.
+; WAITS: no.
 ; Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note and C and V from
 ; adding the note where it keeps them.
 SoundPitchTick:
@@ -1009,6 +1071,7 @@ SoundPitchTick_at7:
 ; added, or taken off when it goes down; the modulation; then the PSG frequency.
 ; HOW: The step is shifted down one place for each bit of SoundTempoPhase above its highest set bit,
 ; and one more: a power of two near the share of the tick gone.
+; WAITS: no.
 ; Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note, N and Z from
 ; the note, and C and V from the last add or subtract where it keeps them.
 SoundPitchTickPlain:
@@ -1098,6 +1161,7 @@ SoundPitchTickPlain_at5:
 ; frame, or the whole length with no gate.
 ; HOW: SoundChannelDefaultArg, SoundGate and SoundVolumeBase; SoundNotePitch; SoundNoteLength;
 ; SoundMultiplyNibble, its product shifted down four places, into SoundGateTimer.
+; WAITS: no.
 ; Entry: X channel. Exit: A the gate timer, N and Z from it, Y the length. No gate, C and V as
 ; SoundNotePitch left them; otherwise C bit 3 of the product, V as SoundMultiplyNibble. X kept.
 SoundStartNote:
@@ -1145,6 +1209,7 @@ SoundStartNote_at1:
 ; HOW: SoundCommandByte is the note. The last note's pitch is kept in zSoundScratch and
 ; zSoundFine for a glide from it; SoundGlideSetup; SoundSetFrequency; SoundStartEnvelope;
 ; SoundPitchTick.
+; WAITS: no.
 ; Entry: X channel. Exit: as SoundPitchTick.
 SoundNotePitch:
     lda a:SoundCommandByte
@@ -1315,6 +1380,7 @@ SoundDivide_at1:
 ; @run 75:8AFF
 ; WHAT IT DOES: Command $E2: the channel's waveform, loaded into its PSG channel.
 ; HOW: SoundChannelWave; SoundLoadWave.
+; WAITS: no.
 ; Entry: X channel. Exit: as SoundLoadWave.
 SoundCommandWave:
     lda a:SoundCommandArgs
@@ -1810,6 +1876,7 @@ SoundCommandCall:
 ; PSG channel it shared.
 ; HOW: SoundReturnLo and Hi. The end drops the return into the command loop, so the loop's
 ; caller gets C set; SoundSilenceChannel; SoundLoadWave with the shared channel's waveform.
+; WAITS: no.
 ; Entry: X channel. Exit: back, A the high byte, N and Z from it, C clear. End, C set, and as the
 ; last call left them; the return address dropped from the stack.
 SoundCommandReturn:
@@ -1912,6 +1979,7 @@ SoundChannelTick_at5:
 ; channel is silenced once it is not, or at once with no ramp. Then a frame of the pitch.
 ; HOW: SoundGateTimer; SoundRampBy onto SoundRampLo and Hi against SoundVolumeBase less
 ; SoundSlideHi; SoundSilenceChannel; runs on into SoundPitchTick.
+; WAITS: no.
 ; Entry: X channel. Exit: as SoundPitchTick.
 SoundGateStep:
     lda a:SoundGateTimer,x

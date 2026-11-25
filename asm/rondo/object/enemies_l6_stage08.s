@@ -23,6 +23,35 @@ NextStateOnScrollY:
 NextStateOnScrollY_at0:
     rts
 
+; @routine 088A:32E DrawStepCountThenClear
+; @run 70:AB2E
+; WHAT IT DOES: On every 32nd frame of the wave counter it draws the tile script of group 0 numbered OBJ_3040, starts a kind $25 object in a free slot from $30 at its place and moves; it counts OBJ_3040 up and clears the object when it reaches 4.
+; HOW: DrawTileScript, FindFreeSlotFrom30, StartObjectAtPlace, ApplyVelocity, an INC, ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: the compare, or as ClearObject.
+DrawStepCountThenClear:
+    lda z:zWaveCounter
+    and #$1F
+    bne DrawStepCountThenClear_at0
+    lda a:OBJ_3040,x
+    clc
+    adc #$00
+    cly
+    jsr VecDrawTileScript
+    jsr VecFindFreeSlotFrom30
+    bcc DrawStepCountThenClear_at1
+    lda #$25
+    jsr VecStartObjectAtPlace
+DrawStepCountThenClear_at1:
+    jsr VecApplyVelocity
+    inc a:OBJ_3040,x
+    lda a:OBJ_3040,x
+    cmp #$04
+    bcc DrawStepCountThenClear_at0
+    jmp VecClearObject
+DrawStepCountThenClear_at0:
+    rts
+
 ; @routine 088A:359 StartThenFallAlongList
 ; @run 70:AB59
 ; WHAT IT DOES: In state 0 loads the object's record. Later it steps the animation list at $AB72, applies gravity without a limit and moves the object.

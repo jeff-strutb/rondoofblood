@@ -983,3 +983,61 @@ void abi_SoundThenAimRandomLength(void)
 {
     abi_sound_end(SoundThenAimRandomLength(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 088A:32E DrawStepCountThenClear
+ * @run 70:AB2E
+ * WHAT IT DOES: On every 32nd frame of the wave counter it draws the tile script of group 0 numbered OBJ_3040, starts a kind $25 object in a free slot from $30 at its place and moves; it counts OBJ_3040 up and clears the object when it reaches 4.
+ * HOW: DrawTileScript, FindFreeSlotFrom30, StartObjectAtPlace, ApplyVelocity, an INC, ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare, or as ClearObject.
+ */
+Ended DrawStepCountThenClear(uint8_t slot)
+{
+    TileRun run;
+    AxisMove move;
+    Sum sum;
+    uint8_t wave, item, found_slot, last, count, placed;
+    bool found;
+    Ended e;
+
+    wave = (uint8_t)(RD8(ZP->wave_counter) & 0x1F);
+    e = ended_load(wave);
+    if (wave != 0) {
+        return e;
+    }
+    item = RD8(OBJ->f3040[slot]);
+    sum = add_bytes(item, 0, false);
+    e = then(then(e, ended_load(item)), ended_of_sum(sum));
+    jsr_push(0xAB3E);
+    run = DrawTileScript(sum.value, 0);
+    jsr_pop();
+    e = then(e, ended_of_tile_run(run, sum.value));
+    jsr_push(0xAB41);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = then(e, ended_of_find_slot(found_slot, last, found));
+    if (found) {
+        jsr_push(0xAB48);
+        placed = StartObjectAtPlace(0x25, slot, found_slot);
+        jsr_pop();
+        e = then(then(e, ended_load(0x25)), ended_with_y(ended_load(placed), found_slot));
+    }
+    jsr_push(0xAB4B);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    count = INC8(OBJ->f3040[slot]);
+    count = RD8(OBJ->f3040[slot]);
+    e = then(then(e, ended_nz(count)), ended_load(count));
+    e = then(e, ended_compare(count, 4));
+    if (count >= 4) {
+        ClearObject(slot);
+    }
+    return e;
+}
+
+void abi_DrawStepCountThenClear(void)
+{
+    abi_ended(DrawStepCountThenClear(cpu.x));
+}

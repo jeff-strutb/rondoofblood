@@ -820,6 +820,7 @@ typedef struct {
     AdStat stat_again;
     bool voice_waited;
     SoundProduct product;
+    uint8_t voice_index;
     Sum table_low;
     Sum table_high;
     bool moved_back;

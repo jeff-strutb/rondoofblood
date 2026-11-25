@@ -3054,7 +3054,6 @@ void abi_SoundCommandReturn(void)
 /* The end of a sequence: the loop's return dropped, C set, and the registers its last steps leave. */
 void sequence_end_exit_shim(SequenceEnd end, uint8_t channel)
 {
-    cpu.s = (uint8_t)(cpu.s + 2);
     sequence_end_flags_shim(end, channel);
 }
 
@@ -3063,7 +3062,7 @@ void sequence_end_flags_shim(SequenceEnd end, uint8_t channel)
     if (end.release.looked)
         abi_flag(P_V, (end.release.effect & 0x40) != 0);
     if (channel >= EFFECT_SHARED_END) {
-        wave_load_exit_shim(end.wave, rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)));
+        wave_load_exit_shim(end.wave, end.wave.wave);
     } else {
         cpu.a = end.value;
         abi_nz((uint8_t)(channel - EFFECT_SHARED_END));
@@ -4135,7 +4134,8 @@ static void play_waiting_voice(DriverTick *tick)
     uint16_t table = (rd8(SoundVoiceFlags) & VOICE_SECOND_SET) ? SoundVoicesSecond : SoundVoicesFirst;
 
     jsr_push((rd8(SoundVoiceFlags) & VOICE_SECOND_SET) ? 0xB58E : 0xB577);
-    tick->product = SoundMultiply(rd8(SoundVoiceIndex), VOICE_ENTRY, tick->stat_again.busy);
+    tick->voice_index = rd8(SoundVoiceIndex);
+    tick->product = SoundMultiply(tick->voice_index, VOICE_ENTRY, tick->stat_again.busy);
     jsr_pop();
     tick->table_low = add_bytes(rd8(zSoundWordLo), (uint8_t)table, false);
     wr8(zSoundTableLo, tick->table_low.value);
@@ -4303,7 +4303,7 @@ void driver_tick_exit_shim(DriverTick tick)
             ad_stat_exit_shim(tick.stat_again);
         if (tick.voice_waited) {
             cpu.y = VOICE_ENTRY;
-            abi_exit_product(tick.product, rd8(SoundVoiceIndex));
+            abi_exit_product(tick.product, tick.voice_index);
             abi_flag(P_V, tick.table_high.overflow);
             if (tick.moved_back)
                 voice_back_exit_shim(tick.back);

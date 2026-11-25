@@ -103,6 +103,36 @@ StartListSoundThenSpawn20:
     jsr VecStartObjectAtPlace
     jmp VecClearObject
 
+; @routine 088A:4B9 StartThreeNumberedObjects
+; @run 70:ACB9
+; WHAT IT DOES: Clears the objects in slots $16 to $18, starts a kind $28 object in each at the place of the object in slot $3E, gives each sprite set 7, its number (0 to 2) as OBJ_34B8 and the frame number plus $47, and then clears the object in slot $3E.
+; HOW: A loop of ClearObjectInY and StartObjectAtPlace, ClearObject.
+; WAITS: no.
+; Entry: X object (kept). Exit: the last compare of Y with $19; A the last frame.
+StartThreeNumberedObjects:
+    phx
+    ldx #$3E
+    ldy #$16
+    stz z:zTemp00
+StartThreeNumberedObjects_at0:
+    jsr VecClearObjectInY
+    lda #$28
+    jsr VecStartObjectAtPlace
+    lda #$07
+    sta a:OBJ_2A10,y
+    lda z:zTemp00
+    sta a:OBJ_34B8,y
+    clc
+    adc #$47
+    sta a:OBJ_2A68,y
+    inc z:zTemp00
+    iny
+    cpy #$19
+    bcc StartThreeNumberedObjects_at0
+    jsr VecClearObject
+    plx
+    rts
+
 ; @routine 088A:4FC LoadThenSpeedFromTable
 ; @run 70:ACFC
 ; WHAT IT DOES: Loads the object's record, takes its X speed from the two-byte entries of the table at $AD21 by OBJ_34B8, its timer from the table at $AD29 and its frame as OBJ_34B8 plus $47.
@@ -279,6 +309,30 @@ SpeedBySideOfScreen:
 ClearFrame:
     stz a:OBJ_2A68,x
     rts
+; @routine 088B:6C9 PlaceFromTableCopySlot10
+; @run 70:B6C9
+; WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B736 names by OBJ_3510, copies the sprite set, frame and facing of the object in slot $10 and sets its flash flags to $10.
+; HOW: Table reads (bank 70), copies.
+; WAITS: no.
+; Entry: X object. Exit: A $10, N and Z from it; Y the row.
+PlaceFromTableCopySlot10:
+    ldy a:OBJ_3510,x
+    lda a:$B736,y
+    tay
+    lda a:RichterWallPushBits+1,y
+    sta a:OBJ_X_LO,x
+    lda a:$BBA6,y
+    sta a:OBJ_Y_LO,x
+    lda a:$2A20
+    sta a:OBJ_2A10,x
+    lda a:$2A78
+    sta a:OBJ_2A68,x
+    lda a:$2AD0
+    sta a:OBJ_2AC0,x
+    lda #$10
+    sta a:OBJ_2B18,x
+    rts
+
 ; @routine 088B:777 SetTimersOf12To15
 ; @run 70:B777
 ; WHAT IT DOES: Sets OBJ_34B8 of the objects 18 to 21 to 1.

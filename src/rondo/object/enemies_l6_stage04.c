@@ -627,3 +627,46 @@ void abi_LandThenFaceAndRun(void)
 {
     land_wait_exit_shim(LandThenFaceAndRun(cpu.x, cpu.y, (cpu.p & P_C) != 0));
 }
+
+/*
+ * @routine 051B:324 LoadThenStateByKindByte
+ * @run 70:B324
+ * WHAT IT DOES: Loads the object's record and sets OBJ_2800 to 1; then by OBJ_3040: zero leaves it; positive goes to state 5 with OBJ_2800 0; negative clears OBJ_3250 and bit 6 of OBJ_30F0 and goes to state 4 with OBJ_2800 0.
+ * HOW: LoadObjectRecord, tests, stores.
+ * WAITS: no.
+ * Entry: X object. Exit: A the state, or OBJ_3040 when zero.
+ */
+Ended LoadThenStateByKindByte(uint8_t slot)
+{
+    uint8_t nz, last, mode, flags;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xB327);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->f2800[slot], 1);
+    mode = RD8(OBJ->f3040[slot]);
+    e = then(then(e, ended_load(1)), ended_load(mode));
+    if (mode == 0) {
+        return e;
+    }
+    if ((mode & 0x80) != 0) {
+        WR8(OBJ->hitbox_on[slot], 0);
+        flags = (uint8_t)(RD8(OBJ->f30f0[slot]) & 0xBF);
+        e = then(e, ended_load(flags));
+        WR8(OBJ->f30f0[slot], flags);
+        WR8(OBJ->state[slot], 4);
+        WR8(OBJ->f2800[slot], 0);
+        return then(e, ended_load(4));
+    }
+    WR8(OBJ->state[slot], 5);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(5));
+}
+
+void abi_LoadThenStateByKindByte(void)
+{
+    abi_ended(LoadThenStateByKindByte(cpu.x));
+}

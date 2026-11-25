@@ -270,3 +270,268 @@ StartThreeShots_at0:
     cpy #$16
     bcc StartThreeShots_at0
     rts
+; @routine 0CAB:5CD StepThenWaitLonger
+; @run 70:B5CD
+; WHAT IT DOES: Steps the animation list at $B5E6; when it ends the object's frame is 0, its timer $30 and OBJ_2800 goes on.
+; HOW: StepObjectFrames and stores.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+StepThenWaitLonger:
+    lda #$E6
+    sta z:zTemp10
+    lda #$B5
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepThenWaitLonger_at0
+    stz a:OBJ_2A68,x
+    lda #$30
+    sta a:OBJ_34B8,x
+    inc a:OBJ_2800,x
+StepThenWaitLonger_at0:
+    rts
+
+; @routine 0CAB:62B StartTwoPieces
+; @run 70:B62B
+; WHAT IT DOES: Starts up to two kind $29 objects at this object's place in free slots from $20 (each only if a slot is free).
+; HOW: FindFreeSlotFrom20 and StartObjectAtPlace, twice.
+; WAITS: no.
+; Entry: X object. Exit: as the last search or start.
+StartTwoPieces:
+    jsr VecFindFreeSlotFrom20
+    bcc StartTwoPieces_at0
+    lda #$29
+    jsr VecStartObjectAtPlace
+    jsr VecFindFreeSlotFrom20
+    bcc StartTwoPieces_at0
+    lda #$29
+    jsr VecStartObjectAtPlace
+StartTwoPieces_at0:
+    rts
+
+; @routine 0CAB:640 StepThenRest
+; @run 70:B640
+; WHAT IT DOES: Steps the animation list at $B65B; when it ends the object shows frame 1, enters state 3 and clears OBJ_2800.
+; HOW: StepObjectFrames and three stores.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: A 3.
+StepThenRest:
+    lda #$5B
+    sta z:zTemp10
+    lda #$B6
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepThenRest_at0
+    lda #$01
+    sta a:OBJ_2A68,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+StepThenRest_at0:
+    rts
+
+; @routine 0CAB:666 StepThenThrowShot
+; @run 70:B666
+; WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with its facing and moves OBJ_2800 on.
+; HOW: StepObjectFrames, ClearObjectInY, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+StepThenThrowShot:
+    lda #$82
+    sta z:zTemp10
+    lda #$B5
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepThenThrowShot_at0
+    ldy #$12
+    jsr VecClearObjectInY
+    lda #$28
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    inc a:OBJ_2800,x
+StepThenThrowShot_at0:
+    rts
+
+; @routine 0CAB:687 SinkWhenPartnerGone
+; @run 70:B687
+; WHAT IT DOES: When slot $12's kind is not $28 the object sinks (SinkToLimit), its timer becomes $30 and OBJ_2800 moves on.
+; HOW: A compare, SinkToLimit, two stores.
+; WAITS: no.
+; Entry: X object. Exit: the compare's flags, or N and Z of the new OBJ_2800.
+SinkWhenPartnerGone:
+    lda a:$2762
+    cmp #$28
+    beq SinkWhenPartnerGone_at0
+    jsr SinkToLimit
+    lda #$30
+    sta a:OBJ_34B8,x
+    inc a:OBJ_2800,x
+SinkWhenPartnerGone_at0:
+    rts
+
+; @routine 0CAB:69A SinkToLimit
+; @run 70:B69A
+; WHAT IT DOES: Takes 3 off the object's Y low byte while it is $30 or more.
+; HOW: A compare and a subtract.
+; WAITS: no.
+; Entry: X object. Exit: under $30: the compare's flags; else the subtract's.
+SinkToLimit:
+    lda a:OBJ_Y_LO,x
+    cmp #$30
+    bcc SinkToLimit_at0
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc #$03
+    sta a:OBJ_Y_LO,x
+SinkToLimit_at0:
+    rts
+
+; @routine 0CAB:6AB SinkAndShootThenRestart
+; @run 70:B6AB
+; WHAT IT DOES: ShootEveryFourth and SinkToLimit; the timer counts down and at zero the object shows frame 1, enters state 3 and clears OBJ_2800.
+; HOW: The two calls, a DEC and three stores.
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+SinkAndShootThenRestart:
+    jsr ShootEveryFourth
+    jsr SinkToLimit
+    dec a:OBJ_34B8,x
+    bne SinkAndShootThenRestart_at0
+    lda #$01
+    sta a:OBJ_2A68,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+SinkAndShootThenRestart_at0:
+    rts
+
+; @routine 0CAB:6C4 ShootEveryFourth
+; @run 70:B6C4
+; WHAT IT DOES: Every fourth count of OBJ_3618, while Y is under $A0, starts a kind $27 object at its place in the first free slot from $20 (sound $26 first), with the
+; object's facing and its OBJ_3778 count (low three bits) as its next kind; the count goes up.
+; HOW: FindFreeSlotFrom20, SoundCommand, StartObjectAtPlace.
+; Untraced: two bytes.
+; WAITS: no.
+; Entry: X object, Y pushed by the sound driver. Exit: see the wrapper.
+ShootEveryFourth:
+    lda a:OBJ_3618,x
+    and #$03
+    bne ShootEveryFourth_at0
+    lda a:OBJ_Y_LO,x
+    cmp #$A0
+    bcs ShootEveryFourth_at0
+    jsr VecFindFreeSlotFrom20
+    bcc ShootEveryFourth_at0
+    lda #$26
+    jsr VecSoundCommand
+    lda #$27
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    lda a:OBJ_3778,x
+    and #$07
+    sta a:OBJ_3040,y
+    inc a:OBJ_3778,x
+ShootEveryFourth_at0:
+    rts
+
+; @routine 0CAB:6F3 StepThenThrowSlowShot
+; @run 70:B6F3
+; WHAT IT DOES: As StepThenThrowShot, but the shot's timer is 2.
+; HOW: StepObjectFrames, ClearObjectInY, StartObjectAtPlace.
+; WAITS: no.
+; Entry and exit: as StepThenThrowShot.
+StepThenThrowSlowShot:
+    lda #$82
+    sta z:zTemp10
+    lda #$B5
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepThenThrowSlowShot_at0
+    ldy #$12
+    jsr VecClearObjectInY
+    lda #$28
+    jsr VecStartObjectAtPlace
+    lda #$02
+    sta a:OBJ_34B8,y
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    inc a:OBJ_2800,x
+StepThenThrowSlowShot_at0:
+    rts
+
+; @routine 0CAB:719 SetLongWait
+; @run 70:B719
+; WHAT IT DOES: Sets the object's timer to $40 and moves OBJ_2800 on.
+; HOW: A store and an INC.
+; WAITS: no.
+; Entry: X object. Exit: N and Z from the new OBJ_2800, A $40.
+SetLongWait:
+    lda #$40
+    sta a:OBJ_34B8,x
+    inc a:OBJ_2800,x
+    rts
+
+; @routine 0CAB:722 SinkThenRestart
+; @run 70:B722
+; WHAT IT DOES: Drops a shot when a slot is free (DropShotWhenSlotFree), counts its timer down and at zero shows frame 1, enters state 3 and clears OBJ_2800.
+; HOW: DropShotWhenSlotFree, DEC, three stores.
+; WAITS: no.
+; Entry: X object. Exit: the count's N and Z, or A 3 at zero.
+SinkThenRestart:
+    jsr DropShotWhenSlotFree
+    dec a:OBJ_34B8,x
+    bne SinkThenRestart_at0
+    lda #$01
+    sta a:OBJ_2A68,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+SinkThenRestart_at0:
+    rts
+
+; @routine 0CAB:738 DropShotWhenSlotFree
+; @run 70:B738
+; WHAT IT DOES: Every 16th count of OBJ_3618, searches slots $30 to $35 for a free one and starts a kind $2A object there at its place.
+; HOW: A search by kind, ClearObjectInY, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object. Exit: the last compare or load.
+DropShotWhenSlotFree:
+    lda a:OBJ_3618,x
+    and #$0F
+    bne DropShotWhenSlotFree_at0
+    ldy #$30
+DropShotWhenSlotFree_at2:
+    lda a:OBJ_2750,y
+    beq DropShotWhenSlotFree_at1
+    iny
+    cpy #$36
+    bcc DropShotWhenSlotFree_at2
+    rts
+DropShotWhenSlotFree_at1:
+    jsr VecClearObjectInY
+    lda #$2A
+    jsr VecStartObjectAtPlace
+DropShotWhenSlotFree_at0:
+    rts
+
+; @routine 0CAB:7A9 StepThenRestB
+; @run 70:B7A9
+; WHAT IT DOES: As StepThenRest with the list at $B7C4.
+; HOW: As StepThenRest.
+; WAITS: no.
+; Entry and exit: as StepThenRest.
+StepThenRestB:
+    lda #$C4
+    sta z:zTemp10
+    lda #$B7
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepThenRestB_at0
+    lda #$01
+    sta a:OBJ_2A68,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+StepThenRestB_at0:
+    rts

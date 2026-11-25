@@ -16,6 +16,7 @@
              --norerun        do not rerun red scripts alone (when every script is expected red)
              --draft-a5 FILE  with `served`: per-draft A5 verdicts (name, filed, calls, identical, divergent, unverified,
                               order) measured elsewhere, instead of measuring the drafts here
+             --proper         with `served --a7`: the filed C where proper, the draft for every other routine (the M1 run)
              --serve-all      with `served --a7`: every filed routine and every content served by its draft (the drafter's recipe)
              --a7             with `served`: build the served box and measure A7 on --scripts alone
              --workers N      scripts measured at once (default 8; each is one cpu-run claim)
@@ -424,6 +425,15 @@ def served(main, opts):
         return 0
     keep = {lab for labs in plan["serve"].values() for lab in labs} | set(plan["free"])
     names = set(plan["serve"]) | {n for n, _ in plan["original"] if n in labels}
+    if opts.get("proper"):
+        # the M1 recipe: the filed C where the proper-C check passes it, the draft for every other routine
+        import ledger
+        funcs = ledger.functions()
+        bad = {n for n in labels if ledger.proper_c_faults(n, funcs)}
+        keep = {r["name"] for r in drafts if filed_of.get(r["name"], "") not in labels or filed_of.get(r["name"]) in bad}
+        names = set(bad)
+        log(f"served: --proper: {len(labels) - len(bad)} filed routines keep their C (proper), {len(bad)} served by drafts, "
+            f"{len(keep)} drafts serve in all", b)
     if opts.get("serve_all"):
         # the drafter's recipe: every filed routine and every other content served by its draft
         keep = {r["name"] for r in drafts}
@@ -477,7 +487,7 @@ def commit(main, rev, paths, n, reds, b):
 
 def parse(argv):
     opts = {"mode": argv[0] if argv else "", "main": TOP, "routines": [], "scripts": [], "sweep": False,
-            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False, "draft_a5": "", "serve_all": False}
+            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False, "draft_a5": "", "serve_all": False, "proper": False}
     i = 1
     while i < len(argv):
         a = argv[i]
@@ -491,6 +501,8 @@ def parse(argv):
             opts["workers"] = int(argv[i + 1]); i += 1
         elif a == "--draft-a5":
             opts["draft_a5"] = os.path.abspath(argv[i + 1]); i += 1
+        elif a == "--proper":
+            opts["proper"] = True
         elif a == "--serve-all":
             opts["serve_all"] = True
         elif a == "--a7":

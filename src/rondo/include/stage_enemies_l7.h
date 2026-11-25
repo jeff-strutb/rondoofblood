@@ -90,6 +90,14 @@ Ended StepListByPhase(uint8_t slot);
 Ended SetSwaySpeed(uint8_t slot);
 Ended BobAndMove(uint8_t slot);
 
+Ended ReactAtWindowEdge(uint8_t slot);
+Ended SwayStep(uint8_t slot);
+Ended SwayOrAdvance(uint8_t slot);
+Ended SwayThenReact(uint8_t slot);
+Ended SwayThenFlip(uint8_t slot);
+Ended SwayThenRestart(uint8_t slot);
+Jump JumpByStateTable(uint8_t slot);
+
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {
     bool in_view;

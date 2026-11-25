@@ -86,6 +86,94 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 117C:0EA CountdownThenState4B
 ; @run 70:B8EA
 ; WHAT IT DOES: The same as CountdownThenState4, at this overlay's copy of it.
@@ -662,4 +750,619 @@ EnterNextStateWhenHitOrPlayerNear_at0:
     sta a:OBJ_3670,x
     inc a:OBJ_27A8,x
 EnterNextStateWhenHitOrPlayerNear_at1:
+    rts
+
+; @routine 117B:53B BurstWhenFlaggedHitB
+; @run 70:B53B
+; WHAT IT DOES: When the object is not yet in state 6 and bit 7 of its status flags is set, plays
+; sound $8B, spawns its six pieces (SpawnSixPiecesB), stops its f3250 and its animation and enters
+; state 6.
+; HOW: Two tests, SoundCommand, SpawnSixPiecesB.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A 6 and N, Z clear, C and V as the piece spawn left them when it
+; burst; otherwise A, N, Z, C from the failing test; X kept.
+BurstWhenFlaggedHitB:
+    lda a:OBJ_27A8,x
+    cmp #$06
+    beq BurstWhenFlaggedHitB_at0
+    lda a:OBJ_31A0,x
+    and #$80
+    beq BurstWhenFlaggedHitB_at0
+    lda #$8B
+    jsr VecSoundCommand
+    jsr SpawnSixPiecesB
+    stz a:OBJ_3250,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$06
+    sta a:OBJ_27A8,x
+BurstWhenFlaggedHitB_at0:
+    rts
+
+; @routine 117B:560 SpawnSixPiecesB
+; @run 70:B560
+; WHAT IT DOES: Starts up to six objects of type $24 at the object's place, each from a free slot
+; from $30, giving each its life_timer, f3510 and speeds from a four byte entry of a table at
+; overlay address $B596.
+; HOW: The body SpawnSixPiecesA has, with this type and table.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as SpawnSixPiecesA.
+SpawnSixPiecesB:
+    cly
+SpawnSixPiecesB_at1:
+    sty z:zHitSlot
+    jsr VecFindFreeSlotFrom30
+    bcc SpawnSixPiecesB_at0
+    lda #$24
+    jsr VecStartObjectAtPlace
+    stx z:zRichterObject
+    lda z:zHitSlot
+    asl a
+    asl a
+    tax
+    lda a:$B596,x
+    sta a:OBJ_34B8,y
+    lda a:$B597,x
+    sta a:OBJ_3510,y
+    lda a:$B598,x
+    sta a:OBJ_VX_HI,y
+    lda a:$B599,x
+    sta a:OBJ_VY_HI,y
+    ldx z:zRichterObject
+    ldy z:zHitSlot
+    iny
+    cpy #$06
+    bcc SpawnSixPiecesB_at1
+SpawnSixPiecesB_at0:
+    rts
+
+; @routine 117C:001 SoundEveryFourthFrameC
+; @run 70:B801
+; WHAT IT DOES: Plays sound $22 on the frames when the low two bits of the object's f3618 are zero.
+; HOW: One test and the call.
+; WAITS: no.
+; Entry: X object. Exit: as SoundEveryFourthFrame.
+SoundEveryFourthFrameC:
+    lda a:OBJ_3618,x
+    and #$03
+    bne SoundEveryFourthFrameC_at0
+    lda #$22
+    jsr VecSoundCommand
+SoundEveryFourthFrameC_at0:
+    rts
+
+; @routine 117D:3CB StartFromScreenEdgeByPlayer
+; @run 71:C3CB
+; WHAT IT DOES: Loads the record, then puts the object at one edge of the screen heading across it:
+; when the player's X low byte is $C0 or more, or between $40 and $BF while the player faces
+; left, on the left edge (X $FFE0, speed $0140, facing left set); otherwise on the right (X $0120,
+; speed -$0140). Its Y is the player's less 4.
+; HOW: LoadObjectRecord, two compares, stores, a 16-bit subtract.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the high byte of the new Y, N, Z, C, V from its subtract; Y 11.
+StartFromScreenEdgeByPlayer:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_X_LO
+    cmp #$40
+    bcc StartFromScreenEdgeByPlayer_at0
+    cmp #$C0
+    bcs StartFromScreenEdgeByPlayer_at1
+    lda a:OBJ_2AC0
+    beq StartFromScreenEdgeByPlayer_at0
+StartFromScreenEdgeByPlayer_at1:
+    lda #$01
+    sta a:OBJ_2AC0,x
+    lda #$FF
+    sta a:OBJ_X_HI,x
+    lda #$E0
+    sta a:OBJ_X_LO,x
+    lda #$01
+    sta a:OBJ_VX_HI,x
+    lda #$40
+    sta a:OBJ_VX_LO,x
+    bra StartFromScreenEdgeByPlayer_at2
+StartFromScreenEdgeByPlayer_at0:
+    lda #$01
+    sta a:OBJ_X_HI,x
+    lda #$20
+    sta a:OBJ_X_LO,x
+    lda #$FE
+    sta a:OBJ_VX_HI,x
+    lda #$C0
+    sta a:OBJ_VX_LO,x
+StartFromScreenEdgeByPlayer_at2:
+    lda a:OBJ_Y_LO
+    sec
+    sbc #$04
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_Y_HI
+    sbc #$00
+    sta a:OBJ_Y_HI,x
+    rts
+
+; @routine 1173:1D6 StartPieceInSlotsFrom28
+; @run 6C:91D6
+; WHAT IT DOES: When the player's Y low byte is below $70, it advances its f3568 and starts an
+; object at its place in the first free slot of $28 to $2F, of the type a table at overlay
+; address $9204 gives by the low three bits of f3568; nothing happens when the eight slots are
+; taken. Then (and when the player is low) it sets its f3510 to $A0.
+; HOW: A search for a slot of type 0, ClearObjectInY, StartObjectAtPlace. When no slot is free the
+; routine ends at once, without the timer: that arm ran in no script, so the draft stops there and
+; liftcmp does not judge it.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A $A0, N set, Z clear, C and V as StartObjectAtPlace left them,
+; Y the slot; when the player is low, A $A0 and C, N, Z from the compare of the player's Y with $70.
+StartPieceInSlotsFrom28:
+    lda a:OBJ_Y_LO
+    cmp #$70
+    bcs StartPieceInSlotsFrom28_at0
+    inc a:OBJ_3568,x
+    ldy #$28
+StartPieceInSlotsFrom28_at2:
+    lda a:OBJ_2750,y
+    beq StartPieceInSlotsFrom28_at1
+    iny
+    cpy #$30
+    bcc StartPieceInSlotsFrom28_at2
+    rts
+StartPieceInSlotsFrom28_at1:
+    jsr VecClearObjectInY
+    phy
+    lda a:OBJ_3568,x
+    and #$07
+    tay
+    lda a:$9204,y
+    ply
+    jsr VecStartObjectAtPlace
+StartPieceInSlotsFrom28_at0:
+    lda #$A0
+    sta a:OBJ_3510,x
+    rts
+
+; @routine 1173:20C SpawnType2AThenRestartTimer
+; @run 6C:920C
+; WHAT IT DOES: When its next_kind is 4, or the player's Y low byte is $70 or more, it starts an
+; object of type $2A at its place from a free slot from $30 (and does nothing more when there is
+; none). Then, and when neither held, it sets its f3510 to $C0.
+; HOW: Two tests, FindFreeSlotFrom30, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A $C0 and N set, Z clear, C and Y as the last call left them;
+; with no free slot, as FindFreeSlotFrom30 left them.
+SpawnType2AThenRestartTimer:
+    lda a:OBJ_3040,x
+    cmp #$04
+    beq SpawnType2AThenRestartTimer_at0
+    lda a:OBJ_Y_LO
+    cmp #$70
+    bcc SpawnType2AThenRestartTimer_at1
+SpawnType2AThenRestartTimer_at0:
+    jsr VecFindFreeSlotFrom30
+    bcc SpawnType2AThenRestartTimer_at2
+    lda #$2A
+    jsr VecStartObjectAtPlace
+SpawnType2AThenRestartTimer_at1:
+    lda #$C0
+    sta a:OBJ_3510,x
+SpawnType2AThenRestartTimer_at2:
+    rts
+
+; @routine 117B:63D PickStateByPlayerDistanceC
+; @run 70:B63D
+; WHAT IT DOES: PickStateByPlayerDistance in this stage's overlay, with its state table at
+; overlay address $B663.
+; HOW: The shared body. The two early arms (an object off the screen across, or down) ran in no
+; script: the draft stops there, so liftcmp does not judge them.
+; WAITS: no.
+; Entry, exit: as PickStateByPlayerDistance.
+PickStateByPlayerDistanceC:
+    stz a:OBJ_2800,x
+    lda a:OBJ_X_HI,x
+    beq PickStateByPlayerDistanceC_at0
+    lda #$03
+    sta a:OBJ_27A8,x
+    rts
+PickStateByPlayerDistanceC_at0:
+    lda a:OBJ_Y_HI,x
+    beq PickStateByPlayerDistanceC_at1
+    lda #$04
+    sta a:OBJ_27A8,x
+    rts
+PickStateByPlayerDistanceC_at1:
+    jsr VecPlayerDistanceSum
+    and #$0F
+    tay
+    lda a:$B663,y
+    sta a:OBJ_27A8,x
+    rts
+
+; @routine 117B:737 AnimateMoveThenSetUpNextStepB
+; @run 70:B737
+; WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+; down; at zero it plays sound $8B, picks a speed and turn (PickSpeedAndTurnFromTable), sets f36c8
+; to $58 plus six bits of PlayerDistanceSum, stops its animation and advances its step.
+; HOW: StepFramesFacingPlayerD, ApplyVelocity, a decrement, then the calls named.
+; WAITS: no.
+; Entry: X object, C in (kept to the sum), D clear. Exit: as AnimateMoveThenSetUpNextStep.
+AnimateMoveThenSetUpNextStepB:
+    ldy #$04
+    jsr StepFramesFacingPlayerD
+    jsr VecApplyVelocity
+    dec a:OBJ_34B8,x
+    bne OrbitStepForward
+    lda #$8B
+    jsr VecSoundCommand
+    jsr PickSpeedAndTurnFromTable
+    jsr VecPlayerDistanceSum
+    and #$3F
+    clc
+    adc #$58
+    sta a:OBJ_36C8,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+    rts
+
+; @routine 1173:26A KnockedUpWhenHitB
+; @run 6C:926A
+; WHAT IT DOES: KnockedUpWhenHit for a state below 3, entering state 3.
+; HOW: The shared body. Only the first test ran in a script: the draft stops after it, so liftcmp
+; does not judge the rest.
+; WAITS: no.
+; Entry, exit: as KnockedUpWhenHit.
+KnockedUpWhenHitB:
+    lda a:OBJ_31A0,x
+    and #$80
+    beq KnockedUpWhenHitB_at0
+    lda a:OBJ_27A8,x
+    cmp #$03
+    bcs KnockedUpWhenHitB_at0
+    stz a:OBJ_3250,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$03
+    sta a:OBJ_2A10,x
+    stz a:OBJ_2A68,x
+    lda #$FE
+    sta a:OBJ_VY_HI,x
+    lda #$FE
+    sta a:OBJ_VY_LO,x
+    lda #$03
+    sta a:OBJ_27A8,x
+KnockedUpWhenHitB_at0:
+    rts
+
+; @routine 117C:1EA KnockedUpWhenHit
+; @run 70:B9EA
+; WHAT IT DOES: When bit 7 of the object's status flags is set and its state is below 9, it stops its
+; f3250 and its animation, takes sprite set 3 and frame 0, a Y speed of -$0102 and enters state 9.
+; HOW: Two tests and the stores.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A 9 and N, Z clear when it was knocked up; otherwise A, N, Z, C from
+; the failing test. X, Y, V kept.
+KnockedUpWhenHit:
+    lda a:OBJ_31A0,x
+    and #$80
+    beq KnockedUpWhenHit_at0
+    lda a:OBJ_27A8,x
+    cmp #$09
+    bcs KnockedUpWhenHit_at0
+    stz a:OBJ_3250,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$03
+    sta a:OBJ_2A10,x
+    stz a:OBJ_2A68,x
+    lda #$FE
+    sta a:OBJ_VY_HI,x
+    lda #$FE
+    sta a:OBJ_VY_LO,x
+    lda #$09
+    sta a:OBJ_27A8,x
+KnockedUpWhenHit_at0:
+    rts
+
+; @routine 117C:6CB SetHitboxFromFrameRowsC
+; @run 70:BECB
+; WHAT IT DOES: Gives the object a hit rectangle from a table: the row is picked by its frame less $29 through a
+; byte table at overlay address $C2B9, and the row's four bytes (at $C2D2, four to a row) are its X offset, Y
+; offset, half width and half height.
+; HOW: Two table reads, four stores.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the half height, N, Z from it, C from the row's shift, V from the subtract
+; of $29, Y the row's offset.
+SetHitboxFromFrameRowsC:
+    lda a:OBJ_2A68,x
+    sec
+    sbc #$29
+    tay
+    lda a:$C2B9,y
+    asl a
+    asl a
+    tay
+    lda a:$C2D2,y
+    sta a:OBJ_3930,x
+    lda a:$C2D3,y
+    sta a:OBJ_39E0,x
+    lda a:$C2D4,y
+    sta a:OBJ_3988,x
+    lda a:$C2D5,y
+    sta a:OBJ_3A38,x
+    rts
+
+; @routine 117D:277 FollowPreviousPiece
+; @run 71:C277
+; WHAT IT DOES: In state 0 it loads its record. Later it takes the place of the object one slot before it,
+; that object's f3250 and facing, and a hit rectangle from a table of four byte rows at overlay address $C2EE
+; picked by that object's frame less $29 (a row beyond 18 is the 18th).
+; HOW: CopyObjectPlaceBack and table reads. The row past the table's end ran in no script: the draft
+; stops there, so liftcmp does not judge it.
+; WAITS: no.
+; Entry: X object, D clear. Exit: state 0: as LoadObjectRecord; otherwise A the facing, N, Z from it, C 0, V from
+; the subtract of $29, Y the row's offset.
+FollowPreviousPiece:
+    lda a:OBJ_27A8,x
+    bne FollowPreviousPiece_at0
+    jmp VecLoadObjectRecord
+FollowPreviousPiece_at0:
+    txa
+    tay
+    dey
+    jsr VecCopyObjectPlaceBack
+    lda a:$324F,x
+    sta a:OBJ_3250,x
+    lda a:$2A67,x
+    sec
+    sbc #$29
+    cmp #$13
+    bcc FollowPreviousPiece_at1
+    lda #$13
+FollowPreviousPiece_at1:
+    asl a
+    asl a
+    tay
+    lda a:$C2EE,y
+    sta a:OBJ_3930,x
+    lda a:$C2EF,y
+    sta a:OBJ_39E0,x
+    lda a:$C2F0,y
+    sta a:OBJ_3988,x
+    lda a:$C2F1,y
+    sta a:OBJ_3A38,x
+    lda a:$2ABF,x
+    sta a:OBJ_2AC0,x
+    rts
+
+; @routine 1173:12C LoadObjectRecordFromTable
+; @run 6C:912C
+; WHAT IT DOES: LoadObjectRecord for the objects of this overlay: the twelve byte record of the object's kind is found
+; through a table of addresses at overlay address $AD37 (kind 1 first) and copied into the object's fields; its hit
+; rectangle offsets are cleared and its state advanced.
+; HOW: The pointer into zTemp10-11 and twelve reads through it, as LoadObjectRecord does; the table is the
+; overlay's own, not the one at the record pointer.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the record's last byte, Y 11, N and Z from the new state, C bit 3 of the
+; packed byte; X, V kept.
+LoadObjectRecordFromTable:
+    lda a:OBJ_2750,x
+    dec a
+    asl a
+    tay
+    lda a:$AD37,y
+    sta z:zTemp10
+    lda a:$AD38,y
+    sta z:zTemp11
+    cly
+    lda (zTemp10),y
+    sta a:OBJ_3358,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_3300,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_32A8,x
+    iny
+    lda (zTemp10),y
+    and #$0F
+    sta a:OBJ_3250,x
+    lda (zTemp10),y
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta a:OBJ_FIELDS_2EE0,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_3988,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_3A38,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_2A10,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_2A68,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_30F0,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_3148,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_31A0,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_31F8,x
+    stz a:OBJ_3930,x
+    stz a:OBJ_39E0,x
+    inc a:OBJ_27A8,x
+    rts
+
+; @routine 1173:2E0 SwingOnCosineThenLeapAtPlayer
+; @run 6C:92E0
+; WHAT IT DOES: Steps the frame list at overlay address $9346, gives itself a Y speed of the cosine of its life_timer
+; angle (speed $0040), moves along Y, counts the angle up and moves along X. When the player is nearer than $60
+; along X, one time in 128 (a random byte below 2) it picks a leap from a table of four byte rows at overlay address
+; $934F by three random bits (X low, X high, Y low, Y high), reverses the X speed when it faces left and moves on
+; a state.
+; HOW: StepObjectFrames, ScaleByCosine, ApplyVelocityY, ApplyVelocityX, DistanceXToPlayer, NextRandom twice,
+; NegateVelocityX.
+; WAITS: no.
+; Entry: X object, Y kept to the frame step, D clear. Exit: as the last test, add or call left them: after a leap
+; A, N, Z from the new state.
+SwingOnCosineThenLeapAtPlayer:
+    lda #$93
+    sta z:zTemp11
+    lda #$46
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda #$40
+    sta z:zTemp00
+    lda #$00
+    sta z:zTemp01
+    lda a:OBJ_34B8,x
+    jsr VecScaleByCosine
+    lda z:zProduct2
+    sta a:OBJ_VY_HI,x
+    lda z:SpriteFlipMask
+    sta a:OBJ_VY_LO,x
+    jsr VecApplyVelocityY
+    inc a:OBJ_34B8,x
+    jsr VecApplyVelocityX
+    jsr VecDistanceXToPlayer
+    cmp #$60
+    bcs SwingOnCosineThenLeapAtPlayer_at0
+    jsr VecNextRandom
+    cmp #$02
+    bcs SwingOnCosineThenLeapAtPlayer_at0
+    jsr VecNextRandom
+    and #$07
+    asl a
+    asl a
+    tay
+    lda a:$934F,y
+    sta a:OBJ_VX_LO,x
+    lda a:$9350,y
+    sta a:OBJ_VX_HI,x
+    lda a:$9351,y
+    sta a:OBJ_VY_LO,x
+    lda a:$9352,y
+    sta a:OBJ_VY_HI,x
+    lda a:OBJ_2AC0,x
+    beq SwingOnCosineThenLeapAtPlayer_at1
+    jsr VecNegateVelocityX
+SwingOnCosineThenLeapAtPlayer_at1:
+    inc a:OBJ_27A8,x
+SwingOnCosineThenLeapAtPlayer_at0:
+    rts
+
+; @routine 117C:15D LaunchWithSoundThenDrift
+; @run 70:B95D
+; WHAT IT DOES: In state 0 it plays sound $25, loads its record, sets its Y speed (high byte) to $F5, moves along Y
+; and takes an X speed from a table of two words at overlay address $B992 by its facing. In any other state it steps
+; the frame list at overlay address $B996 and moves along X.
+; HOW: SoundCommand, LoadObjectRecord, ApplyVelocityY; or StepObjectFrames and ApplyVelocityX as a tail jump.
+; WAITS: no.
+; Entry: X object, Y kept to the frame step, D clear. Exit: state 0: A the X speed's low byte, N, Z from it, C 0,
+; V from ApplyVelocityY, Y the facing index; later A, N, Z, C, V from ApplyVelocityX, Y the step's.
+LaunchWithSoundThenDrift:
+    lda a:OBJ_27A8,x
+    bne LaunchWithSoundThenDrift_at0
+    lda #$25
+    jsr VecSoundCommand
+    jsr VecLoadObjectRecord
+    lda #$F5
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    lda a:OBJ_2AC0,x
+    asl a
+    tay
+    lda a:$B993,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B992,y
+    sta a:OBJ_VX_LO,x
+    rts
+LaunchWithSoundThenDrift_at0:
+    lda #$96
+    sta z:zTemp10
+    lda #$B9
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jmp VecApplyVelocityX
+
+; @routine 1173:299 StartAtRandomSpeedAndHeight
+; @run 6C:9299
+; WHAT IT DOES: Loads the record (LoadObjectRecordFromTable), takes a random life_timer, an X speed and X position
+; from a table of four byte rows at overlay address $92D4 by one random bit, a Y low byte from a table at $92DC by
+; two more random bits, and its facing from the side of the player.
+; HOW: NextRandom twice, SideOfPlayer.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the side bit and N, Z from it, C from SideOfPlayer's compare (or the second
+; random's add), V from the random; Y the table index of the Y low byte.
+StartAtRandomSpeedAndHeight:
+    jsr LoadObjectRecordFromTable
+    jsr VecNextRandom
+    sta a:OBJ_34B8,x
+    and #$01
+    asl a
+    asl a
+    tay
+    lda a:$92D5,y
+    sta a:OBJ_VX_HI,x
+    lda a:$92D4,y
+    sta a:OBJ_VX_LO,x
+    lda a:$92D7,y
+    sta a:OBJ_X_HI,x
+    lda a:$92D6,y
+    sta a:OBJ_X_LO,x
+    jsr VecNextRandom
+    and #$03
+    tay
+    lda a:$92DC,y
+    sta a:OBJ_Y_LO,x
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    rts
+
+; @routine 117B:5AE ChargeWhenPlayerNearB
+; @run 70:B5AE
+; WHAT IT DOES: Animates the object facing the player (list 0). On the first screen across and down, when the player
+; is under $78 pixels away along X it stops its animation, keeps bit 7 of its flags, takes an X speed (high byte) from
+; a table at overlay address $B5F3 by its facing, a Y speed of 2, sets f36c8 to $48 plus five bits of PlayerDistanceSum
+; and enters state 4 with step 2.
+; HOW: StepFramesFacingPlayerD, DistanceXToPlayer, PlayerDistanceSum.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A 2 and N, Z clear, C and V from the add of $48 when it charged; else as the
+; animation step, the position test or the distance compare left them.
+ChargeWhenPlayerNearB:
+    cly
+    jsr StepFramesFacingPlayerD
+    lda a:OBJ_X_HI,x
+    ora a:OBJ_Y_HI,x
+    bne ChargeWhenPlayerNearB_at0
+    jsr VecDistanceXToPlayer
+    cmp #$78
+    bcs ChargeWhenPlayerNearB_at0
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda a:OBJ_FLAGS_2F38,x
+    and #$80
+    sta a:OBJ_FLAGS_2F38,x
+    ldy a:OBJ_2AC0,x
+    lda a:$B5F3,y
+    sta a:OBJ_VX_HI,x
+    lda #$02
+    sta a:OBJ_VY_HI,x
+    jsr VecPlayerDistanceSum
+    and #$1F
+    clc
+    adc #$48
+    sta a:OBJ_36C8,x
+    lda #$04
+    sta a:OBJ_27A8,x
+    lda #$02
+    sta a:OBJ_2800,x
+ChargeWhenPlayerNearB_at0:
     rts

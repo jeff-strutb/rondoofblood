@@ -594,3 +594,115 @@ void abi_WalkWhileFrameChangesC(void)
 {
     abi_ended(WalkWhileFrameChangesC(cpu.x));
 }
+
+/*
+ * @routine 0D5E:286 AnimateAndSpawnThenPause
+ * @run 71:CA86
+ * WHAT IT DOES: While its next_kind is not 0, or the player is within $70 along X, it animates facing the player
+ * (list 2) and, on the frame change to frame $6B, starts an object of type $41 at its place from a free slot from
+ * $30. When the list ends, or the player is farther away with next_kind 0, it stops its animation, enters state 3 and
+ * takes a life_timer from a table at overlay address $CAC7 by two bits of f3568, which it counts up.
+ * HOW: DistanceXToPlayer, StepFramesFacingPlayerE, FindFreeSlotFrom30, StartObjectAtPlace as a tail jump.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: after a spawn as StartObjectAtPlace left them; pausing: A the timer, N, Z from it,
+ * Y the table index; otherwise the failing test or the step's flags.
+ */
+Ended AnimateAndSpawnThenPause(uint8_t slot)
+{
+    enum { TIMERS = 0xCAC7 };
+    uint8_t kind = RD8(OBJ->next_kind[slot]);
+    uint8_t frame, last, found_slot, count, y, value;
+    bool found, pause = false;
+    PlayerDistance distance;
+    FrameStepEnd frames;
+    Ended e = ended_load(kind);
+
+    if (kind == 0) {
+        jsr_push(0xCA8E);
+        distance = DistanceXToPlayer(slot);
+        jsr_pop();
+        e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x70));
+        pause = distance.distance >= 0x70;
+    }
+    if (!pause) {
+        jsr_push(0xCA97);
+        frames = StepFramesFacingPlayerE(slot, 2);
+        jsr_pop();
+        e = ended_then(ended_then(e, ended_with_y(ended_kept(), 2)), frames.end);
+        if (frames.step != FRAME_LIST_ENDED) {
+            if (frames.step != FRAME_CHANGED) {
+                return e;
+            }
+            frame = RD8(OBJ->frame[slot]);
+            e = ended_then(e, ended_compare(frame, 0x6B));
+            if (frame != 0x6B) {
+                return e;
+            }
+            jsr_push(0xCAA5);
+            found_slot = FindFreeSlotFrom30(&last, &found);
+            jsr_pop();
+            e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+            if (!found) {
+                return e;
+            }
+            value = StartObjectAtPlace(0x41, slot, found_slot);
+            return ended_then(ended_then(e, ended_load(0x41)), ended_load(value));
+        }
+    }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->state[slot], 3);
+    INC8(OBJ->f3568[slot]);
+    count = RD8(OBJ->f3568[slot]);
+    y = (uint8_t)(count & 3);
+    value = rd8((uint16_t)(TIMERS + y));
+    WR8(OBJ->life_timer[slot], value);
+    return ended_then(e, ended_with_y(ended_load(value), y));
+}
+
+void abi_AnimateAndSpawnThenPause(void)
+{
+    abi_ended(AnimateAndSpawnThenPause(cpu.x));
+}
+
+/*
+ * @routine 0D5E:3B2 StartLobTowardPlayerB
+ * @run 71:CBB2
+ * @stop CBED
+ * WHAT IT DOES: StartLobTowardPlayer in this stage's overlay, with its table at overlay address $CBED.
+ * HOW: The shared body.
+ * WAITS: no.
+ * Entry, exit: as StartLobTowardPlayer.
+ */
+Ended StartLobTowardPlayerB(uint8_t slot, uint8_t entry_y)
+{
+    static const uint16_t RETURNS[5] = { 0xCBBA, 0xCBC2, 0xCBC5, 0xCBE5, 0xCBEC };
+
+    if (RD8(OBJ->state[slot]) != 0) {
+        return StepLobArcB(slot, entry_y);
+    }
+    return start_lob(slot, 0xCBED, RETURNS);
+}
+
+void abi_StartLobTowardPlayerB(void)
+{
+    abi_ended(StartLobTowardPlayerB(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0D5E:3FD StepLobArcB
+ * @run 71:CBFD
+ * WHAT IT DOES: StepLobArc with the frame list at overlay address $C9EF.
+ * HOW: The shared body.
+ * WAITS: no.
+ * Entry, exit: as StepLobArc.
+ */
+Ended StepLobArcB(uint8_t slot, uint8_t entry_y)
+{
+    return step_lob_arc(slot, entry_y, 0xC9EF, 0xCC08);
+}
+
+void abi_StepLobArcB(void)
+{
+    abi_ended(StepLobArcB(cpu.x, cpu.y));
+}

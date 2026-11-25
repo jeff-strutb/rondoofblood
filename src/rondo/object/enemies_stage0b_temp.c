@@ -885,3 +885,748 @@ void abi_SwoopOnCosineC(void)
 {
     abi_ended(SwoopOnCosineC(cpu.x));
 }
+
+/*
+ * @routine 117B:560 SpawnSixPiecesB
+ * @run 70:B560
+ * WHAT IT DOES: Starts up to six objects of type $24 at the object's place, each from a free slot
+ * from $30, giving each its life_timer, f3510 and speeds from a four byte entry of a table at
+ * overlay address $B596.
+ * HOW: The body SpawnSixPiecesA has, with this type and table.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as SpawnSixPiecesA.
+ */
+Ended SpawnSixPiecesB(uint8_t slot)
+{
+    return spawn_six_pieces(slot, 0x24, 0xB596, 0xB566, 0xB56D);
+}
+
+void abi_SpawnSixPiecesB(void)
+{
+    abi_ended(SpawnSixPiecesB(cpu.x));
+}
+
+/*
+ * @routine 117B:53B BurstWhenFlaggedHitB
+ * @run 70:B53B
+ * WHAT IT DOES: When the object is not yet in state 6 and bit 7 of its status flags is set, plays
+ * sound $8B, spawns its six pieces (SpawnSixPiecesB), stops its f3250 and its animation and enters
+ * state 6.
+ * HOW: Two tests, SoundCommand, SpawnSixPiecesB.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A 6 and N, Z clear, C and V as the piece spawn left them when it
+ * burst; otherwise A, N, Z, C from the failing test; X kept.
+ */
+SoundEnd BurstWhenFlaggedHitB(uint8_t slot, uint8_t entry_y)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t bit;
+    Ended before;
+    Ended e;
+
+    result.end = ended_compare(state, 6);
+    if (state == 6) {
+        return result;
+    }
+    bit = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    before = ended_then(result.end, ended_load(bit));
+    result.end = before;
+    if (bit == 0) {
+        return result;
+    }
+    result.sounded = true;
+    result.command = 0x8B;
+    result.before = ended_then(before, ended_load(0x8B));
+    result.end = ended_kept();
+    jsr_push(0xB54E);
+    result.call = SoundCommand(0x8B, slot, entry_y);
+    jsr_pop();
+    jsr_push(0xB551);
+    e = SpawnSixPiecesB(slot);
+    jsr_pop();
+    WR8(OBJ->hitbox_on[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->state[slot], 6);
+    result.end = ended_then(e, ended_load(6));
+    return result;
+}
+
+void abi_BurstWhenFlaggedHitB(void)
+{
+    abi_sound_end(BurstWhenFlaggedHitB(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 117C:001 SoundEveryFourthFrameC
+ * @run 70:B801
+ * WHAT IT DOES: Plays sound $22 on the frames when the low two bits of the object's f3618 are zero.
+ * HOW: One test and the call.
+ * WAITS: no.
+ * Entry: X object. Exit: as SoundEveryFourthFrame.
+ */
+SoundEnd SoundEveryFourthFrameC(uint8_t slot, uint8_t entry_y)
+{
+    return sound_every_fourth_frame(slot, entry_y, 0xB80D);
+}
+
+void abi_SoundEveryFourthFrameC(void)
+{
+    abi_sound_end(SoundEveryFourthFrameC(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 117D:3CB StartFromScreenEdgeByPlayer
+ * @run 71:C3CB
+ * WHAT IT DOES: Loads the record, then puts the object at one edge of the screen heading across it:
+ * when the player's X low byte is $C0 or more, or between $40 and $BF while the player faces
+ * left, on the left edge (X $FFE0, speed $0140, facing left set); otherwise on the right (X $0120,
+ * speed -$0140). Its Y is the player's less 4.
+ * HOW: LoadObjectRecord, two compares, stores, a 16-bit subtract.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the high byte of the new Y, N, Z, C, V from its subtract; Y 11.
+ */
+Ended StartFromScreenEdgeByPlayer(uint8_t slot)
+{
+    uint8_t last, nz, player_x;
+    bool carry;
+    Sum low, high;
+    Ended e;
+
+    jsr_push(0xC3CE);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    player_x = RD8(OBJ->x_lo[0]);
+    if (player_x >= 0x40 && (player_x >= 0xC0 || RD8(OBJ->facing_left[0]) != 0)) {
+        WR8(OBJ->facing_left[slot], 1);
+        WR8(OBJ->x_hi[slot], 0xFF);
+        WR8(OBJ->x_lo[slot], 0xE0);
+        WR8(OBJ->vx_hi[slot], 1);
+        WR8(OBJ->vx_lo[slot], 0x40);
+    } else {
+        WR8(OBJ->x_hi[slot], 1);
+        WR8(OBJ->x_lo[slot], 0x20);
+        WR8(OBJ->vx_hi[slot], 0xFE);
+        WR8(OBJ->vx_lo[slot], 0xC0);
+    }
+    low = sub_bytes(RD8(OBJ->y_lo[0]), 4, true);
+    WR8(OBJ->y_lo[slot], low.value);
+    high = sub_bytes(RD8(OBJ->y_hi[0]), 0, low.carry);
+    WR8(OBJ->y_hi[slot], high.value);
+    return ended_then(e, ended_of_sum(high));
+}
+
+void abi_StartFromScreenEdgeByPlayer(void)
+{
+    abi_ended(StartFromScreenEdgeByPlayer(cpu.x));
+}
+
+/*
+ * @routine 117B:63D PickStateByPlayerDistanceC
+ * @run 70:B63D
+ * WHAT IT DOES: PickStateByPlayerDistance in this stage's overlay, with its state table at
+ * overlay address $B663.
+ * HOW: The shared body. The two early arms (an object off the screen across, or down) ran in no
+ * script: the draft stops there, so liftcmp does not judge them.
+ * WAITS: no.
+ * Entry, exit: as PickStateByPlayerDistance.
+ */
+Ended PickStateByPlayerDistanceC(uint8_t slot, bool carry_in)
+{
+    return pick_state_by_distance(slot, carry_in, 0xB663, 0xB659);
+}
+
+void abi_PickStateByPlayerDistanceC(void)
+{
+    abi_ended(PickStateByPlayerDistanceC(cpu.x, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 1173:20C SpawnType2AThenRestartTimer
+ * @run 6C:920C
+ * WHAT IT DOES: When its next_kind is 4, or the player's Y low byte is $70 or more, it starts an
+ * object of type $2A at its place from a free slot from $30 (and does nothing more when there is
+ * none). Then, and when neither held, it sets its f3510 to $C0.
+ * HOW: Two tests, FindFreeSlotFrom30, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A $C0 and N set, Z clear, C and Y as the last call left them;
+ * with no free slot, as FindFreeSlotFrom30 left them.
+ */
+Ended SpawnType2AThenRestartTimer(uint8_t slot)
+{
+    uint8_t kind = RD8(OBJ->next_kind[slot]);
+    uint8_t player_y, last, found_slot, value;
+    bool found;
+    Ended e = ended_compare(kind, 4);
+
+    if (kind != 4) {
+        player_y = RD8(OBJ->y_lo[0]);
+        e = ended_then(e, ended_compare(player_y, 0x70));
+        if (player_y < 0x70) {
+            WR8(OBJ->f3510[slot], 0xC0);
+            return ended_then(e, ended_load(0xC0));
+        }
+    }
+    jsr_push(0x921D);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+    if (!found) {
+        return e;
+    }
+    jsr_push(0x9224);
+    value = StartObjectAtPlace(0x2A, slot, found_slot);
+    jsr_pop();
+    e = ended_then(e, ended_load(value));
+    WR8(OBJ->f3510[slot], 0xC0);
+    return ended_then(e, ended_load(0xC0));
+}
+
+void abi_SpawnType2AThenRestartTimer(void)
+{
+    abi_ended(SpawnType2AThenRestartTimer(cpu.x));
+}
+
+/*
+ * @routine 1173:1D6 StartPieceInSlotsFrom28
+ * @run 6C:91D6
+ * WHAT IT DOES: When the player's Y low byte is below $70, it advances its f3568 and starts an
+ * object at its place in the first free slot of $28 to $2F, of the type a table at overlay
+ * address $9204 gives by the low three bits of f3568; nothing happens when the eight slots are
+ * taken. Then (and when the player is low) it sets its f3510 to $A0.
+ * HOW: A search for a slot of type 0, ClearObjectInY, StartObjectAtPlace. When no slot is free the
+ * routine ends at once, without the timer: that arm ran in no script, so the draft stops there and
+ * liftcmp does not judge it.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A $A0, N set, Z clear, C and V as StartObjectAtPlace left them,
+ * Y the slot; when the player is low, A $A0 and C, N, Z from the compare of the player's Y with $70.
+ */
+Ended StartPieceInSlotsFrom28(uint8_t slot)
+{
+    enum { TYPES = 0x9204 };
+    uint8_t player_y = RD8(OBJ->y_lo[0]);
+    uint8_t count, y, kind, type, value;
+    Ended e = ended_compare(player_y, 0x70);
+
+    if (player_y >= 0x70) {
+        WR8(OBJ->f3510[slot], 0xA0);
+        return ended_then(e, ended_load(0xA0));
+    }
+    count = INC8(OBJ->f3568[slot]);
+    e = ended_then(e, ended_nz(count));
+    y = 0x28;
+    e = ended_with_y(e, y);
+    for (;;) {
+        kind = RD8(OBJ->kind[y]);
+        e = ended_then(e, ended_load(kind));
+        if (kind == 0) {
+            break;
+        }
+        y++;
+        e = ended_with_a(ended_with_y(ended_compare(y, 0x30), y), kind);
+        if (y >= 0x30) {
+            return e;
+        }
+    }
+    jsr_push(0x91F0);
+    ClearObjectInY(y);
+    jsr_pop();
+    push8(y);
+    count = RD8(OBJ->f3568[slot]);
+    type = rd8((uint16_t)(TYPES + (count & 7)));
+    y = pull8();
+    e = ended_then(e, ended_with_y(ended_load(type), (uint8_t)(count & 7)));
+    e = ended_with_y(e, y);
+    e = ended_then(e, ended_nz(y));
+    jsr_push(0x91FE);
+    value = StartObjectAtPlace(type, slot, y);
+    jsr_pop();
+    e = ended_then(e, ended_load(value));
+    WR8(OBJ->f3510[slot], 0xA0);
+    return ended_then(e, ended_load(0xA0));
+}
+
+void abi_StartPieceInSlotsFrom28(void)
+{
+    abi_ended(StartPieceInSlotsFrom28(cpu.x));
+}
+
+/*
+ * @routine 117C:1EA KnockedUpWhenHit
+ * @run 70:B9EA
+ * WHAT IT DOES: When bit 7 of the object's status flags is set and its state is below 9, it stops its
+ * f3250 and its animation, takes sprite set 3 and frame 0, a Y speed of -$0102 and enters state 9.
+ * HOW: Two tests and the stores.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A 9 and N, Z clear when it was knocked up; otherwise A, N, Z, C from
+ * the failing test. X, Y, V kept.
+ */
+Ended KnockedUpWhenHit(uint8_t slot)
+{
+    return knock_up_when_flagged(slot, 9, 9);
+}
+
+void abi_KnockedUpWhenHit(void)
+{
+    abi_ended(KnockedUpWhenHit(cpu.x));
+}
+
+/*
+ * @routine 1173:26A KnockedUpWhenHitB
+ * @run 6C:926A
+ * WHAT IT DOES: KnockedUpWhenHit for a state below 3, entering state 3.
+ * HOW: The shared body. Only the first test ran in a script: the draft stops after it, so liftcmp
+ * does not judge the rest.
+ * WAITS: no.
+ * Entry, exit: as KnockedUpWhenHit.
+ */
+Ended KnockedUpWhenHitB(uint8_t slot)
+{
+    return knock_up_when_flagged(slot, 3, 3);
+}
+
+void abi_KnockedUpWhenHitB(void)
+{
+    abi_ended(KnockedUpWhenHitB(cpu.x));
+}
+
+/*
+ * @routine 117C:6CB SetHitboxFromFrameRowsC
+ * @run 70:BECB
+ * WHAT IT DOES: Gives the object a hit rectangle from a table: the row is picked by its frame less $29 through a
+ * byte table at overlay address $C2B9, and the row's four bytes (at $C2D2, four to a row) are its X offset, Y
+ * offset, half width and half height.
+ * HOW: Two table reads, four stores.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the half height, N, Z from it, C from the row's shift, V from the subtract
+ * of $29, Y the row's offset.
+ */
+Ended SetHitboxFromFrameRowsC(uint8_t slot)
+{
+    enum { INDEX = 0xC2B9, ROWS = 0xC2D2 };
+    Sum frame = sub_bytes(RD8(OBJ->frame[slot]), 0x29, true);
+    uint8_t row = rd8((uint16_t)(INDEX + frame.value));
+    uint8_t y = (uint8_t)(row << 2);
+    uint8_t value;
+
+    WR8(OBJ->hitbox_dx[slot], rd8((uint16_t)(ROWS + y)));
+    WR8(OBJ->hitbox_dy[slot], rd8((uint16_t)(ROWS + 1 + y)));
+    WR8(OBJ->hitbox_half_w[slot], rd8((uint16_t)(ROWS + 2 + y)));
+    value = rd8((uint16_t)(ROWS + 3 + y));
+    WR8(OBJ->hitbox_half_h[slot], value);
+    return ended_with_overflow(ended_with_carry(ended_with_y(ended_load(value), y), (row & 0x40) != 0),
+                               frame.overflow);
+}
+
+void abi_SetHitboxFromFrameRowsC(void)
+{
+    abi_ended(SetHitboxFromFrameRowsC(cpu.x));
+}
+
+/*
+ * @routine 117D:277 FollowPreviousPiece
+ * @run 71:C277
+ * WHAT IT DOES: In state 0 it loads its record. Later it takes the place of the object one slot before it,
+ * that object's f3250 and facing, and a hit rectangle from a table of four byte rows at overlay address $C2EE
+ * picked by that object's frame less $29 (a row beyond 18 is the 18th).
+ * HOW: CopyObjectPlaceBack and table reads. The row past the table's end ran in no script: the draft
+ * stops there, so liftcmp does not judge it.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: state 0: as LoadObjectRecord; otherwise A the facing, N, Z from it, C 0, V from
+ * the subtract of $29, Y the row's offset.
+ */
+Ended FollowPreviousPiece(uint8_t slot)
+{
+    return follow_previous_piece(slot, 0x29, 0xC2EE, 0xC285);
+}
+
+void abi_FollowPreviousPiece(void)
+{
+    abi_ended(FollowPreviousPiece(cpu.x));
+}
+
+/*
+ * @routine 117B:737 AnimateMoveThenSetUpNextStepB
+ * @run 70:B737
+ * WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+ * down; at zero it plays sound $8B, picks a speed and turn (PickSpeedAndTurnFromTable), sets f36c8
+ * to $58 plus six bits of PlayerDistanceSum, stops its animation and advances its step.
+ * HOW: StepFramesFacingPlayerD, ApplyVelocity, a decrement, then the calls named.
+ * WAITS: no.
+ * Entry: X object, C in (kept to the sum), D clear. Exit: as AnimateMoveThenSetUpNextStep.
+ */
+SoundEnd AnimateMoveThenSetUpNextStepB(uint8_t slot, bool carry_in)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    FrameStepEnd frames;
+    AxisMove move;
+    uint8_t left, step;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xB73C);
+    frames = StepFramesFacingPlayerD(slot, 4);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 4), frames.end);
+    jsr_push(0xB73F);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    left = (uint8_t)(RD8(OBJ->life_timer[slot]) - 1);
+    WR8(OBJ->life_timer[slot], left);
+    e = ended_then(e, ended_nz(left));
+    result.end = e;
+    if (left != 0) {
+        return result;
+    }
+    result.sounded = true;
+    result.command = 0x8B;
+    result.before = ended_then(e, ended_load(0x8B));
+    jsr_push(0xB749);
+    result.call = SoundCommand(0x8B, slot, ended_y_or(e, 0));
+    jsr_pop();
+    jsr_push(0xB74C);
+    e = PickSpeedAndTurnFromTable(slot);
+    jsr_pop();
+    jsr_push(0xB74F);
+    sum = PlayerDistanceSum(slot, ended_carry_or(e, carry_in));
+    jsr_pop();
+    sum = add_bytes((uint8_t)(sum.value & 0x3F), 0x58, false);
+    WR8(OBJ->f36c8[slot], sum.value);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    step = INC8(OBJ->f2800[slot]);
+    result.end = ended_then(e, ended_with_a(ended_with_overflow(ended_with_carry(ended_nz(step), sum.carry),
+                                                                sum.overflow), sum.value));
+    return result;
+}
+
+void abi_AnimateMoveThenSetUpNextStepB(void)
+{
+    abi_sound_end(AnimateMoveThenSetUpNextStepB(cpu.x, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 1173:12C LoadObjectRecordFromTable
+ * @run 6C:912C
+ * WHAT IT DOES: LoadObjectRecord for the objects of this overlay: the twelve byte record of the object's kind is found
+ * through a table of addresses at overlay address $AD37 (kind 1 first) and copied into the object's fields; its hit
+ * rectangle offsets are cleared and its state advanced.
+ * HOW: The pointer into zTemp10-11 and twelve reads through it, as LoadObjectRecord does; the table is the
+ * overlay's own, not the one at the record pointer.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the record's last byte, Y 11, N and Z from the new state, C bit 3 of the
+ * packed byte; X, V kept.
+ */
+Ended LoadObjectRecordFromTable(uint8_t slot)
+{
+    uint8_t byte, index, state, packed;
+    bool carry;
+
+    byte = RD8(OBJ->kind[slot]);
+    index = (uint8_t)((uint8_t)(byte - 1) << 1);
+    WR8(ZP->temp10, rd8((uint16_t)(0xAD37 + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(0xAD38 + index)));
+    byte = RD8_PTR_Y(ZP->temp10, 0);
+    WR8(OBJ->f3358[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 1);
+    WR8(OBJ->f3300[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 2);
+    WR8(OBJ->f32a8[slot], byte);
+    packed = RD8_PTR_Y(ZP->temp10, 3);
+    WR8(OBJ->hitbox_on[slot], (uint8_t)(packed & 0x0F));
+    packed = RD8_PTR_Y(ZP->temp10, 3);
+    carry = (packed & 0x08) != 0;
+    WR8(OBJ->fields_2ee0[slot], (uint8_t)(packed >> 4));
+    byte = RD8_PTR_Y(ZP->temp10, 4);
+    WR8(OBJ->hitbox_half_w[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 5);
+    WR8(OBJ->hitbox_half_h[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 6);
+    WR8(OBJ->f2a10[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 7);
+    WR8(OBJ->frame[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 8);
+    WR8(OBJ->f30f0[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 9);
+    WR8(OBJ->f3148[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 10);
+    WR8(OBJ->status_flags[slot], byte);
+    byte = RD8_PTR_Y(ZP->temp10, 11);
+    WR8(OBJ->f31f8[slot], byte);
+    WR8(OBJ->hitbox_dx[slot], 0);
+    WR8(OBJ->hitbox_dy[slot], 0);
+    state = INC8(OBJ->state[slot]);
+    return ended_of_record(byte, state, carry);
+}
+
+void abi_LoadObjectRecordFromTable(void)
+{
+    abi_ended(LoadObjectRecordFromTable(cpu.x));
+}
+
+/*
+ * @routine 117C:15D LaunchWithSoundThenDrift
+ * @run 70:B95D
+ * WHAT IT DOES: In state 0 it plays sound $25, loads its record, sets its Y speed (high byte) to $F5, moves along Y
+ * and takes an X speed from a table of two words at overlay address $B992 by its facing. In any other state it steps
+ * the frame list at overlay address $B996 and moves along X.
+ * HOW: SoundCommand, LoadObjectRecord, ApplyVelocityY; or StepObjectFrames and ApplyVelocityX as a tail jump.
+ * WAITS: no.
+ * Entry: X object, Y kept to the frame step, D clear. Exit: state 0: A the X speed's low byte, N, Z from it, C 0,
+ * V from ApplyVelocityY, Y the facing index; later A, N, Z, C, V from ApplyVelocityX, Y the step's.
+ */
+SoundEnd LaunchWithSoundThenDrift(uint8_t slot, uint8_t entry_y)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    uint8_t state = RD8(OBJ->state[slot]);
+    uint8_t last, nz, y, value, exit_y, facing;
+    bool carry;
+    FrameStep step;
+    AxisMove move;
+    Ended e;
+
+    if (state != 0) {
+        WR8(ZP->temp10, 0x96);
+        WR8(ZP->temp11, 0xB9);
+        exit_y = entry_y;
+        jsr_push(0xB98F);
+        step = StepObjectFrames(slot, &exit_y);
+        jsr_pop();
+        e = ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+        move = ApplyVelocityX(slot);
+        result.end = ended_then(e, ended_of_axis_move(move));
+        return result;
+    }
+    result.sounded = true;
+    result.command = 0x25;
+    result.before = ended_then(ended_load(state), ended_load(0x25));
+    jsr_push(0xB967);
+    result.call = SoundCommand(0x25, slot, entry_y);
+    jsr_pop();
+    jsr_push(0xB96A);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->vy_hi[slot], 0xF5);
+    e = ended_then(e, ended_load(0xF5));
+    jsr_push(0xB972);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    facing = RD8(OBJ->facing_left[slot]);
+    y = (uint8_t)(facing << 1);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB993 + y)));
+    value = rd8((uint16_t)(0xB992 + y));
+    WR8(OBJ->vx_lo[slot], value);
+    result.end = ended_then(e, ended_with_y(ended_with_carry(ended_load(value), (facing & 0x80) != 0), y));
+    return result;
+}
+
+void abi_LaunchWithSoundThenDrift(void)
+{
+    abi_sound_end(LaunchWithSoundThenDrift(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 1173:2E0 SwingOnCosineThenLeapAtPlayer
+ * @run 6C:92E0
+ * WHAT IT DOES: Steps the frame list at overlay address $9346, gives itself a Y speed of the cosine of its life_timer
+ * angle (speed $0040), moves along Y, counts the angle up and moves along X. When the player is nearer than $60
+ * along X, one time in 128 (a random byte below 2) it picks a leap from a table of four byte rows at overlay address
+ * $934F by three random bits (X low, X high, Y low, Y high), reverses the X speed when it faces left and moves on
+ * a state.
+ * HOW: StepObjectFrames, ScaleByCosine, ApplyVelocityY, ApplyVelocityX, DistanceXToPlayer, NextRandom twice,
+ * NegateVelocityX.
+ * WAITS: no.
+ * Entry: X object, Y kept to the frame step, D clear. Exit: as the last test, add or call left them: after a leap
+ * A, N, Z from the new state.
+ */
+Ended SwingOnCosineThenLeapAtPlayer(uint8_t slot, uint8_t entry_y)
+{
+    uint8_t exit_y = entry_y, angle, value, y, facing, state;
+    FrameStep step;
+    AxisMove move;
+    PlayerDistance distance;
+    RandomResult first, second;
+    Ended e;
+
+    WR8(ZP->temp11, 0x93);
+    WR8(ZP->temp10, 0x46);
+    jsr_push(0x92EB);
+    step = StepObjectFrames(slot, &exit_y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+    WR8(ZP->temp00, 0x40);
+    WR8(ZP->temp01, 0);
+    angle = RD8(OBJ->life_timer[slot]);
+    jsr_push(0x92F9);
+    ScaleByCosine(angle);
+    jsr_pop();
+    value = RD8(ZP->product.hi);
+    WR8(OBJ->vy_hi[slot], value);
+    e = ended_then(e, ended_with_y(ended_load(value), 0));
+    value = RD8(ZP->product.mid);
+    WR8(OBJ->vy_lo[slot], value);
+    e = ended_then(e, ended_load(value));
+    jsr_push(0x9306);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    value = INC8(OBJ->life_timer[slot]);
+    e = ended_then(e, ended_nz(value));
+    jsr_push(0x930C);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    jsr_push(0x930F);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x60));
+    if (distance.distance >= 0x60) {
+        return e;
+    }
+    jsr_push(0x9316);
+    first = NextRandom();
+    jsr_pop();
+    e = ended_then(ended_then(e, ended_of_random(first)), ended_compare(first.value, 2));
+    if (first.value >= 2) {
+        return e;
+    }
+    jsr_push(0x931D);
+    second = NextRandom();
+    jsr_pop();
+    y = (uint8_t)((second.value & 7) << 2);
+    e = ended_then(ended_then(e, ended_of_random(second)), ended_with_y(ended_with_carry(ended_load(y), false), y));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0x934F + y)));
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0x9350 + y)));
+    WR8(OBJ->vy_lo[slot], rd8((uint16_t)(0x9351 + y)));
+    value = rd8((uint16_t)(0x9352 + y));
+    WR8(OBJ->vy_hi[slot], value);
+    e = ended_then(e, ended_load(value));
+    facing = RD8(OBJ->facing_left[slot]);
+    e = ended_then(e, ended_load(facing));
+    if (facing != 0) {
+        jsr_push(0x9342);
+        e = ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+        jsr_pop();
+    }
+    state = INC8(OBJ->state[slot]);
+    return ended_then(e, ended_nz(state));
+}
+
+void abi_SwingOnCosineThenLeapAtPlayer(void)
+{
+    abi_ended(SwingOnCosineThenLeapAtPlayer(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 1173:299 StartAtRandomSpeedAndHeight
+ * @run 6C:9299
+ * WHAT IT DOES: Loads the record (LoadObjectRecordFromTable), takes a random life_timer, an X speed and X position
+ * from a table of four byte rows at overlay address $92D4 by one random bit, a Y low byte from a table at $92DC by
+ * two more random bits, and its facing from the side of the player.
+ * HOW: NextRandom twice, SideOfPlayer.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A the side bit and N, Z from it, C from SideOfPlayer's compare (or the second
+ * random's add), V from the random; Y the table index of the Y low byte.
+ */
+Ended StartAtRandomSpeedAndHeight(uint8_t slot)
+{
+    uint8_t y, bit;
+    RandomResult first, second;
+    SideResult side;
+    Ended e;
+
+    jsr_push(0x929C);
+    e = LoadObjectRecordFromTable(slot);
+    jsr_pop();
+    jsr_push(0x929F);
+    first = NextRandom();
+    jsr_pop();
+    WR8(OBJ->life_timer[slot], first.value);
+    y = (uint8_t)((first.value & 1) << 2);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0x92D5 + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0x92D4 + y)));
+    WR8(OBJ->x_hi[slot], rd8((uint16_t)(0x92D7 + y)));
+    WR8(OBJ->x_lo[slot], rd8((uint16_t)(0x92D6 + y)));
+    jsr_push(0x92C2);
+    second = NextRandom();
+    jsr_pop();
+    y = (uint8_t)(second.value & 3);
+    WR8(OBJ->y_lo[slot], rd8((uint16_t)(0x92DC + y)));
+    e = ended_then(e, ended_with_y(ended_of_random(second), y));
+    jsr_push(0x92CE);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(side.sides & 1);
+    WR8(OBJ->facing_left[slot], bit);
+    return ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+}
+
+void abi_StartAtRandomSpeedAndHeight(void)
+{
+    abi_ended(StartAtRandomSpeedAndHeight(cpu.x));
+}
+
+/*
+ * @routine 117B:5AE ChargeWhenPlayerNearB
+ * @run 70:B5AE
+ * WHAT IT DOES: Animates the object facing the player (list 0). On the first screen across and down, when the player
+ * is under $78 pixels away along X it stops its animation, keeps bit 7 of its flags, takes an X speed (high byte) from
+ * a table at overlay address $B5F3 by its facing, a Y speed of 2, sets f36c8 to $48 plus five bits of PlayerDistanceSum
+ * and enters state 4 with step 2.
+ * HOW: StepFramesFacingPlayerD, DistanceXToPlayer, PlayerDistanceSum.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A 2 and N, Z clear, C and V from the add of $48 when it charged; else as the
+ * animation step, the position test or the distance compare left them.
+ */
+Ended ChargeWhenPlayerNearB(uint8_t slot)
+{
+    FrameStepEnd frames;
+    PlayerDistance distance;
+    Sum sum;
+    uint8_t both, flags, facing, value;
+    Ended e;
+
+    jsr_push(0xB5B2);
+    frames = StepFramesFacingPlayerD(slot, 0);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 0), frames.end);
+    both = RD8(OBJ->x_hi[slot]);
+    both = (uint8_t)(both | RD8(OBJ->y_hi[slot]));
+    e = ended_then(e, ended_load(both));
+    if (both != 0) {
+        return e;
+    }
+    jsr_push(0xB5BD);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x78));
+    if (distance.distance >= 0x78) {
+        return e;
+    }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    flags = (uint8_t)(RD8(OBJ->flags[slot]) & 0x80);
+    WR8(OBJ->flags[slot], flags);
+    facing = RD8(OBJ->facing_left[slot]);
+    value = rd8((uint16_t)(0xB5F3 + facing));
+    WR8(OBJ->vx_hi[slot], value);
+    WR8(OBJ->vy_hi[slot], 2);
+    jsr_push(0xB5E0);
+    sum = PlayerDistanceSum(slot, false);
+    jsr_pop();
+    sum = add_bytes((uint8_t)(sum.value & 0x1F), 0x48, false);
+    WR8(OBJ->f36c8[slot], sum.value);
+    WR8(OBJ->state[slot], 4);
+    WR8(OBJ->f2800[slot], 2);
+    return ended_with_y(ended_then(e, ended_with_overflow(ended_with_carry(ended_load(2), sum.carry), sum.overflow)), facing);
+}
+
+void abi_ChargeWhenPlayerNearB(void)
+{
+    abi_ended(ChargeWhenPlayerNearB(cpu.x));
+}

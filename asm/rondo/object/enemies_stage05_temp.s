@@ -141,6 +141,94 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0938:7F2 SelectRasterStage1
 ; @run 6F:BFF2
 ; WHAT IT DOES: Sets the stage value the raster effect tests to 1.
@@ -1204,4 +1292,328 @@ SoundEveryFourthFrame:
     lda #$22
     jsr VecSoundCommand
 SoundEveryFourthFrame_at0:
+    rts
+
+; @routine 093C:474 CountdownSoundThenFollowParent
+; @run 70:BC74
+; WHAT IT DOES: Counts f3510 down; at zero it plays sound $25, sets f3250 to 2, stops its
+; animation and advances its step. Then, every frame, it goes on as FollowParentYAndLeave.
+; HOW: A decrement, SoundCommand, FollowParentYAndLeave as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as FollowParentYAndLeave.
+CountdownSoundThenFollowParent:
+    dec a:OBJ_3510,x
+    bne CountdownSoundThenFollowParent_at0
+    lda #$25
+    jsr VecSoundCommand
+    lda #$02
+    sta a:OBJ_3250,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_27A8,x
+CountdownSoundThenFollowParent_at0:
+    jmp FollowParentYAndLeave
+
+; @routine 093C:39A AnimateThenNumberGroupAndLeave
+; @run 70:BB9A
+; WHAT IT DOES: Steps the frame list picked by bit 0 of f3618 (two pointers at overlay address
+; $BBE5). When the list has ended it numbers the group it belongs to: from the slot in f37d0 up to
+; f3828, each object of kind $26 below state 4 gets its place in the group in next_kind and the
+; group's first slot in f37d0. Then it removes itself.
+; HOW: StepObjectFrames, a loop over the slots, ClearObject.
+; WAITS: no.
+; Entry: X object, D clear. Exit: when the list went on, as StepObjectFrames; when it ended, A, N, Z,
+; C from the loop's last compare and Y the end slot (X kept); clobbers zTemp00, zTemp01, zTemp03.
+AnimateThenNumberGroupAndLeave:
+    lda a:OBJ_3618,x
+    and #$01
+    asl a
+    tay
+    lda a:$BBE5,y
+    sta z:zTemp10
+    lda a:$BBE6,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne AnimateThenNumberGroupAndLeave_at0
+    ldy a:OBJ_37D0,x
+    stz z:zTemp00
+    lda a:OBJ_3828,x
+    sta z:zTemp01
+    inc z:zTemp01
+    lda a:OBJ_2750,y
+    cmp #$26
+    bne AnimateThenNumberGroupAndLeave_at1
+    lda a:OBJ_27A8,y
+    cmp #$04
+    bcs AnimateThenNumberGroupAndLeave_at1
+    lda z:zTemp00
+    bne AnimateThenNumberGroupAndLeave_at2
+    sty z:zTemp03
+AnimateThenNumberGroupAndLeave_at2:
+    lda z:zTemp00
+    sta a:OBJ_3040,y
+    lda z:zTemp03
+    sta a:OBJ_37D0,y
+    inc z:zTemp00
+AnimateThenNumberGroupAndLeave_at1:
+    iny
+    cpy z:zTemp01
+    bcc StartWithRecordTableRow
+    jsr VecClearObject
+AnimateThenNumberGroupAndLeave_at0:
+    rts
+
+; @routine 093D:02B AnimateMoveThenSetUpAtRandom
+; @run 71:C02B
+; WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+; down; at zero it plays sound $93, picks a speed and turn (PickSpeedAndTurnFromTableC), sets
+; f36c8 to $18 plus seven random bits, stops its animation and advances its step.
+; HOW: StepFramesFacingPlayerC, ApplyVelocity, a decrement, then the calls named.
+; WAITS: no.
+; Entry: X object, D clear. Exit: while counting, N, Z from the timer, C and V from ApplyVelocity,
+; Y as the animation step left it; at zero A the timer value, N, Z from the new step, C and V from
+; the add of $18.
+AnimateMoveThenSetUpAtRandom:
+    ldy #$04
+    jsr StepFramesFacingPlayerC
+    jsr VecApplyVelocity
+    dec a:OBJ_34B8,x
+    bne AnimateMoveThenSetUpAtRandom_at0
+    lda #$93
+    jsr VecSoundCommand
+    jsr PickSpeedAndTurnFromTableC
+    jsr VecNextRandom
+    and #$7F
+    clc
+    adc #$18
+    sta a:OBJ_36C8,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+AnimateMoveThenSetUpAtRandom_at0:
+    rts
+
+; @routine 093D:6A4 FollowPreviousPieceB
+; @run 71:C6A4
+; WHAT IT DOES: FollowPreviousPiece with the frame base $27 and its row table at overlay address $C71B.
+; HOW: The shared body.
+; WAITS: no.
+; Entry, exit: as FollowPreviousPiece.
+FollowPreviousPieceB:
+    lda a:OBJ_27A8,x
+    bne FollowPreviousPieceB_at0
+    jmp VecLoadObjectRecord
+FollowPreviousPieceB_at0:
+    txa
+    tay
+    dey
+    jsr VecCopyObjectPlaceBack
+    lda a:$324F,x
+    sta a:OBJ_3250,x
+    lda a:$2A67,x
+    sec
+    sbc #$27
+    cmp #$13
+    bcc FollowPreviousPieceB_at1
+    lda #$13
+FollowPreviousPieceB_at1:
+    asl a
+    asl a
+    tay
+    lda a:$C71B,y
+    sta a:OBJ_3930,x
+    lda a:$C71C,y
+    sta a:OBJ_39E0,x
+    lda a:$C71D,y
+    sta a:OBJ_3988,x
+    lda a:$C71E,y
+    sta a:OBJ_3A38,x
+    lda a:$2ABF,x
+    sta a:OBJ_2AC0,x
+    rts
+
+; @routine 093C:417 StartSidewaysAndSpawn29
+; @run 70:BC17
+; WHAT IT DOES: Loads the record, sets f3510 to $28, reverses its X speed when it faces left, moves along X
+; and takes its speeds from a table of eight-byte rows at overlay address $BC64 (X high, X low, Y high, Y low
+; pairs by facing) picked by life_timer; then starts an object of type $29 at its place from a free slot from
+; $50, which takes its f3568.
+; HOW: LoadObjectRecord, NegateVelocityX, ApplyVelocityX, FindFreeSlotFrom50, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the copied f3568 and N, Z from it, C 1, Y the new slot, V from the table
+; index add; with no free slot, as FindFreeSlotFrom50 left them.
+StartSidewaysAndSpawn29:
+    jsr VecLoadObjectRecord
+    lda #$28
+    sta a:OBJ_3510,x
+    lda a:OBJ_2AC0,x
+    beq StartSidewaysAndSpawn29_at0
+    jsr VecNegateVelocityX
+StartSidewaysAndSpawn29_at0:
+    jsr VecApplyVelocityX
+    lda a:OBJ_34B8,x
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_2AC0,x
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$BC65,y
+    sta a:OBJ_VX_HI,x
+    lda a:$BC64,y
+    sta a:OBJ_VX_LO,x
+    lda a:$BC67,y
+    sta a:OBJ_VY_HI,x
+    lda a:$BC66,y
+    sta a:OBJ_VY_LO,x
+    jsr VecFindFreeSlotFrom50
+    bcc StartSidewaysAndSpawn29_at1
+    lda #$29
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_3568,x
+    sta a:OBJ_3568,y
+StartSidewaysAndSpawn29_at1:
+    rts
+
+; @routine 093C:4FD StartSidewaysAndSpawn29B
+; @run 70:BCFD
+; WHAT IT DOES: Loads the record, sets f3510 to $40, reverses its X speed when it faces left and moves along X;
+; starts an object of type $29 at its place from a free slot from $50 (when there is one), with life_timer 1 and
+; this object's f3568; then takes an X speed (high byte) from a table at overlay address $BD32 by its facing and
+; moves along X again.
+; HOW: LoadObjectRecord, NegateVelocityX, ApplyVelocityX, FindFreeSlotFrom50, StartObjectAtPlace, ApplyVelocityX.
+; The reversal ran in no script: the draft stops there, so liftcmp does not judge it.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C, V from the last ApplyVelocityX; Y the facing.
+StartSidewaysAndSpawn29B:
+    jsr VecLoadObjectRecord
+    lda #$40
+    sta a:OBJ_3510,x
+    lda a:OBJ_2AC0,x
+    beq StartSidewaysAndSpawn29B_at0
+    jsr VecNegateVelocityX
+StartSidewaysAndSpawn29B_at0:
+    jsr VecApplyVelocityX
+    jsr VecFindFreeSlotFrom50
+    bcc StartSidewaysAndSpawn29B_at1
+    lda #$29
+    jsr VecStartObjectAtPlace
+    lda #$01
+    sta a:OBJ_34B8,y
+    lda a:OBJ_3568,x
+    sta a:OBJ_3568,y
+StartSidewaysAndSpawn29B_at1:
+    ldy a:OBJ_2AC0,x
+    lda a:$BD32,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    rts
+
+; @routine 093D:619 BurstIntoEightPieces
+; @run 71:C619
+; WHAT IT DOES: Empties the slot after its own, then starts up to eight objects of type $34 at its place, each from
+; a free slot from $30, with its facing and, from a table of six-byte rows at overlay address $C674 by the piece
+; number, its life_timer, f3510, X speed and Y speed; it stops at the first piece that finds no slot. Then it becomes
+; kind $9C in state 0.
+; HOW: ClearObjectInY, a loop of FindFreeSlotFrom30 and StartObjectAtPlace; the piece number is kept in zHitSlot and
+; the object in zRichterObject while the table is read.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A $9C, N set, Z clear; C and Y from the last compare or slot search.
+BurstIntoEightPieces:
+    txa
+    tay
+    iny
+    jsr VecClearObjectInY
+    cly
+BurstIntoEightPieces_at1:
+    sty z:zHitSlot
+    jsr VecFindFreeSlotFrom30
+    bcc BurstIntoEightPieces_at0
+    lda #$34
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_2AC0,y
+    stx z:zRichterObject
+    lda z:zHitSlot
+    asl a
+    sta z:zTemp00
+    asl a
+    clc
+    adc z:zTemp00
+    tax
+    lda a:$C674,x
+    sta a:OBJ_34B8,y
+    lda a:$C675,x
+    sta a:OBJ_3510,y
+    lda a:$C676,x
+    sta a:OBJ_VX_HI,y
+    lda a:$C677,x
+    sta a:OBJ_VX_LO,y
+    lda a:$C678,x
+    sta a:OBJ_VY_HI,y
+    lda a:$C679,x
+    sta a:OBJ_VY_LO,y
+    ldx z:zRichterObject
+    ldy z:zHitSlot
+    iny
+    cpy #$08
+    bcc BurstIntoEightPieces_at1
+BurstIntoEightPieces_at0:
+    lda #$9C
+    sta a:OBJ_2750,x
+    stz a:OBJ_27A8,x
+    rts
+
+; @routine 093C:12E StartGroupThenThrow
+; @run 70:B92E
+; WHAT IT DOES: Loads the record. When bit 7 of next_kind is clear, next_kind is the number of followers: it
+; starts that many objects of type $26 in the slots after its own, each numbered from $81 in next_kind and
+; given this object's slot in f37d0 and the group's last slot in f3828 (this object's f37d0 is its own slot,
+; f3828 its slot plus the count). Then it clears bit 7 of next_kind, faces opposite to bit 0 of it, and runs
+; ThrowByNextKind, PickTimersAtRandom and PickAngleAtRandom.
+; HOW: LoadObjectRecord, a loop of ClearObjectInY and StartObjectAtPlace, then the three calls.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as PickAngleAtRandom.
+StartGroupThenThrow:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_3040,x
+    bmi StartGroupThenThrow_at0
+    txa
+    sta a:OBJ_37D0,x
+    clc
+    adc a:OBJ_3040,x
+    sta a:OBJ_3828,x
+    txa
+    tay
+    iny
+    lda #$81
+    sta z:zTemp00
+StartGroupThenThrow_at1:
+    jsr VecClearObjectInY
+    lda #$26
+    jsr VecStartObjectAtPlace
+    lda z:zTemp00
+    sta a:OBJ_3040,y
+    txa
+    sta a:OBJ_37D0,y
+    lda a:OBJ_3828,x
+    sta a:OBJ_3828,y
+    inc z:zTemp00
+    iny
+    dec a:OBJ_3040,x
+    bne StartGroupThenThrow_at1
+StartGroupThenThrow_at0:
+    lda a:OBJ_3040,x
+    and #$7F
+    sta a:OBJ_3040,x
+    and #$01
+    eor #$01
+    sta a:OBJ_2AC0,x
+    jsr ThrowByNextKind
+    jsr PickTimersAtRandom
+    jsr PickAngleAtRandom
     rts

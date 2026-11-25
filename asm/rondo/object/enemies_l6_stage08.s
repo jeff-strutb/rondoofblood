@@ -487,6 +487,24 @@ SpeedBySideOfScreen:
     stz a:OBJ_VX_LO,x
     jmp VecApplyVelocity
 
+; @routine 088B:25B NearPlayerThenPlaceOrState11
+; @run 70:B25B
+; WHAT IT DOES: When the player is within $60 along X and $A0 along Y the object goes on as SpeedBySideOfScreen; otherwise it goes to state $0B.
+; HOW: DistanceXToPlayer, DistanceYToPlayer, a tail jump into SpeedBySideOfScreen, a store.
+; WAITS: no.
+; Entry: X object. Exit: as SpeedBySideOfScreen, or A $0B.
+NearPlayerThenPlaceOrState11:
+    jsr VecDistanceXToPlayer
+    cmp #$60
+    bcs NearPlayerThenPlaceOrState11_at0
+    jsr VecDistanceYToPlayer
+    cmp #$A0
+    bcc SpeedBySideOfScreen
+NearPlayerThenPlaceOrState11_at0:
+    lda #$0B
+    sta a:OBJ_27A8,x
+    rts
+
 ; @routine 088B:285 SoundThenAimRandomLength
 ; @run 70:B285
 ; WHAT IT DOES: Sends sound $2B, then sets the object's speed along the angle to the player with a length from a table at $B2A7 by a random 0 to 3, and goes on to the next OBJ_2800.

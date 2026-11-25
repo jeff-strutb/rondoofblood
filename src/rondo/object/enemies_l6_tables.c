@@ -1032,3 +1032,96 @@ void abi_JumpByPhaseTable088B06C(void)
 
     jump_shim(jump.end, jump.target);
 }
+
+/*
+ * @routine 025B:545 JumpByStateTable025B545
+ * @run 70:B545
+ * WHAT IT DOES: Goes to the code a table at $B557 names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTable025B545(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xB557 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB558 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTable025B545(void)
+{
+    Jump jump = JumpByStateTable025B545(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 0B4B:64C JumpByStateTable0B4B64C
+ * @run 70:B64C
+ * WHAT IT DOES: Goes to the code a table at $B65E names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTable0B4B64C(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xB65E + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB65F + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTable0B4B64C(void)
+{
+    Jump jump = JumpByStateTable0B4B64C(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 0F6B:3EC JumpByStateTable0F6B3EC
+ * @run 70:B3EC
+ * WHAT IT DOES: Goes to the code a table at $B3FE names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTable0F6B3EC(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xB3FE + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB3FF + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTable0F6B3EC(void)
+{
+    Jump jump = JumpByStateTable0F6B3EC(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}

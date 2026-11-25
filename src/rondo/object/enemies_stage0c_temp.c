@@ -1069,6 +1069,108 @@ void abi_FlickerAndStartPieces(void)
 }
 
 /*
+ * @routine 0CAD:0BC ShatterOnHits
+ * @run 71:C0BC
+ * @stop C11F
+ * WHAT IT DOES: An object that breaks into a piece when hit often. State 0 loads its record and sets sprite set 6, frame 1 and X speed high 4. Once its hits taken reach 5 it
+ * records its event, takes a kind from the table at $C160 by the player's stock (at most 4), clears its state, speeds and parts, sets Y speed high $FB and its timer
+ * to $16 and starts a kind $9B object at its place from a free slot from $50. Before that it steps the part list (StepPartList) in state 1 and
+ * goes on at $C11F once the scroll X low is $80 or more; other states go on at $C135 (neither ever ran in a script).
+ * HOW: LoadObjectRecord, RecordObjectEvent, FindFreeSlotFrom50, StartObjectAtPlace, StepPartList.
+ * WAITS: no.
+ * Entry: X object. Exit: see the wrapper.
+ */
+Jump ShatterOnHits(uint8_t slot)
+{
+    uint8_t state, hits, y, nz, last, stored, event, byte, kind, found_slot, found_last;
+    bool carry, marked, found;
+    Jump jump = { ended_kept(), 0, false };
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        jsr_push(0xC0C4);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->sprite_set[slot], 6);
+        WR8(OBJ->frame[slot], 1);
+        WR8(OBJ->vx_hi[slot], 4);
+        jump.end = then(ended_of_record(last, nz, carry), ended_load(4));
+        return jump;
+    }
+    hits = RD8(OBJ->hit_taken[slot]);
+    e = then(ended_load(state), then(ended_load(hits), ended_compare(hits, 5)));
+    if (hits >= 5) {
+        jsr_push(0xC0DE);
+        marked = RecordObjectEvent(slot, &stored, &event, &byte);
+        jsr_pop();
+        e = then(e, ended_of_object_event_stage(marked, stored, event, byte));
+        y = RD8(ZP->stock);
+        e = then(e, ended_with_y(ended_nz(y), y));
+        e = then(e, cpy(y, 4));
+        if (y >= 4) {
+            y = 4;
+            e = then(e, ended_with_y(ended_nz(4), 4));
+        }
+        kind = rd8((uint16_t)(0xC160 + y));
+        WR8(OBJ->kind[slot], kind);
+        e = then(e, ended_load(kind));
+        WR8(OBJ->state[slot], 0);
+        WR8(OBJ->vx_hi[slot], 0);
+        WR8(OBJ->vx_lo[slot], 0);
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->vy_hi[slot], 0xFB);
+        WR8(OBJ->vy_lo[slot], 0);
+        WR8(OBJ->timer[slot], 0x16);
+        e = then(e, ended_load(0x16));
+        jsr_push(0xC10B);
+        found_slot = FindFreeSlotFrom50(&found_last, &found);
+        jsr_pop();
+        e = then(e, ended_of_find_slot(found_slot, found_last, found));
+        if (!found) {
+            jump.end = e;
+            jump.target = 0xC15F;
+            jump.jumps = true;
+            return jump;
+        }
+        e = then(e, ended_load(0x9B));
+        jump.end = then(e, ended_with_y(ended_load(StartObjectAtPlace(0x9B, slot, found_slot)), found_slot));
+        return jump;
+    }
+    state = RD8(OBJ->state[slot]);
+    e = then(e, ended_load(state));
+    state--;
+    e = then(e, ended_load(state));
+    if (state != 0) {
+        jump.end = e;
+        jump.target = 0xC135;
+        jump.jumps = true;
+        return jump;
+    }
+    jsr_push(0xC11A);
+    e = then(e, StepPartList(slot));
+    jsr_pop();
+    state = rd8(ScrollXLo);
+    e = then(e, ended_load(state));
+    jump.end = e;
+    jump.target = (state & 0x80) == 0 ? 0xC15F : 0xC11F;
+    jump.jumps = true;
+    return jump;
+}
+
+void abi_ShatterOnHits(void)
+{
+    Jump jump = ShatterOnHits(cpu.x);
+
+    if (jump.jumps) {
+        jump_shim(jump.end, jump.target);
+    } else {
+        abi_ended(jump.end);
+    }
+}
+
+/*
  * @routine 0CAD:12A StepPartList
  * @run 71:C12A
  * WHAT IT DOES: Steps the animation list at $C196.

@@ -1,3 +1,48 @@
+; @routine 010D:000 EndingStep
+; @run 6B:8000
+; WHAT IT DOES: One call of the ending's mode: the handler of the sub-mode zGameSubMode names in the table at $8007 (0 begins the ending,
+; 1 runs a frame of it).
+; HOW: Reads zGameSubMode, doubles it and jumps through the table. A word this overlay does not hold runs as the original code.
+; WAITS: yes, through EndingBegin, which waits for the vertical blank.
+; Entry: nothing. Exit: as the handler leaves them.
+EndingStep:
+    lda z:zGameSubMode
+    asl a
+    tax
+    jmp (FrameOverlay8006+1,x)
+
+; @routine 010D:00B EndingBegin
+; @run 6B:800B
+; WHAT IT DOES: Starts the ending: the game state is wiped, the script is set to run from $8AA3, its frame counter to $FFFF and the
+; state goes on.
+; HOW: ResetGameState; the script pointer and the counter are written; zGameSubMode counted up.
+; WAITS: yes, through ResetGameState, which waits for the vertical blank with the display off; the stack there is this routine's
+; return address and the call's.
+; Entry: nothing. Exit: A $FF, X 0, Y $FF, N and Z from the new state; C kept.
+EndingBegin:
+    jsr VecResetGameState
+    lda #$A3
+    sta z:$7E
+    lda #$8A
+    sta z:$7F
+    lda #$FF
+    sta z:zWaitTimer3
+    sta z:zWaitTimer4
+    inc z:zGameSubMode
+    rts
+
+; @routine 010D:01F EndingFrame
+; @run 6B:801F
+; WHAT IT DOES: One frame of the ending: the frame counted, the script's next command run if it is due, and every object run.
+; HOW: EndingFrameTick, EndingScriptStep, EndingObjectsStep.
+; WAITS: no.
+; Entry: nothing. Exit: as EndingObjectsStep.
+EndingFrame:
+    jsr EndingFrameTick
+    jsr EndingScriptStep
+    jsr EndingObjectsStep
+    rts
+
 ; @routine 010D:029 EndingFrameTick
 ; @run 6B:8029
 ; WHAT IT DOES: Counts one frame of the ending scene on its 16-bit frame counter.
@@ -11,6 +56,45 @@ EndingFrameTick:
 EndingFrameTick_at0:
     rts
 
+; @routine 010D:040 EndingScriptAdvance
+; @run 6B:8040
+; WHAT IT DOES: Steps the ending's script past the command it is at, and runs on into EndingScriptStep.
+; HOW: The command byte indexes a table of lengths, which is added to the pointer (the high byte goes up on a carry).
+; WAITS: no.
+; Entry: nothing. Exit: as EndingScriptStep, X the command stepped past (when EndingScriptStep left X alone), V from the pointer's add
+; (when it set none).
+EndingScriptAdvance:
+    lda ($7E)
+    tax
+    lda a:TitleSteps+2,x
+    clc
+    adc z:$7E
+    sta z:$7E
+    bcc EndingScriptStep
+    inc z:$7F
+
+; @routine 010D:04F EndingScriptStep
+; @run 6B:804F
+; WHAT IT DOES: Runs the ending's script command if its time has come: the two time bytes after the command byte equal the frame counter.
+; HOW: Compares the first time byte with zWaitTimer3 and the second with zWaitTimer4 and returns on a difference; otherwise the
+; command, doubled, indexes the table at $806A and it is jumped to with X the doubled command and Y 3.
+; WAITS: no.
+; Entry: nothing. Exit, a time byte differs: A that byte, N, Z and C from comparing it, Y 1 or 2, X kept. Otherwise as the command leaves them.
+EndingScriptStep:
+    ldy #$01
+    lda ($7E),y
+    cmp z:zWaitTimer3
+    bne $8028
+    iny
+    lda ($7E),y
+    cmp z:zWaitTimer4
+    bne $8028
+    lda ($7E)
+    asl a
+    tax
+    ldy #$03
+    jmp ($806A,x)
+
 ; @routine 010D:067 EndingModeDoneBack
 ; @run 6B:8067
 ; WHAT IT DOES: Takes one back off zModeDone.
@@ -20,6 +104,57 @@ EndingFrameTick_at0:
 EndingModeDoneBack:
     dec z:zModeDone
     rts
+
+; @routine 010D:131 EndingClearObjects
+; @run 6B:8131
+; WHAT IT DOES: Empties all 88 object slots.
+; HOW: Sets X to 0 and runs into a loop of ClearObject.
+; WAITS: no.
+; Entry: nothing. Exit: X $58, C and Z set, N clear; A and Y kept.
+EndingClearObjects:
+    clx
+EndingClearObjects_at0:
+    jsr VecClearObject
+    inx
+    cpx #$58
+    bne EndingClearObjects_at0
+    rts
+
+; @routine 010D:1DA EndingObjectsStep
+; @run 6B:81DA
+; WHAT IT DOES: Runs every object of the ending scene that has a kind: a loop over the 88 slots, each with a kind sent to its handler.
+; HOW: OBJ->kind read for each slot; EndingDispatchKind for the ones that are not zero.
+; WAITS: no.
+; Entry: nothing. Exit: X $58, N and Z clear... Z set, C set (the loop's last compare); A the last slot's kind or what its handler left;
+; Y and V as the last handler left them.
+EndingObjectsStep:
+    clx
+EndingObjectsStep_at1:
+    lda a:OBJ_2750,x
+    beq EndingObjectsStep_at0
+    jsr EndingDispatchKind
+EndingObjectsStep_at0:
+    inx
+    cpx #$58
+    bne EndingObjectsStep_at1
+    rts
+
+; @routine 010D:1E9 EndingDispatchKind
+; @run 6B:81E9
+; WHAT IT DOES: Sends an object to the handler its kind names: the table at $81F9 holds one address per kind, kind 1 first.
+; HOW: Kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01; the jump is made with A the word's high
+; byte, Y the index, C bit 7 of kind less one, X the object.
+; WAITS: no.
+; Entry: A the kind (not zero), X the object. Exit: as the handler leaves them.
+EndingDispatchKind:
+    dec a
+    asl a
+    tay
+    lda a:$81F9,y
+    sta z:zTemp00
+    lda a:$81FA,y
+    sta z:zTemp01
+    jmp (ZeroPage)
 
 ; @routine 010D:239 EndingCreditScrollStart
 ; @run 6B:8239

@@ -151,10 +151,11 @@ RasterEndBand1_at0:
 ; @ends 4287
 ; WHAT IT DOES: Ends a raster interrupt, with interrupts back on for the next.
 ; HOW: CLI, then the frame interrupt's exit.
+; WAITS: no.
 ; Entry: from a raster effect. Exit: to that exit.
 RasterDone:
     cli
-    jmp FrameInterrupt_at2
+    jmp FrameInterruptExit
 
 ; @routine 0043:532 RasterEndWorkBand
 ; @run 69:4532

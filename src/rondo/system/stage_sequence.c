@@ -16,6 +16,9 @@ enum {
 /* The registers and flags a stage routine's exit sets; what its set mask does not name stays as it was. */
 void stage_exit_shim(StageExit end)
 {
+    if ((end.set & EXIT_CPU) != 0) {
+        return;
+    }
     cpu.a = end.a;
     abi_nz(end.nz);
     if ((end.set & EXIT_X) != 0) {

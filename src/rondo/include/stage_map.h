@@ -12,7 +12,7 @@ void StageWaitTimerToStep2(void);
 /* system/stage_setup.c */
 void ClearStageStateBytes(void);
 Sum SaveAndMapStageBanks(void);  /* the add that mapped the second bank: C and V at exit */
-void MapStageBanks(void);
+Sum MapStageBanks(void);
 uint8_t RestoreStageBanks(void);
 
 /* object/hitbox_position.c: A at exit, the last value the loop had in A. */
@@ -194,9 +194,15 @@ BlendStepEnd BlendStageScoreRows(uint8_t x);
 BlendStepEnd BlendStageScoreRowsLong(uint8_t x);
 
 /* system/stage_sequence.c: the registers and flags a stage routine with several exits sets; the set mask names which; N and Z are those of nz, which a compare leaves as its difference. */
-enum { EXIT_X = 1, EXIT_Y = 2, EXIT_C = 4, EXIT_V = 8 };
+enum { EXIT_X = 1, EXIT_Y = 2, EXIT_C = 4, EXIT_V = 8, EXIT_CPU = 16 };
 typedef struct { uint8_t a; uint8_t x; uint8_t y; bool c; bool v; uint8_t nz; uint8_t set; } StageExit;
 void stage_exit_shim(StageExit end);
 StageExit StepStageSequence(uint8_t x, uint8_t y);
+
+StageExit StageScriptByWave(void);
+StageExit SetHealthBarAddress(void);
+StageExit SetHealthBarAddressLong(void);
+StageExit StepStageFrame(uint8_t x, uint8_t y);
+StageExit StepStageFrameLong(uint8_t x, uint8_t y);
 
 #endif

@@ -61,9 +61,9 @@ static void map_exit_shim(Sum sum)
  * Entry: nothing. Exit: A the MPR6 bank, flags from the add and the increment (C and V from
  * the add, N and Z from A). X and Y kept.
  */
-void MapStageBanks(void)
+Sum MapStageBanks(void)
 {
-    map_stage_banks();
+    return map_stage_banks();
 }
 
 void abi_MapStageBanks(void)

@@ -1136,3 +1136,100 @@ void abi_LoadThenStepListBreakAtFive(void)
 {
     abi_sound_end(LoadThenStepListBreakAtFive(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 051B:3E2 WalkTurnOrJumpOnLanding
+ * @run 70:B3E2
+ * WHAT IT DOES: When OBJ_3568's low five bits are zero and the player is within $24 along X and $1C along Y, the object faces the player's side (bit 0 of SideOfPlayer) in OBJ_35C0, clears its animation step and timer and goes to state 3. Otherwise it steps the animation list at $B45E and, on a changed frame, asks MoveAndLand with a probe height of 4: a wall hit gives it a Y speed of $FC80 and X speed of $FF00 and state 1; a floor stop clears its speeds; both clear the animation step and timer, with OBJ_2800 0 or 1.
+ * HOW: DistanceXToPlayer, DistanceYToPlayer, SideOfPlayer, StepObjectFrames, MoveAndLand, stores.
+ * WAITS: no.
+ * Entry: X object, Y the column kept unless the step sets it. Exit: see the wrapper.
+ */
+MoveWait WalkTurnOrJumpOnLanding(uint8_t slot, uint8_t y_entry)
+{
+    MoveWait r = { { 0 }, false, { 0 }, { 0 } };
+    PlayerDistance distance;
+    SideResult side;
+    FrameStep step;
+    uint8_t y = y_entry, low, bits, hits;
+    bool wall;
+    Ended e;
+
+    low = (uint8_t)(RD8(OBJ->f3568[slot]) & 0x1F);
+    e = ended_load(low);
+    if (low == 0) {
+        jsr_push(0xB3EC);
+        distance = DistanceXToPlayer(slot);
+        jsr_pop();
+        e = then(then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x24));
+        if (distance.distance < 0x24) {
+            jsr_push(0xB3F3);
+            distance = DistanceYToPlayer(slot);
+            jsr_pop();
+            e = then(then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x1C));
+            if (distance.distance < 0x1C) {
+                jsr_push(0xB3FA);
+                side = SideOfPlayer(slot);
+                jsr_pop();
+                bits = (uint8_t)(side.sides & 0x01);
+                WR8(OBJ->angle_lo[slot], bits);
+                WR8(OBJ->anim_step[slot], 0);
+                WR8(OBJ->anim_timer[slot], 0);
+                WR8(OBJ->state[slot], 3);
+                r.pre = then(then(then(e, ended_of_side(side)), ended_load(bits)), ended_load(3));
+                return r;
+            }
+        }
+    }
+    WR8(ZP->temp10, 0x5E);
+    WR8(ZP->temp11, 0xB4);
+    jsr_push(0xB416);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(then(then(e, ended_load(0x5E)), ended_load(0xB4)), ended_of_frame_step(step, step != FRAME_HELD, y));
+    if (step != FRAME_CHANGED) {
+        r.pre = e;
+        return r;
+    }
+    jsr_push(0xB41D);
+    r.mover = MoveAndLand(4, slot, y, true);
+    jsr_pop();
+    r.asked = true;
+    hits = r.mover.hits;
+    wall = mover_walled(r.mover);
+    if (wall) {
+        WR8(OBJ->vy_hi[slot], 0xFC);
+        WR8(OBJ->vy_lo[slot], 0x80);
+        WR8(OBJ->vx_hi[slot], 0xFF);
+        WR8(OBJ->vx_lo[slot], 0);
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 1);
+        WR8(OBJ->f2800[slot], 0);
+        r.end = ended_load(1);
+        return r;
+    }
+    r.end = ended_load((uint8_t)(hits & 0x01));
+    if ((hits & 0x01) != 0) {
+        return r;
+    }
+    WR8(OBJ->vx_hi[slot], 0);
+    WR8(OBJ->vx_lo[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->state[slot], 1);
+    WR8(OBJ->f2800[slot], 1);
+    r.end = ended_load(1);
+    return r;
+}
+
+void abi_WalkTurnOrJumpOnLanding(void)
+{
+    MoveWait r = WalkTurnOrJumpOnLanding(cpu.x, cpu.y);
+
+    abi_ended(r.pre);
+    if (r.asked) {
+        mover_exit_shim(r.mover, 0x02);
+    }
+    abi_ended(r.end);
+}

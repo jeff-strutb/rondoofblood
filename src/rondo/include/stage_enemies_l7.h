@@ -542,6 +542,14 @@ SoundPlayEnd RiseThenCueMusic(uint8_t slot, uint8_t y_entry);
 SoundEnd LoadThenStepListBreakAtFive(uint8_t slot, uint8_t y_entry);
 Ended FollowBlockWhileState5(uint8_t slot);
 Ended StepListIndex0AThenSpawn(uint8_t slot);
+/* A routine that may ask MoveAndLand: what it left before, the mover, what its instructions left after. */
+typedef struct {
+    Ended pre;
+    bool asked;
+    Mover mover;
+    Ended end;
+} MoveWait;
+MoveWait WalkTurnOrJumpOnLanding(uint8_t slot, uint8_t y_entry);
 Ended NearPlayerThenPlaceOrState11(uint8_t slot);
 LandWait LandThenNextState(uint8_t slot, uint8_t column, bool carry_in);
 SoundEnd SetRasterSpawnThenStepList(uint8_t slot, uint8_t y_entry);

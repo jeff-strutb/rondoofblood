@@ -1690,3 +1690,225 @@ void abi_EndingFlyOff(void)
 {
     object_exit_shim(EndingFlyOff(cpu.x));
 }
+
+/*
+ * @routine 010E:102 EndingDropAndBounce
+ * @run 6B:8902
+ * WHAT IT DOES: An object handler of three stages: the first starts the raster effect $13, sets the scroll's Y slots (1 and 5 to
+ * $2F, 2 and 6 to $AF), picture kind 3, frame 1 and X speed $C0; the second adds $60 to the downward speed each frame and moves
+ * the object until its Y is $60 or more, then fixes it at $60 (Y and X); the third adds $10 to the hold byte each frame and bounces
+ * the object by the sine of it ($07FF scaled) while the byte is not negative, shifting scroll slots 1 and 2 against it;
+ * when it goes negative it fixes the object at Y $60, the slots at $2F and $AF, and moves to the next state.
+ * HOW: OBJ->state; ApplyVelocity; ScaleBySine with zTemp00 and zTemp01 set to $07FF; ZP->product.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingDropAndBounce(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, low, high, sum, timer, product, value;
+    unsigned total;
+    AxisMove move;
+    bool carry;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(ZP->raster_effect, 0x13);
+        WR8(ZP->raster_arg, 0);
+        WR8(SCROLL->y_lo[1], 0x2F);
+        WR8(SCROLL->y_lo[5], 0x2F);
+        WR8(SCROLL->y_lo[2], 0xAF);
+        WR8(SCROLL->y_lo[6], 0xAF);
+        WR8(OBJ->sprite_set[object], 3);
+        WR8(OBJ->frame[object], 1);
+        WR8(OBJ->vx_lo[object], 0xC0);
+        return object_exit(0xC0, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        low = RD8(OBJ->vy_lo[object]);
+        total = (unsigned)low + 0x60;
+        WR8(OBJ->vy_lo[object], (uint8_t)total);
+        high = RD8(OBJ->vy_hi[object]);
+        WR8(OBJ->vy_hi[object], (uint8_t)(high + (total > 0xFF ? 1 : 0)));
+        jsr_push(0x8946);
+        move = ApplyVelocity(object);
+        jsr_pop();
+        low = RD8(OBJ->y_lo[object]);
+        result = with_carry(object_exit(low, (uint8_t)(low - 0x60)), low >= 0x60);
+        result = under_move(result, move);
+        if (low < 0x60) {
+            return result;
+        }
+        WR8(OBJ->y_lo[object], 0x60);
+        WR8(OBJ->x_lo[object], 0x60);
+        result.exit.a = 0x60;
+        result.exit.nz = INC8(OBJ->state[object]);
+        return result;
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    WR8(ZP->temp00, 0xFF);
+    WR8(ZP->temp01, 0x07);
+    value = RD8(OBJ->life_timer[object]);
+    total = (unsigned)value + 0x10;
+    timer = (uint8_t)total;
+    carry = total > 0xFF;
+    WR8(OBJ->life_timer[object], timer);
+    if ((timer & 0x80) != 0) {
+        WR8(OBJ->y_lo[object], 0x60);
+        INC8(OBJ->state[object]);
+        WR8(SCROLL->y_lo[1], 0x2F);
+        WR8(SCROLL->y_lo[2], 0xAF);
+        result = with_carry(object_exit(0xAF, 0xAF), carry);
+        result.exit.v = ((value ^ timer) & (0x10 ^ timer) & 0x80) != 0;
+        result.exit.v_set = true;
+        return result;
+    }
+    jsr_push(0x8970);
+    (void)ScaleBySine(timer);
+    jsr_pop();
+    product = RD8(ZP->product.hi);
+    WR8(OBJ->y_lo[object], (uint8_t)(product + 0x60));
+    product = RD8(ZP->product.hi);
+    WR8(SCROLL->y_lo[1], (uint8_t)(0x2F - product));
+    product = RD8(ZP->product.hi);
+    sum = (uint8_t)(0xAF - product);
+    WR8(SCROLL->y_lo[2], sum);
+    result = with_carry(object_exit(sum, sum), 0xAF >= product);
+    result.exit.v = ((0xAF ^ product) & (0xAF ^ sum) & 0x80) != 0;
+    result.exit.v_set = true;
+    result.exit.y = 0;
+    result.exit.y_kept = false;
+    return result;
+}
+
+void abi_EndingDropAndBounce(void)
+{
+    object_exit_shim(EndingDropAndBounce(cpu.x));
+}
+
+/*
+ * @routine 010D:239 EndingCreditScrollStart
+ * @run 6B:8239
+ * WHAT IT DOES: An object handler: every frame starts list $18 plus the frame count's two low bits on channel 7 as kind 2. In its first
+ * state it also starts script $1A on slot 0, holds the object 6 frames, moves the first scroll's X high byte and Y high byte and
+ * Y low byte, and moves on. In the next states, until state $0A, once the hold has run out it takes the first scroll's X and Y high
+ * bytes from a table at $8284 by state, holds 6 frames and moves on.
+ * HOW: OBJ->state; StartListChannelKind2; StartScriptSlot0Kind1; EndingHoldTimer; SCROLL.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingCreditScrollStart(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, tick, left;
+
+    push8(object);
+    tick = RD8(ZP->frame_tick);
+    jsr_push(0x8246);
+    (void)StartListChannelKind2((uint8_t)(0x18 + (tick & 3)), 7);
+    jsr_pop();
+    (void)pull8();
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        push8(object);
+        jsr_push(0x8252);
+        (void)StartScriptSlot0Kind1(0x1A);
+        jsr_pop();
+        (void)pull8();
+        WR8(OBJ->life_timer[object], 6);
+        INC8(SCROLL->x_hi[0]);
+        INC8(SCROLL->y_hi[0]);
+        DEC8(SCROLL->y_lo[0]);
+        result = object_exit(6, INC8(OBJ->state[object]));
+        result.exit.y = 0x1A;
+        result.exit.y_kept = false;
+        return result;
+    }
+    result = with_carry(object_exit(state, (uint8_t)(state - 0x0A)), state >= 0x0A);
+    if (state == 0x0A) {
+        return result;
+    }
+    jsr_push(0x826C);
+    left = EndingHoldTimer(object);
+    if (left != 0) {
+        result.exit.nz = left;
+        return result;
+    }
+    jsr_pop();
+    state = RD8(OBJ->state[object]);
+    WR8(SCROLL->x_hi[0], rd8((uint16_t)(0x8284 + 2 * state)));
+    WR8(SCROLL->y_hi[0], rd8((uint16_t)(0x8285 + 2 * state)));
+    WR8(OBJ->life_timer[object], 6);
+    result = with_carry(object_exit(6, INC8(OBJ->state[object])), (state & 0x80) != 0);
+    result.exit.y = (uint8_t)(state << 1);
+    result.exit.y_kept = false;
+    return result;
+}
+
+void abi_EndingCreditScrollStart(void)
+{
+    object_exit_shim(EndingCreditScrollStart(cpu.x));
+}
+
+/*
+ * @routine 010D:298 EndingFallingPiece
+ * @run 6B:8298
+ * WHAT IT DOES: An object handler of two stages: the first takes its Y speed from a table at $82D5 by its number, shows picture kind 3
+ * and frame $72 plus its number and moves on; after that each frame it sets flash flags from a table at $82DA by bit 2 of its number
+ * plus the frame count, moves, and clears the object's Y high byte to 1 once it is negative with a non-negative Y low byte.
+ * HOW: OBJ->state; OBJ->flash_flags; ApplyVelocity.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingFallingPiece(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, sum, tick, index, high, low;
+    unsigned total;
+    AxisMove move;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(OBJ->vy_hi[object], rd8((uint16_t)(0x82D5 + object)));
+        WR8(OBJ->sprite_set[object], 3);
+        total = (unsigned)object + 0x72;
+        sum = (uint8_t)total;
+        WR8(OBJ->frame[object], sum);
+        result = with_carry(object_exit(sum, INC8(OBJ->state[object])), total > 0xFF);
+        result.exit.v = ((object ^ sum) & (0x72 ^ sum) & 0x80) != 0;
+        result.exit.v_set = true;
+        return result;
+    }
+    tick = RD8(ZP->frame_tick);
+    index = (uint8_t)((((uint8_t)(object + tick)) >> 2) & 1);
+    WR8(OBJ->flash_flags[object], rd8((uint16_t)(0x82DA + index)));
+    jsr_push(0x82C5);
+    move = ApplyVelocity(object);
+    jsr_pop();
+    high = RD8(OBJ->y_hi[object]);
+    result = under_move(object_exit(high, high), move);
+    result.exit.y = index;
+    result.exit.y_kept = false;
+    if ((high & 0x80) == 0) {
+        return result;
+    }
+    low = RD8(OBJ->y_lo[object]);
+    result.exit.a = low;
+    result.exit.nz = low;
+    if ((low & 0x80) != 0) {
+        return result;
+    }
+    WR8(OBJ->y_hi[object], 1);
+    result.exit.a = 1;
+    result.exit.nz = 1;
+    return result;
+}
+
+void abi_EndingFallingPiece(void)
+{
+    object_exit_shim(EndingFallingPiece(cpu.x));
+}

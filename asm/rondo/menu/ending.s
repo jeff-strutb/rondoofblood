@@ -21,6 +21,94 @@ EndingModeDoneBack:
     dec z:zModeDone
     rts
 
+; @routine 010D:239 EndingCreditScrollStart
+; @run 6B:8239
+; WHAT IT DOES: An object handler: every frame starts list $18 plus the frame count's two low bits on channel 7 as kind 2. In its first
+; state it also starts script $1A on slot 0, holds the object 6 frames, moves the first scroll's X high byte and Y high byte and
+; Y low byte, and moves on. In the next states, until state $0A, once the hold has run out it takes the first scroll's X and Y high
+; bytes from a table at $8284 by state, holds 6 frames and moves on.
+; HOW: OBJ->state; StartListChannelKind2; StartScriptSlot0Kind1; EndingHoldTimer; SCROLL.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingCreditScrollStart:
+    phx
+    lda z:zFrameTick
+    and #$03
+    clc
+    adc #$18
+    ldx #$07
+    jsr VecStartListChannelKind2
+    plx
+    lda a:OBJ_27A8,x
+    bne ModeDoneAdd
+    phx
+    lda #$1A
+    jsr VecStartScriptSlot0Kind1
+    plx
+    lda #$06
+    sta a:OBJ_34B8,x
+    inc a:ScrollXHi
+    inc a:ScrollYHi
+    dec a:ScrollYLo
+    inc a:OBJ_27A8,x
+    rts
+    cmp #$0A
+    beq EndingCreditScrollStart_at0
+    jsr EndingHoldTimer
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$8284,y
+    sta a:ScrollXHi
+    lda a:$8285,y
+    sta a:ScrollYHi
+    lda #$06
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+EndingCreditScrollStart_at0:
+    rts
+
+; @routine 010D:298 EndingFallingPiece
+; @run 6B:8298
+; WHAT IT DOES: An object handler of two stages: the first takes its Y speed from a table at $82D5 by its number, shows picture kind 3
+; and frame $72 plus its number and moves on; after that each frame it sets flash flags from a table at $82DA by bit 2 of its number
+; plus the frame count, moves, and clears the object's Y high byte to 1 once it is negative with a non-negative Y low byte.
+; HOW: OBJ->state; OBJ->flash_flags; ApplyVelocity.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingFallingPiece:
+    lda a:OBJ_27A8,x
+    bne EndingFallingPiece_at0
+    lda a:$82D5,x
+    sta a:OBJ_VY_HI,x
+    lda #$03
+    sta a:OBJ_2A10,x
+    txa
+    clc
+    adc #$72
+    sta a:OBJ_2A68,x
+    inc a:OBJ_27A8,x
+    rts
+EndingFallingPiece_at0:
+    txa
+    clc
+    adc z:zFrameTick
+    lsr a
+    lsr a
+    and #$01
+    tay
+    lda a:$82DA,y
+    sta a:OBJ_2B18,x
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_HI,x
+    bpl EndingFallingPiece_at1
+    lda a:OBJ_Y_LO,x
+    bmi EndingFallingPiece_at1
+    lda #$01
+    sta a:OBJ_Y_HI,x
+EndingFallingPiece_at1:
+    rts
+
 ; @routine 010D:2DC EndingClearAfterScrollX
 ; @run 6B:82DC
 ; WHAT IT DOES: An object handler: counts the first scroll's X high byte up and clears the object.
@@ -1020,6 +1108,92 @@ EndingScrollSlots:
     clc
     adc #$08
     sta a:ScrollXLo+4
+    rts
+
+; @routine 010E:102 EndingDropAndBounce
+; @run 6B:8902
+; WHAT IT DOES: An object handler of three stages: the first starts the raster effect $13, sets the scroll's Y slots (1 and 5 to
+; $2F, 2 and 6 to $AF), picture kind 3, frame 1 and X speed $C0; the second adds $60 to the downward speed each frame and moves
+; the object until its Y is $60 or more, then fixes it at $60 (Y and X); the third adds $10 to the hold byte each frame and bounces
+; the object by the sine of it ($07FF scaled) while the byte is not negative, shifting scroll slots 1 and 2 against it;
+; when it goes negative it fixes the object at Y $60, the slots at $2F and $AF, and moves to the next state.
+; HOW: OBJ->state; ApplyVelocity; ScaleBySine with zTemp00 and zTemp01 set to $07FF; ZP->product.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingDropAndBounce:
+    lda a:OBJ_27A8,x
+    bne EndingDropAndBounce_at0
+    lda #$13
+    sta z:zRasterEffect
+    stz z:zRasterArg
+    lda #$2F
+    sta a:ScrollYLo+1
+    sta a:ScrollYLo+5
+    lda #$AF
+    sta a:ScrollYLo+2
+    sta a:ScrollYLo+6
+    lda #$03
+    sta a:OBJ_2A10,x
+    lda #$01
+    sta a:OBJ_2A68,x
+    lda #$C0
+    sta a:OBJ_VX_LO,x
+EndingDropAndBounce_at3:
+    inc a:OBJ_27A8,x
+    rts
+EndingDropAndBounce_at0:
+    dec a
+    bne EndingDropAndBounce_at1
+    lda #$60
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    cla
+    adc a:OBJ_VY_HI,x
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$60
+    bcc EndingDropAndBounce_at2
+    lda #$60
+    sta a:OBJ_Y_LO,x
+    sta a:OBJ_X_LO,x
+    bra EndingDropAndBounce_at3
+EndingDropAndBounce_at1:
+    dec a
+    bne EndingDropAndBounce_at2
+    lda #$FF
+    sta z:zTemp00
+    lda #$07
+    sta z:zTemp01
+    lda a:OBJ_34B8,x
+    clc
+    adc #$10
+    sta a:OBJ_34B8,x
+    bmi EndingDropAndBounce_at4
+    jsr VecScaleBySine
+    lda z:zProduct2
+    clc
+    adc #$60
+    sta a:OBJ_Y_LO,x
+    lda #$2F
+    sec
+    sbc z:zProduct2
+    sta a:ScrollYLo+1
+    lda #$AF
+    sec
+    sbc z:zProduct2
+    sta a:ScrollYLo+2
+EndingDropAndBounce_at2:
+    rts
+EndingDropAndBounce_at4:
+    lda #$60
+    sta a:OBJ_Y_LO,x
+    inc a:OBJ_27A8,x
+    lda #$2F
+    sta a:ScrollYLo+1
+    lda #$AF
+    sta a:ScrollYLo+2
     rts
 
 ; @routine 010E:19C EndingWaitForList

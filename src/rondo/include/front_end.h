@@ -495,5 +495,6 @@ ObjExit EndingFlyOff(uint8_t object);
 ObjExit EndingDropAndBounce(uint8_t object);
 ObjExit EndingCreditScrollStart(uint8_t object);
 ObjExit EndingFallingPiece(uint8_t object);
+ObjExit EndingPieceSpawn(uint8_t object);
 
 #endif

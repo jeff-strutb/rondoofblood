@@ -129,6 +129,49 @@ EndingClearAfterScrollY:
     inc a:ScrollYHi
     jmp VecClearObject
 
+; @routine 010D:2E8 EndingPieceSpawn
+; @run 6B:82E8
+; WHAT IT DOES: An object handler of two stages: the first waits for object 1's X to be $0078 (high byte 0 and low $78) and moves on;
+; the second makes objects $10 to $2E: each cleared, shown as picture kind 3, kind $1A, frame $40 plus its number, X low and
+; Y low from tables at $831C and $833B; then clears object 1's frame and the object itself.
+; HOW: OBJ->state; ClearObject; two table reads a piece.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingPieceSpawn:
+    lda a:OBJ_27A8,x
+    bne EndingPieceSpawn_at0
+    lda a:OBJ_X_HI+1
+    bne EndingPieceSpawn_at1
+    lda a:OBJ_X_LO+1
+    cmp #$78
+    bne EndingPieceSpawn_at1
+    inc a:OBJ_27A8,x
+EndingPieceSpawn_at1:
+    rts
+EndingPieceSpawn_at0:
+    phx
+    ldx #$10
+EndingPieceSpawn_at2:
+    jsr VecClearObject
+    lda #$03
+    sta a:OBJ_2A10,x
+    lda #$1A
+    sta a:OBJ_2750,x
+    txa
+    clc
+    adc #$40
+    sta a:OBJ_2A68,x
+    lda a:$831C,x
+    sta a:OBJ_X_LO,x
+    lda a:$833B,x
+    sta a:OBJ_Y_LO,x
+    inx
+    cpx #$2F
+    bne EndingPieceSpawn_at2
+    plx
+    stz a:OBJ_2A68+1
+    jmp VecClearObject
+
 ; @routine 010D:36A EndingAimAtPlace
 ; @run 6B:836A
 ; WHAT IT DOES: An object handler of two stages: the first makes the object's speed the distance to the place (X $70, Y $58)

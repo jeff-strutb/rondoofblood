@@ -98,6 +98,45 @@ StepListC103ThenPickAim_at2:
 StepListC103ThenPickAim_at0:
     rts
 
+; @routine 10CD:126 StepListC170ThenMoveAlongAngle
+; @run 71:C126
+; WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_34B8 with the length OBJ_3510:OBJ_3568, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_31A0 has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
+; HOW: StepObjectFrames, SetVelocityFromAngle, ApplyVelocity, a 16-bit add, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the last test, or the new state's N and Z.
+StepListC170ThenMoveAlongAngle:
+    lda #$70
+    sta z:zTemp10
+    lda #$C1
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    lda a:OBJ_3568,x
+    sta z:zTemp00
+    lda a:OBJ_3510,x
+    sta z:zTemp01
+    lda a:OBJ_34B8,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    lda a:OBJ_3568,x
+    clc
+    adc #$0C
+    sta a:OBJ_3568,x
+    lda a:OBJ_3510,x
+    adc #$00
+    sta a:OBJ_3510,x
+    lda a:$27B8
+    cmp #$06
+    bcs WalkAndAttackB
+    lda a:OBJ_31A0,x
+    and #$80
+    beq StepListC170ThenMoveAlongAngle_at0
+    stz a:VDC_DATA_LO,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_27A8,x
+StepListC170ThenMoveAlongAngle_at0:
+    rts
+
 ; @routine 10CD:181 StepListC192ThenClear
 ; @run 71:C181
 ; WHAT IT DOES: Steps the animation list at $C192; when it ends the object is cleared.

@@ -154,7 +154,20 @@ typedef struct {
     bool same_frame;    /* the timer ran on: the list was not read for a new one */
     uint8_t step;
     uint8_t frame;
+    bool exact;         /* the exit state below is the assembly's own: A, N and Z from nz, C, and Y when y_set */
+    uint8_t a;
+    uint8_t nz;
+    bool c;
+    bool y_set;
+    uint8_t y;
 } AnimationStep;
+
+/* What RichterAnimationWait did: its exit, and whether it dropped its caller's return address (the caller then ends too). */
+typedef struct {
+    AnimationStep step;
+    bool dropped;
+    uint8_t high;
+} AnimationWaitEnd;
 
 /* A lift out of the floor by how deep a column read. */
 typedef struct {
@@ -178,6 +191,7 @@ typedef struct {
 } LadderCheck;
 
 AnimationStep RichterAnimationRunning(void);
+AnimationWaitEnd RichterAnimationWait(void);
 void animation_running_exit_shim(AnimationStep step);
 AnimationStep RichterAnimationTick(void);
 AnimationStep RichterSetAnimation(uint8_t animation);

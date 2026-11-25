@@ -1529,3 +1529,78 @@ void abi_StartThenAnimateAndExpire(void)
 {
     abi_ended(StartThenAnimateAndExpire(cpu.x));
 }
+
+/*
+ * @routine 093C:534 CountdownSoundThenNextState
+ * @run 70:BD34
+ * WHAT IT DOES: Counts the object's f3510 down; at zero plays sound $26, sets f3510 to $40 and
+ * f3250 to 2, and moves the object on to its next state.
+ * HOW: A decrement; the rest only at zero.
+ * WAITS: no.
+ * Entry: X object. Exit: N, Z from the timer, or A 2 and N, Z from the new state; C, V and Y as
+ * the sound call left them at zero; X kept.
+ */
+SoundEnd CountdownSoundThenNextState(uint8_t slot, uint8_t entry_y)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    uint8_t left = RD8(OBJ->f3510[slot]);
+    uint8_t state;
+
+    left = (uint8_t)(left - 1);
+    WR8(OBJ->f3510[slot], left);
+    if (left != 0) {
+        result.end = ended_nz(left);
+        return result;
+    }
+    result.sounded = true;
+    result.command = 0x26;
+    result.before = ended_load(0x26);
+    jsr_push(0xBD3E);
+    result.call = SoundCommand(0x26, slot, entry_y);
+    jsr_pop();
+    WR8(OBJ->f3510[slot], 0x40);
+    WR8(OBJ->f3250[slot], 2);
+    state = RD8(OBJ->state[slot]);
+    state = (uint8_t)(state + 1);
+    WR8(OBJ->state[slot], state);
+    result.end = ended_with_a(ended_nz(state), 2);
+    return result;
+}
+
+void abi_CountdownSoundThenNextState(void)
+{
+    abi_sound_end(CountdownSoundThenNextState(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 093D:0F5 SoundEveryFourthFrame
+ * @run 71:C0F5
+ * WHAT IT DOES: Plays sound $22 on the frames when the low two bits of the object's f3618 are zero.
+ * HOW: One test and the call.
+ * WAITS: no.
+ * Entry: X object. Exit: A the masked bits and N, Z from them when no sound; else as the sound
+ * call left them.
+ */
+SoundEnd SoundEveryFourthFrame(uint8_t slot, uint8_t entry_y)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    uint8_t bits = RD8(OBJ->f3618[slot]);
+
+    bits = (uint8_t)(bits & 3);
+    if (bits != 0) {
+        result.end = ended_load(bits);
+        return result;
+    }
+    result.sounded = true;
+    result.command = 0x22;
+    result.before = ended_load(0x22);
+    jsr_push(0xC101);
+    result.call = SoundCommand(0x22, slot, entry_y);
+    jsr_pop();
+    return result;
+}
+
+void abi_SoundEveryFourthFrame(void)
+{
+    abi_sound_end(SoundEveryFourthFrame(cpu.x, cpu.y));
+}

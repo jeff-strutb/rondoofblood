@@ -505,3 +505,407 @@ WalkWhileFrameChangesD:
     jsr VecApplyVelocityX
 WalkWhileFrameChangesD_at0:
     rts
+
+; TEMPORARY: object routines every stage overlay carries its own copy of (they differ only in the
+; disc tables they read), kept together here until each has a home.
+; The disc tables are named here by their overlay address until the typed data layer reads them.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+; @routine 0259:2FE PlayHitSoundA
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $ABEE, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundA:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundA_at0
+    dec a
+    tay
+    lda a:$ABEE,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundA_at0:
+    rts
+
+; @routine 0519:2FE PlayHitSoundB
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC23, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundB:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundB_at0
+    dec a
+    tay
+    lda a:$AC23,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundB_at0:
+    rts
+
+; @routine 07D9:2FE PlayHitSoundC
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AB75, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundC:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundC_at0
+    dec a
+    tay
+    lda a:$AB75,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundC_at0:
+    rts
+
+; @routine 0939:2FE PlayHitSoundD
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC35, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundD:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundD_at0
+    dec a
+    tay
+    lda a:$AC35,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundD_at0:
+    rts
+
+; @routine 09E9:2FE PlayHitSoundE
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC17, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundE:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundE_at0
+    dec a
+    tay
+    lda a:$AC17,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundE_at0:
+    rts
+
+; @routine 0BF9:2FE PlayHitSoundF
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC40, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundF:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundF_at0
+    dec a
+    tay
+    lda a:$AC40,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundF_at0:
+    rts
+
+; @routine 0CA9:2FE PlayHitSoundG
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC64, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundG:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundG_at0
+    dec a
+    tay
+    lda a:$AC64,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundG_at0:
+    rts
+
+; @routine 0D59:2FE PlayHitSoundH
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AD0A, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundH:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundH_at0
+    dec a
+    tay
+    lda a:$AD0A,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundH_at0:
+    rts
+
+; @routine 0EB9:2FE PlayHitSoundI
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC98, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundI:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundI_at0
+    dec a
+    tay
+    lda a:$AC98,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundI_at0:
+    rts
+
+; @routine 1019:2FE PlayHitSoundJ
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC74, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundJ:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundJ_at0
+    dec a
+    tay
+    lda a:$AC74,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundJ_at0:
+    rts
+
+; @routine 1179:2FE PlayHitSoundK
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $AC8E, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundK:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundK_at0
+    dec a
+    tay
+    lda a:$AC8E,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundK_at0:
+    rts
+
+; @routine 16C9:2FE PlayHitSoundL
+; @run 70:A2FE
+; WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+; zero and the object is on the first screen: a table of sounds at overlay address $ABBE, indexed
+; by those bits minus one. Every stage overlay has its own copy with its own table.
+; HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+; SoundIfOnFirstScreen.
+; WAITS: no.
+; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+PlayHitSoundL:
+    lda a:OBJ_31F8,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and #$07
+    beq PlayHitSoundL_at0
+    dec a
+    tay
+    lda a:$ABBE,y
+    jsr VecSoundIfOnFirstScreen
+PlayHitSoundL_at0:
+    rts

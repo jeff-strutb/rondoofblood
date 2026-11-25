@@ -130,6 +130,17 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0938:7F2 SelectRasterStage1
 ; @run 6F:BFF2
 ; WHAT IT DOES: Sets the stage value the raster effect tests to 1.
@@ -1156,4 +1167,41 @@ StartWithFrameAndFace:
     beq StartWithFrameAndFace_at0
     jsr VecNegateVelocityX
 StartWithFrameAndFace_at0:
+    rts
+
+; @routine 093C:534 CountdownSoundThenNextState
+; @run 70:BD34
+; WHAT IT DOES: Counts the object's f3510 down; at zero plays sound $26, sets f3510 to $40 and
+; f3250 to 2, and moves the object on to its next state.
+; HOW: A decrement; the rest only at zero.
+; WAITS: no.
+; Entry: X object. Exit: N, Z from the timer, or A 2 and N, Z from the new state; C, V and Y as
+; the sound call left them at zero; X kept.
+CountdownSoundThenNextState:
+    dec a:OBJ_3510,x
+    bne CountdownSoundThenNextState_at0
+    lda #$26
+    jsr VecSoundCommand
+    lda #$40
+    sta a:OBJ_3510,x
+    lda #$02
+    sta a:OBJ_3250,x
+    inc a:OBJ_27A8,x
+CountdownSoundThenNextState_at0:
+    rts
+
+; @routine 093D:0F5 SoundEveryFourthFrame
+; @run 71:C0F5
+; WHAT IT DOES: Plays sound $22 on the frames when the low two bits of the object's f3618 are zero.
+; HOW: One test and the call.
+; WAITS: no.
+; Entry: X object. Exit: A the masked bits and N, Z from them when no sound; else as the sound
+; call left them.
+SoundEveryFourthFrame:
+    lda a:OBJ_3618,x
+    and #$03
+    bne SoundEveryFourthFrame_at0
+    lda #$22
+    jsr VecSoundCommand
+SoundEveryFourthFrame_at0:
     rts

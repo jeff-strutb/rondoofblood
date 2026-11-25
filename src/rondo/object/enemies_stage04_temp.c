@@ -791,7 +791,7 @@ void abi_BurstIntoSixPieces(void)
  * Entry: X object, D clear. Exit: A the masked bits and N, Z from them when no sound; else as
  * SoundIfOnFirstScreen leaves it.
  */
-ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot)
+ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot, uint8_t entry_y)
 {
     ScreenSoundEnd result = { ended_kept(), ended_kept(), false, { 0 } };
     uint8_t bits = RD8(OBJ->f3618[slot]);
@@ -803,7 +803,7 @@ ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot)
     }
     result.before = ended_load(0x22);
     jsr_push(0xB63E);
-    result.sound = SoundIfOnFirstScreen(0x22, slot, 0);   /* Y: not worked out yet */
+    result.sound = SoundIfOnFirstScreen(0x22, slot, entry_y);
     jsr_pop();
     result.called = true;
     return result;
@@ -811,7 +811,7 @@ ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot)
 
 void abi_SoundEveryFourthFrameB(void)
 {
-    abi_screen_sound_end(SoundEveryFourthFrameB(cpu.x));
+    abi_screen_sound_end(SoundEveryFourthFrameB(cpu.x, cpu.y));
 }
 
 /*
@@ -825,7 +825,7 @@ void abi_SoundEveryFourthFrameB(void)
  * Entry: X object, D clear. Exit: A 6 and N, Z clear when it burst, C and V as the piece spawn left
  * them; otherwise A, N, Z, C from the failing test; X kept; Y as the spawn left it.
  */
-ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot)
+ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot, uint8_t entry_y)
 {
     ScreenSoundEnd result = { ended_kept(), ended_kept(), false, { 0 } };
     uint8_t state = RD8(OBJ->state[slot]);
@@ -844,7 +844,7 @@ ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot)
     }
     result.before = ended_then(result.before, ended_load(0x8B));
     jsr_push(0xB324);
-    result.sound = SoundIfOnFirstScreen(0x8B, slot, 0);   /* Y: not worked out yet */
+    result.sound = SoundIfOnFirstScreen(0x8B, slot, entry_y);
     jsr_pop();
     result.called = true;
     jsr_push(0xB327);
@@ -860,7 +860,7 @@ ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot)
 
 void abi_BurstWhenFlaggedHit(void)
 {
-    abi_screen_sound_end(BurstWhenFlaggedHit(cpu.x));
+    abi_screen_sound_end(BurstWhenFlaggedHit(cpu.x, cpu.y));
 }
 
 /*
@@ -898,7 +898,7 @@ void abi_PickStateByPlayerDistance(void)
  * V from ApplyVelocity, Y as the animation step left it; at zero A the timer value, N, Z from the
  * new step, C and V from the add of $58, Y from the speed pick.
  */
-Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in)
+Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in, uint8_t entry_y)
 {
     FrameStepEnd frames;
     AxisMove move;
@@ -922,7 +922,7 @@ Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in)
         return e;
     }
     jsr_push(0xB57A);
-    SoundIfOnFirstScreen(0x8B, slot, 0);   /* Y: not worked out yet */
+    SoundIfOnFirstScreen(0x8B, slot, ended_y_or(e, entry_y));
     jsr_pop();
     jsr_push(0xB57D);
     e = ended_then(e, PickSpeedAndTurnFromTableB(slot));
@@ -941,7 +941,7 @@ Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in)
 
 void abi_AnimateMoveThenSetUpNextStep(void)
 {
-    abi_ended(AnimateMoveThenSetUpNextStep(cpu.x, (cpu.p & P_C) != 0));
+    abi_ended(AnimateMoveThenSetUpNextStep(cpu.x, (cpu.p & P_C) != 0, cpu.y));
 }
 
 /*

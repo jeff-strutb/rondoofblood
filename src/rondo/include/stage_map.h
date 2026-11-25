@@ -195,4 +195,10 @@ BlendStepEnd BlendStageScoreAddRowsLong(uint8_t x, uint8_t y);
 BlendStepEnd BlendStageScoreRows(uint8_t x);
 BlendStepEnd BlendStageScoreRowsLong(uint8_t x);
 
+/* system/stage_sequence.c: the registers and flags a stage routine with several exits sets; the set mask names which. */
+enum { EXIT_X = 1, EXIT_Y = 2, EXIT_C = 4, EXIT_V = 8 };
+typedef struct { uint8_t a; uint8_t x; uint8_t y; bool c; bool v; uint8_t set; } StageExit;
+void stage_exit_shim(StageExit end);
+StageExit StepStageSequence(uint8_t x, uint8_t y);
+
 #endif

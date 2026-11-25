@@ -762,3 +762,38 @@ void abi_SpawnInFreeSlotEvery30(void)
 {
     abi_ended(SpawnInFreeSlotEvery30(cpu.x));
 }
+
+/*
+ * @routine 10CB:3BE CountScriptsThenStepList
+ * @run 70:B3BE
+ * WHAT IT DOES: Runs StartScriptWhenCountInTable, then steps the animation list at $B3D2; when it ends the object goes to the next OBJ_2800.
+ * HOW: StartScriptWhenCountInTable, StepObjectFrames, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+ */
+Ended CountScriptsThenStepList(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    uint8_t y = y_entry, phase;
+    Ended e;
+
+    jsr_push(0xB3C1);
+    e = StartScriptWhenCountInTable(slot);
+    jsr_pop();
+    WR8(ZP->temp10, 0xD2);
+    WR8(ZP->temp11, 0xB3);
+    jsr_push(0xB3CC);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(then(then(e, ended_load(0xD2)), ended_load(0xB3)), ended_of_frame_step(step, step != FRAME_HELD, y));
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    phase = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(phase));
+}
+
+void abi_CountScriptsThenStepList(void)
+{
+    abi_ended(CountScriptsThenStepList(cpu.x, cpu.y));
+}

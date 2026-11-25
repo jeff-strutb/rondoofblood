@@ -64,6 +64,24 @@ CountThenSoleScriptAndSound:
 CountThenSoleScriptAndSound_at0:
     rts
 
+; @routine 10CB:3BE CountScriptsThenStepList
+; @run 70:B3BE
+; WHAT IT DOES: Runs StartScriptWhenCountInTable, then steps the animation list at $B3D2; when it ends the object goes to the next OBJ_2800.
+; HOW: StartScriptWhenCountInTable, StepObjectFrames, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+CountScriptsThenStepList:
+    jsr StartScriptWhenCountInTable
+    lda #$D2
+    sta z:zTemp10
+    lda #$B3
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne CountScriptsThenStepList_at0
+    inc a:OBJ_2800,x
+CountScriptsThenStepList_at0:
+    rts
+
 ; @routine 10CB:3ED StartScriptWhenCountInTable
 ; @run 70:B3ED
 ; WHAT IT DOES: While OBJ_3568 is not negative it counts it up and looks its old value up in the eight-byte table at $B40D; when found at index n it starts script $98 plus n in slot 5.

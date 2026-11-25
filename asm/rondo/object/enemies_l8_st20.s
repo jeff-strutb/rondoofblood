@@ -192,3 +192,91 @@ CountDownThenClearPhase:
     stz a:OBJ_2800,x
 CountDownThenClearPhase_at0:
     rts
+
+; @routine 0EBF:006 HopBetweenSidesWithBox
+; @run 71:D006
+; WHAT IT DOES: Sets the hit box by the frame (HitBoxByFrameTableCE8F). In state 0 loads the record, picks a side at random, places the object from the table at $D0BD (X) and a random Y near $00DC, and launches it up and aside. In state 1 it steps the list at $D0B8 and moves; its X speed grows by the table at $D0C1 for its side until it changes sign, then it stops, takes the Y speed $FFC0, OBJ_34B8 $10 and goes to state 2. In later states it counts OBJ_34B8 down while it moves in Y and at zero goes back to state 1 and launches again.
+; HOW: HitBoxByFrameTableCE8F, LoadObjectRecord, NextRandom twice, StepObjectFrames, ApplyVelocityY and X, 16-bit adds, NegateVelocityX.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+HopBetweenSidesWithBox:
+    jsr HitBoxByFrameTableCE8F
+    lda a:OBJ_27A8,x
+    bne HopBetweenSidesWithBox_at0
+    jsr VecLoadObjectRecord
+    jsr VecNextRandom
+    and #$01
+    sta a:OBJ_2AC0,x
+    asl a
+    tay
+    lda a:$D0BD,y
+    sta a:OBJ_X_LO,x
+    lda a:$D0BE,y
+    sta a:OBJ_X_HI,x
+    jsr VecNextRandom
+    and #$1F
+    sec
+    sbc #$10
+    clc
+    adc #$DC
+    sta a:OBJ_Y_LO,x
+HopBetweenSidesWithBox_at5:
+    lda #$FE
+    sta a:OBJ_VX_HI,x
+    lda #$90
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VY_HI,x
+    lda #$E0
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_2AC0,x
+    bne HopBetweenSidesWithBox_at1
+    rts
+HopBetweenSidesWithBox_at1:
+    jmp VecNegateVelocityX
+HopBetweenSidesWithBox_at0:
+    dec a
+    bne HopBetweenSidesWithBox_at2
+    lda #$B8
+    sta z:zTemp10
+    lda #$D0
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jsr VecApplyVelocityY
+    jsr VecApplyVelocityX
+    lda a:OBJ_VX_HI,x
+    sta z:zTemp00
+    lda a:OBJ_2AC0,x
+    asl a
+    tay
+    lda a:OBJ_VX_LO,x
+    clc
+    adc a:$D0C1,y
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_VX_HI,x
+    adc a:$D0C2,y
+    sta a:OBJ_VX_HI,x
+    eor z:zTemp00
+    and #$80
+    beq HopBetweenSidesWithBox_at3
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    lda #$00
+    sta a:OBJ_VY_HI,x
+    lda #$C0
+    sta a:OBJ_VY_LO,x
+    lda #$10
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+HopBetweenSidesWithBox_at3:
+    rts
+HopBetweenSidesWithBox_at2:
+    dec a:OBJ_34B8,x
+    beq HopBetweenSidesWithBox_at4
+    jmp VecApplyVelocityY
+HopBetweenSidesWithBox_at4:
+    lda #$01
+    sta a:OBJ_27A8,x
+    stz a:OBJ_3460,x
+    stz a:OBJ_3408,x
+    jmp HopBetweenSidesWithBox_at5

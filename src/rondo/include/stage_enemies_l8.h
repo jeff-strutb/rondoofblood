@@ -359,4 +359,14 @@ Ended HurtOnceThenAnswerYes(uint8_t slot, uint8_t y_entry);
 Ended StepListThenStartPieceAndWalk(uint8_t slot, uint8_t y_entry);
 Ended StartLeapWhenHurtAnswerYes(uint8_t slot, uint8_t y_entry);
 
+/* object/enemies_l8_st26.c */
+Ended MaybeDropItemByPlayerDistance1019(uint8_t slot);
+SoundEnd PlaySound58A(uint8_t slot, uint8_t y_entry);
+SoundEnd PlaySound58B(uint8_t slot, uint8_t y_entry);
+Ended SettleWhenLowOnFirstRow(uint8_t slot);
+Ended LoadRecordFrameFromKind(uint8_t slot);
+Ended CapPlayerXOnScreen1(uint8_t slot);
+Ended LoadRecordThenDriftAndCount(uint8_t slot);
+Ended LoadRecordAtX80(uint8_t slot);
+
 #endif

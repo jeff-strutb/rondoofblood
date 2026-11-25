@@ -193,3 +193,70 @@ HoldScrollStepThenNextState_at0:
     dec a:ScrollStepXHi+1
     dec a:ScrollStepXHi+1
     rts
+
+; @routine 025A:7DE StepScrollThenMoveOrFadeOut
+; @run 70:AFDE
+; WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_2800 and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_3040 by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_3040 and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_3040, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
+; HOW: StepVerticalScrollTable, tests, 16-bit adds in memory, ClearObjectInY, cd_fade (the card's volume fade), a tail jump into SetTimerThenNextState.
+; WAITS: no.
+; Entry: X object. Exit: as the last instruction that ran; with the fade, as cd_fade leaves them. The byte at $3BC3 and $3BF0 keep their address form until they have names. The OBJ_3670 not 0 arm ran in no script; the draft stops there.
+StepScrollThenMoveOrFadeOut:
+    jsr StepVerticalScrollTable
+    lda a:OBJ_27A8
+    ora a:OBJ_2800
+    bne $AFDD
+    lda a:OBJ_VY_HI
+    bne $AFDD
+    lda a:RichterColumnHit
+    beq $AFDD
+    lda a:OBJ_3670,x
+    bne StepScrollThenMoveOrFadeOut_at0
+    phx
+    lda a:OBJ_3040,x
+    tax
+    lda #$10
+    clc
+    adc a:OBJ_VX_LO,x
+    sta a:OBJ_VX_LO,x
+    cla
+    adc a:OBJ_VX_HI,x
+    sta a:OBJ_VX_HI,x
+    cla
+    sec
+    sbc a:OBJ_VX_HI,x
+    sta a:ScrollStepXHi+1
+    plx
+    lda #$10
+    sta a:OBJ_3510
+    lda #$02
+    sta a:PlayerByte3BF0
+    stz a:OBJ_3568
+    ldy a:OBJ_3040,x
+    lda a:OBJ_2A10
+    sta a:OBJ_2A10,y
+    lda a:OBJ_2A68
+    sta a:OBJ_2A68,y
+    lda a:OBJ_2AC0
+    sta a:OBJ_2AC0,y
+    stz a:OBJ_2A68
+    ldy a:ScrollXHi+1
+    lda #$40
+    iny
+    iny
+    bne StepScrollThenMoveOrFadeOut_at1
+    jmp SetTimerThenNextState
+StepScrollThenMoveOrFadeOut_at1:
+    rts
+StepScrollThenMoveOrFadeOut_at0:
+    stz a:OBJ_3670,x
+    ldy a:OBJ_3040,x
+    jsr VecClearObjectInY
+    lda #$31
+    sta a:OBJ_2750,y
+    lda #$10
+    sta a:OBJ_3510
+    lda #$02
+    sta a:PlayerByte3BF0
+    stz a:OBJ_3568
+    lda #$0C
+    jmp BiosCdFade

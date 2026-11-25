@@ -37,3 +37,4 @@ Each routine below has C written from the decoded bytes for the arm named; `lift
 | 0B4A:6B6 | BossPhasesHurtFallAndTileWrites | states 1 to 5 | unit call with X a slot and the state set (1 with hits 1 to 4, and with 5 hits and the player on each side; 2 with the list at $AF8A near its end; 3 with OBJ_34B8 1; 4 with OBJ_34B8 $40 and $08; 5 with OBJ_34B8 1) |
 | 161B:126 | SpawnerWithScrollGates | states 1 and later (all arms) | unit call with X a slot, state 1 with OBJ_3040 0 and not 0; later states with OBJ_3040 0 and the scroll bytes 3E96/3E08 at the window edges, and with OBJ_3040 not 0 and 3E8E below 2, 3E20 below $D0 |
 | 0EBD:2A7 | SpawnerByKindAndScreen | everything past state 0 | unit call with X a slot, state 1, frame[$54] not 4, OBJ_34B8 0, then OBJ_3040 0 (scroll 3E96 2 or 4), 2, and 1 (OBJ_3568 below $80, empty slots from $20) |
+| 025A:730 | StartBossWhenStageC0OrLoad | zStageRequested = $C0 | unit call with X a slot and zStageRequested $C0 |

@@ -1168,6 +1168,7 @@ void abi_StageClearBit(void)
  * WHAT IT DOES: Goes back to the title: forgets what is loaded, loads the menu's scenes
  * and ADPCM, and sets mode 0.
  * HOW: Two scenes, an ADPCM, SetGameMode.
+ * WAITS: no itself; the two scene loads and the ADPCM load wait on the disc, stack 2 deep each.
  * Entry: nothing. Exit: A 0; the rest as AdpcmLoad leaves them.
  */
 typedef struct { DiscLog menu_a; DiscLog menu_b; AdpcmLoadRun adpcm; } BackToTitleRun;
@@ -1179,9 +1180,15 @@ BackToTitleRun ModeBackToTitle(void)
     wr8(zMusicWanted, 0xFF);
     wr8(zCharacterLoaded, 0xFF);
     wr8(zStage, 0);
+    jsr_push(0x53C6);
     run.menu_a = LoadSceneScript(SCENE_MENU_A);
+    jsr_pop();
+    jsr_push(0x53CB);
     run.menu_b = LoadSceneScript(SCENE_MENU_B);
+    jsr_pop();
+    jsr_push(0x53D0);
     run.adpcm = AdpcmLoad(ADPCM_MENU);
+    jsr_pop();
     SetGameMode(0);
     return run;
 }

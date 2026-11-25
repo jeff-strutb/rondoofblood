@@ -244,6 +244,51 @@ SoundSetPan_at0:
 ;
 ;
 ;
+; The sound driver: the PSG's six channels, music and effects, loaded with the kernel's second
+; block at sectors $4D to $56 and mapped at $8000-$DFFF (banks $75 to $77) only while the kernel
+; calls it. Channels 0 to 5 are the PSG's; the driver keeps eight, and its channels 6 and 7 are
+; effects that take over PSG channels 4 and 5.
+;
+; A body returns plain values; its wrapper works out what the assembly leaves in the registers
+; and flags.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
 ; @routine 004E:614 SoundSilenceAll
 ; @run 75:8E14
 ; WHAT IT DOES: Turns every PSG channel off, and the main volume down.
@@ -1289,6 +1334,7 @@ SoundNotePitch_at1:
 ; gets there from the pitch it has now in the glide's frames. Nothing without a glide.
 ; HOW: The distance in zSoundWordLo and Hi, made positive for SoundDivide and the quotient made
 ; negative again; SoundGlideStepLo and Hi.
+; WAITS: no.
 ; Entry: A the target's fine part, Y its note, X channel. Exit: no glide, A and Y kept, Z set, N
 ; and V clear. Otherwise A the step's low byte, N and Z from it, Y 0, C and V as SoundDivide, or
 ; from negating the quotient's high byte when the glide goes down. X kept.
@@ -1341,6 +1387,7 @@ SoundGlideSetup_at0:
 ; HOW: Sixteen steps of shift and subtract. Where the remainder's low byte is under the divisor
 ; but its high byte is not 0, the high byte is taken down once before the subtract and again by
 ; its borrow; the C keeps that.
+; WAITS: no.
 ; Entry: A divisor. Exit: Y 0, Z set, N clear; X kept. A, C and V from the last step: after a
 ; subtract, A the remainder's high byte with C and V from it; else A its low byte, C and V clear.
 SoundDivide:

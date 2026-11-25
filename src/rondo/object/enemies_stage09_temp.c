@@ -844,3 +844,631 @@ void abi_MaybeShootAhead(void)
 {
     abi_ended(MaybeShootAhead(cpu.x));
 }
+
+/*
+ * @routine 09EB:51E PickWaterLevel
+ * @run 70:B51E
+ * WHAT IT DOES: Sets the water the stage wants (RasterWaterWanted and LevelYHi) to a two-byte pair from a table at $B531 picked by
+ * two bits of the wave counter.
+ * HOW: Reads the wave counter and the table (bank 70).
+ * WAITS: no.
+ * Entry: nothing. Exit: A the second byte, Y the index, N and Z from A, C 0.
+ */
+Ended PickWaterLevel(void)
+{
+    uint8_t wave, index, byte;
+
+    wave = RD8(ZP->wave_counter);
+    wave = (uint8_t)(wave & 0x03);
+    index = (uint8_t)(wave << 1);
+    byte = rd8((uint16_t)(0xB531 + index));
+    wr8(RasterWaterWanted, byte);
+    byte = rd8((uint16_t)(0xB532 + index));
+    wr8(LevelYHi, byte);
+    return ended_with_carry(ended_with_y(ended_load(byte), index), false);
+}
+
+void abi_PickWaterLevel(void)
+{
+    abi_ended(PickWaterLevel());
+}
+
+/*
+ * @routine 09EB:55F WaitForPage2
+ * @run 70:B55F
+ * WHAT IT DOES: When the level position's high byte is 2, the object's timer is set to $40 and it enters its next state; the
+ * object in slot $10 also plays sound $A2.
+ * HOW: A compare of ScrollXHiScreen, an INC, SoundCommand.
+ * WAITS: no.
+ * Entry: X object, Y pushed by the sound driver. Exit: see the wrapper.
+ */
+SoundEnd WaitForPage2(uint8_t slot, uint8_t y)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t page, state;
+    Ended e;
+
+    page = rd8(ScrollXHiScreen);
+    e = ended_compare(page, 2);
+    r.end = e;
+    if (page != 2) {
+        return r;
+    }
+    WR8(OBJ->life_timer[slot], 0x40);
+    e = then(e, ended_load(0x40));
+    state = INC8(OBJ->state[slot]);
+    e = then(e, ended_nz(state));
+    e = then(e, cpy(slot, 0x10));
+    r.end = e;
+    if (slot != 0x10) {
+        return r;
+    }
+    r.before = then(e, ended_load(0xA2));
+    r.end = ended_kept();
+    r.sounded = true;
+    r.command = 0xA2;
+    jsr_push(0xB577);
+    r.call = SoundCommand(0xA2, slot, y);
+    jsr_pop();
+    return r;
+}
+
+void abi_WaitForPage2(void)
+{
+    abi_sound_end(WaitForPage2(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 09EB:5BB RiseUntilAboveGround
+ * @run 70:B5BB
+ * WHAT IT DOES: Moves the object, takes $0040 off its Y speed (it climbs), and when its Y position has passed from negative
+ * to a low byte under $80 it enters its next state.
+ * HOW: ApplyVelocity, a 16-bit subtract.
+ * WAITS: no.
+ * Entry: X object. Exit: the last load or INC.
+ */
+Ended RiseUntilAboveGround(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t low, high, y_high, y_low, state;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xB5BE);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_of_axis_move(move);
+    low = RD8(OBJ->vy_lo[slot]);
+    sum = sub_bytes(low, 0x40, true);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    e = then(e, of_sum(sum));
+    high = RD8(OBJ->vy_hi[slot]);
+    sum = sub_bytes(high, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    e = then(e, of_sum(sum));
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_load(y_high));
+    if ((y_high & 0x80) == 0) {
+        return e;
+    }
+    y_low = RD8(OBJ->y_lo[slot]);
+    e = then(e, ended_load(y_low));
+    if ((y_low & 0x80) != 0) {
+        return e;
+    }
+    state = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(state));
+}
+
+void abi_RiseUntilAboveGround(void)
+{
+    abi_ended(RiseUntilAboveGround(cpu.x));
+}
+
+/*
+ * @routine 09EB:5DD WaitForSlot10State4
+ * @run 70:B5DD
+ * WHAT IT DOES: Once the object in slot $10 has reached state 4, this object's timer becomes $40 and it enters its next state.
+ * HOW: A compare of that state.
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare, load or INC.
+ */
+Ended WaitForSlot10State4(uint8_t slot)
+{
+    uint8_t state, mine;
+    Ended e;
+
+    state = RD8(OBJ->state[0x10]);
+    e = ended_compare(state, 4);
+    if (state < 4) {
+        return e;
+    }
+    WR8(OBJ->life_timer[slot], 0x40);
+    e = then(e, ended_load(0x40));
+    mine = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(mine));
+}
+
+void abi_WaitForSlot10State4(void)
+{
+    abi_ended(WaitForSlot10State4(cpu.x));
+}
+
+/*
+ * @routine 09EB:7EB StartNumberedPiece
+ * @run 70:B7EB
+ * WHAT IT DOES: Loads the object's record; its timer comes from a table at $B801 by the slot less $18; its frame is that number plus
+ * $12.
+ * HOW: LoadObjectRecord and an add.
+ * WAITS: no.
+ * Entry: X object. Exit: A the frame, N, Z, C and V from the add, Y the number.
+ */
+Ended StartNumberedPiece(uint8_t slot)
+{
+    uint8_t nz, byte;
+    bool carry;
+    Sum number, frame;
+
+    jsr_push(0xB7EE);
+    LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    number = sub_bytes(slot, 0x18, true);
+    byte = rd8((uint16_t)(0xB801 + number.value));
+    WR8(OBJ->life_timer[slot], byte);
+    frame = add_bytes(number.value, 0x12, false);
+    WR8(OBJ->frame[slot], frame.value);
+    return ended_with_y(of_sum(frame), number.value);
+}
+
+void abi_StartNumberedPiece(void)
+{
+    abi_ended(StartNumberedPiece(cpu.x));
+}
+
+/*
+ * @routine 09EB:7A4 FollowPlayerHitbox
+ * @run 70:B7A4
+ * WHAT IT DOES: In state 0 loads the object's record; later it takes the player's place and sets its hitbox from a four-byte row of the
+ * table at $BC8B picked by the player's frame less 5.
+ * HOW: LoadObjectRecord (a tail jump), CopyObjectPlaceBack from slot $10, the table (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: state 0: as LoadObjectRecord; else A the last table byte, Y the row, N and Z from A, C and V from the subtract.
+ */
+Ended FollowPlayerHitbox(uint8_t slot)
+{
+    uint8_t state, nz, last, frame, index, byte;
+    bool carry;
+    Sum diff;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return ended_of_record(last, nz, carry);
+    }
+    jsr_push(0xB7B1);
+    byte = CopyObjectPlaceBack(0x10, slot);
+    jsr_pop();
+    e = ended_with_y(ended_load(byte), 0x10);
+    frame = RD8(OBJ->frame[0x10]);
+    diff = sub_bytes(frame, 5, true);
+    index = (uint8_t)(diff.value << 2);
+    e = then(e, ended_with_y(ended_with_carry(of_sum(diff), (diff.value & 0x40) != 0), index));
+    byte = rd8((uint16_t)(0xBC8B + index));
+    WR8(OBJ->hitbox_dx[slot], byte);
+    byte = rd8((uint16_t)(0xBC8C + index));
+    WR8(OBJ->hitbox_dy[slot], byte);
+    byte = rd8((uint16_t)(0xBC8D + index));
+    WR8(OBJ->hitbox_half_w[slot], byte);
+    byte = rd8((uint16_t)(0xBC8E + index));
+    WR8(OBJ->hitbox_half_h[slot], byte);
+    return then(e, ended_load(byte));
+}
+
+void abi_FollowPlayerHitbox(void)
+{
+    abi_ended(FollowPlayerHitbox(cpu.x));
+}
+
+/*
+ * @routine 09EC:01A RiseAndClear
+ * @run 70:B81A
+ * WHAT IT DOES: Moves the object, takes $0040 off its Y speed (it climbs) and clears it once its Y position has passed from negative
+ * to a low byte under $80.
+ * HOW: ApplyVelocity, a 16-bit subtract, a tail jump into ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: the last load or subtract.
+ */
+Ended RiseAndClear(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t low, high, y_high, y_low;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xB81D);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_of_axis_move(move);
+    low = RD8(OBJ->vy_lo[slot]);
+    sum = sub_bytes(low, 0x40, true);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    e = then(e, of_sum(sum));
+    high = RD8(OBJ->vy_hi[slot]);
+    sum = sub_bytes(high, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    e = then(e, of_sum(sum));
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_load(y_high));
+    if ((y_high & 0x80) == 0) {
+        return e;
+    }
+    y_low = RD8(OBJ->y_lo[slot]);
+    e = then(e, ended_load(y_low));
+    if ((y_low & 0x80) != 0) {
+        return e;
+    }
+    ClearObject(slot);
+    return e;
+}
+
+void abi_RiseAndClear(void)
+{
+    abi_ended(RiseAndClear(cpu.x));
+}
+
+/*
+ * @routine 09EC:059 RaiseStateAfterSlot10
+ * @run 70:B859
+ * WHAT IT DOES: Once the object in slot $10 is in state $0A or later, an object below state 3 enters state 3.
+ * HOW: Two compares.
+ * Untraced: the whole arm after the first compare (B864 to B86C).
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare or load.
+ */
+Ended RaiseStateAfterSlot10(uint8_t slot)
+{
+    uint8_t lead, state;
+    Ended e;
+
+    lead = RD8(OBJ->state[0x10]);
+    e = ended_compare(lead, 0x0A);
+    if (lead < 0x0A) {
+        return e;
+    }
+    state = RD8(OBJ->state[slot]);
+    e = then(e, ended_compare(state, 3));
+    if (state >= 3) {
+        return e;
+    }
+    WR8(OBJ->state[slot], 3);
+    return then(e, ended_load(3));
+}
+
+void abi_RaiseStateAfterSlot10(void)
+{
+    abi_ended(RaiseStateAfterSlot10(cpu.x));
+}
+
+/*
+ * @routine 09EC:06D StartChainLink
+ * @run 70:B86D
+ * WHAT IT DOES: Loads the object's record, sets OBJ_3510 to $41 and its timer from a table at $B888 by the slot less $12; the object in slot
+ * $19 also moves to its next frame.
+ * HOW: LoadObjectRecord and an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: slot $19: N and Z of the new frame; else the compare of X with $19.
+ */
+Ended StartChainLink(uint8_t slot)
+{
+    uint8_t nz, byte, frame;
+    bool carry;
+    Sum number;
+    Ended e;
+
+    jsr_push(0xB870);
+    LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    WR8(OBJ->f3510[slot], 0x41);
+    number = sub_bytes(slot, 0x12, true);
+    e = ended_with_y(of_sum(number), number.value);
+    byte = rd8((uint16_t)(0xB888 + number.value));
+    WR8(OBJ->life_timer[slot], byte);
+    e = then(e, ended_load(byte));
+    e = then(e, cpy(slot, 0x19));
+    if (slot != 0x19) {
+        return e;
+    }
+    frame = INC8(OBJ->frame[slot]);
+    return then(e, ended_nz(frame));
+}
+
+void abi_StartChainLink(void)
+{
+    abi_ended(StartChainLink(cpu.x));
+}
+
+/*
+ * @routine 09EC:0F4 ChainFollowsPrevious
+ * @run 70:B8F4
+ * WHAT IT DOES: A link of a chain: object $12 takes the place of slot $10 and moves sideways by a table byte ($B923) picked by that
+ * slot's facing, with Y speed 8; any other link takes the place of the link before it and takes its speed from its angle OBJ_3510 with a
+ * length of $0A00; both then move.
+ * HOW: CopyObjectPlaceBack, SetVelocityFromAngle, and a tail jump into ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object. Exit: as ApplyVelocity, Y the table index, or 0 as the angle scale leaves it.
+ */
+Ended ChainFollowsPrevious(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t facing, byte, angle, before;
+    Ended e;
+
+    e = cpy(slot, 0x12);
+    if (slot == 0x12) {
+        jsr_push(0xB8FD);
+        byte = CopyObjectPlaceBack(0x10, slot);
+        jsr_pop();
+        facing = RD8(OBJ->facing_left[0x10]);
+        byte = rd8((uint16_t)(0xB923 + facing));
+        WR8(OBJ->vx_hi[slot], byte);
+        WR8(OBJ->vy_hi[slot], 8);
+        move = ApplyVelocity(slot);
+        return then(ended_with_y(ended_kept(), facing), ended_of_axis_move(move));
+    }
+    before = (uint8_t)(slot - 1);
+    jsr_push(0xB914);
+    CopyObjectPlaceBack(before, slot);
+    jsr_pop();
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, 0x0A);
+    angle = RD8(OBJ->f3510[slot]);
+    jsr_push(0xB920);
+    SetVelocityFromAngle(angle, slot);
+    jsr_pop();
+    move = ApplyVelocity(slot);
+    e = then(ended_with_y(ended_kept(), 0), ended_of_axis_move(move));
+    return e;
+}
+
+void abi_ChainFollowsPrevious(void)
+{
+    abi_ended(ChainFollowsPrevious(cpu.x));
+}
+
+/*
+ * @routine 09EC:1A5 StartKickedPiece
+ * @run 70:B9A5
+ * WHAT IT DOES: Loads the object's record, gives it an X speed from a table at $B9BD by its facing and a Y speed of $10, moves it once and
+ * stops its Y speed.
+ * HOW: LoadObjectRecord, ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object. Exit: as ApplyVelocity with Y the facing.
+ */
+Ended StartKickedPiece(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t nz, facing, byte;
+    bool carry;
+
+    jsr_push(0xB9A8);
+    LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    facing = RD8(OBJ->facing_left[slot]);
+    byte = rd8((uint16_t)(0xB9BD + facing));
+    WR8(OBJ->vx_hi[slot], byte);
+    WR8(OBJ->vy_hi[slot], 0x10);
+    jsr_push(0xB9B9);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    WR8(OBJ->vy_hi[slot], 0);
+    return then(ended_with_y(ended_kept(), facing), ended_of_axis_move(move));
+}
+
+void abi_StartKickedPiece(void)
+{
+    abi_ended(StartKickedPiece(cpu.x));
+}
+
+/*
+ * @routine 09EC:203 StepThenClear
+ * @run 70:BA03
+ * WHAT IT DOES: Steps the animation list at $BA14; when it ends the object is cleared.
+ * HOW: StepObjectFrames and a tail jump into ClearObject.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the step.
+ */
+Ended StepThenClear(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0;
+
+    step = step_list(slot, 0xBA14, 0xBA0E, &y, true);
+    if (step == FRAME_LIST_ENDED) {
+        ClearObject(slot);
+    }
+    return ended_of_frame_step(step, step != FRAME_HELD, y);
+}
+
+void abi_StepThenClear(void)
+{
+    abi_ended(StepThenClear(cpu.x));
+}
+
+/*
+ * @routine 09ED:032 ClearAnimation
+ * @run 71:C032
+ * WHAT IT DOES: Restarts the object's animation: step and timer 0.
+ * HOW: Two stores.
+ * WAITS: no.
+ * Entry: X object. Exit: every register and flag kept.
+ */
+void ClearAnimation(uint8_t slot)
+{
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+}
+
+void abi_ClearAnimation(void)
+{
+    ClearAnimation(cpu.x);
+}
+
+/*
+ * @routine 09ED:06E EnterNextAndReset
+ * @run 71:C06E
+ * WHAT IT DOES: Moves the object on one state and its OBJ_3510 on one, restarts its animation and gives it a countdown of $20 in
+ * its angle byte.
+ * HOW: Two INCs, ClearAnimation, a store.
+ * WAITS: no.
+ * Entry: X object. Exit: A $20, N and Z from it.
+ */
+Ended EnterNextAndReset(uint8_t slot)
+{
+    INC8(OBJ->state[slot]);
+    INC8(OBJ->f3510[slot]);
+    jsr_push(0xC077);
+    ClearAnimation(slot);
+    jsr_pop();
+    WR8(OBJ->angle_hi[slot], 0x20);
+    return ended_load(0x20);
+}
+
+void abi_EnterNextAndReset(void)
+{
+    abi_ended(EnterNextAndReset(cpu.x));
+}
+
+/*
+ * @routine 09ED:07D FlipSide
+ * @run 71:C07D
+ * WHAT IT DOES: Flips bit 0 of the object's life timer (the side it works on).
+ * HOW: An EOR.
+ * WAITS: no.
+ * Entry: X object. Exit: A the new value, N and Z from it.
+ */
+Ended FlipSide(uint8_t slot)
+{
+    uint8_t side;
+
+    side = RD8(OBJ->life_timer[slot]);
+    side = (uint8_t)(side ^ 0x01);
+    WR8(OBJ->life_timer[slot], side);
+    return ended_load(side);
+}
+
+void abi_FlipSide(void)
+{
+    abi_ended(FlipSide(cpu.x));
+}
+
+/*
+ * @routine 09ED:039 StepListByPhase
+ * @run 71:C039
+ * WHAT IT DOES: The object faces as its life timer says and steps the animation list that a table at $C103 names for its OBJ_3510.
+ * HOW: Reads the list's address into zTemp10-11; a tail jump into StepObjectFrames.
+ * WAITS: no.
+ * Entry: X object. Exit: as StepObjectFrames, Y kept unless the step sets it (the index otherwise).
+ */
+Ended StepListByPhase(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t facing, phase, index, y;
+
+    facing = RD8(OBJ->life_timer[slot]);
+    WR8(OBJ->facing_left[slot], facing);
+    phase = RD8(OBJ->f3510[slot]);
+    index = (uint8_t)(phase << 1);
+    y = index;
+    WR8(ZP->temp10, rd8((uint16_t)(0xC103 + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(0xC104 + index)));
+    step = StepObjectFrames(slot, &y);
+    return ended_of_frame_step(step, step != FRAME_HELD, y);
+}
+
+void abi_StepListByPhase(void)
+{
+    Ended e = StepListByPhase(cpu.x);
+
+    abi_ended(e);
+}
+
+/*
+ * @routine 09ED:0C3 SetSwaySpeed
+ * @run 71:C0C3
+ * WHAT IT DOES: Sets the object's X speed from a word of a table at $C0DE, picked by OBJ_3510 times 4 plus life timer times 2.
+ * HOW: Two shifts, an add with carry, two table reads (bank 71).
+ * WAITS: no.
+ * Entry: X object. Exit: A the high byte, Y the index, N and Z from A, C and V from the add.
+ */
+Ended SetSwaySpeed(uint8_t slot)
+{
+    uint8_t phase, side, byte, mix;
+    bool carry;
+    Sum sum;
+
+    phase = RD8(OBJ->f3510[slot]);
+    mix = (uint8_t)(phase << 2);
+    WR8(ZP->temp10, mix);
+    side = RD8(OBJ->life_timer[slot]);
+    carry = (side & 0x80) != 0;
+    mix = RD8(ZP->temp10);
+    sum = add_bytes((uint8_t)(side << 1), mix, carry);
+    byte = rd8((uint16_t)(0xC0DE + sum.value));
+    WR8(OBJ->vx_lo[slot], byte);
+    byte = rd8((uint16_t)(0xC0DF + sum.value));
+    WR8(OBJ->vx_hi[slot], byte);
+    return ended_with_y(then(of_sum(sum), ended_load(byte)), sum.value);
+}
+
+void abi_SetSwaySpeed(void)
+{
+    abi_ended(SetSwaySpeed(cpu.x));
+}
+
+/*
+ * @routine 09ED:086 BobAndMove
+ * @run 71:C086
+ * WHAT IT DOES: Makes the object bob: OBJ_3618 counts up and its sine (scaled by 3FF) added to OBJ_35C0 is its Y low byte; between
+ * Y $B0 and the right place on screen (X from $80 to $9F once the scroll is added) a random wobble of -1 to 2 is added; then it moves.
+ * HOW: ScaleBySine, NextRandom, a tail jump into ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object. Exit: as ApplyVelocity, Y 0 as the sine's exit leaves it.
+ */
+Ended BobAndMove(uint8_t slot)
+{
+    AxisMove move;
+    RandomResult random;
+    uint8_t phase, base, x_low, wobble;
+    Sum sum;
+
+    WR8(ZP->temp00, 0xFF);
+    WR8(ZP->temp01, 3);
+    phase = INC8(OBJ->f3618[slot]);
+    jsr_push(0xC097);
+    ScaleBySine(phase);
+    jsr_pop();
+    base = RD8(ZP->product.hi);
+    sum = add_bytes(base, RD8(OBJ->angle_lo[slot]), false);
+    WR8(OBJ->y_lo[slot], sum.value);
+    if (sum.value < 0xB0) {
+        x_low = RD8(OBJ->x_lo[slot]);
+        sum = add_bytes(x_low, rd8(ScrollXLo), false);
+        if (sum.value >= 0x80 && sum.value < 0xA0) {
+            jsr_push(0xC0B6);
+            random = NextRandom();
+            jsr_pop();
+            wobble = (uint8_t)((random.value & 0x03) - 1);
+            base = RD8(OBJ->y_lo[slot]);
+            sum = add_bytes(base, wobble, (random.value & 0x03) != 0);
+            WR8(OBJ->y_lo[slot], sum.value);
+        }
+    }
+    move = ApplyVelocity(slot);
+    return then(ended_with_y(ended_kept(), 0), ended_of_axis_move(move));
+}
+
+void abi_BobAndMove(void)
+{
+    abi_ended(BobAndMove(cpu.x));
+}

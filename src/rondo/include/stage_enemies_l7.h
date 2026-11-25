@@ -462,6 +462,15 @@ Ended TurnAroundInState9(uint8_t slot);
 Ended FallBackInState9(uint8_t slot);
 SoundEnd PlaySoundTwo(uint8_t slot, uint8_t y_entry);
 Ended ClearHitsTaken(uint8_t slot);
+Jump StepListB819(uint8_t slot, uint8_t y_entry);
+Ended RandomTimer10(uint8_t slot);
+Ended CopyScrollToTimer(uint8_t slot);
+Ended LoadThenSpeedF0(uint8_t slot);
+Ended NextStateOnScrollY(uint8_t slot);
+Ended StepListByIndex088A(uint8_t slot, uint8_t y_entry);
+Ended SetTimersOf12To15(void);
+Ended RandomTimerC0(uint8_t slot);
+Ended NextPhaseUnlessKind25(uint8_t slot);
 
 /* What DrawTileScript called with the item (and the group's Y) leaves: A $FF, the compare's N clear and Z set, C set, Y as the last op left it, and V when a line step ran. */
 static inline Ended ended_of_tile_run(TileRun run, uint8_t item)

@@ -30,9 +30,15 @@ static bool stage_redirect(StageEnterRun *run, uint8_t stage)
     case STAGE_TITLE:
         wr8(zStage, 0);
         run->to_title = true;
+        jsr_push(0x6D31);
         run->menu_a = LoadSceneScript(SCENE_MENU_A);
+        jsr_pop();
+        jsr_push(0x6D36);
         run->menu_b = LoadSceneScript(SCENE_MENU_B);
+        jsr_pop();
+        jsr_push(0x6D3B);
         run->menu_adpcm = AdpcmLoad(ADPCM_MENU);
+        jsr_pop();
         return true;
     case 0x85:
         run->field83_read = true;
@@ -79,7 +85,7 @@ static bool stage_redirect(StageEnterRun *run, uint8_t stage)
 StageEnterRun StageEnter(void)
 {
     StageEnterRun run;
-    uint8_t stage;
+    uint8_t stage, requested;
 
     run.route_read = false;
     run.field83_read = false;
@@ -95,10 +101,15 @@ StageEnterRun StageEnter(void)
     wr8(zField99, 0);
     wr8(zField95, 5);
     wr8(zField8C, (uint8_t)(rd8(zField8C) & 0x7F));
+    jsr_push(0x6CC5);
     ResetGameState();
+    jsr_pop();
+    jsr_push(0x6CC8);
     run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */
-    wr8(zStageRequested, rd8(zStage));
-    if (rd8(zStageRequested) & STAGE_RESTART_BIT) {
+    jsr_pop();
+    requested = rd8(zStage);
+    wr8(zStageRequested, requested);
+    if (requested & STAGE_RESTART_BIT) {
         wr8(zStage, (uint8_t)(rd8(zStage) & ~STAGE_RESTART_BIT));
         wr8(zField8A, 0);
     } else {
@@ -120,7 +131,7 @@ StageEnterRun StageEnter(void)
     if (!(rd8(zStageRequested) & STAGE_RESTART_BIT) && stage_redirect(&run, rd8(zStage)))
         return run;
     wr8(zField83, 0);
-    run.load = StageLoad();
+    run.load = StageLoad(run.field83_read ? run.field83 : run.stop.y);
     return run;
 }
 
@@ -164,17 +175,21 @@ void abi_StageEnter(void)
  * HOW: StageScenes or, for bit 7, StageScenesSecret gives the scene by stage, through a pointer
  * in zTemp0A-0B; StageAdpcm and StageTrack, or their secret tables, give the ADPCM and the track.
  * WAITS: yes, on the drive and the vertical blank, through the scene loads and CdSearchTrack; the stack there is the caller's return and the call frames.
- * Entry: nothing. Exit: as CdSearchTrack, entered with X the stage's index. Clobbers zTemp0A-0B.
+ * Entry: Y as the caller holds it (it is what the track search pushes when nothing after it changes it).
+ * Exit: as CdSearchTrack, entered with X the stage's index. Clobbers zTemp0A-0B.
  */
-StageLoadRun StageLoad(void)
+StageLoadRun StageLoad(uint8_t entry_y)
 {
     StageLoadRun run;
+    uint8_t y = entry_y;
+    uint8_t stage, base, character, table_value;
     uint16_t scenes;
     Sum low;
     Sum high;
     bool secret;
 
-    if (rd8(zStage) & STAGE_SECRET_BIT) {
+    stage = rd8(zStage);
+    if (stage & STAGE_SECRET_BIT) {
         scenes = StageScenesSecret;
         wr8(zTemp0A, (uint8_t)scenes);
         wr8(zTemp0B, (uint8_t)(scenes >> 8));
@@ -184,37 +199,61 @@ StageLoadRun StageLoad(void)
         wr8(zTemp0A, (uint8_t)scenes);
         wr8(zTemp0B, (uint8_t)(scenes >> 8));
         wr8(zField8E, 0);
-        if (rd8(zStage) == 0)
+        stage = rd8(zStage);
+        if (stage == 0)
             wr8(zField8E, (uint8_t)(rd8(zField8E) + 1));
     }
-    low = add_bytes((uint8_t)(rd8(zStage) & STAGE_INDEX_MASK), rd8(zTemp0A), false);
+    stage = rd8(zStage);
+    base = rd8(zTemp0A);
+    low = add_bytes((uint8_t)(stage & STAGE_INDEX_MASK), base, false);
     wr8(zTemp0A, low.value);
-    high = add_bytes(0, rd8(zTemp0B), low.carry);
+    base = rd8(zTemp0B);
+    high = add_bytes(0, base, low.carry);
     wr8(zTemp0B, high.value);
     run.character = rd8(zCharacter);
     run.loaded_before = rd8(zCharacterLoaded);
     run.character_loaded = run.character != run.loaded_before;
     if (run.character_loaded) {
         wr8(zCharacterLoaded, run.character);
+        jsr_push(0x6DB7);
         run.character_scene = LoadSceneScript(run.character);
+        jsr_pop();
+        y = disc_log_y(&run.character_scene, y);
     }
-    run.first_sum = add_bytes(rd8_zp(zTemp0A), rd8(zCharacter), false);
+    base = rd8_zp(zTemp0A);
+    character = rd8(zCharacter);
+    run.first_sum = add_bytes(base, character, false);
+    jsr_push(0x6DBF);
     run.first_scene = LoadSceneScript(run.first_sum.value);
+    jsr_pop();
+    y = disc_log_y(&run.first_scene, y);
     run.second = (uint8_t)(rd8_zp(zTemp0A) + 2);
+    jsr_push(0x6DC6);
     run.second_scene = LoadSceneScript(run.second);
-    secret = (rd8(zStage) & STAGE_SECRET_BIT) != 0;
-    run.saved = secret || rd8(zStage) == STAGE_KEEPS_VRAM_A || rd8(zStage) == STAGE_KEEPS_VRAM_B;
-    if (run.saved)
+    jsr_pop();
+    y = disc_log_y(&run.second_scene, y);
+    stage = rd8(zStage);
+    secret = (stage & STAGE_SECRET_BIT) != 0;
+    run.saved = secret || stage == STAGE_KEEPS_VRAM_A || stage == STAGE_KEEPS_VRAM_B;
+    if (run.saved) {
+        jsr_push(secret ? 0x6DCD : 0x6DF1);
         run.vram = SaveVramToRam();
+        jsr_pop();
+        y = VRAM_COPY_ROW_BYTES;
+    }
     run.adpcm_index = (uint8_t)(rd8(zStage) & STAGE_INDEX_MASK);
-    run.adpcm_sum = add_bytes(rd8((uint16_t)((secret ? StageAdpcmSecret : StageAdpcm) + run.adpcm_index)),
-                              rd8(zCharacter), false);
+    table_value = rd8((uint16_t)((secret ? StageAdpcmSecret : StageAdpcm) + run.adpcm_index));
+    character = rd8(zCharacter);
+    run.adpcm_sum = add_bytes(table_value, character, false);
+    jsr_push(secret ? 0x6DDB : 0x6DFF);
     run.adpcm = AdpcmLoad(run.adpcm_sum.value);
+    jsr_pop();
+    if (!run.adpcm.already)
+        y = disc_log_y(&run.adpcm.log, y);
     run.track_index = (uint8_t)(rd8(zStage) & STAGE_INDEX_MASK);
     run.track = rd8((uint16_t)((secret ? StageTrackSecret : StageTrack) + run.track_index));
-    /* Y as AdpcmLoad leaves it is what CdSearchTrack pushes: the registers are set for that call. */
-    adpcm_load_exit_shim(&run.adpcm);
-    run.search = CdSearchTrack(run.track, run.track_index, cpu.y);
+    /* Y as AdpcmLoad leaves it is what CdSearchTrack pushes. */
+    run.search = CdSearchTrack(run.track, run.track_index, y);
     return run;
 }
 
@@ -250,7 +289,7 @@ void stage_load_exit_shim(const StageLoadRun *run)
 
 void abi_StageLoad(void)
 {
-    StageLoadRun run = StageLoad();
+    StageLoadRun run = StageLoad(cpu.y);
 
     stage_load_exit_shim(&run);
 }

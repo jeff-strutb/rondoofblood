@@ -43,7 +43,7 @@ static Sum map_stage_banks(void)
     return sum;
 }
 
-static void show_map_exit(Sum sum)
+static void map_exit_shim(Sum sum)
 {
     cpu.a = (uint8_t)(sum.value + 1);
     abi_nz(cpu.a);
@@ -68,7 +68,7 @@ void MapStageBanks(void)
 
 void abi_MapStageBanks(void)
 {
-    show_map_exit(map_stage_banks());
+    map_exit_shim(map_stage_banks());
 }
 
 /*
@@ -98,7 +98,7 @@ Sum SaveAndMapStageBanks(void)
 
 void abi_SaveAndMapStageBanks(void)
 {
-    show_map_exit(save_and_map_stage_banks());
+    map_exit_shim(save_and_map_stage_banks());
 }
 
 /*

@@ -1311,6 +1311,7 @@ void abi_ModeGameOverWait(void)
  * the title from stage $10; from the bonus stage the save's flag and the next stage;
  * otherwise the stage's load again with the player's stock restored.
  * HOW: Overlay frame, then zStage.
+ * WAITS: yes, through ResetGameState (the vertical blank) and the loads (the drive); the stack there is the mode loop's return and the call frames.
  * Entry: nothing. Exit: as what ran last.
  */
 typedef enum { SCREEN_WAIT, SCREEN_TITLE, SCREEN_BONUS, SCREEN_STAGE } ScreenPath;
@@ -1361,7 +1362,7 @@ ScreenRun ModeScreen(void)
         return run;
     }
     run.path = SCREEN_STAGE;
-    run.load = StageLoad();
+    run.load = StageLoad(disc_log_y(&run.scene, 0xFF)); /* Y as ResetGameState leaves it, then the scene load's */
     wr8(zField99, 0);
     wr8(zField95, 5);
     wr8(zField8A, 3);

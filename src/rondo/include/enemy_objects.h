@@ -954,6 +954,7 @@ Ended StartSidewaysAndSpawn29(uint8_t slot);
 Ended StartSidewaysAndSpawn29B(uint8_t slot);
 Ended BurstIntoEightPieces(uint8_t slot);
 RandomEnd StartGroupThenThrow(uint8_t slot);
+Ended ContactWithPlayerBox14By20(uint8_t slot);
 /* object/enemies_stage07_temp.c */
 Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);

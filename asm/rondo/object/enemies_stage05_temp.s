@@ -229,6 +229,18 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 05 overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
+;
 ; @routine 0938:7F2 SelectRasterStage1
 ; @run 6F:BFF2
 ; WHAT IT DOES: Sets the stage value the raster effect tests to 1.
@@ -1617,3 +1629,17 @@ StartGroupThenThrow_at0:
     jsr PickTimersAtRandom
     jsr PickAngleAtRandom
     rts
+
+; @routine 093C:05D ContactWithPlayerBox14By20
+; @run 70:B85D
+; WHAT IT DOES: Tests whether the object, as a block of width $14 and height $20, touches the player: sets those
+; two sizes and runs ContactWithPlayer.
+; HOW: Two stores and ContactWithPlayer as a tail jump.
+; WAITS: no.
+; Entry: X object. Exit: as ContactWithPlayer.
+ContactWithPlayerBox14By20:
+    lda #$14
+    sta z:zTemp08
+    lda #$20
+    sta z:zTemp09
+    jmp ContactWithPlayer

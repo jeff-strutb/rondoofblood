@@ -8,6 +8,7 @@
 #include "ram.h"
 #include "access.h"
 #include "enemy_objects.h"
+#include "stage_enemies_l7.h"
 
 /*
  * @routine 0938:7F2 SelectRasterStage1
@@ -2030,4 +2031,25 @@ RandomEnd StartGroupThenThrow(uint8_t slot)
 void abi_StartGroupThenThrow(void)
 {
     abi_random_end(StartGroupThenThrow(cpu.x));
+}
+
+/*
+ * @routine 093C:05D ContactWithPlayerBox14By20
+ * @run 70:B85D
+ * WHAT IT DOES: Tests whether the object, as a block of width $14 and height $20, touches the player: sets those
+ * two sizes and runs ContactWithPlayer.
+ * HOW: Two stores and ContactWithPlayer as a tail jump.
+ * WAITS: no.
+ * Entry: X object. Exit: as ContactWithPlayer.
+ */
+Ended ContactWithPlayerBox14By20(uint8_t slot)
+{
+    WR8(ZP->temp08, 0x14);
+    WR8(ZP->temp09, 0x20);
+    return ended_then(ended_load(0x20), ContactWithPlayer(slot).end);
+}
+
+void abi_ContactWithPlayerBox14By20(void)
+{
+    abi_ended(ContactWithPlayerBox14By20(cpu.x));
 }

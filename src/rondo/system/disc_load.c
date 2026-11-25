@@ -229,6 +229,49 @@ uint8_t disc_log_x(const DiscLog *log, uint8_t entry_x)
     return x;
 }
 
+/* Y after one logged call: what the replay of the call leaves in it (disc_call_exit_shim), or the Y it had. */
+static uint8_t call_y(const DiscCall *call, uint8_t y)
+{
+    switch (call->kind) {
+    case DISC_AD_STAT:
+        return call->as.ad_stat.playing;
+    case DISC_MUL:
+        return 0;
+    case DISC_CD_STAT:
+        return call->as.cd_stat.set_y ? call->as.cd_stat.y : y;
+    case DISC_CD_PAUSE:
+        return call->as.cd_pause.set_y ? call->as.cd_pause.y : y;
+    case DISC_AD_TRANS:
+        return call->as.ad_trans.set_y ? call->as.ad_trans.y : 3;
+    case DISC_AD_CPLAY:
+        return call->as.ad_cplay.set_y ? call->as.ad_cplay.y : 4;
+    case DISC_CD_SEARCH:
+        return call->as.cd_search.set_y ? call->as.cd_search.y : 2;
+    case DISC_CD_READ:
+        return call->as.cd_read.set_y ? call->as.cd_read.y : 2;
+    case DISC_OVERLAY:
+        return call->as.after.y;
+    case DISC_SCENE_BANKS:
+        return 3;
+    case DISC_SCENE_GOTO:
+        return 2;
+    default:
+        return y;
+    }
+}
+
+/* Y as the logged calls leave it, from the Y it had before the first: what the next call pushes. */
+uint8_t disc_log_y(const DiscLog *log, uint8_t entry_y)
+{
+    unsigned first = log->count > DISC_CALLS_KEPT ? log->count - DISC_CALLS_KEPT : 0;
+    uint8_t y = entry_y;
+
+    for (unsigned i = first; i < log->count; i++) {
+        y = call_y(&log->calls[i % DISC_CALLS_KEPT], y);
+    }
+    return y;
+}
+
 /* An address's last add, which leaves its byte in A and its carry and overflow. */
 static void log_sum(DiscLog *log, Sum sum)
 {

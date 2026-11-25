@@ -1,3 +1,62 @@
+; @routine 0F6B:45D StepListThenStartFivePieces
+; @run 70:B45D
+; WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_3040, sets frame 2 and OBJ_3510 $C0 and goes to the next state.
+; HOW: StepListByNumberTable, a loop of ClearObjectInY and StartObjectAtPlace, a counter in zTemp00.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+StepListThenStartFivePieces:
+    jsr StepListByNumberTable
+    bne SwingByCosineFromState0B
+    stz z:zTemp00
+    ldy #$11
+StepListThenStartFivePieces_at0:
+    jsr VecClearObjectInY
+    lda #$A9
+    jsr VecStartObjectAtPlace
+    lda z:zTemp00
+    sta a:OBJ_3040,y
+    inc z:zTemp00
+    iny
+    cpy #$16
+    bne StepListThenStartFivePieces_at0
+    lda #$02
+    sta a:OBJ_2A68,x
+    lda #$C0
+    sta a:OBJ_3510,x
+    inc a:OBJ_27A8,x
+    rts
+
+; @routine 0F6B:4C9 StepListThenRunPhaseTable
+; @run 70:B4C9
+; WHAT IT DOES: Runs StepListByNumberTable and counts OBJ_3568 down; at zero tries StartPieceABInFreeSlot and, when it started one, keeps OBJ_2800 in OBJ_38D8, clears it, sets OBJ_3510 $40 and takes OBJ_3568 from OBJ_35C0. Then runs the code the table at $B501 names for OBJ_2800 (50B, 51C, 52F, 59E, 5B1).
+; HOW: Two calls, a table of two bytes to zTemp00-01, a jump through them.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+StepListThenRunPhaseTable:
+    jsr StepListByNumberTable
+    lda a:OBJ_3568,x
+    beq PickNextPhaseFromTable
+    dec a:OBJ_3568,x
+    bne StepListThenRunPhaseTable_at0
+    jsr StartPieceABInFreeSlot
+    bcc StepListThenRunPhaseTable_at0
+    lda a:OBJ_2800,x
+    sta a:OBJ_38D8,x
+    stz a:OBJ_2800,x
+    lda #$40
+    sta a:OBJ_3510,x
+    lda a:OBJ_35C0,x
+    sta a:OBJ_3568,x
+StepListThenRunPhaseTable_at0:
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$B501,y
+    sta z:zTemp00
+    lda a:$B502,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
 ; @routine 0F6B:52F OrbitCosineSineThenSettle
 ; @run 70:B52F
 ; WHAT IT DOES: Moves the object on an ellipse: X speed from the cosine of OBJ_37D0 scaled by $0120, Y speed from the sine scaled by $0050; turns OBJ_37D0 on by -$0070 a frame (a 16-bit add with OBJ_3778); when OBJ_37D0 reaches $80 it is placed at Y $0040, X $B0 less the scroll and goes to the next OBJ_2800.

@@ -1839,53 +1839,57 @@ void abi_SoundVolumeTick(void)
  * HOW: Sixteen steps of shift and subtract. Where the remainder's low byte is under the divisor
  * but its high byte is not 0, the high byte is taken down once before the subtract and again by
  * its borrow; the C keeps that.
+ * WAITS: no.
  * Entry: A divisor. Exit: Y 0, Z set, N clear; X kept. A, C and V from the last step: after a
  * subtract, A the remainder's high byte with C and V from it; else A its low byte, C and V clear.
  */
 Division SoundDivide(uint8_t divisor)
 {
     Division division = { false, 0, 0, false, false, 0 };
-    uint8_t low = rd8(zSoundWordLo);
-    uint8_t high = rd8(zSoundWordHi);
-    uint8_t left_lo = 0;
-    uint8_t left_hi = 0;
-    uint8_t quotient_lo = 0;
-    uint8_t quotient_hi = 0;
+    uint8_t step, a, fine, take_step;
+    uint16_t quotient = 0;
+    bool carry;
+    Sum low, high;
 
+    wr8(zSoundScratch, 0);
+    wr8(zSoundFine, 0);
     wr8(zSoundStepHi, divisor);
-    for (int step = 0; step < 16; step++) {
-        bool take;
-
-        left_hi = (uint8_t)((left_hi << 1) | (left_lo >> 7));
-        left_lo = (uint8_t)((left_lo << 1) | (high >> 7));
-        high = (uint8_t)((high << 1) | (low >> 7));
-        low = (uint8_t)(low << 1);
-        quotient_hi = (uint8_t)((quotient_hi << 1) | (quotient_lo >> 7));
-        quotient_lo = (uint8_t)(quotient_lo << 1);
-        take = left_lo >= divisor;
-        if (!take && left_hi != 0) {
-            left_hi = (uint8_t)(left_hi - 1);
-            take = true;
+    wr8(zSoundQuotientLo, 0);
+    wr8(zSoundQuotientHi, 0);
+    for (step = 0; step != 16; step++) {
+        carry = ASL8(ZP->sound_word.lo);
+        carry = ROL8(ZP->sound_word.hi, carry);
+        carry = ROL8(ZP->sound_scratch, carry);
+        (void)ROL8(ZP->sound_step.lo, carry);
+        carry = ASL8(ZP->sound_quotient.lo);
+        (void)ROL8(ZP->sound_quotient.hi, carry);
+        quotient = (uint16_t)(quotient << 1);
+        a = rd8(zSoundScratch);
+        take_step = rd8(zSoundStepHi);
+        division.took = a >= take_step;
+        division.last = a;
+        if (!division.took) {
+            fine = rd8(zSoundFine);
+            if (fine != 0) {
+                (void)DEC8(ZP->sound_step.lo);
+                division.took = true;
+            }
         }
-        division.took = take;
-        if (take) {
-            bool borrow = left_lo < divisor;
-
-            left_lo = (uint8_t)(left_lo - divisor);
-            division.high_before = left_hi;
-            division.borrow = borrow;
-            left_hi = (uint8_t)(left_hi - borrow);
-            quotient_lo = (uint8_t)(quotient_lo + 1);
+        if (division.took) {
+            take_step = rd8(zSoundStepHi);
+            low = sub_bytes(a, take_step, true);
+            wr8(zSoundScratch, low.value);
+            fine = rd8(zSoundFine);
+            high = sub_bytes(fine, 0, low.carry);
+            wr8(zSoundFine, high.value);
+            (void)INC8(ZP->sound_quotient.lo);
+            quotient = (uint16_t)(quotient + 1);
+            division.high_before = fine;
+            division.borrow = !low.carry;
+            division.last = high.value;
         }
-        division.last = take ? left_hi : left_lo;
     }
-    wr8(zSoundWordLo, low);
-    wr8(zSoundWordHi, high);
-    wr8(zSoundScratch, left_lo);
-    wr8(zSoundFine, left_hi);
-    wr8(zSoundQuotientLo, quotient_lo);
-    wr8(zSoundQuotientHi, quotient_hi);
-    division.quotient = (uint16_t)(quotient_lo | (quotient_hi << 8));
+    division.quotient = quotient;
     return division;
 }
 
@@ -1915,6 +1919,7 @@ void abi_SoundDivide(void)
  * gets there from the pitch it has now in the glide's frames. Nothing without a glide.
  * HOW: The distance in zSoundWordLo and Hi, made positive for SoundDivide and the quotient made
  * negative again; SoundGlideStepLo and Hi.
+ * WAITS: no.
  * Entry: A the target's fine part, Y its note, X channel. Exit: no glide, A and Y kept, Z set, N
  * and V clear. Otherwise A the step's low byte, N and Z from it, Y 0, C and V as SoundDivide, or
  * from negating the quotient's high byte when the glide goes down. X kept.
@@ -1922,32 +1927,51 @@ void abi_SoundDivide(void)
 GlideSetup SoundGlideSetup(uint8_t fine, uint8_t note, uint8_t channel)
 {
     GlideSetup setup = { false, false, { false, 0, 0, false, false, 0 }, 0, 0 };
-    uint8_t frames = rd8((uint16_t)(SoundGlideFrames + channel));
-    uint16_t distance;
+    uint8_t frames, a, taken;
+    Sum low, high, q_low, q_high;
 
+    frames = rd8((uint16_t)(SoundGlideFrames + channel));
     setup.frames = frames;
     if (frames == 0)
         return setup;
     setup.aimed = true;
     wr8((uint16_t)(SoundGlideTargetFine + channel), fine);
     wr8((uint16_t)(SoundGlideTargetNote + channel), note);
-    distance = (uint16_t)(((note << 8) | rd8((uint16_t)(SoundGlideTargetFine + channel))) -
-                          ((rd8((uint16_t)(SoundPitchNote + channel)) << 8) |
-                           rd8((uint16_t)(SoundPitchFine + channel))));
-    setup.down = (distance & 0x8000) != 0;
-    if (setup.down)
-        distance = (uint16_t)(0 - distance);
-    wr8(zSoundWordLo, (uint8_t)distance);
-    wr8(zSoundWordHi, (uint8_t)(distance >> 8));
-    setup.division = SoundDivide(rd8((uint16_t)(SoundGlideFrames + channel)));
-    setup.step = setup.division.quotient;
+    a = rd8((uint16_t)(SoundGlideTargetFine + channel));
+    taken = rd8((uint16_t)(SoundPitchFine + channel));
+    low = sub_bytes(a, taken, true);
+    wr8(zSoundWordLo, low.value);
+    taken = rd8((uint16_t)(SoundPitchNote + channel));
+    high = sub_bytes(note, taken, low.carry);
+    wr8(zSoundWordHi, high.value);
+    setup.down = (high.value & 0x80) != 0;
     if (setup.down) {
-        setup.step = (uint16_t)(0 - setup.step);
-        wr8(zSoundQuotientLo, (uint8_t)setup.step);
-        wr8(zSoundQuotientHi, (uint8_t)(setup.step >> 8));
+        taken = rd8(zSoundWordLo);
+        low = sub_bytes(0, taken, true);
+        wr8(zSoundWordLo, low.value);
+        taken = rd8(zSoundWordHi);
+        high = sub_bytes(0, taken, low.carry);
+        wr8(zSoundWordHi, high.value);
+        a = rd8((uint16_t)(SoundGlideFrames + channel));
+        jsr_push(0x8725);
+        setup.division = SoundDivide(a);
+        jsr_pop();
+        taken = rd8(zSoundQuotientLo);
+        q_low = sub_bytes(0, taken, true);
+        wr8(zSoundQuotientLo, q_low.value);
+        taken = rd8(zSoundQuotientHi);
+        q_high = sub_bytes(0, taken, q_low.carry);
+        wr8(zSoundQuotientHi, q_high.value);
+        setup.step = (uint16_t)(0 - setup.division.quotient);
+    } else {
+        a = rd8((uint16_t)(SoundGlideFrames + channel));
+        jsr_push(0x8738);
+        setup.division = SoundDivide(a);
+        jsr_pop();
+        setup.step = setup.division.quotient;
     }
-    wr8((uint16_t)(SoundGlideStepHi + channel), (uint8_t)(setup.step >> 8));
-    wr8((uint16_t)(SoundGlideStepLo + channel), (uint8_t)setup.step);
+    wr8((uint16_t)(SoundGlideStepHi + channel), (uint8_t)(rd8(zSoundQuotientHi)));
+    wr8((uint16_t)(SoundGlideStepLo + channel), (uint8_t)(rd8(zSoundQuotientLo)));
     return setup;
 }
 

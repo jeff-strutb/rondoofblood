@@ -356,3 +356,120 @@ void abi_CountDownThenClearPhase(void)
 {
     abi_ended(CountDownThenClearPhase(cpu.x));
 }
+
+/* The launch the state 0 and the state $02 arms of 0EBF:006 share: the speed X -$0170, Y -$0120, reversed in X when facing left. */
+static Ended launch_up_and_aside(uint8_t slot)
+{
+    uint8_t facing;
+    Sum negated;
+    Ended e;
+
+    WR8(OBJ->vx_hi[slot], 0xFE);
+    WR8(OBJ->vx_lo[slot], 0x90);
+    WR8(OBJ->vy_hi[slot], 0xFF);
+    WR8(OBJ->vy_lo[slot], 0xE0);
+    facing = RD8(OBJ->facing_left[slot]);
+    e = ended_load(facing);
+    if (facing == 0) {
+        return then(ended_load(0xE0), e);
+    }
+    negated = NegateVelocityX(slot);
+    return then(e, ended_of_sum(negated));
+}
+
+/*
+ * @routine 0EBF:006 HopBetweenSidesWithBox
+ * @run 71:D006
+ * WHAT IT DOES: Sets the hit box by the frame (HitBoxByFrameTableCE8F). In state 0 loads the record, picks a side at random, places the object from the table at $D0BD (X) and a random Y near $00DC, and launches it up and aside. In state 1 it steps the list at $D0B8 and moves; its X speed grows by the table at $D0C1 for its side until it changes sign, then it stops, takes the Y speed $FFC0, OBJ_34B8 $10 and goes to state 2. In later states it counts OBJ_34B8 down while it moves in Y and at zero goes back to state 1 and launches again.
+ * HOW: HitBoxByFrameTableCE8F, LoadObjectRecord, NextRandom twice, StepObjectFrames, ApplyVelocityY and X, 16-bit adds, NegateVelocityX.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+ */
+Ended HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t state, last, nz, side, y = y_entry, value, old, timer;
+    bool carry;
+    FrameStep step;
+    RandomResult random;
+    AxisMove move;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xD009);
+    e = HitBoxByFrameTableCE8F(slot);
+    jsr_pop();
+    state = RD8(OBJ->state[slot]);
+    e = then(e, ended_load(state));
+    if (state == 0) {
+        jsr_push(0xD011);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = then(e, ended_of_record(last, nz, carry));
+        jsr_push(0xD014);
+        random = NextRandom();
+        jsr_pop();
+        e = then(e, ended_of_random(random));
+        side = random.value & 0x01;
+        WR8(OBJ->facing_left[slot], side);
+        y = (uint8_t)(side << 1);
+        value = rd8((uint16_t)(0xD0BD + y));
+        WR8(OBJ->x_lo[slot], value);
+        value = rd8((uint16_t)(0xD0BE + y));
+        WR8(OBJ->x_hi[slot], value);
+        jsr_push(0xD02A);
+        random = NextRandom();
+        jsr_pop();
+        value = (uint8_t)((random.value & 0x1F) - 0x10 + 0xDC);
+        WR8(OBJ->y_lo[slot], value);
+        return then(e, launch_up_and_aside(slot));
+    }
+    e = then(e, ended_load((uint8_t)(state - 1)));
+    if (state == 1) {
+        e = then(e, l8_step_list(slot, 0xD0B8, 0xD060, false, &y, &step));
+        jsr_push(0xD063);
+        move = ApplyVelocityY(slot);
+        jsr_pop();
+        jsr_push(0xD066);
+        move = ApplyVelocityX(slot);
+        jsr_pop();
+        e = then(e, ended_of_axis_move(move));
+        old = RD8(OBJ->vx_hi[slot]);
+        WR8(ZP->temp00, old);
+        value = RD8(OBJ->facing_left[slot]);
+        y = (uint8_t)(value << 1);
+        value = RD8(OBJ->vx_lo[slot]);
+        sum = add_bytes(value, rd8((uint16_t)(0xD0C1 + y)), false);
+        WR8(OBJ->vx_lo[slot], sum.value);
+        value = RD8(OBJ->vx_hi[slot]);
+        sum = add_bytes(value, rd8((uint16_t)(0xD0C2 + y)), sum.carry);
+        WR8(OBJ->vx_hi[slot], sum.value);
+        e = then(e, ended_of_sum(sum));
+        value = (uint8_t)((sum.value ^ RD8(ZP->temp00)) & 0x80);
+        e = then(e, ended_load(value));
+        if (value == 0) {
+            return e;
+        }
+        WR8(OBJ->vx_hi[slot], 0);
+        WR8(OBJ->vx_lo[slot], 0);
+        WR8(OBJ->vy_hi[slot], 0);
+        WR8(OBJ->vy_lo[slot], 0xC0);
+        WR8(OBJ->f34b8[slot], 0x10);
+        e = then(e, ended_load(0x10));
+        return then(e, ended_nz(INC8(OBJ->state[slot])));
+    }
+    timer = DEC8(OBJ->f34b8[slot]);
+    e = then(e, ended_nz(timer));
+    if (timer != 0) {
+        move = ApplyVelocityY(slot);
+        return then(e, ended_of_axis_move(move));
+    }
+    WR8(OBJ->state[slot], 1);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    return then(then(e, ended_load(1)), launch_up_and_aside(slot));
+}
+
+void abi_HopBetweenSidesWithBox(void)
+{
+    abi_ended(HopBetweenSidesWithBox(cpu.x, cpu.y));
+}

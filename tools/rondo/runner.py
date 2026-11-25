@@ -16,6 +16,7 @@
              --norerun        do not rerun red scripts alone (when every script is expected red)
              --draft-a5 FILE  with `served`: per-draft A5 verdicts (name, filed, calls, identical, divergent, unverified,
                               order) measured elsewhere, instead of measuring the drafts here
+             --serve-all      with `served --a7`: every filed routine and every content served by its draft (the drafter's recipe)
              --a7             with `served`: build the served box and measure A7 on --scripts alone
              --workers N      scripts measured at once (default 8; each is one cpu-run claim)
 
@@ -423,6 +424,11 @@ def served(main, opts):
         return 0
     keep = {lab for labs in plan["serve"].values() for lab in labs} | set(plan["free"])
     names = set(plan["serve"]) | {n for n, _ in plan["original"] if n in labels}
+    if opts.get("serve_all"):
+        # the drafter's recipe: every filed routine and every other content served by its draft
+        keep = {r["name"] for r in drafts}
+        names = set(labels)
+        log(f"served: --serve-all: all {len(keep)} drafts serve, {len(names)} filed routines replaced", b)
     dst = os.path.join(b, "tree-served")
     d = sv.make_tree(tree, dst, cache, drafts, keep, names, filed_of)
     os.makedirs(out, exist_ok=True)
@@ -471,7 +477,7 @@ def commit(main, rev, paths, n, reds, b):
 
 def parse(argv):
     opts = {"mode": argv[0] if argv else "", "main": TOP, "routines": [], "scripts": [], "sweep": False,
-            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False, "draft_a5": ""}
+            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False, "draft_a5": "", "serve_all": False}
     i = 1
     while i < len(argv):
         a = argv[i]
@@ -485,6 +491,8 @@ def parse(argv):
             opts["workers"] = int(argv[i + 1]); i += 1
         elif a == "--draft-a5":
             opts["draft_a5"] = os.path.abspath(argv[i + 1]); i += 1
+        elif a == "--serve-all":
+            opts["serve_all"] = True
         elif a == "--a7":
             opts["a7"] = True
         elif a == "--norerun":

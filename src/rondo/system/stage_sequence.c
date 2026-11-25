@@ -44,6 +44,46 @@ StageExit stage_exit_from_cpu_shim(void)
     return end;
 }
 
+/* What a stage routine's code holds in the registers while it calls pieces that take them from the machine. */
+StageRegs stage_regs_after(StageExit end, StageRegs before)
+{
+    StageRegs now = before;
+
+    if ((end.set & EXIT_CPU) != 0) {
+        end = stage_exit_from_cpu_shim();
+    }
+    now.a = end.a;
+    now.nz = end.nz;
+    if ((end.set & EXIT_X) != 0) {
+        now.x = end.x;
+    }
+    if ((end.set & EXIT_Y) != 0) {
+        now.y = end.y;
+    }
+    if ((end.set & EXIT_C) != 0) {
+        now.c = end.c;
+    }
+    if ((end.set & EXIT_V) != 0) {
+        now.v = end.v;
+    }
+    return now;
+}
+
+void stage_regs_load_shim(StageRegs r)
+{
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    abi_nz(r.nz);
+    abi_flag(P_C, r.c);
+    abi_flag(P_V, r.v);
+}
+
+StageRegs stage_regs_from_cpu_shim(StageRegs before)
+{
+    return stage_regs_after(stage_exit_from_cpu_shim(), before);
+}
+
 static StageExit exit_of_step(BlendStepEnd step)
 {
     StageExit end = { step.a, 0, ROW_ENTRIES, step.c, step.v, step.a, EXIT_C | EXIT_V };

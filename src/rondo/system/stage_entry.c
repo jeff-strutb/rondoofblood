@@ -639,3 +639,50 @@ void abi_LoadStageEntryW(void)
 {
     stage_exit_shim(LoadStageEntryW());
 }
+
+typedef struct {
+    uint32_t disc;
+    StageExit (*load)(void);
+} EntryVariant;
+
+/* Each overlay's copy of the loader, by where it sits on the disc. */
+static const EntryVariant entry_variants[] = {
+    { DISC(0x024E, 0x152), LoadStageEntry },
+    { DISC(0x050E, 0x152), LoadStageEntryB },
+    { DISC(0x05BE, 0x152), LoadStageEntryC },
+    { DISC(0x071E, 0x152), LoadStageEntryD },
+    { DISC(0x07CE, 0x152), LoadStageEntryE },
+    { DISC(0x087E, 0x152), LoadStageEntryF },
+    { DISC(0x092E, 0x152), LoadStageEntryG },
+    { DISC(0x09DE, 0x152), LoadStageEntryH },
+    { DISC(0x0A8E, 0x152), LoadStageEntryI },
+    { DISC(0x0B3E, 0x152), LoadStageEntryJ },
+    { DISC(0x0BEE, 0x152), LoadStageEntryK },
+    { DISC(0x0C9E, 0x152), LoadStageEntryL },
+    { DISC(0x0D4E, 0x152), LoadStageEntryM },
+    { DISC(0x0DFE, 0x152), LoadStageEntryN },
+    { DISC(0x0EAE, 0x152), LoadStageEntryO },
+    { DISC(0x0F5E, 0x152), LoadStageEntryP },
+    { DISC(0x100E, 0x152), LoadStageEntryQ },
+    { DISC(0x10BE, 0x152), LoadStageEntryR },
+    { DISC(0x116E, 0x152), LoadStageEntryS },
+    { DISC(0x12CE, 0x152), LoadStageEntryT },
+    { DISC(0x160E, 0x152), LoadStageEntryU },
+    { DISC(0x16BE, 0x152), LoadStageEntryV },
+    { DISC(0x18CE, 0x152), LoadStageEntryW },
+};
+
+/* The loader of whichever stage overlay is in RAM at $8952. */
+StageExit LoadStageEntryResident(void)
+{
+    uint32_t disc = resident_at(0x8952);
+    unsigned i;
+    StageExit none = { 0, 0, 0, false, false, 0, 0 };
+
+    for (i = 0; i < sizeof entry_variants / sizeof entry_variants[0]; i++) {
+        if (entry_variants[i].disc == disc) {
+            return entry_variants[i].load();
+        }
+    }
+    return none;
+}

@@ -224,17 +224,10 @@ void abi_BlendStageRowPair(void)
  * was blended last, else as BlendStageTileRows; X the step plus one or BlendStageTileRows's; N 0, Z 1,
  * C 1; Y 5 once a blend ran, else kept.
  */
-typedef struct {
-    uint8_t a;
-    uint8_t x;
-    bool y_set;
-    bool v_set;
-    bool v;
-} ChangesExit;
 
-static ChangesExit blend_changes(uint8_t x, uint8_t new_byte)
+static RowChangesExit blend_changes(uint8_t x, uint8_t new_byte)
 {
-    ChangesExit out = { 0, 0, false, false, false };
+    RowChangesExit out = { 0, 0, false, false, false };
     uint8_t old_low;
     uint8_t low;
     uint8_t high;
@@ -282,17 +275,14 @@ static ChangesExit blend_changes(uint8_t x, uint8_t new_byte)
     return out;
 }
 
-TileRowsExit BlendStageRowChanges(uint8_t x, uint8_t new_byte)
+RowChangesExit BlendStageRowChanges(uint8_t x, uint8_t new_byte)
 {
-    ChangesExit out = blend_changes(x, new_byte);
-    TileRowsExit result = { out.a, out.x, out.v };
-
-    return result;
+    return blend_changes(x, new_byte);
 }
 
 void abi_BlendStageRowChanges(void)
 {
-    ChangesExit out = blend_changes(cpu.x, cpu.a);
+    RowChangesExit out = blend_changes(cpu.x, cpu.a);
 
     cpu.a = out.a;
     cpu.x = out.x;

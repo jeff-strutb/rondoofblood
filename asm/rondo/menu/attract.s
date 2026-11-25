@@ -136,7 +136,7 @@ ScriptStep:
 ; puts the mode in its state 2.
 ; HOW: Two stores, then back to ScriptAdvance.
 ; WAITS: no.
-; Entry: from ScriptStep. Exit: as ScriptAdvance.
+; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptSaveReadAndState:
     lda #$01
     sta a:TitleSaveRead

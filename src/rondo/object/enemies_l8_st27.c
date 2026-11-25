@@ -207,3 +207,111 @@ void abi_SpawnRowsWhenScrollAtZero(void)
 {
     abi_ended(SpawnRowsWhenScrollAtZero(cpu.x));
 }
+
+/*
+ * @routine 05CB:13F BossFrameRoutinesC
+ * @run 70:B13F
+ * WHAT IT DOES: One frame of the boss of overlay 05CB: counts OBJ_34B8 up, runs FlagThenHitsCompare, EnterState5WhenFlagged and the code the state table names (JumpByStateTable05CB1CF); then, when OBJ_35C0 and the frame are not 0, starts the list that the table at $B169 names for the frame less 1 (plus $81) on channel 5.
+ * HOW: An INC, three calls, a table read, StartListChannelKind2 between a PHX and a PLX.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last instruction that ran.
+ */
+Ended BossFrameRoutinesC(uint8_t slot)
+{
+    uint8_t aim, frame, y, entry;
+    Sum diff, list;
+    Ended e;
+    Jump jump;
+
+    e = ended_nz(INC8(OBJ->f34b8[slot]));
+    jsr_push(0xB145);
+    e = then(e, FlagThenHitsCompare(slot));
+    jsr_pop();
+    jsr_push(0xB148);
+    e = then(e, EnterState5WhenFlagged(slot));
+    jsr_pop();
+    abi_ended(e);
+    jsr_push(0xB14B);
+    jump = JumpByStateTable05CB1CF(slot);
+    abi_ended(jump.end);
+    slot = enter_handler(slot, jump);
+    jsr_pop();
+    aim = RD8(OBJ->f35c0[slot]);
+    e = ended_load(aim);
+    if (aim != 0) {
+        return e;
+    }
+    frame = RD8(OBJ->frame[slot]);
+    e = then(e, ended_load(frame));
+    if (frame == 0) {
+        return e;
+    }
+    diff = sub_bytes(frame, 1, true);
+    y = diff.value;
+    e = then(then(e, ended_of_sum(diff)), ended_with_y(ended_nz(y), y));
+    entry = rd8((uint16_t)(0xB169 + y));
+    e = then(e, ended_load(entry));
+    if (entry == 0) {
+        return e;
+    }
+    push8(slot);
+    list = add_bytes(entry, 0x81, false);
+    abi_ended(then(e, then(ended_nz(slot), ended_of_sum(list))));
+    jsr_push(0xB167);
+    StartListChannelKind2(list.value, 5);
+    jsr_pop();
+    slot = pull8();
+    return ended_with_a(ended_nz(slot), 2);
+}
+
+void abi_BossFrameRoutinesC(void)
+{
+    abi_ended(BossFrameRoutinesC(cpu.x));
+}
+
+/*
+ * @routine 0F6C:39C BossFrameRoutinesD
+ * @run 70:B39C
+ * WHAT IT DOES: One frame of the boss of overlay 0F6C: runs EnterState0EWhenFlagged and FlashWhenHurtThenSound, the code the state table names (JumpByStateTable0F6C3C0) and, in the states the table at $BBB0 marks, the code at $C523.
+ * HOW: Three calls, a table read, a call into the original code.
+ * WAITS: no.
+ * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The call into $C523 ran in no script; the draft stops there.
+ */
+Ended BossFrameRoutinesD(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t y, marked;
+    Ended e;
+    SoundEnd sound;
+    Jump jump, extra = { { 0 }, 0xC523, true };
+
+    jsr_push(0xBB9F);
+    e = EnterState0EWhenFlagged(slot);
+    jsr_pop();
+    abi_ended(e);
+    jsr_push(0xBBA2);
+    sound = FlashWhenHurtThenSound(slot, y_entry);
+    jsr_pop();
+    abi_sound_end(sound);
+    jsr_push(0xBBA4);
+    jump = JumpByStateTable0F6C3C0(slot);
+    abi_ended(jump.end);
+    slot = enter_handler(slot, jump);
+    jsr_pop();
+    y = RD8(OBJ->state[slot]);
+    e = ended_with_y(ended_nz(y), y);
+    marked = rd8((uint16_t)(0xBBB0 + y));
+    e = then(e, ended_load(marked));
+    if (marked == 0) {
+        return e;
+    }
+    abi_ended(e);
+    jsr_push(0xBBAF);
+    slot = enter_handler(slot, extra);
+    jsr_pop();
+    return ended_kept();
+}
+
+void abi_BossFrameRoutinesD(void)
+{
+    abi_ended(BossFrameRoutinesD(cpu.x, cpu.y));
+}

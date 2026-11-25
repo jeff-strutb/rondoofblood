@@ -11,6 +11,7 @@
 #include "machine.h"
 #include "ram.h"
 #include "routines.h"
+#include "access.h"
 
 /* The overlay's routines with no C yet. */
 enum {
@@ -85,11 +86,11 @@ typedef struct { bool started; uint8_t held; AnimationStep animation; } WalkStar
 typedef struct { Lift lift; FacingSpeed speed; uint8_t marks; } Knock;
 /* The stand's animation, and the animation the sound was started for. */
 typedef struct { AnimationStep stand; uint8_t animation; } StandSound;
-StandSound RichterStartNew(void);
-StandSound RichterStartHealth(void);
-StandSound RichterStartClear(void);
+StandSound RichterStartNew(uint8_t x, uint8_t y);
+StandSound RichterStartHealth(uint8_t x, uint8_t y);
+StandSound RichterStartClear(uint8_t a, uint8_t x, uint8_t y);
 StandSound RichterStartStand(void);
-StandSound RichterStart(void);
+StandSound RichterStart(uint8_t y);
 WalkStart RichterStartWalk(uint8_t facing);
 AnimationStep RichterCrouch(void);
 AnimationStep RichterToFall(void);
@@ -882,29 +883,38 @@ void abi_RichterSpikeBelow(void)
  * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
-StandSound RichterStart(void)
+StandSound RichterStart(uint8_t y)
 {
-    uint8_t how = rd8(zField8A);
-    uint16_t entry = (uint16_t)(PlayerStartHandlers + (uint8_t)(how << 1));
+    uint8_t how = RD8(ZP->field8a);
+    uint8_t doubled = (uint8_t)(how << 1);
+    uint16_t entry = (uint16_t)(PlayerStartHandlers + doubled);
 
     /* The jump reads its entry; each start runs on into the next, so all end standing. */
     rd8(entry);
     rd8((uint16_t)(entry + 1));
     switch (how) {
     case START_NEW_RUN:
-        return RichterStartNew();
+        return RichterStartNew(doubled, y);
     case START_HEALTH:
-        return RichterStartHealth();
+        return RichterStartHealth(doubled, y);
     case START_STAND:
         return RichterStartStand();
     default:
-        return RichterStartClear();
+        return RichterStartClear(doubled, doubled, y);
     }
 }
 
 void abi_RichterStart(void)
 {
-    stand_sound_exit_shim(RichterStart());
+    stand_sound_exit_shim(RichterStart(cpu.y));
+}
+
+/* TAI pushes and pulls Y, A and X: the registers the block move meets are the routine's own at that point. */
+static void clear_work_regs_shim(uint8_t a, uint8_t x, uint8_t y)
+{
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
 }
 
 /*
@@ -915,15 +925,16 @@ void abi_RichterStart(void)
  * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
-void RichterClearWork(void)
+void RichterClearWork(uint8_t a, uint8_t x, uint8_t y)
 {
+    clear_work_regs_shim(a, x, y);
     tai(KernelZeros, 0x3BC0, 0x0040);
-    tai(KernelZeros, 0x20C0, 0x0019);
+    tai(KernelZeros, ADDR_OF(ZP->pad_held), 0x0019);
 }
 
 void abi_RichterClearWork(void)
 {
-    RichterClearWork();
+    RichterClearWork(cpu.a, cpu.x, cpu.y);
 }
 
 /*
@@ -936,17 +947,24 @@ void abi_RichterClearWork(void)
  */
 uint8_t RichterClearKeepPlace(void)
 {
-    uint8_t x = rd8(OBJ_X_LO);
-    uint8_t y = rd8(OBJ_Y_LO);
-    uint8_t facing = rd8(OBJ_2AC0);
+    uint8_t value;
 
+    value = RD8(OBJ->x_lo[0]);
+    push8(value);
+    value = RD8(OBJ->y_lo[0]);
+    push8(value);
+    value = RD8(OBJ->facing_left[0]);
+    push8(value);
     jsr_push(0xA13D);
     ClearObject(OBJECT_PLAYER);
     jsr_pop();
-    wr8(OBJ_2AC0, facing);
-    wr8(OBJ_Y_LO, y);
-    wr8(OBJ_X_LO, x);
-    return x;
+    value = pull8();
+    WR8(OBJ->facing_left[0], value);
+    value = pull8();
+    WR8(OBJ->y_lo[0], value);
+    value = pull8();
+    WR8(OBJ->x_lo[0], value);
+    return value;
 }
 
 void abi_RichterClearKeepPlace(void)
@@ -967,16 +985,16 @@ void abi_RichterClearKeepPlace(void)
  * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
-StandSound RichterStartNew(void)
+StandSound RichterStartNew(uint8_t x, uint8_t y)
 {
-    wr8(zField93, 0);
-    wr8(zField94, START_FIELD94);
-    return RichterStartHealth();
+    WR8(ZP->field93, 0);
+    WR8(ZP->field94, START_FIELD94);
+    return RichterStartHealth(x, y);
 }
 
 void abi_RichterStartNew(void)
 {
-    stand_sound_exit_shim(RichterStartNew());
+    stand_sound_exit_shim(RichterStartNew(cpu.x, cpu.y));
 }
 
 /*
@@ -987,15 +1005,15 @@ void abi_RichterStartNew(void)
  * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
-StandSound RichterStartHealth(void)
+StandSound RichterStartHealth(uint8_t x, uint8_t y)
 {
-    wr8(zPlayerHealth, HEALTH_FULL);
-    return RichterStartClear();
+    WR8(ZP->player_health, HEALTH_FULL);
+    return RichterStartClear(HEALTH_FULL, x, y);
 }
 
 void abi_RichterStartHealth(void)
 {
-    stand_sound_exit_shim(RichterStartHealth());
+    stand_sound_exit_shim(RichterStartHealth(cpu.x, cpu.y));
 }
 
 /*
@@ -1007,23 +1025,23 @@ void abi_RichterStartHealth(void)
  * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
-StandSound RichterStartClear(void)
+StandSound RichterStartClear(uint8_t a, uint8_t x, uint8_t y)
 {
     jsr_push(0xA157);
-    RichterClearWork();
+    RichterClearWork(a, x, y);
     jsr_pop();
     jsr_push(0xA15A);
     RichterClearKeepPlace();
     jsr_pop();
-    wr8(OBJ_3250, START_LIVE);
-    wr8(OBJ_3828, START_LIVE);
-    wr8(OBJ_3460, START_LIVE);
+    WR8(OBJ->hitbox_on[0], START_LIVE);
+    WR8(OBJ->f3828[0], START_LIVE);
+    WR8(OBJ->anim_timer[0], START_LIVE);
     return RichterStartStand();
 }
 
 void abi_RichterStartClear(void)
 {
-    stand_sound_exit_shim(RichterStartClear());
+    stand_sound_exit_shim(RichterStartClear(cpu.a, cpu.x, cpu.y));
 }
 
 /*

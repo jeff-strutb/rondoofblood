@@ -490,6 +490,70 @@ StartKindFromCharacter_at1:
     sta a:OBJ_3510,x
     rts
 
+; @routine 0519:7BE SettleOnLanding
+; @run 70:A7BE
+; WHAT IT DOES: One frame of a thrown object that stops where it lands: StopOnLanding with a probe height of 0; on landing its life timer is set
+; to $F0 and it enters its next state.
+; HOW: StopOnLanding, then a store and an INC.
+; WAITS: no.
+; Entry: X object, Y the probe's column. Exit: the mover's registers, then A $F0 and N, Z from the new state when landed.
+SettleOnLanding:
+    lda #$00
+    jsr VecStopOnLanding
+    bcc SettleOnLanding_at0
+    lda #$F0
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+SettleOnLanding_at0:
+    rts
+
+; @routine 0519:7CE LandThenWait
+; @run 70:A7CE
+; WHAT IT DOES: A thrown object on the first screen row is asked to land (StopOnLanding, height 0); its life timer counts down and at zero
+; becomes $50 while the object enters its next state.
+; HOW: StopOnLanding, DEC, INC.
+; WAITS: no.
+; Entry: X object, Y the probe's column. Exit: the mover's registers when asked, then the timer's N and Z; at zero A $50 and N, Z from the state.
+LandThenWait:
+    lda a:OBJ_Y_HI,x
+    bne LandThenWait_at0
+    lda #$00
+    jsr VecStopOnLanding
+LandThenWait_at0:
+    dec a:OBJ_34B8,x
+    bne LandThenWait_at1
+    lda #$50
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+LandThenWait_at1:
+    rts
+
+; @routine 0519:7E6 LandThenClear
+; @run 70:A7E6
+; WHAT IT DOES: As LandThenWait, but at zero the object is cleared; until then its frame is 0, and it shows OBJ_3510 on the beats where bit 1
+; of the timer is set.
+; HOW: StopOnLanding, DEC; the clear is a tail jump into ClearObject.
+; WAITS: no.
+; Entry: X object, Y the probe's column. Exit: the mover's registers when asked, then the last compare, AND or load.
+LandThenClear:
+    lda a:OBJ_Y_HI,x
+    bne LandThenClear_at0
+    lda #$00
+    jsr VecStopOnLanding
+LandThenClear_at0:
+    dec a:OBJ_34B8,x
+    bne LandThenClear_at1
+    jmp VecClearObject
+LandThenClear_at1:
+    stz a:OBJ_2A68,x
+    lda a:OBJ_34B8,x
+    and #$02
+    beq LandThenClear_at2
+    lda a:OBJ_3510,x
+    sta a:OBJ_2A68,x
+LandThenClear_at2:
+    rts
+
 ; @routine 051A:055 BitMaskFromIndex
 ; @run 70:A855
 ; WHAT IT DOES: Gives the byte with only bit Y set (1 shifted left Y times; 0 if Y is 8 or more).

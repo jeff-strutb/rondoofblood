@@ -249,6 +249,16 @@ ThrowStep StartThrownItem(uint8_t slot);
 ThrowStep FallThenState(uint8_t slot);
 void throw_step_exit_shim(ThrowStep step);
 uint8_t ClearWhenCountEnds(uint8_t slot);
+/* A thrown object's landing wait: whether the landing was asked, its mover, and what the routine's own instructions left. */
+typedef struct {
+    bool asked;
+    Mover mover;
+    Ended end;
+} LandWait;
+LandWait SettleOnLanding(uint8_t slot, uint8_t column, bool carry_in);
+LandWait LandThenWait(uint8_t slot, uint8_t column, bool carry_in);
+LandWait LandThenClear(uint8_t slot, uint8_t column, bool carry_in);
+void land_wait_exit_shim(LandWait wait);
 /* 1 shifted left count times, as a byte. */
 uint8_t BitMaskFromIndex(uint8_t count);
 

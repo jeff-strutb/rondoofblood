@@ -1377,3 +1377,132 @@ void abi_DispatchByKind18D9(void)
 {
     dispatch_exit_shim(DispatchByKind18D9(cpu.x));
 }
+
+/* A landing wait's exit: the mover's registers when the landing was asked, then what the routine's own instructions left. */
+void land_wait_exit_shim(LandWait wait)
+{
+    if (wait.asked) {
+        mover_exit_shim(wait.mover, 0x01);
+    }
+    abi_ended(wait.end);
+}
+
+/*
+ * @routine 0519:7BE SettleOnLanding
+ * @run 70:A7BE
+ * WHAT IT DOES: One frame of a thrown object that stops where it lands: StopOnLanding with a probe height of 0; on landing its life timer is set
+ * to $F0 and it enters its next state.
+ * HOW: StopOnLanding, then a store and an INC.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column. Exit: the mover's registers, then A $F0 and N, Z from the new state when landed.
+ */
+LandWait SettleOnLanding(uint8_t slot, uint8_t column, bool carry_in)
+{
+    LandWait wait = { true, { 0 }, { 0 } };
+    uint8_t state;
+
+    jsr_push(0xA7C3);
+    wait.mover = StopOnLanding(0, slot, column, carry_in);
+    jsr_pop();
+    if (!mover_landed(wait.mover)) {
+        return wait;
+    }
+    WR8(OBJ->life_timer[slot], 0xF0);
+    state = INC8(OBJ->state[slot]);
+    wait.end = ended_with_a(ended_nz(state), 0xF0);
+    return wait;
+}
+
+void abi_SettleOnLanding(void)
+{
+    land_wait_exit_shim(SettleOnLanding(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}
+
+/* The start two waiting handlers share: on the first screen row the object is asked to land. */
+static LandWait land_if_on_row(uint8_t slot, uint8_t column, bool carry_in, uint16_t ret)
+{
+    LandWait wait = { false, { 0 }, { 0 } };
+    uint8_t y_high;
+
+    y_high = RD8(OBJ->y_hi[slot]);
+    wait.end = ended_load(y_high);
+    if (y_high != 0) {
+        return wait;
+    }
+    wait.end = ended_kept();
+    jsr_push(ret);
+    wait.mover = StopOnLanding(0, slot, column, carry_in);
+    jsr_pop();
+    wait.asked = true;
+    return wait;
+}
+
+/*
+ * @routine 0519:7CE LandThenWait
+ * @run 70:A7CE
+ * WHAT IT DOES: A thrown object on the first screen row is asked to land (StopOnLanding, height 0); its life timer counts down and at zero
+ * becomes $50 while the object enters its next state.
+ * HOW: StopOnLanding, DEC, INC.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column. Exit: the mover's registers when asked, then the timer's N and Z; at zero A $50 and N, Z from the state.
+ */
+LandWait LandThenWait(uint8_t slot, uint8_t column, bool carry_in)
+{
+    LandWait wait;
+    uint8_t left, state;
+
+    wait = land_if_on_row(slot, column, carry_in, 0xA7D8);
+    left = DEC8(OBJ->life_timer[slot]);
+    if (left != 0) {
+        wait.end = ended_then(wait.end, ended_nz(left));
+        return wait;
+    }
+    WR8(OBJ->life_timer[slot], 0x50);
+    state = INC8(OBJ->state[slot]);
+    wait.end = ended_then(wait.end, ended_with_a(ended_nz(state), 0x50));
+    return wait;
+}
+
+void abi_LandThenWait(void)
+{
+    land_wait_exit_shim(LandThenWait(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 0519:7E6 LandThenClear
+ * @run 70:A7E6
+ * WHAT IT DOES: As LandThenWait, but at zero the object is cleared; until then its frame is 0, and it shows OBJ_3510 on the beats where bit 1
+ * of the timer is set.
+ * HOW: StopOnLanding, DEC; the clear is a tail jump into ClearObject.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column. Exit: the mover's registers when asked, then the last compare, AND or load.
+ */
+LandWait LandThenClear(uint8_t slot, uint8_t column, bool carry_in)
+{
+    LandWait wait;
+    uint8_t left, timer, bit, frame;
+
+    wait = land_if_on_row(slot, column, carry_in, 0xA7F0);
+    left = DEC8(OBJ->life_timer[slot]);
+    wait.end = ended_then(wait.end, ended_nz(left));
+    if (left == 0) {
+        ClearObject(slot);
+        return wait;
+    }
+    WR8(OBJ->frame[slot], 0);
+    timer = RD8(OBJ->life_timer[slot]);
+    bit = (uint8_t)(timer & 0x02);
+    wait.end = ended_then(wait.end, ended_load(bit));
+    if (bit == 0) {
+        return wait;
+    }
+    frame = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->frame[slot], frame);
+    wait.end = ended_then(wait.end, ended_load(frame));
+    return wait;
+}
+
+void abi_LandThenClear(void)
+{
+    land_wait_exit_shim(LandThenClear(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}

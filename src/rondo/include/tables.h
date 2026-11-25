@@ -14,4 +14,137 @@
 #define StageMaskOffsets_TBL_ELEM 1
 _Static_assert(StageMaskOffsets + 8 <= 0x10000, "StageMaskOffsets runs past the address space");
 
+/* Effect6Bands: 6 bytes of u8, bank 69, 1 place(s) on the disc from 21EA6; band by step; the symbol is one before the first element (index 1 to 5) */
+#define Effect6Bands_TBL Effect6Bands
+#define Effect6Bands_TBL_BANK 0x69
+#define Effect6Bands_TBL_LEN 6
+#define Effect6Bands_TBL_ELEM 1
+_Static_assert(Effect6Bands + 6 <= 0x10000, "Effect6Bands runs past the address space");
+
+/* Effect6YAdds: 6 bytes of u8, bank 69, 1 place(s) on the disc from 21EAB; Y offset by step; index 1 to 5 */
+#define Effect6YAdds_TBL Effect6YAdds
+#define Effect6YAdds_TBL_BANK 0x69
+#define Effect6YAdds_TBL_LEN 6
+#define Effect6YAdds_TBL_ELEM 1
+_Static_assert(Effect6YAdds + 6 <= 0x10000, "Effect6YAdds runs past the address space");
+
+/* Effect6Lines: 6 bytes of u8, bank 69, 1 place(s) on the disc from 21EB0; next line by step; index 1 to 5 */
+#define Effect6Lines_TBL Effect6Lines
+#define Effect6Lines_TBL_BANK 0x69
+#define Effect6Lines_TBL_LEN 6
+#define Effect6Lines_TBL_ELEM 1
+_Static_assert(Effect6Lines + 6 <= 0x10000, "Effect6Lines runs past the address space");
+
+/* Effect8YAdds: 5 bytes of u16le, bank 69, 1 place(s) on the disc from 22033; Y offset words by step */
+#define Effect8YAdds_TBL Effect8YAdds
+#define Effect8YAdds_TBL_BANK 0x69
+#define Effect8YAdds_TBL_LEN 5
+#define Effect8YAdds_TBL_ELEM 2
+_Static_assert(Effect8YAdds + 5 <= 0x10000, "Effect8YAdds runs past the address space");
+
+/* Effect8Lines: 3 bytes of u8, bank 69, 1 place(s) on the disc from 22038; next line by step */
+#define Effect8Lines_TBL Effect8Lines
+#define Effect8Lines_TBL_BANK 0x69
+#define Effect8Lines_TBL_LEN 3
+#define Effect8Lines_TBL_ELEM 1
+_Static_assert(Effect8Lines + 3 <= 0x10000, "Effect8Lines runs past the address space");
+
+/* FlickerMasks: 2 bytes of u8, bank 69, 1 place(s) on the disc from 2203B; VDC control mask by odd or even frame */
+#define FlickerMasks_TBL FlickerMasks
+#define FlickerMasks_TBL_BANK 0x69
+#define FlickerMasks_TBL_LEN 2
+#define FlickerMasks_TBL_ELEM 1
+_Static_assert(FlickerMasks + 2 <= 0x10000, "FlickerMasks runs past the address space");
+
+/* Effect12Bands: 4 bytes of u8, bank 69, 1 place(s) on the disc from 22131; band by step; index 1 to 3 */
+#define Effect12Bands_TBL Effect12Bands
+#define Effect12Bands_TBL_BANK 0x69
+#define Effect12Bands_TBL_LEN 4
+#define Effect12Bands_TBL_ELEM 1
+_Static_assert(Effect12Bands + 4 <= 0x10000, "Effect12Bands runs past the address space");
+
+/* Effect12Lines: 4 bytes of u8, bank 69, 1 place(s) on the disc from 22135; next line by step */
+#define Effect12Lines_TBL Effect12Lines
+#define Effect12Lines_TBL_BANK 0x69
+#define Effect12Lines_TBL_LEN 4
+#define Effect12Lines_TBL_ELEM 1
+_Static_assert(Effect12Lines + 4 <= 0x10000, "Effect12Lines runs past the address space");
+
+/* Effect13Bands: 5 bytes of u8, bank 69, 1 place(s) on the disc from 221C0; band by step; index 1 to 4 */
+#define Effect13Bands_TBL Effect13Bands
+#define Effect13Bands_TBL_BANK 0x69
+#define Effect13Bands_TBL_LEN 5
+#define Effect13Bands_TBL_ELEM 1
+_Static_assert(Effect13Bands + 5 <= 0x10000, "Effect13Bands runs past the address space");
+
+/* Effect13YAdds: 9 bytes of u16le, bank 69, 1 place(s) on the disc from 221C3; Y offset words by step */
+#define Effect13YAdds_TBL Effect13YAdds
+#define Effect13YAdds_TBL_BANK 0x69
+#define Effect13YAdds_TBL_LEN 9
+#define Effect13YAdds_TBL_ELEM 2
+_Static_assert(Effect13YAdds + 9 <= 0x10000, "Effect13YAdds runs past the address space");
+
+/* Effect13Lines: 5 bytes of u8, bank 69, 1 place(s) on the disc from 221CC; next line by step */
+#define Effect13Lines_TBL Effect13Lines
+#define Effect13Lines_TBL_BANK 0x69
+#define Effect13Lines_TBL_LEN 5
+#define Effect13Lines_TBL_ELEM 1
+_Static_assert(Effect13Lines + 5 <= 0x10000, "Effect13Lines runs past the address space");
+
+/* Effect16Bands: 5 bytes of u8, bank 69, 1 place(s) on the disc from 22314; band by step; index 1 to 4 */
+#define Effect16Bands_TBL Effect16Bands
+#define Effect16Bands_TBL_BANK 0x69
+#define Effect16Bands_TBL_LEN 5
+#define Effect16Bands_TBL_ELEM 1
+_Static_assert(Effect16Bands + 5 <= 0x10000, "Effect16Bands runs past the address space");
+
+/* Effect16YAdds: 5 bytes of u8, bank 69, 1 place(s) on the disc from 22318; Y offset by step */
+#define Effect16YAdds_TBL Effect16YAdds
+#define Effect16YAdds_TBL_BANK 0x69
+#define Effect16YAdds_TBL_LEN 5
+#define Effect16YAdds_TBL_ELEM 1
+_Static_assert(Effect16YAdds + 5 <= 0x10000, "Effect16YAdds runs past the address space");
+
+/* Effect16Lines: 5 bytes of u8, bank 69, 1 place(s) on the disc from 2231C; next line by step */
+#define Effect16Lines_TBL Effect16Lines
+#define Effect16Lines_TBL_BANK 0x69
+#define Effect16Lines_TBL_LEN 5
+#define Effect16Lines_TBL_ELEM 1
+_Static_assert(Effect16Lines + 5 <= 0x10000, "Effect16Lines runs past the address space");
+
+/* Effect17Bands: 5 bytes of u8, bank 69, 1 place(s) on the disc from 22384; band by step; index 1 to 4 */
+#define Effect17Bands_TBL Effect17Bands
+#define Effect17Bands_TBL_BANK 0x69
+#define Effect17Bands_TBL_LEN 5
+#define Effect17Bands_TBL_ELEM 1
+_Static_assert(Effect17Bands + 5 <= 0x10000, "Effect17Bands runs past the address space");
+
+/* Effect17Lines: 5 bytes of u8, bank 69, 1 place(s) on the disc from 2238A; next line by step */
+#define Effect17Lines_TBL Effect17Lines
+#define Effect17Lines_TBL_BANK 0x69
+#define Effect17Lines_TBL_LEN 5
+#define Effect17Lines_TBL_ELEM 1
+_Static_assert(Effect17Lines + 5 <= 0x10000, "Effect17Lines runs past the address space");
+
+/* DeepWave: 16 bytes of u16le, bank 69, 1 place(s) on the disc from 226A0; X offset words by wave phase */
+#define DeepWave_TBL DeepWave
+#define DeepWave_TBL_BANK 0x69
+#define DeepWave_TBL_LEN 16
+#define DeepWave_TBL_ELEM 2
+_Static_assert(DeepWave + 16 <= 0x10000, "DeepWave runs past the address space");
+
+/* RasterEffects: 58 bytes of u16le, bank 69, 1 place(s) on the disc from 21CE9; the effect handlers' addresses by raster effect */
+#define RasterEffects_TBL RasterEffects
+#define RasterEffects_TBL_BANK 0x69
+#define RasterEffects_TBL_LEN 58
+#define RasterEffects_TBL_ELEM 2
+_Static_assert(RasterEffects + 58 <= 0x10000, "RasterEffects runs past the address space");
+
+/* RasterStartEntries: 147 bytes of u16le, bank 69, 1 place(s) on the disc from 21C04; band copy entry by raster effect */
+#define RasterStartEntries_TBL RasterStartEntries
+#define RasterStartEntries_TBL_BANK 0x69
+#define RasterStartEntries_TBL_LEN 147
+#define RasterStartEntries_TBL_ELEM 2
+_Static_assert(RasterStartEntries + 147 <= 0x10000, "RasterStartEntries runs past the address space");
+
 #endif

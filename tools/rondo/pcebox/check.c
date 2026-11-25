@@ -1973,6 +1973,17 @@ void check_irq(void)
         fprintf(stderr, "IRQ frame %lu pc %04X S%02X prev_op %X top %s\n", cur_frame, r.pc, r.s, prev_op, top ? rondo_tags[top->tag].name : "-");
     ipend[nipend].from = last_pc;
     ipend[nipend++].prev = prev_op;
+    if (mode == MODE_HYBRID && getenv("RONDO_DIAG_CTX")) {
+        uint64_t k = scan;
+        Ev *x;
+
+        while ((x = evp(k)) && (x->type == EV_CLOSE || x->type == EV_STATE || x->type == EV_RET))
+            k++;
+        fprintf(stderr, "IRQCORE frame %lu core pc %04X S%02X clock %llu top %s%s; record next %llu type %d pc %04X s %02X clock %llu\n", cur_frame, r.pc,
+                r.s, (unsigned long long)hybrid_clock_now(), top ? rondo_tags[top->tag].name : "-",
+                top && top->parked ? "(parked)" : "", (unsigned long long)k, x ? x->type : -1, x ? x->pc : 0, x ? x->s : 0,
+                x ? (unsigned long long)x->clock : 0ull);
+    }
     if (mode == MODE_HYBRID && top && top->parked && !top->wait_frame && r.pc == top->resume_pc &&
         r.s == top->resume_s)
         top->natural++;      /* taken at the place the C waits for: the record's next interrupt is this one */

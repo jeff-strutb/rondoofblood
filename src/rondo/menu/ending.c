@@ -1298,3 +1298,209 @@ void abi_EndingScrollSteps(void)
 {
     object_exit_shim(EndingScrollSteps(cpu.x));
 }
+
+/* The position's high byte after a move: what the move leaves in A. */
+static uint8_t move_high(AxisMove move)
+{
+    uint32_t added = (uint32_t)(int32_t)move.velocity & 0xFFFFFF;
+
+    return (uint8_t)((move.before + added) >> 16);
+}
+
+/* A move that ends a handler: A, N, Z, C and V all from it. */
+static ObjExit move_exit(AxisMove move)
+{
+    uint8_t high = move_high(move);
+    ObjExit result = object_exit(high, high);
+
+    return under_move(result, move);
+}
+
+/*
+ * @routine 010E:01D EndingHoldThenScript19
+ * @run 6B:881D
+ * WHAT IT DOES: An object handler of two stages: the first starts the raster effect $13, sets scroll slots 1 and 5 to Y $2F and
+ * 2 and 6 to $BF and holds the object $40 frames; the second, once the hold has run out, starts script $19 on slot 7 as kind 1
+ * and moves to the next state.
+ * HOW: OBJ->state; EndingHoldTimer; StartScriptSlotKind1.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingHoldThenScript19(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        raster_and_scroll(0x2F, 0xBF);
+        WR8(OBJ->life_timer[object], 0x40);
+        return object_exit(0x40, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    result = object_exit(0, 0);
+    jsr_push(0x8845);
+    result.exit.nz = EndingHoldTimer(object);
+    if (result.exit.nz != 0) {
+        return result;
+    }
+    jsr_pop();
+    push8(object);
+    jsr_push(0x884D);
+    (void)StartScriptSlotKind1(0x19, 7);
+    jsr_pop();
+    (void)pull8();
+    result = object_exit(0x19, INC8(OBJ->state[object]));
+    result.exit.y = 0x19;
+    result.exit.y_kept = false;
+    return result;
+}
+
+void abi_EndingHoldThenScript19(void)
+{
+    object_exit_shim(EndingHoldThenScript19(cpu.x));
+}
+
+/* The two link animations: play a list and, when a frame changed to a non-zero picture, start script $0D on slot 1. */
+static ObjExit link_animation(uint8_t object, uint8_t list_number)
+{
+    ObjExit result;
+    uint8_t state, frame;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(OBJ->sprite_set[object], 3);
+        INC8(OBJ->state[object]);
+    }
+    jsr_push(0x8865);
+    result = EndingFrameList(list_number, object);
+    jsr_pop();
+    if (!result.exit.c) {
+        return result;
+    }
+    frame = RD8(OBJ->frame[object]);
+    result.exit.a = frame;
+    result.exit.nz = frame;
+    if (frame == 0) {
+        return result;
+    }
+    push8(object);
+    jsr_push(0x8874);
+    (void)StartScriptSlotKind1(0x0D, 1);
+    jsr_pop();
+    (void)pull8();
+    result.exit.a = 0x0D;
+    result.exit.y = 0x0D;
+    result.exit.nz = object;
+    return result;
+}
+
+/*
+ * @routine 010E:053 EndingLinkAnimationA
+ * @run 6B:8853
+ * WHAT IT DOES: An object handler: shows picture kind 3 and plays the ending's list 4; when a frame changes to a non-zero picture
+ * it starts script $0D on slot 1 as kind 1.
+ * HOW: OBJ->state and OBJ->sprite_set; EndingFrameList; StartScriptSlotKind1.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingLinkAnimationA(uint8_t object)
+{
+    return link_animation(object, 4);
+}
+
+void abi_EndingLinkAnimationA(void)
+{
+    object_exit_shim(EndingLinkAnimationA(cpu.x));
+}
+
+/*
+ * @routine 010E:076 EndingLinkAnimationB
+ * @run 6B:8876
+ * WHAT IT DOES: As EndingLinkAnimationA, with the ending's list 5.
+ * HOW: OBJ->state and OBJ->sprite_set; EndingFrameList; StartScriptSlotKind1.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingLinkAnimationB(uint8_t object)
+{
+    return link_animation(object, 5);
+}
+
+void abi_EndingLinkAnimationB(void)
+{
+    object_exit_shim(EndingLinkAnimationB(cpu.x));
+}
+
+/*
+ * @routine 010D:36A EndingAimAtPlace
+ * @run 6B:836A
+ * WHAT IT DOES: An object handler of two stages: the first makes the object's speed the distance to the place (X $70, Y $58)
+ * times 8 and moves to the next state; the second adds $18 to the downward speed and moves.
+ * HOW: OBJ->state; subtracts and three shifts of the 16-bit speeds; ApplyVelocity.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingAimAtPlace(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, low, high, vyh, borrow, round, value, carry_low, carry_high = 0;
+    unsigned total;
+    AxisMove move;
+    bool overflow;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        low = RD8(OBJ->x_lo[object]);
+        borrow = low < 0x70;
+        WR8(OBJ->vx_lo[object], (uint8_t)(low - 0x70));
+        high = RD8(OBJ->x_hi[object]);
+        WR8(OBJ->vx_hi[object], (uint8_t)(high - borrow));
+        low = RD8(OBJ->y_lo[object]);
+        borrow = low < 0x58;
+        WR8(OBJ->vy_lo[object], (uint8_t)(low - 0x58));
+        high = RD8(OBJ->y_hi[object]);
+        vyh = (uint8_t)(high - borrow);
+        overflow = (high & (high ^ vyh) & 0x80) != 0;
+        WR8(OBJ->vy_hi[object], vyh);
+        for (round = 0; round < 3; round++) {
+            value = RD8(OBJ->vx_lo[object]);
+            carry_low = value >> 7;
+            WR8(OBJ->vx_lo[object], (uint8_t)(value << 1));
+            value = RD8(OBJ->vx_hi[object]);
+            WR8(OBJ->vx_hi[object], (uint8_t)((value << 1) | carry_low));
+            value = RD8(OBJ->vy_lo[object]);
+            carry_low = value >> 7;
+            WR8(OBJ->vy_lo[object], (uint8_t)(value << 1));
+            value = RD8(OBJ->vy_hi[object]);
+            carry_high = value >> 7;
+            WR8(OBJ->vy_hi[object], (uint8_t)((value << 1) | carry_low));
+        }
+        result = with_carry(object_exit(vyh, INC8(OBJ->state[object])), carry_high != 0);
+        result.exit.v = overflow;
+        result.exit.v_set = true;
+        return result;
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    low = RD8(OBJ->vy_lo[object]);
+    total = (unsigned)low + 0x18;
+    WR8(OBJ->vy_lo[object], (uint8_t)total);
+    if (total > 0xFF) {
+        INC8(OBJ->vy_hi[object]);
+    }
+    jsr_push(0x83CD);
+    move = ApplyVelocity(object);
+    jsr_pop();
+    return move_exit(move);
+}
+
+void abi_EndingAimAtPlace(void)
+{
+    object_exit_shim(EndingAimAtPlace(cpu.x));
+}

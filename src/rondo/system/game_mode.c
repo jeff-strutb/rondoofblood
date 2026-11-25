@@ -78,6 +78,15 @@ static Cpu overlay_loaded_shim(uint16_t entry, uint8_t a)
     return cpu;
 }
 
+/* An overlay called with a frame, A just loaded: N and Z from it. */
+static Cpu overlay_loaded_frame_shim(uint16_t entry, uint8_t a, uint16_t ret)
+{
+    cpu.a = a;
+    abi_nz(a);
+    call_orig(ret, entry);
+    return cpu;
+}
+
 /* An overlay's entry, with A the bank an add just made: N, Z, C and V from the add. */
 static Cpu overlay_added_shim(uint16_t entry, Sum bank, uint16_t ret)
 {
@@ -460,7 +469,7 @@ void abi_ModeAttract(void)
  * fades the CD and goes to mode 8.
  * HOW: The card's joypad byte, the overlay's frame, a sound fade, the card's cd_fade.
  * WAITS: yes, through ResetGameState (the vertical blank); the stack there is the mode loop's return and the call's frame.
- * Entry: nothing. Exit: as what ran last.
+ * Entry: X and Y are the caller's; the overlay's leave goes on to SoundCommand. Exit: as what ran last.
  */
 typedef struct {
     uint8_t run_pressed;
@@ -468,29 +477,37 @@ typedef struct {
     CommandCall sound;
 } AttractPlayRun;
 
-AttractPlayRun ModeAttractPlay(void)
+AttractPlayRun ModeAttractPlay(uint8_t kept_x, uint8_t kept_y)
 {
     AttractPlayRun run;
 
     run.run_pressed = rd8(BiosJoyTrigger) & JOY_RUN;
     if (run.run_pressed == 0) {
-        run.frame.after = overlay_loaded_shim(FrameOverlay8000, 0);
+        run.frame.after = overlay_loaded_frame_shim(FrameOverlay8000, 0, 0x51C0);
         run.frame.done = rd8(zModeDone);
         if (run.frame.done == 0)
             return run;
+        kept_x = run.frame.after.x;
+        kept_y = run.frame.after.y;
     }
     wr8(zGameRunning, 0);
-    run.sound = SoundCommand(SOUND_FADE, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+    jsr_push(0x51CC);
+    run.sound = SoundCommand(SOUND_FADE, kept_x, kept_y);
+    jsr_pop();
+    jsr_push(0x51D1);
     cd_fade(CD_FADE_OUT);
+    jsr_pop();
     wr8(zWaitTimer, GAME_OVER_WAIT);
+    jsr_push(0x51D8);
     ResetGameState();
+    jsr_pop();
     SetGameMode(MODE_GAME_OVER);
     return run;
 }
 
 void abi_ModeAttractPlay(void)
 {
-    AttractPlayRun run = ModeAttractPlay();
+    AttractPlayRun run = ModeAttractPlay(cpu.x, cpu.y);
 
     if (run.run_pressed == 0) {
         overlay_done_shim(run.frame.after, run.frame.done);

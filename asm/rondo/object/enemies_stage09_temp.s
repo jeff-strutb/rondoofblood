@@ -720,6 +720,82 @@ StepThenClear:
     jmp VecClearObject
 StepThenClear_at0:
     rts
+; @routine 09EC:7BC JumpByStateTable
+; @run 70:BFBC
+; WHAT IT DOES: Goes to the code a table at $BFCE names for the object's state.
+; HOW: The table's two bytes go to zTemp10-11 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$BFCE,y
+    sta z:zTemp10
+    lda a:$BFCF,y
+    sta z:zTemp11
+    jmp (zTemp10+$2000)
+
+; @routine 09EC:7F2 SwayThenReact
+; @run 70:BFF2
+; WHAT IT DOES: Steps the animation by phase, sets the sway speed, bobs and moves, then reacts at the window edge.
+; HOW: StepListByPhase, SetSwaySpeed, BobAndMove, a tail jump into ReactAtWindowEdge.
+; WAITS: no.
+; Entry: X object. Exit: as ReactAtWindowEdge.
+SwayThenReact:
+    jsr StepListByPhase
+    jsr SetSwaySpeed
+    jsr BobAndMove
+    jmp ReactAtWindowEdge
+
+; @routine 09EC:7FE SwayOrAdvance
+; @run 70:BFFE
+; WHAT IT DOES: Counts the object's angle byte down; at zero it goes on as EnterNextAndReset, otherwise it sways (SwayStep).
+; HOW: DEC, then the tail calls.
+; WAITS: no.
+; Entry: X object. Exit: as EnterNextAndReset or BobAndMove.
+SwayOrAdvance:
+    dec a:OBJ_3568,x
+    beq EnterNextAndReset
+SwayOrAdvance_at0:
+    jsr StepListByPhase
+    jsr SetSwaySpeed
+    jmp BobAndMove
+
+; @routine 09ED:00C SwayThenFlip
+; @run 71:C00C
+; WHAT IT DOES: Counts the angle byte down; at zero it flips the side, goes on as EnterNextAndReset and sets OBJ_3510 to 1; otherwise it sways.
+; HOW: DEC, FlipSide, EnterNextAndReset, or SwayStep.
+; WAITS: no.
+; Entry: X object. Exit: at zero A 1 from the load; else as BobAndMove.
+SwayThenFlip:
+    dec a:OBJ_3568,x
+    beq SwayThenFlip_at0
+    bne SwayOrAdvance_at0
+SwayThenFlip_at0:
+    jsr FlipSide
+    jsr EnterNextAndReset
+    lda #$01
+    sta a:OBJ_3510,x
+    rts
+
+; @routine 09ED:01F SwayThenRestart
+; @run 71:C01F
+; WHAT IT DOES: Counts the angle byte down; at zero it goes on as EnterNextAndReset, puts the object in state 1 and OBJ_3510 at 0; otherwise it sways.
+; HOW: DEC, EnterNextAndReset, or SwayStep.
+; WAITS: no.
+; Entry: X object. Exit: at zero A 1 from the load; else as BobAndMove.
+SwayThenRestart:
+    dec a:OBJ_3568,x
+    beq SwayThenRestart_at0
+    bne SwayOrAdvance_at0
+SwayThenRestart_at0:
+    jsr EnterNextAndReset
+    lda #$01
+    sta a:OBJ_27A8,x
+    stz a:OBJ_3510,x
+    rts
+
 ; @routine 09ED:032 ClearAnimation
 ; @run 71:C032
 ; WHAT IT DOES: Restarts the object's animation: step and timer 0.
@@ -749,6 +825,32 @@ StepListByPhase:
     sta z:zTemp11
     jmp VecStepObjectFrames
 
+; @routine 09ED:051 ReactAtWindowEdge
+; @run 71:C051
+; WHAT IT DOES: When the object's X plus the scroll is at the edge its side (life timer 0 or 1) names ($E0 or more for 0, under $20 for 1) and it
+; is in state 1, it goes on as EnterNextAndReset.
+; HOW: ScrollXLo and two compares; the last step runs on into the next routine's bytes.
+; Untraced: one byte (the fall-through branch).
+; WAITS: no.
+; Entry: X object. Exit: the last compare or the load; Y the side.
+ReactAtWindowEdge:
+    lda a:OBJ_X_LO,x
+    clc
+    adc a:ScrollXLo
+    ldy a:OBJ_34B8,x
+    beq ReactAtWindowEdge_at0
+    cmp #$20
+    bcc ReactAtWindowEdge_at1
+    rts
+ReactAtWindowEdge_at0:
+    cmp #$E0
+    bcs ReactAtWindowEdge_at1
+    rts
+ReactAtWindowEdge_at1:
+    lda a:OBJ_27A8,x
+    cmp #$01
+    bne EnterNextAndReset_at0
+
 ; @routine 09ED:06E EnterNextAndReset
 ; @run 71:C06E
 ; WHAT IT DOES: Moves the object on one state and its OBJ_3510 on one, restarts its animation and gives it a countdown of $20 in
@@ -762,6 +864,7 @@ EnterNextAndReset:
     jsr ClearAnimation
     lda #$20
     sta a:OBJ_3568,x
+EnterNextAndReset_at0:
     rts
 
 ; @routine 09ED:07D FlipSide

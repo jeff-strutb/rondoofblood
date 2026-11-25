@@ -1383,7 +1383,7 @@ Ended StepListByPhase(uint8_t slot)
     WR8(ZP->temp10, rd8((uint16_t)(0xC103 + index)));
     WR8(ZP->temp11, rd8((uint16_t)(0xC104 + index)));
     step = StepObjectFrames(slot, &y);
-    return ended_of_frame_step(step, step != FRAME_HELD, y);
+    return ended_of_frame_step(step, true, y);
 }
 
 void abi_StepListByPhase(void)
@@ -1444,7 +1444,8 @@ Ended BobAndMove(uint8_t slot)
 
     WR8(ZP->temp00, 0xFF);
     WR8(ZP->temp01, 3);
-    phase = INC8(OBJ->f3618[slot]);
+    INC8(OBJ->f3618[slot]);
+    phase = RD8(OBJ->f3618[slot]);
     jsr_push(0xC097);
     ScaleBySine(phase);
     jsr_pop();
@@ -1460,7 +1461,7 @@ Ended BobAndMove(uint8_t slot)
             jsr_pop();
             wobble = (uint8_t)((random.value & 0x03) - 1);
             base = RD8(OBJ->y_lo[slot]);
-            sum = add_bytes(base, wobble, (random.value & 0x03) != 0);
+            sum = add_bytes(base, wobble, false);
             WR8(OBJ->y_lo[slot], sum.value);
         }
     }
@@ -1471,4 +1472,211 @@ Ended BobAndMove(uint8_t slot)
 void abi_BobAndMove(void)
 {
     abi_ended(BobAndMove(cpu.x));
+}
+
+/*
+ * @routine 09ED:051 ReactAtWindowEdge
+ * @run 71:C051
+ * WHAT IT DOES: When the object's X plus the scroll is at the edge its side (life timer 0 or 1) names ($E0 or more for 0, under $20 for 1) and it
+ * is in state 1, it goes on as EnterNextAndReset.
+ * HOW: ScrollXLo and two compares; the last step runs on into the next routine's bytes.
+ * Untraced: one byte (the fall-through branch).
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare or the load; Y the side.
+ */
+Ended ReactAtWindowEdge(uint8_t slot)
+{
+    uint8_t x_low, side, state;
+    Sum sum;
+    Ended e;
+
+    x_low = RD8(OBJ->x_lo[slot]);
+    sum = add_bytes(x_low, rd8(ScrollXLo), false);
+    e = of_sum(sum);
+    side = RD8(OBJ->life_timer[slot]);
+    e = then(e, ended_with_y(ended_nz(side), side));
+    if (side == 0) {
+        e = then(e, ended_compare(sum.value, 0xE0));
+        if (sum.value < 0xE0) {
+            return e;
+        }
+    } else {
+        e = then(e, ended_compare(sum.value, 0x20));
+        if (sum.value >= 0x20) {
+            return e;
+        }
+    }
+    state = RD8(OBJ->state[slot]);
+    e = then(e, ended_compare(state, 1));
+    if (state != 1) {
+        return e;
+    }
+    return then(e, EnterNextAndReset(slot));
+}
+
+void abi_ReactAtWindowEdge(void)
+{
+    abi_ended(ReactAtWindowEdge(cpu.x));
+}
+
+/* The three steps of a swaying object, which two routines branch into the middle of: the list, the speed, the bob. */
+Ended SwayStep(uint8_t slot)
+{
+    Ended e;
+
+    jsr_push(0xC006);
+    e = StepListByPhase(slot);
+    jsr_pop();
+    jsr_push(0xC009);
+    e = then(e, SetSwaySpeed(slot));
+    jsr_pop();
+    return then(e, BobAndMove(slot));
+}
+
+/*
+ * @routine 09EC:7FE SwayOrAdvance
+ * @run 70:BFFE
+ * WHAT IT DOES: Counts the object's angle byte down; at zero it goes on as EnterNextAndReset, otherwise it sways (SwayStep).
+ * HOW: DEC, then the tail calls.
+ * WAITS: no.
+ * Entry: X object. Exit: as EnterNextAndReset or BobAndMove.
+ */
+Ended SwayOrAdvance(uint8_t slot)
+{
+    uint8_t left;
+
+    left = DEC8(OBJ->angle_hi[slot]);
+    if (left == 0) {
+        return EnterNextAndReset(slot);
+    }
+    return then(ended_nz(left), SwayStep(slot));
+}
+
+void abi_SwayOrAdvance(void)
+{
+    abi_ended(SwayOrAdvance(cpu.x));
+}
+
+/*
+ * @routine 09EC:7F2 SwayThenReact
+ * @run 70:BFF2
+ * WHAT IT DOES: Steps the animation by phase, sets the sway speed, bobs and moves, then reacts at the window edge.
+ * HOW: StepListByPhase, SetSwaySpeed, BobAndMove, a tail jump into ReactAtWindowEdge.
+ * WAITS: no.
+ * Entry: X object. Exit: as ReactAtWindowEdge.
+ */
+Ended SwayThenReact(uint8_t slot)
+{
+    Ended e;
+
+    jsr_push(0xBFF5);
+    e = StepListByPhase(slot);
+    jsr_pop();
+    jsr_push(0xBFF8);
+    e = then(e, SetSwaySpeed(slot));
+    jsr_pop();
+    jsr_push(0xBFFB);
+    e = then(e, BobAndMove(slot));
+    jsr_pop();
+    return then(e, ReactAtWindowEdge(slot));
+}
+
+void abi_SwayThenReact(void)
+{
+    abi_ended(SwayThenReact(cpu.x));
+}
+
+/*
+ * @routine 09ED:00C SwayThenFlip
+ * @run 71:C00C
+ * WHAT IT DOES: Counts the angle byte down; at zero it flips the side, goes on as EnterNextAndReset and sets OBJ_3510 to 1; otherwise it sways.
+ * HOW: DEC, FlipSide, EnterNextAndReset, or SwayStep.
+ * WAITS: no.
+ * Entry: X object. Exit: at zero A 1 from the load; else as BobAndMove.
+ */
+Ended SwayThenFlip(uint8_t slot)
+{
+    uint8_t left;
+    Ended e;
+
+    left = DEC8(OBJ->angle_hi[slot]);
+    e = ended_nz(left);
+    if (left != 0) {
+        return then(e, SwayStep(slot));
+    }
+    jsr_push(0xC016);
+    e = then(e, FlipSide(slot));
+    jsr_pop();
+    jsr_push(0xC019);
+    e = then(e, EnterNextAndReset(slot));
+    jsr_pop();
+    WR8(OBJ->f3510[slot], 1);
+    return then(e, ended_load(1));
+}
+
+void abi_SwayThenFlip(void)
+{
+    abi_ended(SwayThenFlip(cpu.x));
+}
+
+/*
+ * @routine 09ED:01F SwayThenRestart
+ * @run 71:C01F
+ * WHAT IT DOES: Counts the angle byte down; at zero it goes on as EnterNextAndReset, puts the object in state 1 and OBJ_3510 at 0; otherwise it sways.
+ * HOW: DEC, EnterNextAndReset, or SwayStep.
+ * WAITS: no.
+ * Entry: X object. Exit: at zero A 1 from the load; else as BobAndMove.
+ */
+Ended SwayThenRestart(uint8_t slot)
+{
+    uint8_t left;
+    Ended e;
+
+    left = DEC8(OBJ->angle_hi[slot]);
+    e = ended_nz(left);
+    if (left != 0) {
+        return then(e, SwayStep(slot));
+    }
+    jsr_push(0xC029);
+    e = then(e, EnterNextAndReset(slot));
+    jsr_pop();
+    WR8(OBJ->state[slot], 1);
+    WR8(OBJ->f3510[slot], 0);
+    return then(e, ended_load(1));
+}
+
+void abi_SwayThenRestart(void)
+{
+    abi_ended(SwayThenRestart(cpu.x));
+}
+
+/*
+ * @routine 09EC:7BC JumpByStateTable
+ * @run 70:BFBC
+ * WHAT IT DOES: Goes to the code a table at $BFCE names for the object's state.
+ * HOW: The table's two bytes go to zTemp10-11 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTable(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xBFCE + index));
+    WR8(ZP->temp10, low);
+    high = rd8((uint16_t)(0xBFCF + index));
+    WR8(ZP->temp11, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp10, ZP->temp11);
+    return jump;
+}
+
+void abi_JumpByStateTable(void)
+{
+    Jump jump = JumpByStateTable(cpu.x);
+
+    jump_shim(jump.end, jump.target);
 }

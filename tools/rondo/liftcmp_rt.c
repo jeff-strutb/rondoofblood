@@ -104,6 +104,18 @@ void rt_event(void)
  */
 static int is_hardware(uint16_t addr) { return mpr[addr >> 13] == 0xFF; }
 
+/* An instruction byte: the value rd8 would give, with no event and no change to the read counts. */
+uint8_t code8(uint16_t addr)
+{
+    if (is_hardware(addr))
+        return seeded(addr, reads[addr], 1);
+    if (written[addr])
+        return mem[addr];
+    if (card_rom && mpr[addr >> 13] < 0x20)
+        return card_rom[((unsigned)mpr[addr >> 13] << 13) | (addr & 0x1FFF)];
+    return seeded(addr, 0, 1);
+}
+
 uint8_t rd8(uint16_t addr)
 {
     uint8_t v;

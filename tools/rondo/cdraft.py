@@ -99,20 +99,27 @@ IMPLIED = {"tax", "txa", "tay", "tya", "tsx", "txs", "inx", "iny", "dex", "dey",
 BLOCK = {"tii", "tdd", "tin", "tia", "tai"}
 
 
-def addr_expr(mode, ops):
-    """The effective address of an operand, as C; reads of zero page pointers happen in the helper."""
-    v = ops[0]
+def addr_expr(mode, ops, rt=None):
+    """The effective address of an operand, as C; reads of zero page pointers happen in the helper. rt: the operand
+    as a C expression read at run time (the instruction's operand bytes are patched by the routine itself)."""
+    v = ops[0] if rt is None else rt
+    if rt is None:
+        return {
+            "zp": "0x%04X" % (0x2000 | v), "zpx": "ea_zpx(0x%02X)" % v, "zpy": "ea_zpy(0x%02X)" % v,
+            "abs": "0x%04X" % v, "abx": "ea_abx(0x%04X)" % v, "aby": "ea_aby(0x%04X)" % v,
+            "izp": "ea_ind(0x%02X)" % v, "izx": "ea_izx(0x%02X)" % v, "izy": "ea_izy(0x%02X)" % v,
+        }[mode]
     return {
-        "zp": "0x%04X" % (0x2000 | v), "zpx": "ea_zpx(0x%02X)" % v, "zpy": "ea_zpy(0x%02X)" % v,
-        "abs": "0x%04X" % v, "abx": "ea_abx(0x%04X)" % v, "aby": "ea_aby(0x%04X)" % v,
-        "izp": "ea_ind(0x%02X)" % v, "izx": "ea_izx(0x%02X)" % v, "izy": "ea_izy(0x%02X)" % v,
+        "zp": "(0x2000 | %s)" % v, "zpx": "ea_zpx(%s)" % v, "zpy": "ea_zpy(%s)" % v,
+        "abs": "(%s)" % v, "abx": "ea_abx(%s)" % v, "aby": "ea_aby(%s)" % v,
+        "izp": "ea_ind(%s)" % v, "izx": "ea_izx(%s)" % v, "izy": "ea_izy(%s)" % v,
     }[mode]
 
 
-def value_expr(mode, ops):
+def value_expr(mode, ops, rt=None):
     if mode == "imm":
-        return "0x%02X" % ops[0]
-    return "rd8(%s)" % addr_expr(mode, ops)
+        return "0x%02X" % ops[0] if rt is None else rt
+    return "rd8(%s)" % addr_expr(mode, ops, rt)
 
 
 class Seg:
@@ -132,7 +139,8 @@ class Draft:
     def __init__(self, g, base, name, whole=()):
         self.g, self.base, self.name = g, base, name
         self.whole = set(whole)
-        self.whole_span = (0, 0)           # (id(group), run base) of every piece of a whole routine (--whole), else empty
+        self.whole_span = (0, 0)
+        self.written = set()           # (id(group), run base) of every piece of a whole routine (--whole), else empty
         if self.whole:
             self.MAXSEG = 64
         self.segs = [Seg(0, g, base)]
@@ -157,6 +165,23 @@ class Draft:
         on into can be a piece inlined from another routine, outside this routine's own range)."""
         self.stat["tail"] += 1
         return "{ call_original_at(0x%04X, 0x%04X); return; }" % (frompc, addr)
+
+    def smod(self, seg, pc, ln):
+        """Does a store of this draft hit a byte of the instruction at pc (ln bytes)?"""
+        return any(((pc + k) & 0xFFFF) in self.written for k in range(ln))
+
+    def find_written(self):
+        """The addresses the routine's own absolute stores write, kept where they fall inside a piece of its code."""
+        out = set()
+        for sg in self.segs:
+            lo, hi = sg.base, sg.base + sg.g.n
+            for it in sg.g.items:
+                if it[0] != "i":
+                    continue
+                _, o, ln, name, mode, ops, unrun = it
+                if mode == "abs" and (name in STORE_OPS or name in RMW_F) and lo <= ops[0] < hi:
+                    out.add(ops[0])
+        return out
 
     def whole_at(self, seg, rel):
         """A whole routine sits at one disc position: where a branch lands is read there (a content with copies elsewhere
@@ -211,17 +236,34 @@ class Draft:
         pc = (base + o) & 0xFFFF
         nxt = (pc + ln) & 0xFFFF
         c = g.content
+        rt = None
+        if self.smod(seg, pc, ln):
+            # The routine writes the bytes of this instruction (an operand patched in RAM): they are read as the CPU
+            # fetches them, at run time, not taken from the disc.
+            self.stat["selfmod"] += 1
+            if self.smod(seg, pc, 1) or ln not in (2, 3) or not (name in VALUE_OPS or name in STORE_OPS or name in RMW_F
+                                                                or name in ("jmp", "jsr")):
+                self.stat["todo"] += 1
+                return "untraced(0x%04X);" % pc
+            rt = "code%d(0x%04X)" % (16 if ln == 3 else 8, (pc + 1) & 0xFFFF)
+            if name == "jmp" and mode == "abs":
+                return "{ call_original(%s); return; }" % rt
+            if name == "jsr":
+                return "call_orig(0x%04X, %s);" % (nxt, rt)
+            if name == "jmp":
+                ea = rt if mode == "ind" else "ea_abx(%s)" % rt
+                return "{ uint16_t t_ = op_jmp_ptr(%s); call_original(t_); return; }" % ea
         if name in VALUE_OPS:
-            f = "op_%s(%s);" % (name, value_expr(mode, ops))
+            f = "op_%s(%s);" % (name, value_expr(mode, ops, rt))
             if self.tpend and name in T_OPS:
-                f = "op_%s_t(%s);" % (name, value_expr(mode, ops))
+                f = "op_%s_t(%s);" % (name, value_expr(mode, ops, rt))
             return f
         if name in STORE_OPS:
-            return "op_%s(%s);" % (name, addr_expr(mode, ops))
+            return "op_%s(%s);" % (name, addr_expr(mode, ops, rt))
         if name in RMW_F:
             if mode == "acc":
                 return "OP_ACC(%s);" % RMW_F[name]
-            return "OP_MEM(%s, %s);" % (RMW_F[name], addr_expr(mode, ops))
+            return "OP_MEM(%s, %s);" % (RMW_F[name], addr_expr(mode, ops, rt))
         if name == "txs":
             # S is set outright: the routine's frame is gone and what follows is not this call's. The hybrid hands
             # the rest to the original here; A5 and the record end the C (the call is judged as left by the stack).
@@ -312,11 +354,17 @@ class Draft:
         self.bodies[seg.k] = (body, tail)
 
     def text(self):
-        self.bodies = {}
-        i = 0
-        while i < len(self.segs):          # emitting a piece can add the pieces it runs on into
-            self.emit_seg(self.segs[i], None)
-            i += 1
+        for _ in range(4):                 # a piece added late can write a byte of one emitted before: until the set is stable
+            self.bodies = {}
+            self.stat = collections.Counter()
+            i = 0
+            while i < len(self.segs):      # emitting a piece can add the pieces it runs on into
+                self.emit_seg(self.segs[i], None)
+                i += 1
+            w = self.find_written()
+            if w == self.written:
+                break
+            self.written = w
         out = []
         for seg in self.segs:              # labels are known only once every piece has been emitted
             body, tail = self.bodies[seg.k]

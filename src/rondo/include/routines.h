@@ -246,12 +246,12 @@ typedef struct { uint16_t value; bool added; uint8_t high; bool overflow; } Soun
 
 void SoundSilenceAll(uint8_t kept_x);
 void SoundVolumeFull(void);
-void SoundStartEnvelope(uint8_t channel);
-ChannelRelease SoundSilenceChannel(uint8_t channel);
+void SoundStartEnvelope(uint8_t channel, uint8_t kept_a);
+ChannelRelease SoundSilenceChannel(uint8_t channel, uint8_t kept_a);
 SoundProduct SoundMultiply(uint8_t a, uint8_t y, uint8_t kept_x);
-SoundProduct SoundMultiplyNibble(uint8_t a, uint8_t y);
-uint8_t SoundReadPair(uint8_t channel);
-void sound_pointer_step(void);
+SoundProduct SoundMultiplyNibble(uint8_t a, uint8_t y, uint8_t kept_x);
+uint8_t SoundReadPair(uint8_t channel, uint8_t *nz);
+uint8_t sound_pointer_step(void);
 uint8_t SoundStartFade(void);
 uint8_t SoundLoadSequence(uint8_t channel);
 uint8_t SoundSaveSequence(uint8_t channel);
@@ -266,7 +266,7 @@ SlideStep SoundSlideStep(uint8_t channel);
 SlideStep SoundPanSlideStep(uint8_t channel);
 void slide_exit_shim(SlideStep slide);
 void SoundSetPan(uint8_t channel, uint8_t pan);
-uint16_t SoundWaveAddress(uint8_t wave);
+Sum SoundWaveAddress(uint8_t wave);
 
 typedef enum { LENGTH_ONE, LENGTH_DEFAULT, LENGTH_NONE, LENGTH_TABLE } LengthHow;
 
@@ -317,28 +317,9 @@ typedef struct {
 TempoSlide SoundTempoSlideStep(uint8_t channel);
 void tempo_slide_exit_shim(TempoSlide approach);
 
-typedef enum {
-    ENVELOPE_OFF, ENVELOPE_START, ENVELOPE_ATTACK, ENVELOPE_DECAY, ENVELOPE_RELEASE,
-    ENVELOPE_PAST, ENVELOPE_WAITING, ENVELOPE_TIMED
-} EnvelopeHow;
-
-typedef enum { ENVELOPE_COMPARED_NONE, ENVELOPE_COMPARED_SUSTAIN, ENVELOPE_COMPARED_RELEASE } EnvelopeCompare;
-
-/* An envelope frame: the phase it was in, what happened, and what its exit shows. */
-typedef struct {
-    uint8_t how;
-    uint8_t phase;
-    uint8_t timer;
-    uint8_t frames;
-    EnvelopeCompare compared;
-    uint8_t level;
-    uint8_t sustain;
-} EnvelopeStep;
-
-EnvelopeStep SoundEnvelopeStep(uint8_t channel);
 
 /* A scaled offset: its sign, the scale, and the product before any negation. */
-typedef struct { bool negative; uint8_t scale; SoundProduct product; } ScaledOffset;
+typedef struct { bool negative; uint8_t scale; uint8_t factor; SoundProduct product; Sum last; } ScaledOffset;
 
 ScaledOffset SoundScaledOffset(uint8_t byte, uint8_t channel);
 
@@ -367,7 +348,7 @@ typedef struct { uint8_t length; uint8_t gate; SoundProduct product; uint8_t tim
 
 NoteLength SoundSetLength(uint8_t channel);
 
-void wave_address_exit_shim(uint8_t wave);
+void wave_address_exit_shim(Sum high);
 
 /* A frequency set: whether an effect held the channel, noise or tone, the byte written last. */
 typedef struct {
@@ -416,10 +397,10 @@ NoteStart SoundStartNote(uint8_t channel);
 
 typedef enum { WAVE_NONE, WAVE_HELD, WAVE_LOADED } WaveHow;
 
-typedef struct { WaveHow how; uint8_t wave; uint8_t effect; } WaveLoad;
+typedef struct { WaveHow how; uint8_t wave; uint8_t effect; Sum address; } WaveLoad;
 
-WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel);
-void SoundInit(void);
+WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel, uint8_t kept_y);
+void SoundInit(uint8_t kept_x, uint8_t kept_a);
 void abi_SoundInit(void);
 void SoundDriverStopAll(void);
 void wave_load_exit_shim(WaveLoad load, uint8_t wave);
@@ -450,7 +431,7 @@ typedef struct { bool ended; ChannelRelease release; WaveLoad wave; uint8_t valu
 
 void sequence_end_exit_shim(SequenceEnd end, uint8_t channel);
 void sequence_end_flags_shim(SequenceEnd end, uint8_t channel);
-WaveLoad SoundCommandWave(uint8_t channel);
+WaveLoad SoundCommandWave(uint8_t channel, uint8_t kept_y);
 uint8_t SoundCommandPan(uint8_t channel);
 SlideStart SoundCommandPanSlide(uint8_t channel);
 uint8_t SoundCommandVibrato(uint8_t channel);

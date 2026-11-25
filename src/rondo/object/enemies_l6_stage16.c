@@ -525,3 +525,37 @@ void abi_CountThenSpawnInState2(void)
 {
     abi_ended(CountThenSpawnInState2(cpu.x));
 }
+
+/*
+ * @routine 16CB:1F4 StateFiveOnStatusBit7
+ * @run 70:B1F4
+ * WHAT IT DOES: An object in a state under 5 whose OBJ_31A0 has bit 7 set goes to state 5, clears OBJ_2800 and OBJ_3250. (The part after the test ran in no script; it is written from the bytes.)
+ * HOW: A test, a compare, three stores.
+ * WAITS: no.
+ * Entry: X object. Exit: the test, the compare, or A 5.
+ */
+Ended StateFiveOnStatusBit7(uint8_t slot)
+{
+    uint8_t status, state;
+    Ended e;
+
+    status = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    e = ended_load(status);
+    if (status == 0) {
+        return e;
+    }
+    state = RD8(OBJ->state[slot]);
+    e = then(then(e, ended_load(state)), ended_compare(state, 5));
+    if (state >= 5) {
+        return e;
+    }
+    WR8(OBJ->state[slot], 5);
+    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->hitbox_on[slot], 0);
+    return then(e, ended_load(5));
+}
+
+void abi_StateFiveOnStatusBit7(void)
+{
+    abi_ended(StateFiveOnStatusBit7(cpu.x));
+}

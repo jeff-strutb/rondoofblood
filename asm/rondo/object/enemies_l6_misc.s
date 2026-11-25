@@ -95,6 +95,25 @@ HalveDirectionWhenHurt:
 HalveDirectionWhenHurt_at0:
     rts
 
+; @routine 0E0B:0AB StateSevenOnStatusBit7
+; @run 70:B0AB
+; WHAT IT DOES: An object in a state under 7 whose OBJ_31A0 has bit 7 set goes to state 7 and clears OBJ_2800. (The part after the test ran in no script; it is written from the bytes.)
+; HOW: A test, a compare, two stores.
+; WAITS: no.
+; Entry: X object. Exit: the test, the compare, or A 7.
+StateSevenOnStatusBit7:
+    lda a:OBJ_31A0,x
+    and #$80
+    beq StateSevenOnStatusBit7_at0
+    lda a:OBJ_27A8,x
+    cmp #$07
+    bcs StateSevenOnStatusBit7_at0
+    lda #$07
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+StateSevenOnStatusBit7_at0:
+    rts
+
 ; @routine 0E0B:0C2 SetHitBoxFromTable
 ; @run 70:B0C2
 ; WHAT IT DOES: When OBJ_3250 is not zero, takes the object's hit box (four bytes: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the table at $BEEC, four bytes a row, the row being the frame less one.

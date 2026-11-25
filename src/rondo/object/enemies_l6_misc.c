@@ -832,3 +832,36 @@ void abi_WaitForPressThenAnimate(void)
 {
     abi_sound_end(WaitForPressThenAnimate(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0E0B:0AB StateSevenOnStatusBit7
+ * @run 70:B0AB
+ * WHAT IT DOES: An object in a state under 7 whose OBJ_31A0 has bit 7 set goes to state 7 and clears OBJ_2800. (The part after the test ran in no script; it is written from the bytes.)
+ * HOW: A test, a compare, two stores.
+ * WAITS: no.
+ * Entry: X object. Exit: the test, the compare, or A 7.
+ */
+Ended StateSevenOnStatusBit7(uint8_t slot)
+{
+    uint8_t status, state;
+    Ended e;
+
+    status = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    e = ended_load(status);
+    if (status == 0) {
+        return e;
+    }
+    state = RD8(OBJ->state[slot]);
+    e = then(then(e, ended_load(state)), ended_compare(state, 7));
+    if (state >= 7) {
+        return e;
+    }
+    WR8(OBJ->state[slot], 7);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(7));
+}
+
+void abi_StateSevenOnStatusBit7(void)
+{
+    abi_ended(StateSevenOnStatusBit7(cpu.x));
+}

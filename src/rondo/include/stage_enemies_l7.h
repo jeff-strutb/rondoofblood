@@ -602,6 +602,8 @@ Jump JumpByStateTable0CAC6C3(uint8_t slot);
 Jump JumpByStateTable051A190(uint8_t slot);
 Jump JumpByStateTable072B1B1(uint8_t slot);
 Jump JumpByStateTable072B24C(uint8_t slot);
+Jump JumpByStateTable0F6C3C0(uint8_t slot);
+Jump JumpByStateTable05CB1CF(uint8_t slot);
 Jump JumpByStateTable025B545(uint8_t slot);
 Jump JumpByStateTable0B4B64C(uint8_t slot);
 Jump JumpByStateTable0F6B3EC(uint8_t slot);

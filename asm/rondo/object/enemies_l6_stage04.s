@@ -75,6 +75,30 @@ StartPhaseWhenScrolled:
 StartPhaseWhenScrolled_at0:
     rts
 
+; @routine 051B:264 SetFirstObjectTimersThenCount
+; @run 70:B264
+; WHAT IT DOES: Clears the wave counter and sets the first object's OBJ_3510 to 4 and OBJ_3568 to $20 and the byte at $3BF0 to 2; counts OBJ_34B8 down and at zero sets zTemp $8C to $80, zTemp $38 to 3 and clears the hit attack flags.
+; HOW: Stores, DEC.
+; WAITS: no.
+; Entry: X object. Exit: the count, or A 3 at zero.
+SetFirstObjectTimersThenCount:
+    stz z:zWaveCounter
+    lda #$04
+    sta a:OBJ_3510
+    lda #$02
+    sta a:PlayerByte3BF0
+    lda #$20
+    sta a:OBJ_3568
+    dec a:OBJ_34B8,x
+    bne SetFirstObjectTimersThenCount_at0
+    lda #$80
+    sta z:zField8C
+    lda #$03
+    sta z:zSubStep
+    stz a:HitAttackFlags
+SetFirstObjectTimersThenCount_at0:
+    rts
+
 ; @routine 051B:286 LoadThenSpawnWhileScrolling
 ; @run 70:B286
 ; WHAT IT DOES: In state 0 loads the object's record and looks for a free pair of slots. Later, while the screen scrolls right, it counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero it looks in slots $30, $32 and $34 for one whose two kind bytes are zero, clears that object, starts a kind $22 object there at its place and sets its timer from a four-entry table at $B2DF by a random number.
@@ -254,6 +278,21 @@ SetHitBox0C18:
     sta a:OBJ_3988,x
     lda #$18
     sta a:OBJ_3A38,x
+    rts
+
+; @routine 051B:514 ResetAnimThenNextPhase
+; @run 70:B514
+; WHAT IT DOES: Clears OBJ_3250 and the animation step and timer, sets OBJ_34B8 to 4 and goes on to the next OBJ_2800.
+; HOW: Stores and an INC.
+; WAITS: no.
+; Entry: X object. Exit: A 4, N and Z from the new OBJ_2800.
+ResetAnimThenNextPhase:
+    stz a:OBJ_3250,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$04
+    sta a:OBJ_34B8,x
+    inc a:OBJ_2800,x
     rts
 
 ; @routine 051B:5CD StartPieceAtNextSlot

@@ -474,3 +474,127 @@ void abi_JumpByStateTable072B24C(void)
 
     jump_shim(jump.end, jump.target);
 }
+
+/*
+ * @routine 051B:350 JumpByPhaseTable051B350
+ * @run 70:B350
+ * WHAT IT DOES: Goes to the code a table at $B362 names for the object's OBJ_2800.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+ */
+Jump JumpByPhaseTable051B350(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t phase, index, low, high;
+
+    phase = RD8(OBJ->f2800[slot]);
+    index = (uint8_t)(phase << 1);
+    low = rd8((uint16_t)(0xB362 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB363 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (phase & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByPhaseTable051B350(void)
+{
+    Jump jump = JumpByPhaseTable051B350(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 051B:5B5 JumpByPhaseTable051B5B5
+ * @run 70:B5B5
+ * WHAT IT DOES: Goes to the code a table at $B5C7 names for the object's OBJ_2800.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+ */
+Jump JumpByPhaseTable051B5B5(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t phase, index, low, high;
+
+    phase = RD8(OBJ->f2800[slot]);
+    index = (uint8_t)(phase << 1);
+    low = rd8((uint16_t)(0xB5C7 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB5C8 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (phase & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByPhaseTable051B5B5(void)
+{
+    Jump jump = JumpByPhaseTable051B5B5(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 088A:4E4 JumpByStateTable088A4E4
+ * @run 70:ACE4
+ * WHAT IT DOES: Goes to the code a table at $ACF6 names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTable088A4E4(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xACF6 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xACF7 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTable088A4E4(void)
+{
+    Jump jump = JumpByStateTable088A4E4(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 0E0B:16C JumpByPhaseTable0E0B16C
+ * @run 70:B16C
+ * WHAT IT DOES: Goes to the code a table at $B17E names for the object's OBJ_2800.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+ */
+Jump JumpByPhaseTable0E0B16C(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t phase, index, low, high;
+
+    phase = RD8(OBJ->f2800[slot]);
+    index = (uint8_t)(phase << 1);
+    low = rd8((uint16_t)(0xB17E + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB17F + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (phase & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByPhaseTable0E0B16C(void)
+{
+    Jump jump = JumpByPhaseTable0E0B16C(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}

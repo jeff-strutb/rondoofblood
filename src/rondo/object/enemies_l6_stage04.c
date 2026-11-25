@@ -951,3 +951,59 @@ void abi_SpawnPointFromTables(void)
 {
     abi_ended(SpawnPointFromTables(cpu.x));
 }
+
+/*
+ * @routine 051B:514 ResetAnimThenNextPhase
+ * @run 70:B514
+ * WHAT IT DOES: Clears OBJ_3250 and the animation step and timer, sets OBJ_34B8 to 4 and goes on to the next OBJ_2800.
+ * HOW: Stores and an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: A 4, N and Z from the new OBJ_2800.
+ */
+Ended ResetAnimThenNextPhase(uint8_t slot)
+{
+    uint8_t phase;
+
+    WR8(OBJ->hitbox_on[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->f34b8[slot], 4);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(ended_load(4), ended_nz(phase));
+}
+
+void abi_ResetAnimThenNextPhase(void)
+{
+    abi_ended(ResetAnimThenNextPhase(cpu.x));
+}
+
+/*
+ * @routine 051B:264 SetFirstObjectTimersThenCount
+ * @run 70:B264
+ * WHAT IT DOES: Clears the wave counter and sets the first object's OBJ_3510 to 4 and OBJ_3568 to $20 and the byte at $3BF0 to 2; counts OBJ_34B8 down and at zero sets zTemp $8C to $80, zTemp $38 to 3 and clears the hit attack flags.
+ * HOW: Stores, DEC.
+ * WAITS: no.
+ * Entry: X object. Exit: the count, or A 3 at zero.
+ */
+Ended SetFirstObjectTimersThenCount(uint8_t slot)
+{
+    uint8_t left;
+
+    WR8(ZP->wave_counter, 0);
+    WR8(OBJ->f3510[0], 4);
+    wr8(PlayerByte3BF0, 2);
+    WR8(OBJ->f3568[0], 0x20);
+    left = DEC8(OBJ->f34b8[slot]);
+    if (left != 0) {
+        return ended_then(ended_load(0x20), ended_nz(left));
+    }
+    wr8(zField8C, 0x80);
+    wr8(zSubStep, 3);
+    wr8(HitAttackFlags, 0);
+    return ended_then(ended_then(ended_load(0x20), ended_nz(left)), ended_load(3));
+}
+
+void abi_SetFirstObjectTimersThenCount(void)
+{
+    abi_ended(SetFirstObjectTimersThenCount(cpu.x));
+}

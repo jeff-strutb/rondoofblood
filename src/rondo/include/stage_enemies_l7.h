@@ -525,6 +525,8 @@ Ended WalkWhileNearPlayer(uint8_t slot, uint8_t y_entry);
 Ended LoadThenFallAndFlash(uint8_t slot);
 Ended LoadThenSpawnWhileScrolling(uint8_t slot);
 Ended SpawnPointFromTables(uint8_t slot);
+Ended ResetAnimThenNextPhase(uint8_t slot);
+Ended SetFirstObjectTimersThenCount(uint8_t slot);
 SoundEnd FallThenSoundAtPeak(uint8_t slot, uint8_t y_entry);
 SoundEnd StepListB1BAThenSound(uint8_t slot, uint8_t y_entry);
 SoundEnd RiseThenPlaceWithSound(uint8_t slot, uint8_t y_entry);
@@ -551,6 +553,10 @@ Jump JumpByStateTable0CAC6C3(uint8_t slot);
 Jump JumpByStateTable051A190(uint8_t slot);
 Jump JumpByStateTable072B1B1(uint8_t slot);
 Jump JumpByStateTable072B24C(uint8_t slot);
+Jump JumpByPhaseTable051B350(uint8_t slot);
+Jump JumpByPhaseTable051B5B5(uint8_t slot);
+Jump JumpByStateTable088A4E4(uint8_t slot);
+Jump JumpByPhaseTable0E0B16C(uint8_t slot);
 Ended StepListC192ThenClear(uint8_t slot, uint8_t y_entry);
 
 /* What DrawTileScript called with the item (and the group's Y) leaves: A $FF, the compare's N clear and Z set, C set, Y as the last op left it, and V when a line step ran. */

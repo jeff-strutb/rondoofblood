@@ -113,6 +113,31 @@ StepListB37FThenNext:
 StepListB37FThenNext_at0:
     rts
 
+; @routine 051B:392 StepListB3B8ThenLand
+; @run 70:B392
+; WHAT IT DOES: Steps the animation list at $B3B8, then asks StopOnLanding with a probe height of 4; on landing the object gets an X speed of $FEE0, clears its animation step and timer and goes to the next OBJ_2800.
+; HOW: StepObjectFrames, StopOnLanding, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y the probe's column kept unless the step sets it, C passed on. Exit: the mover's registers, then the new OBJ_2800's N and Z when landed.
+StepListB3B8ThenLand:
+    lda #$B8
+    sta z:zTemp10
+    lda #$B3
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    lda #$04
+    jsr VecStopOnLanding
+    bcc StepListB3B8ThenLand_at0
+    lda #$FE
+    sta a:OBJ_VX_HI,x
+    lda #$E0
+    sta a:OBJ_VX_LO,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+StepListB3B8ThenLand_at0:
+    rts
+
 ; @routine 051B:3C3 StepListB37FUnlessFar
 ; @run 70:B3C3
 ; WHAT IT DOES: When the object's X high byte is not zero, or when the animation list at $B37F ends, clears its animation step and timer, goes on to the next state and clears OBJ_2800.
@@ -228,6 +253,32 @@ StartFourPiecesWithCount_at1:
     cmp #$04
     bcc StartFourPiecesWithCount_at1
 StartFourPiecesWithCount_at0:
+    rts
+
+; @routine 051B:707 LandThenFaceAndRun
+; @run 70:B707
+; WHAT IT DOES: Asks StopOnLanding with a probe height of 4; on landing the object faces the player (bit 0 of SideOfPlayer), takes an X speed from the table at $B3BF by that side, clears OBJ_35C0 and OBJ_2800 and goes to state 2.
+; HOW: StopOnLanding, SideOfPlayer, table reads (bank 70), stores.
+; WAITS: no.
+; Entry: X object, Y the probe's column, C passed on. Exit: the mover's registers, then A 2 when landed.
+LandThenFaceAndRun:
+    lda #$04
+    jsr VecStopOnLanding
+    bcc LandThenFaceAndRun_at0
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    asl a
+    tay
+    lda a:$B3C0,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B3BF,y
+    sta a:OBJ_VX_LO,x
+    stz a:OBJ_35C0,x
+    lda #$02
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+LandThenFaceAndRun_at0:
     rts
 
 ; @routine 051B:76A LoadRecordB04

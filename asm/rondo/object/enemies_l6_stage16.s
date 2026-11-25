@@ -38,6 +38,32 @@ ClearSlotsWhenScrollZero_at1:
 ClearSlotsWhenScrollZero_at0:
     rts
 
+; @routine 16CB:27E StepListB2A7ThenPlace
+; @run 70:B27E
+; WHAT IT DOES: Steps the animation list at $B2A7; while it runs the object moves along Y; when it ends the object is put at X $007C, Y $0026 relative to its screen, gets frame 0, OBJ_34B8 $30 and goes to the next OBJ_2800.
+; HOW: StepObjectFrames, a tail jump into ApplyVelocityY, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as ApplyVelocityY, or the new OBJ_2800's N and Z (A $30).
+StepListB2A7ThenPlace:
+    lda #$A7
+    sta z:zTemp10
+    lda #$B2
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    beq StepListB2A7ThenPlace_at0
+    jmp VecApplyVelocityY
+StepListB2A7ThenPlace_at0:
+    lda #$7C
+    sta a:OBJ_X_LO,x
+    stz a:OBJ_Y_HI,x
+    lda #$26
+    sta a:OBJ_Y_LO,x
+    stz a:OBJ_2A68,x
+    lda #$30
+    sta a:OBJ_34B8,x
+    inc a:OBJ_2800,x
+    rts
+
 ; @routine 16CB:2F6 StepListB36AThenCount
 ; @run 70:B2F6
 ; WHAT IT DOES: Steps the animation list at $B36A and moves the object along Y; counts OBJ_34B8 down and at zero clears OBJ_2FE8, sets OBJ_3510 to $40 and goes on to the next OBJ_2800.

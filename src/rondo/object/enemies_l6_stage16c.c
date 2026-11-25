@@ -61,3 +61,56 @@ void abi_StepListBC5CThenAimAtPlayer(void)
 {
     abi_ended(StepListBC5CThenAimAtPlayer(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 16CC:40C LoadThenRandomPlace
+ * @run 70:BC0C
+ * WHAT IT DOES: Loads the object's record and puts it at a random place relative to its screen: X from a random $00 to $7F plus a random $00 to $3F plus $20, Y from a random $00 to $3F plus $10 (high bytes 0).
+ * HOW: LoadObjectRecord, NextRandom three times, adds.
+ * WAITS: no.
+ * Entry: X object. Exit: A the Y low, N, Z, C and V from the last add.
+ */
+Ended LoadThenRandomPlace(uint8_t slot)
+{
+    RandomResult random;
+    Sum sum;
+    uint8_t nz, last, first, second;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xBC0F);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->x_hi[slot], 0);
+    jsr_push(0xBC15);
+    random = NextRandom();
+    jsr_pop();
+    first = (uint8_t)(random.value & 0x7F);
+    e = then(then(e, ended_of_random(random)), ended_load(first));
+    WR8(ZP->temp00, first);
+    jsr_push(0xBC1C);
+    random = NextRandom();
+    jsr_pop();
+    second = (uint8_t)(random.value & 0x3F);
+    e = then(then(e, ended_of_random(random)), ended_load(second));
+    sum = add_bytes(second, RD8(ZP->temp00), false);
+    e = then(e, ended_of_sum(sum));
+    sum = add_bytes(sum.value, 0x20, false);
+    WR8(OBJ->x_lo[slot], sum.value);
+    e = then(e, ended_of_sum(sum));
+    WR8(OBJ->y_hi[slot], 0);
+    jsr_push(0xBC2D);
+    random = NextRandom();
+    jsr_pop();
+    second = (uint8_t)(random.value & 0x3F);
+    e = then(then(e, ended_of_random(random)), ended_load(second));
+    sum = add_bytes(second, 0x10, false);
+    WR8(OBJ->y_lo[slot], sum.value);
+    return then(e, ended_of_sum(sum));
+}
+
+void abi_LoadThenRandomPlace(void)
+{
+    abi_ended(LoadThenRandomPlace(cpu.x));
+}

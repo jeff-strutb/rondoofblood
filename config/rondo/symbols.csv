@@ -88,6 +88,7 @@ E0A2,abs,BiosE0A2,called once at start
 2700,abs,WorkByteB,shared work byte: walled answer; stream count low
 2701,abs,StreamStepLo,stream walk step low
 2702,abs,StreamStepHi,stream walk step high
+270F,abs,ObjectCueIndex,counts 0 to 9: the object loop starts the script of that index from its cue table every fourth wave tick
 2710,abs,HitboxXLo,per slot of 16: the hitbox centre's X, low byte: the object's X low plus the hitbox X offset
 2720,abs,HitboxYLo,per slot of 16: the hitbox centre's Y, low byte
 2740,abs,HitAttackFlags,the byte before the object table that the hit handler tests: bit 0 and bit 1 mark the player attacks that hit objects this frame (an object hit by bit 0 is marked $20 and by bit 1 $40 in its status flags)

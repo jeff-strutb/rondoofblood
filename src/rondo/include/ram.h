@@ -86,6 +86,7 @@
 #define WorkByteB 0x2700 /* shared work byte: walled answer; stream count low */
 #define StreamStepLo 0x2701 /* stream walk step low */
 #define StreamStepHi 0x2702 /* stream walk step high */
+#define ObjectCueIndex 0x270F /* counts 0 to 9: the object loop starts the script of that index from its cue table every fourth wave tick */
 #define HitboxXLo 0x2710 /* per slot of 16: the hitbox centre's X, low byte: the object's X low plus the hitbox X offset */
 #define HitboxYLo 0x2720 /* per slot of 16: the hitbox centre's Y, low byte */
 #define HitAttackFlags 0x2740 /* the byte before the object table that the hit handler tests: bit 0 and bit 1 mark the player attacks that hit objects this frame (an object hit by bit 0 is marked $20 and by bit 1 $40 in its status flags) */

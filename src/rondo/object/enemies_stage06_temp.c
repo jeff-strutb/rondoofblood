@@ -2259,3 +2259,98 @@ void abi_FaceByVelocityAndCatch(void)
 {
     abi_ended(FaceByVelocityAndCatch(cpu.x));
 }
+
+/* A jump a state's handler table makes: the table's two bytes go to zTemp00-01 and the code is jumped through them. */
+static Jump jump_by_state(uint8_t slot, uint16_t table)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(table + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(table + 1 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+/*
+ * @routine 072B:40D JumpByStateTableB
+ * @run 70:B40D
+ * WHAT IT DOES: Goes to the code a table at $B41F names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTableB(uint8_t slot)
+{
+    return jump_by_state(slot, 0xB41F);
+}
+
+void abi_JumpByStateTableB(void)
+{
+    Jump jump = JumpByStateTableB(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 072B:348 RunDriftObject
+ * @run 70:B348
+ * WHAT IT DOES: One frame of the drifting object: its life timer goes up, RaiseStateOnFlag, FlashByHeight and FaceByVelocityAndCatch run, the code its state names runs, then the four path tables at $B46E,
+ * $B52E, $B5EE and $B6AE are shifted up one entry (a trail of its speeds, 192 entries each) and its speeds go into their first entries.
+ * HOW: Four calls, one jump through a table run as the original, two loops of table stores.
+ * WAITS: no.
+ * Entry: X object. Exit: A the Y speed's low byte, Y 0, N and Z of the last table copy.
+ */
+void RunDriftObject(uint8_t slot)
+{
+    Ended e;
+    Jump jump;
+    uint8_t y, byte;
+
+    INC8(OBJ->life_timer[slot]);
+    jsr_push(0xB34E);
+    e = RaiseStateOnFlag(slot);
+    jsr_pop();
+    jsr_push(0xB351);
+    e = ended_then(e, FlashByHeight(slot));
+    jsr_pop();
+    jsr_push(0xB354);
+    e = ended_then(e, FaceByVelocityAndCatch(slot));
+    jsr_pop();
+    jsr_push(0xB357);
+    jump = JumpByStateTableB(slot);
+    e = ended_then(e, jump.end);
+    sync(&e);
+    slot = enter_handler(slot, jump);
+    jsr_pop();
+    for (y = 0xBF; y != 0; y--) {
+        byte = rd8((uint16_t)(0xB46D + y));
+        wr8((uint16_t)(0xB46E + y), byte);
+        byte = rd8((uint16_t)(0xB52D + y));
+        wr8((uint16_t)(0xB52E + y), byte);
+        byte = rd8((uint16_t)(0xB5ED + y));
+        wr8((uint16_t)(0xB5EE + y), byte);
+        byte = rd8((uint16_t)(0xB6AD + y));
+        wr8((uint16_t)(0xB6AE + y), byte);
+    }
+    byte = RD8(OBJ->vx_hi[slot]);
+    wr8(0xB46E, byte);
+    byte = RD8(OBJ->vx_lo[slot]);
+    wr8(0xB52E, byte);
+    byte = RD8(OBJ->vy_hi[slot]);
+    wr8(0xB5EE, byte);
+    byte = RD8(OBJ->vy_lo[slot]);
+    wr8(0xB6AE, byte);
+    e = ended_with_y(ended_with_a(ended_nz(byte), byte), 0);
+    sync(&e);
+}
+
+void abi_RunDriftObject(void)
+{
+    RunDriftObject(cpu.x);
+}

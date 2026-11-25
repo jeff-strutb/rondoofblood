@@ -83,6 +83,7 @@ WorkByteA = $26FF ; shared work byte: landed answer; stream count high
 WorkByteB = $2700 ; shared work byte: walled answer; stream count low
 StreamStepLo = $2701 ; stream walk step low
 StreamStepHi = $2702 ; stream walk step high
+ObjectCueIndex = $270F ; counts 0 to 9: the object loop starts the script of that index from its cue table every fourth wave tick
 HitboxXLo = $2710 ; per slot of 16: the hitbox centre's X, low byte: the object's X low plus the hitbox X offset
 HitboxYLo = $2720 ; per slot of 16: the hitbox centre's Y, low byte
 HitAttackFlags = $2740 ; the byte before the object table that the hit handler tests: bit 0 and bit 1 mark the player attacks that hit objects this frame (an object hit by bit 0 is marked $20 and by bit 1 $40 in its status flags)

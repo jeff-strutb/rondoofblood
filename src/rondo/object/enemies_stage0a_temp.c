@@ -1546,3 +1546,71 @@ void abi_FollowPartner(void)
     }
     abi_ended(r.end);
 }
+
+/*
+ * @routine 0A9D:046 JumpByStateTableC
+ * @run 71:C046
+ * WHAT IT DOES: Goes to the code a table at $C058 names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTableC(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xC058 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xC059 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTableC(void)
+{
+    Jump jump = JumpByStateTableC(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 0A9C:7F2 FaceBreakAndRun
+ * @run 70:BFF2
+ * WHAT IT DOES: One frame of the cave object: its life timer goes up, it faces the player in some states (FaceThePlayerInSomeStatesD), may break (BreakWhenHit) and then the code its state names runs.
+ * HOW: INC, two calls, a tail jump through the state table (JumpByStateTableC).
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to.
+ */
+Jump FaceBreakAndRun(uint8_t slot, Ended *before)
+{
+    SideEnd side;
+    Ended e;
+    Jump jump;
+
+    INC8(OBJ->life_timer[slot]);
+    jsr_push(0xBFF8);
+    side = FaceThePlayerInSomeStatesD(slot);
+    jsr_pop();
+    e = side.side_used ? ended_of_side(side.side) : ended_kept();
+    e = then(e, side.end);
+    jsr_push(0xBFFB);
+    e = then(e, BreakWhenHit(slot));
+    jsr_pop();
+    jump = JumpByStateTableC(slot);
+    *before = e;
+    return jump;
+}
+
+void abi_FaceBreakAndRun(void)
+{
+    Ended before;
+    Jump jump = FaceBreakAndRun(cpu.x, &before);
+
+    abi_ended(before);
+    jump_shim(jump.end, jump.target);
+}

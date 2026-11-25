@@ -39,6 +39,18 @@ BounceAtWalls_at0:
     sec
     rts
 
+; @routine 0A9C:7F2 FaceBreakAndRun
+; @run 70:BFF2
+; WHAT IT DOES: One frame of the cave object: its life timer goes up, it faces the player in some states (FaceThePlayerInSomeStatesD), may break (BreakWhenHit) and then the code its state names runs.
+; HOW: INC, two calls, a tail jump through the state table (JumpByStateTableC).
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to.
+FaceBreakAndRun:
+    inc a:OBJ_34B8,x
+    jsr FaceThePlayerInSomeStatesD
+    jsr BreakWhenHit
+    jmp JumpByStateTableC
+
 ; @routine 0A9D:01F BreakWhenHit
 ; @run 71:C01F
 ; WHAT IT DOES: An object in a state below $0B whose status bit 7 is set clears the object after it, stops its hitbox and animation,
@@ -65,6 +77,22 @@ BreakWhenHit:
     sta a:OBJ_27A8,x
 BreakWhenHit_at0:
     rts
+
+; @routine 0A9D:046 JumpByStateTableC
+; @run 71:C046
+; WHAT IT DOES: Goes to the code a table at $C058 names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTableC:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$C058,y
+    sta z:zTemp00
+    lda a:$C059,y
+    sta z:zTemp01
+    jmp (ZeroPage)
 
 ; @routine 0A9D:070 StartWithPartner
 ; @run 71:C070

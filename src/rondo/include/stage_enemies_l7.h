@@ -86,6 +86,25 @@ ShowEnd FollowPathB(uint8_t slot, uint8_t y);
 SoundEnd StartDriftingPiece(uint8_t slot, uint8_t y);
 BurstTail DropAndBurst(uint8_t slot, uint8_t y);
 Ended StepFallAfterFour(uint8_t slot);
+Jump JumpByStateTableC(uint8_t slot);
+Jump FaceBreakAndRun(uint8_t slot, Ended *before);
+Jump JumpByStateTableB(uint8_t slot);
+void RunDriftObject(uint8_t slot);
+
+/* The registers the original holds at this point: what the typed steps so far left, put into the machine before original code runs. */
+static inline void sync(Ended *e)
+{
+    abi_ended(*e);
+    *e = ended_kept();
+}
+
+/* The object's own code is entered with X its slot, as the dispatch left the other registers. */
+static inline uint8_t enter_handler(uint8_t x, Jump jump)
+{
+    cpu.x = x;
+    jump_shim(jump.end, jump.target);
+    return cpu.x;
+}
 Ended HitDamage(uint8_t slot);
 SoundEnd ScoreForKind(uint8_t slot, uint8_t y);
 Ended BlendStockRows(uint8_t slot, uint8_t y);

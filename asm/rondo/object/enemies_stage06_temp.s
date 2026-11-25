@@ -526,6 +526,41 @@ FallingDebris_at0:
 FallingDebris_at1:
     rts
 
+; @routine 072B:348 RunDriftObject
+; @run 70:B348
+; WHAT IT DOES: One frame of the drifting object: its life timer goes up, RaiseStateOnFlag, FlashByHeight and FaceByVelocityAndCatch run, the code its state names runs, then the four path tables at $B46E,
+; $B52E, $B5EE and $B6AE are shifted up one entry (a trail of its speeds, 192 entries each) and its speeds go into their first entries.
+; HOW: Four calls, one jump through a table run as the original, two loops of table stores.
+; WAITS: no.
+; Entry: X object. Exit: A the Y speed's low byte, Y 0, N and Z of the last table copy.
+RunDriftObject:
+    inc a:OBJ_34B8,x
+    jsr RaiseStateOnFlag
+    jsr FlashByHeight
+    jsr FaceByVelocityAndCatch
+    jsr JumpByStateTableB
+    ldy #$BF
+RunDriftObject_at0:
+    lda a:$B46D,y
+    sta a:$B46E,y
+    lda a:$B52D,y
+    sta a:$B52E,y
+    lda a:$B5ED,y
+    sta a:$B5EE,y
+    lda a:$B6AD,y
+    sta a:$B6AE,y
+    dey
+    bne RunDriftObject_at0
+    lda a:OBJ_VX_HI,x
+    sta a:$B46E
+    lda a:OBJ_VX_LO,x
+    sta a:$B52E
+    lda a:OBJ_VY_HI,x
+    sta a:$B5EE
+    lda a:OBJ_VY_LO,x
+    sta a:$B6AE
+    rts
+
 ; @routine 072B:38D RaiseStateOnFlag
 ; @run 70:B38D
 ; WHAT IT DOES: When bit 7 of the object's status flags is set, an object in a state below 3 enters state 3 and
@@ -611,6 +646,22 @@ FaceByVelocityAndCatch:
     sta a:OBJ_2FE8,x
 FaceByVelocityAndCatch_at0:
     rts
+
+; @routine 072B:40D JumpByStateTableB
+; @run 70:B40D
+; WHAT IT DOES: Goes to the code a table at $B41F names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTableB:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$B41F,y
+    sta z:zTemp00
+    lda a:$B420,y
+    sta z:zTemp01
+    jmp (ZeroPage)
 
 ; @routine 072B:427 StartWithEvent
 ; @run 70:B427

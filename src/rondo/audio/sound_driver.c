@@ -3106,6 +3106,7 @@ static bool run_command(uint8_t command, uint8_t channel, SequenceEnd *end)
  * HOW: SoundReadCommand; the handlers through SoundCommandHandlers, each pushed and returned to,
  * coming back to read again with X from zSoundChannel; $E0 SoundRest, $E1 SoundSetLength, a note
  * SoundStartNote with SoundGateSet and SoundVolumeDefault; SoundSaveSequence.
+ * WAITS: no.
  * Entry: X channel. Exit: ended, C set, and as SoundCommandReturn left them on its way out.
  * Otherwise A the place's high byte, N and Z from it, C clear, X the channel, Y and V as the last
  * command left them.
@@ -3118,28 +3119,41 @@ SequenceRead SoundReadSequence(uint8_t channel)
     for (;;) {
         uint8_t command;
 
+        jsr_push(0xB648);
         read.read = SoundReadCommand(read.channel);
+        jsr_pop();
         command = rd8(SoundCommandByte);
         read.command = command;
         if (command >= SEQUENCE_HANDLERS_FIRST) {
             uint16_t entry = (uint16_t)(SoundCommandHandlers + (uint8_t)((command - SEQUENCE_HANDLERS_FIRST) << 1));
+            uint8_t address_high, address_low;
 
-            rd8((uint16_t)(entry + 1));
-            rd8(entry);
+            push8(0xB6);
+            push8(0x44);
+            address_high = rd8((uint16_t)(entry + 1));
+            push8(address_high);
+            address_low = rd8(entry);
+            push8(address_low);
             read.channel = rd8(zSoundChannel);
+            jsr_pop();                      /* the RTS that jumps to the handler */
             if (run_command(command, read.channel, &read.end)) {
-                read.how = SEQUENCE_ENDED;
+                read.how = SEQUENCE_ENDED;  /* the handler took its return frame itself */
                 return read;
             }
+            jsr_pop();                      /* the handler's RTS back to the top of this routine */
             continue;
         }
         if (command == SEQUENCE_REST) {
+            jsr_push(0xB66B);
             read.rest = SoundRest(read.channel);
+            jsr_pop();
             read.how = SEQUENCE_AT_REST;
             break;
         }
         if (command == SEQUENCE_LENGTH) {
+            jsr_push(0xB674);
             read.length = SoundSetLength(read.channel);
+            jsr_pop();
             read.how = SEQUENCE_AT_LENGTH;
             break;
         }
@@ -3154,11 +3168,15 @@ SequenceRead SoundReadSequence(uint8_t channel)
         wr8((uint16_t)(SoundChannel2550 + read.channel), 0);
         wr8(SoundCommandArgs + 1, rd8((uint16_t)(SoundGateSet + read.channel)));
         wr8(SoundCommandArgs + 2, rd8((uint16_t)(SoundVolumeDefault + read.channel)));
+        jsr_push(0xB69E);
         read.note = SoundStartNote(read.channel);
+        jsr_pop();
         read.how = SEQUENCE_AT_NOTE;
         break;
     }
+    jsr_push(0xB6A1);
     read.place_high = SoundSaveSequence(read.channel);
+    jsr_pop();
     return read;
 }
 
@@ -3338,6 +3356,7 @@ void abi_SoundGlideLookahead(void)
  * HOW: SoundTempo, or $FF when SoundFullTempo's bit 0 is set, onto SoundTempoPhase; SoundChannel2550
  * says a rest; SoundNoteLength; SoundReadSequence; the channel's bit in zSoundChannelBit taken
  * out of zSoundChannelsOn.
+ * WAITS: no.
  * Entry: X channel. Exit: as the last call left them; a rest's tick or between ticks while
  * resting, A SoundChannel2550 with the tempo's add in C and V; switched off, A the channel's bit,
  * Z if no other bit is on, N and V the playing bits 7 and 6 before.
@@ -3354,16 +3373,24 @@ ChannelTick SoundChannelTick(uint8_t channel)
         tick.how = CHANNEL_BETWEEN_RESTING;
         if (tick.rest != 0)
             return tick;
+        jsr_push(0x85ED);
         tick.volume = SoundVolumeTick(channel);
+        jsr_pop();
+        jsr_push(0x85F0);
         tick.pitch = SoundPitchTickPlain(channel);
+        jsr_pop();
         tick.how = CHANNEL_BETWEEN;
         return tick;
     }
+    jsr_push(0x85AC);
     SoundLoadSequence(channel);
+    jsr_pop();
     tick.length = (uint8_t)(rd8((uint16_t)(SoundNoteLength + channel)) - 1);
     wr8((uint16_t)(SoundNoteLength + channel), tick.length);
     if (tick.length == 0) {
+        jsr_push(0x85B4);
         tick.sequence = SoundReadSequence(channel);
+        jsr_pop();
         if (tick.sequence.how == SEQUENCE_ENDED) {
             tick.bit = rd8(zSoundChannelBit);
             tick.playing = rd8(zSoundChannelsOn);
@@ -3375,20 +3402,38 @@ ChannelTick SoundChannelTick(uint8_t channel)
     } else {
         tick.rest = rd8((uint16_t)(SoundChannel2550 + channel));
         if (tick.rest != 0) {
+            jsr_push(0x85DD);
             tick.tempo_slide = SoundTempoSlideStep(channel);
+            jsr_pop();
+            jsr_push(0x85E0);
             tick.slide = SoundSlideStep(channel);
+            jsr_pop();
+            jsr_push(0x85E3);
             tick.pan = SoundPanSlideStep(channel);
+            jsr_pop();
             tick.how = CHANNEL_RESTING;
             return tick;
         }
+        jsr_push(0x85C4);
         tick.gate = SoundGateStep(channel);
+        jsr_pop();
         tick.how = CHANNEL_GATED;
     }
+    jsr_push(0x85C7);
     tick.tempo_slide = SoundTempoSlideStep(channel);
+    jsr_pop();
+    jsr_push(0x85CA);
     tick.lookahead = SoundGlideLookahead(channel);
+    jsr_pop();
+    jsr_push(0x85CD);
     tick.slide = SoundSlideStep(channel);
+    jsr_pop();
+    jsr_push(0x85D0);
     tick.pan = SoundPanSlideStep(channel);
+    jsr_pop();
+    jsr_push(0x85D3);
     tick.volume = SoundVolumeTick(channel);
+    jsr_pop();
     if (tick.volume.how == VOLUME_WAITING) {
         tick.wait = (uint8_t)(rd8((uint16_t)(SoundTremoloWait + channel)) + 1);
         wr8((uint16_t)(SoundTremoloWait + channel), tick.wait);

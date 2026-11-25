@@ -5,7 +5,7 @@
 #include "ram.h"
 #include "stage_map.h"
 
-enum { MPR5 = 0x20, MPR6 = 0x40, FIRST_BANK_OFFSET = 8, SCROLL_STEP_RETURN = 0x8A4E };
+enum { MPR5 = 0x20, MPR6 = 0x40, FIRST_BANK_OFFSET = 8, SCROLL_STEP_RETURN = 0x8A4E, SCROLL_STEP_RUN = 0x8A36 };
 
 /* Maps a bank and the one after it into MPR5 and MPR6, from the offset above the RAM base bank. */
 static bool map_bank_pair(uint8_t offset)
@@ -625,4 +625,72 @@ void abi_StageScrollStepW(void)
     cpu.y = 1;
     abi_flag(P_V, end.v_before);
     stream_walk_exit_shim(end.walk);
+}
+
+/* Each overlay's copy of the step, by where it sits on the disc. */
+typedef struct {
+    uint32_t disc;
+    StageScrollEnd (*step)(uint8_t x);
+} ScrollStepVariant;
+
+static const ScrollStepVariant scroll_step_variants[] = {
+    { DISC(0x024E, 0x236), StageScrollStep },
+    { DISC(0x050E, 0x236), StageScrollStepB },
+    { DISC(0x05BE, 0x236), StageScrollStepC },
+    { DISC(0x071E, 0x236), StageScrollStepD },
+    { DISC(0x07CE, 0x236), StageScrollStepE },
+    { DISC(0x087E, 0x236), StageScrollStepF },
+    { DISC(0x092E, 0x236), StageScrollStepG },
+    { DISC(0x09DE, 0x236), StageScrollStepH },
+    { DISC(0x0A8E, 0x236), StageScrollStepI },
+    { DISC(0x0B3E, 0x236), StageScrollStepJ },
+    { DISC(0x0BEE, 0x236), StageScrollStepK },
+    { DISC(0x0C9E, 0x236), StageScrollStepL },
+    { DISC(0x0D4E, 0x236), StageScrollStepM },
+    { DISC(0x0DFE, 0x236), StageScrollStepN },
+    { DISC(0x0EAE, 0x236), StageScrollStepO },
+    { DISC(0x0F5E, 0x236), StageScrollStepP },
+    { DISC(0x100E, 0x236), StageScrollStepQ },
+    { DISC(0x10BE, 0x236), StageScrollStepR },
+    { DISC(0x116E, 0x236), StageScrollStepS },
+    { DISC(0x12CE, 0x236), StageScrollStepT },
+    { DISC(0x160E, 0x236), StageScrollStepU },
+    { DISC(0x16BE, 0x236), StageScrollStepV },
+    { DISC(0x18CE, 0x236), StageScrollStepW },
+};
+
+/*
+ * The step of whichever stage overlay is in RAM at $8A36. A copy no table row names is original
+ * code the machine runs; the caller's X goes in and the walk's X comes back.
+ */
+static StageScrollEnd original_scroll_step_shim(uint8_t x)
+{
+    StageScrollEnd end;
+
+    cpu.x = x;
+    call_original(SCROLL_STEP_RUN);
+    end.walk.how = STEP_NO_SPEED;
+    end.walk.stepped = false;
+    end.walk.distance_v = false;
+    end.walk.cmp_a = 0;
+    end.walk.cmp_b = 0;
+    end.walk.last.value = 0;
+    end.walk.last.carry = false;
+    end.walk.last.overflow = false;
+    end.walk.x = cpu.x;
+    end.v_before = (cpu.p & P_V) != 0;
+    return end;
+}
+
+StageScrollEnd StageScrollStepResident(uint8_t x)
+{
+    uint32_t disc = resident_at(SCROLL_STEP_RUN);
+    unsigned i;
+
+    for (i = 0; i < sizeof scroll_step_variants / sizeof scroll_step_variants[0]; i++) {
+        if (scroll_step_variants[i].disc == disc) {
+            return scroll_step_variants[i].step(x);
+        }
+    }
+    return original_scroll_step_shim(x);
 }

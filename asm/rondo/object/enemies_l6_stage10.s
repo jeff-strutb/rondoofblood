@@ -1,3 +1,21 @@
+; @routine 10CB:2CB ClearSlot4EUnlessCamera18
+; @run 70:B2CB
+; WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_3510 to $40 and goes on to the next OBJ_2800.
+; HOW: A compare, ClearObjectInY, a store, an INC.
+; WAITS: no.
+; Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z (A $40).
+ClearSlot4EUnlessCamera18:
+    lda a:CameraMode
+    cmp #$18
+    beq ClearSlot4EUnlessCamera18_at0
+    ldy #$4E
+    jsr VecClearObjectInY
+    lda #$40
+    sta a:OBJ_3510,x
+    inc a:OBJ_2800,x
+ClearSlot4EUnlessCamera18_at0:
+    rts
+
 ; @routine 10CD:181 StepListC192ThenClear
 ; @run 71:C181
 ; WHAT IT DOES: Steps the animation list at $C192; when it ends the object is cleared.

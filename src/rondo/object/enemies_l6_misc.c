@@ -110,3 +110,65 @@ void abi_NextPhaseUnlessKind25(void)
 {
     abi_ended(NextPhaseUnlessKind25(cpu.x));
 }
+
+/*
+ * @routine 0E0B:099 HalveDirectionWhenHurt
+ * @run 70:B099
+ * WHAT IT DOES: Unless the object is in state 6, halves its OBJ_3618 once its hits taken reach 5.
+ * HOW: Two compares and a memory shift right.
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare, or the shift's N, Z and C.
+ */
+Ended HalveDirectionWhenHurt(uint8_t slot)
+{
+    uint8_t state, hits, shifted;
+    bool carry = false;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_compare(state, 6);
+    if (state == 6) {
+        return e;
+    }
+    hits = RD8(OBJ->hit_taken[slot]);
+    e = ended_compare(hits, 5);
+    if (hits < 5) {
+        return e;
+    }
+    shifted = LSR8_VALUE(OBJ->f3618[slot], carry);
+    return then(e, ended_with_carry(ended_nz(shifted), carry));
+}
+
+void abi_HalveDirectionWhenHurt(void)
+{
+    abi_ended(HalveDirectionWhenHurt(cpu.x));
+}
+
+/*
+ * @routine 0E0B:10B LoadThenSpawn24
+ * @run 70:B10B
+ * WHAT IT DOES: Loads the object's record, sets OBJ_3618 to $80, clears the object in slot $11 and starts a kind $24 object there at this object's place.
+ * HOW: LoadObjectRecord, ClearObjectInY, a tail jump into StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object. Exit: A the last byte copied, Y $11.
+ */
+Ended LoadThenSpawn24(uint8_t slot)
+{
+    uint8_t nz, last, placed;
+    bool carry;
+
+    jsr_push(0xB10E);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    WR8(OBJ->f3618[slot], 0x80);
+    jsr_push(0xB118);
+    ClearObjectInY(0x11);
+    jsr_pop();
+    placed = StartObjectAtPlace(0x24, slot, 0x11);
+    return then(ended_of_record(last, nz, carry), ended_with_y(ended_load(placed), 0x11));
+}
+
+void abi_LoadThenSpawn24(void)
+{
+    abi_ended(LoadThenSpawn24(cpu.x));
+}

@@ -223,3 +223,88 @@ void abi_CountThenNextStateF3510(void)
 {
     abi_ended(CountThenNextStateF3510(cpu.x));
 }
+
+/*
+ * @routine 088A:724 SetFrameThenCountToNext
+ * @run 70:AF24
+ * WHAT IT DOES: Sets the object's frame (OBJ_2A68) to $0C and counts OBJ_3568 down; at zero it sets it to $10 and goes on to the next state.
+ * HOW: A store, DEC, a store, INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the count, or the new state's N and Z (A $10).
+ */
+Ended SetFrameThenCountToNext(uint8_t slot)
+{
+    uint8_t left, state;
+    Ended e;
+
+    WR8(OBJ->frame[slot], 0x0C);
+    left = DEC8(OBJ->f3568[slot]);
+    e = then(ended_load(0x0C), ended_nz(left));
+    if (left != 0) {
+        return e;
+    }
+    WR8(OBJ->f3568[slot], 0x10);
+    state = INC8(OBJ->state[slot]);
+    return then(then(e, ended_load(0x10)), ended_nz(state));
+}
+
+void abi_SetFrameThenCountToNext(void)
+{
+    abi_ended(SetFrameThenCountToNext(cpu.x));
+}
+
+/*
+ * @routine 088A:41E StartListSoundThenSpawn20
+ * @run 70:AC1E
+ * WHAT IT DOES: Starts the script list $83 on channel 4, starts a kind $20 object in slot $10 at this object's place and clears this object.
+ * HOW: StartListChannelKind2, StartObjectAtPlace, a tail jump into ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: as ClearObject.
+ */
+Ended StartListSoundThenSpawn20(uint8_t slot)
+{
+    uint8_t placed;
+    Ended e;
+
+    push8(slot);
+    jsr_push(0xAC26);
+    StartListChannelKind2(0x83, 4);
+    jsr_pop();
+    slot = pull8();
+    jsr_push(0xAC2E);
+    placed = StartObjectAtPlace(0x20, slot, 0x10);
+    jsr_pop();
+    e = ended_with_y(ended_load(placed), 0x10);
+    ClearObject(slot);
+    return e;
+}
+
+void abi_StartListSoundThenSpawn20(void)
+{
+    abi_ended(StartListSoundThenSpawn20(cpu.x));
+}
+
+/*
+ * @routine 088B:084 StartFallWithFrame21
+ * @run 70:B084
+ * WHAT IT DOES: Zeroes the object's X speed, sets its Y speed high to $FD and its frame to $21 and goes on to the next OBJ_2800.
+ * HOW: Stores and an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: A $21, N and Z from the new OBJ_2800.
+ */
+Ended StartFallWithFrame21(uint8_t slot)
+{
+    uint8_t phase;
+
+    WR8(OBJ->vx_hi[slot], 0);
+    WR8(OBJ->vx_lo[slot], 0);
+    WR8(OBJ->vy_hi[slot], 0xFD);
+    WR8(OBJ->frame[slot], 0x21);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(ended_load(0x21), ended_nz(phase));
+}
+
+void abi_StartFallWithFrame21(void)
+{
+    abi_ended(StartFallWithFrame21(cpu.x));
+}

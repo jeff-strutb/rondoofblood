@@ -23,6 +23,23 @@ NextStateOnScrollY:
 NextStateOnScrollY_at0:
     rts
 
+; @routine 088A:41E StartListSoundThenSpawn20
+; @run 70:AC1E
+; WHAT IT DOES: Starts the script list $83 on channel 4, starts a kind $20 object in slot $10 at this object's place and clears this object.
+; HOW: StartListChannelKind2, StartObjectAtPlace, a tail jump into ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: as ClearObject.
+StartListSoundThenSpawn20:
+    phx
+    lda #$83
+    ldx #$04
+    jsr VecStartListChannelKind2
+    plx
+    ldy #$10
+    lda #$20
+    jsr VecStartObjectAtPlace
+    jmp VecClearObject
+
 ; @routine 088A:52D CountThenNextStateF3510
 ; @run 70:AD2D
 ; WHAT IT DOES: Counts OBJ_3510 down; at zero it sets it to $30 and goes on to the next state.
@@ -49,6 +66,23 @@ PlaySoundTwo:
     jsr VecSoundCommand
     rts
 
+; @routine 088A:724 SetFrameThenCountToNext
+; @run 70:AF24
+; WHAT IT DOES: Sets the object's frame (OBJ_2A68) to $0C and counts OBJ_3568 down; at zero it sets it to $10 and goes on to the next state.
+; HOW: A store, DEC, a store, INC.
+; WAITS: no.
+; Entry: X object. Exit: the count, or the new state's N and Z (A $10).
+SetFrameThenCountToNext:
+    lda #$0C
+    sta a:OBJ_2A68,x
+    dec a:OBJ_3568,x
+    bne SetFrameThenCountToNext_at0
+    lda #$10
+    sta a:OBJ_3568,x
+    inc a:OBJ_27A8,x
+SetFrameThenCountToNext_at0:
+    rts
+
 ; @routine 088A:765 StepListByIndex088A
 ; @run 70:AF65
 ; WHAT IT DOES: Steps the animation list whose address the table at $AF72 gives for the index in Y.
@@ -61,6 +95,22 @@ StepListByIndex088A:
     lda a:$AF73,y
     sta z:zTemp11
     jmp VecStepObjectFrames
+
+; @routine 088B:084 StartFallWithFrame21
+; @run 70:B084
+; WHAT IT DOES: Zeroes the object's X speed, sets its Y speed high to $FD and its frame to $21 and goes on to the next OBJ_2800.
+; HOW: Stores and an INC.
+; WAITS: no.
+; Entry: X object. Exit: A $21, N and Z from the new OBJ_2800.
+StartFallWithFrame21:
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    lda #$FD
+    sta a:OBJ_VY_HI,x
+    lda #$21
+    sta a:OBJ_2A68,x
+    inc a:OBJ_2800,x
+    rts
 
 ; @routine 088B:21D TurnAroundInState9
 ; @run 70:B21D

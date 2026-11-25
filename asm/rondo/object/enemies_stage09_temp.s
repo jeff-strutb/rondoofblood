@@ -771,6 +771,68 @@ WaitForSlot10State4:
 WaitForSlot10State4_at0:
     rts
 
+; @routine 09EB:654 FinalSpinAndEnd
+; @run 70:B654
+; WHAT IT DOES: The last object of the stage's final scene: it is held at X $00B0, Y $0098, its speed follows its angle (OBJ_3568, with the length OBJ_3510) and it moves; the angle turns on by
+; OBJ_3618 and the length shrinks by OBJ_35C0; when the length runs out, if this is slot $10, the music plays again, script slot 3 starts, sound $A1 plays, the object becomes kind $21 in state 0,
+; the water line and the scroll limit are set ($0000 and $027E) and slots $11 to $1F are cleared.
+; HOW: SetVelocityFromAngle, ApplyVelocity, 8-bit subtract, CdPlayAgain, StartSoleScriptSlot, SoundCommand, ClearObjectInY.
+; WAITS: yes, on CdPlayAgain's drive (the stack there is the caller's return, this call's two bytes and X pushed (2) and zeros).
+; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+FinalSpinAndEnd:
+    stz a:OBJ_X_HI,x
+    lda #$B0
+    sta a:OBJ_X_LO,x
+    stz a:OBJ_Y_HI,x
+    lda #$98
+    sta a:OBJ_Y_LO,x
+    stz z:zTemp00
+    lda a:OBJ_3510,x
+    sta z:zTemp01
+    lda a:OBJ_3568,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    lda a:OBJ_3568,x
+    clc
+    adc a:OBJ_3618,x
+    sta a:OBJ_3568,x
+    lda a:OBJ_3510,x
+    sec
+    sbc a:OBJ_35C0,x
+    sta a:OBJ_3510,x
+    bcs FinalSpinAndEnd_at0
+    stz a:OBJ_3510,x
+    cpx #$10
+    bne FinalSpinAndEnd_at0
+    phx
+    rmb3 z:zField8E
+    rmb4 z:zField8E
+    jsr VecCdPlayAgain
+    cla
+    ldx #$03
+    jsr VecStartSoleScriptSlot
+    plx
+    lda #$A1
+    jsr VecSoundCommand
+    lda #$21
+    sta a:OBJ_2750,x
+    stz a:OBJ_27A8,x
+    stz a:LevelYHi
+    stz a:RasterWaterWanted
+    lda #$02
+    sta a:ScrollXMaxHi
+    lda #$7E
+    sta a:ScrollXMaxLo
+    lda #$01
+    sta a:OBJ_2A68,x
+    ldy #$11
+    jsr VecClearObjectInY
+    iny
+    cpy #$20
+    bcc ShootEveryFourth
+FinalSpinAndEnd_at0:
+    rts
+
 ; @routine 09EB:6CD StartOnPlayerAnimation
 ; @run 70:B6CD
 ; WHAT IT DOES: In state 0 loads the object's record and sets its hitbox offsets to $15 and $14; later it takes the place and facing of slot $10 and steps the animation list that
@@ -1082,6 +1144,24 @@ JumpByStateTable:
     sta z:zTemp11
     jmp (zTemp10+$2000)
 
+; @routine 09EC:7D8 StartTracker
+; @run 70:BFD8
+; WHAT IT DOES: Loads the object's record, sets its sprite set to 6 and its frame to 2, and notes its Y low byte in OBJ_35C0 and its next kind in OBJ_3618.
+; HOW: LoadObjectRecord and four stores.
+; WAITS: no.
+; Entry: X object. Exit: A the next kind, N and Z from it, Y 11, C from the record.
+StartTracker:
+    jsr VecLoadObjectRecord
+    lda #$06
+    sta a:OBJ_2A10,x
+    lda #$02
+    sta a:OBJ_2A68,x
+    lda a:OBJ_Y_LO,x
+    sta a:OBJ_35C0,x
+    lda a:OBJ_3040,x
+    sta a:OBJ_3618,x
+    rts
+
 ; @routine 09EC:7F2 SwayThenReact
 ; @run 70:BFF2
 ; WHAT IT DOES: Steps the animation by phase, sets the sway speed, bobs and moves, then reacts at the window edge.
@@ -1281,4 +1361,23 @@ SetSwaySpeed:
     sta a:OBJ_VX_LO,x
     lda a:$C0DF,y
     sta a:OBJ_VX_HI,x
+    rts
+; @routine 09ED:0EA StartThenStepList
+; @run 71:C0EA
+; WHAT IT DOES: In state 0 loads the object's record and sets its sprite set to 6; every frame it steps the animation list at $C112.
+; HOW: LoadObjectRecord, StepObjectFrames.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: as the step.
+StartThenStepList:
+    lda a:OBJ_27A8,x
+    bne StartThenStepList_at0
+    jsr VecLoadObjectRecord
+    lda #$06
+    sta a:OBJ_2A10,x
+StartThenStepList_at0:
+    lda #$C1
+    sta z:zTemp11
+    lda #$12
+    sta z:zTemp10
+    jsr VecStepObjectFrames
     rts

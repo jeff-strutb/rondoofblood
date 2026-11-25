@@ -2286,3 +2286,166 @@ void abi_StartOnPlayerAnimation(void)
 {
     abi_ended(StartOnPlayerAnimation(cpu.x));
 }
+
+/*
+ * @routine 09EC:7D8 StartTracker
+ * @run 70:BFD8
+ * WHAT IT DOES: Loads the object's record, sets its sprite set to 6 and its frame to 2, and notes its Y low byte in OBJ_35C0 and its next kind in OBJ_3618.
+ * HOW: LoadObjectRecord and four stores.
+ * WAITS: no.
+ * Entry: X object. Exit: A the next kind, N and Z from it, Y 11, C from the record.
+ */
+Ended StartTracker(uint8_t slot)
+{
+    uint8_t nz, last, low, kind;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xBFDB);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->sprite_set[slot], 6);
+    WR8(OBJ->frame[slot], 2);
+    low = RD8(OBJ->y_lo[slot]);
+    WR8(OBJ->angle_lo[slot], low);
+    kind = RD8(OBJ->next_kind[slot]);
+    WR8(OBJ->f3618[slot], kind);
+    return ended_then(e, ended_load(kind));
+}
+
+void abi_StartTracker(void)
+{
+    abi_ended(StartTracker(cpu.x));
+}
+
+/*
+ * @routine 09ED:0EA StartThenStepList
+ * @run 71:C0EA
+ * WHAT IT DOES: In state 0 loads the object's record and sets its sprite set to 6; every frame it steps the animation list at $C112.
+ * HOW: LoadObjectRecord, StepObjectFrames.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: as the step.
+ */
+Ended StartThenStepList(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t state, nz, last, y = 0;
+    bool carry;
+    Ended e = ended_kept();
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        jsr_push(0xC0F2);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->sprite_set[slot], 6);
+        e = ended_then(ended_of_record(last, nz, carry), ended_load(6));
+    }
+    step = step_list(slot, 0xC112, 0xC102, &y, true);
+    return ended_then(e, ended_of_frame_step(step, step != FRAME_HELD, y));
+}
+
+void abi_StartThenStepList(void)
+{
+    abi_ended(StartThenStepList(cpu.x));
+}
+
+/*
+ * @routine 09EB:654 FinalSpinAndEnd
+ * @run 70:B654
+ * WHAT IT DOES: The last object of the stage's final scene: it is held at X $00B0, Y $0098, its speed follows its angle (OBJ_3568, with the length OBJ_3510) and it moves; the angle turns on by
+ * OBJ_3618 and the length shrinks by OBJ_35C0; when the length runs out, if this is slot $10, the music plays again, script slot 3 starts, sound $A1 plays, the object becomes kind $21 in state 0,
+ * the water line and the scroll limit are set ($0000 and $027E) and slots $11 to $1F are cleared.
+ * HOW: SetVelocityFromAngle, ApplyVelocity, 8-bit subtract, CdPlayAgain, StartSoleScriptSlot, SoundCommand, ClearObjectInY.
+ * WAITS: yes, on CdPlayAgain's drive (the stack there is the caller's return, this call's two bytes and X pushed (2) and zeros).
+ * Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ */
+void FinalSpinAndEnd(uint8_t slot)
+{
+    ScaleResult scale;
+    AxisMove move;
+    TrackPlay track;
+    SoleSlot sole;
+    CommandCall call;
+    Ended e;
+    uint8_t angle, length, add, step, sub, to, mode;
+    Sum sum;
+
+    WR8(OBJ->x_hi[slot], 0);
+    WR8(OBJ->x_lo[slot], 0xB0);
+    WR8(OBJ->y_hi[slot], 0);
+    WR8(OBJ->y_lo[slot], 0x98);
+    WR8(ZP->temp00, 0);
+    length = RD8(OBJ->f3510[slot]);
+    WR8(ZP->temp01, length);
+    angle = RD8(OBJ->angle_hi[slot]);
+    jsr_push(0xB671);
+    scale = SetVelocityFromAngle(angle, slot);
+    jsr_pop();
+    jsr_push(0xB674);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 0), ended_of_axis_move(move));
+    angle = RD8(OBJ->angle_hi[slot]);
+    add = RD8(OBJ->f3618[slot]);
+    sum = add_bytes(angle, add, false);
+    WR8(OBJ->angle_hi[slot], sum.value);
+    e = ended_then(e, ended_of_sum(sum));
+    length = RD8(OBJ->f3510[slot]);
+    sub = RD8(OBJ->angle_lo[slot]);
+    sum = sub_bytes(length, sub, true);
+    WR8(OBJ->f3510[slot], sum.value);
+    e = ended_then(e, ended_of_sum(sum));
+    if (sum.carry) {
+        sync(&e);
+        return;
+    }
+    WR8(OBJ->f3510[slot], 0);
+    e = ended_then(e, cpy(slot, 0x10));
+    if (slot != 0x10) {
+        sync(&e);
+        return;
+    }
+    sync(&e);
+    push8(slot);
+    RMW8(ZP->field8_e, old, old & 0xF7);
+    RMW8(ZP->field8_e, old, old & 0xEF);
+    jsr_push(0xB699);
+    track = CdPlayAgain(slot, 0);
+    jsr_pop();
+    play_track_exit_shim(track);
+    jsr_push(0xB69F);
+    sole = StartSoleScriptSlot(0, 3);
+    jsr_pop();
+    abi_ended(ended_of_sole(sole));
+    slot = pull8();
+    abi_ended(ended_nz(slot));
+    jsr_push(0xB6A5);
+    call = SoundCommand(0xA1, slot, 0);
+    jsr_pop();
+    sound_command_exit_shim(0xA1, call);
+    WR8(OBJ->kind[slot], 0x21);
+    WR8(OBJ->state[slot], 0);
+    wr8(LevelYHi, 0);
+    wr8(RasterWaterWanted, 0);
+    wr8(ScrollXMaxHi, 2);
+    wr8(ScrollXMaxLo, 0x7E);
+    WR8(OBJ->frame[slot], 1);
+    for (to = 0x11; to < 0x20; to++) {
+        jsr_push(0xB6C7);
+        ClearObjectInY(to);
+        jsr_pop();
+    }
+    mode = 0;
+    e = ended_with_y(ended_nz(0), 0x20);
+    e = ended_with_carry(ended_with_a(e, 1), true);
+    abi_ended(e);
+    (void)scale;
+    (void)mode;
+}
+
+void abi_FinalSpinAndEnd(void)
+{
+    FinalSpinAndEnd(cpu.x);
+}

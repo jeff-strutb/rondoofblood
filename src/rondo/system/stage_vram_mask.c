@@ -7,13 +7,6 @@
 
 enum { MASK_WORDS = 0x80, MASK_BYTES = 0x80, ROW_LIMIT = 0x10, ROW_STEP = 2 };
 
-/* What the routine leaves at its end: A and the carry and overflow if a masking set them. */
-typedef struct {
-    uint8_t a;
-    bool flags_from_mask;
-    Sum mask;
-    uint8_t y;
-} VramMaskExit;
 
 static VramMaskExit mask_vram_rows(bool long_variant)
 {
@@ -120,9 +113,9 @@ static void vram_mask_exit_shim(VramMaskExit out)
  * written, X 0, N 0, Z 1, C and V from the last masking (C 1 when the buffer was cleared), Y 0
  * or the row count when cleared.
  */
-uint8_t MaskVramRowsRandom(void)
+VramMaskExit MaskVramRowsRandom(void)
 {
-    return mask_vram_rows(false).a;
+    return mask_vram_rows(false);
 }
 
 void abi_MaskVramRowsRandom(void)
@@ -138,9 +131,9 @@ void abi_MaskVramRowsRandom(void)
  * WAITS: no.
  * Entry and exit: as MaskVramRowsRandom.
  */
-uint8_t MaskVramRowsRandomLong(void)
+VramMaskExit MaskVramRowsRandomLong(void)
 {
-    return mask_vram_rows(true).a;
+    return mask_vram_rows(true);
 }
 
 void abi_MaskVramRowsRandomLong(void)

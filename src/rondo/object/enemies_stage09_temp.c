@@ -2754,3 +2754,114 @@ void abi_PickWaterOnTenth(void)
 {
     abi_ended(PickWaterOnTenth(cpu.x));
 }
+
+/*
+ * @routine 09EA:588 SwitchStateOnHitRow
+ * @run 70:AD88
+ * WHAT IT DOES: For a state that a table at $ADB0 gives a row number, looks up the hit row (HitRowByKindAndHits); when that is not 0 the object takes the state a table at $ADC8 gives for the row,
+ * plays sound $9F and clears OBJ_2800, OBJ_3408 and OBJ_3460.
+ * HOW: HitRowByKindAndHits, SoundCommand, table reads (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: see abi_sound_end.
+ */
+SoundEnd SwitchStateOnHitRow(uint8_t slot)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t state, row, hit, y, next;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_with_y(ended_nz(state), state);
+    row = rd8((uint16_t)(0xADB0 + state));
+    e = then(e, ended_load(row));
+    if (row == 0) {
+        r.end = e;
+        return r;
+    }
+    WR8(ZP->temp01, row);
+    jsr_push(0xAD95);
+    e = then(e, HitRowByKindAndHits(slot));
+    jsr_pop();
+    hit = RD8(ZP->temp00);
+    e = then(e, ended_load(hit));
+    if (hit == 0) {
+        r.end = e;
+        return r;
+    }
+    y = RD8(ZP->temp01);
+    e = then(e, ended_with_y(ended_nz(y), y));
+    next = rd8((uint16_t)(0xADC8 + y));
+    WR8(OBJ->state[slot], next);
+    e = then(e, ended_load(next));
+    e = then(e, ended_load(0x9F));
+    r.before = e;
+    r.sounded = true;
+    r.command = 0x9F;
+    jsr_push(0xADA6);
+    r.call = SoundCommand(0x9F, slot, y);
+    jsr_pop();
+    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->f3408[slot], 0);
+    WR8(OBJ->f3460[slot], 0);
+    r.end = ended_kept();
+    return r;
+}
+
+void abi_SwitchStateOnHitRow(void)
+{
+    abi_sound_end(SwitchStateOnHitRow(cpu.x));
+}
+
+/*
+ * @routine 09EA:547 StepWithHitTable
+ * @run 70:AD47
+ * WHAT IT DOES: One frame: OBJ_35C0 goes up, then FaceByCue, SwitchStateOnHitRow, AdvanceByHealth, SetHitboxFromFrameFive, and the code the state table at $AE42 names (JumpByStateTableF).
+ * HOW: INC and five calls.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to.
+ */
+SoundEnd StepWithHitTable(uint8_t slot)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    SoundEnd hit;
+    HitboxRow row;
+    Jump jump;
+    uint8_t count;
+    Ended e;
+
+    count = INC8(OBJ->angle_lo[slot]);
+    e = ended_nz(count);
+    jsr_push(0xAD4D);
+    e = then(e, FaceByCue(slot));
+    jsr_pop();
+    jsr_push(0xAD50);
+    hit = SwitchStateOnHitRow(slot);
+    jsr_pop();
+    if (hit.sounded) {
+        abi_ended(then(e, hit.before));
+        sound_command_exit_shim(hit.command, hit.call);
+        e = hit.end;
+    } else {
+        e = then(e, hit.end);
+    }
+    jsr_push(0xAD53);
+    e = then(e, AdvanceByHealth(slot));
+    jsr_pop();
+    jsr_push(0xAD56);
+    row = SetHitboxFromFrameFive(slot);
+    jsr_pop();
+    e = then(e, ended_with_overflow(ended_with_carry(ended_with_y(ended_load(row.last), row.offset), row.carry), row.overflow));
+    jsr_push(0xAD59);
+    jump = JumpByStateTableF(slot);
+    e = then(e, jump.end);
+    sync(&e);
+    slot = enter_handler(slot, jump);
+    jsr_pop();
+    r.end = e;
+    return r;
+}
+
+void abi_StepWithHitTable(void)
+{
+    abi_sound_end(StepWithHitTable(cpu.x));
+}

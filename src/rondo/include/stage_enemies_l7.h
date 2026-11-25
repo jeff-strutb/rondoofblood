@@ -394,6 +394,8 @@ Jump JumpByStateTableF(uint8_t slot);
 Ended HitRowByKindAndHits(uint8_t slot);
 Jump StepFacingAndJump(uint8_t slot, Ended *before);
 Ended PickWaterOnTenth(uint8_t slot);
+SoundEnd SwitchStateOnHitRow(uint8_t slot);
+SoundEnd StepWithHitTable(uint8_t slot);
 Ended TrackPointOrLand(uint8_t slot);
 Ended TrackThenAimAtPlayer(uint8_t slot);
 Ended OrbitThenLeave(uint8_t slot);

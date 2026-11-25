@@ -102,6 +102,21 @@ HealAndClear_at0:
 HealAndClear_at1:
     jmp VecClearObject
 
+; @routine 09EA:547 StepWithHitTable
+; @run 70:AD47
+; WHAT IT DOES: One frame: OBJ_35C0 goes up, then FaceByCue, SwitchStateOnHitRow, AdvanceByHealth, SetHitboxFromFrameFive, and the code the state table at $AE42 names (JumpByStateTableF).
+; HOW: INC and five calls.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to.
+StepWithHitTable:
+    inc a:OBJ_35C0,x
+    jsr FaceByCue
+    jsr SwitchStateOnHitRow
+    jsr AdvanceByHealth
+    jsr SetHitboxFromFrameFive
+    jsr JumpByStateTableF
+    rts
+
 ; @routine 09EA:55A FaceByCue
 ; @run 70:AD5A
 ; WHAT IT DOES: While the screen is not scrolling along X, and in a state the table at $AD70 marks, the object
@@ -119,6 +134,31 @@ FaceByCue:
     and #$01
     sta a:OBJ_2AC0,x
 FaceByCue_at0:
+    rts
+
+; @routine 09EA:588 SwitchStateOnHitRow
+; @run 70:AD88
+; WHAT IT DOES: For a state that a table at $ADB0 gives a row number, looks up the hit row (HitRowByKindAndHits); when that is not 0 the object takes the state a table at $ADC8 gives for the row,
+; plays sound $9F and clears OBJ_2800, OBJ_3408 and OBJ_3460.
+; HOW: HitRowByKindAndHits, SoundCommand, table reads (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: see abi_sound_end.
+SwitchStateOnHitRow:
+    ldy a:OBJ_27A8,x
+    lda a:$ADB0,y
+    beq FaceThePlayerInSomeStatesC
+    sta z:zTemp01
+    jsr HitRowByKindAndHits
+    lda z:zTemp00
+    beq FaceThePlayerInSomeStatesC
+    ldy z:zTemp01
+    lda a:$ADC8,y
+    sta a:OBJ_27A8,x
+    lda #$9F
+    jsr VecSoundCommand
+    stz a:OBJ_2800,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
     rts
 
 ; @routine 09EA:5CB AdvanceByHealth

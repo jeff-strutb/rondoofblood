@@ -593,33 +593,37 @@ void abi_SoundCommandLength(void)
     command_length_exit_shim(SoundCommandLength(cpu.a, cpu.x));
 }
 
-/* The next byte of a sequence through a pointer in zero page, and the pointer on past it. */
-static uint8_t sequence_byte(uint16_t pointer)
+/* The pointer in zero page moved on one byte: the low byte, and the high byte when it wraps. */
+static void sequence_advance(uint16_t pointer)
 {
-    uint8_t byte = rd8_zp(pointer);
     uint8_t low = (uint8_t)(rd8(pointer) + 1);
 
     wr8(pointer, low);
     if (low == 0)
         wr8((uint16_t)(pointer + 1), (uint8_t)(rd8((uint16_t)(pointer + 1)) + 1));
-    return byte;
 }
 
 /* A command and its arguments into SoundCommandByte and SoundCommandArgs, through a pointer. */
-static CommandRead read_command(uint16_t pointer, uint8_t channel)
+static CommandRead read_command(uint16_t pointer, uint16_t length_ret, uint8_t channel)
 {
     CommandRead read;
-    uint8_t byte = sequence_byte(pointer);
+    uint8_t byte = rd8_zp(pointer);
     uint8_t left;
 
     wr8(SoundCommandByte, byte);
+    sequence_advance(pointer);
+    jsr_push(length_ret);
     read.length = SoundCommandLength(byte, channel);
+    jsr_pop();
     /* The count is taken down until it goes negative, so above $80 it reads none. */
     left = read.length.count;
     read.args = 0;
     while ((int8_t)(left = (uint8_t)(left - 1)) >= 0) {
-        wr8((uint16_t)(SoundCommandArgs + read.args), sequence_byte(pointer));
+        push8(left);
+        wr8((uint16_t)(SoundCommandArgs + read.args), rd8_zp(pointer));
         read.args++;
+        left = pull8();
+        sequence_advance(pointer);
     }
     read.left = left;
     return read;
@@ -644,7 +648,7 @@ void command_read_exit_shim(CommandRead read)
  */
 CommandRead SoundReadCommand(uint8_t channel)
 {
-    return read_command(zSoundSequenceLo, channel);
+    return read_command(zSoundSequenceLo, 0xB6B1, channel);
 }
 
 void abi_SoundReadCommand(void)
@@ -664,7 +668,7 @@ CommandRead SoundPeekCommand(uint8_t channel)
 {
     wr8(zSoundWordLo, rd8(zSoundSequenceLo));
     wr8(zSoundWordHi, rd8(zSoundSequenceHi));
-    return read_command(zSoundWordLo, channel);
+    return read_command(zSoundWordLo, 0xB6DC, channel);
 }
 
 void abi_SoundPeekCommand(void)

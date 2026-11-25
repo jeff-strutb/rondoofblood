@@ -22,12 +22,18 @@ enum {
  * @run 69:5CC6
  * WHAT IT DOES: Says whether the System Card is version 1.00, which has no ad_play.
  * HOW: ex_getver: the major version 1 and the minor 0.
+ * WAITS: no.
  * Entry: nothing. Exit: Z set for 1.00. X the major version less one, Y the minor; with major 1, A
  * the minor and N from it, else N from X and A kept. C and V kept.
  */
 CardVersion CardIsVersionOne(void)
 {
-    return ex_getver();
+    CardVersion version;
+
+    jsr_push(0x5CC9);
+    version = ex_getver();
+    jsr_pop();
+    return version;
 }
 
 void abi_CardIsVersionOne(void)
@@ -49,6 +55,7 @@ void abi_CardIsVersionOne(void)
  * @run 69:5D11
  * WHAT IT DOES: Whether ADPCM is busy, and whether it is playing, from the ports.
  * HOW: Each is one port's bit, or if clear another's: as the card's ad_stat.
+ * WAITS: no.
  * Entry: nothing. Exit: X busy, A playing, N and Z from A. Y, C and V kept.
  */
 AdStat KernelAdpcmStat(void)
@@ -78,6 +85,7 @@ void abi_KernelAdpcmStat(void)
  * @run 69:5D2B
  * WHAT IT DOES: Latches the address in the ADPCM address ports as where the unit will write.
  * HOW: The control's bit 3 on, a read of the data port, a short wait, the bit off.
+ * WAITS: no.
  * Entry: nothing. Exit: A 8; Z if the control had no other bits, N and V its bits 7 and 6. X, Y
  * and C kept.
  */
@@ -110,6 +118,7 @@ void abi_KernelAdpcmLatchWrite(void)
  * and starts the unit itself, unless it is playing or the rate is bad.
  * HOW: zBiosDl cleared for a single play; CardIsVersionOne; ad_play, or the ADPCM ports through
  * KernelAdpcmStat and KernelAdpcmLatchWrite.
+ * WAITS: no.
  * Entry: zBiosAl to zBiosDh. Exit: the card's, as ad_play after X the major version less one and
  * Y the minor. 1.00: Y 0; busy, as KernelAdpcmStat; bad rate, A the rate, N and Z from comparing
  * it with $10, C set, X as KernelAdpcmStat; played, A 0, N and Z clear, C clear, V bit 6 of the
@@ -121,13 +130,17 @@ KernelPlay KernelAdpcmPlay(void)
     uint8_t enables;
 
     wr8(zBiosDl, 0);
+    jsr_push(0x5CD2);
     play.version = CardIsVersionOne();
+    jsr_pop();
     if (play.version.major != 1 || play.version.minor != 0) {
         play.how = KERNEL_PLAY_CARD;
         play.card = ad_play();
         return play;
     }
+    jsr_push(0x5CD9);
     play.stat = KernelAdpcmStat();
+    jsr_pop();
     play.how = KERNEL_PLAY_BUSY;
     if (play.stat.playing != 0)
         return play;
@@ -138,7 +151,9 @@ KernelPlay KernelAdpcmPlay(void)
     wr8(AdpcmRate, play.rate);
     wr8(AdpcmAddressLo, rd8(zBiosBl));
     wr8(AdpcmAddressHi, rd8(zBiosBh));
+    jsr_push(0x5CF1);
     KernelAdpcmLatchWrite();
+    jsr_pop();
     wr8(AdpcmAddressLo, rd8(zBiosAl));
     wr8(AdpcmAddressHi, rd8(zBiosAh));
     wr8(AdpcmControl, (uint8_t)(rd8(AdpcmControl) | AD_CONTROL_LATCH_LENGTH));

@@ -366,6 +366,7 @@ SoundReadPair_at1:
 ; @run 76:B6A3
 ; WHAT IT DOES: Reads the channel's next sequence command and its arguments, moving its place on.
 ; HOW: Through zSoundSequenceLo and Hi; SoundCommandLength says how many arguments follow.
+; WAITS: no.
 ; Entry: X channel. Exit: A $FF, or the count less one when it is above $80; N set, Z clear; Y
 ; the argument bytes read; C and V as SoundCommandLength left them. X kept.
 SoundReadCommand:
@@ -397,6 +398,7 @@ SoundReadCommand_at0:
 ; WHAT IT DOES: Reads the channel's next sequence command and its arguments without moving its
 ; place on.
 ; HOW: A copy of the place in zSoundWordLo and Hi is read through instead.
+; WAITS: no.
 ; Entry: X channel. Exit: as SoundReadCommand.
 SoundPeekCommand:
     lda z:zSoundSequenceLo
@@ -432,6 +434,7 @@ SoundPeekCommand_at2:
 ; unless its bit 7 says to reuse the channel's default, which goes into SoundCommandArgs with none
 ; read; $60 up none, except the commands from $E0 up, whose lengths are a table.
 ; HOW: A with bit 7 off picks the class; SoundChannelDefaultArg; SoundCommandLengths.
+; WAITS: no.
 ; Entry: A the command byte, X channel. Exit: A the count. One, N and Z from it, C clear. A
 ; default, N and Z from the default, C set. None from $60 to $DF, N and Z from it less $E0, C
 ; clear. From the table, N and Z from the count, C set, V clear, Y the command less $E0.

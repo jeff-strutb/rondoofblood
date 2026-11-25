@@ -1130,4 +1130,26 @@ void landing_exit_shim(LandingLift landing);
 bool RichterJumpPressed(void);
 bool RichterUpHeld(void);
 
+
+/* What a stream walk ends on, and its exit registers and flags (object/stream.c). */
+typedef enum {
+    WALK_STOPPED_HIGH,     /* the record's high byte differs from the position's */
+    WALK_STOPPED_LOW,      /* the high bytes matched; the low bytes decided */
+    WALK_END_MARK,
+    WALK_BEFORE_START,     /* backward: the record stepped to has its top bit set */
+    EDGE_BEFORE_START,     /* the edge lies before the level's start: no walk made */
+    STEP_NO_SPEED          /* the scroll did not move: no walk made */
+} StreamWalkEnd;
+
+typedef struct {
+    StreamWalkEnd how;
+    bool stepped;          /* a record was stepped to, which leaves Y 1 */
+    bool distance_v;       /* V of the last StreamDistance */
+    uint8_t cmp_a, cmp_b;  /* the compare the walk ended on */
+    Sum last;              /* the last add or subtract of an end that leaves its C and V */
+    uint8_t x;             /* X as the last handler left it (original code may change it) */
+} StreamWalk;
+void stream_walk_exit_shim(StreamWalk walk);
+StreamWalk StreamScrollStep(uint8_t x);
+
 #endif

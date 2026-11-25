@@ -96,4 +96,30 @@ StageListEnd ExpandStageListsT(void);
 StageListEnd ExpandStageListsU(void);
 StageListEnd ExpandStageListsV(void);
 
+/* system/stage_scroll.c: as StreamScrollStep (routines.h), and the V of the bank offset add made before it. */
+typedef struct { StreamWalk walk; bool v_before; } StageScrollEnd;
+StageScrollEnd StageScrollStep(uint8_t x);
+StageScrollEnd StageScrollStepB(uint8_t x);
+StageScrollEnd StageScrollStepC(uint8_t x);
+StageScrollEnd StageScrollStepD(uint8_t x);
+StageScrollEnd StageScrollStepE(uint8_t x);
+StageScrollEnd StageScrollStepF(uint8_t x);
+StageScrollEnd StageScrollStepG(uint8_t x);
+StageScrollEnd StageScrollStepH(uint8_t x);
+StageScrollEnd StageScrollStepI(uint8_t x);
+StageScrollEnd StageScrollStepJ(uint8_t x);
+StageScrollEnd StageScrollStepK(uint8_t x);
+StageScrollEnd StageScrollStepL(uint8_t x);
+StageScrollEnd StageScrollStepM(uint8_t x);
+StageScrollEnd StageScrollStepN(uint8_t x);
+StageScrollEnd StageScrollStepO(uint8_t x);
+StageScrollEnd StageScrollStepP(uint8_t x);
+StageScrollEnd StageScrollStepQ(uint8_t x);
+StageScrollEnd StageScrollStepR(uint8_t x);
+StageScrollEnd StageScrollStepS(uint8_t x);
+StageScrollEnd StageScrollStepT(uint8_t x);
+StageScrollEnd StageScrollStepU(uint8_t x);
+StageScrollEnd StageScrollStepV(uint8_t x);
+StageScrollEnd StageScrollStepW(uint8_t x);
+
 #endif

@@ -34,6 +34,7 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <execinfo.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -83,7 +84,7 @@ enum {
     EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME, EV_END
 };
 enum { K_JSR, K_IRQ, K_JMP };          /* OPEN, CALL: how the entry was made */
-enum { CL_OK, CL_DROP, CL_LEFT };      /* CLOSE: how it ended */
+enum { CL_OK, CL_DROP, CL_LEFT, CL_END };   /* CLOSE: how it ended; CL_END: the script ended with the call open (the record's closing flush, not a hand-over) */
 
 typedef struct {
     uint8_t type, val, old, kind;
@@ -110,7 +111,7 @@ static int is_noise(const Ev *e) { return e->type == EV_ROMR || e->type == EV_RT
 #define PFLAGS 0xCF
 #define PREV_IRQ 0x100
 #define PREV_UNIT 0x101
-#define FRAMES 512
+#define FRAMES 8192
 #define LOG_START (1u << 22)
 static uint64_t log_hard_events = 1u << 24;      /* RONDO_LOG_HARD overrides, for finding a fault */
 #define LOG_HARD log_hard_events
@@ -253,6 +254,14 @@ static void store_push(const Ev *e)
 {
     if (wn == wcap) {
         wcap = wcap ? wcap * 2 : (1u << 16);
+        if (getenv("RONDO_DIAG_WIN") && wcap >= (1u << 22)) {
+            void *bt[24];
+            int nb = backtrace(bt, 24);
+
+            fprintf(stderr, "WINGROW frame %lu cap %llu base %llu sizeof %zu\n", cur_frame, (unsigned long long)wcap,
+                    (unsigned long long)wbase, sizeof *win);
+            backtrace_symbols_fd(bt, nb, 2);
+        }
         win = realloc(win, wcap * sizeof *win);
         if (!win) {
             fprintf(stderr, "check: out of memory in the event window\n");
@@ -358,9 +367,11 @@ static int record_ends_here(const Span *s)
 {
     Ev *c;
 
-    if (at_eof)
+    /* at_eof says the READER reached the end of the stream: a scan's read-ahead gets there long before the hybrid
+     * does. It ends this call only when the call itself has no end in what was read. */
+    if (at_eof && s->end == SPAN_OPEN)
         return 1;
-    return s->end != SPAN_OPEN && (c = evp(s->end)) && c->type == EV_CLOSE && c->kind == CL_LEFT;
+    return s->end != SPAN_OPEN && (c = evp(s->end)) && c->type == EV_CLOSE && (c->kind == CL_LEFT || c->kind == CL_END);
 }
 enum { ABORT_NONE, ABORT_DIVERGED, ABORT_RUNAWAY, ABORT_END };
 static int prefix_mode;                /* A5: judging a call open at the script's end: the log ending is not a defect */
@@ -475,7 +486,7 @@ static uint64_t section_end(Span *s, uint64_t i)
         else if (e->type == EV_OPEN)
             open++;
         else if (e->type == EV_CLOSE && open-- == 0 && mode != MODE_A5)
-            return e->kind == CL_LEFT ? k : NO_RETURN;    /* a call left open at the record's end closes there */
+            return e->kind == CL_LEFT || e->kind == CL_END ? k : NO_RETURN;    /* a call left open at the record's end closes there */
     }
     /* A5, judging a call still open at the end of the log: the handler had not returned either, and what the
      * call did so far is all that is judged. */
@@ -576,9 +587,11 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
             break;
     }
     if (getenv("RONDO_DIAG_CTX") && found < 0 && mode == MODE_HYBRID)
-        fprintf(stderr, "PLACEFAIL frame %lu in %s: type %d phys %06X hit_end %d first %lld at_eof %d s->end %llu cur %llu rondo_pc %04X ends_here %d\n",
+        fprintf(stderr, "PLACEFAIL frame %lu in %s: type %d phys %06X hit_end %d first %lld at_eof %d s->end %llu cur %llu rondo_pc %04X ends_here %d close %d/%d\n",
                 cur_frame, rondo_tags[s->tag].name, type, phys, hit_end, (long long)first, (int)at_eof,
-                (unsigned long long)s->end, (unsigned long long)s->cur, rondo_pc, record_ends_here(s));
+                (unsigned long long)s->end, (unsigned long long)s->cur, rondo_pc, record_ends_here(s),
+                s->end != SPAN_OPEN && evp(s->end) ? evp(s->end)->type : -1,
+                s->end != SPAN_OPEN && evp(s->end) ? evp(s->end)->kind : -1);
     if (found < 0 && hit_end && first < 0 && mode == MODE_HYBRID && sp == s && record_ends_here(s)) {
         /* The original's call ended here (left by the stack: it pulled past its own return address) while the C goes on:
          * the C hands the machine to the original at the instruction it is at, whose access it has not made. Only the
@@ -650,6 +663,10 @@ static int ends_by_dispatch(uint8_t entry_s, int is_irq, const Tag *t)
     return !is_irq && !t->ends && below >= 1 && below < 0x80;
 }
 
+#define HORIZON (8u << 20)           /* hybrid: events a call's return or end is looked for ahead (8M events, 384 MB of window) */
+static uint64_t horizon_calls;
+static int horizon_hit;
+
 static void span_finish_to_call(Span *s);
 
 static void span_finish(Span *s)
@@ -664,6 +681,10 @@ static void span_finish(Span *s)
 
         if (!e)
             break;
+        if (mode == MODE_HYBRID && s->end == SPAN_OPEN && j - s->cur > HORIZON) {
+            horizon_calls++;      /* a call with no end in the next HORIZON events: the rest is not read into memory here */
+            break;
+        }
         if (e->type == EV_RTPULL)
             pulls++;
         if (e->type == EV_INT) {
@@ -1217,6 +1238,19 @@ void wait_interrupt(void)
     for (j = sp->cur; (e = sev(sp, j, &nest)) && !is_counted(e) && e->type != EV_INT; j++)
         if (e->type == EV_FRAME && mode == MODE_HYBRID)
             frame_pass(sp, j, 0);
+    if (!e && mode == MODE_HYBRID && getenv("RONDO_DIAG_CTX"))
+        fprintf(stderr, "WAITEND frame %lu in %s: at_eof %d span end %llu cur %llu j %llu ends_here %d\n", cur_frame,
+                rondo_tags[sp->tag].name, (int)at_eof, (unsigned long long)sp->end, (unsigned long long)sp->cur,
+                (unsigned long long)j, record_ends_here(sp));
+    if (!e && mode == MODE_HYBRID && getenv("RONDO_DIAG_CTX") && sp->end != SPAN_OPEN) {
+        for (uint64_t q = sp->end > 3 ? sp->end - 3 : 0; q < sp->end + 6; q++) {
+            Ev *x = evp(q);
+
+            if (x)
+                fprintf(stderr, "  WAITEV %llu type %d kind %d pc %04X s %02X addr %u clock %llu\n", (unsigned long long)q,
+                        x->type, x->kind, x->pc, x->s, x->addr, (unsigned long long)x->clock);
+        }
+    }
     if (!e && mode == MODE_HYBRID && record_ends_here(sp))
         park_forever();
     if (!e || e->type != EV_INT) {
@@ -1332,8 +1366,17 @@ static void original_at(uint16_t ret, uint16_t addr)
 
         if (!x || (x->type == EV_RET && x->s == (uint8_t)(ec.s + 2) && (!ret || x->pc == ret)))
             break;
+        if (mode == MODE_HYBRID && own && retidx - call > HORIZON) {
+            /* A callee that has not returned within HORIZON events: the search would read the rest of the script into
+             * memory (a stage's main loop never returns). The routine ends here and the original runs on; if the
+             * callee did return later, what the C would have done after it is the original's, counted. */
+            horizon_calls++;
+            horizon_hit = 1;
+            break;
+        }
     }
-    noreturn = retidx >= span->end || !evp(retidx);
+    noreturn = horizon_hit || retidx >= span->end || !evp(retidx);
+    horizon_hit = 0;
     if (own && (ec.kind == K_JMP || noreturn)) {
         /* The routine's own tail jump, or code that does not come back in the call: the routine ends there.
          * (A routine called by C from another's C that jumps this way is a call and a return: below.) */
@@ -1850,6 +1893,18 @@ static void classify_arrival(int index, uint16_t pc)
     (void)pc;
     tail_entry = 0;
     self_jump = (prev_op == 0x4C || prev_op == 0x6C || prev_op == 0x7C) && in_routine(index, before_pc);
+    /* An interrupt's return to the first byte of the routine whose frame is on top at this S resumes that frame (an idle
+     * loop the interrupt came in on): not a new call. Without it each interrupt left one more idle frame open and the
+     * record's frame stack hit its 512 limit, which flushed every frame as left (a long script's idle loop then lost
+     * the interrupts inside it). */
+    if (!self_jump && index >= 0 && prev_op == 0x40 && depth && mode != MODE_HYBRID && frames[depth - 1].tag_index == index) {
+        uint8_t a, x, y, st, p;
+        uint16_t pc2;
+
+        chk_get_regs(&a, &x, &y, &st, &p, &pc2);
+        if (frames[depth - 1].regs.s == st)
+            self_jump = 1;
+    }
     if (index < 0 || plain || computed_entry)
         return;
     tail_entry = prev_op == 0x60 || !in_routine(index, before_pc);
@@ -1903,7 +1958,7 @@ static void close_frames(const Regs *r)
         }
         if (how < 0)
             break;
-        if (how == CL_LEFT && getenv("RONDO_DEBUG_LEFT") && !strcmp(f->tag->name, getenv("RONDO_DEBUG_LEFT")))
+        if (how == CL_LEFT && getenv("RONDO_DEBUG_LEFT") && (!strcmp(getenv("RONDO_DEBUG_LEFT"), "all") || !strcmp(f->tag->name, getenv("RONDO_DEBUG_LEFT"))))
             fprintf(stderr, "LEFT %s kind %d entry S %02X now S %02X pc %04X ret %04X prev_op %X frame %lu\n",
                     f->tag->name, f->kind, f->regs.s, r->s, r->pc, f->ret, prev_op, cur_frame);
         if (mode == MODE_A5) {
@@ -1935,6 +1990,21 @@ static void open_frame(int index, const Regs *r, int kind)
     opens_emitted++;
 
     if (depth == FRAMES) {
+        if (getenv("RONDO_DEBUG_LEFT"))
+            fprintf(stderr, "OVERFLOW frame %lu: %d frames open, the %d limit; every one is flushed as left; top %s\n", cur_frame,
+                    depth, FRAMES, frames[depth - 1].tag->name);
+        if (getenv("RONDO_DEBUG_LEFT")) {
+            int i = 0;
+
+            while (i < depth && i < FRAMES) {
+                int j = i;
+
+                while (j + 1 < depth && frames[j + 1].tag == frames[i].tag && frames[j + 1].regs.s == frames[i].regs.s)
+                    j++;
+                fprintf(stderr, "  OPEN %3d..%3d %s S=%02X\n", i, j, frames[i].tag->name, frames[i].regs.s);
+                i = j + 1;
+            }
+        }
         while (depth) {
             Regs z = { 0 };
 
@@ -2343,7 +2413,7 @@ static void hy_switch_in(Ctx *c)
 static int hy_finish(Ctx *c)
 {
     const Tag *t = &rondo_tags[c->tag];
-    Ev *close = evp(c->span.end);
+    Ev *close = c->span.end == SPAN_OPEN ? NULL : evp(c->span.end);     /* an end not found yet is not looked for: that read the rest of the stream */
     uint8_t s = cpu.s;
     uint16_t pc;
     uint8_t ns;
@@ -2888,6 +2958,20 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
             exit(0);         /* the hybrid stopped reading: its report says why */
     } else {
         hy_trim();
+        if (getenv("RONDO_DIAG_WIN")) {
+            const Ctx *low = NULL;
+            int nctx = 0;
+
+            for (Ctx *c = top; c; c = c->below) {
+                nctx++;
+                if (!low || c->span.cur < low->span.cur)
+                    low = c;
+            }
+            fprintf(stderr, "WIN frame %lu base %llu n %llu scan %llu ctxs %d lowest %s cur %llu start %llu end %llu parked %d\n", frame,
+                    (unsigned long long)wbase, (unsigned long long)wn, (unsigned long long)scan, nctx,
+                    low ? rondo_tags[low->tag].name : "-", low ? (unsigned long long)low->span.cur : 0ull,
+                    low ? (unsigned long long)low->span.start : 0ull, low ? (unsigned long long)low->span.end : 0ull, low ? low->parked : 0);
+        }
         /* The record's hashes for this frame: read ahead until they are there. */
         while (fq_head == fq_tail && fetch_one())
             ;
@@ -3027,7 +3111,7 @@ void check_finish(void)
         while (depth) {
             Regs z = { 0 };
 
-            close_event(&frames[depth - 1], &z, CL_LEFT);
+            close_event(&frames[depth - 1], &z, CL_END);
             depth--;
         }
         memset(&e, 0, sizeof e);
@@ -3083,6 +3167,9 @@ void check_finish(void)
             first = -1L;
         if (stopped_why)
             printf("STOPPED %s\n", stopped_why);
+        if (horizon_calls)
+            fprintf(report, "horizon hand-overs %llu: calls whose return was not within %u events, the original ran on\n",
+                    (unsigned long long)horizon_calls, (unsigned)HORIZON);
         fprintf(report, "calls swapped %llu; access defects %llu; parked %llu, kept %llu, unreached %lld\n"
                 "frames compared %llu of %lld, identical %lu, first differing %ld\n", (unsigned long long)swapped,
                 (unsigned long long)defects, (unsigned long long)parked_n, (unsigned long long)kept_n,

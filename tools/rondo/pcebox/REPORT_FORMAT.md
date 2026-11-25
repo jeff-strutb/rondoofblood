@@ -130,3 +130,14 @@ Diagnostics of the lockstep (they make the run a diagnostic: no verdict): `RONDO
 side's registers, clock and open (record) or parked (hybrid) calls at every frame end; `RONDO_DIAG_RESUME=1` prints each time
 the core reaches a parked C's resume address (its S and the one expected) and each park for a frame end; `RONDO_DIAG_CTX=1`
 prints each time a C is switched in, abandoned or finished.
+`RONDO_DEBUG_LEFT=1` prints each time the record's frame stack (8192 frames) overflows: the top frame, then the open frames in
+runs with their entry S; `RONDO_DEBUG_LEFT=all` or a routine name prints each call the stack closes as left. `RONDO_DIAG_WIN=1` prints
+the hybrid's event window at every frame end (`WIN`: base, length, scan, the lowest parked call) and a backtrace at each window growth
+past 4M events (`WINGROW`).
+
+Close kinds in the record: ok, drop, left, and end (CL_END: the script ended with the call open, the record's closing flush; the hybrid
+parks the C and does not hand over to the original).
+
+The window is bounded: a call whose returning RET (or whose end, for a C that has finished) is not within 8M events (HORIZON) is
+not looked for further. The routine ends there and the original runs on; the hybrid report says `horizon hand-overs N`. Hybrid only;
+A5 reads its whole log.

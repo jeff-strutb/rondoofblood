@@ -481,5 +481,9 @@ ObjExit EndingRiseFrame31(uint8_t object);
 ObjExit EndingRiseFrame32A(uint8_t object);
 ObjExit EndingRiseFrame32B(uint8_t object);
 ObjExit EndingRiseWithList(uint8_t object);
+ObjExit EndingScrollRight6(uint8_t object);
+ObjExit EndingScrollUp(uint8_t object);
+ObjExit EndingScrollDown(uint8_t object);
+ObjExit EndingScrollSteps(uint8_t object);
 
 #endif

@@ -461,6 +461,68 @@ EndingHoldTimer:
 EndingHoldTimer_at0:
     rts
 
+; @routine 010D:5FB EndingScrollSteps
+; @run 6B:85FB
+; WHAT IT DOES: An object handler of five stages: the first counts the first scroll's X and Y high bytes up; the next three each
+; take 8 off the first scroll's X low byte until it is $F8, then clear its X high byte, start the ending's list $0D on this channel
+; and count its Y high byte up; the fifth adds $10 to object 1's X (with the carry into its high byte) and takes 8 off the scroll's
+; X low byte until it is 0.
+; HOW: OBJ->state; EndingScrollBack8; StartListChannelKind2.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingScrollSteps:
+    lda a:OBJ_27A8,x
+    bne EndingScrollSteps_at0
+    inc a:ScrollXHi
+    inc a:ScrollYHi
+    inc a:OBJ_27A8,x
+EndingScrollSteps_at2:
+    rts
+EndingScrollSteps_at0:
+    dec a
+    bne EndingScrollSteps_at1
+    jsr EndingScrollBack8
+    cmp #$F8
+    bne EndingScrollSteps_at2
+    stz a:ScrollXHi
+    inc a:OBJ_27A8,x
+    rts
+EndingScrollSteps_at1:
+    dec a
+    bne EndingScrollSteps_at3
+    jsr EndingScrollBack8
+    cmp #$F8
+    bne EndingScrollSteps_at2
+    stz a:ScrollYHi
+    phx
+    lda #$0D
+    jsr VecStartListChannelKind2
+    plx
+    inc a:OBJ_27A8,x
+    rts
+EndingScrollSteps_at3:
+    dec a
+    bne EndingScrollSteps_at4
+    jsr EndingScrollBack8
+    cmp #$F8
+    bne EndingScrollSteps_at2
+    inc a:ScrollYHi
+    inc a:OBJ_27A8,x
+    rts
+EndingScrollSteps_at4:
+    dec a
+    bne EndingScrollSteps_at2
+    lda a:OBJ_X_LO+1
+    clc
+    adc #$10
+    sta a:OBJ_X_LO+1
+    bcc SoundNotePitch
+    inc a:OBJ_X_HI+1
+    jsr EndingScrollBack8
+    bne EndingScrollSteps_at2
+    inc a:OBJ_27A8,x
+    rts
+
 ; @routine 010D:65E EndingScrollBack8
 ; @run 6B:865E
 ; WHAT IT DOES: Takes 8 off the low byte of the first scroll X.
@@ -472,6 +534,126 @@ EndingScrollBack8:
     sec
     sbc #$08
     sta a:ScrollXLo
+    rts
+
+; @routine 010D:668 EndingScrollRight6
+; @run 6B:8668
+; WHAT IT DOES: An object handler of two stages: adds 6 to the first scroll's X low byte; in the first stage a carry counts
+; the first scroll's Y high byte up and moves to the next state; in the second the byte is counted up once more and a
+; carry moves the X high byte on, clears the low byte and moves to the next state.
+; HOW: OBJ->state; SCROLL->x_lo[0], x_hi[0] and y_hi[0].
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingScrollRight6:
+    lda a:OBJ_27A8,x
+    bne EndingScrollRight6_at0
+    lda a:ScrollXLo
+    clc
+    adc #$06
+    sta a:ScrollXLo
+    bcc EndingScrollRight6_at1
+    inc a:ScrollYHi
+    inc a:OBJ_27A8,x
+EndingScrollRight6_at1:
+    rts
+EndingScrollRight6_at0:
+    dec a
+    bne EndingScrollRight6_at1
+    lda a:ScrollXLo
+    clc
+    adc #$06
+    sta a:ScrollXLo
+    inc a:ScrollXLo
+    bcc EndingScrollRight6_at1
+    inc a:ScrollXHi
+    stz a:ScrollXLo
+    inc a:OBJ_27A8,x
+    rts
+
+; @routine 010D:69A EndingScrollDown
+; @run 6B:869A
+; WHAT IT DOES: An object handler of three stages: the first starts the raster effect $13, sets scroll slots 5 and 6 to Y $1F and
+; $BF, slot 1 to $00, and counts slot 0's Y high byte and slot 2's X high byte up; the second, on odd frames, counts slot 1's Y
+; up and the Y low bytes of the two objects after this one down until slot 1's Y is $1F, then clears the frame of the object
+; two on and moves to the next state; the third plays the ending's list $0B on the next object.
+; HOW: OBJ->state; ZP->frame_tick; SCROLL; EndingFrameList.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingScrollDown:
+    lda a:OBJ_27A8,x
+    bne EndingScrollDown_at0
+    lda #$13
+    sta z:zRasterEffect
+    lda #$1F
+    sta a:ScrollYLo+5
+    lda #$00
+    sta a:ScrollYLo+1
+    inc a:ScrollYHi
+    lda #$BF
+    sta a:ScrollYLo+6
+    inc a:ScrollXHi+2
+    inc a:OBJ_27A8,x
+EndingScrollDown_at2:
+    rts
+EndingScrollDown_at0:
+    dec a
+    bne EndingScrollDown_at1
+    lda z:zFrameTick
+    lsr a
+    bcc EndingScrollDown_at2
+    inc a:ScrollYLo+1
+    dec a:OBJ_Y_LO+1,x
+    dec a:OBJ_Y_LO+2,x
+    lda a:ScrollYLo+1
+    cmp #$1F
+    bne EndingScrollDown_at2
+    inc a:OBJ_27A8,x
+    stz a:OBJ_2A68+2,x
+    rts
+EndingScrollDown_at1:
+    inx
+    lda #$0B
+    jsr EndingFrameList
+    dex
+    rts
+
+; @routine 010D:6E3 EndingScrollUp
+; @run 6B:86E3
+; WHAT IT DOES: An object handler of two stages: the first starts the raster effect $13 and sets scroll slots 1, 5 and 6 to Y
+; $0F, $2F and $BF, slot 1's Y high byte up by one and slot 2's X high byte up by one; the second counts slot 1's Y down (with
+; the borrow) until it is $2F and moves to the next state.
+; HOW: OBJ->state; ZP->raster_effect; SCROLL->y_lo and y_hi.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingScrollUp:
+    lda a:OBJ_27A8,x
+    bne EndingScrollUp_at0
+    lda #$13
+    sta z:zRasterEffect
+    lda #$0F
+    sta a:ScrollYLo+1
+    inc a:ScrollYHi+1
+    lda #$2F
+    sta a:ScrollYLo+5
+    lda #$BF
+    sta a:ScrollYLo+6
+    inc a:ScrollXHi+2
+    inc a:OBJ_27A8,x
+    rts
+EndingScrollUp_at0:
+    dec a
+    bne EndingScrollUp_at1
+    dec a:ScrollYLo+1
+    lda a:ScrollYLo+1
+    cmp #$FF
+    bne EndingScrollUp_at2
+    dec a:ScrollYHi+1
+EndingScrollUp_at2:
+    lda a:ScrollYLo+1
+    cmp #$2F
+    bne EndingScrollUp_at1
+    inc a:OBJ_27A8,x
+EndingScrollUp_at1:
     rts
 
 ; @routine 010D:720 EndingRiseFrame31

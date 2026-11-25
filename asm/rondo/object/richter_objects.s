@@ -2,6 +2,7 @@
 ; @run 6E:C00C
 ; WHAT IT DOES: Adds to an object's X position's low byte.
 ; HOW: A plain add, the carry left for RichterObjectAddXHigh.
+; WAITS: no.
 ; Entry: A the amount, X object. Exit: A the low byte, N, Z, C and V from the add. X and Y kept.
 RichterObjectAddXLow:
     clc
@@ -13,6 +14,7 @@ RichterObjectAddXLow:
 ; @run 6E:C014
 ; WHAT IT DOES: Adds to an object's X position's high byte, with the carry from the low byte.
 ; HOW: An add with the carry in.
+; WAITS: no.
 ; Entry: A the amount, C the carry, X object. Exit: A the high byte, N, Z, C and V from the add.
 ; X and Y kept.
 RichterObjectAddXHigh:
@@ -24,6 +26,7 @@ RichterObjectAddXHigh:
 ; @run 6E:C1CF
 ; WHAT IT DOES: Pulls an object down: its Y speed grows by 6.
 ; HOW: Runs on into RichterObjectSetFall.
+; WAITS: no.
 ; Entry: X object. Exit: as RichterObjectSetFall.
 RichterObjectFall:
     lda a:OBJ_VY_LO,x
@@ -34,6 +37,7 @@ RichterObjectFall:
 ; @run 6E:C1D5
 ; WHAT IT DOES: Sets an object's Y speed's low byte, carrying into its high byte.
 ; HOW: The carry added to OBJ_VY_HI.
+; WAITS: no.
 ; Entry: A the low byte, C the carry, X object. Exit: A the high byte, N, Z, C and V from adding
 ; the carry. X and Y kept.
 RichterObjectSetFall:
@@ -47,6 +51,7 @@ RichterObjectSetFall:
 ; @run 6E:C1E0
 ; WHAT IT DOES: Pulls an object down more gently: its Y speed grows by 3.
 ; HOW: RichterObjectSetFall.
+; WAITS: no.
 ; Entry: X object. Exit: as RichterObjectSetFall.
 RichterObjectFallSlow:
     lda a:OBJ_VY_LO,x
@@ -58,6 +63,7 @@ RichterObjectFallSlow:
 ; @run 6E:C238
 ; WHAT IT DOES: Sets bit 4 of an object's OBJ_2B18.
 ; HOW: ORed in.
+; WAITS: no.
 ; Entry: X object. Exit: A the new OBJ_2B18, N and Z from it. X, Y, C and V kept.
 RichterObjectMarkOn:
     lda #$10
@@ -69,6 +75,7 @@ RichterObjectMarkOn:
 ; @run 6E:C3EC
 ; WHAT IT DOES: Clears bit 4 of an object's OBJ_2B18.
 ; HOW: ANDed out.
+; WAITS: no.
 ; Entry: X object. Exit: A the new OBJ_2B18, N and Z from it. X, Y, C and V kept.
 RichterObjectMarkOff:
     lda #$EF
@@ -80,6 +87,7 @@ RichterObjectMarkOff:
 ; @run 6E:C3F8
 ; WHAT IT DOES: Gives an object Richter's facing and his OBJ_2FE8, doubled.
 ; HOW: RichterObjectTake2FE8, then the facing copied.
+; WAITS: no.
 ; Entry: X object. Exit: A the facing, N and Z from it, C as RichterObjectTake2FE8. X, Y and V
 ; kept.
 RichterObjectFromPlayer:
@@ -92,6 +100,7 @@ RichterObjectFromPlayer:
 ; @run 6E:C401
 ; WHAT IT DOES: Gives an object Richter's OBJ_2FE8, doubled.
 ; HOW: Shifted up a place.
+; WAITS: no.
 ; Entry: X object. Exit: A the value, N and Z from it, C Richter's bit 7. X, Y and V kept.
 RichterObjectTake2FE8:
     lda a:OBJ_2FE8
@@ -103,6 +112,7 @@ RichterObjectTake2FE8:
 ; @run 6E:C409
 ; WHAT IT DOES: Gives the slot of the object being run.
 ; HOW: zRichterObject.
+; WAITS: no.
 ; Entry: nothing. Exit: X the slot, N and Z from it. A, Y, C and V kept.
 RichterObjectSlot:
     ldx z:zRichterObject
@@ -113,6 +123,7 @@ RichterObjectSlot:
 ; WHAT IT DOES: Once, at its animation's step 6 and while PlayerByte3BE1 is set, makes an object's
 ; frame last 4 longer and Richter's one frame shorter than that.
 ; HOW: OBJ_35C0 marks it done; OBJ_2F38 the step; OBJ_2F90 the frame's time.
+; WAITS: no.
 ; Entry: X object. Exit: X and Y kept. Stopped, A what was read last, N and Z from it, or from
 ; comparing the step with 6 and C with it. Done, A Richter's new time, N and Z from the mark, C
 ; and V from the add.
@@ -141,6 +152,7 @@ RichterObjectQuicken_at0:
 ; of the four that have one, with its OBJ_2B18 for the flash.
 ; HOW: OBJ_3568 is the charge; frames $07, $0E, $15 and $1C become $8E to $91; RichterFlashFlags
 ; by OBJ_34B8 less $0E, with bit 7.
+; WAITS: no.
 ; Entry: X object. Exit: X kept. Not charged, A 0, Z set, Y $8E. Not one of the four, A the
 ; frame, N, Z and C from comparing it with $1C, Y $91. Flashed, A the flags, N and Z from them, Y
 ; OBJ_34B8 less $0E, C and V from that subtract. V kept otherwise.
@@ -179,6 +191,7 @@ RichterObjectFlash_at1:
 ; WHAT IT DOES: Charges an object from OBJ_34B8 $0C on, the first time the way it faces is newly
 ; pressed.
 ; HOW: OBJ_3568 counted up; RichterChargePads by OBJ_2AC0 against zPadPressed.
+; WAITS: no.
 ; Entry: X object. Exit: X kept. Before $0C, A OBJ_34B8, N, Z and C from comparing it with $0C.
 ; Charged already, A the charge, N and Z from it, C set. Not pressed, A 0, Z set, C set, Y the
 ; facing. Charged now, A the press, N and Z from the charge, C set, Y the facing. V kept.
@@ -200,6 +213,7 @@ RichterObjectCharge_at0:
 ; @run 6E:C5C5
 ; WHAT IT DOES: Moves an object on to its next state.
 ; HOW: OBJ_27A8 counted up.
+; WAITS: no.
 ; Entry: X object. Exit: N and Z from the new state. A, X, Y, C and V kept.
 RichterObjectNextState:
     inc a:OBJ_27A8,x
@@ -210,6 +224,7 @@ RichterObjectNextState:
 ; WHAT IT DOES: Puts an object at Richter's place plus an offset, signed, the X offset turned
 ; round when the object faces left.
 ; HOW: zTemp04 and zTemp06 the offsets, made 16-bit in zTemp05 and zTemp07.
+; WAITS: no.
 ; Entry: X object, zTemp04 and zTemp06. Exit: A the Y position's high byte, N, Z, C and V from its
 ; add. X and Y kept.
 RichterObjectAtPlayer:
@@ -253,6 +268,7 @@ RichterObjectAtPlayer_at2:
 ; @run 6E:CEBE
 ; WHAT IT DOES: Puts an object exactly where Richter is.
 ; HOW: His position into zTemp00 to 03; runs on into RichterObjectToPoint.
+; WAITS: no.
 ; Entry: X object. Exit: as RichterObjectToPoint.
 RichterObjectAtPlayerPlace:
     lda a:OBJ_X_LO
@@ -268,6 +284,7 @@ RichterObjectAtPlayerPlace:
 ; @run 6E:CED2
 ; WHAT IT DOES: Puts an object at the point in zTemp00 to 03.
 ; HOW: X low and high, Y low and high.
+; WAITS: no.
 ; Entry: X object. Exit: A the Y position's high byte, N and Z from it. X, Y, C and V kept.
 RichterObjectToPoint:
     lda z:zTemp00
@@ -284,9 +301,10 @@ RichterObjectToPoint:
 ; @run 6E:DA40
 ; WHAT IT DOES: Steps an object's animation and, unless it has ended or shows frame 0, returns to
 ; its caller's caller, so the caller's own work waits for the end.
-; HOW: RichterObjectAnimationTick; Z from it; the assembly drops the return address.
+; HOW: RichterObjectAnimationTick; Z from it; the assembly drops the return address with two pulls.
+; WAITS: no.
 ; Entry: X object. Exit, Z set: as the tick. Otherwise the caller's return address is gone, A its
-; high byte, N and Z from it.
+; high byte, N and Z from it; its caller then ends at once.
 RichterObjectAnimationWait:
     jsr RichterObjectAnimationTick
     beq RichterObjectAnimationWait_at0
@@ -299,6 +317,7 @@ RichterObjectAnimationWait_at0:
 ; @run 6E:DA48
 ; WHAT IT DOES: Steps an object's animation; its caller looks at whether it has ended.
 ; HOW: RichterObjectAnimationTick, then the timer against $FF.
+; WAITS: no.
 ; Entry: X object. Exit: A the timer, N, Z and C from comparing it with $FF. Y as the tick. X and
 ; V kept. Clobbers zTemp00-01.
 RichterObjectAnimationRunning:
@@ -312,6 +331,7 @@ RichterObjectAnimationRunning:
 ; WHAT IT DOES: Counts down an object's frame on show; at zero moves to the next step of its list.
 ; A timer of $FF means its animation has stopped.
 ; HOW: OBJ_2F90 the timer, OBJ_FLAGS_2F38 the step, OBJ_2A68 the frame shown.
+; WAITS: no.
 ; Entry: X object. Exit: as RichterAnimationTick.
 RichterObjectAnimationTick:
     lda a:OBJ_2F90,x
@@ -329,6 +349,7 @@ RichterObjectAnimationTick_at0:
 ; @stop DA84
 ; WHAT IT DOES: Starts an object's animation from its first step.
 ; HOW: The animation into OBJ_FIELDS_2EE0, step zero, and its first entry read.
+; WAITS: no.
 ; Entry: A animation, X object. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
 RichterObjectSetAnimation:
     sta a:OBJ_FIELDS_2EE0,x
@@ -357,6 +378,7 @@ RichterObjectSetAnimation_at0:
 ; @run 6E:DA84
 ; WHAT IT DOES: Points at an object's animation list and its step's entry.
 ; HOW: RichterObjectAnimations by OBJ_FIELDS_2EE0 into zTemp00 and 01; the step doubled.
+; WAITS: no.
 ; Entry: X object. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V
 ; kept.
 RichterObjectAnimationList:
@@ -376,6 +398,7 @@ RichterObjectAnimationList:
 ; @run 6E:DD1B
 ; WHAT IT DOES: Takes an object's hitbox away.
 ; HOW: OBJ_3250 cleared.
+; WAITS: no.
 ; Entry: X object. Exit: all registers and flags kept.
 RichterObjectHitboxOff:
     stz a:OBJ_3250,x
@@ -385,6 +408,7 @@ RichterObjectHitboxOff:
 ; @run 6E:DD1F
 ; WHAT IT DOES: Marks an object as having a hitbox and gives it its frame's.
 ; HOW: OBJ_3250 1; runs on into RichterObjectHitboxByFrame.
+; WAITS: no.
 ; Entry: X object. Exit: as RichterObjectHitboxByFrame.
 RichterObjectHitboxOn:
     lda #$01
@@ -394,6 +418,7 @@ RichterObjectHitboxOn:
 ; @run 6E:DD24
 ; WHAT IT DOES: Gives an object the hitbox of the frame it shows, or none.
 ; HOW: RichterFrameHitboxes by OBJ_2A68; runs on into RichterObjectHitboxFrom.
+; WAITS: no.
 ; Entry: X object. Exit: none, A 0, Z set, N clear, Y the frame. Otherwise as
 ; RichterObjectHitboxFrom.
 RichterObjectHitboxByFrame:
@@ -405,6 +430,7 @@ RichterObjectHitboxByFrame:
 ; WHAT IT DOES: Gives an object the hitbox picked, or none.
 ; HOW: Z from the caller says none; otherwise the hitbox's four bytes from RichterObjectHitboxes,
 ; four bytes a hitbox.
+; WAITS: no.
 ; Entry: A the hitbox, Z set for none, X object. Exit: none, as RichterObjectHitboxOff. Otherwise
 ; A the last byte, N and Z from it, Y four times the hitbox, C its bit 6. X and V kept.
 RichterObjectHitboxFrom:

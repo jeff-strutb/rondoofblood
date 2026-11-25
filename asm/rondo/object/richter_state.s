@@ -2,6 +2,7 @@
 ; @run 6D:A000
 ; WHAT IT DOES: Goes to RichterFrame.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as RichterFrame.
 RichterVecFrame:
     jmp RichterFrame
@@ -10,6 +11,7 @@ RichterVecFrame:
 ; @run 6D:A003
 ; WHAT IT DOES: Goes to RichterStart.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as RichterStart.
 RichterVecStart:
     jmp RichterStart
@@ -18,6 +20,7 @@ RichterVecStart:
 ; @run 6D:A006
 ; WHAT IT DOES: Goes to $BB23.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecApplyMove:
     jmp RichterReadColumns
@@ -26,6 +29,7 @@ RichterVecApplyMove:
 ; @run 6D:A009
 ; WHAT IT DOES: Goes to $C3A7.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecC3A7:
     jmp $C3A7
@@ -34,6 +38,7 @@ RichterVecC3A7:
 ; @run 6D:A00C
 ; WHAT IT DOES: Goes to RichterLeapClearingOthers.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as RichterLeapClearingOthers.
 RichterVecC023:
     jmp RichterLeapClearingOthers
@@ -42,6 +47,7 @@ RichterVecC023:
 ; @run 6D:A00F
 ; WHAT IT DOES: Goes to $C076.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecC076:
     jmp $C076
@@ -50,6 +56,7 @@ RichterVecC076:
 ; @run 6D:A012
 ; WHAT IT DOES: Goes to RichterAnimationSound.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as RichterAnimationSound.
 RichterVecAnimationSound:
     jmp RichterAnimationSound
@@ -58,6 +65,7 @@ RichterVecAnimationSound:
 ; @run 6D:A015
 ; WHAT IT DOES: Goes to RichterClearOthersKeepWhip.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as RichterClearOthersKeepWhip.
 RichterVecCE1D:
     jmp RichterClearOthersKeepWhip
@@ -66,6 +74,7 @@ RichterVecCE1D:
 ; @run 6D:A018
 ; WHAT IT DOES: Goes to $B67B.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecSetAnimation:
     jmp RichterSetAnimation
@@ -74,6 +83,7 @@ RichterVecSetAnimation:
 ; @run 6D:A01B
 ; WHAT IT DOES: Goes to $B669.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecSetIdle:
     jmp RichterAnimationTick
@@ -82,6 +92,7 @@ RichterVecSetIdle:
 ; @run 6D:A01E
 ; WHAT IT DOES: Goes to $CE73.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecCE73:
     jmp $CE73
@@ -90,6 +101,7 @@ RichterVecCE73:
 ; @run 6D:A021
 ; WHAT IT DOES: Goes to $BB6E, the wall probe.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecWall:
     jmp RichterWall
@@ -98,6 +110,7 @@ RichterVecWall:
 ; @run 6D:A024
 ; WHAT IT DOES: Goes to $BBC1, the floor probe.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecFloor:
     jmp RichterFloor
@@ -106,6 +119,7 @@ RichterVecFloor:
 ; @run 6D:A027
 ; WHAT IT DOES: Goes to RichterApplyMoveAndPush.
 ; HOW: One jump.
+; WAITS: no.
 ; Entry, exit: as RichterApplyMoveAndPush.
 RichterApplyMoveAndPushGoTo:
     jmp RichterApplyMoveAndPush
@@ -116,6 +130,7 @@ RichterApplyMoveAndPushGoTo:
 ; three is solid or a floor, lets a push on the floor lift him by zFieldCA.
 ; HOW: Bits $81 of RichterColumnHit; zFieldCA goes in as column 0's depth for
 ; RichterLiftByColumn, then is cleared.
+; WAITS: no.
 ; Entry: nothing. Exit: Y as RichterReadColumns left it. A column hit, A its bits, N and Z from
 ; them, X the column, C and V from the read. Not pushed, A 0, X 3, Z and C set, N and V the
 ; push's bits 7 and 6. Lifted, as RichterLiftByColumn, X 0.
@@ -142,11 +157,14 @@ RichterApplyMoveAndPush_at0:
 ; @routine 01B9:04B RichterFrame
 ; @run 6D:A04B
 ; WHAT IT DOES: One frame of Richter: the pad, forced while OBJ_3510 counts down; the
-; pad's overrides; the state's handler; the animation's sound on a change; its hitbox.
+; pad's overrides; a spike while pushed; the state's frame; the turn window and the item's
+; hearts; the animation's sound on a change; its hitbox.
 ; HOW: The animation before and after are compared; the hitbox index comes from the table
 ; by animation and is four bytes of AnimationHitbox.
-; Entry: nothing. Exit: A the last hitbox byte, N and Z from it, X the hitbox offset; Y, C
-; and V as the last code left them.
+; WAITS: no.
+; Entry: nothing. Exit: A the last hitbox byte, N and Z from it, X the hitbox offset, C bit 6
+; of the hitbox index; Y and V as RichterAnimationSound left them on a change, else as the
+; state's frame did.
 RichterFrame:
     lda a:OBJ_3510
     beq RichterFrame_at0
@@ -197,7 +215,11 @@ RichterFrame_at2:
 ; WHAT IT DOES: While pushed (bit 0 of zPlayerPush), outside camera mode $18, with no hit
 ; timer, not above the map, a spike under the player is a hit of kind 6.
 ; HOW: RichterSpikeBelow, then the hit's fields; the state back to standing.
-; Entry: nothing. Exit: as the last step left them.
+; WAITS: no.
+; Entry: nothing. Exit: camera mode $18, A $18, Z and C set. Not pushed, A the camera mode, Z
+; set, N and V the push's bits 7 and 6, C from comparing the mode with $18. Held, A OBJ_3460
+; or PlayerMayLeaveTop, N and Z from it, C as before, V the push's bit 6. No spike, as
+; RichterSpikeBelow. A spike, as RichterSpikeBelow found it, but A $10 with N and Z from it.
 RichterHitWhilePushed:
     lda a:CameraMode
     cmp #$18
@@ -220,10 +242,11 @@ RichterHitWhilePushed_at0:
 ; @routine 01B9:0D5 RichterSpikeBelow
 ; @run 6D:A0D5
 ; WHAT IT DOES: Probes three points at the player's feet for a tile with bit 1 set.
-; HOW: Each point's X from $B6F9 pulled one pixel in, Y from the table by state; the
-; terrain from $B6D2.
-; Entry: nothing. Exit: on finding one, A bit 1, N and Z from it, X the point. Else A
-; zero, X 3, N, Z and C from comparing X with 3.
+; HOW: Each point's X from RichterColumnOffset pulled one pixel in, Y from the table by
+; state; the terrain from RichterReadAbove.
+; WAITS: no.
+; Entry: nothing. Exit: Y, C and V as the last read left them (Y the state when the row was
+; off the map). Found, A 2, N and Z from it, X the point. Else A 0, X 3, Z and C set, N clear.
 RichterSpikeBelow:
     clx
 RichterSpikeBelow_at3:
@@ -258,6 +281,7 @@ RichterSpikeBelow_at2:
 ; HOW: The table of four entries: a new run, the health, the stand, the clear; each goes on
 ; into the next. zField8A is 0 to 3; the C takes anything past 2 as the clear, where the table
 ; would send it elsewhere.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStart:
     lda z:zField8A
@@ -269,16 +293,18 @@ RichterStart:
 ; @run 6D:A11E
 ; WHAT IT DOES: Clears the player's work bytes and zero page.
 ; HOW: Two block moves from the kernel's zeros.
+; WAITS: no.
 ; Entry: nothing. Exit: all registers and flags kept.
 RichterClearWork:
     tai KernelZeros,$3BC0,$0040
-    tai KernelZeros,ZeroPage+zPadHeld,$0019
+    tai KernelZeros,zPadHeld+$2000,$0019
     rts
 
 ; @routine 01B9:12D RichterClearKeepPlace
 ; @run 6D:A12D
 ; WHAT IT DOES: Clears object 0, the player, keeping where it is and which way it faces.
 ; HOW: The three bytes on the stack around ClearObject.
+; WAITS: no.
 ; Entry: nothing. Exit: A the X position, N and Z from it, X 0. Y, C and V kept.
 RichterClearKeepPlace:
     lda a:OBJ_X_LO
@@ -302,6 +328,7 @@ RichterClearKeepPlace:
 ; WHAT IT DOES: Starts a new run: clears zField93 and sets zField94, then as
 ; RichterStartHealth.
 ; HOW: Runs on into it.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStartNew:
     stz z:zField93
@@ -312,6 +339,7 @@ RichterStartNew:
 ; @run 6D:A150
 ; WHAT IT DOES: Fills the health, then as RichterStartClear.
 ; HOW: Runs on into it.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStartHealth:
     lda #$5C
@@ -322,6 +350,7 @@ RichterStartHealth:
 ; WHAT IT DOES: Clears the player's work and object, marks it live, gives a frame of the
 ; hit timer, then as RichterStartStand.
 ; HOW: Runs on into it.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStartClear:
     jsr RichterClearWork
@@ -336,6 +365,7 @@ RichterStartClear:
 ; @run 6D:A167
 ; WHAT IT DOES: Stands the player, and runs on into RichterAnimationSound.
 ; HOW: PlayerByte3BD6 set, RichterStand.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
 RichterStartStand:
     lda #$01
@@ -346,6 +376,7 @@ RichterStartStand:
 ; @run 6D:A16F
 ; WHAT IT DOES: Starts the list that goes with the player's animation on its channel.
 ; HOW: The table by animation, then StartListChannelKind2 with X 7.
+; WAITS: no.
 ; Entry: nothing. Exit: A 2, N 0, Z 0, X 7, Y the animation. C and V kept.
 RichterAnimationSound:
     ldy a:OBJ_2A68
@@ -358,6 +389,7 @@ RichterAnimationSound:
 ; WHAT IT DOES: The death's wait: holds the player still, and when the timer ends clears
 ; the objects from 1 up, stopping at one still live, and ends the mode.
 ; HOW: OBJ_2750 not zero is live. zSubStep 5 ends it.
+; WAITS: no.
 ; Entry: nothing. Exit: still dying, N and Z from the timer, A, X, Y, C and V kept. An object
 ; still out, A its OBJ_2750 and X its slot, N and Z from it, C clear past slot 1. Over, as
 ; RichterStartHitScript with script 9, and C set.
@@ -365,22 +397,21 @@ RichterDyingStep:
     jsr RichterStopX
     stz a:OBJ_2A68
     dec a:PlayerDyingTimer
-    bne RichterDyingStep_at0
+    bne SetGlyphVramPlace
     ldx #$01
-RichterDyingStep_at1:
+RichterDyingStep_at0:
     lda a:OBJ_2750,x
-    bne RichterDyingStep_at0
+    bne SetGlyphVramPlace
     jsr VecClearObject
     inx
     cpx #$10
-    bne RichterDyingStep_at1
+    bne RichterDyingStep_at0
     lda #$05
     sta z:zSubStep
     stz a:PlayerByte3BD7
     stz a:PlayerDying
     lda #$09
     jsr RichterStartHitScript
-RichterDyingStep_at0:
     rts
 
 ; @routine 01B9:1A4 RichterDie
@@ -389,7 +420,7 @@ RichterDyingStep_at0:
 ; and the death's sound.
 ; HOW: FadeAndStopSound, then SoundCommand $60.
 ; WAITS: no.
-; Entry: nothing. Exit: as SoundCommand.
+; Entry: nothing. Exit: as SoundCommand with $60.
 RichterDie:
     stz z:zPlayerHealth
     inc a:PlayerDying
@@ -405,10 +436,16 @@ RichterDie:
 ; @routine 01B9:1BE RichterStateFrame
 ; @run 6D:A1BE
 ; WHAT IT DOES: The state's frame: the death; falling off the map's bottom is death; the
-; hit timer; a hit in OBJ_33B0 taken off the health; then the state's handler.
+; potion's invincibility; the hit timer; a hit in OBJ_33B0 taken off the health; the blink a
+; hit can leave, which presses shake off; then the state's handler.
 ; HOW: Y high 1 or $FF low is below the map. A hit of kind 5 is ignored unless
-; PlayerMayLeaveTop is set. Health gone goes to RichterOutOfHealth.
-; Entry: nothing. Exit: as the path taken left them.
+; PlayerMayLeaveTop is set. Health gone goes to RichterOutOfHealth. Above the map the pad's
+; buttons are dropped. The handler from PlayerStateHandlers by OBJ_27A8.
+; WAITS: no.
+; Entry: nothing. Exit: dying, as RichterDyingStep. Falling off, as RichterDie. The life
+; lost, as SoundCommand with $64. Blinking with no press, A 0, Z set; with a press short of
+; eight, A the count, N, Z and C from comparing it with 8. Otherwise as the state's handler.
+; In each, the registers the earlier steps left where the last step keeps them.
 RichterStateFrame:
     lda a:PlayerDying
     bne RichterDyingStep
@@ -508,15 +545,16 @@ RichterStateFrame_at11:
 ; @run 6D:A298
 ; WHAT IT DOES: The health has run out: with the one-more flag PlayerByte3BF7 at 1 the
 ; player keeps one point and takes the hit; otherwise the mode's step 4 ends the life.
-; HOW: SoundCommand $64 on the way out.
-; Entry: nothing. Exit: as the path taken left them.
+; HOW: SoundCommand $64 on the way out; the hit goes on as RichterStateFrame's.
+; WAITS: no.
+; Entry: nothing. Exit: as RichterStateFrame from the health on.
 RichterOutOfHealth:
     stz z:zPlayerHealth
     lda a:PlayerByte3BF7
     cmp #$01
     bne RichterOutOfHealth_at0
     inc z:zPlayerHealth
-    jmp RichterStateFrame_at5
+    jmp $A21D
 RichterOutOfHealth_at0:
     lda #$04
     sta z:zSubStep
@@ -529,6 +567,7 @@ RichterOutOfHealth_at0:
 ; WHAT IT DOES: Starts the reaction to a hit: the invulnerable frames by the hit's kind,
 ; the state kept to come back to, the state set to 9, and the hit's script.
 ; HOW: Runs on into RichterStartHitScript with 8.
+; WAITS: no.
 ; Entry: nothing. Exit: A and Y 8, X 7, N and Z from 8. C and V kept.
 RichterHitReact:
     jsr RichterPadOverridesOff
@@ -550,6 +589,7 @@ RichterHitReact:
 ; @run 6D:A2D7
 ; WHAT IT DOES: Starts a script on the player's slot.
 ; HOW: StartScriptSlotKind1 with X 7.
+; WAITS: no.
 ; Entry: A script. Exit: A and Y the script, X 7, N and Z from the script. C and V kept.
 RichterStartHitScript:
     ldx #$07
@@ -559,6 +599,7 @@ RichterStartHitScript:
 ; @run 6D:A2E4
 ; WHAT IT DOES: Turns the player to face the way just pressed.
 ; HOW: OBJ_2AC0 is the facing, 0 right, 1 left.
+; WAITS: no.
 ; Entry: nothing. Exit: N and V bits 7 and 6 of the presses, Z set if it did not turn; A the
 ; facing, or 1 and N and Z from it when it turned left. X, Y and C kept.
 RichterTurnOnPress:
@@ -578,15 +619,20 @@ RichterTurnOnPress_at1:
 
 ; @routine 01B9:2FD RichterStandStep1
 ; @run 6D:A2FD
-; WHAT IT DOES: The standing state's attacking step: moves, falls if nothing is below;
-; turns while the attack is young, and when it ends stands or crouches.
-; HOW: OBJ_FLAGS_2F38 counts the attack's progress; object 3, the whip, ends it.
-; Entry: nothing. Exit: as the path taken left them.
+; WHAT IT DOES: The standing state's attacking step: reads the ground, falls if nothing is
+; below; turns with a press while the attack is young; with the whip out and up held early,
+; crouches; otherwise waits for the animation's end, then stands.
+; HOW: OBJ_FLAGS_2F38 counts the attack's progress; object 3 is the whip; PlayerByte3BD5
+; set skips to the wait. RichterAnimationWait returns past this routine while it runs.
+; WAITS: no.
+; Entry: nothing. Exit: falling, as $A9DD. Crouched, A 2, N and Z clear, as the animation's
+; tick left the rest. Waiting, as RichterAnimationRunning, A $A3 and N set, the return's high
+; byte. Stood, as RichterStand. In each, what the checks before it left.
 RichterStandStep1:
     jsr RichterReadColumns
     jsr RichterHasNoFooting
     bcc RichterStandStep1_at0
-    jmp $A9DD
+    jmp EventFlagsClear_at1
 RichterStandStep1_at0:
     jsr RichterLandOnFloor
     lda a:OBJ_FLAGS_2F38
@@ -625,6 +671,7 @@ RichterStandStep1_at3:
 ; @run 6D:A34C
 ; WHAT IT DOES: Clears object 3, the whip.
 ; HOW: ClearObject with X 3.
+; WAITS: no.
 ; Entry: nothing. Exit: X 3, N and Z from it. A, Y, C and V kept.
 RichterClearWhip:
     ldx #$03
@@ -634,6 +681,7 @@ RichterClearWhip:
 ; @run 6D:A351
 ; WHAT IT DOES: Clears the whip and takes to the air. Nothing reached calls it.
 ; HOW: RichterClearWhip, RichterToAir.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterToAir.
 RichterOrphanClearWhipAir:
     bsr RichterClearWhip
@@ -641,11 +689,16 @@ RichterOrphanClearWhipAir:
 
 ; @routine 01B9:358 RichterStandStep2
 ; @run 6D:A358
-; WHAT IT DOES: The standing state's item-crash step: turns with the pad, moves while its
-; timer runs and spawns object $0C in the first free slot from 5; when it ends, stands or
-; falls.
-; HOW: OBJ_30F0 is the timer. Coming off a floor or jumping sets PlayerByte3BD6.
-; Entry: nothing. Exit: as the path taken left them.
+; WHAT IT DOES: The standing state's item-crash step: turns with the pad, and while its timer
+; runs reads the ground (in state 0) and falls if nothing is below, jumps on a press, or steps
+; the animation and spawns object $0C in the first free slot from 5. When the timer has run
+; out, stands, or ends the item crash outside state 0.
+; HOW: OBJ_30F0 is the timer. Ending, falling and jumping count PlayerByte3BD6 up. A jump in
+; the crash's states goes up the ledge by the first table below state 7, the second from it.
+; WAITS: no.
+; Entry: nothing. Exit: as the transition taken, after what the steps before it left. Spawned,
+; A $0C, Y the slot, N clear, Z clear. No free slot, A the last slot's OBJ_2750, Y $10, Z and
+; C set, N clear.
 RichterStandStep2:
     lda a:OBJ_2AC0
     bne RichterStandStep2_at0
@@ -712,6 +765,7 @@ RichterStandStep2_at10:
 ; @run 6D:A3D0
 ; WHAT IT DOES: Gives the state's step, for its caller to index a table of words by.
 ; HOW: OBJ_2800, which the wrapper leaves doubled in A and X.
+; WAITS: no.
 ; Entry: nothing. Exit: A and X the offset, N and Z from it, C the step's bit 7. Y, V kept.
 RichterStepIndex:
     lda a:OBJ_2800
@@ -721,8 +775,10 @@ RichterStepIndex:
 
 ; @routine 01B9:3D6 RichterStateStand
 ; @run 6D:A3D6
-; WHAT IT DOES: State 0: runs the step's handler.
-; HOW: A table of three by RichterStepIndex.
+; WHAT IT DOES: State 0, standing: runs the step's handler: still, attacking, or the item
+; crash.
+; HOW: PlayerStandHandlers, three words by RichterStepIndex.
+; WAITS: no.
 ; Entry: nothing. Exit: as the handler leaves them.
 RichterStateStand:
     bsr RichterStepIndex
@@ -730,11 +786,14 @@ RichterStateStand:
 
 ; @routine 01B9:3E1 RichterStandStep0
 ; @run 6D:A3E1
-; WHAT IT DOES: Standing: moves, then the first thing that applies: nothing below is a
-; fall; a jump; a hit in the air; an attack; a climb; a crouch; down looks down, and left
-; or right start walking.
-; HOW: Each check is a routine leaving its answer in C.
-; Entry: nothing. Exit: as the path taken left them.
+; WHAT IT DOES: Standing: reads the ground he moved onto, then the first thing that applies:
+; nothing below is a fall; a jump; the item crash; an item or the whip; a ledge to climb; up
+; crouches; down, or PlayerByte3BF0, looks down; and left or right start walking.
+; HOW: Each check leaves its answer in C. The look down is animation $47 set outright; otherwise
+; the animation steps.
+; WAITS: no.
+; Entry: nothing. Exit: as the transition taken, with what the checks before it left. Still,
+; Y 1, Z set, N and V the pad's bits 7 and 6, C clear, A as the look or the animation left it.
 RichterStandStep0:
     jsr RichterReadColumns
     jsr RichterHasNoFooting
@@ -791,6 +850,7 @@ RichterStandStep0_at9:
 ; WHAT IT DOES: Starts walking the way the pad says, unless a button stops it; a held jump
 ; keeps the facing and walks backward.
 ; HOW: Y is the new facing, kept unless bit 1 is held. Animation 0 or $32.
+; WAITS: no.
 ; Entry: Y the facing. Exit: as RichterSetAnimation; with an attack held, A, X, Y and C kept,
 ; N and V the pad's bits 7 and 6, Z clear.
 RichterStartWalk:
@@ -819,6 +879,7 @@ RichterStartWalk_at2:
 ; @run 6D:A46C
 ; WHAT IT DOES: Sets the X speed to walking, by facing.
 ; HOW: WalkSpeeds.
+; WAITS: no.
 ; Entry: nothing. Exit: A the speed's high byte, N and Z from it, Y twice the facing, C
 ; the facing's bit 7. X and V kept.
 RichterSpeedWalk:
@@ -835,6 +896,7 @@ RichterSpeedWalk:
 ; @run 6D:A47E
 ; WHAT IT DOES: Sets the X speed for a jump, by facing.
 ; HOW: JumpSpeeds.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterSpeedWalk.
 RichterSpeedJump:
     lda a:OBJ_2AC0
@@ -850,6 +912,7 @@ RichterSpeedJump:
 ; @run 6D:A494
 ; WHAT IT DOES: Sets the X speed for walking backward, by facing.
 ; HOW: BackstepSpeeds.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterSpeedWalk.
 RichterSpeedBackstep:
     lda a:OBJ_2AC0
@@ -865,6 +928,7 @@ RichterSpeedBackstep:
 ; @run 6D:A4AE
 ; WHAT IT DOES: Crouches: state 2, step 3, animation $0C, all speed gone.
 ; HOW: Runs on into RichterStopMoving.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterSetAnimation. X and V kept.
 RichterCrouch:
     jsr RichterPadOverridesOff
@@ -879,6 +943,7 @@ RichterCrouch:
 ; @run 6D:A4C0
 ; WHAT IT DOES: Stops the player along Y and X.
 ; HOW: Runs on into RichterStopX.
+; WAITS: no.
 ; Entry: nothing. Exit: all registers and flags kept.
 RichterStopMoving:
     stz a:OBJ_VY_LO
@@ -900,6 +965,7 @@ RichterStopX:
 ; WHAT IT DOES: Starts an attack standing: state 0, step 1, the animation by the attack's
 ; kind; the whip, with its sound, or the kind's object in a free slot among 5, 8 and $0B.
 ; HOW: PlayerByte3BD5 is the kind. zField93 is what goes in the slot. SoundCommand 3 for the whip.
+; WAITS: no.
 ; Entry: nothing. Exit: Y and C as RichterSetAnimation. The whip, as SoundCommand with command
 ; 3 and X 3; an item, A the item, X its slot, N, Z and V from testing the last slot looked at.
 RichterAttack:
@@ -911,7 +977,6 @@ RichterAttack:
     jsr RichterStopMoving
     ldx a:PlayerByte3BD5
     lda a:LandAnimations,x
-RichterAttack_at4:
     jsr RichterSetAnimation
     lda #$01
     sta a:OBJ_2800
@@ -927,23 +992,22 @@ RichterAttack_at0:
     tst #$FF,a:OBJ_2750+5
     bne RichterAttack_at1
     ldx #$05
-RichterAttack_at3:
     jsr VecClearObject
     sta a:OBJ_2750,x
     rts
 RichterAttack_at1:
     tst #$FF,a:OBJ_2750+8
-    bne RichterAttack_at2
+    bne FallUntilFloor
     ldx #$08
-    bra RichterAttack_at3
-RichterAttack_at2:
+    bra FallThenWait
     ldx #$0B
-    bra RichterAttack_at3
+    bra FallThenWait
 
 ; @routine 01B9:521 RichterToFall
 ; @run 6D:A521
 ; WHAT IT DOES: Starts falling: state 4, animation $10, Y speed 3, no X speed.
 ; HOW: Runs on into RichterPadOverridesOff.
+; WAITS: no.
 ; Entry: nothing. Exit: A 4, N and Z from it; Y and C as RichterSetAnimation. X and V kept.
 RichterToFall:
     lda #$04
@@ -964,6 +1028,7 @@ RichterToFall:
 ; @run 6D:A542
 ; WHAT IT DOES: Clears the pad's overrides.
 ; HOW: Three bytes zeroed.
+; WAITS: no.
 ; Entry: nothing. Exit: all registers and flags kept.
 RichterPadOverridesOff:
     stz a:PadForcedPress
@@ -975,6 +1040,7 @@ RichterPadOverridesOff:
 ; @run 6D:A54B
 ; WHAT IT DOES: A hurt jump off a ledge the first way, or item $05's crash.
 ; HOW: Nudges off the ledge and to RichterToHurtAir, or animation $2B.
+; WAITS: no.
 ; Entry: nothing. Exit: item 5, A $60, N and Z from it, Y and C as RichterSetAnimation. Otherwise
 ; as RichterToHurtAir after RichterNudgeA.
 RichterLedgeHurtA:
@@ -989,6 +1055,7 @@ RichterLedgeHurtA:
 ; @run 6D:A55A
 ; WHAT IT DOES: A hurt jump off a ledge the second way, or item $05's crash.
 ; HOW: As RichterLedgeHurtA with the other nudge and animation $2C.
+; WAITS: no.
 ; Entry: nothing. Exit: item 5, A $60, N and Z from it, Y and C as RichterSetAnimation. Otherwise
 ; as RichterToHurtAir after RichterNudgeB.
 RichterLedgeHurtB:
@@ -1014,10 +1081,13 @@ RichterLedgeHurtB_at1:
 
 ; @routine 01B9:580 RichterUpWhipLeft
 ; @run 6D:A580
-; WHAT IT DOES: Jumps up off a ledge the first way; with button $40 held and $B893's
-; answer, drops off it instead.
-; HOW: Reads the pad; clears PadForcedPressB and zFieldC6.
-; Entry: nothing. Exit: as the path taken left them.
+; WHAT IT DOES: Off a ledge by the first table of nudges: without up held, up into the air at
+; $FAC0; with up held at a ladder, onto it, falling.
+; HOW: The pad's overrides, PadForcedPressB and zFieldC6 cleared; bit 6 of zPadHeld;
+; RichterLadderCheck; LedgeNudge by facing.
+; WAITS: no.
+; Entry: nothing. Exit: the jump, as RichterNudgeBJump with the first nudge. No ladder, as
+; RichterLadderCheck. A ladder, as RichterToFall.
 RichterUpWhipLeft:
     jsr RichterClearPadOverrides
     stz a:PadForcedPressB
@@ -1033,7 +1103,6 @@ RichterUpWhipLeft_at1:
     bra RichterUpWhipRight_at0
 RichterUpWhipLeft_at0:
     bsr RichterNudgeA
-RichterUpWhipLeft_at2:
     jsr RichterToAir
     lda #$C0
     sta a:OBJ_VY_LO
@@ -1046,6 +1115,7 @@ RichterUpWhipLeft_at2:
 ; WHAT IT DOES: Moves the player off a ledge by the first table, by facing, and clears
 ; PlayerMayLeaveTop.
 ; HOW: One add to the X position.
+; WAITS: no.
 ; Entry: nothing. Exit: A the position, N, Z, C, V from the add, X the facing. Y kept.
 RichterNudgeA:
     ldx a:OBJ_2AC0
@@ -1061,6 +1131,7 @@ RichterNudgeA_at0:
 ; @run 6D:A5BC
 ; WHAT IT DOES: As RichterNudgeA by the second table.
 ; HOW: Goes back into it.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterNudgeA.
 RichterNudgeB:
     ldx a:OBJ_2AC0
@@ -1071,16 +1142,18 @@ RichterNudgeB:
 ; @run 6D:A5C4
 ; WHAT IT DOES: The second nudge, and the jump up off the ledge.
 ; HOW: RichterNudgeB, then as RichterUpWhipLeft's jump.
+; WAITS: no.
 ; Entry: nothing. Exit: A $FA, N set, Z clear; C, V and Y as RichterToAir after the nudge.
 RichterNudgeBJump:
     bsr RichterNudgeB
-    bra RichterUpWhipLeft_at2
+    bra $A59D
 
 ; @routine 01B9:5C8 RichterUpWhipRight
 ; @run 6D:A5C8
-; WHAT IT DOES: As RichterUpWhipLeft by the second table.
-; HOW: The same tests.
-; Entry: nothing. Exit: as the path taken left them.
+; WHAT IT DOES: As RichterUpWhipLeft by the second table of nudges.
+; HOW: The same tests; the jump is RichterNudgeBJump.
+; WAITS: no.
+; Entry: nothing. Exit: as RichterUpWhipLeft.
 RichterUpWhipRight:
     jsr RichterClearPadOverrides
     stz a:PadForcedPressB
@@ -1136,6 +1209,7 @@ RichterToHurtAir:
 ; @run 6D:A633
 ; WHAT IT DOES: Fills the slots from 5 with object $0D.
 ; HOW: A loop to $10.
+; WAITS: no.
 ; Entry: nothing. Exit: A $0D, Y $10, N, Z, C from comparing it.
 RichterReactFillD:
     lda #$0D
@@ -1152,6 +1226,7 @@ RichterReactFillD_at0:
 ; @run 6D:A640
 ; WHAT IT DOES: Fills the slots from 5 with object $0B.
 ; HOW: Goes back into the loop.
+; WAITS: no.
 ; Entry: nothing. Exit: A $0B, Y $10, N, Z, C from comparing it.
 RichterReactFillB:
     lda #$0B
@@ -1182,6 +1257,7 @@ RichterItemCrashFive:
 ; @run 6D:A661
 ; WHAT IT DOES: Puts object $0E in slot 5.
 ; HOW: One store.
+; WAITS: no.
 ; Entry: nothing. Exit: A $0E, N and Z from it. X, Y, C, V kept.
 RichterReactE:
     lda #$0E
@@ -1193,6 +1269,7 @@ RichterReactE_at0:
 ; @run 6D:A667
 ; WHAT IT DOES: Puts object $11 in slot 5, and sets the hit timer $60 with the player live.
 ; HOW: Three stores.
+; WAITS: no.
 ; Entry: nothing. Exit: A $60, N and Z from it. X, Y, C, V kept.
 RichterReact11:
     lda #$11
@@ -1207,6 +1284,7 @@ RichterReact11:
 ; @run 6D:A677
 ; WHAT IT DOES: Puts object $10 in slot 5.
 ; HOW: Goes back into RichterReactE's store.
+; WAITS: no.
 ; Entry: nothing. Exit: A $10, N and Z from it. X, Y, C, V kept.
 RichterReact10:
     lda #$10
@@ -1216,6 +1294,7 @@ RichterReact10:
 ; @run 6D:A67B
 ; WHAT IT DOES: Puts object $12 in slot 5.
 ; HOW: Goes back into RichterReactE's store.
+; WAITS: no.
 ; Entry: nothing. Exit: A $12, N and Z from it. X, Y, C, V kept.
 RichterReact12:
     lda #$12
@@ -1225,6 +1304,7 @@ RichterReact12:
 ; @run 6D:A67F
 ; WHAT IT DOES: Puts object $13 in slot 5.
 ; HOW: Goes back into RichterReactE's store.
+; WAITS: no.
 ; Entry: nothing. Exit: A $13, N and Z from it. X, Y, C, V kept.
 RichterReact13:
     lda #$13
@@ -1235,6 +1315,7 @@ RichterReact13:
 ; WHAT IT DOES: Knocked into the air: state 3, animation $31, the knock's speeds, marks
 ; PlayerByte3BF1 bit 0.
 ; HOW: The jump's speed replaced by the knock's.
+; WAITS: no.
 ; Entry: nothing. Exit: A PlayerByte3BF1, N and Z from it; Y twice the facing, C the facing's
 ; bit 7; V as RichterLiftThree. X kept.
 RichterKnockBack:
@@ -1270,6 +1351,7 @@ RichterKnockBack:
 ; moving jump, and when that faces the way the player already did, marks it in
 ; PlayerByte3BF1; otherwise animation $0A.
 ; HOW: The facing the pad asks for is set for the jump's speed, then the old one put back.
+; WAITS: no.
 ; Entry: nothing. Exit: V as RichterLiftThree; X kept. Marked, A $80, N set, Z clear, C set, Y
 ; twice the facing asked for; otherwise as RichterSetAnimation.
 RichterToAir:
@@ -1310,6 +1392,7 @@ RichterToAir_at1:
 ; @run 6D:A70C
 ; WHAT IT DOES: Sets a jump's Y speed, stopped along X, and lifts the player off the floor.
 ; HOW: Speed $FB50; runs on into RichterLiftThree.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterLiftThree.
 RichterJumpSpeed:
     stz a:PlayerByte3BF1
@@ -1323,6 +1406,7 @@ RichterJumpSpeed:
 ; @run 6D:A71C
 ; WHAT IT DOES: Lifts the player three pixels, stopping at the top of the map.
 ; HOW: A 16-bit subtract; high $FF means past the top, and the position becomes zero.
+; WAITS: no.
 ; Entry: nothing. Exit: A the position's high byte; N, Z, C from comparing it with $FF; V
 ; from the subtract. X and Y kept.
 RichterLiftThree:
@@ -1343,11 +1427,14 @@ RichterLiftThree_at0:
 
 ; @routine 01B9:739 RichterStateWalk
 ; @run 6D:A739
-; WHAT IT DOES: State 1, walking: moves, a pixel down onto a slope, falls if nothing is
-; below; then the checks of standing; then keeps walking while the pad says, walking
-; forward or, with the jump held, backward; else stands.
-; HOW: $BAC2's C says there is a floor. The direction held must be the facing's.
-; Entry: nothing. Exit: as the path taken left them.
+; WHAT IT DOES: State 1, walking: a floor under him, or one pixel lower, or he falls; then the
+; first that applies of a jump, the item crash, an item or the whip, a ledge to climb, up to
+; crouch. Otherwise the animation steps, and the pad held his way keeps him walking; held the
+; other way with button II, he steps back; else he stands.
+; HOW: RichterReadColumns and RichterFloorCheck, again after OBJ_Y_LO is stepped down; the
+; checks as in the stand's first step. OBJ_FIELDS_2EE0 0 to walk, $32 to step back.
+; WAITS: no.
+; Entry: nothing. Exit: as the transition taken, with what the checks before it left.
 RichterStateWalk:
     jsr RichterReadColumns
     jsr RichterFloorCheck
@@ -1408,6 +1495,7 @@ RichterStateWalk_at10:
 ; @run 6D:A7AC
 ; WHAT IT DOES: Stands the player: state 0, step 0, animation 1, no speed.
 ; HOW: Clears PlayerMayLeaveTop and PlayerByte3BD5 first.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterSetAnimation. X and V kept.
 RichterStand:
     stz a:PlayerMayLeaveTop
@@ -1429,6 +1517,7 @@ RichterStand:
 ; HOW: The column's offset (RichterColumnOffset) and 8 more past it, read $0A below him for the
 ; low ledge, $1E for the high; the reach from the offset less zTemp00 for the low, less the
 ; column's RichterColumnX for the high. The stand's animation unless he was walking.
+; WAITS: no.
 ; Entry: X the column, zTemp00 the low ledge's X, zTemp01 low or high. Exit: A 2, N and Z clear,
 ; X the state; Y the column's index, or as RichterSetAnimation; C set unless he was standing, or as
 ; RichterSetAnimation; V from the reach's last add or subtract.
@@ -1519,6 +1608,7 @@ RichterClimbStart_at4:
 ; WHAT IT DOES: State 2, crouching: runs the step's handler: down, attacking, nothing, the
 ; crouch's end, or rising.
 ; HOW: RichterCrouchHandlers, five words by RichterStepIndex; step 2's is the RTS of step 0.
+; WAITS: no.
 ; Entry: nothing. Exit: as the handler leaves them; step 2, as RichterStepIndex.
 RichterStateCrouch:
     jsr RichterStepIndex
@@ -1531,6 +1621,7 @@ RichterStateCrouch:
 ; step 4); held, left or right alone turns him.
 ; HOW: The ground checks in turn, each answering in C. zPadPressed bits 7 and 5: right alone
 ; faces right, left alone left, both or neither leave him.
+; WAITS: no.
 ; Entry: nothing. Exit: as the transition taken, with what the checks before it left. Rising,
 ; A 4, as RichterSetAnimation left the rest. Still down, A the presses' left and right bits,
 ; C set, Z clear only for left alone.
@@ -1576,6 +1667,7 @@ RichterCrouchStep0_at3:
 ; WHAT IT DOES: Starts an attack from the crouch: turned by the pad, stopped, animation 6, and
 ; the whip or the item as a standing attack starts them.
 ; HOW: As RichterAttack from its animation on, keeping the state.
+; WAITS: no.
 ; Entry: nothing. Exit: as RichterAttack.
 RichterCrouchAttack:
     jsr RichterPadOverridesOff
@@ -1583,7 +1675,7 @@ RichterCrouchAttack:
     jsr RichterFaceByPad
     jsr RichterStopMoving
     lda #$06
-    jmp RichterAttack_at4
+    jmp $A4E4
 
 ; @routine 01B9:8C7 RichterCrouchStep1
 ; @run 6D:A8C7
@@ -1592,6 +1684,7 @@ RichterCrouchAttack:
 ; waits for the animation's end, then is down again, animation $0E, step 0.
 ; HOW: OBJ_FLAGS_2F38 against 3 and 6. RichterAnimationWait returns past this routine while it
 ; runs.
+; WAITS: no.
 ; Entry: nothing. Exit: falling, as $A9DD. Stood, as RichterAnimationTick, state 0 and
 ; OBJ_FIELDS_2EE0 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
 ; clear, the rest as RichterAnimationRunning. With what the checks before left.
@@ -1599,7 +1692,7 @@ RichterCrouchStep1:
     jsr RichterReadColumns
     jsr RichterHasNoFooting
     bcc RichterCrouchStep1_at0
-    jmp $A9DD
+    jmp EventFlagsClear_at1
 RichterCrouchStep1_at0:
     jsr RichterLandOnFloor
     lda a:OBJ_FLAGS_2F38
@@ -1632,6 +1725,7 @@ RichterCrouchStep1_at3:
 ; is below; a jump, the item crash, an item or the whip; else waits for the animation's end
 ; and goes back to step 0.
 ; HOW: The ground checks in turn. RichterAnimationWait returns past this routine while it runs.
+; WAITS: no.
 ; Entry: nothing. Exit: as the transition taken; waiting, as RichterAnimationRunning, A $A9 and
 ; N set; ended, as RichterAnimationRunning. With what the checks before left.
 RichterCrouchStep3:
@@ -1663,6 +1757,7 @@ RichterCrouchStep3_at3:
 ; WHAT IT DOES: Rising from the crouch: reads the ground, falls if nothing is below; a jump,
 ; the item crash, a standing attack; else waits for the animation's end and stands.
 ; HOW: The ground checks in turn. RichterAnimationWait returns past this routine while it runs.
+; WAITS: no.
 ; Entry: nothing. Exit: as the transition taken; waiting, as RichterAnimationRunning, A $A9 and
 ; N set; risen, as RichterStand. With what the checks before left.
 RichterCrouchStep4:
@@ -1687,105 +1782,12 @@ RichterCrouchStep4_at3:
     jsr RichterAnimationWait
     jmp RichterStand
 
-; @routine 01BB:180 RichterEndItemCrash
-; @run 6D:B180
-; WHAT IT DOES: Ends an item crash: no attack, the crash's last frame held, the animation stopped,
-; the step back to 0.
-; HOW: States 5 to 8 are the crashes; two of them share each entry of RichterCrashEndFrames and
-; RichterCrashEndAnimations.
-; Entry: nothing. Exit: A $FF, N set, Z clear; Y the entry; C bit 0 of the state less 5, V from
-; that subtract. X kept.
-RichterEndItemCrash:
-    stz a:PlayerByte3BD5
-    lda a:OBJ_27A8
-    sec
-    sbc #$05
-    lsr a
-    tay
-    lda a:RichterCrashEndFrames,y
-    sta a:OBJ_2A68
-    lda a:RichterCrashEndAnimations,y
-    sta a:OBJ_FIELDS_2EE0
-    lda #$FF
-    sta a:OBJ_2F90
-    stz a:OBJ_2800
-    rts
-
-; @routine 01BD:023 RichterLeapClearingOthers
-; @run 6D:C023
-; WHAT IT DOES: Clears every object but him, starts sound list $60 and script 1, and script $0B
-; unless PlayerByte3BE2 is set or bit 5 of his OBJ_33B0 is; then leaps up and back: Y speed
-; $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_2750 1.
-; HOW: ClearObject on 1 to 15, StartListChannelKind2 on channel 6, RichterStartHitScript.
-; Entry: nothing. Exit: A 1, N and Z from it; X 7; Y twice the facing, C the facing's bit 7; V
-; bit 6 of OBJ_33B0 if it was tested, else kept.
-RichterLeapClearingOthers:
-    ldx #$01
-RichterLeapClearingOthers_at0:
-    jsr VecClearObject
-    inx
-    cpx #$10
-    bne RichterLeapClearingOthers_at0
-    lda #$60
-    ldx #$06
-    jsr VecStartListChannelKind2
-    lda #$01
-    jsr RichterStartHitScript
-    lda a:PlayerByte3BE2
-    bne RichterLeapClearingOthers_at1
-    tst #$20,a:OBJ_33B0
-    bne RichterLeapClearingOthers_at1
-    lda #$0B
-    jsr RichterStartHitScript
-RichterLeapClearingOthers_at1:
-    lda #$80
-    sta a:OBJ_VY_LO
-    lda #$FE
-    sta a:OBJ_VY_HI
-    lda #$22
-    jsr RichterSetAnimation
-    lda a:OBJ_2AC0
-    asl a
-    tay
-    lda a:RichterLeapSpeeds,y
-    sta a:OBJ_VX_LO
-    lda a:RichterLeapSpeeds+1,y
-    sta a:OBJ_VX_HI
-    stz a:OBJ_27A8
-    lda #$01
-    sta a:OBJ_2750
-    rts
-
-; @routine 01BE:61D RichterClearOthersKeepWhip
-; @run 6D:CE1D
-; WHAT IT DOES: Clears every object but him, and the whip when its OBJ_2750 is 1; drops the
-; forced presses and PlayerByte3BD8.
-; HOW: ClearObject on 1 to 15, passing over 3 when it is kept.
-; Entry: nothing. Exit: A the whip's OBJ_2750; X $10; Z and C set, N clear. Y and V kept.
-RichterClearOthersKeepWhip:
-    ldx #$01
-RichterClearOthersKeepWhip_at1:
-    cpx #$03
-    bne RichterClearOthersKeepWhip_at0
-    lda a:OBJ_2750,x
-    cmp #$01
-    bne RichterClearOthersKeepWhip_at0
-    inx
-RichterClearOthersKeepWhip_at0:
-    jsr VecClearObject
-    inx
-    cpx #$10
-    bne RichterClearOthersKeepWhip_at1
-    stz a:PlayerByte3BD8
-    stz a:PadForcedPress
-    stz a:PadForcedPressB
-    rts
-
 ; @routine 01BA:389 RichterOnMarkedFloor
 ; @run 6D:AB89
 ; WHAT IT DOES: Says whether the floor under him is marked: once he is $10 down the screen, a
 ; column read with bit 5, or with bit 2 while down is held.
 ; HOW: OBJ_Y_LO; RichterColumnHit's bits 5 and 2; bit 4 of zPadHeld.
+; WAITS: no.
 ; Entry: nothing. Exit: C set if marked. Too high, A his Y, N and Z from comparing it with $10.
 ; No bit, A 0, Z set. Bit 5, A $20, Z clear. Bit 2, A 0, Z clear if down is held, N and V the
 ; pad's bits 7 and 6. X, Y kept; V kept but for the pad's test.
@@ -1811,6 +1813,7 @@ RichterOnMarkedFloor_at0:
 ; @run 6D:ABCB
 ; WHAT IT DOES: Pulls him down while he falls: $38 more Y speed a frame, held at $0700.
 ; HOW: OBJ_VY_LO and Hi; at 7 and up the low byte is cleared.
+; WAITS: no.
 ; Entry: nothing. Exit: A the speed's high byte, V from its add; rising, N, Z and C from the add;
 ; falling, N, Z and C from comparing it with 7. X and Y kept.
 RichterFallGravity:
@@ -1832,6 +1835,7 @@ RichterFallGravity_at0:
 ; @run 6D:AE2F
 ; WHAT IT DOES: Moves him along X, stops his animation and sets the state's step back to 0.
 ; HOW: A added to OBJ_X_LO; OBJ_2F90 $FF; OBJ_2800 0.
+; WAITS: no.
 ; Entry: A the move. Exit: A $FF, X the facing, N and Z from it, C and V from the add. Y kept.
 RichterMoveStopped:
     clc
@@ -1848,6 +1852,7 @@ RichterMoveStopped:
 ; WHAT IT DOES: The frame an item crash shows: by which pair of crash states he is in, and by
 ; the attack's kind.
 ; HOW: RichterCrashFrames: states 5 and 6 at 0, 7 and 8 at 4, then PlayerByte3BD5.
+; WAITS: no.
 ; Entry: nothing. Exit: A the frame, N and Z from it, X the entry, C and V from adding the kind.
 ; Y kept.
 RichterCrashFrame:
@@ -1860,6 +1865,31 @@ RichterCrashFrame:
     adc a:PlayerByte3BD5
     tax
     lda a:RichterCrashFrames,x
+    rts
+
+; @routine 01BB:180 RichterEndItemCrash
+; @run 6D:B180
+; WHAT IT DOES: Ends an item crash: no attack, the crash's last frame held, the animation stopped,
+; the step back to 0.
+; HOW: States 5 to 8 are the crashes; two of them share each entry of RichterCrashEndFrames and
+; RichterCrashEndAnimations.
+; WAITS: no.
+; Entry: nothing. Exit: A $FF, N set, Z clear; Y the entry; C bit 0 of the state less 5, V from
+; that subtract. X kept.
+RichterEndItemCrash:
+    stz a:PlayerByte3BD5
+    lda a:OBJ_27A8
+    sec
+    sbc #$05
+    lsr a
+    tay
+    lda a:RichterCrashEndFrames,y
+    sta a:OBJ_2A68
+    lda a:RichterCrashEndAnimations,y
+    sta a:OBJ_FIELDS_2EE0
+    lda #$FF
+    sta a:OBJ_2F90
+    stz a:OBJ_2800
     rts
 
 ; @routine 01BB:73D RichterInvincibleTick
@@ -1919,4 +1949,76 @@ RichterInvincibleTick_at4:
     lda #$01
     sta a:OBJ_3460
     sta a:OBJ_3828
+    rts
+
+; @routine 01BD:023 RichterLeapClearingOthers
+; @run 6D:C023
+; WHAT IT DOES: Clears every object but him, starts sound list $60 and script 1, and script $0B
+; unless PlayerByte3BE2 is set or bit 5 of his OBJ_33B0 is; then leaps up and back: Y speed
+; $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_2750 1.
+; HOW: ClearObject on 1 to 15, StartListChannelKind2 on channel 6, RichterStartHitScript.
+; WAITS: no.
+; Entry: nothing. Exit: A 1, N and Z from it; X 7; Y twice the facing, C the facing's bit 7; V
+; bit 6 of OBJ_33B0 if it was tested, else kept.
+RichterLeapClearingOthers:
+    ldx #$01
+RichterLeapClearingOthers_at0:
+    jsr VecClearObject
+    inx
+    cpx #$10
+    bne RichterLeapClearingOthers_at0
+    lda #$60
+    ldx #$06
+    jsr VecStartListChannelKind2
+    lda #$01
+    jsr RichterStartHitScript
+    lda a:PlayerByte3BE2
+    bne RichterLeapClearingOthers_at1
+    tst #$20,a:OBJ_33B0
+    bne RichterLeapClearingOthers_at1
+    lda #$0B
+    jsr RichterStartHitScript
+RichterLeapClearingOthers_at1:
+    lda #$80
+    sta a:OBJ_VY_LO
+    lda #$FE
+    sta a:OBJ_VY_HI
+    lda #$22
+    jsr RichterSetAnimation
+    lda a:OBJ_2AC0
+    asl a
+    tay
+    lda a:RichterLeapSpeeds,y
+    sta a:OBJ_VX_LO
+    lda a:RichterLeapSpeeds+1,y
+    sta a:OBJ_VX_HI
+    stz a:OBJ_27A8
+    lda #$01
+    sta a:OBJ_2750
+    rts
+
+; @routine 01BE:61D RichterClearOthersKeepWhip
+; @run 6D:CE1D
+; WHAT IT DOES: Clears every object but him, and the whip when its OBJ_2750 is 1; drops the
+; forced presses and PlayerByte3BD8.
+; HOW: ClearObject on 1 to 15, passing over 3 when it is kept.
+; WAITS: no.
+; Entry: nothing. Exit: A the whip's OBJ_2750; X $10; Z and C set, N clear. Y and V kept.
+RichterClearOthersKeepWhip:
+    ldx #$01
+RichterClearOthersKeepWhip_at1:
+    cpx #$03
+    bne RichterClearOthersKeepWhip_at0
+    lda a:OBJ_2750,x
+    cmp #$01
+    bne RichterClearOthersKeepWhip_at0
+    inx
+RichterClearOthersKeepWhip_at0:
+    jsr VecClearObject
+    inx
+    cpx #$10
+    bne RichterClearOthersKeepWhip_at1
+    stz a:PlayerByte3BD8
+    stz a:PadForcedPress
+    stz a:PadForcedPressB
     rts

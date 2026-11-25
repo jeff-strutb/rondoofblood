@@ -16,7 +16,9 @@ Sum MapStageBanks(void);
 uint8_t RestoreStageBanks(void);
 
 /* object/hitbox_position.c: A at exit, the last value the loop had in A. */
-uint8_t ComputeHitboxPositions(void);
+/* A, and the overflow of the last add when one was made; X $10, N 0, Z 1, C 1 follow. */
+typedef struct { uint8_t a; bool v_seen; bool v; } HitboxEnd;
+HitboxEnd ComputeHitboxPositions(void);
 
 /* system/map_draw.c: the VDC data port's word, masked in place; the high byte read back and returned. */
 void SetVramAddresses(uint8_t lo, uint8_t hi);
@@ -204,5 +206,13 @@ StageExit SetHealthBarAddress(void);
 StageExit SetHealthBarAddressLong(void);
 StageExit StepStageFrame(uint8_t x, uint8_t y);
 StageExit StepStageFrameLong(uint8_t x, uint8_t y);
+
+/* object/hit_test.c: the overlay's hit test and its two handlers. */
+StageExit HitTestObject(uint8_t x);
+StageExit HitTestObjectLong(uint8_t x);
+StageExit HitStoreHandler(uint8_t x, uint8_t y);
+StageExit HitReportHandler(uint8_t x, uint8_t y);
+StageExit HitTestAllObjects(uint8_t x);
+StageExit HitTestAllObjectsLong(uint8_t x);
 
 #endif

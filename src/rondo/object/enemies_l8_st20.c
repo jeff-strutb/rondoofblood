@@ -412,6 +412,7 @@ Ended HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry)
         side = random.value & 0x01;
         WR8(OBJ->facing_left[slot], side);
         y = (uint8_t)(side << 1);
+        e = then(e, ended_with_y(ended_with_carry(ended_load(y), false), y));
         value = rd8((uint16_t)(0xD0BD + y));
         WR8(OBJ->x_lo[slot], value);
         value = rd8((uint16_t)(0xD0BE + y));
@@ -419,8 +420,11 @@ Ended HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry)
         jsr_push(0xD02A);
         random = NextRandom();
         jsr_pop();
-        value = (uint8_t)((random.value & 0x1F) - 0x10 + 0xDC);
-        WR8(OBJ->y_lo[slot], value);
+        e = then(e, ended_of_random(random));
+        sum = sub_bytes((uint8_t)(random.value & 0x1F), 0x10, true);
+        sum = add_bytes(sum.value, 0xDC, false);
+        WR8(OBJ->y_lo[slot], sum.value);
+        e = then(e, ended_of_sum(sum));
         return then(e, launch_up_and_aside(slot));
     }
     e = then(e, ended_load((uint8_t)(state - 1)));
@@ -437,6 +441,7 @@ Ended HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry)
         WR8(ZP->temp00, old);
         value = RD8(OBJ->facing_left[slot]);
         y = (uint8_t)(value << 1);
+        e = then(e, ended_with_y(ended_with_carry(ended_load(y), value >= 0x80), y));
         value = RD8(OBJ->vx_lo[slot]);
         sum = add_bytes(value, rd8((uint16_t)(0xD0C1 + y)), false);
         WR8(OBJ->vx_lo[slot], sum.value);

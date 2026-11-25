@@ -16,6 +16,9 @@
              --norerun        do not rerun red scripts alone (when every script is expected red)
              --draft-a5 FILE  with `served`: per-draft A5 verdicts (name, filed, calls, identical, divergent, unverified,
                               order) measured elsewhere, instead of measuring the drafts here
+             --also-defects   with --proper: also serve by draft the filed routines named in lockstep_defects.csv
+             --extra A,B      with --proper: also serve these filed routines by draft; --keep A,B keeps them filed
+             --iterate N      with --proper: until identical (at most N runs) add the filed routines the defects name
              --proper         with `served --a7`: the filed C where proper, the draft for every other routine (the M1 run)
              --serve-all      with `served --a7`: every filed routine and every content served by its draft (the drafter's recipe)
              --a7             with `served`: build the served box and measure A7 on --scripts alone
@@ -428,63 +431,89 @@ def served(main, opts):
         return 0
     keep = {lab for labs in plan["serve"].values() for lab in labs} | set(plan["free"])
     names = set(plan["serve"]) | {n for n, _ in plan["original"] if n in labels}
-    if opts.get("proper"):
-        # the M1 recipe: the filed C where the proper-C check passes it, the draft for every other routine
-        import ledger
-        funcs = ledger.functions()
-        bad = {n for n in labels if ledger.proper_c_faults(n, funcs)}
-        keep = {r["name"] for r in drafts if filed_of.get(r["name"], "") not in labels or filed_of.get(r["name"]) in bad}
-        names = set(bad)
-        log(f"served: --proper: {len(labels) - len(bad)} filed routines keep their C (proper), {len(bad)} served by drafts, "
-            f"{len(keep)} drafts serve in all", b)
-    if opts.get("serve_all"):
-        # the drafter's recipe: every filed routine and every other content served by its draft
-        keep = {r["name"] for r in drafts}
-        names = set(labels)
-        log(f"served: --serve-all: all {len(keep)} drafts serve, {len(names)} filed routines replaced", b)
-    dst = os.path.join(b, "tree-served")
-    d = sv.make_tree(tree, dst, cache, drafts, keep, names, filed_of)
-    os.makedirs(out, exist_ok=True)
-    sv.write_serve_list(os.path.join(out, "serve_drafts.csv"), names)
-    sbox = os.path.join(b, f"pcebox-served-{rev}")
-    if os.path.exists(sbox):
-        os.remove(sbox)
-    ok, text = cpu_run_build(dst, d, sbox)
-    if not ok:
-        print("runner: the served box did not build:\n" + text)
-        return 1
-    for s in scripts:
-        res = measure(tree, sbox, os.path.join(out, "a7"), s, "a7")
-        if res.get("errors"):
-            log(f"served: A7 of {s} FAILED {res['errors']}", b)
-            continue
-        log(f"served: A7 of {s}: {res['a7']['verdict']}: {res['a7']['detail']}", b)
-        f = res["a7"]["fields"]
-        log(f"served: A7 of {s} ({mode}) counts: {f['swapped']} swapped, {f['compared']} frames compared, {f['identical']} identical, "
-            f"{f['defects']} access defects, parked {f['parked']}, unreached {f['unreached']}", b)
-        path = os.path.join(main, "config", "rondo", "lockstep_defects.csv")
-        old_rows = [r for r in records.read(path) if not (r["script"] == s and r["mode"] == mode)]
-        # check.c charges a defect to every swapped call whose span holds the call it names: a line ending
-        # "[in the call of X]" (X not the routine) was made inside X's call. The report keeps 6 lines a routine.
-        own, charged = {}, {}
-        rep = os.path.join(out, "a7", s, "a7run", "a7", s + ".rec.hybrid.txt")
-        if os.path.exists(rep):
-            for ln in open(rep, errors="replace"):
-                m = re.match(r"(\w+) (?:MOVED|EXTRA|MISSING|VALUE|STACK|STATE|REGS|CALL|INT) call \d+ frame \d+", ln)
-                if m:
-                    t = re.search(r"\[in the call of (\w+)\]\s*$", ln)
-                    if t and t.group(1) != m.group(1):
-                        charged.setdefault(m.group(1), set()).add(t.group(1))
-                    else:
-                        own[m.group(1)] = own.get(m.group(1), 0) + 1
-        new_rows = [{"script": s, "mode": mode, "routine": r, "kinds": pack(k), "defects": sum(k.values()), "source": rev,
-                     "own_lines": own.get(r, 0), "inside_call_of": ";".join(sorted(charged.get(r, ())))}
-                    for r, k in sorted(res["a7_defects"].items(), key=lambda kv: -sum(kv[1].values()))]
-        records.write(path, ["script", "mode", "routine", "kinds", "defects", "source", "own_lines", "inside_call_of"],
-                      old_rows + new_rows)
-        bad = sorted(((sum(k.values()), r, k) for r, k in res["a7_defects"].items()), reverse=True)[:8]
-        for n, r, k in bad:
-            log(f"  defects under {filed_of.get(r, r)} ({r}): {k}", b)
+    extra = set(opts.get("extra", ()))
+    if opts.get("also_defects"):
+        extra |= {r["routine"] for r in records.read(os.path.join(main, "config", "rondo", "lockstep_defects.csv"))
+                  if r["mode"] == "proper" and r["script"] in scripts}
+    extra = {n for n in extra if n in labels} - set(opts.get("keep", ()))
+    import ledger
+    funcs = ledger.functions() if opts.get("proper") else {}
+    for it in range(max(1, opts.get("iterate", 0) or 1)):
+        if opts.get("proper"):
+            # the M1 recipe: the filed C where the proper-C check passes it, the draft for every other routine
+            # and for the filed routines named as lockstep defects (extra)
+            bad = {n for n in labels if ledger.proper_c_faults(n, funcs)} | extra
+            keep = {r["name"] for r in drafts if filed_of.get(r["name"], "") not in labels or filed_of.get(r["name"]) in bad}
+            names = set(bad)
+            log(f"served: --proper: {len(labels) - len(bad)} filed routines keep their C, {len(bad)} served by drafts "
+                f"({len(extra)} of them named by lockstep defects), {len(keep)} drafts serve in all", b)
+        if opts.get("serve_all"):
+            # the drafter's recipe: every filed routine and every other content served by its draft
+            keep = {r["name"] for r in drafts}
+            names = set(labels)
+            log(f"served: --serve-all: all {len(keep)} drafts serve, {len(names)} filed routines replaced", b)
+        dst = os.path.join(b, "tree-served")
+        d = sv.make_tree(tree, dst, cache, drafts, keep, names, filed_of)
+        os.makedirs(out, exist_ok=True)
+        sv.write_serve_list(os.path.join(out, "serve_drafts.csv"), names)
+        sbox = os.path.join(b, f"pcebox-served-{rev}")
+        if os.path.exists(sbox):
+            os.remove(sbox)
+        ok, text = cpu_run_build(dst, d, sbox)
+        if not ok:
+            print("runner: the served box did not build:\n" + text)
+            return 1
+        new_extra, all_identical = set(), True
+        for s in scripts:
+            res = measure(tree, sbox, os.path.join(out, "a7"), s, "a7")
+            if res.get("errors"):
+                log(f"served: A7 of {s} FAILED {res['errors']}", b)
+                all_identical = False
+                continue
+            log(f"served: A7 of {s}: {res['a7']['verdict']}: {res['a7']['detail']}", b)
+            f = res["a7"]["fields"]
+            log(f"served: A7 of {s} ({mode}) counts: {f['swapped']} swapped, {f['compared']} frames compared, "
+                f"{f['identical']} identical, {f['defects']} access defects, parked {f['parked']}, unreached {f['unreached']}", b)
+            all_identical &= res["a7"]["verdict"] == "IDENTICAL"
+            path = os.path.join(main, "config", "rondo", "lockstep_defects.csv")
+            old_rows = [r for r in records.read(path) if not (r["script"] == s and r["mode"] == mode)]
+            # check.c charges a defect to every swapped call whose span holds the call it names: a line ending
+            # "[in the call of X]" (X not the routine) was made inside X's call. The report keeps 6 lines a routine.
+            own, charged = {}, {}
+            rep = os.path.join(out, "a7", s, "a7run", "a7", s + ".rec.hybrid.txt")
+            if os.path.exists(rep):
+                for ln in open(rep, errors="replace"):
+                    m = re.match(r"(\w+) (?:MOVED|EXTRA|MISSING|VALUE|STACK|STATE|REGS|CALL|INT) call \d+ frame \d+", ln)
+                    if m:
+                        t = re.search(r"\[in the call of (\w+)\]\s*$", ln)
+                        if t and t.group(1) != m.group(1):
+                            charged.setdefault(m.group(1), set()).add(t.group(1))
+                        else:
+                            own[m.group(1)] = own.get(m.group(1), 0) + 1
+            new_rows = [{"script": s, "mode": mode, "routine": r, "kinds": pack(k), "defects": sum(k.values()), "source": rev,
+                         "own_lines": own.get(r, 0), "inside_call_of": ";".join(sorted(charged.get(r, ())))}
+                        for r, k in sorted(res["a7_defects"].items(), key=lambda kv: -sum(kv[1].values()))]
+            records.write(path, ["script", "mode", "routine", "kinds", "defects", "source", "own_lines", "inside_call_of"],
+                          old_rows + new_rows)
+            for n, r, k in sorted(((sum(k.values()), r, k) for r, k in res["a7_defects"].items()), reverse=True)[:8]:
+                log(f"  defects under {filed_of.get(r, r)} ({r}): {k}", b)
+            new_extra |= {r for r in res["a7_defects"] if r in labels and r not in bad} if opts.get("proper") else set()
+            if res["a7"]["verdict"] == "IDENTICAL" and opts.get("proper"):
+                import csv as _csv
+                bytes_of = {r["routine"]: r["bytes"] for r in records.read(os.path.join(main, "config", "rondo", "gate_a5.csv"))}
+                held = sorted(r for r, v in res["reach"].items() if v[0] > 0 and r in labels and r not in bad)
+                hp = os.path.join(main, "config", "rondo", "lockstep_held.csv")
+                rows_h = [r for r in records.read(hp) if r["script"] != s]
+                rows_h += [{"script": s, "routine": r, "bytes": bytes_of.get(r, ""), "source": rev,
+                            "drafts_serving": len(bad)} for r in held]
+                records.write(hp, ["script", "routine", "bytes", "source", "drafts_serving"], rows_h)
+                log(f"served: {s}: filed C holding in lockstep: {len(held)} routines, "
+                    f"{sum(int(bytes_of.get(r) or 0) for r in held)} B (with {len(bad)} filed routines served by drafts)", b)
+        if all_identical or not new_extra:
+            break
+        extra |= new_extra
+        log(f"served: iteration {it + 1}: {len(new_extra)} more filed routines named by defects go to drafts: "
+            f"{', '.join(sorted(new_extra)[:12])}", b)
     return 0
 
 
@@ -513,7 +542,7 @@ def commit(main, rev, paths, n, reds, b):
 
 def parse(argv):
     opts = {"mode": argv[0] if argv else "", "main": TOP, "routines": [], "scripts": [], "sweep": False,
-            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False, "draft_a5": "", "serve_all": False, "proper": False}
+            "commit": False, "workers": 8, "only": False, "norerun": False, "a7": False, "draft_a5": "", "serve_all": False, "proper": False, "iterate": 0, "also_defects": False, "extra": [], "keep": []}
     i = 1
     while i < len(argv):
         a = argv[i]
@@ -527,6 +556,14 @@ def parse(argv):
             opts["workers"] = int(argv[i + 1]); i += 1
         elif a == "--draft-a5":
             opts["draft_a5"] = os.path.abspath(argv[i + 1]); i += 1
+        elif a == "--iterate":
+            opts["iterate"] = int(argv[i + 1]); i += 1
+        elif a == "--also-defects":
+            opts["also_defects"] = True
+        elif a == "--extra":
+            opts["extra"] = argv[i + 1].split(","); i += 1
+        elif a == "--keep":
+            opts["keep"] = argv[i + 1].split(","); i += 1
         elif a == "--proper":
             opts["proper"] = True
         elif a == "--serve-all":

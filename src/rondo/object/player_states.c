@@ -193,3 +193,107 @@ void abi_StepFlashTimerDown(void)
 {
     abi_sound_end(StepFlashTimerDown(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 01BD:7C9 ObjectTouchesPlayerBox
+ * @run 6E:C7C9
+ * WHAT IT DOES: Says whether the object lies within a box around the player: 8 either side of his X low byte and, from
+ * a point his Y low plus the box offset OBJ_39E0, $14 either side. The answer is 0 for in and 1 for out.
+ * HOW: The first screen only (both high bytes zero); two add and compare windows of $10 and $28.
+ * WAITS: no.
+ * Entry: X object. Exit: A 0 or 1, N and Z from it, C and V from the last window's add and compare. Clobbers zTemp00.
+ */
+Ended ObjectTouchesPlayerBox(uint8_t slot)
+{
+    uint8_t player_y = RD8(OBJ->y_lo[0]);
+    uint8_t offset = RD8(OBJ->hitbox_dy[0]);
+    Sum sum = add_bytes(player_y, offset, false);
+    uint8_t high, mine, theirs, taken;
+    Sum diff, window;
+    Ended e = ended_of_sum(sum);
+
+    WR8(ZP->temp00, sum.value);
+    high = RD8(OBJ->x_hi[slot]);
+    e = ended_then(e, ended_load(high));
+    if (high != 0) {
+        return ended_then(e, ended_load(1));
+    }
+    mine = RD8(OBJ->x_lo[slot]);
+    theirs = RD8(OBJ->x_lo[0]);
+    diff = sub_bytes(mine, theirs, true);
+    window = add_bytes(diff.value, 8, false);
+    e = ended_then(ended_of_sum(window), ended_compare(window.value, 0x10));
+    if (window.value >= 0x10) {
+        return ended_then(e, ended_load(1));
+    }
+    high = RD8(OBJ->y_hi[slot]);
+    e = ended_then(e, ended_load(high));
+    if (high != 0) {
+        return ended_then(e, ended_load(1));
+    }
+    mine = RD8(OBJ->y_lo[slot]);
+    taken = RD8(ZP->temp00);
+    diff = sub_bytes(mine, taken, true);
+    window = add_bytes(diff.value, 0x14, false);
+    e = ended_then(ended_of_sum(window), ended_compare(window.value, 0x28));
+    if (window.value >= 0x28) {
+        return ended_then(e, ended_load(1));
+    }
+    return ended_then(e, ended_load(0));
+}
+
+void abi_ObjectTouchesPlayerBox(void)
+{
+    abi_ended(ObjectTouchesPlayerBox(cpu.x));
+}
+
+/*
+ * @routine 01BE:4E6 NudgeAngleByVelocityAndScroll
+ * @run 6E:CCE6
+ * WHAT IT DOES: Moves the object's angle pair OBJ_3568 and OBJ_35C0 (and the counter OBJ_3618): by two tables when it
+ * moves sideways (by its X speed's sign), then by the scroll speed ScrollSpeedX negated, the table at $CE79 by its sign.
+ * HOW: Chains of 8-bit adds with the carry carried from one to the next.
+ * WAITS: no.
+ * Entry: X object. Exit: A the angle low byte stored, N and Z from it, C and V from its add. X kept, Y the sign index.
+ * Tables at $CD2D, $CD2F and $CE79 have no rows yet (the old address form).
+ */
+Ended NudgeAngleByVelocityAndScroll(uint8_t slot)
+{
+    uint8_t vx_hi = RD8(OBJ->vx_hi[slot]);
+    uint8_t vx_lo = RD8(OBJ->vx_lo[slot]);
+    uint8_t index, scroll, negated, value;
+    Sum sum;
+    Ended e;
+
+    if ((uint8_t)(vx_hi | vx_lo) != 0) {
+        vx_hi = RD8(OBJ->vx_hi[slot]);
+        index = (uint8_t)((vx_hi >> 7) & 1);
+        value = rd8((uint16_t)(0xCD2D + index));
+        sum = add_bytes(value, RD8(OBJ->f3618[slot]), false);
+        WR8(OBJ->f3618[slot], sum.value);
+        value = rd8((uint16_t)(0xCD2F + index));
+        sum = add_bytes(value, RD8(OBJ->angle_hi[slot]), sum.carry);
+        WR8(OBJ->angle_hi[slot], sum.value);
+        value = rd8((uint16_t)(0xCD2F + index));
+        sum = add_bytes(value, RD8(OBJ->angle_lo[slot]), sum.carry);
+        WR8(OBJ->angle_lo[slot], sum.value);
+    }
+    index = 0;
+    scroll = rd8(ScrollSpeedX);
+    negated = (uint8_t)(~scroll + 1);
+    if (negated & 0x80) {
+        index = 1;
+    }
+    sum = add_bytes(negated, RD8(OBJ->angle_hi[slot]), false);
+    WR8(OBJ->angle_hi[slot], sum.value);
+    value = rd8((uint16_t)(0xCE79 + index));
+    sum = add_bytes(value, RD8(OBJ->angle_lo[slot]), sum.carry);
+    WR8(OBJ->angle_lo[slot], sum.value);
+    e = ended_with_y(ended_of_sum(sum), index);
+    return e;
+}
+
+void abi_NudgeAngleByVelocityAndScroll(void)
+{
+    abi_ended(NudgeAngleByVelocityAndScroll(cpu.x));
+}

@@ -334,3 +334,50 @@ void abi_StepListC170ThenMoveAlongAngle(void)
 {
     abi_ended(StepListC170ThenMoveAlongAngle(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 10CB:6B6 RiseThenPlaceAndDrop
+ * @run 70:B6B6
+ * WHAT IT DOES: Moves the object along Y by its speed and takes $0018 off its Y speed. When its Y high byte is $FE it puts the object at X $0070, Y $FFC0, gives it X speed $0030 and Y speed $0400, sets its flags to $81 and zTemp $9E to 4 and goes on to the next OBJ_2800.
+ * HOW: ApplyVelocityY, a 16-bit subtract, stores, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z (A 4).
+ */
+Ended RiseThenPlaceAndDrop(uint8_t slot)
+{
+    AxisMove move;
+    Sum low, high;
+    uint8_t position, phase;
+    Ended e;
+
+    jsr_push(0xB6B9);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    low = sub_bytes(RD8(OBJ->vy_lo[slot]), 0x18, true);
+    WR8(OBJ->vy_lo[slot], low.value);
+    high = sub_bytes(RD8(OBJ->vy_hi[slot]), 0x00, low.carry);
+    WR8(OBJ->vy_hi[slot], high.value);
+    e = then(then(ended_of_axis_move(move), ended_of_sum(low)), ended_of_sum(high));
+    position = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_compare(position, 0xFE));
+    if (position != 0xFE) {
+        return e;
+    }
+    WR8(OBJ->flags[slot], 0x81);
+    wr8(0x209E, 4);
+    WR8(OBJ->x_hi[slot], 0);
+    WR8(OBJ->x_lo[slot], 0x70);
+    WR8(OBJ->y_hi[slot], 0xFF);
+    WR8(OBJ->y_lo[slot], 0xC0);
+    WR8(OBJ->vx_hi[slot], 0);
+    WR8(OBJ->vx_lo[slot], 0x30);
+    WR8(OBJ->vy_hi[slot], 4);
+    WR8(OBJ->vy_lo[slot], 0);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(then(e, ended_load(4)), ended_nz(phase));
+}
+
+void abi_RiseThenPlaceAndDrop(void)
+{
+    abi_ended(RiseThenPlaceAndDrop(cpu.x));
+}

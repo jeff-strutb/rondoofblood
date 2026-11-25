@@ -35,6 +35,46 @@ StepListB697ThenStopY:
 StepListB697ThenStopY_at0:
     rts
 
+; @routine 10CB:6B6 RiseThenPlaceAndDrop
+; @run 70:B6B6
+; WHAT IT DOES: Moves the object along Y by its speed and takes $0018 off its Y speed. When its Y high byte is $FE it puts the object at X $0070, Y $FFC0, gives it X speed $0030 and Y speed $0400, sets its flags to $81 and zTemp $9E to 4 and goes on to the next OBJ_2800.
+; HOW: ApplyVelocityY, a 16-bit subtract, stores, an INC.
+; WAITS: no.
+; Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z (A 4).
+RiseThenPlaceAndDrop:
+    jsr VecApplyVelocityY
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$18
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    lda a:OBJ_Y_HI,x
+    cmp #$FE
+    bne RiseThenPlaceAndDrop_at0
+    lda #$81
+    sta a:OBJ_FLAGS_2F38,x
+    lda #$04
+    sta z:zRasterStage
+    stz a:OBJ_X_HI,x
+    lda #$70
+    sta a:OBJ_X_LO,x
+    lda #$FF
+    sta a:OBJ_Y_HI,x
+    lda #$C0
+    sta a:OBJ_Y_LO,x
+    lda #$00
+    sta a:OBJ_VX_HI,x
+    lda #$30
+    sta a:OBJ_VX_LO,x
+    lda #$04
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    inc a:OBJ_2800,x
+RiseThenPlaceAndDrop_at0:
+    rts
+
 ; @routine 10CB:702 StepListB728ThenRiseSlowly
 ; @run 70:B702
 ; WHAT IT DOES: Steps the animation list at $B728; while it runs the object moves and its Y speed loses $0010 a frame; when it ends the object goes to the next OBJ_2800.

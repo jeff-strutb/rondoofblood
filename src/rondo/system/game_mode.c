@@ -79,13 +79,13 @@ static Cpu overlay_loaded_shim(uint16_t entry, uint8_t a)
 }
 
 /* An overlay's entry, with A the bank an add just made: N, Z, C and V from the add. */
-static Cpu overlay_added_shim(uint16_t entry, Sum bank)
+static Cpu overlay_added_shim(uint16_t entry, Sum bank, uint16_t ret)
 {
     cpu.a = bank.value;
     abi_nz(bank.value);
     abi_flag(P_C, bank.carry);
     abi_flag(P_V, bank.overflow);
-    call_original(entry);
+    call_orig(ret, entry);
     return cpu;
 }
 
@@ -1217,6 +1217,7 @@ void abi_ModeBackToTitle(void)
  * title. A stage with bit 7 set restarts from zStageRequested.
  * HOW: Maps the overlay's bank; the continues at ContinuesLo-Hi; ContinueChoice picks what
  * follows.
+ * WAITS: yes, through the events overlay, SaveScore, ResetGameState and the stage enter; the stack there is the mode loop's return and the call frames.
  * Entry: nothing. Exit: as what ran last.
  */
 typedef struct {
@@ -1243,7 +1244,7 @@ DeadRun ModeDead(void)
     Sum continues;
 
     tam(MPR4, bank.value);
-    run.after = overlay_added_shim(FrameOverlay8000, bank);
+    run.after = overlay_added_shim(FrameOverlay8000, bank, 0x5358);
     run.done = rd8(zModeDone);
     if (run.done == 0)
         return run;
@@ -1257,11 +1258,16 @@ DeadRun ModeDead(void)
         wr8(ContinuesHi, CONTINUES_MAX_HI);
     }
     run.slot = rd8(zSaveSlot);
-    if (!(run.slot & 0x80))
+    if (!(run.slot & 0x80)) {
+        jsr_push(0x5385);
         run.save = SaveScore();
+        jsr_pop();
+    }
     run.choice = rd8(ContinueChoice);
     if (run.choice == 1) {
+        jsr_push(0x53B7);
         ResetGameState();
+        jsr_pop();
         run.title = ModeBackToTitle();
         return run;
     }
@@ -1275,11 +1281,15 @@ DeadRun ModeDead(void)
         run.requested = rd8(zStageRequested) & 0x7F;
     run.restart = (uint8_t)((run.from_request ? run.requested : run.stage) | STAGE_RESTART);
     wr8(zStage, run.restart);
+    jsr_push(0x53A2);
     ResetScoreCounters();
+    jsr_pop();
     run.retry = rd8(zStage);
     if (run.retry == STAGE_RETRY_FROM)
         wr8(zStage, STAGE_RETRY_TO);
+    jsr_push(0x53B1);
     SetGameMode(MODE_STAGE_LOAD);
+    jsr_pop();
     run.next = StageEnterNext();
     return run;
 }
@@ -1334,14 +1344,18 @@ GameOverRun ModeGameOverWait(uint8_t x, uint8_t y)
     wr8(zWaitTimer, run.timer);
     if (run.timer != 0)
         return run;
+    jsr_push(0x543A);
     run.stop = SoundStopAll(x, y);
+    jsr_pop();
     run.restart = (rd8(zModeEvents) & EVENT_CONTINUE) != 0;
     if (!run.restart) {
         run.title = ModeBackToTitle();
         return run;
     }
     wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_CONTINUE));
+    jsr_push(0x5445);
     run.title = ModeBackToTitle();
+    jsr_pop();
     wr8(zCharacter, 0);
     wr8(zField80, 0);
     SetGameMode(MODE_STAGE_LOAD);

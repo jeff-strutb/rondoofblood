@@ -171,16 +171,26 @@ static void mark_stage_shim(StageMark mark)
 /* The title's three scenes and the fixed ADPCM, as two paths load them. */
 typedef struct { DiscLog a; DiscLog b; DiscLog c; DiscLog fixed; } ScreensLoad;
 
-static ScreensLoad load_screens(void)
+static ScreensLoad load_screens(uint16_t first_return)
 {
     ScreensLoad load;
 
     wr8(zMusicWanted, 0);
+    jsr_push(first_return);
     ResetGameState();
+    jsr_pop();
+    jsr_push((uint16_t)(first_return + 5));
     load.a = LoadSceneScript(SCENE_SCREENS_A);
+    jsr_pop();
+    jsr_push((uint16_t)(first_return + 10));
     load.b = LoadSceneScript(SCENE_SCREENS_B);
+    jsr_pop();
+    jsr_push((uint16_t)(first_return + 15));
     load.c = LoadSceneScript(SCENE_SCREENS_C);
+    jsr_pop();
+    jsr_push((uint16_t)(first_return + 18));
     load.fixed = AdpcmLoadFixed(disc_log_x(&load.c, 0));
+    jsr_pop();
     return load;
 }
 
@@ -382,18 +392,24 @@ AttractRun ModeAttract(void)
     if (rd8(zAttractStep) == 0) {
         run.path = ATTRACT_SCREENS;
         wr8(zAttractStep, (uint8_t)(rd8(zAttractStep) + 1));
-        run.screens = load_screens();
+        run.screens = load_screens(0x519D);
         run.mode = NextGameMode();
         return run;
     }
     run.path = ATTRACT_DEMO;
+    jsr_push(0x5176);
     ResetScoreCounters();
+    jsr_pop();
     wr8(zCharacter, 0);
+    jsr_push(0x517D);
     run.scene = LoadSceneScript(SCENE_COMMON);
+    jsr_pop();
     run.step = rd8(zAttractStep);
     run.stage = rd8((uint16_t)(AttractStages + run.step));
     wr8(zStage, run.stage);
+    jsr_push(0x5187);
     run.enter = StageEnter();
+    jsr_pop();
     step = (uint8_t)(rd8(zAttractStep) + 1);
     wr8(zAttractStep, step);
     run.step_after = rd8(zAttractStep);
@@ -534,6 +550,7 @@ void abi_StageEnterNext(void)
  * WHAT IT DOES: The path of ModeStageLoad for bit 3 of zModeEvents: loads the screens'
  * scenes and goes to mode 10.
  * HOW: Clears the bit and the wanted ADPCM, ResetGameState, three scenes, the fixed ADPCM.
+ * WAITS: no.
  * Entry: from ModeStageLoad. Exit: A 0, N 0, Z 0, from SetGameMode's mode; the rest as
  * AdpcmLoadFixed leaves them.
  */
@@ -542,7 +559,7 @@ ScreensLoad ModeStageLoadScreens(void)
     ScreensLoad load;
 
     wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREENS));
-    load = load_screens();
+    load = load_screens(0x5200);
     SetGameMode(MODE_ENDING);
     return load;
 }
@@ -640,7 +657,9 @@ ModeStageLoadRun ModeStageLoad(void)
         run.resume = ModeStageLoadContinue();
     } else {
         run.path = STAGE_LOAD_FIRST;
+        jsr_push(0x51F0);
         run.scene = LoadSceneScript(SCENE_COMMON);
+        jsr_pop();
         run.next = StageEnterNext();
     }
     return run;

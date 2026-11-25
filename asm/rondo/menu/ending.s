@@ -474,6 +474,165 @@ EndingScrollBack8:
     sta a:ScrollXLo
     rts
 
+; @routine 010D:720 EndingRiseFrame31
+; @run 6B:8720
+; WHAT IT DOES: An object handler of three stages: shows picture kind 3 and frame $31, slows its upward speed by 2 and holds
+; $B0 frames; then waits the hold out; then moves until its Y low byte is $48 and moves to the next state.
+; HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingRiseFrame31:
+    lda a:OBJ_27A8,x
+    bne EndingRiseFrame31_at0
+    lda #$03
+    sta a:OBJ_2A10,x
+    lda #$31
+    sta a:OBJ_2A68,x
+    dec a:OBJ_VY_HI,x
+    dec a:OBJ_VY_HI,x
+    lda #$B0
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+    rts
+EndingRiseFrame31_at0:
+    dec a
+    bne EndingRiseFrame31_at1
+    jsr EndingHoldTimer
+    inc a:OBJ_27A8,x
+    rts
+EndingRiseFrame31_at1:
+    dec a
+    bne EndingRiseFrame31_at2
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$48
+    bne EndingRiseFrame31_at2
+    inc a:OBJ_27A8,x
+EndingRiseFrame31_at2:
+    rts
+
+; @routine 010D:759 EndingRiseFrame32A
+; @run 6B:8759
+; WHAT IT DOES: An object handler of three stages: shows picture kind 3, sets its downward speed $60 and slows its upward speed
+; by 2, holds $90 frames and adds $10 to the byte at $345F plus its number; then waits the hold out and shows frame $32; then
+; moves until its Y low byte is $60 and moves to the next state.
+; HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingRiseFrame32A:
+    lda a:OBJ_27A8,x
+    bne EndingRiseFrame32A_at0
+    lda #$03
+    sta a:OBJ_2A10,x
+    lda #$60
+    sta a:OBJ_VY_LO,x
+    dec a:OBJ_VY_HI,x
+    dec a:OBJ_VY_HI,x
+    lda #$90
+    sta a:OBJ_34B8,x
+    lda a:$345F,x
+    clc
+    adc #$10
+    sta a:$345F,x
+    inc a:OBJ_27A8,x
+    rts
+EndingRiseFrame32A_at0:
+    dec a
+    bne EndingRiseFrame32A_at1
+    jsr EndingHoldTimer
+    lda #$32
+    sta a:OBJ_2A68,x
+    inc a:OBJ_27A8,x
+    rts
+EndingRiseFrame32A_at1:
+    dec a
+    bne EndingRiseFrame32A_at2
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$60
+    bne $8758
+    inc a:OBJ_27A8,x
+EndingRiseFrame32A_at2:
+    rts
+
+; @routine 010D:7A0 EndingRiseWithList
+; @run 6B:87A0
+; WHAT IT DOES: An object handler of three stages: shows picture kind 3, slows its upward speed by 1 and holds $80 frames; then
+; waits the hold out; then plays the ending's list 7 and moves until its Y low byte is $68 and moves to the next state.
+; HOW: OBJ->state; EndingHoldTimer; EndingFrameList; ApplyVelocity.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingRiseWithList:
+    lda a:OBJ_27A8,x
+    bne EndingRiseWithList_at0
+    lda #$03
+    sta a:OBJ_2A10,x
+    dec a:OBJ_VY_HI,x
+    lda #$80
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+    rts
+EndingRiseWithList_at0:
+    dec a
+    bne EndingRiseWithList_at1
+    jsr EndingHoldTimer
+    inc a:OBJ_27A8,x
+    rts
+EndingRiseWithList_at1:
+    dec a
+    bne EndingRiseWithList_at2
+    lda #$07
+    jsr EndingFrameList
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$68
+    bne $8758
+    inc a:OBJ_27A8,x
+EndingRiseWithList_at2:
+    rts
+
+; @routine 010D:7D6 EndingRiseFrame32B
+; @run 6B:87D6
+; WHAT IT DOES: As EndingRiseFrame32A, holding $A0 frames and adding $20.
+; HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingRiseFrame32B:
+    lda a:OBJ_27A8,x
+    bne EndingRiseFrame32B_at0
+    lda #$03
+    sta a:OBJ_2A10,x
+    lda #$60
+    sta a:OBJ_VY_LO,x
+    dec a:OBJ_VY_HI,x
+    dec a:OBJ_VY_HI,x
+    lda #$A0
+    sta a:OBJ_34B8,x
+    lda a:$345F,x
+    clc
+    adc #$20
+    sta a:$345F,x
+    inc a:OBJ_27A8,x
+    rts
+EndingRiseFrame32B_at0:
+    dec a
+    bne EndingRiseFrame32B_at1
+    jsr EndingHoldTimer
+    lda #$32
+    sta a:OBJ_2A68,x
+    inc a:OBJ_27A8,x
+    rts
+EndingRiseFrame32B_at1:
+    dec a
+    bne EndingRiseFrame32B_at2
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$60
+    bne EndingRiseFrame32B_at2
+    inc a:OBJ_27A8,x
+EndingRiseFrame32B_at2:
+    rts
+
 ; @routine 010E:0EF EndingScrollSlots
 ; @run 6B:88EF
 ; WHAT IT DOES: Moves the scroll slots 3 and 4 on: 4 added to the low X of slot 3, 8 to the low X of slot 4.

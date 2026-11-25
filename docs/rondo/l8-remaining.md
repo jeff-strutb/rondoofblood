@@ -29,3 +29,7 @@ See l8-untraced-arms.md: C written from the decoded bytes, not compared. Needs a
 
 - A few exotic arms in 025B:266, 025B:761 and 0F6B:395 are not reached by the generated cases.
 - Names to request from the typed access owner: bare zero page bytes $D9, $DA (0B4A:608, 39F, 025C:7ED), the byte $3BF0, $26F3 and $26F4, $3BC3.
+
+## Handed over by L4, not taken (master's plan changed)
+
+0255:0DB, 0255:3C5, 0255:7A5 (alternate entry of 0515:797), 0256:03D, 0256:14C with 0256:16B, 0256:1B1: L4 has not begun them; the master did not give them to L8.

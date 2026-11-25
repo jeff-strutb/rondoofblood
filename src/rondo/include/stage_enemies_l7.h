@@ -49,7 +49,14 @@ Ended RaiseStateOnFlag(uint8_t slot);
 void StopVerticalSpeed(uint8_t slot);
 Jump JumpByStageStep(void);
 
+/* Whether an object is inside a window, and what the routine left. */
+typedef struct {
+    bool in_view;
+    Ended end;
+} ViewTest;
+
 /* object/enemies_stage09_temp.c */
+ViewTest InWindowRange(uint8_t slot);
 Ended FaceByCue(uint8_t slot);
 Ended WalkAndTurnAtEdges(uint8_t slot);
 Ended WalkSideways(uint8_t slot);
@@ -220,18 +227,19 @@ typedef struct {
     Ended end;
 } CueEnd;
 Ended FallingWithGravity(uint8_t slot);
+Ended AimAtPlayerThenArm(uint8_t slot);
+ViewTest InsideScreenBox(uint8_t slot);
+Ended CountThenStop(uint8_t slot);
+Ended PickNextMoveBySide(uint8_t slot);
+Ended StepThenSpawnShot(uint8_t slot);
+Ended ResetToStateThree(uint8_t slot);
+Ended StartThreeShots(uint8_t slot);
 Ended StartWhenHurt(uint8_t slot);
 Ended EnterStateSevenOnFlag(uint8_t slot);
 Ended StartWithGuard(uint8_t slot);
 Ended SlideAngleDown(uint8_t slot);
 Ended SlideAngleUp(uint8_t slot);
 
-/* Whether an object is inside a window, and what the routine left. */
-typedef struct {
-    bool in_view;
-    Ended end;
-} ViewTest;
-ViewTest InWindowRange(uint8_t slot);
 
 /* A memory shift right in one read and one write: the value written, and the bit shifted out in `carry_var`. */
 #define LSR8_VALUE(field, carry_var) \

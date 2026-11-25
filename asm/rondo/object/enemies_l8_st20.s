@@ -73,6 +73,107 @@ MaybeDropItemByPlayerDistance:
     jsr VecStartObjectAtPlace
     rts
 
+; @routine 0EBD:2A7 SpawnerByKindAndScreen
+; @run 71:C2A7
+; WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_34B8 down; then by OBJ_3040: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_3568 below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_35C0 with one random number to 3 in OBJ_3670, and waits $F0.
+; HOW: LoadObjectRecord, searches of the slot kinds, StartObjectAtPlace, ClearObjectInY, NextRandom, FindFreeSlotFrom30.
+; WAITS: no.
+; Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
+SpawnerByKindAndScreen:
+    lda a:OBJ_27A8,x
+    bne SpawnerByKindAndScreen_at0
+    jmp VecLoadObjectRecord
+SpawnerByKindAndScreen_at0:
+    lda a:$2ABC
+    cmp #$04
+    beq SpawnerByKindAndScreen_at1
+    lda a:OBJ_34B8,x
+    beq SpawnerByKindAndScreen_at2
+    dec a:OBJ_34B8,x
+SpawnerByKindAndScreen_at1:
+    rts
+SpawnerByKindAndScreen_at2:
+    lda a:OBJ_3040,x
+    bne SpawnerByKindAndScreen_at3
+    lda a:ScrollXHiScreen
+    cmp #$02
+    bcc SpawnerByKindAndScreen_at1
+    cmp #$03
+    beq SpawnerByKindAndScreen_at1
+    cmp #$05
+    bcs SpawnerByKindAndScreen_at1
+    ldy #$1A
+SpawnerByKindAndScreen_at5:
+    lda a:OBJ_2750,y
+    beq SpawnerByKindAndScreen_at4
+    iny
+    iny
+    cpy #$20
+    bcc SpawnerByKindAndScreen_at5
+    rts
+SpawnerByKindAndScreen_at4:
+    lda #$2C
+    jsr VecStartObjectAtPlace
+    jsr VecNextRandom
+    and #$3F
+    clc
+    adc #$50
+    sta a:OBJ_34B8,x
+    rts
+SpawnerByKindAndScreen_at3:
+    cmp #$02
+    beq SpawnerByKindAndScreen_at6
+    lda a:OBJ_3568,x
+    cmp #$80
+    bcs SpawnerByKindAndScreen_at7
+    ldy #$20
+SpawnerByKindAndScreen_at9:
+    lda a:OBJ_2750,y
+    ora a:OBJ_2750+1,y
+    ora a:OBJ_2750+2,y
+    ora a:OBJ_2750+3,y
+    beq SpawnerByKindAndScreen_at8
+    iny
+    iny
+    iny
+    iny
+    cpy #$40
+    bcc SpawnerByKindAndScreen_at9
+SpawnerByKindAndScreen_at7:
+    rts
+SpawnerByKindAndScreen_at8:
+    phy
+    jsr VecNextRandom
+    and #$03
+    sta z:zTemp01
+    ply
+    lda #$04
+    sta z:zTemp00
+SpawnerByKindAndScreen_at10:
+    jsr VecClearObjectInY
+    lda #$49
+    jsr VecStartObjectAtPlace
+    lda z:zTemp00
+    dec a
+    sta a:OBJ_35C0,y
+    lda z:zTemp01
+    sta a:OBJ_3670,y
+    iny
+    dec z:zTemp00
+    bne SpawnerByKindAndScreen_at10
+    lda #$F0
+    sta a:OBJ_34B8,x
+    rts
+SpawnerByKindAndScreen_at6:
+    jsr VecFindFreeSlotFrom30
+    bcc SpawnerByKindAndScreen_at11
+    lda #$CB
+    jsr VecStartObjectAtPlace
+    lda #$80
+    sta a:OBJ_34B8,x
+SpawnerByKindAndScreen_at11:
+    rts
+
 ; @routine 0EBE:66D HitBoxByFrameTableCE8F
 ; @run 71:CE6D
 ; WHAT IT DOES: Takes the hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from a four byte row of the table at $CE8F picked by the frame less $45.

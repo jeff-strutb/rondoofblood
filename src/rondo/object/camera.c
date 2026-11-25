@@ -339,6 +339,7 @@ typedef struct {
     bool moving;
     bool tested_right;
     uint8_t push;
+    uint8_t speed_hi;
     Direction way;
 } Choice;
 
@@ -401,6 +402,7 @@ typedef enum { VERTICAL_UP, VERTICAL_FLOOR_FIRST, VERTICAL_DOWN } VerticalEnd;
 
 typedef struct {
     OnScreen x;
+    uint8_t speed_hi;
     VerticalEnd how;
     BackMove up;
     FloorProbe floor_before;
@@ -430,20 +432,28 @@ static bool add8_overflows(uint8_t a, uint8_t b)
 }
 
 /* By the speed's sign, or at no speed by bits 2 and 1 of what pushes the player. */
-static Choice choose_direction(void)
+static Choice choose_direction(bool lo_first)
 {
     Choice choice = { 0 };
+    uint8_t first;
+    uint8_t second;
 
-    choice.moving = (rd8(OBJ_VX_HI) | rd8(OBJ_VX_LO)) != 0;
-    choice.push = rd8(zPlayerPush);
+    first = rd8(lo_first ? OBJ_VX_LO : OBJ_VX_HI);
+    second = rd8(lo_first ? OBJ_VX_HI : OBJ_VX_LO);
+    choice.moving = (first | second) != 0;
     if (choice.moving) {
-        choice.way = (rd8(OBJ_VX_HI) & 0x80) ? GOES_LEFT : GOES_RIGHT;
-    } else if (choice.push & PUSH_LEFT) {
-        choice.way = GOES_LEFT;
-    } else {
-        choice.tested_right = true;
-        choice.way = (choice.push & PUSH_RIGHT) ? GOES_RIGHT : GOES_NOWHERE;
+        choice.speed_hi = rd8(OBJ_VX_HI);
+        choice.way = (choice.speed_hi & 0x80) ? GOES_LEFT : GOES_RIGHT;
+        return choice;
     }
+    choice.push = rd8(zPlayerPush);
+    if (choice.push & PUSH_LEFT) {
+        choice.way = GOES_LEFT;
+        return choice;
+    }
+    choice.push = rd8(zPlayerPush);
+    choice.tested_right = true;
+    choice.way = (choice.push & PUSH_RIGHT) ? GOES_RIGHT : GOES_NOWHERE;
     return choice;
 }
 
@@ -453,7 +463,7 @@ static void choice_exit_shim(Choice choice)
     uint8_t mask = choice.tested_right ? PUSH_RIGHT : PUSH_LEFT;
 
     if (choice.moving) {
-        cpu.a = rd8(OBJ_VX_HI);
+        cpu.a = choice.speed_hi;
         abi_nz(cpu.a);
         return;
     }
@@ -916,6 +926,7 @@ void abi_CheckPlayerAtLevelEnd(void)
  * left pushes the player right by a table on how deep it went.
  * HOW: Follows the speed's sign, or bits 2 and 1 of zPlayerPush at no speed, then the
  * overlay's wall entry with Y 1.
+ * WAITS: no.
  * Entry: cpu flags current. Exit: A and flags as the path taken left them; X and Y as
  * the overlay left them or X the depth.
  */
@@ -926,7 +937,7 @@ LeftWallMode CameraModeLeftWall(void)
     CheckPlayerAtLevelEnd();
     mode.y = MovePlayerYIfMoving();
     write16(ScrollStepXLo, ScrollStepXHi, 0);
-    mode.choice = choose_direction();
+    mode.choice = choose_direction(false);
     if (mode.choice.way == GOES_NOWHERE)
         return mode;
     if (mode.choice.way == GOES_RIGHT) {
@@ -1016,6 +1027,7 @@ void abi_CameraModeLeftWall(void)
  * WHAT IT DOES: The usual camera mode: moves the player down or up, then left or right
  * with the scroll following.
  * HOW: Follows the speed's sign, or bits 2 and 1 of zPlayerPush at no speed.
+ * WAITS: no.
  * Entry: cpu flags current. Exit: A and flags as the path taken left them.
  */
 /* FollowMode holds how each step ended, as plain values: no flags pass through this body. */
@@ -1025,7 +1037,7 @@ FollowMode CameraModeFollow(void)
 
     mode.y = MovePlayerYIfMoving();
     write16(ScrollStepXLo, ScrollStepXHi, 0);
-    mode.choice = choose_direction();
+    mode.choice = choose_direction(false);
     if (mode.choice.way == GOES_LEFT)
         mode.left = MovePlayerLeftOrWall();
     else if (mode.choice.way == GOES_RIGHT)
@@ -1817,28 +1829,41 @@ void abi_PlayerAtLeftEdge(void)
  * overlay about the floor before and after moving.
  * HOW: PlayerXOnScreen; a Y speed of zero clears the Y scroll's fraction; then the Y
  * speed's sign. The first floor answer not zero means no move.
+ * WAITS: no.
  * Entry: cpu flags current. Exit: A and flags as the path taken left them.
  */
 VerticalMode CameraModeVertical(void)
 {
     VerticalMode mode = { 0 };
+    uint8_t speed_hi;
+    uint8_t speed_lo;
 
+    jsr_push(0x6A12);
     mode.x = PlayerXOnScreen();
-    write16(ScrollStepYLo, ScrollStepYHi, 0);
-    if ((rd8(OBJ_VY_HI) | rd8(OBJ_VY_LO)) == 0)
+    jsr_pop();
+    wr8(ScrollStepYHi, 0);
+    wr8(ScrollStepYLo, 0);
+    speed_hi = rd8(OBJ_VY_HI);
+    speed_lo = rd8(OBJ_VY_LO);
+    if ((speed_hi | speed_lo) == 0)
         wr8(ScrollYFrac, 0);
-    if (rd8(OBJ_VY_HI) & 0x80) {
+    mode.speed_hi = rd8(OBJ_VY_HI);
+    if (mode.speed_hi & 0x80) {
         mode.how = VERTICAL_UP;
         mode.up = MovePlayerUp();
         return mode;
     }
+    jsr_push(0x6A2B);
     mode.floor_before = PlayerFloor();
+    jsr_pop();
     if (floor_answer(mode.floor_before) != 0) {
         mode.how = VERTICAL_FLOOR_FIRST;
         return mode;
     }
     mode.how = VERTICAL_DOWN;
+    jsr_push(0x6A30);
     mode.down = MovePlayerDown();
+    jsr_pop();
     wr8(zPlayerPush, 0);
     mode.floor_after = PlayerFloor();
     return mode;
@@ -1849,7 +1874,7 @@ void abi_CameraModeVertical(void)
     VerticalMode mode = CameraModeVertical();
 
     x_on_screen_exit_shim(mode.x);
-    cpu.a = rd8(OBJ_VY_HI);
+    cpu.a = mode.speed_hi;
     abi_nz(cpu.a);
     if (mode.how == VERTICAL_UP) {
         back_exit_shim(mode.up);
@@ -1909,6 +1934,7 @@ void abi_PlayerStopAtLeftEdge(void)
  * is a wall, and keeps it between $10 and $EF.
  * HOW: Follows the speed's sign, or bits 2 and 1 of zPlayerPush at no speed, through the
  * wall checks.
+ * WAITS: no.
  * Entry: cpu flags current. Exit: A and flags as the path taken left them.
  */
 OnScreen PlayerXOnScreen(void)
@@ -1916,18 +1942,25 @@ OnScreen PlayerXOnScreen(void)
     OnScreen screen = { 0 };
     uint8_t x;
 
-    screen.choice = choose_direction();
+    screen.choice = choose_direction(true);
     if (screen.choice.way == GOES_NOWHERE) {
         screen.how = ON_SCREEN_STAYED;
         return screen;
     }
-    screen.wall = screen.choice.way == GOES_LEFT ? PlayerWallLeft() : PlayerWallRight();
+    if (screen.choice.way == GOES_LEFT) {
+        jsr_push(0x6A7A);
+        screen.wall = PlayerWallLeft();
+    } else {
+        jsr_push(0x6A59);
+        screen.wall = PlayerWallRight();
+    }
+    jsr_pop();
     if (screen.wall.how != WALL_NOT_THERE) {
         screen.how = ON_SCREEN_WALLED;
         return screen;
     }
-    screen.move = MovePlayerX();
-    x = rd8(OBJ_X_LO);
+    screen.move = add_speed_to_x(OBJ_X_FRAC, OBJ_X_LO);
+    x = (uint8_t)((uint16_t)(screen.move.a + screen.move.b) >> 8);
     if (x >= PLAYER_MAX_X) {
         PlayerAtRightEdge();
         screen.how = ON_SCREEN_RIGHT_EDGE;

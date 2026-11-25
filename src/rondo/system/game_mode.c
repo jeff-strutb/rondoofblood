@@ -63,9 +63,9 @@ static Sum add_decimal(uint8_t a, uint8_t b, bool carry_in)
 }
 
 /* An overlay's entry, run with the registers as the handler was entered with them. */
-static Cpu overlay_shim(uint16_t entry)
+static Cpu overlay_shim(uint16_t entry, uint16_t ret)
 {
-    call_original(entry);
+    call_orig(ret, entry);
     return cpu;
 }
 
@@ -196,11 +196,11 @@ static void screens_load_shim(const ScreensLoad *load)
 /* An overlay's frame: what it left, and the answer it gave in zModeDone. */
 typedef struct { Cpu after; uint8_t done; } OverlayFrame;
 
-static OverlayFrame overlay_frame(uint16_t entry)
+static OverlayFrame overlay_frame(uint16_t entry, uint16_t ret)
 {
     OverlayFrame frame;
 
-    frame.after = overlay_shim(entry);
+    frame.after = overlay_shim(entry, ret);
     frame.done = rd8(zModeDone);
     return frame;
 }
@@ -274,7 +274,7 @@ BootRun ModeBoot(void)
 {
     BootRun run;
 
-    run.frame = overlay_frame(FrameOverlay8000);
+    run.frame = overlay_frame(FrameOverlay8000, 0x5127);
     if (run.frame.done == 0)
         return run;
     run.control = WaitVblankDisplayOff();
@@ -311,11 +311,12 @@ void abi_ModeBoot(void)
  * @run 69:514F
  * WHAT IT DOES: Mode 1: the overlay's frame, then the stage's load.
  * HOW: Overlay frame at its second entry; zField80 cleared; SetGameMode.
+ * WAITS: no.
  * Entry: nothing. Exit: as the overlay leaves them, A zModeDone and N, Z from it; done, A 0.
  */
 OverlayFrame ModeLogo(void)
 {
-    OverlayFrame frame = overlay_frame(FrameOverlay8003);
+    OverlayFrame frame = overlay_frame(FrameOverlay8003, 0x5152);
 
     if (frame.done == 0)
         return frame;
@@ -340,6 +341,7 @@ void abi_ModeLogo(void)
  * zero runs the overlay's other entry; positive restarts the attract's load; negative
  * starts the next demo stage, or on the first pass loads the title's scenes.
  * HOW: The overlay at $8006, then zAttractStep; the five demo stages are AttractStages.
+ * WAITS: no.
  * Entry: nothing. Exit: as what ran last.
  */
 typedef enum { ATTRACT_OTHER_ENTRY, ATTRACT_RESTART, ATTRACT_SCREENS, ATTRACT_DEMO } AttractPath;
@@ -362,7 +364,7 @@ AttractRun ModeAttract(void)
     AttractRun run;
     uint8_t step;
 
-    run.frame = overlay_frame(FrameOverlay8006);
+    run.frame = overlay_frame(FrameOverlay8006, 0x5161);
     if (!(run.frame.done & 0x80)) {
         if (run.frame.done == 0) {
             run.path = ATTRACT_OTHER_ENTRY;
@@ -489,6 +491,7 @@ void abi_ModeAttractPlay(void)
  * @run 69:51F0
  * WHAT IT DOES: Enters the stage in zStage with a clean score count and goes on a mode.
  * HOW: StageEnter, ResetScoreCounters, NextGameMode.
+ * WAITS: no.
  * Entry: nothing. Exit: as NextGameMode.
  */
 typedef struct { StageEnterRun enter; uint8_t mode; } EnterNextRun;
@@ -497,8 +500,12 @@ EnterNextRun StageEnterNext(void)
 {
     EnterNextRun run;
 
+    jsr_push(0x51F3);
     run.enter = StageEnter();
+    jsr_pop();
+    jsr_push(0x51F6);
     ResetScoreCounters();
+    jsr_pop();
     run.mode = NextGameMode();
     return run;
 }
@@ -555,6 +562,7 @@ void abi_ModeStageLoadScreens(void)
  * WHAT IT DOES: The path of ModeStageLoad for bit 4 of zModeEvents: enters the stage and
  * goes to the intro mode.
  * HOW: ResetScoreCounters, a scene, StageEnter, zGameRunning counted, SetGameMode.
+ * WAITS: no.
  * Entry: from ModeStageLoad. Exit: A 0, N 0, Z 0; the rest as StageEnter leaves them.
  */
 typedef struct { DiscLog scene; StageEnterRun enter; } ContinueRun;
@@ -563,9 +571,15 @@ ContinueRun ModeStageLoadContinue(void)
 {
     ContinueRun run;
 
+    jsr_push(0x521A);
     ResetScoreCounters();
+    jsr_pop();
+    jsr_push(0x521F);
     run.scene = LoadSceneScript(SCENE_COMMON);
+    jsr_pop();
+    jsr_push(0x5222);
     run.enter = StageEnter();
+    jsr_pop();
     wr8(zGameRunning, (uint8_t)(rd8(zGameRunning) + 1));
     SetGameMode(MODE_INTRO);
     return run;
@@ -592,6 +606,7 @@ void abi_ModeStageLoadContinue(void)
  * WHAT IT DOES: Mode 4: the menu overlay's frame, then what zModeEvents asks for: the
  * name entry, a new game from the menu, or the first stage.
  * HOW: The overlay's fifth entry, then bits 3 and 4 of zModeEvents.
+ * WAITS: no.
  * Entry: nothing. Exit: as what ran last.
  */
 typedef enum { STAGE_LOAD_WAIT, STAGE_LOAD_SCREENS, STAGE_LOAD_CONTINUE, STAGE_LOAD_FIRST } StageLoadPath;
@@ -609,7 +624,7 @@ ModeStageLoadRun ModeStageLoad(void)
 {
     ModeStageLoadRun run;
 
-    run.frame = overlay_frame(OverlayTerrainLookup);
+    run.frame = overlay_frame(OverlayTerrainLookup, 0x51E0);
     run.path = STAGE_LOAD_WAIT;
     if (run.frame.done == 0)
         return run;
@@ -850,6 +865,7 @@ void abi_ModeStageDone(void)
  * to ModeStageDone. At zero, bits of zModeEvents ask for a boss's ADPCM and scene, a
  * screen's scenes, or the stage's clear with the score saved.
  * HOW: Bits 0, 1 and 2 of zModeEvents, each cleared as it is taken.
+ * WAITS: no.
  * Entry: nothing. Exit: as what ran last.
  */
 typedef enum {
@@ -893,7 +909,7 @@ StageRun ModeStage(void)
     StageRun run;
     uint8_t character;
 
-    run.frame = overlay_frame(FrameOverlay8000);
+    run.frame = overlay_frame(FrameOverlay8000, 0x5268);
     if (run.frame.done & 0x80) {
         run.path = STAGE_LOST;
         SetGameMode(MODE_DEAD);
@@ -1336,12 +1352,16 @@ ScreenRun ModeScreen(void)
 {
     ScreenRun run;
 
-    run.frame = overlay_frame(FrameOverlay8000);
+    run.frame = overlay_frame(FrameOverlay8000, 0x5451);
     run.path = SCREEN_WAIT;
     if (run.frame.done == 0)
         return run;
+    jsr_push(0x5459);
     ResetGameState();
+    jsr_pop();
+    jsr_push(0x545E);
     run.scene = LoadSceneScript(SCENE_COMMON);
+    jsr_pop();
     run.stage = rd8(zStage);
     if (run.stage == STAGE_TITLE_BACK) {
         run.path = SCREEN_TITLE;
@@ -1362,7 +1382,9 @@ ScreenRun ModeScreen(void)
         return run;
     }
     run.path = SCREEN_STAGE;
+    jsr_push(0x546B);
     run.load = StageLoad(disc_log_y(&run.scene, 0xFF)); /* Y as ResetGameState leaves it, then the scene load's */
+    jsr_pop();
     wr8(zField99, 0);
     wr8(zField95, 5);
     wr8(zField8A, 3);
@@ -1411,6 +1433,7 @@ void abi_ModeScreen(void)
  * @run 69:549A
  * WHAT IT DOES: Mode 10: the ending's frame, then the stage in zStage.
  * HOW: Overlay frame, ResetGameState, a scene, StageEnter, ResetScoreCounters, SetGameMode.
+ * WAITS: no.
  * Entry: nothing. Exit: as what ran last.
  */
 typedef struct { OverlayFrame frame; DiscLog scene; StageEnterRun enter; } EndingRun;
@@ -1419,14 +1442,22 @@ EndingRun ModeEnding(void)
 {
     EndingRun run;
 
-    run.frame = overlay_frame(FrameOverlay8000);
+    run.frame = overlay_frame(FrameOverlay8000, 0x549D);
     if (run.frame.done == 0)
         return run;
     wr8(zGameRunning, 0);
+    jsr_push(0x54A7);
     ResetGameState();
+    jsr_pop();
+    jsr_push(0x54AC);
     run.scene = LoadSceneScript(SCENE_COMMON);
+    jsr_pop();
+    jsr_push(0x54AF);
     run.enter = StageEnter();
+    jsr_pop();
+    jsr_push(0x54B2);
     ResetScoreCounters();
+    jsr_pop();
     SetGameMode(MODE_STAGE);
     return run;
 }

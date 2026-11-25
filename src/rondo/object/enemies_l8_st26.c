@@ -517,7 +517,7 @@ Ended ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
     e = then(e, ended_load(value));
     diff = sub_bytes(value, RD8(ZP->temp02), true);
     sum = add_bytes(diff.value, 4, false);
-    e = then(then(e, ended_of_sum(diff)), ended_compare(sum.value, 8));
+    e = then(then(then(e, ended_of_sum(diff)), ended_of_sum(sum)), ended_compare(sum.value, 8));
     near = (uint8_t)(sum.value < 8);
     if (!near) {
         high = RD8(OBJ->f3510[slot]);
@@ -560,4 +560,139 @@ Ended ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
 void abi_ChaseWanderingPointWithSpeedRamp(void)
 {
     abi_ended(ChaseWanderingPointWithSpeedRamp(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 161B:126 SpawnerWithScrollGates
+ * @run 70:B126
+ * WHAT IT DOES: In state 0 loads the record. State 1 starts list $8D on channel 3 when OBJ_3040 is not 0 and goes on. Later it runs CapPlayerXOnScreen1 when OBJ_3040 is 0, waits OBJ_34B8 down, then with OBJ_3040 0 and the scroll in the right window starts an object of type $2C in a free slot of $1A to $1F numbered by OBJ_3510 (which counts up) and takes a random wait of $80 to $BF; with OBJ_3040 not 0 and the scroll's Y in range clears and starts an object of type $55 in the first free slot of $11 to $1F and waits $D0.
+ * HOW: LoadObjectRecord, StartListChannelKind2, CapPlayerXOnScreen1, searches of the slot kinds, StartObjectAtPlace, NextRandom, ClearObjectInY.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
+ */
+Ended SpawnerWithScrollGates(uint8_t slot)
+{
+    uint8_t state, last, nz, kind, y, timer, screen, low, placed, number, value;
+    bool carry;
+    RandomResult random;
+    Sum sum;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        jsr_push(0xB12E);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        return then(e, ended_of_record(last, nz, carry));
+    }
+    e = then(e, ended_load((uint8_t)(state - 1)));
+    if (state == 1) {
+        kind = RD8(OBJ->f3040[slot]);
+        e = then(e, ended_load(kind));
+        if (kind != 0) {
+            e = then(e, l8_list_channel2(slot, 0x8D, 3, 0xB13F));
+        }
+        return then(e, ended_nz(INC8(OBJ->state[slot])));
+    }
+    kind = RD8(OBJ->f3040[slot]);
+    e = then(e, ended_load(kind));
+    if (kind == 0) {
+        jsr_push(0xB14C);
+        e = then(e, CapPlayerXOnScreen1(slot));
+        jsr_pop();
+    }
+    timer = RD8(OBJ->f34b8[slot]);
+    e = then(e, ended_load(timer));
+    if (timer != 0) {
+        return then(e, ended_nz(DEC8(OBJ->f34b8[slot])));
+    }
+    for (y = 0x1A;;) {
+        kind = RD8(OBJ->kind[y]);
+        e = then(e, ended_with_y(ended_load(kind), y));
+        if (kind == 0) {
+            break;
+        }
+        y++;
+        e = then(e, ended_with_y(l8_compare_y(y, 0x20), y));
+        if (y >= 0x20) {
+            return e;
+        }
+    }
+    kind = RD8(OBJ->f3040[slot]);
+    e = then(e, ended_load(kind));
+    if (kind == 0) {
+        screen = RD8(SCROLLE->x_hi_screen[0]);
+        e = then(e, ended_compare(screen, 9));
+        if (screen < 9) {
+            e = then(e, ended_compare(screen, 1));
+            if (screen == 1) {
+                low = RD8(SCROLL->x_lo[0]);
+                e = then(e, ended_compare(low, 0xA0));
+                if (low < 0xA0) {
+                    return e;
+                }
+            }
+        } else {
+            if (screen != 9) {
+                return e;
+            }
+            low = RD8(SCROLL->x_lo[0]);
+            e = then(e, ended_compare(low, 0x20));
+            if (low >= 0x20) {
+                return e;
+            }
+        }
+        jsr_push(0xB188);
+        placed = StartObjectAtPlace(0x2C, slot, y);
+        jsr_pop();
+        e = then(e, ended_load(placed));
+        number = RD8(OBJ->f3510[slot]);
+        WR8(OBJ->f3040[y], number);
+        e = then(e, ended_load(number));
+        e = then(e, ended_nz(INC8(OBJ->f3510[slot])));
+        jsr_push(0xB194);
+        random = NextRandom();
+        jsr_pop();
+        e = then(e, ended_of_random(random));
+        sum = add_bytes((uint8_t)(random.value & 0x3F), 0x80, false);
+        WR8(OBJ->f34b8[slot], sum.value);
+        return then(e, ended_of_sum(sum));
+    }
+    screen = RD8(SCROLLE->y_hi_screen[0]);
+    e = then(e, ended_compare(screen, 2));
+    if (screen >= 2) {
+        return e;
+    }
+    low = RD8(SCROLL->y_lo[0]);
+    e = then(e, ended_compare(low, 0xD0));
+    if (low >= 0xD0) {
+        return e;
+    }
+    for (y = 0x11;;) {
+        kind = RD8(OBJ->kind[y]);
+        e = then(e, ended_with_y(ended_load(kind), y));
+        if (kind == 0) {
+            break;
+        }
+        y++;
+        e = then(e, ended_with_y(l8_compare_y(y, 0x20), y));
+        if (y >= 0x20) {
+            return e;
+        }
+    }
+    jsr_push(0xB1BB);
+    ClearObjectInY(y);
+    jsr_pop();
+    jsr_push(0xB1C2);
+    placed = StartObjectAtPlace(0x55, slot, y);
+    jsr_pop();
+    WR8(OBJ->f34b8[slot], 0xD0);
+    (void)value;
+    return then(then(e, ended_load(placed)), ended_load(0xD0));
+}
+
+void abi_SpawnerWithScrollGates(void)
+{
+    abi_ended(SpawnerWithScrollGates(cpu.x));
 }

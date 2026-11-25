@@ -356,5 +356,7 @@ Ended EnterState0EWhenFlagged(uint8_t slot);
 Ended LoadRecordFrame24(uint8_t slot);
 Ended StartTimerWhenSlot10Ready(uint8_t slot);
 Ended HurtOnceThenAnswerYes(uint8_t slot, uint8_t y_entry);
+Ended StepListThenStartPieceAndWalk(uint8_t slot, uint8_t y_entry);
+Ended StartLeapWhenHurtAnswerYes(uint8_t slot, uint8_t y_entry);
 
 #endif

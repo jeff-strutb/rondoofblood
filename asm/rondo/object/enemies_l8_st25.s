@@ -129,6 +129,35 @@ StartTimerWhenSlot10Ready:
     inc a:OBJ_27A8,x
     rts
 
+; @routine 0F6C:470 StepListThenStartPieceAndWalk
+; @run 70:BC70
+; WHAT IT DOES: Runs StepListByNumberTableC585; when the list ends clears slot $51 and starts an object of type $AD there at the object's place, sets OBJ_3250 2, state 3 and OBJ_34B8 0, restarts the animation, sets the X speed -$00A0 and, facing left, reverses it.
+; HOW: Two calls, ClearObjectInY, StartObjectAtPlace, stores, a tail jump into NegateVelocityX.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. Reversing the speed ran in no script; the draft stops there.
+StepListThenStartPieceAndWalk:
+    jsr StepListByNumberTableC585
+    bne AnimateMoveAndSag
+    ldy #$51
+    jsr VecClearObjectInY
+    lda #$AD
+    jsr VecStartObjectAtPlace
+    lda #$02
+    sta a:OBJ_3250,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    lda #$00
+    sta a:OBJ_34B8,x
+    jsr ClearAnimationThenStepListC585
+    lda #$60
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    lda a:OBJ_2AC0,x
+    beq AnimateMoveAndSag
+    jmp VecNegateVelocityX
+    rts
+
 ; @routine 0F6C:580 HurtOnceThenAnswerYes
 ; @run 70:BD80
 ; WHAT IT DOES: Says yes (C 1) when the object has taken exactly 1 hit, the player's Y low byte is not $9A and slot 0's state is below $10: it then clears its hits and OBJ_3250, sets slot 0's OBJ_3510 $40 and OBJ_3568 $10, OBJ_34B8 $0B, restarts its animation (ClearAnimationThenStepListC585), goes to state 8. Otherwise says no (C 0).
@@ -159,6 +188,50 @@ HurtOnceThenAnswerYes:
     sec
     rts
 HurtOnceThenAnswerYes_at0:
+    clc
+    rts
+
+; @routine 0F6C:6F7 StartLeapWhenHurtAnswerYes
+; @run 70:BEF7
+; WHAT IT DOES: Says no (C 0) when OBJ_35C0 is 0 or the object has taken fewer than 5 hits. Otherwise clears slot $11, starts an object of type $B0 there at its place, gives it the Y speed -$0800 (moved once), clears its hits and OBJ_3250, sets OBJ_34B8 $0E, restarts the animation, sets the speed X $0140 and Y -$0380 (reversing X when facing left), goes to state 9 and says yes (C 1).
+; HOW: Tests, ClearObjectInY, StartObjectAtPlace, ApplyVelocityY, ClearAnimationThenStepListC585, NegateVelocityX.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: C 1 yes, 0 no. The yes arm ran in no script; the draft stops there.
+StartLeapWhenHurtAnswerYes:
+    lda a:OBJ_35C0,x
+    beq StartLeapWhenHurtAnswerYes_at0
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc StartLeapWhenHurtAnswerYes_at0
+    ldy #$11
+    jsr VecClearObjectInY
+    lda #$B0
+    jsr VecStartObjectAtPlace
+    lda #$F8
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    stz a:OBJ_33B0,x
+    stz a:OBJ_3250,x
+    lda #$0E
+    sta a:OBJ_34B8,x
+    jsr ClearAnimationThenStepListC585
+    lda #$80
+    sta a:OBJ_VY_LO,x
+    lda #$FC
+    sta a:OBJ_VY_HI,x
+    lda #$40
+    sta a:OBJ_VX_LO,x
+    lda #$01
+    sta a:OBJ_VX_HI,x
+    lda a:OBJ_2AC0,x
+    beq StartLeapWhenHurtAnswerYes_at1
+    jsr VecNegateVelocityX
+StartLeapWhenHurtAnswerYes_at1:
+    lda #$09
+    sta a:OBJ_27A8,x
+    sec
+    rts
+StartLeapWhenHurtAnswerYes_at0:
     clc
     rts
 

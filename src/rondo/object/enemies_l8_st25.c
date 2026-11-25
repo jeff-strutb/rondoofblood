@@ -449,3 +449,120 @@ void abi_HurtOnceThenAnswerYes(void)
 {
     abi_ended(HurtOnceThenAnswerYes(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0F6C:470 StepListThenStartPieceAndWalk
+ * @run 70:BC70
+ * WHAT IT DOES: Runs StepListByNumberTableC585; when the list ends clears slot $51 and starts an object of type $AD there at the object's place, sets OBJ_3250 2, state 3 and OBJ_34B8 0, restarts the animation, sets the X speed -$00A0 and, facing left, reverses it.
+ * HOW: Two calls, ClearObjectInY, StartObjectAtPlace, stores, a tail jump into NegateVelocityX.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. Reversing the speed ran in no script; the draft stops there.
+ */
+Ended StepListThenStartPieceAndWalk(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t placed, facing;
+    Sum negated;
+    Ended e;
+
+    jsr_push(0xBC73);
+    e = StepListByNumberTableC585(slot, y_entry);
+    jsr_pop();
+    if (e.a != 0) {
+        return e;
+    }
+    jsr_push(0xBC7A);
+    ClearObjectInY(0x51);
+    jsr_pop();
+    jsr_push(0xBC7F);
+    placed = StartObjectAtPlace(0xAD, slot, 0x51);
+    jsr_pop();
+    e = then(then(e, ended_with_y(ended_nz(0x51), 0x51)), ended_load(placed));
+    WR8(OBJ->hitbox_on[slot], 2);
+    WR8(OBJ->state[slot], 3);
+    WR8(OBJ->f34b8[slot], 0);
+    e = then(e, ended_load(0));
+    jsr_push(0xBC91);
+    e = then(e, ClearAnimationThenStepListC585(slot, 0x51));
+    jsr_pop();
+    WR8(OBJ->vx_lo[slot], 0x60);
+    WR8(OBJ->vx_hi[slot], 0xFF);
+    facing = RD8(OBJ->facing_left[slot]);
+    e = then(e, ended_load(facing));
+    if (facing != 0) {
+        negated = NegateVelocityX(slot);
+        e = then(e, ended_of_sum(negated));
+    }
+    return e;
+}
+
+void abi_StepListThenStartPieceAndWalk(void)
+{
+    abi_ended(StepListThenStartPieceAndWalk(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0F6C:6F7 StartLeapWhenHurtAnswerYes
+ * @run 70:BEF7
+ * WHAT IT DOES: Says no (C 0) when OBJ_35C0 is 0 or the object has taken fewer than 5 hits. Otherwise clears slot $11, starts an object of type $B0 there at its place, gives it the Y speed -$0800 (moved once), clears its hits and OBJ_3250, sets OBJ_34B8 $0E, restarts the animation, sets the speed X $0140 and Y -$0380 (reversing X when facing left), goes to state 9 and says yes (C 1).
+ * HOW: Tests, ClearObjectInY, StartObjectAtPlace, ApplyVelocityY, ClearAnimationThenStepListC585, NegateVelocityX.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: C 1 yes, 0 no. The yes arm ran in no script; the draft stops there.
+ */
+Ended StartLeapWhenHurtAnswerYes(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t aim, hits, placed, facing;
+    AxisMove move;
+    Sum negated;
+    Ended e;
+
+    (void)y_entry;
+    aim = RD8(OBJ->f35c0[slot]);
+    e = ended_load(aim);
+    if (aim == 0) {
+        return ended_with_carry(e, false);
+    }
+    hits = RD8(OBJ->hit_taken[slot]);
+    e = then(e, ended_compare(hits, 5));
+    if (hits < 5) {
+        return ended_with_carry(e, false);
+    }
+    jsr_push(0xBF08);
+    ClearObjectInY(0x11);
+    jsr_pop();
+    jsr_push(0xBF0D);
+    placed = StartObjectAtPlace(0xB0, slot, 0x11);
+    jsr_pop();
+    e = then(then(e, ended_with_y(ended_nz(0x11), 0x11)), ended_load(placed));
+    WR8(OBJ->vy_hi[slot], 0xF8);
+    e = then(e, ended_load(0xF8));
+    jsr_push(0xBF15);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    WR8(OBJ->hit_taken[slot], 0);
+    WR8(OBJ->hitbox_on[slot], 0);
+    WR8(OBJ->f34b8[slot], 0x0E);
+    e = then(e, ended_load(0x0E));
+    jsr_push(0xBF23);
+    e = then(e, ClearAnimationThenStepListC585(slot, 0x11));
+    jsr_pop();
+    WR8(OBJ->vy_lo[slot], 0x80);
+    WR8(OBJ->vy_hi[slot], 0xFC);
+    WR8(OBJ->vx_lo[slot], 0x40);
+    WR8(OBJ->vx_hi[slot], 0x01);
+    facing = RD8(OBJ->facing_left[slot]);
+    e = then(e, ended_load(facing));
+    if (facing != 0) {
+        jsr_push(0xBF3F);
+        negated = NegateVelocityX(slot);
+        jsr_pop();
+        e = then(e, ended_of_sum(negated));
+    }
+    WR8(OBJ->state[slot], 9);
+    return ended_with_carry(then(e, ended_load(9)), true);
+}
+
+void abi_StartLeapWhenHurtAnswerYes(void)
+{
+    abi_ended(StartLeapWhenHurtAnswerYes(cpu.x, cpu.y));
+}

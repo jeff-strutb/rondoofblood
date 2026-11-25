@@ -830,7 +830,7 @@ SpikeProbe RichterSpikeBelow(void)
 
     for (probe.column = 0; probe.column < SPIKE_COLUMNS; probe.column++) {
         jsr_push(0xA0D9);
-        uint8_t across = RichterColumnOffset(probe.column);
+        uint8_t across = RichterColumnOffset(probe.column).value;
         jsr_pop();
         uint8_t y = rd8(OBJ_Y_LO);
         uint8_t foot = rd8((uint16_t)(PlayerFootYByState + rd8(OBJ_27A8)));
@@ -3563,7 +3563,7 @@ void abi_RichterStand(void)
 ClimbStart RichterClimbStart(uint8_t column)
 {
     ClimbStart climb = { 0 };
-    uint8_t across;
+    uint8_t across, offset_value, x_value;
     bool past;
 
     RichterPadOverridesOff();
@@ -3574,13 +3574,15 @@ ClimbStart RichterClimbStart(uint8_t column)
         uint8_t ledge_x = rd8(zTemp00);
         uint8_t row = rd8(OBJ_Y_LO);
 
-        across = add_bytes(add_bytes(RichterColumnOffset(column), rd8(OBJ_X_LO), false).value,
-                           CLIMB_PAST_EDGE, false).value;
+        offset_value = RichterColumnOffset(column).value;
+        x_value = rd8(OBJ_X_LO);
+        across = add_bytes(add_bytes(offset_value, x_value, false).value, CLIMB_PAST_EDGE, false).value;
         wr8(zTemp00, across);
         past = tile_answer(RichterReadBelow((uint8_t)(row + CLIMB_LOW_BELOW),
                                             row + CLIMB_LOW_BELOW > 0xFF)) & CLIMB_EDGE_BIT;
         wr8(zTemp00, ledge_x);
-        across = sub_bytes(RichterColumnOffset(column), ledge_x, true).value;
+        offset_value = RichterColumnOffset(column).value;
+        across = sub_bytes(offset_value, ledge_x, true).value;
         if (past) {
             climb.reach = sub_bytes(across, CLIMB_PAST_EDGE, true);
             climb.state = STATE_CLIMB_LOW_EDGE;
@@ -3592,13 +3594,15 @@ ClimbStart RichterClimbStart(uint8_t column)
     } else {
         uint8_t row = rd8(OBJ_Y_LO);
 
-        across = add_bytes(add_bytes(RichterColumnOffset(column), rd8(OBJ_X_LO), false).value,
-                           CLIMB_PAST_EDGE, false).value;
+        offset_value = RichterColumnOffset(column).value;
+        x_value = rd8(OBJ_X_LO);
+        across = add_bytes(add_bytes(offset_value, x_value, false).value, CLIMB_PAST_EDGE, false).value;
         wr8(zTemp00, across);
         past = tile_answer(RichterReadBelow((uint8_t)(row + CLIMB_HIGH_BELOW),
                                             row + CLIMB_HIGH_BELOW > 0xFF)) & CLIMB_EDGE_BIT;
-        across = sub_bytes(RichterColumnOffset(column),
-                           rd8((uint16_t)(RichterColumnX + column)), true).value;
+        offset_value = RichterColumnOffset(column).value;
+        x_value = rd8((uint16_t)(RichterColumnX + column));
+        across = sub_bytes(offset_value, x_value, true).value;
         if (past) {
             climb.reach = sub_bytes(across, 1, true);
             climb.state = STATE_CLIMB_HIGH_EDGE;

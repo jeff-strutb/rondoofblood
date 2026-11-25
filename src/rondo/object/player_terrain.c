@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "ram.h"
 #include "routines.h"
+#include "access.h"
 
 enum {
     WALL_ANSWER = 0x02, WALL_COLUMNS = 6, WALL_FIRST_COLUMN_STANDING = 0,
@@ -25,7 +26,7 @@ enum {
 
 FloorResult RichterFloorOddScreen(void);
 void RichterWallPushed(void);
-static void floor_clears_push(void);
+static void floor_clears_push(FloorResult *result);
 
 /* The point's X and Y high byte are set, or zero: a read of the point or no answer. */
 static TileRead read_point_or_nothing(bool off_the_map)
@@ -175,22 +176,28 @@ void abi_RichterReadIfOnPage(void)
  * Entry: X column. Exit: A the offset, N and Z from it, Y its index, C and V from the index's
  * add. X kept.
  */
-uint8_t RichterColumnOffset(uint8_t column)
+ColumnOffset RichterColumnOffset(uint8_t column)
 {
-    return rd8((uint16_t)(RichterColumnOffsets + (uint8_t)((column << 1) + rd8(OBJ_2AC0))));
+    ColumnOffset r;
+    uint8_t facing = RD8(OBJ->facing_left[0]);
+    Sum index = add_bytes((uint8_t)(column << 1), facing, false);
+
+    r.value = rd8((uint16_t)(RichterColumnOffsets + index.value));
+    r.index = index.value;
+    r.carry = index.carry;
+    r.overflow = index.overflow;
+    return r;
 }
 
 void abi_RichterColumnOffset(void)
 {
-    uint8_t doubled = (uint8_t)(cpu.x << 1);
-    uint8_t facing = rd8(OBJ_2AC0);
-    uint8_t index = (uint8_t)(doubled + facing);
+    ColumnOffset r = RichterColumnOffset(cpu.x);
 
-    cpu.a = RichterColumnOffset(cpu.x);
-    abi_nz(cpu.a);
-    cpu.y = index;
-    abi_flag(P_C, doubled + facing > 0xFF);
-    abi_flag(P_V, (~(doubled ^ facing) & (doubled ^ index) & 0x80) != 0);
+    cpu.a = r.value;
+    abi_nz(r.value);
+    cpu.y = r.index;
+    abi_flag(P_C, r.carry);
+    abi_flag(P_V, r.overflow);
 }
 
 /*
@@ -318,27 +325,58 @@ void abi_RichterWall(void)
     wall_exit_shim(RichterWall(cpu.y));
 }
 
-/* A column's point: its offset across from Richter, and a row below him. Reads it. */
-static TileRead read_column(uint8_t column, uint8_t below)
+/* The overlay's read may run its own code: it is entered with the row add's A and flags. */
+static void read_entry_kept_shim(Sum row);
+static void read_entry_shim(Sum row, uint8_t x, uint8_t y)
 {
-    uint8_t row = rd8(OBJ_Y_LO);
+    cpu.x = x;
+    cpu.y = y;
+    read_entry_kept_shim(row);
+}
 
-    wr8(zTemp00, (uint8_t)(RichterColumnOffset(column) + rd8(OBJ_X_LO)));
-    return RichterReadBelow((uint8_t)(row + below), row + below > 0xFF);
+/* The same with X and Y as they stand. */
+static void read_entry_kept_shim(Sum row)
+{
+    cpu.a = row.value;
+    abi_nz(row.value);
+    abi_flag(P_C, row.carry);
+    abi_flag(P_V, row.overflow);
 }
 
 static ColumnsEnd read_five_columns(uint8_t below)
 {
-    ColumnsEnd end = { false, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, below };
+    ColumnsEnd end = { false, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, below, 0, 0, false };
+    ColumnOffset offset;
+    Sum across, row;
+    uint8_t value, base;
 
-    wr8(zTemp10, below);
+    WR8(ZP->temp10, below);
     for (uint8_t column = 0; column < RICHTER_COLUMNS; column++) {
-        end.row = rd8(OBJ_Y_LO);
-        end.read_made = end.row + below <= 0xFF;
-        end.last = read_column(column, below);
-        wr8((uint16_t)(RichterColumnHit + column), end.read_made ? tile_answer(end.last) : 0);
-        wr8((uint16_t)(RichterColumnRow + column), rd8(zTemp02));
-        wr8((uint16_t)(RichterColumnX + column), rd8(zTemp00));
+        jsr_push(0xBB2B);
+        offset = RichterColumnOffset(column);
+        jsr_pop();
+        base = RD8(OBJ->x_lo[0]);
+        across = add_bytes(offset.value, base, false);
+        WR8(ZP->temp00, across.value);
+        base = RD8(OBJ->y_lo[0]);
+        value = RD8(ZP->temp10);
+        row = add_bytes(base, value, false);
+        read_entry_shim(row, column, offset.index);
+        jsr_push(0xBB3A);
+        end.last = RichterReadBelow(row.value, row.carry);
+        jsr_pop();
+        end.read_made = !row.carry;
+        end.row = base;
+        end.below = value;
+        end.v = row.overflow;
+        end.index = offset.index;
+        value = end.read_made ? tile_answer(end.last) : 0;
+        wr8((uint16_t)(RichterColumnHit + column), value);
+        value = RD8(ZP->temp02);
+        wr8((uint16_t)(RichterColumnRow + column), value);
+        value = RD8(ZP->temp00);
+        wr8((uint16_t)(RichterColumnX + column), value);
+        end.a = value;
     }
     return end;
 }
@@ -346,17 +384,16 @@ static ColumnsEnd read_five_columns(uint8_t below)
 /* X 5, Z set and C set from the loop's compare; A the last column's X. */
 void columns_exit_shim(ColumnsEnd end)
 {
-    if (end.by_original)
+    if (end.by_original) {
         return;
+    }
     if (end.read_made) {
         terrain_read_exit_shim(end.last);
     } else {
-        uint8_t sum = (uint8_t)(end.row + end.below);
-
-        cpu.y = (uint8_t)(((RICHTER_COLUMNS - 1) << 1) + rd8(OBJ_2AC0));
-        abi_flag(P_V, (~(end.row ^ end.below) & (end.row ^ sum) & 0x80) != 0);
+        cpu.y = end.index;
+        abi_flag(P_V, end.v);
     }
-    cpu.a = rd8(zTemp00);
+    cpu.a = end.a;
     cpu.x = RICHTER_COLUMNS;
     abi_nz(0);
     abi_flag(P_C, true);
@@ -410,23 +447,31 @@ void abi_RichterReadColumns(void)
  * Entry: nothing. Exit: at one, A those bits, X the column; else A 0, X 2, C 1, Z 1. V and,
  * at one, C kept. Y kept.
  */
-int RichterColumnsBlocked(void)
+BlockedColumns RichterColumnsBlocked(void)
 {
-    for (int column = 0; column < BLOCKED_COLUMNS; column++)
-        if (rd8((uint16_t)(RichterColumnHit + column)) & TILE_BLOCKS)
-            return column;
-    return -1;
+    BlockedColumns r = { -1, 0 };
+    uint8_t hit;
+
+    for (int column = 0; column < BLOCKED_COLUMNS; column++) {
+        hit = rd8((uint16_t)(RichterColumnHit + column));
+        if (hit & TILE_BLOCKS) {
+            r.column = column;
+            r.bits = (uint8_t)(hit & TILE_BLOCKS);
+            return r;
+        }
+    }
+    return r;
 }
 
 void abi_RichterColumnsBlocked(void)
 {
-    int column = RichterColumnsBlocked();
+    BlockedColumns r = RichterColumnsBlocked();
 
-    if (column >= 0) {
-        cpu.x = (uint8_t)column;
-        cpu.a = rd8((uint16_t)(RichterColumnHit + column)) & TILE_BLOCKS;
+    if (r.column >= 0) {
+        cpu.x = (uint8_t)r.column;
+        cpu.a = r.bits;
         abi_nz(cpu.a);
-        abi_flag(P_C, column > 0 ? false : (cpu.p & P_C) != 0);
+        abi_flag(P_C, r.column > 0 ? false : (cpu.p & P_C) != 0);
     } else {
         cpu.x = BLOCKED_COLUMNS;
         cpu.a = 0;
@@ -435,12 +480,25 @@ void abi_RichterColumnsBlocked(void)
     }
 }
 
-/* A floor was found: the push's flags come off, unless it is carrying him up. */
-static void floor_clears_push(void)
+/* A floor was found: RMB 0 of the push, then RMB 5 unless the push is carrying him up; the A the check ends with. */
+static void floor_clears_push(FloorResult *result)
 {
-    wr8(zPlayerPush, rd8(zPlayerPush) & (uint8_t)~PUSH_ON_FLOOR);
-    if ((rd8(zFieldCA) & 0x80) || !(rd8(zPushYHi) & 0x80))
-        wr8(zPlayerPush, rd8(zPlayerPush) & (uint8_t)~PUSH_LIFTING);
+    uint8_t push, up_x, up_y;
+
+    push = RD8(ZP->player_push);
+    WR8(ZP->player_push, (uint8_t)(push & (uint8_t)~PUSH_ON_FLOOR));
+    up_x = RD8(ZP->fieldca);
+    result->field_ca = up_x;
+    result->a = up_x;
+    if (!(up_x & 0x80)) {
+        up_y = rd8(zPushYHi);
+        result->a = up_y;
+        if (up_y & 0x80) {
+            return;
+        }
+    }
+    push = RD8(ZP->player_push);
+    WR8(ZP->player_push, (uint8_t)(push & (uint8_t)~PUSH_LIFTING));
 }
 
 /*
@@ -455,10 +513,11 @@ static void floor_clears_push(void)
  */
 FloorResult RichterFloorOddScreen(void)
 {
-    FloorResult result = { FLOOR_HIGH_ON_ODD_SCREEN, 0, rd8(zPlayerPush) };
+    FloorResult result = { FLOOR_HIGH_ON_ODD_SCREEN, 0, 0, 0, 0 };
 
     wr8(RichterColumnRow, 0);
-    floor_clears_push();
+    result.push_before = 0;
+    floor_clears_push(&result);
     return result;
 }
 
@@ -479,26 +538,35 @@ void abi_RichterFloorOddScreen(void)
  */
 FloorResult RichterFloorCheck(void)
 {
-    FloorResult result = { FLOOR_NONE, 0, rd8(zPlayerPush) };
+    FloorResult result = { FLOOR_NONE, 0, 0, 0, 0 };
+    uint8_t hit, push;
 
-    if (rd8(OBJ_X_HI) & 1)
+    hit = RD8(OBJ->x_hi[0]);
+    if (hit & 1) {
         return RichterFloorOddScreen();
+    }
     for (uint8_t column = 0; column < FLOOR_COLUMNS; column++) {
-        uint8_t hit = rd8((uint16_t)(RichterColumnHit + column)) & TILE_FLOOR;
-
+        hit = (uint8_t)(rd8((uint16_t)(RichterColumnHit + column)) & TILE_FLOOR);
+        result.a = hit;
         if (hit != 0 && (!(hit & 0x80) || column == 0)) {
             result.how = FLOOR_FOUND;
             result.column = column;
-            floor_clears_push();
+            floor_clears_push(&result);
             return result;
         }
     }
-    if (result.push_before & PUSH_ON_FLOOR) {
-        wr8(RichterColumnRow, rd8(zFieldCA));
+    push = RD8(ZP->player_push);
+    result.push_before = push;
+    if (push & PUSH_ON_FLOOR) {
+        result.field_ca = RD8(ZP->fieldca);
+        wr8(RichterColumnRow, result.field_ca);
         result.how = FLOOR_FROM_PUSH;
         return result;
     }
-    wr8(zPlayerPush, result.push_before & (uint8_t)~(PUSH_ON_FLOOR | PUSH_LIFTING));
+    push = RD8(ZP->player_push);
+    WR8(ZP->player_push, (uint8_t)(push & (uint8_t)~PUSH_ON_FLOOR));
+    push = RD8(ZP->player_push);
+    WR8(ZP->player_push, (uint8_t)(push & (uint8_t)~PUSH_LIFTING));
     return result;
 }
 
@@ -507,7 +575,7 @@ void floor_check_exit_shim(FloorResult result)
     uint8_t before = result.push_before;
 
     if (result.how == FLOOR_NONE) {
-        cpu.a = 0;
+        cpu.a = result.a;
         cpu.x = FLOOR_COLUMNS;
         abi_nz(0);
         abi_flag(P_N, (before & 0x80) != 0);
@@ -518,9 +586,9 @@ void floor_check_exit_shim(FloorResult result)
     cpu.x = result.column;
     if (result.how == FLOOR_FROM_PUSH) {
         abi_flag(P_V, (before & 0x40) != 0);
-        cpu.a = rd8(zFieldCA);
+        cpu.a = result.field_ca;
     } else {
-        cpu.a = (rd8(zFieldCA) & 0x80) ? rd8(zFieldCA) : rd8(zPushYHi);
+        cpu.a = result.a;
     }
     abi_nz(cpu.a);
     abi_flag(P_C, true);
@@ -529,6 +597,36 @@ void floor_check_exit_shim(FloorResult result)
 void abi_RichterFloorCheck(void)
 {
     floor_check_exit_shim(RichterFloorCheck());
+}
+
+/*
+ * One column's point read a fixed number of rows below him, as the low column check, the floor and the solid check make it:
+ * the offset (a call), its add to his X, his Y plus the rows, and the read (a call) entered with that add's A and flags.
+ */
+static ColumnRead column_probe(uint8_t column, uint8_t below, uint16_t ret_offset, uint16_t ret_read)
+{
+    ColumnRead one = { column, 0, below, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, false };
+    ColumnOffset offset;
+    Sum across, row;
+    uint8_t base;
+
+    jsr_push(ret_offset);
+    offset = RichterColumnOffset(column);
+    jsr_pop();
+    base = RD8(OBJ->x_lo[0]);
+    across = add_bytes(offset.value, base, false);
+    WR8(ZP->temp00, across.value);
+    base = RD8(OBJ->y_lo[0]);
+    row = add_bytes(base, below, false);
+    read_entry_shim(row, column, offset.index);
+    jsr_push(ret_read);
+    one.read = RichterReadBelow(row.value, row.carry);
+    jsr_pop();
+    one.row = base;
+    one.read_made = !row.carry;
+    one.index = offset.index;
+    one.v = row.overflow;
+    return one;
 }
 
 /*
@@ -542,13 +640,18 @@ void abi_RichterFloorCheck(void)
  */
 LowColumns RichterLowColumnsBlocked(void)
 {
-    LowColumns low = { -1, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, 0 };
+    LowColumns low = { -1, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, 0, 0, false };
+    ColumnRead one;
+    static const uint16_t offset_ret[2] = { 0xBB03, 0xBB03 };
 
     for (int column = 0; column < BLOCKED_COLUMNS; column++) {
-        low.row = rd8(OBJ_Y_LO);
-        low.read_made = low.row + COLUMNS_BELOW_LOW <= 0xFF;
-        low.last = read_column((uint8_t)column, COLUMNS_BELOW_LOW);
-        low.answer = low.read_made ? tile_answer(low.last) : 0;
+        one = column_probe((uint8_t)column, COLUMNS_BELOW_LOW, offset_ret[column], 0xBB12);
+        low.row = one.row;
+        low.read_made = one.read_made;
+        low.last = one.read;
+        low.index = one.index;
+        low.v = one.v;
+        low.answer = one.read_made ? tile_answer(one.read) : 0;
         if (low.answer & TILE_BLOCKS) {
             low.blocked_column = column;
             return low;
@@ -562,10 +665,8 @@ void low_columns_exit_shim(LowColumns low)
     if (low.read_made) {
         terrain_read_exit_shim(low.last);
     } else {
-        uint8_t sum = (uint8_t)(low.row + COLUMNS_BELOW_LOW);
-
-        cpu.y = (uint8_t)(((BLOCKED_COLUMNS - 1) << 1) + rd8(OBJ_2AC0));
-        abi_flag(P_V, (~(low.row ^ COLUMNS_BELOW_LOW) & (low.row ^ sum) & 0x80) != 0);
+        cpu.y = low.index;
+        abi_flag(P_V, low.v);
     }
     if (low.blocked_column >= 0) {
         cpu.x = (uint8_t)low.blocked_column;
@@ -597,49 +698,70 @@ void abi_RichterLowColumnsBlocked(void)
 FloorProbe RichterFloor(void)
 {
     FloorProbe probe = { 0 };
+    ColumnRead one;
+    uint8_t value, answer, y_lo, y_hi, push;
+    Sum low, high;
 
-    if (rd8(PlayerMayLeaveTop) != 0) {
+    value = rd8(PlayerMayLeaveTop);
+    if (value != 0) {
         probe.how = FLOOR_BARRED;
         return probe;
     }
+    jsr_push(0xBBC9);
     probe.columns = RichterReadColumns();
+    jsr_pop();
+    jsr_push(0xBBCC);
     probe.check = RichterFloorCheck();
+    jsr_pop();
     if (probe.check.how == FLOOR_NONE) {
         probe.how = FLOOR_NOTHING_UNDER;
         return probe;
     }
-    probe.row = rd8(OBJ_Y_LO);
-    probe.read_made = probe.row + COLUMNS_BELOW_CHECK <= 0xFF;
-    probe.read = read_column(probe.check.column, COLUMNS_BELOW_CHECK);
-    if (probe.read_made) {
-        uint8_t answer = tile_answer(probe.read) & TILE_FLOOR;
-
+    one = column_probe(probe.check.column, COLUMNS_BELOW_CHECK, 0xBBD1, 0xBBE0);
+    probe.row = one.row;
+    probe.read_made = one.read_made;
+    probe.read = one.read;
+    probe.index = one.index;
+    probe.probe_v = one.v;
+    if (one.read_made) {
+        answer = (uint8_t)(tile_answer(one.read) & TILE_FLOOR);
         if (answer != 0 && !(answer & 0x80)) {
             probe.how = FLOOR_COLUMN_SOLID;
             return probe;
         }
     }
-    probe.depth = (uint16_t)(int16_t)(int8_t)rd8((uint16_t)(RichterColumnRow + probe.check.column));
-    wr8(zTemp10, (uint8_t)(probe.depth >> 8));
-    probe.y = (uint16_t)(rd8(OBJ_Y_LO) | (rd8(OBJ_Y_HI) << 8));
-    if ((uint16_t)(probe.y - probe.depth) & 0x8000) {
-        wr8(OBJ_Y_LO, FLOOR_TOP_OF_MAP);
-        wr8(OBJ_Y_HI, 0);
+    WR8(ZP->temp10, 0);
+    value = rd8((uint16_t)(RichterColumnRow + probe.check.column));
+    if (value & 0x80) {
+        DEC8(ZP->temp10);
+    }
+    y_lo = RD8(OBJ->y_lo[0]);
+    value = rd8((uint16_t)(RichterColumnRow + probe.check.column));
+    low = sub_bytes(y_lo, value, true);
+    WR8(OBJ->y_lo[0], low.value);
+    y_hi = RD8(OBJ->y_hi[0]);
+    value = RD8(ZP->temp10);
+    high = sub_bytes(y_hi, value, low.carry);
+    WR8(OBJ->y_hi[0], high.value);
+    probe.lift_c = high.carry;
+    probe.lift_v = high.overflow;
+    if (high.value & 0x80) {
+        WR8(OBJ->y_lo[0], FLOOR_TOP_OF_MAP);
+        WR8(OBJ->y_hi[0], 0);
         probe.how = FLOOR_OFF_THE_TOP;
         return probe;
     }
-    wr8(OBJ_Y_LO, (uint8_t)(probe.y - probe.depth));
-    wr8(OBJ_Y_HI, (uint8_t)((uint16_t)(probe.y - probe.depth) >> 8));
-    probe.how = (rd8(zPlayerPush) & PUSH_LIFTING) ? FLOOR_LANDED_PUSHED : FLOOR_LANDED;
+    push = RD8(ZP->player_push);
+    probe.push = push;
+    probe.how = (push & PUSH_LIFTING) ? FLOOR_LANDED_PUSHED : FLOOR_LANDED;
     return probe;
 }
 
 void floor_exit_shim(FloorProbe probe)
 {
-    uint16_t lifted = (uint16_t)(probe.y - probe.depth);
-
-    if (probe.how == FLOOR_BY_ORIGINAL)
+    if (probe.how == FLOOR_BY_ORIGINAL) {
         return;
+    }
     if (probe.how == FLOOR_BARRED) {
         cpu.a = 0;
         abi_nz(0);
@@ -655,20 +777,19 @@ void floor_exit_shim(FloorProbe probe)
     if (probe.read_made) {
         terrain_read_exit_shim(probe.read);
     } else {
-        uint8_t sum = (uint8_t)(probe.row + COLUMNS_BELOW_CHECK);
-
-        cpu.y = (uint8_t)((probe.check.column << 1) + rd8(OBJ_2AC0));
-        abi_flag(P_V, (~(probe.row ^ COLUMNS_BELOW_CHECK) & (probe.row ^ sum) & 0x80) != 0);
+        cpu.y = probe.index;
+        abi_flag(P_V, probe.probe_v);
     }
     if (probe.how == FLOOR_COLUMN_SOLID) {
         cpu.a = 0;
         abi_nz(0);
         return;
     }
-    abi_flag(P_C, probe.y >= probe.depth);
-    abi_flag(P_V, ((probe.y ^ probe.depth) & (probe.y ^ lifted) & 0x8000) != 0);
-    if (probe.how != FLOOR_OFF_THE_TOP)
-        abi_flag(P_V, (rd8(zPlayerPush) & 0x40) != 0);
+    abi_flag(P_C, probe.lift_c);
+    abi_flag(P_V, probe.lift_v);
+    if (probe.how != FLOOR_OFF_THE_TOP) {
+        abi_flag(P_V, (probe.push & 0x40) != 0);
+    }
     cpu.a = probe.how == FLOOR_LANDED_PUSHED ? 0 : 1;
     abi_nz(cpu.a);
 }
@@ -676,15 +797,6 @@ void floor_exit_shim(FloorProbe probe)
 void abi_RichterFloor(void)
 {
     floor_exit_shim(RichterFloor());
-}
-
-static ColumnRead read_one_column(uint8_t column, uint8_t below)
-{
-    ColumnRead one = { column, rd8(OBJ_Y_LO), below };
-
-    one.read_made = one.row + below <= 0xFF;
-    one.read = read_column(column, below);
-    return one;
 }
 
 static uint8_t column_answer(ColumnRead one)
@@ -697,10 +809,8 @@ void column_read_exit_shim(ColumnRead one)
     if (one.read_made) {
         terrain_read_exit_shim(one.read);
     } else {
-        uint8_t sum = (uint8_t)(one.row + one.below);
-
-        cpu.y = (uint8_t)((one.column << 1) + rd8(OBJ_2AC0));
-        abi_flag(P_V, (~(one.row ^ one.below) & (one.row ^ sum) & 0x80) != 0);
+        cpu.y = one.index;
+        abi_flag(P_V, one.v);
     }
 }
 
@@ -715,7 +825,7 @@ void column_read_exit_shim(ColumnRead one)
  */
 ColumnRead RichterSolidUnderColumn(uint8_t column)
 {
-    return read_one_column(column, COLUMNS_BELOW_CHECK);
+    return column_probe(column, COLUMNS_BELOW_CHECK, 0xAA32, 0xAA41);
 }
 
 static uint8_t solid_answer(ColumnRead one)
@@ -744,11 +854,18 @@ void abi_RichterSolidUnderColumn(void)
  */
 ColumnRead RichterReadUnderFeet(void)
 {
-    ColumnRead one = { 0, rd8(OBJ_Y_LO), COLUMNS_BELOW_SOLES };
+    ColumnRead one = { 0, 0, COLUMNS_BELOW_SOLES, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, false };
+    uint8_t value, base;
+    Sum row;
 
-    wr8(zTemp00, rd8(OBJ_X_LO));
-    one.read_made = one.row + COLUMNS_BELOW_SOLES <= 0xFF;
-    one.read = RichterReadBelow((uint8_t)(one.row + COLUMNS_BELOW_SOLES), !one.read_made);
+    value = RD8(OBJ->x_lo[0]);
+    WR8(ZP->temp00, value);
+    base = RD8(OBJ->y_lo[0]);
+    row = add_bytes(base, COLUMNS_BELOW_SOLES, false);
+    read_entry_kept_shim(row);
+    one.read = RichterReadBelow(row.value, row.carry);
+    one.row = base;
+    one.read_made = !row.carry;
     return one;
 }
 
@@ -1061,7 +1178,7 @@ LedgeCheck RichterLedgeCheck(void)
         check.how = LEDGE_LOW;
         return check;
     }
-    check.high_column = RichterColumnsBlocked();
+    check.high_column = RichterColumnsBlocked().column;
     if (check.high_column >= 0 &&
         column_counts(rd8((uint16_t)(RichterColumnHit + check.high_column)), PAD_UP)) {
         wr8(zTemp01, 1);

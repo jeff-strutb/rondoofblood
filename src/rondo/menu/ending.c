@@ -11,6 +11,7 @@
 #include "access.h"
 #include "routines.h"
 #include "front_end.h"
+#include "vram_update.h"
 
 enum { ENDING_LISTS = 0x8A05 };
 
@@ -2563,4 +2564,447 @@ Exit EndingStep(uint8_t kept_y)
 void abi_EndingStep(void)
 {
     exit_shim(EndingStep(cpu.y));
+}
+
+/*
+ * The ending's palette effects (overlay sector $0111, bank $6C at $8000): twelve slots at $3C00, a type byte each (0 free), a list
+ * number at $3C0C, the list's step at $3C18, a count at $3C24 and a timer at $3C30; the slot's other fields at $3C3C, $3C48 and $3C54.
+ */
+enum {
+    EFFECT_TYPE = 0x3C00, EFFECT_LIST = 0x3C0C, EFFECT_STEP = 0x3C18, EFFECT_COUNT = 0x3C24, EFFECT_TIMER = 0x3C30,
+    EFFECT_F3C3C = 0x3C3C, EFFECT_F3C48 = 0x3C48, EFFECT_F3C54 = 0x3C54, EFFECT_SLOTS = 12, EFFECT_COLOURS = 0x3C60,
+    EFFECT_TABLE = 0x82EA
+};
+
+/* The slot given back: every field of it cleared, the type last... first. */
+static void clear_effect_slot(uint8_t slot)
+{
+    wr8((uint16_t)(EFFECT_TYPE + slot), 0);
+    wr8((uint16_t)(EFFECT_LIST + slot), 0);
+    wr8((uint16_t)(EFFECT_STEP + slot), 0);
+    wr8((uint16_t)(EFFECT_COUNT + slot), 0);
+    wr8((uint16_t)(EFFECT_TIMER + slot), 0);
+    wr8((uint16_t)(EFFECT_F3C3C + slot), 0);
+    wr8((uint16_t)(EFFECT_F3C48 + slot), 0);
+    wr8((uint16_t)(EFFECT_F3C54 + slot), 0);
+}
+
+/* A plain Exit that keeps what it does not name. */
+static Exit effect_exit(uint8_t a, uint8_t nz)
+{
+    Exit exit = { 0 };
+
+    exit.a = a;
+    exit.nz = nz;
+    exit.x_kept = exit.y_kept = exit.c_kept = true;
+    return exit;
+}
+
+/* What a palette load leaves in Y, C and V, laid over an exit. */
+static void effect_after_load(Exit *exit, PaletteLoad load)
+{
+    exit->y = 9;
+    exit->y_kept = false;
+    exit->c = load.sum.carry;
+    exit->c_kept = false;
+    exit->v = load.sum.overflow;
+    exit->v_set = true;
+}
+
+/* A byte at an address counted up or down, as the INC and DEC of an absolute,X operand do. */
+static uint8_t inc_at(uint16_t address)
+{
+    uint8_t value = (uint8_t)(rd8(address) + 1);
+
+    wr8(address, value);
+    return value;
+}
+
+static uint8_t dec_at(uint16_t address)
+{
+    uint8_t value = (uint8_t)(rd8(address) - 1);
+
+    wr8(address, value);
+    return value;
+}
+
+/* The slot's list address in zTemp00 and zTemp01, from the table for a negative list number or the pointer at $9400. */
+static void select_effect_list(uint8_t list, uint16_t negative_table, uint16_t pointer)
+{
+    uint8_t y = (uint8_t)(list << 1);
+
+    if ((list & 0x80) != 0) {
+        WR8(ZP->temp00, rd8((uint16_t)(negative_table + y)));
+        WR8(ZP->temp01, rd8((uint16_t)(negative_table + 1 + y)));
+        return;
+    }
+    WR8(ZP->bios_a.lo, rd8(pointer));
+    WR8(ZP->bios_a.hi, rd8((uint16_t)(pointer + 1)));
+    WR8(ZP->temp00, RD8_PTR_Y(ZP->bios_a.lo, y));
+    y++;
+    WR8(ZP->temp01, RD8_PTR_Y(ZP->bios_a.lo, y));
+}
+
+/*
+ * @routine 0111:2F8 EndingEffectList
+ * @run 6C:82F8
+ * WHAT IT DOES: A palette effect that plays a list of palette loads: once its timer has run down it takes the list's palettes one a
+ * step (each loaded by LoadPackedPaletteC), the timer set from the list's first byte; when the list ends it counts a round and starts
+ * the list again, and when the rounds the list names have been played it gives the slot back.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at $89D2).
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N, Z and C from
+ * comparing it with the rounds played, Y 1; X kept.
+ */
+Exit EndingEffectList(uint8_t slot)
+{
+    Exit exit;
+    PaletteLoad load = { { 0, false, false }, 0 };
+    uint8_t timer, y, value, rounds, count;
+    bool loaded = false;
+
+    for (;;) {
+        timer = rd8((uint16_t)(EFFECT_TIMER + slot));
+        if (timer != 0) {
+            exit = effect_exit(timer, dec_at((uint16_t)(EFFECT_TIMER + slot)));
+            if (loaded) {
+                effect_after_load(&exit, load);
+            }
+            return exit;
+        }
+        select_effect_list(rd8((uint16_t)(EFFECT_LIST + slot)), 0x89D2, 0x9400);
+        y = 0;
+        value = RD8_PTR_Y(ZP->temp00, y);
+        wr8((uint16_t)(EFFECT_TIMER + slot), value);
+        for (;;) {
+            y = (uint8_t)((uint8_t)(rd8((uint16_t)(EFFECT_STEP + slot)) << 2) + 2);
+            value = RD8_PTR_Y(ZP->temp00, y);
+            if (value != 0xFF) {
+                jsr_push(0x8340);
+                load = LoadPackedPaletteC(y);
+                jsr_pop();
+                loaded = true;
+                inc_at((uint16_t)(EFFECT_STEP + slot));
+                break;
+            }
+            inc_at((uint16_t)(EFFECT_COUNT + slot));
+            wr8((uint16_t)(EFFECT_STEP + slot), 0);
+            y = 1;
+            value = RD8_PTR_Y(ZP->temp00, y);
+            if ((value & 0x80) != 0) {
+                continue;
+            }
+            rounds = (uint8_t)(value & 0x7F);
+            count = rd8((uint16_t)(EFFECT_COUNT + slot));
+            if (rounds >= count) {
+                continue;
+            }
+            clear_effect_slot(slot);
+            exit = effect_exit(rounds, (uint8_t)(rounds - count));
+            exit.c = false;
+            exit.c_kept = false;
+            exit.y = 1;
+            exit.y_kept = false;
+            if (loaded) {
+                exit.v = load.sum.overflow;
+                exit.v_set = true;
+            }
+            return exit;
+        }
+    }
+}
+
+void abi_EndingEffectList(void)
+{
+    exit_shim(EndingEffectList(cpu.x));
+}
+
+/* One colour word of the fade: each of its three 3-bit components counted down by one unless it is zero. */
+static void fade_colour(uint8_t x)
+{
+    uint8_t low, part, blue, high, carry_out, red;
+
+    low = rd8((uint16_t)(EFFECT_COLOURS + x));
+    part = (uint8_t)(low & 0x07);
+    if (part != 0) {
+        part--;
+    }
+    WR8(ZP->temp02, part);
+    low = rd8((uint16_t)(EFFECT_COLOURS + x));
+    blue = (uint8_t)(low & 0x38);
+    if (blue != 0) {
+        blue = (uint8_t)(blue - 0x08);
+    }
+    part = (uint8_t)(blue | RD8(ZP->temp02));
+    WR8(ZP->temp02, part);
+    low = rd8((uint16_t)(EFFECT_COLOURS + x));
+    high = rd8((uint16_t)(EFFECT_COLOURS + 1 + x));
+    carry_out = (uint8_t)(high & 1);
+    wr8((uint16_t)(EFFECT_COLOURS + 1 + x), (uint8_t)(high >> 1));
+    low = (uint8_t)((low >> 1) | (carry_out << 7));
+    red = (uint8_t)(low & 0xE0);
+    if (red != 0) {
+        red = (uint8_t)(red - 0x20);
+    }
+    carry_out = (uint8_t)(red >> 7);
+    red = (uint8_t)(red << 1);
+    high = rd8((uint16_t)(EFFECT_COLOURS + 1 + x));
+    wr8((uint16_t)(EFFECT_COLOURS + 1 + x), (uint8_t)((high << 1) | carry_out));
+    part = RD8(ZP->temp02);
+    wr8((uint16_t)(EFFECT_COLOURS + x), (uint8_t)(red | part));
+}
+
+/*
+ * @routine 0111:371 EndingEffectFade
+ * @run 6C:8371
+ * WHAT IT DOES: A palette effect that fades palettes down: once its timer has run down it counts a round, gives the slot back after the
+ * eighth, and otherwise takes the list's palettes (an address of the VCE and a count each) and darkens every colour of them by one step
+ * in each of its three components, writing them back to the VCE.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402 (or a table at $9442); the VCE read into $3C60 by a TAI,
+ * changed word by word, and written back by a TIA.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X $20 when a palette
+ * was changed (else the slot), Y the list's place.
+ */
+Exit EndingEffectFade(uint8_t slot)
+{
+    Exit exit;
+    uint8_t timer, y, value, count, low, high, x;
+
+    timer = rd8((uint16_t)(EFFECT_TIMER + slot));
+    if (timer != 0) {
+        return effect_exit(timer, dec_at((uint16_t)(EFFECT_TIMER + slot)));
+    }
+    inc_at((uint16_t)(EFFECT_COUNT + slot));
+    count = rd8((uint16_t)(EFFECT_COUNT + slot));
+    if (count >= 8) {
+        clear_effect_slot(slot);
+        exit = effect_exit(count, (uint8_t)(count - 8));
+        exit.c = true;
+        exit.c_kept = false;
+        return exit;
+    }
+    select_effect_list(rd8((uint16_t)(EFFECT_LIST + slot)), 0x9442, 0x9402);
+    y = 0;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    wr8((uint16_t)(EFFECT_TIMER + slot), value);
+    x = slot;
+    y++;
+    for (;;) {
+        value = RD8_PTR_Y(ZP->temp00, y);
+        if (value == 0xFF) {
+            exit = effect_exit(0xFF, 0);
+            exit.c = true;
+            exit.c_kept = false;
+            exit.x = x;
+            exit.x_kept = false;
+            exit.y = y;
+            exit.y_kept = false;
+            return exit;
+        }
+        WR8(ZP->temp08, value);
+        wr8(VCE_ADDR_LO, value);
+        y++;
+        high = RD8_PTR_Y(ZP->temp00, y);
+        WR8(ZP->temp09, high);
+        wr8(VCE_ADDR_HI, high);
+        y++;
+        block_move_tai(VCE_DATA_LO, EFFECT_COLOURS, 0x20, high, x, y);
+        for (x = 0; x < 0x20; x = (uint8_t)(x + 2)) {
+            fade_colour(x);
+        }
+        low = RD8(ZP->temp08);
+        wr8(VCE_ADDR_LO, low);
+        high = RD8(ZP->temp09);
+        wr8(VCE_ADDR_HI, high);
+        block_move_tia(EFFECT_COLOURS, VCE_DATA_LO, 0x20, high, x, y);
+    }
+}
+
+void abi_EndingEffectFade(void)
+{
+    exit_shim(EndingEffectFade(cpu.x));
+}
+
+/*
+ * @routine 0111:2DA EndingEffectDispatch
+ * @run 6C:82DA
+ * WHAT IT DOES: Sends a palette effect slot to the handler its type names: the table at $82EA holds one address per type, type 1 first.
+ * HOW: Type less one doubled indexes the table; the word goes through zTemp00 and zTemp01; the jump is made with A the word's high byte,
+ * Y the index, C bit 7 of type less one, X the slot. A handler this overlay's C does not hold runs as the original code.
+ * WAITS: no.
+ * Entry: A the type (not zero), X the slot. Exit: as the handler leaves them.
+ */
+Exit EndingEffectDispatch(uint8_t type, uint8_t slot)
+{
+    Exit exit = { 0 };
+    uint8_t less, index, low, high, high_read;
+    uint16_t target;
+    bool carry;
+
+    less = (uint8_t)(type - 1);
+    index = (uint8_t)(less << 1);
+    carry = (less & 0x80) != 0;
+    low = rd8((uint16_t)(EFFECT_TABLE + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(EFFECT_TABLE + 1 + index));
+    WR8(ZP->temp01, high);
+    low = RD8(ZP->temp00);
+    high_read = RD8(ZP->temp01);
+    target = (uint16_t)(low | (high_read << 8));
+    switch (target) {
+    case 0x82F8: exit = EndingEffectList(slot); break;
+    case 0x8371: exit = EndingEffectFade(slot); break;
+    default:
+        cpu_entry_shim(high, slot, index, carry);
+        call_original(target);
+        exit.from_cpu = true;
+        return exit;
+    }
+    if (exit.a_kept) {
+        exit.a = high;
+        exit.a_kept = false;
+    }
+    if (exit.y_kept) {
+        exit.y = index;
+        exit.y_kept = false;
+    }
+    if (exit.c_kept) {
+        exit.c = carry;
+        exit.c_kept = false;
+    }
+    return exit;
+}
+
+void abi_EndingEffectDispatch(void)
+{
+    exit_shim(EndingEffectDispatch(cpu.a, cpu.x));
+}
+
+/* The end of the loop over the slots when the last handler ran as original code: X $FF from the DEX. */
+static void effect_loop_end_shim(bool a_loaded)
+{
+    if (a_loaded) {
+        cpu.a = 0;
+    }
+    cpu.x = 0xFF;
+    abi_nz(0xFF);
+}
+
+/*
+ * @routine 0111:2AE EndingEffectStep
+ * @run 6C:82AE
+ * WHAT IT DOES: One frame of the ending's palette effects: while the game is paused (bit 0 of zPaused) only slots 2 and $0B are run; otherwise,
+ * unless slot 3 holds type 5 (which runs as the original code with X 3), every slot from $0B down to 0 that has a type is run through
+ * EndingEffectDispatch.
+ * HOW: zPaused; the types at $3C00; the slot kept in zRichterObject's byte ($20D9) across each dispatch.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $FF, N set, Z clear; A the last type loaded or what the last handler left; C, Y and V as the last handler left them.
+ */
+Exit EndingEffectStep(void)
+{
+    Exit exit = { 0 };
+    Exit last;
+    uint8_t type, slot, kept;
+    bool have_last = false;
+    uint8_t last_slot = 0;
+    bool y_set = false, c_set = false, v_set = false, v = false, c = false;
+    uint8_t y = 0, a = 0;
+
+    if ((RD8(ZP->paused) & 1) != 0) {
+        type = rd8((uint16_t)(EFFECT_TYPE + 2));
+        jsr_push(0x82B5);
+        if (type != 0) {
+            exit = EndingEffectDispatch(type, 2);
+            if (exit.from_cpu) {
+                jsr_pop();
+                return exit;
+            }
+        }
+        jsr_pop();
+        type = rd8((uint16_t)(EFFECT_TYPE + 0x0B));
+        if (type == 0) {
+            exit = effect_exit(0, 0);
+            exit.x = 0x0B;
+            exit.x_kept = false;
+            return exit;
+        }
+        return EndingEffectDispatch(type, 0x0B);
+    }
+    type = rd8((uint16_t)(EFFECT_TYPE + 3));
+    c = type >= 5;
+    c_set = true;
+    if (type == 5) {
+        cpu_entry_shim(3, 3, 0, c);
+        cpu.x = 3;
+        call_original(0x856F);
+        exit.from_cpu = true;
+        return exit;
+    }
+    for (slot = 0x0B; (int8_t)slot >= 0; slot--) {
+        type = rd8((uint16_t)(EFFECT_TYPE + slot));
+        a = type;
+        if (type != 0) {
+            wr8(0x20D9, slot);
+            jsr_push(0x82D4);
+            last = EndingEffectDispatch(type, slot);
+            jsr_pop();
+            if (last.from_cpu) {
+                have_last = true;
+                last_slot = slot;
+                exit = last;
+            } else {
+                have_last = false;
+                a = last.a;
+                y = last.y;
+                y_set = true;
+                c = last.c;
+                c_set = true;
+                if (last.v_set) {
+                    v = last.v;
+                    v_set = true;
+                }
+            }
+            kept = rd8(0x20D9);
+            slot = kept;
+        }
+    }
+    if (have_last) {
+        effect_loop_end_shim(last_slot != 0);
+        exit.from_cpu = true;
+        return exit;
+    }
+    exit.a = a;
+    exit.x = 0xFF;
+    exit.nz = 0xFF;
+    exit.y = y;
+    exit.y_kept = !y_set;
+    exit.c = c;
+    exit.c_kept = !c_set;
+    exit.v = v;
+    exit.v_set = v_set;
+    return exit;
+}
+
+void abi_EndingEffectStep(void)
+{
+    exit_shim(EndingEffectStep());
+}
+
+/*
+ * @routine 0111:003 EndingEffectEntry
+ * @run 6C:8003
+ * WHAT IT DOES: The palette effects' entry for a frame: runs EndingEffectStep.
+ * HOW: A jump to EndingEffectStep.
+ * WAITS: no.
+ * Entry: nothing. Exit: as EndingEffectStep.
+ */
+Exit EndingEffectEntry(void)
+{
+    return EndingEffectStep();
+}
+
+void abi_EndingEffectEntry(void)
+{
+    exit_shim(EndingEffectEntry());
 }

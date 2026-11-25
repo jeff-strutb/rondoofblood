@@ -39,7 +39,7 @@ typedef struct {
     bool c, v;
 } Exit;
 
-static Held held_in(void)
+static Held held_in_shim(void)
 {
     Held h = { cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0 };
 
@@ -66,7 +66,7 @@ static Exit finish(Exit e)
 }
 
 /* The wrapper's: what the path holds goes into the registers the original has at the jump to the exit. */
-static void exit_regs(Exit e)
+static void exit_regs_shim(Exit e)
 {
     cpu.a = e.a;
     cpu.x = e.x;
@@ -321,7 +321,7 @@ Exit RasterEndBand1(Held h)
 
 void abi_RasterEndBand1(void)
 {
-    exit_regs(RasterEndBand1(held_in()));
+    exit_regs_shim(RasterEndBand1(held_in_shim()));
 }
 
 /*
@@ -343,7 +343,7 @@ Exit RasterEndWorkBand(Held h)
 
 void abi_RasterEndWorkBand(void)
 {
-    exit_regs(RasterEndWorkBand(held_in()));
+    exit_regs_shim(RasterEndWorkBand(held_in_shim()));
 }
 
 /* The body RasterSetNextLine and RasterBandThenLine share: the step counted, the compare line from the stack. */
@@ -377,7 +377,7 @@ Exit RasterSetNextLine(uint8_t line, Held h)
 
 void abi_RasterSetNextLine(void)
 {
-    exit_regs(RasterSetNextLine(cpu.a, held_in()));
+    exit_regs_shim(RasterSetNextLine(cpu.a, held_in_shim()));
 }
 
 /*
@@ -399,7 +399,7 @@ Exit RasterBandThenLine(uint8_t band, uint8_t line, Held h)
 
 void abi_RasterBandThenLine(void)
 {
-    exit_regs(RasterBandThenLine(cpu.x, cpu.a, held_in()));
+    exit_regs_shim(RasterBandThenLine(cpu.x, cpu.a, held_in_shim()));
 }
 
 /*
@@ -427,7 +427,7 @@ Exit RasterEffect2(Held h)
 
 void abi_RasterEffect2(void)
 {
-    exit_regs(RasterEffect2(held_in()));
+    exit_regs_shim(RasterEffect2(held_in_shim()));
 }
 
 /*
@@ -466,7 +466,7 @@ Exit RasterEffect3(Held h)
 
 void abi_RasterEffect3(void)
 {
-    exit_regs(RasterEffect3(held_in()));
+    exit_regs_shim(RasterEffect3(held_in_shim()));
 }
 
 /*
@@ -492,7 +492,7 @@ Exit RasterEffect4(Held h)
 
 void abi_RasterEffect4(void)
 {
-    exit_regs(RasterEffect4(held_in()));
+    exit_regs_shim(RasterEffect4(held_in_shim()));
 }
 
 /*
@@ -529,7 +529,7 @@ Exit RasterEffect5(Held h)
 
 void abi_RasterEffect5(void)
 {
-    exit_regs(RasterEffect5(held_in()));
+    exit_regs_shim(RasterEffect5(held_in_shim()));
 }
 
 /*
@@ -558,7 +558,7 @@ Exit RasterEffect6(Held h)
 
 void abi_RasterEffect6(void)
 {
-    exit_regs(RasterEffect6(held_in()));
+    exit_regs_shim(RasterEffect6(held_in_shim()));
 }
 
 /*
@@ -587,7 +587,7 @@ Exit RasterEffect7(Held h)
 
 void abi_RasterEffect7(void)
 {
-    exit_regs(RasterEffect7(held_in()));
+    exit_regs_shim(RasterEffect7(held_in_shim()));
 }
 
 /*
@@ -607,7 +607,7 @@ Exit RasterEffect8Step4(Held h)
 
 void abi_RasterEffect8Step4(void)
 {
-    exit_regs(RasterEffect8Step4(held_in()));
+    exit_regs_shim(RasterEffect8Step4(held_in_shim()));
 }
 
 /*
@@ -630,7 +630,7 @@ Exit RasterEffect8Step0(Held h)
 
 void abi_RasterEffect8Step0(void)
 {
-    exit_regs(RasterEffect8Step0(held_in()));
+    exit_regs_shim(RasterEffect8Step0(held_in_shim()));
 }
 
 /*
@@ -651,7 +651,7 @@ Exit RasterEffect8Step3(Held h)
 
 void abi_RasterEffect8Step3(void)
 {
-    exit_regs(RasterEffect8Step3(held_in()));
+    exit_regs_shim(RasterEffect8Step3(held_in_shim()));
 }
 
 /* Colours $101-$10F back from where the step below kept them. Leaves A the last byte read, X 0. */
@@ -746,7 +746,7 @@ Exit RasterEffect8(Held h)
 
 void abi_RasterEffect8(void)
 {
-    exit_regs(RasterEffect8(held_in()));
+    exit_regs_shim(RasterEffect8(held_in_shim()));
 }
 
 /* Effects 9 and 10: two bands of a three-step split, the last at a fixed Y. */
@@ -783,7 +783,7 @@ Exit RasterEffect9(Held h)
 
 void abi_RasterEffect9(void)
 {
-    exit_regs(RasterEffect9(held_in()));
+    exit_regs_shim(RasterEffect9(held_in_shim()));
 }
 
 /*
@@ -802,7 +802,7 @@ Exit RasterEffect10(Held h)
 
 void abi_RasterEffect10(void)
 {
-    exit_regs(RasterEffect10(held_in()));
+    exit_regs_shim(RasterEffect10(held_in_shim()));
 }
 
 /*
@@ -823,7 +823,7 @@ Exit RasterEffect11(Held h)
 
 void abi_RasterEffect11(void)
 {
-    exit_regs(RasterEffect11(held_in()));
+    exit_regs_shim(RasterEffect11(held_in_shim()));
 }
 
 /*
@@ -852,7 +852,7 @@ Exit RasterEffect12(Held h)
 
 void abi_RasterEffect12(void)
 {
-    exit_regs(RasterEffect12(held_in()));
+    exit_regs_shim(RasterEffect12(held_in_shim()));
 }
 
 /*
@@ -892,7 +892,7 @@ Exit RasterEffect13(Held h)
 
 void abi_RasterEffect13(void)
 {
-    exit_regs(RasterEffect13(held_in()));
+    exit_regs_shim(RasterEffect13(held_in_shim()));
 }
 
 /*
@@ -931,7 +931,7 @@ Exit RasterEffect14(Held h)
 
 void abi_RasterEffect14(void)
 {
-    exit_regs(RasterEffect14(held_in()));
+    exit_regs_shim(RasterEffect14(held_in_shim()));
 }
 
 /*
@@ -995,7 +995,7 @@ Exit RasterEffect15(Held h)
 
 void abi_RasterEffect15(void)
 {
-    exit_regs(RasterEffect15(held_in()));
+    exit_regs_shim(RasterEffect15(held_in_shim()));
 }
 
 /*
@@ -1024,7 +1024,7 @@ Exit RasterEffect16(Held h)
 
 void abi_RasterEffect16(void)
 {
-    exit_regs(RasterEffect16(held_in()));
+    exit_regs_shim(RasterEffect16(held_in_shim()));
 }
 
 /*
@@ -1053,7 +1053,7 @@ Exit RasterEffect17(Held h)
 
 void abi_RasterEffect17(void)
 {
-    exit_regs(RasterEffect17(held_in()));
+    exit_regs_shim(RasterEffect17(held_in_shim()));
 }
 
 /* Band 0's X low with X high 1, at Y $168: the fixed band of effect 18. */
@@ -1117,7 +1117,7 @@ Exit RasterEffect18(Held h)
 
 void abi_RasterEffect18(void)
 {
-    exit_regs(RasterEffect18(held_in()));
+    exit_regs_shim(RasterEffect18(held_in_shim()));
 }
 
 /*
@@ -1165,7 +1165,7 @@ Exit RasterEffect19(Held h)
 
 void abi_RasterEffect19(void)
 {
-    exit_regs(RasterEffect19(held_in()));
+    exit_regs_shim(RasterEffect19(held_in_shim()));
 }
 
 /*
@@ -1250,7 +1250,7 @@ Exit RasterEffect20(Held h)
 
 void abi_RasterEffect20(void)
 {
-    exit_regs(RasterEffect20(held_in()));
+    exit_regs_shim(RasterEffect20(held_in_shim()));
 }
 
 /*
@@ -1298,7 +1298,7 @@ Exit RasterEffect21(Held h)
 
 void abi_RasterEffect21(void)
 {
-    exit_regs(RasterEffect21(held_in()));
+    exit_regs_shim(RasterEffect21(held_in_shim()));
 }
 
 /*
@@ -1330,7 +1330,7 @@ Exit RasterEffect22(Held h)
 
 void abi_RasterEffect22(void)
 {
-    exit_regs(RasterEffect22(held_in()));
+    exit_regs_shim(RasterEffect22(held_in_shim()));
 }
 
 /* Effects 23 and 29: flatten the colours and restore them, after a first line. */
@@ -1368,7 +1368,7 @@ Exit RasterEffect23(Held h)
 
 void abi_RasterEffect23(void)
 {
-    exit_regs(RasterEffect23(held_in()));
+    exit_regs_shim(RasterEffect23(held_in_shim()));
 }
 
 /*
@@ -1391,7 +1391,7 @@ Exit RasterEffect25(Held h)
 
 void abi_RasterEffect25(void)
 {
-    exit_regs(RasterEffect25(held_in()));
+    exit_regs_shim(RasterEffect25(held_in_shim()));
 }
 
 /*
@@ -1411,7 +1411,7 @@ Exit RasterEffect29(Held h)
 
 void abi_RasterEffect29(void)
 {
-    exit_regs(RasterEffect29(held_in()));
+    exit_regs_shim(RasterEffect29(held_in_shim()));
 }
 
 /*
@@ -1473,7 +1473,7 @@ Exit RasterEffect24(Held h)
 
 void abi_RasterEffect24(void)
 {
-    exit_regs(RasterEffect24(held_in()));
+    exit_regs_shim(RasterEffect24(held_in_shim()));
 }
 
 /*
@@ -1546,7 +1546,7 @@ Exit RasterEffect26(Held h)
 
 void abi_RasterEffect26(void)
 {
-    exit_regs(RasterEffect26(held_in()));
+    exit_regs_shim(RasterEffect26(held_in_shim()));
 }
 
 /*
@@ -1565,7 +1565,7 @@ Exit RasterEffect27(Held h)
 
 void abi_RasterEffect27(void)
 {
-    exit_regs(RasterEffect27(held_in()));
+    exit_regs_shim(RasterEffect27(held_in_shim()));
 }
 
 /*
@@ -1631,7 +1631,7 @@ Exit RasterEffect28(Held h)
 
 void abi_RasterEffect28(void)
 {
-    exit_regs(RasterEffect28(held_in()));
+    exit_regs_shim(RasterEffect28(held_in_shim()));
 }
 
 /*
@@ -1660,7 +1660,7 @@ Exit RasterEffect30(Held h)
 
 void abi_RasterEffect30(void)
 {
-    exit_regs(RasterEffect30(held_in()));
+    exit_regs_shim(RasterEffect30(held_in_shim()));
 }
 
 /*
@@ -1697,7 +1697,7 @@ Exit RasterEffect31(Held h)
 
 void abi_RasterEffect31(void)
 {
-    exit_regs(RasterEffect31(held_in()));
+    exit_regs_shim(RasterEffect31(held_in_shim()));
 }
 
 /*

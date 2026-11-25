@@ -150,12 +150,14 @@ static void compare_shim(uint8_t a, uint8_t b)
 /* A stage's bit, ORed into a table byte at the index StageClearBit gave. */
 typedef struct { StageBit found; uint8_t marked; } StageMark;
 
-static StageMark mark_stage(uint16_t table)
+static StageMark mark_stage(uint16_t table, uint16_t ret)
 {
     StageMark mark;
     uint16_t at;
 
+    jsr_push(ret);
     mark.found = StageClearBit();
+    jsr_pop();
     at = (uint16_t)(table + mark.found.index);
     mark.marked = (uint8_t)(mark.found.bit | rd8(at));
     wr8(at, mark.marked);
@@ -823,7 +825,7 @@ StageDoneRun ModeStageDone(void)
         run.mode = NextGameMode();
         return run;
     }
-    run.mark = mark_stage(StagesVisited);
+    run.mark = mark_stage(StagesVisited, 0x5235);
     ResetGameState();
     run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */
     run.slot = rd8(zSaveSlot);
@@ -959,7 +961,7 @@ StageRun ModeStage(void)
     } else if (rd8(zModeEvents) & EVENT_CLEAR) {
         run.path = STAGE_CLEAR;
         wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_CLEAR));
-        run.mark = mark_stage(StagesVisited);
+        run.mark = mark_stage(StagesVisited, 0x52DC);
         run.slot = rd8(zSaveSlot);
         if (!(run.slot & 0x80))
             run.save = SaveScore();
@@ -1033,6 +1035,7 @@ void abi_ModeStage(void)
  * WHAT IT DOES: Enters the next stage, marks it and saves, and goes to the stage mode; if
  * there is no next stage, back to the title's mode 0.
  * HOW: StageEnter; zStage zero is the end. StageClearBit into StagesReached.
+ * WAITS: no.
  * Entry: nothing. Exit: A 0; N and Z from mode 5, or from zStage zero; the rest as what ran
  * last.
  */
@@ -1048,16 +1051,21 @@ ClearedNextRun StageClearedNext(void)
 {
     ClearedNextRun run;
 
+    jsr_push(0x5309);
     run.enter = StageEnter();
+    jsr_pop();
     run.stage = rd8(zStage);
     if (run.stage == 0) {
         SetGameMode(0);
         return run;
     }
-    run.mark = mark_stage(StagesReached);
+    run.mark = mark_stage(StagesReached, 0x530F);
     run.slot = rd8(zSaveSlot);
-    if (!(run.slot & 0x80))
+    if (!(run.slot & 0x80)) {
+        jsr_push(0x531C);
         run.save = SaveProgress();
+        jsr_pop();
+    }
     SetGameMode(MODE_STAGE);
     return run;
 }
@@ -1089,6 +1097,7 @@ void abi_StageClearedNext(void)
  * @run 69:52FE
  * WHAT IT DOES: Mode 6: marks the stage visited and runs into StageClearedNext.
  * HOW: StageClearBit into StagesVisited.
+ * WAITS: no.
  * Entry: nothing. Exit: as StageClearedNext.
  */
 typedef struct { StageMark mark; ClearedNextRun next; } StageClearedRun;
@@ -1097,7 +1106,7 @@ StageClearedRun ModeStageCleared(void)
 {
     StageClearedRun run;
 
-    run.mark = mark_stage(StagesVisited);
+    run.mark = mark_stage(StagesVisited, 0x5300);
     run.next = StageClearedNext();
     return run;
 }
@@ -1116,6 +1125,7 @@ void abi_ModeStageCleared(void)
  * WHAT IT DOES: Finds zStage's bit in the visited tables: the byte in X, the bit in A.
  * HOW: Bits 2-4 of the stage give the byte, five further on for the second character;
  * bits 0-1 the bit; a stage with bit 7 set takes the high nibble.
+ * WAITS: no.
  * Entry: nothing. Exit: A the bit, X the byte, Y zStage, N and Z from Y, or from the bit with
  * bit 7 set; C and V clear, the add and the shifts never carrying. Clobbers zTemp00.
  */
@@ -1127,6 +1137,7 @@ StageBit StageClearBit(void)
 
     wr8(zTemp00, base);
     stage = rd8(zStage);
+    base = rd8(zTemp00);
     found.index = (uint8_t)(((stage >> 2) & 0x07) + base);
     found.bit = (uint8_t)(1 << (rd8(zStage) & 0x03));
     found.stage = rd8(zStage);

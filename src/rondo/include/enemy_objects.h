@@ -112,6 +112,12 @@ static inline bool ended_carry_or(Ended e, bool entry)
     return e.c_set ? e.c : entry;
 }
 
+/* The Y the state leaves, given the Y the routine was entered with. */
+static inline uint8_t ended_y_or(Ended e, uint8_t entry)
+{
+    return e.y_set ? e.y : entry;
+}
+
 /* The abi_ wrappers' one place that meets the registers. */
 static inline void abi_ended(Ended e)
 {
@@ -619,6 +625,18 @@ static inline Ended enter_state_if_flagged(uint8_t slot, uint8_t state)
 
 /* PROTOTYPES BEGIN */
 /* object/enemies_common_temp.c */
+ScreenSoundEnd PlayHitSoundA(uint8_t slot);
+ScreenSoundEnd PlayHitSoundB(uint8_t slot);
+ScreenSoundEnd PlayHitSoundC(uint8_t slot);
+ScreenSoundEnd PlayHitSoundD(uint8_t slot);
+ScreenSoundEnd PlayHitSoundE(uint8_t slot);
+ScreenSoundEnd PlayHitSoundF(uint8_t slot);
+ScreenSoundEnd PlayHitSoundG(uint8_t slot);
+ScreenSoundEnd PlayHitSoundH(uint8_t slot);
+ScreenSoundEnd PlayHitSoundI(uint8_t slot);
+ScreenSoundEnd PlayHitSoundJ(uint8_t slot);
+ScreenSoundEnd PlayHitSoundK(uint8_t slot);
+ScreenSoundEnd PlayHitSoundL(uint8_t slot);
 Ended DropItemWhenHitA(uint8_t slot);
 Ended DropItemWhenHitB(uint8_t slot);
 Ended DropItemWhenHitC(uint8_t slot);
@@ -653,10 +671,10 @@ Ended OrbitStepForward(uint8_t slot);
 Ended StartTypeAndLaunchUp(uint8_t slot, uint8_t fresh);
 Ended AnimateThenFireOrWait(uint8_t slot);
 Ended BurstIntoSixPieces(uint8_t slot);
-ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot);
-ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot);
+ScreenSoundEnd SoundEveryFourthFrameB(uint8_t slot, uint8_t entry_y);
+ScreenSoundEnd BurstWhenFlaggedHit(uint8_t slot, uint8_t entry_y);
 Ended PickStateByPlayerDistance(uint8_t slot, bool carry_in);
-Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in);
+Ended AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in, uint8_t entry_y);
 Ended ChargeWhenPlayerNear(uint8_t slot);
 Ended TurnOnRandomBeatWalkA(uint8_t slot);
 Ended TurnOnRandomBeatWalkFollowA(uint8_t slot);
@@ -700,6 +718,8 @@ Ended SpawnShotFromFrame(uint8_t slot);
 Ended StartAndMakeNeighbour(uint8_t slot);
 Ended StartWithFrameAndFace(uint8_t slot);
 Ended StartThenAnimateAndExpire(uint8_t slot);
+SoundEnd CountdownSoundThenNextState(uint8_t slot, uint8_t entry_y);
+SoundEnd SoundEveryFourthFrame(uint8_t slot, uint8_t entry_y);
 /* object/enemies_stage07_temp.c */
 Ended EnterState4IfFlagged(uint8_t slot);
 Ended ScrollNotAtRightEnd(void);

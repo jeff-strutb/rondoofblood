@@ -35,6 +35,15 @@ static TileRead read_point_or_nothing(bool off_the_map)
     return off_the_map ? nothing : StageTileRead();
 }
 
+/* The overlay's read may run its own code: it is entered with the add's A and flags. */
+static void read_above_entry_shim(bool on_the_map)
+{
+    cpu.a = 0;
+    abi_nz(0);
+    abi_flag(P_C, on_the_map);
+    abi_flag(P_V, false);
+}
+
 /*
  * @routine 01BB:6D2 RichterReadAbove
  * @run 6D:B6D2
@@ -54,10 +63,7 @@ TileRead RichterReadAbove(uint8_t row, bool on_the_map)
     if (high != 0)
         return read_point_or_nothing(true);
     wr8(zTemp01, 0);
-    cpu.a = 0; /* the read may run the overlay's own code, entered with the add's A and flags */
-    abi_nz(0);
-    abi_flag(P_C, on_the_map);
-    abi_flag(P_V, false);
+    read_above_entry_shim(on_the_map);
     return read_point_or_nothing(false);
 }
 

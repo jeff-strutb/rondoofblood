@@ -1161,3 +1161,190 @@ void abi_WatchVramForMark(void)
         abi_ended(r.event);
     }
 }
+
+/*
+ * @routine 0CAC:45C StepMoveOrClear
+ * @run 70:BC5C
+ * WHAT IT DOES: Steps the animation list at $BC6F; while it runs the object moves by its velocity, and when it ends the object is cleared.
+ * HOW: StepObjectFrames, then a tail jump into ApplyVelocity or ClearObject.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: running: as ApplyVelocity; ended: as the step.
+ */
+Ended StepMoveOrClear(uint8_t slot)
+{
+    FrameStep step;
+    AxisMove move;
+    uint8_t y = 0;
+    Ended e;
+
+    step = step_list(slot, 0xBC6F, 0xBC67, &y, true);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step == FRAME_LIST_ENDED) {
+        ClearObject(slot);
+        return e;
+    }
+    move = ApplyVelocity(slot);
+    return then(e, ended_of_axis_move(move));
+}
+
+void abi_StepMoveOrClear(void)
+{
+    abi_ended(StepMoveOrClear(cpu.x));
+}
+
+/*
+ * @routine 0CAC:57C StepCountClear
+ * @run 70:BD7C
+ * WHAT IT DOES: Steps the animation list at $BD51; counts the object's timer down and clears it at zero; until then its hitbox half height comes from a table at $BD78 by the
+ * frame less $17.
+ * HOW: StepObjectFrames, DEC, a table read (bank 70).
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: cleared: N and Z of the count; else A the table byte, Y the index, C and V from the subtract.
+ */
+Ended StepCountClear(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t y = 0, left, frame, byte;
+    Sum index;
+    Ended e;
+
+    step = step_list(slot, 0xBD51, 0xBD87, &y, false);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    left = DEC8(OBJ->life_timer[slot]);
+    e = then(e, ended_nz(left));
+    if (left == 0) {
+        ClearObject(slot);
+        return e;
+    }
+    frame = RD8(OBJ->frame[slot]);
+    index = sub_bytes(frame, 0x17, true);
+    byte = rd8((uint16_t)(0xBD78 + index.value));
+    WR8(OBJ->hitbox_half_h[slot], byte);
+    return then(then(e, of_sum(index)), ended_with_y(ended_load(byte), index.value));
+}
+
+void abi_StepCountClear(void)
+{
+    abi_ended(StepCountClear(cpu.x));
+}
+
+/*
+ * @routine 0CAC:5B5 StartFallingSpark
+ * @run 70:BDB5
+ * WHAT IT DOES: Loads the object's record, gives OBJ_3510 a random byte, its angle low byte one of four from a table at $BDE1, a random X low byte, X high 0, Y $0100 and a
+ * timer of $C0.
+ * HOW: LoadObjectRecord, NextRandom three times, a table read (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: A $C0, N set, Z clear; Y the table index, C and V as the last random left them.
+ */
+Ended StartFallingSpark(uint8_t slot)
+{
+    RandomResult random;
+    uint8_t nz, last, pick, byte;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xBDB8);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    jsr_push(0xBDBB);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    WR8(OBJ->f3510[slot], random.value);
+    jsr_push(0xBDC1);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    pick = (uint8_t)(random.value & 0x03);
+    e = then(e, ended_with_y(ended_load(pick), pick));
+    byte = rd8((uint16_t)(0xBDE1 + pick));
+    WR8(OBJ->angle_lo[slot], byte);
+    WR8(OBJ->x_hi[slot], 0);
+    jsr_push(0xBDD0);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    WR8(OBJ->x_lo[slot], random.value);
+    WR8(OBJ->y_hi[slot], 1);
+    WR8(OBJ->y_lo[slot], 0);
+    WR8(OBJ->life_timer[slot], 0xC0);
+    return then(e, ended_load(0xC0));
+}
+
+void abi_StartFallingSpark(void)
+{
+    abi_ended(StartFallingSpark(cpu.x));
+}
+
+/*
+ * @routine 0CAC:6DD StartFromTable
+ * @run 70:BEDD
+ * WHAT IT DOES: Loads the object's record, sets its angle low byte to $80 and its angle high byte from a table at $BEF2 by its next kind, less $A0.
+ * HOW: LoadObjectRecord and a subtract.
+ * WAITS: no.
+ * Entry: X object. Exit: A the angle high byte, Y the next kind, C and V from the subtract.
+ */
+Ended StartFromTable(uint8_t slot)
+{
+    uint8_t nz, last, kind, byte;
+    bool carry;
+    Sum diff;
+    Ended e;
+
+    jsr_push(0xBEE0);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(OBJ->angle_lo[slot], 0x80);
+    kind = RD8(OBJ->next_kind[slot]);
+    e = then(e, ended_with_y(ended_nz(kind), kind));
+    byte = rd8((uint16_t)(0xBEF2 + kind));
+    diff = sub_bytes(byte, 0xA0, true);
+    WR8(OBJ->angle_hi[slot], diff.value);
+    return then(e, of_sum(diff));
+}
+
+void abi_StartFromTable(void)
+{
+    abi_ended(StartFromTable(cpu.x));
+}
+
+/*
+ * @routine 0CAB:591 StartShotsUnlessThere
+ * @run 70:B591
+ * WHAT IT DOES: Unless slot $12's kind is $28, starts the three shots (StartThreeShots) and plays sound $2E; then goes on as ResetToStateThree.
+ * HOW: A compare, StartThreeShots, SoundCommand, the next routine's bytes.
+ * WAITS: no.
+ * Entry: X object. Exit: as ResetToStateThree, or the compare's flags when the shots are already there.
+ */
+SoundEnd StartShotsUnlessThere(uint8_t slot)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t kind;
+    Ended e;
+
+    kind = RD8(OBJ->kind[0x12]);
+    e = ended_compare(kind, 0x28);
+    r.end = e;
+    if (kind == 0x28) {
+        return r;
+    }
+    jsr_push(0xB59B);
+    e = then(e, StartThreeShots(slot));
+    jsr_pop();
+    r.before = then(e, ended_load(0x2E));
+    r.sounded = true;
+    r.command = 0x2E;
+    jsr_push(0xB5A0);
+    r.call = SoundCommand(0x2E, slot, 0x16);
+    jsr_pop();
+    r.end = ResetToStateThree(slot);
+    return r;
+}
+
+void abi_StartShotsUnlessThere(void)
+{
+    abi_sound_end(StartShotsUnlessThere(cpu.x));
+}

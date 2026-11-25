@@ -234,6 +234,20 @@ StepThenSpawnShot:
 StepThenSpawnShot_at0:
     rts
 
+; @routine 0CAB:591 StartShotsUnlessThere
+; @run 70:B591
+; WHAT IT DOES: Unless slot $12's kind is $28, starts the three shots (StartThreeShots) and plays sound $2E; then goes on as ResetToStateThree.
+; HOW: A compare, StartThreeShots, SoundCommand, the next routine's bytes.
+; WAITS: no.
+; Entry: X object. Exit: as ResetToStateThree, or the compare's flags when the shots are already there.
+StartShotsUnlessThere:
+    lda a:$2762
+    cmp #$28
+    beq ResetToStateThree_at0
+    jsr StartThreeShots
+    lda #$2E
+    jsr VecSoundCommand
+
 ; @routine 0CAB:5A0 ResetToStateThree
 ; @run 70:B5A0
 ; WHAT IT DOES: Sets the object's frame to 1, its state to 3 and clears OBJ_2800.
@@ -246,6 +260,7 @@ ResetToStateThree:
     lda #$03
     sta a:OBJ_27A8,x
     stz a:OBJ_2800,x
+ResetToStateThree_at0:
     rts
 
 ; @routine 0CAB:5AE StartThreeShots
@@ -566,6 +581,91 @@ StepThenRestB:
     stz a:OBJ_2800,x
 StepThenRestB_at0:
     rts
+; @routine 0CAC:45C StepMoveOrClear
+; @run 70:BC5C
+; WHAT IT DOES: Steps the animation list at $BC6F; while it runs the object moves by its velocity, and when it ends the object is cleared.
+; HOW: StepObjectFrames, then a tail jump into ApplyVelocity or ClearObject.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: running: as ApplyVelocity; ended: as the step.
+StepMoveOrClear:
+    lda #$BC
+    sta z:zTemp11
+    lda #$6F
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    bne StepMoveOrClear_at0
+    jmp VecClearObject
+StepMoveOrClear_at0:
+    jmp VecApplyVelocity
+
+; @routine 0CAC:57C StepCountClear
+; @run 70:BD7C
+; WHAT IT DOES: Steps the animation list at $BD51; counts the object's timer down and clears it at zero; until then its hitbox half height comes from a table at $BD78 by the
+; frame less $17.
+; HOW: StepObjectFrames, DEC, a table read (bank 70).
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: cleared: N and Z of the count; else A the table byte, Y the index, C and V from the subtract.
+StepCountClear:
+    lda #$51
+    sta z:zTemp10
+    lda #$BD
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    dec a:OBJ_34B8,x
+    bne StepCountClear_at0
+    jmp VecClearObject
+StepCountClear_at0:
+    lda a:OBJ_2A68,x
+    sec
+    sbc #$17
+    tay
+    lda a:$BD78,y
+    sta a:OBJ_3A38,x
+    rts
+
+; @routine 0CAC:5B5 StartFallingSpark
+; @run 70:BDB5
+; WHAT IT DOES: Loads the object's record, gives OBJ_3510 a random byte, its angle low byte one of four from a table at $BDE1, a random X low byte, X high 0, Y $0100 and a
+; timer of $C0.
+; HOW: LoadObjectRecord, NextRandom three times, a table read (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: A $C0, N set, Z clear; Y the table index, C and V as the last random left them.
+StartFallingSpark:
+    jsr VecLoadObjectRecord
+    jsr VecNextRandom
+    sta a:OBJ_3510,x
+    jsr VecNextRandom
+    and #$03
+    tay
+    lda a:$BDE1,y
+    sta a:OBJ_35C0,x
+    stz a:OBJ_X_HI,x
+    jsr VecNextRandom
+    sta a:OBJ_X_LO,x
+    lda #$01
+    sta a:OBJ_Y_HI,x
+    stz a:OBJ_Y_LO,x
+    lda #$C0
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 0CAC:6DD StartFromTable
+; @run 70:BEDD
+; WHAT IT DOES: Loads the object's record, sets its angle low byte to $80 and its angle high byte from a table at $BEF2 by its next kind, less $A0.
+; HOW: LoadObjectRecord and a subtract.
+; WAITS: no.
+; Entry: X object. Exit: A the angle high byte, Y the next kind, C and V from the subtract.
+StartFromTable:
+    jsr VecLoadObjectRecord
+    lda #$80
+    sta a:OBJ_35C0,x
+    ldy a:OBJ_3040,x
+    lda a:$BEF2,y
+    sec
+    sbc #$A0
+    sta a:OBJ_3568,x
+    rts
+
 ; @routine 0CAD:12A StepPartList
 ; @run 71:C12A
 ; WHAT IT DOES: Steps the animation list at $C196.

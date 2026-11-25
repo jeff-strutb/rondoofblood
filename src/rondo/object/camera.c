@@ -213,6 +213,7 @@ void abi_SoundIfOnFirstScreen(void)
  * @run 6A:6598
  * WHAT IT DOES: Stops the player moving along X.
  * HOW: Zeroes the X speed.
+ * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
 void StopPlayerX(void)
@@ -405,7 +406,7 @@ WallPush PlayerWallRight(void);
 WallPush PlayerWallLeft(void);
 RightOrWall MovePlayerRightOrWall(void);
 LeftOrWall MovePlayerLeftOrWall(void);
-void PlayerXFromNextAlt(void);
+uint8_t PlayerXFromNextAlt(void);
 WordPair PlayerNextX(void);
 static void RunCameraMode(void);
 static void x_on_screen_exit_shim(OnScreen x);
@@ -1083,6 +1084,7 @@ void abi_PlayerWallRight(void)
  * @run 6A:6803
  * WHAT IT DOES: Moves the player right, unless there is a wall.
  * HOW: PlayerWallRight, then MovePlayerRight.
+ * WAITS: no.
  * Entry: cpu flags current. Exit: as the one that ran last.
  */
 RightOrWall MovePlayerRightOrWall(void)
@@ -1110,10 +1112,15 @@ void abi_MovePlayerRightOrWall(void)
 }
 
 /* The position worked out in zTemp04-05 becomes the player's. */
-static void position_from_next(const Axis *axis)
+static uint8_t position_from_next(const Axis *axis)
 {
-    wr8(axis->pos_frac, rd8(zTemp04));
-    wr8(axis->pos_lo, rd8(zTemp05));
+    uint8_t frac = rd8(zTemp04);
+    uint8_t lo;
+
+    wr8(axis->pos_frac, frac);
+    lo = rd8(zTemp05);
+    wr8(axis->pos_lo, lo);
+    return lo;
 }
 
 /*
@@ -1121,52 +1128,71 @@ static void position_from_next(const Axis *axis)
  * @run 6A:680C
  * WHAT IT DOES: Accepts the position PlayerNextX worked out.
  * HOW: Copies zTemp04-05 to the position.
+ * WAITS: no.
  * Entry: zTemp04-05. Exit: A zTemp05, N and Z from it. X, Y, C, V kept.
  */
-void PlayerXFromNext(void)
+uint8_t PlayerXFromNext(void)
 {
-    position_from_next(&axis_x);
+    return position_from_next(&axis_x);
 }
 
 void abi_PlayerXFromNext(void)
 {
-    PlayerXFromNext();
-    cpu.a = rd8(zTemp05);
+    cpu.a = PlayerXFromNext();
     abi_nz(cpu.a);
 }
 
 /* A scroll position against a limit: the high byte given, the low in zTemp03. */
-static bool scroll_reaches_limit(uint8_t high, uint16_t limit_hi, uint16_t limit_lo)
+typedef struct { uint8_t a; uint8_t b; bool reached; } LimitTest;
+
+static LimitTest scroll_reaches_limit(uint8_t high, uint16_t limit_hi, uint16_t limit_lo)
 {
-    return (uint16_t)((high << 8) | rd8(zTemp03)) >= read16(limit_lo, limit_hi);
+    LimitTest test;
+
+    test.a = high;
+    test.b = rd8(limit_hi);
+    if (test.a == test.b) {
+        test.a = rd8(zTemp03);
+        test.b = rd8(limit_lo);
+    }
+    test.reached = test.a >= test.b;
+    return test;
 }
 
 /* A and N, Z, C from the compare that decided: the high bytes, or on equal the low. */
-static void limit_exit_shim(uint8_t high, uint16_t limit_hi, uint16_t limit_lo)
+static void limit_exit_shim(LimitTest test)
 {
-    uint8_t a = high;
-    uint8_t b = rd8(limit_hi);
+    cpu.a = test.a;
+    abi_nz((uint8_t)(test.a - test.b));
+    abi_flag(P_C, test.reached);
+}
 
-    if (a == b) {
-        a = rd8(zTemp03);
-        b = rd8(limit_lo);
-    }
-    cpu.a = a;
-    abi_nz((uint8_t)(a - b));
-    abi_flag(P_C, a >= b);
+/* What a test against the middle read: the high byte, and at the middle the fraction too. */
+typedef struct { uint8_t high; uint8_t frac; bool past; } MiddleTest;
+
+static MiddleTest middle_test(uint8_t high, uint16_t frac)
+{
+    MiddleTest test;
+
+    test.high = high;
+    test.frac = 0;
+    if (high == SCREEN_MIDDLE)
+        test.frac = rd8(frac);
+    test.past = high >= SCREEN_MIDDLE;
+    return test;
 }
 
 /* A and N, Z from the compare with the middle, or at the middle from the fraction read. */
-static void middle_exit_shim(uint8_t high, uint16_t frac)
+static void middle_exit_shim(MiddleTest test)
 {
-    if (high == SCREEN_MIDDLE) {
-        cpu.a = rd8(frac);
+    if (test.high == SCREEN_MIDDLE) {
+        cpu.a = test.frac;
         abi_nz(cpu.a);
     } else {
-        cpu.a = high;
-        abi_nz((uint8_t)(high - SCREEN_MIDDLE));
+        cpu.a = test.high;
+        abi_nz((uint8_t)(test.high - SCREEN_MIDDLE));
     }
-    abi_flag(P_C, high >= SCREEN_MIDDLE);
+    abi_flag(P_C, test.past);
 }
 
 static void set_player_x(uint16_t x)
@@ -1274,18 +1300,20 @@ void abi_PlayerAtRightEdge(void)
  * past it.
  * HOW: Compares with $80. At $80 it goes on to look at the player's X fraction, also for
  * a Y position, and the answer is C set either way.
+ * WAITS: no.
  * Entry: zTemp05. Exit: C the answer; A and N, Z from the last read or compare. X, Y, V
  * kept.
  */
-bool NextPastMiddle(void)
+MiddleTest NextPastMiddle(void)
 {
-    return rd8(zTemp05) >= SCREEN_MIDDLE;
+    uint8_t high = rd8(zTemp05);
+
+    return middle_test(high, OBJ_X_FRAC);
 }
 
 void abi_NextPastMiddle(void)
 {
-    NextPastMiddle();
-    middle_exit_shim(rd8(zTemp05), OBJ_X_FRAC);
+    middle_exit_shim(NextPastMiddle());
 }
 
 /*
@@ -1314,17 +1342,19 @@ void abi_NextFractionSet(void)
  * @run 6A:68C9
  * WHAT IT DOES: Says whether the player is at the screen's middle or past it, along X.
  * HOW: As NextPastMiddle, on the position.
+ * WAITS: no.
  * Entry: nothing. Exit: as NextPastMiddle.
  */
-bool PlayerXPastMiddle(void)
+MiddleTest PlayerXPastMiddle(void)
 {
-    return rd8(OBJ_X_LO) >= SCREEN_MIDDLE;
+    uint8_t high = rd8(OBJ_X_LO);
+
+    return middle_test(high, OBJ_X_FRAC);
 }
 
 void abi_PlayerXPastMiddle(void)
 {
-    PlayerXPastMiddle();
-    middle_exit_shim(rd8(OBJ_X_LO), OBJ_X_FRAC);
+    middle_exit_shim(PlayerXPastMiddle());
 }
 
 /*
@@ -1332,13 +1362,20 @@ void abi_PlayerXPastMiddle(void)
  * @run 6A:68DC
  * WHAT IT DOES: Gives how far the next position lies past the middle.
  * HOW: Subtracts $8000 from zTemp04-05, into zTemp00-01.
+ * WAITS: no.
  * Entry: zTemp04-05. Exit: A zTemp01, N, Z, C, V from its subtract. X and Y kept.
  */
 WordPair NextPastMiddleAmount(void)
 {
-    WordPair words = { read16(zTemp04, zTemp05), (uint16_t)(SCREEN_MIDDLE << 8) };
+    uint8_t lo = rd8(zTemp04);
+    uint8_t hi;
+    WordPair words;
 
-    write16(zTemp00, zTemp01, (uint16_t)(words.a - words.b));
+    wr8(zTemp00, lo);
+    hi = rd8(zTemp05);
+    wr8(zTemp01, (uint8_t)(hi - SCREEN_MIDDLE));
+    words.a = (uint16_t)((hi << 8) | lo);
+    words.b = (uint16_t)(SCREEN_MIDDLE << 8);
     return words;
 }
 
@@ -1352,17 +1389,17 @@ void abi_NextPastMiddleAmount(void)
  * @run 6A:68EA
  * WHAT IT DOES: Compares a scroll position with the level's right limit.
  * HOW: High bytes, then on equal low bytes.
+ * WAITS: no.
  * Entry: A high, zTemp03 low. Exit: A and N, Z, C from the last compare. X, Y, V kept.
  */
-bool CompareScrollWithRightLimit(uint8_t high)
+LimitTest CompareScrollWithRightLimit(uint8_t high)
 {
     return scroll_reaches_limit(high, ScrollXMaxHi, ScrollXMaxLo);
 }
 
 void abi_CompareScrollWithRightLimit(void)
 {
-    CompareScrollWithRightLimit(cpu.a);
-    limit_exit_shim(cpu.a, ScrollXMaxHi, ScrollXMaxLo);
+    limit_exit_shim(CompareScrollWithRightLimit(cpu.a));
 }
 
 /*
@@ -1425,17 +1462,17 @@ void abi_MovePlayerLeftOrWall(void)
  * @run 6A:694F
  * WHAT IT DOES: The same as PlayerXFromNext, written again for the leftward moves.
  * HOW: Copies zTemp04-05 to the position.
+ * WAITS: no.
  * Entry: zTemp04-05. Exit: A zTemp05, N and Z from it. X, Y, C, V kept.
  */
-void PlayerXFromNextAlt(void)
+uint8_t PlayerXFromNextAlt(void)
 {
-    position_from_next(&axis_x);
+    return position_from_next(&axis_x);
 }
 
 void abi_PlayerXFromNextAlt(void)
 {
-    PlayerXFromNextAlt();
-    cpu.a = rd8(zTemp05);
+    cpu.a = PlayerXFromNextAlt();
     abi_nz(cpu.a);
 }
 
@@ -1800,17 +1837,19 @@ void abi_MovePlayerDown(void)
  * @run 6A:6B3D
  * WHAT IT DOES: Says whether the player is at the screen's middle or past it, along Y.
  * HOW: As PlayerXPastMiddle.
+ * WAITS: no.
  * Entry: nothing. Exit: as NextPastMiddle.
  */
-bool PlayerYPastMiddle(void)
+MiddleTest PlayerYPastMiddle(void)
 {
-    return rd8(OBJ_Y_LO) >= SCREEN_MIDDLE;
+    uint8_t high = rd8(OBJ_Y_LO);
+
+    return middle_test(high, OBJ_Y_FRAC);
 }
 
 void abi_PlayerYPastMiddle(void)
 {
-    PlayerYPastMiddle();
-    middle_exit_shim(rd8(OBJ_Y_LO), OBJ_Y_FRAC);
+    middle_exit_shim(PlayerYPastMiddle());
 }
 
 /*
@@ -1818,17 +1857,17 @@ void abi_PlayerYPastMiddle(void)
  * @run 6A:6B50
  * WHAT IT DOES: Compares a vertical scroll position with the section's bottom limit.
  * HOW: High bytes, then on equal low bytes.
+ * WAITS: no.
  * Entry: A high, zTemp03 low. Exit: A and N, Z, C from the last compare. X, Y, V kept.
  */
-bool CompareScrollWithBottomLimit(uint8_t high)
+LimitTest CompareScrollWithBottomLimit(uint8_t high)
 {
     return scroll_reaches_limit(high, ScrollYMaxHi, ScrollYMaxLo);
 }
 
 void abi_CompareScrollWithBottomLimit(void)
 {
-    CompareScrollWithBottomLimit(cpu.a);
-    limit_exit_shim(cpu.a, ScrollYMaxHi, ScrollYMaxLo);
+    limit_exit_shim(CompareScrollWithBottomLimit(cpu.a));
 }
 
 /*
@@ -1855,17 +1894,17 @@ void abi_PlayerAtTop(void)
  * @run 6A:6B65
  * WHAT IT DOES: Accepts the Y position worked out in zTemp04-05.
  * HOW: Copies it to the position.
+ * WAITS: no.
  * Entry: zTemp04-05. Exit: A zTemp05, N and Z from it. X, Y, C, V kept.
  */
-void PlayerYFromNext(void)
+uint8_t PlayerYFromNext(void)
 {
-    position_from_next(&axis_y);
+    return position_from_next(&axis_y);
 }
 
 void abi_PlayerYFromNext(void)
 {
-    PlayerYFromNext();
-    cpu.a = rd8(zTemp05);
+    cpu.a = PlayerYFromNext();
     abi_nz(cpu.a);
 }
 

@@ -800,3 +800,63 @@ void abi_FallThenSoundAtPeak(void)
 {
     abi_sound_end(FallThenSoundAtPeak(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 088B:0E8 SpeedFromRandomRow
+ * @run 70:B0E8
+ * WHAT IT DOES: Takes the object's two speeds (four bytes: X low and high, Y low and high) from the row of the table at $B109 that a random number from 0 to 7 picks.
+ * HOW: NextRandom, table reads (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: A the last byte read, Y the row offset, C clear.
+ */
+Ended SpeedFromRandomRow(uint8_t slot)
+{
+    RandomResult random;
+    uint8_t y, value;
+
+    jsr_push(0xB0EB);
+    random = NextRandom();
+    jsr_pop();
+    y = (uint8_t)((random.value & 0x07) << 2);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB10A + y)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xB109 + y)));
+    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(0xB10C + y)));
+    value = rd8((uint16_t)(0xB10B + y));
+    WR8(OBJ->vy_lo[slot], value);
+    return then(then(ended_of_random(random), ended_with_carry(ended_with_y(ended_load((uint8_t)(random.value & 0x07)), y), false)), ended_load(value));
+}
+
+void abi_SpeedFromRandomRow(void)
+{
+    abi_ended(SpeedFromRandomRow(cpu.x));
+}
+
+/*
+ * @routine 088A:63F SetHitBoxFromFrameTable
+ * @run 70:AE3F
+ * WHAT IT DOES: Takes the object's hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the four-byte row of the table at $B8F7 that its frame less one names.
+ * HOW: Table reads (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: A the last byte read, Y the row offset.
+ */
+Ended SetHitBoxFromFrameTable(uint8_t slot)
+{
+    Sum row;
+    uint8_t y, value;
+    Ended e;
+
+    row = sub_bytes(RD8(OBJ->frame[slot]), 1, true);
+    y = (uint8_t)(row.value << 2);
+    e = then(ended_of_sum(row), ended_with_carry(ended_with_y(ended_load(y), y), (row.value & 0x40) != 0));
+    WR8(OBJ->hitbox_dx[slot], rd8((uint16_t)(0xB8F7 + y)));
+    WR8(OBJ->hitbox_dy[slot], rd8((uint16_t)(0xB8F8 + y)));
+    WR8(OBJ->hitbox_half_w[slot], rd8((uint16_t)(0xB8F9 + y)));
+    value = rd8((uint16_t)(0xB8FA + y));
+    WR8(OBJ->hitbox_half_h[slot], value);
+    return then(e, ended_load(value));
+}
+
+void abi_SetHitBoxFromFrameTable(void)
+{
+    abi_ended(SetHitBoxFromFrameTable(cpu.x));
+}

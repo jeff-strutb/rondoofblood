@@ -64,6 +64,28 @@ StepListB2A7ThenPlace_at0:
     inc a:OBJ_2800,x
     rts
 
+; @routine 16CB:2D4 CountThenRiseWithFlash
+; @run 70:B2D4
+; WHAT IT DOES: Counts OBJ_34B8 down; at zero it sets sprite set 4, flash flags $10, OBJ_34B8 $40 and a Y speed of $FFC0 and goes on to the next OBJ_2800.
+; HOW: DEC, stores, an INC.
+; WAITS: no.
+; Entry: X object. Exit: the count, or the new OBJ_2800's N and Z (A $C0).
+CountThenRiseWithFlash:
+    dec a:OBJ_34B8,x
+    bne StateMachineWithSoundAndList
+    lda #$04
+    sta a:OBJ_2A10,x
+    lda #$10
+    sta a:OBJ_2B18,x
+    lda #$40
+    sta a:OBJ_34B8,x
+    lda #$FF
+    sta a:OBJ_VY_HI,x
+    lda #$C0
+    sta a:OBJ_VY_LO,x
+    inc a:OBJ_2800,x
+    rts
+
 ; @routine 16CB:2F6 StepListB36AThenCount
 ; @run 70:B2F6
 ; WHAT IT DOES: Steps the animation list at $B36A and moves the object along Y; counts OBJ_34B8 down and at zero clears OBJ_2FE8, sets OBJ_3510 to $40 and goes on to the next OBJ_2800.
@@ -145,4 +167,25 @@ StartKindFromTableAtSlot16:
     lda #$40
     sta a:OBJ_34B8,x
     inc a:OBJ_2800,x
+    rts
+; @routine 16CB:782 LoadThenPlaceAtLeft
+; @run 70:B782
+; WHAT IT DOES: Loads the object's record, sets the raster effect to $0B with argument $BF, puts the object at X $0010, Y $00F6 and sets OBJ_34B8 to $40.
+; HOW: LoadObjectRecord, stores.
+; WAITS: no.
+; Entry: X object. Exit: A $40.
+LoadThenPlaceAtLeft:
+    jsr VecLoadObjectRecord
+    lda #$0B
+    sta z:zRasterEffect
+    lda #$BF
+    sta z:zRasterArg
+    stz a:OBJ_X_HI,x
+    lda #$10
+    sta a:OBJ_X_LO,x
+    stz a:OBJ_Y_HI,x
+    lda #$F6
+    sta a:OBJ_Y_LO,x
+    lda #$40
+    sta a:OBJ_34B8,x
     rts

@@ -202,6 +202,29 @@ FallAndBlinkThenClear_at0:
 FallAndBlinkThenClear_at1:
     rts
 
+; @routine 088A:63F SetHitBoxFromFrameTable
+; @run 70:AE3F
+; WHAT IT DOES: Takes the object's hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the four-byte row of the table at $B8F7 that its frame less one names.
+; HOW: Table reads (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: A the last byte read, Y the row offset.
+SetHitBoxFromFrameTable:
+    lda a:OBJ_2A68,x
+    sec
+    sbc #$01
+    asl a
+    asl a
+    tay
+    lda a:$B8F7,y
+    sta a:OBJ_3930,x
+    lda a:$B8F8,y
+    sta a:OBJ_39E0,x
+    lda a:$B8F9,y
+    sta a:OBJ_3988,x
+    lda a:SoundMusicTable,y
+    sta a:OBJ_3A38,x
+    rts
+
 ; @routine 088A:699 LoadThenStartFiveFromTable
 ; @run 70:AE99
 ; WHAT IT DOES: Loads the object's record, clears OBJ_3778 and its Y speed, sets OBJ_34B8 to $30 and bit 2 of zField8E, copies its X and Y low bytes into all 64 entries of the two tables at $BB66 and $BBA6, then clears the objects in slots $11 to $15 and starts in each an object whose kind the table at $AEDA gives, at this object's place.
@@ -315,6 +338,28 @@ FallThenSoundAtPeak:
     jsr VecSoundCommand
     inc a:OBJ_2800,x
 FallThenSoundAtPeak_at0:
+    rts
+
+; @routine 088B:0E8 SpeedFromRandomRow
+; @run 70:B0E8
+; WHAT IT DOES: Takes the object's two speeds (four bytes: X low and high, Y low and high) from the row of the table at $B109 that a random number from 0 to 7 picks.
+; HOW: NextRandom, table reads (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: A the last byte read, Y the row offset, C clear.
+SpeedFromRandomRow:
+    jsr VecNextRandom
+    and #$07
+    asl a
+    asl a
+    tay
+    lda a:$B10A,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B109,y
+    sta a:OBJ_VX_LO,x
+    lda a:$B10C,y
+    sta a:OBJ_VY_HI,x
+    lda a:$B10B,y
+    sta a:OBJ_VY_LO,x
     rts
 
 ; @routine 088B:21D TurnAroundInState9

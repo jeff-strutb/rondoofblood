@@ -265,3 +265,66 @@ void abi_StepListB2A7ThenPlace(void)
 {
     abi_ended(StepListB2A7ThenPlace(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 16CB:2D4 CountThenRiseWithFlash
+ * @run 70:B2D4
+ * WHAT IT DOES: Counts OBJ_34B8 down; at zero it sets sprite set 4, flash flags $10, OBJ_34B8 $40 and a Y speed of $FFC0 and goes on to the next OBJ_2800.
+ * HOW: DEC, stores, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the count, or the new OBJ_2800's N and Z (A $C0).
+ */
+Ended CountThenRiseWithFlash(uint8_t slot)
+{
+    uint8_t left, phase;
+
+    left = DEC8(OBJ->f34b8[slot]);
+    if (left != 0) {
+        return ended_nz(left);
+    }
+    WR8(OBJ->sprite_set[slot], 4);
+    WR8(OBJ->flash_flags[slot], 0x10);
+    WR8(OBJ->f34b8[slot], 0x40);
+    WR8(OBJ->vy_hi[slot], 0xFF);
+    WR8(OBJ->vy_lo[slot], 0xC0);
+    phase = INC8(OBJ->f2800[slot]);
+    return then(ended_load(0xC0), ended_nz(phase));
+}
+
+void abi_CountThenRiseWithFlash(void)
+{
+    abi_ended(CountThenRiseWithFlash(cpu.x));
+}
+
+/*
+ * @routine 16CB:782 LoadThenPlaceAtLeft
+ * @run 70:B782
+ * WHAT IT DOES: Loads the object's record, sets the raster effect to $0B with argument $BF, puts the object at X $0010, Y $00F6 and sets OBJ_34B8 to $40.
+ * HOW: LoadObjectRecord, stores.
+ * WAITS: no.
+ * Entry: X object. Exit: A $40.
+ */
+Ended LoadThenPlaceAtLeft(uint8_t slot)
+{
+    uint8_t nz, last;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xB785);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    WR8(ZP->raster_effect, 0x0B);
+    WR8(ZP->raster_arg, 0xBF);
+    WR8(OBJ->x_hi[slot], 0);
+    WR8(OBJ->x_lo[slot], 0x10);
+    WR8(OBJ->y_hi[slot], 0);
+    WR8(OBJ->y_lo[slot], 0xF6);
+    WR8(OBJ->f34b8[slot], 0x40);
+    return then(e, ended_load(0x40));
+}
+
+void abi_LoadThenPlaceAtLeft(void)
+{
+    abi_ended(LoadThenPlaceAtLeft(cpu.x));
+}

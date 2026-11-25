@@ -412,6 +412,20 @@ void check_finish(void);
 static void stop_context(uint64_t from);
 static void park_forever(void);
 uint16_t rondo_pc;
+
+/* A left hand-over at which the original took an interrupt right after (the record: the CLOSE, then the INT): the
+ * original runs on from the instruction the C is at with the core's interrupts held (the I flag), until the core is at
+ * the interrupted PC; there the interrupt is dispatched from the record as a C's is (hy_int_pass), at its clock. */
+static struct {
+    int active, tag, n;
+    Ev ev;                  /* the INT event */
+    uint64_t entry_idx;     /* the handler's CALL */
+    uint16_t handler;
+    uint8_t i_orig;         /* the I flag the C had at the hand-over */
+} hold;
+static uint64_t held_ints, held_not;
+static unsigned hold_acc;     /* data accesses the core made under the hold */
+void hold_prepare(Span *s, const Ev *closing);
 void hand_over(uint16_t addr);
 static unsigned long extra_run;
 static const char *stopped_why;
@@ -592,6 +606,16 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
                 (unsigned long long)s->end, (unsigned long long)s->cur, rondo_pc, record_ends_here(s),
                 s->end != SPAN_OPEN && evp(s->end) ? evp(s->end)->type : -1,
                 s->end != SPAN_OPEN && evp(s->end) ? evp(s->end)->kind : -1);
+    if (found < 0 && getenv("RONDO_DIAG_CTX") && mode == MODE_HYBRID && s->end != SPAN_OPEN) {
+        for (uint64_t k = s->end; k < s->end + 14; k++) {
+            Ev *x = evp(k);
+
+            if (!x)
+                break;
+            fprintf(stderr, "  AFTER %llu type %d kind %d addr %06X pc %04X s %02X clock %llu val %02X\n", (unsigned long long)k, x->type,
+                    x->kind, x->addr, x->pc, x->s, (unsigned long long)x->clock, x->val);
+        }
+    }
     if (found < 0 && hit_end && first < 0 && mode == MODE_HYBRID && sp == s && record_ends_here(s)) {
         /* The original's call ended here (left by the stack: it pulled past its own return address) while the C goes on:
          * the C hands the machine to the original at the instruction it is at, whose access it has not made. Only the
@@ -601,8 +625,10 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
          * that this call is). Only a call the record never closes, in a stream that ended, parks for good. */
         Ev *closing = s->end != SPAN_OPEN ? evp(s->end) : NULL;
 
-        if (rondo_pc && closing && closing->type == EV_CLOSE && closing->kind == CL_LEFT)
+        if (rondo_pc && closing && closing->type == EV_CLOSE && closing->kind == CL_LEFT) {
+            hold_prepare(s, closing);
             hand_over(rondo_pc);
+        }
         park_forever();
     }
     if (found >= 0) {
@@ -1354,6 +1380,16 @@ static void original_at(uint16_t ret, uint16_t addr)
         }
     }
     if (!found) {
+        if (getenv("RONDO_DIAG_CTX") && mode == MODE_HYBRID)
+            for (uint64_t k = sp->cur; k < sp->cur + 16; k++) {
+                Ev *x = evp(k);
+
+                if (!x)
+                    break;
+                fprintf(stderr, "  NOCALL %llu type %d kind %d addr %06X pc %04X s %02X clock %llu val %02X (the C calls %04X from %04X, S%02X)\n",
+                        (unsigned long long)k, x->type, x->kind, x->addr, x->pc, x->s, (unsigned long long)x->clock, x->val, addr,
+                        rondo_pc, cpu.s);
+            }
         if (mode == MODE_A5)
             stop_c(ABORT_DIVERGED, "C calls %04X; the original made no such call", addr, 0, 0);
         defect(D_CALL, "C calls %04X; the original made no such call", addr);
@@ -1546,13 +1582,55 @@ void hand_over(uint16_t addr)
     {
         Ctx *c = top;
 
+        uint8_t p = cpu.p;
+
         stats[sp->tag].originals++;
-        chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, addr);
+        if (hold.active) {
+            hold.i_orig = p & P_I;
+            p |= P_I;
+        }
+        chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, p, addr);
         prev_op = 0;
         scan = sp->cur;
         c->abandoned = 1;
         swapcontext(&c->uc, &main_uc);
     }
+}
+
+/* At a left hand-over: the C's registers against the original's at the close (when the C is at the PC the original
+ * left at), and the interrupt that follows the close in the record, if the next event after the close markers is one. */
+void hold_prepare(Span *s, const Ev *closing)
+{
+    uint64_t k;
+    Ev *x;
+
+    hold.active = 0;
+    if (closing->pc == rondo_pc && (cpu.a != closing->a || cpu.x != closing->x || cpu.y != closing->y || cpu.s != closing->s ||
+                                    ((cpu.p ^ closing->p) & PFLAGS)))
+        defect(D_REGS, "at the hand-over at %04X the C has A%02X X%02X Y%02X S%02X P%02X, the original A%02X X%02X Y%02X S%02X P%02X",
+               rondo_pc, cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, closing->a, closing->x, closing->y, closing->s, closing->p);
+    for (k = s->end + 1; (x = evp(k)) && (x->type == EV_CLOSE || x->type == EV_STATE); k++)
+        ;
+    if (!x || x->type != EV_INT) {
+        held_not++;
+        return;
+    }
+    hold.ev = *x;
+    hold.handler = 0;
+    for (uint64_t j = k + 1; j < k + 64 && (x = evp(j)); j++)
+        if (x->type == EV_CALL && x->kind == K_IRQ) {
+            hold.handler = x->pc;
+            hold.entry_idx = j;
+            break;
+        }
+    if (!hold.handler) {
+        held_not++;
+        return;
+    }
+    hold.tag = s->tag;
+    hold.n = 0;
+    hold_acc = 0;
+    hold.active = 1;
 }
 
 /* A tail jump from the instruction at `from`: that is where the original's jump came from, and the hook judges
@@ -1765,6 +1843,8 @@ void check_rd(uint32_t phys, uint8_t v, int kind)
         prev_op = v;
         return;
     }
+    if (kind == 0 && hold.active)
+        hold_acc++;
     if (kind != 0 || !depth || (mode != MODE_A5 && mode != MODE_RECORD))
         return;
     phys = canon(phys);
@@ -1786,6 +1866,8 @@ void check_wr_pre(uint32_t phys, uint8_t v)
 {
     Ev e;
 
+    if (hold.active)
+        hold_acc++;
     if (!depth || (mode != MODE_A5 && mode != MODE_RECORD))
         return;
     phys = canon(phys);
@@ -2766,6 +2848,67 @@ int check_tag_run(const char *name)
 /* The hook before every instruction.                                                           */
 
 int check_exec(uint32_t pc);
+static int hook_again(void);
+
+/* The interrupt the record has after a left hand-over, at the interrupted PC: compared with the core's registers and
+ * dispatched from the record, as hy_int_pass does a C's (pace to its clock, the eight cycles, the pushes, the handler). */
+static int hold_dispatch(const Regs *r)
+{
+    Ev ev = hold.ev;
+    uint8_t mpr[8];
+    uint8_t p = (uint8_t)((r->p & ~P_I) | hold.i_orig);
+
+    hold.active = 0;
+    blame_tag = hold.tag;
+    if (r->a != ev.a || r->x != ev.x || r->y != ev.y || r->s != ev.s || ((p ^ ev.p) & PFLAGS))
+        defect(D_REGS, "at the held interrupt at %04X the core has A%02X X%02X Y%02X S%02X P%02X, the original A%02X X%02X Y%02X S%02X P%02X",
+               (unsigned)r->pc, r->a, r->x, r->y, r->s, p, ev.a, ev.x, ev.y, ev.s, ev.p);
+    if (hybrid_clock_now() > ev.clock)
+        stop_run(3, "the original's run-on after a left hand-over reached the interrupted PC %04X after the interrupt's clock", (unsigned)r->pc);
+    pace_to(ev.clock);
+    chk_charge(8 * (ev.speed ? 3 : 12));
+    for (unsigned k = 0; k < 8; k++)
+        mpr[k] = (uint8_t)chk_mpr(k);
+    if (memcmp(mpr, ev.mpr, 8) || chk_get_speed() != ev.speed)
+        defect(D_INT, "at the held interrupt the MPRs or the CPU clock differ from the original's");
+    blame_tag = -1;
+    chk_set_regs(r->a, r->x, r->y, r->s, p, r->pc);
+    check_irq();             /* the bookkeeping of an interrupt the core took: where the handler returns to */
+    chk_bus_wr((uint16_t)(0x2100 | ev.s), (uint8_t)(ev.pc >> 8));
+    chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(ev.s - 1)), (uint8_t)ev.pc);
+    chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(ev.s - 2)), (uint8_t)(ev.p & ~P_B));
+    chk_set_regs(ev.a, ev.x, ev.y, (uint8_t)(ev.s - 3), (uint8_t)((ev.p | P_I) & ~(P_T | P_D)), hold.handler);
+    prev_op = PREV_IRQ;
+    last_pc = 0xFFFF;
+    scan = hold.entry_idx + 1;
+    held_ints++;
+    return hook_again();
+}
+
+/* Each instruction the original runs under the hold: the hold ends at the record's interrupted PC; anything else that
+ * could make the run-on differ from the record's stops the run. */
+static int hold_step(const Regs *r)
+{
+    uint8_t op;
+
+    if (r->pc == hold.ev.pc && r->s == hold.ev.s)
+        return hold_dispatch(r);
+    {
+        unsigned seen = hold_acc;
+
+        op = chk_bus_rd(r->pc);       /* this look at the opcode is a read the core's hook counts: not the original's */
+        hold_acc = seen;
+    }
+    if (op == 0x08 || op == 0x28 || op == 0x40 || op == 0x58 || op == 0x78)
+        stop_run(3, "an instruction that reads or sets P (%02X at %04X) ran under the interrupt hold", op, (unsigned)r->pc);
+    if (hold_acc)
+        stop_run(3, "the original's run-on after a left hand-over made a data access before the interrupted PC %04X, which the record does not have",
+                 (unsigned)hold.ev.pc);
+    if (++hold.n > 16 || hybrid_clock_now() > hold.ev.clock)
+        stop_run(3, "the original's run-on after a left hand-over did not reach the interrupted PC %04X in time (%d instructions)",
+                 (unsigned)hold.ev.pc, hold.n);
+    return 0;
+}
 
 /* The CPU was set to run code at its registers' PC: what the hook does for that instruction. */
 static int hook_again(void)
@@ -2811,6 +2954,8 @@ int check_exec(uint32_t pc)
         exit(6);
     }
     if (mode == MODE_HYBRID) {
+        if (hold.active)
+            return hold_step(&r);
         if (top && top->parked && top->wait_frame) {
             if (cur_frame < top->wait_frame)
                 return 1;                    /* the frame has not ended: the core goes on, running nothing */
@@ -3199,6 +3344,9 @@ void check_finish(void)
             first = -1L;
         if (stopped_why)
             printf("STOPPED %s\n", stopped_why);
+        if (held_ints || held_not)
+            fprintf(report, "left hand-overs: %llu with the interrupt that followed held and dispatched from the record, %llu with none\n",
+                    (unsigned long long)held_ints, (unsigned long long)held_not);
         if (horizon_calls)
             fprintf(report, "horizon hand-overs %llu: calls whose return was not within %u events, the original ran on\n",
                     (unsigned long long)horizon_calls, (unsigned)HORIZON);

@@ -626,7 +626,7 @@ int main(int argc, char **argv)
             ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
                 (void *)check_rd, NULL, (void *)check_irq);
             ((void (*)(void *, void *))sym(lib, "rondo_set_check_hooks"))(
-                (void *)check_exec, check_mode != 3 ? (void *)check_wr_pre : NULL);
+                (void *)check_exec, (void *)check_wr_pre);
         } else {
             /* A traced run keeps the trace's read and write hooks; the oracles' exec hook only
              * serves the script's unit calls. */

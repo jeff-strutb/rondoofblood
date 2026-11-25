@@ -101,6 +101,15 @@ static inline Ended l8_script_kind1(uint8_t slot, uint8_t script, uint8_t target
     return ended_with_y(ended_with_a(ended_nz(slot), script), script);
 }
 
+/* RecordObjectEvent's exit: unmarked, A 0 and Z; else A the byte stored, Y its index, C whether the event is a multiple of 8. */
+static inline Ended l8_of_event(bool marked, uint8_t stored, uint8_t event, uint8_t byte)
+{
+    if (!marked) {
+        return ended_load(0);
+    }
+    return ended_with_carry(ended_with_y(ended_load(stored), byte), (event & 7) == 0);
+}
+
 /* object/enemies_l8_st11.c */
 Ended LoadRecordOrCapPlayerX(uint8_t slot);
 Ended StartAtX120OrApplyVelocity(uint8_t slot);
@@ -191,5 +200,32 @@ Ended HitDamage16C9(uint8_t slot);
 /* object/enemies_l8_st14.c */
 Ended LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry);
 Ended LoadRecordRandomLiftThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+
+/* object/enemies_l8_st15.c */
+Ended LoadRecordThenRecordEventAtFifth(uint8_t slot, uint8_t y_entry);
+Ended FlagThenHitsCompare(uint8_t slot);
+Ended EnterState5WhenFlagged(uint8_t slot);
+Ended LoadRecordStartTwoPieces(uint8_t slot);
+Ended SetUpEntryFromLeft(uint8_t slot);
+Ended StepListMoveXThenTurnUp(uint8_t slot, uint8_t y_entry);
+Ended WaitForScreenByte2(uint8_t slot);
+SoundEnd CountDownThenSound84AndAppear(uint8_t slot, uint8_t y_entry);
+Ended StepListFallAndSwing(uint8_t slot, uint8_t y_entry);
+Ended CountDownThenLeaveRight(uint8_t slot);
+Ended InsideCenterBand(uint8_t slot);
+Ended FacingByX(uint8_t slot);
+Ended StepListThenTurnAround(uint8_t slot, uint8_t y_entry);
+Ended StepListThenCountDownToState4(uint8_t slot, uint8_t y_entry);
+Ended PickNextPhaseFromTable(uint8_t slot);
+SoundEnd StepListThenLeapWithSound(uint8_t slot, uint8_t y_entry);
+Ended FlyAndSagWithTwoLists(uint8_t slot);
+SoundEnd SoundEvery32Frames(uint8_t slot, uint8_t y_entry);
+Ended PickRandomThenState3(uint8_t slot);
+Ended StepListSlowDownThenPickRandom(uint8_t slot, uint8_t y_entry);
+Ended EdgeCodeByDirection(uint8_t slot);
+Ended TurnTowardCenterOrWait(uint8_t slot);
+Ended StepSideToSideWithCenterCheck(uint8_t slot, uint8_t y_entry);
+SoundEnd StepListThenSoundAndSpawn(uint8_t slot, uint8_t y_entry);
+SoundEnd StepListThenBurstAtFrame14(uint8_t slot, uint8_t y_entry);
 
 #endif

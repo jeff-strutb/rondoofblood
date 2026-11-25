@@ -1,3 +1,51 @@
+; @routine 025C:068 JumpByPhaseTable025C068
+; @run 70:B868
+; WHAT IT DOES: Goes to the code a table at $B87A names for the object's OBJ_2800.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+JumpByPhaseTable025C068:
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$B87A,y
+    sta z:zTemp00
+    lda a:$B87B,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 025C:40D JumpByPhaseTable025C40D
+; @run 70:BC0D
+; WHAT IT DOES: Goes to the code a table at $BC1F names for the object's OBJ_2800.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+JumpByPhaseTable025C40D:
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:AnimationLists+4,y
+    sta z:zTemp00
+    lda a:AnimationLists+5,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 025C:51C JumpByStateTable025C51C
+; @run 70:BD1C
+; WHAT IT DOES: Goes to the code a table at $BD2E names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable025C51C:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$BD2E,y
+    sta z:zTemp00
+    lda a:$BD2F,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
 ; @routine 051A:190 JumpByStateTable051A190
 ; @run 70:A990
 ; WHAT IT DOES: Goes to the code a table at $A9A2 names for the object's state.
@@ -11,6 +59,22 @@ JumpByStateTable051A190:
     lda a:$A9A2,y
     sta z:zTemp00
     lda a:$A9A3,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 051B:225 JumpByStateTable051B225
+; @run 70:B225
+; WHAT IT DOES: Goes to the code a table at $B237 names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable051B225:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:SoundDrvInit+4,y
+    sta z:zTemp00
+    lda a:SoundDrvInit+5,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -43,6 +107,54 @@ JumpByPhaseTable051B5B5:
     lda a:$B5C7,y
     sta z:zTemp00
     lda a:$B5C8,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 05CB:212 JumpByPhaseTable05CB212
+; @run 70:B212
+; WHAT IT DOES: Goes to the code a table at $B224 names for the object's OBJ_2800.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+JumpByPhaseTable05CB212:
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$B224,y
+    sta z:zTemp00
+    lda a:$B225,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 05CB:4B8 JumpByPhaseTable05CB4B8
+; @run 70:B4B8
+; WHAT IT DOES: Goes to the code a table at $B4CA names for the object's OBJ_2800.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+JumpByPhaseTable05CB4B8:
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$B4CA,y
+    sta z:zTemp00
+    lda a:$B4CB,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 05CC:0E9 JumpByStateTable05CC0E9
+; @run 70:B8E9
+; WHAT IT DOES: Goes to the code a table at $B8FB names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable05CC0E9:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:SoundMusicTable+1,y
+    sta z:zTemp00
+    lda a:SoundMusicTable+2,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -107,6 +219,22 @@ JumpByStateTable072C763:
     lda a:$BF75,y
     sta z:zTemp00
     lda a:$BF76,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 088A:304 JumpByStateTable088A304
+; @run 70:AB04
+; WHAT IT DOES: Goes to the code a table at $AB16 names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable088A304:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$AB16,y
+    sta z:zTemp00
+    lda a:$AB17,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -187,6 +315,86 @@ JumpByStateTable09EC18D:
     lda a:$B99F,y
     sta z:zTemp00
     lda a:$B9A0,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0B4A:4DC JumpByStateTable0B4A4DC
+; @run 70:ACDC
+; WHAT IT DOES: Goes to the code a table at $ACEE names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable0B4A4DC:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$ACEE,y
+    sta z:zTemp00
+    lda a:$ACEF,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0B4A:573 JumpByStateTable0B4A573
+; @run 70:AD73
+; WHAT IT DOES: Goes to the code a table at $AD85 names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable0B4A573:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$AD85,y
+    sta z:zTemp00
+    lda a:$AD86,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0B4C:0D7 JumpByPhaseTable0B4C0D7
+; @run 70:B8D7
+; WHAT IT DOES: Goes to the code a table at $B8E9 names for the object's OBJ_2800.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+JumpByPhaseTable0B4C0D7:
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$B8E9,y
+    sta z:zTemp00
+    lda a:$B8EA,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0B4C:42F JumpByPhaseTable0B4C42F
+; @run 70:BC2F
+; WHAT IT DOES: Goes to the code a table at $BC41 names for the object's OBJ_2800.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+JumpByPhaseTable0B4C42F:
+    lda a:OBJ_2800,x
+    asl a
+    tay
+    lda a:$BC41,y
+    sta z:zTemp00
+    lda a:$BC42,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0B4D:08F JumpByStateTable0B4D08F
+; @run 70:C08F
+; WHAT IT DOES: Goes to the code a table at $C0A1 names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable0B4D08F:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$C0A1,y
+    sta z:zTemp00
+    lda a:$C0A2,y
     sta z:zTemp01
     jmp (ZeroPage)
 

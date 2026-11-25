@@ -519,4 +519,17 @@ Exit EndingCommandPlaceTimed(void);
 Exit EndingCommandLoadBanks(void);
 Exit EndingCommandCdPlay(uint8_t index);
 
+
+/* The scene objects' loop and the overlay's entry stubs (menu/attract_objects.c). */
+ObjExit DispatchSceneObject(uint8_t kind, uint8_t object);
+Exit StepSceneObjects(void);
+Exit TitleScreenEntry(uint8_t kept_y);
+Exit AttractEntry(uint8_t kept_y);
+Exit SceneObjectsEntry(void);
+void abi_DispatchSceneObject(void);
+void abi_StepSceneObjects(void);
+void abi_TitleScreenEntry(void);
+void abi_AttractEntry(void);
+void abi_SceneObjectsEntry(void);
+
 #endif

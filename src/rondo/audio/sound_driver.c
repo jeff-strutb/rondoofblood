@@ -12,6 +12,7 @@
 #include "syscard.h"
 #include "access.h"
 #include "routines.h"
+#include "enemy_objects.h"
 
 enum {
     PSG_CHANNELS = 6, PSG_VOLUME_FULL = 0xFF, LEVEL_SILENT = 0x1F,
@@ -93,16 +94,19 @@ void abi_SoundVolumeFull(void)
  * @run 75:8E2D
  * WHAT IT DOES: Starts a channel's envelope from its first phase.
  * HOW: SoundEnvelopePhase 1.
+ * WAITS: no.
  * Entry: X channel. Exit: A, X, Y, C and V kept; N and Z from A.
  */
-void SoundStartEnvelope(uint8_t channel)
+void SoundStartEnvelope(uint8_t channel, uint8_t kept_a)
 {
+    push8(kept_a);
     wr8((uint16_t)(SoundEnvelopePhase + channel), 1);
+    (void)pull8();
 }
 
 void abi_SoundStartEnvelope(void)
 {
-    SoundStartEnvelope(cpu.x);
+    SoundStartEnvelope(cpu.x, cpu.a);
     abi_nz(cpu.a);
 }
 
@@ -112,13 +116,15 @@ void abi_SoundStartEnvelope(void)
  * WHAT IT DOES: Silences a channel: its envelope's level to $1F and its phase off, and the PSG
  * channel's control and balance cleared, unless it is 4 or 5 and an effect plays on it.
  * HOW: The PSG channel is the one already selected.
+ * WAITS: no.
  * Entry: X channel. Exit: A, X and Y kept; N and Z from A; C set if the channel is 6 or more; V
  * bit 6 of the effect's command when channel 4 or 5, else kept.
  */
-ChannelRelease SoundSilenceChannel(uint8_t channel)
+ChannelRelease SoundSilenceChannel(uint8_t channel, uint8_t kept_a)
 {
     ChannelRelease release = { false, 0 };
 
+    push8(kept_a);
     wr8((uint16_t)(SoundEnvelopeLevel + channel), LEVEL_SILENT);
     wr8((uint16_t)(SoundEnvelopePhase + channel), 0);
     release.looked = channel >= EFFECT_SHARED_FIRST && channel < EFFECT_SHARED_END;
@@ -126,12 +132,13 @@ ChannelRelease SoundSilenceChannel(uint8_t channel)
         wr8(PsgControl, 0);
         wr8(PsgBalance, 0);
     }
+    (void)pull8();
     return release;
 }
 
 void abi_SoundSilenceChannel(void)
 {
-    ChannelRelease release = SoundSilenceChannel(cpu.x);
+    ChannelRelease release = SoundSilenceChannel(cpu.x, cpu.a);
 
     abi_nz(cpu.a);
     abi_flag(P_C, cpu.x >= EFFECT_SHARED_END);
@@ -228,16 +235,47 @@ void abi_SoundMultiply(void)
  * @run 75:8F68
  * WHAT IT DOES: Multiplies the low nibble of A by Y into zSoundWordLo and zSoundWordHi.
  * HOW: A shifted up four places, then four steps of shift and add.
+ * WAITS: no.
  * Entry: A and Y. Exit: as SoundMultiply, with A 0 when the nibble was 0.
  */
-SoundProduct SoundMultiplyNibble(uint8_t a, uint8_t y)
+SoundProduct SoundMultiplyNibble(uint8_t a, uint8_t y, uint8_t kept_x)
 {
-    return shift_add((uint8_t)(a & 0x0F), 4, y);
+    SoundProduct product = { 0, false, 0, false };
+    uint8_t step, low, high, new_low, new_high;
+    uint16_t word = 0;
+    bool carry;
+
+    push8(kept_x);
+    WR8(ZP->sound_scratch, (uint8_t)(a << 4));
+    WR8(ZP->sound_word.lo, 0);
+    WR8(ZP->sound_word.hi, 0);
+    for (step = 0; step != 4; step++) {
+        carry = ASL8(ZP->sound_word.lo);
+        ROL8(ZP->sound_word.hi, carry);
+        word = (uint16_t)(word << 1);
+        carry = ASL8(ZP->sound_scratch);
+        if (carry) {
+            low = RD8(ZP->sound_word.lo);
+            new_low = (uint8_t)(low + y);
+            WR8(ZP->sound_word.lo, new_low);
+            carry = (unsigned)low + y > 0xFF;
+            high = RD8(ZP->sound_word.hi);
+            new_high = (uint8_t)(high + (carry ? 1 : 0));
+            WR8(ZP->sound_word.hi, new_high);
+            word = (uint16_t)(word + y);
+            product.added = true;
+            product.high = new_high;
+            product.overflow = high == 0x7F && new_high == 0x80;
+        }
+    }
+    product.value = word;
+    (void)pull8();
+    return product;
 }
 
 void abi_SoundMultiplyNibble(void)
 {
-    abi_exit_product(SoundMultiplyNibble(cpu.a, cpu.y), (uint8_t)(cpu.a << 4));
+    abi_exit_product(SoundMultiplyNibble(cpu.a, cpu.y, cpu.x), (uint8_t)(cpu.a << 4));
 }
 
 /*
@@ -246,38 +284,38 @@ void abi_SoundMultiplyNibble(void)
  * WHAT IT DOES: Reads a sequence's address for a channel: the next two bytes, its place low and
  * high.
  * HOW: Through the pointer in zSoundWordLo and zSoundWordHi, moved on past them.
+ * WAITS: no.
  * Entry: X channel. Exit: A the second byte; N and Z from the pointer's low byte, or its high
  * when the low wrapped to 0. X, Y, C and V kept.
  */
-uint8_t SoundReadPair(uint8_t channel)
+uint8_t SoundReadPair(uint8_t channel, uint8_t *nz)
 {
     uint8_t second;
 
     wr8((uint16_t)(SoundSequenceLo + channel), rd8_zp(zSoundWordLo));
-    sound_pointer_step();
+    (void)sound_pointer_step();
     second = rd8_zp(zSoundWordLo);
     wr8((uint16_t)(SoundSequenceHi + channel), second);
-    sound_pointer_step();
+    *nz = sound_pointer_step();
     return second;
 }
 
 void abi_SoundReadPair(void)
 {
-    uint8_t low;
+    uint8_t nz;
 
-    cpu.a = SoundReadPair(cpu.x);
-    low = rd8(zSoundWordLo);
-    abi_nz(low != 0 ? low : rd8(zSoundWordHi));
+    cpu.a = SoundReadPair(cpu.x, &nz);
+    abi_nz(nz);
 }
 
-/* The sequence pointer on by one byte. */
-void sound_pointer_step(void)
+/* The sequence pointer on by one byte; what N and Z come from: the low byte, or the high when the low wrapped. */
+uint8_t sound_pointer_step(void)
 {
-    uint8_t low = (uint8_t)(rd8(zSoundWordLo) + 1);
+    uint8_t low = INC8(ZP->sound_word.lo);
 
-    wr8(zSoundWordLo, low);
     if (low == 0)
-        wr8(zSoundWordHi, (uint8_t)(rd8(zSoundWordHi) + 1));
+        return INC8(ZP->sound_word.hi);
+    return low;
 }
 
 /*
@@ -356,6 +394,7 @@ void abi_SoundSaveSequence(void)
  * @run 75:8607
  * WHAT IT DOES: Moves the place in the sequence to the address in zSoundWordLo and Hi.
  * HOW: Two bytes copied.
+ * WAITS: no.
  * Entry: nothing. Exit: A the address's high byte, N and Z from it. X, Y, C and V kept.
  */
 uint8_t SoundSequenceFromWord(void)
@@ -380,7 +419,7 @@ void abi_SoundSequenceFromWord(void)
  * are the slide's.
  */
 static SlideStep slide_step(uint8_t channel, uint16_t step_lo, uint16_t step_hi, uint16_t value_lo,
-                            uint16_t value_hi, uint16_t target)
+                            uint16_t value_hi, uint16_t target, bool value_read_first)
 {
     SlideStep slide = { SLIDE_IDLE, 0, false, false };
     unsigned sum;
@@ -398,8 +437,13 @@ static SlideStep slide_step(uint8_t channel, uint16_t step_lo, uint16_t step_hi,
     }
     sum = (unsigned)rd8((uint16_t)(step_lo + channel)) + rd8((uint16_t)(value_lo + channel));
     wr8((uint16_t)(value_lo + channel), (uint8_t)sum);
-    step = rd8((uint16_t)(step_hi + channel));
-    high = rd8((uint16_t)(value_hi + channel));
+    if (value_read_first) {
+        high = rd8((uint16_t)(value_hi + channel));
+        step = rd8((uint16_t)(step_hi + channel));
+    } else {
+        step = rd8((uint16_t)(step_hi + channel));
+        high = rd8((uint16_t)(value_hi + channel));
+    }
     sum = (unsigned)step + high + (sum >> 8);
     slide.value = (uint8_t)sum;
     slide.carry = sum > 0xFF;
@@ -436,6 +480,7 @@ void slide_exit_shim(SlideStep slide)
  * @run 75:8743
  * WHAT IT DOES: Moves a channel's slide on by its step, until its high byte reaches the target.
  * HOW: SoundSlideStepLo and Hi onto SoundSlideLo and Hi; SoundSlideTarget.
+ * WAITS: no.
  * Entry: X channel. Exit: X and Y kept. No slide, A 0, Z set, N clear, C and V kept. At the
  * target, A the high byte, Z and C set, N clear, V kept. Moved, A the high byte, N, Z, C and V
  * from its add.
@@ -443,7 +488,7 @@ void slide_exit_shim(SlideStep slide)
 SlideStep SoundSlideStep(uint8_t channel)
 {
     return slide_step(channel, SoundSlideStepLo, SoundSlideStepHi, SoundSlideLo, SoundSlideHi,
-                      SoundSlideTarget);
+                      SoundSlideTarget, false);
 }
 
 void abi_SoundSlideStep(void)
@@ -456,12 +501,13 @@ void abi_SoundSlideStep(void)
  * @run 75:87CC
  * WHAT IT DOES: Moves a channel's pan on by its step, until it reaches the target.
  * HOW: SoundPanStepLo and Hi onto SoundPanLo and SoundPan; SoundPanTarget.
+ * WAITS: no.
  * Entry: X channel. Exit: as SoundSlideStep.
  */
 SlideStep SoundPanSlideStep(uint8_t channel)
 {
     return slide_step(channel, SoundPanStepLo, SoundPanStepHi, SoundPanLo, SoundPan,
-                      SoundPanTarget);
+                      SoundPanTarget, true);
 }
 
 void abi_SoundPanSlideStep(void)
@@ -493,35 +539,42 @@ void abi_SoundSetPan(void)
  * @run 76:B721
  * WHAT IT DOES: Points the block-move stub's source at a waveform: 32 bytes each from $BD11.
  * HOW: The waveform times 32, plus $BD11, into BlockMoveSourceLo and Hi.
+ * WAITS: no.
  * Entry: A waveform. Exit: A the address's high byte, N, Z, C and V from adding it. X and Y kept.
  */
-uint16_t SoundWaveAddress(uint8_t wave)
+Sum SoundWaveAddress(uint8_t wave)
 {
-    uint16_t address = (uint16_t)(SOUND_WAVES + (wave << 5));
+    uint8_t a = wave, step;
+    bool carry;
+    Sum low, high;
 
-    wr8(BlockMoveSourceLo, (uint8_t)address);
-    wr8(BlockMoveSourceHi, (uint8_t)(address >> 8));
-    return address;
+    wr8(BlockMoveSourceLo, 0);
+    for (step = 0; step != 3; step++) {
+        carry = (a & 1) != 0;
+        a = (uint8_t)(a >> 1);
+        (void)ror_mem(BlockMoveSourceLo, carry);
+    }
+    wr8(BlockMoveSourceHi, a);
+    a = rd8(BlockMoveSourceLo);
+    low = add_bytes(a, (uint8_t)SOUND_WAVES, false);
+    wr8(BlockMoveSourceLo, low.value);
+    a = rd8(BlockMoveSourceHi);
+    high = add_bytes(a, (uint8_t)(SOUND_WAVES >> 8), low.carry);
+    wr8(BlockMoveSourceHi, high.value);
+    return high;
 }
 
-void wave_address_exit_shim(uint8_t wave)
+void wave_address_exit_shim(Sum high)
 {
-    uint8_t page = (uint8_t)(wave >> 3);
-    uint8_t high = (uint8_t)((SOUND_WAVES + (wave << 5)) >> 8);
-    bool carry = ((wave & 0x07) << 5) + (SOUND_WAVES & 0xFF) > 0xFF;
-
-    cpu.a = high;
-    abi_nz(high);
-    abi_flag(P_C, page + (SOUND_WAVES >> 8) + carry > 0xFF);
-    abi_flag(P_V, (~(page ^ (SOUND_WAVES >> 8)) & (page ^ high) & 0x80) != 0);
+    cpu.a = high.value;
+    abi_nz(high.value);
+    abi_flag(P_C, high.carry);
+    abi_flag(P_V, high.overflow);
 }
 
 void abi_SoundWaveAddress(void)
 {
-    uint8_t wave = cpu.a;
-
-    SoundWaveAddress(wave);
-    wave_address_exit_shim(wave);
+    wave_address_exit_shim(SoundWaveAddress(cpu.a));
 }
 
 /*
@@ -805,6 +858,7 @@ void abi_SoundRampStep(void)
  * when it gets there.
  * HOW: SoundTempoSlideBy added to or taken from SoundTempoLo, carrying into SoundTempo;
  * SoundTempoTarget.
+ * WAITS: no.
  * Entry: X channel. Exit: X and Y kept. No step, A 0, Z set, N clear. There, A the target, Z and
  * C set, N clear. Moved, A the fraction, C and V from its add or subtract, N and Z from it, or
  * from the value when that carried into it.
@@ -880,29 +934,17 @@ void abi_SoundTempoSlideStep(void)
     tempo_slide_exit_shim(SoundTempoSlideStep(cpu.x));
 }
 
-/* A timer set to a rate, with the phase moved on when asked. */
-static uint8_t envelope_next(uint8_t channel, uint16_t rate, bool next_phase)
-{
-    uint8_t frames;
 
-    if (next_phase)
-        wr8((uint16_t)(SoundEnvelopePhase + channel), (uint8_t)(rd8((uint16_t)(SoundEnvelopePhase + channel)) + 1));
-    frames = rd8((uint16_t)(rate + channel));
-    wr8((uint16_t)(SoundEnvelopeTimer + channel), frames);
-    return frames;
-}
 
-/* The phase's timer counted down; true when it ran out. */
-static bool envelope_timer_out(uint8_t channel, EnvelopeStep *step)
+/* The attack is over: the phase on, and the decay rate's frames in the timer. */
+static Ended envelope_decay_phase(uint8_t channel)
 {
-    step->timer = (uint8_t)(rd8((uint16_t)(SoundEnvelopeTimer + channel)) - 1);
-    wr8((uint16_t)(SoundEnvelopeTimer + channel), step->timer);
-    if (step->timer != 0) {
-        step->how = ENVELOPE_WAITING;
-        return false;
-    }
-    step->how = ENVELOPE_TIMED;
-    return true;
+    uint8_t a;
+
+    wr8((uint16_t)(SoundEnvelopePhase + channel), (uint8_t)(rd8((uint16_t)(SoundEnvelopePhase + channel)) + 1));
+    a = rd8((uint16_t)(SoundDecayRate + channel));
+    wr8((uint16_t)(SoundEnvelopeTimer + channel), a);
+    return ended_load(a);
 }
 
 /*
@@ -915,87 +957,91 @@ static bool envelope_timer_out(uint8_t channel, EnvelopeStep *step)
  * HOW: SoundEnvelopePhase, SoundEnvelopeTimer and SoundEnvelopeLevel by channel, with the rates
  * and levels set for it. The release compares A, which is 0 there, with $1F, so it never stops
  * itself.
+ * WAITS: no.
  * Entry: X channel. Exit: X, Y and V kept. Off, A $FF, N set, Z clear. Past the release, A the
  * phase less 4, N and Z from it. Timer still running, A 0, N and Z from the timer. Timer set, A
  * the frames it was set to, N and Z from them; C from comparing the level with the sustain in the
  * decay, clear in the release, else kept.
  */
-EnvelopeStep SoundEnvelopeStep(uint8_t channel)
+Ended SoundEnvelopeStep(uint8_t channel)
 {
-    EnvelopeStep step = { ENVELOPE_OFF, 0, 0, 0, ENVELOPE_COMPARED_NONE, 0, 0 };
+    uint16_t phase_at = (uint16_t)(SoundEnvelopePhase + channel);
+    uint16_t timer_at = (uint16_t)(SoundEnvelopeTimer + channel);
+    uint16_t level_at = (uint16_t)(SoundEnvelopeLevel + channel);
+    uint8_t a, timer, level, sustain;
+    Ended e;
 
-    step.phase = rd8((uint16_t)(SoundEnvelopePhase + channel));
-    switch (step.phase) {
-    case ENVELOPE_OFF:
-        return step;
-    case ENVELOPE_START:
-        wr8((uint16_t)(SoundEnvelopePhase + channel), ENVELOPE_ATTACK);
-        wr8((uint16_t)(SoundEnvelopeLevel + channel), rd8((uint16_t)(SoundAttackLevel + channel)));
-        step.how = ENVELOPE_TIMED;
-        if (rd8((uint16_t)(SoundAttackRate + channel)) != 0) {
-            step.frames = envelope_next(channel, SoundAttackRate, false);
-            return step;
+    a = (uint8_t)(rd8(phase_at) - 1);
+    e = ended_nz(a);
+    if ((a & 0x80) != 0)
+        return ended_with_a(e, a);
+    if (a == 0) {
+        wr8(phase_at, (uint8_t)(rd8(phase_at) + 1));
+        a = rd8((uint16_t)(SoundAttackLevel + channel));
+        wr8(level_at, a);
+        a = rd8((uint16_t)(SoundAttackRate + channel));
+        if (a != 0) {
+            wr8(timer_at, a);
+            return ended_load(a);
         }
-        step.frames = envelope_next(channel, SoundDecayRate, true);
-        return step;
-    case ENVELOPE_ATTACK:
-        if (!envelope_timer_out(channel, &step))
-            return step;
-        step.level = (uint8_t)(rd8((uint16_t)(SoundEnvelopeLevel + channel)) - 1);
-        wr8((uint16_t)(SoundEnvelopeLevel + channel), step.level);
-        step.frames = step.level == 0 ? envelope_next(channel, SoundDecayRate, true)
-                                      : envelope_next(channel, SoundAttackRate, false);
-        return step;
-    case ENVELOPE_DECAY:
-        if (!envelope_timer_out(channel, &step))
-            return step;
-        step.level = (uint8_t)(rd8((uint16_t)(SoundEnvelopeLevel + channel)) + 1);
-        wr8((uint16_t)(SoundEnvelopeLevel + channel), step.level);
-        step.level = rd8((uint16_t)(SoundEnvelopeLevel + channel));
-        step.compared = ENVELOPE_COMPARED_SUSTAIN;
-        step.sustain = rd8((uint16_t)(SoundSustainLevel + channel));
-        step.frames = step.level == step.sustain ? envelope_next(channel, SoundReleaseRate, true)
-                                                 : envelope_next(channel, SoundDecayRate, false);
-        return step;
-    case ENVELOPE_RELEASE:
-        if (!envelope_timer_out(channel, &step))
-            return step;
-        wr8((uint16_t)(SoundEnvelopeLevel + channel), (uint8_t)(rd8((uint16_t)(SoundEnvelopeLevel + channel)) + 1));
-        step.compared = ENVELOPE_COMPARED_RELEASE;
-        step.frames = envelope_next(channel, SoundReleaseRate, false);
-        return step;
-    default:
-        step.how = ENVELOPE_PAST;
-        return step;
+        return envelope_decay_phase(channel);
     }
+    a = (uint8_t)(a - 1);
+    if (a == 0) {
+        timer = (uint8_t)(rd8(timer_at) - 1);
+        wr8(timer_at, timer);
+        if (timer != 0)
+            return ended_with_a(ended_nz(timer), 0);
+        level = (uint8_t)(rd8(level_at) - 1);
+        wr8(level_at, level);
+        if (level == 0)
+            return envelope_decay_phase(channel);
+        a = rd8((uint16_t)(SoundAttackRate + channel));
+        wr8(timer_at, a);
+        return ended_load(a);
+    }
+    a = (uint8_t)(a - 1);
+    if (a == 0) {
+        timer = (uint8_t)(rd8(timer_at) - 1);
+        wr8(timer_at, timer);
+        if (timer != 0)
+            return ended_with_a(ended_nz(timer), 0);
+        level = (uint8_t)(rd8(level_at) + 1);
+        wr8(level_at, level);
+        level = rd8(level_at);
+        sustain = rd8((uint16_t)(SoundSustainLevel + channel));
+        e = ended_compare(level, sustain);
+        if (level == sustain) {
+            wr8(phase_at, (uint8_t)(rd8(phase_at) + 1));
+            a = rd8((uint16_t)(SoundReleaseRate + channel));
+        } else {
+            a = rd8((uint16_t)(SoundDecayRate + channel));
+        }
+        wr8(timer_at, a);
+        return ended_then(e, ended_load(a));
+    }
+    a = (uint8_t)(a - 1);
+    if (a != 0)
+        return ended_with_a(ended_nz(a), a);
+    timer = (uint8_t)(rd8(timer_at) - 1);
+    wr8(timer_at, timer);
+    if (timer != 0)
+        return ended_with_a(ended_nz(timer), 0);
+    level = (uint8_t)(rd8(level_at) + 1);
+    wr8(level_at, level);
+    e = ended_compare(a, 0x1F);
+    if (a == 0x1F) {
+        wr8(phase_at, 0);
+        return e;
+    }
+    a = rd8((uint16_t)(SoundReleaseRate + channel));
+    wr8(timer_at, a);
+    return ended_then(e, ended_load(a));
 }
 
 void abi_SoundEnvelopeStep(void)
 {
-    EnvelopeStep step = SoundEnvelopeStep(cpu.x);
-
-    switch (step.how) {
-    case ENVELOPE_OFF:
-        cpu.a = 0xFF;
-        abi_nz(0xFF);
-        return;
-    case ENVELOPE_PAST:
-        cpu.a = (uint8_t)(step.phase - ENVELOPE_RELEASE);
-        abi_nz(cpu.a);
-        return;
-    case ENVELOPE_WAITING:
-        cpu.a = 0;
-        abi_nz(step.timer);
-        return;
-    default:
-        cpu.a = step.frames;
-        abi_nz(step.frames);
-        if (step.compared == ENVELOPE_COMPARED_SUSTAIN)
-            abi_flag(P_C, step.level >= step.sustain);
-        else if (step.compared == ENVELOPE_COMPARED_RELEASE)
-            abi_flag(P_C, false);
-        return;
-    }
+    abi_ended(SoundEnvelopeStep(cpu.x));
 }
 
 /*
@@ -1012,38 +1058,41 @@ ScaledOffset SoundScaledOffset(uint8_t byte, uint8_t channel)
 {
     ScaledOffset offset;
     uint8_t entry = (uint8_t)(byte & 0x7F);
+    uint8_t low, high;
+    Sum sum_low, sum_high;
 
     offset.negative = entry >= OFFSET_NEGATIVE;
+    offset.last.value = 0;
+    offset.factor = rd8((uint16_t)(SoundOffsetTable + (uint8_t)(entry & 0x3F)));
     offset.scale = rd8((uint16_t)(SoundVibratoDepth + channel));
-    offset.product = SoundMultiply(rd8((uint16_t)(SoundOffsetTable + (entry & 0x3F))), offset.scale, channel);
+    jsr_push(offset.negative ? 0x891D : 0x890F);
+    offset.product = SoundMultiply(offset.factor, offset.scale, channel);
+    jsr_pop();
     if (offset.negative) {
-        uint16_t word = (uint16_t)(0 - offset.product.value);
-
-        wr8(zSoundWordLo, (uint8_t)word);
-        wr8(zSoundWordHi, (uint8_t)(word >> 8));
+        low = rd8(zSoundWordLo);
+        sum_low = sub_bytes(0, low, true);
+        wr8(zSoundWordLo, sum_low.value);
+        high = rd8(zSoundWordHi);
+        sum_high = sub_bytes(0, high, sum_low.carry);
+        wr8(zSoundWordHi, sum_high.value);
+        offset.last = sum_high;
     }
     return offset;
 }
 
 void abi_SoundScaledOffset(void)
 {
-    uint8_t factor = rd8((uint16_t)(SoundOffsetTable + (cpu.a & 0x3F)));
     ScaledOffset offset = SoundScaledOffset(cpu.a, cpu.x);
-    uint8_t low = (uint8_t)offset.product.value;
-    uint8_t high = (uint8_t)(offset.product.value >> 8);
-    uint8_t result;
-    bool borrow = low != 0;
 
     cpu.y = offset.scale;
     if (!offset.negative) {
-        abi_exit_product(offset.product, factor);
+        abi_exit_product(offset.product, offset.factor);
         return;
     }
-    result = (uint8_t)(0 - high - borrow);
-    cpu.a = result;
-    abi_nz(result);
-    abi_flag(P_C, !borrow && high == 0);
-    abi_flag(P_V, (high & result & 0x80) != 0);
+    cpu.a = offset.last.value;
+    abi_nz(offset.last.value);
+    abi_flag(P_C, offset.last.carry);
+    abi_flag(P_V, offset.last.overflow);
 }
 
 /*
@@ -1101,31 +1150,45 @@ void abi_SoundSetControl(void)
  * envelope, the slide, the ramp and what is given, less the fade on the six PSG channels, plus
  * the two additions; below 0 it is 0, above $1F it is $1F.
  * HOW: zSoundWordLo holds what is given; SoundEnvelopeStep; SoundSetControl.
+ * WAITS: no.
  * Entry: A what to take off, X channel. Exit: as SoundSetControl, with A the volume when left
  * alone.
  */
 ControlSet SoundApplyVolume(uint8_t less, uint8_t channel)
 {
-    uint8_t volume;
+    uint8_t a, taken;
+    ControlSet set;
 
     wr8(zSoundWordLo, less);
-    SoundEnvelopeStep(channel);
-    volume = (uint8_t)(rd8((uint16_t)(SoundVolumeBase + channel)) - rd8((uint16_t)(SoundEnvelopeLevel + channel)) -
-                       rd8((uint16_t)(SoundSlideHi + channel)) - rd8((uint16_t)(SoundRampHi + channel)) -
-                       rd8(zSoundWordLo));
-    if (channel < EFFECT_SHARED_END)
-        volume = (uint8_t)(volume - rd8(SoundFading));
-    volume = (uint8_t)(volume + rd8((uint16_t)(SoundVolumeAddA + channel)) + rd8((uint16_t)(SoundVolumeAddB + channel)));
-    if (volume & 0x80)
-        volume = 0;
-    else if (volume >= PSG_VOLUME_LIMIT)
-        volume = PSG_VOLUME_LIMIT - 1;
-    {
-        ControlSet set = SoundSetControl(volume, channel);
-
-        set.volume = volume;
-        return set;
+    jsr_push(0x8A7F);
+    (void)SoundEnvelopeStep(channel);
+    jsr_pop();
+    a = rd8((uint16_t)(SoundVolumeBase + channel));
+    taken = rd8((uint16_t)(SoundEnvelopeLevel + channel));
+    a = (uint8_t)(a - taken);
+    taken = rd8((uint16_t)(SoundSlideHi + channel));
+    a = (uint8_t)(a - taken);
+    taken = rd8((uint16_t)(SoundRampHi + channel));
+    a = (uint8_t)(a - taken);
+    taken = rd8(zSoundWordLo);
+    a = (uint8_t)(a - taken);
+    if (channel < EFFECT_SHARED_END) {
+        taken = rd8(SoundFading);
+        a = (uint8_t)(a - taken);
     }
+    taken = rd8((uint16_t)(SoundVolumeAddA + channel));
+    a = (uint8_t)(a + taken);
+    taken = rd8((uint16_t)(SoundVolumeAddB + channel));
+    a = (uint8_t)(a + taken);
+    if (a & 0x80)
+        a = 0;
+    else if (a >= PSG_VOLUME_LIMIT)
+        a = PSG_VOLUME_LIMIT - 1;
+    jsr_push(0x8AAF);
+    set = SoundSetControl(a, channel);
+    jsr_pop();
+    set.volume = a;
+    return set;
 }
 
 void abi_SoundApplyVolume(void)
@@ -1145,6 +1208,7 @@ void abi_SoundApplyVolume(void)
  * gate and no volume.
  * HOW: SoundChannel2550 1, SoundSilenceChannel; the length into SoundChannelDefaultArg and
  * SoundNoteLength.
+ * WAITS: no.
  * Entry: X channel. Exit: A the length, N and Z from it; C and V as SoundSilenceChannel. X and Y
  * kept.
  */
@@ -1154,7 +1218,9 @@ ChannelSilence SoundRest(uint8_t channel)
     uint8_t length;
 
     wr8((uint16_t)(SoundChannel2550 + channel), 1);
-    silence.release = SoundSilenceChannel(channel);
+    jsr_push(0x8AB8);
+    silence.release = SoundSilenceChannel(channel, 1);
+    jsr_pop();
     length = rd8(SoundCommandArgs);
     wr8((uint16_t)(SoundChannelDefaultArg + channel), length);
     wr8((uint16_t)(SoundNoteLength + channel), length);
@@ -1176,6 +1242,21 @@ void abi_SoundRest(void)
     abi_nz(silence.length);
 }
 
+/* The gate timer from the product SoundMultiplyNibble left: its low byte with the high byte shifted in four times, never 0. */
+static uint8_t gate_timer_from_product(void)
+{
+    uint8_t a = RD8(ZP->sound_word.lo);
+    bool carry;
+    uint8_t step;
+
+    for (step = 0; step != 4; step++) {
+        carry = LSR8(ZP->sound_word.hi);
+        a = (uint8_t)((a >> 1) | (carry ? 0x80 : 0));
+    }
+    return a == 0 ? 1 : a;
+}
+
+
 /*
  * @routine 004E:2CB SoundSetLength
  * @run 75:8ACB
@@ -1183,6 +1264,7 @@ void abi_SoundRest(void)
  * that many sixteenths of the length, at least one frame; a gate of 0 sounds the whole length.
  * HOW: SoundNoteLength and SoundChannelDefaultArg, SoundGate and SoundGateSet;
  * SoundMultiplyNibble, its product shifted down four places, into SoundGateTimer.
+ * WAITS: no.
  * Entry: X channel. Exit: A the gate timer, N and Z from it. No gate, C, V and Y kept. Otherwise
  * Y the length, C bit 3 of the product, V as SoundMultiplyNibble. X kept.
  */
@@ -1199,11 +1281,10 @@ NoteLength SoundSetLength(uint8_t channel)
     if (note.gate == 0) {
         note.timer = rd8(SoundCommandArgs);
     } else {
-        note.product = SoundMultiplyNibble(note.gate, rd8(SoundCommandArgs));
-        wr8(zSoundWordHi, (uint8_t)(note.product.value >> 12));
-        note.timer = (uint8_t)(note.product.value >> 4);
-        if (note.timer == 0)
-            note.timer = 1;
+        jsr_push(0x8AEA);
+        note.product = SoundMultiplyNibble(note.gate, rd8(SoundCommandArgs), channel);
+        jsr_pop();
+        note.timer = gate_timer_from_product();
     }
     wr8((uint16_t)(SoundGateTimer + channel), note.timer);
     return note;
@@ -1240,9 +1321,7 @@ void abi_SoundSetLength(void)
 FrequencySet SoundSetFrequency(uint8_t fine, uint8_t channel, uint8_t note)
 {
     FrequencySet set = { false, false, 0, false, 0, 0, 0 };
-    uint16_t entry = (uint16_t)(SoundPeriods + (uint8_t)(note << 1));
-    uint16_t period;
-    uint8_t step;
+    uint8_t y, first, second, step, low, high, subtrahend;
 
     set.looked = channel >= EFFECT_SHARED_FIRST && channel < EFFECT_SHARED_END;
     if (effect_holds(channel, &set.effect)) {
@@ -1256,15 +1335,24 @@ FrequencySet SoundSetFrequency(uint8_t fine, uint8_t channel, uint8_t note)
         wr8(PsgNoise, set.value);
         return set;
     }
-    step = (uint8_t)(rd8(entry) - rd8((uint16_t)(entry + 2)));
-    SoundMultiply(step, rd8(zSoundFine), 0);  /* X: not worked out yet */
+    y = (uint8_t)(note << 1);
+    first = rd8((uint16_t)(SoundPeriods + y));
+    second = rd8((uint16_t)(SoundPeriods + 2 + y));
+    step = (uint8_t)(first - second);
+    push8(y);
+    fine = rd8(zSoundFine);
+    jsr_push(0x8EC5);
+    (void)SoundMultiply(step, fine, channel);
+    jsr_pop();
     wr8(PsgNoise, 0);
-    period = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
-    set.high_before = (uint8_t)(period >> 8);
-    set.borrow = (period & 0xFF) < rd8(zSoundWordHi);
-    period = (uint16_t)(period - rd8(zSoundWordHi));
-    wr8(PsgFreqLo, (uint8_t)period);
-    set.value = (uint8_t)(period >> 8);
+    y = pull8();
+    low = rd8((uint16_t)(SoundPeriods + y));
+    subtrahend = rd8(zSoundWordHi);
+    wr8(PsgFreqLo, (uint8_t)(low - subtrahend));
+    set.borrow = low < subtrahend;
+    high = rd8((uint16_t)(SoundPeriods + 1 + y));
+    set.high_before = high;
+    set.value = (uint8_t)(high - (set.borrow ? 1 : 0));
     wr8(PsgFreqHi, set.value);
     return set;
 }
@@ -1307,14 +1395,15 @@ void abi_SoundSetFrequency(void)
  * effect plays on them.
  * HOW: SoundWaveAddress, then the RAM block-move stub at $22E7 built as a TIN of 32 bytes to
  * PsgWaveData and called.
+ * WAITS: no.
  * Entry: A waveform, X channel. Exit: X and Y kept. $FF, A $FF, Z and C set, N clear, V kept.
  * Left alone, A kept, N and V the effect's bits 7 and 6, Z and C clear. Loaded, A $60, N and Z
  * clear, C and V as SoundWaveAddress.
  */
-WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel)
+WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel, uint8_t kept_y)
 {
-    WaveLoad load = { WAVE_NONE, 0, 0 };
-    uint16_t source;
+    uint16_t source = (uint16_t)(SOUND_WAVES + (wave << 5));
+    WaveLoad load = { WAVE_NONE, 0, 0, { 0, false, false } };
 
     load.wave = wave;
     if (wave == WAVE_NOISE)
@@ -1323,19 +1412,31 @@ WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel)
         load.how = WAVE_HELD;
         return load;
     }
+    push8(wave);
     wr8(PsgBalance, 0);
     wr8(PsgControl, 0);
     wr8(PsgControl, PSG_WAVE_RESET);
     wr8(PsgControl, 0);
-    source = SoundWaveAddress(wave);
+    wave = pull8();
+    jsr_push(0x8E79);
+    load.address = SoundWaveAddress(wave);
+    jsr_pop();
     wr8(BlockMoveDestLo, (uint8_t)PsgWaveData);
     wr8(BlockMoveDestHi, (uint8_t)(PsgWaveData >> 8));
     wr8(BlockMoveStub, OPCODE_TIN);
     wr8(BlockMoveLengthLo, WAVE_SAMPLES);
     wr8(BlockMoveLengthHi, 0);
     wr8(BlockMoveReturn, OPCODE_RTS);
+    jsr_push(0x8E9A);
+    push8(kept_y);                    /* TIN pushes Y, A and X, in that order */
+    push8(OPCODE_RTS);
+    push8(channel);
     for (uint16_t i = 0; i < WAVE_SAMPLES; i++)
         wr8(PsgWaveData, rd8((uint16_t)(source + i)));
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
+    jsr_pop();
     wr8(PsgControl, 0);
     load.how = WAVE_LOADED;
     return load;
@@ -1357,7 +1458,7 @@ void wave_load_exit_shim(WaveLoad load, uint8_t wave)
         cpu.a = wave;
         break;
     case WAVE_LOADED:
-        wave_address_exit_shim(wave);
+        wave_address_exit_shim(load.address);
         cpu.a = OPCODE_RTS;
         abi_nz(OPCODE_RTS);
         break;
@@ -1368,7 +1469,7 @@ void abi_SoundLoadWave(void)
 {
     uint8_t wave = cpu.a;
 
-    wave_load_exit_shim(SoundLoadWave(wave, cpu.x), wave);
+    wave_load_exit_shim(SoundLoadWave(wave, cpu.x, cpu.y), wave);
 }
 
 /*
@@ -1381,8 +1482,10 @@ void abi_SoundLoadWave(void)
  * WAITS: no.
  * Entry: nothing. Exit: A, X, Y and V kept; N and Z from X; C set by the loop's last compare.
  */
-void SoundInit(void)
+void SoundInit(uint8_t kept_x, uint8_t kept_a)
 {
+    push8(kept_x);
+    push8(kept_a);
     wr8(SoundInCommand, 0);
     for (uint8_t channel = 0; channel < SOUND_CHANNELS; channel++) {
         wr8((uint16_t)(SoundChannel25B0 + channel), 0);
@@ -1390,16 +1493,20 @@ void SoundInit(void)
         wr8((uint16_t)(SoundChannelPriority + channel), 0);
         wr8(zSoundAltBalance, 0);
     }
+    jsr_push(0xB24C);
     SoundSilenceAll(SOUND_CHANNELS);       /* X as the loop leaves it */
+    jsr_pop();
     wr8(SoundFading, 0);
     wr8(zSoundChannelsOn, 0);
     wr8(PsgLfoFreq, 0);
     wr8(PsgLfoControl, 0);
+    (void)pull8();
+    (void)pull8();
 }
 
 void abi_SoundInit(void)
 {
-    SoundInit();
+    SoundInit(cpu.x, cpu.a);
     abi_nz(cpu.x);
     abi_flag(P_C, true);
 }
@@ -1461,13 +1568,16 @@ static void count_change(void)
 }
 
 /* The vibrato's phase moved on, and its offset for that phase into the work word. */
-static void vibrato_offset(uint8_t channel)
+static void vibrato_offset(uint8_t channel, uint16_t ret)
 {
-    uint8_t phase = (uint8_t)(rd8((uint16_t)(SoundVibratoPhase + channel)) +
-                              rd8((uint16_t)(SoundVibratoSpeed + channel)));
+    uint8_t phase = rd8((uint16_t)(SoundVibratoPhase + channel));
+    uint8_t speed = rd8((uint16_t)(SoundVibratoSpeed + channel));
 
+    phase = (uint8_t)(phase + speed);
     wr8((uint16_t)(SoundVibratoPhase + channel), phase);
+    jsr_push(ret);
     SoundScaledOffset(phase, channel);
+    jsr_pop();
     count_change();
 }
 
@@ -1490,60 +1600,88 @@ static void pitch_exit_shim(PitchTick tick, bool nz_from_note)
  * modulation; then the PSG frequency for the pitch with those offsets.
  * HOW: SoundGlide*, SoundVibrato* and SoundModulate by channel; zSoundScratch counts what
  * changed; SoundSetFrequency with the fine part and the note.
+ * WAITS: no.
  * Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note and C and V from
  * adding the note where it keeps them.
  */
 PitchTick SoundPitchTick(uint8_t channel)
 {
+    uint8_t a, v, add;
+    Sum low, high;
     PitchTick tick;
-    Sum low;
 
     pitch_tick_start();
-    if (rd8((uint16_t)(SoundGlideFrames + channel)) != 0) {
-        uint8_t delay = rd8((uint16_t)(SoundGlideDelay + channel));
-
-        if (delay != 0) {
-            wr8((uint16_t)(SoundGlideDelay + channel), (uint8_t)(delay - 1));
+    a = rd8((uint16_t)(SoundGlideFrames + channel));
+    if (a != 0) {
+        a = rd8((uint16_t)(SoundGlideDelay + channel));
+        if (a != 0) {
+            v = rd8((uint16_t)(SoundGlideDelay + channel));
+            wr8((uint16_t)(SoundGlideDelay + channel), (uint8_t)(v - 1));
         } else {
-            uint8_t left = (uint8_t)(rd8((uint16_t)(SoundGlideFrames + channel)) - 1);
-
-            wr8((uint16_t)(SoundGlideFrames + channel), left);
-            if (left == 0) {
-                wr8((uint16_t)(SoundPitchFine + channel), rd8((uint16_t)(SoundGlideTargetFine + channel)));
-                wr8((uint16_t)(SoundPitchNote + channel), rd8((uint16_t)(SoundGlideTargetNote + channel)));
+            v = (uint8_t)(rd8((uint16_t)(SoundGlideFrames + channel)) - 1);
+            wr8((uint16_t)(SoundGlideFrames + channel), v);
+            if (v == 0) {
+                a = rd8((uint16_t)(SoundGlideTargetFine + channel));
+                wr8((uint16_t)(SoundPitchFine + channel), a);
+                a = rd8((uint16_t)(SoundGlideTargetNote + channel));
+                wr8((uint16_t)(SoundPitchNote + channel), a);
             } else {
-                low = add_bytes(rd8((uint16_t)(SoundPitchFine + channel)), rd8((uint16_t)(SoundGlideStepLo + channel)), false);
+                a = rd8((uint16_t)(SoundPitchFine + channel));
+                add = rd8((uint16_t)(SoundGlideStepLo + channel));
+                low = add_bytes(a, add, false);
                 wr8((uint16_t)(SoundPitchFine + channel), low.value);
-                wr8((uint16_t)(SoundPitchNote + channel),
-                    add_bytes(rd8((uint16_t)(SoundPitchNote + channel)), rd8((uint16_t)(SoundGlideStepHi + channel)),
-                              low.carry).value);
+                a = rd8((uint16_t)(SoundPitchNote + channel));
+                add = rd8((uint16_t)(SoundGlideStepHi + channel));
+                high = add_bytes(a, add, low.carry);
+                wr8((uint16_t)(SoundPitchNote + channel), high.value);
             }
             count_change();
         }
     }
-    if (rd8((uint16_t)(SoundVibratoDepthMax + channel)) != 0) {
-        if (rd8((uint16_t)(SoundVibratoWait + channel)) != rd8((uint16_t)(SoundVibratoDelay + channel))) {
-            wr8((uint16_t)(SoundVibratoWait + channel), (uint8_t)(rd8((uint16_t)(SoundVibratoWait + channel)) + 1));
+    a = rd8((uint16_t)(SoundVibratoDepthMax + channel));
+    if (a != 0) {
+        a = rd8((uint16_t)(SoundVibratoWait + channel));
+        add = rd8((uint16_t)(SoundVibratoDelay + channel));
+        if (a != add) {
+            v = rd8((uint16_t)(SoundVibratoWait + channel));
+            wr8((uint16_t)(SoundVibratoWait + channel), (uint8_t)(v + 1));
         } else {
-            if (rd8((uint16_t)(SoundVibratoDepth + channel)) < rd8((uint16_t)(SoundVibratoDepthMax + channel))) {
-                low = add_bytes(rd8((uint16_t)(SoundVibratoDepthLo + channel)), rd8((uint16_t)(SoundVibratoGrowLo + channel)), false);
+            a = rd8((uint16_t)(SoundVibratoDepth + channel));
+            add = rd8((uint16_t)(SoundVibratoDepthMax + channel));
+            if (a < add) {
+                a = rd8((uint16_t)(SoundVibratoDepthLo + channel));
+                add = rd8((uint16_t)(SoundVibratoGrowLo + channel));
+                low = add_bytes(a, add, false);
                 wr8((uint16_t)(SoundVibratoDepthLo + channel), low.value);
-                wr8((uint16_t)(SoundVibratoDepth + channel),
-                    add_bytes(rd8((uint16_t)(SoundVibratoDepth + channel)), rd8((uint16_t)(SoundVibratoGrowHi + channel)),
-                              low.carry).value);
+                a = rd8((uint16_t)(SoundVibratoDepth + channel));
+                add = rd8((uint16_t)(SoundVibratoGrowHi + channel));
+                high = add_bytes(a, add, low.carry);
+                wr8((uint16_t)(SoundVibratoDepth + channel), high.value);
             }
-            vibrato_offset(channel);
+            vibrato_offset(channel, 0x88A1);
         }
     }
-    if (rd8((uint16_t)(SoundModulationSpeed + channel)) != 0) {
-        SoundModulate(channel);
+    a = rd8((uint16_t)(SoundModulationSpeed + channel));
+    if (a != 0) {
+        jsr_push(0x88AB);
+        (void)SoundModulate(channel);
+        jsr_pop();
         count_change();
     }
-    low = add_bytes(rd8((uint16_t)(SoundPitchFine + channel)), rd8(zSoundWordLo), false);
+    a = rd8((uint16_t)(SoundPitchFine + channel));
+    add = rd8(zSoundWordLo);
+    low = add_bytes(a, add, false);
+    push8(low.value);
+    a = rd8((uint16_t)(SoundPitchNote + channel));
+    add = rd8(zSoundWordHi);
+    high = add_bytes(a, add, low.carry);
+    a = pull8();
     tick.fine = low.value;
-    tick.last = add_bytes(rd8((uint16_t)(SoundPitchNote + channel)), rd8(zSoundWordHi), low.carry);
-    tick.note = tick.last.value;
-    tick.frequency = SoundSetFrequency(tick.fine, channel, tick.note);
+    tick.last = high;
+    tick.note = high.value;
+    jsr_push(0x88BE);
+    tick.frequency = SoundSetFrequency(a, channel, high.value);
+    jsr_pop();
     return tick;
 }
 
@@ -1560,6 +1698,7 @@ void abi_SoundPitchTick(void)
  * added, or taken off when it goes down; the modulation; then the PSG frequency.
  * HOW: The step is shifted down one place for each bit of SoundTempoPhase above its highest set bit,
  * and one more: a power of two near the share of the tick gone.
+ * WAITS: no.
  * Entry: X channel. Exit: as SoundSetFrequency, with A the fine part, Y the note, N and Z from
  * the note, and C and V from the last add or subtract where it keeps them.
  */
@@ -1570,7 +1709,7 @@ PitchTick SoundPitchTickPlain(uint8_t channel)
     pitch_tick_start();
     if ((rd8((uint16_t)(SoundVibratoDepthLo + channel)) | rd8((uint16_t)(SoundVibratoDepth + channel))) != 0 &&
         rd8((uint16_t)(SoundVibratoWait + channel)) == rd8((uint16_t)(SoundVibratoDelay + channel)))
-        vibrato_offset(channel);
+        vibrato_offset(channel, 0x897C);
     tick.last = add_pitch(channel);
     if (rd8((uint16_t)(SoundGlideFrames + channel)) != 0 && rd8((uint16_t)(SoundGlideDelay + channel)) == 0) {
         uint16_t step = (uint16_t)(rd8((uint16_t)(SoundGlideStepLo + channel)) |
@@ -1849,61 +1988,94 @@ void abi_SoundGlideSetup(void)
  * HOW: SoundCommandByte is the note. The last note's pitch is kept in zSoundScratch and
  * zSoundFine for a glide from it; SoundGlideSetup; SoundSetFrequency; SoundStartEnvelope;
  * SoundPitchTick.
+ * WAITS: no.
  * Entry: X channel. Exit: as SoundPitchTick.
  */
 PitchTick SoundNotePitch(uint8_t channel)
 {
-    uint8_t note;
-    uint8_t fine;
-    Sum low;
-    Sum high;
+    uint8_t a, y, add;
+    Sum low, high;
+    FrequencySet frequency;
+    PitchTick tick;
 
-    rd8(SoundCommandByte);
-    wr8(zSoundScratch, rd8((uint16_t)(SoundPitchFine + channel)));
-    wr8(zSoundFine, rd8((uint16_t)(SoundPitchNote + channel)));
-    note = (uint8_t)(rd8(SoundCommandByte) + rd8((uint16_t)(SoundTranspose + channel)));
-    fine = rd8((uint16_t)(SoundFineTune + channel));
-    if (fine & 0x80)
-        note = (uint8_t)(note - 1);
-    wr8(zSoundWordLo, note);
-    low = add_bytes(fine, rd8((uint16_t)(SoundDetuneAFine + channel)), false);
-    high = add_bytes(note, rd8((uint16_t)(SoundDetuneANote + channel)), low.carry);
+    (void)rd8(SoundCommandByte);
+    a = rd8((uint16_t)(SoundPitchFine + channel));
+    wr8(zSoundScratch, a);
+    a = rd8((uint16_t)(SoundPitchNote + channel));
+    wr8(zSoundFine, a);
+    a = rd8(SoundCommandByte);
+    add = rd8((uint16_t)(SoundTranspose + channel));
+    high = add_bytes(a, add, false);
     wr8(zSoundWordLo, high.value);
-    low = add_bytes(low.value, rd8((uint16_t)(SoundDetuneBFine + channel)), false);
+    a = rd8((uint16_t)(SoundFineTune + channel));
+    if ((a & 0x80) != 0)
+        (void)DEC8(ZP->sound_word.lo);
+    add = rd8((uint16_t)(SoundDetuneAFine + channel));
+    low = add_bytes(a, add, false);
+    push8(low.value);
+    a = rd8(zSoundWordLo);
+    add = rd8((uint16_t)(SoundDetuneANote + channel));
+    high = add_bytes(a, add, low.carry);
+    wr8(zSoundWordLo, high.value);
+    a = pull8();
+    add = rd8((uint16_t)(SoundDetuneBFine + channel));
+    low = add_bytes(a, add, false);
     wr8((uint16_t)(SoundPitchFine + channel), low.value);
-    wr8((uint16_t)(SoundPitchNote + channel),
-        add_bytes(rd8(zSoundWordLo), rd8((uint16_t)(SoundDetuneBNote + channel)), low.carry).value);
+    a = rd8(zSoundWordLo);
+    add = rd8((uint16_t)(SoundDetuneBNote + channel));
+    high = add_bytes(a, add, low.carry);
+    wr8((uint16_t)(SoundPitchNote + channel), high.value);
     wr8((uint16_t)(SoundVibratoPhase + channel), 0);
     wr8((uint16_t)(SoundVibratoWait + channel), 0);
     wr8((uint16_t)(SoundVibratoDepthLo + channel), 0);
     wr8((uint16_t)(SoundVibratoDepth + channel), 0);
-    wr8((uint16_t)(SoundGlideFrames + channel), rd8((uint16_t)(SoundGlideFramesSet + channel)));
-    if (rd8((uint16_t)(SoundGlideFrames + channel)) != 0) {
-        uint8_t target_fine = rd8((uint16_t)(SoundPitchFine + channel));
-        uint8_t target_note;
-
-        wr8((uint16_t)(SoundGlideDelay + channel), rd8((uint16_t)(SoundGlideDelaySet + channel)));
-        if (rd8((uint16_t)(SoundGlideFromLast + channel)) == 0) {
-            low = sub_bytes(target_fine, rd8((uint16_t)(SoundGlideOffsetFine + channel)), true);
+    a = rd8((uint16_t)(SoundGlideFramesSet + channel));
+    wr8((uint16_t)(SoundGlideFrames + channel), a);
+    if (a != 0) {
+        a = rd8((uint16_t)(SoundGlideDelaySet + channel));
+        wr8((uint16_t)(SoundGlideDelay + channel), a);
+        a = rd8((uint16_t)(SoundGlideFromLast + channel));
+        if (a == 0) {
+            a = rd8((uint16_t)(SoundPitchFine + channel));
+            push8(a);
+            add = rd8((uint16_t)(SoundGlideOffsetFine + channel));
+            low = sub_bytes(a, add, true);
             wr8((uint16_t)(SoundPitchFine + channel), low.value);
-            target_note = rd8((uint16_t)(SoundPitchNote + channel));
-            wr8((uint16_t)(SoundPitchNote + channel),
-                sub_bytes(target_note, rd8((uint16_t)(SoundGlideOffsetNote + channel)), low.carry).value);
+            y = rd8((uint16_t)(SoundPitchNote + channel));
+            add = rd8((uint16_t)(SoundGlideOffsetNote + channel));
+            high = sub_bytes(y, add, low.carry);
+            wr8((uint16_t)(SoundPitchNote + channel), high.value);
+            a = pull8();
         } else {
-            target_note = rd8((uint16_t)(SoundPitchNote + channel));
-            target_fine = rd8((uint16_t)(SoundPitchFine + channel));
-            wr8((uint16_t)(SoundPitchFine + channel), rd8(zSoundScratch));
-            wr8((uint16_t)(SoundPitchNote + channel), rd8(zSoundFine));
+            y = rd8((uint16_t)(SoundPitchNote + channel));
+            a = rd8((uint16_t)(SoundPitchFine + channel));
+            push8(a);
+            a = rd8(zSoundScratch);
+            wr8((uint16_t)(SoundPitchFine + channel), a);
+            a = rd8(zSoundFine);
+            wr8((uint16_t)(SoundPitchNote + channel), a);
+            a = pull8();
         }
-        SoundGlideSetup(target_fine, target_note, channel);
+        jsr_push(0x86DA);
+        (void)SoundGlideSetup(a, y, channel);
+        jsr_pop();
     }
-    SoundSetFrequency(rd8((uint16_t)(SoundPitchFine + channel)), channel, rd8((uint16_t)(SoundPitchNote + channel)));
-    SoundStartEnvelope(channel);
+    a = rd8((uint16_t)(SoundPitchFine + channel));
+    y = rd8((uint16_t)(SoundPitchNote + channel));
+    jsr_push(0x86E3);
+    frequency = SoundSetFrequency(a, channel, y);
+    jsr_pop();
+    jsr_push(0x86E6);
+    SoundStartEnvelope(channel, frequency.held ? a : frequency.value);
+    jsr_pop();
     wr8((uint16_t)(SoundTremoloPhase + channel), 0);
     wr8((uint16_t)(SoundTremoloWait + channel), 0);
     wr8((uint16_t)(SoundRampLo + channel), 0);
     wr8((uint16_t)(SoundRampHi + channel), 0);
-    return SoundPitchTick(channel);
+    jsr_push(0x86F5);
+    tick = SoundPitchTick(channel);
+    jsr_pop();
+    return tick;
 }
 
 void abi_SoundNotePitch(void)
@@ -1919,6 +2091,7 @@ void abi_SoundNotePitch(void)
  * frame, or the whole length with no gate.
  * HOW: SoundChannelDefaultArg, SoundGate and SoundVolumeBase; SoundNotePitch; SoundNoteLength;
  * SoundMultiplyNibble, its product shifted down four places, into SoundGateTimer.
+ * WAITS: no.
  * Entry: X channel. Exit: A the gate timer, N and Z from it, Y the length. No gate, C and V as
  * SoundNotePitch left them; otherwise C bit 3 of the product, V as SoundMultiplyNibble. X kept.
  */
@@ -1931,7 +2104,9 @@ NoteStart SoundStartNote(uint8_t channel)
     wr8((uint16_t)(SoundChannelDefaultArg + channel), rd8(SoundCommandArgs));
     wr8((uint16_t)(SoundGate + channel), (uint8_t)(rd8(SoundCommandArgs + 1) & 0x0F));
     wr8((uint16_t)(SoundVolumeBase + channel), (uint8_t)((rd8(SoundCommandArgs + 2) & 0x0F) + NOTE_VOLUME_BASE));
+    jsr_push(0x862C);
     start.pitch = SoundNotePitch(channel);
+    jsr_pop();
     length = rd8((uint16_t)(SoundChannelDefaultArg + channel));
     wr8((uint16_t)(SoundNoteLength + channel), length);
     start.length = length;
@@ -1940,11 +2115,10 @@ NoteStart SoundStartNote(uint8_t channel)
     if (!start.gated) {
         start.timer = rd8((uint16_t)(SoundChannelDefaultArg + channel));
     } else {
-        start.product = SoundMultiplyNibble(gate, length);
-        wr8(zSoundWordHi, (uint8_t)(start.product.value >> 12));
-        start.timer = (uint8_t)(start.product.value >> 4);
-        if (start.timer == 0)
-            start.timer = 1;
+        jsr_push(0x8640);
+        start.product = SoundMultiplyNibble(gate, length, channel);
+        jsr_pop();
+        start.timer = gate_timer_from_product();
     }
     wr8((uint16_t)(SoundGateTimer + channel), start.timer);
     return start;
@@ -1995,11 +2169,18 @@ static void abi_exit_loaded(uint8_t value)
  * @run 75:8AFF
  * WHAT IT DOES: Command $E2: the channel's waveform, loaded into its PSG channel.
  * HOW: SoundChannelWave; SoundLoadWave.
+ * WAITS: no.
  * Entry: X channel. Exit: as SoundLoadWave.
  */
-WaveLoad SoundCommandWave(uint8_t channel)
+WaveLoad SoundCommandWave(uint8_t channel, uint8_t kept_y)
 {
-    return SoundLoadWave(set_from(SoundChannelWave, channel, 0), channel);
+    uint8_t wave = set_from(SoundChannelWave, channel, 0);
+    WaveLoad load;
+
+    jsr_push(0x8B08);
+    load = SoundLoadWave(wave, channel, kept_y);
+    jsr_pop();
+    return load;
 }
 
 void abi_SoundCommandWave(void)
@@ -2007,7 +2188,7 @@ void abi_SoundCommandWave(void)
     uint8_t wave = argument(0);
 
     cpu.a = wave;
-    wave_load_exit_shim(SoundCommandWave(cpu.x), wave);
+    wave_load_exit_shim(SoundCommandWave(cpu.x, cpu.y), wave);
 }
 
 /*
@@ -2691,11 +2872,13 @@ void abi_SoundCommandCall(void)
  * PSG channel it shared.
  * HOW: SoundReturnLo and Hi. The end drops the return into the command loop, so the loop's
  * caller gets C set; SoundSilenceChannel; SoundLoadWave with the shared channel's waveform.
+ * WAITS: no.
  * Entry: X channel. Exit: back, A the high byte, N and Z from it, C clear. End, C set, and as the
  * last call left them; the return address dropped from the stack.
  */
 SequenceEnd SoundCommandReturn(uint8_t channel)
 {
+    uint8_t end_a;
     SequenceEnd end = { false, { false, 0 }, { WAVE_NONE, 0, 0 }, 0 };
 
     if ((rd8((uint16_t)(SoundReturnLo + channel)) | rd8((uint16_t)(SoundReturnHi + channel))) != 0) {
@@ -2707,7 +2890,11 @@ SequenceEnd SoundCommandReturn(uint8_t channel)
         return end;
     }
     end.ended = true;
-    end.release = SoundSilenceChannel(channel);
+    (void)pull8();
+    end_a = pull8();
+    jsr_push(0xB772);
+    end.release = SoundSilenceChannel(channel, end_a);
+    jsr_pop();
     end.value = rd8(SoundPaused);
     if (end.value != 0)
         wr8(PsgMainVolume, 0);
@@ -2715,7 +2902,7 @@ SequenceEnd SoundCommandReturn(uint8_t channel)
         wr8((uint16_t)(SoundChannelCommand + channel), 0);
     if (channel >= EFFECT_SHARED_END) {
         wr8((uint16_t)(SoundChannelPriority + channel), 0);
-        end.wave = SoundLoadWave(rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)), channel);
+        end.wave = SoundLoadWave(rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)), channel, 0 /* Y: not yet worked out */);
     }
     return end;
 }
@@ -2757,7 +2944,7 @@ void sequence_end_flags_shim(SequenceEnd end, uint8_t channel)
 static bool run_command(uint8_t command, uint8_t channel, SequenceEnd *end)
 {
     switch (command) {
-    case 0xE2: SoundCommandWave(channel); break;
+    case 0xE2: SoundCommandWave(channel, 0 /* Y: the dispatch is not yet exact */); break;
     case 0xE3: SoundCommandPan(channel); break;
     case 0xE4: SoundCommandVibrato(channel); break;
     case 0xE5: SoundCommandModulation(channel); break;
@@ -2899,29 +3086,46 @@ void abi_SoundReadSequence(void)
  * channel is silenced once it is not, or at once with no ramp. Then a frame of the pitch.
  * HOW: SoundGateTimer; SoundRampBy onto SoundRampLo and Hi against SoundVolumeBase less
  * SoundSlideHi; SoundSilenceChannel; runs on into SoundPitchTick.
+ * WAITS: no.
  * Entry: X channel. Exit: as SoundPitchTick.
  */
 PitchTick SoundGateStep(uint8_t channel)
 {
-    uint8_t timer = rd8((uint16_t)(SoundGateTimer + channel));
-    bool ramp = true;
+    uint8_t a, timer, volume, slide, ramp_hi, ramp_by, ramp_lo;
+    bool silence = false;
+    Sum low, high;
 
-    if (timer != 0) {
+    a = rd8((uint16_t)(SoundGateTimer + channel));
+    if (a != 0) {
+        timer = rd8((uint16_t)(SoundGateTimer + channel));
         timer = (uint8_t)(timer - 1);
         wr8((uint16_t)(SoundGateTimer + channel), timer);
         if (timer != 0)
             return SoundPitchTick(channel);
-        ramp = rd8((uint16_t)(SoundRampBy + channel)) != 0;
+        a = rd8((uint16_t)(SoundRampBy + channel));
+        silence = a == 0;
     }
-    if (ramp && (uint8_t)(rd8((uint16_t)(SoundVolumeBase + channel)) - rd8((uint16_t)(SoundSlideHi + channel))) >=
-                    rd8((uint16_t)(SoundRampHi + channel))) {
-        Sum low = add_bytes(rd8((uint16_t)(SoundRampLo + channel)), rd8((uint16_t)(SoundRampBy + channel)), false);
-
-        wr8((uint16_t)(SoundRampLo + channel), low.value);
-        wr8((uint16_t)(SoundRampHi + channel), (uint8_t)(rd8((uint16_t)(SoundRampHi + channel)) + low.carry));
-    } else {
-        SoundSilenceChannel(channel);
+    if (!silence) {
+        volume = rd8((uint16_t)(SoundVolumeBase + channel));
+        slide = rd8((uint16_t)(SoundSlideHi + channel));
+        a = (uint8_t)(volume - slide);
+        ramp_hi = rd8((uint16_t)(SoundRampHi + channel));
+        if (a < ramp_hi) {
+            silence = true;
+        } else {
+            ramp_lo = rd8((uint16_t)(SoundRampLo + channel));
+            ramp_by = rd8((uint16_t)(SoundRampBy + channel));
+            low = add_bytes(ramp_lo, ramp_by, false);
+            wr8((uint16_t)(SoundRampLo + channel), low.value);
+            ramp_hi = rd8((uint16_t)(SoundRampHi + channel));
+            high = add_bytes(ramp_hi, 0, low.carry);
+            wr8((uint16_t)(SoundRampHi + channel), high.value);
+            return SoundPitchTick(channel);
+        }
     }
+    jsr_push(0x882A);
+    (void)SoundSilenceChannel(channel, a);
+    jsr_pop();
     return SoundPitchTick(channel);
 }
 
@@ -3191,7 +3395,11 @@ uint8_t SoundStartMusic(void)
     for (uint8_t channel = 0; channel < PSG_CHANNELS; channel++) {
         wr8((uint16_t)(SoundChannelCommand + channel), rd8(SoundCommandIn));
         jsr_push(0xB3DF);
-        SoundReadPair(channel);
+        {
+            uint8_t unused_nz;
+
+            (void)SoundReadPair(channel, &unused_nz);
+        }
         jsr_pop();
         jsr_push(0xB3E2);
         SoundStartChannel(channel);
@@ -3441,7 +3649,11 @@ static EffectEntry effect_entry(uint16_t ret, uint8_t channel, uint8_t held_y)
 static void start_effect_channel(uint8_t channel, uint16_t ret_read, uint16_t ret_start)
 {
     jsr_push(ret_read);
-    SoundReadPair(channel);
+    {
+        uint8_t unused_nz;
+
+        (void)SoundReadPair(channel, &unused_nz);
+    }
     jsr_pop();
     jsr_push(ret_start);
     SoundStartChannel(channel);
@@ -3652,7 +3864,7 @@ static WaveLoad give_back_channel(uint8_t channel, uint8_t bit, uint16_t weight,
     wr8(zSoundChannelsOn, (uint8_t)(rd8(zSoundChannelsOn) & ~bit));
     wr8(weight, 0);
     jsr_push(ret);
-    loaded = SoundLoadWave(rd8((uint16_t)(SoundChannelWave + channel)), channel);
+    loaded = SoundLoadWave(rd8((uint16_t)(SoundChannelWave + channel)), channel, 0 /* Y: not yet worked out */);
     jsr_pop();
     return loaded;
 }
@@ -3782,7 +3994,7 @@ static void fade_step(DriverTick *tick)
         wr8(zSoundChannel, (uint8_t)channel);
         wr8(PsgSelect, (uint8_t)channel);
         jsr_push(0xB5F3);
-        tick->faded[channel] = SoundSilenceChannel((uint8_t)channel);
+        tick->faded[channel] = SoundSilenceChannel((uint8_t)channel, 0x14);
         jsr_pop();
     }
     tick->fade_ended = true;

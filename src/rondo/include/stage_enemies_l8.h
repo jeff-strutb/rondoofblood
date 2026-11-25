@@ -376,5 +376,6 @@ Ended BossFrameRoutinesB(uint8_t slot, uint8_t y_entry);
 Ended SpawnRowsWhenScrollAtZero(uint8_t slot);
 Ended CountDownThenStartPieceInSlots18To1B(uint8_t slot);
 LandWait StepListByPhaseThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry);
+SoundEnd LoadRecordThenWatchThenDropTwice(uint8_t slot, uint8_t y_entry);
 
 #endif

@@ -4,9 +4,10 @@
 (M1 and M2 are both 0). See [Current Status](#current-status) for what the
 gates measure.** All of the code the test scripts run rebuilds as assembly,
 byte for byte on the disc: named by hand where a routine is filed, and
-labelled only by address (the raw intake) where it is not. Proper C has
-been written for 1,945 game routines (counted on 2026-11-25); it is being
-proven against the running original call by call (gate A5) and in lockstep
+labelled only by address (the raw intake) where it is not. C has been
+filed for 1,945 game routines (counted on 2026-11-25). Not all of it meets
+the proper-C standard yet, and some is known to differ from the original;
+it is being proven against the running original call by call (gate A5) and in lockstep
 (gate A7).
 
 **Measured size: 114,441 B of distinct game code in whole routines**, run

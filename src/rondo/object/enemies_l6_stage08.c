@@ -1143,3 +1143,38 @@ void abi_CheckPlayerThenStepListIndex08(void)
 {
     abi_ended(CheckPlayerThenStepListIndex08(cpu.x));
 }
+
+/*
+ * @routine 088B:25B NearPlayerThenPlaceOrState11
+ * @run 70:B25B
+ * WHAT IT DOES: When the player is within $60 along X and $A0 along Y the object goes on as SpeedBySideOfScreen; otherwise it goes to state $0B.
+ * HOW: DistanceXToPlayer, DistanceYToPlayer, a tail jump into SpeedBySideOfScreen, a store.
+ * WAITS: no.
+ * Entry: X object. Exit: as SpeedBySideOfScreen, or A $0B.
+ */
+Ended NearPlayerThenPlaceOrState11(uint8_t slot)
+{
+    PlayerDistance distance;
+    Ended e;
+
+    jsr_push(0xB25E);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = then(ended_of_distance(distance), ended_compare(distance.distance, 0x60));
+    if (distance.distance < 0x60) {
+        jsr_push(0xB265);
+        distance = DistanceYToPlayer(slot);
+        jsr_pop();
+        e = then(then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0xA0));
+        if (distance.distance < 0xA0) {
+            return then(e, SpeedBySideOfScreen(slot, false));
+        }
+    }
+    WR8(OBJ->state[slot], 0x0B);
+    return then(e, ended_load(0x0B));
+}
+
+void abi_NearPlayerThenPlaceOrState11(void)
+{
+    abi_ended(NearPlayerThenPlaceOrState11(cpu.x));
+}

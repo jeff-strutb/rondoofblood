@@ -245,6 +245,19 @@ StepListB25CThenStartList:
 StepListB25CThenStartList_at0:
     rts
 
+; @routine 0E0B:27B LandThenNextState
+; @run 70:B27B
+; WHAT IT DOES: Asks StopOnLanding with a probe height of 4; on landing the object goes to the next state.
+; HOW: StopOnLanding, an INC.
+; WAITS: no.
+; Entry: X object, Y the probe's column, C passed on. Exit: the mover's registers, then the new state's N and Z when landed.
+LandThenNextState:
+    lda #$04
+    jsr VecStopOnLanding
+    bcc SoundThenAimRandomLength
+    inc a:OBJ_27A8,x
+    rts
+
 ; @routine 0E0B:34D CountDownThenState6
 ; @run 70:B34D
 ; WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_2800 and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.

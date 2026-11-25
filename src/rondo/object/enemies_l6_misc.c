@@ -977,3 +977,32 @@ void abi_SetRasterSpawnThenStepList(void)
 {
     abi_sound_end(SetRasterSpawnThenStepList(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0E0B:27B LandThenNextState
+ * @run 70:B27B
+ * WHAT IT DOES: Asks StopOnLanding with a probe height of 4; on landing the object goes to the next state.
+ * HOW: StopOnLanding, an INC.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column, C passed on. Exit: the mover's registers, then the new state's N and Z when landed.
+ */
+LandWait LandThenNextState(uint8_t slot, uint8_t column, bool carry_in)
+{
+    LandWait wait = { true, { 0 }, { 0 } };
+    uint8_t state;
+
+    jsr_push(0xB280);
+    wait.mover = StopOnLanding(4, slot, column, carry_in);
+    jsr_pop();
+    if (!mover_landed(wait.mover)) {
+        return wait;
+    }
+    state = INC8(OBJ->state[slot]);
+    wait.end = ended_nz(state);
+    return wait;
+}
+
+void abi_LandThenNextState(void)
+{
+    land_wait_exit_shim(LandThenNextState(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+}

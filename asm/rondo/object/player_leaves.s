@@ -137,6 +137,36 @@ ClearObjectIfOffRange_at1:
 ClearObjectIfOffRange_at0:
     jmp VecClearObject
 
+; @routine 01BE:567 MoveObjectUpBySigned
+; @run 6E:CD67
+; WHAT IT DOES: Moves the object up the screen by the signed amount in zTemp02: its Y position less the amount,
+; sign extended into the high byte.
+; HOW: A 16-bit subtract of zTemp02, read again for the low byte; the high byte takes the borrow, less 1 more when the
+; amount is negative ($FF subtracted). The negative arm is untraced (137 of 400 cases reach it, and the draft stops
+; there) and is written from the disc's bytes.
+; WAITS: no.
+; Entry: X object, zTemp02 the amount. Exit: A the Y high byte stored, N, Z, C, V from its subtract. X, Y kept.
+MoveObjectUpBySigned:
+    lda z:zTemp02
+    bmi MoveObjectUpBySigned_at0
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc z:zTemp02
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_Y_HI,x
+    sbc #$00
+    sta a:OBJ_Y_HI,x
+    rts
+MoveObjectUpBySigned_at0:
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc z:zTemp02
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_Y_HI,x
+    sbc #$FF
+    sta a:OBJ_Y_HI,x
+    rts
+
 ; @routine 01C0:063 NegateVelocityXIfFacingLeft
 ; @run 6E:D863
 ; WHAT IT DOES: Turns the object's horizontal velocity round when its facing byte is set.
@@ -219,6 +249,77 @@ StepStageTable9C20:
     sta z:zField83
     rts
 
+; @routine 05C0:0A5 HitKindFromBit7
+; @run 6B:98A5
+; WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_3148; kind 2 also sets the
+; slot's OBJ_3828 to 5; then reports the hit.
+; HOW: AND #$80 rotated twice, AND #1, INC, one store, CMP #2; the report as ReportHitToStage.
+; WAITS: no.
+; Entry: X object, Y the slot. Exit: as StoreHitFromTable.
+HitKindFromBit7:
+    lda a:OBJ_3148,x
+    and #$80
+    rol a
+    rol a
+    and #$01
+    inc a
+    sta a:OBJ_38D8,y
+    cmp #$02
+    bne ReportHitToStage
+    lda #$05
+    sta a:OBJ_3828,y
+    bra ReportHitToStage
+
+; @routine 0720:076 ReportHitUnlessTwo
+; @run 6B:9876
+; WHAT IT DOES: Reports the hit to the stage unless the kind just stored in OBJ_38D8 is 2.
+; HOW: CMP #2 on A; equal returns, otherwise goes on to ReportHitToStage.
+; WAITS: no.
+; Entry: A the kind, X object, Y the slot. Exit: equal: A and N, Z, C from the compare; otherwise as StoreHitFromTable.
+ReportHitUnlessTwo:
+    cmp #$02
+    beq ReportHitUnlessTwo_at0
+    lda a:WorkByteA
+    sta a:StageHitReport
+    lda a:WorkByteB
+    sta a:StageHitReport+1
+    lda a:HitboxXLo+3
+    sta a:StageHitReport+2
+    lda a:HitboxYLo+3
+    sta a:StageHitReport+3
+    lda a:OBJ_3828,y
+    sta a:OBJ_33B0,x
+ReportHitUnlessTwo_at0:
+    rts
+
+; @routine 0720:099 HitKindFromBit1
+; @run 6B:9899
+; WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 1 of the object's OBJ_3148, then reports the hit.
+; HOW: AND #2, LSR, INC, one store, then ReportHitUnlessTwo.
+; WAITS: no.
+; Entry: X object, Y the slot. Exit: as ReportHitUnlessTwo.
+HitKindFromBit1:
+    lda a:OBJ_3148,x
+    and #$02
+    lsr a
+    inc a
+    sta a:OBJ_38D8,y
+    bra ReportHitUnlessTwo
+
+; @routine 0720:4ED LoadRecordThenFrameByKind
+; @run 6B:9CED
+; WHAT IT DOES: Loads the object's record, then gives it frame 0 or 1 of a two byte table by bit 0 of its next kind.
+; HOW: LoadObjectRecord, OBJ_3040 and 1, the table at $9CFD; falls into the RTS at $9CFC's neighbour.
+; WAITS: no.
+; Entry: X object. Exit: A the frame, N and Z from it, Y the index, C from the load of the record. X kept.
+LoadRecordThenFrameByKind:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_3040,x
+    and #$01
+    tay
+    lda a:$9CFD,y
+    sta a:OBJ_2A68,x
+
 ; @routine 0720:4FC EmptyHandler9CFC
 ; @run 6B:9CFC
 ; WHAT IT DOES: Nothing: the handler this overlay's table names where an object has nothing to do.
@@ -237,6 +338,34 @@ EmptyHandler9CFC:
 LoadRecordThenRecordEvent:
     jsr VecLoadObjectRecord
     jmp VecRecordObjectEvent
+
+; @routine 0E00:07A ReportHitToStage
+; @run 6B:987A
+; WHAT IT DOES: Copies the stream count's two bytes and the hitbox X and Y of slot 3 to the stage's four byte report,
+; then gives the object's hit timer its byte.
+; HOW: Four read and write pairs, then goes on to StoreHitFromTable.
+; WAITS: no.
+; Entry: X object, Y the slot. Exit: as StoreHitFromTable.
+ReportHitToStage:
+    lda a:WorkByteA
+    sta a:StageHitReport
+    lda a:WorkByteB
+    sta a:StageHitReport+1
+    lda a:HitboxXLo+3
+    sta a:StageHitReport+2
+    lda a:HitboxYLo+3
+    sta a:StageHitReport+3
+
+; @routine 0E00:092 StoreHitFromTable
+; @run 6B:9892
+; WHAT IT DOES: Gives the object's hit timer OBJ_33B0 the byte of OBJ_3828 at the slot in Y.
+; HOW: One read, one write.
+; WAITS: no.
+; Entry: X object, Y the slot. Exit: A the byte, N and Z from it.
+StoreHitFromTable:
+    lda a:OBJ_3828,y
+    sta a:OBJ_33B0,x
+    rts
 
 ; @routine 10C0:293 TileHalfStepAAt9A93
 ; @run 6B:9A93

@@ -461,3 +461,375 @@ MaybeShootAhead:
     sta a:OBJ_2AC0,y
 MaybeShootAhead_at0:
     rts
+; @routine 09EB:51E PickWaterLevel
+; @run 70:B51E
+; WHAT IT DOES: Sets the water the stage wants (RasterWaterWanted and LevelYHi) to a two-byte pair from a table at $B531 picked by
+; two bits of the wave counter.
+; HOW: Reads the wave counter and the table (bank 70).
+; WAITS: no.
+; Entry: nothing. Exit: A the second byte, Y the index, N and Z from A, C 0.
+PickWaterLevel:
+    lda z:zWaveCounter
+    and #$03
+    asl a
+    tay
+    lda a:$B531,y
+    sta a:RasterWaterWanted
+    lda a:$B532,y
+    sta a:LevelYHi
+    rts
+
+; @routine 09EB:55F WaitForPage2
+; @run 70:B55F
+; WHAT IT DOES: When the level position's high byte is 2, the object's timer is set to $40 and it enters its next state; the
+; object in slot $10 also plays sound $A2.
+; HOW: A compare of ScrollXHiScreen, an INC, SoundCommand.
+; WAITS: no.
+; Entry: X object, Y pushed by the sound driver. Exit: see the wrapper.
+WaitForPage2:
+    lda a:ScrollXHiScreen
+    cmp #$02
+    bne WaitForPage2_at0
+    lda #$40
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+    cpx #$10
+    bne WaitForPage2_at0
+    lda #$A2
+    jsr VecSoundCommand
+WaitForPage2_at0:
+    rts
+
+; @routine 09EB:5BB RiseUntilAboveGround
+; @run 70:B5BB
+; WHAT IT DOES: Moves the object, takes $0040 off its Y speed (it climbs), and when its Y position has passed from negative
+; to a low byte under $80 it enters its next state.
+; HOW: ApplyVelocity, a 16-bit subtract.
+; WAITS: no.
+; Entry: X object. Exit: the last load or INC.
+RiseUntilAboveGround:
+    jsr VecApplyVelocity
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$40
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    lda a:OBJ_Y_HI,x
+    bpl RiseUntilAboveGround_at0
+    lda a:OBJ_Y_LO,x
+    bmi RiseUntilAboveGround_at0
+    inc a:OBJ_27A8,x
+RiseUntilAboveGround_at0:
+    rts
+
+; @routine 09EB:5DD WaitForSlot10State4
+; @run 70:B5DD
+; WHAT IT DOES: Once the object in slot $10 has reached state 4, this object's timer becomes $40 and it enters its next state.
+; HOW: A compare of that state.
+; WAITS: no.
+; Entry: X object. Exit: the last compare, load or INC.
+WaitForSlot10State4:
+    lda a:$27B8
+    cmp #$04
+    bcc WaitForSlot10State4_at0
+    lda #$40
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+WaitForSlot10State4_at0:
+    rts
+
+; @routine 09EB:7A4 FollowPlayerHitbox
+; @run 70:B7A4
+; WHAT IT DOES: In state 0 loads the object's record; later it takes the player's place and sets its hitbox from a four-byte row of the
+; table at $BC8B picked by the player's frame less 5.
+; HOW: LoadObjectRecord (a tail jump), CopyObjectPlaceBack from slot $10, the table (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: state 0: as LoadObjectRecord; else A the last table byte, Y the row, N and Z from A, C and V from the subtract.
+FollowPlayerHitbox:
+    lda a:OBJ_27A8,x
+    bne FollowPlayerHitbox_at0
+    jmp VecLoadObjectRecord
+FollowPlayerHitbox_at0:
+    ldy #$10
+    jsr VecCopyObjectPlaceBack
+    lda a:$2A78
+    sec
+    sbc #$05
+    asl a
+    asl a
+    tay
+    lda a:$BC8B,y
+    sta a:OBJ_3930,x
+    lda a:$BC8C,y
+    sta a:OBJ_39E0,x
+    lda a:$BC8D,y
+    sta a:OBJ_3988,x
+    lda a:$BC8E,y
+    sta a:OBJ_3A38,x
+    rts
+
+; @routine 09EB:7EB StartNumberedPiece
+; @run 70:B7EB
+; WHAT IT DOES: Loads the object's record; its timer comes from a table at $B801 by the slot less $18; its frame is that number plus
+; $12.
+; HOW: LoadObjectRecord and an add.
+; WAITS: no.
+; Entry: X object. Exit: A the frame, N, Z, C and V from the add, Y the number.
+StartNumberedPiece:
+    jsr VecLoadObjectRecord
+    txa
+    sec
+    sbc #$18
+    tay
+    lda a:SoundEffectTable+6,y
+    sta a:OBJ_34B8,x
+    tya
+    clc
+    adc #$12
+    sta a:OBJ_2A68,x
+    rts
+; @routine 09EC:01A RiseAndClear
+; @run 70:B81A
+; WHAT IT DOES: Moves the object, takes $0040 off its Y speed (it climbs) and clears it once its Y position has passed from negative
+; to a low byte under $80.
+; HOW: ApplyVelocity, a 16-bit subtract, a tail jump into ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: the last load or subtract.
+RiseAndClear:
+    jsr VecApplyVelocity
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$40
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    lda a:OBJ_Y_HI,x
+    bpl RiseAndClear_at0
+    lda a:OBJ_Y_LO,x
+    bmi RiseAndClear_at0
+    jmp VecClearObject
+RiseAndClear_at0:
+    rts
+
+; @routine 09EC:059 RaiseStateAfterSlot10
+; @run 70:B859
+; WHAT IT DOES: Once the object in slot $10 is in state $0A or later, an object below state 3 enters state 3.
+; HOW: Two compares.
+; Untraced: the whole arm after the first compare (B864 to B86C).
+; WAITS: no.
+; Entry: X object. Exit: the last compare or load.
+RaiseStateAfterSlot10:
+    lda a:$27B8
+    cmp #$0A
+    bcc RaiseStateAfterSlot10_at0
+    lda a:OBJ_27A8,x
+    cmp #$03
+    bcs RaiseStateAfterSlot10_at0
+    lda #$03
+    sta a:OBJ_27A8,x
+RaiseStateAfterSlot10_at0:
+    rts
+
+; @routine 09EC:06D StartChainLink
+; @run 70:B86D
+; WHAT IT DOES: Loads the object's record, sets OBJ_3510 to $41 and its timer from a table at $B888 by the slot less $12; the object in slot
+; $19 also moves to its next frame.
+; HOW: LoadObjectRecord and an INC.
+; WAITS: no.
+; Entry: X object. Exit: slot $19: N and Z of the new frame; else the compare of X with $19.
+StartChainLink:
+    jsr VecLoadObjectRecord
+    lda #$41
+    sta a:OBJ_3510,x
+    txa
+    sec
+    sbc #$12
+    tay
+    lda a:$B888,y
+    sta a:OBJ_34B8,x
+    cpx #$19
+    bne TurnOnRandomBeatWalkFollowC
+    inc a:OBJ_2A68,x
+    rts
+
+; @routine 09EC:0F4 ChainFollowsPrevious
+; @run 70:B8F4
+; WHAT IT DOES: A link of a chain: object $12 takes the place of slot $10 and moves sideways by a table byte ($B923) picked by that
+; slot's facing, with Y speed 8; any other link takes the place of the link before it and takes its speed from its angle OBJ_3510 with a
+; length of $0A00; both then move.
+; HOW: CopyObjectPlaceBack, SetVelocityFromAngle, and a tail jump into ApplyVelocity.
+; WAITS: no.
+; Entry: X object. Exit: as ApplyVelocity, Y the table index or the slot before.
+ChainFollowsPrevious:
+    cpx #$12
+    bne ChainFollowsPrevious_at0
+    ldy #$10
+    jsr VecCopyObjectPlaceBack
+    ldy a:$2AD0
+    lda a:$B923,y
+    sta a:OBJ_VX_HI,x
+    lda #$08
+    sta a:OBJ_VY_HI,x
+    jmp VecApplyVelocity
+ChainFollowsPrevious_at0:
+    txa
+    tay
+    dey
+    jsr VecCopyObjectPlaceBack
+    stz z:zTemp00
+    lda #$0A
+    sta z:zTemp01
+    lda a:OBJ_3510,x
+    jsr VecSetVelocityFromAngle
+    jmp VecApplyVelocity
+
+; @routine 09EC:1A5 StartKickedPiece
+; @run 70:B9A5
+; WHAT IT DOES: Loads the object's record, gives it an X speed from a table at $B9BD by its facing and a Y speed of $10, moves it once and
+; stops its Y speed.
+; HOW: LoadObjectRecord, ApplyVelocity.
+; WAITS: no.
+; Entry: X object. Exit: as ApplyVelocity with Y the facing.
+StartKickedPiece:
+    jsr VecLoadObjectRecord
+    ldy a:OBJ_2AC0,x
+    lda a:$B9BD,y
+    sta a:OBJ_VX_HI,x
+    lda #$10
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    stz a:OBJ_VY_HI,x
+    rts
+
+; @routine 09EC:203 StepThenClear
+; @run 70:BA03
+; WHAT IT DOES: Steps the animation list at $BA14; when it ends the object is cleared.
+; HOW: StepObjectFrames and a tail jump into ClearObject.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as the step.
+StepThenClear:
+    lda #$BA
+    sta z:zTemp11
+    lda #$14
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    bne StepThenClear_at0
+    jmp VecClearObject
+StepThenClear_at0:
+    rts
+; @routine 09ED:032 ClearAnimation
+; @run 71:C032
+; WHAT IT DOES: Restarts the object's animation: step and timer 0.
+; HOW: Two stores.
+; WAITS: no.
+; Entry: X object. Exit: every register and flag kept.
+ClearAnimation:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    rts
+
+; @routine 09ED:039 StepListByPhase
+; @run 71:C039
+; WHAT IT DOES: The object faces as its life timer says and steps the animation list that a table at $C103 names for its OBJ_3510.
+; HOW: Reads the list's address into zTemp10-11; a tail jump into StepObjectFrames.
+; WAITS: no.
+; Entry: X object. Exit: as StepObjectFrames, Y kept unless the step sets it (the index otherwise).
+StepListByPhase:
+    lda a:OBJ_34B8,x
+    sta a:OBJ_2AC0,x
+    lda a:OBJ_3510,x
+    asl a
+    tay
+    lda a:$C103,y
+    sta z:zTemp10
+    lda a:$C104,y
+    sta z:zTemp11
+    jmp VecStepObjectFrames
+
+; @routine 09ED:06E EnterNextAndReset
+; @run 71:C06E
+; WHAT IT DOES: Moves the object on one state and its OBJ_3510 on one, restarts its animation and gives it a countdown of $20 in
+; its angle byte.
+; HOW: Two INCs, ClearAnimation, a store.
+; WAITS: no.
+; Entry: X object. Exit: A $20, N and Z from it.
+EnterNextAndReset:
+    inc a:OBJ_27A8,x
+    inc a:OBJ_3510,x
+    jsr ClearAnimation
+    lda #$20
+    sta a:OBJ_3568,x
+    rts
+
+; @routine 09ED:07D FlipSide
+; @run 71:C07D
+; WHAT IT DOES: Flips bit 0 of the object's life timer (the side it works on).
+; HOW: An EOR.
+; WAITS: no.
+; Entry: X object. Exit: A the new value, N and Z from it.
+FlipSide:
+    lda a:OBJ_34B8,x
+    eor #$01
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 09ED:086 BobAndMove
+; @run 71:C086
+; WHAT IT DOES: Makes the object bob: OBJ_3618 counts up and its sine (scaled by 3FF) added to OBJ_35C0 is its Y low byte; between
+; Y $B0 and the right place on screen (X from $80 to $9F once the scroll is added) a random wobble of -1 to 2 is added; then it moves.
+; HOW: ScaleBySine, NextRandom, a tail jump into ApplyVelocity.
+; WAITS: no.
+; Entry: X object. Exit: as ApplyVelocity, Y 0 as the sine's exit leaves it.
+BobAndMove:
+    lda #$FF
+    sta z:zTemp00
+    lda #$03
+    sta z:zTemp01
+    inc a:OBJ_3618,x
+    lda a:OBJ_3618,x
+    jsr VecScaleBySine
+    lda z:zProduct2
+    clc
+    adc a:OBJ_35C0,x
+    sta a:OBJ_Y_LO,x
+    cmp #$B0
+    bcs BobAndMove_at0
+    lda a:OBJ_X_LO,x
+    clc
+    adc a:ScrollXLo
+    cmp #$80
+    bcc BobAndMove_at0
+    cmp #$A0
+    bcs BobAndMove_at0
+    jsr VecNextRandom
+    and #$03
+    dec a
+    clc
+    adc a:OBJ_Y_LO,x
+    sta a:OBJ_Y_LO,x
+BobAndMove_at0:
+    jmp VecApplyVelocity
+
+; @routine 09ED:0C3 SetSwaySpeed
+; @run 71:C0C3
+; WHAT IT DOES: Sets the object's X speed from a word of a table at $C0DE, picked by OBJ_3510 times 4 plus life timer times 2.
+; HOW: Two shifts, an add with carry, two table reads (bank 71).
+; WAITS: no.
+; Entry: X object. Exit: A the high byte, Y the index, N and Z from A, C and V from the add.
+SetSwaySpeed:
+    lda a:OBJ_3510,x
+    asl a
+    asl a
+    sta z:zTemp10
+    lda a:OBJ_34B8,x
+    asl a
+    adc z:zTemp10
+    tay
+    lda a:$C0DE,y
+    sta a:OBJ_VX_LO,x
+    lda a:$C0DF,y
+    sta a:OBJ_VX_HI,x
+    rts

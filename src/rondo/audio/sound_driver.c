@@ -1281,8 +1281,9 @@ NoteLength SoundSetLength(uint8_t channel)
     if (note.gate == 0) {
         note.timer = rd8(SoundCommandArgs);
     } else {
+        note.length = rd8(SoundCommandArgs);
         jsr_push(0x8AEA);
-        note.product = SoundMultiplyNibble(note.gate, rd8(SoundCommandArgs), channel);
+        note.product = SoundMultiplyNibble(note.gate, note.length, channel);
         jsr_pop();
         note.timer = gate_timer_from_product();
     }
@@ -3031,8 +3032,9 @@ SequenceEnd SoundCommandReturn(uint8_t channel, uint8_t kept_y)
         wr8((uint16_t)(SoundChannelCommand + channel), 0);
     if (channel >= EFFECT_SHARED_END) {
         wr8((uint16_t)(SoundChannelPriority + channel), 0);
+        end_a = rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel));
         jsr_push(0xB78E);
-        end.wave = SoundLoadWave(rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)), channel, kept_y);
+        end.wave = SoundLoadWave(end_a, channel, kept_y);
         jsr_pop();
     }
     return end;
@@ -4044,14 +4046,16 @@ void abi_SoundDriverCommand(void)
 static WaveLoad give_back_channel(uint8_t channel, uint8_t bit, uint16_t weight, uint16_t ret)
 {
     WaveLoad loaded;
+    uint8_t wave;
 
     wr8(PsgSelect, channel);
     wr8(zSoundChannel, channel);
     wr8((uint16_t)(SoundChannelCommand + channel + EFFECT_CHANNEL_OFFSET), 0);
     wr8(zSoundChannelsOn, (uint8_t)(rd8(zSoundChannelsOn) & ~bit));
     wr8(weight, 0);
+    wave = rd8((uint16_t)(SoundChannelWave + channel));
     jsr_push(ret);
-    loaded = SoundLoadWave(rd8((uint16_t)(SoundChannelWave + channel)), channel, 0 /* Y: not yet worked out */);
+    loaded = SoundLoadWave(wave, channel, 0 /* Y: not yet worked out */);
     jsr_pop();
     return loaded;
 }

@@ -289,6 +289,32 @@ StepListB53CToState5:
     stz a:OBJ_2800,x
     rts
 
+; @routine 0E0B:543 SetRasterSpawnThenStepList
+; @run 70:B543
+; WHAT IT DOES: Sets the raster effect to $0B with argument $BF, runs SpawnOnTimerInTable, then steps the animation list at $B568; when it ends it clears the raster effect and its argument, goes to state 4 and clears OBJ_2800.
+; HOW: SpawnOnTimerInTable, StepObjectFrames, stores.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+SetRasterSpawnThenStepList:
+    lda #$0B
+    sta z:zRasterEffect
+    lda #$BF
+    sta z:zRasterArg
+    jsr SpawnOnTimerInTable
+    lda #$68
+    sta z:zTemp10
+    lda #$B5
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne SetRasterSpawnThenStepList_at0
+    stz z:zRasterArg
+    stz z:zRasterEffect
+    lda #$04
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+SetRasterSpawnThenStepList_at0:
+    rts
+
 ; @routine 0E0B:579 SpawnOnTimerInTable
 ; @run 70:B579
 ; WHAT IT DOES: When OBJ_3408 is 6 and OBJ_3460 equals one of the three bytes at $B5A5 it finds a free slot from $30, sends sound $48 and starts a kind $27 object there at its place with its facing.

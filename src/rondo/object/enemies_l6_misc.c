@@ -928,3 +928,52 @@ void abi_SpawnOnTimerInTable(void)
 {
     abi_sound_end(SpawnOnTimerInTable(cpu.x));
 }
+
+/*
+ * @routine 0E0B:543 SetRasterSpawnThenStepList
+ * @run 70:B543
+ * WHAT IT DOES: Sets the raster effect to $0B with argument $BF, runs SpawnOnTimerInTable, then steps the animation list at $B568; when it ends it clears the raster effect and its argument, goes to state 4 and clears OBJ_2800.
+ * HOW: SpawnOnTimerInTable, StepObjectFrames, stores.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+ */
+SoundEnd SetRasterSpawnThenStepList(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    SoundEnd inner;
+    FrameStep step;
+    uint8_t y;
+    Ended e;
+
+    WR8(ZP->raster_effect, 0x0B);
+    WR8(ZP->raster_arg, 0xBF);
+    jsr_push(0xB54E);
+    inner = SpawnOnTimerInTable(slot);
+    jsr_pop();
+    r.before = inner.before;
+    r.sounded = inner.sounded;
+    r.command = inner.command;
+    r.call = inner.call;
+    y = ended_y_or(inner.end, ended_y_or(inner.before, y_entry));
+    WR8(ZP->temp10, 0x68);
+    WR8(ZP->temp11, 0xB5);
+    jsr_push(0xB559);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(then(then(inner.end, ended_load(0x68)), ended_load(0xB5)), ended_of_frame_step(step, step != FRAME_HELD, y));
+    if (step != FRAME_LIST_ENDED) {
+        r.end = e;
+        return r;
+    }
+    WR8(ZP->raster_arg, 0);
+    WR8(ZP->raster_effect, 0);
+    WR8(OBJ->state[slot], 4);
+    WR8(OBJ->f2800[slot], 0);
+    r.end = then(e, ended_load(4));
+    return r;
+}
+
+void abi_SetRasterSpawnThenStepList(void)
+{
+    abi_sound_end(SetRasterSpawnThenStepList(cpu.x, cpu.y));
+}

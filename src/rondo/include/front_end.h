@@ -451,4 +451,18 @@ void abi_WriteGlyphMapRows(void);
 void abi_DrawGlyphPair(void);
 void abi_DrawGlyphText(void);
 
+
+/* The ending scene (menu/ending.c). */
+uint8_t EndingFrameTick(void);
+uint8_t EndingModeDoneBack(void);
+void EndingNothing(void);
+bool EndingHoldTimer(uint8_t object);
+Exit EndingScrollBack8(void);
+Exit EndingScrollSlots(void);
+ObjExit EndingFrameList(uint8_t list, uint8_t object);
+ObjExit EndingClearAfterScrollX(uint8_t object);
+ObjExit EndingClearAfterScrollY(uint8_t object);
+ObjExit EndingScrollRunUp(uint8_t object);
+ObjExit EndingScrollPull(uint8_t object);
+
 #endif

@@ -334,6 +334,96 @@ SoundSetPan_at0:
 ;
 ;
 ;
+; The sound driver: the PSG's six channels, music and effects, loaded with the kernel's second
+; block at sectors $4D to $56 and mapped at $8000-$DFFF (banks $75 to $77) only while the kernel
+; calls it. Channels 0 to 5 are the PSG's; the driver keeps eight, and its channels 6 and 7 are
+; effects that take over PSG channels 4 and 5.
+;
+; A body returns plain values; its wrapper works out what the assembly leaves in the registers
+; and flags.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+; The sound driver: the PSG's six channels, music and effects, loaded with the kernel's second
+; block at sectors $4D to $56 and mapped at $8000-$DFFF (banks $75 to $77) only while the kernel
+; calls it. Channels 0 to 5 are the PSG's; the driver keeps eight, and its channels 6 and 7 are
+; effects that take over PSG channels 4 and 5.
+;
+; A body returns plain values; its wrapper works out what the assembly leaves in the registers
+; and flags.
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
+;
 ; @routine 004E:614 SoundSilenceAll
 ; @run 75:8E14
 ; WHAT IT DOES: Turns every PSG channel off, and the main volume down.
@@ -2104,6 +2194,7 @@ SoundGateStep_at1:
 ; note, after its delay, over its frames, from the pitch now; it is taken and the glide aimed.
 ; HOW: SoundPeekCommand; SoundSequenceFromWord takes it; SoundGlideDelay and SoundGlideFrames; the
 ; note with the transpose, less one with a negative fine tune; SoundGlideSetup with the fine tune.
+; WAITS: no.
 ; Entry: X channel. Exit: X kept. Gliding, A the frames, N and Z from them. Not $F3, as
 ; SoundPeekCommand, with A the command, N, Z and C from comparing it with $F3. Taken, as
 ; SoundGlideSetup, with A the fine tune, Y the note and C from adding the transpose where it

@@ -485,5 +485,9 @@ ObjExit EndingScrollRight6(uint8_t object);
 ObjExit EndingScrollUp(uint8_t object);
 ObjExit EndingScrollDown(uint8_t object);
 ObjExit EndingScrollSteps(uint8_t object);
+ObjExit EndingHoldThenScript19(uint8_t object);
+ObjExit EndingLinkAnimationA(uint8_t object);
+ObjExit EndingLinkAnimationB(uint8_t object);
+ObjExit EndingAimAtPlace(uint8_t object);
 
 #endif

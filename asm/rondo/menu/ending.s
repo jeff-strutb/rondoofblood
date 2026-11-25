@@ -41,6 +41,58 @@ EndingClearAfterScrollY:
     inc a:ScrollYHi
     jmp VecClearObject
 
+; @routine 010D:36A EndingAimAtPlace
+; @run 6B:836A
+; WHAT IT DOES: An object handler of two stages: the first makes the object's speed the distance to the place (X $70, Y $58)
+; times 8 and moves to the next state; the second adds $18 to the downward speed and moves.
+; HOW: OBJ->state; subtracts and three shifts of the 16-bit speeds; ApplyVelocity.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingAimAtPlace:
+    lda a:OBJ_27A8,x
+    bne EndingAimAtPlace_at0
+    lda a:OBJ_X_LO,x
+    sec
+    sbc #$70
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_X_HI,x
+    sbc #$00
+    sta a:OBJ_VX_HI,x
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc #$58
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_Y_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    asl a:OBJ_VX_LO,x
+    rol a:OBJ_VX_HI,x
+    asl a:OBJ_VY_LO,x
+    rol a:OBJ_VY_HI,x
+    asl a:OBJ_VX_LO,x
+    rol a:OBJ_VX_HI,x
+    asl a:OBJ_VY_LO,x
+    rol a:OBJ_VY_HI,x
+    asl a:OBJ_VX_LO,x
+    rol a:OBJ_VX_HI,x
+    asl a:OBJ_VY_LO,x
+    rol a:OBJ_VY_HI,x
+    inc a:OBJ_27A8,x
+    rts
+EndingAimAtPlace_at0:
+    dec a
+    bne EndingAimAtPlace_at1
+    lda #$18
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    bcc EndingAimAtPlace_at2
+    inc a:OBJ_VY_HI,x
+EndingAimAtPlace_at2:
+    jsr VecApplyVelocity
+EndingAimAtPlace_at1:
+    rts
+
 ; @routine 010D:3CE EndingScrollPull
 ; @run 6B:83CE
 ; WHAT IT DOES: An object handler of two states: the first sets the first scroll's X low byte to $80; the second
@@ -814,6 +866,85 @@ EndingRiseFrame32B_at1:
     inc a:OBJ_27A8,x
 EndingRiseFrame32B_at2:
     rts
+
+; @routine 010E:01D EndingHoldThenScript19
+; @run 6B:881D
+; WHAT IT DOES: An object handler of two stages: the first starts the raster effect $13, sets scroll slots 1 and 5 to Y $2F and
+; 2 and 6 to $BF and holds the object $40 frames; the second, once the hold has run out, starts script $19 on slot 7 as kind 1
+; and moves to the next state.
+; HOW: OBJ->state; EndingHoldTimer; StartScriptSlotKind1.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingHoldThenScript19:
+    lda a:OBJ_27A8,x
+    bne EndingHoldThenScript19_at0
+    lda #$13
+    sta z:zRasterEffect
+    lda #$2F
+    sta a:ScrollYLo+1
+    sta a:ScrollYLo+5
+    lda #$BF
+    sta a:ScrollYLo+2
+    sta a:ScrollYLo+6
+    lda #$40
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+    rts
+EndingHoldThenScript19_at0:
+    dec a
+    bne ScriptSound
+    jsr EndingHoldTimer
+    phx
+    lda #$19
+    ldx #$07
+    jsr VecStartScriptSlotKind1
+    plx
+    inc a:OBJ_27A8,x
+    rts
+    rts
+
+; @routine 010E:053 EndingLinkAnimationA
+; @run 6B:8853
+; WHAT IT DOES: An object handler: shows picture kind 3 and plays the ending's list 4; when a frame changes to a non-zero picture
+; it starts script $0D on slot 1 as kind 1.
+; HOW: OBJ->state and OBJ->sprite_set; EndingFrameList; StartScriptSlotKind1.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingLinkAnimationA:
+    lda a:OBJ_27A8,x
+    bne EndingLinkAnimationA_at0
+    lda #$03
+    sta a:OBJ_2A10,x
+    inc a:OBJ_27A8,x
+EndingLinkAnimationA_at0:
+    lda #$04
+    jsr EndingFrameList
+    bcc EndingLinkAnimationA_at1
+    lda a:OBJ_2A68,x
+    beq EndingLinkAnimationA_at1
+    phx
+    ldx #$01
+    lda #$0D
+    jsr VecStartScriptSlotKind1
+    plx
+EndingLinkAnimationA_at1:
+    rts
+
+; @routine 010E:076 EndingLinkAnimationB
+; @run 6B:8876
+; WHAT IT DOES: As EndingLinkAnimationA, with the ending's list 5.
+; HOW: OBJ->state and OBJ->sprite_set; EndingFrameList; StartScriptSlotKind1.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingLinkAnimationB:
+    lda a:OBJ_27A8,x
+    bne EndingLinkAnimationB_at0
+    lda #$03
+    sta a:OBJ_2A10,x
+    inc a:OBJ_27A8,x
+EndingLinkAnimationB_at0:
+    lda #$05
+    bra $8862
 
 ; @routine 010E:0EF EndingScrollSlots
 ; @run 6B:88EF

@@ -1964,56 +1964,121 @@ void abi_PlayerYFromNextWord(void)
  * WHAT IT DOES: Moves the player down, or the scroll under it, as MovePlayerRight does
  * to the right.
  * HOW: The 16.8 next position in zTemp04-06, then as MovePlayerRight on the Y fields.
+ * WAITS: no.
  * Entry: nothing. Exit: A, flags as the last step left them. X and Y kept. Clobbers
  * zTemp00-06.
  */
 /* zTemp00-06 hold the sums here because the routine leaves them: they are RAM it must end with. */
+LimitTest CompareScrollWithBottomLimit(uint8_t high);
+uint8_t PlayerYFromNextWord(void);
+
 DownMove MovePlayerDown(void)
 {
     DownMove move = { 0 };
-    uint16_t speed = read16(OBJ_VY_LO, OBJ_VY_HI);
-    uint16_t from = read16(OBJ_Y_FRAC, OBJ_Y_LO);
-    uint16_t limit = read16(ScrollYMaxLo, ScrollYMaxHi);
-    uint16_t scroll = read16(ScrollYFrac, ScrollYLo);
-    bool at_middle_already = rd8(OBJ_Y_LO) >= SCREEN_MIDDLE;
-    uint16_t taken;
-    uint16_t sum;
+    MiddleTest middle;
+    LimitTest reach;
+    uint8_t speed_lo;
+    uint8_t speed_hi;
+    uint8_t frac;
+    uint8_t from_lo;
+    uint8_t base;
+    uint8_t scroll_lo;
+    uint8_t step_lo;
+    uint8_t step_hi;
+    unsigned sum;
 
-    write16(ScrollStepYLo, ScrollStepYHi, 0);
-    move.next = (uint16_t)(speed + from);
-    move.next_carried = move.next < speed;
+    wr8(ScrollStepYLo, 0);
+    wr8(ScrollStepYHi, 0);
+    speed_lo = rd8(OBJ_VY_LO);
+    frac = rd8(OBJ_Y_FRAC);
+    sum = (unsigned)speed_lo + frac;
+    wr8(zTemp04, (uint8_t)sum);
+    speed_hi = rd8(OBJ_VY_HI);
+    from_lo = rd8(OBJ_Y_LO);
+    sum = (unsigned)speed_hi + from_lo + (sum >> 8);
+    wr8(zTemp05, (uint8_t)sum);
+    move.next = (uint16_t)((((uint8_t)sum) << 8) | (uint8_t)(speed_lo + frac));
+    move.next_carried = (sum >> 8) != 0;
     move.high = rd8(OBJ_Y_HI);
     move.next_page = (uint8_t)(move.high + (move.next_carried ? 1 : 0));
-    write16(zTemp04, zTemp05, move.next);
     wr8(zTemp06, move.next_page);
-    if ((move.next >> 8) < SCREEN_MIDDLE) {
+    jsr_push(0x6AB8);
+    middle = NextPastMiddle();
+    jsr_pop();
+    if (!middle.past) {
         PlayerYFromNextWord();
         move.how = DOWN_PLAYER;
         return move;
     }
-    wr8(zTemp03, (uint8_t)(scroll >> 8));
+    scroll_lo = rd8(ScrollYLo);
+    wr8(zTemp03, scroll_lo);
     move.page = rd8(ScrollYHiScreen);
-    if ((uint16_t)((move.page << 8) | (scroll >> 8)) == limit) {
+    jsr_push(0x6AC5);
+    reach = CompareScrollWithBottomLimit(move.page);
+    jsr_pop();
+    if (reach.a == reach.b) {
         PlayerYFromNextWord();
         move.how = DOWN_AT_LIMIT;
         return move;
     }
-    taken = at_middle_already ? speed : (uint16_t)(move.next - (SCREEN_MIDDLE << 8));
-    write16(zTemp00, zTemp01, taken);
-    sum = (uint16_t)(scroll + taken);
-    move.carried = sum < scroll;
-    write16(zTemp02, zTemp03, sum);
-    if ((uint16_t)(((uint8_t)(move.page + (move.carried ? 1 : 0)) << 8) | (sum >> 8)) < limit) {
-        if (!at_middle_already)
-            write16(OBJ_Y_FRAC, OBJ_Y_LO, (uint16_t)(SCREEN_MIDDLE << 8));
-        move.step = taken;
-        write16(ScrollStepYLo, ScrollStepYHi, taken);
+    jsr_push(0x6ACA);
+    NextPastMiddleAmount();
+    jsr_pop();
+    jsr_push(0x6ACD);
+    middle = PlayerYPastMiddle();
+    jsr_pop();
+    if (middle.past) {
+        base = rd8(OBJ_VY_LO);
+        wr8(zTemp00, base);
+    } else {
+        base = rd8(zTemp00);
+    }
+    frac = rd8(ScrollYFrac);
+    sum = (unsigned)base + frac;
+    wr8(zTemp02, (uint8_t)sum);
+    if (middle.past) {
+        base = rd8(OBJ_VY_HI);
+        wr8(zTemp01, base);
+    } else {
+        base = rd8(zTemp01);
+    }
+    scroll_lo = rd8(ScrollYLo);
+    sum = (unsigned)base + scroll_lo + (sum >> 8);
+    wr8(zTemp03, (uint8_t)sum);
+    move.carried = (sum >> 8) != 0;
+    move.page = rd8(ScrollYHiScreen);
+    sum = (unsigned)move.page + (move.carried ? 1 : 0);
+    jsr_push(middle.past ? 0x6AEB : 0x6B05);
+    reach = CompareScrollWithBottomLimit((uint8_t)sum);
+    jsr_pop();
+    if (!reach.reached) {
+        if (!middle.past) {
+            wr8(OBJ_Y_LO, SCREEN_MIDDLE);
+            wr8(OBJ_Y_FRAC, 0);
+        }
+        step_lo = rd8(zTemp00);
+        wr8(ScrollStepYLo, step_lo);
+        step_hi = rd8(zTemp01);
+        wr8(ScrollStepYHi, step_hi);
+        move.step = (uint16_t)((step_hi << 8) | step_lo);
         move.how = DOWN_STEP;
         return move;
     }
-    move.step = (uint16_t)(((limit & 0xFF) << 8) - scroll);
-    write16(ScrollStepYLo, ScrollStepYHi, move.step);
-    write16(OBJ_Y_FRAC, OBJ_Y_LO, (uint16_t)(move.next - move.step));
+    frac = rd8(ScrollYFrac);
+    step_lo = (uint8_t)(0 - frac);
+    wr8(ScrollStepYLo, step_lo);
+    base = rd8(ScrollYMaxLo);
+    scroll_lo = rd8(ScrollYLo);
+    step_hi = (uint8_t)(base - scroll_lo - (frac != 0 ? 1 : 0));
+    wr8(ScrollStepYHi, step_hi);
+    base = rd8(zTemp04);
+    step_lo = rd8(ScrollStepYLo);
+    sum = (unsigned)(base < step_lo);
+    wr8(OBJ_Y_FRAC, (uint8_t)(base - step_lo));
+    base = rd8(zTemp05);
+    step_hi = rd8(ScrollStepYHi);
+    wr8(OBJ_Y_LO, (uint8_t)(base - step_hi - sum));
+    move.step = (uint16_t)((step_hi << 8) | step_lo);
     move.how = DOWN_BOTH;
     return move;
 }

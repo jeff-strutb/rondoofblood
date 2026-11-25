@@ -16,6 +16,45 @@ ClearSlot4EUnlessCamera18:
 ClearSlot4EUnlessCamera18_at0:
     rts
 
+; @routine 10CB:415 RiseThenPlaceWithSound
+; @run 70:B415
+; WHAT IT DOES: Moves the object along Y by its speed and takes $0010 off its Y speed. When its Y high byte is $FE it sends sound $E7, sets its flags to $81, frame $1D, puts it at X $0000, Y $FFE0, gives it X speed $0400 and Y speed $0600 (high bytes) and goes on to the next OBJ_2800.
+; HOW: ApplyVelocityY, a 16-bit subtract, SoundCommand, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
+RiseThenPlaceWithSound:
+    jsr VecApplyVelocityY
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$10
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    lda a:OBJ_Y_HI,x
+    cmp #$FE
+    bne RiseThenPlaceWithSound_at0
+    lda #$E7
+    jsr VecSoundCommand
+    lda #$80
+    sta a:OBJ_FLAGS_2F38,x
+    lda #$1D
+    sta a:OBJ_2A68,x
+    stz a:OBJ_X_HI,x
+    lda #$00
+    sta a:OBJ_X_LO,x
+    lda #$FF
+    sta a:OBJ_Y_HI,x
+    lda #$E0
+    sta a:OBJ_Y_LO,x
+    lda #$06
+    sta a:OBJ_VY_HI,x
+    lda #$04
+    sta a:OBJ_VX_HI,x
+    inc a:OBJ_2800,x
+RiseThenPlaceWithSound_at0:
+    rts
+
 ; @routine 10CB:680 StepListB697ThenStopY
 ; @run 70:B680
 ; WHAT IT DOES: Steps the animation list at $B697; when it ends, the object's Y speed is cleared and it goes to the next OBJ_2800.

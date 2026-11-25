@@ -882,3 +882,72 @@ void abi_LoadThenSpawnWhileScrolling(void)
 {
     abi_ended(LoadThenSpawnWhileScrolling(cpu.x));
 }
+
+/*
+ * @routine 051E:115 SpawnPointFromTables
+ * @run 71:C915
+ * WHAT IT DOES: Counts OBJ_34B8 down; at zero it gives itself a new timer (RandomTimer10), finds a free slot from $30 and there starts a kind $AF object with this object's OBJ_3040, placed from the tables at $C97A and $CA99 by that byte and OBJ_3510's low three bits (four bytes a row: X low, X high, Y low, Y high; the X and Y low plus a random 0 to 7), and OBJ_3510 low two bits; then counts OBJ_3510 up.
+ * HOW: RandomTimer10, FindFreeSlotFrom30, table reads (bank 70), NextRandom twice.
+ * WAITS: no.
+ * Entry: X object. Exit: the new OBJ_3510's N and Z, Y the new slot; or the count.
+ */
+Ended SpawnPointFromTables(uint8_t slot)
+{
+    RandomResult random;
+    Sum sum;
+    uint8_t left, found_slot, last, kind, temp, index, offset, value, y;
+    bool found;
+    Ended e;
+
+    left = DEC8(OBJ->f34b8[slot]);
+    e = ended_nz(left);
+    if (left != 0) {
+        return e;
+    }
+    jsr_push(0xC91C);
+    e = then(e, RandomTimer10(slot));
+    jsr_pop();
+    jsr_push(0xC91F);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = then(e, ended_of_find_slot(found_slot, last, found));
+    if (!found) {
+        return e;
+    }
+    y = found_slot;
+    WR8(OBJ->kind[y], 0xAF);
+    push8(slot);
+    kind = RD8(OBJ->f3040[slot]);
+    WR8(OBJ->f3040[y], kind);
+    WR8(ZP->temp10, kind);
+    offset = (uint8_t)((RD8(OBJ->f3510[slot]) & 0x07) << 2);
+    index = RD8(ZP->temp10);
+    sum = add_bytes(offset, rd8((uint16_t)(0xC97A + index)), false);
+    index = sum.value;
+    WR8(OBJ->x_lo[y], rd8((uint16_t)(0xCA99 + index)));
+    WR8(OBJ->x_hi[y], rd8((uint16_t)(0xCA9A + index)));
+    WR8(OBJ->y_lo[y], rd8((uint16_t)(0xCA9B + index)));
+    value = rd8((uint16_t)(0xCA9C + index));
+    WR8(OBJ->y_hi[y], value);
+    slot = pull8();
+    jsr_push(0xC959);
+    random = NextRandom();
+    jsr_pop();
+    sum = add_bytes((uint8_t)(random.value & 0x07), RD8(OBJ->x_lo[y]), false);
+    WR8(OBJ->x_lo[y], sum.value);
+    jsr_push(0xC965);
+    random = NextRandom();
+    jsr_pop();
+    sum = add_bytes((uint8_t)(random.value & 0x07), RD8(OBJ->y_lo[y]), false);
+    WR8(OBJ->y_lo[y], sum.value);
+    value = (uint8_t)(RD8(OBJ->f3510[slot]) & 0x03);
+    WR8(OBJ->f3510[y], value);
+    e = then(ended_with_y(ended_of_sum(sum), y), ended_load(value));
+    value = INC8(OBJ->f3510[slot]);
+    return then(e, ended_nz(value));
+}
+
+void abi_SpawnPointFromTables(void)
+{
+    abi_ended(SpawnPointFromTables(cpu.x));
+}

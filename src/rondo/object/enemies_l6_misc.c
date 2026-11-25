@@ -515,3 +515,68 @@ void abi_SetHitBoxFromTable(void)
 {
     abi_ended(SetHitBoxFromTable(cpu.x));
 }
+
+/*
+ * @routine 0E0C:412 CopyPlaceAndHitBoxOfSlot10
+ * @run 70:BC12
+ * WHAT IT DOES: In state 0 loads the object's record. Later it takes the place of the object in slot $10 and its facing; if that object's OBJ_3250 is not zero it takes the hit box (four bytes a row from the table at $C024, the row being that object's frame less one; the half width plus 8), else it clears its half width and half height.
+ * HOW: LoadObjectRecord, CopyObjectPlaceBack, a pointer built in zTemp00-01, four reads through it.
+ * WAITS: no.
+ * Entry: X object. Exit: see the code: the last read or the clears.
+ */
+Ended CopyPlaceAndHitBoxOfSlot10(uint8_t slot)
+{
+    Sum row, sum;
+    uint8_t state, nz, last, on, twice, y, value, low;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return then(ended_load(state), ended_of_record(last, nz, carry));
+    }
+    jsr_push(0xBC1F);
+    last = CopyObjectPlaceBack(0x10, slot);
+    jsr_pop();
+    e = then(then(ended_load(state), ended_with_y(ended_load(last), 0x10)), ended_nz(last));
+    value = RD8(OBJ->facing_left[0x10]);
+    WR8(OBJ->facing_left[slot], value);
+    e = then(e, ended_load(value));
+    on = RD8(OBJ->hitbox_on[0x10]);
+    e = then(e, ended_load(on));
+    if (on == 0) {
+        WR8(OBJ->hitbox_half_w[slot], 0);
+        WR8(OBJ->hitbox_half_h[slot], 0);
+        return e;
+    }
+    WR8(ZP->temp00, 0x24);
+    WR8(ZP->temp01, 0xC0);
+    row = sub_bytes(RD8(OBJ->frame[0x10]), 1, true);
+    twice = (uint8_t)(row.value << 1);
+    WR8(ZP->temp02, twice);
+    for (y = 0; y < 2; y++) {
+        low = RD8(ZP->temp00);
+        sum = add_bytes(low, RD8(ZP->temp02), false);
+        WR8(ZP->temp00, sum.value);
+        carry = sum.carry;
+        low = RD8(ZP->temp01);
+        sum = add_bytes(low, 0, carry);
+        WR8(ZP->temp01, sum.value);
+    }
+    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 0));
+    WR8(OBJ->hitbox_dx[slot], value);
+    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 1));
+    WR8(OBJ->hitbox_dy[slot], value);
+    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 2));
+    sum = add_bytes(value, 0x08, false);
+    WR8(OBJ->hitbox_half_w[slot], sum.value);
+    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 3));
+    WR8(OBJ->hitbox_half_h[slot], value);
+    return then(then(e, ended_of_sum(sum)), ended_with_y(ended_load(value), 3));
+}
+
+void abi_CopyPlaceAndHitBoxOfSlot10(void)
+{
+    abi_ended(CopyPlaceAndHitBoxOfSlot10(cpu.x));
+}

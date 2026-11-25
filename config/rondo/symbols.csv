@@ -394,6 +394,8 @@ A6C1,abs,KnockSpeeds,knockback's X speed by facing
 BE8E,abs,AnimationSounds,the list to start by animation
 BF08,abs,AnimationHitboxIndex,hitbox index by animation
 BF84,abs,AnimationHitbox,hitbox of four bytes
+9327,abs,StageClearBitLo,16 bytes by stage index: the low byte of the stage's bit in the cleared word (StageClearBit)
+932F,abs,StageClearBitHi,16 bytes by stage index: the high byte of the stage's bit in the cleared word (StageClearBit)
 971A,abs,TileHandlers,the stage overlay's handlers for attributes $80-$9B
 97DD,abs,TileHalfStepsA,steps for tiles $87-$8A by half of the tile
 97E5,abs,TileHalfStepsB,steps for tiles $8C-$8F by half of the tile

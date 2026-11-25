@@ -475,6 +475,18 @@ Ended SetHitBox0C18(uint8_t slot);
 Ended StartPieceAtNextSlot(uint8_t slot);
 Ended DrawTileScriptByHighBits(uint8_t slot);
 Ended CountThenNextStateF3510(uint8_t slot);
+Jump JumpByPhaseTable072C004(uint8_t slot);
+Jump JumpByStateTable072C763(uint8_t slot);
+Jump JumpByStateTable093C3FF(uint8_t slot);
+Jump JumpByStateTable093C4E5(uint8_t slot);
+Jump JumpByStateTable09EB7D3(uint8_t slot);
+Jump JumpByStateTable09EC18D(uint8_t slot);
+Jump JumpByStateTable0BFC12B(uint8_t slot);
+Jump JumpByStateTable0CAB12F(uint8_t slot);
+Jump JumpByPhaseTable0CAB4D7(uint8_t slot);
+Jump JumpByStateTable0CAC47A(uint8_t slot);
+Jump JumpByStateTable0CAC59D(uint8_t slot);
+Jump JumpByStateTable0CAC6C3(uint8_t slot);
 Ended StepListC192ThenClear(uint8_t slot, uint8_t y_entry);
 
 /* What DrawTileScript called with the item (and the group's Y) leaves: A $FF, the compare's N clear and Z set, C set, Y as the last op left it, and V when a line step ran. */

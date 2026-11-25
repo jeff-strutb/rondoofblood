@@ -938,6 +938,126 @@ StartFallingSpark:
     sta a:OBJ_34B8,x
     rts
 
+; @routine 0CAC:5E5 TrackThenAimAtPlayer
+; @run 70:BDE5
+; WHAT IT DOES: Runs TrackPointOrLand, adds the speed OBJ_35C0 to the angle OBJ_3510 and counts the timer down; at zero it takes the angle to the player and
+; the speed OBJ_35C0 along it, and goes on to the next state.
+; HOW: TrackPointOrLand, AngleToPlayer, SetVelocityFromAngle.
+; WAITS: no.
+; Entry: X object. Exit: the timer's count, or the state's count after the step.
+TrackThenAimAtPlayer:
+    jsr TrackPointOrLand
+    lda a:OBJ_3510,x
+    clc
+    adc a:OBJ_35C0,x
+    sta a:OBJ_3510,x
+    dec a:OBJ_34B8,x
+    bne FlashFallAnimateThenRemove
+    jsr VecAngleToPlayer
+    pha
+    stz z:zTemp01
+    lda a:OBJ_35C0,x
+    sta z:zTemp01
+    pla
+    jsr VecSetVelocityFromAngle
+    inc a:OBJ_27A8,x
+    rts
+
+; @routine 0CAC:60A TrackPointOrLand
+; @run 70:BE0A
+; WHAT IT DOES: Puts object $16 at the place of object $10, one length $30 along the object's angle OBJ_3510, and moves it. If the object has landed
+; (OBJ_3618 set), or is within 8 of object $16 on both axes, it lands: frame 2, OBJ_3300 $12, flags OBJ_2EE0 and OBJ_3618 set, and object $16
+; is placed and moved again along the angle. Otherwise it takes the angle to object $16 and moves at the speed OBJ_35C0 along it.
+; HOW: CopyObjectPlaceBack, SetVelocityFromAngle, ApplyVelocity, AngleToPoint, 16-bit subtract and add.
+; WAITS: no.
+; Entry: X object. Exit: as ApplyVelocity.
+TrackPointOrLand:
+    lda a:OBJ_3510,x
+    sta z:zTemp02
+    phx
+    ldx #$16
+    ldy #$10
+    jsr VecCopyObjectPlaceBack
+    stz z:zTemp00
+    lda #$30
+    sta z:zTemp01
+    lda z:zTemp02
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    plx
+    lda a:OBJ_3618,x
+    bne TrackPointOrLand_at0
+    lda a:OBJ_X_LO,x
+    sec
+    sbc a:$2BDE
+    sta z:zTemp00
+    lda a:OBJ_X_HI,x
+    sbc a:$2B86
+    sta z:zTemp01
+    lda z:zTemp00
+    clc
+    adc #$08
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$00
+    bne TrackPointOrLand_at1
+    lda z:zTemp00
+    cmp #$10
+    bcs TrackPointOrLand_at1
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc a:$2CE6
+    sta z:zTemp00
+    lda a:OBJ_Y_HI,x
+    sbc a:$2C8E
+    sta z:zTemp01
+    lda z:zTemp00
+    clc
+    adc #$08
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$00
+    bne TrackPointOrLand_at1
+    lda z:zTemp00
+    cmp #$10
+    bcs TrackPointOrLand_at1
+TrackPointOrLand_at0:
+    lda #$02
+    sta a:OBJ_3358,x
+    lda #$12
+    sta a:OBJ_3300,x
+    lda #$01
+    sta a:OBJ_FIELDS_2EE0,x
+    lda #$01
+    sta a:OBJ_3618,x
+    ldy #$10
+    jsr VecCopyObjectPlaceBack
+    stz z:zTemp00
+    lda #$30
+    sta z:zTemp01
+    lda a:OBJ_3510,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    rts
+TrackPointOrLand_at1:
+    lda a:$2B86
+    sta z:zTemp09
+    lda a:$2BDE
+    sta z:zTemp08
+    lda a:$2C8E
+    sta z:zTemp0B
+    lda a:$2CE6
+    sta z:zTemp0A
+    jsr VecAngleToPoint
+    pha
+    stz z:zTemp00
+    lda a:OBJ_35C0,x
+    sta z:zTemp01
+    pla
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    rts
+
 ; @routine 0CAC:6DD StartFromTable
 ; @run 70:BEDD
 ; WHAT IT DOES: Loads the object's record, sets its angle low byte to $80 and its angle high byte from a table at $BEF2 by its next kind, less $A0.
@@ -953,6 +1073,58 @@ StartFromTable:
     sec
     sbc #$A0
     sta a:OBJ_3568,x
+    rts
+
+; @routine 0CAC:703 OrbitThenLeave
+; @run 70:BF03
+; WHAT IT DOES: Steps the animation list that a table at $BF66 names for the object's next kind, puts the object at X $0080, Y $0070 relative
+; to its screen and moves it along its angle OBJ_3568 by the length held in OBJ_3510 and the timer; then adds $80 to that 16-bit length,
+; turns the angle by one and, once the high byte of the length reaches $50, takes the speed from the turned-about angle with length $0400 and goes on to the next state.
+; HOW: A table read (bank 70), StepObjectFrames, SetVelocityFromAngle, ApplyVelocity.
+; WAITS: no.
+; Entry: X object. Exit: the state's count when it goes on, else the compare.
+OrbitThenLeave:
+    lda a:OBJ_3040,x
+    asl a
+    tay
+    lda a:$BF66,y
+    sta z:zTemp10
+    lda a:$BF67,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    stz a:OBJ_X_HI,x
+    stz a:OBJ_Y_HI,x
+    lda #$80
+    sta a:OBJ_X_LO,x
+    lda #$70
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_3510,x
+    sta z:zTemp00
+    lda a:OBJ_34B8,x
+    sta z:zTemp01
+    lda a:OBJ_3568,x
+    jsr VecSetVelocityFromAngle
+    jsr VecApplyVelocity
+    lda a:OBJ_3510,x
+    clc
+    adc #$80
+    sta a:OBJ_3510,x
+    lda a:OBJ_34B8,x
+    adc #$00
+    sta a:OBJ_34B8,x
+    inc a:OBJ_3568,x
+    lda a:OBJ_34B8,x
+    cmp #$50
+    bcc OrbitThenLeave_at0
+    stz z:zTemp00
+    lda #$04
+    sta z:zTemp01
+    lda a:OBJ_3568,x
+    clc
+    adc #$80
+    jsr VecSetVelocityFromAngle
+    inc a:OBJ_27A8,x
+OrbitThenLeave_at0:
     rts
 
 ; @routine 0CAD:12A StepPartList

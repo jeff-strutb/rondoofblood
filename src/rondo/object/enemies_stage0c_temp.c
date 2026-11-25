@@ -1865,3 +1865,276 @@ void abi_BounceSparkOffWalls(void)
 
     abi_chain(&c);
 }
+
+/* One axis of 0CAC:60A: the distance from object $16 plus 8, as a 16-bit subtract and add; true when it is $10 or more. */
+static bool axis_far(uint16_t lo_column, uint16_t hi_column, uint8_t slot, Ended *e)
+{
+    uint8_t mine, theirs, low, high;
+    Sum sum;
+
+    mine = RD8_IDX(lo_column, slot);
+    theirs = RD8_IDX(lo_column, 0x16);
+    sum = sub_bytes(mine, theirs, true);
+    *e = then(*e, of_sum(sum));
+    WR8(ZP->temp00, sum.value);
+    mine = RD8_IDX(hi_column, slot);
+    theirs = RD8_IDX(hi_column, 0x16);
+    sum = sub_bytes(mine, theirs, sum.carry);
+    *e = then(*e, of_sum(sum));
+    WR8(ZP->temp01, sum.value);
+    low = RD8(ZP->temp00);
+    sum = add_bytes(low, 8, false);
+    *e = then(*e, of_sum(sum));
+    WR8(ZP->temp00, sum.value);
+    high = RD8(ZP->temp01);
+    sum = add_bytes(high, 0, sum.carry);
+    *e = then(*e, of_sum(sum));
+    if (sum.value != 0) {
+        return true;
+    }
+    low = RD8(ZP->temp00);
+    *e = then(*e, ended_compare(low, 0x10));
+    return low >= 0x10;
+}
+
+/*
+ * @routine 0CAC:60A TrackPointOrLand
+ * @run 70:BE0A
+ * WHAT IT DOES: Puts object $16 at the place of object $10, one length $30 along the object's angle OBJ_3510, and moves it. If the object has landed
+ * (OBJ_3618 set), or is within 8 of object $16 on both axes, it lands: frame 2, OBJ_3300 $12, flags OBJ_2EE0 and OBJ_3618 set, and object $16
+ * is placed and moved again along the angle. Otherwise it takes the angle to object $16 and moves at the speed OBJ_35C0 along it.
+ * HOW: CopyObjectPlaceBack, SetVelocityFromAngle, ApplyVelocity, AngleToPoint, 16-bit subtract and add.
+ * WAITS: no.
+ * Entry: X object. Exit: as ApplyVelocity.
+ */
+Ended TrackPointOrLand(uint8_t slot)
+{
+    AxisMove move;
+    AngleExit angle;
+    ScaleResult scale;
+    uint8_t byte, placed;
+    bool far;
+    Ended e;
+
+    byte = RD8(OBJ->f3510[slot]);
+    e = ended_load(byte);
+    WR8(ZP->temp02, byte);
+    push8(slot);
+    jsr_push(0xBE17);
+    placed = CopyObjectPlaceBack(0x10, 0x16);
+    jsr_pop();
+    e = then(e, ended_with_y(ended_load(placed), 0x10));
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, 0x30);
+    byte = RD8(ZP->temp02);
+    e = then(e, ended_load(byte));
+    jsr_push(0xBE22);
+    scale = SetVelocityFromAngle(byte, 0x16);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    jsr_push(0xBE25);
+    move = ApplyVelocity(0x16);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    slot = pull8();
+    e = then(e, ended_nz(slot));
+    byte = RD8(OBJ->f3618[slot]);
+    e = then(e, ended_load(byte));
+    far = false;
+    if (byte == 0) {
+        far = axis_far(COL(OBJ->x_lo), COL(OBJ->x_hi), slot, &e);
+        if (!far) {
+            far = axis_far(COL(OBJ->y_lo), COL(OBJ->y_hi), slot, &e);
+        }
+    }
+    if (!far) {
+        WR8(OBJ->f3358[slot], 2);
+        WR8(OBJ->f3300[slot], 0x12);
+        WR8(OBJ->fields_2ee0[slot], 1);
+        WR8(OBJ->f3618[slot], 1);
+        jsr_push(0xBE8C);
+        placed = CopyObjectPlaceBack(0x10, slot);
+        jsr_pop();
+        e = then(e, ended_with_y(ended_load(placed), 0x10));
+        WR8(ZP->temp00, 0);
+        WR8(ZP->temp01, 0x30);
+        byte = RD8(OBJ->f3510[slot]);
+        e = then(e, ended_load(byte));
+        jsr_push(0xBE98);
+        scale = SetVelocityFromAngle(byte, slot);
+        jsr_pop();
+        e = then(e, ended_of_scale(scale));
+        jsr_push(0xBE9B);
+        move = ApplyVelocity(slot);
+        jsr_pop();
+        return then(e, ended_of_axis_move(move));
+    }
+    byte = RD8(OBJ->x_hi[0x16]);
+    WR8(ZP->temp09, byte);
+    byte = RD8(OBJ->x_lo[0x16]);
+    WR8(ZP->temp08, byte);
+    byte = RD8(OBJ->y_hi[0x16]);
+    WR8(ZP->temp0b, byte);
+    byte = RD8(OBJ->y_lo[0x16]);
+    WR8(ZP->temp0a, byte);
+    e = then(e, ended_load(byte));
+    jsr_push(0xBEB3);
+    angle = AngleToPoint(slot);
+    jsr_pop();
+    e = then(e, ended_of_angle(angle));
+    push8(angle.a);
+    WR8(ZP->temp00, 0);
+    byte = RD8(OBJ->angle_lo[slot]);
+    WR8(ZP->temp01, byte);
+    e = then(e, ended_load(byte));
+    byte = pull8();
+    e = then(e, ended_load(byte));
+    jsr_push(0xBEBF);
+    scale = SetVelocityFromAngle(byte, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    jsr_push(0xBEC2);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    return then(e, ended_of_axis_move(move));
+}
+
+void abi_TrackPointOrLand(void)
+{
+    abi_ended(TrackPointOrLand(cpu.x));
+}
+
+/*
+ * @routine 0CAC:5E5 TrackThenAimAtPlayer
+ * @run 70:BDE5
+ * WHAT IT DOES: Runs TrackPointOrLand, adds the speed OBJ_35C0 to the angle OBJ_3510 and counts the timer down; at zero it takes the angle to the player and
+ * the speed OBJ_35C0 along it, and goes on to the next state.
+ * HOW: TrackPointOrLand, AngleToPlayer, SetVelocityFromAngle.
+ * WAITS: no.
+ * Entry: X object. Exit: the timer's count, or the state's count after the step.
+ */
+Ended TrackThenAimAtPlayer(uint8_t slot)
+{
+    AngleExit angle;
+    ScaleResult scale;
+    Sum sum;
+    uint8_t byte, count;
+    Ended e;
+
+    jsr_push(0xBDE8);
+    e = TrackPointOrLand(slot);
+    jsr_pop();
+    byte = RD8(OBJ->f3510[slot]);
+    e = then(e, ended_load(byte));
+    sum = add_bytes(byte, RD8(OBJ->angle_lo[slot]), false);
+    WR8(OBJ->f3510[slot], sum.value);
+    e = then(e, of_sum(sum));
+    count = DEC8(OBJ->life_timer[slot]);
+    e = then(e, ended_nz(count));
+    if (count != 0) {
+        return e;
+    }
+    jsr_push(0xBDFA);
+    angle = AngleToPlayer(slot);
+    jsr_pop();
+    e = then(e, ended_of_angle(angle));
+    push8(angle.a);
+    WR8(ZP->temp01, 0);
+    byte = RD8(OBJ->angle_lo[slot]);
+    WR8(ZP->temp01, byte);
+    e = then(e, ended_load(byte));
+    byte = pull8();
+    e = then(e, ended_load(byte));
+    jsr_push(0xBE06);
+    scale = SetVelocityFromAngle(byte, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    count = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(count));
+}
+
+void abi_TrackThenAimAtPlayer(void)
+{
+    abi_ended(TrackThenAimAtPlayer(cpu.x));
+}
+
+/*
+ * @routine 0CAC:703 OrbitThenLeave
+ * @run 70:BF03
+ * WHAT IT DOES: Steps the animation list that a table at $BF66 names for the object's next kind, puts the object at X $0080, Y $0070 relative
+ * to its screen and moves it along its angle OBJ_3568 by the length held in OBJ_3510 and the timer; then adds $80 to that 16-bit length,
+ * turns the angle by one and, once the high byte of the length reaches $50, takes the speed from the turned-about angle with length $0400 and goes on to the next state.
+ * HOW: A table read (bank 70), StepObjectFrames, SetVelocityFromAngle, ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object. Exit: the state's count when it goes on, else the compare.
+ */
+Ended OrbitThenLeave(uint8_t slot)
+{
+    FrameStep step;
+    AxisMove move;
+    ScaleResult scale;
+    Sum sum;
+    uint8_t kind, y, byte, high, count;
+    Ended e;
+
+    kind = RD8(OBJ->next_kind[slot]);
+    y = (uint8_t)(kind << 1);
+    e = ended_with_carry(ended_with_y(ended_load(y), y), (kind & 0x80) != 0);
+    byte = rd8((uint16_t)(0xBF66 + y));
+    WR8(ZP->temp10, byte);
+    byte = rd8((uint16_t)(0xBF67 + y));
+    WR8(ZP->temp11, byte);
+    jsr_push(0xBF15);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(e, ended_of_frame_step(step, true, y));
+    WR8(OBJ->x_hi[slot], 0);
+    WR8(OBJ->y_hi[slot], 0);
+    WR8(OBJ->x_lo[slot], 0x80);
+    WR8(OBJ->y_lo[slot], 0x70);
+    byte = RD8(OBJ->f3510[slot]);
+    WR8(ZP->temp00, byte);
+    byte = RD8(OBJ->life_timer[slot]);
+    WR8(ZP->temp01, byte);
+    byte = RD8(OBJ->angle_hi[slot]);
+    e = then(e, ended_load(byte));
+    jsr_push(0xBF35);
+    scale = SetVelocityFromAngle(byte, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    jsr_push(0xBF38);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    byte = RD8(OBJ->f3510[slot]);
+    sum = add_bytes(byte, 0x80, false);
+    WR8(OBJ->f3510[slot], sum.value);
+    e = then(e, of_sum(sum));
+    byte = RD8(OBJ->life_timer[slot]);
+    sum = add_bytes(byte, 0, sum.carry);
+    WR8(OBJ->life_timer[slot], sum.value);
+    e = then(e, of_sum(sum));
+    count = INC8(OBJ->angle_hi[slot]);
+    e = then(e, ended_nz(count));
+    high = RD8(OBJ->life_timer[slot]);
+    e = then(e, ended_compare(high, 0x50));
+    if (high < 0x50) {
+        return e;
+    }
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, 4);
+    byte = RD8(OBJ->angle_hi[slot]);
+    sum = add_bytes(byte, 0x80, false);
+    e = then(e, of_sum(sum));
+    jsr_push(0xBF62);
+    scale = SetVelocityFromAngle(sum.value, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    count = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(count));
+}
+
+void abi_OrbitThenLeave(void)
+{
+    abi_ended(OrbitThenLeave(cpu.x));
+}

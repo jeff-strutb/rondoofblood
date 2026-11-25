@@ -98,6 +98,30 @@ Ended SwayThenFlip(uint8_t slot);
 Ended SwayThenRestart(uint8_t slot);
 Jump JumpByStateTable(uint8_t slot);
 
+/* object/enemies_stage0a_temp.c */
+Ended BreakWhenHit(uint8_t slot);
+Ended StartWithPartner(uint8_t slot);
+LandWait StopWhenLanded(uint8_t slot, uint8_t column, bool carry_in);
+Ended SlowToPlayer(uint8_t slot);
+Ended ChooseAttackByDistance(uint8_t slot);
+Ended TurnWhenWaitEnds(uint8_t slot);
+Ended StepWithArmor(uint8_t slot, uint8_t y);
+Ended ChooseNextMove(uint8_t slot, bool carry_in);
+ScreenSoundEnd StepAndShout(uint8_t slot);
+
+/* A shooting routine's exit: what came before, the sound call, what followed it, and the rest. */
+typedef struct {
+    Ended before;
+    Ended end;
+    bool called;
+    SoundOnScreen sound;
+    Ended mid;
+    AxisMove move;
+} ShotEnd;
+ShotEnd ShootArrow(uint8_t slot, uint8_t cue);
+ShotEnd FlashAndCount(uint8_t slot, uint8_t y);
+
+
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {
     bool in_view;

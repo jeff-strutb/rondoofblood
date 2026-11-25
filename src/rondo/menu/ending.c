@@ -1823,12 +1823,16 @@ ObjExit EndingCreditScrollStart(uint8_t object)
         INC8(SCROLL->x_hi[0]);
         INC8(SCROLL->y_hi[0]);
         DEC8(SCROLL->y_lo[0]);
-        result = object_exit(6, INC8(OBJ->state[object]));
+        result = with_carry(object_exit(6, INC8(OBJ->state[object])), false);
         result.exit.y = 0x1A;
         result.exit.y_kept = false;
+        result.exit.v = false;
+        result.exit.v_set = true;
         return result;
     }
     result = with_carry(object_exit(state, (uint8_t)(state - 0x0A)), state >= 0x0A);
+    result.exit.v = false;                      /* the add of the list number: no overflow */
+    result.exit.v_set = true;
     if (state == 0x0A) {
         return result;
     }
@@ -1840,12 +1844,14 @@ ObjExit EndingCreditScrollStart(uint8_t object)
     }
     jsr_pop();
     state = RD8(OBJ->state[object]);
-    WR8(SCROLL->x_hi[0], rd8((uint16_t)(0x8284 + 2 * state)));
-    WR8(SCROLL->y_hi[0], rd8((uint16_t)(0x8285 + 2 * state)));
+    WR8(SCROLL->x_hi[0], rd8((uint16_t)(0x8284 + (uint8_t)(state << 1))));
+    WR8(SCROLL->y_hi[0], rd8((uint16_t)(0x8285 + (uint8_t)(state << 1))));
     WR8(OBJ->life_timer[object], 6);
     result = with_carry(object_exit(6, INC8(OBJ->state[object])), (state & 0x80) != 0);
     result.exit.y = (uint8_t)(state << 1);
     result.exit.y_kept = false;
+    result.exit.v = false;
+    result.exit.v_set = true;
     return result;
 }
 
@@ -1911,4 +1917,59 @@ ObjExit EndingFallingPiece(uint8_t object)
 void abi_EndingFallingPiece(void)
 {
     object_exit_shim(EndingFallingPiece(cpu.x));
+}
+
+/*
+ * @routine 010D:2E8 EndingPieceSpawn
+ * @run 6B:82E8
+ * WHAT IT DOES: An object handler of two stages: the first waits for object 1's X to be $0078 (high byte 0 and low $78) and moves on;
+ * the second makes objects $10 to $2E: each cleared, shown as picture kind 3, kind $1A, frame $40 plus its number, X low and
+ * Y low from tables at $831C and $833B; then clears object 1's frame and the object itself.
+ * HOW: OBJ->state; ClearObject; two table reads a piece.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingPieceSpawn(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, value, piece, table;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        value = RD8(OBJ->x_hi[1]);
+        if (value != 0) {
+            return object_exit(value, value);
+        }
+        value = RD8(OBJ->x_lo[1]);
+        result = with_carry(object_exit(value, (uint8_t)(value - 0x78)), value >= 0x78);
+        if (value == 0x78) {
+            result.exit.nz = INC8(OBJ->state[object]);
+        }
+        return result;
+    }
+    push8(object);
+    table = 0;
+    for (piece = 0x10; piece != 0x2F; piece++) {
+        jsr_push(0x8303);
+        ClearObject(piece);
+        jsr_pop();
+        WR8(OBJ->sprite_set[piece], 3);
+        WR8(OBJ->kind[piece], 0x1A);
+        WR8(OBJ->frame[piece], (uint8_t)(piece + 0x40));
+        WR8(OBJ->x_lo[piece], rd8((uint16_t)(0x831C + piece)));
+        table = rd8((uint16_t)(0x833B + piece));
+        WR8(OBJ->y_lo[piece], table);
+    }
+    (void)pull8();
+    WR8(OBJ->frame[1], 0);
+    result = with_carry(object_exit(table, object), true);
+    result.exit.v = false;                      /* the last add of piece $2E and $40 */
+    result.exit.v_set = true;
+    ClearObject(object);
+    return result;
+}
+
+void abi_EndingPieceSpawn(void)
+{
+    object_exit_shim(EndingPieceSpawn(cpu.x));
 }

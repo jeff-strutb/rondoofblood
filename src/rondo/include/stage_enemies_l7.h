@@ -49,6 +49,24 @@ Ended RaiseStateOnFlag(uint8_t slot);
 void StopVerticalSpeed(uint8_t slot);
 Jump JumpByStageStep(void);
 
+typedef struct {
+    Ended first;
+    Ended head;
+    SoundEnd burst;
+    Ended tail;
+} ShowEnd;
+typedef struct {
+    SoundEnd pre;
+    Ended tail;
+} BurstTail;
+SoundEnd BurstAtHeightE0(uint8_t slot, uint8_t y);
+ShowEnd ShowByVelocity(uint8_t slot, uint8_t y);
+ShowEnd FollowPathAndShow(uint8_t slot, uint8_t y);
+ShowEnd SetHitboxThenFollowPath(uint8_t slot, uint8_t y);
+ShowEnd FollowPathB(uint8_t slot, uint8_t y);
+SoundEnd StartDriftingPiece(uint8_t slot, uint8_t y);
+BurstTail DropAndBurst(uint8_t slot, uint8_t y);
+Ended StepFallAfterFour(uint8_t slot);
 Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
 
 /* Whether an object is inside a window, and what the routine left. */

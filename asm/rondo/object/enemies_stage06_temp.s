@@ -1012,6 +1012,111 @@ JumpByStageStep:
     sta z:zTemp01
     jmp (ZeroPage)
 
+; @routine 072C:5CD SetHitboxThenFollowPath
+; @run 70:BDCD
+; WHAT IT DOES: Sets the object's hitbox flag by its direction (HitboxByVerticalDirection) and goes on as FollowPathAndShow.
+; HOW: HitboxByVerticalDirection, then the next routine's bytes.
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: as FollowPathAndShow.
+SetHitboxThenFollowPath:
+    jsr HitboxByVerticalDirection
+
+; @routine 072C:5D0 FollowPathAndShow
+; @run 70:BDD0
+; WHAT IT DOES: Takes the object's speed from the four path tables (index from the table at $BE24 by its timer, plus 4), moves it and goes on as ShowByVelocity.
+; HOW: Table reads (bank 70), ApplyVelocity, then the next routine's bytes.
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: as ShowByVelocity, over the move's.
+FollowPathAndShow:
+    ldy a:OBJ_34B8,x
+    lda a:$BE24,y
+    clc
+    adc #$04
+    tay
+    lda a:$B46E,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B52E,y
+    sta a:OBJ_VX_LO,x
+    lda a:$B5EE,y
+    sta a:OBJ_VY_HI,x
+    lda a:$B6AE,y
+    sta a:OBJ_VY_LO,x
+    jsr VecApplyVelocity
+
+; @routine 072C:5F5 ShowByVelocity
+; @run 70:BDF5
+; WHAT IT DOES: Runs BurstAtHeightE0; the object's frame comes from a table at $BE39 by its timer, its hitbox half width and height from a table at $BE4F by that frame less one;
+; when its X speed's high byte is not between 2 and $FD the frame goes up 7.
+; HOW: BurstAtHeightE0, table reads (bank 70).
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ShowByVelocity:
+    jsr BurstAtHeightE0
+    ldy a:OBJ_34B8,x
+    lda a:$BE39,y
+    sta a:OBJ_2A68,x
+    sec
+    sbc #$01
+    tay
+    lda a:$BE4F,y
+    sta a:OBJ_3988,x
+    sta a:OBJ_3A38,x
+    lda a:OBJ_VX_HI,x
+    cmp #$02
+    bcc ShowByVelocity_at0
+    cmp #$FE
+    bcs ShowByVelocity_at0
+    rts
+ShowByVelocity_at0:
+    lda a:OBJ_2A68,x
+    clc
+    adc #$07
+    sta a:OBJ_2A68,x
+    rts
+
+; @routine 072C:656 BurstAtHeightE0
+; @run 70:BE56
+; WHAT IT DOES: When the object is on the first screen row and its Y low byte is in $E0 to $EF it plays sound $23 and starts a burst of debris (StartDebrisBurst, timer 0).
+; HOW: Two compares, SoundCommand, a tail jump into StartDebrisBurst.
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: no burst: the last compare or load; else as StartDebrisBurst.
+BurstAtHeightE0:
+    lda a:OBJ_Y_HI,x
+    bne BurstAtHeightE0_at0
+    lda a:OBJ_Y_LO,x
+    and #$F0
+    cmp #$E0
+    bne BurstAtHeightE0_at0
+    lda #$23
+    jsr VecSoundCommand
+    cla
+    jmp StartDebrisBurst
+BurstAtHeightE0_at0:
+    rts
+
+; @routine 072C:671 FollowPathB
+; @run 70:BE71
+; WHAT IT DOES: As FollowPathAndShow with the index table at $BE99, going on as ShowByVelocity by a jump.
+; HOW: Table reads (bank 70), ApplyVelocity, a tail jump.
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: as FollowPathAndShow.
+FollowPathB:
+    ldy a:OBJ_34B8,x
+    lda a:$BE99,y
+    clc
+    adc #$04
+    tay
+    lda a:$B46E,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B52E,y
+    sta a:OBJ_VX_LO,x
+    lda a:$B5EE,y
+    sta a:OBJ_VY_HI,x
+    lda a:$B6AE,y
+    sta a:OBJ_VY_LO,x
+    jsr VecApplyVelocity
+    jmp ShowByVelocity
+
 ; @routine 072C:6AE StopVerticalSpeed
 ; @run 70:BEAE
 ; WHAT IT DOES: Sets the object's Y speed to 0.
@@ -1021,4 +1126,87 @@ JumpByStageStep:
 StopVerticalSpeed:
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
+    rts
+; @routine 072C:77B StartDriftingPiece
+; @run 70:BF7B
+; WHAT IT DOES: Loads the object's record, takes its X speed from a table at $BFA2 by its timer, a Y speed of 4, and reverses the X speed with sound $25 when slot $10 faces left.
+; HOW: LoadObjectRecord, NegateVelocityX, SoundCommand.
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+StartDriftingPiece:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$BFA3,y
+    sta a:OBJ_VX_HI,x
+    lda a:$BFA2,y
+    sta a:OBJ_VX_LO,x
+    lda #$04
+    sta a:OBJ_VY_HI,x
+    lda a:$2AD0
+    beq StartDriftingPiece_at0
+    jsr VecNegateVelocityX
+    lda #$25
+    jsr VecSoundCommand
+StartDriftingPiece_at0:
+    rts
+
+; @routine 072C:7AA DropAndBurst
+; @run 70:BFAA
+; WHAT IT DOES: Steps the animation list at $BFEF and moves; once its Y low byte reaches $7F it sets it to $7F, plays sound $23, starts a burst of debris (timer 0), sets its hitbox
+; to $10 by $0C, stops sideways, sets a Y speed of $FF00, resets the animation and enters its next state.
+; HOW: StepObjectFrames, ApplyVelocity, SoundCommand, StartDebrisBurst.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+DropAndBurst:
+    lda #$EF
+    sta z:zTemp10
+    lda #$BF
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$7F
+    bcc DropAndBurst_at0
+    lda #$7F
+    sta a:OBJ_Y_LO,x
+    lda #$23
+    jsr VecSoundCommand
+    cla
+    jsr StartDebrisBurst
+    lda #$10
+    sta a:OBJ_3988,x
+    lda #$0C
+    sta a:OBJ_3A38,x
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_27A8,x
+DropAndBurst_at0:
+    rts
+
+; @routine 072C:7F4 StepFallAfterFour
+; @run 70:BFF4
+; WHAT IT DOES: Steps the animation list at $C010; once its animation step is 4 or more the hitbox goes off and the object falls (ApplyGravity, ApplyVelocity).
+; HOW: StepObjectFrames, ApplyGravity, ApplyVelocity.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as ApplyVelocity when it falls; else the compare's flags.
+StepFallAfterFour:
+    lda #$10
+    sta z:zTemp10
+    lda #$C0
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    lda a:OBJ_3408,x
+    cmp #$04
+    bcc StepFallAfterFour_at0
+    stz a:OBJ_3250,x
+    jsr VecApplyGravity
+    jsr VecApplyVelocity
+StepFallAfterFour_at0:
     rts

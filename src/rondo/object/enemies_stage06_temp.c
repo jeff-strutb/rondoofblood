@@ -1636,3 +1636,368 @@ void abi_RaiseStateOnFlag(void)
 {
     abi_ended(RaiseStateOnFlag(cpu.x));
 }
+
+/*
+ * @routine 072C:656 BurstAtHeightE0
+ * @run 70:BE56
+ * WHAT IT DOES: When the object is on the first screen row and its Y low byte is in $E0 to $EF it plays sound $23 and starts a burst of debris (StartDebrisBurst, timer 0).
+ * HOW: Two compares, SoundCommand, a tail jump into StartDebrisBurst.
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: no burst: the last compare or load; else as StartDebrisBurst.
+ */
+SoundEnd BurstAtHeightE0(uint8_t slot, uint8_t y)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t high, low;
+    Ended e;
+
+    high = RD8(OBJ->y_hi[slot]);
+    e = ended_load(high);
+    r.end = e;
+    if (high != 0) {
+        return r;
+    }
+    low = RD8(OBJ->y_lo[slot]);
+    low = (uint8_t)(low & 0xF0);
+    e = then(e, ended_load(low));
+    e = then(e, ended_compare(low, 0xE0));
+    r.end = e;
+    if (low != 0xE0) {
+        return r;
+    }
+    r.before = then(e, ended_load(0x23));
+    r.sounded = true;
+    r.command = 0x23;
+    jsr_push(0xBE69);
+    r.call = SoundCommand(0x23, slot, y);
+    jsr_pop();
+    r.end = StartDebrisBurst(slot, 0, y);
+    return r;
+}
+
+void abi_BurstAtHeightE0(void)
+{
+    abi_sound_end(BurstAtHeightE0(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 072C:5F5 ShowByVelocity
+ * @run 70:BDF5
+ * WHAT IT DOES: Runs BurstAtHeightE0; the object's frame comes from a table at $BE39 by its timer, its hitbox half width and height from a table at $BE4F by that frame less one;
+ * when its X speed's high byte is not between 2 and $FD the frame goes up 7.
+ * HOW: BurstAtHeightE0, table reads (bank 70).
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ */
+ShowEnd ShowByVelocity(uint8_t slot, uint8_t y)
+{
+    ShowEnd r = { { 0 } };
+    uint8_t phase, frame, speed, size;
+    Sum diff, sum;
+    Ended e;
+
+    jsr_push(0xBDF8);
+    r.burst = BurstAtHeightE0(slot, y);
+    jsr_pop();
+    phase = RD8(OBJ->life_timer[slot]);
+    frame = rd8((uint16_t)(0xBE39 + phase));
+    WR8(OBJ->frame[slot], frame);
+    e = ended_with_y(ended_load(frame), phase);
+    diff = sub_bytes(frame, 1, true);
+    e = then(e, of_sum(diff));
+    e = then(e, ended_with_y(ended_kept(), diff.value));
+    size = rd8((uint16_t)(0xBE4F + diff.value));
+    WR8(OBJ->hitbox_half_w[slot], size);
+    WR8(OBJ->hitbox_half_h[slot], size);
+    e = then(e, ended_load(size));
+    speed = RD8(OBJ->vx_hi[slot]);
+    e = then(e, ended_compare(speed, 2));
+    if (speed >= 2) {
+        e = then(e, ended_compare(speed, 0xFE));
+        if (speed < 0xFE) {
+            r.tail = e;
+            return r;
+        }
+    }
+    frame = RD8(OBJ->frame[slot]);
+    sum = add_bytes(frame, 7, false);
+    WR8(OBJ->frame[slot], sum.value);
+    r.tail = then(e, of_sum(sum));
+    return r;
+}
+
+void abi_ShowByVelocity(void)
+{
+    ShowEnd r = ShowByVelocity(cpu.x, cpu.y);
+
+    abi_sound_end(r.burst);
+    abi_ended(r.tail);
+}
+
+/* The move a drifting piece makes from the four work tables at $B46E, $B52E, $B5EE and $B6AE, by an index its own table gives. */
+static Ended speed_from_tables(uint8_t slot, uint16_t index_table, uint16_t ret, uint8_t *y_out)
+{
+    AxisMove move;
+    uint8_t phase, base, byte;
+    Sum sum;
+    Ended e;
+
+    phase = RD8(OBJ->life_timer[slot]);
+    base = rd8((uint16_t)(index_table + phase));
+    e = ended_with_y(ended_load(base), phase);
+    sum = add_bytes(base, 4, false);
+    e = then(e, ended_with_y(of_sum(sum), sum.value));
+    *y_out = sum.value;
+    byte = rd8((uint16_t)(0xB46E + sum.value));
+    WR8(OBJ->vx_hi[slot], byte);
+    byte = rd8((uint16_t)(0xB52E + sum.value));
+    WR8(OBJ->vx_lo[slot], byte);
+    byte = rd8((uint16_t)(0xB5EE + sum.value));
+    WR8(OBJ->vy_hi[slot], byte);
+    byte = rd8((uint16_t)(0xB6AE + sum.value));
+    WR8(OBJ->vy_lo[slot], byte);
+    jsr_push(ret);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    return then(e, ended_of_axis_move(move));
+}
+
+/*
+ * @routine 072C:5D0 FollowPathAndShow
+ * @run 70:BDD0
+ * WHAT IT DOES: Takes the object's speed from the four path tables (index from the table at $BE24 by its timer, plus 4), moves it and goes on as ShowByVelocity.
+ * HOW: Table reads (bank 70), ApplyVelocity, then the next routine's bytes.
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: as ShowByVelocity, over the move's.
+ */
+ShowEnd FollowPathAndShow(uint8_t slot, uint8_t y)
+{
+    ShowEnd r = { { 0 } };
+    Ended e;
+
+    e = speed_from_tables(slot, 0xBE24, 0xBDF5, &y);
+    r = ShowByVelocity(slot, y);
+    r.head = e;
+    return r;
+}
+
+void abi_FollowPathAndShow(void)
+{
+    ShowEnd r = FollowPathAndShow(cpu.x, cpu.y);
+
+    abi_ended(r.head);
+    abi_sound_end(r.burst);
+    abi_ended(r.tail);
+}
+
+/*
+ * @routine 072C:5CD SetHitboxThenFollowPath
+ * @run 70:BDCD
+ * WHAT IT DOES: Sets the object's hitbox flag by its direction (HitboxByVerticalDirection) and goes on as FollowPathAndShow.
+ * HOW: HitboxByVerticalDirection, then the next routine's bytes.
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: as FollowPathAndShow.
+ */
+ShowEnd SetHitboxThenFollowPath(uint8_t slot, uint8_t y)
+{
+    ShowEnd r = { { 0 } };
+    Ended e;
+
+    jsr_push(0xBDD0);
+    e = HitboxByVerticalDirection(slot);
+    jsr_pop();
+    r = FollowPathAndShow(slot, y);
+    r.first = e;
+    return r;
+}
+
+void abi_SetHitboxThenFollowPath(void)
+{
+    ShowEnd r = SetHitboxThenFollowPath(cpu.x, cpu.y);
+
+    abi_ended(r.first);
+    abi_ended(r.head);
+    abi_sound_end(r.burst);
+    abi_ended(r.tail);
+}
+
+/*
+ * @routine 072C:671 FollowPathB
+ * @run 70:BE71
+ * WHAT IT DOES: As FollowPathAndShow with the index table at $BE99, going on as ShowByVelocity by a jump.
+ * HOW: Table reads (bank 70), ApplyVelocity, a tail jump.
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: as FollowPathAndShow.
+ */
+ShowEnd FollowPathB(uint8_t slot, uint8_t y)
+{
+    ShowEnd r = { { 0 } };
+    Ended e;
+
+    e = speed_from_tables(slot, 0xBE99, 0xBE96, &y);
+    r = ShowByVelocity(slot, y);
+    r.head = e;
+    return r;
+}
+
+void abi_FollowPathB(void)
+{
+    ShowEnd r = FollowPathB(cpu.x, cpu.y);
+
+    abi_ended(r.head);
+    abi_sound_end(r.burst);
+    abi_ended(r.tail);
+}
+
+/*
+ * @routine 072C:77B StartDriftingPiece
+ * @run 70:BF7B
+ * WHAT IT DOES: Loads the object's record, takes its X speed from a table at $BFA2 by its timer, a Y speed of 4, and reverses the X speed with sound $25 when slot $10 faces left.
+ * HOW: LoadObjectRecord, NegateVelocityX, SoundCommand.
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ */
+SoundEnd StartDriftingPiece(uint8_t slot, uint8_t y)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t nz, last, phase, index, byte, facing;
+    bool carry;
+    Ended e;
+    Sum negated;
+
+    jsr_push(0xBF7E);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    phase = RD8(OBJ->life_timer[slot]);
+    index = (uint8_t)(phase << 1);
+    e = then(e, ended_with_y(ended_with_carry(ended_load(index), (phase & 0x80) != 0), index));
+    byte = rd8((uint16_t)(0xBFA3 + index));
+    WR8(OBJ->vx_hi[slot], byte);
+    byte = rd8((uint16_t)(0xBFA2 + index));
+    WR8(OBJ->vx_lo[slot], byte);
+    WR8(OBJ->vy_hi[slot], 4);
+    e = then(e, ended_load(4));
+    facing = RD8(OBJ->facing_left[0x10]);
+    e = then(e, ended_load(facing));
+    r.end = e;
+    if (facing == 0) {
+        return r;
+    }
+    jsr_push(0xBF9C);
+    negated = NegateVelocityX(slot);
+    jsr_pop();
+    e = then(e, of_sum(negated));
+    r.before = then(e, ended_load(0x25));
+    r.sounded = true;
+    r.command = 0x25;
+    jsr_push(0xBFA1);
+    r.call = SoundCommand(0x25, slot, index);
+    jsr_pop();
+    r.end = ended_kept();
+    return r;
+}
+
+void abi_StartDriftingPiece(void)
+{
+    abi_sound_end(StartDriftingPiece(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 072C:7AA DropAndBurst
+ * @run 70:BFAA
+ * WHAT IT DOES: Steps the animation list at $BFEF and moves; once its Y low byte reaches $7F it sets it to $7F, plays sound $23, starts a burst of debris (timer 0), sets its hitbox
+ * to $10 by $0C, stops sideways, sets a Y speed of $FF00, resets the animation and enters its next state.
+ * HOW: StepObjectFrames, ApplyVelocity, SoundCommand, StartDebrisBurst.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+ */
+BurstTail DropAndBurst(uint8_t slot, uint8_t y)
+{
+    BurstTail r = { { { 0 }, { 0 }, false, 0, { 0 } }, { 0 } };
+    FrameStep step;
+    AxisMove move;
+    uint8_t low, state;
+    Ended e;
+
+    step = step_list(slot, 0xEF, 0xBF, 0xBFB5, &y);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    jsr_push(0xBFB8);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    low = RD8(OBJ->y_lo[slot]);
+    e = then(e, ended_compare(low, 0x7F));
+    r.pre.end = e;
+    if (low < 0x7F) {
+        return r;
+    }
+    WR8(OBJ->y_lo[slot], 0x7F);
+    r.pre.before = then(e, ended_load(0x23));
+    r.pre.sounded = true;
+    r.pre.command = 0x23;
+    jsr_push(0xBFC9);
+    r.pre.call = SoundCommand(0x23, slot, y);
+    jsr_pop();
+    jsr_push(0xBFCD);
+    r.pre.end = StartDebrisBurst(slot, 0, y);
+    jsr_pop();
+    WR8(OBJ->hitbox_half_w[slot], 0x10);
+    WR8(OBJ->hitbox_half_h[slot], 0x0C);
+    WR8(OBJ->vx_hi[slot], 0);
+    WR8(OBJ->vx_lo[slot], 0);
+    WR8(OBJ->vy_hi[slot], 0xFF);
+    WR8(OBJ->vy_lo[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    state = INC8(OBJ->state[slot]);
+    r.tail = ended_with_a(ended_nz(state), 0xFF);
+    return r;
+}
+
+void abi_DropAndBurst(void)
+{
+    BurstTail r = DropAndBurst(cpu.x, cpu.y);
+
+    abi_sound_end(r.pre);
+    abi_ended(r.tail);
+}
+
+/*
+ * @routine 072C:7F4 StepFallAfterFour
+ * @run 70:BFF4
+ * WHAT IT DOES: Steps the animation list at $C010; once its animation step is 4 or more the hitbox goes off and the object falls (ApplyGravity, ApplyVelocity).
+ * HOW: StepObjectFrames, ApplyGravity, ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as ApplyVelocity when it falls; else the compare's flags.
+ */
+Ended StepFallAfterFour(uint8_t slot)
+{
+    FrameStep step;
+    GravityResult gravity;
+    AxisMove move;
+    uint8_t y = 0, anim;
+    Ended e;
+
+    step = step_list(slot, 0x10, 0xC0, 0xBFFF, &y);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    anim = RD8(OBJ->anim_step[slot]);
+    e = then(e, ended_compare(anim, 4));
+    if (anim < 4) {
+        return e;
+    }
+    WR8(OBJ->hitbox_on[slot], 0);
+    jsr_push(0xC00C);
+    gravity = ApplyGravity(slot);
+    jsr_pop();
+    jsr_push(0xC00F);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    (void)gravity;
+    return then(e, ended_of_axis_move(move));
+}
+
+void abi_StepFallAfterFour(void)
+{
+    abi_ended(StepFallAfterFour(cpu.x));
+}

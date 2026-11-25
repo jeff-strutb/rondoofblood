@@ -303,18 +303,26 @@ def run_configs(name, rows_full):
     return found or None
 
 
-def resident_entries(configs, rows, extra_discs=None):
-    """[(mpr tuple, run address, disc offset)]: for each configuration, each routine entry (a disc location of a
-    routine with C) the run map shows resident at a logical address under it."""
+def resident_entries(configs, rows, run_set=None, near=None):
+    """[(mpr tuple, run address, disc offset)]: for each configuration the run map shows, what is resident at each run
+    address a call can be made to (the entry of a routine or a piece of the cache): the disc offset of the byte there.
+    The mapper configuration alone does not say which overlay is loaded: the same banks hold one stage's overlay in one
+    script and another's in the next, so the run map has several disc offsets for one (configuration, address). The
+    callee is the one from the same overlay as the routine under test: the candidate nearest to its own disc place
+    (`near`). A configuration that has other code at the address than any routine or piece we know makes the call a stub,
+    never another overlay's routine at the same run address."""
     cfgs, recs = load_runmap()
     wanted = {tuple(c) for c in (configs or [DEFAULT_MAP])}
-    entry_discs = {int(r[2]) for r in rows if r[5] == "0"} | (extra_discs or set())
+    runs = run_set if run_set is not None else {int(r[0], 16) for r in rows}
     ids = {cid for cid, t in cfgs.items() if t in wanted}
-    seen, out = set(), []
+    cands = {}
     for disc_off, logical, cfg in recs:
-        if cfg in ids and disc_off in entry_discs and (cfg, logical, disc_off) not in seen:
-            seen.add((cfg, logical, disc_off))
-            out.append((cfgs[cfg], logical, disc_off))
+        if cfg in ids and logical in runs:
+            cands.setdefault((cfg, logical), set()).add(disc_off)
+    out = []
+    for (cfg, logical), ds in sorted(cands.items()):
+        pick = min(ds, key=lambda d: (abs(d - near), d)) if near is not None else min(ds)
+        out.append((cfgs[cfg], logical, pick))
     return out
 
 
@@ -405,7 +413,8 @@ def warm_check(game_objs, cache):
                 "const Resident resident_tab[] = { { { 0 }, 0, 0 } }; const unsigned resident_count = 0;\n"
                 "typedef struct { uint32_t disc; void (*abi)(void); } DiscDispatch;\n"
                 "const DiscDispatch disc_table[] = { { 0, 0 } }; const unsigned disc_count = 0;\n"
-                "const DiscDispatch piece_table[] = { { 0, 0 } }; const unsigned piece_count = 0;\nvoid draft_entry(void) {}\n")
+                "typedef struct { uint32_t disc; uint16_t run; void (*abi)(void); } PieceDispatch;\n"
+                "const PieceDispatch piece_table[] = { { 0, 0, 0 } }; const unsigned piece_count = 0;\nvoid draft_entry(void) {}\n")
         for n in sorted(x for x in undefined - defined if x.startswith("abi_")):
             f.write("void %s(void) {}\n" % n)
     link(os.path.join(work, "warm.bin"), game_objs + libs + [rt, stub], [], [], None)
@@ -423,7 +432,7 @@ def runtime_object(cache):
     return obj
 
 
-def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=()):
+def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=(), pieces_src=None, pieces_unfiled_only=False):
     defined, undefined = set(), set()
     for o in objs:
         for line in run(["nm", "-g", o]).stdout.splitlines():
@@ -460,10 +469,11 @@ def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=()):
                     items.append((r, "abi_" + label))
                     have.add(r)
     pieces = {}
-    if through:
-        for key, label in through.items():
-            if key[0] != "C" and ("abi_" + label) in libsyms and int(key[0]) not in by_disc:
-                pieces.setdefault(int(key[0]), "abi_" + label)
+    src_map = pieces_src if pieces_src is not None else through
+    if src_map:
+        for key, label in src_map.items():
+            if key[0] != "C" and ("abi_" + label) in libsyms and not (pieces_unfiled_only and int(key[0]) in by_disc):
+                pieces[(int(key[0]), int(key[1], 16))] = "abi_" + label
                 r = key[1].rjust(4, "0")
                 if ("0", r) not in seen and ("1", r) not in seen:
                     seen.add(("0", r))
@@ -482,10 +492,11 @@ def build_dispatch(path, rows, objs, through=None, libsyms=(), resident=()):
         for d, sym in sorted(by_disc.items()):
             f.write("    { %du, %s },\n" % (d, sym))
         f.write("    { 0, 0 }\n};\nconst unsigned disc_count = %d;\n" % len(by_disc))
-        f.write("const DiscDispatch piece_table[] = {\n")
-        for d, sym in sorted(pieces.items()):
-            f.write("    { %du, %s },\n" % (d, sym))
-        f.write("    { 0, 0 }\n};\nconst unsigned piece_count = %d;\n" % len(pieces))
+        f.write("typedef struct { uint32_t disc; uint16_t run; void (*abi)(void); } PieceDispatch;\n"
+                "const PieceDispatch piece_table[] = {\n")
+        for (d, run_addr), sym in sorted(pieces.items()):
+            f.write("    { %du, 0x%04X, %s },\n" % (d, run_addr, sym))
+        f.write("    { 0, 0, 0 }\n};\nconst unsigned piece_count = %d;\n" % len(pieces))
         f.write("typedef struct { uint8_t m[5]; uint16_t run; uint32_t disc; } Resident;\nconst Resident resident_tab[] = {\n")
         for cfg, logical, d in resident:
             f.write("    { { %s }, 0x%04X, %du },\n" % (", ".join("0x" + c for c in cfg), logical, d))
@@ -746,19 +757,26 @@ def one(name, a, ctx):
     os.makedirs(work, exist_ok=True)
     disp = os.path.join(work, "dispatch.c")
     configs = run_configs(name, ctx["rows_full"])
-    piece_discs = set()
+    run_set = {int(r[0], 16) for r in ctx["rows"]}
     if a.callees == "through":
-        for r in csv.DictReader(open(os.path.join((ctx["drafts"][0] if ctx["drafts"] else __import__("cdraft").current_cache()), "members.csv"))) if os.path.exists(os.path.join((ctx["drafts"][0] if ctx["drafts"] else __import__("cdraft").current_cache()), "members.csv")) else []:
-            if r["space"] == "D":
-                piece_discs.add(int(r["offset"]))
-    resident = resident_entries(configs, ctx["rows"], piece_discs)
-    ndisp = build_dispatch(disp, ctx["rows"], objs, resident=resident)
+        mem_path = os.path.join(ctx["drafts"][0] if ctx["drafts"] else __import__("cdraft").current_cache(), "members.csv")
+        if os.path.exists(mem_path):
+            for r in csv.DictReader(open(mem_path)):
+                if r["space"] == "D":
+                    run_set.add(int(r["run"], 16))
+    near = next((int(r[2]) for r in ctx["rows"] if r[3] == name), None)
+    resident = resident_entries(configs, ctx["rows"], run_set, near)
     disp_d, libobj = disp, []
     if a.callees == "through":
         libo, members, libsyms = draft_library(ctx["drafts"], ctx["cache"])
+        # code the C calls that has no C of its own (the original's code) runs, on the lifted side too, as its draft
+        ndisp = build_dispatch(disp, ctx["rows"], objs, resident=resident, libsyms=libsyms, pieces_src=members,
+                               pieces_unfiled_only=True)
         disp_d = os.path.join(work, "dispatch_draft.c")
         build_dispatch(disp_d, ctx["rows"], objs, members, libsyms, resident)
         libobj = [libo]
+    else:
+        ndisp = build_dispatch(disp, ctx["rows"], objs, resident=resident)
     draft_c = os.path.join(work, "draft_%s.c" % name)
     open(draft_c, "w").write('#include "machine.h"\n#include "ops6280.h"\n\n' + body)
     rt = os.path.join(HERE, "liftcmp_rt.c")
@@ -785,7 +803,7 @@ def one(name, a, ctx):
     if disp_d != disp:
         dispobj_d = os.path.join(work, "dispatch_draft.o")
         run(["cc", "-O1", "-w", "-fno-pie", "-c", disp_d, "-o", dispobj_d])
-    link(os.path.join(work, "lifted.bin"), objs + [rtobj["lifted"], dispobj], [], [], None)
+    link(os.path.join(work, "lifted.bin"), objs + [rtobj["lifted"], dispobj] + libobj, [], [], None)
     link(os.path.join(work, "draft.bin"), objs + [dobj, rtobj["draft"], dispobj_d] + libobj, [], [], None)
     logs, covs = {"lifted": {}, "draft": {}}, {}
     envv = dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0")

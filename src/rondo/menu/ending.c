@@ -520,6 +520,16 @@ static void raster_and_scroll(uint8_t first, uint8_t second)
     WR8(SCROLL->y_lo[2], second);
 }
 
+/* The same, the lower slot of each pair written first. */
+static void raster_and_scroll_low_first(uint8_t first, uint8_t second)
+{
+    WR8(ZP->raster_effect, 0x13);
+    WR8(SCROLL->y_lo[1], first);
+    WR8(SCROLL->y_lo[5], first);
+    WR8(SCROLL->y_lo[2], second);
+    WR8(SCROLL->y_lo[6], second);
+}
+
 /*
  * @routine 010D:484 EndingScrollWindowA
  * @run 6B:8484
@@ -1333,7 +1343,7 @@ ObjExit EndingHoldThenScript19(uint8_t object)
 
     state = RD8(OBJ->state[object]);
     if (state == 0) {
-        raster_and_scroll(0x2F, 0xBF);
+        raster_and_scroll_low_first(0x2F, 0xBF);
         WR8(OBJ->life_timer[object], 0x40);
         return object_exit(0x40, INC8(OBJ->state[object]));
     }

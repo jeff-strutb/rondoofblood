@@ -318,12 +318,13 @@ static void stub_routine(uint16_t target)
  * The lifted C stops with the registers it holds there; the draft is stopped at the same place, so the two are judged
  * up to the jump and by A, X, Y, S and P at it (the END line). */
 static int ends_addr = -1;
+static int calls_open; /* JSR frames open: a tail jump adds none, so a chain of tail hops is still the routine's own */
 
 static void enter(uint16_t target, int tail)
 {
     void (*abi)(void) = find_abi(target);
 
-    if (tail && depth == 0 && (int)target == ends_addr)
+    if (tail && calls_open == 0 && (int)target == ends_addr)
         return;
 
     if (abi && depth >= 512) {
@@ -335,7 +336,9 @@ static void enter(uint16_t target, int tail)
         /* C in the tree: it runs, on both sides, and its accesses are in the log as they are made */
         printf("#IN %04X\n", target);
         depth++;
+        calls_open += !tail;
         abi();
+        calls_open -= !tail;
         depth--;
         printf("#OUT %04X\n", target);
     } else {
@@ -458,6 +461,7 @@ int main(int argc, char **argv)
         cov_n = 0;
         seed = sd;
         depth = 0;
+        calls_open = 0;
         events = 0;
         for (unsigned i = 0; i < n; i++) {
             unsigned ad, val;

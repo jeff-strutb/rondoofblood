@@ -479,6 +479,49 @@ SetTimersOf12To15_at0:
     cpy #$16
     bcc SetTimersOf12To15_at0
     rts
+; @routine 088B:7AF FollowSlot10WithHitBox
+; @run 70:B7AF
+; WHAT IT DOES: In state 0 loads the object's record. Later it takes the place, facing and OBJ_3250 of the object in slot $10 and a hit box from the four-byte row of the table at $B9DF that slot's frame less one names; with a zero half width and half height it clears OBJ_3250. When the object in slot $10 is no longer of kind $20 this object is cleared.
+; HOW: LoadObjectRecord, CopyObjectPlaceBack, table reads (bank 70), ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: the compare with $20, or as ClearObject.
+FollowSlot10WithHitBox:
+    lda a:OBJ_27A8,x
+    bne FollowSlot10WithHitBox_at0
+    jmp VecLoadObjectRecord
+FollowSlot10WithHitBox_at0:
+    ldy #$10
+    jsr VecCopyObjectPlaceBack
+    lda a:$2A78
+    sec
+    sbc #$01
+    asl a
+    asl a
+    tay
+    lda a:$B9DF,y
+    sta a:OBJ_3930,x
+    lda a:$B9E0,y
+    sta a:OBJ_39E0,x
+    lda a:$B9E1,y
+    sta a:OBJ_3988,x
+    lda a:$B9E2,y
+    sta a:OBJ_3A38,x
+    lda a:$2AD0
+    sta a:OBJ_2AC0,x
+    lda a:$3260
+    sta a:OBJ_3250,x
+    lda a:OBJ_3988,x
+    ora a:OBJ_3A38,x
+    bne FollowSlot10WithHitBox_at1
+    stz a:OBJ_3250,x
+FollowSlot10WithHitBox_at1:
+    lda a:$2760
+    cmp #$20
+    beq FollowSlot10WithHitBox_at2
+    jmp VecClearObject
+FollowSlot10WithHitBox_at2:
+    rts
+
 ; @routine 088C:43C StartThenWaitForField83
 ; @run 70:BC3C
 ; WHAT IT DOES: In state 0 loads the object's record and sets frame 2 and sprite set 6. In state 1, once zField83 is not zero, it sets the scroll Y high to 1, frame $46, sprite set 7, X low $80, Y low $58 and goes on to the next state.

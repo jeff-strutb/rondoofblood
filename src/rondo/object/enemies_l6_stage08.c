@@ -860,3 +860,61 @@ void abi_SetHitBoxFromFrameTable(void)
 {
     abi_ended(SetHitBoxFromFrameTable(cpu.x));
 }
+
+/*
+ * @routine 088B:7AF FollowSlot10WithHitBox
+ * @run 70:B7AF
+ * WHAT IT DOES: In state 0 loads the object's record. Later it takes the place, facing and OBJ_3250 of the object in slot $10 and a hit box from the four-byte row of the table at $B9DF that slot's frame less one names; with a zero half width and half height it clears OBJ_3250. When the object in slot $10 is no longer of kind $20 this object is cleared.
+ * HOW: LoadObjectRecord, CopyObjectPlaceBack, table reads (bank 70), ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: the compare with $20, or as ClearObject.
+ */
+Ended FollowSlot10WithHitBox(uint8_t slot)
+{
+    Sum row;
+    uint8_t state, nz, last, y, value, half_w, kind;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return then(ended_load(state), ended_of_record(last, nz, carry));
+    }
+    jsr_push(0xB7BC);
+    last = CopyObjectPlaceBack(0x10, slot);
+    jsr_pop();
+    e = then(then(ended_load(state), ended_with_y(ended_load(last), 0x10)), ended_nz(last));
+    row = sub_bytes(RD8(OBJ->frame[0x10]), 1, true);
+    y = (uint8_t)(row.value << 2);
+    e = then(then(e, ended_of_sum(row)), ended_with_carry(ended_with_y(ended_load(y), y), (row.value & 0x40) != 0));
+    WR8(OBJ->hitbox_dx[slot], rd8((uint16_t)(0xB9DF + y)));
+    WR8(OBJ->hitbox_dy[slot], rd8((uint16_t)(0xB9E0 + y)));
+    WR8(OBJ->hitbox_half_w[slot], rd8((uint16_t)(0xB9E1 + y)));
+    value = rd8((uint16_t)(0xB9E2 + y));
+    WR8(OBJ->hitbox_half_h[slot], value);
+    e = then(e, ended_load(value));
+    value = RD8(OBJ->facing_left[0x10]);
+    WR8(OBJ->facing_left[slot], value);
+    e = then(e, ended_load(value));
+    value = RD8(OBJ->hitbox_on[0x10]);
+    WR8(OBJ->hitbox_on[slot], value);
+    e = then(e, ended_load(value));
+    half_w = RD8(OBJ->hitbox_half_w[slot]);
+    value = (uint8_t)(half_w | RD8(OBJ->hitbox_half_h[slot]));
+    e = then(e, ended_load(value));
+    if (value == 0) {
+        WR8(OBJ->hitbox_on[slot], 0);
+    }
+    kind = RD8(OBJ->kind[0x10]);
+    e = then(e, ended_compare(kind, 0x20));
+    if (kind != 0x20) {
+        ClearObject(slot);
+    }
+    return e;
+}
+
+void abi_FollowSlot10WithHitBox(void)
+{
+    abi_ended(FollowSlot10WithHitBox(cpu.x));
+}

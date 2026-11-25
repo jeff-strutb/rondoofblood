@@ -1,0 +1,68 @@
+
+/*
+ * @routine 093C:12E StartGroupThenThrow
+ * @run 70:B92E
+ * WHAT IT DOES: Loads the record. When bit 7 of next_kind is clear, next_kind is the number of followers: it
+ * starts that many objects of type $26 in the slots after its own, each numbered from $81 in next_kind and
+ * given this object's slot in f37d0 and the group's last slot in f3828 (this object's f37d0 is its own slot,
+ * f3828 its slot plus the count). Then it clears bit 7 of next_kind, faces opposite to bit 0 of it, and runs
+ * ThrowByNextKind, PickTimersAtRandom and PickAngleAtRandom.
+ * HOW: LoadObjectRecord, a loop of ClearObjectInY and StartObjectAtPlace, then the three calls.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: as PickAngleAtRandom.
+ */
+RandomEnd StartGroupThenThrow(uint8_t slot)
+{
+    uint8_t last, nz, count, y, mark, value, left;
+    bool carry;
+    Sum sum;
+    RandomEnd picked;
+
+    jsr_push(0xB931);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    count = RD8(OBJ->next_kind[slot]);
+    if ((count & 0x80) == 0) {
+        WR8(OBJ->f37d0[slot], slot);
+        count = RD8(OBJ->next_kind[slot]);
+        sum = add_bytes(slot, count, false);
+        WR8(OBJ->f3828[slot], sum.value);
+        y = (uint8_t)(slot + 1);
+        WR8(ZP->temp00, 0x81);
+        do {
+            jsr_push(0xB94B);
+            ClearObjectInY(y);
+            jsr_pop();
+            jsr_push(0xB950);
+            StartObjectAtPlace(0x26, slot, y);
+            jsr_pop();
+            mark = RD8(ZP->temp00);
+            WR8(OBJ->next_kind[y], mark);
+            WR8(OBJ->f37d0[y], slot);
+            value = RD8(OBJ->f3828[slot]);
+            WR8(OBJ->f3828[y], value);
+            INC8(ZP->temp00);
+            y++;
+            left = DEC8(OBJ->next_kind[slot]);
+        } while (left != 0);
+    }
+    count = RD8(OBJ->next_kind[slot]);
+    count = (uint8_t)(count & 0x7F);
+    WR8(OBJ->next_kind[slot], count);
+    WR8(OBJ->facing_left[slot], (uint8_t)((count & 1) ^ 1));
+    jsr_push(0xB979);
+    ThrowByNextKind(slot);
+    jsr_pop();
+    jsr_push(0xB97C);
+    PickTimersAtRandom(slot);
+    jsr_pop();
+    jsr_push(0xB97F);
+    picked = PickAngleAtRandom(slot);
+    jsr_pop();
+    return picked;
+}
+
+void abi_StartGroupThenThrow(void)
+{
+    abi_random_end(StartGroupThenThrow(cpu.x));
+}

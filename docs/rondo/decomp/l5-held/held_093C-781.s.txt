@@ -1,0 +1,23 @@
+
+; @routine 093C:781 TurnAroundAndHalveSpeedB
+; @run 70:BF81
+; WHAT IT DOES: TurnAroundAndHalveSpeed in this stage's overlay (PickSpeedAndTurnFromTableC).
+; HOW: The shared body.
+; WAITS: no.
+; Entry, exit: as TurnAroundAndHalveSpeed.
+TurnAroundAndHalveSpeedB:
+    lda a:OBJ_2AC0,x
+    sta a:OBJ_3720,x
+    jsr VecPlayerDistanceSum
+    and #$0F
+    sta a:OBJ_3670,x
+    jsr PickSpeedAndTurnFromTableC
+    jsr VecNegateVelocityX
+    jsr VecNegateVelocityY
+    jsr $C016
+    lda #$0C
+    sta a:OBJ_34B8,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+    rts

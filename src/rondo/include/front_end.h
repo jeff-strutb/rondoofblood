@@ -442,4 +442,13 @@ void abi_AttractStartCheck(void);
 void abi_AttractBlink(void);
 void abi_AttractStep(void);
 
+
+/* The menus' glyph text (menu/glyph_text.c). */
+Exit WriteGlyphMapRows(void);
+Exit DrawGlyphPair(void);
+Exit DrawGlyphText(void);
+void abi_WriteGlyphMapRows(void);
+void abi_DrawGlyphPair(void);
+void abi_DrawGlyphText(void);
+
 #endif

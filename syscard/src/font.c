@@ -272,7 +272,9 @@ FontGet ex_getfnt(void)
     uint16_t number, glyph, buffer;
     uint8_t bank_high, bank;
 
+    jsr_push(0xF127);
     get.index = sjis_to_font_index();
+    jsr_pop();
     if (get.index.failure != FONT_FOUND)
         return get;
     window = (int8_t)(rd8(CardBh) - WINDOW_HIGH) >= 0 ? WINDOW_LOW : WINDOW_HIGH;

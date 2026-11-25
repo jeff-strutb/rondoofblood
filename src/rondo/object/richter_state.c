@@ -411,6 +411,7 @@ static void set_state_alu(Alu *r, uint8_t state, uint8_t step)
  * @run 6D:A000
  * WHAT IT DOES: Goes to RichterFrame.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as RichterFrame.
  */
 void abi_RichterVecFrame(void)
@@ -423,6 +424,7 @@ void abi_RichterVecFrame(void)
  * @run 6D:A003
  * WHAT IT DOES: Goes to RichterStart.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as RichterStart.
  */
 void abi_RichterVecStart(void)
@@ -435,6 +437,7 @@ void abi_RichterVecStart(void)
  * @run 6D:A006
  * WHAT IT DOES: Goes to $BB23.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as that code.
  */
 void abi_RichterVecApplyMove(void)
@@ -447,6 +450,7 @@ void abi_RichterVecApplyMove(void)
  * @run 6D:A009
  * WHAT IT DOES: Goes to $C3A7.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as that code.
  */
 void abi_RichterVecC3A7(void)
@@ -459,6 +463,7 @@ void abi_RichterVecC3A7(void)
  * @run 6D:A00C
  * WHAT IT DOES: Goes to RichterLeapClearingOthers.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as RichterLeapClearingOthers.
  */
 void abi_RichterVecC023(void)
@@ -471,6 +476,7 @@ void abi_RichterVecC023(void)
  * @run 6D:A00F
  * WHAT IT DOES: Goes to $C076.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as that code.
  */
 void abi_RichterVecC076(void)
@@ -483,6 +489,7 @@ void abi_RichterVecC076(void)
  * @run 6D:A012
  * WHAT IT DOES: Goes to RichterAnimationSound.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as RichterAnimationSound.
  */
 void abi_RichterVecAnimationSound(void)
@@ -495,6 +502,7 @@ void abi_RichterVecAnimationSound(void)
  * @run 6D:A015
  * WHAT IT DOES: Goes to RichterClearOthersKeepWhip.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as RichterClearOthersKeepWhip.
  */
 void abi_RichterVecCE1D(void)
@@ -507,6 +515,7 @@ void abi_RichterVecCE1D(void)
  * @run 6D:A018
  * WHAT IT DOES: Goes to $B67B.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as that code.
  */
 void abi_RichterVecSetAnimation(void)
@@ -519,6 +528,7 @@ void abi_RichterVecSetAnimation(void)
  * @run 6D:A01B
  * WHAT IT DOES: Goes to $B669.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as that code.
  */
 void abi_RichterVecSetIdle(void)
@@ -531,6 +541,7 @@ void abi_RichterVecSetIdle(void)
  * @run 6D:A01E
  * WHAT IT DOES: Goes to $CE73.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as that code.
  */
 void abi_RichterVecCE73(void)
@@ -543,6 +554,7 @@ void abi_RichterVecCE73(void)
  * @run 6D:A021
  * WHAT IT DOES: Goes to $BB6E, the wall probe.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as that code.
  */
 void abi_RichterVecWall(void)
@@ -555,6 +567,7 @@ void abi_RichterVecWall(void)
  * @run 6D:A024
  * WHAT IT DOES: Goes to $BBC1, the floor probe.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as that code.
  */
 void abi_RichterVecFloor(void)
@@ -569,13 +582,18 @@ void abi_RichterVecFloor(void)
  * three is solid or a floor, lets a push on the floor lift him by zFieldCA.
  * HOW: Bits $81 of RichterColumnHit; zFieldCA goes in as column 0's depth for
  * RichterLiftByColumn, then is cleared.
+ * WAITS: no.
  * Entry: nothing. Exit: Y as RichterReadColumns left it. A column hit, A its bits, N and Z from
  * them, X the column, C and V from the read. Not pushed, A 0, X 3, Z and C set, N and V the
  * push's bits 7 and 6. Lifted, as RichterLiftByColumn, X 0.
  */
 MovePush RichterApplyMoveAndPush(void)
 {
-    MovePush move = { MOVE_PUSH_BLOCKED, RichterReadColumns(), 0, 0, 0, { false, 0, 0 } };
+    MovePush move = { MOVE_PUSH_BLOCKED, { 0 }, 0, 0, 0, { false, 0, 0 } };
+
+    jsr_push(0xA02D);
+    move.columns = RichterReadColumns();
+    jsr_pop();
 
     for (move.column = 0; move.column < FLOOR_COLUMNS; move.column++) {
         move.hit = (uint8_t)(rd8((uint16_t)(RichterColumnHit + move.column)) & TILE_FLOOR_BITS);
@@ -587,7 +605,9 @@ MovePush RichterApplyMoveAndPush(void)
     if (!(move.push & PUSH_ON_FLOOR))
         return move;
     wr8(RichterColumnRow, rd8(zFieldCA));
+    jsr_push(0xA048);
     move.lift = RichterLiftByColumn(0);
+    jsr_pop();
     wr8(zFieldCA, 0);
     move.how = MOVE_PUSH_LIFTED;
     return move;
@@ -626,6 +646,7 @@ void abi_RichterApplyMoveAndPush(void)
  * @run 6D:A027
  * WHAT IT DOES: Goes to RichterApplyMoveAndPush.
  * HOW: One jump.
+ * WAITS: no.
  * Entry, exit: as RichterApplyMoveAndPush.
  */
 void abi_RichterApplyMoveAndPushGoTo(void)
@@ -641,6 +662,7 @@ void abi_RichterApplyMoveAndPushGoTo(void)
  * hearts; the animation's sound on a change; its hitbox.
  * HOW: The animation before and after are compared; the hitbox index comes from the table
  * by animation and is four bytes of AnimationHitbox.
+ * WAITS: no.
  * Entry: nothing. Exit: A the last hitbox byte, N and Z from it, X the hitbox offset, C bit 6
  * of the hitbox index; Y and V as RichterAnimationSound left them on a change, else as the
  * state's frame did.
@@ -662,20 +684,35 @@ Frame RichterFrame(void)
     }
     if (frame.forced_left == 0) {
         wr8(PlayerByte3BF0, 0);
+        jsr_push(0xA066);
         RichterReadPad();
+        jsr_pop();
     }
     wr8(zPadPressed, (uint8_t)(rd8(PadForcedPress) | rd8(zPadPressed) | rd8(PadForcedPressB)));
     before = rd8(OBJ_2A68);
+    jsr_push(0xA077);
     RichterClearPadOverrides();
+    jsr_pop();
+    jsr_push(0xA07A);
     frame.push = RichterHitWhilePushed();
+    jsr_pop();
     /* Original code runs inside the state's frame, from the registers the push check left. */
     push_hit_exit_shim(frame.push);
+    jsr_push(0xA07D);
     frame.state = RichterStateFrame();
+    jsr_pop();
+    jsr_push(0xA080);
     RichterCheckTurnWindow();
+    jsr_pop();
+    jsr_push(0xA083);
     RichterCheckItemHearts();
+    jsr_pop();
     frame.sounded = rd8(OBJ_2A68) != before;
-    if (frame.sounded)
+    if (frame.sounded) {
+        jsr_push(0xA08C);
         frame.animation = RichterAnimationSound();
+        jsr_pop();
+    }
     frame.index = rd8((uint16_t)(AnimationHitboxIndex + rd8(OBJ_2A68)));
     hitbox = (uint16_t)(AnimationHitbox + (uint8_t)(frame.index << 2));
     wr8(OBJ_3930, rd8(hitbox));
@@ -705,6 +742,7 @@ void abi_RichterFrame(void)
  * WHAT IT DOES: While pushed (bit 0 of zPlayerPush), outside camera mode $18, with no hit
  * timer, not above the map, a spike under the player is a hit of kind 6.
  * HOW: RichterSpikeBelow, then the hit's fields; the state back to standing.
+ * WAITS: no.
  * Entry: nothing. Exit: camera mode $18, A $18, Z and C set. Not pushed, A the camera mode, Z
  * set, N and V the push's bits 7 and 6, C from comparing the mode with $18. Held, A OBJ_3460
  * or PlayerMayLeaveTop, N and Z from it, C as before, V the push's bit 6. No spike, as
@@ -725,7 +763,9 @@ PushHit RichterHitWhilePushed(void)
     hit.how = PUSH_HIT_HELD;
     if (hit.held != 0)
         return hit;
+    jsr_push(0xA0C5);
     hit.spike = RichterSpikeBelow();
+    jsr_pop();
     hit.how = PUSH_HIT_NO_SPIKE;
     if (!hit.spike.found)
         return hit;
@@ -779,6 +819,7 @@ void abi_RichterHitWhilePushed(void)
  * WHAT IT DOES: Probes three points at the player's feet for a tile with bit 1 set.
  * HOW: Each point's X from RichterColumnOffset pulled one pixel in, Y from the table by
  * state; the terrain from RichterReadAbove.
+ * WAITS: no.
  * Entry: nothing. Exit: Y, C and V as the last read left them (Y the state when the row was
  * off the map). Found, A 2, N and Z from it, X the point. Else A 0, X 3, Z and C set, N clear.
  */
@@ -787,7 +828,9 @@ SpikeProbe RichterSpikeBelow(void)
     SpikeProbe probe = { false, 0, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 } };
 
     for (probe.column = 0; probe.column < SPIKE_COLUMNS; probe.column++) {
+        jsr_push(0xA0D9);
         uint8_t across = RichterColumnOffset(probe.column);
+        jsr_pop();
         uint8_t y = rd8(OBJ_Y_LO);
         uint8_t foot = rd8((uint16_t)(PlayerFootYByState + rd8(OBJ_27A8)));
 
@@ -798,7 +841,9 @@ SpikeProbe RichterSpikeBelow(void)
             across--;
         wr8(zTemp00, (uint8_t)(across + rd8(OBJ_X_LO)));
         probe.on_the_map = y + foot > 0xFF;
+        jsr_push(0xA0F4);
         probe.read = RichterReadAbove((uint8_t)(y + foot), probe.on_the_map);
+        jsr_pop();
         if (tile_answer(probe.read) & TILE_SPIKE) {
             probe.found = true;
             return probe;
@@ -834,6 +879,7 @@ void abi_RichterSpikeBelow(void)
  * HOW: The table of four entries: a new run, the health, the stand, the clear; each goes on
  * into the next. zField8A is 0 to 3; the C takes anything past 2 as the clear, where the table
  * would send it elsewhere.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
 StandSound RichterStart(void)
@@ -866,6 +912,7 @@ void abi_RichterStart(void)
  * @run 6D:A11E
  * WHAT IT DOES: Clears the player's work bytes and zero page.
  * HOW: Two block moves from the kernel's zeros.
+ * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
 void RichterClearWork(void)
@@ -884,6 +931,7 @@ void abi_RichterClearWork(void)
  * @run 6D:A12D
  * WHAT IT DOES: Clears object 0, the player, keeping where it is and which way it faces.
  * HOW: The three bytes on the stack around ClearObject.
+ * WAITS: no.
  * Entry: nothing. Exit: A the X position, N and Z from it, X 0. Y, C and V kept.
  */
 uint8_t RichterClearKeepPlace(void)
@@ -892,7 +940,9 @@ uint8_t RichterClearKeepPlace(void)
     uint8_t y = rd8(OBJ_Y_LO);
     uint8_t facing = rd8(OBJ_2AC0);
 
+    jsr_push(0xA13D);
     ClearObject(OBJECT_PLAYER);
+    jsr_pop();
     wr8(OBJ_2AC0, facing);
     wr8(OBJ_Y_LO, y);
     wr8(OBJ_X_LO, x);
@@ -914,6 +964,7 @@ void abi_RichterClearKeepPlace(void)
  * WHAT IT DOES: Starts a new run: clears zField93 and sets zField94, then as
  * RichterStartHealth.
  * HOW: Runs on into it.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
 StandSound RichterStartNew(void)
@@ -933,6 +984,7 @@ void abi_RichterStartNew(void)
  * @run 6D:A150
  * WHAT IT DOES: Fills the health, then as RichterStartClear.
  * HOW: Runs on into it.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
 StandSound RichterStartHealth(void)
@@ -952,12 +1004,17 @@ void abi_RichterStartHealth(void)
  * WHAT IT DOES: Clears the player's work and object, marks it live, gives a frame of the
  * hit timer, then as RichterStartStand.
  * HOW: Runs on into it.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
 StandSound RichterStartClear(void)
 {
+    jsr_push(0xA157);
     RichterClearWork();
+    jsr_pop();
+    jsr_push(0xA15A);
     RichterClearKeepPlace();
+    jsr_pop();
     wr8(OBJ_3250, START_LIVE);
     wr8(OBJ_3828, START_LIVE);
     wr8(OBJ_3460, START_LIVE);
@@ -974,6 +1031,7 @@ void abi_RichterStartClear(void)
  * @run 6D:A167
  * WHAT IT DOES: Stands the player, and runs on into RichterAnimationSound.
  * HOW: PlayerByte3BD6 set, RichterStand.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterAnimationSound, and C as RichterStand left it.
  */
 StandSound RichterStartStand(void)
@@ -981,7 +1039,9 @@ StandSound RichterStartStand(void)
     StandSound started;
 
     wr8(PlayerByte3BD6, 1);
+    jsr_push(0xA16F);
     started.stand = RichterStand();
+    jsr_pop();
     started.animation = RichterAnimationSound();
     return started;
 }
@@ -996,6 +1056,7 @@ void abi_RichterStartStand(void)
  * @run 6D:A16F
  * WHAT IT DOES: Starts the list that goes with the player's animation on its channel.
  * HOW: The table by animation, then StartListChannelKind2 with X 7.
+ * WAITS: no.
  * Entry: nothing. Exit: A 2, N 0, Z 0, X 7, Y the animation. C and V kept.
  */
 uint8_t RichterAnimationSound(void)
@@ -1032,6 +1093,7 @@ void abi_RichterAnimationSound(void)
  * WHAT IT DOES: The death's wait: holds the player still, and when the timer ends clears
  * the objects from 1 up, stopping at one still live, and ends the mode.
  * HOW: OBJ_2750 not zero is live. zSubStep 5 ends it.
+ * WAITS: no.
  * Entry: nothing. Exit: still dying, N and Z from the timer, A, X, Y, C and V kept. An object
  * still out, A its OBJ_2750 and X its slot, N and Z from it, C clear past slot 1. Over, as
  * RichterStartHitScript with script 9, and C set.
@@ -1040,7 +1102,9 @@ DyingStep RichterDyingStep(void)
 {
     DyingStep step = { DYING_WAITING, 0, 0 };
 
+    jsr_push(0xA17D);
     RichterStopX();
+    jsr_pop();
     wr8(OBJ_2A68, 0);
     step.value = (uint8_t)(rd8(PlayerDyingTimer) - 1);
     wr8(PlayerDyingTimer, step.value);
@@ -1052,12 +1116,16 @@ DyingStep RichterDyingStep(void)
             step.how = DYING_OBJECT_LEFT;
             return step;
         }
+        jsr_push(0xA18F);
         ClearObject(step.object);
+        jsr_pop();
     }
     wr8(zSubStep, DEATH_SUB_STEP);
     wr8(PlayerByte3BD7, 0);
     wr8(PlayerDying, 0);
+    jsr_push(0xA1A3);
     RichterStartHitScript(SCRIPT_DEATH);
+    jsr_pop();
     step.how = DYING_OVER;
     return step;
 }
@@ -1330,6 +1398,7 @@ static void out_of_health(StateFrame *f)
  * HOW: Y high 1 or $FF low is below the map. A hit of kind 5 is ignored unless
  * PlayerMayLeaveTop is set. Health gone goes to RichterOutOfHealth. Above the map the pad's
  * buttons are dropped. The handler from PlayerStateHandlers by OBJ_27A8.
+ * WAITS: no.
  * Entry: nothing. Exit: dying, as RichterDyingStep. Falling off, as RichterDie. The life
  * lost, as SoundCommand with $64. Blinking with no press, A 0, Z set; with a press short of
  * eight, A the count, N, Z and C from comparing it with 8. Otherwise as the state's handler.
@@ -1426,6 +1495,7 @@ void abi_RichterStateFrame(void)
  * WHAT IT DOES: The health has run out: with the one-more flag PlayerByte3BF7 at 1 the
  * player keeps one point and takes the hit; otherwise the mode's step 4 ends the life.
  * HOW: SoundCommand $64 on the way out; the hit goes on as RichterStateFrame's.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterStateFrame from the health on.
  */
 StateFrame RichterOutOfHealth(void)
@@ -1448,13 +1518,16 @@ void abi_RichterOutOfHealth(void)
  * WHAT IT DOES: Starts the reaction to a hit: the invulnerable frames by the hit's kind,
  * the state kept to come back to, the state set to 9, and the hit's script.
  * HOW: Runs on into RichterStartHitScript with 8.
+ * WAITS: no.
  * Entry: nothing. Exit: A and Y 8, X 7, N and Z from 8. C and V kept.
  */
 void RichterHitReact(void)
 {
     uint8_t kind;
 
+    jsr_push(0xA2B5);
     RichterPadOverridesOff();
+    jsr_pop();
     kind = (uint8_t)(rd8(OBJ_33B0) & HIT_KINDS);
     wr8(OBJ_3460, rd8((uint16_t)(HitInvulnerableFrames + kind)));
     wr8(OBJ_35C0, rd8(OBJ_27A8));
@@ -1475,6 +1548,7 @@ void abi_RichterHitReact(void)
  * @run 6D:A2D7
  * WHAT IT DOES: Starts a script on the player's slot.
  * HOW: StartScriptSlotKind1 with X 7.
+ * WAITS: no.
  * Entry: A script. Exit: A and Y the script, X 7, N and Z from the script. C and V kept.
  */
 void RichterStartHitScript(uint8_t script)
@@ -1503,6 +1577,7 @@ void abi_RichterStartHitScript(void)
  * @run 6D:A2E4
  * WHAT IT DOES: Turns the player to face the way just pressed.
  * HOW: OBJ_2AC0 is the facing, 0 right, 1 left.
+ * WAITS: no.
  * Entry: nothing. Exit: N and V bits 7 and 6 of the presses, Z set if it did not turn; A the
  * facing, or 1 and N and Z from it when it turned left. X, Y and C kept.
  */
@@ -1584,6 +1659,7 @@ static void attack_fall_shim(const AttackStand *st)
  * crouches; otherwise waits for the animation's end, then stands.
  * HOW: OBJ_FLAGS_2F38 counts the attack's progress; object 3 is the whip; PlayerByte3BD5
  * set skips to the wait. RichterAnimationWait returns past this routine while it runs.
+ * WAITS: no.
  * Entry: nothing. Exit: falling, as $A9DD. Crouched, A 2, N and Z clear, as the animation's
  * tick left the rest. Waiting, as RichterAnimationRunning, A $A3 and N set, the return's high
  * byte. Stood, as RichterStand. In each, what the checks before it left.
@@ -1666,6 +1742,7 @@ void abi_RichterStandStep1(void)
  * @run 6D:A34C
  * WHAT IT DOES: Clears object 3, the whip.
  * HOW: ClearObject with X 3.
+ * WAITS: no.
  * Entry: nothing. Exit: X 3, N and Z from it. A, Y, C and V kept.
  */
 void RichterClearWhip(void)
@@ -1685,6 +1762,7 @@ void abi_RichterClearWhip(void)
  * @run 6D:A351
  * WHAT IT DOES: Clears the whip and takes to the air. Nothing reached calls it.
  * HOW: RichterClearWhip, RichterToAir.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterToAir.
  */
 void abi_RichterOrphanClearWhipAir(void)
@@ -1747,6 +1825,7 @@ static void crash_stand_replay_shim(const CrashStand *st)
  * out, stands, or ends the item crash outside state 0.
  * HOW: OBJ_30F0 is the timer. Ending, falling and jumping count PlayerByte3BD6 up. A jump in
  * the crash's states goes up the ledge by the first table below state 7, the second from it.
+ * WAITS: no.
  * Entry: nothing. Exit: as the transition taken, after what the steps before it left. Spawned,
  * A $0C, Y the slot, N clear, Z clear. No free slot, A the last slot's OBJ_2750, Y $10, Z and
  * C set, N clear.
@@ -1778,8 +1857,12 @@ CrashStand RichterStandStep2(void)
     wr8(OBJ_30F0, (uint8_t)(rd8(OBJ_30F0) - 1));
     st.state = rd8(OBJ_27A8);
     if (st.state == STATE_STAND) {
+        jsr_push(0xA383);
         st.columns = RichterReadColumns();
+        jsr_pop();
+        jsr_push(0xA386);
         st.footing = RichterHasNoFooting();
+        jsr_pop();
         if (st.footing.no_floor) {
             st.bumped = (uint8_t)(rd8(PlayerByte3BD6) + 1);
             wr8(PlayerByte3BD6, st.bumped);
@@ -1788,7 +1871,9 @@ CrashStand RichterStandStep2(void)
             return st;
         }
     }
+    jsr_push(0xA38B);
     st.jump = RichterJumpPressed();
+    jsr_pop();
     if (st.jump) {
         st.bumped = (uint8_t)(rd8(PlayerByte3BD6) + 1);
         wr8(PlayerByte3BD6, st.bumped);
@@ -1802,7 +1887,9 @@ CrashStand RichterStandStep2(void)
         }
         return st;
     }
+    jsr_push(0xA390);
     st.stand = RichterAnimationTick();
+    jsr_pop();
     st.how = CRASH_STAND_NO_SLOT;
     for (st.slot = CRASH_FIRST_SLOT; st.slot < OBJECT_END; st.slot++) {
         st.seen = rd8((uint16_t)(OBJ_2750 + st.slot));
@@ -1860,6 +1947,7 @@ void abi_RichterStandStep2(void)
  * @run 6D:A3D0
  * WHAT IT DOES: Gives the state's step, for its caller to index a table of words by.
  * HOW: OBJ_2800, which the wrapper leaves doubled in A and X.
+ * WAITS: no.
  * Entry: nothing. Exit: A and X the offset, N and Z from it, C the step's bit 7. Y, V kept.
  */
 uint8_t RichterStepIndex(void)
@@ -1895,6 +1983,7 @@ static void stand_handler_shim(uint8_t step, uint16_t handler)
  * WHAT IT DOES: State 0, standing: runs the step's handler: still, attacking, or the item
  * crash.
  * HOW: PlayerStandHandlers, three words by RichterStepIndex.
+ * WAITS: no.
  * Entry: nothing. Exit: as the handler leaves them.
  */
 StandState RichterStateStand(void)
@@ -1902,7 +1991,9 @@ StandState RichterStateStand(void)
     StandState st = { 0 };
     uint16_t entry;
 
+    jsr_push(0xA3D8);
     st.step = RichterStepIndex();
+    jsr_pop();
     entry = (uint16_t)(PlayerStandHandlers + (uint8_t)(st.step << 1));
     st.handler = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
     /* Original code runs in the handlers, from the registers the index left. */
@@ -2006,6 +2097,7 @@ static void stand_replay_shim(const StandStep *st)
  * crouches; down, or PlayerByte3BF0, looks down; and left or right start walking.
  * HOW: Each check leaves its answer in C. The look down is animation $47 set outright; otherwise
  * the animation steps.
+ * WAITS: no.
  * Entry: nothing. Exit: as the transition taken, with what the checks before it left. Still,
  * Y 1, Z set, N and V the pad's bits 7 and 6, C clear, A as the look or the animation left it.
  */
@@ -2013,46 +2105,62 @@ StandStep RichterStandStep0(void)
 {
     StandStep st = { 0 };
 
+    jsr_push(0xA3E4);
     st.columns = RichterReadColumns();
+    jsr_pop();
     st.reached = STAND_READ_COLUMNS;
+    jsr_push(0xA3E7);
     st.footing = RichterHasNoFooting();
+    jsr_pop();
     st.reached = STAND_FOOTING;
     if (st.footing.no_floor) {
         st.how = STAND_FELL;
         st.animation = RichterToFall();
         return st;
     }
+    jsr_push(0xA3EF);
     st.jump = RichterJumpPressed();
+    jsr_pop();
     st.reached = STAND_JUMP;
     if (st.jump) {
         st.how = STAND_JUMPED;
         st.air = RichterToAir();
         return st;
     }
+    jsr_push(0xA3F7);
     st.landing = RichterLandOnFloor();
+    jsr_pop();
     st.reached = STAND_LANDING;
+    jsr_push(0xA3FA);
     st.crash = RichterTryItemCrash();
+    jsr_pop();
     st.reached = STAND_ITEM_CRASH;
     if (st.crash.how == CRASH_STARTED) {
         st.how = STAND_CRASHED;
         st.hurt = RichterToHurtAir();
         return st;
     }
+    jsr_push(0xA402);
     st.use = RichterUseItem();
+    jsr_pop();
     st.reached = STAND_ITEM_USE;
     if (st.use.how != USE_NO_PRESS) {
         st.how = STAND_ATTACKED;
         st.attack = RichterAttack();
         return st;
     }
+    jsr_push(0xA40A);
     st.ledge = RichterLedgeCheck();
+    jsr_pop();
     st.reached = STAND_LEDGE;
     if (st.ledge.how == LEDGE_LOW || st.ledge.how == LEDGE_HIGH) {
         st.how = STAND_CLIMBED;
         st.climb = RichterClimbStart(ledge_column(st.ledge));
         return st;
     }
+    jsr_push(0xA412);
     st.up = RichterUpHeld();
+    jsr_pop();
     st.reached = STAND_UP;
     if (st.up) {
         st.how = STAND_CROUCHED;
@@ -2069,7 +2177,9 @@ StandStep RichterStandStep0(void)
             wr8(OBJ_2A68, ANIM_LOOK_DOWN);
         } else {
             st.ticked = true;
+            jsr_push(0xA432);
             st.tick = RichterAnimationTick();
+            jsr_pop();
         }
     }
     st.reached = STAND_WALK;
@@ -2126,6 +2236,7 @@ void abi_RichterStandStep0(void)
  * WHAT IT DOES: Starts walking the way the pad says, unless a button stops it; a held jump
  * keeps the facing and walks backward.
  * HOW: Y is the new facing, kept unless bit 1 is held. Animation 0 or $32.
+ * WAITS: no.
  * Entry: Y the facing. Exit: as RichterSetAnimation; with an attack held, A, X, Y and C kept,
  * N and V the pad's bits 7 and 6, Z clear.
  */
@@ -2133,7 +2244,9 @@ WalkStart RichterStartWalk(uint8_t facing)
 {
     WalkStart walk = { false };
 
+    jsr_push(0xA445);
     RichterPadOverridesOff();
+    jsr_pop();
     if (!(rd8(zPadHeld) & PAD_JUMP))
         wr8(OBJ_2AC0, facing);
     walk.held = rd8(zPadHeld);
@@ -2190,6 +2303,7 @@ static void abi_exit_speed(FacingSpeed set)
  * @run 6D:A46C
  * WHAT IT DOES: Sets the X speed to walking, by facing.
  * HOW: WalkSpeeds.
+ * WAITS: no.
  * Entry: nothing. Exit: A the speed's high byte, N and Z from it, Y twice the facing, C
  * the facing's bit 7. X and V kept.
  */
@@ -2208,6 +2322,7 @@ void abi_RichterSpeedWalk(void)
  * @run 6D:A47E
  * WHAT IT DOES: Sets the X speed for a jump, by facing.
  * HOW: JumpSpeeds.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterSpeedWalk.
  */
 FacingSpeed RichterSpeedJump(void)
@@ -2225,6 +2340,7 @@ void abi_RichterSpeedJump(void)
  * @run 6D:A494
  * WHAT IT DOES: Sets the X speed for walking backward, by facing.
  * HOW: BackstepSpeeds.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterSpeedWalk.
  */
 FacingSpeed RichterSpeedBackstep(void)
@@ -2242,15 +2358,20 @@ void abi_RichterSpeedBackstep(void)
  * @run 6D:A4AE
  * WHAT IT DOES: Crouches: state 2, step 3, animation $0C, all speed gone.
  * HOW: Runs on into RichterStopMoving.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterSetAnimation. X and V kept.
  */
 AnimationStep RichterCrouch(void)
 {
     AnimationStep animation;
 
+    jsr_push(0xA4B1);
     RichterPadOverridesOff();
+    jsr_pop();
     set_state(STATE_CROUCH, CROUCH_STEP);
+    jsr_push(0xA4C0);
     animation = RichterSetAnimation(ANIM_CROUCH);
+    jsr_pop();
     RichterStopMoving();
     return animation;
 }
@@ -2265,6 +2386,7 @@ void abi_RichterCrouch(void)
  * @run 6D:A4C0
  * WHAT IT DOES: Stops the player along Y and X.
  * HOW: Runs on into RichterStopX.
+ * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
 void RichterStopMoving(void)
@@ -2330,6 +2452,7 @@ static AttackStart attack_with_animation(uint8_t animation)
  * WHAT IT DOES: Starts an attack standing: state 0, step 1, the animation by the attack's
  * kind; the whip, with its sound, or the kind's object in a free slot among 5, 8 and $0B.
  * HOW: PlayerByte3BD5 is the kind. zField93 is what goes in the slot. SoundCommand 3 for the whip.
+ * WAITS: no.
  * Entry: nothing. Exit: Y and C as RichterSetAnimation. The whip, as SoundCommand with command
  * 3 and X 3; an item, A the item, X its slot, N, Z and V from testing the last slot looked at.
  */
@@ -2376,6 +2499,7 @@ void abi_RichterAttack(void)
  * @run 6D:A521
  * WHAT IT DOES: Starts falling: state 4, animation $10, Y speed 3, no X speed.
  * HOW: Runs on into RichterPadOverridesOff.
+ * WAITS: no.
  * Entry: nothing. Exit: A 4, N and Z from it; Y and C as RichterSetAnimation. X and V kept.
  */
 AnimationStep RichterToFall(void)
@@ -2383,11 +2507,15 @@ AnimationStep RichterToFall(void)
     AnimationStep animation;
 
     set_state(STATE_FALL, 0);
+    jsr_push(0xA530);
     animation = RichterSetAnimation(ANIM_FALL);
+    jsr_pop();
     wr8(OBJ_VY_LO, 0);
     wr8(OBJ_VY_HI, FALL_SPEED_HI);
     wr8(OBJ_34B8, STATE_FALL_34B8);
+    jsr_push(0xA542);
     RichterStopX();
+    jsr_pop();
     RichterPadOverridesOff();
     return animation;
 }
@@ -2409,6 +2537,7 @@ void abi_RichterToFall(void)
  * @run 6D:A542
  * WHAT IT DOES: Clears the pad's overrides.
  * HOW: Three bytes zeroed.
+ * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
 void RichterPadOverridesOff(void)
@@ -2438,6 +2567,7 @@ static Alu item_crash(Alu r, uint8_t id)
  * @run 6D:A54B
  * WHAT IT DOES: A hurt jump off a ledge the first way, or item $05's crash.
  * HOW: Nudges off the ledge and to RichterToHurtAir, or animation $2B.
+ * WAITS: no.
  * Entry: nothing. Exit: item 5, A $60, N and Z from it, Y and C as RichterSetAnimation. Otherwise
  * as RichterToHurtAir after RichterNudgeA.
  */
@@ -2445,7 +2575,9 @@ LedgeHurt RichterLedgeHurtA(void)
 {
     LedgeHurt hurt;
 
+    jsr_push(0xA54E);
     RichterPadOverridesOff();
+    jsr_pop();
     hurt.crash = rd8(zField93) == ITEM_CRASH_FIVE;
     if (hurt.crash) {
         hurt.animation = RichterSetAnimation(ANIM_LEDGE_CRASH_A);
@@ -2454,7 +2586,9 @@ LedgeHurt RichterLedgeHurtA(void)
         wr8(OBJ_30F0, CRASH_FIVE_TIMER);
         return hurt;
     }
+    jsr_push(0xA557);
     hurt.nudge = RichterNudgeA();
+    jsr_pop();
     hurt.hurt = RichterToHurtAir();
     return hurt;
 }
@@ -2469,6 +2603,7 @@ void abi_RichterLedgeHurtA(void)
  * @run 6D:A55A
  * WHAT IT DOES: A hurt jump off a ledge the second way, or item $05's crash.
  * HOW: As RichterLedgeHurtA with the other nudge and animation $2C.
+ * WAITS: no.
  * Entry: nothing. Exit: item 5, A $60, N and Z from it, Y and C as RichterSetAnimation. Otherwise
  * as RichterToHurtAir after RichterNudgeB.
  */
@@ -2476,16 +2611,24 @@ LedgeHurt RichterLedgeHurtB(void)
 {
     LedgeHurt hurt;
 
+    jsr_push(0xA55D);
     RichterPadOverridesOff();
+    jsr_pop();
     hurt.crash = rd8(zField93) == ITEM_CRASH_FIVE;
     if (hurt.crash) {
+        jsr_push(0xA56E);
         hurt.animation = RichterSetAnimation(ANIM_LEDGE_CRASH_B);
+        jsr_pop();
+        jsr_push(0xA571);
         RichterStopMoving();
+        jsr_pop();
         wr8(OBJ_2800, LEDGE_CRASH_STEP);
         wr8(OBJ_30F0, CRASH_FIVE_TIMER);
         return hurt;
     }
+    jsr_push(0xA566);
     hurt.nudge = RichterNudgeB();
+    jsr_pop();
     hurt.hurt = RichterToHurtAir();
     return hurt;
 }
@@ -2526,6 +2669,7 @@ static void abi_exit_nudge(Nudge nudge)
  * WHAT IT DOES: Moves the player off a ledge by the first table, by facing, and clears
  * PlayerMayLeaveTop.
  * HOW: One add to the X position.
+ * WAITS: no.
  * Entry: nothing. Exit: A the position, N, Z, C, V from the add, X the facing. Y kept.
  */
 Nudge RichterNudgeA(void)
@@ -2543,6 +2687,7 @@ void abi_RichterNudgeA(void)
  * @run 6D:A5BC
  * WHAT IT DOES: As RichterNudgeA by the second table.
  * HOW: Goes back into it.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterNudgeA.
  */
 Nudge RichterNudgeB(void)
@@ -2622,6 +2767,7 @@ void up_whip_exit_shim(UpWhip whip)
  * $FAC0; with up held at a ladder, onto it, falling.
  * HOW: The pad's overrides, PadForcedPressB and zFieldC6 cleared; bit 6 of zPadHeld;
  * RichterLadderCheck; LedgeNudge by facing.
+ * WAITS: no.
  * Entry: nothing. Exit: the jump, as RichterNudgeBJump with the first nudge. No ladder, as
  * RichterLadderCheck. A ladder, as RichterToFall.
  */
@@ -2640,11 +2786,17 @@ void abi_RichterUpWhipLeft(void)
  * @run 6D:A5C4
  * WHAT IT DOES: The second nudge, and the jump up off the ledge.
  * HOW: RichterNudgeB, then as RichterUpWhipLeft's jump.
+ * WAITS: no.
  * Entry: nothing. Exit: A $FA, N set, Z clear; C, V and Y as RichterToAir after the nudge.
  */
 LedgeJump RichterNudgeBJump(void)
 {
-    return jump_off_ledge(RichterNudgeB());
+    Nudge nudge;
+
+    jsr_push(0xA5C6);
+    nudge = RichterNudgeB();
+    jsr_pop();
+    return jump_off_ledge(nudge);
 }
 
 void ledge_jump_exit_shim(LedgeJump jump)
@@ -2665,6 +2817,7 @@ void abi_RichterNudgeBJump(void)
  * @run 6D:A5C8
  * WHAT IT DOES: As RichterUpWhipLeft by the second table of nudges.
  * HOW: The same tests; the jump is RichterNudgeBJump.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterUpWhipLeft.
  */
 UpWhip RichterUpWhipRight(void)
@@ -2717,18 +2870,26 @@ HurtAir RichterToHurtAir(void)
     HurtAir hurt;
     uint16_t entry;
 
+    jsr_push(0xA5F5);
     RichterPadOverridesOff();
+    jsr_pop();
     hurt.crash = rd8(zField93) == ITEM_CRASH_FIVE;
     if (hurt.crash) {
         hurt.crash_five = RichterItemCrashFive();
         return hurt;
     }
     set_state(STATE_AIR, 2);
+    jsr_push(0xA608);
     hurt.lift = RichterJumpSpeed();
+    jsr_pop();
     wr8(OBJ_3460, HURT_TIMER);
     wr8(OBJ_3250, 0);
+    jsr_push(0xA615);
     hurt.animation = RichterSetAnimation(ANIM_HURT_AIR);
+    jsr_pop();
+    jsr_push(0xA61A);
     hurt.sound = SoundCommand(SOUND_HURT, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+    jsr_pop();
     hurt.item = rd8(zField93);
     entry = (uint16_t)(HitReactionHandlers + (uint8_t)(hurt.item << 1));
     rd8(entry);
@@ -2800,6 +2961,7 @@ void ledge_hurt_exit_shim(LedgeHurt hurt)
  * @run 6D:A633
  * WHAT IT DOES: Fills the slots from 5 with object $0D.
  * HOW: A loop to $10.
+ * WAITS: no.
  * Entry: nothing. Exit: A $0D, Y $10, N, Z, C from comparing it.
  */
 void RichterReactFillD(void)
@@ -2818,6 +2980,7 @@ void abi_RichterReactFillD(void)
  * @run 6D:A640
  * WHAT IT DOES: Fills the slots from 5 with object $0B.
  * HOW: Goes back into the loop.
+ * WAITS: no.
  * Entry: nothing. Exit: A $0B, Y $10, N, Z, C from comparing it.
  */
 void RichterReactFillB(void)
@@ -2844,9 +3007,15 @@ CrashFive RichterItemCrashFive(void)
 {
     CrashFive crash;
 
+    jsr_push(0xA647);
     RichterStopMoving();
+    jsr_pop();
+    jsr_push(0xA64C);
     crash.animation = RichterSetAnimation(ANIM_CRASH_FIVE);
+    jsr_pop();
+    jsr_push(0xA651);
     crash.sound = SoundCommand(SOUND_HURT, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+    jsr_pop();
     set_state(STATE_STAND, 2);
     wr8(OBJ_30F0, CRASH_FIVE_TIMER);
     return crash;
@@ -2871,6 +3040,7 @@ void abi_RichterItemCrashFive(void)
  * @run 6D:A661
  * WHAT IT DOES: Puts object $0E in slot 5.
  * HOW: One store.
+ * WAITS: no.
  * Entry: nothing. Exit: A $0E, N and Z from it. X, Y, C, V kept.
  */
 void RichterReactE(void)
@@ -2890,6 +3060,7 @@ void abi_RichterReactE(void)
  * @run 6D:A667
  * WHAT IT DOES: Puts object $11 in slot 5, and sets the hit timer $60 with the player live.
  * HOW: Three stores.
+ * WAITS: no.
  * Entry: nothing. Exit: A $60, N and Z from it. X, Y, C, V kept.
  */
 void RichterReact11(void)
@@ -2911,6 +3082,7 @@ void abi_RichterReact11(void)
  * @run 6D:A677
  * WHAT IT DOES: Puts object $10 in slot 5.
  * HOW: Goes back into RichterReactE's store.
+ * WAITS: no.
  * Entry: nothing. Exit: A $10, N and Z from it. X, Y, C, V kept.
  */
 void RichterReact10(void)
@@ -2930,6 +3102,7 @@ void abi_RichterReact10(void)
  * @run 6D:A67B
  * WHAT IT DOES: Puts object $12 in slot 5.
  * HOW: Goes back into RichterReactE's store.
+ * WAITS: no.
  * Entry: nothing. Exit: A $12, N and Z from it. X, Y, C, V kept.
  */
 void RichterReact12(void)
@@ -2949,6 +3122,7 @@ void abi_RichterReact12(void)
  * @run 6D:A67F
  * WHAT IT DOES: Puts object $13 in slot 5.
  * HOW: Goes back into RichterReactE's store.
+ * WAITS: no.
  * Entry: nothing. Exit: A $13, N and Z from it. X, Y, C, V kept.
  */
 void RichterReact13(void)
@@ -2969,6 +3143,7 @@ void abi_RichterReact13(void)
  * WHAT IT DOES: Knocked into the air: state 3, animation $31, the knock's speeds, marks
  * PlayerByte3BF1 bit 0.
  * HOW: The jump's speed replaced by the knock's.
+ * WAITS: no.
  * Entry: nothing. Exit: A PlayerByte3BF1, N and Z from it; Y twice the facing, C the facing's
  * bit 7; V as RichterLiftThree. X kept.
  */
@@ -2979,9 +3154,13 @@ Knock RichterKnockBack(void)
     wr8(PlayerMayLeaveTop, 0);
     wr8(PadForcedPressB, 0);
     wr8(zFieldC6, 0);
+    jsr_push(0xA68E);
     knock.lift = RichterJumpSpeed();
+    jsr_pop();
     set_state(STATE_AIR, 0);
+    jsr_push(0xA69D);
     RichterSetAnimation(ANIM_KNOCK);
+    jsr_pop();
     knock.speed = speed_by_facing(KnockSpeeds);
     wr8(OBJ_VY_LO, KNOCK_RISE_LO);
     wr8(OBJ_VY_HI, KNOCK_RISE_HI);
@@ -3007,6 +3186,7 @@ void abi_RichterKnockBack(void)
  * moving jump, and when that faces the way the player already did, marks it in
  * PlayerByte3BF1; otherwise animation $0A.
  * HOW: The facing the pad asks for is set for the jump's speed, then the old one put back.
+ * WAITS: no.
  * Entry: nothing. Exit: V as RichterLiftThree; X kept. Marked, A $80, N set, Z clear, C set, Y
  * twice the facing asked for; otherwise as RichterSetAnimation.
  */
@@ -3020,20 +3200,26 @@ AirStart RichterToAir(void)
     wr8(PadForcedPressB, 0);
     wr8(zFieldC6, 0);
     set_state(STATE_AIR, 0);
+    jsr_push(0xA6D9);
     air.lift = RichterJumpSpeed();
+    jsr_pop();
     if (rd8(zPadHeld) & PAD_RIGHT) {
         way = FACING_RIGHT;
     } else if (rd8(zPadHeld) & PAD_LEFT) {
         way = FACING_LEFT;
     } else {
+        jsr_push(0xA6F2);
         air.animation = RichterSetAnimation(ANIM_AIR);
+        jsr_pop();
         return air;
     }
     air.moving = true;
     facing = rd8(OBJ_2AC0);
     wr8(OBJ_2AC0, way);
     RichterSetAnimation(ANIM_AIR_MOVING);
+    jsr_push(0xA6F5);
     air.speed = RichterSpeedJump();
+    jsr_pop();
     air.same_way = facing == rd8(OBJ_2AC0);
     wr8(OBJ_2AC0, facing);
     if (air.same_way) {
@@ -3067,12 +3253,15 @@ void abi_RichterToAir(void)
  * @run 6D:A70C
  * WHAT IT DOES: Sets a jump's Y speed, stopped along X, and lifts the player off the floor.
  * HOW: Speed $FB50; runs on into RichterLiftThree.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterLiftThree.
  */
 Lift RichterJumpSpeed(void)
 {
     wr8(PlayerByte3BF1, 0);
+    jsr_push(0xA712);
     RichterStopMoving();
+    jsr_pop();
     wr8(OBJ_VY_LO, 0x50);
     wr8(OBJ_VY_HI, 0xFB);
     return RichterLiftThree();
@@ -3088,6 +3277,7 @@ void abi_RichterJumpSpeed(void)
  * @run 6D:A71C
  * WHAT IT DOES: Lifts the player three pixels, stopping at the top of the map.
  * HOW: A 16-bit subtract; high $FF means past the top, and the position becomes zero.
+ * WAITS: no.
  * Entry: nothing. Exit: A the position's high byte; N, Z, C from comparing it with $FF; V
  * from the subtract. X and Y kept.
  */
@@ -3170,63 +3360,86 @@ static void walk_replay_shim(const WalkStep *w)
  * other way with button II, he steps back; else he stands.
  * HOW: RichterReadColumns and RichterFloorCheck, again after OBJ_Y_LO is stepped down; the
  * checks as in the stand's first step. OBJ_FIELDS_2EE0 0 to walk, $32 to step back.
+ * WAITS: no.
  * Entry: nothing. Exit: as the transition taken, with what the checks before it left.
  */
 WalkStep RichterStateWalk(void)
 {
     WalkStep w = { 0 };
 
+    jsr_push(0xA73C);
     w.columns = RichterReadColumns();
+    jsr_pop();
+    jsr_push(0xA73F);
     w.floor = RichterFloorCheck();
+    jsr_pop();
     if (w.floor.how == FLOOR_NONE) {
         w.stepped = (uint8_t)(rd8(OBJ_Y_LO) + 1);
         wr8(OBJ_Y_LO, w.stepped);
+        jsr_push(0xA747);
         w.columns_below = RichterReadColumns();
+        jsr_pop();
+        jsr_push(0xA74A);
         w.floor_below = RichterFloorCheck();
+        jsr_pop();
         if (w.floor_below.how == FLOOR_NONE) {
             w.how = WALK_FELL;
             w.fall = RichterToFall();
             return w;
         }
     }
+    jsr_push(0xA752);
     w.jump = RichterJumpPressed();
+    jsr_pop();
     w.reached = STAND_JUMP;
     if (w.jump) {
         w.how = WALK_JUMPED;
         w.air = RichterToAir();
         return w;
     }
+    jsr_push(0xA75A);
     w.landing = RichterLandOnFloor();
+    jsr_pop();
     w.reached = STAND_LANDING;
+    jsr_push(0xA75D);
     w.crash = RichterTryItemCrash();
+    jsr_pop();
     w.reached = STAND_ITEM_CRASH;
     if (w.crash.how == CRASH_STARTED) {
         w.how = WALK_CRASHED;
         w.hurt = RichterToHurtAir();
         return w;
     }
+    jsr_push(0xA765);
     w.use = RichterUseItem();
+    jsr_pop();
     w.reached = STAND_ITEM_USE;
     if (w.use.how != USE_NO_PRESS) {
         w.how = WALK_ATTACKED;
         w.attack = RichterAttack();
         return w;
     }
+    jsr_push(0xA76D);
     w.ledge = RichterLedgeCheck();
+    jsr_pop();
     w.reached = STAND_LEDGE;
     if (w.ledge.how == LEDGE_LOW || w.ledge.how == LEDGE_HIGH) {
         w.how = WALK_CLIMBED;
         w.climb = RichterClimbStart(ledge_column(w.ledge));
         return w;
     }
+    jsr_push(0xA775);
     w.up = RichterUpHeld();
+    jsr_pop();
     w.reached = STAND_UP;
     if (w.up) {
         w.how = WALK_CROUCHED;
         w.fall = RichterCrouch();
         return w;
     }
+    jsr_push(0xA77D);
     w.tick = RichterAnimationTick();
+    jsr_pop();
     w.reached = STAND_LOOK;
     w.facing = rd8(OBJ_2AC0);
     w.held = rd8(zPadHeld);
@@ -3292,6 +3505,7 @@ void abi_RichterStateWalk(void)
  * @run 6D:A7AC
  * WHAT IT DOES: Stands the player: state 0, step 0, animation 1, no speed.
  * HOW: Clears PlayerMayLeaveTop and PlayerByte3BD5 first.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterSetAnimation. X and V kept.
  */
 AnimationStep RichterStand(void)
@@ -3301,7 +3515,9 @@ AnimationStep RichterStand(void)
     wr8(PlayerMayLeaveTop, 0);
     wr8(PlayerByte3BD5, 0);
     set_state(STATE_STAND, 0);
+    jsr_push(0xA7C1);
     animation = RichterSetAnimation(ANIM_STAND);
+    jsr_pop();
     RichterStopMoving();
     return animation;
 }
@@ -3321,6 +3537,7 @@ void abi_RichterStand(void)
  * HOW: The column's offset (RichterColumnOffset) and 8 more past it, read $0A below him for the
  * low ledge, $1E for the high; the reach from the offset less zTemp00 for the low, less the
  * column's RichterColumnX for the high. The stand's animation unless he was walking.
+ * WAITS: no.
  * Entry: X the column, zTemp00 the low ledge's X, zTemp01 low or high. Exit: A 2, N and Z clear,
  * X the state; Y the column's index, or as RichterSetAnimation; C set unless he was standing, or as
  * RichterSetAnimation; V from the reach's last add or subtract.
@@ -3554,6 +3771,7 @@ static void wait_exit_shim(const CheckLog *log, uint8_t return_high)
  * WHAT IT DOES: State 2, crouching: runs the step's handler: down, attacking, nothing, the
  * crouch's end, or rising.
  * HOW: RichterCrouchHandlers, five words by RichterStepIndex; step 2's is the RTS of step 0.
+ * WAITS: no.
  * Entry: nothing. Exit: as the handler leaves them; step 2, as RichterStepIndex.
  */
 CrouchState RichterStateCrouch(void)
@@ -3561,7 +3779,9 @@ CrouchState RichterStateCrouch(void)
     CrouchState st = { 0 };
     uint16_t entry;
 
+    jsr_push(0xA861);
     st.step = RichterStepIndex();
+    jsr_pop();
     entry = (uint16_t)(RichterCrouchHandlers + (uint8_t)(st.step << 1));
     st.handler = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
     /* Original code runs in the handlers, from the registers the index left. */
@@ -3651,6 +3871,7 @@ static void crouch_fall_shim(const CheckLog *log)
  * step 4); held, left or right alone turns him.
  * HOW: The ground checks in turn, each answering in C. zPadPressed bits 7 and 5: right alone
  * faces right, left alone left, both or neither leave him.
+ * WAITS: no.
  * Entry: nothing. Exit: as the transition taken, with what the checks before it left. Rising,
  * A 4, as RichterSetAnimation left the rest. Still down, A the presses' left and right bits,
  * C set, Z clear only for left alone.
@@ -3688,14 +3909,21 @@ CrouchStep RichterCrouchStep0(void)
  * WHAT IT DOES: Starts an attack from the crouch: turned by the pad, stopped, animation 6, and
  * the whip or the item as a standing attack starts them.
  * HOW: As RichterAttack from its animation on, keeping the state.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterAttack.
  */
 AttackStart RichterCrouchAttack(void)
 {
+    jsr_push(0xA8B9);
     RichterPadOverridesOff();
+    jsr_pop();
     wr8(PlayerByte3BE1, 0);
+    jsr_push(0xA8BF);
     RichterFaceByPad();
+    jsr_pop();
+    jsr_push(0xA8C2);
     RichterStopMoving();
+    jsr_pop();
     return attack_with_animation(ANIM_CROUCH_ATTACK);
 }
 
@@ -3712,6 +3940,7 @@ void abi_RichterCrouchAttack(void)
  * waits for the animation's end, then is down again, animation $0E, step 0.
  * HOW: OBJ_FLAGS_2F38 against 3 and 6. RichterAnimationWait returns past this routine while it
  * runs.
+ * WAITS: no.
  * Entry: nothing. Exit: falling, as $A9DD. Stood, as RichterAnimationTick, state 0 and
  * OBJ_FIELDS_2EE0 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
  * clear, the rest as RichterAnimationRunning. With what the checks before left.
@@ -3755,6 +3984,7 @@ CrouchStep RichterCrouchStep1(void)
  * is below; a jump, the item crash, an item or the whip; else waits for the animation's end
  * and goes back to step 0.
  * HOW: The ground checks in turn. RichterAnimationWait returns past this routine while it runs.
+ * WAITS: no.
  * Entry: nothing. Exit: as the transition taken; waiting, as RichterAnimationRunning, A $A9 and
  * N set; ended, as RichterAnimationRunning. With what the checks before left.
  */
@@ -3789,6 +4019,7 @@ CrouchStep RichterCrouchStep3(void)
  * WHAT IT DOES: Rising from the crouch: reads the ground, falls if nothing is below; a jump,
  * the item crash, a standing attack; else waits for the animation's end and stands.
  * HOW: The ground checks in turn. RichterAnimationWait returns past this routine while it runs.
+ * WAITS: no.
  * Entry: nothing. Exit: as the transition taken; waiting, as RichterAnimationRunning, A $A9 and
  * N set; risen, as RichterStand. With what the checks before left.
  */
@@ -3891,6 +4122,7 @@ void abi_RichterCrouchStep4(void)
  * the step back to 0.
  * HOW: States 5 to 8 are the crashes; two of them share each entry of RichterCrashEndFrames and
  * RichterCrashEndAnimations.
+ * WAITS: no.
  * Entry: nothing. Exit: A $FF, N set, Z clear; Y the entry; C bit 0 of the state less 5, V from
  * that subtract. X kept.
  */
@@ -3931,6 +4163,7 @@ void abi_RichterEndItemCrash(void)
  * unless PlayerByte3BE2 is set or bit 5 of his OBJ_33B0 is; then leaps up and back: Y speed
  * $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_2750 1.
  * HOW: ClearObject on 1 to 15, StartListChannelKind2 on channel 6, RichterStartHitScript.
+ * WAITS: no.
  * Entry: nothing. Exit: A 1, N and Z from it; X 7; Y twice the facing, C the facing's bit 7; V
  * bit 6 of OBJ_33B0 if it was tested, else kept.
  */
@@ -3938,19 +4171,31 @@ Leap RichterLeapClearingOthers(void)
 {
     Leap leap = { { 0, 0 }, false, 0 };
 
-    for (uint8_t object = OBJECT_FIRST_OTHER; object < OBJECT_END; object++)
+    for (uint8_t object = OBJECT_FIRST_OTHER; object < OBJECT_END; object++) {
+        jsr_push(0xC028);
         ClearObject(object);
+        jsr_pop();
+    }
+    jsr_push(0xC034);
     StartListChannelKind2(LEAP_LIST, LEAP_CHANNEL);
+    jsr_pop();
+    jsr_push(0xC039);
     RichterStartHitScript(LEAP_SCRIPT);
+    jsr_pop();
     if (rd8(PlayerByte3BE2) == 0) {
         leap.tested = true;
         leap.hit = rd8(OBJ_33B0);
-        if (!(leap.hit & LEAP_HIT_KEEPS))
+        if (!(leap.hit & LEAP_HIT_KEEPS)) {
+            jsr_push(0xC049);
             RichterStartHitScript(LEAP_SCRIPT_UNLESS_HELD);
+            jsr_pop();
+        }
     }
     wr8(OBJ_VY_LO, LEAP_RISE_LO);
     wr8(OBJ_VY_HI, LEAP_RISE_HI);
+    jsr_push(0xC058);
     RichterSetAnimation(ANIM_LEAP);
+    jsr_pop();
     leap.speed = speed_by_facing(RichterLeapSpeeds);
     wr8(OBJ_27A8, STATE_STAND);
     wr8(OBJ_2750, 1);
@@ -3975,6 +4220,7 @@ void abi_RichterLeapClearingOthers(void)
  * WHAT IT DOES: Clears every object but him, and the whip when its OBJ_2750 is 1; drops the
  * forced presses and PlayerByte3BD8.
  * HOW: ClearObject on 1 to 15, passing over 3 when it is kept.
+ * WAITS: no.
  * Entry: nothing. Exit: A the whip's OBJ_2750; X $10; Z and C set, N clear. Y and V kept.
  */
 OthersCleared RichterClearOthersKeepWhip(void)
@@ -3987,7 +4233,9 @@ OthersCleared RichterClearOthersKeepWhip(void)
             if (cleared.whip == WHIP_KEPT)
                 continue;
         }
+        jsr_push(0xCE2E);
         ClearObject(object);
+        jsr_pop();
     }
     wr8(PlayerByte3BD8, 0);
     wr8(PadForcedPress, 0);
@@ -4009,6 +4257,7 @@ void abi_RichterClearOthersKeepWhip(void)
  * WHAT IT DOES: Says whether the floor under him is marked: once he is $10 down the screen, a
  * column read with bit 5, or with bit 2 while down is held.
  * HOW: OBJ_Y_LO; RichterColumnHit's bits 5 and 2; bit 4 of zPadHeld.
+ * WAITS: no.
  * Entry: nothing. Exit: C set if marked. Too high, A his Y, N and Z from comparing it with $10.
  * No bit, A 0, Z set. Bit 5, A $20, Z clear. Bit 2, A 0, Z clear if down is held, N and V the
  * pad's bits 7 and 6. X, Y kept; V kept but for the pad's test.
@@ -4060,6 +4309,7 @@ void abi_RichterOnMarkedFloor(void)
  * @run 6D:ABCB
  * WHAT IT DOES: Pulls him down while he falls: $38 more Y speed a frame, held at $0700.
  * HOW: OBJ_VY_LO and Hi; at 7 and up the low byte is cleared.
+ * WAITS: no.
  * Entry: nothing. Exit: A the speed's high byte, V from its add; rising, N, Z and C from the add;
  * falling, N, Z and C from comparing it with 7. X and Y kept.
  */
@@ -4097,6 +4347,7 @@ void abi_RichterFallGravity(void)
  * WHAT IT DOES: The frame an item crash shows: by which pair of crash states he is in, and by
  * the attack's kind.
  * HOW: RichterCrashFrames: states 5 and 6 at 0, 7 and 8 at 4, then PlayerByte3BD5.
+ * WAITS: no.
  * Entry: nothing. Exit: A the frame, N and Z from it, X the entry, C and V from adding the kind.
  * Y kept.
  */
@@ -4126,6 +4377,7 @@ void abi_RichterCrashFrame(void)
  * @run 6D:AE2F
  * WHAT IT DOES: Moves him along X, stops his animation and sets the state's step back to 0.
  * HOW: A added to OBJ_X_LO; OBJ_2F90 $FF; OBJ_2800 0.
+ * WAITS: no.
  * Entry: A the move. Exit: A $FF, X the facing, N and Z from it, C and V from the add. Y kept.
  */
 Sum RichterMoveStopped(uint8_t move)
@@ -4182,12 +4434,16 @@ InvincibleTick RichterInvincibleTick(void)
     tick.compared = rd8(PlayerInvincibleTimer);
     if (tick.compared == INVINCIBLE_START) {
         tick.first_sound = true;
+        jsr_push(0xB766);
         tick.first = SoundCommand(SOUND_INVINCIBLE_START, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+        jsr_pop();
         tick.compared = tick.first.taken ? tick.first.mpr4 : SOUND_INVINCIBLE_START;
     }
     if (tick.compared == INVINCIBLE_ENDING) {
         tick.second_sound = true;
+        jsr_push(0xB76F);
         tick.second = SoundCommand(SOUND_INVINCIBLE_ENDING, 0, 0);   /* X and Y: this call site's registers are not worked out yet */
+        jsr_pop();
     }
     tick.value = (uint8_t)(rd8(PlayerInvincibleTimer) - 1);
     wr8(PlayerInvincibleTimer, tick.value);

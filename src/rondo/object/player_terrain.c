@@ -41,6 +41,7 @@ static TileRead read_point_or_nothing(bool off_the_map)
  * WHAT IT DOES: Reads the terrain at a row that may lie above the map: a row off the top
  * reads as nothing.
  * HOW: The row's add, with its carry, decides the point's Y high byte; only zero is read.
+ * WAITS: no.
  * Entry: A row, C its add's carry: set while the row stays on the map. zTemp00 X. Exit: as the
  * read, or A 0 with N and Z from the add.
  */
@@ -90,6 +91,7 @@ void abi_RichterReadAbove(void)
  * WHAT IT DOES: Reads the terrain at a row on the first screen down: a row past it reads as
  * nothing.
  * HOW: The carry from the row's add says it passed; otherwise X and Y high bytes are zero.
+ * WAITS: no.
  * Entry: A row, C its add's carry, zTemp00 X. Exit: as the read, or A 0 with N, Z, C and V kept.
  */
 TileRead RichterReadBelow(uint8_t row, bool carry)
@@ -114,6 +116,7 @@ void abi_RichterReadBelow(void)
  * @run 6D:B6EA
  * WHAT IT DOES: Reads the terrain at a row, the Y high byte taken from Richter's own.
  * HOW: His Y high byte plus the carry from the row's add.
+ * WAITS: no.
  * Entry: A row, C its add's carry, zTemp00 X. Exit: as the read.
  */
 TileRead RichterReadOnScreen(uint8_t row, bool carry)
@@ -135,6 +138,7 @@ void abi_RichterReadOnScreen(void)
  * WHAT IT DOES: Reads the terrain at the point in zTemp00-03, unless the Y high byte just
  * added is not zero.
  * HOW: Tests what the caller's add left.
+ * WAITS: no.
  * Entry: Z from that byte, zTemp00-03 the point. Exit: as the read, or A 0 with N and Z kept.
  */
 TileRead RichterReadIfOnPage(bool on_page)
@@ -154,6 +158,7 @@ void abi_RichterReadIfOnPage(void)
  * @run 6D:B6F9
  * WHAT IT DOES: Gives how far across a probe's column lies, by column and facing.
  * HOW: A table of pairs, one for each way he faces.
+ * WAITS: no.
  * Entry: X column. Exit: A the offset, N and Z from it, Y its index, C and V from the index's
  * add. X kept.
  */
@@ -181,6 +186,7 @@ void abi_RichterColumnOffset(void)
  * WHAT IT DOES: The wall probe's answer when a push holds him against that side: a wall as
  * deep as the push says.
  * HOW: zPlayerPushDepth to zTemp00. Sits before RichterWall, which branches back to it.
+ * WAITS: no.
  * Entry: nothing. Exit: A 2, N and Z clear. X, Y, C and V kept.
  */
 void RichterWallPushed(void)
@@ -202,6 +208,7 @@ void abi_RichterWallPushed(void)
  * him that way counts as a wall, and otherwise up to six points down his side are read,
  * fewer when he crouches or is in the air.
  * HOW: The reach by side, then each column's height added to his position.
+ * WAITS: no.
  * Entry: Y side. Exit: A 2 with N 0, Z 0 at a wall, zTemp00 how deep; else Z set. Other
  * registers and flags as the last step left them.
  */
@@ -236,7 +243,9 @@ WallProbe RichterWall(uint8_t side)
         wr8(zTemp03, (uint8_t)(y >> 8));
         probe.read_made = (y >> 8) == 0;
         if (probe.read_made) {
+            jsr_push(0xBBAF);
             probe.last_read = RichterReadIfOnPage(true);
+            jsr_pop();
             probe.any_read = true;
             if (tile_answer(probe.last_read) & WALL_ANSWER) {
                 probe.how = WALL_FOUND;
@@ -345,6 +354,7 @@ void columns_exit_shim(ColumnsEnd end)
  * @run 6D:BB1D
  * WHAT IT DOES: Reads the five columns of terrain at his waist.
  * HOW: As RichterReadColumns, $0B below his position.
+ * WAITS: no.
  * Entry and exit: as RichterReadColumns.
  */
 ColumnsEnd RichterReadColumnsHigh(void)
@@ -364,6 +374,7 @@ void abi_RichterReadColumnsHigh(void)
  * look at: the step the overlay makes after he has moved.
  * HOW: Each column's answer, row and X go to RichterColumnHit, RichterColumnRow and
  * RichterColumnX.
+ * WAITS: no.
  * Entry: nothing. Exit: A the last column's X, X 5, N 0, Z 1, C 1, Y and V from the last read,
  * or its row's add if that passed the screen. Clobbers zTemp00-03, zTemp10.
  */
@@ -382,6 +393,7 @@ void abi_RichterReadColumns(void)
  * @run 6D:BAAD
  * WHAT IT DOES: Says whether either of the first two columns read holds a blocking tile.
  * HOW: Bits $24 of RichterColumnHit.
+ * WAITS: no.
  * Entry: nothing. Exit: at one, A those bits, X the column; else A 0, X 2, C 1, Z 1. V and,
  * at one, C kept. Y kept.
  */
@@ -425,6 +437,7 @@ static void floor_clears_push(void)
  * its depth cleared, as the floor check finds one.
  * HOW: Sits before RichterFloorCheck, which branches back to it, and goes on into its found
  * floor's end.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterFloorCheck finding a floor at column 0.
  */
 FloorResult RichterFloorOddScreen(void)
@@ -448,6 +461,7 @@ void abi_RichterFloorOddScreen(void)
  * odd screens across, always at the first, with its depth cleared. A push that was already
  * carrying him counts as floor too.
  * HOW: Bits $81 of the first three columns, but bit 7 alone counts only for the first.
+ * WAITS: no.
  * Entry: nothing. Exit: C the answer, X the column. A, N, Z and V as the path left them.
  */
 FloorResult RichterFloorCheck(void)
@@ -509,6 +523,7 @@ void abi_RichterFloorCheck(void)
  * @run 6D:BAFF
  * WHAT IT DOES: Reads the two columns lowest under Richter and says whether either blocks.
  * HOW: Each is read $12 below him, and bits $24 of the answer tell.
+ * WAITS: no.
  * Entry: nothing. Exit: at one, A those bits, X the column; else A 0, X 2, C 1, Z 1. Y and V
  * from the last read.
  */
@@ -562,6 +577,7 @@ void abi_RichterLowColumnsBlocked(void)
  * WHAT IT DOES: Asks whether Richter stands on a floor, and lifts him out of it: by how deep
  * the column read, but not above the top of the map. A push from below does not count.
  * HOW: RichterReadColumns and RichterFloorCheck, then the column once more $0E below him.
+ * WAITS: no.
  * Entry: X kept unless a column was found. Exit: A 1 and N 0, Z 0 on a floor, else A 0, Z set.
  * C from the lift, V as the last step left it. Clobbers zTemp00-03, zTemp10.
  */
@@ -681,6 +697,7 @@ void column_read_exit_shim(ColumnRead one)
  * WHAT IT DOES: Says whether one column of terrain, $0E below Richter, is solid to stand on:
  * a tile with bit 7 set does not count.
  * HOW: Bit 0 of the answer, unless bit 7 is set.
+ * WAITS: no.
  * Entry: X column. Exit: A the answer, N and Z from it. X kept; Y, C and V from the read.
  */
 ColumnRead RichterSolidUnderColumn(uint8_t column)
@@ -747,6 +764,7 @@ void abi_RichterReadUnderFeet(void)
  * @run 6D:B868
  * WHAT IT DOES: Says whether up is held.
  * HOW: Bit 6 of zPadHeld.
+ * WAITS: no.
  * Entry: nothing. Exit: C the answer. All else kept.
  */
 bool RichterUpHeld(void)
@@ -764,6 +782,7 @@ void abi_RichterUpHeld(void)
  * @run 6D:B87E
  * WHAT IT DOES: Says whether the jump button was newly pressed.
  * HOW: Bit 0 of zPadPressed.
+ * WAITS: no.
  * Entry: nothing. Exit: C the answer. All else kept.
  */
 bool RichterJumpPressed(void)
@@ -782,6 +801,7 @@ void abi_RichterJumpPressed(void)
  * WHAT IT DOES: Says whether Richter has nothing to stand on: no floor found, or the column
  * found is not solid under him.
  * HOW: RichterFloorCheck, then RichterSolidUnderColumn.
+ * WAITS: no.
  * Entry: nothing. Exit: C the answer; A, X, Y and V as the last step left them.
  */
 FootingCheck RichterHasNoFooting(void)
@@ -793,7 +813,9 @@ FootingCheck RichterHasNoFooting(void)
         return footing;
     }
     footing.read_made = true;
+    jsr_push(0xB88D);
     footing.under = RichterSolidUnderColumn(footing.check.column);
+    jsr_pop();
     footing.no_floor = solid_answer(footing.under) != 0;
     return footing;
 }
@@ -832,6 +854,7 @@ static bool set_ladder_point(uint16_t reach)
  * WHAT IT DOES: Says whether there is something to climb down from here: looks downward from
  * $18 below him, a tile at a time, for the first solid tile with one of bits 0 or 2 above it.
  * HOW: The section's camera mode settles it in two cases; low on the screen it cannot be.
+ * WAITS: no.
  * Entry: nothing. Exit: C the answer. A, Y and V as the last step left them. X kept. Clobbers
  * zTemp00-03, zTemp10-11.
  */
@@ -960,6 +983,7 @@ typedef struct {
  * WHAT IT DOES: Says whether jump was pressed and he may act on it: with up held, only if there
  * is a ladder to take.
  * HOW: RichterJumpPressed, then RichterLadderCheck when up is held; the latched buttons clear.
+ * WAITS: no.
  * Entry: nothing. Exit: C the answer, with what the last step left.
  */
 JumpOrClimb RichterJumpOrClimb(void)
@@ -1007,6 +1031,7 @@ static bool column_counts(uint8_t answer, uint8_t pad_bit)
  * on, unless a push holds him. zTemp01 says which: 0 low, 1 high.
  * HOW: RichterLowColumnsBlocked with down held, RichterColumnsBlocked with up held; bit $20 of
  * the tile counts whatever the pad.
+ * WAITS: no.
  * Entry: nothing. Exit: C the answer, with what the last step left.
  */
 LedgeCheck RichterLedgeCheck(void)
@@ -1089,6 +1114,7 @@ void abi_RichterLedgeCheck(void)
  * WHAT IT DOES: Lifts him out of the floor by how deep this column read, and not above the top
  * of the map.
  * HOW: The depth in RichterColumnRow, signed, which is cleared.
+ * WAITS: no.
  * Entry: X column. Exit: A his Y high byte, or 2 at the top; N and Z from it; C and V from the
  * subtract. X and Y kept. Clobbers zTemp10.
  */
@@ -1129,6 +1155,7 @@ void abi_RichterLiftByColumn(void)
  * @run 6D:BA7A
  * WHAT IT DOES: If there is a floor under him, lifts him out of it.
  * HOW: RichterFloorCheck, then runs on into RichterLiftByColumn.
+ * WAITS: no.
  * Entry: nothing. Exit: as RichterLiftByColumn, or as RichterFloorCheck with no floor.
  */
 LandingLift RichterLandOnFloor(void)

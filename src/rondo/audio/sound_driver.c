@@ -1705,53 +1705,94 @@ void abi_SoundPitchTick(void)
 PitchTick SoundPitchTickPlain(uint8_t channel)
 {
     PitchTick tick;
+    uint8_t a, b, hi;
+    bool carry;
+    Sum low, high;
 
     pitch_tick_start();
-    if ((rd8((uint16_t)(SoundVibratoDepthLo + channel)) | rd8((uint16_t)(SoundVibratoDepth + channel))) != 0 &&
-        rd8((uint16_t)(SoundVibratoWait + channel)) == rd8((uint16_t)(SoundVibratoDelay + channel)))
-        vibrato_offset(channel, 0x897C);
-    tick.last = add_pitch(channel);
-    if (rd8((uint16_t)(SoundGlideFrames + channel)) != 0 && rd8((uint16_t)(SoundGlideDelay + channel)) == 0) {
-        uint16_t step = (uint16_t)(rd8((uint16_t)(SoundGlideStepLo + channel)) |
-                                   (rd8((uint16_t)(SoundGlideStepHi + channel)) << 8));
-        bool down = (step & 0x8000) != 0;
-        uint8_t shift = rd8((uint16_t)(SoundTempoPhase + channel));
-        Sum low;
-
-        count_change();
-        if (down)
-            step = (uint16_t)(0 - step);
-        /* Shifted down a place for each bit the shift byte gives up before its set bit comes out. */
-        for (;;) {
-            bool last = (shift & 0x80) != 0;
-
-            step = (uint16_t)(step >> 1);
-            shift = (uint8_t)(shift << 1);
-            if (last)
-                break;
-        }
-        wr8(zSoundFine, (uint8_t)step);
-        wr8(zSoundStepHi, (uint8_t)(step >> 8));
-        if (!down) {
-            low = add_bytes(rd8(zSoundWordLo), (uint8_t)step, false);
-            wr8(zSoundWordLo, low.value);
-            tick.last = add_bytes(rd8(zSoundWordHi), (uint8_t)(step >> 8), low.carry);
-        } else {
-            low = sub_bytes(rd8(zSoundWordLo), (uint8_t)step, true);
-            wr8(zSoundWordLo, low.value);
-            tick.last = sub_bytes(rd8(zSoundWordHi), (uint8_t)(step >> 8), low.carry);
-        }
-        wr8(zSoundWordHi, tick.last.value);
+    a = rd8((uint16_t)(SoundVibratoDepthLo + channel));
+    b = rd8((uint16_t)(SoundVibratoDepth + channel));
+    tick.last.value = 0;
+    tick.last.carry = false;
+    tick.last.overflow = false;
+    if ((a | b) != 0) {
+        a = rd8((uint16_t)(SoundVibratoWait + channel));
+        b = rd8((uint16_t)(SoundVibratoDelay + channel));
+        if (a == b)
+            vibrato_offset(channel, 0x897C);
     }
-    if (rd8((uint16_t)(SoundModulationSpeed + channel)) != 0) {
-        Modulation mod = SoundModulate(channel);
+    a = rd8(zSoundWordLo);
+    b = rd8((uint16_t)(SoundPitchFine + channel));
+    low = add_bytes(a, b, false);
+    wr8(zSoundWordLo, low.value);
+    a = rd8(zSoundWordHi);
+    b = rd8((uint16_t)(SoundPitchNote + channel));
+    high = add_bytes(a, b, low.carry);
+    wr8(zSoundWordHi, high.value);
+    tick.last = high;
+    a = rd8((uint16_t)(SoundGlideFrames + channel));
+    if (a != 0) {
+        a = rd8((uint16_t)(SoundGlideDelay + channel));
+        if (a == 0) {
+            count_change();
+            a = rd8((uint16_t)(SoundGlideStepLo + channel));
+            wr8(zSoundFine, a);
+            hi = rd8((uint16_t)(SoundGlideStepHi + channel));
+            wr8(zSoundStepHi, hi);
+            if ((hi & 0x80) != 0) {
+                a = rd8(zSoundFine);
+                low = sub_bytes(0, a, true);
+                wr8(zSoundFine, low.value);
+                a = rd8(zSoundStepHi);
+                high = sub_bytes(0, a, low.carry);
+                wr8(zSoundStepHi, high.value);
+            }
+            a = rd8((uint16_t)(SoundTempoPhase + channel));
+            do {
+                carry = LSR8(ZP->sound_step.hi);
+                (void)ROR8(ZP->sound_step.lo, carry);
+                carry = (a & 0x80) != 0;
+                a = (uint8_t)(a << 1);
+            } while (!carry);
+            if ((hi & 0x80) == 0) {
+                a = rd8(zSoundFine);
+                b = rd8(zSoundWordLo);
+                low = add_bytes(a, b, false);
+                wr8(zSoundWordLo, low.value);
+                a = rd8(zSoundStepHi);
+                b = rd8(zSoundWordHi);
+                high = add_bytes(a, b, low.carry);
+                wr8(zSoundWordHi, high.value);
+            } else {
+                a = rd8(zSoundWordLo);
+                b = rd8(zSoundFine);
+                low = sub_bytes(a, b, true);
+                wr8(zSoundWordLo, low.value);
+                a = rd8(zSoundWordHi);
+                b = rd8(zSoundStepHi);
+                high = sub_bytes(a, b, low.carry);
+                wr8(zSoundWordHi, high.value);
+            }
+            tick.last = high;
+        }
+    }
+    a = rd8((uint16_t)(SoundModulationSpeed + channel));
+    if (a != 0) {
+        Modulation mod;
 
+        jsr_push(0x89E8);
+        mod = SoundModulate(channel);
+        jsr_pop();
         tick.last = add_bytes(mod.add, mod.before, mod.carry_in);
         count_change();
     }
-    tick.fine = rd8(zSoundWordLo);
-    tick.note = rd8(zSoundWordHi);
-    tick.frequency = SoundSetFrequency(tick.fine, channel, tick.note);
+    a = rd8(zSoundWordLo);
+    hi = rd8(zSoundWordHi);
+    tick.fine = a;
+    tick.note = hi;
+    jsr_push(0x89F1);
+    tick.frequency = SoundSetFrequency(a, channel, hi);
+    jsr_pop();
     return tick;
 }
 

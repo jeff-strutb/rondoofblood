@@ -306,16 +306,61 @@ static void (*find_abi(uint16_t target))(void)
     return 0;
 }
 
-/* Code with no C: its registers on return are the case's seeded ones, nothing else changes. */
+/*
+ * Contracts (tools/rondo/stubs.csv): a callee with no C that is known to keep some registers or flags. Each row holds a run
+ * address, the disc place of the overlay copy it describes (all ones: any copy) and the letters it keeps (A X Y, N V Z C).
+ * Only the row that matches the callee and the copy resident under the case's mapper applies; every other stub is arbitrary.
+ */
+typedef struct { uint16_t target; uint32_t disc; unsigned keeps; } StubContract;
+static StubContract contracts[256];
+static unsigned contract_count;
+
+static void load_contracts(const char *path)
+{
+    FILE *f = fopen(path, "r");
+    char line[256];
+
+    while (f && fgets(line, sizeof line, f) && contract_count < 256) {
+        unsigned t;
+        char d[32], k[32];
+        unsigned keeps = 0;
+
+        if (sscanf(line, "%x %31s %31s", &t, d, k) != 3)
+            continue;
+        for (char *c = k; *c; c++)
+            keeps |= *c == 'A' ? 1 : *c == 'X' ? 2 : *c == 'Y' ? 4 : *c == 'N' ? 8 : *c == 'V' ? 16 : *c == 'Z' ? 32 : *c == 'C' ? 64 : 0;
+        contracts[contract_count].target = (uint16_t)t;
+        contracts[contract_count].disc = d[0] == '*' ? 0xFFFFFFFFu : (uint32_t)strtoul(d, 0, 16);
+        contracts[contract_count].keeps = keeps;
+        contract_count++;
+    }
+    if (f)
+        fclose(f);
+}
+
+/* Code with no C: its registers on return are the case's seeded ones, except what a contract says it keeps. */
 static void stub_routine(uint16_t target)
 {
     rt_event();
     unsigned n = stub_calls[target]++;
+    unsigned keeps = 0;
+    uint8_t was_a = cpu.a, was_x = cpu.x, was_y = cpu.y, was_p = cpu.p;
+    uint32_t here = resident_disc(target);
 
-    cpu.a = seeded(target, n, 11);
-    cpu.x = seeded(target, n, 12);
-    cpu.y = seeded(target, n, 13);
+    for (unsigned i = 0; i < contract_count; i++)
+        if (contracts[i].target == target && (contracts[i].disc == 0xFFFFFFFFu || contracts[i].disc == here))
+            keeps |= contracts[i].keeps;
+    if (keeps)
+        printf("#CONTRACT %04X %X\n", target, here);
+    cpu.a = (keeps & 1) ? was_a : seeded(target, n, 11);
+    cpu.x = (keeps & 2) ? was_x : seeded(target, n, 12);
+    cpu.y = (keeps & 4) ? was_y : seeded(target, n, 13);
     cpu.p = (uint8_t)(seeded(target, n, 14) & (P_N | P_V | P_Z | P_C | (decimal_ok ? P_D : 0)));
+    {
+        unsigned kp = ((keeps & 8) ? P_N : 0) | ((keeps & 16) ? P_V : 0) | ((keeps & 32) ? P_Z : 0) | ((keeps & 64) ? P_C : 0);
+
+        cpu.p = (uint8_t)((cpu.p & ~kp) | (was_p & kp));
+    }
     printf("STUB %04X -> A=%02X X=%02X Y=%02X P=%02X\n", target, cpu.a, cpu.x, cpu.y, cpu.p);
 }
 
@@ -442,6 +487,8 @@ int main(int argc, char **argv)
             fclose(rf);
         }
     }
+    if (getenv("LIFTCMP_STUBS") && getenv("LIFTCMP_STUBS")[0])
+        load_contracts(getenv("LIFTCMP_STUBS"));
     if (getenv("LIFTCMP_ENDS") && getenv("LIFTCMP_ENDS")[0])
         ends_addr = (int)strtol(getenv("LIFTCMP_ENDS"), 0, 16);
     decimal_ok = getenv("LIFTCMP_DECIMAL") && getenv("LIFTCMP_DECIMAL")[0] == '1';

@@ -105,6 +105,8 @@ typedef struct {
     bool any_read;
     TileRead last_read;   /* the last column that was read */
     uint16_t last_row, last_lift;
+    uint8_t mode;         /* PlayerMayLeaveTop as the probe read it: C of the compare */
+    bool v;               /* V of the last height add */
 } WallProbe;
 
 /* How a read of the five columns ended. */
@@ -1149,6 +1151,9 @@ typedef struct {
     uint8_t push;
     LowColumns low;
     int high_column;
+    uint8_t a;          /* the exit state: A, X, N and Z from a, C */
+    uint8_t x;
+    bool c;
 } LedgeCheck;
 
 /* How a landing lift ended. */

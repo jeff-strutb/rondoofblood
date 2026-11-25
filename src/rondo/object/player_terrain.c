@@ -27,6 +27,7 @@ enum {
 FloorResult RichterFloorOddScreen(void);
 void RichterWallPushed(void);
 static void floor_clears_push(FloorResult *result);
+static void read_entry_shim(Sum row, uint8_t x, uint8_t y);
 
 /* The point's X and Y high byte are set, or zero: a read of the point or no answer. */
 static TileRead read_point_or_nothing(bool off_the_map)
@@ -235,39 +236,48 @@ void abi_RichterWallPushed(void)
 WallProbe RichterWall(uint8_t side)
 {
     WallProbe probe = { WALL_BARRED };
-    uint8_t state;
-    uint8_t reach;
+    uint8_t state, reach, value, x_lo, y_lo, y_hi, column;
+    Sum across, low, high;
+    TileRead read;
 
-    if (rd8(PlayerMayLeaveTop) == 1)
+    probe.mode = rd8(PlayerMayLeaveTop);
+    if (probe.mode == 1) {
         return probe;
-    if (rd8(zPlayerPush) & rd8((uint16_t)(RichterWallPushBits + side))) {
+    }
+    value = RD8(ZP->player_push);
+    if (value & rd8((uint16_t)(RichterWallPushBits + side))) {
         RichterWallPushed();
         probe.how = WALL_PUSHED;
         return probe;
     }
     reach = rd8((uint16_t)(RichterWallReach + side));
-    wr8(zTemp10, reach);
-    state = rd8(OBJ_27A8);
-    probe.column = state == STATE_IN_AIR || state == STATE_FALLING ? WALL_FIRST_COLUMN_IN_AIR :
-                   state == STATE_CROUCHING ? WALL_FIRST_COLUMN_CROUCHING : WALL_FIRST_COLUMN_STANDING;
+    WR8(ZP->temp10, reach);
+    state = RD8(OBJ->state[0]);
+    column = state == STATE_IN_AIR || state == STATE_FALLING ? WALL_FIRST_COLUMN_IN_AIR :
+             state == STATE_CROUCHING ? WALL_FIRST_COLUMN_CROUCHING : WALL_FIRST_COLUMN_STANDING;
+    probe.column = column;
     for (; probe.column < WALL_COLUMNS; probe.column++) {
-        uint16_t y = (uint16_t)(rd8(OBJ_Y_LO) | (rd8(OBJ_Y_HI) << 8));
-
-        probe.last_row = y;
-        probe.last_lift = (uint16_t)(rd8((uint16_t)(RichterWallLift + probe.column)) |
-                                     (rd8((uint16_t)(RichterWallLiftHigh + probe.column)) << 8));
-        y = (uint16_t)(y + probe.last_lift);
-        wr8(zTemp00, (uint8_t)(rd8(OBJ_X_LO) + reach));
-        wr8(zTemp01, 0);
-        wr8(zTemp02, (uint8_t)y);
-        wr8(zTemp03, (uint8_t)(y >> 8));
-        probe.read_made = (y >> 8) == 0;
+        x_lo = RD8(OBJ->x_lo[0]);
+        value = RD8(ZP->temp10);
+        across = add_bytes(x_lo, value, false);
+        WR8(ZP->temp00, across.value);
+        WR8(ZP->temp01, 0);
+        y_lo = RD8(OBJ->y_lo[0]);
+        low = add_bytes(y_lo, rd8((uint16_t)(RichterWallLift + probe.column)), false);
+        WR8(ZP->temp02, low.value);
+        y_hi = RD8(OBJ->y_hi[0]);
+        high = add_bytes(y_hi, rd8((uint16_t)(RichterWallLiftHigh + probe.column)), low.carry);
+        WR8(ZP->temp03, high.value);
+        probe.v = high.overflow;
+        probe.read_made = high.value == 0;
+        read_entry_shim(high, probe.column, side);
+        jsr_push(0xBBAF);
+        read = RichterReadIfOnPage(probe.read_made);
+        jsr_pop();
         if (probe.read_made) {
-            jsr_push(0xBBAF);
-            probe.last_read = RichterReadIfOnPage(true);
-            jsr_pop();
+            probe.last_read = read;
             probe.any_read = true;
-            if (tile_answer(probe.last_read) & WALL_ANSWER) {
+            if (tile_answer(read) & WALL_ANSWER) {
                 probe.how = WALL_FOUND;
                 return probe;
             }
@@ -275,15 +285,6 @@ WallProbe RichterWall(uint8_t side)
     }
     probe.how = WALL_NONE;
     return probe;
-}
-
-/* C and V from a column's height add, for a column off the page. */
-static void wall_lift_flags_shim(WallProbe probe)
-{
-    uint16_t sum = (uint16_t)(probe.last_row + probe.last_lift);
-
-    abi_flag(P_C, sum < probe.last_row);
-    abi_flag(P_V, (~(probe.last_row ^ probe.last_lift) & (probe.last_row ^ sum) & 0x8000) != 0);
 }
 
 void wall_exit_shim(WallProbe probe)
@@ -299,7 +300,7 @@ void wall_exit_shim(WallProbe probe)
     case WALL_PUSHED:
         cpu.a = WALL_ANSWER;
         abi_nz(WALL_ANSWER);
-        abi_flag(P_C, rd8(PlayerMayLeaveTop) >= 1);
+        abi_flag(P_C, probe.mode >= 1);
         break;
     case WALL_FOUND:
         terrain_read_exit_shim(probe.last_read);
@@ -308,10 +309,12 @@ void wall_exit_shim(WallProbe probe)
         cpu.x = probe.column;
         break;
     case WALL_NONE:
-        if (probe.any_read)
+        if (probe.any_read) {
             terrain_read_exit_shim(probe.last_read);
-        if (!probe.read_made)
-            wall_lift_flags_shim(probe);
+        }
+        if (!probe.read_made) {
+            abi_flag(P_V, probe.v);
+        }
         cpu.a = 0;
         abi_nz(0);
         abi_flag(P_C, true);
@@ -1183,70 +1186,81 @@ static bool column_counts(uint8_t answer, uint8_t pad_bit)
 LedgeCheck RichterLedgeCheck(void)
 {
     LedgeCheck check = { LEDGE_PUSHED };
+    BlockedColumns high;
+    uint8_t push, held, bits;
+    bool found = false;
 
-    check.push = rd8(zPlayerPush);
+    push = RD8(ZP->player_push);
+    check.push = push;
     check.high_column = -1;
-    if (check.push & PUSH_ON_FLOOR)
+    if (push & PUSH_ON_FLOOR) {
         return check;
+    }
+    jsr_push(0xBA48);
+    jsr_push(0xBA53);
     check.low = RichterLowColumnsBlocked();
-    if (check.low.blocked_column >= 0 && column_counts(check.low.answer, PAD_DOWN)) {
-        wr8(zTemp01, 0);
-        check.how = LEDGE_LOW;
-        return check;
+    jsr_pop();
+    if (check.low.blocked_column >= 0) {
+        bits = (uint8_t)(check.low.answer & TILE_BLOCK_ANY);
+        found = bits != 0;
+        if (!found) {
+            held = RD8(ZP->pad_held);
+            found = (held & PAD_DOWN) != 0;
+        }
+        if (found) {
+            WR8(ZP->temp01, 0);
+            jsr_pop();
+            check.how = LEDGE_LOW;
+            check.a = bits;
+            check.x = (uint8_t)check.low.blocked_column;
+            check.c = true;
+            return check;
+        }
     }
-    check.high_column = RichterColumnsBlocked().column;
-    if (check.high_column >= 0 &&
-        column_counts(rd8((uint16_t)(RichterColumnHit + check.high_column)), PAD_UP)) {
-        wr8(zTemp01, 1);
-        check.how = LEDGE_HIGH;
-        return check;
-    }
+    jsr_pop();
+    jsr_push(0xBA4C);
+    jsr_push(0xBA67);
+    high = RichterColumnsBlocked();
+    jsr_pop();
+    check.high_column = high.column;
     check.how = LEDGE_NONE;
+    check.a = 0;
+    check.x = BLOCKED_COLUMNS;
+    check.c = false;
+    if (high.column >= 0) {
+        bits = (uint8_t)(high.bits & TILE_BLOCK_ANY);
+        found = bits != 0;
+        if (!found) {
+            held = RD8(ZP->pad_held);
+            found = (held & PAD_UP) != 0;
+        }
+        check.a = bits;
+        check.x = (uint8_t)high.column;
+        if (found) {
+            WR8(ZP->temp01, 1);
+            check.how = LEDGE_HIGH;
+            check.a = 1;
+            check.c = true;
+        }
+    }
+    jsr_pop();
     return check;
 }
 
 void ledge_check_exit_shim(LedgeCheck check)
 {
-    uint8_t low_bit = check.low.answer & TILE_BLOCK_ANY;
-
-    abi_flag(P_V, (check.push & 0x40) != 0);
     if (check.how == LEDGE_PUSHED) {
-        abi_nz(check.push & PUSH_ON_FLOOR);
+        abi_flag(P_V, (check.push & 0x40) != 0);
         abi_flag(P_N, (check.push & 0x80) != 0);
+        abi_flag(P_Z, false);
         abi_flag(P_C, false);
         return;
     }
     low_columns_exit_shim(check.low);
-    if (check.low.blocked_column >= 0) {
-        cpu.a = low_bit;
-        abi_nz(low_bit);
-        if (low_bit != 0)
-            abi_flag(P_N, true);
-    }
-    if (check.how == LEDGE_LOW) {
-        abi_flag(P_C, true);
-        return;
-    }
-    if (check.high_column >= 0) {
-        uint8_t high_bit = rd8((uint16_t)(RichterColumnHit + check.high_column)) & TILE_BLOCK_ANY;
-
-        cpu.x = (uint8_t)check.high_column;
-        cpu.a = high_bit;
-        abi_nz(high_bit);
-        if (high_bit != 0)
-            abi_flag(P_N, true);
-    } else {
-        cpu.x = BLOCKED_COLUMNS;
-        cpu.a = 0;
-        abi_nz(0);
-    }
-    if (check.how == LEDGE_HIGH) {
-        cpu.a = 1;
-        abi_nz(1);
-        abi_flag(P_C, true);
-    } else {
-        abi_flag(P_C, false);
-    }
+    cpu.a = check.a;
+    cpu.x = check.x;
+    abi_nz(check.a);
+    abi_flag(P_C, check.c);
 }
 
 void abi_RichterLedgeCheck(void)

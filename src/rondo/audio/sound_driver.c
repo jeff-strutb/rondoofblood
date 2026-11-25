@@ -1387,6 +1387,15 @@ void abi_SoundSetFrequency(void)
     frequency_exit_shim(SoundSetFrequency(cpu.a, cpu.x, note), note);
 }
 
+/* The RAM block-move stub the driver builds (a TIN and an RTS at $22E7), which no C stands for: run as the original. */
+static void block_move_stub_shim(uint16_t ret, uint8_t a, uint8_t x, uint8_t y)
+{
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    call_orig(ret, BlockMoveStub);
+}
+
 /*
  * @routine 004E:654 SoundLoadWave
  * @run 75:8E54
@@ -1402,7 +1411,6 @@ void abi_SoundSetFrequency(void)
  */
 WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel, uint8_t kept_y)
 {
-    uint16_t source = (uint16_t)(SOUND_WAVES + (wave << 5));
     WaveLoad load = { WAVE_NONE, 0, 0, { 0, false, false } };
 
     load.wave = wave;
@@ -1427,16 +1435,7 @@ WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel, uint8_t kept_y)
     wr8(BlockMoveLengthLo, WAVE_SAMPLES);
     wr8(BlockMoveLengthHi, 0);
     wr8(BlockMoveReturn, OPCODE_RTS);
-    jsr_push(0x8E9A);
-    push8(kept_y);                    /* TIN pushes Y, A and X, in that order */
-    push8(OPCODE_RTS);
-    push8(channel);
-    for (uint16_t i = 0; i < WAVE_SAMPLES; i++)
-        wr8(PsgWaveData, rd8((uint16_t)(source + i)));
-    (void)pull8();
-    (void)pull8();
-    (void)pull8();
-    jsr_pop();
+    block_move_stub_shim(0x8E9A, OPCODE_RTS, channel, kept_y);
     wr8(PsgControl, 0);
     load.how = WAVE_LOADED;
     return load;
@@ -3020,7 +3019,9 @@ SequenceEnd SoundCommandReturn(uint8_t channel)
         wr8((uint16_t)(SoundChannelCommand + channel), 0);
     if (channel >= EFFECT_SHARED_END) {
         wr8((uint16_t)(SoundChannelPriority + channel), 0);
+        jsr_push(0xB78E);
         end.wave = SoundLoadWave(rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)), channel, 0 /* Y: not yet worked out */);
+        jsr_pop();
     }
     return end;
 }

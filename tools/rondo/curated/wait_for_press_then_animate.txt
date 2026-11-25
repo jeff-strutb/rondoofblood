@@ -1,0 +1,4 @@
+a=00 x=20 y=00 s=F0 p= mem:27A8+20=01 mem:2800+20=00 mem:2CD0=AA mem:2BC8=D0 mem:20C1=10
+a=00 x=20 y=00 s=F0 p= mem:27A8+20=01 mem:2800+20=00 mem:2CD0=AA mem:2BC8=D8 mem:20C1=10
+a=00 x=20 y=00 s=F0 p= mem:27A8+20=01 mem:2800+20=00 mem:2CD0=AA mem:2BC8=C0 mem:20C1=10
+a=00 x=20 y=00 s=F0 p= mem:27A8+20=01 mem:2800+20=00 mem:2CD0=AA mem:2BC8=D0 mem:20C1=00

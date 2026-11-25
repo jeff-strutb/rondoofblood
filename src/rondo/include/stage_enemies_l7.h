@@ -69,6 +69,27 @@ Ended StartSplitterHigh(uint8_t slot, bool carry_in);
 Ended StartSplitterLow(uint8_t slot, bool carry_in);
 Ended MaybeShootAhead(uint8_t slot);
 
+Ended PickWaterLevel(void);
+SoundEnd WaitForPage2(uint8_t slot, uint8_t y);
+Ended RiseUntilAboveGround(uint8_t slot);
+Ended WaitForSlot10State4(uint8_t slot);
+Ended StartNumberedPiece(uint8_t slot);
+Ended FollowPlayerHitbox(uint8_t slot);
+
+Ended RiseAndClear(uint8_t slot);
+Ended RaiseStateAfterSlot10(uint8_t slot);
+Ended StartChainLink(uint8_t slot);
+Ended ChainFollowsPrevious(uint8_t slot);
+Ended StartKickedPiece(uint8_t slot);
+Ended StepThenClear(uint8_t slot);
+
+void ClearAnimation(uint8_t slot);
+Ended EnterNextAndReset(uint8_t slot);
+Ended FlipSide(uint8_t slot);
+Ended StepListByPhase(uint8_t slot);
+Ended SetSwaySpeed(uint8_t slot);
+Ended BobAndMove(uint8_t slot);
+
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {
     bool in_view;

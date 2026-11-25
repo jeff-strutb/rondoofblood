@@ -122,4 +122,30 @@ StageScrollEnd StageScrollStepU(uint8_t x);
 StageScrollEnd StageScrollStepV(uint8_t x);
 StageScrollEnd StageScrollStepW(uint8_t x);
 
+/* system/stage_start.c: the script started and the carry and overflow of the table index add. */
+typedef struct { uint8_t script; Sum index; } StageStartEnd;
+StageStartEnd StartStageLists(void);
+StageStartEnd StartStageListsB(void);
+StageStartEnd StartStageListsC(void);
+StageStartEnd StartStageListsD(void);
+StageStartEnd StartStageListsE(void);
+StageStartEnd StartStageListsF(void);
+StageStartEnd StartStageListsG(void);
+StageStartEnd StartStageListsH(void);
+StageStartEnd StartStageListsI(void);
+StageStartEnd StartStageListsJ(void);
+StageStartEnd StartStageListsK(void);
+StageStartEnd StartStageListsL(void);
+StageStartEnd StartStageListsM(void);
+StageStartEnd StartStageListsN(void);
+StageStartEnd StartStageListsO(void);
+StageStartEnd StartStageListsP(void);
+StageStartEnd StartStageListsQ(void);
+StageStartEnd StartStageListsR(void);
+StageStartEnd StartStageListsS(void);
+StageStartEnd StartStageListsT(void);
+StageStartEnd StartStageListsU(void);
+StageStartEnd StartStageListsV(void);
+StageStartEnd StartStageListsW(void);
+
 #endif

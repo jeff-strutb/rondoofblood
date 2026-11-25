@@ -88,6 +88,7 @@
 #define StreamStepHi 0x2702 /* stream walk step high */
 #define HitboxXLo 0x2710 /* per slot of 16: the hitbox centre's X, low byte: the object's X low plus the hitbox X offset */
 #define HitboxYLo 0x2720 /* per slot of 16: the hitbox centre's Y, low byte */
+#define HitAttackFlags 0x2740 /* the byte before the object table that the hit handler tests: bit 0 and bit 1 mark the player attacks that hit objects this frame (an object hit by bit 0 is marked $20 and by bit 1 $40 in its status flags) */
 #define HitboxHi 0x2730 /* per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset */
 #define LevelFullWalk 0x2744 /* set during a whole-screen stream walk */
 #define Field2742 0x2742 /* a stage overlay byte (six uses in 024F:67F); no meaning found yet */

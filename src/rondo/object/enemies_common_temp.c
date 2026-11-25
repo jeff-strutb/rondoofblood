@@ -514,6 +514,138 @@ void abi_DropItemWhenHitE(void)
 }
 
 /*
+ * @routine 0259:2C5 DropItemWhenHitF
+ * @run 70:A2C5
+ * WHAT IT DOES: When the object has taken a hit of 5 or more and its f31f8 bits 2 to 4 are not
+ * zero, may drop an item: a random number under the limit in a table at overlay address $ABC6
+ * (indexed by those bits minus one) picks the chance; the item comes from a table at $ABCE,
+ * indexed by the player distance sum's low nibble plus the bits minus one times $10; it starts in
+ * a free slot from $30 at the object's place. Every stage overlay has its own copy and tables.
+ * HOW: NextRandom, PlayerDistanceSum, FindFreeSlotFrom30, StartObjectAtPlace. The arms the draft
+ * reaches as untraced bytes (most of the cases here) are NOT CHECKED; they wait for coverage
+ * (PROCEDURE section 6).
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
+ * free slot (or the table index); X kept. Clobbers zTemp00.
+ */
+Ended DropItemWhenHitF(uint8_t slot)
+{
+    enum { LIMITS = 0xABC6, ITEMS = 0xABCE };
+
+    return drop_item_when_hit(slot, LIMITS, ITEMS);
+}
+
+void abi_DropItemWhenHitF(void)
+{
+    abi_ended(DropItemWhenHitF(cpu.x));
+}
+
+/*
+ * @routine 09E9:2C5 DropItemWhenHitG
+ * @run 70:A2C5
+ * WHAT IT DOES: When the object has taken a hit of 5 or more and its f31f8 bits 2 to 4 are not
+ * zero, may drop an item: a random number under the limit in a table at overlay address $ABEF
+ * (indexed by those bits minus one) picks the chance; the item comes from a table at $ABF7,
+ * indexed by the player distance sum's low nibble plus the bits minus one times $10; it starts in
+ * a free slot from $30 at the object's place. Every stage overlay has its own copy and tables.
+ * HOW: NextRandom, PlayerDistanceSum, FindFreeSlotFrom30, StartObjectAtPlace. The arms the draft
+ * reaches as untraced bytes (most of the cases here) are NOT CHECKED; they wait for coverage
+ * (PROCEDURE section 6).
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
+ * free slot (or the table index); X kept. Clobbers zTemp00.
+ */
+Ended DropItemWhenHitG(uint8_t slot)
+{
+    enum { LIMITS = 0xABEF, ITEMS = 0xABF7 };
+
+    return drop_item_when_hit(slot, LIMITS, ITEMS);
+}
+
+void abi_DropItemWhenHitG(void)
+{
+    abi_ended(DropItemWhenHitG(cpu.x));
+}
+
+/*
+ * @routine 0A99:2C5 DropItemWhenHitH
+ * @run 70:A2C5
+ * WHAT IT DOES: When the object has taken a hit of 5 or more and its f31f8 bits 2 to 4 are not
+ * zero, may drop an item: a random number under the limit in a table at overlay address $AC44
+ * (indexed by those bits minus one) picks the chance; the item comes from a table at $AC4C,
+ * indexed by the player distance sum's low nibble plus the bits minus one times $10; it starts in
+ * a free slot from $30 at the object's place. Every stage overlay has its own copy and tables.
+ * HOW: NextRandom, PlayerDistanceSum, FindFreeSlotFrom30, StartObjectAtPlace. The arms the draft
+ * reaches as untraced bytes (most of the cases here) are NOT CHECKED; they wait for coverage
+ * (PROCEDURE section 6).
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
+ * free slot (or the table index); X kept. Clobbers zTemp00.
+ */
+Ended DropItemWhenHitH(uint8_t slot)
+{
+    enum { LIMITS = 0xAC44, ITEMS = 0xAC4C };
+
+    return drop_item_when_hit(slot, LIMITS, ITEMS);
+}
+
+void abi_DropItemWhenHitH(void)
+{
+    abi_ended(DropItemWhenHitH(cpu.x));
+}
+
+/*
+ * @routine 0CA9:2C5 DropItemWhenHitI
+ * @run 70:A2C5
+ * WHAT IT DOES: When the object has taken a hit of 5 or more and its f31f8 bits 2 to 4 are not
+ * zero, may drop an item: a random number under the limit in a table at overlay address $AC3C
+ * (indexed by those bits minus one) picks the chance; the item comes from a table at $AC44,
+ * indexed by the player distance sum's low nibble plus the bits minus one times $10; it starts in
+ * a free slot from $30 at the object's place. Every stage overlay has its own copy and tables.
+ * HOW: NextRandom, PlayerDistanceSum, FindFreeSlotFrom30, StartObjectAtPlace. The arms the draft
+ * reaches as untraced bytes (most of the cases here) are NOT CHECKED; they wait for coverage
+ * (PROCEDURE section 6).
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
+ * free slot (or the table index); X kept. Clobbers zTemp00.
+ */
+Ended DropItemWhenHitI(uint8_t slot)
+{
+    enum { LIMITS = 0xAC3C, ITEMS = 0xAC44 };
+
+    return drop_item_when_hit(slot, LIMITS, ITEMS);
+}
+
+void abi_DropItemWhenHitI(void)
+{
+    abi_ended(DropItemWhenHitI(cpu.x));
+}
+
+/*
+ * @routine 0A99:2FE PlayHitSoundM
+ * @run 70:A2FE
+ * WHAT IT DOES: Plays the sound that bits 5 to 7 of the object's f31f8 ask for, when they are not
+ * zero and the object is on the first screen: a table of sounds at overlay address $AC7C, indexed
+ * by those bits minus one. Every stage overlay has its own copy with its own table.
+ * HOW: Shifts the byte right five times, masks three bits, indexes the table, and calls
+ * SoundIfOnFirstScreen.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
+ * played: as SoundIfOnFirstScreen leaves it (Y the table index).
+ */
+ScreenSoundEnd PlayHitSoundM(uint8_t slot)
+{
+    enum { TABLE = 0xAC7C };
+
+    return sound_from_hit_code(slot, TABLE);
+}
+
+void abi_PlayHitSoundM(void)
+{
+    abi_screen_sound_end(PlayHitSoundM(cpu.x));
+}
+
+/*
  * @routine 088A:5AF FaceThePlayerInSomeStatesC
  * @run 70:ADAF
  * WHAT IT DOES: FaceThePlayerInSomeStates in the overlay at sector 088A, with its table at $ADC0.

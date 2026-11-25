@@ -675,6 +675,8 @@ void RasterInterrupt(void);
 uint8_t BitOfIndex(uint8_t index, uint8_t x, uint8_t *byte);
 void bit_of_index_exit_shim(uint8_t index, uint8_t mask, uint8_t byte);
 void score_exit_shim(uint8_t changed);
+uint8_t AddScoreByte(uint8_t points);
+uint8_t AddScoreWord(void);
 void record_event_exit_shim(uint8_t event, uint8_t merged, uint8_t byte);
 uint8_t RecordEvent(uint8_t event, uint8_t x, uint8_t *byte);
 bool RecordObjectEvent(uint8_t object, uint8_t *stored, uint8_t *event, uint8_t *byte);

@@ -209,6 +209,23 @@ StepBounce StepAndPounce(uint8_t slot, uint8_t y);
 AttackWalk WalkThenTurn(uint8_t slot, uint8_t column);
 FollowEnd FollowPartner(uint8_t slot, uint8_t y);
 
+/* object/enemies_stage0c_temp.c */
+typedef struct {
+    Ended pre;
+    bool played;
+    TrackPlay track;
+    bool sounded;
+    uint8_t command;
+    CommandCall call;
+    Ended end;
+} CueEnd;
+Ended FallingWithGravity(uint8_t slot);
+Ended StartWhenHurt(uint8_t slot);
+Ended EnterStateSevenOnFlag(uint8_t slot);
+Ended StartWithGuard(uint8_t slot);
+Ended SlideAngleDown(uint8_t slot);
+Ended SlideAngleUp(uint8_t slot);
+
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {
     bool in_view;

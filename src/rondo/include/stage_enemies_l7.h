@@ -273,6 +273,10 @@ Ended SlideAngleDown(uint8_t slot);
 Ended SlideAngleUp(uint8_t slot);
 
 
+ViewTest TouchesPlayerMark(uint8_t slot);
+Ended CountBothPairs(uint8_t slot);
+SoundEnd HealAndClear(uint8_t slot, uint8_t y);
+Ended StartOnPlayerAnimation(uint8_t slot);
 Ended AdvanceByHealth(uint8_t slot);
 Ended PickGroundSpeedInWindow(uint8_t slot);
 Ended MoveThenPick(uint8_t slot);

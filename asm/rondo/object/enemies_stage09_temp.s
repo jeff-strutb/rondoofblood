@@ -1,3 +1,86 @@
+; @routine 093C:082 TouchesPlayerMark
+; @run 70:B882
+; WHAT IT DOES: Says, with C, whether a mark applies to the object: false (C clear) when the object has no state or is in state 4 or the player byte PlayerByte3BD8 is 0;
+; otherwise a table byte decides: with the player byte 2 the table at $A166, else the table at $A146, indexed by the wave counter's low three bits plus $18; a nonzero
+; byte (zero for the first table) says yes (C set).
+; HOW: Compares and a table read (bank 70).
+; Untraced: the player byte 2 arm (B88E to B89A).
+; WAITS: no.
+; Entry: X object. Exit: C the answer; A and N, Z as the last load or compare left them.
+TouchesPlayerMark:
+    lda a:OBJ_27A8,x
+    beq TouchesPlayerMark_at0
+    cmp #$04
+    beq TouchesPlayerMark_at0
+    lda a:PlayerByte3BD8
+    beq TouchesPlayerMark_at0
+    cmp #$02
+    bne TouchesPlayerMark_at1
+    lda z:zWaveCounter
+    and #$07
+    clc
+    adc #$18
+    tay
+    lda a:$A166,y
+    beq TouchesPlayerMark_at0
+TouchesPlayerMark_at2:
+    sec
+    rts
+TouchesPlayerMark_at1:
+    lda z:zWaveCounter
+    and #$07
+    clc
+    adc #$18
+    tay
+    lda a:$A146,y
+    bne TouchesPlayerMark_at2
+TouchesPlayerMark_at0:
+    clc
+    rts
+
+; @routine 093C:1DD CountBothPairs
+; @run 70:B9DD
+; WHAT IT DOES: Runs CountTimerPairDownOrRepick and CountAnglePairDownOrRepick.
+; HOW: Two calls.
+; WAITS: no.
+; Entry: X object. Exit: as the second, over the first's.
+CountBothPairs:
+    jsr CountTimerPairDownOrRepick
+    jsr CountAnglePairDownOrRepick
+    rts
+
+; @routine 09E9:6B0 HealAndClear
+; @run 70:A6B0
+; WHAT IT DOES: An item that heals: the player's health goes up $28 (to at most $5C) and the item is cleared; when the health is already $5C the object instead plays sound $0B
+; and becomes a kind $9F in state 0 with a timer of 3.
+; HOW: A compare, an add, a tail jump into ClearObject.
+; Untraced: the full-health arm (A6B6) and the cap (A6D4).
+; WAITS: no.
+; Entry: X object. Exit: the last compare, add or load.
+HealAndClear:
+    lda z:zPlayerHealth
+    cmp #$5C
+    bne HealAndClear_at0
+    lda #$0B
+    jsr VecSoundCommand
+    lda #$9F
+    sta a:OBJ_2750,x
+    lda #$03
+    sta a:OBJ_34B8,x
+    stz a:OBJ_27A8,x
+    rts
+HealAndClear_at0:
+    lda z:zPlayerHealth
+    clc
+    adc #$28
+    sta z:zPlayerHealth
+    cmp #$5C
+    bcc HealAndClear_at1
+    lda #$5C
+    sta z:zPlayerHealth
+HealAndClear_at1:
+    jmp VecClearObject
+
 ; @routine 09EA:55A FaceByCue
 ; @run 70:AD5A
 ; WHAT IT DOES: While the screen is not scrolling along X, and in a state the table at $AD70 marks, the object
@@ -687,6 +770,36 @@ WaitForSlot10State4:
     inc a:OBJ_27A8,x
 WaitForSlot10State4_at0:
     rts
+
+; @routine 09EB:6CD StartOnPlayerAnimation
+; @run 70:B6CD
+; WHAT IT DOES: In state 0 loads the object's record and sets its hitbox offsets to $15 and $14; later it takes the place and facing of slot $10 and steps the animation list that
+; a table at $B707 names for slot $10's state (the list index from the table at $B6FF).
+; HOW: LoadObjectRecord, CopyObjectPlaceBack, table reads (bank 70), a tail jump into StepObjectFrames.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: state 0: A $14 from the store; else as StepObjectFrames.
+StartOnPlayerAnimation:
+    lda a:OBJ_27A8,x
+    bne StartOnPlayerAnimation_at0
+    jsr VecLoadObjectRecord
+    lda #$15
+    sta a:OBJ_3930,x
+    lda #$14
+    sta a:OBJ_39E0,x
+    rts
+StartOnPlayerAnimation_at0:
+    ldy #$10
+    jsr VecCopyObjectPlaceBack
+    lda a:$2AD0
+    sta a:OBJ_2AC0,x
+    ldy a:$27B8
+    lda a:$B6FF,y
+    tay
+    lda a:$B707,y
+    sta z:zTemp10
+    lda a:$B708,y
+    sta z:zTemp11
+    jmp VecStepObjectFrames
 
 ; @routine 09EB:7A4 FollowPlayerHitbox
 ; @run 70:B7A4

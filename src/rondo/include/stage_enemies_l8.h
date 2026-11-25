@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "enemy_objects.h"
 #include "common_objects.h"
+#include "stage_enemies_l7.h"
 
 /* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
 static inline Ended l8_of_scale(ScaleResult r)
@@ -263,5 +264,36 @@ SoundEnd SoundAndSpawnFiveAtFrame27(uint8_t slot, uint8_t y_entry);
 Ended StepListThenState5(uint8_t slot, uint8_t y_entry);
 SoundEnd SoundThenLeapByFacing(uint8_t slot, uint8_t y_entry);
 SoundEnd MaybeSound19AndSpawnPiece(uint8_t slot, uint8_t number, uint8_t y_entry);
+
+/* object/enemies_l8_st19.c */
+Ended LoadRecordInStateZero(uint8_t slot);
+Ended FaceThePlayerByStateTable(uint8_t slot);
+Ended StateTableHurtFlag(uint8_t slot);
+SoundEnd EnterState0FWhenFlagged(uint8_t slot, uint8_t y_entry);
+Ended HitBoxByFrameTable(uint8_t slot);
+Ended LoadRecordStartPieceAtPlace(uint8_t slot);
+Ended StartScriptsFromTable(uint8_t slot);
+ExitChain FallToGroundAt98(uint8_t slot, uint8_t y_entry, bool carry_in);
+ExitChain FallThenSoundAtGround(uint8_t slot, uint8_t y_entry, bool carry_in);
+ExitChain MoveXAndProbeWallBounce(uint8_t slot, uint8_t y_entry);
+ExitChain StepListThenWallBounce(uint8_t slot, uint8_t y_entry);
+ExitChain CountDownThenHopTowardPlayer(uint8_t slot, uint8_t y_entry);
+ExitChain CountDownThenHopAwayFromPlayer(uint8_t slot, uint8_t y_entry);
+ExitChain StepListFallThenSoundAtGround(uint8_t slot, uint8_t y_entry);
+ExitChain StepListThenTileWriteAndSpawn(uint8_t slot, uint8_t y_entry);
+ExitChain WaitThenStepListWithSoundAndBounce(uint8_t slot, uint8_t y_entry);
+ExitChain StepListFallThenCountLandings(uint8_t slot, uint8_t y_entry);
+Ended LoadRecordLeapByNumberThenFall(uint8_t slot);
+Ended FollowObject10HitBoxByFrame(uint8_t slot);
+
+/* object/enemies_l8_st20.c */
+Ended RecordEventWhenSlot10InState0F(uint8_t slot);
+Ended FaceThePlayerByStateTableB(uint8_t slot);
+Ended MaybeDropItemByPlayerDistance(uint8_t slot);
+Ended HitBoxByFrameTableCE8F(uint8_t slot);
+Ended StepListFacePlayerUntilNear(uint8_t slot, uint8_t y_entry);
+Ended FacePlayerThenPickPhase(uint8_t slot);
+SoundEnd LeapByPlayerDistance(uint8_t slot, uint8_t y_entry);
+Ended CountDownThenClearPhase(uint8_t slot);
 
 #endif

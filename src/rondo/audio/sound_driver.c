@@ -2412,6 +2412,7 @@ void abi_SoundCommandVibratoGrow(void)
  * @run 75:8B6E
  * WHAT IT DOES: Command $E5: the modulation's speed and its two masks, from the start.
  * HOW: SoundModulationSpeed, SoundModulationMaskHi and Lo; the phase cleared.
+ * WAITS: no.
  * Entry: X channel. Exit: A the low mask, N and Z from it. X, Y, C and V kept.
  */
 uint8_t SoundCommandModulation(uint8_t channel)
@@ -2455,13 +2456,14 @@ static LoopEnd loop_end(uint8_t channel, const SoundLoop *loop)
 {
     LoopEnd end = { false, 0, { 0, false, false } };
     uint8_t passes = argument(0);
-    int16_t detune;
-    Sum low;
+    uint8_t a, b, step, count;
+    bool carry;
+    Sum low, volume;
 
     if (passes != 0) {
-        uint8_t count = (uint8_t)(rd8((uint16_t)(loop->count + channel)) + 1);
-
-        wr8((uint16_t)(loop->count + channel), count);
+        count = rd8((uint16_t)(loop->count + channel));
+        wr8((uint16_t)(loop->count + channel), (uint8_t)(count + 1));
+        count = rd8((uint16_t)(loop->count + channel));
         if (passes == count) {
             wr8((uint16_t)(loop->volume + channel), 0);
             wr8((uint16_t)(loop->detune_fine + channel), 0);
@@ -2471,14 +2473,28 @@ static LoopEnd loop_end(uint8_t channel, const SoundLoop *loop)
             return end;
         }
     }
-    wr8((uint16_t)(loop->volume + channel), (uint8_t)(argument(1) + rd8((uint16_t)(loop->volume + channel))));
-    detune = (int16_t)((int8_t)argument(2) * 16);
-    wr8(zSoundWordLo, (uint8_t)((uint16_t)detune >> 8));
-    low = add_bytes((uint8_t)detune, rd8((uint16_t)(loop->detune_fine + channel)), false);
+    a = argument(1);
+    b = rd8((uint16_t)(loop->volume + channel));
+    volume = add_bytes(a, b, false);
+    wr8((uint16_t)(loop->volume + channel), volume.value);
+    wr8(zSoundWordLo, 0);
+    a = argument(2);
+    if ((a & 0x80) != 0)
+        (void)DEC8(ZP->sound_word.lo);
+    for (step = 0; step != 4; step++) {
+        carry = (a & 0x80) != 0;
+        a = (uint8_t)(a << 1);
+        (void)ROL8(ZP->sound_word.lo, carry);
+    }
+    b = rd8((uint16_t)(loop->detune_fine + channel));
+    low = add_bytes(a, b, false);
     wr8((uint16_t)(loop->detune_fine + channel), low.value);
-    end.sum = add_bytes(rd8(zSoundWordLo), rd8((uint16_t)(loop->detune_note + channel)), low.carry);
+    a = rd8(zSoundWordLo);
+    b = rd8((uint16_t)(loop->detune_note + channel));
+    end.sum = add_bytes(a, b, low.carry);
     wr8((uint16_t)(loop->detune_note + channel), end.sum.value);
-    wr8(zSoundSequenceLo, rd8((uint16_t)(loop->start_lo + channel)));
+    a = rd8((uint16_t)(loop->start_lo + channel));
+    wr8(zSoundSequenceLo, a);
     end.value = rd8((uint16_t)(loop->start_hi + channel));
     wr8(zSoundSequenceHi, end.value);
     return end;
@@ -2792,6 +2808,7 @@ void abi_SoundCommandRepeatMark(void)
  * goes back to the mark, playing the section again; the third goes back to where the second was,
  * and the next pass goes on again.
  * HOW: SoundRepeatState 0, 1 and 2; SoundRepeatReturnLo and Hi.
+ * WAITS: no.
  * Entry: X channel. Exit: X, Y, C and V kept. First, A 0, N and Z from the state 1. Second and
  * third, A the high byte of where it goes, N and Z from it. Past 2, A the state less 2, N and Z
  * from it.
@@ -2803,10 +2820,12 @@ Repeat SoundCommandRepeat(uint8_t channel)
     repeat.state = rd8((uint16_t)(SoundRepeatState + channel));
     switch (repeat.state) {
     case REPEAT_MARKED:
+        (void)rd8((uint16_t)(SoundRepeatState + channel));
         wr8((uint16_t)(SoundRepeatState + channel), REPEAT_FIRST_PASS);
         repeat.value = 0;
         break;
     case REPEAT_FIRST_PASS:
+        (void)rd8((uint16_t)(SoundRepeatState + channel));
         wr8((uint16_t)(SoundRepeatState + channel), REPEAT_AGAIN);
         wr8((uint16_t)(SoundRepeatReturnLo + channel), rd8(zSoundSequenceLo));
         wr8((uint16_t)(SoundRepeatReturnHi + channel), rd8(zSoundSequenceHi));
@@ -2815,6 +2834,7 @@ Repeat SoundCommandRepeat(uint8_t channel)
         wr8(zSoundSequenceHi, repeat.value);
         break;
     case REPEAT_AGAIN:
+        (void)rd8((uint16_t)(SoundRepeatState + channel));
         wr8((uint16_t)(SoundRepeatState + channel), REPEAT_FIRST_PASS);
         wr8(zSoundSequenceLo, rd8((uint16_t)(SoundRepeatReturnLo + channel)));
         repeat.value = rd8((uint16_t)(SoundRepeatReturnHi + channel));

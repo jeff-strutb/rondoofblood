@@ -1,0 +1,30 @@
+
+; @routine 093D:02B AnimateMoveThenSetUpAtRandom
+; @run 71:C02B
+; WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+; down; at zero it plays sound $93, picks a speed and turn (PickSpeedAndTurnFromTableC), sets
+; f36c8 to $18 plus seven random bits, stops its animation and advances its step.
+; HOW: StepFramesFacingPlayerC, ApplyVelocity, a decrement, then the calls named.
+; WAITS: no.
+; Entry: X object, D clear. Exit: while counting, N, Z from the timer, C and V from ApplyVelocity,
+; Y as the animation step left it; at zero A the timer value, N, Z from the new step, C and V from
+; the add of $18.
+AnimateMoveThenSetUpAtRandom:
+    ldy #$04
+    jsr StepFramesFacingPlayerC
+    jsr VecApplyVelocity
+    dec a:OBJ_34B8,x
+    bne AnimateMoveThenSetUpAtRandom_at0
+    lda #$93
+    jsr VecSoundCommand
+    jsr PickSpeedAndTurnFromTableC
+    jsr VecNextRandom
+    and #$7F
+    clc
+    adc #$18
+    sta a:OBJ_36C8,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+AnimateMoveThenSetUpAtRandom_at0:
+    rts

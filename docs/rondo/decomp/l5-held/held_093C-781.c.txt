@@ -1,0 +1,18 @@
+
+/*
+ * @routine 093C:781 TurnAroundAndHalveSpeedB
+ * @run 70:BF81
+ * WHAT IT DOES: TurnAroundAndHalveSpeed in this stage's overlay (PickSpeedAndTurnFromTableC).
+ * HOW: The shared body.
+ * WAITS: no.
+ * Entry, exit: as TurnAroundAndHalveSpeed.
+ */
+Ended TurnAroundAndHalveSpeedB(uint8_t slot, bool carry_in)
+{
+    return turn_around_body(slot, carry_in, PickSpeedAndTurnFromTableC, 0xBF81);
+}
+
+void abi_TurnAroundAndHalveSpeedB(void)
+{
+    abi_ended(TurnAroundAndHalveSpeedB(cpu.x, (cpu.p & P_C) != 0));
+}

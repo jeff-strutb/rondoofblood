@@ -1,0 +1,65 @@
+
+/*
+ * @routine 093D:02B AnimateMoveThenSetUpAtRandom
+ * @run 71:C02B
+ * WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+ * down; at zero it plays sound $93, picks a speed and turn (PickSpeedAndTurnFromTableC), sets
+ * f36c8 to $18 plus seven random bits, stops its animation and advances its step.
+ * HOW: StepFramesFacingPlayerC, ApplyVelocity, a decrement, then the calls named.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: while counting, N, Z from the timer, C and V from ApplyVelocity,
+ * Y as the animation step left it; at zero A the timer value, N, Z from the new step, C and V from
+ * the add of $18.
+ */
+SoundEnd AnimateMoveThenSetUpAtRandom(uint8_t slot)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    FrameStepEnd frames;
+    AxisMove move;
+    RandomResult random;
+    uint8_t left, step;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xC030);
+    frames = StepFramesFacingPlayerC(slot, 4);
+    jsr_pop();
+    e = ended_then(ended_with_y(ended_kept(), 4), frames.end);
+    jsr_push(0xC033);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = ended_then(e, ended_of_axis_move(move));
+    left = (uint8_t)(RD8(OBJ->life_timer[slot]) - 1);
+    WR8(OBJ->life_timer[slot], left);
+    e = ended_then(e, ended_nz(left));
+    result.end = e;
+    if (left != 0) {
+        return result;
+    }
+    result.sounded = true;
+    result.command = 0x93;
+    result.before = ended_then(e, ended_load(0x93));
+    jsr_push(0xC03D);
+    result.call = SoundCommand(0x93, slot, ended_y_or(e, 0));
+    jsr_pop();
+    jsr_push(0xC040);
+    e = PickSpeedAndTurnFromTableC(slot);
+    jsr_pop();
+    jsr_push(0xC043);
+    random = NextRandom();
+    jsr_pop();
+    e = ended_then(e, ended_of_random(random));
+    sum = add_bytes((uint8_t)(random.value & 0x7F), 0x18, false);
+    WR8(OBJ->f36c8[slot], sum.value);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    step = INC8(OBJ->f2800[slot]);
+    result.end = ended_then(e, ended_with_a(ended_with_overflow(ended_with_carry(ended_nz(step), sum.carry),
+                                                                sum.overflow), sum.value));
+    return result;
+}
+
+void abi_AnimateMoveThenSetUpAtRandom(void)
+{
+    abi_sound_end(AnimateMoveThenSetUpAtRandom(cpu.x));
+}

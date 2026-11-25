@@ -1,0 +1,60 @@
+
+; @routine 093D:055 SwayThenThrowOrWait
+; @run 71:C055
+; WHAT IT DOES: Moves the object, adds a sway to its X speed from a table of two words at overlay address $C0BC by
+; the side of the player (bit 0 of SideOfPlayer), limits that speed (ClampSpeedXToTwo) and takes $0010 from its Y
+; speed. While the Y speed stays positive it animates facing the player (list 4) and, when its X speed's sign
+; differs from the side, sets its frame to $20. Once the Y speed has turned negative it runs ThrowUpward, animates
+; and plays sound $22 every fourth frame; and when it is on the first screen down (Y high 0) and its Y low is below
+; f36c8 it advances its step.
+; HOW: ApplyVelocity, SideOfPlayer, two sixteen bit adds and a subtract, ClampSpeedXToTwo, ThrowUpward,
+; StepFramesFacingPlayerC, SoundEveryFourthFrame.
+; WAITS: no.
+; Entry: X object, D clear. Exit: see the wrapper; the last test or call, as the code leaves them.
+SwayThenThrowOrWait:
+    jsr VecApplyVelocity
+    jsr VecSideOfPlayer
+    and #$01
+    sta z:zTemp00
+    asl a
+    tay
+    lda a:OBJ_VX_LO,x
+    clc
+    adc a:$C0BC,y
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_VX_HI,x
+    adc a:$C0BD,y
+    sta a:OBJ_VX_HI,x
+    jsr $C0C0
+    lda a:OBJ_VY_LO,x
+    sec
+    sbc #$10
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    sbc #$00
+    sta a:OBJ_VY_HI,x
+    bmi SwayThenThrowOrWait_at0
+    ldy #$04
+    jsr StepFramesFacingPlayerC
+    lda a:OBJ_VX_HI,x
+    rol a
+    rol a
+    and #$01
+    eor z:zTemp00
+    beq SwayThenThrowOrWait_at1
+    lda #$20
+    sta a:OBJ_2A68,x
+    rts
+SwayThenThrowOrWait_at0:
+    jsr $C0E5
+    ldy #$04
+    jsr StepFramesFacingPlayerC
+    jsr SoundEveryFourthFrame
+    lda a:OBJ_Y_HI,x
+    bne SwayThenThrowOrWait_at1
+    lda a:OBJ_Y_LO,x
+    cmp a:OBJ_36C8,x
+    bcs SwayThenThrowOrWait_at1
+    inc a:OBJ_2800,x
+SwayThenThrowOrWait_at1:
+    rts

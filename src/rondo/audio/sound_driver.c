@@ -1390,6 +1390,8 @@ void abi_SoundSetFrequency(void)
 /* The RAM block-move stub the driver builds (a TIN and an RTS at $22E7), which no C stands for: run as the original. */
 static void block_move_stub_shim(uint16_t ret, uint8_t a, uint8_t x, uint8_t y, Sum last)
 {
+    Cpu entry = cpu;      /* the typed caller's wrapper reads its own registers from cpu: give them back */
+
     abi_nz(a);
     abi_flag(P_C, last.carry);
     abi_flag(P_V, last.overflow);
@@ -1397,6 +1399,7 @@ static void block_move_stub_shim(uint16_t ret, uint8_t a, uint8_t x, uint8_t y, 
     cpu.x = x;
     cpu.y = y;
     call_orig(ret, BlockMoveStub);
+    cpu = entry;
 }
 
 /*

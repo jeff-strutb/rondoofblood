@@ -756,18 +756,18 @@ def stub_contracts():
     if not os.path.exists(STUBS):
         return rows
     for r in csv.DictReader(l for l in open(STUBS, encoding="utf-8") if l.strip() and not l.startswith("#")):
-        t, place, keeps, ev = r["target"].strip(), r["place"].strip(), r["keeps"].strip(), r["evidence"].strip()
-        if not ev or not keeps or any(c not in "AXYNVZC" for c in keeps):
-            raise SystemExit(f"liftcmp: stubs.csv row {t} {place}: it needs its keeps (letters of AXYNVZC) and its evidence")
+        t, entry, place, keeps, sets, ev = (r[k].strip() for k in ("target", "entry", "place", "keeps", "sets", "evidence"))
+        if not ev or not (keeps or sets) or any(c not in "AXYNVZC" for c in keeps) or not entry:
+            raise SystemExit(f"liftcmp: stubs.csv row {t} {place}: it needs its entry, its keeps (letters of AXYNVZC) or sets, and its evidence")
         disc = None if place == "*" else int(place.split(":")[0], 16) * 2048 + int(place.split(":")[1], 16)
-        rows.append((int(t, 16), disc, keeps, ev))
+        rows.append((int(t, 16), int(entry, 16), disc, keeps or "-", sets or "-", ev))
     return rows
 
 
 def write_stub_file(path):
     with open(path, "w") as f:
-        for t, d, k, _ in stub_contracts():
-            f.write("%04X %s %s\n" % (t, "*" if d is None else "%X" % d, k))
+        for t, e, d, k, st, _ in stub_contracts():
+            f.write("%04X %04X %s %s %s\n" % (t, e, "*" if d is None else "%X" % d, k, st))
     return path
 
 
@@ -987,10 +987,10 @@ def one(name, a, ctx):
             if x.startswith("#CONTRACT"):
                 used.add(x.split()[1])
     assumed = []
-    for t, d, k, ev in stub_contracts():
+    for t, e, d, k, st, ev in stub_contracts():
         if "%04X" % t in used:
-            assumed.append(f"ASSUMPTION: the callee at ${t:04X} ({'any copy' if d is None else 'the copy at disc %X' % d}) has no C; its stub keeps {k} "
-                           f"as the call left it ({ev})")
+            assumed.append(f"ASSUMPTION: the callee at ${t:04X} ({'any copy' if d is None else 'the copy of the overlay whose $%04X is at disc %X' % (e, d)}) has no C; "
+                           f"its stub keeps {k}{'; sets ' + st if st != '-' else ''} ({ev})")
     lines = lines[:1] + assumed + lines[1:]
     rep = os.path.join(a.report, name + ".txt")
     os.makedirs(a.report, exist_ok=True)

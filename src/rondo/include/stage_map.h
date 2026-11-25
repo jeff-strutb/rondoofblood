@@ -71,4 +71,29 @@ StageRunsEnd ExpandStageVramRunsT(void);
 StageRunsEnd ExpandStageVramRunsU(void);
 StageRunsEnd ExpandStageVramRunsV(void);
 
+/* system/stage_lists.c: where the walk stopped: Y the last index, X if a run was stored, V from the last add. */
+typedef struct { uint8_t x; bool x_set; uint8_t y; bool v; } StageListEnd;
+StageListEnd ExpandStageLists(void);
+StageListEnd ExpandStageListsB(void);
+StageListEnd ExpandStageListsC(void);
+StageListEnd ExpandStageListsD(void);
+StageListEnd ExpandStageListsE(void);
+StageListEnd ExpandStageListsF(void);
+StageListEnd ExpandStageListsG(void);
+StageListEnd ExpandStageListsH(void);
+StageListEnd ExpandStageListsI(void);
+StageListEnd ExpandStageListsJ(void);
+StageListEnd ExpandStageListsK(void);
+StageListEnd ExpandStageListsL(void);
+StageListEnd ExpandStageListsM(void);
+StageListEnd ExpandStageListsN(void);
+StageListEnd ExpandStageListsO(void);
+StageListEnd ExpandStageListsP(void);
+StageListEnd ExpandStageListsQ(void);
+StageListEnd ExpandStageListsR(void);
+StageListEnd ExpandStageListsS(void);
+StageListEnd ExpandStageListsT(void);
+StageListEnd ExpandStageListsU(void);
+StageListEnd ExpandStageListsV(void);
+
 #endif

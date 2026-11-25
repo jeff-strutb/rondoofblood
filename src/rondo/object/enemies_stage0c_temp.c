@@ -1714,3 +1714,58 @@ void abi_StartSideDrifter(void)
 {
     abi_ended(StartSideDrifter(cpu.x));
 }
+/*
+ * @routine 0CAB:31C CountThenCue
+ * @run 70:B31C
+ * WHAT IT DOES: Counts the object's timer down; at zero it clears bits 3 and 4 of zField8E, plays the music again (CdPlayAgain), sends sound $BF, sets the angle word to
+ * $8000 (OBJ_3568 $80, OBJ_35C0 0) and enters its next state.
+ * HOW: DEC, two memory bit clears, CdPlayAgain, SoundCommand, INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+ */
+CueEnd CountThenCue(uint8_t slot, uint8_t y)
+{
+    CueEnd r = { { 0 }, false, { 0 }, false, 0, { 0 }, { 0 } };
+    uint8_t left, flags, state;
+
+    left = DEC8(OBJ->life_timer[slot]);
+    r.pre = ended_nz(left);
+    if (left != 0) {
+        return r;
+    }
+    flags = RD8(ZP->field8_e);
+    flags = (uint8_t)(flags & 0xF7);
+    WR8(ZP->field8_e, flags);
+    flags = RD8(ZP->field8_e);
+    flags = (uint8_t)(flags & 0xEF);
+    WR8(ZP->field8_e, flags);
+    jsr_push(0xB328);
+    r.track = CdPlayAgain(slot, y);
+    jsr_pop();
+    r.played = true;
+    r.command = 0xBF;
+    jsr_push(0xB32D);
+    r.call = SoundCommand(0xBF, slot, y);
+    jsr_pop();
+    r.sounded = true;
+    WR8(OBJ->angle_hi[slot], 0x80);
+    WR8(OBJ->angle_lo[slot], 0);
+    state = INC8(OBJ->state[slot]);
+    r.end = ended_nz(state);
+    return r;
+}
+
+void abi_CountThenCue(void)
+{
+    CueEnd r = CountThenCue(cpu.x, cpu.y);
+
+    abi_ended(r.pre);
+    if (r.played) {
+        play_track_exit_shim(r.track);
+    }
+    if (r.sounded) {
+        sound_command_exit_shim(r.command, r.call);
+    }
+    abi_ended(r.end);
+}
+

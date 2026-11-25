@@ -578,6 +578,40 @@ FlashByHeight_at0:
     sta a:OBJ_2B18,x
     rts
 
+; @routine 072B:3DB FaceByVelocityAndCatch
+; @run 70:B3DB
+; WHAT IT DOES: The object faces the way it moves (facing is the X speed's sign bit turned round) and its OBJ_2FE8 is cleared; it is then set to $80 when the stage's flag word (OBJ_3828 of slot
+; $10) has the bit the Y speed's direction names (1 for falling, 2 for rising), the object is on the first screen row and its Y low byte is from $74 to $AF.
+; HOW: Shifts through carry for the sign bits, an AND with the byte at $3838 (OBJ_3828 slot $10), compares.
+; WAITS: no.
+; Entry: X object. Exit: the last AND, compare or load; C bit 6 of the Y speed.
+FaceByVelocityAndCatch:
+    lda a:OBJ_VX_HI,x
+    rol a
+    rol a
+    and #$01
+    eor #$01
+    sta a:OBJ_2AC0,x
+    stz a:OBJ_2FE8,x
+    lda a:OBJ_VY_HI,x
+    rol a
+    rol a
+    and #$01
+    inc a
+    and a:$3838
+    beq FaceByVelocityAndCatch_at0
+    lda a:OBJ_Y_HI,x
+    bne FaceByVelocityAndCatch_at0
+    lda a:OBJ_Y_LO,x
+    cmp #$74
+    bcc FaceByVelocityAndCatch_at0
+    cmp #$B0
+    bcs FaceByVelocityAndCatch_at0
+    lda #$80
+    sta a:OBJ_2FE8,x
+FaceByVelocityAndCatch_at0:
+    rts
+
 ; @routine 072B:427 StartWithEvent
 ; @run 70:B427
 ; WHAT IT DOES: Loads the object's record and records its event (when it is one the save remembers).

@@ -2206,3 +2206,56 @@ void abi_StepThenMusicAgain(void)
         abi_sound_end(r.sound);
     }
 }
+
+/*
+ * @routine 072B:3DB FaceByVelocityAndCatch
+ * @run 70:B3DB
+ * WHAT IT DOES: The object faces the way it moves (facing is the X speed's sign bit turned round) and its OBJ_2FE8 is cleared; it is then set to $80 when the stage's flag word (OBJ_3828 of slot
+ * $10) has the bit the Y speed's direction names (1 for falling, 2 for rising), the object is on the first screen row and its Y low byte is from $74 to $AF.
+ * HOW: Shifts through carry for the sign bits, an AND with the byte at $3838 (OBJ_3828 slot $10), compares.
+ * WAITS: no.
+ * Entry: X object. Exit: the last AND, compare or load; C bit 6 of the Y speed.
+ */
+Ended FaceByVelocityAndCatch(uint8_t slot)
+{
+    uint8_t speed, facing, sign, mask, flags, y_high, y_low;
+    Ended e;
+
+    speed = RD8(OBJ->vx_hi[slot]);
+    facing = (uint8_t)(((speed >> 7) & 0x01) ^ 0x01);
+    e = ended_with_carry(ended_load(facing), (speed & 0x40) != 0);
+    WR8(OBJ->facing_left[slot], facing);
+    WR8(OBJ->f2fe8[slot], 0);
+    speed = RD8(OBJ->vy_hi[slot]);
+    sign = (uint8_t)((speed >> 7) & 0x01);
+    e = then(e, ended_with_carry(ended_load(sign), (speed & 0x40) != 0));
+    mask = (uint8_t)(sign + 1);
+    e = then(e, ended_load(mask));
+    flags = RD8(OBJ->f3828[0x10]);
+    mask = (uint8_t)(mask & flags);
+    e = then(e, ended_load(mask));
+    if (mask == 0) {
+        return e;
+    }
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_load(y_high));
+    if (y_high != 0) {
+        return e;
+    }
+    y_low = RD8(OBJ->y_lo[slot]);
+    e = then(e, ended_compare(y_low, 0x74));
+    if (y_low < 0x74) {
+        return e;
+    }
+    e = then(e, ended_compare(y_low, 0xB0));
+    if (y_low >= 0xB0) {
+        return e;
+    }
+    WR8(OBJ->f2fe8[slot], 0x80);
+    return then(e, ended_load(0x80));
+}
+
+void abi_FaceByVelocityAndCatch(void)
+{
+    abi_ended(FaceByVelocityAndCatch(cpu.x));
+}

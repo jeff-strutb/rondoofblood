@@ -76,6 +76,28 @@ StartWithGuard:
     sta a:OBJ_34B8,x
     rts
 
+; @routine 0CAB:31C CountThenCue
+; @run 70:B31C
+; WHAT IT DOES: Counts the object's timer down; at zero it clears bits 3 and 4 of zField8E, plays the music again (CdPlayAgain), sends sound $BF, sets the angle word to
+; $8000 (OBJ_3568 $80, OBJ_35C0 0) and enters its next state.
+; HOW: DEC, two memory bit clears, CdPlayAgain, SoundCommand, INC.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
+CountThenCue:
+    dec a:OBJ_34B8,x
+    bne CountThenCue_at0
+    rmb3 z:zField8E
+    rmb4 z:zField8E
+    jsr VecCdPlayAgain
+    lda #$BF
+    jsr VecSoundCommand
+    lda #$80
+    sta a:OBJ_3568,x
+    stz a:OBJ_35C0,x
+    inc a:OBJ_27A8,x
+CountThenCue_at0:
+    rts
+
 ; @routine 0CAB:389 SlideAngleDown
 ; @run 70:B389
 ; WHAT IT DOES: Takes one off the 16-bit angle word (OBJ_3568 high, OBJ_35C0 low, in steps of $0100 less 0 on the low byte as the code subtracts $0100); when the high byte

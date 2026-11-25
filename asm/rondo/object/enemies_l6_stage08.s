@@ -23,6 +23,21 @@ NextStateOnScrollY:
 NextStateOnScrollY_at0:
     rts
 
+; @routine 088A:52D CountThenNextStateF3510
+; @run 70:AD2D
+; WHAT IT DOES: Counts OBJ_3510 down; at zero it sets it to $30 and goes on to the next state.
+; HOW: DEC, a store, INC.
+; WAITS: no.
+; Entry: X object. Exit: the count, or the new state's N and Z (A $30).
+CountThenNextStateF3510:
+    dec a:OBJ_3510,x
+    bne CountThenNextStateF3510_at0
+    lda #$30
+    sta a:OBJ_3510,x
+    inc a:OBJ_27A8,x
+CountThenNextStateF3510_at0:
+    rts
+
 ; @routine 088A:71E PlaySoundTwo
 ; @run 70:AF1E
 ; WHAT IT DOES: Plays sound 2.

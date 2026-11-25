@@ -195,3 +195,31 @@ void abi_SetTimersOf12To15(void)
 {
     abi_ended(SetTimersOf12To15());
 }
+
+/*
+ * @routine 088A:52D CountThenNextStateF3510
+ * @run 70:AD2D
+ * WHAT IT DOES: Counts OBJ_3510 down; at zero it sets it to $30 and goes on to the next state.
+ * HOW: DEC, a store, INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the count, or the new state's N and Z (A $30).
+ */
+Ended CountThenNextStateF3510(uint8_t slot)
+{
+    uint8_t left, state;
+    Ended e;
+
+    left = DEC8(OBJ->f3510[slot]);
+    e = ended_nz(left);
+    if (left != 0) {
+        return e;
+    }
+    WR8(OBJ->f3510[slot], 0x30);
+    state = INC8(OBJ->state[slot]);
+    return then(then(e, ended_load(0x30)), ended_nz(state));
+}
+
+void abi_CountThenNextStateF3510(void)
+{
+    abi_ended(CountThenNextStateF3510(cpu.x));
+}

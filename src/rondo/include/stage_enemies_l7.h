@@ -471,6 +471,11 @@ Ended StepListByIndex088A(uint8_t slot, uint8_t y_entry);
 Ended SetTimersOf12To15(void);
 Ended RandomTimerC0(uint8_t slot);
 Ended NextPhaseUnlessKind25(uint8_t slot);
+Ended SetHitBox0C18(uint8_t slot);
+Ended StartPieceAtNextSlot(uint8_t slot);
+Ended DrawTileScriptByHighBits(uint8_t slot);
+Ended CountThenNextStateF3510(uint8_t slot);
+Ended StepListC192ThenClear(uint8_t slot, uint8_t y_entry);
 
 /* What DrawTileScript called with the item (and the group's Y) leaves: A $FF, the compare's N clear and Z set, C set, Y as the last op left it, and V when a line step ran. */
 static inline Ended ended_of_tile_run(TileRun run, uint8_t item)

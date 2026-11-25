@@ -8,6 +8,54 @@ LoadRecordA04:
     jsr VecLoadObjectRecord
     rts
 
+; @routine 051B:4BF SetHitBox0C18
+; @run 70:B4BF
+; WHAT IT DOES: Sets the object's hit box: X offset 0, half width $0C, half height $18.
+; HOW: Three stores.
+; WAITS: no.
+; Entry: X object. Exit: A $18, N and Z from it.
+SetHitBox0C18:
+    stz a:OBJ_3930,x
+    lda #$0C
+    sta a:OBJ_3988,x
+    lda #$18
+    sta a:OBJ_3A38,x
+    rts
+
+; @routine 051B:5CD StartPieceAtNextSlot
+; @run 70:B5CD
+; WHAT IT DOES: Clears the object in the slot after this one, starts a kind $32 object there at this object's place and goes on to the next OBJ_2800.
+; HOW: ClearObjectInY, StartObjectAtPlace, an INC.
+; WAITS: no.
+; Entry: X object. Exit: A the last byte copied, Y the slot after; N and Z from the new OBJ_2800.
+StartPieceAtNextSlot:
+    txa
+    tay
+    iny
+    jsr VecClearObjectInY
+    lda #$32
+    jsr VecStartObjectAtPlace
+    inc a:OBJ_2800,x
+    rts
+
+; @routine 051B:690 DrawTileScriptByHighBits
+; @run 70:B690
+; WHAT IT DOES: Draws the tile script of group 0 numbered by bits 4 to 6 of OBJ_3040 (as 0 to 7) and goes on to the next OBJ_2800.
+; HOW: DrawTileScript, an INC.
+; WAITS: no.
+; Entry: X object. Exit: the tile script's registers, then N and Z from the new OBJ_2800.
+DrawTileScriptByHighBits:
+    lda a:OBJ_3040,x
+    and #$70
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    cly
+    jsr VecDrawTileScript
+    inc a:OBJ_2800,x
+    rts
+
 ; @routine 051B:76A LoadRecordB04
 ; @run 70:B76A
 ; WHAT IT DOES: Loads the object's record.

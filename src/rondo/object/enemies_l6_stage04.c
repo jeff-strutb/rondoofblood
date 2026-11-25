@@ -145,3 +145,80 @@ void abi_CopyScrollToTimer(void)
 {
     abi_ended(CopyScrollToTimer(cpu.x));
 }
+
+/*
+ * @routine 051B:4BF SetHitBox0C18
+ * @run 70:B4BF
+ * WHAT IT DOES: Sets the object's hit box: X offset 0, half width $0C, half height $18.
+ * HOW: Three stores.
+ * WAITS: no.
+ * Entry: X object. Exit: A $18, N and Z from it.
+ */
+Ended SetHitBox0C18(uint8_t slot)
+{
+    WR8(OBJ->hitbox_dx[slot], 0);
+    WR8(OBJ->hitbox_half_w[slot], 0x0C);
+    WR8(OBJ->hitbox_half_h[slot], 0x18);
+    return ended_load(0x18);
+}
+
+void abi_SetHitBox0C18(void)
+{
+    abi_ended(SetHitBox0C18(cpu.x));
+}
+
+/*
+ * @routine 051B:5CD StartPieceAtNextSlot
+ * @run 70:B5CD
+ * WHAT IT DOES: Clears the object in the slot after this one, starts a kind $32 object there at this object's place and goes on to the next OBJ_2800.
+ * HOW: ClearObjectInY, StartObjectAtPlace, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: A the last byte copied, Y the slot after; N and Z from the new OBJ_2800.
+ */
+Ended StartPieceAtNextSlot(uint8_t slot)
+{
+    uint8_t to = (uint8_t)(slot + 1), placed, phase;
+
+    jsr_push(0xB5D3);
+    ClearObjectInY(to);
+    jsr_pop();
+    jsr_push(0xB5D8);
+    placed = StartObjectAtPlace(0x32, slot, to);
+    jsr_pop();
+    phase = INC8(OBJ->f2800[slot]);
+    return ended_with_y(ended_with_a(ended_nz(phase), placed), to);
+}
+
+void abi_StartPieceAtNextSlot(void)
+{
+    abi_ended(StartPieceAtNextSlot(cpu.x));
+}
+
+/*
+ * @routine 051B:690 DrawTileScriptByHighBits
+ * @run 70:B690
+ * WHAT IT DOES: Draws the tile script of group 0 numbered by bits 4 to 6 of OBJ_3040 (as 0 to 7) and goes on to the next OBJ_2800.
+ * HOW: DrawTileScript, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the tile script's registers, then N and Z from the new OBJ_2800.
+ */
+Ended DrawTileScriptByHighBits(uint8_t slot)
+{
+    TileRun run;
+    uint8_t item, phase;
+    Ended e;
+
+    item = (uint8_t)((RD8(OBJ->f3040[slot]) & 0x70) >> 4);
+    e = ended_with_carry(ended_load(item), false);
+    jsr_push(0xB69D);
+    run = DrawTileScript(item, 0);
+    jsr_pop();
+    e = then(e, ended_of_tile_run(run, item));
+    phase = INC8(OBJ->f2800[slot]);
+    return then(e, ended_nz(phase));
+}
+
+void abi_DrawTileScriptByHighBits(void)
+{
+    abi_ended(DrawTileScriptByHighBits(cpu.x));
+}

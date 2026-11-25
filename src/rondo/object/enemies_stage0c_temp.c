@@ -30,6 +30,14 @@ static Ended ended_of_object_event_stage(bool marked, uint8_t stored, uint8_t ev
     return ended_with_carry(ended_with_y(ended_load(stored), byte), (event & 7) == 0);
 }
 
+/* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
+static Ended ended_of_scale(ScaleResult r)
+{
+    Ended e = ended_with_y(ended_with_carry(ended_with_a(ended_nz(r.nz), r.a), r.carry), 0);
+
+    return r.v_set ? ended_with_overflow(e, r.overflow) : e;
+}
+
 /* AngleToPlayer's exit: A, N, Z, C, V and Y. */
 static Ended ended_of_angle(AngleExit r)
 {
@@ -1347,4 +1355,208 @@ SoundEnd StartShotsUnlessThere(uint8_t slot)
 void abi_StartShotsUnlessThere(void)
 {
     abi_sound_end(StartShotsUnlessThere(cpu.x));
+}
+
+/*
+ * @routine 0CAC:282 FollowAndFacePlayer
+ * @run 70:BA82
+ * WHAT IT DOES: In state 0 loads the object's record; later it sets its frame to 0 and, when a table at $BAAF by slot $10's frame says so, copies slot $10's flash flag, takes
+ * its place and shows the frame $29 plus the angle to the player in thirty-seconds.
+ * HOW: LoadObjectRecord (a tail jump), CopyObjectPlaceBack, AngleToPlayer, table read (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: state 0: as LoadObjectRecord; else the last load or add.
+ */
+Ended FollowAndFacePlayer(uint8_t slot)
+{
+    AngleExit angle;
+    uint8_t state, nz, last, lead, flag, flash, placed, frame;
+    bool carry;
+    Sum sum;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return ended_of_record(last, nz, carry);
+    }
+    WR8(OBJ->frame[slot], 0);
+    lead = RD8(OBJ->frame[0x10]);
+    flag = rd8((uint16_t)(0xBAAF + lead));
+    e = ended_with_y(ended_load(flag), lead);
+    if (flag == 0) {
+        return e;
+    }
+    flash = RD8(OBJ->flash_flags[0x10]);
+    WR8(OBJ->flash_flags[slot], flash);
+    e = then(e, ended_load(flash));
+    jsr_push(0xBAA0);
+    placed = CopyObjectPlaceBack(0x10, slot);
+    jsr_pop();
+    e = then(e, ended_with_y(ended_load(placed), 0x10));
+    jsr_push(0xBAA3);
+    angle = AngleToPlayer(slot);
+    jsr_pop();
+    e = then(e, ended_of_angle(angle));
+    frame = (uint8_t)(angle.a >> 5);
+    e = then(e, ended_with_carry(ended_load(frame), (angle.a & 0x10) != 0));
+    sum = add_bytes(frame, 0x29, false);
+    WR8(OBJ->frame[slot], sum.value);
+    return then(e, of_sum(sum));
+}
+
+void abi_FollowAndFacePlayer(void)
+{
+    abi_ended(FollowAndFacePlayer(cpu.x));
+}
+
+/*
+ * @routine 0CAC:315 StepOrClearByKind
+ * @run 70:BB15
+ * WHAT IT DOES: Steps the animation list that a table at $BB2D names for the object's timer-index (OBJ_34B8 doubled); when it ends the object is cleared.
+ * HOW: A table read (bank 70), StepObjectFrames, a tail jump into ClearObject. (The part of the routine at $BAEF that comes after its table.)
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the step.
+ */
+Ended StepOrClearByKind(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t phase, index, y;
+
+    phase = RD8(OBJ->life_timer[slot]);
+    index = (uint8_t)(phase << 1);
+    y = index;
+    WR8(ZP->temp10, rd8((uint16_t)(0xBB2D + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(0xBB2E + index)));
+    jsr_push(0xBB27);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    if (step == FRAME_LIST_ENDED) {
+        ClearObject(slot);
+    }
+    return ended_of_frame_step(step, true, y);
+}
+
+void abi_StepOrClearByKind(void)
+{
+    abi_ended(StepOrClearByKind(cpu.x));
+}
+
+/*
+ * @routine 0CAC:2EF StartSoundedPiece
+ * @run 70:BAEF
+ * @stop BB10
+ * WHAT IT DOES: In state 0 loads the object's record, plays the sound a table at $BB12 names for its timer-index, takes an X speed from a table at $BB10 by its facing, moves
+ * along X once and faces right; in any other state it goes on as StepOrClearByKind (the code after the table).
+ * HOW: LoadObjectRecord, SoundCommand, ApplyVelocityX.
+ * Untraced: the tables at $BB10 are data the run only read.
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ */
+SoundEnd StartSoundedPiece(uint8_t slot, uint8_t y)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    AxisMove move;
+    uint8_t state, nz, last, phase, command, facing, byte;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        r.end = StepOrClearByKind(slot);
+        return r;
+    }
+    jsr_push(0xBAF7);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    phase = RD8(OBJ->life_timer[slot]);
+    command = rd8((uint16_t)(0xBB12 + phase));
+    r.before = then(e, ended_with_y(ended_load(command), phase));
+    r.sounded = true;
+    r.command = command;
+    jsr_push(0xBB00);
+    r.call = SoundCommand(command, slot, phase);
+    jsr_pop();
+    facing = RD8(OBJ->facing_left[slot]);
+    byte = rd8((uint16_t)(0xBB10 + facing));
+    WR8(OBJ->vx_hi[slot], byte);
+    jsr_push(0xBB0C);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    WR8(OBJ->facing_left[slot], 0);
+    r.end = then(ended_with_y(ended_kept(), facing), ended_of_axis_move(move));
+    return r;
+}
+
+void abi_StartSoundedPiece(void)
+{
+    abi_sound_end(StartSoundedPiece(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0CAC:492 StartThrownPiece
+ * @run 70:BC92
+ * WHAT IT DOES: Loads the object's record, turns on bit 7 of its hitbox flag, gives it an X speed from a table at $BCD1 by its facing and a Y speed of $18, moves it, then picks
+ * a random length from a table at $BCD3 and sets its speed from the angle a table at $BCE3 names for its next kind (SetVelocityFromAngle); a left-facing object is reversed.
+ * HOW: LoadObjectRecord, ApplyVelocity, NextRandom, SetVelocityFromAngle.
+ * Untraced: the reversal (BCCD).
+ * Curated cases: tools/rondo/curated/start_thrown_piece.txt (right-facing objects, the traced arm).
+ * WAITS: no.
+ * Entry: X object. Exit: the last load; C, V and Y as the angle scale left them.
+ */
+Ended StartThrownPiece(uint8_t slot)
+{
+    RandomResult random;
+    ScaleResult scale;
+    AxisMove move;
+    uint8_t nz, last, flags, facing, byte, pick, index, kind, angle, left;
+    bool carry;
+    Ended e;
+
+    jsr_push(0xBC95);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    flags = RD8(OBJ->hitbox_on[slot]);
+    flags = (uint8_t)(flags | 0x80);
+    WR8(OBJ->hitbox_on[slot], flags);
+    e = then(e, ended_load(flags));
+    facing = RD8(OBJ->facing_left[slot]);
+    byte = rd8((uint16_t)(0xBCD1 + facing));
+    WR8(OBJ->vx_hi[slot], byte);
+    WR8(OBJ->vy_hi[slot], 0x18);
+    jsr_push(0xBCAE);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    jsr_push(0xBCB1);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    pick = (uint8_t)(random.value & 0x07);
+    index = (uint8_t)(pick << 1);
+    e = then(e, ended_with_y(ended_with_carry(ended_load(index), false), index));
+    byte = rd8((uint16_t)(0xBCD3 + index));
+    WR8(ZP->temp00, byte);
+    byte = rd8((uint16_t)(0xBCD4 + index));
+    WR8(ZP->temp01, byte);
+    kind = RD8(OBJ->next_kind[slot]);
+    angle = rd8((uint16_t)(0xBCE3 + kind));
+    jsr_push(0xBCC8);
+    scale = SetVelocityFromAngle(angle, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    left = RD8(OBJ->facing_left[slot]);
+    e = then(e, ended_load(left));
+    if (left != 0) {
+        jsr_push(0xBCCD);
+        e = then(e, of_sum(NegateVelocityX(slot)));
+        jsr_pop();
+    }
+    return e;
+}
+
+void abi_StartThrownPiece(void)
+{
+    abi_ended(StartThrownPiece(cpu.x));
 }

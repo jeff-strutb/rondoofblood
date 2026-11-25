@@ -581,6 +581,81 @@ StepThenRestB:
     stz a:OBJ_2800,x
 StepThenRestB_at0:
     rts
+; @routine 0CAC:282 FollowAndFacePlayer
+; @run 70:BA82
+; WHAT IT DOES: In state 0 loads the object's record; later it sets its frame to 0 and, when a table at $BAAF by slot $10's frame says so, copies slot $10's flash flag, takes
+; its place and shows the frame $29 plus the angle to the player in thirty-seconds.
+; HOW: LoadObjectRecord (a tail jump), CopyObjectPlaceBack, AngleToPlayer, table read (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: state 0: as LoadObjectRecord; else the last load or add.
+FollowAndFacePlayer:
+    lda a:OBJ_27A8,x
+    bne FollowAndFacePlayer_at0
+    jmp VecLoadObjectRecord
+FollowAndFacePlayer_at0:
+    stz a:OBJ_2A68,x
+    ldy a:$2A78
+    lda a:$BAAF,y
+    beq FollowAndFacePlayer_at1
+    lda a:$2B28
+    sta a:OBJ_2B18,x
+    ldy #$10
+    jsr VecCopyObjectPlaceBack
+    jsr VecAngleToPlayer
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    clc
+    adc #$29
+    sta a:OBJ_2A68,x
+FollowAndFacePlayer_at1:
+    rts
+
+; @routine 0CAC:2EF StartSoundedPiece
+; @run 70:BAEF
+; @stop BB10
+; WHAT IT DOES: In state 0 loads the object's record, plays the sound a table at $BB12 names for its timer-index, takes an X speed from a table at $BB10 by its facing, moves
+; along X once and faces right; in any other state it goes on as StepOrClearByKind (the code after the table).
+; HOW: LoadObjectRecord, SoundCommand, ApplyVelocityX.
+; Untraced: the tables at $BB10 are data the run only read.
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+StartSoundedPiece:
+    lda a:OBJ_27A8,x
+    bne StepOrClearByKind
+    jsr VecLoadObjectRecord
+    ldy a:OBJ_34B8,x
+    lda a:$BB12,y
+    jsr VecSoundCommand
+    ldy a:OBJ_2AC0,x
+    lda a:$BB10,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    stz a:OBJ_2AC0,x
+    rts
+
+; @routine 0CAC:315 StepOrClearByKind
+; @run 70:BB15
+; WHAT IT DOES: Steps the animation list that a table at $BB2D names for the object's timer-index (OBJ_34B8 doubled); when it ends the object is cleared.
+; HOW: A table read (bank 70), StepObjectFrames, a tail jump into ClearObject. (The part of the routine at $BAEF that comes after its table.)
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as the step.
+StepOrClearByKind:
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$BB2D,y
+    sta z:zTemp10
+    lda a:$BB2E,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepOrClearByKind_at0
+    jmp VecClearObject
+StepOrClearByKind_at0:
+    rts
+
 ; @routine 0CAC:45C StepMoveOrClear
 ; @run 70:BC5C
 ; WHAT IT DOES: Steps the animation list at $BC6F; while it runs the object moves by its velocity, and when it ends the object is cleared.
@@ -597,6 +672,43 @@ StepMoveOrClear:
     jmp VecClearObject
 StepMoveOrClear_at0:
     jmp VecApplyVelocity
+
+; @routine 0CAC:492 StartThrownPiece
+; @run 70:BC92
+; WHAT IT DOES: Loads the object's record, turns on bit 7 of its hitbox flag, gives it an X speed from a table at $BCD1 by its facing and a Y speed of $18, moves it, then picks
+; a random length from a table at $BCD3 and sets its speed from the angle a table at $BCE3 names for its next kind (SetVelocityFromAngle); a left-facing object is reversed.
+; HOW: LoadObjectRecord, ApplyVelocity, NextRandom, SetVelocityFromAngle.
+; Untraced: the reversal (BCCD).
+; Curated cases: tools/rondo/curated/start_thrown_piece.txt (right-facing objects, the traced arm).
+; WAITS: no.
+; Entry: X object. Exit: the last load; C, V and Y as the angle scale left them.
+StartThrownPiece:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_3250,x
+    ora #$80
+    sta a:OBJ_3250,x
+    ldy a:OBJ_2AC0,x
+    lda a:$BCD1,y
+    sta a:OBJ_VX_HI,x
+    lda #$18
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    jsr VecNextRandom
+    and #$07
+    asl a
+    tay
+    lda a:$BCD3,y
+    sta z:zTemp00
+    lda a:$BCD4,y
+    sta z:zTemp01
+    ldy a:OBJ_3040,x
+    lda a:$BCE3,y
+    jsr VecSetVelocityFromAngle
+    lda a:OBJ_2AC0,x
+    beq StartThrownPiece_at0
+    jsr VecNegateVelocityX
+StartThrownPiece_at0:
+    rts
 
 ; @routine 0CAC:57C StepCountClear
 ; @run 70:BD7C

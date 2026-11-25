@@ -132,11 +132,13 @@ static void work_x_from(uint8_t band)
     WR8(BANDS->bgx_hi[WORK_BAND], byte);
 }
 
-static void next_step(void)
+/* INC RasterStep: its N and Z are the new step's, which the paths that end on it hold. */
+static uint8_t next_step(void)
 {
     uint8_t step = (uint8_t)(rd8(RasterStep) + 1);
 
     wr8(RasterStep, step);
+    return step;
 }
 
 /*
@@ -664,7 +666,12 @@ static Exit restore_saved_colours(Held h)
         byte = rd8((uint16_t)(SavedColoursHi + colour));
         WR8(VCE->data_hi, byte);
     }
-    return finish(exit_of(byte, 0, h.y, h.c, h.v));
+    {
+        Exit e = exit_of(byte, 0, h.y, h.c, h.v);
+
+        e.nz = P_Z; /* the last DEX, X now 0, set the flags after the last load */
+        return finish(e);
+    }
 }
 
 /*
@@ -977,8 +984,12 @@ Exit RasterEffect15(Held h)
         WR8(VDC->data_lo, sum.value);
         high = add_bytes(0, 0, sum.carry);
         WR8(VDC->data_hi, high.value);
-        next_step();
-        return finish(exit_of(high.value, WORK_BAND, wave, false, sum.overflow));
+        {
+            Exit e = exit_of(high.value, WORK_BAND, wave, false, sum.overflow);
+
+            e.nz = nz_of(next_step());
+            return finish(e);
+        }
     }
 }
 
@@ -1451,8 +1462,12 @@ Exit RasterEffect24(Held h)
         high = add_bytes(0, RD8(BANDS->bgx_hi[2]), low.carry);
         WR8(BANDS->bgx_hi[2], high.value);
         WR8(VDC->data_hi, high.value);
-        next_step();
-        return finish(exit_of(high.value, WORK_BAND, wave, high.carry, high.overflow));
+        {
+            Exit e = exit_of(high.value, WORK_BAND, wave, high.carry, high.overflow);
+
+            e.nz = nz_of(next_step());
+            return finish(e);
+        }
     }
 }
 
@@ -1507,8 +1522,12 @@ static Exit marked_band_step(Held h, uint8_t limit, uint8_t shift, uint16_t writ
     WR8(VDC->data_lo, low.value);
     high = add_bytes(0, 0, low.carry);
     WR8(VDC->data_hi, high.value);
-    next_step();
-    return finish(exit_of(high.value, WORK_BAND, step, false, low.overflow));
+    {
+        Exit e = exit_of(high.value, WORK_BAND, step, false, low.overflow);
+
+        e.nz = nz_of(next_step());
+        return finish(e);
+    }
 }
 
 /*
@@ -1602,8 +1621,12 @@ Exit RasterEffect28(Held h)
     WR8(VDC->data_lo, low.value);
     high = add_bytes(0, 0, low.carry);
     WR8(VDC->data_hi, high.value);
-    next_step();
-    return finish(exit_of(high.value, WORK_BAND, h.y, false, low.overflow));
+    {
+        Exit e = exit_of(high.value, WORK_BAND, h.y, false, low.overflow);
+
+        e.nz = nz_of(next_step());
+        return finish(e);
+    }
 }
 
 void abi_RasterEffect28(void)

@@ -1591,56 +1591,120 @@ void abi_PlayerXFromNextAlt(void)
     abi_nz(cpu.a);
 }
 
-/* The scroll takes the step: at the middle the player sits there, and the step is the amount. */
-static void step_scroll_back(const Axis *axis, BackMove *move)
+/* The scroll takes the step: at the middle the player is put there (low, then fraction) and the
+ * step is the amount in zTemp00-01; else the step is the speed. */
+static void step_scroll_back(const Axis *axis, BackMove *move, bool at_middle)
 {
-    if (move->at_middle) {
-        write16(axis->pos_frac, axis->pos_lo, (uint16_t)(SCREEN_MIDDLE << 8));
-        move->step = read16(zTemp00, zTemp01);
+    uint8_t lo;
+    uint8_t hi;
+
+    if (at_middle) {
+        wr8(axis->pos_lo, SCREEN_MIDDLE);
+        wr8(axis->pos_frac, 0);
+        lo = rd8(zTemp00);
+        wr8(axis->step_lo, lo);
+        hi = rd8(zTemp01);
+        wr8(axis->step_hi, hi);
     } else {
-        move->step = read16(axis->vel_lo, axis->vel_hi);
+        lo = rd8(axis->vel_lo);
+        wr8(axis->step_lo, lo);
+        hi = rd8(axis->vel_hi);
+        wr8(axis->step_hi, hi);
     }
-    write16(axis->step_lo, axis->step_hi, move->step);
+    move->step = (uint16_t)((hi << 8) | lo);
 }
 
-/*
- * The scroll takes a backward move. Past the middle the player moves; before it the
- * scroll takes the move, down to its start, and then the player the rest. A scroll
- * already at its start leaves it all to the player.
- */
-static BackMove scroll_back(const Axis *axis, BackMove move)
-{
-    uint8_t lowest = rd8(axis->min_hi);
-    uint16_t scroll = read16(axis->scroll_frac, axis->scroll_lo);
-    uint16_t taken;
-    uint16_t sum;
+/* The calls a scroll step back makes, as the frames of one axis return from them. */
+typedef struct {
+    uint16_t amount_ret, far_ret, near_ret;
+    MiddleTest (*past_middle)(void);
+} BackFrames;
 
-    write16(zTemp00, zTemp01, (uint16_t)(move.next - 0x8000));
-    move.page = rd8(axis->scroll_hi);
-    move.at_middle = rd8(axis->pos_lo) >= SCREEN_MIDDLE;
-    if (move.page != lowest) {
-        step_scroll_back(axis, &move);
+MiddleTest NextPastMiddle(void);
+MiddleTest PlayerXPastMiddle(void);
+MiddleTest PlayerYPastMiddle(void);
+WordPair NextPastMiddleAmount(void);
+
+static const BackFrames back_frames_x = { 0x6971, 0x6986, 0x698D, PlayerXPastMiddle };
+static const BackFrames back_frames_y = { 0x6B8D, 0x6BA2, 0x6BA9, PlayerYPastMiddle };
+
+static BackMove scroll_back(const Axis *axis, BackMove move, const BackFrames *frames)
+{
+    MiddleTest middle;
+    uint8_t page;
+    uint8_t lowest;
+    uint8_t frac;
+    uint8_t lo;
+    uint8_t base;
+    uint8_t low_step;
+    uint8_t high_step;
+    uint8_t position_frac;
+    uint8_t added_lo;
+    uint8_t position_lo;
+    uint8_t added_hi;
+    unsigned sum;
+    unsigned carry;
+
+    jsr_push(frames->amount_ret);
+    NextPastMiddleAmount();
+    jsr_pop();
+    page = rd8(axis->scroll_hi);
+    lowest = rd8(axis->min_hi);
+    move.page = page;
+    if (page != lowest) {
+        jsr_push(frames->far_ret);
+        middle = frames->past_middle();
+        jsr_pop();
+        move.at_middle = middle.past;
+        step_scroll_back(axis, &move, middle.past);
         move.how = BACK_STEP_FAR;
         return move;
     }
-    if (scroll == 0) {
+    frac = rd8(axis->scroll_frac);
+    lo = rd8(axis->scroll_lo);
+    if ((frac | lo) == 0) {
         position_from_next(axis);
         move.how = BACK_AT_START;
         return move;
     }
-    taken = move.at_middle ? read16(zTemp00, zTemp01) : read16(axis->vel_lo, axis->vel_hi);
-    sum = (uint16_t)(scroll + taken);
-    move.carried = sum < scroll;
-    write16(zTemp02, zTemp03, sum);
-    if ((uint8_t)(0xFF + move.page + (move.carried ? 1 : 0)) == lowest) {
-        step_scroll_back(axis, &move);
+    jsr_push(frames->near_ret);
+    middle = frames->past_middle();
+    jsr_pop();
+    move.at_middle = middle.past;
+    base = middle.past ? rd8(zTemp00) : rd8(axis->vel_lo);
+    frac = rd8(axis->scroll_frac);
+    sum = (unsigned)base + frac;
+    wr8(zTemp02, (uint8_t)sum);
+    base = middle.past ? rd8(zTemp01) : rd8(axis->vel_hi);
+    lo = rd8(axis->scroll_lo);
+    sum = (unsigned)base + lo + (sum >> 8);
+    wr8(zTemp03, (uint8_t)sum);
+    move.carried = (sum >> 8) != 0;
+    page = rd8(axis->scroll_hi);
+    move.page = page;
+    lowest = rd8(axis->min_hi);
+    if ((uint8_t)(0xFF + page + (move.carried ? 1 : 0)) == lowest) {
+        step_scroll_back(axis, &move, middle.past);
         move.how = BACK_STEP_NEAR;
         return move;
     }
-    write16(axis->step_lo, axis->step_hi, (uint16_t)(0u - scroll));
-    move.position = read16(axis->pos_frac, axis->pos_lo);
-    move.added = read16(axis->back_add_lo, axis->back_add_hi);
-    write16(axis->pos_frac, axis->pos_lo, (uint16_t)(move.position + move.added));
+    frac = rd8(axis->scroll_frac);
+    low_step = (uint8_t)(0 - frac);
+    wr8(axis->step_lo, low_step);
+    lo = rd8(axis->scroll_lo);
+    high_step = (uint8_t)(0 - lo - (frac != 0 ? 1 : 0));
+    wr8(axis->step_hi, high_step);
+    position_frac = rd8(axis->pos_frac);
+    added_lo = rd8(axis->back_add_lo);
+    sum = (unsigned)position_frac + added_lo;
+    wr8(axis->pos_frac, (uint8_t)sum);
+    carry = sum >> 8;
+    position_lo = rd8(axis->pos_lo);
+    added_hi = rd8(axis->back_add_hi);
+    wr8(axis->pos_lo, (uint8_t)(position_lo + added_hi + carry));
+    move.step = (uint16_t)((high_step << 8) | low_step);
+    move.position = (uint16_t)((position_lo << 8) | position_frac);
+    move.added = (uint16_t)((added_hi << 8) | added_lo);
     move.how = BACK_BOTH;
     return move;
 }
@@ -1651,30 +1715,38 @@ static BackMove scroll_back(const Axis *axis, BackMove move)
  * WHAT IT DOES: Moves the player left, or the scroll under it, as MovePlayerRight does
  * to the right, and stops the player at the left edge of the screen.
  * HOW: The next position, the edge, then the scroll's start in place of its limit.
+ * WAITS: no.
  * Entry: nothing. Exit: A, flags as the last step left them. X and Y kept. Clobbers
  * zTemp00-05.
  */
 BackMove MovePlayerLeft(void)
 {
     BackMove move = { 0 };
+    WordPair words;
+    MiddleTest middle;
     uint8_t high;
 
-    move.speed = read16(OBJ_VX_LO, OBJ_VX_HI);
-    move.from = read16(OBJ_X_FRAC, OBJ_X_LO);
-    move.next = (uint16_t)(move.speed + move.from);
+    jsr_push(0x695D);
+    words = PlayerNextX();
+    jsr_pop();
+    move.speed = words.a;
+    move.from = words.b;
+    move.next = (uint16_t)(words.a + words.b);
     high = (uint8_t)(move.next >> 8);
-    write16(zTemp04, zTemp05, move.next);
     if (high <= PLAYER_MIN_X) {
         PlayerAtLeftEdge();
         move.how = BACK_AT_EDGE;
         return move;
     }
-    if (high >= SCREEN_MIDDLE) {
+    jsr_push(0x696C);
+    middle = NextPastMiddle();
+    jsr_pop();
+    if (middle.past) {
         position_from_next(&axis_x);
         move.how = BACK_PLAYER;
         return move;
     }
-    return scroll_back(&axis_x, move);
+    return scroll_back(&axis_x, move, &back_frames_x);
 }
 
 void abi_MovePlayerLeft(void)
@@ -2034,30 +2106,45 @@ void abi_PlayerYFromNext(void)
  * the left, and stops the player at the top of the map if it would pass it.
  * HOW: The next position, zero or a borrow meaning the top, then as MovePlayerLeft on the
  * Y fields.
+ * WAITS: no.
  * Entry: nothing. Exit: A, flags as the last step left them. X and Y kept. Clobbers
  * zTemp00-05.
  */
 BackMove MovePlayerUp(void)
 {
     BackMove move = { 0 };
-    uint8_t high;
+    MiddleTest middle;
+    uint8_t speed_lo = rd8(OBJ_VY_LO);
+    uint8_t frac = rd8(OBJ_Y_FRAC);
+    unsigned sum = (unsigned)speed_lo + frac;
+    uint8_t next_lo = (uint8_t)sum;
+    uint8_t speed_hi;
+    uint8_t from_lo;
+    uint8_t next_hi;
 
-    move.speed = read16(OBJ_VY_LO, OBJ_VY_HI);
-    move.from = read16(OBJ_Y_FRAC, OBJ_Y_LO);
-    move.next = (uint16_t)(move.speed + move.from);
-    high = (uint8_t)(move.next >> 8);
-    write16(zTemp04, zTemp05, move.next);
-    if (high == 0 || move.next >= move.speed) {
+    wr8(zTemp04, next_lo);
+    speed_hi = rd8(OBJ_VY_HI);
+    from_lo = rd8(OBJ_Y_LO);
+    sum = (unsigned)speed_hi + from_lo + (sum >> 8);
+    next_hi = (uint8_t)sum;
+    wr8(zTemp05, next_hi);
+    move.speed = (uint16_t)((speed_hi << 8) | speed_lo);
+    move.from = (uint16_t)((from_lo << 8) | frac);
+    move.next = (uint16_t)((next_hi << 8) | next_lo);
+    if (next_hi == 0 || (sum >> 8) == 0) {
         PlayerAtTop();
         move.how = BACK_AT_TOP;
         return move;
     }
-    if (high >= SCREEN_MIDDLE) {
+    jsr_push(0x6B88);
+    middle = NextPastMiddle();
+    jsr_pop();
+    if (middle.past) {
         position_from_next(&axis_y);
         move.how = BACK_PLAYER;
         return move;
     }
-    return scroll_back(&axis_y, move);
+    return scroll_back(&axis_y, move, &back_frames_y);
 }
 
 void abi_MovePlayerUp(void)

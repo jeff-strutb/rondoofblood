@@ -527,6 +527,7 @@ Ended LoadThenSpawnWhileScrolling(uint8_t slot);
 Ended SpawnPointFromTables(uint8_t slot);
 Ended JumpAwayThenLand(uint8_t slot);
 Ended StateSevenOnStatusBit7(uint8_t slot);
+SoundEnd SpawnOnTimerInTable(uint8_t slot);
 /* What a routine that sends a sound and then plays the music again leaves, in the order of its calls. */
 typedef struct {
     Ended pre;

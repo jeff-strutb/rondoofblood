@@ -865,3 +865,66 @@ void abi_StateSevenOnStatusBit7(void)
 {
     abi_ended(StateSevenOnStatusBit7(cpu.x));
 }
+
+/*
+ * @routine 0E0B:579 SpawnOnTimerInTable
+ * @run 70:B579
+ * WHAT IT DOES: When OBJ_3408 is 6 and OBJ_3460 equals one of the three bytes at $B5A5 it finds a free slot from $30, sends sound $48 and starts a kind $27 object there at its place with its facing.
+ * HOW: A search loop, FindFreeSlotFrom30, SoundCommand, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, Y kept for the sound's push only when the search ran. Exit: see the wrapper.
+ */
+SoundEnd SpawnOnTimerInTable(uint8_t slot)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    uint8_t step, timer, y, found_slot, last, placed, facing, entry;
+    bool found;
+    Ended e;
+
+    step = RD8(OBJ->anim_step[slot]);
+    e = ended_compare(step, 6);
+    if (step != 6) {
+        r.end = e;
+        return r;
+    }
+    for (y = 0;; y++) {
+        timer = RD8(OBJ->anim_timer[slot]);
+        entry = rd8((uint16_t)(0xB5A5 + y));
+        e = then(then(e, ended_load(timer)), ended_compare(timer, entry));
+        if (timer == entry) {
+            break;
+        }
+        e = then(e, ended_with_y(ended_with_carry(ended_nz((uint8_t)(y + 1 - 3)), (y + 1) >= 3), (uint8_t)(y + 1)));
+        if ((y + 1) >= 3) {
+            r.end = e;
+            return r;
+        }
+    }
+    e = then(e, ended_with_y(ended_nz(y), y));
+    jsr_push(0xB592);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = then(e, ended_of_find_slot(found_slot, last, found));
+    if (!found) {
+        r.end = e;
+        return r;
+    }
+    r.before = then(e, ended_load(0x48));
+    r.sounded = true;
+    r.command = 0x48;
+    jsr_push(0xB599);
+    r.call = SoundCommand(0x48, slot, found_slot);
+    jsr_pop();
+    jsr_push(0xB59E);
+    placed = StartObjectAtPlace(0x27, slot, found_slot);
+    jsr_pop();
+    facing = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->facing_left[found_slot], facing);
+    r.end = then(then(ended_load(0x27), ended_with_y(ended_load(placed), found_slot)), ended_load(facing));
+    return r;
+}
+
+void abi_SpawnOnTimerInTable(void)
+{
+    abi_sound_end(SpawnOnTimerInTable(cpu.x));
+}

@@ -1,3 +1,65 @@
+; @routine 01BB:0A0 RichterTurnOnPad
+; @run 6D:B0A0
+; WHAT IT DOES: Turns the player round when the pad says so: facing right and the pad's bit 7 held turns him left,
+; facing left and bit 5 held turns him right; the state then takes the next one from a table.
+; HOW: OBJ_2AC0 is the facing; a TST of zPadHeld; the state less 5 indexes the table at $B03B.
+; WAITS: no.
+; Entry: nothing. Exit: no turn: A the facing, N, V, Z from the TST. A turn: A the new state, N and Z from it, Y the
+; old state less 5, C and V from that subtract.
+RichterTurnOnPad:
+    lda a:OBJ_2AC0
+    bne RichterTurnOnPad_at0
+    tst #$80,z:zPadHeld
+    beq RichterTurnOnPad_at1
+    inc a:OBJ_2AC0
+RichterTurnOnPad_at2:
+    lda a:OBJ_27A8
+    sec
+    sbc #$05
+    tay
+    lda a:$B03B,y
+    sta a:OBJ_27A8
+    rts
+RichterTurnOnPad_at0:
+    tst #$20,z:zPadHeld
+    beq RichterTurnOnPad_at1
+    stz a:OBJ_2AC0
+    bra RichterTurnOnPad_at2
+RichterTurnOnPad_at1:
+    rts
+
+; @routine 01BB:1AA CountDownThenStand
+; @run 6D:B1AA
+; WHAT IT DOES: Counts the player's timer in OBJ_2F90 down; when it reaches zero he stands.
+; HOW: DEC of the byte; zero goes on to RichterStand, any other value returns.
+; WAITS: no.
+; Entry: nothing. Exit: counting on, N and Z from the new value; at zero as RichterStand.
+; Checked with --callees wrappers: RichterStand's earlier C differs from its draft in the call frames of its own calls.
+CountDownThenStand:
+    dec a:OBJ_2F90
+    beq CountDownThenStand_at0
+    rts
+CountDownThenStand_at0:
+    jmp RichterStand
+
+; @routine 01BB:79E RichterReadAtOffset
+; @run 6D:B79E
+; WHAT IT DOES: Reads the terrain at a point offset from the player's own X and Y low bytes by a pair from a table.
+; HOW: X low plus the table's byte at $B7B1+Y into zTemp00; Y low plus the one at $B7B2+Y becomes the row, its carry
+; the Y high's; goes on to RichterReadOnScreen.
+; WAITS: no.
+; Entry: Y the table's offset. Exit: as RichterReadOnScreen.
+; Checked with --callees wrappers; no case reaches the read's own code, so the read made by C is not reached.
+RichterReadAtOffset:
+    lda a:OBJ_X_LO
+    clc
+    adc a:$B7B1,y
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc a:$B7B2,y
+    jmp RichterReadOnScreen
+
 ; @routine 01BC:7B4 RichterStateDoubled
 ; @run 6D:BFB4
 ; WHAT IT DOES: Twice the state of the object Richter's code is running, for a table of words.
@@ -53,6 +115,28 @@ RichterFlagsAgainstFour:
     cmp #$04
     rts
 
+; @routine 01BE:174 ClearObjectIfOffRange
+; @run 6E:C974
+; WHAT IT DOES: Empties the object when it is off the map above or below, or far to the side.
+; HOW: Y high must be zero; X high zero keeps it; otherwise X low from $40 up to $BF empties it.
+; WAITS: no.
+; Entry: X object. Exit: kept: A the last byte read, N, Z, C from the last compare; emptied: as the load or compare
+; before the jump (ClearObject keeps every register).
+ClearObjectIfOffRange:
+    lda a:OBJ_Y_HI,x
+    bne ClearObjectIfOffRange_at0
+    lda a:OBJ_X_HI,x
+    beq ClearObjectIfOffRange_at1
+    lda a:OBJ_X_LO,x
+    cmp #$40
+    bcc ClearObjectIfOffRange_at1
+    cmp #$C0
+    bcc ClearObjectIfOffRange_at0
+ClearObjectIfOffRange_at1:
+    rts
+ClearObjectIfOffRange_at0:
+    jmp VecClearObject
+
 ; @routine 01C0:063 NegateVelocityXIfFacingLeft
 ; @run 6E:D863
 ; WHAT IT DOES: Turns the object's horizontal velocity round when its facing byte is set.
@@ -65,6 +149,24 @@ NegateVelocityXIfFacingLeft:
     rts
 NegateVelocityXIfFacingLeft_at0:
     jmp VecNegateVelocityX
+
+; @routine 01C0:129 ClearObjectInYAndCopyPlace
+; @run 6E:D929
+; WHAT IT DOES: Empties the object in Y, then gives it the position of the object in X.
+; HOW: ClearObjectInY, then four byte copies: X low, X high, Y low, Y high.
+; WAITS: no.
+; Entry: X the source object, Y the one to empty. Exit: A the last byte copied, N and Z from it. X, Y, C, V kept.
+ClearObjectInYAndCopyPlace:
+    jsr VecClearObjectInY
+    lda a:OBJ_X_LO,x
+    sta a:OBJ_X_LO,y
+    lda a:OBJ_X_HI,x
+    sta a:OBJ_X_HI,y
+    lda a:OBJ_Y_LO,x
+    sta a:OBJ_Y_LO,y
+    lda a:OBJ_Y_HI,x
+    sta a:OBJ_Y_HI,y
+    rts
 
 ; @routine 024D:0A0 MapOverlayBanks5And6
 ; @run 6B:80A0
@@ -124,6 +226,58 @@ StepStageTable9C20:
 ; WAITS: no.
 ; Entry: any. Exit: all registers and flags kept.
 EmptyHandler9CFC:
+    rts
+
+; @routine 09EB:559 LoadRecordThenRecordEvent
+; @run 70:B559
+; WHAT IT DOES: Loads the object's record, then marks its event when it is one the save remembers.
+; HOW: LoadObjectRecord, then goes on to RecordObjectEvent.
+; WAITS: no.
+; Entry: X object. Exit: as RecordObjectEvent.
+LoadRecordThenRecordEvent:
+    jsr VecLoadObjectRecord
+    jmp VecRecordObjectEvent
+
+; @routine 10C0:293 TileHalfStepAAt9A93
+; @run 6B:9A93
+; WHAT IT DOES: The tiles $83 and up of this overlay: a step of the row that differs between the tile's halves.
+; HOW: A pair of bytes in the table at $9AEF by tile, the second for the right half.
+; WAITS: no.
+; Entry: A tile, zTemp00 column, zTemp02 row. Exit: A $81; Y the index; C and V from the add.
+TileHalfStepAAt9A93:
+    sec
+    sbc #$83
+    asl a
+    tay
+    bbr2 zTemp00,TileHalfStepAAt9A93_at0
+    iny
+TileHalfStepAAt9A93_at0:
+    lda a:$9AEF,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 10C0:2A7 TileHalfStepBAt9AA7
+; @run 6B:9AA7
+; WHAT IT DOES: The tiles $8C and up of this overlay: as TileHalfStepAAt9A93, the other way round.
+; HOW: A pair of bytes in the table at $9AF7 by tile, the second for the left half.
+; WAITS: no.
+; Entry and exit: as TileHalfStepAAt9A93.
+TileHalfStepBAt9AA7:
+    sec
+    sbc #$8C
+    asl a
+    tay
+    bbs2 zTemp00,TileHalfStepBAt9AA7_at0
+    iny
+TileHalfStepBAt9AA7_at0:
+    lda a:$9AF7,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
     rts
 
 ; @routine 10C0:482 TileNudgeAt9C82

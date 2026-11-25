@@ -709,6 +709,7 @@ void abi_RichterSolidUnderColumn(void)
  * @run 6D:AA48
  * WHAT IT DOES: Reads the terrain straight under his feet, $1E below his position.
  * HOW: His own X with no column's offset.
+ * WAITS: no.
  * Entry: nothing. Exit: as the read.
  */
 ColumnRead RichterReadUnderFeet(void)
@@ -722,7 +723,7 @@ ColumnRead RichterReadUnderFeet(void)
 }
 
 /* Past the screen the row's add leaves all four flags, and the CLA that follows changes none. */
-static void under_feet_exit_shim(ColumnRead one)
+void under_feet_exit_shim(ColumnRead one)
 {
     if (one.read_made) {
         terrain_read_exit_shim(one.read);

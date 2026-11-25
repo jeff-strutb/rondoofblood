@@ -1,3 +1,42 @@
+; @routine 051B:02F LoadThenStepListBreakAtFive
+; @run 70:B02F
+; WHAT IT DOES: In state 0 loads the object's record and sets sprite set 7 and frame 7. Later it steps the animation list at $B075; once its hits taken reach 5 it sends sound $82, records its event, becomes the kind in OBJ_3040 with OBJ_3A90 $10 and state 0, and starts a kind $9B object in a free slot from $50 at its place. (The part after the compare ran in no script; it is written from the decoded bytes.)
+; HOW: LoadObjectRecord, StepObjectFrames, SoundCommand, RecordObjectEvent, FindFreeSlotFrom50, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+LoadThenStepListBreakAtFive:
+    lda a:OBJ_27A8,x
+    bne LoadThenStepListBreakAtFive_at0
+    jsr VecLoadObjectRecord
+    lda #$07
+    sta a:OBJ_2A10,x
+    lda #$07
+    sta a:OBJ_2A68,x
+    rts
+LoadThenStepListBreakAtFive_at0:
+    lda #$B0
+    sta z:zTemp11
+    lda #$75
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc LoadThenStepListBreakAtFive_at1
+    lda #$82
+    jsr VecSoundCommand
+    jsr VecRecordObjectEvent
+    lda a:OBJ_3040,x
+    sta a:OBJ_2750,x
+    lda #$10
+    sta a:OBJ_3A90,x
+    stz a:OBJ_27A8,x
+    jsr VecFindFreeSlotFrom50
+    bcc LoadThenStepListBreakAtFive_at1
+    lda #$9B
+    jmp VecStartObjectAtPlace
+LoadThenStepListBreakAtFive_at1:
+    rts
+
 ; @routine 051B:0FE LoadOrFallAlongListByTimer
 ; @run 70:B0FE
 ; @stop B125

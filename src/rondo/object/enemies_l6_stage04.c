@@ -15,6 +15,15 @@ static Ended then(Ended e, Ended next)
     return ended_then(e, next);
 }
 
+/* RecordObjectEvent's exit: unmarked, A 0 and Z; else A the byte stored, Y its index, C whether the event is a multiple of 8. */
+static Ended ended_of_object_event(bool marked, uint8_t stored, uint8_t event, uint8_t byte)
+{
+    if (!marked) {
+        return ended_load(0);
+    }
+    return ended_with_carry(ended_with_y(ended_load(stored), byte), (event & 7) == 0);
+}
+
 /*
  * @routine 051B:23D LoadRecordA04
  * @run 70:B23D
@@ -1054,4 +1063,76 @@ Ended FollowBlockWhileState5(uint8_t slot)
 void abi_FollowBlockWhileState5(void)
 {
     abi_ended(FollowBlockWhileState5(cpu.x));
+}
+
+/*
+ * @routine 051B:02F LoadThenStepListBreakAtFive
+ * @run 70:B02F
+ * WHAT IT DOES: In state 0 loads the object's record and sets sprite set 7 and frame 7. Later it steps the animation list at $B075; once its hits taken reach 5 it sends sound $82, records its event, becomes the kind in OBJ_3040 with OBJ_3A90 $10 and state 0, and starts a kind $9B object in a free slot from $50 at its place. (The part after the compare ran in no script; it is written from the decoded bytes.)
+ * HOW: LoadObjectRecord, StepObjectFrames, SoundCommand, RecordObjectEvent, FindFreeSlotFrom50, StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+ */
+SoundEnd LoadThenStepListBreakAtFive(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    FrameStep step;
+    uint8_t state, nz, last, hits, stored, event, byte, kind, found_slot, found_last, placed, y = y_entry;
+    bool carry, marked, found;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        jsr_push(0xB037);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->sprite_set[slot], 7);
+        WR8(OBJ->frame[slot], 7);
+        r.end = then(then(e, ended_of_record(last, nz, carry)), ended_load(7));
+        return r;
+    }
+    WR8(ZP->temp11, 0xB0);
+    WR8(ZP->temp10, 0x75);
+    jsr_push(0xB04D);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(then(then(e, ended_load(0xB0)), ended_load(0x75)), ended_of_frame_step(step, step != FRAME_HELD, y));
+    hits = RD8(OBJ->hit_taken[slot]);
+    e = then(then(e, ended_load(hits)), ended_compare(hits, 5));
+    if (hits < 5) {
+        r.end = e;
+        return r;
+    }
+    r.before = then(e, ended_load(0x82));
+    r.sounded = true;
+    r.command = 0x82;
+    jsr_push(0xB059);
+    r.call = SoundCommand(0x82, slot, y);
+    jsr_pop();
+    jsr_push(0xB05C);
+    marked = RecordObjectEvent(slot, &stored, &event, &byte);
+    jsr_pop();
+    e = ended_of_object_event(marked, stored, event, byte);
+    kind = RD8(OBJ->f3040[slot]);
+    WR8(OBJ->kind[slot], kind);
+    WR8(OBJ->timer[slot], 0x10);
+    WR8(OBJ->state[slot], 0);
+    e = then(then(e, ended_load(kind)), ended_load(0x10));
+    jsr_push(0xB06D);
+    found_slot = FindFreeSlotFrom50(&found_last, &found);
+    jsr_pop();
+    e = then(e, ended_of_find_slot(found_slot, found_last, found));
+    if (!found) {
+        r.end = e;
+        return r;
+    }
+    placed = StartObjectAtPlace(0x9B, slot, found_slot);
+    r.end = then(then(e, ended_load(0x9B)), ended_with_y(ended_load(placed), found_slot));
+    return r;
+}
+
+void abi_LoadThenStepListBreakAtFive(void)
+{
+    abi_sound_end(LoadThenStepListBreakAtFive(cpu.x, cpu.y));
 }

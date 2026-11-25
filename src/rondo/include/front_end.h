@@ -489,5 +489,8 @@ ObjExit EndingHoldThenScript19(uint8_t object);
 ObjExit EndingLinkAnimationA(uint8_t object);
 ObjExit EndingLinkAnimationB(uint8_t object);
 ObjExit EndingAimAtPlace(uint8_t object);
+ObjExit EndingScrollSqueeze(uint8_t object);
+ObjExit EndingWaitForList(uint8_t object);
+ObjExit EndingFlyOff(uint8_t object);
 
 #endif

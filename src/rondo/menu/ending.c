@@ -1514,3 +1514,179 @@ void abi_EndingAimAtPlace(void)
 {
     object_exit_shim(EndingAimAtPlace(cpu.x));
 }
+
+/* A plain Exit as a handler's result. */
+static ObjExit through_exit(Exit exit)
+{
+    ObjExit result = { 0 };
+
+    result.exit = exit;
+    return result;
+}
+
+/*
+ * @routine 010E:087 EndingScrollSqueeze
+ * @run 6B:8887
+ * WHAT IT DOES: An object handler of four stages: the first starts the raster effect $14 and sets the scroll's Y slots (1 and 5 to
+ * $2F, 2 and 6 to $BF, 0 to $5F, 4 to $A7) and holds the object $40 frames; the second waits the hold out; the third, on odd frames,
+ * moves slots 5 and 6 towards each other until slot 5 is $78; every stage but the first moves scroll slots 3 and 4 on.
+ * HOW: OBJ->state; SCROLL->y_lo; EndingScrollSlots.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollSqueeze(uint8_t object)
+{
+    ObjExit result;
+    Exit slots;
+    uint8_t state, value, left;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(ZP->raster_effect, 0x14);
+        INC8(SCROLL->y_hi[1]);
+        WR8(SCROLL->y_lo[1], 0x2F);
+        WR8(SCROLL->y_lo[5], 0x2F);
+        WR8(SCROLL->y_lo[2], 0xBF);
+        WR8(SCROLL->y_lo[6], 0xBF);
+        WR8(SCROLL->y_lo[0], 0x5F);
+        WR8(SCROLL->y_lo[4], 0xA7);
+        WR8(OBJ->life_timer[object], 0x40);
+        return object_exit(0x40, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        left = DEC8(OBJ->life_timer[object]);
+        result = object_exit(0, left);
+        if (left == 0) {
+            result.exit.nz = INC8(OBJ->state[object]);
+        }
+        return result;
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        slots = EndingScrollSlots();               /* a jump, not a call: no frame */
+        return through_exit(slots);
+    }
+    jsr_push(0x88C8);
+    slots = EndingScrollSlots();
+    jsr_pop();
+    result = object_exit(slots.a, slots.nz);
+    result.exit.c = slots.c;
+    result.exit.c_kept = false;
+    result.exit.v = slots.v;
+    result.exit.v_set = true;
+    if ((RD8(ZP->frame_tick) & 1) == 0) {
+        return result;
+    }
+    INC8(SCROLL->y_lo[5]);
+    DEC8(SCROLL->y_lo[6]);
+    value = RD8(SCROLL->y_lo[5]);
+    if (value == 0x78) {
+        INC8(OBJ->state[object]);
+    }
+    value = RD8(SCROLL->y_lo[5]);
+    WR8(SCROLL->y_lo[1], value);
+    value = RD8(SCROLL->y_lo[6]);
+    result = with_carry(object_exit(value, (uint8_t)(value - 0xA7)), value >= 0xA7);
+    result.exit.v = slots.v;
+    result.exit.v_set = true;
+    if (value >= 0xA7) {
+        WR8(SCROLL->y_lo[4], value);
+    }
+    return result;
+}
+
+void abi_EndingScrollSqueeze(void)
+{
+    object_exit_shim(EndingScrollSqueeze(cpu.x));
+}
+
+/*
+ * @routine 010E:19C EndingWaitForList
+ * @run 6B:899C
+ * WHAT IT DOES: An object handler: in its first state plays the ending's list its next kind names, and when the list has ended
+ * and the kind is not negative moves to the next state.
+ * HOW: OBJ->state and OBJ->next_kind; EndingFrameList.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingWaitForList(uint8_t object)
+{
+    ObjExit list;
+    uint8_t state, kind;
+
+    state = RD8(OBJ->state[object]);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    kind = RD8(OBJ->next_kind[object]);
+    jsr_push(0x89A7);
+    list = EndingFrameList(kind, object);
+    jsr_pop();
+    if (list.exit.a != 0) {
+        return list;
+    }
+    kind = RD8(OBJ->next_kind[object]);
+    list.exit.a = kind;
+    list.exit.nz = kind;
+    if ((kind & 0x80) != 0) {
+        return list;
+    }
+    list.exit.nz = INC8(OBJ->state[object]);
+    return list;
+}
+
+void abi_EndingWaitForList(void)
+{
+    object_exit_shim(EndingWaitForList(cpu.x));
+}
+
+/*
+ * @routine 010E:1B2 EndingFlyOff
+ * @run 6B:89B2
+ * WHAT IT DOES: An object handler of two stages: the first takes its speed from four tables at $89E2 by its next kind; the second
+ * moves the object until its hold has run out.
+ * HOW: OBJ->state and OBJ->next_kind; ApplyVelocity; OBJ->life_timer.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingFlyOff(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, kind, left;
+    AxisMove move;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        kind = RD8(OBJ->next_kind[object]);
+        WR8(OBJ->vx_lo[object], rd8((uint16_t)(0x89E2 + kind)));
+        WR8(OBJ->vx_hi[object], rd8((uint16_t)(0x89E7 + kind)));
+        WR8(OBJ->vy_lo[object], rd8((uint16_t)(0x89EC + kind)));
+        state = rd8((uint16_t)(0x89F1 + kind));
+        WR8(OBJ->vy_hi[object], state);
+        result = object_exit(state, INC8(OBJ->state[object]));
+        result.exit.y = kind;
+        result.exit.y_kept = false;
+        return result;
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    jsr_push(0x89DC);
+    move = ApplyVelocity(object);
+    jsr_pop();
+    left = DEC8(OBJ->life_timer[object]);
+    result = object_exit(0, left);
+    result.exit.a_kept = true;
+    result = under_move(result, move);
+    if (left == 0) {
+        result.exit.nz = INC8(OBJ->state[object]);
+    }
+    return result;
+}
+
+void abi_EndingFlyOff(void)
+{
+    object_exit_shim(EndingFlyOff(cpu.x));
+}

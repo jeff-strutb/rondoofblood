@@ -946,6 +946,65 @@ EndingLinkAnimationB_at0:
     lda #$05
     bra $8862
 
+; @routine 010E:087 EndingScrollSqueeze
+; @run 6B:8887
+; WHAT IT DOES: An object handler of four stages: the first starts the raster effect $14 and sets the scroll's Y slots (1 and 5 to
+; $2F, 2 and 6 to $BF, 0 to $5F, 4 to $A7) and holds the object $40 frames; the second waits the hold out; the third, on odd frames,
+; moves slots 5 and 6 towards each other until slot 5 is $78; every stage but the first moves scroll slots 3 and 4 on.
+; HOW: OBJ->state; SCROLL->y_lo; EndingScrollSlots.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingScrollSqueeze:
+    lda a:OBJ_27A8,x
+    bne EndingScrollSqueeze_at0
+    lda #$14
+    sta z:zRasterEffect
+    inc a:ScrollYHi+1
+    lda #$2F
+    sta a:ScrollYLo+1
+    sta a:ScrollYLo+5
+    lda #$BF
+    sta a:ScrollYLo+2
+    sta a:ScrollYLo+6
+    lda #$5F
+    sta a:ScrollYLo
+    lda #$A7
+    sta a:ScrollYLo+4
+    lda #$40
+    sta a:OBJ_34B8,x
+    inc a:OBJ_27A8,x
+EndingScrollSqueeze_at2:
+    rts
+EndingScrollSqueeze_at0:
+    dec a
+    bne EndingScrollSqueeze_at1
+    dec a:OBJ_34B8,x
+    bne EndingScrollSqueeze_at2
+    inc a:OBJ_27A8,x
+    rts
+EndingScrollSqueeze_at1:
+    dec a
+    bne EndingScrollSqueeze_at3
+    jsr EndingScrollSlots
+    bbr0 zFrameTick,EndingScrollSqueeze_at2
+    inc a:ScrollYLo+5
+    dec a:ScrollYLo+6
+    lda a:ScrollYLo+5
+    cmp #$78
+    bne EndingScrollSqueeze_at4
+    inc a:OBJ_27A8,x
+EndingScrollSqueeze_at4:
+    lda a:ScrollYLo+5
+    sta a:ScrollYLo+1
+    lda a:ScrollYLo+6
+    cmp #$A7
+    bcc EndingScrollSqueeze_at5
+    sta a:ScrollYLo+4
+EndingScrollSqueeze_at5:
+    rts
+EndingScrollSqueeze_at3:
+    jmp EndingScrollSlots
+
 ; @routine 010E:0EF EndingScrollSlots
 ; @run 6B:88EF
 ; WHAT IT DOES: Moves the scroll slots 3 and 4 on: 4 added to the low X of slot 3, 8 to the low X of slot 4.
@@ -961,6 +1020,56 @@ EndingScrollSlots:
     clc
     adc #$08
     sta a:ScrollXLo+4
+    rts
+
+; @routine 010E:19C EndingWaitForList
+; @run 6B:899C
+; WHAT IT DOES: An object handler: in its first state plays the ending's list its next kind names, and when the list has ended
+; and the kind is not negative moves to the next state.
+; HOW: OBJ->state and OBJ->next_kind; EndingFrameList.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingWaitForList:
+    lda a:OBJ_27A8,x
+    bne EndingWaitForList_at0
+    lda a:OBJ_3040,x
+    jsr EndingFrameList
+    bne EndingWaitForList_at0
+    lda a:OBJ_3040,x
+    bmi EndingWaitForList_at0
+    inc a:OBJ_27A8,x
+EndingWaitForList_at0:
+    rts
+
+; @routine 010E:1B2 EndingFlyOff
+; @run 6B:89B2
+; WHAT IT DOES: An object handler of two stages: the first takes its speed from four tables at $89E2 by its next kind; the second
+; moves the object until its hold has run out.
+; HOW: OBJ->state and OBJ->next_kind; ApplyVelocity; OBJ->life_timer.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them.
+EndingFlyOff:
+    lda a:OBJ_27A8,x
+    bne EndingFlyOff_at0
+    ldy a:OBJ_3040,x
+    lda a:$89E2,y
+    sta a:OBJ_VX_LO,x
+    lda a:$89E7,y
+    sta a:OBJ_VX_HI,x
+    lda a:$89EC,y
+    sta a:OBJ_VY_LO,x
+    lda a:$89F1,y
+    sta a:OBJ_VY_HI,x
+EndingFlyOff_at2:
+    inc a:OBJ_27A8,x
+    rts
+EndingFlyOff_at0:
+    dec a
+    bne EndingFlyOff_at1
+    jsr VecApplyVelocity
+    dec a:OBJ_34B8,x
+    beq EndingFlyOff_at2
+EndingFlyOff_at1:
     rts
 
 ; @routine 010E:1F6 EndingFrameList

@@ -1,3 +1,64 @@
+; @routine 051F:454 WaitForPressThenAnimate
+; @run 71:D454
+; WHAT IT DOES: In state 0 loads the object's record and sets sprite set 6. Later, with OBJ_2800 0, it waits until the first object is at Y low $AA and X low $CC to $D3 and the pad's new presses have bit 4; then it moves to the next OBJ_2800, clears its animation step and timer and takes the first object's X low and Y low plus $D8 as its place. With OBJ_2800 not 0 it sets the first object's OBJ_3510 to $C0 and OBJ_3568 to $10 and steps the animation list at $D443; sound $3B when a frame changes; when the list ends it clears OBJ_2800, its frame and the first object's OBJ_3510.
+; HOW: LoadObjectRecord, StepObjectFrames, SoundCommand, stores.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+WaitForPressThenAnimate:
+    lda a:OBJ_27A8,x
+    bne WaitForPressThenAnimate_at0
+    jsr VecLoadObjectRecord
+    lda #$06
+    sta a:OBJ_2A10,x
+    rts
+WaitForPressThenAnimate_at0:
+    lda a:OBJ_2800,x
+    bne WaitForPressThenAnimate_at1
+    lda a:OBJ_Y_LO
+    cmp #$AA
+    bne WaitForPressThenAnimate_at2
+    lda a:OBJ_X_LO
+    cmp #$D4
+    bcs WaitForPressThenAnimate_at2
+    lda a:OBJ_X_LO
+    cmp #$CC
+    bcc WaitForPressThenAnimate_at2
+    lda z:zPadPressed
+    and #$10
+    beq WaitForPressThenAnimate_at2
+    inc a:OBJ_2800,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda a:OBJ_X_LO
+    sta a:OBJ_X_LO,x
+    lda a:OBJ_Y_LO
+    clc
+    adc #$D8
+    sta a:OBJ_Y_LO,x
+WaitForPressThenAnimate_at2:
+    rts
+WaitForPressThenAnimate_at1:
+    lda #$C0
+    sta a:OBJ_3510
+    lda #$10
+    sta a:OBJ_3568
+    lda #$43
+    sta z:zTemp10
+    lda #$D4
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne WaitForPressThenAnimate_at3
+    stz a:OBJ_2800,x
+    stz a:OBJ_2A68,x
+    stz a:OBJ_3510
+    rts
+WaitForPressThenAnimate_at3:
+    bcc WaitForPressThenAnimate_at4
+    lda #$3B
+    jsr VecSoundCommand
+WaitForPressThenAnimate_at4:
+    rts
+
 ; @routine 072C:5A7 LoadRecordA06
 ; @run 70:BDA7
 ; WHAT IT DOES: Loads the object's record.

@@ -848,6 +848,20 @@ static void pace_to(uint64_t want)
     }
 }
 
+/* The time a hardware READ happened at, for pacing the core to it: the record stamps a read after the core's handler ran
+ * (the read hook), and a VDC or VCE access (the I/O page's first two 1K ranges) steals a cycle BEFORE its handler runs
+ * (pce.cpp IORead), so the handler saw the state one cycle before the stamp. A read paced to the stamp and then made would be
+ * one cycle late: the status flag it reads can already be set. A write is stamped in the pre hook, before the steal
+ * (check_wr_pre), so it is paced to its stamp as it is. */
+static void pace_to_access(uint32_t phys, uint64_t stamp)
+{
+    uint32_t off = phys & 0x1FFF;
+
+    if ((phys >> 13) == 0xFF && ((off & 0x1C00) == 0x0000 || (off & 0x1C00) == 0x0400))
+        stamp -= chk_get_speed() ? 3 : 12;
+    pace_to(stamp);
+}
+
 /*
  * The one primitive: park the C, with the emulated CPU set up (by the caller) to run what must
  * run. The hook resumes the C when the CPU reaches resume_pc with S resume_s after an RTS or RTI.
@@ -991,13 +1005,18 @@ uint8_t rd8(uint16_t addr)
             return chk_bus_rd(addr);
         j = place(sp, is_ram(p) ? EV_R : EV_HWR, p, NULL, 0);
         e = j >= 0 ? evp((uint64_t)j) : NULL;
+        uint64_t before;
+
         if (e && !is_ram(p))
-            pace_to(e->clock);
+            pace_to_access(p, e->clock);
+        before = hybrid_clock_now();
         v = chk_bus_rd(addr);
         if (e && e->val != v) {
             char b[96];
 
-            defect(D_VALUE, "C read %06X gave %02X, the original's %s", p, v, describe(e, b, sizeof b));
+            defect(D_VALUE, "C read %06X gave %02X, the original's %s (the core's clock before the read %llu, after %llu; the record's %llu)", p, v,
+                   describe(e, b, sizeof b), (unsigned long long)before, (unsigned long long)hybrid_clock_now(),
+                   (unsigned long long)e->clock);
         }
         return v;
     }

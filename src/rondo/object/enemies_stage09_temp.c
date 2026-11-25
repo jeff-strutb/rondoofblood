@@ -2540,3 +2540,125 @@ void abi_StartFallingSpark09(void)
 {
     abi_ended(StartFallingSpark09(cpu.x));
 }
+
+/*
+ * @routine 09EB:211 ShootMoveAndPickSpeed
+ * @run 70:B211
+ * WHAT IT DOES: MaybeShootAhead, a move in X (ApplyVelocityX), and a tail jump into PickGroundSpeedInWindow.
+ * HOW: Two calls and a tail jump.
+ * WAITS: no.
+ * Entry: X object. Exit: as PickGroundSpeedInWindow.
+ */
+Ended ShootMoveAndPickSpeed(uint8_t slot)
+{
+    AxisMove move;
+    Ended e;
+
+    jsr_push(0xB214);
+    e = MaybeShootAhead(slot);
+    jsr_pop();
+    jsr_push(0xB217);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    return then(e, PickGroundSpeedInWindow(slot));
+}
+
+void abi_ShootMoveAndPickSpeed(void)
+{
+    abi_ended(ShootMoveAndPickSpeed(cpu.x));
+}
+
+/*
+ * @routine 09EB:539 JumpByStateTableE
+ * @run 70:B539
+ * WHAT IT DOES: Goes to the code a table at $B54B names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTableE(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xB54B + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xB54C + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTableE(void)
+{
+    Jump jump = JumpByStateTableE(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 09EA:630 JumpByStateTableF
+ * @run 70:AE30
+ * WHAT IT DOES: Goes to the code a table at $AE42 names for the object's state.
+ * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+ */
+Jump JumpByStateTableF(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xAE42 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xAE43 + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_JumpByStateTableF(void)
+{
+    Jump jump = JumpByStateTableF(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
+/*
+ * @routine 09E9:28D HitRowByKindAndHits
+ * @run 70:A28D
+ * WHAT IT DOES: Puts the byte of a table at $AB9F picked by 16 times OBJ_2EE0 plus the hits taken (OBJ_33B0) into zTemp00.
+ * HOW: Four shifts, an add, a table read (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: A the table byte, Y its index, C and V from the add.
+ */
+Ended HitRowByKindAndHits(uint8_t slot)
+{
+    uint8_t group, hits, shifted, byte;
+    Sum sum;
+    Ended e;
+
+    group = RD8(OBJ->fields_2ee0[slot]);
+    shifted = (uint8_t)(group << 4);
+    e = ended_with_carry(ended_nz(shifted), (group & 0x10) != 0);
+    WR8(ZP->temp00, shifted);
+    hits = RD8(OBJ->hit_taken[slot]);
+    e = then(e, ended_load(hits));
+    sum = add_bytes(hits, RD8(ZP->temp00), false);
+    e = then(e, of_sum(sum));
+    byte = rd8((uint16_t)(0xAB9F + sum.value));
+    WR8(ZP->temp00, byte);
+    return then(e, ended_with_y(ended_load(byte), sum.value));
+}
+
+void abi_HitRowByKindAndHits(void)
+{
+    abi_ended(HitRowByKindAndHits(cpu.x));
+}

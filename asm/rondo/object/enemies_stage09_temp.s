@@ -49,6 +49,27 @@ CountBothPairs:
     jsr CountAnglePairDownOrRepick
     rts
 
+; @routine 09E9:28D HitRowByKindAndHits
+; @run 70:A28D
+; WHAT IT DOES: Puts the byte of a table at $AB9F picked by 16 times OBJ_2EE0 plus the hits taken (OBJ_33B0) into zTemp00.
+; HOW: Four shifts, an add, a table read (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: A the table byte, Y its index, C and V from the add.
+HitRowByKindAndHits:
+    lda a:OBJ_FIELDS_2EE0,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_33B0,x
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AB9F,y
+    sta z:zTemp00
+    rts
+
 ; @routine 09E9:6B0 HealAndClear
 ; @run 70:A6B0
 ; WHAT IT DOES: An item that heals: the player's health goes up $28 (to at most $5C) and the item is cleared; when the health is already $5C the object instead plays sound $0B
@@ -138,6 +159,22 @@ AdvanceByHealth_at2:
     sta a:OBJ_3148,x
 AdvanceByHealth_at0:
     rts
+
+; @routine 09EA:630 JumpByStateTableF
+; @run 70:AE30
+; WHAT IT DOES: Goes to the code a table at $AE42 names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTableF:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$AE42,y
+    sta z:zTemp00
+    lda a:$AE43,y
+    sta z:zTemp01
+    jmp (ZeroPage)
 
 ; @routine 09EA:664 StartTwinSpawner
 ; @run 70:AE64
@@ -669,6 +706,17 @@ StartSplitterLow:
 StartSplitterLow_at0:
     rts
 
+; @routine 09EB:211 ShootMoveAndPickSpeed
+; @run 70:B211
+; WHAT IT DOES: MaybeShootAhead, a move in X (ApplyVelocityX), and a tail jump into PickGroundSpeedInWindow.
+; HOW: Two calls and a tail jump.
+; WAITS: no.
+; Entry: X object. Exit: as PickGroundSpeedInWindow.
+ShootMoveAndPickSpeed:
+    jsr MaybeShootAhead
+    jsr VecApplyVelocityX
+    jmp PickGroundSpeedInWindow
+
 ; @routine 09EB:21A MaybeShootAhead
 ; @run 70:B21A
 ; WHAT IT DOES: Every 32nd count of the object's OBJ_35C0, with a chance of three in four, starts a kind $2A object at its place in
@@ -709,6 +757,22 @@ PickWaterLevel:
     lda a:$B532,y
     sta a:LevelYHi
     rts
+
+; @routine 09EB:539 JumpByStateTableE
+; @run 70:B539
+; WHAT IT DOES: Goes to the code a table at $B54B names for the object's state.
+; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTableE:
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$B54B,y
+    sta z:zTemp00
+    lda a:$B54C,y
+    sta z:zTemp01
+    jmp (ZeroPage)
 
 ; @routine 09EB:55F WaitForPage2
 ; @run 70:B55F

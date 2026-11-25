@@ -565,3 +565,170 @@ void abi_LoadRecordThenClearEnemiesAtScreen2(void)
 {
     abi_sound_end(LoadRecordThenClearEnemiesAtScreen2(cpu.x, cpu.y));
 }
+
+/* The code at $BB62, which no script ran and which has no row of its own: C 0 when the object's X is inside the band from $0010 to $00EF on the first screen, C 1 when not. */
+static Ended inside_edge_band(uint8_t slot)
+{
+    uint8_t high, low;
+    Ended e;
+
+    high = RD8(OBJ->x_hi[slot]);
+    e = ended_load(high);
+    if (high != 0) {
+        return ended_with_carry(e, true);
+    }
+    low = RD8(OBJ->x_lo[slot]);
+    e = ended_compare(low, 0xF0);
+    if (low >= 0xF0) {
+        return ended_with_carry(e, true);
+    }
+    e = ended_compare(low, 0x10);
+    return ended_with_carry(e, low < 0x10);
+}
+
+/*
+ * @routine 05CC:282 LoadRecordThenFollowOrHomeIn
+ * @run 70:BA82
+ * WHAT IT DOES: In state 0 loads the record and sets the Y speed $1A. Later (unless the game's sub-mode is 4) it takes the place of slot $10 and moves by an X speed from the table at $BA90 by its number and slot $10's facing. While OBJ_34B8 is 0 and slot $10 is in state 4 with OBJ_2800 of 2 or 3 it waits for a hit of 1 to 4, then takes the distance to the player as its aim (OBJ_3510, OBJ_3568) and sets OBJ_34B8 1. While OBJ_34B8 is not 0 it homes in: it puts slot 0 at its place and moves it by the aim (turned on a step by the sign of each part), restores the speed of slot $10 and ends.
+ * HOW: LoadObjectRecord, CopyObjectPlaceBack, ApplyVelocity, CopyObjectPlace, ApplyVelocity with X and Y swapped, compares, table reads, stores.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last instruction that ran. The arm that takes the aim and the whole of the homing arm ran in no script (the draft stops there); the code at $BB62 that the homing arm calls has no row and is written here as inside_edge_band.
+ */
+Ended LoadRecordThenFollowOrHomeIn(uint8_t slot)
+{
+    uint8_t state, mode, facing, index, value, held, other, flags, hits, aim, y;
+    uint8_t last, nz, placed;
+    bool carry;
+    AxisMove move;
+    Sum sum, diff;
+    Ended e, band;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        jsr_push(0xBA8A);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->vy_hi[slot], 0x1A);
+        return then(ended_of_record(last, nz, carry), ended_load(0x1A));
+    }
+    mode = RD8(ZP->game_sub_mode);
+    e = ended_compare(mode, 4);
+    if (mode == 4) {
+        return e;
+    }
+    jsr_push(0xBA9F);
+    placed = CopyObjectPlaceBack(0x10, slot);
+    jsr_pop();
+    e = then(then(e, ended_with_y(ended_nz(0x10), 0x10)), ended_load(placed));
+    diff = sub_bytes(slot, 0x11, true);
+    index = (uint8_t)(diff.value << 1);
+    e = then(e, ended_with_carry(ended_load(index), (diff.value & 0x80) != 0));
+    facing = RD8(OBJ->facing_left[0x10]);
+    sum = add_bytes(index, facing, false);
+    y = sum.value;
+    e = ended_with_y(then(e, ended_of_sum(sum)), y);
+    value = rd8((uint16_t)(0xBA90 + y));
+    WR8(OBJ->vx_hi[slot], value);
+    e = then(e, ended_load(value));
+    jsr_push(0xBAB2);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    held = RD8(OBJ->f34b8[slot]);
+    e = then(e, ended_load(held));
+    if (held == 0) {
+        other = RD8(OBJ->state[0x10]);
+        e = then(e, ended_compare(other, 4));
+        if (other != 4) {
+            return e;
+        }
+        other = RD8(OBJ->f2800[0x10]);
+        e = then(e, ended_compare(other, 2));
+        if (other != 2) {
+            e = then(e, ended_compare(other, 3));
+            if (other != 3) {
+                return e;
+            }
+        }
+        WR8(OBJ->hitbox_on[slot], 2);
+        e = then(e, ended_load(2));
+        hits = RD8(OBJ->hit_taken[slot]);
+        e = then(e, ended_load(hits));
+        if (hits == 0) {
+            return e;
+        }
+        e = then(e, ended_compare(hits, 5));
+        if (hits >= 5) {
+            return e;
+        }
+        aim = RD8(OBJ->x_lo[0]);
+        diff = sub_bytes(aim, RD8(OBJ->x_lo[slot]), true);
+        WR8(OBJ->f3510[slot], diff.value);
+        aim = RD8(OBJ->y_lo[0]);
+        diff = sub_bytes(aim, RD8(OBJ->y_lo[slot]), true);
+        WR8(OBJ->f3568[slot], diff.value);
+        e = then(e, ended_of_sum(diff));
+        WR8(OBJ->f34b8[slot], 1);
+        return then(e, ended_load(1));
+    }
+    jsr_push(0xBAF5);
+    band = inside_edge_band(slot);
+    jsr_pop();
+    e = then(e, band);
+    if (!band.c) {
+        other = RD8(OBJ->state[0x10]);
+        e = then(e, ended_compare(other, 4));
+        if (other != 4) {
+            WR8(OBJ->hitbox_on[slot], 0);
+            WR8(OBJ->f34b8[slot], 0);
+            return e;
+        }
+    }
+    jsr_push(0xBB03);
+    placed = CopyObjectPlace(slot, 0);
+    jsr_pop();
+    e = then(then(e, ended_with_y(ended_nz(0), 0)), ended_load(placed));
+    value = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->vx_hi[0], value);
+    value = RD8(OBJ->f3568[slot]);
+    WR8(OBJ->vy_hi[0], value);
+    e = then(e, ended_load(value));
+    jsr_push(0xBB13);
+    move = ApplyVelocity(0);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    value = RD8(OBJ->f3510[slot]);
+    e = then(e, ended_load(value));
+    if (value != 0) {
+        index = (uint8_t)((value >> 7) & 0x01);
+        e = then(e, ended_with_y(ended_load(index), index));
+        value = RD8(OBJ->f3510[slot]);
+        sum = add_bytes(value, rd8((uint16_t)(0xBB60 + index)), false);
+        WR8(OBJ->f3510[slot], sum.value);
+        e = then(e, ended_of_sum(sum));
+    }
+    value = RD8(OBJ->f3568[slot]);
+    e = then(e, ended_load(value));
+    if (value != 0) {
+        index = (uint8_t)((value >> 7) & 0x01);
+        e = then(e, ended_with_y(ended_load(index), index));
+        value = RD8(OBJ->f3568[slot]);
+        sum = add_bytes(value, rd8((uint16_t)(0xBB60 + index)), false);
+        WR8(OBJ->f3568[slot], sum.value);
+        e = then(e, ended_of_sum(sum));
+    }
+    flags = RD8(OBJ->vx_hi[0x10]);
+    WR8(OBJ->vx_hi[0], flags);
+    flags = RD8(OBJ->vx_lo[0x10]);
+    WR8(OBJ->vx_lo[0], flags);
+    WR8(OBJ->vy_hi[0], 0xFF);
+    WR8(OBJ->vy_lo[0], 0);
+    WR8(OBJ->f3510[0], 2);
+    WR8(OBJ->f3568[0], 0);
+    return then(e, ended_load(2));
+}
+
+void abi_LoadRecordThenFollowOrHomeIn(void)
+{
+    abi_ended(LoadRecordThenFollowOrHomeIn(cpu.x));
+}

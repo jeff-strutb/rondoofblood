@@ -114,6 +114,119 @@ StepListThenClearWhenEnded:
     jmp VecClearObject
     rts
 
+; @routine 05CC:282 LoadRecordThenFollowOrHomeIn
+; @run 70:BA82
+; WHAT IT DOES: In state 0 loads the record and sets the Y speed $1A. Later (unless the game's sub-mode is 4) it takes the place of slot $10 and moves by an X speed from the table at $BA90 by its number and slot $10's facing. While OBJ_34B8 is 0 and slot $10 is in state 4 with OBJ_2800 of 2 or 3 it waits for a hit of 1 to 4, then takes the distance to the player as its aim (OBJ_3510, OBJ_3568) and sets OBJ_34B8 1. While OBJ_34B8 is not 0 it homes in: it puts slot 0 at its place and moves it by the aim (turned on a step by the sign of each part), restores the speed of slot $10 and ends.
+; HOW: LoadObjectRecord, CopyObjectPlaceBack, ApplyVelocity, CopyObjectPlace, ApplyVelocity with X and Y swapped, compares, table reads, stores.
+; WAITS: no.
+; Entry: X object. Exit: as the last instruction that ran. The arm that takes the aim and the whole of the homing arm ran in no script (the draft stops there); the code at $BB62 that the homing arm calls has no row and is written here as inside_edge_band.
+LoadRecordThenFollowOrHomeIn:
+    lda a:OBJ_27A8,x
+    bne $BA94
+    jsr VecLoadObjectRecord
+    lda #$1A
+    sta a:OBJ_VY_HI,x
+    rts
+    cpx a:$0DF3
+    trb z:$A5
+    and (zPlayerPush),y
+    tsb z:$F0
+    rmb5 z:zCharacterLoaded
+    bpl CountDownThenClearAndAdvanceSlot10
+    lda z:$40
+    txa
+    sec
+    sbc #$11
+    asl a
+    clc
+    adc a:$2AD0
+    tay
+    lda a:$BA90,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocity
+    lda a:OBJ_34B8,x
+    bne LoadRecordThenFollowOrHomeIn_at0
+    lda a:$27B8
+    cmp #$04
+    bne LoadRecordThenFollowOrHomeIn_at1
+    lda a:$2810
+    cmp #$02
+    beq LoadRecordThenFollowOrHomeIn_at2
+    cmp #$03
+    beq LoadRecordThenFollowOrHomeIn_at2
+    rts
+LoadRecordThenFollowOrHomeIn_at2:
+    lda #$02
+    sta a:OBJ_3250,x
+    lda a:OBJ_33B0,x
+    beq LoadRecordThenFollowOrHomeIn_at1
+    cmp #$05
+    bcs LoadRecordThenFollowOrHomeIn_at1
+    lda a:OBJ_X_LO
+    sec
+    sbc a:OBJ_X_LO,x
+    sta a:OBJ_3510,x
+    lda a:OBJ_Y_LO
+    sec
+    sbc a:OBJ_Y_LO,x
+    sta a:OBJ_3568,x
+    lda #$01
+    sta a:OBJ_34B8,x
+LoadRecordThenFollowOrHomeIn_at1:
+    rts
+LoadRecordThenFollowOrHomeIn_at0:
+    jsr $BB62
+    bcs LoadRecordThenFollowOrHomeIn_at3
+    lda a:$27B8
+    cmp #$04
+    bne RichterWallLift
+LoadRecordThenFollowOrHomeIn_at3:
+    ldy #$00
+    jsr VecCopyObjectPlace
+    lda a:OBJ_3510,x
+    sta a:OBJ_VX_HI
+    lda a:OBJ_3568,x
+    sta a:OBJ_VY_HI
+    sxy
+    jsr VecApplyVelocity
+    sxy
+    lda a:OBJ_3510,x
+    beq LoadRecordThenFollowOrHomeIn_at4
+    rol a
+    rol a
+    and #$01
+    tay
+    lda a:OBJ_3510,x
+    clc
+    adc a:RichterWallLiftHigh+1,y
+    sta a:OBJ_3510,x
+LoadRecordThenFollowOrHomeIn_at4:
+    lda a:OBJ_3568,x
+    beq LoadRecordThenFollowOrHomeIn_at5
+    rol a
+    rol a
+    and #$01
+    tay
+    lda a:OBJ_3568,x
+    clc
+    adc a:RichterWallLiftHigh+1,y
+    sta a:OBJ_3568,x
+LoadRecordThenFollowOrHomeIn_at5:
+    lda a:$2D90
+    sta a:OBJ_VX_HI
+    lda a:$2DE8
+    sta a:OBJ_VX_LO
+    lda #$FF
+    sta a:OBJ_VY_HI
+    stz a:OBJ_VY_LO
+    lda #$02
+    sta a:OBJ_3510
+    stz a:OBJ_3568
+    rts
+    stz a:OBJ_3250,x
+    stz a:OBJ_34B8,x
+    rts
+
 ; @routine 05CC:376 CountFramesThenRunByState
 ; @run 70:BB76
 ; WHAT IT DOES: Counts OBJ_34B8 up and runs the code a table at $BB8B names for the object's state (391, 3BA or 3FA).

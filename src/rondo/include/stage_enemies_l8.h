@@ -241,5 +241,6 @@ SoundEnd StepListSpawnAndMoveXOrClear(uint8_t slot, uint8_t y_entry);
 Ended ClearIfAboveOrFall(uint8_t slot);
 Ended LoadRecordRandomFlingOrFall(uint8_t slot);
 SoundEnd LoadRecordThenClearEnemiesAtScreen2(uint8_t slot, uint8_t y_entry);
+Ended LoadRecordThenFollowOrHomeIn(uint8_t slot);
 
 #endif

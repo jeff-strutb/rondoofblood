@@ -464,9 +464,24 @@ def served(main, opts):
             f"{f['defects']} access defects, parked {f['parked']}, unreached {f['unreached']}", b)
         path = os.path.join(main, "config", "rondo", "lockstep_defects.csv")
         old_rows = [r for r in records.read(path) if not (r["script"] == s and r["mode"] == mode)]
-        new_rows = [{"script": s, "mode": mode, "routine": r, "kinds": pack(k), "defects": sum(k.values()), "source": rev}
+        # check.c charges a defect to every swapped call whose span holds the call it names: a line ending
+        # "[in the call of X]" (X not the routine) was made inside X's call. The report keeps 6 lines a routine.
+        own, charged = {}, {}
+        rep = os.path.join(out, "a7", s, "a7run", "a7", s + ".rec.hybrid.txt")
+        if os.path.exists(rep):
+            for ln in open(rep, errors="replace"):
+                m = re.match(r"(\w+) (?:MOVED|EXTRA|MISSING|VALUE|STACK|STATE|REGS|CALL|INT) call \d+ frame \d+", ln)
+                if m:
+                    t = re.search(r"\[in the call of (\w+)\]\s*$", ln)
+                    if t and t.group(1) != m.group(1):
+                        charged.setdefault(m.group(1), set()).add(t.group(1))
+                    else:
+                        own[m.group(1)] = own.get(m.group(1), 0) + 1
+        new_rows = [{"script": s, "mode": mode, "routine": r, "kinds": pack(k), "defects": sum(k.values()), "source": rev,
+                     "own_lines": own.get(r, 0), "inside_call_of": ";".join(sorted(charged.get(r, ())))}
                     for r, k in sorted(res["a7_defects"].items(), key=lambda kv: -sum(kv[1].values()))]
-        records.write(path, ["script", "mode", "routine", "kinds", "defects", "source"], old_rows + new_rows)
+        records.write(path, ["script", "mode", "routine", "kinds", "defects", "source", "own_lines", "inside_call_of"],
+                      old_rows + new_rows)
         bad = sorted(((sum(k.values()), r, k) for r, k in res["a7_defects"].items()), reverse=True)[:8]
         for n, r, k in bad:
             log(f"  defects under {filed_of.get(r, r)} ({r}): {k}", b)

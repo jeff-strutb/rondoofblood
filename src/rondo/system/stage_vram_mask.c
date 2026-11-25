@@ -91,7 +91,7 @@ static VramMaskExit mask_vram_rows(bool long_variant)
     return out;
 }
 
-static void show_vram_mask_exit(VramMaskExit out)
+static void vram_mask_exit_shim(VramMaskExit out)
 {
     cpu.a = out.a;
     cpu.x = 0;
@@ -127,7 +127,7 @@ uint8_t MaskVramRowsRandom(void)
 
 void abi_MaskVramRowsRandom(void)
 {
-    show_vram_mask_exit(mask_vram_rows(false));
+    vram_mask_exit_shim(mask_vram_rows(false));
 }
 
 /*
@@ -145,5 +145,5 @@ uint8_t MaskVramRowsRandomLong(void)
 
 void abi_MaskVramRowsRandomLong(void)
 {
-    show_vram_mask_exit(mask_vram_rows(true));
+    vram_mask_exit_shim(mask_vram_rows(true));
 }

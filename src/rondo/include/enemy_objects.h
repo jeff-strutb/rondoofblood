@@ -755,6 +755,12 @@ Ended SwingOnCosineB(uint8_t slot);
 Ended PickSpeedAndTurnFromTable(uint8_t slot);
 Ended TurnOnRandomBeatWalkC(uint8_t slot);
 Ended TurnOnRandomBeatWalkFollowC(uint8_t slot);
+Ended FlashFallAnimateThenRemove(uint8_t slot);
+Ended StartAndMakeNeighbourB(uint8_t slot);
+Ended EnterNextStateWhenHitOrPlayerNear(uint8_t slot);
+Ended PlaceAtRandomOnEdge(uint8_t slot);
+Ended StartFlyerAtRandom(uint8_t slot);
+Ended SwoopOnCosineC(uint8_t slot);
 /* object/state_countdown.c */
 uint8_t CountdownNextStepA(uint8_t slot);
 uint8_t CountdownNextStateA(uint8_t slot);

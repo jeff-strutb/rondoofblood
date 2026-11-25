@@ -75,6 +75,17 @@
 ;
 ;
 ;
+; TEMPORARY: the stage 0B overlay's object routines whose enemy kind is not yet identified, kept
+; together here until each kind has a file of its own.
+; The disc tables the routines read are named here by their overlay address until the typed data
+; layer reads them.
+;
+;
+;
+;
+;
+;
+;
 ; @routine 117C:0EA CountdownThenState4B
 ; @run 70:B8EA
 ; WHAT IT DOES: The same as CountdownThenState4, at this overlay's copy of it.
@@ -483,4 +494,172 @@ TurnOnRandomBeatWalkFollowC_done:
     lda #$05
     sta a:OBJ_27A8,x
     stz a:OBJ_2800,x
+    rts
+
+; @routine 117C:219 StartFlyerAtRandom
+; @run 70:BA19
+; WHAT IT DOES: Starts the object from its record with flash flags $8F, places it at random
+; (PlaceAtRandomOnEdge), gives it a random f36c8 and a f35c0 from four bytes at overlay address
+; $BA49 by two random bits, turns it to face the player and gives it a Y speed of $FF40.
+; HOW: LoadObjectRecord, PlaceAtRandomOnEdge, NextRandom twice, SideOfPlayer.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A $40 and N, Z clear; C from the side compare; V from the
+; random numbers; Y the table index.
+StartFlyerAtRandom:
+    jsr VecLoadObjectRecord
+    lda #$8F
+    sta a:OBJ_2B18,x
+    jsr PlaceAtRandomOnEdge
+    jsr VecNextRandom
+    sta a:OBJ_36C8,x
+    jsr VecNextRandom
+    and #$03
+    tay
+    lda a:$BA49,y
+    sta a:OBJ_35C0,x
+    jsr VecSideOfPlayer
+    and #$01
+    sta a:OBJ_2AC0,x
+    lda #$FF
+    sta a:OBJ_VY_HI,x
+    lda #$40
+    sta a:OBJ_VY_LO,x
+    rts
+
+; @routine 117C:251 PlaceAtRandomOnEdge
+; @run 70:BA51
+; WHAT IT DOES: Puts the object at a random place chosen from a table of position pairs at overlay
+; address $BA8A: the row group depends on which way the scroll moves (zTemp00 $10, $20 moving right,
+; 0 moving left), the row on three random bits; its Y low byte comes from four bytes at $BABA by two
+; more random bits; its Y high byte is cleared.
+; HOW: NextRandom twice.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A the Y byte, N, Z from it; C, V from the second NextRandom;
+; Y its index. Clobbers zTemp00.
+PlaceAtRandomOnEdge:
+    lda #$10
+    sta z:zTemp00
+    lda a:ScrollSpeedX
+    beq PlaceAtRandomOnEdge_at0
+    bmi PlaceAtRandomOnEdge_at1
+    lda #$20
+    sta z:zTemp00
+    bra PlaceAtRandomOnEdge_at0
+PlaceAtRandomOnEdge_at1:
+    stz z:zTemp00
+PlaceAtRandomOnEdge_at0:
+    jsr VecNextRandom
+    and #$07
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$BA8B,y
+    sta a:OBJ_X_HI,x
+    lda a:$BA8A,y
+    sta a:OBJ_X_LO,x
+    stz a:OBJ_Y_HI,x
+    jsr VecNextRandom
+    and #$03
+    tay
+    lda a:$BABA,y
+    sta a:OBJ_Y_LO,x
+    rts
+
+; @routine 117C:2BE SwoopOnCosineC
+; @run 70:BABE
+; WHAT IT DOES: Unless the object in slot $54 shows frame 4: gives the object an X speed of
+; its f36c8's angle's cosine (speed $00A0), moves it along X, advances f36c8, moves it by its
+; velocity, and when it is on the first screen down and under $E0 moves it on a state.
+; HOW: ScaleByCosine, ApplyVelocityX, ApplyVelocity.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as the last test, add or compare left them; Y 0 after the scale.
+SwoopOnCosineC:
+    lda a:$2ABC
+    cmp #$04
+    beq SwoopOnCosine_at0
+    lda #$A0
+    sta z:zTemp00
+    lda #$00
+    sta z:zTemp01
+    lda a:OBJ_36C8,x
+    jsr VecScaleByCosine
+    lda z:zProduct2
+    sta a:OBJ_VX_HI,x
+    lda z:SpriteFlipMask
+    sta a:OBJ_VX_LO,x
+    jsr VecApplyVelocityX
+    inc a:OBJ_36C8,x
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_HI,x
+    bne SwoopOnCosine_at0
+    lda a:OBJ_Y_LO,x
+    cmp #$E0
+    bcs SwoopOnCosine_at0
+    inc a:OBJ_27A8,x
+SwoopOnCosine_at0:
+    rts
+
+; @routine 117C:609 FlashFallAnimateThenRemove
+; @run 70:BE09
+; WHAT IT DOES: Sets the object's flash flags to $8B, moves it along Y, and animates it along the list
+; at overlay address $BE22; when the list has ended the object removes itself.
+; HOW: ApplyVelocityY, StepObjectFrames; ClearObject as a tail jump.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as StepObjectFrames, V from ApplyVelocityY. Clobbers zTemp10-11.
+FlashFallAnimateThenRemove:
+    lda #$8B
+    sta a:OBJ_2B18,x
+    jsr VecApplyVelocityY
+    lda #$22
+    sta z:zTemp10
+    lda #$BE
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne FlashFallAnimateThenRemove_at0
+    jmp VecClearObject
+FlashFallAnimateThenRemove_at0:
+    rts
+
+; @routine 117C:6F1 StartAndMakeNeighbourB
+; @run 70:BEF1
+; WHAT IT DOES: Starts the object from its record, empties the slot after it and starts an object
+; of type $2C there at its place, and sets its own life_timer to $50.
+; HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A $50 and N, Z clear; C from the record; Y the neighbour's slot.
+StartAndMakeNeighbourB:
+    jsr VecLoadObjectRecord
+    txa
+    tay
+    iny
+    jsr VecClearObjectInY
+    lda #$2C
+    jsr VecStartObjectAtPlace
+    lda #$50
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 117C:705 EnterNextStateWhenHitOrPlayerNear
+; @run 70:BF05
+; WHAT IT DOES: When the object has taken a hit, or the player is within $68 pixels along X and $18
+; along Y, sets f3670 to 1 and moves the object on to its next state.
+; HOW: DistanceXToPlayer and DistanceYToPlayer compared.
+; WAITS: no.
+; Entry: X object, D clear. Exit: A, N, Z, C from the last test; V from the last distance;
+; or A 1 and N, Z from the new state.
+EnterNextStateWhenHitOrPlayerNear:
+    lda a:OBJ_33B0,x
+    bne EnterNextStateWhenHitOrPlayerNear_at0
+    jsr VecDistanceXToPlayer
+    cmp #$68
+    bcs EnterNextStateWhenHitOrPlayerNear_at1
+    jsr VecDistanceYToPlayer
+    cmp #$18
+    bcs EnterNextStateWhenHitOrPlayerNear_at1
+EnterNextStateWhenHitOrPlayerNear_at0:
+    lda #$01
+    sta a:OBJ_3670,x
+    inc a:OBJ_27A8,x
+EnterNextStateWhenHitOrPlayerNear_at1:
     rts

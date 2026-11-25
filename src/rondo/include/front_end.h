@@ -414,4 +414,32 @@ void abi_AttractFrameTick(void);
 void abi_AttractEndCountdown(void);
 void abi_ClearAllObjects(void);
 
+
+/* The title overlay's sub-mode handlers (menu/title_steps.c). A handler that ends in a sound command
+ * returns the call with what comes after it. */
+typedef struct { CommandCall call; uint8_t done; } TitleSound;
+typedef struct { Exit exit; CommandCall call; bool sounded; uint8_t x, y; } AttractStart;
+Exit TitleSetUp(uint8_t kept_x, uint8_t kept_y);
+Exit TitleScreenBegin(void);
+TitleSound TitleSoundBegin(uint8_t kept_x, uint8_t kept_y);
+void title_sound_exit_shim(TitleSound sound);
+Exit TitleStep(uint8_t kept_y);
+Exit TitleEntry(uint8_t kept_y);
+Exit TitleScreenStep(uint8_t kept_y);
+Exit AttractWaitStart(void);
+AttractStart AttractStartCheck(uint8_t index, uint8_t kept_y);
+void attract_start_exit_shim(AttractStart start);
+Exit AttractBlink(void);
+Exit AttractStep(uint8_t kept_y);
+void abi_TitleSetUp(void);
+void abi_TitleScreenBegin(void);
+void abi_TitleSoundBegin(void);
+void abi_TitleStep(void);
+void abi_TitleEntry(void);
+void abi_TitleScreenStep(void);
+void abi_AttractWaitStart(void);
+void abi_AttractStartCheck(void);
+void abi_AttractBlink(void);
+void abi_AttractStep(void);
+
 #endif

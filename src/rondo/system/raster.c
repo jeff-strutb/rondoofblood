@@ -240,7 +240,7 @@ static Exit band_table_step(uint8_t step, uint16_t bands, uint16_t y_adds, uint1
     return finish(exit_of(high.value, WORK_BAND, step, high.carry, high.overflow));
 }
 
-/* The same with the second table in words, for Y moves past one byte: Y is the doubled step halved again. */
+/* The same with the second table in words, for Y moves past one byte: Y is the doubled step halved again, so the line table is read by the step's low seven bits. */
 static Exit band_table_step_word(uint8_t step, uint16_t bands, uint16_t y_adds, uint16_t lines,
                                  uint16_t write_ret, uint16_t select_ret)
 {
@@ -252,7 +252,7 @@ static Exit band_table_step_word(uint8_t step, uint16_t bands, uint16_t y_adds, 
     work_x_from(band);
     (void)work_y_from_plus_word(band, y_adds, index);
     write_work_then_select(write_ret, select_ret);
-    line = rd8((uint16_t)(lines + step));
+    line = rd8((uint16_t)(lines + (index >> 1)));
     high = line_word_of(line);
     return finish(exit_of(high.value, WORK_BAND, (uint8_t)(index >> 1), high.carry, high.overflow));
 }

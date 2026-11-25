@@ -1,0 +1,33 @@
+# Coverage for the raster effects no script reaches (PROCEDURE section 6, step 2): in Stage 0, the effect the frame asks for
+# (zRasterEffect, $2045) is poked, and held for 40 frames, one effect after another. Each effect then runs every frame as the game does.
+include _newgame.txt
+wait 600
+poke 2045 02
+run 40
+poke 2045 04
+run 40
+poke 2045 05
+run 40
+poke 2045 07
+run 40
+poke 2045 09
+run 40
+poke 2045 0A
+run 40
+poke 2045 0F
+run 40
+poke 2045 16
+run 40
+poke 2045 19
+run 40
+poke 2045 1A
+run 40
+poke 2045 1B
+run 40
+poke 2045 1D
+run 40
+poke 2045 1E
+run 40
+poke 2045 1F
+run 40
+shot end

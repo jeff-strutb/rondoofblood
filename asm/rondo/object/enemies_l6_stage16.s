@@ -1,3 +1,27 @@
+; @routine 16CB:175 CountThenSpawnInState2
+; @run 70:B175
+; WHAT IT DOES: In state 2 counts OBJ_3880 down; at zero it sets it to $22 and starts a kind $28 object in a free slot from $30 at this object's place.
+; HOW: DEC, FindFreeSlotFrom30, StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object. Exit: the last compare, the count, or the start's registers.
+CountThenSpawnInState2:
+    lda a:OBJ_27A8,x
+    cmp #$02
+    bne CountThenSpawnInState2_at0
+    lda a:OBJ_3880,x
+    beq CountThenSpawnInState2_at1
+    dec a:OBJ_3880,x
+    rts
+CountThenSpawnInState2_at1:
+    lda #$22
+    sta a:OBJ_3880,x
+    jsr VecFindFreeSlotFrom30
+    bcc CountThenSpawnInState2_at0
+    lda #$28
+    jsr VecStartObjectAtPlace
+CountThenSpawnInState2_at0:
+    rts
+
 ; @routine 16CB:20E LoadThenStartRise
 ; @run 70:B20E
 ; WHAT IT DOES: Loads the object's record, sets its flip byte (OBJ_2FE8) to $80, its Y speed to $FE80 and OBJ_3720 to $E0.

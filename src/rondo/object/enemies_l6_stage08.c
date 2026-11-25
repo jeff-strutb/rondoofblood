@@ -15,6 +15,20 @@ static Ended then(Ended e, Ended next)
     return ended_then(e, next);
 }
 
+/* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
+static Ended ended_of_scale(ScaleResult r)
+{
+    Ended e = ended_with_y(ended_with_carry(ended_with_a(ended_nz(r.nz), r.a), r.carry), 0);
+
+    return r.v_set ? ended_with_overflow(e, r.overflow) : e;
+}
+
+/* AngleToPlayer's exit: A, N, Z, C, V and Y. */
+static Ended ended_of_angle(AngleExit r)
+{
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(r.a), r.c), r.v), r.y);
+}
+
 /*
  * @routine 088B:6C5 ClearFrame
  * @run 70:B6C5
@@ -917,4 +931,55 @@ Ended FollowSlot10WithHitBox(uint8_t slot)
 void abi_FollowSlot10WithHitBox(void)
 {
     abi_ended(FollowSlot10WithHitBox(cpu.x));
+}
+
+/*
+ * @routine 088B:285 SoundThenAimRandomLength
+ * @run 70:B285
+ * WHAT IT DOES: Sends sound $2B, then sets the object's speed along the angle to the player with a length from a table at $B2A7 by a random 0 to 3, and goes on to the next OBJ_2800.
+ * HOW: SoundCommand, AngleToPlayer, NextRandom, SetVelocityFromAngle, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
+ */
+SoundEnd SoundThenAimRandomLength(uint8_t slot, uint8_t y_entry)
+{
+    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    AngleExit angle;
+    RandomResult random;
+    ScaleResult scale;
+    uint8_t index, phase;
+    Ended e;
+
+    r.before = ended_load(0x2B);
+    r.sounded = true;
+    r.command = 0x2B;
+    jsr_push(0xB28A);
+    r.call = SoundCommand(0x2B, slot, y_entry);
+    jsr_pop();
+    jsr_push(0xB28D);
+    angle = AngleToPlayer(slot);
+    jsr_pop();
+    e = ended_of_angle(angle);
+    push8(angle.a);
+    jsr_push(0xB291);
+    random = NextRandom();
+    jsr_pop();
+    index = (uint8_t)((random.value & 0x03) << 1);
+    e = then(then(e, ended_of_random(random)), ended_with_carry(ended_with_y(ended_load((uint8_t)(random.value & 0x03)), index), false));
+    WR8(ZP->temp00, rd8((uint16_t)(0xB2A7 + index)));
+    WR8(ZP->temp01, rd8((uint16_t)(0xB2A8 + index)));
+    angle.a = pull8();
+    e = then(e, ended_load(angle.a));
+    jsr_push(0xB2A3);
+    scale = SetVelocityFromAngle(angle.a, slot);
+    jsr_pop();
+    e = then(e, ended_of_scale(scale));
+    phase = INC8(OBJ->f2800[slot]);
+    r.end = then(e, ended_nz(phase));
+    return r;
+}
+
+void abi_SoundThenAimRandomLength(void)
+{
+    abi_sound_end(SoundThenAimRandomLength(cpu.x, cpu.y));
 }

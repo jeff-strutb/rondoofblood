@@ -1028,6 +1028,7 @@ void abi_SceneCallOverlay(void);
 void abi_SceneReadSectors(void);
 void disc_log_exit_shim(const DiscLog *log);
 uint8_t disc_log_x(const DiscLog *log, uint8_t entry_x);
+uint8_t disc_log_y(const DiscLog *log, uint8_t entry_y);
 void adpcm_load_exit_shim(const AdpcmLoadRun *run);
 void abi_AdpcmLoadFixed(void);
 void abi_CdSearchTrack(void);
@@ -1087,7 +1088,7 @@ typedef struct {
     StageLoadRun load;
 } StageEnterRun;
 
-StageLoadRun StageLoad(void);
+StageLoadRun StageLoad(uint8_t entry_y);
 StageEnterRun StageEnter(void);
 void stage_load_exit_shim(const StageLoadRun *run);
 void stage_enter_exit_shim(const StageEnterRun *run);

@@ -39,7 +39,7 @@ static MaskExit mask_cells(uint8_t x, uint8_t y, uint16_t from)
     return out;
 }
 
-static void show_mask_exit(MaskExit out, uint8_t x)
+static void mask_exit_shim(MaskExit out, uint8_t x)
 {
     cpu.a = out.a;
     abi_nz(x);
@@ -67,7 +67,7 @@ void abi_MaskStageRowCopy(void)
 {
     uint8_t x = cpu.x;
 
-    show_mask_exit(mask_cells(x, cpu.y, 2), x);
+    mask_exit_shim(mask_cells(x, cpu.y, 2), x);
 }
 
 /*
@@ -89,5 +89,5 @@ void abi_MaskStageRow(void)
 {
     uint8_t x = cpu.x;
 
-    show_mask_exit(mask_cells(x, cpu.y, 0), x);
+    mask_exit_shim(mask_cells(x, cpu.y, 0), x);
 }

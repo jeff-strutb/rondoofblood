@@ -1886,3 +1886,212 @@ void abi_StepShootOnCue(void)
 {
     abi_sound_end(StepShootOnCue(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 09EA:5CB AdvanceByHealth
+ * @run 70:ADCB
+ * WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_32A8 falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
+ * when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_2800 are reset, and from phase 2 its OBJ_3148 loses
+ * bits 3 to 6.
+ * HOW: Table reads (bank 70).
+ * Untraced: the phase 2 test (ADD7) and the OBJ_3148 mask (AE00).
+ * WAITS: no.
+ * Entry: X object. Exit: the last compare, load or AND.
+ */
+Ended AdvanceByHealth(uint8_t slot)
+{
+    uint8_t state, phase, health, limit, byte, flags;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        return e;
+    }
+    phase = RD8(OBJ->f3618[slot]);
+    e = then(e, ended_with_y(ended_nz(phase), phase));
+    e = then(e, cpy(phase, 2));
+    if (phase == 2) {
+        health = RD8(OBJ->f32a8[slot]);
+        health = (uint8_t)(health & 0x80);
+        e = then(e, ended_load(health));
+        if (health == 0) {
+            return e;
+        }
+    } else {
+        health = RD8(OBJ->f32a8[slot]);
+        limit = rd8((uint16_t)(0xAE09 + phase));
+        e = then(e, ended_compare(health, limit));
+        if (health >= limit) {
+            return e;
+        }
+    }
+    byte = rd8((uint16_t)(0xAE0B + phase));
+    WR8(OBJ->state[slot], byte);
+    e = then(e, ended_load(byte));
+    INC8(OBJ->f3618[slot]);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->f2800[slot], 0);
+    phase = RD8(OBJ->f3618[slot]);
+    e = then(e, ended_compare(phase, 2));
+    if (phase < 2) {
+        return e;
+    }
+    flags = RD8(OBJ->f3148[slot]);
+    flags = (uint8_t)(flags & 0x87);
+    WR8(OBJ->f3148[slot], flags);
+    return then(e, ended_load(flags));
+}
+
+void abi_AdvanceByHealth(void)
+{
+    abi_ended(AdvanceByHealth(cpu.x));
+}
+
+/*
+ * @routine 09EB:14D PickGroundSpeedInWindow
+ * @run 70:B14D
+ * WHAT IT DOES: When the object is inside the window (InWindowRange), OBJ_2800 takes a byte of a sixteen-byte table at $B15F picked at random.
+ * HOW: InWindowRange, NextRandom, a table read (bank 70).
+ * WAITS: no.
+ * Entry: X object. Exit: outside: the window test's flags; inside: A the table byte, Y the pick, C and V from the random.
+ */
+Ended PickGroundSpeedInWindow(uint8_t slot)
+{
+    ViewTest view;
+    RandomResult random;
+    uint8_t pick, byte;
+    Ended e;
+
+    jsr_push(0xB150);
+    view = InWindowRange(slot);
+    jsr_pop();
+    e = view.end;
+    if (!view.in_view) {
+        return e;
+    }
+    jsr_push(0xB155);
+    random = NextRandom();
+    jsr_pop();
+    e = then(e, ended_of_random(random));
+    pick = (uint8_t)(random.value & 0x0F);
+    e = then(e, ended_with_y(ended_load(pick), pick));
+    byte = rd8((uint16_t)(0xB15F + pick));
+    WR8(OBJ->f2800[slot], byte);
+    return then(e, ended_load(byte));
+}
+
+void abi_PickGroundSpeedInWindow(void)
+{
+    abi_ended(PickGroundSpeedInWindow(cpu.x));
+}
+
+/*
+ * @routine 09EB:14A MoveThenPick
+ * @run 70:B14A
+ * WHAT IT DOES: Moves the object along X, then PickGroundSpeedInWindow.
+ * HOW: ApplyVelocityX, then the next routine's bytes.
+ * WAITS: no.
+ * Entry: X object. Exit: as PickGroundSpeedInWindow.
+ */
+Ended MoveThenPick(uint8_t slot)
+{
+    AxisMove move;
+    Ended e;
+
+    jsr_push(0xB14D);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    e = ended_of_axis_move(move);
+    return then(e, PickGroundSpeedInWindow(slot));
+}
+
+void abi_MoveThenPick(void)
+{
+    abi_ended(MoveThenPick(cpu.x));
+}
+
+/*
+ * @routine 09EB:1C7 SwingAndPick
+ * @run 70:B1C7
+ * WHAT IT DOES: Sets the object's Y speed to the cosine of its OBJ_3670 count (multiplier $0150), moves it, counts OBJ_3670 up and goes on as PickGroundSpeedInWindow.
+ * HOW: ScaleByCosine, ApplyVelocity, a tail jump into PickGroundSpeedInWindow.
+ * WAITS: no.
+ * Entry: X object. Exit: as PickGroundSpeedInWindow.
+ */
+Ended SwingAndPick(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t angle, high, low;
+
+    WR8(ZP->temp00, 0x50);
+    WR8(ZP->temp01, 1);
+    angle = RD8(OBJ->f3670[slot]);
+    jsr_push(0xB1D5);
+    ScaleByCosine(angle);
+    jsr_pop();
+    high = RD8(ZP->product.hi);
+    WR8(OBJ->vy_hi[slot], high);
+    low = RD8(ZP->product.mid);
+    WR8(OBJ->vy_lo[slot], low);
+    jsr_push(0xB1E2);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    INC8(OBJ->f3670[slot]);
+    (void)move;
+    return then(ended_with_y(ended_kept(), 0), PickGroundSpeedInWindow(slot));
+}
+
+void abi_SwingAndPick(void)
+{
+    abi_ended(SwingAndPick(cpu.x));
+}
+
+/*
+ * @routine 09EC:1BF FallStepAndLeave
+ * @run 70:B9BF
+ * WHAT IT DOES: Steps the animation list at $B9F2, adds $0010 to the Y speed and moves down; once Y low is $C0 or more the hitbox goes off, the animation resets and the
+ * object enters its next state.
+ * HOW: StepObjectFrames, ApplyVelocityY.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the last compare or INC.
+ */
+Ended FallStepAndLeave(uint8_t slot)
+{
+    FrameStep step;
+    AxisMove move;
+    uint8_t y = 0, low, high, y_low, state;
+    Sum sum;
+    Ended e;
+
+    step = step_list(slot, 0xB9F2, 0xB9CA, &y, true);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    low = RD8(OBJ->vy_lo[slot]);
+    sum = add_bytes(low, 0x10, false);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    e = then(e, of_sum(sum));
+    high = RD8(OBJ->vy_hi[slot]);
+    sum = add_bytes(high, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    e = then(e, of_sum(sum));
+    jsr_push(0xB9DE);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    y_low = RD8(OBJ->y_lo[slot]);
+    e = then(e, ended_compare(y_low, 0xC0));
+    if (y_low < 0xC0) {
+        return e;
+    }
+    WR8(OBJ->hitbox_on[slot], 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    state = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(state));
+}
+
+void abi_FallStepAndLeave(void)
+{
+    abi_ended(FallStepAndLeave(cpu.x));
+}

@@ -68,6 +68,9 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
   # refuses the landing with main as it was, and before the checks, whose build refuses a script with no trace. The folder holds links to main existing script folders, except
   # the ones being traced, and the merged maps written into it cover all of them.
   S=$(python3 tools/rondo/landcheck.py scripts main) || exit 9
+  if [ -z "$S" ]; then
+    X=$(python3 tools/rondo/landcheck.py merge "$M/build/rondo/trace") || { echo "LAND REFUSED (trace merge): $X"; exit 9; }
+  fi
   if [ -n "$S" ]; then
     P=$(python3 tools/rondo/cpuguard.py core "$M") || { echo "LAND REFUSED (trace): $P"; exit 9; }
     [ -x "$M/build/rondo/pcebox/pcebox" ] || { echo "LAND REFUSED (trace): main has no pcebox binary; run setup.sh pcebox in the main checkout"; exit 9; }

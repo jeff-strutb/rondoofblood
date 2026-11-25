@@ -847,7 +847,8 @@ void abi_HitKindFromBit1(void)
  * @run 6B:98A5
  * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_3148; kind 2 also sets the
  * slot's OBJ_3828 to 5; then reports the hit.
- * HOW: AND #$80 rotated twice, AND #1, INC, one store, CMP #2; the report as ReportHitToStage.
+ * HOW: AND #$80 rotated twice, AND #1, INC, one store, CMP #2; the report as ReportHitToStage. The kind 2 arm is
+ * untraced (135 of 400 cases reach it and the draft stops there), written from the disc's bytes.
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: as StoreHitFromTable.
  */

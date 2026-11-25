@@ -266,4 +266,7 @@ StageExit InitStage(uint8_t x, uint8_t y);
 StageExit InitStageB(uint8_t x, uint8_t y);
 StageExit InitStageC(uint8_t x, uint8_t y);
 
+/* system/stage_state_start.c: the state a stage starts in. */
+StageExit EnterStageState(void);
+
 #endif

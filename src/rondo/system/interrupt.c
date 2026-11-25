@@ -55,12 +55,17 @@ static void call_with_live_registers_shim(uint16_t ret, uint16_t target)
 }
 
 /* The sound tick of the late frame: X is 0 (CLX before the band write), Y the interrupted code's. */
-static void late_sound_tick_shim(uint8_t a, uint8_t y)
+static void late_sound_tick_shim(uint8_t a, uint8_t y, bool line_written, Sum line)
 {
     cpu.a = a;
     cpu.x = 0;
     cpu.y = y;
     abi_nz(a);
+    if (line_written) {
+        /* The raster line's high byte was the last add: it left the carry and the overflow. */
+        abi_flag(P_C, line.carry);
+        abi_flag(P_V, line.overflow);
+    }
     call_orig(0x42D2, 0x4366);
 }
 
@@ -107,11 +112,14 @@ static void clear_raster_enable(void)
 static void late_frame(uint8_t kept_y)
 {
     uint8_t byte;
+    bool line_written = false;
+    Sum line = { 0 };
 
     clear_raster_enable();
     byte = rd8(RasterEffectNow);
     if (byte != 0) {
-        write_raster_line(0x42AB);
+        line = write_raster_line(0x42AB);
+        line_written = true;
         set_raster_enable();
     }
     jsr_push(0x42C3);
@@ -122,7 +130,7 @@ static void late_frame(uint8_t kept_y)
     jsr_push(0x42CF);
     byte = WriteBandScroll(0);
     jsr_pop();
-    late_sound_tick_shim(byte, kept_y);
+    late_sound_tick_shim(byte, kept_y, line_written, line);
 }
 
 /* A frame on time: video, then the game's logic with interrupts on. */

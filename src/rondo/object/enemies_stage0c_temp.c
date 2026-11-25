@@ -1560,3 +1560,157 @@ void abi_StartThrownPiece(void)
 {
     abi_ended(StartThrownPiece(cpu.x));
 }
+
+/* A random pick of a two-byte pair: the table's high byte at +1 and its low byte at +0 of the doubled index. */
+static Ended pick_speed_pair(uint16_t table, uint16_t ret, uint16_t high_column, uint16_t low_column, uint8_t slot)
+{
+    RandomResult random;
+    uint8_t pick, index, byte;
+    Ended e;
+
+    jsr_push(ret);
+    random = NextRandom();
+    jsr_pop();
+    e = ended_of_random(random);
+    pick = (uint8_t)(random.value & 0x07);
+    index = (uint8_t)(pick << 1);
+    e = then(e, ended_with_y(ended_with_carry(ended_load(index), false), index));
+    byte = rd8((uint16_t)(table + 1 + index));
+    WR8_IDX(high_column, slot, byte);
+    byte = rd8((uint16_t)(table + index));
+    WR8_IDX(low_column, slot, byte);
+    return then(e, ended_load(byte));
+}
+
+/*
+ * @routine 0CAC:3C1 StartScatteringPiece
+ * @run 70:BBC1
+ * WHAT IT DOES: In any state but 0 it goes on as StepMoveOrClear. In state 0 it loads its record, takes a random X and Y speed from a table at $BC1C (sixteen bytes: eight
+ * words), moves once, then takes a second random X speed from $BC2C and Y speed from $BC3C.
+ * HOW: LoadObjectRecord, NextRandom four times, ApplyVelocity, table reads (bank 70).
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: the last random's pick and table read.
+ */
+Ended StartScatteringPiece(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t state, nz, last;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        return StepMoveOrClear(slot);
+    }
+    jsr_push(0xBBCC);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    e = then(e, pick_speed_pair(0xBC1C, 0xBBCF, COL(OBJ->vx_hi), COL(OBJ->vx_lo), slot));
+    e = then(e, pick_speed_pair(0xBC1C, 0xBBE2, COL(OBJ->vy_hi), COL(OBJ->vy_lo), slot));
+    jsr_push(0xBBF5);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    e = then(e, pick_speed_pair(0xBC2C, 0xBBF8, COL(OBJ->vx_hi), COL(OBJ->vx_lo), slot));
+    return then(e, pick_speed_pair(0xBC3C, 0xBC0B, COL(OBJ->vy_hi), COL(OBJ->vy_lo), slot));
+}
+
+void abi_StartScatteringPiece(void)
+{
+    abi_ended(StartScatteringPiece(cpu.x));
+}
+
+/*
+ * @routine 0CAC:399 StepListAndMove
+ * @run 70:BB99
+ * WHAT IT DOES: Steps the animation list that a table at $BBAC names for the object's timer-index (doubled) and moves the object (the part of the routine at $BB4E after its table).
+ * HOW: A table read (bank 70), StepObjectFrames, a tail jump into ApplyVelocity.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as ApplyVelocity, Y from the step.
+ */
+Ended StepListAndMove(uint8_t slot)
+{
+    FrameStep step;
+    AxisMove move;
+    uint8_t phase, index, y;
+    Ended e;
+
+    phase = RD8(OBJ->life_timer[slot]);
+    index = (uint8_t)(phase << 1);
+    y = index;
+    WR8(ZP->temp10, rd8((uint16_t)(0xBBAC + index)));
+    WR8(ZP->temp11, rd8((uint16_t)(0xBBAD + index)));
+    jsr_push(0xBBA9);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, true, y);
+    move = ApplyVelocity(slot);
+    return then(e, ended_of_axis_move(move));
+}
+
+void abi_StepListAndMove(void)
+{
+    abi_ended(StepListAndMove(cpu.x));
+}
+
+/*
+ * @routine 0CAC:34E StartSideDrifter
+ * @run 70:BB4E
+ * @stop BB89
+ * WHAT IT DOES: In state 0 loads the object's record, takes an X speed from a table at $BB89 by its facing, moves along X once, takes a four-byte speed row from the table at $BB8B by its
+ * timer-index and reverses its X speed when it faces left; in any other state it goes on as StepListAndMove.
+ * HOW: LoadObjectRecord, ApplyVelocityX, NegateVelocityX, table reads (bank 70).
+ * Untraced: the tables at $BB89 and $BB8B are data the run only read.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a callee sets it. Exit: state 0: the last load or negate; else as StepListAndMove.
+ */
+Ended StartSideDrifter(uint8_t slot)
+{
+    AxisMove move;
+    uint8_t state, nz, last, facing, byte, phase, index, left;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state != 0) {
+        return StepListAndMove(slot);
+    }
+    jsr_push(0xBB56);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    facing = RD8(OBJ->facing_left[slot]);
+    byte = rd8((uint16_t)(0xBB89 + facing));
+    WR8(OBJ->vx_hi[slot], byte);
+    e = then(e, ended_with_y(ended_load(byte), facing));
+    jsr_push(0xBB62);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    phase = RD8(OBJ->life_timer[slot]);
+    index = (uint8_t)(phase << 2);
+    e = then(e, ended_with_y(ended_with_carry(ended_load(index), (phase & 0x40) != 0), index));
+    byte = rd8((uint16_t)(0xBB8C + index));
+    WR8(OBJ->vx_hi[slot], byte);
+    byte = rd8((uint16_t)(0xBB8B + index));
+    WR8(OBJ->vx_lo[slot], byte);
+    byte = rd8((uint16_t)(0xBB8E + index));
+    WR8(OBJ->vy_hi[slot], byte);
+    byte = rd8((uint16_t)(0xBB8D + index));
+    WR8(OBJ->vy_lo[slot], byte);
+    e = then(e, ended_load(byte));
+    left = RD8(OBJ->facing_left[slot]);
+    e = then(e, ended_load(left));
+    if (left != 0) {
+        jsr_push(0xBB88);
+        e = then(e, of_sum(NegateVelocityX(slot)));
+        jsr_pop();
+    }
+    return e;
+}
+
+void abi_StartSideDrifter(void)
+{
+    abi_ended(StartSideDrifter(cpu.x));
+}

@@ -656,6 +656,105 @@ StepOrClearByKind:
 StepOrClearByKind_at0:
     rts
 
+; @routine 0CAC:34E StartSideDrifter
+; @run 70:BB4E
+; @stop BB89
+; WHAT IT DOES: In state 0 loads the object's record, takes an X speed from a table at $BB89 by its facing, moves along X once, takes a four-byte speed row from the table at $BB8B by its
+; timer-index and reverses its X speed when it faces left; in any other state it goes on as StepListAndMove.
+; HOW: LoadObjectRecord, ApplyVelocityX, NegateVelocityX, table reads (bank 70).
+; Untraced: the tables at $BB89 and $BB8B are data the run only read.
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: state 0: the last load or negate; else as StepListAndMove.
+StartSideDrifter:
+    lda a:OBJ_27A8,x
+    bne $BB97
+    jsr VecLoadObjectRecord
+    ldy a:OBJ_2AC0,x
+    lda a:$BB89,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_34B8,x
+    asl a
+    asl a
+    tay
+    lda a:$BB8C,y
+    sta a:OBJ_VX_HI,x
+    lda a:$BB8B,y
+    sta a:OBJ_VX_LO,x
+    lda a:$BB8E,y
+    sta a:OBJ_VY_HI,x
+    lda a:$BB8D,y
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_2AC0,x
+    beq StartSideDrifter_at0
+    jsr VecNegateVelocityX
+StartSideDrifter_at0:
+    rts
+
+; @routine 0CAC:399 StepListAndMove
+; @run 70:BB99
+; WHAT IT DOES: Steps the animation list that a table at $BBAC names for the object's timer-index (doubled) and moves the object (the part of the routine at $BB4E after its table).
+; HOW: A table read (bank 70), StepObjectFrames, a tail jump into ApplyVelocity.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as ApplyVelocity, Y from the step.
+StepListAndMove:
+    bit z:zTemp0A,x
+    tay
+    lda a:$BBAC,y
+    sta z:zTemp10
+    lda a:$BBAD,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    jmp VecApplyVelocity
+
+; @routine 0CAC:3C1 StartScatteringPiece
+; @run 70:BBC1
+; WHAT IT DOES: In any state but 0 it goes on as StepMoveOrClear. In state 0 it loads its record, takes a random X and Y speed from a table at $BC1C (sixteen bytes: eight
+; words), moves once, then takes a second random X speed from $BC2C and Y speed from $BC3C.
+; HOW: LoadObjectRecord, NextRandom four times, ApplyVelocity, table reads (bank 70).
+; WAITS: no.
+; Entry: X object, Y kept unless a callee sets it. Exit: the last random's pick and table read.
+StartScatteringPiece:
+    lda a:OBJ_27A8,x
+    beq StartScatteringPiece_at0
+    jmp StepMoveOrClear
+StartScatteringPiece_at0:
+    jsr VecLoadObjectRecord
+    jsr VecNextRandom
+    and #$07
+    asl a
+    tay
+    lda a:AnimationLists+2,y
+    sta a:OBJ_VX_HI,x
+    lda a:AnimationLists+1,y
+    sta a:OBJ_VX_LO,x
+    jsr VecNextRandom
+    and #$07
+    asl a
+    tay
+    lda a:AnimationLists+2,y
+    sta a:OBJ_VY_HI,x
+    lda a:AnimationLists+1,y
+    sta a:OBJ_VY_LO,x
+    jsr VecApplyVelocity
+    jsr VecNextRandom
+    and #$07
+    asl a
+    tay
+    lda a:$BC2D,y
+    sta a:OBJ_VX_HI,x
+    lda a:$BC2C,y
+    sta a:OBJ_VX_LO,x
+    jsr VecNextRandom
+    and #$07
+    asl a
+    tay
+    lda a:$BC3D,y
+    sta a:OBJ_VY_HI,x
+    lda a:$BC3C,y
+    sta a:OBJ_VY_LO,x
+    rts
+
 ; @routine 0CAC:45C StepMoveOrClear
 ; @run 70:BC5C
 ; WHAT IT DOES: Steps the animation list at $BC6F; while it runs the object moves by its velocity, and when it ends the object is cleared.

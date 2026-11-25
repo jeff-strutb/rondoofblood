@@ -500,6 +500,9 @@ int main(int argc, char **argv)
                 sigaction(SIGSEGV, &sa, 0);
                 sigaction(SIGBUS, &sa, 0);
                 sigaction(SIGFPE, &sa, 0);
+                sigaction(SIGILL, &sa, 0);
+                sigaction(SIGABRT, &sa, 0);
+                sigaction(SIGTRAP, &sa, 0);
             }
             setitimer(ITIMER_REAL, &t, 0);
             ENTRY();

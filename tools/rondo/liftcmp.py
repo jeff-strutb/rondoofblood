@@ -729,6 +729,15 @@ def explain_untraced(cases, untraced_ids, draft_logs, raw_draft, draft_text):
     return out
 
 
+def routine_ends(path, name):
+    """The @ends address (hex) in the routine's tag block, or '' when it has none."""
+    for block in re.findall(r"/\*.*?\*/", open(path, encoding="utf-8").read(), re.S):
+        if re.search(r"@routine\s+\S+\s+%s\b" % re.escape(name), block):
+            m = re.search(r"@ends\s+([0-9A-Fa-f]{4})", block)
+            return m.group(1) if m else ""
+    return ""
+
+
 def one(name, a, ctx):
     os.makedirs(ctx["cache"], exist_ok=True)
     src = find_source(name, ctx["sources"])
@@ -806,7 +815,7 @@ def one(name, a, ctx):
     link(os.path.join(work, "lifted.bin"), objs + [rtobj["lifted"], dispobj] + libobj, [], [], None)
     link(os.path.join(work, "draft.bin"), objs + [dobj, rtobj["draft"], dispobj_d] + libobj, [], [], None)
     logs, covs = {"lifted": {}, "draft": {}}, {}
-    envv = dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0")
+    envv = dict(os.environ, LIFTCMP_DECIMAL="1" if a.decimal else "0", LIFTCMP_ENDS=routine_ends(src, name))
     for base in (TOP, main_checkout()):
         rom = os.path.join(base, "build", "rondo", "system", "syscard3.pce")
         if os.path.exists(rom):

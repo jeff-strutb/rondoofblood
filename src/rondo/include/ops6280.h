@@ -371,6 +371,10 @@ static inline uint16_t op_jmp_ptr(uint16_t a)
     return (uint16_t)(lo | (hi << 8));
 }
 
+/* The address of the instruction the draft is at, set before each one: the checker hands the rest of a call to the
+ * original from here when the original's call ended (left by the stack) before the C's did. */
+extern uint16_t rondo_pc;
+
 /*
  * A branch or fall-through into bytes no script ran: the draft has no code for them. Defined by
  * the drafter's support file (counts, reports, ends the run).

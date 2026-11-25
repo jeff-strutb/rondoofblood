@@ -520,6 +520,8 @@ Ended LoadThenSinkAlongList(uint8_t slot, uint8_t y_entry);
 Ended LoadThenStartFiveFromTable(uint8_t slot);
 Ended SetHitBoxFromTable(uint8_t slot);
 Ended RiseThenPlaceAndDrop(uint8_t slot);
+Ended WalkWhileNearPlayer(uint8_t slot, uint8_t y_entry);
+Ended LoadThenFallAndFlash(uint8_t slot);
 SoundEnd RiseThenPlaceWithSound(uint8_t slot, uint8_t y_entry);
 Ended StepListC170ThenMoveAlongAngle(uint8_t slot, uint8_t y_entry);
 Ended StartThenWaitForField83(uint8_t slot);

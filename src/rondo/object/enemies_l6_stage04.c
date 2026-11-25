@@ -728,3 +728,78 @@ void abi_LoadThenSinkAlongList(void)
 {
     abi_ended(LoadThenSinkAlongList(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 051B:5DC WalkWhileNearPlayer
+ * @run 70:B5DC
+ * WHAT IT DOES: Counts toward the end of a walk: when the player is within $60 along X and $20 along Y, or when OBJ_3568's low nibble is zero and OBJ_3040 counts down to zero, it clears its animation step and timer and goes on to the next OBJ_2800. Otherwise it flips OBJ_35C0 when OBJ_3568 is zero, steps the animation list at $B62F and, on a changed frame, takes its X speed from the table at $B644 by OBJ_35C0 and moves along X.
+ * HOW: DistanceXToPlayer, DistanceYToPlayer, tests, StepObjectFrames, ApplyVelocityX.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the last test or step.
+ */
+Ended WalkWhileNearPlayer(uint8_t slot, uint8_t y_entry)
+{
+    PlayerDistance distance;
+    FrameStep step;
+    AxisMove move;
+    uint8_t y = y_entry, value, phase, side;
+    bool end_walk = false;
+    Ended e;
+
+    jsr_push(0xB5DF);
+    distance = DistanceXToPlayer(slot);
+    jsr_pop();
+    e = then(ended_of_distance(distance), ended_compare(distance.distance, 0x60));
+    if (distance.distance < 0x60) {
+        jsr_push(0xB5E6);
+        distance = DistanceYToPlayer(slot);
+        jsr_pop();
+        e = then(then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x20));
+        end_walk = distance.distance < 0x20;
+    }
+    if (!end_walk) {
+        value = (uint8_t)(RD8(OBJ->f3568[slot]) & 0x0F);
+        e = then(e, ended_load(value));
+        if (value == 0) {
+            value = DEC8(OBJ->f3040[slot]);
+            e = then(e, ended_nz(value));
+            end_walk = value == 0;
+        }
+    }
+    if (end_walk) {
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        phase = INC8(OBJ->f2800[slot]);
+        return then(e, ended_nz(phase));
+    }
+    value = RD8(OBJ->f3568[slot]);
+    e = then(e, ended_load(value));
+    if (value == 0) {
+        side = (uint8_t)(RD8(OBJ->angle_lo[slot]) ^ 0x01);
+        WR8(OBJ->angle_lo[slot], side);
+        e = then(e, ended_load(side));
+    }
+    WR8(ZP->temp10, 0x2F);
+    WR8(ZP->temp11, 0xB6);
+    jsr_push(0xB618);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = then(e, ended_of_frame_step(step, step != FRAME_HELD, y));
+    if (step != FRAME_CHANGED) {
+        return e;
+    }
+    side = RD8(OBJ->angle_lo[slot]);
+    y = (uint8_t)(side << 1);
+    e = then(e, ended_with_y(ended_load(y), y));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xB644 + y)));
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB645 + y)));
+    jsr_push(0xB62E);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    return then(e, ended_of_axis_move(move));
+}
+
+void abi_WalkWhileNearPlayer(void)
+{
+    abi_ended(WalkWhileNearPlayer(cpu.x, cpu.y));
+}

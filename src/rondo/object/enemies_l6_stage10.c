@@ -435,3 +435,62 @@ void abi_RiseThenPlaceWithSound(void)
 {
     abi_sound_end(RiseThenPlaceWithSound(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 10CC:74F LoadThenFallAndFlash
+ * @run 70:BF4F
+ * WHAT IT DOES: In state 0 loads the object's record and sets flags 1, frame $59, X speed $00C0, Y speed $0030 and OBJ_3510 $34. Later it adds $0008 to its Y speed, moves, sets its flash flags to $10 while OBJ_3510 is under $10, counts OBJ_3510 down and clears the object at zero.
+ * HOW: LoadObjectRecord, a 16-bit add, ApplyVelocity, DEC, ClearObject.
+ * WAITS: no.
+ * Entry: X object. Exit: the record's registers and A $34 in state 0; else the count.
+ */
+Ended LoadThenFallAndFlash(uint8_t slot)
+{
+    AxisMove move;
+    Sum low, high;
+    uint8_t state, nz, last, timer, left;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        jsr_push(0xBF57);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        WR8(OBJ->flags[slot], 1);
+        WR8(OBJ->frame[slot], 0x59);
+        WR8(OBJ->vx_hi[slot], 0);
+        WR8(OBJ->vx_lo[slot], 0xC0);
+        WR8(OBJ->vy_hi[slot], 0);
+        WR8(OBJ->vy_lo[slot], 0x30);
+        WR8(OBJ->f3510[slot], 0x34);
+        return then(then(ended_load(state), ended_of_record(last, nz, carry)), ended_load(0x34));
+    }
+    low = add_bytes(RD8(OBJ->vy_lo[slot]), 0x08, false);
+    WR8(OBJ->vy_lo[slot], low.value);
+    high = add_bytes(RD8(OBJ->vy_hi[slot]), 0, low.carry);
+    WR8(OBJ->vy_hi[slot], high.value);
+    e = then(then(ended_load(state), ended_of_sum(low)), ended_of_sum(high));
+    jsr_push(0xBF8F);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    timer = RD8(OBJ->f3510[slot]);
+    e = then(e, ended_load(timer));
+    e = then(e, ended_compare(timer, 0x10));
+    if (timer < 0x10) {
+        WR8(OBJ->flash_flags[slot], 0x10);
+        e = then(e, ended_load(0x10));
+    }
+    left = DEC8(OBJ->f3510[slot]);
+    e = then(e, ended_nz(left));
+    if (left == 0) {
+        ClearObject(slot);
+    }
+    return e;
+}
+
+void abi_LoadThenFallAndFlash(void)
+{
+    abi_ended(LoadThenFallAndFlash(cpu.x));
+}

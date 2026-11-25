@@ -219,6 +219,53 @@ StartPieceAtNextSlot:
     inc a:OBJ_2800,x
     rts
 
+; @routine 051B:5DC WalkWhileNearPlayer
+; @run 70:B5DC
+; WHAT IT DOES: Counts toward the end of a walk: when the player is within $60 along X and $20 along Y, or when OBJ_3568's low nibble is zero and OBJ_3040 counts down to zero, it clears its animation step and timer and goes on to the next OBJ_2800. Otherwise it flips OBJ_35C0 when OBJ_3568 is zero, steps the animation list at $B62F and, on a changed frame, takes its X speed from the table at $B644 by OBJ_35C0 and moves along X.
+; HOW: DistanceXToPlayer, DistanceYToPlayer, tests, StepObjectFrames, ApplyVelocityX.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the last test or step.
+WalkWhileNearPlayer:
+    jsr VecDistanceXToPlayer
+    cmp #$60
+    bcs WalkWhileNearPlayer_at0
+    jsr VecDistanceYToPlayer
+    cmp #$20
+    bcc WalkWhileNearPlayer_at1
+WalkWhileNearPlayer_at0:
+    lda a:OBJ_3568,x
+    and #$0F
+    bne WalkWhileNearPlayer_at2
+    dec a:OBJ_3040,x
+    bne WalkWhileNearPlayer_at2
+WalkWhileNearPlayer_at1:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+    rts
+WalkWhileNearPlayer_at2:
+    lda a:OBJ_3568,x
+    bne WalkWhileNearPlayer_at3
+    lda a:OBJ_35C0,x
+    eor #$01
+    sta a:OBJ_35C0,x
+WalkWhileNearPlayer_at3:
+    lda #$2F
+    sta z:zTemp10
+    lda #$B6
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bcc SoundReadPair
+    lda a:OBJ_35C0,x
+    asl a
+    tay
+    lda a:$B644,y
+    sta a:OBJ_VX_LO,x
+    lda a:$B645,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    rts
+
 ; @routine 051B:648 StepListB66BToState2
 ; @run 70:B648
 ; WHAT IT DOES: Steps the animation list at $B66B; when it ends the object gets an X speed of $FEE0, clears OBJ_35C0 and OBJ_2800 and goes to state 2.

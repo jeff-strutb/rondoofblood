@@ -140,6 +140,51 @@ StepListB728ThenRiseSlowly_at0:
     inc a:OBJ_2800,x
     rts
 
+; @routine 10CC:74F LoadThenFallAndFlash
+; @run 70:BF4F
+; WHAT IT DOES: In state 0 loads the object's record and sets flags 1, frame $59, X speed $00C0, Y speed $0030 and OBJ_3510 $34. Later it adds $0008 to its Y speed, moves, sets its flash flags to $10 while OBJ_3510 is under $10, counts OBJ_3510 down and clears the object at zero.
+; HOW: LoadObjectRecord, a 16-bit add, ApplyVelocity, DEC, ClearObject.
+; WAITS: no.
+; Entry: X object. Exit: the record's registers and A $34 in state 0; else the count.
+LoadThenFallAndFlash:
+    lda a:OBJ_27A8,x
+    bne StartDriftingPiece
+    jsr VecLoadObjectRecord
+    lda #$01
+    sta a:OBJ_FLAGS_2F38,x
+    lda #$59
+    sta a:OBJ_2A68,x
+    lda #$00
+    sta a:OBJ_VX_HI,x
+    lda #$C0
+    sta a:OBJ_VX_LO,x
+    lda #$00
+    sta a:OBJ_VY_HI,x
+    lda #$30
+    sta a:OBJ_VY_LO,x
+    lda #$34
+    sta a:OBJ_3510,x
+    rts
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$08
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocity
+    lda a:OBJ_3510,x
+    cmp #$10
+    bcs LoadThenFallAndFlash_at0
+    lda #$10
+    sta a:OBJ_2B18,x
+LoadThenFallAndFlash_at0:
+    dec a:OBJ_3510,x
+    bne LoadThenFallAndFlash_at1
+    jmp VecClearObject
+LoadThenFallAndFlash_at1:
+    rts
+
 ; @routine 10CD:0C6 StepListC103ThenPickAim
 ; @run 71:C0C6
 ; WHAT IT DOES: Steps the animation list at $C103; when it ends the object picks OBJ_34B8: half the time the angle to the player, otherwise a random $00 to $7F plus the byte the table at $C088 gives for the player's side; it then clears OBJ_3510 and OBJ_3568, sets OBJ_3250 to 2 and goes on to the next state.

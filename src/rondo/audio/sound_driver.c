@@ -1388,8 +1388,11 @@ void abi_SoundSetFrequency(void)
 }
 
 /* The RAM block-move stub the driver builds (a TIN and an RTS at $22E7), which no C stands for: run as the original. */
-static void block_move_stub_shim(uint16_t ret, uint8_t a, uint8_t x, uint8_t y)
+static void block_move_stub_shim(uint16_t ret, uint8_t a, uint8_t x, uint8_t y, Sum last)
 {
+    abi_nz(a);
+    abi_flag(P_C, last.carry);
+    abi_flag(P_V, last.overflow);
     cpu.a = a;
     cpu.x = x;
     cpu.y = y;
@@ -1435,7 +1438,7 @@ WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel, uint8_t kept_y)
     wr8(BlockMoveLengthLo, WAVE_SAMPLES);
     wr8(BlockMoveLengthHi, 0);
     wr8(BlockMoveReturn, OPCODE_RTS);
-    block_move_stub_shim(0x8E9A, OPCODE_RTS, channel, kept_y);
+    block_move_stub_shim(0x8E9A, OPCODE_RTS, channel, kept_y, load.address);
     wr8(PsgControl, 0);
     load.how = WAVE_LOADED;
     return load;
@@ -2993,7 +2996,7 @@ void abi_SoundCommandCall(void)
  * Entry: X channel. Exit: back, A the high byte, N and Z from it, C clear. End, C set, and as the
  * last call left them; the return address dropped from the stack.
  */
-SequenceEnd SoundCommandReturn(uint8_t channel)
+SequenceEnd SoundCommandReturn(uint8_t channel, uint8_t kept_y)
 {
     uint8_t end_a;
     SequenceEnd end = { false, { false, 0 }, { WAVE_NONE, 0, 0 }, 0 };
@@ -3020,7 +3023,7 @@ SequenceEnd SoundCommandReturn(uint8_t channel)
     if (channel >= EFFECT_SHARED_END) {
         wr8((uint16_t)(SoundChannelPriority + channel), 0);
         jsr_push(0xB78E);
-        end.wave = SoundLoadWave(rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)), channel, 0 /* Y: not yet worked out */);
+        end.wave = SoundLoadWave(rd8((uint16_t)(SoundChannelWave - EFFECT_CHANNEL_OFFSET + channel)), channel, kept_y);
         jsr_pop();
     }
     return end;
@@ -3029,7 +3032,7 @@ SequenceEnd SoundCommandReturn(uint8_t channel)
 void abi_SoundCommandReturn(void)
 {
     uint8_t channel = cpu.x;
-    SequenceEnd end = SoundCommandReturn(channel);
+    SequenceEnd end = SoundCommandReturn(channel, cpu.y);
 
     if (!end.ended) {
         abi_exit_loaded(end.value);
@@ -3060,10 +3063,10 @@ void sequence_end_flags_shim(SequenceEnd end, uint8_t channel)
 }
 
 /* A command from $E2 up, run by its handler; true when it ended the channel's sequence. */
-static bool run_command(uint8_t command, uint8_t channel, SequenceEnd *end)
+static bool run_command(uint8_t command, uint8_t channel, SequenceEnd *end, uint8_t y)
 {
     switch (command) {
-    case 0xE2: SoundCommandWave(channel, 0 /* Y: the dispatch is not yet exact */); break;
+    case 0xE2: SoundCommandWave(channel, y); break;
     case 0xE3: SoundCommandPan(channel); break;
     case 0xE4: SoundCommandVibrato(channel); break;
     case 0xE5: SoundCommandModulation(channel); break;
@@ -3089,7 +3092,7 @@ static bool run_command(uint8_t command, uint8_t channel, SequenceEnd *end)
     case 0xFD: SoundCommandJump(); break;
     case 0xFE: SoundCommandCall(channel); break;
     case 0xFF:
-        *end = SoundCommandReturn(channel);
+        *end = SoundCommandReturn(channel, y);
         return end->ended;
     default:
         SoundCommandNothing();
@@ -3137,7 +3140,7 @@ SequenceRead SoundReadSequence(uint8_t channel)
             push8(address_low);
             read.channel = rd8(zSoundChannel);
             jsr_pop();                      /* the RTS that jumps to the handler */
-            if (run_command(command, read.channel, &read.end)) {
+            if (run_command(command, read.channel, &read.end, read.read.args)) {
                 read.how = SEQUENCE_ENDED;  /* the handler took its return frame itself */
                 return read;
             }

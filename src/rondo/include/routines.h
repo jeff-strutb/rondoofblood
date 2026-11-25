@@ -507,7 +507,7 @@ AnimationStep RichterObjectAnimationTick(uint8_t object);
 AnimationStep RichterObjectAnimationRunning(uint8_t object);
 AnimationStep RichterObjectAnimationWait(uint8_t object);
 uint8_t SoundCommandCall(uint8_t channel);
-SequenceEnd SoundCommandReturn(uint8_t channel);
+SequenceEnd SoundCommandReturn(uint8_t channel, uint8_t kept_y);
 void glide_setup_exit_shim(GlideSetup setup);
 void note_start_exit_shim(NoteStart start);
 

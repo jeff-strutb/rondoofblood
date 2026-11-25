@@ -269,7 +269,7 @@ def main():
     filed_line = (f"**Filed C: {filed_n} game routines have filed C; {reworked_n} of them were lifted or reworked since "
                   f"{REWORK_SINCE}** (any line of the routine last changed on or after that date, by `git blame`). "
                   + (f"**Drafted C, a stepping stone and never counted as decompiled: {dr[1]:,} of {dr[0]:,} "
-                     f"register-shaped drafts identical in A5** at the drafter's measure of {dr[2]}." if dr else ""))
+                     f"register-shaped drafts identical in A5** measured {dr[2]} by the runner, the A5 of every draft serving." if dr else ""))
     block = "\n".join([
         START,
         "![Progress against the traced floor of the game's code](docs/rondo/progress.svg)",

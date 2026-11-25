@@ -1,0 +1,22 @@
+
+/*
+ * @routine 07DB:4BE TurnAroundAndHalveSpeed
+ * @run 70:B4BE
+ * WHAT IT DOES: Keeps the object's facing in f3720, makes its f3670 from the low nibble of
+ * PlayerDistanceSum, picks a new speed and turn from that (PickSpeedAndTurnFromTableB), then
+ * reverses both speeds and halves them, sets life_timer to $0C, stops the animation and advances
+ * the step.
+ * HOW: PlayerDistanceSum, the pick, NegateVelocityX, NegateVelocityY, HalveObjectVelocity.
+ * WAITS: no.
+ * Entry: X object, C in (kept to the sum), D clear. Exit: A $0C and N, Z from the new step; C
+ * from the halve, V from the second negate.
+ */
+Ended TurnAroundAndHalveSpeed(uint8_t slot, bool carry_in)
+{
+    return turn_around_body(slot, carry_in, PickSpeedAndTurnFromTableB, 0xB4BE);
+}
+
+void abi_TurnAroundAndHalveSpeed(void)
+{
+    abi_ended(TurnAroundAndHalveSpeed(cpu.x, (cpu.p & P_C) != 0));
+}

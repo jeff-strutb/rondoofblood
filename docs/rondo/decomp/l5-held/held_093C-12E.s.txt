@@ -1,0 +1,50 @@
+
+; @routine 093C:12E StartGroupThenThrow
+; @run 70:B92E
+; WHAT IT DOES: Loads the record. When bit 7 of next_kind is clear, next_kind is the number of followers: it
+; starts that many objects of type $26 in the slots after its own, each numbered from $81 in next_kind and
+; given this object's slot in f37d0 and the group's last slot in f3828 (this object's f37d0 is its own slot,
+; f3828 its slot plus the count). Then it clears bit 7 of next_kind, faces opposite to bit 0 of it, and runs
+; ThrowByNextKind, PickTimersAtRandom and PickAngleAtRandom.
+; HOW: LoadObjectRecord, a loop of ClearObjectInY and StartObjectAtPlace, then the three calls.
+; WAITS: no.
+; Entry: X object, D clear. Exit: as PickAngleAtRandom.
+StartGroupThenThrow:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_3040,x
+    bmi StartGroupThenThrow_at0
+    txa
+    sta a:OBJ_37D0,x
+    clc
+    adc a:OBJ_3040,x
+    sta a:OBJ_3828,x
+    txa
+    tay
+    iny
+    lda #$81
+    sta z:zTemp00
+StartGroupThenThrow_at1:
+    jsr VecClearObjectInY
+    lda #$26
+    jsr VecStartObjectAtPlace
+    lda z:zTemp00
+    sta a:OBJ_3040,y
+    txa
+    sta a:OBJ_37D0,y
+    lda a:OBJ_3828,x
+    sta a:OBJ_3828,y
+    inc z:zTemp00
+    iny
+    dec a:OBJ_3040,x
+    bne StartGroupThenThrow_at1
+StartGroupThenThrow_at0:
+    lda a:OBJ_3040,x
+    and #$7F
+    sta a:OBJ_3040,x
+    and #$01
+    eor #$01
+    sta a:OBJ_2AC0,x
+    jsr ThrowByNextKind
+    jsr PickTimersAtRandom
+    jsr PickAngleAtRandom
+    rts

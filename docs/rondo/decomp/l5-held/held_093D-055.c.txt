@@ -1,0 +1,94 @@
+
+/*
+ * @routine 093D:055 SwayThenThrowOrWait
+ * @run 71:C055
+ * WHAT IT DOES: Moves the object, adds a sway to its X speed from a table of two words at overlay address $C0BC by
+ * the side of the player (bit 0 of SideOfPlayer), limits that speed (ClampSpeedXToTwo) and takes $0010 from its Y
+ * speed. While the Y speed stays positive it animates facing the player (list 4) and, when its X speed's sign
+ * differs from the side, sets its frame to $20. Once the Y speed has turned negative it runs ThrowUpward, animates
+ * and plays sound $22 every fourth frame; and when it is on the first screen down (Y high 0) and its Y low is below
+ * f36c8 it advances its step.
+ * HOW: ApplyVelocity, SideOfPlayer, two sixteen bit adds and a subtract, ClampSpeedXToTwo, ThrowUpward,
+ * StepFramesFacingPlayerC, SoundEveryFourthFrame.
+ * WAITS: no.
+ * Entry: X object, D clear. Exit: see the wrapper; the last test or call, as the code leaves them.
+ */
+SoundEnd SwayThenThrowOrWait(uint8_t slot)
+{
+    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    FrameStepEnd frames;
+    SideResult side;
+    AxisMove move;
+    Sum low, high;
+    uint8_t bit, y, sign, high_y, step;
+    Ended e;
+
+    jsr_push(0xC058);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    jsr_push(0xC05B);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bit = (uint8_t)(side.sides & 1);
+    WR8(ZP->temp00, bit);
+    y = (uint8_t)(bit << 1);
+    e = ended_then(ended_then(ended_of_axis_move(move), ended_of_side(side)), ended_with_y(ended_load(y), y));
+    sign = RD8(OBJ->vx_lo[slot]);
+    low = add_bytes(sign, rd8((uint16_t)(0xC0BC + y)), false);
+    WR8(OBJ->vx_lo[slot], low.value);
+    sign = RD8(OBJ->vx_hi[slot]);
+    high = add_bytes(sign, rd8((uint16_t)(0xC0BD + y)), low.carry);
+    WR8(OBJ->vx_hi[slot], high.value);
+    e = ended_then(e, ended_of_sum(high));
+    jsr_push(0xC077);
+    e = ended_then(e, ClampSpeedXToTwo(slot));
+    jsr_pop();
+    low = sub_bytes(RD8(OBJ->vy_lo[slot]), 0x10, true);
+    WR8(OBJ->vy_lo[slot], low.value);
+    high = sub_bytes(RD8(OBJ->vy_hi[slot]), 0, low.carry);
+    WR8(OBJ->vy_hi[slot], high.value);
+    e = ended_then(e, ended_of_sum(high));
+    if ((high.value & 0x80) == 0) {
+        jsr_push(0xC08F);
+        frames = StepFramesFacingPlayerC(slot, 4);
+        jsr_pop();
+        e = ended_then(ended_then(e, ended_with_y(ended_kept(), 4)), frames.end);
+        sign = RD8(OBJ->vx_hi[slot]);
+        bit = (uint8_t)(((sign >> 7) & 1) ^ RD8(ZP->temp00));
+        e = ended_then(e, ended_with_carry(ended_with_a(ended_nz(bit), bit), (sign & 0x40) != 0));
+        if (bit != 0) {
+            WR8(OBJ->frame[slot], 0x20);
+            e = ended_then(e, ended_load(0x20));
+        }
+        result.end = e;
+        return result;
+    }
+    jsr_push(0xC0A3);
+    e = ended_then(e, ThrowUpward(slot));
+    jsr_pop();
+    jsr_push(0xC0A8);
+    frames = StepFramesFacingPlayerC(slot, 4);
+    jsr_pop();
+    e = ended_then(ended_then(e, ended_with_y(ended_kept(), 4)), frames.end);
+    jsr_push(0xC0AB);
+    result = sound_end_after(e, SoundEveryFourthFrame(slot, ended_y_or(e, 4)));
+    jsr_pop();
+    high_y = RD8(OBJ->y_hi[slot]);
+    result = sound_end_then(result, ended_load(high_y));
+    if (high_y != 0) {
+        return result;
+    }
+    y = RD8(OBJ->y_lo[slot]);
+    sign = RD8(OBJ->f36c8[slot]);
+    result = sound_end_then(result, ended_compare(y, sign));
+    if (y >= sign) {
+        return result;
+    }
+    step = INC8(OBJ->f2800[slot]);
+    return sound_end_then(result, ended_nz(step));
+}
+
+void abi_SwayThenThrowOrWait(void)
+{
+    abi_sound_end(SwayThenThrowOrWait(cpu.x));
+}

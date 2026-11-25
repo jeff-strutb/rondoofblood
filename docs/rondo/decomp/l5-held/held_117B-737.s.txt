@@ -1,0 +1,27 @@
+
+; @routine 117B:737 AnimateMoveThenSetUpNextStepB
+; @run 70:B737
+; WHAT IT DOES: Animates the object facing the player (list 4), moves it, and counts life_timer
+; down; at zero it plays sound $8B, picks a speed and turn (PickSpeedAndTurnFromTable), sets f36c8
+; to $58 plus six bits of PlayerDistanceSum, stops its animation and advances its step.
+; HOW: StepFramesFacingPlayerD, ApplyVelocity, a decrement, then the calls named.
+; WAITS: no.
+; Entry: X object, C in (kept to the sum), D clear. Exit: as AnimateMoveThenSetUpNextStep.
+AnimateMoveThenSetUpNextStepB:
+    ldy #$04
+    jsr StepFramesFacingPlayerD
+    jsr VecApplyVelocity
+    dec a:OBJ_34B8,x
+    bne OrbitStepForward
+    lda #$8B
+    jsr VecSoundCommand
+    jsr PickSpeedAndTurnFromTable
+    jsr VecPlayerDistanceSum
+    and #$3F
+    clc
+    adc #$58
+    sta a:OBJ_36C8,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_2800,x
+    rts

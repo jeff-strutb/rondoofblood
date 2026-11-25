@@ -405,6 +405,8 @@ Ended FallStepAndLeave(uint8_t slot);
 Ended StartTracker(uint8_t slot);
 Ended StartThenStepList(uint8_t slot);
 void FinalSpinAndEnd(uint8_t slot);
+Ended StepFallingSpark(uint8_t slot);
+Ended StartFallingSpark09(uint8_t slot);
 Ended ChainCountdown(uint8_t slot);
 Ended ChainSwings(uint8_t slot);
 Ended WalkAndPick(uint8_t slot);

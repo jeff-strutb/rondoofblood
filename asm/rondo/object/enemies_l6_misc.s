@@ -187,6 +187,28 @@ CountDownThenState6_at0:
     sta a:OBJ_3618,x
     rts
 
+; @routine 0E0B:51C StepListB53CToState5
+; @run 70:B51C
+; WHAT IT DOES: Steps the animation list at $B53C; when it ends it clears the raster effect and its argument and the animation step and timer, and the object goes to state 5 with OBJ_2800 0.
+; HOW: StepObjectFrames, stores.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or A 5 when the list ended.
+StepListB53CToState5:
+    lda #$3C
+    sta z:zTemp10
+    lda #$B5
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne BurstWhenFlaggedHitB
+    stz z:zRasterArg
+    stz z:zRasterEffect
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$05
+    sta a:OBJ_27A8,x
+    stz a:OBJ_2800,x
+    rts
+
 ; @routine 0E0B:5DD NextPhaseUnlessKind25
 ; @run 70:B5DD
 ; WHAT IT DOES: Goes on to the next OBJ_2800 unless the object in slot $50 is of kind $25.

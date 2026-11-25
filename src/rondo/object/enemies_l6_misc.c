@@ -623,3 +623,40 @@ void abi_StepListB1BAThenSound(void)
 {
     abi_sound_end(StepListB1BAThenSound(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0E0B:51C StepListB53CToState5
+ * @run 70:B51C
+ * WHAT IT DOES: Steps the animation list at $B53C; when it ends it clears the raster effect and its argument and the animation step and timer, and the object goes to state 5 with OBJ_2800 0.
+ * HOW: StepObjectFrames, stores.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or A 5 when the list ended.
+ */
+Ended StepListB53CToState5(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    uint8_t y = y_entry;
+    Ended e;
+
+    WR8(ZP->temp10, 0x3C);
+    WR8(ZP->temp11, 0xB5);
+    jsr_push(0xB527);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    WR8(ZP->raster_arg, 0);
+    WR8(ZP->raster_effect, 0);
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
+    WR8(OBJ->state[slot], 5);
+    WR8(OBJ->f2800[slot], 0);
+    return then(e, ended_load(5));
+}
+
+void abi_StepListB53CToState5(void)
+{
+    abi_ended(StepListB53CToState5(cpu.x, cpu.y));
+}

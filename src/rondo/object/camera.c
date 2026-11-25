@@ -526,20 +526,38 @@ static void down_exit_shim(DownMove move)
     }
 }
 
+/* The player's X speed added to its X position, low byte then high with the carry, written to
+ * a word: the reads and writes in the assembly's order. */
+static WordPair add_speed_to_x(uint16_t dest_lo, uint16_t dest_hi)
+{
+    WordPair words;
+    uint8_t vlo = rd8(OBJ_VX_LO);
+    uint8_t flo = rd8(OBJ_X_FRAC);
+    unsigned low = (unsigned)vlo + flo;
+    uint8_t vhi;
+    uint8_t xhi;
+
+    wr8(dest_lo, (uint8_t)low);
+    vhi = rd8(OBJ_VX_HI);
+    xhi = rd8(OBJ_X_LO);
+    wr8(dest_hi, (uint8_t)(vhi + xhi + (low >> 8)));
+    words.a = (uint16_t)((vhi << 8) | vlo);
+    words.b = (uint16_t)((xhi << 8) | flo);
+    return words;
+}
+
 /*
  * @routine 0047:59F MovePlayerX
  * @run 6A:659F
  * WHAT IT DOES: Moves the player by its X speed.
  * HOW: Adds the 8.8 speed to position low and fraction, with no carry into the high
  * byte: the player stays on the screen.
+ * WAITS: no.
  * Entry: nothing. Exit: A position low, N, Z, C and V from its add. X and Y kept.
  */
 WordPair MovePlayerX(void)
 {
-    WordPair words = { read16(OBJ_VX_LO, OBJ_VX_HI), read16(OBJ_X_FRAC, OBJ_X_LO) };
-
-    write16(OBJ_X_FRAC, OBJ_X_LO, (uint16_t)(words.a + words.b));
-    return words;
+    return add_speed_to_x(OBJ_X_FRAC, OBJ_X_LO);
 }
 
 void abi_MovePlayerX(void)
@@ -824,14 +842,12 @@ void abi_CameraModeCarried(void)
  * WHAT IT DOES: Works out where the player's speed would put it along X, without moving
  * it.
  * HOW: The 8.8 sum, left in zTemp04-05.
+ * WAITS: no.
  * Entry: nothing. Exit: A zTemp05, N, Z, C, V from its add. X and Y kept.
  */
 WordPair PlayerNextX(void)
 {
-    WordPair words = { read16(OBJ_VX_LO, OBJ_VX_HI), read16(OBJ_X_FRAC, OBJ_X_LO) };
-
-    write16(zTemp04, zTemp05, (uint16_t)(words.a + words.b));
-    return words;
+    return add_speed_to_x(zTemp04, zTemp05);
 }
 
 void abi_PlayerNextX(void)

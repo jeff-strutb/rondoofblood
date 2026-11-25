@@ -656,3 +656,162 @@ void abi_LoadRecordThenWatchThenDropTwice(void)
 {
     abi_sound_end(LoadRecordThenWatchThenDropTwice(cpu.x, cpu.y));
 }
+
+/* The four VDC word writes of 0B4A:6B6: the select, the low byte (the object's OBJ_3510, which then grows by $10), the high byte $0F, then the data select and a zero word. */
+static Ended write_tile_pair(uint8_t slot)
+{
+    uint8_t low, grown;
+    Sum sum;
+
+    jsr_push(0xAF55);
+    SelectVramWriteAddress();
+    jsr_pop();
+    low = RD8(OBJ->f3510[slot]);
+    WR8(VDC->data_lo, low);
+    sum = add_bytes(low, 0x10, false);
+    WR8(OBJ->f3510[slot], sum.value);
+    WR8(VDC->data_hi, 0x0F);
+    jsr_push(0xAF66);
+    SelectVramData();
+    jsr_pop();
+    WR8(VDC->data_lo, 0);
+    WR8(VDC->data_hi, 0);
+    grown = sum.value;
+    (void)grown;
+    return ended_of_sum(sum);
+}
+
+/*
+ * @routine 0B4A:6B6 BossPhasesHurtFallAndTileWrites
+ * @run 70:AEB6
+ * WHAT IT DOES: A boss in phases. State 0 loads the record. State 1: at 1 to 4 hits records the event and goes to state 2; at 5 hits, with the player on the right, takes the X speed 4, OBJ_34B8 $10, records the event, counts OBJ_3568 up and goes to state 5. State 2 steps the list at $AF8A and, when it ends, goes to state 3 with OBJ_34B8 $10 and starts list 0 on channel 5. State 3 waits OBJ_34B8 down, then state 4 with OBJ_34B8 $40 and frame $0F. State 4 counts down, drops one row every eighth frame and writes four tile pairs; at the end it clears the object. States 5 on fall: the X speed loses $0034 a frame until OBJ_34B8 runs out, then state 2.
+ * HOW: LoadObjectRecord, RecordObjectEvent, SideOfPlayer, StepObjectFrames, StartListChannelKind3, VDC writes, ApplyVelocity, ClearObject.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
+ */
+Ended BossPhasesHurtFallAndTileWrites(uint8_t slot, uint8_t y_entry)
+{
+    uint8_t state, last, nz, hits, stored, event, byte, y = y_entry, timer, bits, value, flag;
+    bool carry, marked;
+    FrameStep step;
+    SideResult side;
+    AxisMove move;
+    Sum diff;
+    int round;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    if (state == 0) {
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return then(e, ended_of_record(last, nz, carry));
+    }
+    e = then(e, ended_load((uint8_t)(state - 1)));
+    if (state == 1) {
+        hits = RD8(OBJ->hit_taken[slot]);
+        e = then(e, ended_load(hits));
+        if (hits == 0) {
+            return e;
+        }
+        e = then(e, ended_compare(hits, 5));
+        if (hits < 5) {
+            jsr_push(0xAECD);
+            marked = RecordObjectEvent(slot, &stored, &event, &byte);
+            jsr_pop();
+            e = then(e, l8_of_event(marked, stored, event, byte));
+            return then(e, ended_nz(INC8(OBJ->state[slot])));
+        }
+        jsr_push(0xAED4);
+        side = SideOfPlayer(slot);
+        jsr_pop();
+        e = then(e, ended_with_carry(ended_load((uint8_t)(side.sides >> 1)), (side.sides & 1) != 0));
+        if ((side.sides & 1) != 0) {
+            return then(e, ended_nz(INC8(OBJ->state[slot])));
+        }
+        WR8(OBJ->vx_hi[slot], 4);
+        WR8(OBJ->f34b8[slot], 0x10);
+        e = then(e, ended_load(0x10));
+        jsr_push(0xAEE4);
+        marked = RecordObjectEvent(slot, &stored, &event, &byte);
+        jsr_pop();
+        e = then(e, l8_of_event(marked, stored, event, byte));
+        e = then(e, ended_nz(INC8(OBJ->f3568[slot])));
+        WR8(OBJ->state[slot], 5);
+        return then(e, ended_load(5));
+    }
+    e = then(e, ended_load((uint8_t)(state - 2)));
+    if (state == 2) {
+        e = then(e, l8_step_list(slot, 0xAF8A, 0xAEFB, true, &y, &step));
+        if (step != FRAME_LIST_ENDED) {
+            return e;
+        }
+        e = then(e, ended_nz(INC8(OBJ->state[slot])));
+        WR8(OBJ->f34b8[slot], 0x10);
+        push8(slot);
+        jsr_push(0xAF0C);
+        StartListChannelKind3(0, 5);
+        jsr_pop();
+        slot = pull8();
+        return then(e, ended_with_a(ended_nz(slot), 3));
+    }
+    e = then(e, ended_load((uint8_t)(state - 3)));
+    if (state == 3) {
+        timer = DEC8(OBJ->f34b8[slot]);
+        e = then(e, ended_nz(timer));
+        if (timer != 0) {
+            return e;
+        }
+        e = then(e, ended_nz(INC8(OBJ->state[slot])));
+        WR8(OBJ->f34b8[slot], 0x40);
+        WR8(OBJ->frame[slot], 0x0F);
+        return then(e, ended_load(0x0F));
+    }
+    e = then(e, ended_load((uint8_t)(state - 4)));
+    if (state == 4) {
+        timer = DEC8(OBJ->f34b8[slot]);
+        e = then(e, ended_nz(timer));
+        if (timer == 0) {
+            flag = RD8(OBJ->f3568[slot]);
+            e = then(e, ended_load(flag));
+            ClearObject(slot);
+            return e;
+        }
+        bits = RD8(OBJ->f34b8[slot]);
+        value = (uint8_t)(bits & 0x07);
+        e = then(e, ended_load(value));
+        if (value != 0) {
+            return e;
+        }
+        e = then(e, ended_nz(INC8(OBJ->y_lo[slot])));
+        bits = RD8(OBJ->f34b8[slot]);
+        value = (uint8_t)((bits >> 3) + 0xC8);
+        WR8(OBJ->f3510[slot], value);
+        for (round = 0; round < 4; round++) {
+            e = then(e, write_tile_pair(slot));
+        }
+        return e;
+    }
+    jsr_push(0xAF6E);
+    move = ApplyVelocity(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    value = RD8(OBJ->vx_lo[slot]);
+    diff = sub_bytes(value, 0x34, true);
+    WR8(OBJ->vx_lo[slot], diff.value);
+    value = RD8(OBJ->vx_hi[slot]);
+    diff = sub_bytes(value, 0, diff.carry);
+    WR8(OBJ->vx_hi[slot], diff.value);
+    e = then(e, ended_of_sum(diff));
+    timer = DEC8(OBJ->f34b8[slot]);
+    e = then(e, ended_nz(timer));
+    if (timer != 0) {
+        return e;
+    }
+    WR8(OBJ->state[slot], 2);
+    return then(e, ended_load(2));
+}
+
+void abi_BossPhasesHurtFallAndTileWrites(void)
+{
+    abi_ended(BossPhasesHurtFallAndTileWrites(cpu.x, cpu.y));
+}

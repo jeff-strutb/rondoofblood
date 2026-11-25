@@ -286,6 +286,121 @@ ClearWhenHurtThenWait_at1:
     sta z:zPlayerHealth
     jmp VecClearObject
 
+; @routine 0B4A:6B6 BossPhasesHurtFallAndTileWrites
+; @run 70:AEB6
+; WHAT IT DOES: A boss in phases. State 0 loads the record. State 1: at 1 to 4 hits records the event and goes to state 2; at 5 hits, with the player on the right, takes the X speed 4, OBJ_34B8 $10, records the event, counts OBJ_3568 up and goes to state 5. State 2 steps the list at $AF8A and, when it ends, goes to state 3 with OBJ_34B8 $10 and starts list 0 on channel 5. State 3 waits OBJ_34B8 down, then state 4 with OBJ_34B8 $40 and frame $0F. State 4 counts down, drops one row every eighth frame and writes four tile pairs; at the end it clears the object. States 5 on fall: the X speed loses $0034 a frame until OBJ_34B8 runs out, then state 2.
+; HOW: LoadObjectRecord, RecordObjectEvent, SideOfPlayer, StepObjectFrames, StartListChannelKind3, VDC writes, ApplyVelocity, ClearObject.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
+BossPhasesHurtFallAndTileWrites:
+    lda a:OBJ_27A8,x
+    bne BossPhasesHurtFallAndTileWrites_at0
+    jmp VecLoadObjectRecord
+BossPhasesHurtFallAndTileWrites_at0:
+    dec a
+    bne BossPhasesHurtFallAndTileWrites_at1
+    lda a:OBJ_33B0,x
+    beq BossPhasesHurtFallAndTileWrites_at2
+    cmp #$05
+    bcs BossPhasesHurtFallAndTileWrites_at3
+    jsr VecRecordObjectEvent
+BossPhasesHurtFallAndTileWrites_at4:
+    inc a:OBJ_27A8,x
+    rts
+BossPhasesHurtFallAndTileWrites_at3:
+    jsr VecSideOfPlayer
+    lsr a
+    bcs BossPhasesHurtFallAndTileWrites_at4
+    lda #$04
+    sta a:OBJ_VX_HI,x
+    lda #$10
+    sta a:OBJ_34B8,x
+    jsr VecRecordObjectEvent
+    inc a:OBJ_3568,x
+    lda #$05
+    sta a:OBJ_27A8,x
+    rts
+BossPhasesHurtFallAndTileWrites_at1:
+    dec a
+    bne BossPhasesHurtFallAndTileWrites_at5
+    lda #$AF
+    sta z:zTemp11
+    lda #$8A
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    bne BossPhasesHurtFallAndTileWrites_at2
+    inc a:OBJ_27A8,x
+    lda #$10
+    sta a:OBJ_34B8,x
+    phx
+    cla
+    ldx #$05
+    jsr VecStartListChannelKind3
+    plx
+BossPhasesHurtFallAndTileWrites_at2:
+    rts
+BossPhasesHurtFallAndTileWrites_at5:
+    dec a
+    bne SetFrameThenCountToNext
+    dec a:OBJ_34B8,x
+    bne BossPhasesHurtFallAndTileWrites_at2
+    inc a:OBJ_27A8,x
+    lda #$40
+    sta a:OBJ_34B8,x
+    lda #$0F
+    sta a:OBJ_2A68,x
+    rts
+    dec a
+    bne BossPhasesHurtFallAndTileWrites_at6
+    dec a:OBJ_34B8,x
+    beq BossPhasesHurtFallAndTileWrites_at7
+    lda a:OBJ_34B8,x
+    and #$07
+    bne BossPhasesHurtFallAndTileWrites_at2
+    inc a:OBJ_Y_LO,x
+    lda a:OBJ_34B8,x
+    lsr a
+    lsr a
+    lsr a
+    clc
+    adc #$C8
+    sta a:OBJ_3510,x
+    bsr BossPhasesHurtFallAndTileWrites_at8
+    bsr BossPhasesHurtFallAndTileWrites_at8
+    bsr BossPhasesHurtFallAndTileWrites_at8
+    bra BossPhasesHurtFallAndTileWrites_at8
+BossPhasesHurtFallAndTileWrites_at7:
+    lda a:OBJ_3568,x
+    beq BossPhasesHurtFallAndTileWrites_at9
+BossPhasesHurtFallAndTileWrites_at9:
+    jmp VecClearObject
+BossPhasesHurtFallAndTileWrites_at8:
+    jsr VecSelectVramWriteAddress
+    lda a:OBJ_3510,x
+    sta a:VDC_DATA_LO
+    clc
+    adc #$10
+    sta a:OBJ_3510,x
+    st2 #$0F
+    jsr VecSelectVramData
+    st1 #$00
+    st2 #$00
+    rts
+BossPhasesHurtFallAndTileWrites_at6:
+    jsr VecApplyVelocity
+    lda a:OBJ_VX_LO,x
+    sec
+    sbc #$34
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_VX_HI,x
+    sbc #$00
+    sta a:OBJ_VX_HI,x
+    dec a:OBJ_34B8,x
+    bne BossPhasesHurtFallAndTileWrites_at2
+    lda #$02
+    sta a:OBJ_27A8,x
+    rts
+
 ; @routine 0B4A:79D LoadRecordThenWatchThenDropTwice
 ; @run 70:AF9D
 ; WHAT IT DOES: In state 0 loads the record. State 1 looks for an object of kind $24 in slots $10 to $2E; when it is in frame $11, at X low $B8 or more on the first screen, and the player's X low is $C0 or more, the object goes to state 2. State 2: its Y speed gains $0020 a frame and it moves; at Y low $BC it stops, takes Y speed high $FE, plays sound $2C and goes to state 3. State 3 does the same fall until its Y high byte is not 0, then goes to state 4.

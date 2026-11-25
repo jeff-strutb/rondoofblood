@@ -642,7 +642,7 @@ static TrackPlay play_track(uint8_t track, uint8_t mode, uint8_t kept_x, uint8_t
 }
 
 /* As the BIOS's calls leave the registers, then X and Y back as they came, N and Z from X. */
-static void play_track_exit_shim(TrackPlay play)
+void play_track_exit_shim(TrackPlay play)
 {
     uint8_t x = play.x;
     uint8_t y = play.y;

@@ -937,6 +937,7 @@ typedef struct {
 
 TrackPlay CdPlayOnce(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 TrackPlay CdPlayAgain(uint8_t kept_x, uint8_t kept_y);
+void play_track_exit_shim(TrackPlay play);
 TrackPlay CdPlayRepeat(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 
 /* The title: src/rondo/menu/title.c. */

@@ -169,4 +169,23 @@ Ended StepListThenCountdownNextState(uint8_t slot, uint8_t y_entry);
 SoundEnd StepListThenSound43AtZero(uint8_t slot, uint8_t y_entry);
 Ended SeekObject19ThenHitAndClear(uint8_t slot, uint8_t y_entry);
 
+/* object/enemies_l8_hit_damage.c */
+Ended HitDamage0519(uint8_t slot);
+Ended HitDamage05C9(uint8_t slot);
+Ended HitDamage0729(uint8_t slot);
+Ended HitDamage07D9(uint8_t slot);
+Ended HitDamage0889(uint8_t slot);
+Ended HitDamage0939(uint8_t slot);
+Ended HitDamage0A99(uint8_t slot);
+Ended HitDamage0B49(uint8_t slot);
+Ended HitDamage0BF9(uint8_t slot);
+Ended HitDamage0CA9(uint8_t slot);
+Ended HitDamage0D59(uint8_t slot);
+Ended HitDamage0E09(uint8_t slot);
+Ended HitDamage0EB9(uint8_t slot);
+Ended HitDamage1019(uint8_t slot);
+Ended HitDamage10C9(uint8_t slot);
+Ended HitDamage1179(uint8_t slot);
+Ended HitDamage16C9(uint8_t slot);
+
 #endif

@@ -304,7 +304,7 @@ class Draft:
                 if b[2]:
                     out.append("    %s  /* untraced */" % b[1])
                 else:
-                    out.append("    %s  /* %04X %s */" % (b[1], b[3], b[4]))
+                    out.append("    rondo_pc = 0x%04X; %s  /* %s */" % (b[3], b[1], b[4]))
             if tail:
                 out.append("    %s  /* runs on into the next routine */" % tail)
         return "\n".join(out)

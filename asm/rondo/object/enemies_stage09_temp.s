@@ -17,6 +17,45 @@ FaceByCue:
 FaceByCue_at0:
     rts
 
+; @routine 09EA:5CB AdvanceByHealth
+; @run 70:ADCB
+; WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_32A8 falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
+; when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_2800 are reset, and from phase 2 its OBJ_3148 loses
+; bits 3 to 6.
+; HOW: Table reads (bank 70).
+; Untraced: the phase 2 test (ADD7) and the OBJ_3148 mask (AE00).
+; WAITS: no.
+; Entry: X object. Exit: the last compare, load or AND.
+AdvanceByHealth:
+    lda a:OBJ_27A8,x
+    beq AdvanceByHealth_at0
+    ldy a:OBJ_3618,x
+    cpy #$02
+    bne AdvanceByHealth_at1
+    lda a:OBJ_32A8,x
+    and #$80
+    bne AdvanceByHealth_at2
+    rts
+AdvanceByHealth_at1:
+    lda a:OBJ_32A8,x
+    cmp a:$AE09,y
+    bcs AdvanceByHealth_at0
+AdvanceByHealth_at2:
+    lda a:$AE0B,y
+    sta a:OBJ_27A8,x
+    inc a:OBJ_3618,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    stz a:OBJ_2800,x
+    lda a:OBJ_3618,x
+    cmp #$02
+    bcc AdvanceByHealth_at0
+    lda a:OBJ_3148,x
+    and #$87
+    sta a:OBJ_3148,x
+AdvanceByHealth_at0:
+    rts
+
 ; @routine 09EA:664 StartTwinSpawner
 ; @run 70:AE64
 ; WHAT IT DOES: Loads the object's record, clears OBJ_3618, sets its wait to $60 and sets bit 2 of zField8E; then
@@ -412,6 +451,32 @@ BurstOnLanding_at1:
 BurstOnLanding_at0:
     rts
 
+; @routine 09EB:14A MoveThenPick
+; @run 70:B14A
+; WHAT IT DOES: Moves the object along X, then PickGroundSpeedInWindow.
+; HOW: ApplyVelocityX, then the next routine's bytes.
+; WAITS: no.
+; Entry: X object. Exit: as PickGroundSpeedInWindow.
+MoveThenPick:
+    jsr VecApplyVelocityX
+
+; @routine 09EB:14D PickGroundSpeedInWindow
+; @run 70:B14D
+; WHAT IT DOES: When the object is inside the window (InWindowRange), OBJ_2800 takes a byte of a sixteen-byte table at $B15F picked at random.
+; HOW: InWindowRange, NextRandom, a table read (bank 70).
+; WAITS: no.
+; Entry: X object. Exit: outside: the window test's flags; inside: A the table byte, Y the pick, C and V from the random.
+PickGroundSpeedInWindow:
+    jsr InWindowRange
+    bcc PickGroundSpeedInWindow_at0
+    jsr VecNextRandom
+    and #$0F
+    tay
+    lda a:$B15F,y
+    sta a:OBJ_2800,x
+PickGroundSpeedInWindow_at0:
+    rts
+
 ; @routine 09EB:16F InWindowRange
 ; @run 70:B16F
 ; WHAT IT DOES: Says whether the object is inside the page range the stage keeps its things alive in: the object's X plus the scroll,
@@ -472,6 +537,27 @@ StartSplitterHigh:
     jsr VecNegateVelocityX
 StartSplitterHigh_at0:
     rts
+
+; @routine 09EB:1C7 SwingAndPick
+; @run 70:B1C7
+; WHAT IT DOES: Sets the object's Y speed to the cosine of its OBJ_3670 count (multiplier $0150), moves it, counts OBJ_3670 up and goes on as PickGroundSpeedInWindow.
+; HOW: ScaleByCosine, ApplyVelocity, a tail jump into PickGroundSpeedInWindow.
+; WAITS: no.
+; Entry: X object. Exit: as PickGroundSpeedInWindow.
+SwingAndPick:
+    lda #$50
+    sta z:zTemp00
+    lda #$01
+    sta z:zTemp01
+    lda a:OBJ_3670,x
+    jsr VecScaleByCosine
+    lda z:zProduct2
+    sta a:OBJ_VY_HI,x
+    lda z:SpriteFlipMask
+    sta a:OBJ_VY_LO,x
+    jsr VecApplyVelocity
+    inc a:OBJ_3670,x
+    jmp PickGroundSpeedInWindow
 
 ; @routine 09EB:1E8 StartSplitterLow
 ; @run 70:B1E8
@@ -818,6 +904,37 @@ StartKickedPiece:
     sta a:OBJ_VY_HI,x
     jsr VecApplyVelocity
     stz a:OBJ_VY_HI,x
+    rts
+
+; @routine 09EC:1BF FallStepAndLeave
+; @run 70:B9BF
+; WHAT IT DOES: Steps the animation list at $B9F2, adds $0010 to the Y speed and moves down; once Y low is $C0 or more the hitbox goes off, the animation resets and the
+; object enters its next state.
+; HOW: StepObjectFrames, ApplyVelocityY.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the last compare or INC.
+FallStepAndLeave:
+    lda #$B9
+    sta z:zTemp11
+    lda #$F2
+    sta z:zTemp10
+    jsr VecStepObjectFrames
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$10
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    lda a:OBJ_Y_LO,x
+    cmp #$C0
+    bcc FallStepAndLeave_at0
+    stz a:OBJ_3250,x
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    inc a:OBJ_27A8,x
+FallStepAndLeave_at0:
     rts
 
 ; @routine 09EC:203 StepThenClear

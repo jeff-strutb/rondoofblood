@@ -273,6 +273,11 @@ Ended SlideAngleDown(uint8_t slot);
 Ended SlideAngleUp(uint8_t slot);
 
 
+Ended AdvanceByHealth(uint8_t slot);
+Ended PickGroundSpeedInWindow(uint8_t slot);
+Ended MoveThenPick(uint8_t slot);
+Ended SwingAndPick(uint8_t slot);
+Ended FallStepAndLeave(uint8_t slot);
 Ended ChainCountdown(uint8_t slot);
 Ended ChainSwings(uint8_t slot);
 Ended WalkAndPick(uint8_t slot);

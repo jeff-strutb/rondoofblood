@@ -657,6 +657,7 @@ EndingStartList3:
     cla
     ldx #$07
     jsr VecStartListChannelKind3
+EndingStartList3_at0:
     plx
     lda #$20
     sta a:OBJ_34B8,x
@@ -1439,3 +1440,237 @@ EndingFrameList:
     lda a:$8A06,y
     sta z:zTemp11
     jmp VecStepObjectFrames
+
+; @routine 0111:003 EndingEffectEntry
+; @run 6C:8003
+; WHAT IT DOES: The palette effects' entry for a frame: runs EndingEffectStep.
+; HOW: A jump to EndingEffectStep.
+; WAITS: no.
+; Entry: nothing. Exit: as EndingEffectStep.
+EndingEffectEntry:
+    jmp EndingEffectStep
+
+; @routine 0111:2AE EndingEffectStep
+; @run 6C:82AE
+; WHAT IT DOES: One frame of the ending's palette effects: while the game is paused (bit 0 of zPaused) only slots 2 and $0B are run; otherwise,
+; unless slot 3 holds type 5 (which runs as the original code with X 3), every slot from $0B down to 0 that has a type is run through
+; EndingEffectDispatch.
+; HOW: zPaused; the types at $3C00; the slot kept in zRichterObject's byte ($20D9) across each dispatch.
+; WAITS: no.
+; Entry: nothing. Exit: X $FF, N set, Z clear; A the last type loaded or what the last handler left; C, Y and V as the last handler left them.
+EndingEffectStep:
+    bbr0 zPaused,EndingEffectStep_at0
+    ldx #$02
+    bsr EndingEffectStep_at1
+    ldx #$0B
+EndingEffectStep_at1:
+    lda a:ScriptSlotKind,x
+    bne EndingEffectDispatch
+    rts
+EndingEffectStep_at2:
+    ldx #$03
+    jmp EndingStartList3_at0
+EndingEffectStep_at0:
+    lda a:ScriptSlotKind+3
+    cmp #$05
+    beq EndingEffectStep_at2
+    ldx #$0B
+EndingEffectStep_at4:
+    lda a:ScriptSlotKind,x
+    beq EndingEffectStep_at3
+    stx z:zRichterObject
+    bsr EndingEffectDispatch
+    ldx z:zRichterObject
+EndingEffectStep_at3:
+    dex
+    bpl EndingEffectStep_at4
+    rts
+
+; @routine 0111:2DA EndingEffectDispatch
+; @run 6C:82DA
+; WHAT IT DOES: Sends a palette effect slot to the handler its type names: the table at $82EA holds one address per type, type 1 first.
+; HOW: Type less one doubled indexes the table; the word goes through zTemp00 and zTemp01; the jump is made with A the word's high byte,
+; Y the index, C bit 7 of type less one, X the slot. A handler this overlay's C does not hold runs as the original code.
+; WAITS: no.
+; Entry: A the type (not zero), X the slot. Exit: as the handler leaves them.
+EndingEffectDispatch:
+    dec a
+    asl a
+    tay
+    lda a:$82EA,y
+    sta z:zTemp00
+    lda a:$82EB,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0111:2F8 EndingEffectList
+; @run 6C:82F8
+; WHAT IT DOES: A palette effect that plays a list of palette loads: once its timer has run down it takes the list's palettes one a
+; step (each loaded by LoadPackedPaletteC), the timer set from the list's first byte; when the list ends it counts a round and starts
+; the list again, and when the rounds the list names have been played it gives the slot back.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at $89D2).
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N, Z and C from
+; comparing it with the rounds played, Y 1; X kept.
+EndingEffectList:
+    lda a:ScriptSlotTimer,x
+    beq EndingEffectList_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EndingEffectList_at0:
+    lda a:ScriptSlotScript,x
+    bpl EndingEffectList_at1
+    asl a
+    tay
+    lda a:$89D2,y
+    sta z:zTemp00
+    lda a:$89D3,y
+    sta z:zTemp01
+    bra EndingEffectList_at2
+EndingEffectList_at1:
+    asl a
+    tay
+    lda a:$9400
+    sta z:zBiosAl
+    lda a:$9401
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EndingEffectList_at2:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+EndingEffectList_at4:
+    lda a:ScriptSlotField18,x
+    asl a
+    asl a
+    inc a
+    inc a
+    tay
+    lda (zTemp00),y
+    cmp #$FF
+    beq EndingEffectList_at3
+    jsr LoadPackedPaletteC
+    inc a:ScriptSlotField18,x
+    bra EndingEffectList
+EndingEffectList_at3:
+    inc a:ScriptSlotField24,x
+    stz a:ScriptSlotField18,x
+    ldy #$01
+    lda (zTemp00),y
+    bmi EndingEffectList_at4
+    and #$7F
+    cmp a:ScriptSlotField24,x
+    bcs EndingEffectList_at4
+EndingEffectList_at5:
+    stz a:ScriptSlotKind,x
+    stz a:ScriptSlotScript,x
+    stz a:ScriptSlotField18,x
+    stz a:ScriptSlotField24,x
+    stz a:ScriptSlotTimer,x
+    stz a:ScriptSlotField3C,x
+    stz a:ScriptSlotField48,x
+    stz a:ScriptSlotField54,x
+    rts
+
+; @routine 0111:371 EndingEffectFade
+; @run 6C:8371
+; WHAT IT DOES: A palette effect that fades palettes down: once its timer has run down it counts a round, gives the slot back after the
+; eighth, and otherwise takes the list's palettes (an address of the VCE and a count each) and darkens every colour of them by one step
+; in each of its three components, writing them back to the VCE.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402 (or a table at $9442); the VCE read into $3C60 by a TAI,
+; changed word by word, and written back by a TIA.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X $20 when a palette
+; was changed (else the slot), Y the list's place.
+EndingEffectFade:
+    lda a:ScriptSlotTimer,x
+    beq EndingEffectFade_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EndingEffectFade_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EndingEffectFade_at1
+    jmp EndingEffectList_at5
+EndingEffectFade_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EndingEffectFade_at2
+    lda a:$9442,y
+    sta z:zTemp00
+    lda a:$9443,y
+    sta z:zTemp01
+    bra EndingEffectFade_at3
+EndingEffectFade_at2:
+    lda a:$9402
+    sta z:zBiosAl
+    lda a:$9403
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EndingEffectFade_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EndingEffectFade_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EndingEffectFade_at4
+    rts
+EndingEffectFade_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EndingEffectFade_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EndingEffectFade_at5
+    dec a
+EndingEffectFade_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EndingEffectFade_at6
+    sec
+    sbc #$08
+EndingEffectFade_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EndingEffectFade_at7
+    sec
+    sbc #$20
+EndingEffectFade_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EndingEffectFade_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EndingEffectFade_at9

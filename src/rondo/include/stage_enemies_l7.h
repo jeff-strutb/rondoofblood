@@ -59,6 +59,24 @@ typedef struct {
     SoundEnd pre;
     Ended tail;
 } BurstTail;
+typedef struct {
+    SoundEnd sound;
+    Ended burst;
+    bool burst_run;
+    Ended unused;
+    uint8_t unused2;
+    Ended tail;
+} BreakEnd;
+typedef struct {
+    SoundEnd sound;
+    bool played;
+    Ended pre;
+    TrackPlay track;
+    Ended post;
+} MusicEnd;
+BreakEnd BreakIntoPieces(uint8_t slot, uint8_t y_entry);
+Ended StartScriptsAndLists(uint8_t slot);
+MusicEnd StepThenMusicAgain(uint8_t slot, uint8_t y);
 SoundEnd BurstAtHeightE0(uint8_t slot, uint8_t y);
 ShowEnd ShowByVelocity(uint8_t slot, uint8_t y);
 ShowEnd FollowPathAndShow(uint8_t slot, uint8_t y);

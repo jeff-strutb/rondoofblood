@@ -435,6 +435,57 @@ FallingPieceMove_at0:
     lda a:OBJ_VY_LO,x
     sta z:zPushYLo
     rts
+; @routine 072B:2B5 BreakIntoPieces
+; @run 70:B2B5
+; WHAT IT DOES: In state 0 loads the object's record. Once it has taken a hit of 5 or more it records its event, starts a kind $84 piece at its place in each of slots $3D to $3F with
+; a speed row (four bytes each) from the table at $B30F, plays sound $19, starts a burst of debris (timer 1) and becomes a kind $9C object in state 0.
+; HOW: LoadObjectRecord, RecordObjectEvent, ClearObjectInY and StartObjectAtPlace in a loop, SoundCommand, StartDebrisBurst.
+; WAITS: no.
+; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+BreakIntoPieces:
+    lda a:OBJ_27A8,x
+    bne BreakIntoPieces_at0
+    jsr VecLoadObjectRecord
+    rts
+BreakIntoPieces_at0:
+    lda a:OBJ_33B0,x
+    cmp #$05
+    bcc BreakIntoPieces_at1
+    jsr VecRecordObjectEvent
+    stz z:zTemp00
+    ldy #$3D
+BreakIntoPieces_at2:
+    jsr VecClearObjectInY
+    lda #$84
+    jsr VecStartObjectAtPlace
+    phx
+    ldx z:zTemp00
+    lda a:$B310,x
+    sta a:OBJ_VX_HI,y
+    lda a:$B30F,x
+    sta a:OBJ_VX_LO,y
+    lda a:$B312,x
+    sta a:OBJ_VY_HI,y
+    lda a:$B311,x
+    sta a:OBJ_VY_LO,y
+    plx
+    lda z:zTemp00
+    clc
+    adc #$04
+    sta z:zTemp00
+    iny
+    cpy #$40
+    bcc BreakIntoPieces_at2
+    lda #$19
+    jsr VecSoundCommand
+    lda #$01
+    jsr StartDebrisBurst
+    lda #$9C
+    sta a:OBJ_2750,x
+    stz a:OBJ_27A8,x
+BreakIntoPieces_at1:
+    rts
+
 ; @routine 072B:31B StartOnFirstState
 ; @run 70:B31B
 ; WHAT IT DOES: An object that only needs its record loaded: in state 0 it does LoadObjectRecord, otherwise nothing.
@@ -579,6 +630,45 @@ StartPieceChain_at1:
     inc z:zTemp01
     dec z:zTemp00
     bne StartPieceChain_at1
+    rts
+
+; @routine 072B:76E StepThenMusicAgain
+; @run 70:B76E
+; WHAT IT DOES: Steps the animation list at $B7AD; on the new frame with animation step 2 it sets bit 4 of zField8E and plays sound $FE; when the list ends it turns on the object's
+; hitbox flag (2), clears bits 3 and 4 of zField8E, plays the music again (CdPlayAgain), clears OBJ_2F38, sets bit 2 of zField8E and bit 4 and 6 of OBJ_3148, and enters its next state.
+; HOW: StepObjectFrames, SoundCommand, CdPlayAgain.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+StepThenMusicAgain:
+    lda #$AD
+    sta z:zTemp10
+    lda #$B7
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    beq StepThenMusicAgain_at0
+    bcc StepThenMusicAgain_at1
+    lda a:OBJ_3408,x
+    cmp #$02
+    bne StepThenMusicAgain_at1
+    smb4 z:zField8E
+    lda #$FE
+    jsr VecSoundCommand
+    rts
+StepThenMusicAgain_at0:
+    lda #$02
+    sta a:OBJ_3250,x
+    rmb3 z:zField8E
+    rmb4 z:zField8E
+    jsr VecCdPlayAgain
+    stz a:OBJ_FLAGS_2F38,x
+    lda z:zField8E
+    ora #$04
+    sta z:zField8E
+    lda a:OBJ_3148,x
+    ora #$50
+    sta a:OBJ_3148,x
+    inc a:OBJ_27A8,x
+StepThenMusicAgain_at1:
     rts
 
 ; @routine 072C:053 StartPieceStreamA
@@ -1209,4 +1299,29 @@ StepFallAfterFour:
     jsr VecApplyGravity
     jsr VecApplyVelocity
 StepFallAfterFour_at0:
+    rts
+; @routine 072D:09F StartScriptsAndLists
+; @run 71:C09F
+; WHAT IT DOES: In state 0 starts script slot 4 with script $91 and loads the object's record; later it starts list channel 4 with the list $AE plus the low nibble of ScrollYLo.
+; HOW: StartScriptSlotKind1, LoadObjectRecord (a tail jump), StartListChannelKind2; X is pushed around each start.
+; WAITS: no.
+; Entry: X object. Exit: state 0: as LoadObjectRecord; else A the channel's kind, N and Z from X, C and V from the add.
+StartScriptsAndLists:
+    lda a:OBJ_27A8,x
+    bne StartScriptsAndLists_at0
+    phx
+    lda #$91
+    ldx #$04
+    jsr VecStartScriptSlotKind1
+    plx
+    jmp VecLoadObjectRecord
+StartScriptsAndLists_at0:
+    lda a:ScrollYLo
+    and #$0F
+    clc
+    adc #$AE
+    phx
+    ldx #$04
+    jsr VecStartListChannelKind2
+    plx
     rts

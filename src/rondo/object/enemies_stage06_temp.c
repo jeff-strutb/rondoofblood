@@ -2001,3 +2001,208 @@ void abi_StepFallAfterFour(void)
 {
     abi_ended(StepFallAfterFour(cpu.x));
 }
+
+/*
+ * @routine 072B:2B5 BreakIntoPieces
+ * @run 70:B2B5
+ * WHAT IT DOES: In state 0 loads the object's record. Once it has taken a hit of 5 or more it records its event, starts a kind $84 piece at its place in each of slots $3D to $3F with
+ * a speed row (four bytes each) from the table at $B30F, plays sound $19, starts a burst of debris (timer 1) and becomes a kind $9C object in state 0.
+ * HOW: LoadObjectRecord, RecordObjectEvent, ClearObjectInY and StartObjectAtPlace in a loop, SoundCommand, StartDebrisBurst.
+ * WAITS: no.
+ * Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ */
+BreakEnd BreakIntoPieces(uint8_t slot, uint8_t y_entry)
+{
+    BreakEnd r = { { 0 }, { 0 }, false, { 0 }, 0, { 0 } };
+    uint8_t state, nz, last, hit, stored, event, byte, to, row, placed, number;
+    bool carry, marked;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        jsr_push(0xB2BD);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        r.sound.end = ended_of_record(last, nz, carry);
+        return r;
+    }
+    hit = RD8(OBJ->hit_taken[slot]);
+    e = ended_compare(hit, 5);
+    r.sound.end = e;
+    if (hit < 5) {
+        return r;
+    }
+    jsr_push(0xB2C8);
+    marked = RecordObjectEvent(slot, &stored, &event, &byte);
+    jsr_pop();
+    e = then(e, ended_of_object_event(marked, stored, event, byte));
+    WR8(ZP->temp00, 0);
+    to = 0x3D;
+    do {
+        jsr_push(0xB2CF);
+        ClearObjectInY(to);
+        jsr_pop();
+        jsr_push(0xB2D4);
+        placed = StartObjectAtPlace(0x84, slot, to);
+        jsr_pop();
+        push8(slot);
+        row = RD8(ZP->temp00);
+        byte = rd8((uint16_t)(0xB310 + row));
+        WR8(OBJ->vx_hi[to], byte);
+        byte = rd8((uint16_t)(0xB30F + row));
+        WR8(OBJ->vx_lo[to], byte);
+        byte = rd8((uint16_t)(0xB312 + row));
+        WR8(OBJ->vy_hi[to], byte);
+        byte = rd8((uint16_t)(0xB311 + row));
+        WR8(OBJ->vy_lo[to], byte);
+        slot = pull8();
+        number = RD8(ZP->temp00);
+        number = (uint8_t)(number + 4);
+        WR8(ZP->temp00, number);
+        to++;
+    } while (to < 0x40);
+    (void)placed;
+    r.sound.before = then(e, ended_load(0x19));
+    r.sound.sounded = true;
+    r.sound.command = 0x19;
+    jsr_push(0xB301);
+    r.sound.call = SoundCommand(0x19, slot, 0x40);
+    jsr_pop();
+    jsr_push(0xB306);
+    r.burst = StartDebrisBurst(slot, 1, 0x40);
+    jsr_pop();
+    r.burst_run = true;
+    WR8(OBJ->kind[slot], 0x9C);
+    WR8(OBJ->state[slot], 0);
+    r.sound.end = ended_kept();
+    r.tail = ended_load(0x9C);
+    return r;
+}
+
+void abi_BreakIntoPieces(void)
+{
+    BreakEnd r = BreakIntoPieces(cpu.x, cpu.y);
+
+    abi_sound_end(r.sound);
+    if (r.burst_run) {
+        abi_ended(r.burst);
+        abi_ended(r.tail);
+    }
+}
+
+/*
+ * @routine 072D:09F StartScriptsAndLists
+ * @run 71:C09F
+ * WHAT IT DOES: In state 0 starts script slot 4 with script $91 and loads the object's record; later it starts list channel 4 with the list $AE plus the low nibble of ScrollYLo.
+ * HOW: StartScriptSlotKind1, LoadObjectRecord (a tail jump), StartListChannelKind2; X is pushed around each start.
+ * WAITS: no.
+ * Entry: X object. Exit: state 0: as LoadObjectRecord; else A the channel's kind, N and Z from X, C and V from the add.
+ */
+Ended StartScriptsAndLists(uint8_t slot)
+{
+    uint8_t state, nz, last, kind, scroll, list;
+    bool carry;
+    Sum sum;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    if (state == 0) {
+        push8(slot);
+        jsr_push(0xC0AC);
+        StartScriptSlotKind1(0x91, 4);
+        jsr_pop();
+        slot = pull8();
+        last = LoadObjectRecord(slot, &nz, &carry);
+        return ended_of_record(last, nz, carry);
+    }
+    scroll = rd8(ScrollYLo);
+    scroll = (uint8_t)(scroll & 0x0F);
+    e = ended_load(scroll);
+    sum = add_bytes(scroll, 0xAE, false);
+    list = sum.value;
+    e = then(e, of_sum(sum));
+    push8(slot);
+    jsr_push(0xC0BE);
+    kind = StartListChannelKind2(list, 4);
+    jsr_pop();
+    slot = pull8();
+    e = then(e, ended_load(kind));
+    return then(e, ended_nz(slot));
+}
+
+void abi_StartScriptsAndLists(void)
+{
+    abi_ended(StartScriptsAndLists(cpu.x));
+}
+
+/*
+ * @routine 072B:76E StepThenMusicAgain
+ * @run 70:B76E
+ * WHAT IT DOES: Steps the animation list at $B7AD; on the new frame with animation step 2 it sets bit 4 of zField8E and plays sound $FE; when the list ends it turns on the object's
+ * hitbox flag (2), clears bits 3 and 4 of zField8E, plays the music again (CdPlayAgain), clears the object flags (OBJ_2F38), sets bit 2 of zField8E and bit 4 and 6 of OBJ_3148, and enters its next state.
+ * HOW: StepObjectFrames, SoundCommand, CdPlayAgain.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
+ */
+MusicEnd StepThenMusicAgain(uint8_t slot, uint8_t y)
+{
+    MusicEnd r = { { { 0 }, { 0 }, false, 0, { 0 } }, false, { 0 }, { 0 }, { 0 } };
+    FrameStep step;
+    uint8_t anim, flags, bits, state;
+    Ended e;
+
+    step = step_list(slot, 0xAD, 0xB7, 0xB779, &y);
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    r.sound.end = e;
+    if (step == FRAME_HELD) {
+        return r;
+    }
+    if (step == FRAME_CHANGED) {
+        anim = RD8(OBJ->anim_step[slot]);
+        e = then(e, ended_compare(anim, 2));
+        r.sound.end = e;
+        if (anim != 2) {
+            return r;
+        }
+        RMW8(ZP->field8_e, old, old | 0x10);
+        r.sound.before = then(e, ended_load(0xFE));
+        r.sound.sounded = true;
+        r.sound.command = 0xFE;
+        jsr_push(0xB78B);
+        r.sound.call = SoundCommand(0xFE, slot, y);
+        jsr_pop();
+        r.sound.end = ended_kept();
+        return r;
+    }
+    WR8(OBJ->hitbox_on[slot], 2);
+    RMW8(ZP->field8_e, old, old & 0xF7);
+    RMW8(ZP->field8_e, old, old & 0xEF);
+    r.pre = then(e, ended_load(2));
+    jsr_push(0xB798);
+    r.track = CdPlayAgain(slot, y);
+    jsr_pop();
+    r.played = true;
+    WR8(OBJ->flags[slot], 0);
+    flags = RD8(ZP->field8_e);
+    flags = (uint8_t)(flags | 0x04);
+    WR8(ZP->field8_e, flags);
+    bits = RD8(OBJ->f3148[slot]);
+    bits = (uint8_t)(bits | 0x50);
+    WR8(OBJ->f3148[slot], bits);
+    state = INC8(OBJ->state[slot]);
+    r.post = then(ended_load(bits), ended_nz(state));
+    return r;
+}
+
+void abi_StepThenMusicAgain(void)
+{
+    MusicEnd r = StepThenMusicAgain(cpu.x, cpu.y);
+
+    if (r.played) {
+        abi_ended(r.pre);
+        play_track_exit_shim(r.track);
+        abi_ended(r.post);
+    } else {
+        abi_sound_end(r.sound);
+    }
+}

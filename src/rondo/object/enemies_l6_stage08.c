@@ -619,3 +619,91 @@ void abi_StartThreeNumberedObjects(void)
 
     abi_ended(StartThreeNumberedObjects(slot));
 }
+
+/*
+ * @routine 088B:705 PlaceFromTableThenStepList
+ * @run 70:B705
+ * WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B73A names by OBJ_3510, sets sprite set 7, copies the facing of the object in slot $10 and steps the animation list the table at $B73E gives for OBJ_3510.
+ * HOW: Table reads (bank 70), StepObjectFrames.
+ * WAITS: no.
+ * Entry: X object, Y overwritten. Exit: as StepObjectFrames.
+ */
+Ended PlaceFromTableThenStepList(uint8_t slot)
+{
+    FrameStep step;
+    uint8_t index, row, y, timer;
+    Ended e;
+
+    index = RD8(OBJ->f3510[slot]);
+    row = rd8((uint16_t)(0xB73A + index));
+    e = then(ended_with_y(ended_nz(index), index), ended_with_y(ended_load(row), row));
+    WR8(OBJ->x_lo[slot], rd8((uint16_t)(0xBB66 + row)));
+    WR8(OBJ->y_lo[slot], rd8((uint16_t)(0xBBA6 + row)));
+    WR8(OBJ->sprite_set[slot], 7);
+    WR8(OBJ->facing_left[slot], RD8(OBJ->facing_left[0x10]));
+    timer = RD8(OBJ->f3510[slot]);
+    y = (uint8_t)(timer << 1);
+    e = then(e, ended_with_carry(ended_with_y(ended_load(y), y), (timer & 0x80) != 0));
+    WR8(ZP->temp10, rd8((uint16_t)(0xB73E + y)));
+    WR8(ZP->temp11, rd8((uint16_t)(0xB73F + y)));
+    jsr_push(0xB735);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    return then(e, ended_of_frame_step(step, step != FRAME_HELD, y));
+}
+
+void abi_PlaceFromTableThenStepList(void)
+{
+    abi_ended(PlaceFromTableThenStepList(cpu.x));
+}
+
+/*
+ * @routine 088C:43C StartThenWaitForField83
+ * @run 70:BC3C
+ * WHAT IT DOES: In state 0 loads the object's record and sets frame 2 and sprite set 6. In state 1, once zField83 is not zero, it sets the scroll Y high to 1, frame $46, sprite set 7, X low $80, Y low $58 and goes on to the next state.
+ * HOW: LoadObjectRecord, a DEC, stores, an INC.
+ * WAITS: no.
+ * Entry: X object. Exit: the DEC, the load of zField83, or the new state's N and Z (A $58).
+ */
+Ended StartThenWaitForField83(uint8_t slot)
+{
+    uint8_t state, nz, last, count, field, next;
+    bool carry;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    count = state;
+    if (state == 0) {
+        jsr_push(0xBC44);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = then(e, ended_of_record(last, nz, carry));
+        WR8(OBJ->frame[slot], 2);
+        WR8(OBJ->sprite_set[slot], 6);
+        e = then(then(e, ended_load(2)), ended_load(6));
+        count = 6;
+    }
+    count--;
+    e = then(e, ended_load(count));
+    if (count != 0) {
+        return e;
+    }
+    field = RD8(ZP->field83);
+    e = then(e, ended_load(field));
+    if (field == 0) {
+        return e;
+    }
+    WR8(SCROLL->y_hi[0], 1);
+    WR8(OBJ->frame[slot], 0x46);
+    WR8(OBJ->sprite_set[slot], 7);
+    WR8(OBJ->x_lo[slot], 0x80);
+    WR8(OBJ->y_lo[slot], 0x58);
+    next = INC8(OBJ->state[slot]);
+    return then(then(e, ended_load(0x58)), ended_nz(next));
+}
+
+void abi_StartThenWaitForField83(void)
+{
+    abi_ended(StartThenWaitForField83(cpu.x));
+}

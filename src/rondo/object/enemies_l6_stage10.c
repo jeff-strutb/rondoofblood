@@ -15,6 +15,12 @@ static Ended then(Ended e, Ended next)
     return ended_then(e, next);
 }
 
+/* AngleToPlayer's exit: A, N, Z, C, V and Y. */
+static Ended ended_of_angle(AngleExit r)
+{
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(r.a), r.c), r.v), r.y);
+}
+
 /*
  * @routine 10CD:181 StepListC192ThenClear
  * @run 71:C181
@@ -193,4 +199,67 @@ Ended StepListB728ThenRiseSlowly(uint8_t slot, uint8_t y_entry)
 void abi_StepListB728ThenRiseSlowly(void)
 {
     abi_ended(StepListB728ThenRiseSlowly(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 10CD:0C6 StepListC103ThenPickAim
+ * @run 71:C0C6
+ * WHAT IT DOES: Steps the animation list at $C103; when it ends the object picks OBJ_34B8: half the time the angle to the player, otherwise a random $00 to $7F plus the byte the table at $C088 gives for the player's side; it then clears OBJ_3510 and OBJ_3568, sets OBJ_3250 to 2 and goes on to the next state.
+ * HOW: StepObjectFrames, NextRandom, SideOfPlayer, AngleToPlayer, stores, an INC.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A 2) when the list ended.
+ */
+Ended StepListC103ThenPickAim(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    RandomResult random;
+    SideResult side;
+    AngleExit angle;
+    Sum sum;
+    uint8_t y = y_entry, bits, state;
+    Ended e;
+
+    WR8(ZP->temp10, 0x03);
+    WR8(ZP->temp11, 0xC1);
+    jsr_push(0xC0D1);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    e = ended_of_frame_step(step, step != FRAME_HELD, y);
+    if (step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    jsr_push(0xC0D6);
+    random = NextRandom();
+    jsr_pop();
+    e = then(then(e, ended_of_random(random)), ended_load((uint8_t)(random.value & 0x01)));
+    if ((random.value & 0x01) != 0) {
+        jsr_push(0xC0DD);
+        side = SideOfPlayer(slot);
+        jsr_pop();
+        bits = (uint8_t)(side.sides & 0x01);
+        e = then(then(e, ended_of_side(side)), ended_with_y(ended_load(bits), bits));
+        jsr_push(0xC0E3);
+        random = NextRandom();
+        jsr_pop();
+        e = then(then(e, ended_of_random(random)), ended_load((uint8_t)(random.value & 0x7F)));
+        sum = add_bytes((uint8_t)(random.value & 0x7F), rd8((uint16_t)(0xC088 + bits)), false);
+        WR8(OBJ->f34b8[slot], sum.value);
+        e = then(e, ended_of_sum(sum));
+    } else {
+        jsr_push(0xC0F1);
+        angle = AngleToPlayer(slot);
+        jsr_pop();
+        WR8(OBJ->f34b8[slot], angle.a);
+        e = then(e, ended_of_angle(angle));
+    }
+    WR8(OBJ->f3510[slot], 0);
+    WR8(OBJ->f3568[slot], 0);
+    WR8(OBJ->hitbox_on[slot], 2);
+    state = INC8(OBJ->state[slot]);
+    return then(then(e, ended_load(2)), ended_nz(state));
+}
+
+void abi_StepListC103ThenPickAim(void)
+{
+    abi_ended(StepListC103ThenPickAim(cpu.x, cpu.y));
 }

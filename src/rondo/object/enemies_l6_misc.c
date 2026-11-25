@@ -413,3 +413,55 @@ void abi_StepListB25CThenStartList(void)
 {
     abi_ended(StepListB25CThenStartList(cpu.x, cpu.y));
 }
+
+/*
+ * @routine 0E0C:201 TurnTowardPlayerOrStepList
+ * @run 70:BA01
+ * WHAT IT DOES: While OBJ_3568 counts down the object waits, turning round when it reaches zero. At zero it compares its facing with the player's side: when they differ it sets OBJ_3568 to 5 and frame $2C, otherwise it steps the animation list at $B9FA.
+ * HOW: DEC, EOR, SideOfPlayer, StepObjectFrames.
+ * WAITS: no.
+ * Entry: X object, Y kept unless the step sets it. Exit: the last instruction's registers.
+ */
+Ended TurnTowardPlayerOrStepList(uint8_t slot, uint8_t y_entry)
+{
+    FrameStep step;
+    SideResult side;
+    uint8_t count, facing, bits, y = y_entry;
+    Ended e;
+
+    count = RD8(OBJ->f3568[slot]);
+    e = ended_load(count);
+    if (count != 0) {
+        count = DEC8(OBJ->f3568[slot]);
+        e = then(e, ended_nz(count));
+        if (count != 0) {
+            return e;
+        }
+        facing = (uint8_t)(RD8(OBJ->facing_left[slot]) ^ 0x01);
+        WR8(OBJ->facing_left[slot], facing);
+        return then(e, ended_load(facing));
+    }
+    jsr_push(0xBA17);
+    side = SideOfPlayer(slot);
+    jsr_pop();
+    bits = (uint8_t)(side.sides & 0x01);
+    e = then(then(e, ended_of_side(side)), ended_load(bits));
+    facing = RD8(OBJ->facing_left[slot]);
+    e = then(e, ended_compare(bits, facing));
+    if (bits != facing) {
+        WR8(OBJ->f3568[slot], 5);
+        WR8(OBJ->frame[slot], 0x2C);
+        return then(e, ended_load(0x2C));
+    }
+    WR8(ZP->temp10, 0xFA);
+    WR8(ZP->temp11, 0xB9);
+    jsr_push(0xBA34);
+    step = StepObjectFrames(slot, &y);
+    jsr_pop();
+    return then(e, ended_of_frame_step(step, step != FRAME_HELD, y));
+}
+
+void abi_TurnTowardPlayerOrStepList(void)
+{
+    abi_ended(TurnTowardPlayerOrStepList(cpu.x, cpu.y));
+}

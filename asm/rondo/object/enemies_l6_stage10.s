@@ -61,6 +61,43 @@ StepListB728ThenRiseSlowly_at0:
     inc a:OBJ_2800,x
     rts
 
+; @routine 10CD:0C6 StepListC103ThenPickAim
+; @run 71:C0C6
+; WHAT IT DOES: Steps the animation list at $C103; when it ends the object picks OBJ_34B8: half the time the angle to the player, otherwise a random $00 to $7F plus the byte the table at $C088 gives for the player's side; it then clears OBJ_3510 and OBJ_3568, sets OBJ_3250 to 2 and goes on to the next state.
+; HOW: StepObjectFrames, NextRandom, SideOfPlayer, AngleToPlayer, stores, an INC.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A 2) when the list ended.
+StepListC103ThenPickAim:
+    lda #$03
+    sta z:zTemp10
+    lda #$C1
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    bne StepListC103ThenPickAim_at0
+    jsr VecNextRandom
+    and #$01
+    beq StepListC103ThenPickAim_at1
+    jsr VecSideOfPlayer
+    and #$01
+    tay
+    jsr VecNextRandom
+    and #$7F
+    clc
+    adc a:$C088,y
+    sta a:OBJ_34B8,x
+    bra StepListC103ThenPickAim_at2
+StepListC103ThenPickAim_at1:
+    jsr VecAngleToPlayer
+    sta a:OBJ_34B8,x
+StepListC103ThenPickAim_at2:
+    stz a:OBJ_3510,x
+    stz a:OBJ_3568,x
+    lda #$02
+    sta a:OBJ_3250,x
+    inc a:OBJ_27A8,x
+StepListC103ThenPickAim_at0:
+    rts
+
 ; @routine 10CD:181 StepListC192ThenClear
 ; @run 71:C181
 ; WHAT IT DOES: Steps the animation list at $C192; when it ends the object is cleared.

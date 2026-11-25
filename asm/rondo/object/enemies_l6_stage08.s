@@ -333,6 +333,34 @@ PlaceFromTableCopySlot10:
     sta a:OBJ_2B18,x
     rts
 
+; @routine 088B:705 PlaceFromTableThenStepList
+; @run 70:B705
+; WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B73A names by OBJ_3510, sets sprite set 7, copies the facing of the object in slot $10 and steps the animation list the table at $B73E gives for OBJ_3510.
+; HOW: Table reads (bank 70), StepObjectFrames.
+; WAITS: no.
+; Entry: X object, Y overwritten. Exit: as StepObjectFrames.
+PlaceFromTableThenStepList:
+    ldy a:OBJ_3510,x
+    lda a:$B73A,y
+    tay
+    lda a:RichterWallPushBits+1,y
+    sta a:OBJ_X_LO,x
+    lda a:$BBA6,y
+    sta a:OBJ_Y_LO,x
+    lda #$07
+    sta a:OBJ_2A10,x
+    lda a:$2AD0
+    sta a:OBJ_2AC0,x
+    lda a:OBJ_3510,x
+    asl a
+    tay
+    lda a:$B73E,y
+    sta z:zTemp10
+    lda a:$B73F,y
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    rts
+
 ; @routine 088B:777 SetTimersOf12To15
 ; @run 70:B777
 ; WHAT IT DOES: Sets OBJ_34B8 of the objects 18 to 21 to 1.
@@ -347,4 +375,36 @@ SetTimersOf12To15_at0:
     iny
     cpy #$16
     bcc SetTimersOf12To15_at0
+    rts
+; @routine 088C:43C StartThenWaitForField83
+; @run 70:BC3C
+; WHAT IT DOES: In state 0 loads the object's record and sets frame 2 and sprite set 6. In state 1, once zField83 is not zero, it sets the scroll Y high to 1, frame $46, sprite set 7, X low $80, Y low $58 and goes on to the next state.
+; HOW: LoadObjectRecord, a DEC, stores, an INC.
+; WAITS: no.
+; Entry: X object. Exit: the DEC, the load of zField83, or the new state's N and Z (A $58).
+StartThenWaitForField83:
+    lda a:OBJ_27A8,x
+    bne StartThenWaitForField83_at0
+    jsr VecLoadObjectRecord
+    lda #$02
+    sta a:OBJ_2A68,x
+    lda #$06
+    sta a:OBJ_2A10,x
+StartThenWaitForField83_at0:
+    dec a
+    bne StartThenWaitForField83_at1
+    lda z:zField83
+    beq StartThenWaitForField83_at1
+    lda #$01
+    sta a:ScrollYHi
+    lda #$46
+    sta a:OBJ_2A68,x
+    lda #$07
+    sta a:OBJ_2A10,x
+    lda #$80
+    sta a:OBJ_X_LO,x
+    lda #$58
+    sta a:OBJ_Y_LO,x
+    inc a:OBJ_27A8,x
+StartThenWaitForField83_at1:
     rts

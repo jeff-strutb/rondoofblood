@@ -197,6 +197,39 @@ StepListB9B7ThenAimAtPlayer:
 StepListB9B7ThenAimAtPlayer_at0:
     rts
 
+; @routine 0E0C:201 TurnTowardPlayerOrStepList
+; @run 70:BA01
+; WHAT IT DOES: While OBJ_3568 counts down the object waits, turning round when it reaches zero. At zero it compares its facing with the player's side: when they differ it sets OBJ_3568 to 5 and frame $2C, otherwise it steps the animation list at $B9FA.
+; HOW: DEC, EOR, SideOfPlayer, StepObjectFrames.
+; WAITS: no.
+; Entry: X object, Y kept unless the step sets it. Exit: the last instruction's registers.
+TurnTowardPlayerOrStepList:
+    lda a:OBJ_3568,x
+    beq RichterItemSecondCosts
+    dec a:OBJ_3568,x
+    bne TurnTowardPlayerOrStepList_at0
+    lda a:OBJ_2AC0,x
+    eor #$01
+    sta a:OBJ_2AC0,x
+TurnTowardPlayerOrStepList_at0:
+    rts
+    jsr VecSideOfPlayer
+    and #$01
+    cmp a:OBJ_2AC0,x
+    beq TurnTowardPlayerOrStepList_at1
+    lda #$05
+    sta a:OBJ_3568,x
+    lda #$2C
+    sta a:OBJ_2A68,x
+    rts
+TurnTowardPlayerOrStepList_at1:
+    lda #$FA
+    sta z:zTemp10
+    lda #$B9
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    rts
+
 ; @routine 12DF:038 RandomTimerC0
 ; @run 71:D038
 ; WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number with bits 6 and 7 set.

@@ -1,3 +1,44 @@
+; @routine 0A9A:33A BounceAtWalls
+; @run 70:AB3A
+; WHAT IT DOES: Moves the object along X and asks the floor (request 9); when the floor under the side it is moving to has no wall bit, or the wall
+; ahead (request 2) has none, it goes on; otherwise it turns round (NegateVelocityX) and moves once more.
+; HOW: ApplyVelocityX, ProbeTerrain twice, NegateVelocityX; the answer is C: set when it turned.
+; WAITS: no.
+; Entry: X object, Y the probe's column. Exit: C set when the object turned round; A and the flags as the last instructions left them.
+BounceAtWalls:
+    jsr VecApplyVelocityX
+    lda #$09
+    jsr VecProbeTerrain
+    lda a:OBJ_VX_HI,x
+    rol a
+    rol a
+    and #$01
+    eor #$01
+    tay
+    lda a:TileHit+1,y
+    and #$01
+    beq BounceAtWalls_at0
+    lda #$02
+    jsr VecProbeTerrain
+    lda a:OBJ_VX_HI,x
+    rol a
+    rol a
+    and #$01
+    eor #$01
+    asl a
+    tay
+    lda a:TileHit,y
+    ora a:TileHit+1,y
+    and #$02
+    bne BounceAtWalls_at0
+    clc
+    rts
+BounceAtWalls_at0:
+    jsr VecNegateVelocityX
+    jsr VecApplyVelocityX
+    sec
+    rts
+
 ; @routine 0A9D:01F BreakWhenHit
 ; @run 71:C01F
 ; WHAT IT DOES: An object in a state below $0B whose status bit 7 is set clears the object after it, stops its hitbox and animation,
@@ -305,4 +346,200 @@ ShootArrow:
     jsr VecApplyVelocity
     sxy
     ldx z:zRichterObject
+    rts
+; @routine 0A9E:4C3 HopAndSettle
+; @run 71:CCC3
+; WHAT IT DOES: An object with a state and on the first screen row is lifted by sixteen times its next kind, moved by its Y speed, given gravity and asked for
+; the floor (request 9, probe height 10): on floor its Y speed is stopped; then it is put back down by the same lift.
+; HOW: Two 16-bit adds of the lift, ApplyVelocityY, ApplyGravity, ProbeTerrain.
+; WAITS: no.
+; Entry: X object, Y the probe's column, C passed to the lookup. Exit: see the wrapper.
+HopAndSettle:
+    lda a:OBJ_27A8,x
+    beq HopAndSettle_at0
+    lda a:OBJ_Y_HI,x
+    bne HopAndSettle_at0
+    lda a:OBJ_3040,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_Y_LO,x
+    clc
+    adc z:zTemp00
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_Y_HI,x
+    adc #$00
+    sta a:OBJ_Y_HI,x
+    jsr VecApplyVelocityY
+    jsr VecApplyGravity
+    lda #$0A
+    sta z:SpriteFlipMask
+    lda #$09
+    jsr VecProbeTerrain
+    and #$01
+    beq HopAndSettle_at1
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+HopAndSettle_at1:
+    lda a:OBJ_3040,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc z:zTemp00
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_Y_HI,x
+    sbc #$00
+    sta a:OBJ_Y_HI,x
+HopAndSettle_at0:
+    rts
+
+; @routine 0A9E:51B SetHitboxByFrame
+; @run 71:CD1B
+; WHAT IT DOES: Turns the object's hitbox on and sets its X offset from a table at $CD39 by its frame less $80; from frame $86 on, the hitbox goes off and the
+; offset 0.
+; HOW: A compare of the frame and a table read (bank 71).
+; Untraced: frames $86 and over (CD32).
+; WAITS: no.
+; Entry: X object. Exit: frame under $86: A the table byte, Y the index, C and V from the subtract; else A the frame, the compare's flags.
+SetHitboxByFrame:
+    lda #$02
+    sta a:OBJ_3250,x
+    lda a:OBJ_2A68,x
+    cmp #$86
+    bcs SetHitboxByFrame_at0
+    sec
+    sbc #$80
+    tay
+    lda a:$CD39,y
+    sta a:OBJ_3930,x
+    rts
+SetHitboxByFrame_at0:
+    stz a:OBJ_3250,x
+    stz a:OBJ_3930,x
+    rts
+
+; @routine 0A9E:53F StartKnifeThrower
+; @run 71:CD3F
+; WHAT IT DOES: Loads the object's record. If its next kind is a count (bit 7 clear) it starts that many kind $30 objects after it, each numbered from $81 up, each
+; remembering this object's slot and its slot plus count; then the count loses bit 7, its low bit decides the facing, and the throw, the timers and the angle are
+; picked (ThrowByNextKindB, PickTimersAtRandomB, PickAngleAtRandomB).
+; HOW: LoadObjectRecord, a loop of ClearObjectInY and StartObjectAtPlace.
+; Untraced: one byte.
+; WAITS: no.
+; Entry: X object. Exit: see the wrapper (the three picks, one after the other).
+StartKnifeThrower:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_3040,x
+    bmi StartKnifeThrower_at0
+    txa
+    sta a:OBJ_37D0,x
+    clc
+    adc a:OBJ_3040,x
+    sta a:OBJ_3828,x
+    txa
+    tay
+    iny
+    lda #$81
+    sta z:zTemp00
+StartKnifeThrower_at1:
+    jsr VecClearObjectInY
+    lda #$30
+    jsr VecStartObjectAtPlace
+    lda z:zTemp00
+    sta a:OBJ_3040,y
+    txa
+    sta a:OBJ_37D0,y
+    lda a:OBJ_3828,x
+    sta a:OBJ_3828,y
+    inc z:zTemp00
+    iny
+    dec a:OBJ_3040,x
+    bne StartKnifeThrower_at1
+StartKnifeThrower_at0:
+    lda a:OBJ_3040,x
+    and #$7F
+    sta a:OBJ_3040,x
+    and #$01
+    eor #$01
+    sta a:OBJ_2AC0,x
+    jsr ThrowByNextKindB
+    jsr PickTimersAtRandomB
+    jsr PickAngleAtRandomB
+    rts
+
+; @routine 0A9E:5EE CountBothWaits
+; @run 71:CDEE
+; WHAT IT DOES: Runs both waits, CountDownThenAdvance and CountDownAngleThenAdvance.
+; HOW: Two calls.
+; WAITS: no.
+; Entry: X object. Exit: as the second.
+CountBothWaits:
+    jsr CountDownThenAdvance
+    jsr CountDownAngleThenAdvance
+    rts
+
+; @routine 0A9E:5F5 CountDownThenAdvance
+; @run 71:CDF5
+; WHAT IT DOES: A 16-bit wait (OBJ_3510 low, the life timer high): while it is not zero it counts down; at zero it picks new timers (PickTimersAtRandomB),
+; stops the animation and enters state 2.
+; HOW: An ORA of the two bytes, a 16-bit subtract.
+; Untraced: the arm at zero (CDFD to CE0B).
+; WAITS: no.
+; Entry: X object. Exit: see the wrapper.
+CountDownThenAdvance:
+    lda a:OBJ_34B8,x
+    ora a:OBJ_3510,x
+    bne CountDownThenAdvance_at0
+    jsr PickTimersAtRandomB
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$02
+    sta a:OBJ_27A8,x
+    rts
+CountDownThenAdvance_at0:
+    lda a:OBJ_3510,x
+    sec
+    sbc #$01
+    sta a:OBJ_3510,x
+    lda a:OBJ_34B8,x
+    sbc #$00
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 0A9E:61E CountDownAngleThenAdvance
+; @run 71:CE1E
+; WHAT IT DOES: With the object's X high byte 0, a 16-bit wait (OBJ_3568 high, OBJ_35C0 low) counts down; at zero it picks a new angle
+; (PickAngleAtRandomB), stops the animation, clears OBJ_2800 and enters state 3.
+; HOW: An ORA of the two bytes, a 16-bit subtract.
+; Untraced: everything past the X high byte test.
+; WAITS: no.
+; Entry: X object. Exit: see the wrapper.
+CountDownAngleThenAdvance:
+    lda a:OBJ_X_HI,x
+    bne CountDownAngleThenAdvance_at0
+    lda a:OBJ_3568,x
+    ora a:OBJ_35C0,x
+    bne CountDownAngleThenAdvance_at1
+    jsr PickAngleAtRandomB
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    stz a:OBJ_2800,x
+    lda #$03
+    sta a:OBJ_27A8,x
+    rts
+CountDownAngleThenAdvance_at1:
+    lda a:OBJ_35C0,x
+    sec
+    sbc #$01
+    sta a:OBJ_35C0,x
+    lda a:OBJ_3568,x
+    sbc #$00
+    sta a:OBJ_3568,x
+CountDownAngleThenAdvance_at0:
     rts

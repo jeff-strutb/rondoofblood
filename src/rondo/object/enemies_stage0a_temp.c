@@ -33,6 +33,29 @@ static bool carry_of(Ended e, bool entry)
     return e.c_set ? e.c : entry;
 }
 
+/* ApplyGravity and ApplyGravityUnlimited's exit: A, N, Z, C and V as gravity_exit_shim leaves them. */
+static Ended ended_of_gravity(GravityResult g)
+{
+    Ended e;
+
+    if (g.gained) {
+        e = ended_with_a(ended_nz(g.carried ? g.high : g.low), g.low);
+        return ended_with_overflow(ended_with_carry(e, g.carried), g.overflow);
+    }
+    e = ended_with_a(ended_nz((uint8_t)(g.high - 7)), g.high);
+    return ended_with_carry(e, true);
+}
+
+/* A wait's exit: what came before, the callee's exit when it ran, then the rest. */
+void wait_exit_shim(WaitEnd r)
+{
+    abi_ended(r.before);
+    if (r.picked) {
+        abi_random_end(r.timers);
+    }
+    abi_ended(r.after);
+}
+
 /* The steps of an animation list at `list` (zTemp10 first or zTemp11 first, as the assembly stores them). */
 static FrameStep step_list(uint8_t slot, uint16_t list, uint16_t ret, uint8_t *y, bool high_first)
 {
@@ -588,4 +611,408 @@ void abi_FlashAndCount(void)
         abi_ended(r.mid);
     }
     abi_ended(r.end);
+}
+
+/*
+ * @routine 0A9E:4C3 HopAndSettle
+ * @run 71:CCC3
+ * WHAT IT DOES: An object with a state and on the first screen row is lifted by sixteen times its next kind, moved by its Y speed, given gravity and asked for
+ * the floor (request 9, probe height 10): on floor its Y speed is stopped; then it is put back down by the same lift.
+ * HOW: Two 16-bit adds of the lift, ApplyVelocityY, ApplyGravity, ProbeTerrain.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column, C passed to the lookup. Exit: see the wrapper.
+ */
+HopEnd HopAndSettle(uint8_t slot, uint8_t column, bool carry_in)
+{
+    HopEnd r = { { 0 }, false, { 0 }, { 0 } };
+    uint8_t state, y_high, kind, lift, low, high, hit;
+    Sum sum;
+    AxisMove move;
+    GravityResult gravity;
+    Ended e;
+
+    state = RD8(OBJ->state[slot]);
+    e = ended_load(state);
+    r.before = e;
+    if (state == 0) {
+        return r;
+    }
+    y_high = RD8(OBJ->y_hi[slot]);
+    e = then(e, ended_load(y_high));
+    r.before = e;
+    if (y_high != 0) {
+        return r;
+    }
+    kind = RD8(OBJ->next_kind[slot]);
+    lift = (uint8_t)(kind << 4);
+    WR8(ZP->temp00, lift);
+    low = RD8(OBJ->y_lo[slot]);
+    lift = RD8(ZP->temp00);
+    sum = add_bytes(low, lift, false);
+    WR8(OBJ->y_lo[slot], sum.value);
+    high = RD8(OBJ->y_hi[slot]);
+    sum = add_bytes(high, 0, sum.carry);
+    WR8(OBJ->y_hi[slot], sum.value);
+    e = then(e, of_sum(sum));
+    jsr_push(0xCCEA);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    jsr_push(0xCCED);
+    gravity = ApplyGravity(slot);
+    jsr_pop();
+    e = then(e, ended_of_gravity(gravity));
+    WR8(ZP->product.mid, 0x0A);
+    jsr_push(0xCCF6);
+    r.probe = ProbeTerrain(9, slot, column, carry_of(e, carry_in));
+    jsr_pop();
+    r.probed = true;
+    hit = (uint8_t)(r.probe.answer & 0x01);
+    r.after = ended_load(hit);
+    if (hit != 0) {
+        WR8(OBJ->vy_hi[slot], 0);
+        WR8(OBJ->vy_lo[slot], 0);
+    }
+    kind = RD8(OBJ->next_kind[slot]);
+    lift = (uint8_t)(kind << 4);
+    WR8(ZP->temp00, lift);
+    low = RD8(OBJ->y_lo[slot]);
+    lift = RD8(ZP->temp00);
+    sum = sub_bytes(low, lift, true);
+    WR8(OBJ->y_lo[slot], sum.value);
+    high = RD8(OBJ->y_hi[slot]);
+    sum = sub_bytes(high, 0, sum.carry);
+    WR8(OBJ->y_hi[slot], sum.value);
+    r.after = then(r.after, of_sum(sum));
+    return r;
+}
+
+void abi_HopAndSettle(void)
+{
+    HopEnd r = HopAndSettle(cpu.x, cpu.y, (cpu.p & P_C) != 0);
+
+    abi_ended(r.before);
+    if (r.probed) {
+        probe_exit_shim(r.probe);
+    }
+    abi_ended(r.after);
+}
+
+/*
+ * @routine 0A9E:51B SetHitboxByFrame
+ * @run 71:CD1B
+ * WHAT IT DOES: Turns the object's hitbox on and sets its X offset from a table at $CD39 by its frame less $80; from frame $86 on, the hitbox goes off and the
+ * offset 0.
+ * HOW: A compare of the frame and a table read (bank 71).
+ * Untraced: frames $86 and over (CD32).
+ * WAITS: no.
+ * Entry: X object. Exit: frame under $86: A the table byte, Y the index, C and V from the subtract; else A the frame, the compare's flags.
+ */
+Ended SetHitboxByFrame(uint8_t slot)
+{
+    uint8_t frame, byte;
+    Sum index;
+    Ended e;
+
+    WR8(OBJ->hitbox_on[slot], 2);
+    frame = RD8(OBJ->frame[slot]);
+    e = ended_compare(frame, 0x86);
+    if (frame >= 0x86) {
+        WR8(OBJ->hitbox_on[slot], 0);
+        WR8(OBJ->hitbox_dx[slot], 0);
+        return e;
+    }
+    index = sub_bytes(frame, 0x80, true);
+    byte = rd8((uint16_t)(0xCD39 + index.value));
+    WR8(OBJ->hitbox_dx[slot], byte);
+    return then(of_sum(index), ended_with_y(ended_load(byte), index.value));
+}
+
+void abi_SetHitboxByFrame(void)
+{
+    abi_ended(SetHitboxByFrame(cpu.x));
+}
+
+/*
+ * @routine 0A9E:5F5 CountDownThenAdvance
+ * @run 71:CDF5
+ * WHAT IT DOES: A 16-bit wait (OBJ_3510 low, the life timer high): while it is not zero it counts down; at zero it picks new timers (PickTimersAtRandomB),
+ * stops the animation and enters state 2.
+ * HOW: An ORA of the two bytes, a 16-bit subtract.
+ * Untraced: the arm at zero (CDFD to CE0B).
+ * WAITS: no.
+ * Entry: X object. Exit: see the wrapper.
+ */
+WaitEnd CountDownThenAdvance(uint8_t slot)
+{
+    WaitEnd r = { { 0 }, false, { 0 }, { 0 } };
+    uint8_t high, low, merged, state;
+    Sum sum;
+
+    high = RD8(OBJ->life_timer[slot]);
+    low = RD8(OBJ->f3510[slot]);
+    merged = (uint8_t)(high | low);
+    r.before = ended_load(merged);
+    if (merged == 0) {
+        jsr_push(0xCE00);
+        r.timers = PickTimersAtRandomB(slot);
+        jsr_pop();
+        r.picked = true;
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->state[slot], 2);
+        r.after = ended_load(2);
+        return r;
+    }
+    low = RD8(OBJ->f3510[slot]);
+    sum = sub_bytes(low, 1, true);
+    WR8(OBJ->f3510[slot], sum.value);
+    high = RD8(OBJ->life_timer[slot]);
+    sum = sub_bytes(high, 0, sum.carry);
+    WR8(OBJ->life_timer[slot], sum.value);
+    (void)state;
+    r.after = of_sum(sum);
+    return r;
+}
+
+void abi_CountDownThenAdvance(void)
+{
+    wait_exit_shim(CountDownThenAdvance(cpu.x));
+}
+
+/*
+ * @routine 0A9E:61E CountDownAngleThenAdvance
+ * @run 71:CE1E
+ * WHAT IT DOES: With the object's X high byte 0, a 16-bit wait (OBJ_3568 high, OBJ_35C0 low) counts down; at zero it picks a new angle
+ * (PickAngleAtRandomB), stops the animation, clears OBJ_2800 and enters state 3.
+ * HOW: An ORA of the two bytes, a 16-bit subtract.
+ * Untraced: everything past the X high byte test.
+ * WAITS: no.
+ * Entry: X object. Exit: see the wrapper.
+ */
+WaitEnd CountDownAngleThenAdvance(uint8_t slot)
+{
+    WaitEnd r = { { 0 }, false, { 0 }, { 0 } };
+    uint8_t x_high, high, low, merged;
+    Sum sum;
+
+    x_high = RD8(OBJ->x_hi[slot]);
+    r.before = ended_load(x_high);
+    if (x_high != 0) {
+        return r;
+    }
+    high = RD8(OBJ->angle_hi[slot]);
+    low = RD8(OBJ->angle_lo[slot]);
+    merged = (uint8_t)(high | low);
+    r.before = ended_load(merged);
+    if (merged == 0) {
+        jsr_push(0xCE2E);
+        r.timers = PickAngleAtRandomB(slot);
+        jsr_pop();
+        r.picked = true;
+        WR8(OBJ->anim_step[slot], 0);
+        WR8(OBJ->anim_timer[slot], 0);
+        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->state[slot], 3);
+        r.after = ended_load(3);
+        return r;
+    }
+    low = RD8(OBJ->angle_lo[slot]);
+    sum = sub_bytes(low, 1, true);
+    WR8(OBJ->angle_lo[slot], sum.value);
+    high = RD8(OBJ->angle_hi[slot]);
+    sum = sub_bytes(high, 0, sum.carry);
+    WR8(OBJ->angle_hi[slot], sum.value);
+    r.after = of_sum(sum);
+    return r;
+}
+
+void abi_CountDownAngleThenAdvance(void)
+{
+    wait_exit_shim(CountDownAngleThenAdvance(cpu.x));
+}
+
+/*
+ * @routine 0A9E:5EE CountBothWaits
+ * @run 71:CDEE
+ * WHAT IT DOES: Runs both waits, CountDownThenAdvance and CountDownAngleThenAdvance.
+ * HOW: Two calls.
+ * WAITS: no.
+ * Entry: X object. Exit: as the second.
+ */
+WaitPair CountBothWaits(uint8_t slot)
+{
+    WaitPair pair;
+
+    jsr_push(0xCDF1);
+    pair.first = CountDownThenAdvance(slot);
+    jsr_pop();
+    jsr_push(0xCDF4);
+    pair.second = CountDownAngleThenAdvance(slot);
+    jsr_pop();
+    return pair;
+}
+
+void abi_CountBothWaits(void)
+{
+    WaitPair pair = CountBothWaits(cpu.x);
+
+    wait_exit_shim(pair.first);
+    wait_exit_shim(pair.second);
+}
+
+/*
+ * @routine 0A9E:53F StartKnifeThrower
+ * @run 71:CD3F
+ * WHAT IT DOES: Loads the object's record. If its next kind is a count (bit 7 clear) it starts that many kind $30 objects after it, each numbered from $81 up, each
+ * remembering this object's slot and its slot plus count; then the count loses bit 7, its low bit decides the facing, and the throw, the timers and the angle are
+ * picked (ThrowByNextKindB, PickTimersAtRandomB, PickAngleAtRandomB).
+ * HOW: LoadObjectRecord, a loop of ClearObjectInY and StartObjectAtPlace.
+ * Untraced: one byte.
+ * WAITS: no.
+ * Entry: X object. Exit: see the wrapper (the three picks, one after the other).
+ */
+ThrowChain StartKnifeThrower(uint8_t slot)
+{
+    ThrowChain r = { { 0 }, { 0 }, { { 0 }, false, { 0 } }, { { 0 }, false, { 0 } } };
+    uint8_t nz, last, kind, count, to, number, shared, bits, remaining;
+    bool carry;
+    Sum sum;
+    Ended e;
+
+    jsr_push(0xCD42);
+    last = LoadObjectRecord(slot, &nz, &carry);
+    jsr_pop();
+    e = ended_of_record(last, nz, carry);
+    kind = RD8(OBJ->next_kind[slot]);
+    e = then(e, ended_load(kind));
+    if ((kind & 0x80) == 0) {
+        WR8(OBJ->f37d0[slot], slot);
+        kind = RD8(OBJ->next_kind[slot]);
+        sum = add_bytes(slot, kind, false);
+        WR8(OBJ->f3828[slot], sum.value);
+        e = then(e, of_sum(sum));
+        to = (uint8_t)(slot + 1);
+        number = 0x81;
+        WR8(ZP->temp00, number);
+        do {
+            jsr_push(0xCD5C);
+            ClearObjectInY(to);
+            jsr_pop();
+            jsr_push(0xCD61);
+            StartObjectAtPlace(0x30, slot, to);
+            jsr_pop();
+            number = RD8(ZP->temp00);
+            WR8(OBJ->next_kind[to], number);
+            WR8(OBJ->f37d0[to], slot);
+            shared = RD8(OBJ->f3828[slot]);
+            WR8(OBJ->f3828[to], shared);
+            INC8(ZP->temp00);
+            to++;
+            remaining = DEC8(OBJ->next_kind[slot]);
+        } while (remaining != 0);
+        e = then(e, ended_with_y(ended_nz(remaining), to));
+    }
+    count = RD8(OBJ->next_kind[slot]);
+    count = (uint8_t)(count & 0x7F);
+    WR8(OBJ->next_kind[slot], count);
+    bits = (uint8_t)(count & 0x01);
+    bits = (uint8_t)(bits ^ 0x01);
+    WR8(OBJ->facing_left[slot], bits);
+    r.before = then(e, ended_load(bits));
+    jsr_push(0xCD8A);
+    r.thrown = ThrowByNextKindB(slot);
+    jsr_pop();
+    jsr_push(0xCD8D);
+    r.timers = PickTimersAtRandomB(slot);
+    jsr_pop();
+    jsr_push(0xCD90);
+    r.angle = PickAngleAtRandomB(slot);
+    jsr_pop();
+    return r;
+}
+
+void abi_StartKnifeThrower(void)
+{
+    ThrowChain r = StartKnifeThrower(cpu.x);
+
+    abi_ended(r.before);
+    abi_ended(r.thrown);
+    abi_random_end(r.timers);
+    abi_random_end(r.angle);
+}
+
+/*
+ * @routine 0A9A:33A BounceAtWalls
+ * @run 70:AB3A
+ * WHAT IT DOES: Moves the object along X and asks the floor (request 9); when the floor under the side it is moving to has no wall bit, or the wall
+ * ahead (request 2) has none, it goes on; otherwise it turns round (NegateVelocityX) and moves once more.
+ * HOW: ApplyVelocityX, ProbeTerrain twice, NegateVelocityX; the answer is C: set when it turned.
+ * WAITS: no.
+ * Entry: X object, Y the probe's column. Exit: C set when the object turned round; A and the flags as the last instructions left them.
+ */
+TurnEnd BounceAtWalls(uint8_t slot, uint8_t column)
+{
+    TurnEnd r = { { 0 }, { 0 }, false, { 0 }, { 0 }, false, { 0 } };
+    AxisMove move;
+    uint8_t speed, side, flags, flags2;
+    Ended e;
+
+    jsr_push(0xAB3D);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    r.e0 = ended_of_axis_move(move);
+    jsr_push(0xAB42);
+    r.probe1 = ProbeTerrain(9, slot, column, r.e0.c);
+    jsr_pop();
+    speed = RD8(OBJ->vx_hi[slot]);
+    side = (uint8_t)((speed >> 7) ^ 0x01);
+    e = ended_with_carry(ended_with_y(ended_load(side), side), (speed & 0x40) != 0);
+    flags = rd8((uint16_t)(TileHit + 1 + side));
+    flags = (uint8_t)(flags & 0x01);
+    e = then(e, ended_load(flags));
+    r.e1 = e;
+    if (flags != 0) {
+        jsr_push(0xAB58);
+        r.probe2 = ProbeTerrain(2, slot, side, e.c);
+        jsr_pop();
+        r.second = true;
+        speed = RD8(OBJ->vx_hi[slot]);
+        side = (uint8_t)(((speed >> 7) ^ 0x01) << 1);
+        e = ended_with_carry(ended_with_y(ended_load(side), side), false);
+        flags = rd8((uint16_t)(TileHit + side));
+        flags2 = rd8((uint16_t)(TileHit + 1 + side));
+        flags = (uint8_t)((flags | flags2) & 0x02);
+        e = then(e, ended_load(flags));
+        r.e2 = e;
+        if (flags == 0) {
+            r.e2 = then(e, ended_with_carry(ended_kept(), false));
+            return r;
+        }
+    }
+    jsr_push(0xAB72);
+    NegateVelocityX(slot);
+    jsr_pop();
+    jsr_push(0xAB75);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    r.e3 = then(ended_of_axis_move(move), ended_with_carry(ended_kept(), true));
+    r.turned = true;
+    return r;
+}
+
+void abi_BounceAtWalls(void)
+{
+    TurnEnd r = BounceAtWalls(cpu.x, cpu.y);
+
+    abi_ended(r.e0);
+    probe_exit_shim(r.probe1);
+    abi_ended(r.e1);
+    if (r.second) {
+        probe_exit_shim(r.probe2);
+        abi_ended(r.e2);
+    }
+    if (r.turned) {
+        abi_ended(r.e3);
+    }
 }

@@ -122,6 +122,52 @@ ShotEnd ShootArrow(uint8_t slot, uint8_t cue);
 ShotEnd FlashAndCount(uint8_t slot, uint8_t y);
 
 
+/* Exits of the hopping and waiting routines of stage 0A51. */
+typedef struct {
+    Ended before;
+    bool probed;
+    Probe probe;
+    Ended after;
+} HopEnd;
+typedef struct {
+    Ended before;
+    bool picked;
+    RandomEnd timers;
+    Ended after;
+} WaitEnd;
+typedef struct {
+    WaitEnd first;
+    WaitEnd second;
+} WaitPair;
+HopEnd HopAndSettle(uint8_t slot, uint8_t column, bool carry_in);
+Ended SetHitboxByFrame(uint8_t slot);
+WaitEnd CountDownThenAdvance(uint8_t slot);
+WaitEnd CountDownAngleThenAdvance(uint8_t slot);
+WaitPair CountBothWaits(uint8_t slot);
+void wait_exit_shim(WaitEnd r);
+
+/* A routine that picks a throw, then timers, then an angle: the exits of the three in order. */
+typedef struct {
+    Ended before;
+    Ended thrown;
+    RandomEnd timers;
+    RandomEnd angle;
+} ThrowChain;
+ThrowChain StartKnifeThrower(uint8_t slot);
+
+/* BounceAtWalls: two probes and what each step left. */
+typedef struct {
+    Ended e0;
+    Probe probe1;
+    bool second;
+    Ended e1;
+    Probe probe2;
+    bool turned;
+    Ended e2;
+    Ended e3;
+} TurnEnd;
+TurnEnd BounceAtWalls(uint8_t slot, uint8_t column);
+
 /* Whether an object is inside a window, and what the routine left. */
 typedef struct {
     bool in_view;

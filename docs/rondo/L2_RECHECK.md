@@ -11,7 +11,7 @@ Routines filed in lot L2 whose check is not a clean liftcmp through mode. Each i
 
 ## The earlier Richter C that still differs from its draft (liftcmp through mode, 2026-11-25, after call frames and the animation core)
 
-Re-lifted and matching: RichterAnimationTick, RichterSetAnimation, RichterAnimationRunning, RichterAnimationWait, the object variants (RichterObjectAnimationList, Tick, SetAnimation, Running, Wait), RichterReadAbove. The animation exits are now built in the body (AnimationStep carries A, N and Z, C and Y); the old shims read memory the assembly does not read and add accesses.
+Re-lifted and matching: every routine of richter_objects.c; the start chain (RichterStart on 12 curated cases that give the disc's handler table and the four values of zField8A, RichterStartNew, Health, Clear, Stand, ClearWork, ClearKeepPlace, AnimationSound); RichterAnimationTick, RichterSetAnimation, RichterAnimationRunning, RichterAnimationWait, the object variants (RichterObjectAnimationList, Tick, SetAnimation, Running, Wait), RichterReadAbove. The animation exits are now built in the body (AnimationStep carries A, N and Z, C and Y); the old shims read memory the assembly does not read and add accesses.
 
 Still differing, in the three files (each needs its body rewritten to the assembly's own order, its call frames checked and its exit built in the body, not in a shim that reads RAM):
 

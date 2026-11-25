@@ -1,6 +1,7 @@
 # The scene script interpreter's handlers (ScriptSound, ScriptStartList*, ScriptStartSlotKind1 to 3, ScriptPlayTrack, ScriptPlace*,
 # ScriptAdvance and the rest of that group) are entered with Y 3 (the script step's own LDY #3 before the jump), not the seeded Y.
-# Run the whole file with --curated tools/rondo/curated/attract.txt --cases 0.
+# Run by name, not as a whole file (other routines in attract.c are not entered with Y 3): the @seed line fixes Y 3 in the seeded cases too.
+@seed y=03
 a=D6 x=54 y=03 s=F0 p=
 a=90 x=35 y=03 s=F0 p=Z
 a=6E x=F5 y=03 s=F0 p=N

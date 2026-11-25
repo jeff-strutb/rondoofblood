@@ -241,7 +241,7 @@ def parse_curated(path):
         return cases
     for n, line in enumerate(open(path), 1):
         line = line.split("#")[0].strip()
-        if not line:
+        if not line or line.startswith("@seed"):
             continue
         c = dict(a=0, x=0, y=0, s=0xF0, p=0, mem=[], label=f"{os.path.basename(path)}:{n}")
         for tok in line.split():
@@ -259,6 +259,21 @@ def parse_curated(path):
                     raise SystemExit(f"liftcmp: {path}:{n}: cannot read {tok!r}")
         cases.append(c)
     return cases
+
+
+def parse_seed_fixed(path):
+    """The registers a curated file fixes in the seeded cases: a line '@seed y=03' (the entry contract of the routines it covers)."""
+    fixed = {}
+    if path:
+        for line in open(path):
+            line = line.split("#")[0].strip()
+            if line.startswith("@seed"):
+                for tok in line.split()[1:]:
+                    k, _, v = tok.partition("=")
+                    if k not in ("a", "x", "y"):
+                        raise SystemExit(f"liftcmp: {path}: cannot fix {tok!r} in seeded cases")
+                    fixed[k] = int(v, 16)
+    return fixed
 
 
 DEFAULT_MAP = ("69", "6A", "00", "00", "00")
@@ -326,7 +341,7 @@ def resident_entries(configs, rows, run_set=None, near=None):
     return out
 
 
-def make_cases(curated, n, seed, decimal=False, irq=False, configs=None):
+def make_cases(curated, n, seed, decimal=False, irq=False, configs=None, fixed=None):
     rng = random.Random(seed)
     configs = configs or [DEFAULT_MAP]
     cases = []
@@ -348,6 +363,7 @@ def make_cases(curated, n, seed, decimal=False, irq=False, configs=None):
             p |= 0x04
         cases.append(dict(a=r8(), x=r8() if rng.random() < 0.5 else rng.randrange(0, 0x58), y=r8(), s=rng.randrange(0x90, 0xF9),
                           p=p & 0xCF, mem=[], label="seed", mpr=cfg))
+        cases[-1].update(fixed or {})
     with_seed = []
     for i, c in enumerate(cases):
         c["seed"] = rng.getrandbits(48)
@@ -780,7 +796,7 @@ def one(name, a, ctx):
     draft_c = os.path.join(work, "draft_%s.c" % name)
     open(draft_c, "w").write('#include "machine.h"\n#include "ops6280.h"\n\n' + body)
     rt = os.path.join(HERE, "liftcmp_rt.c")
-    cases = make_cases(parse_curated(a.curated), a.cases, a.seed, a.decimal, a.irq, configs)
+    cases = make_cases(parse_curated(a.curated), a.cases, a.seed, a.decimal, a.irq, configs, parse_seed_fixed(a.curated))
     cfile = os.path.join(work, "cases.txt")
     write_cases(cases, cfile)
     exes = {}

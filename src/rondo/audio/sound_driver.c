@@ -1768,6 +1768,7 @@ void abi_SoundPitchTickPlain(void)
  * waiting.
  * HOW: SoundRampStep; the tremolo's phase moved on, made positive and shifted up by its depth,
  * the high byte taken off by SoundApplyVolume.
+ * WAITS: no.
  * Entry: X channel. Exit: no volume, A 0, Z set, N clear, C clear, Y and V as SoundRampStep.
  * Otherwise as SoundApplyVolume, with C set while the tremolo waits, else clear; Y 0 after a
  * tremolo where it keeps it.
@@ -1775,34 +1776,47 @@ void abi_SoundPitchTickPlain(void)
 VolumeTick SoundVolumeTick(uint8_t channel)
 {
     VolumeTick tick = { VOLUME_NONE, { RAMP_WAITING, 0, 0, 0, 0 }, 0, { false, false, 0, 0, 0, 0, 0 } };
-    uint8_t depth;
-    uint8_t less = 0;
+    uint8_t depth, a, other, phase, place;
+    uint16_t return_to;
+    bool carry;
 
+    jsr_push(0x8772);
     tick.ramp = SoundRampStep(channel);
-    if (rd8((uint16_t)(SoundVolumeBase + channel)) == 0)
+    jsr_pop();
+    a = rd8((uint16_t)(SoundVolumeBase + channel));
+    if (a == 0)
         return tick;
     depth = rd8((uint16_t)(SoundTremoloDepth + channel));
     tick.how = VOLUME_PLAIN;
+    return_to = 0x87AA;
+    tick.less = 0;
     if (depth != 0) {
-        if (rd8((uint16_t)(SoundTremoloWait + channel)) != rd8((uint16_t)(SoundTremoloDelay + channel))) {
+        a = rd8((uint16_t)(SoundTremoloWait + channel));
+        other = rd8((uint16_t)(SoundTremoloDelay + channel));
+        if (a != other) {
             tick.how = VOLUME_WAITING;
+            return_to = 0x8788;
         } else {
-            uint8_t phase = (uint8_t)(rd8((uint16_t)(SoundTremoloPhase + channel)) +
-                                      rd8((uint16_t)(SoundTremoloSpeed + channel)));
-            uint16_t shifted;
-
+            a = rd8((uint16_t)(SoundTremoloPhase + channel));
+            other = rd8((uint16_t)(SoundTremoloSpeed + channel));
+            phase = (uint8_t)(a + other);
             wr8((uint16_t)(SoundTremoloPhase + channel), phase);
             if (phase & 0x80)
                 phase = (uint8_t)(0 - phase);
-            shifted = phase;
-            for (uint8_t place = depth; place != 0; place--)
-                shifted = (uint16_t)(shifted << 1);
-            less = (uint8_t)(shifted >> 8);
+            wr8(zSoundWordLo, phase);
+            a = 0;
+            depth = rd8((uint16_t)(SoundTremoloDepth + channel));
+            for (place = depth; place != 0; place--) {
+                carry = ASL8(ZP->sound_word.lo);
+                a = (uint8_t)((a << 1) | (carry ? 1 : 0));
+            }
+            tick.less = a;
             tick.how = VOLUME_TREMOLO;
         }
     }
-    tick.volume = SoundApplyVolume(less, channel);
-    tick.less = less;
+    jsr_push(return_to);
+    tick.volume = SoundApplyVolume(tick.less, channel);
+    jsr_pop();
     return tick;
 }
 

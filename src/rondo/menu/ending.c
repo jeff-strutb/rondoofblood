@@ -1059,3 +1059,242 @@ void abi_EndingRiseWithList(void)
 {
     object_exit_shim(EndingRiseWithList(cpu.x));
 }
+
+/*
+ * @routine 010D:668 EndingScrollRight6
+ * @run 6B:8668
+ * WHAT IT DOES: An object handler of two stages: adds 6 to the first scroll's X low byte; in the first stage a carry counts
+ * the first scroll's Y high byte up and moves to the next state; in the second the byte is counted up once more and a
+ * carry moves the X high byte on, clears the low byte and moves to the next state.
+ * HOW: OBJ->state; SCROLL->x_lo[0], x_hi[0] and y_hi[0].
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollRight6(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, low, sum;
+    bool second = false;
+    unsigned total;
+
+    state = RD8(OBJ->state[object]);
+    if (state != 0) {
+        state = (uint8_t)(state - 1);
+        if (state != 0) {
+            return object_exit(state, state);
+        }
+        second = true;
+    }
+    low = RD8(SCROLL->x_lo[0]);
+    total = (unsigned)low + 6;
+    sum = (uint8_t)total;
+    WR8(SCROLL->x_lo[0], sum);
+    result = with_carry(object_exit(sum, sum), total > 0xFF);
+    result.exit.v = ((low ^ sum) & (6 ^ sum) & 0x80) != 0;
+    result.exit.v_set = true;
+    if (second) {
+        result.exit.nz = INC8(SCROLL->x_lo[0]);
+    }
+    if (total <= 0xFF) {
+        return result;
+    }
+    if (!second) {
+        INC8(SCROLL->y_hi[0]);
+    } else {
+        INC8(SCROLL->x_hi[0]);
+        WR8(SCROLL->x_lo[0], 0);
+    }
+    result.exit.nz = INC8(OBJ->state[object]);
+    return result;
+}
+
+void abi_EndingScrollRight6(void)
+{
+    object_exit_shim(EndingScrollRight6(cpu.x));
+}
+
+/*
+ * @routine 010D:6E3 EndingScrollUp
+ * @run 6B:86E3
+ * WHAT IT DOES: An object handler of two stages: the first starts the raster effect $13 and sets scroll slots 1, 5 and 6 to Y
+ * $0F, $2F and $BF, slot 1's Y high byte up by one and slot 2's X high byte up by one; the second counts slot 1's Y down (with
+ * the borrow) until it is $2F and moves to the next state.
+ * HOW: OBJ->state; ZP->raster_effect; SCROLL->y_lo and y_hi.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollUp(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, value;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(ZP->raster_effect, 0x13);
+        WR8(SCROLL->y_lo[1], 0x0F);
+        INC8(SCROLL->y_hi[1]);
+        WR8(SCROLL->y_lo[5], 0x2F);
+        WR8(SCROLL->y_lo[6], 0xBF);
+        INC8(SCROLL->x_hi[2]);
+        return object_exit(0xBF, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state != 0) {
+        return object_exit(state, state);
+    }
+    DEC8(SCROLL->y_lo[1]);
+    value = RD8(SCROLL->y_lo[1]);
+    if (value == 0xFF) {
+        DEC8(SCROLL->y_hi[1]);
+    }
+    value = RD8(SCROLL->y_lo[1]);
+    result = with_carry(object_exit(value, (uint8_t)(value - 0x2F)), value >= 0x2F);
+    if (value == 0x2F) {
+        result.exit.nz = INC8(OBJ->state[object]);
+    }
+    return result;
+}
+
+void abi_EndingScrollUp(void)
+{
+    object_exit_shim(EndingScrollUp(cpu.x));
+}
+
+/*
+ * @routine 010D:69A EndingScrollDown
+ * @run 6B:869A
+ * WHAT IT DOES: An object handler of three stages: the first starts the raster effect $13, sets scroll slots 5 and 6 to Y $1F and
+ * $BF, slot 1 to $00, and counts slot 0's Y high byte and slot 2's X high byte up; the second, on odd frames, counts slot 1's Y
+ * up and the Y low bytes of the two objects after this one down until slot 1's Y is $1F, then clears the frame of the object
+ * two on and moves to the next state; the third plays the ending's list $0B on the next object.
+ * HOW: OBJ->state; ZP->frame_tick; SCROLL; EndingFrameList.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollDown(uint8_t object)
+{
+    ObjExit result, list;
+    uint8_t state, tick, value;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(ZP->raster_effect, 0x13);
+        WR8(SCROLL->y_lo[5], 0x1F);
+        WR8(SCROLL->y_lo[1], 0x00);
+        INC8(SCROLL->y_hi[0]);
+        WR8(SCROLL->y_lo[6], 0xBF);
+        INC8(SCROLL->x_hi[2]);
+        return object_exit(0xBF, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0) {
+        tick = RD8(ZP->frame_tick);
+        result = with_carry(object_exit((uint8_t)(tick >> 1), (uint8_t)(tick >> 1)), (tick & 1) != 0);
+        if ((tick & 1) == 0) {
+            return result;
+        }
+        INC8(SCROLL->y_lo[1]);
+        DEC8(OBJ->y_lo[object + 1]);
+        DEC8(OBJ->y_lo[object + 2]);
+        value = RD8(SCROLL->y_lo[1]);
+        result = with_carry(object_exit(value, (uint8_t)(value - 0x1F)), value >= 0x1F);
+        if (value == 0x1F) {
+            result.exit.nz = INC8(OBJ->state[object]);
+            WR8(OBJ->frame[object + 2], 0);
+        }
+        return result;
+    }
+    jsr_push(0x86E1);
+    list = EndingFrameList(0x0B, (uint8_t)(object + 1));
+    jsr_pop();
+    list.exit.x_kept = true;
+    list.exit.nz = object;
+    return list;
+}
+
+void abi_EndingScrollDown(void)
+{
+    object_exit_shim(EndingScrollDown(cpu.x));
+}
+
+/*
+ * @routine 010D:5FB EndingScrollSteps
+ * @run 6B:85FB
+ * WHAT IT DOES: An object handler of five stages: the first counts the first scroll's X and Y high bytes up; the next three each
+ * take 8 off the first scroll's X low byte until it is $F8, then clear its X high byte, start the ending's list $0D on this channel
+ * and count its Y high byte up; the fifth adds $10 to object 1's X (with the carry into its high byte) and takes 8 off the scroll's
+ * X low byte until it is 0.
+ * HOW: OBJ->state; EndingScrollBack8; StartListChannelKind2.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them.
+ */
+ObjExit EndingScrollSteps(uint8_t object)
+{
+    ObjExit result;
+    Exit back;
+    uint8_t state, value;
+    unsigned total;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        INC8(SCROLL->x_hi[0]);
+        INC8(SCROLL->y_hi[0]);
+        return object_exit(0, INC8(OBJ->state[object]));
+    }
+    state = (uint8_t)(state - 1);
+    if (state == 0 || state == 1 || state == 2) {
+        static const uint16_t RETS[] = { 0x8610, 0x8621, 0x8639 };
+
+        jsr_push(RETS[state]);
+        back = EndingScrollBack8();
+        jsr_pop();
+        value = back.a;
+        result = with_carry(object_exit(value, (uint8_t)(value - 0xF8)), value >= 0xF8);
+        result.exit.v = back.v;
+        result.exit.v_set = true;
+        if (value != 0xF8) {
+            return result;
+        }
+        if (state == 0) {
+            WR8(SCROLL->x_hi[0], 0);
+        } else if (state == 1) {
+            WR8(SCROLL->y_hi[0], 0);
+            push8(object);
+            jsr_push(0x862E);
+            (void)StartListChannelKind2(0x0D, object);
+            jsr_pop();
+            (void)pull8();
+            result.exit.a = 2;
+        } else {
+            INC8(SCROLL->y_hi[0]);
+        }
+        result.exit.nz = INC8(OBJ->state[object]);
+        return result;
+    }
+    if (state != 3) {
+        return object_exit(state - 3, (uint8_t)(state - 3));
+    }
+    value = RD8(OBJ->x_lo[1]);
+    total = (unsigned)value + 0x10;
+    WR8(OBJ->x_lo[1], (uint8_t)total);
+    if (total > 0xFF) {
+        INC8(OBJ->x_hi[1]);
+    }
+    jsr_push(0x8658);
+    back = EndingScrollBack8();
+    jsr_pop();
+    result = object_exit(back.a, back.nz);
+    result.exit.c = back.c;
+    result.exit.c_kept = false;
+    result.exit.v = back.v;
+    result.exit.v_set = true;
+    if (back.a == 0) {
+        result.exit.nz = INC8(OBJ->state[object]);
+    }
+    return result;
+}
+
+void abi_EndingScrollSteps(void)
+{
+    object_exit_shim(EndingScrollSteps(cpu.x));
+}

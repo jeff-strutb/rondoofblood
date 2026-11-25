@@ -229,4 +229,29 @@ StageExit StepStageEnding(uint8_t x, uint8_t y);
 /* system/stage_main.c: one frame of the stage. */
 StageExit RunStageFrame(uint8_t x, uint8_t y);
 
+/* system/stage_entry.c: loads the stage section's entry record. */
+StageExit LoadStageEntry(void);
+StageExit LoadStageEntryB(void);
+StageExit LoadStageEntryC(void);
+StageExit LoadStageEntryD(void);
+StageExit LoadStageEntryE(void);
+StageExit LoadStageEntryF(void);
+StageExit LoadStageEntryG(void);
+StageExit LoadStageEntryH(void);
+StageExit LoadStageEntryI(void);
+StageExit LoadStageEntryJ(void);
+StageExit LoadStageEntryK(void);
+StageExit LoadStageEntryL(void);
+StageExit LoadStageEntryM(void);
+StageExit LoadStageEntryN(void);
+StageExit LoadStageEntryO(void);
+StageExit LoadStageEntryP(void);
+StageExit LoadStageEntryQ(void);
+StageExit LoadStageEntryR(void);
+StageExit LoadStageEntryS(void);
+StageExit LoadStageEntryT(void);
+StageExit LoadStageEntryU(void);
+StageExit LoadStageEntryV(void);
+StageExit LoadStageEntryW(void);
+
 #endif

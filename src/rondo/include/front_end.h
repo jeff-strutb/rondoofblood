@@ -496,5 +496,13 @@ ObjExit EndingDropAndBounce(uint8_t object);
 ObjExit EndingCreditScrollStart(uint8_t object);
 ObjExit EndingFallingPiece(uint8_t object);
 ObjExit EndingPieceSpawn(uint8_t object);
+void EndingClearObjects(void);
+Exit EndingScriptAdvance(void);
+Exit EndingScriptStep(void);
+Exit EndingBegin(void);
+ObjExit EndingDispatchKind(uint8_t kind, uint8_t object);
+Exit EndingObjectsStep(void);
+Exit EndingFrame(void);
+Exit EndingStep(uint8_t kept_y);
 
 #endif

@@ -41,6 +41,16 @@ static void object_exit_shim(ObjExit result)
     exit_shim(result.exit);
 }
 
+/* The registers a handler is entered with from the kind dispatch: A the table's high byte, X the object, Y the index, N and Z from A, C the doubling's. */
+static void cpu_entry_shim(uint8_t high, uint8_t object, uint8_t index, bool carry)
+{
+    cpu.a = high;
+    cpu.x = object;
+    cpu.y = index;
+    abi_nz(high);
+    abi_flag(P_C, carry);
+}
+
 /* A compare's carry on an exit. */
 static ObjExit with_carry(ObjExit result, bool carry)
 {
@@ -1317,6 +1327,17 @@ static uint8_t move_high(AxisMove move)
     return (uint8_t)((move.before + added) >> 16);
 }
 
+/* The V a move leaves: the sign of the speed against the position's high byte and the sum's. */
+static bool move_overflow(AxisMove move)
+{
+    uint32_t added = (uint32_t)(int32_t)move.velocity & 0xFFFFFF;
+    uint8_t sign = (uint8_t)(added >> 16);
+    uint8_t high = (uint8_t)(move.before >> 16);
+    uint8_t result = move_high(move);
+
+    return (~(sign ^ high) & (sign ^ result) & 0x80) != 0;
+}
+
 /* A move that ends a handler: A, N, Z, C and V all from it. */
 static ObjExit move_exit(AxisMove move)
 {
@@ -1972,4 +1993,574 @@ ObjExit EndingPieceSpawn(uint8_t object)
 void abi_EndingPieceSpawn(void)
 {
     object_exit_shim(EndingPieceSpawn(cpu.x));
+}
+
+/*
+ * The ending's scene script: the pointer at $7E, the frame counter zWaitTimer3 and zWaitTimer4. A command is a byte, its length from a table
+ * at $8030, a time as two bytes, and operands; EndingScriptAdvance steps past a command and EndingScriptStep runs the next if its time is
+ * the counter's, and each command goes back to EndingScriptAdvance.
+ */
+#define ENDING_PTR _gap_007C[2]
+#define ENDING_PTR_HI _gap_007C[3]
+
+enum { VDC_REG_VRAM_A = 2, ENDING_LENGTHS = 0x8030, ENDING_COMMANDS = 0x806A, ENDING_OBJECTS = 0x58 };
+
+/* The registers a command handler outside C is entered with: A and X the doubled command, Y 3. */
+static void ending_tail_shim(uint8_t index, uint8_t command, int v_in)
+{
+    if (v_in >= 0) {
+        abi_flag(P_V, v_in != 0);
+    }
+    cpu.a = index;
+    cpu.x = index;
+    cpu.y = 3;
+    abi_nz(3);
+    abi_flag(P_C, (command & 0x80) != 0);
+}
+
+/*
+ * @routine 010D:131 EndingClearObjects
+ * @run 6B:8131
+ * WHAT IT DOES: Empties all 88 object slots.
+ * HOW: Sets X to 0 and runs into a loop of ClearObject.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $58, C and Z set, N clear; A and Y kept.
+ */
+void EndingClearObjects(void)
+{
+    uint8_t slot;
+
+    for (slot = 0; slot != ENDING_OBJECTS; slot++) {
+        jsr_push(0x8135);
+        ClearObject(slot);
+        jsr_pop();
+    }
+}
+
+void abi_EndingClearObjects(void)
+{
+    EndingClearObjects();
+    cpu.x = ENDING_OBJECTS;
+    abi_nz(0);
+    abi_flag(P_C, true);
+}
+
+Exit EndingScriptStepV(int v_in);
+
+/*
+ * @routine 010D:040 EndingScriptAdvance
+ * @run 6B:8040
+ * WHAT IT DOES: Steps the ending's script past the command it is at, and runs on into EndingScriptStep.
+ * HOW: The command byte indexes a table of lengths, which is added to the pointer (the high byte goes up on a carry).
+ * WAITS: no.
+ * Entry: nothing. Exit: as EndingScriptStep, X the command stepped past (when EndingScriptStep left X alone), V from the pointer's add
+ * (when it set none).
+ */
+Exit EndingScriptAdvance(void)
+{
+    Exit exit;
+    uint8_t command, length, low, sum_value;
+    bool sum_carry, sum_overflow;
+    unsigned total;
+
+    command = RD8_PTR(ZP->ENDING_PTR);
+    length = rd8((uint16_t)(ENDING_LENGTHS + command));
+    low = RD8(ZP->ENDING_PTR);
+    total = (unsigned)length + low;
+    sum_value = (uint8_t)total;
+    sum_carry = total > 0xFF;
+    sum_overflow = ((length ^ sum_value) & (low ^ sum_value) & 0x80) != 0;
+    WR8(ZP->ENDING_PTR, sum_value);
+    if (sum_carry) {
+        INC8(ZP->ENDING_PTR_HI);
+    }
+    exit = EndingScriptStepV(sum_overflow);
+    if (exit.x_kept) {
+        exit.x = command;
+        exit.x_kept = false;
+    }
+    if (!exit.v_set) {
+        exit.v = sum_overflow;
+        exit.v_set = true;
+    }
+    return exit;
+}
+
+void abi_EndingScriptAdvance(void)
+{
+    exit_shim(EndingScriptAdvance());
+}
+
+/* The script commands that start something: the operand byte and a start, then back to EndingScriptAdvance. */
+static Exit command_start_list(void)
+{
+    uint8_t list = RD8_PTR_Y(ZP->ENDING_PTR, 3);
+
+    jsr_push(0x8095);
+    StartListChannel0Kind2(list);
+    jsr_pop();
+    jsr_push(0x8098);
+    ClearScreenState();
+    jsr_pop();
+    jsr_push(0x809B);
+    EndingClearObjects();
+    jsr_pop();
+    block_move_tai(0x4003, ScrollXFrac, 0x00EE, VDC_REG_VRAM_A, ENDING_OBJECTS, 0xFF);
+    return EndingScriptAdvance();
+}
+
+static Exit command_start_script(uint8_t kind)
+{
+    uint8_t script = RD8_PTR_Y(ZP->ENDING_PTR, 3);
+
+    jsr_push(kind == 1 ? 0x80B0 : 0x80B5);
+    if (kind == 1) {
+        (void)StartScriptSlot0Kind1(script);
+    } else {
+        (void)StartScriptSlot0Kind2(script);
+    }
+    jsr_pop();
+    return EndingScriptAdvance();
+}
+
+static Exit command_cd_play(uint8_t index)
+{
+    uint8_t track = RD8_PTR_Y(ZP->ENDING_PTR, 3);
+
+    jsr_push(0x80CA);
+    (void)CdPlayOnce(track, index, 3);
+    jsr_pop();
+    return EndingScriptAdvance();
+}
+
+/* The commands that place an object: ClearObject and the four place bytes, then the fields each command names. */
+static Exit command_place(uint8_t fields, uint8_t first_ret)
+{
+    uint8_t object, y, value;
+
+    object = RD8_PTR_Y(ZP->ENDING_PTR, 3);
+    jsr_push(first_ret);
+    (void)ScriptPlaceObject(object, 3);
+    jsr_pop();
+    y = 7;
+    switch (fields) {
+    case 0:
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->kind[object], value);
+        break;
+    case 1:
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->next_kind[object], value);
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->sprite_set[object], value);
+        WR8(OBJ->kind[object], 2);
+        break;
+    case 2:
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->frame[object], value);
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->sprite_set[object], value);
+        break;
+    default:
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->frame[object], value);
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->sprite_set[object], value);
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->next_kind[object], value);
+        y++;
+        value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+        WR8(OBJ->life_timer[object], value);
+        WR8(OBJ->kind[object], 3);
+        break;
+    }
+    return EndingScriptAdvance();
+}
+
+/* The command that reads four banks of the ADPCM memory into the RAM banks at MPR5 and MPR6. */
+static Exit command_load_banks(void)
+{
+    uint8_t i, bank, rotated, carry, out, round;
+
+    WR8(ZP->temp00, 0);
+    do {
+        i = RD8(ZP->temp00);
+        bank = (uint8_t)((uint8_t)(i << 1) + 0x10 + RD8(ZP->ram_base_bank));
+        tam(0x20, bank);
+        tam(0x40, (uint8_t)(bank + 1));
+        WR8(ZP->bios_c.lo, 0);
+        rotated = RD8(ZP->temp00);
+        carry = 0;
+        for (round = 0; round < 3; round++) {
+            out = (uint8_t)(rotated & 1);
+            rotated = (uint8_t)((rotated >> 1) | (carry << 7));
+            carry = out;
+        }
+        WR8(ZP->bios_c.hi, rotated);
+        WR8(ZP->bios_d.hi, 0);
+        WR8(ZP->bios_b.lo, 0);
+        WR8(ZP->bios_b.hi, 0xA0);
+        WR8(ZP->bios_a.lo, 0);
+        WR8(ZP->bios_a.hi, 0x40);
+        jsr_push(0x81CF);
+        (void)ad_read();
+        jsr_pop();
+        INC8(ZP->temp00);
+    } while (RD8(ZP->temp00) != 4);
+    return EndingScriptAdvance();
+}
+
+/*
+ * @routine 010D:04F EndingScriptStep
+ * @run 6B:804F
+ * WHAT IT DOES: Runs the ending's script command if its time has come: the two time bytes after the command byte equal the frame counter.
+ * HOW: Compares the first time byte with zWaitTimer3 and the second with zWaitTimer4 and returns on a difference; otherwise the
+ * command, doubled, indexes the table at $806A and it is jumped to with X the doubled command and Y 3.
+ * WAITS: no.
+ * Entry: nothing. Exit, a time byte differs: A that byte, N, Z and C from comparing it, Y 1 or 2, X kept. Otherwise as the command leaves them.
+ */
+Exit EndingScriptStepV(int v_in)
+{
+    Exit exit = { 0 };
+    uint8_t time, counter, command, index, value, high;
+    uint16_t target;
+
+    time = RD8_PTR_Y(ZP->ENDING_PTR, 1);
+    counter = RD8(ZP->wait_timer3);
+    if (time != counter) {
+        exit.a = time;
+        exit.y = 1;
+        exit.nz = (uint8_t)(time - counter);
+        exit.c = time >= counter;
+        exit.x_kept = true;
+        return exit;
+    }
+    time = RD8_PTR_Y(ZP->ENDING_PTR, 2);
+    counter = RD8(ZP->wait_timer4);
+    if (time != counter) {
+        exit.a = time;
+        exit.y = 2;
+        exit.nz = (uint8_t)(time - counter);
+        exit.c = time >= counter;
+        exit.x_kept = true;
+        return exit;
+    }
+    command = RD8_PTR(ZP->ENDING_PTR);
+    index = (uint8_t)(command << 1);
+    value = rd8((uint16_t)(ENDING_COMMANDS + index));
+    high = rd8((uint16_t)(ENDING_COMMANDS + 1 + index));
+    target = (uint16_t)(value | (high << 8));
+    switch (target) {
+    case 0x8090: return command_start_list();
+    case 0x80AB: return command_start_script(1);
+    case 0x80B2: return command_start_script(2);
+    case 0x80C5: return command_cd_play(index);
+    case 0x80CD: return command_place(0, 0x80D3);
+    case 0x80DC: return command_place(1, 0x80E2);
+    case 0x80F6: return command_place(2, 0x80FC);
+    case 0x810B: return command_place(3, 0x8111);
+    case 0x81A5: return command_load_banks();
+    case 0x8067:
+        exit.a = index;
+        exit.x = index;
+        exit.y = 3;
+        exit.nz = DEC8(ZP->mode_done);
+        exit.c = (command & 0x80) != 0;
+        return exit;
+    default:
+        break;
+    }
+    ending_tail_shim(index, command, v_in);
+    call_original(target);
+    exit.from_cpu = true;
+    return exit;
+}
+
+Exit EndingScriptStep(void)
+{
+    return EndingScriptStepV(-1);
+}
+
+void abi_EndingScriptStep(void)
+{
+    exit_shim(EndingScriptStep());
+}
+
+/*
+ * @routine 010D:00B EndingBegin
+ * @run 6B:800B
+ * WHAT IT DOES: Starts the ending: the game state is wiped, the script is set to run from $8AA3, its frame counter to $FFFF and the
+ * state goes on.
+ * HOW: ResetGameState; the script pointer and the counter are written; zGameSubMode counted up.
+ * WAITS: yes, through ResetGameState, which waits for the vertical blank with the display off; the stack there is this routine's
+ * return address and the call's.
+ * Entry: nothing. Exit: A $FF, X 0, Y $FF, N and Z from the new state; C kept.
+ */
+Exit EndingBegin(void)
+{
+    Exit exit = { 0 };
+
+    jsr_push(0x800E);
+    ResetGameState();
+    jsr_pop();
+    WR8(ZP->ENDING_PTR, 0xA3);
+    WR8(ZP->ENDING_PTR_HI, 0x8A);
+    WR8(ZP->wait_timer3, 0xFF);
+    WR8(ZP->wait_timer4, 0xFF);
+    exit.a = 0xFF;
+    exit.x = 0;
+    exit.y = 0xFF;
+    exit.nz = INC8(ZP->game_sub_mode);
+    exit.c_kept = true;
+    return exit;
+}
+
+void abi_EndingBegin(void)
+{
+    exit_shim(EndingBegin());
+}
+
+/*
+ * @routine 010D:1E9 EndingDispatchKind
+ * @run 6B:81E9
+ * WHAT IT DOES: Sends an object to the handler its kind names: the table at $81F9 holds one address per kind, kind 1 first.
+ * HOW: Kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01; the jump is made with A the word's high
+ * byte, Y the index, C bit 7 of kind less one, X the object.
+ * WAITS: no.
+ * Entry: A the kind (not zero), X the object. Exit: as the handler leaves them.
+ */
+ObjExit EndingDispatchKind(uint8_t kind, uint8_t object)
+{
+    ObjExit result;
+    Exit exit = { 0 };
+    uint8_t less, index, low, high, high_read;
+    uint16_t target;
+    bool carry;
+
+    less = (uint8_t)(kind - 1);
+    index = (uint8_t)(less << 1);
+    carry = (less & 0x80) != 0;
+    low = rd8((uint16_t)(0x81F9 + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0x81FA + index));
+    WR8(ZP->temp01, high);
+    low = RD8(ZP->temp00);
+    high_read = RD8(ZP->temp01);
+    target = (uint16_t)(low | (high_read << 8));
+    switch (target) {
+    case 0x899C: result = EndingWaitForList(object); break;
+    case 0x89B2: result = EndingFlyOff(object); break;
+    case 0x8902: result = EndingDropAndBounce(object); break;
+    case 0x8887: result = EndingScrollSqueeze(object); break;
+    case 0x8853: result = EndingLinkAnimationA(object); break;
+    case 0x8876: result = EndingLinkAnimationB(object); break;
+    case 0x881D: result = EndingHoldThenScript19(object); break;
+    case 0x8720: result = EndingRiseFrame31(object); break;
+    case 0x8759: result = EndingRiseFrame32A(object); break;
+    case 0x87A0: result = EndingRiseWithList(object); break;
+    case 0x8405: result = EndingScrollRunUp(object); break;
+    case 0x86E3: result = EndingScrollUp(object); break;
+    case 0x869A: result = EndingScrollDown(object); break;
+    case 0x8668: result = EndingScrollRight6(object); break;
+    case 0x85FB: result = EndingScrollSteps(object); break;
+    case 0x850C: result = EndingPlayList0EThenClear(object); break;
+    case 0x84DE: result = EndingRiseToY40(object); break;
+    case 0x84BE: result = EndingPlayList0F(object); break;
+    case 0x8484: result = EndingScrollWindowA(object); break;
+    case 0x8438: result = EndingScrollWindowSteps(object); break;
+    case 0x8418: result = EndingPlayList10(object); break;
+    case 0x84A1: result = EndingScrollWindowB(object); break;
+    case 0x83CE: result = EndingScrollPull(object); break;
+    case 0x836A: result = EndingAimAtPlace(object); break;
+    case 0x82E8: result = EndingPieceSpawn(object); break;
+    case 0x82E2: result = EndingClearAfterScrollY(object); break;
+    case 0x82DC: result = EndingClearAfterScrollX(object); break;
+    case 0x8298: result = EndingFallingPiece(object); break;
+    case 0x8239: result = EndingCreditScrollStart(object); break;
+    case 0x87D6: result = EndingRiseFrame32B(object); break;
+    default:
+        exit.from_cpu = true;
+        result.exit = exit;
+        result.moved = false;
+        cpu_entry_shim(high, object, index, carry);
+        call_original(target);
+        return result;
+    }
+    if (result.exit.a_kept) {
+        result.exit.a = result.moved ? move_high(result.move) : high;
+        result.exit.a_kept = false;
+    }
+    if (result.exit.y_kept) {
+        result.exit.y = index;
+        result.exit.y_kept = false;
+    }
+    if (result.exit.c_kept && !result.moved) {
+        result.exit.c = carry;
+        result.exit.c_kept = false;
+    }
+    return result;
+}
+
+void abi_EndingDispatchKind(void)
+{
+    object_exit_shim(EndingDispatchKind(cpu.a, cpu.x));
+}
+
+/* After the last object: the loop's compare of X with $58, and the A the last slot left. */
+static void objects_end_shim(uint8_t a)
+{
+    cpu.a = a;
+    cpu.x = ENDING_OBJECTS;
+    abi_nz(0);
+    abi_flag(P_C, true);
+}
+
+/*
+ * @routine 010D:1DA EndingObjectsStep
+ * @run 6B:81DA
+ * WHAT IT DOES: Runs every object of the ending scene that has a kind: a loop over the 88 slots, each with a kind sent to its handler.
+ * HOW: OBJ->kind read for each slot; EndingDispatchKind for the ones that are not zero.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $58, N and Z clear... Z set, C set (the loop's last compare); A the last slot's kind or what its handler left;
+ * Y and V as the last handler left them.
+ */
+static Exit objects_step(Exit prior)
+{
+    Exit exit = { 0 };
+    ObjExit result;
+    uint8_t slot, kind, a = 0, y = 0;
+    bool y_set = false, v_set = false, v = false, via_cpu = false;
+
+    for (slot = 0; slot != ENDING_OBJECTS; slot++) {
+        kind = RD8(OBJ->kind[slot]);
+        a = kind;
+        if (kind == 0) {
+            continue;
+        }
+        jsr_push(0x81E3);
+        result = EndingDispatchKind(kind, slot);
+        jsr_pop();
+        if (result.exit.from_cpu) {
+            via_cpu = true;
+            continue;
+        }
+        via_cpu = false;
+        a = result.exit.a;
+        if (!result.exit.x_kept) {
+            slot = result.exit.x;
+        }
+        if (!result.exit.y_kept) {
+            y = result.exit.y;
+            y_set = true;
+        }
+        if (result.moved) {
+            v = move_overflow(result.move);
+            v_set = true;
+        }
+        if (result.exit.v_set) {
+            v = result.exit.v;
+            v_set = true;
+        }
+    }
+    if (via_cpu) {
+        exit.from_cpu = true;
+        objects_end_shim(a);
+        return exit;
+    }
+    exit.a = a;
+    exit.x = ENDING_OBJECTS;
+    exit.y = y_set ? y : prior.y;
+    exit.y_kept = y_set ? false : prior.y_kept;
+    exit.nz = 0;
+    exit.c = true;
+    exit.v = v_set ? v : prior.v;
+    exit.v_set = v_set ? true : prior.v_set;
+    return exit;
+}
+
+Exit EndingObjectsStep(void)
+{
+    Exit none = { 0 };
+
+    none.y_kept = true;
+    return objects_step(none);
+}
+
+void abi_EndingObjectsStep(void)
+{
+    exit_shim(EndingObjectsStep());
+}
+
+/*
+ * @routine 010D:01F EndingFrame
+ * @run 6B:801F
+ * WHAT IT DOES: One frame of the ending: the frame counted, the script's next command run if it is due, and every object run.
+ * HOW: EndingFrameTick, EndingScriptStep, EndingObjectsStep.
+ * WAITS: no.
+ * Entry: nothing. Exit: as EndingObjectsStep.
+ */
+Exit EndingFrame(void)
+{
+    Exit exit;
+
+    jsr_push(0x8022);
+    EndingFrameTick();
+    jsr_pop();
+    jsr_push(0x8025);
+    exit = EndingScriptStep();
+    jsr_pop();
+    jsr_push(0x8028);
+    exit = objects_step(exit);
+    jsr_pop();
+    return exit;
+}
+
+void abi_EndingFrame(void)
+{
+    exit_shim(EndingFrame());
+}
+
+/*
+ * @routine 010D:000 EndingStep
+ * @run 6B:8000
+ * WHAT IT DOES: One call of the ending's mode: the handler of the sub-mode zGameSubMode names in the table at $8007 (0 begins the ending,
+ * 1 runs a frame of it).
+ * HOW: Reads zGameSubMode, doubles it and jumps through the table. A word this overlay does not hold runs as the original code.
+ * WAITS: yes, through EndingBegin, which waits for the vertical blank.
+ * Entry: nothing. Exit: as the handler leaves them.
+ */
+Exit EndingStep(uint8_t kept_y)
+{
+    Exit exit = { 0 };
+    uint8_t state, index, low, high;
+    uint16_t target;
+
+    state = RD8(ZP->game_sub_mode);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0x8007 + index));
+    high = rd8((uint16_t)(0x8008 + index));
+    target = (uint16_t)(low | (high << 8));
+    switch (target) {
+    case 0x800B: return EndingBegin();
+    case 0x801F: return EndingFrame();
+    default:
+        break;
+    }
+    cpu_entry_shim(index, index, kept_y, (state & 0x80) != 0);
+    call_original(target);
+    exit.from_cpu = true;
+    return exit;
+}
+
+void abi_EndingStep(void)
+{
+    exit_shim(EndingStep(cpu.y));
 }

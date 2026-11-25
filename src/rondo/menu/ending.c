@@ -2092,8 +2092,16 @@ void abi_EndingScriptAdvance(void)
     exit_shim(EndingScriptAdvance());
 }
 
-/* The script commands that start something: the operand byte and a start, then back to EndingScriptAdvance. */
-static Exit command_start_list(void)
+/*
+ * @routine 010D:090 EndingCommandStartList
+ * @run 6B:8090
+ * WHAT IT DOES: A script command: starts list channel 0 with the operand's list, clears the screen's state and all the object slots, and
+ * clears the scroll block again.
+ * HOW: StartListChannel0Kind2, ClearScreenState, EndingClearObjects, a TAI from $4003 to $3E00; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandStartList(void)
 {
     uint8_t list = RD8_PTR_Y(ZP->ENDING_PTR, 3);
 
@@ -2110,11 +2118,11 @@ static Exit command_start_list(void)
     return EndingScriptAdvance();
 }
 
-static Exit command_start_script(uint8_t kind)
+static Exit start_script_command(uint8_t kind)
 {
     uint8_t script = RD8_PTR_Y(ZP->ENDING_PTR, 3);
 
-    jsr_push(kind == 1 ? 0x80B0 : 0x80B5);
+    jsr_push(kind == 1 ? 0x80B0 : 0x80B7);
     if (kind == 1) {
         (void)StartScriptSlot0Kind1(script);
     } else {
@@ -2124,7 +2132,41 @@ static Exit command_start_script(uint8_t kind)
     return EndingScriptAdvance();
 }
 
-static Exit command_cd_play(uint8_t index)
+/*
+ * @routine 010D:0AB EndingCommandStartScript1
+ * @run 6B:80AB
+ * WHAT IT DOES: A script command: starts script slot 0 as kind 1 with the operand's script.
+ * HOW: StartScriptSlot0Kind1; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandStartScript1(void)
+{
+    return start_script_command(1);
+}
+
+/*
+ * @routine 010D:0B2 EndingCommandStartScript2
+ * @run 6B:80B2
+ * WHAT IT DOES: A script command: starts script slot 0 as kind 2 with the operand's script.
+ * HOW: StartScriptSlot0Kind2; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandStartScript2(void)
+{
+    return start_script_command(2);
+}
+
+/*
+ * @routine 010D:0C5 EndingCommandCdPlay
+ * @run 6B:80C5
+ * WHAT IT DOES: A script command: plays the CD track the operand names, once.
+ * HOW: CdPlayOnce; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, X the doubled command, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandCdPlay(uint8_t index)
 {
     uint8_t track = RD8_PTR_Y(ZP->ENDING_PTR, 3);
 
@@ -2134,14 +2176,36 @@ static Exit command_cd_play(uint8_t index)
     return EndingScriptAdvance();
 }
 
+/* The copy of ScriptPlaceObject at $813B: ClearObject and the four place bytes after the object's, the call's frame its own. */
+static void place_object_copy(uint8_t object)
+{
+    uint8_t y, value;
+
+    jsr_push(0x813E);
+    ClearObject(object);
+    jsr_pop();
+    y = 4;
+    value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+    WR8(OBJ->x_lo[object], value);
+    y++;
+    value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+    WR8(OBJ->x_hi[object], value);
+    y++;
+    value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+    WR8(OBJ->y_lo[object], value);
+    y++;
+    value = RD8_PTR_Y(ZP->ENDING_PTR, y);
+    WR8(OBJ->y_hi[object], value);
+}
+
 /* The commands that place an object: ClearObject and the four place bytes, then the fields each command names. */
-static Exit command_place(uint8_t fields, uint8_t first_ret)
+static Exit place_command(uint8_t fields, uint16_t first_ret)
 {
     uint8_t object, y, value;
 
     object = RD8_PTR_Y(ZP->ENDING_PTR, 3);
     jsr_push(first_ret);
-    (void)ScriptPlaceObject(object, 3);
+    place_object_copy(object);
     jsr_pop();
     y = 7;
     switch (fields) {
@@ -2187,7 +2251,67 @@ static Exit command_place(uint8_t fields, uint8_t first_ret)
 }
 
 /* The command that reads four banks of the ADPCM memory into the RAM banks at MPR5 and MPR6. */
-static Exit command_load_banks(void)
+/*
+ * @routine 010D:0CD EndingCommandPlaceKind
+ * @run 6B:80CD
+ * WHAT IT DOES: A script command: places an object (empties it and gives it the four place bytes) and sets its kind from the byte after.
+ * HOW: ScriptPlaceObject; one store; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandPlaceKind(void)
+{
+    return place_command(0, 0x80D3);
+}
+
+/*
+ * @routine 010D:0DC EndingCommandPlaceNext
+ * @run 6B:80DC
+ * WHAT IT DOES: A script command: places an object, sets its next kind and picture kind from the two bytes after, and its kind to 2.
+ * HOW: ScriptPlaceObject; three stores; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandPlaceNext(void)
+{
+    return place_command(1, 0x80E2);
+}
+
+/*
+ * @routine 010D:0F6 EndingCommandPlaceFrame
+ * @run 6B:80F6
+ * WHAT IT DOES: A script command: places an object and sets its frame and picture kind from the two bytes after.
+ * HOW: ScriptPlaceObject; two stores; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandPlaceFrame(void)
+{
+    return place_command(2, 0x80FC);
+}
+
+/*
+ * @routine 010D:10B EndingCommandPlaceTimed
+ * @run 6B:810B
+ * WHAT IT DOES: A script command: places an object and sets its frame, picture kind, next kind and hold from the four bytes after, and its kind to 3.
+ * HOW: ScriptPlaceObject; five stores; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandPlaceTimed(void)
+{
+    return place_command(3, 0x8111);
+}
+
+/*
+ * @routine 010D:1A5 EndingCommandLoadBanks
+ * @run 6B:81A5
+ * WHAT IT DOES: A script command: reads four banks of the ADPCM memory into the RAM banks at MPR5 and MPR6, one after another.
+ * HOW: For each of four numbers the two banks are mapped, the ADPCM address and the length set, and ad_read called; back to EndingScriptAdvance.
+ * WAITS: yes, through ad_read, which waits for the ADPCM to be idle.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandLoadBanks(void)
 {
     uint8_t i, bank, rotated, carry, out, round;
 
@@ -2260,15 +2384,15 @@ Exit EndingScriptStepV(int v_in)
     high = rd8((uint16_t)(ENDING_COMMANDS + 1 + index));
     target = (uint16_t)(value | (high << 8));
     switch (target) {
-    case 0x8090: return command_start_list();
-    case 0x80AB: return command_start_script(1);
-    case 0x80B2: return command_start_script(2);
-    case 0x80C5: return command_cd_play(index);
-    case 0x80CD: return command_place(0, 0x80D3);
-    case 0x80DC: return command_place(1, 0x80E2);
-    case 0x80F6: return command_place(2, 0x80FC);
-    case 0x810B: return command_place(3, 0x8111);
-    case 0x81A5: return command_load_banks();
+    case 0x8090: return EndingCommandStartList();
+    case 0x80AB: return EndingCommandStartScript1();
+    case 0x80B2: return EndingCommandStartScript2();
+    case 0x80C5: return EndingCommandCdPlay(index);
+    case 0x80CD: return EndingCommandPlaceKind();
+    case 0x80DC: return EndingCommandPlaceNext();
+    case 0x80F6: return EndingCommandPlaceFrame();
+    case 0x810B: return EndingCommandPlaceTimed();
+    case 0x81A5: return EndingCommandLoadBanks();
     case 0x8067:
         exit.a = index;
         exit.x = index;
@@ -3007,4 +3131,49 @@ Exit EndingEffectEntry(void)
 void abi_EndingEffectEntry(void)
 {
     exit_shim(EndingEffectEntry());
+}
+
+void abi_EndingCommandStartList(void)
+{
+    exit_shim(EndingCommandStartList());
+}
+
+void abi_EndingCommandStartScript1(void)
+{
+    exit_shim(EndingCommandStartScript1());
+}
+
+void abi_EndingCommandStartScript2(void)
+{
+    exit_shim(EndingCommandStartScript2());
+}
+
+void abi_EndingCommandCdPlay(void)
+{
+    exit_shim(EndingCommandCdPlay(cpu.x));
+}
+
+void abi_EndingCommandPlaceKind(void)
+{
+    exit_shim(EndingCommandPlaceKind());
+}
+
+void abi_EndingCommandPlaceNext(void)
+{
+    exit_shim(EndingCommandPlaceNext());
+}
+
+void abi_EndingCommandPlaceFrame(void)
+{
+    exit_shim(EndingCommandPlaceFrame());
+}
+
+void abi_EndingCommandPlaceTimed(void)
+{
+    exit_shim(EndingCommandPlaceTimed());
+}
+
+void abi_EndingCommandLoadBanks(void)
+{
+    exit_shim(EndingCommandLoadBanks());
 }

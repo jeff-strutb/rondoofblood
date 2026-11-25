@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "ram.h"
 #include "routines.h"
+#include "access.h"
 
 enum {
     OBJECT_MARK = 0x10, OBJECT_STATE_QUICK = 6, OBJECT_QUICKEN = 4, OBJECT_FLASH_FIRST = 0x8E,
@@ -683,17 +684,6 @@ void abi_RichterObjectHitboxOn(void)
     hitbox_exit_shim(box);
 }
 
-/* An object's animation list, with zTemp00 and 01 left pointing at it as the original does. */
-static uint16_t object_animation_list(uint8_t object)
-{
-    uint16_t entry = (uint16_t)(RichterObjectAnimations + (uint8_t)(rd8((uint16_t)(OBJ_FIELDS_2EE0 + object)) << 1));
-    uint16_t list = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
-
-    wr8(zTemp00, (uint8_t)list);
-    wr8(zTemp01, (uint8_t)(list >> 8));
-    return list;
-}
-
 /*
  * @routine 01C0:284 RichterObjectAnimationList
  * @run 6E:DA84
@@ -703,46 +693,69 @@ static uint16_t object_animation_list(uint8_t object)
  * Entry: X object. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V
  * kept.
  */
-uint8_t RichterObjectAnimationList(uint8_t object)
+ObjectListStep RichterObjectAnimationList(uint8_t object)
 {
-    object_animation_list(object);
-    return rd8((uint16_t)(OBJ_FLAGS_2F38 + object));
+    ObjectListStep r;
+    uint8_t doubled = (uint8_t)(RD8(OBJ->fields_2ee0[object]) << 1);
+    uint8_t step;
+
+    WR8(ZP->temp00, rd8((uint16_t)(RichterObjectAnimations + doubled)));
+    WR8(ZP->temp01, rd8((uint16_t)(RichterObjectAnimations + 1 + doubled)));
+    step = RD8(OBJ->flags[object]);
+    r.y = (uint8_t)(step << 1);
+    r.carry = (step & 0x80) != 0;
+    return r;
 }
 
 void abi_RichterObjectAnimationList(void)
 {
-    uint8_t step = RichterObjectAnimationList(cpu.x);
+    ObjectListStep r = RichterObjectAnimationList(cpu.x);
 
-    cpu.a = (uint8_t)(step << 1);
-    cpu.y = cpu.a;
-    abi_nz(cpu.a);
-    abi_flag(P_C, (step & 0x80) != 0);
+    cpu.a = r.y;
+    cpu.y = r.y;
+    abi_nz(r.y);
+    abi_flag(P_C, r.carry);
 }
 
-/* The list's entry at the object's step: how long, then which frame; $FE starts it over. */
-static AnimationStep object_read_entry(uint8_t object, AnimationStep result)
+/* The exit state of an animation routine as the assembly leaves it. */
+static AnimationStep object_animation_exit(uint8_t a, uint8_t nz, bool c, bool y_set, uint8_t y)
 {
-    for (;;) {
-        uint16_t list = object_animation_list(object);
-        uint8_t step = rd8((uint16_t)(OBJ_FLAGS_2F38 + object));
-        uint8_t time;
+    AnimationStep r = { FRAME_STOPPED, false, false, 0, 0, true, a, nz, c, y_set, y };
 
-        result.step = step;
-        time = rd8((uint16_t)(list + (uint8_t)(step << 1)));
-        wr8((uint16_t)(OBJ_2F90 + object), time);
+    return r;
+}
+
+/* The entry of the object's step in play: how long, then which frame; a mark of $FE starts the list over. */
+static AnimationStep object_read_entry(uint8_t object)
+{
+    AnimationStep result;
+    ObjectListStep list;
+    uint8_t time, frame, y;
+
+    for (;;) {
+        jsr_push(0xDA6B);
+        list = RichterObjectAnimationList(object);
+        jsr_pop();
+        y = list.y;
+        time = RD8_PTR_Y(ZP->temp00, y);
+        WR8(OBJ->f2f90[object], time);
         if (time == OBJECT_ANIMATION_STOPPED) {
+            result = object_animation_exit(OBJECT_ANIMATION_STOPPED, 0, true, true, y);
             result.how = FRAME_END_MARK;
             return result;
         }
         if (time != OBJECT_ANIMATION_LOOPS) {
-            result.frame = rd8((uint16_t)(list + (uint8_t)((step << 1) + 1)));
-            wr8((uint16_t)(OBJ_2A68 + object), result.frame);
-            result.how = FRAME_SHOWN;
-            return result;
+            break;
         }
-        wr8((uint16_t)(OBJ_FLAGS_2F38 + object), 0);
-        result.looped = true;
+        WR8(OBJ->flags[object], 0);
     }
+    y++;
+    frame = RD8_PTR_Y(ZP->temp00, y);
+    WR8(OBJ->frame[object], frame);
+    result = object_animation_exit(frame, frame, false, true, y);
+    result.how = FRAME_SHOWN;
+    result.frame = frame;
+    return result;
 }
 
 /*
@@ -756,11 +769,9 @@ static AnimationStep object_read_entry(uint8_t object, AnimationStep result)
  */
 AnimationStep RichterObjectSetAnimation(uint8_t object, uint8_t animation)
 {
-    AnimationStep result = { FRAME_STOPPED };
-
-    wr8((uint16_t)(OBJ_FIELDS_2EE0 + object), animation);
-    wr8((uint16_t)(OBJ_FLAGS_2F38 + object), 0);
-    return object_read_entry(object, result);
+    WR8(OBJ->fields_2ee0[object], animation);
+    WR8(OBJ->flags[object], 0);
+    return object_read_entry(object);
 }
 
 void abi_RichterObjectSetAnimation(void)
@@ -779,27 +790,30 @@ void abi_RichterObjectSetAnimation(void)
  */
 AnimationStep RichterObjectAnimationTick(uint8_t object)
 {
-    AnimationStep result = { FRAME_STOPPED };
-    uint8_t time = rd8((uint16_t)(OBJ_2F90 + object));
+    AnimationStep result;
+    ObjectListStep list;
+    uint8_t time = RD8(OBJ->f2f90[object]);
+    uint8_t left, y, frame;
 
-    if (time == OBJECT_ANIMATION_STOPPED)
-        return result;
-    wr8((uint16_t)(OBJ_2F90 + object), (uint8_t)(time - 1));
-    if (time == 1) {
-        wr8((uint16_t)(OBJ_FLAGS_2F38 + object), (uint8_t)(rd8((uint16_t)(OBJ_FLAGS_2F38 + object)) + 1));
-        return object_read_entry(object, result);
+    if (time == OBJECT_ANIMATION_STOPPED) {
+        return object_animation_exit(OBJECT_ANIMATION_STOPPED, 0, true, false, 0);
     }
-    {
-        uint16_t list = object_animation_list(object);
-        uint8_t step = rd8((uint16_t)(OBJ_FLAGS_2F38 + object));
-
-        result.step = step;
-        result.same_frame = true;
-        result.frame = rd8((uint16_t)(list + (uint8_t)((step << 1) + 1)));
-        wr8((uint16_t)(OBJ_2A68 + object), result.frame);
-        result.how = FRAME_SHOWN;
-        return result;
+    left = DEC8(OBJ->f2f90[object]);
+    if (left == 0) {
+        INC8(OBJ->flags[object]);
+        return object_read_entry(object);
     }
+    jsr_push(0xDA82);
+    list = RichterObjectAnimationList(object);
+    jsr_pop();
+    y = (uint8_t)(list.y + 1);
+    frame = RD8_PTR_Y(ZP->temp00, y);
+    WR8(OBJ->frame[object], frame);
+    result = object_animation_exit(frame, frame, list.carry, true, y);
+    result.how = FRAME_SHOWN;
+    result.same_frame = true;
+    result.frame = frame;
+    return result;
 }
 
 void abi_RichterObjectAnimationTick(void)
@@ -818,19 +832,19 @@ void abi_RichterObjectAnimationTick(void)
  */
 AnimationStep RichterObjectAnimationRunning(uint8_t object)
 {
-    return RichterObjectAnimationTick(object);
+    AnimationStep tick;
+    uint8_t time;
+
+    jsr_push(0xDA4B);
+    tick = RichterObjectAnimationTick(object);
+    jsr_pop();
+    time = RD8(OBJ->f2f90[object]);
+    return object_animation_exit(time, (uint8_t)(time - OBJECT_ANIMATION_STOPPED), time >= OBJECT_ANIMATION_STOPPED, tick.y_set, tick.y);
 }
 
 void abi_RichterObjectAnimationRunning(void)
 {
-    uint8_t object = cpu.x;
-    AnimationStep step = RichterObjectAnimationRunning(object);
-    uint8_t time = rd8((uint16_t)(OBJ_2F90 + object));
-
-    animation_exit_shim(step);
-    cpu.a = time;
-    abi_nz((uint8_t)(time - OBJECT_ANIMATION_STOPPED));
-    abi_flag(P_C, time == OBJECT_ANIMATION_STOPPED);
+    animation_exit_shim(RichterObjectAnimationRunning(cpu.x));
 }
 
 /*
@@ -838,21 +852,30 @@ void abi_RichterObjectAnimationRunning(void)
  * @run 6E:DA40
  * WHAT IT DOES: Steps an object's animation and, unless it has ended or shows frame 0, returns to
  * its caller's caller, so the caller's own work waits for the end.
- * HOW: RichterObjectAnimationTick; Z from it; the assembly drops the return address.
+ * HOW: RichterObjectAnimationTick; Z from it; the assembly drops the return address with two pulls.
  * WAITS: no.
  * Entry: X object. Exit, Z set: as the tick. Otherwise the caller's return address is gone, A its
- * high byte, N and Z from it.
+ * high byte, N and Z from it; its caller then ends at once.
  */
-AnimationStep RichterObjectAnimationWait(uint8_t object)
+AnimationWaitEnd RichterObjectAnimationWait(uint8_t object)
 {
-    return RichterObjectAnimationTick(object);
+    AnimationWaitEnd r = { { FRAME_STOPPED }, false, 0 };
+
+    jsr_push(0xDA43);
+    r.step = RichterObjectAnimationTick(object);
+    jsr_pop();
+    if (r.step.nz == 0) {
+        return r;
+    }
+    pull8();
+    r.high = pull8();
+    r.dropped = true;
+    r.step.a = r.high;
+    r.step.nz = r.high;
+    return r;
 }
 
 void abi_RichterObjectAnimationWait(void)
 {
-    AnimationStep step = RichterObjectAnimationWait(cpu.x);
-
-    animation_exit_shim(step);
-    if (step.how == FRAME_SHOWN && step.frame != 0)
-        object_drop_return_shim();
+    animation_exit_shim(RichterObjectAnimationWait(cpu.x).step);
 }

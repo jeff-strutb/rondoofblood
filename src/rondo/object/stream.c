@@ -1149,7 +1149,7 @@ void StreamWalkLines(uint8_t x)
 }
 
 /* The count ended by going from 1 to 0: A is the ORA's result, 0; every walk leaves Y 1. */
-static void lines_exit_shim(Sum count)
+void lines_exit_shim(Sum count)
 {
     cpu.a = 0;
     cpu.y = 1;
@@ -1214,9 +1214,9 @@ static Sum stream_full_walk(uint8_t *x)
     return count;
 }
 
-void StreamFullWalk(uint8_t x)
+Sum StreamFullWalk(uint8_t x)
 {
-    stream_full_walk(&x);
+    return stream_full_walk(&x);
 }
 
 void abi_StreamFullWalk(void)

@@ -162,31 +162,33 @@ StageScrollEnd StageScrollStepResident(uint8_t x);
 
 /* system/stage_frame.c: the frame set-up's end; leaves what RunObjects leaves. */
 void StepScrollAndRunObjects(uint8_t x);
+/* What a stage object set-up leaves for its tail jump. */
+typedef struct { uint8_t x; Sum count; } SetUpEnd;
 
 /* system/stage_objects.c: sets a stage's objects up and runs the first frame; leaves what RunObjects leaves. */
-uint8_t SetUpStageObjects(uint8_t x);
-uint8_t SetUpStageObjectsB(uint8_t x);
-uint8_t SetUpStageObjectsC(uint8_t x);
-uint8_t SetUpStageObjectsD(uint8_t x);
-uint8_t SetUpStageObjectsE(uint8_t x);
-uint8_t SetUpStageObjectsF(uint8_t x);
-uint8_t SetUpStageObjectsG(uint8_t x);
-uint8_t SetUpStageObjectsH(uint8_t x);
-uint8_t SetUpStageObjectsI(uint8_t x);
-uint8_t SetUpStageObjectsJ(uint8_t x);
-uint8_t SetUpStageObjectsK(uint8_t x);
-uint8_t SetUpStageObjectsL(uint8_t x);
-uint8_t SetUpStageObjectsM(uint8_t x);
-uint8_t SetUpStageObjectsN(uint8_t x);
-uint8_t SetUpStageObjectsO(uint8_t x);
-uint8_t SetUpStageObjectsP(uint8_t x);
-uint8_t SetUpStageObjectsQ(uint8_t x);
-uint8_t SetUpStageObjectsR(uint8_t x);
-uint8_t SetUpStageObjectsS(uint8_t x);
-uint8_t SetUpStageObjectsT(uint8_t x);
-uint8_t SetUpStageObjectsU(uint8_t x);
-uint8_t SetUpStageObjectsV(uint8_t x);
-uint8_t SetUpStageObjectsW(uint8_t x);
+SetUpEnd SetUpStageObjects(uint8_t x);
+SetUpEnd SetUpStageObjectsB(uint8_t x);
+SetUpEnd SetUpStageObjectsC(uint8_t x);
+SetUpEnd SetUpStageObjectsD(uint8_t x);
+SetUpEnd SetUpStageObjectsE(uint8_t x);
+SetUpEnd SetUpStageObjectsF(uint8_t x);
+SetUpEnd SetUpStageObjectsG(uint8_t x);
+SetUpEnd SetUpStageObjectsH(uint8_t x);
+SetUpEnd SetUpStageObjectsI(uint8_t x);
+SetUpEnd SetUpStageObjectsJ(uint8_t x);
+SetUpEnd SetUpStageObjectsK(uint8_t x);
+SetUpEnd SetUpStageObjectsL(uint8_t x);
+SetUpEnd SetUpStageObjectsM(uint8_t x);
+SetUpEnd SetUpStageObjectsN(uint8_t x);
+SetUpEnd SetUpStageObjectsO(uint8_t x);
+SetUpEnd SetUpStageObjectsP(uint8_t x);
+SetUpEnd SetUpStageObjectsQ(uint8_t x);
+SetUpEnd SetUpStageObjectsR(uint8_t x);
+SetUpEnd SetUpStageObjectsS(uint8_t x);
+SetUpEnd SetUpStageObjectsT(uint8_t x);
+SetUpEnd SetUpStageObjectsU(uint8_t x);
+SetUpEnd SetUpStageObjectsV(uint8_t x);
+SetUpEnd SetUpStageObjectsW(uint8_t x);
 
 /* system/stage_spawn.c: A, X and Y the pair leaves; ran false when nothing was done. */
 typedef struct { uint8_t a; uint8_t x; uint8_t y; bool ran; } StageSpawnEnd;

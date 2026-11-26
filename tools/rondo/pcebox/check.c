@@ -483,6 +483,7 @@ static struct {
 } hold;
 static unsigned long idle_until_frame;     /* after a frame hold: the core runs nothing until this frame has ended */
 static uint64_t frame_holds;
+static uint64_t left_run_holds;  /* left hand-overs whose interrupt came after a few work RAM accesses of the run-on */
 static uint64_t end_target_ints; /* at the script's end: an interrupt the original took at a jump's target, handed over there */
 static uint64_t int_holds;       /* interrupts a few instructions past a hand-over: held until the core stands there */
 static uint64_t held_ints, held_not;
@@ -2036,7 +2037,28 @@ int hold_arm_from(uint64_t k, int tag, int need, uint16_t pc, uint8_t sp_s)
  * the hold, 1; else 0. */
 int hold_arm(uint64_t end_idx, int tag)
 {
-    return hold_arm_from(end_idx + 1, tag, 0, 0, 0);
+    /* The work RAM accesses the original made after the close and before the interrupt (pulls, a load or two) are its
+     * run-on's own: the core makes them; no hardware access or other marker may come between. */
+    unsigned acc = 0;
+    uint64_t k = end_idx + 1;
+    Ev *x;
+
+    for (; (x = evp(k)); k++) {
+        if (x->type == EV_CLOSE || x->type == EV_STATE || x->type == EV_ROMR || is_poke(x))
+            continue;
+        if ((x->type == EV_R || x->type == EV_W || x->type == EV_RTPULL) && acc < 16) {
+            acc++;
+            continue;
+        }
+        break;
+    }
+    if (!acc)
+        return hold_arm_from(end_idx + 1, tag, 0, 0, 0);
+    if (!x || x->type != EV_INT || !hold_arm_from(k, tag, 0, 0, 0))
+        return 0;
+    hold.acc_max = acc;
+    left_run_holds++;
+    return 1;
 }
 
 void hold_prepare(Span *s, const Ev *closing)
@@ -4048,6 +4070,8 @@ void check_finish(void)
                 (unsigned long long)int_holds);
         fprintf(report, "interrupts at a jump's target at the script's end, handed over there: %llu\n",
                 (unsigned long long)end_target_ints);
+        fprintf(report, "left hand-overs held to an interrupt after the run-on's work RAM accesses: %llu\n",
+                (unsigned long long)left_run_holds);
         fprintf(report, "frame ends a few instructions past a hand-over, the core held until it stood there: %llu\n",
                 (unsigned long long)frame_holds);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",

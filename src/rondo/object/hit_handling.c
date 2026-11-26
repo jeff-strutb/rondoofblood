@@ -251,11 +251,11 @@ ExitChain ObjectHit(uint8_t slot, uint8_t y)
     jsr_pop();
     chain_sound(&c, score);
     jsr_push(0xA232);
-    drop = DropItemWhenHitF(slot);
+    drop = drop_item_when_hit_exit_shim(DropItemWhenHitF(slot));
     jsr_pop();
     chain_ended(&c, drop);
     jsr_push(0xA235);
-    screen = PlayHitSoundA(slot);
+    screen = play_hit_sound_exit_shim(PlayHitSoundA(slot));
     jsr_pop();
     chain_screen(&c, screen);
     status = RD8(OBJ->status_flags[slot]);

@@ -9,6 +9,9 @@
 #include "access.h"
 #include "enemy_objects.h"
 
+/* The arms the converted routines end on (ObjArm, enemy_objects.h); each routine's exit shim builds the registers and flags from them. */
+enum { AS_HELD, AS_OTHER_FRAME, AS_NO_SLOT, AS_SPAWNED, AS_PAUSE };
+
 /* Stores a constant in the object's f34b8 (here the phase index of the speed table below). */
 static Ended set_phase(uint8_t slot, uint8_t phase)
 {
@@ -123,14 +126,14 @@ void abi_SetSpeedFromPhaseTable(void)
  * WAITS: no.
  * Entry: X object. Exit: A the masked bit, or 6 when entered; N, Z from it; X, Y and C kept.
  */
-Ended EnterState6IfFlaggedB(uint8_t slot)
+ObjArm EnterState6IfFlaggedB(uint8_t slot)
 {
     return enter_state_if_flagged(slot, 6);
 }
 
 void abi_EnterState6IfFlaggedB(void)
 {
-    abi_ended(EnterState6IfFlaggedB(cpu.x));
+    abi_ended(load_exit_shim(EnterState6IfFlaggedB(cpu.x)));
 }
 
 /*
@@ -538,11 +541,11 @@ void abi_AnimateByKindThenNextState(void)
  * Entry: X object, Y the list's offset, D clear. Exit: as StepObjectFrames. Clobbers zTemp00,
  * zTemp10-11.
  */
-FrameStepEnd StepFramesFacingPlayerE(uint8_t slot, uint8_t index)
+ObjArm StepFramesFacingPlayerE(uint8_t slot, uint8_t index)
 {
     enum { LISTS = 0xC9B9 };
+    ObjArm r = { 0 };
     uint8_t sides, exit_y = index;
-    FrameStepEnd result;
 
     jsr_push(0xC9A7);
     sides = SideOfPlayer(slot).sides;
@@ -550,14 +553,14 @@ FrameStepEnd StepFramesFacingPlayerE(uint8_t slot, uint8_t index)
     WR8(OBJ->facing_left[slot], (uint8_t)(sides & 1));
     WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
     WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
-    result.step = StepObjectFrames(slot, &exit_y);
-    result.end = ended_of_frame_step(result.step, result.step != FRAME_HELD, exit_y);
-    return result;
+    r.step = StepObjectFrames(slot, &exit_y);
+    r.y = exit_y;
+    return r;
 }
 
 void abi_StepFramesFacingPlayerE(void)
 {
-    abi_ended(StepFramesFacingPlayerE(cpu.x, cpu.y).end);
+    abi_ended(frame_step_exit_shim(StepFramesFacingPlayerE(cpu.x, cpu.y)));
 }
 
 /*
@@ -569,30 +572,32 @@ void abi_StepFramesFacingPlayerE(void)
  * WAITS: no.
  * Entry, exit: as WalkWhileFrameChanges.
  */
-Ended WalkWhileFrameChangesC(uint8_t slot)
+ObjArm WalkWhileFrameChangesC(uint8_t slot)
 {
     enum { SPEEDS = 0xC9A2 };
-    FrameStepEnd step;
+    ObjArm r;
     uint8_t phase;
-    AxisMove move;
 
     jsr_push(0xC993);
-    step = StepFramesFacingPlayerE(slot, 0);
+    r = StepFramesFacingPlayerE(slot, 0);
     jsr_pop();
-    if (step.step != FRAME_CHANGED) {
-        return ended_then(ended_with_y(ended_kept(), 0), step.end);
+    r.arm = WW_HELD;
+    if (r.step != FRAME_CHANGED) {
+        return r;
     }
     phase = RD8(OBJ->f3510[slot]);
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + phase)));
     jsr_push(0xC9A1);
-    move = ApplyVelocityX(slot);
+    r.move = ApplyVelocityX(slot);
     jsr_pop();
-    return ended_then(ended_then(step.end, ended_with_y(ended_kept(), phase)), ended_of_axis_move(move));
+    r.arm = WW_MOVED;
+    r.first = phase;
+    return r;
 }
 
 void abi_WalkWhileFrameChangesC(void)
 {
-    abi_ended(WalkWhileFrameChangesC(cpu.x));
+    abi_ended(walk_while_frame_changes_exit_shim(WalkWhileFrameChangesC(cpu.x)));
 }
 
 /*
@@ -607,46 +612,53 @@ void abi_WalkWhileFrameChangesC(void)
  * Entry: X object, D clear. Exit: after a spawn as StartObjectAtPlace left them; pausing: A the timer, N, Z from it,
  * Y the table index; otherwise the failing test or the step's flags.
  */
-Ended AnimateAndSpawnThenPause(uint8_t slot)
+ObjArm AnimateAndSpawnThenPause(uint8_t slot)
 {
     enum { TIMERS = 0xCAC7 };
+    ObjArm r = { 0 };
+    ObjArm frames;
     uint8_t kind = RD8(OBJ->next_kind[slot]);
     uint8_t frame, last, found_slot, count, y, value;
     bool found, pause = false;
-    PlayerDistance distance;
-    FrameStepEnd frames;
-    Ended e = ended_load(kind);
 
+    r.first = kind;
     if (kind == 0) {
         jsr_push(0xCA8E);
-        distance = DistanceXToPlayer(slot);
+        r.distance = DistanceXToPlayer(slot);
         jsr_pop();
-        e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x70));
-        pause = distance.distance >= 0x70;
+        r.flag = true;
+        pause = r.distance.distance >= 0x70;
     }
     if (!pause) {
         jsr_push(0xCA97);
         frames = StepFramesFacingPlayerE(slot, 2);
         jsr_pop();
-        e = ended_then(ended_then(e, ended_with_y(ended_kept(), 2)), frames.end);
-        if (frames.step != FRAME_LIST_ENDED) {
-            if (frames.step != FRAME_CHANGED) {
-                return e;
+        r.other = true;
+        r.step = frames.step;
+        r.y = frames.y;
+        if (r.step != FRAME_LIST_ENDED) {
+            r.arm = AS_HELD;
+            if (r.step != FRAME_CHANGED) {
+                return r;
             }
             frame = RD8(OBJ->frame[slot]);
-            e = ended_then(e, ended_compare(frame, 0x6B));
+            r.arm = AS_OTHER_FRAME;
+            r.second = frame;
             if (frame != 0x6B) {
-                return e;
+                return r;
             }
             jsr_push(0xCAA5);
             found_slot = FindFreeSlotFrom30(&last, &found);
             jsr_pop();
-            e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+            r.arm = AS_NO_SLOT;
+            r.third = found_slot;
+            r.fourth = last;
             if (!found) {
-                return e;
+                return r;
             }
-            value = StartObjectAtPlace(0x41, slot, found_slot);
-            return ended_then(ended_then(e, ended_load(0x41)), ended_load(value));
+            r.fifth = StartObjectAtPlace(0x41, slot, found_slot);
+            r.arm = AS_SPAWNED;
+            return r;
         }
     }
     WR8(OBJ->anim_step[slot], 0);
@@ -657,12 +669,44 @@ Ended AnimateAndSpawnThenPause(uint8_t slot)
     y = (uint8_t)(count & 3);
     value = rd8((uint16_t)(TIMERS + y));
     WR8(OBJ->life_timer[slot], value);
-    return ended_then(e, ended_with_y(ended_load(value), y));
+    r.arm = AS_PAUSE;
+    r.second = y;
+    r.fifth = value;
+    return r;
+}
+
+/* The LDA of next_kind; the distance and its CMP with $70 when it was 0; LDY #2 and the step when it animated; then the
+ * CMP of the frame with $6B, the slot search, LDA #$41 and the start's A; or, pausing, the timer's LDA and TAY. */
+static Ended animate_and_spawn_then_pause_exit_shim(ObjArm r)
+{
+    Ended e = ended_load(r.first);
+
+    if (r.flag) {
+        e = ended_then(ended_then(e, ended_of_distance(r.distance)), ended_compare(r.distance.distance, 0x70));
+    }
+    if (r.other) {
+        e = ended_then(e, ldy_frame_step_shim(2, r));
+    }
+    if (r.arm == AS_PAUSE) {
+        return ended_then(e, ended_with_y(ended_load(r.fifth), r.second));
+    }
+    if (r.arm == AS_HELD) {
+        return e;
+    }
+    e = ended_then(e, ended_compare(r.second, 0x6B));
+    if (r.arm == AS_OTHER_FRAME) {
+        return e;
+    }
+    e = ended_then(e, ended_of_find_slot(r.third, r.fourth, r.arm == AS_SPAWNED));
+    if (r.arm == AS_NO_SLOT) {
+        return e;
+    }
+    return ended_then(ended_then(e, ended_load(0x41)), ended_load(r.fifth));
 }
 
 void abi_AnimateAndSpawnThenPause(void)
 {
-    abi_ended(AnimateAndSpawnThenPause(cpu.x));
+    abi_ended(animate_and_spawn_then_pause_exit_shim(AnimateAndSpawnThenPause(cpu.x)));
 }
 
 /*
@@ -674,19 +718,24 @@ void abi_AnimateAndSpawnThenPause(void)
  * WAITS: no.
  * Entry, exit: as StartLobTowardPlayer.
  */
-Ended StartLobTowardPlayerB(uint8_t slot, uint8_t entry_y)
+ObjArm StartLobTowardPlayerB(uint8_t slot, uint8_t entry_y)
 {
     static const uint16_t RETURNS[5] = { 0xCBBA, 0xCBC2, 0xCBC5, 0xCBE5, 0xCBEC };
+    ObjArm r = { 0 };
 
     if (RD8(OBJ->state[slot]) != 0) {
-        return StepLobArcB(slot, entry_y);
+        r.arm = LB_ARC;
+        r.sub = obj_sub(StepLobArcB(slot, entry_y));
+        return r;
     }
-    return start_lob(slot, 0xCBED, RETURNS);
+    r.arm = LB_START;
+    r.sub = obj_sub(start_lob(slot, 0xCBED, RETURNS));
+    return r;
 }
 
 void abi_StartLobTowardPlayerB(void)
 {
-    abi_ended(StartLobTowardPlayerB(cpu.x, cpu.y));
+    abi_ended(start_lob_toward_player_exit_shim(StartLobTowardPlayerB(cpu.x, cpu.y)));
 }
 
 /*
@@ -697,12 +746,12 @@ void abi_StartLobTowardPlayerB(void)
  * WAITS: no.
  * Entry, exit: as StepLobArc.
  */
-Ended StepLobArcB(uint8_t slot, uint8_t entry_y)
+ObjArm StepLobArcB(uint8_t slot, uint8_t entry_y)
 {
     return step_lob_arc(slot, entry_y, 0xC9EF, 0xCC08);
 }
 
 void abi_StepLobArcB(void)
 {
-    abi_ended(StepLobArcB(cpu.x, cpu.y));
+    abi_ended(step_lob_arc_exit_shim(StepLobArcB(cpu.x, cpu.y)));
 }

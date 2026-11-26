@@ -20,7 +20,10 @@ member,CardRam,sprite,u8,17,CardSprite,
 member,CardRam,color_command,u8,1F,CardColorCommand,
 member,CardRam,color_background,u8,20,CardColorBackground,
 member,CardRam,color_sprites,u8,23,CardColorSprites,
-member,CardRam,pad_pressed,u8,2D,CardPadPressed,
+member,CardRam,pad_asked,u8,27,CardPadAsked,
+member,CardRam,pad_now,u8[5],28,CardPadNow,
+member,CardRam,pad_pressed,u8[5],2D,CardPadPressed,
+member,CardRam,pad_before,u8[5],32,CardPadBefore,
 member,CardRam,frame_tick,u8,41,CardFrameTick,
 member,CardRam,vdc_mwr,u8,42,CardVdcMwr,
 member,CardRam,vdc_dcr,u8,43,CardVdcDcr,
@@ -60,8 +63,8 @@ member,CardRam,adpcm_sectors_left,u24le,9E,CardAdpcmSectorsLeft,
 member,CardRam,adpcm_next_sector,u24be,A1,CardAdpcmNextSector,
 member,CardRam,cd_busy,u8,A4,CardCdBusy,
 member,CardRam,adpcm_active,u8,A5,CardAdpcmActive,
-member,CardRam,adpcm_length,u8,A6,CardAdpcmLength,
-member,CardRam,adpcm_address,u8,A8,CardAdpcmAddress,
+member,CardRam,adpcm_length_word,u16le,A6,CardAdpcmLength|CardAdpcmLengthHi,
+member,CardRam,adpcm_address_word,u16le,A8,CardAdpcmAddress|CardAdpcmAddressHi,
 member,CardRam,adpcm_rate,u8,AA,CardAdpcmRate,
 member,CardRam,byte_count,u16le,B3,CardByteCount|CardByteCountHi,
 member,CardRam,saved_mprs,u8[8],B5,CardSavedMprs,
@@ -101,6 +104,10 @@ member,CardCdUnit,adpcm_control,u8,0D,AdpcmControl,
 member,CardCdUnit,adpcm_rate,u8,0E,AdpcmRate,
 member,CardCdUnit,fade,u8,0F,CdFade,
 
+# The low bytes of the two ADPCM words, as the code first read them.
+alias,CardRam,adpcm_length,adpcm_length_word.lo,
+alias,CardRam,adpcm_address,adpcm_address_word.lo,
+
 # font.c and math.c name parts of the eight saved MPRs for their own use; the same bytes.
 alias,CardRam,font_saved_mprs,saved_mprs+3[2],CardFontSavedMprs
 alias,CardRam,saved_mpr6,saved_mprs+6,CardSavedMpr6
@@ -122,3 +129,13 @@ alias,CardZeroPage,a,args+0:u16le,CardAl
 alias,CardZeroPage,b,args+2:u16le,CardBl
 alias,CardZeroPage,c,args+4:u16le,CardCl
 alias,CardZeroPage,d,args+6:u16le,CardDl
+
+# The joypad port, read through the I/O area.
+record,CardPadPorts,aos,1000,1,1,CPADP
+member,CardPadPorts,port,u8,00,CardPadPort,
+
+# Card ROM tables the pad and font code read (bank 0, read only).
+record,CardPadBits,aos,E504,1,5,CPADBITS
+member,CardPadBits,bits,u8[5],00,CardPadBitTable,
+record,CardFontRows,aos,F27E,1,58,CFONTROWS
+member,CardFontRows,starts,u8[88],00,FontRowStarts,

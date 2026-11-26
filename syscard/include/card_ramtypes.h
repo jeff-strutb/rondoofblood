@@ -65,9 +65,12 @@ typedef struct {
     uint8_t color_background; /* CardColorBackground */
     uint8_t _gap_0021[2]; /* no name yet: $2221-$2222 */
     uint8_t color_sprites; /* CardColorSprites */
-    uint8_t _gap_0024[9]; /* no name yet: $2224-$222C */
-    uint8_t pad_pressed; /* CardPadPressed */
-    uint8_t _gap_002E[19]; /* no name yet: $222E-$2240 */
+    uint8_t _gap_0024[3]; /* no name yet: $2224-$2226 */
+    uint8_t pad_asked; /* CardPadAsked */
+    uint8_t pad_now[5]; /* CardPadNow */
+    uint8_t pad_pressed[5]; /* CardPadPressed */
+    uint8_t pad_before[5]; /* CardPadBefore */
+    uint8_t _gap_0037[10]; /* no name yet: $2237-$2240 */
     uint8_t frame_tick; /* CardFrameTick */
     uint8_t vdc_mwr; /* CardVdcMwr */
     uint8_t vdc_dcr; /* CardVdcDcr */
@@ -112,10 +115,8 @@ typedef struct {
     U24BE adpcm_next_sector; /* CardAdpcmNextSector */
     uint8_t cd_busy; /* CardCdBusy */
     uint8_t adpcm_active; /* CardAdpcmActive */
-    uint8_t adpcm_length; /* CardAdpcmLength */
-    uint8_t _gap_00A7[1]; /* no name yet: $22A7-$22A7 */
-    uint8_t adpcm_address; /* CardAdpcmAddress */
-    uint8_t _gap_00A9[1]; /* no name yet: $22A9-$22A9 */
+    union { U16LE adpcm_length_word; struct { uint8_t adpcm_length; }; }; /* CardAdpcmLength +1 */
+    union { U16LE adpcm_address_word; struct { uint8_t adpcm_address; }; }; /* CardAdpcmAddress +1 */
     uint8_t adpcm_rate; /* CardAdpcmRate */
     uint8_t _gap_00AB[8]; /* no name yet: $22AB-$22B2 */
     U16LE byte_count; /* CardByteCount +1 */
@@ -135,7 +136,10 @@ _Static_assert(CardRam_BASE + offsetof(CardRam, sprite) + 0 == CardSprite, "Card
 _Static_assert(CardRam_BASE + offsetof(CardRam, color_command) + 0 == CardColorCommand, "CardRam.color_command is not at CardColorCommand");
 _Static_assert(CardRam_BASE + offsetof(CardRam, color_background) + 0 == CardColorBackground, "CardRam.color_background is not at CardColorBackground");
 _Static_assert(CardRam_BASE + offsetof(CardRam, color_sprites) + 0 == CardColorSprites, "CardRam.color_sprites is not at CardColorSprites");
+_Static_assert(CardRam_BASE + offsetof(CardRam, pad_asked) + 0 == CardPadAsked, "CardRam.pad_asked is not at CardPadAsked");
+_Static_assert(CardRam_BASE + offsetof(CardRam, pad_now) + 0 == CardPadNow, "CardRam.pad_now is not at CardPadNow");
 _Static_assert(CardRam_BASE + offsetof(CardRam, pad_pressed) + 0 == CardPadPressed, "CardRam.pad_pressed is not at CardPadPressed");
+_Static_assert(CardRam_BASE + offsetof(CardRam, pad_before) + 0 == CardPadBefore, "CardRam.pad_before is not at CardPadBefore");
 _Static_assert(CardRam_BASE + offsetof(CardRam, frame_tick) + 0 == CardFrameTick, "CardRam.frame_tick is not at CardFrameTick");
 _Static_assert(CardRam_BASE + offsetof(CardRam, vdc_mwr) + 0 == CardVdcMwr, "CardRam.vdc_mwr is not at CardVdcMwr");
 _Static_assert(CardRam_BASE + offsetof(CardRam, vdc_dcr) + 0 == CardVdcDcr, "CardRam.vdc_dcr is not at CardVdcDcr");
@@ -176,8 +180,10 @@ _Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_sectors_left) + 0 == CardA
 _Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_next_sector) + 0 == CardAdpcmNextSector, "CardRam.adpcm_next_sector is not at CardAdpcmNextSector");
 _Static_assert(CardRam_BASE + offsetof(CardRam, cd_busy) + 0 == CardCdBusy, "CardRam.cd_busy is not at CardCdBusy");
 _Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_active) + 0 == CardAdpcmActive, "CardRam.adpcm_active is not at CardAdpcmActive");
-_Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_length) + 0 == CardAdpcmLength, "CardRam.adpcm_length is not at CardAdpcmLength");
-_Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_address) + 0 == CardAdpcmAddress, "CardRam.adpcm_address is not at CardAdpcmAddress");
+_Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_length_word) + 0 == CardAdpcmLength, "CardRam.adpcm_length_word is not at CardAdpcmLength");
+_Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_length_word) + 1 == CardAdpcmLengthHi, "CardRam.adpcm_length_word is not at CardAdpcmLengthHi");
+_Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_address_word) + 0 == CardAdpcmAddress, "CardRam.adpcm_address_word is not at CardAdpcmAddress");
+_Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_address_word) + 1 == CardAdpcmAddressHi, "CardRam.adpcm_address_word is not at CardAdpcmAddressHi");
 _Static_assert(CardRam_BASE + offsetof(CardRam, adpcm_rate) + 0 == CardAdpcmRate, "CardRam.adpcm_rate is not at CardAdpcmRate");
 _Static_assert(CardRam_BASE + offsetof(CardRam, byte_count) + 0 == CardByteCount, "CardRam.byte_count is not at CardByteCount");
 _Static_assert(CardRam_BASE + offsetof(CardRam, byte_count) + 1 == CardByteCountHi, "CardRam.byte_count is not at CardByteCountHi");
@@ -296,5 +302,35 @@ _Static_assert(sizeof(CardRomTables) == 0xF, "CardRomTables size");
 _Static_assert(CardRomTables_BASE + offsetof(CardRomTables, signature) + 0 == BackupSignature, "CardRomTables.signature is not at BackupSignature");
 _Static_assert(CardRomTables_BASE + offsetof(CardRomTables, format_password) + 0 == BackupFormatPassword, "CardRomTables.format_password is not at BackupFormatPassword");
 #define CROMT ((CardRomTables *)CardRomTables_BASE)
+
+/* CardPadPorts: one struct at $1000, 1 element(s), 1 bytes */
+#define CardPadPorts_BASE 0x1000
+#define CardPadPorts_COUNT 1
+typedef struct {
+    uint8_t port; /* CardPadPort */
+} CardPadPorts;
+_Static_assert(sizeof(CardPadPorts) == 0x1, "CardPadPorts size");
+_Static_assert(CardPadPorts_BASE + offsetof(CardPadPorts, port) + 0 == CardPadPort, "CardPadPorts.port is not at CardPadPort");
+#define CPADP ((CardPadPorts *)CardPadPorts_BASE)
+
+/* CardPadBits: one struct at $E504, 1 element(s), 5 bytes */
+#define CardPadBits_BASE 0xE504
+#define CardPadBits_COUNT 1
+typedef struct {
+    uint8_t bits[5]; /* CardPadBitTable */
+} CardPadBits;
+_Static_assert(sizeof(CardPadBits) == 0x5, "CardPadBits size");
+_Static_assert(CardPadBits_BASE + offsetof(CardPadBits, bits) + 0 == CardPadBitTable, "CardPadBits.bits is not at CardPadBitTable");
+#define CPADBITS ((CardPadBits *)CardPadBits_BASE)
+
+/* CardFontRows: one struct at $F27E, 1 element(s), 88 bytes */
+#define CardFontRows_BASE 0xF27E
+#define CardFontRows_COUNT 1
+typedef struct {
+    uint8_t starts[88]; /* FontRowStarts */
+} CardFontRows;
+_Static_assert(sizeof(CardFontRows) == 0x58, "CardFontRows size");
+_Static_assert(CardFontRows_BASE + offsetof(CardFontRows, starts) + 0 == FontRowStarts, "CardFontRows.starts is not at FontRowStarts");
+#define CFONTROWS ((CardFontRows *)CardFontRows_BASE)
 
 #endif

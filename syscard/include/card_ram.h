@@ -129,7 +129,14 @@
 #define CardAdTransSent 0x22C1 /* the command bytes ad_trans_step has sent */
 #define CardAdTransStep 0x22C2 /* ad_trans_step's state: 0 none; 1 select; 2 command; 3 start the transfer; 4 status */
 #define CardAdTransAddress 0x22C3 /* the ADPCM address ad_trans_step's transfer writes to: low first */
-#define CardPadPressed 0x222D /* the buttons each of the five pads has newly pressed, as ex_joysns finds them: bit 2 select, bit 3 run */
+#define CardPadPressed 0x222D /* the buttons each of the five pads has newly pressed, as ex_joysns finds them (five bytes): bit 2 select, bit 3 run */
 #define SuperRamKey 0x18C0 /* written $AA then $55 at boot when the Super System Card's RAM is found; its effect is not traced */
+#define CardPadPort 0x1000 /* the joypad port: the pad's buttons by the scan phase */
+#define CardPadAsked 0x2227 /* the mask of the pads asked for */
+#define CardPadNow 0x2228 /* the current buttons of the five pads */
+#define CardPadBefore 0x2232 /* the buttons of the five pads on the scan before: five bytes */
+#define CardAdpcmLengthHi 0x22A7 /* the high byte of the length ad_play last latched */
+#define CardAdpcmAddressHi 0x22A9 /* the high byte of the address ad_play last latched */
+#define CardPadBitTable 0xE504 /* the bit of each of the five pads: 01 02 04 08 10 */
 
 #endif

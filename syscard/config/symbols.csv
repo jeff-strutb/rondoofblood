@@ -126,5 +126,12 @@ E5D7,abs,ColorReadStub,the first three bytes of the stub that reads the palettes
 22C1,abs,CardAdTransSent,the command bytes ad_trans_step has sent
 22C2,abs,CardAdTransStep,ad_trans_step's state: 0 none; 1 select; 2 command; 3 start the transfer; 4 status
 22C3,abs,CardAdTransAddress,the ADPCM address ad_trans_step's transfer writes to: low first
-222D,abs,CardPadPressed,"the buttons each of the five pads has newly pressed, as ex_joysns finds them: bit 2 select, bit 3 run"
+222D,abs,CardPadPressed,"the buttons each of the five pads has newly pressed, as ex_joysns finds them (five bytes): bit 2 select, bit 3 run"
 18C0,abs,SuperRamKey,"written $AA then $55 at boot when the Super System Card's RAM is found; its effect is not traced"
+1000,abs,CardPadPort,the joypad port: the pad's buttons by the scan phase
+2227,abs,CardPadAsked,the mask of the pads asked for
+2228,abs,CardPadNow,the current buttons of the five pads, active high: five bytes
+2232,abs,CardPadBefore,the buttons of the five pads on the scan before: five bytes
+22A7,abs,CardAdpcmLengthHi,the high byte of the length ad_play last latched
+22A9,abs,CardAdpcmAddressHi,the high byte of the address ad_play last latched
+E504,abs,CardPadBitTable,the bit of each of the five pads: 01 02 04 08 10

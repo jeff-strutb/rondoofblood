@@ -432,6 +432,7 @@ static struct {
     uint8_t i_orig;         /* the I flag the C had at the hand-over */
 } hold;
 static uint64_t held_ints, held_not;
+static uint64_t handover_frames;   /* frame ends the record took at the place a C handed over to the original: passed by the C */
 static uint64_t retpoint_ints;   /* interrupts the record took at a resume place after original code that the core reached early: delivered by the C */
 static unsigned hold_acc;     /* data accesses the core made under the hold */
 void hold_prepare(Span *s, const Ev *closing);
@@ -1809,6 +1810,28 @@ void hand_over(uint16_t addr)
         uint8_t p = cpu.p;
 
         stats[sp->tag].originals++;
+        /* The record's frame end at the place the C stands, with the C's S: before the original ran the instruction at
+         * rondo_pc, or the branch there and before the instruction at addr (a branch makes no access, so both are this
+         * place in the record). The C's instructions take no time, so the core, given the machine here, would end that
+         * frame only after it ran on (out of the routine, with another S): it is passed here, as an access past it would
+         * pass it. */
+        {
+            int nest = sp->nest;
+
+            for (uint64_t j = sp->cur;; j++) {
+                Ev *e = sev(sp, j, &nest);
+
+                if (!e)
+                    break;
+                if (is_noise(e) && e->type != EV_RTPULL)
+                    continue;
+                if (e->type != EV_FRAME || (e->pc != rondo_pc && e->pc != addr) || e->s != cpu.s)
+                    break;
+                handover_frames++;
+                frame_pass(sp, j, 0);
+                sp->cur = j + 1;
+            }
+        }
         /* The machine goes to the original here. When the record's next event past the markers is the interrupt it took at
          * this very PC and S (before it ran the instruction at addr), it is held and dispatched from the record, as after a
          * left close; else the original's own timing carries on. */
@@ -3777,6 +3800,8 @@ void check_finish(void)
                     (unsigned long long)held_ints, (unsigned long long)held_not);
         fprintf(report, "interrupts at the return from original code delivered from the record (the core came back before they were due): %llu\n",
                 (unsigned long long)retpoint_ints);
+        fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",
+                (unsigned long long)handover_frames);
         if (horizon_calls)
             fprintf(report, "horizon hand-overs %llu: calls whose return was not within %u events, the original ran on\n",
                     (unsigned long long)horizon_calls, (unsigned)HORIZON);

@@ -46,7 +46,6 @@ uint8_t tma(uint8_t m) { mix(5); mix(m); return 0; }
 void call_original(uint16_t a) { mix(6); mix(a); }
 void call_orig(uint16_t r, uint16_t a) { mix(7); mix(r); mix(a); }
 void wait_interrupt(void) { mix(8); }
-void call_return_point(void) {}
 void st0(uint8_t v) { mix(9); mix(v); }
 void st1(uint8_t v) { mix(10); mix(v); }
 void st2(uint8_t v) { mix(11); mix(v); }

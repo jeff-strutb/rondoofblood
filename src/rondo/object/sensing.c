@@ -479,15 +479,32 @@ static void word_subtract_shim(uint16_t before, uint16_t amount)
     abi_flag(P_V, ((before ^ amount) & (before ^ after) & 0x8000) != 0);
 }
 
+/* A lookup whose own code ran (the overlay's lookup, or a tile read it handed to the original): its registers are the original's. */
+static bool lookup_ran_original(LookupEnd end)
+{
+    return end.by_original || (!end.last_skipped && end.read_any && end.last.kind == TILE_BY_ORIGINAL);
+}
+
+/* Whether original code ran in the probe's wall half, which leaves every flag the steps before it set behind it. */
+bool probe_ran_original(Probe p)
+{
+    return p.wall_asked && lookup_ran_original(p.wall);
+}
+
 /* Registers and flags as a probe's steps leave them, in the assembly's order. */
 void probe_exit_shim(Probe p)
 {
-    if (p.floor_asked)
+    bool original = probe_ran_original(p);
+
+    if (p.floor_asked && !original) {
         lookup_exit_shim(p.floor);
-    if (p.scanned && p.scanned_to > 0)
+    }
+    if (p.scanned && p.scanned_to > 0 && !original) {
         abi_flag(P_C, p.scanned_to >= FLOOR_COLUMNS);
-    if (p.lifted)
+    }
+    if (p.lifted && !original) {
         word_subtract_shim(p.lift_before, p.lift_amount);
+    }
     if (p.wall_asked) {
         lookup_exit_shim(p.wall);
         if (p.pushed == PUSHED_RIGHT) {

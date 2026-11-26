@@ -151,7 +151,15 @@ static inline void chain_probe(ExitChain *c, Probe p)
 }
 static inline void abi_chain(const ExitChain *c)
 {
+    unsigned first = 0;
+
+    /* A probe that ran original code left that code's registers and flags: the steps before it were never in the machine. */
     for (unsigned i = 0; i < c->count; i++) {
+        if (c->step[i].kind == STEP_PROBE && probe_ran_original(c->step[i].p)) {
+            first = i;
+        }
+    }
+    for (unsigned i = first; i < c->count; i++) {
         if (c->step[i].kind == STEP_ENDED) {
             abi_ended(c->step[i].e);
         } else if (c->step[i].kind == STEP_SOUND_END) {

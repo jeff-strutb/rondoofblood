@@ -99,11 +99,16 @@ static AnimationStep animation_exit(uint8_t a, uint8_t nz, bool c, bool y_set, u
 }
 
 /*
- * The part of the animation code the others call (01BB:69C, no tag of its own): points zTemp00-01 at the list of the
- * animation in play and gives Y twice the step. A is that doubled step and C its bit 7 when it returns.
+ * @routine 01BB:69C RichterAnimationPoint
+ * @run 6D:B69C
+ * WHAT IT DOES: Points zTemp00-01 at the list of the animation in play and gives Y twice the step in play.
+ * HOW: OBJ_FIELDS_2EE0 doubled indexes AnimationLists; the step in OBJ_FLAGS_2F38 doubled.
+ * WAITS: no.
+ * Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
  */
-static uint8_t animation_list_and_step(bool *carry)
+ObjectListStep RichterAnimationPoint(void)
 {
+    ObjectListStep r;
     uint8_t animation = RD8(OBJ->fields_2ee0[0]);
     uint8_t doubled = (uint8_t)(animation << 1);
     uint8_t step;
@@ -111,8 +116,27 @@ static uint8_t animation_list_and_step(bool *carry)
     WR8(ZP->temp00, rd8((uint16_t)(AnimationLists + doubled)));
     WR8(ZP->temp01, rd8((uint16_t)(AnimationLists + 1 + doubled)));
     step = RD8(OBJ->flags[0]);
-    *carry = (step & 0x80) != 0;
-    return (uint8_t)(step << 1);
+    r.y = (uint8_t)(step << 1);
+    r.carry = (step & 0x80) != 0;
+    return r;
+}
+
+void abi_RichterAnimationPoint(void)
+{
+    ObjectListStep r = RichterAnimationPoint();
+
+    cpu.a = r.y;
+    cpu.y = r.y;
+    abi_nz(r.y);
+    abi_flag(P_C, r.carry);
+}
+
+static uint8_t animation_list_and_step(bool *carry)
+{
+    ObjectListStep r = RichterAnimationPoint();
+
+    *carry = r.carry;
+    return r.y;
 }
 
 /* The entry of the step in play: how long, then which frame; a mark of $FE starts the list over. */

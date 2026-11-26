@@ -5,6 +5,7 @@
 ; dots, in 24 bits. Its bank, counted from bank 8 for 16 dots or 24 for 12, goes to a window
 ; that misses the caller's buffer, $6000 if _BX is at or above $A000 and $A000 if not; then the
 ; glyph is copied or expanded, and the MPRs put back.
+; WAITS: no.
 ; Entry: _AX, _BX, _DH. Exit, copied: A 0, X 0, Y $20 (or $FF for 12 dots), N and Z from the
 ; second MPR put back, C set, V clear. Refused: A 1, N 0, Z 0, C set, V as sjis_to_font_index,
 ; X and Y kept. _CL holds the window, CardPointerLo the glyph's address there.
@@ -129,6 +130,7 @@ ex_getfnt_at14:
 ; two. The alphanumeric, Greek and Cyrillic rows close up their gaps; rows $28-$2F are empty and
 ; those after them move down eight. The number is the column plus the row's first glyph from
 ; FontRowStarts.
+; WAITS: no.
 ; Entry: _AH, _AL. Exit, found: _AX the number, A its high byte, N and Z from it, C clear, V from
 ; adding the carry, Y the row's offset in the table. Refused: C set; A, N, Z and V from where it
 ; stopped. X kept, and Y if refused.
@@ -235,6 +237,7 @@ sjis_to_font_index_at8:
 ; WHAT IT DOES: Writes a 12-dot glyph as sixteen rows of two bytes where _BX points.
 ; HOW: The font packs two rows of twelve dots in three bytes; each row is written as twelve
 ; dots and four clear ones. Twelve rows, then eight bytes of zero for the last four.
+; WAITS: no.
 ; Entry: CardPointerLo the glyph, _BX. Exit: A 0, X 0, Y $FF, N 1, Z 0, C 1. V kept. _BX moved on
 ; by 24.
 expand_12dot_glyph:
@@ -274,7 +277,8 @@ expand_12dot_glyph_at2:
 
 ; @card 00:F300 put_font_byte
 ; WHAT IT DOES: Writes a byte of a glyph where _BX points, and moves _BX on.
-; HOW: A store and a 16-bit increment.
+; HOW: A store through _BX and a 16-bit increment.
+; WAITS: no.
 ; Entry: A, _BX. Exit: N and Z from _BL after the increment, or from _BH if _BL went to zero. A,
 ; X, Y, C, V kept.
 put_font_byte:

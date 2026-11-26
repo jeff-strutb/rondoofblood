@@ -109,6 +109,14 @@ static inline uint8_t enter_handler(uint8_t x, Jump jump)
     }
     return cpu.x;
 }
+/* A converted routine that asks a mover (a landing wait, LandWait, or a move wait, MoveWait, common_objects.h): whether
+ * the mover was asked, how it went, and what the routine ended on. */
+typedef struct {
+    bool asked;
+    Mover mover;
+    ObjArm arm;
+} MoverArm;
+
 Ended HitDamage(uint8_t slot);
 SoundEnd ScoreForKind(uint8_t slot, uint8_t y);
 Ended BlendStockRows(uint8_t slot, uint8_t y);
@@ -549,22 +557,22 @@ Ended StepListB728ThenRiseSlowly(uint8_t slot, uint8_t y_entry);
 Ended CountThenJumpRight(uint8_t slot);
 ObjArm StepListBC5CThenAimAtPlayer(uint8_t slot, uint8_t y_entry);
 ObjArm LoadOrFallAlongListByTimer(uint8_t slot);
-LandWait StepListB3B8ThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry);
-LandWait LandThenFaceAndRun(uint8_t slot, uint8_t column, bool carry_in);
+MoverArm StepListB3B8ThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry);
+MoverArm LandThenFaceAndRun(uint8_t slot, uint8_t column, bool carry_in);
 Ended StepListB2A7ThenPlace(uint8_t slot, uint8_t y_entry);
 ObjArm LoadThenRandomPlace(uint8_t slot);
 Ended PlaceFromTableCopySlot10(uint8_t slot);
 Ended StartThreeNumberedObjects(uint8_t slot);
 Ended PlaceFromTableThenStepList(uint8_t slot);
-Ended LoadThenSinkAlongList(uint8_t slot, uint8_t y_entry);
+ObjArm LoadThenSinkAlongList(uint8_t slot, uint8_t y_entry);
 Ended LoadThenStartFiveFromTable(uint8_t slot);
 Ended SetHitBoxFromTable(uint8_t slot);
 Ended CopyPlaceAndHitBoxOfSlot10(uint8_t slot);
 Ended RiseThenPlaceAndDrop(uint8_t slot);
-Ended WalkWhileNearPlayer(uint8_t slot, uint8_t y_entry);
+ObjArm WalkWhileNearPlayer(uint8_t slot, uint8_t y_entry);
 Ended LoadThenFallAndFlash(uint8_t slot);
-Ended LoadThenSpawnWhileScrolling(uint8_t slot);
-Ended SpawnPointFromTables(uint8_t slot);
+ObjArm LoadThenSpawnWhileScrolling(uint8_t slot);
+ObjArm SpawnPointFromTables(uint8_t slot);
 Ended JumpAwayThenLand(uint8_t slot);
 Ended StateSevenOnStatusBit7(uint8_t slot);
 SoundEnd SpawnOnTimerInTable(uint8_t slot);
@@ -579,9 +587,9 @@ typedef struct {
     Ended end;
 } SoundPlayEnd;
 SoundPlayEnd RiseThenCueMusic(uint8_t slot, uint8_t y_entry);
-SoundEnd LoadThenStepListBreakAtFive(uint8_t slot, uint8_t y_entry);
-Ended FollowBlockWhileState5(uint8_t slot);
-Ended LoadThenBreakIntoThrownPiece(uint8_t slot, uint8_t y_entry);
+ObjArm LoadThenStepListBreakAtFive(uint8_t slot, uint8_t y_entry);
+ObjArm FollowBlockWhileState5(uint8_t slot);
+ObjArm LoadThenBreakIntoThrownPiece(uint8_t slot, uint8_t y_entry);
 Ended StepListIndex0AThenSpawn(uint8_t slot);
 Ended LoadThenSwingAndDrop(uint8_t slot);
 /* A routine that may ask MoveAndLand: what it left before, the mover, what its instructions left after. */
@@ -591,7 +599,7 @@ typedef struct {
     Mover mover;
     Ended end;
 } MoveWait;
-MoveWait WalkTurnOrJumpOnLanding(uint8_t slot, uint8_t y_entry);
+MoverArm WalkTurnOrJumpOnLanding(uint8_t slot, uint8_t y_entry);
 Ended NearPlayerThenPlaceOrState11(uint8_t slot);
 LandWait LandThenNextState(uint8_t slot, uint8_t column, bool carry_in);
 SoundEnd SetRasterSpawnThenStepList(uint8_t slot, uint8_t y_entry);
@@ -614,8 +622,8 @@ Ended SetHitBoxFromFrameTable(uint8_t slot);
 Ended CountThenRiseWithFlash(uint8_t slot);
 Ended LoadThenPlaceAtLeft(uint8_t slot);
 Ended StepListB53CToState5(uint8_t slot, uint8_t y_entry);
-Ended ResetAnimThenNextPhase(uint8_t slot);
-Ended SetFirstObjectTimersThenCount(uint8_t slot);
+ObjArm ResetAnimThenNextPhase(uint8_t slot);
+ObjArm SetFirstObjectTimersThenCount(uint8_t slot);
 SoundEnd FallThenSoundAtPeak(uint8_t slot, uint8_t y_entry);
 SoundEnd StepListB1BAThenSound(uint8_t slot, uint8_t y_entry);
 SoundEnd RiseThenPlaceWithSound(uint8_t slot, uint8_t y_entry);
@@ -623,7 +631,7 @@ Ended StepListC170ThenMoveAlongAngle(uint8_t slot, uint8_t y_entry);
 Ended StartThenWaitForField83(uint8_t slot);
 Ended TurnTowardPlayerOrStepList(uint8_t slot, uint8_t y_entry);
 Ended StepListC103ThenPickAim(uint8_t slot, uint8_t y_entry);
-Ended LoadThenStateByKindByte(uint8_t slot);
+ObjArm LoadThenStateByKindByte(uint8_t slot);
 Ended StepListB9B7ThenAimAtPlayer(uint8_t slot, uint8_t y_entry);
 ObjArm StartJumpUpLeft(uint8_t slot);
 Ended FallThenStopForRaster(uint8_t slot);

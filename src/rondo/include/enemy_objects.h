@@ -346,14 +346,14 @@ typedef struct {
  */
 #define OBJ_ARM_FIELDS \
     int arm; \
-    uint8_t first, second, third, fourth, fifth; \
+    uint8_t first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth; \
     uint8_t y; \
     bool flag, other; \
     FrameStep step; \
     AxisMove move; \
     RandomResult random; \
     SideResult side; \
-    PlayerDistance distance; \
+    PlayerDistance distance, distance2; \
     AngleExit angle; \
     Sum sum; \
     bool sounded; \
@@ -416,6 +416,12 @@ static inline Ended frame_step_exit_shim(ObjArm r)
 static inline Ended record_exit_shim(ObjArm r)
 {
     return ended_of_record(r.first, r.second, r.flag);
+}
+
+/* The C a callee is entered with right after such a step: the step's, or the entry's when it set none. */
+static inline bool frame_step_carry_shim(ObjArm r, bool entry)
+{
+    return ended_carry_or(frame_step_exit_shim(r), entry);
 }
 
 /* An LDY of the list index before such a step: Y stands as loaded unless the step set it. */

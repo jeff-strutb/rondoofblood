@@ -162,7 +162,7 @@ EndingCommandCdPlay:
 EndingCommandPlaceKind:
     lda ($7E),y
     tax
-    jsr AddToListWord_at0
+    jsr EndingPlaceObject
     iny
     lda ($7E),y
     sta a:OBJ_2750,x
@@ -177,7 +177,7 @@ EndingCommandPlaceKind:
 EndingCommandPlaceNext:
     lda ($7E),y
     tax
-    jsr AddToListWord_at0
+    jsr EndingPlaceObject
     iny
     lda ($7E),y
     sta a:OBJ_3040,x
@@ -197,7 +197,7 @@ EndingCommandPlaceNext:
 EndingCommandPlaceFrame:
     lda ($7E),y
     tax
-    jsr AddToListWord_at0
+    jsr EndingPlaceObject
     iny
     lda ($7E),y
     sta a:OBJ_2A68,x
@@ -215,7 +215,7 @@ EndingCommandPlaceFrame:
 EndingCommandPlaceTimed:
     lda ($7E),y
     tax
-    jsr AddToListWord_at0
+    jsr EndingPlaceObject
     iny
     lda ($7E),y
     sta a:OBJ_2A68,x
@@ -245,6 +245,28 @@ EndingClearObjects_at0:
     inx
     cpx #$58
     bne EndingClearObjects_at0
+    rts
+
+; @routine 010D:13B EndingPlaceObject
+; @run 6B:813B
+; WHAT IT DOES: Empties an object and gives it the place four script bytes name (the copy of ScriptPlaceObject in this overlay).
+; HOW: ClearObject; then the bytes at Y plus 1 to 4 go to the object's X low, X high, Y low and Y high.
+; WAITS: no.
+; Entry: X the object, Y the script byte before the four. Exit: A the last byte read, Y plus 4, N and Z from A; X and C kept.
+EndingPlaceObject:
+    jsr VecClearObject
+    iny
+    lda ($7E),y
+    sta a:OBJ_X_LO,x
+    iny
+    lda ($7E),y
+    sta a:OBJ_X_HI,x
+    iny
+    lda ($7E),y
+    sta a:OBJ_Y_LO,x
+    iny
+    lda ($7E),y
+    sta a:OBJ_Y_HI,x
     rts
 
 ; @routine 010D:1A5 EndingCommandLoadBanks
@@ -1416,25 +1438,24 @@ EndingScrollSqueeze_at0:
     rts
 EndingScrollSqueeze_at1:
     dec a
-    bne EndingScrollSqueeze_at3
+    bne InitStage
     jsr EndingScrollSlots
     bbr0 zFrameTick,EndingScrollSqueeze_at2
     inc a:ScrollYLo+5
     dec a:ScrollYLo+6
     lda a:ScrollYLo+5
     cmp #$78
-    bne EndingScrollSqueeze_at4
+    bne EndingScrollSqueeze_at3
     inc a:OBJ_27A8,x
-EndingScrollSqueeze_at4:
+EndingScrollSqueeze_at3:
     lda a:ScrollYLo+5
     sta a:ScrollYLo+1
     lda a:ScrollYLo+6
     cmp #$A7
-    bcc EndingScrollSqueeze_at5
+    bcc EndingScrollSqueeze_at4
     sta a:ScrollYLo+4
-EndingScrollSqueeze_at5:
+EndingScrollSqueeze_at4:
     rts
-EndingScrollSqueeze_at3:
     jmp EndingScrollSlots
 
 ; @routine 010E:0EF EndingScrollSlots

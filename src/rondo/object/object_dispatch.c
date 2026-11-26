@@ -1159,6 +1159,18 @@ static Jump dispatch_by_kind(uint8_t slot, uint16_t table)
     return jump;
 }
 
+/* The call the object loop makes to its overlay's dispatch: its wrapper, or the original code at $A313 where the overlay has none. */
+uint8_t call_kind_dispatch(uint8_t x, void (*abi_dispatch)(void))
+{
+    cpu.x = x;
+    if (abi_dispatch != 0) {
+        abi_dispatch();
+    } else {
+        call_original(0xA313);
+    }
+    return cpu.x;
+}
+
 /* The jump of a dispatch: the registers it leaves, and the code if there is one. */
 void dispatch_exit_shim(Jump jump)
 {

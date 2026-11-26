@@ -855,7 +855,7 @@ typedef struct {
 } L8St17StepsArm;
 
 L8St17RingArm StartRingOfPieces(uint8_t slot);
-Ended l8_ring_exit_shim(L8St17RingArm r);
+Ended l8_ring_of_pieces_exit_shim(L8St17RingArm r);
 L8Arm LoadRecordFlingThenFall(uint8_t slot);
 L8Record LoadRecordFacingLeftRising(uint8_t slot);
 L8St17ScreenArm SoundBAAtScreen2(uint8_t slot, uint8_t y_entry);
@@ -1571,8 +1571,6 @@ L8St27BossBArm BossFrameRoutinesB(uint8_t slot, uint8_t y_entry);
 L8St27RowsArm SpawnRowsWhenScrollAtZero(uint8_t slot);
 PieceSlotsArm CountDownThenStartPieceInSlots18To1B(uint8_t slot);
 L8PhaseLandArm StepListByPhaseThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry);
-SoundEnd LoadRecordThenWatchThenDropTwice(uint8_t slot, uint8_t y_entry);
-Ended BossPhasesHurtFallAndTileWrites(uint8_t slot, uint8_t y_entry);
 HopArm HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry);
 ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry);
 GatesArm SpawnerWithScrollGates(uint8_t slot);

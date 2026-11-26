@@ -7,6 +7,7 @@
  * and keeps what it left.
  */
 #include "machine.h"
+#include "ops6280.h"
 #include "ram.h"
 #include "routines.h"
 
@@ -231,6 +232,7 @@ static OverlayFrame overlay_frame(uint16_t entry, uint16_t ret)
  * @run 69:5105
  * WHAT IT DOES: Runs this frame's game mode.
  * HOW: Counts zFrameTick, then jumps through GameModeHandlers by zGameMode.
+ * WAITS: no itself; the handler it jumps to waits where its own routine does.
  * Entry: nothing. Exit: as the handler leaves them; it is entered with A and X twice the mode,
  * N and Z from it, C the mode's bit 7.
  */
@@ -249,6 +251,8 @@ ModeHandler FrameModeDispatch(void)
     return found;
 }
 
+static void attract_handler_shim(void);
+
 /* The handler at the address the table gave, through its C where it has C. */
 static void mode_handler_shim(uint16_t handler)
 {
@@ -261,6 +265,10 @@ static void mode_handler_shim(uint16_t handler)
 
     for (unsigned i = 0; i < sizeof handlers / sizeof handlers[0]; i++)
         if (handlers[i].run == handler) {
+            if (handler == 0x515E) {
+                attract_handler_shim();
+                return;
+            }
             handlers[i].abi();
             return;
         }
@@ -392,8 +400,7 @@ AttractRun ModeAttract(void)
     run.frame = overlay_frame(FrameOverlay8006, 0x5161);
     if (!(run.frame.done & 0x80)) {
         if (run.frame.done == 0) {
-            run.path = ATTRACT_OTHER_ENTRY;
-            run.second = overlay_loaded_shim(FrameOverlay8009, run.frame.done);
+            run.path = ATTRACT_OTHER_ENTRY;     /* the tail JMP $8009 is made by the span's owner */
         } else {
             run.path = ATTRACT_RESTART;
             SetGameMode(MODE_ATTRACT_LOAD);
@@ -431,23 +438,23 @@ AttractRun ModeAttract(void)
     return run;
 }
 
-void abi_ModeAttract(void)
+/* ModeAttract's exit; true when it ends in the tail JMP $8009, which the span's owner makes. */
+static bool attract_exit_shim(AttractRun run)
 {
-    AttractRun run = ModeAttract();
-
     overlay_done_shim(run.frame.after, run.frame.done);
     switch (run.path) {
     case ATTRACT_OTHER_ENTRY:
-        restore_shim(run.second);
-        return;
+        cpu.a = run.frame.done;
+        abi_nz(run.frame.done);
+        return true;
     case ATTRACT_RESTART:
         set_mode_shim(MODE_ATTRACT_LOAD);
-        return;
+        return false;
     case ATTRACT_SCREENS:
         load_shim(0);
         screens_load_shim(&run.screens);
         next_mode_shim(run.mode);
-        return;
+        return false;
     case ATTRACT_DEMO:
         load_shim(run.step);
         reset_score_shim();
@@ -458,8 +465,20 @@ void abi_ModeAttract(void)
         cpu.a = run.step_after;
         compare_shim(run.step_after, STAGES_ATTRACT);
         next_mode_shim(run.mode);
-        return;
+        return false;
     }
+    return false;
+}
+
+static void attract_handler_shim(void)
+{
+    if (attract_exit_shim(ModeAttract()))
+        call_original_at(0x5167, FrameOverlay8009);
+}
+
+void abi_ModeAttract(void)
+{
+    attract_handler_shim();
 }
 
 /*

@@ -509,6 +509,7 @@ Exit EndingEffectFade(uint8_t slot);
 Exit EndingEffectDispatch(uint8_t type, uint8_t slot);
 Exit EndingEffectStep(void);
 Exit EndingEffectEntry(void);
+Exit EndingPlaceObject(uint8_t object, uint8_t y);
 Exit EndingCommandStartList(void);
 Exit EndingCommandStartScript1(void);
 Exit EndingCommandStartScript2(void);

@@ -2176,15 +2176,23 @@ Exit EndingCommandCdPlay(uint8_t index)
     return EndingScriptAdvance();
 }
 
-/* The copy of ScriptPlaceObject at $813B: ClearObject and the four place bytes after the object's, the call's frame its own. */
-static void place_object_copy(uint8_t object)
+/*
+ * @routine 010D:13B EndingPlaceObject
+ * @run 6B:813B
+ * WHAT IT DOES: Empties an object and gives it the place four script bytes name (the copy of ScriptPlaceObject in this overlay).
+ * HOW: ClearObject; then the bytes at Y plus 1 to 4 go to the object's X low, X high, Y low and Y high.
+ * WAITS: no.
+ * Entry: X the object, Y the script byte before the four. Exit: A the last byte read, Y plus 4, N and Z from A; X and C kept.
+ */
+Exit EndingPlaceObject(uint8_t object, uint8_t y)
 {
-    uint8_t y, value;
+    Exit exit = { 0 };
+    uint8_t value;
 
     jsr_push(0x813E);
     ClearObject(object);
     jsr_pop();
-    y = 4;
+    y++;
     value = RD8_PTR_Y(ZP->ENDING_PTR, y);
     WR8(OBJ->x_lo[object], value);
     y++;
@@ -2196,6 +2204,17 @@ static void place_object_copy(uint8_t object)
     y++;
     value = RD8_PTR_Y(ZP->ENDING_PTR, y);
     WR8(OBJ->y_hi[object], value);
+    exit.a = value;
+    exit.y = y;
+    exit.nz = value;
+    exit.x_kept = true;
+    exit.c_kept = true;
+    return exit;
+}
+
+void abi_EndingPlaceObject(void)
+{
+    exit_shim(EndingPlaceObject(cpu.x, cpu.y));
 }
 
 /* The commands that place an object: ClearObject and the four place bytes, then the fields each command names. */
@@ -2205,7 +2224,7 @@ static Exit place_command(uint8_t fields, uint16_t first_ret)
 
     object = RD8_PTR_Y(ZP->ENDING_PTR, 3);
     jsr_push(first_ret);
-    place_object_copy(object);
+    (void)EndingPlaceObject(object, 3);
     jsr_pop();
     y = 7;
     switch (fields) {

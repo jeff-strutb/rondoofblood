@@ -181,7 +181,7 @@ ad_read_at4:
 ; Entry: A _DH, the ADPCM address latched. Exit, refused: A $22, N 0, Z 0, C from comparing with
 ; 7. Read: A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left
 ; of the last bank. V kept.
-; Not run by any script.
+; Not checked: no script reaches it.
 ad_read_to_banks:
     cmp #$07
     bmi ad_read_to_banks_at0
@@ -253,6 +253,7 @@ ad_read_to_banks_at4:
 ; HOW: write_vram_word_pending, with the address register selected; then _BX = $0002.
 ; WAITS: no.
 ; Entry: _BX, the VDC's address register selected. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
+; Not checked: no script reaches it.
 aim_bx_at_vram_port:
     jsr write_vram_word_pending
     lda #$02
@@ -275,7 +276,7 @@ aim_bx_at_vram_port:
 ; _DH: A $22, N 0, Z 0, C 1. Written: A 0, V bit 6 of the status as the last wait read it; from
 ; memory N 0, Z 1; from VRAM N 0, Z 1, C 1; from banks N and Z from the bank put back, C bit 3
 ; of _DH, X the pages and Y the bytes left of the last bank.
-; Not run by any script.
+; Not checked: no script reaches it.
 ad_write:
     lda a:AdpcmDma
     and #$03

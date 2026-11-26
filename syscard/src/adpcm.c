@@ -230,6 +230,7 @@ void ad_play_exit_shim(AdPlay play)
  * HOW: write_vram_word_pending, with the address register selected; then _BX = $0002.
  * WAITS: no.
  * Entry: _BX, the VDC's address register selected. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
+ * Not checked: no script reaches it.
  */
 CardExit aim_bx_at_vram_port(void)
 {
@@ -313,7 +314,7 @@ static uint8_t mpr_mask(uint8_t mode)
  * Entry: A _DH, the ADPCM address latched. Exit, refused: A $22, N 0, Z 0, C from comparing with
  * 7. Read: A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left
  * of the last bank. V kept.
- * Not run by any script.
+ * Not checked: no script reaches it.
  */
 CardExit ad_read_to_banks(uint8_t mode)
 {
@@ -483,7 +484,7 @@ void abi_ad_read(void)
  * _DH: A $22, N 0, Z 0, C 1. Written: A 0, V bit 6 of the status as the last wait read it; from
  * memory N 0, Z 1; from VRAM N 0, Z 1, C 1; from banks N and Z from the bank put back, C bit 3
  * of _DH, X the pages and Y the bytes left of the last bank.
- * Not run by any script.
+ * Not checked: no script reaches it.
  */
 CardExit ad_write(void)
 {

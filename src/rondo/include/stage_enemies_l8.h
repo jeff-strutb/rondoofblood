@@ -568,19 +568,88 @@ SoundEnd StepListThenSoundAndSpawn(uint8_t slot, uint8_t y_entry);
 SoundEnd StepListThenBurstAtFrame14(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st16.c */
-Ended LoadRecordLaunchByFacing(uint8_t slot);
-Ended StepListBounceOffFloorAtRandom(uint8_t slot, uint8_t y_entry);
-Ended StepListFallThenLandOrClear(uint8_t slot, uint8_t y_entry);
-Ended StepListThenClearWhenEnded(uint8_t slot, uint8_t y_entry);
-Jump CountFramesThenRunByState(uint8_t slot);
-Ended LoadRecordLaunchSideways(uint8_t slot);
-Ended StepListFallThenTurnToPlayer(uint8_t slot, uint8_t y_entry);
-SoundEnd SoundAndSpawnEveryFourthFrame(uint8_t slot, uint8_t y_entry);
-SoundEnd StepListSpawnAndMoveXOrClear(uint8_t slot, uint8_t y_entry);
-Ended ClearIfAboveOrFall(uint8_t slot);
-Ended LoadRecordRandomFlingOrFall(uint8_t slot);
-SoundEnd LoadRecordThenClearEnemiesAtScreen2(uint8_t slot, uint8_t y_entry);
-Ended LoadRecordThenFollowOrHomeIn(uint8_t slot);
+/* The structs the converted routines of st16 return where L8Arm does not fit: the arm and the values behind it. */
+typedef struct {
+    int arm;
+    L8Step step;
+    AxisMove move;
+    uint8_t ground, value, counted;
+    RandomResult random, random2;
+} L8St16BounceArm;
+
+typedef struct {
+    uint8_t counted, state, high;
+    uint16_t target;
+} L8St16StateJump;
+
+typedef struct {
+    int arm;
+    L8Step step;
+    AxisMove move;
+    uint8_t ground, counted;
+    SideResult side;
+} L8St16TurnArm;
+
+typedef struct {
+    int arm;
+    uint8_t bits, placed;
+    L8Slot found;
+    CommandCall call;
+} L8St16SpawnArm;
+
+typedef struct {
+    L8Step step;
+    L8St16SpawnArm spawn;
+    AxisMove move;
+    uint8_t high;
+} L8St16MoveXArm;
+
+typedef struct {
+    int arm;
+    uint8_t state, value;
+    L8Arm fall;
+    L8Record record;
+    RandomResult random, random2;
+    Sum sum;
+} L8St16FlingArm;
+
+typedef struct {
+    int arm;
+    uint8_t state, screen, kind, flags, x_end, x;
+    L8Record record;
+    CommandCall call;
+    TileRun run;
+} L8St16ScreenArm;
+
+/* The code at $BB62 (inside_edge_band): the bytes read and whether the object is outside the band. */
+typedef struct {
+    int arm;
+    uint8_t high, low;
+    bool outside;
+} L8St16Band;
+
+typedef struct {
+    int arm;
+    L8Record record;
+    uint8_t mode, placed, facing, value, held, other, phase, hits, placed2, vy, aim_x, aim_y;
+    Sum diff, sum, aim, sum_x, sum_y;
+    AxisMove move, move2;
+    L8St16Band band;
+} L8St16HomeArm;
+
+L8Arm LoadRecordLaunchByFacing(uint8_t slot);
+L8St16BounceArm StepListBounceOffFloorAtRandom(uint8_t slot, uint8_t y_entry);
+L8Arm StepListFallThenLandOrClear(uint8_t slot, uint8_t y_entry);
+L8Arm StepListThenClearWhenEnded(uint8_t slot, uint8_t y_entry);
+L8St16StateJump CountFramesThenRunByState(uint8_t slot);
+L8Arm LoadRecordLaunchSideways(uint8_t slot);
+L8St16TurnArm StepListFallThenTurnToPlayer(uint8_t slot, uint8_t y_entry);
+L8St16SpawnArm SoundAndSpawnEveryFourthFrame(uint8_t slot, uint8_t y_entry);
+L8St16MoveXArm StepListSpawnAndMoveXOrClear(uint8_t slot, uint8_t y_entry);
+L8Arm ClearIfAboveOrFall(uint8_t slot);
+L8St16FlingArm LoadRecordRandomFlingOrFall(uint8_t slot);
+L8St16ScreenArm LoadRecordThenClearEnemiesAtScreen2(uint8_t slot, uint8_t y_entry);
+L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot);
 
 /* object/enemies_l8_st17.c */
 Ended StartRingOfPieces(uint8_t slot);

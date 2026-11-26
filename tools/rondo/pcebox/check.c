@@ -58,6 +58,8 @@ extern const Tag rondo_tags[];
 extern const unsigned rondo_tag_count;
 extern const unsigned rondo_ram_calls[];
 extern const unsigned rondo_ram_call_count;
+extern const struct Alias { const char *name; uint16_t run; } rondo_aliases[];
+extern const unsigned rondo_alias_count;
 
 typedef struct { uint8_t a, x, y, s, p; uint16_t pc; } Regs;
 
@@ -3292,11 +3294,15 @@ int check_idle(void)
 }
 
 /* The run address of a routine by name, or -1. */
+/* A routine's name to its run address: a row's own, else a filed routine served by the draft at its address. */
 int check_tag_run(const char *name)
 {
     for (unsigned i = 0; i < rondo_tag_count; i++)
         if (!strcmp(rondo_tags[i].name, name))
             return rondo_tags[i].run;
+    for (unsigned i = 0; i < rondo_alias_count; i++)
+        if (!strcmp(rondo_aliases[i].name, name))
+            return rondo_aliases[i].run;
     return -1;
 }
 

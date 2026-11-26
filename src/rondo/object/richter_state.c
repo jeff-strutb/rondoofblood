@@ -2321,14 +2321,17 @@ WalkStart RichterStartWalk(uint8_t facing)
         return walk;
     walk.started = true;
     set_state(STATE_WALKING, 0);
-    walk.animation = RichterSetAnimation((rd8(zPadHeld) & PAD_JUMP) ? ANIM_WALK_BACK : ANIM_WALK);
+    walk.held = rd8(zPadHeld);
+    walk.animation = RichterSetAnimation((walk.held & PAD_JUMP) ? ANIM_WALK_BACK : ANIM_WALK);
     return walk;
 }
 
 void walk_start_exit_shim(WalkStart walk)
 {
     if (walk.started) {
+        /* RichterSetAnimation keeps V: it is the last TST of the pad's */
         animation_exit_shim(walk.animation);
+        abi_flag(P_V, (walk.held & 0x40) != 0);
         return;
     }
     /* TST of the attack bit, which is set: N and V from the pad's top bits, Z clear. */

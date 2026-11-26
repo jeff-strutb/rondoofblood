@@ -10,10 +10,6 @@
 #include "stage_enemies_l8.h"
 
 void abi_ProbeTileRead9991(void);
-Ended StepListByNumberTableC585(uint8_t slot, uint8_t y_entry);
-Ended ToggleFacing(uint8_t slot);
-Ended HurtOnceThenAnswerYes(uint8_t slot, uint8_t y_entry);
-Ended StartLeapWhenHurtAnswerYes(uint8_t slot, uint8_t y_entry);
 
 static Ended then(Ended e, Ended next)
 {
@@ -166,21 +162,21 @@ Ended WalkAndTurnAtEdge(uint8_t slot, uint8_t y_entry)
     SideReadEnd probe;
 
     jsr_push(0xBCA7);
-    e = StartLeapWhenHurtAnswerYes(slot, y);
+    e = l8_leap_yes_exit_shim(StartLeapWhenHurtAnswerYes(slot, y));
     jsr_pop();
     if (e.c) {
         return e;
     }
     y = ended_y_or(e, y);
     jsr_push(0xBCAD);
-    e = then(e, HurtOnceThenAnswerYes(slot, y));
+    e = then(e, l8_hurt_once_exit_shim(HurtOnceThenAnswerYes(slot, y)));
     jsr_pop();
     if (e.c) {
         return e;
     }
     y = ended_y_or(e, y);
     jsr_push(0xBCB3);
-    e = then(e, StepListByNumberTableC585(slot, y));
+    e = then(e, l8_number_step_c585_exit_shim(StepListByNumberTableC585(slot, y)));
     jsr_pop();
     y = ended_y_or(e, y);
     jsr_push(0xBCB6);
@@ -210,7 +206,7 @@ Ended WalkAndTurnAtEdge(uint8_t slot, uint8_t y_entry)
         return e;
     }
     jsr_push(0xBCCF);
-    e = then(e, ToggleFacing(slot));
+    e = then(e, l8_toggle_facing_exit_shim(ToggleFacing(slot)));
     jsr_pop();
     return then(e, ended_of_sum(NegateVelocityX(slot)));
 }
@@ -220,9 +216,6 @@ void abi_WalkAndTurnAtEdge(void)
     abi_ended(WalkAndTurnAtEdge(cpu.x, cpu.y));
 }
 
-Ended StepListByNumberTable(uint8_t slot, uint8_t y_entry);
-Ended SpawnFlashingPieceWhenRising(uint8_t slot);
-Ended CountDownThenClearOnTimer(uint8_t slot);
 
 enum {
     PIECE_LIFE = 0xB919, PIECE_FACING = 0xB91D, PIECE_SPEED = 0xB921, PIECE_VX = 0xB925, PIECE_VY = 0xB92D,
@@ -292,15 +285,15 @@ Ended DroppingPieceStep(uint8_t slot, uint8_t y_entry)
     }
     a = (uint8_t)(a - 1);
     if (a != 0) {
-        return then(ended_load(a), CountDownThenClearOnTimer(slot));
+        return then(ended_load(a), l8_clear_on_timer_exit_shim(CountDownThenClearOnTimer(slot)));
     }
     e = ended_load(a);
     jsr_push(0xB869);
-    e = then(e, StepListByNumberTable(slot, y));
+    e = then(e, l8_number_step_exit_shim(StepListByNumberTable(slot, y)));
     jsr_pop();
     y = ended_y_or(e, y);
     jsr_push(0xB86C);
-    e = then(e, SpawnFlashingPieceWhenRising(slot));
+    e = then(e, l8_flash_piece_exit_shim(SpawnFlashingPieceWhenRising(slot)));
     jsr_pop();
     y = ended_y_or(e, y);
     jsr_push(0xB86F);

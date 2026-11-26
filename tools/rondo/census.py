@@ -945,7 +945,49 @@ def counted_census(disc, tr, strict, relaxed, names):
     out["counted_strict"] = sum(1 for d in counted if d in strict.found)
     out["counted_relaxed_only"] = out["counted"] - out["counted_strict"]
     out["counted_never_loaded"] = sum(1 for d in counted if m2 is not None and not m2[d] & 1)
-    return out, dups
+    return out, dups, data, src_of
+
+
+def unloaded_scenes(path):
+    """The scenes no script loads, for briefing coverage scripts: each scene's memory, the counted census bytes in it
+    (from censusmap.bin, so census.py runs first), those no other scene's memory holds, and the disc sectors it
+    reads; most census bytes first."""
+    names = all_scripts()
+    disc = Disc()
+    tr = Traces(names)
+    ctxs = contexts(disc, tr)
+    cmap = open(MAP, "rb").read()
+    held = {c.key: {d for a in c.banks.values() for d in a if d >= 0} for c in ctxs}
+    holders = collections.Counter(d for ds in held.values() for d in ds)
+    rows = []
+    for c in ctxs:
+        ds = held[c.key]
+        if not ds or any(tr.map2[d] & 1 for d in ds):
+            continue                          # some script loaded part of it
+        counted = [d for d in ds if cmap[d] & 6 and not cmap[d] & 24]
+        secs = sorted({d // SECTOR for d in ds})
+        spans, a = [], None
+        for sct in secs:
+            if a is None or sct != spans[-1][1] + 1:
+                spans.append([sct, sct])
+            else:
+                spans[-1][1] = sct
+            a = sct
+        rows.append({"scene": c.key, "list": c.list_key, "memory_bytes": len(ds),
+                     "census_counted": len(counted),
+                     "census_strict": sum(1 for d in counted if cmap[d] & 2),
+                     "census_relaxed_only": sum(1 for d in counted if cmap[d] & 4),
+                     "census_only_here": sum(1 for d in counted if holders[d] == 1),
+                     "sectors": " ".join(f"{x:X}-{y:X}" if x != y else f"{x:X}" for x, y in spans)})
+    rows.sort(key=lambda r: (-r["census_counted"], str(r["scene"])))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", newline="\n", encoding="ascii") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]) if rows else ["scene"], lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+    print(f"{len(rows)} scenes no script loads; {sum(r['census_counted'] for r in rows):,} counted census bytes in "
+          f"their memory, {sum(r['census_only_here'] for r in rows):,} of them in no other scene's memory: {path}")
+    return 0
 
 
 def main():
@@ -956,6 +998,8 @@ def main():
     if "--holdout" in sys.argv[1:]:
         holdout(out=os.path.join(TOP, "build", "rondo", "census_holdout.txt"))
         return 0
+    if "--scenes" in sys.argv[1:]:
+        return unloaded_scenes(os.path.join(TOP, "build", "rondo", "briefs", "unloaded-scenes.csv"))
     names = all_scripts()
     disc = Disc()
     tr = Traces(names)
@@ -965,7 +1009,8 @@ def main():
     strict._ext.clear()
     relaxed = run_census(disc, tr, ctxs, model, "relaxed")
     relaxed._ext.clear()
-    # censusmap.bin: 1 traced, 2 strict census only, 4 relaxed census only; census.csv: bytes per rule
+    # censusmap.bin: 1 traced, 2 strict census only, 4 relaxed census only; with 8 proven data and 16 a proven
+    # duplicate (both left out of the counted census); build/rondo/census.csv: bytes per rule
     m = bytearray(USER_BYTES)
     rows = collections.Counter()
     for d, rule in relaxed.found.items():
@@ -981,7 +1026,12 @@ def main():
     print(f"traced {len(tr.code)} B; strict census adds {sum(1 for r in strict.found.values() if r != 'traced')} B; "
           f"relaxed adds {sum(1 for r in relaxed.found.values() if r != 'traced')} B")
     print("unplaced calls:", strict.stats["unplaced"], "ambiguous:", strict.stats["ambiguous"])
-    out, dups = counted_census(disc, tr, strict, relaxed, names)
+    out, dups, data, src_of = counted_census(disc, tr, strict, relaxed, names)
+    for d in data:                            # censusmap.bin also marks what the counted census leaves out
+        m[d] |= 8
+    for d in src_of:
+        m[d] |= 16
+    open(MAP, "wb").write(m)
     out = {"stamp": trace_stamp(names), "scripts": len(names), "traced_by_location": len(tr.code), **out}
     with open(COUNTED, "w", newline="\n", encoding="ascii") as f:
         w = csv.writer(f, lineterminator="\n")

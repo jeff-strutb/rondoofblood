@@ -142,7 +142,7 @@ typedef struct {
     bool carry;
 } RandomByte;
 
-RandomByte ex_rnd(void);
+RandomByte ex_rnd(uint8_t flags);
 
 /* The card's version, as ex_getver gives it. */
 typedef struct {

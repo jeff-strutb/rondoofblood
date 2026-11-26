@@ -80,7 +80,7 @@ SoundEnd ScoreForKind(uint8_t slot, uint8_t y)
         return r;
     }
     jsr_push(0xA2C4);
-    r = GiveExtraLife(slot, y);
+    r = give_extra_life_exit_shim(GiveExtraLife(slot, y));
     jsr_pop();
     r.end = ended_then(e, r.end);
     return r;

@@ -103,7 +103,7 @@ void abi_jump_user_irq1(void)
 }
 
 /* JSR into original code with no C (the unwritten reads of the disc): the registers are the ones given, and those it leaves come back. */
-static void call_original_shim(uint16_t ret, uint16_t target, uint8_t *a, uint8_t *x, uint8_t *y)
+static void call_original_shim(uint16_t ret, uint16_t target, uint8_t *a, uint8_t *x, uint8_t *y, uint8_t *p)
 {
     cpu.a = *a;
     cpu.x = *x;
@@ -113,6 +113,7 @@ static void call_original_shim(uint16_t ret, uint16_t target, uint8_t *a, uint8_
     *a = cpu.a;
     *x = cpu.x;
     *y = cpu.y;
+    *p = cpu.p;
 }
 
 
@@ -339,16 +340,17 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
                     uint8_t ra = 1;
                     uint8_t rx = amount;
                     uint8_t ry = y;
+                    uint8_t rp = 0;
 
-                    call_original_shim(0xE7AE, 0xE905, &ra, &rx, &ry);
+                    call_original_shim(0xE7AE, 0xE905, &ra, &rx, &ry, &rp);
                     t.a = ra;
                     t.x = rx;
                     t.y = ry;
                     t.a_set = t.x_set = t.y_set = true;
-                    t.n = (cpu.p & P_N) != 0;
-                    t.z = (cpu.p & P_Z) != 0;
-                    t.c = (cpu.p & P_C) != 0;
-                    t.v = (cpu.p & P_V) != 0;
+                    t.n = (rp & P_N) != 0;
+                    t.z = (rp & P_Z) != 0;
+                    t.c = (rp & P_C) != 0;
+                    t.v = (rp & P_V) != 0;
                     t.c_set = t.v_set = true;
                 }
                 held = TSB8(CCDU->irq_control, IRQ_PLAY_BITS);
@@ -548,7 +550,11 @@ void card_irq1(uint8_t a, uint8_t x, uint8_t y)
             (void)INC8(CRAM->rnd_seed);
             a = RD8(CZP->reset_mark);
             if (a == BOOT_RESET_MARK_ONE)
-                call_original_shim(0xE8B1, 0xE6CF, &a, &x, &y);
+                {
+                    uint8_t rp = 0;
+
+                    call_original_shim(0xE8B1, 0xE6CF, &a, &x, &y, &rp);
+                }
             jsr_push(0xE8B4);
             step = ex_joysns();
             jsr_pop();

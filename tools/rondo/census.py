@@ -549,11 +549,14 @@ class Census:
         reads) it decodes cleanly to a proper end and only its score is low. The jump reading the table is the
         evidence there; the score is not, and one low entry must not end the table (PLAN section 1). Strict only:
         its tables are anchored on the jumps it followed; relaxed reads far looser tables, and with this it took
-        data as code through them (claims on bytes sent to a video or sound port: 12,423 to 244,241)."""
+        data as code through them (claims on bytes sent to a video or sound port: 12,423 to 244,241). The score
+        must still be at least relaxed's threshold: entries that score as data (below 0) brought in 1,568,976
+        bytes over the folds that relaxed does not claim, 6 of them ever run."""
         instrs, ok, score = self.extent(d)
         if ok:
             return True
-        if table and self.strict and instrs and self.why.get(d) == "reads as data (score)":
+        if table and self.strict and instrs and self.why.get(d) == "reads as data (score)" \
+                and score >= self.TAU["relaxed"]:
             self.tabled.add(d)
             return True
         return False

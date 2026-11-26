@@ -432,6 +432,7 @@ static struct {
     uint8_t i_orig;         /* the I flag the C had at the hand-over */
 } hold;
 static uint64_t held_ints, held_not;
+static uint64_t retpoint_ints;   /* interrupts the record took at a resume place after original code that the core reached early: delivered by the C */
 static unsigned hold_acc;     /* data accesses the core made under the hold */
 void hold_prepare(Span *s, const Ev *closing);
 int hold_arm(uint64_t end_idx, int tag);
@@ -1705,6 +1706,8 @@ static void original_at(uint16_t ret, uint16_t addr)
     {
         uint8_t s0 = cpu.s;
         uint16_t back = ret;
+        int natural0;
+        int took;
 
         pace_site = "call";
         pace_to(ec.clock);
@@ -1722,7 +1725,9 @@ static void original_at(uint16_t ret, uint16_t addr)
         prev_op = 0x20;
         last_pc = rondo_tags[span->tag].run;
         scan = call + 1;
+        natural0 = top ? top->natural : 0;
         cpu_run_until(back, (uint8_t)(s0 + 2));
+        took = top ? top->natural - natural0 : 0;     /* the interrupts the core took at the return place itself */
         {
             uint8_t a, x, y, s, p;
             uint16_t pc;
@@ -1747,6 +1752,31 @@ static void original_at(uint16_t ret, uint16_t addr)
                 top->natural--;
                 if (r2 == NO_RETURN)
                     break;
+                k = r2;
+            }
+        }
+        /* The record's interrupt at the return place itself (the callee's RTS has run, its RET follows the handler) that
+         * the core did not take there: the core arrives early when the code ran before it was C, whose instructions take
+         * no time (a draft's hand-over to the original a few instructions before the RTS), so the C resumes before the
+         * interrupt is due. The original took it before the instruction at the return address: it is delivered here, at
+         * the record's clock, with S as it was there, as call_return_point delivers one at a C's own return. */
+        if (top && natural0 == 0 && took == 0) {
+            for (uint64_t k = call + 1; k < retidx; k++) {
+                Ev *x = evp(k);
+                uint64_t r2;
+
+                if (!x || x->type != EV_INT)
+                    continue;
+                r2 = section_end(span, k);
+                if (r2 == NO_RETURN)
+                    break;
+                if (x->pc == back && x->s == (uint8_t)(s0 + 2)) {
+                    cpu.s = (uint8_t)(s0 + 2);
+                    retpoint_ints++;
+                    hy_int_pass(span, k, r2);
+                    cpu.s = s0;
+                    break;
+                }
                 k = r2;
             }
         }
@@ -3740,6 +3770,8 @@ void check_finish(void)
         if (held_ints || held_not)
             fprintf(report, "left hand-overs: %llu with the interrupt that followed held and dispatched from the record, %llu with none\n",
                     (unsigned long long)held_ints, (unsigned long long)held_not);
+        fprintf(report, "interrupts at the return from original code delivered from the record (the core came back before they were due): %llu\n",
+                (unsigned long long)retpoint_ints);
         if (horizon_calls)
             fprintf(report, "horizon hand-overs %llu: calls whose return was not within %u events, the original ran on\n",
                     (unsigned long long)horizon_calls, (unsigned)HORIZON);

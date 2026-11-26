@@ -16,7 +16,9 @@ enum {
     STATE_STOP_ASKED = 2, PSG_SELECT = 0x0800, PSG_CONTROL = 0x0804, PSG_WAVE = 0x0806, PSG_NOISE = 0x0807, PSG_FREQ_LOW = 0x0802,
     PSG_FREQ_HIGH = 0x0803, PSG_BALANCE = 0x0805, CHANNEL_FLAGS = 0x25FF, NOISE_FLAGS = 0x2601, FREQ_LOW = 0x25E7, FREQ_HIGH = 0x25ED,
     BALANCE = 0x25F9, VOLUME = 0x25F3, PLAYER_MODE_AT = 0x22DF, CHANNEL_USED = 0x247C, CHANNEL_BUSY = 0x2474, WAVE_TABLE_USER = 0x22D2,
-    WAVE_TABLE_BUILT_IN = 0xD9A6, WAVE_BUILT_IN_COUNT = 0x2D, WAVE_BYTES = 0x20, ZP_E8 = 0x20E8, ZP_E9 = 0x20E9
+    WAVE_TABLE_BUILT_IN = 0xD9A6, WAVE_BUILT_IN_COUNT = 0x2D, WAVE_BYTES = 0x20, ZP_E8 = 0x20E8, ZP_E9 = 0x20E9, ZP_EA = 0x20EA, ZP_EB = 0x20EB,
+    CHANNEL_NOW = 0x22E0, PITCH_STEP = 0x255D, PITCH_FRACTION = 0x2563, PITCH_HIGH = 0x24AF, LEFT_STEP = 0x2569, LEFT_FRACTION = 0x256F,
+    RIGHT_STEP = 0x2575, RIGHT_FRACTION = 0x257B
 };
 
 /*
@@ -290,4 +292,180 @@ CardExit psg_write_channels(void)
 void abi_psg_write_channels(void)
 {
     card_exit_apply(psg_write_channels());
+}
+
+/* A, as it stands, rolled left twice and masked to the bit that came round: the fraction's carry into the whole part. */
+static void roll_carry(Trk *t)
+{
+    t_rol(t);
+    t_rol(t);
+    t_a(t, (uint8_t)(t->a & 1));
+}
+
+/*
+ * @card 02:D257 psg_slide_channel
+ * WHAT IT DOES: Moves the current channel's pitch, left volume and right volume one step towards where its slides are taking them.
+ * HOW: Each slide has a signed step ($255D, $2569, $2575 plus the channel) and a fraction ($2563, $256F, $257B): the step added to
+ * the fraction in seven bits, the carry out of bit 6 into bit 7 added to (or taken from) the whole part ($24AF, the nibbles of $25F9),
+ * clipped at its limit, where the slide ends by clearing its step.
+ * WAITS: no.
+ * Entry: CardPlayChannel ($22E0) the channel. Exit: A, X and the flags as the last step left them.
+ */
+CardExit psg_slide_channel(void)
+{
+    Trk t = { 0 };
+    uint8_t x = rd8(CHANNEL_NOW);
+    uint8_t value;
+
+    t.x = x;
+    t.x_set = true;
+    t_nz(&t, x);
+    value = rd8((uint16_t)(PITCH_STEP + x));
+    t_a(&t, value);
+    if (value != 0) {
+        bool done = false;
+
+        if ((value & 0x80) == 0) {
+            t_clc(&t);
+            t_adc(&t, rd8((uint16_t)(PITCH_FRACTION + x)));
+            wr8(ZP_EA, t.a);
+            roll_carry(&t);
+            t_clc(&t);
+            t_adc(&t, rd8((uint16_t)(PITCH_HIGH + x)));
+            if (t.z || t.n)
+                done = true;
+            if (!done) {
+                t.a = 0;
+                t.a_set = true;
+                wr8((uint16_t)(PITCH_STEP + x), 0);
+            }
+        } else {
+            t_a(&t, (uint8_t)(value ^ 0xFF));
+            t_inc(&t);
+            t_clc(&t);
+            t_adc(&t, rd8((uint16_t)(PITCH_FRACTION + x)));
+            wr8(ZP_EA, t.a);
+            roll_carry(&t);
+            wr8(ZP_EB, t.a);
+            value = rd8((uint16_t)(PITCH_HIGH + x));
+            t_a(&t, value);
+            t_sec(&t);
+            t_sbc(&t, rd8(ZP_EB));
+            if (!t.z) {
+                t_cmp(&t, t.a, 0xE1);
+                if (t.a < 0xE1) {
+                    t_a(&t, 0xE1);
+                    wr8((uint16_t)(PITCH_STEP + x), 0);
+                }
+            }
+        }
+        wr8((uint16_t)(PITCH_HIGH + x), t.a);
+        value = rd8(ZP_EA);
+        t_a(&t, value);
+        t_a(&t, (uint8_t)(value & 0x7F));
+        wr8((uint16_t)(PITCH_FRACTION + x), t.a);
+    }
+    value = rd8((uint16_t)(LEFT_STEP + x));
+    t_a(&t, value);
+    if (value != 0) {
+        if ((value & 0x80) == 0) {
+            t_clc(&t);
+            t_adc(&t, rd8((uint16_t)(LEFT_FRACTION + x)));
+            wr8(ZP_EA, t.a);
+            roll_carry(&t);
+            wr8(ZP_EB, t.a);
+            value = rd8((uint16_t)(BALANCE + x));
+            t_a(&t, (uint8_t)(value & 0x0F));
+            t_clc(&t);
+            t_adc(&t, rd8(ZP_EB));
+            t_cmp(&t, t.a, 0x10);
+            if (t.a >= 0x10) {
+                t_a(&t, 0x0F);
+                wr8((uint16_t)(LEFT_STEP + x), 0);
+            }
+        } else {
+            t_a(&t, (uint8_t)(value ^ 0xFF));
+            t_inc(&t);
+            t_clc(&t);
+            t_adc(&t, rd8((uint16_t)(LEFT_FRACTION + x)));
+            wr8(ZP_EA, t.a);
+            roll_carry(&t);
+            wr8(ZP_EB, t.a);
+            value = rd8((uint16_t)(BALANCE + x));
+            t_a(&t, (uint8_t)(value & 0x0F));
+            t_sec(&t);
+            t_sbc(&t, rd8(ZP_EB));
+            if (t.z) {
+                t.a = 0;
+                t.a_set = true;
+                wr8((uint16_t)(LEFT_STEP + x), 0);
+            }
+        }
+        wr8(ZP_EB, t.a);
+        value = rd8((uint16_t)(BALANCE + x));
+        t_a(&t, (uint8_t)(value & 0xF0));
+        t_a(&t, (uint8_t)(t.a | rd8(ZP_EB)));
+        wr8((uint16_t)(BALANCE + x), t.a);
+        value = rd8(ZP_EA);
+        t_a(&t, value);
+        t_a(&t, (uint8_t)(value & 0x7F));
+        wr8((uint16_t)(LEFT_FRACTION + x), t.a);
+    }
+    value = rd8((uint16_t)(RIGHT_STEP + x));
+    t_a(&t, value);
+    if (value == 0)
+        return t_exit(&t);
+    if ((value & 0x80) == 0) {
+        t_clc(&t);
+        t_adc(&t, rd8((uint16_t)(RIGHT_FRACTION + x)));
+        wr8(ZP_EA, t.a);
+        t_a(&t, (uint8_t)(t.a & 0x80));
+        t_lsr(&t);
+        t_lsr(&t);
+        t_lsr(&t);
+        wr8(ZP_EB, t.a);
+        value = rd8((uint16_t)(BALANCE + x));
+        t_a(&t, (uint8_t)(value & 0xF0));
+        t_clc(&t);
+        t_adc(&t, rd8(ZP_EB));
+        if (t.c) {
+            t_a(&t, 0xF0);
+            wr8((uint16_t)(RIGHT_STEP + x), 0);
+        }
+    } else {
+        t_a(&t, (uint8_t)(value ^ 0xFF));
+        t_inc(&t);
+        t_clc(&t);
+        t_adc(&t, rd8((uint16_t)(RIGHT_FRACTION + x)));
+        wr8(ZP_EA, t.a);
+        t_a(&t, (uint8_t)(t.a & 0x80));
+        t_lsr(&t);
+        t_lsr(&t);
+        t_lsr(&t);
+        wr8(ZP_EB, t.a);
+        value = rd8((uint16_t)(BALANCE + x));
+        t_a(&t, (uint8_t)(value & 0xF0));
+        t_sec(&t);
+        t_sbc(&t, rd8(ZP_EB));
+        if (t.z) {
+            t.a = 0;
+            t.a_set = true;
+            wr8((uint16_t)(RIGHT_STEP + x), 0);
+        }
+    }
+    wr8(ZP_EB, t.a);
+    value = rd8((uint16_t)(BALANCE + x));
+    t_a(&t, (uint8_t)(value & 0x0F));
+    t_a(&t, (uint8_t)(t.a | rd8(ZP_EB)));
+    wr8((uint16_t)(BALANCE + x), t.a);
+    value = rd8(ZP_EA);
+    t_a(&t, value);
+    t_a(&t, (uint8_t)(value & 0x7F));
+    wr8((uint16_t)(RIGHT_FRACTION + x), t.a);
+    return t_exit(&t);
+}
+
+void abi_psg_slide_channel(void)
+{
+    card_exit_apply(psg_slide_channel());
 }

@@ -107,4 +107,62 @@ static inline void t_mask(Trk *t, uint8_t mask, uint8_t old)
 }
 
 
+/* The instructions of the tracked A. */
+static inline void t_adc(Trk *t, uint8_t operand)
+{
+    Sum sum = add8(t->a, operand, t->c);
+
+    t_a(t, sum.value);
+    t->c = sum.carry;
+    t->v = sum.overflow;
+    t->c_set = t->v_set = true;
+}
+
+static inline void t_sbc(Trk *t, uint8_t operand)
+{
+    Sum sum = sub8(t->a, operand, t->c);
+
+    t_a(t, sum.value);
+    t->c = sum.carry;
+    t->v = sum.overflow;
+    t->c_set = t->v_set = true;
+}
+
+static inline void t_clc(Trk *t)
+{
+    t->c = false;
+    t->c_set = true;
+}
+
+static inline void t_sec(Trk *t)
+{
+    t->c = true;
+    t->c_set = true;
+}
+
+static inline void t_rol(Trk *t)
+{
+    bool out = (t->a & 0x80) != 0;
+
+    t_a(t, (uint8_t)((t->a << 1) | (t->c ? 1 : 0)));
+    t->c = out;
+    t->c_set = true;
+}
+
+static inline void t_lsr(Trk *t)
+{
+    bool out = (t->a & 1) != 0;
+
+    t_a(t, (uint8_t)(t->a >> 1));
+    t->c = out;
+    t->c_set = true;
+}
+
+/* INC A and DEC A: N and Z only. */
+static inline void t_inc(Trk *t)
+{
+    t->a = (uint8_t)(t->a + 1);
+    t_nz(t, t->a);
+}
+
 #endif

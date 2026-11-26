@@ -442,4 +442,6 @@ CardExit psg_tempo_tick(void);
 CardExit psg_wave_offset(uint8_t number);
 CardExit psg_write_channels(void);
 
+CardExit psg_slide_channel(void);
+
 #endif

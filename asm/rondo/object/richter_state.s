@@ -975,7 +975,7 @@ RichterStopX:
 ; HOW: PlayerByte3BD5 is the kind. zField93 is what goes in the slot. SoundCommand 3 for the whip.
 ; WAITS: no.
 ; Entry: nothing. Exit: Y and C as RichterSetAnimation. The whip, as SoundCommand with command
-; 3 and X 3; an item, A the item, X its slot, N, Z and V from testing the last slot looked at.
+; 3 and X 3; an item, A the item, X its slot, N and Z clear (LDX), V from testing the last slot looked at.
 RichterAttack:
     jsr RichterPadOverridesOff
     stz a:PlayerByte3BE1
@@ -985,33 +985,25 @@ RichterAttack:
     jsr RichterStopMoving
     ldx a:PlayerByte3BD5
     lda a:LandAnimations,x
-
-; @routine 01B9:4E4 RichterAttackAnimation
-; @run 6D:A4E4
-; WHAT IT DOES: The attack from its animation on: step 1, then the whip with its sound or the kind's object in a free slot.
-; HOW: RichterSetAnimation with A, then PlayerByte3BD5 picks the whip (RichterClearWhip, sound 3) or the item in slot 5, 8 or $0B.
-; WAITS: no.
-; Entry: A the animation. Exit: as RichterAttack.
-RichterAttackAnimation:
     jsr RichterSetAnimation
     lda #$01
     sta a:OBJ_2800
     lda a:PlayerByte3BD5
-    bne RichterAttackAnimation_at0
+    bne RichterAttack_at0
     jsr RichterClearWhip
     lda #$01
     sta a:OBJ_2750+3
     lda #$03
     jmp VecSoundCommand
-RichterAttackAnimation_at0:
+RichterAttack_at0:
     lda z:zField93
     tst #$FF,a:OBJ_2750+5
-    bne RichterAttackAnimation_at1
+    bne RichterAttack_at1
     ldx #$05
     jsr VecClearObject
     sta a:OBJ_2750,x
     rts
-RichterAttackAnimation_at1:
+RichterAttack_at1:
     tst #$FF,a:OBJ_2750+8
     bne FallUntilFloor
     ldx #$08
@@ -1691,7 +1683,7 @@ RichterCrouchAttack:
     jsr RichterFaceByPad
     jsr RichterStopMoving
     lda #$06
-    jmp RichterAttackAnimation
+    jmp $A4E4
 
 ; @routine 01B9:8C7 RichterCrouchStep1
 ; @run 6D:A8C7

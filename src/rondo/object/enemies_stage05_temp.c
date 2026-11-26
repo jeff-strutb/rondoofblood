@@ -2122,7 +2122,7 @@ Ended ContactWithPlayerBox14By20(uint8_t slot)
 {
     WR8(ZP->temp08, 0x14);
     WR8(ZP->temp09, 0x20);
-    return ended_then(ended_load(0x20), ContactWithPlayer(slot).end);
+    return ended_then(ended_load(0x20), contact_exit_shim(ContactWithPlayer(slot)));
 }
 
 void abi_ContactWithPlayerBox14By20(void)

@@ -33,19 +33,19 @@ Ended BossFrameRoutines(uint8_t slot, uint8_t y_entry)
 
     e = ended_nz(INC8(OBJ->f3568[slot]));
     jsr_push(0xB477);
-    e = then(e, SwingByCosineFromState0B(slot));
+    e = then(e, l8_swing_by_cosine_exit_shim(SwingByCosineFromState0B(slot)));
     jsr_pop();
     jsr_push(0xB47A);
-    e = then(e, EnterState0BWhenFlagged(slot));
+    e = then(e, l8_enter_state0b_exit_shim(EnterState0BWhenFlagged(slot)));
     jsr_pop();
     jsr_push(0xB47D);
-    e = then(e, StartRandomScriptWhenFlagged(slot));
+    e = then(e, l8_random_script_exit_shim(StartRandomScriptWhenFlagged(slot)));
     jsr_pop();
     jsr_push(0xB480);
-    e = then(e, PushPlayerWhenFlagged(slot));
+    e = then(e, l8_push_player_exit_shim(PushPlayerWhenFlagged(slot)));
     jsr_pop();
     jsr_push(0xB483);
-    sound = HitSoundThenSpawnPieces(slot, e.y_set ? e.y : y_entry);
+    sound = l8_hit_sound_spawn_exit_shim(HitSoundThenSpawnPieces(slot, e.y_set ? e.y : y_entry));
     jsr_pop();
     abi_sound_end(sound_end_after(e, sound));
     jsr_push(0xB486);
@@ -174,7 +174,7 @@ Ended SpawnRowsWhenScrollAtZero(uint8_t slot)
     e = SetBossFixedFields();
     jsr_pop();
     jsr_push(0xB0A5);
-    e = then(e, StepVerticalScrollTable(slot));
+    e = then(e, l8_vertical_scroll_table_exit_shim(StepVerticalScrollTable(slot)));
     jsr_pop();
     WR8(SCROLLE->step_x_hi[1], 0);
     high = RD8(SCROLL->x_hi[1]);

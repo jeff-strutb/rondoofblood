@@ -289,7 +289,7 @@ Ended HoldScrollStepThenNextState(uint8_t slot)
     e = SetBossFixedFields();
     jsr_pop();
     jsr_push(0xAFC7);
-    e = then(e, StepVerticalScrollTable(slot));
+    e = then(e, l8_vertical_scroll_table_exit_shim(StepVerticalScrollTable(slot)));
     jsr_pop();
     WR8(SCROLLE->step_x_hi[1], 0);
     high = RD8(SCROLL->x_hi[1]);
@@ -424,7 +424,7 @@ static FadeEnd step_scroll_then_move_or_fade_out(uint8_t slot)
     r.faded = false;
     r.nibble = 0;
     jsr_push(0xAFE1);
-    e = StepVerticalScrollTable(slot);
+    e = l8_vertical_scroll_table_exit_shim(StepVerticalScrollTable(slot));
     jsr_pop();
     value = RD8(OBJ->state[0]);
     high = RD8(OBJ->f2800[0]);

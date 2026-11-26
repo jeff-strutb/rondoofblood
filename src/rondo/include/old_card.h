@@ -129,4 +129,50 @@ void abi_PlayerWalk(void);
 PlayerArm PlayerJump(uint8_t object);
 void abi_PlayerJump(void);
 
+/* How a routine of object 1 (the program's second character) ended. The values behind the registers, applied in the
+ * order the original made them: the last animation step (its FrameStep and the Y it left, Y to A after a TAY), the
+ * move's V, the random byte's C and V; then by arm: LOADED, A first and N and Z from second; COMPARED, A first
+ * compared with second; NZ_ONLY, N and Z from second (a decrement of memory), A kept. Registers not named are kept. */
+enum { OBJ1_ANIMATED, OBJ1_LOADED, OBJ1_COMPARED, OBJ1_NZ_ONLY, OBJ1_ORIGINAL };
+
+typedef struct {
+    int arm;
+    uint8_t first, second;
+    bool stepped;
+    FrameStep step;
+    uint8_t step_y;
+    bool through_tay;
+    bool moved;
+    AxisMove move;
+    bool randomized;
+    RandomResult random;
+} Obj1Arm;
+
+PlayerArm PlayerHurtFromAttack(uint8_t object);
+void abi_PlayerHurtFromAttack(void);
+PlayerArm PlayerAttack(uint8_t object);
+void abi_PlayerAttack(void);
+PlayerArm PlayerKnockedBack(uint8_t object);
+void abi_PlayerKnockedBack(void);
+void InitObject1(void);
+void abi_InitObject1(void);
+Obj1Arm RunObject1(void);
+void abi_RunObject1(void);
+Obj1Arm Object1WaitForScroll(uint8_t object);
+void abi_Object1WaitForScroll(void);
+Obj1Arm Object1WalkIn(uint8_t object);
+void abi_Object1WalkIn(void);
+Obj1Arm Object1FacePlayer(uint8_t object);
+void abi_Object1FacePlayer(void);
+Obj1Arm Object1Wait(uint8_t object);
+void abi_Object1Wait(void);
+Obj1Arm Object1Jump(uint8_t object);
+void abi_Object1Jump(void);
+Obj1Arm Object1Hold(uint8_t object);
+void abi_Object1Hold(void);
+Obj1Arm Object1StepLeft(uint8_t object);
+void abi_Object1StepLeft(void);
+Obj1Arm Object1StepRight(uint8_t object);
+void abi_Object1StepRight(void);
+
 #endif

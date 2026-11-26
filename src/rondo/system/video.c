@@ -303,10 +303,17 @@ void abi_WriteScreenTiming(void)
     abi_nz(cpu.a);
 }
 
-/* A block move saves and puts back Y, A and X on the stack: the A it saves is the last one loaded. */
-static void tai_with_a_shim(uint8_t a, uint16_t source, uint16_t destination, uint16_t length)
+/*
+ * A block move saves and puts back Y, A and X on the stack: the A it saves is the last one loaded. X and Y are the
+ * caller's: given (set) by a caller whose registers are traced, else the live ones, as before.
+ */
+static void tai_with_a_shim(uint8_t a, bool set, uint8_t x, uint8_t y, uint16_t source, uint16_t destination, uint16_t length)
 {
     cpu.a = a;
+    if (set) {
+        cpu.x = x;
+        cpu.y = y;
+    }
     tai(source, destination, length);
 }
 
@@ -321,7 +328,7 @@ static void tai_with_a_shim(uint8_t a, uint16_t source, uint16_t destination, ui
  * WAITS: yes, through WaitVblankDisplayOff, which spins until the frame interrupt sees vblank; the stack there holds this routine's return address and the JSR frame.
  * Entry: interrupts on. Exit: A 2, X 0, Y $FF, N 1, Z 0.
  */
-void ClearScreenState(void)
+static void clear_screen_state(bool set, uint8_t kept_x, uint8_t kept_y)
 {
     jsr_push(0x5BA3);
     WaitVblankDisplayOff();
@@ -329,7 +336,7 @@ void ClearScreenState(void)
     wr8(zDisplayDelay, 4);
     wr8(zRasterEffect, 0);
     wr8(zVideoMode, 0);
-    tai_with_a_shim(4, KernelZeros, ScrollXFrac, 0x00EE);
+    tai_with_a_shim(4, set, kept_x, kept_y, KernelZeros, ScrollXFrac, 0x00EE);
     jsr_push(0x5BB5);
     ClearVdcControlHigh();
     jsr_pop();
@@ -345,6 +352,17 @@ void ClearScreenState(void)
         st1(VRAM_BLANK_TILE_LO);
         st2(VRAM_BLANK_TILE_HI);
     }
+}
+
+/* The routine, with the X and Y it was entered with unknown (the live ones) or given. */
+void ClearScreenState(void)
+{
+    clear_screen_state(false, 0, 0);
+}
+
+void ClearScreenStateAt(uint8_t kept_x, uint8_t kept_y)
+{
+    clear_screen_state(true, kept_x, kept_y);
 }
 
 void abi_ClearScreenState(void)
@@ -366,7 +384,7 @@ void abi_ClearScreenState(void)
  * WAITS: yes, through WaitVblankDisplayOff, which spins until the frame interrupt sees vblank; the stack there holds this routine's return address and the JSR frame.
  * Entry: interrupts on. Exit: as ClearScreenState.
  */
-void ResetGameState(void)
+static void reset_game_state(bool set, uint8_t kept_x, uint8_t kept_y)
 {
     jsr_push(0x5B78);
     WaitVblankDisplayOff();
@@ -379,9 +397,19 @@ void ResetGameState(void)
     wr8(VCE_ADDR_HI, 1);
     wr8(VCE_DATA_LO, 0);
     wr8(VCE_DATA_HI, 0);
-    tai_with_a_shim(1, KernelZeros, LevelStreamLo, 0x0003);
-    tai_with_a_shim(1, KernelZeros, GameRamStart, 0x164D);
-    ClearScreenState();
+    tai_with_a_shim(1, set, kept_x, kept_y, KernelZeros, LevelStreamLo, 0x0003);
+    tai_with_a_shim(1, set, kept_x, kept_y, KernelZeros, GameRamStart, 0x164D);
+    clear_screen_state(set, kept_x, kept_y);
+}
+
+void ResetGameState(void)
+{
+    reset_game_state(false, 0, 0);
+}
+
+void ResetGameStateAt(uint8_t kept_x, uint8_t kept_y)
+{
+    reset_game_state(true, kept_x, kept_y);
 }
 
 /* ResetGameState's exit, for its wrapper and for a caller's that replays it. */

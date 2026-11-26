@@ -183,13 +183,17 @@ static void mark_stage_shim(StageMark mark)
 /* The title's three scenes and the fixed ADPCM, as two paths load them. */
 typedef struct { DiscLog a; DiscLog b; DiscLog c; DiscLog fixed; } ScreensLoad;
 
-static ScreensLoad load_screens(uint16_t first_return)
+/* traced: the X and Y the caller has at the call are known (ModeAttract: what the overlay left); else the live ones. */
+static ScreensLoad load_screens(uint16_t first_return, bool traced, uint8_t kept_x, uint8_t kept_y)
 {
     ScreensLoad load;
 
     wr8(zMusicWanted, 0);
     jsr_push(first_return);
-    ResetGameState();
+    if (traced)
+        ResetGameStateAt(kept_x, kept_y);
+    else
+        ResetGameState();
     jsr_pop();
     jsr_push((uint16_t)(first_return + 5));
     load.a = LoadSceneScript(SCENE_SCREENS_A);
@@ -410,7 +414,7 @@ AttractRun ModeAttract(void)
     if (rd8(zAttractStep) == 0) {
         run.path = ATTRACT_SCREENS;
         wr8(zAttractStep, (uint8_t)(rd8(zAttractStep) + 1));
-        run.screens = load_screens(0x519D);
+        run.screens = load_screens(0x519D, true, run.frame.after.x, run.frame.after.y);
         run.mode = NextGameMode();
         return run;
     }
@@ -597,7 +601,7 @@ ScreensLoad ModeStageLoadScreens(void)
     ScreensLoad load;
 
     wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREENS));
-    load = load_screens(0x5200);
+    load = load_screens(0x5200, false, 0, 0);
     SetGameMode(MODE_ENDING);
     return load;
 }

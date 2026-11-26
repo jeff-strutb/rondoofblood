@@ -3,6 +3,7 @@
 #include "syscard.h"
 
 /* The wrappers the vectors go through: each is defined with its routine. */
+void abi_ex_joysns(void);
 void abi_cd_base(void);
 void abi_cd_read(void);
 void abi_cd_play(void);
@@ -453,4 +454,21 @@ MemOpen vec_ex_memopen(void)
 void abi_vec_ex_memopen(void)
 {
     abi_ex_memopen();
+}
+
+/*
+ * @card 00:E063 vec_ex_joysns
+ * WHAT IT DOES: The jump table's entry for ex_joysns: goes to it.
+ * HOW: A JMP to ex_joysns, no frame of its own: the caller's JSR frame is the one ex_joysns returns through.
+ * WAITS: no.
+ * Entry, exit: as ex_joysns.
+ */
+CardExit vec_ex_joysns(void)
+{
+    return ex_joysns();
+}
+
+void abi_vec_ex_joysns(void)
+{
+    abi_ex_joysns();
 }

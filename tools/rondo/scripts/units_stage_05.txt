@@ -14,7 +14,6 @@ dump r1
 random 502 3000 8
 shot r2
 dump r2
-wait 30
 call 8952 M=208E:23
 wait 2
 poke 6B:1D8C 00

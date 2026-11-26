@@ -692,15 +692,429 @@ SelectBlockTablesP_at0:
     sta z:zTemp05
     rts
 
+; @routine 00C5:142 VramListFromTableA
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8360,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8360, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableA:
+    asl a
+    tay
+    lda a:$8360,y
+    sta z:$14
+    lda a:$8361,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0111:142 VramListFromTableB
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $82AE,
+; gives its pointer.
+; HOW: A doubled indexes the table at $82AE, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableB:
+    asl a
+    tay
+    lda a:$82AE,y
+    sta z:$14
+    lda a:$82AF,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0251:142 VramListFromTableC
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $901F,
+; gives its pointer.
+; HOW: A doubled indexes the table at $901F, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableC:
+    asl a
+    tay
+    lda a:$901F,y
+    sta z:$14
+    lda a:$9020,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0511:142 VramListFromTableD
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $9349,
+; gives its pointer.
+; HOW: A doubled indexes the table at $9349, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableD:
+    asl a
+    tay
+    lda a:$9349,y
+    sta z:$14
+    lda a:$934A,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 05C1:142 VramListFromTableE
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E4B,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8E4B, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableE:
+    asl a
+    tay
+    lda a:$8E4B,y
+    sta z:$14
+    lda a:$8E4C,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0721:142 VramListFromTableF
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E95,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8E95, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableF:
+    asl a
+    tay
+    lda a:$8E95,y
+    sta z:$14
+    lda a:$8E96,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 07D1:142 VramListFromTableG
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $9236,
+; gives its pointer.
+; HOW: A doubled indexes the table at $9236, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableG:
+    asl a
+    tay
+    lda a:$9236,y
+    sta z:$14
+    lda a:$9237,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0881:142 VramListFromTableH
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $901E,
+; gives its pointer.
+; HOW: A doubled indexes the table at $901E, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableH:
+    asl a
+    tay
+    lda a:$901E,y
+    sta z:$14
+    lda a:$901F,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0931:142 VramListFromTableI
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E90,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8E90, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableI:
+    asl a
+    tay
+    lda a:$8E90,y
+    sta z:$14
+    lda a:$8E91,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 09E1:142 VramListFromTableJ
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $9020,
+; gives its pointer.
+; HOW: A doubled indexes the table at $9020, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableJ:
+    asl a
+    tay
+    lda a:$9020,y
+    sta z:$14
+    lda a:$9021,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0A91:142 VramListFromTableK
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E5D,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8E5D, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableK:
+    asl a
+    tay
+    lda a:$8E5D,y
+    sta z:$14
+    lda a:$8E5E,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0B41:142 VramListFromTableL
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8DE0,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8DE0, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableL:
+    asl a
+    tay
+    lda a:$8DE0,y
+    sta z:$14
+    lda a:$8DE1,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0BF1:142 VramListFromTableM
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8CA7,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8CA7, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableM:
+    asl a
+    tay
+    lda a:$8CA7,y
+    sta z:$14
+    lda a:$8CA8,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0D51:142 VramListFromTableN
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8D9C,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8D9C, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableN:
+    asl a
+    tay
+    lda a:$8D9C,y
+    sta z:$14
+    lda a:$8D9D,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0E01:142 VramListFromTableO
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8D36,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8D36, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableO:
+    asl a
+    tay
+    lda a:$8D36,y
+    sta z:$14
+    lda a:$8D37,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0EB1:142 VramListFromTableP
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8FBB,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8FBB, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableP:
+    asl a
+    tay
+    lda a:$8FBB,y
+    sta z:$14
+    lda a:$8FBC,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 0F61:142 VramListFromTableQ
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8D2E,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8D2E, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableQ:
+    asl a
+    tay
+    lda a:$8D2E,y
+    sta z:$14
+    lda a:$8D2F,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 1011:142 VramListFromTableR
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8F58,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8F58, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableR:
+    asl a
+    tay
+    lda a:$8F58,y
+    sta z:$14
+    lda a:$8F59,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 10C1:142 VramListFromTableS
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E56,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8E56, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableS:
+    asl a
+    tay
+    lda a:$8E56,y
+    sta z:$14
+    lda a:$8E57,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 1171:142 VramListFromTableT
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $9089,
+; gives its pointer.
+; HOW: A doubled indexes the table at $9089, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableT:
+    asl a
+    tay
+    lda a:$9089,y
+    sta z:$14
+    lda a:$908A,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 1611:142 VramListFromTableU
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $917E,
+; gives its pointer.
+; HOW: A doubled indexes the table at $917E, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableU:
+    asl a
+    tay
+    lda a:$917E,y
+    sta z:$14
+    lda a:$917F,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 16C1:142 VramListFromTableV
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8FEB,
+; gives its pointer.
+; HOW: A doubled indexes the table at $8FEB, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableV:
+    asl a
+    tay
+    lda a:$8FEB,y
+    sta z:$14
+    lda a:$8FEC,y
+    sta z:$15
+    cly
+    bra VramListRun
+
+; @routine 18D1:142 VramListFromTableW
+; @run 6C:8142
+; WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $92F6,
+; gives its pointer.
+; HOW: A doubled indexes the table at $92F6, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+; WAITS: no.
+; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableW:
+    asl a
+    tay
+    lda a:$92F6,y
+    sta z:$14
+    lda a:$92F7,y
+    sta z:$15
+    cly
+    bra VramListRun
+
 ; @routine 00C5:151 VramListFromIndex
 ; @run 6C:8151
 ; WHAT IT DOES: Runs the VRAM list whose number is in A: the overlay's table of lists gives its pointer.
 ; HOW: An entry into the list loop (vram_list): A doubled indexes the table at $9802, the pointer goes
-; to zp $14, Y 0, and the loop runs on at VramListRun. A number of $80 or more branches to $8142
-; (untraced), which reads a table at $8360 the same way.
+; to zp $14, Y 0, and the loop runs on at VramListRun. A number of $80 or more branches to $8142, which
+; reads the overlay's own second table the same way (the original's code, run as it is).
 ; WAITS: no.
-; Entry: A the list number. Exit: as VramListRun.
-; Untraced: the branch to $8142 (the bytes of $8142 to $8150 are not in this routine).
+; Entry: A the list number, N the branch's (a caller loads A first). Exit: as VramListRun.
+; Not in this routine: the bytes of $8142 to $8150, run as the original.
 VramListFromIndex:
     bmi *-15
     asl a

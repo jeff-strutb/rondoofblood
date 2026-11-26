@@ -56,10 +56,13 @@ ad_reset:
 ; and any other bit of _DL plays what is already latched.
 ; HOW: Does nothing while ADPCM plays. Keeps _BX, _AX and the rate, latches the address and the
 ; length, sets the rate, then turns on the half-way interrupt and starts the unit.
+; WAITS: no.
 ; Entry: _AX, _BX, _DL, _DH. Exit, busy: as ad_stat. Bad rate: A _DH, C set, N and Z from
 ; comparing it with $10, X as ad_stat. Played: A 0, N 0, Z 0, V bit 6 of the interrupt enables
 ; as they were; latched: X and Y _AX, C clear; played again: X as ad_stat. Y, C, V kept
 ; otherwise.
+; The address and length words are read by their addresses, the high bytes plus one: no record yet
+; (row request to the typed access session).
 ad_play:
     jsr ad_stat
     bne ad_play_at0
@@ -108,7 +111,11 @@ ad_play_at0:
 ; HOW: Waits until ADPCM is not playing, latches the address, drops the byte the unit had
 ; fetched, then reads byte after byte. VRAM goes through the data port, its two halves in turn;
 ; banks through a TMA or TAM stub it writes in RAM, 8 KB a bank, the MPR put back at the end.
-; Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit: A 0, or $22 refused. See abi_ad_read.
+; WAITS: on ad_stat, with the stack as the caller's.
+; Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit: X _CL and Y _CH, V bit 6 of the control
+; port as the latch read it. To memory: A 0, N 0, Z 1, C kept. To VRAM: the same, C 1. Banks and
+; refused: as ad_read_to_banks.
+; Not run by any script.
 ad_read:
     jsr ad_stat
     bne ad_read
@@ -170,9 +177,11 @@ ad_read_at4:
 ; after it, through the MPR numbered _DH (A on entry). A number of 7 or more is refused with $22.
 ; HOW: A TMA stub written in RAM keeps the bank the MPR held; each bank is mapped with a TAM stub
 ; and filled, 8 KB, at the MPR's window; the kept bank goes back at the end.
+; WAITS: no.
 ; Entry: A _DH, the ADPCM address latched. Exit, refused: A $22, N 0, Z 0, C from comparing with
 ; 7. Read: A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left
 ; of the last bank. V kept.
+; Not run by any script.
 ad_read_to_banks:
     cmp #$07
     bmi ad_read_to_banks_at0
@@ -242,6 +251,7 @@ ad_read_to_banks_at4:
 ; WHAT IT DOES: Makes _BX the VDC's write address, then points _BX at the VDC's data port, for a
 ; copy that writes through [_BX].
 ; HOW: write_vram_word_pending, with the address register selected; then _BX = $0002.
+; WAITS: no.
 ; Entry: _BX, the VDC's address register selected. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
 aim_bx_at_vram_port:
     jsr write_vram_word_pending
@@ -250,6 +260,155 @@ aim_bx_at_vram_port:
     stz z:CardBh
     rts
 
+
+; @card 00:F4D8 ad_write
+; WHAT IT DOES: Writes _AX bytes to ADPCM memory at address _CX, or where the last write left
+; off if _CX is $FFFF: from memory at _BX if _DH is 0, from VRAM at _BX if _DH is $FF, or else
+; from banks from _BL on, mapped through the MPR numbered _DH (1 to 6; $87 to $FE pass the same
+; test). _DH of 7 to $86 gives $22. Refused while a transfer from the CD runs.
+; HOW: Latches the address unless _CX is $FFFF, then byte after byte, waiting for the unit to
+; take each. VRAM comes through the VDC's read address and data port, its two halves in turn;
+; banks through a TMA or TAM stub it writes in RAM, 8 KB a bank, the MPR put back at the end.
+; WAITS: on the unit's writing bit, with the stack as the caller's.
+; Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit, a transfer running: A its bits, N 0, Z 0;
+; X, Y, C, V kept. Else, if _CX was latched, X _CL, Y _CH, C 0; if not, X, Y kept and C 1. Bad
+; _DH: A $22, N 0, Z 0, C 1. Written: A 0, V bit 6 of the status as the last wait read it; from
+; memory N 0, Z 1; from VRAM N 0, Z 1, C 1; from banks N and Z from the bank put back, C bit 3
+; of _DH, X the pages and Y the bytes left of the last bank.
+; Not run by any script.
+ad_write:
+    lda a:AdpcmDma
+    and #$03
+    bne ad_write_at0
+    lda z:CardCl
+    and z:CardCh
+    cmp #$FF
+    beq ad_write_at1
+    ldx z:CardCl
+    ldy z:CardCh
+    jsr ad_set_address
+    jsr ad_latch_write_address
+ad_write_at1:
+    lda z:CardDh
+    beq ad_write_at2
+    cmp #$FF
+    beq ad_write_at3
+    jmp ad_write_at4
+ad_write_at2:
+    lda (CardBl)
+    sta a:AdpcmData
+ad_write_at5:
+    tst #$04,a:AdpcmStatus
+    bne ad_write_at5
+    inc z:CardBl
+    bne ad_write_at6
+    inc z:CardBh
+ad_write_at6:
+    lda z:CardAl
+    bne ad_write_at7
+    dec z:CardAh
+ad_write_at7:
+    dec z:CardAl
+    lda z:CardAl
+    ora z:CardAh
+    bne ad_write_at2
+    cla
+ad_write_at0:
+    rts
+ad_write_at3:
+    lda #$01
+    sta z:CardVdcReg
+    sta a:VdcAddress
+    jsr aim_bx_at_vram_port
+    lda #$02
+    sta z:CardVdcReg
+    sta a:VdcAddress
+ad_write_at8:
+    tst #$04,a:AdpcmStatus
+    bne ad_write_at8
+    lda (CardBl)
+    sta a:AdpcmData
+    lda z:CardBl
+    eor #$01
+    sta z:CardBl
+    lda z:CardAl
+    bne ad_write_at9
+    dec z:CardAh
+ad_write_at9:
+    dec z:CardAl
+    lda z:CardAl
+    ora z:CardAh
+    bne ad_write_at8
+    stz a:CardVramPending
+    cla
+ad_write_at17:
+    rts
+ad_write_at4:
+    cmp #$07
+    bmi ad_write_at10
+    lda #$22
+    bra ad_write_at17
+ad_write_at10:
+    tax
+    lda #$01
+ad_write_at11:
+    asl a
+    dex
+    bne ad_write_at11
+    sta a:CardMprStubMask
+    lda #$43
+    sta a:CardMprStub
+    lda #$60
+    sta a:CardMprStubReturn
+    jsr CardMprStub
+    sta a:CardSavedMprBank
+    lda z:CardBl
+    sta z:CardDl
+ad_write_at12:
+    lda z:CardDh
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:CardBh
+    stz z:CardBl
+    lda #$53
+    sta a:CardMprStub
+    lda z:CardDl
+    jsr CardMprStub
+    ldx #$20
+    cly
+ad_write_at13:
+    tst #$04,a:AdpcmStatus
+    bne ad_write_at13
+    lda (CardBl)
+    sta a:AdpcmData
+    inc z:CardBl
+    bne ad_write_at14
+    inc z:CardBh
+ad_write_at14:
+    lda z:CardAl
+    bne ad_write_at15
+    dec z:CardAh
+ad_write_at15:
+    dec z:CardAl
+    lda z:CardAl
+    ora z:CardAh
+    beq ad_write_at16
+    dey
+    bne ad_write_at13
+    dex
+    bne ad_write_at13
+    inc z:CardDl
+    bra ad_write_at12
+ad_write_at16:
+    lda #$53
+    sta a:CardMprStub
+    lda a:CardSavedMprBank
+    jsr CardMprStub
+    cla
+    rts
 
 ; @card 00:F61F ad_cplay
 ; WHAT IT DOES: Plays ADPCM straight from the disc: _AL, _AH, _BL sectors (low first) from the

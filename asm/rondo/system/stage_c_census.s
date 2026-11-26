@@ -5338,3 +5338,269 @@ TileSlopeF3CD:
     sta z:zTemp02
     lda #$81
     rts
+
+; @routine 03D0:1AC GateObjectStep3CD
+; @run 6B:99AC
+; @stop 99BE
+; @unreachable 6B:99AC-6B:99BD no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $99AC runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: An object handler for the stage's gate, as GateObjectStep152D: its step at $2818 from the table of
+; seven at $99BE. No code of the overlay reaches it; the census counts none of its bytes.
+; HOW: The step doubled indexes the table; its word goes through zTemp00-01 and is jumped through.
+; WAITS: no.
+; Entry: X the object. Exit: as the step leaves them.
+GateObjectStep3CD:
+    lda a:$2818,x
+    asl a
+    tay
+    lda a:$99BE,y
+    sta z:zTemp00
+    lda a:$99BF,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 03D0:1CC GateStart3CD
+; @run 6B:99CC
+; @stop 99DB
+; @unreachable 6B:99CC-6B:99DA no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $99CC runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: The gate's first step: the kernel's piece at $40D2 and its sprite at $2A58 from the two at $99DC by
+; bit 0 of its packed byte; then the RTS at $99DB (StageSubStepNone152D's kind, run on into).
+; HOW: $40D2; a table read.
+; WAITS: no.
+; Entry: X the object. Exit: A the sprite, N and Z from it, Y the bit.
+GateStart3CD:
+    jsr VecLoadObjectRecord
+    lda a:$2F20,x
+    and #$01
+    tay
+    lda a:$99DC,y
+    sta a:$2A58,x
+
+; @routine 03D0:1E0 GateWaitPlayer3CD
+; @run 6B:99E0
+; @unreachable 6B:99E0-6B:9A40 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $99E0 runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: The gate waits for the player, as GateWaitPlayer152D, with camera mode 1 cleared when the stage is
+; cleared through it; a packed byte with a high nibble other than $F names the sound, and camera mode is cleared;
+; with no high nibble, packed bytes 2 to 5 start the card's CD fade of type $0C.
+; HOW: Tests; stores; shifts; the kernel's piece at $400F with X 6 (X on the stack); a jump to cd_fade.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test, the kernel or cd_fade left them; X kept.
+GateWaitPlayer3CD:
+    lda a:LevelFullWalk+2
+    eor #$01
+    and a:PlayerByte3BD7
+    beq GateWaitPlayer3CD_at0
+    lda a:$31F0,x
+    beq GateWaitPlayer3CD_at0
+    cmp #$03
+    bcs GateWaitPlayer3CD_at0
+    lda a:$2F20,x
+    and #$0F
+    inc a
+    sta z:zField8C
+    lda a:CameraMode
+    dec a
+    bne GateWaitPlayer3CD_at1
+    stz a:CameraMode
+GateWaitPlayer3CD_at1:
+    lda #$03
+    sta z:zSubStep
+    inc a:$2818,x
+    stz a:$3310,x
+    lda #$04
+    sta a:$32C8,x
+    lda a:$2F20,x
+    and #$F0
+    beq GateWaitPlayer3CD_at2
+    stz z:zRasterEffect
+    stz a:CameraMode
+    cmp #$F0
+    beq GateWaitPlayer3CD_at0
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    ora #$80
+    phx
+    ldx #$06
+    jsr VecStartListChannelKind2
+    plx
+GateWaitPlayer3CD_at0:
+    rts
+GateWaitPlayer3CD_at2:
+    lda a:$2F20,x
+    cmp #$02
+    bcc GateWaitPlayer3CD_at0
+    cmp #$06
+    bcs GateWaitPlayer3CD_at0
+    lda #$0C
+    jmp BiosCdFade
+
+; @routine 03D0:241 GateWaitStep3CD
+; @run 6B:9A41
+; @unreachable 6B:9A41-6B:9A4A no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $9A41 runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: The gate waits for the cleared stage's step at $85 to reach 2, then goes on.
+; HOW: A compare; an increment.
+; WAITS: no.
+; Entry: X the object. Exit: A $85, N, Z and C from the compare, or N and Z from the step's increment.
+GateWaitStep3CD:
+    lda z:zField85
+    cmp #$02
+    bne GateWaitClear3CD_at0
+    inc a:$2818,x
+    rts
+
+; @routine 03D0:24B GateOpen3CD
+; @run 6B:9A4B
+; @unreachable 6B:9A4B-6B:9A88 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $9A4B runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: The gate opens, as GateOpen152D, with sound $56 at the end.
+; HOW: A countdown at $32C8; a compare; gate_frame; the sound hook by a jump.
+; WAITS: no.
+; Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
+GateOpen3CD:
+    dec a:$32C8,x
+    bne GateOpen3CD_at0
+    inc a:$3310,x
+    lda a:$3310,x
+    cmp #$04
+    bne GateOpen3CD_at1
+    inc a:$2818,x
+    lda z:zField8C
+    ora #$80
+    sta z:zField8C
+    lda #$56
+    jmp VecSoundCommand
+GateOpen3CD_at1:
+    lda #$04
+    sta a:$32C8,x
+    lda a:$2F20,x
+    and #$01
+    tay
+    lda a:$99DC,y
+    clc
+    adc a:$3310,x
+    sta a:$2A58,x
+    clc
+    adc a:$99DE,y
+    phx
+    ldx #$05
+    jsr VecStartListChannelKind2
+    plx
+GateOpen3CD_at0:
+    rts
+
+; @routine 03D0:289 GateWaitClear3CD
+; @run 6B:9A89
+; @unreachable 6B:9A89-6B:9AA5 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $9A89 runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: The gate waits until zField8C loses bit 7, then goes on with its timer 4; a gate whose packed byte is 2
+; to 5 skips its closing.
+; HOW: A test; stores; compares; a second increment.
+; WAITS: no.
+; Entry: X the object. Exit: A zField8C, N and Z from it; or A the packed byte, N, Z and C from its compare, or N and Z
+; from the second increment.
+GateWaitClear3CD:
+    lda z:zField8C
+    bmi GateWaitClear3CD_at0
+    inc a:$2818,x
+    lda #$04
+    sta a:$32C8,x
+    lda a:$2F20,x
+    cmp #$02
+    bcc GateWaitClear3CD_at1
+    cmp #$06
+    bcc GateWaitClear3CD_at2
+GateWaitClear3CD_at1:
+    bra GateWaitClear3CD_at0
+GateWaitClear3CD_at2:
+    inc a:$2818,x
+GateWaitClear3CD_at0:
+    rts
+
+; @routine 03D0:2A6 GateClose3CD
+; @run 6B:9AA6
+; @unreachable 6B:9AA6-6B:9AD8 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $9AA6 runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: The gate closes, as GateClose152D, with sound $56 at the end.
+; HOW: A countdown at $32C8; a decrement; gate_frame; the sound hook by a jump.
+; WAITS: no.
+; Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
+GateClose3CD:
+    dec a:$32C8,x
+    bne GateClose3CD_at0
+    dec a:$3310,x
+    bpl GateClose3CD_at1
+    inc a:$2818,x
+    lda #$56
+    jmp VecSoundCommand
+GateClose3CD_at1:
+    lda #$04
+    sta a:$32C8,x
+    lda a:$2F20,x
+    and #$01
+    tay
+    lda a:$99DC,y
+    clc
+    adc a:$3310,x
+    sta a:$2A58,x
+    clc
+    adc a:$99DE,y
+    phx
+    ldx #$05
+    jsr VecStartListChannelKind2
+    plx
+GateClose3CD_at0:
+    rts

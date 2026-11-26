@@ -2121,7 +2121,7 @@ Exit EndingCommandStartList(void)
     StartListChannel0Kind2(list);
     jsr_pop();
     jsr_push(0x8098);
-    ClearScreenState();
+    ClearScreenStateAt(0, 3);   /* X 0 from the list start, Y 3 from EndingScriptStep */
     jsr_pop();
     jsr_push(0x809B);
     EndingClearObjects();
@@ -2459,14 +2459,14 @@ void abi_EndingScriptStep(void)
  * HOW: ResetGameState; the script pointer and the counter are written; zGameSubMode counted up.
  * WAITS: yes, through ResetGameState, which waits for the vertical blank with the display off; the stack there is this routine's
  * return address and the call's.
- * Entry: nothing. Exit: A $FF, X 0, Y $FF, N and Z from the new state; C kept.
+ * Entry: X the doubled sub-mode and Y kept (ResetGameState saves them). Exit: A $FF, X 0, Y $FF, N and Z from the new state; C kept.
  */
-Exit EndingBegin(void)
+Exit EndingBegin(uint8_t kept_x, uint8_t kept_y)
 {
     Exit exit = { 0 };
 
     jsr_push(0x800E);
-    ResetGameState();
+    ResetGameStateAt(kept_x, kept_y);
     jsr_pop();
     WR8(ZP->ENDING_PTR, 0xA3);
     WR8(ZP->ENDING_PTR_HI, 0x8A);
@@ -2482,7 +2482,7 @@ Exit EndingBegin(void)
 
 void abi_EndingBegin(void)
 {
-    exit_shim(EndingBegin());
+    exit_shim(EndingBegin(cpu.x, cpu.y));
 }
 
 /*
@@ -2709,7 +2709,7 @@ Exit EndingStep(uint8_t kept_y)
     high = rd8((uint16_t)(0x8008 + index));
     target = (uint16_t)(low | (high << 8));
     switch (target) {
-    case 0x800B: return EndingBegin();
+    case 0x800B: return EndingBegin(index, kept_y);
     case 0x801F: return EndingFrame();
     default:
         break;

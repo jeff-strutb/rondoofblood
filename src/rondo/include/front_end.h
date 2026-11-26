@@ -262,7 +262,8 @@ void abi_PlaceCursorObjects(void);
 void abi_ShiftObjectsByScrollChange(void);
 
 /* Defined elsewhere, typed, and not declared in routines.h. */
-void ClearScreenState(void);                          /* system/video.c */
+void ClearScreenState(void);
+void ClearScreenStateAt(uint8_t kept_x, uint8_t kept_y);   /* with the X and Y it was entered with */                          /* system/video.c */
 
 /* Placeholders for the scene script (menu/attract.c): its tables of command lengths and handlers
  * and the title's "save read" byte. */
@@ -397,7 +398,7 @@ void abi_ScriptPlaceObjectFrame(void);
 void abi_ScriptPlaceTitleObjectA(void);
 void abi_ScriptPlaceTitleObjectB(void);
 void abi_AttractHoldBeforeEnd(void);
-uint8_t AttractBegin(void);
+uint8_t AttractBegin(uint8_t kept_x, uint8_t kept_y);
 uint8_t ModeDoneAdd(void);
 void abi_AttractBegin(void);
 void abi_ModeDoneAdd(void);
@@ -407,7 +408,7 @@ typedef struct {
     uint8_t value;
     bool reset;
 } AttractEnd;
-AttractEnd AttractEndCountdown(void);
+AttractEnd AttractEndCountdown(uint8_t kept_x, uint8_t kept_y);
 void ClearAllObjects(void);
 
 void abi_AttractFrameTick(void);
@@ -420,7 +421,7 @@ void abi_ClearAllObjects(void);
 typedef struct { CommandCall call; uint8_t done; } TitleSound;
 typedef struct { Exit exit; CommandCall call; bool sounded; uint8_t x, y; } AttractStart;
 Exit TitleSetUp(uint8_t kept_x, uint8_t kept_y);
-Exit TitleScreenBegin(void);
+Exit TitleScreenBegin(uint8_t kept_x, uint8_t kept_y);
 TitleSound TitleSoundBegin(uint8_t kept_x, uint8_t kept_y);
 void title_sound_exit_shim(TitleSound sound);
 Exit TitleStep(uint8_t kept_y);
@@ -499,7 +500,7 @@ ObjExit EndingPieceSpawn(uint8_t object);
 void EndingClearObjects(void);
 Exit EndingScriptAdvance(void);
 Exit EndingScriptStep(void);
-Exit EndingBegin(void);
+Exit EndingBegin(uint8_t kept_x, uint8_t kept_y);
 ObjExit EndingDispatchKind(uint8_t kind, uint8_t object);
 Exit EndingObjectsStep(void);
 Exit EndingFrame(void);

@@ -1054,6 +1054,7 @@ void track_search_exit_shim(const TrackSearch *search);
 void save_vram_exit_shim(Sum low);
 void reset_game_state_exit_shim(void);
 void ResetGameState(void);
+void ResetGameStateAt(uint8_t kept_x, uint8_t kept_y);   /* with the X and Y it was entered with */
 uint8_t WaitVblankDisplayOff(void);
 void abi_StageEnter(void);
 void abi_StageLoad(void);

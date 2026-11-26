@@ -19,7 +19,7 @@ EndingStep:
 ; HOW: ResetGameState; the script pointer and the counter are written; zGameSubMode counted up.
 ; WAITS: yes, through ResetGameState, which waits for the vertical blank with the display off; the stack there is this routine's
 ; return address and the call's.
-; Entry: nothing. Exit: A $FF, X 0, Y $FF, N and Z from the new state; C kept.
+; Entry: X the doubled sub-mode and Y kept (ResetGameState saves them). Exit: A $FF, X 0, Y $FF, N and Z from the new state; C kept.
 EndingBegin:
     jsr VecResetGameState
     lda #$A3

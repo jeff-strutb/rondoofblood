@@ -400,3 +400,13 @@ void abi_ResetGameState(void)
     ResetGameState(cpu.x, cpu.y);
     reset_game_state_exit_shim();
 }
+
+/*
+ * ResetGameState for a caller whose X and Y at the call are not yet traced from its entry: they are the live
+ * registers, as before ResetGameState took them. OPEN (validation A): game_mode.c's mode routines, EndingBegin and
+ * StageLoad; each is to pass its own, as AttractBegin does.
+ */
+void reset_game_state_entered(void)
+{
+    ResetGameState(cpu.x, cpu.y);
+}

@@ -135,7 +135,7 @@ typedef struct {
     uint64_t unv_depth;      /* nested deeper than FRAMES */
     uint64_t unv_computed;   /* a tagged address entered by RTS: a computed dispatch, not opened */
     uint64_t arrive_branch;  /* a tagged address reached by a branch, fall-through or other non-entry (not opened) */
-    uint64_t arrive_nonres;  /* a tagged address entered by JSR or JMP while its bytes are not resident (not opened) */
+    uint64_t arrive_nonres;  /* kept for the report's column: always 0 (an arrival while no row's bytes are resident is OTHER CODE) */
     uint64_t runaway;        /* the C ran past its access or write budget (counted divergent) */
     uint64_t prefix;         /* open at the script's end: its accesses judged as far as the log goes */
     uint64_t dispatch;       /* the C ended by an RTS that jumps to an address the routine pushed (the RTS-as-jump trick): judged up to there */
@@ -3060,19 +3060,28 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
  * unverified, so the routine is not IDENTICAL on the strength of other calls). `judge_calls`: A5 and the record
  * count the calls; the hybrid counts the arrivals only.
  */
+static uint64_t other_call, other_branch;   /* arrivals at a tagged address while no row there had its bytes resident */
+
 static void count_arrival(int index, int judge_calls)
 {
     Stat *s = &stats[index];
+    int entry = prev_is_entry() || prev_op == PREV_IRQ;
 
     (void)judge_calls;
     if (self_jump)
         return;                 /* a JMP to the routine's own first byte: the idle loop, not an arrival */
-    if (prev_is_entry() || prev_op == PREV_IRQ) {
-        if (!tag_resident(&rondo_tags[index]))
-            s->arrive_nonres++;
+    if (!tag_resident(&rondo_tags[index])) {
+        /* tag_pick found no row at this address whose bytes are there: the code that ran is another overlay's, with
+         * no row. It is no routine's arrival; it is counted on its own (OTHER CODE in the report). */
+        if (entry)
+            other_call++;
+        else
+            other_branch++;
         return;
     }
-    s->arrive_branch++;      /* a branch back into the routine's own first byte */
+    if (entry)
+        return;
+    s->arrive_branch++;      /* a branch back into the routine's own first byte, its bytes resident */
 }
 
 /* What happens between two instructions, for the record and A5: state changes, calls that ended, interrupts that returned. */
@@ -3591,6 +3600,8 @@ void check_finish(void)
                     (unsigned long long)s->arrive_nonres, (unsigned long long)s->runaway,
                     (unsigned long long)s->prefix, (unsigned long long)s->noreturn, (unsigned long long)s->dispatch);
         }
+        fprintf(report, "OTHER CODE at tagged addresses (no row's bytes resident, charged to no routine): %llu by call, %llu by branch\n",
+                (unsigned long long)other_call, (unsigned long long)other_branch);
         if (probe_calls)
             fprintf(report, "PROBE resident_at: %llu calls, %llu differ, variants seen %u and %u\n",
                     (unsigned long long)probe_calls, (unsigned long long)probe_bad, probe_seen[0], probe_seen[1]);
@@ -3679,6 +3690,8 @@ void check_finish(void)
         if (horizon_calls)
             fprintf(report, "horizon hand-overs %llu: calls whose return was not within %u events, the original ran on\n",
                     (unsigned long long)horizon_calls, (unsigned)HORIZON);
+        fprintf(report, "OTHER CODE at tagged addresses (no row's bytes resident, charged to no routine): %llu by call, %llu by branch\n",
+                (unsigned long long)other_call, (unsigned long long)other_branch);
         fprintf(report, "calls swapped %llu; access defects %llu; parked %llu, kept %llu, unreached %lld\n"
                 "frames compared %llu of %lld, identical %lu, first differing %ld\n", (unsigned long long)swapped,
                 (unsigned long long)defects, (unsigned long long)parked_n, (unsigned long long)kept_n,
@@ -3694,6 +3707,10 @@ void check_finish(void)
             for (int k = 0; k < NKIND; k++)
                 if (stats[i].kind[k])
                     printf("DEFECT %s %s %llu\n", rondo_tags[i].name, kind_name[k], (unsigned long long)stats[i].kind[k]);
+            if (getenv("RONDO_DIAG_CTX") && (stats[i].arrive_branch || stats[i].arrive_nonres || stats[i].unv_computed))
+                fprintf(stderr, "ARRIVE %s branch %llu nonres %llu computed %llu\n", rondo_tags[i].name,
+                        (unsigned long long)stats[i].arrive_branch, (unsigned long long)stats[i].arrive_nonres,
+                        (unsigned long long)stats[i].unv_computed);
         }
         for (unsigned i = 0; ran_inside && i < rondo_tag_count; i++)
             if (ran_inside[i])

@@ -88,6 +88,10 @@ typedef struct {
     CdPlay attempts[CD_PLAY_KEPT];
 } OldCardPlay;
 
+void OldCardMain(void);
+void abi_OldCardMain(void);
+void OldCardSoftReset(void);
+void abi_OldCardSoftReset(void);
 void StepDemoFrame(void);
 void abi_StepDemoFrame(void);
 SpritesArm DrawSprites(void);

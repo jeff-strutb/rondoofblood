@@ -420,6 +420,7 @@ class Census:
         self.stats = collections.Counter()
         self.tails = []                 # where each claimed extent ended: (disc offset, run address, bank)
         self.starts = set()             # every instruction start claimed
+        self.tabled = set()             # extents a table read as code whose only fault is a low score
         self._ext = {}
 
     def extent(self, d, cache=True):
@@ -494,7 +495,7 @@ class Census:
                 continue
             seen.add((d, pc))
             instrs, ok, score = self.extent(d)
-            if not (ok or self.tr.ran(d)) or not instrs:
+            if not (ok or self.tr.ran(d) or d in self.tabled) or not instrs:
                 self.stats["dropped extents"] += 1
                 continue
             q = pc
@@ -543,12 +544,33 @@ class Census:
                     return lw
         return None
 
-    def entries_of(self, ctx, w, bank, window):
+    def entry_ok(self, d, table):
+        """What is at d starts code: the extent reads as code, or (an entry of a table a JMP (abs,X) or JMP (abs)
+        reads) it decodes cleanly to a proper end and only its score is low. The jump reading the table is the
+        evidence there; the score is not, and one low entry must not end the table (PLAN section 1). Strict only:
+        its tables are anchored on the jumps it followed; relaxed reads far looser tables, and with this it took
+        data as code through them (claims on bytes sent to a video or sound port: 12,423 to 244,241)."""
+        instrs, ok, score = self.extent(d)
+        if ok:
+            return True
+        if table and self.strict and instrs and self.why.get(d) == "reads as data (score)":
+            self.tabled.add(d)
+            return True
+        return False
+
+    def entries_of(self, ctx, w, bank, window, table=False):
         """[(bank, disc offset)] a word can point at when what is there reads as code."""
         if w < 0x4000:
             return []
         cands = ctx.resolve(w, bank, window)
-        return cands if len(cands) == 1 and self.extent(cands[0][1])[1] else self.pick(cands) if len(cands) > 1 else []
+        if len(cands) == 1:
+            return cands if self.entry_ok(cands[0][1], table) else []
+        good = [(b, d) for b, d in cands if self.entry_ok(d, table)]
+        if len(good) == 1 or (good and not self.strict):
+            return good
+        if len(cands) > 1:
+            self.stats["ambiguous"] += 1
+        return []
 
     def table_seeds(self, ctx, table):
         """Read a table to its full length: every entry that starts code, repeats kept, the words that mean "no
@@ -566,7 +588,7 @@ class Census:
             w = buf[d] | buf[d + 1] << 8
             if w in (0xFFFF, 0x0000):
                 continue
-            got = self.entries_of(ctx, w, bank, window)
+            got = self.entries_of(ctx, w, bank, window, table=True)
             if not got:
                 break
             out += [(tt, w, tb if tb is not None else bank) for tb, tt in got]
@@ -764,6 +786,15 @@ def holdout(only=None, out=None):
             if r == "traced" or d in strict.found:
                 continue
             why = strict.why.get(relaxed.owner.get(d)) or "no strict rule reaches it: " + r
+            e = disagree[why]
+            e[0] += 1
+            e[1] += d in full.code
+            e[2] += d in truth
+        for d, r in strict.found.items():               # the other way: what strict claims and relaxed does not
+            if r == "traced" or d in relaxed.found:
+                continue
+            why = "strict only: " + ("table entry read as code despite its score"
+                                     if strict.owner.get(d) in strict.tabled else r)
             e = disagree[why]
             e[0] += 1
             e[1] += d in full.code

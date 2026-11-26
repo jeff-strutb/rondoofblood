@@ -26,7 +26,7 @@ State of lot L4 (VRAM update, background layers, raster, frame interrupt) on 202
 
 ## Divergent or uncovered in the sweep at 55f97e9, not yet looked at
 
-- SelectVdcRegister: 1 divergent of 34286070 in play_s0_r6, call 673883: "hardware write 1FE000: C 02, original 01". The register number differs, so a caller passes the wrong one. A5 on play_s0_r6 was started and had not finished when this was written.
+- SelectVdcRegister: 1 divergent of 34286070 in play_s0_r6 at the sweep (55f97e9), call 673883: "hardware write 1FE000: C 02, original 01". Rerun on the tree at c68f8f8: A5 on play_s0_r6 gives SelectVdcRegister 1470607 of 1470607 identical, no divergent call, so that call is not reproduced; the cause was not found and no change was made for it. The rerun does report SelectVdcRegister accesses MOVED in the call of RichterFrame (L2's routine, frame 12809), not an L4 defect.
 - WriteVdcControl: UNCOVERED (no script calls it).
 - TitleStep and TitleEntry (not L4): A differs in 3 calls of 1302 ("A C 00 orig 10").
 - Layer routines (layers.c, layer_draw.c) were all IDENTICAL in the sweep.

@@ -2639,7 +2639,9 @@ static void classify_arrival(int index, uint16_t pc)
     }
     if (index < 0 || plain || computed_entry)
         return;
-    tail_entry = prev_op == 0x60 || !in_routine(index, before_pc);
+    /* The return or branch lands on a tag whose bytes are not the ones mapped (another overlay's routine at the same address):
+     * that code is no routine's entry, so the return is no jump into it (the frame the C stands in goes on past it). */
+    tail_entry = (prev_op == 0x60 || !in_routine(index, before_pc)) && tag_resident(&rondo_tags[index]);
 }
 
 static void judge(Frame *f, const Regs *r);

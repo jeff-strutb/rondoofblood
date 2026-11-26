@@ -1,0 +1,39 @@
+# Unit calls of arms no script ran in routines of the stage $86 overlay (gate C), with the stage loaded by
+# attract_86's demo (its prefix to its first dump, frame 20,626, when bank $70 holds the overlay at $A000 and
+# object slot $20 is empty). Each call stages the slot's state (OBJ_27A8+$20 = $27C8), hits ($33D0), timer
+# ($34D8) and X high ($2B90) and maps the overlay's banks for the call.
+wait 120
+press RUN 6
+wait 1000
+poke 51B2 06
+wait 19500
+# BossPhasesHurtFallAndTileWrites: state 1 with 2 hits, then 5 hits with the slot on each side of the player.
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:01,33D0:02
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:01,33D0:05,2B90:00
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:01,33D0:05,2B90:0F
+wait 2
+# state 2 (the list, and at its end: anim_step $3428 9, anim_timer $3480 0), state 3 with the timer at its end and before, state 4 at $40, $09 and $41 (a row dropped and four tile pairs written) and its end with OBJ_3568 ($3588) 0 and 1, state 5.
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:02
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:02,3428:09,3480:00
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:03,34D8:01
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:03,34D8:05
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:04,34D8:40
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:04,34D8:09
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:04,34D8:41
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:04,34D8:01
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:04,34D8:01,3588:01
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:05,34D8:01
+wait 2
+call BossPhasesHurtFallAndTileWrites X=20 MPR5=70 MPR6=71 M=27C8:05,34D8:05
+wait 2

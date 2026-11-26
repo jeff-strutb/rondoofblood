@@ -12,6 +12,9 @@
 #include "enemy_objects.h"
 #include "player_objects.h"
 
+enum { PI_FP_NONE, PI_FP_RIGHT, PI_FP_LEFT };
+enum { PI_NP_NONE, PI_NP_NOTED };
+enum { PI_CH_SHORT, PI_CH_READY };
 enum {
     PAD_LEFT_OR_RIGHT = 0xA0, PAD_RIGHT_ONLY = 0x20, PAD_TURBO_BIT = 0x01, PAD_ORDINARY_BITS = 0xFE,
     PAD_SELECT_BIT = 0x04, ANIMATION_STOPPED = 0xFF, ANIMATION_LOOPS = 0xFE,
@@ -391,25 +394,38 @@ void abi_RichterCheckTurnWindow(void)
  * Entry: nothing. Exit: A the bits looked at last; N and Z from them, or from the facing when it
  * turns left. X, Y, C and V kept.
  */
-Ended RichterFaceByPad(void)
+ObjArm RichterFaceByPad(void)
 {
+    ObjArm r = { 0 };
     uint8_t held = RD8(ZP->pad_held);
-    uint8_t turn = (uint8_t)(held & PAD_LEFT_OR_RIGHT);
 
-    if (turn == 0) {
-        return ended_load(turn);
+    r.first = (uint8_t)(held & PAD_LEFT_OR_RIGHT);
+    r.arm = PI_FP_NONE;
+    if (r.first == 0) {
+        return r;
     }
     WR8(OBJ->facing_left[0], 0);
-    turn = (uint8_t)(turn & PAD_RIGHT_ONLY);
-    if (turn != 0) {
-        return ended_load(turn);
+    r.first = (uint8_t)(r.first & PAD_RIGHT_ONLY);
+    r.arm = PI_FP_RIGHT;
+    if (r.first != 0) {
+        return r;
     }
-    return ended_with_a(ended_nz(INC8(OBJ->facing_left[0])), 0);
+    r.second = INC8(OBJ->facing_left[0]);
+    r.arm = PI_FP_LEFT;
+    return r;
+}
+
+static Ended richter_face_by_pad_exit_shim(ObjArm r)
+{
+    if (r.arm == PI_FP_LEFT) {
+        return ended_with_a(ended_nz(r.second), 0);
+    }
+    return ended_load(r.first);
 }
 
 void abi_RichterFaceByPad(void)
 {
-    abi_ended(RichterFaceByPad());
+    abi_ended(richter_face_by_pad_exit_shim(RichterFaceByPad()));
 }
 
 /*
@@ -421,23 +437,35 @@ void abi_RichterFaceByPad(void)
  * Entry: nothing. Exit: Z from the test, N and V bits 7 and 6 of the presses; A 4 if pressed.
  * X, Y and C kept.
  */
-EndedTst RichterNoteItemPress(void)
+ObjArm RichterNoteItemPress(void)
 {
-    uint8_t pressed = RD8(ZP->pad_pressed);
-    EndedTst r;
+    ObjArm r = { 0 };
 
-    if ((pressed & PAD_SELECT_BIT) == 0) {
-        return ended_tst(ended_kept(), pressed, PAD_SELECT_BIT);
+    r.first = RD8(ZP->pad_pressed);
+    r.arm = PI_NP_NONE;
+    if ((r.first & PAD_SELECT_BIT) == 0) {
+        return r;
     }
     wr8(PadForcedPress, ITEM_REQUEST);
-    r = ended_tst(ended_load(ITEM_REQUEST), pressed, PAD_SELECT_BIT);
-    r.v_only = true;
+    r.arm = PI_NP_NOTED;
     return r;
+}
+
+static EndedTst richter_note_item_press_exit_shim(ObjArm r)
+{
+    EndedTst t;
+
+    if (r.arm == PI_NP_NONE) {
+        return ended_tst(ended_kept(), r.first, PAD_SELECT_BIT);
+    }
+    t = ended_tst(ended_load(ITEM_REQUEST), r.first, PAD_SELECT_BIT);
+    t.v_only = true;
+    return t;
 }
 
 void abi_RichterNoteItemPress(void)
 {
-    abi_ended_tst(RichterNoteItemPress());
+    abi_ended_tst(richter_note_item_press_exit_shim(RichterNoteItemPress()));
 }
 
 /*
@@ -449,28 +477,38 @@ void abi_RichterNoteItemPress(void)
  * Entry: nothing. Exit: X the item; A the hearts, N, Z and C from the compare, or A $0F. Y and
  * V kept.
  */
-EndedX RichterCheckItemHearts(void)
+ObjArm RichterCheckItemHearts(void)
 {
-    EndedX r;
-    uint8_t item, hearts, cost;
+    ObjArm r = { 0 };
 
     wr8(RichterItemReady, 0);
-    item = RD8(ZP->field93);
-    hearts = RD8(ZP->field94);
-    cost = rd8((uint16_t)(RichterItemCosts + item));
-    r.x = item;
-    r.end = ended_compare(hearts, cost);
-    if (hearts >= cost) {
+    r.first = RD8(ZP->field93);
+    r.second = RD8(ZP->field94);
+    r.third = rd8((uint16_t)(RichterItemCosts + r.first));
+    r.arm = PI_CH_SHORT;
+    if (r.second >= r.third) {
         wr8(RichterItemReady, ITEM_READY);
-        r.end = ended_load(ITEM_READY);
-        r.end = ended_with_carry(r.end, true);
+        r.arm = PI_CH_READY;
     }
     return r;
 }
 
+static EndedX richter_check_item_hearts_exit_shim(ObjArm r)
+{
+    EndedX x;
+
+    x.x = r.first;
+    x.end = ended_compare(r.second, r.third);
+    if (r.arm == PI_CH_READY) {
+        x.end = ended_load(ITEM_READY);
+        x.end = ended_with_carry(x.end, true);
+    }
+    return x;
+}
+
 void abi_RichterCheckItemHearts(void)
 {
-    EndedX r = RichterCheckItemHearts();
+    EndedX r = richter_check_item_hearts_exit_shim(RichterCheckItemHearts());
 
     abi_ended(r.end);
     cpu.x = r.x;

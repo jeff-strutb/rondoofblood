@@ -399,6 +399,10 @@ def served(main, opts):
                                    "divergent": int(r["divergent"]), "unverified": int(r["unverified"]),
                                    "order_flags": int(r["order"])}
         log(f"served: per-draft A5 from {opts['draft_a5']}: {len(draft_a5)} drafts", b)
+    elif opts.get("serve_all") and opts.get("a7") and sorted(scripts) != sorted(records.script_names(main)):
+        # every draft serves whatever A5 says, and the drafted count needs every script: a rerun of some
+        # scripts measures A7 alone
+        log("served: --serve-all on some scripts: no draft A5 (it decides nothing here)", b)
     else:
         if not os.path.exists(allbox):
             dst = os.path.join(b, "tree-alldrafts")

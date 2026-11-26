@@ -26,3 +26,13 @@ The 22 routines of player_terrain.c count as unchecked. Their liftcmp results we
 ## player_terrain.c rechecked (2026-11-25, after typed access landed 6b63f9f)
 
 With tools/rondo/stubs.csv (the tile read's contracts per callee, no global keep X) and no local switch, all 22 routines of player_terrain.c that have a draft match under liftcmp through mode: ReadColumns 400, LowColumnsBlocked 400, Wall 400, Floor 377 (23 untraced), HasNoFooting 191 (209 untraced), LedgeCheck 300 (100 untraced), LadderCheck 106 (494 untraced), LandOnFloor 135 (265 untraced), the rest 400 or all comparable. The reports print an ASSUMPTION line for each contract used. The untraced counts are arms the draft steers into bytes no script ran. The contracts cover the eleven copies of the tile read at $967F; the $9991 family (ProbeTileRead9991, the box probes of player_probe_boxes.c) has none yet and stays as listed above. RichterReadColumnsHigh and RichterFloorOddScreen have no draft of their own (pieces), checked as part of ReadColumns and FloorCheck.
+
+## State of 2026-11-25 (after 9bdc4df and the commits on it)
+
+Checked in through mode (liftcmp, `--drafts` main's cache): RichterFrame, RichterVecFrame, RichterToAir, RichterStartWalk, RichterUpWhipLeft, RichterNudgeBJump, RichterStateFrame, RichterOutOfHealth, RichterItemCrashFive: 0 differing. RichterAttack and RichterCrouchAttack: 0 differing of 249 and 248 comparable (landed in 9bdc4df).
+
+RichterStart and RichterVecStart: 12 of 12 curated cases (tools/rondo/curated/richter_start.txt, the table at $A116 as the disc has it) match. The random cases differ because they leave the jump table at random values and the draft jumps into code no state of the game reaches; they are not a C difference.
+
+Through-mode only, `$8006` vector: RichterClimbStart, RichterUpWhipRight (1 of 400 cases), RichterApplyMoveAndPush, RichterStateWalk, RichterLadderCheck, RichterLedgeCheck differ only where the tile read is entered through StageTileReadVector9991 ($8006): the draft side takes it to TerrainTileRead (return 96CD), the lifted side to ProbeTileRead9991 (99DF). Validation A (L8) says the lifted side is right when the case's mapper has 05C0:191 at $9991 (the vector's JMP is the overlay's own), and the drafter's draft holds one stage's JMP. Recheck each with `--callees wrappers` and with A5 on the stage scripts before they count as done.
+
+Still to re-lift (no call frames, bodies not in the assembly's order): RichterStandStep0, RichterStandStep1, RichterStandStep2, RichterCrouchStep0, RichterCrouchStep1, RichterCrouchStep3, RichterCrouchStep4, RichterToHurtAir, RichterVecC3A7, RichterVecC076; their 2026-11-25 sweep ran before the ClimbStart and ToAir changes, so rerun it first.

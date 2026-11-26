@@ -395,7 +395,7 @@ void abi_BossFrameRoutinesC(void)
  * WHAT IT DOES: Takes the hit box (OBJ_3988, OBJ_3A38, OBJ_3930, OBJ_39E0) from a four byte row of the table at $C575, the row the table at $C545 names for the object's frame (OBJ_2A68).
  * HOW: A read of the frame as Y, a table read, two shifts, four table reads and stores.
  * WAITS: no.
- * Entry: X object. Exit: A the last byte read, Y the row, C bit 6 of the kind, N and Z from A (l8_hitbox_row_exit_shim). Called by BossFrameRoutinesD from the states $BBB0 marks, which ran in no script (docs/rondo/l8-untraced-arms.md). The tables at $C545 and $C575 keep their address form until they have a name.
+ * Entry: X object. Exit: A the last byte read, Y the row, C bit 6 of the kind, N and Z from A (l8_hitbox_row_exit_shim). Called by BossFrameRoutinesD from the states $BBB0 marks, which ran in no script (docs/rondo/l8-untraced-arms.md). The C reads the tables HitBoxKindByFrame ($C545) and HitBoxRows ($C575) by address until their reader exists (no script reaches the routine yet).
  */
 L8HitBoxRowArm HitBoxRowByFrameKind(uint8_t slot)
 {

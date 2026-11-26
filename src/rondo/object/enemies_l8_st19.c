@@ -50,9 +50,9 @@ enum { ST19_FOLLOW_LOADED, ST19_FOLLOW_NO_MODE, ST19_FOLLOW_FOLLOWED };
  * WAITS: no.
  * Entry: X object. Exit: the state's N and Z, or as LoadObjectRecord (l8_load_zero_exit_shim).
  */
-L8Load LoadRecordInStateZero(uint8_t slot)
+L8Load LoadRecordInStateZero(uint8_t slot, L8Layout lay)
 {
-    return l8_load_new(slot, 0xB026);
+    return l8_load_new(slot, l8_at(lay, 0xB026));
 }
 
 /* What LoadRecordInStateZero leaves in A, Y and the flags: the state, then the record when it was loaded. */
@@ -63,7 +63,7 @@ static Ended l8_load_zero_exit_shim(L8Load r)
 
 void abi_LoadRecordInStateZero(void)
 {
-    abi_ended(l8_load_zero_exit_shim(LoadRecordInStateZero(cpu.x)));
+    abi_ended(l8_load_zero_exit_shim(LoadRecordInStateZero(cpu.x, L8_LOADED)));
 }
 
 /*

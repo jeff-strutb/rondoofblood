@@ -16,5 +16,7 @@ VramExit VramListFromTable1B91(uint8_t a, uint8_t x, bool overflow);
 void abi_VramListFromTable1B91(void);
 VramExit VramListFromTable25F7(uint8_t a, uint8_t x, bool overflow);
 void abi_VramListFromTable25F7(void);
+VramExit VramListFromTable1CF1(uint8_t a, uint8_t x, bool overflow);
+void abi_VramListFromTable1CF1(void);
 
 #endif

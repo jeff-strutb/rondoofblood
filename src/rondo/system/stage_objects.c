@@ -24,7 +24,7 @@ void lines_exit_shim(Sum count);   /* object/stream.c */
  * fourth byte is set, maps the object banks (the second pair at the offset the overlay keeps),
  * walks the whole stream, and finishes with the frame set-up's end.
  */
-static SetUpEnd set_up_stage_objects(uint16_t record_table, uint16_t second_offset_at, uint8_t x)
+SetUpEnd SetUpObjectsBody(uint8_t x, const SetUpLayout *layout)
 {
     uint8_t y;
     uint8_t value;
@@ -32,20 +32,20 @@ static SetUpEnd set_up_stage_objects(uint16_t record_table, uint16_t second_offs
     Sum sum;
     SetUpEnd end;
 
-    jsr_push(CLEAR_RETURN);
+    jsr_push(layout->clear_return);
     ClearEnemySlots(x);
     jsr_pop();
-    jsr_push(MAP_RETURN);
+    jsr_push(layout->map_return);
     MapOverlayBank7();
     jsr_pop();
     y = (uint8_t)(RD8(ZP->field83) << SECTION_RECORD_SHIFT);
-    value = rd8((uint16_t)(record_table + y));
+    value = rd8((uint16_t)(layout->record_table + y));
     WR8(LEVEL->level_stream.lo, value);
-    value = rd8((uint16_t)(record_table + 1 + y));
+    value = rd8((uint16_t)(layout->record_table + 1 + y));
     WR8(LEVEL->level_stream.hi, value);
-    value = rd8((uint16_t)(record_table + 2 + y));
+    value = rd8((uint16_t)(layout->record_table + 2 + y));
     WR8(LEVEL->level_axis, value);
-    clear_flags = rd8((uint16_t)(record_table + 3 + y));
+    clear_flags = rd8((uint16_t)(layout->record_table + 3 + y));
     if (clear_flags != 0) {
         for (x = EVENT_FLAG_BYTES - 1; (int8_t)x >= 0; x--) {
             WR8(LEVEL->event_flags[x], 0);
@@ -54,15 +54,23 @@ static SetUpEnd set_up_stage_objects(uint16_t record_table, uint16_t second_offs
     sum = add_bytes(OBJECT_BANK_OFFSET, RD8(ZP->ram_base_bank), false);
     tam(MPR5, sum.value);
     tam(MPR6, (uint8_t)(sum.value + 1));
-    value = rd8(second_offset_at);
+    value = rd8(layout->second_offset_at);
     sum = add_bytes(value, RD8(ZP->ram_base_bank), false);
     tam(MPR5, sum.value);
     tam(MPR6, (uint8_t)(sum.value + 1));
-    jsr_push(WALK_RETURN);
+    jsr_push(layout->walk_return);
     end.count = StreamFullWalk(x);
     jsr_pop();
     end.x = x;      /* the tail JMP $8A4F is made by the wrapper, the span's owner */
     return end;
+}
+
+/* 024E's layout: the return addresses of the three calls, from the overlay's record table and second bank offset. */
+static SetUpEnd set_up_stage_objects(uint16_t record_table, uint16_t second_offset_at, uint8_t x)
+{
+    SetUpLayout layout = { record_table, second_offset_at, CLEAR_RETURN, MAP_RETURN, WALK_RETURN };
+
+    return SetUpObjectsBody(x, &layout);
 }
 
 /*

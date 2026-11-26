@@ -285,4 +285,31 @@ StageExit GaugeStepUp(void);
 StageExit GaugeStep(void);
 StageExit RunStageGauge(void);
 
+/*
+ * The stage overlay's bodies, with what moves between the overlay's copies given as a layout: the return addresses of the
+ * calls (run address after the call's last byte) and the tables. The wrappers of each overlay pass its layout; 024E's values
+ * are the ones its wrappers use.
+ */
+typedef struct {
+    uint16_t clear_screen_return, first_load_return, map_return, first_code_return, second_load_return, second_code_return;
+    uint16_t effect_table, first_code, second_code;
+} InitStageLayout;
+StageExit InitStageBody(uint8_t x, uint8_t y, const InitStageLayout *layout);
+StageExit LoadStageEntryBody(uint16_t table, uint16_t character_offsets);
+typedef struct { uint16_t second_offset_at, step_return; } ScrollStepLayout;
+StageScrollEnd ScrollStepBody(uint8_t x, const ScrollStepLayout *layout);
+typedef struct { uint16_t record_table, second_offset_at, clear_return, map_return, walk_return; } SetUpLayout;
+SetUpEnd SetUpObjectsBody(uint8_t x, const SetUpLayout *layout);
+typedef SpawnedObject (*SpawnRow)(uint8_t row);
+typedef struct { uint16_t first_return_1, first_return_2, second_return_1, second_return_2; } SpawnPairLayout;
+StageSpawnEnd SpawnFirstPairBody(SpawnRow spawn, const SpawnPairLayout *layout);
+StageSpawnEnd SpawnSecondPairBody(SpawnRow spawn, const SpawnPairLayout *layout);
+typedef void (*SetBarAddress)(uint8_t lo, uint8_t hi);
+typedef struct {
+    uint16_t sequence_return, stock_return, add_return, score_return, wave_return, bar_down_return, and_return, bar_up_return,
+             or_return, sound_up_return, sound_down_return, map_return, blend_return_1, blend_return_2;
+    uint16_t frame_table, tail_run;
+} StepFrameLayout;
+StageExit StepStageFrameBody(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar, const StepFrameLayout *layout);
+
 #endif

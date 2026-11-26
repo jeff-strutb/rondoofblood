@@ -934,6 +934,11 @@ static void pace_to(uint64_t want)
         uint64_t d = want - now;
 
         chk_charge((int)(d > 0x7FFFFFFF ? 0x7FFFFFFF : d));
+    } else if (want == 0 && getenv("RONDO_DIAG_AHEAD")) {
+        static unsigned zero_n;
+
+        if (zero_n++ < 5)
+            fprintf(stderr, "PACE-TO-ZERO frame %lu after site '%s': the event has no clock\n", cur_frame, pace_site);
     } else if (want < now && getenv("RONDO_DIAG_AHEAD")) {
         /* The core is ahead of the record: the time cannot be given back. This is where a lead shows first. */
         fprintf(stderr, "AHEAD frame %lu %s: the core is %llu clocks past the record's %llu\n", cur_frame, pace_site,
@@ -1911,6 +1916,29 @@ static void judge(Frame *f, const Regs *r);
  * under the routine as a prefix, and as unv_log when the outermost call is the only one), then the log from the next
  * call on is kept and the run goes on. Nothing is dropped without a count.
  */
+/* RONDO_DUMP_SPAN=NAME,N: the record's events of the Nth call of routine NAME (A5 and the hybrid), one line each: the index
+ * from the call's first event, type, kind, address, pc, s, val and clock. Types: 0 R, 1 W, 2 ROMR, 3 HWR, 4 HWW, 5 RTPULL,
+ * 6 STATE, 7 OPEN, 8 CLOSE, 9 CALL, 10 RET, 11 INT, 12 IRET, 13 FRAME. */
+static void dump_span(const char *name, uint64_t callno, uint64_t from, uint64_t to)
+{
+    const char *want = getenv("RONDO_DUMP_SPAN");
+    char buf[128];
+    unsigned long n;
+
+    if (!want || sscanf(want, "%127[^,],%lu", buf, &n) != 2 || strcmp(buf, name) || n != callno)
+        return;
+    fprintf(stderr, "SPAN %s call %llu, events %llu to %llu:\n", name, (unsigned long long)callno, (unsigned long long)from,
+            (unsigned long long)to);
+    for (uint64_t k = from; k < to; k++) {
+        Ev *x = evp(k);
+
+        if (!x)
+            break;
+        fprintf(stderr, "SPAN +%llu type %d kind %d addr %06X pc %04X s %02X val %02X clock %llu\n", (unsigned long long)(k - from),
+                x->type, x->kind, x->addr, x->pc, x->s, x->val, (unsigned long long)x->clock);
+    }
+}
+
 static void trim_log(void)
 {
     if (getenv("RONDO_TRIM_TRACE"))
@@ -2369,6 +2397,7 @@ static void judge(Frame *f, const Regs *r)
     int fsn0 = 1;
 
     s->calls++;
+    dump_span(f->tag->name, s->calls, f->start, end);
     if (prefix && getenv("RONDO_JUDGE_CHECK")) {
         if (!snap)
             snap = malloc(33u * 8192);
@@ -2472,6 +2501,9 @@ static void judge(Frame *f, const Regs *r)
         if (f->tag->ends && ((cpu.p ^ r->p) & PFLAGS))
             dl += (size_t)snprintf(diff + dl, sizeof diff - dl, " P C %02X orig %02X (entry %02X);", cpu.p, r->p,
                                    f->regs.p);
+        if (getenv("RONDO_DIAG_EXIT") && !strcmp(f->tag->name, getenv("RONDO_DIAG_EXIT")))
+            fprintf(stderr, "EXIT %s call %llu frame %lu: C S%02X (entry S%02X) exit S%02X pc %04X, the original S%02X pc %04X\n", f->tag->name,
+                    (unsigned long long)s->calls, cur_frame, cpu.s, f->regs.s, exit_s, exit_pc, r->s, r->pc);
         if (exit_s != r->s || exit_pc != r->pc)
             defect(D_STACK, "the call ends with S %02X and returns to %04X, the original S %02X and %04X", exit_s,
                    exit_pc, r->s, r->pc);
@@ -2881,6 +2913,20 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
     top = c;
     swapped++;
     stats[index].calls++;
+    if (getenv("RONDO_DUMP_SPAN")) {
+        uint64_t k = i;
+        int nest = 0;
+        Ev *x;
+
+        while ((x = evp(k)) && k < i + 200000) {
+            if (x->type == EV_OPEN)
+                nest++;
+            else if (x->type == EV_CLOSE && --nest == 0)
+                break;
+            k++;
+        }
+        dump_span(rondo_tags[index].name, stats[index].calls, i, k + 1);
+    }
     cpu.a = r->a;
     cpu.x = r->x;
     cpu.y = r->y;

@@ -141,3 +141,15 @@ parks the C and does not hand over to the original).
 The window is bounded: a call whose returning RET (or whose end, for a C that has finished) is not within 8M events (HORIZON) is
 not looked for further. The routine ends there and the original runs on; the hybrid report says `horizon hand-overs N`. Hybrid only;
 A5 reads its whole log.
+
+More diagnostics (environment variables; none changes a verdict, except RONDO_NO_RAMCALL, which switches a rule off to compare):
+`RONDO_DIAG_CTX=1` also prints, in the hybrid, `IRQCORE` (an interrupt the core takes itself: its PC, S and clock against the record's next event),
+`ENTERS` (a tail the drafted code decided is no call), `NOCALL` and `AFTER` (the record's events when a C calls what the original did not) and
+`INTPASS` (an interrupt dispatched to a C whose S differs from the record's: the INT event, the C's S, its last placed access, the next 12 events).
+`RONDO_DIAG_UNTAGGED=1` (A5) prints each CALL to an untagged target that stops placement: routine, target, whether the target's 16 bytes are in the
+disc's data track, and `passed` (the target is a no-disc-origin call target from the traces, the call returns: its accesses are the routine's own) or `kept`.
+`RONDO_NO_RAMCALL=1` turns that pass off. `RONDO_DIAG_AHEAD=1` prints each time the core is already past the clock the record wants it at (with the
+place that asked) and each pace to a zero clock. `RONDO_DIAG_EXIT=NAME` (A5) prints, for each judged call of NAME, the C's S at its end, the S and PC
+the exit compare uses, and the original's. `RONDO_DUMP_SPAN=NAME,N` (A5 and the hybrid) prints every event of the Nth call of NAME: `SPAN +index type kind
+addr pc s val clock` (types: 0 R, 1 W, 2 ROMR, 3 HWR, 4 HWW, 5 RTPULL, 6 STATE, 7 OPEN, 8 CLOSE, 9 CALL, 10 RET, 11 INT, 12 IRET, 13 FRAME); in A5 the
+number is the order the calls are judged in (close order for nested calls), in the hybrid the order they are swapped in.

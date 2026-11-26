@@ -500,24 +500,25 @@ ObjArm LoadThenScatterAlongList(uint8_t slot, uint8_t y_entry)
         r.arm = SC_MOVED;
         return r;
     }
+    r.arm = S16_LS_START;
     jsr_push(0xB6F4);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
     (void)last;
     WR8(OBJ->flash_flags[slot], 0x10);
     jsr_push(0xB6FC);
-    random = NextRandom();
+    r.random = NextRandom();
     jsr_pop();
     WR8(OBJ->vx_hi[slot], (uint8_t)((random.value & 0x0F) - 0x08));
     jsr_push(0xB707);
-    random = NextRandom();
+    r.random2 = NextRandom();
     jsr_pop();
     WR8(OBJ->vy_hi[slot], (uint8_t)((random.value & 0x0F) - 0x10));
     jsr_push(0xB712);
     (void)ApplyVelocity(slot);
     jsr_pop();
     jsr_push(0xB715);
-    random = NextRandom();
+    r.random3 = NextRandom();
     jsr_pop();
     index = (uint8_t)((random.value & 0x03) << 1);
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB740 + index)));
@@ -583,7 +584,7 @@ ObjArm CountThenSpawnInState2(uint8_t slot)
     }
     WR8(OBJ->f3880[slot], 0x22);
     jsr_push(0xB18D);
-    found_slot = FindFreeSlotFrom30(&last, &found);
+    found_slot = FindFreeSlotFrom30(&r.fifth, &found);
     jsr_pop();
     r.fourth = found_slot;
     r.fifth = last;

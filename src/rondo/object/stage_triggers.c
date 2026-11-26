@@ -1,5 +1,8 @@
 /* The stage objects that wait for a hit: they take their numbers from their record and start a step when hit. */
-#include "enemy_objects.h"
+#include "machine.h"
+#include "access.h"
+#include "routines.h"
+#include "ram.h"
 #include "stage_map.h"
 
 enum {
@@ -16,11 +19,92 @@ static uint8_t rol_a(uint8_t a, bool *carry)
     return out;
 }
 
-/* What the code at the second trigger's label leaves: the hit-taken byte cleared, A as it was. */
-static Ended clear_hit_taken(uint8_t x, Ended e)
+/* How a trigger's frame ended, which decides what its exit shows. */
+typedef enum { TRIGGER_RECORD_LOADED, TRIGGER_NOT_ALLOWED, TRIGGER_NOT_HIT, TRIGGER_HIT_TOO_OFTEN, TRIGGER_STARTED } TriggerHow;
+
+typedef struct {
+    TriggerHow how;
+    uint8_t a;       /* the byte the last load or compare worked on */
+    uint8_t y;       /* Y where the path sets it */
+    bool y_set;
+    bool carry;      /* the carry the first frame's rotates left */
+    bool overflow;   /* the overflow of the first frame's add */
+} TriggerEnd;
+
+/* What each way of ending leaves in A, N, Z, C, V and Y. */
+static void trigger_exit_shim(TriggerEnd end)
 {
-    WR8(OBJ->hit_taken[x], 0);
-    return e;
+    cpu.a = end.a;
+    switch (end.how) {
+    case TRIGGER_RECORD_LOADED:
+        abi_nz(end.a);
+        abi_flag(P_C, end.carry);
+        abi_flag(P_V, end.overflow);
+        break;
+    case TRIGGER_NOT_ALLOWED:
+    case TRIGGER_NOT_HIT:
+        abi_nz(end.a);
+        break;
+    case TRIGGER_HIT_TOO_OFTEN:
+        abi_nz((uint8_t)(end.a - HIT_LIMIT));
+        abi_flag(P_C, true);
+        break;
+    case TRIGGER_STARTED:
+        abi_nz(end.a);
+        abi_flag(P_C, false);
+        break;
+    }
+    if (end.y_set) {
+        cpu.y = end.y;
+    }
+}
+
+/* The first frame of both triggers: the record, the hitbox byte moved on, the record's byte split. */
+static TriggerEnd load_trigger(uint8_t x, uint8_t number_mask, bool takes_count, uint16_t record_return)
+{
+    TriggerEnd end = { TRIGGER_RECORD_LOADED, 0, 0, false, false, false };
+    Sum sum;
+    uint8_t a;
+    uint8_t y;
+    uint8_t last;
+    uint8_t nz;
+    bool carry;
+
+    jsr_push(record_return);
+    last = LoadObjectRecord(x, &nz, &carry);
+    jsr_pop();
+    (void)last;
+    a = RD8(OBJ->hitbox_on[x]);
+    sum = add_bytes(RECORD_SLOT_FIRST, a, false);
+    WR8(OBJ->hitbox_on[x], sum.value);
+    a = RD8(OBJ->next_kind[x]);
+    y = a;
+    a = (uint8_t)(a & number_mask);
+    WR8(OBJ->f3510[x], a);
+    a = y;
+    carry = sum.carry;
+    a = rol_a(a, &carry);
+    a = rol_a(a, &carry);
+    a = rol_a(a, &carry);
+    if (takes_count) {
+        y = a;
+        a = (uint8_t)(a & TWO_BITS);
+        WR8(OBJ->angle_hi[x], a);
+        a = y;
+        a = rol_a(a, &carry);
+        a = rol_a(a, &carry);
+        a = (uint8_t)(a & TWO_BITS);
+        WR8(OBJ->life_timer[x], a);
+    } else {
+        a = (uint8_t)(a & TWO_BITS);
+        WR8(OBJ->angle_hi[x], a);
+    }
+    end.a = a;
+    end.y = y;
+    end.y_set = true;
+    end.carry = carry;
+    end.overflow = sum.overflow;
+    return end;
 }
 
 /*
@@ -58,60 +142,37 @@ void abi_ClearStageTimers(void)
  * WAITS: no.
  * Entry: X the object. Exit: as the last path left it.
  */
-Ended StageTriggerObject(uint8_t x)
+TriggerEnd StageTriggerObject(uint8_t x)
 {
-    Ended e;
-    Sum sum;
+    TriggerEnd end = { TRIGGER_NOT_ALLOWED, 0, 0, false, false, false };
     uint8_t a;
     uint8_t y;
-    uint8_t last;
-    uint8_t nz;
-    bool carry;
 
     a = RD8(OBJ->state[x]);
     if (a == 0) {
-        jsr_push(FIRST_RECORD_RETURN);
-        last = LoadObjectRecord(x, &nz, &carry);
-        jsr_pop();
-        (void)last;
-        a = RD8(OBJ->hitbox_on[x]);
-        sum = add_bytes(RECORD_SLOT_FIRST, a, false);
-        WR8(OBJ->hitbox_on[x], sum.value);
-        a = RD8(OBJ->next_kind[x]);
-        y = a;
-        a = (uint8_t)(a & NIBBLE);
-        WR8(OBJ->f3510[x], a);
-        a = y;
-        carry = sum.carry;
-        a = rol_a(a, &carry);
-        a = rol_a(a, &carry);
-        a = rol_a(a, &carry);
-        y = a;
-        a = (uint8_t)(a & TWO_BITS);
-        WR8(OBJ->angle_hi[x], a);
-        a = y;
-        a = rol_a(a, &carry);
-        a = rol_a(a, &carry);
-        a = (uint8_t)(a & TWO_BITS);
-        WR8(OBJ->life_timer[x], a);
-        e = ended_with_y(ended_with_overflow(ended_with_carry(ended_load(a), carry), sum.overflow), y);
-        return e;
+        return load_trigger(x, NIBBLE, true, FIRST_RECORD_RETURN);
     }
     WR8(OBJ->timer[x], 0);
     y = RD8(OBJ->life_timer[x]);
+    end.y = y;
+    end.y_set = true;
     a = rd8((uint16_t)(PadOverrides + y));
-    e = ended_with_y(ended_load(a), y);
+    end.a = a;
     if (a == 0) {
-        return clear_hit_taken(x, e);
+        WR8(OBJ->hit_taken[x], 0);
+        return end;
     }
     a = RD8(OBJ->hit_taken[x]);
-    e = ended_with_y(ended_load(a), y);
+    end.a = a;
     if (a == 0) {
-        return clear_hit_taken(x, e);
+        end.how = TRIGGER_NOT_HIT;
+        WR8(OBJ->hit_taken[x], 0);
+        return end;
     }
-    e = ended_with_y(ended_compare(a, HIT_LIMIT), y);
     if (a >= HIT_LIMIT) {
-        return clear_hit_taken(x, e);
+        end.how = TRIGGER_HIT_TOO_OFTEN;
+        WR8(OBJ->hit_taken[x], 0);
+        return end;
     }
     a = RD8(OBJ->f3510[x]);
     WR8(ZP->field83, a);
@@ -119,12 +180,14 @@ Ended StageTriggerObject(uint8_t x)
     WR8(ZP->field87, a);
     WR8(ZP->field8c, 1);
     WR8(ZP->sub_step, STEP_TO_RUN);
-    return ended_with_y(ended_with_carry(ended_load(STEP_TO_RUN), false), y);
+    end.how = TRIGGER_STARTED;
+    end.a = STEP_TO_RUN;
+    return end;
 }
 
 void abi_StageTriggerObject(void)
 {
-    abi_ended(StageTriggerObject(cpu.x));
+    trigger_exit_shim(StageTriggerObject(cpu.x));
 }
 
 /*
@@ -138,63 +201,44 @@ void abi_StageTriggerObject(void)
  * WAITS: no.
  * Entry: X the object. Exit: as the last path left it.
  */
-Ended StageTriggerObjectB(uint8_t x)
+TriggerEnd StageTriggerObjectB(uint8_t x)
 {
-    Ended e;
-    Sum sum;
+    TriggerEnd end = { TRIGGER_NOT_ALLOWED, 0, 0, false, false, false };
     uint8_t a;
-    uint8_t y;
-    uint8_t last;
-    uint8_t nz;
-    bool carry;
 
     a = RD8(OBJ->state[x]);
     if (a == 0) {
-        jsr_push(SECOND_RECORD_RETURN);
-        last = LoadObjectRecord(x, &nz, &carry);
-        jsr_pop();
-        (void)last;
-        a = RD8(OBJ->hitbox_on[x]);
-        sum = add_bytes(RECORD_SLOT_FIRST, a, false);
-        WR8(OBJ->hitbox_on[x], sum.value);
-        a = RD8(OBJ->next_kind[x]);
-        y = a;
-        a = (uint8_t)(a & FIVE_BITS);
-        WR8(OBJ->f3510[x], a);
-        a = y;
-        carry = sum.carry;
-        a = rol_a(a, &carry);
-        a = rol_a(a, &carry);
-        a = rol_a(a, &carry);
-        a = (uint8_t)(a & TWO_BITS);
-        WR8(OBJ->angle_hi[x], a);
-        return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(a), carry), sum.overflow), y);
+        return load_trigger(x, FIVE_BITS, false, SECOND_RECORD_RETURN);
     }
     WR8(OBJ->timer[x], 0);
     a = RD8(OBJ->next_kind[x]);
-    e = ended_load(a);
+    end.a = a;
     if ((a & 0x80) != 0) {
         /* Untraced: a negative number takes the same exit as a missing hit. */
         a = rd8(PlayerByte3BD7);
-        e = ended_load(a);
+        end.a = a;
         if (a == 0) {
-            return clear_hit_taken(x, e);
+            WR8(OBJ->hit_taken[x], 0);
+            return end;
         }
     }
     a = rd8(PlayerMayLeaveTop);
     a = (uint8_t)(a - 1);
-    e = ended_load(a);
+    end.a = a;
     if (a == 0) {
-        return e;
+        return end;
     }
     a = RD8(OBJ->hit_taken[x]);
-    e = ended_load(a);
+    end.a = a;
     if (a == 0) {
-        return clear_hit_taken(x, e);
+        end.how = TRIGGER_NOT_HIT;
+        WR8(OBJ->hit_taken[x], 0);
+        return end;
     }
-    e = ended_compare(a, HIT_LIMIT);
     if (a >= HIT_LIMIT) {
-        return clear_hit_taken(x, e);
+        end.how = TRIGGER_HIT_TOO_OFTEN;
+        WR8(OBJ->hit_taken[x], 0);
+        return end;
     }
     a = RD8(OBJ->f3510[x]);
     WR8(ZP->field83, a);
@@ -204,10 +248,12 @@ Ended StageTriggerObjectB(uint8_t x)
     WR8(ZP->sub_step, STEP_TO_RUN);
     WR8(OBJ->vx_hi[0], 0);
     WR8(OBJ->vx_lo[0], 0);
-    return ended_with_carry(ended_load(STEP_TO_RUN), false);
+    end.how = TRIGGER_STARTED;
+    end.a = STEP_TO_RUN;
+    return end;
 }
 
 void abi_StageTriggerObjectB(void)
 {
-    abi_ended(StageTriggerObjectB(cpu.x));
+    trigger_exit_shim(StageTriggerObjectB(cpu.x));
 }

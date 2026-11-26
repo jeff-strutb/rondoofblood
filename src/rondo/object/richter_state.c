@@ -283,7 +283,7 @@ CrouchStep RichterCrouchStep4(void);
 AttackStart RichterCrouchAttack(void);
 void crouch_exit_shim(CrouchStep c);
 void crouch_state_exit_shim(CrouchState st);
-AttackStart RichterAttackAnimation(uint8_t animation);
+static AttackStart attack_with_animation(uint8_t animation);
 static void stand_handler_shim(uint8_t step, uint16_t handler);
 static FacingSpeed speed_by_facing(uint16_t table);
 static void abi_exit_speed(FacingSpeed set);
@@ -2479,15 +2479,8 @@ void abi_RichterStopX(void)
     RichterStopX();
 }
 
-/*
- * @routine 01B9:4E4 RichterAttackAnimation
- * @run 6D:A4E4
- * WHAT IT DOES: The attack from its animation on: step 1, then the whip with its sound or the kind's object in a free slot.
- * HOW: RichterSetAnimation with A, then PlayerByte3BD5 picks the whip (RichterClearWhip, sound 3) or the item in slot 5, 8 or $0B.
- * WAITS: no.
- * Entry: A the animation. Exit: as RichterAttack.
- */
-AttackStart RichterAttackAnimation(uint8_t animation)
+/* The attack from its animation on: step 1, then the whip with its sound or the item's object. A jump target of CrouchAttack and what RichterAttack runs on into: not filed as a routine of its own. */
+static AttackStart attack_with_animation(uint8_t animation)
 {
     AttackStart attack;
 
@@ -2520,11 +2513,6 @@ AttackStart RichterAttackAnimation(uint8_t animation)
 
 void attack_exit_shim(AttackStart attack);
 
-void abi_RichterAttackAnimation(void)
-{
-    attack_exit_shim(RichterAttackAnimation(cpu.a));
-}
-
 /*
  * @routine 01B9:4CD RichterAttack
  * @run 6D:A4CD
@@ -2551,7 +2539,7 @@ AttackStart RichterAttack(void)
     RichterStopMoving();
     jsr_pop();
     kind = rd8(PlayerByte3BD5);
-    return RichterAttackAnimation(rd8((uint16_t)(LandAnimations + kind)));
+    return attack_with_animation(rd8((uint16_t)(LandAnimations + kind)));
 }
 
 /* The whip's sound's exit after X 3; or the item in A and X its slot, N and Z from the LDX, V from the last test. */
@@ -4011,7 +3999,7 @@ AttackStart RichterCrouchAttack(void)
     jsr_push(0xA8C2);
     RichterStopMoving();
     jsr_pop();
-    return RichterAttackAnimation(ANIM_CROUCH_ATTACK);
+    return attack_with_animation(ANIM_CROUCH_ATTACK);
 }
 
 void abi_RichterCrouchAttack(void)

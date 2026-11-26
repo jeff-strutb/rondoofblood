@@ -10,6 +10,8 @@
 #include "ram.h"
 #include "routines.h"
 #include "access.h"
+#include "enemy_objects.h"
+#include "player_objects.h"
 
 enum {
     WALL_ANSWER = 0x02, WALL_COLUMNS = 6, WALL_FIRST_COLUMN_STANDING = 0,
@@ -990,8 +992,15 @@ void abi_RichterHasNoFooting(void)
     footing_exit_shim(RichterHasNoFooting());
 }
 
-/* The point zTemp10-11 under him at his own X (a local subroutine of the ladder check): the high byte of the add. */
-static Sum ladder_point(void)
+/*
+ * @routine 01BC:0F2 RichterLadderPoint
+ * @run 6D:B8F2
+ * WHAT IT DOES: Sets the point the ladder check reads: his X, and his Y plus the offset in zTemp10-11, into zTemp00-03.
+ * HOW: Two adds with the carry between them.
+ * WAITS: no.
+ * Entry: zTemp10-11 the offset. Exit: A the Y high byte of the point, N, Z, C and V from its add. X and Y kept.
+ */
+Sum RichterLadderPoint(void)
 {
     uint8_t value, base;
     Sum low, high;
@@ -1008,6 +1017,16 @@ static Sum ladder_point(void)
     high = add_bytes(base, value, low.carry);
     WR8(ZP->temp03, high.value);
     return high;
+}
+
+void abi_RichterLadderPoint(void)
+{
+    Sum high = RichterLadderPoint();
+
+    cpu.a = high.value;
+    abi_nz(high.value);
+    abi_flag(P_C, high.carry);
+    abi_flag(P_V, high.overflow);
 }
 
 /* The overlay's read may run its own code: it is entered with that add's A and flags (X and Y as they stand). */
@@ -1060,7 +1079,7 @@ LadderCheck RichterLadderCheck(void)
     WR8(ZP->temp10, LADDER_FIRST_REACH);
     WR8(ZP->temp11, 0);
     jsr_push(0xB8B5);
-    high = ladder_point();
+    high = RichterLadderPoint();
     jsr_pop();
     for (bool first = true;; first = false) {
         if (high.value != 0) {
@@ -1089,7 +1108,7 @@ LadderCheck RichterLadderCheck(void)
             return ladder_end(check, LADDER_REACH_OUT, step.value, step.value, false);
         }
         jsr_push(0xB8C2);
-        high = ladder_point();
+        high = RichterLadderPoint();
         jsr_pop();
     }
     value = RD8(ZP->temp10);
@@ -1099,7 +1118,7 @@ LadderCheck RichterLadderCheck(void)
     high = add_bytes(0xFF, value, step.carry);
     WR8(ZP->temp11, high.value);
     jsr_push(0xB8E5);
-    high = ladder_point();
+    high = RichterLadderPoint();
     jsr_pop();
     ladder_entry_shim(high);
     jsr_push(0xB8E8);
@@ -1201,12 +1220,104 @@ static bool column_counts(uint8_t answer, uint8_t pad_bit)
  * WAITS: no.
  * Entry: nothing. Exit: C the answer, with what the last step left.
  */
+/*
+ * @routine 01BC:250 RichterLedgeLow
+ * @run 6D:BA50
+ * WHAT IT DOES: The ledge check's low half: the two low columns read; a column that blocks counts when its bit $20 is set or
+ * down is held, and then zTemp01 is cleared.
+ * HOW: RichterLowColumnsBlocked, the answer's bit $20, bit 4 of zPadHeld.
+ * WAITS: no.
+ * Entry: nothing. Exit: C set at a ledge, A the bit looked at, X the column; else C clear (A 0, X 2 when no column blocks).
+ */
+LedgeLowPart RichterLedgeLow(void)
+{
+    LedgeLowPart r = { false, { -1 }, 0, BLOCKED_COLUMNS, false };
+    uint8_t bits, held;
+
+    jsr_push(0xBA53);
+    r.low = RichterLowColumnsBlocked();
+    jsr_pop();
+    if (r.low.blocked_column < 0) {
+        return r;
+    }
+    bits = (uint8_t)(r.low.answer & TILE_BLOCK_ANY);
+    r.a = bits;
+    r.x = (uint8_t)r.low.blocked_column;
+    r.found = bits != 0;
+    if (!r.found) {
+        held = RD8(ZP->pad_held);
+        r.found = (held & PAD_DOWN) != 0;
+    }
+    if (r.found) {
+        WR8(ZP->temp01, 0);
+        r.c = true;
+    }
+    return r;
+}
+
+void abi_RichterLedgeLow(void)
+{
+    LedgeLowPart r = RichterLedgeLow();
+
+    low_columns_exit_shim(r.low);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    abi_nz(r.a);
+    abi_flag(P_C, r.c);
+}
+
+/*
+ * @routine 01BC:264 RichterLedgeHigh
+ * @run 6D:BA64
+ * WHAT IT DOES: The ledge check's high half: the first two columns read; a column that blocks counts when its bit $20 is set or
+ * up is held, and then zTemp01 is set to 1.
+ * HOW: RichterColumnsBlocked, the answer's bit $20, bit 6 of zPadHeld.
+ * WAITS: no.
+ * Entry: nothing. Exit: C set at a ledge with A 1, X the column; else C clear (A the bit looked at, X 2 when no column blocks).
+ */
+LedgeHighPart RichterLedgeHigh(void)
+{
+    LedgeHighPart r = { false, { -1, 0 }, 0, BLOCKED_COLUMNS, false };
+    uint8_t bits, held;
+
+    jsr_push(0xBA67);
+    r.high = RichterColumnsBlocked();
+    jsr_pop();
+    if (r.high.column < 0) {
+        return r;
+    }
+    bits = (uint8_t)(r.high.bits & TILE_BLOCK_ANY);
+    r.a = bits;
+    r.x = (uint8_t)r.high.column;
+    r.found = bits != 0;
+    if (!r.found) {
+        held = RD8(ZP->pad_held);
+        r.found = (held & PAD_UP) != 0;
+    }
+    if (r.found) {
+        WR8(ZP->temp01, 1);
+        r.a = 1;
+        r.c = true;
+    }
+    return r;
+}
+
+void abi_RichterLedgeHigh(void)
+{
+    LedgeHighPart r = RichterLedgeHigh();
+
+    cpu.a = r.a;
+    cpu.x = r.x;
+    abi_nz(r.a);
+    abi_flag(P_C, r.c);
+}
+
 LedgeCheck RichterLedgeCheck(void)
 {
     LedgeCheck check = { LEDGE_PUSHED };
-    BlockedColumns high;
-    uint8_t push, held, bits;
-    bool found = false;
+    LedgeLowPart low;
+    LedgeHighPart high;
+    uint8_t push;
 
     push = RD8(ZP->player_push);
     check.push = push;
@@ -1215,53 +1326,24 @@ LedgeCheck RichterLedgeCheck(void)
         return check;
     }
     jsr_push(0xBA48);
-    jsr_push(0xBA53);
-    check.low = RichterLowColumnsBlocked();
+    low = RichterLedgeLow();
     jsr_pop();
-    if (check.low.blocked_column >= 0) {
-        bits = (uint8_t)(check.low.answer & TILE_BLOCK_ANY);
-        found = bits != 0;
-        if (!found) {
-            held = RD8(ZP->pad_held);
-            found = (held & PAD_DOWN) != 0;
-        }
-        if (found) {
-            WR8(ZP->temp01, 0);
-            jsr_pop();
-            check.how = LEDGE_LOW;
-            check.a = bits;
-            check.x = (uint8_t)check.low.blocked_column;
-            check.c = true;
-            return check;
-        }
+    check.low = low.low;
+    if (low.found) {
+        check.how = LEDGE_LOW;
+        check.a = low.a;
+        check.x = low.x;
+        check.c = true;
+        return check;
     }
-    jsr_pop();
     jsr_push(0xBA4C);
-    jsr_push(0xBA67);
-    high = RichterColumnsBlocked();
+    high = RichterLedgeHigh();
     jsr_pop();
-    check.high_column = high.column;
-    check.how = LEDGE_NONE;
-    check.a = 0;
-    check.x = BLOCKED_COLUMNS;
-    check.c = false;
-    if (high.column >= 0) {
-        bits = (uint8_t)(high.bits & TILE_BLOCK_ANY);
-        found = bits != 0;
-        if (!found) {
-            held = RD8(ZP->pad_held);
-            found = (held & PAD_UP) != 0;
-        }
-        check.a = bits;
-        check.x = (uint8_t)high.column;
-        if (found) {
-            WR8(ZP->temp01, 1);
-            check.how = LEDGE_HIGH;
-            check.a = 1;
-            check.c = true;
-        }
-    }
-    jsr_pop();
+    check.high_column = high.high.column;
+    check.how = high.found ? LEDGE_HIGH : LEDGE_NONE;
+    check.a = high.a;
+    check.x = high.x;
+    check.c = high.c;
     return check;
 }
 

@@ -255,25 +255,24 @@ RichterTryItemCrash_at2:
     ldx z:zField93
     lda z:zField94
     cmp a:RichterItemCosts,x
-    bcs RichterTryItemCrash_at3
+    bcs DroppingPieceStep
 RichterTryItemCrash_at0:
     stz a:PadForcedPress
     clc
     rts
-RichterTryItemCrash_at3:
     ldx z:zField93
     lda a:RichterItemCrashLists,x
-    beq RichterTryItemCrash_at4
+    beq RichterTryItemCrash_at3
     ldx #$06
     jsr VecStartListChannelKind2
-RichterTryItemCrash_at4:
+RichterTryItemCrash_at3:
     stz a:PlayerByte3BD6
     ldx z:zField93
     lda a:RichterItemCrashScripts,x
-    beq RichterTryItemCrash_at5
+    beq RichterTryItemCrash_at4
     ldx #$06
     jsr VecStartScriptSlotKind1
-RichterTryItemCrash_at5:
+RichterTryItemCrash_at4:
     ldx z:zField93
     lda z:zField94
     sed
@@ -293,10 +292,17 @@ RichterTryItemCrash_at5:
 RichterLatchButtons:
     lda z:zPadPressed
     and #$02
-    bsr RichterLatchButtons_at0
+    bsr RichterLatchBits
     lda z:zPadPressed
     and #$01
-RichterLatchButtons_at0:
+
+; @routine 01BC:113 RichterLatchBits
+; @run 6D:B913
+; WHAT IT DOES: Adds the buttons in A to the ones latched in PadForcedPressB.
+; HOW: ORA of the byte, STA back.
+; WAITS: no.
+; Entry: A the buttons. Exit: A the latched byte, N and Z from it. X, Y, C and V kept.
+RichterLatchBits:
     ora a:PadForcedPressB
     sta a:PadForcedPressB
     rts

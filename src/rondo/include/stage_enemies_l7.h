@@ -196,54 +196,54 @@ typedef struct {
 } ViewTest;
 
 /* object/enemies_stage09_temp.c */
-ViewTest InWindowRange(uint8_t slot);
-Ended FaceByCue(uint8_t slot);
-Ended WalkAndTurnAtEdges(uint8_t slot);
-Ended WalkSideways(uint8_t slot);
-Ended PickNextAction(uint8_t slot);
-Ended WalkTowardPlayer(uint8_t slot);
+ObjArm InWindowRange(uint8_t slot);
+ObjArm FaceByCue(uint8_t slot);
+ObjArm WalkAndTurnAtEdges(uint8_t slot);
+ObjArm WalkSideways(uint8_t slot);
+ObjArm PickNextAction(uint8_t slot);
+ObjArm WalkTowardPlayer(uint8_t slot);
 
-Ended StartCueScript(uint8_t slot, uint8_t y);
-Ended PlayCueOnFrame(uint8_t slot);
-SoundEnd StepFlyingCue(uint8_t slot, uint8_t y);
-Ended StartTwinSpawner(uint8_t slot);
+ObjArm StartCueScript(uint8_t slot, uint8_t y);
+ObjArm PlayCueOnFrame(uint8_t slot);
+ObjArm StepFlyingCue(uint8_t slot, uint8_t y);
+ObjArm StartTwinSpawner(uint8_t slot);
 
-Ended StepThenQuarterWait(uint8_t slot);
-Ended StartShotRing(uint8_t slot);
-Ended EnterStateWhenSlotClear(uint8_t slot);
-SoundEnd BurstOnLanding(uint8_t slot, uint8_t y);
-Ended StartSplitterHigh(uint8_t slot, bool carry_in);
-Ended StartSplitterLow(uint8_t slot, bool carry_in);
-Ended MaybeShootAhead(uint8_t slot);
+ObjArm StepThenQuarterWait(uint8_t slot);
+ObjArm StartShotRing(uint8_t slot);
+ObjArm EnterStateWhenSlotClear(uint8_t slot);
+ObjArm BurstOnLanding(uint8_t slot, uint8_t y);
+ObjArm StartSplitterHigh(uint8_t slot, bool carry_in);
+ObjArm StartSplitterLow(uint8_t slot, bool carry_in);
+ObjArm MaybeShootAhead(uint8_t slot);
 
-Ended PickWaterLevel(void);
-SoundEnd WaitForPage2(uint8_t slot, uint8_t y);
-Ended RiseUntilAboveGround(uint8_t slot);
-Ended WaitForSlot10State4(uint8_t slot);
-Ended StartNumberedPiece(uint8_t slot);
-Ended FollowPlayerHitbox(uint8_t slot);
+ObjArm PickWaterLevel(void);
+ObjArm WaitForPage2(uint8_t slot, uint8_t y);
+ObjArm RiseUntilAboveGround(uint8_t slot);
+ObjArm WaitForSlot10State4(uint8_t slot);
+ObjArm StartNumberedPiece(uint8_t slot);
+ObjArm FollowPlayerHitbox(uint8_t slot);
 
-Ended RiseAndClear(uint8_t slot);
-Ended RaiseStateAfterSlot10(uint8_t slot);
-Ended StartChainLink(uint8_t slot);
-Ended ChainFollowsPrevious(uint8_t slot);
-Ended StartKickedPiece(uint8_t slot);
-Ended StepThenClear(uint8_t slot);
+ObjArm RiseAndClear(uint8_t slot);
+ObjArm RaiseStateAfterSlot10(uint8_t slot);
+ObjArm StartChainLink(uint8_t slot);
+ObjArm ChainFollowsPrevious(uint8_t slot);
+ObjArm StartKickedPiece(uint8_t slot);
+ObjArm StepThenClear(uint8_t slot);
 
 void ClearAnimation(uint8_t slot);
-Ended EnterNextAndReset(uint8_t slot);
-Ended FlipSide(uint8_t slot);
-Ended StepListByPhase(uint8_t slot);
-Ended SetSwaySpeed(uint8_t slot);
-Ended BobAndMove(uint8_t slot);
+ObjArm EnterNextAndReset(uint8_t slot);
+ObjArm FlipSide(uint8_t slot);
+ObjArm StepListByPhase(uint8_t slot);
+ObjArm SetSwaySpeed(uint8_t slot);
+ObjArm BobAndMove(uint8_t slot);
 
-Ended ReactAtWindowEdge(uint8_t slot);
-Ended SwayStep(uint8_t slot);
-Ended SwayOrAdvance(uint8_t slot);
-Ended SwayThenReact(uint8_t slot);
-Ended SwayThenFlip(uint8_t slot);
-Ended SwayThenRestart(uint8_t slot);
-Jump JumpByStateTable(uint8_t slot);
+ObjArm ReactAtWindowEdge(uint8_t slot);
+ObjArm SwayStep(uint8_t slot);
+ObjArm SwayOrAdvance(uint8_t slot);
+ObjArm SwayThenReact(uint8_t slot);
+ObjArm SwayThenFlip(uint8_t slot);
+ObjArm SwayThenRestart(uint8_t slot);
+ObjArm JumpByStateTable(uint8_t slot);
 
 /* object/enemies_stage0a_temp.c */
 Ended BreakWhenHit(uint8_t slot);
@@ -411,14 +411,14 @@ Jump JumpByStateTableD(uint8_t slot);
 Jump JumpByPhaseTable(uint8_t slot);
 Ended StepWithGuardTable(uint8_t slot);
 Ended StepPhaseThenPause(uint8_t slot);
-Ended ShootMoveAndPickSpeed(uint8_t slot);
-Jump JumpByStateTableE(uint8_t slot);
-Jump JumpByStateTableF(uint8_t slot);
-Ended HitRowByKindAndHits(uint8_t slot);
-Jump StepFacingAndJump(uint8_t slot, Ended *before);
-Ended PickWaterOnTenth(uint8_t slot);
-SoundEnd SwitchStateOnHitRow(uint8_t slot);
-SoundEnd StepWithHitTable(uint8_t slot);
+ObjArm ShootMoveAndPickSpeed(uint8_t slot);
+ObjArm JumpByStateTableE(uint8_t slot);
+ObjArm JumpByStateTableF(uint8_t slot);
+ObjArm HitRowByKindAndHits(uint8_t slot);
+ObjArm StepFacingAndJump(uint8_t slot);
+ObjArm PickWaterOnTenth(uint8_t slot);
+ObjArm SwitchStateOnHitRow(uint8_t slot);
+ObjArm StepWithHitTable(uint8_t slot);
 Ended TrackPointOrLand(uint8_t slot);
 Ended TrackThenAimAtPlayer(uint8_t slot);
 Ended OrbitThenLeave(uint8_t slot);
@@ -446,24 +446,24 @@ Ended SlideAngleDown(uint8_t slot);
 Ended SlideAngleUp(uint8_t slot);
 
 
-ViewTest TouchesPlayerMark(uint8_t slot);
+ObjArm TouchesPlayerMark(uint8_t slot);
 Ended CountBothPairs(uint8_t slot);
-SoundEnd HealAndClear(uint8_t slot, uint8_t y);
-Ended StartOnPlayerAnimation(uint8_t slot);
-Ended AdvanceByHealth(uint8_t slot);
-Ended PickGroundSpeedInWindow(uint8_t slot);
-Ended MoveThenPick(uint8_t slot);
-Ended SwingAndPick(uint8_t slot);
-Ended FallStepAndLeave(uint8_t slot);
-Ended StartTracker(uint8_t slot);
-Ended StartThenStepList(uint8_t slot);
-void FinalSpinAndEnd(uint8_t slot);
-Ended StepFallingSpark(uint8_t slot);
-Ended StartFallingSpark09(uint8_t slot);
-Ended ChainCountdown(uint8_t slot);
-Ended ChainSwings(uint8_t slot);
-Ended WalkAndPick(uint8_t slot);
-SoundEnd StepShootOnCue(uint8_t slot, uint8_t y);
+ObjArm HealAndClear(uint8_t slot, uint8_t y);
+ObjArm StartOnPlayerAnimation(uint8_t slot);
+ObjArm AdvanceByHealth(uint8_t slot);
+ObjArm PickGroundSpeedInWindow(uint8_t slot);
+ObjArm MoveThenPick(uint8_t slot);
+ObjArm SwingAndPick(uint8_t slot);
+ObjArm FallStepAndLeave(uint8_t slot);
+ObjArm StartTracker(uint8_t slot);
+ObjArm StartThenStepList(uint8_t slot);
+ObjArm FinalSpinAndEnd(uint8_t slot);
+ObjArm StepFallingSpark(uint8_t slot);
+ObjArm StartFallingSpark09(uint8_t slot);
+ObjArm ChainCountdown(uint8_t slot);
+ObjArm ChainSwings(uint8_t slot);
+ObjArm WalkAndPick(uint8_t slot);
+ObjArm StepShootOnCue(uint8_t slot, uint8_t y);
 
 /* A memory shift right in one read and one write: the value written, and the bit shifted out in `carry_var`. */
 #define LSR8_VALUE(field, carry_var) \

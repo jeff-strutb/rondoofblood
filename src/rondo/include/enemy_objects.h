@@ -362,24 +362,40 @@ typedef struct {
     CommandCall call; \
     bool screen_called; \
     SoundOnScreen screen; \
-    TileRun run;
+    TileRun run; \
+    Sum sum2, sum3; \
+    AxisMove move2; \
+    GravityResult gravity; \
+    SoleSlot sole; \
+    uint8_t bytes[32]; \
+    uint16_t target;
 
-/* A callee's ObjArm kept inside its caller's (one level: a callee kept this way keeps no callee of its own). */
+/* The fields alone: a callee's result kept at the deepest level. */
 typedef struct {
     OBJ_ARM_FIELDS
+} ObjLeaf;
+
+/* A callee's ObjArm kept inside its caller's: its own fields, and the results of up to four callees of its own. */
+typedef struct {
+    OBJ_ARM_FIELDS
+    ObjLeaf sub, sub2, sub3, sub4;
 } ObjSub;
 
 typedef struct {
     OBJ_ARM_FIELDS
-    ObjSub sub;
+    ObjSub sub, sub2, sub3, sub4;
 } ObjArm;
 
-/* A callee's ObjArm as its caller keeps it, and back for the callee's exit shim. */
+/* A callee's ObjArm as its caller keeps it (one level of its own callees stays), and back for the callee's exit shim. */
 static inline ObjSub obj_sub(ObjArm a)
 {
-    ObjSub s;
+    ObjSub s = { 0 };
 
-    memcpy(&s, &a, sizeof s);
+    memcpy(&s, &a, sizeof(ObjLeaf));
+    memcpy(&s.sub, &a.sub, sizeof(ObjLeaf));
+    memcpy(&s.sub2, &a.sub2, sizeof(ObjLeaf));
+    memcpy(&s.sub3, &a.sub3, sizeof(ObjLeaf));
+    memcpy(&s.sub4, &a.sub4, sizeof(ObjLeaf));
     return s;
 }
 
@@ -387,7 +403,28 @@ static inline ObjArm obj_arm(ObjSub s)
 {
     ObjArm a = { 0 };
 
-    memcpy(&a, &s, sizeof s);
+    memcpy(&a, &s, sizeof(ObjLeaf));
+    memcpy(&a.sub, &s.sub, sizeof(ObjLeaf));
+    memcpy(&a.sub2, &s.sub2, sizeof(ObjLeaf));
+    memcpy(&a.sub3, &s.sub3, sizeof(ObjLeaf));
+    memcpy(&a.sub4, &s.sub4, sizeof(ObjLeaf));
+    return a;
+}
+
+/* One level further: a callee's callee's result as a leaf, and back. */
+static inline ObjLeaf obj_leaf(ObjArm a)
+{
+    ObjLeaf l;
+
+    memcpy(&l, &a, sizeof l);
+    return l;
+}
+
+static inline ObjArm obj_arm_of(ObjLeaf l)
+{
+    ObjArm a = { 0 };
+
+    memcpy(&a, &l, sizeof l);
     return a;
 }
 

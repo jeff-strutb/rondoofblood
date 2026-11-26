@@ -125,7 +125,7 @@ cd_subrd:
 ; HOW: The byte from $1807, kept in CardSubcodeByte. A named entry into cd_subrd, which falls into it; the interrupt that says a
 ; subcode byte is ready calls it alone.
 ; WAITS: no.
-; Entry: nothing. Exit: A the byte, C clear. N, Z, V, X, Y kept.
+; Entry: nothing. Exit: A the byte, N and Z from it, C clear. V, X, Y kept.
 cd_subrd_read:
     lda a:CdSubcode
     sta a:CardSubcodeByte

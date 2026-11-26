@@ -216,7 +216,7 @@ void abi_write_vram_word_pending(void)
  * HOW: The byte from $1807, kept in CardSubcodeByte. A named entry into cd_subrd, which falls into it; the interrupt that says a
  * subcode byte is ready calls it alone.
  * WAITS: no.
- * Entry: nothing. Exit: A the byte, C clear. N, Z, V, X, Y kept.
+ * Entry: nothing. Exit: A the byte, N and Z from it, C clear. V, X, Y kept.
  */
 uint8_t cd_subrd_read(void)
 {
@@ -229,6 +229,7 @@ uint8_t cd_subrd_read(void)
 void abi_cd_subrd_read(void)
 {
     cpu.a = cd_subrd_read();
+    abi_nz(cpu.a);
     abi_flag(P_C, false);
 }
 

@@ -136,6 +136,13 @@ StageRegs HitKindSide152D(StageRegs r);
 StageRegs StageProbePoints152D(StageRegs r);
 StageRegs StageProbeAgain152D(StageRegs r);
 StageRegs ProbeTile152D(StageRegs r);
+StageRegs GateObjectStep152D(StageRegs r);
+StageRegs GateStart152D(StageRegs r);
+StageRegs GateWaitPlayer152D(StageRegs r);
+StageRegs GateWaitStep152D(StageRegs r);
+StageRegs GateOpen152D(StageRegs r);
+StageRegs GateWaitClear152D(StageRegs r);
+StageRegs GateClose152D(StageRegs r);
 
 void abi_StageEntryA152D(void);
 void abi_StageEntryB152D(void);
@@ -264,5 +271,12 @@ void abi_HitKindSide152D(void);
 void abi_StageProbePoints152D(void);
 void abi_StageProbeAgain152D(void);
 void abi_ProbeTile152D(void);
+void abi_GateObjectStep152D(void);
+void abi_GateStart152D(void);
+void abi_GateWaitPlayer152D(void);
+void abi_GateWaitStep152D(void);
+void abi_GateOpen152D(void);
+void abi_GateWaitClear152D(void);
+void abi_GateClose152D(void);
 
 #endif

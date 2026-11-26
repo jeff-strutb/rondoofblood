@@ -1,35 +1,47 @@
 script,verdict,detail,source
-attract,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_82,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_83,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_84,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_85,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_86,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_87,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_88,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_89,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_8A,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-attract_8E,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-boot,DIVERGENT,"DIVERGENT: first differing frame 15; 900 of 900 frames compared, 871 identical; access defects 1332; parked 2, kept 0, unreached 1, unopened arrivals 550",be14573
-gameover,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-menu_files,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-menu_names,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-play_s0_r1,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-play_s0_r2,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-play_s0_r3,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-play_s0_r4,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-play_s0_r5,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-play_s0_r6,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-raster_effects,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-sound_test,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_04,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_05,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_06,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_07,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_08,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_09,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_0A,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_0B,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_0C,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_0E,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
-stage_10,DIVERGENT,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_82,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_83,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_84,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_85,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_86,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_87,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_88,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_89,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_8A,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+attract_8E,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+boot,IDENTICAL,"IDENTICAL: 900 of 900 frames compared, 900 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 6212",d4226e1
+camera_modes,MISSING,,
+card_unit_adpcm,MISSING,,
+card_unit_backup,MISSING,,
+card_unit_bank2,MISSING,,
+card_unit_cd,MISSING,,
+card_unit_cplay,MISSING,,
+card_unit_misc,MISSING,,
+card_unit_read,MISSING,,
+card_unit_trans,MISSING,,
+card_unit_vdc,MISSING,,
+gameover,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+menu_files,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+menu_names,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+mode_screen,MISSING,,
+play_s0_r1,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+play_s0_r2,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+play_s0_r3,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+play_s0_r4,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+play_s0_r5,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+play_s0_r6,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+raster_effects,MISSING,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+sound_test,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_04,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_05,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_06,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_07,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_08,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_09,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_0A,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_0B,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_0C,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_0E,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+stage_10,STALE,"DIVERGENT: first differing frame 15; 904 of unknown frames compared, 874 identical; access defects 1345; parked 3, kept 0, unreached -1, unopened arrivals 551",be14573
+unit_video,MISSING,,

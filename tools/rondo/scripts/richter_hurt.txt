@@ -1,0 +1,22 @@
+# Coverage poke, not play (PROCEDURE section 6, step 2): in Stage 0, after the first 6000 frames of the seeded random play of
+# play_s0_r1 (its seeds 101 and 102), the hit the enemies leave for the player to pay (OBJ_33B0, the kind, with its damage in OBJ_32A8)
+# is poked in, as a collision with an enemy leaves it, so RichterStateFrame takes the hit and the hurt state (state 9) runs by itself:
+# first a hit of kind 2 for 1 point (hit reaction, knockback, hurt, then standing again after 150 frames), then a hit of kind 1 for more
+# than the health left (OBJ_32A8 $40 against a health poked to 1: the one-more flag, then the life lost). No script has the player
+# hurt by an enemy hard enough to run the reaction's later steps: the random play dies or stays clear of them.
+# Run on the original alone (pcebox, no checker): all 16936 frames ran, no hang. After the first poke Stage 0 goes on with the player
+# standing (shot hurt); after the lethal one the life is lost, REST reads 2 and the stage starts over (shot dead).
+include _newgame.txt
+wait 1500
+random 101 3000 8
+random 102 3000 8
+poke 32A8 01
+poke 33B0 02
+run 150
+shot hurt
+poke 2098 01
+poke 32A8 40
+poke 33B0 01
+run 400
+shot dead
+run 200

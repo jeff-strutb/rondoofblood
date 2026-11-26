@@ -2202,6 +2202,32 @@ void call_return_point(void)
         r = section_end(s, j);
         if (r == NO_RETURN)
             break;
+        /* An interrupt the original took after this call's RTS (its pulls of the frame are behind the interrupt in the record,
+         * the callee's RET passed) came at S two higher than the C's, which has not dropped the frame yet: the C's next access
+         * takes it, after the drop. Only one before the RTS is delivered here, with the frame on the stack. */
+        {
+            uint32_t own = 0x1F0100u + (uint8_t)(cpu.s + 1);
+            int pulled = 0;
+
+            for (uint64_t k = j; k > s->start;) {
+                Ev *x = evp(--k);
+
+                if (!x)
+                    break;
+                if (x->type == EV_RTPULL) {
+                    if (x->addr == own || x->addr == own + 1) {
+                        pulled = 1;
+                        break;
+                    }
+                    continue;
+                }
+                if (x->type == EV_RET || x->type == EV_CLOSE || is_noise(x))
+                    continue;
+                break;
+            }
+            if (pulled)
+                break;
+        }
         s->nest = nest;
         hy_int_pass(s, j, r);
         s->cur = r + 1;

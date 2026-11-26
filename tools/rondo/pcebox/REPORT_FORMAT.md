@@ -60,6 +60,10 @@ of that script ("record exit N", "hybrid exit N", "timed out after 1500 s"); a f
   the address is not its caller's. The original's call goes on in the routines that address begins (the record opens them
   as calls of their own, nested in this one's span): the C is judged up to its RTS, its exit and the rest of the span are
   not compared; in lockstep the call is finished there and the arrivals of the dispatched routines are matched one by one).
+  A call counts as a dispatch only when the original made the same jump in that call: the record holds the arrival its RTS
+  logs (a RET, or the CALL of a tagged routine entered by RTS) at the address the C's stack holds, with S two above the
+  C's. With none, the C left a push or a frame on the stack where the original returned: the call is judged whole and
+  its S compare names it (a STACK defect in its own call); the report's `RTS below the entry S` line counts these calls.
   `order` counts calls with an access defect and no other fault. `calls = identical + divergent + unverified + order`.
 
 `oracle.py a5` writes, in `$RONDO_ORACLE_OUT`:
@@ -154,6 +158,7 @@ More diagnostics (environment variables; none changes a verdict, except RONDO_NO
 disc's data track, and `passed` (the target is a no-disc-origin call target from the traces, the call returns: its accesses are the routine's own) or `kept`.
 `RONDO_NO_RAMCALL=1` turns that pass off. `RONDO_DIAG_AHEAD=1` prints each time the core is already past the clock the record wants it at (with the
 place that asked) and each pace to a zero clock. `RONDO_DIAG_EXIT=NAME` (A5) prints, for each judged call of NAME, the C's S at its end, the S and PC
-the exit compare uses, and the original's. `RONDO_DUMP_SPAN=NAME,N` (A5 and the hybrid) prints every event of the Nth call of NAME: `SPAN +index type kind
+the exit compare uses, and the original's. `RONDO_DIAG_DISPATCH=1` (A5 and the hybrid) prints `NOTDISPATCH` for each call whose C ended below its
+entry S where the original made no such jump: routine, entry S, the C's S and the address its RTS goes to. `RONDO_DUMP_SPAN=NAME,N` (A5 and the hybrid) prints every event of the Nth call of NAME: `SPAN +index type kind
 addr pc s val clock` (types: 0 R, 1 W, 2 ROMR, 3 HWR, 4 HWW, 5 RTPULL, 6 STATE, 7 OPEN, 8 CLOSE, 9 CALL, 10 RET, 11 INT, 12 IRET, 13 FRAME); in A5 the
 number is the order the calls are judged in (close order for nested calls), in the hybrid the order they are swapped in.

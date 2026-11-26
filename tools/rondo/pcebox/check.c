@@ -755,6 +755,51 @@ static int ends_by_dispatch(uint8_t entry_s, int is_irq, const Tag *t)
 static uint64_t horizon_calls;
 static int horizon_hit;
 
+/* A C that ends with S below its entry RTSes to an address on its own stack. That is a dispatch only if the original
+ * made the same jump in this call: the arrival its RTS logs (a RET marker, or the CALL of a tagged routine entered by
+ * RTS) at the address the C's stack holds, with S two above the C's, before the call's end (interrupts skipped).
+ * Otherwise the C left a push or a frame on the stack where the original returned, and the call is judged whole, so
+ * the S compare names it in its own call, not in the next. The match is on the arrival's address and S, not on a
+ * nesting count: A5's record has no CLOSE events to count with. c_s is the C's S at its end; target the address its
+ * RTS goes to. */
+static int original_dispatched(Span *s, uint8_t c_s, uint16_t target)
+{
+    int nest = s->nest;
+
+    for (uint64_t j = s->cur; mode != MODE_HYBRID || j - s->cur <= HORIZON; j++) {
+        Ev *e = sev(s, j, &nest);
+
+        if (!e)
+            return 0;
+        if (e->type == EV_INT) {
+            uint64_t r = section_end(s, j);
+
+            if (r == NO_RETURN)
+                return 0;
+            j = r;
+            continue;
+        }
+        if ((e->type == EV_RET || (e->type == EV_CALL && e->kind != K_IRQ)) && e->pc == target &&
+            e->s == (uint8_t)(c_s + 2))
+            return 1;
+    }
+    return 0;
+}
+
+static uint64_t not_dispatched;      /* calls whose C ended below its entry S where the original made no such jump */
+
+/* ends_by_dispatch, confirmed against the record: counted and (RONDO_DIAG_DISPATCH) printed when the record refuses. */
+static int dispatch_confirmed(Span *s, uint8_t entry_s, uint16_t target, const char *name)
+{
+    if (original_dispatched(s, cpu.s, target))
+        return 1;
+    not_dispatched++;
+    if (getenv("RONDO_DIAG_DISPATCH"))
+        fprintf(stderr, "NOTDISPATCH frame %lu %s: entry S%02X, the C ends at S%02X and its RTS goes to %04X; the original "
+                "made no such jump: judged whole\n", cur_frame, name, entry_s, cpu.s, target);
+    return 0;
+}
+
 static void span_finish_to_call(Span *s);
 
 static void span_finish(Span *s)
@@ -2535,7 +2580,10 @@ static void judge(Frame *f, const Regs *r)
     if (reason == 0) {
         f->tag->abi();
         apply_pokes(span.cur, end);
-        if (!prefix && ends_by_dispatch(f->regs.s, f->kind == K_IRQ, f->tag)) {
+        if (!prefix && ends_by_dispatch(f->regs.s, f->kind == K_IRQ, f->tag) &&
+            dispatch_confirmed(&span, f->regs.s, (uint16_t)((ram_bank[0xF8][0x100 | (uint8_t)(cpu.s + 1)] |
+                                                             (ram_bank[0xF8][0x100 | (uint8_t)(cpu.s + 2)] << 8)) + 1),
+                               f->tag->name)) {
             s->dispatch++;
             longjmp(c_abort, ABORT_END);       /* the original's call goes on in the routines it jumped to: judged up to here */
         }
@@ -2773,7 +2821,10 @@ static void co_main(void)
     blame_tag = c->tag;
     in_swap = c->tag;
     rondo_tags[c->tag].abi();
-    if (ends_by_dispatch(c->entry_s, c->kind == K_IRQ, &rondo_tags[c->tag])) {
+    if (ends_by_dispatch(c->entry_s, c->kind == K_IRQ, &rondo_tags[c->tag]) &&
+        dispatch_confirmed(&c->span, c->entry_s, (uint16_t)((chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(cpu.s + 1))) |
+                                                            (chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(cpu.s + 2))) << 8)) + 1),
+                           rondo_tags[c->tag].name)) {
         c->dispatch = 1;
         stats[c->tag].dispatch++;
         span_finish_to_call(&c->span);
@@ -3602,6 +3653,8 @@ void check_finish(void)
         }
         fprintf(report, "OTHER CODE at tagged addresses (no row's bytes resident, charged to no routine): %llu by call, %llu by branch\n",
                 (unsigned long long)other_call, (unsigned long long)other_branch);
+        fprintf(report, "RTS below the entry S that the original did not make (judged whole, not as a dispatch): %llu calls\n",
+                (unsigned long long)not_dispatched);
         if (probe_calls)
             fprintf(report, "PROBE resident_at: %llu calls, %llu differ, variants seen %u and %u\n",
                     (unsigned long long)probe_calls, (unsigned long long)probe_bad, probe_seen[0], probe_seen[1]);
@@ -3692,6 +3745,8 @@ void check_finish(void)
                     (unsigned long long)horizon_calls, (unsigned)HORIZON);
         fprintf(report, "OTHER CODE at tagged addresses (no row's bytes resident, charged to no routine): %llu by call, %llu by branch\n",
                 (unsigned long long)other_call, (unsigned long long)other_branch);
+        fprintf(report, "RTS below the entry S that the original did not make (judged whole, not as a dispatch): %llu calls\n",
+                (unsigned long long)not_dispatched);
         fprintf(report, "calls swapped %llu; access defects %llu; parked %llu, kept %llu, unreached %lld\n"
                 "frames compared %llu of %lld, identical %lu, first differing %ld\n", (unsigned long long)swapped,
                 (unsigned long long)defects, (unsigned long long)parked_n, (unsigned long long)kept_n,

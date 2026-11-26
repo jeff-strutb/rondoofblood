@@ -485,3 +485,67 @@ void abi_RunListChannel1B91(void)
 {
     channel_exit_shim(abi_run_list_channel(0x8CF2));
 }
+
+/*
+ * @routine 25F7:018 RunListChannel25F7
+ * @run 6C:8018
+ * @stop 8133
+ * @unreachable 6C:8018-6C:8132 no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8018 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Runs one list channel by its kind: 1 plays a list of VRAM lists with a hold between them, 3 steps a
+ * list of VRAM copies (its lists from the table at $829F), any other runs one VRAM list and frees the channel.
+ * HOW: The kind counted down to pick the path. Kind 1 reads the overlay's table of channel lists at $9800, the hold
+ * from the list and the VRAM list after it (VramListFromIndex, a tail jump); $FF ends it, $FE starts it again and runs
+ * the routine from its top with A $FE. Kind 3 waits while the game is paused; each entry of its list is a hold (0),
+ * a restart (2), or a VRAM copy (words read from the read port and written back, from a plain address pair or, for 1,
+ * a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
+ * WAITS: no.
+ * Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ */
+ChannelExit RunListChannel25F7(uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v)
+{
+    return run_list_channel(0x829F, kind, slot, y, c, v);
+}
+
+void abi_RunListChannel25F7(void)
+{
+    channel_exit_shim(abi_run_list_channel(0x829F));
+}
+
+/*
+ * @routine 1CF1:018 RunListChannel1CF1
+ * @run 6C:8018
+ * @stop 8133
+ * @unreachable 6C:8018-6C:8132 no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8018 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Runs one list channel by its kind: 1 plays a list of VRAM lists with a hold between them, 3 steps a
+ * list of VRAM copies (its lists from the table at $9049), any other runs one VRAM list and frees the channel.
+ * HOW: The kind counted down to pick the path. Kind 1 reads the overlay's table of channel lists at $9800, the hold
+ * from the list and the VRAM list after it (VramListFromIndex, a tail jump); $FF ends it, $FE starts it again and runs
+ * the routine from its top with A $FE. Kind 3 waits while the game is paused; each entry of its list is a hold (0),
+ * a restart (2), or a VRAM copy (words read from the read port and written back, from a plain address pair or, for 1,
+ * a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
+ * WAITS: no.
+ * Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ */
+ChannelExit RunListChannel1CF1(uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v)
+{
+    return run_list_channel(0x9049, kind, slot, y, c, v);
+}
+
+void abi_RunListChannel1CF1(void)
+{
+    channel_exit_shim(abi_run_list_channel(0x9049));
+}

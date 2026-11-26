@@ -331,13 +331,27 @@ def resident_entries(configs, rows, run_set=None, near=None):
     runs = run_set if run_set is not None else {int(r[0], 16) for r in rows}
     ids = {cid for cid, t in cfgs.items() if t in wanted}
     cands = {}
+    bases = {}
     for disc_off, logical, cfg in recs:
-        if cfg in ids and logical in runs:
-            cands.setdefault((cfg, logical), set()).add(disc_off)
+        if cfg in ids:
+            # one overlay copy fills an 8 KB window from disc: its bytes share a base (disc offset less offset in the window)
+            if logical in runs:
+                bases.setdefault((cfg, logical >> 13), {}).setdefault(disc_off - (logical & 0x1FFF), set()).add(logical)
+                cands.setdefault((cfg, logical), set()).add(disc_off)
+    # The copy is chosen once for each window of a configuration, not once for each address: picking the nearest copy
+    # address by address mixed overlays (the vector at $8006 from one stage's copy, the routine at $9991 from another's).
+    # The copy nearest to the routine under test wins (its own overlay); the one with the most of the addresses breaks a tie.
+    chosen = {}
+    for key, bs in bases.items():
+        rank = (lambda b: (abs(b - near), -len(bs[b]), b)) if near is not None else (lambda b: (-len(bs[b]), b))
+        chosen[key] = min(bs, key=rank)
     out = []
     for (cfg, logical), ds in sorted(cands.items()):
-        pick = min(ds, key=lambda d: (abs(d - near), d)) if near is not None else min(ds)
-        out.append((cfgs[cfg], logical, pick))
+        d = chosen[(cfg, logical >> 13)] + (logical & 0x1FFF)
+        if d in ds:
+            out.append((cfgs[cfg], logical, d))
+        # else: the chosen copy has no code the traces ran at this address: nothing known is resident (a stub), never
+        # another overlay's routine at the same run address
     return out
 
 

@@ -27,12 +27,15 @@ enum {
     FADE_SOUND = 0x209D, STAGE_FLAG_2743 = 0x2743,
     KERNEL_4006 = 0x4006, KERNEL_4009 = 0x4009, SOUND_HOOK = 0x401B, KERNEL_407B = 0x407B,
     SUB_MODE_TABLE = 0x8013, SUB_STEP_TABLE = 0x8112, DEATH_PHASE_TABLE = 0x81E8, FACING_SPEEDS = 0x8209,
-    ROW_MAP = 0x3A00, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4, SCREEN_3EC4 = 0x3EC4
+    ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4, SCREEN_3EC4 = 0x3EC4
 };
 
 typedef StageRegs Regs;
 
 static Regs loaded(Regs r, uint8_t value);
+
+/* A JSR to one of this file's routines: the frame the original pushes, the routine, the pop. */
+#define CALL(ret, expr) do { jsr_push(ret); r = (expr); jsr_pop(); } while (0)
 
 Ended MapOverlayBanks5And6(void);
 Ended MapOverlayBank7(void);
@@ -82,16 +85,14 @@ static void clear_scroll_bytes(Regs r)
     tai_shim(r, KernelZeros, ADDR_OF8(BANDS->bgy_lo[0]), 0x0078);
 }
 
-/* JSR to the census duplicates of map_draw.c's VRAM routines, at $9415, $942A and $9439, through their C. */
+/* JSR $9415, SetVramAddresses152D. */
 static Regs set_vram_addresses(Regs r, uint16_t ret)
 {
-    jsr_push(ret);
-    SetVramAddresses(r.x, r.y);
-    jsr_pop();
-    r.a = 2;
-    r.nz = 2;
+    CALL(ret, SetVramAddresses152D(r));
     return r;
 }
+
+/* JSR to the census duplicates of map_draw.c's AndVramData and OrVramData, at $942A and $9439, through their C. */
 
 static Regs and_vram(Regs r, uint16_t ret)
 {
@@ -203,18 +204,15 @@ static Regs fade_tail(Regs r, uint8_t type)
     return loaded(r, vec_cd_fade(type));
 }
 
-/* A JSR to one of this file's routines: the frame the original pushes, the routine, the pop. */
-#define CALL(ret, expr) do { jsr_push(ret); r = (expr); jsr_pop(); } while (0)
-
 /*
  * @routine 152D:000 StageEntryA152D
  * @run 6B:8000
- * @unreachable 6B:8000-6B:8002 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8000-6B:8002 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8000 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8000 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The overlay's entry at $8000: goes to StageSubModeStep152D, the stage's frame by sub-mode.
@@ -235,22 +233,22 @@ void abi_StageEntryA152D(void)
 /*
  * @routine 152D:003 StageEntryB152D
  * @run 6B:8003
- * @unreachable 6B:8003-6B:8005 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8003-6B:8005 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8003 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8003 runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: The overlay's entry at $8003: goes to StageEndStep152D, the frame of the stage's end by zGameSubMode.
+ * WHAT IT DOES: The overlay's entry at $8003: goes to ContinueStep152D, the continue screen's frame by zGameSubMode.
  * HOW: One jump, no frame of its own.
  * WAITS: as the handler.
- * Entry, exit: as StageEndStep152D.
+ * Entry, exit: as ContinueStep152D.
  */
 StageRegs StageEntryB152D(StageRegs r)
 {
-    return StageEndStep152D(r);
+    return ContinueStep152D(r);
 }
 
 void abi_StageEntryB152D(void)
@@ -261,12 +259,12 @@ void abi_StageEntryB152D(void)
 /*
  * @routine 152D:006 StageEntryC152D
  * @run 6B:8006
- * @unreachable 6B:8006-6B:8008 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8006-6B:8008 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8006 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8006 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The overlay's entry at $8006: goes to ProbeTile152D, the tile probe at $96C6.
@@ -287,12 +285,12 @@ void abi_StageEntryC152D(void)
 /*
  * @routine 152D:009 StageEntryD152D
  * @run 6B:8009
- * @unreachable 6B:8009-6B:800B no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8009-6B:800B no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8009 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8009 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The overlay's entry at $8009: goes to ClearBitRowsFour152D at $8E72.
@@ -314,12 +312,12 @@ void abi_StageEntryD152D(void)
  * @routine 152D:00C StageSubModeStep152D
  * @run 6B:800C
  * @stop 8013
- * @unreachable 6B:800C-6B:8012 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:800C-6B:8012 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $800C runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $800C runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The stage's frame: runs the handler of the sub-mode zGameSubMode holds, from the table of seven at
@@ -353,7 +351,7 @@ StageRegs StageSubModeStep152D(StageRegs r)
     case 0x85C4:
         return StageSubModeEnd152D(r);
     case 0x90F8:
-        return StageSubModeBoss152D(r);
+        return StageSubModeTally152D(r);
     default:
         return orig_tail_shim(r, handler);
     }
@@ -367,12 +365,12 @@ void abi_StageSubModeStep152D(void)
 /*
  * @routine 152D:034 StageSubModeStart152D
  * @run 6B:8034
- * @unreachable 6B:8034-6B:806E no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8034-6B:806E no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8034 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8034 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 0, the stage's start: sets the stage up (the kernel's piece at $4006, the overlay's tables, the
@@ -426,12 +424,12 @@ void abi_StageSubModeStart152D(void)
 /*
  * @routine 152D:06F StageFadeTimer152D
  * @run 6B:806F
- * @unreachable 6B:806F-6B:8099 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:806F-6B:8099 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $806F runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $806F runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Counts down the stage's fade at $9B by two a frame. On the step that reaches one it marks the fade as
@@ -486,12 +484,12 @@ void abi_StageFadeTimer152D(void)
 /*
  * @routine 152D:09A StagePauseToggle152D
  * @run 6B:809A
- * @unreachable 6B:809A-6B:80B0 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:809A-6B:80B0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $809A runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $809A runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Pauses or unpauses the stage when the first pad's button 8 (Run) is pressed, unless the fade is
@@ -530,12 +528,12 @@ void abi_StagePauseToggle152D(void)
 /*
  * @routine 152D:0B1 StageModeEventsStep152D
  * @run 6B:80B1
- * @unreachable 6B:80B1-6B:80D6 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:80B1-6B:80D6 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $80B1 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $80B1 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Counts the wave and steps zModeEvents: $11 added, wrapped below $50 by its low nibble; a low pair that
@@ -585,12 +583,12 @@ void abi_StageModeEventsStep152D(void)
  * @routine 152D:0D7 StageSubModePlay152D
  * @run 6B:80D7
  * @stop 8112
- * @unreachable 6B:80D7-6B:8111 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:80D7-6B:8111 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $80D7 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $80D7 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 1, the stage in play: the fade and the pause; paused, the paused frame (StagePausedFrame152D)
@@ -663,12 +661,12 @@ void abi_StageSubModePlay152D(void)
 /*
  * @routine 152D:120 StageSubStepNone152D
  * @run 6B:8120
- * @unreachable 6B:8120-6B:8120 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8120-6B:8120 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8120 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8120 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-step 0: nothing.
@@ -688,12 +686,12 @@ void abi_StageSubStepNone152D(void)
 /*
  * @routine 152D:121 StageSubStepNoneB152D
  * @run 6B:8121
- * @unreachable 6B:8121-6B:8121 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8121-6B:8121 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8121 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8121 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-step 1: nothing.
@@ -726,12 +724,12 @@ static Regs restart_fade(Regs r)
 /*
  * @routine 152D:122 StageSubStepDeath152D
  * @run 6B:8122
- * @unreachable 6B:8122-6B:8147 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8122-6B:8147 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8122 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8122 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-step 2, the player died: sub-mode 2 with zField80, zField89 and the fall's step cleared, the
@@ -763,12 +761,12 @@ void abi_StageSubStepDeath152D(void)
 /*
  * @routine 152D:148 StageSubStepCleared152D
  * @run 6B:8148
- * @unreachable 6B:8148-6B:817A no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8148-6B:817A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8148 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8148 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-step 3, the stage cleared: sub-mode 3 with its step 0, its table at $84 picked by zField8C (none:
@@ -815,12 +813,12 @@ void abi_StageSubStepCleared152D(void)
 /*
  * @routine 152D:17B StageSubStepFadeOut152D
  * @run 6B:817B
- * @unreachable 6B:817B-6B:8189 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:817B-6B:8189 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $817B runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $817B runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-step 4: sub-mode 4 with zField80 and zField89 cleared, and the overlay at $A000's piece at $A067.
@@ -846,12 +844,12 @@ void abi_StageSubStepFadeOut152D(void)
 /*
  * @routine 152D:18A StageSubStepFadeOutB152D
  * @run 6B:818A
- * @unreachable 6B:818A-6B:819A no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:818A-6B:819A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $818A runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $818A runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-step 5: sub-mode 4 entered at its step 5 (zField80 5, zField89 cleared), and the overlay at $A000's
@@ -879,12 +877,12 @@ void abi_StageSubStepFadeOutB152D(void)
 /*
  * @routine 152D:19B StageSubStepBoss152D
  * @run 6B:819B
- * @unreachable 6B:819B-6B:81C8 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:819B-6B:81C8 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $819B runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $819B runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-step 6: sub-mode 6 with zField80, zField89 and the fall's step cleared, the overlay at $A000's
@@ -919,12 +917,12 @@ void abi_StageSubStepBoss152D(void)
 /*
  * @routine 152D:1C9 StageSubModeDeath152D
  * @run 6B:81C9
- * @unreachable 6B:81C9-6B:81E0 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:81C9-6B:81E0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $81C9 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $81C9 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 2, the player's death: sound command $FF, then the death's phase; once the phase has put the
@@ -958,12 +956,12 @@ void abi_StageSubModeDeath152D(void)
  * @routine 152D:1E1 StageDeathPhase152D
  * @run 6B:81E1
  * @stop 81E8
- * @unreachable 6B:81E1-6B:81E7 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:81E1-6B:81E7 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $81E1 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $81E1 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The death's phase by zField87, from the table of four at $81E8.
@@ -1022,12 +1020,12 @@ static Regs respawn(Regs r, uint16_t ret)
 /*
  * @routine 152D:1F0 StageDeathRespawn152D
  * @run 6B:81F0
- * @unreachable 6B:81F0-6B:8208 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:81F0-6B:8208 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $81F0 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $81F0 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Phase 0 of the death: the player put back and the stage in play again (sub-mode 1), the player's count
@@ -1049,12 +1047,12 @@ void abi_StageDeathRespawn152D(void)
 /*
  * @routine 152D:20B StageDeathRespawnB152D
  * @run 6B:820B
- * @unreachable 6B:820B-6B:8223 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:820B-6B:8223 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $820B runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $820B runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Phase 1 of the death: as phase 0 (the same bytes, the same table at $8209).
@@ -1109,12 +1107,12 @@ static Regs fall_moves(Regs r, uint16_t at, bool right)
 /*
  * @routine 152D:224 StageDeathFallLeft152D
  * @run 6B:8224
- * @unreachable 6B:8224-6B:8235 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8224-6B:8235 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8224 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8224 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Phase 2 of the death, the fall to the left, by the fall's step at $88: step 0 sets the player's Y
@@ -1153,12 +1151,12 @@ void abi_StageDeathFallLeft152D(void)
 /*
  * @routine 152D:236 StageDeathFallStart152D
  * @run 6B:8236
- * @unreachable 6B:8236-6B:8270 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8236-6B:8270 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8236 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8236 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The fall's first step: the overlay at $A000's pieces at $A018 (with A 0) and $A012, and the fall's
@@ -1186,12 +1184,12 @@ void abi_StageDeathFallStart152D(void)
 /*
  * @routine 152D:25F StageDeathFallBackLeft152D
  * @run 6B:825F
- * @unreachable 6B:825F-6B:8270 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:825F-6B:8270 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $825F runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $825F runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The left fall's last step, reached from StageDeathFallLeft152D: the player put back
@@ -1213,12 +1211,12 @@ void abi_StageDeathFallBackLeft152D(void)
 /*
  * @routine 152D:271 StageDeathFallRight152D
  * @run 6B:8271
- * @unreachable 6B:8271-6B:82B3 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8271-6B:82B3 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8271 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8271 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Phase 3 of the death, the fall to the right, by the fall's step at $88: step 0 sets the player's Y
@@ -1259,12 +1257,12 @@ void abi_StageDeathFallRight152D(void)
  * @routine 152D:2B4 StageSubModeCleared152D
  * @run 6B:82B4
  * @stop 82BE
- * @unreachable 6B:82B4-6B:82BD no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:82B4-6B:82BD no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $82B4 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $82B4 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 3, the stage cleared: the events step, then the step of the table $84 picked (the next stage's
@@ -1307,12 +1305,12 @@ void abi_StageSubModeCleared152D(void)
 /*
  * @routine 152D:2C6 StageClearedNextStage152D
  * @run 6B:82C6
- * @unreachable 6B:82C6-6B:82EF no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:82C6-6B:82EF no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $82C6 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $82C6 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The cleared stage's first table: the next stage set up as the start does (the kernel's piece at $4009,
@@ -1353,12 +1351,12 @@ void abi_StageClearedNextStage152D(void)
  * @routine 152D:2FC StageClearedWalkOut152D
  * @run 6B:82FC
  * @stop 8303
- * @unreachable 6B:82FC-6B:8302 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:82FC-6B:8302 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $82FC runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $82FC runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The cleared stage's second table: its step at $85 from the five at $8303 (the wait for the objects,
@@ -1401,12 +1399,12 @@ void abi_StageClearedWalkOut152D(void)
 /*
  * @routine 152D:30D StageClearedWaitObjects152D
  * @run 6B:830D
- * @unreachable 6B:830D-6B:832D no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:830D-6B:832D no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $830D runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $830D runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A step of the cleared stage: the overlay at $A000's pieces at $A009 and $A08D and the scroll, then,
@@ -1490,12 +1488,12 @@ static Regs walk_frame(Regs r, uint16_t at)
 /*
  * @routine 152D:32E StageClearedWalk152D
  * @run 6B:832E
- * @unreachable 6B:832E-6B:8370 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:832E-6B:8370 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $832E runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $832E runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A step of the cleared stage: the player walks the scroll ($3E74 the step from $82F0 by the side,
@@ -1537,12 +1535,12 @@ void abi_StageClearedWalk152D(void)
 /*
  * @routine 152D:371 StageClearedWaitScroll152D
  * @run 6B:8371
- * @unreachable 6B:8371-6B:837D no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8371-6B:837D no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8371 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8371 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A step of the cleared stage: the scroll and the overlay at $A000's piece at $A321; once zField8C is
@@ -1572,12 +1570,12 @@ void abi_StageClearedWaitScroll152D(void)
 /*
  * @routine 152D:37E StageClearedWalkBack152D
  * @run 6B:837E
- * @unreachable 6B:837E-6B:83C0 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:837E-6B:83C0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $837E runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $837E runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A step of the cleared stage: the player walks back (its count at $3310 $E0, its step at $3358 from
@@ -1634,12 +1632,12 @@ void abi_StageClearedWalkBack152D(void)
 /*
  * @routine 152D:3C1 StageClearedWalkOn152D
  * @run 6B:83C1
- * @unreachable 6B:83C1-6B:8435 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:83C1-6B:8435 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $83C1 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $83C1 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The cleared stage's last step: the player walks on with the scroll until its X low byte at $3E08 is 0;
@@ -1705,12 +1703,12 @@ void abi_StageClearedWalkOn152D(void)
  * @routine 152D:436 StageClearedBossWalk152D
  * @run 6B:8436
  * @stop 8440
- * @unreachable 6B:8436-6B:843F no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8436-6B:843F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8436 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8436 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The cleared stage's third table, after a boss: the fade's countdown, then its step at $85 from the three
@@ -1751,12 +1749,12 @@ void abi_StageClearedBossWalk152D(void)
 /*
  * @routine 152D:446 StageBossScrollToDoor152D
  * @run 6B:8446
- * @unreachable 6B:8446-6B:847B no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8446-6B:847B no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8446 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8446 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A step after the boss: the overlay at $A000's piece at $A009, the scroll stepped by 1 with the player's
@@ -1803,12 +1801,12 @@ void abi_StageBossScrollToDoor152D(void)
 /*
  * @routine 152D:47C StageBossWaitDoor152D
  * @run 6B:847C
- * @unreachable 6B:847C-6B:8498 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:847C-6B:8498 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $847C runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $847C runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A step after the boss: the overlay at $A000's piece at $A009 and the scroll; once the door object's
@@ -1847,12 +1845,12 @@ void abi_StageBossWaitDoor152D(void)
 /*
  * @routine 152D:499 StageBossWalkOut152D
  * @run 6B:8499
- * @unreachable 6B:8499-6B:84D7 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8499-6B:84D7 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8499 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8499 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The last step after the boss: the player walks out (its count at $3310 $B8) with the overlay at $A000's
@@ -1904,12 +1902,12 @@ void abi_StageBossWalkOut152D(void)
  * @routine 152D:4D8 StageClearedLastWalk152D
  * @run 6B:84D8
  * @stop 84DF
- * @unreachable 6B:84D8-6B:84DE no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:84D8-6B:84DE no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $84D8 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $84D8 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The cleared stage's fourth table: its step at $85 from the four at $84DF (the wait for the objects and
@@ -1950,12 +1948,12 @@ void abi_StageClearedLastWalk152D(void)
 /*
  * @routine 152D:4E7 StageClearedCount152D
  * @run 6B:84E7
- * @unreachable 6B:84E7-6B:84E9 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:84E7-6B:84E9 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $84E7 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $84E7 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A step of the last walk that only counts the step.
@@ -1978,12 +1976,12 @@ void abi_StageClearedCount152D(void)
 /*
  * @routine 152D:4EA StageClearedWalkOff152D
  * @run 6B:84EA
- * @unreachable 6B:84EA-6B:852B no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:84EA-6B:852B no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $84EA runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $84EA runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The last walk off the screen: the player's step and count at $3358 and $3310 from $82F8 by the side,
@@ -2044,12 +2042,12 @@ void abi_StageClearedWalkOff152D(void)
  * @routine 152D:52C StageSubModeFade152D
  * @run 6B:852C
  * @stop 8542
- * @unreachable 6B:852C-6B:8541 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:852C-6B:8541 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $852C runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $852C runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 4, the fade out after the death or the stage: the events step and the rows, then the step at
@@ -2107,12 +2105,12 @@ void abi_StageSubModeFade152D(void)
 /*
  * @routine 152D:550 StageFadeStart152D
  * @run 6B:8550
- * @unreachable 6B:8550-6B:8558 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8550-6B:8558 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8550 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8550 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The fade's first step: the overlay at $A000's pieces at $A00C and $A012, and the step counted.
@@ -2136,12 +2134,12 @@ void abi_StageFadeStart152D(void)
 /*
  * @routine 152D:559 StageFadeWait152D
  * @run 6B:8559
- * @unreachable 6B:8559-6B:8570 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8559-6B:8570 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8559 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8559 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The fade's second step: the overlay at $A000's piece at $A00F, and $A012 again when it changed the byte
@@ -2218,8 +2216,24 @@ static Regs pause_cd(Regs r, uint16_t ret)
     return r;
 }
 
-/* A life taken from the stock in A (a decimal subtract of 1, SED SEC SBC CLD) and written to zStock. */
-static Regs take_stock(Regs r)
+/* A decimal add of 1 to A with C clear (SED CLC ADC #1): the sum, N and Z from it, C the carry out; V kept. */
+static Regs bcd_plus_one(Regs r)
+{
+    unsigned sum = (r.a & 0x0Fu) + 1u;
+
+    if (sum >= 0x0A) {
+        sum += 0x06;
+    }
+    sum += r.a & 0xF0u;
+    if (sum >= 0xA0) {
+        sum += 0x60;
+    }
+    r.c = (sum & 0xFF00u) != 0;
+    return loaded(r, (uint8_t)sum);
+}
+
+/* A decimal subtract of 1 from A with C set (SED SEC SBC #1): the difference, N and Z from it, C no borrow; V kept. */
+static Regs bcd_less_one(Regs r)
 {
     uint8_t stock = r.a;
     uint8_t low = (uint8_t)((stock & 0x0F) - 1);
@@ -2233,8 +2247,14 @@ static Regs take_stock(Regs r)
         value = (uint8_t)(value - 0x60);
     }
     r.c = (high & 0x10) == 0;
-    r = loaded(r, value);
-    WR8(ZP->stock, value);
+    return loaded(r, value);
+}
+
+/* A life taken from the stock in A and written to zStock. */
+static Regs take_stock(Regs r)
+{
+    r = bcd_less_one(r);
+    WR8(ZP->stock, r.a);
     return r;
 }
 
@@ -2249,12 +2269,12 @@ static Regs fade_wait_set(Regs r)
 /*
  * @routine 152D:571 StageFadeStopCd152D
  * @run 6B:8571
- * @unreachable 6B:8571-6B:857F no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8571-6B:857F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8571 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8571 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The fade's third step: the CD paused (cd_pause until it answers 0); with no stock left zModeDone is
@@ -2286,12 +2306,12 @@ void abi_StageFadeStopCd152D(void)
 /*
  * @routine 152D:580 StageFadeTakeStock152D
  * @run 6B:8580
- * @unreachable 6B:8580-6B:8596 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8580-6B:8596 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8580 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8580 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A fade step: with stock left the fade goes back to its third step (zField80 2); with none the wait at
@@ -2320,12 +2340,12 @@ void abi_StageFadeTakeStock152D(void)
 /*
  * @routine 152D:597 StageFadeWaitLast152D
  * @run 6B:8597
- * @unreachable 6B:8597-6B:85A0 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8597-6B:85A0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8597 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8597 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: A fade step: counts zWaitTimer3 down, and when it reaches 0 the fade goes back to its third step
@@ -2353,12 +2373,12 @@ void abi_StageFadeWaitLast152D(void)
 /*
  * @routine 152D:5A9 StageFadeRestart152D
  * @run 6B:85A9
- * @unreachable 6B:85A9-6B:85C3 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:85A9-6B:85C3 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $85A9 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $85A9 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The fade's last step: the stage starts again from sub-mode 0, zField83 back to zField86, zField8A and
@@ -2392,12 +2412,12 @@ void abi_StageFadeRestart152D(void)
 /*
  * @routine 152D:5C4 StageSubModeOpening152D
  * @run 6B:85C4
- * @unreachable 6B:85C4-6B:85E9 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:85C4-6B:85E9 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $85C4 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $85C4 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 5, the stage's opening: the events step, the rows, the overlay at $A000's frame, the scroll,
@@ -2436,12 +2456,12 @@ void abi_StageSubModeOpening152D(void)
 /*
  * @routine 152D:5EA StageLoadRowMap152D
  * @run 6B:85EA
- * @unreachable 6B:85EA-6B:8618 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:85EA-6B:8618 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $85EA runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $85EA runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Fills the stage's row map at $3A00: cleared from KernelZeros (255 bytes), then unpacked from the route's
@@ -2501,12 +2521,12 @@ void abi_StageLoadRowMap152D(void)
 /*
  * @routine 152D:619 StageRouteSetUpA152D
  * @run 6B:8619
- * @unreachable 6B:8619-6B:8626 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8619-6B:8626 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8619 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8619 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The kernel's pieces at $403F and at $400C (with A the route's byte from the table at $9A59 by
@@ -2533,12 +2553,12 @@ void abi_StageRouteSetUpA152D(void)
 /*
  * @routine 152D:627 StageRouteSetUpB152D
  * @run 6B:8627
- * @unreachable 6B:8627-6B:8630 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8627-6B:8630 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8627 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8627 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The kernel's piece at $4015 with A the route's byte from the table at $9A5C by zField82 and X 7.
@@ -2577,12 +2597,12 @@ static Regs load_screen_keeping_flags(Regs r, uint16_t ret)
 /*
  * @routine 152D:631 StageResetScroll152D
  * @run 6B:8631
- * @unreachable 6B:8631-6B:8684 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8631-6B:8684 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8631 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8631 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sets the stage's screen up: the kernel's piece at $4009, the scroll cleared and loaded for the stage
@@ -2632,12 +2652,12 @@ static Regs screen_byte(Regs r)
 /*
  * @routine 152D:685 StageLoadScreen152D
  * @run 6B:8685
- * @unreachable 6B:8685-6B:872F no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8685-6B:872F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8685 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8685 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Loads the stage's screen from its record (the table at $9A90 by zField83): the scroll's pages, X and Y,
@@ -2741,12 +2761,12 @@ void abi_StageLoadScreen152D(void)
 /*
  * @routine 152D:734 StageOverlayFrame152D
  * @run 6B:8734
- * @unreachable 6B:8734-6B:8747 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8734-6B:8747 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8734 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8734 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The frame of the overlays above: the piece at $AE47 under bank 7, then the piece at $A000 under banks
@@ -2779,12 +2799,12 @@ void abi_StageOverlayFrame152D(void)
 /*
  * @routine 152D:748 StageLevelStart152D
  * @run 6B:8748
- * @unreachable 6B:8748-6B:877A no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8748-6B:877A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8748 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8748 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Starts the stage's level: the kernel's piece at $4057 under bank 7, the level's stream and axis from the
@@ -2911,12 +2931,12 @@ static Regs take_door(Regs r, bool by_pad)
 /*
  * @routine 152D:77B DoorHandler152D
  * @run 6B:877B
- * @unreachable 6B:877B-6B:87C5 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:877B-6B:87C5 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $877B runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $877B runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: An object handler for a door the pad's override opens. Not yet placed (its byte at $2818 0): $A36C, and
@@ -2946,12 +2966,12 @@ void abi_DoorHandler152D(void)
 /*
  * @routine 152D:7C6 DoorHandlerB152D
  * @run 6B:87C6
- * @unreachable 6B:87C6-6B:8800 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:87C6-6B:8800 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $87C6 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $87C6 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: An object handler for a door PlayerByte3BD7 opens: as DoorHandler152D, with no pad override (the
@@ -2976,14 +2996,14 @@ void abi_DoorHandlerB152D(void)
 }
 
 /*
- * @routine 152D:801 StageHudStart152D
+ * @routine 152E:001 StageHudStart152D
  * @run 6B:8801
- * @unreachable 6B:8801-6B:8810 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8801-6B:8810 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8801 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8801 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Draws the stage's display at its start: the pieces 0 and 1 of StageDrawPiece152D, the stock and the
@@ -3011,14 +3031,14 @@ void abi_StageHudStart152D(void)
 }
 
 /*
- * @routine 152D:811 StageHudStep152D
+ * @routine 152E:011 StageHudStep152D
  * @run 6B:8811
- * @unreachable 6B:8811-6B:8877 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8811-6B:8877 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8811 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8811 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The stage's display each frame: the item sound's step, the item's frame at $2A9E from the table at
@@ -3102,14 +3122,14 @@ void abi_StageHudStep152D(void)
 }
 
 /*
- * @routine 152D:881 StageHudSound152D
+ * @routine 152E:081 StageHudSound152D
  * @run 6B:8881
- * @unreachable 6B:8881-6B:8890 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8881-6B:8890 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8881 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8881 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The item's glow: the kernel's piece at $4018 with X 1 and A the colour of the step the wave counter's low
@@ -3182,20 +3202,20 @@ static Regs bar_address(Regs r, uint8_t count, uint8_t low_add, uint8_t high)
 }
 
 /*
- * @routine 152D:899 StageHealthBarAddress152D
+ * @routine 152E:099 StageHealthBarAddress152D
  * @run 6B:8899
- * @unreachable 6B:8899-6B:88C1 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8899-6B:88C1 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8899 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8899 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Points the VDC at the health bar's piece for the shown health zField99 ($5E less it, in the rows from
  * $6500), unless zField99 is 0.
- * HOW: A subtract, nibbles and shifts into zTemp00-01, an add; SetVramAddresses with the address in X and Y (its bytes
- * at $9415 are a census duplicate of map_draw.c's, run through its C).
+ * HOW: A subtract, nibbles and shifts into zTemp00-01, an add; SetVramAddresses152D with the address in X and
+ * Y.
  * WAITS: no.
  * Entry: nothing. Exit, zField99 0: A 0, N and Z from it. Else: A 2, N and Z clear; X and Y the address, C from the
  * add, V from it. Clobbers zTemp00-01.
@@ -3219,14 +3239,14 @@ void abi_StageHealthBarAddress152D(void)
 }
 
 /*
- * @routine 152D:8C2 StageBossBarReset152D
+ * @routine 152E:0C2 StageBossBarReset152D
  * @run 6B:88C2
- * @unreachable 6B:88C2-6B:88CB no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:88C2-6B:88CB no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $88C2 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $88C2 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The boss's bar drawn anew (StageDrawPiece152D 2) and its length at $2745 set to $5C; then runs on into
@@ -3251,14 +3271,14 @@ void abi_StageBossBarReset152D(void)
 }
 
 /*
- * @routine 152D:8CC StageBossBar152D
+ * @routine 152E:0CC StageBossBar152D
  * @run 6B:88CC
- * @unreachable 6B:88CC-6B:88DA no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:88CC-6B:88DA no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $88CC runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $88CC runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The boss's bar each frame: while the boss's frame at $2A9D is 0 the bar is drawn anew
@@ -3287,14 +3307,14 @@ void abi_StageBossBar152D(void)
 }
 
 /*
- * @routine 152D:8DB StageBossBarStep152D
+ * @routine 152E:0DB StageBossBarStep152D
  * @run 6B:88DB
- * @unreachable 6B:88DB-6B:891B no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:88DB-6B:891B no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $88DB runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $88DB runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Moves the boss's bar at $2745 one step toward the boss's health at $3128: down, the piece cleared; up,
@@ -3361,20 +3381,19 @@ void abi_StageBossBarStep152D(void)
 }
 
 /*
- * @routine 152D:91C StageBossBarAddress152D
+ * @routine 152E:11C StageBossBarAddress152D
  * @run 6B:891C
- * @unreachable 6B:891C-6B:8964 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:891C-6B:8964 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $891C runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $891C runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Points the VDC at the boss's bar's piece for the length at $2745 ($5E less it, from $5D40, a page on
  * at $3F and more), unless the length is 0.
- * HOW: The page in zTemp08-09; a subtract, nibbles and shifts into zTemp00-01, adds; SetVramAddresses (map_draw.c's C,
- * a census duplicate at $9415) with the address in X and Y.
+ * HOW: The page in zTemp08-09; a subtract, nibbles and shifts into zTemp00-01, adds; SetVramAddresses152D with the address in X and Y.
  * WAITS: no.
  * Entry: nothing. Exit, length 0: A 0, N and Z from it. Else: A 2, N and Z clear; X and Y the address, C and V from the
  * last add. Clobbers zTemp00-01 and zTemp08-09.
@@ -3420,14 +3439,14 @@ void abi_StageBossBarAddress152D(void)
 }
 
 /*
- * @routine 152D:97D StageBossBarFlash152D
+ * @routine 152E:17D StageBossBarFlash152D
  * @run 6B:897D
- * @unreachable 6B:897D-6B:89BD no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:897D-6B:89BD no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $897D runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $897D runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The boss's bar at its end: every other piece of the four (by the wave counter's bit 0, from the table
@@ -3487,19 +3506,19 @@ void abi_StageBossBarFlash152D(void)
 }
 
 /*
- * @routine 152D:9BE StageBarErase152D
+ * @routine 152E:1BE StageBarErase152D
  * @run 6B:89BE
- * @unreachable 6B:89BE-6B:89E8 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:89BE-6B:89E8 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $89BE runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $89BE runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Blanks a bar's piece in VRAM at the address in X and Y, in 64 words: each word ANDed with a mask of
  * the kernel's random piece at $4051, zRandom2 and zRandom1, and the flash step's row of the table at $8975.
- * HOW: SetVramAddresses (map_draw.c's C, a census duplicate at $9415); a loop down X of reads and writes of the VDC's
+ * HOW: SetVramAddresses152D; a loop down X of reads and writes of the VDC's
  * data port.
  * WAITS: no.
  * Entry: X, Y the VRAM address. Exit: X 0, N and Z from it; A the word's high byte, Y the flash step's row; C and V
@@ -3541,14 +3560,14 @@ static uint8_t digit_row(uint8_t y)
 }
 
 /*
- * @routine 152D:9E9 StageDrawDigit152D
+ * @routine 152E:1E9 StageDrawDigit152D
  * @run 6B:89E9
- * @unreachable 6B:89E9-6B:8A68 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:89E9-6B:8A68 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $89E9 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $89E9 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Draws the digit in A into the display at the place in X (StageDigitAddress152D): the digit's five rows
@@ -3645,18 +3664,18 @@ void abi_StageDrawDigit152D(void)
 }
 
 /*
- * @routine 152D:A69 StageDigitAddress152D
+ * @routine 152E:269 StageDigitAddress152D
  * @run 6B:8A69
- * @unreachable 6B:8A69-6B:8A77 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8A69-6B:8A77 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8A69 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8A69 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Points the VDC at the display's place zTemp04 (its even pair) from the table of addresses at $8A78.
- * HOW: Two table reads; a jump to SetVramAddresses (map_draw.c's C, a census duplicate at $9415).
+ * HOW: Two table reads; a jump to SetVramAddresses152D.
  * WAITS: no.
  * Entry: zTemp04 the place. Exit: A 2, N and Z clear; X and Y the address.
  */
@@ -3668,10 +3687,7 @@ StageRegs StageDigitAddress152D(StageRegs r)
     r.a = rd8((uint16_t)(0x8A78 + index));
     r.y = rd8((uint16_t)(0x8A79 + index));
     r.x = r.a;
-    SetVramAddresses(r.x, r.y);
-    r.a = 2;
-    r.nz = 2;
-    return r;
+    return SetVramAddresses152D(r);
 }
 
 void abi_StageDigitAddress152D(void)
@@ -3680,14 +3696,14 @@ void abi_StageDigitAddress152D(void)
 }
 
 /*
- * @routine 152D:ACC StagePausedSelect152D
+ * @routine 152E:2CC StagePausedSelect152D
  * @run 6B:8ACC
- * @unreachable 6B:8ACC-6B:8AF0 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8ACC-6B:8AF0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8ACC runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8ACC runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The pause screen's choice, reached from StagePausedFrame152D: on the first pad's left or right (bits 4
@@ -3767,14 +3783,14 @@ static Regs pause_menu_row(Regs r, uint8_t row)
 }
 
 /*
- * @routine 152D:AF1 StagePausedFrame152D
+ * @routine 152E:2F1 StagePausedFrame152D
  * @run 6B:8AF1
- * @unreachable 6B:8AF1-6B:8B6F no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8AF1-6B:8B6F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8AF1 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8AF1 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The paused frame. zPaused's bit 1 clear: the choice (StagePausedSelect152D). Else zPaused counts up by
@@ -3865,14 +3881,14 @@ void abi_StagePausedFrame152D(void)
 }
 
 /*
- * @routine 152D:BA4 StageOpeningStart152D
+ * @routine 152E:3A4 StageOpeningStart152D
  * @run 6B:8BA4
- * @unreachable 6B:8BA4-6B:8BD4 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8BA4-6B:8BD4 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8BA4 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8BA4 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Starts the stage's opening when zField8E's bit 0 is clear: the display's pieces 3 and 4
@@ -3953,15 +3969,15 @@ static Regs move_by_speed(Regs r, uint16_t speed_lo, uint16_t pos_lo, uint16_t s
 }
 
 /*
- * @routine 152D:BD5 StageOpeningStep152D
+ * @routine 152E:3D5 StageOpeningStep152D
  * @run 6B:8BD5
  * @stop 8C87
- * @unreachable 6B:8BD5-6B:8C86 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8BD5-6B:8C86 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8BD5 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8BD5 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: One frame of the stage's opening: once the ADPCM is idle the kernel's piece at $407B runs once ($33E4
@@ -4042,14 +4058,14 @@ void abi_StageOpeningStep152D(void)
 }
 
 /*
- * @routine 152D:CA3 StageOpeningFade152D
+ * @routine 152E:4A3 StageOpeningFade152D
  * @run 6B:8CA3
- * @unreachable 6B:8CA3-6B:8CEE no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8CA3-6B:8CEE no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8CA3 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8CA3 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: The opening's fade of the screen's rows, with A the count kept at $339C: from it the rows' fade level
@@ -4144,21 +4160,21 @@ static void fade_row_pass(uint8_t x, uint8_t next)
 }
 
 /*
- * @routine 152D:CEF StageOpeningCopyRow152D
+ * @routine 152E:4EF StageOpeningCopyRow152D
  * @run 6B:8CEF
- * @unreachable 6B:8CEF-6B:8DB7 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8CEF-6B:8DB7 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8CEF runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8CEF runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Fades one row of the screen in VRAM: the row's 64 words (at the address in zTemp10-11) read into the
  * buffer at $397E; at a level of $10 or more cleared; else, for each level step below the last, every word ANDed with
  * the next word under a random mask (zRandom2 rotated with bit 7 set, ORed with itself), then every word ANDed with
  * zRandom2 OR zRandom3; then runs on into StageOpeningWriteRow152D, which writes the buffer back.
- * HOW: SetVramAddresses (map_draw.c's C, a census duplicate at $9415); loops of the VDC's data port and of the buffer.
+ * HOW: SetVramAddresses152D; loops of the VDC's data port and of the buffer.
  * WAITS: no.
  * Entry: zTemp10-11 the row's address, zMultiplierHi the level. Exit: as StageOpeningWriteRow152D. Clobbers zTemp00.
  */
@@ -4218,14 +4234,14 @@ void abi_StageOpeningCopyRow152D(void)
 }
 
 /*
- * @routine 152D:DB8 StageOpeningWriteRow152D
+ * @routine 152E:5B8 StageOpeningWriteRow152D
  * @run 6B:8DB8
- * @unreachable 6B:8DB8-6B:8DCA no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8DB8-6B:8DCA no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8DB8 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8DB8 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Writes the row's 64 words from the buffer at $397E back through the VDC's data port.
@@ -4254,14 +4270,14 @@ void abi_StageOpeningWriteRow152D(void)
 }
 
 /*
- * @routine 152D:DCB StageDrawStock152D
+ * @routine 152E:5CB StageDrawStock152D
  * @run 6B:8DCB
- * @unreachable 6B:8DCB-6B:8DD3 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8DCB-6B:8DD3 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8DCB runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8DCB runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Draws the stock zStock (two digits at places 0 and 1).
@@ -4286,14 +4302,14 @@ void abi_StageDrawStock152D(void)
 }
 
 /*
- * @routine 152D:DD4 StageDrawScoreAdd152D
+ * @routine 152E:5D4 StageDrawScoreAdd152D
  * @run 6B:8DD4
- * @unreachable 6B:8DD4-6B:8DE4 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8DD4-6B:8DE4 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8DD4 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8DD4 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Draws the points to add, zScoreAddLo and zScoreAddHi (four digits from place 3).
@@ -4323,14 +4339,14 @@ void abi_StageDrawScoreAdd152D(void)
 }
 
 /*
- * @routine 152D:DE5 StageDrawScore152D
+ * @routine 152E:5E5 StageDrawScore152D
  * @run 6B:8DE5
- * @unreachable 6B:8DE5-6B:8DFC no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8DE5-6B:8DFC no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8DE5 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8DE5 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Draws the score zScore0-2 (six digits from place 1).
@@ -4364,14 +4380,14 @@ void abi_StageDrawScore152D(void)
 }
 
 /*
- * @routine 152D:DFD StageDrawNumber152D
+ * @routine 152E:5FD StageDrawNumber152D
  * @run 6B:8DFD
- * @unreachable 6B:8DFD-6B:8E0D no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8DFD-6B:8E0D no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8DFD runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8DFD runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Draws the two decimal digits of A at the places X and X + 1, the low digit first.
@@ -4420,14 +4436,14 @@ static Regs list_advance(Regs r)
 }
 
 /*
- * @routine 152D:E0E StageUnpackList152D
+ * @routine 152E:60E StageUnpackList152D
  * @run 6B:8E0E
- * @unreachable 6B:8E0E-6B:8E71 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8E0E-6B:8E71 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8E0E runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8E0E runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Unpacks the route's list (the table at $9A62 by zField82) into memory: SaveBuffer's 767 bytes cleared
@@ -4502,14 +4518,14 @@ void abi_StageUnpackList152D(void)
 }
 
 /*
- * @routine 152D:E72 ClearBitRowsFour152D
+ * @routine 152E:672 ClearBitRowsFour152D
  * @run 6B:8E72
- * @unreachable 6B:8E72-6B:8E77 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8E72-6B:8E77 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8E72 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8E72 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Runs StageClearBitRows152D four times: three calls and the run into it.
@@ -4531,14 +4547,14 @@ void abi_ClearBitRowsFour152D(void)
 }
 
 /*
- * @routine 152D:E78 StageClearBitRows152D
+ * @routine 152E:678 StageClearBitRows152D
  * @run 6B:8E78
- * @unreachable 6B:8E78-6B:8ED1 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * @unreachable 6B:8E78-6B:8ED1 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
  * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
- * run. No input or poke of work RAM can load the sector, and a unit call at $8E78 runs whatever overlay another scene
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8E78 runs whatever overlay another scene
  * left there, not these bytes.
  *
  * WHAT IT DOES: Clears one bit of four VRAM words $10 apart, for the map entry zTemp0F names: its low nibble picks the
@@ -4600,4 +4616,1627 @@ StageRegs StageClearBitRows152D(StageRegs r)
 void abi_StageClearBitRows152D(void)
 {
     regs_exit_shim(StageClearBitRows152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152E:6EA ContinueStep152D
+ * @run 6B:8EEA
+ * @stop 8EF1
+ * @unreachable 6B:8EEA-6B:8EF0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8EEA runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The continue screen's frame: the step zGameSubMode holds, from the four at $8EF1 (the start, the
+ * reveal, the menu's start, the menu).
+ * HOW: zGameSubMode doubled indexes the table, whose word is jumped through.
+ * WAITS: as the step.
+ * Entry: nothing. Exit: as the step leaves them; it is entered with A and X twice zGameSubMode, N and Z from it, C its
+ * bit 7.
+ */
+StageRegs ContinueStep152D(StageRegs r)
+{
+    uint8_t mode = RD8(ZP->game_sub_mode);
+    uint8_t twice = (uint8_t)(mode << 1);
+    uint16_t handler;
+
+    r.c = (mode & 0x80) != 0;
+    r = loaded(r, twice);
+    r.x = twice;
+    handler = table_word(0x8EF1, twice);
+    switch (handler) {
+    case 0x8EF9:
+        return ContinueStart152D(r);
+    case 0x8F5B:
+        return ContinueReveal152D(r);
+    case 0x9042:
+        return ContinueMenuStart152D(r);
+    case 0x908B:
+        return ContinueMenu152D(r);
+    default:
+        return orig_tail_shim(r, handler);
+    }
+}
+
+void abi_ContinueStep152D(void)
+{
+    regs_exit_shim(ContinueStep152D(regs_entry_shim()));
+}
+
+/* A row's VRAM address from $6E00: the row (in A) times $40, into zTemp00-01. */
+static Regs continue_row_address(Regs r, uint8_t row)
+{
+    Sum sum;
+    uint8_t old, value;
+
+    WR8(ZP->temp00, 0);
+    r.c = (row & 0x01) != 0;
+    old = RD8(ZP->temp00);
+    WR8(ZP->temp00, (uint8_t)((r.c ? 0x80 : 0) | (old >> 1)));
+    r.c = (row & 0x02) != 0;
+    old = RD8(ZP->temp00);
+    WR8(ZP->temp00, (uint8_t)((r.c ? 0x80 : 0) | (old >> 1)));
+    value = (uint8_t)(row >> 2);
+    r = loaded(r, value);
+    WR8(ZP->temp01, value);
+    return r;
+}
+
+/*
+ * @routine 152E:6F9 ContinueStart152D
+ * @run 6B:8EF9
+ * @unreachable 6B:8EF9-6B:8F5A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8EF9 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The continue screen's start: sound $36, zRasterStage cleared; for each of the eight rows (7 down to 0)
+ * its 64 VRAM words at $6E00 + row x $40 cleared, the kernel's piece at $4054 with X the row, and the row's object
+ * placed (its count at $32C8 twice the row, sprite $0D up at $2A58, set 5, X $48, $2C50 $59); then the kernel's piece
+ * at $4012 with A $0D, and the next step.
+ * HOW: The row in zTemp10; the address through zTemp00-01 and the kernel's pieces at $4021 and $4027; ST1 and ST2
+ * in a loop.
+ * WAITS: no.
+ * Entry: nothing. Exit: N and Z from zGameSubMode's increment; A, X, Y, C and V as $4012 left them.
+ */
+StageRegs ContinueStart152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t row, value;
+
+    r = loaded(r, 0x36);
+    r = orig_shim(r, 0x8EFE, SOUND_HOOK);
+    WR8(ZP->raster_stage, 0);
+    r = loaded(r, 0x07);
+    WR8(ZP->temp10, 0x07);
+    do {
+        row = RD8(ZP->temp10);
+        r = continue_row_address(r, row);
+        r = orig_shim(r, 0x8F13, 0x4021);
+        value = RD8(ZP->temp00);
+        sum = add_bytes(0x00, value, false);
+        WR8(VDC->data_lo, sum.value);
+        value = RD8(ZP->temp01);
+        sum = add_bytes(0x6E, value, sum.carry);
+        r = loaded(r, sum.value);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        WR8(VDC->data_hi, sum.value);
+        r = orig_shim(r, 0x8F25, 0x4027);
+        for (r.y = 0; r.y != 0x40; r.y++) {
+            st1(0x00);
+            st2(0x00);
+        }
+        r.c = true;
+        r.x = RD8(ZP->temp10);
+        r = orig_shim(r, 0x8F34, 0x4054);
+        WR8(OBJ->f32a8[32 + r.x], (uint8_t)(r.x << 1));
+        sum = add_bytes(r.x, 0x0D, false);
+        WR8(OBJ->sprite_set[72 + r.x], sum.value);
+        WR8(OBJ->sprite_set[r.x], 0x05);
+        WR8(OBJ->x_hi[8 + r.x], 0x48);
+        r = loaded(r, 0x59);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        WR8(OBJ->x_frac[48 + r.x], 0x59);
+        r.nz = DEC8(ZP->temp10);
+    } while ((r.nz & 0x80) == 0);
+    r = loaded(r, 0x0D);
+    r = orig_shim(r, 0x8F58, 0x4012);
+    r.nz = INC8(ZP->game_sub_mode);
+    return r;
+}
+
+void abi_ContinueStart152D(void)
+{
+    regs_exit_shim(ContinueStart152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152E:75B ContinueReveal152D
+ * @run 6B:8F5B
+ * @unreachable 6B:8F5B-6B:8F7D no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8F5B runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The continue screen's reveal: Run pressed once the last row's count at $32CF is $11 ends it; else each
+ * row from 7 down steps (ContinueRowStep152D), and the last row's count is moved from $10 to $11.
+ * HOW: A pad bit and a compare; BSR in a loop down X.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last piece that ran left them, X $FF after the rows; A the count, N, Z and C from its
+ * compare.
+ */
+StageRegs ContinueReveal152D(StageRegs r)
+{
+    r = loaded(r, (uint8_t)(rd8(BiosJoyTrigger) & 0x08));
+    if (r.a != 0) {
+        r = loaded(r, RD8(OBJ->f32a8[39]));
+        r = compared(r, 0x11);
+        if (r.nz == 0) {
+            r.nz = INC8(ZP->game_sub_mode);
+            return r;
+        }
+    }
+    r.x = 7;
+    do {
+        CALL(0x8F70, ContinueRowStep152D(r));
+        r.x--;
+        r.nz = r.x;
+    } while ((r.x & 0x80) == 0);
+    r = loaded(r, RD8(OBJ->f32a8[39]));
+    r = compared(r, 0x10);
+    if (r.nz != 0) {
+        return r;
+    }
+    r.nz = INC8(OBJ->f32a8[39]);
+    return r;
+}
+
+void abi_ContinueReveal152D(void)
+{
+    regs_exit_shim(ContinueReveal152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152E:77E ContinueDeadFade152D
+ * @run 6B:8F7E
+ * @unreachable 6B:8F7E-6B:8F82 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8F7E runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The card's CD fade of type $0C. No code of the overlay reaches these bytes (they follow the RTS of
+ * ContinueReveal152D); the C is the bytes' own.
+ * HOW: A load and a jump to cd_fade.
+ * WAITS: no.
+ * Entry: nothing. Exit: as cd_fade: A the nibble, N and Z from it; X, Y, C and V kept.
+ */
+StageRegs ContinueDeadFade152D(StageRegs r)
+{
+    r = loaded(r, 0x0C);
+    return fade_tail(r, 0x0C);
+}
+
+void abi_ContinueDeadFade152D(void)
+{
+    regs_exit_shim(ContinueDeadFade152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152E:783 ContinueRowStep152D
+ * @run 6B:8F83
+ * @unreachable 6B:8F83-6B:9014 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $8F83 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: One row of the continue screen's reveal, X the row. While its byte at $2818 is 0 its object slides
+ * right by 8 a frame as its count at $32C8 runs down, and then the byte is set. After that, while the count is below
+ * $10: the row's word at $6E0E less the count is cleared (not at $0F), the stage's banks $10 and $11 mapped, four
+ * columns of the row's picture (from $B29E, a row's 128 bytes) drawn by ContinueRowDraw152D, $2C50 and the count
+ * counted.
+ * HOW: Tests and stores in the row's columns; the address in zTemp00-01, the picture in zTemp08-09; the kernel's
+ * pieces at $4021 and $4027; TAM.
+ * WAITS: no.
+ * Entry: X the row. Exit: as the last instruction that ran left them; X kept.
+ */
+StageRegs ContinueRowStep152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t row = r.x, value, old;
+
+    r = loaded(r, RD8(OBJ->f2800[24 + row]));
+    if (r.a == 0) {
+        r = loaded(r, RD8(OBJ->f32a8[32 + row]));
+        if (r.a == 0) {
+            r.nz = INC8(OBJ->f2800[24 + row]);
+            return r;
+        }
+        value = RD8(OBJ->x_hi[8 + row]);
+        sum = add_bytes(value, 0x08, false);
+        r = loaded(r, sum.value);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        WR8(OBJ->x_hi[8 + row], sum.value);
+        r.nz = DEC8(OBJ->f32a8[32 + row]);
+        return r;
+    }
+    r = loaded(r, RD8(OBJ->f32a8[32 + row]));
+    r = compared(r, 0x10);
+    if (r.c) {
+        return r;
+    }
+    r = continue_row_address(r, row);
+    value = RD8(ZP->temp00);
+    sum = add_bytes(0x00, value, false);
+    WR8(ZP->temp00, sum.value);
+    value = RD8(ZP->temp01);
+    sum = add_bytes(0x6E, value, sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp01, sum.value);
+    r = loaded(r, RD8(OBJ->f32a8[32 + row]));
+    r = compared(r, 0x0F);
+    if (r.nz != 0) {
+        r = orig_shim(r, 0x8FC7, 0x4021);
+        value = RD8(ZP->temp00);
+        sum = add_bytes(value, 0x0E, false);
+        value = RD8(OBJ->f32a8[32 + r.x]);
+        sum = sub_bytes(sum.value, value, true);
+        WR8(VDC->data_lo, sum.value);
+        r = loaded(r, RD8(ZP->temp01));
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        WR8(VDC->data_hi, r.a);
+        r = orig_shim(r, 0x8FDB, 0x4027);
+        st1(0x00);
+        st2(0x00);
+    }
+    sum = add_bytes(0x10, RD8(ZP->ram_base_bank), false);
+    tam(0x20, sum.value);
+    tam(0x40, (uint8_t)(sum.value + 1));
+    WR8(ZP->temp08, 0);
+    r.c = (r.x & 0x01) != 0;
+    old = RD8(ZP->temp08);
+    WR8(ZP->temp08, (uint8_t)((r.c ? 0x80 : 0) | (old >> 1)));
+    WR8(ZP->temp09, (uint8_t)(r.x >> 1));
+    value = RD8(ZP->temp08);
+    sum = add_bytes(0x9E, value, false);
+    WR8(ZP->temp08, sum.value);
+    value = RD8(ZP->temp09);
+    sum = add_bytes(0xB2, value, sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp09, sum.value);
+    r = loaded(r, 0x0F);
+    CALL(0x9002, ContinueRowDraw152D(r));
+    r = loaded(r, 0x1F);
+    CALL(0x9006, ContinueRowDraw152D(r));
+    r = loaded(r, 0x2F);
+    CALL(0x900A, ContinueRowDraw152D(r));
+    r = loaded(r, 0x3F);
+    CALL(0x900E, ContinueRowDraw152D(r));
+    r.nz = INC8(OBJ->x_frac[48 + r.x]);
+    r.nz = INC8(OBJ->f32a8[32 + r.x]);
+    return r;
+}
+
+void abi_ContinueRowStep152D(void)
+{
+    regs_exit_shim(ContinueRowStep152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152F:015 ContinueRowDraw152D
+ * @run 6B:9015
+ * @unreachable 6B:9015-6B:9041 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9015 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: One word of a continue row's picture: the VDC pointed at the row's word A less its count, and the
+ * picture's word there (from zTemp08-09, two bytes a word) written.
+ * HOW: The column in zTemp10; the kernel's pieces at $4021 and $4027; reads through the picture's pointer.
+ * WAITS: no.
+ * Entry: A the column, X the row, zTemp00-01 the row's address, zTemp08-09 the picture. Exit: A the word's high byte,
+ * N and Z from it, Y its offset; C and V from the subtract. X as $4027 left it.
+ */
+StageRegs ContinueRowDraw152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t value;
+
+    WR8(ZP->temp10, r.a);
+    r = orig_shim(r, 0x901A, 0x4021);
+    value = RD8(ZP->temp00);
+    sum = add_bytes(value, RD8(ZP->temp10), false);
+    value = RD8(OBJ->f32a8[32 + r.x]);
+    sum = sub_bytes(sum.value, value, true);
+    WR8(VDC->data_lo, sum.value);
+    r = loaded(r, RD8(ZP->temp01));
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(VDC->data_hi, r.a);
+    r = orig_shim(r, 0x902E, 0x4027);
+    value = RD8(ZP->temp10);
+    sum = sub_bytes(value, RD8(OBJ->f32a8[32 + r.x]), true);
+    r.c = (sum.value & 0x80) != 0;
+    r.v = sum.overflow;
+    r.y = (uint8_t)(sum.value << 1);
+    r = loaded(r, RD8_PTR_Y(ZP->temp08, r.y));
+    WR8(VDC->data_lo, r.a);
+    r.y++;
+    r = loaded(r, RD8_PTR_Y(ZP->temp08, r.y));
+    WR8(VDC->data_hi, r.a);
+    return r;
+}
+
+void abi_ContinueRowDraw152D(void)
+{
+    regs_exit_shim(ContinueRowDraw152D(regs_entry_shim()));
+}
+
+/* The menu's pointer object: its X at $2C58 from the table at $90CD by ContinueChoice. */
+static Regs continue_pointer(Regs r)
+{
+    r.x = rd8(ContinueChoice);
+    r = loaded(r, rd8((uint16_t)(0x90CD + r.x)));
+    WR8(OBJ->x_frac[56], r.a);
+    return r;
+}
+
+/*
+ * @routine 152F:042 ContinueMenuStart152D
+ * @run 6B:9042
+ * @unreachable 6B:9042-6B:908A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9042 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The continue menu's start: the kernel's piece at $4057, zField90, zField91, zRasterEffect and the
+ * scroll's X and Y cleared; the kernel's piece at $4054 for object 8 (its loop ends after one) and for $44 to $47;
+ * the next step; the kernel's pieces at $4012 (A $0E) and $400C (A $6C); the menu's objects (sprites 4 and 3, X $4F)
+ * and the choice ContinueChoice 0, the pointer placed.
+ * HOW: Stores; two loops of the kernel's piece; a branch into ContinueMenu152D's pointer code at $90B6.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the pointer's X, N and Z from it, X the choice; Y, C and V as $400C left them.
+ */
+StageRegs ContinueMenuStart152D(StageRegs r)
+{
+    r = orig_shim(r, 0x9045, 0x4057);
+    WR8(ZP->field90, 0);
+    WR8(ZP->field91, 0);
+    WR8(ZP->raster_effect, 0);
+    WR8(SCROLL->x_lo[0], 0);
+    WR8(SCROLL->x_hi[0], 0);
+    WR8(SCROLL->y_lo[0], 0);
+    WR8(SCROLL->y_hi[0], 0);
+    r.x = 0x08;
+    do {
+        r = orig_shim(r, 0x905C, 0x4054);
+        r.x++;
+        r.c = r.x >= 0x10;
+        r.nz = (uint8_t)(r.x - 0x10);
+    } while ((r.nz & 0x80) == 0);
+    r.x = 0x44;
+    do {
+        r = orig_shim(r, 0x9066, 0x4054);
+        r.x++;
+        r.c = r.x >= 0x48;
+        r.nz = (uint8_t)(r.x - 0x48);
+    } while (r.nz != 0);
+    r.nz = INC8(ZP->game_sub_mode);
+    r = loaded(r, 0x0E);
+    r = orig_shim(r, 0x9072, 0x4012);
+    r = loaded(r, 0x6C);
+    r = orig_shim(r, 0x9077, 0x400C);
+    r = loaded(r, 0x04);
+    WR8(OBJ->sprite_set[80], 0x04);
+    r = loaded(r, 0x03);
+    WR8(OBJ->sprite_set[8], 0x03);
+    r = loaded(r, 0x4F);
+    WR8(OBJ->x_hi[16], 0x4F);
+    wr8(ContinueChoice, 0);
+    return continue_pointer(r);
+}
+
+void abi_ContinueMenuStart152D(void)
+{
+    regs_exit_shim(ContinueMenuStart152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152F:08B ContinueMenu152D
+ * @run 6B:908B
+ * @unreachable 6B:908B-6B:90C7 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $908B runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The continue menu: the cursor's blink; button I or Run takes the choice (sound $FF, zModeDone
+ * counted); up, down or Select moves ContinueChoice (the table at $90C8, two on for down), with the kernel's piece at
+ * $4012 for the choice's text and sound 1, and the pointer moved.
+ * HOW: ContinueBlink152D; pad bits; a table read and an add; the kernel and the sound hook.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last instruction that ran left them.
+ */
+StageRegs ContinueMenu152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t choice;
+
+    CALL(0x908E, ContinueBlink152D(r));
+    r = loaded(r, (uint8_t)(rd8(BiosJoyTrigger) & 0x09));
+    if (r.a != 0) {
+        r = loaded(r, 0xFF);
+        r = orig_shim(r, 0x90C5, SOUND_HOOK);
+        r.nz = INC8(ZP->mode_done);
+        return r;
+    }
+    r = loaded(r, (uint8_t)(rd8(BiosJoyTrigger) & 0x54));
+    if (r.a == 0) {
+        return r;
+    }
+    r.x = rd8(ContinueChoice);
+    r = loaded(r, (uint8_t)(r.a & 0x10));
+    if (r.a == 0) {
+        r.x = (uint8_t)(r.x + 2);
+    }
+    choice = rd8((uint16_t)(0x90C8 + r.x));
+    wr8(ContinueChoice, choice);
+    sum = add_bytes(choice, 0x0E, false);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    r = orig_shim(r, 0x90B1, 0x4012);
+    r = loaded(r, 0x01);
+    r = orig_shim(r, 0x90B6, SOUND_HOOK);
+    return continue_pointer(r);
+}
+
+void abi_ContinueMenu152D(void)
+{
+    regs_exit_shim(ContinueMenu152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152F:0D0 ContinueBlink152D
+ * @run 6B:90D0
+ * @unreachable 6B:90D0-6B:90ED no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $90D0 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Every fourth frame the kernel's piece at $4018 with X 0 and A the next of the ten blink colours at
+ * $90EE (the step at $32D0, back to 0 after 9).
+ * HOW: zFrameTick's low two bits; a table read; the kernel; an increment and a compare.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the step or zFrameTick's bits, N, Z and C from the last test; X and Y as $4018 left them.
+ */
+StageRegs ContinueBlink152D(StageRegs r)
+{
+    r = loaded(r, (uint8_t)(RD8(ZP->frame_tick) & 0x03));
+    if (r.a != 0) {
+        return r;
+    }
+    r.y = RD8(OBJ->f32a8[40]);
+    r = loaded(r, rd8((uint16_t)(0x90EE + r.y)));
+    r.x = 0;
+    r = orig_shim(r, 0x90E0, 0x4018);
+    r.nz = INC8(OBJ->f32a8[40]);
+    r = loaded(r, RD8(OBJ->f32a8[40]));
+    r = compared(r, 0x0A);
+    if (!r.c) {
+        return r;
+    }
+    WR8(OBJ->f32a8[40], 0);
+    return r;
+}
+
+void abi_ContinueBlink152D(void)
+{
+    regs_exit_shim(ContinueBlink152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:0F8 StageSubModeTally152D
+ * @run 6B:90F8
+ * @stop 9108
+ * @unreachable 6B:90F8-6B:9107 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $90F8 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Sub-mode 6, the tally after the boss: the events step, the display, the overlays' frame, then the
+ * tally's step at zField80 from the eight at $9108 (the start, the board, the board's reveal, a pause, the health and
+ * hearts counted into the score, a wait, the stock bonus, the end).
+ * HOW: StageModeEventsStep152D, StageHudStep152D, StageOverlayFrame152D; zField80 doubled indexes the table, whose
+ * word is jumped through.
+ * WAITS: as the step.
+ * Entry: nothing. Exit: as the step leaves them; it is entered with A and X twice zField80, N and Z from it, C its
+ * bit 7.
+ */
+StageRegs StageSubModeTally152D(StageRegs r)
+{
+    uint8_t step, twice;
+    uint16_t handler;
+
+    CALL(0x90FB, StageModeEventsStep152D(r));
+    CALL(0x90FE, StageHudStep152D(r));
+    CALL(0x9101, StageOverlayFrame152D(r));
+    step = RD8(ZP->field80);
+    twice = (uint8_t)(step << 1);
+    r.c = (step & 0x80) != 0;
+    r = loaded(r, twice);
+    r.x = twice;
+    handler = table_word(0x9108, twice);
+    switch (handler) {
+    case 0x9118:
+        return TallyStart152D(r);
+    case 0x9126:
+        return TallyBoard152D(r);
+    case 0x9198:
+        return TallyReveal152D(r);
+    case 0x92B1:
+        return TallyPause152D(r);
+    case 0x92BC:
+        return TallyCount152D(r);
+    case 0x9312:
+        return TallyWaitPress152D(r);
+    case 0x9324:
+        return TallyStockBonus152D(r);
+    case 0x9342:
+        return TallyEnd152D(r);
+    default:
+        return orig_tail_shim(r, handler);
+    }
+}
+
+void abi_StageSubModeTally152D(void)
+{
+    regs_exit_shim(StageSubModeTally152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:34D TallyWait152D
+ * @run 6B:934D
+ * @unreachable 6B:934D-6B:9357 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $934D runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The tally's wait: while the count at $3310 is not 0 it is counted down and the caller's step ends here,
+ * this routine dropping its caller's return address so its RTS ends the caller too.
+ * HOW: A test; a decrement; two PLA.
+ * WAITS: no.
+ * Entry: nothing. Exit, count 0: A 0, N and Z from it, the rest kept. Else: the frame dropped, A the return address's
+ * high byte less one, N and Z from it.
+ */
+TallyWaitEnd TallyWait152D(StageRegs r)
+{
+    TallyWaitEnd end;
+    uint8_t byte;
+
+    r = loaded(r, RD8(OBJ->f3300[16]));
+    end.dropped = false;
+    if (r.a != 0) {
+        r.nz = DEC8(OBJ->f3300[16]);
+        byte = pull8();
+        r = loaded(r, byte);
+        byte = pull8();
+        r = loaded(r, byte);
+        end.dropped = true;
+    }
+    end.r = r;
+    return end;
+}
+
+void abi_TallyWait152D(void)
+{
+    regs_exit_shim(TallyWait152D(regs_entry_shim()).r);
+}
+
+/* JSR $934D: the frame pushed; popped only when TallyWait152D did not drop it. */
+static TallyWaitEnd tally_wait(Regs r, uint16_t ret)
+{
+    TallyWaitEnd end;
+
+    jsr_push(ret);
+    end = TallyWait152D(r);
+    if (!end.dropped) {
+        jsr_pop();
+    }
+    return end;
+}
+
+/*
+ * @routine 1530:118 TallyStart152D
+ * @run 6B:9118
+ * @unreachable 6B:9118-6B:9122 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9118 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The tally's first step, after the wait: the kernel's piece at $4087, sound $32, and the next step
+ * (runs on into TallyNext152D).
+ * HOW: TallyWait152D; $4087; the sound hook.
+ * WAITS: no.
+ * Entry: nothing. Exit: as TallyWait152D when it ends the step; else as TallyNext152D.
+ */
+StageRegs TallyStart152D(StageRegs r)
+{
+    TallyWaitEnd wait = tally_wait(r, 0x911B);
+
+    r = wait.r;
+    if (wait.dropped) {
+        return r;
+    }
+    r = orig_shim(r, 0x911E, 0x4087);
+    r = loaded(r, 0x32);
+    r = orig_shim(r, 0x9123, SOUND_HOOK);
+    return TallyNext152D(r);
+}
+
+void abi_TallyStart152D(void)
+{
+    regs_exit_shim(TallyStart152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:123 TallyNext152D
+ * @run 6B:9123
+ * @unreachable 6B:9123-6B:9125 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9123 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The tally's next step: zField80 counted.
+ * HOW: An increment.
+ * WAITS: no.
+ * Entry: nothing. Exit: N and Z from the increment; A, X, Y, C and V kept.
+ */
+StageRegs TallyNext152D(StageRegs r)
+{
+    r.nz = INC8(ZP->field80);
+    return r;
+}
+
+void abi_TallyNext152D(void)
+{
+    regs_exit_shim(TallyNext152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:126 TallyBoard152D
+ * @run 6B:9126
+ * @unreachable 6B:9126-6B:916F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9126 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The tally's board: the kernel's piece at $4012 (A $16), the display's pieces 5 to 7
+ * (StageDrawPiece152D), the hearts kept at $330D, the full-health mark ($2A9B $18 at zPlayerHealth $5C), three
+ * blocks of VRAM words cleared (StageClearWords152D: $0E at $5000, $0C at $5400, $0A at $5D80), the board's cells
+ * at $3980 from the 62 at $93B9; the next step (TallyNext152D), then runs on into TallyDigits152D.
+ * HOW: Calls; a copy loop.
+ * WAITS: no.
+ * Entry: nothing. Exit: as TallyDigits152D.
+ */
+StageRegs TallyBoard152D(StageRegs r)
+{
+    r = loaded(r, 0x16);
+    r = orig_shim(r, 0x912B, 0x4012);
+    r.x = 5;
+    r.nz = 5;
+    CALL(0x9130, StageDrawPiece152D(r));
+    r.x++;
+    r.nz = r.x;
+    CALL(0x9134, StageDrawPiece152D(r));
+    r.x++;
+    r.nz = r.x;
+    CALL(0x9138, StageDrawPiece152D(r));
+    r = loaded(r, RD8(ZP->field94));
+    WR8(OBJ->f3300[13], r.a);
+    r = loaded(r, RD8(ZP->player_health));
+    r = compared(r, 0x5C);
+    if (r.nz == 0) {
+        r = loaded(r, 0x18);
+        WR8(OBJ->frame[51], 0x18);
+    }
+    r.x = 0;
+    r.y = 0x50;
+    r = loaded(r, 0x0E);
+    CALL(0x9150, StageClearWords152D(r));
+    r.x = 0;
+    r.y = 0x54;
+    r = loaded(r, 0x0C);
+    CALL(0x9158, StageClearWords152D(r));
+    r.x = 0x80;
+    r.y = 0x5D;
+    r = loaded(r, 0x0A);
+    CALL(0x9161, StageClearWords152D(r));
+    for (r.x = 0; r.x != 0x3E; r.x++) {
+        r = loaded(r, rd8((uint16_t)(0x93B9 + r.x)));
+        wr8((uint16_t)(TALLY_CELLS + r.x), r.a);
+    }
+    r.c = true;
+    r.nz = 0;
+    CALL(0x9170, TallyNext152D(r));
+    return TallyDigits152D(r);
+}
+
+void abi_TallyBoard152D(void)
+{
+    regs_exit_shim(TallyBoard152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:170 TallyDigits152D
+ * @run 6B:9170
+ * @unreachable 6B:9170-6B:9197 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9170 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Puts the health and the hearts on the board as digits: zPlayerHealth's tens and units (StageSplitTens152D)
+ * at $3991 and $3992, zField94's two BCD digits at $39A1 and $39A2, each one more than the digit; a leading zero is
+ * left out.
+ * HOW: StageSplitTens152D; shifts and masks; stores.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the hearts' last cell, N and Z from its increment; X the health's tens cell; C from the
+ * compare, V from the split's add. Y kept.
+ */
+StageRegs TallyDigits152D(StageRegs r)
+{
+    uint8_t hearts;
+
+    r = loaded(r, RD8(ZP->player_health));
+    CALL(0x9175, StageSplitTens152D(r));
+    r.x++;
+    r.c = r.x >= 0x01;
+    r.nz = (uint8_t)(r.x - 0x01);
+    if (r.nz != 0) {
+        wr8((uint16_t)(TALLY_CELLS + 0x11), r.x);
+    }
+    r = loaded(r, (uint8_t)(r.a + 1));
+    wr8((uint16_t)(TALLY_CELLS + 0x12), r.a);
+    hearts = RD8(ZP->field94);
+    r.c = (hearts & 0x08) != 0;
+    r = loaded(r, (uint8_t)((hearts >> 4) + 1));
+    r = compared(r, 0x01);
+    if (r.nz != 0) {
+        wr8((uint16_t)(TALLY_CELLS + 0x21), r.a);
+    }
+    hearts = RD8(ZP->field94);
+    r = loaded(r, (uint8_t)((hearts & 0x0F) + 1));
+    wr8((uint16_t)(TALLY_CELLS + 0x22), r.a);
+    return r;
+}
+
+void abi_TallyDigits152D(void)
+{
+    regs_exit_shim(TallyDigits152D(regs_entry_shim()));
+}
+
+/* The stage's Super RAM banks $10 and $11 above zRamBaseBank in MPR5 and MPR6. */
+static Regs map_stage_banks(Regs r)
+{
+    Sum sum = add_bytes(0x10, RD8(ZP->ram_base_bank), false);
+
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    tam(0x20, r.a);
+    r = loaded(r, (uint8_t)(r.a + 1));
+    tam(0x40, r.a);
+    return r;
+}
+
+/*
+ * @routine 1530:198 TallyReveal152D
+ * @run 6B:9198
+ * @unreachable 6B:9198-6B:922B no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9198 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The board's reveal, under the stage's banks: once all 62 cells at $3980 are 0 the reveal is done
+ * (zPaused's bit 1 set, the wait at $3310 $40, the next step). Else a random cell that is not yet 0 is stepped by $40
+ * (cleared when it carries), and drawn: a cell of the first ten columns as its 16-word glyph from the picture at $B77E
+ * (rows from $5D80); the others by TallyCell152D.
+ * HOW: MapStageBanks; a loop down X; the kernel's random piece at $4051 until it gives a live cell; shifts into
+ * zTemp08-09, the glyph's address in zTemp10-11; SetVramWriteAddress152D; a loop of 16 words with SXY.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last instruction that ran left them.
+ */
+StageRegs TallyReveal152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t cell, value, old, tens;
+
+    r = map_stage_banks(r);
+    for (r.x = 0x3D; (r.x & 0x80) == 0; r.x--) {
+        r = loaded(r, rd8((uint16_t)(TALLY_CELLS + r.x)));
+        if (r.a != 0) {
+            break;
+        }
+    }
+    if ((r.x & 0x80) != 0) {
+        r.nz = r.x;
+        RMW8(ZP->paused, old, old | 0x02);
+        r = loaded(r, 0x40);
+        WR8(OBJ->f3300[16], 0x40);
+        return TallyNext152D(r);
+    }
+    for (;;) {
+        r = orig_shim(r, 0x91B9, 0x4051);
+        r = loaded(r, (uint8_t)(r.a & 0x3F));
+        r = compared(r, 0x3E);
+        if (r.c) {
+            continue;
+        }
+        r.x = r.a;
+        r = loaded(r, rd8((uint16_t)(TALLY_CELLS + r.x)));
+        if (r.a != 0) {
+            break;
+        }
+    }
+    WR8(ZP->temp00, r.a);
+    sum = add_bytes(r.a, 0x40, r.c);
+    wr8((uint16_t)(TALLY_CELLS + r.x), sum.value);
+    if (sum.carry) {
+        wr8((uint16_t)(TALLY_CELLS + r.x), 0);
+    }
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    cell = (uint8_t)(r.x & 0x3F);
+    r = loaded(r, cell);
+    r = compared(r, 0x0A);
+    if (r.c) {
+        return TallyCell152D(r);
+    }
+    WR8(ZP->temp08, 0);
+    old = RD8(ZP->temp08);
+    WR8(ZP->temp08, (uint8_t)(((cell & 0x01) != 0 ? 0x80 : 0) | (old >> 1)));
+    old = RD8(ZP->temp08);
+    WR8(ZP->temp08, (uint8_t)(((cell & 0x02) != 0 ? 0x80 : 0) | (old >> 1)));
+    WR8(ZP->temp09, (uint8_t)(cell >> 2));
+    value = RD8(ZP->temp00);
+    tens = (uint8_t)((value >> 2) & 0x30);
+    sum = add_bytes(tens, 0x80, false);
+    value = RD8(ZP->temp08);
+    sum = add_bytes(sum.value, value, false);
+    r.x = sum.value;
+    value = RD8(ZP->temp09);
+    sum = add_bytes(0x5D, value, sum.carry);
+    r.y = sum.value;
+    value = RD8(ZP->temp00);
+    cell = (uint8_t)((uint8_t)(value - 1) & 0x3F);
+    WR8(ZP->temp08, 0);
+    for (int i = 0; i < 3; i++) {
+        old = RD8(ZP->temp08);
+        WR8(ZP->temp08, (uint8_t)(((cell & 0x01) != 0 ? 0x80 : 0) | (old >> 1)));
+        cell = (uint8_t)(cell >> 1);
+    }
+    WR8(ZP->temp09, cell);
+    value = RD8(ZP->temp08);
+    sum = add_bytes(0x7E, value, false);
+    WR8(ZP->temp10, sum.value);
+    value = RD8(ZP->temp09);
+    sum = add_bytes(0xB7, value, sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp11, sum.value);
+    CALL(0x9216, SetVramWriteAddress152D(r));
+    r.y = 0;
+    r.x = 0x10;
+    do {
+        r = loaded(r, RD8_PTR_Y(ZP->temp10, r.x));
+        WR8(VDC->data_lo, r.a);
+        r = loaded(r, RD8_PTR_Y(ZP->temp10, r.y));
+        WR8(VDC->data_hi, r.a);
+        r.y++;
+        r.x++;
+        r.c = r.y >= 0x10;
+        r.nz = (uint8_t)(r.y - 0x10);
+    } while (r.nz != 0);
+    return r;
+}
+
+void abi_TallyReveal152D(void)
+{
+    regs_exit_shim(TallyReveal152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:22C TallyCell152D
+ * @run 6B:922C
+ * @unreachable 6B:922C-6B:92B0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $922C runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Draws one of the board's cells past the first ten columns: A the cell's index, zTemp00 its value
+ * (its top two bits the shade, its low six the glyph). The cell's place gives the VRAM word (rows of eight from $5008,
+ * odd and even halves) and which of the word's bytes it fills; eight bytes of the glyph from the picture at $B69E
+ * (eight a glyph) go into that byte, the other byte written back as it was.
+ * HOW: A subtract and shifts into zTemp01-02 and zTemp08-09, the glyph's address in zTemp10-11; SetVramAddresses152D;
+ * a loop of eight reads and writes of the VDC's data port.
+ * WAITS: no.
+ * Entry: A the cell's index ($0A up), C set; zTemp00 the cell's value. Exit: Y 8, Z set, C set; A the last byte read
+ * or written; X the VRAM address's low byte. Clobbers zTemp01-02, zTemp08-11.
+ */
+StageRegs TallyCell152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t cell, value, old, place;
+
+    sum = sub_bytes(r.a, 0x0A, true);
+    cell = sum.value;
+    r.x = cell;
+    WR8(ZP->temp01, cell);
+    value = (uint8_t)((cell >> 1) & 0x1C);
+    if ((RD8(ZP->temp01) & 0x04) != 0) {
+        value = (uint8_t)(value | 0x20);
+    }
+    WR8(ZP->temp02, value);
+    place = (uint8_t)(RD8(ZP->temp01) & 0x03);
+    place = (uint8_t)(place | RD8(ZP->temp02));
+    WR8(ZP->temp01, place);
+    WR8(ZP->temp08, 0);
+    (void)LSR8(ZP->temp08);
+    place = (uint8_t)(place >> 1);
+    for (int i = 0; i < 2; i++) {
+        old = RD8(ZP->temp08);
+        WR8(ZP->temp08, (uint8_t)(((place & 0x01) != 0 ? 0x80 : 0) | (old >> 1)));
+        place = (uint8_t)(place >> 1);
+    }
+    WR8(ZP->temp09, place);
+    value = RD8(ZP->temp00);
+    sum = add_bytes((uint8_t)((value >> 2) & 0x30), 0x08, false);
+    value = RD8(ZP->temp08);
+    sum = add_bytes(sum.value, value, false);
+    r.x = sum.value;
+    value = RD8(ZP->temp09);
+    sum = add_bytes(0x50, value, sum.carry);
+    r.y = sum.value;
+    value = RD8(ZP->temp00);
+    value = (uint8_t)((uint8_t)(value - 1) & 0x3F);
+    WR8(ZP->temp09, 0);
+    for (int i = 0; i < 3; i++) {
+        bool out = (value & 0x80) != 0;
+
+        value = (uint8_t)(value << 1);
+        old = RD8(ZP->temp09);
+        WR8(ZP->temp09, (uint8_t)((old << 1) | (out ? 1 : 0)));
+    }
+    WR8(ZP->temp08, value);
+    value = RD8(ZP->temp08);
+    sum = add_bytes(0x9E, value, false);
+    WR8(ZP->temp10, sum.value);
+    value = RD8(ZP->temp09);
+    sum = add_bytes(0xB6, value, sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp11, sum.value);
+    r = set_vram_addresses(r, 0x9285);
+    r.y = 0;
+    if ((RD8(ZP->temp01) & 0x01) == 0) {
+        do {
+            value = RD8(VDC->data_lo);
+            WR8(VDC->data_lo, value);
+            (void)RD8(VDC->data_hi);
+            r = loaded(r, RD8_PTR_Y(ZP->temp10, r.y));
+            WR8(VDC->data_hi, r.a);
+            r.y++;
+        } while (r.y != 0x08);
+    } else {
+        do {
+            (void)RD8(VDC->data_lo);
+            r = loaded(r, RD8_PTR_Y(ZP->temp10, r.y));
+            WR8(VDC->data_lo, r.a);
+            value = RD8(VDC->data_hi);
+            r = loaded(r, value);
+            WR8(VDC->data_hi, value);
+            r.y++;
+        } while (r.y != 0x08);
+    }
+    r.c = true;
+    r.nz = 0;
+    return r;
+}
+
+void abi_TallyCell152D(void)
+{
+    regs_exit_shim(TallyCell152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:2B1 TallyPause152D
+ * @run 6B:92B1
+ * @unreachable 6B:92B1-6B:92BB no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $92B1 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: A pause of the tally: after the wait, the next wait at $3310 set to $40 and the next step.
+ * HOW: TallyWait152D; a store; a jump to TallyNext152D.
+ * WAITS: no.
+ * Entry: nothing. Exit: as TallyWait152D when it ends the step; else as TallyNext152D, A $40.
+ */
+StageRegs TallyPause152D(StageRegs r)
+{
+    TallyWaitEnd wait = tally_wait(r, 0x92B4);
+
+    r = wait.r;
+    if (wait.dropped) {
+        return r;
+    }
+    r = loaded(r, 0x40);
+    WR8(OBJ->f3300[16], 0x40);
+    return TallyNext152D(r);
+}
+
+void abi_TallyPause152D(void)
+{
+    regs_exit_shim(TallyPause152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:2BC TallyCount152D
+ * @run 6B:92BC
+ * @unreachable 6B:92BC-6B:9311 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $92BC runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The tally's count: the paused frame's menu step with zPaused's bit 0 set for it; while zPaused's bit 1
+ * is clear the health is counted into the score (zPlayerHealth down by one, its cells redrawn by TallyHealth152D, 1
+ * point by the kernel's piece at $408A), then after the wait the hearts (zField94 down by one in BCD, TallyHearts152D,
+ * $10 points); the score redrawn and sound 1 every fourth event. With both at 0 the tally goes on two steps, or, when
+ * the full-health mark at $2A9B is set, stays with zPaused's bit 1 set and the wait at $3310 $40.
+ * HOW: Bit changes; StagePausedFrame152D; decrements; $408A; StageDrawScore152D; the sound hook.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last piece that ran left them.
+ */
+StageRegs TallyCount152D(StageRegs r)
+{
+    TallyWaitEnd wait;
+    uint8_t old;
+
+    RMW8(ZP->paused, old, old | 0x01);
+    CALL(0x92C1, StagePausedFrame152D(r));
+    RMW8(ZP->paused, old, old & (uint8_t)~0x01);
+    if ((RD8(ZP->paused) & 0x02) != 0) {
+        return r;
+    }
+    r = loaded(r, RD8(ZP->player_health));
+    if (r.a != 0) {
+        r.nz = DEC8(ZP->player_health);
+        CALL(0x92CF, TallyHealth152D(r));
+        r = loaded(r, 0x01);
+    } else {
+        wait = tally_wait(r, 0x92D6);
+        r = wait.r;
+        if (wait.dropped) {
+            return r;
+        }
+        r = loaded(r, RD8(ZP->field94));
+        if (r.a == 0) {
+            r.nz = DEC8(OBJ->f3300[16]);
+            r.nz = INC8(ZP->field80);
+            r.nz = INC8(ZP->field80);
+            r = loaded(r, RD8(OBJ->frame[51]));
+            if (r.a != 0) {
+                r.nz = DEC8(ZP->field80);
+                r.nz = DEC8(ZP->field80);
+                RMW8(ZP->paused, old, old | 0x02);
+                r = loaded(r, 0x40);
+                WR8(OBJ->f3300[16], 0x40);
+            }
+            return TallyNext152D(r);
+        }
+        r = bcd_less_one(r);
+        WR8(ZP->field94, r.a);
+        CALL(0x92E4, TallyHearts152D(r));
+        r = loaded(r, 0x10);
+    }
+    r = orig_shim(r, 0x92E9, 0x408A);
+    CALL(0x92EC, StageDrawScore152D(r));
+    r = loaded(r, (uint8_t)(RD8(ZP->mode_events) & 0x03));
+    if (r.a != 0) {
+        return r;
+    }
+    r = loaded(r, 0x01);
+    return orig_shim(r, 0x92F7, SOUND_HOOK);
+}
+
+void abi_TallyCount152D(void)
+{
+    regs_exit_shim(TallyCount152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:312 TallyWaitPress152D
+ * @run 6B:9312
+ * @unreachable 6B:9312-6B:9323 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9312 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: A wait of the tally: after the wait, the paused frame's menu step; once zPaused's bit 1 is clear the
+ * wait at $3310 is $20 and the next step.
+ * HOW: TallyWait152D; StagePausedFrame152D; a bit test; a store and a jump to TallyNext152D.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last piece that ran left them.
+ */
+StageRegs TallyWaitPress152D(StageRegs r)
+{
+    TallyWaitEnd wait = tally_wait(r, 0x9315);
+
+    r = wait.r;
+    if (wait.dropped) {
+        return r;
+    }
+    CALL(0x9318, StagePausedFrame152D(r));
+    if ((RD8(ZP->paused) & 0x02) != 0) {
+        return r;
+    }
+    r = loaded(r, 0x20);
+    WR8(OBJ->f3300[16], 0x20);
+    return TallyNext152D(r);
+}
+
+void abi_TallyWaitPress152D(void)
+{
+    regs_exit_shim(TallyWaitPress152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:324 TallyStockBonus152D
+ * @run 6B:9324
+ * @unreachable 6B:9324-6B:9341 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9324 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The stock bonus: after the wait, zStock up by one in BCD (kept at 99), redrawn (StageDrawStock152D),
+ * sound $2A, the wait at $3310 one less and the next step.
+ * HOW: TallyWait152D; SED, ADC, CLD; StageDrawStock152D; the sound hook; a decrement; a jump to TallyNext152D.
+ * WAITS: no.
+ * Entry: D clear, as the game keeps it. Exit: as TallyNext152D.
+ */
+StageRegs TallyStockBonus152D(StageRegs r)
+{
+    TallyWaitEnd wait = tally_wait(r, 0x9327);
+
+    r = wait.r;
+    if (wait.dropped) {
+        return r;
+    }
+    r = loaded(r, RD8(ZP->stock));
+    r = bcd_plus_one(r);
+    if (r.c) {
+        r = loaded(r, 0x99);
+    }
+    WR8(ZP->stock, r.a);
+    CALL(0x9337, StageDrawStock152D(r));
+    r = loaded(r, 0x2A);
+    r = orig_shim(r, 0x933C, SOUND_HOOK);
+    r.nz = DEC8(OBJ->f3300[16]);
+    return TallyNext152D(r);
+}
+
+void abi_TallyStockBonus152D(void)
+{
+    regs_exit_shim(TallyStockBonus152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:342 TallyEnd152D
+ * @run 6B:9342
+ * @unreachable 6B:9342-6B:934C no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9342 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The tally's end: after the wait, zField94 back from the hearts kept at $330D and zModeDone counted.
+ * HOW: TallyWait152D; a store; an increment.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the hearts, N and Z from zModeDone's increment.
+ */
+StageRegs TallyEnd152D(StageRegs r)
+{
+    TallyWaitEnd wait = tally_wait(r, 0x9345);
+
+    r = wait.r;
+    if (wait.dropped) {
+        return r;
+    }
+    r = loaded(r, RD8(OBJ->f3300[13]));
+    WR8(ZP->field94, r.a);
+    r.nz = INC8(ZP->mode_done);
+    return r;
+}
+
+void abi_TallyEnd152D(void)
+{
+    regs_exit_shim(TallyEnd152D(regs_entry_shim()));
+}
+
+/* The last cells of a count drawn: below LIMIT the word block at $5440 or $5540 cleared (StageClearWords152D, one row),
+ * else the next cell stepped (TallyDigitCell152D). */
+static Regs tally_count_cells(Regs r, uint8_t value, uint8_t limit, uint8_t cell, uint8_t row_hi)
+{
+    r = loaded(r, value);
+    r = compared(r, limit);
+    if (r.c) {
+        r.x = cell;
+        r.nz = cell;
+        return TallyDigitCell152D(r);
+    }
+    r.x = 0x40;
+    r.y = row_hi;
+    r = loaded(r, 0x01);
+    return StageClearWords152D(r);
+}
+
+/*
+ * @routine 1530:358 TallyHealth152D
+ * @run 6B:9358
+ * @unreachable 6B:9358-6B:937B no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9358 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Redraws the board's health: the stage's banks mapped, the digits put in (TallyDigits152D), the units'
+ * cell $12 stepped (TallyDigitCell152D); from 10 up the tens' cell $11 too, below it the tens' place cleared.
+ * HOW: MapStageBanks; TallyDigits152D; TallyDigitCell152D by BSR; a compare; a branch to TallyDigitCell152D or a jump
+ * to StageClearWords152D.
+ * WAITS: no.
+ * Entry: nothing. Exit: as TallyDigitCell152D or StageClearWords152D.
+ */
+StageRegs TallyHealth152D(StageRegs r)
+{
+    r = map_stage_banks(r);
+    CALL(0x9365, TallyDigits152D(r));
+    r.x = 0x12;
+    r.nz = 0x12;
+    CALL(0x9369, TallyDigitCell152D(r));
+    return tally_count_cells(r, RD8(ZP->player_health), 0x0A, 0x11, 0x54);
+}
+
+void abi_TallyHealth152D(void)
+{
+    regs_exit_shim(TallyHealth152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:37C TallyHearts152D
+ * @run 6B:937C
+ * @unreachable 6B:937C-6B:939F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $937C runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Redraws the board's hearts as TallyHealth152D does the health: the units' cell $22, and from $10 up
+ * (BCD) the tens' cell $21, below it the tens' place cleared.
+ * HOW: MapStageBanks; TallyDigits152D; TallyDigitCell152D by BSR; a compare; a branch to TallyDigitCell152D or a jump
+ * to StageClearWords152D.
+ * WAITS: no.
+ * Entry: nothing. Exit: as TallyDigitCell152D or StageClearWords152D.
+ */
+StageRegs TallyHearts152D(StageRegs r)
+{
+    r = map_stage_banks(r);
+    CALL(0x9389, TallyDigits152D(r));
+    r.x = 0x22;
+    r.nz = 0x22;
+    CALL(0x938D, TallyDigitCell152D(r));
+    return tally_count_cells(r, RD8(ZP->field94), 0x10, 0x21, 0x55);
+}
+
+void abi_TallyHearts152D(void)
+{
+    regs_exit_shim(TallyHearts152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:3A0 TallyDigitCell152D
+ * @run 6B:93A0
+ * @unreachable 6B:93A0-6B:93B8 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $93A0 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Draws the board's cell X at every shade from its value up: TallyCell152D for the cell, then the cell
+ * stepped by $40 until it carries.
+ * HOW: X kept on the stack across TallyCell152D; an add; a loop.
+ * WAITS: no.
+ * Entry: X the cell. Exit: A the cell plus $40, C set, N and Z from it; X the cell; Y 8.
+ */
+StageRegs TallyDigitCell152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t value;
+
+    for (;;) {
+        push8(r.x);
+        r = loaded(r, rd8((uint16_t)(TALLY_CELLS + r.x)));
+        WR8(ZP->temp00, r.a);
+        r = loaded(r, r.x);
+        CALL(0x93AA, TallyCell152D(r));
+        r.x = pull8();
+        r.nz = r.x;
+        value = rd8((uint16_t)(TALLY_CELLS + r.x));
+        sum = add_bytes(value, 0x40, false);
+        r = loaded(r, sum.value);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        if (r.c) {
+            return r;
+        }
+        wr8((uint16_t)(TALLY_CELLS + r.x), sum.value);
+    }
+}
+
+void abi_TallyDigitCell152D(void)
+{
+    regs_exit_shim(TallyDigitCell152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:3F7 StageClearWords152D
+ * @run 6B:93F7
+ * @unreachable 6B:93F7-6B:9409 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $93F7 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Clears A rows of 64 VRAM words from the address in X and Y.
+ * HOW: The count in zTemp00; SetVramWriteAddress152D; ST1 and ST2 in loops.
+ * WAITS: no.
+ * Entry: A the rows, X and Y the address. Exit: X 0, A as SetVramWriteAddress152D left it, N and Z from the count's
+ * decrement (Z set). Y, C and V as SetVramWriteAddress152D left them. Clobbers zTemp00.
+ */
+StageRegs StageClearWords152D(StageRegs r)
+{
+    WR8(ZP->temp00, r.a);
+    CALL(0x93FC, SetVramWriteAddress152D(r));
+    do {
+        for (r.x = 0x40; r.x != 0; r.x--) {
+            st1(0x00);
+            st2(0x00);
+        }
+        r.nz = DEC8(ZP->temp00);
+    } while (r.nz != 0);
+    return r;
+}
+
+void abi_StageClearWords152D(void)
+{
+    regs_exit_shim(StageClearWords152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:40A StageSplitTens152D
+ * @run 6B:940A
+ * @unreachable 6B:940A-6B:9414 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $940A runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Splits A into its tens (X) and its units (A) by repeated subtracts of ten.
+ * HOW: A loop of SBC #$0A, X counted; the last subtract undone.
+ * WAITS: no.
+ * Entry: A the number. Exit: A the units, X the tens, N and Z from X's decrement; C and V from the add that undid the
+ * last subtract. Y kept.
+ */
+StageRegs StageSplitTens152D(StageRegs r)
+{
+    Sum sum;
+
+    r.x = 0;
+    do {
+        r.x++;
+        sum = sub_bytes(r.a, 0x0A, true);
+        r.a = sum.value;
+    } while (sum.carry);
+    sum = add_bytes(r.a, 0x0A, false);
+    r.a = sum.value;
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    r.x--;
+    r.nz = r.x;
+    return r;
+}
+
+void abi_StageSplitTens152D(void)
+{
+    regs_exit_shim(StageSplitTens152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:415 SetVramAddresses152D
+ * @run 6B:9415
+ * @unreachable 6B:9415-6B:941D no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9415 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Points both of the VDC's VRAM addresses at the word in X and Y, then runs on into
+ * SetVramWriteAddress152D. The bytes are those of SetVramAddresses (map_draw.c) at this overlay's address, where
+ * $941E is an entry of its own.
+ * HOW: The kernel's piece at $4024 (the read address), X and Y into the data port; then SetVramWriteAddress152D.
+ * WAITS: no.
+ * Entry: X low byte, Y high byte of the VRAM address. Exit: as SetVramWriteAddress152D.
+ */
+StageRegs SetVramAddresses152D(StageRegs r)
+{
+    r = orig_shim(r, 0x9418, 0x4024);
+    WR8(VDC->data_lo, r.x);
+    WR8(VDC->data_hi, r.y);
+    return SetVramWriteAddress152D(r);
+}
+
+void abi_SetVramAddresses152D(void)
+{
+    regs_exit_shim(SetVramAddresses152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:41E SetVramWriteAddress152D
+ * @run 6B:941E
+ * @unreachable 6B:941E-6B:9429 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $941E runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Points the VDC's VRAM write address at the word in X and Y and selects the data port.
+ * HOW: The kernel's piece at $4021, X and Y into the data port; a jump to the kernel's piece at $4027.
+ * WAITS: no.
+ * Entry: X low byte, Y high byte of the VRAM address. Exit: as $4027 leaves them.
+ */
+StageRegs SetVramWriteAddress152D(StageRegs r)
+{
+    r = orig_shim(r, 0x9421, 0x4021);
+    WR8(VDC->data_lo, r.x);
+    WR8(VDC->data_hi, r.y);
+    return orig_tail_shim(r, 0x4027);
+}
+
+void abi_SetVramWriteAddress152D(void)
+{
+    regs_exit_shim(SetVramWriteAddress152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:448 StageDrawPiece152D
+ * @run 6B:9448
+ * @unreachable 6B:9448-6B:9467 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9448 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Places one of the display's pieces, X from 0 to 7: the kernel's piece at $405D gives a slot for the
+ * object the table at $9468 names, and the slot takes its sprite, set, X and Y from the tables at $9470, $9478,
+ * $9480 and $9488.
+ * HOW: Table reads by X; $405D; stores by the slot in Y.
+ * WAITS: no.
+ * Entry: X the piece. Exit: A the Y written, N and Z from it; X and Y as $405D left them; C and V as it left them.
+ */
+StageRegs StageDrawPiece152D(StageRegs r)
+{
+    r = loaded(r, rd8((uint16_t)(0x9468 + r.x)));
+    r.y = r.a;
+    r = orig_shim(r, 0x944F, 0x405D);
+    r = loaded(r, rd8((uint16_t)(0x9470 + r.x)));
+    WR8(OBJ->sprite_set[72 + r.y], r.a);
+    r = loaded(r, rd8((uint16_t)(0x9478 + r.x)));
+    WR8(OBJ->sprite_set[r.y], r.a);
+    r = loaded(r, rd8((uint16_t)(0x9480 + r.x)));
+    WR8(OBJ->x_hi[8 + r.y], r.a);
+    r = loaded(r, rd8((uint16_t)(0x9488 + r.x)));
+    WR8(OBJ->x_frac[48 + r.y], r.a);
+    return r;
+}
+
+void abi_StageDrawPiece152D(void)
+{
+    regs_exit_shim(StageDrawPiece152D(regs_entry_shim()));
 }

@@ -143,6 +143,7 @@ MovePlayerYIfMoving_at0:
 ; and Y speed; bit 5 also takes the Y fraction from PlayerAnchorObject. Bit 3 moves the
 ; player down the screen against the push's Y and scrolls by it, in place of the camera
 ; mode.
+; WAITS: no.
 ; Entry: nothing. Exit: A and Y as the overlay leaves them, V too, X 7, N 0, Z 1, C 1.
 PlayerAndCameraFrame:
     lda a:OBJ_VX_LO
@@ -186,7 +187,7 @@ PlayerAndCameraFrame_at1:
     sta a:OBJ_Y_LO
     bra PlayerAndCameraFrame_at3
 PlayerAndCameraFrame_at2:
-    bsr PlayerAndCameraFrame_at4
+    bsr CameraModeDispatch
 PlayerAndCameraFrame_at3:
     pla
     sta a:OBJ_VY_HI
@@ -204,7 +205,15 @@ PlayerAndCameraFrame_at5:
     cpx #$07
     bne PlayerAndCameraFrame_at5
     rts
-PlayerAndCameraFrame_at4:
+
+; @routine 0047:681 CameraModeDispatch
+; @run 6A:6681
+; WHAT IT DOES: Runs the section's camera mode: the handler the table names for CameraMode.
+; HOW: CameraMode doubled indexes CameraModeHandlers; a jump through it, so the handler's
+; RTS returns to the caller of this routine.
+; WAITS: no.
+; Entry: nothing. Exit: as the handler leaves them.
+CameraModeDispatch:
     lda a:CameraMode
     asl a
     tax

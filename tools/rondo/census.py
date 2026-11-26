@@ -56,6 +56,7 @@ SCRIPTS = os.path.join(HERE, "scripts")
 OUT = os.path.join(TOP, "build", "rondo", "census.csv")
 COUNTED = os.path.join(TOP, "config", "rondo", "census.csv")              # the counted census: the denominator's
 DUPLICATES = os.path.join(TOP, "config", "rondo", "census_duplicates.csv")  # proven duplicates, left out
+EXPLAINED = os.path.join(TOP, "config", "rondo", "census_explained.csv")    # relaxed-only runs kept as code, why
 MAP = os.path.join(TOP, "build", "rondo", "censusmap.bin")
 SECTOR = 2048
 BANK = 0x2000
@@ -855,7 +856,8 @@ def counted_census(disc, tr, strict, relaxed, names):
     census claims, less the bytes proven data and the runs proven duplicates. Unproven bytes count as code.
 
     Proven data: sent to the VDC, VCE, PSG or ADPCM port; or loaded into a register by code in place and never run;
-    or inside a claimed instruction whose bytes a script ran at another instruction boundary.
+    or inside a claimed instruction whose bytes a script ran at another instruction boundary; or a whole run of
+    claimed bytes, at least COPY long, repeating with a period of one or two bytes (filler, tile words).
     Proven duplicate: a whole maximal run of claimed bytes, at least COPY long, equal byte for byte to a place of the
     same length, not overlapping it, whose bytes are all counted and kept and that a script ran some of (the copy
     that ran is the one counted), or else to a place wholly earlier on the disc whose bytes are all counted and kept
@@ -881,6 +883,22 @@ def counted_census(disc, tr, strict, relaxed, names):
                     for i in range(n):
                         if p + i in claimed:
                             data.setdefault(p + i, "decode contradicted by a trace")
+    # a run of claimed bytes, at least COPY long, that repeats with a period of one or two bytes over its whole
+    # length is filler or a pattern (tile words, $FF, $00): data
+    run_list, i, ordered = [], 0, sorted(d for d in claimed if d not in data)
+    while i < len(ordered):
+        j = i
+        while j + 1 < len(ordered) and ordered[j + 1] == ordered[j] + 1:
+            j += 1
+        run_list.append((ordered[i], ordered[j] + 1))
+        i = j + 1
+    for a, b in run_list:
+        if b - a >= COPY:
+            for per in (1, 2):
+                if all(buf[t] == buf[t - per] for t in range(a + per, b)):
+                    for t in range(a, b):
+                        data[t] = f"a pattern repeating every {per} byte(s)"
+                    break
     rest = sorted(d for d in claimed if d not in data)
     keep = bytearray(USER_BYTES)              # 1: counted and still kept (traced code, census bytes not left out)
     for d in tr.code:
@@ -938,14 +956,37 @@ def counted_census(disc, tr, strict, relaxed, names):
     out = {"claimed": len(claimed), "strict": sum(1 for d in claimed if d in strict.found),
            "proven_data": len(data), "duplicates": len(src_of), "duplicate_runs": len(dups),
            "duplicates_of_traced": sum(1 for v in src_of.values() if v == "traced")}
-    for why in ("sunk", "read in place", "decode contradicted by a trace"):
-        out["proven_data_" + why.replace(" ", "_")] = sum(1 for v in data.values() if v == why)
+    for key, why in (("sunk", "sunk"), ("read_in_place", "read in place"),
+                     ("decode_contradicted", "decode contradicted by a trace"),
+                     ("pattern_1", "a pattern repeating every 1 byte(s)"),
+                     ("pattern_2", "a pattern repeating every 2 byte(s)")):
+        out["proven_data_" + key] = sum(1 for v in data.values() if v == why)
     counted = [d for d in rest if keep[d]]
     out["counted"] = len(counted)
     out["counted_strict"] = sum(1 for d in counted if d in strict.found)
     out["counted_relaxed_only"] = out["counted"] - out["counted_strict"]
     out["counted_never_loaded"] = sum(1 for d in counted if m2 is not None and not m2[d] & 1)
-    return out, dups, data, src_of
+    # the relaxed-only bytes kept as code, run by run, with the evidence (PLAN section 1, rule 3; the master's ruling
+    # of 2026-11-26: a byte kept as code is settled when a writer files it; only taking one out needs a proof)
+    kentry = {d for d in tr.entries if KERNEL_SECTOR * SECTOR <= d < KERNEL_SECTOR * SECTOR + 0x4000}
+    rel = sorted(d for d in counted if d not in strict.found)
+    explained, i = [], 0
+    while i < len(rel):
+        j = i
+        while j + 1 < len(rel) and rel[j + 1] == rel[j] + 1:
+            j += 1
+        a, b, p, calls = rel[i], rel[j] + 1, rel[i], 0
+        while p < b:
+            n, name, mode, w = disc.decode(p)
+            if name is None:
+                break
+            if mode == "abs" and name in ("jsr", "jmp") and kernel_disc(w) in kentry:
+                calls += 1
+            p += n
+        explained.append((a, b - a, "code", f"calls an entered kernel entry ({calls}); the test fires on 4.4% of the "
+                          "bytes of data pieces of the same lengths (measured 2026-11-26)" if calls else "no data proof"))
+        i = j + 1
+    return out, dups, data, src_of, explained
 
 
 def unloaded_scenes(path):
@@ -1026,7 +1067,12 @@ def main():
     print(f"traced {len(tr.code)} B; strict census adds {sum(1 for r in strict.found.values() if r != 'traced')} B; "
           f"relaxed adds {sum(1 for r in relaxed.found.values() if r != 'traced')} B")
     print("unplaced calls:", strict.stats["unplaced"], "ambiguous:", strict.stats["ambiguous"])
-    out, dups, data, src_of = counted_census(disc, tr, strict, relaxed, names)
+    out, dups, data, src_of, explained = counted_census(disc, tr, strict, relaxed, names)
+    with open(EXPLAINED, "w", newline="\n", encoding="ascii") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["start", "length", "verdict", "evidence"])
+        for a, n, v, why in sorted(explained, key=lambda e: -e[1]):
+            w.writerow([f"{a:X}", n, v, why])
     for d in data:                            # censusmap.bin also marks what the counted census leaves out
         m[d] |= 8
     for d in src_of:

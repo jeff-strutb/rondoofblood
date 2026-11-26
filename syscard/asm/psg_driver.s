@@ -152,3 +152,147 @@ psg_write_channels_at18:
     jmp psg_write_channels_at0
 psg_write_channels_at19:
     rts
+
+; @card 02:D257 psg_slide_channel
+; WHAT IT DOES: Moves the current channel's pitch, left volume and right volume one step towards where its slides are taking them.
+; HOW: Each slide has a signed step ($255D, $2569, $2575 plus the channel) and a fraction ($2563, $256F, $257B): the step added to
+; the fraction in seven bits, the carry out of bit 6 into bit 7 added to (or taken from) the whole part ($24AF, the nibbles of $25F9),
+; clipped at its limit, where the slide ends by clearing its step.
+; WAITS: no.
+; Entry: CardPlayChannel ($22E0) the channel. Exit: A, X and the flags as the last step left them.
+psg_slide_channel:
+    ldx a:$22E0
+    lda a:$255D,x
+    beq psg_slide_channel_at5
+    bmi psg_slide_channel_at2
+    clc
+    adc a:$2563,x
+    sta z:$EA
+    rol a
+    rol a
+    and #$01
+    clc
+    adc a:$24AF,x
+    beq psg_slide_channel_at4
+    bmi psg_slide_channel_at4
+    cla
+    stz a:$255D,x
+    bra psg_slide_channel_at4
+psg_slide_channel_at2:
+    eor #$FF
+    inc a
+    clc
+    adc a:$2563,x
+    sta z:$EA
+    rol a
+    rol a
+    and #$01
+    sta z:$EB
+    lda a:$24AF,x
+    sec
+    sbc z:$EB
+    beq psg_slide_channel_at4
+    cmp #$E1
+    bcs psg_slide_channel_at4
+    lda #$E1
+    stz a:$255D,x
+psg_slide_channel_at4:
+    sta a:$24AF,x
+    lda z:$EA
+    and #$7F
+    sta a:$2563,x
+psg_slide_channel_at5:
+    lda a:$2569,x
+    beq psg_slide_channel_at12
+    bmi psg_slide_channel_at7
+    clc
+    adc a:$256F,x
+    sta z:$EA
+    rol a
+    rol a
+    and #$01
+    sta z:$EB
+    lda a:$25F9,x
+    and #$0F
+    clc
+    adc z:$EB
+    cmp #$10
+    bcc psg_slide_channel_at9
+    lda #$0F
+    stz a:$2569,x
+    bra psg_slide_channel_at9
+psg_slide_channel_at7:
+    eor #$FF
+    inc a
+    clc
+    adc a:$256F,x
+    sta z:$EA
+    rol a
+    rol a
+    and #$01
+    sta z:$EB
+    lda a:$25F9,x
+    and #$0F
+    sec
+    sbc z:$EB
+    bne psg_slide_channel_at9
+    cla
+    stz a:$2569,x
+psg_slide_channel_at9:
+    sta z:$EB
+    lda a:$25F9,x
+    and #$F0
+    ora z:$EB
+    sta a:$25F9,x
+    lda z:$EA
+    and #$7F
+    sta a:$256F,x
+psg_slide_channel_at12:
+    lda a:$2575,x
+    beq psg_slide_channel_at19
+    bmi psg_slide_channel_at14
+    clc
+    adc a:$257B,x
+    sta z:$EA
+    and #$80
+    lsr a
+    lsr a
+    lsr a
+    sta z:$EB
+    lda a:$25F9,x
+    and #$F0
+    clc
+    adc z:$EB
+    bcc psg_slide_channel_at17
+    lda #$F0
+    stz a:$2575,x
+    bra psg_slide_channel_at17
+psg_slide_channel_at14:
+    eor #$FF
+    inc a
+    clc
+    adc a:$257B,x
+    sta z:$EA
+    and #$80
+    lsr a
+    lsr a
+    lsr a
+    sta z:$EB
+    lda a:$25F9,x
+    and #$F0
+    sec
+    sbc z:$EB
+    bne psg_slide_channel_at17
+    cla
+    stz a:$2575,x
+psg_slide_channel_at17:
+    sta z:$EB
+    lda a:$25F9,x
+    and #$0F
+    ora z:$EB
+    sta a:$25F9,x
+    lda z:$EA
+    and #$7F
+    sta a:$257B,x
+psg_slide_channel_at19:
+    rts

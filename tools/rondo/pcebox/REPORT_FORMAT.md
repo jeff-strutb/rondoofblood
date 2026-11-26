@@ -47,7 +47,9 @@ of that script ("record exit N", "hybrid exit N", "timed out after 1500 s"); a f
   MOVED EXTRA MISSING VALUE STACK STATE REGS CALL INT (every defect, so a cascade counts many), then ten cause counts:
   `left` (left by a longer route than RTS or RTI: unverified), `log` (calls whose log filled: judged as a prefix),
   `depth` (nested deeper than 512: unverified), `computed` (unused, 0), `arrive_branch` (a branch back into the routine's own
-  first byte, information), `arrive_nonres` (entered while another overlay's bytes were there, information), `runaway`
+  first byte while its bytes are resident, information), `arrive_nonres` (always 0: an arrival at a tagged address while no
+  row there has its bytes resident ran another overlay's code and is charged to no routine; the report's `OTHER CODE` line
+  counts those, by call and by branch), `runaway`
   (the C ran past its access or write budget: counted in `divergent`), `prefix` (open at the script's end or at a full log:
   judged as far as the record goes, counted in `identical` or `order`), `noreturn` (A5: a call the C made with its return
   frame (`call_orig`) that the original's record shows did not come back inside the call: no RET at the callee's stack
@@ -84,6 +86,8 @@ of that script ("record exit N", "hybrid exit N", "timed out after 1500 s"); a f
 - the summary line, always last, fields in this order:
   `hybrid: <N> swapped, frames compared <C>, identical <I>, first differing <X>, access defects <D>, interrupts inside <K>,
   original calls <O>, waits <W>, frames expected <E>, parked <P>, kept <Q>, unreached <U>, unopened arrivals <A>, diagnostic <Z>`.
+  `A` is the arrivals charged to routines whose bytes were resident (branch, computed); arrivals of other code at a tagged
+  address are not in it (the `OTHER CODE` line).
   `X` is the first frame whose hash differs (>= 1), else a code: **-1 identical**, -2 access defects with every frame
   identical, -3 stopped in step, -4 diagnostic run, -5 not a verdict (nothing swapped, the record's frame count unknown or
   not equal to `C`, `parked` more than the calls the record left open, or calls of the record never reached).

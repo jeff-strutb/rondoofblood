@@ -492,6 +492,7 @@ static struct {
     uint64_t ubegin;     /* hybrid: the record's UBEGIN of this call, where the called routine's OPEN is looked for; 0 none */
 } unit;
 static uint64_t frame_holds;
+static uint64_t nested_jumps;    /* jumps into original code made by a C another C called: no stand-in frame */
 static uint64_t end_calls;       /* calls into original code still running when the script ended */
 static uint64_t jsr_after_int;   /* JSRs whose target an interrupt came in at: their return address marked after it */
 static uint64_t left_back;       /* left hand-overs made at the close's PC, the C standing past it with the original's registers */
@@ -1825,9 +1826,17 @@ static void original_at(uint16_t ret, uint16_t addr)
         int natural0;
         int took;
 
+        int nested_jump = !ret && ec.kind == K_JMP;
+
         pace_site = "call";
         pace_to(ec.clock);
-        if (!ret) {
+        if (nested_jump) {
+            /* A jump made by a C that another C called (the original's JMP: it pushed nothing): the code returns through the
+             * frame of that C call, already on the stack, to the address it holds; the machine's S is the original's. */
+            back = (uint16_t)((chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s0 + 1))) |
+                               (chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(s0 + 2))) << 8)) + 1);
+            nested_jumps++;
+        } else if (!ret) {
             /* No frame was stated: the code needs a return address on the stack all the same. */
             uint16_t r2 = ec.kind == K_JSR ? ec.ret : 0;
 
@@ -1838,7 +1847,7 @@ static void original_at(uint16_t ret, uint16_t addr)
         }
         stats[span->tag].originals++;
         chk_set_regs(cpu.a, cpu.x, cpu.y, s0, cpu.p, addr);
-        prev_op = 0x20;
+        prev_op = nested_jump ? 0x4C : 0x20;
         last_pc = rondo_tags[span->tag].run;
         scan = call + 1;
         natural0 = top ? top->natural : 0;
@@ -3313,8 +3322,8 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
         blame_tag = -1;
     }
     if (getenv("RONDO_DIAG_DRIFT") && drift_in(cur_frame))
-        fprintf(stderr, "DRIFT frame %lu enter %s call %llu pc %04X S%02X: core clock %llu, the record's %llu (%+lld)\n", cur_frame,
-                rondo_tags[index].name, (unsigned long long)stats[index].calls + 1, r->pc, r->s,
+        fprintf(stderr, "DRIFT frame %lu enter %s call %llu pc %04X S%02X (record S%02X): core clock %llu, the record's %llu (%+lld)\n", cur_frame,
+                rondo_tags[index].name, (unsigned long long)stats[index].calls + 1, r->pc, r->s, e->s,
                 (unsigned long long)hybrid_clock_now(), (unsigned long long)e->clock,
                 (long long)hybrid_clock_now() - (long long)e->clock);
     c = ctx_new();
@@ -4119,6 +4128,8 @@ void check_finish(void)
                 (unsigned long long)left_back);
         fprintf(report, "calls into original code still running at the script's end, run on the machine: %llu\n",
                 (unsigned long long)end_calls);
+        fprintf(report, "jumps into original code from a C called by another C, run with the original's stack: %llu\n",
+                (unsigned long long)nested_jumps);
         fprintf(report, "frame ends a few instructions past a hand-over, the core held until it stood there: %llu\n",
                 (unsigned long long)frame_holds);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",

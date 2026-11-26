@@ -99,3 +99,82 @@ about 45 routines, text 'to 8006: C A.. original A..' or 'C calls 8006; the orig
 | RichterVecFrame | gameover | MISSING | call 1 frame 12809: the original's write 1F01E9 (4B) at access 1042 of the call is not made |
 | RichterVecStart | attract_82 | MISSING | call 1 frame 20170: the original's read 1F0EE0 (01) at access 313 of the call is not made |
 | RichterWall | attract_82 | MOVED | call 1 frame 20226: C read 1F0CD0 placed at access 14, past 4 of the original's accesses it has not made first: read 1F0BC8 (20) at 8 (a read the C sk |
+
+## After the $9991 tile-read fix (3b31e17): attract_82, 100 divergent, the 64 that are not Player/Richter/Camera
+
+Cause 1 above took attract_82 from 113 to 100 divergent (388 verdicts over twelve scripts, none worse). The families left, by first defect:
+
+- Ending* (13 routines): exit 'A C 00 orig 82/84/87/88, P C 00 orig 80' and EndingScriptStep VALUE write 1F01EF C 00 orig 80: one exit-flags cause in EndingScriptStep's callers (check what A and P the original's script step leaves).
+- Title* (TitleEntry, TitleSetUp, TitleStep): 'A C 00 orig 10'.
+- Card calls from the game (CdPlayOnce/Again/Repeat, CdSearchTrack, LoadSceneScript): EXTRA read 1F00FC with the original making no more accesses: the card routine's C (card writer).
+- Sound driver (SoundCommand, SoundDriverCommand, SoundStartVoice, KernelAdpcmPlay): EXTRA/MOVED in the driver (L5, card writer for ad_play).
+- Routines of L8 that call a sound or jump table (BossFrameRoutinesC, CountDownThenSound84AndAppear, StepListThenLeapWithSound, StepListThenBurstAtFrame14, StepListSlowDownThenPickRandom, StepListFallThenMusicAgain): the same drivers; StepListSlowDownThenPickRandom EXTRA read 1F0E40 to look at.
+- Probe and landing exits (ProbeTerrain, ProbeTerrainAlt, SettleOnLanding, StopOnLanding, VecStopOnLanding): P differs by V ($40) after the V-exit fix of a29ff94 was not in this run; rerun.
+- Other: RunObjects 'C calls B13F' and StepScrollAndRunObjects 'to B13F' (L7b's RunObjects fix), ObjectHit, EnterStageState 'to E018', FrameModeDispatch, VramListFromIndex 1FE002, ProbeWalls.
+
+| routine | first defect |
+|---|---|
+| AttractStep | verdict only |
+| AttractWaitStart | verdict only |
+| BossFrameRoutinesC | EXTRA call 1 frame 20171: C read 1F15D0; the original made no more accesses in the call |
+| CdPlayAgain | EXTRA call 1 frame 21227: C read 1F00FC; the original made no more accesses in the call |
+| CdPlayOnce | EXTRA call 1 frame 937: C read 1F00FC; the original made no more accesses in the call |
+| CdPlayRepeat | EXTRA call 1 frame 21227: C read 1F00FC; the original made no more accesses in the call |
+| CdSearchTrack | EXTRA call 1 frame 20160: C read 1F00FC; the original made no more accesses in the call |
+| CountDownThenSound84AndAppear | verdict only |
+| EndingCreditScrollStart |  A C 01 orig 82; P C 00 orig 80 (entry 80); |
+| EndingDispatchKind |  A C 00 orig 88; P C 00 orig 80 (entry 01); |
+| EndingFrame | EXTRA call 1 frame 8333: C write 1F01F1; the original made no more accesses in the call |
+| EndingHoldThenScript19 |  A C 00 orig 88; P C 00 orig 80 (entry 80); |
+| EndingHoldTimer |  A C 00 orig 88; P C 00 orig 80 (entry 02); |
+| EndingRiseFrame31 |  A C 00 orig 87; |
+| EndingRiseFrame32A |  A C 00 orig 87; |
+| EndingRiseFrame32B |  A C 00 orig 88; |
+| EndingRiseWithList |  A C 00 orig 87; P C 00 orig 80 (entry 80); |
+| EndingScriptAdvance | EXTRA call 1 frame 8333: C read 1F007E; the original made no more accesses in the call [in the call of EndingScriptStep] |
+| EndingScriptStep | VALUE call 2 frame 8333: C wrote 1F01EF with 00, the original's write 1F01EF (80) |
+| EndingScrollWindowSteps |  A C 00 orig 84; P C 00 orig 80 (entry 80); |
+| EndingScrollsOn |  P C 00 orig 80 (entry 80); |
+| EndingSplitScrolls |  P C 00 orig 80 (entry 80); |
+| EndingStartList3 |  P C 00 orig 80 (entry 80); |
+| EndingStartScript18 |  P C 00 orig 80 (entry 80); |
+| EndingStep | MISSING call 2 frame 8333: the original's write 1F01ED (81) at access 30728 of the call is not made |
+| EnterStageState | to E018: C A82 X00 Y00 P80, original A82 X08 YFF P80 |
+| FrameModeDispatch | code called at 8009 does not come back in this call, from a routine the call did not enter |
+| KernelAdpcmPlay | MOVED call 11 frame 23754: C write 1F00FE placed at access 272, past 1 of the original's accesses it has not made first: write 1F01E7 (A |
+| LoadSceneScript | EXTRA call 1 frame 218: C read 1F00FC; the original made no more accesses in the call |
+| ModeAttract | verdict only |
+| ModeBackToTitle | verdict only |
+| ModeBoot | verdict only |
+| ModeGameOverWait | verdict only |
+| ObjectHit |  A C 80 orig 6B; Y C 08 orig 00; P C 80 orig 41 (entry 01); 1F11B0 C 80 orig 00; 1F0000 C 00 orig 07; 1F0000 C 00 orig 07; 1F12B8  |
+| ProbeTerrain | verdict only |
+| ProbeTerrainAlt | verdict only |
+| ProbeWalls | EXTRA call 1 frame 20269: C read 1F0012; the original made no more accesses in the call [in the call of ProbeTerrain] |
+| RunObjects | C calls B13F; the original made no such call |
+| SaveVramToRam | verdict only |
+| SceneReadSectors | verdict only |
+| ScriptPlayTrack | verdict only |
+| ScriptSound | verdict only |
+| ScriptStep | verdict only |
+| SettleOnLanding | to 800F: C A00 X21 Y04 P02, original A00 X21 Y04 P42 |
+| SoundCommand | EXTRA call 10 frame 20258: C read 1F0034; the original made no more accesses in the call [in the call of RichterAttack] |
+| SoundDriverCommand | EXTRA call 10 frame 20258: C write 1F01EA; the original made no more accesses in the call [in the call of RichterAttack] |
+| SoundStartVoice | EXTRA call 11 frame 23754: C write 1F01E9; the original's next is write 1F01E8 (B3) at access 121 of the call [in the call of RichterFra |
+| StageEnter | verdict only |
+| StageLoad | verdict only |
+| StepListFallThenMusicAgain | verdict only |
+| StepListSlowDownThenPickRandom | EXTRA call 7 frame 21505: C read 1F0E40; the original made no more accesses in the call |
+| StepListThenBurstAtFrame14 | verdict only |
+| StepListThenLeapWithSound | verdict only |
+| StepScrollAndRunObjects | to B13F: C AB1 X10 Y46 P80, original AB1 X10 Y46 PC0 |
+| StopOnLanding | to 800F: C A00 X21 Y04 P02, original A00 X21 Y04 P42 |
+| TitleEntry |  A C 00 orig 10; |
+| TitleSetUp |  A C 00 orig 10; |
+| TitleStep |  A C 00 orig 10; |
+| VecCdPlayAgain | verdict only |
+| VecCdPlayOnce | verdict only |
+| VecPlayerAndCameraFrame | verdict only |
+| VecSoundCommand | verdict only |
+| VecStopOnLanding | to 800F: C A00 X21 Y04 P02, original A00 X21 Y04 P42 |
+| VramListFromIndex | hardware write 1FE002: C AD, original 00 |

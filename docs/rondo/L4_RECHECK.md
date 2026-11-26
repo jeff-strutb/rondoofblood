@@ -1,0 +1,36 @@
+# L4 routines to recheck
+
+State of lot L4 (VRAM update, background layers, raster, frame interrupt) on 2026-11-25, written when writing stopped for verification. Every figure is from a run named here; nothing is stated that was not run.
+
+## raster.c (48 routines, landed d8500c3, cbc55a5, 98626b6)
+
+- A5 on the script raster_effects (tools/rondo/scripts/raster_effects.txt: a coverage poke of zRasterEffect, $2045, to each effect 1 to 31, 40 frames each, in Stage 0): all 40 raster routines judged are IDENTICAL, none unverified (RasterInterrupt 12640 of 12640, RasterDone 12640 of 12640, RasterBandThenLine 1047 of 1047).
+- liftcmp (through mode, after typed-access's tail-hop change 4fc6274): every handler with a draft matches every case (400 of 400 or its case count; RasterEffect24 193 of 193, RasterEffect13 380 of 380). RasterInterrupt 398 of 400, the other 2 reach untraced bytes. RasterStart and CopyBands* have their own rows in the A5 table (IDENTICAL, 342170 calls in the sweep).
+- Not run: RasterInterrupt for effect numbers 32 to 255 in A5. The original reads the word at $4529 plus twice the number there and jumps to it; for 32 it jumps to $01A2 (the I/O page), so the original is not sane there and a poke cannot run it. liftcmp's random cases cover 0 to 255 (the C dispatches by the address read, to the handler's C or to the original).
+- The 14 effects no other script runs (2, 4, 5, 7, 9, 10, 15, 22, 25, 26, 27, 29, 30, 31) are covered by the poke only. Who stores $45 (zRasterEffect): constants 0, 1, $0B, $12, $13, $14, $1C, and in each stage's area setup (024E:152 and its 23 copies) byte 12 of an area record. Over the 24 copies those bytes are 0 to $1D. Two limits of that note: the area index (zero page $83) is not bounded here, and the System Card and BIOS were not searched for stores to $45, nor for indexed, indirect or block-move writes to it or to $2045. It is a note in the header, not a contract.
+- The jump table at $44E9 (32 words) is named in RasterInterrupt's header in the .s, not as assembled data: asmbuild sizes a filed routine by decoding disc bytes for every indented line, so a .word table inside the routine's text overlaps the next routine. The bytes stay from the disc.
+
+## interrupt.c
+
+- FrameInterrupt: A5 identical on attract_82 (54999 of 54999) and boot (670 of 670) since b0d6951 (the late frame's carry and overflow into the sound tick). liftcmp through mode DIFFERS (900 cases: 3 match, 542 differ, 355 reach untraced bytes, 9 mapper configurations); not examined case by case, so no claim is made about why. It no longer dies with "stack smashing" since RasterInterrupt cannot make a wild call.
+- FrameInterruptExit (0043:287, filed cc9b75c): liftcmp 400 of 400. A5: UNVERIFIED, every call in the "left" column (54998 on attract_82, 669 on boot), because the original leaves the call at the RTI of the next routine. The proposal to judge a left call up to its point of leaving was refused by the master; it stays unverified.
+- LateFrame: UNVERIFIED in A5 for the same reason (1253 calls on attract_82, 1 on boot).
+- KernelStart, KernelIdle, IgnoredInterrupt: KernelStart identical (1 call), IgnoredInterrupt identical; KernelIdle unverified (a jump to itself).
+
+## vram_update.c
+
+- VramListFromIndex (00C5:151) and the 15 bytes before it at $8142. In every overlay those 15 bytes read that overlay's own second table. 1cd4d5e filed 23 of them as routines VramListFromTableA to W (disc 00C5:142, 0111:142, 0251:142, 0511:142, 05C1:142, 0721:142, 07D1:142, 0881:142, 0931:142, 09E1:142, 0A91:142, 0B41:142, 0BF1:142, 0D51:142, 0E01:142, 0EB1:142, 0F61:142, 1011:142, 10C1:142, 1171:142, 1611:142, 16C1:142, 18D1:142) and VramListFromIndex runs the resident one's C through resident_at. A5 on attract_82: VramListFromIndex 4290 of 4290 identical (it was 910 identical, 3380 divergent). **Open:** the 23 pieces are reached by a branch from C, so A5 reads them UNCOVERED (0 calls). The master's direction is to file each overlay's whole VramListFromIndex as its own variant, each judged by its own calls; not done.
+- The 9 overlays whose $8142 table no script has run (so they run as the original and have no routine): disc 0441:142 (table $8E6A), 0651:142 ($8E65), 1231:142 ($9118), 14E1:111 and 1781:111 ($8F98), 1531:10F ($8EDC), 1551:111 ($91A9), 1A31:142 ($8ED2), 1B91:142 ($8D82), and the three at 25F7:142, 267F:142, 2707:142 ($829F); the exact copies of an executed table (82AE at 1845, 1AA0, 1C2F, 1DDA, 1E65, 20C0, 224F, 23FA, 1CF1 for $9089, and so on) are placed from the filed text. They need coverage under PROCEDURE section 6 (a script, a poke or a unit call), and C.
+- VramCommandsFetch, VramCommandsNext, VramCommandsRepeat, VramListRun: A5 identical on menu_names (34833, 34755, 16806, 35 calls) and on attract_82 (134637, 133604, 60956, 4296). The sweep at 55f97e9 showed them UNVERIFIED (2337605, 2335544, 1184560, 1040); that is not reproduced on these two scripts now, and the other 31 scripts were not rerun by me.
+- LoadPackedPalette (0251:4BF), B (00C5:580), C (0111:4CE): liftcmp 400 of 400 each; A5 identical for B (349 calls on menu_names); A and C uncovered there.
+
+## Divergent or uncovered in the sweep at 55f97e9, not yet looked at
+
+- SelectVdcRegister: 1 divergent of 34286070 in play_s0_r6, call 673883: "hardware write 1FE000: C 02, original 01". The register number differs, so a caller passes the wrong one. A5 on play_s0_r6 was started and had not finished when this was written.
+- WriteVdcControl: UNCOVERED (no script calls it).
+- TitleStep and TitleEntry (not L4): A differs in 3 calls of 1302 ("A C 00 orig 10").
+- Layer routines (layers.c, layer_draw.c) were all IDENTICAL in the sweep.
+
+## L4 rows not begun
+
+0255:0DB (11 B), 0255:3C5 (38 B), 0255:7A5 (106 B, 21 copies, alternate entry of 0515:797), 0256:03D (59 B), 0256:14C (31 B) with its alternate entry 0256:16B (21 B), 0256:1B1 (59 B), 0251:2E9 (96 B, 23 copies), 00C5:018 and its stage variants, 0255:7A5's callers, and the orphans.

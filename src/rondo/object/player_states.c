@@ -11,31 +11,40 @@
 #include "enemy_objects.h"
 #include "player_objects.h"
 
+enum { PS_W_WAIT, PS_W_NEXT };
+enum { PS_SF_TIMER, PS_SF_RESTART, PS_SF_SOUND };
+enum { PS_NK_LOCKED, PS_NK_LOW, PS_NK_PLAIN, PS_NK_BUMPED };
+enum { PS_SD_TIMER, PS_SD_RESTART, PS_SD_SOUND };
+enum { PS_OT_X_HIGH, PS_OT_X_FAR, PS_OT_Y_HIGH, PS_OT_Y_FAR, PS_OT_TOUCH };
 enum { FLASH_FRAMES = 0x9CFD, FLASH_LISTS = 0x9CFF, FLASH_CHANNEL = 5, FLASH_STEPS = 4, FLASH_SOUND = 0x71, FLASH_FRAME_TIME = 4 };
 
 /* The step that starts the flash's next list: reload the timer, take the frame and the list from the tables by the kind. */
-static Ended flash_restart(uint8_t slot, uint16_t ret)
+static ObjArm flash_restart(uint8_t slot, uint16_t ret)
 {
-    uint8_t kind, index, base, step, list, started;
-    Sum frame, sum;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t kind, base, step, list;
+    Sum frame;
 
     WR8(OBJ->life_timer[slot], FLASH_FRAME_TIME);
     kind = RD8(OBJ->next_kind[slot]);
-    index = (uint8_t)(kind & 1);
-    base = rd8((uint16_t)(FLASH_FRAMES + index));
+    r.first = (uint8_t)(kind & 1);
+    base = rd8((uint16_t)(FLASH_FRAMES + r.first));
     step = RD8(OBJ->f3510[slot]);
     frame = add_bytes(base, step, false);
     WR8(OBJ->frame[slot], frame.value);
-    sum = add_bytes(frame.value, rd8((uint16_t)(FLASH_LISTS + index)), false);
-    list = sum.value;
+    r.sum = add_bytes(frame.value, rd8((uint16_t)(FLASH_LISTS + r.first)), false);
+    list = r.sum.value;
     push8(slot);
     jsr_push(ret);
-    started = StartListChannelKind2(list, FLASH_CHANNEL);
+    r.second = StartListChannelKind2(list, FLASH_CHANNEL);
     jsr_pop();
-    slot = pull8();
-    e = ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(slot), started), sum.carry), sum.overflow), index);
-    return e;
+    r.third = pull8();
+    return r;
+}
+
+static Ended flash_restart_exit_shim(ObjArm r)
+{
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(r.third), r.second), r.sum.carry), r.sum.overflow), r.first);
 }
 
 /*
@@ -46,20 +55,33 @@ static Ended flash_restart(uint8_t slot, uint16_t ret)
  * WAITS: no.
  * Entry: X object. Exit: A zField85; N, Z, C from the compare, or N and Z from the new state. X, Y kept.
  */
-Ended WaitForField85Two(uint8_t slot)
+ObjArm WaitForField85Two(uint8_t slot)
 {
-    uint8_t value = RD8(ZP->field85);
-    Ended e = ended_compare(value, 2);
+    ObjArm r = { 0 };
 
-    if (value != 2) {
+    r.first = RD8(ZP->field85);
+    r.arm = PS_W_WAIT;
+    if (r.first != 2) {
+        return r;
+    }
+    r.second = INC8(OBJ->state[slot]);
+    r.arm = PS_W_NEXT;
+    return r;
+}
+
+static Ended wait_for_field85_two_exit_shim(ObjArm r)
+{
+    Ended e = ended_compare(r.first, 2);
+
+    if (r.arm == PS_W_WAIT) {
         return e;
     }
-    return ended_then(e, ended_nz(INC8(OBJ->state[slot])));
+    return ended_then(e, ended_nz(r.second));
 }
 
 void abi_WaitForField85Two(void)
 {
-    abi_ended(WaitForField85Two(cpu.x));
+    abi_ended(wait_for_field85_two_exit_shim(WaitForField85Two(cpu.x)));
 }
 
 /*
@@ -73,37 +95,55 @@ void abi_WaitForField85Two(void)
  * slot, C and V from the second add) or the sound. The end of the flash (four steps) is untraced (4 of 400 cases reach it
  * and the draft stops there): written from the disc's bytes.
  */
-SoundEnd StepFlashTimer(uint8_t slot, uint8_t y)
+ObjArm StepFlashTimer(uint8_t slot, uint8_t y)
 {
-    SoundEnd r = { ended_kept(), ended_kept(), false, 0, { 0 } };
-    uint8_t timer = DEC8(OBJ->life_timer[slot]);
-    uint8_t count, flags;
+    ObjArm r = { 0 };
+    uint8_t flags;
 
-    r.end = ended_nz(timer);
-    if (timer != 0) {
+    r.first = DEC8(OBJ->life_timer[slot]);
+    r.arm = PS_SF_TIMER;
+    if (r.first != 0) {
         return r;
     }
     INC8(OBJ->f3510[slot]);
-    count = RD8(OBJ->f3510[slot]);
-    r.end = ended_compare(count, FLASH_STEPS);
-    if (count != FLASH_STEPS) {
-        r.end = flash_restart(slot, 0x9DAD);
+    r.second = RD8(OBJ->f3510[slot]);
+    if (r.second != FLASH_STEPS) {
+        r.sub = obj_sub(flash_restart(slot, 0x9DAD));
+        r.arm = PS_SF_RESTART;
         return r;
     }
     INC8(OBJ->state[slot]);
     flags = RD8(ZP->field8c);
     WR8(ZP->field8c, (uint8_t)(flags | 0x80));
-    r.end = ended_kept();
-    r.before = ended_load(FLASH_SOUND);
     r.sounded = true;
     r.command = FLASH_SOUND;
     r.call = SoundCommand(FLASH_SOUND, slot, y);
+    r.arm = PS_SF_SOUND;
     return r;
+}
+
+static SoundEnd step_flash_timer_exit_shim(ObjArm r)
+{
+    SoundEnd s = { ended_kept(), ended_kept(), false, 0, { 0 } };
+
+    if (r.arm == PS_SF_TIMER) {
+        s.end = ended_nz(r.first);
+        return s;
+    }
+    if (r.arm == PS_SF_RESTART) {
+        s.end = flash_restart_exit_shim(obj_arm(r.sub));
+        return s;
+    }
+    s.before = ended_load(FLASH_SOUND);
+    s.sounded = true;
+    s.command = r.command;
+    s.call = r.call;
+    return s;
 }
 
 void abi_StepFlashTimer(void)
 {
-    abi_sound_end(StepFlashTimer(cpu.x, cpu.y));
+    abi_sound_end(step_flash_timer_exit_shim(StepFlashTimer(cpu.x, cpu.y)));
 }
 
 /*
@@ -117,42 +157,62 @@ void abi_StepFlashTimer(void)
  * The arms for the nibbles 6 to 11 and the second INC are untraced (89 of 400 cases stop the draft): written from the
  * disc's bytes.
  */
-Ended NextStateByKindBits(uint8_t slot)
+ObjArm NextStateByKindBits(uint8_t slot)
 {
-    uint8_t flags = RD8(ZP->field8c);
-    uint8_t kind;
-    Ended e = ended_load(flags);
+    ObjArm r = { 0 };
     bool bump;
 
-    if (flags & 0x80) {
-        return e;
+    r.first = RD8(ZP->field8c);
+    r.arm = PS_NK_LOCKED;
+    if (r.first & 0x80) {
+        return r;
     }
     INC8(OBJ->state[slot]);
     WR8(OBJ->life_timer[slot], FLASH_FRAME_TIME);
-    kind = (uint8_t)(RD8(OBJ->next_kind[slot]) & 0x0F);
-    e = ended_compare(kind, 2);
-    if (kind < 2) {
-        return e;
+    r.second = (uint8_t)(RD8(OBJ->next_kind[slot]) & 0x0F);
+    r.arm = PS_NK_LOW;
+    if (r.second < 2) {
+        return r;
     }
-    e = ended_compare(kind, 6);
-    bump = kind < 6;
+    r.fourth = 6;
+    bump = r.second < 6;
     if (!bump) {
-        e = ended_compare(kind, 0x0A);
-        bump = kind == 0x0A;
+        r.fourth = 0x0A;
+        bump = r.second == 0x0A;
     }
     if (!bump) {
-        e = ended_compare(kind, 0x0B);
-        bump = kind == 0x0B;
+        r.fourth = 0x0B;
+        bump = r.second == 0x0B;
     }
+    r.arm = PS_NK_PLAIN;
     if (bump) {
-        e = ended_then(e, ended_nz(INC8(OBJ->state[slot])));
+        r.third = INC8(OBJ->state[slot]);
+        r.arm = PS_NK_BUMPED;
+    }
+    return r;
+}
+
+/* Each compare replaces the one before it: the last one made, then the second INC's flags when it bumped. */
+static Ended next_state_by_kind_bits_exit_shim(ObjArm r)
+{
+    Ended e;
+
+    if (r.arm == PS_NK_LOCKED) {
+        return ended_load(r.first);
+    }
+    if (r.arm == PS_NK_LOW) {
+        return ended_compare(r.second, 2);
+    }
+    e = ended_compare(r.second, r.fourth);
+    if (r.arm == PS_NK_BUMPED) {
+        e = ended_then(e, ended_nz(r.third));
     }
     return e;
 }
 
 void abi_NextStateByKindBits(void)
 {
-    abi_ended(NextStateByKindBits(cpu.x));
+    abi_ended(next_state_by_kind_bits_exit_shim(NextStateByKindBits(cpu.x)));
 }
 
 /*
@@ -164,34 +224,51 @@ void abi_NextStateByKindBits(void)
  * WAITS: no.
  * Entry: X object, Y kept. Exit: as StepFlashTimer.
  */
-SoundEnd StepFlashTimerDown(uint8_t slot, uint8_t y)
+ObjArm StepFlashTimerDown(uint8_t slot, uint8_t y)
 {
-    SoundEnd r = { ended_kept(), ended_kept(), false, 0, { 0 } };
-    uint8_t timer = DEC8(OBJ->life_timer[slot]);
-    uint8_t count;
+    ObjArm r = { 0 };
 
-    r.end = ended_nz(timer);
-    if (timer != 0) {
+    r.first = DEC8(OBJ->life_timer[slot]);
+    r.arm = PS_SD_TIMER;
+    if (r.first != 0) {
         return r;
     }
-    count = DEC8(OBJ->f3510[slot]);
-    r.end = ended_nz(count);
-    if ((count & 0x80) == 0) {
-        r.end = flash_restart(slot, 0x9E07);
+    r.second = DEC8(OBJ->f3510[slot]);
+    if ((r.second & 0x80) == 0) {
+        r.sub = obj_sub(flash_restart(slot, 0x9E07));
+        r.arm = PS_SD_RESTART;
         return r;
     }
     INC8(OBJ->state[slot]);
-    r.end = ended_kept();
-    r.before = ended_load(FLASH_SOUND);
     r.sounded = true;
     r.command = FLASH_SOUND;
     r.call = SoundCommand(FLASH_SOUND, slot, y);
+    r.arm = PS_SD_SOUND;
     return r;
+}
+
+static SoundEnd step_flash_timer_down_exit_shim(ObjArm r)
+{
+    SoundEnd s = { ended_kept(), ended_kept(), false, 0, { 0 } };
+
+    if (r.arm == PS_SD_TIMER) {
+        s.end = ended_nz(r.first);
+        return s;
+    }
+    if (r.arm == PS_SD_RESTART) {
+        s.end = flash_restart_exit_shim(obj_arm(r.sub));
+        return s;
+    }
+    s.before = ended_load(FLASH_SOUND);
+    s.sounded = true;
+    s.command = r.command;
+    s.call = r.call;
+    return s;
 }
 
 void abi_StepFlashTimerDown(void)
 {
-    abi_sound_end(StepFlashTimerDown(cpu.x, cpu.y));
+    abi_sound_end(step_flash_timer_down_exit_shim(StepFlashTimerDown(cpu.x, cpu.y)));
 }
 
 /*
@@ -203,40 +280,63 @@ void abi_StepFlashTimerDown(void)
  * WAITS: no.
  * Entry: X object. Exit: A 0 or 1, N and Z from it, C and V from the last window's add and compare. Clobbers zTemp00.
  */
-Ended ObjectTouchesPlayerBox(uint8_t slot)
+ObjArm ObjectTouchesPlayerBox(uint8_t slot)
 {
+    ObjArm r = { 0 };
     uint8_t player_y = RD8(OBJ->y_lo[0]);
     uint8_t offset = RD8(OBJ->hitbox_dy[0]);
-    Sum sum = add_bytes(player_y, offset, false);
-    uint8_t high, mine, theirs, taken;
-    Sum diff, window;
-    Ended e = ended_of_sum(sum);
+    uint8_t mine, theirs, taken;
+    Sum diff;
 
-    WR8(ZP->temp00, sum.value);
-    high = RD8(OBJ->x_hi[slot]);
-    e = ended_then(e, ended_load(high));
-    if (high != 0) {
-        return ended_then(e, ended_load(1));
+    r.sum = add_bytes(player_y, offset, false);
+    WR8(ZP->temp00, r.sum.value);
+    r.first = RD8(OBJ->x_hi[slot]);
+    r.arm = PS_OT_X_HIGH;
+    if (r.first != 0) {
+        return r;
     }
     mine = RD8(OBJ->x_lo[slot]);
     theirs = RD8(OBJ->x_lo[0]);
     diff = sub_bytes(mine, theirs, true);
-    window = add_bytes(diff.value, 8, false);
-    e = ended_then(ended_of_sum(window), ended_compare(window.value, 0x10));
-    if (window.value >= 0x10) {
-        return ended_then(e, ended_load(1));
+    r.sum2 = add_bytes(diff.value, 8, false);
+    r.arm = PS_OT_X_FAR;
+    if (r.sum2.value >= 0x10) {
+        return r;
     }
-    high = RD8(OBJ->y_hi[slot]);
-    e = ended_then(e, ended_load(high));
-    if (high != 0) {
-        return ended_then(e, ended_load(1));
+    r.second = RD8(OBJ->y_hi[slot]);
+    r.arm = PS_OT_Y_HIGH;
+    if (r.second != 0) {
+        return r;
     }
     mine = RD8(OBJ->y_lo[slot]);
     taken = RD8(ZP->temp00);
     diff = sub_bytes(mine, taken, true);
-    window = add_bytes(diff.value, 0x14, false);
-    e = ended_then(ended_of_sum(window), ended_compare(window.value, 0x28));
-    if (window.value >= 0x28) {
+    r.sum3 = add_bytes(diff.value, 0x14, false);
+    r.arm = PS_OT_Y_FAR;
+    if (r.sum3.value >= 0x28) {
+        return r;
+    }
+    r.arm = PS_OT_TOUCH;
+    return r;
+}
+
+static Ended object_touches_player_box_exit_shim(ObjArm r)
+{
+    Ended e = ended_then(ended_of_sum(r.sum), ended_load(r.first));
+
+    if (r.arm == PS_OT_X_HIGH) {
+        return ended_then(e, ended_load(1));
+    }
+    e = ended_then(e, ended_then(ended_of_sum(r.sum2), ended_compare(r.sum2.value, 0x10)));
+    if (r.arm == PS_OT_X_FAR) {
+        return ended_then(e, ended_load(1));
+    }
+    e = ended_then(e, ended_load(r.second));
+    if (r.arm == PS_OT_Y_HIGH) {
+        return ended_then(e, ended_load(1));
+    }
+    e = ended_then(e, ended_then(ended_of_sum(r.sum3), ended_compare(r.sum3.value, 0x28)));
+    if (r.arm == PS_OT_Y_FAR) {
         return ended_then(e, ended_load(1));
     }
     return ended_then(e, ended_load(0));
@@ -244,7 +344,7 @@ Ended ObjectTouchesPlayerBox(uint8_t slot)
 
 void abi_ObjectTouchesPlayerBox(void)
 {
-    abi_ended(ObjectTouchesPlayerBox(cpu.x));
+    abi_ended(object_touches_player_box_exit_shim(ObjectTouchesPlayerBox(cpu.x)));
 }
 
 /*
@@ -257,13 +357,13 @@ void abi_ObjectTouchesPlayerBox(void)
  * Entry: X object. Exit: A the angle low byte stored, N and Z from it, C and V from its add. X kept, Y the sign index.
  * Tables at $CD2D, $CD2F and $CE79 have no rows yet (the old address form).
  */
-Ended NudgeAngleByVelocityAndScroll(uint8_t slot)
+ObjArm NudgeAngleByVelocityAndScroll(uint8_t slot)
 {
+    ObjArm r = { 0 };
     uint8_t vx_hi = RD8(OBJ->vx_hi[slot]);
     uint8_t vx_lo = RD8(OBJ->vx_lo[slot]);
     uint8_t index, scroll, negated, value;
     Sum sum;
-    Ended e;
 
     if ((uint8_t)(vx_hi | vx_lo) != 0) {
         vx_hi = RD8(OBJ->vx_hi[slot]);
@@ -287,13 +387,18 @@ Ended NudgeAngleByVelocityAndScroll(uint8_t slot)
     sum = add_bytes(negated, RD8(OBJ->angle_hi[slot]), false);
     WR8(OBJ->angle_hi[slot], sum.value);
     value = rd8((uint16_t)(0xCE79 + index));
-    sum = add_bytes(value, RD8(OBJ->angle_lo[slot]), sum.carry);
-    WR8(OBJ->angle_lo[slot], sum.value);
-    e = ended_with_y(ended_of_sum(sum), index);
-    return e;
+    r.sum = add_bytes(value, RD8(OBJ->angle_lo[slot]), sum.carry);
+    WR8(OBJ->angle_lo[slot], r.sum.value);
+    r.first = index;
+    return r;
+}
+
+static Ended nudge_angle_by_velocity_and_scroll_exit_shim(ObjArm r)
+{
+    return ended_with_y(ended_of_sum(r.sum), r.first);
 }
 
 void abi_NudgeAngleByVelocityAndScroll(void)
 {
-    abi_ended(NudgeAngleByVelocityAndScroll(cpu.x));
+    abi_ended(nudge_angle_by_velocity_and_scroll_exit_shim(NudgeAngleByVelocityAndScroll(cpu.x)));
 }

@@ -42,7 +42,7 @@ Ended StartChannel81OnceThenStepScrollTable(uint8_t slot)
     jsr_push(0xB0E4);
     e = then(e, SetBossFixedFields());
     jsr_pop();
-    return then(e, StepVerticalScrollTable(slot));
+    return then(e, l8_vertical_scroll_table_exit_shim(StepVerticalScrollTable(slot)));
 }
 
 void abi_StartChannel81OnceThenStepScrollTable(void)
@@ -62,7 +62,7 @@ Ended NextStateThenStepScrollTable(uint8_t slot)
 {
     Ended e = ended_nz(INC8(OBJ->state[slot]));
 
-    return then(e, StepVerticalScrollTable(slot));
+    return then(e, l8_vertical_scroll_table_exit_shim(StepVerticalScrollTable(slot)));
 }
 
 void abi_NextStateThenStepScrollTable(void)
@@ -91,7 +91,7 @@ SoundEnd StepListMarksThenSound74AtC8(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     e = then(e, ended_of_axis_move(move));
     jsr_push(0xB5FA);
-    e = then(e, StartScriptAtTimerMarks(slot));
+    e = then(e, l8_timer_marks_exit_shim(StartScriptAtTimerMarks(slot)));
     jsr_pop();
     y = e.y_set ? e.y : y;
     x = RD8(OBJ->x_lo[slot]);
@@ -135,7 +135,7 @@ Ended SpinThenCountDownToState(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->f3568[0], 0);
     e = then(e, ended_load(2));
     jsr_push(0xB6C7);
-    e = then(e, SpinOnCircle(slot));
+    e = then(e, l8_spin_on_circle_exit_shim(SpinOnCircle(slot)));
     jsr_pop();
     timer = DEC8(OBJ->f3510[slot]);
     e = then(e, ended_nz(timer));
@@ -171,7 +171,7 @@ Ended SpinThenCountDownToPhase80(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->f3568[0], 0);
     e = then(e, ended_load(2));
     jsr_push(0xB72E);
-    e = then(e, SpinOnCircle(slot));
+    e = then(e, l8_spin_on_circle_exit_shim(SpinOnCircle(slot)));
     jsr_pop();
     timer = DEC8(OBJ->f3510[slot]);
     e = then(e, ended_nz(timer));
@@ -203,7 +203,7 @@ Ended SpinThenCountPhaseDown(uint8_t slot, uint8_t y_entry)
     Ended e = l8_step_list(slot, 0xB6DA, 0xB747, false, &y, &step);
 
     jsr_push(0xB74A);
-    e = then(e, SpinOnCircle(slot));
+    e = then(e, l8_spin_on_circle_exit_shim(SpinOnCircle(slot)));
     jsr_pop();
     WR8(OBJ->f3670[slot], 2);
     e = then(e, ended_load(2));
@@ -239,7 +239,7 @@ Ended SpinThenCountWordDown(uint8_t slot, uint8_t y_entry)
     Ended e = l8_step_list(slot, 0xB6DA, 0xB7D2, false, &y, &step);
 
     jsr_push(0xB7D5);
-    e = then(e, SpinOnCircle(slot));
+    e = then(e, l8_spin_on_circle_exit_shim(SpinOnCircle(slot)));
     jsr_pop();
     low = RD8(OBJ->f3510[slot]);
     diff = sub_bytes(low, 1, true);

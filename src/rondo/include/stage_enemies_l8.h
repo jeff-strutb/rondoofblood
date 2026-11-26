@@ -284,28 +284,114 @@ Ended CountdownThenSpawnPieces(uint8_t slot);
 Ended HoldScrollStepThenNextState(uint8_t slot);
 
 /* object/enemies_l8_st12.c */
-Ended StepVerticalScrollTable(uint8_t slot);
-Ended CountdownThenStartScript80(uint8_t slot);
-Ended LoadRecordPlaceByKind(uint8_t slot);
-Ended LoadRecordAtPlayerPlace(uint8_t slot);
-Ended LoadRecordThenSinkByF3520(uint8_t slot);
-Ended LoadRecordThenStepListByKind(uint8_t slot, uint8_t y_entry);
-Ended LoadRecordSinkThenStepListByKind(uint8_t slot, uint8_t y_entry);
-SoundEnd StateMachineWithSoundAndList(uint8_t slot, uint8_t y_entry);
-Ended DriftRecordThenMoveWithJitter(uint8_t slot);
-Ended SwingByCosineFromState0B(uint8_t slot);
-Ended StartRandomScriptWhenFlagged(uint8_t slot);
-Ended PushPlayerWhenFlagged(uint8_t slot);
-SoundEnd HitSoundThenSpawnPieces(uint8_t slot, uint8_t y_entry);
-Ended EnterState0BWhenFlagged(uint8_t slot);
-Ended StartPieceAtTopLeft(uint8_t slot);
-Ended CountDownThenStartScripts(uint8_t slot);
-SoundEnd CountDownWithSound77(uint8_t slot, uint8_t y_entry);
-Ended StartScriptAtTimerMarks(uint8_t slot);
-Ended SpinOutThenLeave(uint8_t slot, uint8_t y_entry);
-Ended SpinOnCircle(uint8_t slot);
-SoundEnd StepListThenBurstAtFrame18(uint8_t slot, uint8_t y_entry);
-SoundEnd HomeOnPointThenRingAndSound(uint8_t slot, uint8_t y_entry);
+/* The structs the converted routines of st12 return where L8Arm does not fit: the arm and the values behind it. */
+typedef struct {
+    int arm;
+    L8Load load;
+    uint8_t moved, kind, timer, state, counted, lo;
+    Sum sum;
+    L8Step step;
+} L8St12KindListArm;
+
+typedef struct {
+    int arm;
+    L8Load load;
+    uint8_t moved, other, timer, scroll, counted, flags, x_lo, x_hi, x;
+    bool sounded;
+    CommandCall call;
+    L8Step step;
+} L8St12PhaseArm;
+
+typedef struct {
+    int arm;
+    L8Load load;
+    uint8_t state, kind, timer, counted, x_lo, x_hi, x_step, y_lo, y_hi, y_step;
+    AxisMove move;
+    RandomResult x_random, y_random;
+    Sum x_sum, y_sum;
+} L8St12DriftArm;
+
+typedef struct {
+    int arm;
+    uint8_t state, angle, high, mid;
+    ScaleResult scale;
+    AxisMove move;
+    Sum sum;
+} L8St12SwingArm;
+
+typedef struct {
+    int arm;
+    uint8_t flag, timer, script, x;
+    RandomResult random, random2;
+} L8St12ScriptArm;
+
+typedef struct {
+    int arm;
+    uint8_t hits, timer, counted, wave, placed;
+    bool sounded;
+    CommandCall call;
+    L8Slot found;
+} L8St12HitArm;
+
+typedef struct {
+    int arm;
+    uint8_t timer, counted, now;
+    CommandCall call;
+} L8St12Sound77Arm;
+
+typedef struct {
+    int arm;
+    uint8_t first, timer, mark, at, next, script, x, counted;
+} L8St12MarksArm;
+
+typedef struct {
+    int arm;
+    L8Step step;
+    uint8_t counted, frame, placed;
+    CommandCall call;
+} L8St12BurstArm;
+
+typedef struct {
+    int arm;
+    L8Step step;
+    AngleExit toward;
+    uint8_t angle, x_hi, y_hi;
+    ScaleResult scale;
+    AxisMove move;
+    Sum x_near, y_near;
+    CommandCall call;
+} L8St12HomeArm;
+
+L8Arm StepVerticalScrollTable(uint8_t slot);
+Ended l8_vertical_scroll_table_exit_shim(L8Arm r);
+L8Arm CountdownThenStartScript80(uint8_t slot);
+L8Arm LoadRecordPlaceByKind(uint8_t slot);
+L8Arm LoadRecordAtPlayerPlace(uint8_t slot);
+L8Arm LoadRecordThenSinkByF3520(uint8_t slot);
+L8St12KindListArm LoadRecordThenStepListByKind(uint8_t slot, uint8_t y_entry);
+L8Arm LoadRecordSinkThenStepListByKind(uint8_t slot, uint8_t y_entry);
+L8St12PhaseArm StateMachineWithSoundAndList(uint8_t slot, uint8_t y_entry);
+L8St12DriftArm DriftRecordThenMoveWithJitter(uint8_t slot);
+L8St12SwingArm SwingByCosineFromState0B(uint8_t slot);
+Ended l8_swing_by_cosine_exit_shim(L8St12SwingArm r);
+L8St12ScriptArm StartRandomScriptWhenFlagged(uint8_t slot);
+Ended l8_random_script_exit_shim(L8St12ScriptArm r);
+L8Arm PushPlayerWhenFlagged(uint8_t slot);
+Ended l8_push_player_exit_shim(L8Arm r);
+L8St12HitArm HitSoundThenSpawnPieces(uint8_t slot, uint8_t y_entry);
+SoundEnd l8_hit_sound_spawn_exit_shim(L8St12HitArm r);
+L8Arm EnterState0BWhenFlagged(uint8_t slot);
+Ended l8_enter_state0b_exit_shim(L8Arm r);
+L8Arm StartPieceAtTopLeft(uint8_t slot);
+L8Arm CountDownThenStartScripts(uint8_t slot);
+L8St12Sound77Arm CountDownWithSound77(uint8_t slot, uint8_t y_entry);
+L8St12MarksArm StartScriptAtTimerMarks(uint8_t slot);
+Ended l8_timer_marks_exit_shim(L8St12MarksArm r);
+L8Arm SpinOutThenLeave(uint8_t slot, uint8_t y_entry);
+L8Arm SpinOnCircle(uint8_t slot);
+Ended l8_spin_on_circle_exit_shim(L8Arm r);
+L8St12BurstArm StepListThenBurstAtFrame18(uint8_t slot, uint8_t y_entry);
+L8St12HomeArm HomeOnPointThenRingAndSound(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st13.c */
 Ended StepListThenStartChannel85(uint8_t slot, uint8_t y_entry);
@@ -341,23 +427,30 @@ SoundEnd StepListThenSound43AtZero(uint8_t slot, uint8_t y_entry);
 Ended SeekObject19ThenHitAndClear(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_hit_damage.c */
-Ended HitDamage0519(uint8_t slot);
-Ended HitDamage05C9(uint8_t slot);
-Ended HitDamage0729(uint8_t slot);
-Ended HitDamage07D9(uint8_t slot);
-Ended HitDamage0889(uint8_t slot);
-Ended HitDamage0939(uint8_t slot);
-Ended HitDamage0A99(uint8_t slot);
-Ended HitDamage0B49(uint8_t slot);
-Ended HitDamage0BF9(uint8_t slot);
-Ended HitDamage0CA9(uint8_t slot);
-Ended HitDamage0D59(uint8_t slot);
-Ended HitDamage0E09(uint8_t slot);
-Ended HitDamage0EB9(uint8_t slot);
-Ended HitDamage1019(uint8_t slot);
-Ended HitDamage10C9(uint8_t slot);
-Ended HitDamage1179(uint8_t slot);
-Ended HitDamage16C9(uint8_t slot);
+/* A HitDamage variant's values behind its exit: the row times sixteen, the add of the hit, the damage read. */
+typedef struct {
+    uint8_t row;
+    Sum index;
+    uint8_t damage;
+} L8HitDamage;
+
+L8HitDamage HitDamage0519(uint8_t slot);
+L8HitDamage HitDamage05C9(uint8_t slot);
+L8HitDamage HitDamage0729(uint8_t slot);
+L8HitDamage HitDamage07D9(uint8_t slot);
+L8HitDamage HitDamage0889(uint8_t slot);
+L8HitDamage HitDamage0939(uint8_t slot);
+L8HitDamage HitDamage0A99(uint8_t slot);
+L8HitDamage HitDamage0B49(uint8_t slot);
+L8HitDamage HitDamage0BF9(uint8_t slot);
+L8HitDamage HitDamage0CA9(uint8_t slot);
+L8HitDamage HitDamage0D59(uint8_t slot);
+L8HitDamage HitDamage0E09(uint8_t slot);
+L8HitDamage HitDamage0EB9(uint8_t slot);
+L8HitDamage HitDamage1019(uint8_t slot);
+L8HitDamage HitDamage10C9(uint8_t slot);
+L8HitDamage HitDamage1179(uint8_t slot);
+L8HitDamage HitDamage16C9(uint8_t slot);
 
 /* object/enemies_l8_st14.c */
 L8Arm LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry);

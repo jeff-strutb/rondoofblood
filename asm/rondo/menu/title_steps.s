@@ -47,8 +47,8 @@ TitleStep_at0:
 ; with 0, six stores, zGameSubMode counted up. A and X read back from the backup call reach no
 ; branch that a result other than 0 makes differ.
 ; WAITS: no.
-; Entry: X the doubled sub-mode, Y kept. Exit: A, X and Y 0, N and Z from the new sub-mode, C and V
-; as ex_scrsiz leaves them.
+; Entry: X the doubled sub-mode, Y kept. Exit: A $10 (the last load), X and Y 0, N and Z from the new
+; sub-mode, C and V as ex_scrsiz leaves them.
 ; not checked: the draft only ran a backup read that returns 0; the other results are untraced.
 TitleSetUp:
     jsr VecSoundStopAll
@@ -104,7 +104,7 @@ TitleScreenStep:
 ; on slot 0 as kind 1, zTemp3F and the script's step cleared, and on to the next sub-mode.
 ; HOW: ClearScreenState, five stores, the two starts, two stores and zGameSubMode counted up.
 ; WAITS: no.
-; Entry: nothing. Exit: A and Y 3, X 0, N and Z from the new sub-mode; C and V kept.
+; Entry: X the doubled sub-mode and Y kept (ClearScreenState saves them). Exit: A and Y 3, X 0, N and Z from the new sub-mode; C and V kept.
 TitleScreenBegin:
     jsr VecClearScreenState
     stz a:OBJ_2A68

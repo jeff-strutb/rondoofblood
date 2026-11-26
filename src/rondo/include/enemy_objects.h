@@ -351,7 +351,7 @@ typedef struct {
     bool flag, other; \
     FrameStep step; \
     AxisMove move; \
-    RandomResult random, random2, random3; \
+    RandomResult random, random2, random3, random4; \
     SideResult side; \
     PlayerDistance distance, distance2; \
     AngleExit angle; \

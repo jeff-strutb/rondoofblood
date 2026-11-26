@@ -20,7 +20,10 @@ enum {
     CHANNEL_NOW = 0x22E0, PITCH_STEP = 0x255D, PITCH_FRACTION = 0x2563, PITCH_HIGH = 0x24AF, LEFT_STEP = 0x2569, LEFT_FRACTION = 0x256F,
     RIGHT_STEP = 0x2575, RIGHT_FRACTION = 0x257B, SEQ_KIND = 0x25E1, SEQ_STATE = 0x260D, SEQ_POINTER_LOW = 0x259F, SEQ_POINTER_HIGH = 0x25A5,
     NOISE_AT = 0x2601, FREQ_HIGH_AT = 0x25ED, FREQ_LOW_AT = 0x25E7, SHAPE_LOW = 0x24D9, SHAPE_HIGH = 0x24DF, BALANCE_AT = 0x25F9, FLAGS_AT = 0x25FF,
-    SHAPES_BUILT_IN = 0xD8A1, SHAPES_USER = 0x22D5
+    SHAPES_BUILT_IN = 0xD8A1, SHAPES_USER = 0x22D5, ENV_KIND = 0x25E1, FREQ_NOW_LOW = 0x25E7, FREQ_NOW_HIGH = 0x25ED, FREQ_BASE_LOW = 0x249D,
+    FREQ_BASE_HIGH = 0x24A3, VIB_STEP = 0x2581, VIB_ON = 0x2593, VIB_COUNT = 0x2599, VIB_LOW = 0x2587, VIB_HIGH = 0x258D, DETUNE = 0x2557,
+    SLIDE_ON = 0x254B, SLIDE_COUNT = 0x2551, SLIDE_LOW = 0x2539, SLIDE_HIGH = 0x253F, SLIDE_AT = 0x2545, PORT_ON = 0x2527, PORT_COUNT = 0x252D,
+    PORT_LOW = 0x2515, PORT_HIGH = 0x251B, PORT_AT = 0x2521, SCALE = 0x2533, SCALE_BASE = 0x2497
 };
 
 /*
@@ -644,4 +647,327 @@ CardExit psg_read_notes(void)
 void abi_psg_read_notes(void)
 {
     card_exit_apply(psg_read_notes());
+}
+
+/*
+ * @card 02:D611 psg_add_pitch
+ * WHAT IT DOES: Adds the amount in $EA and $EB to the current channel's frequency.
+ * HOW: A 16-bit add to $25E7 and $25ED, plus the channel.
+ * WAITS: no.
+ * Entry: X the channel, $EA and $EB the amount. Exit: A the high byte, C and V from its add, N and Z from it. X, Y kept.
+ */
+CardExit psg_add_pitch(uint8_t x)
+{
+    Trk t = { 0 };
+    uint8_t value;
+
+    value = rd8((uint16_t)(FREQ_NOW_LOW + x));
+    t_a(&t, value);
+    t_clc(&t);
+    t_adc(&t, rd8(ZP_EA));
+    wr8((uint16_t)(FREQ_NOW_LOW + x), t.a);
+    value = rd8((uint16_t)(FREQ_NOW_HIGH + x));
+    t_a(&t, value);
+    t_adc(&t, rd8(ZP_EB));
+    wr8((uint16_t)(FREQ_NOW_HIGH + x), t.a);
+    return t_exit(&t);
+}
+
+void abi_psg_add_pitch(void)
+{
+    card_exit_apply(psg_add_pitch(cpu.x));
+}
+
+/*
+ * @card 02:D5E2 psg_scale_amount
+ * WHAT IT DOES: Makes the byte in $EA a signed 16-bit amount in $EA and $EB, scaled by the channel's scale less its base.
+ * HOW: $EB the sign of $EA; the channel's scale ($2533) less its base ($2497) as a shift count: left for plus, right for minus; a
+ * right shift that leaves something in the high byte makes it $FF.
+ * WAITS: no.
+ * Entry: X the channel, $EA the byte. Exit: $EA and $EB the amount; A, Y and the flags as the last step left them. X kept.
+ */
+CardExit psg_scale_amount(uint8_t x)
+{
+    Trk t = { 0 };
+    uint8_t value;
+    uint8_t y;
+
+    wr8(ZP_EB, 0);
+    value = rd8(ZP_EA);
+    t_a(&t, value);
+    if ((value & 0x80) != 0) {
+        value = rd8(ZP_EB);
+        value = (uint8_t)(value - 1);
+        wr8(ZP_EB, value);
+        t_nz(&t, value);
+    }
+    value = rd8((uint16_t)(SCALE + x));
+    t_a(&t, value);
+    if (value == 0)
+        return t_exit(&t);
+    t_sec(&t);
+    t_sbc(&t, rd8((uint16_t)(SCALE_BASE + x)));
+    y = t.a;
+    t.y = y;
+    t.y_set = true;
+    t_xy_nz(&t, y);
+    if ((y & 0x80) == 0) {
+        while (y != 0) {
+            uint8_t low = rd8(ZP_EA);
+            uint8_t high;
+
+            wr8(ZP_EA, (uint8_t)(low << 1));
+            high = rd8(ZP_EB);
+            wr8(ZP_EB, (uint8_t)((high << 1) | (low >> 7)));
+            t.c = (high & 0x80) != 0;
+            t.c_set = true;
+            y--;
+            t.y = y;
+            t_xy_nz(&t, y);
+        }
+        return t_exit(&t);
+    }
+    while (y != 0) {
+        uint8_t high = rd8(ZP_EB);
+        uint8_t low;
+
+        wr8(ZP_EB, (uint8_t)(high >> 1));
+        low = rd8(ZP_EA);
+        wr8(ZP_EA, (uint8_t)((high << 7) | (low >> 1)));
+        t.c = (low & 1) != 0;
+        t.c_set = true;
+        y++;
+        t.y = y;
+        t_xy_nz(&t, y);
+    }
+    value = rd8(ZP_EB);
+    t_a(&t, value);
+    if (value != 0) {
+        t_a(&t, 0xFF);
+        wr8(ZP_EB, 0xFF);
+    }
+    return t_exit(&t);
+}
+
+void abi_psg_scale_amount(void)
+{
+    card_exit_apply(psg_scale_amount(cpu.x));
+}
+
+/* JSR psg_scale_amount and then psg_add_pitch: the channel in X, the registers they leave taken on. */
+static void scale_and_add(Trk *t, uint8_t x, uint16_t first_ret, uint16_t second_ret)
+{
+    jsr_push(first_ret);
+    t_take(t, psg_scale_amount(x));
+    jsr_pop();
+    jsr_push(second_ret);
+    t_take(t, psg_add_pitch(x));
+    jsr_pop();
+}
+
+/* A memory byte counted down or up by one, and what N and Z say of it. */
+static uint8_t step_byte(Trk *t, uint16_t at, int by)
+{
+    uint8_t value = rd8(at);
+
+    value = (uint8_t)(value + by);
+    wr8(at, value);
+    t_nz(t, value);
+    return value;
+}
+
+/* The vibrato of psg_pitch_effects. */
+static void pitch_vibrato(Trk *t, uint8_t x)
+{
+    uint8_t value;
+    uint8_t y = t->y;
+    bool direct = false;
+
+    value = rd8((uint16_t)(VIB_ON + x));
+    t_a(t, value);
+    if (value != 0 && step_byte(t, (uint16_t)(VIB_COUNT + x), -1) == 0) {
+        (void)step_byte(t, (uint16_t)(VIB_COUNT + x), 1);
+        value = rd8((uint16_t)(VIB_LOW + x));
+        t_a(t, value);
+        wr8(ZP_EA, value);
+        value = rd8((uint16_t)(VIB_HIGH + x));
+        t_a(t, value);
+        wr8(ZP_EB, value);
+        jsr_push(0xD547);
+        t_take(t, psg_add_pitch(x));
+        jsr_pop();
+        direct = true;
+    }
+    if (direct)
+        return;
+    wr8(ZP_EA, y);
+    jsr_push(0xD54E);
+    t_take(t, psg_scale_amount(x));
+    jsr_pop();
+    value = rd8((uint16_t)(VIB_LOW + x));
+    t_a(t, value);
+    t_clc(t);
+    t_adc(t, rd8(ZP_EA));
+    wr8((uint16_t)(VIB_LOW + x), t->a);
+    wr8(ZP_EA, t->a);
+    value = rd8((uint16_t)(VIB_HIGH + x));
+    t_a(t, value);
+    t_adc(t, rd8(ZP_EB));
+    wr8((uint16_t)(VIB_HIGH + x), t->a);
+    wr8(ZP_EB, t->a);
+    jsr_push(0xD566);
+    t_take(t, psg_add_pitch(x));
+    jsr_pop();
+}
+
+/* The pitch slide through a list of psg_pitch_effects. */
+static void pitch_slide(Trk *t, uint8_t x)
+{
+    uint8_t value;
+    uint8_t y;
+    uint8_t item;
+
+    value = rd8((uint16_t)(SLIDE_ON + x));
+    t_a(t, value);
+    if (value == 0)
+        return;
+    if (step_byte(t, (uint16_t)(SLIDE_COUNT + x), -1) != 0)
+        return;
+    (void)step_byte(t, (uint16_t)(SLIDE_COUNT + x), 1);
+    value = rd8((uint16_t)(SLIDE_LOW + x));
+    t_a(t, value);
+    wr8(ZP_E8, value);
+    value = rd8((uint16_t)(SLIDE_HIGH + x));
+    t_a(t, value);
+    wr8(ZP_E9, value);
+    y = rd8((uint16_t)(SLIDE_AT + x));
+    t->y = y;
+    t->y_set = true;
+    t_xy_nz(t, y);
+    item = rd8_zp_y(ZP_E8, y);
+    t_a(t, item);
+    t_cmp(t, item, 0x80);
+    if (item == 0x80) {
+        t_cmp(t, y, 0);
+        if (y == 0)
+            return;
+        y--;
+        t->y = y;
+        t_xy_nz(t, y);
+        item = rd8_zp_y(ZP_E8, y);
+        t_a(t, item);
+    }
+    wr8(ZP_EA, item);
+    push8(y);
+    scale_and_add(t, x, 0xD5A0, 0xD5A3);
+    y = pull8();
+    t->y = y;
+    t->y_set = true;
+    t_xy_nz(t, y);
+    y++;
+    t->y = y;
+    t_xy_nz(t, y);
+    if (y == 0) {
+        y--;
+        t->y = y;
+        t_xy_nz(t, y);
+    }
+    t_a(t, y);
+    wr8((uint16_t)(SLIDE_AT + x), y);
+}
+
+/* The portamento through a list of psg_pitch_effects. */
+static void pitch_portamento(Trk *t, uint8_t x)
+{
+    uint8_t value;
+    uint8_t y;
+    uint8_t item;
+
+    value = rd8((uint16_t)(PORT_ON + x));
+    t_a(t, value);
+    if (value == 0)
+        return;
+    if (step_byte(t, (uint16_t)(PORT_COUNT + x), -1) != 0)
+        return;
+    (void)step_byte(t, (uint16_t)(PORT_COUNT + x), 1);
+    value = rd8((uint16_t)(PORT_LOW + x));
+    t_a(t, value);
+    wr8(ZP_E8, value);
+    value = rd8((uint16_t)(PORT_HIGH + x));
+    t_a(t, value);
+    wr8(ZP_E9, value);
+    y = rd8((uint16_t)(PORT_AT + x));
+    t->y = y;
+    t->y_set = true;
+    t_xy_nz(t, y);
+    for (;;) {
+        item = rd8_zp_y(ZP_E8, y);
+        t_a(t, item);
+        t_cmp(t, item, 0x80);
+        if (item != 0x80)
+            break;
+        t_cmp(t, y, 0);
+        if (y == 0)
+            return;
+        wr8((uint16_t)(PORT_AT + x), 0);
+        y = 0;
+        t->y = 0;
+        t->y_set = true;
+    }
+    wr8(ZP_EA, item);
+    scale_and_add(t, x, 0xD5DB, 0xD5DE);
+    (void)step_byte(t, (uint16_t)(PORT_AT + x), 1);
+}
+
+/*
+ * @card 02:D510 psg_pitch_effects
+ * WHAT IT DOES: Works the current channel's pitch effects for the frame: the base pitch put back, then its vibrato, its detune, its pitch
+ * slide through a list and its portamento through another.
+ * HOW: Only for a channel of kind 0 ($25E1, high nibble). The frequency set from its base ($249D, $24A3), then: vibrato ($2581 step, $2593 on):
+ * counted down in $2599, then the accumulated amount ($2587, $258D) added, else the step scaled, accumulated and added; detune ($2557):
+ * scaled and added; slide ($254B on): each time $2551 reaches 0 the next byte of the list at ($2539, $253F) from $2545, $80 ends it
+ * (stepping back one byte); portamento ($2527 on): the same with the list at ($2515, $251B) from $2521, $80 sending it back to its start.
+ * WAITS: no.
+ * Entry: CardPlayChannel ($22E0) the channel. Exit: A, Y and the flags as the last step left them; X the channel.
+ */
+CardExit psg_pitch_effects(void)
+{
+    Trk t = { 0 };
+    uint8_t x = rd8(CHANNEL_NOW);
+    uint8_t value;
+
+    t.x = x;
+    t.x_set = true;
+    t_xy_nz(&t, x);
+    value = rd8((uint16_t)(ENV_KIND + x));
+    t_a(&t, value);
+    t_a(&t, (uint8_t)(value & 0xF0));
+    if (t.a != 0)
+        return t_exit(&t);
+    value = rd8((uint16_t)(FREQ_BASE_LOW + x));
+    t_a(&t, value);
+    wr8((uint16_t)(FREQ_NOW_LOW + x), value);
+    value = rd8((uint16_t)(FREQ_BASE_HIGH + x));
+    t_a(&t, value);
+    wr8((uint16_t)(FREQ_NOW_HIGH + x), value);
+    value = rd8((uint16_t)(VIB_STEP + x));
+    t_a(&t, value);
+    t.y = value;
+    t.y_set = true;
+    if (value != 0)
+        pitch_vibrato(&t, x);
+    value = rd8((uint16_t)(DETUNE + x));
+    t_a(&t, value);
+    if (value != 0) {
+        wr8(ZP_EA, value);
+        scale_and_add(&t, x, 0xD570, 0xD573);
+    }
+    pitch_slide(&t, x);
+    pitch_portamento(&t, x);
+    return t_exit(&t);
+}
+
+void abi_psg_pitch_effects(void)
+{
+    card_exit_apply(psg_pitch_effects());
 }

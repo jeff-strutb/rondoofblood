@@ -422,3 +422,167 @@ psg_read_notes_at20:
     inc z:$E9
 psg_read_notes_at21:
     jmp psg_read_notes_at1
+
+; @card 02:D510 psg_pitch_effects
+; WHAT IT DOES: Works the current channel's pitch effects for the frame: the base pitch put back, then its vibrato, its detune, its pitch
+; slide through a list and its portamento through another.
+; HOW: Only for a channel of kind 0 ($25E1, high nibble). The frequency set from its base ($249D, $24A3), then: vibrato ($2581 step, $2593 on):
+; counted down in $2599, then the accumulated amount ($2587, $258D) added, else the step scaled, accumulated and added; detune ($2557):
+; scaled and added; slide ($254B on): each time $2551 reaches 0 the next byte of the list at ($2539, $253F) from $2545, $80 ends it
+; (stepping back one byte); portamento ($2527 on): the same with the list at ($2515, $251B) from $2521, $80 sending it back to its start.
+; WAITS: no.
+; Entry: CardPlayChannel ($22E0) the channel. Exit: A, Y and the flags as the last step left them; X the channel.
+psg_pitch_effects:
+    ldx a:$22E0
+    lda a:$25E1,x
+    and #$F0
+    beq psg_pitch_effects_at0
+    rts
+psg_pitch_effects_at0:
+    lda a:$249D,x
+    sta a:$25E7,x
+    lda a:$24A3,x
+    sta a:$25ED,x
+    lda a:$2581,x
+    tay
+    beq psg_pitch_effects_at4
+    lda a:$2593,x
+    beq psg_pitch_effects_at2
+    dec a:$2599,x
+    bne psg_pitch_effects_at2
+    inc a:$2599,x
+    lda a:$2587,x
+    sta z:$EA
+    lda a:$258D,x
+    sta z:$EB
+    jsr psg_add_pitch
+    bra psg_pitch_effects_at4
+psg_pitch_effects_at2:
+    sty z:$EA
+    jsr psg_scale_amount
+    lda a:$2587,x
+    clc
+    adc z:$EA
+    sta a:$2587,x
+    sta z:$EA
+    lda a:$258D,x
+    adc z:$EB
+    sta a:$258D,x
+    sta z:$EB
+    jsr psg_add_pitch
+psg_pitch_effects_at4:
+    lda a:$2557,x
+    beq psg_pitch_effects_at5
+    sta z:$EA
+    jsr psg_scale_amount
+    jsr psg_add_pitch
+psg_pitch_effects_at5:
+    lda a:$254B,x
+    beq psg_pitch_effects_at11
+    dec a:$2551,x
+    bne psg_pitch_effects_at11
+    inc a:$2551,x
+    lda a:$2539,x
+    sta z:$E8
+    lda a:$253F,x
+    sta z:$E9
+    ldy a:$2545,x
+    lda (<$E8),y
+    cmp #$80
+    bne psg_pitch_effects_at7
+    cpy #$00
+    beq psg_pitch_effects_at11
+    dey
+    lda (<$E8),y
+psg_pitch_effects_at7:
+    sta z:$EA
+    phy
+    jsr psg_scale_amount
+    jsr psg_add_pitch
+    ply
+    iny
+    bne psg_pitch_effects_at8
+    dey
+psg_pitch_effects_at8:
+    tya
+    sta a:$2545,x
+psg_pitch_effects_at11:
+    lda a:$2527,x
+    beq psg_pitch_effects_at15
+    dec a:$252D,x
+    bne psg_pitch_effects_at15
+    inc a:$252D,x
+    lda a:$2515,x
+    sta z:$E8
+    lda a:$251B,x
+    sta z:$E9
+    ldy a:$2521,x
+psg_pitch_effects_at12:
+    lda (<$E8),y
+    cmp #$80
+    bne psg_pitch_effects_at14
+    cpy #$00
+    beq psg_pitch_effects_at15
+    stz a:$2521,x
+    cly
+    bra psg_pitch_effects_at12
+psg_pitch_effects_at14:
+    sta z:$EA
+    jsr psg_scale_amount
+    jsr psg_add_pitch
+    inc a:$2521,x
+psg_pitch_effects_at15:
+    rts
+
+; @card 02:D5E2 psg_scale_amount
+; WHAT IT DOES: Makes the byte in $EA a signed 16-bit amount in $EA and $EB, scaled by the channel's scale less its base.
+; HOW: $EB the sign of $EA; the channel's scale ($2533) less its base ($2497) as a shift count: left for plus, right for minus; a
+; right shift that leaves something in the high byte makes it $FF.
+; WAITS: no.
+; Entry: X the channel, $EA the byte. Exit: $EA and $EB the amount; A, Y and the flags as the last step left them. X kept.
+psg_scale_amount:
+    stz z:$EB
+    lda z:$EA
+    bpl psg_scale_amount_at0
+    dec z:$EB
+psg_scale_amount_at0:
+    lda a:$2533,x
+    beq psg_scale_amount_at6
+    sec
+    sbc a:$2497,x
+    tay
+    bmi psg_scale_amount_at3
+psg_scale_amount_at1:
+    beq psg_scale_amount_at6
+    asl z:$EA
+    rol z:$EB
+    dey
+    bra psg_scale_amount_at1
+psg_scale_amount_at3:
+    beq psg_scale_amount_at4
+    lsr z:$EB
+    ror z:$EA
+    iny
+    bra psg_scale_amount_at3
+psg_scale_amount_at4:
+    lda z:$EB
+    beq psg_scale_amount_at6
+    lda #$FF
+    sta z:$EB
+psg_scale_amount_at6:
+    rts
+
+; @card 02:D611 psg_add_pitch
+; WHAT IT DOES: Adds the amount in $EA and $EB to the current channel's frequency.
+; HOW: A 16-bit add to $25E7 and $25ED, plus the channel.
+; WAITS: no.
+; Entry: X the channel, $EA and $EB the amount. Exit: A the high byte, C and V from its add, N and Z from it. X, Y kept.
+psg_add_pitch:
+    lda a:$25E7,x
+    clc
+    adc z:$EA
+    sta a:$25E7,x
+    lda a:$25ED,x
+    adc z:$EB
+    sta a:$25ED,x
+    rts

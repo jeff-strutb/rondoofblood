@@ -8,86 +8,125 @@
 #include "access.h"
 #include "enemy_objects.h"
 
-/* Whether an item drops when the object is hit hard enough: see DropItemWhenHitA. */
-static Ended drop_item_when_hit(uint8_t slot, uint16_t limits, uint16_t items)
-{
-    uint8_t hit = RD8(OBJ->hit_taken[slot]);
-    uint8_t code, bits, y, limit, item, index, type, last, last2;
-    bool found;
-    uint8_t found_slot;
-    RandomResult random;
-    Sum sum, added;
-    Ended e;
+/* The arms the shared bodies end on. */
+enum { CT_DI_MILD, CT_DI_NO_BITS, CT_DI_ROLL, CT_DI_NO_SLOT, CT_DI_DROPPED };
+enum { CT_HS_NONE, CT_HS_PLAYED };
+enum { CT_WD_STEPPED, CT_WD_MOVED };
 
-    e = ended_compare(hit, 5);
-    if (hit < 5) {
-        return e;
+/* Whether an item drops when the object is hit hard enough: see DropItemWhenHitA. */
+static ObjArm drop_item_when_hit(uint8_t slot, uint16_t limits, uint16_t items)
+{
+    ObjArm r = { 0 };
+    uint8_t found_slot;
+    bool found;
+
+    r.first = RD8(OBJ->hit_taken[slot]);
+    r.arm = CT_DI_MILD;
+    if (r.first < 5) {
+        return r;
     }
-    code = RD8(OBJ->f31f8[slot]);
-    bits = (uint8_t)((code >> 2) & 7);
-    e = ended_then(e, ended_with_carry(ended_load(bits), (code & 2) != 0));
-    if (bits == 0) {
-        return e;
+    r.second = RD8(OBJ->f31f8[slot]);
+    r.third = (uint8_t)((r.second >> 2) & 7);
+    r.arm = CT_DI_NO_BITS;
+    if (r.third == 0) {
+        return r;
     }
-    y = (uint8_t)(bits - 1);
-    e = ended_then(e, ended_with_y(ended_kept(), y));
-    WR8(ZP->temp00, (uint8_t)(y << 4));
+    r.fourth = (uint8_t)(r.third - 1);
+    WR8(ZP->temp00, (uint8_t)(r.fourth << 4));
     jsr_push(0xA2E0);
-    random = NextRandom();
+    r.random = NextRandom();
     jsr_pop();
-    limit = rd8((uint16_t)(limits + y));
-    e = ended_then(ended_then(e, ended_of_random(random)), ended_compare(random.value, limit));
-    if (random.value >= limit) {
-        return e;
+    r.fifth = rd8((uint16_t)(limits + r.fourth));
+    r.arm = CT_DI_ROLL;
+    if (r.random.value >= r.fifth) {
+        return r;
     }
     jsr_push(0xA2E8);
-    sum = PlayerDistanceSum(slot, false);
+    r.sum = PlayerDistanceSum(slot, false);
     jsr_pop();
-    e = ended_then(e, ended_of_sum(sum));
-    index = (uint8_t)(sum.value & 0x0F);
-    added = add_bytes(index, RD8(ZP->temp00), false);
-    y = added.value;
-    item = rd8((uint16_t)(items + y));
-    WR8(ZP->temp00, item);
-    e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_load(item), added.carry),
-                                                          added.overflow), y));
+    r.sum2 = add_bytes((uint8_t)(r.sum.value & 0x0F), RD8(ZP->temp00), false);
+    r.sixth = rd8((uint16_t)(items + r.sum2.value));
+    WR8(ZP->temp00, r.sixth);
     jsr_push(0xA2F6);
-    found_slot = FindFreeSlotFrom30(&last, &found);
+    found_slot = FindFreeSlotFrom30(&r.eighth, &found);
     jsr_pop();
-    e = ended_then(e, ended_with_carry(ended_with_y(ended_load(last), found_slot), found));
-    e = ended_then(e, ended_nz(0));
+    r.seventh = found_slot;
+    r.flag = found;
+    r.arm = CT_DI_NO_SLOT;
     if (!found) {
+        return r;
+    }
+    r.ninth = RD8(ZP->temp00);
+    jsr_push(0xA2FD);
+    r.tenth = StartObjectAtPlace(r.ninth, slot, found_slot);
+    jsr_pop();
+    r.arm = CT_DI_DROPPED;
+    return r;
+}
+
+/* The exit of every copy of DropItemWhenHit. */
+Ended drop_item_when_hit_exit_shim(ObjArm r)
+{
+    Ended e = ended_compare(r.first, 5);
+
+    if (r.arm == CT_DI_MILD) {
         return e;
     }
-    type = RD8(ZP->temp00);
-    e = ended_then(e, ended_load(type));
-    jsr_push(0xA2FD);
-    last2 = StartObjectAtPlace(type, slot, found_slot);
-    jsr_pop();
-    return ended_then(e, ended_load(last2));
+    e = ended_then(e, ended_with_carry(ended_load(r.third), (r.second & 2) != 0));
+    if (r.arm == CT_DI_NO_BITS) {
+        return e;
+    }
+    e = ended_then(e, ended_with_y(ended_kept(), r.fourth));
+    e = ended_then(ended_then(e, ended_of_random(r.random)), ended_compare(r.random.value, r.fifth));
+    if (r.arm == CT_DI_ROLL) {
+        return e;
+    }
+    e = ended_then(e, ended_of_sum(r.sum));
+    e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_load(r.sixth), r.sum2.carry), r.sum2.overflow), r.sum2.value));
+    e = ended_then(e, ended_with_carry(ended_with_y(ended_load(r.eighth), r.seventh), r.flag));
+    e = ended_then(e, ended_nz(0));
+    if (r.arm == CT_DI_NO_SLOT) {
+        return e;
+    }
+    e = ended_then(e, ended_load(r.ninth));
+    return ended_then(e, ended_load(r.tenth));
 }
 
 /* Plays the sound the object's f31f8 asks for (its bits 5 to 7, minus one, index the table), if it is on the first screen. */
-static ScreenSoundEnd sound_from_hit_code(uint8_t slot, uint16_t table)
+static ObjArm sound_from_hit_code(uint8_t slot, uint16_t table)
 {
-    ScreenSoundEnd result = { ended_kept(), ended_kept(), false, { 0 } };
+    ObjArm r = { 0 };
     uint8_t code = RD8(OBJ->f31f8[slot]);
-    uint8_t bits = (uint8_t)((code >> 5) & 7);
-    uint8_t y, command;
-    bool carry = (code & 0x10) != 0;
 
-    result.before = ended_with_carry(ended_load(bits), carry);
-    if (bits == 0) {
-        return result;
+    r.first = (uint8_t)((code >> 5) & 7);
+    r.flag = (code & 0x10) != 0;
+    r.arm = CT_HS_NONE;
+    if (r.first == 0) {
+        return r;
     }
-    y = (uint8_t)(bits - 1);
-    command = rd8((uint16_t)(table + y));
-    result.before = ended_with_y(ended_with_carry(ended_load(command), carry), y);
+    r.second = (uint8_t)(r.first - 1);
+    r.third = rd8((uint16_t)(table + r.second));
     jsr_push(0xA312);
-    result.sound = SoundIfOnFirstScreen(command, slot, y);
+    r.screen = SoundIfOnFirstScreen(r.third, slot, r.second);
     jsr_pop();
-    result.called = true;
-    return result;
+    r.screen_called = true;
+    r.arm = CT_HS_PLAYED;
+    return r;
+}
+
+/* The exit of every copy of PlayHitSound: the bits' load, then the table's command. */
+ScreenSoundEnd play_hit_sound_exit_shim(ObjArm r)
+{
+    ScreenSoundEnd s = { ended_kept(), ended_kept(), false, { 0 } };
+
+    s.before = ended_with_carry(ended_load(r.first), r.flag);
+    if (r.arm == CT_HS_NONE) {
+        return s;
+    }
+    s.before = ended_with_y(ended_with_carry(ended_load(r.third), r.flag), r.second);
+    s.sound = r.screen;
+    s.called = true;
+    return s;
 }
 
 /*
@@ -102,7 +141,7 @@ static ScreenSoundEnd sound_from_hit_code(uint8_t slot, uint16_t table)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundA(uint8_t slot)
+ObjArm PlayHitSoundA(uint8_t slot)
 {
     enum { TABLE = 0xABEE };
 
@@ -111,7 +150,7 @@ ScreenSoundEnd PlayHitSoundA(uint8_t slot)
 
 void abi_PlayHitSoundA(void)
 {
-    abi_screen_sound_end(PlayHitSoundA(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundA(cpu.x)));
 }
 
 /*
@@ -126,7 +165,7 @@ void abi_PlayHitSoundA(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundB(uint8_t slot)
+ObjArm PlayHitSoundB(uint8_t slot)
 {
     enum { TABLE = 0xAC23 };
 
@@ -135,7 +174,7 @@ ScreenSoundEnd PlayHitSoundB(uint8_t slot)
 
 void abi_PlayHitSoundB(void)
 {
-    abi_screen_sound_end(PlayHitSoundB(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundB(cpu.x)));
 }
 
 /*
@@ -150,7 +189,7 @@ void abi_PlayHitSoundB(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundC(uint8_t slot)
+ObjArm PlayHitSoundC(uint8_t slot)
 {
     enum { TABLE = 0xAB75 };
 
@@ -159,7 +198,7 @@ ScreenSoundEnd PlayHitSoundC(uint8_t slot)
 
 void abi_PlayHitSoundC(void)
 {
-    abi_screen_sound_end(PlayHitSoundC(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundC(cpu.x)));
 }
 
 /*
@@ -174,7 +213,7 @@ void abi_PlayHitSoundC(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundD(uint8_t slot)
+ObjArm PlayHitSoundD(uint8_t slot)
 {
     enum { TABLE = 0xAC35 };
 
@@ -183,7 +222,7 @@ ScreenSoundEnd PlayHitSoundD(uint8_t slot)
 
 void abi_PlayHitSoundD(void)
 {
-    abi_screen_sound_end(PlayHitSoundD(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundD(cpu.x)));
 }
 
 /*
@@ -198,7 +237,7 @@ void abi_PlayHitSoundD(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundE(uint8_t slot)
+ObjArm PlayHitSoundE(uint8_t slot)
 {
     enum { TABLE = 0xAC17 };
 
@@ -207,7 +246,7 @@ ScreenSoundEnd PlayHitSoundE(uint8_t slot)
 
 void abi_PlayHitSoundE(void)
 {
-    abi_screen_sound_end(PlayHitSoundE(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundE(cpu.x)));
 }
 
 /*
@@ -222,7 +261,7 @@ void abi_PlayHitSoundE(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundF(uint8_t slot)
+ObjArm PlayHitSoundF(uint8_t slot)
 {
     enum { TABLE = 0xAC40 };
 
@@ -231,7 +270,7 @@ ScreenSoundEnd PlayHitSoundF(uint8_t slot)
 
 void abi_PlayHitSoundF(void)
 {
-    abi_screen_sound_end(PlayHitSoundF(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundF(cpu.x)));
 }
 
 /*
@@ -246,7 +285,7 @@ void abi_PlayHitSoundF(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundG(uint8_t slot)
+ObjArm PlayHitSoundG(uint8_t slot)
 {
     enum { TABLE = 0xAC64 };
 
@@ -255,7 +294,7 @@ ScreenSoundEnd PlayHitSoundG(uint8_t slot)
 
 void abi_PlayHitSoundG(void)
 {
-    abi_screen_sound_end(PlayHitSoundG(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundG(cpu.x)));
 }
 
 /*
@@ -270,7 +309,7 @@ void abi_PlayHitSoundG(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundH(uint8_t slot)
+ObjArm PlayHitSoundH(uint8_t slot)
 {
     enum { TABLE = 0xAD0A };
 
@@ -279,7 +318,7 @@ ScreenSoundEnd PlayHitSoundH(uint8_t slot)
 
 void abi_PlayHitSoundH(void)
 {
-    abi_screen_sound_end(PlayHitSoundH(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundH(cpu.x)));
 }
 
 /*
@@ -294,7 +333,7 @@ void abi_PlayHitSoundH(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundI(uint8_t slot)
+ObjArm PlayHitSoundI(uint8_t slot)
 {
     enum { TABLE = 0xAC98 };
 
@@ -303,7 +342,7 @@ ScreenSoundEnd PlayHitSoundI(uint8_t slot)
 
 void abi_PlayHitSoundI(void)
 {
-    abi_screen_sound_end(PlayHitSoundI(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundI(cpu.x)));
 }
 
 /*
@@ -318,7 +357,7 @@ void abi_PlayHitSoundI(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundJ(uint8_t slot)
+ObjArm PlayHitSoundJ(uint8_t slot)
 {
     enum { TABLE = 0xAC74 };
 
@@ -327,7 +366,7 @@ ScreenSoundEnd PlayHitSoundJ(uint8_t slot)
 
 void abi_PlayHitSoundJ(void)
 {
-    abi_screen_sound_end(PlayHitSoundJ(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundJ(cpu.x)));
 }
 
 /*
@@ -342,7 +381,7 @@ void abi_PlayHitSoundJ(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundK(uint8_t slot)
+ObjArm PlayHitSoundK(uint8_t slot)
 {
     enum { TABLE = 0xAC8E };
 
@@ -351,7 +390,7 @@ ScreenSoundEnd PlayHitSoundK(uint8_t slot)
 
 void abi_PlayHitSoundK(void)
 {
-    abi_screen_sound_end(PlayHitSoundK(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundK(cpu.x)));
 }
 
 /*
@@ -366,7 +405,7 @@ void abi_PlayHitSoundK(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundL(uint8_t slot)
+ObjArm PlayHitSoundL(uint8_t slot)
 {
     enum { TABLE = 0xABBE };
 
@@ -375,7 +414,7 @@ ScreenSoundEnd PlayHitSoundL(uint8_t slot)
 
 void abi_PlayHitSoundL(void)
 {
-    abi_screen_sound_end(PlayHitSoundL(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundL(cpu.x)));
 }
 
 /*
@@ -393,7 +432,7 @@ void abi_PlayHitSoundL(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitA(uint8_t slot)
+ObjArm DropItemWhenHitA(uint8_t slot)
 {
     enum { LIMITS = 0xAB3D, ITEMS = 0xAB45 };
 
@@ -402,7 +441,7 @@ Ended DropItemWhenHitA(uint8_t slot)
 
 void abi_DropItemWhenHitA(void)
 {
-    abi_ended(DropItemWhenHitA(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitA(cpu.x)));
 }
 
 /*
@@ -420,7 +459,7 @@ void abi_DropItemWhenHitA(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitB(uint8_t slot)
+ObjArm DropItemWhenHitB(uint8_t slot)
 {
     enum { LIMITS = 0xABFD, ITEMS = 0xAC05 };
 
@@ -429,7 +468,7 @@ Ended DropItemWhenHitB(uint8_t slot)
 
 void abi_DropItemWhenHitB(void)
 {
-    abi_ended(DropItemWhenHitB(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitB(cpu.x)));
 }
 
 /*
@@ -447,7 +486,7 @@ void abi_DropItemWhenHitB(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitC(uint8_t slot)
+ObjArm DropItemWhenHitC(uint8_t slot)
 {
     enum { LIMITS = 0xAC08, ITEMS = 0xAC10 };
 
@@ -456,7 +495,7 @@ Ended DropItemWhenHitC(uint8_t slot)
 
 void abi_DropItemWhenHitC(void)
 {
-    abi_ended(DropItemWhenHitC(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitC(cpu.x)));
 }
 
 /*
@@ -474,7 +513,7 @@ void abi_DropItemWhenHitC(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitD(uint8_t slot)
+ObjArm DropItemWhenHitD(uint8_t slot)
 {
     enum { LIMITS = 0xACD2, ITEMS = 0xACDA };
 
@@ -483,7 +522,7 @@ Ended DropItemWhenHitD(uint8_t slot)
 
 void abi_DropItemWhenHitD(void)
 {
-    abi_ended(DropItemWhenHitD(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitD(cpu.x)));
 }
 
 /*
@@ -501,7 +540,7 @@ void abi_DropItemWhenHitD(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitE(uint8_t slot)
+ObjArm DropItemWhenHitE(uint8_t slot)
 {
     enum { LIMITS = 0xAC56, ITEMS = 0xAC5E };
 
@@ -510,7 +549,7 @@ Ended DropItemWhenHitE(uint8_t slot)
 
 void abi_DropItemWhenHitE(void)
 {
-    abi_ended(DropItemWhenHitE(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitE(cpu.x)));
 }
 
 /*
@@ -528,7 +567,7 @@ void abi_DropItemWhenHitE(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitF(uint8_t slot)
+ObjArm DropItemWhenHitF(uint8_t slot)
 {
     enum { LIMITS = 0xABC6, ITEMS = 0xABCE };
 
@@ -537,7 +576,7 @@ Ended DropItemWhenHitF(uint8_t slot)
 
 void abi_DropItemWhenHitF(void)
 {
-    abi_ended(DropItemWhenHitF(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitF(cpu.x)));
 }
 
 /*
@@ -555,7 +594,7 @@ void abi_DropItemWhenHitF(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitG(uint8_t slot)
+ObjArm DropItemWhenHitG(uint8_t slot)
 {
     enum { LIMITS = 0xABEF, ITEMS = 0xABF7 };
 
@@ -564,7 +603,7 @@ Ended DropItemWhenHitG(uint8_t slot)
 
 void abi_DropItemWhenHitG(void)
 {
-    abi_ended(DropItemWhenHitG(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitG(cpu.x)));
 }
 
 /*
@@ -582,7 +621,7 @@ void abi_DropItemWhenHitG(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitH(uint8_t slot)
+ObjArm DropItemWhenHitH(uint8_t slot)
 {
     enum { LIMITS = 0xAC44, ITEMS = 0xAC4C };
 
@@ -591,7 +630,7 @@ Ended DropItemWhenHitH(uint8_t slot)
 
 void abi_DropItemWhenHitH(void)
 {
-    abi_ended(DropItemWhenHitH(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitH(cpu.x)));
 }
 
 /*
@@ -609,7 +648,7 @@ void abi_DropItemWhenHitH(void)
  * Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
  * free slot (or the table index); X kept. Clobbers zTemp00.
  */
-Ended DropItemWhenHitI(uint8_t slot)
+ObjArm DropItemWhenHitI(uint8_t slot)
 {
     enum { LIMITS = 0xAC3C, ITEMS = 0xAC44 };
 
@@ -618,7 +657,7 @@ Ended DropItemWhenHitI(uint8_t slot)
 
 void abi_DropItemWhenHitI(void)
 {
-    abi_ended(DropItemWhenHitI(cpu.x));
+    abi_ended(drop_item_when_hit_exit_shim(DropItemWhenHitI(cpu.x)));
 }
 
 /*
@@ -633,7 +672,7 @@ void abi_DropItemWhenHitI(void)
  * Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
  * played: as SoundIfOnFirstScreen leaves it (Y the table index).
  */
-ScreenSoundEnd PlayHitSoundM(uint8_t slot)
+ObjArm PlayHitSoundM(uint8_t slot)
 {
     enum { TABLE = 0xAC7C };
 
@@ -642,7 +681,7 @@ ScreenSoundEnd PlayHitSoundM(uint8_t slot)
 
 void abi_PlayHitSoundM(void)
 {
-    abi_screen_sound_end(PlayHitSoundM(cpu.x));
+    abi_screen_sound_end(play_hit_sound_exit_shim(PlayHitSoundM(cpu.x)));
 }
 
 /*
@@ -744,32 +783,42 @@ void abi_PickAngleAtRandomB(void)
  * WAITS: no.
  * Entry, exit: as WalkWhileFrameChangesB.
  */
-Ended WalkWhileFrameChangesD(uint8_t slot, uint8_t index)
+ObjArm WalkWhileFrameChangesD(uint8_t slot, uint8_t index)
 {
     enum { LISTS = 0xBF56, SPEEDS = 0xBF5A };
-    uint8_t exit_y = index, phase;
-    FrameStep step;
-    AxisMove move;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t exit_y = index;
 
     WR8(ZP->temp10, rd8((uint16_t)(LISTS + index)));
     WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + index)));
     jsr_push(0xBF47);
-    step = StepObjectFrames(slot, &exit_y);
+    r.step = StepObjectFrames(slot, &exit_y);
     jsr_pop();
-    e = ended_of_frame_step(step, step != FRAME_HELD, exit_y);
-    if (step != FRAME_CHANGED) {
+    r.y = exit_y;
+    r.arm = CT_WD_STEPPED;
+    if (r.step != FRAME_CHANGED) {
+        return r;
+    }
+    r.first = RD8(OBJ->f3510[slot]);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + r.first)));
+    jsr_push(0xBF55);
+    r.move = ApplyVelocityX(slot);
+    jsr_pop();
+    r.arm = CT_WD_MOVED;
+    return r;
+}
+
+static Ended walk_while_frame_changes_d_exit_shim(ObjArm r)
+{
+    Ended e = frame_step_exit_shim(r);
+
+    if (r.arm == CT_WD_STEPPED) {
         return e;
     }
-    phase = RD8(OBJ->f3510[slot]);
-    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + phase)));
-    jsr_push(0xBF55);
-    move = ApplyVelocityX(slot);
-    jsr_pop();
-    return ended_then(ended_then(e, ended_with_y(ended_kept(), phase)), ended_of_axis_move(move));
+    return ended_then(ended_then(e, ended_with_y(ended_kept(), r.first)), ended_of_axis_move(r.move));
 }
 
 void abi_WalkWhileFrameChangesD(void)
 {
-    abi_ended(WalkWhileFrameChangesD(cpu.x, cpu.y));
+    abi_ended(walk_while_frame_changes_d_exit_shim(WalkWhileFrameChangesD(cpu.x, cpu.y)));
 }

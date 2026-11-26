@@ -120,6 +120,158 @@ static inline Ended l8_of_event(bool marked, uint8_t stored, uint8_t event, uint
     return ended_with_carry(ended_with_y(ended_load(stored), byte), (event & 7) == 0);
 }
 
+/*
+ * The converted form (the pattern of ending.c, 441de03): a routine's body returns the arm it ended on and the values behind it,
+ * read or made on that path, and what its typed callees returned. Its exit shim alone builds A, Y and the flags from them; the
+ * abi_ wrapper sets the registers from the shim. No body builds an exit.
+ */
+
+/* LDA state, BNE, JSR LoadObjectRecord: the state read, and the record's result when state 0 loaded it. */
+typedef struct {
+    uint8_t state;
+    bool loaded;
+    uint8_t last, nz;
+    bool carry;
+} L8Load;
+
+/* The list address stored in zTemp10-11 and StepObjectFrames: the byte stored last, the step, and the Y it left. */
+typedef struct {
+    uint8_t stored;
+    FrameStep step;
+    uint8_t y;
+} L8Step;
+
+/* LoadObjectRecord's result. */
+typedef struct {
+    uint8_t last, nz;
+    bool carry;
+} L8Record;
+
+/* FindFreeSlotFrom20, 30 and 50: the slot, the last type read and whether one was free. */
+typedef struct {
+    uint8_t slot, last;
+    bool found;
+} L8Slot;
+
+/* What a converted body ended on: the arm and the values behind it (each routine says which it fills). */
+typedef struct {
+    int arm;
+    uint8_t first, second, third, y;
+    bool flag;
+    L8Load load;
+    L8Record record;
+    L8Step step;
+    L8Slot found;
+    AxisMove move;
+    RandomResult random;
+    ScaleResult scale;
+    Sum sum;
+} L8Arm;
+
+static inline L8Load l8_load_new(uint8_t slot, uint16_t ret)
+{
+    L8Load r = { 0 };
+
+    r.state = RD8(OBJ->state[slot]);
+    if (r.state == 0) {
+        jsr_push(ret);
+        r.last = LoadObjectRecord(slot, &r.nz, &r.carry);
+        jsr_pop();
+        r.loaded = true;
+    }
+    return r;
+}
+
+static inline L8Record l8_record(uint8_t slot)
+{
+    L8Record r;
+
+    r.last = LoadObjectRecord(slot, &r.nz, &r.carry);
+    return r;
+}
+
+static inline L8Step l8_list_step(uint8_t slot, uint16_t list, uint16_t ret, bool high_first, uint8_t y)
+{
+    uint8_t lo = (uint8_t)list, hi = (uint8_t)(list >> 8);
+    L8Step r;
+
+    if (high_first) {
+        WR8(ZP->temp11, hi);
+        WR8(ZP->temp10, lo);
+        r.stored = lo;
+    } else {
+        WR8(ZP->temp10, lo);
+        WR8(ZP->temp11, hi);
+        r.stored = hi;
+    }
+    r.y = y;
+    jsr_push(ret);
+    r.step = StepObjectFrames(slot, &r.y);
+    jsr_pop();
+    return r;
+}
+
+static inline L8Slot l8_free_slot30(void)
+{
+    L8Slot r;
+
+    r.slot = FindFreeSlotFrom30(&r.last, &r.found);
+    return r;
+}
+
+/* PHX, LDA #list, LDX #channel, JSR StartListChannelKind2, PLX: the X pulled. */
+static inline uint8_t l8_channel2(uint8_t slot, uint8_t list, uint8_t channel, uint16_t ret)
+{
+    push8(slot);
+    jsr_push(ret);
+    StartListChannelKind2(list, channel);
+    jsr_pop();
+    return pull8();
+}
+
+/* PHX, LDA #script, LDX #slot, JSR StartScriptSlotKind1, PLX: the X pulled. */
+static inline uint8_t l8_script1(uint8_t slot, uint8_t script, uint8_t target, uint16_t ret)
+{
+    push8(slot);
+    jsr_push(ret);
+    StartScriptSlotKind1(script, target);
+    jsr_pop();
+    return pull8();
+}
+
+/* For the exit shims: what each of the above leaves. */
+static inline Ended l8_load_ended(L8Load r)
+{
+    Ended e = ended_load(r.state);
+
+    return r.loaded ? ended_then(e, ended_of_record(r.last, r.nz, r.carry)) : e;
+}
+
+static inline Ended l8_record_ended(L8Record r)
+{
+    return ended_of_record(r.last, r.nz, r.carry);
+}
+
+static inline Ended l8_step_ended(L8Step r)
+{
+    return ended_then(ended_load(r.stored), ended_of_frame_step(r.step, r.step != FRAME_HELD, r.y));
+}
+
+static inline Ended l8_slot_ended(L8Slot r)
+{
+    return ended_of_find_slot(r.slot, r.last, r.found);
+}
+
+static inline Ended l8_channel2_ended(uint8_t x)
+{
+    return ended_with_a(ended_nz(x), 2);
+}
+
+static inline Ended l8_script1_ended(uint8_t x, uint8_t script)
+{
+    return ended_with_y(ended_with_a(ended_nz(x), script), script);
+}
+
 /* object/enemies_l8_st11.c */
 Ended LoadRecordOrCapPlayerX(uint8_t slot);
 Ended StartAtX120OrApplyVelocity(uint8_t slot);
@@ -208,8 +360,8 @@ Ended HitDamage1179(uint8_t slot);
 Ended HitDamage16C9(uint8_t slot);
 
 /* object/enemies_l8_st14.c */
-Ended LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry);
-Ended LoadRecordRandomLiftThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+L8Arm LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+L8Arm LoadRecordRandomLiftThenMoveOrClear(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st15.c */
 Ended LoadRecordThenRecordEventAtFifth(uint8_t slot, uint8_t y_entry);

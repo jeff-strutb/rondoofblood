@@ -105,6 +105,7 @@ void call_original(uint16_t a) { (void)a; }
 void call_orig(uint16_t r, uint16_t a) { (void)r; (void)a; }
 void call_orig_framed(uint16_t r, uint16_t a) { (void)r; (void)a; }
 void wait_interrupt(void) {}
+void call_return_point(void) {}
 void untraced(uint16_t a) { (void)a; }
 
 /* ---- the core ---- */

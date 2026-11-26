@@ -222,6 +222,7 @@ StageLoad_at5:
 ; zRamBaseBank.
 ; HOW: Eight rows of $80 bytes, read through the VDC's data port, through a pointer in
 ; the BIOS's zBiosAl-Ah.
+; WAITS: no.
 ; Entry: nothing. Exit: A the pointer's low byte, N and Z from X reaching zero, C from its
 ; add, V too; X 0, Y $80.
 SaveVramToRam:

@@ -750,11 +750,47 @@ static int ends_by_dispatch(uint8_t entry_s, int is_irq, const Tag *t)
     return !is_irq && !t->ends && below >= 1 && below < 0x80;
 }
 
+/* Did the ORIGINAL return normally from this call (RTS to its caller, S at entry plus 2) with no call or entry of another
+ * routine left in the record before it? Then a C that ends with S below its entry did not dispatch: it left its frame on
+ * the stack (a push or a JSR frame with no pop), and the call is judged whole, where the S compare names it. Only a call
+ * the original itself ended by jumping on (a table dispatch) is judged up to there. A5 gives the exit registers; the
+ * hybrid reads the CLOSE. */
+static int returns_normally(Span *s, uint8_t entry_s, uint16_t ret, const Regs *exit_r);
 #define HORIZON (8u << 20)           /* hybrid: events a call's return or end is looked for ahead (8M events, 384 MB of window) */
 static uint64_t horizon_calls;
 static int horizon_hit;
 
 static void span_finish_to_call(Span *s);
+
+static int returns_normally(Span *s, uint8_t entry_s, uint16_t ret, const Regs *exit_r)
+{
+    int nest = s->nest;
+
+    for (uint64_t j = s->cur; j < s->cur + HORIZON; j++) {
+        Ev *e = sev(s, j, &nest);
+
+        if (!e)
+            break;
+        if (e->type == EV_INT) {
+            uint64_t r = section_end(s, j);
+
+            if (r == NO_RETURN)
+                return 0;
+            j = r;
+            continue;
+        }
+        if (e->type == EV_CALL || e->type == EV_OPEN)
+            return 0;
+    }
+    if (exit_r)
+        return exit_r->s == (uint8_t)(entry_s + 2) && exit_r->pc == ret;
+    if (s->end != SPAN_OPEN) {
+        Ev *c = evp(s->end);
+
+        return c && c->type == EV_CLOSE && c->kind == CL_OK && c->s == (uint8_t)(entry_s + 2);
+    }
+    return 0;
+}
 
 static void span_finish(Span *s)
 {
@@ -2499,7 +2535,8 @@ static void judge(Frame *f, const Regs *r)
     if (reason == 0) {
         f->tag->abi();
         apply_pokes(span.cur, end);
-        if (!prefix && ends_by_dispatch(f->regs.s, f->kind == K_IRQ, f->tag)) {
+        if (!prefix && ends_by_dispatch(f->regs.s, f->kind == K_IRQ, f->tag) &&
+            (getenv("RONDO_OLD_DISPATCH") || !returns_normally(&span, f->regs.s, f->ret, r))) {
             s->dispatch++;
             longjmp(c_abort, ABORT_END);       /* the original's call goes on in the routines it jumped to: judged up to here */
         }
@@ -2737,7 +2774,8 @@ static void co_main(void)
     blame_tag = c->tag;
     in_swap = c->tag;
     rondo_tags[c->tag].abi();
-    if (ends_by_dispatch(c->entry_s, c->kind == K_IRQ, &rondo_tags[c->tag])) {
+    if (ends_by_dispatch(c->entry_s, c->kind == K_IRQ, &rondo_tags[c->tag]) &&
+        (getenv("RONDO_OLD_DISPATCH") || !returns_normally(&c->span, c->entry_s, 0, NULL))) {
         c->dispatch = 1;
         stats[c->tag].dispatch++;
         span_finish_to_call(&c->span);

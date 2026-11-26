@@ -173,7 +173,7 @@ Exit TitleScreenBegin(uint8_t kept_x, uint8_t kept_y)
     Exit exit = { 0 };
 
     jsr_push(0x8208);
-    ClearScreenStateAt(kept_x, kept_y);
+    ClearScreenState(wait_regs_xy_shim(kept_x, kept_y));
     jsr_pop();
     wr8(F2A68, 0);
     wr8(F2A8A, 0);

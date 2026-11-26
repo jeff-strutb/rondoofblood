@@ -4,6 +4,7 @@
 
 #include "machine.h"
 #include "syscard.h"
+#include "wait_regs.h"
 
 /* A byte add or subtract: the result, its carry as the processor's C, and its overflow. */
 typedef struct { uint8_t value; bool carry; bool overflow; } Sum;
@@ -1053,8 +1054,7 @@ void abi_CdSearchTrack(void);
 void track_search_exit_shim(const TrackSearch *search);
 void save_vram_exit_shim(Sum low);
 void reset_game_state_exit_shim(void);
-void ResetGameState(void);
-void ResetGameStateAt(uint8_t kept_x, uint8_t kept_y);   /* with the X and Y it was entered with */
+void ResetGameState(WaitRegs entry);
 uint8_t WaitVblankDisplayOff(void);
 void abi_StageEnter(void);
 void abi_StageLoad(void);

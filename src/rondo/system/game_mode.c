@@ -123,6 +123,16 @@ static void load_shim(uint8_t a)
     abi_nz(a);
 }
 
+/*
+ * What a handler holds when it calls a routine that waits right after its overlay's frame said done (LDA zModeDone, BNE):
+ * the overlay's registers with A the answer, which the wait's interrupt pushes.
+ */
+static WaitRegs done_wait_shim(Cpu after, uint8_t done)
+{
+    overlay_done_shim(after, done);
+    return wait_regs_live_shim();
+}
+
 /* LDA #mode, JSR SetGameMode: A 0, N and Z from the mode. */
 static void set_mode_shim(uint8_t mode)
 {
@@ -183,17 +193,14 @@ static void mark_stage_shim(StageMark mark)
 /* The title's three scenes and the fixed ADPCM, as two paths load them. */
 typedef struct { DiscLog a; DiscLog b; DiscLog c; DiscLog fixed; } ScreensLoad;
 
-/* traced: the X and Y the caller has at the call are known (ModeAttract: what the overlay left); else the live ones. */
-static ScreensLoad load_screens(uint16_t first_return, bool traced, uint8_t kept_x, uint8_t kept_y)
+/* at: the registers and flags the caller holds at the JSR to ResetGameState (STZ zMusicWanted changes none of them). */
+static ScreensLoad load_screens(uint16_t first_return, WaitRegs at)
 {
     ScreensLoad load;
 
     wr8(zMusicWanted, 0);
     jsr_push(first_return);
-    if (traced)
-        ResetGameStateAt(kept_x, kept_y);
-    else
-        ResetGameState();
+    ResetGameState(at);
     jsr_pop();
     jsr_push((uint16_t)(first_return + 5));
     load.a = LoadSceneScript(SCENE_SCREENS_A);
@@ -383,6 +390,15 @@ void abi_ModeLogo(void)
  */
 typedef enum { ATTRACT_OTHER_ENTRY, ATTRACT_RESTART, ATTRACT_SCREENS, ATTRACT_DEMO } AttractPath;
 
+/* At the title path's ResetGameState: the overlay's registers, A 0 from LDA zAttractStep, N and Z from its INC to 1. */
+static WaitRegs attract_screens_wait_shim(Cpu after, uint8_t done)
+{
+    overlay_done_shim(after, done);
+    load_shim(0);
+    abi_nz(1);
+    return wait_regs_live_shim();
+}
+
 typedef struct {
     OverlayFrame frame;
     AttractPath path;
@@ -414,7 +430,7 @@ AttractRun ModeAttract(void)
     if (rd8(zAttractStep) == 0) {
         run.path = ATTRACT_SCREENS;
         wr8(zAttractStep, (uint8_t)(rd8(zAttractStep) + 1));
-        run.screens = load_screens(0x519D, true, run.frame.after.x, run.frame.after.y);
+        run.screens = load_screens(0x519D, attract_screens_wait_shim(run.frame.after, run.frame.done));
         run.mode = NextGameMode();
         return run;
     }
@@ -522,7 +538,7 @@ AttractPlayRun ModeAttractPlay(uint8_t kept_x, uint8_t kept_y)
     jsr_pop();
     wr8(zWaitTimer, GAME_OVER_WAIT);
     jsr_push(0x51D8);
-    ResetGameState();
+    ResetGameState(wait_regs_live_shim());   /* A5 identical with the live registers (76139 calls at d89c150) */
     jsr_pop();
     SetGameMode(MODE_GAME_OVER);
     return run;
@@ -601,7 +617,7 @@ ScreensLoad ModeStageLoadScreens(void)
     ScreensLoad load;
 
     wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREENS));
-    load = load_screens(0x5200, false, 0, 0);
+    load = load_screens(0x5200, wait_regs_live_shim());   /* entered from ModeStageLoad: the live registers */
     SetGameMode(MODE_ENDING);
     return load;
 }
@@ -877,12 +893,18 @@ StageDoneRun ModeStageDone(void)
         return run;
     }
     run.mark = mark_stage(StagesVisited, 0x5235);
-    ResetGameState();
+    jsr_push(0x523E);
+    ResetGameState(wait_regs_live_shim());   /* entered by ModeStage's BNE: the live registers */
+    jsr_pop();
+    jsr_push(0x5241);
     run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */
+    jsr_pop();
     run.slot = rd8(zSaveSlot);
     if (!(run.slot & 0x80)) {
         run.saved = true;
+        jsr_push(0x5248);
         run.save = SaveProgress();
+        jsr_pop();
         run.save_slot = rd8(zSaveSlot);
         run.offset = rd8((uint16_t)(SaveSlotOffsets + run.save_slot));
         run.seen = rd8((uint16_t)(SaveBonusSeen + run.offset));
@@ -893,8 +915,12 @@ StageDoneRun ModeStageDone(void)
         }
     }
     wr8(zCharacterLoaded, 0xFF);
+    jsr_push(0x525B);
     run.ending_a = LoadSceneScript(SCENE_ENDING_A);
+    jsr_pop();
+    jsr_push(0x5260);
     run.ending_b = LoadSceneScript(SCENE_ENDING_B);
+    jsr_pop();
     SetGameMode(MODE_SCREEN);
     return run;
 }
@@ -980,9 +1006,38 @@ static uint8_t screen_scenes(uint8_t stage)
     }
 }
 
+/* The returns of the two scene loads of the screen path, by the stage's arm (from the disc's bytes at 52A7 to 52D0). */
+typedef struct { uint16_t first; uint16_t second; } SceneReturns;
+
+static SceneReturns screen_scene_returns(uint8_t first)
+{
+    SceneReturns r;
+
+    switch (first) {
+    case 0x02:
+        r.first = 0x52CE;
+        r.second = 0x52D3;
+        break;
+    case 0x0A:
+        r.first = 0x52C2;
+        r.second = 0x52C7;
+        break;
+    case 0x0C:
+        r.first = 0x52B6;
+        r.second = 0x52BB;
+        break;
+    default:
+        r.first = 0x52AA;
+        r.second = 0x52AF;
+        break;
+    }
+    return r;
+}
+
 StageRun ModeStage(void)
 {
     StageRun run;
+    SceneReturns returns;
     uint8_t character;
 
     run.frame = overlay_frame(FrameOverlay8000, 0x5268);
@@ -996,32 +1051,48 @@ StageRun ModeStage(void)
         run.path = STAGE_BOSS;
         wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_BOSS));
         run.adpcm_sum = add_bytes(ADPCM_BOSS, rd8(zCharacter), false);
+        jsr_push(0x5279);
         run.adpcm = AdpcmLoad(run.adpcm_sum.value);
-        run.scene_a = LoadSceneScript(SCENE_BOSS);
+        jsr_pop();
+        run.scene_a = LoadSceneScript(SCENE_BOSS);   /* a tail JMP: no frame */
     } else if (rd8(zModeEvents) & EVENT_SCREEN) {
         run.path = STAGE_SCREEN;
         wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREEN));
-        ResetGameState();
+        jsr_push(0x528E);
+        ResetGameState(wait_regs_live_shim());
+        jsr_pop();
         wr8(zMusicWanted, 0xFF);
         wr8(zCharacterLoaded, 0xFF);
         run.stage = rd8(zStage);
         run.first = screen_scenes(run.stage);
+        returns = screen_scene_returns(run.first);
+        jsr_push(returns.first);
         run.scene_a = LoadSceneScript(run.first);
+        jsr_pop();
+        jsr_push(returns.second);
         run.scene_b = LoadSceneScript((uint8_t)(run.first + 1));
+        jsr_pop();
         SetGameMode(MODE_SCREEN);
     } else if (rd8(zModeEvents) & EVENT_CLEAR) {
         run.path = STAGE_CLEAR;
         wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_CLEAR));
         run.mark = mark_stage(StagesVisited, 0x52DC);
         run.slot = rd8(zSaveSlot);
-        if (!(run.slot & 0x80))
+        if (!(run.slot & 0x80)) {
+            jsr_push(0x52E9);
             run.save = SaveScore();
+            jsr_pop();
+        }
         character = rd8(zCharacter);
         run.clear_a = add_bytes((uint8_t)(character << 1), SCENE_CLEAR, (character & 0x80) != 0);
+        jsr_push(0x52F1);
         run.scene_a = LoadSceneScript(run.clear_a.value);
+        jsr_pop();
         character = rd8(zCharacter);
         run.clear_b = add_bytes((uint8_t)(character << 1), SCENE_CLEAR + 1, (character & 0x80) != 0);
+        jsr_push(0x52F9);
         run.scene_b = LoadSceneScript(run.clear_b.value);
+        jsr_pop();
         SetGameMode(MODE_SCREEN);
     } else {
         run.path = STAGE_PLAYING;
@@ -1288,6 +1359,21 @@ typedef struct {
     EnterNextRun next;
 } DeadRun;
 
+/*
+ * At the back-to-title path's ResetGameState: what the handler's code left up to there, as its wrapper replays it (the
+ * overlay, the compare with $0A, the save slot's load and the save), then A 0, N 0 and Z 1 from the DEC of the choice.
+ */
+static WaitRegs dead_wait_shim(const DeadRun *run)
+{
+    overlay_done_shim(run->after, run->done);
+    compare_shim(run->continues_hi, CONTINUES_CAP_HI);
+    load_shim(run->slot);
+    if (!(run->slot & 0x80))
+        save_exit_shim(&run->save);
+    load_shim(0);
+    return wait_regs_live_shim();
+}
+
 DeadRun ModeDead(void)
 {
     DeadRun run;
@@ -1317,7 +1403,7 @@ DeadRun ModeDead(void)
     run.choice = rd8(ContinueChoice);
     if (run.choice == 1) {
         jsr_push(0x53B7);
-        ResetGameState();
+        ResetGameState(dead_wait_shim(&run));
         jsr_pop();
         run.title = ModeBackToTitle();
         return run;
@@ -1463,7 +1549,7 @@ ScreenRun ModeScreen(void)
     if (run.frame.done == 0)
         return run;
     jsr_push(0x5459);
-    ResetGameState();
+    ResetGameState(done_wait_shim(run.frame.after, run.frame.done));
     jsr_pop();
     jsr_push(0x545E);
     run.scene = LoadSceneScript(SCENE_COMMON);
@@ -1557,7 +1643,7 @@ EndingRun ModeEnding(void)
         return run;
     wr8(zGameRunning, 0);
     jsr_push(0x54A7);
-    ResetGameState();
+    ResetGameState(done_wait_shim(run.frame.after, run.frame.done));
     jsr_pop();
     jsr_push(0x54AC);
     run.scene = LoadSceneScript(SCENE_COMMON);

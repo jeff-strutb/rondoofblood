@@ -61,7 +61,7 @@ AttractEnd AttractEndCountdown(uint8_t kept_x, uint8_t kept_y)
         return end;
     }
     jsr_push(0x87DA);
-    ResetGameStateAt(kept_x, kept_y);
+    ResetGameState(wait_regs_xy_shim(kept_x, kept_y));
     jsr_pop();
     end.value = DEC8(ZP->mode_done);
     end.reset = true;
@@ -123,7 +123,7 @@ void abi_ClearAllObjects(void)
 uint8_t AttractBegin(uint8_t kept_x, uint8_t kept_y)
 {
     jsr_push(0x871D);
-    ResetGameStateAt(kept_x, kept_y);
+    ResetGameState(wait_regs_xy_shim(kept_x, kept_y));
     jsr_pop();
     WR8(ZP->_gap_007C[2], 0x98);
     WR8(ZP->_gap_007C[3], 0x8F);
@@ -362,7 +362,7 @@ Exit ScriptStartListAndClear(void)
     StartListChannel0Kind2(list);
     jsr_pop();
     jsr_push(0x8861);
-    ClearScreenStateAt(0, 3);   /* X 0 from the list start, Y 3 from ScriptStep */
+    ClearScreenState(wait_regs_xy_shim(0, 3));   /* X 0 from the list start, Y 3 from ScriptStep */
     jsr_pop();
     jsr_push(0x8864);
     ClearAllObjects();

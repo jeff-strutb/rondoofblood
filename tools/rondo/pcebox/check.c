@@ -1837,6 +1837,8 @@ void call_return_point(void)
         Ev *e = sev(s, j, &nest);
         uint64_t r;
 
+        if (e && is_noise(e) && e->type != EV_RTPULL)
+            continue;            /* a read of ROM or a poke between the C's last access and the interrupt (uncounted); the RTS's pulls stop the scan */
         if (e && e->type == EV_FRAME) {
             /* The frame ended in the original with the call's RTS not yet run (the pulls follow): the hash is taken with
              * the frame still on the stack, as the record took it. */

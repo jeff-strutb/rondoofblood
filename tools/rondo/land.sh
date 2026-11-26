@@ -9,7 +9,8 @@
 #   3. when asm, src, syscard or tools differ from main: assembles all filed assembly in place and
 #      requires the whole game image and the whole card image byte exact, and builds the hybrid from
 #      the worktree's C and requires a clean link, no undefined abi_ symbol (landcheck.py);
-#   4. when the landing adds or changes a file in tools/rondo/scripts, traces those scripts (and the ones
+#   4. when the landing adds or changes a file in tools/rondo/scripts, traces those scripts, with a box built
+#      from the landing tree in its own folder (the link check's build, made first; never main's box) (and the ones
 #      including a changed include file) into a private copy of the trace folder, one cpu-run slot each, up to
 #      4: a failed or inconsistent trace refuses the landing here, before main is touched;
 #      (before 5: a landing that changes tools/toolchains/patches/pce applies the whole patch set, in order, to a
@@ -73,7 +74,11 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
   fi
   if [ -n "$S" ]; then
     P=$(python3 tools/rondo/cpuguard.py core "$M") || { echo "LAND REFUSED (trace): $P"; exit 9; }
-    [ -x "$M/build/rondo/pcebox/pcebox" ] || { echo "LAND REFUSED (trace): main has no pcebox binary; run setup.sh pcebox in the main checkout"; exit 9; }
+    # The box that traces is built from this landing tree, in the landing folder (landcheck.py link, the same
+    # build the link check below makes, so it is built once): main shared box has the tag table of whatever
+    # commit last built it, and refuses a script that calls a routine tagged since.
+    python3 tools/rondo/landcheck.py link "$O" || exit 6
+    LINKED=1
     T=$O/trace; rm -rf "$T"; mkdir -p "$T"
     for d in "$M"/build/rondo/trace/*/; do
       n=$(basename "$d")
@@ -81,7 +86,7 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
     done
     P=""; for n in $S; do P="$P tools/rondo/scripts/$n.txt"; done
     B=$(python3 tools/rondo/landcheck.py code "$M/build/rondo/trace/discmap.bin")
-    RONDO_TRACE_OUT=$T RONDO_PCEBOX=$M/build/rondo/pcebox/pcebox python3 tools/rondo/trace.py $P > "$O/trace.log" 2>&1 \
+    RONDO_TRACE_OUT=$T RONDO_PCEBOX=$O/pcebox python3 tools/rondo/trace.py $P > "$O/trace.log" 2>&1 \
       || { echo "LAND REFUSED (trace): tracing $S failed, main untouched: $(grep -v merged: "$O/trace.log" | tail -2 | tr "\n" " ")"; exit 9; }
     A=$(python3 tools/rondo/landcheck.py code "$T/discmap.bin")
     echo "traced $S into a private folder: $(grep "^merged:" "$O/trace.log")"
@@ -118,7 +123,7 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
     echo "decomp tree identical to main: image and link checks skipped"
   else
     python3 tools/rondo/landcheck.py image "$O" || exit 5
-    python3 tools/rondo/landcheck.py link "$O" || exit 6
+    [ -n "${LINKED:-}" ] || python3 tools/rondo/landcheck.py link "$O" || exit 6
   fi
   OLDMAIN=$(git -C "$M" rev-parse HEAD)
   git -C "$M" merge -q --ff-only "$BR" || { echo "LAND REFUSED (main): main could not fast-forward to $BR (main checkout has changes at those paths, or main moved); land again"; exit 7; }

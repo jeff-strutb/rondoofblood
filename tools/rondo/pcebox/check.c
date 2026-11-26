@@ -482,6 +482,7 @@ static struct {
 } hold;
 static unsigned long idle_until_frame;     /* after a frame hold: the core runs nothing until this frame has ended */
 static uint64_t frame_holds;
+static uint64_t end_target_ints; /* at the script's end: an interrupt the original took at a jump's target, handed over there */
 static uint64_t int_holds;       /* interrupts a few instructions past a hand-over: held until the core stands there */
 static uint64_t held_ints, held_not;
 static uint64_t handover_ints;     /* interrupts the record took before the instruction a C handed over at: delivered by the C */
@@ -1612,6 +1613,24 @@ static void original_at(uint16_t ret, uint16_t addr)
         if (rondo_pc && closing && closing->type == EV_CLOSE && closing->kind == CL_LEFT) {
             hold_prepare(span, closing);
             hand_over(rondo_pc);
+        }
+        /* The original jumped there and took an interrupt at the target before its first instruction (the record has the
+         * INT before the arrival's CALL, and the handler runs to the script's end, so the CALL never comes): the machine
+         * goes to the original at the target, where the hand-over hold dispatches that interrupt from the record. */
+        if (closing && closing->type == EV_CLOSE && closing->kind == CL_END) {
+            int nest2 = span->nest;
+
+            for (uint64_t j = span->cur;; j++) {
+                Ev *x = sev(span, j, &nest2);
+
+                if (!x || (!is_noise(x) && x->type != EV_STATE && x->type != EV_CLOSE)) {
+                    if (x && x->type == EV_INT && x->pc == addr && x->s == cpu.s) {
+                        end_target_ints++;
+                        hand_over(addr);
+                    }
+                    break;
+                }
+            }
         }
         park_forever();
     }
@@ -4015,6 +4034,8 @@ void check_finish(void)
                 (unsigned long long)handover_ints);
         fprintf(report, "interrupts a few instructions past a hand-over, the core held until it stood there: %llu\n",
                 (unsigned long long)int_holds);
+        fprintf(report, "interrupts at a jump's target at the script's end, handed over there: %llu\n",
+                (unsigned long long)end_target_ints);
         fprintf(report, "frame ends a few instructions past a hand-over, the core held until it stood there: %llu\n",
                 (unsigned long long)frame_holds);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",

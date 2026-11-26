@@ -113,8 +113,8 @@ static void load_exit_shim(uint8_t value)
  * with 0, six stores, zGameSubMode counted up. A and X read back from the backup call reach no
  * branch that a result other than 0 makes differ.
  * WAITS: no.
- * Entry: X the doubled sub-mode, Y kept. Exit: A, X and Y 0, N and Z from the new sub-mode, C and V
- * as ex_scrsiz leaves them.
+ * Entry: X the doubled sub-mode, Y kept. Exit: A $10 (the raster line it loaded last), X and Y 0, N and Z from
+ * the new sub-mode, C and V as ex_scrsiz leaves them.
  * not checked: the draft only ran a backup read that returns 0; the other results are untraced.
  */
 Exit TitleSetUp(uint8_t kept_x, uint8_t kept_y)
@@ -147,6 +147,7 @@ Exit TitleSetUp(uint8_t kept_x, uint8_t kept_y)
     WR8(ZP->raster_arg, RASTER_LINE);
     wr8(F3E21, 0);
     wr8(F3E29, 0);
+    exit.a = RASTER_LINE;
     exit.nz = next_step();
     card_flags(&exit, card);
     return exit;

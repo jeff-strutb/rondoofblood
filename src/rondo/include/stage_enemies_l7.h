@@ -153,7 +153,7 @@ typedef struct {
     FiveResult five;
 } GuardArm;
 
-Ended HitDamage(uint8_t slot);
+ObjArm HitDamage(uint8_t slot);
 SoundEnd ScoreForKind(uint8_t slot, uint8_t y);
 Ended BlendStockRows(uint8_t slot, uint8_t y);
 SoundEnd GiveExtraLife(uint8_t slot, uint8_t y);
@@ -219,7 +219,13 @@ static inline void abi_chain(const ExitChain *c)
         }
     }
 }
-ExitChain ObjectHit(uint8_t slot, uint8_t y);
+/* ObjectHit's arm and the score's exit (ScoreForKind is not converted yet). */
+typedef struct {
+    ObjArm arm;
+    SoundEnd score;
+} HitArm;
+HitArm ObjectHit(uint8_t slot, uint8_t y);
+void object_hit_exit_shim(HitArm h);
 ExitChain BounceSparkOffWalls(uint8_t slot, bool carry_in);
 
 /* Whether an object is inside a window, and what the routine left. */

@@ -533,7 +533,8 @@ static Ended l8_clear_four_exit_shim(L8Arm r)
     if (r.arm == CF_OTHER_SCREEN) {
         return ended_compare(r.second, 2);
     }
-    e = ended_load(3);
+    e = ended_compare(r.second, 2);
+    e = then(e, ended_load(3));
     e = then(e, ended_with_y(ended_nz(0x43), 0x43));
     e = then(e, ended_load(0xFF));
     return then(e, ended_nz(r.third));

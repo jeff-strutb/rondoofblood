@@ -1,4 +1,5 @@
-/* The rest of lot L8's overlay at sectors 0F6C and 0F6D: the tile read vector, the side probe and a walking object's step. */
+/* The rest of lot L8's overlay at sectors 0F6C and 0F6D: the tile read vector, the side probe and a walking object's step. The
+ * converted bodies return the arm they ended on and the values behind it; their exit shims build A, Y and the flags. */
 #include "machine.h"
 #include "ram.h"
 #include "access.h"
@@ -10,10 +11,6 @@
 #include "stage_enemies_l8.h"
 
 void abi_ProbeTileRead9991(void);
-Ended StepListByNumberTableC585(uint8_t slot, uint8_t y_entry);
-Ended ToggleFacing(uint8_t slot);
-Ended HurtOnceThenAnswerYes(uint8_t slot, uint8_t y_entry);
-Ended StartLeapWhenHurtAnswerYes(uint8_t slot, uint8_t y_entry);
 
 static Ended then(Ended e, Ended next)
 {
@@ -36,6 +33,11 @@ typedef struct {
     bool x_changed;
     uint8_t x;
 } SideReadEnd;
+
+/* ProbeTileSideBit1: the tile read's exit and the X it left. */
+typedef struct {
+    SideReadEnd read;
+} L8SideBitArm;
 
 /* The exit of a tile read: A, Y and the flags as terrain_read_exit_shim puts them, and X when the read ran original code. */
 static SideReadEnd ended_of_tile_read_shim(TileRead read)
@@ -77,12 +79,11 @@ enum { SIDE_OFFSETS = 0xC357, SIDE_PROBE_RETURN = 0xC34F, SIDE_FEET = 0x16 };
  * HOW: The side of the point comes from the sign of the X speed (two offsets at $C357), $16 below the object's Y.
  * The tile read is the vector at $8006.
  * WAITS: no.
- * Entry: X object. Exit: A the attribute's bit 1, N and Z from it, C that bit, Y and V as the tile read left them.
+ * Entry: X object. Exit: A the attribute's bit 1, N and Z from it, C that bit, Y and V as the tile read left them (l8_side_bit1_exit_shim).
  */
-SideReadEnd ProbeTileSideBit1(uint8_t slot)
+L8SideBitArm ProbeTileSideBit1(uint8_t slot)
 {
-    SideReadEnd read;
-    Ended e;
+    L8SideBitArm r;
     Sum low;
     Sum high;
     Sum row_low;
@@ -114,23 +115,65 @@ SideReadEnd ProbeTileSideBit1(uint8_t slot)
     row_high = add_bytes(0, m, row_low.carry);
     WR8(ZP->temp03, row_high.value);
     jsr_push(SIDE_PROBE_RETURN);
-    read = StageTileReadVector9991();
+    r.read = StageTileReadVector9991();
     jsr_pop();
-    e = read.e;
-    a = (uint8_t)(e.a & 0x02);
-    read.e = then(e, ended_with_carry(ended_load(a), a != 0));
+    (void)c;
+    return r;
+}
+
+/* What ProbeTileSideBit1 leaves: the tile read's exit, then A its bit 1 and C that bit; X as the read left it. */
+SideReadEnd l8_side_bit1_exit_shim(L8SideBitArm r)
+{
+    SideReadEnd read = r.read;
+    uint8_t a = (uint8_t)(read.e.a & 0x02);
+
+    read.e = then(read.e, ended_with_carry(ended_load(a), a != 0));
     return read;
 }
 
 void abi_ProbeTileSideBit1(void)
 {
-    SideReadEnd r = ProbeTileSideBit1(cpu.x);
+    SideReadEnd r = l8_side_bit1_exit_shim(ProbeTileSideBit1(cpu.x));
 
     abi_ended(r.e);
     if (r.x_changed) {
         cpu.x = r.x;
     }
 }
+
+/* WalkAndTurnAtEdge: the two answers, the step, the move, the distance and whether it was near, the player's Y, what the other code left, the probe, the facing and the reversed speed. */
+enum { ST25M_WALK_LEAPT, ST25M_WALK_HURT, ST25M_WALK_OTHER, ST25M_WALK_NO_EDGE, ST25M_WALK_TURNED };
+typedef struct {
+    int arm;
+    L8LeapYesArm leap;
+    L8HurtOnceArm hurt;
+    L8NumberStep step;
+    AxisMove move;
+    PlayerDistance distance;
+    bool near;
+    uint8_t height, facing;
+    Ended other;
+    L8SideBitArm probe;
+    Sum negated;
+} L8WalkArm;
+
+/* DroppingPieceStep: the state, the record, the kind, its speed and index and the last speed byte of state 0; the timer of the later
+ * states; in state 1 the step, the flashing piece, the moves, the Y speed, the tile read and its bit, the lift, the slot search, the
+ * start and its feet, and the new state. */
+enum { ST25M_DROP_LOADED, ST25M_DROP_COUNTING, ST25M_DROP_RISING, ST25M_DROP_OFF_FLOOR, ST25M_DROP_LANDED };
+typedef struct {
+    int arm;
+    uint8_t state, kind, speed, index, last, timer, bit, placed, count;
+    L8Record record;
+    AxisMove move1, move2;
+    L8NumberStep step;
+    L8FlashPieceArm flash;
+    SideReadEnd read;
+    Sum lift, feet;
+    L8Slot found;
+} L8DropPieceArm;
+
+static Ended l8_walk_so_far_shim(L8WalkArm r);
 
 /* The code the walking step runs on at BCD3 when it is on the ground tile and near: it has no C. */
 static Ended walk_other_shim(Ended e, uint8_t y)
@@ -153,76 +196,108 @@ static Ended walk_other_shim(Ended e, uint8_t y)
  * HOW: StartLeapWhenHurtAnswerYes, HurtOnceThenAnswerYes, StepListByNumberTableC585, ApplyVelocityX, DistanceXToPlayer, ProbeTileSideBit1,
  * and for the turn ToggleFacing and a tail jump into NegateVelocityX.
  * WAITS: no.
- * Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran. The arms that end at the first two answers
+ * Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran (l8_walk_exit_shim). The arms that end at the first two answers
  * and the near arm ran in no script.
  */
-Ended WalkAndTurnAtEdge(uint8_t slot, uint8_t y_entry)
+L8WalkArm WalkAndTurnAtEdge(uint8_t slot, uint8_t y_entry)
 {
-    Ended e;
-    PlayerDistance distance;
-    AxisMove move;
     uint8_t y = y_entry;
-    uint8_t height;
-    SideReadEnd probe;
+    L8WalkArm r = { 0 };
 
     jsr_push(0xBCA7);
-    e = StartLeapWhenHurtAnswerYes(slot, y);
+    r.leap = StartLeapWhenHurtAnswerYes(slot, y);
     jsr_pop();
-    if (e.c) {
-        return e;
+    if (r.leap.yes) {
+        r.arm = ST25M_WALK_LEAPT;
+        return r;
     }
-    y = ended_y_or(e, y);
     jsr_push(0xBCAD);
-    e = then(e, HurtOnceThenAnswerYes(slot, y));
+    r.hurt = HurtOnceThenAnswerYes(slot, y);
     jsr_pop();
-    if (e.c) {
-        return e;
+    if (r.hurt.yes) {
+        r.arm = ST25M_WALK_HURT;
+        return r;
     }
-    y = ended_y_or(e, y);
     jsr_push(0xBCB3);
-    e = then(e, StepListByNumberTableC585(slot, y));
+    r.step = StepListByNumberTableC585(slot, y);
     jsr_pop();
-    y = ended_y_or(e, y);
+    y = r.step.step != FRAME_HELD ? r.step.y : r.step.index;
     jsr_push(0xBCB6);
-    move = ApplyVelocityX(slot);
+    r.move = ApplyVelocityX(slot);
     jsr_pop();
-    e = then(e, ended_of_axis_move(move));
     jsr_push(0xBCB9);
-    distance = DistanceXToPlayer(slot);
+    r.distance = DistanceXToPlayer(slot);
     jsr_pop();
-    e = then(e, ended_of_distance(distance));
-    e = then(e, ended_compare(distance.distance, 0x40));
-    if (distance.distance < 0x40) {
-        height = RD8(OBJ->y_lo[0]);
-        e = then(e, ended_compare(height, 0x9A));
-        if (height != 0x9A) {
-            return walk_other_shim(e, y);
+    r.near = r.distance.distance < 0x40;
+    if (r.near) {
+        r.height = RD8(OBJ->y_lo[0]);
+        if (r.height != 0x9A) {
+            r.other = walk_other_shim(l8_walk_so_far_shim(r), y);
+            r.arm = ST25M_WALK_OTHER;
+            return r;
         }
     }
     jsr_push(0xBCCA);
-    probe = ProbeTileSideBit1(slot);
+    r.probe = ProbeTileSideBit1(slot);
     jsr_pop();
-    e = then(e, probe.e);
-    if (probe.x_changed) {
-        slot = probe.x;
+    if (r.probe.read.x_changed) {
+        slot = r.probe.read.x;
     }
-    if (!e.c) {
-        return e;
+    if ((r.probe.read.e.a & 0x02) == 0) {
+        r.arm = ST25M_WALK_NO_EDGE;
+        return r;
     }
     jsr_push(0xBCCF);
-    e = then(e, ToggleFacing(slot));
+    r.facing = ToggleFacing(slot);
     jsr_pop();
-    return then(e, ended_of_sum(NegateVelocityX(slot)));
+    r.negated = NegateVelocityX(slot);
+    r.arm = ST25M_WALK_TURNED;
+    return r;
+}
+
+/* What WalkAndTurnAtEdge leaves in A, Y and the flags, from the arm it ended on (the near arm: what the original code left). */
+static Ended l8_walk_exit_shim(L8WalkArm r)
+{
+    Ended e;
+
+    if (r.arm == ST25M_WALK_LEAPT) {
+        return l8_leap_yes_exit_shim(r.leap);
+    }
+    if (r.arm == ST25M_WALK_HURT) {
+        return then(l8_leap_yes_exit_shim(r.leap), l8_hurt_once_exit_shim(r.hurt));
+    }
+    if (r.arm == ST25M_WALK_OTHER) {
+        return r.other;
+    }
+    e = then(l8_walk_so_far_shim(r), l8_side_bit1_exit_shim(r.probe).e);
+    if (r.arm == ST25M_WALK_NO_EDGE) {
+        return e;
+    }
+    e = then(e, l8_toggle_facing_exit_shim(r.facing));
+    return then(e, ended_of_sum(r.negated));
 }
 
 void abi_WalkAndTurnAtEdge(void)
 {
-    abi_ended(WalkAndTurnAtEdge(cpu.x, cpu.y));
+    abi_ended(l8_walk_exit_shim(WalkAndTurnAtEdge(cpu.x, cpu.y)));
 }
 
-Ended StepListByNumberTable(uint8_t slot, uint8_t y_entry);
-Ended SpawnFlashingPieceWhenRising(uint8_t slot);
-Ended CountDownThenClearOnTimer(uint8_t slot);
+/* What WalkAndTurnAtEdge's instructions have left by the distance test (and the height test when near): the registers the other
+ * code at BCD3 is entered with, and the start of the later arms' exits. */
+static Ended l8_walk_so_far_shim(L8WalkArm r)
+{
+    Ended e = then(l8_leap_yes_exit_shim(r.leap), l8_hurt_once_exit_shim(r.hurt));
+
+    e = then(e, l8_number_step_c585_exit_shim(r.step));
+    e = then(e, ended_of_axis_move(r.move));
+    e = then(e, ended_of_distance(r.distance));
+    e = then(e, ended_compare(r.distance.distance, 0x40));
+    if (r.near) {
+        e = then(e, ended_compare(r.height, 0x9A));
+    }
+    return e;
+}
+
 
 enum {
     PIECE_LIFE = 0xB919, PIECE_FACING = 0xB91D, PIECE_SPEED = 0xB921, PIECE_VX = 0xB925, PIECE_VY = 0xB92D,
@@ -239,88 +314,71 @@ enum {
  * HOW: LoadObjectRecord, StepListByNumberTable, SpawnFlashingPieceWhenRising, ApplyVelocityX and Y, the tile read vector at $8006,
  * FindFreeSlotFrom30 and StartObjectAtPlace.
  * WAITS: no.
- * Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran.
+ * Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran (l8_drop_piece_exit_shim).
  */
-Ended DroppingPieceStep(uint8_t slot, uint8_t y_entry)
+L8DropPieceArm DroppingPieceStep(uint8_t slot, uint8_t y_entry)
 {
-    Ended e;
     Sum sum;
     Sum row;
-    AxisMove move;
-    SideReadEnd read;
     uint8_t a;
     uint8_t m;
     uint8_t y = y_entry;
-    uint8_t last;
-    uint8_t nz;
-    uint8_t found_slot;
-    uint8_t placed;
-    bool carry;
-    bool found;
+    L8DropPieceArm r = { 0 };
 
-    a = RD8(OBJ->state[slot]);
-    if (a == 0) {
+    r.state = RD8(OBJ->state[slot]);
+    if (r.state == 0) {
         jsr_push(0xB82C);
-        last = LoadObjectRecord(slot, &nz, &carry);
+        r.record = l8_record(slot);
         jsr_pop();
-        e = ended_of_record(last, nz, carry);
-        y = RD8(OBJ->next_kind[slot]);
-        e = then(e, ended_with_y(ended_nz(y), y));
-        a = rd8((uint16_t)(PIECE_LIFE + y));
+        r.kind = RD8(OBJ->next_kind[slot]);
+        a = rd8((uint16_t)(PIECE_LIFE + r.kind));
         WR8(OBJ->life_timer[slot], a);
-        a = rd8((uint16_t)(PIECE_FACING + y));
+        a = rd8((uint16_t)(PIECE_FACING + r.kind));
         WR8(OBJ->facing_left[slot], a);
-        a = rd8((uint16_t)(PIECE_SPEED + y));
-        WR8(OBJ->vx_hi[slot], a);
-        e = then(e, ended_load(a));
+        r.speed = rd8((uint16_t)(PIECE_SPEED + r.kind));
+        WR8(OBJ->vx_hi[slot], r.speed);
         jsr_push(0xB844);
-        move = ApplyVelocityX(slot);
+        r.move1 = ApplyVelocityX(slot);
         jsr_pop();
-        e = then(e, ended_of_axis_move(move));
-        a = y;
-        carry = (a & 0x80) != 0;
-        y = (uint8_t)(a << 1);
-        a = rd8((uint16_t)(PIECE_VX + y));
+        r.index = (uint8_t)(r.kind << 1);
+        a = rd8((uint16_t)(PIECE_VX + r.index));
         WR8(OBJ->vx_lo[slot], a);
-        a = rd8((uint16_t)(PIECE_VX + 1 + y));
+        a = rd8((uint16_t)(PIECE_VX + 1 + r.index));
         WR8(OBJ->vx_hi[slot], a);
-        a = rd8((uint16_t)(PIECE_VY + y));
+        a = rd8((uint16_t)(PIECE_VY + r.index));
         WR8(OBJ->vy_lo[slot], a);
-        a = rd8((uint16_t)(PIECE_VY + 1 + y));
-        WR8(OBJ->vy_hi[slot], a);
-        return then(e, ended_with_y(ended_with_carry(ended_load(a), carry), y));
+        r.last = rd8((uint16_t)(PIECE_VY + 1 + r.index));
+        WR8(OBJ->vy_hi[slot], r.last);
+        r.arm = ST25M_DROP_LOADED;
+        return r;
     }
-    a = (uint8_t)(a - 1);
-    if (a != 0) {
-        return then(ended_load(a), CountDownThenClearOnTimer(slot));
+    if ((uint8_t)(r.state - 1) != 0) {
+        r.timer = CountDownThenClearOnTimer(slot);
+        r.arm = ST25M_DROP_COUNTING;
+        return r;
     }
-    e = ended_load(a);
     jsr_push(0xB869);
-    e = then(e, StepListByNumberTable(slot, y));
+    r.step = StepListByNumberTable(slot, y);
     jsr_pop();
-    y = ended_y_or(e, y);
     jsr_push(0xB86C);
-    e = then(e, SpawnFlashingPieceWhenRising(slot));
+    r.flash = SpawnFlashingPieceWhenRising(slot);
     jsr_pop();
-    y = ended_y_or(e, y);
     jsr_push(0xB86F);
-    move = ApplyVelocityX(slot);
+    r.move1 = ApplyVelocityX(slot);
     jsr_pop();
-    e = then(e, ended_of_axis_move(move));
     jsr_push(0xB872);
-    move = ApplyVelocityY(slot);
+    r.move2 = ApplyVelocityY(slot);
     jsr_pop();
-    e = then(e, ended_of_axis_move(move));
     a = RD8(OBJ->vy_lo[slot]);
     sum = add_bytes(a, PIECE_FALL_STEP, false);
     WR8(OBJ->vy_lo[slot], sum.value);
     a = RD8(OBJ->vy_hi[slot]);
     sum = add_bytes(a, 0, sum.carry);
     WR8(OBJ->vy_hi[slot], sum.value);
-    a = RD8(OBJ->vy_hi[slot]);
-    e = then(e, ended_load(a));
-    if ((a & 0x80) != 0) {
-        return e;
+    r.last = RD8(OBJ->vy_hi[slot]);
+    if ((r.last & 0x80) != 0) {
+        r.arm = ST25M_DROP_RISING;
+        return r;
     }
     a = RD8(OBJ->x_lo[slot]);
     WR8(ZP->temp00, a);
@@ -333,44 +391,78 @@ Ended DroppingPieceStep(uint8_t slot, uint8_t y_entry)
     row = add_bytes(a, 0, sum.carry);
     WR8(ZP->temp03, row.value);
     jsr_push(0xB8A4);
-    read = StageTileReadVector9991();
+    r.read = StageTileReadVector9991();
     jsr_pop();
-    e = then(e, read.e);
-    if (read.x_changed) {
-        slot = read.x;
+    if (r.read.x_changed) {
+        slot = r.read.x;
     }
-    a = (uint8_t)(read.e.a & 0x01);
-    e = then(e, ended_load(a));
-    if (a == 0) {
-        return e;
+    r.bit = (uint8_t)(r.read.e.a & 0x01);
+    if (r.bit == 0) {
+        r.arm = ST25M_DROP_OFF_FLOOR;
+        return r;
     }
     a = RD8(OBJ->y_lo[slot]);
     m = RD8(ZP->temp02);
-    sum = sub_bytes(a, m, true);
-    WR8(OBJ->y_lo[slot], sum.value);
-    e = then(e, ended_of_sum(sum));
+    r.lift = sub_bytes(a, m, true);
+    WR8(OBJ->y_lo[slot], r.lift.value);
     jsr_push(0xB8B4);
-    found_slot = FindFreeSlotFrom30(&last, &found);
+    r.found = l8_free_slot30();
     jsr_pop();
-    e = then(e, ended_of_find_slot(found_slot, last, found));
-    if (found) {
+    if (r.found.found) {
         jsr_push(0xB8BB);
-        placed = StartObjectAtPlace(PIECE_TYPE, slot, found_slot);
+        r.placed = StartObjectAtPlace(PIECE_TYPE, slot, r.found.slot);
         jsr_pop();
-        e = then(e, ended_load(placed));
-        a = RD8(OBJ->y_lo[found_slot]);
-        sum = add_bytes(a, PIECE_FEET, false);
-        WR8(OBJ->y_lo[found_slot], sum.value);
-        e = then(e, ended_of_sum(sum));
+        a = RD8(OBJ->y_lo[r.found.slot]);
+        r.feet = add_bytes(a, PIECE_FEET, false);
+        WR8(OBJ->y_lo[r.found.slot], r.feet.value);
     }
     WR8(OBJ->f3510[slot], 6);
     WR8(OBJ->hitbox_on[slot], 0);
     WR8(OBJ->flash_flags[slot], PIECE_FALL_STEP);
-    a = INC8(OBJ->state[slot]);
-    return then(e, ended_nz(a));
+    r.count = INC8(OBJ->state[slot]);
+    r.arm = ST25M_DROP_LANDED;
+    return r;
+}
+
+/* What DroppingPieceStep leaves in A, Y and the flags, from the arm it ended on. */
+static Ended l8_drop_piece_exit_shim(L8DropPieceArm r)
+{
+    Ended e;
+
+    if (r.arm == ST25M_DROP_LOADED) {
+        e = l8_record_ended(r.record);
+        e = then(e, ended_with_y(ended_nz(r.kind), r.kind));
+        e = then(e, ended_load(r.speed));
+        e = then(e, ended_of_axis_move(r.move1));
+        return then(e, ended_with_y(ended_with_carry(ended_load(r.last), (r.kind & 0x80) != 0), r.index));
+    }
+    if (r.arm == ST25M_DROP_COUNTING) {
+        return then(ended_load((uint8_t)(r.state - 1)), l8_clear_on_timer_exit_shim(r.timer));
+    }
+    e = ended_load((uint8_t)(r.state - 1));
+    e = then(e, l8_number_step_exit_shim(r.step));
+    e = then(e, l8_flash_piece_exit_shim(r.flash));
+    e = then(e, ended_of_axis_move(r.move1));
+    e = then(e, ended_of_axis_move(r.move2));
+    e = then(e, ended_load(r.last));
+    if (r.arm == ST25M_DROP_RISING) {
+        return e;
+    }
+    e = then(e, r.read.e);
+    e = then(e, ended_load(r.bit));
+    if (r.arm == ST25M_DROP_OFF_FLOOR) {
+        return e;
+    }
+    e = then(e, ended_of_sum(r.lift));
+    e = then(e, l8_slot_ended(r.found));
+    if (r.found.found) {
+        e = then(e, ended_load(r.placed));
+        e = then(e, ended_of_sum(r.feet));
+    }
+    return then(e, ended_nz(r.count));
 }
 
 void abi_DroppingPieceStep(void)
 {
-    abi_ended(DroppingPieceStep(cpu.x, cpu.y));
+    abi_ended(l8_drop_piece_exit_shim(DroppingPieceStep(cpu.x, cpu.y)));
 }

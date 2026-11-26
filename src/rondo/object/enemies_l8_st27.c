@@ -285,11 +285,11 @@ Ended BossFrameRoutinesD(uint8_t slot, uint8_t y_entry)
     Jump jump, extra = { { 0 }, 0xC523, true };
 
     jsr_push(0xBB9F);
-    e = EnterState0EWhenFlagged(slot);
+    e = l8_enter_0e_exit_shim(EnterState0EWhenFlagged(slot));
     jsr_pop();
     abi_ended(e);
     jsr_push(0xBBA2);
-    sound = FlashWhenHurtThenSound(slot, y_entry);
+    sound = l8_flash_hurt_exit_shim(FlashWhenHurtThenSound(slot, y_entry));
     jsr_pop();
     abi_sound_end(sound);
     jsr_push(0xBBA4);

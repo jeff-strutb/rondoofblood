@@ -337,6 +337,32 @@ typedef struct {
 } FrameStepEnd;
 
 /*
+ * What a converted routine ended on (the 441de03 pattern): the arm, one enum per routine naming the
+ * path its last instructions took; the values that path read or made; and the typed results of the
+ * callees it ended after. A body fills it and returns it; it holds no register or flag. The
+ * routine's own *_exit_shim, the one place that meets the assembly's convention, builds the
+ * registers and flags from it with the ended_ builders above, and its abi_ wrapper applies them.
+ */
+typedef struct {
+    int arm;
+    uint8_t first, second, third, fourth, fifth;
+    uint8_t y;
+    bool flag, other;
+    FrameStep step;
+    AxisMove move;
+    RandomResult random;
+    SideResult side;
+    PlayerDistance distance;
+    AngleExit angle;
+    Sum sum;
+    bool sounded;
+    uint8_t command;
+    CommandCall call;
+    bool screen_called;
+    SoundOnScreen screen;
+} ObjArm;
+
+/*
  * Bodies several stage files share (one C body for every near copy). Each takes the object's
  * slot and says how it ended.
  */

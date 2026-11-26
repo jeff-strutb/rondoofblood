@@ -65,12 +65,6 @@ void call_orig(uint16_t ret, uint16_t addr);
  * pops the frame at ret. Nothing is pushed here; the frame is dropped on return, as call_orig does.
  */
 void call_orig_framed(uint16_t ret, uint16_t addr);
-/*
- * call_return_point(): the C is about to make the RTS of a call it made (jsr_pop). The original took an interrupt that came
- * before that RTS at the RTS, with the frame still on the stack: the lockstep delivers it here, before S is popped. It is
- * not an access of the original and nothing else; a port without a checker defines it empty.
- */
-void call_return_point(void);
 void cli(void);                           /* CLI: interrupts on */
 /*
  * resident_at(run): which routine is loaded at a run address. Returns the disc location (DISC(sector, offset)) of the
@@ -115,7 +109,6 @@ static inline void jsr_push(uint16_t ret)
 
 static inline void jsr_pop(void)
 {
-    call_return_point();
     cpu.s = (uint8_t)(cpu.s + 2);
 }
 
@@ -134,7 +127,6 @@ static inline int call_frame(uint16_t ret, void (*abi)(void))
     abi();
     if (cpu.s != expect)
         return 1;
-    call_return_point();
     cpu.s = (uint8_t)(cpu.s + 2);
     return 0;
 }

@@ -168,7 +168,7 @@ static void clear_owed(Trk *t, uint8_t bit)
     uint8_t value = rd8(ZP_CD_OWED);
 
     wr8(ZP_CD_OWED, (uint8_t)(value & ~bit));
-    t_mask(t, bit, value);
+    t_mask(t, bit, value, false);
 }
 
 /*
@@ -199,7 +199,7 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
     wr8(ZP_CD_OWED, t.a);
     if ((rd8(ZP_CD_OWED) & OWED_DONE) != 0) {
         held = TRB8(CCDU->irq_control, OWED_DONE);
-        t_mask(&t, OWED_DONE, held);
+        t_mask(&t, OWED_DONE, held, false);
         clear_owed(&t, OWED_DONE);
         cli();
         value = rd8(CardAdpcmSectorsLeft);
@@ -257,13 +257,13 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
                 t_take(&t, cd_send_command_start());
                 jsr_pop();
                 held = TSB8(CCDU->irq_control, IRQ_PLAY_BITS);
-                t_mask(&t, IRQ_PLAY_BITS, held);
+                t_mask(&t, IRQ_PLAY_BITS, held, true);
             }
         }
     }
     if ((rd8(ZP_CD_OWED) & OWED_DMA) != 0) {
         held = TRB8(CCDU->irq_control, OWED_DMA);
-        t_mask(&t, OWED_DMA, held);
+        t_mask(&t, OWED_DMA, held, false);
         clear_owed(&t, OWED_DMA);
         cli();
         t_a(&t, ADPCM_DMA_START);
@@ -271,7 +271,7 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
     }
     if ((rd8(ZP_CD_OWED) & OWED_DATA) != 0) {
         held = TRB8(CCDU->irq_control, OWED_DATA);
-        t_mask(&t, OWED_DATA, held);
+        t_mask(&t, OWED_DATA, held, false);
         clear_owed(&t, OWED_DATA);
         cli();
         value = RD8(CRAM->cd_busy);
@@ -288,13 +288,13 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
             jsr_pop();
         }
         held = TSB8(CCDU->irq_control, CD_ACK);
-        t_mask(&t, CD_ACK, held);
+        t_mask(&t, CD_ACK, held, true);
         do {
             value = RD8(CCDU->bus_status);
             t_tst(&t, CD_REQUEST, value);
         } while ((value & CD_REQUEST) != 0);
         held = TRB8(CCDU->irq_control, CD_ACK);
-        t_mask(&t, CD_ACK, held);
+        t_mask(&t, CD_ACK, held, false);
         do {
             value = RD8(CCDU->bus_status);
             t_a(&t, (uint8_t)(value & PHASE_BITS));
@@ -303,13 +303,13 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
         value = RD8(CCDU->data);
         t_a(&t, value);
         held = TSB8(CCDU->irq_control, CD_ACK);
-        t_mask(&t, CD_ACK, held);
+        t_mask(&t, CD_ACK, held, true);
         do {
             value = RD8(CCDU->bus_status);
             t_tst(&t, CD_REQUEST, value);
         } while ((value & CD_REQUEST) != 0);
         held = TRB8(CCDU->irq_control, CD_ACK);
-        t_mask(&t, CD_ACK, held);
+        t_mask(&t, CD_ACK, held, false);
         do {
             value = RD8(CCDU->bus_status);
             t_tst(&t, CD_BUSY, value);
@@ -323,12 +323,12 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
             jsr_pop();
             WR8(CRAM->adpcm_step, 0);
             held = TSB8(CCDU->irq_control, OWED_DONE);
-            t_mask(&t, OWED_DONE, held);
+            t_mask(&t, OWED_DONE, held, true);
         }
     }
     if ((rd8(ZP_CD_OWED) & OWED_SUBCODE) != 0) {
         held = TRB8(CCDU->irq_control, OWED_SUBCODE);
-        t_mask(&t, OWED_SUBCODE, held);
+        t_mask(&t, OWED_SUBCODE, held, false);
         clear_owed(&t, OWED_SUBCODE);
         cli();
         jsr_push(0xE83D);
@@ -338,14 +338,14 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
         t.c = false;
         t.c_set = true;
         held = TSB8(CCDU->irq_control, OWED_SUBCODE);
-        t_mask(&t, OWED_SUBCODE, held);
+        t_mask(&t, OWED_SUBCODE, held, true);
     }
     if ((rd8(ZP_CD_OWED) & OWED_ADPCM) != 0) {
         held = TRB8(CCDU->irq_control, IRQ_HALF_AND_END);
-        t_mask(&t, IRQ_HALF_AND_END, held);
+        t_mask(&t, IRQ_HALF_AND_END, held, false);
         clear_owed(&t, OWED_ADPCM);
         held = TRB8(CCDU->adpcm_control, IRQ_PLAY_BITS);
-        t_mask(&t, IRQ_PLAY_BITS, held);
+        t_mask(&t, IRQ_PLAY_BITS, held, false);
         jsr_push(0xE856);
         ad_stop_clear();
         jsr_pop();

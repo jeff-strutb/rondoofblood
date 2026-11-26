@@ -892,13 +892,20 @@ def counted_census(disc, tr, strict, relaxed, names):
             j += 1
         run_list.append((ordered[i], ordered[j] + 1))
         i = j + 1
-    for a, b in run_list:
-        if b - a >= COPY:
-            for per in (1, 2):
-                if all(buf[t] == buf[t - per] for t in range(a + per, b)):
-                    for t in range(a, b):
-                        data[t] = f"a pattern repeating every {per} byte(s)"
-                    break
+    for a, b in run_list:                     # every stretch of a run, at least COPY long, of one repeating period
+        for per in (1, 2):
+            t = a + per
+            while t < b:
+                if buf[t] != buf[t - per]:
+                    t += 1
+                    continue
+                u = t
+                while u < b and buf[u] == buf[u - per]:
+                    u += 1
+                if u - (t - per) >= COPY:
+                    for x in range(t - per, u):
+                        data.setdefault(x, f"a pattern repeating every {per} byte(s)")
+                t = u + 1
     rest = sorted(d for d in claimed if d not in data)
     keep = bytearray(USER_BYTES)              # 1: counted and still kept (traced code, census bytes not left out)
     for d in tr.code:
@@ -952,10 +959,36 @@ def counted_census(disc, tr, strict, relaxed, names):
         for t in range(a, b):
             keep[t] = 0
         dups.append((a, n, found[0], found[1]))
+    # a copy of a filed routine's whole span, decoded from a census instruction start: as the traced floor counts
+    # whole routines once. At least COPY bytes, or at least 8 at the same offset in its 8 KB bank (so the same run
+    # address, with the same absolute operands); the filed copy counted and kept when the copy is decided
+    starts = strict.starts | relaxed.starts
+    spans = {}
+    routines = asmfile.all_routines()
+    for i, r in enumerate(routines):
+        nxt = routines[i + 1]["disc"] if i + 1 < len(routines) else len(buf)
+        n = sum(ins[1] for ins in asmfile.span(buf, r, nxt))
+        if n >= 8:
+            spans.setdefault(bytes(buf[r["disc"]:r["disc"] + 8]), []).append((r["disc"], n, r["name"]))
+    rcopies = []
+    for d in sorted(starts):
+        if not keep[d] or d not in claimed or d in data:
+            continue
+        for r0, n, name in spans.get(bytes(buf[d:d + 8]), ()):
+            if r0 == d or d < r0 + n and r0 < d + n or (n < COPY and (d - r0) % BANK):
+                continue
+            if buf[d:d + n] == buf[r0:r0 + n] and all(keep[d + t] and (d + t) in claimed for t in range(n)) \
+                    and all(keep[r0 + t] for t in range(n)):
+                for t in range(n):
+                    keep[d + t] = 0
+                rcopies.append((d, n, r0, "routine " + name))
+                break
+    dups += rcopies
     src_of = {a + t: kind for a, n, s0, kind in dups for t in range(n)}
     out = {"claimed": len(claimed), "strict": sum(1 for d in claimed if d in strict.found),
            "proven_data": len(data), "duplicates": len(src_of), "duplicate_runs": len(dups),
-           "duplicates_of_traced": sum(1 for v in src_of.values() if v == "traced")}
+           "duplicates_of_traced": sum(1 for v in src_of.values() if v == "traced"),
+           "duplicates_of_a_filed_routine": sum(1 for v in src_of.values() if v.startswith("routine "))}
     for key, why in (("sunk", "sunk"), ("read_in_place", "read in place"),
                      ("decode_contradicted", "decode contradicted by a trace"),
                      ("pattern_1", "a pattern repeating every 1 byte(s)"),
@@ -1088,8 +1121,10 @@ def main():
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["start", "length", "copy_of", "proof"])
         for a, n, src, kind in dups:
-            w.writerow([f"{a:X}", n, f"{src:X}", f"each byte in a {COPY}-byte window equal to " +
-                        ("traced code" if kind == "traced" else "census bytes earlier on the disc, kept")])
+            w.writerow([f"{a:X}", n, f"{src:X}", "the whole run equal byte for byte to " +
+                        ("a kept copy a script ran some of" if kind == "traced" else
+                         "a kept copy earlier on the disc" if kind == "census" else
+                         f"the whole span of filed {kind}, decoded from a census instruction start")])
     print("counted census:", ", ".join(f"{k} {v}" for k, v in out.items()))
     return 0
 

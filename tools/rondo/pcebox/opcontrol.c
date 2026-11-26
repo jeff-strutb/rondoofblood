@@ -103,6 +103,7 @@ void cli(void) { cpu.p &= (uint8_t)~P_I; }
 void tai(uint16_t s, uint16_t d, uint16_t n) { (void)s; (void)d; (void)n; }
 void call_original(uint16_t a) { (void)a; }
 void call_orig(uint16_t r, uint16_t a) { (void)r; (void)a; }
+void call_orig_framed(uint16_t r, uint16_t a) { (void)r; (void)a; }
 void wait_interrupt(void) {}
 void untraced(uint16_t a) { (void)a; }
 

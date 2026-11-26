@@ -464,6 +464,20 @@ void call_orig(uint16_t ret, uint16_t target)
     cpu.s = (uint8_t)(cpu.s + 2);
 }
 
+/* As call_orig, the frame having been pushed by the C before: nothing is pushed here. */
+void call_orig_framed(uint16_t ret, uint16_t target)
+{
+    uint8_t expect = cpu.s;
+
+    (void)ret;
+    enter(target, 0);
+    if (cpu.s != expect) {
+        printf("FRAME DROPPED\n");
+        return;
+    }
+    cpu.s = (uint8_t)(cpu.s + 2);
+}
+
 void untraced(uint16_t addr)
 {
     printf("UNTRACED %04X\n", addr);

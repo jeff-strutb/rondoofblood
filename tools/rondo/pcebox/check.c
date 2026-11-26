@@ -56,6 +56,8 @@ typedef struct {
 
 extern const Tag rondo_tags[];
 extern const unsigned rondo_tag_count;
+extern const unsigned rondo_ram_calls[];
+extern const unsigned rondo_ram_call_count;
 
 typedef struct { uint8_t a, x, y, s, p; uint16_t pc; } Regs;
 
@@ -249,7 +251,7 @@ static int at_eof;
 static FILE *in;
 
 /* Frames the hybrid has read ahead of its own: the record's hashes. */
-static struct { uint64_t ram, pic; } *fq;
+static struct { uint64_t ram, pic, when; uint16_t pc; uint8_t s; } *fq;
 static uint64_t fq_head, fq_tail, fq_cap;
 
 static void store_push(const Ev *e)
@@ -300,6 +302,9 @@ static int fetch_one(void)
         }
         fq[fq_tail].ram = e.clock;
         fq[fq_tail].pic = e.hash2;
+        fq[fq_tail].pc = e.pc;
+        fq[fq_tail].s = e.s;
+        memcpy(&fq[fq_tail].when, e.mpr, 8);
         fq_tail++;
     }
     store_push(&e);
@@ -539,6 +544,38 @@ static void apply_pokes(uint64_t from, uint64_t to)
  * no such access before a barrier. Interrupts passed on the way are delivered before it returns.
  * A match that is not the next counted event is a MOVED defect; none at all is EXTRA.
  */
+/* A call (JSR) into RAM code with no disc origin (the traces' provenance: rondo_ram_calls, from edges.csv) that comes back
+ * to the routine that made it: its accesses are that routine's own, to be matched against its C, not a callee's. */
+static int ram_call_phys(uint32_t phys)
+{
+    for (unsigned i = 0; i < rondo_ram_call_count; i++)
+        if (rondo_ram_calls[i] == phys)
+            return 1;
+    return 0;
+}
+
+static int ram_call_returns(Span *s, uint64_t j, const Ev *call)
+{
+    uint32_t phys;
+    int nest = s->nest;
+
+    if (mode == MODE_A5)
+        phys = a5_phys(call->pc);
+    else
+        phys = canon(((uint32_t)chk_mpr(call->pc >> 13) << 13) | (call->pc & 0x1FFF));
+    if (!ram_call_phys(phys))
+        return 0;
+    for (uint64_t k = j + 1; k < j + 200000; k++) {
+        Ev *x = sev(s, k, &nest);
+
+        if (!x)
+            return 0;
+        if (x->type == EV_RET && x->s == (uint8_t)(call->s + 2))
+            return 1;
+    }
+    return 0;
+}
+
 static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8_t speed)
 {
     uint64_t j = s->cur;
@@ -591,6 +628,7 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
         if (e->type == EV_CALL && e->kind == K_JSR && tag_pick(e->pc) < 0 && !hw) {
             /* The original called code the C has not: the C must say so (call_original) first. */
             static uint64_t last_j = UINT64_MAX;
+            int passes = !getenv("RONDO_NO_RAMCALL") && ram_call_returns(s, j, e);     /* the switch is for comparing verdicts with and without the rule */
 
             if (getenv("RONDO_DIAG_UNTAGGED") && mode == MODE_A5 && j != last_j) {
                 uint32_t tp = a5_phys(e->pc);
@@ -604,9 +642,11 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
                     hit = memmem(user, 20785152, w, 16);
                 }
                 last_j = j;
-                fprintf(stderr, "UNTAGGEDCALL routine %s target %04X phys %06X %s frame %lu\n", rondo_tags[s->tag].name, e->pc, tp,
-                        !page ? "hw" : hit ? "disc" : "nodisc", cur_frame);
+                fprintf(stderr, "UNTAGGEDCALL routine %s target %04X phys %06X %s frame %lu %s\n", rondo_tags[s->tag].name, e->pc, tp,
+                        !page ? "hw" : hit ? "disc" : "nodisc", cur_frame, passes ? "passed" : "kept");
             }
+            if (passes)
+                continue;      /* the stub's accesses are this routine's own: matched against the C's */
             break;
         }
         if (!is_counted(e))
@@ -884,6 +924,8 @@ static int *cur_fsn;
 static uint64_t hybrid_clock_now(void) { return chk_ts_abs(); }
 
 /* Brings the hybrid's clock to the original's at an access of hardware. */
+static const char *pace_site = "";
+
 static void pace_to(uint64_t want)
 {
     uint64_t now = hybrid_clock_now();
@@ -892,14 +934,13 @@ static void pace_to(uint64_t want)
         uint64_t d = want - now;
 
         chk_charge((int)(d > 0x7FFFFFFF ? 0x7FFFFFFF : d));
+    } else if (want < now && getenv("RONDO_DIAG_AHEAD")) {
+        /* The core is ahead of the record: the time cannot be given back. This is where a lead shows first. */
+        fprintf(stderr, "AHEAD frame %lu %s: the core is %llu clocks past the record's %llu\n", cur_frame, pace_site,
+                (unsigned long long)(now - want), (unsigned long long)want);
     }
 }
 
-/* The time a hardware READ happened at, for pacing the core to it: the record stamps a read after the core's handler ran
- * (the read hook), and a VDC or VCE access (the I/O page's first two 1K ranges) steals a cycle BEFORE its handler runs
- * (pce.cpp IORead), so the handler saw the state one cycle before the stamp. A read paced to the stamp and then made would be
- * one cycle late: the status flag it reads can already be set. A write is stamped in the pre hook, before the steal
- * (check_wr_pre), so it is paced to its stamp as it is. */
 static void pace_to_access(uint32_t phys, uint64_t stamp)
 {
     uint32_t off = phys & 0x1FFF;
@@ -953,6 +994,7 @@ static void hy_int_pass(Span *s, uint64_t i, uint64_t r)
         }
     }
     stats[s->tag].ints++;
+    pace_site = "interrupt (C)";
     pace_to(ev.clock);
     /* The interrupt's own eight cycles (seven, and the one that samples the next), which the core spends before the
      * handler's first instruction: 3 master clocks a cycle at the fast clock, 12 at the slow. */
@@ -961,6 +1003,21 @@ static void hy_int_pass(Span *s, uint64_t i, uint64_t r)
         mpr[k] = (uint8_t)chk_mpr(k);
     if (memcmp(mpr, ev.mpr, 8) || chk_get_speed() != ev.speed)
         defect(D_INT, "at the interrupt the MPRs or the CPU clock differ from the original's");
+    if (cpu.s != ev.s && getenv("RONDO_DIAG_CTX")) {
+        Ev *last = s->cur > s->start ? evp(s->cur - 1) : NULL;
+
+        fprintf(stderr, "INTPASS frame %lu in %s: INT event %llu at PC %04X S%02X, the C's S%02X; the C's last placed access (event %llu) type %d addr %06X\n",
+                cur_frame, rondo_tags[s->tag].name, (unsigned long long)i, ev.pc, ev.s, cpu.s, (unsigned long long)(s->cur - 1),
+                last ? last->type : -1, last ? last->addr : 0u);
+        for (uint64_t k = i; k < i + 13; k++) {
+            Ev *x = evp(k);
+
+            if (!x)
+                break;
+            fprintf(stderr, "  INTPASS +%llu type %d kind %d addr %06X pc %04X s %02X val %02X\n", (unsigned long long)(k - i), x->type, x->kind,
+                    x->addr, x->pc, x->s, x->val);
+        }
+    }
     if (cpu.s != ev.s)
         defect(D_STACK, "at the interrupt S is %02X, the original's %02X", cpu.s, ev.s);
     /* The interrupt's own pushes on the live stack, as the CPU makes them. */
@@ -1067,6 +1124,7 @@ uint8_t rd8(uint16_t addr)
         uint64_t before;
 
         if (e && !is_ram(p))
+            pace_site = "hardware read";
             pace_to_access(p, e->clock);
         before = hybrid_clock_now();
         v = chk_bus_rd(addr);
@@ -1123,8 +1181,10 @@ void wr8(uint16_t addr, uint8_t value)
         }
         j = place(sp, is_ram(p) ? EV_W : EV_HWW, p, NULL, 0);
         e = j >= 0 ? evp((uint64_t)j) : NULL;
-        if (e && !is_ram(p))
+        if (e && !is_ram(p)) {
+            pace_site = "hardware write";
             pace_to(e->clock);
+        }
         if (e && e->val != value) {
             char b[96];
 
@@ -1167,8 +1227,10 @@ static void st_reg(unsigned which, uint32_t phys, uint8_t value)
     Ev *e = j >= 0 ? evp((uint64_t)j) : NULL;
 
     if (mode == MODE_HYBRID) {
-        if (e)
+        if (e) {
+            pace_site = "st0/st1/st2";
             pace_to(e->clock);
+        }
         if (e && e->val != value)
             defect(D_VALUE, "C wrote hardware %06X with %02X, the original %02X", phys, value, e->val);
         chk_bus_st(which, value);
@@ -1535,6 +1597,7 @@ static void original_at(uint16_t ret, uint16_t addr)
             Ctx *c = top;
 
             stats[span->tag].originals++;
+            pace_site = "tail";
             pace_to(ec.clock);
             chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, cpu.p, addr);
             prev_op = ec.kind == K_JMP ? 0x4C : 0x20;
@@ -1576,6 +1639,7 @@ static void original_at(uint16_t ret, uint16_t addr)
         uint8_t s0 = cpu.s;
         uint16_t back = ret;
 
+        pace_site = "call";
         pace_to(ec.clock);
         if (!ret) {
             /* No frame was stated: the code needs a return address on the stack all the same. */
@@ -1709,9 +1773,10 @@ void hold_prepare(Span *s, const Ev *closing)
      * clock of the last access the C paced to (the instructions the C ran since took no time). From there the original's
      * own timing takes the core to what comes next (an interrupt is taken where the original took it). */
     if (closing->pc == rondo_pc) {
-        if (closing->clock >= hybrid_clock_now())
+        if (closing->clock >= hybrid_clock_now()) {
+            pace_site = "left hand-over";
             pace_to(closing->clock);
-        else
+        } else
             defect(D_INT, "at the hand-over at %04X the core's clock is %llu clocks past the original's", rondo_pc,
                    (unsigned long long)(hybrid_clock_now() - closing->clock));
     }
@@ -1743,6 +1808,12 @@ void leave_original(uint16_t addr)
 void call_original(uint16_t addr)
 {
     original_at(0, addr);
+}
+
+void call_orig_framed(uint16_t ret, uint16_t addr)
+{
+    original_at(ret, addr);
+    cpu.s = (uint8_t)(cpu.s + 2);
 }
 
 void call_orig(uint16_t ret, uint16_t addr)
@@ -2667,6 +2738,9 @@ static int hy_finish(Ctx *c)
                    cpu.x, cpu.y, p, close->a, close->x, close->y, close->p);
         blame_tag = -1;
         owed = (int64_t)close->clock - (int64_t)hybrid_clock_now();
+        if (owed < 0 && getenv("RONDO_DIAG_AHEAD"))
+            fprintf(stderr, "AHEAD frame %lu call end of %s: the core is %lld clocks past the record's %llu\n", cur_frame, rondo_tags[c->tag].name,
+                    (long long)-owed, (unsigned long long)close->clock);
     } else {
         owed = 1;
     }
@@ -3220,6 +3294,8 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
         e.addr = (uint32_t)frame;
         e.clock = hash;
         e.hash2 = picture;
+        e.pc = pc;
+        e.s = s;
         {
             uint64_t when = cur_clock();
 
@@ -3254,8 +3330,10 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
             if (fq[fq_head].ram != hash || fq[fq_head].pic != picture) {
                 if (hy_first_bad == (unsigned long)-1) {
                     hy_first_bad = frame;
-                    fprintf(report, "first differing frame %lu: RAM %s, picture %s\n", frame,
-                            fq[fq_head].ram != hash ? "differs" : "same", fq[fq_head].pic != picture ? "differs" : "same");
+                    fprintf(report, "first differing frame %lu: RAM %s, picture %s; the core at PC %04X S%02X clock %llu%s, the original at PC %04X S%02X clock %llu\n",
+                            frame, fq[fq_head].ram != hash ? "differs" : "same", fq[fq_head].pic != picture ? "differs" : "same",
+                            (unsigned)pc, s, (unsigned long long)hybrid_clock_now(), top && top->parked ? " (a C is parked: the registers are the hybrid's)" : "",
+                            (unsigned)fq[fq_head].pc, fq[fq_head].s, (unsigned long long)fq[fq_head].when);
                 }
             } else {
                 hy_frames_ok++;

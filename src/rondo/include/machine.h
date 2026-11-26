@@ -59,6 +59,12 @@ void tai(uint16_t src, uint16_t dst, uint16_t len);
  */
 void call_original(uint16_t addr);
 void call_orig(uint16_t ret, uint16_t addr);
+/*
+ * call_orig_framed: as call_orig, for a JSR whose frame the C has pushed already (jsr_push before a nested C body ran): the
+ * original runs at addr, whether the original reached it by that JSR or by the nested routine's JMP, and returns when its RTS
+ * pops the frame at ret. Nothing is pushed here; the frame is dropped on return, as call_orig does.
+ */
+void call_orig_framed(uint16_t ret, uint16_t addr);
 void cli(void);                           /* CLI: interrupts on */
 /*
  * resident_at(run): which routine is loaded at a run address. Returns the disc location (DISC(sector, offset)) of the

@@ -121,8 +121,17 @@ def main():
             rows.append(f'    {{ 0x{int(r["run"], 16):04X}, {r["length"]}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x0000, {int(r.get("rom") or 0)} }},')
             added += 1
         print(f"{added} drafted routines")
+    # Calls (JSR, BSR) the traces saw into RAM code with no disc origin (trace.c, edges.csv: the target's space R): the
+    # physical RAM addresses the checker lets a routine's own C make the accesses of (A5 and lockstep).
+    ram_calls = set()
+    for path in glob.glob(os.path.join(TOP, "build", "rondo", "trace", "*", "edges.csv")):
+        for r in csv.DictReader(open(path, newline="")):
+            if r["kind"] in ("20", "44") and r["to_space"] == "R":
+                ram_calls.add(int(r["to"], 16))
     out +=["const Tag rondo_tags[] = {"] + rows + ["};",
-            f"const unsigned rondo_tag_count = {len(rows)};", ""]
+            f"const unsigned rondo_tag_count = {len(rows)};", "",
+            "const unsigned rondo_ram_calls[] = { " + ", ".join("0x%06X" % a for a in sorted(ram_calls)) + (", " if ram_calls else "") + "0 };",
+            f"const unsigned rondo_ram_call_count = {len(ram_calls)};", ""]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="ascii", newline="\n") as f:
         f.write("\n".join(out))

@@ -1,48 +1,48 @@
 script,verdict,detail,source
-attract,DIVERGENT,"DIVERGENT: first differing frame 946; 6126 of 6126 frames compared, 5901 identical; access defects 103289; parked 2, kept 0, unreached 0, unopened arrivals 0",c0e271f
-attract_82,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_83,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_84,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_85,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_86,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_87,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_88,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_89,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_8A,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-attract_8E,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
+attract,DIVERGENT,"DIVERGENT: first differing frame 946; 6126 of 6126 frames compared, 5901 identical; access defects 103289; parked 2, kept 0, unreached 0, unopened arrivals 0",d89c150
+attract_82,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_83,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_84,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_85,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_86,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_87,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_88,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_89,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_8A,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+attract_8E,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
 boot,IDENTICAL,"IDENTICAL: 900 of 900 frames compared, 900 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",c0e271f
-camera_modes,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-card_unit_adpcm,MISSING,,
-card_unit_backup,DIVERGENT,"DIVERGENT: first differing frame 827; 827 of unknown frames compared, 826 identical; access defects 3; parked 2, kept 0, unreached -1, unopened arrivals 0",c0e271f
-card_unit_bank2,MISSING,,
-card_unit_cd,MISSING,,
-card_unit_cplay,MISSING,,
-card_unit_misc,MISSING,,
-card_unit_read,DIVERGENT,"DIVERGENT: first differing frame 827; 879 of unknown frames compared, 826 identical; access defects 1163; parked 2, kept 0, unreached -1, unopened arrivals 0",c0e271f
-card_unit_trans,MISSING,,
-card_unit_vdc,DIVERGENT,"DIVERGENT: first differing frame 827; 830 of unknown frames compared, 826 identical; access defects 2; parked 1, kept 0, unreached -1, unopened arrivals 0",c0e271f
-gameover,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-menu_files,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-menu_names,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-mode_screen,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-play_s0_r1,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-play_s0_r2,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-play_s0_r3,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-play_s0_r4,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-play_s0_r5,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-play_s0_r6,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-raster_effects,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-richter_hurt,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-sound_test,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_04,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_05,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_06,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_07,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_08,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_09,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_0A,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_0B,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_0C,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_0E,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-stage_10,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",c0e271f
-unit_video,DIVERGENT,"DIVERGENT: first differing frame 827; 830 of unknown frames compared, 826 identical; access defects 5; parked 1, kept 0, unreached -1, unopened arrivals 0",c0e271f
+camera_modes,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_adpcm,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_backup,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_bank2,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_cd,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_cplay,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_misc,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_read,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_trans,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+card_unit_vdc,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+gameover,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+menu_files,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+menu_names,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+mode_screen,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+play_s0_r1,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+play_s0_r2,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+play_s0_r3,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+play_s0_r4,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+play_s0_r5,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+play_s0_r6,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+raster_effects,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+richter_hurt,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+sound_test,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_04,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_05,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_06,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_07,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_08,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_09,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_0A,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_0B,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_0C,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_0E,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+stage_10,DIVERGENT,"DIVERGENT: first differing frame 946; 6350 of unknown frames compared, 6124 identical; access defects 103341; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150
+unit_video,STOPPED,"STOPPED: 826 of unknown frames compared, 826 identical; access defects 0; parked 3, kept 0, unreached -1, unopened arrivals 0",d89c150

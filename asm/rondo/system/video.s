@@ -164,7 +164,8 @@ ClearVdcControlHigh:
 ; black, the level pointer and all game RAM zero, then a blank screen.
 ; HOW: Waits for vblank with the display off, zeroes colours 0 and $100,
 ; block-fills $26D0 and $26F3 up with zero, then runs into ClearScreenState.
-; Entry: interrupts on. Exit: as ClearScreenState.
+; WAITS: yes, through WaitVblankDisplayOff, which spins until the frame interrupt sees vblank; the stack there holds this routine's return address and the JSR frame.
+; Entry: interrupts on; X and Y kept. Exit: as ClearScreenState.
 ResetGameState:
     jsr WaitVblankDisplayOff
     stz a:VCE_ADDR_LO
@@ -186,7 +187,8 @@ ResetGameState:
 ; with the blank tile.
 ; HOW: Waits for vblank with the display off, block-fills $3E00 with zero, sets
 ; the VRAM write address to 0 and writes tile $0110 $1000 times.
-; Entry: interrupts on. Exit: A 2, X 0, Y $FF, N 1, Z 0.
+; WAITS: yes, through WaitVblankDisplayOff, which spins until the frame interrupt sees vblank; the stack there holds this routine's return address and the JSR frame.
+; Entry: interrupts on; X and Y kept (the block move saves them on the stack). Exit: A 2, X 0, Y $FF, N 1, Z 0.
 ClearScreenState:
     jsr WaitVblankDisplayOff
     lda #$04

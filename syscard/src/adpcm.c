@@ -230,7 +230,7 @@ void ad_play_exit_shim(AdPlay play)
  * HOW: write_vram_word_pending, with the address register selected; then _BX = $0002.
  * WAITS: no.
  * Entry: _BX, the VDC's address register selected. Exit: A 2, N 0, Z 0. X, Y, C, V kept.
- * Not checked: no script reaches it.
+ * Checked by unit calls (card_unit_adpcm).
  */
 CardExit aim_bx_at_vram_port(void)
 {
@@ -314,7 +314,7 @@ static uint8_t mpr_mask(uint8_t mode)
  * Entry: A _DH, the ADPCM address latched. Exit, refused: A $22, N 0, Z 0, C from comparing with
  * 7. Read: A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left
  * of the last bank. V kept.
- * Not checked: no script reaches it.
+ * Not checked: the TMA and TAM stubs it writes in RAM are done in C, until the checker compares RAM-built code with its caller.
  */
 CardExit ad_read_to_banks(uint8_t mode)
 {
@@ -345,6 +345,7 @@ CardExit ad_read_to_banks(uint8_t mode)
         bool more;
 
         value = RD8(CZP->d.hi);
+        e.c = (value & 0x08) != 0;      /* the last ASL of the five that make the window's high byte */
         WR8(CZP->b.hi, (uint8_t)(value << BANK_WINDOW_SHIFT));
         WR8(CZP->b.lo, 0);
         WR8(CRAM->mpr_stub, STUB_TAM);
@@ -402,7 +403,7 @@ void abi_ad_read_to_banks(void)
  * Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit: X _CL and Y _CH, V bit 6 of the control
  * port as the latch read it. To memory: A 0, N 0, Z 1, C kept. To VRAM: the same, C 1. Banks and
  * refused: as ad_read_to_banks.
- * Not run by any script.
+ * Memory and VRAM arms by unit calls (card_unit_adpcm); banks arm not checked: the TMA and TAM stubs it writes in RAM are done in C, until the checker compares RAM-built code with its caller.
  */
 CardExit ad_read(void)
 {
@@ -484,7 +485,7 @@ void abi_ad_read(void)
  * _DH: A $22, N 0, Z 0, C 1. Written: A 0, V bit 6 of the status as the last wait read it; from
  * memory N 0, Z 1; from VRAM N 0, Z 1, C 1; from banks N and Z from the bank put back, C bit 3
  * of _DH, X the pages and Y the bytes left of the last bank.
- * Not checked: no script reaches it.
+ * Banks arm not checked: the TMA and TAM stubs it writes in RAM are done in C, until the checker compares RAM-built code with its caller. The rest by unit calls (card_unit_adpcm).
  */
 CardExit ad_write(void)
 {
@@ -572,6 +573,7 @@ CardExit ad_write(void)
     WR8(CZP->d.lo, value);
     do {
         value = RD8(CZP->d.hi);
+        r.c = (value & 0x08) != 0;      /* the last ASL of the five that make the window's high byte */
         WR8(CZP->b.hi, (uint8_t)(value << BANK_WINDOW_SHIFT));
         WR8(CZP->b.lo, 0);
         WR8(CRAM->mpr_stub, STUB_TAM);

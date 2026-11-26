@@ -1,0 +1,29 @@
+# Unit calls of the System Card's ADPCM memory entries no game path reaches: reads and writes to memory, VRAM and banks.
+# _AX count at 20F8, _BX at 20FA, _CX address at 20FC, _DH mode at 20FF.
+wait 120
+press RUN 6
+wait 700
+call ad_read_byte
+wait 2
+call aim_bx_at_vram_port M=20FA:00,20FB:10
+wait 2
+call ad_read M=20F8:04,20F9:00,20FA:00,20FB:30,20FC:00,20FD:00,20FF:00
+wait 2
+call ad_read M=20F8:04,20F9:00,20FA:00,20FB:10,20FC:00,20FD:00,20FF:FF
+wait 2
+call ad_read M=20F8:10,20F9:00,20FA:68,20FB:00,20FC:00,20FD:00,20FF:03
+wait 2
+call ad_read M=20F8:10,20F9:00,20FA:68,20FB:00,20FC:00,20FD:00,20FF:09
+wait 2
+call ad_read_to_banks A=03 M=20F8:08,20F9:00,20FA:68,20FB:00
+wait 2
+call ad_write M=20F8:04,20F9:00,20FA:00,20FB:30,20FC:00,20FD:00,20FF:00
+wait 2
+call ad_write M=20F8:04,20F9:00,20FA:00,20FB:10,20FC:00,20FD:00,20FF:FF
+wait 2
+call ad_write M=20F8:10,20F9:00,20FA:68,20FB:00,20FC:10,20FD:00,20FF:03
+wait 2
+call ad_write M=20F8:10,20F9:00,20FA:68,20FB:00,20FC:FF,20FD:FF,20FF:09
+wait 2
+call ad_write M=20F8:04,20F9:00,20FA:00,20FB:30,20FC:FF,20FD:FF,20FF:00
+wait 30

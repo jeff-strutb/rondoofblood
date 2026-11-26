@@ -1388,19 +1388,23 @@ void abi_SoundSetFrequency(void)
     frequency_exit_shim(SoundSetFrequency(cpu.a, cpu.x, note), note);
 }
 
-/* The RAM block-move stub the driver builds (a TIN and an RTS at $22E7), which no C stands for: run as the original. */
-static void block_move_stub_shim(uint16_t ret, uint8_t a, uint8_t x, uint8_t y, Sum last)
+/*
+ * The RAM block-move stub the driver builds ($22E7: TIN, source, destination, length, RTS), run as
+ * the machine runs it: the instruction pushes Y, A and X, copies each byte from the incrementing
+ * source to the fixed destination, and pulls X, A and Y; the RTS returns.
+ */
+static void block_move_tin(uint8_t a, uint8_t x, uint8_t y, uint16_t source, uint16_t dest, uint16_t length)
 {
-    Cpu entry = cpu;      /* the typed caller's wrapper reads its own registers from cpu: give them back */
+    uint16_t i;
 
-    abi_nz(a);
-    abi_flag(P_C, last.carry);
-    abi_flag(P_V, last.overflow);
-    cpu.a = a;
-    cpu.x = x;
-    cpu.y = y;
-    call_orig(ret, BlockMoveStub);
-    cpu = entry;
+    push8(y);
+    push8(a);
+    push8(x);
+    for (i = 0; i < length; i++)
+        wr8(dest, rd8((uint16_t)(source + i)));
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
 }
 
 /*
@@ -1410,13 +1414,10 @@ static void block_move_stub_shim(uint16_t ret, uint8_t a, uint8_t x, uint8_t y, 
  * reset, the 32 samples written. $FF loads none, and channels 4 and 5 are left alone while an
  * effect plays on them.
  * HOW: SoundWaveAddress, then the RAM block-move stub at $22E7 built as a TIN of 32 bytes to
- * PsgWaveData and called. The bytes that run as original code are those eight, $22E7 to $22EE
- * (TIN $D3, source, destination, length, RTS $60), which this routine writes into work RAM itself:
- * they have no disc origin, so no @routine can own them, and the checker hands a call into them
- * to the original (the C's own imitation of the 32 reads and writes of the move was reported as
- * EXTRA accesses by gate A5 on sound_test, the original's call giving the same accesses itself).
- * The C writes the eight bytes, pushes the return frame and the registers and flags the assembly
- * holds, and calls the stub through block_move_stub_shim (call_orig).
+ * PsgWaveData and called: the C writes the eight stub bytes, pushes the JSR frame, and does the
+ * move as the TIN does (pushes Y, A, X, 32 reads and writes, pulls), then drops the RTS's frame.
+ * NOT CHECKED: gate A5 reported the first C imitation's accesses as EXTRA; this version is
+ * written from the core's block-transfer code and has not yet been through A5.
  * WAITS: no.
  * Entry: A waveform, X channel. Exit: X and Y kept. $FF, A $FF, Z and C set, N clear, V kept.
  * Left alone, A kept, N and V the effect's bits 7 and 6, Z and C clear. Loaded, A $60, N and Z
@@ -1448,7 +1449,9 @@ WaveLoad SoundLoadWave(uint8_t wave, uint8_t channel, uint8_t kept_y)
     wr8(BlockMoveLengthLo, WAVE_SAMPLES);
     wr8(BlockMoveLengthHi, 0);
     wr8(BlockMoveReturn, OPCODE_RTS);
-    block_move_stub_shim(0x8E9A, OPCODE_RTS, channel, kept_y, load.address);
+    jsr_push(0x8E9A);
+    block_move_tin(OPCODE_RTS, channel, kept_y, (uint16_t)(SOUND_WAVES + (wave << 5)), PsgWaveData, WAVE_SAMPLES);
+    jsr_pop();
     wr8(PsgControl, 0);
     load.how = WAVE_LOADED;
     return load;

@@ -32,8 +32,8 @@ What it does for main's tip (design: build/rondo/pipeline/DESIGN.md, the rule: r
      a checker or harness change, not a commit elsewhere. The plan prints with the time it should take;
   3. measures each planned script alone: A5 then A7 (oracle_io.py), one cpu-run claim of 1 core and 2 GB
      each, in a private output folder, with the private pcebox; at most --workers waiting or running;
-  4. reruns every red script (A7 not identical, A5 divergent) alone, nothing else of ours running, and
-     records the second result; a flip is logged as a flake;
+  4. reruns every red script (A7 not identical, A5 divergent) alone, each in its own process and cpu-run
+     claim, all reds at once within --workers, and records the second result; a flip is logged as a flake;
   5. writes the records, then the ledger (only if every script has a result), and commits them under the
      landing lock with explicit paths. It never holds or edits C: failures are reported (reds.txt, the log).
 A script run that fails (exit, timeout) leaves that script's old record in place and no ledger is written.

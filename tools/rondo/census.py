@@ -381,6 +381,31 @@ class Model:
         return sum(self.llr.get(t, self.default) for t in toks)
 
 
+class Instrs:
+    """An extent's instructions, (disc offset, length) each, packed as offset * 8 + length in 32 bits (an
+    instruction is at most 7 bytes; the user data is under 2**29 bytes). The extent cache holds hundreds of
+    thousands of overlapping extents, and tuples cost about 2.5 GB at 47 scripts."""
+
+    __slots__ = ("a",)
+
+    def __init__(self, pairs):
+        self.a = array.array("I", (p << 3 | n for p, n in pairs))
+
+    def __len__(self):
+        return len(self.a)
+
+    def __getitem__(self, i):
+        v = self.a[i]
+        return v >> 3, v & 7
+
+    def __iter__(self):
+        for v in self.a:
+            yield v >> 3, v & 7
+
+    def __bool__(self):
+        return len(self.a) > 0
+
+
 class Census:
     """One census over one trace set. mode "strict" or "relaxed"."""
 
@@ -434,7 +459,7 @@ class Census:
         score = self.model.score(toks)
         if ok and score < self.TAU[self.mode]:
             ok, why = False, "reads as data (score)"
-        v = (instrs, ok, score)
+        v = (Instrs(instrs), ok, score)
         if cache:
             self._ext[d] = v
         if why and cache:

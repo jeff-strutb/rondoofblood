@@ -3734,8 +3734,16 @@ void check_finish(void)
             known = end_seen;
             expected = end_frames;
             for (uint64_t k = scan > wbase ? scan : wbase; k < wbase + wn; k++)
-                if (win[k - wbase].type == EV_OPEN)
+                if (win[k - wbase].type == EV_OPEN) {
                     unreached++;
+                    if (getenv("RONDO_DIAG_CTX")) {
+                        Ev *u = &win[k - wbase];
+                        fprintf(stderr, "UNREACHED %llu (scan %llu, stream end %llu): OPEN %s pc %04X s %02X clock %llu\n",
+                                (unsigned long long)k, (unsigned long long)scan, (unsigned long long)(wbase + wn),
+                                u->addr < rondo_tag_count ? rondo_tags[u->addr].name : "?", u->pc, u->s,
+                                (unsigned long long)u->clock);
+                    }
+                }
         }
         diagnostic = getenv("RONDO_KEEP") || getenv("RONDO_ONLY") || getenv("RONDO_KEEP_WAITS") ||
                      getenv("RONDO_PLACE") || getenv("RONDO_SKIPS") || getenv("RONDO_DUMP_FRAME");

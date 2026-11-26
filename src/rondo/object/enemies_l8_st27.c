@@ -329,19 +329,19 @@ static Ended bossc_tail(const L8St27BossCArm *r)
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (bossc_exit_shim).
  */
-L8St27BossCArm BossFrameRoutinesC(uint8_t slot)
+L8St27BossCArm BossFrameRoutinesC(uint8_t slot, L8Layout lay)
 {
     L8St27BossCArm r = { 0 };
 
     r.counted = INC8(OBJ->f34b8[slot]);
-    jsr_push(0xB145);
+    jsr_push(l8_at(lay, 0xB145));
     r.flag = FlagThenHitsCompare(slot);
     jsr_pop();
-    jsr_push(0xB148);
+    jsr_push(l8_at(lay, 0xB148));
     r.enter = EnterState5WhenFlagged(slot);
     jsr_pop();
     abi_ended(bossc_before_jump(&r));
-    jsr_push(0xB14B);
+    jsr_push(l8_at(lay, 0xB14B));
     r.jump = JumpByStateTable05CB1CF(slot);
     abi_ended(r.jump.end);
     slot = enter_handler(slot, r.jump);
@@ -358,7 +358,7 @@ L8St27BossCArm BossFrameRoutinesC(uint8_t slot)
     }
     r.diff = sub_bytes(r.frame, 1, true);
     r.y = r.diff.value;
-    r.entry = rd8((uint16_t)(0xB169 + r.y));
+    r.entry = rd8((uint16_t)(l8_at(lay, 0xB169) + r.y));
     if (r.entry == 0) {
         r.arm = ST27_C_NO_ENTRY;
         return r;
@@ -368,7 +368,7 @@ L8St27BossCArm BossFrameRoutinesC(uint8_t slot)
     r.list = add_bytes(r.entry, 0x81, false);
     r.arm = ST27_C_LISTED;
     abi_ended(then(bossc_tail(&r), then(ended_nz(r.x), ended_of_sum(r.list))));
-    jsr_push(0xB167);
+    jsr_push(l8_at(lay, 0xB167));
     StartListChannelKind2(r.list.value, 5);
     jsr_pop();
     r.pulled = pull8();
@@ -386,7 +386,7 @@ static Ended bossc_exit_shim(L8St27BossCArm r)
 
 void abi_BossFrameRoutinesC(void)
 {
-    abi_ended(bossc_exit_shim(BossFrameRoutinesC(cpu.x)));
+    abi_ended(bossc_exit_shim(BossFrameRoutinesC(cpu.x, L8_LOADED)));
 }
 
 /* What BossFrameRoutinesD left after the table's code when the state was marked or not: the state as Y and the mark. */

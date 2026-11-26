@@ -142,6 +142,13 @@ StageRegs TileSlopeE3CD(StageRegs r);
 StageRegs TileSlopeF3CD(StageRegs r);
 StageRegs StageMapDebug3CD(StageRegs r);
 StageRegs StageMapDebugPage3CD(StageRegs r);
+StageRegs GateObjectStep3CD(StageRegs r);
+StageRegs GateStart3CD(StageRegs r);
+StageRegs GateWaitPlayer3CD(StageRegs r);
+StageRegs GateWaitStep3CD(StageRegs r);
+StageRegs GateOpen3CD(StageRegs r);
+StageRegs GateWaitClear3CD(StageRegs r);
+StageRegs GateClose3CD(StageRegs r);
 
 void abi_StageEntryA3CD(void);
 void abi_StageEntryB3CD(void);
@@ -277,5 +284,12 @@ void abi_TileSlopeE3CD(void);
 void abi_TileSlopeF3CD(void);
 void abi_StageMapDebug3CD(void);
 void abi_StageMapDebugPage3CD(void);
+void abi_GateObjectStep3CD(void);
+void abi_GateStart3CD(void);
+void abi_GateWaitPlayer3CD(void);
+void abi_GateWaitStep3CD(void);
+void abi_GateOpen3CD(void);
+void abi_GateWaitClear3CD(void);
+void abi_GateClose3CD(void);
 
 #endif

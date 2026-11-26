@@ -30,7 +30,7 @@ enum {
     HIT_X = 0x2713, HIT_Y = 0x2723, HIT_HI = 0x2733, TEST_X = 0x2702, TEST_Y = 0x2703, REACH_X = 0x2704,
     REACH_Y = 0x2705, HIT_GATE = 0x2748, PROBE_HIT = 0x26F6, PROBE_X = 0x26FA, PROBE_Y = 0x26FE,
     ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4,
-    SCREEN_3EC4 = 0x3EC4, CENTER_GATE = 0x2860, PROBE_LISTS_3CD = 0xD756
+    SCREEN_3EC4 = 0x3EC4, CENTER_GATE = 0x2860, PROBE_LISTS_3CD = 0xD756, GATE_BUSY = 0x2746
 };
 
 typedef StageRegs Regs;
@@ -7439,4 +7439,364 @@ StageRegs StageMapDebugPage3CD(StageRegs r)
 void abi_StageMapDebugPage3CD(void)
 {
     regs_exit_shim(StageMapDebugPage3CD(regs_entry_shim()));
+}
+
+/*
+ * @routine 03D0:1AC GateObjectStep3CD
+ * @run 6B:99AC
+ * @stop 99BE
+ * @unreachable 6B:99AC-6B:99BD no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+ * bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+ * records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+ * reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+ * script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+ * SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+ * poke of work RAM can load the sectors, and a unit call at $99AC runs whatever overlay another scene left there, not
+ * these bytes.
+ *
+ * WHAT IT DOES: An object handler for the stage's gate, as GateObjectStep152D: its step at $2818 from the table of
+ * seven at $99BE. No code of the overlay reaches it; the census counts none of its bytes.
+ * HOW: The step doubled indexes the table; its word goes through zTemp00-01 and is jumped through.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the step leaves them.
+ */
+StageRegs GateObjectStep3CD(StageRegs r)
+{
+    uint8_t step, index;
+    uint16_t handler;
+
+    step = RD8(OBJ->f2800[24 + r.x]);
+    index = (uint8_t)(step << 1);
+    r.c = (step & 0x80) != 0;
+    r.y = index;
+    r = loaded(r, rd8((uint16_t)(0x99BE + index)));
+    WR8(ZP->temp00, r.a);
+    r = loaded(r, rd8((uint16_t)(0x99BF + index)));
+    WR8(ZP->temp01, r.a);
+    index = RD8(ZP->temp00);
+    handler = (uint16_t)(index | (RD8(ZP->temp01) << 8));
+    switch (handler) {
+    case 0x99CC:
+        return GateStart3CD(r);
+    case 0x99E0:
+        return GateWaitPlayer3CD(r);
+    case 0x9A41:
+        return GateWaitStep3CD(r);
+    case 0x9A4B:
+        return GateOpen3CD(r);
+    case 0x9A89:
+        return GateWaitClear3CD(r);
+    case 0x9AA6:
+        return GateClose3CD(r);
+    case 0x99DB:
+        return StageSubStepNone152D(r);
+    default:
+        return orig_tail_shim(r, handler);
+    }
+}
+
+void abi_GateObjectStep3CD(void)
+{
+    regs_exit_shim(GateObjectStep3CD(regs_entry_shim()));
+}
+
+/*
+ * @routine 03D0:1CC GateStart3CD
+ * @run 6B:99CC
+ * @stop 99DB
+ * @unreachable 6B:99CC-6B:99DA no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+ * bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+ * records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+ * reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+ * script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+ * SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+ * poke of work RAM can load the sectors, and a unit call at $99CC runs whatever overlay another scene left there, not
+ * these bytes.
+ *
+ * WHAT IT DOES: The gate's first step: the kernel's piece at $40D2 and its sprite at $2A58 from the two at $99DC by
+ * bit 0 of its packed byte; then the RTS at $99DB (StageSubStepNone152D's kind, run on into).
+ * HOW: $40D2; a table read.
+ * WAITS: no.
+ * Entry: X the object. Exit: A the sprite, N and Z from it, Y the bit.
+ */
+StageRegs GateStart3CD(StageRegs r)
+{
+    r = orig_shim(r, 0x99CF, 0x40D2);
+    r.y = (uint8_t)(RD8(OBJ->fields_2ee0[64 + r.x]) & 0x01);
+    r = loaded(r, rd8((uint16_t)(0x99DC + r.y)));
+    WR8(OBJ->sprite_set[72 + r.x], r.a);
+    return StageSubStepNone152D(r);
+}
+
+void abi_GateStart3CD(void)
+{
+    regs_exit_shim(GateStart3CD(regs_entry_shim()));
+}
+
+/*
+ * @routine 03D0:1E0 GateWaitPlayer3CD
+ * @run 6B:99E0
+ * @unreachable 6B:99E0-6B:9A40 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+ * bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+ * records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+ * reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+ * script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+ * SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+ * poke of work RAM can load the sectors, and a unit call at $99E0 runs whatever overlay another scene left there, not
+ * these bytes.
+ *
+ * WHAT IT DOES: The gate waits for the player, as GateWaitPlayer152D, with camera mode 1 cleared when the stage is
+ * cleared through it; a packed byte with a high nibble other than $F names the sound, and camera mode is cleared;
+ * with no high nibble, packed bytes 2 to 5 start the card's CD fade of type $0C.
+ * HOW: Tests; stores; shifts; the kernel's piece at $400F with X 6 (X on the stack); a jump to cd_fade.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test, the kernel or cd_fade left them; X kept.
+ */
+StageRegs GateWaitPlayer3CD(StageRegs r)
+{
+    uint8_t gate;
+
+    gate = (uint8_t)(rd8(GATE_BUSY) ^ 0x01);
+    r = loaded(r, (uint8_t)(gate & rd8(PlayerByte3BD7)));
+    if (r.a == 0) {
+        return r;
+    }
+    r = loaded(r, RD8(OBJ->status_flags[80 + r.x]));
+    if (r.a == 0) {
+        return r;
+    }
+    r = compared(r, 0x03);
+    if (r.c) {
+        return r;
+    }
+    r = loaded(r, (uint8_t)((RD8(OBJ->fields_2ee0[64 + r.x]) & 0x0F) + 1));
+    WR8(ZP->field8c, r.a);
+    r = loaded(r, (uint8_t)(RD8(SCROLLLIM->camera_mode) - 1));
+    if (r.a == 0) {
+        WR8(SCROLLLIM->camera_mode, 0);
+    }
+    r = loaded(r, 0x03);
+    WR8(ZP->sub_step, 0x03);
+    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    WR8(OBJ->f3300[16 + r.x], 0);
+    r = loaded(r, 0x04);
+    WR8(OBJ->f32a8[32 + r.x], 0x04);
+    r = loaded(r, (uint8_t)(RD8(OBJ->fields_2ee0[64 + r.x]) & 0xF0));
+    if (r.a == 0) {
+        r = loaded(r, RD8(OBJ->fields_2ee0[64 + r.x]));
+        r = compared(r, 0x02);
+        if (!r.c) {
+            return r;
+        }
+        r = compared(r, 0x06);
+        if (r.c) {
+            return r;
+        }
+        r = loaded(r, 0x0C);
+        return fade_tail(r, 0x0C);
+    }
+    WR8(ZP->raster_effect, 0);
+    WR8(SCROLLLIM->camera_mode, 0);
+    r = compared(r, 0xF0);
+    if (r.nz == 0) {
+        return r;
+    }
+    r.c = (r.a & 0x08) != 0;
+    r = loaded(r, (uint8_t)((r.a >> 4) | 0x80));
+    push8(r.x);
+    r.x = 0x06;
+    r.nz = 0x06;
+    r = orig_shim(r, 0x9A2F, 0x400F);
+    r.x = pull8();
+    r.nz = r.x;
+    return r;
+}
+
+void abi_GateWaitPlayer3CD(void)
+{
+    regs_exit_shim(GateWaitPlayer3CD(regs_entry_shim()));
+}
+
+/*
+ * @routine 03D0:241 GateWaitStep3CD
+ * @run 6B:9A41
+ * @unreachable 6B:9A41-6B:9A4A no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+ * bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+ * records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+ * reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+ * script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+ * SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+ * poke of work RAM can load the sectors, and a unit call at $9A41 runs whatever overlay another scene left there, not
+ * these bytes.
+ *
+ * WHAT IT DOES: The gate waits for the cleared stage's step at $85 to reach 2, then goes on.
+ * HOW: A compare; an increment.
+ * WAITS: no.
+ * Entry: X the object. Exit: A $85, N, Z and C from the compare, or N and Z from the step's increment.
+ */
+StageRegs GateWaitStep3CD(StageRegs r)
+{
+    r = loaded(r, rd8(SUB3_STEP));
+    r = compared(r, 0x02);
+    if (r.nz != 0) {
+        return r;
+    }
+    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    return r;
+}
+
+void abi_GateWaitStep3CD(void)
+{
+    regs_exit_shim(GateWaitStep3CD(regs_entry_shim()));
+}
+
+/* The gate's next frame, as in stage_b_census.c, from the tables at $99DC and $99DE. */
+static Regs gate_frame(Regs r, uint16_t ret)
+{
+    Sum sum;
+    uint8_t base, count, step;
+
+    r = loaded(r, 0x04);
+    WR8(OBJ->f32a8[32 + r.x], 0x04);
+    r.y = (uint8_t)(RD8(OBJ->fields_2ee0[64 + r.x]) & 0x01);
+    base = rd8((uint16_t)(0x99DC + r.y));
+    count = RD8(OBJ->f3300[16 + r.x]);
+    sum = add_bytes(base, count, false);
+    WR8(OBJ->sprite_set[72 + r.x], sum.value);
+    step = rd8((uint16_t)(0x99DE + r.y));
+    sum = add_bytes(sum.value, step, false);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    push8(r.x);
+    r.x = 0x05;
+    r.nz = 0x05;
+    r = orig_shim(r, ret, 0x400F);
+    r.x = pull8();
+    r.nz = r.x;
+    return r;
+}
+
+/*
+ * @routine 03D0:24B GateOpen3CD
+ * @run 6B:9A4B
+ * @unreachable 6B:9A4B-6B:9A88 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+ * bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+ * records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+ * reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+ * script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+ * SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+ * poke of work RAM can load the sectors, and a unit call at $9A4B runs whatever overlay another scene left there, not
+ * these bytes.
+ *
+ * WHAT IT DOES: The gate opens, as GateOpen152D, with sound $56 at the end.
+ * HOW: A countdown at $32C8; a compare; gate_frame; the sound hook by a jump.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
+ */
+StageRegs GateOpen3CD(StageRegs r)
+{
+    r.nz = DEC8(OBJ->f32a8[32 + r.x]);
+    if (r.nz != 0) {
+        return r;
+    }
+    r.nz = INC8(OBJ->f3300[16 + r.x]);
+    r = loaded(r, RD8(OBJ->f3300[16 + r.x]));
+    r = compared(r, 0x04);
+    if (r.nz != 0) {
+        return gate_frame(r, 0x9A87);
+    }
+    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    r = loaded(r, (uint8_t)(RD8(ZP->field8c) | 0x80));
+    WR8(ZP->field8c, r.a);
+    r = loaded(r, 0x56);
+    return orig_tail_shim(r, SOUND_HOOK);
+}
+
+void abi_GateOpen3CD(void)
+{
+    regs_exit_shim(GateOpen3CD(regs_entry_shim()));
+}
+
+/*
+ * @routine 03D0:289 GateWaitClear3CD
+ * @run 6B:9A89
+ * @unreachable 6B:9A89-6B:9AA5 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+ * bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+ * records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+ * reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+ * script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+ * SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+ * poke of work RAM can load the sectors, and a unit call at $9A89 runs whatever overlay another scene left there, not
+ * these bytes.
+ *
+ * WHAT IT DOES: The gate waits until zField8C loses bit 7, then goes on with its timer 4; a gate whose packed byte is 2
+ * to 5 skips its closing.
+ * HOW: A test; stores; compares; a second increment.
+ * WAITS: no.
+ * Entry: X the object. Exit: A zField8C, N and Z from it; or A the packed byte, N, Z and C from its compare, or N and Z
+ * from the second increment.
+ */
+StageRegs GateWaitClear3CD(StageRegs r)
+{
+    r = loaded(r, RD8(ZP->field8c));
+    if ((r.a & 0x80) != 0) {
+        return r;
+    }
+    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    r = loaded(r, 0x04);
+    WR8(OBJ->f32a8[32 + r.x], 0x04);
+    r = loaded(r, RD8(OBJ->fields_2ee0[64 + r.x]));
+    r = compared(r, 0x02);
+    if (!r.c) {
+        return r;
+    }
+    r = compared(r, 0x06);
+    if (r.c) {
+        return r;
+    }
+    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    return r;
+}
+
+void abi_GateWaitClear3CD(void)
+{
+    regs_exit_shim(GateWaitClear3CD(regs_entry_shim()));
+}
+
+/*
+ * @routine 03D0:2A6 GateClose3CD
+ * @run 6B:9AA6
+ * @unreachable 6B:9AA6-6B:9AD8 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+ * bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+ * records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+ * reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+ * script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+ * SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+ * poke of work RAM can load the sectors, and a unit call at $9AA6 runs whatever overlay another scene left there, not
+ * these bytes.
+ *
+ * WHAT IT DOES: The gate closes, as GateClose152D, with sound $56 at the end.
+ * HOW: A countdown at $32C8; a decrement; gate_frame; the sound hook by a jump.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
+ */
+StageRegs GateClose3CD(StageRegs r)
+{
+    r.nz = DEC8(OBJ->f32a8[32 + r.x]);
+    if (r.nz != 0) {
+        return r;
+    }
+    r.nz = DEC8(OBJ->f3300[16 + r.x]);
+    if ((r.nz & 0x80) == 0) {
+        return gate_frame(r, 0x9AD7);
+    }
+    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    r = loaded(r, 0x56);
+    return orig_tail_shim(r, SOUND_HOOK);
+}
+
+void abi_GateClose3CD(void)
+{
+    regs_exit_shim(GateClose3CD(regs_entry_shim()));
 }

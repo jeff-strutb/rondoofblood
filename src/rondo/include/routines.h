@@ -1108,7 +1108,7 @@ typedef struct {
 } StageEnterRun;
 
 StageLoadRun StageLoad(uint8_t entry_y);
-StageEnterRun StageEnter(void);
+StageEnterRun StageEnter(uint8_t kept_x, uint8_t kept_y);   /* X and Y as the caller has them at the call */
 void stage_load_exit_shim(const StageLoadRun *run);
 void stage_enter_exit_shim(const StageEnterRun *run);
 

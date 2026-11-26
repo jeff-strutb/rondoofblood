@@ -183,17 +183,14 @@ static void mark_stage_shim(StageMark mark)
 /* The title's three scenes and the fixed ADPCM, as two paths load them. */
 typedef struct { DiscLog a; DiscLog b; DiscLog c; DiscLog fixed; } ScreensLoad;
 
-/* traced: the X and Y the caller has at the call are known (ModeAttract: what the overlay left); else the live ones. */
-static ScreensLoad load_screens(uint16_t first_return, bool traced, uint8_t kept_x, uint8_t kept_y)
+/* The X and Y the caller has at the call are known (what the overlay left, or what the caller's own steps left). */
+static ScreensLoad load_screens(uint16_t first_return, uint8_t kept_x, uint8_t kept_y)
 {
     ScreensLoad load;
 
     wr8(zMusicWanted, 0);
     jsr_push(first_return);
-    if (traced)
-        ResetGameStateAt(kept_x, kept_y);
-    else
-        ResetGameState();
+    ResetGameStateAt(kept_x, kept_y);
     jsr_pop();
     jsr_push((uint16_t)(first_return + 5));
     load.a = LoadSceneScript(SCENE_SCREENS_A);
@@ -414,7 +411,7 @@ AttractRun ModeAttract(void)
     if (rd8(zAttractStep) == 0) {
         run.path = ATTRACT_SCREENS;
         wr8(zAttractStep, (uint8_t)(rd8(zAttractStep) + 1));
-        run.screens = load_screens(0x519D, true, run.frame.after.x, run.frame.after.y);
+        run.screens = load_screens(0x519D, run.frame.after.x, run.frame.after.y);
         run.mode = NextGameMode();
         return run;
     }
@@ -430,7 +427,7 @@ AttractRun ModeAttract(void)
     run.stage = rd8((uint16_t)(AttractStages + run.step));
     wr8(zStage, run.stage);
     jsr_push(0x5187);
-    run.enter = StageEnter();
+    run.enter = StageEnter(disc_log_x(&run.scene, run.frame.after.x), run.step);   /* LDY zAttractStep */
     jsr_pop();
     step = (uint8_t)(rd8(zAttractStep) + 1);
     wr8(zAttractStep, step);
@@ -500,9 +497,20 @@ typedef struct {
     CommandCall sound;
 } AttractPlayRun;
 
+/* X and Y after the sound fade and the card's fade (the replay of their exits). */
+static Cpu regs_after_sound(CommandCall call, uint8_t kept_x, uint8_t kept_y)
+{
+    cpu.x = kept_x;
+    cpu.y = kept_y;
+    sound_command_exit_shim(SOUND_FADE, call);
+    cd_fade_exit_shim(CD_FADE_OUT);
+    return cpu;
+}
+
 AttractPlayRun ModeAttractPlay(uint8_t kept_x, uint8_t kept_y)
 {
     AttractPlayRun run;
+    Cpu kept;
 
     run.run_pressed = rd8(BiosJoyTrigger) & JOY_RUN;
     if (run.run_pressed == 0) {
@@ -521,8 +529,9 @@ AttractPlayRun ModeAttractPlay(uint8_t kept_x, uint8_t kept_y)
     vec_cd_fade(CD_FADE_OUT);
     jsr_pop();
     wr8(zWaitTimer, GAME_OVER_WAIT);
+    kept = regs_after_sound(run.sound, kept_x, kept_y);
     jsr_push(0x51D8);
-    ResetGameState();
+    ResetGameStateAt(kept.x, kept.y);
     jsr_pop();
     SetGameMode(MODE_GAME_OVER);
     return run;
@@ -558,12 +567,12 @@ void abi_ModeAttractPlay(void)
  */
 typedef struct { StageEnterRun enter; uint8_t mode; } EnterNextRun;
 
-EnterNextRun StageEnterNext(void)
+EnterNextRun StageEnterNext(uint8_t kept_x, uint8_t kept_y)
 {
     EnterNextRun run;
 
     jsr_push(0x51F3);
-    run.enter = StageEnter();
+    run.enter = StageEnter(kept_x, kept_y);
     jsr_pop();
     jsr_push(0x51F6);
     ResetScoreCounters();
@@ -581,7 +590,7 @@ static void enter_next_exit_shim(const EnterNextRun *run)
 
 void abi_StageEnterNext(void)
 {
-    EnterNextRun run = StageEnterNext();
+    EnterNextRun run = StageEnterNext(cpu.x, cpu.y);
 
     enter_next_exit_shim(&run);
 }
@@ -596,12 +605,12 @@ void abi_StageEnterNext(void)
  * Entry: from ModeStageLoad. Exit: A 0, N 0, Z 0, from SetGameMode's mode; the rest as
  * AdpcmLoadFixed leaves them.
  */
-ScreensLoad ModeStageLoadScreens(void)
+ScreensLoad ModeStageLoadScreens(uint8_t kept_x, uint8_t kept_y)
 {
     ScreensLoad load;
 
     wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREENS));
-    load = load_screens(0x5200, false, 0, 0);
+    load = load_screens(0x5200, kept_x, kept_y);
     SetGameMode(MODE_ENDING);
     return load;
 }
@@ -614,7 +623,7 @@ static void load_screens_exit_shim(const ScreensLoad *load)
 
 void abi_ModeStageLoadScreens(void)
 {
-    ScreensLoad load = ModeStageLoadScreens();
+    ScreensLoad load = ModeStageLoadScreens(cpu.x, cpu.y);
 
     load_screens_exit_shim(&load);
 }
@@ -630,7 +639,7 @@ void abi_ModeStageLoadScreens(void)
  */
 typedef struct { DiscLog scene; StageEnterRun enter; } ContinueRun;
 
-ContinueRun ModeStageLoadContinue(void)
+ContinueRun ModeStageLoadContinue(uint8_t kept_x, uint8_t kept_y)
 {
     ContinueRun run;
 
@@ -641,7 +650,7 @@ ContinueRun ModeStageLoadContinue(void)
     run.scene = LoadSceneScript(SCENE_COMMON);
     jsr_pop();
     jsr_push(0x5222);
-    run.enter = StageEnter();
+    run.enter = StageEnter(disc_log_x(&run.scene, kept_x), disc_log_y(&run.scene, kept_y));
     jsr_pop();
     wr8(zGameRunning, (uint8_t)(rd8(zGameRunning) + 1));
     SetGameMode(MODE_INTRO);
@@ -658,7 +667,7 @@ static void continue_exit_shim(const ContinueRun *run)
 
 void abi_ModeStageLoadContinue(void)
 {
-    ContinueRun run = ModeStageLoadContinue();
+    ContinueRun run = ModeStageLoadContinue(cpu.x, cpu.y);
 
     continue_exit_shim(&run);
 }
@@ -693,16 +702,16 @@ ModeStageLoadRun ModeStageLoad(void)
         return run;
     if (rd8(zModeEvents) & EVENT_SCREENS) {
         run.path = STAGE_LOAD_SCREENS;
-        run.screens = ModeStageLoadScreens();
+        run.screens = ModeStageLoadScreens(run.frame.after.x, run.frame.after.y);
     } else if (rd8(zModeEvents) & EVENT_CONTINUE) {
         run.path = STAGE_LOAD_CONTINUE;
-        run.resume = ModeStageLoadContinue();
+        run.resume = ModeStageLoadContinue(run.frame.after.x, run.frame.after.y);
     } else {
         run.path = STAGE_LOAD_FIRST;
         jsr_push(0x51F0);
         run.scene = LoadSceneScript(SCENE_COMMON);
         jsr_pop();
-        run.next = StageEnterNext();
+        run.next = StageEnterNext(disc_log_x(&run.scene, run.frame.after.x), disc_log_y(&run.scene, run.frame.after.y));
     }
     return run;
 }
@@ -786,6 +795,13 @@ static void save_exit_shim(const SaveRun *run)
     cpu.a = run->last;
     compare_shim(SAVE_STAGE_BYTES, SAVE_STAGE_BYTES);
     backup_write_exit_shim(&run->write);
+}
+
+/* X and Y a save leaves (the replay of its exit), for the caller that goes on with them. */
+static Cpu regs_after_save(const SaveRun *run)
+{
+    save_exit_shim(run);
+    return cpu;
 }
 
 void abi_SaveProgress(void)
@@ -877,7 +893,7 @@ StageDoneRun ModeStageDone(void)
         return run;
     }
     run.mark = mark_stage(StagesVisited, 0x5235);
-    ResetGameState();
+    ResetGameStateAt(run.mark.found.index, run.mark.found.stage);   /* X the byte and Y the stage StageClearBit left */
     run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */
     run.slot = rd8(zSaveSlot);
     if (!(run.slot & 0x80)) {
@@ -1001,7 +1017,7 @@ StageRun ModeStage(void)
     } else if (rd8(zModeEvents) & EVENT_SCREEN) {
         run.path = STAGE_SCREEN;
         wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREEN));
-        ResetGameState();
+        ResetGameStateAt(run.frame.after.x, run.frame.after.y);
         wr8(zMusicWanted, 0xFF);
         wr8(zCharacterLoaded, 0xFF);
         run.stage = rd8(zStage);
@@ -1098,12 +1114,12 @@ typedef struct {
     SaveRun save;
 } ClearedNextRun;
 
-ClearedNextRun StageClearedNext(void)
+ClearedNextRun StageClearedNext(uint8_t kept_x, uint8_t kept_y)
 {
     ClearedNextRun run;
 
     jsr_push(0x5309);
-    run.enter = StageEnter();
+    run.enter = StageEnter(kept_x, kept_y);
     jsr_pop();
     run.stage = rd8(zStage);
     if (run.stage == 0) {
@@ -1138,7 +1154,7 @@ static void cleared_next_exit_shim(const ClearedNextRun *run)
 
 void abi_StageClearedNext(void)
 {
-    ClearedNextRun run = StageClearedNext();
+    ClearedNextRun run = StageClearedNext(cpu.x, cpu.y);
 
     cleared_next_exit_shim(&run);
 }
@@ -1158,7 +1174,7 @@ StageClearedRun ModeStageCleared(void)
     StageClearedRun run;
 
     run.mark = mark_stage(StagesVisited, 0x5300);
-    run.next = StageClearedNext();
+    run.next = StageClearedNext(run.mark.found.index, run.mark.found.stage);
     return run;
 }
 
@@ -1293,6 +1309,7 @@ DeadRun ModeDead(void)
     DeadRun run;
     Sum bank = add_bytes(EVENTS_BANK_OFFSET, rd8(zRamBaseBank), false);
     Sum continues;
+    Cpu kept;   /* X and Y as the overlay left them, or SaveScore */
 
     tam(MPR4, bank.value);
     run.after = overlay_added_shim(FrameOverlay8000, bank, 0x5358);
@@ -1314,10 +1331,13 @@ DeadRun ModeDead(void)
         run.save = SaveScore();
         jsr_pop();
     }
+    kept = run.after;
+    if (!(run.slot & 0x80))
+        kept = regs_after_save(&run.save);
     run.choice = rd8(ContinueChoice);
     if (run.choice == 1) {
         jsr_push(0x53B7);
-        ResetGameState();
+        ResetGameStateAt(kept.x, kept.y);
         jsr_pop();
         run.title = ModeBackToTitle();
         return run;
@@ -1341,7 +1361,7 @@ DeadRun ModeDead(void)
     jsr_push(0x53B1);
     SetGameMode(MODE_STAGE_LOAD);
     jsr_pop();
-    run.next = StageEnterNext();
+    run.next = StageEnterNext(kept.x, kept.y);
     return run;
 }
 
@@ -1454,16 +1474,28 @@ typedef struct {
     uint8_t field_a3;
 } ScreenRun;
 
+/* X and Y after the bonus save's read and write (the replay of their exits). */
+static Cpu regs_after_bonus_write(BackupAccess read, uint8_t save_slot, uint8_t offset, const BackupWriteRun *write)
+{
+    backup_read_exit_shim(read);
+    cpu.y = save_slot;
+    cpu.x = offset;
+    load_shim(1);
+    backup_write_exit_shim(write);
+    return cpu;
+}
+
 ScreenRun ModeScreen(void)
 {
     ScreenRun run;
+    Cpu kept;
 
     run.frame = overlay_frame(FrameOverlay8000, 0x5451);
     run.path = SCREEN_WAIT;
     if (run.frame.done == 0)
         return run;
     jsr_push(0x5459);
-    ResetGameState();
+    ResetGameStateAt(run.frame.after.x, run.frame.after.y);
     jsr_pop();
     jsr_push(0x545E);
     run.scene = LoadSceneScript(SCENE_COMMON);
@@ -1488,7 +1520,11 @@ ScreenRun ModeScreen(void)
             run.write = BackupWrite();
             jsr_pop();
         }
-        run.next = StageClearedNext();
+        kept.x = disc_log_x(&run.scene, 0);
+        kept.y = disc_log_y(&run.scene, 0xFF);
+        if (!(run.slot & 0x80))
+            kept = regs_after_bonus_write(run.read, run.save_slot, run.offset, &run.write);
+        run.next = StageClearedNext(kept.x, kept.y);
         return run;
     }
     run.path = SCREEN_STAGE;
@@ -1557,13 +1593,13 @@ EndingRun ModeEnding(void)
         return run;
     wr8(zGameRunning, 0);
     jsr_push(0x54A7);
-    ResetGameState();
+    ResetGameStateAt(run.frame.after.x, run.frame.after.y);
     jsr_pop();
     jsr_push(0x54AC);
     run.scene = LoadSceneScript(SCENE_COMMON);
     jsr_pop();
     jsr_push(0x54AF);
-    run.enter = StageEnter();
+    run.enter = StageEnter(disc_log_x(&run.scene, 0), disc_log_y(&run.scene, 0xFF));   /* X 0 and Y $FF from ResetGameState, then the scene's */
     jsr_pop();
     jsr_push(0x54B2);
     ResetScoreCounters();

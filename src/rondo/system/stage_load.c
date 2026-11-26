@@ -80,9 +80,9 @@ static bool stage_redirect(StageEnterRun *run, uint8_t stage)
  * go elsewhere when they end, and stage 2 goes back to the title's load. Then StageLoad.
  * HOW: Keeps the request in zStageRequested; zField8A says how the stage starts.
  * WAITS: yes, through ResetGameState (the vertical blank) and StageLoad (the drive); the stack there is the mode loop's return and the call frames.
- * Entry: nothing. Exit: as StageLoad, or as AdpcmLoad back at the title's load.
+ * Entry: X and Y are the caller's (ResetGameState saves them on the stack). Exit: as StageLoad, or as AdpcmLoad back at the title's load.
  */
-StageEnterRun StageEnter(void)
+StageEnterRun StageEnter(uint8_t kept_x, uint8_t kept_y)
 {
     StageEnterRun run;
     uint8_t stage, requested;
@@ -102,7 +102,7 @@ StageEnterRun StageEnter(void)
     wr8(zField95, 5);
     wr8(zField8C, (uint8_t)(rd8(zField8C) & 0x7F));
     jsr_push(0x6CC5);
-    ResetGameState();
+    ResetGameStateAt(kept_x, kept_y);
     jsr_pop();
     jsr_push(0x6CC8);
     run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */
@@ -161,7 +161,7 @@ void stage_enter_exit_shim(const StageEnterRun *run)
 
 void abi_StageEnter(void)
 {
-    StageEnterRun run = StageEnter();
+    StageEnterRun run = StageEnter(cpu.x, cpu.y);
 
     stage_enter_exit_shim(&run);
 }

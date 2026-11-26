@@ -586,7 +586,7 @@ ExitChain CountDownThenHopTowardPlayer(uint8_t slot, uint8_t y_entry)
     uint8_t facing;
 
     jsr_push(0xB79E);
-    ran = CountDownOrPickNextTimer(slot);
+    ran = l8_count_down_or_pick_exit_shim(CountDownOrPickNextTimer(slot));
     jsr_pop();
     chain_ended(&c, ran);
     if (ran.c) {
@@ -646,7 +646,7 @@ ExitChain CountDownThenHopAwayFromPlayer(uint8_t slot, uint8_t y_entry)
     uint8_t facing;
 
     jsr_push(0xB837);
-    ran = CountDownOrPickNextTimer(slot);
+    ran = l8_count_down_or_pick_exit_shim(CountDownOrPickNextTimer(slot));
     jsr_pop();
     chain_ended(&c, ran);
     if (ran.c) {
@@ -749,9 +749,9 @@ ExitChain StepListThenTileWriteAndSpawn(uint8_t slot, uint8_t y_entry)
         return c;
     }
     jsr_push(0xBB16);
-    chain_sound(&c, SoundAndTileWriteAtFrame24(slot, y));
+    chain_sound(&c, l8_tile_write_24_exit_shim(SoundAndTileWriteAtFrame24(slot, y)));
     jsr_pop();
-    chain_sound(&c, SoundAndSpawnFiveAtFrame27(slot, y));
+    chain_sound(&c, l8_spawn_five_27_exit_shim(SoundAndSpawnFiveAtFrame27(slot, y)));
     return c;
 }
 

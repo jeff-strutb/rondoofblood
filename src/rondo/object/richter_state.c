@@ -628,6 +628,9 @@ void move_push_exit_shim(MovePush move)
     case MOVE_PUSH_BLOCKED:
         cpu.a = move.hit;
         abi_nz(move.hit);
+        /* each column passed by was CPX #3 with X below 3: C clear */
+        if (move.column != 0)
+            abi_flag(P_C, false);
         break;
     case MOVE_PUSH_NOT_PUSHED:
         cpu.a = 0;

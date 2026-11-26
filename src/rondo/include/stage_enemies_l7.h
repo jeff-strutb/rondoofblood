@@ -38,6 +38,7 @@ typedef struct {
 } PieceObjArm;
 
 Ended contact_exit_shim(ContactArm a);
+ContactArm ContactWithPlayerBox14By20(uint8_t slot);
 Ended start_debris_burst_exit_shim(ObjArm r);
 
 /* object/enemies_stage06_temp.c */
@@ -482,7 +483,7 @@ ObjArm SlideAngleUp(uint8_t slot);
 
 
 ObjArm TouchesPlayerMark(uint8_t slot);
-Ended CountBothPairs(uint8_t slot);
+ObjArm CountBothPairs(uint8_t slot);
 ObjArm HealAndClear(uint8_t slot, uint8_t y);
 ObjArm StartOnPlayerAnimation(uint8_t slot);
 ObjArm AdvanceByHealth(uint8_t slot);

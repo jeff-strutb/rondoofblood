@@ -425,6 +425,7 @@ class Census:
         self.tails = []                 # where each claimed extent ended: (disc offset, run address, bank)
         self.starts = set()             # every instruction start claimed
         self.tabled = set()             # extents a table read as code whose only fault is a low score
+        self.table_bytes = set()        # the words of every jump table read, up to where its walk ended
         self._ext = {}
 
     def extent(self, d, cache=True):
@@ -591,10 +592,12 @@ class Census:
                 break
             w = buf[d] | buf[d + 1] << 8
             if w in (0xFFFF, 0x0000):
+                self.table_bytes.update((d, d + 1))
                 continue
             got = self.entries_of(ctx, w, bank, window, table=True)
             if not got:
                 break
+            self.table_bytes.update((d, d + 1))
             out += [(tt, w, tb if tb is not None else bank) for tb, tt in got]
         return out
 
@@ -856,7 +859,9 @@ def counted_census(disc, tr, strict, relaxed, names):
     census claims, less the bytes proven data and the runs proven duplicates. Unproven bytes count as code.
 
     Proven data: sent to the VDC, VCE, PSG or ADPCM port; or loaded into a register by code in place and never run;
-    or inside a claimed instruction whose bytes a script ran at another instruction boundary; or a whole run of
+    or inside a claimed instruction whose bytes a script ran at another instruction boundary; or a word of a jump
+    table a JMP (abs,X) or JMP (abs) in strict's followed code reads, up to where the walk ended, when strict does
+    not also claim that byte as code (a walk can read past a table into code); or a whole run of
     claimed bytes, at least COPY long, repeating with a period of one or two bytes (filler, tile words).
     Proven duplicate: a whole maximal run of claimed bytes, at least COPY long, equal byte for byte to a place of the
     same length, not overlapping it, whose bytes are all counted and kept and that a script ran some of (the copy
@@ -875,6 +880,8 @@ def counted_census(disc, tr, strict, relaxed, names):
             data[d] = "sunk"
         elif inplace[d]:
             data[d] = "read in place"
+        elif d in strict.table_bytes and d not in strict.found:
+            data[d] = "a jump table followed code reads"       # strict's walks: anchored, their length known
     for c in (strict, relaxed):
         for p in c.starts:
             if p in claimed:
@@ -991,6 +998,7 @@ def counted_census(disc, tr, strict, relaxed, names):
            "duplicates_of_a_filed_routine": sum(1 for v in src_of.values() if v.startswith("routine "))}
     for key, why in (("sunk", "sunk"), ("read_in_place", "read in place"),
                      ("decode_contradicted", "decode contradicted by a trace"),
+                     ("jump_table", "a jump table followed code reads"),
                      ("pattern_1", "a pattern repeating every 1 byte(s)"),
                      ("pattern_2", "a pattern repeating every 2 byte(s)")):
         out["proven_data_" + key] = sum(1 for v in data.values() if v == why)

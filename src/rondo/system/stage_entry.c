@@ -15,7 +15,7 @@ enum {
  * place: the first byte the X screen of every scroll slot, the next the Y screen and Y high,
  * then the scroll positions and the camera limits, and last the player's start.
  */
-static StageExit load_stage_entry(uint16_t table)
+StageExit LoadStageEntryBody(uint16_t table, uint16_t character_offsets)
 {
     StageExit end = { 0, 0, 0, false, false, 0, EXIT_Y };
     uint8_t y;
@@ -108,7 +108,7 @@ static StageExit load_stage_entry(uint16_t table)
                 end.c = sum.value >= KIND_SPAN;
                 if (sum.value < KIND_SPAN) {
                     value = RD8(OBJ->x_lo[X_LO_SLOT]);
-                    a = rd8((uint16_t)(CHARACTER_OFFSETS + sum.value));
+                    a = rd8((uint16_t)(character_offsets + sum.value));
                     sum = add_bytes(a, value, false);
                     WR8(OBJ->x_lo[X_LO_SLOT], sum.value);
                     end.c = sum.carry;
@@ -133,6 +133,12 @@ static StageExit load_stage_entry(uint16_t table)
     end.y = y;
     end.nz = y;
     return end;
+}
+
+/* 024E's layout: the character offsets are at $8A32. */
+static StageExit load_stage_entry(uint16_t table)
+{
+    return LoadStageEntryBody(table, CHARACTER_OFFSETS);
 }
 
 /*

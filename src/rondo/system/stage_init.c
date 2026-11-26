@@ -11,6 +11,15 @@ enum {
     SECOND_LOAD_RETURN = 0x893E, SECOND_CODE_RETURN = 0x8944, EFFECT_TABLE = 0x88CE
 };
 
+/* 024E's layout of the start: the return addresses of its calls, the effect table, and the overlay's two set-ups. */
+static StageExit init_stage(uint8_t x, uint8_t y, uint16_t first_code, uint16_t second_code)
+{
+    InitStageLayout layout = { CLEAR_SCREEN_RETURN, FIRST_LOAD_RETURN, MAP_RETURN, FIRST_CODE_RETURN,
+                               SECOND_LOAD_RETURN, SECOND_CODE_RETURN, EFFECT_TABLE, first_code, second_code };
+
+    return InitStageBody(x, y, &layout);
+}
+
 void abi_ClearScreenState(void);
 void abi_MapOverlayBank7(void);
 
@@ -44,7 +53,7 @@ static StageRegs load_entry(StageRegs r, uint16_t ret)
  * overlay's table says the section has a second set-up, clears and loads again and runs that;
  * clears once more and ends as the entry loader.
  */
-static StageExit init_stage(uint8_t x, uint8_t y, uint16_t first_code, uint16_t second_code)
+StageExit InitStageBody(uint8_t x, uint8_t y, const InitStageLayout *layout)
 {
     StageRegs r = { 0, x, y, false, false, 0 };
     StageExit end;
@@ -57,30 +66,30 @@ static StageExit init_stage(uint8_t x, uint8_t y, uint16_t first_code, uint16_t 
     r.a = a;
     r.nz = a;
     stage_regs_load_shim(r);
-    jsr_push(CLEAR_SCREEN_RETURN);
+    jsr_push(layout->clear_screen_return);
     abi_ClearScreenState();
     jsr_pop();
     r = stage_regs_from_cpu_shim(r);
     clear_scroll_shim(r);
     WR8(OBJ->sprite_flip[0], 0);
-    r = load_entry(r, FIRST_LOAD_RETURN);
+    r = load_entry(r, layout->first_load_return);
     stage_regs_load_shim(r);
-    jsr_push(MAP_RETURN);
+    jsr_push(layout->map_return);
     abi_MapOverlayBank7();
     jsr_pop();
     r = stage_regs_from_cpu_shim(r);
     stage_regs_load_shim(r);
-    call_orig(FIRST_CODE_RETURN, first_code);
+    call_orig(layout->first_code_return, layout->first_code);
     r = stage_regs_from_cpu_shim(r);
     r.y = RD8(ZP->raster_effect);
-    a = rd8((uint16_t)(EFFECT_TABLE + r.y));
+    a = rd8((uint16_t)(layout->effect_table + r.y));
     r.a = a;
     r.nz = a;
     if (a != 0) {
         clear_scroll_shim(r);
-        r = load_entry(r, SECOND_LOAD_RETURN);
+        r = load_entry(r, layout->second_load_return);
         stage_regs_load_shim(r);
-        call_orig(SECOND_CODE_RETURN, second_code);
+        call_orig(layout->second_code_return, layout->second_code);
         r = stage_regs_from_cpu_shim(r);
     }
     clear_scroll_shim(r);

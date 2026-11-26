@@ -23,6 +23,8 @@ call bm_files A=00 M=20F8:01,20F9:00,20FA:00,20FB:32
 wait 2
 call bm_files A=00 M=20F8:02,20F9:00,20FA:00,20FB:32
 wait 2
+call bm_read A=00 M=20F8:9A,20F9:6C,20FA:00,20FB:32 M=20FC:08,20FD:00,20FE:00,20FF:00
+wait 2
 call bm_delete A=00 M=20F8:9A,20F9:6C
 wait 2
 call bm_delete A=00 M=20F8:9A,20F9:6C

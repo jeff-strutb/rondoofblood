@@ -28,5 +28,7 @@ ChannelExit RunListChannel25F7(uint8_t kind, uint8_t slot, uint8_t y, bool c, bo
 void abi_RunListChannel25F7(void);
 ChannelExit RunListChannel1CF1(uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v);
 void abi_RunListChannel1CF1(void);
+ChannelExit RunListChannelBody(uint16_t table, uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v);
+void ChannelExitShim(ChannelExit exit);
 
 #endif

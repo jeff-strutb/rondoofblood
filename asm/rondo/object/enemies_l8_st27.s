@@ -110,7 +110,7 @@ HurtSoundsThenRunTable:
     rts
 
 ; @routine 0F6C:39C BossFrameRoutinesD
-; @run 70:B39C
+; @run 70:BB9C
 ; WHAT IT DOES: One frame of the boss of overlay 0F6C: runs EnterState0EWhenFlagged and FlashWhenHurtThenSound, the code the state table names (JumpByStateTable0F6C3C0) and, in the states the table at $BBB0 marks, the code at $C523.
 ; HOW: Three calls, a table read, a call into the original code.
 ; WAITS: no.

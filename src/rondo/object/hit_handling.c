@@ -57,44 +57,63 @@ void abi_HitDamage(void)
  * WAITS: no.
  * Entry: X object, Y the sound driver's. Exit: see the wrapper.
  */
-SoundEnd ScoreForKind(uint8_t slot, uint8_t y)
-{
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
-    uint8_t flags, kind, index, changed;
-    Sum diff;
-    Ended e;
+enum { HH_SK_FLAGGED, HH_SK_NO_CHANGE, HH_SK_LIFE };
 
-    flags = rd8(HitAttackFlags);
-    flags = (uint8_t)(flags & 0x01);
-    e = ended_load(flags);
-    r.end = e;
-    if (flags != 0) {
+ObjArm ScoreForKind(uint8_t slot, uint8_t y)
+{
+    ObjArm r = { 0 };
+    uint8_t kind;
+
+    r.first = rd8(HitAttackFlags);
+    r.first = (uint8_t)(r.first & 0x01);
+    r.arm = HH_SK_FLAGGED;
+    if (r.first != 0) {
         return r;
     }
     kind = RD8(OBJ->kind[slot]);
-    diff = sub_bytes(kind, 0x20, true);
-    index = (uint8_t)(diff.value << 1);
-    e = ended_then(ended_of_sum(diff), ended_with_y(ended_with_carry(ended_load(index), (diff.value & 0x80) != 0), index));
-    WR8(ZP->temp00, rd8((uint16_t)(0xABF5 + index)));
-    WR8(ZP->temp01, rd8((uint16_t)(0xABF6 + index)));
+    r.sum = sub_bytes(kind, 0x20, true);
+    r.y = (uint8_t)(r.sum.value << 1);
+    WR8(ZP->temp00, rd8((uint16_t)(0xABF5 + r.y)));
+    WR8(ZP->temp01, rd8((uint16_t)(0xABF6 + r.y)));
     jsr_push(0xA2BF);
-    changed = AddScoreWord();
+    r.second = AddScoreWord();
     jsr_pop();
-    e = ended_then(e, ended_with_carry(ended_load(changed), changed != 0));
-    r.end = e;
-    if (changed == 0) {
+    r.arm = HH_SK_NO_CHANGE;
+    if (r.second == 0) {
         return r;
     }
     jsr_push(0xA2C4);
-    r = give_extra_life_exit_shim(GiveExtraLife(slot, y));
+    r.sub = obj_sub(GiveExtraLife(slot, y));
     jsr_pop();
-    r.end = ended_then(e, r.end);
+    r.arm = HH_SK_LIFE;
     return r;
+}
+
+/* The attack flags' load; else the kind's subtraction, the score table's load with Y and C, and the add's result; when it changed,
+   the extra life's exit (its sound before, its end after these). */
+SoundEnd score_for_kind_exit_shim(ObjArm r)
+{
+    SoundEnd s = { { 0 }, { 0 }, false, 0, { 0 } };
+    Ended e;
+
+    if (r.arm == HH_SK_FLAGGED) {
+        s.end = ended_load(r.first);
+        return s;
+    }
+    e = ended_then(ended_of_sum(r.sum), ended_with_y(ended_with_carry(ended_load(r.y), (r.sum.value & 0x80) != 0), r.y));
+    e = ended_then(e, ended_with_carry(ended_load(r.second), r.second != 0));
+    s.end = e;
+    if (r.arm == HH_SK_NO_CHANGE) {
+        return s;
+    }
+    s = give_extra_life_exit_shim(obj_arm(r.sub));
+    s.end = ended_then(e, s.end);
+    return s;
 }
 
 void abi_ScoreForKind(void)
 {
-    abi_sound_end(ScoreForKind(cpu.x, cpu.y));
+    abi_sound_end(score_for_kind_exit_shim(ScoreForKind(cpu.x, cpu.y)));
 }
 
 /*
@@ -120,7 +139,7 @@ enum { OH_DEAD, OH_HP_NEGATIVE, OH_NO_HIT, OH_NO_DAMAGE, OH_SHOUT, OH_TAIL_NO_NU
 
 HitArm ObjectHit(uint8_t slot, uint8_t y)
 {
-    HitArm h = { { 0 }, { { 0 }, { 0 }, false, 0, { 0 } } };
+    HitArm h = { { 0 }, { 0 } };
     ObjArm *r = &h.arm;
     uint8_t status, bits, flags, hit, command, kind, number, hp, damage;
     uint8_t stored, event, byte;
@@ -359,7 +378,7 @@ void object_hit_exit_shim(HitArm h)
     } else {
         abi_ended(ended_load(0));
     }
-    abi_sound_end(h.score);
+    abi_sound_end(score_for_kind_exit_shim(h.score));
     abi_ended(drop_item_when_hit_exit_shim(obj_arm(r->sub)));
     abi_screen_sound_end(play_hit_sound_exit_shim(obj_arm(r->sub2)));
     e = ended_load(v[OH_NUMBER]);

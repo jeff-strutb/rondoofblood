@@ -207,7 +207,7 @@ typedef struct {
     AttackStandHow how;
     ColumnsEnd columns; FootingCheck footing; LandingLift landing;
     uint8_t progress; TurnPress turn; uint8_t mark; uint8_t whip; uint8_t late; uint8_t timer; bool up;
-    AnimationStep tick; AnimationStep running; AnimationStep stand;
+    AnimationStep tick; AnimationWaitEnd wait; AnimationStep stand;
 } AttackStand;
 typedef enum {
     CRASH_STAND_STOOD, CRASH_STAND_ENDED, CRASH_STAND_FELL, CRASH_STAND_JUMPED, CRASH_STAND_UP_WHIP,
@@ -1735,17 +1735,26 @@ AttackStand RichterStandStep1(void)
 {
     AttackStand st = { 0 };
 
+    jsr_push(0xA300);
     st.columns = RichterReadColumns();
+    jsr_pop();
+    jsr_push(0xA303);
     st.footing = RichterHasNoFooting();
+    jsr_pop();
     if (st.footing.no_floor) {
         st.how = ATTACK_STAND_FELL;
         attack_fall_shim(&st);
         return st;
     }
+    jsr_push(0xA30B);
     st.landing = RichterLandOnFloor();
+    jsr_pop();
     st.progress = rd8(OBJ_FLAGS_2F38);
-    if (st.progress < TURN_PROGRESS)
+    if (st.progress < TURN_PROGRESS) {
+        jsr_push(0xA314);
         st.turn = RichterTurnOnPress();
+        jsr_pop();
+    }
     st.mark = rd8(PlayerByte3BD5);
     if (st.mark == 0) {
         st.whip = rd8((uint16_t)(OBJ_2750 + OBJECT_WHIP));
@@ -1754,10 +1763,14 @@ AttackStand RichterStandStep1(void)
             if (st.late >= CROUCH_PROGRESS) {
                 st.timer = rd8(OBJ_2F90);
             } else {
+                jsr_push(0xA32A);
                 st.up = RichterUpHeld();
+                jsr_pop();
                 if (st.up) {
                     wr8(OBJ_FIELDS_2EE0, ATTACK_CROUCH_FIELD);
+                    jsr_push(0xA33D);
                     st.tick = RichterAnimationTick();
+                    jsr_pop();
                     wr8(OBJ_27A8, STATE_CROUCH);
                     st.how = ATTACK_STAND_CROUCHED;
                     return st;
@@ -1765,11 +1778,14 @@ AttackStand RichterStandStep1(void)
             }
         }
     }
-    st.running = RichterAnimationRunning();
-    if (rd8(OBJ_2F90) != ANIMATION_STOPPED) {
+    jsr_push(0xA32F);
+    st.wait = RichterAnimationWait();
+    if (st.wait.dropped) {
+        /* the wait took this frame's return address off: the caller's own return is next */
         st.how = ATTACK_STAND_WAITING;
         return st;
     }
+    jsr_pop();
     wr8(PlayerByte3BD5, 0);
     st.stand = RichterStand();
     st.how = ATTACK_STAND_STOOD;
@@ -1788,12 +1804,10 @@ void attack_stand_exit_shim(AttackStand st)
         abi_nz(STATE_CROUCH);
         break;
     case ATTACK_STAND_WAITING:
-        animation_running_exit_shim(st.running);
-        cpu.a = WAIT_RETURN_HIGH;
-        abi_nz(WAIT_RETURN_HIGH);
+        animation_exit_shim(st.wait.step);
         break;
     default:
-        animation_running_exit_shim(st.running);
+        animation_exit_shim(st.wait.step);
         animation_exit_shim(st.stand);
         break;
     }

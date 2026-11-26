@@ -1420,7 +1420,7 @@ ObjArm StepPartList(uint8_t slot)
 
 void abi_StepPartList(void)
 {
-    abi_ended(step_part_list_exit_shim(StepPartList(cpu.x)));
+    abi_ended(frame_step_exit_shim(StepPartList(cpu.x)));
 }
 
 /*
@@ -1548,7 +1548,7 @@ static Jump shatter_on_hits_exit_shim(ObjArm r)
         jump.jumps = true;
         return jump;
     }
-    e = then(e, step_part_list_exit_shim(obj_arm(r.sub)));
+    e = then(e, frame_step_exit_shim(obj_arm(r.sub)));
     e = then(e, ended_load(r.bytes[2]));
     jump.end = e;
     jump.target = r.target;

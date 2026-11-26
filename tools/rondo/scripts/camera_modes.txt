@@ -1,0 +1,16 @@
+# Coverage poke, not play (PROCEDURE section 6, step 2): in Stage 0, after the first 6000 frames of the seeded random play of play_s0_r1 (its seeds 101 and 102), the section's camera mode (CameraMode, $3EB6, an index into the 30
+# words of CameraModeHandlers at $6689) is poked to 4 (CameraModeLeftWall, $6722) and to $17 (CameraModeCarried, $66C5), 60 frames each,
+# so each handler then runs every frame as the game runs it. The game sets the mode from the byte 4 of the area's record (area setup
+# 024E:152 and its copies) when an area is entered; no script has entered an area whose record holds 4 or $17.
+include _newgame.txt
+wait 1500
+random 101 3000 8
+random 102 3000 8
+poke 3EB6 04
+run 60
+shot leftwall
+poke 3EB6 17
+run 60
+shot carried
+poke 3EB6 00
+run 30

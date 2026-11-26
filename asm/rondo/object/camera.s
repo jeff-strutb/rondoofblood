@@ -268,6 +268,7 @@ PlayerNextX:
 ; WHAT IT DOES: When the scroll is at the level's end and the player has walked into
 ; the last stretch of the screen, $C0 to $EB, sets the player's two exit fields.
 ; HOW: Compares the scroll's high byte with its limit, and the position with the range.
+; WAITS: no.
 ; Entry: nothing. Exit: A and flags as the last compare or load left them. X, Y, V kept.
 CheckPlayerAtLevelEnd:
     lda a:ScrollXHiScreen

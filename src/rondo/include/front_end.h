@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "machine.h"
+#include "wait_regs.h"
 
 /* Defined elsewhere, typed, and not declared in routines.h. */
 void ClearObject(uint8_t object);                    /* object/lifecycle.c */
@@ -262,8 +263,7 @@ void abi_PlaceCursorObjects(void);
 void abi_ShiftObjectsByScrollChange(void);
 
 /* Defined elsewhere, typed, and not declared in routines.h. */
-void ClearScreenState(void);
-void ClearScreenStateAt(uint8_t kept_x, uint8_t kept_y);   /* with the X and Y it was entered with */                          /* system/video.c */
+void ClearScreenState(WaitRegs entry);   /* system/video.c: entry the registers the caller holds at the JSR */                          /* system/video.c */
 
 /* Placeholders for the scene script (menu/attract.c): its tables of command lengths and handlers
  * and the title's "save read" byte. */

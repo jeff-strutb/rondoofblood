@@ -85,7 +85,8 @@ static bool stage_redirect(StageEnterRun *run, uint8_t stage)
 StageEnterRun StageEnter(void)
 {
     StageEnterRun run;
-    uint8_t stage, requested;
+    WaitRegs at;
+    uint8_t stage, requested, field8c;
 
     run.route_read = false;
     run.field83_read = false;
@@ -100,9 +101,14 @@ StageEnterRun StageEnter(void)
     wr8(zField92, 0);
     wr8(zField99, 0);
     wr8(zField95, 5);
-    wr8(zField8C, (uint8_t)(rd8(zField8C) & 0x7F));
+    field8c = (uint8_t)(rd8(zField8C) & 0x7F);
+    wr8(zField8C, field8c);
+    at = wait_regs_live_shim();             /* the caller's X, Y, C and V are not known here: the live ones */
+    at.a = field8c;                         /* LDA zField8C, AND #$7F: A, N and Z */
+    at.n = (field8c & 0x80) != 0;
+    at.z = field8c == 0;
     jsr_push(0x6CC5);
-    ResetGameState();
+    ResetGameState(at);
     jsr_pop();
     jsr_push(0x6CC8);
     run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */

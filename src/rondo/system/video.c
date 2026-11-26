@@ -2,6 +2,7 @@
 #include "machine.h"
 #include "ram.h"
 #include "access.h"
+#include "routines.h"
 
 /* VDC registers. */
 enum {
@@ -303,17 +304,49 @@ void abi_WriteScreenTiming(void)
     abi_nz(cpu.a);
 }
 
-/*
- * A block move saves and puts back Y, A and X on the stack: the A it saves is the last one loaded. X and Y are the
- * caller's: given (set) by a caller whose registers are traced, else the live ones, as before.
- */
-static void tai_with_a_shim(uint8_t a, bool set, uint8_t x, uint8_t y, uint16_t source, uint16_t destination, uint16_t length)
+/* The registers and flags the code holds at a wait or a block move, where an interrupt can push them: put in the machine. */
+static void wait_regs_shim(WaitRegs r)
 {
-    cpu.a = a;
-    if (set) {
-        cpu.x = x;
-        cpu.y = y;
-    }
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    abi_flag(P_N, r.n);
+    abi_flag(P_Z, r.z);
+    abi_flag(P_C, r.c);
+    abi_flag(P_V, r.v);
+}
+
+/* What the machine holds now, for a wrapper whose routine is entered from original code with them. */
+WaitRegs wait_regs_live_shim(void)
+{
+    WaitRegs r = { cpu.a, cpu.x, cpu.y, (cpu.p & P_N) != 0, (cpu.p & P_Z) != 0, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0 };
+
+    return r;
+}
+
+/* The live A and flags with X and Y as the caller knows them. */
+WaitRegs wait_regs_xy_shim(uint8_t x, uint8_t y)
+{
+    WaitRegs r = wait_regs_live_shim();
+
+    r.x = x;
+    r.y = y;
+    return r;
+}
+
+/* The registers after an LDA #a: A, and N and Z from it; the rest as they were. */
+static WaitRegs after_load(WaitRegs r, uint8_t a)
+{
+    r.a = a;
+    r.n = (a & 0x80) != 0;
+    r.z = a == 0;
+    return r;
+}
+
+/* A block move saves and puts back Y, A and X on the stack, with the registers the code holds there. */
+static void tai_regs_shim(WaitRegs r, uint16_t source, uint16_t destination, uint16_t length)
+{
+    wait_regs_shim(r);
     tai(source, destination, length);
 }
 
@@ -328,15 +361,16 @@ static void tai_with_a_shim(uint8_t a, bool set, uint8_t x, uint8_t y, uint16_t 
  * WAITS: yes, through WaitVblankDisplayOff, which spins until the frame interrupt sees vblank; the stack there holds this routine's return address and the JSR frame.
  * Entry: interrupts on. Exit: A 2, X 0, Y $FF, N 1, Z 0.
  */
-static void clear_screen_state(bool set, uint8_t kept_x, uint8_t kept_y)
+static void clear_screen_state(WaitRegs entry)
 {
+    wait_regs_shim(entry);                  /* what the wait's interrupt pushes */
     jsr_push(0x5BA3);
     WaitVblankDisplayOff();
     jsr_pop();
     wr8(zDisplayDelay, 4);
     wr8(zRasterEffect, 0);
     wr8(zVideoMode, 0);
-    tai_with_a_shim(4, set, kept_x, kept_y, KernelZeros, ScrollXFrac, 0x00EE);
+    tai_regs_shim(after_load(entry, 4), KernelZeros, ScrollXFrac, 0x00EE);
     jsr_push(0x5BB5);
     ClearVdcControlHigh();
     jsr_pop();
@@ -354,20 +388,15 @@ static void clear_screen_state(bool set, uint8_t kept_x, uint8_t kept_y)
     }
 }
 
-/* The routine, with the X and Y it was entered with unknown (the live ones) or given. */
-void ClearScreenState(void)
+/* entry: the registers and flags the caller holds at the JSR, which the wait and the block move see. */
+void ClearScreenState(WaitRegs entry)
 {
-    clear_screen_state(false, 0, 0);
-}
-
-void ClearScreenStateAt(uint8_t kept_x, uint8_t kept_y)
-{
-    clear_screen_state(true, kept_x, kept_y);
+    clear_screen_state(entry);
 }
 
 void abi_ClearScreenState(void)
 {
-    ClearScreenState();
+    ClearScreenState(wait_regs_live_shim());
     cpu.a = VDC_REG_VRAM;
     cpu.x = 0;
     cpu.y = 0xFF;
@@ -384,8 +413,11 @@ void abi_ClearScreenState(void)
  * WAITS: yes, through WaitVblankDisplayOff, which spins until the frame interrupt sees vblank; the stack there holds this routine's return address and the JSR frame.
  * Entry: interrupts on. Exit: as ClearScreenState.
  */
-static void reset_game_state(bool set, uint8_t kept_x, uint8_t kept_y)
+static void reset_game_state(WaitRegs entry)
 {
+    WaitRegs loaded = after_load(entry, 1);     /* LDA #$01 for colour $100: what the block moves and the next wait see */
+
+    wait_regs_shim(entry);                  /* what the wait's interrupt pushes */
     jsr_push(0x5B78);
     WaitVblankDisplayOff();
     jsr_pop();
@@ -397,19 +429,15 @@ static void reset_game_state(bool set, uint8_t kept_x, uint8_t kept_y)
     wr8(VCE_ADDR_HI, 1);
     wr8(VCE_DATA_LO, 0);
     wr8(VCE_DATA_HI, 0);
-    tai_with_a_shim(1, set, kept_x, kept_y, KernelZeros, LevelStreamLo, 0x0003);
-    tai_with_a_shim(1, set, kept_x, kept_y, KernelZeros, GameRamStart, 0x164D);
-    clear_screen_state(set, kept_x, kept_y);
+    tai_regs_shim(loaded, KernelZeros, LevelStreamLo, 0x0003);
+    tai_regs_shim(loaded, KernelZeros, GameRamStart, 0x164D);
+    clear_screen_state(loaded);
 }
 
-void ResetGameState(void)
+/* entry: the registers and flags the caller holds at the JSR, which the wait and the block moves see. */
+void ResetGameState(WaitRegs entry)
 {
-    reset_game_state(false, 0, 0);
-}
-
-void ResetGameStateAt(uint8_t kept_x, uint8_t kept_y)
-{
-    reset_game_state(true, kept_x, kept_y);
+    reset_game_state(entry);
 }
 
 /* ResetGameState's exit, for its wrapper and for a caller's that replays it. */
@@ -423,6 +451,6 @@ void reset_game_state_exit_shim(void)
 
 void abi_ResetGameState(void)
 {
-    ResetGameState();
+    ResetGameState(wait_regs_live_shim());
     reset_game_state_exit_shim();
 }

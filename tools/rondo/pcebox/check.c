@@ -1128,9 +1128,10 @@ uint8_t rd8(uint16_t addr)
         e = j >= 0 ? evp((uint64_t)j) : NULL;
         uint64_t before;
 
-        if (e && !is_ram(p))
+        if (e && !is_ram(p)) {
             pace_site = "hardware read";
             pace_to_access(p, e->clock);
+        }
         before = hybrid_clock_now();
         v = chk_bus_rd(addr);
         if (e && e->val != v) {

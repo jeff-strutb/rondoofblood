@@ -347,6 +347,9 @@ static ChannelExit abi_run_list_channel(uint16_t table)
  * a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
  * WAITS: no.
  * Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ * liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_list_channels_0441.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+ * unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
  */
 ChannelExit RunListChannel0441(uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v)
 {
@@ -379,6 +382,9 @@ void abi_RunListChannel0441(void)
  * a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
  * WAITS: no.
  * Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ * liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_list_channels_0651.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+ * unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
  */
 ChannelExit RunListChannel0651(uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v)
 {
@@ -411,6 +417,9 @@ void abi_RunListChannel0651(void)
  * a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
  * WAITS: no.
  * Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ * liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_list_channels_1231.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+ * unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
  */
 ChannelExit RunListChannel1231(uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v)
 {
@@ -443,6 +452,9 @@ void abi_RunListChannel1231(void)
  * a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
  * WAITS: no.
  * Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ * liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_list_channels_1A31.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+ * unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
  */
 ChannelExit RunListChannel1A31(uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v)
 {
@@ -475,6 +487,9 @@ void abi_RunListChannel1A31(void)
  * a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
  * WAITS: no.
  * Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ * liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_list_channels_1B91.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+ * unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
  */
 ChannelExit RunListChannel1B91(uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v)
 {

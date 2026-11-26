@@ -245,6 +245,7 @@ typedef struct {
     ColumnsEnd columns; FloorResult floor; uint8_t stepped; ColumnsEnd columns_below;
     FloorResult floor_below; bool jump; LandingLift landing; ItemCrash crash; ItemUse use;
     LedgeCheck ledge; bool up; AnimationStep tick; uint8_t facing; uint8_t held;
+    uint8_t jump_held; uint8_t back_facing;
     AnimationStep fall; AirStart air; HurtAir hurt; AttackStart attack; FacingSpeed speed;
     ClimbStart climb;
 } WalkStep;
@@ -3458,12 +3459,12 @@ static void walk_replay_shim(const WalkStep *w)
     abi_nz(w->facing);
     if (w->how == WALK_ON)
         return;
-    abi_flag(P_N, (w->held & 0x80) != 0);
-    abi_flag(P_V, (w->held & 0x40) != 0);
-    abi_flag(P_Z, !(w->held & PAD_JUMP));
-    if (w->held & PAD_JUMP) {
-        cpu.a = w->facing;
-        abi_nz(w->facing);
+    abi_flag(P_N, (w->jump_held & 0x80) != 0);
+    abi_flag(P_V, (w->jump_held & 0x40) != 0);
+    abi_flag(P_Z, !(w->jump_held & PAD_JUMP));
+    if (w->jump_held & PAD_JUMP) {
+        cpu.a = w->back_facing;
+        abi_nz(w->back_facing);
     }
 }
 
@@ -3565,11 +3566,19 @@ WalkStep RichterStateWalk(void)
         w.speed = RichterSpeedWalk();
         return w;
     }
-    if ((w.held & PAD_JUMP) && (w.held & (w.facing == FACING_RIGHT ? PAD_LEFT : PAD_RIGHT))) {
-        wr8(OBJ_FIELDS_2EE0, BACKSTEP_FIELD);
-        w.how = WALK_BACKSTEP;
-        w.speed = RichterSpeedBackstep();
-        return w;
+    /* TST #2 of the pad, then the facing and the pad once more for the way back */
+    w.jump_held = rd8(zPadHeld);
+    if (w.jump_held & PAD_JUMP) {
+        uint8_t back;
+
+        w.back_facing = rd8(OBJ_2AC0);
+        back = rd8(zPadHeld);
+        if (back & (w.back_facing == FACING_RIGHT ? PAD_LEFT : PAD_RIGHT)) {
+            wr8(OBJ_FIELDS_2EE0, BACKSTEP_FIELD);
+            w.how = WALK_BACKSTEP;
+            w.speed = RichterSpeedBackstep();
+            return w;
+        }
     }
     w.how = WALK_STOOD;
     w.fall = RichterStand();

@@ -482,6 +482,7 @@ static struct {
 } hold;
 static unsigned long idle_until_frame;     /* after a frame hold: the core runs nothing until this frame has ended */
 static uint64_t frame_holds;
+static uint64_t int_holds;       /* interrupts a few instructions past a hand-over: held until the core stands there */
 static uint64_t held_ints, held_not;
 static uint64_t handover_ints;     /* interrupts the record took before the instruction a C handed over at: delivered by the C */
 static uint64_t handover_frames;   /* frame ends the record took at the place a C handed over to the original: passed by the C */
@@ -1933,6 +1934,13 @@ void hand_over(uint16_t addr)
                     break;
                 if (is_noise(e) && e->type != EV_RTPULL)
                     continue;
+                if (e->type == EV_INT && e->s == cpu.s) {
+                    /* The same for the interrupt the original took a few instructions on: held, dispatched from the
+                     * record when the core stands at its PC (an INT at addr itself is the hold's below, the same). */
+                    if (hold_arm_from(j, sp->tag, 1, e->pc, cpu.s))
+                        int_holds++;
+                    break;
+                }
                 if (e->type == EV_FRAME && e->s == cpu.s && cur_frame < e->addr) {
                     hold.ev = *e;
                     memcpy(&hold.ev.clock, e->mpr, 8);
@@ -4005,6 +4013,8 @@ void check_finish(void)
                 (unsigned long long)dispatch_held);
         fprintf(report, "interrupts before the instruction a C handed over at, delivered by the C: %llu\n",
                 (unsigned long long)handover_ints);
+        fprintf(report, "interrupts a few instructions past a hand-over, the core held until it stood there: %llu\n",
+                (unsigned long long)int_holds);
         fprintf(report, "frame ends a few instructions past a hand-over, the core held until it stood there: %llu\n",
                 (unsigned long long)frame_holds);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",

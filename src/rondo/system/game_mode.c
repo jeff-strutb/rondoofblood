@@ -733,6 +733,7 @@ void abi_ModeStageLoad(void)
  * @run 69:53D7
  * WHAT IT DOES: Writes the character's progress to the save slot in zSaveSlot.
  * HOW: Reads the backup file to RAM, copies into the slot, writes it back.
+ * WAITS: no itself; BackupRead and BackupWrite wait on the backup memory, the stack there holds this routine's return address and the call's frame.
  * Entry: nothing. Exit: as BackupWrite, entered with X past the slot's stage bytes, Y $14, A
  * the last byte copied, Z and C set.
  */
@@ -757,11 +758,13 @@ static void save_progress_tail(SaveRun *run)
     run->write = BackupWrite();
 }
 
-static SaveRun save_slot_open(void)
+static SaveRun save_slot_open(uint16_t ret)
 {
     SaveRun run;
 
+    jsr_push(ret);
     run.read = BackupRead();
+    jsr_pop();
     run.slot = rd8(zSaveSlot);
     run.offset = rd8((uint16_t)(SaveSlotOffsets + run.slot));
     return run;
@@ -769,7 +772,7 @@ static SaveRun save_slot_open(void)
 
 SaveRun SaveProgress(void)
 {
-    SaveRun run = save_slot_open();
+    SaveRun run = save_slot_open(0x53DA);
 
     save_progress_tail(&run);
     return run;
@@ -798,19 +801,27 @@ void abi_SaveProgress(void)
  * WHAT IT DOES: As SaveProgress, and first adds the stage's score to the slot's total, in
  * BCD, stopping at 999999.
  * HOW: A 24-bit BCD add from zScoreAddLo-Hi.
+ * WAITS: no itself; BackupRead and BackupWrite wait on the backup memory, the stack there holds this routine's return address and the call's frame.
  * Entry: nothing. Exit: as SaveProgress.
  */
 SaveRun SaveScore(void)
 {
-    SaveRun run = save_slot_open();
+    SaveRun run = save_slot_open(0x53E4);
     uint16_t total = (uint16_t)(SaveScoreTotal + run.offset);
     Sum sum;
 
-    sum = add_decimal(rd8(zScoreAddLo), rd8(total), false);
+    uint8_t add, held;
+
+    add = rd8(zScoreAddLo);     /* the score first, then the total, as the add reads them */
+    held = rd8(total);
+    sum = add_decimal(add, held, false);
     wr8(total, sum.value);
-    sum = add_decimal(rd8(zScoreAddHi), rd8((uint16_t)(total + 1)), sum.carry);
+    add = rd8(zScoreAddHi);
+    held = rd8((uint16_t)(total + 1));
+    sum = add_decimal(add, held, sum.carry);
     wr8((uint16_t)(total + 1), sum.value);
-    sum = add_decimal(0, rd8((uint16_t)(total + 2)), sum.carry);
+    held = rd8((uint16_t)(total + 2));
+    sum = add_decimal(0, held, sum.carry);
     wr8((uint16_t)(total + 2), sum.value);
     if (sum.carry) {
         wr8(total, 0x99);
@@ -1467,11 +1478,15 @@ ScreenRun ModeScreen(void)
         run.path = SCREEN_BONUS;
         run.slot = rd8(zSaveSlot);
         if (!(run.slot & 0x80)) {
+            jsr_push(0x548A);
             run.read = BackupRead();
+            jsr_pop();
             run.save_slot = rd8(zSaveSlot);
             run.offset = rd8((uint16_t)(SaveSlotOffsets + run.save_slot));
             wr8((uint16_t)(SaveBonusSeen + run.offset), 1);
+            jsr_push(0x5497);
             run.write = BackupWrite();
+            jsr_pop();
         }
         run.next = StageClearedNext();
         return run;

@@ -485,6 +485,7 @@ ModeBackToTitle:
 ; @run 69:53D7
 ; WHAT IT DOES: Writes the character's progress to the save slot in zSaveSlot.
 ; HOW: Reads the backup file to RAM, copies into the slot, writes it back.
+; WAITS: no itself; BackupRead and BackupWrite wait on the backup memory, the stack there holds this routine's return address and the call's frame.
 ; Entry: nothing. Exit: as BackupWrite, entered with X past the slot's stage bytes, Y $14, A
 ; the last byte copied, Z and C set.
 SaveProgress:
@@ -498,6 +499,7 @@ SaveProgress:
 ; WHAT IT DOES: As SaveProgress, and first adds the stage's score to the slot's total, in
 ; BCD, stopping at 999999.
 ; HOW: A 24-bit BCD add from zScoreAddLo-Hi.
+; WAITS: no itself; BackupRead and BackupWrite wait on the backup memory, the stack there holds this routine's return address and the call's frame.
 ; Entry: nothing. Exit: as SaveProgress.
 SaveScore:
     jsr VecBackupRead

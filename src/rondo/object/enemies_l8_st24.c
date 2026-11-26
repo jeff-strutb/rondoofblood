@@ -377,7 +377,7 @@ void abi_SpinThenCountWordDown(void)
 /* The Y the sound call takes: the one the ring start left, else the one the routine was entered with. */
 static uint8_t ring_y(const L8St24RingArm *r, uint8_t y_entry)
 {
-    Ended e = l8_ring_exit_shim(r->ring);
+    Ended e = l8_ring_of_pieces_exit_shim(r->ring);
 
     return e.y_set ? e.y : y_entry;
 }
@@ -438,7 +438,7 @@ static ExitChain ring_exit_shim(L8St24RingArm r)
         return c;
     }
     chain_ended(&c, ended_of_tile_run(r.run, 0));
-    chain_ended(&c, l8_ring_exit_shim(r.ring));
+    chain_ended(&c, l8_ring_of_pieces_exit_shim(r.ring));
     s.sounded = true;
     s.command = 0x56;
     s.before = ended_load(0x56);

@@ -380,8 +380,18 @@ def served(main, opts):
     log(f"served: {rev}, draft cache {st}: {len(drafts)} drafts, {len(labels)} of {len(ext)} filed routines have one", b)
     mode = "proper" if opts.get("proper") else "serve-all" if opts.get("serve_all") else "mix"
     out = os.path.join(b, f"out-served-{rev}-{mode}")
-    shutil.rmtree(out, ignore_errors=True)
-    draft_a5 = {}
+    allbox = os.path.join(b, f"pcebox-alldrafts-{rev}-{st}")
+    # a script's draft A5 depends only on the all-drafts box: a result measured with this same box is kept
+    d5dir = os.path.join(out, "d5")
+    keep_d5 = os.path.exists(os.path.join(d5dir, "box.txt")) and open(os.path.join(d5dir, "box.txt")).read() == allbox
+    if keep_d5:
+        for name in os.listdir(out):
+            if name != "d5":
+                shutil.rmtree(os.path.join(out, name), ignore_errors=True) if os.path.isdir(os.path.join(out, name)) \
+                    else os.remove(os.path.join(out, name))
+    else:
+        shutil.rmtree(out, ignore_errors=True)
+    draft_a5, d5_failed = {}, []
     if opts.get("draft_a5"):
         # per-draft verdicts measured elsewhere (the drafter's full A5 with every draft serving)
         for r in csv.DictReader(open(opts["draft_a5"], newline="")):
@@ -390,7 +400,6 @@ def served(main, opts):
                                    "order_flags": int(r["order"])}
         log(f"served: per-draft A5 from {opts['draft_a5']}: {len(draft_a5)} drafts", b)
     else:
-        allbox = os.path.join(b, f"pcebox-alldrafts-{rev}-{st}")
         if not os.path.exists(allbox):
             dst = os.path.join(b, "tree-alldrafts")
             d = sv.make_tree(tree, dst, cache, drafts, {r["name"] for r in drafts}, set(labels), filed_of)
@@ -399,16 +408,22 @@ def served(main, opts):
                 print("runner: the all-drafts box did not build:\n" + text)
                 return 1
         with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(opts["workers"], len(scripts)))) as ex:
-            results_d5 = list(ex.map(lambda s: measure(tree, allbox, os.path.join(out, "d5"), s, "d5"), scripts))
+            results_d5 = list(ex.map(lambda s: d5_result(tree, allbox, d5dir, s), scripts))
+        with open(os.path.join(d5dir, "box.txt"), "w") as f:
+            f.write(allbox)
         for s, res in zip(scripts, results_d5):
             if res.get("errors"):
-                print(f"runner: draft A5 of {s} failed: {res['errors']}")
-                return 1
+                # no draft A5 for this script: it is reported, the others still count, and no drafted count is written
+                log(f"served: draft A5 of {s} FAILED {res['errors']}", b)
+                d5_failed.append(s)
+                continue
             for lab, v in res["a5"].items():
                 t = draft_a5.setdefault(lab, {"calls": 0, "identical": 0, "divergent": 0, "unverified": 0, "order_flags": 0})
                 for k in t:
                     t[k] += v[k]
-    if scripts == records.script_names(main) and not opts.get("draft_a5"):
+    if d5_failed:
+        log(f"served: no drafted count written: {len(d5_failed)} script(s) without a draft A5: {' '.join(d5_failed)}", b)
+    if scripts == records.script_names(main) and not opts.get("draft_a5") and not d5_failed:
         # every script measured: the drafted count the README prints (config/rondo/drafted.csv, tracked)
         import datetime
         rom = {r["name"]: r.get("rom", "0") for r in drafts}
@@ -527,6 +542,16 @@ def served(main, opts):
         log(f"served: iteration {it + 1}: {len(new_extra)} more filed routines named by defects go to drafts: "
             f"{', '.join(sorted(new_extra)[:12])}", b)
     return 0
+
+
+def d5_result(tree, allbox, d5dir, s):
+    """A script's draft A5: the stored result when it was measured with this box and has no error, else measured."""
+    path = os.path.join(d5dir, s, "result.json")
+    if os.path.exists(os.path.join(d5dir, "box.txt")) and os.path.exists(path):
+        res = json.load(open(path))
+        if not res.get("errors"):
+            return res
+    return measure(tree, allbox, d5dir, s, "d5")
 
 
 TABLE = ["script", "mode", "verdict", "code", "frames", "defects", "first_stop", "cause", "source"]

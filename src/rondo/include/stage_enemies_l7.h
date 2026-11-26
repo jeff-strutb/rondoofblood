@@ -98,11 +98,15 @@ static inline void sync(Ended *e)
     *e = ended_kept();
 }
 
-/* The object's own code is entered with X its slot, as the dispatch left the other registers. */
+/* The object's own code is entered with X its slot, as the dispatch left the other registers. A dispatch with nothing to jump to (the object's kind was cleared meanwhile, the original's `beq` to its `rts`) leaves only its registers. */
 static inline uint8_t enter_handler(uint8_t x, Jump jump)
 {
     cpu.x = x;
-    jump_shim(jump.end, jump.target);
+    if (jump.jumps) {
+        jump_shim(jump.end, jump.target);
+    } else {
+        abi_ended(jump.end);
+    }
     return cpu.x;
 }
 Ended HitDamage(uint8_t slot);

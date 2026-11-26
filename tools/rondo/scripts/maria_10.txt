@@ -1,0 +1,49 @@
+# Maria: scene $01 (her character scene, which StageLoad loads when zCharacter is 1 and her scene is not in), her
+# Stage $10 scene $56 (StageScenes plus zCharacter), then scenes $5A and $5B (the clear screens for zCharacter 1).
+# To the continue screen (as stage_10), then ContinueChoice ($3F24) 2, the screen's third choice: ModeDead then
+# switches zCharacter (EOR 1) and restarts the stage, as the game does when the player continues as the other
+# character. zStage $10, seeded random play as Maria, then the clear as clear_10 pokes it (zModeEvents 4, the result of
+# the stage-end sequence's SMB2 in Stage $10).
+include _continue_to.txt
+poke 2081 10
+poke 3F24 02
+press I 6
+wait 900
+shot entered
+dump entered
+random 1611 3000 8
+shot r1
+dump r1
+random 1612 3000 8
+shot r2
+dump r2
+poke 209A 04
+wait 1
+dump p01
+wait 1
+dump p02
+wait 1
+dump p03
+wait 1
+dump p04
+wait 1
+dump p05
+wait 5
+dump p10
+wait 10
+dump p20
+wait 20
+dump p40
+wait 60
+dump p100
+wait 100
+dump p200
+wait 400
+shot loaded
+dump loaded
+wait 1800
+shot s1
+dump s1
+wait 1800
+shot s2
+dump s2

@@ -689,7 +689,6 @@ StageDeathFallBackLeft152D:
     jsr StageResetScroll152D
     lda #$01
     sta z:zGameSubMode
-StageDeathFallBackLeft152D_at0:
     lda #$20
     sta a:$3310
     lda #$20
@@ -2018,31 +2017,31 @@ StageHudStep152D:
     ldy #$F0
     jsr $942A
     dec z:zField99
-    bra StageHudStep152D_at2
+    bra StageHudStep152D_at6
 StageHudStep152D_at1:
-    bbr5 zField8E,StageHudStep152D_at3
-    bbs6 zField8E,StageHudStep152D_at3
+    bbr5 zField8E,StageHudStep152D_at2
+    bbs6 zField8E,StageHudStep152D_at2
     lda #$0B
     jsr VecSoundCommand
     smb6 z:zField8E
-StageHudStep152D_at3:
+StageHudStep152D_at2:
     inc z:zField99
     bsr StageHealthBarAddress152D
     ldx #$00
     ldy #$0F
     jsr $9439
-    bra StageHudStep152D_at4
+    bra StageHudStep152D_at3
 StageHudStep152D_at0:
     smb5 z:zField8E
-StageHudStep152D_at2:
-    bbr6 zField8E,StageHudStep152D_at4
+StageHudStep152D_at6:
+    bbr6 zField8E,StageHudStep152D_at3
     rmb6 z:zField8E
     lda #$2C
     jsr VecSoundCommand
-StageHudStep152D_at4:
+StageHudStep152D_at3:
     lda z:zField94
     cmp z:zField95
-    beq StageHudStep152D_at5
+    beq StageHudStep152D_at4
     sta z:zField95
     and #$0F
     ldx #$08
@@ -2054,10 +2053,10 @@ StageHudStep152D_at4:
     lsr a
     ldx #$09
     jsr StageDrawDigit152D
-StageHudStep152D_at5:
-    bbs2 zField8E,StageHudStep152D_at6
+StageHudStep152D_at4:
+    bbs2 zField8E,StageHudStep152D_at5
     rts
-StageHudStep152D_at6:
+StageHudStep152D_at5:
     jmp StageBossBar152D
 
 ; @routine 152E:081 StageHudSound152D
@@ -3356,7 +3355,7 @@ ContinueReveal152D_at1:
     bpl ContinueReveal152D_at1
     lda a:$32CF
     cmp #$10
-    bne ContinueRowStep152D_at0
+    bne ContinueRowStep152D_at2
     inc a:$32CF
     rts
 
@@ -3400,23 +3399,23 @@ ContinueDeadFade152D:
 ; Entry: X the row. Exit: as the last instruction that ran left them; X kept.
 ContinueRowStep152D:
     lda a:$2818,x
-    bne ContinueRowStep152D_at1
+    bne ContinueRowStep152D_at0
     lda a:$32C8,x
-    bne ContinueRowStep152D_at2
+    bne ContinueRowStep152D_at1
     inc a:$2818,x
     rts
-ContinueRowStep152D_at2:
+ContinueRowStep152D_at1:
     lda a:OBJ_X_HI+8,x
     clc
     adc #$08
     sta a:OBJ_X_HI+8,x
     dec a:$32C8,x
-ContinueRowStep152D_at0:
+ContinueRowStep152D_at2:
     rts
-ContinueRowStep152D_at1:
+ContinueRowStep152D_at0:
     lda a:$32C8,x
     cmp #$10
-    bcs ContinueRowStep152D_at0
+    bcs ContinueRowStep152D_at2
     stz z:zTemp00
     txa
     lsr a
@@ -3567,7 +3566,7 @@ ContinueMenuStart152D_at1:
     lda #$4F
     sta a:$2B80
     stz a:ContinueChoice
-    bra ContinueMenu152D_at0
+    bra ContinueMenu152D_at3
 
 ; @routine 152F:08B ContinueMenu152D
 ; @run 6B:908B
@@ -3589,16 +3588,16 @@ ContinueMenu152D:
     jsr ContinueBlink152D
     lda a:BiosJoyTrigger
     and #$09
-    bne ContinueMenu152D_at1
+    bne ContinueMenu152D_at0
     lda a:BiosJoyTrigger
     and #$54
-    beq ContinueMenu152D_at2
+    beq ContinueMenu152D_at1
     ldx a:ContinueChoice
     and #$10
-    bne ContinueMenu152D_at3
+    bne ContinueMenu152D_at2
     inx
     inx
-ContinueMenu152D_at3:
+ContinueMenu152D_at2:
     lda a:$90C8,x
     sta a:ContinueChoice
     clc
@@ -3606,16 +3605,16 @@ ContinueMenu152D_at3:
     jsr VecStartScriptSlot0Kind1
     lda #$01
     jsr VecSoundCommand
-ContinueMenu152D_at0:
+ContinueMenu152D_at3:
     ldx a:ContinueChoice
     lda a:$90CD,x
     sta a:$2C58
     rts
-ContinueMenu152D_at1:
+ContinueMenu152D_at0:
     lda #$FF
     jsr VecSoundCommand
     inc z:zModeDone
-ContinueMenu152D_at2:
+ContinueMenu152D_at1:
     rts
 
 ; @routine 152F:0D0 ContinueBlink152D
@@ -4326,15 +4325,16 @@ TallyDigitCell152D_at0:
 StageClearWords152D:
     sta z:zTemp00
     jsr SetVramWriteAddress152D
-StageClearWords152D_at1:
+StageClearWords152D_at2:
     ldx #$40
-StageClearWords152D_at0:
+StageClearWords152D_at1:
     st1 #$00
     st2 #$00
     dex
-    bne StageClearWords152D_at0
-    dec z:zTemp00
     bne StageClearWords152D_at1
+StageClearWords152D_at0:
+    dec z:zTemp00
+    bne StageClearWords152D_at2
     rts
 
 ; @routine 152F:40A StageSplitTens152D
@@ -5119,4 +5119,251 @@ ProbeTile152D_at7:
     lda a:$98AA,y
     sta z:zTemp02
     lda #$81
+    rts
+
+; @routine 1530:0EA GateObjectStep152D
+; @run 6B:98EA
+; @stop 98FC
+; @unreachable 6B:98EA-6B:98FB no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sectors, and a unit call at $98EA runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: An object handler for the stage's gate: its step at $2818 runs from the table of seven at $98FC (the
+; start, the wait for the player, the wait for the cleared stage's step, the opening, the wait, the closing, nothing).
+; No code of the overlay reaches it (another overlay's tables do); the census counts none of its bytes.
+; HOW: The step doubled indexes the table; its word goes through zTemp00-01 and is jumped through.
+; WAITS: no.
+; Entry: X the object. Exit: as the step leaves them; it is entered with A the word's high byte and Y the index.
+GateObjectStep152D:
+    lda a:$2818,x
+    asl a
+    tay
+    lda a:$98FC,y
+    sta z:zTemp00
+    lda a:$98FD,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 1530:10A GateStart152D
+; @run 6B:990A
+; @stop 9926
+; @unreachable 6B:990A-6B:9925 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sectors, and a unit call at $990A runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The gate's first step: the overlay at $A000's piece at $A36C, the gate's Y moved up by ScrollYLo, its
+; sprite at $2A58 from the two at $9927 by bit 0 of its packed byte at $2F20; then the RTS at $9926 (the bytes of
+; StageSubStepNone152D's kind, run on into).
+; HOW: $A36C; a negate and an add; a table read.
+; WAITS: no.
+; Entry: X the object. Exit: A the sprite, N and Z from it, Y the bit; C and V from the add.
+GateStart152D:
+    jsr RichterStandStep2_at11
+    lda a:ScrollYLo
+    eor #$FF
+    inc a
+    clc
+    adc a:$2C50,x
+    sta a:$2C50,x
+    lda a:$2F20,x
+    and #$01
+    tay
+    lda a:$9927,y
+    sta a:$2A58,x
+
+; @routine 1530:12B GateWaitPlayer152D
+; @run 6B:992B
+; @unreachable 6B:992B-6B:9975 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sectors, and a unit call at $992B runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The gate waits for the player: with PlayerByte3BD7 set and the byte at $2746 clear, and the gate's
+; state at $31F0 1 or 2, the stage is cleared through it (zField8C its packed byte's low nibble plus one, zSubStep 3),
+; the gate goes on to its next step (its count 0, its timer 4); a packed byte's high nibble names a sound (raster
+; effect and $3EA4 cleared, the kernel's piece at $400F with X 6 and A the nibble with bit 7).
+; HOW: Tests; stores; shifts; X kept on the stack across the kernel.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test or the kernel left them; X kept.
+GateWaitPlayer152D:
+    lda a:LevelFullWalk+2
+    eor #$01
+    and a:PlayerByte3BD7
+    beq GateWaitPlayer152D_at0
+    lda a:$31F0,x
+    beq GateWaitPlayer152D_at0
+    cmp #$03
+    bcs GateWaitPlayer152D_at0
+    lda a:$2F20,x
+    and #$0F
+    inc a
+    sta z:zField8C
+    lda #$03
+    sta z:zSubStep
+    inc a:$2818,x
+    stz a:$3310,x
+    lda #$04
+    sta a:$32C8,x
+    lda a:$2F20,x
+    and #$F0
+    beq GateWaitPlayer152D_at0
+    stz z:zRasterEffect
+    stz a:ScrollSpeedX+6
+    lda a:$2F20,x
+    and #$F0
+    beq GateWaitPlayer152D_at0
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    ora #$80
+    phx
+    ldx #$06
+    jsr VecStartListChannelKind2
+    plx
+GateWaitPlayer152D_at0:
+    rts
+
+; @routine 1530:176 GateWaitStep152D
+; @run 6B:9976
+; @unreachable 6B:9976-6B:997F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sectors, and a unit call at $9976 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The gate waits for the cleared stage's step at $85 to reach 2, then goes on.
+; HOW: A compare; an increment.
+; WAITS: no.
+; Entry: X the object. Exit: A $85, N, Z and C from the compare, or N and Z from the step's increment.
+GateWaitStep152D:
+    lda z:zField85
+    cmp #$02
+    bne GateWaitClear152D_at0
+    inc a:$2818,x
+    rts
+
+; @routine 1530:180 GateOpen152D
+; @run 6B:9980
+; @unreachable 6B:9980-6B:99BD no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sectors, and a unit call at $9980 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The gate opens: every fourth frame its count at $3310 steps up and its frame is drawn; at 4 it goes
+; on, zField8C gets bit 7 and sound $3A is sent.
+; HOW: A countdown at $32C8; a compare; gate_frame; the sound hook by a jump.
+; WAITS: no.
+; Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
+GateOpen152D:
+    dec a:$32C8,x
+    bne GateOpen152D_at0
+    inc a:$3310,x
+    lda a:$3310,x
+    cmp #$04
+    bne GateOpen152D_at1
+    inc a:$2818,x
+    lda z:zField8C
+    ora #$80
+    sta z:zField8C
+    lda #$3A
+    jmp VecSoundCommand
+GateOpen152D_at1:
+    lda #$04
+    sta a:$32C8,x
+    lda a:$2F20,x
+    and #$01
+    tay
+    lda a:$9927,y
+    clc
+    adc a:$3310,x
+    sta a:$2A58,x
+    clc
+    adc a:$9929,y
+    phx
+    ldx #$05
+    jsr VecStartListChannelKind2
+    plx
+GateOpen152D_at0:
+    rts
+
+; @routine 1530:1BE GateWaitClear152D
+; @run 6B:99BE
+; @unreachable 6B:99BE-6B:99CA no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sectors, and a unit call at $99BE runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The gate waits until zField8C loses bit 7, then goes on with its timer 4.
+; HOW: A test; stores.
+; WAITS: no.
+; Entry: X the object. Exit: A zField8C, N and Z from it, or A 4.
+GateWaitClear152D:
+    lda z:zField8C
+    bmi GateWaitClear152D_at0
+    inc a:$2818,x
+    lda #$04
+    sta a:$32C8,x
+GateWaitClear152D_at0:
+    rts
+
+; @routine 1530:1CB GateClose152D
+; @run 6B:99CB
+; @unreachable 6B:99CB-6B:99FD no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sectors, and a unit call at $99CB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The gate closes: every fourth frame its count at $3310 steps down and its frame is drawn; below 0 it
+; goes on and sound $3A is sent.
+; HOW: A countdown at $32C8; a decrement; gate_frame; the sound hook by a jump.
+; WAITS: no.
+; Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
+GateClose152D:
+    dec a:$32C8,x
+    bne GateClose152D_at0
+    dec a:$3310,x
+    bpl GateClose152D_at1
+    inc a:$2818,x
+    lda #$3A
+    jmp VecSoundCommand
+GateClose152D_at1:
+    lda #$04
+    sta a:$32C8,x
+    lda a:$2F20,x
+    and #$01
+    tay
+    lda a:$9927,y
+    clc
+    adc a:$3310,x
+    sta a:$2A58,x
+    clc
+    adc a:$9929,y
+    phx
+    ldx #$05
+    jsr VecStartListChannelKind2
+    plx
+GateClose152D_at0:
     rts

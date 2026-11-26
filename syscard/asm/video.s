@@ -617,6 +617,7 @@ load_font_at0:
 ; Entry: CardColorCommand, CardColorBackground, CardColorSprites. Exit, no command: A 0, N 0, Z 1.
 ; Sprites moved: A 1, the VCE address's high byte it last loaded, N 0, Z 0, C 0. Sprites skipped:
 ; A 0, N 0, Z 1, C 0 if the background moved, else as it was. X, Y, V kept.
+; Not checked: the block move it writes in RAM is done in C; the checker compares RAM-built code only as part of its caller once that change lands.
 ex_colorcmd:
     lda a:CardColorCommand
     bne ex_colorcmd_at0

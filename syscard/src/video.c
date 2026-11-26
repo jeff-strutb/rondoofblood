@@ -950,21 +950,33 @@ enum {
 };
 
 /*
- * The JSR the BIOS makes into the block move it wrote in RAM at CardBlockStub: original code with no C, run as the
- * original runs it, with the registers it has there. For the background's set A is the length's low byte and N and Z
- * come from the ROL that made the length's high byte; for the sprites' set the LDA #1 that loads the VCE address's
- * high byte is the last to set A, N and Z. C is 0 either way, X and Y as the routine got them. The stub's own TIA or
- * TAI pushes and pulls Y, A and X, moves the bytes and returns.
+ * The JSR into the block move the BIOS wrote in RAM at CardBlockStub, done here in C, every access in the order the CPU makes
+ * it: the frame, Y, A and X pushed by the TIA or TAI, the bytes (TIA: the source in turn to the port's two addresses;
+ * TAI: the port's two addresses in turn to the destination), X, A and Y pulled. A at the JSR is the length's low byte for the
+ * background's set and 1 (the LDA #1 of the VCE address's high byte) for the sprites'.
  */
-static void call_block_stub_shim(uint16_t ret, bool sprites, uint8_t length_low, uint8_t length_high, uint8_t x,
-                                 uint8_t y)
+static void run_block_stub(uint16_t ret, bool read_back, uint16_t memory, uint16_t length, uint8_t a, uint8_t x,
+                           uint8_t y)
 {
-    cpu.a = sprites ? SPRITE_PALETTES : length_low;
-    cpu.x = x;
-    cpu.y = y;
-    abi_nz(sprites ? SPRITE_PALETTES : length_high);
-    abi_flag(P_C, false);
-    call_orig(ret, CardBlockStub);
+    jsr_push(ret);
+    push8(y);
+    push8(a);
+    push8(x);
+    for (uint16_t i = 0; i < length; i++) {
+        if (read_back) {
+            uint8_t byte = rd8((uint16_t)(VceDataLo + (i & 1)));
+
+            wr8((uint16_t)(memory + i), byte);
+        } else {
+            uint8_t byte = rd8((uint16_t)(memory + i));
+
+            wr8((uint16_t)(VceDataLo + (i & 1)), byte);
+        }
+    }
+    (void)pull8();
+    (void)pull8();
+    (void)pull8();
+    jsr_pop();
 }
 
 /* One set of palettes, to the VCE or back, as the BIOS's stub does it: the registers the block moves push are
@@ -1010,7 +1022,8 @@ static CardExit move_color_set(uint16_t set, uint8_t palette_high, bool read_bac
     (void)pull8();
     WR8(CVCE->addr_lo, 0);
     WR8(CVCE->addr_hi, palette_high);
-    call_block_stub_shim(ret_stub, palette_high != 0, length_low, length_high, x, y);
+    run_block_stub(ret_stub, read_back, (uint16_t)(memory_low | (memory_high << 8)),
+                   (uint16_t)(length_low | (length_high << 8)), palette_high != 0 ? SPRITE_PALETTES : length_low, x, y);
     e.c = false;
     e.set_c = true;
     if (palette_high != 0) {
@@ -1032,6 +1045,7 @@ static CardExit move_color_set(uint16_t set, uint8_t palette_high, bool read_bac
  * Entry: CardColorCommand, CardColorBackground, CardColorSprites; X, Y (pushed by the block moves). Exit, no
  * command: A 0, N 0, Z 1. Sprites moved: A 1, the VCE address's high byte it last loaded, N 0, Z 0, C 0. Sprites
  * skipped: A 0, N 0, Z 1, C 0 if the background moved, else as it was. X, Y, V kept.
+ * Not checked: the block move it writes in RAM is done in C; the checker compares RAM-built code only as part of its caller once that change lands.
  */
 CardExit ex_colorcmd(uint8_t x, uint8_t y)
 {

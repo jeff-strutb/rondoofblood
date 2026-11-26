@@ -29,8 +29,6 @@ void st1(uint8_t value);
 void st2(uint8_t value);
 uint8_t tma(uint8_t mpr_bit);
 void tam(uint8_t mpr_bits, uint8_t bank);
-/* A JSR into original code with no C: ret is the address after the JSR, the registers are cpu's, the frame is pushed and popped. */
-void call_orig(uint16_t ret, uint16_t addr);
 void cli(void);
 void csl(void); /* the CPU to its slow clock, as CSL; it stays so for the caller */
 void csh(void); /* the CPU to its fast clock, as CSH */

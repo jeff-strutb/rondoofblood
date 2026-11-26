@@ -421,7 +421,8 @@ RightOrWall MovePlayerRightOrWall(void);
 LeftOrWall MovePlayerLeftOrWall(void);
 uint8_t PlayerXFromNextAlt(void);
 WordPair PlayerNextX(void);
-static void RunCameraMode(void);
+void CameraModeDispatch(void);
+void abi_CameraModeDispatch(void);
 static void x_on_screen_exit_shim(OnScreen x);
 static void right_or_wall_exit_shim(RightOrWall result);
 static void left_or_wall_exit_shim(LeftOrWall result);
@@ -728,34 +729,65 @@ void abi_MovePlayerYIfMoving(void)
  * and Y speed; bit 5 also takes the Y fraction from PlayerAnchorObject. Bit 3 moves the
  * player down the screen against the push's Y and scrolls by it, in place of the camera
  * mode.
+ * WAITS: no.
  * Entry: nothing. Exit: A and Y as the overlay leaves them, V too, X 7, N 0, Z 1, C 1.
  */
 ColumnsEnd PlayerAndCameraFrame(void)
 {
-    uint16_t speed_x = read16(OBJ_VX_LO, OBJ_VX_HI);
-    uint16_t speed_y = read16(OBJ_VY_LO, OBJ_VY_HI);
     ColumnsEnd moved;
+    uint8_t low;
+    uint8_t high;
+    uint8_t push_low;
+    uint8_t push_high;
+    unsigned sum;
+    uint8_t anchor;
+    uint8_t fraction;
+    uint8_t lift;
 
-    if (rd8(zPlayerPush) & PUSH_ADDS_X)
-        write16(OBJ_VX_LO, OBJ_VX_HI, (uint16_t)(speed_x + read16(zPushXLo, zPushXHi)));
+    push8(rd8(OBJ_VX_LO));
+    push8(rd8(OBJ_VX_HI));
+    push8(rd8(OBJ_VY_LO));
+    push8(rd8(OBJ_VY_HI));
+    if (rd8(zPlayerPush) & PUSH_ADDS_X) {
+        low = rd8(OBJ_VX_LO);
+        push_low = rd8(zPushXLo);
+        sum = (unsigned)low + push_low;
+        wr8(OBJ_VX_LO, (uint8_t)sum);
+        high = rd8(OBJ_VX_HI);
+        push_high = rd8(zPushXHi);
+        wr8(OBJ_VX_HI, (uint8_t)(high + push_high + (sum >> 8)));
+    }
     if (rd8(zPlayerPush) & PUSH_ADDS_Y) {
-        uint8_t fraction = rd8((uint16_t)(OBJ_Y_FRAC + rd8(PlayerAnchorObject)));
-
-        write16(OBJ_VY_LO, OBJ_VY_HI, (uint16_t)(speed_y + read16(zPushYLo, zPushYHi)));
+        low = rd8(OBJ_VY_LO);
+        push_low = rd8(zPushYLo);
+        sum = (unsigned)low + push_low;
+        wr8(OBJ_VY_LO, (uint8_t)sum);
+        high = rd8(OBJ_VY_HI);
+        push_high = rd8(zPushYHi);
+        wr8(OBJ_VY_HI, (uint8_t)(high + push_high + (sum >> 8)));
+        anchor = rd8(PlayerAnchorObject);
+        fraction = rd8((uint16_t)(OBJ_Y_FRAC + anchor));
         wr8(ScrollYFrac, fraction);
         wr8(OBJ_Y_FRAC, fraction);
     }
     if (rd8(zPlayerPush) & PUSH_LIFTS_SCROLL) {
-        uint8_t lift = rd8(zPushYHi);
-
-        write16(ScrollStepYLo, ScrollStepYHi, (uint16_t)(lift << 8));
-        wr8(OBJ_Y_LO, (uint8_t)(rd8(OBJ_Y_LO) - lift));
+        wr8(ScrollStepYLo, 0);
+        lift = rd8(zPushYHi);
+        wr8(ScrollStepYHi, lift);
+        high = rd8(OBJ_Y_LO);
+        wr8(OBJ_Y_LO, (uint8_t)(high - lift));
     } else {
-        RunCameraMode();
+        jsr_push(0x6665);
+        CameraModeDispatch();
+        jsr_pop();
     }
-    write16(OBJ_VY_LO, OBJ_VY_HI, speed_y);
-    write16(OBJ_VX_LO, OBJ_VX_HI, speed_x);
+    wr8(OBJ_VY_HI, pull8());
+    wr8(OBJ_VY_LO, pull8());
+    wr8(OBJ_VX_HI, pull8());
+    wr8(OBJ_VX_LO, pull8());
+    jsr_push(0x6678);
     moved = PlayerMoved();
+    jsr_pop();
     for (unsigned i = 0; i < PLAYER_PUSH_BYTES; i++)
         wr8((uint16_t)(zPlayerPush + i), 0);
     return moved;
@@ -781,10 +813,16 @@ static void camera_mode_original_shim(uint16_t handler, uint8_t mode)
 }
 
 /*
- * The camera mode's handler, from a table of 30 words by CameraMode. RTS from the
- * handler comes back to the caller of RunCameraMode.
+ * @routine 0047:681 CameraModeDispatch
+ * @run 6A:6681
+ * WHAT IT DOES: Runs the section's camera mode: the handler the table of 30 words, indexed by
+ * CameraMode, names.
+ * HOW: CameraMode doubled indexes CameraModeHandlers; a jump through it, so the handler's RTS
+ * returns to the caller of this routine.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the handler leaves them.
  */
-static void RunCameraMode(void)
+void CameraModeDispatch(void)
 {
     uint8_t mode = rd8(CameraMode);
     uint16_t entry = (uint16_t)(CameraModeHandlers + (uint8_t)(mode << 1));
@@ -807,6 +845,11 @@ static void RunCameraMode(void)
         camera_mode_original_shim(handler, mode);
         break;
     }
+}
+
+void abi_CameraModeDispatch(void)
+{
+    CameraModeDispatch();
 }
 
 /*

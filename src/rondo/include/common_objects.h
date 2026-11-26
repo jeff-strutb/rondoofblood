@@ -261,9 +261,9 @@ LandWait SettleOnLanding(uint8_t slot, uint8_t column, bool carry_in);
 LandWait LandThenWait(uint8_t slot, uint8_t column, bool carry_in);
 LandWait LandThenClear(uint8_t slot, uint8_t column, bool carry_in);
 void land_wait_exit_shim(LandWait wait);
-SoundEnd CollectHearts(uint8_t slot, uint8_t y_entry);
-SoundEnd CollectScoreItem(uint8_t slot, uint8_t y_entry);
-SoundEnd StartScorePickup(uint8_t slot, uint8_t y_entry);
+ObjArm CollectHearts(uint8_t slot, uint8_t y_entry);
+ObjArm CollectScoreItem(uint8_t slot, uint8_t y_entry);
+ObjArm StartScorePickup(uint8_t slot, uint8_t y_entry);
 /* 1 shifted left count times, as a byte. */
 uint8_t BitMaskFromIndex(uint8_t count);
 

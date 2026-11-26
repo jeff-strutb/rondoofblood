@@ -154,7 +154,8 @@ typedef struct {
 } GuardArm;
 
 ObjArm HitDamage(uint8_t slot);
-SoundEnd ScoreForKind(uint8_t slot, uint8_t y);
+ObjArm ScoreForKind(uint8_t slot, uint8_t y);
+SoundEnd score_for_kind_exit_shim(ObjArm r);
 ObjArm BlendStockRows(uint8_t slot, uint8_t y);
 Ended blend_stock_rows_exit_shim(ObjArm r);
 ObjArm GiveExtraLife(uint8_t slot, uint8_t y);
@@ -222,10 +223,10 @@ static inline void abi_chain(const ExitChain *c)
         }
     }
 }
-/* ObjectHit's arm and the score's exit (ScoreForKind is not converted yet). */
+/* ObjectHit's arm and ScoreForKind's, kept whole: its extra life's block rows lie a level deeper than an arm's sub holds. */
 typedef struct {
     ObjArm arm;
-    SoundEnd score;
+    ObjArm score;
 } HitArm;
 HitArm ObjectHit(uint8_t slot, uint8_t y);
 void object_hit_exit_shim(HitArm h);

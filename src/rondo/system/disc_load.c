@@ -834,7 +834,7 @@ void abi_CdSearchTrack(void)
     track_search_exit_shim(&search);
 }
 
-/* The scene overlay's entry at $8006, with the registers SceneCallOverlay gives it. */
+/* The registers SceneCallOverlay gives the overlay's entry at $8006; the jump itself is made by the span's owner. */
 static Cpu scene_overlay_shim(uint8_t offset, uint8_t pointer_high, Sum bank)
 {
     cpu.a = pointer_high;
@@ -843,7 +843,6 @@ static Cpu scene_overlay_shim(uint8_t offset, uint8_t pointer_high, Sum bank)
     abi_nz(pointer_high);
     abi_flag(P_C, bank.carry);
     abi_flag(P_V, bank.overflow);
-    call_original(FrameOverlay8006);
     return cpu;
 }
 
@@ -872,6 +871,7 @@ SceneCall SceneCallOverlay(uint8_t offset)
 void abi_SceneCallOverlay(void)
 {
     cpu = SceneCallOverlay(cpu.x).after;
+    call_original(FrameOverlay8006);
 }
 
 static void log_overlay(DiscLog *log, uint8_t offset, uint16_t ret)
@@ -879,8 +879,9 @@ static void log_overlay(DiscLog *log, uint8_t offset, uint16_t ret)
     DiscCall call = disc_call(DISC_OVERLAY);
 
     jsr_push(ret);
-    call.as.after = SceneCallOverlay(offset).after;
-    jsr_pop();
+    cpu = SceneCallOverlay(offset).after;
+    call_orig_framed(ret, FrameOverlay8006);        /* the overlay's code returns to ret; its frame is the JSR's, pushed above */
+    call.as.after = cpu;
     log_call(log, call);
 }
 

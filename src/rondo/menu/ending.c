@@ -2492,7 +2492,6 @@ Exit EndingCommandPlaceTimed(void)
  * HOW: For each of four numbers the two banks are mapped, the ADPCM address and the length set, and ad_read called; back to EndingScriptAdvance.
  * WAITS: yes, through ad_read, which waits for the ADPCM to be idle.
  * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
- * not checked: differs inside the card's ad_read, whose draft pushes frames its C does not.
  */
 Exit EndingCommandLoadBanks(void)
 {

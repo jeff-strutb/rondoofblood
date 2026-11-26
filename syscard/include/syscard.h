@@ -160,11 +160,7 @@ typedef enum {
 
 typedef struct {
     AdPlayHow how;
-    AdStat stat;
-    uint8_t rate;
-    uint8_t irq_before;  /* the CD unit's interrupt enables before playing turned one on */
-    uint8_t length_low;  /* what was latched as the length, which X and Y give back */
-    uint8_t length_high;
+    CardExit exit;
 } AdPlay;
 
 CardVersion ex_getver(void);
@@ -189,43 +185,13 @@ enum { START_RUN = 0, START_SELECT = 1 };
 CardExit start_screen(void);
 uint8_t ad_reset(void);
 AdPlay ad_play(void);
-/* What ad_read did, and what its exit shows. */
-typedef struct {
-    AdStat stat;
-    uint8_t latch;        /* the control port as ad_latch_read_address read it */
-    uint8_t mode;         /* _DH */
-    bool refused;
-    uint8_t mask;         /* the MPR bit, reading to banks */
-    uint8_t saved_bank;
-    uint8_t pages_left;
-    uint8_t bytes_left;
-} AdRead;
-
-AdRead ad_read(void);
-void ad_read_to_banks(AdRead *read);
-
-/* What ad_write did, and what its exit shows. */
-typedef struct {
-    uint8_t busy;         /* the transfer bits of the port: not zero refuses */
-    bool addressed;       /* _CX was not $FFFF: it was latched */
-    uint8_t address_low;  /* _CL */
-    uint8_t address_high; /* _CH */
-    uint8_t latch;        /* the control port as ad_latch_write_address read it */
-    uint8_t mode;         /* _DH */
-    bool refused;
-    uint8_t mask;         /* the MPR bit, writing from banks */
-    uint8_t saved_bank;
-    uint8_t pages_left;
-    uint8_t bytes_left;
-    uint8_t last_status;  /* the status port as the last wait read it */
-} AdWrite;
-
-AdWrite ad_write(void);
-void ad_write_exit_shim(AdWrite write);
+CardExit ad_read(void);
+CardExit ad_read_to_banks(uint8_t mode);
+CardExit ad_write(void);
 
 
 CardExit ad_trans_begin(void);
-void aim_bx_at_vram_port(void);
+CardExit aim_bx_at_vram_port(void);
 uint8_t ad_read_byte(void);
 uint8_t write_vram_word_pending(void);
 

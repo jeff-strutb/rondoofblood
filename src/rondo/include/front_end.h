@@ -327,6 +327,7 @@ typedef struct { Exit exit; AxisMove move; bool moved; } ObjExit;
 
 /* menu/attract.c */
 ObjExit ObjectFrameList(uint8_t list, uint8_t object);
+ObjExit ObjectFrameListAt(uint8_t list, uint8_t object, uint16_t table);   /* with the list table's address, for the copies in other overlays */
 ObjExit PlayFrameListOnce(uint8_t object);
 ObjExit AnimateAndCueSeven(uint8_t object);
 ObjExit AnimateList1AndCueSeven(uint8_t object);

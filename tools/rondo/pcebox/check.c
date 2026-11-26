@@ -757,6 +757,7 @@ static int ends_by_dispatch(uint8_t entry_s, int is_irq, const Tag *t)
  * the original itself ended by jumping on (a table dispatch) is judged up to there. A5 gives the exit registers; the
  * hybrid reads the CLOSE. */
 static int returns_normally(Span *s, uint8_t entry_s, uint16_t ret, const Regs *exit_r);
+static int a5_handed;       /* A5: the C handed the rest of the call to the original (a tail, leave_original): what it left on the stack is the original's to pop */
 #define HORIZON (8u << 20)           /* hybrid: events a call's return or end is looked for ahead (8M events, 384 MB of window) */
 static uint64_t horizon_calls;
 static int horizon_hit;
@@ -1632,6 +1633,7 @@ static void original_at(uint16_t ret, uint16_t addr)
         if (mode == MODE_A5) {
             const Regs *x = exit_regs_a5;
 
+            a5_handed = 1;
             if (prefix_mode)
                 longjmp(c_abort, ABORT_END);     /* still open at the script's end: nothing of its exit to compare */
             for (uint64_t k = call + 1; k < span->end; k++)
@@ -1858,8 +1860,10 @@ void call_original_at(uint16_t from, uint16_t addr)
  */
 void leave_original(uint16_t addr)
 {
-    if (mode == MODE_A5)
+    if (mode == MODE_A5) {
+        a5_handed = 1;
         return;
+    }
     hand_over(addr);
 }
 
@@ -2550,12 +2554,13 @@ static void judge(Frame *f, const Regs *r)
             probe_seen[0] = got;
         }
     }
+    a5_handed = 0;
     reason = setjmp(c_abort);
     if (reason == 0) {
         f->tag->abi();
         apply_pokes(span.cur, end);
         if (!prefix && ends_by_dispatch(f->regs.s, f->kind == K_IRQ, f->tag) &&
-            (getenv("RONDO_OLD_DISPATCH") || !returns_normally(&span, f->regs.s, f->ret, r))) {
+            (getenv("RONDO_OLD_DISPATCH") || a5_handed || !returns_normally(&span, f->regs.s, f->ret, r))) {
             s->dispatch++;
             longjmp(c_abort, ABORT_END);       /* the original's call goes on in the routines it jumped to: judged up to here */
         }

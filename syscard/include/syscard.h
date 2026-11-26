@@ -437,4 +437,6 @@ CardExit cd_send_command_start(void);
 
 CardExit run_bank2_tasks(uint8_t x, uint8_t y);
 
+CardExit psg_tempo_tick(void);
+
 #endif

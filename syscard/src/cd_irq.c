@@ -336,23 +336,9 @@ CardExit cd_interrupt(uint8_t x, uint8_t y)
                 WR8_IDX(COL(CRAM->cd_command), 4, amount);
                 t_a(&t, 1);
                 WR8(CRAM->cd_busy, 1);
-                {
-                    uint8_t ra = 1;
-                    uint8_t rx = amount;
-                    uint8_t ry = y;
-                    uint8_t rp = 0;
-
-                    call_original_shim(0xE7AE, 0xE905, &ra, &rx, &ry, &rp);
-                    t.a = ra;
-                    t.x = rx;
-                    t.y = ry;
-                    t.a_set = t.x_set = t.y_set = true;
-                    t.n = (rp & P_N) != 0;
-                    t.z = (rp & P_Z) != 0;
-                    t.c = (rp & P_C) != 0;
-                    t.v = (rp & P_V) != 0;
-                    t.c_set = t.v_set = true;
-                }
+                jsr_push(0xE7AE);
+                t_take(&t, cd_send_command_start());
+                jsr_pop();
                 held = TSB8(CCDU->irq_control, IRQ_PLAY_BITS);
                 t_mask(&t, IRQ_PLAY_BITS, held);
             }

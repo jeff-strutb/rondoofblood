@@ -33,6 +33,18 @@ cd_reset_at2:
 cd_send_command:
     lda a:CardCdBusy
     bne cd_send_command
+
+; @card 00:E905 cd_send_command_start
+; WHAT IT DOES: Sends the command in CardCdCommand to the drive, and unless told not to,
+; waits for it to answer, without first waiting for a transfer in progress.
+; HOW: Selects the drive, hands over bytes while the bus is in its command phase. Then waits up to $FE
+; frames for the request bit. A named entry into cd_send_command, which falls into it; the interrupt that
+; reads the next blocks of an ADPCM play calls it alone.
+; WAITS: yes, on the drive's bus and on the frame count the interrupt keeps, with the stack as the caller's.
+; Entry: the command built. Exit: A, N, Z, C and V as the path left them (the phase answered, the byte
+; that said something else is running, or 1 for a timeout); X the bytes sent, or the first frame count if it
+; waited. Y kept.
+cd_send_command_start:
     stz a:CardCdTimedOut
 cd_send_command_at0:
     lda #$81

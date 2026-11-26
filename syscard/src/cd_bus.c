@@ -208,17 +208,18 @@ static uint8_t read_bus_phase(void)
 }
 
 /*
- * @card 00:E900 cd_send_command
+ * @card 00:E905 cd_send_command_start
  * WHAT IT DOES: Sends the command in CardCdCommand to the drive, and unless told not to,
- * waits for it to answer.
- * HOW: Waits for a transfer in progress, selects the drive, hands over bytes while the bus
- * is in its command phase. Then waits up to $FE frames for the request bit.
+ * waits for it to answer, without first waiting for a transfer in progress.
+ * HOW: Selects the drive, hands over bytes while the bus is in its command phase. Then waits up to $FE
+ * frames for the request bit. A named entry into cd_send_command, which falls into it; the interrupt that
+ * reads the next blocks of an ADPCM play calls it alone.
  * WAITS: yes, on the drive's bus and on the frame count the interrupt keeps, with the stack as the caller's.
  * Entry: the command built. Exit: A, N, Z, C and V as the path left them (the phase answered, the byte
  * that said something else is running, or 1 for a timeout); X the bytes sent, or the first frame count if it
  * waited. Y kept.
  */
-CardExit cd_send_command(void)
+CardExit cd_send_command_start(void)
 {
     CardExit e = { 0 };
     uint8_t status;
@@ -233,8 +234,6 @@ CardExit cd_send_command(void)
     bool again = false;
     bool selected = false;
 
-    while (RD8(CRAM->cd_busy) != 0) {
-    }
     WR8(CRAM->cd_timed_out, 0);
     while (!selected) {
         WR8(CCDU->data, BUS_SELECT_ID);
@@ -355,6 +354,30 @@ CardExit cd_send_command(void)
         }
         again = true;
     }
+}
+
+
+void abi_cd_send_command_start(void)
+{
+    card_exit_apply(cd_send_command_start());
+}
+
+/*
+ * @card 00:E900 cd_send_command
+ * WHAT IT DOES: Sends the command in CardCdCommand to the drive, and unless told not to,
+ * waits for it to answer.
+ * HOW: Waits for a transfer in progress, selects the drive, hands over bytes while the bus
+ * is in its command phase. Then waits up to $FE frames for the request bit.
+ * WAITS: yes, on the drive's bus and on the frame count the interrupt keeps, with the stack as the caller's.
+ * Entry: the command built. Exit: A, N, Z, C and V as the path left them (the phase answered, the byte
+ * that said something else is running, or 1 for a timeout); X the bytes sent, or the first frame count if it
+ * waited. Y kept.
+ */
+CardExit cd_send_command(void)
+{
+    while (RD8(CRAM->cd_busy) != 0) {
+    }
+    return cd_send_command_start();
 }
 
 void abi_cd_send_command(void)

@@ -1525,7 +1525,7 @@ CommandCall PlaySound58B(uint8_t slot, uint8_t y_entry);
 L8Arm SettleWhenLowOnFirstRow(uint8_t slot);
 L8Arm LoadRecordFrameFromKind(uint8_t slot);
 L8Arm CapPlayerXOnScreen1(uint8_t slot);
-DriftArm LoadRecordThenDriftAndCount(uint8_t slot);
+DriftArm LoadRecordThenDriftAndCount(uint8_t slot, L8Layout lay);
 L8Load LoadRecordAtX80(uint8_t slot);
 
 /* object/enemies_l8_st27.c */

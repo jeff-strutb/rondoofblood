@@ -949,6 +949,24 @@ enum {
     COLOR_SET_COUNT_AT = 2, COLOR_SET_SHIFT_LOW = 4, STUB_PORT_HIGH = 4, VCE_PORT_LOW = 4
 };
 
+/*
+ * The JSR the BIOS makes into the block move it wrote in RAM at CardBlockStub: original code with no C, run as the
+ * original runs it, with the registers it has there. For the background's set A is the length's low byte and N and Z
+ * come from the ROL that made the length's high byte; for the sprites' set the LDA #1 that loads the VCE address's
+ * high byte is the last to set A, N and Z. C is 0 either way, X and Y as the routine got them. The stub's own TIA or
+ * TAI pushes and pulls Y, A and X, moves the bytes and returns.
+ */
+static void call_block_stub_shim(uint16_t ret, bool sprites, uint8_t length_low, uint8_t length_high, uint8_t x,
+                                 uint8_t y)
+{
+    cpu.a = sprites ? SPRITE_PALETTES : length_low;
+    cpu.x = x;
+    cpu.y = y;
+    abi_nz(sprites ? SPRITE_PALETTES : length_high);
+    abi_flag(P_C, false);
+    call_orig(ret, CardBlockStub);
+}
+
 /* One set of palettes, to the VCE or back, as the BIOS's stub does it: the registers the block moves push are
  * A (the length's low byte), X and Y as they came. */
 static CardExit move_color_set(uint16_t set, uint8_t palette_high, bool read_back, uint16_t ret_stub,
@@ -963,7 +981,6 @@ static CardExit move_color_set(uint16_t set, uint8_t palette_high, bool read_bac
     uint8_t length_high;
     uint8_t memory_low;
     uint8_t memory_high;
-    uint16_t memory;
 
     e.a = e.nz = count;
     e.set_a = e.set_nz = true;
@@ -993,24 +1010,7 @@ static CardExit move_color_set(uint16_t set, uint8_t palette_high, bool read_bac
     (void)pull8();
     WR8(CVCE->addr_lo, 0);
     WR8(CVCE->addr_hi, palette_high);
-    memory = (uint16_t)(memory_low | (memory_high << 8));
-    jsr_push(ret_stub);
-    if (read_back) {
-        push8(y);
-        push8(length_low);
-        push8(x);
-        for (uint16_t i = 0; i < (uint16_t)(length_low | (length_high << 8)); i++) {
-            uint8_t byte = rd8((uint16_t)(0x0404 + (i & 1)));
-
-            wr8((uint16_t)(memory + i), byte);
-        }
-        (void)pull8();
-        (void)pull8();
-        (void)pull8();
-    } else {
-        block_move_tia(memory, VceDataLo, (uint16_t)(length_low | (length_high << 8)), length_low, x, y);
-    }
-    jsr_pop();
+    call_block_stub_shim(ret_stub, palette_high != 0, length_low, length_high, x, y);
     e.c = false;
     e.set_c = true;
     if (palette_high != 0) {

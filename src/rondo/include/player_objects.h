@@ -59,16 +59,19 @@ static inline void abi_ended_tst(EndedTst r)
 }
 
 /* object/player_leaves.c: the tile handlers of the stage overlays that hold their own tile read at $9991 */
-Ended TileNudgeAt9C82(void);
-Ended TileLift7At9C87(void);
-Ended TileLift6At9C91(void);
-Ended TileLift5At9C9B(void);
-Ended TileLift4At9CA5(void);
-Ended TileLift3At9CAF(void);
-Ended TileLift2At9CB9(void);
-Ended TileLift1At9CC3(void);
-Ended TileHalfStepAAt9A93(uint8_t tile);
-Ended TileHalfStepBAt9AA7(uint8_t tile);
+ObjArm TileNudgeAt9C82(void);
+ObjArm TileLift7At9C87(void);
+ObjArm TileLift6At9C91(void);
+ObjArm TileLift5At9C9B(void);
+ObjArm TileLift4At9CA5(void);
+ObjArm TileLift3At9CAF(void);
+ObjArm TileLift2At9CB9(void);
+ObjArm TileLift1At9CC3(void);
+ObjArm TileHalfStepAAt9A93(uint8_t tile);
+ObjArm TileHalfStepBAt9AA7(uint8_t tile);
+Ended tile_nudge_exit_shim(ObjArm r);
+Ended tile_row_up_exit_shim(ObjArm r);
+Ended tile_half_step_exit_shim(ObjArm r);
 
 /* object/player_input.c */
 typedef struct { Ended end; bool x_set; uint8_t x; } TurnWindow;

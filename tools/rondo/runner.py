@@ -280,15 +280,18 @@ def cycle(main, opts):
             results[res["script"]] = res
             log(f"  measured {res['script']}: " + ("FAILED " + "; ".join(res["errors"]) if res.get("errors") else
                 f"A7 {res['a7']['verdict']}, {len(res['a5'])} routines called"), b)
-    for s in sorted(results):
-        if red(results[s]) and not opts["norerun"]:
-            log(f"  {s} is red: rerun alone", b)
-            second = measure(tree, box, out, s)
-            flipped = not red(second) if not second.get("errors") else False
-            log(f"  {s} rerun: " + ("FAILED " + "; ".join(second["errors"]) if second.get("errors") else
-                "now green (a flake)" if flipped else "red again"), b)
-            if not second.get("errors"):
-                results[s] = second
+    # each red script is rerun alone, in its own process and out folder slot, all reds at once (the claims queue
+    # them through cpu-run); a rerun's result is on disk the moment it ends
+    reds_first = [s for s in sorted(results) if red(results[s]) and not opts["norerun"]]
+    if reds_first:
+        log(f"  {len(reds_first)} red script(s): each rerun alone, {workers} at once", b)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            for s, second in zip(reds_first, ex.map(lambda x: measure(tree, box, out, x), reds_first)):
+                flipped = not red(second) if not second.get("errors") else False
+                log(f"  {s} rerun: " + ("FAILED " + "; ".join(second["errors"]) if second.get("errors") else
+                    "now green (a flake)" if flipped else "red again"), b)
+                if not second.get("errors"):
+                    results[s] = second
     failed = sorted(s for s, r in results.items() if r.get("errors"))
     for s in sorted(results):
         if s not in failed:

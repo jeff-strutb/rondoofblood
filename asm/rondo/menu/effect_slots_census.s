@@ -84,7 +84,7 @@ EffectDispatch0441:
 ; list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
 ; again, and when the rounds the list names have been played it gives the slot back.
 ; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
-; $8998); each palette loaded by LoadPackedPaletteC's bytes at $84BB.
+; $8998); each palette loaded by the packed palette loader at $84BB, whose bytes are LoadPackedPaletteC's.
 ; WAITS: no.
 ; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
 ; Z and C from comparing it with the rounds played, Y 1; X kept.
@@ -181,7 +181,7 @@ ClearEffectSlot0441:
 ; the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
 ; every colour of them by one step in each of its three components, writing them back to the VCE.
 ; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
-; table at ${T:04X}; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+; table at $89BC; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
 ; WAITS: no.
 ; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
 ; $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
@@ -415,7 +415,7 @@ EffectShade0441_at7:
 ; WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
 ; colour's two bytes) picked by the list number, the slot then given back.
 ; HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
-; or for a negative number the table at ${T:04X}; the four bytes go to the VCE ports.
+; or for a negative number the table at $89BC; the four bytes go to the VCE ports.
 ; WAITS: no.
 ; Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
 ; kept.
@@ -455,7 +455,7 @@ EffectColour0441_at1:
 
 ; @routine 0441:535 EffectFlash0441
 ; @run 6C:8535
-; @stop 85C0
+; @stop 05C0
 ; @unreachable 6C:8535-6C:85BF no read the game makes loads disc sector 0441, so these bytes are never in memory.
 ; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
 ; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
@@ -477,7 +477,7 @@ EffectFlash0441:
     lda #$01
     sta z:$3C
     lda a:ScriptSlotField24,x
-    bne EffectFlash0441_at0
+    bne EffectFlash1A31
     lda #$00
     sta a:VCE_ADDR_HI
     lda #$00
@@ -488,13 +488,12 @@ EffectFlash0441:
     lda #$80
     sta a:VCE_ADDR_LO
     tai VCE_DATA_LO,$8898,$0100
-EffectFlash0441_at0:
     inc a:ScriptSlotField24,x
     lda a:ScriptSlotField24,x
     cmp #$10
-    bcc EffectFlash0441_at1
+    bcc EffectFlash0441_at0
     jmp EffectFlashEnd0441
-EffectFlash0441_at1:
+EffectFlash0441_at0:
     lda a:ScriptSlotScript,x
     asl a
     asl a
@@ -512,7 +511,7 @@ EffectFlash0441_at1:
     lda a:$85E8,y
     sta z:zTemp03
     cly
-EffectFlash0441_at3:
+EffectFlash0441_at2:
     lda a:$8667,y
     cmp #$FF
     bne EffectFlash0441_at4
@@ -524,7 +523,7 @@ EffectFlash0441_at4:
     sta z:zTemp09
     iny
     clx
-EffectFlash0441_at2:
+EffectFlash0441_at1:
     lda z:zTemp02
     sta a:SavedColoursLo,x
     lda z:zTemp03
@@ -532,13 +531,13 @@ EffectFlash0441_at2:
     inx
     inx
     cpx #$20
-    bcc EffectFlash0441_at2
+    bcc EffectFlash0441_at1
     lda z:zTemp08
     sta a:VCE_ADDR_LO
     lda z:zTemp09
     sta a:VCE_ADDR_HI
     tia SavedColoursLo,VCE_DATA_LO,$0020
-    jmp EffectFlash0441_at3
+    jmp EffectFlash0441_at2
 
 ; @routine 0441:5C0 EffectFlashEnd0441
 ; @run 6C:85C0
@@ -552,8 +551,7 @@ EffectFlash0441_at2:
 ;
 ; WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
 ; the slot given back.
-; HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes at
-; $8345.
+; HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes.
 ; WAITS: no.
 ; Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
 EffectFlashEnd0441:
@@ -656,7 +654,7 @@ EffectDispatch0651:
 ; list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
 ; again, and when the rounds the list names have been played it gives the slot back.
 ; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
-; $8998); each palette loaded by LoadPackedPaletteC's bytes at $84BB.
+; $8998); each palette loaded by the packed palette loader at $84BB, whose bytes are LoadPackedPaletteC's.
 ; WAITS: no.
 ; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
 ; Z and C from comparing it with the rounds played, Y 1; X kept.
@@ -753,7 +751,7 @@ ClearEffectSlot0651:
 ; the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
 ; every colour of them by one step in each of its three components, writing them back to the VCE.
 ; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
-; table at ${T:04X}; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+; table at $89AC; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
 ; WAITS: no.
 ; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
 ; $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
@@ -987,7 +985,7 @@ EffectShade0651_at7:
 ; WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
 ; colour's two bytes) picked by the list number, the slot then given back.
 ; HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
-; or for a negative number the table at ${T:04X}; the four bytes go to the VCE ports.
+; or for a negative number the table at $89AC; the four bytes go to the VCE ports.
 ; WAITS: no.
 ; Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
 ; kept.
@@ -1027,7 +1025,7 @@ EffectColour0651_at1:
 
 ; @routine 0651:535 EffectFlash0651
 ; @run 6C:8535
-; @stop 85C0
+; @stop 05C0
 ; @unreachable 6C:8535-6C:85BF no read the game makes loads disc sector 0651, so these bytes are never in memory.
 ; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
 ; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
@@ -1049,7 +1047,7 @@ EffectFlash0651:
     lda #$01
     sta z:$3C
     lda a:ScriptSlotField24,x
-    bne EffectFlash0651_at0
+    bne EffectFlash1A31
     lda #$00
     sta a:VCE_ADDR_HI
     lda #$00
@@ -1060,13 +1058,12 @@ EffectFlash0651:
     lda #$80
     sta a:VCE_ADDR_LO
     tai VCE_DATA_LO,$8898,$0100
-EffectFlash0651_at0:
     inc a:ScriptSlotField24,x
     lda a:ScriptSlotField24,x
     cmp #$10
-    bcc EffectFlash0651_at1
+    bcc EffectFlash0651_at0
     jmp EffectFlashEnd0651
-EffectFlash0651_at1:
+EffectFlash0651_at0:
     lda a:ScriptSlotScript,x
     asl a
     asl a
@@ -1084,7 +1081,7 @@ EffectFlash0651_at1:
     lda a:$85E8,y
     sta z:zTemp03
     cly
-EffectFlash0651_at3:
+EffectFlash0651_at2:
     lda a:$8667,y
     cmp #$FF
     bne EffectFlash0651_at4
@@ -1096,7 +1093,7 @@ EffectFlash0651_at4:
     sta z:zTemp09
     iny
     clx
-EffectFlash0651_at2:
+EffectFlash0651_at1:
     lda z:zTemp02
     sta a:SavedColoursLo,x
     lda z:zTemp03
@@ -1104,13 +1101,13 @@ EffectFlash0651_at2:
     inx
     inx
     cpx #$20
-    bcc EffectFlash0651_at2
+    bcc EffectFlash0651_at1
     lda z:zTemp08
     sta a:VCE_ADDR_LO
     lda z:zTemp09
     sta a:VCE_ADDR_HI
     tia SavedColoursLo,VCE_DATA_LO,$0020
-    jmp EffectFlash0651_at3
+    jmp EffectFlash0651_at2
 
 ; @routine 0651:5C0 EffectFlashEnd0651
 ; @run 6C:85C0
@@ -1124,8 +1121,7 @@ EffectFlash0651_at2:
 ;
 ; WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
 ; the slot given back.
-; HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes at
-; $8345.
+; HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes.
 ; WAITS: no.
 ; Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
 EffectFlashEnd0651:
@@ -1228,7 +1224,7 @@ EffectDispatch1231:
 ; list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
 ; again, and when the rounds the list names have been played it gives the slot back.
 ; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
-; $8998); each palette loaded by LoadPackedPaletteC's bytes at $84BB.
+; $8998); each palette loaded by the packed palette loader at $84BB, whose bytes are LoadPackedPaletteC's.
 ; WAITS: no.
 ; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
 ; Z and C from comparing it with the rounds played, Y 1; X kept.
@@ -1325,7 +1321,7 @@ ClearEffectSlot1231:
 ; the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
 ; every colour of them by one step in each of its three components, writing them back to the VCE.
 ; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
-; table at ${T:04X}; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+; table at $89B2; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
 ; WAITS: no.
 ; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
 ; $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
@@ -1559,7 +1555,7 @@ EffectShade1231_at7:
 ; WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
 ; colour's two bytes) picked by the list number, the slot then given back.
 ; HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
-; or for a negative number the table at ${T:04X}; the four bytes go to the VCE ports.
+; or for a negative number the table at $89B2; the four bytes go to the VCE ports.
 ; WAITS: no.
 ; Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
 ; kept.
@@ -1599,7 +1595,7 @@ EffectColour1231_at1:
 
 ; @routine 1231:535 EffectFlash1231
 ; @run 6C:8535
-; @stop 85C0
+; @stop 05C0
 ; @unreachable 6C:8535-6C:85BF no read the game makes loads disc sector 1231, so these bytes are never in memory.
 ; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
 ; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
@@ -1621,7 +1617,7 @@ EffectFlash1231:
     lda #$01
     sta z:$3C
     lda a:ScriptSlotField24,x
-    bne EffectFlash1231_at0
+    bne EffectFlash1A31
     lda #$00
     sta a:VCE_ADDR_HI
     lda #$00
@@ -1632,13 +1628,12 @@ EffectFlash1231:
     lda #$80
     sta a:VCE_ADDR_LO
     tai VCE_DATA_LO,$8898,$0100
-EffectFlash1231_at0:
     inc a:ScriptSlotField24,x
     lda a:ScriptSlotField24,x
     cmp #$10
-    bcc EffectFlash1231_at1
+    bcc EffectFlash1231_at0
     jmp EffectFlashEnd1231
-EffectFlash1231_at1:
+EffectFlash1231_at0:
     lda a:ScriptSlotScript,x
     asl a
     asl a
@@ -1656,7 +1651,7 @@ EffectFlash1231_at1:
     lda a:$85E8,y
     sta z:zTemp03
     cly
-EffectFlash1231_at3:
+EffectFlash1231_at2:
     lda a:$8667,y
     cmp #$FF
     bne EffectFlash1231_at4
@@ -1668,7 +1663,7 @@ EffectFlash1231_at4:
     sta z:zTemp09
     iny
     clx
-EffectFlash1231_at2:
+EffectFlash1231_at1:
     lda z:zTemp02
     sta a:SavedColoursLo,x
     lda z:zTemp03
@@ -1676,13 +1671,13 @@ EffectFlash1231_at2:
     inx
     inx
     cpx #$20
-    bcc EffectFlash1231_at2
+    bcc EffectFlash1231_at1
     lda z:zTemp08
     sta a:VCE_ADDR_LO
     lda z:zTemp09
     sta a:VCE_ADDR_HI
     tia SavedColoursLo,VCE_DATA_LO,$0020
-    jmp EffectFlash1231_at3
+    jmp EffectFlash1231_at2
 
 ; @routine 1231:5C0 EffectFlashEnd1231
 ; @run 6C:85C0
@@ -1696,8 +1691,7 @@ EffectFlash1231_at2:
 ;
 ; WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
 ; the slot given back.
-; HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes at
-; $8345.
+; HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes.
 ; WAITS: no.
 ; Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
 EffectFlashEnd1231:
@@ -1713,3 +1707,2543 @@ EffectFlashEnd1231:
     sta a:VCE_ADDR_LO
     tia $8898,VCE_DATA_LO,$0100
     jmp ClearEffectSlot1231
+
+; @routine 1A31:29F EffectStep1A31
+; @run 6C:829F
+; @unreachable 6C:829F-6C:82CA no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $829F runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: One frame of the ending's palette effects: while the game is paused only slots 2 and $0B are run;
+; otherwise slot 3 alone when it holds kind 5, else every slot from $0B down to 0 that has a kind.
+; HOW: zPaused, the kinds at $3C00; EffectDispatch for each slot, the slot kept in zRichterObject's byte across it; kind
+; 5 at slot 3 is entered with X 3.
+; WAITS: no.
+; Entry: Y only for kind 5's block moves. Exit: X $FF, N set, Z clear; A the last kind loaded or what the last handler
+; left; C, Y and V as the last handler left them.
+EffectStep1A31:
+    bbr0 zPaused,EffectStep1A31_at0
+    ldx #$02
+    bsr EffectStep1A31_at1
+    ldx #$0B
+EffectStep1A31_at1:
+    lda a:ScriptSlotKind,x
+    bne EffectDispatch1A31
+    rts
+EffectStep1A31_at4:
+    ldx #$03
+    jmp EffectFlash1A31
+EffectStep1A31_at0:
+    lda a:ScriptSlotKind+3
+    cmp #$05
+    beq EffectStep1A31_at4
+    ldx #$0B
+EffectStep1A31_at3:
+    lda a:ScriptSlotKind,x
+    beq EffectStep1A31_at2
+    stx z:zRichterObject
+    bsr EffectDispatch1A31
+    ldx z:zRichterObject
+EffectStep1A31_at2:
+    dex
+    bpl EffectStep1A31_at3
+    rts
+
+; @routine 1A31:2CB EffectDispatch1A31
+; @run 6C:82CB
+; @stop 82DB
+; @unreachable 6C:82CB-6C:82DA no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $82CB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Sends a palette effect slot to the handler its kind names: the table at $82DB holds one address per
+; kind, kind 1 first.
+; HOW: The kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through,
+; with A the word's high byte, Y the index, C bit 7 of the kind less one, X the slot.
+; WAITS: no.
+; Entry: A the kind (not zero), X the slot. Exit: as the handler leaves them.
+EffectDispatch1A31:
+    dec a
+    asl a
+    tay
+    lda a:$82DB,y
+    sta z:zTemp00
+    lda a:$82DC,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 1A31:2E9 EffectList1A31
+; @run 6C:82E9
+; @unreachable 6C:82E9-6C:8348 no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $82E9 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 1: a palette effect that plays a list of palette loads; once its timer has run down it takes the
+; list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
+; again, and when the rounds the list names have been played it gives the slot back.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
+; $89C3); each palette loaded by the packed palette loader at $84BF, whose bytes are LoadPackedPaletteC's.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
+; Z and C from comparing it with the rounds played, Y 1; X kept.
+EffectList1A31:
+    lda a:ScriptSlotTimer,x
+    beq EffectList1A31_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectList1A31_at0:
+    lda a:ScriptSlotScript,x
+    bpl EffectList1A31_at1
+    asl a
+    tay
+    lda a:$89C3,y
+    sta z:zTemp00
+    lda a:$89C4,y
+    sta z:zTemp01
+    bra EffectList1A31_at2
+EffectList1A31_at1:
+    asl a
+    tay
+    lda a:$9400
+    sta z:zBiosAl
+    lda a:$9401
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectList1A31_at2:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+EffectList1A31_at4:
+    lda a:ScriptSlotField18,x
+    asl a
+    asl a
+    inc a
+    inc a
+    tay
+    lda (zTemp00),y
+    cmp #$FF
+    beq EffectList1A31_at3
+    jsr LoadPackedPalette
+    inc a:ScriptSlotField18,x
+    bra EffectList1A31
+EffectList1A31_at3:
+    inc a:ScriptSlotField24,x
+    stz a:ScriptSlotField18,x
+    ldy #$01
+    lda (zTemp00),y
+    bmi EffectList1A31_at4
+    and #$7F
+    cmp a:ScriptSlotField24,x
+    bcs EffectList1A31_at4
+
+; @routine 1A31:349 ClearEffectSlot1A31
+; @run 6C:8349
+; @unreachable 6C:8349-6C:8361 no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8349 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Gives a palette effect slot back: its eight fields cleared.
+; HOW: Eight STZ of the slot's columns, the kind first.
+; WAITS: no.
+; Entry: X the slot. Exit: A, X, Y and the flags kept.
+ClearEffectSlot1A31:
+    stz a:ScriptSlotKind,x
+    stz a:ScriptSlotScript,x
+    stz a:ScriptSlotField18,x
+    stz a:ScriptSlotField24,x
+    stz a:ScriptSlotTimer,x
+    stz a:ScriptSlotField3C,x
+    stz a:ScriptSlotField48,x
+    stz a:ScriptSlotField54,x
+    rts
+
+; @routine 1A31:362 EffectFade1A31
+; @run 6C:8362
+; @unreachable 6C:8362-6C:840A no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8362 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 2: a palette effect that fades palettes down: once its timer has run down it counts a round, gives
+; the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
+; every colour of them by one step in each of its three components, writing them back to the VCE.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
+; table at $89D9; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
+; $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
+EffectFade1A31:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade1A31_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade1A31_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade1A31_at1
+    jmp ClearEffectSlot1A31
+EffectFade1A31_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade1A31_at2
+    lda a:$89D9,y
+    sta z:zTemp00
+    lda a:$89DA,y
+    sta z:zTemp01
+    bra EffectFade1A31_at3
+EffectFade1A31_at2:
+    lda a:$9402
+    sta z:zBiosAl
+    lda a:$9403
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade1A31_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade1A31_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade1A31_at4
+    rts
+EffectFade1A31_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade1A31_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade1A31_at5
+    dec a
+EffectFade1A31_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade1A31_at6
+    sec
+    sbc #$08
+EffectFade1A31_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade1A31_at7
+    sec
+    sbc #$20
+EffectFade1A31_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade1A31_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade1A31_at9
+
+; @routine 1A31:40B EffectShade1A31
+; @run 6C:840B
+; @stop 84BF
+; @unreachable 6C:840B-6C:84BE no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $840B runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 3: a palette effect that darkens palettes by an amount that grows each round: once its timer has
+; run down it counts a round (the slot is given back after the eighth) and writes the list's palettes to the VCE, each
+; colour's blue, green and red parts taken down by 7 less the count, by that times 8 and times 32, not below zero.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9404; zTemp08 to zTemp0A the three amounts;
+; the blocks (eight colours, their ninth bits first) read through zTemp02.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, Y
+; the list's place, V from the last block's pointer add (else kept).
+EffectShade1A31:
+    lda a:ScriptSlotTimer,x
+    beq EffectShade1A31_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectShade1A31_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectShade1A31_at1
+    jmp ClearEffectSlot1A31
+EffectShade1A31_at1:
+    eor #$07
+    sta z:zTemp08
+    asl a
+    asl a
+    asl a
+    sta z:zTemp09
+    asl a
+    asl a
+    sta z:zTemp0A
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    lda a:$9404
+    sta z:zBiosAl
+    lda a:$9405
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectShade1A31_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectShade1A31_at2
+    rts
+EffectShade1A31_at2:
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    iny
+    sty z:zHitSlot
+    lda (zTemp02)
+    sta z:zTemp05
+EffectShade1A31_at8:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+EffectShade1A31_at6:
+    iny
+    lda (zTemp02),y
+    and #$07
+    sec
+    sbc z:zTemp08
+    bcs EffectShade1A31_at3
+    cla
+EffectShade1A31_at3:
+    sta z:zTemp0B
+    lda (zTemp02),y
+    and #$38
+    sec
+    sbc z:zTemp09
+    bcs EffectShade1A31_at4
+    cla
+EffectShade1A31_at4:
+    ora z:zTemp0B
+    sta z:zTemp0B
+    lda (zTemp02),y
+    asl z:zTemp04
+    ror a
+    and #$E0
+    sec
+    sbc z:zTemp0A
+    bcs EffectShade1A31_at5
+    cla
+EffectShade1A31_at5:
+    asl a
+    ora z:zTemp0B
+    sta a:VCE_DATA_LO
+    cla
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc EffectShade1A31_at6
+    lda z:zTemp02
+    clc
+    adc #$09
+    sta z:zTemp02
+    bcc EffectShade1A31_at7
+    inc z:zTemp03
+EffectShade1A31_at7:
+    dec z:zTemp05
+    bpl EffectShade1A31_at8
+    ldy z:zHitSlot
+    jmp EffectShade1A31_at9
+
+; @routine 1A31:4FF EffectColour1A31
+; @run 6C:84FF
+; @unreachable 6C:84FF-6C:8538 no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $84FF runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
+; colour's two bytes) picked by the list number, the slot then given back.
+; HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
+; or for a negative number the table at $89D9; the four bytes go to the VCE ports.
+; WAITS: no.
+; Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
+; kept.
+EffectColour1A31:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour1A31_at0
+    asl a
+    asl a
+    adc a:$9406
+    sta z:zTemp00
+    cla
+    adc a:$9407
+    sta z:zTemp01
+    bra EffectColour1A31_at1
+EffectColour1A31_at0:
+    asl a
+    asl a
+    adc #$D9
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour1A31_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot1A31
+
+; @routine 1A31:539 EffectVceSave1A31
+; @run 6C:8539
+; @unreachable 6C:8539-6C:8542 no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8539 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 6: all 512 colours of the VCE saved in the Super RAM bank mapped at $A000, at $B000.
+; HOW: SelectSavedBank, then a TAI of $400 bytes from the VCE's data port.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block move. Exit: as SelectSavedBank.
+EffectVceSave1A31:
+    bsr SelectSavedBank1A31
+    tai VCE_DATA_LO,$B000,$0400
+    rts
+
+; @routine 1A31:543 EffectVceRestore1A31
+; @run 6C:8543
+; @unreachable 6C:8543-6C:854C no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8543 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 7: the 512 colours written back to the VCE from the Super RAM bank mapped at $A000, at $B000.
+; HOW: SelectSavedBank, then a TIA of $400 bytes to the VCE's data port.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block move. Exit: as SelectSavedBank.
+EffectVceRestore1A31:
+    bsr SelectSavedBank1A31
+    tia $B000,VCE_DATA_LO,$0400
+    rts
+
+; @routine 1A31:54D SelectSavedBank1A31
+; @run 6C:854D
+; @unreachable 6C:854D-6C:855F no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $854D runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Maps the Super RAM bank of the saved palette at $A000 and sets the VCE's colour address to 0.
+; HOW: The bank is the base bank plus $12, or plus $30 when bit 0 of zIdleFlag is set; TAM for MPR5.
+; WAITS: no.
+; Entry: nothing. Exit: A the bank, N and Z from it, C and V from the add; X and Y kept.
+SelectSavedBank1A31:
+    lda #$12
+    bbr0 zIdleFlag,SelectSavedBank1A31_at0
+    lda #$30
+SelectSavedBank1A31_at0:
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    stz a:VCE_ADDR_LO
+    stz a:VCE_ADDR_HI
+    rts
+
+; @routine 1A31:560 EffectFlash1A31
+; @run 6C:8560
+; @stop 05EB
+; @unreachable 6C:8560-6C:85EA no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8560 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 5: a palette effect that flashes: the first time it saves the VCE's background and sprite palettes
+; in the overlay's RAM; each round it fills a 16 colour buffer with one colour of its table and writes it over every
+; palette the list at $8692 names; after the sixteenth round it puts the saved palettes back and gives the slot up.
+; HOW: Zero page $3C set to 1; the count in $3C24; TAI and TIA between the VCE's data port and $86C3, $88C3 and $3C60;
+; the colour table at $8612 indexed by the list number times 32 and the count times 2.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block moves. Exit: A $FF at the list's end with Z and C set, X $20 (or the slot when
+; no palette was written), Y the list's place, V from the table index's add; after the sixteenth round as EffectFlashEnd
+; with C set.
+EffectFlash1A31:
+    lda #$01
+    sta z:$3C
+    lda a:ScriptSlotField24,x
+    bne EffectFlash1A31_at0
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,$86C3,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,$88C3,$0100
+EffectFlash1A31_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$10
+    bcc EffectFlash1A31_at4
+    jmp EffectFlashEnd1A31
+EffectFlash1A31_at4:
+    lda a:ScriptSlotScript,x
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp04
+    lda a:ScriptSlotField24,x
+    asl a
+    clc
+    adc z:zTemp04
+    tay
+    lda a:$8612,y
+    sta z:zTemp02
+    lda a:$8613,y
+    sta z:zTemp03
+    cly
+EffectFlash1A31_at3:
+    lda a:$8692,y
+    cmp #$FF
+    bne EffectFlash1A31_at1
+    rts
+EffectFlash1A31_at1:
+    sta z:zTemp08
+    iny
+    lda a:$8692,y
+    sta z:zTemp09
+    iny
+    clx
+EffectFlash1A31_at2:
+    lda z:zTemp02
+    sta a:SavedColoursLo,x
+    lda z:zTemp03
+    sta a:SavedColoursLo+1,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFlash1A31_at2
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFlash1A31_at3
+
+; @routine 1A31:5EB EffectFlashEnd1A31
+; @run 6C:85EB
+; @unreachable 6C:85EB-6C:8611 no read the game makes loads disc sector 1A31, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $85EB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
+; the slot given back.
+; HOW: Two TIA from $86C3 (256 colours) and $88C3 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes.
+; WAITS: no.
+; Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
+EffectFlashEnd1A31:
+    stz z:$3C
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tia $86C3,VCE_DATA_LO,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tia $88C3,VCE_DATA_LO,$0100
+    jmp ClearEffectSlot1A31
+
+; @routine 1B91:29F EffectStep1B91
+; @run 6C:829F
+; @unreachable 6C:829F-6C:82CA no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $829F runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: One frame of the ending's palette effects: while the game is paused only slots 2 and $0B are run;
+; otherwise slot 3 alone when it holds kind 5, else every slot from $0B down to 0 that has a kind.
+; HOW: zPaused, the kinds at $3C00; EffectDispatch for each slot, the slot kept in zRichterObject's byte across it; kind
+; 5 at slot 3 is entered with X 3.
+; WAITS: no.
+; Entry: Y only for kind 5's block moves. Exit: X $FF, N set, Z clear; A the last kind loaded or what the last handler
+; left; C, Y and V as the last handler left them.
+EffectStep1B91:
+    bbr0 zPaused,EffectStep1B91_at0
+    ldx #$02
+    bsr EffectStep1B91_at1
+    ldx #$0B
+EffectStep1B91_at1:
+    lda a:ScriptSlotKind,x
+    bne EffectDispatch1B91
+    rts
+EffectStep1B91_at4:
+    ldx #$03
+    jmp EffectFlash1B91
+EffectStep1B91_at0:
+    lda a:ScriptSlotKind+3
+    cmp #$05
+    beq EffectStep1B91_at4
+    ldx #$0B
+EffectStep1B91_at3:
+    lda a:ScriptSlotKind,x
+    beq EffectStep1B91_at2
+    stx z:zRichterObject
+    bsr EffectDispatch1B91
+    ldx z:zRichterObject
+EffectStep1B91_at2:
+    dex
+    bpl EffectStep1B91_at3
+    rts
+
+; @routine 1B91:2CB EffectDispatch1B91
+; @run 6C:82CB
+; @stop 82DB
+; @unreachable 6C:82CB-6C:82DA no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $82CB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Sends a palette effect slot to the handler its kind names: the table at $82DB holds one address per
+; kind, kind 1 first.
+; HOW: The kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through,
+; with A the word's high byte, Y the index, C bit 7 of the kind less one, X the slot.
+; WAITS: no.
+; Entry: A the kind (not zero), X the slot. Exit: as the handler leaves them.
+EffectDispatch1B91:
+    dec a
+    asl a
+    tay
+    lda a:$82DB,y
+    sta z:zTemp00
+    lda a:$82DC,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 1B91:2E9 EffectList1B91
+; @run 6C:82E9
+; @unreachable 6C:82E9-6C:8348 no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $82E9 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 1: a palette effect that plays a list of palette loads; once its timer has run down it takes the
+; list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
+; again, and when the rounds the list names have been played it gives the slot back.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
+; $89C3); each palette loaded by the packed palette loader at $84BF, whose bytes are LoadPackedPaletteC's.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
+; Z and C from comparing it with the rounds played, Y 1; X kept.
+EffectList1B91:
+    lda a:ScriptSlotTimer,x
+    beq EffectList1B91_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectList1B91_at0:
+    lda a:ScriptSlotScript,x
+    bpl EffectList1B91_at1
+    asl a
+    tay
+    lda a:$89C3,y
+    sta z:zTemp00
+    lda a:$89C4,y
+    sta z:zTemp01
+    bra EffectList1B91_at2
+EffectList1B91_at1:
+    asl a
+    tay
+    lda a:$9400
+    sta z:zBiosAl
+    lda a:$9401
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectList1B91_at2:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+EffectList1B91_at4:
+    lda a:ScriptSlotField18,x
+    asl a
+    asl a
+    inc a
+    inc a
+    tay
+    lda (zTemp00),y
+    cmp #$FF
+    beq EffectList1B91_at3
+    jsr LoadPackedPalette
+    inc a:ScriptSlotField18,x
+    bra EffectList1B91
+EffectList1B91_at3:
+    inc a:ScriptSlotField24,x
+    stz a:ScriptSlotField18,x
+    ldy #$01
+    lda (zTemp00),y
+    bmi EffectList1B91_at4
+    and #$7F
+    cmp a:ScriptSlotField24,x
+    bcs EffectList1B91_at4
+
+; @routine 1B91:349 ClearEffectSlot1B91
+; @run 6C:8349
+; @unreachable 6C:8349-6C:8361 no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8349 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Gives a palette effect slot back: its eight fields cleared.
+; HOW: Eight STZ of the slot's columns, the kind first.
+; WAITS: no.
+; Entry: X the slot. Exit: A, X, Y and the flags kept.
+ClearEffectSlot1B91:
+    stz a:ScriptSlotKind,x
+    stz a:ScriptSlotScript,x
+    stz a:ScriptSlotField18,x
+    stz a:ScriptSlotField24,x
+    stz a:ScriptSlotTimer,x
+    stz a:ScriptSlotField3C,x
+    stz a:ScriptSlotField48,x
+    stz a:ScriptSlotField54,x
+    rts
+
+; @routine 1B91:362 EffectFade1B91
+; @run 6C:8362
+; @unreachable 6C:8362-6C:840A no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8362 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 2: a palette effect that fades palettes down: once its timer has run down it counts a round, gives
+; the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
+; every colour of them by one step in each of its three components, writing them back to the VCE.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
+; table at $89CF; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
+; $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
+EffectFade1B91:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade1B91_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade1B91_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade1B91_at1
+    jmp ClearEffectSlot1B91
+EffectFade1B91_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade1B91_at2
+    lda a:$89CF,y
+    sta z:zTemp00
+    lda a:$89D0,y
+    sta z:zTemp01
+    bra EffectFade1B91_at3
+EffectFade1B91_at2:
+    lda a:$9402
+    sta z:zBiosAl
+    lda a:$9403
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade1B91_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade1B91_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade1B91_at4
+    rts
+EffectFade1B91_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade1B91_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade1B91_at5
+    dec a
+EffectFade1B91_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade1B91_at6
+    sec
+    sbc #$08
+EffectFade1B91_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade1B91_at7
+    sec
+    sbc #$20
+EffectFade1B91_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade1B91_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade1B91_at9
+
+; @routine 1B91:40B EffectShade1B91
+; @run 6C:840B
+; @stop 84BF
+; @unreachable 6C:840B-6C:84BE no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $840B runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 3: a palette effect that darkens palettes by an amount that grows each round: once its timer has
+; run down it counts a round (the slot is given back after the eighth) and writes the list's palettes to the VCE, each
+; colour's blue, green and red parts taken down by 7 less the count, by that times 8 and times 32, not below zero.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9404; zTemp08 to zTemp0A the three amounts;
+; the blocks (eight colours, their ninth bits first) read through zTemp02.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, Y
+; the list's place, V from the last block's pointer add (else kept).
+EffectShade1B91:
+    lda a:ScriptSlotTimer,x
+    beq EffectShade1B91_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectShade1B91_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectShade1B91_at1
+    jmp ClearEffectSlot1B91
+EffectShade1B91_at1:
+    eor #$07
+    sta z:zTemp08
+    asl a
+    asl a
+    asl a
+    sta z:zTemp09
+    asl a
+    asl a
+    sta z:zTemp0A
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    lda a:$9404
+    sta z:zBiosAl
+    lda a:$9405
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectShade1B91_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectShade1B91_at2
+    rts
+EffectShade1B91_at2:
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    iny
+    sty z:zHitSlot
+    lda (zTemp02)
+    sta z:zTemp05
+EffectShade1B91_at8:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+EffectShade1B91_at6:
+    iny
+    lda (zTemp02),y
+    and #$07
+    sec
+    sbc z:zTemp08
+    bcs EffectShade1B91_at3
+    cla
+EffectShade1B91_at3:
+    sta z:zTemp0B
+    lda (zTemp02),y
+    and #$38
+    sec
+    sbc z:zTemp09
+    bcs EffectShade1B91_at4
+    cla
+EffectShade1B91_at4:
+    ora z:zTemp0B
+    sta z:zTemp0B
+    lda (zTemp02),y
+    asl z:zTemp04
+    ror a
+    and #$E0
+    sec
+    sbc z:zTemp0A
+    bcs EffectShade1B91_at5
+    cla
+EffectShade1B91_at5:
+    asl a
+    ora z:zTemp0B
+    sta a:VCE_DATA_LO
+    cla
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc EffectShade1B91_at6
+    lda z:zTemp02
+    clc
+    adc #$09
+    sta z:zTemp02
+    bcc EffectShade1B91_at7
+    inc z:zTemp03
+EffectShade1B91_at7:
+    dec z:zTemp05
+    bpl EffectShade1B91_at8
+    ldy z:zHitSlot
+    jmp EffectShade1B91_at9
+
+; @routine 1B91:4FF EffectColour1B91
+; @run 6C:84FF
+; @unreachable 6C:84FF-6C:8538 no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $84FF runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
+; colour's two bytes) picked by the list number, the slot then given back.
+; HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
+; or for a negative number the table at $89CF; the four bytes go to the VCE ports.
+; WAITS: no.
+; Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
+; kept.
+EffectColour1B91:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour1B91_at0
+    asl a
+    asl a
+    adc a:$9406
+    sta z:zTemp00
+    cla
+    adc a:$9407
+    sta z:zTemp01
+    bra EffectColour1B91_at1
+EffectColour1B91_at0:
+    asl a
+    asl a
+    adc #$CF
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour1B91_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot1B91
+
+; @routine 1B91:539 EffectVceSave1B91
+; @run 6C:8539
+; @unreachable 6C:8539-6C:8542 no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8539 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 6: all 512 colours of the VCE saved in the Super RAM bank mapped at $A000, at $B000.
+; HOW: SelectSavedBank, then a TAI of $400 bytes from the VCE's data port.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block move. Exit: as SelectSavedBank.
+EffectVceSave1B91:
+    bsr SelectSavedBank1B91
+    tai VCE_DATA_LO,$B000,$0400
+    rts
+
+; @routine 1B91:543 EffectVceRestore1B91
+; @run 6C:8543
+; @unreachable 6C:8543-6C:854C no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8543 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 7: the 512 colours written back to the VCE from the Super RAM bank mapped at $A000, at $B000.
+; HOW: SelectSavedBank, then a TIA of $400 bytes to the VCE's data port.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block move. Exit: as SelectSavedBank.
+EffectVceRestore1B91:
+    bsr SelectSavedBank1B91
+    tia $B000,VCE_DATA_LO,$0400
+    rts
+
+; @routine 1B91:54D SelectSavedBank1B91
+; @run 6C:854D
+; @unreachable 6C:854D-6C:855F no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $854D runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Maps the Super RAM bank of the saved palette at $A000 and sets the VCE's colour address to 0.
+; HOW: The bank is the base bank plus $12, or plus $30 when bit 0 of zIdleFlag is set; TAM for MPR5.
+; WAITS: no.
+; Entry: nothing. Exit: A the bank, N and Z from it, C and V from the add; X and Y kept.
+SelectSavedBank1B91:
+    lda #$12
+    bbr0 zIdleFlag,SelectSavedBank1B91_at0
+    lda #$30
+SelectSavedBank1B91_at0:
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    stz a:VCE_ADDR_LO
+    stz a:VCE_ADDR_HI
+    rts
+
+; @routine 1B91:560 EffectFlash1B91
+; @run 6C:8560
+; @stop 05EB
+; @unreachable 6C:8560-6C:85EA no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8560 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 5: a palette effect that flashes: the first time it saves the VCE's background and sprite palettes
+; in the overlay's RAM; each round it fills a 16 colour buffer with one colour of its table and writes it over every
+; palette the list at $8692 names; after the sixteenth round it puts the saved palettes back and gives the slot up.
+; HOW: Zero page $3C set to 1; the count in $3C24; TAI and TIA between the VCE's data port and $86C3, $88C3 and $3C60;
+; the colour table at $8612 indexed by the list number times 32 and the count times 2.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block moves. Exit: A $FF at the list's end with Z and C set, X $20 (or the slot when
+; no palette was written), Y the list's place, V from the table index's add; after the sixteenth round as EffectFlashEnd
+; with C set.
+EffectFlash1B91:
+    lda #$01
+    sta z:$3C
+    lda a:ScriptSlotField24,x
+    bne EffectFlash1B91_at0
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,$86C3,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,$88C3,$0100
+EffectFlash1B91_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$10
+    bcc EffectFlash1B91_at4
+    jmp EffectFlashEnd1B91
+EffectFlash1B91_at4:
+    lda a:ScriptSlotScript,x
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp04
+    lda a:ScriptSlotField24,x
+    asl a
+    clc
+    adc z:zTemp04
+    tay
+    lda a:$8612,y
+    sta z:zTemp02
+    lda a:$8613,y
+    sta z:zTemp03
+    cly
+EffectFlash1B91_at3:
+    lda a:$8692,y
+    cmp #$FF
+    bne EffectFlash1B91_at1
+    rts
+EffectFlash1B91_at1:
+    sta z:zTemp08
+    iny
+    lda a:$8692,y
+    sta z:zTemp09
+    iny
+    clx
+EffectFlash1B91_at2:
+    lda z:zTemp02
+    sta a:SavedColoursLo,x
+    lda z:zTemp03
+    sta a:SavedColoursLo+1,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFlash1B91_at2
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFlash1B91_at3
+
+; @routine 1B91:5EB EffectFlashEnd1B91
+; @run 6C:85EB
+; @unreachable 6C:85EB-6C:8611 no read the game makes loads disc sector 1B91, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $85EB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
+; the slot given back.
+; HOW: Two TIA from $86C3 (256 colours) and $88C3 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes.
+; WAITS: no.
+; Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
+EffectFlashEnd1B91:
+    stz z:$3C
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tia $86C3,VCE_DATA_LO,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tia $88C3,VCE_DATA_LO,$0100
+    jmp ClearEffectSlot1B91
+
+; @routine 1CF1:29F EffectStep1CF1
+; @run 6C:829F
+; @unreachable 6C:829F-6C:82CA no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $829F runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: One frame of the ending's palette effects: while the game is paused only slots 2 and $0B are run;
+; otherwise slot 3 alone when it holds kind 5, else every slot from $0B down to 0 that has a kind.
+; HOW: zPaused, the kinds at $3C00; EffectDispatch for each slot, the slot kept in zRichterObject's byte across it; kind
+; 5 at slot 3 is entered with X 3.
+; WAITS: no.
+; Entry: Y only for kind 5's block moves. Exit: X $FF, N set, Z clear; A the last kind loaded or what the last handler
+; left; C, Y and V as the last handler left them.
+EffectStep1CF1:
+    bbr0 zPaused,EffectStep1CF1_at0
+    ldx #$02
+    bsr EffectStep1CF1_at1
+    ldx #$0B
+EffectStep1CF1_at1:
+    lda a:ScriptSlotKind,x
+    bne EffectDispatch1CF1
+    rts
+EffectStep1CF1_at4:
+    ldx #$03
+    jmp EffectFlash1CF1
+EffectStep1CF1_at0:
+    lda a:ScriptSlotKind+3
+    cmp #$05
+    beq EffectStep1CF1_at4
+    ldx #$0B
+EffectStep1CF1_at3:
+    lda a:ScriptSlotKind,x
+    beq EffectStep1CF1_at2
+    stx z:zRichterObject
+    bsr EffectDispatch1CF1
+    ldx z:zRichterObject
+EffectStep1CF1_at2:
+    dex
+    bpl EffectStep1CF1_at3
+    rts
+
+; @routine 1CF1:2CB EffectDispatch1CF1
+; @run 6C:82CB
+; @stop 82DB
+; @unreachable 6C:82CB-6C:82DA no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $82CB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Sends a palette effect slot to the handler its kind names: the table at $82DB holds one address per
+; kind, kind 1 first.
+; HOW: The kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through,
+; with A the word's high byte, Y the index, C bit 7 of the kind less one, X the slot.
+; WAITS: no.
+; Entry: A the kind (not zero), X the slot. Exit: as the handler leaves them.
+EffectDispatch1CF1:
+    dec a
+    asl a
+    tay
+    lda a:$82DB,y
+    sta z:zTemp00
+    lda a:$82DC,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 1CF1:2E9 EffectList1CF1
+; @run 6C:82E9
+; @unreachable 6C:82E9-6C:8348 no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $82E9 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 1: a palette effect that plays a list of palette loads; once its timer has run down it takes the
+; list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
+; again, and when the rounds the list names have been played it gives the slot back.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
+; $89C3); each palette loaded by the packed palette loader at $84BF, whose bytes are LoadPackedPaletteC's.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
+; Z and C from comparing it with the rounds played, Y 1; X kept.
+EffectList1CF1:
+    lda a:ScriptSlotTimer,x
+    beq EffectList1CF1_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectList1CF1_at0:
+    lda a:ScriptSlotScript,x
+    bpl EffectList1CF1_at1
+    asl a
+    tay
+    lda a:$89C3,y
+    sta z:zTemp00
+    lda a:$89C4,y
+    sta z:zTemp01
+    bra EffectList1CF1_at2
+EffectList1CF1_at1:
+    asl a
+    tay
+    lda a:$9400
+    sta z:zBiosAl
+    lda a:$9401
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectList1CF1_at2:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+EffectList1CF1_at4:
+    lda a:ScriptSlotField18,x
+    asl a
+    asl a
+    inc a
+    inc a
+    tay
+    lda (zTemp00),y
+    cmp #$FF
+    beq EffectList1CF1_at3
+    jsr LoadPackedPalette
+    inc a:ScriptSlotField18,x
+    bra EffectList1CF1
+EffectList1CF1_at3:
+    inc a:ScriptSlotField24,x
+    stz a:ScriptSlotField18,x
+    ldy #$01
+    lda (zTemp00),y
+    bmi EffectList1CF1_at4
+    and #$7F
+    cmp a:ScriptSlotField24,x
+    bcs EffectList1CF1_at4
+
+; @routine 1CF1:349 ClearEffectSlot1CF1
+; @run 6C:8349
+; @unreachable 6C:8349-6C:8361 no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8349 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Gives a palette effect slot back: its eight fields cleared.
+; HOW: Eight STZ of the slot's columns, the kind first.
+; WAITS: no.
+; Entry: X the slot. Exit: A, X, Y and the flags kept.
+ClearEffectSlot1CF1:
+    stz a:ScriptSlotKind,x
+    stz a:ScriptSlotScript,x
+    stz a:ScriptSlotField18,x
+    stz a:ScriptSlotField24,x
+    stz a:ScriptSlotTimer,x
+    stz a:ScriptSlotField3C,x
+    stz a:ScriptSlotField48,x
+    stz a:ScriptSlotField54,x
+    rts
+
+; @routine 1CF1:362 EffectFade1CF1
+; @run 6C:8362
+; @unreachable 6C:8362-6C:840A no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8362 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 2: a palette effect that fades palettes down: once its timer has run down it counts a round, gives
+; the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
+; every colour of them by one step in each of its three components, writing them back to the VCE.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
+; table at $89D1; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
+; $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
+EffectFade1CF1:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade1CF1_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade1CF1_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade1CF1_at1
+    jmp ClearEffectSlot1CF1
+EffectFade1CF1_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade1CF1_at2
+    lda a:$89D1,y
+    sta z:zTemp00
+    lda a:$89D2,y
+    sta z:zTemp01
+    bra EffectFade1CF1_at3
+EffectFade1CF1_at2:
+    lda a:$9402
+    sta z:zBiosAl
+    lda a:$9403
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade1CF1_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade1CF1_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade1CF1_at4
+    rts
+EffectFade1CF1_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade1CF1_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade1CF1_at5
+    dec a
+EffectFade1CF1_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade1CF1_at6
+    sec
+    sbc #$08
+EffectFade1CF1_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade1CF1_at7
+    sec
+    sbc #$20
+EffectFade1CF1_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade1CF1_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade1CF1_at9
+
+; @routine 1CF1:40B EffectShade1CF1
+; @run 6C:840B
+; @stop 84BF
+; @unreachable 6C:840B-6C:84BE no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $840B runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 3: a palette effect that darkens palettes by an amount that grows each round: once its timer has
+; run down it counts a round (the slot is given back after the eighth) and writes the list's palettes to the VCE, each
+; colour's blue, green and red parts taken down by 7 less the count, by that times 8 and times 32, not below zero.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9404; zTemp08 to zTemp0A the three amounts;
+; the blocks (eight colours, their ninth bits first) read through zTemp02.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, Y
+; the list's place, V from the last block's pointer add (else kept).
+EffectShade1CF1:
+    lda a:ScriptSlotTimer,x
+    beq EffectShade1CF1_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectShade1CF1_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectShade1CF1_at1
+    jmp ClearEffectSlot1CF1
+EffectShade1CF1_at1:
+    eor #$07
+    sta z:zTemp08
+    asl a
+    asl a
+    asl a
+    sta z:zTemp09
+    asl a
+    asl a
+    sta z:zTemp0A
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    lda a:$9404
+    sta z:zBiosAl
+    lda a:$9405
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectShade1CF1_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectShade1CF1_at2
+    rts
+EffectShade1CF1_at2:
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    iny
+    sty z:zHitSlot
+    lda (zTemp02)
+    sta z:zTemp05
+EffectShade1CF1_at8:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+EffectShade1CF1_at6:
+    iny
+    lda (zTemp02),y
+    and #$07
+    sec
+    sbc z:zTemp08
+    bcs EffectShade1CF1_at3
+    cla
+EffectShade1CF1_at3:
+    sta z:zTemp0B
+    lda (zTemp02),y
+    and #$38
+    sec
+    sbc z:zTemp09
+    bcs EffectShade1CF1_at4
+    cla
+EffectShade1CF1_at4:
+    ora z:zTemp0B
+    sta z:zTemp0B
+    lda (zTemp02),y
+    asl z:zTemp04
+    ror a
+    and #$E0
+    sec
+    sbc z:zTemp0A
+    bcs EffectShade1CF1_at5
+    cla
+EffectShade1CF1_at5:
+    asl a
+    ora z:zTemp0B
+    sta a:VCE_DATA_LO
+    cla
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc EffectShade1CF1_at6
+    lda z:zTemp02
+    clc
+    adc #$09
+    sta z:zTemp02
+    bcc EffectShade1CF1_at7
+    inc z:zTemp03
+EffectShade1CF1_at7:
+    dec z:zTemp05
+    bpl EffectShade1CF1_at8
+    ldy z:zHitSlot
+    jmp EffectShade1CF1_at9
+
+; @routine 1CF1:4FF EffectColour1CF1
+; @run 6C:84FF
+; @unreachable 6C:84FF-6C:8538 no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $84FF runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
+; colour's two bytes) picked by the list number, the slot then given back.
+; HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
+; or for a negative number the table at $89D1; the four bytes go to the VCE ports.
+; WAITS: no.
+; Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
+; kept.
+EffectColour1CF1:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour1CF1_at0
+    asl a
+    asl a
+    adc a:$9406
+    sta z:zTemp00
+    cla
+    adc a:$9407
+    sta z:zTemp01
+    bra EffectColour1CF1_at1
+EffectColour1CF1_at0:
+    asl a
+    asl a
+    adc #$D1
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour1CF1_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot1CF1
+
+; @routine 1CF1:539 EffectVceSave1CF1
+; @run 6C:8539
+; @unreachable 6C:8539-6C:8542 no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8539 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 6: all 512 colours of the VCE saved in the Super RAM bank mapped at $A000, at $B000.
+; HOW: SelectSavedBank, then a TAI of $400 bytes from the VCE's data port.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block move. Exit: as SelectSavedBank.
+EffectVceSave1CF1:
+    bsr SelectSavedBank1CF1
+    tai VCE_DATA_LO,$B000,$0400
+    rts
+
+; @routine 1CF1:543 EffectVceRestore1CF1
+; @run 6C:8543
+; @unreachable 6C:8543-6C:854C no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8543 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 7: the 512 colours written back to the VCE from the Super RAM bank mapped at $A000, at $B000.
+; HOW: SelectSavedBank, then a TIA of $400 bytes to the VCE's data port.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block move. Exit: as SelectSavedBank.
+EffectVceRestore1CF1:
+    bsr SelectSavedBank1CF1
+    tia $B000,VCE_DATA_LO,$0400
+    rts
+
+; @routine 1CF1:54D SelectSavedBank1CF1
+; @run 6C:854D
+; @unreachable 6C:854D-6C:855F no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $854D runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Maps the Super RAM bank of the saved palette at $A000 and sets the VCE's colour address to 0.
+; HOW: The bank is the base bank plus $12, or plus $30 when bit 0 of zIdleFlag is set; TAM for MPR5.
+; WAITS: no.
+; Entry: nothing. Exit: A the bank, N and Z from it, C and V from the add; X and Y kept.
+SelectSavedBank1CF1:
+    lda #$12
+    bbr0 zIdleFlag,SelectSavedBank1CF1_at0
+    lda #$30
+SelectSavedBank1CF1_at0:
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    stz a:VCE_ADDR_LO
+    stz a:VCE_ADDR_HI
+    rts
+
+; @routine 1CF1:560 EffectFlash1CF1
+; @run 6C:8560
+; @stop 05EB
+; @unreachable 6C:8560-6C:85EA no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8560 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 5: a palette effect that flashes: the first time it saves the VCE's background and sprite palettes
+; in the overlay's RAM; each round it fills a 16 colour buffer with one colour of its table and writes it over every
+; palette the list at $8692 names; after the sixteenth round it puts the saved palettes back and gives the slot up.
+; HOW: Zero page $3C set to 1; the count in $3C24; TAI and TIA between the VCE's data port and $86C3, $88C3 and $3C60;
+; the colour table at $8612 indexed by the list number times 32 and the count times 2.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block moves. Exit: A $FF at the list's end with Z and C set, X $20 (or the slot when
+; no palette was written), Y the list's place, V from the table index's add; after the sixteenth round as EffectFlashEnd
+; with C set.
+EffectFlash1CF1:
+    lda #$01
+    sta z:$3C
+    lda a:ScriptSlotField24,x
+    bne EffectFlash1CF1_at0
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,$86C3,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,$88C3,$0100
+EffectFlash1CF1_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$10
+    bcc EffectFlash1CF1_at4
+    jmp EffectFlashEnd1CF1
+EffectFlash1CF1_at4:
+    lda a:ScriptSlotScript,x
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp04
+    lda a:ScriptSlotField24,x
+    asl a
+    clc
+    adc z:zTemp04
+    tay
+    lda a:$8612,y
+    sta z:zTemp02
+    lda a:$8613,y
+    sta z:zTemp03
+    cly
+EffectFlash1CF1_at3:
+    lda a:$8692,y
+    cmp #$FF
+    bne EffectFlash1CF1_at1
+    rts
+EffectFlash1CF1_at1:
+    sta z:zTemp08
+    iny
+    lda a:$8692,y
+    sta z:zTemp09
+    iny
+    clx
+EffectFlash1CF1_at2:
+    lda z:zTemp02
+    sta a:SavedColoursLo,x
+    lda z:zTemp03
+    sta a:SavedColoursLo+1,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFlash1CF1_at2
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFlash1CF1_at3
+
+; @routine 1CF1:5EB EffectFlashEnd1CF1
+; @run 6C:85EB
+; @unreachable 6C:85EB-6C:8611 no read the game makes loads disc sector 1CF1, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $85EB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
+; the slot given back.
+; HOW: Two TIA from $86C3 (256 colours) and $88C3 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes.
+; WAITS: no.
+; Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
+EffectFlashEnd1CF1:
+    stz z:$3C
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tia $86C3,VCE_DATA_LO,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tia $88C3,VCE_DATA_LO,$0100
+    jmp ClearEffectSlot1CF1
+
+; @routine 25F7:29F EffectStep25F7
+; @run 6C:829F
+; @unreachable 6C:829F-6C:82CA no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $829F runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: One frame of the ending's palette effects: while the game is paused only slots 2 and $0B are run;
+; otherwise slot 3 alone when it holds kind 5, else every slot from $0B down to 0 that has a kind.
+; HOW: zPaused, the kinds at $3C00; EffectDispatch for each slot, the slot kept in zRichterObject's byte across it; kind
+; 5 at slot 3 is entered with X 3.
+; WAITS: no.
+; Entry: Y only for kind 5's block moves. Exit: X $FF, N set, Z clear; A the last kind loaded or what the last handler
+; left; C, Y and V as the last handler left them.
+EffectStep25F7:
+    bbr0 zPaused,EffectStep25F7_at0
+    ldx #$02
+    bsr EffectStep25F7_at1
+    ldx #$0B
+EffectStep25F7_at1:
+    lda a:ScriptSlotKind,x
+    bne EffectDispatch25F7
+    rts
+EffectStep25F7_at4:
+    ldx #$03
+    jmp EffectFlash25F7
+EffectStep25F7_at0:
+    lda a:ScriptSlotKind+3
+    cmp #$05
+    beq EffectStep25F7_at4
+    ldx #$0B
+EffectStep25F7_at3:
+    lda a:ScriptSlotKind,x
+    beq EffectStep25F7_at2
+    stx z:zRichterObject
+    bsr EffectDispatch25F7
+    ldx z:zRichterObject
+EffectStep25F7_at2:
+    dex
+    bpl EffectStep25F7_at3
+    rts
+
+; @routine 25F7:2CB EffectDispatch25F7
+; @run 6C:82CB
+; @stop 82DB
+; @unreachable 6C:82CB-6C:82DA no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $82CB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Sends a palette effect slot to the handler its kind names: the table at $82DB holds one address per
+; kind, kind 1 first.
+; HOW: The kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through,
+; with A the word's high byte, Y the index, C bit 7 of the kind less one, X the slot.
+; WAITS: no.
+; Entry: A the kind (not zero), X the slot. Exit: as the handler leaves them.
+EffectDispatch25F7:
+    dec a
+    asl a
+    tay
+    lda a:$82DB,y
+    sta z:zTemp00
+    lda a:$82DC,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 25F7:2E9 EffectList25F7
+; @run 6C:82E9
+; @unreachable 6C:82E9-6C:8348 no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $82E9 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 1: a palette effect that plays a list of palette loads; once its timer has run down it takes the
+; list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
+; again, and when the rounds the list names have been played it gives the slot back.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
+; $89C3); each palette loaded by the packed palette loader at $84BF, whose bytes are LoadPackedPaletteC's.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
+; Z and C from comparing it with the rounds played, Y 1; X kept.
+EffectList25F7:
+    lda a:ScriptSlotTimer,x
+    beq EffectList25F7_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectList25F7_at0:
+    lda a:ScriptSlotScript,x
+    bpl EffectList25F7_at1
+    asl a
+    tay
+    lda a:$89C3,y
+    sta z:zTemp00
+    lda a:$89C4,y
+    sta z:zTemp01
+    bra EffectList25F7_at2
+EffectList25F7_at1:
+    asl a
+    tay
+    lda a:$9400
+    sta z:zBiosAl
+    lda a:$9401
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectList25F7_at2:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+EffectList25F7_at4:
+    lda a:ScriptSlotField18,x
+    asl a
+    asl a
+    inc a
+    inc a
+    tay
+    lda (zTemp00),y
+    cmp #$FF
+    beq EffectList25F7_at3
+    jsr LoadPackedPalette
+    inc a:ScriptSlotField18,x
+    bra EffectList25F7
+EffectList25F7_at3:
+    inc a:ScriptSlotField24,x
+    stz a:ScriptSlotField18,x
+    ldy #$01
+    lda (zTemp00),y
+    bmi EffectList25F7_at4
+    and #$7F
+    cmp a:ScriptSlotField24,x
+    bcs EffectList25F7_at4
+
+; @routine 25F7:349 ClearEffectSlot25F7
+; @run 6C:8349
+; @unreachable 6C:8349-6C:8361 no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8349 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Gives a palette effect slot back: its eight fields cleared.
+; HOW: Eight STZ of the slot's columns, the kind first.
+; WAITS: no.
+; Entry: X the slot. Exit: A, X, Y and the flags kept.
+ClearEffectSlot25F7:
+    stz a:ScriptSlotKind,x
+    stz a:ScriptSlotScript,x
+    stz a:ScriptSlotField18,x
+    stz a:ScriptSlotField24,x
+    stz a:ScriptSlotTimer,x
+    stz a:ScriptSlotField3C,x
+    stz a:ScriptSlotField48,x
+    stz a:ScriptSlotField54,x
+    rts
+
+; @routine 25F7:362 EffectFade25F7
+; @run 6C:8362
+; @unreachable 6C:8362-6C:840A no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8362 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 2: a palette effect that fades palettes down: once its timer has run down it counts a round, gives
+; the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
+; every colour of them by one step in each of its three components, writing them back to the VCE.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
+; table at $9410; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
+; $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
+EffectFade25F7:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade25F7_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade25F7_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade25F7_at1
+    jmp ClearEffectSlot25F7
+EffectFade25F7_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade25F7_at2
+    lda a:$9410,y
+    sta z:zTemp00
+    lda a:$9411,y
+    sta z:zTemp01
+    bra EffectFade25F7_at3
+EffectFade25F7_at2:
+    lda a:$9402
+    sta z:zBiosAl
+    lda a:$9403
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade25F7_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade25F7_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade25F7_at4
+    rts
+EffectFade25F7_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade25F7_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade25F7_at5
+    dec a
+EffectFade25F7_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade25F7_at6
+    sec
+    sbc #$08
+EffectFade25F7_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade25F7_at7
+    sec
+    sbc #$20
+EffectFade25F7_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade25F7_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade25F7_at9
+
+; @routine 25F7:40B EffectShade25F7
+; @run 6C:840B
+; @stop 84BF
+; @unreachable 6C:840B-6C:84BE no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $840B runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 3: a palette effect that darkens palettes by an amount that grows each round: once its timer has
+; run down it counts a round (the slot is given back after the eighth) and writes the list's palettes to the VCE, each
+; colour's blue, green and red parts taken down by 7 less the count, by that times 8 and times 32, not below zero.
+; HOW: The slot's fields at $3C00 and up; the list through the pointer at $9404; zTemp08 to zTemp0A the three amounts;
+; the blocks (eight colours, their ninth bits first) read through zTemp02.
+; WAITS: no.
+; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, Y
+; the list's place, V from the last block's pointer add (else kept).
+EffectShade25F7:
+    lda a:ScriptSlotTimer,x
+    beq EffectShade25F7_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectShade25F7_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectShade25F7_at1
+    jmp ClearEffectSlot25F7
+EffectShade25F7_at1:
+    eor #$07
+    sta z:zTemp08
+    asl a
+    asl a
+    asl a
+    sta z:zTemp09
+    asl a
+    asl a
+    sta z:zTemp0A
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    lda a:$9404
+    sta z:zBiosAl
+    lda a:$9405
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectShade25F7_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectShade25F7_at2
+    rts
+EffectShade25F7_at2:
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    iny
+    sty z:zHitSlot
+    lda (zTemp02)
+    sta z:zTemp05
+EffectShade25F7_at8:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+EffectShade25F7_at6:
+    iny
+    lda (zTemp02),y
+    and #$07
+    sec
+    sbc z:zTemp08
+    bcs EffectShade25F7_at3
+    cla
+EffectShade25F7_at3:
+    sta z:zTemp0B
+    lda (zTemp02),y
+    and #$38
+    sec
+    sbc z:zTemp09
+    bcs EffectShade25F7_at4
+    cla
+EffectShade25F7_at4:
+    ora z:zTemp0B
+    sta z:zTemp0B
+    lda (zTemp02),y
+    asl z:zTemp04
+    ror a
+    and #$E0
+    sec
+    sbc z:zTemp0A
+    bcs EffectShade25F7_at5
+    cla
+EffectShade25F7_at5:
+    asl a
+    ora z:zTemp0B
+    sta a:VCE_DATA_LO
+    cla
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc EffectShade25F7_at6
+    lda z:zTemp02
+    clc
+    adc #$09
+    sta z:zTemp02
+    bcc EffectShade25F7_at7
+    inc z:zTemp03
+EffectShade25F7_at7:
+    dec z:zTemp05
+    bpl EffectShade25F7_at8
+    ldy z:zHitSlot
+    jmp EffectShade25F7_at9
+
+; @routine 25F7:4FF EffectColour25F7
+; @run 6C:84FF
+; @unreachable 6C:84FF-6C:8538 no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $84FF runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
+; colour's two bytes) picked by the list number, the slot then given back.
+; HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
+; or for a negative number the table at $89C3; the four bytes go to the VCE ports.
+; WAITS: no.
+; Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
+; kept.
+EffectColour25F7:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour25F7_at0
+    asl a
+    asl a
+    adc a:$9406
+    sta z:zTemp00
+    cla
+    adc a:$9407
+    sta z:zTemp01
+    bra EffectColour25F7_at1
+EffectColour25F7_at0:
+    asl a
+    asl a
+    adc #$C3
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour25F7_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot25F7
+
+; @routine 25F7:539 EffectVceSave25F7
+; @run 6C:8539
+; @unreachable 6C:8539-6C:8542 no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8539 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 6: all 512 colours of the VCE saved in the Super RAM bank mapped at $A000, at $B000.
+; HOW: SelectSavedBank, then a TAI of $400 bytes from the VCE's data port.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block move. Exit: as SelectSavedBank.
+EffectVceSave25F7:
+    bsr SelectSavedBank25F7
+    tai VCE_DATA_LO,$B000,$0400
+    rts
+
+; @routine 25F7:543 EffectVceRestore25F7
+; @run 6C:8543
+; @unreachable 6C:8543-6C:854C no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8543 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 7: the 512 colours written back to the VCE from the Super RAM bank mapped at $A000, at $B000.
+; HOW: SelectSavedBank, then a TIA of $400 bytes to the VCE's data port.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block move. Exit: as SelectSavedBank.
+EffectVceRestore25F7:
+    bsr SelectSavedBank25F7
+    tia $B000,VCE_DATA_LO,$0400
+    rts
+
+; @routine 25F7:54D SelectSavedBank25F7
+; @run 6C:854D
+; @unreachable 6C:854D-6C:855F no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $854D runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Maps the Super RAM bank of the saved palette at $A000 and sets the VCE's colour address to 0.
+; HOW: The bank is the base bank plus $12, or plus $30 when bit 0 of zIdleFlag is set; TAM for MPR5.
+; WAITS: no.
+; Entry: nothing. Exit: A the bank, N and Z from it, C and V from the add; X and Y kept.
+SelectSavedBank25F7:
+    lda #$12
+    bbr0 zIdleFlag,SelectSavedBank25F7_at0
+    lda #$30
+SelectSavedBank25F7_at0:
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    stz a:VCE_ADDR_LO
+    stz a:VCE_ADDR_HI
+    rts
+
+; @routine 25F7:560 EffectFlash25F7
+; @run 6C:8560
+; @stop 05EB
+; @unreachable 6C:8560-6C:85EA no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $8560 runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: Kind 5: a palette effect that flashes: the first time it saves the VCE's background and sprite palettes
+; in the overlay's RAM; each round it fills a 16 colour buffer with one colour of its table and writes it over every
+; palette the list at $8692 names; after the sixteenth round it puts the saved palettes back and gives the slot up.
+; HOW: Zero page $3C set to 1; the count in $3C24; TAI and TIA between the VCE's data port and $86C3, $88C3 and $3C60;
+; the colour table at $8612 indexed by the list number times 32 and the count times 2.
+; WAITS: no.
+; Entry: X the slot, Y kept for the block moves. Exit: A $FF at the list's end with Z and C set, X $20 (or the slot when
+; no palette was written), Y the list's place, V from the table index's add; after the sixteenth round as EffectFlashEnd
+; with C set.
+EffectFlash25F7:
+    lda #$01
+    sta z:$3C
+    lda a:ScriptSlotField24,x
+    bne EffectFlash25F7_at0
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,$86C3,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,$88C3,$0100
+EffectFlash25F7_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$10
+    bcc EffectFlash25F7_at4
+    jmp EffectFlashEnd25F7
+EffectFlash25F7_at4:
+    lda a:ScriptSlotScript,x
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp04
+    lda a:ScriptSlotField24,x
+    asl a
+    clc
+    adc z:zTemp04
+    tay
+    lda a:$8612,y
+    sta z:zTemp02
+    lda a:$8613,y
+    sta z:zTemp03
+    cly
+EffectFlash25F7_at3:
+    lda a:$8692,y
+    cmp #$FF
+    bne EffectFlash25F7_at1
+    rts
+EffectFlash25F7_at1:
+    sta z:zTemp08
+    iny
+    lda a:$8692,y
+    sta z:zTemp09
+    iny
+    clx
+EffectFlash25F7_at2:
+    lda z:zTemp02
+    sta a:SavedColoursLo,x
+    lda z:zTemp03
+    sta a:SavedColoursLo+1,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFlash25F7_at2
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFlash25F7_at3
+
+; @routine 25F7:5EB EffectFlashEnd25F7
+; @run 6C:85EB
+; @unreachable 6C:85EB-6C:8611 no read the game makes loads disc sector 25F7, so these bytes are never in memory.
+; Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+; the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+; five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+; on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+; run. No input or poke of work RAM can load the sector, and a unit call at $85EB runs whatever overlay another scene
+; left there, not these bytes.
+;
+; WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
+; the slot given back.
+; HOW: Two TIA from $86C3 (256 colours) and $88C3 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes.
+; WAITS: no.
+; Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
+EffectFlashEnd25F7:
+    stz z:$3C
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tia $86C3,VCE_DATA_LO,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tia $88C3,VCE_DATA_LO,$0100
+    jmp ClearEffectSlot25F7

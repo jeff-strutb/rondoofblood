@@ -1,0 +1,46 @@
+# Scene $5E (SCENE_BOSS, loaded by ModeStage when bit 0 of zModeEvents is set), by a poke of what Stage $0C's own
+# trigger writes. The trigger is an object of scene $4B (disc $96D88D, run $B88D in the stage's second scene): when its
+# timer runs out, unless $3C03 is 5, it writes 4 to $3510 and $10 to $3568 (fixed fields of slot 0, the player) and sets
+# bit 0 of zModeEvents ($9A, SMB0). It is the only code on the disc that sets that bit. Stage $0C by a continue
+# restart (as stage_0C), seeded random play, then those three bytes in one frame (zModeEvents is 0 during play, so
+# the poke is the SMB0's result), then seeded random play with the boss's scene in memory. Scene $5E reads the
+# same sectors as scene $4E (Stage $8C's second scene, which StageEnter redirects to $0E), so it runs that code too.
+include _continue_to.txt
+poke 2081 0C
+press I 6
+wait 900
+random 1201 3000 8
+shot before
+dump before
+poke 3510 04
+poke 3568 10
+poke 209A 01
+wait 1
+dump p01
+wait 1
+dump p02
+wait 1
+dump p03
+wait 1
+dump p04
+wait 1
+dump p05
+wait 5
+dump p10
+wait 10
+dump p20
+wait 20
+dump p40
+wait 60
+dump p100
+wait 100
+dump p200
+wait 400
+shot loaded
+dump loaded
+random 1202 3000 8
+shot r1
+dump r1
+random 1203 3000 8
+shot r2
+dump r2

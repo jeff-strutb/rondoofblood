@@ -1,0 +1,218 @@
+# RunObjects18D9 (the object loop's copy in sector 18D9): its arms no gameplay script runs, by pokes of the live objects' fields at the state of the last dump below. Coverage for gate C (PROCEDURE section 6, step 2), no unit call.
+# Stage $10 (from StageScenes) by a continue restart, then seeded random play.
+include _continue_to.txt
+poke 2081 10
+press I 6
+wait 900
+shot entered
+dump entered
+random 1601 3000 8
+shot r1
+dump r1
+random 1602 3000 8
+shot r2
+dump r2
+# Object loop arms by pokes of object fields, in the frame after the last dump: the scroll nudged left and up (negative speeds),
+# hold window (flags bit 2), the hurt timer, the player's byte 3BD8 as 3, 2 and 1 against the wave counter, then objects far off screen.
+poke 3E08 FD
+poke 3E20 FD
+wait 1
+poke 2BBD 02
+poke 2C15 00
+poke 2CC5 00
+poke 2D1D 80
+poke 313D 06
+poke 2FDD 00
+poke 2BBE 01
+poke 2C16 00
+poke 2CC6 00
+poke 2D1E 80
+poke 313E 06
+poke 2FDE 00
+poke 2BBF 01
+poke 2C17 50
+poke 2CC7 00
+poke 2D1F 80
+poke 313F 06
+poke 2FDF 00
+wait 1
+poke 2BBD FF
+poke 2C15 80
+poke 2CC5 00
+poke 2D1D 80
+poke 313D 06
+poke 2FDD 00
+poke 2BBE FF
+poke 2C16 D0
+poke 2CC6 00
+poke 2D1E 80
+poke 313E 06
+poke 2FDE 00
+poke 2BBF 80
+poke 2C17 00
+poke 2CC7 00
+poke 2D1F 80
+poke 313F 06
+poke 2FDF 00
+wait 1
+poke 2BBD 00
+poke 2C15 80
+poke 2CC5 00
+poke 2D1D 80
+poke 313D 02
+poke 2FDD 05
+poke 3195 00
+poke 2BBE 00
+poke 2C16 80
+poke 2CC6 00
+poke 2D1E 80
+poke 313E 02
+poke 2FDE 05
+poke 3196 04
+wait 1
+poke 2BBD 00
+poke 2C15 80
+poke 2CC5 00
+poke 2D1D 80
+poke 313D 02
+poke 2FDD 00
+poke 3195 04
+poke 2BBE 00
+poke 2C16 80
+poke 2CC6 00
+poke 2D1E 80
+poke 313E 02
+poke 2FDE 00
+poke 3196 04
+poke 2BBF 00
+poke 2C17 80
+poke 2CC7 00
+poke 2D1F 80
+poke 313F 02
+poke 2FDF 00
+poke 3197 04
+poke 3BD8 03
+wait 1
+poke 3BD8 03
+wait 1
+poke 3BD8 03
+wait 1
+poke 3BD8 03
+wait 1
+poke 3BD8 03
+wait 1
+poke 3BD8 03
+wait 1
+poke 3BD8 03
+wait 1
+poke 3BD8 03
+wait 1
+poke 3195 00
+poke 3196 20
+poke 3197 40
+poke 3BD8 02
+wait 1
+poke 3195 00
+poke 3196 20
+poke 3197 40
+poke 3BD8 02
+wait 1
+poke 3195 00
+poke 3196 20
+poke 3197 40
+poke 3BD8 02
+wait 1
+poke 3195 00
+poke 3196 20
+poke 3197 40
+poke 3BD8 02
+wait 1
+poke 3195 00
+poke 3196 20
+poke 3197 40
+poke 3BD8 02
+wait 1
+poke 3195 00
+poke 3196 20
+poke 3197 40
+poke 3BD8 02
+wait 1
+poke 3195 00
+poke 3196 20
+poke 3197 40
+poke 3BD8 02
+wait 1
+poke 3195 00
+poke 3196 20
+poke 3197 40
+poke 3BD8 02
+wait 1
+poke 3195 00
+poke 3196 08
+poke 3197 10
+poke 3BD8 01
+wait 1
+poke 3195 00
+poke 3196 08
+poke 3197 10
+poke 3BD8 01
+wait 1
+poke 3195 00
+poke 3196 08
+poke 3197 10
+poke 3BD8 01
+wait 1
+poke 3195 00
+poke 3196 08
+poke 3197 10
+poke 3BD8 01
+wait 1
+poke 3195 00
+poke 3196 08
+poke 3197 10
+poke 3BD8 01
+wait 1
+poke 3195 00
+poke 3196 08
+poke 3197 10
+poke 3BD8 01
+wait 1
+poke 3195 00
+poke 3196 08
+poke 3197 10
+poke 3BD8 01
+wait 1
+poke 3195 00
+poke 3196 08
+poke 3197 10
+poke 3BD8 01
+wait 1
+poke 3BD8 00
+poke 2BBD 80
+poke 2C15 10
+poke 2CC5 00
+poke 2D1D 80
+poke 313D 00
+poke 2FDD 00
+poke 2BBE 00
+poke 2C16 80
+poke 2CC6 01
+poke 2D1E 90
+poke 313E 00
+poke 2FDE 00
+poke 2BBF 00
+poke 2C17 80
+poke 2CC7 80
+poke 2D1F 10
+poke 313F 00
+poke 2FDF 00
+wait 1
+poke 2BBD 01
+poke 2C15 90
+poke 2CC5 00
+poke 2D1D 80
+poke 313D 00
+poke 2FDD 00
+wait 1
+wait 60
+dump polled

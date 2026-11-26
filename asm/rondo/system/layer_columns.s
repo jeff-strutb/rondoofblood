@@ -5,10 +5,11 @@
 ; offset at $A781 and $A783 when $3E66's bit 7 is set), down the screen and on into the screen below.
 ; HOW: BlockIndexForPlace for the first block; then each block number from the second table (zTemp04) by Y goes to
 ; CopyTileBlockToVram with the bank bit; Y steps by 8 (a row of blocks) with the bit read again, and past $40 the
-; next screen row's map byte selects the tables again. zTemp08 counts the blocks.
+; next screen row's map byte selects the tables again. zTemp08 counts the blocks. Each JSR goes to the overlay's
+; routine when that is the one resident at its address, to the original otherwise, as the original does.
 ; WAITS: no.
-; Entry: X the entry, Y the offset's index. Exit: A $10, N 0, Z 1 (the count's decrement), C 1, V from the last block
-; copy, Y the last block's index, X kept.
+; Entry: X the entry, Y the offset's index. Exit: A as the last block copy left it ($10), N 0, Z 1 (the count's
+; decrement), C and V from the copy, Y the last block's index, X kept.
 DrawBlockColumn:
     lda a:Scroll3E66,x
     and #$7F
@@ -74,9 +75,11 @@ DrawBlockColumn_at2:
 ; stage's block tables selected by it (zTemp0C, zTemp04), and the block's index within the screen in Y; then runs
 ; into BitmapBitShifted, whose bit is the block's bank.
 ; HOW: Shifts through the carry: the screen's bit 0 above the X byte, the row's bit 0 above the Y byte; ScreenMapAt
-; and the resident SelectBlockTables; Y the X byte's top three bits or'd with the Y byte's bits 5 to 3.
+; and the resident SelectBlockTables (each the overlay's routine when it is resident, the original otherwise); Y the X
+; byte's top three bits or'd with the Y byte's bits 5 to 3.
 ; WAITS: no.
-; Entry: X the scroll entry. Exit: as BitmapBitShifted. Clobbers zTemp00, 01, 04, 05, 0C to 0E, 10 and 11.
+; Entry: X the scroll entry, Y as the caller holds it. Exit: as BitmapBitShifted, V from SelectBlockTables' add.
+; Clobbers zTemp00, 01, 04, 05, 0C to 0E, 10 and 11.
 BlockIndexForPlace:
     lda z:zTemp03
     ror a

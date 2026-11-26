@@ -49,7 +49,7 @@ static Ended l8_st17_event_ended(L8St17Event r)
  * WHAT IT DOES: For the numbers 0 to $17 starts an object of type $28 in a free slot of $20 to $3F at the object's place and gives it the seven bytes of the eight byte row of the table at $ABE8: OBJ_34B8, X speed high, Y speed high, OBJ_3568, OBJ_35C0, OBJ_3618 and OBJ_3670; it stops when no slot is free.
  * HOW: A loop of FindFreeSlotFrom20, StartObjectAtPlace, a table read by the number times 8, stores. zD9 and zDA keep their address form until they have names.
  * WAITS: no.
- * Entry: X object. Exit: as the last instruction that ran (l8_ring_exit_shim).
+ * Entry: X object. Exit: as the last instruction that ran (l8_ring_of_pieces_exit_shim).
  */
 L8St17RingArm StartRingOfPieces(uint8_t slot)
 {
@@ -98,7 +98,7 @@ L8St17RingArm StartRingOfPieces(uint8_t slot)
 }
 
 /* What StartRingOfPieces leaves in A, Y and the flags, from the arm it ended on (the last pass of the loop). */
-Ended l8_ring_exit_shim(L8St17RingArm r)
+Ended l8_ring_of_pieces_exit_shim(L8St17RingArm r)
 {
     if (r.arm == ST17_RING_NONE_FREE) {
         return l8_slot_ended(r.found);
@@ -108,7 +108,7 @@ Ended l8_ring_exit_shim(L8St17RingArm r)
 
 void abi_StartRingOfPieces(void)
 {
-    abi_ended(l8_ring_exit_shim(StartRingOfPieces(cpu.x)));
+    abi_ended(l8_ring_of_pieces_exit_shim(StartRingOfPieces(cpu.x)));
 }
 
 /*

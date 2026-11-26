@@ -98,7 +98,7 @@ void abi_BossFrameRoutines(void)
  * WHAT IT DOES: Runs SoundWhenHurtThenFlag and SoundAndState6WhenFlagged and then the code the state table names (JumpByStateTable0F6B3EC).
  * HOW: Three calls.
  * WAITS: no.
- * Entry: X object, Y kept for the sounds. Exit: as the code the table names (hurt_exit_shim).
+ * Entry: X object, Y kept for the sounds. Exit: as the code the table names (l8_hurt_sounds_exit_shim).
  */
 L8St27HurtArm HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry)
 {
@@ -121,7 +121,7 @@ L8St27HurtArm HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry)
 }
 
 /* What HurtSoundsThenRunTable leaves after the table's code: nothing of its own. */
-static Ended hurt_exit_shim(L8St27HurtArm r)
+static Ended l8_hurt_sounds_exit_shim(L8St27HurtArm r)
 {
     (void)r;
     return ended_kept();
@@ -129,7 +129,7 @@ static Ended hurt_exit_shim(L8St27HurtArm r)
 
 void abi_HurtSoundsThenRunTable(void)
 {
-    abi_ended(hurt_exit_shim(HurtSoundsThenRunTable(cpu.x, cpu.y)));
+    abi_ended(l8_hurt_sounds_exit_shim(HurtSoundsThenRunTable(cpu.x, cpu.y)));
 }
 
 /* What the count and the two callees of BossFrameRoutinesB left before the list start of state 0F. */

@@ -10,10 +10,16 @@
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
 
-static Ended then(Ended e, Ended next)
-{
-    return ended_then(e, next);
-}
+/* The arms the converted routines end on (ObjArm, enemy_objects.h). */
+enum { HD_STATE6, HD_FEW_HITS, HD_HALVED };
+enum { TP_WAITING, TP_TURNED, TP_AWAY, TP_STEPPED };
+enum { CH_LOADED, CH_OFF, CH_BOXED };
+enum { WP_LOADED, WP_WAITING, WP_PRESSED, WP_ENDED, WP_STEPPED };
+enum { S7_CLEAR, S7_ABOVE, S7_SET };
+enum { SO_OTHER_STEP, SO_NOT_IN_TABLE, SO_NO_SLOT, SO_SPAWNED };
+enum { SW_LOADED, SW_SWINGING, SW_CLEARED, SW_PLACED };
+
+static uint8_t spawn_then_step_y_shim(ObjArm inner, uint8_t y_entry);
 
 /* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
 static Ended ended_of_scale(ScaleResult r)
@@ -231,6 +237,7 @@ ObjArm LoadThenSpawn24(uint8_t slot)
     jsr_push(0xB10E);
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
+    r.flag = carry;
     WR8(OBJ->f3618[slot], 0x80);
     jsr_push(0xB118);
     ClearObjectInY(0x11);
@@ -620,8 +627,7 @@ ObjArm SetHitBoxFromTable(uint8_t slot)
     }
     WR8(ZP->temp00, 0xEC);
     WR8(ZP->temp01, 0xBE);
-    row = sub_bytes(RD8(OBJ->frame[slot]), 1, true);
-    twice = (uint8_t)(row.value << 1);
+    twice = (uint8_t)((uint8_t)(RD8(OBJ->frame[slot]) - 1) << 1);
     WR8(ZP->temp02, twice);
     for (y = 0; y < 2; y++) {
         low = RD8(ZP->temp00);
@@ -691,8 +697,7 @@ ObjArm CopyPlaceAndHitBoxOfSlot10(uint8_t slot)
     }
     WR8(ZP->temp00, 0x24);
     WR8(ZP->temp01, 0xC0);
-    row = sub_bytes(RD8(OBJ->frame[0x10]), 1, true);
-    twice = (uint8_t)(row.value << 1);
+    twice = (uint8_t)((uint8_t)(RD8(OBJ->frame[0x10]) - 1) << 1);
     WR8(ZP->temp02, twice);
     for (y = 0; y < 2; y++) {
         low = RD8(ZP->temp00);
@@ -884,7 +889,7 @@ ObjArm TurnTowardPlayerAndMove(uint8_t slot, uint8_t y_entry)
     r.second = RD8(OBJ->f34b8[slot]);
     WR8(ZP->temp01, r.second);
     jsr_push(0xB9E7);
-    turn = TurnAngleToward();
+    r.turn = TurnAngleToward();
     jsr_pop();
     r.flag = turn.equal;
     r.third = turn.angle;
@@ -952,6 +957,7 @@ ObjArm WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
         jsr_push(0xD45C);
         r.first = LoadObjectRecord(slot, &r.second, &r.flag);
         jsr_pop();
+        r.flag = carry;
         WR8(OBJ->sprite_set[slot], 6);
         return r;
     }

@@ -10,10 +10,13 @@
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
 
-static Ended then(Ended e, Ended next)
-{
-    return ended_then(e, next);
-}
+/* The arms the converted routines end on (ObjArm, enemy_objects.h). */
+enum { FO_HIGH, FO_LOW, FO_BUSY, FO_STARTED };
+enum { PA_RANDOM, PA_ANGLE };
+enum { MA_MOVING, MA_NEXT };
+enum { ST_NEGATIVE, ST_NOT_FOUND, ST_STARTED };
+enum { CM_FALLING, CM_STEPPED, CM_CUED };
+enum { SF_COUNTING, SF_FULL, SF_SPAWNED };
 
 /* StartSoleScriptSlot's exit: Y the script, A the script when started else the busy kind, N and Z from A, C started. */
 static Ended ended_of_sole(SoleSlot sole)
@@ -565,6 +568,7 @@ ObjArm LoadThenFallAndFlash(uint8_t slot)
         jsr_push(0xBF57);
         r.first = LoadObjectRecord(slot, &r.second, &r.flag);
         jsr_pop();
+        r.flag = carry;
         WR8(OBJ->flags[slot], 1);
         WR8(OBJ->frame[slot], 0x59);
         WR8(OBJ->vx_hi[slot], 0);
@@ -636,6 +640,9 @@ ObjArm CountThenSoleScriptAndSound(uint8_t slot)
     jsr_push(0xB2EC);
     r.sole = StartSoleScriptSlot(0, 3);
     jsr_pop();
+    r.second = sole.script;
+    r.third = sole.busy_kind;
+    r.flag = sole.started;
     slot = pull8();
     r.second = slot;
     r.sounded = true;

@@ -356,6 +356,7 @@ typedef struct {
     PlayerDistance distance, distance2; \
     AngleExit angle; \
     ScaleResult scale; \
+    TurnAngleResult turn; \
     Sum sum; \
     bool sounded; \
     uint8_t command; \

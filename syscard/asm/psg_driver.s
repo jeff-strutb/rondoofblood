@@ -586,3 +586,140 @@ psg_add_pitch:
     adc z:$EB
     sta a:$25ED,x
     rts
+
+; @card 02:D422 psg_volume_envelope
+; WHAT IT DOES: Works the current channel's volume envelope for the frame: the held part moves the level by its rates until its length is
+; used up, the release moves it down by the release rates, and the next segment is read from the shape's list when the held part ends.
+; HOW: State $260D: 0 off (volume 0); bit 7 the release; 2 ending (state counted down, position cleared, next segment); else the held part:
+; $24BB counted down and the release bit set at 0, $250F the length left (0 reads the next segment), the level ($24EB, $24F1) moved by
+; the rates ($24F7, $24FD). The list at ($24D9, $24DF) from $24E5: $FB skips three bytes, $FC sets the level then reads a segment (length, two
+; rates), a length below $FB is a segment ($FF if 0), anything else holds. The volume is the level over 4 plus the channel's base ($24AF).
+; WAITS: no.
+; Entry: CardPlayChannel ($22E0) the channel. Exit: A, Y and the flags as the last step left them; X the channel.
+psg_volume_envelope:
+    ldx a:$22E0
+    lda a:$260D,x
+    bne psg_volume_envelope_at0
+    jmp psg_volume_envelope_at13
+psg_volume_envelope_at0:
+    bmi psg_volume_envelope_at8
+    cmp #$02
+    beq psg_volume_envelope_at12
+    dec a:$24BB,x
+    bne psg_volume_envelope_at1
+    ora #$80
+    sta a:$260D,x
+psg_volume_envelope_at1:
+    lda a:$250F,x
+    bne psg_volume_envelope_at2
+    bra psg_volume_envelope_at18
+psg_volume_envelope_at2:
+    lda a:$24EB,x
+    clc
+    adc a:$24F7,x
+    sta a:$24EB,x
+    lda a:$24F1,x
+    adc a:$24FD,x
+    bpl psg_volume_envelope_at4
+    cla
+    sta a:$24EB,x
+    ldy a:$24FD,x
+    bmi psg_volume_envelope_at4
+    lda #$7C
+psg_volume_envelope_at4:
+    sta a:$24F1,x
+    lda a:$250F,x
+    cmp #$FF
+    beq psg_volume_envelope_at16
+    dec a:$250F,x
+    bra psg_volume_envelope_at16
+psg_volume_envelope_at8:
+    lda a:$24EB,x
+    clc
+    adc a:$2503,x
+    sta a:$24EB,x
+    lda a:$24F1,x
+    adc a:$2509,x
+    bpl psg_volume_envelope_at10
+    cla
+    sta a:$24EB,x
+    ldy a:$2509,x
+    bmi psg_volume_envelope_at10
+    lda #$7C
+psg_volume_envelope_at10:
+    sta a:$24F1,x
+    bra psg_volume_envelope_at16
+psg_volume_envelope_at12:
+    dec a:$260D,x
+    stz a:$24E5,x
+    bra psg_volume_envelope_at18
+psg_volume_envelope_at13:
+    stz a:$25F3,x
+    bra psg_volume_envelope_at17
+psg_volume_envelope_at15:
+    tya
+    sta a:$24E5,x
+psg_volume_envelope_at16:
+    lda a:$24F1,x
+    lsr a
+    lsr a
+    clc
+    adc a:$24AF,x
+    bpl psg_volume_envelope_at17a
+    cla
+psg_volume_envelope_at17a:
+    sta a:$25F3,x
+psg_volume_envelope_at17:
+    rts
+psg_volume_envelope_at18:
+    ldy a:$24E5,x
+    lda a:$24D9,x
+    sta z:$E8
+    lda a:$24DF,x
+    sta z:$E9
+psg_volume_envelope_at19:
+    lda (<$E8),y
+    cmp #$FB
+    bcc psg_volume_envelope_at21
+    beq psg_volume_envelope_at24
+    cmp #$FC
+    beq psg_volume_envelope_at25
+    bra psg_volume_envelope_at28
+psg_volume_envelope_at21:
+    cmp #$00
+    bne psg_volume_envelope_at22
+    dec a
+psg_volume_envelope_at22:
+    sta a:$250F,x
+    iny
+    lda (<$E8),y
+    sta a:$24F7,x
+    iny
+    lda (<$E8),y
+    sta a:$24FD,x
+    iny
+    bra psg_volume_envelope_at15
+psg_volume_envelope_at24:
+    iny
+    iny
+    iny
+    bra psg_volume_envelope_at19
+psg_volume_envelope_at25:
+    iny
+    lda (<$E8),y
+    sta a:$24EB,x
+    iny
+    lda (<$E8),y
+    sta a:$24F1,x
+    iny
+    lda (<$E8),y
+    cmp #$FB
+    bcc psg_volume_envelope_at21
+    stz a:$250F,x
+    bra psg_volume_envelope_at15
+psg_volume_envelope_at28:
+    lda #$FF
+    sta a:$250F,x
+    stz a:$24F7,x
+    stz a:$24FD,x
+    jmp psg_volume_envelope_at16

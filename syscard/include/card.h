@@ -64,8 +64,12 @@ static inline void jsr_push(uint16_t ret)
     push8((uint8_t)(ret - 1));
 }
 
+/* The checker's delivery point at a return: an interrupt the original took before the RTS is delivered here, with the frame still on the stack. */
+void call_return_point(void);
+
 static inline void jsr_pop(void)
 {
+    call_return_point();
     cpu.s = (uint8_t)(cpu.s + 2);
 }
 

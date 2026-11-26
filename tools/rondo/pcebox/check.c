@@ -85,7 +85,8 @@ enum { MODE_OFF, MODE_A5, MODE_RECORD, MODE_HYBRID };
 /* Events. Accesses first; the rest are markers with a payload. */
 enum {
     EV_R, EV_W, EV_ROMR, EV_HWR, EV_HWW, EV_RTPULL, EV_STATE,
-    EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME, EV_END
+    EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME, EV_END,
+    EV_UBEGIN, EV_UEND          /* the script's unit call: what the harness and the called routine do, between the two */
 };
 enum { K_JSR, K_IRQ, K_JMP };          /* OPEN, CALL: how the entry was made */
 enum { CL_OK, CL_DROP, CL_LEFT, CL_END };   /* CLOSE: how it ended; CL_END: the script ended with the call open (the record's closing flush, not a hand-over) */
@@ -256,6 +257,8 @@ static FILE *in;
 static struct { uint64_t ram, pic, when; uint16_t pc, top; uint8_t s; } *fq;
 static uint64_t fq_head, fq_tail, fq_cap;
 
+static void unit_note(uint64_t idx, int type);
+
 static void store_push(const Ev *e)
 {
     if (wn == wcap) {
@@ -310,6 +313,8 @@ static int fetch_one(void)
         memcpy(&fq[fq_tail].when, e.mpr, 8);
         fq_tail++;
     }
+    if (e.type == EV_UBEGIN || e.type == EV_UEND)
+        unit_note(wbase + wn, e.type);
     store_push(&e);
     return 1;
 }
@@ -350,12 +355,53 @@ static Ev *evp(uint64_t i);
  * The event at j for a scan of a span: NULL at the span's end (its own CLOSE, which sets end) or
  * where the record stops. *nest counts the frames the scan has gone into.
  */
+/*
+ * A unit call is the script's own call of a routine (the `call` command), made at a frame boundary wherever the game is: its
+ * accesses (the harness's mark push, the routine's own, what it calls) are in the stream between an EV_UBEGIN and an EV_UEND.
+ * A call the game had open before it (the host) did not make them and its C does not: for a span that began before the
+ * block they are noise, and the unit's writes are applied to A5's model as the cursor crosses them (apply_pokes). The unit
+ * routine's own span, which begins inside the block, counts them as any call's.
+ */
+static struct { uint64_t b, e; } uranges[512];
+static unsigned nur;
+static int ur_open;                    /* the last range has begun and not ended */
+
+static void unit_note(uint64_t idx, int type)
+{
+    if (type == EV_UBEGIN) {
+        if (nur < sizeof uranges / sizeof uranges[0]) {
+            uranges[nur].b = idx;
+            uranges[nur].e = UINT64_MAX;
+            nur++;
+            ur_open = 1;
+        }
+    } else if (type == EV_UEND && nur && ur_open) {
+        uranges[nur - 1].e = idx;
+        ur_open = 0;
+    }
+}
+
+static int unit_skip(const Span *s, uint64_t j)
+{
+    for (unsigned i = nur; i-- > 0;) {
+        if (j >= uranges[i].b && j <= uranges[i].e)
+            return s->start < uranges[i].b;
+        if (uranges[i].e < j && uranges[i].e != UINT64_MAX)
+            break;                 /* ranges are in order: the ones before this end before j */
+    }
+    return 0;
+}
+
+static Ev unit_noise = { .type = EV_ROMR };
+
 static Ev *sev(Span *s, uint64_t j, int *nest)
 {
     Ev *e;
 
     if (j >= s->end || !(e = evp(j)))
         return NULL;
+    if (nur && unit_skip(s, j))
+        return &unit_noise;
     if (mode != MODE_A5) {
         if (e->type == EV_OPEN) {
             (*nest)++;
@@ -541,7 +587,7 @@ static void apply_pokes(uint64_t from, uint64_t to)
     for (uint64_t k = from; k < to; k++) {
         Ev *e = evp(k);
 
-        if (e && is_poke(e))
+        if (e && (is_poke(e) || (e->type == EV_W && sp && unit_skip(sp, k))))
             ram_bank[e->addr >> 13][e->addr & 0x1FFF] = e->val;
     }
 }
@@ -1591,6 +1637,9 @@ static void original_at(uint16_t ret, uint16_t addr)
         Ev *x = evp(k);
         char b[96];
 
+        if (unit_skip(span, k))
+            continue;
+
         if (x->type == EV_INT) {
             uint64_t r = section_end(span, k);
 
@@ -2172,6 +2221,8 @@ static void log_event(const Ev *e)
                 exit(5);
             }
         }
+        if (e->type == EV_UBEGIN || e->type == EV_UEND)
+            unit_note(wn, e->type);
         win[wn++] = *e;
     } else if (mode == MODE_RECORD) {
         wire_write(e);
@@ -3165,6 +3216,7 @@ static struct {
     uint16_t entry;
     Regs saved;
     uint8_t s;
+    void *host;          /* hybrid: the C on top when the call was made (parked, often waiting for the frame end) */
 } unit;
 
 /* NULL on success; otherwise why not. Called between frames, in every run alike. */
@@ -3181,10 +3233,39 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
     if (!tag_resident(&rondo_tags[index]))
         return "the routine's bytes are not resident at its address";
     chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
+    if (mode == MODE_HYBRID && getenv("RONDO_DIAG_CTX"))
+        fprintf(stderr, "UNITCALL frame %lu %04X: core PC %04X S%02X; top %s parked %d wait_frame %lu resume %04X S%02X\n", cur_frame,
+                addr, r.pc, r.s, top ? rondo_tags[top->tag].name : "-", top ? top->parked : 0, top ? top->wait_frame : 0,
+                top ? top->resume_pc : 0, top ? top->resume_s : 0);
     unit.saved = r;
+    if (depth && (mode == MODE_A5 || mode == MODE_RECORD))
+        marker(EV_UBEGIN, &r, 0, 0, 0);
+    if (mode == MODE_HYBRID) {
+        /* The registers the script leaves unnamed are the machine's at the call: the original's, which the record's
+         * UBEGIN holds. The hybrid's core stands where a parked C left it (its registers at its last access, I masked
+         * while it waits for the frame end), so those are taken from the record; the core's own are put back after. */
+        Ev *x;
+
+        for (uint64_t k = scan; k < scan + (1u << 16) && (x = evp(k)); k++)
+            if (x->type == EV_UBEGIN) {
+                r.a = x->a;
+                r.x = x->x;
+                r.y = x->y;
+                r.p = x->p;
+                if (x->s != r.s) {
+                    int keep = blame_tag;
+
+                    blame_tag = index;
+                    defect(D_STACK, "at the unit call S is %02X, the original's %02X", r.s, x->s);
+                    blame_tag = keep;
+                }
+                break;
+            }
+    }
     chk_bus_wr((uint16_t)(0x2100 | r.s), (uint8_t)((uint16_t)(UNIT_MARK - 1) >> 8));
     chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(r.s - 1)), (uint8_t)(UNIT_MARK - 1));
     unit.s = (uint8_t)(r.s - 2);
+    unit.host = mode == MODE_HYBRID ? (void *)top : NULL;
     unit.entry = addr;
     unit.entered = 0;
     unit.count = 0;
@@ -3416,9 +3497,14 @@ int check_exec(uint32_t pc)
         exit(6);
     }
     if (mode == MODE_HYBRID) {
+        /* The script's unit call runs on the machine as it stood at the frame boundary: a C that was parked there (the
+         * game's own call, open in the record around the unit call's block) stays parked until the call returns to
+         * its mark and the machine is put back; it is not resumed by the frame end or a PC the unit's code passes. */
+        int unit_over_host = unit.active && top && (void *)top == unit.host;
+
         if (hold.active)
             return hold_step(&r);
-        if (top && top->parked && top->wait_frame) {
+        if (!unit_over_host && top && top->parked && top->wait_frame) {
             if (cur_frame < top->wait_frame)
                 return 1;                    /* the frame has not ended: the core goes on, running nothing */
             top->wait_frame = 0;
@@ -3428,7 +3514,7 @@ int check_exec(uint32_t pc)
         if (getenv("RONDO_DIAG_RESUME") && top && top->parked && pc == top->resume_pc)
             fprintf(stderr, "DIAGRESUME frame %lu %s pc %04X S%02X resume_s %02X prev_op %X wait_frame %lu\n", cur_frame,
                     rondo_tags[top->tag].name, (unsigned)pc, r.s, top->resume_s, prev_op, top->wait_frame);
-        if (top && top->parked && (prev_op == 0x60 || prev_op == 0x40) && pc == top->resume_pc &&
+        if (!unit_over_host && top && top->parked && (prev_op == 0x60 || prev_op == 0x40) && pc == top->resume_pc &&
             r.s == top->resume_s) {
             if (prev_op == 0x40 && nipend && ipend[nipend - 1].resume == pc && ipend[nipend - 1].s == r.s)
                 nipend--;
@@ -3476,6 +3562,8 @@ int check_exec(uint32_t pc)
     }
     if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
         unit.active = 0;
+        if (depth)
+            marker(EV_UEND, &r, 0, 0, 0);
         chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
         prev_op = -1;
         return 0;

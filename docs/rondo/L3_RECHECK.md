@@ -12,7 +12,7 @@ All are landed, image byte exact. "Through" = liftcmp default; "wrappers" = `--c
 
 ## Compared only up to a harness limit (liftcmp), needs A5
 
-- ProbeTileSideBit1 (0F6D:324), DroppingPieceStep (0F6C:024), WalkAndTurnAtEdge (0F6C:4A4): the call of the vector at $8006 resolves to another overlay's vector in the harness; events agree up to it (DroppingPieceStep 369 of 369 outside it; WalkAndTurnAtEdge 116 of 116 with wrappers). Cover: attract_89.
+- ProbeTileSideBit1 (0F6D:324), DroppingPieceStep (0F6C:024), WalkAndTurnAtEdge (0F6C:4A4): the call of the vector at $8006 resolves to another overlay's vector in the harness; events agree up to it (DroppingPieceStep 369 of 369 outside it; WalkAndTurnAtEdge 116 of 116 with wrappers). Cover: attract_89. **A5 on attract_89 has NOT been run by L3**; these three are partly checked until it is run and read.
 - ClearStageBitRowsLong (05BF:2DF): agrees up to its call of SetVramAddressesLong at $968F, which the harness stubs; the other two entries 400 of 400.
 - EnterStageState (024E:02B): the 127 cases that call the System Card routine at $E018 are stubbed on the lifted side; the rest match.
 - StepStageFrame/Long (36D), RunStageFrame: through mode stubs their callees; A5 identical on 13,537 and 6,718 calls for the frame tick.

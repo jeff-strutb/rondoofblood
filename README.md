@@ -154,11 +154,11 @@ decomps:
 <!-- progress:start -->
 ![Progress against the traced floor of the game's code](docs/rondo/progress.svg)
 
-Measured on `17070a9`: gate records from `d89c150`, every one of the 47 scripts traced and with a gate A7 result.
+Measured on `ead9aa8`: gate records from `d89c150`, every one of the 47 scripts traced and with a gate A7 result.
 
 **Denominator: 495,841 B: 111,974 B the 47 scripts ran, counted by distinct whole routines, + 383,867 B of code no script runs that the static census finds (288,786 B by the strict census; 95,081 B only by the relaxed one, counted as code until each byte is explained as code to file or data to name). Left out: 276,932 B proven duplicates, whole runs byte for byte equal to code counted elsewhere (`config/rondo/census_duplicates.csv`), and 8,223 B proven data (sent to a video or sound port, read in place by code, or a decode a trace contradicts).**
 
-**Code no script runs: 383,867 B (77.42% of the denominator), a line of its own and never inside M1** (188,794 B of it in disc areas no script loads). It is decompiled like any other code, and its C is marked unreached: it cannot reach T3 until a script runs it (PLAN section 1, the ruling of 2026-11-26).
+**Code no script runs: 383,867 B (77.42% of the denominator), a line of its own** (188,794 B of it in disc areas no script loads). It is decompiled like any other code. It counts in M1 only when a script runs it and the gates pass it, or when it is proven unreachable and filed as proper C whose header records the proof (PLAN section 1, the rulings of 2026-11-26); none is yet.
 
 **1 of 2058 routines (123 B) fail the proper-C check: register-shaped C, a stepping stone, not decompiled.** The check is a pattern check, so every count above T2 is a ceiling until reviewed.
 

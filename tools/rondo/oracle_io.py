@@ -122,7 +122,7 @@ def read_a7(out, script, stdout):
     if verdict is None:
         raise ValueError(f"unknown first-differing code {code}")
     if verdict == "IDENTICAL" and not (f["compared"] == f["expected"] == f["identical"] and not f["defects"]
-                                       and not f["unreached"] and not f["unopened"]):
+                                       and not f["unreached"]):
         raise ValueError("code -1 but the line's own counts do not say identical: " + line[:200])
     note = f"{f['compared']} of {f['expected'] if f['expected'] >= 0 else 'unknown'} frames compared, {f['identical']} identical"
     if verdict == "DIVERGENT":

@@ -118,9 +118,20 @@ def proper_c_faults(name, funcs):
     return sorted(faults)
 
 
-def a7_passed(entry):
+def unjudged():
+    """{routine: reason} from config/rondo/unjudged.csv: routines whose code ran as original, unjudged, at a point
+    a lockstep run reached (a branch arrival at a tagged entry: the master's ruling of 2026-11-25). They do not
+    certify from lockstep until their arrivals are judged, whatever the scripts say."""
+    path = os.path.join(TOP, "config", "rondo", "unjudged.csv")
+    if not os.path.exists(path):
+        return {}
+    with open(path, newline="") as f:
+        return {r["routine"]: r["reason"] for r in csv.DictReader(f)}
+
+
+def a7_passed(entry, name=""):
     """C of the routine ran in a counting script's lockstep run, and every script reaching it passes."""
-    return bool(entry) and entry[0] > 0 and not entry[1]
+    return bool(entry) and entry[0] > 0 and not entry[1] and name not in unjudged()
 
 
 @functools.lru_cache(maxsize=None)
@@ -237,7 +248,7 @@ def card_ledger(funcs, a7):
                 re.search(r"(?<!#)\$[0-9A-Fa-f]{2,4}", line) for line in blocks[name]),
             "gate_c": cover.get(name, (0, 0))[0] > 0 and cover[name][0] == cover[name][1],
             "gate_a5": int(row5.get("identical", 0)) > 0 and int(row5.get("divergent", 1)) == 0,
-            "gate_a7": a7_passed(a7.get(name)),
+            "gate_a7": a7_passed(a7.get(name), name),
         }
         rows.append({"routine": name, "where": r["tag"], "bytes": n,
                      "tier": tier_of(gates, name in blocks), **{g: int(v) for g, v in gates.items()},
@@ -289,7 +300,7 @@ def main():
                 re.search(r"(?<!#)\$[0-9A-Fa-f]{2,4}", line) for line in blocks[name]),
             "gate_c": cover.get(name, (0, 0))[0] > 0 and cover[name][0] == cover[name][1],
             "gate_a5": int(row5.get("identical", 0)) > 0 and int(row5.get("divergent", 1)) == 0,
-            "gate_a7": a7_passed(a7.get(name)),
+            "gate_a7": a7_passed(a7.get(name), name),
         }
         for gate in gates:
             if (name, gate) in waived:

@@ -2788,7 +2788,9 @@ static LedgeJump jump_off_ledge(Nudge nudge)
     LedgeJump jump;
 
     jump.nudge = nudge;
+    jsr_push(0xA5A0);
     jump.air = RichterToAir();
+    jsr_pop();
     wr8(OBJ_VY_LO, LEDGE_JUMP_LO);
     wr8(OBJ_VY_HI, LEDGE_JUMP_HI);
     return jump;
@@ -2802,16 +2804,29 @@ static UpWhip up_whip(uint16_t nudges, bool second)
 {
     UpWhip whip = { 0 };
 
+    jsr_push(second ? 0xA5CB : 0xA583);
     RichterClearPadOverrides();
+    jsr_pop();
     wr8(PadForcedPressB, 0);
     wr8(zFieldC6, 0);
     whip.held = rd8(zPadHeld);
     if (!(whip.held & PAD_UP_B)) {
         whip.how = UP_WHIP_JUMPED;
-        whip.jump = second ? RichterNudgeBJump() : jump_off_ledge(RichterNudgeA());
+        if (second) {
+            whip.jump = RichterNudgeBJump();
+        } else {
+            Nudge nudge;
+
+            jsr_push(0xA59D);
+            nudge = RichterNudgeA();
+            jsr_pop();
+            whip.jump = jump_off_ledge(nudge);
+        }
         return whip;
     }
+    jsr_push(second ? 0xA5D8 : 0xA590);
     whip.ladder = RichterLadderCheck();
+    jsr_pop();
     if (!ladder_found(whip.ladder)) {
         whip.how = UP_WHIP_NO_LADDER;
         return whip;

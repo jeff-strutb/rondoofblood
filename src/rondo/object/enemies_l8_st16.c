@@ -262,7 +262,7 @@ void abi_StepListThenClearWhenEnded(void)
  * WAITS: no.
  * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state (l8_run_by_state_exit_shim).
  */
-L8St16StateJump CountFramesThenRunByState(uint8_t slot)
+L8St16StateJump CountFramesThenRunByState(uint8_t slot, L8Layout lay)
 {
     L8St16StateJump r = { 0 };
     uint8_t index, low;
@@ -270,9 +270,9 @@ L8St16StateJump CountFramesThenRunByState(uint8_t slot)
     r.counted = INC8(OBJ->f34b8[slot]);
     r.state = RD8(OBJ->state[slot]);
     index = (uint8_t)(r.state << 1);
-    low = rd8((uint16_t)(0xBB8B + index));
+    low = rd8((uint16_t)(l8_at(lay, 0xBB8B) + index));
     WR8(ZP->temp00, low);
-    r.high = rd8((uint16_t)(0xBB8C + index));
+    r.high = rd8((uint16_t)(l8_at(lay, 0xBB8C) + index));
     WR8(ZP->temp01, r.high);
     r.target = RD16_LH2(ZP->temp00, ZP->temp01);
     return r;
@@ -293,7 +293,7 @@ static Jump l8_run_by_state_exit_shim(L8St16StateJump r)
 
 void abi_CountFramesThenRunByState(void)
 {
-    Jump jump = l8_run_by_state_exit_shim(CountFramesThenRunByState(cpu.x));
+    Jump jump = l8_run_by_state_exit_shim(CountFramesThenRunByState(cpu.x, L8_LOADED));
 
     jump_shim(jump.end, jump.target);
 }
@@ -306,22 +306,22 @@ void abi_CountFramesThenRunByState(void)
  * WAITS: no.
  * Entry: X object. Exit: A $04, Y the facing, C and V from the move (l8_launch_sideways_exit_shim).
  */
-L8Arm LoadRecordLaunchSideways(uint8_t slot)
+L8Arm LoadRecordLaunchSideways(uint8_t slot, L8Layout lay)
 {
     L8Arm r = { 0 };
     uint8_t value;
 
-    jsr_push(0xBB94);
+    jsr_push(l8_at(lay, 0xBB94));
     r.record = l8_record(slot);
     jsr_pop();
     r.y = RD8(OBJ->facing_left[slot]);
-    r.first = rd8((uint16_t)(0xBBB6 + r.y));
+    r.first = rd8((uint16_t)(l8_at(lay, 0xBBB6) + r.y));
     WR8(OBJ->vx_hi[slot], r.first);
     WR8(OBJ->vy_hi[slot], 8);
-    jsr_push(0xBBA5);
+    jsr_push(l8_at(lay, 0xBBA5));
     r.move = ApplyVelocity(slot);
     jsr_pop();
-    value = rd8((uint16_t)(0xBBB8 + r.y));
+    value = rd8((uint16_t)(l8_at(lay, 0xBBB8) + r.y));
     WR8(OBJ->vx_hi[slot], value);
     WR8(OBJ->vx_lo[slot], 0);
     WR8(OBJ->vy_hi[slot], 4);
@@ -342,7 +342,7 @@ static Ended l8_launch_sideways_exit_shim(L8Arm r)
 
 void abi_LoadRecordLaunchSideways(void)
 {
-    abi_ended(l8_launch_sideways_exit_shim(LoadRecordLaunchSideways(cpu.x)));
+    abi_ended(l8_launch_sideways_exit_shim(LoadRecordLaunchSideways(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -509,7 +509,7 @@ void abi_StepListSpawnAndMoveXOrClear(void)
  * WAITS: no.
  * Entry: X object. Exit: the load, or as ApplyVelocity (l8_above_or_fall_exit_shim).
  */
-L8Arm ClearIfAboveOrFall(uint8_t slot)
+L8Arm ClearIfAboveOrFall(uint8_t slot, L8Layout lay)
 {
     L8Arm r = { 0 };
     GravityResult gravity;
@@ -520,7 +520,7 @@ L8Arm ClearIfAboveOrFall(uint8_t slot)
         r.arm = ABOVE_CLEARED;
         return r;
     }
-    jsr_push(0xBC94);
+    jsr_push(l8_at(lay, 0xBC94));
     gravity = ApplyGravityUnlimited(slot);
     jsr_pop();
     (void)gravity;
@@ -540,7 +540,7 @@ static Ended l8_above_or_fall_exit_shim(L8Arm r)
 
 void abi_ClearIfAboveOrFall(void)
 {
-    abi_ended(l8_above_or_fall_exit_shim(ClearIfAboveOrFall(cpu.x)));
+    abi_ended(l8_above_or_fall_exit_shim(ClearIfAboveOrFall(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -552,39 +552,39 @@ void abi_ClearIfAboveOrFall(void)
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_fling_or_fall_exit_shim). OBJ_Y_LO of slot 11 is written because LoadObjectRecord leaves Y 11.
  */
-L8St16FlingArm LoadRecordRandomFlingOrFall(uint8_t slot)
+L8St16FlingArm LoadRecordRandomFlingOrFall(uint8_t slot, L8Layout lay)
 {
     L8St16FlingArm r = { 0 };
     uint8_t pick, y, value;
 
     r.state = RD8(OBJ->state[slot]);
     if (r.state != 0) {
-        r.fall = ClearIfAboveOrFall(slot);
+        r.fall = ClearIfAboveOrFall(slot, lay);
         r.arm = FLING_OLD;
         return r;
     }
-    jsr_push(0xBC38);
+    jsr_push(l8_at(lay, 0xBC38));
     r.record = l8_record(slot);
     jsr_pop();
     y = 11;
-    jsr_push(0xBC3B);
+    jsr_push(l8_at(lay, 0xBC3B));
     r.random = NextRandom();
     jsr_pop();
     pick = r.random.value & 0x01;
     r.sum = add_bytes(pick, 0x23, false);
     WR8(OBJ->frame[slot], r.sum.value);
     WR8(OBJ->y_lo[y], 0xBE);
-    jsr_push(0xBC4B);
+    jsr_push(l8_at(lay, 0xBC4B));
     r.random2 = NextRandom();
     jsr_pop();
     y = (uint8_t)((r.random2.value & 0x07) << 2);
-    value = rd8((uint16_t)(0xBC6A + y));
+    value = rd8((uint16_t)(l8_at(lay, 0xBC6A) + y));
     WR8(OBJ->vx_hi[slot], value);
-    value = rd8((uint16_t)(0xBC69 + y));
+    value = rd8((uint16_t)(l8_at(lay, 0xBC69) + y));
     WR8(OBJ->vx_lo[slot], value);
-    value = rd8((uint16_t)(0xBC6C + y));
+    value = rd8((uint16_t)(l8_at(lay, 0xBC6C) + y));
     WR8(OBJ->vy_hi[slot], value);
-    r.value = rd8((uint16_t)(0xBC6B + y));
+    r.value = rd8((uint16_t)(l8_at(lay, 0xBC6B) + y));
     WR8(OBJ->vy_lo[slot], r.value);
     r.arm = FLING_NEW;
     return r;
@@ -612,7 +612,7 @@ static Ended l8_fling_or_fall_exit_shim(L8St16FlingArm r)
 
 void abi_LoadRecordRandomFlingOrFall(void)
 {
-    abi_ended(l8_fling_or_fall_exit_shim(LoadRecordRandomFlingOrFall(cpu.x)));
+    abi_ended(l8_fling_or_fall_exit_shim(LoadRecordRandomFlingOrFall(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -746,7 +746,7 @@ static Ended l8_band_exit_shim(L8St16Band r)
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_follow_or_home_exit_shim). The arm that takes the aim and the whole of the homing arm ran in no script (the draft stops there); the code at $BB62 that the homing arm calls has no row and is written here as inside_edge_band.
  */
-L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot)
+L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot, L8Layout lay)
 {
     L8St16HomeArm r = { 0 };
     uint8_t state, index, y, aim, value, flags;
@@ -754,7 +754,7 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot)
 
     state = RD8(OBJ->state[slot]);
     if (state == 0) {
-        jsr_push(0xBA8A);
+        jsr_push(l8_at(lay, 0xBA8A));
         r.record = l8_record(slot);
         jsr_pop();
         WR8(OBJ->vy_hi[slot], 0x1A);
@@ -766,7 +766,7 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot)
         r.arm = HOME_PAUSED;
         return r;
     }
-    jsr_push(0xBA9F);
+    jsr_push(l8_at(lay, 0xBA9F));
     r.placed = CopyObjectPlaceBack(0x10, slot);
     jsr_pop();
     r.diff = sub_bytes(slot, 0x11, true);
@@ -774,9 +774,9 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot)
     r.facing = RD8(OBJ->facing_left[0x10]);
     r.sum = add_bytes(index, r.facing, false);
     y = r.sum.value;
-    r.value = rd8((uint16_t)(0xBA90 + y));
+    r.value = rd8((uint16_t)(l8_at(lay, 0xBA90) + y));
     WR8(OBJ->vx_hi[slot], r.value);
-    jsr_push(0xBAB2);
+    jsr_push(l8_at(lay, 0xBAB2));
     r.move = ApplyVelocity(slot);
     jsr_pop();
     r.held = RD8(OBJ->f34b8[slot]);
@@ -813,7 +813,7 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot)
         r.arm = HOME_AIMED;
         return r;
     }
-    jsr_push(0xBAF5);
+    jsr_push(l8_at(lay, 0xBAF5));
     r.band = inside_edge_band(slot);
     jsr_pop();
     if (!r.band.outside) {
@@ -825,28 +825,28 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot)
             return r;
         }
     }
-    jsr_push(0xBB03);
+    jsr_push(l8_at(lay, 0xBB03));
     r.placed2 = CopyObjectPlace(slot, 0);
     jsr_pop();
     value = RD8(OBJ->f3510[slot]);
     WR8(OBJ->vx_hi[0], value);
     r.vy = RD8(OBJ->f3568[slot]);
     WR8(OBJ->vy_hi[0], r.vy);
-    jsr_push(0xBB13);
+    jsr_push(l8_at(lay, 0xBB13));
     r.move2 = ApplyVelocity(0);
     jsr_pop();
     r.aim_x = RD8(OBJ->f3510[slot]);
     if (r.aim_x != 0) {
         index = (uint8_t)((r.aim_x >> 7) & 0x01);
         value = RD8(OBJ->f3510[slot]);
-        r.sum_x = add_bytes(value, rd8((uint16_t)(0xBB60 + index)), false);
+        r.sum_x = add_bytes(value, rd8((uint16_t)(l8_at(lay, 0xBB60) + index)), false);
         WR8(OBJ->f3510[slot], r.sum_x.value);
     }
     r.aim_y = RD8(OBJ->f3568[slot]);
     if (r.aim_y != 0) {
         index = (uint8_t)((r.aim_y >> 7) & 0x01);
         value = RD8(OBJ->f3568[slot]);
-        r.sum_y = add_bytes(value, rd8((uint16_t)(0xBB60 + index)), false);
+        r.sum_y = add_bytes(value, rd8((uint16_t)(l8_at(lay, 0xBB60) + index)), false);
         WR8(OBJ->f3568[slot], r.sum_y.value);
     }
     flags = RD8(OBJ->vx_hi[0x10]);
@@ -932,5 +932,5 @@ static Ended l8_follow_or_home_exit_shim(L8St16HomeArm r)
 
 void abi_LoadRecordThenFollowOrHomeIn(void)
 {
-    abi_ended(l8_follow_or_home_exit_shim(LoadRecordThenFollowOrHomeIn(cpu.x)));
+    abi_ended(l8_follow_or_home_exit_shim(LoadRecordThenFollowOrHomeIn(cpu.x, L8_LOADED)));
 }

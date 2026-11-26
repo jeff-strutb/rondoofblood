@@ -1416,8 +1416,8 @@ static void block_move_tin(uint8_t a, uint8_t x, uint8_t y, uint16_t source, uin
  * HOW: SoundWaveAddress, then the RAM block-move stub at $22E7 built as a TIN of 32 bytes to
  * PsgWaveData and called: the C writes the eight stub bytes, pushes the JSR frame, and does the
  * move as the TIN does (pushes Y, A, X, 32 reads and writes, pulls), then drops the RTS's frame.
- * NOT CHECKED: gate A5 reported the first C imitation's accesses as EXTRA; this version is
- * written from the core's block-transfer code and has not yet been through A5.
+ * Checked by gate A5 on sound_test (8 of 8 calls identical, with the checker taking the stub's own
+ * accesses as the C's: d249cb1); liftcmp cannot compare it, the call being into the RAM stub.
  * WAITS: no.
  * Entry: A waveform, X channel. Exit: X and Y kept. $FF, A $FF, Z and C set, N clear, V kept.
  * Left alone, A kept, N and V the effect's bits 7 and 6, Z and C clear. Loaded, A $60, N and Z

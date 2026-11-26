@@ -362,7 +362,9 @@ typedef struct {
     CommandCall call; \
     bool screen_called; \
     SoundOnScreen screen; \
-    TileRun run;
+    TileRun run; \
+    bool played; \
+    TrackPlay track;
 
 /* A callee's ObjArm kept inside its caller's (one level: a callee kept this way keeps no callee of its own). */
 typedef struct {

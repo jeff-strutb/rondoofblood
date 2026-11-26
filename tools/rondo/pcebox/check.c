@@ -1815,6 +1815,44 @@ void call_original(uint16_t addr)
     original_at(0, addr);
 }
 
+/*
+ * The C's call is about to end (jsr_pop, call_frame: just before the S update that drops the call's frame). In the record the
+ * original took an interrupt before its RTS pulled the return address when the next events after the C's last placed
+ * access are the interrupt and then the RTPULLs: the interrupt is delivered here, with S as the original had it (the frame
+ * still on the stack), not at the next access of the caller, after the frame is gone. Hybrid only; A5 passes the
+ * interrupts left at the call's end in span_finish.
+ */
+void call_return_point(void)
+{
+    Span *s = sp;
+    int nest;
+    uint64_t j;
+
+    if (mode != MODE_HYBRID || !s)
+        return;
+    nest = s->nest;
+    for (j = s->cur;; j++) {
+        Ev *e = sev(s, j, &nest);
+        uint64_t r;
+
+        if (e && e->type == EV_FRAME) {
+            /* The frame ended in the original with the call's RTS not yet run (the pulls follow): the hash is taken with
+             * the frame still on the stack, as the record took it. */
+            frame_pass(s, j, 0);
+            s->cur = j + 1;
+            continue;
+        }
+        if (!e || e->type != EV_INT)
+            break;
+        r = section_end(s, j);
+        if (r == NO_RETURN)
+            break;
+        hy_int_pass(s, j, r);
+        s->cur = r + 1;
+        j = r;
+    }
+}
+
 void call_orig_framed(uint16_t ret, uint16_t addr)
 {
     original_at(ret, addr);

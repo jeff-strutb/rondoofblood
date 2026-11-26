@@ -1,6 +1,6 @@
 /*
- * TEMPORARY: the stage misc object routines of lot L6 (enemy kinds not yet identified), by routine. Bodies return how the routine's last
- * instructions left A, Y and the flags (Ended, enemy_objects.h); the abi_ wrappers show it.
+ * TEMPORARY: the stage misc object routines of lot L6 (enemy kinds not yet identified), by routine. Bodies return what they ended on
+ * (ObjArm, enemy_objects.h); each routine's exit shim builds A, Y and the flags from it and its abi_ wrapper applies them.
  */
 #include "machine.h"
 #include "ram.h"
@@ -10,10 +10,16 @@
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
 
-static Ended then(Ended e, Ended next)
-{
-    return ended_then(e, next);
-}
+/* The arms the converted routines end on (ObjArm, enemy_objects.h). */
+enum { HD_STATE6, HD_FEW_HITS, HD_HALVED };
+enum { TP_WAITING, TP_TURNED, TP_AWAY, TP_STEPPED };
+enum { CH_LOADED, CH_OFF, CH_BOXED };
+enum { WP_LOADED, WP_WAITING, WP_PRESSED, WP_ENDED, WP_STEPPED };
+enum { S7_CLEAR, S7_ABOVE, S7_SET };
+enum { SO_OTHER_STEP, SO_NOT_IN_TABLE, SO_NO_SLOT, SO_SPAWNED };
+enum { SW_LOADED, SW_SWINGING, SW_CLEARED, SW_PLACED };
+
+static uint8_t spawn_then_step_y_shim(ObjArm inner, uint8_t y_entry);
 
 /* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
 static Ended ended_of_scale(ScaleResult r)
@@ -37,20 +43,21 @@ static Ended ended_of_angle(AngleExit r)
  * WAITS: no.
  * Entry: X object. Exit: as LoadObjectRecord.
  */
-Ended LoadRecordA06(uint8_t slot)
+ObjArm LoadRecordA06(uint8_t slot)
 {
-    uint8_t nz, last;
+    ObjArm r = { 0 };
     bool carry;
 
     jsr_push(0xBDAA);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &carry);
     jsr_pop();
-    return ended_of_record(last, nz, carry);
+    r.flag = carry;
+    return r;
 }
 
 void abi_LoadRecordA06(void)
 {
-    abi_ended(LoadRecordA06(cpu.x));
+    abi_ended(record_exit_shim(LoadRecordA06(cpu.x)));
 }
 
 /*
@@ -61,15 +68,24 @@ void abi_LoadRecordA06(void)
  * WAITS: no.
  * Entry: X object. Exit: all kept.
  */
-Ended ClearHitsTaken(uint8_t slot)
+ObjArm ClearHitsTaken(uint8_t slot)
 {
+    ObjArm r = { 0 };
+
     WR8(OBJ->hit_taken[slot], 0);
+    return r;
+}
+
+/* Nothing it leaves visible changed. */
+static Ended kept_exit_shim(ObjArm r)
+{
+    (void)r;
     return ended_kept();
 }
 
 void abi_ClearHitsTaken(void)
 {
-    abi_ended(ClearHitsTaken(cpu.x));
+    abi_ended(kept_exit_shim(ClearHitsTaken(cpu.x)));
 }
 
 /*
@@ -80,22 +96,27 @@ void abi_ClearHitsTaken(void)
  * WAITS: no.
  * Entry: X object. Exit: A the timer, N set, Z clear; C and V from the random number.
  */
-Ended RandomTimerC0(uint8_t slot)
+ObjArm RandomTimerC0(uint8_t slot)
 {
-    RandomResult random;
-    uint8_t value;
+    ObjArm r = { 0 };
 
     jsr_push(0xD03B);
-    random = NextRandom();
+    r.random = NextRandom();
     jsr_pop();
-    value = (uint8_t)(random.value | 0xC0);
-    WR8(OBJ->f34b8[slot], value);
-    return then(ended_of_random(random), ended_load(value));
+    r.first = (uint8_t)(r.random.value | 0xC0);
+    WR8(OBJ->f34b8[slot], r.first);
+    return r;
+}
+
+/* NextRandom's exit, the ORA's A. */
+static Ended random_timer_c0_exit_shim(ObjArm r)
+{
+    return ended_then(ended_of_random(r.random), ended_load(r.first));
 }
 
 void abi_RandomTimerC0(void)
 {
-    abi_ended(RandomTimerC0(cpu.x));
+    abi_ended(random_timer_c0_exit_shim(RandomTimerC0(cpu.x)));
 }
 
 /*
@@ -106,23 +127,29 @@ void abi_RandomTimerC0(void)
  * WAITS: no.
  * Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z.
  */
-Ended NextPhaseUnlessKind25(uint8_t slot)
+ObjArm NextPhaseUnlessKind25(uint8_t slot)
 {
-    uint8_t kind, phase;
-    Ended e;
+    ObjArm r = { 0 };
 
-    kind = RD8(OBJ->kind[0x50]);
-    e = ended_compare(kind, 0x25);
-    if (kind == 0x25) {
-        return e;
+    r.first = RD8(OBJ->kind[0x50]);
+    if (r.first == 0x25) {
+        return r;
     }
-    phase = INC8(OBJ->f2800[slot]);
-    return then(e, ended_nz(phase));
+    r.second = INC8(OBJ->f2800[slot]);
+    return r;
+}
+
+/* The CMP of the kind with $25, the INC when not. */
+static Ended next_phase_unless_kind25_exit_shim(ObjArm r)
+{
+    Ended e = ended_compare(r.first, 0x25);
+
+    return r.first == 0x25 ? e : ended_then(e, ended_nz(r.second));
 }
 
 void abi_NextPhaseUnlessKind25(void)
 {
-    abi_ended(NextPhaseUnlessKind25(cpu.x));
+    abi_ended(next_phase_unless_kind25_exit_shim(NextPhaseUnlessKind25(cpu.x)));
 }
 
 /*
@@ -133,29 +160,42 @@ void abi_NextPhaseUnlessKind25(void)
  * WAITS: no.
  * Entry: X object. Exit: the last compare, or the shift's N, Z and C.
  */
-Ended HalveDirectionWhenHurt(uint8_t slot)
+ObjArm HalveDirectionWhenHurt(uint8_t slot)
 {
-    uint8_t state, hits, shifted;
+    ObjArm r = { 0 };
     bool carry = false;
+
+    r.first = RD8(OBJ->state[slot]);
+    r.arm = HD_STATE6;
+    if (r.first == 6) {
+        return r;
+    }
+    r.second = RD8(OBJ->hit_taken[slot]);
+    r.arm = HD_FEW_HITS;
+    if (r.second < 5) {
+        return r;
+    }
+    r.third = LSR8_VALUE(OBJ->f3618[slot], carry);
+    r.flag = carry;
+    r.arm = HD_HALVED;
+    return r;
+}
+
+/* The CMP of the state with 6; else the CMP of the hits with 5 (it replaces it), and the LSR's N, Z and C. */
+static Ended halve_direction_when_hurt_exit_shim(ObjArm r)
+{
     Ended e;
 
-    state = RD8(OBJ->state[slot]);
-    e = ended_compare(state, 6);
-    if (state == 6) {
-        return e;
+    if (r.arm == HD_STATE6) {
+        return ended_compare(r.first, 6);
     }
-    hits = RD8(OBJ->hit_taken[slot]);
-    e = ended_compare(hits, 5);
-    if (hits < 5) {
-        return e;
-    }
-    shifted = LSR8_VALUE(OBJ->f3618[slot], carry);
-    return then(e, ended_with_carry(ended_nz(shifted), carry));
+    e = ended_compare(r.second, 5);
+    return r.arm == HD_FEW_HITS ? e : ended_then(e, ended_with_carry(ended_nz(r.third), r.flag));
 }
 
 void abi_HalveDirectionWhenHurt(void)
 {
-    abi_ended(HalveDirectionWhenHurt(cpu.x));
+    abi_ended(halve_direction_when_hurt_exit_shim(HalveDirectionWhenHurt(cpu.x)));
 }
 
 /*
@@ -166,25 +206,32 @@ void abi_HalveDirectionWhenHurt(void)
  * WAITS: no.
  * Entry: X object. Exit: A the last byte copied, Y $11.
  */
-Ended LoadThenSpawn24(uint8_t slot)
+ObjArm LoadThenSpawn24(uint8_t slot)
 {
-    uint8_t nz, last, placed;
+    ObjArm r = { 0 };
     bool carry;
 
     jsr_push(0xB10E);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &carry);
     jsr_pop();
+    r.flag = carry;
     WR8(OBJ->f3618[slot], 0x80);
     jsr_push(0xB118);
     ClearObjectInY(0x11);
     jsr_pop();
-    placed = StartObjectAtPlace(0x24, slot, 0x11);
-    return then(ended_of_record(last, nz, carry), ended_with_y(ended_load(placed), 0x11));
+    r.third = StartObjectAtPlace(0x24, slot, 0x11);
+    return r;
+}
+
+/* The record, then the start's A with Y $11. */
+static Ended load_then_spawn24_exit_shim(ObjArm r)
+{
+    return ended_then(record_exit_shim(r), ended_with_y(ended_load(r.third), 0x11));
 }
 
 void abi_LoadThenSpawn24(void)
 {
-    abi_ended(LoadThenSpawn24(cpu.x));
+    abi_ended(load_then_spawn24_exit_shim(LoadThenSpawn24(cpu.x)));
 }
 
 /*
@@ -195,29 +242,37 @@ void abi_LoadThenSpawn24(void)
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or A 4 when the list ended.
  */
-Ended StepListB5FEToState4(uint8_t slot, uint8_t y_entry)
+ObjArm StepListB5FEToState4(uint8_t slot, uint8_t y_entry)
 {
-    FrameStep step;
+    ObjArm r = { 0 };
     uint8_t y = y_entry;
-    Ended e;
 
     WR8(ZP->temp10, 0xFE);
     WR8(ZP->temp11, 0xB5);
     jsr_push(0xB5F3);
-    step = StepObjectFrames(slot, &y);
+    r.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    e = ended_of_frame_step(step, step != FRAME_HELD, y);
-    if (step != FRAME_LIST_ENDED) {
-        return e;
+    r.y = y;
+    if (r.step != FRAME_LIST_ENDED) {
+        return r;
     }
     WR8(OBJ->state[slot], 4);
     WR8(OBJ->f2800[slot], 0);
-    return then(e, ended_load(4));
+    r.first = 4;
+    return r;
+}
+
+/* The step's exit; when the list ended, the LDA of the new state over it. */
+static Ended step_then_load_exit_shim(ObjArm r)
+{
+    Ended e = frame_step_exit_shim(r);
+
+    return r.step == FRAME_LIST_ENDED ? ended_then(e, ended_load(r.first)) : e;
 }
 
 void abi_StepListB5FEToState4(void)
 {
-    abi_ended(StepListB5FEToState4(cpu.x, cpu.y));
+    abi_ended(step_then_load_exit_shim(StepListB5FEToState4(cpu.x, cpu.y)));
 }
 
 /*
@@ -229,31 +284,36 @@ void abi_StepListB5FEToState4(void)
  * WAITS: no.
  * Entry: X object. Exit: the count, or the new OBJ_2800's N and Z.
  */
-Ended FallThenStopForRaster(uint8_t slot)
+ObjArm FallThenStopForRaster(uint8_t slot)
 {
-    AxisMove move;
-    uint8_t left, phase;
-    Ended e;
+    ObjArm r = { 0 };
 
     jsr_push(0xB187);
-    move = ApplyVelocityY(slot);
+    r.move = ApplyVelocityY(slot);
     jsr_pop();
-    left = DEC8(OBJ->f34b8[slot]);
-    e = then(ended_of_axis_move(move), ended_nz(left));
-    if (left != 0) {
-        return e;
+    r.second = DEC8(OBJ->f34b8[slot]);
+    if (r.second != 0) {
+        return r;
     }
     WR8(ZP->raster_arg, 0);
     WR8(ZP->raster_effect, 0);
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0);
-    phase = INC8(OBJ->f2800[slot]);
-    return then(e, ended_nz(phase));
+    r.first = INC8(OBJ->f2800[slot]);
+    return r;
+}
+
+/* The move, the DEC's N and Z, and the INC at zero. */
+static Ended fall_then_stop_for_raster_exit_shim(ObjArm r)
+{
+    Ended e = ended_then(ended_of_axis_move(r.move), ended_nz(r.second));
+
+    return r.second != 0 ? e : ended_then(e, ended_nz(r.first));
 }
 
 void abi_FallThenStopForRaster(void)
 {
-    abi_ended(FallThenStopForRaster(cpu.x));
+    abi_ended(fall_then_stop_for_raster_exit_shim(FallThenStopForRaster(cpu.x)));
 }
 
 /*
@@ -264,31 +324,36 @@ void abi_FallThenStopForRaster(void)
  * WAITS: no.
  * Entry: X object. Exit: A 0, Z set.
  */
-Ended LoadThenRiseFast(uint8_t slot)
+ObjArm LoadThenRiseFast(uint8_t slot)
 {
-    AxisMove move;
-    uint8_t nz, last;
+    ObjArm r = { 0 };
     bool carry;
-    Ended e;
 
     jsr_push(0xB92B);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &carry);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
+    r.flag = carry;
     WR8(OBJ->vy_hi[slot], 0xD8);
     jsr_push(0xB933);
-    move = ApplyVelocityY(slot);
+    r.move = ApplyVelocityY(slot);
     jsr_pop();
-    e = then(then(e, ended_load(0xD8)), ended_of_axis_move(move));
     WR8(OBJ->f3510[slot], 0x30);
     WR8(OBJ->vy_hi[slot], 0xFA);
     WR8(OBJ->vy_lo[slot], 0);
-    return then(e, ended_load(0));
+    return r;
+}
+
+/* The record, LDA #$D8, the move, LDA #0. */
+static Ended load_then_rise_fast_exit_shim(ObjArm r)
+{
+    Ended e = ended_then(ended_then(record_exit_shim(r), ended_load(0xD8)), ended_of_axis_move(r.move));
+
+    return ended_then(e, ended_load(0));
 }
 
 void abi_LoadThenRiseFast(void)
 {
-    abi_ended(LoadThenRiseFast(cpu.x));
+    abi_ended(load_then_rise_fast_exit_shim(LoadThenRiseFast(cpu.x)));
 }
 
 /*
@@ -299,28 +364,36 @@ void abi_LoadThenRiseFast(void)
  * WAITS: no.
  * Entry: X object. Exit: the count; at zero, the table byte as loaded (Y its index).
  */
-Ended CountDownThenState6(uint8_t slot)
+ObjArm CountDownThenState6(uint8_t slot)
 {
-    uint8_t count, index, value;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t index;
 
-    count = RD8(OBJ->f3618[slot]);
-    e = ended_load(count);
-    if (count != 0) {
-        count = DEC8(OBJ->f3618[slot]);
-        return then(e, ended_nz(count));
+    r.first = RD8(OBJ->f3618[slot]);
+    if (r.first != 0) {
+        r.second = DEC8(OBJ->f3618[slot]);
+        return r;
     }
     WR8(OBJ->state[slot], 6);
     WR8(OBJ->f2800[slot], 0);
     index = (uint8_t)(RD8(OBJ->angle_lo[slot]) & 0x03);
-    value = rd8((uint16_t)(0xB36B + index));
-    WR8(OBJ->f3618[slot], value);
-    return then(e, ended_with_y(ended_load(value), index));
+    r.third = rd8((uint16_t)(0xB36B + index));
+    WR8(OBJ->f3618[slot], r.third);
+    r.y = index;
+    return r;
+}
+
+/* The count's LDA; then the DEC, or the table byte's LDA with Y its index. */
+static Ended count_down_then_state6_exit_shim(ObjArm r)
+{
+    Ended e = ended_load(r.first);
+
+    return r.first != 0 ? ended_then(e, ended_nz(r.second)) : ended_then(e, ended_with_y(ended_load(r.third), r.y));
 }
 
 void abi_CountDownThenState6(void)
 {
-    abi_ended(CountDownThenState6(cpu.x));
+    abi_ended(count_down_then_state6_exit_shim(CountDownThenState6(cpu.x)));
 }
 
 /*
@@ -331,46 +404,52 @@ void abi_CountDownThenState6(void)
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A $C0) when the list ended.
  */
-Ended StepListB9B7ThenAimAtPlayer(uint8_t slot, uint8_t y_entry)
+ObjArm StepListB9B7ThenAimAtPlayer(uint8_t slot, uint8_t y_entry)
 {
-    FrameStep step;
-    AngleExit angle;
-    ScaleResult scale;
-    uint8_t y = y_entry, byte, state;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t y = y_entry;
 
     WR8(ZP->temp10, 0xB7);
     WR8(ZP->temp11, 0xB9);
     jsr_push(0xB992);
-    step = StepObjectFrames(slot, &y);
+    r.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    e = ended_of_frame_step(step, step != FRAME_HELD, y);
-    if (step != FRAME_LIST_ENDED) {
-        return e;
+    r.y = y;
+    if (r.step != FRAME_LIST_ENDED) {
+        return r;
     }
     jsr_push(0xB997);
-    angle = AngleToPlayer(slot);
+    r.angle = AngleToPlayer(slot);
     jsr_pop();
-    e = then(e, ended_of_angle(angle));
-    WR8(OBJ->f34b8[slot], angle.a);
+    WR8(OBJ->f34b8[slot], r.angle.a);
     WR8(ZP->temp00, 0x80);
     WR8(ZP->temp01, 0x01);
-    byte = RD8(OBJ->f34b8[slot]);
-    e = then(e, ended_load(byte));
+    r.second = RD8(OBJ->f34b8[slot]);
     jsr_push(0xB9A8);
-    scale = SetVelocityFromAngle(byte, slot);
+    r.scale = SetVelocityFromAngle(r.second, slot);
     jsr_pop();
-    e = then(e, ended_of_scale(scale));
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->f3510[slot], 0xC0);
-    state = INC8(OBJ->state[slot]);
-    return then(then(e, ended_load(0xC0)), ended_nz(state));
+    r.first = INC8(OBJ->state[slot]);
+    return r;
+}
+
+/* The step; when the list ended AngleToPlayer, the angle's LDA, the scale, LDA #$C0 and the INC. */
+static Ended step_list_b9b7_then_aim_exit_shim(ObjArm r)
+{
+    Ended e = frame_step_exit_shim(r);
+
+    if (r.step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    e = ended_then(ended_then(ended_then(e, ended_of_angle(r.angle)), ended_load(r.second)), ended_of_scale(r.scale));
+    return ended_then(ended_then(e, ended_load(0xC0)), ended_nz(r.first));
 }
 
 void abi_StepListB9B7ThenAimAtPlayer(void)
 {
-    abi_ended(StepListB9B7ThenAimAtPlayer(cpu.x, cpu.y));
+    abi_ended(step_list_b9b7_then_aim_exit_shim(StepListB9B7ThenAimAtPlayer(cpu.x, cpu.y)));
 }
 
 /*
@@ -381,20 +460,19 @@ void abi_StepListB9B7ThenAimAtPlayer(void)
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z when the list ended.
  */
-Ended StepListB25CThenStartList(uint8_t slot, uint8_t y_entry)
+ObjArm StepListB25CThenStartList(uint8_t slot, uint8_t y_entry)
 {
-    FrameStep step;
-    uint8_t y = y_entry, flags, state;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t y = y_entry, flags;
 
     WR8(ZP->temp10, 0x5C);
     WR8(ZP->temp11, 0xB2);
     jsr_push(0xB242);
-    step = StepObjectFrames(slot, &y);
+    r.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    e = ended_of_frame_step(step, step != FRAME_HELD, y);
-    if (step != FRAME_LIST_ENDED) {
-        return e;
+    r.y = y;
+    if (r.step != FRAME_LIST_ENDED) {
+        return r;
     }
     push8(slot);
     jsr_push(0xB24C);
@@ -402,16 +480,27 @@ Ended StepListB25CThenStartList(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     slot = pull8();
     flags = RD8(ZP->field8e);
-    WR8(ZP->field8e, (uint8_t)(flags | 0x04));
+    r.second = (uint8_t)(flags | 0x04);
+    WR8(ZP->field8e, r.second);
     WR8(OBJ->hitbox_on[slot], 2);
-    state = INC8(OBJ->state[slot]);
-    e = then(e, ended_load((uint8_t)(flags | 0x04)));
-    return then(then(e, ended_load(2)), ended_nz(state));
+    r.first = INC8(OBJ->state[slot]);
+    return r;
+}
+
+/* The step; when the list ended the ORA's A, LDA #2 and the INC. */
+static Ended step_list_b25c_then_start_list_exit_shim(ObjArm r)
+{
+    Ended e = frame_step_exit_shim(r);
+
+    if (r.step != FRAME_LIST_ENDED) {
+        return e;
+    }
+    return ended_then(ended_then(ended_then(e, ended_load(r.second)), ended_load(2)), ended_nz(r.first));
 }
 
 void abi_StepListB25CThenStartList(void)
 {
-    abi_ended(StepListB25CThenStartList(cpu.x, cpu.y));
+    abi_ended(step_list_b25c_then_start_list_exit_shim(StepListB25CThenStartList(cpu.x, cpu.y)));
 }
 
 /*
@@ -422,48 +511,62 @@ void abi_StepListB25CThenStartList(void)
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the last instruction's registers.
  */
-Ended TurnTowardPlayerOrStepList(uint8_t slot, uint8_t y_entry)
+ObjArm TurnTowardPlayerOrStepList(uint8_t slot, uint8_t y_entry)
 {
-    FrameStep step;
-    SideResult side;
-    uint8_t count, facing, bits, y = y_entry;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t facing, y = y_entry;
 
-    count = RD8(OBJ->f3568[slot]);
-    e = ended_load(count);
-    if (count != 0) {
-        count = DEC8(OBJ->f3568[slot]);
-        e = then(e, ended_nz(count));
-        if (count != 0) {
-            return e;
+    r.first = RD8(OBJ->f3568[slot]);
+    if (r.first != 0) {
+        r.second = DEC8(OBJ->f3568[slot]);
+        r.arm = TP_WAITING;
+        if (r.second != 0) {
+            return r;
         }
-        facing = (uint8_t)(RD8(OBJ->facing_left[slot]) ^ 0x01);
-        WR8(OBJ->facing_left[slot], facing);
-        return then(e, ended_load(facing));
+        r.third = (uint8_t)(RD8(OBJ->facing_left[slot]) ^ 0x01);
+        WR8(OBJ->facing_left[slot], r.third);
+        r.arm = TP_TURNED;
+        return r;
     }
     jsr_push(0xBA17);
-    side = SideOfPlayer(slot);
+    r.side = SideOfPlayer(slot);
     jsr_pop();
-    bits = (uint8_t)(side.sides & 0x01);
-    e = then(then(e, ended_of_side(side)), ended_load(bits));
+    r.third = (uint8_t)(r.side.sides & 0x01);
     facing = RD8(OBJ->facing_left[slot]);
-    e = then(e, ended_compare(bits, facing));
-    if (bits != facing) {
+    r.fourth = facing;
+    if (r.third != facing) {
         WR8(OBJ->f3568[slot], 5);
         WR8(OBJ->frame[slot], 0x2C);
-        return then(e, ended_load(0x2C));
+        r.arm = TP_AWAY;
+        return r;
     }
     WR8(ZP->temp10, 0xFA);
     WR8(ZP->temp11, 0xB9);
     jsr_push(0xBA34);
-    step = StepObjectFrames(slot, &y);
+    r.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    return then(e, ended_of_frame_step(step, step != FRAME_HELD, y));
+    r.y = y;
+    r.arm = TP_STEPPED;
+    return r;
+}
+
+/* The count's LDA; counting, the DEC and the EOR at zero; else SideOfPlayer, the AND, the CMP with the facing, then
+ * LDA #$2C or the step. */
+static Ended turn_toward_player_or_step_list_exit_shim(ObjArm r)
+{
+    Ended e = ended_load(r.first);
+
+    if (r.arm == TP_WAITING || r.arm == TP_TURNED) {
+        e = ended_then(e, ended_nz(r.second));
+        return r.arm == TP_WAITING ? e : ended_then(e, ended_load(r.third));
+    }
+    e = ended_then(ended_then(ended_then(e, ended_of_side(r.side)), ended_load(r.third)), ended_compare(r.third, r.fourth));
+    return ended_then(e, r.arm == TP_AWAY ? ended_load(0x2C) : frame_step_exit_shim(r));
 }
 
 void abi_TurnTowardPlayerOrStepList(void)
 {
-    abi_ended(TurnTowardPlayerOrStepList(cpu.x, cpu.y));
+    abi_ended(turn_toward_player_or_step_list_exit_shim(TurnTowardPlayerOrStepList(cpu.x, cpu.y)));
 }
 
 /*
@@ -474,22 +577,20 @@ void abi_TurnTowardPlayerOrStepList(void)
  * WAITS: no.
  * Entry: X object. Exit: A the last byte read, Y 3; or the test of OBJ_3250.
  */
-Ended SetHitBoxFromTable(uint8_t slot)
+ObjArm SetHitBoxFromTable(uint8_t slot)
 {
-    Sum row, sum;
-    uint8_t on, twice, y, value, low;
+    ObjArm r = { 0 };
+    Sum sum = { 0 };
+    uint8_t twice, y, value, low;
     bool carry;
-    Ended e;
 
-    on = RD8(OBJ->hitbox_on[slot]);
-    e = ended_load(on);
-    if (on == 0) {
-        return e;
+    r.first = RD8(OBJ->hitbox_on[slot]);
+    if (r.first == 0) {
+        return r;
     }
     WR8(ZP->temp00, 0xEC);
     WR8(ZP->temp01, 0xBE);
-    row = sub_bytes(RD8(OBJ->frame[slot]), 1, true);
-    twice = (uint8_t)(row.value << 1);
+    twice = (uint8_t)((uint8_t)(RD8(OBJ->frame[slot]) - 1) << 1);
     WR8(ZP->temp02, twice);
     for (y = 0; y < 2; y++) {
         low = RD8(ZP->temp00);
@@ -500,20 +601,30 @@ Ended SetHitBoxFromTable(uint8_t slot)
         sum = add_bytes(low, 0, carry);
         WR8(ZP->temp01, sum.value);
     }
+    r.sum = sum;
     value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 0));
     WR8(OBJ->hitbox_dx[slot], value);
     value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 1));
     WR8(OBJ->hitbox_dy[slot], value);
     value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 2));
     WR8(OBJ->hitbox_half_w[slot], value);
-    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 3));
-    WR8(OBJ->hitbox_half_h[slot], value);
-    return then(ended_of_sum(sum), ended_with_y(ended_load(value), 3));
+    r.second = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 3));
+    WR8(OBJ->hitbox_half_h[slot], r.second);
+    return r;
+}
+
+/* The test of OBJ_3250; else the pointer's last add, and the last byte's LDA with Y 3. */
+static Ended set_hit_box_from_table_exit_shim(ObjArm r)
+{
+    if (r.first == 0) {
+        return ended_load(r.first);
+    }
+    return ended_then(ended_of_sum(r.sum), ended_with_y(ended_load(r.second), 3));
 }
 
 void abi_SetHitBoxFromTable(void)
 {
-    abi_ended(SetHitBoxFromTable(cpu.x));
+    abi_ended(set_hit_box_from_table_exit_shim(SetHitBoxFromTable(cpu.x)));
 }
 
 /*
@@ -524,36 +635,35 @@ void abi_SetHitBoxFromTable(void)
  * WAITS: no.
  * Entry: X object. Exit: see the code: the last read or the clears.
  */
-Ended CopyPlaceAndHitBoxOfSlot10(uint8_t slot)
+ObjArm CopyPlaceAndHitBoxOfSlot10(uint8_t slot)
 {
-    Sum row, sum;
-    uint8_t state, nz, last, on, twice, y, value, low;
+    ObjArm r = { 0 };
+    Sum sum = { 0 };
+    uint8_t twice, y, value, low;
     bool carry;
-    Ended e;
 
-    state = RD8(OBJ->state[slot]);
-    if (state == 0) {
-        last = LoadObjectRecord(slot, &nz, &carry);
-        return then(ended_load(state), ended_of_record(last, nz, carry));
+    r.third = RD8(OBJ->state[slot]);
+    if (r.third == 0) {
+        r.first = LoadObjectRecord(slot, &r.second, &carry);
+        r.flag = carry;
+        r.arm = CH_LOADED;
+        return r;
     }
     jsr_push(0xBC1F);
-    last = CopyObjectPlaceBack(0x10, slot);
+    r.fourth = CopyObjectPlaceBack(0x10, slot);
     jsr_pop();
-    e = then(then(ended_load(state), ended_with_y(ended_load(last), 0x10)), ended_nz(last));
-    value = RD8(OBJ->facing_left[0x10]);
-    WR8(OBJ->facing_left[slot], value);
-    e = then(e, ended_load(value));
-    on = RD8(OBJ->hitbox_on[0x10]);
-    e = then(e, ended_load(on));
-    if (on == 0) {
+    r.fifth = RD8(OBJ->facing_left[0x10]);
+    WR8(OBJ->facing_left[slot], r.fifth);
+    r.sixth = RD8(OBJ->hitbox_on[0x10]);
+    if (r.sixth == 0) {
         WR8(OBJ->hitbox_half_w[slot], 0);
         WR8(OBJ->hitbox_half_h[slot], 0);
-        return e;
+        r.arm = CH_OFF;
+        return r;
     }
     WR8(ZP->temp00, 0x24);
     WR8(ZP->temp01, 0xC0);
-    row = sub_bytes(RD8(OBJ->frame[0x10]), 1, true);
-    twice = (uint8_t)(row.value << 1);
+    twice = (uint8_t)((uint8_t)(RD8(OBJ->frame[0x10]) - 1) << 1);
     WR8(ZP->temp02, twice);
     for (y = 0; y < 2; y++) {
         low = RD8(ZP->temp00);
@@ -568,17 +678,34 @@ Ended CopyPlaceAndHitBoxOfSlot10(uint8_t slot)
     WR8(OBJ->hitbox_dx[slot], value);
     value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 1));
     WR8(OBJ->hitbox_dy[slot], value);
-    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 2));
-    sum = add_bytes(value, 0x08, false);
-    WR8(OBJ->hitbox_half_w[slot], sum.value);
-    value = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 3));
-    WR8(OBJ->hitbox_half_h[slot], value);
-    return then(then(e, ended_of_sum(sum)), ended_with_y(ended_load(value), 3));
+    r.seventh = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 2));
+    WR8(OBJ->hitbox_half_w[slot], (uint8_t)(r.seventh + 0x08));
+    r.eighth = rd8((uint16_t)(RD16_LH2(ZP->temp00, ZP->temp01) + 3));
+    WR8(OBJ->hitbox_half_h[slot], r.eighth);
+    r.arm = CH_BOXED;
+    return r;
+}
+
+/* State 0: the state's LDA, the record. Later the state's LDA, the copy's A with Y $10, the facing's and OBJ_3250's
+ * LDAs; with a box, the half width's add of 8 and the last byte's LDA with Y 3. */
+static Ended copy_place_and_hit_box_exit_shim(ObjArm r)
+{
+    Ended e;
+
+    if (r.arm == CH_LOADED) {
+        return ended_then(ended_load(0), record_exit_shim(r));
+    }
+    e = ended_then(ended_then(ended_load(r.third), ended_with_y(ended_load(r.fourth), 0x10)), ended_nz(r.fourth));
+    e = ended_then(ended_then(e, ended_load(r.fifth)), ended_load(r.sixth));
+    if (r.arm == CH_OFF) {
+        return e;
+    }
+    return ended_then(ended_then(e, ended_of_sum(add_bytes(r.seventh, 0x08, false))), ended_with_y(ended_load(r.eighth), 3));
 }
 
 void abi_CopyPlaceAndHitBoxOfSlot10(void)
 {
-    abi_ended(CopyPlaceAndHitBoxOfSlot10(cpu.x));
+    abi_ended(copy_place_and_hit_box_exit_shim(CopyPlaceAndHitBoxOfSlot10(cpu.x)));
 }
 
 /*
@@ -589,24 +716,20 @@ void abi_CopyPlaceAndHitBoxOfSlot10(void)
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
  */
-SoundEnd StepListB1BAThenSound(uint8_t slot, uint8_t y_entry)
+ObjArm StepListB1BAThenSound(uint8_t slot, uint8_t y_entry)
 {
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
-    FrameStep step;
-    uint8_t y = y_entry, phase;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t y = y_entry;
 
     WR8(ZP->temp10, 0xBA);
     WR8(ZP->temp11, 0xB1);
     jsr_push(0xB1A5);
-    step = StepObjectFrames(slot, &y);
+    r.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    e = ended_of_frame_step(step, step != FRAME_HELD, y);
-    if (step != FRAME_LIST_ENDED) {
-        r.end = e;
+    r.y = y;
+    if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    r.before = then(e, ended_load(0x46));
     r.sounded = true;
     r.command = 0x46;
     jsr_push(0xB1AC);
@@ -614,14 +737,31 @@ SoundEnd StepListB1BAThenSound(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     WR8(OBJ->sprite_set[slot], 4);
     WR8(OBJ->frame[slot], 1);
-    phase = INC8(OBJ->f2800[slot]);
-    r.end = then(ended_load(1), ended_nz(phase));
+    r.first = INC8(OBJ->f2800[slot]);
     return r;
+}
+
+/* The step; when the list ended LDA #$46 and the sound, then LDA #1 and the INC. */
+static SoundEnd step_list_b1ba_then_sound_exit_shim(ObjArm r)
+{
+    SoundEnd s = { { 0 }, { 0 }, false, 0, { 0 } };
+    Ended e = frame_step_exit_shim(r);
+
+    if (!r.sounded) {
+        s.end = e;
+        return s;
+    }
+    s.before = ended_then(e, ended_load(0x46));
+    s.sounded = true;
+    s.command = r.command;
+    s.call = r.call;
+    s.end = ended_then(ended_load(1), ended_nz(r.first));
+    return s;
 }
 
 void abi_StepListB1BAThenSound(void)
 {
-    abi_sound_end(StepListB1BAThenSound(cpu.x, cpu.y));
+    abi_sound_end(step_list_b1ba_then_sound_exit_shim(StepListB1BAThenSound(cpu.x, cpu.y)));
 }
 
 /*
@@ -632,20 +772,19 @@ void abi_StepListB1BAThenSound(void)
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or A 5 when the list ended.
  */
-Ended StepListB53CToState5(uint8_t slot, uint8_t y_entry)
+ObjArm StepListB53CToState5(uint8_t slot, uint8_t y_entry)
 {
-    FrameStep step;
+    ObjArm r = { 0 };
     uint8_t y = y_entry;
-    Ended e;
 
     WR8(ZP->temp10, 0x3C);
     WR8(ZP->temp11, 0xB5);
     jsr_push(0xB527);
-    step = StepObjectFrames(slot, &y);
+    r.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    e = ended_of_frame_step(step, step != FRAME_HELD, y);
-    if (step != FRAME_LIST_ENDED) {
-        return e;
+    r.y = y;
+    if (r.step != FRAME_LIST_ENDED) {
+        return r;
     }
     WR8(ZP->raster_arg, 0);
     WR8(ZP->raster_effect, 0);
@@ -653,12 +792,13 @@ Ended StepListB53CToState5(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 5);
     WR8(OBJ->f2800[slot], 0);
-    return then(e, ended_load(5));
+    r.first = 5;
+    return r;
 }
 
 void abi_StepListB53CToState5(void)
 {
-    abi_ended(StepListB53CToState5(cpu.x, cpu.y));
+    abi_ended(step_then_load_exit_shim(StepListB53CToState5(cpu.x, cpu.y)));
 }
 
 /* TurnAngleToward's exit (turn_angle_exit_shim): equal gives the angle with Z set and C set, else the last add. */
@@ -678,62 +818,64 @@ static Ended ended_of_turn(TurnAngleResult r)
  * WAITS: no.
  * Entry: X object, Y kept unless a callee sets it. Exit: the count, or the new state's N and Z (A $F0).
  */
-Ended TurnTowardPlayerAndMove(uint8_t slot, uint8_t y_entry)
+ObjArm TurnTowardPlayerAndMove(uint8_t slot, uint8_t y_entry)
 {
-    ScaleResult scale;
-    AxisMove move;
-    AngleExit angle;
-    TurnAngleResult turn;
-    uint8_t angle_byte, left, state;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t angle_byte;
 
     jsr_push(0xB9C5);
-    e = TurnTowardPlayerOrStepList(slot, y_entry);
+    r.sub = obj_sub(TurnTowardPlayerOrStepList(slot, y_entry));
     jsr_pop();
     WR8(ZP->temp00, 0xC0);
     WR8(ZP->temp01, 0x01);
-    angle_byte = RD8(OBJ->f34b8[slot]);
-    e = then(then(e, ended_load(0x01)), ended_load(angle_byte));
+    r.first = RD8(OBJ->f34b8[slot]);
     jsr_push(0xB9D3);
-    scale = SetVelocityFromAngle(angle_byte, slot);
+    r.scale = SetVelocityFromAngle(r.first, slot);
     jsr_pop();
-    e = then(e, ended_of_scale(scale));
     jsr_push(0xB9D6);
-    move = ApplyVelocity(slot);
+    r.move = ApplyVelocity(slot);
     jsr_pop();
-    e = then(e, ended_of_axis_move(move));
     jsr_push(0xB9D9);
-    angle = AngleToPlayer(slot);
+    r.angle = AngleToPlayer(slot);
     jsr_pop();
-    e = then(e, ended_of_angle(angle));
-    WR8(ZP->temp02, angle.a);
+    WR8(ZP->temp02, r.angle.a);
     WR8(ZP->temp00, 0x02);
-    angle_byte = RD8(OBJ->f34b8[slot]);
-    WR8(ZP->temp01, angle_byte);
-    e = then(then(e, ended_load(0x02)), ended_load(angle_byte));
+    r.second = RD8(OBJ->f34b8[slot]);
+    WR8(ZP->temp01, r.second);
     jsr_push(0xB9E7);
-    turn = TurnAngleToward();
+    r.turn = TurnAngleToward();
     jsr_pop();
-    e = then(e, ended_of_turn(turn));
-    angle_byte = (uint8_t)(turn.angle & 0xFE);
-    if (!turn.equal) {
-        angle_byte = (uint8_t)(turn.last.value & 0xFE);
+    angle_byte = (uint8_t)(r.turn.angle & 0xFE);
+    if (!r.turn.equal) {
+        angle_byte = (uint8_t)(r.turn.last.value & 0xFE);
     }
-    e = then(e, ended_load(angle_byte));
+    r.third = angle_byte;
     WR8(OBJ->f34b8[slot], angle_byte);
-    left = DEC8(OBJ->f3510[slot]);
-    e = then(e, ended_nz(left));
-    if (left != 0) {
-        return e;
+    r.fourth = DEC8(OBJ->f3510[slot]);
+    if (r.fourth != 0) {
+        return r;
     }
     WR8(OBJ->f3510[slot], 0xF0);
-    state = INC8(OBJ->state[slot]);
-    return then(then(e, ended_load(0xF0)), ended_nz(state));
+    r.fifth = INC8(OBJ->state[slot]);
+    return r;
+}
+
+/* TurnTowardPlayerOrStepList's exit, LDA #1, the angle's LDA, the scale, the move, AngleToPlayer, LDA #2, the angle's
+ * LDA, TurnAngleToward, the AND, the DEC; at zero LDA #$F0 and the INC. */
+static Ended turn_toward_player_and_move_exit_shim(ObjArm r)
+{
+    Ended e = turn_toward_player_or_step_list_exit_shim(obj_arm(r.sub));
+
+    e = ended_then(ended_then(ended_then(e, ended_load(0x01)), ended_load(r.first)), ended_of_scale(r.scale));
+    e = ended_then(ended_then(e, ended_of_axis_move(r.move)), ended_of_angle(r.angle));
+    e = ended_then(ended_then(ended_then(e, ended_load(0x02)), ended_load(r.second)), ended_of_turn(r.turn));
+    e = ended_then(ended_then(e, ended_load(r.third)), ended_nz(r.fourth));
+    return r.fourth != 0 ? e : ended_then(ended_then(e, ended_load(0xF0)), ended_nz(r.fifth));
 }
 
 void abi_TurnTowardPlayerAndMove(void)
 {
-    abi_ended(TurnTowardPlayerAndMove(cpu.x, cpu.y));
+    abi_ended(turn_toward_player_and_move_exit_shim(TurnTowardPlayerAndMove(cpu.x, cpu.y)));
 }
 
 /*
@@ -744,60 +886,53 @@ void abi_TurnTowardPlayerAndMove(void)
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
  */
-SoundEnd WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
+ObjArm WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
 {
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
-    FrameStep step;
-    Sum sum;
-    uint8_t state, nz, last, phase, value, y = y_entry;
+    ObjArm r = { 0 };
+    uint8_t y = y_entry;
     bool carry;
-    Ended e;
 
-    state = RD8(OBJ->state[slot]);
-    e = ended_load(state);
-    if (state == 0) {
+    r.third = RD8(OBJ->state[slot]);
+    if (r.third == 0) {
         jsr_push(0xD45C);
-        last = LoadObjectRecord(slot, &nz, &carry);
+        r.first = LoadObjectRecord(slot, &r.second, &carry);
         jsr_pop();
+        r.flag = carry;
         WR8(OBJ->sprite_set[slot], 6);
-        r.end = then(then(e, ended_of_record(last, nz, carry)), ended_load(6));
+        r.arm = WP_LOADED;
         return r;
     }
-    phase = RD8(OBJ->f2800[slot]);
-    e = then(e, ended_load(phase));
-    if (phase == 0) {
-        value = RD8(OBJ->y_lo[0]);
-        e = then(e, ended_compare(value, 0xAA));
-        if (value != 0xAA) {
-            r.end = e;
+    r.fourth = RD8(OBJ->f2800[slot]);
+    if (r.fourth == 0) {
+        r.arm = WP_WAITING;
+        r.fifth = RD8(OBJ->y_lo[0]);
+        r.tenth = 1;
+        if (r.fifth != 0xAA) {
             return r;
         }
-        value = RD8(OBJ->x_lo[0]);
-        e = then(e, ended_compare(value, 0xD4));
-        if (value >= 0xD4) {
-            r.end = e;
+        r.sixth = RD8(OBJ->x_lo[0]);
+        r.tenth = 2;
+        if (r.sixth >= 0xD4) {
             return r;
         }
-        value = RD8(OBJ->x_lo[0]);
-        e = then(e, ended_compare(value, 0xCC));
-        if (value < 0xCC) {
-            r.end = e;
+        r.seventh = RD8(OBJ->x_lo[0]);
+        r.tenth = 3;
+        if (r.seventh < 0xCC) {
             return r;
         }
-        value = (uint8_t)(RD8(ZP->pad_pressed) & 0x10);
-        e = then(e, ended_load(value));
-        if (value == 0) {
-            r.end = e;
+        r.eighth = (uint8_t)(RD8(ZP->pad_pressed) & 0x10);
+        r.tenth = 4;
+        if (r.eighth == 0) {
             return r;
         }
         INC8(OBJ->f2800[slot]);
         WR8(OBJ->anim_step[slot], 0);
         WR8(OBJ->anim_timer[slot], 0);
-        value = RD8(OBJ->x_lo[0]);
-        WR8(OBJ->x_lo[slot], value);
-        sum = add_bytes(RD8(OBJ->y_lo[0]), 0xD8, false);
-        WR8(OBJ->y_lo[slot], sum.value);
-        r.end = then(then(e, ended_load(value)), ended_of_sum(sum));
+        r.ninth = RD8(OBJ->x_lo[0]);
+        WR8(OBJ->x_lo[slot], r.ninth);
+        r.first = RD8(OBJ->y_lo[0]);
+        WR8(OBJ->y_lo[slot], (uint8_t)(r.first + 0xD8));
+        r.arm = WP_PRESSED;
         return r;
     }
     WR8(OBJ->f3510[0], 0xC0);
@@ -805,21 +940,20 @@ SoundEnd WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
     WR8(ZP->temp10, 0x43);
     WR8(ZP->temp11, 0xD4);
     jsr_push(0xD4B0);
-    step = StepObjectFrames(slot, &y);
+    r.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    e = then(then(then(e, ended_load(0x10)), ended_load(0xD4)), ended_of_frame_step(step, step != FRAME_HELD, y));
-    if (step == FRAME_LIST_ENDED) {
+    r.y = y;
+    if (r.step == FRAME_LIST_ENDED) {
         WR8(OBJ->f2800[slot], 0);
         WR8(OBJ->frame[slot], 0);
         WR8(OBJ->f3510[0], 0);
-        r.end = then(e, ended_load(0));
+        r.arm = WP_ENDED;
         return r;
     }
-    if (step != FRAME_CHANGED) {
-        r.end = e;
+    r.arm = WP_STEPPED;
+    if (r.step != FRAME_CHANGED) {
         return r;
     }
-    r.before = then(e, ended_load(0x3B));
     r.sounded = true;
     r.command = 0x3B;
     jsr_push(0xD4C3);
@@ -828,9 +962,55 @@ SoundEnd WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
     return r;
 }
 
+/* State 0: the state's LDA, the record, LDA #6. Waiting: the state's and phase's LDAs, then each test that ran (the CMPs
+ * of the first object's Y low with $AA and X low with $D4 and $CC, the AND of the pad), and when pressed the X low's
+ * LDA and the add of $D8. Animating: LDA #$10, LDA #$D4, the step, then LDA #0 at the end, or LDA #$3B and the sound on a change. */
+static SoundEnd wait_for_press_then_animate_exit_shim(ObjArm r)
+{
+    SoundEnd s = { { 0 }, { 0 }, false, 0, { 0 } };
+    Ended e = ended_load(r.third);
+
+    if (r.arm == WP_LOADED) {
+        s.end = ended_then(ended_then(e, record_exit_shim(r)), ended_load(6));
+        return s;
+    }
+    e = ended_then(e, ended_load(r.fourth));
+    if (r.arm == WP_WAITING || r.arm == WP_PRESSED) {
+        e = ended_then(e, ended_compare(r.fifth, 0xAA));
+        if (r.tenth >= 2) {
+            e = ended_then(e, ended_compare(r.sixth, 0xD4));
+        }
+        if (r.tenth >= 3) {
+            e = ended_then(e, ended_compare(r.seventh, 0xCC));
+        }
+        if (r.tenth >= 4) {
+            e = ended_then(e, ended_load(r.eighth));
+        }
+        if (r.arm == WP_PRESSED) {
+            e = ended_then(ended_then(e, ended_load(r.ninth)), ended_of_sum(add_bytes(r.first, 0xD8, false)));
+        }
+        s.end = e;
+        return s;
+    }
+    e = ended_then(ended_then(ended_then(e, ended_load(0x10)), ended_load(0xD4)), frame_step_exit_shim(r));
+    if (r.arm == WP_ENDED) {
+        s.end = ended_then(e, ended_load(0));
+        return s;
+    }
+    if (!r.sounded) {
+        s.end = e;
+        return s;
+    }
+    s.before = ended_then(e, ended_load(0x3B));
+    s.sounded = true;
+    s.command = r.command;
+    s.call = r.call;
+    return s;
+}
+
 void abi_WaitForPressThenAnimate(void)
 {
-    abi_sound_end(WaitForPressThenAnimate(cpu.x, cpu.y));
+    abi_sound_end(wait_for_press_then_animate_exit_shim(WaitForPressThenAnimate(cpu.x, cpu.y)));
 }
 
 /*
@@ -841,29 +1021,41 @@ void abi_WaitForPressThenAnimate(void)
  * WAITS: no.
  * Entry: X object. Exit: the test, the compare, or A 7.
  */
-Ended StateSevenOnStatusBit7(uint8_t slot)
+ObjArm StateSevenOnStatusBit7(uint8_t slot)
 {
-    uint8_t status, state;
-    Ended e;
+    ObjArm r = { 0 };
 
-    status = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
-    e = ended_load(status);
-    if (status == 0) {
-        return e;
+    r.first = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    r.arm = S7_CLEAR;
+    if (r.first == 0) {
+        return r;
     }
-    state = RD8(OBJ->state[slot]);
-    e = then(then(e, ended_load(state)), ended_compare(state, 7));
-    if (state >= 7) {
-        return e;
+    r.second = RD8(OBJ->state[slot]);
+    r.arm = S7_ABOVE;
+    if (r.second >= 7) {
+        return r;
     }
     WR8(OBJ->state[slot], 7);
     WR8(OBJ->f2800[slot], 0);
-    return then(e, ended_load(7));
+    r.arm = S7_SET;
+    return r;
+}
+
+/* The AND's A; the state's LDA and CMP #7; LDA #7. */
+static Ended state_seven_on_status_bit7_exit_shim(ObjArm r)
+{
+    Ended e = ended_load(r.first);
+
+    if (r.arm == S7_CLEAR) {
+        return e;
+    }
+    e = ended_then(ended_then(e, ended_load(r.second)), ended_compare(r.second, 7));
+    return r.arm == S7_ABOVE ? e : ended_then(e, ended_load(7));
 }
 
 void abi_StateSevenOnStatusBit7(void)
 {
-    abi_ended(StateSevenOnStatusBit7(cpu.x));
+    abi_ended(state_seven_on_status_bit7_exit_shim(StateSevenOnStatusBit7(cpu.x)));
 }
 
 /*
@@ -874,59 +1066,90 @@ void abi_StateSevenOnStatusBit7(void)
  * WAITS: no.
  * Entry: X object, Y kept for the sound's push only when the search ran. Exit: see the wrapper.
  */
-SoundEnd SpawnOnTimerInTable(uint8_t slot)
+ObjArm SpawnOnTimerInTable(uint8_t slot)
 {
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
-    uint8_t step, timer, y, found_slot, last, placed, facing, entry;
+    ObjArm r = { 0 };
+    uint8_t timer, y, found_slot, last, entry;
     bool found;
-    Ended e;
 
-    step = RD8(OBJ->anim_step[slot]);
-    e = ended_compare(step, 6);
-    if (step != 6) {
-        r.end = e;
+    r.first = RD8(OBJ->anim_step[slot]);
+    r.arm = SO_OTHER_STEP;
+    if (r.first != 6) {
         return r;
     }
     for (y = 0;; y++) {
         timer = RD8(OBJ->anim_timer[slot]);
         entry = rd8((uint16_t)(0xB5A5 + y));
-        e = then(then(e, ended_load(timer)), ended_compare(timer, entry));
+        r.second = timer;
+        r.third = entry;
+        r.y = y;
         if (timer == entry) {
             break;
         }
-        e = then(e, ended_with_y(ended_with_carry(ended_nz((uint8_t)(y + 1 - 3)), (y + 1) >= 3), (uint8_t)(y + 1)));
         if ((y + 1) >= 3) {
-            r.end = e;
+            r.arm = SO_NOT_IN_TABLE;
             return r;
         }
     }
-    e = then(e, ended_with_y(ended_nz(y), y));
     jsr_push(0xB592);
     found_slot = FindFreeSlotFrom30(&last, &found);
     jsr_pop();
-    e = then(e, ended_of_find_slot(found_slot, last, found));
+    r.fourth = found_slot;
+    r.fifth = last;
+    r.arm = SO_NO_SLOT;
     if (!found) {
-        r.end = e;
         return r;
     }
-    r.before = then(e, ended_load(0x48));
     r.sounded = true;
     r.command = 0x48;
     jsr_push(0xB599);
     r.call = SoundCommand(0x48, slot, found_slot);
     jsr_pop();
     jsr_push(0xB59E);
-    placed = StartObjectAtPlace(0x27, slot, found_slot);
+    r.sixth = StartObjectAtPlace(0x27, slot, found_slot);
     jsr_pop();
-    facing = RD8(OBJ->facing_left[slot]);
-    WR8(OBJ->facing_left[found_slot], facing);
-    r.end = then(then(ended_load(0x27), ended_with_y(ended_load(placed), found_slot)), ended_load(facing));
+    r.seventh = RD8(OBJ->facing_left[slot]);
+    WR8(OBJ->facing_left[found_slot], r.seventh);
+    r.arm = SO_SPAWNED;
     return r;
+}
+
+/* The CMP of the step with 6; for each table byte looked at the timer's LDA and CMP (only the last one's stands with
+ * the INY and CPY #3 when not found); when found the TYA's Y, the slot search, LDA #$48 and the sound, then LDA #$27,
+ * the start's A with Y the slot and the facing's LDA. */
+static SoundEnd spawn_on_timer_in_table_exit_shim(ObjArm r)
+{
+    SoundEnd s = { { 0 }, { 0 }, false, 0, { 0 } };
+    Ended e = ended_compare(r.first, 6);
+
+    if (r.arm == SO_OTHER_STEP) {
+        s.end = e;
+        return s;
+    }
+    if (r.y > 0) {
+        e = ended_then(e, ended_with_y(ended_with_carry(ended_nz((uint8_t)(r.y - 3)), r.y >= 3), r.y));
+    }
+    e = ended_then(ended_then(e, ended_load(r.second)), ended_compare(r.second, r.third));
+    if (r.arm == SO_NOT_IN_TABLE) {
+        s.end = ended_then(e, ended_with_y(ended_with_carry(ended_nz((uint8_t)(r.y + 1 - 3)), (r.y + 1) >= 3), (uint8_t)(r.y + 1)));
+        return s;
+    }
+    e = ended_then(ended_then(e, ended_with_y(ended_nz(r.y), r.y)), ended_of_find_slot(r.fourth, r.fifth, r.arm == SO_SPAWNED));
+    if (r.arm == SO_NO_SLOT) {
+        s.end = e;
+        return s;
+    }
+    s.before = ended_then(e, ended_load(0x48));
+    s.sounded = true;
+    s.command = r.command;
+    s.call = r.call;
+    s.end = ended_then(ended_then(ended_load(0x27), ended_with_y(ended_load(r.sixth), r.fourth)), ended_load(r.seventh));
+    return s;
 }
 
 void abi_SpawnOnTimerInTable(void)
 {
-    abi_sound_end(SpawnOnTimerInTable(cpu.x));
+    abi_sound_end(spawn_on_timer_in_table_exit_shim(SpawnOnTimerInTable(cpu.x)));
 }
 
 /*
@@ -937,45 +1160,56 @@ void abi_SpawnOnTimerInTable(void)
  * WAITS: no.
  * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
  */
-SoundEnd SetRasterSpawnThenStepList(uint8_t slot, uint8_t y_entry)
+ObjArm SetRasterSpawnThenStepList(uint8_t slot, uint8_t y_entry)
 {
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
-    SoundEnd inner;
-    FrameStep step;
+    ObjArm r = { 0 };
+    ObjArm inner;
     uint8_t y;
-    Ended e;
 
     WR8(ZP->raster_effect, 0x0B);
     WR8(ZP->raster_arg, 0xBF);
     jsr_push(0xB54E);
     inner = SpawnOnTimerInTable(slot);
     jsr_pop();
-    r.before = inner.before;
-    r.sounded = inner.sounded;
-    r.command = inner.command;
-    r.call = inner.call;
-    y = ended_y_or(inner.end, ended_y_or(inner.before, y_entry));
+    r.sub = obj_sub(inner);
+    y = spawn_then_step_y_shim(inner, y_entry);
     WR8(ZP->temp10, 0x68);
     WR8(ZP->temp11, 0xB5);
     jsr_push(0xB559);
-    step = StepObjectFrames(slot, &y);
+    r.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    e = then(then(then(inner.end, ended_load(0x68)), ended_load(0xB5)), ended_of_frame_step(step, step != FRAME_HELD, y));
-    if (step != FRAME_LIST_ENDED) {
-        r.end = e;
+    r.y = y;
+    if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
     WR8(ZP->raster_arg, 0);
     WR8(ZP->raster_effect, 0);
     WR8(OBJ->state[slot], 4);
     WR8(OBJ->f2800[slot], 0);
-    r.end = then(e, ended_load(4));
     return r;
+}
+
+/* The Y StepObjectFrames is entered with: what SpawnOnTimerInTable left, or the entry's. */
+static uint8_t spawn_then_step_y_shim(ObjArm inner, uint8_t y_entry)
+{
+    SoundEnd s = spawn_on_timer_in_table_exit_shim(inner);
+
+    return ended_y_or(s.end, ended_y_or(s.before, y_entry));
+}
+
+/* SpawnOnTimerInTable's sound and exit, then LDA #$68, LDA #$B5, the step, and LDA #4 when the list ended. */
+static SoundEnd set_raster_spawn_then_step_list_exit_shim(ObjArm r)
+{
+    SoundEnd s = spawn_on_timer_in_table_exit_shim(obj_arm(r.sub));
+    Ended e = ended_then(ended_then(ended_then(s.end, ended_load(0x68)), ended_load(0xB5)), frame_step_exit_shim(r));
+
+    s.end = r.step == FRAME_LIST_ENDED ? ended_then(e, ended_load(4)) : e;
+    return s;
 }
 
 void abi_SetRasterSpawnThenStepList(void)
 {
-    abi_sound_end(SetRasterSpawnThenStepList(cpu.x, cpu.y));
+    abi_sound_end(set_raster_spawn_then_step_list_exit_shim(SetRasterSpawnThenStepList(cpu.x, cpu.y)));
 }
 
 /*
@@ -986,25 +1220,35 @@ void abi_SetRasterSpawnThenStepList(void)
  * WAITS: no.
  * Entry: X object, Y the probe's column, C passed on. Exit: the mover's registers, then the new state's N and Z when landed.
  */
-LandWait LandThenNextState(uint8_t slot, uint8_t column, bool carry_in)
+MoverArm LandThenNextState(uint8_t slot, uint8_t column, bool carry_in)
 {
-    LandWait wait = { true, { 0 }, { 0 } };
-    uint8_t state;
+    MoverArm w = { true, { 0 }, { 0 } };
 
     jsr_push(0xB280);
-    wait.mover = StopOnLanding(4, slot, column, carry_in);
+    w.mover = StopOnLanding(4, slot, column, carry_in);
     jsr_pop();
-    if (!mover_landed(wait.mover)) {
-        return wait;
+    w.arm.flag = mover_landed(w.mover);
+    if (!w.arm.flag) {
+        return w;
     }
-    state = INC8(OBJ->state[slot]);
-    wait.end = ended_nz(state);
+    w.arm.first = INC8(OBJ->state[slot]);
+    return w;
+}
+
+/* The mover's registers; when landed, the INC's N and Z after them. */
+static LandWait land_then_next_state_exit_shim(MoverArm w)
+{
+    LandWait wait = { w.asked, w.mover, ended_kept() };
+
+    if (w.arm.flag) {
+        wait.end = ended_nz(w.arm.first);
+    }
     return wait;
 }
 
 void abi_LandThenNextState(void)
 {
-    land_wait_exit_shim(LandThenNextState(cpu.x, cpu.y, (cpu.p & P_C) != 0));
+    land_wait_exit_shim(land_then_next_state_exit_shim(LandThenNextState(cpu.x, cpu.y, (cpu.p & P_C) != 0)));
 }
 
 /*
@@ -1016,88 +1260,104 @@ void abi_LandThenNextState(void)
  * WAITS: no.
  * Entry: X object. Exit: the last instruction's registers.
  */
-Ended LoadThenSwingAndDrop(uint8_t slot)
+ObjArm LoadThenSwingAndDrop(uint8_t slot)
 {
-    ScaleResult scale;
-    AxisMove move;
+    ObjArm r = { 0 };
     Sum sum;
-    uint8_t state, nz, last, y, value, angle, count;
+    uint8_t y, value, angle;
     bool carry;
-    Ended e;
 
-    state = RD8(OBJ->state[slot]);
-    e = ended_load(state);
-    if (state == 0) {
+    r.third = RD8(OBJ->state[slot]);
+    if (r.third == 0) {
         jsr_push(0xB84D);
-        last = LoadObjectRecord(slot, &nz, &carry);
+        r.first = LoadObjectRecord(slot, &r.second, &carry);
         jsr_pop();
-        e = then(e, ended_of_record(last, nz, carry));
+        r.flag = carry;
         WR8(OBJ->y_lo[slot], 0xF0);
         y = RD8(OBJ->facing_left[slot]);
         value = rd8((uint16_t)(0xB86D + y));
         WR8(OBJ->vx_hi[slot], value);
-        e = then(then(then(e, ended_load(0xF0)), ended_with_y(ended_nz(y), y)), ended_load(value));
         jsr_push(0xB85E);
-        move = ApplyVelocityX(slot);
+        r.move = ApplyVelocityX(slot);
         jsr_pop();
-        e = then(e, ended_of_axis_move(move));
         y = RD8(OBJ->facing_left[slot]);
-        value = rd8((uint16_t)(0xB86F + y));
-        WR8(OBJ->vx_hi[slot], value);
+        r.fourth = y;
+        r.fifth = rd8((uint16_t)(0xB86F + y));
+        WR8(OBJ->vx_hi[slot], r.fifth);
         WR8(OBJ->f34b8[slot], 0x80);
-        return then(then(then(e, ended_with_y(ended_nz(y), y)), ended_load(value)), ended_load(0x80));
+        r.arm = SW_LOADED;
+        return r;
     }
-    e = then(e, ended_load(0));
     WR8(ZP->temp00, 0);
     WR8(ZP->temp01, 0x0C);
     angle = RD8(OBJ->f34b8[slot]);
-    e = then(then(e, ended_load(0x0C)), ended_load(angle));
     jsr_push(0xB87F);
-    scale = ScaleByCosine(angle);
+    r.scale = ScaleByCosine(angle);
     jsr_pop();
-    e = then(e, ended_of_scale(scale));
     value = rd8(zProduct2);
     WR8(OBJ->vy_hi[slot], value);
-    e = then(e, ended_load(value));
     value = rd8(zProduct1);
     WR8(OBJ->vy_lo[slot], value);
-    e = then(e, ended_load(value));
     jsr_push(0xB88C);
-    move = ApplyVelocityY(slot);
+    r.move = ApplyVelocityY(slot);
     jsr_pop();
-    e = then(e, ended_of_axis_move(move));
-    value = RD8(OBJ->f34b8[slot]);
-    sum = add_bytes(value, 0x08, false);
+    r.fourth = RD8(OBJ->f34b8[slot]);
+    sum = add_bytes(r.fourth, 0x08, false);
     WR8(OBJ->f34b8[slot], sum.value);
-    e = then(then(e, ended_load(value)), ended_of_sum(sum));
+    r.arm = SW_SWINGING;
     if (!sum.carry) {
-        return e;
+        return r;
     }
     WR8(OBJ->f34b8[slot], 0x80);
     WR8(OBJ->y_lo[slot], 0xF0);
-    e = then(then(e, ended_load(0x80)), ended_load(0xF0));
     jsr_push(0xB8A4);
-    move = ApplyVelocityX(slot);
+    r.move2 = ApplyVelocityX(slot);
     jsr_pop();
-    e = then(e, ended_of_axis_move(move));
     INC8(OBJ->f3510[slot]);
-    count = RD8(OBJ->f3510[slot]);
-    e = then(then(e, ended_load(count)), ended_compare(count, 5));
-    if (count >= 5) {
+    r.fifth = RD8(OBJ->f3510[slot]);
+    if (r.fifth >= 5) {
         ClearObject(slot);
-        return e;
+        r.arm = SW_CLEARED;
+        return r;
     }
-    y = (uint8_t)(count << 1);
-    e = then(e, ended_with_carry(ended_with_y(ended_load(y), y), false));
+    y = (uint8_t)(r.fifth << 1);
     value = rd8((uint16_t)(0xB8C0 + y));
     WR8(OBJ->y_lo[slot], value);
-    e = then(e, ended_load(value));
-    value = rd8((uint16_t)(0xB8C1 + y));
-    WR8(OBJ->y_hi[slot], value);
-    return then(e, ended_load(value));
+    r.sixth = rd8((uint16_t)(0xB8C1 + y));
+    WR8(OBJ->y_hi[slot], r.sixth);
+    r.arm = SW_PLACED;
+    return r;
+}
+
+/* State 0: the record and loads, ApplyVelocityX, the facing's LDY with the second speed's LDA, LDA #$80 (every flag the
+ * first loads left is set again by the move). Later: the scale (A and every flag the loads before it left set again),
+ * the product's loads, ApplyVelocityY, the angle's LDA and add of 8; on its carry LDA #$80, LDA #$F0, ApplyVelocityX,
+ * the count's LDA and CMP #5, then the ASL (C 0) and TAY and the table's two LDAs. */
+static Ended load_then_swing_and_drop_exit_shim(ObjArm r)
+{
+    Ended e;
+
+    if (r.arm == SW_LOADED) {
+        e = ended_then(ended_then(ended_load(0), record_exit_shim(r)), ended_of_axis_move(r.move));
+        e = ended_then(ended_then(e, ended_with_y(ended_nz(r.fourth), r.fourth)), ended_load(r.fifth));
+        return ended_then(e, ended_load(0x80));
+    }
+    e = ended_then(ended_load(r.third), ended_of_scale(r.scale));
+    e = ended_then(e, ended_of_axis_move(r.move));
+    e = ended_then(ended_then(e, ended_load(r.fourth)), ended_of_sum(add_bytes(r.fourth, 0x08, false)));
+    if (r.arm == SW_SWINGING) {
+        return e;
+    }
+    e = ended_then(ended_then(ended_then(e, ended_load(0x80)), ended_load(0xF0)), ended_of_axis_move(r.move2));
+    e = ended_then(ended_then(e, ended_load(r.fifth)), ended_compare(r.fifth, 5));
+    if (r.arm == SW_CLEARED) {
+        return e;
+    }
+    e = ended_then(e, ended_with_carry(ended_with_y(ended_load((uint8_t)(r.fifth << 1)), (uint8_t)(r.fifth << 1)), false));
+    return ended_then(e, ended_load(r.sixth));
 }
 
 void abi_LoadThenSwingAndDrop(void)
 {
-    abi_ended(LoadThenSwingAndDrop(cpu.x));
+    abi_ended(load_then_swing_and_drop_exit_shim(LoadThenSwingAndDrop(cpu.x)));
 }

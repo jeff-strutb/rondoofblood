@@ -350,12 +350,13 @@ typedef struct {
     uint8_t y; \
     bool flag, other; \
     FrameStep step; \
-    AxisMove move; \
+    AxisMove move, move2; \
     RandomResult random; \
     SideResult side; \
     PlayerDistance distance, distance2; \
     AngleExit angle; \
     ScaleResult scale; \
+    TurnAngleResult turn; \
     Sum sum; \
     bool sounded; \
     uint8_t command; \

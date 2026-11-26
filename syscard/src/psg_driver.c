@@ -25,7 +25,9 @@ enum {
     SLIDE_ON = 0x254B, SLIDE_COUNT = 0x2551, SLIDE_LOW = 0x2539, SLIDE_HIGH = 0x253F, SLIDE_AT = 0x2545, PORT_ON = 0x2527, PORT_COUNT = 0x252D,
     PORT_LOW = 0x2515, PORT_HIGH = 0x251B, PORT_AT = 0x2521, SCALE = 0x2533, SCALE_BASE = 0x2497, ENV_STATE = 0x260D, ENV_TIMER = 0x24BB,
     ENV_LEFT = 0x250F, ENV_LEVEL_LOW = 0x24EB, ENV_LEVEL_HIGH = 0x24F1, ENV_RATE_LOW = 0x24F7, ENV_RATE_HIGH = 0x24FD, ENV_RELEASE_LOW = 0x2503,
-    ENV_RELEASE_HIGH = 0x2509, ENV_AT = 0x24E5, VOLUME_BASE = 0x24AF, VOLUME_OUT = 0x25F3, ENV_LEVEL_MAX = 0x7C
+    ENV_RELEASE_HIGH = 0x2509, ENV_AT = 0x24E5, VOLUME_BASE = 0x24AF, VOLUME_OUT = 0x25F3, ENV_LEVEL_MAX = 0x7C, SONG_NEXT = 0x22E1, SONG_LIST = 0x22D0,
+    SONG_FLAGS = 0x22DE, SONG_CHANNEL_FLAGS = 0x22E2, NOTE_COUNT = 0x24A9, CHANNEL_DEFAULT_SHAPE = 0xD8A1, CHANNEL_START_LOW = 0x248B,
+    CHANNEL_START_HIGH = 0x2491, CHANNEL_LOOP_LOW = 0x24C1, CHANNEL_LOOP_HIGH = 0x24C7, SCALE_BASE_AT = 0x2497, ENV_RELEASE_HIGH_AT = 0x2509
 };
 
 /*
@@ -1183,4 +1185,134 @@ CardExit psg_volume_envelope(void)
 void abi_psg_volume_envelope(void)
 {
     card_exit_apply(psg_volume_envelope());
+}
+
+/* The arrays one channel of a song start clears, in the order the assembly clears them. */
+static const uint16_t SONG_CLEARED[] = {
+    0x260D, 0x24B5, 0x24AF, 0x2527, 0x254B, 0x2533, 0x2557, 0x2581, 0x2593, 0x25E1, 0x24CD, 0x255D, 0x2569, 0x2575, 0x24D3
+};
+
+/*
+ * @card 02:CD45 psg_start_song
+ * WHAT IT DOES: Starts the song that was asked for, if one was: sets up each channel the song's header names.
+ * HOW: $22E1 the song asked for (bit 7 set: none, or already started); the song's header found through the pointer at $22D0 and the list
+ * of headers, its first byte a mask of channels (bit 7 set: it is a song); for each channel in the mask the state, counts and effects
+ * arrays cleared, the default shape, balance and scale set, the channel's start pointer taken from the header, the flags set from
+ * $22E2 if the header's bit 6 says so; then the fade cleared, the song marked started and the player's done flag cleared.
+ * WAITS: no.
+ * Entry: nothing. Exit: A $40, X 6, Y the bytes of the header read, C 1, N and V from the done flags' old byte, Z from A and it.
+ */
+CardExit psg_start_song(void)
+{
+    Trk t = { 0 };
+    uint8_t value;
+    uint8_t mask;
+    uint8_t header;
+    uint8_t x;
+    uint8_t y;
+
+    value = rd8(SONG_NEXT);
+    t_a(&t, value);
+    if ((value & 0x80) != 0)
+        return t_exit(&t);
+    t_asl(&t);
+    y = t.a;
+    t.y = y;
+    t.y_set = true;
+    t_xy_nz(&t, y);
+    value = rd8(SONG_LIST);
+    t_a(&t, value);
+    wr8(ZP_EA, value);
+    value = rd8((uint16_t)(SONG_LIST + 1));
+    t_a(&t, value);
+    wr8(ZP_EB, value);
+    value = rd8_zp_y(ZP_EA, y);
+    t_a(&t, value);
+    wr8(ZP_E8, value);
+    y++;
+    t.y = y;
+    t_xy_nz(&t, y);
+    value = rd8_zp_y(ZP_EA, y);
+    t_a(&t, value);
+    wr8(ZP_E9, value);
+    header = rd8_zp_y(ZP_E8, 0);
+    t_a(&t, header);
+    if ((header & 0x80) == 0)
+        return t_exit(&t);
+    wr8(ZP_EA, header);
+    wr8(ZP_EB, header);
+    y = 0;
+    t.y = 0;
+    for (x = 0; x < CHANNELS; x++) {
+        bool take;
+
+        t.x = x;
+        t.x_set = true;
+        mask = rd8(ZP_EA);
+        take = (mask & 1) != 0;
+        wr8(ZP_EA, (uint8_t)(mask >> 1));
+        t_nz(&t, (uint8_t)(mask >> 1));
+        t.c = take;
+        t.c_set = true;
+        if (take) {
+            t_a(&t, 1);
+            wr8((uint16_t)(CHANNEL_STATE + x), 1);
+            wr8((uint16_t)(NOTE_COUNT + x), 1);
+            for (unsigned i = 0; i < sizeof SONG_CLEARED / sizeof SONG_CLEARED[0]; i++)
+                wr8((uint16_t)(SONG_CLEARED[i] + x), 0);
+            value = rd8(CHANNEL_DEFAULT_SHAPE);
+            t_a(&t, value);
+            wr8((uint16_t)(SHAPE_LOW + x), value);
+            value = rd8((uint16_t)(CHANNEL_DEFAULT_SHAPE + 1));
+            t_a(&t, value);
+            wr8((uint16_t)(SHAPE_HIGH + x), value);
+            t_a(&t, 0x84);
+            wr8((uint16_t)(ENV_RELEASE_HIGH_AT + x), 0x84);
+            t_a(&t, 4);
+            wr8((uint16_t)(SCALE_BASE_AT + x), 4);
+            y++;
+            t.y = y;
+            t_xy_nz(&t, y);
+            value = rd8_zp_y(ZP_E8, y);
+            t_a(&t, value);
+            wr8((uint16_t)(CHANNEL_START_LOW + x), value);
+            wr8((uint16_t)(CHANNEL_LOOP_LOW + x), value);
+            y++;
+            t.y = y;
+            t_xy_nz(&t, y);
+            value = rd8_zp_y(ZP_E8, y);
+            t_a(&t, value);
+            wr8((uint16_t)(CHANNEL_START_HIGH + x), value);
+            wr8((uint16_t)(CHANNEL_LOOP_HIGH + x), value);
+            t_a(&t, 0x80);
+            t_cmp(&t, x, 4);
+            if (x >= 4)
+                wr8((uint16_t)(NOISE_AT + x), 0x80);
+            wr8((uint16_t)(FLAGS_AT + x), 0x80);
+            value = rd8(ZP_EB);
+            if ((value & 0x40) != 0) {
+                value = rd8(SONG_CHANNEL_FLAGS);
+                t_a(&t, value);
+                wr8((uint16_t)(FLAGS_AT + x), value);
+            }
+        }
+        t.x = (uint8_t)(x + 1);
+        t_xy_nz(&t, t.x);
+        t_cmp(&t, t.x, CHANNELS);
+    }
+    t.x = CHANNELS;
+    wr8(TEMPO_ON, 0);
+    wr8(TEMPO_TICKS, 0);
+    value = rd8(SONG_NEXT);
+    wr8(SONG_NEXT, (uint8_t)(value | 0x80));
+    t_mask(&t, 0x80, value, true);
+    value = rd8(SONG_FLAGS);
+    wr8(SONG_FLAGS, (uint8_t)(value & ~0x40));
+    t_mask(&t, 0x40, value, false);
+    return t_exit(&t);
+}
+
+void abi_psg_start_song(void)
+{
+    card_exit_apply(psg_start_song());
 }

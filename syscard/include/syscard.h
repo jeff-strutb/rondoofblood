@@ -452,4 +452,6 @@ CardExit psg_add_pitch(uint8_t x);
 
 CardExit psg_volume_envelope(void);
 
+CardExit psg_start_song(void);
+
 #endif

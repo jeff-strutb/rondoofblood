@@ -351,7 +351,7 @@ typedef struct {
     bool flag, other; \
     FrameStep step; \
     AxisMove move; \
-    RandomResult random; \
+    RandomResult random, random2, random3; \
     SideResult side; \
     PlayerDistance distance, distance2; \
     AngleExit angle; \
@@ -363,12 +363,14 @@ typedef struct {
     bool screen_called; \
     SoundOnScreen screen; \
     TileRun run; \
-    Sum sum2, sum3; \
+    Sum sum2, sum3, sum4; \
     AxisMove move2; \
     GravityResult gravity; \
     SoleSlot sole; \
     uint8_t bytes[32]; \
-    uint16_t target;
+    uint16_t target; \
+    ScaleResult scale, scale2; \
+    TrackPlay track;
 
 /* The fields alone: a callee's result kept at the deepest level. */
 typedef struct {

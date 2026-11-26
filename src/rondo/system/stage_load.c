@@ -102,7 +102,7 @@ StageEnterRun StageEnter(void)
     wr8(zField95, 5);
     wr8(zField8C, (uint8_t)(rd8(zField8C) & 0x7F));
     jsr_push(0x6CC5);
-    reset_game_state_entered();
+    ResetGameState();
     jsr_pop();
     jsr_push(0x6CC8);
     run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */

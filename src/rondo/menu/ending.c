@@ -2121,7 +2121,7 @@ Exit EndingCommandStartList(void)
     StartListChannel0Kind2(list);
     jsr_pop();
     jsr_push(0x8098);
-    ClearScreenState(0, 3);   /* X 0 from the list start, Y 3 from EndingScriptStep */
+    ClearScreenState();
     jsr_pop();
     jsr_push(0x809B);
     EndingClearObjects();
@@ -2466,7 +2466,7 @@ Exit EndingBegin(void)
     Exit exit = { 0 };
 
     jsr_push(0x800E);
-    reset_game_state_entered();
+    ResetGameState();
     jsr_pop();
     WR8(ZP->ENDING_PTR, 0xA3);
     WR8(ZP->ENDING_PTR_HI, 0x8A);

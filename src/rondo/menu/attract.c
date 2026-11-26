@@ -51,7 +51,7 @@ void abi_AttractFrameTick(void)
  * Entry: nothing. Exit: N and Z from the byte last decremented, C and the registers as
  * ResetGameState leaves them (kept when the count has not run out).
  */
-AttractEnd AttractEndCountdown(uint8_t kept_x, uint8_t kept_y)
+AttractEnd AttractEndCountdown(void)
 {
     AttractEnd end;
 
@@ -61,7 +61,7 @@ AttractEnd AttractEndCountdown(uint8_t kept_x, uint8_t kept_y)
         return end;
     }
     jsr_push(0x87DA);
-    ResetGameState(kept_x, kept_y);
+    ResetGameState();
     jsr_pop();
     end.value = DEC8(ZP->mode_done);
     end.reset = true;
@@ -70,7 +70,7 @@ AttractEnd AttractEndCountdown(uint8_t kept_x, uint8_t kept_y)
 
 void abi_AttractEndCountdown(void)
 {
-    AttractEnd end = AttractEndCountdown(cpu.x, cpu.y);
+    AttractEnd end = AttractEndCountdown();
 
     if (end.reset) {
         reset_game_state_exit_shim();
@@ -120,10 +120,10 @@ void abi_ClearAllObjects(void)
  * inside ResetGameState (its C does not yet place the frame of its own call to the vblank wait);
  * this routine's own accesses agree up to that call.
  */
-uint8_t AttractBegin(uint8_t kept_x, uint8_t kept_y)
+uint8_t AttractBegin(void)
 {
     jsr_push(0x871D);
-    ResetGameState(kept_x, kept_y);
+    ResetGameState();
     jsr_pop();
     WR8(ZP->_gap_007C[2], 0x98);
     WR8(ZP->_gap_007C[3], 0x8F);
@@ -134,7 +134,7 @@ uint8_t AttractBegin(uint8_t kept_x, uint8_t kept_y)
 
 void abi_AttractBegin(void)
 {
-    uint8_t state = AttractBegin(cpu.x, cpu.y);
+    uint8_t state = AttractBegin();
 
     reset_game_state_exit_shim();
     cpu.a = 0xFF;
@@ -362,7 +362,7 @@ Exit ScriptStartListAndClear(void)
     StartListChannel0Kind2(list);
     jsr_pop();
     jsr_push(0x8861);
-    ClearScreenState(0, 3);   /* X 0 from the list start, Y 3 from ScriptStep */
+    ClearScreenState();
     jsr_pop();
     jsr_push(0x8864);
     ClearAllObjects();

@@ -1849,9 +1849,13 @@ void call_return_point(void)
         return;
     nest = s->nest;
     for (j = s->cur;; j++) {
+        uint64_t end0 = s->end;
         Ev *e = sev(s, j, &nest);
         uint64_t r;
 
+        if (!e && end0 == SPAN_OPEN && s->end != SPAN_OPEN && getenv("RONDO_DIAG_CTX"))
+            fprintf(stderr, "RETPOINT %s frame %lu: scan from %llu found the call's end at %llu (nest at start %d)\n",
+                    rondo_tags[s->tag].name, cur_frame, (unsigned long long)s->cur, (unsigned long long)s->end, s->nest);
         if (e && is_noise(e) && e->type != EV_RTPULL)
             continue;            /* a read of ROM or a poke between the C's last access and the interrupt (uncounted) */
         if (e && (e->type == EV_CLOSE || e->type == EV_RET))
@@ -1868,6 +1872,7 @@ void call_return_point(void)
         if (e && e->type == EV_FRAME) {
             /* The frame ended in the original with the call's RTS not yet run (the pulls follow): the hash is taken with
              * the frame still on the stack, as the record took it. */
+            s->nest = nest;      /* the nested CLOSEs passed are behind the cursor now */
             frame_pass(s, j, 0);
             s->cur = j + 1;
             continue;
@@ -1877,6 +1882,7 @@ void call_return_point(void)
         r = section_end(s, j);
         if (r == NO_RETURN)
             break;
+        s->nest = nest;
         hy_int_pass(s, j, r);
         s->cur = r + 1;
         j = r;

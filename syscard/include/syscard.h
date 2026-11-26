@@ -419,4 +419,6 @@ void ex_joysns_exit_shim(CardExit e);
 CardExit init_card_hardware(void);
 CardExit card_boot_init(uint8_t a, uint8_t x, uint8_t y);
 
+CardExit check_boot_disc(uint8_t entry_a, uint8_t entry_x, uint8_t entry_y);
+
 #endif

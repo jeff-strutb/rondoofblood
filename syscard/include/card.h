@@ -29,6 +29,8 @@ void st1(uint8_t value);
 void st2(uint8_t value);
 uint8_t tma(uint8_t mpr_bit);
 void tam(uint8_t mpr_bits, uint8_t bank);
+/* A JSR into original code the card does not hold (the program the disc loaded): ret is the address after the JSR, the registers are cpu's. */
+void call_orig(uint16_t ret, uint16_t addr);
 /* A tail jump (JMP) the routine makes at the instruction `from` into original code: the registers are cpu's. */
 void call_original_at(uint16_t from, uint16_t addr);
 void cli(void);

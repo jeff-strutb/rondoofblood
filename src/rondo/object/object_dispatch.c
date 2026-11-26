@@ -11,6 +11,9 @@
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
 
+/* The arms a dispatch by kind ends on. */
+enum { DK_NONE, DK_JUMP };
+
 enum { HIT_STATE = 5, HIT_LIMIT = 5, BLINK_LIMIT = 0x18, BLINK_FLAG = 0x86, BLINK_WAVE_MASK = 0x02 };
 
 /*
@@ -905,29 +908,34 @@ void jump_shim(Ended end, uint16_t target)
  * Entry: X object. Exit: as the code jumped to; A the table's high byte, Y the index, N and Z from A,
  * C and V from the kind's subtract and shift.
  */
-Jump JumpByKindTable(uint8_t slot)
+ObjArm JumpByKindTable(uint8_t slot)
 {
-    Jump jump = { { 0 }, 0, false };
-    uint8_t kind, index, low, high;
-    Sum diff;
+    ObjArm r = { 0 };
+    uint8_t kind, low;
 
     kind = RD8(OBJ->kind[slot]);
-    diff = sub_bytes(kind, 0x83, true);
-    index = (uint8_t)(diff.value << 1);
-    low = rd8((uint16_t)(0xA56B + index));
+    r.sum = sub_bytes(kind, 0x83, true);
+    r.first = (uint8_t)(r.sum.value << 1);
+    low = rd8((uint16_t)(0xA56B + r.first));
     WR8(ZP->temp00, low);
-    high = rd8((uint16_t)(0xA56C + index));
-    WR8(ZP->temp01, high);
-    jump.end = ended_with_y(ended_load(high), index);
-    jump.end = ended_with_carry(ended_with_overflow(jump.end, diff.overflow), (diff.value & 0x80) != 0);
-    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
-    jump.jumps = true;
+    r.second = rd8((uint16_t)(0xA56C + r.first));
+    WR8(ZP->temp01, r.second);
+    r.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return r;
+}
+
+static Jump jump_by_kind_table_exit_shim(ObjArm r)
+{
+    Jump jump = { { 0 }, r.target, true };
+
+    jump.end = ended_with_y(ended_load(r.second), r.first);
+    jump.end = ended_with_carry(ended_with_overflow(jump.end, r.sum.overflow), (r.sum.value & 0x80) != 0);
     return jump;
 }
 
 void abi_JumpByKindTable(void)
 {
-    Jump jump = JumpByKindTable(cpu.x);
+    Jump jump = jump_by_kind_table_exit_shim(JumpByKindTable(cpu.x));
 
     jump_shim(jump.end, jump.target);
 }
@@ -1137,36 +1145,38 @@ void abi_ClearWhenCountEnds(void)
  * table): an object with a kind goes to the code the table names for its kind less one; kind 0 does
  * nothing.
  */
-static Jump dispatch_by_kind(uint8_t slot, uint16_t table)
+static ObjArm dispatch_by_kind(uint8_t slot, uint16_t table)
 {
-    Jump jump = { { 0 }, 0, false };
-    uint8_t kind, less, index, low, high;
+    ObjArm r = { 0 };
+    uint8_t low;
 
-    kind = RD8(OBJ->kind[slot]);
-    if (kind == 0) {
-        jump.end = ended_load(0);
-        return jump;
+    r.first = RD8(OBJ->kind[slot]);
+    r.arm = DK_NONE;
+    if (r.first == 0) {
+        return r;
     }
-    less = (uint8_t)(kind - 1);
-    index = (uint8_t)(less << 1);
-    low = rd8((uint16_t)(table + index));
+    r.second = (uint8_t)(r.first - 1);
+    r.third = (uint8_t)(r.second << 1);
+    low = rd8((uint16_t)(table + r.third));
     WR8(ZP->temp00, low);
-    high = rd8((uint16_t)(table + 1 + index));
-    WR8(ZP->temp01, high);
-    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (less & 0x80) != 0);
-    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
-    jump.jumps = true;
-    return jump;
+    r.fourth = rd8((uint16_t)(table + 1 + r.third));
+    WR8(ZP->temp01, r.fourth);
+    r.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    r.arm = DK_JUMP;
+    return r;
 }
 
 /* The jump of a dispatch: the registers it leaves, and the code if there is one. */
-void dispatch_exit_shim(Jump jump)
+void dispatch_exit_shim(ObjArm r)
 {
-    if (jump.jumps) {
-        jump_shim(jump.end, jump.target);
-    } else {
-        abi_ended(jump.end);
+    Ended end;
+
+    if (r.arm == DK_NONE) {
+        abi_ended(ended_load(0));
+        return;
     }
+    end = ended_with_carry(ended_with_y(ended_load(r.fourth), r.third), (r.second & 0x80) != 0);
+    jump_shim(end, r.target);
 }
 
 /*
@@ -1180,7 +1190,7 @@ void dispatch_exit_shim(Jump jump)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind0259(uint8_t slot)
+ObjArm DispatchByKind0259(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAB3A);
 }
@@ -1201,7 +1211,7 @@ void abi_DispatchByKind0259(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind07D9(uint8_t slot)
+ObjArm DispatchByKind07D9(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAA72);
 }
@@ -1222,7 +1232,7 @@ void abi_DispatchByKind07D9(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind0889(uint8_t slot)
+ObjArm DispatchByKind0889(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAA35);
 }
@@ -1243,7 +1253,7 @@ void abi_DispatchByKind0889(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind0A99(uint8_t slot)
+ObjArm DispatchByKind0A99(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAB77);
 }
@@ -1264,7 +1274,7 @@ void abi_DispatchByKind0A99(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind0CA9(uint8_t slot)
+ObjArm DispatchByKind0CA9(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAB9D);
 }
@@ -1285,7 +1295,7 @@ void abi_DispatchByKind0CA9(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind0E09(uint8_t slot)
+ObjArm DispatchByKind0E09(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAAAA);
 }
@@ -1306,7 +1316,7 @@ void abi_DispatchByKind0E09(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind10C9(uint8_t slot)
+ObjArm DispatchByKind10C9(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAB4A);
 }
@@ -1327,7 +1337,7 @@ void abi_DispatchByKind10C9(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind12D9(uint8_t slot)
+ObjArm DispatchByKind12D9(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xABAF);
 }
@@ -1348,7 +1358,7 @@ void abi_DispatchByKind12D9(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind16C9(uint8_t slot)
+ObjArm DispatchByKind16C9(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAB0D);
 }
@@ -1369,7 +1379,7 @@ void abi_DispatchByKind16C9(void)
  * Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
  * N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
  */
-Jump DispatchByKind18D9(uint8_t slot)
+ObjArm DispatchByKind18D9(uint8_t slot)
 {
     return dispatch_by_kind(slot, 0xAAD5);
 }

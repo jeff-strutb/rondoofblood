@@ -460,6 +460,8 @@ static Ended l8_drop_piece_exit_shim(L8DropPieceArm r)
         e = then(e, ended_load(r.placed));
         e = then(e, ended_of_sum(r.feet));
     }
+    e = then(e, ended_load(6));
+    e = then(e, ended_load(PIECE_FALL_STEP));
     return then(e, ended_nz(r.count));
 }
 

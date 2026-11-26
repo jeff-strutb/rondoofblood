@@ -273,15 +273,64 @@ static inline Ended l8_script1_ended(uint8_t x, uint8_t script)
 }
 
 /* object/enemies_l8_st11.c */
-Ended LoadRecordOrCapPlayerX(uint8_t slot);
-Ended StartAtX120OrApplyVelocity(uint8_t slot);
-Ended SetBossFixedFields(void);
-Ended CountdownThenNextState(uint8_t slot);
-Ended SetTimerThenNextState(uint8_t slot, uint8_t timer);
-Ended SpawnPiece21Mask1F(uint8_t slot);
-Ended SpawnPiece21UnlessMasked(uint8_t slot, uint8_t mask);
-Ended CountdownThenSpawnPieces(uint8_t slot);
-Ended HoldScrollStepThenNextState(uint8_t slot);
+/* SpawnPiece21UnlessMasked, SpawnPiece21Mask1F: the AND of the mask and the scroll byte, and when 0 the slot search and the start. */
+typedef struct {
+    bool started;
+    uint8_t anded, placed;
+    L8Slot found;
+} L8St11Spawn;
+
+/* CountdownThenNextState: the arm, the fixed fields' value, the count, the spawn or the new state. */
+typedef struct {
+    int arm;
+    uint8_t fixed, timer, state;
+    L8St11Spawn spawn;
+} L8St11CountArm;
+
+/* CountdownThenSpawnPieces: the fixed fields' value, the count, the new state or the first spawn, the scroll byte masked, the random bits and the second spawn. */
+typedef struct {
+    int arm;
+    uint8_t fixed, timer, state, masked, bits, placed;
+    L8St11Spawn spawn;
+    RandomResult random;
+    L8Slot found;
+} L8St11PiecesArm;
+
+/* HoldScrollStepThenNextState: the fixed fields' value, the table step, the scroll bytes, the new state or the last step count. */
+typedef struct {
+    int arm;
+    uint8_t fixed, high, low, state, step;
+    L8Arm table;
+} L8St11HoldArm;
+
+/* StartBossWhenStageC0OrLoad: the fixed fields' value, the requested stage, the record, the scroll count, the slot pulled and the track call. */
+typedef struct {
+    int arm;
+    uint8_t fixed, stage, counted, pulled;
+    L8Record record;
+    TrackPlay track;
+} L8St11StartBossArm;
+
+/* StepScrollThenMoveOrFadeOut: the table step, the bytes tested, the line, the target, Y, the scroll byte, the speed's subtract, the slot pulled, the new state and the fade's nibble. */
+typedef struct {
+    int arm;
+    uint8_t joined, vy, card, line, target, y, scroll, pulled, state, nibble;
+    L8Arm table;
+    Sum diff;
+} L8St11FadeArm;
+
+L8Arm LoadRecordOrCapPlayerX(uint8_t slot);
+L8Arm StartAtX120OrApplyVelocity(uint8_t slot);
+uint8_t SetBossFixedFields(void);
+Ended l8_boss_fixed_exit_shim(uint8_t value);
+L8St11CountArm CountdownThenNextState(uint8_t slot);
+uint8_t SetTimerThenNextState(uint8_t slot, uint8_t timer);
+Ended l8_next_state_exit_shim(uint8_t state);
+L8St11Spawn SpawnPiece21Mask1F(uint8_t slot);
+Ended l8_spawn_piece21_mask1f_exit_shim(L8St11Spawn r);
+L8St11Spawn SpawnPiece21UnlessMasked(uint8_t slot, uint8_t mask);
+L8St11PiecesArm CountdownThenSpawnPieces(uint8_t slot);
+L8St11HoldArm HoldScrollStepThenNextState(uint8_t slot);
 
 /* object/enemies_l8_st12.c */
 /* The structs the converted routines of st12 return where L8Arm does not fit: the arm and the values behind it. */
@@ -541,31 +590,131 @@ L8Arm LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry);
 L8Arm LoadRecordRandomLiftThenMoveOrClear(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st15.c */
-Ended LoadRecordThenRecordEventAtFifth(uint8_t slot, uint8_t y_entry);
-Ended FlagThenHitsCompare(uint8_t slot);
-Ended EnterState5WhenFlagged(uint8_t slot);
-Ended LoadRecordStartTwoPieces(uint8_t slot);
-Ended SetUpEntryFromLeft(uint8_t slot);
-Ended StepListMoveXThenTurnUp(uint8_t slot, uint8_t y_entry);
-Ended WaitForScreenByte2(uint8_t slot);
-SoundEnd CountDownThenSound84AndAppear(uint8_t slot, uint8_t y_entry);
-Ended StepListFallAndSwing(uint8_t slot, uint8_t y_entry);
-Ended CountDownThenLeaveRight(uint8_t slot);
-Ended InsideCenterBand(uint8_t slot);
-Ended FacingByX(uint8_t slot);
-Ended StepListThenTurnAround(uint8_t slot, uint8_t y_entry);
-Ended StepListThenCountDownToState4(uint8_t slot, uint8_t y_entry);
-Ended PickNextPhaseFromTable(uint8_t slot);
-SoundEnd StepListThenLeapWithSound(uint8_t slot, uint8_t y_entry);
-Ended FlyAndSagWithTwoLists(uint8_t slot);
-SoundEnd SoundEvery32Frames(uint8_t slot, uint8_t y_entry);
-Ended PickRandomThenState3(uint8_t slot);
-Ended StepListSlowDownThenPickRandom(uint8_t slot, uint8_t y_entry);
-Ended EdgeCodeByDirection(uint8_t slot);
-Ended TurnTowardCenterOrWait(uint8_t slot);
-Ended StepSideToSideWithCenterCheck(uint8_t slot, uint8_t y_entry);
-SoundEnd StepListThenSoundAndSpawn(uint8_t slot, uint8_t y_entry);
-SoundEnd StepListThenBurstAtFrame14(uint8_t slot, uint8_t y_entry);
+/* The structs the converted routines of st15 return where L8Arm does not fit: the arm and the values behind it. */
+/* SoundEvery32Frames, CountDownThenSound84AndAppear: the values read or made and the sound call when one was made. */
+typedef struct {
+    int arm;
+    uint8_t first, second;
+    CommandCall call;
+} L8St15Sound;
+
+/* LoadRecordThenRecordEventAtFifth: the load, the list step, the hits, the event record, the kind, the slot search, the start and the move. */
+typedef struct {
+    int arm;
+    L8Load load;
+    L8Step step;
+    uint8_t hits, stored, event, byte, kind, placed;
+    bool marked;
+    L8Slot found;
+    AxisMove move;
+} L8St15Fifth;
+
+/* InsideCenterBand: the arm, the byte it read last (the A it leaves) and whether the object is outside (C). */
+typedef struct {
+    int arm;
+    uint8_t a;
+    bool outside;
+} L8St15Band;
+
+/* FacingByX: the high byte, the low byte (on the first screen), the answer (A) and the side of the player (off it). */
+typedef struct {
+    int arm;
+    uint8_t high, low, a;
+    SideResult side;
+} L8St15Facing;
+
+/* EdgeCodeByDirection: the direction read, the band's result and the answer (A). */
+typedef struct {
+    int arm;
+    uint8_t direction, code;
+    L8St15Band band;
+} L8St15Edge;
+
+/* StepListThenLeapWithSound: the list step, the sound call, the facing, its index and the count. */
+typedef struct {
+    int arm;
+    L8Step step;
+    CommandCall call;
+    uint8_t facing, index, count;
+} L8St15Leap;
+
+/* StepListSlowDownThenPickRandom: the list step, the move, the frame bits, the halve, the speed bytes read (twice) and the pick's result. */
+typedef struct {
+    int arm;
+    L8Step step;
+    AxisMove move;
+    uint8_t bits, high, low, high2, low2;
+    ArithExit halved;
+    L8Arm pick;
+} L8St15Slow;
+
+/* TurnTowardCenterOrWait: the counts, the random number and the sum, the band, the rotated byte and its low bit, the side and the facing. */
+typedef struct {
+    int arm;
+    uint8_t count, shifted, bit, facing, count2;
+    RandomResult random;
+    Sum sum;
+    L8St15Band band;
+    L8St15Facing side;
+} L8St15Turn;
+
+/* StepSideToSideWithCenterCheck: the facing and its index, the list step, the move, the edge code, the timer, the counts, the side bits and the facing. */
+typedef struct {
+    int arm;
+    uint8_t facing, index, value, timer, count, bits, current, count2;
+    L8Step step;
+    AxisMove move;
+    L8St15Edge edge;
+    SideResult side;
+} L8St15Side;
+
+/* StepListThenSoundAndSpawn: the list step, the pick, the animation step read (twice), the sound call, the bits, the slot search, the start and the facing. */
+typedef struct {
+    int arm;
+    L8Step step;
+    L8Arm pick;
+    bool checked, sounded;
+    uint8_t anim1, anim2, bits, placed, facing;
+    CommandCall call;
+    L8Slot found;
+} L8St15Spawn;
+
+/* StepListThenBurstAtFrame14: the list step, the pick, the frame, the sound call, the start and the facing. */
+typedef struct {
+    int arm;
+    L8Step step;
+    L8Arm pick;
+    uint8_t frame, placed, facing;
+    CommandCall call;
+} L8St15Burst;
+
+L8St15Fifth LoadRecordThenRecordEventAtFifth(uint8_t slot, uint8_t y_entry);
+L8Arm FlagThenHitsCompare(uint8_t slot);
+Ended l8_flag_then_hits_exit_shim(L8Arm r);
+L8Arm EnterState5WhenFlagged(uint8_t slot);
+Ended l8_enter_state5_exit_shim(L8Arm r);
+L8Arm LoadRecordStartTwoPieces(uint8_t slot);
+uint8_t SetUpEntryFromLeft(uint8_t slot);
+L8Arm StepListMoveXThenTurnUp(uint8_t slot, uint8_t y_entry);
+L8Arm WaitForScreenByte2(uint8_t slot);
+L8St15Sound CountDownThenSound84AndAppear(uint8_t slot, uint8_t y_entry);
+L8Arm StepListFallAndSwing(uint8_t slot, uint8_t y_entry);
+L8Arm CountDownThenLeaveRight(uint8_t slot);
+L8St15Band InsideCenterBand(uint8_t slot);
+L8St15Facing FacingByX(uint8_t slot);
+L8Arm StepListThenTurnAround(uint8_t slot, uint8_t y_entry);
+L8Arm StepListThenCountDownToState4(uint8_t slot, uint8_t y_entry);
+L8Arm PickNextPhaseFromTable(uint8_t slot);
+L8St15Leap StepListThenLeapWithSound(uint8_t slot, uint8_t y_entry);
+L8Arm FlyAndSagWithTwoLists(uint8_t slot);
+L8St15Sound SoundEvery32Frames(uint8_t slot, uint8_t y_entry);
+L8Arm PickRandomThenState3(uint8_t slot);
+L8St15Slow StepListSlowDownThenPickRandom(uint8_t slot, uint8_t y_entry);
+L8St15Edge EdgeCodeByDirection(uint8_t slot);
+L8St15Turn TurnTowardCenterOrWait(uint8_t slot);
+L8St15Side StepSideToSideWithCenterCheck(uint8_t slot, uint8_t y_entry);
+L8St15Spawn StepListThenSoundAndSpawn(uint8_t slot, uint8_t y_entry);
+L8St15Burst StepListThenBurstAtFrame14(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st16.c */
 /* The structs the converted routines of st16 return where L8Arm does not fit: the arm and the values behind it. */
@@ -652,14 +801,68 @@ L8St16ScreenArm LoadRecordThenClearEnemiesAtScreen2(uint8_t slot, uint8_t y_entr
 L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot);
 
 /* object/enemies_l8_st17.c */
-Ended StartRingOfPieces(uint8_t slot);
-Ended LoadRecordFlingThenFall(uint8_t slot);
-Ended LoadRecordFacingLeftRising(uint8_t slot);
-SoundEnd SoundBAAtScreen2(uint8_t slot, uint8_t y_entry);
-Ended LoadRecordThenDrawTileScript2(uint8_t slot);
-Ended ScatterPiecesDownward(uint8_t slot);
-SoundEnd ClearWhenHurtThenWait(uint8_t slot, uint8_t y_entry);
-SoundEnd DrawTileScriptStepsThenScatter(uint8_t slot, uint8_t y_entry);
+/* StartRingOfPieces: the last pass of the loop: the slot search, and when the last number was placed the number and the last byte copied. */
+typedef struct {
+    int arm;
+    L8Slot found;
+    uint8_t number, value;
+} L8St17RingArm;
+
+/* SoundBAAtScreen2: the screen byte, and when it was 2 the sound call and the state after the INC. */
+typedef struct {
+    bool sounded;
+    uint8_t screen, count;
+    CommandCall call;
+} L8St17ScreenArm;
+
+/* LoadRecordThenDrawTileScript2: the flag, and when it was clear the record and the tile run. */
+typedef struct {
+    bool cleared;
+    uint8_t flag;
+    L8Record record;
+    TileRun run;
+} L8St17DrawArm;
+
+/* ScatterPiecesDownward: one pass of its loop (the slot search, the start, the parity of the count and the speed it picks, the move, the slot read back, the count less 1 stored, the count after the DEC). */
+typedef struct {
+    L8Slot found;
+    uint8_t placed, parity, speed, slot, left, dec;
+    AxisMove move;
+} L8St17ScatterPass;
+
+/* ScatterPiecesDownward: the first add, each pass (the last one only reaching its slot search when none was free) and the closing subtract. */
+typedef struct {
+    Sum first, last;
+    unsigned passes;
+    L8St17ScatterPass pass[17];
+} L8St17ScatterArm;
+
+/* ClearWhenHurtThenWait: the hits, the health when 1 to 4 hits were taken, and the sound call of the wait arm. */
+typedef struct {
+    int arm;
+    uint8_t hits, health;
+    CommandCall call;
+} L8St17HurtArm;
+
+/* DrawTileScriptStepsThenScatter: the X high byte, the hits, the step, the add and the item, the tile run, the sound call, the scatter, the counts after it and the table values. */
+typedef struct {
+    int arm;
+    uint8_t high, hits, steps, item, count, after, index, value, state_inc;
+    Sum sum;
+    TileRun run;
+    CommandCall call;
+    L8St17ScatterArm scatter;
+} L8St17StepsArm;
+
+L8St17RingArm StartRingOfPieces(uint8_t slot);
+Ended l8_ring_exit_shim(L8St17RingArm r);
+L8Arm LoadRecordFlingThenFall(uint8_t slot);
+L8Record LoadRecordFacingLeftRising(uint8_t slot);
+L8St17ScreenArm SoundBAAtScreen2(uint8_t slot, uint8_t y_entry);
+L8St17DrawArm LoadRecordThenDrawTileScript2(uint8_t slot);
+L8St17ScatterArm ScatterPiecesDownward(uint8_t slot);
+L8St17HurtArm ClearWhenHurtThenWait(uint8_t slot, uint8_t y_entry);
+L8St17StepsArm DrawTileScriptStepsThenScatter(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st18.c */
 /* StepListThenPickStateByLuck: the state, the frame and the count of the frame 4 arm, the list step, and what the pick read and made. */
@@ -730,25 +933,163 @@ L8SpawnPieceArm MaybeSound19AndSpawnPiece(uint8_t slot, uint8_t number, uint8_t 
 SoundEnd l8_sound19_piece_exit_shim(L8SpawnPieceArm r);
 
 /* object/enemies_l8_st19.c */
-Ended LoadRecordInStateZero(uint8_t slot);
-Ended FaceThePlayerByStateTable(uint8_t slot);
-Ended StateTableHurtFlag(uint8_t slot);
-SoundEnd EnterState0FWhenFlagged(uint8_t slot, uint8_t y_entry);
-Ended HitBoxByFrameTable(uint8_t slot);
-Ended LoadRecordStartPieceAtPlace(uint8_t slot);
-Ended StartScriptsFromTable(uint8_t slot);
-ExitChain FallToGroundAt98(uint8_t slot, uint8_t y_entry, bool carry_in);
-ExitChain FallThenSoundAtGround(uint8_t slot, uint8_t y_entry, bool carry_in);
-ExitChain MoveXAndProbeWallBounce(uint8_t slot, uint8_t y_entry);
-ExitChain StepListThenWallBounce(uint8_t slot, uint8_t y_entry);
-ExitChain CountDownThenHopTowardPlayer(uint8_t slot, uint8_t y_entry);
-ExitChain CountDownThenHopAwayFromPlayer(uint8_t slot, uint8_t y_entry);
-ExitChain StepListFallThenSoundAtGround(uint8_t slot, uint8_t y_entry);
-ExitChain StepListThenTileWriteAndSpawn(uint8_t slot, uint8_t y_entry);
-ExitChain WaitThenStepListWithSoundAndBounce(uint8_t slot, uint8_t y_entry);
-ExitChain StepListFallThenCountLandings(uint8_t slot, uint8_t y_entry);
-Ended LoadRecordLeapByNumberThenFall(uint8_t slot);
-Ended FollowObject10HitBoxByFrame(uint8_t slot);
+/* FaceThePlayerByStateTable: the bits of OBJ_3618, the state, the table byte, and when it was marked the side and the facing. */
+typedef struct {
+    int arm;
+    uint8_t bits, state, marked, facing;
+    SideResult side;
+} L8St19FaceArm;
+
+/* StateTableHurtFlag: the state, the table byte it stores, the marked byte and the hits. */
+typedef struct {
+    int arm;
+    uint8_t state, value, marked, hits;
+} L8St19HurtFlagArm;
+
+/* EnterState0FWhenFlagged: the flags, the state and the sound call. */
+typedef struct {
+    int arm;
+    uint8_t flags, state;
+    CommandCall call;
+} L8St19EnterArm;
+
+/* HitBoxByFrameTable: the switch, and when it was set the subtract, the row and the last table byte. */
+typedef struct {
+    bool set;
+    uint8_t on, row, value;
+    Sum diff;
+} L8St19HitBoxArm;
+
+/* LoadRecordStartPieceAtPlace: the record and the start's last byte. */
+typedef struct {
+    L8Record record;
+    uint8_t placed;
+} L8St19PieceArm;
+
+/* StartScriptsFromTable: the timer, the step of the first read and its table byte (when the timer ran out), the step and row of the second read, the marker, and the arm's own values. */
+typedef struct {
+    int arm;
+    uint8_t timer, inc, step, row, value, step2, row2, value2, flags, state_inc, script, pulled;
+} L8St19ScriptsArm;
+
+/* FallToGroundAt98: the probe, the move, gravity, the ground read, whether it landed and the probe's column. */
+typedef struct {
+    Probe probe;
+    AxisMove move;
+    GravityResult gravity;
+    uint8_t ground, y;
+    bool yes;
+} L8St19FallArm;
+
+/* FallThenSoundAtGround: the fall, and when it landed the sound call and the state after the INC. */
+typedef struct {
+    L8St19FallArm fall;
+    CommandCall call;
+    uint8_t count;
+} L8St19FallSoundArm;
+
+/* MoveXAndProbeWallBounce: the move, the probe, the side index, the attribute bits, and when they showed bit 1 the reversed speed and the second move. */
+typedef struct {
+    AxisMove move, move2;
+    Probe probe;
+    uint8_t y, bits;
+    Sum negated;
+    bool yes;
+} L8St19BounceArm;
+
+/* StepListThenWallBounce: the list step, and when the graphic changed the aim, the table byte and the bounce. */
+typedef struct {
+    L8Step step;
+    uint8_t aim, value;
+    L8St19BounceArm next;
+    bool yes;
+    uint8_t y;
+} L8St19StepBounceArm;
+
+/* CountDownThenHopTowardPlayer and ...AwayFromPlayer: the timer's result, whether it ran out, the hop, the facing stored, the distance and whether the state was set. */
+typedef struct {
+    L8Arm timer;
+    bool ran_out;
+    L8St19StepBounceArm hop;
+    uint8_t facing;
+    PlayerDistance distance;
+    bool entered;
+} L8St19HopArm;
+
+/* StepListFallThenSoundAtGround: the list step, the fall, and when it landed the sound call and the OBJ_2800 after the INC. */
+typedef struct {
+    L8Step step;
+    L8St19FallArm fall;
+    CommandCall call;
+    uint8_t count;
+} L8St19StepFallSoundArm;
+
+/* StepListThenTileWriteAndSpawn: the list step and, when the graphic changed, the two routines' results. */
+typedef struct {
+    L8Step step;
+    L8TileWriteArm tile;
+    L8SpawnFiveArm five;
+} L8St19TileSpawnArm;
+
+/* WaitThenStepListWithSoundAndBounce: the OBJ_2800, the distance of the first arm, the list step, the frame, the sound call, the facing, the table byte and the bounce. */
+typedef struct {
+    int arm;
+    uint8_t phase, inc, frame, facing, value;
+    PlayerDistance distance;
+    bool entered;
+    L8Step step;
+    CommandCall call;
+    L8St19BounceArm bounce;
+} L8St19WaitBounceArm;
+
+/* StepListFallThenCountLandings: the list step, the fall, and when it landed the bit shifted out, the count after the INC and the count read. */
+typedef struct {
+    L8Step step;
+    L8St19FallArm fall;
+    bool shifted;
+    uint8_t inc, count;
+} L8St19LandingsArm;
+
+/* LoadRecordLeapByNumberThenFall: the load, the facing index, the move, the number, its row and the last table byte, the facing and the reversed speed. */
+typedef struct {
+    int arm;
+    L8Load load;
+    uint8_t facing_index, number, row, value, facing;
+    AxisMove move;
+    Sum negated;
+} L8St19LeapArm;
+
+/* FollowObject10HitBoxByFrame: the INC, the state, the record of state 0, the mode of slot $10, the byte CopyObjectPlaceBack returned, the frame subtract, its row, the facing and the kind. */
+typedef struct {
+    int arm;
+    uint8_t inc, state, mode, copied, row, facing, kind;
+    L8Record record;
+    Sum diff;
+} L8St19FollowArm;
+
+L8Load LoadRecordInStateZero(uint8_t slot);
+L8St19FaceArm FaceThePlayerByStateTable(uint8_t slot);
+Ended l8_face_state_table_exit_shim(L8St19FaceArm r);
+L8St19HurtFlagArm StateTableHurtFlag(uint8_t slot);
+Ended l8_state_table_hurt_exit_shim(L8St19HurtFlagArm r);
+L8St19EnterArm EnterState0FWhenFlagged(uint8_t slot, uint8_t y_entry);
+SoundEnd l8_enter_state0f_exit_shim(L8St19EnterArm r);
+L8St19HitBoxArm HitBoxByFrameTable(uint8_t slot);
+Ended l8_hitbox_frame_table_exit_shim(L8St19HitBoxArm r);
+L8St19PieceArm LoadRecordStartPieceAtPlace(uint8_t slot);
+L8St19ScriptsArm StartScriptsFromTable(uint8_t slot);
+L8St19FallArm FallToGroundAt98(uint8_t slot, uint8_t y_entry, bool carry_in);
+L8St19FallSoundArm FallThenSoundAtGround(uint8_t slot, uint8_t y_entry, bool carry_in);
+L8St19BounceArm MoveXAndProbeWallBounce(uint8_t slot, uint8_t y_entry);
+L8St19StepBounceArm StepListThenWallBounce(uint8_t slot, uint8_t y_entry);
+L8St19HopArm CountDownThenHopTowardPlayer(uint8_t slot, uint8_t y_entry);
+L8St19HopArm CountDownThenHopAwayFromPlayer(uint8_t slot, uint8_t y_entry);
+L8St19StepFallSoundArm StepListFallThenSoundAtGround(uint8_t slot, uint8_t y_entry);
+L8St19TileSpawnArm StepListThenTileWriteAndSpawn(uint8_t slot, uint8_t y_entry);
+L8St19WaitBounceArm WaitThenStepListWithSoundAndBounce(uint8_t slot, uint8_t y_entry);
+L8St19LandingsArm StepListFallThenCountLandings(uint8_t slot, uint8_t y_entry);
+L8St19LeapArm LoadRecordLeapByNumberThenFall(uint8_t slot);
+L8St19FollowArm FollowObject10HitBoxByFrame(uint8_t slot);
 
 /* object/enemies_l8_st20.c */
 /* RecordObjectEvent's result. */
@@ -987,14 +1328,55 @@ typedef struct {
 L8ThrownArm ThrownPieceThenScatterAndLeave(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st24.c */
-Ended StartChannel81OnceThenStepScrollTable(uint8_t slot);
-Ended NextStateThenStepScrollTable(uint8_t slot);
-SoundEnd StepListMarksThenSound74AtC8(uint8_t slot, uint8_t y_entry);
-Ended SpinThenCountDownToState(uint8_t slot, uint8_t y_entry);
-Ended SpinThenCountDownToPhase80(uint8_t slot, uint8_t y_entry);
-Ended SpinThenCountPhaseDown(uint8_t slot, uint8_t y_entry);
-Ended SpinThenCountWordDown(uint8_t slot, uint8_t y_entry);
-ExitChain CountDownThenDrawAndSpawnRing(uint8_t slot, uint8_t y_entry);
+/* StartChannel81OnceThenStepScrollTable: the flag, the sub-mode, the count and the X pulled of the list start, the fixed fields' value and the table step. */
+typedef struct {
+    int arm;
+    uint8_t flag, mode, counted, x, fixed;
+    L8Arm table;
+} L8St24StartArm;
+
+/* NextStateThenStepScrollTable: the new state and the table step. */
+typedef struct {
+    uint8_t state;
+    L8Arm table;
+} L8St24NextArm;
+
+/* StepListMarksThenSound74AtC8: the list step, the move, the marks, the X low byte, and when it was $C8 the sound call and the new state. */
+typedef struct {
+    int arm;
+    L8Step step;
+    AxisMove move;
+    L8St12MarksArm marks;
+    uint8_t x, state;
+    CommandCall call;
+} L8St24MarksArm;
+
+/* The four spin routines: the list step, the spin, the count (or the sum of the word count and the joined bytes) and the new state. */
+typedef struct {
+    int arm;
+    L8Step step;
+    L8Arm spin;
+    uint8_t timer, state, joined;
+    Sum diff;
+} L8St24SpinArm;
+
+/* CountDownThenDrawAndSpawnRing: the screen byte, the count, the tile script run, the ring start's result, the sound call and the new state. */
+typedef struct {
+    int arm;
+    uint8_t screen, timer, state;
+    TileRun run;
+    L8St17RingArm ring;
+    CommandCall call;
+} L8St24RingArm;
+
+L8St24StartArm StartChannel81OnceThenStepScrollTable(uint8_t slot);
+L8St24NextArm NextStateThenStepScrollTable(uint8_t slot);
+L8St24MarksArm StepListMarksThenSound74AtC8(uint8_t slot, uint8_t y_entry);
+L8St24SpinArm SpinThenCountDownToState(uint8_t slot, uint8_t y_entry);
+L8St24SpinArm SpinThenCountDownToPhase80(uint8_t slot, uint8_t y_entry);
+L8St24SpinArm SpinThenCountPhaseDown(uint8_t slot, uint8_t y_entry);
+L8St24SpinArm SpinThenCountWordDown(uint8_t slot, uint8_t y_entry);
+L8St24RingArm CountDownThenDrawAndSpawnRing(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st25.c */
 /* LoadRecordOrBurstWhenFlagged: the state, the record, the flags, and for the burst the sound call, the last start and its slot. */
@@ -1130,10 +1512,63 @@ DriftArm LoadRecordThenDriftAndCount(uint8_t slot);
 L8Load LoadRecordAtX80(uint8_t slot);
 
 /* object/enemies_l8_st27.c */
-Ended BossFrameRoutines(uint8_t slot, uint8_t y_entry);
-Ended HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry);
-Ended BossFrameRoutinesB(uint8_t slot, uint8_t y_entry);
-Ended SpawnRowsWhenScrollAtZero(uint8_t slot);
+/* BossFrameRoutines: the count, what the five callees returned in order and the table's jump. */
+typedef struct {
+    uint8_t counted;
+    L8St12SwingArm swing;
+    L8Arm enter;
+    L8St12ScriptArm script;
+    L8Arm push;
+    L8St12HitArm hit;
+    Jump jump;
+} L8St27BossArm;
+
+/* HurtSoundsThenRunTable: the two hurt sounds' results and the table's jump. */
+typedef struct {
+    HurtSoundArm hurt, state6;
+    Jump jump;
+} L8St27HurtArm;
+
+/* BossFrameRoutinesB: the count, what the callees returned in order, the table's jump, and when the list was started the flag, the frame, the X pushed and pulled and the two sums. */
+typedef struct {
+    bool listed;
+    uint8_t counted, flag, frame, x, pulled;
+    Ended face, hurt, box;
+    SoundEnd enter;
+    Jump jump;
+    Sum diff, list;
+} L8St27BossBArm;
+
+/* SpawnRowsWhenScrollAtZero: the fixed fields' value, the table step, the scroll bytes, and at zero the counts, the spawn's registers, the slot pulled and the new state. */
+typedef struct {
+    int arm;
+    uint8_t fixed, high, low, counted, dec, pulled, state, spawn_a, spawn_y;
+    bool ran;
+    L8Arm table;
+} L8St27RowsArm;
+
+/* BossFrameRoutinesC: the count, the two callees' results, the table's jump, the bytes read after it, the sums, and the X pushed and pulled of the list start. */
+typedef struct {
+    int arm;
+    uint8_t counted, aim, frame, y, entry, x, pulled;
+    L8Arm flag, enter;
+    Jump jump;
+    Sum diff, list;
+} L8St27BossCArm;
+
+/* BossFrameRoutinesD: the two callees' results, the table's jump, the state read as Y and the mark. */
+typedef struct {
+    int arm;
+    uint8_t y, marked;
+    L8Arm enter;
+    L8FlashHurtArm flash;
+    Jump jump;
+} L8St27BossDArm;
+
+L8St27BossArm BossFrameRoutines(uint8_t slot, uint8_t y_entry);
+L8St27HurtArm HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry);
+L8St27BossBArm BossFrameRoutinesB(uint8_t slot, uint8_t y_entry);
+L8St27RowsArm SpawnRowsWhenScrollAtZero(uint8_t slot);
 PieceSlotsArm CountDownThenStartPieceInSlots18To1B(uint8_t slot);
 L8PhaseLandArm StepListByPhaseThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry);
 SoundEnd LoadRecordThenWatchThenDropTwice(uint8_t slot, uint8_t y_entry);
@@ -1142,9 +1577,9 @@ HopArm HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry);
 ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry);
 GatesArm SpawnerWithScrollGates(uint8_t slot);
 SpawnerArm SpawnerByKindAndScreen(uint8_t slot);
-Ended StartBossWhenStageC0OrLoad(uint8_t slot, uint8_t y_entry);
-Ended StepScrollThenMoveOrFadeOut(uint8_t slot);
-Ended BossFrameRoutinesC(uint8_t slot);
-Ended BossFrameRoutinesD(uint8_t slot, uint8_t y_entry);
+L8St11StartBossArm StartBossWhenStageC0OrLoad(uint8_t slot, uint8_t y_entry);
+L8St11FadeArm StepScrollThenMoveOrFadeOut(uint8_t slot);
+L8St27BossCArm BossFrameRoutinesC(uint8_t slot);
+L8St27BossDArm BossFrameRoutinesD(uint8_t slot, uint8_t y_entry);
 
 #endif

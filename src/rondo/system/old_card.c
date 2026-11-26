@@ -34,8 +34,68 @@ enum {
     FOLLOW_LEFT_EDGE = 0x28, FOLLOW_RIGHT_EDGE = 0xD8, FOLLOW_CENTRE_X = 0x80, FOLLOW_SCROLL_END = 0x03,
     CARD_E0E4 = 0xE0E4,                /* a card entry with no typed C yet; it takes its arguments at $221F to $2225 */
     CARD_ARG_221F = 0x221F, CARD_ARG_2220 = 0x2220, CARD_ARG_2221 = 0x2221, CARD_ARG_2222 = 0x2222,
-    CARD_ARG_2225 = 0x2225             /* the card's RAM: no names yet, so their address form */
+    CARD_ARG_2225 = 0x2225,            /* the card's RAM: no names yet, so their address form */
+    CARD_E0AE = 0xE0AE,                /* a card entry with no typed C yet (DrawSprites calls it with A 0, X $10) */
+    DEMO_TIMER = 0x20,                 /* the object whose $34B8 and $3510 bytes the frame step counts down */
+    SPRITE_SETS = 0x4C9D,              /* the program's table of sprite part lists, a word per frame */
+    MIRROR_OFFSETS = 0x4453,           /* $F0 and $E0: a part's X mirrored, by its width bit; then $10 and 0, the
+                                        * left edge a part at X high byte 0 must reach, by the same bit */
+    OPENING_TRACK = 0x4498,            /* PlayCdTrack's six bytes of the card's play arguments */
+    CD_PLAY_FROM = 0x40, CD_PLAY_REPEAT_MODE = 0x41
 };
+
+static void follow_exit_shim(FollowArm r);
+static void player_exit_shim(PlayerArm r);
+
+/* The registers StepDemoFrame hands the original code it calls after RunPlayerObject: what the player left. */
+static void demo_player_regs_shim(PlayerArm r)
+{
+    if (r.arm != PLAYER_ORIGINAL) {
+        cpu.x = PLAYER;
+    }
+    player_exit_shim(r);
+}
+
+/*
+ * @routine 0023:228 StepDemoFrame
+ * @run 80:4228
+ * WHAT IT DOES: One frame of the player screen: counts down object $20's timer (its $34B8 byte, then its $3510 byte
+ * when that reaches zero) and clears its frame when both have; runs the player, the program's routines at $4863,
+ * $4B11 and $49AD, ScrollWithPlayer, and the routines at $497B and $4BE8.
+ * HOW: Two decrements, then seven calls; the four with no C yet are run as original with the registers the call
+ * before left.
+ * WAITS: where the original code it calls does (not read yet).
+ * Entry: nothing. Exit: as the routine at $4BE8 leaves them.
+ */
+void StepDemoFrame(void)
+{
+    PlayerArm player;
+    FollowArm follow;
+
+    if (DEC8(OBJ->f34b8[DEMO_TIMER]) == 0) {
+        if (DEC8(OBJ->f3510[DEMO_TIMER]) == 0) {
+            WR8(OBJ->frame[DEMO_TIMER], 0);
+        }
+    }
+    jsr_push(0x4238);
+    player = RunPlayerObject();
+    jsr_pop();
+    demo_player_regs_shim(player);
+    call_orig(0x423B, 0x4863);
+    call_orig(0x423E, 0x4B11);
+    call_orig(0x4241, 0x49AD);
+    jsr_push(0x4244);
+    follow = ScrollWithPlayer();
+    jsr_pop();
+    follow_exit_shim(follow);
+    call_orig(0x4247, 0x497B);
+    call_orig(0x424A, 0x4BE8);
+}
+
+void abi_StepDemoFrame(void)
+{
+    StepDemoFrame();
+}
 
 /*
  * @routine 0023:24B SetBackgroundScroll
@@ -283,6 +343,376 @@ FollowArm ScrollWithPlayer(void)
 void abi_ScrollWithPlayer(void)
 {
     follow_exit_shim(ScrollWithPlayer());
+}
+
+/* What DrawObjectSprite leaves: every register from the arm; V where the arm made an add. */
+static void sprite_exit_shim(SpriteArm r)
+{
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    abi_nz(r.nz);
+    abi_flag(P_C, r.carry);
+    if (r.v_set) {
+        abi_flag(P_V, r.overflow);
+    }
+}
+
+/*
+ * @routine 0023:321 DrawObjectSprite
+ * @run 80:4321
+ * WHAT IT DOES: Writes an object's sprites to the VDC's data port, a part at a time from the list its frame names
+ * in the table at $4C9D: each part is five bytes (attributes, Y and X offsets, the pattern's two bytes). A part off
+ * the screen (Y plus $40 outside 0 to $12F, X plus $20 outside the part's edge to $11F) is passed over; a part's X
+ * is mirrored when the object faces left, its palette replaced (flash bit 7) or offset (bit 6) by the low nibble
+ * of the object's flash byte, and its Y flip set from the object's flip byte. Each part written counts one of the
+ * sprites left (zp $17); when they run out it stops.
+ * HOW: The object's place plus the screen's offsets into zTemp06 to 0B, the part's four words built in zTemp00
+ * to 07 and written high word first, from zTemp07 down, through absolute reads of the zero page.
+ * WAITS: no.
+ * Entry: X the object. Exit: by arm (SpriteArm): A, X, Y, N, Z, C and V as the arm's last instructions left them.
+ */
+SpriteArm DrawObjectSprite(uint8_t object)
+{
+    SpriteArm r = { 0 };
+    uint8_t value, index, parts, width, high, low, edge, flash, attr;
+    bool visible;
+    Sum sum;
+
+    value = RD8(OBJ->y_lo[object]);
+    sum = add_bytes(value, 0x40, false);
+    WR8(ZP->temp08, sum.value);
+    value = RD8(OBJ->y_hi[object]);
+    sum = add_bytes(value, 0, sum.carry);
+    WR8(ZP->temp09, sum.value);
+    value = RD8(OBJ->x_lo[object]);
+    sum = add_bytes(value, 0x20, false);
+    WR8(ZP->temp0a, sum.value);
+    value = RD8(OBJ->x_hi[object]);
+    sum = add_bytes(value, 0, sum.carry);
+    WR8(ZP->temp0b, sum.value);
+    value = RD8(OBJ->facing_left[object]);
+    WR8(ZP->temp0d, value);
+    value = RD8(OBJ->sprite_flip[object]);
+    WR8(ZP->sprite_flip_mask, value);
+    value = RD8(OBJ->flash_flags[object]);
+    WR8(ZP->temp0e, value);
+    WR8(ZP->temp0f, (uint8_t)(value & 0x0F));
+    WR8(ZP->temp00, (uint8_t)SPRITE_SETS);
+    WR8(ZP->temp01, (uint8_t)(SPRITE_SETS >> 8));
+    value = RD8(OBJ->frame[object]);
+    index = (uint8_t)(value << 1);
+    r.carry = (value & 0x80) != 0;
+    if (r.carry) {
+        INC8(ZP->temp01);
+    }
+    value = RD8_PTR_Y(ZP->temp00, index);
+    WR8(ZP->temp10, value);
+    index++;
+    value = RD8_PTR_Y(ZP->temp00, index);
+    WR8(ZP->temp11, value);
+    parts = RD8_PTR(ZP->temp10);
+    WR8(ZP->sprite_parts_left, parts);
+    if (parts == 0) {
+        r.arm = SPRITE_NO_PARTS;
+        r.a = 0;
+        r.x = object;
+        r.y = index;
+        r.nz = 0;
+        return r;
+    }
+    if (INC8(ZP->temp10) == 0) {
+        INC8(ZP->temp11);
+    }
+    for (;;) {
+        r.x = 0;                                   /* CLX, CLY at $437B */
+        attr = RD8_PTR_Y(ZP->temp10, 0);
+        WR8(ZP->temp00, attr);
+        r.y = 1;
+        WR8(ZP->temp06, 0);
+        value = RD8_PTR_Y(ZP->temp10, 1);
+        if ((value & 0x80) != 0) {
+            DEC8(ZP->temp06);
+        }
+        sum = add_bytes(value, RD8(ZP->temp08), false);
+        WR8(ZP->temp07, sum.value);
+        high = RD8(ZP->temp06);
+        sum = add_bytes(high, RD8(ZP->temp09), sum.carry);
+        WR8(ZP->temp06, sum.value);
+        visible = sum.value == 0 || (sum.value == 1 && RD8(ZP->temp07) < 0x30);
+        if (visible) {
+            r.y = 2;
+            attr = RD8(ZP->temp00);
+            width = (uint8_t)(attr & 0x01);
+            r.x = width;
+            WR8(ZP->temp04, 0);
+            if (RD8(ZP->temp0d) != 0) {
+                attr = RD8(ZP->temp00);
+                WR8(ZP->temp00, (uint8_t)(attr ^ 0x08));
+                value = rd8((uint16_t)(MIRROR_OFFSETS + width));
+                value = (uint8_t)(value - RD8_PTR_Y(ZP->temp10, 2));
+            } else {
+                value = RD8_PTR_Y(ZP->temp10, 2);
+            }
+            if ((value & 0x80) != 0) {
+                DEC8(ZP->temp04);
+            }
+            sum = add_bytes(value, RD8(ZP->temp0a), false);
+            WR8(ZP->temp05, sum.value);
+            high = RD8(ZP->temp04);
+            sum = add_bytes(high, RD8(ZP->temp0b), sum.carry);
+            WR8(ZP->temp04, sum.value);
+            r.overflow = sum.overflow;
+            if (sum.value == 0) {
+                low = RD8(ZP->temp05);
+                edge = rd8((uint16_t)(MIRROR_OFFSETS + 2 + width));
+                visible = low >= edge;
+            } else if ((sum.value & 0x80) != 0) {
+                visible = false;
+            } else {
+                high = RD8(ZP->temp04);
+                visible = high == 1 && RD8(ZP->temp05) < 0x20;
+            }
+        }
+        if (visible) {
+            r.y = 3;
+            value = RD8_PTR_Y(ZP->temp10, 3);
+            WR8(ZP->temp03, value);
+            r.y = 4;
+            value = RD8_PTR_Y(ZP->temp10, 4);
+            WR8(ZP->temp02, (uint8_t)((value & 0x70) >> 4));
+            flash = RD8(ZP->temp0e);
+            if ((flash & 0x80) != 0) {
+                value = RD8_PTR_Y(ZP->temp10, 4);
+                value = (uint8_t)((value & 0x80) | RD8(ZP->temp0f));
+                r.carry = true;
+            } else if ((flash & 0x40) != 0) {
+                value = RD8_PTR_Y(ZP->temp10, 4);
+                sum = add_bytes(value, RD8(ZP->temp0f), false);
+                value = (uint8_t)(sum.value & 0x8F);
+                r.carry = sum.carry;
+                r.overflow = sum.overflow;
+            } else {
+                value = (uint8_t)(RD8_PTR_Y(ZP->temp10, 4) & 0x8F);
+                r.carry = false;
+            }
+            WR8(ZP->temp01, value);
+            value = (uint8_t)(RD8(ZP->sprite_flip_mask) & 0x80);
+            value = (uint8_t)(value ^ RD8(ZP->temp01));
+            WR8(ZP->temp01, value);
+            index = 7;
+            for (;;) {
+                value = rd8((uint16_t)(ADDR_OF(ZP->temp00) + index));
+                WR8(VDC->data_lo, value);
+                index--;
+                value = rd8((uint16_t)(ADDR_OF(ZP->temp00) + index));
+                WR8(VDC->data_hi, value);
+                index--;
+                if ((index & 0x80) != 0) {
+                    break;
+                }
+            }
+            r.y = index;
+            r.a = value;
+            low = DEC8(ZP->sprites_left);
+            if ((low & 0x80) != 0) {
+                r.arm = SPRITE_OUT_OF_SPRITES;
+                r.nz = low;
+                r.v_set = true;
+                return r;
+            }
+        }
+        sum = add_bytes(0x05, RD8(ZP->temp10), false);
+        WR8(ZP->temp10, sum.value);
+        if (sum.carry) {
+            INC8(ZP->temp11);
+        }
+        parts = DEC8(ZP->sprite_parts_left);
+        if (parts == 0) {
+            r.arm = SPRITE_PARTS_DONE;
+            r.a = sum.value;
+            r.nz = 0;
+            r.carry = sum.carry;
+            r.overflow = sum.overflow;
+            r.v_set = true;
+            return r;
+        }
+    }
+}
+
+void abi_DrawObjectSprite(void)
+{
+    sprite_exit_shim(DrawObjectSprite(cpu.x));
+}
+
+/* The registers DrawSprites hands the card at $E0AE: A 0 (CLA, flags kept), X $10, N and Z from the LDX. */
+static void sprites_card_regs_shim(void)
+{
+    cpu.a = 0x00;
+    cpu.x = 0x10;
+    abi_nz(0x10);
+}
+
+/* What DrawSprites leaves: the last object's arm for Y, C and V (the card's when none was drawn), then A and X and
+ * N and Z by the arm. */
+static void sprites_exit_shim(SpritesArm r)
+{
+    if (r.drew) {
+        sprite_exit_shim(r.last);
+    }
+    switch (r.arm) {
+    case SPRITES_OUT:
+        return;
+    case SPRITES_ALL_USED:
+        cpu.a = r.a;
+        cpu.x = 0x00;
+        abi_nz(0x00);
+        return;
+    default:
+        cpu.a = r.a;
+        cpu.x = 0xFF;
+        abi_nz(0xFF);
+        return;
+    }
+}
+
+/*
+ * @routine 0023:2E8 DrawSprites
+ * @run 80:42E8
+ * WHAT IT DOES: Draws the frame's sprites: after the card's entry at $E0AE (A 0, X $10), every object of the 88
+ * with a frame is drawn by DrawObjectSprite, 64 sprites at most; the sprites left over are written as zeros.
+ * HOW: zp $17 the sprites left, zp $15 the objects left, zp $D9 the slot across the call; four zero words a sprite
+ * by ST1 and ST2.
+ * WAITS: where the card's entry does.
+ * Entry: nothing. Exit: by arm (SpritesArm).
+ */
+SpritesArm DrawSprites(void)
+{
+    SpritesArm r = { 0 };
+    uint8_t slot, frame, count;
+
+    sprites_card_regs_shim();
+    call_orig(0x42EE, CARD_E0AE);
+    WR8(ZP->sprites_left, 0x3F);
+    WR8(ZP->product.hi, 0x58);
+    slot = 0;
+    do {
+        frame = RD8(OBJ->frame[slot]);
+        r.a = frame;
+        if (frame != 0) {
+            WR8(ZP->richter_object, slot);
+            jsr_push(0x4300);
+            r.last = DrawObjectSprite(slot);
+            jsr_pop();
+            r.drew = true;
+            r.a = r.last.a;
+            if (r.last.arm == SPRITE_OUT_OF_SPRITES) {
+                r.arm = SPRITES_OUT;
+                return r;
+            }
+            slot = RD8(ZP->richter_object);
+        }
+        slot++;
+    } while (DEC8(ZP->product.hi) != 0);
+    count = RD8(ZP->sprites_left);
+    if (count == 0) {
+        r.arm = SPRITES_ALL_USED;
+        return r;
+    }
+    do {
+        st1(0);
+        st2(0);
+        st1(0);
+        st2(0);
+        st1(0);
+        st2(0);
+        st1(0);
+        st2(0);
+        count--;
+    } while ((count & 0x80) == 0);
+    r.arm = SPRITES_CLEARED;
+    return r;
+}
+
+void abi_DrawSprites(void)
+{
+    sprites_exit_shim(DrawSprites());
+}
+
+/*
+ * @routine 0023:457 PlayCdTrack
+ * @run 80:4457
+ * WHAT IT DOES: Plays the program's CD track, repeating (mode $41), from the six bytes at $4498, asking the card's
+ * cd_play until it answers zero; then the card's cd_fade with A 0.
+ * HOW: The kernel's CdPlayRepeat without its track table: zTemp00-01 point at the bytes, which go to the card's
+ * argument bytes in its order, zBiosBh $40 first; X the mode, then each failed try's answer.
+ * WAITS: yes, on the drive, as CdPlayRepeat: the stack there is the caller's return, this call's two bytes and X and
+ * Y pushed.
+ * Entry: nothing. Exit: A 0 from the fade, C and V as the card leaves them, X and Y kept, N and Z from X. The C
+ * replays the last 32 tries' exits.
+ */
+OldCardPlay PlayCdTrack(uint8_t kept_x, uint8_t kept_y)
+{
+    OldCardPlay play = { 0 };
+    uint8_t result;
+
+    push8(kept_x);
+    push8(kept_y);
+    WR8(ZP->cd_play_mode, CD_PLAY_REPEAT_MODE);
+    WR8(ZP->temp00, (uint8_t)OPENING_TRACK);
+    WR8(ZP->temp01, (uint8_t)(OPENING_TRACK >> 8));
+    do {
+        CdPlay tried;
+
+        wr8(zBiosBh, CD_PLAY_FROM);
+        wr8(zBiosAl, RD8_PTR(ZP->temp00));
+        wr8(zBiosAh, RD8_PTR_Y(ZP->temp00, 1));
+        wr8(zBiosBl, RD8_PTR_Y(ZP->temp00, 2));
+        wr8(zBiosDh, RD8(ZP->cd_play_mode));
+        wr8(zBiosCl, RD8_PTR_Y(ZP->temp00, 3));
+        wr8(zBiosCh, RD8_PTR_Y(ZP->temp00, 4));
+        play.dl = RD8_PTR_Y(ZP->temp00, 5);
+        wr8(zBiosDl, play.dl);
+        jsr_push(0x448E);
+        tried = vec_cd_play(play.dl, play.tries == 0 ? CD_PLAY_REPEAT_MODE
+                                                     : play.results[(play.tries - 1) % CD_PLAY_KEPT]);
+        jsr_pop();
+        result = cd_play_result(tried);
+        play.results[play.tries % CD_PLAY_KEPT] = result;
+        play.attempts[play.tries % CD_PLAY_KEPT] = tried;
+        play.tries++;
+    } while (result != 0);
+    jsr_push(0x4495);
+    vec_cd_fade(0);
+    jsr_pop();
+    play.y = pull8();
+    play.x = pull8();
+    return play;
+}
+
+/* As the card's calls leave the registers (each try's with A the last argument, X the mode or the answer before,
+ * Y 5), then X and Y back as they came, N and Z from X. */
+static void play_exit_shim(OldCardPlay play)
+{
+    unsigned first = play.tries > CD_PLAY_KEPT ? play.tries - CD_PLAY_KEPT : 0;
+
+    for (unsigned i = first; i < play.tries; i++) {
+        cpu.x = i == 0 ? CD_PLAY_REPEAT_MODE : play.results[(i - 1) % CD_PLAY_KEPT];
+        cpu.a = play.dl;
+        cpu.y = 5;
+        abi_nz(play.dl);
+        cd_play_exit_shim(play.attempts[i % CD_PLAY_KEPT]);
+    }
+    cpu.x = 0;
+    cd_fade_exit_shim(0);
+    cpu.x = play.x;
+    cpu.y = play.y;
+    abi_nz(play.x);
+}
+
+void abi_PlayCdTrack(void)
+{
+    play_exit_shim(PlayCdTrack(cpu.x, cpu.y));
 }
 
 /*

@@ -225,6 +225,7 @@ CameraModeDispatch:
 ; the player: moves the player on the screen, and takes the push as the scroll step
 ; unless bit 4 of zPlayerPush says it was already added to the speed.
 ; HOW: Zeroes both steps, MovePlayerYIfMoving, PlayerXOnScreen, copies the push.
+; WAITS: no.
 ; Entry: cpu flags current. Exit: A and N, Z the last read; C and V as the moves left
 ; them; X and Y as the overlay left them.
 CameraModeCarried:

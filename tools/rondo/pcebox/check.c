@@ -3181,6 +3181,10 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
     if (!tag_resident(&rondo_tags[index]))
         return "the routine's bytes are not resident at its address";
     chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
+    if (mode == MODE_HYBRID && getenv("RONDO_DIAG_CTX"))
+        fprintf(stderr, "UNITCALL frame %lu %04X: core PC %04X S%02X; top %s parked %d wait_frame %lu resume %04X S%02X\n", cur_frame,
+                addr, r.pc, r.s, top ? rondo_tags[top->tag].name : "-", top ? top->parked : 0, top ? top->wait_frame : 0,
+                top ? top->resume_pc : 0, top ? top->resume_s : 0);
     unit.saved = r;
     chk_bus_wr((uint16_t)(0x2100 | r.s), (uint8_t)((uint16_t)(UNIT_MARK - 1) >> 8));
     chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(r.s - 1)), (uint8_t)(UNIT_MARK - 1));

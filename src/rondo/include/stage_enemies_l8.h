@@ -651,19 +651,52 @@ LeapArm LeapByPlayerDistance(uint8_t slot, uint8_t y_entry);
 uint8_t CountDownThenClearPhase(uint8_t slot);
 
 /* object/enemies_l8_st21.c */
-Ended LoadRecordSplitIntoFourAndClear(uint8_t slot);
-Ended LoadRecordThenFollowScroll(uint8_t slot);
-Ended StartPieceWithSpeedFromTable(uint8_t slot);
-Ended LoadRecordFlipByPlayerThenFall(uint8_t slot);
-Ended LoadRecordThenClearAtSubStep3(uint8_t slot);
-SoundEnd SoundWhenHurtThenFlag(uint8_t slot, uint8_t y_entry);
-SoundEnd SoundAndState6WhenFlagged(uint8_t slot, uint8_t y_entry);
-Ended LoadRecordFrame0D(uint8_t slot);
-Ended ClearFourAtScreen2(uint8_t slot);
-Ended MoveUpUntilY40(uint8_t slot);
-Ended CountDownThenCopyPhase(uint8_t slot);
-Ended ResetPieceAndAdvance(uint8_t slot);
-SoundEnd BreakIntoPiecesAtFifthHit(uint8_t slot, uint8_t y_entry);
+typedef struct {
+    L8Record record;
+    L8Event event;
+    uint8_t value, y;
+} SplitArm;
+
+typedef struct {
+    int arm;
+    uint8_t state, value, sides, kind;
+    L8Record record;
+    Sum diff;
+    AxisMove move;
+} FollowArm;
+
+typedef struct {
+    int arm;
+    uint8_t first, second, value;
+    CommandCall call;
+} HurtSoundArm;
+
+typedef struct {
+    int arm;
+    uint8_t state, hits, placed, counted[3];
+    L8Record record;
+    L8Event event;
+    CommandCall call;
+    Sum sum;
+    L8Slot found;
+    L8Arm piece[4];
+} BreakArm;
+
+SplitArm LoadRecordSplitIntoFourAndClear(uint8_t slot);
+FollowArm LoadRecordThenFollowScroll(uint8_t slot);
+L8Arm StartPieceWithSpeedFromTable(uint8_t slot);
+FollowArm LoadRecordFlipByPlayerThenFall(uint8_t slot);
+L8Arm LoadRecordThenClearAtSubStep3(uint8_t slot);
+HurtSoundArm SoundWhenHurtThenFlag(uint8_t slot, uint8_t y_entry);
+SoundEnd l8_hurt_then_flag_exit_shim(HurtSoundArm r);
+HurtSoundArm SoundAndState6WhenFlagged(uint8_t slot, uint8_t y_entry);
+SoundEnd l8_state6_when_flagged_exit_shim(HurtSoundArm r);
+L8Record LoadRecordFrame0D(uint8_t slot);
+L8Arm ClearFourAtScreen2(uint8_t slot);
+L8Arm MoveUpUntilY40(uint8_t slot);
+L8Arm CountDownThenCopyPhase(uint8_t slot);
+uint8_t ResetPieceAndAdvance(uint8_t slot);
+BreakArm BreakIntoPiecesAtFifthHit(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st22.c */
 Ended OrbitCosineSineThenSettle(uint8_t slot);

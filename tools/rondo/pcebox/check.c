@@ -787,6 +787,7 @@ static int original_dispatched(Span *s, uint8_t c_s, uint16_t target)
     return 0;
 }
 
+static int a5_handed;       /* A5: the C handed the rest of the call to the original (a tail, leave_original): what it left on the stack is the original's code's to pop */
 static uint64_t not_dispatched;      /* calls whose C ended below its entry S where the original made no such jump */
 
 /* ends_by_dispatch, confirmed against the record: counted and (RONDO_DIAG_DISPATCH) printed when the record refuses. */
@@ -1642,6 +1643,7 @@ static void original_at(uint16_t ret, uint16_t addr)
         if (mode == MODE_A5) {
             const Regs *x = exit_regs_a5;
 
+            a5_handed = 1;
             if (prefix_mode)
                 longjmp(c_abort, ABORT_END);     /* still open at the script's end: nothing of its exit to compare */
             for (uint64_t k = call + 1; k < span->end; k++)
@@ -1897,8 +1899,10 @@ void call_original_at(uint16_t from, uint16_t addr)
  */
 void leave_original(uint16_t addr)
 {
-    if (mode == MODE_A5)
+    if (mode == MODE_A5) {
+        a5_handed = 1;
         return;
+    }
     hand_over(addr);
 }
 
@@ -2606,14 +2610,15 @@ static void judge(Frame *f, const Regs *r)
             probe_seen[0] = got;
         }
     }
+    a5_handed = 0;
     reason = setjmp(c_abort);
     if (reason == 0) {
         f->tag->abi();
         apply_pokes(span.cur, end);
         if (!prefix && ends_by_dispatch(f->regs.s, f->kind == K_IRQ, f->tag) &&
-            dispatch_confirmed(&span, f->regs.s, (uint16_t)((ram_bank[0xF8][0x100 | (uint8_t)(cpu.s + 1)] |
+            (a5_handed || dispatch_confirmed(&span, f->regs.s, (uint16_t)((ram_bank[0xF8][0x100 | (uint8_t)(cpu.s + 1)] |
                                                              (ram_bank[0xF8][0x100 | (uint8_t)(cpu.s + 2)] << 8)) + 1),
-                               f->tag->name)) {
+                               f->tag->name))) {
             s->dispatch++;
             longjmp(c_abort, ABORT_END);       /* the original's call goes on in the routines it jumped to: judged up to here */
         }

@@ -15,49 +15,65 @@ static Ended then(Ended e, Ended next)
     return ended_then(e, next);
 }
 
+/* The arms the routines end on (L8Arm). */
+enum { FLASH_START, FLASH_LIST_ENDED, FLASH_MOVED };
+enum { LIFT_START, LIFT_LIST_ENDED, LIFT_MOVED };
+
 /*
  * @routine 025D:040 LoadRecordFlashByNumberThenMoveOrClear
  * @run 71:C040
  * WHAT IT DOES: In state 0 loads the record, gives it the speed X -$0400 and Y -$0180 (OBJ_VY_LO $80) and the flash flags from the table at $C061 by OBJ_34B8. Later it steps the animation list at $C076 and moves, or is cleared when the list ends.
  * HOW: LoadObjectRecord, stores, StepObjectFrames, tail jumps into ClearObject or ApplyVelocity.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (flash_exit_shim).
  */
-Ended LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry)
+L8Arm LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry)
 {
-    uint8_t y = y_entry, state, last, nz, value;
-    bool carry;
-    FrameStep step;
-    AxisMove move;
-    Ended e;
+    L8Arm r = { 0 };
+    uint8_t state, y;
 
     state = RD8(OBJ->state[slot]);
     if (state == 0) {
         jsr_push(0xC048);
-        last = LoadObjectRecord(slot, &nz, &carry);
+        r.record = l8_record(slot);
         jsr_pop();
-        e = ended_of_record(last, nz, carry);
         WR8(OBJ->vy_hi[slot], 0xFE);
         WR8(OBJ->vy_lo[slot], 0x80);
         WR8(OBJ->vx_hi[slot], 0xFC);
-        e = then(e, ended_load(0xFC));
         y = RD8(OBJ->f34b8[slot]);
-        value = rd8((uint16_t)(0xC061 + y));
-        WR8(OBJ->flash_flags[slot], value);
-        return then(e, ended_with_y(ended_load(value), y));
+        r.first = rd8((uint16_t)(0xC061 + y));
+        WR8(OBJ->flash_flags[slot], r.first);
+        r.y = y;
+        r.arm = FLASH_START;
+        return r;
     }
-    e = l8_step_list(slot, 0xC076, 0xC06E, false, &y, &step);
-    if (step == FRAME_LIST_ENDED) {
+    r.step = l8_list_step(slot, 0xC076, 0xC06E, false, y_entry);
+    if (r.step.step == FRAME_LIST_ENDED) {
         ClearObject(slot);
-        return e;
+        r.arm = FLASH_LIST_ENDED;
+        return r;
     }
-    move = ApplyVelocity(slot);
-    return then(e, ended_of_axis_move(move));
+    r.move = ApplyVelocity(slot);
+    r.arm = FLASH_MOVED;
+    return r;
+}
+
+/* What LoadRecordFlashByNumberThenMoveOrClear leaves in A, Y and the flags, from the arm it ended on. */
+static Ended flash_exit_shim(L8Arm r)
+{
+    switch (r.arm) {
+    case FLASH_START:
+        return then(then(l8_record_ended(r.record), ended_load(0xFC)), ended_with_y(ended_load(r.first), r.y));
+    case FLASH_LIST_ENDED:
+        return l8_step_ended(r.step);
+    default:
+        return then(l8_step_ended(r.step), ended_of_axis_move(r.move));
+    }
 }
 
 void abi_LoadRecordFlashByNumberThenMoveOrClear(void)
 {
-    abi_ended(LoadRecordFlashByNumberThenMoveOrClear(cpu.x, cpu.y));
+    abi_ended(flash_exit_shim(LoadRecordFlashByNumberThenMoveOrClear(cpu.x, cpu.y)));
 }
 
 /*
@@ -66,57 +82,68 @@ void abi_LoadRecordFlashByNumberThenMoveOrClear(void)
  * WHAT IT DOES: In state 0 loads the record, gives it a random Y speed from -$10 to $0F and the X speed $18, moves it once and sets the speed from the angle $68 with the radius $0100. Later it steps the animation list at $C0FC and moves, or is cleared when the list ends.
  * HOW: LoadObjectRecord, NextRandom, ApplyVelocity, SetVelocityFromAngle, StepObjectFrames, tail jumps into ClearObject or ApplyVelocity.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (lift_exit_shim).
  */
-Ended LoadRecordRandomLiftThenMoveOrClear(uint8_t slot, uint8_t y_entry)
+L8Arm LoadRecordRandomLiftThenMoveOrClear(uint8_t slot, uint8_t y_entry)
 {
-    uint8_t y = y_entry, state, last, nz, masked;
-    bool carry;
-    FrameStep step;
-    RandomResult random;
-    AxisMove move;
-    ScaleResult scale;
-    Sum diff;
-    Ended e;
+    L8Arm r = { 0 };
+    uint8_t state;
 
     state = RD8(OBJ->state[slot]);
     if (state == 0) {
         jsr_push(0xC0C8);
-        last = LoadObjectRecord(slot, &nz, &carry);
+        r.record = l8_record(slot);
         jsr_pop();
-        e = ended_of_record(last, nz, carry);
         jsr_push(0xC0CB);
-        random = NextRandom();
+        r.random = NextRandom();
         jsr_pop();
-        e = then(e, ended_of_random(random));
-        masked = random.value & 0x1F;
-        e = then(e, ended_load(masked));
-        diff = sub_bytes(masked, 0x10, true);
-        WR8(OBJ->vy_hi[slot], diff.value);
-        e = then(e, ended_of_sum(diff));
+        r.first = r.random.value & 0x1F;
+        r.sum = sub_bytes(r.first, 0x10, true);
+        WR8(OBJ->vy_hi[slot], r.sum.value);
         WR8(OBJ->vx_hi[slot], 0x18);
-        e = then(e, ended_load(0x18));
         jsr_push(0xC0DB);
-        move = ApplyVelocity(slot);
+        r.move = ApplyVelocity(slot);
         jsr_pop();
-        e = then(e, ended_of_axis_move(move));
         WR8(ZP->temp00, 0);
         WR8(ZP->temp01, 1);
         jsr_push(0xC0E8);
-        scale = SetVelocityFromAngle(0x68, slot);
+        r.scale = SetVelocityFromAngle(0x68, slot);
         jsr_pop();
-        return then(then(e, ended_load(0x68)), l8_of_scale(scale));
+        r.arm = LIFT_START;
+        return r;
     }
-    e = l8_step_list(slot, 0xC0FC, 0xC0F4, false, &y, &step);
-    if (step == FRAME_LIST_ENDED) {
+    r.step = l8_list_step(slot, 0xC0FC, 0xC0F4, false, y_entry);
+    if (r.step.step == FRAME_LIST_ENDED) {
         ClearObject(slot);
-        return e;
+        r.arm = LIFT_LIST_ENDED;
+        return r;
     }
-    move = ApplyVelocity(slot);
-    return then(e, ended_of_axis_move(move));
+    r.move = ApplyVelocity(slot);
+    r.arm = LIFT_MOVED;
+    return r;
+}
+
+/* What LoadRecordRandomLiftThenMoveOrClear leaves in A, Y and the flags, from the arm it ended on. */
+static Ended lift_exit_shim(L8Arm r)
+{
+    Ended e;
+
+    switch (r.arm) {
+    case LIFT_START:
+        e = then(l8_record_ended(r.record), ended_of_random(r.random));
+        e = then(e, ended_load(r.first));
+        e = then(e, ended_of_sum(r.sum));
+        e = then(e, ended_load(0x18));
+        e = then(e, ended_of_axis_move(r.move));
+        return then(then(e, ended_load(0x68)), l8_of_scale(r.scale));
+    case LIFT_LIST_ENDED:
+        return l8_step_ended(r.step);
+    default:
+        return then(l8_step_ended(r.step), ended_of_axis_move(r.move));
+    }
 }
 
 void abi_LoadRecordRandomLiftThenMoveOrClear(void)
 {
-    abi_ended(LoadRecordRandomLiftThenMoveOrClear(cpu.x, cpu.y));
+    abi_ended(lift_exit_shim(LoadRecordRandomLiftThenMoveOrClear(cpu.x, cpu.y)));
 }

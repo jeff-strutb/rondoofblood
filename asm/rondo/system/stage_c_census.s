@@ -2145,7 +2145,7 @@ StageResetScroll3CD:
     bsr StageLoadScreen3CD
     pla
     sta z:zField8E
-    jsr StartKindFromCharacter_at0
+    jsr $A79D
 StageResetScroll3CD_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088

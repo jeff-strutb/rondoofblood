@@ -1627,3 +1627,633 @@ psg_start_song_alt_at10:
     ora a:$22DD
     sta a:$22DE
     rts
+
+; @card 02:CDF6 psg_sequencer
+; WHAT IT DOES: Steps one channel's sequence when its note has run out: reads the stream's commands, each of which changes the
+; channel's state, until a note or the end of the song's stream.
+; HOW: The channel's note count ($24A9 plus the channel) counted down; while it is not zero nothing else. At zero the stream's pointer
+; ($248B, $2491) is taken and each byte read: $D0 and above is a command through the jump table at $CE1D (duration scale, scale base
+; and its step, rest, volume slides, shape, balance, flags, call and return, loops, tempo, the fade), anything below a note, which sets
+; the count, the rest, the pitch (from the song's stream, the octave table or the noise value) and the channel's state, and keeps the
+; pointer.
+; WAITS: no.
+; Entry: X the channel. Exit: counting: N and Z from the count. A note: A the pointer's high byte, N and Z from it, X, Y the channel.
+; The stop command: A 2, N 0, Z 0, X, Y the channel. C, V as the last command's arithmetic left them.
+psg_sequencer:
+    dec a:$24A9,x
+    beq psg_sequencer_at0
+    rts
+psg_sequencer_at0:
+    sxy
+    lda a:$248B,y
+    sta z:$E8
+    lda a:$2491,y
+    sta z:$E9
+psg_sequencer_at1:
+    lda (<$E8)
+    inc z:$E8
+    bne psg_sequencer_at2
+    inc z:$E9
+psg_sequencer_at2:
+    pha
+    cmp #$D0
+    bcc psg_sequencer_at3
+    sec
+    sbc #$D0
+    asl a
+    tax
+    pla
+    jmp (psg_sequencer_table,x)
+psg_sequencer_table:
+    .addr psg_sequencer_at19
+    .addr psg_sequencer_at20
+    .addr psg_sequencer_at20
+    .addr psg_sequencer_at20
+    .addr psg_sequencer_at20
+    .addr psg_sequencer_at20
+    .addr psg_sequencer_at20
+    .addr psg_sequencer_at20
+    .addr psg_sequencer_at21
+    .addr psg_sequencer_at22
+    .addr psg_sequencer_at23
+    .addr psg_sequencer_at1
+    .addr psg_sequencer_at24
+    .addr psg_sequencer_at25
+    .addr psg_sequencer_at26
+    .addr psg_sequencer_at27
+    .addr psg_sequencer_at1
+    .addr psg_sequencer_at30
+    .addr psg_sequencer_at31
+    .addr psg_sequencer_at32
+    .addr psg_sequencer_at35
+    .addr psg_sequencer_at37
+    .addr psg_sequencer_at38
+    .addr psg_sequencer_at43
+    .addr psg_sequencer_at44
+    .addr psg_sequencer_at45
+    .addr psg_sequencer_at46
+    .addr psg_sequencer_at47
+    .addr psg_sequencer_at48
+    .addr psg_sequencer_at49
+    .addr psg_sequencer_at50
+    .addr psg_sequencer_at51
+    .addr psg_sequencer_at53
+    .addr psg_sequencer_at55
+    .addr psg_sequencer_at57
+    .addr psg_sequencer_at58
+    .addr psg_sequencer_at59
+    .addr psg_sequencer_at62
+    .addr psg_sequencer_at63
+    .addr psg_sequencer_at64
+    .addr psg_sequencer_at65
+    .addr psg_sequencer_at1
+    .addr psg_sequencer_at1
+    .addr psg_sequencer_at1
+    .addr psg_sequencer_at1
+    .addr psg_sequencer_at1
+    .addr psg_sequencer_at66
+    .addr psg_sequencer_at68
+psg_sequencer_at3:
+    ldx a:$24D3,y
+    beq psg_sequencer_at6
+    and #$0F
+    inc a
+    cmp a:$24D3,y
+    bcs psg_sequencer_at4
+    sax
+psg_sequencer_at4:
+    sta z:$EA
+    clc
+psg_sequencer_at5:
+    dex
+    beq psg_sequencer_at7
+    adc z:$EA
+    bra psg_sequencer_at5
+psg_sequencer_at6:
+    lda (<$E8)
+    inc z:$E8
+    bne psg_sequencer_at7
+    inc z:$E9
+psg_sequencer_at7:
+    sta a:$24A9,y
+    tax
+    lda (<$E8)
+    sax
+    cpx #$DA
+    beq psg_sequencer_at10
+    lsr a
+    lsr a
+    lsr a
+    sta z:$EA
+    sec
+    lda a:$24A9,y
+    ldx a:$24B5,y
+psg_sequencer_at8:
+    beq psg_sequencer_at10
+psg_sequencer_at9:
+    sbc z:$EA
+    dex
+    bra psg_sequencer_at8
+psg_sequencer_at10:
+    sta a:$24BB,y
+    pla
+    and #$F0
+    bne psg_sequencer_at11
+    cla
+    jmp psg_sequencer_at18
+psg_sequencer_at11:
+    sec
+    sbc #$10
+    lsr a
+    lsr a
+    lsr a
+    tax
+    lda a:$25E1,y
+    and #$F0
+    sax
+    beq psg_sequencer_at14
+    cpx #$10
+    bne psg_sequencer_at13
+    clc
+    adc a:$22DB
+    sta z:$EA
+    cla
+    adc a:$22DC
+    sta z:$EB
+    lda (<$EA)
+    sta a:$259F,y
+    inc z:$EA
+    bne psg_sequencer_at12
+    inc z:$EB
+psg_sequencer_at12:
+    lda (<$EA)
+    sta a:$25A5,y
+    bra psg_sequencer_at15
+psg_sequencer_at13:
+    cpy #$04
+    bcc psg_sequencer_at14
+    clc
+    adc a:$24CD,y
+    lsr a
+    sta a:$2601,y
+    bra psg_sequencer_at15
+    brk
+    clc
+    bmi psg_sequencer_at17
+    rts
+    sei
+    bcc psg_sequencer_at9
+psg_sequencer_at14:
+    ldx a:$2497,y
+    clc
+    adc a:$CF05,x
+    adc a:$24CD,y
+    tax
+    lda a:$D71A,x
+    sta a:$249D,y
+    lda a:$D71B,x
+    sta a:$24A3,y
+    cpy #$04
+    bcc psg_sequencer_at15
+    lda #$80
+    sta a:$2601,y
+psg_sequencer_at15:
+    lda a:$260D,y
+    cmp #$03
+    bne psg_sequencer_at16
+    lda #$01
+    bra psg_sequencer_at18
+psg_sequencer_at16:
+    cla
+    sta a:$2521,y
+    sta a:$2545,y
+    sta a:$2587,y
+    sta a:$258D,y
+    lda a:$2527,y
+    sta a:$252D,y
+    lda a:$254B,y
+    sta a:$2551,y
+psg_sequencer_at17:
+    lda a:$2593,y
+    sta a:$2599,y
+    lda #$02
+psg_sequencer_at18:
+    sta a:$260D,y
+    lda z:$E8
+    sta a:$248B,y
+    lda z:$E9
+    sta a:$2491,y
+    rts
+psg_sequencer_at19:
+    lda (<$E8)
+    and #$0F
+    sta a:$24D3,y
+    jmp psg_sequencer_at69
+psg_sequencer_at20:
+    and #$07
+    sta a:$2497,y
+    jmp psg_sequencer_at1
+psg_sequencer_at21:
+    ldx a:$22E0
+    inc a:$2497,x
+    jmp psg_sequencer_at1
+psg_sequencer_at22:
+    ldx a:$22E0
+    dec a:$2497,x
+    jmp psg_sequencer_at1
+psg_sequencer_at23:
+    lda #$03
+    sta a:$260D,y
+    jmp psg_sequencer_at1
+psg_sequencer_at24:
+    lda (<$E8)
+    and #$1F
+    sec
+    sbc #$1F
+    sta a:$24AF,y
+    cla
+    sta a:$255D,y
+    jmp psg_sequencer_at69
+psg_sequencer_at25:
+    lda (<$E8)
+    sta a:$25F9,y
+    cla
+    sta a:$2569,y
+    sta a:$2575,y
+    jmp psg_sequencer_at69
+psg_sequencer_at26:
+    lda (<$E8)
+    dec a
+    and #$07
+    sec
+    sbc #$08
+    eor #$FF
+    sta a:$24B5,y
+    jmp psg_sequencer_at69
+psg_sequencer_at27:
+    lda a:$24AF,y
+    clc
+    adc (<$E8)
+    bmi psg_sequencer_at28
+    cla
+    bra psg_sequencer_at29
+psg_sequencer_at28:
+    cmp #$E1
+    bcs psg_sequencer_at29
+    lda #$E1
+psg_sequencer_at29:
+    sta a:$24AF,y
+    jmp psg_sequencer_at69
+psg_sequencer_at30:
+    lda a:$24C1,y
+    sta z:$E8
+    lda a:$24C7,y
+    sta z:$E9
+    jmp psg_sequencer_at1
+psg_sequencer_at31:
+    lda z:$E8
+    sta a:$24C1,y
+    lda z:$E9
+    sta a:$24C7,y
+    jmp psg_sequencer_at1
+psg_sequencer_at32:
+    sxy
+    lda (<$E8)
+    bne psg_sequencer_at33
+    lda #$02
+psg_sequencer_at33:
+    pha
+    inc z:$E8
+    bne psg_sequencer_at34
+    inc z:$E9
+psg_sequencer_at34:
+    jsr psg_call_stack
+    lda z:$E8
+    sta (<$EA),y
+    iny
+    lda z:$E9
+    sta (<$EA),y
+    iny
+    pla
+    sta (<$EA),y
+    iny
+    sty z:$EA
+    lda a:$25E1,x
+    and #$F0
+    ora z:$EA
+    sta a:$25E1,x
+    sxy
+    jmp psg_sequencer_at1
+psg_sequencer_at35:
+    sxy
+    jsr psg_call_stack
+    dey
+    lda (<$EA),y
+    dec a
+    beq psg_sequencer_at36
+    sta (<$EA),y
+    dey
+    lda (<$EA),y
+    sta z:$E9
+    dey
+    lda (<$EA),y
+    sta z:$E8
+    sxy
+    jmp psg_sequencer_at1
+psg_sequencer_at36:
+    dey
+    dey
+    sty z:$EA
+    lda a:$25E1,x
+    and #$F0
+    ora z:$EA
+    sta a:$25E1,x
+    sxy
+    jmp psg_sequencer_at1
+psg_sequencer_at37:
+    lda (<$E8)
+    sta a:$25FF,y
+    jmp psg_sequencer_at69
+psg_sequencer_at38:
+    sxy
+    lda (<$E8)
+    cmp #$10
+    bcs psg_sequencer_at39
+    asl a
+    tay
+    lda a:$D8A1,y
+    sta z:$EA
+    lda a:$D8A2,y
+    sta z:$EB
+    bra psg_sequencer_at41
+psg_sequencer_at39:
+    sec
+    sbc #$10
+    asl a
+    clc
+    adc a:$22D5
+    sta z:$EA
+    cla
+    adc a:$22D6
+    sta z:$EB
+    lda (<$EA)
+    tay
+    inc z:$EA
+    bne psg_sequencer_at40
+    inc z:$EB
+psg_sequencer_at40:
+    lda (<$EA)
+    sta z:$EB
+    sty z:$EA
+psg_sequencer_at41:
+    stz a:$2503,x
+    stz a:$2509,x
+    lda (<$EA)
+    cmp #$FB
+    bne psg_sequencer_at42
+    ldy #$01
+    lda (<$EA),y
+    sta a:$2503,x
+    iny
+    lda (<$EA),y
+    sta a:$2509,x
+    lda #$03
+    clc
+    adc z:$EA
+    sta z:$EA
+    cla
+    adc z:$EB
+    sta z:$EB
+psg_sequencer_at42:
+    lda z:$EA
+    sta a:$24D9,x
+    lda z:$EB
+    sta a:$24DF,x
+    stz a:$250F,x
+    stz a:$24F1,x
+    stz a:$24F7,x
+    stz a:$24FD,x
+    sxy
+    jmp psg_sequencer_at69
+psg_sequencer_at43:
+    sxy
+    lda (<$E8)
+    asl a
+    tay
+    lda a:$22D7
+    sta z:$EA
+    lda a:$22D8
+    sta z:$EB
+    lda (<$EA),y
+    sta a:$2515,x
+    iny
+    lda (<$EA),y
+    sta a:$251B,x
+    stz a:$2521,x
+    sxy
+    jmp psg_sequencer_at69
+psg_sequencer_at44:
+    lda (<$E8)
+    sta a:$2527,y
+    jmp psg_sequencer_at69
+psg_sequencer_at45:
+    lda (<$E8)
+    and #$07
+    sta a:$2533,y
+    jmp psg_sequencer_at69
+psg_sequencer_at46:
+    sxy
+    lda (<$E8)
+    asl a
+    tay
+    lda a:$22D9
+    sta z:$EA
+    lda a:$22DA
+    sta z:$EB
+    lda (<$EA),y
+    sta a:$2539,x
+    iny
+    lda (<$EA),y
+    sta a:$253F,x
+    stz a:$2545,x
+    sxy
+    jmp psg_sequencer_at69
+psg_sequencer_at47:
+    lda (<$E8)
+    sta a:$254B,y
+    jmp psg_sequencer_at69
+psg_sequencer_at48:
+    lda (<$E8)
+    sta a:$2557,y
+    jmp psg_sequencer_at69
+psg_sequencer_at49:
+    lda (<$E8)
+    sta a:$2581,y
+    jmp psg_sequencer_at69
+psg_sequencer_at50:
+    lda (<$E8)
+    sta a:$2593,y
+    jmp psg_sequencer_at69
+psg_sequencer_at51:
+    lda (<$E8)
+    tax
+    inc z:$E8
+    bne psg_sequencer_at52
+    inc z:$E9
+psg_sequencer_at52:
+    lda (<$E8)
+    sta z:$E9
+    stx z:$E8
+    jmp psg_sequencer_at1
+psg_sequencer_at53:
+    sxy
+    jsr psg_call_stack
+    lda z:$E8
+    sta (<$EA),y
+    iny
+    lda z:$E9
+    sta (<$EA),y
+    iny
+    sty z:$EA
+    lda a:$25E1,x
+    and #$F0
+    ora z:$EA
+    sta a:$25E1,x
+    lda (<$E8)
+    tay
+    inc z:$E8
+    bne psg_sequencer_at54
+    inc z:$E9
+psg_sequencer_at54:
+    lda (<$E8)
+    sta z:$E9
+    sty z:$E8
+    sxy
+    jmp psg_sequencer_at1
+psg_sequencer_at55:
+    sxy
+    jsr psg_call_stack
+    dey
+    lda (<$EA),y
+    sta z:$E9
+    dey
+    lda (<$EA),y
+    sta z:$E8
+    sty z:$EA
+    lda a:$25E1,x
+    and #$F0
+    ora z:$EA
+    sta a:$25E1,x
+    inc z:$E8
+    bne psg_sequencer_at56
+    inc z:$E9
+psg_sequencer_at56:
+    sxy
+    jmp psg_sequencer_at69
+psg_sequencer_at57:
+    lda (<$E8)
+    asl a
+    sta a:$24CD,y
+    jmp psg_sequencer_at69
+psg_sequencer_at58:
+    lda (<$E8)
+    asl a
+    sta z:$EA
+    lda a:$24CD,y
+    clc
+    adc z:$EA
+    sta a:$24CD,y
+    bra psg_sequencer_at69
+psg_sequencer_at59:
+    phy
+    lda (<$E8)
+    asl a
+    tay
+    ldx #$05
+psg_sequencer_at60:
+    lda a:$2607,x
+    beq psg_sequencer_at61
+    tya
+    sta a:$24CD,x
+psg_sequencer_at61:
+    dex
+    bpl psg_sequencer_at60
+    ply
+    bra psg_sequencer_at69
+psg_sequencer_at62:
+    lda (<$E8)
+    sta a:$255D,y
+    cla
+    sta a:$2563,y
+    bra psg_sequencer_at69
+psg_sequencer_at63:
+    lda (<$E8)
+    sta a:$2569,y
+    cla
+    sta a:$256F,y
+    bra psg_sequencer_at69
+psg_sequencer_at64:
+    lda (<$E8)
+    sta a:$2575,y
+    cla
+    sta a:$257B,y
+    bra psg_sequencer_at69
+psg_sequencer_at65:
+    lda (<$E8)
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:$EA
+    lda a:$25E1,y
+    and #$0F
+    ora z:$EA
+    sta a:$25E1,y
+    lda (<$E8)
+    cmp #$01
+    bne psg_sequencer_at69
+    cla
+    sta a:$2503,y
+    sta a:$2509,y
+    bra psg_sequencer_at69
+psg_sequencer_at66:
+    lda (<$E8)
+    bit #$7F
+    beq psg_sequencer_at69
+    cmp #$00
+    bpl psg_sequencer_at67
+    eor #$FF
+    inc a
+psg_sequencer_at67:
+    sta a:$2613
+    stz a:$2614
+    stz a:$2615
+    bra psg_sequencer_at69
+psg_sequencer_at68:
+    lda #$02
+    sta a:$2607,y
+    rts
+psg_sequencer_at69:
+    inc z:$E8
+    bne psg_sequencer_at70
+    inc z:$E9
+psg_sequencer_at70:
+    jmp psg_sequencer_at1
+
+; @card 02:D23A psg_call_stack
+; WHAT IT DOES: Finds the stack of calls the channel keeps for its sequence: a pointer to it in $EA and $EB, and how deep it is in Y.
+; HOW: The channel's stack lies at the address the two tables at $D24B and $D251 give ($25AB, $25B4, $25BD, $25C6, $25CF, $25D8: nine bytes
+; each); its depth is the low nibble of the channel's kind byte ($25E1 plus the channel).
+; WAITS: no.
+; Entry: X the channel. Exit: $EA and $EB the stack's address; A and Y the depth, N and Z from it. X, C and V kept.
+psg_call_stack:
+    lda a:$D24B,x
+    sta z:$EA
+    lda a:$D251,x
+    sta z:$EB
+    lda a:$25E1,x
+    and #$0F
+    tay
+    rts
+    .byte $AB,$B4,$BD,$C6,$CF,$D8
+    .byte $25,$25,$25,$25,$25,$25

@@ -1400,3 +1400,564 @@ void abi_psg_start_song_alt(void)
 {
     card_exit_apply(psg_start_song_alt());
 }
+
+/* The sequencer's arrays (the first player's: the second player's sequencer is its own code). */
+enum {
+    DURATION_SCALE = 0x24D3, NOTE_REST = 0x24BB, REST_STEP = 0x24B5, TIE_OCTAVE = 0x24CD, KIND_ARRAY = 0x25E1,
+    CALL_STACK_LOW = 0xD24B, CALL_STACK_HIGH = 0xD251, JUMP_TABLE = 0xCE1D, OCTAVE_STEPS = 0xCF05, PITCH_TABLE_LOW = 0xD71A,
+    PITCH_TABLE_HIGH = 0xD71B, SONG_STREAM_BASE = 0x22DB, SHAPE_USER_COUNT = 0x22D5, PORT_SHAPES = 0x22D7, SLIDE_SHAPES = 0x22D9,
+    RELEASE_AT = 0x2503, RELEASE_HIGH_AT = 0x2509, ENV_LEFT_AT = 0x250F, LOOP_FRAME_LOW = 0x24C1, LOOP_FRAME_HIGH = 0x24C7,
+    SCALE_AT = 0x2533, DETUNE_AT = 0x2557
+};
+
+static inline uint16_t at(uint16_t base, uint8_t index)
+{
+    return (uint16_t)(base + index);
+}
+
+/*
+ * @card 02:D23A psg_call_stack
+ * WHAT IT DOES: Finds the stack of calls the channel keeps for its sequence: a pointer to it in $EA and $EB, and how deep it is in Y.
+ * HOW: The channel's stack lies at the address the two tables at $D24B and $D251 give ($25AB, $25B4, $25BD, $25C6, $25CF, $25D8: nine bytes
+ * each); its depth is the low nibble of the channel's kind byte ($25E1 plus the channel).
+ * WAITS: no.
+ * Entry: X the channel. Exit: $EA and $EB the stack's address; A and Y the depth, N and Z from it. X, C and V kept.
+ */
+CardExit psg_call_stack(uint8_t x)
+{
+    uint8_t value;
+
+    value = rd8((uint16_t)(CALL_STACK_LOW + x));
+    wr8(ZP_EA, value);
+    value = rd8((uint16_t)(CALL_STACK_HIGH + x));
+    wr8(ZP_EB, value);
+    value = (uint8_t)(rd8((uint16_t)(KIND_ARRAY + x)) & 0x0F);
+    return with_y(exit_a(value), value);
+}
+
+void abi_psg_call_stack(void)
+{
+    card_exit_apply(psg_call_stack(cpu.x));
+}
+
+/* The call stack of a channel, called as JSR: its depth, the frame's return address given. */
+static uint8_t sequence_stack(uint8_t channel, uint16_t ret)
+{
+    CardExit e;
+
+    jsr_push(ret);
+    e = psg_call_stack(channel);
+    jsr_pop();
+    return e.y;
+}
+
+/* The channel's depth kept in the low nibble of its kind byte: the nibble replaced by the byte in $EA. */
+static void keep_stack_depth(uint8_t channel, uint8_t depth)
+{
+    uint8_t value;
+
+    wr8(ZP_EA, depth);
+    value = (uint8_t)(rd8(at(KIND_ARRAY, channel)) & 0xF0);
+    value = (uint8_t)(value | rd8(ZP_EA));
+    wr8(at(KIND_ARRAY, channel), value);
+}
+
+/* The sequence's note (a byte below $D0): its length, scaled by the channel's duration scale and counted down by the rest step; then the
+ * pitch its high nibble asks for, from the song's stream, the octave table or the tied noise value; the effects of the last note cleared
+ * unless it was tied; the pointer kept. What it leaves: A the pointer's high byte, X and Y, and the flags as the arithmetic left them. */
+static CardExit sequence_note(uint8_t y, uint8_t x, uint8_t note, CardExit t)
+{
+    uint8_t a;
+    uint8_t value;
+    uint8_t kind;
+    bool c;
+    Sum sum;
+
+    t = with_c(t, false);
+    x = rd8(at(DURATION_SCALE, y));
+    if (x == 0) {
+        a = rd8_zp_y(ZP_E8, 0);
+        step_pair(ZP_E8);
+    } else {
+        a = (uint8_t)((note & 0x0F) + 1);
+        value = rd8(at(DURATION_SCALE, y));
+        if (a < value) {
+            value = a;
+            a = x;
+            x = value;
+        }
+        wr8(ZP_EA, a);
+        c = false;
+        for (;;) {
+            x = (uint8_t)(x - 1);
+            if (x == 0)
+                break;
+            sum = add8(a, rd8(ZP_EA), c);
+            a = sum.value;
+            c = sum.carry;
+            t = with_v(t, sum.overflow);
+        }
+        t = with_c(t, c);
+    }
+    wr8(at(NOTE_COUNT, y), a);
+    x = a;
+    a = rd8_zp_y(ZP_E8, 0);
+    value = a;
+    a = x;
+    x = value;
+    t = with_c(t, x >= 0xDA);
+    if (x != 0xDA) {
+        a = (uint8_t)(a >> 3);
+        wr8(ZP_EA, a);
+        c = true;
+        a = rd8(at(NOTE_COUNT, y));
+        x = rd8(at(REST_STEP, y));
+        while (x != 0) {
+            sum = sub8(a, rd8(ZP_EA), c);
+            a = sum.value;
+            c = sum.carry;
+            t = with_v(t, sum.overflow);
+            x = (uint8_t)(x - 1);
+        }
+        t = with_c(t, c);
+    }
+    wr8(at(NOTE_REST, y), a);
+    a = (uint8_t)(pull8() & 0xF0);
+    if (a != 0) {
+        sum = sub8(a, 0x10, true);
+        t = with_v(t, sum.overflow);
+        t = with_c(t, (sum.value & 4) != 0);
+        a = (uint8_t)(sum.value >> 3);
+        x = a;
+        kind = (uint8_t)(rd8(at(KIND_ARRAY, y)) & 0xF0);
+        a = x;
+        x = kind;
+        if (kind != 0)
+            t = with_c(t, kind >= 0x10);
+        if (kind == 0x10) {
+            sum = add8(a, rd8(SONG_STREAM_BASE), false);
+            wr8(ZP_EA, sum.value);
+            sum = add8(0, rd8((uint16_t)(SONG_STREAM_BASE + 1)), sum.carry);
+            wr8(ZP_EB, sum.value);
+            t = with_v(with_c(t, sum.carry), sum.overflow);
+            value = rd8_zp_y(ZP_EA, 0);
+            wr8(at(SEQ_POINTER_LOW, y), value);
+            step_pair(ZP_EA);
+            value = rd8_zp_y(ZP_EA, 0);
+            wr8(at(SEQ_POINTER_HIGH, y), value);
+        } else {
+            if (kind != 0)
+                t = with_c(t, y >= 4);
+            if (kind != 0 && y >= 4) {
+                sum = add8(a, rd8(at(TIE_OCTAVE, y)), false);
+                a = (uint8_t)(sum.value >> 1);
+                t = with_v(with_c(t, (sum.value & 1) != 0), sum.overflow);
+                wr8(at(NOISE_AT, y), a);
+            } else {
+                x = rd8(at(SCALE_BASE_AT, y));
+                sum = add8(a, rd8((uint16_t)(OCTAVE_STEPS + x)), false);
+                sum = add8(sum.value, rd8(at(TIE_OCTAVE, y)), sum.carry);
+                x = sum.value;
+                a = rd8((uint16_t)(PITCH_TABLE_LOW + x));
+                wr8(at(FREQ_BASE_LOW, y), a);
+                a = rd8((uint16_t)(PITCH_TABLE_HIGH + x));
+                wr8(at(FREQ_BASE_HIGH, y), a);
+                t = with_v(with_c(t, y >= 4), sum.overflow);
+                if (y >= 4) {
+                    a = 0x80;
+                    wr8(at(NOISE_AT, y), a);
+                }
+            }
+        }
+        a = rd8(at(SEQ_STATE, y));
+        t = with_c(t, a >= 3);
+        if (a == 3) {
+            a = 1;
+        } else {
+            wr8(at(PORT_AT, y), 0);
+            wr8(at(SLIDE_AT, y), 0);
+            wr8(at(VIB_LOW, y), 0);
+            wr8(at(VIB_HIGH, y), 0);
+            a = rd8(at(PORT_ON, y));
+            wr8(at(PORT_COUNT, y), a);
+            a = rd8(at(SLIDE_ON, y));
+            wr8(at(SLIDE_COUNT, y), a);
+            a = rd8(at(VIB_ON, y));
+            wr8(at(VIB_COUNT, y), a);
+            a = 2;
+        }
+    }
+    wr8(at(SEQ_STATE, y), a);
+    a = rd8(ZP_E8);
+    wr8(at(CHANNEL_START_LOW, y), a);
+    a = rd8(ZP_E9);
+    wr8(at(CHANNEL_START_HIGH, y), a);
+    return card_exit_over(t, with_y(with_x(exit_a(a), x), y));
+}
+
+/* A shift left of a byte (ASL A): the byte's bit 7 is what it carries out. */
+static CardExit shift_left(CardExit t, uint8_t value)
+{
+    return with_c(t, (value & 0x80) != 0);
+}
+
+/*
+ * @card 02:CDF6 psg_sequencer
+ * WHAT IT DOES: Steps one channel's sequence when its note has run out: reads the stream's commands, each of which changes the
+ * channel's state, until a note or the end of the song's stream.
+ * HOW: The channel's note count ($24A9 plus the channel) counted down; while it is not zero nothing else. At zero the stream's pointer
+ * ($248B, $2491) is taken and each byte read: $D0 and above is a command through the jump table at $CE1D (duration scale, scale base
+ * and its step, rest, volume slides, shape, balance, flags, call and return, loops, tempo, the fade), anything below a note, which sets
+ * the count, the rest, the pitch (from the song's stream, the octave table or the noise value) and the channel's state, and keeps the
+ * pointer.
+ * WAITS: no.
+ * Entry: X the channel. Exit: counting: N and Z from the count. A note: A the pointer's high byte, N and Z from it, X, Y the channel.
+ * The stop command: A 2, N 0, Z 0, X, Y the channel. C, V as the last command's arithmetic left them.
+ */
+static CardExit sequencer_body(uint8_t channel, uint8_t entry_y)
+{
+    CardExit t = { 0 };
+    uint8_t x;
+    uint8_t y = channel;
+    uint8_t a;
+    uint8_t depth;
+    uint8_t value;
+    uint16_t target;
+    Sum sum;
+
+    value = rd8(at(NOTE_COUNT, channel));
+    value = (uint8_t)(value - 1);
+    wr8(at(NOTE_COUNT, channel), value);
+    if (value != 0) {
+        t.nz = value;
+        t.set_nz = true;
+        return t;
+    }
+    x = entry_y;
+    a = rd8(at(CHANNEL_START_LOW, y));
+    wr8(ZP_E8, a);
+    a = rd8(at(CHANNEL_START_HIGH, y));
+    wr8(ZP_E9, a);
+    for (;;) {
+        a = rd8_zp_y(ZP_E8, 0);
+        step_pair(ZP_E8);
+        push8(a);
+        if (a < 0xD0)
+            return sequence_note(y, x, a, with_c(t, false));
+        sum = sub8(a, 0xD0, true);
+        t = shift_left(with_v(t, sum.overflow), sum.value);
+        x = (uint8_t)(sum.value << 1);
+        a = pull8();
+        target = rd8((uint16_t)(JUMP_TABLE + x));
+        target |= (uint16_t)(rd8((uint16_t)(JUMP_TABLE + x + 1)) << 8);
+        switch (target) {
+        case 0xCF68:
+            a = (uint8_t)(rd8_zp_y(ZP_E8, 0) & 0x0F);
+            wr8(at(DURATION_SCALE, y), a);
+            break;
+        case 0xCF72:
+            wr8(at(SCALE_BASE_AT, y), (uint8_t)(a & 0x07));
+            continue;
+        case 0xCF7A:
+            x = rd8(CHANNEL_NOW);
+            value = rd8(at(SCALE_BASE_AT, x));
+            wr8(at(SCALE_BASE_AT, x), (uint8_t)(value + 1));
+            continue;
+        case 0xCF83:
+            x = rd8(CHANNEL_NOW);
+            value = rd8(at(SCALE_BASE_AT, x));
+            wr8(at(SCALE_BASE_AT, x), (uint8_t)(value - 1));
+            continue;
+        case 0xCF8C:
+            wr8(at(SEQ_STATE, y), 3);
+            continue;
+        case 0xCF94:
+            a = (uint8_t)(rd8_zp_y(ZP_E8, 0) & 0x1F);
+            sum = sub8(a, 0x1F, true);
+            t = with_v(with_c(t, sum.carry), sum.overflow);
+            wr8(at(PITCH_HIGH, y), sum.value);
+            wr8(at(PITCH_STEP, y), 0);
+            break;
+        case 0xCFA5:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(BALANCE, y), a);
+            wr8(at(LEFT_STEP, y), 0);
+            wr8(at(RIGHT_STEP, y), 0);
+            break;
+        case 0xCFB4:
+            a = (uint8_t)((rd8_zp_y(ZP_E8, 0) - 1) & 0x07);
+            sum = sub8(a, 0x08, true);
+            t = with_v(with_c(t, sum.carry), sum.overflow);
+            wr8(at(REST_STEP, y), (uint8_t)(sum.value ^ 0xFF));
+            break;
+        case 0xCFC4:
+            a = rd8(at(PITCH_HIGH, y));
+            sum = add8(a, rd8_zp_y(ZP_E8, 0), false);
+            t = with_v(with_c(t, sum.carry), sum.overflow);
+            a = sum.value;
+            if ((a & 0x80) == 0) {
+                a = 0;
+            } else {
+                t = with_c(t, a >= 0xE1);
+                if (a < 0xE1)
+                    a = 0xE1;
+            }
+            wr8(at(PITCH_HIGH, y), a);
+            break;
+        case 0xCFDB:
+            a = rd8(at(LOOP_FRAME_LOW, y));
+            wr8(ZP_E8, a);
+            a = rd8(at(LOOP_FRAME_HIGH, y));
+            wr8(ZP_E9, a);
+            continue;
+        case 0xCFE8:
+            a = rd8(ZP_E8);
+            wr8(at(LOOP_FRAME_LOW, y), a);
+            a = rd8(ZP_E9);
+            wr8(at(LOOP_FRAME_HIGH, y), a);
+            continue;
+        case 0xCFF5:
+            a = rd8_zp_y(ZP_E8, 0);
+            if (a == 0)
+                a = 2;
+            push8(a);
+            step_pair(ZP_E8);
+            depth = sequence_stack(y, 0xD006);
+            wr8_zp_y(ZP_EA, depth, rd8(ZP_E8));
+            depth++;
+            wr8_zp_y(ZP_EA, depth, rd8(ZP_E9));
+            depth++;
+            a = pull8();
+            wr8_zp_y(ZP_EA, depth, a);
+            depth++;
+            keep_stack_depth(y, depth);
+            x = depth;
+            continue;
+        case 0xD024:
+            depth = sequence_stack(y, 0xD028);
+            depth--;
+            a = (uint8_t)(rd8_zp_y(ZP_EA, depth) - 1);
+            if (a != 0) {
+                wr8_zp_y(ZP_EA, depth, a);
+                depth--;
+                a = rd8_zp_y(ZP_EA, depth);
+                wr8(ZP_E9, a);
+                depth--;
+                a = rd8_zp_y(ZP_EA, depth);
+                wr8(ZP_E8, a);
+            } else {
+                depth = (uint8_t)(depth - 2);
+                keep_stack_depth(y, depth);
+            }
+            x = depth;
+            continue;
+        case 0xD050:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(CHANNEL_FLAGS, y), a);
+            break;
+        case 0xD058:
+            a = rd8_zp_y(ZP_E8, 0);
+            t = with_c(t, a >= 0x10);
+            if (a < 0x10) {
+                depth = (uint8_t)(a << 1);
+                t = shift_left(t, a);
+                wr8(ZP_EA, rd8((uint16_t)(SHAPES_BUILT_IN + depth)));
+                wr8(ZP_EB, rd8((uint16_t)(SHAPES_BUILT_IN + 1 + depth)));
+            } else {
+                sum = sub8(a, 0x10, true);
+                t = with_v(shift_left(t, sum.value), sum.overflow);
+                sum = add8((uint8_t)(sum.value << 1), rd8(SHAPES_USER), false);
+                wr8(ZP_EA, sum.value);
+                a = rd8((uint16_t)(SHAPES_USER + 1));
+                sum = add8(0, a, sum.carry);
+                wr8(ZP_EB, sum.value);
+                t = with_v(with_c(t, sum.carry), sum.overflow);
+                depth = rd8_zp_y(ZP_EA, 0);
+                step_pair(ZP_EA);
+                a = rd8_zp_y(ZP_EA, 0);
+                wr8(ZP_EB, a);
+                wr8(ZP_EA, depth);
+            }
+            wr8(at(RELEASE_AT, y), 0);
+            wr8(at(RELEASE_HIGH_AT, y), 0);
+            a = rd8_zp_y(ZP_EA, 0);
+            t = with_c(t, a >= 0xFB);
+            if (a == 0xFB) {
+                depth = 1;
+                a = rd8_zp_y(ZP_EA, depth);
+                wr8(at(RELEASE_AT, y), a);
+                depth++;
+                a = rd8_zp_y(ZP_EA, depth);
+                wr8(at(RELEASE_HIGH_AT, y), a);
+                sum = add8(3, rd8(ZP_EA), false);
+                wr8(ZP_EA, sum.value);
+                sum = add8(0, rd8(ZP_EB), sum.carry);
+                wr8(ZP_EB, sum.value);
+                t = with_v(with_c(t, sum.carry), sum.overflow);
+            }
+            a = rd8(ZP_EA);
+            wr8(at(SHAPE_LOW, y), a);
+            a = rd8(ZP_EB);
+            wr8(at(SHAPE_HIGH, y), a);
+            wr8(at(ENV_LEFT_AT, y), 0);
+            wr8(at(ENV_LEVEL_HIGH, y), 0);
+            wr8(at(ENV_RATE_LOW, y), 0);
+            wr8(at(ENV_RATE_HIGH, y), 0);
+            x = depth;
+            break;
+        case 0xD0CB:
+        case 0xD0FE:
+            a = rd8_zp_y(ZP_E8, 0);
+            t = shift_left(t, a);
+            depth = (uint8_t)(a << 1);
+            wr8(ZP_EA, rd8(target == 0xD0CB ? PORT_SHAPES : SLIDE_SHAPES));
+            wr8(ZP_EB, rd8((uint16_t)((target == 0xD0CB ? PORT_SHAPES : SLIDE_SHAPES) + 1)));
+            a = rd8_zp_y(ZP_EA, depth);
+            wr8(at(target == 0xD0CB ? PORT_LOW : SLIDE_LOW, y), a);
+            depth++;
+            a = rd8_zp_y(ZP_EA, depth);
+            wr8(at(target == 0xD0CB ? PORT_HIGH : SLIDE_HIGH, y), a);
+            wr8(at(target == 0xD0CB ? PORT_AT : SLIDE_AT, y), 0);
+            x = depth;
+            break;
+        case 0xD0EC:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(PORT_ON, y), a);
+            break;
+        case 0xD0F4:
+            a = (uint8_t)(rd8_zp_y(ZP_E8, 0) & 0x07);
+            wr8(at(SCALE_AT, y), a);
+            break;
+        case 0xD11F:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(SLIDE_ON, y), a);
+            break;
+        case 0xD127:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(DETUNE_AT, y), a);
+            break;
+        case 0xD12F:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(VIB_STEP, y), a);
+            break;
+        case 0xD137:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(VIB_ON, y), a);
+            break;
+        case 0xD13F:
+            x = rd8_zp_y(ZP_E8, 0);
+            step_pair(ZP_E8);
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(ZP_E9, a);
+            wr8(ZP_E8, x);
+            continue;
+        case 0xD151:
+            depth = sequence_stack(y, 0xD155);
+            wr8_zp_y(ZP_EA, depth, rd8(ZP_E8));
+            depth++;
+            wr8_zp_y(ZP_EA, depth, rd8(ZP_E9));
+            depth++;
+            keep_stack_depth(y, depth);
+            x = rd8_zp_y(ZP_E8, 0);
+            step_pair(ZP_E8);
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(ZP_E9, a);
+            wr8(ZP_E8, x);
+            continue;
+        case 0xD17E:
+            depth = sequence_stack(y, 0xD182);
+            depth--;
+            a = rd8_zp_y(ZP_EA, depth);
+            wr8(ZP_E9, a);
+            depth--;
+            a = rd8_zp_y(ZP_EA, depth);
+            wr8(ZP_E8, a);
+            keep_stack_depth(y, depth);
+            step_pair(ZP_E8);
+            x = depth;
+            break;
+        case 0xD1A2:
+            a = rd8_zp_y(ZP_E8, 0);
+            t = shift_left(t, a);
+            wr8(at(TIE_OCTAVE, y), (uint8_t)(a << 1));
+            break;
+        case 0xD1AB:
+            a = rd8_zp_y(ZP_E8, 0);
+            t = shift_left(t, a);
+            wr8(ZP_EA, (uint8_t)(a << 1));
+            a = rd8(at(TIE_OCTAVE, y));
+            sum = add8(a, rd8(ZP_EA), false);
+            t = with_v(with_c(t, sum.carry), sum.overflow);
+            wr8(at(TIE_OCTAVE, y), sum.value);
+            break;
+        case 0xD1BB:
+            push8(y);
+            a = rd8_zp_y(ZP_E8, 0);
+            t = shift_left(t, a);
+            depth = (uint8_t)(a << 1);
+            for (x = 5; (x & 0x80) == 0; x--) {
+                if (rd8(at(CHANNEL_STATE, x)) != 0)
+                    wr8(at(TIE_OCTAVE, x), depth);
+            }
+            (void)pull8();
+            break;
+        case 0xD1D1:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(PITCH_STEP, y), a);
+            wr8(at(PITCH_FRACTION, y), 0);
+            break;
+        case 0xD1DC:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(LEFT_STEP, y), a);
+            wr8(at(LEFT_FRACTION, y), 0);
+            break;
+        case 0xD1E7:
+            a = rd8_zp_y(ZP_E8, 0);
+            wr8(at(RIGHT_STEP, y), a);
+            wr8(at(RIGHT_FRACTION, y), 0);
+            break;
+        case 0xD1F2:
+            a = rd8_zp_y(ZP_E8, 0);
+            t = with_c(t, (a & 0x10) != 0);
+            wr8(ZP_EA, (uint8_t)(a << 4));
+            value = (uint8_t)(rd8(at(KIND_ARRAY, y)) & 0x0F);
+            wr8(at(KIND_ARRAY, y), (uint8_t)(value | rd8(ZP_EA)));
+            a = rd8_zp_y(ZP_E8, 0);
+            t = with_c(t, a >= 1);
+            if (a == 1) {
+                wr8(at(RELEASE_AT, y), 0);
+                wr8(at(RELEASE_HIGH_AT, y), 0);
+            }
+            break;
+        case 0xD213:
+            a = rd8_zp_y(ZP_E8, 0);
+            t = with_v(t, true);
+            if ((a & 0x7F) == 0)
+                break;
+            t = with_c(t, true);
+            if ((a & 0x80) != 0)
+                a = (uint8_t)(-a);
+            wr8(TEMPO_ON, a);
+            wr8(TEMPO_PHASE, 0);
+            wr8(TEMPO_TICKS, 0);
+            break;
+        case 0xD22B:
+            wr8(at(CHANNEL_STATE, y), 2);
+            return card_exit_over(t, with_y(with_x(exit_a(2), x), y));
+        case 0xCE07:
+        default:
+            continue;
+        }
+        step_pair(ZP_E8);
+    }
+}
+
+CardExit psg_sequencer(uint8_t x, uint8_t y)
+{
+    return sequencer_body(x, y);
+}
+
+void abi_psg_sequencer(void)
+{
+    card_exit_apply(psg_sequencer(cpu.x, cpu.y));
+}

@@ -118,7 +118,7 @@ HurtSoundsThenRunTable:
 BossFrameRoutinesD:
     jsr EnterState0EWhenFlagged
     jsr FlashWhenHurtThenSound
-    bsr SoundAndState6WhenFlagged
+    bsr $BBC0
     ldy a:OBJ_27A8,x
     lda a:$BBB0,y
     beq BossFrameRoutinesD_at0

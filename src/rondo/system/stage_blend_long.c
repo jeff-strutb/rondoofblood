@@ -16,43 +16,58 @@
  * WAITS: no.
  * Entry: X kept, Y the second row of the first blend. Exit: A the bank restored, N and Z from it; C and V as the last blend or the bank add left them.
  */
-Ended BlendStageRowsOfPlayer(uint8_t slot, uint8_t y)
+/* The arms BlendStageRowsOfPlayer ends on. */
+enum { BR_BLEND_OFF, BR_BLENDED };
+
+ObjArm BlendStageRowsOfPlayer(uint8_t slot, uint8_t y)
 {
+    ObjArm r = { 0 };
     TileRowsExit blend;
-    Sum mapped;
-    uint8_t flag, row_a, row_b, bank;
-    Ended e;
 
     jsr_push(0x9184);
-    mapped = SaveAndMapStageBanks();
+    r.sum = SaveAndMapStageBanks();
     jsr_pop();
-    e = ended_with_a(ended_with_overflow(ended_with_carry(ended_nz((uint8_t)(mapped.value + 1)), mapped.carry), mapped.overflow),
-                     (uint8_t)(mapped.value + 1));
-    flag = RD8(STAGEVARS->blend_on[1]);
-    e = ended_then(e, ended_load(flag));
-    if (flag == 0) {
+    r.first = RD8(STAGEVARS->blend_on[1]);
+    r.arm = r.first == 0 ? BR_BLENDED : BR_BLEND_OFF;
+    if (r.arm == BR_BLENDED) {
         push8(slot);
         WR8(STAGEVARS->blend_on[0], 0);
-        row_a = RD8(ZP->score_add.lo);
-        e = ended_then(e, ended_load(row_a));
+        r.second = RD8(ZP->score_add.lo);
         jsr_push(0x9194);
-        blend = BlendStageRowPair(3, row_a, y);
+        blend = BlendStageRowPair(3, r.second, y);
         jsr_pop();
-        e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(0), blend.a), true), blend.v), 5));
-        row_b = RD8(ZP->score_add.hi);
-        e = ended_then(e, ended_load(row_b));
+        r.third = blend.a;
+        r.flag = blend.v;
+        r.fourth = RD8(ZP->score_add.hi);
         jsr_push(0x919B);
-        blend = BlendStageRowPair(5, row_b, 5);
+        blend = BlendStageRowPair(5, r.fourth, 5);
         jsr_pop();
-        e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(0), blend.a), true), blend.v), 5));
-        slot = pull8();
-        e = ended_then(e, ended_nz(slot));
+        r.fifth = blend.a;
+        r.other = blend.v;
+        r.sixth = pull8();
     }
-    bank = RestoreStageBanks();
-    return ended_then(e, ended_load(bank));
+    r.seventh = RestoreStageBanks();
+    return r;
+}
+
+/* BlendStageRowsOfPlayer's exit: A the bank restored, N and Z from it; C and V as the last blend or the bank add left them. */
+Ended blend_stage_rows_of_player_exit_shim(ObjArm r)
+{
+    Ended e = ended_with_a(ended_with_overflow(ended_with_carry(ended_nz((uint8_t)(r.sum.value + 1)), r.sum.carry), r.sum.overflow),
+                           (uint8_t)(r.sum.value + 1));
+
+    e = ended_then(e, ended_load(r.first));
+    if (r.arm == BR_BLENDED) {
+        e = ended_then(e, ended_load(r.second));
+        e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(0), r.third), true), r.flag), 5));
+        e = ended_then(e, ended_load(r.fourth));
+        e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(0), r.fifth), true), r.other), 5));
+        e = ended_then(e, ended_nz(r.sixth));
+    }
+    return ended_then(e, ended_load(r.seventh));
 }
 
 void abi_BlendStageRowsOfPlayer(void)
 {
-    abi_ended(BlendStageRowsOfPlayer(cpu.x, cpu.y));
+    abi_ended(blend_stage_rows_of_player_exit_shim(BlendStageRowsOfPlayer(cpu.x, cpu.y)));
 }

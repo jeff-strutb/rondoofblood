@@ -84,8 +84,8 @@ def cpu_run(jobs, mem, *cmd, **kw):
                           text=True, **kw)
 
 
-def export(main, rev, b):
-    tree = os.path.join(b, "tree-" + rev)
+def export(main, rev, b, tag=""):
+    tree = os.path.join(b, "tree-" + rev + tag)
     shutil.rmtree(tree, ignore_errors=True)
     os.makedirs(tree)
     a = subprocess.Popen(["git", "-C", main, "archive", rev], stdout=subprocess.PIPE)
@@ -103,9 +103,10 @@ def export(main, rev, b):
     return tree
 
 
-def prepare(main, rev, b, d):
-    """The private tree, its own pcebox, and the compiled hashes: (tree, box, chash, extents)."""
-    tree = export(main, rev, b)
+def prepare(main, rev, b, d, tag=""):
+    """The private tree, its own pcebox, and the compiled hashes: (tree, box, chash, extents). `tag` names a tree
+    of its own (served runs beside a sweep of the same revision and must not re-export the sweep's tree)."""
+    tree = export(main, rev, b, tag)
     box = os.path.join(b, "pcebox-" + rev)
     if not os.path.exists(box) or not os.path.exists(box + ".gen"):      # a box of this revision is reused
         r = cpu_run(1, "2G", "env", "RONDO_BOX=" + box, "sh", os.path.join(tree, "setup.sh"), "pcebox")
@@ -367,7 +368,7 @@ def served(main, opts):
         print("runner: REFUSED: the draft cache is stale or missing: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache")
         return 3
     rev = git(main, "rev-parse", "--short=7", "HEAD").stdout.strip()
-    tree, box, chash, ext = prepare(main, rev, b, b)
+    tree, box, chash, ext = prepare(main, rev, b, b, "-served")
     rec = records.Records(main)
     scripts = opts["scripts"] or ["boot"]
     if scripts == ["all"]:
@@ -468,8 +469,14 @@ def served(main, opts):
             print("runner: the served box did not build:\n" + text)
             return 1
         new_extra, all_identical = set(), True
+        # each script alone in its own process and cpu-run claim, --workers at once; the records below are then
+        # written one script at a time
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(opts["workers"], len(scripts)))) as ex:
+            runs = dict(zip(scripts, ex.map(lambda x: measure(tree, sbox, os.path.join(out, "a7"), x, "a7"), scripts)))
+        table = []
         for s in scripts:
-            res = measure(tree, sbox, os.path.join(out, "a7"), s, "a7")
+            res = runs[s]
+            table.append(table_row(s, mode, rev, res, os.path.join(out, "a7", s)))
             if res.get("errors"):
                 log(f"served: A7 of {s} FAILED {res['errors']}", b)
                 all_identical = False
@@ -513,12 +520,57 @@ def served(main, opts):
                 records.write(hp, ["script", "routine", "bytes", "source", "drafts_serving"], rows_h)
                 log(f"served: {s}: filed C holding in lockstep: {len(held)} routines, "
                     f"{sum(int(bytes_of.get(r) or 0) for r in held)} B (with {len(bad)} filed routines served by drafts)", b)
+        write_table(main, out, mode, rev, scripts, table, b)
         if all_identical or not new_extra:
             break
         extra |= new_extra
         log(f"served: iteration {it + 1}: {len(new_extra)} more filed routines named by defects go to drafts: "
             f"{', '.join(sorted(new_extra)[:12])}", b)
     return 0
+
+
+TABLE = ["script", "mode", "verdict", "code", "frames", "defects", "first_stop", "cause", "source"]
+
+
+def table_row(s, mode, rev, res, d):
+    """One script's lockstep result: its verdict, the first differing frame or code, frames compared of expected,
+    access defects, where it first stopped (the report's STOPPED line or its first defect line) and the cause
+    the checker gave there."""
+    if res.get("errors"):
+        return {"script": s, "mode": mode, "verdict": "NORESULT", "code": "", "frames": "", "defects": "",
+                "first_stop": "", "cause": "; ".join(res["errors"])[:300], "source": rev}
+    f = res["a7"]["fields"]
+    stop, cause = "", ""
+    so = os.path.join(d, "a7.stdout.txt")
+    if os.path.exists(so):
+        stop = next((ln.strip() for ln in open(so, errors="replace") if ln.startswith("STOPPED ")), "")
+    rep = os.path.join(d, "a7run", "a7", s + ".rec.hybrid.txt")
+    if os.path.exists(rep):
+        lines = open(rep, errors="replace").read().splitlines()
+        cause = next((ln.strip() for ln in lines if ln.startswith("stopped at frame")), "")
+        first = next((ln.strip() for ln in lines if re.match(
+            r"\w+ (?:MOVED|EXTRA|MISSING|VALUE|STACK|STATE|REGS|CALL|INT) call \d+ frame \d+", ln)), "")
+        if not stop:
+            stop = first
+        elif first and not cause:
+            cause = first
+    def text(x):        # the records are ASCII
+        return x.encode("ascii", "replace").decode()[:300]
+    return {"script": s, "mode": mode, "verdict": res["a7"]["verdict"], "code": f["code"],
+            "frames": f"{f['compared']}/{f['expected']}", "defects": f["defects"], "first_stop": text(stop),
+            "cause": text(cause), "source": rev}
+
+
+def write_table(main, out, mode, rev, scripts, table, b):
+    """The per-script lockstep table of one served run: in its output folder always, and as the record
+    config/rondo/runs/served_a7.csv (this mode's rows replaced) when every script was measured."""
+    records.write(os.path.join(out, "table.csv"), TABLE, table)
+    n = sum(1 for r in table if r["verdict"] == "IDENTICAL")
+    log(f"served: {mode} at {rev}: {n} of {len(table)} scripts identical; table {os.path.join(out, 'table.csv')}", b)
+    if sorted(scripts) == sorted(records.script_names(main)):
+        path = os.path.join(main, "config", "rondo", "runs", "served_a7.csv")
+        old = [r for r in records.read(path) if r["mode"] != mode] if os.path.exists(path) else []
+        records.write(path, TABLE, old + table)
 
 
 def cpu_run_build(tree, draftdir, box):

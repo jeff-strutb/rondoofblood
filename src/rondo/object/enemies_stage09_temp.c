@@ -2765,22 +2765,29 @@ void abi_TouchesPlayerMark(void)
  * WAITS: no.
  * Entry: X object. Exit: as the second, over the first's.
  */
-Ended CountBothPairs(uint8_t slot)
+ObjArm CountBothPairs(uint8_t slot)
 {
-    Ended e;
+    ObjArm r = { 0 };
 
     jsr_push(0xB9E0);
-    e = CountTimerPairDownOrRepick(slot);
+    r.sub = obj_sub(CountTimerPairDownOrRepick(slot));
     jsr_pop();
     jsr_push(0xB9E3);
-    e = then(e, CountAnglePairDownOrRepick(slot));
+    r.sub2 = obj_sub(CountAnglePairDownOrRepick(slot));
     jsr_pop();
-    return e;
+    return r;
+}
+
+static Ended count_both_pairs_exit_shim(ObjArm r)
+{
+    Ended e = count_timer_pair_down_or_repick_exit_shim(obj_arm(r.sub));
+
+    return then(e, count_angle_pair_down_or_repick_exit_shim(obj_arm(r.sub2)));
 }
 
 void abi_CountBothPairs(void)
 {
-    abi_ended(CountBothPairs(cpu.x));
+    abi_ended(count_both_pairs_exit_shim(CountBothPairs(cpu.x)));
 }
 
 /*

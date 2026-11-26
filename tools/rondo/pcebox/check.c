@@ -479,6 +479,7 @@ static struct {
     uint16_t handler;
     uint8_t i_orig;         /* the I flag the C had at the hand-over */
     int frame;              /* a frame hold: ev is the FRAME, its clock the frame end's; the core is let idle there */
+    unsigned acc_max;       /* work RAM accesses the core may make on the way: the original's own, in the record before ev */
 } hold;
 static unsigned long idle_until_frame;     /* after a frame hold: the core runs nothing until this frame has ended */
 static uint64_t frame_holds;
@@ -1945,6 +1946,7 @@ void hand_over(uint16_t addr)
          * stops the run on any access or a P instruction before), then runs nothing until the frame has ended. */
         if (!hold.active) {
             int nest = sp->nest;
+            unsigned acc = 0;      /* the original's work RAM accesses on the way, which the core makes itself */
 
             for (uint64_t j = sp->cur;; j++) {
                 Ev *e = sev(sp, j, &nest);
@@ -1953,17 +1955,26 @@ void hand_over(uint16_t addr)
                     break;
                 if (is_noise(e) && e->type != EV_RTPULL)
                     continue;
-                if (e->type == EV_INT && e->s == cpu.s) {
+                if ((e->type == EV_R || e->type == EV_W) && acc < 16) {
+                    acc++;
+                    continue;
+                }
+                if (e->type == EV_INT && (acc || e->s == cpu.s)) {
                     /* The same for the interrupt the original took a few instructions on: held, dispatched from the
-                     * record when the core stands at its PC (an INT at addr itself is the hold's below, the same). */
-                    if (hold_arm_from(j, sp->tag, 1, e->pc, cpu.s))
+                     * record when the core stands at its PC and S (an INT at addr itself is the hold's below, the same).
+                     * The work RAM accesses the original made on the way the core makes as the original's code does;
+                     * no hardware access, call or return comes before it. */
+                    if (hold_arm_from(j, sp->tag, 1, e->pc, e->s)) {
+                        hold.acc_max = acc;
                         int_holds++;
+                    }
                     break;
                 }
-                if (e->type == EV_FRAME && e->s == cpu.s && cur_frame < e->addr) {
+                if (e->type == EV_FRAME && !acc && e->s == cpu.s && cur_frame < e->addr) {
                     hold.ev = *e;
                     memcpy(&hold.ev.clock, e->mpr, 8);
                     hold.frame = 1;
+                    hold.acc_max = 0;
                     hold.tag = sp->tag;
                     hold.n = 0;
                     hold.handler = 0;
@@ -2004,6 +2015,7 @@ int hold_arm_from(uint64_t k, int tag, int need, uint16_t pc, uint8_t sp_s)
         return 0;
     hold.ev = *x;
     hold.frame = 0;
+    hold.acc_max = 0;
     hold.handler = 0;
     for (uint64_t j = k + 1; j < k + 64 && (x = evp(j)); j++)
         if (x->type == EV_CALL && x->kind == K_IRQ) {
@@ -3542,10 +3554,10 @@ static int hold_step(const Regs *r)
     }
     if (op == 0x08 || op == 0x28 || op == 0x40 || op == 0x58 || op == 0x78)
         stop_run(3, "an instruction that reads or sets P (%02X at %04X) ran under the interrupt hold", op, (unsigned)r->pc);
-    if (hold_acc)
+    if (hold_acc > hold.acc_max)
         stop_run(3, "the original's run-on after a left hand-over made a data access before the interrupted PC %04X, which the record does not have",
                  (unsigned)hold.ev.pc);
-    if (++hold.n > 16 || hybrid_clock_now() > hold.ev.clock)
+    if (++hold.n > 16 + 2 * (int)hold.acc_max || hybrid_clock_now() > hold.ev.clock)
         stop_run(3, "the original's run-on after a left hand-over did not reach the interrupted PC %04X in time (%d instructions)",
                  (unsigned)hold.ev.pc, hold.n);
     return 0;

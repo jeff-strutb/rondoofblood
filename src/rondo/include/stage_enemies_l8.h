@@ -1594,7 +1594,7 @@ GatesArm SpawnerWithScrollGates(uint8_t slot);
 SpawnerArm SpawnerByKindAndScreen(uint8_t slot);
 L8St11StartBossArm StartBossWhenStageC0OrLoad(uint8_t slot, uint8_t y_entry);
 L8St11FadeArm StepScrollThenMoveOrFadeOut(uint8_t slot);
-L8St27BossCArm BossFrameRoutinesC(uint8_t slot);
+L8St27BossCArm BossFrameRoutinesC(uint8_t slot, L8Layout lay);
 L8St27BossDArm BossFrameRoutinesD(uint8_t slot, uint8_t y_entry);
 
 #endif

@@ -154,7 +154,7 @@ decomps:
 <!-- progress:start -->
 ![Progress against the traced floor of the game's code](docs/rondo/progress.svg)
 
-Measured on `b77f090`: gate records from `d89c150`, every one of the 47 scripts traced and with a gate A7 result.
+Measured on `aaa6675`: gate records from `d89c150`, every one of the 47 scripts traced and with a gate A7 result.
 
 **Denominator: 111,974 B, the traced floor: the code 47 scripts ran, counted by distinct whole routines (211,569 B by disc location). The static census is not yet in it, so the true total is larger.**
 
@@ -182,9 +182,9 @@ Card routines short of a gate, overlapping: A7 swap 197, every byte run 87, A5 j
 
 **A5, each routine's C against the original call by call: 2078 routines identical, game 1885 and card 193** (49 and 0 divergent, 2 and 0 unverified, 122 and 4 uncovered). 1 of 47 scripts are identical in lockstep.
 
-**Filed C: 2057 game routines have filed C; 1929 of them were lifted or reworked since 2026-11-21** (any line of the routine last changed on or after that date, by `git blame`). **Drafted C, a stepping stone and never counted as decompiled: 2,768 of 2,906 register-shaped drafts identical in A5** measured 2026-11-26 by the runner, the A5 of every draft serving.
+**Filed C: 2057 game routines have filed C; 1929 of them were lifted or reworked since 2026-11-21** (any line of the routine last changed on or after that date, by `git blame`). **Drafted C, a stepping stone and never counted as decompiled: 2,776 of 2,906 register-shaped drafts identical in A5** measured 2026-11-26 by the runner, the A5 of every draft serving.
 
-**Drafts in lockstep, the plan's first bar (PLAN section 7) and never counted as decompiled: 27 of 47 scripts identical with every routine's draft in place**, measured at `9b724a6`, `d89c150`, `f40e79f` (`config/rondo/runs/served_a7.csv`: each script's first stop and its cause).
+**Drafts in lockstep, the plan's first bar (PLAN section 7) and never counted as decompiled: 46 of 47 scripts identical with every routine's draft in place**, measured at `8723974`, `b328065` (`config/rondo/runs/served_a7.csv`: each script's first stop and its cause).
 
 **Filed C holding in lockstep, a line of its own and not part of M1: 68 routines, 2,678 B**, in the 1 script(s) that came out identical with the filed C in place and drafts serving for every routine that fails the proper-C check or a defect (boot). A routine is T3 only when every script that reaches it is identical with its C in place: 0 routines meet that so far (0 B); the rest wait for the scripts listed in `config/rondo/certification_queue.csv`. Measured at `d5e832b`.
 

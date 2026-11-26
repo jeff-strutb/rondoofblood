@@ -84,6 +84,7 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
 int check_tag_run(const char *name);
 void check_where(const char *text);
 int check_unit_active(void);
+int check_idle(void);
 void check_poke(uint32_t phys, uint8_t old, uint8_t value);
 int check_init(int which, const char *path, const char *user_path);
 void check_finish(void);
@@ -514,6 +515,14 @@ static int run_script(const char *script, int depth)
                 return 2;
             }
         } else if (!strcmp(cmd, "call") && k >= 2) {
+            /* The call is made where the game has no routine open beyond the kernel's idle loop: made inside another's
+             * call, its frame and accesses would be counted into that call. Frames are run until then (at most 120);
+             * past that the call is made where it is and the report says so. */
+            for (int n = 0; !check_idle() && n < 120; n++)
+                run(1);
+            if (!check_idle())
+                fprintf(stderr, "pcebox: %s:%d: call: the game was not idle within 120 frames; the call is made inside an open call\n",
+                        script, ln);
             if (unit_call(line, script, ln)) {
                 fclose(s);
                 return 2;

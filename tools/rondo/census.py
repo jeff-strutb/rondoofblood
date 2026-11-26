@@ -22,8 +22,9 @@ Two censuses, both from the code the scripts ran (their traces) and no other inp
   strict   follows calls, jumps and branches from every place the traces entered code, JMP
            (abs,X) and JMP (abs) tables read to their full length (repeated entries kept, "no
            entry" words skipped), and handler-pointer arrays anchored on a pointer to code that ran.
-           A block that decodes into an undefined opcode, into BRK (which two bytes of zero
-           decode as) or into an opcode no script ever ran, or jumps into I/O, is data and is dropped.
+           A block that decodes into an undefined opcode or into BRK (which two bytes of zero decode as;
+           no script runs BRK), or jumps into I/O, is data and is dropped. A defined opcode no script ran
+           is not a reason: unrun code may use any of them (65 never ran in 47 scripts, sei and nop among them).
   relaxed  strict, plus every pointer array whether anchored or not, every lone plausible
            pointer, every untouched stretch that decodes cleanly to a return, and blocks
            with the opcodes strict refuses. Every byte it finds that strict does not is
@@ -440,9 +441,6 @@ class Census:
             op = buf[p]
             if self.strict and op == 0:
                 why = "BRK"
-                break
-            if self.strict and op in self.model.never:
-                why = "opcode no script ran"
                 break
             if op == 0 and instrs and buf[instrs[-1][0]] == 0:       # two zero bytes: data
                 why = "two BRK"

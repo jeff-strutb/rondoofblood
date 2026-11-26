@@ -23,7 +23,9 @@ enum {
     SHAPES_BUILT_IN = 0xD8A1, SHAPES_USER = 0x22D5, ENV_KIND = 0x25E1, FREQ_NOW_LOW = 0x25E7, FREQ_NOW_HIGH = 0x25ED, FREQ_BASE_LOW = 0x249D,
     FREQ_BASE_HIGH = 0x24A3, VIB_STEP = 0x2581, VIB_ON = 0x2593, VIB_COUNT = 0x2599, VIB_LOW = 0x2587, VIB_HIGH = 0x258D, DETUNE = 0x2557,
     SLIDE_ON = 0x254B, SLIDE_COUNT = 0x2551, SLIDE_LOW = 0x2539, SLIDE_HIGH = 0x253F, SLIDE_AT = 0x2545, PORT_ON = 0x2527, PORT_COUNT = 0x252D,
-    PORT_LOW = 0x2515, PORT_HIGH = 0x251B, PORT_AT = 0x2521, SCALE = 0x2533, SCALE_BASE = 0x2497
+    PORT_LOW = 0x2515, PORT_HIGH = 0x251B, PORT_AT = 0x2521, SCALE = 0x2533, SCALE_BASE = 0x2497, ENV_STATE = 0x260D, ENV_TIMER = 0x24BB,
+    ENV_LEFT = 0x250F, ENV_LEVEL_LOW = 0x24EB, ENV_LEVEL_HIGH = 0x24F1, ENV_RATE_LOW = 0x24F7, ENV_RATE_HIGH = 0x24FD, ENV_RELEASE_LOW = 0x2503,
+    ENV_RELEASE_HIGH = 0x2509, ENV_AT = 0x24E5, VOLUME_BASE = 0x24AF, VOLUME_OUT = 0x25F3, ENV_LEVEL_MAX = 0x7C
 };
 
 /*
@@ -970,4 +972,215 @@ CardExit psg_pitch_effects(void)
 void abi_psg_pitch_effects(void)
 {
     card_exit_apply(psg_pitch_effects());
+}
+
+/* The end the volume envelope's paths join at, $D4A3: the level made the channel's volume. */
+static void env_volume(Trk *t, uint8_t x)
+{
+    uint8_t value = rd8((uint16_t)(ENV_LEVEL_HIGH + x));
+
+    t_a(t, value);
+    t_lsr(t);
+    t_lsr(t);
+    t_clc(t);
+    t_adc(t, rd8((uint16_t)(VOLUME_BASE + x)));
+    if (t->n) {
+        t->a = 0;
+        t->a_set = true;
+    }
+    wr8((uint16_t)(VOLUME_OUT + x), t->a);
+}
+
+/* From $D4CE: a segment's length and its two rates read from the list at $E8, the position kept, the volume made. */
+static void env_segment(Trk *t, uint8_t x, uint8_t y, uint8_t length)
+{
+    uint8_t value;
+
+    t_cmp(t, length, 0);
+    if (length == 0) {
+        t->a = 0xFF;
+        t_nz(t, 0xFF);
+        length = 0xFF;
+    }
+    wr8((uint16_t)(ENV_LEFT + x), length);
+    y++;
+    t->y = y;
+    t_xy_nz(t, y);
+    value = rd8_zp_y(ZP_E8, y);
+    t_a(t, value);
+    wr8((uint16_t)(ENV_RATE_LOW + x), value);
+    y++;
+    t->y = y;
+    t_xy_nz(t, y);
+    value = rd8_zp_y(ZP_E8, y);
+    t_a(t, value);
+    wr8((uint16_t)(ENV_RATE_HIGH + x), value);
+    y++;
+    t->y = y;
+    t_xy_nz(t, y);
+    t_a(t, y);
+    wr8((uint16_t)(ENV_AT + x), y);
+    env_volume(t, x);
+}
+
+/* From $D4B3: the next segment of the envelope's list. */
+static void env_next(Trk *t, uint8_t x)
+{
+    uint8_t y = rd8((uint16_t)(ENV_AT + x));
+    uint8_t value;
+    uint8_t item;
+
+    t->y = y;
+    t->y_set = true;
+    t_xy_nz(t, y);
+    value = rd8((uint16_t)(SHAPE_LOW + x));
+    t_a(t, value);
+    wr8(ZP_E8, value);
+    value = rd8((uint16_t)(SHAPE_HIGH + x));
+    t_a(t, value);
+    wr8(ZP_E9, value);
+    for (;;) {
+        item = rd8_zp_y(ZP_E8, y);
+        t_a(t, item);
+        t_cmp(t, item, 0xFB);
+        if (item < 0xFB) {
+            env_segment(t, x, y, item);
+            return;
+        }
+        if (item == 0xFB) {
+            for (int i = 0; i < 3; i++) {
+                y++;
+                t->y = y;
+                t_xy_nz(t, y);
+            }
+            continue;
+        }
+        t_cmp(t, item, 0xFC);
+        if (item != 0xFC) {
+            t_a(t, 0xFF);
+            wr8((uint16_t)(ENV_LEFT + x), 0xFF);
+            wr8((uint16_t)(ENV_RATE_LOW + x), 0);
+            wr8((uint16_t)(ENV_RATE_HIGH + x), 0);
+            env_volume(t, x);
+            return;
+        }
+        y++;
+        t->y = y;
+        t_xy_nz(t, y);
+        value = rd8_zp_y(ZP_E8, y);
+        t_a(t, value);
+        wr8((uint16_t)(ENV_LEVEL_LOW + x), value);
+        y++;
+        t->y = y;
+        t_xy_nz(t, y);
+        value = rd8_zp_y(ZP_E8, y);
+        t_a(t, value);
+        wr8((uint16_t)(ENV_LEVEL_HIGH + x), value);
+        y++;
+        t->y = y;
+        t_xy_nz(t, y);
+        item = rd8_zp_y(ZP_E8, y);
+        t_a(t, item);
+        t_cmp(t, item, 0xFB);
+        if (item < 0xFB) {
+            env_segment(t, x, y, item);
+            return;
+        }
+        wr8((uint16_t)(ENV_LEFT + x), 0);
+        t_a(t, y);
+        wr8((uint16_t)(ENV_AT + x), y);
+        env_volume(t, x);
+        return;
+    }
+}
+
+/* ADC of the level by a rate, clipped at 0 or at $7C: $D444 for the held part and $D470 for the release. */
+static void env_move_level(Trk *t, uint8_t x, uint16_t rate_low, uint16_t rate_high)
+{
+    uint8_t value;
+    uint8_t rate;
+
+    value = rd8((uint16_t)(ENV_LEVEL_LOW + x));
+    t_a(t, value);
+    t_clc(t);
+    t_adc(t, rd8((uint16_t)(rate_low + x)));
+    wr8((uint16_t)(ENV_LEVEL_LOW + x), t->a);
+    value = rd8((uint16_t)(ENV_LEVEL_HIGH + x));
+    t_a(t, value);
+    t_adc(t, rd8((uint16_t)(rate_high + x)));
+    if (t->n) {
+        t->a = 0;
+        wr8((uint16_t)(ENV_LEVEL_LOW + x), 0);
+        rate = rd8((uint16_t)(rate_high + x));
+        t->y = rate;
+        t->y_set = true;
+        t_xy_nz(t, rate);
+        if ((rate & 0x80) == 0)
+            t_a(t, ENV_LEVEL_MAX);
+    }
+    wr8((uint16_t)(ENV_LEVEL_HIGH + x), t->a);
+}
+
+/*
+ * @card 02:D422 psg_volume_envelope
+ * WHAT IT DOES: Works the current channel's volume envelope for the frame: the held part moves the level by its rates until its length is
+ * used up, the release moves it down by the release rates, and the next segment is read from the shape's list when the held part ends.
+ * HOW: State $260D: 0 off (volume 0); bit 7 the release; 2 ending (state counted down, position cleared, next segment); else the held part:
+ * $24BB counted down and the release bit set at 0, $250F the length left (0 reads the next segment), the level ($24EB, $24F1) moved by
+ * the rates ($24F7, $24FD). The list at ($24D9, $24DF) from $24E5: $FB skips three bytes, $FC sets the level then reads a segment (length, two
+ * rates), a length below $FB is a segment ($FF if 0), anything else holds. The volume is the level over 4 plus the channel's base ($24AF).
+ * WAITS: no.
+ * Entry: CardPlayChannel ($22E0) the channel. Exit: A, Y and the flags as the last step left them; X the channel.
+ */
+CardExit psg_volume_envelope(void)
+{
+    Trk t = { 0 };
+    uint8_t x = rd8(CHANNEL_NOW);
+    uint8_t state;
+    uint8_t value;
+
+    t.x = x;
+    t.x_set = true;
+    t_xy_nz(&t, x);
+    state = rd8((uint16_t)(ENV_STATE + x));
+    t_a(&t, state);
+    if (state == 0) {
+        wr8((uint16_t)(VOLUME_OUT + x), 0);
+        return t_exit(&t);
+    }
+    if ((state & 0x80) != 0) {
+        env_move_level(&t, x, ENV_RELEASE_LOW, ENV_RELEASE_HIGH);
+        env_volume(&t, x);
+        return t_exit(&t);
+    }
+    t_cmp(&t, state, 2);
+    if (state == 2) {
+        (void)step_byte(&t, (uint16_t)(ENV_STATE + x), -1);
+        wr8((uint16_t)(ENV_AT + x), 0);
+        env_next(&t, x);
+        return t_exit(&t);
+    }
+    if (step_byte(&t, (uint16_t)(ENV_TIMER + x), -1) == 0) {
+        t_a(&t, (uint8_t)(state | 0x80));
+        wr8((uint16_t)(ENV_STATE + x), t.a);
+    }
+    value = rd8((uint16_t)(ENV_LEFT + x));
+    t_a(&t, value);
+    if (value == 0) {
+        env_next(&t, x);
+        return t_exit(&t);
+    }
+    env_move_level(&t, x, ENV_RATE_LOW, ENV_RATE_HIGH);
+    value = rd8((uint16_t)(ENV_LEFT + x));
+    t_a(&t, value);
+    t_cmp(&t, value, 0xFF);
+    if (value != 0xFF)
+        (void)step_byte(&t, (uint16_t)(ENV_LEFT + x), -1);
+    env_volume(&t, x);
+    return t_exit(&t);
+}
+
+void abi_psg_volume_envelope(void)
+{
+    card_exit_apply(psg_volume_envelope());
 }

@@ -1585,6 +1585,7 @@ typedef struct {
     L8Arm enter;
     L8FlashHurtArm flash;
     Jump jump;
+    L8HitBoxRowArm row;
 } L8St27BossDArm;
 
 L8St27BossArm BossFrameRoutines(uint8_t slot, uint8_t y_entry);

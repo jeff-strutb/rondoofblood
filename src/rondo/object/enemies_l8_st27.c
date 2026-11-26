@@ -441,15 +441,14 @@ static Ended bossd_tail(const L8St27BossDArm *r)
 /*
  * @routine 0F6C:39C BossFrameRoutinesD
  * @run 70:BB9C
- * WHAT IT DOES: One frame of the boss of overlay 0F6C: runs EnterState0EWhenFlagged and FlashWhenHurtThenSound, the code the state table names (JumpByStateTable0F6C3C0) and, in the states the table at $BBB0 marks, the code at $C523.
+ * WHAT IT DOES: One frame of the boss of overlay 0F6C: runs EnterState0EWhenFlagged and FlashWhenHurtThenSound, the code the state table names (JumpByStateTable0F6C3C0) and, in the states the table at $BBB0 marks, HitBoxRowByFrameKind.
  * HOW: Three calls, a table read, a call into the original code.
  * WAITS: no.
- * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (bossd_exit_shim). The call into $C523 ran in no script; the draft stops there.
+ * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (bossd_exit_shim). The call into HitBoxRowByFrameKind (0F6D:523) ran in no script; the draft stops there.
  */
 L8St27BossDArm BossFrameRoutinesD(uint8_t slot, uint8_t y_entry)
 {
     L8St27BossDArm r = { 0 };
-    Jump extra = { { 0 }, 0xC523, true };
 
     jsr_push(0xBB9F);
     r.enter = EnterState0EWhenFlagged(slot);
@@ -472,7 +471,7 @@ L8St27BossDArm BossFrameRoutinesD(uint8_t slot, uint8_t y_entry)
     }
     abi_ended(bossd_tail(&r));
     jsr_push(0xBBAF);
-    slot = enter_handler(slot, extra);
+    r.row = HitBoxRowByFrameKind(slot);
     jsr_pop();
     r.arm = ST27_D_MARKED;
     return r;
@@ -484,7 +483,7 @@ static Ended bossd_exit_shim(L8St27BossDArm r)
     if (r.arm == ST27_D_UNMARKED) {
         return bossd_tail(&r);
     }
-    return ended_kept();
+    return l8_hitbox_row_exit_shim(r.row);
 }
 
 void abi_BossFrameRoutinesD(void)

@@ -348,6 +348,7 @@ typedef struct {
     uint8_t y_high_late, handler_state;
 } StateFrame;
 Death RichterDie(uint8_t x, uint8_t y);
+Death RichterDeathSound(uint8_t x, uint8_t y);
 StateFrame RichterStateFrame(uint8_t x, uint8_t y);
 StateFrame RichterOutOfHealth(uint8_t x, uint8_t y);
 void death_exit_shim(Death death);
@@ -1215,11 +1216,31 @@ Death RichterDie(uint8_t x, uint8_t y)
     RichterStopX();
     jsr_pop();
     WR8(OBJ->state[0], STATE_DYING);
+    return RichterDeathSound(x, y);
+}
+
+/*
+ * @routine 01B9:1B6 RichterDeathSound
+ * @run 6D:A1B6
+ * WHAT IT DOES: Fades the music out and plays the death's sound.
+ * HOW: FadeAndStopSound, then SoundCommand $60.
+ * WAITS: no.
+ * Entry: X, Y kept for the sound. Exit: as SoundCommand with $60.
+ */
+Death RichterDeathSound(uint8_t x, uint8_t y)
+{
+    Death death;
+
     jsr_push(0xA1B9);
     fade_and_stop_sound_shim();
     jsr_pop();
     death.sound = SoundCommand(SOUND_DEATH, x, y);
     return death;
+}
+
+void abi_RichterDeathSound(void)
+{
+    death_exit_shim(RichterDeathSound(cpu.x, cpu.y));
 }
 
 void death_exit_shim(Death death)

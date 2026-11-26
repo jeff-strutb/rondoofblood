@@ -432,6 +432,7 @@ static struct {
     uint8_t i_orig;         /* the I flag the C had at the hand-over */
 } hold;
 static uint64_t held_ints, held_not;
+static uint64_t handover_ints;     /* interrupts the record took before the instruction a C handed over at: delivered by the C */
 static uint64_t handover_frames;   /* frame ends the record took at the place a C handed over to the original: passed by the C */
 static uint64_t retpoint_ints;
 static uint64_t dispatch_held;    /* interrupts the record took at an RTS dispatch's target: held for the core's arrival there */   /* interrupts the record took at a resume place after original code that the core reached early: delivered by the C */
@@ -1830,6 +1831,20 @@ void hand_over(uint16_t addr)
                     break;
                 if (is_noise(e) && e->type != EV_RTPULL)
                     continue;
+                if (e->type == EV_INT && e->pc == rondo_pc && e->s == cpu.s) {
+                    /* The interrupt the original took before the instruction the C stands at (a branch it then took):
+                     * delivered by the C, which resumes at that PC, as at a C's return point. One taken after the branch,
+                     * at addr, is the hold's below. */
+                    uint64_t r = section_end(sp, j);
+
+                    if (r == NO_RETURN)
+                        break;
+                    handover_ints++;
+                    hy_int_pass(sp, j, r);
+                    sp->cur = r + 1;
+                    j = r;
+                    continue;
+                }
                 if (e->type != EV_FRAME || (e->pc != rondo_pc && e->pc != addr) || e->s != cpu.s)
                     break;
                 handover_frames++;
@@ -3816,6 +3831,8 @@ void check_finish(void)
                 (unsigned long long)retpoint_ints);
         fprintf(report, "interrupts at the address an RTS dispatch goes to, held for the core's arrival there: %llu\n",
                 (unsigned long long)dispatch_held);
+        fprintf(report, "interrupts before the instruction a C handed over at, delivered by the C: %llu\n",
+                (unsigned long long)handover_ints);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",
                 (unsigned long long)handover_frames);
         if (horizon_calls)

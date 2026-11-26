@@ -175,4 +175,79 @@ void abi_Object1StepLeft(void);
 Obj1Arm Object1StepRight(uint8_t object);
 void abi_Object1StepRight(void);
 
+/* How a routine of the world objects (slots 4 to $13, placed in world coordinates) ended: the animation step and its
+ * Y (step_last: the step came after the move, so its C stands), the last world move (A, N, Z, C and V), then by arm:
+ * LOADED, A first and N and Z from second, C where c_set; COMPARED, A first compared with second; NZ_ONLY, N and Z
+ * from second; HIT, the knock-back's: A $1E, Y the hurt byte (first) halved, C its bit 0, V that of the SBC (sub_v). */
+enum { WORLD_ANIMATED, WORLD_LOADED, WORLD_COMPARED, WORLD_NZ_ONLY, WORLD_HIT, WORLD_ORIGINAL };
+
+typedef struct {
+    int arm;
+    uint8_t first, second;
+    bool c_set, carry;
+    bool stepped, step_last;
+    FrameStep step;
+    uint8_t step_y;
+    bool moved;
+    AxisMove move;
+    bool sub_v;
+} WorldArm;
+
+/* How RunWorldObjects ended: A the last frame byte read or the last handler's A (ran_last), the last handler's arm
+ * for Y and V (ran: any handler ran). */
+typedef struct {
+    bool ran, ran_last;
+    uint8_t frame;
+    WorldArm last;
+} WorldRun;
+
+/* How SpawnerStep ended: by arm, with the bytes behind A and N and Z and the carry. */
+enum { SPAWN_HELD, SPAWN_COUNTED, SPAWN_EVEN_FRAME, SPAWN_TICKED, SPAWN_NO_SLOT, SPAWN_PLACED, SPAWN_ORIGINAL };
+
+typedef struct {
+    int arm;
+    uint8_t first, second;
+    bool carry;
+} SpawnArm;
+
+/* How CheckPlayerHits ended: A, the value N and Z come from, C; Y 2 where a hit to the left set it (y_set); V where a
+ * subtract or the reach's add made one (v_set); X $15 after a loop, kept from the loop before otherwise. */
+typedef struct {
+    uint8_t a, nz;
+    bool carry;
+    bool y_set;
+    bool v_set, overflow;
+} HitsArm;
+
+Sum WorldToScreen(void);
+void abi_WorldToScreen(void);
+void ClearWorldObjects(void);
+void abi_ClearWorldObjects(void);
+WorldRun RunWorldObjects(void);
+void abi_RunWorldObjects(void);
+WorldArm RunWorldObject(uint8_t object);
+void abi_RunWorldObject(void);
+WorldArm WorldObjectFallIn(uint8_t object);
+void abi_WorldObjectFallIn(void);
+WorldArm WorldObjectWalk(uint8_t object);
+void abi_WorldObjectWalk(void);
+WorldArm WorldObjectStunned(uint8_t object);
+void abi_WorldObjectStunned(void);
+WorldArm WorldObjectFallAway(uint8_t object);
+void abi_WorldObjectFallAway(void);
+WorldArm WorldObjectPiece(uint8_t object);
+void abi_WorldObjectPiece(void);
+void InitSpawner(void);
+void abi_InitSpawner(void);
+SpawnArm RunSpawner(void);
+void abi_RunSpawner(void);
+SpawnArm SpawnerStep(uint8_t object);
+void abi_SpawnerStep(void);
+AxisMove ApplyWorldVelocity(uint8_t object);
+void abi_ApplyWorldVelocity(void);
+AxisMove ApplyWorldVelocityX(uint8_t object);
+void abi_ApplyWorldVelocityX(void);
+HitsArm CheckPlayerHits(void);
+void abi_CheckPlayerHits(void);
+
 #endif

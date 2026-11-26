@@ -79,6 +79,13 @@ void stage_regs_load_shim(StageRegs r)
     abi_flag(P_V, r.v);
 }
 
+StageRegs stage_regs_entry_shim(void)
+{
+    StageRegs r = { cpu.a, cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0, cpu.a };
+
+    return r;
+}
+
 StageRegs stage_regs_from_cpu_shim(StageRegs before)
 {
     return stage_regs_after(stage_exit_from_cpu_shim(), before);

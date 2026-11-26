@@ -397,7 +397,7 @@ static Ended bossd_tail(const L8St27BossDArm *r)
 
 /*
  * @routine 0F6C:39C BossFrameRoutinesD
- * @run 70:B39C
+ * @run 70:BB9C
  * WHAT IT DOES: One frame of the boss of overlay 0F6C: runs EnterState0EWhenFlagged and FlashWhenHurtThenSound, the code the state table names (JumpByStateTable0F6C3C0) and, in the states the table at $BBB0 marks, the code at $C523.
  * HOW: Three calls, a table read, a call into the original code.
  * WAITS: no.
@@ -408,15 +408,15 @@ L8St27BossDArm BossFrameRoutinesD(uint8_t slot, uint8_t y_entry)
     L8St27BossDArm r = { 0 };
     Jump extra = { { 0 }, 0xC523, true };
 
-    jsr_push(0xB39F);
+    jsr_push(0xBB9F);
     r.enter = EnterState0EWhenFlagged(slot);
     jsr_pop();
     abi_ended(l8_enter_0e_exit_shim(r.enter));
-    jsr_push(0xB3A2);
+    jsr_push(0xBBA2);
     r.flash = FlashWhenHurtThenSound(slot, y_entry);
     jsr_pop();
     abi_sound_end(l8_flash_hurt_exit_shim(r.flash));
-    jsr_push(0xB3A4);
+    jsr_push(0xBBA4);
     r.jump = JumpByStateTable0F6C3C0(slot);
     abi_ended(r.jump.end);
     slot = enter_handler(slot, r.jump);
@@ -428,7 +428,7 @@ L8St27BossDArm BossFrameRoutinesD(uint8_t slot, uint8_t y_entry)
         return r;
     }
     abi_ended(bossd_tail(&r));
-    jsr_push(0xB3AF);
+    jsr_push(0xBBAF);
     slot = enter_handler(slot, extra);
     jsr_pop();
     r.arm = ST27_D_MARKED;

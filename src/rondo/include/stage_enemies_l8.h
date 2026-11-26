@@ -394,37 +394,121 @@ L8St12BurstArm StepListThenBurstAtFrame18(uint8_t slot, uint8_t y_entry);
 L8St12HomeArm HomeOnPointThenRingAndSound(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st13.c */
-Ended StepListThenStartChannel85(uint8_t slot, uint8_t y_entry);
-Ended StepListThenStopAnimation(uint8_t slot, uint8_t y_entry);
-Ended StepListB995ThenWait(uint8_t slot, uint8_t y_entry);
-Ended StepListThenStartType2D(uint8_t slot, uint8_t y_entry);
-Ended StepListThenClearAnimation(uint8_t slot, uint8_t y_entry);
-Ended StepListThenStartType2E(uint8_t slot, uint8_t y_entry);
-SoundEnd StepListThenSoundAndStartChannel86(uint8_t slot, uint8_t y_entry);
-Ended SpiralOutWhileStepping(uint8_t slot, uint8_t y_entry);
-Ended MoveXUntilPastLeftEdge(uint8_t slot);
-Ended CountDownThenClearAndAdvanceSlot10(uint8_t slot);
-SoundEnd SoundWhenHurtInStatesOneToThree(uint8_t slot, uint8_t y_entry);
-Ended LoadRecordAimAtPlayer(uint8_t slot);
-Ended NearObject19(uint8_t slot);
-Ended StartRiseAndSpawnRing(uint8_t slot);
-Ended SpawnRingOfSeven(uint8_t slot);
-Ended FallAlongListUntilGround(uint8_t slot, uint8_t y_entry);
-Ended StepListCCThenMoveOrClear(uint8_t slot, uint8_t y_entry);
-Ended LoadRecordThrowByNumber(uint8_t slot);
-Ended FallThenTurnAtTimerEnd(uint8_t slot);
-Ended StepListCBThenMoveOrClear(uint8_t slot, uint8_t y_entry);
-Ended FollowObject19ThenStepListByMode(uint8_t slot, uint8_t y_entry);
-Ended StartScriptByWaveBit(uint8_t slot);
-SoundEnd LoadRecordWithSound1C(uint8_t slot);
-Ended FollowObject19ThenLaunch(uint8_t slot);
-Ended SpawnType30EveryFourthFrame(uint8_t slot);
-Ended StepListThenSpawnUntilHurt(uint8_t slot, uint8_t y_entry);
-SoundEnd SpawnType2FAtWaveMarks(uint8_t slot, uint8_t y_entry);
-SoundEnd StepListSlowSideways(uint8_t slot, uint8_t y_entry);
-Ended StepListThenCountdownNextState(uint8_t slot, uint8_t y_entry);
-SoundEnd StepListThenSound43AtZero(uint8_t slot, uint8_t y_entry);
-Ended SeekObject19ThenHitAndClear(uint8_t slot, uint8_t y_entry);
+/* The structs the converted routines of st13 return where L8Arm does not fit: the arm and the values behind it. */
+typedef struct {
+    int arm;
+    uint8_t first, second, third, fourth;
+    L8Step step;
+    L8Record record;
+    Sum sum;
+    CommandCall call;
+} L8St13SoundArm;
+
+typedef struct {
+    int arm;
+    L8Step step;
+    uint8_t radius_lo, radius_hi, angle, counted;
+    ScaleResult scale;
+    AxisMove move;
+    Sum shrunk, turned;
+} L8St13SpiralArm;
+
+typedef struct {
+    L8Record record;
+    AxisMove move;
+    AngleExit toward;
+    uint8_t angle;
+    ScaleResult scale;
+} L8St13AimArm;
+
+/* NearObject19: the arm, the last difference and its subtract's V, and whether near (both within 7). */
+typedef struct {
+    int arm;
+    uint8_t diff;
+    bool overflow, near;
+} L8St13Near;
+
+typedef struct {
+    uint8_t count, y;
+} L8St13Ring;
+
+typedef struct {
+    L8St13Ring ring;
+    uint8_t counted;
+} L8St13RiseArm;
+
+typedef struct {
+    int arm;
+    L8Record record;
+    uint8_t last, mode, kept, index, entry, lo;
+    L8Step step;
+} L8St13FollowArm;
+
+typedef struct {
+    int arm;
+    L8Step step;
+    AxisMove move;
+    L8Arm spawn;
+    uint8_t flags, counted;
+} L8St13UntilHurtArm;
+
+typedef struct {
+    int arm;
+    uint8_t wave, mark, at, next, placed, x;
+    L8Slot found;
+    CommandCall call;
+    AxisMove move;
+} L8St13WaveMarksArm;
+
+typedef struct {
+    L8Step step;
+    Sum sum;
+    AxisMove move;
+    L8St13WaveMarksArm marks;
+} L8St13SidewaysArm;
+
+typedef struct {
+    int arm;
+    L8Step step;
+    uint8_t x_lo, y_lo, angle, value;
+    AngleExit toward;
+    ScaleResult scale;
+    AxisMove move;
+    L8St13Near near;
+    RandomResult random;
+} L8St13SeekArm;
+
+L8Arm StepListThenStartChannel85(uint8_t slot, uint8_t y_entry);
+L8Arm StepListThenStopAnimation(uint8_t slot, uint8_t y_entry);
+L8Arm StepListB995ThenWait(uint8_t slot, uint8_t y_entry);
+L8Arm StepListThenStartType2D(uint8_t slot, uint8_t y_entry);
+L8Arm StepListThenClearAnimation(uint8_t slot, uint8_t y_entry);
+L8Arm StepListThenStartType2E(uint8_t slot, uint8_t y_entry);
+L8St13SoundArm StepListThenSoundAndStartChannel86(uint8_t slot, uint8_t y_entry);
+L8St13SpiralArm SpiralOutWhileStepping(uint8_t slot, uint8_t y_entry);
+L8Arm MoveXUntilPastLeftEdge(uint8_t slot);
+L8Arm CountDownThenClearAndAdvanceSlot10(uint8_t slot);
+L8St13SoundArm SoundWhenHurtInStatesOneToThree(uint8_t slot, uint8_t y_entry);
+L8St13AimArm LoadRecordAimAtPlayer(uint8_t slot);
+L8St13Near NearObject19(uint8_t slot);
+L8St13RiseArm StartRiseAndSpawnRing(uint8_t slot);
+L8St13Ring SpawnRingOfSeven(uint8_t slot);
+L8Arm FallAlongListUntilGround(uint8_t slot, uint8_t y_entry);
+L8Arm StepListCCThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+L8Arm LoadRecordThrowByNumber(uint8_t slot);
+L8Arm FallThenTurnAtTimerEnd(uint8_t slot);
+L8Arm StepListCBThenMoveOrClear(uint8_t slot, uint8_t y_entry);
+L8St13FollowArm FollowObject19ThenStepListByMode(uint8_t slot, uint8_t y_entry);
+L8Arm StartScriptByWaveBit(uint8_t slot);
+L8St13SoundArm LoadRecordWithSound1C(uint8_t slot);
+L8Arm FollowObject19ThenLaunch(uint8_t slot);
+L8Arm SpawnType30EveryFourthFrame(uint8_t slot);
+L8St13UntilHurtArm StepListThenSpawnUntilHurt(uint8_t slot, uint8_t y_entry);
+L8St13WaveMarksArm SpawnType2FAtWaveMarks(uint8_t slot, uint8_t y_entry);
+L8St13SidewaysArm StepListSlowSideways(uint8_t slot, uint8_t y_entry);
+L8Arm StepListThenCountdownNextState(uint8_t slot, uint8_t y_entry);
+L8St13SoundArm StepListThenSound43AtZero(uint8_t slot, uint8_t y_entry);
+L8St13SeekArm SeekObject19ThenHitAndClear(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_hit_damage.c */
 /* A HitDamage variant's values behind its exit: the row times sixteen, the add of the hit, the damage read. */

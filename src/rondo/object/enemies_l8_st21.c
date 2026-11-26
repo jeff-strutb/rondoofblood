@@ -18,7 +18,7 @@ static Ended then(Ended e, Ended next)
 }
 
 enum { FS_START, FS_FOLLOW };
-enum { SP_NO_SLOT, SP_STARTED };
+enum { ST21_NO_SLOT, ST21_STARTED };
 enum { FLIP_FALL, FLIP_NONE, FLIP_FLIPPED };
 enum { CS_LOADED, CS_OTHER_STEP, CS_CLEARED };
 enum { HT_FLAGGED, HT_FEW_HITS, HT_OTHER_HIGH, HT_SET };
@@ -169,7 +169,7 @@ L8Arm StartPieceWithSpeedFromTable(uint8_t slot)
     r.found.slot = FindFreeSlotFrom20(&r.found.last, &r.found.found);
     jsr_pop();
     if (!r.found.found) {
-        r.arm = SP_NO_SLOT;
+        r.arm = ST21_NO_SLOT;
         return r;
     }
     jsr_push(0xB15A);
@@ -196,7 +196,7 @@ L8Arm StartPieceWithSpeedFromTable(uint8_t slot)
     r.second = number;
     r.third = value;
     (void)placed;
-    r.arm = SP_STARTED;
+    r.arm = ST21_STARTED;
     return r;
 }
 
@@ -204,7 +204,7 @@ static Ended l8_piece_speed_exit_shim(L8Arm r)
 {
     Ended e = l8_slot_ended(r.found);
 
-    if (r.arm == SP_NO_SLOT) {
+    if (r.arm == ST21_NO_SLOT) {
         return e;
     }
     return then(e, ended_with_a(ended_with_overflow(ended_with_carry(ended_nz(r.first), r.second >= 0x80), r.sum.overflow), r.third));

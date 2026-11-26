@@ -1,6 +1,6 @@
 script,mode,verdict,code,frames,defects,first_stop,cause,source
 attract,serve-all,IDENTICAL,-1,6126/6126,0,,,9b724a6
-attract_82,serve-all,DIVERGENT,20950,24626/24626,0,,,9f65529
+attract_82,serve-all,DIVERGENT,20950,24626/24626,0,,,b10dc4b
 attract_83,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_84,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_85,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
@@ -8,41 +8,41 @@ attract_86,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_87,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_88,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_89,serve-all,IDENTICAL,-1,24626/24626,0,,,9f65529
-attract_8A,serve-all,STOPPED,-3,22117/-1,0,,stopped at frame 22117: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),f40e79f
+attract_8A,serve-all,STOPPED,-3,22117/-1,0,,stopped at frame 22117: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),b10dc4b
 attract_8E,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 boot,serve-all,IDENTICAL,-1,900/900,0,,,9b724a6
 camera_modes,serve-all,IDENTICAL,-1,16354/16354,0,,,9b724a6
 card_unit_adpcm,serve-all,IDENTICAL,-1,902/902,0,,,d89c150
 card_unit_backup,serve-all,IDENTICAL,-1,911/911,0,,,d89c150
-card_unit_bank2,serve-all,STOPPED,-3,826/-1,1,c04E07 CALL call 1 frame 826 at card_unit_bank2.txt:6: C calls CE07; the original made no such call,stopped at frame 826: a call into original code the record does not have,d89c150
+card_unit_bank2,serve-all,STOPPED,-3,826/-1,1,c04E07 CALL call 1 frame 826 at card_unit_bank2.txt:6: C calls CE07; the original made no such call,stopped at frame 826: a call into original code the record does not have,b10dc4b
 card_unit_cd,serve-all,IDENTICAL,-1,901/901,0,,,d89c150
 card_unit_cplay,serve-all,IDENTICAL,-1,1013/1013,0,,,d89c150
 card_unit_misc,serve-all,IDENTICAL,-1,894/894,0,,,d89c150
 card_unit_read,serve-all,IDENTICAL,-1,879/879,0,,,d89c150
 card_unit_trans,serve-all,IDENTICAL,-1,904/904,0,,,d89c150
-card_unit_vdc,serve-all,STOPPED,-3,834/-1,0,,stopped at frame 834: the hybrid calls ex_rcron (SFD); the record's next is r0043_174 (SFF),d89c150
+card_unit_vdc,serve-all,STOPPED,-3,834/-1,0,,stopped at frame 834: the hybrid calls ex_rcron (SFD); the record's next is r0043_174 (SFF),b10dc4b
 gameover,serve-all,IDENTICAL,-1,29092/29092,0,,,9b724a6
 menu_files,serve-all,IDENTICAL,-1,10746/10746,0,,,9b724a6
 menu_names,serve-all,IDENTICAL,-1,13582/13582,0,,,9b724a6
 mode_screen,serve-all,IDENTICAL,-1,11386/11386,0,,,9b724a6
-play_s0_r1,serve-all,DIVERGENT,20509,28186/28186,0,,,9f65529
-play_s0_r2,serve-all,DIVERGENT,21749,28186/28186,0,,,9f65529
-play_s0_r3,serve-all,DIVERGENT,25061,28186/28186,0,,,9f65529
-play_s0_r4,serve-all,DIVERGENT,20352,28186/28186,0,,,9f65529
-play_s0_r5,serve-all,DIVERGENT,19749,28186/28186,0,,,9f65529
-play_s0_r6,serve-all,DIVERGENT,19359,28186/28186,0,,,9f65529
+play_s0_r1,serve-all,IDENTICAL,-1,28186/28186,0,,,b10dc4b
+play_s0_r2,serve-all,IDENTICAL,-1,28186/28186,0,,,b10dc4b
+play_s0_r3,serve-all,IDENTICAL,-1,28186/28186,0,,,b10dc4b
+play_s0_r4,serve-all,IDENTICAL,-1,28186/28186,0,,,b10dc4b
+play_s0_r5,serve-all,IDENTICAL,-1,28186/28186,0,,,b10dc4b
+play_s0_r6,serve-all,IDENTICAL,-1,28186/28186,0,,,b10dc4b
 raster_effects,serve-all,IDENTICAL,-1,10526/10526,0,,,9b724a6
 richter_hurt,serve-all,IDENTICAL,-1,16936/16936,0,,,9b724a6
 sound_test,serve-all,IDENTICAL,-1,17134/17134,0,,,9b724a6
-stage_04,serve-all,DIVERGENT,29133,35092/35092,0,,,9f65529
-stage_05,serve-all,DIVERGENT,29951,30748/-1,0,,stopped at frame 30748: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),9f65529
-stage_06,serve-all,DIVERGENT,30215,35092/35092,0,,,9f65529
+stage_04,serve-all,IDENTICAL,-1,35092/35092,0,,,b10dc4b
+stage_05,serve-all,STOPPED,-3,30748/-1,0,,stopped at frame 30748: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),b10dc4b
+stage_06,serve-all,IDENTICAL,-1,35092/35092,0,,,b10dc4b
 stage_07,serve-all,IDENTICAL,-1,35092/35092,0,,,9f65529
 stage_08,serve-all,IDENTICAL,-1,35092/35092,0,,,9b724a6
-stage_09,serve-all,DIVERGENT,35092,35092/35092,0,,,9f65529
-stage_0A,serve-all,STOPPED,-3,30423/-1,0,,stopped at frame 30423: the hybrid calls card_card_irq1 (SDD); the record's next is r01BC_27A (SE0),9f65529
-stage_0B,serve-all,STOPPED,-3,29189/-1,0,,stopped at frame 29189: the hybrid calls r0043_297 (SFC); the record's next is card_card_irq1 (SF8),f40e79f
+stage_09,serve-all,DIVERGENT,35092,35092/35092,0,,,b10dc4b
+stage_0A,serve-all,STOPPED,-3,30423/-1,0,,stopped at frame 30423: the hybrid calls card_card_irq1 (SDD); the record's next is r01BC_27A (SE0),b10dc4b
+stage_0B,serve-all,STOPPED,-3,29189/-1,0,,stopped at frame 29189: the hybrid calls r0043_297 (SFC); the record's next is card_card_irq1 (SF8),b10dc4b
 stage_0C,serve-all,IDENTICAL,-1,35092/35092,0,,,9b724a6
 stage_0E,serve-all,IDENTICAL,-1,35092/35092,0,,,9f65529
-stage_10,serve-all,DIVERGENT,35092,35092/35092,0,,,9f65529
+stage_10,serve-all,DIVERGENT,35092,35092/35092,0,,,b10dc4b
 unit_video,serve-all,IDENTICAL,-1,834/834,0,,,d89c150

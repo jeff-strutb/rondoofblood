@@ -464,6 +464,9 @@ void call_orig(uint16_t ret, uint16_t target)
     cpu.s = (uint8_t)(cpu.s + 2);
 }
 
+/* The lockstep checker's delivery point before a return: the lift comparison has none. */
+void call_return_point(void) {}
+
 /* As call_orig, the frame having been pushed by the C before: nothing is pushed here. */
 void call_orig_framed(uint16_t ret, uint16_t target)
 {

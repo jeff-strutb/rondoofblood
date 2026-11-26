@@ -448,14 +448,97 @@ Ended LoadRecordLeapByNumberThenFall(uint8_t slot);
 Ended FollowObject10HitBoxByFrame(uint8_t slot);
 
 /* object/enemies_l8_st20.c */
-Ended RecordEventWhenSlot10InState0F(uint8_t slot);
-Ended FaceThePlayerByStateTableB(uint8_t slot);
-Ended MaybeDropItemByPlayerDistance(uint8_t slot);
-Ended HitBoxByFrameTableCE8F(uint8_t slot);
-Ended StepListFacePlayerUntilNear(uint8_t slot, uint8_t y_entry);
-Ended FacePlayerThenPickPhase(uint8_t slot);
-SoundEnd LeapByPlayerDistance(uint8_t slot, uint8_t y_entry);
-Ended CountDownThenClearPhase(uint8_t slot);
+/* RecordObjectEvent's result. */
+typedef struct {
+    bool marked;
+    uint8_t stored, event, byte;
+} L8Event;
+
+typedef struct {
+    int arm;
+    uint8_t state, kind, value, counted;
+    L8Event event;
+} EventArm;
+
+typedef struct {
+    int arm;
+    uint8_t bits, state, marked, facing;
+    SideResult side;
+} FaceArm;
+
+typedef struct {
+    int arm;
+    uint8_t hits, bits, level, row, threshold, value, item, item2, placed;
+    bool bit1;
+    RandomResult random;
+    Sum sum, joined;
+    L8Slot found;
+} DropArm;
+
+typedef struct {
+    int arm;
+    uint8_t facing, counted;
+    L8Step step;
+    SideResult side;
+    PlayerDistance distance;
+} NearArm;
+
+typedef struct {
+    uint8_t facing, index, value, counted;
+    SideResult side;
+} PhaseArm;
+
+typedef struct {
+    int arm;
+    uint8_t facing, counted;
+    bool negated_used;
+    Sum negated;
+    PlayerDistance distance;
+    CommandCall call;
+} LeapArm;
+
+/* The launch HopBetweenSidesWithBox's states 0 and 2 share: the facing read and, facing left, NegateVelocityX's sum. */
+typedef struct {
+    uint8_t facing;
+    Sum negated;
+} HopLaunch;
+
+typedef struct {
+    int arm;
+    L8Arm box;
+    uint8_t state, y, facing, sign, counted, timer;
+    L8Record record;
+    RandomResult random, random2;
+    Sum sum;
+    HopLaunch launch;
+    L8Step step;
+    AxisMove move;
+} HopArm;
+
+/* A scan of the slot kinds from a first slot: the slot it stopped at, the last kind (or joined kinds) read, and whether it stepped. */
+typedef struct {
+    uint8_t y, kind;
+    bool stepped;
+} L8Scan;
+
+typedef struct {
+    int arm;
+    uint8_t state, frame, timer, counted, kind, screen, aim, placed, y_end, left;
+    L8Record record;
+    L8Scan scan;
+    L8Slot found;
+    RandomResult random;
+    Sum sum;
+} SpawnerArm;
+
+EventArm RecordEventWhenSlot10InState0F(uint8_t slot);
+FaceArm FaceThePlayerByStateTableB(uint8_t slot);
+DropArm MaybeDropItemByPlayerDistance(uint8_t slot);
+L8Arm HitBoxByFrameTableCE8F(uint8_t slot);
+NearArm StepListFacePlayerUntilNear(uint8_t slot, uint8_t y_entry);
+PhaseArm FacePlayerThenPickPhase(uint8_t slot);
+LeapArm LeapByPlayerDistance(uint8_t slot, uint8_t y_entry);
+uint8_t CountDownThenClearPhase(uint8_t slot);
 
 /* object/enemies_l8_st21.c */
 Ended LoadRecordSplitIntoFourAndClear(uint8_t slot);
@@ -530,10 +613,10 @@ Ended CountDownThenStartPieceInSlots18To1B(uint8_t slot);
 LandWait StepListByPhaseThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry);
 SoundEnd LoadRecordThenWatchThenDropTwice(uint8_t slot, uint8_t y_entry);
 Ended BossPhasesHurtFallAndTileWrites(uint8_t slot, uint8_t y_entry);
-Ended HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry);
+HopArm HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry);
 Ended ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry);
 Ended SpawnerWithScrollGates(uint8_t slot);
-Ended SpawnerByKindAndScreen(uint8_t slot);
+SpawnerArm SpawnerByKindAndScreen(uint8_t slot);
 Ended StartBossWhenStageC0OrLoad(uint8_t slot, uint8_t y_entry);
 Ended StepScrollThenMoveOrFadeOut(uint8_t slot);
 Ended BossFrameRoutinesC(uint8_t slot);

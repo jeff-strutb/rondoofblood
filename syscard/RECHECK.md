@@ -14,7 +14,6 @@ From the catalog (tools/rondo/catalog.py, System Card: 169 entries): the entries
 
 | call | from | why |
 |---|---|---|
-| 00:E905 (the CD command send with its waits) | cd_interrupt | no script runs it: no C |
-| 00:E6CF, which calls 02:CD12 and 02:C2EF in card bank 2 | card_irq1, when the reset mark is 1 | no script runs it, nor anything in bank 2: no C for E6CF or for bank 2 |
+| 02:CD12 and 02:C2EF in card bank 2 (the CD player's two tasks) | run_bank2_tasks (00:E6CF), which card_irq1 calls when the reset mark is 1 | no script runs them: unit calls of run_bank2_tasks (card_unit_bank2) run them as original code; no C for bank 2 yet |
 | the program at $2B26 | check_boot_disc | the disc's own boot program, not card code |
 | the program's interrupt vectors at $2200 to $220B | the four jumps (E733, E867, E86A, E86D) | the program's code |

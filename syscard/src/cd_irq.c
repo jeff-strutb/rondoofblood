@@ -19,7 +19,9 @@ enum {
     OWED_DONE = 0x04, OWED_DMA = 0x40, OWED_DATA = 0x20, OWED_SUBCODE = 0x10, OWED_ADPCM = 0x08,
     ADPCM_BUSY = 0x08, BOOT_RESET_MARK_ONE = 0x01, VDC_RASTER = 0x20, VDC_REG_CR = 0x05, VDC_REG_RCR = 0x07, VDC_REG_BXR = 0x08,
     F5_USER_IRQ2 = 0x01, F5_USER_IRQ1 = 0x02, F5_NO_LISTS = 0x20, F5_VSYNC_USER = 0x10, F5_NO_RASTER_LISTS = 0x80,
-    F5_HSYNC_USER = 0x40, F6_RASTER = 0x20, F6_VBLANK = 0x04
+    F5_HSYNC_USER = 0x40, F6_RASTER = 0x20, F6_VBLANK = 0x04,
+    MPR4_BIT = 0x10, MPR5_BIT = 0x20, MPR6_BIT = 0x40, PLAYER_BANK_4 = 0x22EB, PLAYER_BANK_5 = 0x22EC, PLAYER_MODE = 0x22DF,
+    PLAYER_DONE = 0x22DE, PLAYER_TIMER = 0x22D4, PLAYER_PSG_SELECT = 0x22ED, TIMER_COUNT_PORT = 0x0C00, PSG_SELECT_PORT = 0x0800
 };
 
 /* JMP [vector]: the two bytes read, low first, and a jump into the original code they name, with the registers given. */
@@ -116,6 +118,21 @@ static void call_original_shim(uint16_t ret, uint16_t target, uint8_t *a, uint8_
     *p = cpu.p;
 }
 
+
+/* The same with the flags the instruction before the JSR left: the N, Z and C (or V) bits in `flags` under `mask` are set, the rest kept. */
+static void call_original_flags_shim(uint16_t ret, uint16_t target, uint8_t *a, uint8_t *x, uint8_t *y, uint8_t *p, uint8_t flags,
+                                     uint8_t mask)
+{
+    cpu.a = *a;
+    cpu.x = *x;
+    cpu.y = *y;
+    cpu.p = (uint8_t)((cpu.p & ~mask) | (flags & mask));
+    call_orig(ret, target);
+    *a = cpu.a;
+    *x = cpu.x;
+    *y = cpu.y;
+    *p = cpu.p;
+}
 
 /* What a routine called leaves in the registers the handler goes on with. */
 static void take(CardExit e, uint8_t *a, uint8_t *x, uint8_t *y)
@@ -489,6 +506,107 @@ void abi_card_irq2(void)
 }
 
 /*
+ * @card 00:E6CF run_bank2_tasks
+ * WHAT IT DOES: Runs the card's CD player tasks in its bank 2: the first (at $CD12) when CardPlayerMode is not zero, the second (at $C2EF)
+ * unless it is 1; each that answers 0 marks itself done in CardPlayerDone ($22DE: bit 6 for the first, bit 7 for the second). Then
+ * the PSG's timer is loaded from $22D4 once, unless the reset mark's bit 0 is set, and the PSG's channel select put back.
+ * HOW: MPR4, MPR5 and MPR6 kept on the stack; MPR4 and MPR5 set from $22EB and $22EC, MPR6 to bank 2; the tasks called; the MPRs
+ * pulled back.
+ * WAITS: no.
+ * Entry: X, Y (the interrupted code's). Exit: A $22ED's byte, N and Z from it, C and V as the last compare left them. X, Y as the tasks left them.
+ * The tasks themselves, in bank 2, are original code: no script runs them.
+ */
+CardExit run_bank2_tasks(uint8_t x, uint8_t y)
+{
+    Trk t = { 0 };
+    uint8_t value;
+    uint8_t a;
+    uint8_t xr = x;
+    uint8_t yr = y;
+    uint8_t p = 0;
+
+    t.x = x;
+    t.y = y;
+    value = tma(MPR4_BIT);
+    t.a = value;
+    t.a_set = true;
+    push8(value);
+    value = tma(MPR5_BIT);
+    t.a = value;
+    push8(value);
+    value = tma(MPR6_BIT);
+    t.a = value;
+    push8(value);
+    value = rd8(PLAYER_BANK_4);
+    t_a(&t, value);
+    tam(MPR4_BIT, value);
+    value = rd8(PLAYER_BANK_5);
+    t_a(&t, value);
+    tam(MPR5_BIT, value);
+    t_a(&t, 2);
+    tam(MPR6_BIT, 2);
+    value = rd8(PLAYER_MODE);
+    t_a(&t, value);
+    if (value != 0) {
+        a = value;
+        call_original_flags_shim(0xE6EE, 0xCD12, &a, &xr, &yr, &p, (uint8_t)((t.n ? P_N : 0) | (t.z ? P_Z : 0)), P_N | P_Z);
+        t_a(&t, a);
+        t_cmp(&t, a, 0);
+        if (a == 0) {
+            value = rd8(PLAYER_DONE);
+            t_a(&t, value);
+            t_a(&t, (uint8_t)(value | 0x40));
+            wr8(PLAYER_DONE, t.a);
+        }
+    }
+    value = rd8(PLAYER_MODE);
+    t_a(&t, value);
+    t_cmp(&t, value, 1);
+    if (value != 1) {
+        a = value;
+        call_original_flags_shim(0xE704, 0xC2EF, &a, &xr, &yr, &p, (uint8_t)((t.n ? P_N : 0) | (t.z ? P_Z : 0) | (t.c ? P_C : 0)),
+                                 P_N | P_Z | P_C);
+        t_a(&t, a);
+        t_cmp(&t, a, 0);
+        if (a == 0) {
+            value = rd8(PLAYER_DONE);
+            t_a(&t, value);
+            t_a(&t, (uint8_t)(value | 0x80));
+            wr8(PLAYER_DONE, t.a);
+        }
+    }
+    value = RD8(CZP->reset_mark);
+    t_a(&t, (uint8_t)(value & 1));
+    if (t.a == 0) {
+        value = rd8(PLAYER_TIMER);
+        t_a(&t, value);
+        if ((value & 0x80) == 0) {
+            wr8(TIMER_COUNT_PORT, value);
+            t_a(&t, (uint8_t)(value | 0x80));
+            wr8(PLAYER_TIMER, t.a);
+        }
+    }
+    value = pull8();
+    t.a = value;
+    tam(MPR6_BIT, value);
+    value = pull8();
+    t.a = value;
+    tam(MPR5_BIT, value);
+    value = pull8();
+    t.a = value;
+    tam(MPR4_BIT, value);
+    value = rd8(PLAYER_PSG_SELECT);
+    t_a(&t, value);
+    wr8(PSG_SELECT_PORT, value);
+    return t_exit(&t);
+}
+
+void abi_run_bank2_tasks(void)
+{
+    card_exit_apply(run_bank2_tasks(cpu.x, cpu.y));
+}
+
+/*
  * @card 00:E870 card_irq1
  * WHAT IT DOES: The IRQ1 interrupt: the VDC's. A program that has set its own handler (bit 1 of CardIrqFlags) has it. Otherwise: on a
  * raster interrupt the VDC's control register copy is written, the frame counted, the colours and the pads taken unless the program
@@ -535,12 +653,12 @@ void card_irq1(uint8_t a, uint8_t x, uint8_t y)
             take(step, &a, &x, &y);
             (void)INC8(CRAM->rnd_seed);
             a = RD8(CZP->reset_mark);
-            if (a == BOOT_RESET_MARK_ONE)
-                {
-                    uint8_t rp = 0;
-
-                    call_original_shim(0xE8B1, 0xE6CF, &a, &x, &y, &rp);
-                }
+            if (a == BOOT_RESET_MARK_ONE) {
+                jsr_push(0xE8B1);
+                step = run_bank2_tasks(x, y);
+                jsr_pop();
+                take(step, &a, &x, &y);
+            }
             jsr_push(0xE8B4);
             step = ex_joysns();
             jsr_pop();

@@ -15,6 +15,13 @@
 
 enum { ENDING_LISTS = 0x8A05 };
 
+/* The arms the converted handlers end on (see EndingArm in front_end.h). */
+enum { FP_START, FP_POSITIVE, FP_LOW, FP_SET };
+enum { DB_START, DB_FALL, DB_LANDED, DB_OTHER, DB_DONE, DB_BOUNCE };
+enum { CS_START, CS_AT_TEN, CS_DROPPED, CS_ADVANCED };
+enum { SS_START, SS_BACK, SS_BACK_DONE, SS_OTHER, SS_FIFTH };
+enum { SQ_START, SQ_WAIT, SQ_TAIL, SQ_ODD_WAIT, SQ_MOVED };
+
 /* A handler's start: the registers it leaves alone are marked kept. */
 static ObjExit object_exit(uint8_t a, uint8_t nz)
 {
@@ -1270,33 +1277,34 @@ void abi_EndingScrollDown(void)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-ObjExit EndingScrollSteps(uint8_t object)
+EndingArm EndingScrollSteps(uint8_t object)
 {
-    ObjExit result;
-    Exit back;
-    uint8_t state, value;
+    EndingArm r = { 0 };
+    uint8_t state, low, value;
     unsigned total;
 
     state = RD8(OBJ->state[object]);
     if (state == 0) {
         INC8(SCROLL->x_hi[0]);
         INC8(SCROLL->y_hi[0]);
-        return object_exit(0, INC8(OBJ->state[object]));
+        r.arm = SS_START;
+        r.third = INC8(OBJ->state[object]);
+        return r;
     }
     state = (uint8_t)(state - 1);
     if (state == 0 || state == 1 || state == 2) {
         static const uint16_t RETS[] = { 0x8610, 0x8621, 0x8639 };
 
         jsr_push(RETS[state]);
-        back = EndingScrollBack8();
+        r.exit = EndingScrollBack8();
         jsr_pop();
-        value = back.a;
-        result = with_carry(object_exit(value, (uint8_t)(value - 0xF8)), value >= 0xF8);
-        result.exit.v = back.v;
-        result.exit.v_set = true;
-        if (value != 0xF8) {
-            return result;
+        r.first = r.exit.a;
+        r.arm = SS_BACK;
+        if (r.first != 0xF8) {
+            return r;
         }
+        r.arm = SS_BACK_DONE;
+        r.index = state;
         if (state == 0) {
             WR8(SCROLL->x_hi[0], 0);
         } else if (state == 1) {
@@ -1306,15 +1314,16 @@ ObjExit EndingScrollSteps(uint8_t object)
             (void)StartListChannelKind2(0x0D, object);
             jsr_pop();
             (void)pull8();
-            result.exit.a = 2;
         } else {
             INC8(SCROLL->y_hi[0]);
         }
-        result.exit.nz = INC8(OBJ->state[object]);
-        return result;
+        r.third = INC8(OBJ->state[object]);
+        return r;
     }
     if (state != 3) {
-        return object_exit(state - 3, (uint8_t)(state - 3));
+        r.arm = SS_OTHER;
+        r.first = (uint8_t)(state - 3);
+        return r;
     }
     value = RD8(OBJ->x_lo[1]);
     total = (unsigned)value + 0x10;
@@ -1323,22 +1332,54 @@ ObjExit EndingScrollSteps(uint8_t object)
         INC8(OBJ->x_hi[1]);
     }
     jsr_push(0x8658);
-    back = EndingScrollBack8();
+    r.exit = EndingScrollBack8();
     jsr_pop();
-    result = object_exit(back.a, back.nz);
-    result.exit.c = back.c;
-    result.exit.c_kept = false;
-    result.exit.v = back.v;
-    result.exit.v_set = true;
-    if (back.a == 0) {
-        result.exit.nz = INC8(OBJ->state[object]);
+    low = r.exit.a;
+    r.first = low;
+    r.arm = SS_FIFTH;
+    if (low == 0) {
+        r.third = INC8(OBJ->state[object]);
     }
-    return result;
+    return r;
+}
+
+/* What EndingScrollSteps leaves in the registers and flags, from the arm it ended on. */
+static ObjExit scroll_steps_exit_shim(EndingArm r)
+{
+    ObjExit result;
+
+    switch (r.arm) {
+    case SS_START:
+        return object_exit(0, r.third);
+    case SS_OTHER:
+        return object_exit(r.first, r.first);
+    case SS_FIFTH:
+        result = object_exit(r.exit.a, r.exit.nz);
+        result.exit.c = r.exit.c;
+        result.exit.c_kept = false;
+        result.exit.v = r.exit.v;
+        result.exit.v_set = true;
+        if (r.first == 0) {
+            result.exit.nz = r.third;
+        }
+        return result;
+    default:
+        result = with_carry(object_exit(r.first, (uint8_t)(r.first - 0xF8)), r.first >= 0xF8);
+        result.exit.v = r.exit.v;
+        result.exit.v_set = true;
+        if (r.arm == SS_BACK_DONE) {
+            if (r.index == 1) {
+                result.exit.a = 2;
+            }
+            result.exit.nz = r.third;
+        }
+        return result;
+    }
 }
 
 void abi_EndingScrollSteps(void)
 {
-    object_exit_shim(EndingScrollSteps(cpu.x));
+    object_exit_shim(scroll_steps_exit_shim(EndingScrollSteps(cpu.x)));
 }
 
 /* The position's high byte after a move: what the move leaves in A. */
@@ -1578,10 +1619,9 @@ static ObjExit through_exit(Exit exit)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-ObjExit EndingScrollSqueeze(uint8_t object)
+EndingArm EndingScrollSqueeze(uint8_t object)
 {
-    ObjExit result;
-    Exit slots;
+    EndingArm r = { 0 };
     uint8_t state, value, left;
 
     state = RD8(OBJ->state[object]);
@@ -1595,32 +1635,32 @@ ObjExit EndingScrollSqueeze(uint8_t object)
         WR8(SCROLL->y_lo[0], 0x5F);
         WR8(SCROLL->y_lo[4], 0xA7);
         WR8(OBJ->life_timer[object], 0x40);
-        return object_exit(0x40, INC8(OBJ->state[object]));
+        r.arm = SQ_START;
+        r.third = INC8(OBJ->state[object]);
+        return r;
     }
     state = (uint8_t)(state - 1);
     if (state == 0) {
         left = DEC8(OBJ->life_timer[object]);
-        result = object_exit(0, left);
+        r.arm = SQ_WAIT;
+        r.third = left;
         if (left == 0) {
-            result.exit.nz = INC8(OBJ->state[object]);
+            r.third = INC8(OBJ->state[object]);
         }
-        return result;
+        return r;
     }
     state = (uint8_t)(state - 1);
     if (state != 0) {
-        slots = EndingScrollSlots();               /* a jump, not a call: no frame */
-        return through_exit(slots);
+        r.arm = SQ_TAIL;
+        r.exit = EndingScrollSlots();               /* a jump, not a call: no frame */
+        return r;
     }
     jsr_push(0x88C8);
-    slots = EndingScrollSlots();
+    r.exit = EndingScrollSlots();
     jsr_pop();
-    result = object_exit(slots.a, slots.nz);
-    result.exit.c = slots.c;
-    result.exit.c_kept = false;
-    result.exit.v = slots.v;
-    result.exit.v_set = true;
+    r.arm = SQ_ODD_WAIT;
     if ((RD8(ZP->frame_tick) & 1) == 0) {
-        return result;
+        return r;
     }
     INC8(SCROLL->y_lo[5]);
     DEC8(SCROLL->y_lo[6]);
@@ -1631,18 +1671,44 @@ ObjExit EndingScrollSqueeze(uint8_t object)
     value = RD8(SCROLL->y_lo[5]);
     WR8(SCROLL->y_lo[1], value);
     value = RD8(SCROLL->y_lo[6]);
-    result = with_carry(object_exit(value, (uint8_t)(value - 0xA7)), value >= 0xA7);
-    result.exit.v = slots.v;
-    result.exit.v_set = true;
+    r.arm = SQ_MOVED;
+    r.first = value;
     if (value >= 0xA7) {
         WR8(SCROLL->y_lo[4], value);
     }
-    return result;
+    return r;
+}
+
+/* What EndingScrollSqueeze leaves in the registers and flags, from the arm it ended on. */
+static ObjExit scroll_squeeze_exit_shim(EndingArm r)
+{
+    ObjExit result;
+
+    switch (r.arm) {
+    case SQ_START:
+        return object_exit(0x40, r.third);
+    case SQ_WAIT:
+        return object_exit(0, r.third);
+    case SQ_TAIL:
+        return through_exit(r.exit);
+    case SQ_ODD_WAIT:
+        result = object_exit(r.exit.a, r.exit.nz);
+        result.exit.c = r.exit.c;
+        result.exit.c_kept = false;
+        result.exit.v = r.exit.v;
+        result.exit.v_set = true;
+        return result;
+    default:
+        result = with_carry(object_exit(r.first, (uint8_t)(r.first - 0xA7)), r.first >= 0xA7);
+        result.exit.v = r.exit.v;
+        result.exit.v_set = true;
+        return result;
+    }
 }
 
 void abi_EndingScrollSqueeze(void)
 {
-    object_exit_shim(EndingScrollSqueeze(cpu.x));
+    object_exit_shim(scroll_squeeze_exit_shim(EndingScrollSqueeze(cpu.x)));
 }
 
 /*
@@ -1747,13 +1813,11 @@ void abi_EndingFlyOff(void)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-ObjExit EndingDropAndBounce(uint8_t object)
+EndingArm EndingDropAndBounce(uint8_t object)
 {
-    ObjExit result;
-    uint8_t state, low, high, sum, timer, product, value;
+    EndingArm r = { 0 };
+    uint8_t state, low, high, timer, product, value;
     unsigned total;
-    AxisMove move;
-    bool carry;
 
     state = RD8(OBJ->state[object]);
     if (state == 0) {
@@ -1766,7 +1830,9 @@ ObjExit EndingDropAndBounce(uint8_t object)
         WR8(OBJ->sprite_set[object], 3);
         WR8(OBJ->frame[object], 1);
         WR8(OBJ->vx_lo[object], 0xC0);
-        return object_exit(0xC0, INC8(OBJ->state[object]));
+        r.arm = DB_START;
+        r.third = INC8(OBJ->state[object]);
+        return r;
     }
     state = (uint8_t)(state - 1);
     if (state == 0) {
@@ -1776,40 +1842,41 @@ ObjExit EndingDropAndBounce(uint8_t object)
         high = RD8(OBJ->vy_hi[object]);
         WR8(OBJ->vy_hi[object], (uint8_t)(high + (total > 0xFF ? 1 : 0)));
         jsr_push(0x8946);
-        move = ApplyVelocity(object);
+        r.move = ApplyVelocity(object);
         jsr_pop();
-        low = RD8(OBJ->y_lo[object]);
-        result = with_carry(object_exit(low, (uint8_t)(low - 0x60)), low >= 0x60);
-        result = under_move(result, move);
-        if (low < 0x60) {
-            return result;
+        r.first = RD8(OBJ->y_lo[object]);
+        r.arm = DB_FALL;
+        if (r.first < 0x60) {
+            return r;
         }
         WR8(OBJ->y_lo[object], 0x60);
         WR8(OBJ->x_lo[object], 0x60);
-        result.exit.a = 0x60;
-        result.exit.nz = INC8(OBJ->state[object]);
-        return result;
+        r.arm = DB_LANDED;
+        r.third = INC8(OBJ->state[object]);
+        return r;
     }
     state = (uint8_t)(state - 1);
     if (state != 0) {
-        return object_exit(state, state);
+        r.arm = DB_OTHER;
+        r.first = state;
+        return r;
     }
     WR8(ZP->temp00, 0xFF);
     WR8(ZP->temp01, 0x07);
     value = RD8(OBJ->life_timer[object]);
     total = (unsigned)value + 0x10;
     timer = (uint8_t)total;
-    carry = total > 0xFF;
     WR8(OBJ->life_timer[object], timer);
     if ((timer & 0x80) != 0) {
         WR8(OBJ->y_lo[object], 0x60);
         INC8(OBJ->state[object]);
         WR8(SCROLL->y_lo[1], 0x2F);
         WR8(SCROLL->y_lo[2], 0xAF);
-        result = with_carry(object_exit(0xAF, 0xAF), carry);
-        result.exit.v = ((value ^ timer) & (0x10 ^ timer) & 0x80) != 0;
-        result.exit.v_set = true;
-        return result;
+        r.arm = DB_DONE;
+        r.first = value;
+        r.second = timer;
+        r.flag = total > 0xFF;
+        return r;
     }
     jsr_push(0x8970);
     (void)ScaleBySine(timer);
@@ -1819,19 +1886,51 @@ ObjExit EndingDropAndBounce(uint8_t object)
     product = RD8(ZP->product.hi);
     WR8(SCROLL->y_lo[1], (uint8_t)(0x2F - product));
     product = RD8(ZP->product.hi);
-    sum = (uint8_t)(0xAF - product);
-    WR8(SCROLL->y_lo[2], sum);
-    result = with_carry(object_exit(sum, sum), 0xAF >= product);
-    result.exit.v = ((0xAF ^ product) & (0xAF ^ sum) & 0x80) != 0;
-    result.exit.v_set = true;
-    result.exit.y = 0;
-    result.exit.y_kept = false;
-    return result;
+    WR8(SCROLL->y_lo[2], (uint8_t)(0xAF - product));
+    r.arm = DB_BOUNCE;
+    r.first = product;
+    return r;
+}
+
+/* What EndingDropAndBounce leaves in the registers and flags, from the arm it ended on. */
+static ObjExit drop_and_bounce_exit_shim(EndingArm r)
+{
+    ObjExit result;
+    uint8_t sum;
+
+    switch (r.arm) {
+    case DB_START:
+        return object_exit(0xC0, r.third);
+    case DB_FALL:
+    case DB_LANDED:
+        result = with_carry(object_exit(r.first, (uint8_t)(r.first - 0x60)), r.first >= 0x60);
+        result = under_move(result, r.move);
+        if (r.arm == DB_LANDED) {
+            result.exit.a = 0x60;
+            result.exit.nz = r.third;
+        }
+        return result;
+    case DB_OTHER:
+        return object_exit(r.first, r.first);
+    case DB_DONE:
+        result = with_carry(object_exit(0xAF, 0xAF), r.flag);
+        result.exit.v = ((r.first ^ r.second) & (0x10 ^ r.second) & 0x80) != 0;
+        result.exit.v_set = true;
+        return result;
+    default:
+        sum = (uint8_t)(0xAF - r.first);
+        result = with_carry(object_exit(sum, sum), 0xAF >= r.first);
+        result.exit.v = ((0xAF ^ r.first) & (0xAF ^ sum) & 0x80) != 0;
+        result.exit.v_set = true;
+        result.exit.y = 0;
+        result.exit.y_kept = false;
+        return result;
+    }
 }
 
 void abi_EndingDropAndBounce(void)
 {
-    object_exit_shim(EndingDropAndBounce(cpu.x));
+    object_exit_shim(drop_and_bounce_exit_shim(EndingDropAndBounce(cpu.x)));
 }
 
 /*
@@ -1846,9 +1945,9 @@ void abi_EndingDropAndBounce(void)
  * Entry: X the object. Exit: as the last test left them.
  * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
-ObjExit EndingCreditScrollStart(uint8_t object)
+EndingArm EndingCreditScrollStart(uint8_t object)
 {
-    ObjExit result;
+    EndingArm r = { 0 };
     uint8_t state, tick, left;
 
     push8(object);
@@ -1868,40 +1967,59 @@ ObjExit EndingCreditScrollStart(uint8_t object)
         INC8(SCROLL->x_hi[0]);
         INC8(SCROLL->y_hi[0]);
         DEC8(SCROLL->y_lo[0]);
-        result = with_carry(object_exit(6, INC8(OBJ->state[object])), false);
-        result.exit.y = 0x1A;
-        result.exit.y_kept = false;
-        result.exit.v = false;
-        result.exit.v_set = true;
-        return result;
+        r.arm = CS_START;
+        r.third = INC8(OBJ->state[object]);
+        return r;
     }
-    result = with_carry(object_exit(state, (uint8_t)(state - 0x0A)), state >= 0x0A);
-    result.exit.v = false;                      /* the add of the list number: no overflow */
-    result.exit.v_set = true;
+    r.first = state;
+    r.arm = CS_AT_TEN;
     if (state == 0x0A) {
-        return result;
+        return r;
     }
     jsr_push(0x826C);
     left = EndingHoldTimer(object);
     if (left != 0) {
-        return hold_dropped(result, 0x826C);
+        r.arm = CS_DROPPED;
+        return r;
     }
     jsr_pop();
     state = RD8(OBJ->state[object]);
     WR8(SCROLL->x_hi[0], rd8((uint16_t)(0x8284 + (uint8_t)(state << 1))));
     WR8(SCROLL->y_hi[0], rd8((uint16_t)(0x8285 + (uint8_t)(state << 1))));
     WR8(OBJ->life_timer[object], 6);
-    result = with_carry(object_exit(6, INC8(OBJ->state[object])), (state & 0x80) != 0);
-    result.exit.y = (uint8_t)(state << 1);
-    result.exit.y_kept = false;
-    result.exit.v = false;
+    r.arm = CS_ADVANCED;
+    r.second = state;
+    r.third = INC8(OBJ->state[object]);
+    return r;
+}
+
+/* What EndingCreditScrollStart leaves in the registers and flags, from the arm it ended on. */
+static ObjExit credit_scroll_exit_shim(EndingArm r)
+{
+    ObjExit result;
+
+    if (r.arm == CS_START) {
+        result = with_carry(object_exit(6, r.third), false);
+        result.exit.y = 0x1A;
+        result.exit.y_kept = false;
+    } else if (r.arm == CS_ADVANCED) {
+        result = with_carry(object_exit(6, r.third), (r.second & 0x80) != 0);
+        result.exit.y = (uint8_t)(r.second << 1);
+        result.exit.y_kept = false;
+    } else {
+        result = with_carry(object_exit(r.first, (uint8_t)(r.first - 0x0A)), r.first >= 0x0A);
+        if (r.arm == CS_DROPPED) {
+            result = hold_dropped(result, 0x826C);
+        }
+    }
+    result.exit.v = false;                      /* the add of the list number: no overflow */
     result.exit.v_set = true;
     return result;
 }
 
 void abi_EndingCreditScrollStart(void)
 {
-    object_exit_shim(EndingCreditScrollStart(cpu.x));
+    object_exit_shim(credit_scroll_exit_shim(EndingCreditScrollStart(cpu.x)));
 }
 
 /*
@@ -1914,12 +2032,11 @@ void abi_EndingCreditScrollStart(void)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-ObjExit EndingFallingPiece(uint8_t object)
+EndingArm EndingFallingPiece(uint8_t object)
 {
-    ObjExit result;
-    uint8_t state, sum, tick, index, high, low;
+    EndingArm r = { 0 };
+    uint8_t state, sum, tick, index, high;
     unsigned total;
-    AxisMove move;
 
     state = RD8(OBJ->state[object]);
     if (state == 0) {
@@ -1928,39 +2045,63 @@ ObjExit EndingFallingPiece(uint8_t object)
         total = (unsigned)object + 0x72;
         sum = (uint8_t)total;
         WR8(OBJ->frame[object], sum);
-        result = with_carry(object_exit(sum, INC8(OBJ->state[object])), total > 0xFF);
-        result.exit.v = ((object ^ sum) & (0x72 ^ sum) & 0x80) != 0;
-        result.exit.v_set = true;
-        return result;
+        r.arm = FP_START;
+        r.first = object;
+        r.second = sum;
+        r.flag = total > 0xFF;
+        r.third = INC8(OBJ->state[object]);
+        return r;
     }
     tick = RD8(ZP->frame_tick);
     index = (uint8_t)((((uint8_t)(object + tick)) >> 2) & 1);
     WR8(OBJ->flash_flags[object], rd8((uint16_t)(0x82DA + index)));
     jsr_push(0x82C5);
-    move = ApplyVelocity(object);
+    r.move = ApplyVelocity(object);
     jsr_pop();
+    r.index = index;
     high = RD8(OBJ->y_hi[object]);
-    result = under_move(object_exit(high, high), move);
-    result.exit.y = index;
-    result.exit.y_kept = false;
+    r.first = high;
+    r.arm = FP_POSITIVE;
     if ((high & 0x80) == 0) {
-        return result;
+        return r;
     }
-    low = RD8(OBJ->y_lo[object]);
-    result.exit.a = low;
-    result.exit.nz = low;
-    if ((low & 0x80) != 0) {
-        return result;
+    r.second = RD8(OBJ->y_lo[object]);
+    r.arm = FP_LOW;
+    if ((r.second & 0x80) != 0) {
+        return r;
     }
     WR8(OBJ->y_hi[object], 1);
-    result.exit.a = 1;
-    result.exit.nz = 1;
+    r.arm = FP_SET;
+    return r;
+}
+
+/* What EndingFallingPiece leaves in the registers and flags, from the arm it ended on. */
+static ObjExit falling_piece_exit_shim(EndingArm r)
+{
+    ObjExit result;
+
+    if (r.arm == FP_START) {
+        result = with_carry(object_exit(r.second, r.third), r.flag);
+        result.exit.v = ((r.first ^ r.second) & (0x72 ^ r.second) & 0x80) != 0;
+        result.exit.v_set = true;
+        return result;
+    }
+    result = under_move(object_exit(r.first, r.first), r.move);
+    result.exit.y = r.index;
+    result.exit.y_kept = false;
+    if (r.arm == FP_LOW) {
+        result.exit.a = r.second;
+        result.exit.nz = r.second;
+    } else if (r.arm == FP_SET) {
+        result.exit.a = 1;
+        result.exit.nz = 1;
+    }
     return result;
 }
 
 void abi_EndingFallingPiece(void)
 {
-    object_exit_shim(EndingFallingPiece(cpu.x));
+    object_exit_shim(falling_piece_exit_shim(EndingFallingPiece(cpu.x)));
 }
 
 /*
@@ -2525,8 +2666,8 @@ ObjExit EndingDispatchKind(uint8_t kind, uint8_t object)
     switch (target) {
     case 0x899C: result = EndingWaitForList(object); break;
     case 0x89B2: result = EndingFlyOff(object); break;
-    case 0x8902: result = EndingDropAndBounce(object); break;
-    case 0x8887: result = EndingScrollSqueeze(object); break;
+    case 0x8902: result = drop_and_bounce_exit_shim(EndingDropAndBounce(object)); break;
+    case 0x8887: result = scroll_squeeze_exit_shim(EndingScrollSqueeze(object)); break;
     case 0x8853: result = EndingLinkAnimationA(object); break;
     case 0x8876: result = EndingLinkAnimationB(object); break;
     case 0x881D: result = EndingHoldThenScript19(object); break;
@@ -2537,7 +2678,7 @@ ObjExit EndingDispatchKind(uint8_t kind, uint8_t object)
     case 0x86E3: result = EndingScrollUp(object); break;
     case 0x869A: result = EndingScrollDown(object); break;
     case 0x8668: result = EndingScrollRight6(object); break;
-    case 0x85FB: result = EndingScrollSteps(object); break;
+    case 0x85FB: result = scroll_steps_exit_shim(EndingScrollSteps(object)); break;
     case 0x850C: result = EndingPlayList0EThenClear(object); break;
     case 0x84DE: result = EndingRiseToY40(object); break;
     case 0x84BE: result = EndingPlayList0F(object); break;
@@ -2550,8 +2691,8 @@ ObjExit EndingDispatchKind(uint8_t kind, uint8_t object)
     case 0x82E8: result = EndingPieceSpawn(object); break;
     case 0x82E2: result = EndingClearAfterScrollY(object); break;
     case 0x82DC: result = EndingClearAfterScrollX(object); break;
-    case 0x8298: result = EndingFallingPiece(object); break;
-    case 0x8239: result = EndingCreditScrollStart(object); break;
+    case 0x8298: result = falling_piece_exit_shim(EndingFallingPiece(object)); break;
+    case 0x8239: result = credit_scroll_exit_shim(EndingCreditScrollStart(object)); break;
     case 0x87D6: result = EndingRiseFrame32B(object); break;
     default:
         exit.from_cpu = true;

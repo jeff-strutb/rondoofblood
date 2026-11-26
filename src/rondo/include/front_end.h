@@ -453,7 +453,16 @@ void abi_DrawGlyphPair(void);
 void abi_DrawGlyphText(void);
 
 
-/* The ending scene (menu/ending.c). */
+/* The ending scene (menu/ending.c). A handler converted to typed C returns what it ended on, not registers: the arm, the values it read or
+ * made, a flag, the move it made, and an Exit a callee returned; its exit shim builds the registers and flags from them. */
+typedef struct {
+    int arm;
+    uint8_t first, second, third, index;
+    bool flag;
+    AxisMove move;
+    Exit exit;
+} EndingArm;
+
 uint8_t EndingFrameTick(void);
 uint8_t EndingModeDoneBack(void);
 void EndingNothing(void);
@@ -485,17 +494,17 @@ ObjExit EndingRiseWithList(uint8_t object);
 ObjExit EndingScrollRight6(uint8_t object);
 ObjExit EndingScrollUp(uint8_t object);
 ObjExit EndingScrollDown(uint8_t object);
-ObjExit EndingScrollSteps(uint8_t object);
+EndingArm EndingScrollSteps(uint8_t object);
 ObjExit EndingHoldThenScript19(uint8_t object);
 ObjExit EndingLinkAnimationA(uint8_t object);
 ObjExit EndingLinkAnimationB(uint8_t object);
 ObjExit EndingAimAtPlace(uint8_t object);
-ObjExit EndingScrollSqueeze(uint8_t object);
+EndingArm EndingScrollSqueeze(uint8_t object);
 ObjExit EndingWaitForList(uint8_t object);
 ObjExit EndingFlyOff(uint8_t object);
-ObjExit EndingDropAndBounce(uint8_t object);
-ObjExit EndingCreditScrollStart(uint8_t object);
-ObjExit EndingFallingPiece(uint8_t object);
+EndingArm EndingDropAndBounce(uint8_t object);
+EndingArm EndingCreditScrollStart(uint8_t object);
+EndingArm EndingFallingPiece(uint8_t object);
 ObjExit EndingPieceSpawn(uint8_t object);
 void EndingClearObjects(void);
 Exit EndingScriptAdvance(void);

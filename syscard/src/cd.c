@@ -211,6 +211,28 @@ void abi_write_vram_word_pending(void)
 }
 
 /*
+ * @card 00:F35A cd_subrd_read
+ * WHAT IT DOES: Takes the subcode byte the drive has ready.
+ * HOW: The byte from $1807, kept in CardSubcodeByte. A named entry into cd_subrd, which falls into it; the interrupt that says a
+ * subcode byte is ready calls it alone.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the byte, C clear. N, Z, V, X, Y kept.
+ */
+uint8_t cd_subrd_read(void)
+{
+    uint8_t byte = RD8(CCDU->subcode);
+
+    WR8(CRAM->subcode_byte, byte);
+    return byte;
+}
+
+void abi_cd_subrd_read(void)
+{
+    cpu.a = cd_subrd_read();
+    abi_flag(P_C, false);
+}
+
+/*
  * @card 00:F354 cd_subrd
  * WHAT IT DOES: Reads a subcode byte, if one is waiting.
  * HOW: Bit 4 of the status port; the byte comes from $1807 and is kept in CardSubcodeByte.
@@ -224,8 +246,7 @@ CdSubcodeRead cd_subrd(void)
 
     read.status = RD8(CCDU->irq_status);
     if (read.status & CD_STATUS_SUBCODE) {
-        read.byte = RD8(CCDU->subcode);
-        WR8(CRAM->subcode_byte, read.byte);
+        read.byte = cd_subrd_read();
         read.ready = true;
     }
     return read;

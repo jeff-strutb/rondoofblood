@@ -119,6 +119,14 @@ write_vram_word_pending:
 cd_subrd:
     tst #$10,a:CdIrqStatus
     beq cd_subrd_at0
+
+; @card 00:F35A cd_subrd_read
+; WHAT IT DOES: Takes the subcode byte the drive has ready.
+; HOW: The byte from $1807, kept in CardSubcodeByte. A named entry into cd_subrd, which falls into it; the interrupt that says a
+; subcode byte is ready calls it alone.
+; WAITS: no.
+; Entry: nothing. Exit: A the byte, C clear. N, Z, V, X, Y kept.
+cd_subrd_read:
     lda a:CdSubcode
     sta a:CardSubcodeByte
     clc

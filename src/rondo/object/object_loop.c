@@ -98,7 +98,7 @@ static bool past_edge(uint8_t high_value, uint8_t low_value)
  */
 static Ended run_objects(uint8_t entry_x, void (*by_kind)(void))
 {
-    ExitChain c;
+    HitArm hit;
     Ended e = ended_kept();
     uint8_t x, y, kind, state, flags, high, low, timer, mode, wave, table, count, script, index;
     bool next, dispatch;
@@ -169,9 +169,9 @@ static Ended run_objects(uint8_t entry_x, void (*by_kind)(void))
         if (!next && !dispatch) {
             sync(&e);
             jsr_push(0xA09A);
-            c = ObjectHit(x, y);
+            hit = ObjectHit(x, y);
             jsr_pop();
-            abi_chain(&c);
+            object_hit_exit_shim(hit);
             flags = RD8(OBJ->f30f0[x]);
             flags = (uint8_t)(flags & 0x04);
             e = ended_load(flags);

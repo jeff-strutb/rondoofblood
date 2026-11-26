@@ -214,6 +214,8 @@ typedef struct { uint8_t a; uint8_t x; uint8_t y; bool c; bool v; uint8_t nz; } 
 StageRegs stage_regs_after(StageExit end, StageRegs before);
 void stage_regs_load_shim(StageRegs r);
 StageRegs stage_regs_from_cpu_shim(StageRegs before);
+/* The registers and flags a routine is entered with, for one whose callee sees them unchanged. */
+StageRegs stage_regs_entry_shim(void);
 StageExit StepStageSequence(uint8_t x, uint8_t y);
 
 StageExit StageScriptByWave(void);
@@ -270,7 +272,7 @@ StageExit InitStageB(uint8_t x, uint8_t y);
 StageExit InitStageC(uint8_t x, uint8_t y);
 
 /* system/stage_state_start.c: the state a stage starts in. */
-StageExit EnterStageState(void);
+StageExit EnterStageState(StageRegs entry);
 
 /* system/stage_clear_bits.c: masks rows of VRAM words by the stage's cleared bit. */
 StageExit ClearStageBitRows(uint8_t x);

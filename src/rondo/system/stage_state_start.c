@@ -17,13 +17,15 @@ enum { CARD_RETURN = 0x883C, CARD_CALL = 0xE018, DISPLAY_DELAY = 2, FIELD8E_ENDI
  * effect is cleared, the display delay set to 2 and the game sub mode cleared.
  * HOW: A loop of the card call; the rest is stores.
  * WAITS: it waits for the card as long as it answers.
- * Entry: nothing. Exit: A the last value loaded, X the card's last answer when it was called.
+ * Entry: X, Y, C and V as the caller left them: nothing before the card call changes them, so
+ * the first call gets them (entry). Exit: A the last value loaded, X the card's last answer when
+ * it was called.
  * Seventeen stage overlays hold this code.
  */
-StageExit EnterStageState(void)
+StageExit EnterStageState(StageRegs entry)
 {
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
-    StageRegs r = { 0, 0, 0, false, false, 0 };
+    StageRegs r = entry;
     StageExit card;
     uint8_t a;
 
@@ -72,5 +74,5 @@ StageExit EnterStageState(void)
 
 void abi_EnterStageState(void)
 {
-    stage_exit_shim(EnterStageState());
+    stage_exit_shim(EnterStageState(stage_regs_entry_shim()));
 }

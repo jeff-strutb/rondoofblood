@@ -1059,6 +1059,21 @@ static void frame_pass(Span *s, uint64_t idx, unsigned pulls)
     if (getenv("RONDO_DIAG_RESUME"))
         fprintf(stderr, "DIAGFRAME frame %lu event %llu wait_frame %lu in %s S%02X pulls %u\n", cur_frame,
                 (unsigned long long)idx, c->wait_frame, rondo_tags[c->tag].name, cpu.s, pulls);
+    if (getenv("RONDO_DIAG_CTX") && (uint8_t)(cpu.s + pulls) != e->s) {
+        /* The C stands where the original's frame ended, and its S is not the original's: the C's stack differs here. */
+        fprintf(stderr, "FRAMEPASS frame %lu in %s (%s): the C's S%02X (+%u pulls), the record's S%02X at PC %04X; fs:", cur_frame,
+                rondo_tags[c->tag].name, blame_tag >= 0 ? rondo_tags[blame_tag].name : "-", cpu.s, pulls, e->s, e->pc);
+        for (int i = 0; i < c->fsn && i < FS_MAX; i++)
+            fprintf(stderr, " %s", rondo_tags[c->fs[i]].name);
+        fprintf(stderr, "\n");
+        for (uint64_t k = idx > 14 ? idx - 14 : 0; k < idx; k++) {
+            Ev *x2 = evp(k);
+
+            if (x2)
+                fprintf(stderr, "  FRAMEPASS -%llu type %d kind %d addr %06X pc %04X s %02X val %02X\n", (unsigned long long)(idx - k), x2->type,
+                        x2->kind, x2->addr, x2->pc, x2->s, x2->val);
+        }
+    }
     chk_get_regs(&a, &x, &y, &st, &p, &pc);
     /* pulls: the bytes of its return address the original's RTS or RTI had taken when the frame ended. */
     chk_set_regs(cpu.a, cpu.x, cpu.y, (uint8_t)(cpu.s + pulls), (uint8_t)(cpu.p | P_I), pc);

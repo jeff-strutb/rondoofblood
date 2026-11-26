@@ -12,7 +12,7 @@ enum {
     CLEAR_RETURN = 0x8A62, WALK_JUMP = 0x8AA1, STEP_OBJECTS_ENTRY = 0x8A4F, MAP_RETURN = 0x8A65, WALK_RETURN = 0x8AA1
 };
 
-Ended MapOverlayBank7(void);
+ObjArm MapOverlayBank7(void);
 void ClearEnemySlots(uint8_t entry_x);
 Sum StreamFullWalk(uint8_t x);
 void lines_exit_shim(Sum count);   /* object/stream.c */

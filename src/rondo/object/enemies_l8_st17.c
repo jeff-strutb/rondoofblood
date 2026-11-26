@@ -467,7 +467,7 @@ static DoubleSound pulse_water_level_and_scatter(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->f3568[0], 0);
     value = RD8(OBJ->f3510[slot]);
     jsr_push(0xAD2A);
-    first = MaybeSound19AndSpawnPiece(slot, value, y_entry);
+    first = l8_sound19_piece_exit_shim(MaybeSound19AndSpawnPiece(slot, value, y_entry));
     jsr_pop();
     first = sound_end_after(ended_load(value), first);
     t.first = first;

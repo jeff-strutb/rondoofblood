@@ -42,7 +42,7 @@ DrawGlyphText_at0:
 ; $10, $11 and $31.
 ; WAITS: no.
 ; Entry: the string at zTemp00 and zTemp01. Exit: as WriteGlyphRowsTwice: A the last byte written, X
-; that plus 16, Y 8, Z and C set, N clear. V as the tile place's add left it.
+; that plus 16, Y 8, Z and C set, N clear. V as the last of the tile place's add and the card's font calls left it.
 ; not checked: agrees for 40 events, then differs inside the card's sjis_to_font_index.
 DrawGlyphPair:
     jsr VecSelectVramWriteAddress

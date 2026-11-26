@@ -124,14 +124,17 @@ static void copy_glyph(uint16_t table, uint16_t buffer)
 }
 
 /* The card's font for the code in zBiosAl and zBiosAh, into the buffer in zBiosBl and zBiosBh. */
-static void get_glyph(uint8_t buffer_low, uint8_t buffer_high, uint16_t ret)
+static CardExit get_glyph(uint8_t buffer_low, uint8_t buffer_high, uint16_t ret)
 {
+    CardExit font;
+
     WR8(ZP->bios_b.lo, buffer_low);
     WR8(ZP->bios_b.hi, buffer_high);
     WR8(ZP->bios_d.hi, 1);
     jsr_push(ret);
-    (void)vec_ex_getfnt();
+    font = vec_ex_getfnt();
     jsr_pop();
+    return font;
 }
 
 /*
@@ -147,7 +150,7 @@ static void get_glyph(uint8_t buffer_low, uint8_t buffer_high, uint16_t ret)
  * $10, $11 and $31.
  * WAITS: no.
  * Entry: the string at zTemp00 and zTemp01. Exit: as WriteGlyphRowsTwice: A the last byte written, X
- * that plus 16, Y 8, Z and C set, N clear. V as the tile place's add left it.
+ * that plus 16, Y 8, Z and C set, N clear. V as the last of the tile place's add and the card's font calls left it.
  * not checked: agrees for 40 events, then differs inside the card's sjis_to_font_index.
  */
 Exit DrawGlyphPair(void)
@@ -157,6 +160,7 @@ Exit DrawGlyphPair(void)
     unsigned total;
     int i;
     GlyphRows rows;
+    CardExit font;
     bool overflow;
 
     jsr_push(0x84D8);
@@ -188,7 +192,9 @@ Exit DrawGlyphPair(void)
     if (high_code == CODE_9C) {
         copy_glyph(TABLE_FIRST, GLYPH_FIRST);
     } else {
-        get_glyph(FONT_LOW_BUFFER, FONT_HIGH_BUFFER, 0x8522);
+        font = get_glyph(FONT_LOW_BUFFER, FONT_HIGH_BUFFER, 0x8522);
+        if (font.set_v)
+            overflow = font.v;
     }
     second = RD8_PTR(ZP->temp00);
     if (second == 0) {
@@ -212,7 +218,9 @@ Exit DrawGlyphPair(void)
         } else if (second == CODE_E0 && low_code == LOW_81) {
             copy_glyph(TABLE_E081, GLYPH_SECOND);
         } else {
-            get_glyph(FONT_SECOND_LOW, FONT_HIGH_BUFFER, 0x8588);
+            font = get_glyph(FONT_SECOND_LOW, FONT_HIGH_BUFFER, 0x8588);
+            if (font.set_v)
+                overflow = font.v;
         }
     }
     for (x = GLYPH_BYTES - 1; (int8_t)x >= 0; x = (uint8_t)(x - 2)) {

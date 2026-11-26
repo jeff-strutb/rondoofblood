@@ -351,9 +351,10 @@ def main():
         f"**Denominator: {denom}.**",
         "",
         *([f"**Code no script runs: {census_code:,} B ({percent(census_code, game_whole)} of the denominator), a "
-           f"line of its own and never inside M1** ({cen['counted_never_loaded']:,} B of it in disc areas no script "
-           "loads). It is decompiled like any other code, and its C is marked unreached: it cannot reach T3 until a "
-           "script runs it (PLAN section 1, the ruling of 2026-11-26).", ""] if CENSUS_COUNTED else []),
+           f"line of its own** ({cen['counted_never_loaded']:,} B of it in disc areas no script loads). It is "
+           "decompiled like any other code. It counts in M1 only when a script runs it and the gates pass it, or when "
+           "it is proven unreachable and filed as proper C whose header records the proof (PLAN section 1, the "
+           "rulings of 2026-11-26); none is yet.", ""] if CENSUS_COUNTED else []),
         f"**{below[0]} of {len(rows)} routines ({below[1]:,} B) fail the proper-C check: "
         "register-shaped C, a stepping stone, not decompiled.** The check is a pattern check, so "
         "every count above T2 is a ceiling until reviewed.",

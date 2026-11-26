@@ -108,8 +108,15 @@ document it as such." Applied:
 2. Anything that decodes as code and is not proven data or a proven
    duplicate stays in the denominator, loadable or not.
 3. Code nothing reaches stays in, and is filed with C marked unreached.
-   It cannot reach T3 until something runs it. The README shows it as a
-   line of its own, never inside M1.
+   Amended by the maintainer the same day: "If we prove it unreachable,
+   it counts in our progress until we prove otherwise yes." So code
+   proven unreachable (no load path, input, poke or unit call can run it),
+   once filed as proper C, counts in M1. Its header records the proof and
+   marks the C optimistic, not gate-proven. If a script ever reaches it,
+   it is judged by the gates like any other routine, and it leaves the
+   count if it fails. Code that is only unreached, with no proof, does
+   not count until a script runs it and the gates pass it. The README
+   shows code no script runs as a line of its own.
 
 | Tier | Meaning |
 |---|---|

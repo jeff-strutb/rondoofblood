@@ -243,6 +243,15 @@ class Draft:
             return "untraced(0x%04X);" % addr
         return self.tail(addr, frompc, branch)
 
+    def computed_jmp(self, seg, ea):
+        """JMP (abs) or JMP (abs,X): the target is known only at run time. From the routine's own piece, a target that is
+        the routine's own first byte is a loop of the routine, as an absolute JMP there is (jump_to): the record has no
+        call for it (the recorder's self jump). Any other target is code of its own, run as original."""
+        if seg.k == 0:
+            return "{ uint16_t t_ = op_jmp_ptr(%s); if (t_ == 0x%04X) { goto %s; } call_original(t_); return; }" % (
+                ea, seg.base & 0xFFFF, self.label(seg, 0))
+        return "{ uint16_t t_ = op_jmp_ptr(%s); call_original(t_); return; }" % ea
+
     def step(self, seg, idx):
         g, base = seg.g, seg.base
         _, o, ln, name, mode, ops, unrun = g.items[idx]
@@ -265,7 +274,7 @@ class Draft:
                 return "call_orig(0x%04X, %s);" % (nxt, rt)
             if name == "jmp":
                 ea = rt if mode == "ind" else "ea_abx(%s)" % rt
-                return "{ uint16_t t_ = op_jmp_ptr(%s); call_original(t_); return; }" % ea
+                return self.computed_jmp(seg, ea)
         if name in VALUE_OPS:
             f = "op_%s(%s);" % (name, value_expr(mode, ops, rt))
             if self.tpend and name in T_OPS:
@@ -318,7 +327,7 @@ class Draft:
                 return self.jump_to(seg, ops[0], False, pc)
             ea = "0x%04X" % ops[0] if mode == "ind" else "ea_abx(0x%04X)" % ops[0]
             self.stat["computed"] += 1
-            return "{ uint16_t t_ = op_jmp_ptr(%s); call_original(t_); return; }" % ea
+            return self.computed_jmp(seg, ea)
         if name in ("rts", "rti"):
             return "return;"
         if name == "tst":

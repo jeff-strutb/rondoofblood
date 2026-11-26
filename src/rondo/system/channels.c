@@ -326,6 +326,26 @@ void abi_StartScriptSlotKind4(void)
 }
 
 /*
+ * @routine 0045:533 SetScriptSlotKindAndScript
+ * @run 69:5533
+ * WHAT IT DOES: Stores a script slot's kind and its script: the end that StartScriptSlotKind1 runs into and that the sole slot
+ * start calls.
+ * HOW: Two stores.
+ * WAITS: no.
+ * Entry: A kind, Y script, X slot. Exit: A the script, N and Z from it. X and Y kept.
+ */
+uint8_t SetScriptSlotKindAndScript(uint8_t kind, uint8_t script, uint8_t slot)
+{
+    script_slot_kind(kind, script, slot);
+    return script;
+}
+
+void abi_SetScriptSlotKindAndScript(void)
+{
+    script_slot_exit_shim(SetScriptSlotKindAndScript(cpu.a, cpu.y, cpu.x));
+}
+
+/*
  * @routine 0045:552 StartSoleScriptSlot
  * @run 69:5552
  * WHAT IT DOES: Starts a script slot as kind 5, unless slot 3 is in use: says which.
@@ -351,7 +371,7 @@ SoleSlot StartSoleScriptSlot(uint8_t script, uint8_t slot)
     ClearScriptSlot(slot);
     jsr_pop();
     jsr_push(0x555E);
-    script_slot_kind(KIND_SOLE_SCRIPT, script, slot);
+    (void)SetScriptSlotKindAndScript(KIND_SOLE_SCRIPT, script, slot);
     jsr_pop();
     return result;
 }

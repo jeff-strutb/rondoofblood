@@ -15,7 +15,7 @@
 #include "enemy_objects.h"
 
 enum {
-    PSG_CHANNELS = 6, PSG_VOLUME_FULL = 0xFF, LEVEL_SILENT = 0x1F,
+    PSG_CHANNELS = 6, PSG_VOLUME_FULL = 0xFF, LEVEL_SILENT = 0x1F, RELEASE_LIMIT = 0x1F,
     EFFECT_SHARED_FIRST = 4, EFFECT_SHARED_END = 6, EFFECT_CHANNEL_OFFSET = 2,
     FADE_STEP_START = 0x10, SOUND_WAVES = 0xBD11, SEQUENCE_NOTES_END = 0x60, SEQUENCE_REUSE = 0x80,
     SEQUENCE_LONG_FIRST = 0xE0, OFFSET_NEGATIVE = 0x40, PSG_CHANNEL_ON = 0x80, BALANCE_SET_SIZE = 0x10,
@@ -936,15 +936,36 @@ void abi_SoundTempoSlideStep(void)
 
 
 
-/* The attack is over: the phase on, and the decay rate's frames in the timer. */
-static Ended envelope_decay_phase(uint8_t channel)
+/*
+ * The arm SoundEnvelopeStep ended on and the values behind it: A and N, Z from value (ENV_VALUE); A 0 and N, Z from value, a
+ * timer still running (ENV_TIMER); C from comparing compared with against, then A and N, Z from value (ENV_COMPARED); the
+ * compare alone, A compared (ENV_COMPARED_ONLY). Its exit shim builds the registers and flags from them.
+ */
+typedef enum { ENV_VALUE, ENV_TIMER, ENV_COMPARED, ENV_COMPARED_ONLY } EnvelopeArmKind;
+
+typedef struct {
+    EnvelopeArmKind arm;
+    uint8_t value;
+    uint8_t compared;
+    uint8_t against;
+} EnvelopeArm;
+
+static EnvelopeArm envelope_arm(EnvelopeArmKind arm, uint8_t value)
+{
+    EnvelopeArm r = { arm, value, 0, 0 };
+
+    return r;
+}
+
+/* The attack is over: the phase on, and the decay rate's frames in the timer; the rate. */
+static uint8_t envelope_decay_phase(uint8_t channel)
 {
     uint8_t a;
 
     wr8((uint16_t)(SoundEnvelopePhase + channel), (uint8_t)(rd8((uint16_t)(SoundEnvelopePhase + channel)) + 1));
     a = rd8((uint16_t)(SoundDecayRate + channel));
     wr8((uint16_t)(SoundEnvelopeTimer + channel), a);
-    return ended_load(a);
+    return a;
 }
 
 /*
@@ -956,25 +977,28 @@ static Ended envelope_decay_phase(uint8_t channel)
  * a step quieter each time, without end. Off, and past the release, nothing.
  * HOW: SoundEnvelopePhase, SoundEnvelopeTimer and SoundEnvelopeLevel by channel, with the rates
  * and levels set for it. The release compares A, which is 0 there, with $1F, so it never stops
- * itself.
+ * itself. The body returns the arm it ended on and the values behind it; envelope_step_exit_shim
+ * builds A and the flags. Curated cases (the attack's last step into the decay, the decay reaching
+ * the sustain): tools/rondo/curated/sound_envelope_step.txt.
  * WAITS: no.
  * Entry: X channel. Exit: X, Y and V kept. Off, A $FF, N set, Z clear. Past the release, A the
  * phase less 4, N and Z from it. Timer still running, A 0, N and Z from the timer. Timer set, A
  * the frames it was set to, N and Z from them; C from comparing the level with the sustain in the
  * decay, clear in the release, else kept.
  */
-Ended SoundEnvelopeStep(uint8_t channel)
+
+EnvelopeArm SoundEnvelopeStep(uint8_t channel)
 {
     uint16_t phase_at = (uint16_t)(SoundEnvelopePhase + channel);
     uint16_t timer_at = (uint16_t)(SoundEnvelopeTimer + channel);
     uint16_t level_at = (uint16_t)(SoundEnvelopeLevel + channel);
     uint8_t a, timer, level, sustain;
-    Ended e;
+    EnvelopeArm r;
 
     a = (uint8_t)(rd8(phase_at) - 1);
-    e = ended_nz(a);
-    if ((a & 0x80) != 0)
-        return ended_with_a(e, a);
+    if ((a & 0x80) != 0) {
+        return envelope_arm(ENV_VALUE, a);
+    }
     if (a == 0) {
         wr8(phase_at, (uint8_t)(rd8(phase_at) + 1));
         a = rd8((uint16_t)(SoundAttackLevel + channel));
@@ -982,35 +1006,37 @@ Ended SoundEnvelopeStep(uint8_t channel)
         a = rd8((uint16_t)(SoundAttackRate + channel));
         if (a != 0) {
             wr8(timer_at, a);
-            return ended_load(a);
+            return envelope_arm(ENV_VALUE, a);
         }
-        return envelope_decay_phase(channel);
+        return envelope_arm(ENV_VALUE, envelope_decay_phase(channel));
     }
     a = (uint8_t)(a - 1);
     if (a == 0) {
         timer = (uint8_t)(rd8(timer_at) - 1);
         wr8(timer_at, timer);
-        if (timer != 0)
-            return ended_with_a(ended_nz(timer), 0);
+        if (timer != 0) {
+            return envelope_arm(ENV_TIMER, timer);
+        }
         level = (uint8_t)(rd8(level_at) - 1);
         wr8(level_at, level);
-        if (level == 0)
-            return envelope_decay_phase(channel);
+        if (level == 0) {
+            return envelope_arm(ENV_VALUE, envelope_decay_phase(channel));
+        }
         a = rd8((uint16_t)(SoundAttackRate + channel));
         wr8(timer_at, a);
-        return ended_load(a);
+        return envelope_arm(ENV_VALUE, a);
     }
     a = (uint8_t)(a - 1);
     if (a == 0) {
         timer = (uint8_t)(rd8(timer_at) - 1);
         wr8(timer_at, timer);
-        if (timer != 0)
-            return ended_with_a(ended_nz(timer), 0);
+        if (timer != 0) {
+            return envelope_arm(ENV_TIMER, timer);
+        }
         level = (uint8_t)(rd8(level_at) + 1);
         wr8(level_at, level);
         level = rd8(level_at);
         sustain = rd8((uint16_t)(SoundSustainLevel + channel));
-        e = ended_compare(level, sustain);
         if (level == sustain) {
             wr8(phase_at, (uint8_t)(rd8(phase_at) + 1));
             a = rd8((uint16_t)(SoundReleaseRate + channel));
@@ -1018,30 +1044,53 @@ Ended SoundEnvelopeStep(uint8_t channel)
             a = rd8((uint16_t)(SoundDecayRate + channel));
         }
         wr8(timer_at, a);
-        return ended_then(e, ended_load(a));
+        r = envelope_arm(ENV_COMPARED, a);
+        r.compared = level;
+        r.against = sustain;
+        return r;
     }
     a = (uint8_t)(a - 1);
-    if (a != 0)
-        return ended_with_a(ended_nz(a), a);
+    if (a != 0) {
+        return envelope_arm(ENV_VALUE, a);
+    }
     timer = (uint8_t)(rd8(timer_at) - 1);
     wr8(timer_at, timer);
-    if (timer != 0)
-        return ended_with_a(ended_nz(timer), 0);
+    if (timer != 0) {
+        return envelope_arm(ENV_TIMER, timer);
+    }
     level = (uint8_t)(rd8(level_at) + 1);
     wr8(level_at, level);
-    e = ended_compare(a, 0x1F);
-    if (a == 0x1F) {
+    if (a == RELEASE_LIMIT) {
         wr8(phase_at, 0);
-        return e;
+        r = envelope_arm(ENV_COMPARED_ONLY, 0);
+    } else {
+        a = rd8((uint16_t)(SoundReleaseRate + channel));
+        wr8(timer_at, a);
+        r = envelope_arm(ENV_COMPARED, a);
     }
-    a = rd8((uint16_t)(SoundReleaseRate + channel));
-    wr8(timer_at, a);
-    return ended_then(e, ended_load(a));
+    r.compared = 0;
+    r.against = RELEASE_LIMIT;
+    return r;
+}
+
+/* What SoundEnvelopeStep leaves in A and the flags, from the arm it ended on (X, Y and V kept; C kept unless compared). */
+static Ended envelope_step_exit_shim(EnvelopeArm r)
+{
+    switch (r.arm) {
+    case ENV_TIMER:
+        return ended_with_a(ended_nz(r.value), 0);
+    case ENV_COMPARED:
+        return ended_then(ended_compare(r.compared, r.against), ended_load(r.value));
+    case ENV_COMPARED_ONLY:
+        return ended_compare(r.compared, r.against);
+    default:
+        return ended_load(r.value);
+    }
 }
 
 void abi_SoundEnvelopeStep(void)
 {
-    abi_ended(SoundEnvelopeStep(cpu.x));
+    abi_ended(envelope_step_exit_shim(SoundEnvelopeStep(cpu.x)));
 }
 
 /*

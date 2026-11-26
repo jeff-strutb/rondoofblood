@@ -609,13 +609,13 @@ void abi_InsideCenterBand(void)
  */
 enum { ST15_FACING_OFF_SCREEN, ST15_FACING_ON_SCREEN };
 
-L8St15Facing FacingByX(uint8_t slot)
+L8St15Facing FacingByX(uint8_t slot, L8Layout lay)
 {
     L8St15Facing r = { 0 };
 
     r.high = RD8(OBJ->x_hi[slot]);
     if (r.high != 0) {
-        jsr_push(0xB3F0);
+        jsr_push(l8_at(lay, 0xB3F0));
         r.side = SideOfPlayer(slot);
         jsr_pop();
         r.a = (uint8_t)(r.side.sides & 0x01);
@@ -639,7 +639,7 @@ static Ended l8_facing_by_x_exit_shim(L8St15Facing r)
 
 void abi_FacingByX(void)
 {
-    abi_ended(l8_facing_by_x_exit_shim(FacingByX(cpu.x)));
+    abi_ended(l8_facing_by_x_exit_shim(FacingByX(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -748,14 +748,14 @@ void abi_StepListThenCountDownToState4(void)
  * WAITS: no.
  * Entry: X object. Exit: A the table byte, Y the index, N and Z from the new OBJ_3568 (l8_next_phase_exit_shim).
  */
-L8Arm PickNextPhaseFromTable(uint8_t slot)
+L8Arm PickNextPhaseFromTable(uint8_t slot, L8Layout lay)
 {
     L8Arm r = { 0 };
 
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     r.first = (uint8_t)(RD8(OBJ->f3568[slot]) & 0x07);
-    r.second = rd8((uint16_t)(0xB4EC + r.first));
+    r.second = rd8((uint16_t)(l8_at(lay, 0xB4EC) + r.first));
     WR8(OBJ->f2800[slot], r.second);
     r.third = INC8(OBJ->f3568[slot]);
     return r;
@@ -769,7 +769,7 @@ static Ended l8_next_phase_exit_shim(L8Arm r)
 
 void abi_PickNextPhaseFromTable(void)
 {
-    abi_ended(l8_next_phase_exit_shim(PickNextPhaseFromTable(cpu.x)));
+    abi_ended(l8_next_phase_exit_shim(PickNextPhaseFromTable(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -841,7 +841,7 @@ void abi_StepListThenLeapWithSound(void)
  */
 enum { ST15_SAG_RISING, ST15_SAG_LOW_HIGH, ST15_SAG_DONE };
 
-L8Arm FlyAndSagWithTwoLists(uint8_t slot)
+L8Arm FlyAndSagWithTwoLists(uint8_t slot, L8Layout lay)
 {
     uint8_t speed, lo, value;
     Sum sum;
@@ -850,15 +850,15 @@ L8Arm FlyAndSagWithTwoLists(uint8_t slot)
     WR8(OBJ->f3358[slot], 0);
     speed = RD8(OBJ->vy_hi[slot]);
     r.first = (uint8_t)(((speed >> 7) & 0x01) << 1);
-    lo = rd8((uint16_t)(0xB575 + r.first));
+    lo = rd8((uint16_t)(l8_at(lay, 0xB575) + r.first));
     WR8(ZP->temp10, lo);
-    r.step.stored = rd8((uint16_t)(0xB576 + r.first));
+    r.step.stored = rd8((uint16_t)(l8_at(lay, 0xB576) + r.first));
     WR8(ZP->temp11, r.step.stored);
     r.step.y = r.first;
-    jsr_push(0xB54F);
+    jsr_push(l8_at(lay, 0xB54F));
     r.step.step = StepObjectFrames(slot, &r.step.y);
     jsr_pop();
-    jsr_push(0xB552);
+    jsr_push(l8_at(lay, 0xB552));
     r.move = ApplyVelocity(slot);
     jsr_pop();
     value = RD8(OBJ->vy_lo[slot]);
@@ -904,7 +904,7 @@ static Ended l8_fly_sag_exit_shim(L8Arm r)
 
 void abi_FlyAndSagWithTwoLists(void)
 {
-    abi_ended(l8_fly_sag_exit_shim(FlyAndSagWithTwoLists(cpu.x)));
+    abi_ended(l8_fly_sag_exit_shim(FlyAndSagWithTwoLists(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -960,11 +960,11 @@ void abi_SoundEvery32Frames(void)
  * WAITS: no.
  * Entry: X object. Exit: A 3, Y the random number masked, C and V from NextRandom (l8_pick_random_exit_shim).
  */
-L8Arm PickRandomThenState3(uint8_t slot)
+L8Arm PickRandomThenState3(uint8_t slot, L8Layout lay)
 {
     L8Arm r = { 0 };
 
-    jsr_push(0xB5C7);
+    jsr_push(l8_at(lay, 0xB5C7));
     r.random = NextRandom();
     jsr_pop();
     r.first = r.random.value & 0x03;
@@ -985,7 +985,7 @@ static Ended l8_pick_random_exit_shim(L8Arm r)
 
 void abi_PickRandomThenState3(void)
 {
-    abi_ended(l8_pick_random_exit_shim(PickRandomThenState3(cpu.x)));
+    abi_ended(l8_pick_random_exit_shim(PickRandomThenState3(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -1027,7 +1027,7 @@ L8St15Slow StepListSlowDownThenPickRandom(uint8_t slot, uint8_t y_entry)
     } else {
         r.arm = ST15_SLOW_STOPPED_ZERO;
     }
-    r.pick = PickRandomThenState3(slot);
+    r.pick = PickRandomThenState3(slot, L8_LOADED);
     return r;
 }
 
@@ -1067,12 +1067,12 @@ void abi_StepListSlowDownThenPickRandom(void)
  */
 enum { ST15_EDGE_OUT_DIRECTED, ST15_EDGE_OUT_PLAIN, ST15_EDGE_INSIDE };
 
-L8St15Edge EdgeCodeByDirection(uint8_t slot)
+L8St15Edge EdgeCodeByDirection(uint8_t slot, L8Layout lay)
 {
     L8St15Edge r = { 0 };
 
     r.direction = RD8(OBJ->f3618[slot]);
-    jsr_push(r.direction != 0 ? 0xB46D : 0xB477);
+    jsr_push(l8_at(lay, r.direction != 0 ? 0xB46D : 0xB477));
     r.band = InsideCenterBand(slot);
     jsr_pop();
     if (r.band.outside) {
@@ -1103,7 +1103,7 @@ static Ended l8_edge_code_exit_shim(L8St15Edge r)
 
 void abi_EdgeCodeByDirection(void)
 {
-    abi_ended(l8_edge_code_exit_shim(EdgeCodeByDirection(cpu.x)));
+    abi_ended(l8_edge_code_exit_shim(EdgeCodeByDirection(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -1116,26 +1116,26 @@ void abi_EdgeCodeByDirection(void)
  */
 enum { ST15_CENTER_WAITING, ST15_CENTER_MATCHED };
 
-L8St15Turn TurnTowardCenterOrWait(uint8_t slot)
+L8St15Turn TurnTowardCenterOrWait(uint8_t slot, L8Layout lay)
 {
     L8St15Turn r = { 0 };
 
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     r.count = INC8(OBJ->f2800[slot]);
-    jsr_push(0xB3AD);
+    jsr_push(l8_at(lay, 0xB3AD));
     r.random = NextRandom();
     jsr_pop();
     r.sum = add_bytes((uint8_t)(r.random.value & 0x03), 2, false);
     WR8(OBJ->f3510[slot], r.sum.value);
-    jsr_push(0xB3B8);
+    jsr_push(l8_at(lay, 0xB3B8));
     r.band = InsideCenterBand(slot);
     jsr_pop();
     r.shifted = (uint8_t)((uint8_t)(r.band.a << 1) | (r.band.outside ? 1 : 0));
     r.bit = (uint8_t)(r.shifted & 0x01);
     WR8(OBJ->f3618[slot], r.bit);
-    jsr_push(0xB3C1);
-    r.side = FacingByX(slot);
+    jsr_push(l8_at(lay, 0xB3C1));
+    r.side = FacingByX(slot, lay);
     jsr_pop();
     r.facing = RD8(OBJ->facing_left[slot]);
     if (r.side.a != r.facing) {
@@ -1168,7 +1168,7 @@ static Ended l8_turn_toward_center_exit_shim(L8St15Turn r)
 
 void abi_TurnTowardCenterOrWait(void)
 {
-    abi_ended(l8_turn_toward_center_exit_shim(TurnTowardCenterOrWait(cpu.x)));
+    abi_ended(l8_turn_toward_center_exit_shim(TurnTowardCenterOrWait(cpu.x, L8_LOADED)));
 }
 
 /*
@@ -1202,7 +1202,7 @@ L8St15Side StepSideToSideWithCenterCheck(uint8_t slot, uint8_t y_entry)
         return r;
     }
     jsr_push(0xB440);
-    r.edge = EdgeCodeByDirection(slot);
+    r.edge = EdgeCodeByDirection(slot, L8_LOADED);
     jsr_pop();
     if (r.edge.code == 0) {
         r.arm = ST15_SIDE_EDGE_NONE;
@@ -1382,7 +1382,7 @@ L8St15Spawn StepListThenSoundAndSpawn(uint8_t slot, uint8_t y_entry)
 
     r.step = l8_list_step(slot, 0xB62B, 0xB5F9, false, y_entry);
     if (r.step.step == FRAME_LIST_ENDED) {
-        r.pick = PickRandomThenState3(slot);
+        r.pick = PickRandomThenState3(slot, L8_LOADED);
         r.arm = ST15_SPAWN_ENDED;
         return r;
     }
@@ -1483,7 +1483,7 @@ L8St15Burst StepListThenBurstAtFrame14(uint8_t slot, uint8_t y_entry)
 
     r.step = l8_list_step(slot, 0xB675, 0xB653, false, y_entry);
     if (r.step.step == FRAME_LIST_ENDED) {
-        r.pick = PickRandomThenState3(slot);
+        r.pick = PickRandomThenState3(slot, L8_LOADED);
         r.arm = ST15_BURST_ENDED;
         return r;
     }

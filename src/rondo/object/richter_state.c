@@ -3780,64 +3780,78 @@ static void log_add(CheckLog *log, CheckRecord record)
     log->step[log->count++] = record;
 }
 
-static ColumnsEnd check_columns(CheckLog *log)
+static ColumnsEnd check_columns(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_COLUMNS };
 
+    jsr_push(ret);
     r.columns = RichterReadColumns();
+    jsr_pop();
     log_add(log, r);
     return r.columns;
 }
 
-static bool check_no_footing(CheckLog *log)
+static bool check_no_footing(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_FOOTING };
 
+    jsr_push(ret);
     r.footing = RichterHasNoFooting();
+    jsr_pop();
     log_add(log, r);
     return r.footing.no_floor;
 }
 
-static void check_landing(CheckLog *log)
+static void check_landing(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_LANDING };
 
+    jsr_push(ret);
     r.landing = RichterLandOnFloor();
+    jsr_pop();
     log_add(log, r);
 }
 
-static bool check_jump(CheckLog *log)
+static bool check_jump(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_ANSWER };
 
+    jsr_push(ret);
     r.answer = RichterJumpPressed();
+    jsr_pop();
     log_add(log, r);
     return r.answer;
 }
 
-static bool check_up(CheckLog *log)
+static bool check_up(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_ANSWER };
 
+    jsr_push(ret);
     r.answer = RichterUpHeld();
+    jsr_pop();
     log_add(log, r);
     return r.answer;
 }
 
-static bool check_item_crash(CheckLog *log)
+static bool check_item_crash(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_CRASH };
 
+    jsr_push(ret);
     r.crash = RichterTryItemCrash();
+    jsr_pop();
     log_add(log, r);
     return r.crash.how == CRASH_STARTED;
 }
 
-static bool check_item_use(CheckLog *log)
+static bool check_item_use(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_USE };
 
+    jsr_push(ret);
     r.use = RichterUseItem();
+    jsr_pop();
     log_add(log, r);
     return r.use.how != USE_NO_PRESS;
 }
@@ -3853,22 +3867,30 @@ static bool check_progress_below(CheckLog *log, uint8_t mark)
     return r.compare.value < mark;
 }
 
-static void check_turn(CheckLog *log)
+static void check_turn(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_TURN };
 
+    jsr_push(ret);
     r.turn = RichterTurnOnPress();
+    jsr_pop();
     log_add(log, r);
 }
 
 /* The animation's wait: false when it still runs, and the step must return at once. */
-static bool check_animation_ended(CheckLog *log)
+static bool check_animation_ended(CheckLog *log, uint16_t ret)
 {
     CheckRecord r = { .kind = CHECK_RUNNING };
+    AnimationWaitEnd wait;
 
-    r.running = RichterAnimationRunning();
+    jsr_push(ret);
+    wait = RichterAnimationWait();
+    r.running = wait.step;
     log_add(log, r);
-    return rd8(OBJ_2F90) == ANIMATION_STOPPED;
+    if (wait.dropped)
+        return false;   /* the wait took the return address off: this step's caller is next */
+    jsr_pop();
+    return true;
 }
 
 void check_log_replay_shim(const CheckLog *log)
@@ -4033,19 +4055,21 @@ CrouchStep RichterCrouchStep0(void)
 {
     CrouchStep c = { 0 };
 
-    check_columns(&c.log);
-    if (check_no_footing(&c.log))
+    check_columns(&c.log, 0xA871);
+    if (check_no_footing(&c.log, 0xA874))
         return crouch_falls(c);
-    check_landing(&c.log);
-    if (check_jump(&c.log))
+    check_landing(&c.log, 0xA87C);
+    if (check_jump(&c.log, 0xA87F))
         return crouch_jumps(c);
-    if (check_item_crash(&c.log))
+    if (check_item_crash(&c.log, 0xA887))
         return crouch_crashes(c);
-    if (check_item_use(&c.log))
+    if (check_item_use(&c.log, 0xA88F))
         return crouch_attacks(c);
-    if (!check_up(&c.log)) {
+    if (!check_up(&c.log, 0xA894)) {
         c.how = CROUCH_RISING;
+        jsr_push(0xA8B0);
         c.animation = RichterSetAnimation(ANIM_RISE);
+        jsr_pop();
         wr8(OBJ_2800, CROUCH_RISE_STEP);
         return c;
     }
@@ -4102,23 +4126,23 @@ CrouchStep RichterCrouchStep1(void)
 {
     CrouchStep c = { 0 };
 
-    check_columns(&c.log);
-    if (check_no_footing(&c.log)) {
+    check_columns(&c.log, 0xA8CA);
+    if (check_no_footing(&c.log, 0xA8CD)) {
         c.how = CROUCH_FELL_ORIGINAL;
         crouch_fall_shim(&c.log);
         return c;
     }
-    check_landing(&c.log);
+    check_landing(&c.log, 0xA8D5);
     if (check_progress_below(&c.log, TURN_PROGRESS))
-        check_turn(&c.log);
-    if (check_progress_below(&c.log, CROUCH_PROGRESS) && !check_up(&c.log)) {
+        check_turn(&c.log, 0xA8DF);
+    if (check_progress_below(&c.log, CROUCH_PROGRESS) && !check_up(&c.log, 0xA8E9)) {
         wr8(OBJ_27A8, STATE_STAND);
         wr8(OBJ_FIELDS_2EE0, ATTACK_STAND_FIELD);
         c.how = CROUCH_STOOD_TICK;
         c.animation = RichterAnimationTick();
         return c;
     }
-    if (!check_animation_ended(&c.log)) {
+    if (!check_animation_ended(&c.log, 0xA8EE)) {
         c.how = CROUCH_WAITING;
         c.return_high = CROUCH_ATTACK_RETURN_HIGH;
         return c;
@@ -4145,18 +4169,20 @@ CrouchStep RichterCrouchStep3(void)
 {
     CrouchStep c = { 0 };
 
+    jsr_push(0xA90A);
     RichterPadOverridesOff();
-    check_columns(&c.log);
-    if (check_no_footing(&c.log))
+    jsr_pop();
+    check_columns(&c.log, 0xA90D);
+    if (check_no_footing(&c.log, 0xA910))
         return crouch_falls(c);
-    check_landing(&c.log);
-    if (check_jump(&c.log))
+    check_landing(&c.log, 0xA918);
+    if (check_jump(&c.log, 0xA91B))
         return crouch_jumps(c);
-    if (check_item_crash(&c.log))
+    if (check_item_crash(&c.log, 0xA923))
         return crouch_crashes(c);
-    if (check_item_use(&c.log))
+    if (check_item_use(&c.log, 0xA92B))
         return crouch_attacks(c);
-    if (!check_animation_ended(&c.log)) {
+    if (!check_animation_ended(&c.log, 0xA933)) {
         c.how = CROUCH_WAITING;
         c.return_high = CROUCH_END_RETURN_HIGH;
         return c;
@@ -4180,20 +4206,20 @@ CrouchStep RichterCrouchStep4(void)
 {
     CrouchStep c = { 0 };
 
-    check_columns(&c.log);
-    if (check_no_footing(&c.log))
+    check_columns(&c.log, 0xA93A);
+    if (check_no_footing(&c.log, 0xA93D))
         return crouch_falls(c);
-    check_landing(&c.log);
-    if (check_jump(&c.log))
+    check_landing(&c.log, 0xA945);
+    if (check_jump(&c.log, 0xA948))
         return crouch_jumps(c);
-    if (check_item_crash(&c.log))
+    if (check_item_crash(&c.log, 0xA950))
         return crouch_crashes(c);
-    if (check_item_use(&c.log)) {
+    if (check_item_use(&c.log, 0xA958)) {
         c.how = CROUCH_ATTACKED;
         c.attack = RichterAttack();
         return c;
     }
-    if (!check_animation_ended(&c.log)) {
+    if (!check_animation_ended(&c.log, 0xA960)) {
         c.how = CROUCH_WAITING;
         c.return_high = CROUCH_END_RETURN_HIGH;
         return c;

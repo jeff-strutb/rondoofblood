@@ -802,15 +802,26 @@ void abi_PlayerAndCameraFrame(void)
     abi_flag(P_C, true);
 }
 
-/* One call to a camera mode with no C yet, with what the table's jump leaves. */
-static void camera_mode_original_shim(uint16_t handler, uint8_t mode)
+/* What the table's jump leaves for the mode: A and X the mode doubled, N and Z from it, C its top bit. */
+static void camera_mode_registers_shim(uint8_t mode)
 {
     cpu.a = (uint8_t)(mode << 1);
     cpu.x = cpu.a;
     abi_nz(cpu.a);
     abi_flag(P_C, (mode & 0x80) != 0);
+}
+
+/* One call to a camera mode with no C yet, with what the table's jump leaves. */
+static void camera_mode_original_shim(uint16_t handler, uint8_t mode)
+{
+    camera_mode_registers_shim(mode);
     call_original(handler);
 }
+
+void abi_CameraModeCarried(void);
+void abi_CameraModeLeftWall(void);
+void abi_CameraModeFollow(void);
+void abi_CameraModeVertical(void);
 
 /*
  * @routine 0047:681 CameraModeDispatch
@@ -830,16 +841,20 @@ void CameraModeDispatch(void)
 
     switch (handler) {
     case 0x66C5:
-        CameraModeCarried();
+        camera_mode_registers_shim(mode);
+        abi_CameraModeCarried();
         break;
     case 0x6722:
-        CameraModeLeftWall();
+        camera_mode_registers_shim(mode);
+        abi_CameraModeLeftWall();
         break;
     case 0x678E:
-        CameraModeFollow();
+        camera_mode_registers_shim(mode);
+        abi_CameraModeFollow();
         break;
     case 0x6A0F:
-        CameraModeVertical();
+        camera_mode_registers_shim(mode);
+        abi_CameraModeVertical();
         break;
     default:
         camera_mode_original_shim(handler, mode);
@@ -859,6 +874,7 @@ void abi_CameraModeDispatch(void)
  * the player: moves the player on the screen, and takes the push as the scroll step
  * unless bit 4 of zPlayerPush says it was already added to the speed.
  * HOW: Zeroes both steps, MovePlayerYIfMoving, PlayerXOnScreen, copies the push.
+ * WAITS: no.
  * Entry: cpu flags current. Exit: A and N, Z the last read; C and V as the moves left
  * them; X and Y as the overlay left them.
  */
@@ -868,8 +884,12 @@ CarriedMode CameraModeCarried(void)
 
     write16(ScrollStepXLo, ScrollStepXHi, 0);
     write16(ScrollStepYLo, ScrollStepYHi, 0);
+    jsr_push(0x66D4);
     mode.y = MovePlayerYIfMoving();
+    jsr_pop();
+    jsr_push(0x66D7);
     mode.x = PlayerXOnScreen();
+    jsr_pop();
     mode.copied_push = !(rd8(zPlayerPush) & PUSH_ADDS_X);
     if (mode.copied_push) {
         write16(ScrollStepXLo, ScrollStepXHi, read16(zPushXLo, zPushXHi));
@@ -977,8 +997,12 @@ LeftWallMode CameraModeLeftWall(void)
 {
     LeftWallMode mode = { 0 };
 
+    jsr_push(0x6725);
     CheckPlayerAtLevelEnd();
+    jsr_pop();
+    jsr_push(0x6728);
     mode.y = MovePlayerYIfMoving();
+    jsr_pop();
     write16(ScrollStepXLo, ScrollStepXHi, 0);
     mode.choice = choose_direction(false);
     if (mode.choice.way == GOES_NOWHERE)
@@ -987,9 +1011,13 @@ LeftWallMode CameraModeLeftWall(void)
         mode.right = MovePlayerRightOrWall();
         return mode;
     }
+    jsr_push(0x6751);
     mode.wall = PlayerWall(1);
+    jsr_pop();
     if (!wall_found(mode.wall)) {
+        jsr_push(0x677F);
         mode.next = PlayerNextX();
+        jsr_pop();
         if (rd8(zTemp05) <= PLAYER_MIN_X) {
             PlayerAtLeftEdge();
             mode.how = LEFT_WALL_AT_EDGE;
@@ -1078,7 +1106,9 @@ FollowMode CameraModeFollow(void)
 {
     FollowMode mode = { 0 };
 
+    jsr_push(0x6791);
     mode.y = MovePlayerYIfMoving();
+    jsr_pop();
     write16(ScrollStepXLo, ScrollStepXHi, 0);
     mode.choice = choose_direction(false);
     if (mode.choice.way == GOES_LEFT)

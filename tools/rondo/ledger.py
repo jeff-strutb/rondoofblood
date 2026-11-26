@@ -54,6 +54,9 @@ CONFIG = os.path.join(TOP, "config", "rondo")
 OUT = os.path.join(TOP, "docs", "rondo", "ledger.csv")
 CARD_OUT = os.path.join(TOP, "syscard", "ledger.csv")
 WAIVERS = os.path.join(TOP, "config", "rondo", "ledger_waivers.csv")
+# Routines marked @unreachable whose C a verifier proved wrong (liftcmp against the census draft of their own
+# assembly differs): "until we prove otherwise" (PLAN section 1). A row leaves on a clean liftcmp.
+HELD = os.path.join(TOP, "config", "rondo", "unreachable_held.csv")
 FUNC = re.compile(r"^(?:static\s+)?(?:inline\s+)?[\w\s\*]+?\b(\w+)\s*\(([^;{}]*)\)\s*\n\{", re.M)
 CALL = re.compile(r"\b(\w+)\s*\(")
 BAD = (("cpu", re.compile(r"\bcpu\.")), ("alu helper", re.compile(r"\balu_\w+\s*\(")),
@@ -235,7 +238,13 @@ def unreachable_marks(sources=None):
     return out
 
 
-def optimistic(gates, marked, reached):
+def held_unreachable():
+    if not os.path.exists(HELD):
+        return set()
+    return {row["routine"] for row in csv.DictReader(open(HELD, newline=""))}
+
+
+def optimistic(gates, marked, reached, held=False):
     """'counted': proven unreachable (a proof of at least PROOF_MIN characters), proper C, byte-exact assembly,
     and nothing has reached it: it counts in M1 as optimistic (the maintainer's ruling, PLAN section 1).
     'contradicted': marked, but a script reached it and a gate fails: it leaves the count. '' otherwise; a
@@ -246,6 +255,8 @@ def optimistic(gates, marked, reached):
         return "" if all(gates[g] for g in ("proper_c", "gate_0", "gate_c", "gate_a5", "gate_a7")) else "contradicted"
     if len(marked[1]) < PROOF_MIN:
         return "no proof"
+    if held:
+        return "held: its C differs from its draft (unreachable_held.csv)"
     return "counted" if gates["proper_c"] and gates["gate_0"] else "not proper C or not byte exact"
 
 
@@ -329,6 +340,7 @@ def main():
     waived = waivers()
     routines = asmfile.all_routines()
     marks = unreachable_marks()
+    held = held_unreachable()
     rows = []
     for i, r in enumerate(routines):
         name = r["name"]
@@ -352,7 +364,7 @@ def main():
         c_text = funcs.get(name, "") + funcs.get("abi_" + name, "")
         reached = cover.get(name, (0, 0))[0] > 0 or int(row5.get("calls", 0) or 0) > 0 or \
             bool(a7.get(name)) and a7[name][0] > 0
-        unr = optimistic(gates, marks.get(name), reached)
+        unr = optimistic(gates, marks.get(name), reached, name in held)
         rows.append({
             "routine": name, "where": r["tag"], "bytes": n, "tier": tier,
             **{g: int(v) for g, v in gates.items()},

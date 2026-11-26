@@ -1399,7 +1399,9 @@ static void after_hit(StateFrame *f)
         if (f->state != STATE_DYING) {
             f->count = rd8(PlayerByte3BE3);
             if (f->count == 0) {
+                jsr_push(0xA249);
                 RichterStartHitScript(SCRIPT_BLINK_START);
+                jsr_pop();
                 wr8(PlayerByte3BE3, (uint8_t)(rd8(PlayerByte3BE3) + 1));
             }
             f->pressed = rd8(zPadPressed);
@@ -1414,7 +1416,9 @@ static void after_hit(StateFrame *f)
                 return;
             }
             wr8(PlayerByte3BE2, 0);
+            jsr_push(0xA263);
             RichterStartHitScript(SCRIPT_DEATH);
+            jsr_pop();
         }
     }
     f->y_high_late = rd8(OBJ_Y_HI);
@@ -1435,10 +1439,14 @@ static void hit_taken(StateFrame *f)
     f->taken = true;
     f->blinking_hit = rd8(PlayerByte3BE2);
     if (f->blinking_hit != 0) {
+        jsr_push(0xA22C);
         RichterStartHitScript(SCRIPT_BLINK_HIT);
+        jsr_pop();
         wr8(OBJ_33B0, 0);
     } else {
+        jsr_push(0xA234);
         RichterHitReact();
+        jsr_pop();
     }
     after_hit(f);
 }
@@ -1492,7 +1500,9 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
         f.death = RichterDie(x, y);
         return f;
     }
+    jsr_push(0xA1D5);
     f.tick = RichterInvincibleTick(x, y);
+    jsr_pop();
     f.hit_timer = rd8(OBJ_3460);
     if (f.hit_timer != 0) {
         wr8(OBJ_33B0, 0);
@@ -1505,7 +1515,9 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
         f.blink_flags = (uint8_t)(rd8(PlayerByte3BE2) | rd8(PlayerByte3BE8) | rd8(PlayerByte3BE9));
         if (f.blink_flags == 0) {
             f.timer_script = true;
+            jsr_push(0xA1F2);
             RichterStartHitScript(SCRIPT_DEATH);
+            jsr_pop();
         }
     }
     f.hit_looked = true;

@@ -95,7 +95,7 @@ RichterVecSetIdle:
 ; WAITS: no.
 ; Entry, exit: as that code.
 RichterVecCE73:
-    jmp $CE73
+    jmp HitBoxByFrameTableCE8F_at0
 
 ; @routine 01B9:021 RichterVecWall
 ; @run 6D:A021
@@ -429,6 +429,14 @@ RichterDie:
     jsr RichterStopX
     lda #$09
     sta a:OBJ_27A8
+
+; @routine 01B9:1B6 RichterDeathSound
+; @run 6D:A1B6
+; WHAT IT DOES: Fades the music out and plays the death's sound.
+; HOW: FadeAndStopSound, then SoundCommand $60.
+; WAITS: no.
+; Entry: X, Y kept for the sound. Exit: as SoundCommand with $60.
+RichterDeathSound:
     jsr VecFadeAndStopSound
     lda #$60
     jmp VecSoundCommand

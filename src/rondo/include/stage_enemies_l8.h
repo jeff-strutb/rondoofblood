@@ -614,6 +614,22 @@ typedef struct {
     bool stepped;
 } L8Scan;
 
+/*
+ * For the exit shims: what a scan of the slot kinds left. Each slot read is a load with Y the slot, each step a CPY of the next slot against the
+ * limit; only the last load and the last compare stand. full: it ran past the limit (y is the slot past it, kind the last read).
+ */
+static inline Ended l8_scan_ended(Ended e, L8Scan s, uint8_t step, uint8_t limit, bool full)
+{
+    if (full) {
+        e = ended_then(e, ended_with_y(ended_load(s.kind), (uint8_t)(s.y - step)));
+        return ended_then(e, ended_with_y(l8_compare_y(s.y, limit), s.y));
+    }
+    if (s.stepped) {
+        e = ended_then(e, ended_with_y(l8_compare_y(s.y, limit), s.y));
+    }
+    return ended_then(e, ended_with_y(ended_load(s.kind), s.y));
+}
+
 typedef struct {
     int arm;
     uint8_t state, frame, timer, counted, kind, screen, aim, placed, y_end, left;
@@ -627,6 +643,7 @@ typedef struct {
 EventArm RecordEventWhenSlot10InState0F(uint8_t slot);
 FaceArm FaceThePlayerByStateTableB(uint8_t slot);
 DropArm MaybeDropItemByPlayerDistance(uint8_t slot);
+Ended l8_drop_item_exit_shim(DropArm r);  /* also the exit of 1019:2C5 */
 L8Arm HitBoxByFrameTableCE8F(uint8_t slot);
 NearArm StepListFacePlayerUntilNear(uint8_t slot, uint8_t y_entry);
 PhaseArm FacePlayerThenPickPhase(uint8_t slot);
@@ -688,27 +705,68 @@ Ended StepListThenStartPieceAndWalk(uint8_t slot, uint8_t y_entry);
 Ended StartLeapWhenHurtAnswerYes(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st26.c */
-Ended MaybeDropItemByPlayerDistance1019(uint8_t slot);
-SoundEnd PlaySound58A(uint8_t slot, uint8_t y_entry);
-SoundEnd PlaySound58B(uint8_t slot, uint8_t y_entry);
-Ended SettleWhenLowOnFirstRow(uint8_t slot);
-Ended LoadRecordFrameFromKind(uint8_t slot);
-Ended CapPlayerXOnScreen1(uint8_t slot);
-Ended LoadRecordThenDriftAndCount(uint8_t slot);
-Ended LoadRecordAtX80(uint8_t slot);
+typedef struct {
+    int arm;
+    uint8_t state, timer, again, wait, counted;
+    L8Record record;
+    AxisMove move;
+} DriftArm;
+
+typedef struct {
+    int arm;
+    uint8_t state, page, joined;
+    L8Record record;
+    Sum sum, sum_page, diff;
+    L8Scan scan;
+} PieceSlotsArm;
+
+typedef struct {
+    int arm;
+    uint8_t state, flash, facing, wait, pick, counted, angle, index, angle2, value, high, low;
+    bool picked, index_carry;
+    L8Record record;
+    L8Step step;
+    L8Arm settle;
+    SideResult side;
+    RandomResult random, random2;
+    ScaleResult scale;
+    AxisMove move;
+    AngleExit toward;
+    TurnAngleResult turn;
+    Sum wait_sum, target, diff, sum, speed;
+} ChaseArm;
+
+typedef struct {
+    int arm;
+    uint8_t state, kind, x_pulled, counted, timer, kind2, screen, low, placed, number;
+    L8Record record;
+    L8Arm cap;
+    L8Scan scan, scan2;
+    RandomResult random;
+    Sum sum;
+} GatesArm;
+
+DropArm MaybeDropItemByPlayerDistance1019(uint8_t slot);
+CommandCall PlaySound58A(uint8_t slot, uint8_t y_entry);
+CommandCall PlaySound58B(uint8_t slot, uint8_t y_entry);
+L8Arm SettleWhenLowOnFirstRow(uint8_t slot);
+L8Arm LoadRecordFrameFromKind(uint8_t slot);
+L8Arm CapPlayerXOnScreen1(uint8_t slot);
+DriftArm LoadRecordThenDriftAndCount(uint8_t slot);
+L8Load LoadRecordAtX80(uint8_t slot);
 
 /* object/enemies_l8_st27.c */
 Ended BossFrameRoutines(uint8_t slot, uint8_t y_entry);
 Ended HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry);
 Ended BossFrameRoutinesB(uint8_t slot, uint8_t y_entry);
 Ended SpawnRowsWhenScrollAtZero(uint8_t slot);
-Ended CountDownThenStartPieceInSlots18To1B(uint8_t slot);
+PieceSlotsArm CountDownThenStartPieceInSlots18To1B(uint8_t slot);
 LandWait StepListByPhaseThenLand(uint8_t slot, uint8_t y_entry, bool carry_entry);
 SoundEnd LoadRecordThenWatchThenDropTwice(uint8_t slot, uint8_t y_entry);
 Ended BossPhasesHurtFallAndTileWrites(uint8_t slot, uint8_t y_entry);
 HopArm HopBetweenSidesWithBox(uint8_t slot, uint8_t y_entry);
-Ended ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry);
-Ended SpawnerWithScrollGates(uint8_t slot);
+ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry);
+GatesArm SpawnerWithScrollGates(uint8_t slot);
 SpawnerArm SpawnerByKindAndScreen(uint8_t slot);
 Ended StartBossWhenStageC0OrLoad(uint8_t slot, uint8_t y_entry);
 Ended StepScrollThenMoveOrFadeOut(uint8_t slot);

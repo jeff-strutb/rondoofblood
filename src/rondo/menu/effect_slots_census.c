@@ -29,7 +29,7 @@ enum {
     COLOUR_POINTER = 0x9406,
     SAVED_BACKGROUND_BYTES = 0x200, SAVED_SPRITE_BYTES = 0x100,
     MPR5 = 0x20, KIND_COUNT_MAX = 7, VCE_SAVE = 0xB000, VCE_SAVE_BYTES = 0x400, BANK_PLAIN = 0x12, BANK_IDLE = 0x30,
-    LIST_END = 0xFF, FADE_ROUNDS = 8, SHADE_ROUNDS = 8, FLASH_ROUNDS = 0x10
+    NO_KIND = 0xFF, LIST_END = 0xFF, FADE_ROUNDS = 8, SHADE_ROUNDS = 8, FLASH_ROUNDS = 0x10
 };
 
 /*
@@ -607,6 +607,9 @@ static Exit run_effect_dispatch(const EffectLayout *layout, uint8_t type, uint8_
         if (layout->handler[kind] == target) {
             break;
         }
+    }
+    if (kind == layout->kinds) {
+        kind = NO_KIND;
     }
     switch (kind) {
     case 0: exit = run_effect_list(layout, slot); break;

@@ -478,7 +478,10 @@ static struct {
     uint64_t entry_idx;     /* the handler's CALL */
     uint16_t handler;
     uint8_t i_orig;         /* the I flag the C had at the hand-over */
+    int frame;              /* a frame hold: ev is the FRAME, its clock the frame end's; the core is let idle there */
 } hold;
+static unsigned long idle_until_frame;     /* after a frame hold: the core runs nothing until this frame has ended */
+static uint64_t frame_holds;
 static uint64_t held_ints, held_not;
 static uint64_t handover_ints;     /* interrupts the record took before the instruction a C handed over at: delivered by the C */
 static uint64_t handover_frames;   /* frame ends the record took at the place a C handed over to the original: passed by the C */
@@ -1916,6 +1919,34 @@ void hand_over(uint16_t addr)
                 sp->cur = j + 1;
             }
         }
+        /* The record's frame end a few instructions on, before the original's next access, with the C's S: the original
+         * ran from addr to the FRAME's PC making no access. The core, given the machine here, is early by the C's
+         * untimed instructions: it runs from addr with its interrupts held until it stands at that PC and S (hold_step
+         * stops the run on any access or a P instruction before), then runs nothing until the frame has ended. */
+        if (!hold.active) {
+            int nest = sp->nest;
+
+            for (uint64_t j = sp->cur;; j++) {
+                Ev *e = sev(sp, j, &nest);
+
+                if (!e)
+                    break;
+                if (is_noise(e) && e->type != EV_RTPULL)
+                    continue;
+                if (e->type == EV_FRAME && e->s == cpu.s && cur_frame < e->addr) {
+                    hold.ev = *e;
+                    memcpy(&hold.ev.clock, e->mpr, 8);
+                    hold.frame = 1;
+                    hold.tag = sp->tag;
+                    hold.n = 0;
+                    hold.handler = 0;
+                    hold_acc = 0;
+                    hold.active = 1;
+                    frame_holds++;
+                }
+                break;
+            }
+        }
         /* The machine goes to the original here. When the record's next event past the markers is the interrupt it took at
          * this very PC and S (before it ran the instruction at addr), it is held and dispatched from the record, as after a
          * left close; else the original's own timing carries on. */
@@ -1945,6 +1976,7 @@ int hold_arm_from(uint64_t k, int tag, int need, uint16_t pc, uint8_t sp_s)
     if (!x || x->type != EV_INT || (need && (x->pc != pc || x->s != sp_s)))
         return 0;
     hold.ev = *x;
+    hold.frame = 0;
     hold.handler = 0;
     for (uint64_t j = k + 1; j < k + 64 && (x = evp(j)); j++)
         if (x->type == EV_CALL && x->kind == K_IRQ) {
@@ -3462,6 +3494,17 @@ static int hold_step(const Regs *r)
 {
     uint8_t op;
 
+    if (r->pc == hold.ev.pc && r->s == hold.ev.s && hold.frame) {
+        /* The core stands where the original's frame ended: it runs nothing until the frame has ended, then goes on. */
+        hold.active = 0;
+        hold.frame = 0;
+        chk_set_regs(r->a, r->x, r->y, r->s, (uint8_t)((r->p & ~P_I) | hold.i_orig), r->pc);
+        if (cur_frame < hold.ev.addr) {
+            idle_until_frame = hold.ev.addr;
+            return 1;
+        }
+        return 0;
+    }
     if (r->pc == hold.ev.pc && r->s == hold.ev.s)
         return hold_dispatch(r);
     {
@@ -3523,6 +3566,11 @@ int check_exec(uint32_t pc)
         if (mode == MODE_HYBRID)
             stop_run(6, "a unit call ran over 2,000,000 instructions");
         exit(6);
+    }
+    if (mode == MODE_HYBRID && idle_until_frame) {
+        if (cur_frame < idle_until_frame)
+            return 1;
+        idle_until_frame = 0;
     }
     if (mode == MODE_HYBRID) {
         /* The script's unit call runs on the machine as it stood at the frame boundary: a C that was parked there (the
@@ -3957,6 +4005,8 @@ void check_finish(void)
                 (unsigned long long)dispatch_held);
         fprintf(report, "interrupts before the instruction a C handed over at, delivered by the C: %llu\n",
                 (unsigned long long)handover_ints);
+        fprintf(report, "frame ends a few instructions past a hand-over, the core held until it stood there: %llu\n",
+                (unsigned long long)frame_holds);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",
                 (unsigned long long)handover_frames);
         if (horizon_calls)

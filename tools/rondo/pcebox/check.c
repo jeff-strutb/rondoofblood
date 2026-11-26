@@ -433,7 +433,8 @@ static struct {
 } hold;
 static uint64_t held_ints, held_not;
 static uint64_t handover_frames;   /* frame ends the record took at the place a C handed over to the original: passed by the C */
-static uint64_t retpoint_ints;   /* interrupts the record took at a resume place after original code that the core reached early: delivered by the C */
+static uint64_t retpoint_ints;
+static uint64_t dispatch_held;    /* interrupts the record took at an RTS dispatch's target: held for the core's arrival there */   /* interrupts the record took at a resume place after original code that the core reached early: delivered by the C */
 static unsigned hold_acc;     /* data accesses the core made under the hold */
 void hold_prepare(Span *s, const Ev *closing);
 int hold_arm(uint64_t end_idx, int tag);
@@ -803,7 +804,7 @@ static int dispatch_confirmed(Span *s, uint8_t entry_s, uint16_t target, const c
     return 0;
 }
 
-static void span_finish_to_call(Span *s);
+static void span_finish_to_call(Span *s, uint16_t target, uint8_t arrival_s);
 
 static void span_finish(Span *s)
 {
@@ -847,7 +848,7 @@ static void span_finish(Span *s)
 
 /* As span_finish, for a call that ended by dispatch: what is left up to the arrival at the dispatched address (where the
  * record's next call begins) is passed or reported; the rest of the span belongs to the dispatched routines. */
-static void span_finish_to_call(Span *s)
+static void span_finish_to_call(Span *s, uint16_t target, uint8_t arrival_s)
 {
     int reported = 0;
     int nest = s->nest;
@@ -859,6 +860,10 @@ static void span_finish_to_call(Span *s)
         char b[96];
 
         if (!e || e->type == EV_CALL || e->type == EV_OPEN)
+            break;
+        /* The interrupt the original took at the dispatched address, its RTS run (S as after it): not the C's to deliver
+         * before its own RTS; hy_finish holds it for the core's arrival there. */
+        if (e->type == EV_INT && e->pc == target && e->s == arrival_s)
             break;
         if (e->type == EV_RTPULL)
             pulls++;
@@ -2885,7 +2890,9 @@ static void co_main(void)
                            rondo_tags[c->tag].name)) {
         c->dispatch = 1;
         stats[c->tag].dispatch++;
-        span_finish_to_call(&c->span);
+        span_finish_to_call(&c->span, (uint16_t)((chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(cpu.s + 1))) |
+                                                  (chk_bus_rd((uint16_t)(0x2100 | (uint8_t)(cpu.s + 2))) << 8)) + 1),
+                            (uint8_t)(cpu.s + 2));
     } else {
         span_finish(&c->span);
     }
@@ -2937,6 +2944,13 @@ static int hy_finish(Ctx *c)
 
         owed = next && (next->type == EV_CALL || next->type == EV_OPEN) && next->clock
                    ? (int64_t)next->clock - (int64_t)hybrid_clock_now() : 1;
+        /* The original took an interrupt at the dispatched address before its first instruction (span_finish_to_call
+         * stopped there): held, and dispatched from the record when the core stands there, as after a hand-over. */
+        if (next && next->type == EV_INT && !hold.active && hold_arm_from(c->span.cur, c->tag, 1, pc, ns)) {
+            hold.i_orig = p & P_I;
+            p |= P_I;
+            dispatch_held++;
+        }
         chk_set_regs(cpu.a, cpu.x, cpu.y, ns, p, pc);
         prev_op = 0x60;
         last_pc = 0xFFFF;
@@ -3800,6 +3814,8 @@ void check_finish(void)
                     (unsigned long long)held_ints, (unsigned long long)held_not);
         fprintf(report, "interrupts at the return from original code delivered from the record (the core came back before they were due): %llu\n",
                 (unsigned long long)retpoint_ints);
+        fprintf(report, "interrupts at the address an RTS dispatch goes to, held for the core's arrival there: %llu\n",
+                (unsigned long long)dispatch_held);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",
                 (unsigned long long)handover_frames);
         if (horizon_calls)

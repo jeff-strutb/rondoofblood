@@ -1,6 +1,6 @@
 script,mode,verdict,code,frames,defects,first_stop,cause,source
 attract,serve-all,IDENTICAL,-1,6126/6126,0,,,575e1c0
-attract_82,serve-all,DIVERGENT,20950,24626/24626,0,,,575e1c0
+attract_82,serve-all,DIVERGENT,20950,24626/24626,0,,,8de8191
 attract_83,serve-all,IDENTICAL,-1,24626/24626,0,,,575e1c0
 attract_84,serve-all,IDENTICAL,-1,24626/24626,0,,,575e1c0
 attract_85,serve-all,IDENTICAL,-1,24626/24626,0,,,575e1c0
@@ -8,7 +8,7 @@ attract_86,serve-all,IDENTICAL,-1,24626/24626,0,,,575e1c0
 attract_87,serve-all,IDENTICAL,-1,24626/24626,0,,,575e1c0
 attract_88,serve-all,IDENTICAL,-1,24626/24626,0,,,575e1c0
 attract_89,serve-all,IDENTICAL,-1,24626/24626,0,,,575e1c0
-attract_8A,serve-all,STOPPED,-3,22252/-1,0,,stopped at frame 22252: the hybrid calls r10C0_4C3 (SEB); the record's next is card_card_irq1 (SE8),575e1c0
+attract_8A,serve-all,IDENTICAL,-1,24626/24626,0,,,8de8191
 attract_8E,serve-all,IDENTICAL,-1,24626/24626,0,,,575e1c0
 boot,serve-all,IDENTICAL,-1,900/900,0,,,575e1c0
 camera_modes,serve-all,IDENTICAL,-1,16354/16354,0,,,575e1c0
@@ -20,7 +20,7 @@ card_unit_cplay,serve-all,IDENTICAL,-1,1013/1013,0,,,575e1c0
 card_unit_misc,serve-all,IDENTICAL,-1,894/894,0,,,575e1c0
 card_unit_read,serve-all,IDENTICAL,-1,879/879,0,,,575e1c0
 card_unit_trans,serve-all,IDENTICAL,-1,904/904,0,,,575e1c0
-card_unit_vdc,serve-all,STOPPED,-3,834/-1,0,,stopped at frame 834: the hybrid calls ex_rcron (SFD); the record's next is r0043_174 (SFF),575e1c0
+card_unit_vdc,serve-all,STOPPED,-3,834/-1,0,,stopped at frame 834: the hybrid calls ex_rcron (SFD); the record's next is r0043_174 (SFF),8de8191
 gameover,serve-all,IDENTICAL,-1,29092/29092,0,,,575e1c0
 menu_files,serve-all,IDENTICAL,-1,10746/10746,0,,,575e1c0
 menu_names,serve-all,IDENTICAL,-1,13582/13582,0,,,575e1c0
@@ -35,13 +35,13 @@ raster_effects,serve-all,IDENTICAL,-1,10526/10526,0,,,575e1c0
 richter_hurt,serve-all,IDENTICAL,-1,16936/16936,0,,,575e1c0
 sound_test,serve-all,IDENTICAL,-1,17134/17134,0,,,575e1c0
 stage_04,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0
-stage_05,serve-all,STOPPED,-3,33490/-1,366,"r093B_24C VALUE call 37 frame 33490: C read 1F0000 gave 93, the original's read 1F0000 (95) (the core's clock before the read 12022771440, after 12022771440; the record's 0)",stopped at frame 33490: a call into original code the record does not have,575e1c0
+stage_05,serve-all,STOPPED,-3,33490/-1,366,"r093B_24C VALUE call 37 frame 33490: C read 1F0000 gave 93, the original's read 1F0000 (95) (the core's clock before the read 12022771440, after 12022771440; the record's 0)",stopped at frame 33490: a call into original code the record does not have,8de8191
 stage_06,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0
 stage_07,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0
 stage_08,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0
 stage_09,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0
 stage_0A,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0
-stage_0B,serve-all,STOPPED,-3,29189/-1,0,,stopped at frame 29189: the hybrid calls r0043_297 (SFC); the record's next is card_card_irq1 (SF8),575e1c0
+stage_0B,serve-all,STOPPED,-3,30226/-1,0,,"stopped at frame 30226: the original's run-on after a left hand-over made a data access before the interrupted PC 428F, which the record does not have",8de8191
 stage_0C,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0
 stage_0E,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0
 stage_10,serve-all,IDENTICAL,-1,35092/35092,0,,,575e1c0

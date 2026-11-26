@@ -284,7 +284,7 @@ CardExit start_screen(void)
                 jsr_pop();
                 r = card_exit_over(r, step);
             }
-            pressed = RD8(CRAM->pad_pressed);
+            pressed = RD8(CRAM->pad_pressed[0]);
             if (pressed == PAD_RUN) {
                 break;
             }

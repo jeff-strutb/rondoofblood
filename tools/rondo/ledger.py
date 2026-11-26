@@ -207,6 +207,48 @@ def assembly_blocks(pattern=("asm", "rondo", "**", "*.s")):
     return blocks
 
 
+UNREACHABLE = re.compile(r"@unreachable\s+([0-9A-Fa-f]{2}:[0-9A-Fa-f]{4})-([0-9A-Fa-f]{2}:[0-9A-Fa-f]{4})(.*)")
+PROOF_MIN = 40      # characters: a proof names the load paths read and why no input, poke or unit call runs it
+
+
+def unreachable_marks(sources=None):
+    """{routine: (range, proof)} from the routines' header comments: `@unreachable BB:AAAA-BB:AAAA` followed by the
+    proof (PROCEDURE section 4), in the comment that holds the routine's @routine or @card tag. The proof runs
+    from the rest of that line to the first blank comment line or the next heading."""
+    out = {}
+    for _, text in (source_texts() if sources is None else sources):
+        for block in re.findall(r"/\*.*?\*/", text, flags=re.S):
+            m = UNREACHABLE.search(block)
+            if not m:
+                continue
+            t = re.search(r"@routine\s+[0-9A-Fa-f]{4}:[0-9A-Fa-f]{3}\s+(\w+)", block) or \
+                re.search(r"@card\s+[0-9A-Fa-f]{2}:[0-9A-Fa-f]{4}\s+(\w+)", block)
+            if not t:
+                continue
+            proof = [m.group(3).strip()]
+            for line in block[m.end():].splitlines()[1:]:
+                line = line.strip().lstrip("*").strip()
+                if not line or line.startswith("@") or re.match(r"[A-Z][A-Z ]+:", line) or line.startswith("/"):
+                    break
+                proof.append(line)
+            out[t.group(1)] = (f"{m.group(1)}-{m.group(2)}", " ".join(x for x in proof if x))
+    return out
+
+
+def optimistic(gates, marked, reached):
+    """'counted': proven unreachable (a proof of at least PROOF_MIN characters), proper C, byte-exact assembly,
+    and nothing has reached it: it counts in M1 as optimistic (the maintainer's ruling, PLAN section 1).
+    'contradicted': marked, but a script reached it and a gate fails: it leaves the count. '' otherwise; a
+    marked routine that a script reached and that passes every gate is simply T3."""
+    if not marked:
+        return ""
+    if reached:
+        return "" if all(gates[g] for g in ("proper_c", "gate_0", "gate_c", "gate_a5", "gate_a7")) else "contradicted"
+    if len(marked[1]) < PROOF_MIN:
+        return "no proof"
+    return "counted" if gates["proper_c"] and gates["gate_0"] else "not proper C or not byte exact"
+
+
 def waivers():
     if not os.path.exists(WAIVERS):
         return set()
@@ -286,6 +328,7 @@ def main():
     cover = oracle.coverage()
     waived = waivers()
     routines = asmfile.all_routines()
+    marks = unreachable_marks()
     rows = []
     for i, r in enumerate(routines):
         name = r["name"]
@@ -307,9 +350,13 @@ def main():
                 gates[gate] = True
         tier = tier_of(gates, name in blocks)
         c_text = funcs.get(name, "") + funcs.get("abi_" + name, "")
+        reached = cover.get(name, (0, 0))[0] > 0 or int(row5.get("calls", 0) or 0) > 0 or \
+            bool(a7.get(name)) and a7[name][0] > 0
+        unr = optimistic(gates, marks.get(name), reached)
         rows.append({
             "routine": name, "where": r["tag"], "bytes": n, "tier": tier,
             **{g: int(v) for g, v in gates.items()},
+            "unreachable": unr,
             "unverified_calls": row5.get("unverified", ""),
             "faults": "; ".join(faults),
             "c_hash": hashlib.sha256(c_text.encode()).hexdigest()[:12],
@@ -328,6 +375,8 @@ def main():
         print(f"  not {gate}:", tally(lambda row, g=gate: not row[g]))
     for tier in ("T4", "T3", "T2", ""):
         print(f"{tier or 'no tier'}:", tally(lambda row, t=tier: row["tier"] == t))
+    print("proven unreachable, counted in M1 as optimistic:", tally(lambda row: row["unreachable"] == "counted"),
+          "; marked but reached and failing a gate:", tally(lambda row: row["unreachable"] == "contradicted"))
     print("A5 routines counted:", len(a5), "; A7 routines counted:", len(a7),
           "; image counted:", image is not None, "; waivers:", len(waived))
     card_ledger(funcs, a7)

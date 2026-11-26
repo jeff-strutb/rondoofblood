@@ -150,6 +150,27 @@ where the routine sits.
 how deep its stack is there. If no input reaches the routine, the header
 says so and says how its script runs it.
 
+**Code proven unreachable** (2026-11-26, the maintainer's ruling in PLAN
+section 1). When no load path, input, poke or unit call can run a routine,
+its header says so in one tag, in the same comment as its `@routine` or
+`@card` tag:
+
+    @unreachable BB:AAAA-BB:AAAA the proof
+
+The range is the routine's bytes, bank and run address. The proof follows
+on the same line and the lines after it, up to a blank comment line or the
+next heading. It names the load paths read in full (the scene lists, the
+boot reads, every table that can point at the code) and says why no input,
+no poke of work RAM and no unit call at the routine's own entry can run it
+sanely. A proof shorter than 40 characters is not read as one.
+
+The routine is still filed as proper C, with byte-exact assembly. Its C is
+optimistic: the ledger counts it in M1 on a line of its own, beside the
+gate-proven count. If a script ever reaches it, it is judged by the gates
+like any other routine and leaves that line if a gate fails. Code that is
+only unreached, with no proof, is not marked this way and does not count
+until a script runs it and the gates pass it.
+
 ## 5. Build, trace, land
 
 The loop as the first writers ran it (2026-11-21; a few minutes a routine

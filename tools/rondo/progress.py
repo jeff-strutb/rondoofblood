@@ -286,6 +286,8 @@ def main():
     logic = (t3[0] + t4[0] - vectors[0], t3[1] + t4[1] - vectors[1])
     below = tally(rows, lambda r: r["proper_c"] == "0")
     m1_bytes, m2_bytes = t3[1] + t4[1], t4[1]
+    unreach = tally(rows, lambda r: r.get("unreachable") == "counted")       # proven unreachable: optimistic
+    contra = tally(rows, lambda r: r.get("unreachable") == "contradicted")
     short = {g: tally(rows, lambda r, g=g: r[g] == "0")[0]
              for g in ("gate_0", "gate_c", "gate_a5", "gate_a7", "symbolic")}
     m1_text = f"M1, T3 or better: {percent(m1_bytes, game_whole)} ({m1_bytes:,} B, {t3[0] + t4[0]} routines)"
@@ -354,7 +356,9 @@ def main():
            f"line of its own** ({cen['counted_never_loaded']:,} B of it in disc areas no script loads). It is "
            "decompiled like any other code. It counts in M1 only when a script runs it and the gates pass it, or when "
            "it is proven unreachable and filed as proper C whose header records the proof (PLAN section 1, the "
-           "rulings of 2026-11-26); none is yet.", ""] if CENSUS_COUNTED else []),
+           f"rulings of 2026-11-26): {unreach[0]} routines, {unreach[1]:,} B so far"
+           + (f"; {contra[0]} routines marked unreachable were reached and fail a gate, and do not count" if contra[0]
+              else "") + ".", ""] if CENSUS_COUNTED else []),
         f"**{below[0]} of {len(rows)} routines ({below[1]:,} B) fail the proper-C check: "
         "register-shaped C, a stepping stone, not decompiled.** The check is a pattern check, so "
         "every count above T2 is a ceiling until reviewed.",
@@ -363,6 +367,8 @@ def main():
         "|---|---:|---:|---:|",
         f"| M2: T4 | {t4[0]} | {t4[1]:,} | {percent(t4[1], game_whole)} |",
         f"| M1: T3 or better | {t3[0] + t4[0]} | {m1_bytes:,} | {percent(m1_bytes, game_whole)} |",
+        f"| M1 with proven-unreachable C, optimistic (`@unreachable`, PLAN section 1) | {t3[0] + t4[0] + unreach[0]} "
+        f"| {m1_bytes + unreach[1]:,} | {percent(m1_bytes + unreach[1], game_whole)} |",
         f"| of those, real logic and not one-line vectors | {logic[0]} | {logic[1]:,} | {percent(logic[1], game_whole)} |",
         f"| T2: filed, not certified | {t2[0]} | {t2[1]:,} | |",
         "",

@@ -101,25 +101,31 @@ RichterAnimationTick_at0:
 ; Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
 RichterSetAnimation:
     sta a:OBJ_FIELDS_2EE0
-RichterSetAnimation_at2:
     stz a:OBJ_FLAGS_2F38
-    bsr RichterSetAnimation_at0
+    bsr RichterAnimationPoint
     lda (zTemp00),y
     sta a:OBJ_2F90
     cmp #$FF
-    bne RichterSetAnimation_at1
+    bne RichterSetAnimation_at0
     rts
-RichterSetAnimation_at1:
+RichterSetAnimation_at0:
     cmp #$FE
-    beq RichterSetAnimation_at2
-    bra RichterSetAnimation_at3
-    bsr RichterSetAnimation_at0
-RichterSetAnimation_at3:
+    beq LoadRecordStartPieceAtPlace
+    bra RichterSetAnimation_at1
+    bsr RichterAnimationPoint
+RichterSetAnimation_at1:
     iny
     lda (zTemp00),y
     sta a:OBJ_2A68
     rts
-RichterSetAnimation_at0:
+
+; @routine 01BB:69C RichterAnimationPoint
+; @run 6D:B69C
+; WHAT IT DOES: Points zTemp00-01 at the list of the animation in play and gives Y twice the step in play.
+; HOW: OBJ_FIELDS_2EE0 doubled indexes AnimationLists; the step in OBJ_FLAGS_2F38 doubled.
+; WAITS: no.
+; Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
+RichterAnimationPoint:
     lda a:OBJ_FIELDS_2EE0
     asl a
     tay
@@ -427,12 +433,11 @@ RichterUseItemSeven:
 ; if it was slot 5, else clear. None: Z and C set, N clear. X and V kept.
 RichterFindItemOut:
     ldy #$05
-RichterFindItemOut_at1:
     lda a:OBJ_2750,y
     bne RichterFindItemOut_at0
     iny
     cpy #$10
-    bne RichterFindItemOut_at1
+    bne StepListThenStartType2E
 RichterFindItemOut_at0:
     rts
 

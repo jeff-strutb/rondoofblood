@@ -126,9 +126,31 @@ CopyNoBands:
 ; @run 69:44E1
 ; @ends 4287
 ; WHAT IT DOES: A raster interrupt: runs this frame's effect.
-; HOW: Through the table by effect number. Effect 0 only ends the interrupt.
-; Entry: from FrameInterrupt, the effect below 32, which is all the table holds. Exit:
-; to its exit.
+; HOW: The effect number in RasterEffectNow is doubled to a byte (TAX) and the word at $44E9 plus that byte is the
+; address JMPed to; effect 0 only ends the interrupt.
+; WAITS: no.
+; Entry: from FrameInterrupt, A and Y the interrupted code's. Exit: to the frame interrupt's exit through the
+; handler, which has A and X the effect doubled, the carry its top bit, N and Z from A. Past the table:
+; the table is 32 words, $44E9 to $4528, one per effect 0 to 31 (RasterDone, RasterEndBand1, RasterEffect2
+; to RasterEffect31 in order). The doubling wraps in a byte, so the numbers $80 to $FF read the words of $00 to $7F, and
+; a number from 32 to 127 reads its word from $4529 on, the bytes of the code that follows, and jumps to the
+; address they spell: this routine does the same, through the C of the handler at that address if it has
+; one, else through the original. Who writes the number: RasterEffectNow ($3F31) is written by
+; FrameInterrupt (a copy of zRasterEffect, $45) and cleared by WaitVblankDisplayOff. Stores to $45 found in the
+; filed code and the intake: the constants 0, 1, $0B, $12, $13, $14 and $1C, and in each stage's area setup
+; (024E:152 and its 23 copies) byte 12 of an area record of the stage's overlay; over the 24 copies
+; those bytes are 0 to $1D. That is a note, not a contract, with two limits: the area index (zero page
+; $83) is not bounded here, and the System Card and BIOS were not searched for stores to $45, nor
+; for indexed, indirect or block-move writes to it or to $2045.
+; The table, $44E9 to $4528 (32 words, left as the disc's bytes; named here by effect):
+;   0 RasterDone 452E, 1 RasterEndBand1 4529, 2 RasterEffect2 4536, 3 RasterEffect3 455C, 4 RasterEffect4 45B1,
+;   5 RasterEffect5 45CC, 6 RasterEffect6 4643, 7 RasterEffect7 46B6, 8 RasterEffect8 476A, 9 RasterEffect9 483D,
+;   10 RasterEffect10 487F, 11 RasterEffect11 48C1, 12 RasterEffect12 48CE, 13 RasterEffect13 4939,
+;   14 RasterEffect14 49D1, 15 RasterEffect15 4A16, 16 RasterEffect16 4AB1, 17 RasterEffect17 4B21,
+;   18 RasterEffect18 4B8F, 19 RasterEffect19 4C15, 20 RasterEffect20 4C79, 21 RasterEffect21 4D32,
+;   22 RasterEffect22 4DA4, 23 RasterEffect23 4DE1, 24 RasterEffect24 4E26, 25 RasterEffect25 4DFE,
+;   26 RasterEffect26 4EB0, 27 RasterEffect27 4F26, 28 RasterEffect28 4FA0, 29 RasterEffect29 4E09,
+;   30 RasterEffect30 502D, 31 RasterEffect31 509B.
 RasterInterrupt:
     lda a:RasterEffectNow
     asl a

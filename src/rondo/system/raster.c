@@ -1816,16 +1816,6 @@ void abi_RasterEffect31(void)
     exit_regs_shim(RasterEffect31(held_in_shim()));
 }
 
-/*
- * @routine 0043:4E1 RasterInterrupt
- * @run 69:44E1
- * @ends 4287
- * WHAT IT DOES: A raster interrupt: runs this frame's effect.
- * HOW: Through the table by effect number. Effect 0 only ends the interrupt.
- * WAITS: no.
- * Entry: from FrameInterrupt, the effect below 32, which is all the table holds. Exit:
- * to its exit.
- */
 /* The handler is entered with A and X the effect doubled and the carry the effect's top bit, N and Z from A. */
 static void dispatch_registers_shim(uint8_t effect, uint8_t index)
 {
@@ -1835,25 +1825,63 @@ static void dispatch_registers_shim(uint8_t effect, uint8_t index)
     abi_flag(P_C, (effect & 0x80) != 0);
 }
 
+/* The handler at the address the table gave: its C where it has C, else the original there. */
+static void raster_handler_shim(uint16_t target)
+{
+    static const struct { uint16_t run; void (*abi)(void); } handlers[] = {
+        { 0x452E, abi_RasterDone }, { 0x4529, abi_RasterEndBand1 }, { 0x4536, abi_RasterEffect2 },
+        { 0x455C, abi_RasterEffect3 }, { 0x45B1, abi_RasterEffect4 }, { 0x45CC, abi_RasterEffect5 },
+        { 0x4643, abi_RasterEffect6 }, { 0x46B6, abi_RasterEffect7 }, { 0x476A, abi_RasterEffect8 },
+        { 0x483D, abi_RasterEffect9 }, { 0x487F, abi_RasterEffect10 }, { 0x48C1, abi_RasterEffect11 },
+        { 0x48CE, abi_RasterEffect12 }, { 0x4939, abi_RasterEffect13 }, { 0x49D1, abi_RasterEffect14 },
+        { 0x4A16, abi_RasterEffect15 }, { 0x4AB1, abi_RasterEffect16 }, { 0x4B21, abi_RasterEffect17 },
+        { 0x4B8F, abi_RasterEffect18 }, { 0x4C15, abi_RasterEffect19 }, { 0x4C79, abi_RasterEffect20 },
+        { 0x4D32, abi_RasterEffect21 }, { 0x4DA4, abi_RasterEffect22 }, { 0x4DE1, abi_RasterEffect23 },
+        { 0x4E26, abi_RasterEffect24 }, { 0x4DFE, abi_RasterEffect25 }, { 0x4EB0, abi_RasterEffect26 },
+        { 0x4F26, abi_RasterEffect27 }, { 0x4FA0, abi_RasterEffect28 }, { 0x4E09, abi_RasterEffect29 },
+        { 0x502D, abi_RasterEffect30 }, { 0x509B, abi_RasterEffect31 }
+    };
+
+    for (unsigned i = 0; i < sizeof handlers / sizeof handlers[0]; i++) {
+        if (handlers[i].run == target) {
+            handlers[i].abi();
+            return;
+        }
+    }
+    call_original(target);
+}
+
+/*
+ * @routine 0043:4E1 RasterInterrupt
+ * @run 69:44E1
+ * @ends 4287
+ * WHAT IT DOES: A raster interrupt: runs this frame's effect.
+ * HOW: The effect number in RasterEffectNow is doubled to a byte (TAX) and the word at $44E9 plus that byte is the
+ * address JMPed to; effect 0 only ends the interrupt.
+ * WAITS: no.
+ * Entry: from FrameInterrupt, A and Y the interrupted code's. Exit: to the frame interrupt's exit through the
+ * handler, which has A and X the effect doubled, the carry its top bit, N and Z from A. Past the table:
+ * the table is 32 words, $44E9 to $4528, one per effect 0 to 31 (RasterDone, RasterEndBand1, RasterEffect2
+ * to RasterEffect31 in order). The doubling wraps in a byte, so the numbers $80 to $FF read the words of $00 to $7F, and
+ * a number from 32 to 127 reads its word from $4529 on, the bytes of the code that follows, and jumps to the
+ * address they spell: this routine does the same, through the C of the handler at that address if it has
+ * one, else through the original. Who writes the number: RasterEffectNow ($3F31) is written by
+ * FrameInterrupt (a copy of zRasterEffect, $45) and cleared by WaitVblankDisplayOff. Stores to $45 found in the
+ * filed code and the intake: the constants 0, 1, $0B, $12, $13, $14 and $1C, and in each stage's area setup
+ * (024E:152 and its 23 copies) byte 12 of an area record of the stage's overlay; over the 24 copies
+ * those bytes are 0 to $1D. That is a note, not a contract, with two limits: the area index (zero page
+ * $83) is not bounded here, and the System Card and BIOS were not searched for stores to $45, nor
+ * for indexed, indirect or block-move writes to it or to $2045.
+ */
 void RasterInterrupt(void)
 {
-    static void (*const effects[])(void) = {
-        abi_RasterDone, abi_RasterEndBand1, abi_RasterEffect2, abi_RasterEffect3,
-        abi_RasterEffect4, abi_RasterEffect5, abi_RasterEffect6, abi_RasterEffect7,
-        abi_RasterEffect8, abi_RasterEffect9, abi_RasterEffect10, abi_RasterEffect11,
-        abi_RasterEffect12, abi_RasterEffect13, abi_RasterEffect14, abi_RasterEffect15,
-        abi_RasterEffect16, abi_RasterEffect17, abi_RasterEffect18, abi_RasterEffect19,
-        abi_RasterEffect20, abi_RasterEffect21, abi_RasterEffect22, abi_RasterEffect23,
-        abi_RasterEffect24, abi_RasterEffect25, abi_RasterEffect26, abi_RasterEffect27,
-        abi_RasterEffect28, abi_RasterEffect29, abi_RasterEffect30, abi_RasterEffect31
-    };
     uint8_t effect = RD8(RASTERST->effect_now);
     uint8_t index = (uint8_t)(effect << 1);
+    uint8_t low = TBL8(RasterEffects, index);
+    uint8_t high = TBL8(RasterEffects, index + 1);
 
-    (void)TBL8(RasterEffects, index);
-    (void)TBL8(RasterEffects, index + 1);
     dispatch_registers_shim(effect, index);
-    effects[effect]();
+    raster_handler_shim((uint16_t)(low | (high << 8)));
 }
 
 void abi_RasterInterrupt(void)

@@ -10,6 +10,17 @@
 #include "enemy_objects.h"
 
 /* The arms the converted routines end on (ObjArm, enemy_objects.h); each routine's exit shim builds the registers and flags from them. */
+enum { BB_T8_NOT5, BB_T8_RUNNING, BB_T8_STATE8 };
+enum { BB_E6_NOFLAG, BB_E6_LATE, BB_E6_MILD, BB_E6_ENTERED };
+enum { BB_E7_ENTERED, BB_E7_NONE };
+enum { BB_FO_FRAME, BB_FO_STEP };
+enum { BB_FP_NONE, BB_FP_FACED };
+enum { BB_EN_HIT, BB_EN_X_FAR, BB_EN_Y_FAR, BB_EN_NEAR };
+enum { BB_SW_EARLY, BB_SW_HIGH, BB_SW_LOW, BB_SW_NEXT };
+enum { BB_ST_LOW, BB_ST_NO_SLOT, BB_ST_SPAWNED };
+enum { BB_P28_HIGH, BB_P28_FULL, BB_P28_STARTED };
+enum { BB_LW_STEP, BB_LW_LAUNCH };
+enum { BB_LP_FAR, BB_LP_ROLL, BB_LP_LEAP };
 enum { BS_IN_STATE, BS_CLEAR, BS_BURST };
 enum { AN_COUNTING, AN_DONE };
 enum { CB_HIGH, CB_FAR, CB_CHARGED };
@@ -64,37 +75,53 @@ void abi_ChangeToType9BB(void)
  * Entry: X object. Exit: A and N, Z from the last compare, OR or load; C and V from the high
  * byte's subtract when it ran; X and Y kept.
  */
-Ended SixteenBitTimerToState8(uint8_t slot)
+ObjArm SixteenBitTimerToState8(uint8_t slot)
 {
-    uint8_t state = RD8(OBJ->state[slot]);
-    uint8_t low, high, both, new_low, new_high;
-    bool borrow;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t low, new_low, both;
 
-    if (state != 5) {
-        return ended_compare(state, 5);
+    r.first = RD8(OBJ->state[slot]);
+    r.arm = BB_T8_NOT5;
+    if (r.first != 5) {
+        return r;
     }
     low = RD8(OBJ->f35c0[slot]);
     new_low = (uint8_t)(low - 1);
-    borrow = low == 0;
+    r.flag = low == 0;
     WR8(OBJ->f35c0[slot], new_low);
-    high = RD8(OBJ->f3568[slot]);
-    new_high = (uint8_t)(high - (borrow ? 1 : 0));
-    WR8(OBJ->f3568[slot], new_high);
+    r.second = RD8(OBJ->f3568[slot]);
+    r.third = (uint8_t)(r.second - (r.flag ? 1 : 0));
+    WR8(OBJ->f3568[slot], r.third);
     both = RD8(OBJ->f35c0[slot]);
-    both = (uint8_t)(new_high | both);
-    e = ended_with_overflow(ended_with_carry(ended_load(both), !(high == 0 && borrow)),
-                            sub_overflow(high, 0, new_high));
-    if (both != 0) {
-        return e;
+    r.fourth = (uint8_t)(r.third | both);
+    r.arm = BB_T8_RUNNING;
+    if (r.fourth != 0) {
+        return r;
     }
     WR8(OBJ->state[slot], 8);
-    return ended_with_overflow(ended_with_carry(ended_load(8), e.c), e.v);
+    r.arm = BB_T8_STATE8;
+    return r;
+}
+
+static Ended sixteen_bit_timer_to_state8_exit_shim(ObjArm r)
+{
+    bool carry = !(r.second == 0 && r.flag);
+    bool overflow = sub_overflow(r.second, 0, r.third);
+    Ended e;
+
+    if (r.arm == BB_T8_NOT5) {
+        return ended_compare(r.first, 5);
+    }
+    e = ended_with_overflow(ended_with_carry(ended_load(r.fourth), carry), overflow);
+    if (r.arm == BB_T8_RUNNING) {
+        return e;
+    }
+    return ended_with_overflow(ended_with_carry(ended_load(8), carry), overflow);
 }
 
 void abi_SixteenBitTimerToState8(void)
 {
-    abi_ended(SixteenBitTimerToState8(cpu.x));
+    abi_ended(sixteen_bit_timer_to_state8_exit_shim(SixteenBitTimerToState8(cpu.x)));
 }
 
 /*
@@ -105,14 +132,22 @@ void abi_SixteenBitTimerToState8(void)
  * WAITS: no.
  * Entry: nothing. Exit: everything kept.
  */
-Ended NoOpStateA(void)
+ObjArm NoOpStateA(void)
 {
+    ObjArm r = { 0 };
+
+    return r;
+}
+
+static Ended no_op_state_a_exit_shim(ObjArm r)
+{
+    (void)r;
     return ended_kept();
 }
 
 void abi_NoOpStateA(void)
 {
-    abi_ended(NoOpStateA());
+    abi_ended(no_op_state_a_exit_shim(NoOpStateA()));
 }
 
 /*
@@ -125,22 +160,27 @@ void abi_NoOpStateA(void)
  * Entry: X object. Exit: A the low speed byte; N, Z from it; C bit 7 of the facing byte; Y the
  * entry's offset; X kept.
  */
-Ended SetXSpeedFromFacing(uint8_t slot)
+ObjArm SetXSpeedFromFacing(uint8_t slot)
 {
     enum { TABLE = 0xBD0F };
-    uint8_t facing = RD8(OBJ->facing_left[slot]);
-    uint8_t y = (uint8_t)(facing << 1);
-    uint8_t value;
+    ObjArm r = { 0 };
 
-    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(TABLE + 1 + y)));
-    value = rd8((uint16_t)(TABLE + y));
-    WR8(OBJ->vx_lo[slot], value);
-    return ended_with_y(ended_with_carry(ended_load(value), (facing & 0x80) != 0), y);
+    r.first = RD8(OBJ->facing_left[slot]);
+    r.second = (uint8_t)(r.first << 1);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(TABLE + 1 + r.second)));
+    r.third = rd8((uint16_t)(TABLE + r.second));
+    WR8(OBJ->vx_lo[slot], r.third);
+    return r;
+}
+
+static Ended set_x_speed_from_facing_exit_shim(ObjArm r)
+{
+    return ended_with_y(ended_with_carry(ended_load(r.third), (r.first & 0x80) != 0), r.second);
 }
 
 void abi_SetXSpeedFromFacing(void)
 {
-    abi_ended(SetXSpeedFromFacing(cpu.x));
+    abi_ended(set_x_speed_from_facing_exit_shim(SetXSpeedFromFacing(cpu.x)));
 }
 
 /*
@@ -153,30 +193,48 @@ void abi_SetXSpeedFromFacing(void)
  * WAITS: no.
  * Entry: X object. Exit: A and N, Z, C from the last load or compare; X and Y kept.
  */
-Ended EnterState6WhenHitHard(uint8_t slot)
+ObjArm EnterState6WhenHitHard(uint8_t slot)
 {
-    uint8_t flag = RD8(OBJ->f3670[slot]);
-    uint8_t state, hit;
+    ObjArm r = { 0 };
 
-    if (flag == 0) {
-        return ended_load(0);
+    r.first = RD8(OBJ->f3670[slot]);
+    r.arm = BB_E6_NOFLAG;
+    if (r.first == 0) {
+        return r;
     }
-    state = RD8(OBJ->state[slot]);
-    if (state >= 6) {
-        return ended_compare(state, 6);
+    r.second = RD8(OBJ->state[slot]);
+    r.arm = BB_E6_LATE;
+    if (r.second >= 6) {
+        return r;
     }
-    hit = RD8(OBJ->hit_taken[slot]);
-    if (hit < 5) {
-        return ended_compare(hit, 5);
+    r.third = RD8(OBJ->hit_taken[slot]);
+    r.arm = BB_E6_MILD;
+    if (r.third < 5) {
+        return r;
     }
     WR8(OBJ->state[slot], 6);
     WR8(OBJ->f2800[slot], 0);
-    return ended_load(6);
+    r.arm = BB_E6_ENTERED;
+    return r;
+}
+
+static Ended enter_state6_when_hit_hard_exit_shim(ObjArm r)
+{
+    switch (r.arm) {
+    case BB_E6_NOFLAG:
+        return ended_load(0);
+    case BB_E6_LATE:
+        return ended_compare(r.second, 6);
+    case BB_E6_MILD:
+        return ended_compare(r.third, 5);
+    default:
+        return ended_load(6);
+    }
 }
 
 void abi_EnterState6WhenHitHard(void)
 {
-    abi_ended(EnterState6WhenHitHard(cpu.x));
+    abi_ended(enter_state6_when_hit_hard_exit_shim(EnterState6WhenHitHard(cpu.x)));
 }
 
 /*
@@ -189,25 +247,32 @@ void abi_EnterState6WhenHitHard(void)
  * WAITS: no.
  * Entry: X object. Exit: A the last value loaded; N, Z from it; X, Y and C kept.
  */
-Ended EnterState7IfYHighOrFlagged(uint8_t slot)
+ObjArm EnterState7IfYHighOrFlagged(uint8_t slot)
 {
-    uint8_t high = RD8(OBJ->y_hi[slot]);
-    uint8_t flags, bit;
+    ObjArm r = { 0 };
 
-    if (high == 0) {
-        flags = RD8(OBJ->status_flags[slot]);
-        bit = (uint8_t)(flags & 0x80);
-        if (bit == 0) {
-            return ended_load(0);
+    r.first = RD8(OBJ->y_hi[slot]);
+    r.arm = BB_E7_ENTERED;
+    if (r.first == 0) {
+        r.second = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+        r.arm = BB_E7_NONE;
+        if (r.second == 0) {
+            return r;
         }
+        r.arm = BB_E7_ENTERED;
     }
     WR8(OBJ->state[slot], 7);
-    return ended_load(7);
+    return r;
+}
+
+static Ended enter_state7_if_y_high_or_flagged_exit_shim(ObjArm r)
+{
+    return r.arm == BB_E7_NONE ? ended_load(0) : ended_load(7);
 }
 
 void abi_EnterState7IfYHighOrFlagged(void)
 {
-    abi_ended(EnterState7IfYHighOrFlagged(cpu.x));
+    abi_ended(enter_state7_if_y_high_or_flagged_exit_shim(EnterState7IfYHighOrFlagged(cpu.x)));
 }
 
 /*
@@ -218,14 +283,22 @@ void abi_EnterState7IfYHighOrFlagged(void)
  * WAITS: no.
  * Entry: nothing. Exit: everything kept.
  */
-Ended NoOpStateB(void)
+ObjArm NoOpStateB(void)
 {
+    ObjArm r = { 0 };
+
+    return r;
+}
+
+static Ended no_op_state_b_exit_shim(ObjArm r)
+{
+    (void)r;
     return ended_kept();
 }
 
 void abi_NoOpStateB(void)
 {
-    abi_ended(NoOpStateB());
+    abi_ended(no_op_state_b_exit_shim(NoOpStateB()));
 }
 
 /*
@@ -391,28 +464,30 @@ void abi_BecomeType9CWhenAnimationEndsB(void)
  * WAITS: no.
  * Entry, exit: as LoadRecordStartAngle40.
  */
-Ended LoadRecordStartAngle40B(uint8_t slot)
+ObjArm LoadRecordStartAngle40B(uint8_t slot)
 {
-    uint8_t nz, last;
-    bool carry;
-    AxisMove move;
-    Ended e;
+    ObjArm r = { 0 };
 
     jsr_push(0xB8F8);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
     jsr_push(0xB8FB);
-    move = ApplyVelocity(slot);
+    r.move = ApplyVelocity(slot);
     jsr_pop();
-    e = ended_then(e, ended_of_axis_move(move));
     WR8(OBJ->angle_hi[slot], 0x40);
+    return r;
+}
+
+static Ended load_record_start_angle40b_exit_shim(ObjArm r)
+{
+    Ended e = ended_then(record_exit_shim(r), ended_of_axis_move(r.move));
+
     return ended_then(e, ended_load(0x40));
 }
 
 void abi_LoadRecordStartAngle40B(void)
 {
-    abi_ended(LoadRecordStartAngle40B(cpu.x));
+    abi_ended(load_record_start_angle40b_exit_shim(LoadRecordStartAngle40B(cpu.x)));
 }
 
 /*
@@ -425,25 +500,36 @@ void abi_LoadRecordStartAngle40B(void)
  * Entry: X object, D clear. Exit: A $1B and N, Z from it when falling; else as StepObjectFrames.
  * Clobbers zTemp10-11.
  */
-Ended FrameOneBWhenFallingElseAnimate(uint8_t slot)
+ObjArm FrameOneBWhenFallingElseAnimate(uint8_t slot)
 {
+    ObjArm r = { 0 };
     uint8_t speed = RD8(OBJ->vy_hi[slot]);
     uint8_t exit_y = 0;
-    FrameStep step;
 
+    r.arm = BB_FO_FRAME;
     if ((speed & 0x80) == 0) {
         WR8(OBJ->frame[slot], 0x1B);
-        return ended_load(0x1B);
+        return r;
     }
     WR8(ZP->temp10, 0xC7);
     WR8(ZP->temp11, 0xBB);
-    step = StepObjectFrames(slot, &exit_y);
-    return ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+    r.step = StepObjectFrames(slot, &exit_y);
+    r.y = exit_y;
+    r.arm = BB_FO_STEP;
+    return r;
+}
+
+static Ended frame_one_b_when_falling_else_animate_exit_shim(ObjArm r)
+{
+    if (r.arm == BB_FO_FRAME) {
+        return ended_load(0x1B);
+    }
+    return frame_step_exit_shim(r);
 }
 
 void abi_FrameOneBWhenFallingElseAnimate(void)
 {
-    abi_ended(FrameOneBWhenFallingElseAnimate(cpu.x));
+    abi_ended(frame_one_b_when_falling_else_animate_exit_shim(FrameOneBWhenFallingElseAnimate(cpu.x)));
 }
 
 /*
@@ -455,31 +541,43 @@ void abi_FrameOneBWhenFallingElseAnimate(void)
  * WAITS: no.
  * Entry, exit: as FaceThePlayerInSomeStates.
  */
-SideEnd FaceThePlayerInSomeStatesB(uint8_t slot)
+ObjArm FaceThePlayerInSomeStatesB(uint8_t slot)
 {
     enum { TABLE = 0xBE95 };
-    SideEnd result = { ended_kept(), false, { 0, false, false } };
-    uint8_t state = RD8(OBJ->state[slot]);
-    uint8_t entry = rd8((uint16_t)(TABLE + state));
-    uint8_t bit;
+    ObjArm r = { 0 };
 
-    result.end = ended_with_y(ended_load(entry), state);
-    if (entry == 0) {
-        return result;
+    r.first = RD8(OBJ->state[slot]);
+    r.second = rd8((uint16_t)(TABLE + r.first));
+    r.arm = BB_FP_NONE;
+    if (r.second == 0) {
+        return r;
     }
     jsr_push(0xBE8F);
-    result.side = SideOfPlayer(slot);
+    r.side = SideOfPlayer(slot);
     jsr_pop();
-    result.side_used = true;
-    bit = (uint8_t)(result.side.sides & 1);
-    WR8(OBJ->facing_left[slot], bit);
-    result.end = ended_with_y(ended_load(bit), state);
-    return result;
+    r.third = (uint8_t)(r.side.sides & 1);
+    WR8(OBJ->facing_left[slot], r.third);
+    r.arm = BB_FP_FACED;
+    return r;
+}
+
+static SideEnd face_the_player_in_some_states_b_exit_shim(ObjArm r)
+{
+    SideEnd s = { ended_kept(), false, { 0, false, false } };
+
+    if (r.arm == BB_FP_NONE) {
+        s.end = ended_with_y(ended_load(r.second), r.first);
+        return s;
+    }
+    s.side = r.side;
+    s.side_used = true;
+    s.end = ended_with_y(ended_load(r.third), r.first);
+    return s;
 }
 
 void abi_FaceThePlayerInSomeStatesB(void)
 {
-    abi_side_end(FaceThePlayerInSomeStatesB(cpu.x));
+    abi_side_end(face_the_player_in_some_states_b_exit_shim(FaceThePlayerInSomeStatesB(cpu.x)));
 }
 
 /*
@@ -490,22 +588,23 @@ void abi_FaceThePlayerInSomeStatesB(void)
  * WAITS: no.
  * Entry: X object, D clear. Exit: as StepObjectFrames. Clobbers zTemp10-11.
  */
-Ended AnimateAlongListC3C2(uint8_t slot)
+ObjArm AnimateAlongListC3C2(uint8_t slot)
 {
+    ObjArm r = { 0 };
     uint8_t exit_y = 0;
-    FrameStep step;
 
     WR8(ZP->temp10, 0xC2);
     WR8(ZP->temp11, 0xC3);
     jsr_push(0xC3C1);
-    step = StepObjectFrames(slot, &exit_y);
+    r.step = StepObjectFrames(slot, &exit_y);
     jsr_pop();
-    return ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+    r.y = exit_y;
+    return r;
 }
 
 void abi_AnimateAlongListC3C2(void)
 {
-    abi_ended(AnimateAlongListC3C2(cpu.x));
+    abi_ended(frame_step_exit_shim(AnimateAlongListC3C2(cpu.x)));
 }
 
 /*
@@ -518,10 +617,10 @@ void abi_AnimateAlongListC3C2(void)
  * Entry: X object, D clear. Exit: A the new life_timer, N, Z, C and V from the add of 2; Y 0.
  * Clobbers zTemp00-01, zTemp10-12, zProduct0-2, zMultiplierLo-Hi.
  */
-Ended SwingOnCosineB(uint8_t slot)
+ObjArm SwingOnCosineB(uint8_t slot)
 {
+    ObjArm r = { 0 };
     uint8_t angle, value;
-    Sum sum;
 
     WR8(ZP->temp00, 0xA0);
     WR8(ZP->temp01, 0);
@@ -537,14 +636,19 @@ Ended SwingOnCosineB(uint8_t slot)
     ApplyVelocity(slot);
     jsr_pop();
     angle = RD8(OBJ->life_timer[slot]);
-    sum = add_bytes(angle, 2, false);
-    WR8(OBJ->life_timer[slot], sum.value);
-    return ended_with_y(ended_of_sum(sum), 0);
+    r.sum = add_bytes(angle, 2, false);
+    WR8(OBJ->life_timer[slot], r.sum.value);
+    return r;
+}
+
+static Ended swing_on_cosine_b_exit_shim(ObjArm r)
+{
+    return ended_with_y(ended_of_sum(r.sum), 0);
 }
 
 void abi_SwingOnCosineB(void)
 {
-    abi_ended(SwingOnCosineB(cpu.x));
+    abi_ended(swing_on_cosine_b_exit_shim(SwingOnCosineB(cpu.x)));
 }
 
 /*
@@ -630,32 +734,35 @@ void abi_TurnOnRandomBeatWalkFollowC(void)
  * WAITS: no.
  * Entry: X object, D clear. Exit: as StepObjectFrames, V from ApplyVelocityY. Clobbers zTemp10-11.
  */
-Ended FlashFallAnimateThenRemove(uint8_t slot)
+ObjArm FlashFallAnimateThenRemove(uint8_t slot)
 {
+    ObjArm r = { 0 };
     uint8_t exit_y = 0;
-    AxisMove move;
-    FrameStep step;
-    Ended e;
 
     WR8(OBJ->flash_flags[slot], 0x8B);
     jsr_push(0xBE11);
-    move = ApplyVelocityY(slot);
+    r.move = ApplyVelocityY(slot);
     jsr_pop();
     WR8(ZP->temp10, 0x22);
     WR8(ZP->temp11, 0xBE);
     jsr_push(0xBE1C);
-    step = StepObjectFrames(slot, &exit_y);
+    r.step = StepObjectFrames(slot, &exit_y);
     jsr_pop();
-    e = ended_then(ended_of_axis_move(move), ended_of_frame_step(step, step != FRAME_HELD, exit_y));
-    if (step == FRAME_LIST_ENDED) {
+    r.y = exit_y;
+    if (r.step == FRAME_LIST_ENDED) {
         ClearObject(slot);
     }
-    return e;
+    return r;
+}
+
+static Ended flash_fall_animate_then_remove_exit_shim(ObjArm r)
+{
+    return ended_then(ended_of_axis_move(r.move), frame_step_exit_shim(r));
 }
 
 void abi_FlashFallAnimateThenRemove(void)
 {
-    abi_ended(FlashFallAnimateThenRemove(cpu.x));
+    abi_ended(flash_fall_animate_then_remove_exit_shim(FlashFallAnimateThenRemove(cpu.x)));
 }
 
 /*
@@ -667,32 +774,35 @@ void abi_FlashFallAnimateThenRemove(void)
  * WAITS: no.
  * Entry: X object, D clear. Exit: A $50 and N, Z clear; C from the record; Y the neighbour's slot.
  */
-Ended StartAndMakeNeighbourB(uint8_t slot)
+ObjArm StartAndMakeNeighbourB(uint8_t slot)
 {
-    uint8_t nz, last, neighbour, value;
-    bool carry;
-    Ended e;
+    ObjArm r = { 0 };
 
     jsr_push(0xBEF4);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
-    neighbour = (uint8_t)(slot + 1);
-    e = ended_then(e, ended_with_y(ended_nz(neighbour), neighbour));
+    r.third = (uint8_t)(slot + 1);
     jsr_push(0xBEFA);
-    ClearObjectInY(neighbour);
+    ClearObjectInY(r.third);
     jsr_pop();
     jsr_push(0xBEFF);
-    value = StartObjectAtPlace(0x2C, slot, neighbour);
+    r.fourth = StartObjectAtPlace(0x2C, slot, r.third);
     jsr_pop();
-    e = ended_then(e, ended_load(value));
     WR8(OBJ->life_timer[slot], 0x50);
+    return r;
+}
+
+static Ended start_and_make_neighbour_b_exit_shim(ObjArm r)
+{
+    Ended e = ended_then(record_exit_shim(r), ended_with_y(ended_nz(r.third), r.third));
+
+    e = ended_then(e, ended_load(r.fourth));
     return ended_then(e, ended_load(0x50));
 }
 
 void abi_StartAndMakeNeighbourB(void)
 {
-    abi_ended(StartAndMakeNeighbourB(cpu.x));
+    abi_ended(start_and_make_neighbour_b_exit_shim(StartAndMakeNeighbourB(cpu.x)));
 }
 
 /*
@@ -705,37 +815,54 @@ void abi_StartAndMakeNeighbourB(void)
  * Entry: X object, D clear. Exit: A, N, Z, C from the last test; V from the last distance;
  * or A 1 and N, Z from the new state.
  */
-Ended EnterNextStateWhenHitOrPlayerNear(uint8_t slot)
+ObjArm EnterNextStateWhenHitOrPlayerNear(uint8_t slot)
 {
-    uint8_t hit = RD8(OBJ->hit_taken[slot]);
-    PlayerDistance distance;
-    uint8_t state;
-    Ended e = ended_load(hit);
+    ObjArm r = { 0 };
 
-    if (hit == 0) {
+    r.first = RD8(OBJ->hit_taken[slot]);
+    r.arm = BB_EN_HIT;
+    if (r.first == 0) {
         jsr_push(0xBF0D);
-        distance = DistanceXToPlayer(slot);
+        r.distance = DistanceXToPlayer(slot);
         jsr_pop();
-        e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x68));
-        if (distance.distance >= 0x68) {
-            return e;
+        r.arm = BB_EN_X_FAR;
+        if (r.distance.distance >= 0x68) {
+            return r;
         }
         jsr_push(0xBF14);
-        distance = DistanceYToPlayer(slot);
+        r.distance2 = DistanceYToPlayer(slot);
         jsr_pop();
-        e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x18));
-        if (distance.distance >= 0x18) {
+        r.arm = BB_EN_Y_FAR;
+        if (r.distance2.distance >= 0x18) {
+            return r;
+        }
+        r.arm = BB_EN_NEAR;
+    }
+    WR8(OBJ->f3670[slot], 1);
+    r.second = INC8(OBJ->state[slot]);
+    return r;
+}
+
+static Ended enter_next_state_when_hit_or_player_near_exit_shim(ObjArm r)
+{
+    Ended e = ended_load(r.first);
+
+    if (r.arm != BB_EN_HIT) {
+        e = ended_then(ended_then(e, ended_of_distance(r.distance)), ended_compare(r.distance.distance, 0x68));
+        if (r.arm == BB_EN_X_FAR) {
+            return e;
+        }
+        e = ended_then(ended_then(e, ended_of_distance(r.distance2)), ended_compare(r.distance2.distance, 0x18));
+        if (r.arm == BB_EN_Y_FAR) {
             return e;
         }
     }
-    WR8(OBJ->f3670[slot], 1);
-    state = INC8(OBJ->state[slot]);
-    return ended_then(e, ended_with_a(ended_nz(state), 1));
+    return ended_then(e, ended_with_a(ended_nz(r.second), 1));
 }
 
 void abi_EnterNextStateWhenHitOrPlayerNear(void)
 {
-    abi_ended(EnterNextStateWhenHitOrPlayerNear(cpu.x));
+    abi_ended(enter_next_state_when_hit_or_player_near_exit_shim(EnterNextStateWhenHitOrPlayerNear(cpu.x)));
 }
 
 /*
@@ -750,10 +877,11 @@ void abi_EnterNextStateWhenHitOrPlayerNear(void)
  * Entry: X object, D clear. Exit: A the Y byte, N, Z from it; C, V from the second NextRandom;
  * Y its index. Clobbers zTemp00.
  */
-Ended PlaceAtRandomOnEdge(uint8_t slot)
+ObjArm PlaceAtRandomOnEdge(uint8_t slot)
 {
     enum { PLACES = 0xBA8A, HEIGHTS = 0xBABA };
-    uint8_t speed, group, row, y, value;
+    ObjArm r = { 0 };
+    uint8_t speed, group, row, y;
     RandomResult random;
     Sum sum;
 
@@ -777,17 +905,22 @@ Ended PlaceAtRandomOnEdge(uint8_t slot)
     WR8(OBJ->x_lo[slot], rd8((uint16_t)(PLACES + y)));
     WR8(OBJ->y_hi[slot], 0);
     jsr_push(0xBA80);
-    random = NextRandom();
+    r.random = NextRandom();
     jsr_pop();
-    y = (uint8_t)(random.value & 3);
-    value = rd8((uint16_t)(HEIGHTS + y));
-    WR8(OBJ->y_lo[slot], value);
-    return ended_with_y(ended_then(ended_of_random(random), ended_load(value)), y);
+    r.second = (uint8_t)(r.random.value & 3);
+    r.first = rd8((uint16_t)(HEIGHTS + r.second));
+    WR8(OBJ->y_lo[slot], r.first);
+    return r;
+}
+
+static Ended place_at_random_on_edge_exit_shim(ObjArm r)
+{
+    return ended_with_y(ended_then(ended_of_random(r.random), ended_load(r.first)), r.second);
 }
 
 void abi_PlaceAtRandomOnEdge(void)
 {
-    abi_ended(PlaceAtRandomOnEdge(cpu.x));
+    abi_ended(place_at_random_on_edge_exit_shim(PlaceAtRandomOnEdge(cpu.x)));
 }
 
 /*
@@ -801,49 +934,54 @@ void abi_PlaceAtRandomOnEdge(void)
  * Entry: X object, D clear. Exit: A $40 and N, Z clear; C from the side compare; V from the
  * random numbers; Y the table index.
  */
-Ended StartFlyerAtRandom(uint8_t slot)
+ObjArm StartFlyerAtRandom(uint8_t slot)
 {
     enum { TABLE = 0xBA49 };
-    uint8_t nz, last, y, value;
-    bool carry;
+    ObjArm r = { 0 };
     RandomResult random;
-    SideResult side;
-    Ended e;
 
     jsr_push(0xBA1C);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
     WR8(OBJ->flash_flags[slot], 0x8F);
-    e = ended_then(e, ended_load(0x8F));
     jsr_push(0xBA24);
-    e = ended_then(e, PlaceAtRandomOnEdge(slot));
+    r.sub = obj_sub(PlaceAtRandomOnEdge(slot));
     jsr_pop();
     jsr_push(0xBA27);
-    random = NextRandom();
+    r.random = NextRandom();
     jsr_pop();
-    WR8(OBJ->f36c8[slot], random.value);
-    e = ended_then(e, ended_of_random(random));
+    WR8(OBJ->f36c8[slot], r.random.value);
     jsr_push(0xBA2D);
-    random = NextRandom();
+    r.random2 = NextRandom();
     jsr_pop();
-    y = (uint8_t)(random.value & 3);
-    value = rd8((uint16_t)(TABLE + y));
-    WR8(OBJ->f35c0[slot], value);
-    e = ended_then(ended_then(e, ended_of_random(random)), ended_with_y(ended_load(value), y));
+    r.third = (uint8_t)(r.random2.value & 3);
+    r.fourth = rd8((uint16_t)(TABLE + r.third));
+    WR8(OBJ->f35c0[slot], r.fourth);
     jsr_push(0xBA39);
-    side = SideOfPlayer(slot);
+    r.side = SideOfPlayer(slot);
     jsr_pop();
-    WR8(OBJ->facing_left[slot], (uint8_t)(side.sides & 1));
-    e = ended_then(ended_then(e, ended_of_side(side)), ended_load((uint8_t)(side.sides & 1)));
+    r.fifth = (uint8_t)(r.side.sides & 1);
+    WR8(OBJ->facing_left[slot], r.fifth);
     WR8(OBJ->vy_hi[slot], 0xFF);
     WR8(OBJ->vy_lo[slot], 0x40);
+    (void)random;
+    return r;
+}
+
+static Ended start_flyer_at_random_exit_shim(ObjArm r)
+{
+    Ended e = ended_then(record_exit_shim(r), ended_load(0x8F));
+
+    e = ended_then(e, place_at_random_on_edge_exit_shim(obj_arm(r.sub)));
+    e = ended_then(e, ended_of_random(r.random));
+    e = ended_then(ended_then(e, ended_of_random(r.random2)), ended_with_y(ended_load(r.fourth), r.third));
+    e = ended_then(ended_then(e, ended_of_side(r.side)), ended_load(r.fifth));
     return ended_then(e, ended_load(0x40));
 }
 
 void abi_StartFlyerAtRandom(void)
 {
-    abi_ended(StartFlyerAtRandom(cpu.x));
+    abi_ended(start_flyer_at_random_exit_shim(StartFlyerAtRandom(cpu.x)));
 }
 
 /*
@@ -856,16 +994,15 @@ void abi_StartFlyerAtRandom(void)
  * WAITS: no.
  * Entry: X object, D clear. Exit: as the last test, add or compare left them; Y 0 after the scale.
  */
-Ended SwoopOnCosineC(uint8_t slot)
+ObjArm SwoopOnCosineC(uint8_t slot)
 {
-    uint8_t frame = RD8(OBJ->frame[0x54]);
-    uint8_t angle, value, high, low, state;
-    AxisMove move;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t angle, value;
 
-    e = ended_compare(frame, 4);
-    if (frame == 4) {
-        return e;
+    r.first = RD8(OBJ->frame[0x54]);
+    r.arm = BB_SW_EARLY;
+    if (r.first == 4) {
+        return r;
     }
     WR8(ZP->temp00, 0xA0);
     WR8(ZP->temp01, 0);
@@ -878,32 +1015,52 @@ Ended SwoopOnCosineC(uint8_t slot)
     value = RD8(ZP->product.mid);
     WR8(OBJ->vx_lo[slot], value);
     jsr_push(0xBAE0);
-    move = ApplyVelocityX(slot);
+    r.move = ApplyVelocityX(slot);
     jsr_pop();
-    e = ended_with_y(ended_of_axis_move(move), 0);
-    value = INC8(OBJ->f36c8[slot]);
-    e = ended_then(e, ended_nz(value));
+    r.second = INC8(OBJ->f36c8[slot]);
     jsr_push(0xBAE6);
-    move = ApplyVelocity(slot);
+    r.move2 = ApplyVelocity(slot);
     jsr_pop();
-    e = ended_then(e, ended_of_axis_move(move));
-    high = RD8(OBJ->y_hi[slot]);
-    e = ended_then(e, ended_load(high));
-    if (high != 0) {
+    r.third = RD8(OBJ->y_hi[slot]);
+    r.arm = BB_SW_HIGH;
+    if (r.third != 0) {
+        return r;
+    }
+    r.fourth = RD8(OBJ->y_lo[slot]);
+    r.arm = BB_SW_LOW;
+    if (r.fourth >= 0xE0) {
+        return r;
+    }
+    r.fifth = INC8(OBJ->state[slot]);
+    r.arm = BB_SW_NEXT;
+    return r;
+}
+
+/* The compare of frame $54 with 4 ends the routine early; the first move's exit replaces it otherwise. */
+static Ended swoop_on_cosine_c_exit_shim(ObjArm r)
+{
+    Ended e;
+
+    if (r.arm == BB_SW_EARLY) {
+        return ended_compare(r.first, 4);
+    }
+    e = ended_with_y(ended_of_axis_move(r.move), 0);
+    e = ended_then(e, ended_nz(r.second));
+    e = ended_then(e, ended_of_axis_move(r.move2));
+    e = ended_then(e, ended_load(r.third));
+    if (r.arm == BB_SW_HIGH) {
         return e;
     }
-    low = RD8(OBJ->y_lo[slot]);
-    e = ended_then(e, ended_compare(low, 0xE0));
-    if (low >= 0xE0) {
+    e = ended_then(e, ended_compare(r.fourth, 0xE0));
+    if (r.arm == BB_SW_LOW) {
         return e;
     }
-    state = INC8(OBJ->state[slot]);
-    return ended_then(e, ended_nz(state));
+    return ended_then(e, ended_nz(r.fifth));
 }
 
 void abi_SwoopOnCosineC(void)
 {
-    abi_ended(SwoopOnCosineC(cpu.x));
+    abi_ended(swoop_on_cosine_c_exit_shim(SwoopOnCosineC(cpu.x)));
 }
 
 /*
@@ -1025,17 +1182,15 @@ void abi_SoundEveryFourthFrameC(void)
  * WAITS: no.
  * Entry: X object, D clear. Exit: A the high byte of the new Y, N, Z, C, V from its subtract; Y 11.
  */
-Ended StartFromScreenEdgeByPlayer(uint8_t slot)
+ObjArm StartFromScreenEdgeByPlayer(uint8_t slot)
 {
-    uint8_t last, nz, player_x;
-    bool carry;
-    Sum low, high;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t player_x;
+    Sum low;
 
     jsr_push(0xC3CE);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
     player_x = RD8(OBJ->x_lo[0]);
     if (player_x >= 0x40 && (player_x >= 0xC0 || RD8(OBJ->facing_left[0]) != 0)) {
         WR8(OBJ->facing_left[slot], 1);
@@ -1051,14 +1206,19 @@ Ended StartFromScreenEdgeByPlayer(uint8_t slot)
     }
     low = sub_bytes(RD8(OBJ->y_lo[0]), 4, true);
     WR8(OBJ->y_lo[slot], low.value);
-    high = sub_bytes(RD8(OBJ->y_hi[0]), 0, low.carry);
-    WR8(OBJ->y_hi[slot], high.value);
-    return ended_then(e, ended_of_sum(high));
+    r.sum = sub_bytes(RD8(OBJ->y_hi[0]), 0, low.carry);
+    WR8(OBJ->y_hi[slot], r.sum.value);
+    return r;
+}
+
+static Ended start_from_screen_edge_by_player_exit_shim(ObjArm r)
+{
+    return ended_then(record_exit_shim(r), ended_of_sum(r.sum));
 }
 
 void abi_StartFromScreenEdgeByPlayer(void)
 {
-    abi_ended(StartFromScreenEdgeByPlayer(cpu.x));
+    abi_ended(start_from_screen_edge_by_player_exit_shim(StartFromScreenEdgeByPlayer(cpu.x)));
 }
 
 /*
@@ -1092,39 +1252,59 @@ void abi_PickStateByPlayerDistanceC(void)
  * Entry: X object, D clear. Exit: A $C0 and N set, Z clear, C and Y as the last call left them;
  * with no free slot, as FindFreeSlotFrom30 left them.
  */
-Ended SpawnType2AThenRestartTimer(uint8_t slot)
+ObjArm SpawnType2AThenRestartTimer(uint8_t slot)
 {
-    uint8_t kind = RD8(OBJ->next_kind[slot]);
-    uint8_t player_y, last, found_slot, value;
+    ObjArm r = { 0 };
+    uint8_t found_slot;
     bool found;
-    Ended e = ended_compare(kind, 4);
 
-    if (kind != 4) {
-        player_y = RD8(OBJ->y_lo[0]);
-        e = ended_then(e, ended_compare(player_y, 0x70));
-        if (player_y < 0x70) {
+    r.first = RD8(OBJ->next_kind[slot]);
+    if (r.first != 4) {
+        r.second = RD8(OBJ->y_lo[0]);
+        r.arm = BB_ST_LOW;
+        if (r.second < 0x70) {
             WR8(OBJ->f3510[slot], 0xC0);
-            return ended_then(e, ended_load(0xC0));
+            return r;
         }
     }
     jsr_push(0x921D);
-    found_slot = FindFreeSlotFrom30(&last, &found);
+    found_slot = FindFreeSlotFrom30(&r.fourth, &found);
     jsr_pop();
-    e = ended_then(e, ended_of_find_slot(found_slot, last, found));
+    r.third = found_slot;
+    r.flag = found;
+    r.arm = BB_ST_NO_SLOT;
     if (!found) {
-        return e;
+        return r;
     }
     jsr_push(0x9224);
-    value = StartObjectAtPlace(0x2A, slot, found_slot);
+    r.fifth = StartObjectAtPlace(0x2A, slot, found_slot);
     jsr_pop();
-    e = ended_then(e, ended_load(value));
     WR8(OBJ->f3510[slot], 0xC0);
+    r.arm = BB_ST_SPAWNED;
+    return r;
+}
+
+static Ended spawn_type2a_then_restart_timer_exit_shim(ObjArm r)
+{
+    Ended e = ended_compare(r.first, 4);
+
+    if (r.first != 4) {
+        e = ended_then(e, ended_compare(r.second, 0x70));
+        if (r.arm == BB_ST_LOW) {
+            return ended_then(e, ended_load(0xC0));
+        }
+    }
+    e = ended_then(e, ended_of_find_slot(r.third, r.fourth, r.flag));
+    if (r.arm == BB_ST_NO_SLOT) {
+        return e;
+    }
+    e = ended_then(e, ended_load(r.fifth));
     return ended_then(e, ended_load(0xC0));
 }
 
 void abi_SpawnType2AThenRestartTimer(void)
 {
-    abi_ended(SpawnType2AThenRestartTimer(cpu.x));
+    abi_ended(spawn_type2a_then_restart_timer_exit_shim(SpawnType2AThenRestartTimer(cpu.x)));
 }
 
 /*
@@ -1141,31 +1321,31 @@ void abi_SpawnType2AThenRestartTimer(void)
  * Entry: X object, D clear. Exit: A $A0, N set, Z clear, C and V as StartObjectAtPlace left them,
  * Y the slot; when the player is low, A $A0 and C, N, Z from the compare of the player's Y with $70.
  */
-Ended StartPieceInSlotsFrom28(uint8_t slot)
+ObjArm StartPieceInSlotsFrom28(uint8_t slot)
 {
     enum { TYPES = 0x9204 };
-    uint8_t player_y = RD8(OBJ->y_lo[0]);
-    uint8_t count, y, kind, type, value;
-    Ended e = ended_compare(player_y, 0x70);
+    ObjArm r = { 0 };
+    uint8_t y, kind, count;
 
-    if (player_y >= 0x70) {
+    r.first = RD8(OBJ->y_lo[0]);
+    r.arm = BB_P28_HIGH;
+    if (r.first >= 0x70) {
         WR8(OBJ->f3510[slot], 0xA0);
-        return ended_then(e, ended_load(0xA0));
+        return r;
     }
-    count = INC8(OBJ->f3568[slot]);
-    e = ended_then(e, ended_nz(count));
+    r.second = INC8(OBJ->f3568[slot]);
     y = 0x28;
-    e = ended_with_y(e, y);
     for (;;) {
         kind = RD8(OBJ->kind[y]);
-        e = ended_then(e, ended_load(kind));
+        r.bytes[r.third] = kind;
+        r.third++;
         if (kind == 0) {
             break;
         }
         y++;
-        e = ended_with_a(ended_with_y(ended_compare(y, 0x30), y), kind);
         if (y >= 0x30) {
-            return e;
+            r.arm = BB_P28_FULL;
+            return r;
         }
     }
     jsr_push(0x91F0);
@@ -1173,22 +1353,48 @@ Ended StartPieceInSlotsFrom28(uint8_t slot)
     jsr_pop();
     push8(y);
     count = RD8(OBJ->f3568[slot]);
-    type = rd8((uint16_t)(TYPES + (count & 7)));
+    r.seventh = (uint8_t)(count & 7);
+    r.fifth = rd8((uint16_t)(TYPES + r.seventh));
     y = pull8();
-    e = ended_then(e, ended_with_y(ended_load(type), (uint8_t)(count & 7)));
-    e = ended_with_y(e, y);
-    e = ended_then(e, ended_nz(y));
+    r.fourth = y;
     jsr_push(0x91FE);
-    value = StartObjectAtPlace(type, slot, y);
+    r.sixth = StartObjectAtPlace(r.fifth, slot, y);
     jsr_pop();
-    e = ended_then(e, ended_load(value));
     WR8(OBJ->f3510[slot], 0xA0);
+    r.arm = BB_P28_STARTED;
+    return r;
+}
+
+/* Each pass of the scan loads the slot's kind; a busy slot's INY and CPY #$30 replace everything before them. */
+static Ended start_piece_in_slots_from28_exit_shim(ObjArm r)
+{
+    Ended e = ended_compare(r.first, 0x70);
+    uint8_t i;
+
+    if (r.arm == BB_P28_HIGH) {
+        return ended_then(e, ended_load(0xA0));
+    }
+    e = ended_with_y(ended_then(e, ended_nz(r.second)), 0x28);
+    for (i = 0; i < r.third; i++) {
+        e = ended_then(e, ended_load(r.bytes[i]));
+        if (r.bytes[i] == 0) {
+            break;
+        }
+        e = ended_with_a(ended_with_y(ended_compare((uint8_t)(0x28 + i + 1), 0x30), (uint8_t)(0x28 + i + 1)), r.bytes[i]);
+    }
+    if (r.arm == BB_P28_FULL) {
+        return e;
+    }
+    e = ended_then(e, ended_with_y(ended_load(r.fifth), r.seventh));
+    e = ended_with_y(e, r.fourth);
+    e = ended_then(e, ended_nz(r.fourth));
+    e = ended_then(e, ended_load(r.sixth));
     return ended_then(e, ended_load(0xA0));
 }
 
 void abi_StartPieceInSlotsFrom28(void)
 {
-    abi_ended(StartPieceInSlotsFrom28(cpu.x));
+    abi_ended(start_piece_in_slots_from28_exit_shim(StartPieceInSlotsFrom28(cpu.x)));
 }
 
 /*
@@ -1241,26 +1447,31 @@ void abi_KnockedUpWhenHitB(void)
  * Entry: X object, D clear. Exit: A the half height, N, Z from it, C from the row's shift, V from the subtract
  * of $29, Y the row's offset.
  */
-Ended SetHitboxFromFrameRowsC(uint8_t slot)
+ObjArm SetHitboxFromFrameRowsC(uint8_t slot)
 {
     enum { INDEX = 0xC2B9, ROWS = 0xC2D2 };
-    Sum frame = sub_bytes(RD8(OBJ->frame[slot]), 0x29, true);
-    uint8_t row = rd8((uint16_t)(INDEX + frame.value));
-    uint8_t y = (uint8_t)(row << 2);
-    uint8_t value;
+    ObjArm r = { 0 };
 
-    WR8(OBJ->hitbox_dx[slot], rd8((uint16_t)(ROWS + y)));
-    WR8(OBJ->hitbox_dy[slot], rd8((uint16_t)(ROWS + 1 + y)));
-    WR8(OBJ->hitbox_half_w[slot], rd8((uint16_t)(ROWS + 2 + y)));
-    value = rd8((uint16_t)(ROWS + 3 + y));
-    WR8(OBJ->hitbox_half_h[slot], value);
-    return ended_with_overflow(ended_with_carry(ended_with_y(ended_load(value), y), (row & 0x40) != 0),
-                               frame.overflow);
+    r.sum = sub_bytes(RD8(OBJ->frame[slot]), 0x29, true);
+    r.first = rd8((uint16_t)(INDEX + r.sum.value));
+    r.second = (uint8_t)(r.first << 2);
+    WR8(OBJ->hitbox_dx[slot], rd8((uint16_t)(ROWS + r.second)));
+    WR8(OBJ->hitbox_dy[slot], rd8((uint16_t)(ROWS + 1 + r.second)));
+    WR8(OBJ->hitbox_half_w[slot], rd8((uint16_t)(ROWS + 2 + r.second)));
+    r.third = rd8((uint16_t)(ROWS + 3 + r.second));
+    WR8(OBJ->hitbox_half_h[slot], r.third);
+    return r;
+}
+
+static Ended set_hitbox_from_frame_rows_c_exit_shim(ObjArm r)
+{
+    return ended_with_overflow(ended_with_carry(ended_with_y(ended_load(r.third), r.second), (r.first & 0x40) != 0),
+                               r.sum.overflow);
 }
 
 void abi_SetHitboxFromFrameRowsC(void)
 {
-    abi_ended(SetHitboxFromFrameRowsC(cpu.x));
+    abi_ended(set_hitbox_from_frame_rows_c_exit_shim(SetHitboxFromFrameRowsC(cpu.x)));
 }
 
 /*
@@ -1387,10 +1598,10 @@ void abi_AnimateMoveThenSetUpNextStepB(void)
  * Entry: X object, D clear. Exit: A the record's last byte, Y 11, N and Z from the new state, C bit 3 of the
  * packed byte; X, V kept.
  */
-Ended LoadObjectRecordFromTable(uint8_t slot)
+ObjArm LoadObjectRecordFromTable(uint8_t slot)
 {
-    uint8_t byte, index, state, packed;
-    bool carry;
+    ObjArm r = { 0 };
+    uint8_t byte, index, packed;
 
     byte = RD8(OBJ->kind[slot]);
     index = (uint8_t)((uint8_t)(byte - 1) << 1);
@@ -1405,7 +1616,7 @@ Ended LoadObjectRecordFromTable(uint8_t slot)
     packed = RD8_PTR_Y(ZP->temp10, 3);
     WR8(OBJ->hitbox_on[slot], (uint8_t)(packed & 0x0F));
     packed = RD8_PTR_Y(ZP->temp10, 3);
-    carry = (packed & 0x08) != 0;
+    r.flag = (packed & 0x08) != 0;
     WR8(OBJ->fields_2ee0[slot], (uint8_t)(packed >> 4));
     byte = RD8_PTR_Y(ZP->temp10, 4);
     WR8(OBJ->hitbox_half_w[slot], byte);
@@ -1422,16 +1633,17 @@ Ended LoadObjectRecordFromTable(uint8_t slot)
     byte = RD8_PTR_Y(ZP->temp10, 10);
     WR8(OBJ->status_flags[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 11);
+    r.first = byte;
     WR8(OBJ->f31f8[slot], byte);
     WR8(OBJ->hitbox_dx[slot], 0);
     WR8(OBJ->hitbox_dy[slot], 0);
-    state = INC8(OBJ->state[slot]);
-    return ended_of_record(byte, state, carry);
+    r.second = INC8(OBJ->state[slot]);
+    return r;
 }
 
 void abi_LoadObjectRecordFromTable(void)
 {
-    abi_ended(LoadObjectRecordFromTable(cpu.x));
+    abi_ended(record_exit_shim(LoadObjectRecordFromTable(cpu.x)));
 }
 
 /*
@@ -1445,56 +1657,68 @@ void abi_LoadObjectRecordFromTable(void)
  * Entry: X object, Y kept to the frame step, D clear. Exit: state 0: A the X speed's low byte, N, Z from it, C 0,
  * V from ApplyVelocityY, Y the facing index; later A, N, Z, C, V from ApplyVelocityX, Y the step's.
  */
-SoundEnd LaunchWithSoundThenDrift(uint8_t slot, uint8_t entry_y)
+ObjArm LaunchWithSoundThenDrift(uint8_t slot, uint8_t entry_y)
 {
-    SoundEnd result = { ended_kept(), ended_kept(), false, 0, { 0 } };
-    uint8_t state = RD8(OBJ->state[slot]);
-    uint8_t last, nz, y, value, exit_y, facing;
-    bool carry;
-    FrameStep step;
-    AxisMove move;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t exit_y;
 
-    if (state != 0) {
+    r.first = RD8(OBJ->state[slot]);
+    if (r.first != 0) {
+        r.arm = BB_LW_STEP;
         WR8(ZP->temp10, 0x96);
         WR8(ZP->temp11, 0xB9);
         exit_y = entry_y;
         jsr_push(0xB98F);
-        step = StepObjectFrames(slot, &exit_y);
+        r.step = StepObjectFrames(slot, &exit_y);
         jsr_pop();
-        e = ended_of_frame_step(step, step != FRAME_HELD, exit_y);
-        move = ApplyVelocityX(slot);
-        result.end = ended_then(e, ended_of_axis_move(move));
-        return result;
+        r.y = exit_y;
+        r.move = ApplyVelocityX(slot);
+        return r;
     }
-    result.sounded = true;
-    result.command = 0x25;
-    result.before = ended_then(ended_load(state), ended_load(0x25));
+    r.arm = BB_LW_LAUNCH;
+    r.sounded = true;
+    r.command = 0x25;
     jsr_push(0xB967);
-    result.call = SoundCommand(0x25, slot, entry_y);
+    r.call = SoundCommand(0x25, slot, entry_y);
     jsr_pop();
     jsr_push(0xB96A);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.third = LoadObjectRecord(slot, &r.fourth, &r.flag);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
     WR8(OBJ->vy_hi[slot], 0xF5);
-    e = ended_then(e, ended_load(0xF5));
     jsr_push(0xB972);
-    move = ApplyVelocityY(slot);
+    r.move = ApplyVelocityY(slot);
     jsr_pop();
-    e = ended_then(e, ended_of_axis_move(move));
-    facing = RD8(OBJ->facing_left[slot]);
-    y = (uint8_t)(facing << 1);
-    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB993 + y)));
-    value = rd8((uint16_t)(0xB992 + y));
-    WR8(OBJ->vx_lo[slot], value);
-    result.end = ended_then(e, ended_with_y(ended_with_carry(ended_load(value), (facing & 0x80) != 0), y));
-    return result;
+    r.fifth = RD8(OBJ->facing_left[slot]);
+    r.sixth = (uint8_t)(r.fifth << 1);
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB993 + r.sixth)));
+    r.seventh = rd8((uint16_t)(0xB992 + r.sixth));
+    WR8(OBJ->vx_lo[slot], r.seventh);
+    return r;
+}
+
+static SoundEnd launch_with_sound_then_drift_exit_shim(ObjArm r)
+{
+    SoundEnd s = { ended_kept(), ended_kept(), false, 0, { 0 } };
+    Ended e;
+
+    if (r.arm == BB_LW_STEP) {
+        s.end = ended_then(frame_step_exit_shim(r), ended_of_axis_move(r.move));
+        return s;
+    }
+    s.sounded = true;
+    s.command = r.command;
+    s.before = ended_then(ended_load(r.first), ended_load(0x25));
+    s.call = r.call;
+    e = ended_of_record(r.third, r.fourth, r.flag);
+    e = ended_then(e, ended_load(0xF5));
+    e = ended_then(e, ended_of_axis_move(r.move));
+    s.end = ended_then(e, ended_with_y(ended_with_carry(ended_load(r.seventh), (r.fifth & 0x80) != 0), r.sixth));
+    return s;
 }
 
 void abi_LaunchWithSoundThenDrift(void)
 {
-    abi_sound_end(LaunchWithSoundThenDrift(cpu.x, cpu.y));
+    abi_sound_end(launch_with_sound_then_drift_exit_shim(LaunchWithSoundThenDrift(cpu.x, cpu.y)));
 }
 
 /*
@@ -1511,82 +1735,97 @@ void abi_LaunchWithSoundThenDrift(void)
  * Entry: X object, Y kept to the frame step, D clear. Exit: as the last test, add or call left them: after a leap
  * A, N, Z from the new state.
  */
-Ended SwingOnCosineThenLeapAtPlayer(uint8_t slot, uint8_t entry_y)
+ObjArm SwingOnCosineThenLeapAtPlayer(uint8_t slot, uint8_t entry_y)
 {
-    uint8_t exit_y = entry_y, angle, value, y, facing, state;
-    FrameStep step;
-    AxisMove move;
-    PlayerDistance distance;
-    RandomResult first, second;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t exit_y = entry_y, angle;
 
     WR8(ZP->temp11, 0x93);
     WR8(ZP->temp10, 0x46);
     jsr_push(0x92EB);
-    step = StepObjectFrames(slot, &exit_y);
+    r.step = StepObjectFrames(slot, &exit_y);
     jsr_pop();
-    e = ended_of_frame_step(step, step != FRAME_HELD, exit_y);
+    r.y = exit_y;
     WR8(ZP->temp00, 0x40);
     WR8(ZP->temp01, 0);
     angle = RD8(OBJ->life_timer[slot]);
     jsr_push(0x92F9);
     ScaleByCosine(angle);
     jsr_pop();
-    value = RD8(ZP->product.hi);
-    WR8(OBJ->vy_hi[slot], value);
-    e = ended_then(e, ended_with_y(ended_load(value), 0));
-    value = RD8(ZP->product.mid);
-    WR8(OBJ->vy_lo[slot], value);
-    e = ended_then(e, ended_load(value));
+    r.first = RD8(ZP->product.hi);
+    WR8(OBJ->vy_hi[slot], r.first);
+    r.second = RD8(ZP->product.mid);
+    WR8(OBJ->vy_lo[slot], r.second);
     jsr_push(0x9306);
-    move = ApplyVelocityY(slot);
+    r.move = ApplyVelocityY(slot);
     jsr_pop();
-    e = ended_then(e, ended_of_axis_move(move));
-    value = INC8(OBJ->life_timer[slot]);
-    e = ended_then(e, ended_nz(value));
+    r.third = INC8(OBJ->life_timer[slot]);
     jsr_push(0x930C);
-    move = ApplyVelocityX(slot);
+    r.move2 = ApplyVelocityX(slot);
     jsr_pop();
-    e = ended_then(e, ended_of_axis_move(move));
     jsr_push(0x930F);
-    distance = DistanceXToPlayer(slot);
+    r.distance = DistanceXToPlayer(slot);
     jsr_pop();
-    e = ended_then(ended_then(e, ended_of_distance(distance)), ended_compare(distance.distance, 0x60));
-    if (distance.distance >= 0x60) {
-        return e;
+    r.arm = BB_LP_FAR;
+    if (r.distance.distance >= 0x60) {
+        return r;
     }
     jsr_push(0x9316);
-    first = NextRandom();
+    r.random = NextRandom();
     jsr_pop();
-    e = ended_then(ended_then(e, ended_of_random(first)), ended_compare(first.value, 2));
-    if (first.value >= 2) {
-        return e;
+    r.arm = BB_LP_ROLL;
+    if (r.random.value >= 2) {
+        return r;
     }
     jsr_push(0x931D);
-    second = NextRandom();
+    r.random2 = NextRandom();
     jsr_pop();
-    y = (uint8_t)((second.value & 7) << 2);
-    e = ended_then(ended_then(e, ended_of_random(second)), ended_with_y(ended_with_carry(ended_load(y), false), y));
-    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0x934F + y)));
-    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0x9350 + y)));
-    WR8(OBJ->vy_lo[slot], rd8((uint16_t)(0x9351 + y)));
-    value = rd8((uint16_t)(0x9352 + y));
-    WR8(OBJ->vy_hi[slot], value);
-    e = ended_then(e, ended_load(value));
-    facing = RD8(OBJ->facing_left[slot]);
-    e = ended_then(e, ended_load(facing));
-    if (facing != 0) {
+    r.fourth = (uint8_t)((r.random2.value & 7) << 2);
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0x934F + r.fourth)));
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0x9350 + r.fourth)));
+    WR8(OBJ->vy_lo[slot], rd8((uint16_t)(0x9351 + r.fourth)));
+    r.fifth = rd8((uint16_t)(0x9352 + r.fourth));
+    WR8(OBJ->vy_hi[slot], r.fifth);
+    r.sixth = RD8(OBJ->facing_left[slot]);
+    if (r.sixth != 0) {
         jsr_push(0x9342);
-        e = ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+        r.sum = NegateVelocityX(slot);
         jsr_pop();
     }
-    state = INC8(OBJ->state[slot]);
-    return ended_then(e, ended_nz(state));
+    r.seventh = INC8(OBJ->state[slot]);
+    r.arm = BB_LP_LEAP;
+    return r;
+}
+
+static Ended swing_on_cosine_then_leap_at_player_exit_shim(ObjArm r)
+{
+    Ended e = frame_step_exit_shim(r);
+
+    e = ended_then(e, ended_with_y(ended_load(r.first), 0));
+    e = ended_then(e, ended_load(r.second));
+    e = ended_then(e, ended_of_axis_move(r.move));
+    e = ended_then(e, ended_nz(r.third));
+    e = ended_then(e, ended_of_axis_move(r.move2));
+    e = ended_then(ended_then(e, ended_of_distance(r.distance)), ended_compare(r.distance.distance, 0x60));
+    if (r.arm == BB_LP_FAR) {
+        return e;
+    }
+    e = ended_then(ended_then(e, ended_of_random(r.random)), ended_compare(r.random.value, 2));
+    if (r.arm == BB_LP_ROLL) {
+        return e;
+    }
+    e = ended_then(ended_then(e, ended_of_random(r.random2)), ended_with_y(ended_with_carry(ended_load(r.fourth), false), r.fourth));
+    e = ended_then(e, ended_load(r.fifth));
+    e = ended_then(e, ended_load(r.sixth));
+    if (r.sixth != 0) {
+        e = ended_then(e, ended_of_sum(r.sum));
+    }
+    return ended_then(e, ended_nz(r.seventh));
 }
 
 void abi_SwingOnCosineThenLeapAtPlayer(void)
 {
-    abi_ended(SwingOnCosineThenLeapAtPlayer(cpu.x, cpu.y));
+    abi_ended(swing_on_cosine_then_leap_at_player_exit_shim(SwingOnCosineThenLeapAtPlayer(cpu.x, cpu.y)));
 }
 
 /*
@@ -1600,15 +1839,14 @@ void abi_SwingOnCosineThenLeapAtPlayer(void)
  * Entry: X object, D clear. Exit: A the side bit and N, Z from it, C from SideOfPlayer's compare (or the second
  * random's add), V from the random; Y the table index of the Y low byte.
  */
-Ended StartAtRandomSpeedAndHeight(uint8_t slot)
+ObjArm StartAtRandomSpeedAndHeight(uint8_t slot)
 {
-    uint8_t y, bit;
-    RandomResult first, second;
-    SideResult side;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t y;
+    RandomResult first;
 
     jsr_push(0x929C);
-    e = LoadObjectRecordFromTable(slot);
+    r.sub = obj_sub(LoadObjectRecordFromTable(slot));
     jsr_pop();
     jsr_push(0x929F);
     first = NextRandom();
@@ -1620,22 +1858,28 @@ Ended StartAtRandomSpeedAndHeight(uint8_t slot)
     WR8(OBJ->x_hi[slot], rd8((uint16_t)(0x92D7 + y)));
     WR8(OBJ->x_lo[slot], rd8((uint16_t)(0x92D6 + y)));
     jsr_push(0x92C2);
-    second = NextRandom();
+    r.random = NextRandom();
     jsr_pop();
-    y = (uint8_t)(second.value & 3);
-    WR8(OBJ->y_lo[slot], rd8((uint16_t)(0x92DC + y)));
-    e = ended_then(e, ended_with_y(ended_of_random(second), y));
+    r.first = (uint8_t)(r.random.value & 3);
+    WR8(OBJ->y_lo[slot], rd8((uint16_t)(0x92DC + r.first)));
     jsr_push(0x92CE);
-    side = SideOfPlayer(slot);
+    r.side = SideOfPlayer(slot);
     jsr_pop();
-    bit = (uint8_t)(side.sides & 1);
-    WR8(OBJ->facing_left[slot], bit);
-    return ended_then(ended_then(e, ended_of_side(side)), ended_load(bit));
+    r.second = (uint8_t)(r.side.sides & 1);
+    WR8(OBJ->facing_left[slot], r.second);
+    return r;
+}
+
+static Ended start_at_random_speed_and_height_exit_shim(ObjArm r)
+{
+    Ended e = ended_then(record_exit_shim(obj_arm(r.sub)), ended_with_y(ended_of_random(r.random), r.first));
+
+    return ended_then(ended_then(e, ended_of_side(r.side)), ended_load(r.second));
 }
 
 void abi_StartAtRandomSpeedAndHeight(void)
 {
-    abi_ended(StartAtRandomSpeedAndHeight(cpu.x));
+    abi_ended(start_at_random_speed_and_height_exit_shim(StartAtRandomSpeedAndHeight(cpu.x)));
 }
 
 /*

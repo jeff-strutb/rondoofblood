@@ -804,9 +804,9 @@ void abi_FlashAndCount(void)
  * WAITS: no.
  * Entry: X object, Y the probe's column, C passed to the lookup. Exit: see the wrapper.
  */
-HopArm HopAndSettle(uint8_t slot, uint8_t column, bool carry_in)
+L7HopArm HopAndSettle(uint8_t slot, uint8_t column, bool carry_in)
 {
-    HopArm r = { { 0 }, { 0 } };
+    L7HopArm r = { { 0 }, { 0 } };
     uint8_t kind, lift, low, high;
     Sum sum;
     AxisMove move;
@@ -866,7 +866,7 @@ HopArm HopAndSettle(uint8_t slot, uint8_t column, bool carry_in)
 }
 
 /* The state's load and, past it, the high byte's; after the probe, the hit bit's load and the high byte's subtraction. */
-static HopEnd hop_and_settle_exit_shim(HopArm r)
+static HopEnd hop_and_settle_exit_shim(L7HopArm r)
 {
     HopEnd h = { { 0 }, false, { 0 }, { 0 } };
 
@@ -1467,7 +1467,7 @@ static ObjArm chase_tail(uint8_t slot)
 }
 
 /* The four exits of the chase in order: the distance and what it did to the state, the walk, the facing and the move choice, the tail. */
-static void chase_exit_shim(ChaseArm r)
+static void chase_exit_shim(L7ChaseArm r)
 {
     Ended e = then(ended_of_distance(r.head.distance), ended_compare(r.head.distance.distance, r.head.first));
 
@@ -1484,10 +1484,10 @@ static void chase_exit_shim(ChaseArm r)
     abi_ended(e);
 }
 
-static ChaseArm chase(uint8_t slot, uint8_t column, bool carry_in, bool far_when_ge, uint8_t limit, uint8_t near_state, bool invert,
+static L7ChaseArm chase(uint8_t slot, uint8_t column, bool carry_in, bool far_when_ge, uint8_t limit, uint8_t near_state, bool invert,
                       uint16_t ret_distance, uint16_t ret_walk, uint16_t ret_move)
 {
-    ChaseArm r = { { 0 }, { { 0 }, { { 0 }, { 0 }, { 0 } } }, { 0 }, { 0 } };
+    L7ChaseArm r = { { 0 }, { { 0 }, { { 0 }, { 0 }, { 0 } } }, { 0 }, { 0 } };
     uint8_t facing;
 
     jsr_push(ret_distance);
@@ -1524,7 +1524,7 @@ static ChaseArm chase(uint8_t slot, uint8_t column, bool carry_in, bool far_when
  * WAITS: no.
  * Entry: X object, Y the probe's column, C passed on. Exit: see chase_exit_shim.
  */
-ChaseArm ChasePlayerA(uint8_t slot, uint8_t column, bool carry_in)
+L7ChaseArm ChasePlayerA(uint8_t slot, uint8_t column, bool carry_in)
 {
     return chase(slot, column, carry_in, false, 0x64, 5, false, 0xC187, 0xC195, 0xC19E);
 }
@@ -1542,7 +1542,7 @@ void abi_ChasePlayerA(void)
  * WAITS: no.
  * Entry and exit: as ChasePlayerA.
  */
-ChaseArm ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in)
+L7ChaseArm ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in)
 {
     return chase(slot, column, carry_in, true, 0x78, 4, true, 0xC1B4, 0xC1C2, 0xC1CD);
 }

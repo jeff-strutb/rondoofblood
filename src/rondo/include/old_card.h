@@ -54,6 +54,48 @@ typedef struct {
     uint8_t y;
 } TitleArm;
 
+/* How DrawObjectSprite ended: the object had no parts, the 64 sprites ran out (after a part was written), or the
+ * object's parts were all done. The registers it leaves: A, X, Y, the value N and Z come from, and C and V where the
+ * arm set them (no parts: C the frame's bit 7, V kept). */
+enum { SPRITE_NO_PARTS, SPRITE_OUT_OF_SPRITES, SPRITE_PARTS_DONE };
+
+typedef struct {
+    int arm;
+    uint8_t a, x, y, nz;
+    bool carry;
+    bool v_set;
+    bool overflow;
+} SpriteArm;
+
+/* How DrawSprites ended: out of sprites inside DrawObjectSprite, every sprite used (X 0), or the rest cleared
+ * (X $FF). A is the last frame byte read or the last DrawObjectSprite's A; drew says whether any object was drawn,
+ * whose last arm gives Y, C and V. */
+enum { SPRITES_OUT, SPRITES_ALL_USED, SPRITES_CLEARED };
+
+typedef struct {
+    int arm;
+    uint8_t a;
+    bool drew;
+    SpriteArm last;
+} SpritesArm;
+
+/* PlayCdTrack: the card's play tried until it answered zero, the last tries' results kept for the exit. */
+typedef struct {
+    uint8_t dl;
+    uint8_t x, y;     /* X and Y as pulled back */
+    unsigned tries;
+    uint8_t results[CD_PLAY_KEPT];
+    CdPlay attempts[CD_PLAY_KEPT];
+} OldCardPlay;
+
+void StepDemoFrame(void);
+void abi_StepDemoFrame(void);
+SpritesArm DrawSprites(void);
+void abi_DrawSprites(void);
+SpriteArm DrawObjectSprite(uint8_t object);
+void abi_DrawObjectSprite(void);
+OldCardPlay PlayCdTrack(uint8_t kept_x, uint8_t kept_y);
+void abi_PlayCdTrack(void);
 uint8_t SetBackgroundScroll(void);
 void abi_SetBackgroundScroll(void);
 void SelectVdcRegisterOldCard(uint8_t reg);

@@ -1,3 +1,28 @@
+; @routine 0023:228 StepDemoFrame
+; @run 80:4228
+; WHAT IT DOES: One frame of the player screen: counts down object $20's timer (its $34B8 byte, then its $3510 byte
+; when that reaches zero) and clears its frame when both have; runs the player, the program's routines at $4863,
+; $4B11 and $49AD, ScrollWithPlayer, and the routines at $497B and $4BE8.
+; HOW: Two decrements, then seven calls; the four with no C yet are run as original with the registers the call
+; before left.
+; WAITS: where the original code it calls does (not read yet).
+; Entry: nothing. Exit: as the routine at $4BE8 leaves them.
+StepDemoFrame:
+    dec a:$34D8
+    bne StepDemoFrame_at0
+    dec a:$3530
+    bne StepDemoFrame_at0
+    stz a:$2A88
+StepDemoFrame_at0:
+    jsr RunPlayerObject
+    jsr $4863
+    jsr $4B11
+    jsr $49AD
+    jsr ScrollWithPlayer
+    jsr $497B
+    jsr $4BE8
+    rts
+
 ; @routine 0023:24B SetBackgroundScroll
 ; @run 80:424B
 ; WHAT IT DOES: Writes the scroll the program wants, band 0's background X and Y, to the VDC's BXR and BYR.
@@ -123,6 +148,290 @@ ScrollWithPlayer_at0:
 ScrollWithPlayer_at2:
     lda #$80
     sta a:OBJ_X_LO
+    rts
+
+; @routine 0023:2E8 DrawSprites
+; @run 80:42E8
+; WHAT IT DOES: Draws the frame's sprites: after the card's entry at $E0AE (A 0, X $10), every object of the 88
+; with a frame is drawn by DrawObjectSprite, 64 sprites at most; the sprites left over are written as zeros.
+; HOW: zp $17 the sprites left, zp $15 the objects left, zp $D9 the slot across the call; four zero words a sprite
+; by ST1 and ST2.
+; WAITS: where the card's entry does.
+; Entry: nothing. Exit: by arm (SpritesArm).
+DrawSprites:
+    cla
+    ldx #$10
+    jsr $E0AE
+    lda #$3F
+    sta z:SpritesLeft
+    lda #$58
+    sta z:zProduct2
+    clx
+DrawSprites_at2:
+    lda a:OBJ_2A68,x
+    beq DrawSprites_at0
+    stx z:zRichterObject
+    bsr DrawObjectSprite
+    bmi DrawSprites_at1
+    ldx z:zRichterObject
+DrawSprites_at0:
+    inx
+    dec z:zProduct2
+    bne DrawSprites_at2
+    ldx z:SpritesLeft
+    beq DrawSprites_at1
+DrawSprites_at3:
+    st1 #$00
+    st2 #$00
+    st1 #$00
+    st2 #$00
+    st1 #$00
+    st2 #$00
+    st1 #$00
+    st2 #$00
+    dex
+    bpl DrawSprites_at3
+DrawSprites_at1:
+    rts
+
+; @routine 0023:321 DrawObjectSprite
+; @run 80:4321
+; WHAT IT DOES: Writes an object's sprites to the VDC's data port, a part at a time from the list its frame names
+; in the table at $4C9D: each part is five bytes (attributes, Y and X offsets, the pattern's two bytes). A part off
+; the screen (Y plus $40 outside 0 to $12F, X plus $20 outside the part's edge to $11F) is passed over; a part's X
+; is mirrored when the object faces left, its palette replaced (flash bit 7) or offset (bit 6) by the low nibble
+; of the object's flash byte, and its Y flip set from the object's flip byte. Each part written counts one of the
+; sprites left (zp $17); when they run out it stops.
+; HOW: The object's place plus the screen's offsets into zTemp06 to 0B, the part's four words built in zTemp00
+; to 07 and written high word first, from zTemp07 down, through absolute reads of the zero page.
+; WAITS: no.
+; Entry: X the object. Exit: by arm (SpriteArm): A, X, Y, N, Z, C and V as the arm's last instructions left them.
+DrawObjectSprite:
+    lda a:OBJ_Y_LO,x
+    clc
+    adc #$40
+    sta z:zTemp08
+    lda a:OBJ_Y_HI,x
+    adc #$00
+    sta z:zTemp09
+    lda a:OBJ_X_LO,x
+    clc
+    adc #$20
+    sta z:zTemp0A
+    lda a:OBJ_X_HI,x
+    adc #$00
+    sta z:zTemp0B
+    lda a:OBJ_2AC0,x
+    sta z:zTemp0D
+    lda a:OBJ_2FE8,x
+    sta z:SpriteFlipMask
+    lda a:OBJ_2B18,x
+    sta z:zTemp0E
+    and #$0F
+    sta z:zTemp0F
+    lda #$9D
+    sta z:zTemp00
+    lda #$4C
+    sta z:zTemp01
+    lda a:OBJ_2A68,x
+    asl a
+    tay
+    bcc DrawObjectSprite_at0
+    inc z:zTemp01
+DrawObjectSprite_at0:
+    lda (zTemp00),y
+    sta z:zTemp10
+    iny
+    lda (zTemp00),y
+    sta z:zTemp11
+    lda (zTemp10)
+    sta z:SpritePartsLeft
+    bne DrawObjectSprite_at1
+    jmp DrawObjectSprite_at2
+DrawObjectSprite_at1:
+    inc z:zTemp10
+    bne DrawObjectSprite_at3
+    inc z:zTemp11
+DrawObjectSprite_at3:
+    clx
+    cly
+    lda (zTemp10),y
+    sta z:zTemp00
+    iny
+    stz z:zTemp06
+    lda (zTemp10),y
+    bpl DrawObjectSprite_at4
+    dec z:zTemp06
+DrawObjectSprite_at4:
+    clc
+    adc z:zTemp08
+    sta z:zTemp07
+    lda z:zTemp06
+    adc z:zTemp09
+    sta z:zTemp06
+    beq DrawObjectSprite_at5
+    bpl DrawObjectSprite_at6
+    jmp DrawObjectSprite_at7
+DrawObjectSprite_at6:
+    cmp #$01
+    beq DrawObjectSprite_at8
+    jmp DrawObjectSprite_at7
+DrawObjectSprite_at8:
+    lda z:zTemp07
+    cmp #$30
+    bcc DrawObjectSprite_at5
+    jmp DrawObjectSprite_at7
+DrawObjectSprite_at5:
+    iny
+    lda z:zTemp00
+    and #$01
+    tax
+    stz z:zTemp04
+    lda z:zTemp0D
+    beq DrawObjectSprite_at9
+    lda z:zTemp00
+    eor #$08
+    sta z:zTemp00
+    lda a:$4453,x
+    sec
+    sbc (zTemp10),y
+    bra DrawObjectSprite_at10
+DrawObjectSprite_at9:
+    lda (zTemp10),y
+DrawObjectSprite_at10:
+    bpl DrawObjectSprite_at11
+    dec z:zTemp04
+DrawObjectSprite_at11:
+    clc
+    adc z:zTemp0A
+    sta z:zTemp05
+    lda z:zTemp04
+    adc z:zTemp0B
+    sta z:zTemp04
+    beq DrawObjectSprite_at12
+    bpl DrawObjectSprite_at13
+    jmp DrawObjectSprite_at7
+DrawObjectSprite_at13:
+    lda z:zTemp04
+    cmp #$01
+    bne DrawObjectSprite_at7
+    lda z:zTemp05
+    cmp #$20
+    bcs DrawObjectSprite_at7
+    bra DrawObjectSprite_at14
+DrawObjectSprite_at12:
+    lda z:zTemp05
+    cmp a:$4455,x
+    bcc DrawObjectSprite_at7
+DrawObjectSprite_at14:
+    iny
+    lda (zTemp10),y
+    sta z:zTemp03
+    iny
+    lda (zTemp10),y
+    and #$70
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta z:zTemp02
+    lda z:zTemp0E
+    asl a
+    bcs DrawObjectSprite_at15
+    bpl DrawObjectSprite_at16
+    lda (zTemp10),y
+    clc
+    adc z:zTemp0F
+    and #$8F
+    bra DrawObjectSprite_at17
+DrawObjectSprite_at15:
+    lda (zTemp10),y
+    and #$80
+    ora z:zTemp0F
+    bra DrawObjectSprite_at17
+DrawObjectSprite_at16:
+    lda (zTemp10),y
+    and #$8F
+DrawObjectSprite_at17:
+    sta z:zTemp01
+    lda z:SpriteFlipMask
+    and #$80
+    eor z:zTemp01
+    sta z:zTemp01
+    iny
+    ldy #$07
+DrawObjectSprite_at18:
+    lda a:ZeroPage,y
+    sta a:VDC_DATA_LO
+    dey
+    lda a:ZeroPage,y
+    sta a:VDC_DATA_HI
+    dey
+    bpl DrawObjectSprite_at18
+    dec z:SpritesLeft
+    bmi DrawObjectSprite_at2
+DrawObjectSprite_at7:
+    lda #$05
+    clc
+    adc z:zTemp10
+    sta z:zTemp10
+    bcc DrawObjectSprite_at19
+    inc z:zTemp11
+DrawObjectSprite_at19:
+    dec z:SpritePartsLeft
+    beq DrawObjectSprite_at2
+    jmp DrawObjectSprite_at3
+DrawObjectSprite_at2:
+    rts
+
+; @routine 0023:457 PlayCdTrack
+; @run 80:4457
+; WHAT IT DOES: Plays the program's CD track, repeating (mode $41), from the six bytes at $4498, asking the card's
+; cd_play until it answers zero; then the card's cd_fade with A 0.
+; HOW: The kernel's CdPlayRepeat without its track table: zTemp00-01 point at the bytes, which go to the card's
+; argument bytes in its order, zBiosBh $40 first; X the mode, then each failed try's answer.
+; WAITS: yes, on the drive, as CdPlayRepeat: the stack there is the caller's return, this call's two bytes and X and
+; Y pushed.
+; Entry: nothing. Exit: A 0 from the fade, C and V as the card leaves them, X and Y kept, N and Z from X. The C
+; replays the last 32 tries' exits.
+PlayCdTrack:
+    phx
+    phy
+    ldx #$41
+    stx z:zCdPlayMode
+    lda #$98
+    sta z:zTemp00
+    lda #$44
+    sta z:zTemp01
+PlayCdTrack_at0:
+    lda #$40
+    sta z:zBiosBh
+    lda (zTemp00)
+    sta z:zBiosAl
+    ldy #$01
+    lda (zTemp00),y
+    sta z:zBiosAh
+    iny
+    lda (zTemp00),y
+    sta z:zBiosBl
+    lda z:zCdPlayMode
+    sta z:zBiosDh
+    iny
+    lda (zTemp00),y
+    sta z:zBiosCl
+    iny
+    lda (zTemp00),y
+    sta z:zBiosCh
+    iny
+    lda (zTemp00),y
+    sta z:zBiosDl
+    jsr BiosCdPlay
+    tax
+    bne PlayCdTrack_at0
+    cla
+    jsr BiosCdFade
+    ply
+    plx
     rts
 
 ; @routine 0023:4D0 SpawnTitleObjects

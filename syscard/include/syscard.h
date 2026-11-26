@@ -369,49 +369,11 @@ MemOpen ex_memopen(void);
 uint8_t cd_ack_on(void);
 uint8_t cd_ack_off(void);
 
-/* ad_trans_step's states, as CardAdTransStep holds them. */
-enum { AD_TRANS_IDLE, AD_TRANS_SELECT, AD_TRANS_COMMAND, AD_TRANS_DATA, AD_TRANS_STATUS };
-
-/* How ad_trans_select's try at the drive went. */
-typedef enum { AD_SELECT_BUSY, AD_SELECT_TIMED_OUT, AD_SELECTED } AdSelectHow;
-
-typedef struct {
-    AdSelectHow how;
-    uint8_t bus;         /* the bus as the busy test read it */
-    uint8_t tries_left;  /* X: the count of tries, down from 0, when the drive answered */
-} AdTransSelect;
-
-/* What ad_trans_command did with the phase it found. */
-typedef enum { AD_COMMAND_WAITING, AD_COMMAND_SENT, AD_COMMAND_DONE } AdCommandHow;
-
-typedef struct {
-    AdCommandHow how;
-    uint8_t index;    /* the command byte sent */
-    uint8_t control;  /* the CD control port as the acknowledge found it */
-    uint8_t answer;   /* the phase and $B8, when not the command phase */
-} AdTransCommand;
-
-typedef struct {
-    bool done;
-    uint8_t phase;     /* the phase first read */
-    uint8_t status;    /* the drive's status byte */
-    uint8_t last_bus;  /* the bus's last read, once free */
-} AdTransFinish;
-
-/* One step of ad_trans_step: the state it found, and what that state's step did. */
-typedef struct {
-    uint8_t state;
-    AdTransSelect select;
-    AdTransCommand command;
-    uint8_t control;   /* the ADPCM control port, starting the transfer */
-    AdTransFinish finish;
-} AdTransStep;
-
-AdTransSelect ad_trans_select(void);
-AdTransCommand ad_trans_command(void);
-uint8_t ad_trans_start_dma(void);
-AdTransFinish ad_trans_finish(void);
-AdTransStep ad_trans_step(void);
+CardExit ad_trans_select(void);
+CardExit ad_trans_command(void);
+CardExit ad_trans_start_dma(void);
+CardExit ad_trans_finish(void);
+CardExit ad_trans_step(void);
 
 /* What ex_setvec leaves: the flags it pulled, and X unless the vector was the soft reset's. */
 typedef struct {

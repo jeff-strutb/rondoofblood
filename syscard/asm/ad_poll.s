@@ -2,6 +2,7 @@
 ; WHAT IT DOES: Selects the drive for ad_trans_step's read, once.
 ; HOW: Puts the drive's ID on the bus; if the bus is free, raises select and looks 256 times,
 ; with a pause the C does not state, for the drive's request. Seeing it moves the state to 2.
+; WAITS: no: 256 looks at most.
 ; Entry: nothing. Exit: A 2 selected, 1 not; N 0, Z 0; V bit 6 of the bus as the busy test
 ; read it; X the tries left when selected, 0 when not, kept when the bus was busy. Y, C kept.
 ad_trans_select:
@@ -34,6 +35,7 @@ ad_trans_select_at3:
 ; WHAT IT DOES: Moves ad_trans_step's command on by one bus phase.
 ; HOW: In the command phase, sends the next byte of CardCdCommand and acknowledges it. A data
 ; phase moves the state to 3, a status phase to 4; any other phase does nothing.
+; WAITS: through cd_ack_pulse, on the drive's request bit, in the command phase.
 ; Entry: nothing. Exit: a byte sent, A $80, X its index, C set, Z, N and V as cd_ack_off leaves
 ; them. A data or status phase: A the new state, N 0, Z 0, C set. Another: A the phase and $B8,
 ; N, Z and C from comparing it with $88. V and X kept on both. Y kept.
@@ -72,6 +74,7 @@ ad_trans_command_at3:
 ; WHAT IT DOES: Starts the drive's data flowing into ADPCM memory, at the address given.
 ; HOW: CardAdTransAddress to the ADPCM unit as its write address, the transfer from the CD
 ; on, and the state to 4.
+; WAITS: no.
 ; Entry: nothing. Exit: A 4, N 0, Z 0, V bit 6 of the ADPCM control port as the strobe found
 ; it. X, Y, C kept.
 ad_trans_start_dma:
@@ -90,6 +93,7 @@ ad_trans_start_dma:
 ; WHAT IT DOES: Once the drive is in its status phase, ends ad_trans_step's read.
 ; HOW: Stops the transfer, takes the status byte into CardCdStatus and the message byte into
 ; CardBusPhase, each with its handshake, waits for the bus to go free and sets the state to 0.
+; WAITS: on the bus, with the stack as the caller's and the two bytes of its own frame.
 ; Entry: nothing. Exit: done, A the status, N and Z from it, C set, V bit 6 of the bus's last
 ; read. Not yet, A the phase, N from it less $D8, Z 0, C clear, V kept. X, Y kept.
 ad_trans_finish:
@@ -136,6 +140,7 @@ ad_trans_finish_at4:
 ; without waiting on the drive: the caller calls it until it returns with C set.
 ; HOW: Dispatches on CardAdTransStep: 1 ad_trans_select, 2 ad_trans_command, 3
 ; ad_trans_start_dma, 4 ad_trans_finish. 0 and anything above 4 do nothing.
+; WAITS: through ad_trans_command and ad_trans_finish.
 ; Entry: nothing. Exit: state 4 as ad_trans_finish. Otherwise C clear, and A, X, N, Z and V as
 ; the step left them; state 0, A 0, N 0, Z 1; above 4, A the state, N and Z from it less 4.
 ; Y kept.

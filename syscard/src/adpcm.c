@@ -667,9 +667,9 @@ CardExit ad_trans_begin(void)
     WR8_IDX(COL(CRAM->cd_command), 4, value);
     WR8_IDX(COL(CRAM->cd_command), 5, 0);
     value = RD8(CZP->b.lo);
-    WR8(CRAM->adpcm_address, value);
+    WR8(CRAM->ad_trans_address, value);
     value = RD8(CZP->b.hi);
-    wr8((uint16_t)(CardAdpcmAddress + 1), value);
+    wr8((uint16_t)(CardAdTransAddress + 1), value);
     WR8(CRAM->ad_trans_sent, 0);
     WR8(CRAM->ad_trans_step, AD_TRANS_FIRST_STEP);
     e.a = AD_TRANS_FIRST_STEP;

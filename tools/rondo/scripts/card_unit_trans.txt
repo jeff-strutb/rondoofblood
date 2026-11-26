@@ -1,0 +1,30 @@
+# Unit calls of the System Card's stepped ADPCM transfer from the disc, which no game path reaches: ad_trans_begin sets one sector up
+# (_AL 1, _BX the ADPCM address 0, the sector at _CL _CH _DL), then ad_trans_step runs one step a call.
+wait 120
+press RUN 6
+wait 700
+call ad_trans_begin M=20F8:01,20F9:00,20FA:00,20FB:00,20FC:00,20FD:00 M=20FE:10
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+call ad_trans_step
+wait 2
+wait 30

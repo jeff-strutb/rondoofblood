@@ -419,14 +419,14 @@ ObjArm ThrowByNextKind(uint8_t slot)
     return r;
 }
 
-static Ended throw_by_next_kind_exit_shim(ObjArm r)
+static Ended stage05_throw_by_next_kind_exit_shim(ObjArm r)
 {
     return ended_then(ended_with_y(ended_kept(), r.first), ended_of_axis_move(r.move));
 }
 
 void abi_ThrowByNextKind(void)
 {
-    abi_ended(throw_by_next_kind_exit_shim(ThrowByNextKind(cpu.x)));
+    abi_ended(stage05_throw_by_next_kind_exit_shim(ThrowByNextKind(cpu.x)));
 }
 
 /*

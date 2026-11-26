@@ -703,7 +703,7 @@ static RecordRun load_record(uint8_t x)
     return run;
 }
 
-static void handler_entry_shim(RecordRun run);
+static void handler_entry_shim(RecordRun run, uint8_t x);
 
 /*
  * @routine 0046:7A5 RunStreamRecord
@@ -747,11 +747,12 @@ uint8_t RunStreamRecord(uint8_t x)
         StreamSpawnIfOther(x);
         break;
     case HANDLER_CALL_OVERLAY:
+        handler_entry_shim(run, x);   /* the registers the code the record names is jumped to with */
         StreamCallOverlay(x);
         break;
     default:
         /* Another entry, or past the table: the bytes there are the code to run. */
-        handler_entry_shim(run);
+        handler_entry_shim(run, x);
         x = record_code_shim(run.code);
         break;
     }
@@ -759,8 +760,9 @@ uint8_t RunStreamRecord(uint8_t x)
 }
 
 /* What the assembly has in A, Y and the flags as it jumps to a handler. */
-static void handler_entry_shim(RecordRun run)
+static void handler_entry_shim(RecordRun run, uint8_t x)
 {
+    cpu.x = x;
     cpu.a = (uint8_t)(run.code >> 8);
     cpu.y = (uint8_t)(run.handler << 1);
     abi_nz(cpu.a);
@@ -780,7 +782,7 @@ void abi_RunStreamRecord(void)
         abi_flag(P_V, run.slot_overflow);
         return;
     }
-    handler_entry_shim(run);
+    handler_entry_shim(run, cpu.x);
     switch (run.code) {
     case HANDLER_SPAWN_IF_FREE:
         abi_StreamSpawnIfFree();

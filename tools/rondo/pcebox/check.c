@@ -483,6 +483,7 @@ static struct {
 } hold;
 static unsigned long idle_until_frame;     /* after a frame hold: the core runs nothing until this frame has ended */
 static uint64_t frame_holds;
+static uint64_t left_back;       /* left hand-overs made at the close's PC, the C standing past it with the original's registers */
 static uint64_t left_run_holds;  /* left hand-overs whose interrupt came after a few work RAM accesses of the run-on */
 static uint64_t end_target_ints; /* at the script's end: an interrupt the original took at a jump's target, handed over there */
 static uint64_t int_holds;       /* interrupts a few instructions past a hand-over: held until the core stands there */
@@ -748,6 +749,15 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
         Ev *closing = s->end != SPAN_OPEN ? evp(s->end) : NULL;
 
         if (rondo_pc && closing && closing->type == EV_CLOSE && closing->kind == CL_LEFT) {
+            /* The C may stand a few instructions past the place the original left the call (instructions with no
+             * access, a TAM that maps what is mapped): when its registers are the original's at the close, the machine
+             * is the original's there, and the hand-over is made at the close's PC, where an interrupt the original
+             * took at once is then met. */
+            if (closing->pc != rondo_pc && cpu.a == closing->a && cpu.x == closing->x && cpu.y == closing->y &&
+                cpu.s == closing->s && !((cpu.p ^ closing->p) & PFLAGS)) {
+                rondo_pc = closing->pc;
+                left_back++;
+            }
             hold_prepare(s, closing);
             hand_over(rondo_pc);
         }
@@ -4072,6 +4082,8 @@ void check_finish(void)
                 (unsigned long long)end_target_ints);
         fprintf(report, "left hand-overs held to an interrupt after the run-on's work RAM accesses: %llu\n",
                 (unsigned long long)left_run_holds);
+        fprintf(report, "left hand-overs made at the close's PC, the C past it with the original's registers: %llu\n",
+                (unsigned long long)left_back);
         fprintf(report, "frame ends a few instructions past a hand-over, the core held until it stood there: %llu\n",
                 (unsigned long long)frame_holds);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",

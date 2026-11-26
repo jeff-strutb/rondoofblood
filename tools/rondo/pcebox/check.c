@@ -83,7 +83,8 @@ enum { MODE_OFF, MODE_A5, MODE_RECORD, MODE_HYBRID };
 /* Events. Accesses first; the rest are markers with a payload. */
 enum {
     EV_R, EV_W, EV_ROMR, EV_HWR, EV_HWW, EV_RTPULL, EV_STATE,
-    EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME, EV_END
+    EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME, EV_END,
+    EV_UBEGIN, EV_UEND          /* the script's unit call: what the harness and the called routine do, between the two */
 };
 enum { K_JSR, K_IRQ, K_JMP };          /* OPEN, CALL: how the entry was made */
 enum { CL_OK, CL_DROP, CL_LEFT, CL_END };   /* CLOSE: how it ended; CL_END: the script ended with the call open (the record's closing flush, not a hand-over) */
@@ -254,6 +255,8 @@ static FILE *in;
 static struct { uint64_t ram, pic, when; uint16_t pc, top; uint8_t s; } *fq;
 static uint64_t fq_head, fq_tail, fq_cap;
 
+static void unit_note(uint64_t idx, int type);
+
 static void store_push(const Ev *e)
 {
     if (wn == wcap) {
@@ -308,6 +311,8 @@ static int fetch_one(void)
         memcpy(&fq[fq_tail].when, e.mpr, 8);
         fq_tail++;
     }
+    if (e.type == EV_UBEGIN || e.type == EV_UEND)
+        unit_note(wbase + wn, e.type);
     store_push(&e);
     return 1;
 }
@@ -348,12 +353,53 @@ static Ev *evp(uint64_t i);
  * The event at j for a scan of a span: NULL at the span's end (its own CLOSE, which sets end) or
  * where the record stops. *nest counts the frames the scan has gone into.
  */
+/*
+ * A unit call is the script's own call of a routine (the `call` command), made at a frame boundary wherever the game is: its
+ * accesses (the harness's mark push, the routine's own, what it calls) are in the stream between an EV_UBEGIN and an EV_UEND.
+ * A call the game had open before it (the host) did not make them and its C does not: for a span that began before the
+ * block they are noise, and the unit's writes are applied to A5's model as the cursor crosses them (apply_pokes). The unit
+ * routine's own span, which begins inside the block, counts them as any call's.
+ */
+static struct { uint64_t b, e; } uranges[512];
+static unsigned nur;
+static int ur_open;                    /* the last range has begun and not ended */
+
+static void unit_note(uint64_t idx, int type)
+{
+    if (type == EV_UBEGIN) {
+        if (nur < sizeof uranges / sizeof uranges[0]) {
+            uranges[nur].b = idx;
+            uranges[nur].e = UINT64_MAX;
+            nur++;
+            ur_open = 1;
+        }
+    } else if (type == EV_UEND && nur && ur_open) {
+        uranges[nur - 1].e = idx;
+        ur_open = 0;
+    }
+}
+
+static int unit_skip(const Span *s, uint64_t j)
+{
+    for (unsigned i = nur; i-- > 0;) {
+        if (j >= uranges[i].b && j <= uranges[i].e)
+            return s->start < uranges[i].b;
+        if (uranges[i].e < j && uranges[i].e != UINT64_MAX)
+            break;                 /* ranges are in order: the ones before this end before j */
+    }
+    return 0;
+}
+
+static Ev unit_noise = { .type = EV_ROMR };
+
 static Ev *sev(Span *s, uint64_t j, int *nest)
 {
     Ev *e;
 
     if (j >= s->end || !(e = evp(j)))
         return NULL;
+    if (nur && unit_skip(s, j))
+        return &unit_noise;
     if (mode != MODE_A5) {
         if (e->type == EV_OPEN) {
             (*nest)++;
@@ -535,7 +581,7 @@ static void apply_pokes(uint64_t from, uint64_t to)
     for (uint64_t k = from; k < to; k++) {
         Ev *e = evp(k);
 
-        if (e && is_poke(e))
+        if (e && (is_poke(e) || (e->type == EV_W && sp && unit_skip(sp, k))))
             ram_bank[e->addr >> 13][e->addr & 0x1FFF] = e->val;
     }
 }
@@ -1557,6 +1603,9 @@ static void original_at(uint16_t ret, uint16_t addr)
         Ev *x = evp(k);
         char b[96];
 
+        if (unit_skip(span, k))
+            continue;
+
         if (x->type == EV_INT) {
             uint64_t r = section_end(span, k);
 
@@ -2056,6 +2105,8 @@ static void log_event(const Ev *e)
                 exit(5);
             }
         }
+        if (e->type == EV_UBEGIN || e->type == EV_UEND)
+            unit_note(wn, e->type);
         win[wn++] = *e;
     } else if (mode == MODE_RECORD) {
         wire_write(e);
@@ -3053,6 +3104,8 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
         return "the routine's bytes are not resident at its address";
     chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
     unit.saved = r;
+    if (depth && (mode == MODE_A5 || mode == MODE_RECORD))
+        marker(EV_UBEGIN, &r, 0, 0, 0);
     chk_bus_wr((uint16_t)(0x2100 | r.s), (uint8_t)((uint16_t)(UNIT_MARK - 1) >> 8));
     chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(r.s - 1)), (uint8_t)(UNIT_MARK - 1));
     unit.s = (uint8_t)(r.s - 2);
@@ -3334,6 +3387,8 @@ int check_exec(uint32_t pc)
     }
     if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
         unit.active = 0;
+        if (depth)
+            marker(EV_UEND, &r, 0, 0, 0);
         chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
         prev_op = -1;
         return 0;

@@ -54,6 +54,8 @@ import huc  # noqa: E402
 TRACE = os.path.join(TOP, "build", "rondo", "trace")
 SCRIPTS = os.path.join(HERE, "scripts")
 OUT = os.path.join(TOP, "build", "rondo", "census.csv")
+COUNTED = os.path.join(TOP, "config", "rondo", "census.csv")              # the counted census: the denominator's
+DUPLICATES = os.path.join(TOP, "config", "rondo", "census_duplicates.csv")  # proven duplicates, left out
 MAP = os.path.join(TOP, "build", "rondo", "censusmap.bin")
 SECTOR = 2048
 BANK = 0x2000
@@ -807,6 +809,145 @@ def holdout(only=None, out=None):
     return rows
 
 
+BLOCK_MOVES = (0x73, 0xC3, 0xD3, 0xE3, 0xF3)      # TII, TDD, TIN, TIA, TAI: they copy code as readily as data
+CARD = os.path.join(TOP, "build", "rondo", "system", "syscard3.pce")
+
+
+def read_in_place(disc, names):
+    """bytearray: 1 where an instruction other than a block move loaded the disc byte while it sat in a bank window
+    ($4000-$DFFF), in place. trace.c's discmap2 bit 2 is wider: it follows a byte's value into work RAM, so a byte
+    copied to RAM and read there is marked too, which says nothing about the disc location; and reads.csv also
+    lists block moves' sources. The reader is named by its disc (D:) or card (C:) offset."""
+    card = open(CARD, "rb").read()
+    out = bytearray(USER_BYTES)
+    for n in names:
+        with open(os.path.join(TRACE, n, "reads.csv")) as f:
+            next(f)
+            for line in f:
+                s, k, reader, _, dl, _ = line.split(",")
+                if not 0x4000 <= int(dl, 16) < 0xE000:
+                    continue
+                if ":" not in reader:
+                    continue            # code running in work RAM (the built code at $22E7): its opcode is not known
+                space, at = reader.split(":")
+                at = int(at, 16)
+                op = disc.buf[at] if space == "D" else card[at] if space == "C" and at < len(card) else None
+                if op is None or op in BLOCK_MOVES:
+                    continue
+                s = int(s, 16)
+                out[s:s + int(k)] = b"\x01" * int(k)
+    return out
+
+
+def trace_stamp(names):
+    """What the counted census was worked out from: a hash of every script's code and data maps."""
+    import hashlib
+    h = hashlib.sha1()
+    for n in sorted(names):
+        for m in ("discmap.bin", "discmap2.bin"):
+            with open(os.path.join(TRACE, n, m), "rb") as f:
+                h.update(hashlib.sha1(f.read()).digest())
+    return h.hexdigest()[:16]
+
+
+def counted_census(disc, tr, strict, relaxed, names):
+    """The census the denominator counts (PLAN section 1, the maintainer's ruling of 2026-11-26): every byte either
+    census claims, less the bytes proven data and the runs proven duplicates. Unproven bytes count as code.
+
+    Proven data: sent to the VDC, VCE, PSG or ADPCM port; or loaded into a register by code in place and never run;
+    or inside a claimed instruction whose bytes a script ran at another instruction boundary.
+    Proven duplicate: a whole maximal run of claimed bytes, at least COPY long, equal byte for byte to a place of the
+    same length, not overlapping it, whose bytes are all counted and kept and that a script ran some of (the copy
+    that ran is the one counted), or else to a place wholly earlier on the disc whose bytes are all counted and kept
+    (the earliest copy is the one counted). Kept is checked when each run is decided, so two copies never remove
+    each other. A whole run, as the traced floor
+    counts whole routines once: a shorter match can be two routines that share a sequence, and leaving that out
+    would shrink the denominator. Where a census copy lies before a partly run copy of the same code, the overlap
+    may count twice: the error is on the side of a larger denominator."""
+    buf, code, m2 = disc.buf, tr.map, tr.map2
+    claimed = {d for d, r in relaxed.found.items() if r != "traced"} | {d for d, r in strict.found.items() if r != "traced"}
+    inplace = read_in_place(disc, names)
+    data = {}
+    for d in claimed:
+        if m2 is not None and m2[d] & SUNK:
+            data[d] = "sunk"
+        elif inplace[d]:
+            data[d] = "read in place"
+    for c in (strict, relaxed):
+        for p in c.starts:
+            if p in claimed:
+                n = disc.decode(p)[0]
+                if any(code[p + i] & 3 for i in range(1, n)):
+                    for i in range(n):
+                        if p + i in claimed:
+                            data.setdefault(p + i, "decode contradicted by a trace")
+    rest = sorted(d for d in claimed if d not in data)
+    keep = bytearray(USER_BYTES)              # 1: counted and still kept (traced code, census bytes not left out)
+    for d in tr.code:
+        keep[d] = 1
+    for d in rest:
+        keep[d] = 1
+
+    def key(d):
+        k = bytes(buf[d:d + COPY])
+        return k if len(set(k)) >= 4 else None              # not a run of one or two filler bytes
+    at = collections.defaultdict(list)       # window -> every place among counted bytes holding it, in disc order
+    for d in range(USER_BYTES - COPY):
+        if keep[d] and keep[d + COPY - 1] and all(keep[d + i] for i in range(COPY)):
+            k = key(d)
+            if k is not None:
+                at[k].append(d)
+    runs, i = [], 0
+    while i < len(rest):                      # maximal runs of claimed bytes that are not proven data
+        j = i
+        while j + 1 < len(rest) and rest[j + 1] == rest[j] + 1:
+            j += 1
+        runs.append((rest[i], rest[j] + 1))
+        i = j + 1
+
+    def candidates(a, b):
+        """Every place the whole run a..b may be found again, aligned on its first non-filler window."""
+        for o in range(0, b - a - COPY + 1):
+            k = key(a + o)
+            if k is not None:
+                return [s0 - o for s0 in at.get(k, ()) if s0 - o >= 0]
+        return []
+    dups = []
+    for a, b in runs:                         # in disc order, so a source earlier on the disc is already decided
+        n = b - a
+        if n < COPY:
+            continue                          # too short to prove
+        found = None
+        cands = [s0 for s0 in candidates(a, b) if not (a < s0 + n and s0 < b) and buf[s0:s0 + n] == buf[a:b]
+                 and all(keep[s0 + t] for t in range(n))]
+        for s0 in cands:                      # a copy a script ran some of: that one is counted
+            if any(code[s0 + t] & 3 for t in range(n)):
+                found = (s0, "traced")
+                break
+        if found is None:                     # else the earliest copy, wholly before this one
+            for s0 in cands:
+                if s0 + n <= a:
+                    found = (s0, "census")
+                    break
+        if found is None:
+            continue
+        for t in range(a, b):
+            keep[t] = 0
+        dups.append((a, n, found[0], found[1]))
+    src_of = {a + t: kind for a, n, s0, kind in dups for t in range(n)}
+    out = {"claimed": len(claimed), "strict": sum(1 for d in claimed if d in strict.found),
+           "proven_data": len(data), "duplicates": len(src_of), "duplicate_runs": len(dups),
+           "duplicates_of_traced": sum(1 for v in src_of.values() if v == "traced")}
+    for why in ("sunk", "read in place", "decode contradicted by a trace"):
+        out["proven_data_" + why.replace(" ", "_")] = sum(1 for v in data.values() if v == why)
+    counted = [d for d in rest if keep[d]]
+    out["counted"] = len(counted)
+    out["counted_strict"] = sum(1 for d in counted if d in strict.found)
+    out["counted_relaxed_only"] = out["counted"] - out["counted_strict"]
+    out["counted_never_loaded"] = sum(1 for d in counted if m2 is not None and not m2[d] & 1)
+    return out, dups
+
+
 def main():
     if not os.environ.get("CPU_RUN_JOBS"):
         print("refusing to run outside the slot queue (CPU_RUN_JOBS is not set); run it as:\n"
@@ -840,6 +981,20 @@ def main():
     print(f"traced {len(tr.code)} B; strict census adds {sum(1 for r in strict.found.values() if r != 'traced')} B; "
           f"relaxed adds {sum(1 for r in relaxed.found.values() if r != 'traced')} B")
     print("unplaced calls:", strict.stats["unplaced"], "ambiguous:", strict.stats["ambiguous"])
+    out, dups = counted_census(disc, tr, strict, relaxed, names)
+    out = {"stamp": trace_stamp(names), "scripts": len(names), "traced_by_location": len(tr.code), **out}
+    with open(COUNTED, "w", newline="\n", encoding="ascii") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["key", "value"])
+        for k, v in out.items():
+            w.writerow([k, v])
+    with open(DUPLICATES, "w", newline="\n", encoding="ascii") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["start", "length", "copy_of", "proof"])
+        for a, n, src, kind in dups:
+            w.writerow([f"{a:X}", n, f"{src:X}", f"each byte in a {COPY}-byte window equal to " +
+                        ("traced code" if kind == "traced" else "census bytes earlier on the disc, kept")])
+    print("counted census:", ", ".join(f"{k} {v}" for k, v in out.items()))
     return 0
 
 

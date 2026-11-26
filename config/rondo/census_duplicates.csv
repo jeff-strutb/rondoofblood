@@ -1,0 +1,2172 @@
+start,length,copy_of,proof
+22750,29,226D8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2F881,43,608A8,each byte in a 16-byte window equal to traced code
+2F953,125,6097F,each byte in a 16-byte window equal to traced code
+8882E,56,6282E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+888B1,46,628B1,each byte in a 16-byte window equal to traced code
+88A66,25,62A66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+88EB3,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+12686E,50,2DE86E,each byte in a 16-byte window equal to traced code
+1268EC,59,2DE8EC,each byte in a 16-byte window equal to traced code
+126A3D,35,286A3D,each byte in a 16-byte window equal to traced code
+126A66,33,38EA66,each byte in a 16-byte window equal to traced code
+126AAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+126C13,41,286C13,each byte in a 16-byte window equal to traced code
+1271E0,18,4971E0,each byte in a 16-byte window equal to traced code
+1272A4,175,2872A4,each byte in a 16-byte window equal to traced code
+1275BA,26,2875BA,each byte in a 16-byte window equal to traced code
+127607,26,2875BA,each byte in a 16-byte window equal to traced code
+12764D,26,2875BA,each byte in a 16-byte window equal to traced code
+127F01,220,287F01,each byte in a 16-byte window equal to traced code
+12882A,60,6282A,each byte in a 16-byte window equal to traced code
+128A66,25,62A66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+128AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+128B8B,19,62C4C,each byte in a 16-byte window equal to traced code
+128D60,178,4F0D60,each byte in a 16-byte window equal to traced code
+128EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+12A930,203,49A930,each byte in a 16-byte window equal to traced code
+12AA10,437,28AA10,each byte in a 16-byte window equal to traced code
+12ABEB,124,4F2BEB,each byte in a 16-byte window equal to traced code
+12AC77,526,392C77,each byte in a 16-byte window equal to traced code
+12AEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+12B092,34,393092,each byte in a 16-byte window equal to traced code
+12B1D0,20,28B1D0,each byte in a 16-byte window equal to traced code
+12C8A1,31,28C8A1,each byte in a 16-byte window equal to traced code
+12CA3C,17,3ECA3C,each byte in a 16-byte window equal to traced code
+12CB28,61,28CB28,each byte in a 16-byte window equal to traced code
+12CB6A,71,28CB6A,each byte in a 16-byte window equal to traced code
+12CC44,26,28CC44,each byte in a 16-byte window equal to traced code
+12CDB1,159,75CDB1,each byte in a 16-byte window equal to traced code
+12D1EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+12D235,261,395235,each byte in a 16-byte window equal to traced code
+136913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+138192,74,860482,each byte in a 16-byte window equal to traced code
+1383E3,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+160800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18E913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18EA26,110,136A26,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18EA96,128,136A96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18EB17,202,136B17,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18EBE2,50,136BE2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18EC15,40,136C15,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18EE4D,18,136E4D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18EE65,297,136E65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+18EF96,105,136F96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+190414,74,860482,each byte in a 16-byte window equal to traced code
+194E41,34,28CD3D,each byte in a 16-byte window equal to traced code
+1952EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+195B3B,31,2E5A32,each byte in a 16-byte window equal to traced code
+198800,415,448800,each byte in a 16-byte window equal to traced code
+1A0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1B0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1B8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1E803C,17,86029F,each byte in a 16-byte window equal to traced code
+1E8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1EA800,143,12A800,each byte in a 16-byte window equal to traced code
+1ED100,17,28D050,each byte in a 16-byte window equal to traced code
+1F8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+208800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+210800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21E913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21E92C,234,18E92C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21EA26,110,136A26,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21EA96,128,136A96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21EB17,202,136B17,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21EBE2,50,136BE2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21EC15,40,136C15,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21EE4D,18,136E4D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21EE65,297,136E65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21EF96,105,136F96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21F000,73,18F000,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21F3D3,240,18F3D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21F4D8,378,18F4D8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21F663,183,18F663,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21F74F,173,18F74F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21F811,185,18F811,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21F8CB,48,18F8CB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21FAF0,16,18FAF0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21FB0C,404,18FB0C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21FCAA,86,18FCAA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21FD13,36,18FD13,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21FD38,104,18FD38,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21FDD2,157,18FDD2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21FE97,301,18FE97,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+21FFD5,54,18FFD5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2201F1,92,1901F1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+220250,49,190250,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+22039F,53,19039F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+220414,74,860482,each byte in a 16-byte window equal to traced code
+22045F,316,19045F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+22062C,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+220672,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+220E79,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+222800,219,192800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2228E1,1258,1928E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+222DCC,251,192DCC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+222EC8,57,192EC8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+222F03,27,192F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+223040,245,193040,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+223147,65,193147,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2247F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+22499F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+224B9C,281,194B9C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+224D48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+224D6E,208,194D6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+224E41,34,28CD3D,each byte in a 16-byte window equal to traced code
+224E6E,70,194E6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+224EB5,159,194EB5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+224F6E,308,194F6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+22527E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2252AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2252EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+225339,261,195339,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+225C17,44,395B1B,each byte in a 16-byte window equal to traced code
+226991,53,39689F,each byte in a 16-byte window equal to traced code
+228800,415,448800,each byte in a 16-byte window equal to traced code
+228B5D,59,198B5D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+240800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+24A800,106,12A800,each byte in a 16-byte window equal to traced code
+250800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+28686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+2868EC,59,2DE8EC,each byte in a 16-byte window equal to traced code
+28692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+286943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+28697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2869D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+286A66,33,38EA66,each byte in a 16-byte window equal to traced code
+286B61,159,126B61,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+286C3D,535,126C3D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+286E75,149,126E75,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+286F20,129,126F20,each byte in a 16-byte window equal to traced code
+2871E0,18,4971E0,each byte in a 16-byte window equal to traced code
+287206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2872FC,87,4972FC,each byte in a 16-byte window equal to traced code
+2873A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+28746D,160,12746D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+287522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2876AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2879DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+287B60,29,127B60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+287D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+287D87,36,2E0099,each byte in a 16-byte window equal to traced code
+2880FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+288170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2881DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+28837B,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2883C1,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+28882A,60,6282A,each byte in a 16-byte window equal to traced code
+288A66,25,62A66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+288AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+288D60,178,4F0D60,each byte in a 16-byte window equal to traced code
+288EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+28A8BF,28,12A8BF,each byte in a 16-byte window equal to traced code
+28A946,431,80A946,each byte in a 16-byte window equal to traced code
+28AB8D,784,2E2B8D,each byte in a 16-byte window equal to traced code
+28AEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+28AF29,51,12AF29,each byte in a 16-byte window equal to traced code
+28C8A6,26,3948A6,each byte in a 16-byte window equal to traced code
+28C8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+28CA3C,17,3ECA3C,each byte in a 16-byte window equal to traced code
+28CE75,141,4F4E75,each byte in a 16-byte window equal to traced code
+28CF33,17,96CF33,each byte in a 16-byte window equal to traced code
+28D00A,19,12D00A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+28D235,261,395235,each byte in a 16-byte window equal to traced code
+290BD1,16,130BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DE887,25,C66887,each byte in a 16-byte window equal to traced code
+2DE8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DE92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DE97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DE9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DEA3D,101,38EA3D,each byte in a 16-byte window equal to traced code
+2DEAAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+2DF048,58,127048,each byte in a 16-byte window equal to traced code
+2DF1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+2DF206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DF2A4,175,5472A4,each byte in a 16-byte window equal to traced code
+2DF3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DF3BC,42,4EF3BC,each byte in a 16-byte window equal to traced code
+2DF443,41,4EF443,each byte in a 16-byte window equal to traced code
+2DF4A5,18,1274A5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DF5BA,26,2875BA,each byte in a 16-byte window equal to traced code
+2DF607,26,2875BA,each byte in a 16-byte window equal to traced code
+2DF64D,26,2875BA,each byte in a 16-byte window equal to traced code
+2DF6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2DF79C,174,96779C,each byte in a 16-byte window equal to traced code
+2DF9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2E0482,391,860482,each byte in a 16-byte window equal to traced code
+2E082A,60,6282A,each byte in a 16-byte window equal to traced code
+2E0A47,56,62A47,each byte in a 16-byte window equal to traced code
+2E0AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+2E0D39,217,4F0D39,each byte in a 16-byte window equal to traced code
+2E0EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2E28BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+2E2946,590,392946,each byte in a 16-byte window equal to traced code
+2E2BC5,704,392BC5,each byte in a 16-byte window equal to traced code
+2E2EAF,43,392EAF,each byte in a 16-byte window equal to traced code
+2E3092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2E48A1,31,3948A1,each byte in a 16-byte window equal to traced code
+2E48E2,48,3EC8E2,each byte in a 16-byte window equal to traced code
+2E4A29,36,3ECA29,each byte in a 16-byte window equal to traced code
+2E4A4F,26,12CA4F,each byte in a 16-byte window equal to traced code
+2E4B28,61,28CB28,each byte in a 16-byte window equal to traced code
+2E4C44,26,28CC44,each byte in a 16-byte window equal to traced code
+2E4C82,28,28CC82,each byte in a 16-byte window equal to traced code
+2E4CBD,153,28CCBD,each byte in a 16-byte window equal to traced code
+2E4E11,63,28CE11,each byte in a 16-byte window equal to traced code
+2E4E6B,152,12CE6B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2E4F33,17,96CF33,each byte in a 16-byte window equal to traced code
+2E517A,22,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2E5235,261,395235,each byte in a 16-byte window equal to traced code
+2E542D,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2E6092,87,19619B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2E62D8,25,1963E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+2F8800,379,19C800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+310800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+318800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32692C,234,13692C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326A26,110,136A26,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326A96,128,136A96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326B17,202,136B17,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326BE2,50,136BE2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326C15,40,136C15,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326E4D,18,136E4D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326E65,297,136E65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+326F96,105,136F96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3273D3,240,1373D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3274D8,378,1374D8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+327655,209,137655,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32775B,173,13775B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32781D,234,13781D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+327AFC,32,137AFC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+327B1D,113,137B1D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+327BB6,396,137BB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+327D43,70,137D43,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+327F69,98,137F69,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+327FCE,49,137FCE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32811D,53,13811D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+328192,74,860482,each byte in a 16-byte window equal to traced code
+3281DD,18,1381DD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3281F0,297,1381F0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+328E79,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32A800,219,192800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32A8E1,1258,1928E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32ADCC,251,192DCC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32AEC8,57,192EC8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32AF03,27,192F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32B040,245,193040,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32B147,65,193147,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32C7F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32C99F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32CD48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32CD6E,208,194D6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32CE41,34,28CD3D,each byte in a 16-byte window equal to traced code
+32D27E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32D2AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+32D2EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+32D339,261,195339,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+330B5D,59,198B5D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+348800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+358800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38E887,25,C66887,each byte in a 16-byte window equal to traced code
+38E8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38E92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38E97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38E9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38EA3D,35,286A3D,each byte in a 16-byte window equal to traced code
+38EAA2,156,3E6AA2,each byte in a 16-byte window equal to traced code
+38EB3F,193,126B3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38EC0D,47,2DEC0D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38ED4D,46,7AED4D,each byte in a 16-byte window equal to traced code
+38EFD5,173,126FD5,each byte in a 16-byte window equal to traced code
+38F12B,25,12712B,each byte in a 16-byte window equal to traced code
+38F1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+38F206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38F2A4,175,5472A4,each byte in a 16-byte window equal to traced code
+38F3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38F3BC,42,4EF3BC,each byte in a 16-byte window equal to traced code
+38F443,41,4EF443,each byte in a 16-byte window equal to traced code
+38F4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38F522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38F5BA,26,2875BA,each byte in a 16-byte window equal to traced code
+38F607,26,2875BA,each byte in a 16-byte window equal to traced code
+38F64D,26,2875BA,each byte in a 16-byte window equal to traced code
+38F6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38F79C,174,96779C,each byte in a 16-byte window equal to traced code
+38F85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38F960,16,2DF960,each byte in a 16-byte window equal to traced code
+38F9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+38FAD9,78,2DFAD9,each byte in a 16-byte window equal to traced code
+38FE72,29,2DFE72,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3900A5,24,2E00A5,each byte in a 16-byte window equal to traced code
+390213,25,2E0213,each byte in a 16-byte window equal to traced code
+390259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+39040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+390482,75,860482,each byte in a 16-byte window equal to traced code
+390540,22,12822E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+39069A,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3906E0,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+39082A,60,6282A,each byte in a 16-byte window equal to traced code
+390A47,56,62A47,each byte in a 16-byte window equal to traced code
+390AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+390D39,217,4F0D39,each byte in a 16-byte window equal to traced code
+390EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3928BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+3928EA,30,28A8EA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+39290A,35,2E290A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+392946,583,80A946,each byte in a 16-byte window equal to traced code
+392B94,688,442B94,each byte in a 16-byte window equal to traced code
+3930EE,20,12B0EE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3931B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+3948D6,60,3EC8D6,each byte in a 16-byte window equal to traced code
+394A29,36,3ECA29,each byte in a 16-byte window equal to traced code
+394A4F,26,12CA4F,each byte in a 16-byte window equal to traced code
+394D08,78,28CD08,each byte in a 16-byte window equal to traced code
+394D6F,22,12CD6F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+394E11,63,28CE11,each byte in a 16-byte window equal to traced code
+394E6A,153,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+394F33,17,96CF33,each byte in a 16-byte window equal to traced code
+394FE6,55,3ECFE6,each byte in a 16-byte window equal to traced code
+395190,76,12D190,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3951EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+396532,89,226624,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3968C0,20,28EC0D,each byte in a 16-byte window equal to traced code
+398BD9,24,2E8BD9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+3E68EC,59,43E8EC,each byte in a 16-byte window equal to traced code
+3E692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E697C,37,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E69D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E6A3C,102,43EA3C,each byte in a 16-byte window equal to traced code
+3E6AAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+3E6B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E71E0,18,4971E0,each byte in a 16-byte window equal to traced code
+3E7206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E72A4,175,5472A4,each byte in a 16-byte window equal to traced code
+3E73A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E746C,161,12746C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E7522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E76AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E79DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E7D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E7D87,36,2E0099,each byte in a 16-byte window equal to traced code
+3E7F03,218,287F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E80FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E8170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E81DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E882E,56,6282E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3E88B4,43,628B4,each byte in a 16-byte window equal to traced code
+3E8A47,56,62A47,each byte in a 16-byte window equal to traced code
+3E8AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+3E8D39,217,4F0D39,each byte in a 16-byte window equal to traced code
+3E8EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3EA8BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+3EA945,689,4F2945,each byte in a 16-byte window equal to traced code
+3EAC4C,594,442C4C,each byte in a 16-byte window equal to traced code
+3EAEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+3EAF29,51,12AF29,each byte in a 16-byte window equal to traced code
+3EB092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3EB6B3,19,24B06C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3EC8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3ECB28,61,28CB28,each byte in a 16-byte window equal to traced code
+3ECE11,63,28CE11,each byte in a 16-byte window equal to traced code
+3ECE6E,149,4F4E6E,each byte in a 16-byte window equal to traced code
+3ECF33,17,96CF33,each byte in a 16-byte window equal to traced code
+3ED17A,22,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+3ED235,61,54D33A,each byte in a 16-byte window equal to traced code
+43E887,25,C66887,each byte in a 16-byte window equal to traced code
+43E8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43E92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43E97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43E9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43EA3C,36,496A3C,each byte in a 16-byte window equal to traced code
+43EAAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+43EB3F,193,126B3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43EC0D,47,2DEC0D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43ED66,21,126D66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43F048,58,127048,each byte in a 16-byte window equal to traced code
+43F12B,25,12712B,each byte in a 16-byte window equal to traced code
+43F1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+43F206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43F2A4,175,5472A4,each byte in a 16-byte window equal to traced code
+43F3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43F3BC,42,4EF3BC,each byte in a 16-byte window equal to traced code
+43F4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43F522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43F5BA,26,2875BA,each byte in a 16-byte window equal to traced code
+43F607,26,2875BA,each byte in a 16-byte window equal to traced code
+43F64D,26,2875BA,each byte in a 16-byte window equal to traced code
+43F6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43F79C,174,96779C,each byte in a 16-byte window equal to traced code
+43F85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43F9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+43FB3F,724,2DFB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+440099,36,2E0099,each byte in a 16-byte window equal to traced code
+440215,23,2E0215,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+440259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+44040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+440482,75,860482,each byte in a 16-byte window equal to traced code
+440540,22,12822E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+44082A,60,6282A,each byte in a 16-byte window equal to traced code
+440A47,56,62A47,each byte in a 16-byte window equal to traced code
+440AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+440D39,217,4F0D39,each byte in a 16-byte window equal to traced code
+440EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4428BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+442C92,530,49AC92,each byte in a 16-byte window equal to traced code
+442EAF,43,392EAF,each byte in a 16-byte window equal to traced code
+442F28,52,2E2F28,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+443092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4431B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+4448E2,48,49C8E2,each byte in a 16-byte window equal to traced code
+444A29,36,3ECA29,each byte in a 16-byte window equal to traced code
+444A4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+444D08,78,28CD08,each byte in a 16-byte window equal to traced code
+444D6F,18,12CD6F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+444DB4,59,394DB4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+444E11,63,28CE11,each byte in a 16-byte window equal to traced code
+444E6D,150,4F4E6D,each byte in a 16-byte window equal to traced code
+444F33,17,96CF33,each byte in a 16-byte window equal to traced code
+444FE6,55,3ECFE6,each byte in a 16-byte window equal to traced code
+44506A,24,39506A,each byte in a 16-byte window equal to traced code
+445190,76,12D190,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4451EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+448BD9,24,2E8BD9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+4968EC,59,4EE8EC,each byte in a 16-byte window equal to traced code
+49692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+496943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4969D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+496A56,76,4EEA56,each byte in a 16-byte window equal to traced code
+496ABA,43,286ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+496B19,37,286B19,each byte in a 16-byte window equal to traced code
+496B61,219,2DEB61,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+497206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4972A4,45,2872A4,each byte in a 16-byte window equal to traced code
+4972D6,38,2872D6,each byte in a 16-byte window equal to traced code
+4973A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49746D,160,12746D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+497522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4976AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4979DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+497B60,29,127B60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+497D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+497D87,36,2E0099,each byte in a 16-byte window equal to traced code
+497F04,217,287F04,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4980FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+498170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4981DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+498443,18,328465,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49882E,56,6282E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4988B4,43,628B4,each byte in a 16-byte window equal to traced code
+498A47,56,62A47,each byte in a 16-byte window equal to traced code
+498AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+498D39,217,4F0D39,each byte in a 16-byte window equal to traced code
+498EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49A8BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+49A8E6,20,2E28E6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49A900,45,3EA900,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49A945,1246,4F2945,each byte in a 16-byte window equal to traced code
+49AEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+49AF29,51,12AF29,each byte in a 16-byte window equal to traced code
+49B092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49B64F,29,32B5EB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49C8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49CE11,63,28CE11,each byte in a 16-byte window equal to traced code
+49CE6A,153,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49CF33,17,96CF33,each byte in a 16-byte window equal to traced code
+49D2B0,17,3952B0,each byte in a 16-byte window equal to traced code
+49D2DF,58,3952DF,each byte in a 16-byte window equal to traced code
+49D8CE,40,32D9C2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49DB10,17,32DC04,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+49EC7C,17,8BE841,each byte in a 16-byte window equal to traced code
+4A0318,119,3303F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4A0BD1,46,3F0BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EE887,25,C66887,each byte in a 16-byte window equal to traced code
+4EE8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EE92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EE97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EE9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EEA3C,36,64EA3C,each byte in a 16-byte window equal to traced code
+4EEAA2,156,546AA2,each byte in a 16-byte window equal to traced code
+4EEB3F,193,126B3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EEC0D,47,2DEC0D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EED66,21,126D66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EEFD5,173,126FD5,each byte in a 16-byte window equal to traced code
+4EF12B,25,12712B,each byte in a 16-byte window equal to traced code
+4EF1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+4EF206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EF2A4,175,5472A4,each byte in a 16-byte window equal to traced code
+4EF3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EF4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EF522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EF6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EF79C,174,96779C,each byte in a 16-byte window equal to traced code
+4EF85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EF960,16,2DF960,each byte in a 16-byte window equal to traced code
+4EF9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EFAD9,78,2DFAD9,each byte in a 16-byte window equal to traced code
+4EFB3E,725,38FB3E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4EFE71,30,43FE71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F00A5,24,2E00A5,each byte in a 16-byte window equal to traced code
+4F0212,26,2E0212,each byte in a 16-byte window equal to traced code
+4F0259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F0482,75,860482,each byte in a 16-byte window equal to traced code
+4F0540,22,12822E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F082E,56,6282E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F08B4,43,628B4,each byte in a 16-byte window equal to traced code
+4F0A47,56,62A47,each byte in a 16-byte window equal to traced code
+4F0B62,349,2E0B62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F0D39,39,62DFA,each byte in a 16-byte window equal to traced code
+4F28E8,24,28A8E8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F2902,31,3EA902,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F292F,700,80A92F,each byte in a 16-byte window equal to traced code
+4F2BF6,686,80ABF6,each byte in a 16-byte window equal to traced code
+4F2EAF,43,392EAF,each byte in a 16-byte window equal to traced code
+4F2F29,51,12AF29,each byte in a 16-byte window equal to traced code
+4F3092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F31B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+4F48D6,60,54C8D6,each byte in a 16-byte window equal to traced code
+4F4A4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+4F4D08,78,28CD08,each byte in a 16-byte window equal to traced code
+4F4E11,63,28CE11,each byte in a 16-byte window equal to traced code
+4F4E6C,68,12CE6C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F4EB6,19,5A565F,each byte in a 16-byte window equal to traced code
+4F4EDB,40,12CEDB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F4F33,17,96CF33,each byte in a 16-byte window equal to traced code
+4F4FE6,55,3ECFE6,each byte in a 16-byte window equal to traced code
+4F506A,24,39506A,each byte in a 16-byte window equal to traced code
+4F5235,261,395235,each byte in a 16-byte window equal to traced code
+4F6941,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+4F8BD9,24,2E8BD9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+5468EC,59,59E8EC,each byte in a 16-byte window equal to traced code
+54692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+546943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5469D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+546A3C,102,59EA3C,each byte in a 16-byte window equal to traced code
+546AAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+546B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54712B,25,12712B,each byte in a 16-byte window equal to traced code
+5471E0,18,4971E0,each byte in a 16-byte window equal to traced code
+547206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5472E0,115,64F2E0,each byte in a 16-byte window equal to traced code
+5473A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54746C,161,12746C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+547522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+547607,26,2875BA,each byte in a 16-byte window equal to traced code
+54764D,26,2875BA,each byte in a 16-byte window equal to traced code
+5476AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5479DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+547B5F,30,3E7B5F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+547D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+547D87,36,2E0099,each byte in a 16-byte window equal to traced code
+547F03,218,287F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5480FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+548170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5481DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54882A,60,6282A,each byte in a 16-byte window equal to traced code
+548A47,56,62A47,each byte in a 16-byte window equal to traced code
+548AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+548D39,217,6A8D39,each byte in a 16-byte window equal to traced code
+548EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54A8BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+54AEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+54AF29,51,12AF29,each byte in a 16-byte window equal to traced code
+54B092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54B1B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+54C885,18,12C885,each byte in a 16-byte window equal to traced code
+54C8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54CA3C,17,3ECA3C,each byte in a 16-byte window equal to traced code
+54CD08,78,28CD08,each byte in a 16-byte window equal to traced code
+54CE11,63,28CE11,each byte in a 16-byte window equal to traced code
+54CE6E,149,704E6E,each byte in a 16-byte window equal to traced code
+54CF33,17,96CF33,each byte in a 16-byte window equal to traced code
+54CFE6,55,3ECFE6,each byte in a 16-byte window equal to traced code
+54D06A,24,39506A,each byte in a 16-byte window equal to traced code
+54D17A,22,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+54D282,17,23059,each byte in a 16-byte window equal to traced code
+54D29D,51,39529D,each byte in a 16-byte window equal to traced code
+54D2D3,103,3952D3,each byte in a 16-byte window equal to traced code
+550BD1,46,3F0BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59E887,25,C66887,each byte in a 16-byte window equal to traced code
+59E8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59E92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59E97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59E9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59EA3C,36,64EA3C,each byte in a 16-byte window equal to traced code
+59EAAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+59EB3F,193,126B3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59EC0D,47,2DEC0D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59ED66,21,126D66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59F048,58,127048,each byte in a 16-byte window equal to traced code
+59F12B,25,12712B,each byte in a 16-byte window equal to traced code
+59F1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+59F206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59F2A4,175,64F2A4,each byte in a 16-byte window equal to traced code
+59F3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59F4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59F522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59F607,26,2875BA,each byte in a 16-byte window equal to traced code
+59F64D,26,2875BA,each byte in a 16-byte window equal to traced code
+59F6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59F79C,174,96779C,each byte in a 16-byte window equal to traced code
+59F85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59F9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59FB3F,724,2DFB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+59FE71,30,43FE71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A0041,20,440041,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A0099,36,2E0099,each byte in a 16-byte window equal to traced code
+5A0215,23,2E0215,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A0259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A0482,75,860482,each byte in a 16-byte window equal to traced code
+5A0540,22,12822E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A082A,60,6282A,each byte in a 16-byte window equal to traced code
+5A0A47,56,62A47,each byte in a 16-byte window equal to traced code
+5A0AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+5A0D39,217,6A8D39,each byte in a 16-byte window equal to traced code
+5A0EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A28E8,24,28A8E8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A2902,31,3EA902,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A292F,700,80A92F,each byte in a 16-byte window equal to traced code
+5A2BF6,686,80ABF6,each byte in a 16-byte window equal to traced code
+5A2EAF,43,392EAF,each byte in a 16-byte window equal to traced code
+5A2F29,51,12AF29,each byte in a 16-byte window equal to traced code
+5A3092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A31B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+5A48E2,48,5FC8E2,each byte in a 16-byte window equal to traced code
+5A4A29,36,3ECA29,each byte in a 16-byte window equal to traced code
+5A4A4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+5A4D08,78,28CD08,each byte in a 16-byte window equal to traced code
+5A4D71,20,12CD71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A4E11,63,28CE11,each byte in a 16-byte window equal to traced code
+5A4E6C,151,864E6C,each byte in a 16-byte window equal to traced code
+5A4F33,17,96CF33,each byte in a 16-byte window equal to traced code
+5A5346,89,44654D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A565F,18,12CEB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5A8BD9,24,2E8BD9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+5F68EC,59,64E8EC,each byte in a 16-byte window equal to traced code
+5F692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F6943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F69D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F6A3C,102,64EA3C,each byte in a 16-byte window equal to traced code
+5F6B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F712B,25,12712B,each byte in a 16-byte window equal to traced code
+5F71E0,18,4971E0,each byte in a 16-byte window equal to traced code
+5F7206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F72A4,175,64F2A4,each byte in a 16-byte window equal to traced code
+5F73A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F746C,161,12746C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F7522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F76AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F79DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F7B5F,30,3E7B5F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F7D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F7D87,36,2E0099,each byte in a 16-byte window equal to traced code
+5F7F03,218,287F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F80FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F8170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F81DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5F882A,60,6282A,each byte in a 16-byte window equal to traced code
+5F8A47,56,62A47,each byte in a 16-byte window equal to traced code
+5F8AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+5F8D39,217,6A8D39,each byte in a 16-byte window equal to traced code
+5F8EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5FA8BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+5FAEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+5FAF29,51,12AF29,each byte in a 16-byte window equal to traced code
+5FB092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5FB1B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+5FC8A1,31,3948A1,each byte in a 16-byte window equal to traced code
+5FC8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5FC995,16,12C995,each byte in a 16-byte window equal to traced code
+5FCD7F,49,12CD7F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5FCE11,63,28CE11,each byte in a 16-byte window equal to traced code
+5FCE6E,149,704E6E,each byte in a 16-byte window equal to traced code
+5FCF33,17,96CF33,each byte in a 16-byte window equal to traced code
+5FD17A,22,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+5FD2DF,58,3952DF,each byte in a 16-byte window equal to traced code
+5FD418,40,3ED34D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+600BD1,46,3F0BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64E887,25,C66887,each byte in a 16-byte window equal to traced code
+64E8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64E92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64E97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64E9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64EA56,76,6FEA56,each byte in a 16-byte window equal to traced code
+64EAAD,56,286AAD,each byte in a 16-byte window equal to traced code
+64EB19,37,286B19,each byte in a 16-byte window equal to traced code
+64EB61,219,2DEB61,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64F048,58,127048,each byte in a 16-byte window equal to traced code
+64F12B,25,12712B,each byte in a 16-byte window equal to traced code
+64F1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+64F206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64F2FC,87,4972FC,each byte in a 16-byte window equal to traced code
+64F3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64F4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64F522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64F6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64F79C,174,96779C,each byte in a 16-byte window equal to traced code
+64F85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64F9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64FB3F,724,2DFB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+64FE71,30,43FE71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+650212,26,2E0212,each byte in a 16-byte window equal to traced code
+650259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+65040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+650482,391,860482,each byte in a 16-byte window equal to traced code
+65082A,60,6282A,each byte in a 16-byte window equal to traced code
+650873,207,2E0873,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+650A47,56,62A47,each byte in a 16-byte window equal to traced code
+650AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+650B62,349,2E0B62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+650D39,217,6A8D39,each byte in a 16-byte window equal to traced code
+650EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6528BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+6528E8,1468,5FA8E8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+652EAF,43,392EAF,each byte in a 16-byte window equal to traced code
+652F29,51,12AF29,each byte in a 16-byte window equal to traced code
+653092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6531B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+6548E2,48,6AC8E2,each byte in a 16-byte window equal to traced code
+654A4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+654D08,78,28CD08,each byte in a 16-byte window equal to traced code
+654E73,61,12CE73,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+654EB6,19,12CEB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+654EDB,40,12CEDB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+654F33,17,96CF33,each byte in a 16-byte window equal to traced code
+655009,20,12D009,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+65506A,24,39506A,each byte in a 16-byte window equal to traced code
+655358,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+658BCD,36,2E8BCD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+6A68EC,59,6FE8EC,each byte in a 16-byte window equal to traced code
+6A692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A6943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A69D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A6A3C,102,6FEA3C,each byte in a 16-byte window equal to traced code
+6A6AAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+6A6B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A712B,25,12712B,each byte in a 16-byte window equal to traced code
+6A71E0,18,4971E0,each byte in a 16-byte window equal to traced code
+6A7206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A72E0,115,137296,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A73A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A746C,161,12746C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A7522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A76AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A79DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A7B5F,30,3E7B5F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A7D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A7D87,36,2E0099,each byte in a 16-byte window equal to traced code
+6A7F00,221,287F00,each byte in a 16-byte window equal to traced code
+6A80FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A8170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A81DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A8444,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A848A,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A882A,60,6282A,each byte in a 16-byte window equal to traced code
+6A8A66,25,62A66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6A8AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+6A8D60,178,4F0D60,each byte in a 16-byte window equal to traced code
+6A8EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6AA8BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+6AA8E8,1467,54A8E8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6AAEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+6AAF29,51,12AF29,each byte in a 16-byte window equal to traced code
+6AB092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6AB1B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+6AC8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6AC995,16,12C995,each byte in a 16-byte window equal to traced code
+6ACA4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+6ACD71,63,12CD71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6ACDEC,100,28CDEC,each byte in a 16-byte window equal to traced code
+6ACE6A,153,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6ACF33,17,96CF33,each byte in a 16-byte window equal to traced code
+6ACFAD,17,12CFAD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6AD17A,22,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6AD235,261,395235,each byte in a 16-byte window equal to traced code
+6AFF5D,20,28EC0D,each byte in a 16-byte window equal to traced code
+6B0BD1,16,130BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C2800,106,12A800,each byte in a 16-byte window equal to traced code
+6C286B,802,24A86B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C2B8E,86,24AB8E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C2BE8,28,24ABE8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C2C09,340,24AC09,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C2D62,190,24AD62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C2E22,67,24AE22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C306C,19,24B06C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C35A8,766,24B5A8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6C38A7,25,24B8A7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FE887,25,C66887,each byte in a 16-byte window equal to traced code
+6FE8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FE92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FE97C,37,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FE9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FEAA2,156,5F6AA2,each byte in a 16-byte window equal to traced code
+6FEB3F,193,126B3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FEC0D,47,2DEC0D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FED66,21,126D66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FEFD5,173,126FD5,each byte in a 16-byte window equal to traced code
+6FF12B,25,12712B,each byte in a 16-byte window equal to traced code
+6FF1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+6FF206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FF2A4,175,C672A4,each byte in a 16-byte window equal to traced code
+6FF3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FF4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FF522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FF607,26,2875BA,each byte in a 16-byte window equal to traced code
+6FF64D,26,2875BA,each byte in a 16-byte window equal to traced code
+6FF6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FF79C,174,96779C,each byte in a 16-byte window equal to traced code
+6FF85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FF960,16,2DF960,each byte in a 16-byte window equal to traced code
+6FF9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FFAD9,78,2DFAD9,each byte in a 16-byte window equal to traced code
+6FFB3E,725,38FB3E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+6FFE71,30,43FE71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+700045,16,440045,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+700099,36,2E0099,each byte in a 16-byte window equal to traced code
+700212,26,2E0212,each byte in a 16-byte window equal to traced code
+700259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+70040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+700482,75,860482,each byte in a 16-byte window equal to traced code
+700540,22,12822E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+70082A,60,6282A,each byte in a 16-byte window equal to traced code
+700A47,56,62A47,each byte in a 16-byte window equal to traced code
+700AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+700B62,349,2E0B62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+700D39,217,758D39,each byte in a 16-byte window equal to traced code
+700EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7028E8,24,28A8E8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+702902,31,3EA902,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+70292F,700,80A92F,each byte in a 16-byte window equal to traced code
+702BF6,686,80ABF6,each byte in a 16-byte window equal to traced code
+702EAF,43,392EAF,each byte in a 16-byte window equal to traced code
+702F29,51,12AF29,each byte in a 16-byte window equal to traced code
+703092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7031B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+7048D6,60,75C8D6,each byte in a 16-byte window equal to traced code
+704A29,36,3ECA29,each byte in a 16-byte window equal to traced code
+704A4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+704D08,78,28CD08,each byte in a 16-byte window equal to traced code
+704E11,63,28CE11,each byte in a 16-byte window equal to traced code
+704E6D,67,12CE6D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+704EB6,19,12CEB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+704EDB,40,12CEDB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+704F33,17,96CF33,each byte in a 16-byte window equal to traced code
+704FE6,55,3ECFE6,each byte in a 16-byte window equal to traced code
+70506A,24,39506A,each byte in a 16-byte window equal to traced code
+70538F,89,44654D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+708BD9,24,2E8BD9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+7568EC,59,7AE8EC,each byte in a 16-byte window equal to traced code
+75692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+756943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7569D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+756A3C,113,7AEA3C,each byte in a 16-byte window equal to traced code
+756ABA,132,5F6ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+756B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+756FD5,30,126FD5,each byte in a 16-byte window equal to traced code
+75712B,25,12712B,each byte in a 16-byte window equal to traced code
+7571E0,18,4971E0,each byte in a 16-byte window equal to traced code
+757206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7572A4,175,C672A4,each byte in a 16-byte window equal to traced code
+7573A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75746C,161,12746C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+757522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7575BA,26,2875BA,each byte in a 16-byte window equal to traced code
+7576AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7579DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+757AD9,78,127AD9,each byte in a 16-byte window equal to traced code
+757B5F,30,3E7B5F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+757D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+757D87,36,2E0099,each byte in a 16-byte window equal to traced code
+757F00,221,287F00,each byte in a 16-byte window equal to traced code
+7580FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+758170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7581DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+758553,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+758599,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75882A,60,6282A,each byte in a 16-byte window equal to traced code
+758A66,25,62A66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+758AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+758D60,178,4F0D60,each byte in a 16-byte window equal to traced code
+758EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75A8BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+75A8E8,1468,5FA8E8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75AEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+75AF29,51,12AF29,each byte in a 16-byte window equal to traced code
+75B092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75B1B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+75C8A1,31,3948A1,each byte in a 16-byte window equal to traced code
+75C8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75C995,16,12C995,each byte in a 16-byte window equal to traced code
+75CA4F,26,12CA4F,each byte in a 16-byte window equal to traced code
+75CC44,26,28CC44,each byte in a 16-byte window equal to traced code
+75CC82,28,28CC82,each byte in a 16-byte window equal to traced code
+75CCBD,153,28CCBD,each byte in a 16-byte window equal to traced code
+75CD6B,18,12CD6B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75CD7F,49,12CD7F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75CE11,63,28CE11,each byte in a 16-byte window equal to traced code
+75CE6A,153,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75CF33,17,96CF33,each byte in a 16-byte window equal to traced code
+75D190,76,12D190,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+75D1EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+760BD1,16,130BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+785D49,32,445C57,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AE887,25,C66887,each byte in a 16-byte window equal to traced code
+7AE8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AE92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AE97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AE9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AEA3C,36,6FEA3C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AEAAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+7AEB3F,193,126B3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AEC0D,47,2DEC0D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AED51,42,B5ED51,each byte in a 16-byte window equal to traced code
+7AF048,58,127048,each byte in a 16-byte window equal to traced code
+7AF12B,25,12712B,each byte in a 16-byte window equal to traced code
+7AF1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+7AF206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AF2A4,175,C672A4,each byte in a 16-byte window equal to traced code
+7AF3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AF3BC,42,4EF3BC,each byte in a 16-byte window equal to traced code
+7AF43C,48,43F43C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AF4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AF522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AF5BA,26,2875BA,each byte in a 16-byte window equal to traced code
+7AF607,26,2875BA,each byte in a 16-byte window equal to traced code
+7AF64D,26,2875BA,each byte in a 16-byte window equal to traced code
+7AF6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AF79C,174,96779C,each byte in a 16-byte window equal to traced code
+7AF85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AF9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AFB3F,724,2DFB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7AFE71,30,43FE71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B0041,20,440041,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B0099,36,2E0099,each byte in a 16-byte window equal to traced code
+7B013E,68,2E013E,each byte in a 16-byte window equal to traced code
+7B0215,23,2E0215,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B0259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B0482,75,860482,each byte in a 16-byte window equal to traced code
+7B0540,22,12822E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B0682,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B06C8,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B082A,60,6282A,each byte in a 16-byte window equal to traced code
+7B0873,207,700873,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B0A47,56,62A47,each byte in a 16-byte window equal to traced code
+7B0B62,349,2E0B62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B0D39,39,62DFA,each byte in a 16-byte window equal to traced code
+7B28E8,24,28A8E8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B2902,31,3EA902,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B292F,700,80A92F,each byte in a 16-byte window equal to traced code
+7B2BF6,686,80ABF6,each byte in a 16-byte window equal to traced code
+7B2EAF,43,392EAF,each byte in a 16-byte window equal to traced code
+7B2F28,52,2E2F28,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B3092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B31B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+7B48A1,31,3948A1,each byte in a 16-byte window equal to traced code
+7B48E2,48,80C8E2,each byte in a 16-byte window equal to traced code
+7B4A29,36,3ECA29,each byte in a 16-byte window equal to traced code
+7B4A4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+7B4B28,61,28CB28,each byte in a 16-byte window equal to traced code
+7B4C44,26,28CC44,each byte in a 16-byte window equal to traced code
+7B4C82,28,28CC82,each byte in a 16-byte window equal to traced code
+7B4CBD,153,28CCBD,each byte in a 16-byte window equal to traced code
+7B4D6F,18,12CD6F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B4DB4,59,394DB4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B4E11,63,28CE11,each byte in a 16-byte window equal to traced code
+7B4E6D,150,864E6D,each byte in a 16-byte window equal to traced code
+7B4F33,17,96CF33,each byte in a 16-byte window equal to traced code
+7B517A,98,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B51EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+7B59DF,20,28EC0D,each byte in a 16-byte window equal to traced code
+7B6E8B,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7B8BD9,24,2E8BD9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BC800,358,194800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BC99F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BCB6F,40,28CB3D,each byte in a 16-byte window equal to traced code
+7BCB9C,281,194B9C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BCD48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BCD6E,68,28CC6A,each byte in a 16-byte window equal to traced code
+7BCDB7,135,194DB7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BCE41,34,28CD3D,each byte in a 16-byte window equal to traced code
+7BCE6E,70,194E6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BCEB5,159,194EB5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BCF6E,308,194F6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BD27E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BD2AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+7BD2EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+80686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+8068EC,59,85E8EC,each byte in a 16-byte window equal to traced code
+80692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+806943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8069D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+806A3C,102,6FEA3C,each byte in a 16-byte window equal to traced code
+806AAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+806B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8071E0,18,4971E0,each byte in a 16-byte window equal to traced code
+807206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8072A4,175,C672A4,each byte in a 16-byte window equal to traced code
+8073A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80746C,161,12746C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+807522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8076AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8079DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+807B60,29,127B60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+807D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+807D87,36,2E0099,each byte in a 16-byte window equal to traced code
+807F04,217,287F04,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8080FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+808170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8081DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8083D5,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80841B,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80882A,60,6282A,each byte in a 16-byte window equal to traced code
+808A47,56,62A47,each byte in a 16-byte window equal to traced code
+808AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+808B62,349,548B62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+808D39,217,860D39,each byte in a 16-byte window equal to traced code
+808EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80A8BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+80A910,29,28A910,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80A945,298,C6A945,each byte in a 16-byte window equal to traced code
+80AA85,959,54AA85,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80AEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+80AF28,52,2E2F28,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80B092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80C8A1,31,3948A1,each byte in a 16-byte window equal to traced code
+80C8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80C995,16,12C995,each byte in a 16-byte window equal to traced code
+80CA4F,26,12CA4F,each byte in a 16-byte window equal to traced code
+80CD6D,31,12CD6D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80CDB3,157,8BCDB3,each byte in a 16-byte window equal to traced code
+80CE6A,308,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80D17A,98,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80D1EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+80D235,322,75D235,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+80F322,19,7BE6CF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+810BD1,46,3F0BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85E887,25,C66887,each byte in a 16-byte window equal to traced code
+85E8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85E92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85E97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85E9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85EA3D,257,8B6A3D,each byte in a 16-byte window equal to traced code
+85EB3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85EFD5,173,126FD5,each byte in a 16-byte window equal to traced code
+85F1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+85F206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85F2A4,45,2872A4,each byte in a 16-byte window equal to traced code
+85F2D6,38,2872D6,each byte in a 16-byte window equal to traced code
+85F338,27,497338,each byte in a 16-byte window equal to traced code
+85F3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85F4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85F522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85F6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85F79C,174,96779C,each byte in a 16-byte window equal to traced code
+85F85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85F960,16,2DF960,each byte in a 16-byte window equal to traced code
+85F9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85FAD9,78,2DFAD9,each byte in a 16-byte window equal to traced code
+85FB3E,725,38FB3E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+85FE72,29,2DFE72,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8600A5,24,2E00A5,each byte in a 16-byte window equal to traced code
+860264,47,2E0264,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8602BB,52,2E02BB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86082A,60,6282A,each byte in a 16-byte window equal to traced code
+860A47,56,62A47,each byte in a 16-byte window equal to traced code
+860D39,39,62DFA,each byte in a 16-byte window equal to traced code
+862C4F,28,12A8BF,each byte in a 16-byte window equal to traced code
+8648A6,26,3948A6,each byte in a 16-byte window equal to traced code
+8648D6,60,8BC8D6,each byte in a 16-byte window equal to traced code
+864A3C,17,3ECA3C,each byte in a 16-byte window equal to traced code
+864D08,78,28CD08,each byte in a 16-byte window equal to traced code
+864DB4,59,394DB4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+864E11,63,28CE11,each byte in a 16-byte window equal to traced code
+864E6C,68,12CE6C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+864EB6,19,12CEB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+864EDB,40,12CEDB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+864F33,17,96CF33,each byte in a 16-byte window equal to traced code
+864FE6,55,3ECFE6,each byte in a 16-byte window equal to traced code
+8650D4,25,7050D4,each byte in a 16-byte window equal to traced code
+865190,76,12D190,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8651EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+865305,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+868BCD,36,2E8BCD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86E913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86E92C,234,18E92C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86EA26,110,136A26,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86EA96,128,136A96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86EB17,202,136B17,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86EBE2,50,136BE2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86EC15,40,136C15,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86EE4D,18,136E4D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86EE65,297,136E65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86EF96,105,136F96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86F3D3,240,18F3D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86F4D8,378,18F4D8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86F663,183,18F663,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86F74F,173,18F74F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86F811,185,18F811,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86F8CB,48,18F8CB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86FAF0,16,18FAF0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86FB0C,404,18FB0C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86FCAA,86,18FCAA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86FD13,36,18FD13,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86FD38,104,18FD38,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86FDD2,157,18FDD2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86FE97,301,18FE97,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+86FFD5,54,18FFD5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8701F1,92,1901F1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+870250,49,190250,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+87039F,53,19039F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+870414,74,860482,each byte in a 16-byte window equal to traced code
+87045F,316,19045F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+870622,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+870668,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+8B68EC,59,B5E8EC,each byte in a 16-byte window equal to traced code
+8B692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B6943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B69D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B6A3D,101,6FEA3D,each byte in a 16-byte window equal to traced code
+8B6ABA,132,5F6ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B6B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B71E0,18,4971E0,each byte in a 16-byte window equal to traced code
+8B7206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B72A4,175,C672A4,each byte in a 16-byte window equal to traced code
+8B73A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B746C,161,12746C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B7522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B76AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B79DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B7B60,29,127B60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B7D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B7D87,36,2E0099,each byte in a 16-byte window equal to traced code
+8B7F03,218,287F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B80FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B8170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B81DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B83CE,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B8414,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B882A,60,6282A,each byte in a 16-byte window equal to traced code
+8B8A66,25,62A66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B8AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+8B8B62,349,6A8B62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B8D60,178,4F0D60,each byte in a 16-byte window equal to traced code
+8B8EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8B9A71,39,3EF7BA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BA8BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+8BA8E6,40,80A8E6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BA910,29,28A910,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BA946,297,B0A946,each byte in a 16-byte window equal to traced code
+8BAA85,959,54AA85,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BAEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+8BAF29,51,12AF29,each byte in a 16-byte window equal to traced code
+8BB092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BC8A1,31,3948A1,each byte in a 16-byte window equal to traced code
+8BC8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BCD6D,16,12CD6D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BCDB3,60,75CDB3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BCE11,63,28CE11,each byte in a 16-byte window equal to traced code
+8BCE6A,153,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BCF33,17,96CF33,each byte in a 16-byte window equal to traced code
+8BD190,76,12D190,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BD1EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+8BD235,322,75D235,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BD461,45,54D44F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BE45D,17,445ACC,each byte in a 16-byte window equal to traced code
+8BE5A4,36,3EF6A9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8BF137,36,3EE7A8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8C0BD1,16,130BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E2800,143,12A800,each byte in a 16-byte window equal to traced code
+8E2890,59,1EA890,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E28D5,755,1EA8D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E2BC9,294,1EABC9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E2CF0,57,1EACF0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E2D2F,23,1EAD2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E2E92,254,1EAE92,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E2F9B,79,1EAF9B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5000,88,785000,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5067,52,785067,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E50A8,329,7850A8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E520D,93,78520D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5279,17,785279,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5401,33,785401,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E542B,43,78542B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E545A,212,78545A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E55AF,111,7855AF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5626,151,785626,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E56D5,37,7856D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5712,330,785712,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5875,94,785875,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5902,256,785902,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5A1F,217,785A1F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5B28,38,785B28,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5B50,76,785B50,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5B9D,207,785B9D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5C6E,57,785C6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5CAA,54,785CAA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5CE8,94,785CE8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5D49,32,445C57,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5D72,20,785D72,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5D90,225,785D90,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5E75,45,785E75,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5EA6,172,785EA6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5F55,87,785F55,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E5FB2,107,785FB2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E6051,69,786051,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E609A,124,78609A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E6118,119,786118,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E64CD,303,7864CD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E6620,119,786620,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E67BD,126,7867BD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8E8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+8F0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91692C,234,13692C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916A26,110,136A26,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916A96,128,136A96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916B17,202,136B17,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916BE2,50,136BE2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916C15,40,136C15,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916E4D,18,136E4D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916E65,297,136E65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+916F96,105,136F96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9173D3,240,1373D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9174D8,378,1374D8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+917655,209,137655,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91775B,173,13775B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91781D,234,13781D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+917AFC,32,137AFC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+917B1D,113,137B1D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+917BB6,396,137BB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+917D43,70,137D43,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+917F69,98,137F69,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+917FCE,49,137FCE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91811D,53,13811D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+918192,74,860482,each byte in a 16-byte window equal to traced code
+9181DD,18,1381DD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9181F0,297,1381F0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+918427,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91846D,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+918E79,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91A800,219,192800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91A8E1,1258,1928E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91ADCC,251,192DCC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91AEC8,57,192EC8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91AF03,27,192F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91B040,245,193040,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91B147,65,193147,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91C7F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91C99F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91CB9C,281,32CB9C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91CD48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91CD6E,208,194D6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91CE41,34,28CD3D,each byte in a 16-byte window equal to traced code
+91CE6E,70,32CE6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91CEB5,159,32CEB5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91CF6E,308,32CF6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91D27E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91D2AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+91D2EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+91DA06,20,B0D912,each byte in a 16-byte window equal to traced code
+920800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+930800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9668EC,59,B5E8EC,each byte in a 16-byte window equal to traced code
+96692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+966943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9669D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+966A3C,113,B5EA3C,each byte in a 16-byte window equal to traced code
+966ABA,132,5F6ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+966B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+966FD5,30,126FD5,each byte in a 16-byte window equal to traced code
+9671E0,18,4971E0,each byte in a 16-byte window equal to traced code
+967206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9672A4,175,C672A4,each byte in a 16-byte window equal to traced code
+9673A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96746C,161,B5F46C,each byte in a 16-byte window equal to traced code
+967522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9675BA,26,2875BA,each byte in a 16-byte window equal to traced code
+967607,26,2875BA,each byte in a 16-byte window equal to traced code
+96764D,26,2875BA,each byte in a 16-byte window equal to traced code
+9676AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9679DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+967AD9,78,2DFAD9,each byte in a 16-byte window equal to traced code
+967B3E,725,38FB3E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+967E71,30,43FE71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+968041,20,440041,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+968099,36,2E0099,each byte in a 16-byte window equal to traced code
+968212,26,2E0212,each byte in a 16-byte window equal to traced code
+968259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96840D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+968482,391,860482,each byte in a 16-byte window equal to traced code
+968690,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9686D6,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96882A,60,6282A,each byte in a 16-byte window equal to traced code
+9688B1,46,628B1,each byte in a 16-byte window equal to traced code
+968A66,25,62A66,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+968AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+968D60,178,4F0D60,each byte in a 16-byte window equal to traced code
+968EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96AC47,29,12A8BE,each byte in a 16-byte window equal to traced code
+96C8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96C995,16,12C995,each byte in a 16-byte window equal to traced code
+96C9E0,109,3EC9E0,each byte in a 16-byte window equal to traced code
+96CA4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+96CC44,26,28CC44,each byte in a 16-byte window equal to traced code
+96CC82,28,28CC82,each byte in a 16-byte window equal to traced code
+96CCBD,153,28CCBD,each byte in a 16-byte window equal to traced code
+96CD6B,18,12CD6B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96CD7F,49,12CD7F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96CDB1,62,75CDB1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96CE11,63,28CE11,each byte in a 16-byte window equal to traced code
+96CE6E,149,B64E6E,each byte in a 16-byte window equal to traced code
+96CFE6,55,3ECFE6,each byte in a 16-byte window equal to traced code
+96D06A,24,39506A,each byte in a 16-byte window equal to traced code
+96D190,76,12D190,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+96D1EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+96D695,20,7BD799,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+970BD1,16,130BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9747F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+97499F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+974B6F,40,28CB3D,each byte in a 16-byte window equal to traced code
+974B9C,281,194B9C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+974D48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+974D6E,68,28CC6A,each byte in a 16-byte window equal to traced code
+974DB7,135,194DB7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+974E41,34,28CD3D,each byte in a 16-byte window equal to traced code
+974E6E,70,194E6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+974EB5,159,194EB5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+974F6E,308,194F6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+97527E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9752AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9752EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+975339,60,54D33A,each byte in a 16-byte window equal to traced code
+9756D9,19,28EC0D,each byte in a 16-byte window equal to traced code
+9A6828,16,1E6828,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A6850,130,1E6850,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A68D5,18,1E68D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A68EB,232,1E68EB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A69D4,124,1E69D4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A6A60,230,1E6A60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A6B47,180,1E6B47,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A6C02,55,1E6C02,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A6C3D,519,1E6C3D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A6E45,308,1E6E45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A6F90,218,1E6F90,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7070,680,1E7070,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A731C,231,1E731C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7418,247,1E7418,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7553,186,1E7553,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7630,187,1E7630,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7700,234,1E7700,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A77EC,249,1E77EC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A78F5,442,1E78F5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7ABA,86,1E7ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7B22,30,1E7B22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7B44,101,1E7B44,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7BDE,102,1E7BDE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7C45,30,1E7C45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7C8B,399,1E7C8B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7E20,454,1E7E20,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A7FF1,34,1E7FF1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9A803C,17,86029F,each byte in a 16-byte window equal to traced code
+9F686E,113,B5E86E,each byte in a 16-byte window equal to traced code
+9F68E7,64,B068E7,each byte in a 16-byte window equal to traced code
+9F692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F6943,119,B06943,each byte in a 16-byte window equal to traced code
+9F69C5,104,B5E9C5,each byte in a 16-byte window equal to traced code
+9F6A3D,22,286A3D,each byte in a 16-byte window equal to traced code
+9F6A5E,224,B5EA5E,each byte in a 16-byte window equal to traced code
+9F6B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F6C3D,255,126C3D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F6D3D,305,126D3D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F6E72,341,2DEE72,each byte in a 16-byte window equal to traced code
+9F6FD5,157,126FD5,each byte in a 16-byte window equal to traced code
+9F7079,83,967079,each byte in a 16-byte window equal to traced code
+9F7522,372,B5F522,each byte in a 16-byte window equal to traced code
+9F76AD,183,1276AD,each byte in a 16-byte window equal to traced code
+9F7798,178,967798,each byte in a 16-byte window equal to traced code
+9F785F,233,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F7B3E,469,38FB3E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F7D1A,89,2DFD1A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F7D79,49,2DFD79,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F7DAC,103,2DFDAC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F7E45,43,2DFE45,each byte in a 16-byte window equal to traced code
+9F7E71,113,43FE71,each byte in a 16-byte window equal to traced code
+9F807A,59,127D68,each byte in a 16-byte window equal to traced code
+9F8259,98,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F82BE,49,2E02BE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F840D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F8482,74,860482,each byte in a 16-byte window equal to traced code
+9F84CD,16,3904CD,each byte in a 16-byte window equal to traced code
+9F84DE,229,8604DE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F85C4,69,3905C4,each byte in a 16-byte window equal to traced code
+9F8690,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F86D6,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9F8EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9FA800,223,4F2800,each byte in a 16-byte window equal to traced code
+9FAB8F,92,442B8F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9FABF4,559,54ABF4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9FAE2C,251,B0AE2C,each byte in a 16-byte window equal to traced code
+9FAF28,57,2E2F28,each byte in a 16-byte window equal to traced code
+9FAF6A,20,12AF6A,each byte in a 16-byte window equal to traced code
+9FB0A0,245,B0B0A0,each byte in a 16-byte window equal to traced code
+9FB1B1,16,12B1B1,each byte in a 16-byte window equal to traced code
+9FB1D1,27,28B1D1,each byte in a 16-byte window equal to traced code
+9FC800,91,28C800,each byte in a 16-byte window equal to traced code
+9FC85C,224,B6485C,each byte in a 16-byte window equal to traced code
+9FCB13,82,96CB13,each byte in a 16-byte window equal to traced code
+9FCB6D,68,28CB6D,each byte in a 16-byte window equal to traced code
+9FCC44,26,28CC44,each byte in a 16-byte window equal to traced code
+9FCC68,70,5FCC68,each byte in a 16-byte window equal to traced code
+9FCCB3,253,12CCB3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9FCDB1,159,B0CDB1,each byte in a 16-byte window equal to traced code
+9FCE6A,308,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9FD17A,38,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9FD1A2,58,12D1A2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9FD1EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+9FD235,378,96D235,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+9FEE06,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A00800,415,448800,each byte in a 16-byte window equal to traced code
+A047F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A04B6F,40,28CB3D,each byte in a 16-byte window equal to traced code
+A04D48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A04D6E,68,28CC6A,each byte in a 16-byte window equal to traced code
+A04DB7,135,194DB7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A04E41,34,28CD3D,each byte in a 16-byte window equal to traced code
+A0527E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A052AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A052EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+A05339,378,7BD339,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A06EAC,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A08800,415,448800,each byte in a 16-byte window equal to traced code
+A08BC7,60,A00BC7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1C7F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1C99F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1CB9C,281,32CB9C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1CD48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1CD6E,208,194D6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1CE41,34,28CD3D,each byte in a 16-byte window equal to traced code
+A1CE6E,70,32CE6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1CEB5,159,32CEB5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1CF6E,308,32CF6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1D27E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1D2AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A1D2EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+A1D339,61,54D33A,each byte in a 16-byte window equal to traced code
+A30800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A38800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A68800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6E828,16,1E6828,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6E850,130,1E6850,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6E8D5,18,1E68D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6E8EB,232,1E68EB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6E9D4,124,1E69D4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6EA60,230,1E6A60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6EB47,180,1E6B47,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6EC02,55,1E6C02,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6EE45,308,1E6E45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6F31C,231,1E731C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6F418,247,1E7418,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6F553,186,1E7553,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6F630,187,1E7630,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6F700,234,1E7700,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6F8F5,442,1E78F5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6FABA,86,1E7ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6FB22,30,1E7B22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6FB44,101,1E7B44,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6FBDE,102,1E7BDE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6FC45,30,1E7C45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6FC8B,399,1E7C8B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A6FFF1,34,1E7FF1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A7003C,17,86029F,each byte in a 16-byte window equal to traced code
+A72800,143,12A800,each byte in a 16-byte window equal to traced code
+A72890,59,1EA890,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A728D5,755,1EA8D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A72BC9,294,1EABC9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A72CF0,57,1EACF0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A72D2F,23,1EAD2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A72D4A,318,8E2D4A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A72E92,254,1EAE92,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A72F9B,79,1EAF9B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75000,88,785000,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75067,52,785067,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A750A8,329,7850A8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A7520D,93,78520D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75279,17,785279,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75401,33,785401,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A7542B,43,78542B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A7545A,212,78545A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A755AF,111,7855AF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75626,151,785626,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A756D5,37,7856D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75712,330,785712,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75875,94,785875,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75902,256,785902,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75A1F,217,785A1F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75B28,38,785B28,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75B50,76,785B50,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75B9D,207,785B9D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75C6E,57,785C6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75CAA,54,785CAA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75CE8,94,785CE8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75D49,32,445C57,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75D72,20,785D72,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75D90,225,785D90,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75E75,45,785E75,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75EA6,172,785EA6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75F55,87,785F55,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A75FB2,107,785FB2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A76051,69,786051,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A7609A,124,78609A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A76118,119,786118,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A764CD,303,7864CD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A76620,119,786620,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A767BD,126,7867BD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A78800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A88800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A90800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9A800,106,12A800,each byte in a 16-byte window equal to traced code
+A9A86B,802,24A86B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9AB8E,86,24AB8E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9ABE8,28,24ABE8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9AC09,340,24AC09,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9AD62,190,24AD62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9AE22,67,24AE22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9B06C,19,24B06C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9B5A8,766,24B5A8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+A9B8A7,25,24B8A7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA6828,16,1E6828,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA6850,130,1E6850,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA68D5,18,1E68D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA68EB,232,1E68EB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA69D4,124,1E69D4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA6A60,230,1E6A60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA6B47,180,1E6B47,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA6C02,55,1E6C02,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA6C3D,519,1E6C3D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA6E45,308,1E6E45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA6F90,218,1E6F90,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7070,680,1E7070,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA731C,231,1E731C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7418,247,1E7418,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7553,186,1E7553,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7630,187,1E7630,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7700,234,1E7700,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA77EC,249,1E77EC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA78F5,442,1E78F5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7ABA,86,1E7ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7B22,30,1E7B22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7B44,101,1E7B44,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7BDE,102,1E7BDE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7C45,30,1E7C45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7C8B,399,1E7C8B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7E20,454,1E7E20,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA7FF1,34,1E7FF1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AA803C,17,86029F,each byte in a 16-byte window equal to traced code
+AAA800,143,12A800,each byte in a 16-byte window equal to traced code
+AAA890,59,1EA890,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAA8D5,755,1EA8D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAABC9,294,1EABC9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAACF0,57,1EACF0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAAD2F,23,1EAD2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAAD4A,318,1EAD4A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAAE92,254,1EAE92,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAAF9B,79,1EAF9B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAD100,17,28D050,each byte in a 16-byte window equal to traced code
+AAEF3B,40,1EEF3B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AAF5E2,61,1EF5E2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AB0800,396,1F0800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AC0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AD0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AD2800,106,12A800,each byte in a 16-byte window equal to traced code
+AD286B,802,24A86B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AD2B8E,86,24AB8E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AD2BE8,28,24ABE8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AD2D62,190,24AD62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AD2E22,67,24AE22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AD32C5,153,24B80D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADE828,16,1E6828,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADE850,130,1E6850,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADE8D5,18,1E68D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADE8EB,232,1E68EB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADE9D4,124,1E69D4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADEA60,230,1E6A60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADEB47,180,1E6B47,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADEC02,55,1E6C02,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADEC3D,519,A6EC3D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADEE45,308,1E6E45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADEF90,218,A6EF90,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADF070,680,A6F070,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADF31C,231,1E731C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADF418,247,1E7418,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADF553,186,1E7553,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADF630,187,1E7630,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADF700,234,1E7700,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADF7EC,249,A6F7EC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADF8F5,442,1E78F5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADFABA,86,1E7ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADFB22,30,1E7B22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADFB44,101,1E7B44,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADFBDE,102,1E7BDE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADFC45,30,1E7C45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADFC8B,399,1E7C8B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADFE20,454,A6FE20,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+ADFFF1,34,1E7FF1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+AE003C,17,86029F,each byte in a 16-byte window equal to traced code
+B0686E,25,2DE86E,each byte in a 16-byte window equal to traced code
+B068EC,59,B5E8EC,each byte in a 16-byte window equal to traced code
+B0692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B06943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B069D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B06A3D,257,B5EA3D,each byte in a 16-byte window equal to traced code
+B06B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B06FD5,124,126FD5,each byte in a 16-byte window equal to traced code
+B071E0,18,4971E0,each byte in a 16-byte window equal to traced code
+B07206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B072A4,175,C672A4,each byte in a 16-byte window equal to traced code
+B073A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0746C,161,12746C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B07522,98,127522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B075BA,26,2875BA,each byte in a 16-byte window equal to traced code
+B07607,26,2875BA,each byte in a 16-byte window equal to traced code
+B0764D,26,2875BA,each byte in a 16-byte window equal to traced code
+B076AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B07960,16,127960,each byte in a 16-byte window equal to traced code
+B079DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B07AD9,78,127AD9,each byte in a 16-byte window equal to traced code
+B07B60,29,127B60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B07D2F,19,127D2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B07D87,36,2E0099,each byte in a 16-byte window equal to traced code
+B07E2C,68,287E2C,each byte in a 16-byte window equal to traced code
+B07F03,218,287F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B080FB,53,1280FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B08170,93,128170,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B081DB,284,1281DB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B08405,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0844B,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0882E,56,6282E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B088B4,43,628B4,each byte in a 16-byte window equal to traced code
+B089CD,178,629CD,each byte in a 16-byte window equal to traced code
+B08AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+B08D39,217,9F8D39,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B08EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0A8BF,28,12A8BF,each byte in a 16-byte window equal to traced code
+B0A8E6,50,9FA8E6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0A91A,19,28A91A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0A946,33,C6A946,each byte in a 16-byte window equal to traced code
+B0A9FB,1193,C6A9FB,each byte in a 16-byte window equal to traced code
+B0AEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+B0AF29,51,12AF29,each byte in a 16-byte window equal to traced code
+B0B092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0B6EC,57,91B688,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0B7AD,56,91B749,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0C885,18,12C885,each byte in a 16-byte window equal to traced code
+B0C8A1,31,3948A1,each byte in a 16-byte window equal to traced code
+B0C8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0C995,16,12C995,each byte in a 16-byte window equal to traced code
+B0C9E0,109,3EC9E0,each byte in a 16-byte window equal to traced code
+B0CA4F,26,12CA4F,each byte in a 16-byte window equal to traced code
+B0CC44,26,28CC44,each byte in a 16-byte window equal to traced code
+B0CC82,28,28CC82,each byte in a 16-byte window equal to traced code
+B0CCBD,153,28CCBD,each byte in a 16-byte window equal to traced code
+B0CD6B,20,12CD6B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0CD81,47,12CD81,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0CDB1,62,75CDB1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0CE11,63,28CE11,each byte in a 16-byte window equal to traced code
+B0CE6A,153,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0CF33,17,96CF33,each byte in a 16-byte window equal to traced code
+B0D17A,98,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0D1EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+B0D235,322,75D235,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0D970,44,91DA49,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B0F98C,23,91F78F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B10BD1,46,3F0BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B16828,16,1E6828,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B16850,130,1E6850,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B168D5,18,1E68D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B168EB,232,1E68EB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B169D4,124,1E69D4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B16A60,230,1E6A60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B16B47,180,1E6B47,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B16C02,55,1E6C02,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B16C3D,519,1E6C3D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B16E45,308,1E6E45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B16F90,218,1E6F90,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17070,680,1E7070,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B1731C,231,1E731C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17418,247,1E7418,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17553,186,1E7553,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17630,187,1E7630,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17700,234,1E7700,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B177EC,249,1E77EC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B178F5,442,1E78F5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17ABA,86,1E7ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17B22,30,1E7B22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17B44,101,1E7B44,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17BDE,102,1E7BDE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17C45,30,1E7C45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17C8B,399,1E7C8B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17E20,454,1E7E20,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B17FF1,34,1E7FF1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B1803C,17,86029F,each byte in a 16-byte window equal to traced code
+B5E887,25,C66887,each byte in a 16-byte window equal to traced code
+B5E8F8,47,1368E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5E92A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5E97C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5E9D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5EA3C,36,6FEA3C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5EAAD,145,5F6AAD,each byte in a 16-byte window equal to traced code
+B5EB3F,193,126B3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5EC0D,47,2DEC0D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5ED5D,30,126D5D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5F048,58,127048,each byte in a 16-byte window equal to traced code
+B5F12B,25,12712B,each byte in a 16-byte window equal to traced code
+B5F1E0,18,4971E0,each byte in a 16-byte window equal to traced code
+B5F206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5F2A4,175,C672A4,each byte in a 16-byte window equal to traced code
+B5F3A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5F4A4,19,1274A4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5F522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5F6AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5F79C,174,96779C,each byte in a 16-byte window equal to traced code
+B5F85F,234,2DF85F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5F9DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5FB3F,724,2DFB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B5FE71,30,43FE71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B60043,18,440043,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B60099,36,2E0099,each byte in a 16-byte window equal to traced code
+B60215,23,2E0215,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B60259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B6040D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B60482,75,860482,each byte in a 16-byte window equal to traced code
+B60540,22,12822E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B606A8,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B606EE,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B6082A,60,6282A,each byte in a 16-byte window equal to traced code
+B60A47,56,62A47,each byte in a 16-byte window equal to traced code
+B60AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+B60D39,217,9F8D39,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B60EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B628BE,29,12A8BE,each byte in a 16-byte window equal to traced code
+B628E8,1468,5FA8E8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B62EAF,43,392EAF,each byte in a 16-byte window equal to traced code
+B62F29,51,12AF29,each byte in a 16-byte window equal to traced code
+B63092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B631B1,59,28B1B1,each byte in a 16-byte window equal to traced code
+B648E2,48,C6C8E2,each byte in a 16-byte window equal to traced code
+B64A4E,27,12CA4E,each byte in a 16-byte window equal to traced code
+B64D08,78,28CD08,each byte in a 16-byte window equal to traced code
+B64DB4,59,394DB4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B64E11,63,28CE11,each byte in a 16-byte window equal to traced code
+B64E6E,66,12CE6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B64EB6,19,12CEB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B64EDB,40,12CEDB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B64F33,17,96CF33,each byte in a 16-byte window equal to traced code
+B64FE6,55,3ECFE6,each byte in a 16-byte window equal to traced code
+B6506A,24,39506A,each byte in a 16-byte window equal to traced code
+B65190,76,12D190,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B651EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+B652C8,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B65B85,28,B65B27,each byte in a 16-byte window equal to traced code
+B68BE1,16,2E8BE1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B90800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+B98800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBE828,16,1E6828,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBE850,130,1E6850,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBE8D5,18,1E68D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBE8EB,232,1E68EB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBE9D4,124,1E69D4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBEA60,230,1E6A60,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBEB47,180,1E6B47,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBEC02,55,1E6C02,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBEC3D,519,A6EC3D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBEE45,308,1E6E45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBEF90,218,A6EF90,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBF070,680,A6F070,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBF31C,231,1E731C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBF418,247,1E7418,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBF553,186,1E7553,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBF630,187,1E7630,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBF700,234,1E7700,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBF7EC,249,A6F7EC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBF8F5,442,1E78F5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBFABA,86,1E7ABA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBFB22,30,1E7B22,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBFB44,101,1E7B44,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBFBDE,102,1E7BDE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBFC45,30,1E7C45,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBFC8B,399,1E7C8B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBFE20,454,A6FE20,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BBFFF1,34,1E7FF1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC003C,17,86029F,each byte in a 16-byte window equal to traced code
+BC0809,660,A70809,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC0AA4,746,A70AA4,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC2800,143,12A800,each byte in a 16-byte window equal to traced code
+BC2890,59,1EA890,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC28D5,755,1EA8D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC2BC9,294,1EABC9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC2CF0,57,1EACF0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC2D2F,23,1EAD2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC2D4A,318,8E2D4A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC2E92,254,1EAE92,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC2F9B,79,1EAF9B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5000,88,785000,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5067,52,785067,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC50A8,329,7850A8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC520D,93,78520D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5279,17,785279,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5401,33,785401,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC542B,43,78542B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC545A,212,78545A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC55AF,111,7855AF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5626,151,785626,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC56D5,37,7856D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5712,330,785712,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5875,94,785875,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5902,256,785902,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5A1F,217,785A1F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5B28,38,785B28,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5B50,76,785B50,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5B9D,207,785B9D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5C6E,57,785C6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5CAA,54,785CAA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5CE8,94,785CE8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5D49,32,445C57,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5D72,20,785D72,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5D90,225,785D90,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5E75,45,785E75,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5EA6,172,785EA6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5F55,87,785F55,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC5FB2,107,785FB2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC6051,69,786051,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC609A,124,78609A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC6118,119,786118,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC64CD,303,7864CD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC6620,119,786620,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC67BD,126,7867BD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BC8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BD8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BE8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+BF0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C20800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C22E88,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C24800,415,448800,each byte in a 16-byte window equal to traced code
+C30800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C668EC,59,1368D5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6692A,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C66943,53,126943,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6697C,38,12697C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C669D3,35,1269D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C66B3F,253,2DEB3F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C66FD5,124,126FD5,each byte in a 16-byte window equal to traced code
+C671E0,18,4971E0,each byte in a 16-byte window equal to traced code
+C67206,25,127206,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C672E0,115,137296,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C673A0,19,1273A0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6746D,160,9F746D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C67522,98,2DF522,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C675BA,26,2875BA,each byte in a 16-byte window equal to traced code
+C67607,26,2875BA,each byte in a 16-byte window equal to traced code
+C6764D,26,2875BA,each byte in a 16-byte window equal to traced code
+C676AD,64,1276AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C67960,16,2DF960,each byte in a 16-byte window equal to traced code
+C679DF,18,1279DF,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C67AD9,78,2DFAD9,each byte in a 16-byte window equal to traced code
+C67B3E,725,38FB3E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C67E71,30,43FE71,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C68213,25,2E0213,each byte in a 16-byte window equal to traced code
+C68259,150,2E0259,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6840D,53,2E040D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C68482,391,860482,each byte in a 16-byte window equal to traced code
+C6882A,60,6282A,each byte in a 16-byte window equal to traced code
+C68A47,56,62A47,each byte in a 16-byte window equal to traced code
+C68AA2,17,4F0AA2,each byte in a 16-byte window equal to traced code
+C68B62,349,B60B62,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C68D39,217,9F8D39,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C68EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6A8BF,28,12A8BF,each byte in a 16-byte window equal to traced code
+C6A8E6,54,9FA8E6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6A91E,39,44291E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6A967,1335,54A967,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6AEAF,43,392EAF,each byte in a 16-byte window equal to traced code
+C6AF29,51,12AF29,each byte in a 16-byte window equal to traced code
+C6B092,186,28B092,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6B1D0,20,28B1D0,each byte in a 16-byte window equal to traced code
+C6C86A,22,12C86A,each byte in a 16-byte window equal to traced code
+C6C885,18,12C885,each byte in a 16-byte window equal to traced code
+C6C8A1,31,3948A1,each byte in a 16-byte window equal to traced code
+C6C8FE,20,12C8FE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6C995,16,12C995,each byte in a 16-byte window equal to traced code
+C6C9E0,109,3EC9E0,each byte in a 16-byte window equal to traced code
+C6CA4F,26,12CA4F,each byte in a 16-byte window equal to traced code
+C6CB28,61,28CB28,each byte in a 16-byte window equal to traced code
+C6CB6A,71,28CB6A,each byte in a 16-byte window equal to traced code
+C6CC44,26,28CC44,each byte in a 16-byte window equal to traced code
+C6CC68,328,12CC68,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6CE6A,308,12CE6A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6D17A,98,12D17A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C6D1EB,26,28D1EB,each byte in a 16-byte window equal to traced code
+C6D290,69,195531,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C70BD1,46,3F0BD1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+C98800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+CA0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+CD0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+CE0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1692C,234,13692C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16A26,110,136A26,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16A96,128,136A96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16B17,202,136B17,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16BE2,50,136BE2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16C15,40,136C15,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16E4D,18,136E4D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16E65,297,136E65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D16F96,105,136F96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D173D3,240,1373D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D174D8,378,1374D8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D17655,209,137655,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1775B,173,13775B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1781D,234,13781D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D17AFC,32,137AFC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D17B1D,113,137B1D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D17BB6,396,137BB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D17D43,70,137D43,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D17F69,98,137F69,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D17FCE,49,137FCE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1811D,53,13811D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D18192,74,860482,each byte in a 16-byte window equal to traced code
+D181DD,18,1381DD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D181F0,297,1381F0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D18EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1A800,219,192800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1A8E1,1258,1928E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1ADCC,251,192DCC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1AEC8,57,192EC8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1AF03,27,192F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1B040,245,193040,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1B147,65,193147,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1B4D1,16,54B535,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1B608,20,54B66C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1B7C9,16,54B8AD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1C7F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1C99F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1CB9C,281,32CB9C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1CD48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1CD6E,208,194D6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1CE41,34,28CD3D,each byte in a 16-byte window equal to traced code
+D1CE6E,70,32CE6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1CEB5,159,32CEB5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1CF6E,308,32CF6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1D27E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1D2AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1D2EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+D1D339,322,91D339,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D1E751,44,54E81F,each byte in a 16-byte window equal to traced code
+D1EEE6,39,54EFC3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D20800,415,448800,each byte in a 16-byte window equal to traced code
+D20BC7,60,A00BC7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D28800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D38800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D48800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D50000,671,C22800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D50688,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D50800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D52000,415,448800,each byte in a 16-byte window equal to traced code
+D80800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+D90800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC692C,234,13692C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6A26,110,136A26,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6A96,128,136A96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6B17,202,136B17,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6BE2,50,136BE2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6C15,40,136C15,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6E4D,18,136E4D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6E65,297,136E65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC6F96,105,136F96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC73D3,240,1373D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC74D8,378,1374D8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC7655,209,137655,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC775B,173,13775B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC781D,234,13781D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC7AFC,32,137AFC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC7B1D,113,137B1D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC7BB6,396,137BB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC7D43,70,137D43,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC7F69,98,137F69,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC7FCE,49,137FCE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC811D,53,13811D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC8192,74,860482,each byte in a 16-byte window equal to traced code
+DC81DD,18,1381DD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC81F0,297,1381F0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC8466,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC84AC,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DC8EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCA800,219,192800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCA8E1,1258,1928E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCADCC,251,192DCC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCAEC8,57,192EC8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCAF03,27,192F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCB040,245,193040,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCB147,65,193147,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCB6B8,34,6AB71C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCC7F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCC99F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCCB9C,281,32CB9C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCCD48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCCD6E,208,194D6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCCE41,34,28CD3D,each byte in a 16-byte window equal to traced code
+DCCE6E,70,32CE6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCCEB5,159,32CEB5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCCF6E,308,32CF6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCD27E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCD2AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCD2EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+DCD339,322,91D339,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DCE5B4,53,3EF1FC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DD004B,20,28EC0D,each byte in a 16-byte window equal to traced code
+DD0667,25,6B05DA,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DD07D6,457,257D6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DD0BC7,60,A00BC7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DD8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DE8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+DF8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E00800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E17800,671,C22800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E17E88,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E19800,415,448800,each byte in a 16-byte window equal to traced code
+E30800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E40800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76913,21,12692A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7692C,234,13692C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76A26,110,136A26,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76A96,128,136A96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76B17,202,136B17,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76BE2,50,136BE2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76C15,40,136C15,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76E4D,18,136E4D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76E65,297,136E65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E76F96,105,136F96,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E77000,73,137000,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E773D3,240,1373D3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E774D8,378,1374D8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E77655,209,137655,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7775B,173,13775B,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7781D,234,13781D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E77AFC,32,137AFC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E77B1D,113,137B1D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E77BB6,396,137BB6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E77D43,70,137D43,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E77F69,98,137F69,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E77FCE,49,137FCE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7811D,53,13811D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E78192,74,860482,each byte in a 16-byte window equal to traced code
+E781DD,18,1381DD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E781F0,297,1381F0,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E783F0,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E78436,23,13839D,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E78EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7A800,219,192800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7A8E1,1258,1928E1,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7ADCC,251,192DCC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7AEC8,57,192EC8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7AF03,27,192F03,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7B040,245,193040,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7B147,65,193147,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7C7F3,371,1947F3,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7C99F,244,19499F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7CB9C,281,32CB9C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7CD48,26,194D48,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7CD6E,208,194D6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7CE41,34,28CD3D,each byte in a 16-byte window equal to traced code
+E7CE6E,70,32CE6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7CEB5,159,32CEB5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7CF6E,308,32CF6E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7D27E,40,19527E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7D2AC,52,1952AC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7D2EF,26,28D1EB,each byte in a 16-byte window equal to traced code
+E7D339,322,91D339,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7E09A,63,32E998,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7F28D,44,54E81F,each byte in a 16-byte window equal to traced code
+E7F917,104,8BF85A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7FABA,53,3EF1FC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E7FFBF,66,8BFF1C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E80231,20,28EC0D,each byte in a 16-byte window equal to traced code
+E80800,415,448800,each byte in a 16-byte window equal to traced code
+E80BC7,60,A00BC7,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E88800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+E98800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EA8800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EB0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EE0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EEB03A,64,D4E03A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EEB0A2,41,D4E0A2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EEB0F8,302,D4E0F8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EED000,671,C22800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EED688,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+EEF000,415,448800,each byte in a 16-byte window equal to traced code
+EF0800,273,158800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F30842,56,D4E042,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F308A2,41,D4E0A2,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F308F8,176,D4E0F8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F309A9,125,D4E1A9,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F32800,671,C22800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F32EB3,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F34800,415,448800,each byte in a 16-byte window equal to traced code
+F34E94,17,C24E2A,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F34EC9,34,C24E5F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F34EF2,17,C24E88,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+F34F32,28,C24EC8,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1060000,671,C22800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+10606B3,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1062000,415,448800,each byte in a 16-byte window equal to traced code
+1062706,25,D5269C,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1125A1E,262,E15A1E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1127800,671,C22800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1127EB3,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1129800,415,448800,each byte in a 16-byte window equal to traced code
+1129C47,17,E19BDD,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1129C8A,16,E19C20,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1129F2F,101,E19EC5,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1129F99,24,E19F2F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+11FB009,36,EEB009,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+11FB3FB,20,EEB3FB,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+11FD000,671,C22800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+11FD6B3,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+11FF000,415,448800,each byte in a 16-byte window equal to traced code
+12EB800,671,C22800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+12EBAAE,883,1127AAE,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+12EBEB3,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+12ED800,415,448800,each byte in a 16-byte window equal to traced code
+12F98A6,41,105E0A6,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+12F98FC,302,105E0FC,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+12FBEA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+12FD800,415,448800,each byte in a 16-byte window equal to traced code
+133F800,1554,12FB800,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+133FEA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1341800,415,448800,each byte in a 16-byte window equal to traced code
+1341DA1,17,12FDD77,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1382321,27,133E40F,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1383EA4,16,62F65,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1385800,415,448800,each byte in a 16-byte window equal to traced code
+1385D85,17,12FDD77,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"
+1385F8C,49,12FDF7E,"each byte in a 16-byte window equal to census bytes earlier on the disc, kept"

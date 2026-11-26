@@ -12,8 +12,9 @@ denominator that is computed, never typed in: the code the scripts ran counted b
 routines (the merged trace, rebuilt here from every script's own map; routines whose whole span
 is byte for byte the same count once, with the offsets of them that any script ran unioned; code
 outside every catalog routine counts per disc location), plus the code the static census finds
-that no script ran once an audited census exists (CENSUS_COUNTED). Until then the denominator
-is the traced floor and the picture and README say so. The card's is the card bytes the scripts
+that no script ran from config/rondo/census.csv (census.py: either census's claims less proven data and
+proven duplicates, PLAN section 1). Without that file the denominator is the traced floor and the picture
+and README say so; with a stale one (other traces) it refuses to publish. The card's is the card bytes the scripts
 ran, likewise a floor.
 
     python3 tools/rondo/progress.py --print     the headline lines only, writing nothing
@@ -42,7 +43,24 @@ GATE_A5 = os.path.join(TOP, "config", "rondo", "gate_a5.csv")
 GATE_A7 = os.path.join(TOP, "config", "rondo", "gate_a7.csv")
 OUTPUTS = {"docs/rondo/ledger.csv", "syscard/ledger.csv", "docs/rondo/progress.svg", "README.md",
            "tools/rondo/progress.py"}
-CENSUS_COUNTED = False  # set only by an audited census (PLAN.md section 1); none exists yet
+CENSUS = os.path.join(TOP, "config", "rondo", "census.csv")    # the counted census, written by census.py
+
+
+def census_counts():
+    """{key: int} from config/rondo/census.csv, the census the denominator counts on the terms of PLAN section 1
+    (the maintainer's ruling of 2026-11-26): every byte either census claims, less proven data and proven
+    duplicates; a byte not yet explained counts as code. None if there is no such file. Refuses when it was worked
+    out from other traces than the ones present (its stamp), so the census is never stale in the denominator."""
+    if not os.path.exists(CENSUS):
+        return None
+    rows = {r["key"]: r["value"] for r in csv.DictReader(open(CENSUS, newline=""))}
+    if "--print" not in sys.argv[1:]:
+        sys.path.insert(0, os.path.join(TOP, "tools", "rondo"))
+        import census
+        if rows.get("stamp") != census.trace_stamp(script_names()):
+            refuse("config/rondo/census.csv was worked out from other traces: "
+                   "cpu-run -j 1 -m 3G -- python3 tools/rondo/census.py")
+    return {k: int(v) for k, v in rows.items() if k != "stamp"}
 
 
 def git(*args):
@@ -238,15 +256,23 @@ def tally_a5(card):
 
 def main():
     game_floor, card_floor, by_location = floors()
-    census_code = 0  # bytes of code no script ran that an audited census found (CENSUS_COUNTED)
-    game_whole = game_floor + (census_code if CENSUS_COUNTED else 0)
+    cen = census_counts()
+    CENSUS_COUNTED = cen is not None
+    census_code = cen["counted"] if cen else 0      # code no script ran that the census finds, counted as code
+    game_whole = game_floor + census_code
     card_whole = card_floor
     head = git("rev-parse", "--short", "HEAD").strip()
     gates = sorted({r["source"] for r in csv.DictReader(open(GATE_A5, newline=""))})
     n_scripts = len(script_names())
     if CENSUS_COUNTED:
-        denom = f"{game_whole:,} B: {game_floor:,} B scripts ran + {census_code:,} B the audited census adds"
-        denom_text = f"Progress against {game_whole:,} B of game code (scripts + audited census)"
+        denom = (f"{game_whole:,} B: {game_floor:,} B the {n_scripts} scripts ran, counted by distinct whole routines, "
+                 f"+ {census_code:,} B of code no script runs that the static census finds "
+                 f"({cen['counted_strict']:,} B by the strict census; {cen['counted_relaxed_only']:,} B only by the "
+                 "relaxed one, counted as code until each byte is explained as code to file or data to name). "
+                 f"Left out: {cen['duplicates']:,} B proven duplicates, whole runs byte for byte equal to code counted "
+                 f"elsewhere (`config/rondo/census_duplicates.csv`), and {cen['proven_data']:,} B proven data (sent to "
+                 "a video or sound port, read in place by code, or a decode a trace contradicts)")
+        denom_text = f"Progress against {game_whole:,} B of game code (traced code + the census)"
     else:
         denom = (f"{game_whole:,} B, the traced floor: the code {n_scripts} scripts ran, counted by distinct whole "
                  f"routines ({by_location:,} B by disc location). The static census is not yet in it, so the "
@@ -324,6 +350,10 @@ def main():
         "",
         f"**Denominator: {denom}.**",
         "",
+        *([f"**Code no script runs: {census_code:,} B ({percent(census_code, game_whole)} of the denominator), a "
+           f"line of its own and never inside M1** ({cen['counted_never_loaded']:,} B of it in disc areas no script "
+           "loads). It is decompiled like any other code, and its C is marked unreached: it cannot reach T3 until a "
+           "script runs it (PLAN section 1, the ruling of 2026-11-26).", ""] if CENSUS_COUNTED else []),
         f"**{below[0]} of {len(rows)} routines ({below[1]:,} B) fail the proper-C check: "
         "register-shaped C, a stepping stone, not decompiled.** The check is a pattern check, so "
         "every count above T2 is a ceiling until reviewed.",

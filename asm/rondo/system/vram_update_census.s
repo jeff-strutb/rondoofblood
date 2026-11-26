@@ -15,6 +15,9 @@
 ; HOW: A doubled indexes the table at $8E6A, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+; liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_vram_list_0441.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+; VramListRun, as VramListFromTableC's does.
 VramListFromTable0441:
     asl a
     tay
@@ -42,6 +45,9 @@ VramListFromTable0441:
 ; HOW: A doubled indexes the table at $8E65, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+; liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_vram_list_0651.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+; VramListRun, as VramListFromTableC's does.
 VramListFromTable0651:
     asl a
     tay
@@ -69,6 +75,9 @@ VramListFromTable0651:
 ; HOW: A doubled indexes the table at $9118, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+; liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_vram_list_1231.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+; VramListRun, as VramListFromTableC's does.
 VramListFromTable1231:
     asl a
     tay
@@ -96,6 +105,9 @@ VramListFromTable1231:
 ; HOW: A doubled indexes the table at $8ED2, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+; liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_vram_list_1A31.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+; VramListRun, as VramListFromTableC's does.
 VramListFromTable1A31:
     asl a
     tay
@@ -123,6 +135,9 @@ VramListFromTable1A31:
 ; HOW: A doubled indexes the table at $8D82, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+; liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_vram_list_1B91.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+; VramListRun, as VramListFromTableC's does.
 VramListFromTable1B91:
     asl a
     tay
@@ -150,6 +165,9 @@ VramListFromTable1B91:
 ; HOW: A doubled indexes the table at $829F, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+; liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_vram_list_25F7.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+; VramListRun, as VramListFromTableC's does.
 VramListFromTable25F7:
     asl a
     tay

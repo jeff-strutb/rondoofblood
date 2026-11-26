@@ -1,0 +1,20 @@
+# census RunListChannel: every path, with lists that end at once (VramListFromIndex's table at $9802 included)
+# kind 3, paused
+a=03 x=00 mem:203B=01
+# kind 3, first step: table load, then a hold (0), an end ($80), a copy (3), a packed copy (1), a negative op
+a=03 x=00 mem:203B=00 mem:3C88=00 mem:8EA0=00 mem:8EA1=30 mem:3C90=00 mem:3000=00 mem:3001=05
+a=03 x=00 mem:203B=00 mem:3C88=00 mem:8EA0=00 mem:8EA1=30 mem:3C90=00 mem:3000=80
+a=03 x=00 mem:203B=00 mem:3C88=00 mem:8EA0=00 mem:8EA1=30 mem:3C90=00 mem:3000=03 mem:3001=00 mem:3002=10 mem:3003=00 mem:3004=20 mem:3005=02 mem:3006=80
+a=03 x=00 mem:203B=00 mem:3C88=00 mem:8EA0=00 mem:8EA1=30 mem:3C90=00 mem:3000=01 mem:3001=12 mem:3002=34 mem:3003=56 mem:3004=03 mem:3005=00 mem:3006=05
+a=03 x=00 mem:203B=00 mem:3C88=00 mem:8EA0=00 mem:8EA1=30 mem:3C90=00 mem:3000=FF
+# kind 3, later steps: the hold counting, and a restart (2) that reloads the list, which then ends
+a=03 x=02 mem:203B=00 mem:3C90+2=01 mem:3C98+2=04
+a=03 x=02 mem:203B=00 mem:3C90+2=01 mem:3C98+2=00 mem:3CA0+2=10 mem:3CA8+2=30 mem:3010=02 mem:3C88+2=01 mem:8EA2=00 mem:8EA3=30 mem:3000=80
+# kind 1: hold counting; the list's end ($FF); a restart ($FE, then the one-list path); a VRAM list and its hold
+a=01 x=01 mem:3C98+1=03
+a=01 x=01 mem:3C98+1=00 mem:9800=00 mem:9801=31 mem:3C88+1=00 mem:3100=00 mem:3101=32 mem:3C90+1=00 mem:3200=FF
+a=01 x=01 p=C mem:3C98+1=00 mem:9800=00 mem:9801=31 mem:3C88+1=00 mem:3100=00 mem:3101=32 mem:3C90+1=00 mem:3200=FE mem:9802=00 mem:9803=33 mem:3300=00 mem:3301=34 mem:3400=FF
+a=01 x=01 mem:3C98+1=00 mem:9800=00 mem:9801=31 mem:3C88+1=00 mem:3100=00 mem:3101=32 mem:3C90+1=01 mem:3202=07 mem:3203=00 mem:9802=00 mem:9803=33 mem:3300=00 mem:3301=34 mem:3400=FF
+# other kinds: one VRAM list, then the channel freed
+a=02 x=04 mem:3C88+4=00 mem:9802=00 mem:9803=33 mem:3300=00 mem:3301=34 mem:3400=FF
+a=05 x=07 p=CV mem:3C88+7=00 mem:9802=00 mem:9803=33 mem:3300=00 mem:3301=34 mem:3400=FF

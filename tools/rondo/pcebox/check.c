@@ -2751,7 +2751,9 @@ static void open_frame(int index, const Regs *r, int kind)
     e.speed = f->speed;
     memcpy(e.mpr, f->mpr, 8);
     log_event(&e);
-    f->start = wn;
+    /* log_event can trim the A5 log (trim_log: frames[0] judged, the array moved down one): the frame opened here is the
+     * top one again, wherever it now is. */
+    frames[depth - 1].start = wn;
 }
 
 /* ------------------------------------------------------------------------------------------ */

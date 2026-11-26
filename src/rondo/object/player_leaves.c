@@ -17,14 +17,30 @@
 
 enum { TILE_HANDLED_A = 0x81, STAGE_TABLE_9C20 = 0x9C20, VY_TABLE = 0xBFCB, VX_TABLE = 0xBFEC };
 
-/* A row moved up by `amount`: SEC, SBC, and the handled answer in A. */
-static Ended tile_row_up(uint8_t amount)
-{
-    uint8_t row = RD8(ZP->temp02);
-    Sum sum = sub_bytes(row, amount, true);
+/* Arms: one enum per routine that has more than one way out. */
+enum { PL_CLEAR_LOAD, PL_CLEAR_COMPARE_40, PL_CLEAR_COMPARE_C0 };
+enum { PL_NEG_FACING_RIGHT, PL_NEG_NEGATED };
+enum { PL_REC_NOT_MARKED, PL_REC_MARKED };
+enum { PL_REPORT_UNLESS_EQUAL_TWO, PL_REPORT_UNLESS_REPORTED };
+enum { PL_BIT1_REPORTED };
+enum { PL_BIT7_SECOND_OF_TWO, PL_BIT7_FIRST };
+enum { PL_TURN_FACING_RIGHT_NOT, PL_TURN_FACING_LEFT_NOT, PL_TURN_FLIPPED_RIGHT, PL_TURN_FLIPPED_LEFT };
 
-    WR8(ZP->temp02, sum.value);
-    return ended_with_overflow(ended_with_carry(ended_load(TILE_HANDLED_A), sum.carry), sum.overflow);
+/* A row moved up by `amount`: SEC, SBC, and the handled answer in A. */
+static ObjArm tile_row_up(uint8_t amount)
+{
+    ObjArm r = { 0 };
+    uint8_t row = RD8(ZP->temp02);
+
+    r.sum = sub_bytes(row, amount, true);
+    WR8(ZP->temp02, r.sum.value);
+    return r;
+}
+
+/* The tile handlers' result: A $81, C and V from the row's subtraction. */
+Ended tile_row_up_exit_shim(ObjArm r)
+{
+    return ended_with_overflow(ended_with_carry(ended_load(TILE_HANDLED_A), r.sum.carry), r.sum.overflow);
 }
 
 /*
@@ -69,15 +85,23 @@ void abi_EmptyHandler9CFC(void)
  * WAITS: no.
  * Entry: zTemp02 row. Exit: A $81, N set, Z clear; C, V and Y kept.
  */
-Ended TileNudgeAt9C82(void)
+ObjArm TileNudgeAt9C82(void)
 {
+    ObjArm r = { 0 };
+
     INC8(ZP->temp02);
+    return r;
+}
+
+Ended tile_nudge_exit_shim(ObjArm r)
+{
+    (void)r;
     return ended_load(TILE_HANDLED_A);
 }
 
 void abi_TileNudgeAt9C82(void)
 {
-    abi_ended(TileNudgeAt9C82());
+    abi_ended(tile_nudge_exit_shim(TileNudgeAt9C82()));
 }
 
 /*
@@ -88,14 +112,14 @@ void abi_TileNudgeAt9C82(void)
  * WAITS: no.
  * Entry: zTemp02 row. Exit: A $81; C and V from the subtract; Y kept.
  */
-Ended TileLift7At9C87(void)
+ObjArm TileLift7At9C87(void)
 {
     return tile_row_up(7);
 }
 
 void abi_TileLift7At9C87(void)
 {
-    abi_ended(TileLift7At9C87());
+    abi_ended(tile_row_up_exit_shim(TileLift7At9C87()));
 }
 
 /*
@@ -106,14 +130,14 @@ void abi_TileLift7At9C87(void)
  * WAITS: no.
  * Entry and exit: as TileLift7At9C87.
  */
-Ended TileLift6At9C91(void)
+ObjArm TileLift6At9C91(void)
 {
     return tile_row_up(6);
 }
 
 void abi_TileLift6At9C91(void)
 {
-    abi_ended(TileLift6At9C91());
+    abi_ended(tile_row_up_exit_shim(TileLift6At9C91()));
 }
 
 /*
@@ -124,14 +148,14 @@ void abi_TileLift6At9C91(void)
  * WAITS: no.
  * Entry and exit: as TileLift7At9C87.
  */
-Ended TileLift5At9C9B(void)
+ObjArm TileLift5At9C9B(void)
 {
     return tile_row_up(5);
 }
 
 void abi_TileLift5At9C9B(void)
 {
-    abi_ended(TileLift5At9C9B());
+    abi_ended(tile_row_up_exit_shim(TileLift5At9C9B()));
 }
 
 /*
@@ -142,14 +166,14 @@ void abi_TileLift5At9C9B(void)
  * WAITS: no.
  * Entry and exit: as TileLift7At9C87.
  */
-Ended TileLift4At9CA5(void)
+ObjArm TileLift4At9CA5(void)
 {
     return tile_row_up(4);
 }
 
 void abi_TileLift4At9CA5(void)
 {
-    abi_ended(TileLift4At9CA5());
+    abi_ended(tile_row_up_exit_shim(TileLift4At9CA5()));
 }
 
 /*
@@ -160,14 +184,14 @@ void abi_TileLift4At9CA5(void)
  * WAITS: no.
  * Entry and exit: as TileLift7At9C87.
  */
-Ended TileLift3At9CAF(void)
+ObjArm TileLift3At9CAF(void)
 {
     return tile_row_up(3);
 }
 
 void abi_TileLift3At9CAF(void)
 {
-    abi_ended(TileLift3At9CAF());
+    abi_ended(tile_row_up_exit_shim(TileLift3At9CAF()));
 }
 
 /*
@@ -178,14 +202,14 @@ void abi_TileLift3At9CAF(void)
  * WAITS: no.
  * Entry and exit: as TileLift7At9C87.
  */
-Ended TileLift2At9CB9(void)
+ObjArm TileLift2At9CB9(void)
 {
     return tile_row_up(2);
 }
 
 void abi_TileLift2At9CB9(void)
 {
-    abi_ended(TileLift2At9CB9());
+    abi_ended(tile_row_up_exit_shim(TileLift2At9CB9()));
 }
 
 /*
@@ -196,14 +220,14 @@ void abi_TileLift2At9CB9(void)
  * WAITS: no.
  * Entry and exit: as TileLift7At9C87.
  */
-Ended TileLift1At9CC3(void)
+ObjArm TileLift1At9CC3(void)
 {
     return tile_row_up(1);
 }
 
 void abi_TileLift1At9CC3(void)
 {
-    abi_ended(TileLift1At9CC3());
+    abi_ended(tile_row_up_exit_shim(TileLift1At9CC3()));
 }
 
 /*
@@ -214,22 +238,30 @@ void abi_TileLift1At9CC3(void)
  * WAITS: no.
  * Entry: nothing. Exit: A and X the doubled state, N and Z from it, C the state's bit 7. Y, V kept.
  */
-EndedX RichterStateDoubled(void)
+ObjArm RichterStateDoubled(void)
 {
+    ObjArm r = { 0 };
     uint8_t slot = RD8(ZP->richter_object);
     uint8_t state = RD8(OBJ->state[slot]);
-    uint8_t doubled = (uint8_t)(state << 1);
-    EndedX r;
 
-    r.end = ended_with_carry(ended_load(doubled), (state & 0x80) != 0);
-    r.x = doubled;
+    r.first = (uint8_t)(state << 1);
+    r.flag = (state & 0x80) != 0;
     return r;
+}
+
+/* A and X the doubled state; C its bit 7. */
+static EndedX richter_state_doubled_exit_shim(ObjArm r)
+{
+    EndedX e;
+
+    e.end = ended_with_carry(ended_load(r.first), r.flag);
+    e.x = r.first;
+    return e;
 }
 
 void abi_RichterStateDoubled(void)
 {
-    EndedX r = RichterStateDoubled();
-
+        EndedX r = richter_state_doubled_exit_shim(RichterStateDoubled());
     abi_ended(r.end);
     cpu.x = r.x;
 }
@@ -242,20 +274,28 @@ void abi_RichterStateDoubled(void)
  * WAITS: no.
  * Entry: nothing. Exit: X zRichterObject, A the flags, N, Z, C from A less 4. Y, V kept.
  */
-EndedX RichterFlagsAgainstFour(void)
+ObjArm RichterFlagsAgainstFour(void)
 {
-    uint8_t slot = RD8(ZP->richter_object);
-    uint8_t flags = RD8(OBJ->flags[0]);
-    EndedX r;
+    ObjArm r = { 0 };
 
-    r.end = ended_compare(flags, 4);
-    r.x = slot;
+    r.second = RD8(ZP->richter_object);
+    r.first = RD8(OBJ->flags[0]);
     return r;
+}
+
+/* The flags compared with 4; X the Richter's slot. */
+static EndedX richter_flags_against_four_exit_shim(ObjArm r)
+{
+    EndedX e;
+
+    e.end = ended_compare(r.first, 4);
+    e.x = r.second;
+    return e;
 }
 
 void abi_RichterFlagsAgainstFour(void)
 {
-    EndedX r = RichterFlagsAgainstFour();
+        EndedX r = richter_flags_against_four_exit_shim(RichterFlagsAgainstFour());
 
     abi_ended(r.end);
     cpu.x = r.x;
@@ -269,18 +309,24 @@ void abi_RichterFlagsAgainstFour(void)
  * WAITS: no.
  * Entry: nothing. Exit: A the bank, N, Z, C, V from the add; MPR5 set. X, Y kept.
  */
-Ended MapOverlayBank7(void)
+ObjArm MapOverlayBank7(void)
 {
+    ObjArm r = { 0 };
     uint8_t base = RD8(ZP->ram_base_bank);
-    Sum sum = add_bytes(7, base, false);
 
-    tam(0x20, sum.value);
-    return ended_of_sum(sum);
+    r.sum = add_bytes(7, base, false);
+    tam(0x20, r.sum.value);
+    return r;
+}
+
+static Ended map_overlay_bank7_exit_shim(ObjArm r)
+{
+    return ended_of_sum(r.sum);
 }
 
 void abi_MapOverlayBank7(void)
 {
-    abi_ended(MapOverlayBank7());
+    abi_ended(map_overlay_bank7_exit_shim(MapOverlayBank7()));
 }
 
 /*
@@ -291,22 +337,27 @@ void abi_MapOverlayBank7(void)
  * WAITS: no.
  * Entry: nothing. Exit: A the second bank, N and Z from it, C and V from the add; MPR5 and MPR6 set.
  */
-Ended MapOverlayBanks5And6(void)
+ObjArm MapOverlayBanks5And6(void)
 {
+    ObjArm r = { 0 };
     uint8_t base = RD8(ZP->ram_base_bank);
-    Sum sum = add_bytes(5, base, false);
-    uint8_t next = (uint8_t)(sum.value + 1);
-    Ended e;
 
-    tam(0x20, sum.value);
-    tam(0x40, next);
-    e = ended_with_overflow(ended_with_carry(ended_load(next), sum.carry), sum.overflow);
-    return e;
+    r.sum = add_bytes(5, base, false);
+    r.first = (uint8_t)(r.sum.value + 1);
+    tam(0x20, r.sum.value);
+    tam(0x40, r.first);
+    return r;
+}
+
+/* A the second bank; C and V from the add. */
+static Ended map_overlay_banks_exit_shim(ObjArm r)
+{
+    return ended_with_overflow(ended_with_carry(ended_load(r.first), r.sum.carry), r.sum.overflow);
 }
 
 void abi_MapOverlayBanks5And6(void)
 {
-    abi_ended(MapOverlayBanks5And6());
+    abi_ended(map_overlay_banks_exit_shim(MapOverlayBanks5And6()));
 }
 
 /*
@@ -317,21 +368,26 @@ void abi_MapOverlayBanks5And6(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. C, V kept.
  */
-Ended StepStageTable9C20(void)
+ObjArm StepStageTable9C20(void)
 {
-    uint8_t index;
-    uint8_t value;
+    ObjArm r = { 0 };
 
     INC8(ZP->field82);
-    index = RD8(ZP->field82);
-    value = rd8((uint16_t)(STAGE_TABLE_9C20 + index));
-    WR8(ZP->field83, value);
-    return ended_with_y(ended_load(value), index);
+    r.y = RD8(ZP->field82);
+    r.first = rd8((uint16_t)(STAGE_TABLE_9C20 + r.y));
+    WR8(ZP->field83, r.first);
+    return r;
+}
+
+/* A the table's value, Y the index. */
+static Ended step_stage_table_exit_shim(ObjArm r)
+{
+    return ended_with_y(ended_load(r.first), r.y);
 }
 
 void abi_StepStageTable9C20(void)
 {
-    abi_ended(StepStageTable9C20());
+    abi_ended(step_stage_table_exit_shim(StepStageTable9C20()));
 }
 
 /*
@@ -342,21 +398,28 @@ void abi_StepStageTable9C20(void)
  * WAITS: no.
  * Entry: A the entry, X the object. Exit: A the high byte, N and Z from it, C the entry's bit 7, Y the doubled entry.
  */
-Ended SetVelocityYFromTable(uint8_t slot, uint8_t entry)
+/* A the high byte read, C the entry's bit 7, Y twice the entry. */
+static Ended set_velocity_from_table_exit_shim(ObjArm r)
 {
-    uint8_t y = (uint8_t)(entry << 1);
-    uint8_t value;
+    return ended_with_y(ended_with_carry(ended_load(r.first), r.flag), r.y);
+}
 
-    value = rd8((uint16_t)(VY_TABLE + y));
-    WR8(OBJ->vy_lo[slot], value);
-    value = rd8((uint16_t)(VY_TABLE + 1 + y));
-    WR8(OBJ->vy_hi[slot], value);
-    return ended_with_y(ended_with_carry(ended_load(value), (entry & 0x80) != 0), y);
+ObjArm SetVelocityYFromTable(uint8_t slot, uint8_t entry)
+{
+    ObjArm r = { 0 };
+
+    r.y = (uint8_t)(entry << 1);
+    r.first = rd8((uint16_t)(VY_TABLE + r.y));
+    WR8(OBJ->vy_lo[slot], r.first);
+    r.first = rd8((uint16_t)(VY_TABLE + 1 + r.y));
+    WR8(OBJ->vy_hi[slot], r.first);
+    r.flag = (entry & 0x80) != 0;
+    return r;
 }
 
 void abi_SetVelocityYFromTable(void)
 {
-    abi_ended(SetVelocityYFromTable(cpu.x, cpu.a));
+    abi_ended(set_velocity_from_table_exit_shim(SetVelocityYFromTable(cpu.x, cpu.a)));
 }
 
 /*
@@ -367,21 +430,22 @@ void abi_SetVelocityYFromTable(void)
  * WAITS: no.
  * Entry and exit: as SetVelocityYFromTable.
  */
-Ended SetVelocityXFromTable(uint8_t slot, uint8_t entry)
+ObjArm SetVelocityXFromTable(uint8_t slot, uint8_t entry)
 {
-    uint8_t y = (uint8_t)(entry << 1);
-    uint8_t value;
+    ObjArm r = { 0 };
 
-    value = rd8((uint16_t)(VX_TABLE + y));
-    WR8(OBJ->vx_lo[slot], value);
-    value = rd8((uint16_t)(VX_TABLE + 1 + y));
-    WR8(OBJ->vx_hi[slot], value);
-    return ended_with_y(ended_with_carry(ended_load(value), (entry & 0x80) != 0), y);
+    r.y = (uint8_t)(entry << 1);
+    r.first = rd8((uint16_t)(VX_TABLE + r.y));
+    WR8(OBJ->vx_lo[slot], r.first);
+    r.first = rd8((uint16_t)(VX_TABLE + 1 + r.y));
+    WR8(OBJ->vx_hi[slot], r.first);
+    r.flag = (entry & 0x80) != 0;
+    return r;
 }
 
 void abi_SetVelocityXFromTable(void)
 {
-    abi_ended(SetVelocityXFromTable(cpu.x, cpu.a));
+    abi_ended(set_velocity_from_table_exit_shim(SetVelocityXFromTable(cpu.x, cpu.a)));
 }
 
 /*
@@ -392,20 +456,34 @@ void abi_SetVelocityXFromTable(void)
  * WAITS: no.
  * Entry: X the object. Exit: facing zero: A zero, Z. Otherwise as NegateVelocityX.
  */
-Ended NegateVelocityXIfFacingLeft(uint8_t slot)
+ObjArm NegateVelocityXIfFacingLeft(uint8_t slot)
 {
-    uint8_t facing = RD8(OBJ->facing_left[slot]);
-    Ended e = ended_load(facing);
+    ObjArm r = { 0 };
 
-    if (facing == 0) {
+    r.first = RD8(OBJ->facing_left[slot]);
+    r.arm = PL_NEG_FACING_RIGHT;
+    if (r.first == 0) {
+        return r;
+    }
+    r.sum = NegateVelocityX(slot);
+    r.arm = PL_NEG_NEGATED;
+    return r;
+}
+
+/* The facing's load; when it was set, the negation's sum after it. */
+static Ended negate_velocity_exit_shim(ObjArm r)
+{
+    Ended e = ended_load(r.first);
+
+    if (r.arm == PL_NEG_FACING_RIGHT) {
         return e;
     }
-    return ended_then(e, ended_of_sum(NegateVelocityX(slot)));
+    return ended_then(e, ended_of_sum(r.sum));
 }
 
 void abi_NegateVelocityXIfFacingLeft(void)
 {
-    abi_ended(NegateVelocityXIfFacingLeft(cpu.x));
+    abi_ended(negate_velocity_exit_shim(NegateVelocityXIfFacingLeft(cpu.x)));
 }
 
 /*
@@ -454,34 +532,43 @@ void abi_CountDownThenStand(void)
  * Entry: X object. Exit: kept: A the last byte read, N, Z, C from the last compare; emptied: as the load or compare
  * before the jump (ClearObject keeps every register).
  */
-Ended ClearObjectIfOffRange(uint8_t slot)
+ObjArm ClearObjectIfOffRange(uint8_t slot)
 {
-    uint8_t value = RD8(OBJ->y_hi[slot]);
-    Ended e = ended_load(value);
+    ObjArm r = { 0 };
 
-    if (value == 0) {
-        value = RD8(OBJ->x_hi[slot]);
-        e = ended_load(value);
-        if (value == 0) {
-            return e;
+    r.first = RD8(OBJ->y_hi[slot]);
+    r.arm = PL_CLEAR_LOAD;
+    if (r.first == 0) {
+        r.first = RD8(OBJ->x_hi[slot]);
+        if (r.first == 0) {
+            return r;
         }
-        value = RD8(OBJ->x_lo[slot]);
-        e = ended_compare(value, 0x40);
-        if (value < 0x40) {
-            return e;
+        r.first = RD8(OBJ->x_lo[slot]);
+        r.arm = PL_CLEAR_COMPARE_40;
+        if (r.first < 0x40) {
+            return r;
         }
-        e = ended_compare(value, 0xC0);
-        if (value >= 0xC0) {
-            return e;
+        r.arm = PL_CLEAR_COMPARE_C0;
+        if (r.first >= 0xC0) {
+            return r;
         }
     }
     ClearObject(slot);
-    return e;
+    return r;
+}
+
+/* The last load or compare the walk made: of y_hi or x_hi, or of x_lo with $40 or $C0. */
+static Ended clear_object_exit_shim(ObjArm r)
+{
+    if (r.arm == PL_CLEAR_LOAD) {
+        return ended_load(r.first);
+    }
+    return ended_compare(r.first, r.arm == PL_CLEAR_COMPARE_40 ? 0x40 : 0xC0);
 }
 
 void abi_ClearObjectIfOffRange(void)
 {
-    abi_ended(ClearObjectIfOffRange(cpu.x));
+    abi_ended(clear_object_exit_shim(ClearObjectIfOffRange(cpu.x)));
 }
 
 /*
@@ -492,10 +579,10 @@ void abi_ClearObjectIfOffRange(void)
  * WAITS: no.
  * Entry: X the source object, Y the one to empty. Exit: A the last byte copied, N and Z from it. X, Y, C, V kept.
  */
-Ended ClearObjectInYAndCopyPlace(uint8_t source, uint8_t target)
+ObjArm ClearObjectInYAndCopyPlace(uint8_t source, uint8_t target)
 {
+    ObjArm r = { 0 };
     uint8_t value;
-
     jsr_push(0xD92C);
     ClearObjectInY(target);
     jsr_pop();
@@ -506,13 +593,20 @@ Ended ClearObjectInYAndCopyPlace(uint8_t source, uint8_t target)
     value = RD8(OBJ->y_lo[source]);
     WR8(OBJ->y_lo[target], value);
     value = RD8(OBJ->y_hi[source]);
-    WR8(OBJ->y_hi[target], value);
-    return ended_load(value);
+        WR8(OBJ->y_hi[target], value);
+    r.first = value;
+    return r;
+}
+
+/* A the last byte copied. */
+static Ended clear_in_y_exit_shim(ObjArm r)
+{
+    return ended_load(r.first);
 }
 
 void abi_ClearObjectInYAndCopyPlace(void)
 {
-    abi_ended(ClearObjectInYAndCopyPlace(cpu.x, cpu.y));
+    abi_ended(clear_in_y_exit_shim(ClearObjectInYAndCopyPlace(cpu.x, cpu.y)));
 }
 
 /*
@@ -525,39 +619,54 @@ void abi_ClearObjectInYAndCopyPlace(void)
  * Entry: nothing. Exit: no turn: A the facing, N, V, Z from the TST. A turn: A the new state, N and Z from it, Y the
  * old state less 5, C and V from that subtract.
  */
-EndedTst RichterTurnOnPad(void)
+ObjArm RichterTurnOnPad(void)
 {
-    uint8_t facing = RD8(OBJ->facing_left[0]);
-    uint8_t pad;
+    ObjArm r = { 0 };
     uint8_t state;
-    Sum sum;
-    uint8_t value;
-    Ended e = ended_load(facing);
 
-    if (facing == 0) {
-        pad = RD8(ZP->pad_held);
-        if ((pad & 0x80) == 0) {
-            return ended_tst(e, pad, 0x80);
+    r.first = RD8(OBJ->facing_left[0]);
+    if (r.first == 0) {
+        r.second = RD8(ZP->pad_held);
+        r.arm = PL_TURN_FACING_RIGHT_NOT;
+        if ((r.second & 0x80) == 0) {
+            return r;
         }
         INC8(OBJ->facing_left[0]);
+        r.arm = PL_TURN_FLIPPED_RIGHT;
     } else {
-        pad = RD8(ZP->pad_held);
-        if ((pad & 0x20) == 0) {
-            return ended_tst(e, pad, 0x20);
+        r.second = RD8(ZP->pad_held);
+        r.arm = PL_TURN_FACING_LEFT_NOT;
+        if ((r.second & 0x20) == 0) {
+            return r;
         }
         WR8(OBJ->facing_left[0], 0);
+        r.arm = PL_TURN_FLIPPED_LEFT;
     }
     state = RD8(OBJ->state[0]);
-    sum = sub_bytes(state, 5, true);
-    value = rd8((uint16_t)(0xB03B + sum.value));
-    WR8(OBJ->state[0], value);
-    e = ended_with_y(ended_with_overflow(ended_with_carry(ended_load(value), sum.carry), sum.overflow), sum.value);
+    r.sum = sub_bytes(state, 5, true);
+    r.third = rd8((uint16_t)(0xB03B + r.sum.value));
+    WR8(OBJ->state[0], r.third);
+    return r;
+}
+
+/* Without a turn, the facing's load and a TST of the pad; after one, the state's load with Y, C and V of its subtraction. */
+static EndedTst richter_turn_on_pad_exit_shim(ObjArm r)
+{
+    Ended e = ended_load(r.first);
+
+    if (r.arm == PL_TURN_FACING_RIGHT_NOT) {
+        return ended_tst(e, r.second, 0x80);
+    }
+    if (r.arm == PL_TURN_FACING_LEFT_NOT) {
+        return ended_tst(e, r.second, 0x20);
+    }
+    e = ended_with_y(ended_with_overflow(ended_with_carry(ended_load(r.third), r.sum.carry), r.sum.overflow), r.sum.value);
     return ended_tst_none(e);
 }
 
 void abi_RichterTurnOnPad(void)
 {
-    abi_ended_tst(RichterTurnOnPad());
+    abi_ended_tst(richter_turn_on_pad_exit_shim(RichterTurnOnPad()));
 }
 
 /*
@@ -568,27 +677,40 @@ void abi_RichterTurnOnPad(void)
  * WAITS: no.
  * Entry: X object. Exit: as RecordObjectEvent.
  */
-Ended LoadRecordThenRecordEvent(uint8_t slot)
+ObjArm LoadRecordThenRecordEvent(uint8_t slot)
 {
-    uint8_t last, nz, stored, event, byte;
+    ObjArm r = { 0 };
+    uint8_t nz, stored, event, byte;
     bool carry;
     bool marked;
-    Ended e;
 
     jsr_push(0xB55C);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
+    r.second = nz;
+    r.flag = carry;
     marked = RecordObjectEvent(slot, &stored, &event, &byte);
-    if (!marked) {
+    r.third = stored;
+    r.fourth = event;
+    r.y = byte;
+    r.arm = marked ? PL_REC_MARKED : PL_REC_NOT_MARKED;
+    return r;
+}
+
+/* The record's exit, then the event's: A 0 when none was marked, else the byte stored, Y its offset, C the event's low bits clear. */
+static Ended load_record_then_event_exit_shim(ObjArm r)
+{
+    Ended e = record_exit_shim(r);
+
+    if (r.arm == PL_REC_NOT_MARKED) {
         return ended_then(e, ended_load(0));
     }
-    return ended_then(e, ended_with_carry(ended_with_y(ended_load(stored), byte), (event & 7) == 0));
+    return ended_then(e, ended_with_carry(ended_with_y(ended_load(r.third), r.y), (r.fourth & 7) == 0));
 }
 
 void abi_LoadRecordThenRecordEvent(void)
 {
-    abi_ended(LoadRecordThenRecordEvent(cpu.x));
+    abi_ended(load_record_then_event_exit_shim(LoadRecordThenRecordEvent(cpu.x)));
 }
 
 /*
@@ -606,6 +728,12 @@ typedef struct {
     TileRead read;
 } OffsetRead;
 
+/* The registers the overlay's own code is entered with: the add's A and flags. */
+static void read_at_offset_entry_shim(Sum row)
+{
+    abi_ended(ended_of_sum(row));
+}
+
 OffsetRead RichterReadAtOffset(uint8_t offset)
 {
     OffsetRead r;
@@ -616,7 +744,7 @@ OffsetRead RichterReadAtOffset(uint8_t offset)
     WR8(ZP->temp00, column.value);
     y_lo = RD8(OBJ->y_lo[0]);
     r.row = add_bytes(y_lo, rd8((uint16_t)(0xB7B2 + offset)), false);
-    abi_ended(ended_of_sum(r.row)); /* the read may run the overlay's own code, entered with this add's A and flags */
+        read_at_offset_entry_shim(r.row); /* the read may run the overlay's own code, entered with this add's A and flags */
     r.read = RichterReadOnScreen(r.row.value, r.row.carry);
     return r;
 }
@@ -632,22 +760,28 @@ void abi_RichterReadAtOffset(void)
 }
 
 /* A tile's step from a table by the tile and the half of it the point lies in: the shared body. */
-static Ended tile_half_step(uint16_t table, uint8_t first_tile, uint8_t tile, bool right_for_bit)
+static ObjArm tile_half_step(uint16_t table, uint8_t first_tile, uint8_t tile, bool right_for_bit)
 {
-    uint8_t index = (uint8_t)((uint8_t)(tile - first_tile) << 1);
+    ObjArm r = { 0 };
     uint8_t column = RD8(ZP->temp00);
     uint8_t step;
     uint8_t row;
-    Sum sum;
 
+    r.y = (uint8_t)((uint8_t)(tile - first_tile) << 1);
     if (((column & 4) != 0) == right_for_bit) {
-        index++;
+        r.y++;
     }
-    step = rd8((uint16_t)(table + index));
+    step = rd8((uint16_t)(table + r.y));
     row = RD8(ZP->temp02);
-    sum = add_bytes(step, row, false);
-    WR8(ZP->temp02, sum.value);
-    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(TILE_HANDLED_A), sum.carry), sum.overflow), index);
+    r.sum = add_bytes(step, row, false);
+    WR8(ZP->temp02, r.sum.value);
+    return r;
+}
+
+/* A $81, C and V from the row's add, Y the table's index. */
+Ended tile_half_step_exit_shim(ObjArm r)
+{
+    return ended_with_y(tile_row_up_exit_shim(r), r.y);
 }
 
 /*
@@ -658,14 +792,14 @@ static Ended tile_half_step(uint16_t table, uint8_t first_tile, uint8_t tile, bo
  * WAITS: no.
  * Entry: A tile, zTemp00 column, zTemp02 row. Exit: A $81; Y the index; C and V from the add.
  */
-Ended TileHalfStepAAt9A93(uint8_t tile)
+ObjArm TileHalfStepAAt9A93(uint8_t tile)
 {
     return tile_half_step(0x9AEF, 0x83, tile, true);
 }
 
 void abi_TileHalfStepAAt9A93(void)
 {
-    abi_ended(TileHalfStepAAt9A93(cpu.a));
+    abi_ended(tile_half_step_exit_shim(TileHalfStepAAt9A93(cpu.a)));
 }
 
 /*
@@ -676,14 +810,14 @@ void abi_TileHalfStepAAt9A93(void)
  * WAITS: no.
  * Entry and exit: as TileHalfStepAAt9A93.
  */
-Ended TileHalfStepBAt9AA7(uint8_t tile)
+ObjArm TileHalfStepBAt9AA7(uint8_t tile)
 {
     return tile_half_step(0x9AF7, 0x8C, tile, false);
 }
 
 void abi_TileHalfStepBAt9AA7(void)
 {
-    abi_ended(TileHalfStepBAt9AA7(cpu.a));
+    abi_ended(tile_half_step_exit_shim(TileHalfStepBAt9AA7(cpu.a)));
 }
 
 /*
@@ -697,24 +831,31 @@ void abi_TileHalfStepBAt9AA7(void)
  * WAITS: no.
  * Entry: X object, zTemp02 the amount. Exit: A the Y high byte stored, N, Z, C, V from its subtract. X, Y kept.
  */
-Ended MoveObjectUpBySigned(uint8_t slot)
+ObjArm MoveObjectUpBySigned(uint8_t slot)
 {
+    ObjArm r = { 0 };
     uint8_t amount = RD8(ZP->temp02);
     uint8_t high_operand = (amount & 0x80) ? 0xFF : 0x00;
     uint8_t y_low = RD8(OBJ->y_lo[slot]);
     uint8_t taken = RD8(ZP->temp02);
-    Sum low, high;
+    Sum low;
 
     low = sub_bytes(y_low, taken, true);
     WR8(OBJ->y_lo[slot], low.value);
-    high = sub_bytes(RD8(OBJ->y_hi[slot]), high_operand, low.carry);
-    WR8(OBJ->y_hi[slot], high.value);
-    return ended_of_sum(high);
+    r.sum = sub_bytes(RD8(OBJ->y_hi[slot]), high_operand, low.carry);
+    WR8(OBJ->y_hi[slot], r.sum.value);
+    return r;
+}
+
+/* The high byte's subtraction. */
+static Ended move_object_up_exit_shim(ObjArm r)
+{
+    return ended_of_sum(r.sum);
 }
 
 void abi_MoveObjectUpBySigned(void)
 {
-    abi_ended(MoveObjectUpBySigned(cpu.x));
+    abi_ended(move_object_up_exit_shim(MoveObjectUpBySigned(cpu.x)));
 }
 
 /*
@@ -725,26 +866,33 @@ void abi_MoveObjectUpBySigned(void)
  * WAITS: no.
  * Entry: X object. Exit: A the frame, N and Z from it, Y the index, C from the load of the record. X kept.
  */
-Ended LoadRecordThenFrameByKind(uint8_t slot)
+ObjArm LoadRecordThenFrameByKind(uint8_t slot)
 {
-    uint8_t last, nz, kind, index, frame;
+    ObjArm r = { 0 };
+    uint8_t nz, kind;
     bool carry;
-    Ended e;
 
     jsr_push(0x9CF0);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
+    r.second = nz;
+    r.flag = carry;
     kind = RD8(OBJ->next_kind[slot]);
-    index = (uint8_t)(kind & 1);
-    frame = rd8((uint16_t)(0x9CFD + index));
-    WR8(OBJ->frame[slot], frame);
-    return ended_then(e, ended_with_y(ended_load(frame), index));
+    r.y = (uint8_t)(kind & 1);
+    r.third = rd8((uint16_t)(0x9CFD + r.y));
+    WR8(OBJ->frame[slot], r.third);
+    return r;
+}
+
+/* The record's exit, then the frame's load with Y its index. */
+static Ended load_record_then_frame_exit_shim(ObjArm r)
+{
+    return ended_then(record_exit_shim(r), ended_with_y(ended_load(r.third), r.y));
 }
 
 void abi_LoadRecordThenFrameByKind(void)
 {
-    abi_ended(LoadRecordThenFrameByKind(cpu.x));
+    abi_ended(load_record_then_frame_exit_shim(LoadRecordThenFrameByKind(cpu.x)));
 }
 
 /*
@@ -755,17 +903,24 @@ void abi_LoadRecordThenFrameByKind(void)
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: A the byte, N and Z from it.
  */
-Ended StoreHitFromTable(uint8_t slot, uint8_t y)
+ObjArm StoreHitFromTable(uint8_t slot, uint8_t y)
 {
-    uint8_t value = RD8(OBJ->f3828[y]);
+    ObjArm r = { 0 };
 
-    WR8(OBJ->hit_taken[slot], value);
-    return ended_load(value);
+    r.first = RD8(OBJ->f3828[y]);
+    WR8(OBJ->hit_taken[slot], r.first);
+    return r;
+}
+
+/* A the byte stored. */
+static Ended store_hit_exit_shim(ObjArm r)
+{
+    return ended_load(r.first);
 }
 
 void abi_StoreHitFromTable(void)
 {
-    abi_ended(StoreHitFromTable(cpu.x, cpu.y));
+    abi_ended(store_hit_exit_shim(StoreHitFromTable(cpu.x, cpu.y)));
 }
 
 /*
@@ -777,7 +932,7 @@ void abi_StoreHitFromTable(void)
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: as StoreHitFromTable.
  */
-Ended ReportHitToStage(uint8_t slot, uint8_t y)
+ObjArm ReportHitToStage(uint8_t slot, uint8_t y)
 {
     uint8_t value;
 
@@ -794,7 +949,7 @@ Ended ReportHitToStage(uint8_t slot, uint8_t y)
 
 void abi_ReportHitToStage(void)
 {
-    abi_ended(ReportHitToStage(cpu.x, cpu.y));
+    abi_ended(store_hit_exit_shim(ReportHitToStage(cpu.x, cpu.y)));
 }
 
 /*
@@ -805,19 +960,34 @@ void abi_ReportHitToStage(void)
  * WAITS: no.
  * Entry: A the kind, X object, Y the slot. Exit: equal: A and N, Z, C from the compare; otherwise as StoreHitFromTable.
  */
-Ended ReportHitUnlessTwo(uint8_t kind, uint8_t slot, uint8_t y)
+ObjArm ReportHitUnlessTwo(uint8_t kind, uint8_t slot, uint8_t y)
 {
-    Ended e = ended_compare(kind, 2);
+    ObjArm r = { 0 };
 
+    r.first = kind;
+    r.arm = PL_REPORT_UNLESS_EQUAL_TWO;
     if (kind == 2) {
+        return r;
+    }
+    r.sub = obj_sub(ReportHitToStage(slot, y));
+    r.arm = PL_REPORT_UNLESS_REPORTED;
+    return r;
+}
+
+/* The compare with 2; when it was not equal, the report's store after it. */
+static Ended report_hit_unless_two_exit_shim(ObjArm r)
+{
+    Ended e = ended_compare(r.first, 2);
+
+    if (r.arm == PL_REPORT_UNLESS_EQUAL_TWO) {
         return e;
     }
-    return ended_then(e, ReportHitToStage(slot, y));
+    return ended_then(e, store_hit_exit_shim(obj_arm(r.sub)));
 }
 
 void abi_ReportHitUnlessTwo(void)
 {
-    abi_ended(ReportHitUnlessTwo(cpu.a, cpu.x, cpu.y));
+    abi_ended(report_hit_unless_two_exit_shim(ReportHitUnlessTwo(cpu.a, cpu.x, cpu.y)));
 }
 
 /*
@@ -828,18 +998,21 @@ void abi_ReportHitUnlessTwo(void)
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: as ReportHitUnlessTwo.
  */
-Ended HitKindFromBit1(uint8_t slot, uint8_t y)
+ObjArm HitKindFromBit1(uint8_t slot, uint8_t y)
 {
+    ObjArm r = { 0 };
     uint8_t flags = RD8(OBJ->f3148[slot]);
     uint8_t kind = (uint8_t)(((flags & 2) >> 1) + 1);
 
     WR8(OBJ->f38d8[y], kind);
-    return ReportHitUnlessTwo(kind, slot, y);
+    r.sub = obj_sub(ReportHitUnlessTwo(kind, slot, y));
+    r.arm = PL_BIT1_REPORTED;
+    return r;
 }
 
 void abi_HitKindFromBit1(void)
 {
-    abi_ended(HitKindFromBit1(cpu.x, cpu.y));
+    abi_ended(report_hit_unless_two_exit_shim(obj_arm(HitKindFromBit1(cpu.x, cpu.y).sub)));
 }
 
 /*
@@ -852,22 +1025,35 @@ void abi_HitKindFromBit1(void)
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: as StoreHitFromTable.
  */
-Ended HitKindFromBit7(uint8_t slot, uint8_t y)
+ObjArm HitKindFromBit7(uint8_t slot, uint8_t y)
 {
+    ObjArm r = { 0 };
     uint8_t flags = RD8(OBJ->f3148[slot]);
     uint8_t kind = (uint8_t)((((flags & 0x80) ? 1 : 0)) + 1);
-    Ended e;
 
+    r.first = kind;
     WR8(OBJ->f38d8[y], kind);
-    e = ended_compare(kind, 2);
+    r.arm = PL_BIT7_FIRST;
     if (kind == 2) {
         WR8(OBJ->f3828[y], 5);
+        r.arm = PL_BIT7_SECOND_OF_TWO;
+    }
+    r.sub = obj_sub(ReportHitToStage(slot, y));
+    return r;
+}
+
+/* The compare with 2, or the 5 stored when it was equal, then the report's store after it. */
+static Ended hit_kind_from_bit7_exit_shim(ObjArm r)
+{
+    Ended e = ended_compare(r.first, 2);
+
+    if (r.arm == PL_BIT7_SECOND_OF_TWO) {
         e = ended_load(5);
     }
-    return ended_then(e, ReportHitToStage(slot, y));
+    return ended_then(e, store_hit_exit_shim(obj_arm(r.sub)));
 }
 
 void abi_HitKindFromBit7(void)
 {
-    abi_ended(HitKindFromBit7(cpu.x, cpu.y));
+    abi_ended(hit_kind_from_bit7_exit_shim(HitKindFromBit7(cpu.x, cpu.y)));
 }

@@ -268,7 +268,7 @@ typedef struct {
 typedef struct {
     Ended before;
     bool picked;
-    RandomEnd timers;
+    ObjArm timers;   /* what PickTimersAtRandomB or PickAngleAtRandomB ended on */
     Ended after;
 } WaitEnd;
 typedef struct {
@@ -285,9 +285,9 @@ void wait_exit_shim(WaitEnd r);
 /* A routine that picks a throw, then timers, then an angle: the exits of the three in order. */
 typedef struct {
     Ended before;
-    Ended thrown;
-    RandomEnd timers;
-    RandomEnd angle;
+    ObjArm thrown;   /* what ThrowByNextKindB, PickTimersAtRandomB and PickAngleAtRandomB ended on */
+    ObjArm timers;
+    ObjArm angle;
 } ThrowChain;
 ThrowChain StartKnifeThrower(uint8_t slot);
 

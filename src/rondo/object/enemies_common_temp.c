@@ -653,14 +653,14 @@ void abi_PlayHitSoundM(void)
  * WAITS: no.
  * Entry, exit: as FaceThePlayerInSomeStates.
  */
-SideEnd FaceThePlayerInSomeStatesC(uint8_t slot)
+ObjArm FaceThePlayerInSomeStatesC(uint8_t slot)
 {
     return face_player_in_states(slot, 0xADC0, 0xADBA);
 }
 
 void abi_FaceThePlayerInSomeStatesC(void)
 {
-    abi_side_end(FaceThePlayerInSomeStatesC(cpu.x));
+    abi_side_end(face_player_in_states_exit_shim(FaceThePlayerInSomeStatesC(cpu.x)));
 }
 
 /*
@@ -671,14 +671,14 @@ void abi_FaceThePlayerInSomeStatesC(void)
  * WAITS: no.
  * Entry, exit: as FaceThePlayerInSomeStates.
  */
-SideEnd FaceThePlayerInSomeStatesD(uint8_t slot)
+ObjArm FaceThePlayerInSomeStatesD(uint8_t slot)
 {
     return face_player_in_states(slot, 0xC00F, 0xC009);
 }
 
 void abi_FaceThePlayerInSomeStatesD(void)
 {
-    abi_side_end(FaceThePlayerInSomeStatesD(cpu.x));
+    abi_side_end(face_player_in_states_exit_shim(FaceThePlayerInSomeStatesD(cpu.x)));
 }
 
 /*
@@ -689,14 +689,14 @@ void abi_FaceThePlayerInSomeStatesD(void)
  * WAITS: no.
  * Entry, exit: as ThrowByNextKind.
  */
-Ended ThrowByNextKindB(uint8_t slot)
+ObjArm ThrowByNextKindB(uint8_t slot)
 {
     return throw_by_next_kind(slot, 0xCDB4, 0xCDAD);
 }
 
 void abi_ThrowByNextKindB(void)
 {
-    abi_ended(ThrowByNextKindB(cpu.x));
+    abi_ended(throw_by_next_kind_exit_shim(ThrowByNextKindB(cpu.x)));
 }
 
 /*
@@ -707,14 +707,14 @@ void abi_ThrowByNextKindB(void)
  * WAITS: no.
  * Entry, exit: as PickTimersAtRandom.
  */
-RandomEnd PickTimersAtRandomB(uint8_t slot)
+ObjArm PickTimersAtRandomB(uint8_t slot)
 {
     return pick_pair_at_random(slot, 0xCDCA, 0xCDB9, false);
 }
 
 void abi_PickTimersAtRandomB(void)
 {
-    abi_random_end(PickTimersAtRandomB(cpu.x));
+    abi_random_end(pick_pair_at_random_exit_shim(PickTimersAtRandomB(cpu.x)));
 }
 
 /*
@@ -725,14 +725,14 @@ void abi_PickTimersAtRandomB(void)
  * WAITS: no.
  * Entry, exit: as PickAngleAtRandom.
  */
-RandomEnd PickAngleAtRandomB(uint8_t slot)
+ObjArm PickAngleAtRandomB(uint8_t slot)
 {
     return pick_pair_at_random(slot, 0xCDE6, 0xCDD5, true);
 }
 
 void abi_PickAngleAtRandomB(void)
 {
-    abi_random_end(PickAngleAtRandomB(cpu.x));
+    abi_random_end(pick_pair_at_random_exit_shim(PickAngleAtRandomB(cpu.x)));
 }
 
 /*

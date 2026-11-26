@@ -435,4 +435,6 @@ void card_irq1(uint8_t a, uint8_t x, uint8_t y);
 
 CardExit cd_send_command_start(void);
 
+CardExit run_bank2_tasks(uint8_t x, uint8_t y);
+
 #endif

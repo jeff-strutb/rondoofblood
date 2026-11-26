@@ -1,0 +1,9 @@
+# Unit calls of the System Card's bank 2 task runner (00:E6CF), which no game path reaches: with CardPlayerMode ($22DF) 0 it runs the
+# task at $C2EF only, with 1 the task at $CD12 only. The bank 2 tasks are original code the card's C calls.
+wait 120
+press RUN 6
+wait 700
+call run_bank2_tasks M=22DF:01
+wait 4
+call run_bank2_tasks M=22DF:00
+wait 30

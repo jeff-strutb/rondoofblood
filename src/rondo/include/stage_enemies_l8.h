@@ -416,15 +416,72 @@ SoundEnd ClearWhenHurtThenWait(uint8_t slot, uint8_t y_entry);
 SoundEnd DrawTileScriptStepsThenScatter(uint8_t slot, uint8_t y_entry);
 
 /* object/enemies_l8_st18.c */
-Ended CountDownOrPickNextTimer(uint8_t slot);
-Ended StepListThenPickStateByLuck(uint8_t slot, uint8_t y_entry);
-SoundEnd StepListThenLeapByDistance(uint8_t slot, uint8_t y_entry);
-Ended CountDownThenState5(uint8_t slot);
-SoundEnd SoundAndTileWriteAtFrame24(uint8_t slot, uint8_t y_entry);
-SoundEnd SoundAndSpawnFiveAtFrame27(uint8_t slot, uint8_t y_entry);
-Ended StepListThenState5(uint8_t slot, uint8_t y_entry);
-SoundEnd SoundThenLeapByFacing(uint8_t slot, uint8_t y_entry);
-SoundEnd MaybeSound19AndSpawnPiece(uint8_t slot, uint8_t number, uint8_t y_entry);
+/* StepListThenPickStateByLuck: the state, the frame and the count of the frame 4 arm, the list step, and what the pick read and made. */
+typedef struct {
+    int arm;
+    uint8_t state, frame, count, side_bit, shifted, aim, pick, index, value;
+    L8Step step;
+    SideResult side;
+    RandomResult random;
+    Sum sum;
+} L8LuckArm;
+
+/* StepListThenLeapByDistance: the list step, the sound call, the distance and the index, the last speed byte, the count and the facing read, the reversed speed. */
+typedef struct {
+    int arm;
+    L8Step step;
+    CommandCall call;
+    PlayerDistance distance;
+    uint8_t index, value, count, facing;
+    Sum negated;
+} L8LeapDistanceArm;
+
+/* SoundThenLeapByFacing: the sound call, the facing, its index and the count. */
+typedef struct {
+    CommandCall call;
+    uint8_t facing, index, count;
+} L8LeapFacingArm;
+
+/* SoundAndTileWriteAtFrame24: the frame, and when it was $24 the sound call, the subtract and the last rotate's carry. */
+typedef struct {
+    bool wrote;
+    uint8_t frame, carry_out;
+    CommandCall call;
+    Sum diff;
+} L8TileWriteArm;
+
+/* SoundAndSpawnFiveAtFrame27: the frame, the sound call, and the last pass of the loop: the slot search, the start and the number. */
+enum { L8_FIVE_NOT_FRAME, L8_FIVE_NONE_FREE, L8_FIVE_ALL_STARTED };
+typedef struct {
+    int arm;
+    uint8_t frame, placed, number;
+    CommandCall call;
+    L8Slot found;
+} L8SpawnFiveArm;
+
+/* MaybeSound19AndSpawnPiece: the low two bits, and when 0 the sound call, the slot search, the start, the random number, its low bits and the sum. */
+typedef struct {
+    bool spawned;
+    uint8_t bits, placed, pick;
+    CommandCall call;
+    L8Slot found;
+    RandomResult random;
+    Sum sum;
+} L8SpawnPieceArm;
+
+L8Arm CountDownOrPickNextTimer(uint8_t slot);
+Ended l8_count_down_or_pick_exit_shim(L8Arm r);
+L8LuckArm StepListThenPickStateByLuck(uint8_t slot, uint8_t y_entry);
+L8LeapDistanceArm StepListThenLeapByDistance(uint8_t slot, uint8_t y_entry);
+L8Arm CountDownThenState5(uint8_t slot);
+L8TileWriteArm SoundAndTileWriteAtFrame24(uint8_t slot, uint8_t y_entry);
+SoundEnd l8_tile_write_24_exit_shim(L8TileWriteArm r);
+L8SpawnFiveArm SoundAndSpawnFiveAtFrame27(uint8_t slot, uint8_t y_entry);
+SoundEnd l8_spawn_five_27_exit_shim(L8SpawnFiveArm r);
+L8Arm StepListThenState5(uint8_t slot, uint8_t y_entry);
+L8LeapFacingArm SoundThenLeapByFacing(uint8_t slot, uint8_t y_entry);
+L8SpawnPieceArm MaybeSound19AndSpawnPiece(uint8_t slot, uint8_t number, uint8_t y_entry);
+SoundEnd l8_sound19_piece_exit_shim(L8SpawnPieceArm r);
 
 /* object/enemies_l8_st19.c */
 Ended LoadRecordInStateZero(uint8_t slot);

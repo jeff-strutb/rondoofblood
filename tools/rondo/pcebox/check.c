@@ -482,7 +482,17 @@ static struct {
     unsigned acc_max;       /* work RAM accesses the core may make on the way: the original's own, in the record before ev */
 } hold;
 static unsigned long idle_until_frame;     /* after a frame hold: the core runs nothing until this frame has ended */
+static struct {
+    int active, entered;
+    unsigned long count;
+    uint16_t entry;
+    Regs saved;
+    uint8_t s;
+    void *host;          /* hybrid: the C on top when the call was made (parked, often waiting for the frame end) */
+    uint64_t ubegin;     /* hybrid: the record's UBEGIN of this call, where the called routine's OPEN is looked for; 0 none */
+} unit;
 static uint64_t frame_holds;
+static uint64_t end_calls;       /* calls into original code still running when the script ended */
 static uint64_t jsr_after_int;   /* JSRs whose target an interrupt came in at: their return address marked after it */
 static uint64_t left_back;       /* left hand-overs made at the close's PC, the C standing past it with the original's registers */
 static uint64_t left_run_holds;  /* left hand-overs whose interrupt came after a few work RAM accesses of the run-on */
@@ -1597,7 +1607,7 @@ static void original_at(uint16_t ret, uint16_t addr)
     Span *span = sp;
     int nest = span->nest;
     int own = blame_tag < 0 || blame_tag == span->tag;     /* the routine whose call this is makes the call itself */
-    int noreturn;
+    int noreturn, by_horizon;
 
     for (uint64_t j = sp->cur;; j++) {
         Ev *x = sev(sp, j, &nest);
@@ -1731,6 +1741,7 @@ static void original_at(uint16_t ret, uint16_t addr)
         }
     }
     noreturn = horizon_hit || retidx >= span->end || !evp(retidx);
+    by_horizon = horizon_hit;
     horizon_hit = 0;
     if (own && (ec.kind == K_JMP || noreturn)) {
         /* The routine's own tail jump, or code that does not come back in the call: the routine ends there.
@@ -1772,6 +1783,14 @@ static void original_at(uint16_t ret, uint16_t addr)
             c->abandoned = 1;
             swapcontext(&c->uc, &main_uc);
         }
+    }
+    /* The script ended inside the call (the record closes it as CL_END) with the code called still running: it never comes
+     * back in the record because the record ends. The code is run on the machine as any call's is, and the C waits for
+     * a return the script's end does not reach. */
+    if (noreturn && mode == MODE_HYBRID && !by_horizon && span->end != SPAN_OPEN && evp(span->end) &&
+        evp(span->end)->type == EV_CLOSE && evp(span->end)->kind == CL_END) {
+        noreturn = 0;
+        end_calls++;
     }
     if (noreturn) {
         /* A routine called from another's C jumps to code that never returns here: the C after it is wrong. */
@@ -3254,6 +3273,12 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
     Ev *e = NULL;
     Ctx *c;
 
+    /* The script's unit call: the record's OPEN of the routine it calls is in the call's block, after its UBEGIN. The
+     * hook's cursor can stand before events of the C the call was made over (a C makes its accesses on its own span's
+     * cursor), whose calls must not be taken for this one's. */
+    if (prev_op == PREV_UNIT && unit.active && unit.ubegin && unit.ubegin + 1 > i)
+        i = unit.ubegin + 1;
+
     for (;; i++) {
         e = evp(i);
         if (!e || e->type == EV_OPEN)
@@ -3342,14 +3367,6 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
 /* ------------------------------------------------------------------------------------------ */
 /* Unit calls: a call at a routine's own entry, made by the script.                             */
 
-static struct {
-    int active, entered;
-    unsigned long count;
-    uint16_t entry;
-    Regs saved;
-    uint8_t s;
-    void *host;          /* hybrid: the C on top when the call was made (parked, often waiting for the frame end) */
-} unit;
 
 /* NULL on success; otherwise why not. Called between frames, in every run alike. */
 const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint8_t x, int has_y, uint8_t y,
@@ -3378,8 +3395,10 @@ const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint
          * while it waits for the frame end), so those are taken from the record; the core's own are put back after. */
         Ev *x;
 
+        unit.ubegin = 0;
         for (uint64_t k = scan; k < scan + (1u << 16) && (x = evp(k)); k++)
             if (x->type == EV_UBEGIN) {
+                unit.ubegin = k;
                 r.a = x->a;
                 r.x = x->x;
                 r.y = x->y;
@@ -4098,6 +4117,8 @@ void check_finish(void)
                 (unsigned long long)left_run_holds);
         fprintf(report, "left hand-overs made at the close's PC, the C past it with the original's registers: %llu\n",
                 (unsigned long long)left_back);
+        fprintf(report, "calls into original code still running at the script's end, run on the machine: %llu\n",
+                (unsigned long long)end_calls);
         fprintf(report, "frame ends a few instructions past a hand-over, the core held until it stood there: %llu\n",
                 (unsigned long long)frame_holds);
         fprintf(report, "frame ends at a hand-over to the original passed by the C (the original's frame ended where the C stood): %llu\n",

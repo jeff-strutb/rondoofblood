@@ -86,7 +86,7 @@ build_pcebox() {
     RONDO_GEN="$gen" python3 -I "$top/tools/rondo/hybrid.py"
     # The decompiled C reports each function it enters, so A7 sees which routines' C ran inside a
     # swapped call (check.c); the harness itself is left out of that.
-    cc -O2 -Wall -Wextra -rdynamic -finstrument-functions \
+    cc -O2 -g1 -Wall -Wextra -rdynamic -finstrument-functions \
         -finstrument-functions-exclude-file-list=tools/rondo/pcebox/,build/rondo/pcebox/ \
         -I "$tc/src/pce/libretro-common/include" -I "$gen" \
         -I "$src/include" -I "$top/syscard/include" -o "$out.new" "$top/tools/rondo/pcebox/pcebox.c" \

@@ -1,4 +1,4 @@
-# Coverage poke, not play (PROCEDURE section 6, step 2): in Stage 0 the raster effect the frame asks for (zRasterEffect, $2045)
+# Coverage poke, not play (PROCEDURE section 6, step 2): 600 frames after the new-game sequence (the trace shows 25 sectors of code run, so not yet in the stage's own code) the raster effect the frame asks for (zRasterEffect, $2045)
 # is poked to each of the effects 1 to 31, the table's whole range, 40 frames each. Effects 2, 4, 5, 7, 9, 10, 15, 22, 25, 26, 27, 29, 30 and
 # 31 are run by no other script; the rest are here so A5 judges every handler on one short script.
 # Who stores the effect number (a static search of the filed asm and the intake for stores to zero page $45): constants 1 (TitleSetUp),

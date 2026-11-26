@@ -370,6 +370,7 @@ typedef struct {
     YMove y;
     OnScreen x;
     bool copied_push;
+    uint8_t push_y_hi; /* the last byte the push copy read, which is A on leaving */
 } CarriedMode;
 
 typedef struct {
@@ -385,7 +386,20 @@ typedef enum {
     LEFT_WALL_PUSHED
 } LeftWallEnd;
 
+/* A after PlayerNextX: the high byte of the position's sum, which the assembly compares without reading zTemp05 again. */
+static uint8_t next_high(WordPair next)
+{
+    return (uint8_t)((uint16_t)(next.a + next.b) >> 8);
+}
+
+/* What CheckPlayerAtLevelEnd leaves: A, the value whose N and Z the last compare or load set, and the carry. */
 typedef struct {
+    uint8_t a, flags_from;
+    bool c;
+} LevelEnd;
+
+typedef struct {
+    LevelEnd level;
     YMove y;
     Choice choice;
     RightOrWall right;
@@ -882,8 +896,10 @@ CarriedMode CameraModeCarried(void)
 {
     CarriedMode mode;
 
-    write16(ScrollStepXLo, ScrollStepXHi, 0);
-    write16(ScrollStepYLo, ScrollStepYHi, 0);
+    wr8(ScrollStepXLo, 0);
+    wr8(ScrollStepXHi, 0);
+    wr8(ScrollStepYLo, 0);
+    wr8(ScrollStepYHi, 0);
     jsr_push(0x66D4);
     mode.y = MovePlayerYIfMoving();
     jsr_pop();
@@ -892,8 +908,16 @@ CarriedMode CameraModeCarried(void)
     jsr_pop();
     mode.copied_push = !(rd8(zPlayerPush) & PUSH_ADDS_X);
     if (mode.copied_push) {
-        write16(ScrollStepXLo, ScrollStepXHi, read16(zPushXLo, zPushXHi));
-        write16(ScrollStepYLo, ScrollStepYHi, read16(zPushYLo, zPushYHi));
+        uint8_t byte = rd8(zPushXLo);
+
+        wr8(ScrollStepXLo, byte);
+        byte = rd8(zPushXHi);
+        wr8(ScrollStepXHi, byte);
+        byte = rd8(zPushYLo);
+        wr8(ScrollStepYLo, byte);
+        byte = rd8(zPushYHi);
+        wr8(ScrollStepYHi, byte);
+        mode.push_y_hi = byte;
     }
     return mode;
 }
@@ -905,7 +929,7 @@ void abi_CameraModeCarried(void)
     y_move_exit_shim(mode.y);
     x_on_screen_exit_shim(mode.x);
     if (mode.copied_push) {
-        cpu.a = rd8(zPushYHi);
+        cpu.a = mode.push_y_hi;
         abi_nz(cpu.a);
     }
 }
@@ -935,16 +959,35 @@ void abi_PlayerNextX(void)
  * WHAT IT DOES: When the scroll is at the level's end and the player has walked into
  * the last stretch of the screen, $C0 to $EB, sets the player's two exit fields.
  * HOW: Compares the scroll's high byte with its limit, and the position with the range.
+ * WAITS: no.
  * Entry: nothing. Exit: A and flags as the last compare or load left them. X, Y, V kept.
  */
-void CheckPlayerAtLevelEnd(void)
+LevelEnd CheckPlayerAtLevelEnd(void)
 {
-    uint8_t x = rd8(OBJ_X_LO);
+    uint8_t scroll = rd8(ScrollXHiScreen);
+    uint8_t limit = rd8(ScrollXMaxHi);
+    uint8_t x;
+    LevelEnd end = { scroll, (uint8_t)(scroll - limit), scroll >= limit };
 
-    if (rd8(ScrollXHiScreen) == rd8(ScrollXMaxHi) && x >= LEVEL_END_FROM_X && x < LEVEL_END_TO_X) {
-        wr8(OBJ_3510, 0xFF);
-        wr8(OBJ_3568, LEVEL_END_TIMER);
-    }
+    if (scroll != limit)
+        return end;
+    x = rd8(OBJ_X_LO);
+    end.a = x;
+    end.flags_from = (uint8_t)(x - LEVEL_END_FROM_X);
+    end.c = x >= LEVEL_END_FROM_X;
+    if (x < LEVEL_END_FROM_X)
+        return end;
+    x = rd8(OBJ_X_LO);
+    end.a = x;
+    end.flags_from = (uint8_t)(x - LEVEL_END_TO_X);
+    end.c = x >= LEVEL_END_TO_X;
+    if (x >= LEVEL_END_TO_X)
+        return end;
+    wr8(OBJ_3510, 0xFF);
+    wr8(OBJ_3568, LEVEL_END_TIMER);
+    end.a = LEVEL_END_TIMER;
+    end.flags_from = LEVEL_END_TIMER;
+    return end;
 }
 
 /* A compare leaves A, N, Z and C; V stands. */
@@ -956,29 +999,16 @@ static void compare_exit_shim(uint8_t a, uint8_t b)
 }
 
 /* A and the flags from the compare that decided, or the last load. V stands. */
-static void level_end_exit_shim(void)
+static void level_end_exit_shim(LevelEnd end)
 {
-    uint8_t scroll = rd8(ScrollXHiScreen);
-    uint8_t limit = rd8(ScrollXMaxHi);
-    uint8_t x = rd8(OBJ_X_LO);
-
-    if (scroll != limit) {
-        compare_exit_shim(scroll, limit);
-    } else if (x < LEVEL_END_FROM_X) {
-        compare_exit_shim(x, LEVEL_END_FROM_X);
-    } else {
-        compare_exit_shim(x, LEVEL_END_TO_X);
-        if (x < LEVEL_END_TO_X) {
-            cpu.a = LEVEL_END_TIMER;
-            abi_nz(LEVEL_END_TIMER);
-        }
-    }
+    cpu.a = end.a;
+    abi_nz(end.flags_from);
+    abi_flag(P_C, end.c);
 }
 
 void abi_CheckPlayerAtLevelEnd(void)
 {
-    CheckPlayerAtLevelEnd();
-    level_end_exit_shim();
+    level_end_exit_shim(CheckPlayerAtLevelEnd());
 }
 
 /*
@@ -998,7 +1028,7 @@ LeftWallMode CameraModeLeftWall(void)
     LeftWallMode mode = { 0 };
 
     jsr_push(0x6725);
-    CheckPlayerAtLevelEnd();
+    mode.level = CheckPlayerAtLevelEnd();
     jsr_pop();
     jsr_push(0x6728);
     mode.y = MovePlayerYIfMoving();
@@ -1018,7 +1048,7 @@ LeftWallMode CameraModeLeftWall(void)
         jsr_push(0x677F);
         mode.next = PlayerNextX();
         jsr_pop();
-        if (rd8(zTemp05) <= PLAYER_MIN_X) {
+        if (next_high(mode.next) <= PLAYER_MIN_X) {
             PlayerAtLeftEdge();
             mode.how = LEFT_WALL_AT_EDGE;
         } else {
@@ -1053,7 +1083,7 @@ void abi_CameraModeLeftWall(void)
     LeftWallMode mode = CameraModeLeftWall();
     uint8_t sum = (uint8_t)(mode.push + mode.position);
 
-    level_end_exit_shim();
+    level_end_exit_shim(mode.level);
     y_move_exit_shim(mode.y);
     choice_exit_shim(mode.choice);
     if (mode.choice.way == GOES_NOWHERE)
@@ -1070,8 +1100,8 @@ void abi_CameraModeLeftWall(void)
     case LEFT_WALL_AT_EDGE:
     case LEFT_WALL_MOVED:
         abi_alu(word_add_exit_shim(mode.next));
-        compare_exit_shim(rd8(zTemp05), PLAYER_MIN_X);
-        cpu.a = mode.how == LEFT_WALL_AT_EDGE ? PLAYER_MIN_X : rd8(zTemp05);
+        compare_exit_shim(next_high(mode.next), PLAYER_MIN_X);
+        cpu.a = mode.how == LEFT_WALL_AT_EDGE ? PLAYER_MIN_X : next_high(mode.next);
         abi_nz(cpu.a);
         break;
     case LEFT_WALL_STOPPED:

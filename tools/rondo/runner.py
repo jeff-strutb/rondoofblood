@@ -592,10 +592,19 @@ def write_table(main, out, mode, rev, scripts, table, b):
     records.write(os.path.join(out, "table.csv"), TABLE, table)
     n = sum(1 for r in table if r["verdict"] == "IDENTICAL")
     log(f"served: {mode} at {rev}: {n} of {len(table)} scripts identical; table {os.path.join(out, 'table.csv')}", b)
-    if sorted(scripts) == sorted(records.script_names(main)):
-        path = os.path.join(main, "config", "rondo", "runs", "served_a7.csv")
-        old = [r for r in records.read(path) if r["mode"] != mode] if os.path.exists(path) else []
-        records.write(path, TABLE, old + table)
+    path = os.path.join(main, "config", "rondo", "runs", "served_a7.csv")
+    names = set(records.script_names(main))
+    old = records.read(path)
+    have = {r["script"] for r in old if r["mode"] == mode}
+    if set(scripts) == names or names <= have | set(scripts):
+        # every script has a row of this mode: a whole run replaces the mode's rows, a rerun of some scripts
+        # replaces theirs (each row names the commit it was measured at); rows of removed scripts go
+        done = set(scripts)
+        rows = [r for r in old if r["mode"] != mode or (r["script"] not in done and r["script"] in names)] + table
+        records.write(path, TABLE, sorted(rows, key=lambda r: (r["mode"], r["script"])))
+    else:
+        log(f"served: served_a7.csv not written: {len(names - have - set(scripts))} script(s) of mode {mode} "
+            "have no row yet; run every script once", b)
 
 
 def cpu_run_build(tree, draftdir, box):

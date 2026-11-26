@@ -1717,7 +1717,7 @@ static void stub_tam(uint8_t mask, uint8_t bank, uint16_t ret)
  * WAITS: only through the exchanges.
  * Entry: _CL, _CH, _DL address; the rest by _DH; A, X (pushed). Exit: A 0 if well, $22 for a bad request;
  * else as cd_retry_after_error. C 1 if well. X, Y and V as the last step left them.
- * Read to VRAM and the bad request by unit calls (card_unit_read). The read through an MPR is not checked: the TMA and TAM stubs it writes in RAM are done in C, until the checker compares RAM-built code with its caller.
+ * By unit calls (card_unit_read): VRAM, the bad request and the read through an MPR.
  */
 CardExit cd_read(uint8_t a, uint8_t x)
 {

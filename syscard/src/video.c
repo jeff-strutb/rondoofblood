@@ -1045,7 +1045,7 @@ static CardExit move_color_set(uint16_t set, uint8_t palette_high, bool read_bac
  * Entry: CardColorCommand, CardColorBackground, CardColorSprites; X, Y (pushed by the block moves). Exit, no
  * command: A 0, N 0, Z 1. Sprites moved: A 1, the VCE address's high byte it last loaded, N 0, Z 0, C 0. Sprites
  * skipped: A 0, N 0, Z 1, C 0 if the background moved, else as it was. X, Y, V kept.
- * Not checked: the block move it writes in RAM is done in C; the checker compares RAM-built code only as part of its caller once that change lands.
+ * The block move it writes in RAM is done in C and compared as part of this routine (boot script).
  */
 CardExit ex_colorcmd(uint8_t x, uint8_t y)
 {

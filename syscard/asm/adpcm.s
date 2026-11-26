@@ -115,7 +115,7 @@ ad_play_at0:
 ; Entry: _AX, _BX, _CX, _DH, and _BL for banks. Exit: X _CL and Y _CH, V bit 6 of the control
 ; port as the latch read it. To memory: A 0, N 0, Z 1, C kept. To VRAM: the same, C 1. Banks and
 ; refused: as ad_read_to_banks.
-; Memory and VRAM arms by unit calls (card_unit_adpcm); banks arm not checked: the TMA and TAM stubs it writes in RAM are done in C, until the checker compares RAM-built code with its caller.
+; By unit calls (card_unit_adpcm): memory, VRAM and banks.
 ad_read:
     jsr ad_stat
     bne ad_read
@@ -181,7 +181,7 @@ ad_read_at4:
 ; Entry: A _DH, the ADPCM address latched. Exit, refused: A $22, N 0, Z 0, C from comparing with
 ; 7. Read: A 0, N and Z from the bank put back, C bit 3 of _DH, X the pages and Y the bytes left
 ; of the last bank. V kept.
-; Not checked: the TMA and TAM stubs it writes in RAM are done in C, until the checker compares RAM-built code with its caller.
+; Checked by unit calls (card_unit_adpcm), its RAM stubs included.
 ad_read_to_banks:
     cmp #$07
     bmi ad_read_to_banks_at0
@@ -276,7 +276,7 @@ aim_bx_at_vram_port:
 ; _DH: A $22, N 0, Z 0, C 1. Written: A 0, V bit 6 of the status as the last wait read it; from
 ; memory N 0, Z 1; from VRAM N 0, Z 1, C 1; from banks N and Z from the bank put back, C bit 3
 ; of _DH, X the pages and Y the bytes left of the last bank.
-; Banks arm not checked: the TMA and TAM stubs it writes in RAM are done in C, until the checker compares RAM-built code with its caller. The rest by unit calls (card_unit_adpcm).
+; Checked by unit calls (card_unit_adpcm), the banks arm and its RAM stubs included.
 ad_write:
     lda a:AdpcmDma
     and #$03

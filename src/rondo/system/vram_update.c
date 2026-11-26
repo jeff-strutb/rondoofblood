@@ -774,6 +774,9 @@ static VramExit vram_list(uint8_t a, uint8_t x, uint8_t y, bool carry, bool over
 
 static void vram_exit_shim(VramExit out)
 {
+    if (out.left) {
+        return;
+    }
     cpu.a = out.a;
     cpu.x = out.x;
     cpu.y = out.y;
@@ -793,28 +796,555 @@ static bool entry_overflow_shim(void)
     return (cpu.p & P_V) != 0;
 }
 
+/* The 15 bytes before VramListFromIndex in every overlay: its second table's pointer for a list number of $80 or more. */
+static VramExit vram_list_from_table(uint16_t table, uint8_t a, uint8_t x, bool overflow)
+{
+    uint8_t y = (uint8_t)(a << 1);
+    bool carry = (a & 0x80) != 0;
+    uint8_t value = rd8((uint16_t)(table + y));
+
+    wr8(ZpListLow, value);
+    value = rd8((uint16_t)(table + 1 + y));
+    wr8(ZpListHigh, value);
+    return vram_list(value, x, 0, carry, overflow);
+}
+
+/*
+ * @routine 00C5:142 VramListFromTableA
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8360,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8360, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableA(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8360, a, x, overflow);
+}
+
+void abi_VramListFromTableA(void)
+{
+    vram_exit_shim(VramListFromTableA(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0111:142 VramListFromTableB
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $82AE,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $82AE, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableB(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x82AE, a, x, overflow);
+}
+
+void abi_VramListFromTableB(void)
+{
+    vram_exit_shim(VramListFromTableB(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0251:142 VramListFromTableC
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $901F,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $901F, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableC(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x901F, a, x, overflow);
+}
+
+void abi_VramListFromTableC(void)
+{
+    vram_exit_shim(VramListFromTableC(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0511:142 VramListFromTableD
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $9349,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $9349, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableD(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x9349, a, x, overflow);
+}
+
+void abi_VramListFromTableD(void)
+{
+    vram_exit_shim(VramListFromTableD(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 05C1:142 VramListFromTableE
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E4B,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8E4B, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableE(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8E4B, a, x, overflow);
+}
+
+void abi_VramListFromTableE(void)
+{
+    vram_exit_shim(VramListFromTableE(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0721:142 VramListFromTableF
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E95,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8E95, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableF(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8E95, a, x, overflow);
+}
+
+void abi_VramListFromTableF(void)
+{
+    vram_exit_shim(VramListFromTableF(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 07D1:142 VramListFromTableG
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $9236,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $9236, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableG(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x9236, a, x, overflow);
+}
+
+void abi_VramListFromTableG(void)
+{
+    vram_exit_shim(VramListFromTableG(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0881:142 VramListFromTableH
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $901E,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $901E, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableH(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x901E, a, x, overflow);
+}
+
+void abi_VramListFromTableH(void)
+{
+    vram_exit_shim(VramListFromTableH(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0931:142 VramListFromTableI
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E90,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8E90, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableI(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8E90, a, x, overflow);
+}
+
+void abi_VramListFromTableI(void)
+{
+    vram_exit_shim(VramListFromTableI(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 09E1:142 VramListFromTableJ
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $9020,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $9020, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableJ(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x9020, a, x, overflow);
+}
+
+void abi_VramListFromTableJ(void)
+{
+    vram_exit_shim(VramListFromTableJ(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0A91:142 VramListFromTableK
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E5D,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8E5D, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableK(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8E5D, a, x, overflow);
+}
+
+void abi_VramListFromTableK(void)
+{
+    vram_exit_shim(VramListFromTableK(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0B41:142 VramListFromTableL
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8DE0,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8DE0, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableL(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8DE0, a, x, overflow);
+}
+
+void abi_VramListFromTableL(void)
+{
+    vram_exit_shim(VramListFromTableL(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0BF1:142 VramListFromTableM
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8CA7,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8CA7, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableM(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8CA7, a, x, overflow);
+}
+
+void abi_VramListFromTableM(void)
+{
+    vram_exit_shim(VramListFromTableM(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0D51:142 VramListFromTableN
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8D9C,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8D9C, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableN(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8D9C, a, x, overflow);
+}
+
+void abi_VramListFromTableN(void)
+{
+    vram_exit_shim(VramListFromTableN(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0E01:142 VramListFromTableO
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8D36,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8D36, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableO(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8D36, a, x, overflow);
+}
+
+void abi_VramListFromTableO(void)
+{
+    vram_exit_shim(VramListFromTableO(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0EB1:142 VramListFromTableP
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8FBB,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8FBB, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableP(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8FBB, a, x, overflow);
+}
+
+void abi_VramListFromTableP(void)
+{
+    vram_exit_shim(VramListFromTableP(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 0F61:142 VramListFromTableQ
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8D2E,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8D2E, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableQ(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8D2E, a, x, overflow);
+}
+
+void abi_VramListFromTableQ(void)
+{
+    vram_exit_shim(VramListFromTableQ(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 1011:142 VramListFromTableR
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8F58,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8F58, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableR(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8F58, a, x, overflow);
+}
+
+void abi_VramListFromTableR(void)
+{
+    vram_exit_shim(VramListFromTableR(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 10C1:142 VramListFromTableS
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8E56,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8E56, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableS(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8E56, a, x, overflow);
+}
+
+void abi_VramListFromTableS(void)
+{
+    vram_exit_shim(VramListFromTableS(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 1171:142 VramListFromTableT
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $9089,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $9089, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableT(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x9089, a, x, overflow);
+}
+
+void abi_VramListFromTableT(void)
+{
+    vram_exit_shim(VramListFromTableT(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 1611:142 VramListFromTableU
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $917E,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $917E, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableU(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x917E, a, x, overflow);
+}
+
+void abi_VramListFromTableU(void)
+{
+    vram_exit_shim(VramListFromTableU(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 16C1:142 VramListFromTableV
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $8FEB,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $8FEB, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableV(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x8FEB, a, x, overflow);
+}
+
+void abi_VramListFromTableV(void)
+{
+    vram_exit_shim(VramListFromTableV(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * @routine 18D1:142 VramListFromTableW
+ * @run 6C:8142
+ * WHAT IT DOES: Runs the VRAM list whose number is in A, for a number of $80 or more: this overlay's second table of lists, at $92F6,
+ * gives its pointer.
+ * HOW: A doubled indexes the table at $92F6, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
+ * Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
+ * WAITS: no.
+ * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ */
+VramExit VramListFromTableW(uint8_t a, uint8_t x, bool overflow)
+{
+    return vram_list_from_table(0x92F6, a, x, overflow);
+}
+
+void abi_VramListFromTableW(void)
+{
+    vram_exit_shim(VramListFromTableW(cpu.a, cpu.x, entry_overflow_shim()));
+}
+
+/*
+ * The branch the routine takes for a list number of $80 or more goes to $8142, which is not in this routine and
+ * is another table in each overlay (the operand differs from one to the next): it runs as the original, with the
+ * registers the branch left, and joins VramListRun at $8169 itself.
+ */
+static VramExit branch_to_8142_shim(uint8_t a, uint8_t x, bool carry, bool overflow)
+{
+    VramExit out = { 0 };
+
+    cpu.a = a;
+    cpu.x = x;
+    abi_flag(P_C, carry);
+    abi_flag(P_V, overflow);
+    call_original(0x8142);
+    out.left = true;
+    return out;
+}
+
+/*
+ * The variant of the 15 bytes at $8142 that this overlay has, by what the machine says is resident there: its C, as a
+ * typed call. One this tree has no routine for (an overlay no script has run) runs as the original.
+ */
+static VramExit table_variant_shim(uint8_t a, uint8_t x, bool carry, bool overflow)
+{
+    static const struct { uint32_t disc; VramExit (*run)(uint8_t a, uint8_t x, bool overflow); } variants[] = {
+        { DISC(0x00C5, 0x142), VramListFromTableA },
+        { DISC(0x0111, 0x142), VramListFromTableB },
+        { DISC(0x0251, 0x142), VramListFromTableC },
+        { DISC(0x0511, 0x142), VramListFromTableD },
+        { DISC(0x05C1, 0x142), VramListFromTableE },
+        { DISC(0x0721, 0x142), VramListFromTableF },
+        { DISC(0x07D1, 0x142), VramListFromTableG },
+        { DISC(0x0881, 0x142), VramListFromTableH },
+        { DISC(0x0931, 0x142), VramListFromTableI },
+        { DISC(0x09E1, 0x142), VramListFromTableJ },
+        { DISC(0x0A91, 0x142), VramListFromTableK },
+        { DISC(0x0B41, 0x142), VramListFromTableL },
+        { DISC(0x0BF1, 0x142), VramListFromTableM },
+        { DISC(0x0D51, 0x142), VramListFromTableN },
+        { DISC(0x0E01, 0x142), VramListFromTableO },
+        { DISC(0x0EB1, 0x142), VramListFromTableP },
+        { DISC(0x0F61, 0x142), VramListFromTableQ },
+        { DISC(0x1011, 0x142), VramListFromTableR },
+        { DISC(0x10C1, 0x142), VramListFromTableS },
+        { DISC(0x1171, 0x142), VramListFromTableT },
+        { DISC(0x1611, 0x142), VramListFromTableU },
+        { DISC(0x16C1, 0x142), VramListFromTableV },
+        { DISC(0x18D1, 0x142), VramListFromTableW }
+    };
+    uint32_t resident = resident_at(0x8142);
+
+    for (unsigned i = 0; i < sizeof variants / sizeof variants[0]; i++) {
+        if (variants[i].disc == resident) {
+            return variants[i].run(a, x, overflow);
+        }
+    }
+    return branch_to_8142_shim(a, x, carry, overflow);
+}
+
 /*
  * @routine 00C5:151 VramListFromIndex
  * @run 6C:8151
  * WHAT IT DOES: Runs the VRAM list whose number is in A: the overlay's table of lists gives its pointer.
  * HOW: An entry into the list loop (vram_list): A doubled indexes the table at $9802, the pointer goes
- * to zp $14, Y 0, and the loop runs on at VramListRun. A number of $80 or more branches to $8142
- * (untraced), which reads a table at $8360 the same way.
+ * to zp $14, Y 0, and the loop runs on at VramListRun. A number of $80 or more branches to $8142, which
+ * reads the overlay's own second table the same way (the original's code, run as it is).
  * WAITS: no.
- * Entry: A the list number. Exit: as VramListRun.
- * Untraced: the branch to $8142 (the bytes of $8142 to $8150 are not in this routine).
+ * Entry: A the list number, N the branch's (a caller loads A first). Exit: as VramListRun.
+ * Not in this routine: the bytes of $8142 to $8150, run as the original.
  */
-VramExit VramListFromIndex(uint8_t a, uint8_t x, bool carry, bool overflow)
+VramExit VramListFromIndex(uint8_t a, uint8_t x, bool negative, bool carry, bool overflow)
 {
     uint8_t y, value;
 
-    if (a & 0x80) {
-        y = (uint8_t)(a << 1);
-        value = rd8((uint16_t)(0x8360 + y));
-        wr8(ZpListLow, value);
-        value = rd8((uint16_t)(0x8361 + y));
-        wr8(ZpListHigh, value);
-        return vram_list(a, x, 0, (a & 0x80) != 0, overflow);
+    if (negative) {
+        return table_variant_shim(a, x, carry, overflow);
     }
     y = (uint8_t)(a << 1);
     carry = (a & 0x80) != 0;
@@ -832,7 +1362,7 @@ VramExit VramListFromIndex(uint8_t a, uint8_t x, bool carry, bool overflow)
 
 void abi_VramListFromIndex(void)
 {
-    vram_exit_shim(VramListFromIndex(cpu.a, cpu.x, entry_carry_shim(), entry_overflow_shim()));
+    vram_exit_shim(VramListFromIndex(cpu.a, cpu.x, (cpu.p & P_N) != 0, entry_carry_shim(), entry_overflow_shim()));
 }
 
 /*

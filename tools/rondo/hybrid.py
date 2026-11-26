@@ -102,6 +102,10 @@ def main():
         swappable += ok
         out.append(f"void {abi}(void);")
         rows.append(f'    {{ 0x{r["run"]:04X}, {r["length"]}, {r["disc"]}, "{r["name"]}", {abi}, {int(ok)}, 0x0000, 1 }},')
+    # A filed routine served by its draft has no row of its own: its name stays an alias of its run address, so a
+    # script's unit call by that name reaches the draft that starts there (pcebox check_tag_run).
+    aliases = [(r["name"], r["run"]) for r in routines if r["name"] in serve]
+    aliases += [(r["name"], r["run"]) for r in cardfile.spans() if r["name"] in serve]
     if DRAFTS:
         have = {r["name"] for r in routines if "abi_" + r["name"] in calls}
         have |= {r["name"] for r in cardfile.spans() if "abi_" + r["name"] in calls}
@@ -131,7 +135,10 @@ def main():
     out +=["const Tag rondo_tags[] = {"] + rows + ["};",
             f"const unsigned rondo_tag_count = {len(rows)};", "",
             "const unsigned rondo_ram_calls[] = { " + ", ".join("0x%06X" % a for a in sorted(ram_calls)) + (", " if ram_calls else "") + "0 };",
-            f"const unsigned rondo_ram_call_count = {len(ram_calls)};", ""]
+            f"const unsigned rondo_ram_call_count = {len(ram_calls)};", "",
+            "const struct Alias { const char *name; uint16_t run; } rondo_aliases[] = {"] + \
+           [f'    {{ "{n}", 0x{run:04X} }},' for n, run in aliases] + ['    { 0, 0 }', "};",
+            f"const unsigned rondo_alias_count = {len(aliases)};", ""]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="ascii", newline="\n") as f:
         f.write("\n".join(out))

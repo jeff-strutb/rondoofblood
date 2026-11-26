@@ -389,6 +389,49 @@ void abi_BossFrameRoutinesC(void)
     abi_ended(bossc_exit_shim(BossFrameRoutinesC(cpu.x, L8_LOADED)));
 }
 
+/*
+ * @routine 0F6D:523 HitBoxRowByFrameKind
+ * @run 71:C523
+ * WHAT IT DOES: Takes the hit box (OBJ_3988, OBJ_3A38, OBJ_3930, OBJ_39E0) from a four byte row of the table at $C575, the row the table at $C545 names for the object's frame (OBJ_2A68).
+ * HOW: A read of the frame as Y, a table read, two shifts, four table reads and stores.
+ * WAITS: no.
+ * Entry: X object. Exit: A the last byte read, Y the row, C bit 6 of the kind, N and Z from A (l8_hitbox_row_exit_shim). Called by BossFrameRoutinesD from the states $BBB0 marks, which ran in no script (docs/rondo/l8-untraced-arms.md). The tables at $C545 and $C575 keep their address form until they have a name.
+ */
+L8HitBoxRowArm HitBoxRowByFrameKind(uint8_t slot)
+{
+    L8HitBoxRowArm r;
+    uint8_t value;
+
+    r.frame = RD8(OBJ->frame[slot]);
+    r.kind = rd8((uint16_t)(0xC545 + r.frame));
+    r.row = (uint8_t)(r.kind << 2);
+    value = rd8((uint16_t)(0xC575 + r.row));
+    WR8(OBJ->hitbox_half_w[slot], value);
+    value = rd8((uint16_t)(0xC576 + r.row));
+    WR8(OBJ->hitbox_half_h[slot], value);
+    value = rd8((uint16_t)(0xC577 + r.row));
+    WR8(OBJ->hitbox_dx[slot], value);
+    r.last = rd8((uint16_t)(0xC578 + r.row));
+    WR8(OBJ->hitbox_dy[slot], r.last);
+    return r;
+}
+
+/* What HitBoxRowByFrameKind leaves in A, Y and the flags: the frame as Y, the kind, two shifts (C the kind's bit 6), the row as A and Y, then the last byte. */
+static Ended l8_hitbox_row_exit_shim(L8HitBoxRowArm r)
+{
+    Ended e = ended_with_y(ended_nz(r.frame), r.frame);
+
+    e = then(e, ended_load(r.kind));
+    e = then(e, ended_with_carry(ended_load(r.row), (r.kind & 0x40) != 0));
+    e = ended_with_y(e, r.row);
+    return then(e, ended_load(r.last));
+}
+
+void abi_HitBoxRowByFrameKind(void)
+{
+    abi_ended(l8_hitbox_row_exit_shim(HitBoxRowByFrameKind(cpu.x)));
+}
+
 /* What BossFrameRoutinesD left after the table's code when the state was marked or not: the state as Y and the mark. */
 static Ended bossd_tail(const L8St27BossDArm *r)
 {

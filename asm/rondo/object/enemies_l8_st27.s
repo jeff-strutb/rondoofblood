@@ -139,3 +139,25 @@ BossFrameRoutinesD_at0:
     ora (zTemp00,x)
     brk
     brk
+
+; @routine 0F6D:523 HitBoxRowByFrameKind
+; @run 71:C523
+; WHAT IT DOES: Takes the hit box (OBJ_3988, OBJ_3A38, OBJ_3930, OBJ_39E0) from a four byte row of the table at $C575, the row the table at $C545 names for the object's frame (OBJ_2A68).
+; HOW: A read of the frame as Y, a table read, two shifts, four table reads and stores.
+; WAITS: no.
+; Entry: X object. Exit: A the last byte read, Y the row, C bit 6 of the kind, N and Z from A. The tables at $C545 and $C575 keep their address form until they have a name.
+HitBoxRowByFrameKind:
+    ldy a:OBJ_2A68,x
+    lda a:$C545,y
+    asl a
+    asl a
+    tay
+    lda a:$C575,y
+    sta a:OBJ_3988,x
+    lda a:$C576,y
+    sta a:OBJ_3A38,x
+    lda a:$C577,y
+    sta a:OBJ_3930,x
+    lda a:$C578,y
+    sta a:OBJ_39E0,x
+    rts

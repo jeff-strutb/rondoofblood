@@ -18,12 +18,16 @@ enum {
 
 typedef void (*SetBarAddress)(uint8_t lo, uint8_t hi);
 
-/* The sound command the frame sends: A the command, Y as the code holds it; what Y is after it. */
-static uint8_t sound_command_shim(uint8_t command, uint8_t x, uint8_t y)
+/* The sound command the frame sends: A the command (N and Z from its load), X and Y as the code holds them, C and V as the
+ * last instructions to set them left them; what Y is after it. */
+static uint8_t sound_command_shim(uint8_t command, uint8_t x, uint8_t y, bool c, bool v)
 {
     cpu.a = command;
     cpu.x = x;
     cpu.y = y;
+    abi_nz(command);
+    abi_flag(P_C, c);
+    abi_flag(P_V, v);
     call_original(SOUND_HOOK_RUN);
     return cpu.y;
 }
@@ -195,16 +199,21 @@ static void apply_step(BlendStepEnd step, uint8_t *y)
     }
 }
 
-/* One tick of the stage: the sequence or the blends, the wave script, the frames, the health bar, the banks and the shown bytes. */
-static StageExit step_stage_frame(uint8_t x, uint8_t y, SetBarAddress set_bar)
+/*
+ * One tick of the stage: the sequence or the blends, the wave script, the frames, the health bar, the banks and the shown bytes.
+ * v is the overflow the routine was entered with; the sound command is called with the carry and overflow the code holds there.
+ */
+static StageExit step_stage_frame(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar)
 {
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     StageExit other;
+    StageExit bar;
     BlendStepEnd step;
     TileRowsExit blend;
     Sum map;
     bool sequence;
     bool check_sound;
+    bool carry;
     uint8_t a;
     uint8_t health;
     uint8_t shown;
@@ -232,6 +241,9 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, SetBarAddress set_bar)
         other = StepStageSequence(x, y);
         jsr_pop();
         apply_exit(other, &x, &y);
+        if ((other.set & EXIT_V) != 0) {
+            v = other.v;
+        }
     } else {
         jsr_push(STOCK_RETURN);
         step = BlendStageStockRows(x, y);
@@ -245,6 +257,7 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, SetBarAddress set_bar)
         step = BlendStageScoreRows(x);
         jsr_pop();
         apply_step(step, &y);
+        v = step.v;
     }
     jsr_push(WAVE_RETURN);
     other = StageScriptByWave();
@@ -267,12 +280,15 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, SetBarAddress set_bar)
     health = RD8(ZP->player_health);
     shown = RD8(ZP->field99);
     check_sound = true;
+    carry = true;
     if (health == shown) {
         RMW8(ZP->field8e, flags, flags | FLAG_HEALTH_SHOWN);
     } else if (health < shown) {
         jsr_push(BAR_DOWN_RETURN);
-        (void)set_health_bar_address(set_bar);
+        bar = set_health_bar_address(set_bar);
         jsr_pop();
+        carry = bar.c;
+        v = bar.v;
         x = 0xFF;
         y = 0xF0;
         jsr_push(AND_RETURN);
@@ -283,7 +299,7 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, SetBarAddress set_bar)
         check_sound = false;
         if ((RD8(ZP->field8e) & FLAG_HEALTH_SHOWN) != 0 && (RD8(ZP->field8e) & FLAG_SOUND_DONE) == 0) {
             jsr_push(SOUND_UP_RETURN);
-            y = sound_command_shim(SOUND_HEALTH_UP, x, y);
+            y = sound_command_shim(SOUND_HEALTH_UP, x, y, true, v);
             jsr_pop();
             RMW8(ZP->field8e, flags, flags | FLAG_SOUND_DONE);
         }
@@ -300,7 +316,7 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, SetBarAddress set_bar)
     if (check_sound && (RD8(ZP->field8e) & FLAG_SOUND_DONE) != 0) {
         RMW8(ZP->field8e, flags, flags & ~FLAG_SOUND_DONE);
         jsr_push(SOUND_DOWN_RETURN);
-        y = sound_command_shim(SOUND_HEALTH_DOWN, x, y);
+        y = sound_command_shim(SOUND_HEALTH_DOWN, x, y, carry, v);
         jsr_pop();
     }
     jsr_push(MAP_RETURN);
@@ -351,16 +367,17 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, SetBarAddress set_bar)
  * With zField8E bit 2 set the code runs on into the next piece of the overlay, which has no C.
  * Eleven stage overlays hold this code, the ones whose VRAM routines are at $9392 and $93A1.
  * WAITS: no.
- * Entry: X and Y as the blends take them. Exit: as the last step left it.
+ * Entry: X and Y as the blends take them; V as the caller left it, which the health sounds can be
+ * called with. Exit: as the last step left it.
  */
-StageExit StepStageFrame(uint8_t x, uint8_t y)
+StageExit StepStageFrame(uint8_t x, uint8_t y, bool v)
 {
-    return step_stage_frame(x, y, SetVramAddresses);
+    return step_stage_frame(x, y, v, SetVramAddresses);
 }
 
 void abi_StepStageFrame(void)
 {
-    stage_exit_shim(StepStageFrame(cpu.x, cpu.y));
+    stage_exit_shim(StepStageFrame(cpu.x, cpu.y, (cpu.p & P_V) != 0));
 }
 
 /*
@@ -373,12 +390,12 @@ void abi_StepStageFrame(void)
  * WAITS: no.
  * Entry, exit: as StepStageFrame.
  */
-StageExit StepStageFrameLong(uint8_t x, uint8_t y)
+StageExit StepStageFrameLong(uint8_t x, uint8_t y, bool v)
 {
-    return step_stage_frame(x, y, SetVramAddressesLong);
+    return step_stage_frame(x, y, v, SetVramAddressesLong);
 }
 
 void abi_StepStageFrameLong(void)
 {
-    stage_exit_shim(StepStageFrameLong(cpu.x, cpu.y));
+    stage_exit_shim(StepStageFrameLong(cpu.x, cpu.y, (cpu.p & P_V) != 0));
 }

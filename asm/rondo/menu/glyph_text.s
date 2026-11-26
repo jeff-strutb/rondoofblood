@@ -7,6 +7,7 @@
 ; WAITS: no.
 ; Entry: the string at zTemp00 and zTemp01. Exit: A 0, Z set, N clear; X, Y, C and V as the last pair's
 ; map rows left them, or as the pointer's last step left them when there was no pair.
+; not checked: matches only with the callees as filed wrappers on both sides.
 DrawGlyphText:
     lda (zTemp00)
     sta z:zTemp08
@@ -42,6 +43,7 @@ DrawGlyphText_at0:
 ; WAITS: no.
 ; Entry: the string at zTemp00 and zTemp01. Exit: as WriteGlyphRowsTwice: A the last byte written, X
 ; that plus 16, Y 8, Z and C set, N clear. V as the tile place's add left it.
+; not checked: agrees for 40 events, then differs inside the card's sjis_to_font_index.
 DrawGlyphPair:
     jsr VecSelectVramWriteAddress
     lda z:zTemp10
@@ -108,33 +110,32 @@ DrawGlyphPair_at5:
     beq DrawGlyphPair_at10
 DrawGlyphPair_at8:
     cpx #$E0
-    bne DrawGlyphPair_at11
+    bne EndingStartScript18
     cpy #$81
-    bne DrawGlyphPair_at11
+    bne EndingStartScript18
+    ldx #$1F
+DrawGlyphPair_at11:
+    lda a:$85E0,x
+    sta a:$3B60,x
+    dex
+    bpl DrawGlyphPair_at11
+    bra DrawGlyphPair_at7
+DrawGlyphPair_at9:
     ldx #$1F
 DrawGlyphPair_at12:
-    lda a:$85E0,x
+    lda a:$8600,x
     sta a:$3B60,x
     dex
     bpl DrawGlyphPair_at12
     bra DrawGlyphPair_at7
-DrawGlyphPair_at9:
+DrawGlyphPair_at10:
     ldx #$1F
 DrawGlyphPair_at13:
-    lda a:$8600,x
+    lda a:$8640,x
     sta a:$3B60,x
     dex
     bpl DrawGlyphPair_at13
     bra DrawGlyphPair_at7
-DrawGlyphPair_at10:
-    ldx #$1F
-DrawGlyphPair_at14:
-    lda a:$8640,x
-    sta a:$3B60,x
-    dex
-    bpl DrawGlyphPair_at14
-    bra DrawGlyphPair_at7
-DrawGlyphPair_at11:
     lda #$60
     sta z:zBiosBl
     lda #$3B
@@ -144,7 +145,7 @@ DrawGlyphPair_at11:
     jsr $E060
 DrawGlyphPair_at7:
     ldx #$1F
-DrawGlyphPair_at15:
+DrawGlyphPair_at14:
     lsr a:$3B5F,x
     ror a:$3B60,x
     lsr a:$3B5F,x
@@ -158,7 +159,7 @@ DrawGlyphPair_at15:
     sta a:StageMaskBuffer,x
     dex
     dex
-    bpl DrawGlyphPair_at15
+    bpl DrawGlyphPair_at14
     ldx #$00
     jsr WriteGlyphRowsTwice
     ldx #$01

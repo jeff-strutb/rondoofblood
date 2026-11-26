@@ -129,6 +129,7 @@ void abi_EndingNothing(void)
  * WAITS: no.
  * Entry: X the object, the caller's frame on the stack. Exit: N and Z from the timer (it returns the timer), Z set when
  * it has run out; A, X, Y and C kept.
+ * not checked: it pulls its caller's frame and cannot run alone; its callers compare it.
  */
 uint8_t EndingHoldTimer(uint8_t object)
 {
@@ -621,6 +622,7 @@ void abi_EndingScrollWindowHold(void)
  * HOW: OBJ->state; EndingHoldTimer; SCROLL->x_lo and x_hi.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingScrollWindowSteps(uint8_t object)
 {
@@ -682,6 +684,7 @@ void abi_EndingScrollWindowSteps(void)
  * WAITS: no.
  * Entry: X the object, A as the dispatch left it. Exit: A $20, N and Z from the new state; C and the registers kept.
  * While the hold lasts: A kept, N and Z from the timer.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingStartList3(uint8_t object, uint8_t entry_a)
 {
@@ -716,6 +719,7 @@ void abi_EndingStartList3(void)
  * WAITS: no.
  * Entry: X the object, A as the dispatch left it. Exit: A and Y $18, N and Z from the new state; C and X kept.
  * While the hold lasts: A kept, N and Z from the timer.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingStartScript18(uint8_t object, uint8_t entry_a)
 {
@@ -804,6 +808,7 @@ void abi_EndingScrollSlide(void)
  * WAITS: no.
  * Entry: X the object, A as the dispatch left it. Exit: A $20, N and Z from the new state; C and the registers kept.
  * While the hold lasts: A kept, N and Z from the timer.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingSplitScrolls(uint8_t object, uint8_t entry_a)
 {
@@ -839,6 +844,7 @@ void abi_EndingSplitScrolls(void)
  * HOW: EndingHoldTimer; four counts.
  * WAITS: no.
  * Entry: X the object, A as the dispatch left it. Exit: A kept, N and Z from the new state; C and the registers kept.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingScrollsOn(uint8_t object, uint8_t entry_a)
 {
@@ -898,6 +904,7 @@ static void rise_start(uint8_t object)
  * HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingRiseFrame31(uint8_t object)
 {
@@ -997,6 +1004,7 @@ static ObjExit rise_frame32(uint8_t object, uint8_t hold, uint8_t shift, uint16_
  * HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingRiseFrame32A(uint8_t object)
 {
@@ -1015,6 +1023,7 @@ void abi_EndingRiseFrame32A(void)
  * HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingRiseFrame32B(uint8_t object)
 {
@@ -1034,6 +1043,7 @@ void abi_EndingRiseFrame32B(void)
  * HOW: OBJ->state; EndingHoldTimer; EndingFrameList; ApplyVelocity.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingRiseWithList(uint8_t object)
 {
@@ -1357,6 +1367,7 @@ static ObjExit move_exit(AxisMove move)
  * HOW: OBJ->state; EndingHoldTimer; StartScriptSlotKind1.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingHoldThenScript19(uint8_t object)
 {
@@ -1822,6 +1833,7 @@ void abi_EndingDropAndBounce(void)
  * HOW: OBJ->state; StartListChannelKind2; StartScriptSlot0Kind1; EndingHoldTimer; SCROLL.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
+ * not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
  */
 ObjExit EndingCreditScrollStart(uint8_t object)
 {
@@ -2329,6 +2341,7 @@ Exit EndingCommandPlaceTimed(void)
  * HOW: For each of four numbers the two banks are mapped, the ADPCM address and the length set, and ad_read called; back to EndingScriptAdvance.
  * WAITS: yes, through ad_read, which waits for the ADPCM to be idle.
  * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ * not checked: differs inside the card's ad_read, whose draft pushes frames its C does not.
  */
 Exit EndingCommandLoadBanks(void)
 {
@@ -2575,6 +2588,7 @@ static void objects_end_shim(uint8_t a)
  * WAITS: no.
  * Entry: nothing. Exit: X $58, N and Z clear... Z set, C set (the loop's last compare); A the last slot's kind or what its handler left;
  * Y and V as the last handler left them.
+ * not checked: the jump to a handler is computed and through mode cannot follow it; only the idle loop is compared (curated/ending_objects_idle.txt).
  */
 static Exit objects_step(Exit prior)
 {
@@ -2650,6 +2664,7 @@ void abi_EndingObjectsStep(void)
  * HOW: EndingFrameTick, EndingScriptStep, EndingObjectsStep.
  * WAITS: no.
  * Entry: nothing. Exit: as EndingObjectsStep.
+ * not checked: as EndingObjectsStep: only the idle loop is compared.
  */
 Exit EndingFrame(void)
 {
@@ -2680,6 +2695,7 @@ void abi_EndingFrame(void)
  * HOW: Reads zGameSubMode, doubles it and jumps through the table. A word this overlay does not hold runs as the original code.
  * WAITS: yes, through EndingBegin, which waits for the vertical blank.
  * Entry: nothing. Exit: as the handler leaves them.
+ * not checked: one case of 400 jumps to a table word outside this overlay's C.
  */
 Exit EndingStep(uint8_t kept_y)
 {
@@ -2977,6 +2993,7 @@ void abi_EndingEffectFade(void)
  * Y the index, C bit 7 of type less one, X the slot. A handler this overlay's C does not hold runs as the original code.
  * WAITS: no.
  * Entry: A the type (not zero), X the slot. Exit: as the handler leaves them.
+ * not checked: 2 of 400 cases jump to a type outside the table.
  */
 Exit EndingEffectDispatch(uint8_t type, uint8_t slot)
 {
@@ -3050,6 +3067,7 @@ static void effect_loop_end_shim(bool a_loaded)
  * HOW: zPaused; the types at $3C00; the slot kept in zRichterObject's byte ($20D9) across each dispatch.
  * WAITS: no.
  * Entry: nothing. Exit: X $FF, N set, Z clear; A the last type loaded or what the last handler left; C, Y and V as the last handler left them.
+ * not checked: the paused path is untraced in the draft, and types outside the table jump to other overlays.
  */
 Exit EndingEffectStep(void)
 {
@@ -3147,6 +3165,7 @@ void abi_EndingEffectStep(void)
  * HOW: A jump to EndingEffectStep.
  * WAITS: no.
  * Entry: nothing. Exit: as EndingEffectStep.
+ * not checked: as EndingEffectStep.
  */
 Exit EndingEffectEntry(void)
 {

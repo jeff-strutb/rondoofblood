@@ -1067,6 +1067,7 @@ void abi_SceneReadSectors(void)
  * WAITS: yes, on the drive: through SceneReadSectors, and on the overlay calls; the stack there is the caller's return and this call's two bytes (and an overlay call's).
  * Entry: A scene. Exit: A the last op, N and Z from comparing it with $80, C 1; X, Y and V as
  * the last op left them. Clobbers zTemp00-02, zTemp08-09.
+ * not checked: A5 divergent at 55f97e9 (EXTRA read of zBiosCl in the first call); liftcmp 1013 of 1200 comparable cases match, the rest differ in the overlay call's flags.
  */
 DiscLog LoadSceneScript(uint8_t scene)
 {

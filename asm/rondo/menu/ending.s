@@ -5,6 +5,7 @@
 ; HOW: Reads zGameSubMode, doubles it and jumps through the table. A word this overlay does not hold runs as the original code.
 ; WAITS: yes, through EndingBegin, which waits for the vertical blank.
 ; Entry: nothing. Exit: as the handler leaves them.
+; not checked: one case of 400 jumps to a table word outside this overlay's C.
 EndingStep:
     lda z:zGameSubMode
     asl a
@@ -37,6 +38,7 @@ EndingBegin:
 ; HOW: EndingFrameTick, EndingScriptStep, EndingObjectsStep.
 ; WAITS: no.
 ; Entry: nothing. Exit: as EndingObjectsStep.
+; not checked: as EndingObjectsStep: only the idle loop is compared.
 EndingFrame:
     jsr EndingFrameTick
     jsr EndingScriptStep
@@ -275,6 +277,7 @@ EndingPlaceObject:
 ; HOW: For each of four numbers the two banks are mapped, the ADPCM address and the length set, and ad_read called; back to EndingScriptAdvance.
 ; WAITS: yes, through ad_read, which waits for the ADPCM to be idle.
 ; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+; not checked: differs inside the card's ad_read, whose draft pushes frames its C does not.
 EndingCommandLoadBanks:
     stz z:zTemp00
 EndingCommandLoadBanks_at0:
@@ -314,6 +317,7 @@ EndingCommandLoadBanks_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: X $58, N and Z clear... Z set, C set (the loop's last compare); A the last slot's kind or what its handler left;
 ; Y and V as the last handler left them.
+; not checked: the jump to a handler is computed and through mode cannot follow it; only the idle loop is compared (curated/ending_objects_idle.txt).
 EndingObjectsStep:
     clx
 EndingObjectsStep_at1:
@@ -352,6 +356,7 @@ EndingDispatchKind:
 ; HOW: OBJ->state; StartListChannelKind2; StartScriptSlot0Kind1; EndingHoldTimer; SCROLL.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingCreditScrollStart:
     phx
     lda z:zFrameTick
@@ -638,6 +643,7 @@ EndingPlayList10_at1:
 ; HOW: OBJ->state; EndingHoldTimer; SCROLL->x_lo and x_hi.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingScrollWindowSteps:
     lda a:OBJ_27A8,x
     bne EndingScrollWindowSteps_at0
@@ -838,6 +844,7 @@ EndingScrollWindowHold:
 ; WAITS: no.
 ; Entry: X the object, A as the dispatch left it. Exit: A $20, N and Z from the new state; C and the registers kept.
 ; While the hold lasts: A kept, N and Z from the timer.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingStartList3:
     jsr EndingHoldTimer
     phx
@@ -859,6 +866,7 @@ EndingStartList3_at0:
 ; WAITS: no.
 ; Entry: X the object, A as the dispatch left it. Exit: A and Y $18, N and Z from the new state; C and X kept.
 ; While the hold lasts: A kept, N and Z from the timer.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingStartScript18:
     jsr EndingHoldTimer
     phx
@@ -911,6 +919,7 @@ EndingScrollSlide_at0:
 ; WAITS: no.
 ; Entry: X the object, A as the dispatch left it. Exit: A $20, N and Z from the new state; C and the registers kept.
 ; While the hold lasts: A kept, N and Z from the timer.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingSplitScrolls:
     jsr EndingHoldTimer
     stz a:ScrollYHi+6
@@ -933,6 +942,7 @@ EndingSplitScrolls:
 ; HOW: EndingHoldTimer; four counts.
 ; WAITS: no.
 ; Entry: X the object, A as the dispatch left it. Exit: A kept, N and Z from the new state; C and the registers kept.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingScrollsOn:
     jsr EndingHoldTimer
     inc a:ScrollYHi+6
@@ -959,6 +969,7 @@ EndingNothing:
 ; WAITS: no.
 ; Entry: X the object, the caller's frame on the stack. Exit: N and Z from the timer (it returns the timer), Z set when
 ; it has run out; A, X, Y and C kept.
+; not checked: it pulls its caller's frame and cannot run alone; its callers compare it.
 EndingHoldTimer:
     dec a:OBJ_34B8,x
     beq EndingHoldTimer_at0
@@ -1169,6 +1180,7 @@ EndingScrollUp_at1:
 ; HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingRiseFrame31:
     lda a:OBJ_27A8,x
     bne EndingRiseFrame31_at0
@@ -1207,6 +1219,7 @@ EndingRiseFrame31_at2:
 ; HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingRiseFrame32A:
     lda a:OBJ_27A8,x
     bne EndingRiseFrame32A_at0
@@ -1250,6 +1263,7 @@ EndingRiseFrame32A_at2:
 ; HOW: OBJ->state; EndingHoldTimer; EndingFrameList; ApplyVelocity.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingRiseWithList:
     lda a:OBJ_27A8,x
     bne EndingRiseWithList_at0
@@ -1285,6 +1299,7 @@ EndingRiseWithList_at2:
 ; HOW: OBJ->state; EndingHoldTimer; ApplyVelocity.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingRiseFrame32B:
     lda a:OBJ_27A8,x
     bne EndingRiseFrame32B_at0
@@ -1329,6 +1344,7 @@ EndingRiseFrame32B_at2:
 ; HOW: OBJ->state; EndingHoldTimer; StartScriptSlotKind1.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
+; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingHoldThenScript19:
     lda a:OBJ_27A8,x
     bne EndingHoldThenScript19_at0
@@ -1633,6 +1649,7 @@ EndingFrameList:
 ; HOW: A jump to EndingEffectStep.
 ; WAITS: no.
 ; Entry: nothing. Exit: as EndingEffectStep.
+; not checked: as EndingEffectStep.
 EndingEffectEntry:
     jmp EndingEffectStep
 
@@ -1644,6 +1661,7 @@ EndingEffectEntry:
 ; HOW: zPaused; the types at $3C00; the slot kept in zRichterObject's byte ($20D9) across each dispatch.
 ; WAITS: no.
 ; Entry: nothing. Exit: X $FF, N set, Z clear; A the last type loaded or what the last handler left; C, Y and V as the last handler left them.
+; not checked: the paused path is untraced in the draft, and types outside the table jump to other overlays.
 EndingEffectStep:
     bbr0 zPaused,EndingEffectStep_at0
     ldx #$02
@@ -1679,6 +1697,7 @@ EndingEffectStep_at3:
 ; Y the index, C bit 7 of type less one, X the slot. A handler this overlay's C does not hold runs as the original code.
 ; WAITS: no.
 ; Entry: A the type (not zero), X the slot. Exit: as the handler leaves them.
+; not checked: 2 of 400 cases jump to a type outside the table.
 EndingEffectDispatch:
     dec a
     asl a

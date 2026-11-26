@@ -433,4 +433,6 @@ CardExit cd_interrupt(uint8_t x, uint8_t y);
 void card_irq2(uint8_t a, uint8_t x, uint8_t y);
 void card_irq1(uint8_t a, uint8_t x, uint8_t y);
 
+CardExit cd_send_command_start(void);
+
 #endif

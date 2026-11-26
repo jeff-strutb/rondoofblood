@@ -175,7 +175,7 @@ void item_crash_exit_shim(ItemCrash crash);
 uint8_t RichterStepIndex(void);
 /* A ledge taken hold of: the column, the reach and its last add, the state, the animation. */
 typedef struct {
-    uint8_t column; Sum reach; uint8_t state; uint8_t was; bool animated; AnimationStep animation;
+    uint8_t column; uint8_t index; Sum reach; uint8_t state; uint8_t was; bool animated; AnimationStep animation;
 } ClimbStart;
 ClimbStart RichterClimbStart(uint8_t column);
 void climb_start_exit_shim(ClimbStart climb);
@@ -3659,6 +3659,7 @@ ClimbStart RichterClimbStart(uint8_t column)
 {
     ClimbStart climb = { 0 };
     uint8_t across, offset_value, x_value, row;
+    ColumnOffset offset;
     bool past;
 
     jsr_push(0xA7C7);
@@ -3672,7 +3673,8 @@ ClimbStart RichterClimbStart(uint8_t column)
 
         push8(ledge_x);
         jsr_push(0xA7D8);
-        offset_value = RichterColumnOffset(column).value;
+        offset = RichterColumnOffset(column);
+        offset_value = offset.value;
         jsr_pop();
         x_value = rd8(OBJ_X_LO);
         across = add_bytes(add_bytes(offset_value, x_value, false).value, CLIMB_PAST_EDGE, false).value;
@@ -3685,7 +3687,8 @@ ClimbStart RichterClimbStart(uint8_t column)
         ledge_x = pull8();
         wr8(zTemp00, ledge_x);
         jsr_push(past ? 0xA7F4 : 0xA81C);
-        offset_value = RichterColumnOffset(column).value;
+        offset = RichterColumnOffset(column);
+        offset_value = offset.value;
         jsr_pop();
         x_value = rd8(zTemp00);
         across = sub_bytes(offset_value, x_value, true).value;
@@ -3699,7 +3702,8 @@ ClimbStart RichterClimbStart(uint8_t column)
         }
     } else {
         jsr_push(0xA82C);
-        offset_value = RichterColumnOffset(column).value;
+        offset = RichterColumnOffset(column);
+        offset_value = offset.value;
         jsr_pop();
         x_value = rd8(OBJ_X_LO);
         across = add_bytes(add_bytes(offset_value, x_value, false).value, CLIMB_PAST_EDGE, false).value;
@@ -3710,7 +3714,8 @@ ClimbStart RichterClimbStart(uint8_t column)
                                             row + CLIMB_HIGH_BELOW > 0xFF)) & CLIMB_EDGE_BIT;
         jsr_pop();
         jsr_push(past ? 0xA845 : 0xA853);
-        offset_value = RichterColumnOffset(column).value;
+        offset = RichterColumnOffset(column);
+        offset_value = offset.value;
         jsr_pop();
         x_value = rd8((uint16_t)(RichterColumnX + column));
         across = sub_bytes(offset_value, x_value, true).value;
@@ -3722,6 +3727,7 @@ ClimbStart RichterClimbStart(uint8_t column)
             climb.state = STATE_CLIMB_HIGH_OPEN;
         }
     }
+    climb.index = offset.index;
     wr8(PlayerClimbReach, climb.reach.value);
     climb.was = rd8(OBJ_27A8);
     if (climb.was != STATE_WALKING) {
@@ -3738,7 +3744,7 @@ ClimbStart RichterClimbStart(uint8_t column)
 
 void climb_start_exit_shim(ClimbStart climb)
 {
-    cpu.y = (uint8_t)((climb.column << 1) + rd8(OBJ_2AC0));
+    cpu.y = climb.index;
     abi_flag(P_V, climb.reach.overflow);
     abi_flag(P_C, climb.was >= STATE_WALKING);
     if (climb.animated)

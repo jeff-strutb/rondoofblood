@@ -274,4 +274,10 @@ StageExit ClearStageBitRows(uint8_t x);
 StageExit ClearStageBitRowsLong(uint8_t x);
 StageExit ClearStageBitRowsFour(uint8_t x);
 
+/* object/stage_gauge.c: a stage's gauge. */
+StageExit SetGaugeAddress(void);
+StageExit GaugeStepUp(void);
+StageExit GaugeStep(void);
+StageExit RunStageGauge(void);
+
 #endif

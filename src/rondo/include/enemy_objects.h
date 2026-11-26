@@ -369,7 +369,7 @@ typedef struct {
     SoleSlot sole; \
     uint8_t bytes[32]; \
     uint16_t target; \
-    ScaleResult scale, scale2; \
+    ScaleResult scale2; \
     TrackPlay track;
 
 /* The fields alone: a callee's result kept at the deepest level. */

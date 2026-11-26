@@ -1654,7 +1654,7 @@ StageResetScroll152D:
     pla
     sta z:zField8E
     jsr $802C
-    jsr RichterUpWhipRight_at2
+    jsr $A5EB
     lda z:zRasterEffect
     cmp #$05
     beq StageResetScroll152D_at1
@@ -1670,7 +1670,7 @@ StageResetScroll152D_at1:
     bsr StageLoadScreen152D
     pla
     sta z:zField8E
-    jsr ChangeKindFromTable_at1
+    jsr $A626
 StageResetScroll152D_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,ScrollBgyLo,$0078

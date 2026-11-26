@@ -818,9 +818,10 @@ typedef struct {
     CommandCall call;
 } L8FlashHurtArm;
 
-/* HurtOnceThenAnswerYes: the hits, the player's Y, slot 0's state and the step of the yes arm. */
+/* HurtOnceThenAnswerYes: its answer, the hits, the player's Y, slot 0's state and the step of the yes arm. */
 typedef struct {
     int arm;
+    bool yes;
     uint8_t hits, ground, state;
     L8NumberStep step;
 } L8HurtOnceArm;
@@ -833,9 +834,10 @@ typedef struct {
     Sum negated;
 } L8PieceWalkArm;
 
-/* StartLeapWhenHurtAnswerYes: OBJ_35C0, the hits, the start, the move, the step, the facing and the reversed speed. */
+/* StartLeapWhenHurtAnswerYes: its answer, OBJ_35C0, the hits, the start, the move, the step, the facing and the reversed speed. */
 typedef struct {
     int arm;
+    bool yes;
     uint8_t aim, hits, placed, facing;
     AxisMove move;
     L8NumberStep step;

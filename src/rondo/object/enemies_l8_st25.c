@@ -559,6 +559,7 @@ L8HurtOnceArm HurtOnceThenAnswerYes(uint8_t slot, uint8_t y_entry)
     r.step = ClearAnimationThenStepListC585(slot, y_entry);
     jsr_pop();
     WR8(OBJ->state[slot], 8);
+    r.yes = true;
     r.arm = ST25_ONCE_YES;
     return r;
 }
@@ -706,6 +707,7 @@ L8LeapYesArm StartLeapWhenHurtAnswerYes(uint8_t slot, uint8_t y_entry)
         r.arm = ST25_LEAP_REVERSED;
     }
     WR8(OBJ->state[slot], 9);
+    r.yes = true;
     return r;
 }
 

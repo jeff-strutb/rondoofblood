@@ -19,7 +19,7 @@ A run whose environment holds `RONDO_KEEP`, `RONDO_ONLY`, `RONDO_KEEP_WAITS`, `R
 |---|---|
 | 0 | the script ran to its end |
 | 1 | setup failed (a file, the core, a symbol) |
-| 2 | a bad argument or script line (an unknown command; a `call` at an address that is not a routine's own entry, or whose bytes are not resident) |
+| 2 | a bad argument or script line (an unknown command; a `call` at an address that is not a routine's own entry, or whose bytes are not resident; in a traced run with no oracle, `--trace` alone, a `call` at an address with no tag is allowed when a bank is mapped there) |
 | 3 | lockstep could not go on in step; the report and totals were written first (a wait with no interrupt in the record, a call into original code the record does not have, original code that does not return, the C making 200,000 accesses in a row the original did not) |
 | 4 | the hybrid and the record disagree on which routine is called next; report and totals written first |
 | 5 | out of memory, or an event was trimmed from the window (a checker fault) |
@@ -162,3 +162,7 @@ the exit compare uses, and the original's. `RONDO_DIAG_DISPATCH=1` (A5 and the h
 entry S where the original made no such jump: routine, entry S, the C's S and the address its RTS goes to. `RONDO_DUMP_SPAN=NAME,N` (A5 and the hybrid) prints every event of the Nth call of NAME: `SPAN +index type kind
 addr pc s val clock` (types: 0 R, 1 W, 2 ROMR, 3 HWR, 4 HWW, 5 RTPULL, 6 STATE, 7 OPEN, 8 CLOSE, 9 CALL, 10 RET, 11 INT, 12 IRET, 13 FRAME); in A5 the
 number is the order the calls are judged in (close order for nested calls), in the hybrid the order they are swapped in.
+
+The script's unit call: `call ADDR|NAME [A=hh] [X=hh] [Y=hh] [P=hh] [M=aaaa:hh,...] [MPRn=hh ...]`. `MPRn=hh` (n 2 to 6) maps bank hh at
+MPRn for the call only, before its entry is checked for residency, and puts the old bank back when the call returns to its mark; the same in
+the record, A5 and the hybrid, and neither change is logged as a mapping change of the program.

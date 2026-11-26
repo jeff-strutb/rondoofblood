@@ -195,8 +195,8 @@ OldCardMain_at4:
     jsr $E07B
     jsr InitPlayerObject
     jsr InitObject1
-    jsr $4AFC
-    jsr $49A2
+    jsr InitSpawner
+    jsr ClearWorldObjects
     lda #$37
     sta a:$2A88
     lda #$80
@@ -250,12 +250,12 @@ OldCardSoftReset:
 ; @routine 0023:228 StepDemoFrame
 ; @run 80:4228
 ; WHAT IT DOES: One frame of the player screen: counts down object $20's timer (its $34B8 byte, then its $3510 byte
-; when that reaches zero) and clears its frame when both have; runs the player, the program's routines at $4863,
-; $4B11 and $49AD, ScrollWithPlayer, and the routines at $497B and $4BE8.
-; HOW: Two decrements, then seven calls; the four with no C yet are run as original with the registers the call
-; before left.
-; WAITS: where the original code it calls does (not read yet).
-; Entry: nothing. Exit: as the routine at $4BE8 leaves them.
+; when that reaches zero) and clears its frame when both have; then runs the player, object 1, the spawner, the
+; world objects, ScrollWithPlayer, WorldToScreen and CheckPlayerHits.
+; HOW: Two decrements, then seven calls, each made by its frame so that the registers one leaves are those the next
+; is entered with, as in the original.
+; WAITS: no.
+; Entry: nothing. Exit: as CheckPlayerHits leaves them, with what it keeps from the calls before.
 StepDemoFrame:
     dec a:$34D8
     bne StepDemoFrame_at0
@@ -265,11 +265,11 @@ StepDemoFrame:
 StepDemoFrame_at0:
     jsr RunPlayerObject
     jsr RunObject1
-    jsr $4B11
-    jsr $49AD
+    jsr RunSpawner
+    jsr RunWorldObjects
     jsr ScrollWithPlayer
-    jsr $497B
-    jsr $4BE8
+    jsr WorldToScreen
+    jsr CheckPlayerHits
     rts
 
 ; @routine 0023:24B SetBackgroundScroll
@@ -1248,4 +1248,517 @@ Object1StepRight:
     sta a:OBJ_2AC0,x
     jmp Object1WalkIn_at1
 Object1StepRight_at0:
+    rts
+
+; @routine 0024:17B WorldToScreen
+; @run 80:497B
+; WHAT IT DOES: Places objects 4 to $13 on the screen from their world places: X is the world X ($3568 low, $35C0
+; high) less the scroll (ScrollXLo and Hi), Y the world Y ($3670 and $36C8) as it is.
+; HOW: A loop over the slots; a subtract with borrow for X, two copies for Y.
+; WAITS: no.
+; Entry: nothing. Exit: A the last Y high byte, X $14, N 0, Z 1, C 1 (the CPX), V from the last subtract. Y kept.
+WorldToScreen:
+    ldx #$04
+WorldToScreen_at0:
+    lda a:OBJ_3568,x
+    sec
+    sbc a:ScrollXLo
+    sta a:OBJ_X_LO,x
+    lda a:OBJ_35C0,x
+    sbc a:ScrollXHi
+    sta a:OBJ_X_HI,x
+    lda a:OBJ_3670,x
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_36C8,x
+    sta a:OBJ_Y_HI,x
+    inx
+    cpx #$14
+    bne WorldToScreen_at0
+    rts
+
+; @routine 0024:1A2 ClearWorldObjects
+; @run 80:49A2
+; WHAT IT DOES: Empties objects 4 to $13.
+; HOW: The program's copy of ClearObject in a loop.
+; WAITS: no.
+; Entry: nothing. Exit: X $14, N 0, Z 1, C 1 (the CPX). A, Y and V kept.
+ClearWorldObjects:
+    ldx #$04
+ClearWorldObjects_at0:
+    jsr $4584
+    inx
+    cpx #$14
+    bne ClearWorldObjects_at0
+    rts
+
+; @routine 0024:1AD RunWorldObjects
+; @run 80:49AD
+; WHAT IT DOES: Runs every odd world object from 5 to $13 that has a frame, through RunWorldObject.
+; HOW: A loop over the slots two at a time.
+; WAITS: no.
+; Entry: nothing. Exit: A the last frame byte read, or the last handler's A when the last slot ran; X $15, N 0, Z 1,
+; C 1 (the CPX); Y and V as the last handler left them, kept when none ran.
+RunWorldObjects:
+    ldx #$05
+RunWorldObjects_at1:
+    lda a:OBJ_2A68,x
+    beq RunWorldObjects_at0
+    jsr RunWorldObject
+RunWorldObjects_at0:
+    inx
+    inx
+    cpx #$15
+    bne RunWorldObjects_at1
+    rts
+
+; @routine 0024:1BE RunWorldObject
+; @run 80:49BE
+; WHAT IT DOES: Runs a world object's handler for its state: fall in, walk, stunned, fall away, the thrown piece.
+; HOW: The state doubled indexes the table at $49D0; the word goes to zTemp00-01 and an indirect jump takes it.
+; WAITS: no.
+; Entry: X the object. Exit: as the handler leaves them. X kept.
+RunWorldObject:
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$49D0,y
+    sta z:zTemp00
+    lda a:$49D1,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0024:1DA WorldObjectFallIn
+; @run 80:49DA
+; WHAT IT DOES: A world object falling in ($20 a frame) until world Y $A0, where it lands and starts walking left
+; (X velocity $FF80, state 1).
+; HOW: The velocity word's add, ApplyWorldVelocity, a compare; the landing's stores.
+; WAITS: no.
+; Entry: X the object. Exit: as world_exit_shim. X kept.
+WorldObjectFallIn:
+    lda #$20
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    cla
+    adc a:OBJ_VY_HI,x
+    sta a:OBJ_VY_HI,x
+    jsr ApplyWorldVelocity
+    lda a:OBJ_3670,x
+    cmp #$A0
+    bcs WorldObjectFallIn_at0
+    rts
+WorldObjectFallIn_at0:
+    lda #$A0
+    sta a:OBJ_3670,x
+    lda #$80
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    stz a:OBJ_VY_LO,x
+    stz a:OBJ_VY_HI,x
+    lda #$01
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 0024:210 WorldObjectWalk
+; @run 80:4A10
+; WHAT IT DOES: A world object walking: hit by the whip ($3250 set) it is knocked back; otherwise it moves, and once
+; left of world X $28 it stops, stunned (frame $1A, state 2 for $40 frames); otherwise the walk's animation.
+; HOW: ApplyWorldVelocity, tests of the world X's bytes; StartObjectAnimation on list 5.
+; WAITS: no.
+; Entry: X the object. Exit: as world_exit_shim. X kept.
+WorldObjectWalk:
+    lda a:OBJ_3250,x
+    bne WorldObjectWalk_at0
+    jsr ApplyWorldVelocity
+    lda a:OBJ_35C0,x
+    bmi WorldObjectWalk_at1
+    bne WorldObjectWalk_at2
+    lda a:OBJ_3568,x
+    cmp #$28
+    bcs WorldObjectWalk_at2
+WorldObjectWalk_at1:
+    inc a:OBJ_34B8,x
+    lda #$1A
+    sta a:OBJ_2A68,x
+    lda #$40
+    sta a:OBJ_3720,x
+    rts
+WorldObjectWalk_at2:
+    lda #$05
+    jmp StartObjectAnimation
+WorldObjectWalk_at0:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    stz a:OBJ_VX_LO,x
+    lda a:OBJ_3250,x
+    lsr a
+    tay
+    lda a:$4A8B,y
+    sta a:OBJ_VX_HI,x
+    stz a:OBJ_VY_LO,x
+    lda #$FC
+    sta a:OBJ_VY_HI,x
+    lda #$04
+    sta a:OBJ_34B8,x
+    lda a:OBJ_3568,x
+    sta a:$3567,x
+    lda a:OBJ_35C0,x
+    sta a:$35BF,x
+    lda a:OBJ_3670,x
+    sec
+    sbc #$10
+    sta a:$366F,x
+    lda a:OBJ_36C8,x
+    sta a:$36C7,x
+    lda #$FE
+    sta a:$2E2F,x
+    lda a:OBJ_3250,x
+    lsr a
+    tay
+    lda a:$4A8D,y
+    sta a:$2D7F,x
+    lda #$1E
+    sta a:$2A67,x
+    rts
+
+; @routine 0024:28F WorldObjectStunned
+; @run 80:4A8F
+; WHAT IT DOES: A world object stunned: when its count runs out it stops and falls away (Y velocity $FC00, the next
+; state).
+; HOW: The count's decrement; the velocity's and the animation's stores.
+; WAITS: no.
+; Entry: X the object. Exit: as world_exit_shim. X kept.
+WorldObjectStunned:
+    dec a:OBJ_3720,x
+    bne WorldObjectStunned_at0
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    stz a:OBJ_VX_LO,x
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VY_LO,x
+    lda #$FC
+    sta a:OBJ_VY_HI,x
+    inc a:OBJ_34B8,x
+WorldObjectStunned_at0:
+    rts
+
+; @routine 0024:2AC WorldObjectFallAway
+; @run 80:4AAC
+; WHAT IT DOES: A world object falling away ($40 a frame): emptied once its world Y's high byte is set (off the
+; bottom), otherwise the fall's animation (list 6).
+; HOW: The velocity word's add, ApplyWorldVelocity, a test; the program's copy of ClearObject by a JMP.
+; WAITS: no.
+; Entry: X the object. Exit: as world_exit_shim. X kept.
+WorldObjectFallAway:
+    lda #$40
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    cla
+    adc a:OBJ_VY_HI,x
+    sta a:OBJ_VY_HI,x
+    jsr ApplyWorldVelocity
+    lda a:OBJ_36C8,x
+    bne WorldObjectFallAway_at0
+    lda #$06
+    jsr StartObjectAnimation
+    rts
+WorldObjectFallAway_at0:
+    jmp $4584
+
+; @routine 0024:2CD WorldObjectPiece
+; @run 80:4ACD
+; WHAT IT DOES: A world object knocked back: while the piece before it has a frame, the piece's animation (list 7)
+; and move; then its own fall ($40 a frame), emptied off the bottom, otherwise the fall's animation (list 6).
+; HOW: The piece's routines with X one lower (DEX, then INX); the velocity word's add, ApplyWorldVelocity.
+; WAITS: no.
+; Entry: X the object. Exit: as world_exit_shim. X kept.
+WorldObjectPiece:
+    lda a:$2A67,x
+    beq WorldObjectPiece_at0
+    dex
+    lda #$07
+    jsr StartObjectAnimation
+    jsr ApplyWorldVelocity
+    inx
+WorldObjectPiece_at0:
+    lda #$40
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    cla
+    adc a:OBJ_VY_HI,x
+    sta a:OBJ_VY_HI,x
+    jsr ApplyWorldVelocity
+    lda a:OBJ_36C8,x
+    beq WorldObjectPiece_at1
+    jmp $4584
+WorldObjectPiece_at1:
+    lda #$06
+    jmp StartObjectAnimation
+
+; @routine 0024:2FC InitSpawner
+; @run 80:4AFC
+; WHAT IT DOES: Empties object 3, the spawner, and places it at world X $2E0 with a count of 1.
+; HOW: The program's copy of ClearObject, then three stores.
+; WAITS: no.
+; Entry: nothing. Exit: A 2, X 3, N and Z from A. Y, C and V kept.
+InitSpawner:
+    ldx #$03
+    jsr $4584
+    lda #$01
+    sta a:OBJ_3720,x
+    lda #$E0
+    sta a:OBJ_3568,x
+    lda #$02
+    sta a:OBJ_35C0,x
+    rts
+
+; @routine 0024:311 RunSpawner
+; @run 80:4B11
+; WHAT IT DOES: Runs the spawner's handler for its state (its table at $4B25 has one).
+; HOW: The state doubled indexes the table; the word goes to zTemp00-01 and an indirect jump takes it.
+; WAITS: no.
+; Entry: nothing. Exit: X 3 or as the handler leaves it; the rest as the handler leaves them.
+RunSpawner:
+    ldx #$03
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$4B25,y
+    sta z:zTemp00
+    lda a:$4B26,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0024:327 SpawnerStep
+; @run 80:4B27
+; WHAT IT DOES: The spawner: while the scroll is below $200, every other frame it counts down, and at zero it puts a
+; new world object in the first free pair of slots from 4 (frame $15 in the odd one, at the spawner's world place);
+; from $200 on it counts down to 1 and holds there.
+; HOW: zFrameTick's bit 0 by an LSR; the slot loop with X pushed and pulled; the program's copy of ClearObject twice.
+; WAITS: no.
+; Entry: X the spawner. Exit: by arm (SpawnArm): A, N, Z and C; X 3 on the loop's arms. Y and V kept.
+SpawnerStep:
+    lda a:ScrollXHi
+    cmp #$02
+    bcs SpawnerStep_at0
+    lda z:zFrameTick
+    lsr a
+    bcc SpawnerStep_at1
+    dec a:OBJ_3720,x
+    bne SpawnerStep_at1
+    phx
+    ldx #$04
+SpawnerStep_at3:
+    lda a:OBJ_2A68+1,x
+    beq SpawnerStep_at2
+    inx
+    inx
+    cpx #$14
+    bne SpawnerStep_at3
+SpawnerStep_at4:
+    plx
+SpawnerStep_at1:
+    rts
+SpawnerStep_at0:
+    lda a:OBJ_3720,x
+    cmp #$01
+    beq SpawnerStep_at1
+    dec a:OBJ_3720,x
+    rts
+SpawnerStep_at2:
+    jsr $4584
+    inx
+    jsr $4584
+    lda a:OBJ_3568+3
+    sta a:OBJ_3568,x
+    lda a:OBJ_35C0+3
+    sta a:OBJ_35C0,x
+    lda a:OBJ_3670+3
+    sta a:OBJ_3670,x
+    lda a:OBJ_36C8+3
+    sta a:OBJ_36C8,x
+    lda #$15
+    sta a:OBJ_2A68,x
+    jmp SpawnerStep_at4
+
+; @routine 0024:37A ApplyWorldVelocity
+; @run 80:4B7A
+; WHAT IT DOES: Moves a world object by its velocity on both axes: X into $3510, $3568 and $35C0, Y into $3618,
+; $3670 and $36C8.
+; HOW: As ApplyVelocity, on the world columns.
+; WAITS: no.
+; Entry: X object. Exit: A the Y position's high byte, N, Z, C and V from its add. X and Y kept. Clobbers zTemp10.
+ApplyWorldVelocity:
+    stz z:zTemp10
+    lda a:OBJ_VX_HI,x
+    bpl ApplyWorldVelocity_at0
+    dec z:zTemp10
+ApplyWorldVelocity_at0:
+    lda a:OBJ_VX_LO,x
+    clc
+    adc a:OBJ_3510,x
+    sta a:OBJ_3510,x
+    lda a:OBJ_VX_HI,x
+    adc a:OBJ_3568,x
+    sta a:OBJ_3568,x
+    lda z:zTemp10
+    adc a:OBJ_35C0,x
+    sta a:OBJ_35C0,x
+    stz z:zTemp10
+    lda a:OBJ_VY_HI,x
+    bpl ApplyWorldVelocity_at1
+    dec z:zTemp10
+ApplyWorldVelocity_at1:
+    lda a:OBJ_VY_LO,x
+    clc
+    adc a:OBJ_3618,x
+    sta a:OBJ_3618,x
+    lda a:OBJ_VY_HI,x
+    adc a:OBJ_3670,x
+    sta a:OBJ_3670,x
+    lda z:zTemp10
+    adc a:OBJ_36C8,x
+    sta a:OBJ_36C8,x
+    rts
+
+; @routine 0024:3C3 ApplyWorldVelocityX
+; @run 80:4BC3
+; WHAT IT DOES: Moves a world object along X by its X velocity.
+; HOW: The head of ApplyWorldVelocity, as its own entry that returns.
+; WAITS: no.
+; Entry: X object. Exit: A the X position's high byte, N, Z, C and V from its add. X and Y kept. Clobbers zTemp10.
+ApplyWorldVelocityX:
+    stz z:zTemp10
+    lda a:OBJ_VX_HI,x
+    bpl ApplyWorldVelocityX_at0
+    dec z:zTemp10
+ApplyWorldVelocityX_at0:
+    lda a:OBJ_VX_LO,x
+    clc
+    adc a:OBJ_3510,x
+    sta a:OBJ_3510,x
+    lda a:OBJ_VX_HI,x
+    adc a:OBJ_3568,x
+    sta a:OBJ_3568,x
+    lda z:zTemp10
+    adc a:OBJ_35C0,x
+    sta a:OBJ_35C0,x
+    rts
+
+; @routine 0024:3E8 CheckPlayerHits
+; @run 80:4BE8
+; WHAT IT DOES: The touches of the player with the walking world objects (odd slots 5 to $13, on screen, state 0 or
+; 1): one within $20 in Y and $12 in X hurts the player ($3250 of object 0: 1 from the right, 3 from the left). Then,
+; when the player's frame is the whip's ($0B), the whip's point ($30 ahead of the player, $D0 behind when facing
+; left, if it is on the screen) hits each such object within 8 in Y and $24 in X ($3250 of the object: 1 when it is
+; right of the player, 3 when left).
+; HOW: The player's place in zTemp00-01, zTemp08 the side; two loops over the slots.
+; WAITS: no.
+; Entry: nothing. Exit: by arm (HitsArm): A, N, Z, C; Y 2 and V where the arm set them; X $15 after a loop.
+CheckPlayerHits:
+    lda a:OBJ_X_LO
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    sta z:zTemp01
+    stz a:OBJ_3250
+    ldx #$05
+CheckPlayerHits_at3:
+    lda a:OBJ_X_HI,x
+    bne CheckPlayerHits_at0
+    lda a:OBJ_34B8,x
+    cmp #$02
+    bcs CheckPlayerHits_at0
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc z:zTemp01
+    bcs CheckPlayerHits_at1
+    eor #$FF
+    inc a
+CheckPlayerHits_at1:
+    cmp #$20
+    bcs CheckPlayerHits_at0
+    stz z:zTemp08
+    lda a:OBJ_X_LO,x
+    sec
+    sbc z:zTemp00
+    bcs CheckPlayerHits_at2
+    eor #$FF
+    inc a
+    ldy #$02
+    sty z:zTemp08
+CheckPlayerHits_at2:
+    cmp #$12
+    bcs CheckPlayerHits_at0
+    lda z:zTemp08
+    inc a
+    sta a:OBJ_3250
+CheckPlayerHits_at0:
+    inx
+    inx
+    cpx #$15
+    bne CheckPlayerHits_at3
+    lda a:OBJ_2A68
+    cmp #$0B
+    bne CheckPlayerHits_at4
+    lda a:OBJ_2AC0
+    beq CheckPlayerHits_at5
+    lda #$D0
+    clc
+    adc z:zTemp00
+    sta z:zTemp00
+    bcs CheckPlayerHits_at6
+CheckPlayerHits_at4:
+    rts
+CheckPlayerHits_at5:
+    lda #$30
+    clc
+    adc z:zTemp00
+    sta z:zTemp00
+    bcs CheckPlayerHits_at4
+CheckPlayerHits_at6:
+    ldx #$05
+CheckPlayerHits_at11:
+    stz a:OBJ_3250,x
+    lda a:OBJ_X_HI,x
+    bne CheckPlayerHits_at7
+    lda a:OBJ_34B8,x
+    cmp #$02
+    bcs CheckPlayerHits_at7
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc z:zTemp01
+    bcs CheckPlayerHits_at8
+    eor #$FF
+    inc a
+CheckPlayerHits_at8:
+    cmp #$08
+    bcs CheckPlayerHits_at7
+    lda a:OBJ_X_LO,x
+    sec
+    sbc z:zTemp00
+    bcs CheckPlayerHits_at9
+    eor #$FF
+    inc a
+CheckPlayerHits_at9:
+    cmp #$24
+    bcs CheckPlayerHits_at7
+    stz z:zTemp08
+    lda a:OBJ_X_LO,x
+    sec
+    sbc a:OBJ_X_LO
+    bcs CheckPlayerHits_at10
+    ldy #$02
+    sty z:zTemp08
+CheckPlayerHits_at10:
+    lda z:zTemp08
+    inc a
+    sta a:OBJ_3250,x
+CheckPlayerHits_at7:
+    inx
+    inx
+    cpx #$15
+    bne CheckPlayerHits_at11
     rts

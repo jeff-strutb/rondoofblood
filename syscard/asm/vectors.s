@@ -197,3 +197,11 @@ vec_ma_mul8u:
 ; Entry, exit: as ex_memopen.
 vec_ex_memopen:
     jmp ex_memopen
+
+; @card 00:E063 vec_ex_joysns
+; WHAT IT DOES: The jump table's entry for ex_joysns: goes to it.
+; HOW: A JMP to ex_joysns, no frame of its own: the caller's JSR frame is the one ex_joysns returns through.
+; WAITS: no.
+; Entry, exit: as ex_joysns.
+vec_ex_joysns:
+    jmp ex_joysns

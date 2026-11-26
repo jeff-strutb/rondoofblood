@@ -450,4 +450,8 @@ CardExit vec_ex_satclr(void);
 MaMul8u vec_ma_mul8u(uint8_t a, uint8_t flags);
 MemOpen vec_ex_memopen(void);
 
+CardExit ex_joysns(void);
+CardExit vec_ex_joysns(void);
+void ex_joysns_exit_shim(CardExit e);
+
 #endif

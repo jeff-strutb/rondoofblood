@@ -54,6 +54,17 @@ static void call_with_live_registers_shim(uint16_t ret, uint16_t target)
     call_orig(ret, target);
 }
 
+/* The card's pad read, framed, with the registers and flags it leaves taken on. */
+static void joysns_shim(void)
+{
+    CardExit exit;
+
+    jsr_push(0x4246);
+    exit = vec_ex_joysns();
+    jsr_pop();
+    ex_joysns_exit_shim(exit);
+}
+
 /* The sound tick of the late frame: X is 0 (CLX before the band write), Y the interrupted code's. */
 static void late_sound_tick_shim(uint8_t a, uint8_t y, bool line_written, Sum line)
 {
@@ -201,7 +212,7 @@ static void full_frame(uint8_t kept_x)
     call_with_live_registers_shim(0x423D, FrameOverlay8003);
     call_with_live_registers_shim(0x4240, FrameOverlay8000);
     call_with_live_registers_shim(0x4243, 0x4366);
-    call_with_live_registers_shim(0x4246, BiosE063);
+    joysns_shim();
     call_with_live_registers_shim(0x4249, 0x5A9A);
     sum = map_from_base(MPR4, 0x03);
     load_sum_shim(sum);

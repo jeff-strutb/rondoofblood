@@ -17,13 +17,14 @@
 
 enum { STAGE_POINTER_LO = 0x207E, STAGE_POINTER_HI = 0x207F, STAGE_CLEAR_7C = 0x207C, STAGE_CLEAR_7D = 0x207D };
 
-/* The one test of zGameRunning, and when the game runs the stores: the Ended the routine leaves. */
-static Ended reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
+/* The one test of zGameRunning, and when the game runs the stores: what the routine ended on. */
+static ObjArm reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
 {
-    uint8_t running = RD8(ZP->game_running);
+    ObjArm r = { 0 };
 
-    if (running == 0) {
-        return ended_load(running);
+    r.first = RD8(ZP->game_running);
+    if (r.first == 0) {
+        return r;
     }
     WR8(ZP->random0, 0);
     WR8(ZP->random1, 0);
@@ -35,7 +36,15 @@ static Ended reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
     wr8(STAGE_CLEAR_7D, 0);
     wr8(STAGE_POINTER_LO, pointer_lo);
     wr8(STAGE_POINTER_HI, pointer_hi);
-    return ended_load(pointer_hi);
+    r.second = pointer_hi;
+    r.flag = true;
+    return r;
+}
+
+/* A when the game was not running, else the pointer's high byte. */
+static Ended reset_stage_variables_exit_shim(ObjArm r)
+{
+    return ended_load(r.flag ? r.second : r.first);
 }
 
 /*
@@ -46,14 +55,14 @@ static Ended reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C2 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables024D(void)
+ObjArm ResetStageVariables024D(void)
 {
     return reset_stage_variables(0x0d, 0xc2);
 }
 
 void abi_ResetStageVariables024D(void)
 {
-    abi_ended(ResetStageVariables024D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables024D()));
 }
 
 /*
@@ -64,14 +73,14 @@ void abi_ResetStageVariables024D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $CE and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables050D(void)
+ObjArm ResetStageVariables050D(void)
 {
     return reset_stage_variables(0x66, 0xce);
 }
 
 void abi_ResetStageVariables050D(void)
 {
-    abi_ended(ResetStageVariables050D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables050D()));
 }
 
 /*
@@ -82,14 +91,14 @@ void abi_ResetStageVariables050D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $BE and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables05BD(void)
+ObjArm ResetStageVariables05BD(void)
 {
     return reset_stage_variables(0x15, 0xbe);
 }
 
 void abi_ResetStageVariables05BD(void)
 {
-    abi_ended(ResetStageVariables05BD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables05BD()));
 }
 
 /*
@@ -100,14 +109,14 @@ void abi_ResetStageVariables05BD(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C2 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables071D(void)
+ObjArm ResetStageVariables071D(void)
 {
     return reset_stage_variables(0x4e, 0xc2);
 }
 
 void abi_ResetStageVariables071D(void)
 {
-    abi_ended(ResetStageVariables071D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables071D()));
 }
 
 /*
@@ -118,14 +127,14 @@ void abi_ResetStageVariables071D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DC and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables07CD(void)
+ObjArm ResetStageVariables07CD(void)
 {
     return reset_stage_variables(0x50, 0xdc);
 }
 
 void abi_ResetStageVariables07CD(void)
 {
-    abi_ended(ResetStageVariables07CD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables07CD()));
 }
 
 /*
@@ -136,14 +145,14 @@ void abi_ResetStageVariables07CD(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C3 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables087D(void)
+ObjArm ResetStageVariables087D(void)
 {
     return reset_stage_variables(0xaa, 0xc3);
 }
 
 void abi_ResetStageVariables087D(void)
 {
-    abi_ended(ResetStageVariables087D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables087D()));
 }
 
 /*
@@ -154,14 +163,14 @@ void abi_ResetStageVariables087D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DB and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables092D(void)
+ObjArm ResetStageVariables092D(void)
 {
     return reset_stage_variables(0x8f, 0xdb);
 }
 
 void abi_ResetStageVariables092D(void)
 {
-    abi_ended(ResetStageVariables092D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables092D()));
 }
 
 /*
@@ -172,14 +181,14 @@ void abi_ResetStageVariables092D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C2 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables09DD(void)
+ObjArm ResetStageVariables09DD(void)
 {
     return reset_stage_variables(0x74, 0xc2);
 }
 
 void abi_ResetStageVariables09DD(void)
 {
-    abi_ended(ResetStageVariables09DD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables09DD()));
 }
 
 /*
@@ -190,14 +199,14 @@ void abi_ResetStageVariables09DD(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DD and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables0A8D(void)
+ObjArm ResetStageVariables0A8D(void)
 {
     return reset_stage_variables(0xd7, 0xdd);
 }
 
 void abi_ResetStageVariables0A8D(void)
 {
-    abi_ended(ResetStageVariables0A8D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables0A8D()));
 }
 
 /*
@@ -208,14 +217,14 @@ void abi_ResetStageVariables0A8D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D4 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables0B3D(void)
+ObjArm ResetStageVariables0B3D(void)
 {
     return reset_stage_variables(0x6f, 0xd4);
 }
 
 void abi_ResetStageVariables0B3D(void)
 {
-    abi_ended(ResetStageVariables0B3D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables0B3D()));
 }
 
 /*
@@ -226,14 +235,14 @@ void abi_ResetStageVariables0B3D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DA and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables0BED(void)
+ObjArm ResetStageVariables0BED(void)
 {
     return reset_stage_variables(0x06, 0xda);
 }
 
 void abi_ResetStageVariables0BED(void)
 {
-    abi_ended(ResetStageVariables0BED());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables0BED()));
 }
 
 /*
@@ -244,14 +253,14 @@ void abi_ResetStageVariables0BED(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C3 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables0C9D(void)
+ObjArm ResetStageVariables0C9D(void)
 {
     return reset_stage_variables(0x1a, 0xc3);
 }
 
 void abi_ResetStageVariables0C9D(void)
 {
-    abi_ended(ResetStageVariables0C9D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables0C9D()));
 }
 
 /*
@@ -262,14 +271,14 @@ void abi_ResetStageVariables0C9D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D9 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables0D4D(void)
+ObjArm ResetStageVariables0D4D(void)
 {
     return reset_stage_variables(0x37, 0xd9);
 }
 
 void abi_ResetStageVariables0D4D(void)
 {
-    abi_ended(ResetStageVariables0D4D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables0D4D()));
 }
 
 /*
@@ -280,14 +289,14 @@ void abi_ResetStageVariables0D4D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C1 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables0DFD(void)
+ObjArm ResetStageVariables0DFD(void)
 {
     return reset_stage_variables(0x5c, 0xc1);
 }
 
 void abi_ResetStageVariables0DFD(void)
 {
-    abi_ended(ResetStageVariables0DFD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables0DFD()));
 }
 
 /*
@@ -298,14 +307,14 @@ void abi_ResetStageVariables0DFD(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $B3 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables0EAD(void)
+ObjArm ResetStageVariables0EAD(void)
 {
     return reset_stage_variables(0x89, 0xb3);
 }
 
 void abi_ResetStageVariables0EAD(void)
 {
-    abi_ended(ResetStageVariables0EAD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables0EAD()));
 }
 
 /*
@@ -316,14 +325,14 @@ void abi_ResetStageVariables0EAD(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $B1 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables0F5D(void)
+ObjArm ResetStageVariables0F5D(void)
 {
     return reset_stage_variables(0xf3, 0xb1);
 }
 
 void abi_ResetStageVariables0F5D(void)
 {
-    abi_ended(ResetStageVariables0F5D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables0F5D()));
 }
 
 /*
@@ -334,14 +343,14 @@ void abi_ResetStageVariables0F5D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D5 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables100D(void)
+ObjArm ResetStageVariables100D(void)
 {
     return reset_stage_variables(0x56, 0xd5);
 }
 
 void abi_ResetStageVariables100D(void)
 {
-    abi_ended(ResetStageVariables100D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables100D()));
 }
 
 /*
@@ -352,14 +361,14 @@ void abi_ResetStageVariables100D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C5 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables10BD(void)
+ObjArm ResetStageVariables10BD(void)
 {
     return reset_stage_variables(0x8c, 0xc5);
 }
 
 void abi_ResetStageVariables10BD(void)
 {
-    abi_ended(ResetStageVariables10BD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables10BD()));
 }
 
 /*
@@ -370,14 +379,14 @@ void abi_ResetStageVariables10BD(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $DB and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables116D(void)
+ObjArm ResetStageVariables116D(void)
 {
     return reset_stage_variables(0x63, 0xdb);
 }
 
 void abi_ResetStageVariables116D(void)
 {
-    abi_ended(ResetStageVariables116D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables116D()));
 }
 
 /*
@@ -388,14 +397,14 @@ void abi_ResetStageVariables116D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D2 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables12CD(void)
+ObjArm ResetStageVariables12CD(void)
 {
     return reset_stage_variables(0x5a, 0xd2);
 }
 
 void abi_ResetStageVariables12CD(void)
 {
-    abi_ended(ResetStageVariables12CD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables12CD()));
 }
 
 /*
@@ -406,14 +415,14 @@ void abi_ResetStageVariables12CD(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $D9 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables160D(void)
+ObjArm ResetStageVariables160D(void)
 {
     return reset_stage_variables(0x16, 0xd9);
 }
 
 void abi_ResetStageVariables160D(void)
 {
-    abi_ended(ResetStageVariables160D());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables160D()));
 }
 
 /*
@@ -424,14 +433,14 @@ void abi_ResetStageVariables160D(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $BF and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables16BD(void)
+ObjArm ResetStageVariables16BD(void)
 {
     return reset_stage_variables(0x26, 0xbf);
 }
 
 void abi_ResetStageVariables16BD(void)
 {
-    abi_ended(ResetStageVariables16BD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables16BD()));
 }
 
 /*
@@ -442,12 +451,12 @@ void abi_ResetStageVariables16BD(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zGameRunning, N and Z from it when it is zero; otherwise A $C3 and N set. X, Y, C, V kept.
  */
-Ended ResetStageVariables18CD(void)
+ObjArm ResetStageVariables18CD(void)
 {
     return reset_stage_variables(0x73, 0xc3);
 }
 
 void abi_ResetStageVariables18CD(void)
 {
-    abi_ended(ResetStageVariables18CD());
+    abi_ended(reset_stage_variables_exit_shim(ResetStageVariables18CD()));
 }

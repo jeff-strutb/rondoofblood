@@ -296,3 +296,129 @@ psg_slide_channel_at17:
     sta a:$257B,x
 psg_slide_channel_at19:
     rts
+
+; @card 02:D350 psg_read_notes
+; WHAT IT DOES: Reads the current channel's note stream when the channel is in the state that wants it: a note's pitch, the sound's
+; shape (its waveform pair), the volume or the channel flags, until a note or the stream's end.
+; HOW: Only for a channel whose kind ($25E1, high nibble) is 1 and whose state ($260D) is not zero. Each byte of the stream at the
+; pointer kept in $259F and $25A5: below $B0 a noise value (channels 4 and 5); $B0 to $BF the high pitch and the next byte the low, and
+; the note is read; $C0 a shape number, built-in or the user's, $D0 the balance, $E0 the flags; anything else ends the stream. A
+; shape, balance or flags byte goes on to the next byte.
+; WAITS: no.
+; Entry: CardPlayChannel ($22E0) the channel. Exit: A, X, Y and the flags as the last step left them.
+psg_read_notes:
+    ldy a:$22E0
+    lda a:$25E1,y
+    and #$F0
+    cmp #$10
+    beq psg_read_notes_at0
+psg_read_notes_at22:
+    rts
+psg_read_notes_at0:
+    lda a:$260D,y
+    beq psg_read_notes_at22
+    lda a:$259F,y
+    sta z:$E8
+    lda a:$25A5,y
+    sta z:$E9
+psg_read_notes_at1:
+    lda (<$E8)
+    inc z:$E8
+    bne psg_read_notes_at2
+    inc z:$E9
+psg_read_notes_at2:
+    tax
+    cmp #$B0
+    bcc psg_read_notes_at7
+    and #$F0
+    cmp #$B0
+    beq psg_read_notes_at9
+    cmp #$C0
+    beq psg_read_notes_at12
+    cmp #$D0
+    beq psg_read_notes_at17
+    cmp #$E0
+    beq psg_read_notes_at18
+    jmp psg_read_notes_at19
+psg_read_notes_at7:
+    cpy #$04
+    bcc psg_read_notes_at11
+    and #$1F
+    sta a:$2601,y
+    bra psg_read_notes_at11
+psg_read_notes_at9:
+    txa
+    sec
+    sbc #$B0
+    sta a:$25ED,y
+    lda (<$E8)
+    inc z:$E8
+    bne psg_read_notes_at10
+    inc z:$E9
+psg_read_notes_at10:
+    sta a:$25E7,y
+    cpy #$04
+    bcc psg_read_notes_at11
+    lda #$80
+    sta a:$2601,y
+psg_read_notes_at11:
+    lda z:$E8
+    sta a:$259F,y
+    lda z:$E9
+    sta a:$25A5,y
+    rts
+psg_read_notes_at12:
+    lda (<$E8)
+    cmp #$10
+    bcs psg_read_notes_at13
+    asl a
+    tax
+    lda a:$D8A1,x
+    sta a:$24D9,y
+    lda a:$D8A2,x
+    sta a:$24DF,y
+    bra psg_read_notes_at20
+psg_read_notes_at13:
+    sec
+    sbc #$10
+    asl a
+    clc
+    adc a:$22D5
+    sta z:$EA
+    cla
+    adc a:$22D6
+    sta z:$EB
+    lda (<$EA)
+    sta a:$24D9,y
+    inc z:$EA
+    bne psg_read_notes_at14
+    inc z:$EB
+psg_read_notes_at14:
+    lda (<$EA)
+    sta a:$24DF,y
+    bra psg_read_notes_at20
+psg_read_notes_at17:
+    lda (<$E8)
+    sta a:$25F9,y
+    bra psg_read_notes_at20
+psg_read_notes_at18:
+    lda (<$E8)
+    sta a:$25FF,y
+    bra psg_read_notes_at20
+psg_read_notes_at19:
+    cla
+    sta a:$260D,y
+    lda z:$E8
+    sec
+    sbc #$01
+    sta a:$259F,y
+    lda z:$E9
+    sbc #$00
+    sta a:$25A5,y
+    rts
+psg_read_notes_at20:
+    inc z:$E8
+    bne psg_read_notes_at21
+    inc z:$E9
+psg_read_notes_at21:
+    jmp psg_read_notes_at1

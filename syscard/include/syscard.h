@@ -459,4 +459,11 @@ CardExit psg_tempo_tick_alt(void);
 CardExit psg_wave_offset_alt(uint8_t number);
 CardExit psg_write_channels_alt(void);
 
+CardExit psg_slide_channel_alt(void);
+CardExit psg_read_notes_alt(void);
+CardExit psg_add_pitch_alt(uint8_t x);
+CardExit psg_scale_amount_alt(uint8_t x);
+CardExit psg_pitch_effects_alt(void);
+CardExit psg_volume_envelope_alt(void);
+
 #endif

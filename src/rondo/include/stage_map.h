@@ -269,4 +269,9 @@ StageExit InitStageC(uint8_t x, uint8_t y);
 /* system/stage_state_start.c: the state a stage starts in. */
 StageExit EnterStageState(void);
 
+/* system/stage_clear_bits.c: masks rows of VRAM words by the stage's cleared bit. */
+StageExit ClearStageBitRows(uint8_t x);
+StageExit ClearStageBitRowsLong(uint8_t x);
+StageExit ClearStageBitRowsFour(uint8_t x);
+
 #endif

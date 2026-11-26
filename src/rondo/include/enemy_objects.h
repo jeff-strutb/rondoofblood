@@ -360,7 +360,8 @@ typedef struct {
     uint8_t command; \
     CommandCall call; \
     bool screen_called; \
-    SoundOnScreen screen;
+    SoundOnScreen screen; \
+    TileRun run;
 
 /* A callee's ObjArm kept inside its caller's (one level: a callee kept this way keeps no callee of its own). */
 typedef struct {
@@ -409,6 +410,12 @@ enum { WF_WALKING, WF_DONE };
 static inline Ended frame_step_exit_shim(ObjArm r)
 {
     return ended_of_frame_step(r.step, r.step != FRAME_HELD, r.y);
+}
+
+/* LoadObjectRecord's exit, kept as first (the last byte), second (its N and Z) and flag (its C). */
+static inline Ended record_exit_shim(ObjArm r)
+{
+    return ended_of_record(r.first, r.second, r.flag);
 }
 
 /* An LDY of the list index before such a step: Y stands as loaded unless the step set it. */

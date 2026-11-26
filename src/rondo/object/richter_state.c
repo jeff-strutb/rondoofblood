@@ -336,7 +336,7 @@ typedef struct {
     uint8_t hit_timer, timer_left, blink_flags;
     bool timer_script;            /* the hit timer ran out with no blink: script 9 */
     bool hit_looked;
-    uint8_t hit, leave_top;       /* OBJ_33B0, and PlayerMayLeaveTop for a hit of kind 5 */
+    uint8_t hit, hit_kind, leave_top;   /* OBJ_33B0 twice, and PlayerMayLeaveTop for a hit of kind 5 */
     bool paid;
     Sum health;                   /* the hit's damage taken off the health */
     bool out_of_health;
@@ -1486,6 +1486,7 @@ static void out_of_health(StateFrame *f, uint8_t x, uint8_t y)
 StateFrame RichterStateFrame(uint8_t x, uint8_t y)
 {
     StateFrame f = { 0 };
+    uint8_t health, damage;
 
     f.dying = rd8(PlayerDying);
     if (f.dying != 0) {
@@ -1526,7 +1527,8 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
         after_hit(&f);
         return f;
     }
-    if ((f.hit & HIT_KINDS) == HIT_KIND_IGNORED) {
+    f.hit_kind = rd8(OBJ_33B0);   /* LDA again, then AND #7 */
+    if ((f.hit_kind & HIT_KINDS) == HIT_KIND_IGNORED) {
         f.leave_top = rd8(PlayerMayLeaveTop);
         if (f.leave_top == 0) {
             wr8(OBJ_33B0, 0);
@@ -1535,7 +1537,9 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
         }
     }
     f.paid = true;
-    f.health = sub_bytes(rd8(zPlayerHealth), rd8(OBJ_32A8), true);
+    health = rd8(zPlayerHealth);
+    damage = rd8(OBJ_32A8);
+    f.health = sub_bytes(health, damage, true);
     wr8(zPlayerHealth, f.health.value);
     if (!f.health.carry || f.health.value == 0)
         out_of_health(&f, x, y);

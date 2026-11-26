@@ -1393,7 +1393,7 @@ void abi_VramListRun(void)
  * WHAT IT DOES: Runs one stream of VRAM commands from the pointer in zp $12: counted words, a word repeated, pairs
  * of a byte and a fixed byte, a new write address (absolute, or added to the last), until $FF.
  * HOW: An entry into the command loop (vram_commands), at its first fetch. The commands that run on from the
- * overlay's other entries (VramCommandsRepeat and its two inside) are cases of the same loop.
+ * overlay's other entries (VramCommandsRepeat and the entries it jumps to) are cases of the same loop.
  * WAITS: no.
  * Entry: zp $12 the stream. Exit: A $FF, C and Z set, N clear, Y the index of the $FF, V from the last add.
  * Untraced: the command $FD (set the write address).
@@ -1436,12 +1436,11 @@ void abi_VramCommandsNext(void)
  * @routine 00C5:20E VramCommandsRepeat
  * @run 6C:820E
  * WHAT IT DOES: The commands from $820E on: a counted word written again and again, and the stream's other
- * forms (pairs, the address commands).
+ * forms.
  * HOW: An entry into the command loop (vram_commands), at the repeat command with A its count; the pairs
- * command at $822B, the address-add at $8247 and the address set at $8266 are its cases.
+ * command at $822B, the address-add at $8247 and the address set at $8266 are entries of their own.
  * WAITS: no.
  * Entry: A the count, Y the index of the command, zp $12 the stream. Exit: as VramCommandsFetch.
- * Untraced: the $8266 command.
  */
 VramExit VramCommandsRepeat(uint8_t a, uint8_t y, bool carry, bool overflow)
 {
@@ -1451,6 +1450,64 @@ VramExit VramCommandsRepeat(uint8_t a, uint8_t y, bool carry, bool overflow)
 void abi_VramCommandsRepeat(void)
 {
     vram_exit_shim(commands_exit_shim(VramCommandsRepeat(cpu.a, cpu.y, entry_carry_shim(), entry_overflow_shim())));
+}
+
+/*
+ * @routine 00C5:22B VramCommandsPairs
+ * @run 6C:822B
+ * WHAT IT DOES: The stream's pairs command: a count, a fixed high byte, then that many low bytes, each written to the
+ * VDC's data port with the fixed byte as its high half.
+ * HOW: An entry into the command loop (vram_commands), at the pairs command; VramCommandsFetch jumps here for a command byte of 0.
+ * WAITS: no.
+ * Entry: Y the index of the command byte, zp $12 the stream. Exit: as VramCommandsFetch.
+ */
+VramExit VramCommandsPairs(uint8_t y, bool carry, bool overflow)
+{
+    return vram_commands(VRAM_COMMAND_PAIRS, 0, y, carry, overflow);
+}
+
+void abi_VramCommandsPairs(void)
+{
+    vram_exit_shim(commands_exit_shim(VramCommandsPairs(cpu.y, entry_carry_shim(), entry_overflow_shim())));
+}
+
+/*
+ * @routine 00C5:247 VramCommandsAddressAdd
+ * @run 6C:8247
+ * WHAT IT DOES: The stream's address-add command ($FE): the VDC's write address is set to the last address set plus the
+ * two bytes that follow, its high byte masked to four bits unless bit 0 of zp $11 is set.
+ * HOW: An entry into the command loop (vram_commands), at the address add; VramCommandsFetch jumps here for $FE.
+ * WAITS: no.
+ * Entry: Y the index of the command byte, zp $12 the stream. Exit: as VramCommandsFetch.
+ */
+VramExit VramCommandsAddressAdd(uint8_t y, bool carry, bool overflow)
+{
+    return vram_commands(VRAM_COMMAND_ADDRESS_ADD, 0, y, carry, overflow);
+}
+
+void abi_VramCommandsAddressAdd(void)
+{
+    vram_exit_shim(commands_exit_shim(VramCommandsAddressAdd(cpu.y, entry_carry_shim(), entry_overflow_shim())));
+}
+
+/*
+ * @routine 00C5:266 VramCommandsAddress
+ * @run 6C:8266
+ * WHAT IT DOES: The stream's address command ($FD): the VDC's write address and the kept copy of it are set to the two bytes
+ * that follow.
+ * HOW: An entry into the command loop (vram_commands), at the address set; VramCommandsFetch jumps here for $FD.
+ * WAITS: no.
+ * Entry: Y the index of the command byte, zp $12 the stream. Exit: as VramCommandsFetch.
+ * Untraced: the whole routine.
+ */
+VramExit VramCommandsAddress(uint8_t y, bool carry, bool overflow)
+{
+    return vram_commands(VRAM_COMMAND_ADDRESS, 0, y, carry, overflow);
+}
+
+void abi_VramCommandsAddress(void)
+{
+    vram_exit_shim(commands_exit_shim(VramCommandsAddress(cpu.y, entry_carry_shim(), entry_overflow_shim())));
 }
 
 /*

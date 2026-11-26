@@ -920,6 +920,28 @@ void abi_RichterUseItemEight(void)
 }
 
 /*
+ * @routine 01BC:113 RichterLatchBits
+ * @run 6D:B913
+ * WHAT IT DOES: Adds the buttons in A to the ones latched in PadForcedPressB.
+ * HOW: ORA of the byte, STA back.
+ * WAITS: no.
+ * Entry: A the buttons. Exit: A the latched byte, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t RichterLatchBits(uint8_t buttons)
+{
+    uint8_t latched = (uint8_t)(rd8(PadForcedPressB) | buttons);
+
+    wr8(PadForcedPressB, latched);
+    return latched;
+}
+
+void abi_RichterLatchBits(void)
+{
+    cpu.a = RichterLatchBits(cpu.a);
+    abi_nz(cpu.a);
+}
+
+/*
  * @routine 01BB:909 RichterLatchButtons
  * @run 6D:B909
  * WHAT IT DOES: Keeps the jump and attack presses until a state acts on them.
@@ -929,21 +951,16 @@ void abi_RichterUseItemEight(void)
  */
 uint8_t RichterLatchButtons(void)
 {
-    uint8_t latched, pressed, held;
+    uint8_t pressed;
 
     pressed = RD8(ZP->pad_pressed);
     pressed = (uint8_t)(pressed & ITEM_USE_PRESS);
     jsr_push(0xB90F);
-    held = rd8(PadForcedPressB);
-    latched = (uint8_t)(held | pressed);
-    wr8(PadForcedPressB, latched);
+    RichterLatchBits(pressed);
     jsr_pop();
     pressed = RD8(ZP->pad_pressed);
     pressed = (uint8_t)(pressed & PAD_TURBO_BIT);
-    held = rd8(PadForcedPressB);
-    latched = (uint8_t)(held | pressed);
-    wr8(PadForcedPressB, latched);
-    return latched;
+    return RichterLatchBits(pressed);
 }
 
 void abi_RichterLatchButtons(void)

@@ -76,4 +76,10 @@ Ended RichterFaceByPad(void);
 TurnWindow RichterCheckTurnWindow(void);
 EndedX RichterCheckItemHearts(void);
 
+/* object/player_terrain.c: the two halves of the ledge check */
+typedef struct { bool found; LowColumns low; uint8_t a; uint8_t x; bool c; } LedgeLowPart;
+typedef struct { bool found; BlockedColumns high; uint8_t a; uint8_t x; bool c; } LedgeHighPart;
+LedgeLowPart RichterLedgeLow(void);
+LedgeHighPart RichterLedgeHigh(void);
+
 #endif

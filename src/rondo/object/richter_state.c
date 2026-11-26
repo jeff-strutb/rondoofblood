@@ -283,7 +283,7 @@ CrouchStep RichterCrouchStep4(void);
 AttackStart RichterCrouchAttack(void);
 void crouch_exit_shim(CrouchStep c);
 void crouch_state_exit_shim(CrouchState st);
-static AttackStart attack_with_animation(uint8_t animation);
+AttackStart RichterAttackAnimation(uint8_t animation);
 static void stand_handler_shim(uint8_t step, uint16_t handler);
 static FacingSpeed speed_by_facing(uint16_t table);
 static void abi_exit_speed(FacingSpeed set);
@@ -2479,8 +2479,15 @@ void abi_RichterStopX(void)
     RichterStopX();
 }
 
-/* The attack from its animation on: step 1, then the whip with its sound or the item's object. */
-static AttackStart attack_with_animation(uint8_t animation)
+/*
+ * @routine 01B9:4E4 RichterAttackAnimation
+ * @run 6D:A4E4
+ * WHAT IT DOES: The attack from its animation on: step 1, then the whip with its sound or the kind's object in a free slot.
+ * HOW: RichterSetAnimation with A, then PlayerByte3BD5 picks the whip (RichterClearWhip, sound 3) or the item in slot 5, 8 or $0B.
+ * WAITS: no.
+ * Entry: A the animation. Exit: as RichterAttack.
+ */
+AttackStart RichterAttackAnimation(uint8_t animation)
 {
     AttackStart attack;
 
@@ -2511,6 +2518,13 @@ static AttackStart attack_with_animation(uint8_t animation)
     return attack;
 }
 
+void attack_exit_shim(AttackStart attack);
+
+void abi_RichterAttackAnimation(void)
+{
+    attack_exit_shim(RichterAttackAnimation(cpu.a));
+}
+
 /*
  * @routine 01B9:4CD RichterAttack
  * @run 6D:A4CD
@@ -2519,7 +2533,7 @@ static AttackStart attack_with_animation(uint8_t animation)
  * HOW: PlayerByte3BD5 is the kind. zField93 is what goes in the slot. SoundCommand 3 for the whip.
  * WAITS: no.
  * Entry: nothing. Exit: Y and C as RichterSetAnimation. The whip, as SoundCommand with command
- * 3 and X 3; an item, A the item, X its slot, N, Z and V from testing the last slot looked at.
+ * 3 and X 3; an item, A the item, X its slot, N and Z clear (LDX), V from testing the last slot looked at.
  */
 AttackStart RichterAttack(void)
 {
@@ -2537,10 +2551,10 @@ AttackStart RichterAttack(void)
     RichterStopMoving();
     jsr_pop();
     kind = rd8(PlayerByte3BD5);
-    return attack_with_animation(rd8((uint16_t)(LandAnimations + kind)));
+    return RichterAttackAnimation(rd8((uint16_t)(LandAnimations + kind)));
 }
 
-/* The whip's sound's exit after X 3; or the item in A and X its slot, N, Z and V from the last test. */
+/* The whip's sound's exit after X 3; or the item in A and X its slot, N and Z from the LDX, V from the last test. */
 void attack_exit_shim(AttackStart attack)
 {
     animation_exit_shim(attack.animation);
@@ -2552,15 +2566,10 @@ void attack_exit_shim(AttackStart attack)
     }
     cpu.a = attack.item;
     cpu.x = attack.slot;
-    if (attack.slot == ITEM_SLOT_C) {
-        abi_flag(P_Z, false);
-        abi_flag(P_N, (attack.tested_b & 0x80) != 0);
-        abi_flag(P_V, (attack.tested_b & 0x40) != 0);
-    } else {
-        abi_flag(P_Z, true);
-        abi_flag(P_N, false);
-        abi_flag(P_V, false);
-    }
+    /* LDX of the slot, after the last TST, sets N and Z from X (a slot is never 0); V is the TST's */
+    abi_flag(P_Z, false);
+    abi_flag(P_N, false);
+    abi_flag(P_V, (attack.tested_b & 0x40) != 0);
 }
 
 void abi_RichterAttack(void)
@@ -4002,7 +4011,7 @@ AttackStart RichterCrouchAttack(void)
     jsr_push(0xA8C2);
     RichterStopMoving();
     jsr_pop();
-    return attack_with_animation(ANIM_CROUCH_ATTACK);
+    return RichterAttackAnimation(ANIM_CROUCH_ATTACK);
 }
 
 void abi_RichterCrouchAttack(void)

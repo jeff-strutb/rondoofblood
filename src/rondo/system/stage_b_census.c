@@ -27,6 +27,8 @@ enum {
     FADE_SOUND = 0x209D, STAGE_FLAG_2743 = 0x2743,
     KERNEL_4006 = 0x4006, KERNEL_4009 = 0x4009, SOUND_HOOK = 0x401B, KERNEL_407B = 0x407B,
     SUB_MODE_TABLE = 0x8013, SUB_STEP_TABLE = 0x8112, DEATH_PHASE_TABLE = 0x81E8, FACING_SPEEDS = 0x8209,
+    HIT_X = 0x2713, HIT_Y = 0x2723, HIT_HI = 0x2733, TEST_X = 0x2702, TEST_Y = 0x2703, REACH_X = 0x2704,
+    REACH_Y = 0x2705, HIT_GATE = 0x2748, PROBE_HIT = 0x26F6, PROBE_X = 0x26FA, PROBE_Y = 0x26FE, PROBE_LISTS = 0xDB54,
     ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4, SCREEN_3EC4 = 0x3EC4
 };
 
@@ -596,7 +598,7 @@ void abi_StageModeEventsStep152D(void)
  * camera, the objects and the screen; then the sub-step zSubStep held (cleared) runs from the table at $8112.
  * HOW: Calls StageFadeTimer152D and StagePauseToggle152D; jumps to StagePausedFrame152D; calls StageModeEventsStep152D,
  * MapOverlayBanks5And6, $A000, then $A006, MapOverlayBank7, $A08D, MapOverlayBanks5And6, $A009, StageScroll152D,
- * StageHitTests152D and StageRows152D; the sub-step doubled indexes the table.
+ * StageObjectHits152D and StageRows152D; the sub-step doubled indexes the table.
  * WAITS: where the pieces it calls wait.
  * Entry: nothing. Exit: as the sub-step's handler leaves them; it is entered with A and X twice the sub-step, N and Z
  * from it, C its bit 7. Paused: as StagePausedFrame152D.
@@ -623,7 +625,7 @@ StageRegs StageSubModePlay152D(StageRegs r)
         r = map_banks_5_6(r, 0x80FD);
         r = orig_shim(r, 0x8100, 0xA009);
         CALL(0x8103, StageScroll152D(r));
-        CALL(0x8106, StageHitTests152D(r));
+        CALL(0x8106, StageObjectHits152D(r));
         CALL(0x8109, StageRows152D(r));
     }
     step = RD8(ZP->sub_step);
@@ -6239,4 +6241,895 @@ StageRegs StageDrawPiece152D(StageRegs r)
 void abi_StageDrawPiece152D(void)
 {
     regs_exit_shim(StageDrawPiece152D(regs_entry_shim()));
+}
+
+/* Where a pass of the objects' hit loop enters it: at an object's test, at its hit timer, at the next object, or at
+ * the test of an object that has an event. */
+typedef enum { HIT_AT_TEST, HIT_AT_TIMER, HIT_AT_NEXT, HIT_AT_EVENT } HitEntry;
+
+/* A signed offset read for a 16-bit add: zTemp00 cleared, the offset read, and zTemp00 $FF when it is negative. */
+static uint8_t signed_offset(uint16_t addr)
+{
+    uint8_t offset;
+
+    WR8(ZP->temp00, 0);
+    offset = rd8(addr);
+    if ((offset & 0x80) != 0) {
+        (void)DEC8(ZP->temp00);
+    }
+    return offset;
+}
+
+/* The object's box tested against the hit boxes of slots 15 down to 0: true when one is hit (its handler run by
+ * StageHitHandler152D and the object's timer at $3790 stepped), false when none is. */
+static bool test_hit_boxes(Regs *r)
+{
+    Sum sum;
+    uint8_t x = r->x, value, other;
+
+    for (r->y = 0x0F; (r->y & 0x80) == 0; r->y--) {
+        *r = loaded(*r, rd8((uint16_t)(HIT_HI + r->y)));
+        if (r->a != 0) {
+            continue;
+        }
+        value = RD8(OBJ->f3670[72 + x]);
+        other = RD8(OBJ->f3670[72 + r->y]);
+        sum = add_bytes(value, other, false);
+        wr8(REACH_X, sum.value);
+        value = RD8(OBJ->f3720[40 + x]);
+        other = RD8(OBJ->f3720[40 + r->y]);
+        sum = add_bytes(value, other, false);
+        wr8(REACH_Y, sum.value);
+        value = rd8(TEST_X);
+        other = rd8((uint16_t)(HIT_X + r->y));
+        sum = sub_bytes(value, other, true);
+        value = sum.value;
+        if (!sum.carry) {
+            value = (uint8_t)((value ^ 0xFF) + 1);
+        }
+        *r = loaded(*r, value);
+        *r = compared(*r, rd8(REACH_X));
+        if (r->c) {
+            continue;
+        }
+        value = rd8(TEST_Y);
+        other = rd8((uint16_t)(HIT_Y + r->y));
+        sum = sub_bytes(value, other, true);
+        value = sum.value;
+        if (!sum.carry) {
+            value = (uint8_t)((value ^ 0xFF) + 1);
+        }
+        *r = loaded(*r, value);
+        *r = compared(*r, rd8(REACH_Y));
+        if (r->c) {
+            continue;
+        }
+        jsr_push(0x9574);
+        *r = StageHitHandler152D(*r);
+        jsr_pop();
+        *r = loaded(*r, RD8(OBJ->f3778[24 + r->x]));
+        if (r->a != 0) {
+            r->nz = DEC8(OBJ->f3778[24 + r->x]);
+            WR8(OBJ->status_flags[80 + r->x], 0);
+        }
+        return true;
+    }
+    r->nz = r->y;
+    return false;
+}
+
+/* An object with an event: its state at $31F0 cleared, its point (its X and Y moved by the offsets at $3670 and $3700)
+ * kept at $2702 and $2703; on the screen's page it is tested against the hit boxes. True: go on to the next object
+ * (a box was hit). False: go on to its timer. */
+static bool test_event_object(Regs *r)
+{
+    Sum sum;
+    uint8_t x = r->x, offset, value;
+
+    WR8(OBJ->status_flags[80 + x], 0);
+    offset = signed_offset(ADDR_OF8(OBJ->f3670[x]));
+    value = RD8(OBJ->x_hi[8 + x]);
+    sum = add_bytes(offset, value, false);
+    wr8(TEST_X, sum.value);
+    value = RD8(OBJ->flash_flags[24 + x]);
+    sum = add_bytes(value, RD8(ZP->temp00), sum.carry);
+    *r = loaded(*r, sum.value);
+    r->c = sum.carry;
+    r->v = sum.overflow;
+    if (sum.value != 0) {
+        return false;
+    }
+    offset = signed_offset(ADDR_OF8(OBJ->f36c8[56 + x]));
+    value = RD8(OBJ->x_frac[48 + x]);
+    sum = add_bytes(offset, value, false);
+    wr8(TEST_Y, sum.value);
+    value = RD8(OBJ->x_lo[64 + x]);
+    sum = add_bytes(value, RD8(ZP->temp00), sum.carry);
+    *r = loaded(*r, sum.value);
+    r->c = sum.carry;
+    r->v = sum.overflow;
+    if (sum.value != 0) {
+        return false;
+    }
+    return test_hit_boxes(r);
+}
+
+/* The objects' hit loop, objects $47 down to $10, entered where ENTRY says: an object with an event is tested
+ * (test_event_object); each object's hit timer at $3790 counts down, its state at $31F0 cleared while it runs. At the
+ * end X comes back from the stack (pushed by StageObjectHits152D). */
+static Regs hit_loop(Regs r, HitEntry entry)
+{
+    for (;;) {
+        if (entry == HIT_AT_TEST) {
+            r = loaded(r, RD8(OBJ->event_id[56 + r.x]));
+            entry = r.a != 0 ? HIT_AT_EVENT : HIT_AT_TIMER;
+        }
+        if (entry == HIT_AT_EVENT) {
+            entry = test_event_object(&r) ? HIT_AT_NEXT : HIT_AT_TIMER;
+        }
+        if (entry == HIT_AT_TIMER) {
+            r = loaded(r, RD8(OBJ->f3778[24 + r.x]));
+            if (r.a != 0) {
+                WR8(OBJ->status_flags[80 + r.x], 0);
+                r.nz = DEC8(OBJ->f3778[24 + r.x]);
+            }
+        }
+        r.x--;
+        r.c = r.x >= 0x10;
+        r.nz = (uint8_t)(r.x - 0x10);
+        if (!r.c) {
+            break;
+        }
+        entry = HIT_AT_TEST;
+    }
+    r.x = pull8();
+    r.nz = r.x;
+    return r;
+}
+
+/*
+ * @routine 1530:490 StageObjectHits152D
+ * @run 6B:9490
+ * @unreachable 6B:9490-6B:949A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9490 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The objects' hits each frame: the hit boxes of slots 0 to 15 placed (StagePlaceHitBoxes152D), then
+ * for objects $47 down to $10 the test of each object that has an event against those boxes and the step of its hit
+ * timer; runs on into the loop's timer step at $949B for the first object without an event.
+ * HOW: X kept on the stack; StagePlaceHitBoxes152D; the loop (hit_loop), shared with StageHitTimer152D,
+ * StageHitNext152D and StageHitEvent152D, which are its entries the loop's branches and jumps reach.
+ * WAITS: no.
+ * Entry: nothing. Exit: X kept, N and Z from it; C clear; A, Y and V as the last object's step left them.
+ */
+StageRegs StageObjectHits152D(StageRegs r)
+{
+    push8(r.x);
+    CALL(0x9494, StagePlaceHitBoxes152D(r));
+    r.x = 0x47;
+    return hit_loop(r, HIT_AT_TEST);
+}
+
+void abi_StageObjectHits152D(void)
+{
+    regs_exit_shim(StageObjectHits152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:49B StageHitTimer152D
+ * @run 6B:949B
+ * @unreachable 6B:949B-6B:94A5 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $949B runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The hit loop's step of object X's hit timer at $3790 (while it runs, the object's state at $31F0 is
+ * cleared and the timer counted down), then the loop goes on (StageHitNext152D).
+ * HOW: A test, a store and a decrement in the hit loop.
+ * WAITS: no.
+ * Entry: X the object, the loop's X on the stack. Exit: as StageObjectHits152D.
+ */
+StageRegs StageHitTimer152D(StageRegs r)
+{
+    return hit_loop(r, HIT_AT_TIMER);
+}
+
+void abi_StageHitTimer152D(void)
+{
+    regs_exit_shim(StageHitTimer152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:4A6 StageHitNext152D
+ * @run 6B:94A6
+ * @unreachable 6B:94A6-6B:94AC no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $94A6 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The hit loop's next object: X down by one; from $10 down the loop goes on, below it X comes back from
+ * the stack.
+ * HOW: DEX, CPX and the loop's branch; PLX.
+ * WAITS: no.
+ * Entry: X the object, the loop's X on the stack. Exit: as StageObjectHits152D.
+ */
+StageRegs StageHitNext152D(StageRegs r)
+{
+    return hit_loop(r, HIT_AT_NEXT);
+}
+
+void abi_StageHitNext152D(void)
+{
+    regs_exit_shim(StageHitNext152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:4FD StageHitEvent152D
+ * @run 6B:94FD
+ * @unreachable 6B:94FD-6B:958A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $94FD runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The hit loop's test of object X that has an event: its state at $31F0 cleared; its point (its X and Y
+ * moved by the signed offsets at $3670 and $3700) must be on the screen's page; then each hit box of slots 15 down to
+ * 0 that is on the page and within the two objects' reaches ($36B8 and $3748 added) is a hit: StageHitHandler152D runs
+ * and the object's hit timer steps. Then the loop goes on.
+ * HOW: 16-bit adds with the sign in zTemp00; the point in $2702-$2703, the reaches in $2704-$2705; distances as
+ * absolute differences; the loop.
+ * WAITS: no.
+ * Entry: X the object, the loop's X on the stack. Exit: as StageObjectHits152D.
+ */
+StageRegs StageHitEvent152D(StageRegs r)
+{
+    return hit_loop(r, HIT_AT_EVENT);
+}
+
+void abi_StageHitEvent152D(void)
+{
+    regs_exit_shim(StageHitEvent152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:4AD StagePlaceHitBoxes152D
+ * @run 6B:94AD
+ * @unreachable 6B:94AD-6B:94B7 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $94AD runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Places the hit boxes of slots 0 to 15 (StagePlaceHitBox152D for each).
+ * HOW: A loop up X.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $10, N and Z from the compare (Z set), C set; A, Y and V as the last box left them.
+ */
+StageRegs StagePlaceHitBoxes152D(StageRegs r)
+{
+    r.x = 0;
+    do {
+        CALL(0x94B2, StagePlaceHitBox152D(r));
+        r.x++;
+        r.c = r.x >= 0x10;
+        r.nz = (uint8_t)(r.x - 0x10);
+    } while (!r.c);
+    return r;
+}
+
+void abi_StagePlaceHitBoxes152D(void)
+{
+    regs_exit_shim(StagePlaceHitBoxes152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:4B8 StagePlaceHitBox152D
+ * @run 6B:94B8
+ * @unreachable 6B:94B8-6B:94FC no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $94B8 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Places slot X's hit box: with no event the box is off the page ($2733 1); else its X and Y (the
+ * slot's position moved by the signed offsets at $3670 and $3700) at $2713 and $2723, and the two high bytes ORed
+ * into $2733 (0 when the box is on the screen's page).
+ * HOW: 16-bit adds with the sign in zTemp00.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A the page byte, N and Z from the ORA; C and V from the last add. X and Y kept.
+ */
+StageRegs StagePlaceHitBox152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t x = r.x, offset, value;
+
+    r = loaded(r, RD8(OBJ->event_id[56 + x]));
+    if (r.a == 0) {
+        r = loaded(r, 0x01);
+        wr8((uint16_t)(HIT_HI + x), 0x01);
+        return r;
+    }
+    WR8(ZP->temp00, 0);
+    if ((RD8(OBJ->f3670[x]) & 0x80) != 0) {
+        (void)DEC8(ZP->temp00);
+    }
+    value = RD8(OBJ->x_hi[8 + x]);
+    offset = RD8(OBJ->f3670[x]);
+    sum = add_bytes(value, offset, false);
+    wr8((uint16_t)(HIT_X + x), sum.value);
+    value = RD8(OBJ->flash_flags[24 + x]);
+    sum = add_bytes(value, RD8(ZP->temp00), sum.carry);
+    wr8((uint16_t)(HIT_HI + x), sum.value);
+    WR8(ZP->temp00, 0);
+    if ((RD8(OBJ->f36c8[56 + x]) & 0x80) != 0) {
+        (void)DEC8(ZP->temp00);
+    }
+    value = RD8(OBJ->x_frac[48 + x]);
+    offset = RD8(OBJ->f36c8[56 + x]);
+    sum = add_bytes(value, offset, false);
+    wr8((uint16_t)(HIT_Y + x), sum.value);
+    value = RD8(OBJ->x_lo[64 + x]);
+    sum = add_bytes(value, RD8(ZP->temp00), sum.carry);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    value = (uint8_t)(sum.value | rd8((uint16_t)(HIT_HI + x)));
+    r = loaded(r, value);
+    wr8((uint16_t)(HIT_HI + x), value);
+    return r;
+}
+
+void abi_StagePlaceHitBox152D(void)
+{
+    regs_exit_shim(StagePlaceHitBox152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:58B StageHitHandler152D
+ * @run 6B:958B
+ * @unreachable 6B:958B-6B:95A8 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $958B runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Object X hit slot Y's box: the object kept as the slot's hitter at $35E0, zHitSlot the slot; when the
+ * slot's hit kind at $3598 is not 0 its handler (the table of 15 at $95A9, kind 1 first) runs with Y the slot.
+ * HOW: Stores; a table read into zTemp00-01 and a jump through it.
+ * WAITS: no.
+ * Entry: X the object, Y the slot. Exit: kind 0: A 0, N and Z from it. Else: as the handler leaves them; it is entered
+ * with A the handler's high byte and Y the slot.
+ */
+StageRegs StageHitHandler152D(StageRegs r)
+{
+    uint8_t kind, index;
+    uint16_t handler;
+
+    r = loaded(r, r.x);
+    wr8((uint16_t)(ADDR_OF8(OBJ->angle_lo[32]) + r.y), r.a);
+    WR8(ZP->hit_slot, r.y);
+    r = loaded(r, rd8((uint16_t)(ADDR_OF8(OBJ->angle_hi[48]) + r.y)));
+    if (r.a == 0) {
+        return r;
+    }
+    kind = (uint8_t)(r.a - 1);
+    index = (uint8_t)(kind << 1);
+    r.c = (kind & 0x80) != 0;
+    r.y = index;
+    r = loaded(r, rd8((uint16_t)(0x95A9 + index)));
+    WR8(ZP->temp00, r.a);
+    r = loaded(r, rd8((uint16_t)(0x95AA + index)));
+    WR8(ZP->temp01, r.a);
+    r.y = RD8(ZP->hit_slot);
+    r.nz = r.y;
+    index = RD8(ZP->temp00);
+    handler = (uint16_t)(index | (RD8(ZP->temp01) << 8));
+    switch (handler) {
+    case 0x95C7:
+        return HitKindSpawn152D(r);
+    case 0x95E4:
+        return HitKindFacing152D(r);
+    case 0x95F1:
+        return HitKindState152D(r);
+    case 0x95F8:
+        return HitKindSide152D(r);
+    default:
+        return orig_tail_shim(r, handler);
+    }
+}
+
+void abi_StageHitHandler152D(void)
+{
+    regs_exit_shim(StageHitHandler152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:5C7 HitKindSpawn152D
+ * @run 6B:95C7
+ * @unreachable 6B:95C7-6B:95E3 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $95C7 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Hit kinds 1 to 4: the object's state at $31F0 takes the slot's kind; when the first object's state at
+ * $31F0 is 0 and the gate at $2748 is 0, the first object takes this object's bytes at $31A8 and $3160 (its state at
+ * $31F0 and its byte at $3118).
+ * HOW: Loads and stores; two tests.
+ * WAITS: no.
+ * Entry: X the object, Y the slot. Exit: A the last byte loaded, N and Z from it. X, Y, C and V kept.
+ */
+StageRegs HitKindSpawn152D(StageRegs r)
+{
+    r = loaded(r, rd8((uint16_t)(ADDR_OF8(OBJ->angle_hi[48]) + r.y)));
+    WR8(OBJ->status_flags[80 + r.x], r.a);
+    r = loaded(r, RD8(OBJ->status_flags[80]));
+    if (r.a != 0) {
+        return r;
+    }
+    r = loaded(r, rd8(HIT_GATE));
+    if (r.a != 0) {
+        return r;
+    }
+    r = loaded(r, RD8(OBJ->status_flags[8 + r.x]));
+    WR8(OBJ->status_flags[80], r.a);
+    r = loaded(r, RD8(OBJ->f3148[24 + r.x]));
+    WR8(OBJ->f30f0[40], r.a);
+    return r;
+}
+
+void abi_HitKindSpawn152D(void)
+{
+    regs_exit_shim(HitKindSpawn152D(regs_entry_shim()));
+}
+
+/* The side the slot keeps at $3628 (1 or 2); unless it is 2 the object takes the slot's kind (HitKindState152D). */
+static Regs hit_side_set(Regs r, uint8_t side)
+{
+    r = loaded(r, side);
+    wr8((uint16_t)(ADDR_OF8(OBJ->f3618[16]) + r.y), side);
+    r = compared(r, 0x02);
+    if (r.nz == 0) {
+        return r;
+    }
+    return HitKindState152D(r);
+}
+
+/*
+ * @routine 1530:5E4 HitKindFacing152D
+ * @run 6B:95E4
+ * @unreachable 6B:95E4-6B:95F0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $95E4 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Hit kind 6: the slot's side at $3628 from the object's facing (bit 0 of $2FF8, plus one); unless it is
+ * 2, runs on into HitKindState152D.
+ * HOW: A mask and an increment; a compare.
+ * WAITS: no.
+ * Entry: X the object, Y the slot. Exit: side 2: A 2, Z set, C set. Else as HitKindState152D.
+ */
+StageRegs HitKindFacing152D(StageRegs r)
+{
+    uint8_t side = (uint8_t)((RD8(OBJ->sprite_flip[16 + r.x]) & 0x01) + 1);
+
+    return hit_side_set(r, side);
+}
+
+void abi_HitKindFacing152D(void)
+{
+    regs_exit_shim(HitKindFacing152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:5F1 HitKindState152D
+ * @run 6B:95F1
+ * @unreachable 6B:95F1-6B:95F7 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $95F1 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Hit kinds 5, 7 and 10 to 15: the object's state at $31F0 takes the slot's kind.
+ * HOW: A load and a store.
+ * WAITS: no.
+ * Entry: X the object, Y the slot. Exit: A the kind, N and Z from it. X, Y, C and V kept.
+ */
+StageRegs HitKindState152D(StageRegs r)
+{
+    r = loaded(r, rd8((uint16_t)(ADDR_OF8(OBJ->angle_hi[48]) + r.y)));
+    WR8(OBJ->status_flags[80 + r.x], r.a);
+    return r;
+}
+
+void abi_HitKindState152D(void)
+{
+    regs_exit_shim(HitKindState152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:5F8 HitKindSide152D
+ * @run 6B:95F8
+ * @unreachable 6B:95F8-6B:9603 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $95F8 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Hit kind 9: the slot's side at $3628 from bit 1 of the object's $2FF8 (plus one); unless it is 2, the
+ * object takes the slot's kind. The compare and what follows are HitKindFacing152D's bytes at $95ED.
+ * HOW: A mask, a shift and an increment; a branch into HitKindFacing152D's bytes.
+ * WAITS: no.
+ * Entry: X the object, Y the slot. Exit: as HitKindFacing152D.
+ */
+StageRegs HitKindSide152D(StageRegs r)
+{
+    uint8_t side = (uint8_t)(((RD8(OBJ->sprite_flip[16 + r.x]) & 0x02) >> 1) + 1);
+
+    return hit_side_set(r, side);
+}
+
+void abi_HitKindSide152D(void)
+{
+    regs_exit_shim(HitKindSide152D(regs_entry_shim()));
+}
+
+/* A probe point: the next four bytes of the list (zTemp0C-0D, Y on) added to object X's position, into zTemp00-03. */
+static Regs probe_point(Regs r)
+{
+    Sum sum;
+    uint8_t offset, value;
+
+    offset = RD8_PTR_Y(ZP->temp0c, r.y);
+    value = RD8(OBJ->x_hi[8 + r.x]);
+    sum = add_bytes(offset, value, false);
+    WR8(ZP->temp00, sum.value);
+    r.y++;
+    offset = RD8_PTR_Y(ZP->temp0c, r.y);
+    value = RD8(OBJ->flash_flags[24 + r.x]);
+    sum = add_bytes(offset, value, sum.carry);
+    WR8(ZP->temp01, sum.value);
+    r.y++;
+    offset = RD8_PTR_Y(ZP->temp0c, r.y);
+    value = RD8(OBJ->x_frac[48 + r.x]);
+    sum = add_bytes(offset, value, false);
+    WR8(ZP->temp02, sum.value);
+    r.y++;
+    offset = RD8_PTR_Y(ZP->temp0c, r.y);
+    value = RD8(OBJ->x_lo[64 + r.x]);
+    sum = add_bytes(offset, value, sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp03, sum.value);
+    r.y++;
+    return r;
+}
+
+/* The probe list of the index in A from the table at $DB54, into zTemp0C-0D; zTemp0A, the point's count, 0. */
+static Regs probe_list(Regs r, uint8_t index)
+{
+    r.c = (index & 0x80) != 0;
+    r.y = (uint8_t)(index << 1);
+    r = loaded(r, rd8((uint16_t)(PROBE_LISTS + r.y)));
+    WR8(ZP->temp0c, r.a);
+    r = loaded(r, rd8((uint16_t)(PROBE_LISTS + 1 + r.y)));
+    WR8(ZP->temp0d, r.a);
+    r.y = 0;
+    WR8(ZP->temp0a, 0);
+    return r;
+}
+
+/*
+ * @routine 1530:604 StageProbePoints152D
+ * @run 6B:9604
+ * @unreachable 6B:9604-6B:9651 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9604 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Probes the map at an object's four points (the list the index in A names, from the table at $DB54:
+ * four offsets of X and Y a point from the object's position): for each, ProbeTile152D's answer at $26F6 and the
+ * tile's column and row at $26FA and $26FE.
+ * HOW: The list in zTemp0C-0D, the count in zTemp0A; the point into zTemp00-03; Y kept on the stack across
+ * ProbeTile152D.
+ * WAITS: no.
+ * Entry: A the list, X the object. Exit: A 4, Z set, C set; Y past the last point; X kept as ProbeTile152D keeps it.
+ */
+StageRegs StageProbePoints152D(StageRegs r)
+{
+    uint8_t count;
+
+    r = probe_list(r, r.a);
+    do {
+        r = probe_point(r);
+        push8(r.y);
+        CALL(0x9639, ProbeTile152D(r));
+        r.y = RD8(ZP->temp0a);
+        wr8((uint16_t)(PROBE_HIT + r.y), r.a);
+        r = loaded(r, RD8(ZP->temp00));
+        wr8((uint16_t)(PROBE_X + r.y), r.a);
+        r = loaded(r, RD8(ZP->temp02));
+        wr8((uint16_t)(PROBE_Y + r.y), r.a);
+        r.nz = INC8(ZP->temp0a);
+        r.y = pull8();
+        count = RD8(ZP->temp0a);
+        r = loaded(r, count);
+        r = compared(r, 0x04);
+    } while (r.nz != 0);
+    return r;
+}
+
+void abi_StageProbePoints152D(void)
+{
+    regs_exit_shim(StageProbePoints152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 1530:652 StageProbeAgain152D
+ * @run 6B:9652
+ * @unreachable 6B:9652-6B:96C5 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $9652 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Probes an object's four points (StageProbePoints152D), then each point whose answer has bit 0 set and
+ * bit 7 clear again 8 pixels higher; when the second probe's answer has bit 0 set the first answer keeps only bits 1
+ * to 6.
+ * HOW: A kept on the stack across StageProbePoints152D; the list again; for each point a test of its answer, the point
+ * into zTemp00-03 and $FFF8 added to its Y, ProbeTile152D with Y kept on the stack.
+ * WAITS: no.
+ * Entry: A the list, X the object. Exit: A 4, Z set, C set; Y past the last point.
+ */
+StageRegs StageProbeAgain152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t list, value, answer;
+
+    push8(r.a);
+    CALL(0x9656, StageProbePoints152D(r));
+    list = pull8();
+    r = probe_list(r, list);
+    do {
+        push8(r.y);
+        r.y = RD8(ZP->temp0a);
+        answer = rd8((uint16_t)(PROBE_HIT + r.y));
+        r.y = pull8();
+        r = loaded(r, (uint8_t)(answer & 0x81));
+        if ((r.a & 0x80) != 0 || r.a == 0) {
+            r.y = (uint8_t)(r.y + 4);
+        } else {
+            r = probe_point(r);
+            value = RD8(ZP->temp02);
+            sum = add_bytes(0xF8, value, false);
+            WR8(ZP->temp02, sum.value);
+            value = RD8(ZP->temp02);
+            sum = add_bytes(0xFF, value, sum.carry);
+            r = loaded(r, sum.value);
+            r.c = sum.carry;
+            r.v = sum.overflow;
+            WR8(ZP->temp02, sum.value);
+            push8(r.y);
+            CALL(0x96A6, ProbeTile152D(r));
+            r.y = RD8(ZP->temp0a);
+            r = loaded(r, (uint8_t)(r.a & 0x01));
+            if (r.a != 0) {
+                r.y = RD8(ZP->temp0a);
+                r = loaded(r, (uint8_t)(rd8((uint16_t)(PROBE_HIT + r.y)) & 0x7E));
+                wr8((uint16_t)(PROBE_HIT + r.y), r.a);
+            }
+            r.y = pull8();
+        }
+        r.nz = INC8(ZP->temp0a);
+        r = loaded(r, RD8(ZP->temp0a));
+        r = compared(r, 0x04);
+    } while (r.nz != 0);
+    return r;
+}
+
+void abi_StageProbeAgain152D(void)
+{
+    regs_exit_shim(StageProbeAgain152D(regs_entry_shim()));
+}
+
+/* A slope's or step's row from an 8 by 8 table at TABLE by the row in zTemp02 and the column in zTemp00. */
+static Regs tile_row_from_table(Regs r, uint16_t table)
+{
+    Sum sum;
+    uint8_t row = RD8(ZP->temp02);
+    uint8_t column;
+
+    r.c = (row & 0x20) != 0;
+    row = (uint8_t)(row << 3);
+    column = RD8(ZP->temp00);
+    sum = add_bytes(row, column, false);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    r.y = sum.value;
+    r = loaded(r, rd8((uint16_t)(table + r.y)));
+    WR8(ZP->temp02, r.a);
+    return loaded(r, 0x81);
+}
+
+/* A row from an 8-entry table at TABLE by the column in zTemp00. */
+static Regs tile_row_by_column(Regs r, uint16_t table)
+{
+    r.y = RD8(ZP->temp00);
+    r = loaded(r, rd8((uint16_t)(table + r.y)));
+    WR8(ZP->temp02, r.a);
+    return loaded(r, 0x81);
+}
+
+/*
+ * @routine 1530:6C6 ProbeTile152D
+ * @run 6B:96C6
+ * @unreachable 6B:96C6-6B:97D2 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sectors, and a unit call at $96C6 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Says what the map holds at a point: the background's entry there (its place from the point plus the
+ * scroll, read from VRAM), the entry's page in SaveBuffer (pages of 256 bytes from $7D00) and its attribute there.
+ * A page of bit 7 or an attribute below $80 gives 0 or the attribute; $80 to $85 are slopes and steps that set the
+ * row in the tile (zTemp02) from the tables at $97DA up and answer $81; $86 to $89 move the row by the table at $97D3
+ * and $8A by one, answering 1.
+ * HOW: 9-bit adds of the point and the scroll into zTemp04-07; the kernel's pieces at $4024 and $4027 around the VRAM
+ * address; the entry in zTemp08-09; compares of the attribute.
+ * WAITS: no.
+ * Entry: zTemp00-01 X, zTemp02-03 Y. Exit: A the answer, N and Z from it; zTemp00 the column in the tile, zTemp02 the
+ * row; Y and C as the last load or compare left them. X kept as the kernel keeps it. Clobbers zTemp04-09.
+ */
+StageRegs ProbeTile152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t value, other, old, page, attribute;
+    bool carry;
+
+    value = RD8(ZP->temp00);
+    other = RD8(SCROLL->x_lo[0]);
+    sum = add_bytes(value, other, false);
+    WR8(ZP->temp04, sum.value);
+    value = RD8(ZP->temp01);
+    other = RD8(SCROLL->x_hi[0]);
+    sum = add_bytes(value, other, sum.carry);
+    carry = (sum.value & 0x01) != 0;
+    value = RD8(ZP->temp04);
+    value = (uint8_t)((carry ? 0x80 : 0) | (value >> 1));
+    value = (uint8_t)((value >> 2) & 0x3F);
+    WR8(ZP->temp05, value);
+    value = (uint8_t)(RD8(ZP->temp04) & 0x07);
+    WR8(ZP->temp00, value);
+    value = RD8(ZP->temp02);
+    other = RD8(SCROLL->y_lo[0]);
+    sum = add_bytes(value, other, false);
+    WR8(ZP->temp06, sum.value);
+    value = RD8(ZP->temp03);
+    other = RD8(SCROLL->y_hi[0]);
+    sum = add_bytes(value, other, sum.carry);
+    WR8(ZP->temp07, (uint8_t)(sum.value & 0x01));
+    value = RD8(ZP->temp06);
+    for (int i = 0; i < 3; i++) {
+        bool out = (value & 0x80) != 0;
+
+        value = (uint8_t)(value << 1);
+        old = RD8(ZP->temp07);
+        WR8(ZP->temp07, (uint8_t)((old << 1) | (out ? 1 : 0)));
+    }
+    value = (uint8_t)(value & 0xC0);
+    other = RD8(ZP->temp05);
+    sum = add_bytes(value, other, false);
+    WR8(ZP->temp05, sum.value);
+    value = (uint8_t)(RD8(ZP->temp06) & 0x07);
+    r = loaded(r, value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp02, value);
+    r = orig_shim(r, 0x9711, 0x4024);
+    WR8(VDC->data_lo, RD8(ZP->temp05));
+    r = loaded(r, RD8(ZP->temp07));
+    WR8(VDC->data_hi, r.a);
+    r = orig_shim(r, 0x971E, 0x4027);
+    WR8(ZP->temp08, RD8(VDC->data_lo));
+    page = (uint8_t)(RD8(VDC->data_hi) & 0x07);
+    WR8(ZP->temp09, page);
+    r.y = page;
+    r = loaded(r, rd8((uint16_t)(SaveBuffer + r.y)));
+    if ((r.a & 0x80) != 0) {
+        return loaded(r, 0x00);
+    }
+    value = RD8(ZP->temp08);
+    sum = add_bytes(value, 0x00, false);
+    WR8(ZP->temp08, sum.value);
+    value = rd8((uint16_t)(SaveBuffer + r.y));
+    sum = add_bytes(value, 0x7D, sum.carry);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp09, sum.value);
+    attribute = RD8_PTR(ZP->temp08);
+    r = loaded(r, attribute);
+    if ((attribute & 0x80) == 0) {
+        return r;
+    }
+    r = compared(r, 0x80);
+    if (r.nz == 0) {
+        return tile_row_by_column(r, 0x97DA);
+    }
+    r = compared(r, 0x81);
+    if (r.nz == 0) {
+        return tile_row_from_table(r, 0x97E2);
+    }
+    r = compared(r, 0x82);
+    if (r.nz == 0) {
+        return tile_row_from_table(r, 0x9822);
+    }
+    r = compared(r, 0x83);
+    if (r.nz == 0) {
+        return tile_row_by_column(r, 0x9862);
+    }
+    r = compared(r, 0x84);
+    if (r.nz == 0) {
+        return tile_row_from_table(r, 0x986A);
+    }
+    r = compared(r, 0x85);
+    if (r.nz == 0) {
+        return tile_row_from_table(r, 0x98AA);
+    }
+    r = compared(r, 0x8A);
+    if (!r.c) {
+        sum = sub_bytes(r.a, 0x83, true);
+        r.y = sum.value;
+        value = rd8((uint16_t)(0x97D3 + r.y));
+        other = RD8(ZP->temp02);
+        sum = add_bytes(value, other, false);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        WR8(ZP->temp02, sum.value);
+        return loaded(r, 0x01);
+    }
+    r = compared(r, 0x8A);
+    if (r.nz != 0) {
+        return r;
+    }
+    r.nz = INC8(ZP->temp02);
+    return loaded(r, 0x01);
+}
+
+void abi_ProbeTile152D(void)
+{
+    regs_exit_shim(ProbeTile152D(regs_entry_shim()));
 }

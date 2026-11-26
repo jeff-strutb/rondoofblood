@@ -28,6 +28,16 @@ static ObjExit object_exit(uint8_t a, uint8_t nz)
     return result;
 }
 
+/* EndingHoldTimer's early exit pulled the two bytes of the caller's return address with PLA: A is the last one (its high
+ * byte), N and Z from it, and the caller's frame is gone. */
+static ObjExit hold_dropped(ObjExit result, uint16_t ret)
+{
+    result.exit.a = (uint8_t)(ret >> 8);
+    result.exit.a_kept = false;
+    result.exit.nz = result.exit.a;
+    return result;
+}
+
 static void object_exit_shim(ObjExit result)
 {
     uint8_t moved_a = 0;
@@ -127,8 +137,8 @@ void abi_EndingNothing(void)
  * HOW: OBJ->life_timer counted down; when it is not zero the return address of the call is pulled off the
  * stack (two PLA) before the RTS.
  * WAITS: no.
- * Entry: X the object, the caller's frame on the stack. Exit: N and Z from the timer (it returns the timer), Z set when
- * it has run out; A, X, Y and C kept.
+ * Entry: X the object, the caller's frame on the stack. Exit: while the hold lasts A the high byte of the caller's return
+ * address (the last PLA), N and Z from it; when it has run out N and Z from the timer (zero). X, Y and C kept.
  * not checked: it pulls its caller's frame and cannot run alone; its callers compare it.
  */
 uint8_t EndingHoldTimer(uint8_t object)
@@ -150,7 +160,8 @@ void abi_EndingHoldTimer(void)
     abi_nz(left);
     if (left != 0) {
         (void)pull8();
-        (void)pull8();
+        cpu.a = pull8();
+        abi_nz(cpu.a);
     }
 }
 
@@ -641,7 +652,7 @@ ObjExit EndingScrollWindowSteps(uint8_t object)
         jsr_push(0x8460);
         result.exit.nz = EndingHoldTimer(object);
         if (result.exit.nz != 0) {
-            return result;
+            return hold_dropped(result, 0x8460);
         }
         jsr_pop();
         result.exit.nz = INC8(OBJ->state[object]);
@@ -693,7 +704,7 @@ ObjExit EndingStartList3(uint8_t object, uint8_t entry_a)
     jsr_push(0x8568);
     result.exit.nz = EndingHoldTimer(object);
     if (result.exit.nz != 0) {
-        return result;
+        return hold_dropped(result, 0x8568);
     }
     jsr_pop();
     push8(object);
@@ -728,7 +739,7 @@ ObjExit EndingStartScript18(uint8_t object, uint8_t entry_a)
     jsr_push(0x857C);
     result.exit.nz = EndingHoldTimer(object);
     if (result.exit.nz != 0) {
-        return result;
+        return hold_dropped(result, 0x857C);
     }
     jsr_pop();
     push8(object);
@@ -817,7 +828,7 @@ ObjExit EndingSplitScrolls(uint8_t object, uint8_t entry_a)
     jsr_push(0x85C2);
     result.exit.nz = EndingHoldTimer(object);
     if (result.exit.nz != 0) {
-        return result;
+        return hold_dropped(result, 0x85C2);
     }
     jsr_pop();
     WR8(SCROLL->y_hi[6], 0);
@@ -853,7 +864,7 @@ ObjExit EndingScrollsOn(uint8_t object, uint8_t entry_a)
     jsr_push(0x85E5);
     result.exit.nz = EndingHoldTimer(object);
     if (result.exit.nz != 0) {
-        return result;
+        return hold_dropped(result, 0x85E5);
     }
     jsr_pop();
     INC8(SCROLL->y_hi[6]);
@@ -927,7 +938,7 @@ ObjExit EndingRiseFrame31(uint8_t object)
         jsr_push(0x8744);
         result.exit.nz = EndingHoldTimer(object);
         if (result.exit.nz != 0) {
-            return result;
+            return hold_dropped(result, 0x8744);
         }
         jsr_pop();
         result.exit.nz = INC8(OBJ->state[object]);
@@ -979,7 +990,7 @@ static ObjExit rise_frame32(uint8_t object, uint8_t hold, uint8_t shift, uint16_
         jsr_push(hold_ret);
         result.exit.nz = EndingHoldTimer(object);
         if (result.exit.nz != 0) {
-            return result;
+            return hold_dropped(result, hold_ret);
         }
         jsr_pop();
         WR8(OBJ->frame[object], 0x32);
@@ -1064,7 +1075,7 @@ ObjExit EndingRiseWithList(uint8_t object)
         jsr_push(0x87BC);
         result.exit.nz = EndingHoldTimer(object);
         if (result.exit.nz != 0) {
-            return result;
+            return hold_dropped(result, 0x87BC);
         }
         jsr_pop();
         result.exit.nz = INC8(OBJ->state[object]);
@@ -1388,7 +1399,7 @@ ObjExit EndingHoldThenScript19(uint8_t object)
     jsr_push(0x8845);
     result.exit.nz = EndingHoldTimer(object);
     if (result.exit.nz != 0) {
-        return result;
+        return hold_dropped(result, 0x8845);
     }
     jsr_pop();
     push8(object);
@@ -1873,8 +1884,7 @@ ObjExit EndingCreditScrollStart(uint8_t object)
     jsr_push(0x826C);
     left = EndingHoldTimer(object);
     if (left != 0) {
-        result.exit.nz = left;
-        return result;
+        return hold_dropped(result, 0x826C);
     }
     jsr_pop();
     state = RD8(OBJ->state[object]);

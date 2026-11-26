@@ -425,4 +425,12 @@ void ad_stop_clear(void);
 CardExit ad_play_latch(void);
 uint8_t cd_subrd_read(void);
 
+void jump_user_irq2(uint8_t a, uint8_t x, uint8_t y);
+void jump_user_hsync(uint8_t a, uint8_t x, uint8_t y);
+void jump_user_vsync(uint8_t a, uint8_t x, uint8_t y);
+void jump_user_irq1(uint8_t a, uint8_t x, uint8_t y);
+CardExit cd_interrupt(uint8_t x, uint8_t y);
+void card_irq2(uint8_t a, uint8_t x, uint8_t y);
+void card_irq1(uint8_t a, uint8_t x, uint8_t y);
+
 #endif

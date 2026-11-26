@@ -10,6 +10,9 @@
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
 
+/* The arms StartDebrisBurst ends on. */
+enum { DBU_NO_SLOT, DBU_STARTED };
+
 /*
  * @routine 01BA:6D0 StartDebrisBurst
  * @run 70:A90B
@@ -20,11 +23,11 @@
  * Entry: A the timer, X object, Y pushed and pulled back. Exit: Y as it came, N and Z from it; C 1 when all six were
  * started, 0 when a search found no slot; A the last byte loaded.
  */
-Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry)
+ObjArm StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry)
 {
-    uint8_t number, last, found_slot, placed, again;
+    ObjArm r = { 0 };
+    uint8_t number, found_slot;
     bool found;
-    Ended e = ended_load(timer);
 
     WR8(ZP->temp00, timer);
     push8(y_entry);
@@ -32,33 +35,48 @@ Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry)
     for (;;) {
         WR8(ZP->hit_slot, number);
         jsr_push(0xA914);
-        found_slot = FindFreeSlotFrom30(&last, &found);
+        found_slot = FindFreeSlotFrom30(&r.first, &found);
         jsr_pop();
-        e = ended_with_carry(ended_with_y(ended_with_a(ended_nz(0), last), found_slot), found);
+        r.second = found_slot;
+        r.arm = DBU_NO_SLOT;
         if (!found) {
             break;
         }
         timer = RD8(ZP->temp00);
         WR8(OBJ->life_timer[found_slot], timer);
         jsr_push(0xA920);
-        placed = StartObjectAtPlace(0x9A, slot, found_slot);
+        StartObjectAtPlace(0x9A, slot, found_slot);
         jsr_pop();
         number = RD8(ZP->hit_slot);
         WR8(OBJ->f3510[found_slot], number);
-        e = ended_with_y(ended_with_a(ended_nz(number), number), found_slot);
+        r.third = number;
         number = RD8(ZP->hit_slot);
         number++;
-        e = ended_then(e, ended_with_carry(ended_with_y(ended_nz(number), number), number >= 6));
+        r.fourth = number;
+        r.arm = DBU_STARTED;
         if (number >= 6) {
             break;
         }
     }
-    again = pull8();
-    (void)placed;
-    return ended_then(e, ended_with_y(ended_nz(again), again));
+    r.fifth = pull8();
+    return r;
+}
+
+/* The last pass decides the exit: a search that found no slot, or the sixth start's loads and its count. */
+Ended start_debris_burst_exit_shim(ObjArm r)
+{
+    Ended e;
+
+    if (r.arm == DBU_NO_SLOT) {
+        e = ended_with_carry(ended_with_y(ended_with_a(ended_nz(0), r.first), r.second), false);
+    } else {
+        e = ended_with_y(ended_with_a(ended_nz(r.third), r.third), r.second);
+        e = ended_then(e, ended_with_carry(ended_with_y(ended_nz(r.fourth), r.fourth), r.fourth >= 6));
+    }
+    return ended_then(e, ended_with_y(ended_nz(r.fifth), r.fifth));
 }
 
 void abi_StartDebrisBurst(void)
 {
-    abi_ended(StartDebrisBurst(cpu.x, cpu.a, cpu.y));
+    abi_ended(start_debris_burst_exit_shim(StartDebrisBurst(cpu.x, cpu.a, cpu.y)));
 }

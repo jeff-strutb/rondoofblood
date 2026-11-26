@@ -19,6 +19,19 @@ static Ended then(Ended e, Ended next)
     return ended_then(e, next);
 }
 
+/* The code a state table names, entered from the JSR that reached the table: the frame is pushed already (jsr_push), the original's code returns to ret by its RTS and the C goes on after it, as the original does. A table with nothing to jump to leaves only its registers and the frame is dropped. */
+static uint8_t l8_enter_framed(uint8_t x, Jump jump, uint16_t ret)
+{
+    cpu.x = x;
+    abi_ended(jump.end);
+    if (jump.jumps) {
+        call_orig_framed(ret, jump.target);
+    } else {
+        jsr_pop();
+    }
+    return cpu.x;
+}
+
 /* The arms the routines end on. */
 enum { ST27_ROWS_SCROLLING, ST27_ROWS_AT_ZERO };
 enum { ST27_C_AIM, ST27_C_NO_FRAME, ST27_C_NO_ENTRY, ST27_C_LISTED };
@@ -75,8 +88,7 @@ L8St27BossArm BossFrameRoutines(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB486);
     r.jump = JumpByStateTable025B545(slot);
     abi_ended(r.jump.end);
-    slot = enter_handler(slot, r.jump);
-    jsr_pop();
+    slot = l8_enter_framed(slot, r.jump, 0xB486);
     return r;
 }
 
@@ -115,8 +127,7 @@ L8St27HurtArm HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB394);
     r.jump = JumpByStateTable0F6B3EC(slot);
     abi_ended(r.jump.end);
-    slot = enter_handler(slot, r.jump);
-    jsr_pop();
+    slot = l8_enter_framed(slot, r.jump, 0xB394);
     return r;
 }
 
@@ -188,8 +199,7 @@ L8St27BossBArm BossFrameRoutinesB(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB568);
     r.jump = JumpByStateTable0B4B64C(slot);
     abi_ended(r.jump.end);
-    slot = enter_handler(slot, r.jump);
-    jsr_pop();
+    slot = l8_enter_framed(slot, r.jump, 0xB568);
     r.flag = RD8(OBJ->f3670[slot]);
     if (r.flag == 0) {
         return r;
@@ -344,8 +354,7 @@ L8St27BossCArm BossFrameRoutinesC(uint8_t slot, L8Layout lay)
     jsr_push(l8_at(lay, 0xB14B));
     r.jump = JumpByStateTable05CB1CF(slot);
     abi_ended(r.jump.end);
-    slot = enter_handler(slot, r.jump);
-    jsr_pop();
+    slot = l8_enter_framed(slot, r.jump, l8_at(lay, 0xB14B));
     r.aim = RD8(OBJ->f35c0[slot]);
     if (r.aim != 0) {
         r.arm = ST27_C_AIM;
@@ -461,8 +470,7 @@ L8St27BossDArm BossFrameRoutinesD(uint8_t slot, uint8_t y_entry)
     jsr_push(0xBBA4);
     r.jump = JumpByStateTable0F6C3C0(slot);
     abi_ended(r.jump.end);
-    slot = enter_handler(slot, r.jump);
-    jsr_pop();
+    slot = l8_enter_framed(slot, r.jump, 0xBBA4);
     r.y = RD8(OBJ->state[slot]);
     r.marked = rd8((uint16_t)(0xBBB0 + r.y));
     if (r.marked == 0) {

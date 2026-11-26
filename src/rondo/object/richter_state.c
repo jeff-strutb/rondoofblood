@@ -3287,18 +3287,20 @@ AirStart RichterToAir(void)
     } else if (rd8(zPadHeld) & PAD_LEFT) {
         way = FACING_LEFT;
     } else {
-        jsr_push(0xA6F2);
         air.animation = RichterSetAnimation(ANIM_AIR);
-        jsr_pop();
         return air;
     }
     air.moving = true;
     facing = rd8(OBJ_2AC0);
+    push8(facing);
     wr8(OBJ_2AC0, way);
+    jsr_push(0xA6F2);
     RichterSetAnimation(ANIM_AIR_MOVING);
+    jsr_pop();
     jsr_push(0xA6F5);
     air.speed = RichterSpeedJump();
     jsr_pop();
+    facing = pull8();
     air.same_way = facing == rd8(OBJ_2AC0);
     wr8(OBJ_2AC0, facing);
     if (air.same_way) {

@@ -194,7 +194,7 @@ enum {
 typedef struct {
     StandHow how; uint8_t reached;
     ColumnsEnd columns; FootingCheck footing; bool jump; LandingLift landing; ItemCrash crash;
-    ItemUse use; LedgeCheck ledge; bool up; uint8_t held; uint8_t look_flag; bool ticked;
+    ItemUse use; LedgeCheck ledge; bool up; uint8_t held; uint8_t right_held; uint8_t left_held; uint8_t look_flag; bool ticked;
     AnimationStep tick;
     AnimationStep animation; AirStart air; HurtAir hurt; AttackStart attack; WalkStart walk;
     ClimbStart climb;
@@ -2176,12 +2176,14 @@ static void stand_replay_shim(const StandStep *st)
     }
     if (st->reached >= STAND_WALK) {
         cpu.y = FACING_RIGHT;
-        abi_flag(P_N, (st->held & 0x80) != 0);
-        abi_flag(P_V, (st->held & 0x40) != 0);
-        abi_flag(P_Z, !(st->held & PAD_RIGHT));
-        if (!(st->held & PAD_RIGHT)) {
+        abi_flag(P_N, (st->right_held & 0x80) != 0);
+        abi_flag(P_V, (st->right_held & 0x40) != 0);
+        abi_flag(P_Z, !(st->right_held & PAD_RIGHT));
+        if (!(st->right_held & PAD_RIGHT)) {
             cpu.y = FACING_LEFT;
-            abi_flag(P_Z, !(st->held & PAD_LEFT));
+            abi_flag(P_N, (st->left_held & 0x80) != 0);
+            abi_flag(P_V, (st->left_held & 0x40) != 0);
+            abi_flag(P_Z, !(st->left_held & PAD_LEFT));
         }
     }
 }
@@ -2280,10 +2282,15 @@ StandStep RichterStandStep0(void)
         }
     }
     st.reached = STAND_WALK;
-    if (st.held & PAD_RIGHT) {
+    /* TST #$20, then TST #$80: the pad is read again for each */
+    st.right_held = rd8(zPadHeld);
+    if (st.right_held & PAD_RIGHT) {
         st.how = STAND_WALKED;
         st.walk = RichterStartWalk(FACING_RIGHT);
-    } else if (st.held & PAD_LEFT) {
+        return st;
+    }
+    st.left_held = rd8(zPadHeld);
+    if (st.left_held & PAD_LEFT) {
         st.how = STAND_WALKED;
         st.walk = RichterStartWalk(FACING_LEFT);
     } else {

@@ -1849,14 +1849,30 @@ void call_return_point(void)
         return;
     nest = s->nest;
     for (j = s->cur;; j++) {
+        uint64_t end0 = s->end;
         Ev *e = sev(s, j, &nest);
         uint64_t r;
 
+        if (!e && end0 == SPAN_OPEN && s->end != SPAN_OPEN && getenv("RONDO_DIAG_CTX"))
+            fprintf(stderr, "RETPOINT %s frame %lu: scan from %llu found the call's end at %llu (nest at start %d)\n",
+                    rondo_tags[s->tag].name, cur_frame, (unsigned long long)s->cur, (unsigned long long)s->end, s->nest);
         if (e && is_noise(e) && e->type != EV_RTPULL)
-            continue;            /* a read of ROM or a poke between the C's last access and the interrupt (uncounted); the RTS's pulls stop the scan */
+            continue;            /* a read of ROM or a poke between the C's last access and the interrupt (uncounted) */
+        if (e && (e->type == EV_CLOSE || e->type == EV_RET))
+            continue;            /* the end of a call nested in this one, which the C has returned from already (its own return point has passed) */
+        if (e && e->type == EV_RTPULL) {
+            /* The pulls of this call's own RTS (its return address at S+1 and S+2 of the stack) stop the scan: the interrupt or
+             * frame end comes before them. Pulls of a nested call's RTS, already returned from, are passed. */
+            uint32_t own = 0x1F0100u + (uint8_t)(cpu.s + 1);
+
+            if (e->addr == own || e->addr == own + 1)
+                break;
+            continue;
+        }
         if (e && e->type == EV_FRAME) {
             /* The frame ended in the original with the call's RTS not yet run (the pulls follow): the hash is taken with
              * the frame still on the stack, as the record took it. */
+            s->nest = nest;      /* the nested CLOSEs passed are behind the cursor now */
             frame_pass(s, j, 0);
             s->cur = j + 1;
             continue;
@@ -1866,6 +1882,7 @@ void call_return_point(void)
         r = section_end(s, j);
         if (r == NO_RETURN)
             break;
+        s->nest = nest;
         hy_int_pass(s, j, r);
         s->cur = r + 1;
         j = r;
@@ -3618,9 +3635,24 @@ void check_finish(void)
                 ;
             known = end_seen;
             expected = end_frames;
-            for (uint64_t k = scan > wbase ? scan : wbase; k < wbase + wn; k++)
-                if (win[k - wbase].type == EV_OPEN)
+            /* A C still running (or parked) at the end has compared the record's events its span passed: the calls
+             * opened there were reached, through the C. */
+            uint64_t reached = scan;
+
+            for (Ctx *c = top; c; c = c->below)
+                if (c->span.cur > reached)
+                    reached = c->span.cur;
+            for (uint64_t k = reached > wbase ? reached : wbase; k < wbase + wn; k++)
+                if (win[k - wbase].type == EV_OPEN) {
                     unreached++;
+                    if (getenv("RONDO_DIAG_CTX")) {
+                        Ev *u = &win[k - wbase];
+                        fprintf(stderr, "UNREACHED %llu (scan %llu, stream end %llu): OPEN %s pc %04X s %02X clock %llu\n",
+                                (unsigned long long)k, (unsigned long long)scan, (unsigned long long)(wbase + wn),
+                                u->addr < rondo_tag_count ? rondo_tags[u->addr].name : "?", u->pc, u->s,
+                                (unsigned long long)u->clock);
+                    }
+                }
         }
         diagnostic = getenv("RONDO_KEEP") || getenv("RONDO_ONLY") || getenv("RONDO_KEEP_WAITS") ||
                      getenv("RONDO_PLACE") || getenv("RONDO_SKIPS") || getenv("RONDO_DUMP_FRAME");

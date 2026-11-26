@@ -1,0 +1,12 @@
+# Game mode 9 (ModeScreen, the story screens) by a poke of zGameMode ($30) in Stage 0, a second after the stage's
+# first frames: the mode's handler runs from the frame dispatcher and the screens play on their own. It ends at
+# the second screen: left running longer the game falls into garbage (the poke leaves no scene to go on to).
+# Reached by no script before: ModeScreen, and the stage-load and sub-mode routines it goes on through.
+include _newgame.txt
+wait 1500
+poke 2030 09
+wait 300
+shot m9a
+wait 900
+shot m9b
+dump m9

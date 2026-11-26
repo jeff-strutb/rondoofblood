@@ -1,48 +1,48 @@
 script,mode,verdict,code,frames,defects,first_stop,cause,source
 attract,serve-all,IDENTICAL,-1,6126/6126,0,,,9b724a6
-attract_82,serve-all,DIVERGENT,20950,24626/24626,0,,,9b724a6
+attract_82,serve-all,DIVERGENT,20950,24626/24626,0,,,f40e79f
 attract_83,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_84,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_85,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_86,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_87,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 attract_88,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
-attract_89,serve-all,DIVERGENT,22000,24626/24626,0,,,9b724a6
-attract_8A,serve-all,STOPPED,-3,22117/-1,0,,stopped at frame 22117: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),9b724a6
+attract_89,serve-all,DIVERGENT,22000,24626/24626,0,,,f40e79f
+attract_8A,serve-all,STOPPED,-3,22117/-1,0,,stopped at frame 22117: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),f40e79f
 attract_8E,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 boot,serve-all,IDENTICAL,-1,900/900,0,,,9b724a6
 camera_modes,serve-all,IDENTICAL,-1,16354/16354,0,,,9b724a6
-card_unit_adpcm,serve-all,NORESULT,,,,,a7: card_unit_adpcm: hybrid exit 2: core's default,9b724a6
-card_unit_backup,serve-all,DIVERGENT,827,827/-1,3,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 13482, past 12376 of the original's accesses it has not made first: write 1F01F3 (00) at 1069 (a read the C skips is reported here, on the access after it)",stopped at frame 827: the hybrid calls card_card_irq1 (SF2); the record's next is r0046_366 (SF3),9b724a6
-card_unit_bank2,serve-all,STOPPED,-3,826/-1,7,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 2327, past 795 of the original's accesses it has not made first: write 1F01F3 (00) at 1068 (a read the C skips is reported here, on the access after it)",stopped at frame 826: a call into original code the record does not have,9b724a6
-card_unit_cd,serve-all,NORESULT,,,,,a7: card_unit_cd: hybrid exit 2: he core's default,9b724a6
-card_unit_cplay,serve-all,NORESULT,,,,,a7: card_unit_cplay: hybrid exit 2: core's default,9b724a6
-card_unit_misc,serve-all,NORESULT,,,,,a7: card_unit_misc: hybrid exit 2:  core's default,9b724a6
-card_unit_read,serve-all,DIVERGENT,827,879/-1,1163,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 22297, past 20604 of the original's accesses it has not made first: write 1F01F3 (00) at 1075 (a read the C skips is reported here, on the access after it)","stopped at frame 884: a unit call ran over 2,000,000 instructions",9b724a6
-card_unit_trans,serve-all,NORESULT,,,,,a7: card_unit_trans: hybrid exit 2: core's default,9b724a6
-card_unit_vdc,serve-all,DIVERGENT,827,830/-1,2,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1084, past 12 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,9b724a6
+card_unit_adpcm,serve-all,NORESULT,,,,,a7: card_unit_adpcm: hybrid exit 2: core's default,f40e79f
+card_unit_backup,serve-all,DIVERGENT,827,827/-1,3,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 13482, past 12376 of the original's accesses it has not made first: write 1F01F3 (00) at 1069 (a read the C skips is reported here, on the access after it)",stopped at frame 827: the hybrid calls card_card_irq1 (SF2); the record's next is r0046_366 (SF3),f40e79f
+card_unit_bank2,serve-all,STOPPED,-3,826/-1,7,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 2327, past 795 of the original's accesses it has not made first: write 1F01F3 (00) at 1068 (a read the C skips is reported here, on the access after it)",stopped at frame 826: a call into original code the record does not have,f40e79f
+card_unit_cd,serve-all,NORESULT,,,,,a7: card_unit_cd: hybrid exit 2: he core's default,f40e79f
+card_unit_cplay,serve-all,NORESULT,,,,,a7: card_unit_cplay: hybrid exit 2: core's default,f40e79f
+card_unit_misc,serve-all,NORESULT,,,,,a7: card_unit_misc: hybrid exit 2:  core's default,f40e79f
+card_unit_read,serve-all,DIVERGENT,827,879/-1,1163,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 22297, past 20604 of the original's accesses it has not made first: write 1F01F3 (00) at 1075 (a read the C skips is reported here, on the access after it)","stopped at frame 884: a unit call ran over 2,000,000 instructions",f40e79f
+card_unit_trans,serve-all,NORESULT,,,,,a7: card_unit_trans: hybrid exit 2: core's default,f40e79f
+card_unit_vdc,serve-all,DIVERGENT,827,830/-1,2,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1084, past 12 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,f40e79f
 gameover,serve-all,IDENTICAL,-1,29092/29092,0,,,9b724a6
 menu_files,serve-all,IDENTICAL,-1,10746/10746,0,,,9b724a6
 menu_names,serve-all,IDENTICAL,-1,13582/13582,0,,,9b724a6
 mode_screen,serve-all,IDENTICAL,-1,11386/11386,0,,,9b724a6
-play_s0_r1,serve-all,DIVERGENT,18238,28186/28186,0,,,9b724a6
-play_s0_r2,serve-all,DIVERGENT,18711,28186/28186,0,,,9b724a6
-play_s0_r3,serve-all,DIVERGENT,24797,28186/28186,0,,,9b724a6
-play_s0_r4,serve-all,DIVERGENT,17845,28186/28186,0,,,9b724a6
-play_s0_r5,serve-all,DIVERGENT,17061,28186/28186,0,,,9b724a6
-play_s0_r6,serve-all,DIVERGENT,19059,28186/28186,0,,,9b724a6
+play_s0_r1,serve-all,DIVERGENT,18238,28186/28186,0,,,f40e79f
+play_s0_r2,serve-all,DIVERGENT,18711,28186/28186,0,,,f40e79f
+play_s0_r3,serve-all,DIVERGENT,24797,28186/28186,0,,,f40e79f
+play_s0_r4,serve-all,DIVERGENT,17845,28186/28186,0,,,f40e79f
+play_s0_r5,serve-all,DIVERGENT,17061,28186/28186,0,,,f40e79f
+play_s0_r6,serve-all,DIVERGENT,19059,28186/28186,0,,,f40e79f
 raster_effects,serve-all,IDENTICAL,-1,10526/10526,0,,,9b724a6
 richter_hurt,serve-all,IDENTICAL,-1,16936/16936,0,,,9b724a6
 sound_test,serve-all,IDENTICAL,-1,17134/17134,0,,,9b724a6
-stage_04,serve-all,DIVERGENT,29133,35092/35092,0,,,9b724a6
-stage_05,serve-all,DIVERGENT,29883,30748/-1,0,,stopped at frame 30748: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),9b724a6
-stage_06,serve-all,DIVERGENT,29872,35092/35092,0,,,9b724a6
-stage_07,serve-all,DIVERGENT,29275,35092/35092,0,,,9b724a6
+stage_04,serve-all,DIVERGENT,29133,35092/35092,0,,,f40e79f
+stage_05,serve-all,DIVERGENT,29883,30748/-1,0,,stopped at frame 30748: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),f40e79f
+stage_06,serve-all,DIVERGENT,29872,35092/35092,0,,,f40e79f
+stage_07,serve-all,DIVERGENT,29275,35092/35092,0,,,f40e79f
 stage_08,serve-all,IDENTICAL,-1,35092/35092,0,,,9b724a6
-stage_09,serve-all,DIVERGENT,35092,35092/35092,0,,,9b724a6
-stage_0A,serve-all,DIVERGENT,29393,30423/-1,0,,stopped at frame 30423: the hybrid calls card_card_irq1 (SDD); the record's next is r01BC_27A (SE0),9b724a6
-stage_0B,serve-all,STOPPED,-3,29189/-1,0,,stopped at frame 29189: the hybrid calls r0043_297 (SFC); the record's next is card_card_irq1 (SF8),9b724a6
+stage_09,serve-all,DIVERGENT,35092,35092/35092,0,,,f40e79f
+stage_0A,serve-all,DIVERGENT,29393,30423/-1,0,,stopped at frame 30423: the hybrid calls card_card_irq1 (SDD); the record's next is r01BC_27A (SE0),f40e79f
+stage_0B,serve-all,STOPPED,-3,29189/-1,0,,stopped at frame 29189: the hybrid calls r0043_297 (SFC); the record's next is card_card_irq1 (SF8),f40e79f
 stage_0C,serve-all,IDENTICAL,-1,35092/35092,0,,,9b724a6
-stage_0E,serve-all,DIVERGENT,30232,35092/35092,0,,,9b724a6
-stage_10,serve-all,DIVERGENT,35092,35092/35092,0,,,9b724a6
-unit_video,serve-all,DIVERGENT,827,830/-1,5,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1085, past 7 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,9b724a6
+stage_0E,serve-all,DIVERGENT,30232,35092/35092,0,,,f40e79f
+stage_10,serve-all,DIVERGENT,35092,35092/35092,0,,,f40e79f
+unit_video,serve-all,DIVERGENT,827,830/-1,5,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1085, past 7 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,f40e79f

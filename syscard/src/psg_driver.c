@@ -8,7 +8,7 @@
  */
 #include "card.h"
 #include "card_access.h"
-#include "card_trk.h"
+#include "card_exit.h"
 #include "syscard.h"
 
 enum {
@@ -42,48 +42,42 @@ enum {
  */
 CardExit psg_tempo_tick(void)
 {
-    Trk t = { 0 };
+    uint8_t step = rd8(TEMPO_ON);
+    uint8_t phase;
+    uint8_t ticks;
+    uint8_t state = 0;
+    uint8_t a;
     Sum sum;
-    uint8_t value;
-    int x;
+    CardExit e = { 0 };
 
-    value = rd8(TEMPO_ON);
-    t_a(&t, value);
-    if (value == 0)
-        return t_exit(&t);
-    t.c = false;
-    t.c_set = true;
-    value = rd8(TEMPO_PHASE);
-    sum = add8(t.a, value, false);
-    t_a(&t, sum.value);
-    t.c = sum.carry;
-    t.v = sum.overflow;
-    t.v_set = true;
-    if ((sum.value & 0x80) != 0) {
-        value = rd8(TEMPO_TICKS);
-        value = (uint8_t)(value + 1);
-        wr8(TEMPO_TICKS, value);
-        t_nz(&t, value);
-        t_a(&t, (uint8_t)(sum.value & 0x7F));
+    if (step == 0)
+        return exit_a(0);
+    phase = rd8(TEMPO_PHASE);
+    sum = add8(step, phase, false);
+    a = sum.value;
+    if ((a & 0x80) != 0) {
+        ticks = rd8(TEMPO_TICKS);
+        wr8(TEMPO_TICKS, (uint8_t)(ticks + 1));
+        a = (uint8_t)(a & 0x7F);
     }
-    wr8(TEMPO_PHASE, t.a);
-    value = rd8(TEMPO_TICKS);
-    t_a(&t, value);
-    t_cmp(&t, value, TEMPO_LIMIT);
-    if (value < TEMPO_LIMIT)
-        return t_exit(&t);
-    for (x = CHANNELS - 1; x >= 0; x--) {
-        value = rd8((uint16_t)(CHANNEL_STATE + x));
-        t_a(&t, value);
-        if (value != 0) {
-            t_a(&t, STATE_STOP_ASKED);
+    wr8(TEMPO_PHASE, a);
+    ticks = rd8(TEMPO_TICKS);
+    if (ticks < TEMPO_LIMIT)
+        return with_v(exit_cmp(ticks, TEMPO_LIMIT), sum.overflow);
+    for (int x = CHANNELS - 1; x >= 0; x--) {
+        state = rd8((uint16_t)(CHANNEL_STATE + x));
+        if (state != 0) {
             wr8((uint16_t)(CHANNEL_STATE + x), STATE_STOP_ASKED);
+            state = STATE_STOP_ASKED;
         }
-        t.x = (uint8_t)(x - 1);
-        t.x_set = true;
-        t_nz(&t, t.x);
     }
-    return t_exit(&t);
+    e.a = state;
+    e.x = 0xFF;
+    e.nz = 0xFF;
+    e.c = true;
+    e.v = sum.overflow;
+    e.set_a = e.set_x = e.set_nz = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_psg_tempo_tick(void)
@@ -128,149 +122,120 @@ void abi_psg_wave_offset(void)
     card_exit_apply(psg_wave_offset(cpu.a));
 }
 
-/* The built-in table's address plus the offset psg_wave_offset left in $E8 and $E9, as the two adds make it. */
-static void add_wave_base(Trk *t, uint8_t low_base, uint8_t high_base, bool low_from_memory, uint16_t memory)
+/* The table's address plus the offset psg_wave_offset left in $E8 and $E9, as the two adds make it: the second add's sum. */
+static Sum wave_address(uint8_t low_base, uint8_t high_base, bool from_memory, uint16_t memory)
 {
+    Sum low;
+    Sum high;
     uint8_t value;
-    Sum sum;
-    uint8_t base = low_base;
 
-    if (low_from_memory) {
-        base = rd8(memory);
-        t_a(t, base);
-    } else {
-        t_a(t, base);
-    }
+    if (from_memory)
+        low_base = rd8(memory);
     value = rd8(ZP_E8);
-    sum = add8(base, value, false);
-    t_a(t, sum.value);
-    t->c = sum.carry;
-    t->v = sum.overflow;
-    t->c_set = t->v_set = true;
-    wr8(ZP_E8, sum.value);
-    base = high_base;
-    if (low_from_memory) {
-        base = rd8((uint16_t)(memory + 1));
-        t_a(t, base);
-    } else {
-        t_a(t, base);
-    }
+    low = add8(low_base, value, false);
+    wr8(ZP_E8, low.value);
+    if (from_memory)
+        high_base = rd8((uint16_t)(memory + 1));
     value = rd8(ZP_E9);
-    sum = add8(base, value, sum.carry);
-    t_a(t, sum.value);
-    t->c = sum.carry;
-    t->v = sum.overflow;
-    wr8(ZP_E9, sum.value);
+    high = add8(high_base, value, low.carry);
+    wr8(ZP_E9, high.value);
+    return high;
 }
 
-/* One channel of psg_write_channels, X the channel. */
-static void write_channel(Trk *t, uint8_t channel)
+/* One channel of psg_write_channels: what its path leaves in A, C, V and Y (those it touches). */
+static CardExit write_channel(uint8_t channel)
 {
+    CardExit e = { 0 };
     uint8_t value;
-    uint8_t number;
+    uint8_t state;
+    uint8_t a;
+    bool noise = false;
     Sum sum;
-    CardExit step;
 
-    value = rd8((uint16_t)(CHANNEL_STATE + channel));
-    t_a(t, value);
-    t_cmp(t, value, 1);
-    if (t->n)
-        return;
+    state = rd8((uint16_t)(CHANNEL_STATE + channel));
+    e = exit_cmp(state, 1);
+    if (((uint8_t)(state - 1) & 0x80) != 0)
+        return e;
     wr8(PSG_SELECT, channel);
-    if (!t->z) {
+    if (state != 1) {
         wr8(PSG_CONTROL, 0);
         wr8((uint16_t)(CHANNEL_STATE + channel), 0);
         value = rd8(PLAYER_MODE_AT);
-        t_a(t, value);
-        t_cmp(t, value, 1);
+        e = exit_cmp(value, 1);
         if (value == 1)
-            return;
+            return e;
         value = rd8((uint16_t)(CHANNEL_USED + channel));
-        t_a(t, value);
+        e.a = value;
         if (value == 0)
-            return;
+            return e;
         value = rd8((uint16_t)(CHANNEL_BUSY + channel));
-        t_a(t, (uint8_t)(value & 0x7F));
-        wr8((uint16_t)(CHANNEL_BUSY + channel), t->a);
-        return;
+        e.a = (uint8_t)(value & 0x7F);
+        wr8((uint16_t)(CHANNEL_BUSY + channel), e.a);
+        return e;
     }
     value = rd8((uint16_t)(CHANNEL_FLAGS + channel));
-    t_a(t, value);
-    if (!t->n) {
-        t_a(t, (uint8_t)(value | 0x80));
-        wr8((uint16_t)(CHANNEL_FLAGS + channel), t->a);
-        t_a(t, (uint8_t)(t->a & 0x7F));
-        number = t->a;
-        t_cmp(t, number, WAVE_BUILT_IN_COUNT);
+    a = value;
+    if ((value & 0x80) == 0) {
+        uint8_t number;
+        CardExit step;
+
+        a = (uint8_t)(value | 0x80);
+        wr8((uint16_t)(CHANNEL_FLAGS + channel), a);
+        number = (uint8_t)(a & 0x7F);
         if (number < WAVE_BUILT_IN_COUNT) {
             jsr_push(0xD68E);
             step = psg_wave_offset(number);
             jsr_pop();
-            t_take(t, step);
-            add_wave_base(t, 0xA6, 0xD9, false, 0);
+            (void)step;
+            sum = wave_address(0xA6, 0xD9, false, 0);
         } else {
-            t_a(t, (uint8_t)(number - WAVE_BUILT_IN_COUNT));
-            t->c = true;
-            t->c_set = true;
             jsr_push(0xD6A3);
             step = psg_wave_offset((uint8_t)(number - WAVE_BUILT_IN_COUNT));
             jsr_pop();
-            t_take(t, step);
-            add_wave_base(t, 0, 0, true, WAVE_TABLE_USER);
+            (void)step;
+            sum = wave_address(0, 0, true, WAVE_TABLE_USER);
         }
-        t_a(t, 0x40);
+        e = with_v(with_c(exit_a(sum.value), sum.carry), sum.overflow);
         wr8(PSG_CONTROL, 0x40);
         wr8(PSG_CONTROL, 0);
         for (uint8_t y = 0; y < WAVE_BYTES; y++) {
-            value = rd8_zp_y(ZP_E8, y);
-            wr8(PSG_WAVE, value);
-            t_a(t, value);
-            t->y = (uint8_t)(y + 1);
-            t->y_set = true;
+            a = rd8_zp_y(ZP_E8, y);
+            wr8(PSG_WAVE, a);
         }
-        t_cmp(t, WAVE_BYTES, WAVE_BYTES);
-        t->y = WAVE_BYTES;
+        e = with_y(with_c(e, true), WAVE_BYTES);
+        e.a = a;
     }
-    {
-        bool noise = false;
-
-        t_cmp(t, channel, 4);
-        if (channel >= 4) {
-            value = rd8((uint16_t)(NOISE_FLAGS + channel));
-            t_a(t, value);
-            if ((value & 0x80) == 0) {
-                t_a(t, (uint8_t)(value | 0x80));
-                wr8(PSG_NOISE, t->a);
-                noise = true;
-            }
-        }
-        if (!noise) {
-            wr8(PSG_NOISE, 0);
-            value = rd8((uint16_t)(FREQ_LOW + channel));
-            t_a(t, value);
-            wr8(PSG_FREQ_LOW, value);
-            value = rd8((uint16_t)(FREQ_HIGH + channel));
-            t_a(t, value);
-            wr8(PSG_FREQ_HIGH, value);
+    if (channel >= 4) {
+        value = rd8((uint16_t)(NOISE_FLAGS + channel));
+        a = value;
+        if ((value & 0x80) == 0) {
+            a = (uint8_t)(value | 0x80);
+            wr8(PSG_NOISE, a);
+            noise = true;
         }
     }
-    value = rd8((uint16_t)(BALANCE + channel));
-    t_a(t, value);
-    wr8(PSG_BALANCE, value);
+    if (!noise) {
+        wr8(PSG_NOISE, 0);
+        a = rd8((uint16_t)(FREQ_LOW + channel));
+        wr8(PSG_FREQ_LOW, a);
+        a = rd8((uint16_t)(FREQ_HIGH + channel));
+        wr8(PSG_FREQ_HIGH, a);
+    }
+    a = rd8((uint16_t)(BALANCE + channel));
+    wr8(PSG_BALANCE, a);
     value = rd8((uint16_t)(VOLUME + channel));
-    t_a(t, value);
-    value = rd8(TEMPO_TICKS);
-    sum = sub8(t->a, value, true);
-    t_a(t, sum.value);
-    t->c = sum.carry;
-    t->v = sum.overflow;
-    t->c_set = t->v_set = true;
+    a = rd8(TEMPO_TICKS);
+    sum = sub8(value, a, true);
     if (sum.value == 0 || (sum.value & 0x80) != 0) {
         wr8(PSG_CONTROL, 0);
+        a = sum.value;
     } else {
-        t_a(t, (uint8_t)(sum.value | 0x80));
-        wr8(PSG_CONTROL, t->a);
+        a = (uint8_t)(sum.value | 0x80);
+        wr8(PSG_CONTROL, a);
     }
+    e.a = a;
+    e.set_a = true;
+    return with_v(with_c(e, sum.carry), sum.overflow);
 }
 
 /*
@@ -287,15 +252,15 @@ static void write_channel(Trk *t, uint8_t channel)
  */
 CardExit psg_write_channels(void)
 {
-    Trk t = { 0 };
+    CardExit e = { 0 };
 
-    for (int x = CHANNELS - 1; x >= 0; x--) {
-        write_channel(&t, (uint8_t)x);
-        t.x = (uint8_t)(x - 1);
-        t.x_set = true;
-        t_nz(&t, t.x);
-    }
-    return t_exit(&t);
+    for (int x = CHANNELS - 1; x >= 0; x--)
+        e = card_exit_over(e, write_channel((uint8_t)x));
+    e.x = 0xFF;
+    e.nz = 0xFF;
+    e.set_x = e.set_nz = true;
+    e.set_n = e.set_z = false;
+    return e;
 }
 
 void abi_psg_write_channels(void)
@@ -303,12 +268,150 @@ void abi_psg_write_channels(void)
     card_exit_apply(psg_write_channels());
 }
 
-/* A, as it stands, rolled left twice and masked to the bit that came round: the fraction's carry into the whole part. */
-static void roll_carry(Trk *t)
+/* The sum's top bit, which two ROLs and an AND of 1 bring round: the fraction's carry into the whole part. */
+static uint8_t fraction_carry(uint8_t sum)
 {
-    t_rol(t);
-    t_rol(t);
-    t_a(t, (uint8_t)(t->a & 1));
+    return (uint8_t)(sum >> 7);
+}
+
+/* The pitch slide of psg_slide_channel: what it leaves in A, C and V. */
+static CardExit slide_pitch(uint8_t x)
+{
+    uint8_t step = rd8((uint16_t)(PITCH_STEP + x));
+    uint8_t high;
+    uint8_t fraction;
+    uint8_t carry;
+    uint8_t keep;
+    Sum sum;
+    bool c;
+
+    if (step == 0)
+        return exit_a(0);
+    if ((step & 0x80) == 0) {
+        fraction = rd8((uint16_t)(PITCH_FRACTION + x));
+        sum = add8(step, fraction, false);
+        wr8(ZP_EA, sum.value);
+        carry = fraction_carry(sum.value);
+        high = rd8((uint16_t)(PITCH_HIGH + x));
+        sum = add8(carry, high, false);
+        c = sum.carry;
+        keep = sum.value;
+        if (sum.value != 0 && (sum.value & 0x80) == 0) {
+            keep = 0;
+            wr8((uint16_t)(PITCH_STEP + x), 0);
+        }
+    } else {
+        fraction = rd8((uint16_t)(PITCH_FRACTION + x));
+        sum = add8((uint8_t)((step ^ 0xFF) + 1), fraction, false);
+        wr8(ZP_EA, sum.value);
+        carry = fraction_carry(sum.value);
+        wr8(ZP_EB, carry);
+        high = rd8((uint16_t)(PITCH_HIGH + x));
+        sum = sub8(high, rd8(ZP_EB), true);
+        c = sum.carry;
+        keep = sum.value;
+        if (sum.value != 0) {
+            c = sum.value >= 0xE1;
+            if (sum.value < 0xE1) {
+                keep = 0xE1;
+                wr8((uint16_t)(PITCH_STEP + x), 0);
+            }
+        }
+    }
+    wr8((uint16_t)(PITCH_HIGH + x), keep);
+    keep = rd8(ZP_EA);
+    wr8((uint16_t)(PITCH_FRACTION + x), (uint8_t)(keep & 0x7F));
+    return with_v(with_c(exit_a((uint8_t)(keep & 0x7F)), c), sum.overflow);
+}
+
+/* The left volume slide: what it leaves in A, C and V (nothing but A if there is none). */
+static CardExit slide_left(uint8_t x)
+{
+    uint8_t step = rd8((uint16_t)(LEFT_STEP + x));
+    uint8_t value;
+    uint8_t carry;
+    uint8_t level;
+    Sum sum;
+    bool c;
+
+    if (step == 0)
+        return exit_a(0);
+    if ((step & 0x80) == 0) {
+        value = rd8((uint16_t)(LEFT_FRACTION + x));
+        sum = add8(step, value, false);
+        wr8(ZP_EA, sum.value);
+        carry = fraction_carry(sum.value);
+        wr8(ZP_EB, carry);
+        value = rd8((uint16_t)(BALANCE + x));
+        sum = add8((uint8_t)(value & 0x0F), rd8(ZP_EB), false);
+        c = sum.value >= 0x10;
+        level = sum.value;
+        if (sum.value >= 0x10) {
+            level = 0x0F;
+            wr8((uint16_t)(LEFT_STEP + x), 0);
+        }
+    } else {
+        value = rd8((uint16_t)(LEFT_FRACTION + x));
+        sum = add8((uint8_t)((step ^ 0xFF) + 1), value, false);
+        wr8(ZP_EA, sum.value);
+        carry = fraction_carry(sum.value);
+        wr8(ZP_EB, carry);
+        value = rd8((uint16_t)(BALANCE + x));
+        sum = sub8((uint8_t)(value & 0x0F), rd8(ZP_EB), true);
+        c = sum.carry;
+        level = sum.value;
+        if (sum.value == 0)
+            wr8((uint16_t)(LEFT_STEP + x), 0);
+    }
+    wr8(ZP_EB, level);
+    value = rd8((uint16_t)(BALANCE + x));
+    level = (uint8_t)((value & 0xF0) | rd8(ZP_EB));
+    wr8((uint16_t)(BALANCE + x), level);
+    value = rd8(ZP_EA);
+    wr8((uint16_t)(LEFT_FRACTION + x), (uint8_t)(value & 0x7F));
+    return with_v(with_c(exit_a((uint8_t)(value & 0x7F)), c), sum.overflow);
+}
+
+/* The right volume slide: what it leaves in A, C and V (A only if there is none). */
+static CardExit slide_right(uint8_t x)
+{
+    uint8_t step = rd8((uint16_t)(RIGHT_STEP + x));
+    uint8_t value;
+    uint8_t level;
+    Sum sum;
+    Sum fraction;
+
+    if (step == 0)
+        return exit_a(0);
+    value = rd8((uint16_t)(RIGHT_FRACTION + x));
+    if ((step & 0x80) == 0) {
+        fraction = add8(step, value, false);
+        wr8(ZP_EA, fraction.value);
+        wr8(ZP_EB, (uint8_t)((fraction.value & 0x80) >> 3));
+        value = rd8((uint16_t)(BALANCE + x));
+        sum = add8((uint8_t)(value & 0xF0), rd8(ZP_EB), false);
+        level = sum.value;
+        if (sum.carry) {
+            level = 0xF0;
+            wr8((uint16_t)(RIGHT_STEP + x), 0);
+        }
+    } else {
+        fraction = add8((uint8_t)((step ^ 0xFF) + 1), value, false);
+        wr8(ZP_EA, fraction.value);
+        wr8(ZP_EB, (uint8_t)((fraction.value & 0x80) >> 3));
+        value = rd8((uint16_t)(BALANCE + x));
+        sum = sub8((uint8_t)(value & 0xF0), rd8(ZP_EB), true);
+        level = sum.value;
+        if (sum.value == 0)
+            wr8((uint16_t)(RIGHT_STEP + x), 0);
+    }
+    wr8(ZP_EB, level);
+    value = rd8((uint16_t)(BALANCE + x));
+    level = (uint8_t)((value & 0x0F) | rd8(ZP_EB));
+    wr8((uint16_t)(BALANCE + x), level);
+    value = rd8(ZP_EA);
+    wr8((uint16_t)(RIGHT_FRACTION + x), (uint8_t)(value & 0x7F));
+    return with_v(with_c(exit_a((uint8_t)(value & 0x7F)), sum.carry), sum.overflow);
 }
 
 /*
@@ -322,156 +425,12 @@ static void roll_carry(Trk *t)
  */
 CardExit psg_slide_channel(void)
 {
-    Trk t = { 0 };
     uint8_t x = rd8(CHANNEL_NOW);
-    uint8_t value;
+    CardExit e = exit_x(x);
 
-    t.x = x;
-    t.x_set = true;
-    t_nz(&t, x);
-    value = rd8((uint16_t)(PITCH_STEP + x));
-    t_a(&t, value);
-    if (value != 0) {
-        bool done = false;
-
-        if ((value & 0x80) == 0) {
-            t_clc(&t);
-            t_adc(&t, rd8((uint16_t)(PITCH_FRACTION + x)));
-            wr8(ZP_EA, t.a);
-            roll_carry(&t);
-            t_clc(&t);
-            t_adc(&t, rd8((uint16_t)(PITCH_HIGH + x)));
-            if (t.z || t.n)
-                done = true;
-            if (!done) {
-                t.a = 0;
-                t.a_set = true;
-                wr8((uint16_t)(PITCH_STEP + x), 0);
-            }
-        } else {
-            t_a(&t, (uint8_t)(value ^ 0xFF));
-            t_inc(&t);
-            t_clc(&t);
-            t_adc(&t, rd8((uint16_t)(PITCH_FRACTION + x)));
-            wr8(ZP_EA, t.a);
-            roll_carry(&t);
-            wr8(ZP_EB, t.a);
-            value = rd8((uint16_t)(PITCH_HIGH + x));
-            t_a(&t, value);
-            t_sec(&t);
-            t_sbc(&t, rd8(ZP_EB));
-            if (!t.z) {
-                t_cmp(&t, t.a, 0xE1);
-                if (t.a < 0xE1) {
-                    t_a(&t, 0xE1);
-                    wr8((uint16_t)(PITCH_STEP + x), 0);
-                }
-            }
-        }
-        wr8((uint16_t)(PITCH_HIGH + x), t.a);
-        value = rd8(ZP_EA);
-        t_a(&t, value);
-        t_a(&t, (uint8_t)(value & 0x7F));
-        wr8((uint16_t)(PITCH_FRACTION + x), t.a);
-    }
-    value = rd8((uint16_t)(LEFT_STEP + x));
-    t_a(&t, value);
-    if (value != 0) {
-        if ((value & 0x80) == 0) {
-            t_clc(&t);
-            t_adc(&t, rd8((uint16_t)(LEFT_FRACTION + x)));
-            wr8(ZP_EA, t.a);
-            roll_carry(&t);
-            wr8(ZP_EB, t.a);
-            value = rd8((uint16_t)(BALANCE + x));
-            t_a(&t, (uint8_t)(value & 0x0F));
-            t_clc(&t);
-            t_adc(&t, rd8(ZP_EB));
-            t_cmp(&t, t.a, 0x10);
-            if (t.a >= 0x10) {
-                t_a(&t, 0x0F);
-                wr8((uint16_t)(LEFT_STEP + x), 0);
-            }
-        } else {
-            t_a(&t, (uint8_t)(value ^ 0xFF));
-            t_inc(&t);
-            t_clc(&t);
-            t_adc(&t, rd8((uint16_t)(LEFT_FRACTION + x)));
-            wr8(ZP_EA, t.a);
-            roll_carry(&t);
-            wr8(ZP_EB, t.a);
-            value = rd8((uint16_t)(BALANCE + x));
-            t_a(&t, (uint8_t)(value & 0x0F));
-            t_sec(&t);
-            t_sbc(&t, rd8(ZP_EB));
-            if (t.z) {
-                t.a = 0;
-                t.a_set = true;
-                wr8((uint16_t)(LEFT_STEP + x), 0);
-            }
-        }
-        wr8(ZP_EB, t.a);
-        value = rd8((uint16_t)(BALANCE + x));
-        t_a(&t, (uint8_t)(value & 0xF0));
-        t_a(&t, (uint8_t)(t.a | rd8(ZP_EB)));
-        wr8((uint16_t)(BALANCE + x), t.a);
-        value = rd8(ZP_EA);
-        t_a(&t, value);
-        t_a(&t, (uint8_t)(value & 0x7F));
-        wr8((uint16_t)(LEFT_FRACTION + x), t.a);
-    }
-    value = rd8((uint16_t)(RIGHT_STEP + x));
-    t_a(&t, value);
-    if (value == 0)
-        return t_exit(&t);
-    if ((value & 0x80) == 0) {
-        t_clc(&t);
-        t_adc(&t, rd8((uint16_t)(RIGHT_FRACTION + x)));
-        wr8(ZP_EA, t.a);
-        t_a(&t, (uint8_t)(t.a & 0x80));
-        t_lsr(&t);
-        t_lsr(&t);
-        t_lsr(&t);
-        wr8(ZP_EB, t.a);
-        value = rd8((uint16_t)(BALANCE + x));
-        t_a(&t, (uint8_t)(value & 0xF0));
-        t_clc(&t);
-        t_adc(&t, rd8(ZP_EB));
-        if (t.c) {
-            t_a(&t, 0xF0);
-            wr8((uint16_t)(RIGHT_STEP + x), 0);
-        }
-    } else {
-        t_a(&t, (uint8_t)(value ^ 0xFF));
-        t_inc(&t);
-        t_clc(&t);
-        t_adc(&t, rd8((uint16_t)(RIGHT_FRACTION + x)));
-        wr8(ZP_EA, t.a);
-        t_a(&t, (uint8_t)(t.a & 0x80));
-        t_lsr(&t);
-        t_lsr(&t);
-        t_lsr(&t);
-        wr8(ZP_EB, t.a);
-        value = rd8((uint16_t)(BALANCE + x));
-        t_a(&t, (uint8_t)(value & 0xF0));
-        t_sec(&t);
-        t_sbc(&t, rd8(ZP_EB));
-        if (t.z) {
-            t.a = 0;
-            t.a_set = true;
-            wr8((uint16_t)(RIGHT_STEP + x), 0);
-        }
-    }
-    wr8(ZP_EB, t.a);
-    value = rd8((uint16_t)(BALANCE + x));
-    t_a(&t, (uint8_t)(value & 0x0F));
-    t_a(&t, (uint8_t)(t.a | rd8(ZP_EB)));
-    wr8((uint16_t)(BALANCE + x), t.a);
-    value = rd8(ZP_EA);
-    t_a(&t, value);
-    t_a(&t, (uint8_t)(value & 0x7F));
-    wr8((uint16_t)(RIGHT_FRACTION + x), t.a);
-    return t_exit(&t);
+    e = card_exit_over(e, slide_pitch(x));
+    e = card_exit_over(e, slide_left(x));
+    return card_exit_over(e, slide_right(x));
 }
 
 void abi_psg_slide_channel(void)
@@ -479,33 +438,28 @@ void abi_psg_slide_channel(void)
     card_exit_apply(psg_slide_channel());
 }
 
-/* INC of a zero page pair: the low byte, and the high if it wrapped; N and Z from the last one. */
-static void step_pair(Trk *t, uint16_t low)
+/* INC of a zero page pair: the low byte, and the high if it wrapped. */
+static void step_pair(uint16_t low)
 {
     uint8_t value = rd8(low);
 
     value = (uint8_t)(value + 1);
     wr8(low, value);
-    t_nz(t, value);
     if (value == 0) {
         value = rd8((uint16_t)(low + 1));
-        value = (uint8_t)(value + 1);
-        wr8((uint16_t)(low + 1), value);
-        t_nz(t, value);
+        wr8((uint16_t)(low + 1), (uint8_t)(value + 1));
     }
 }
 
-/* The pointer in $E8 and $E9 kept in the channel's arrays, and the end of the routine. */
-static CardExit keep_sequence_pointer(Trk *t, uint8_t y)
+/* The pointer in $E8 and $E9 kept in the channel's arrays: A the high byte, with N and Z from it, is what the stream leaves. */
+static uint8_t keep_sequence_pointer(uint8_t y)
 {
     uint8_t value = rd8(ZP_E8);
 
-    t_a(t, value);
     wr8((uint16_t)(SEQ_POINTER_LOW + y), value);
     value = rd8(ZP_E9);
-    t_a(t, value);
     wr8((uint16_t)(SEQ_POINTER_HIGH + y), value);
-    return t_exit(t);
+    return value;
 }
 
 /*
@@ -521,130 +475,93 @@ static CardExit keep_sequence_pointer(Trk *t, uint8_t y)
  */
 CardExit psg_read_notes(void)
 {
-    Trk t = { 0 };
+    CardExit e;
+    CardExit seen = { 0 };
     uint8_t y = rd8(CHANNEL_NOW);
     uint8_t value;
     uint8_t note;
+    uint8_t kind;
+    Sum sum;
 
-    t.y = y;
-    t.y_set = true;
-    t_nz(&t, y);
-    value = rd8((uint16_t)(SEQ_KIND + y));
-    t_a(&t, value);
-    t_a(&t, (uint8_t)(value & 0xF0));
-    t_cmp(&t, t.a, 0x10);
-    if (t.a != 0x10)
-        return t_exit(&t);
+    kind = (uint8_t)(rd8((uint16_t)(SEQ_KIND + y)) & 0xF0);
+    if (kind != 0x10)
+        return with_y(exit_cmp(kind, 0x10), y);
     value = rd8((uint16_t)(SEQ_STATE + y));
-    t_a(&t, value);
     if (value == 0)
-        return t_exit(&t);
+        return with_y(with_c(exit_a(0), true), y);
     value = rd8((uint16_t)(SEQ_POINTER_LOW + y));
-    t_a(&t, value);
     wr8(ZP_E8, value);
     value = rd8((uint16_t)(SEQ_POINTER_HIGH + y));
-    t_a(&t, value);
     wr8(ZP_E9, value);
     for (;;) {
         note = rd8_zp_y(ZP_E8, 0);
-        t_a(&t, note);
-        step_pair(&t, ZP_E8);
-        t.x = note;
-        t.x_set = true;
-        t_a(&t, note);
-        t_cmp(&t, note, 0xB0);
+        step_pair(ZP_E8);
         if (note < 0xB0) {
-            t_cmp(&t, y, 4);
-            if (y >= 4) {
-                t_a(&t, (uint8_t)(note & 0x1F));
-                wr8((uint16_t)(NOISE_AT + y), t.a);
-            }
-            return keep_sequence_pointer(&t, y);
+            if (y >= 4)
+                wr8((uint16_t)(NOISE_AT + y), (uint8_t)(note & 0x1F));
+            value = keep_sequence_pointer(y);
+            e = with_y(with_x(with_c(exit_a(value), y >= 4), note), y);
+            return card_exit_over(seen, e);
         }
-        t_a(&t, (uint8_t)(note & 0xF0));
-        t_cmp(&t, t.a, 0xB0);
-        if (t.a == 0xB0) {
-            t_a(&t, note);
-            t_sec(&t);
-            t_sbc(&t, 0xB0);
-            wr8((uint16_t)(FREQ_HIGH_AT + y), t.a);
+        kind = (uint8_t)(note & 0xF0);
+        if (kind == 0xB0) {
+            sum = sub8(note, 0xB0, true);
+            wr8((uint16_t)(FREQ_HIGH_AT + y), sum.value);
             value = rd8_zp_y(ZP_E8, 0);
-            t_a(&t, value);
-            step_pair(&t, ZP_E8);
+            step_pair(ZP_E8);
             wr8((uint16_t)(FREQ_LOW_AT + y), value);
-            t_cmp(&t, y, 4);
-            if (y >= 4) {
-                t_a(&t, 0x80);
+            if (y >= 4)
                 wr8((uint16_t)(NOISE_AT + y), 0x80);
-            }
-            return keep_sequence_pointer(&t, y);
+            value = keep_sequence_pointer(y);
+            e = with_v(with_y(with_x(with_c(exit_a(value), y >= 4), note), y), sum.overflow);
+            return e;
         }
-        t_cmp(&t, t.a, 0xC0);
-        if (t.a == 0xC0) {
+        if (kind == 0xC0) {
             value = rd8_zp_y(ZP_E8, 0);
-            t_a(&t, value);
-            t_cmp(&t, value, 0x10);
             if (value < 0x10) {
-                t_asl(&t);
-                t.x = t.a;
-                t_xy_nz(&t, t.a);
-                value = rd8((uint16_t)(SHAPES_BUILT_IN + t.x));
-                t_a(&t, value);
-                wr8((uint16_t)(SHAPE_LOW + y), value);
-                value = rd8((uint16_t)(SHAPES_BUILT_IN + 1 + t.x));
-                t_a(&t, value);
-                wr8((uint16_t)(SHAPE_HIGH + y), value);
+                uint8_t index = (uint8_t)(value << 1);
+
+                wr8((uint16_t)(SHAPE_LOW + y), rd8((uint16_t)(SHAPES_BUILT_IN + index)));
+                wr8((uint16_t)(SHAPE_HIGH + y), rd8((uint16_t)(SHAPES_BUILT_IN + 1 + index)));
             } else {
-                t_sec(&t);
-                t_sbc(&t, 0x10);
-                t_asl(&t);
-                t_clc(&t);
-                t_adc(&t, rd8(SHAPES_USER));
-                wr8(ZP_EA, t.a);
-                t.a = 0;
-                t.a_set = true;
-                t_adc(&t, rd8((uint16_t)(SHAPES_USER + 1)));
-                wr8(ZP_EB, t.a);
+                Sum high;
+                uint8_t doubled = (uint8_t)((uint8_t)(value - 0x10) << 1);
+
+                sum = add8(doubled, rd8(SHAPES_USER), false);
+                wr8(ZP_EA, sum.value);
+                high = add8(0, rd8((uint16_t)(SHAPES_USER + 1)), sum.carry);
+                wr8(ZP_EB, high.value);
+                seen = with_v(seen, high.overflow);
                 value = rd8_zp_y(ZP_EA, 0);
-                t_a(&t, value);
                 wr8((uint16_t)(SHAPE_LOW + y), value);
-                step_pair(&t, ZP_EA);
+                step_pair(ZP_EA);
                 value = rd8_zp_y(ZP_EA, 0);
-                t_a(&t, value);
                 wr8((uint16_t)(SHAPE_HIGH + y), value);
             }
-            step_pair(&t, ZP_E8);
+            step_pair(ZP_E8);
             continue;
         }
-        t_cmp(&t, t.a, 0xD0);
-        if (t.a == 0xD0) {
+        if (kind == 0xD0) {
             value = rd8_zp_y(ZP_E8, 0);
-            t_a(&t, value);
             wr8((uint16_t)(BALANCE_AT + y), value);
-            step_pair(&t, ZP_E8);
+            step_pair(ZP_E8);
             continue;
         }
-        t_cmp(&t, t.a, 0xE0);
-        if (t.a == 0xE0) {
+        if (kind == 0xE0) {
             value = rd8_zp_y(ZP_E8, 0);
-            t_a(&t, value);
             wr8((uint16_t)(FLAGS_AT + y), value);
-            step_pair(&t, ZP_E8);
+            step_pair(ZP_E8);
             continue;
         }
-        t.a = 0;
-        t.a_set = true;
         wr8((uint16_t)(SEQ_STATE + y), 0);
         value = rd8(ZP_E8);
-        t_a(&t, value);
-        t_sec(&t);
-        t_sbc(&t, 1);
-        wr8((uint16_t)(SEQ_POINTER_LOW + y), t.a);
+        sum = sub8(value, 1, true);
+        wr8((uint16_t)(SEQ_POINTER_LOW + y), sum.value);
         value = rd8(ZP_E9);
-        t_a(&t, value);
-        t_sbc(&t, 0);
-        wr8((uint16_t)(SEQ_POINTER_HIGH + y), t.a);
-        return t_exit(&t);
+        sum = sub8(value, 0, sum.carry);
+        wr8((uint16_t)(SEQ_POINTER_HIGH + y), sum.value);
+        e = with_v(with_c(with_y(with_x(exit_a(sum.value), note), y), sum.carry), sum.overflow);
+        return e;
     }
 }
 
@@ -662,19 +579,17 @@ void abi_psg_read_notes(void)
  */
 CardExit psg_add_pitch(uint8_t x)
 {
-    Trk t = { 0 };
+    Sum low;
+    Sum high;
     uint8_t value;
 
     value = rd8((uint16_t)(FREQ_NOW_LOW + x));
-    t_a(&t, value);
-    t_clc(&t);
-    t_adc(&t, rd8(ZP_EA));
-    wr8((uint16_t)(FREQ_NOW_LOW + x), t.a);
+    low = add8(value, rd8(ZP_EA), false);
+    wr8((uint16_t)(FREQ_NOW_LOW + x), low.value);
     value = rd8((uint16_t)(FREQ_NOW_HIGH + x));
-    t_a(&t, value);
-    t_adc(&t, rd8(ZP_EB));
-    wr8((uint16_t)(FREQ_NOW_HIGH + x), t.a);
-    return t_exit(&t);
+    high = add8(value, rd8(ZP_EB), low.carry);
+    wr8((uint16_t)(FREQ_NOW_HIGH + x), high.value);
+    return with_v(with_c(exit_a(high.value), high.carry), high.overflow);
 }
 
 void abi_psg_add_pitch(void)
@@ -692,65 +607,54 @@ void abi_psg_add_pitch(void)
  */
 CardExit psg_scale_amount(uint8_t x)
 {
-    Trk t = { 0 };
     uint8_t value;
     uint8_t y;
+    uint8_t low;
+    uint8_t high;
+    bool carry = false;
+    Sum sum;
+    CardExit e;
 
     wr8(ZP_EB, 0);
     value = rd8(ZP_EA);
-    t_a(&t, value);
-    if ((value & 0x80) != 0) {
-        value = rd8(ZP_EB);
-        value = (uint8_t)(value - 1);
-        wr8(ZP_EB, value);
-        t_nz(&t, value);
-    }
+    if ((value & 0x80) != 0)
+        wr8(ZP_EB, (uint8_t)(rd8(ZP_EB) - 1));
     value = rd8((uint16_t)(SCALE + x));
-    t_a(&t, value);
     if (value == 0)
-        return t_exit(&t);
-    t_sec(&t);
-    t_sbc(&t, rd8((uint16_t)(SCALE_BASE + x)));
-    y = t.a;
-    t.y = y;
-    t.y_set = true;
-    t_xy_nz(&t, y);
+        return exit_a(0);
+    sum = sub8(value, rd8((uint16_t)(SCALE_BASE + x)), true);
+    y = sum.value;
+    carry = sum.carry;
+    e = with_v(exit_a(sum.value), sum.overflow);
     if ((y & 0x80) == 0) {
         while (y != 0) {
-            uint8_t low = rd8(ZP_EA);
-            uint8_t high;
-
+            low = rd8(ZP_EA);
             wr8(ZP_EA, (uint8_t)(low << 1));
             high = rd8(ZP_EB);
             wr8(ZP_EB, (uint8_t)((high << 1) | (low >> 7)));
-            t.c = (high & 0x80) != 0;
-            t.c_set = true;
+            carry = (high & 0x80) != 0;
             y--;
-            t.y = y;
-            t_xy_nz(&t, y);
         }
-        return t_exit(&t);
+        e.nz = 0;
+        e.set_nz = true;
+        return with_y(with_c(e, carry), 0);
     }
     while (y != 0) {
-        uint8_t high = rd8(ZP_EB);
-        uint8_t low;
-
+        high = rd8(ZP_EB);
         wr8(ZP_EB, (uint8_t)(high >> 1));
         low = rd8(ZP_EA);
         wr8(ZP_EA, (uint8_t)((high << 7) | (low >> 1)));
-        t.c = (low & 1) != 0;
-        t.c_set = true;
+        carry = (low & 1) != 0;
         y++;
-        t.y = y;
-        t_xy_nz(&t, y);
     }
     value = rd8(ZP_EB);
-    t_a(&t, value);
     if (value != 0) {
-        t_a(&t, 0xFF);
         wr8(ZP_EB, 0xFF);
+        value = 0xFF;
     }
-    return t_exit(&t);
+    e = with_y(with_c(e, carry), 0);
+    e.a = e.nz = value;
+    return e;
 }
 
 void abi_psg_scale_amount(void)
@@ -758,169 +662,146 @@ void abi_psg_scale_amount(void)
     card_exit_apply(psg_scale_amount(cpu.x));
 }
 
-/* JSR psg_scale_amount and then psg_add_pitch: the channel in X, the registers they leave taken on. */
-static void scale_and_add(Trk *t, uint8_t x, uint16_t first_ret, uint16_t second_ret)
+/* JSR psg_scale_amount and then psg_add_pitch: the channel in X; what the two leave, the second over the first. */
+static CardExit scale_and_add(uint8_t x, uint16_t first_ret, uint16_t second_ret)
 {
+    CardExit first;
+    CardExit second;
+
     jsr_push(first_ret);
-    t_take(t, psg_scale_amount(x));
+    first = psg_scale_amount(x);
     jsr_pop();
     jsr_push(second_ret);
-    t_take(t, psg_add_pitch(x));
+    second = psg_add_pitch(x);
     jsr_pop();
+    return card_exit_over(first, second);
 }
 
-/* A memory byte counted down or up by one, and what N and Z say of it. */
-static uint8_t step_byte(Trk *t, uint16_t at, int by)
+/* A memory byte counted down or up by one: the new value. */
+static uint8_t step_byte(uint16_t at, int by)
 {
     uint8_t value = rd8(at);
 
     value = (uint8_t)(value + by);
     wr8(at, value);
-    t_nz(t, value);
     return value;
 }
 
-/* The vibrato of psg_pitch_effects. */
-static void pitch_vibrato(Trk *t, uint8_t x)
+/* The vibrato of psg_pitch_effects, the step in Y: what it leaves in C, V and Y (the A and flags the detune after it loads over). */
+static CardExit pitch_vibrato(uint8_t x, uint8_t y)
 {
+    CardExit scale;
+    CardExit add;
     uint8_t value;
-    uint8_t y = t->y;
-    bool direct = false;
+    Sum low;
+    Sum high;
 
     value = rd8((uint16_t)(VIB_ON + x));
-    t_a(t, value);
-    if (value != 0 && step_byte(t, (uint16_t)(VIB_COUNT + x), -1) == 0) {
-        (void)step_byte(t, (uint16_t)(VIB_COUNT + x), 1);
+    if (value != 0 && step_byte((uint16_t)(VIB_COUNT + x), -1) == 0) {
+        (void)step_byte((uint16_t)(VIB_COUNT + x), 1);
         value = rd8((uint16_t)(VIB_LOW + x));
-        t_a(t, value);
         wr8(ZP_EA, value);
         value = rd8((uint16_t)(VIB_HIGH + x));
-        t_a(t, value);
         wr8(ZP_EB, value);
         jsr_push(0xD547);
-        t_take(t, psg_add_pitch(x));
+        add = psg_add_pitch(x);
         jsr_pop();
-        direct = true;
+        return add;
     }
-    if (direct)
-        return;
     wr8(ZP_EA, y);
     jsr_push(0xD54E);
-    t_take(t, psg_scale_amount(x));
+    scale = psg_scale_amount(x);
     jsr_pop();
     value = rd8((uint16_t)(VIB_LOW + x));
-    t_a(t, value);
-    t_clc(t);
-    t_adc(t, rd8(ZP_EA));
-    wr8((uint16_t)(VIB_LOW + x), t->a);
-    wr8(ZP_EA, t->a);
+    low = add8(value, rd8(ZP_EA), false);
+    wr8((uint16_t)(VIB_LOW + x), low.value);
+    wr8(ZP_EA, low.value);
     value = rd8((uint16_t)(VIB_HIGH + x));
-    t_a(t, value);
-    t_adc(t, rd8(ZP_EB));
-    wr8((uint16_t)(VIB_HIGH + x), t->a);
-    wr8(ZP_EB, t->a);
+    high = add8(value, rd8(ZP_EB), low.carry);
+    wr8((uint16_t)(VIB_HIGH + x), high.value);
+    wr8(ZP_EB, high.value);
     jsr_push(0xD566);
-    t_take(t, psg_add_pitch(x));
+    add = psg_add_pitch(x);
     jsr_pop();
+    return card_exit_over(scale, add);
 }
 
-/* The pitch slide through a list of psg_pitch_effects. */
-static void pitch_slide(Trk *t, uint8_t x)
+/* The pitch slide through a list of psg_pitch_effects: what it leaves in C, V and Y (the A and flags the portamento after it loads over). */
+static CardExit pitch_slide(uint8_t x)
 {
+    CardExit e = { 0 };
     uint8_t value;
     uint8_t y;
     uint8_t item;
 
     value = rd8((uint16_t)(SLIDE_ON + x));
-    t_a(t, value);
     if (value == 0)
-        return;
-    if (step_byte(t, (uint16_t)(SLIDE_COUNT + x), -1) != 0)
-        return;
-    (void)step_byte(t, (uint16_t)(SLIDE_COUNT + x), 1);
+        return e;
+    if (step_byte((uint16_t)(SLIDE_COUNT + x), -1) != 0)
+        return e;
+    (void)step_byte((uint16_t)(SLIDE_COUNT + x), 1);
     value = rd8((uint16_t)(SLIDE_LOW + x));
-    t_a(t, value);
     wr8(ZP_E8, value);
     value = rd8((uint16_t)(SLIDE_HIGH + x));
-    t_a(t, value);
     wr8(ZP_E9, value);
     y = rd8((uint16_t)(SLIDE_AT + x));
-    t->y = y;
-    t->y_set = true;
-    t_xy_nz(t, y);
+    e = with_y(e, y);
     item = rd8_zp_y(ZP_E8, y);
-    t_a(t, item);
-    t_cmp(t, item, 0x80);
     if (item == 0x80) {
-        t_cmp(t, y, 0);
         if (y == 0)
-            return;
+            return with_c(e, true);
         y--;
-        t->y = y;
-        t_xy_nz(t, y);
         item = rd8_zp_y(ZP_E8, y);
-        t_a(t, item);
     }
     wr8(ZP_EA, item);
     push8(y);
-    scale_and_add(t, x, 0xD5A0, 0xD5A3);
+    e = card_exit_over(e, scale_and_add(x, 0xD5A0, 0xD5A3));
     y = pull8();
-    t->y = y;
-    t->y_set = true;
-    t_xy_nz(t, y);
     y++;
-    t->y = y;
-    t_xy_nz(t, y);
-    if (y == 0) {
+    if (y == 0)
         y--;
-        t->y = y;
-        t_xy_nz(t, y);
-    }
-    t_a(t, y);
     wr8((uint16_t)(SLIDE_AT + x), y);
+    return with_y(e, y);
 }
 
-/* The portamento through a list of psg_pitch_effects. */
-static void pitch_portamento(Trk *t, uint8_t x)
+/* The portamento through a list of psg_pitch_effects: what it leaves in A, N, Z, C, V and Y. */
+static CardExit pitch_portamento(uint8_t x)
 {
+    CardExit e;
     uint8_t value;
     uint8_t y;
     uint8_t item;
 
     value = rd8((uint16_t)(PORT_ON + x));
-    t_a(t, value);
     if (value == 0)
-        return;
-    if (step_byte(t, (uint16_t)(PORT_COUNT + x), -1) != 0)
-        return;
-    (void)step_byte(t, (uint16_t)(PORT_COUNT + x), 1);
+        return exit_a(0);
+    if (step_byte((uint16_t)(PORT_COUNT + x), -1) != 0) {
+        e = exit_a(value);
+        e.nz = rd8((uint16_t)(PORT_COUNT + x));
+        return e;
+    }
+    (void)step_byte((uint16_t)(PORT_COUNT + x), 1);
     value = rd8((uint16_t)(PORT_LOW + x));
-    t_a(t, value);
     wr8(ZP_E8, value);
     value = rd8((uint16_t)(PORT_HIGH + x));
-    t_a(t, value);
     wr8(ZP_E9, value);
     y = rd8((uint16_t)(PORT_AT + x));
-    t->y = y;
-    t->y_set = true;
-    t_xy_nz(t, y);
     for (;;) {
         item = rd8_zp_y(ZP_E8, y);
-        t_a(t, item);
-        t_cmp(t, item, 0x80);
         if (item != 0x80)
             break;
-        t_cmp(t, y, 0);
-        if (y == 0)
-            return;
+        if (y == 0) {
+            e = with_y(with_c(exit_a(0x80), true), 0);
+            e.nz = 0;
+            return e;
+        }
         wr8((uint16_t)(PORT_AT + x), 0);
         y = 0;
-        t->y = 0;
-        t->y_set = true;
     }
     wr8(ZP_EA, item);
-    scale_and_add(t, x, 0xD5DB, 0xD5DE);
-    (void)step_byte(t, (uint16_t)(PORT_AT + x), 1);
+    e = scale_and_add(x, 0xD5DB, 0xD5DE);
+    e.nz = step_byte((uint16_t)(PORT_AT + x), 1);
+    return with_y(e, e.set_y ? e.y : y);
 }
 
 /*
@@ -936,39 +817,30 @@ static void pitch_portamento(Trk *t, uint8_t x)
  */
 CardExit psg_pitch_effects(void)
 {
-    Trk t = { 0 };
     uint8_t x = rd8(CHANNEL_NOW);
     uint8_t value;
+    uint8_t kind;
+    CardExit e = exit_x(x);
 
-    t.x = x;
-    t.x_set = true;
-    t_xy_nz(&t, x);
-    value = rd8((uint16_t)(ENV_KIND + x));
-    t_a(&t, value);
-    t_a(&t, (uint8_t)(value & 0xF0));
-    if (t.a != 0)
-        return t_exit(&t);
+    kind = (uint8_t)(rd8((uint16_t)(ENV_KIND + x)) & 0xF0);
+    if (kind != 0)
+        return card_exit_over(e, exit_a(kind));
     value = rd8((uint16_t)(FREQ_BASE_LOW + x));
-    t_a(&t, value);
     wr8((uint16_t)(FREQ_NOW_LOW + x), value);
     value = rd8((uint16_t)(FREQ_BASE_HIGH + x));
-    t_a(&t, value);
     wr8((uint16_t)(FREQ_NOW_HIGH + x), value);
     value = rd8((uint16_t)(VIB_STEP + x));
-    t_a(&t, value);
-    t.y = value;
-    t.y_set = true;
+    e = card_exit_over(e, with_y(exit_a(value), value));
     if (value != 0)
-        pitch_vibrato(&t, x);
+        e = card_exit_over(e, pitch_vibrato(x, value));
     value = rd8((uint16_t)(DETUNE + x));
-    t_a(&t, value);
+    e = card_exit_over(e, exit_a(value));
     if (value != 0) {
         wr8(ZP_EA, value);
-        scale_and_add(&t, x, 0xD570, 0xD573);
+        e = card_exit_over(e, scale_and_add(x, 0xD570, 0xD573));
     }
-    pitch_slide(&t, x);
-    pitch_portamento(&t, x);
-    return t_exit(&t);
+    e = card_exit_over(e, pitch_slide(x));
+    return card_exit_over(e, pitch_portamento(x));
 }
 
 void abi_psg_pitch_effects(void)
@@ -976,151 +848,109 @@ void abi_psg_pitch_effects(void)
     card_exit_apply(psg_pitch_effects());
 }
 
-/* The end the volume envelope's paths join at, $D4A3: the level made the channel's volume. */
-static void env_volume(Trk *t, uint8_t x)
+/* The end the volume envelope's paths join at, $D4A3: the level made the channel's volume. What it leaves: A the volume, N and Z from the sum. */
+static CardExit env_volume(uint8_t x)
 {
-    uint8_t value = rd8((uint16_t)(ENV_LEVEL_HIGH + x));
+    CardExit e = { 0 };
+    uint8_t level = rd8((uint16_t)(ENV_LEVEL_HIGH + x));
+    uint8_t shifted = (uint8_t)(level >> 2);
+    Sum sum = add8(shifted, rd8((uint16_t)(VOLUME_BASE + x)), false);
+    uint8_t volume = (sum.value & 0x80) != 0 ? 0 : sum.value;
 
-    t_a(t, value);
-    t_lsr(t);
-    t_lsr(t);
-    t_clc(t);
-    t_adc(t, rd8((uint16_t)(VOLUME_BASE + x)));
-    if (t->n) {
-        t->a = 0;
-        t->a_set = true;
-    }
-    wr8((uint16_t)(VOLUME_OUT + x), t->a);
+    wr8((uint16_t)(VOLUME_OUT + x), volume);
+    e.a = volume;
+    e.nz = sum.value;
+    e.c = sum.carry;
+    e.v = sum.overflow;
+    e.set_a = e.set_nz = e.set_c = e.set_v = true;
+    return e;
 }
 
-/* From $D4CE: a segment's length and its two rates read from the list at $E8, the position kept, the volume made. */
-static void env_segment(Trk *t, uint8_t x, uint8_t y, uint8_t length)
+/* From $D4CE: a segment's length and its two rates read from the list at $E8 from Y, the position kept; gives Y after them. */
+static uint8_t env_segment(uint8_t x, uint8_t y, uint8_t length)
 {
     uint8_t value;
 
-    t_cmp(t, length, 0);
-    if (length == 0) {
-        t->a = 0xFF;
-        t_nz(t, 0xFF);
+    if (length == 0)
         length = 0xFF;
-    }
     wr8((uint16_t)(ENV_LEFT + x), length);
     y++;
-    t->y = y;
-    t_xy_nz(t, y);
     value = rd8_zp_y(ZP_E8, y);
-    t_a(t, value);
     wr8((uint16_t)(ENV_RATE_LOW + x), value);
     y++;
-    t->y = y;
-    t_xy_nz(t, y);
     value = rd8_zp_y(ZP_E8, y);
-    t_a(t, value);
     wr8((uint16_t)(ENV_RATE_HIGH + x), value);
     y++;
-    t->y = y;
-    t_xy_nz(t, y);
-    t_a(t, y);
     wr8((uint16_t)(ENV_AT + x), y);
-    env_volume(t, x);
+    return y;
 }
 
-/* From $D4B3: the next segment of the envelope's list. */
-static void env_next(Trk *t, uint8_t x)
+/* From $D4B3: the next segment of the envelope's list; gives Y as it ends. */
+static uint8_t env_next(uint8_t x)
 {
     uint8_t y = rd8((uint16_t)(ENV_AT + x));
     uint8_t value;
     uint8_t item;
 
-    t->y = y;
-    t->y_set = true;
-    t_xy_nz(t, y);
     value = rd8((uint16_t)(SHAPE_LOW + x));
-    t_a(t, value);
     wr8(ZP_E8, value);
     value = rd8((uint16_t)(SHAPE_HIGH + x));
-    t_a(t, value);
     wr8(ZP_E9, value);
     for (;;) {
         item = rd8_zp_y(ZP_E8, y);
-        t_a(t, item);
-        t_cmp(t, item, 0xFB);
-        if (item < 0xFB) {
-            env_segment(t, x, y, item);
-            return;
-        }
+        if (item < 0xFB)
+            return env_segment(x, y, item);
         if (item == 0xFB) {
-            for (int i = 0; i < 3; i++) {
-                y++;
-                t->y = y;
-                t_xy_nz(t, y);
-            }
+            y = (uint8_t)(y + 3);
             continue;
         }
-        t_cmp(t, item, 0xFC);
         if (item != 0xFC) {
-            t_a(t, 0xFF);
             wr8((uint16_t)(ENV_LEFT + x), 0xFF);
             wr8((uint16_t)(ENV_RATE_LOW + x), 0);
             wr8((uint16_t)(ENV_RATE_HIGH + x), 0);
-            env_volume(t, x);
-            return;
+            return y;
         }
         y++;
-        t->y = y;
-        t_xy_nz(t, y);
         value = rd8_zp_y(ZP_E8, y);
-        t_a(t, value);
         wr8((uint16_t)(ENV_LEVEL_LOW + x), value);
         y++;
-        t->y = y;
-        t_xy_nz(t, y);
         value = rd8_zp_y(ZP_E8, y);
-        t_a(t, value);
         wr8((uint16_t)(ENV_LEVEL_HIGH + x), value);
         y++;
-        t->y = y;
-        t_xy_nz(t, y);
         item = rd8_zp_y(ZP_E8, y);
-        t_a(t, item);
-        t_cmp(t, item, 0xFB);
-        if (item < 0xFB) {
-            env_segment(t, x, y, item);
-            return;
-        }
+        if (item < 0xFB)
+            return env_segment(x, y, item);
         wr8((uint16_t)(ENV_LEFT + x), 0);
-        t_a(t, y);
         wr8((uint16_t)(ENV_AT + x), y);
-        env_volume(t, x);
-        return;
+        return y;
     }
 }
 
-/* ADC of the level by a rate, clipped at 0 or at $7C: $D444 for the held part and $D470 for the release. */
-static void env_move_level(Trk *t, uint8_t x, uint16_t rate_low, uint16_t rate_high)
+/* ADC of the level by a rate, clipped at 0 or at $7C: $D444 for the held part and $D470 for the release. Gives the Y the clip loads, or -1. */
+static int env_move_level(uint8_t x, uint16_t rate_low, uint16_t rate_high)
 {
-    uint8_t value;
+    Sum low;
+    Sum high;
+    uint8_t level;
     uint8_t rate;
+    int y = -1;
 
-    value = rd8((uint16_t)(ENV_LEVEL_LOW + x));
-    t_a(t, value);
-    t_clc(t);
-    t_adc(t, rd8((uint16_t)(rate_low + x)));
-    wr8((uint16_t)(ENV_LEVEL_LOW + x), t->a);
-    value = rd8((uint16_t)(ENV_LEVEL_HIGH + x));
-    t_a(t, value);
-    t_adc(t, rd8((uint16_t)(rate_high + x)));
-    if (t->n) {
-        t->a = 0;
+    level = rd8((uint16_t)(ENV_LEVEL_LOW + x));
+    low = add8(level, rd8((uint16_t)(rate_low + x)), false);
+    wr8((uint16_t)(ENV_LEVEL_LOW + x), low.value);
+    level = rd8((uint16_t)(ENV_LEVEL_HIGH + x));
+    high = add8(level, rd8((uint16_t)(rate_high + x)), low.carry);
+    level = high.value;
+    if ((high.value & 0x80) != 0) {
+        level = 0;
         wr8((uint16_t)(ENV_LEVEL_LOW + x), 0);
         rate = rd8((uint16_t)(rate_high + x));
-        t->y = rate;
-        t->y_set = true;
-        t_xy_nz(t, rate);
+        y = rate;
         if ((rate & 0x80) == 0)
-            t_a(t, ENV_LEVEL_MAX);
+            level = ENV_LEVEL_MAX;
     }
-    wr8((uint16_t)(ENV_LEVEL_HIGH + x), t->a);
+    wr8((uint16_t)(ENV_LEVEL_HIGH + x), level);
+    return y;
 }
 
 /*
@@ -1136,50 +966,38 @@ static void env_move_level(Trk *t, uint8_t x, uint16_t rate_low, uint16_t rate_h
  */
 CardExit psg_volume_envelope(void)
 {
-    Trk t = { 0 };
     uint8_t x = rd8(CHANNEL_NOW);
     uint8_t state;
     uint8_t value;
+    int y = -1;
+    CardExit e = exit_x(x);
 
-    t.x = x;
-    t.x_set = true;
-    t_xy_nz(&t, x);
     state = rd8((uint16_t)(ENV_STATE + x));
-    t_a(&t, state);
     if (state == 0) {
         wr8((uint16_t)(VOLUME_OUT + x), 0);
-        return t_exit(&t);
+        return card_exit_over(e, exit_a(0));
     }
     if ((state & 0x80) != 0) {
-        env_move_level(&t, x, ENV_RELEASE_LOW, ENV_RELEASE_HIGH);
-        env_volume(&t, x);
-        return t_exit(&t);
-    }
-    t_cmp(&t, state, 2);
-    if (state == 2) {
-        (void)step_byte(&t, (uint16_t)(ENV_STATE + x), -1);
+        y = env_move_level(x, ENV_RELEASE_LOW, ENV_RELEASE_HIGH);
+    } else if (state == 2) {
+        (void)step_byte((uint16_t)(ENV_STATE + x), -1);
         wr8((uint16_t)(ENV_AT + x), 0);
-        env_next(&t, x);
-        return t_exit(&t);
+        y = env_next(x);
+    } else {
+        if (step_byte((uint16_t)(ENV_TIMER + x), -1) == 0)
+            wr8((uint16_t)(ENV_STATE + x), (uint8_t)(state | 0x80));
+        value = rd8((uint16_t)(ENV_LEFT + x));
+        if (value == 0) {
+            y = env_next(x);
+        } else {
+            y = env_move_level(x, ENV_RATE_LOW, ENV_RATE_HIGH);
+            value = rd8((uint16_t)(ENV_LEFT + x));
+            if (value != 0xFF)
+                (void)step_byte((uint16_t)(ENV_LEFT + x), -1);
+        }
     }
-    if (step_byte(&t, (uint16_t)(ENV_TIMER + x), -1) == 0) {
-        t_a(&t, (uint8_t)(state | 0x80));
-        wr8((uint16_t)(ENV_STATE + x), t.a);
-    }
-    value = rd8((uint16_t)(ENV_LEFT + x));
-    t_a(&t, value);
-    if (value == 0) {
-        env_next(&t, x);
-        return t_exit(&t);
-    }
-    env_move_level(&t, x, ENV_RATE_LOW, ENV_RATE_HIGH);
-    value = rd8((uint16_t)(ENV_LEFT + x));
-    t_a(&t, value);
-    t_cmp(&t, value, 0xFF);
-    if (value != 0xFF)
-        (void)step_byte(&t, (uint16_t)(ENV_LEFT + x), -1);
-    env_volume(&t, x);
-    return t_exit(&t);
+    e = card_exit_over(e, env_volume(x));
+    return y >= 0 ? with_y(e, (uint8_t)y) : e;
 }
 
 void abi_psg_volume_envelope(void)
@@ -1204,112 +1022,79 @@ static const uint16_t SONG_CLEARED[] = {
  */
 CardExit psg_start_song(void)
 {
-    Trk t = { 0 };
+    CardExit e = { 0 };
     uint8_t value;
-    uint8_t mask;
     uint8_t header;
-    uint8_t x;
     uint8_t y;
+    uint8_t song;
 
-    value = rd8(SONG_NEXT);
-    t_a(&t, value);
-    if ((value & 0x80) != 0)
-        return t_exit(&t);
-    t_asl(&t);
-    y = t.a;
-    t.y = y;
-    t.y_set = true;
-    t_xy_nz(&t, y);
+    song = rd8(SONG_NEXT);
+    if ((song & 0x80) != 0)
+        return exit_a(song);
+    y = (uint8_t)(song << 1);
     value = rd8(SONG_LIST);
-    t_a(&t, value);
     wr8(ZP_EA, value);
     value = rd8((uint16_t)(SONG_LIST + 1));
-    t_a(&t, value);
     wr8(ZP_EB, value);
     value = rd8_zp_y(ZP_EA, y);
-    t_a(&t, value);
     wr8(ZP_E8, value);
     y++;
-    t.y = y;
-    t_xy_nz(&t, y);
     value = rd8_zp_y(ZP_EA, y);
-    t_a(&t, value);
     wr8(ZP_E9, value);
     header = rd8_zp_y(ZP_E8, 0);
-    t_a(&t, header);
     if ((header & 0x80) == 0)
-        return t_exit(&t);
+        return with_y(with_c(exit_a(header), false), y);
     wr8(ZP_EA, header);
     wr8(ZP_EB, header);
     y = 0;
-    t.y = 0;
-    for (x = 0; x < CHANNELS; x++) {
-        bool take;
+    for (uint8_t x = 0; x < CHANNELS; x++) {
+        uint8_t mask = rd8(ZP_EA);
 
-        t.x = x;
-        t.x_set = true;
-        mask = rd8(ZP_EA);
-        take = (mask & 1) != 0;
         wr8(ZP_EA, (uint8_t)(mask >> 1));
-        t_nz(&t, (uint8_t)(mask >> 1));
-        t.c = take;
-        t.c_set = true;
-        if (take) {
-            t_a(&t, 1);
-            wr8((uint16_t)(CHANNEL_STATE + x), 1);
-            wr8((uint16_t)(NOTE_COUNT + x), 1);
-            for (unsigned i = 0; i < sizeof SONG_CLEARED / sizeof SONG_CLEARED[0]; i++)
-                wr8((uint16_t)(SONG_CLEARED[i] + x), 0);
-            value = rd8(CHANNEL_DEFAULT_SHAPE);
-            t_a(&t, value);
-            wr8((uint16_t)(SHAPE_LOW + x), value);
-            value = rd8((uint16_t)(CHANNEL_DEFAULT_SHAPE + 1));
-            t_a(&t, value);
-            wr8((uint16_t)(SHAPE_HIGH + x), value);
-            t_a(&t, 0x84);
-            wr8((uint16_t)(ENV_RELEASE_HIGH_AT + x), 0x84);
-            t_a(&t, 4);
-            wr8((uint16_t)(SCALE_BASE_AT + x), 4);
-            y++;
-            t.y = y;
-            t_xy_nz(&t, y);
-            value = rd8_zp_y(ZP_E8, y);
-            t_a(&t, value);
-            wr8((uint16_t)(CHANNEL_START_LOW + x), value);
-            wr8((uint16_t)(CHANNEL_LOOP_LOW + x), value);
-            y++;
-            t.y = y;
-            t_xy_nz(&t, y);
-            value = rd8_zp_y(ZP_E8, y);
-            t_a(&t, value);
-            wr8((uint16_t)(CHANNEL_START_HIGH + x), value);
-            wr8((uint16_t)(CHANNEL_LOOP_HIGH + x), value);
-            t_a(&t, 0x80);
-            t_cmp(&t, x, 4);
-            if (x >= 4)
-                wr8((uint16_t)(NOISE_AT + x), 0x80);
-            wr8((uint16_t)(FLAGS_AT + x), 0x80);
-            value = rd8(ZP_EB);
-            if ((value & 0x40) != 0) {
-                value = rd8(SONG_CHANNEL_FLAGS);
-                t_a(&t, value);
-                wr8((uint16_t)(FLAGS_AT + x), value);
-            }
+        if ((mask & 1) == 0)
+            continue;
+        wr8((uint16_t)(CHANNEL_STATE + x), 1);
+        wr8((uint16_t)(NOTE_COUNT + x), 1);
+        for (unsigned i = 0; i < sizeof SONG_CLEARED / sizeof SONG_CLEARED[0]; i++)
+            wr8((uint16_t)(SONG_CLEARED[i] + x), 0);
+        value = rd8(CHANNEL_DEFAULT_SHAPE);
+        wr8((uint16_t)(SHAPE_LOW + x), value);
+        value = rd8((uint16_t)(CHANNEL_DEFAULT_SHAPE + 1));
+        wr8((uint16_t)(SHAPE_HIGH + x), value);
+        wr8((uint16_t)(ENV_RELEASE_HIGH_AT + x), 0x84);
+        wr8((uint16_t)(SCALE_BASE_AT + x), 4);
+        y++;
+        value = rd8_zp_y(ZP_E8, y);
+        wr8((uint16_t)(CHANNEL_START_LOW + x), value);
+        wr8((uint16_t)(CHANNEL_LOOP_LOW + x), value);
+        y++;
+        value = rd8_zp_y(ZP_E8, y);
+        wr8((uint16_t)(CHANNEL_START_HIGH + x), value);
+        wr8((uint16_t)(CHANNEL_LOOP_HIGH + x), value);
+        if (x >= 4)
+            wr8((uint16_t)(NOISE_AT + x), 0x80);
+        wr8((uint16_t)(FLAGS_AT + x), 0x80);
+        value = rd8(ZP_EB);
+        if ((value & 0x40) != 0) {
+            value = rd8(SONG_CHANNEL_FLAGS);
+            wr8((uint16_t)(FLAGS_AT + x), value);
         }
-        t.x = (uint8_t)(x + 1);
-        t_xy_nz(&t, t.x);
-        t_cmp(&t, t.x, CHANNELS);
     }
-    t.x = CHANNELS;
     wr8(TEMPO_ON, 0);
     wr8(TEMPO_TICKS, 0);
     value = rd8(SONG_NEXT);
     wr8(SONG_NEXT, (uint8_t)(value | 0x80));
-    t_mask(&t, 0x80, value, true);
     value = rd8(SONG_FLAGS);
     wr8(SONG_FLAGS, (uint8_t)(value & ~0x40));
-    t_mask(&t, 0x40, value, false);
-    return t_exit(&t);
+    e.a = 0x40;
+    e.x = CHANNELS;
+    e.y = y;
+    e.c = true;
+    e.n = (value & 0x80) != 0;
+    e.v = (value & 0x40) != 0;
+    e.z = (uint8_t)(value & ~0x40) == 0;
+    e.set_a = e.set_x = e.set_y = e.set_c = e.set_n = e.set_v = e.set_z = true;
+    return e;
 }
 
 void abi_psg_start_song(void)

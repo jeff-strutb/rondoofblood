@@ -630,6 +630,8 @@ C534,abs,StageTileRows,the stage overlay's rows of 5 tile colour bytes in the MP
 81A1,abs,SpriteXMin,the 00D1 overlay's 2 lowest X values a sprite part is drawn at (bank 6C)
 81A3,abs,SpriteSetTable,the 00D1 overlay's table of sprite sets, a word per set: the frame pointers' table (bank 6C)
 93D0,abs,StageSpawnSlot,by spawn row of 8 in the stage overlay: the object slot to clear and fill
+C545,abs,HitBoxKindByFrame,the 0F6D overlay's hit-box row kind (0 to 3) by object frame (OBJ_2A68), 48 bytes up to HitBoxRows (bank 71; read by HitBoxRowByFrameKind)
+C575,abs,HitBoxRows,the 0F6D overlay's 4 hit-box rows of 4 bytes (half width, half height, X offset, Y offset) by kind; row 0 all zero (bank 71; read by HitBoxRowByFrameKind)
 93D8,abs,StageSpawnFrame,by spawn row of 8 in the stage overlay: stored to the object's 2A68 field (its frame)
 93E0,abs,StageSpawnKind,by spawn row of 8 in the stage overlay: stored to the object's 2A10 field
 93E8,abs,StageSpawnXLo,by spawn row of 8 in the stage overlay: stored to the object's X low

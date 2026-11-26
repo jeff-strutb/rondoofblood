@@ -72,6 +72,7 @@ Probe ProbeTerrainFrontColumn(uint8_t request, uint8_t object, uint8_t column, b
 
 /* Exit shims exported from the files that define them, for callers' wrappers. */
 void probe_exit_shim(Probe p);  /* object/sensing.c */
+bool probe_ran_original(Probe p);  /* object/sensing.c */
 bool probe_carry_out(Probe p, bool carry);  /* the C a probe leaves, given the C it was entered with: object/sensing.c */
 
 /* How a mover's start went: the move and whether gravity gained. */

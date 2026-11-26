@@ -1427,8 +1427,9 @@ WallProbe PlayerWall(uint8_t side)
 {
     WallProbe other = { WALL_BY_ORIGINAL };
 
-    if (rd8(zCharacterLoaded) == CHARACTER_RICHTER)
+    if (resident_at(PlayerOvlWall) == DISC(0x01B9, 0x021)) {
         return RichterWall(side);
+    }
     other.answer = player_overlay_shim(PlayerOvlWall, true, side);
     return other;
 }
@@ -1437,8 +1438,9 @@ FloorProbe PlayerFloor(void)
 {
     FloorProbe other = { FLOOR_BY_ORIGINAL };
 
-    if (rd8(zCharacterLoaded) == CHARACTER_RICHTER)
+    if (resident_at(PlayerOvlFloor) == DISC(0x01B9, 0x024)) {
         return RichterFloor();
+    }
     other.answer = player_overlay_shim(PlayerOvlFloor, false, 0);
     return other;
 }
@@ -1447,8 +1449,9 @@ ColumnsEnd PlayerMoved(void)
 {
     ColumnsEnd other = { true };
 
-    if (rd8(zCharacterLoaded) == CHARACTER_RICHTER)
+    if (resident_at(PlayerOvlMoved) == DISC(0x01B9, 0x006)) {
         return RichterReadColumns();
+    }
     player_overlay_shim(PlayerOvlMoved, false, 0);
     return other;
 }

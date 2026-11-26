@@ -678,12 +678,15 @@ Frame RichterFrame(uint8_t x, uint8_t y)
 {
     Frame frame = { 0 };
     uint8_t before;
+    uint8_t pressed;
     uint16_t hitbox;
 
     if (rd8(OBJ_3510) != 0) {
-        uint8_t forced = rd8(OBJ_3568);
+        uint8_t held = rd8(zPadHeld);
+        uint8_t forced;
 
-        wr8(zPadPrevious, rd8(zPadHeld));
+        wr8(zPadPrevious, held);
+        forced = rd8(OBJ_3568);
         wr8(zPadHeld, forced);
         wr8(zPadPressed, forced);
         frame.forced_left = (uint8_t)(rd8(OBJ_3510) - 1);
@@ -695,8 +698,12 @@ Frame RichterFrame(uint8_t x, uint8_t y)
         RichterReadPad();
         jsr_pop();
     }
-    wr8(zPadPressed, (uint8_t)(rd8(PadForcedPress) | rd8(zPadPressed) | rd8(PadForcedPressB)));
+    pressed = rd8(PadForcedPress);
+    pressed |= rd8(zPadPressed);
+    pressed |= rd8(PadForcedPressB);
+    wr8(zPadPressed, pressed);
     before = rd8(OBJ_2A68);
+    push8(before);
     jsr_push(0xA077);
     RichterClearPadOverrides();
     jsr_pop();
@@ -714,6 +721,7 @@ Frame RichterFrame(uint8_t x, uint8_t y)
     jsr_push(0xA083);
     RichterCheckItemHearts();
     jsr_pop();
+    before = pull8();
     frame.sounded = rd8(OBJ_2A68) != before;
     if (frame.sounded) {
         jsr_push(0xA08C);
@@ -3616,26 +3624,37 @@ void abi_RichterStand(void)
 ClimbStart RichterClimbStart(uint8_t column)
 {
     ClimbStart climb = { 0 };
-    uint8_t across, offset_value, x_value;
+    uint8_t across, offset_value, x_value, row;
     bool past;
 
+    jsr_push(0xA7C7);
     RichterPadOverridesOff();
+    jsr_pop();
     wr8(zFieldC4, 0);
     wr8(PlayerMayLeaveTop, 1);
     climb.column = column;
     if (rd8(zTemp01) == 0) {
         uint8_t ledge_x = rd8(zTemp00);
-        uint8_t row = rd8(OBJ_Y_LO);
 
+        push8(ledge_x);
+        jsr_push(0xA7D8);
         offset_value = RichterColumnOffset(column).value;
+        jsr_pop();
         x_value = rd8(OBJ_X_LO);
         across = add_bytes(add_bytes(offset_value, x_value, false).value, CLIMB_PAST_EDGE, false).value;
         wr8(zTemp00, across);
+        row = rd8(OBJ_Y_LO);
+        jsr_push(0xA7EA);
         past = tile_answer(RichterReadBelow((uint8_t)(row + CLIMB_LOW_BELOW),
                                             row + CLIMB_LOW_BELOW > 0xFF)) & CLIMB_EDGE_BIT;
+        jsr_pop();
+        ledge_x = pull8();
         wr8(zTemp00, ledge_x);
+        jsr_push(past ? 0xA7F4 : 0xA81C);
         offset_value = RichterColumnOffset(column).value;
-        across = sub_bytes(offset_value, ledge_x, true).value;
+        jsr_pop();
+        x_value = rd8(zTemp00);
+        across = sub_bytes(offset_value, x_value, true).value;
         if (past) {
             climb.reach = sub_bytes(across, CLIMB_PAST_EDGE, true);
             climb.state = STATE_CLIMB_LOW_EDGE;
@@ -3645,15 +3664,20 @@ ClimbStart RichterClimbStart(uint8_t column)
             climb.state = STATE_CLIMB_LOW_OPEN;
         }
     } else {
-        uint8_t row = rd8(OBJ_Y_LO);
-
+        jsr_push(0xA82C);
         offset_value = RichterColumnOffset(column).value;
+        jsr_pop();
         x_value = rd8(OBJ_X_LO);
         across = add_bytes(add_bytes(offset_value, x_value, false).value, CLIMB_PAST_EDGE, false).value;
         wr8(zTemp00, across);
+        row = rd8(OBJ_Y_LO);
+        jsr_push(0xA83E);
         past = tile_answer(RichterReadBelow((uint8_t)(row + CLIMB_HIGH_BELOW),
                                             row + CLIMB_HIGH_BELOW > 0xFF)) & CLIMB_EDGE_BIT;
+        jsr_pop();
+        jsr_push(past ? 0xA845 : 0xA853);
         offset_value = RichterColumnOffset(column).value;
+        jsr_pop();
         x_value = rd8((uint16_t)(RichterColumnX + column));
         across = sub_bytes(offset_value, x_value, true).value;
         if (past) {
@@ -3668,7 +3692,9 @@ ClimbStart RichterClimbStart(uint8_t column)
     climb.was = rd8(OBJ_27A8);
     if (climb.was != STATE_WALKING) {
         climb.animated = true;
+        jsr_push(0xA80B);
         climb.animation = RichterSetAnimation(ANIM_WALK);
+        jsr_pop();
     }
     wr8(OBJ_2800, CLIMB_STEP);
     wr8(OBJ_27A8, climb.state);

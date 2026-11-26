@@ -2466,7 +2466,7 @@ Exit EndingBegin(void)
     Exit exit = { 0 };
 
     jsr_push(0x800E);
-    ResetGameState(cpu.x, cpu.y);
+    reset_game_state_entered();
     jsr_pop();
     WR8(ZP->ENDING_PTR, 0xA3);
     WR8(ZP->ENDING_PTR_HI, 0x8A);

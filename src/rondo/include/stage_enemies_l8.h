@@ -7,6 +7,23 @@
 #include "common_objects.h"
 #include "stage_enemies_l7.h"
 
+/*
+ * Where one copy of a routine's code runs. The disc holds some bodies more than once, at other run addresses (the copies of the
+ * overlays no scene loads): a copy's return addresses (the JSR and BSR frames) and the tables its code reads move by the same
+ * shift, and nothing else of the routine changes. A body takes the layout of the copy it stands for; the loaded copy's is
+ * L8_LOADED, which keeps every constant the body had.
+ */
+typedef struct {
+    uint16_t shift;
+} L8Layout;
+
+#define L8_LOADED ((L8Layout){ 0 })
+
+static inline uint16_t l8_at(L8Layout lay, uint16_t address)
+{
+    return (uint16_t)(address + lay.shift);
+}
+
 /* The exit of the angle scales (scale_exit_shim): A, N and Z, C, V when an add ran, and Y 0. */
 static inline Ended l8_of_scale(ScaleResult r)
 {
@@ -790,15 +807,15 @@ L8Arm LoadRecordLaunchByFacing(uint8_t slot);
 L8St16BounceArm StepListBounceOffFloorAtRandom(uint8_t slot, uint8_t y_entry);
 L8Arm StepListFallThenLandOrClear(uint8_t slot, uint8_t y_entry);
 L8Arm StepListThenClearWhenEnded(uint8_t slot, uint8_t y_entry);
-L8St16StateJump CountFramesThenRunByState(uint8_t slot);
-L8Arm LoadRecordLaunchSideways(uint8_t slot);
+L8St16StateJump CountFramesThenRunByState(uint8_t slot, L8Layout lay);
+L8Arm LoadRecordLaunchSideways(uint8_t slot, L8Layout lay);
 L8St16TurnArm StepListFallThenTurnToPlayer(uint8_t slot, uint8_t y_entry);
 L8St16SpawnArm SoundAndSpawnEveryFourthFrame(uint8_t slot, uint8_t y_entry);
 L8St16MoveXArm StepListSpawnAndMoveXOrClear(uint8_t slot, uint8_t y_entry);
-L8Arm ClearIfAboveOrFall(uint8_t slot);
-L8St16FlingArm LoadRecordRandomFlingOrFall(uint8_t slot);
+L8Arm ClearIfAboveOrFall(uint8_t slot, L8Layout lay);
+L8St16FlingArm LoadRecordRandomFlingOrFall(uint8_t slot, L8Layout lay);
 L8St16ScreenArm LoadRecordThenClearEnemiesAtScreen2(uint8_t slot, uint8_t y_entry);
-L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot);
+L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot, L8Layout lay);
 
 /* object/enemies_l8_st17.c */
 /* StartRingOfPieces: the last pass of the loop: the slot search, and when the last number was placed the number and the last byte copied. */

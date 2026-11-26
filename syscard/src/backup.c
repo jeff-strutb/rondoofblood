@@ -130,7 +130,7 @@ void abi_bm_close(void)
  * WAITS: only through bm_close, on the not formatted path.
  * Entry: A (only kept). Exit, formatted: A the first byte, N 1, Z 0, C 1, X $FF, I set. Exit, not: its
  * caller's caller is next, A $FF, N 1, Z 0, X where it differed, C from that compare, I clear.
- * Not run by any script: the not formatted path.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): the not formatted path.
  */
 BackupCheck bm_open_formatted(uint8_t a)
 {
@@ -240,7 +240,7 @@ static CardExit window_exit(BackupWindow w)
  * HOW: A 16-bit decrement of CardByteCount.
  * WAITS: no.
  * Entry: CardByteCount. Exit: A its two bytes ORed, N and Z from that. X, Y, C, V kept. Returns A.
- * Not run by any script: a low byte of zero, which takes one from the high byte.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): a low byte of zero, which takes one from the high byte.
  */
 uint8_t bm_count_down(void)
 {
@@ -271,7 +271,7 @@ void abi_bm_count_down(void)
  * Entry: _AX the name's address, backup memory open. Exit, found: C clear, A the file's high
  * byte, N and Z from it, Y $0C, V from taking the name's offset off again. Exit, not found: C
  * set, A 0, N 0, Z 1, Y 1, V from the last step, or kept if there were no files. X the saved MPR.
- * Not run by any script: a name that does not match a file.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): a name that does not match a file.
  */
 CardExit bm_find_file(void)
 {
@@ -373,7 +373,7 @@ typedef struct {
  * Entry: _AX the password's address; A (only kept; opened with the password's first byte). Exit,
  * wrong password: A 1, N 0, Z 0, Y where it differed, C from that compare. Exit: A 0, N 0, Z 1, X $FF,
  * Y the bytes short of a page, C whether all of it answered, I clear. V kept.
- * Not run by any script: the whole routine.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): the whole routine.
  */
 BackupAccess bm_format(uint8_t a)
 {
@@ -448,7 +448,7 @@ BackupAccess bm_format(uint8_t a)
  * WAITS: only through bm_close.
  * Entry: A (only kept). Exit: A 0, N 0, Z 1, X $FF, C and V from the subtract's high byte, I clear;
  * or $FF as bm_open_formatted if not formatted. Y kept.
- * Not run by any script: a result below zero, which puts zero in _CX.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): a result below zero, which puts zero in _CX.
  */
 BackupAccess bm_free(uint8_t a)
 {
@@ -504,7 +504,7 @@ BackupAccess bm_free(uint8_t a)
  * Entry: CardFileLo. Exit: A 0, N 0, Z 1, Y the low byte of four plus the bytes summed, C and V
  * from the last add's high byte. X kept. CardPointerLo-Hi the file, its high byte moved on by
  * the pages crossed.
- * Not run by any script: a file crossing a page of the memory.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): a file crossing a page of the memory.
  */
 CardExit bm_sum_file(void)
 {
@@ -641,7 +641,7 @@ void abi_bm_place_span(void)
  * Exit, forward: X 2, A the high bytes' difference, N 0, Z 0, C 1, V from that subtract.
  * Exit, backward: X 0, A the destination's new high byte, N 0, Z 1, C and V from moving it on.
  * Y kept.
- * Not run by any script: the forward way.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): the forward way.
  */
 CardExit bm_move_direction(void)
 {
@@ -712,7 +712,7 @@ void abi_bm_move_direction(void)
  * Entry: CardPointerLo the source, CardCopyLo the destination, CardByteCount. Exit: A 0, Y 1, N
  * and Z from loading Y (CLA leaves them), CardPointerLo the next free byte. Nothing to
  * move: X, C, V kept. Else X, C and V as bm_move_direction leaves them.
- * Not run by any script: the forward move.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): the forward move.
  */
 CardExit bm_move(void)
 {
@@ -787,7 +787,7 @@ void abi_bm_move(void)
  * WAITS: no.
  * Entry: CardPointerLo, CardCopyLo, CardByteCount. Exit: A 0, N 0, Z 1, X the saved MPR, Y the
  * low byte of the count, C bit 4 of the caller's old high byte. V kept.
- * Not run by any script: a copy crossing a page.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): a copy crossing a page.
  */
 CardExit bm_copy_out(void)
 {
@@ -831,7 +831,7 @@ void abi_bm_copy_out(void)
  * HOW: As bm_copy_out, the other way.
  * WAITS: no.
  * Entry: CardPointerLo, CardCopyLo, CardByteCount. Exit: as bm_copy_out.
- * Not run by any script: a copy crossing a page.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): a copy crossing a page.
  */
 CardExit bm_copy_in(void)
 {
@@ -879,7 +879,7 @@ void abi_bm_copy_in(void)
  * Entry: _AX the name, CardCopyLo-Hi. Exit, made: C clear, A 0, N 0, Z 1, Y 1, X the saved MPR, V
  * from moving the next free byte on. Exit, refused: C set, A the high byte of the test, N and Z
  * from it, V from it. X and Y kept.
- * Not run by any script: the refused exit (no room).
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): the refused exit (no room).
  */
 CardExit bm_new_file(void)
 {
@@ -976,7 +976,7 @@ static void access_exit(BackupAccess access)
  * past the end: _CX 0, A 0, Y 1, C 1, X and V as bm_find_file. Read: bytes copied, X the saved MPR,
  * Y the count's low byte, C bit 4 of _BH; nothing copied, X as bm_find_file, Y 1, C from the cut or
  * the place; V from the cut or the place.
- * Not run by any script: an offset past the end, a bad checksum.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): an offset past the end, a bad checksum.
  */
 BackupAccess bm_read(uint8_t a)
 {
@@ -1129,7 +1129,7 @@ void abi_bm_read(void)
  * formatted, as bm_open_formatted. No room for a header: A 1, X as bm_find_file, Y 1, C, V as
  * bm_new_file. No room to grow: A 1, X the saved MPR, Y 1, C 0, V from that compare. Written: A 0,
  * X the saved MPR, Y 3, C and V from negating the sum's high byte.
- * Not run by any script: a write that fits the file, a refused header, no room to grow.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): a write that fits the file, a refused header, no room to grow.
  */
 BackupAccess bm_write(uint8_t a)
 {
@@ -1410,7 +1410,7 @@ void abi_bm_delete(void)
  * Y $0D, C 1, V from moving CardFileLo on by 4 to the name. No such file: A 1, X $FF, Y 1, _AL
  * the files counted, C and V from the high byte of the last step past a file, or C 1 and V kept
  * if there was none.
- * Not run by any script: everything after the check of the header.
+ * Not run by any script (the unit calls of card_unit_backup judged the routine, not this arm): everything after the check of the header.
  */
 BackupAccess bm_files(uint8_t a)
 {

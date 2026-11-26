@@ -230,13 +230,7 @@ static Ended run_objects(uint8_t entry_x, void (*by_kind)(void))
         if (dispatch) {
             sync(&e);
             jsr_push(0xA115);
-            cpu.x = x;
-            if (by_kind != 0) {
-                by_kind();
-            } else {
-                call_original(0xA313);
-            }
-            x = cpu.x;
+            x = call_kind_dispatch(x, by_kind);
             jsr_pop();
             e = ended_kept();
         }

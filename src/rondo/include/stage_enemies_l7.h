@@ -458,6 +458,8 @@ SoundEnd StepShootOnCue(uint8_t slot, uint8_t y);
 #define LSR8_VALUE(field, carry_var) \
     RMW8(field, old_s, ((carry_var) = (old_s & 1) != 0, old_s >> 1))
 
+/* The call the loop makes to its overlay's dispatch (JSR $A313): the wrapper of the overlay's own DispatchByKind, or the original code at $A313 when it has none; gives X as the object's code left it. */
+uint8_t call_kind_dispatch(uint8_t x, void (*abi_dispatch)(void));
 Ended RunObjects(uint8_t entry_x);
 Ended RunObjects07D9(uint8_t entry_x);
 Ended RunObjects0889(uint8_t entry_x);

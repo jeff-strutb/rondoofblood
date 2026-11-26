@@ -1084,7 +1084,7 @@ typedef struct {
     Sum diff;
 } L8St19FollowArm;
 
-L8Load LoadRecordInStateZero(uint8_t slot);
+L8Load LoadRecordInStateZero(uint8_t slot, L8Layout lay);
 L8St19FaceArm FaceThePlayerByStateTable(uint8_t slot);
 Ended l8_face_state_table_exit_shim(L8St19FaceArm r);
 L8St19HurtFlagArm StateTableHurtFlag(uint8_t slot);

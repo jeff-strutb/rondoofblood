@@ -45,10 +45,10 @@ static StageExit clear_bit_rows(uint8_t entry_x, SetAddress set)
         jsr_pop();
         y = pull8();
         byte = RD8(VDC->data_lo);
-        byte = (uint8_t)(byte & rd8((uint16_t)(StageClearBitLo + y)));
+        byte = (uint8_t)(byte & TBL8(StageClearBitLo, y));
         WR8(VDC->data_lo, byte);
         byte = RD8(VDC->data_hi);
-        byte = (uint8_t)(byte & rd8((uint16_t)(StageClearBitHi + y)));
+        byte = (uint8_t)(byte & TBL8(StageClearBitHi, y));
         WR8(VDC->data_hi, byte);
         entry_x = pull8();
         a = RD8(ZP->temp0a);

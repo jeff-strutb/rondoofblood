@@ -172,7 +172,7 @@ void abi_SetUpStageObjects026E(void)
 /*
  * @routine 026E:309 SpawnStageObjectsRows01026E
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 026E, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 026E, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -351,7 +351,7 @@ void abi_SetUpStageObjects031E(void)
 /*
  * @routine 031E:309 SpawnStageObjectsRows01031E
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 031E, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 031E, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -530,7 +530,7 @@ void abi_SetUpStageObjects043E(void)
 /*
  * @routine 043E:309 SpawnStageObjectsRows01043E
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 043E, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 043E, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -709,7 +709,7 @@ void abi_SetUpStageObjects064E(void)
 /*
  * @routine 064E:309 SpawnStageObjectsRows01064E
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 064E, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 064E, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -888,7 +888,7 @@ void abi_SetUpStageObjects10DE(void)
 /*
  * @routine 10DE:309 SpawnStageObjectsRows0110DE
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 10DE, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 10DE, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -1067,7 +1067,7 @@ void abi_SetUpStageObjects122E(void)
 /*
  * @routine 122E:309 SpawnStageObjectsRows01122E
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 122E, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 122E, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -1246,7 +1246,7 @@ void abi_SetUpStageObjects1A2E(void)
 /*
  * @routine 1A2E:309 SpawnStageObjectsRows011A2E
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 1A2E, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 1A2E, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -1425,7 +1425,7 @@ void abi_SetUpStageObjects1B8E(void)
 /*
  * @routine 1B8E:309 SpawnStageObjectsRows011B8E
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 1B8E, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 1B8E, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -1604,7 +1604,7 @@ void abi_SetUpStageObjects1CEE(void)
 /*
  * @routine 1CEE:309 SpawnStageObjectsRows011CEE
  * @run 6B:8B09
- * @unreachable 6B:8B09-6B:8B22 no read the game makes loads disc sector 1CEE, so these bytes are never in memory.
+ * @unreachable 6B:8B09-6B:8B21 no read the game makes loads disc sector 1CEE, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector

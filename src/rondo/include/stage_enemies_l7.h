@@ -323,8 +323,8 @@ typedef struct {
 typedef struct {
     ObjArm arm;
     Probe probe;
-} HopArm;
-HopArm HopAndSettle(uint8_t slot, uint8_t column, bool carry_in);
+} L7HopArm;
+L7HopArm HopAndSettle(uint8_t slot, uint8_t column, bool carry_in);
 ObjArm SetHitboxByFrame(uint8_t slot);
 ObjArm CountDownThenAdvance(uint8_t slot);
 ObjArm CountDownAngleThenAdvance(uint8_t slot);
@@ -354,13 +354,13 @@ typedef struct {
     WalkArm walk;
     ObjArm mid;
     ObjArm tail;
-} ChaseArm;
+} L7ChaseArm;
 BounceArm BounceWithHeight4(uint8_t slot, uint8_t column);
 WalkArm WalkByPhase(uint8_t slot, uint8_t phase, uint8_t column);
 AttackArm WalkAndAttackA(uint8_t slot, uint8_t column);
 AttackArm WalkAndAttackB(uint8_t slot, uint8_t column);
-ChaseArm ChasePlayerA(uint8_t slot, uint8_t column, bool carry_in);
-ChaseArm ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in);
+L7ChaseArm ChasePlayerA(uint8_t slot, uint8_t column, bool carry_in);
+L7ChaseArm ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in);
 
 typedef struct {
     ObjArm arm;

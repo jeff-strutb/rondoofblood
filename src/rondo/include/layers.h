@@ -65,6 +65,10 @@ Sum ScrollXPlusOffsetC(uint8_t entry, uint8_t index);
 Sum ScrollYPlusOffset(uint8_t entry, uint8_t index);
 Sum ScrollYPlusOffsetB(uint8_t entry, uint8_t index);
 AdvanceResult AdvanceScrollX(uint8_t entry);
+/* The bodies of AdvanceScrollX, ScrollXPlusOffset and ScrollYPlusOffset with the overlay's table given (copies in other overlays differ only there). */
+AdvanceResult AdvanceScrollXAt(uint8_t entry, uint16_t table);
+Sum ScrollXPlusOffsetAt(uint8_t entry, uint8_t index, uint16_t table);
+Sum ScrollYPlusOffsetAt(uint8_t entry, uint8_t index, uint16_t table);
 AdvanceResult AdvanceScrollXB(uint8_t entry);
 AdvanceResult AdvanceScrollXC(uint8_t entry);
 AdvanceResult AdvanceScrollY(uint8_t entry);

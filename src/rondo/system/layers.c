@@ -537,6 +537,17 @@ static ScrollOffsetShape y_offset_shape(uint16_t table)
     return shape;
 }
 
+/* The bodies of ScrollXPlusOffset and ScrollYPlusOffset with the overlay's table given: the never-loaded copies of the routine in other overlays differ only there. */
+Sum ScrollXPlusOffsetAt(uint8_t entry, uint8_t index, uint16_t table)
+{
+    return scroll_plus_offset(entry, index, x_offset_shape(table));
+}
+
+Sum ScrollYPlusOffsetAt(uint8_t entry, uint8_t index, uint16_t table)
+{
+    return scroll_plus_offset(entry, index, y_offset_shape(table));
+}
+
 /*
  * @routine 0255:75C ScrollXPlusOffset
  * @run 6F:A75C
@@ -690,6 +701,12 @@ static AdvanceResult advance_scroll(uint8_t entry, AdvanceShape shape)
     result.sum = sum;
     result.sign = sign;
     return result;
+}
+
+/* AdvanceScrollX's body with the overlay's sign table given, for the copies in other overlays. */
+AdvanceResult AdvanceScrollXAt(uint8_t entry, uint16_t table)
+{
+    return advance_scroll(entry, x_advance_shape(table));
 }
 
 /*

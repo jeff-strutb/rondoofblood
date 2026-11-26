@@ -3678,6 +3678,7 @@ int check_exec(uint32_t pc)
         if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
             unit.active = 0;
             chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
+        last_pc = unit.saved.pc;     /* the machine put back where it was: the arrival there is no entry (no tail from the mark) */
             prev_op = -1;
             return 0;
         }
@@ -3697,6 +3698,7 @@ int check_exec(uint32_t pc)
         if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
             unit.active = 0;
             chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
+        last_pc = unit.saved.pc;     /* the machine put back where it was: the arrival there is no entry (no tail from the mark) */
         }
         return 0;
     }
@@ -3712,6 +3714,7 @@ int check_exec(uint32_t pc)
         if (depth)
             marker(EV_UEND, &r, 0, 0, 0);
         chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
+        last_pc = unit.saved.pc;     /* the machine put back where it was: the arrival there is no entry (no tail from the mark) */
         prev_op = -1;
         return 0;
     }

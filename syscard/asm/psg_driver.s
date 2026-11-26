@@ -723,3 +723,92 @@ psg_volume_envelope_at28:
     stz a:$24F7,x
     stz a:$24FD,x
     jmp psg_volume_envelope_at16
+
+; @card 02:CD45 psg_start_song
+; WHAT IT DOES: Starts the song that was asked for, if one was: sets up each channel the song's header names.
+; HOW: $22E1 the song asked for (bit 7 set: none, or already started); the song's header found through the pointer at $22D0 and the list
+; of headers, its first byte a mask of channels (bit 7 set: it is a song); for each channel in the mask the state, counts and effects
+; arrays cleared, the default shape, balance and scale set, the channel's start pointer taken from the header, the flags set from
+; $22E2 if the header's bit 6 says so; then the fade cleared, the song marked started and the player's done flag cleared.
+; WAITS: no.
+; Entry: nothing. Exit: A $40, X 6, Y the bytes of the header read, C 1, N and V from the done flags' old byte, Z from A and it.
+psg_start_song:
+    lda a:$22E1
+    bpl psg_start_song_at0
+psg_start_song_at12:
+    rts
+psg_start_song_at0:
+    asl a
+    tay
+    lda a:$22D0
+    sta z:$EA
+    lda a:$22D1
+    sta z:$EB
+    lda (<$EA),y
+    sta z:$E8
+    iny
+    lda (<$EA),y
+    sta z:$E9
+    lda (<$E8)
+    bpl psg_start_song_at12
+    sta z:$EA
+    sta z:$EB
+    cly
+    clx
+psg_start_song_at3:
+    lsr z:$EA
+    bcc psg_start_song_at10
+    lda #$01
+    sta a:$2607,x
+    sta a:$24A9,x
+    stz a:$260D,x
+    stz a:$24B5,x
+    stz a:$24AF,x
+    stz a:$2527,x
+    stz a:$254B,x
+    stz a:$2533,x
+    stz a:$2557,x
+    stz a:$2581,x
+    stz a:$2593,x
+    stz a:$25E1,x
+    stz a:$24CD,x
+    stz a:$255D,x
+    stz a:$2569,x
+    stz a:$2575,x
+    stz a:$24D3,x
+    lda a:$D8A1
+    sta a:$24D9,x
+    lda a:$D8A2
+    sta a:$24DF,x
+    lda #$84
+    sta a:$2509,x
+    lda #$04
+    sta a:$2497,x
+    iny
+    lda (<$E8),y
+    sta a:$248B,x
+    sta a:$24C1,x
+    iny
+    lda (<$E8),y
+    sta a:$2491,x
+    sta a:$24C7,x
+    lda #$80
+    cpx #$04
+    bcc psg_start_song_at8
+    sta a:$2601,x
+psg_start_song_at8:
+    sta a:$25FF,x
+    bbr6 $EB,psg_start_song_at10
+    lda a:$22E2
+    sta a:$25FF,x
+psg_start_song_at10:
+    inx
+    cpx #$06
+    bcc psg_start_song_at3
+    stz a:$2613
+    stz a:$2615
+    lda #$80
+    tsb a:$22E1
+    lda #$40
+    trb a:$22DE
+    rts

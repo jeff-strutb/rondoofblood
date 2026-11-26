@@ -12,15 +12,15 @@ attract_8A,serve-all,STOPPED,-3,22117/-1,0,,stopped at frame 22117: the hybrid c
 attract_8E,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
 boot,serve-all,IDENTICAL,-1,900/900,0,,,9b724a6
 camera_modes,serve-all,IDENTICAL,-1,16354/16354,0,,,9b724a6
-card_unit_adpcm,serve-all,NORESULT,,,,,a7: card_unit_adpcm: hybrid exit 2: core's default,f40e79f
-card_unit_backup,serve-all,DIVERGENT,827,827/-1,3,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 13482, past 12376 of the original's accesses it has not made first: write 1F01F3 (00) at 1069 (a read the C skips is reported here, on the access after it)",stopped at frame 827: the hybrid calls card_card_irq1 (SF2); the record's next is r0046_366 (SF3),f40e79f
-card_unit_bank2,serve-all,STOPPED,-3,826/-1,7,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 2327, past 795 of the original's accesses it has not made first: write 1F01F3 (00) at 1068 (a read the C skips is reported here, on the access after it)",stopped at frame 826: a call into original code the record does not have,f40e79f
-card_unit_cd,serve-all,NORESULT,,,,,a7: card_unit_cd: hybrid exit 2: he core's default,f40e79f
-card_unit_cplay,serve-all,NORESULT,,,,,a7: card_unit_cplay: hybrid exit 2: core's default,f40e79f
-card_unit_misc,serve-all,NORESULT,,,,,a7: card_unit_misc: hybrid exit 2:  core's default,f40e79f
-card_unit_read,serve-all,DIVERGENT,827,879/-1,1163,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 22297, past 20604 of the original's accesses it has not made first: write 1F01F3 (00) at 1075 (a read the C skips is reported here, on the access after it)","stopped at frame 884: a unit call ran over 2,000,000 instructions",f40e79f
-card_unit_trans,serve-all,NORESULT,,,,,a7: card_unit_trans: hybrid exit 2: core's default,f40e79f
-card_unit_vdc,serve-all,DIVERGENT,827,830/-1,2,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1084, past 12 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,f40e79f
+card_unit_adpcm,serve-all,IDENTICAL,-1,902/902,0,,,d89c150
+card_unit_backup,serve-all,IDENTICAL,-1,911/911,0,,,d89c150
+card_unit_bank2,serve-all,STOPPED,-3,826/-1,1,c04E07 CALL call 1 frame 826 at card_unit_bank2.txt:6: C calls CE07; the original made no such call,stopped at frame 826: a call into original code the record does not have,d89c150
+card_unit_cd,serve-all,IDENTICAL,-1,901/901,0,,,d89c150
+card_unit_cplay,serve-all,IDENTICAL,-1,1013/1013,0,,,d89c150
+card_unit_misc,serve-all,IDENTICAL,-1,894/894,0,,,d89c150
+card_unit_read,serve-all,IDENTICAL,-1,879/879,0,,,d89c150
+card_unit_trans,serve-all,IDENTICAL,-1,904/904,0,,,d89c150
+card_unit_vdc,serve-all,STOPPED,-3,834/-1,0,,stopped at frame 834: the hybrid calls ex_rcron (SFD); the record's next is r0043_174 (SFF),d89c150
 gameover,serve-all,IDENTICAL,-1,29092/29092,0,,,9b724a6
 menu_files,serve-all,IDENTICAL,-1,10746/10746,0,,,9b724a6
 menu_names,serve-all,IDENTICAL,-1,13582/13582,0,,,9b724a6
@@ -45,4 +45,4 @@ stage_0B,serve-all,STOPPED,-3,29189/-1,0,,stopped at frame 29189: the hybrid cal
 stage_0C,serve-all,IDENTICAL,-1,35092/35092,0,,,9b724a6
 stage_0E,serve-all,DIVERGENT,30232,35092/35092,0,,,f40e79f
 stage_10,serve-all,DIVERGENT,35092,35092/35092,0,,,f40e79f
-unit_video,serve-all,DIVERGENT,827,830/-1,5,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1085, past 7 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,f40e79f
+unit_video,serve-all,IDENTICAL,-1,834/834,0,,,d89c150

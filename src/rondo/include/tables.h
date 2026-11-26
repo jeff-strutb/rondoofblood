@@ -147,4 +147,18 @@ _Static_assert(RasterEffects + 58 <= 0x10000, "RasterEffects runs past the addre
 #define RasterStartEntries_TBL_ELEM 2
 _Static_assert(RasterStartEntries + 147 <= 0x10000, "RasterStartEntries runs past the address space");
 
+/* StageClearBitLo: 16 bytes of u8, bank 6B, 2 place(s) on the disc from 127B27; low byte of the stage bit by stage index 0 to 15 */
+#define StageClearBitLo_TBL StageClearBitLo
+#define StageClearBitLo_TBL_BANK 0x6B
+#define StageClearBitLo_TBL_LEN 16
+#define StageClearBitLo_TBL_ELEM 1
+_Static_assert(StageClearBitLo + 16 <= 0x10000, "StageClearBitLo runs past the address space");
+
+/* StageClearBitHi: 16 bytes of u8, bank 6B, 2 place(s) on the disc from 127B2F; high byte of the stage bit by stage index 0 to 15 */
+#define StageClearBitHi_TBL StageClearBitHi
+#define StageClearBitHi_TBL_BANK 0x6B
+#define StageClearBitHi_TBL_LEN 16
+#define StageClearBitHi_TBL_ELEM 1
+_Static_assert(StageClearBitHi + 16 <= 0x10000, "StageClearBitHi runs past the address space");
+
 #endif

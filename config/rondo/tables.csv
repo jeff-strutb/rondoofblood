@@ -17,5 +17,7 @@ Effect16Lines,5,u8,RasterEffect16,next line by step,69,2231C,1,2,SETTLED
 Effect17Bands,5,u8,RasterEffect17,band by step; index 1 to 4,69,22384,1,1,SETTLED
 Effect17Lines,5,u8,RasterEffect17,next line by step,69,2238A,1,2,SETTLED
 DeepWave,16,u16le,RasterEffect24,X offset words by wave phase,69,226A0,1,16,SETTLED
-RasterEffects,58,u16le,RasterInterrupt,the effect handlers' addresses by raster effect,69,21CE9,1,24,SETTLED
-RasterStartEntries,147,u16le,RasterStart|CopyBands4Down|CopyBands3Down,band copy entry by raster effect,69,21C04,1,26,SETTLED
+RasterEffects,58,u16le,RasterInterrupt,the effect handlers' addresses by raster effect,69,21CE9,1,18,SETTLED
+RasterStartEntries,147,u16le,RasterStart|CopyBands4Down|CopyBands3Down,band copy entry by raster effect,69,21C04,1,19,SETTLED
+StageClearBitLo,16,u8,ClearStageBitRows|ClearStageBitRowsLong|ClearStageBitRowsFour,low byte of the stage bit by stage index 0 to 15,6B,127B27,2,6,SETTLED
+StageClearBitHi,16,u8,ClearStageBitRows|ClearStageBitRowsLong|ClearStageBitRowsFour,high byte of the stage bit by stage index 0 to 15,6B,127B2F,2,4,SETTLED

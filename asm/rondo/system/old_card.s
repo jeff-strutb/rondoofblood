@@ -194,7 +194,7 @@ OldCardMain_at4:
     jsr $E09F
     jsr $E07B
     jsr InitPlayerObject
-    jsr $4846
+    jsr InitObject1
     jsr $4AFC
     jsr $49A2
     lda #$37
@@ -264,7 +264,7 @@ StepDemoFrame:
     stz a:$2A88
 StepDemoFrame_at0:
     jsr RunPlayerObject
-    jsr $4863
+    jsr RunObject1
     jsr $4B11
     jsr $49AD
     jsr ScrollWithPlayer
@@ -800,8 +800,8 @@ InitPlayerObject:
 
 ; @routine 0023:6DF RunPlayerObject
 ; @run 80:46DF
-; WHAT IT DOES: Runs the player object's handler for its state (the byte at $34B8): stand, walk, jump, and two the
-; program has at $4812 and $4824.
+; WHAT IT DOES: Runs the player object's handler for its state (the byte at $34B8): stand, walk, jump, attack, and
+; knocked back.
 ; HOW: The state doubled indexes the table at $46F3; the word goes to zTemp00-01 and an indirect jump takes it.
 ; WAITS: no.
 ; Entry: nothing. Exit: X 0; the rest as the handler leaves them.
@@ -975,4 +975,277 @@ PlayerJump_at0:
     stz a:OBJ_VY_HI,x
     jmp $4720
 PlayerJump_at1:
+    rts
+
+; @routine 0024:00F PlayerHurtFromAttack
+; @run 80:480F
+; WHAT IT DOES: The attack's way to the knock-back.
+; HOW: A jump to $4769 in PlayerStand.
+; WAITS: no.
+; Entry: X the object. Exit: as player_exit_shim's hurt arm. X kept.
+PlayerHurtFromAttack:
+    jmp PlayerStand_at0
+
+; @routine 0024:012 PlayerAttack
+; @run 80:4812
+; WHAT IT DOES: The player attacking: knocked back when hurt; otherwise the attack's animation, and standing again
+; when its list has ended.
+; HOW: StartObjectAnimation on the state's list, its A tested through a TAY; $4720 to stand.
+; WAITS: no.
+; Entry: X the object. Exit: as player_exit_shim's arms. X kept.
+PlayerAttack:
+    lda a:OBJ_3250,x
+    bne PlayerHurtFromAttack
+    lda a:OBJ_34B8,x
+    jsr StartObjectAnimation
+    tay
+    bne PlayerAttack_at0
+    jmp $4720
+PlayerAttack_at0:
+    rts
+
+; @routine 0024:024 PlayerKnockedBack
+; @run 80:4824
+; WHAT IT DOES: The player knocked back: gravity ($40 a frame on the Y velocity), the move, and the knock-back's
+; animation (list 4) until it is back at the floor (Y $A0), where it stands.
+; HOW: The velocity word's add, the program's copy of ApplyVelocity, then $4720 or StartObjectAnimation.
+; WAITS: no.
+; Entry: X the object. Exit: as player_exit_shim's animated arm, V that of the move. X kept.
+PlayerKnockedBack:
+    lda #$40
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    cla
+    adc a:OBJ_VY_HI,x
+    sta a:OBJ_VY_HI,x
+    jsr $4624
+    lda a:OBJ_Y_LO,x
+    cmp #$A0
+    bcc PlayerKnockedBack_at0
+    jmp $4720
+PlayerKnockedBack_at0:
+    lda #$04
+    jmp StartObjectAnimation
+
+; @routine 0024:046 InitObject1
+; @run 80:4846
+; WHAT IT DOES: Empties object 1, the program's second character, and starts it off the right of the screen: X $140,
+; Y $A0, facing left, X velocity $FF00.
+; HOW: The program's copy of ClearObject, then five stores.
+; WAITS: no.
+; Entry: nothing. Exit: A $FF, X 1, N and Z from A. Y, C and V kept.
+InitObject1:
+    ldx #$01
+    jsr $4584
+    lda #$A0
+    sta a:OBJ_Y_LO,x
+    lda #$01
+    sta a:OBJ_X_HI,x
+    sta a:OBJ_2AC0,x
+    lda #$40
+    sta a:OBJ_X_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    rts
+
+; @routine 0024:063 RunObject1
+; @run 80:4863
+; WHAT IT DOES: Runs object 1's handler for its state: wait for the scroll's end, walk in, wait, jump, hold the
+; thrown piece, step left, step right.
+; HOW: The state doubled indexes the table at $4877; the word goes to zTemp00-01 and an indirect jump takes it.
+; WAITS: no.
+; Entry: nothing. Exit: X 1; the rest as the handler leaves them.
+RunObject1:
+    ldx #$01
+    lda a:OBJ_34B8,x
+    asl a
+    tay
+    lda a:$4877,y
+    sta z:zTemp00
+    lda a:$4878,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 0024:085 Object1WaitForScroll
+; @run 80:4885
+; WHAT IT DOES: Object 1's first state: waits until the scroll has reached its end ($3E01 set), then walks in.
+; HOW: One test, then the state's increment.
+; WAITS: no.
+; Entry: X the object. Exit: A $3E01's byte; N and Z from it, or from the state's increment. X, Y, C and V kept.
+Object1WaitForScroll:
+    lda a:ScrollXFrac+1
+    beq Object1WaitForScroll_at0
+    inc a:OBJ_34B8,x
+Object1WaitForScroll_at0:
+    rts
+
+; @routine 0024:08E Object1WalkIn
+; @run 80:488E
+; WHAT IT DOES: Object 1 walking in from the right: the walk's animation (list 8), the move by its velocity, and at
+; X $C0 a wait ($489D, which the steps left and right end in too).
+; HOW: StartObjectAnimation, the program's copy of ApplyVelocity, a compare; then the wait's stores and the program's
+; copy of NextRandom.
+; WAITS: no.
+; Entry: X the object. Exit: as object1_exit_shim. X kept.
+Object1WalkIn:
+    lda #$08
+    jsr StartObjectAnimation
+    jsr $4624
+    lda a:OBJ_X_LO,x
+    cmp #$C0
+    bne Object1WalkIn_at0
+Object1WalkIn_at1:
+    lda #$02
+    sta a:OBJ_34B8,x
+    stz a:OBJ_VX_HI,x
+    jsr $4692
+    and #$3F
+    ora #$40
+    sta a:OBJ_3510,x
+Object1WalkIn_at0:
+    rts
+
+; @routine 0024:0B0 Object1FacePlayer
+; @run 80:48B0
+; WHAT IT DOES: Where object 1 goes after a jump or a throw: a wait when the player is on the other half of the
+; screen, otherwise a walk toward the screen's other side.
+; HOW: The sign of the two X bytes' EOR; the animation's counters zeroed; the state from the X byte's sign.
+; WAITS: no.
+; Entry: X the object. Exit: as object1_exit_shim. X kept, and Y, C and V on the walk's arm.
+Object1FacePlayer:
+    lda a:OBJ_X_LO,x
+    eor a:OBJ_X_LO
+    bmi Object1WalkIn_at1
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda a:OBJ_X_LO,x
+    bpl Object1FacePlayer_at0
+    lda #$05
+    sta a:OBJ_34B8,x
+    rts
+Object1FacePlayer_at0:
+    lda #$06
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 0024:0CF Object1Wait
+; @run 80:48CF
+; WHAT IT DOES: Object 1 waiting: when the wait runs out, one time in four on the right half of the screen it throws a
+; piece (object 2 at its place, frame $2E, state 4 for $80 frames); otherwise it jumps (Y velocity $FB00, state 3).
+; HOW: The wait's decrement, the program's copy of NextRandom, a test of the X byte's sign.
+; WAITS: no.
+; Entry: X the object. Exit: as object1_exit_shim. X kept.
+Object1Wait:
+    dec a:OBJ_3510,x
+    bne Object1Wait_at0
+    jsr $4692
+    and #$03
+    bne Object1Wait_at1
+    lda a:OBJ_X_LO,x
+    bpl Object1Wait_at1
+    lda a:OBJ_X_LO,x
+    sta a:OBJ_X_LO+1,x
+    lda a:OBJ_Y_LO,x
+    sta a:OBJ_Y_LO+1,x
+    lda #$2E
+    sta a:OBJ_2A68+1,x
+    lda #$04
+    sta a:OBJ_34B8,x
+    lda #$80
+    sta a:OBJ_3510,x
+Object1Wait_at0:
+    rts
+Object1Wait_at1:
+    stz a:OBJ_3408,x
+    stz a:OBJ_3460,x
+    lda #$FB
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    lda #$03
+    sta a:OBJ_34B8,x
+    rts
+
+; @routine 0024:110 Object1Jump
+; @run 80:4910
+; WHAT IT DOES: Object 1 in the air: gravity ($20 a frame), the move, a landing at Y $A0, the jump's animation (list
+; 9); when its list has ended the velocity's high bytes are zeroed and it goes on as Object1FacePlayer.
+; HOW: As PlayerJump, its A tested through a TAY.
+; WAITS: no.
+; Entry: X the object. Exit: as object1_exit_shim, V that of the move. X kept.
+Object1Jump:
+    lda #$20
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    cla
+    adc a:OBJ_VY_HI,x
+    sta a:OBJ_VY_HI,x
+    jsr $4624
+    lda a:OBJ_Y_LO,x
+    cmp #$A0
+    bcc Object1Jump_at0
+    lda #$A0
+    sta a:OBJ_Y_LO,x
+Object1Jump_at0:
+    lda #$09
+    jsr StartObjectAnimation
+    tay
+    bne Object1Jump_at1
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VY_HI,x
+    jmp Object1FacePlayer
+Object1Jump_at1:
+    rts
+
+; @routine 0024:141 Object1Hold
+; @run 80:4941
+; WHAT IT DOES: Object 1 holding the thrown piece: when the hold runs out the piece (object 2) loses its frame and
+; object 1 goes on as Object1FacePlayer.
+; HOW: The hold's decrement, one store.
+; WAITS: no.
+; Entry: X the object. Exit: as object1_exit_shim. X kept.
+Object1Hold:
+    dec a:OBJ_3510,x
+    bne Object1Hold_at0
+    stz a:OBJ_2A68+1,x
+    jmp Object1FacePlayer
+Object1Hold_at0:
+    rts
+
+; @routine 0024:14D Object1StepLeft
+; @run 80:494D
+; WHAT IT DOES: Object 1 walking left a pixel a frame (list 8); at X $40 it faces right and waits.
+; HOW: StartObjectAnimation, the X byte's decrement read back and compared; the wait at $489D.
+; WAITS: no.
+; Entry: X the object. Exit: as object1_exit_shim. X kept.
+Object1StepLeft:
+    lda #$08
+    jsr StartObjectAnimation
+    dec a:OBJ_X_LO,x
+    lda a:OBJ_X_LO,x
+    cmp #$40
+    bne Object1StepLeft_at0
+    stz a:OBJ_2AC0,x
+    jmp Object1WalkIn_at1
+Object1StepLeft_at0:
+    rts
+
+; @routine 0024:163 Object1StepRight
+; @run 80:4963
+; WHAT IT DOES: Object 1 walking right a pixel a frame (list 8); at X $C0 it faces left and waits.
+; HOW: As Object1StepLeft, the other way.
+; WAITS: no.
+; Entry: X the object. Exit: as object1_exit_shim. X kept.
+Object1StepRight:
+    lda #$08
+    jsr StartObjectAnimation
+    inc a:OBJ_X_LO,x
+    lda a:OBJ_X_LO,x
+    cmp #$C0
+    bne Object1StepRight_at0
+    lda #$01
+    sta a:OBJ_2AC0,x
+    jmp Object1WalkIn_at1
+Object1StepRight_at0:
     rts

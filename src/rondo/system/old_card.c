@@ -53,7 +53,10 @@ enum {
     CARD_E05D = 0xE05D, CARD_ARG_2223 = 0x2223, CARD_ARG_2224 = 0x2224,
     VECTOR_SOFT_RESET = 0x06, SOFT_RESET_RUN = 0x4225,
     TRIGGER_RUN = 0x08,
-    ALL_OBJECTS = 0x58
+    ALL_OBJECTS = 0x58,
+    OBJECT1 = 1,                       /* the program's second character */
+    OBJECT1_HANDLERS = 0x4877,         /* RunObject1's table: a handler address per state */
+    OBJECT1_WALK_END = 0xC0, OBJECT1_LEFT_END = 0x40
 };
 
 static void follow_exit_shim(FollowArm r);
@@ -1305,7 +1308,7 @@ static PlayerArm player_walk_steer(uint8_t object)
     return player_animate(object);
 }
 
-/* A handler with no C yet (states 3 and 4, at $4812 and $4824), run with the registers RunPlayerObject holds at its
+/* A handler with no C (the table names none past state 4), run with the registers RunPlayerObject holds at its
  * JMP: A the table's high byte (N and Z from it), X 0, Y the doubled state, C the state's bit 7. */
 static void player_handler_shim(uint16_t handler, uint8_t high, uint8_t index, bool carry)
 {
@@ -1320,8 +1323,8 @@ static void player_handler_shim(uint16_t handler, uint8_t high, uint8_t index, b
 /*
  * @routine 0023:6DF RunPlayerObject
  * @run 80:46DF
- * WHAT IT DOES: Runs the player object's handler for its state (the byte at $34B8): stand, walk, jump, and two the
- * program has at $4812 and $4824.
+ * WHAT IT DOES: Runs the player object's handler for its state (the byte at $34B8): stand, walk, jump, attack, and
+ * knocked back.
  * HOW: The state doubled indexes the table at $46F3; the word goes to zTemp00-01 and an indirect jump takes it.
  * WAITS: no.
  * Entry: nothing. Exit: X 0; the rest as the handler leaves them.
@@ -1346,6 +1349,10 @@ PlayerArm RunPlayerObject(void)
         return PlayerWalk(PLAYER);
     case 0x47CF:
         return PlayerJump(PLAYER);
+    case 0x4812:
+        return PlayerAttack(PLAYER);
+    case 0x4824:
+        return PlayerKnockedBack(PLAYER);
     default:
         player_handler_shim(handler, high, index, (state & 0x80) != 0);
         r.arm = PLAYER_ORIGINAL;
@@ -1514,4 +1521,557 @@ PlayerArm PlayerJump(uint8_t object)
 void abi_PlayerJump(void)
 {
     player_exit_shim(PlayerJump(cpu.x));
+}
+
+/*
+ * @routine 0024:00F PlayerHurtFromAttack
+ * @run 80:480F
+ * WHAT IT DOES: The attack's way to the knock-back.
+ * HOW: A jump to $4769 in PlayerStand.
+ * WAITS: no.
+ * Entry: X the object. Exit: as player_exit_shim's hurt arm. X kept.
+ */
+PlayerArm PlayerHurtFromAttack(uint8_t object)
+{
+    return player_hurt(object);
+}
+
+void abi_PlayerHurtFromAttack(void)
+{
+    player_exit_shim(PlayerHurtFromAttack(cpu.x));
+}
+
+/*
+ * @routine 0024:012 PlayerAttack
+ * @run 80:4812
+ * WHAT IT DOES: The player attacking: knocked back when hurt; otherwise the attack's animation, and standing again
+ * when its list has ended.
+ * HOW: StartObjectAnimation on the state's list, its A tested through a TAY; $4720 to stand.
+ * WAITS: no.
+ * Entry: X the object. Exit: as player_exit_shim's arms. X kept.
+ */
+PlayerArm PlayerAttack(uint8_t object)
+{
+    PlayerArm r = { 0 };
+    uint8_t state;
+
+    if (RD8(OBJ->f3250[object]) != 0) {
+        return PlayerHurtFromAttack(object);    /* BNE $480F */
+    }
+    state = RD8(OBJ->f34b8[object]);
+    jsr_push(0x481D);
+    r.step = StartObjectAnimation(state, object, &r.y);
+    jsr_pop();
+    if (r.step != FRAME_LIST_ENDED) {
+        r.arm = PLAYER_ANIMATED;
+        r.through_tay = true;
+        return r;
+    }
+    return player_rest(object);                 /* JMP $4720 */
+}
+
+void abi_PlayerAttack(void)
+{
+    player_exit_shim(PlayerAttack(cpu.x));
+}
+
+/*
+ * @routine 0024:024 PlayerKnockedBack
+ * @run 80:4824
+ * WHAT IT DOES: The player knocked back: gravity ($40 a frame on the Y velocity), the move, and the knock-back's
+ * animation (list 4) until it is back at the floor (Y $A0), where it stands.
+ * HOW: The velocity word's add, the program's copy of ApplyVelocity, then $4720 or StartObjectAnimation.
+ * WAITS: no.
+ * Entry: X the object. Exit: as player_exit_shim's animated arm, V that of the move. X kept.
+ */
+PlayerArm PlayerKnockedBack(uint8_t object)
+{
+    PlayerArm r = { 0 };
+    AxisMove move;
+    uint8_t value;
+    Sum sum;
+
+    value = RD8(OBJ->vy_lo[object]);
+    sum = add_bytes(0x40, value, false);
+    WR8(OBJ->vy_lo[object], sum.value);
+    value = RD8(OBJ->vy_hi[object]);
+    sum = add_bytes(0, value, sum.carry);
+    WR8(OBJ->vy_hi[object], sum.value);
+    jsr_push(0x4837);
+    move = ApplyVelocity(object);
+    jsr_pop();
+    value = RD8(OBJ->y_lo[object]);
+    if (value >= PLAYER_FLOOR) {
+        r = player_rest(object);                /* JMP $4720 */
+    } else {
+        r.arm = PLAYER_ANIMATED;
+        r.step = StartObjectAnimation(PLAYER_HURT_STATE, object, &r.y);   /* JMP $4276 */
+    }
+    r.moved = true;
+    r.move = move;
+    return r;
+}
+
+void abi_PlayerKnockedBack(void)
+{
+    player_exit_shim(PlayerKnockedBack(cpu.x));
+}
+
+/*
+ * @routine 0024:046 InitObject1
+ * @run 80:4846
+ * WHAT IT DOES: Empties object 1, the program's second character, and starts it off the right of the screen: X $140,
+ * Y $A0, facing left, X velocity $FF00.
+ * HOW: The program's copy of ClearObject, then five stores.
+ * WAITS: no.
+ * Entry: nothing. Exit: A $FF, X 1, N and Z from A. Y, C and V kept.
+ */
+void InitObject1(void)
+{
+    jsr_push(0x484B);
+    ClearObject(OBJECT1);
+    jsr_pop();
+    WR8(OBJ->y_lo[OBJECT1], PLAYER_FLOOR);
+    WR8(OBJ->x_hi[OBJECT1], 0x01);
+    WR8(OBJ->facing_left[OBJECT1], 0x01);
+    WR8(OBJ->x_lo[OBJECT1], 0x40);
+    WR8(OBJ->vx_hi[OBJECT1], 0xFF);
+}
+
+void abi_InitObject1(void)
+{
+    InitObject1();
+    cpu.a = 0xFF;
+    cpu.x = OBJECT1;
+    abi_nz(0xFF);
+}
+
+/* What object 1's routines leave, from the values the arm recorded (Obj1Arm, old_card.h). */
+static void object1_exit_shim(Obj1Arm r)
+{
+    if (r.arm == OBJ1_ORIGINAL) {
+        return;
+    }
+    if (r.stepped) {
+        step_frames_exit_shim(r.step, r.step_y);
+    }
+    if (r.through_tay) {
+        cpu.y = cpu.a;
+    }
+    if (r.moved) {
+        bool carry = (cpu.p & P_C) != 0;
+
+        (void)axis_move_flags_shim(r.move);
+        abi_flag(P_C, carry);
+    }
+    if (r.randomized) {
+        abi_flag(P_C, r.random.carry);
+        abi_flag(P_V, r.random.overflow);
+    }
+    switch (r.arm) {
+    case OBJ1_LOADED:
+        cpu.a = r.first;
+        abi_nz(r.second);
+        return;
+    case OBJ1_COMPARED:
+        cpu.a = r.first;
+        abi_nz((uint8_t)(r.first - r.second));
+        abi_flag(P_C, r.first >= r.second);
+        return;
+    case OBJ1_NZ_ONLY:
+        abi_nz(r.second);
+        return;
+    default:
+        return;
+    }
+}
+
+/* $489D: a wait before the next move: state 2, X speed's high byte 0, a wait of $40 to $7F frames from the random
+ * byte. The arm keeps what the routine that jumped here recorded. */
+static Obj1Arm object1_pick_wait(uint8_t object, Obj1Arm r)
+{
+    uint8_t wait;
+
+    WR8(OBJ->f34b8[object], 0x02);
+    WR8(OBJ->vx_hi[object], 0);
+    jsr_push(0x48A8);
+    r.random = NextRandom();                    /* the copy at $4692 */
+    jsr_pop();
+    r.randomized = true;
+    wait = (uint8_t)((r.random.value & 0x3F) | 0x40);
+    WR8(OBJ->f3510[object], wait);
+    r.arm = OBJ1_LOADED;
+    r.first = wait;
+    r.second = wait;
+    return r;
+}
+
+/* $48B0: with the player on the other half of the screen, a wait; otherwise a walk toward the screen's other side
+ * (state 5 from the right half, 6 from the left), the animation from its start. */
+static Obj1Arm object1_face_player(uint8_t object, Obj1Arm r)
+{
+    uint8_t x, player, state;
+
+    x = RD8(OBJ->x_lo[object]);
+    player = RD8(OBJ->x_lo[PLAYER]);
+    if (((x ^ player) & 0x80) != 0) {
+        return object1_pick_wait(object, r);
+    }
+    WR8(OBJ->anim_step[object], 0);
+    WR8(OBJ->anim_timer[object], 0);
+    x = RD8(OBJ->x_lo[object]);
+    state = (x & 0x80) != 0 ? 0x05 : 0x06;
+    WR8(OBJ->f34b8[object], state);
+    r.arm = OBJ1_LOADED;
+    r.first = state;
+    r.second = state;
+    return r;
+}
+
+/* A handler with no C (the table names none past state 6), run with the registers RunObject1 holds at its JMP: A
+ * the table's high byte (N and Z from it), X 1, Y the doubled state, C the state's bit 7. */
+static void object1_handler_shim(uint16_t handler, uint8_t high, uint8_t index, bool carry)
+{
+    cpu.a = high;
+    cpu.x = OBJECT1;
+    cpu.y = index;
+    abi_nz(high);
+    abi_flag(P_C, carry);
+    call_original(handler);
+}
+
+/*
+ * @routine 0024:063 RunObject1
+ * @run 80:4863
+ * WHAT IT DOES: Runs object 1's handler for its state: wait for the scroll's end, walk in, wait, jump, hold the
+ * thrown piece, step left, step right.
+ * HOW: The state doubled indexes the table at $4877; the word goes to zTemp00-01 and an indirect jump takes it.
+ * WAITS: no.
+ * Entry: nothing. Exit: X 1; the rest as the handler leaves them.
+ */
+Obj1Arm RunObject1(void)
+{
+    Obj1Arm r = { 0 };
+    uint8_t state, index, low, high;
+    uint16_t handler;
+
+    state = RD8(OBJ->f34b8[OBJECT1]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(OBJECT1_HANDLERS + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(OBJECT1_HANDLERS + 1 + index));
+    WR8(ZP->temp01, high);
+    handler = RD16_LH2(ZP->temp00, ZP->temp01);  /* JMP [$2000] */
+    switch (handler) {
+    case 0x4885:
+        return Object1WaitForScroll(OBJECT1);
+    case 0x488E:
+        return Object1WalkIn(OBJECT1);
+    case 0x48CF:
+        return Object1Wait(OBJECT1);
+    case 0x4910:
+        return Object1Jump(OBJECT1);
+    case 0x4941:
+        return Object1Hold(OBJECT1);
+    case 0x494D:
+        return Object1StepLeft(OBJECT1);
+    case 0x4963:
+        return Object1StepRight(OBJECT1);
+    default:
+        object1_handler_shim(handler, high, index, (state & 0x80) != 0);
+        r.arm = OBJ1_ORIGINAL;
+        return r;
+    }
+}
+
+void abi_RunObject1(void)
+{
+    Obj1Arm r = RunObject1();
+
+    if (r.arm != OBJ1_ORIGINAL) {
+        cpu.x = OBJECT1;
+    }
+    object1_exit_shim(r);
+}
+
+/*
+ * @routine 0024:085 Object1WaitForScroll
+ * @run 80:4885
+ * WHAT IT DOES: Object 1's first state: waits until the scroll has reached its end ($3E01 set), then walks in.
+ * HOW: One test, then the state's increment.
+ * WAITS: no.
+ * Entry: X the object. Exit: A $3E01's byte; N and Z from it, or from the state's increment. X, Y, C and V kept.
+ */
+Obj1Arm Object1WaitForScroll(uint8_t object)
+{
+    Obj1Arm r = { 0 };
+
+    r.arm = OBJ1_LOADED;
+    r.first = RD8(SCROLL->x_frac[1]);
+    r.second = r.first;
+    if (r.first != 0) {
+        r.second = INC8(OBJ->f34b8[object]);
+    }
+    return r;
+}
+
+void abi_Object1WaitForScroll(void)
+{
+    object1_exit_shim(Object1WaitForScroll(cpu.x));
+}
+
+/*
+ * @routine 0024:08E Object1WalkIn
+ * @run 80:488E
+ * WHAT IT DOES: Object 1 walking in from the right: the walk's animation (list 8), the move by its velocity, and at
+ * X $C0 a wait ($489D, which the steps left and right end in too).
+ * HOW: StartObjectAnimation, the program's copy of ApplyVelocity, a compare; then the wait's stores and the program's
+ * copy of NextRandom.
+ * WAITS: no.
+ * Entry: X the object. Exit: as object1_exit_shim. X kept.
+ */
+Obj1Arm Object1WalkIn(uint8_t object)
+{
+    Obj1Arm r = { 0 };
+    uint8_t x;
+
+    jsr_push(0x4893);
+    r.step = StartObjectAnimation(0x08, object, &r.step_y);
+    jsr_pop();
+    r.stepped = true;
+    jsr_push(0x4896);
+    r.move = ApplyVelocity(object);
+    jsr_pop();
+    r.moved = true;
+    x = RD8(OBJ->x_lo[object]);
+    if (x != OBJECT1_WALK_END) {
+        r.arm = OBJ1_COMPARED;
+        r.first = x;
+        r.second = OBJECT1_WALK_END;
+        return r;
+    }
+    return object1_pick_wait(object, r);
+}
+
+void abi_Object1WalkIn(void)
+{
+    object1_exit_shim(Object1WalkIn(cpu.x));
+}
+
+/*
+ * @routine 0024:0B0 Object1FacePlayer
+ * @run 80:48B0
+ * WHAT IT DOES: Where object 1 goes after a jump or a throw: a wait when the player is on the other half of the
+ * screen, otherwise a walk toward the screen's other side.
+ * HOW: The sign of the two X bytes' EOR; the animation's counters zeroed; the state from the X byte's sign.
+ * WAITS: no.
+ * Entry: X the object. Exit: as object1_exit_shim. X kept, and Y, C and V on the walk's arm.
+ */
+Obj1Arm Object1FacePlayer(uint8_t object)
+{
+    Obj1Arm r = { 0 };
+
+    return object1_face_player(object, r);
+}
+
+void abi_Object1FacePlayer(void)
+{
+    object1_exit_shim(Object1FacePlayer(cpu.x));
+}
+
+/*
+ * @routine 0024:0CF Object1Wait
+ * @run 80:48CF
+ * WHAT IT DOES: Object 1 waiting: when the wait runs out, one time in four on the right half of the screen it throws a
+ * piece (object 2 at its place, frame $2E, state 4 for $80 frames); otherwise it jumps (Y velocity $FB00, state 3).
+ * HOW: The wait's decrement, the program's copy of NextRandom, a test of the X byte's sign.
+ * WAITS: no.
+ * Entry: X the object. Exit: as object1_exit_shim. X kept.
+ */
+Obj1Arm Object1Wait(uint8_t object)
+{
+    Obj1Arm r = { 0 };
+    uint8_t value;
+
+    value = DEC8(OBJ->f3510[object]);
+    if (value != 0) {
+        r.arm = OBJ1_NZ_ONLY;
+        r.second = value;
+        return r;
+    }
+    jsr_push(0x48D7);
+    r.random = NextRandom();                    /* the copy at $4692 */
+    jsr_pop();
+    r.randomized = true;
+    r.arm = OBJ1_LOADED;
+    if ((r.random.value & 0x03) == 0 && (RD8(OBJ->x_lo[object]) & 0x80) != 0) {
+        value = RD8(OBJ->x_lo[object]);
+        WR8(OBJ->x_lo[object + 1], value);
+        value = RD8(OBJ->y_lo[object]);
+        WR8(OBJ->y_lo[object + 1], value);
+        WR8(OBJ->frame[object + 1], 0x2E);
+        WR8(OBJ->f34b8[object], 0x04);
+        WR8(OBJ->f3510[object], 0x80);
+        r.first = 0x80;
+        r.second = 0x80;
+        return r;
+    }
+    WR8(OBJ->anim_step[object], 0);
+    WR8(OBJ->anim_timer[object], 0);
+    WR8(OBJ->vy_hi[object], 0xFB);
+    WR8(OBJ->vy_lo[object], 0);
+    WR8(OBJ->f34b8[object], 0x03);
+    r.first = 0x03;
+    r.second = 0x03;
+    return r;
+}
+
+void abi_Object1Wait(void)
+{
+    object1_exit_shim(Object1Wait(cpu.x));
+}
+
+/*
+ * @routine 0024:110 Object1Jump
+ * @run 80:4910
+ * WHAT IT DOES: Object 1 in the air: gravity ($20 a frame), the move, a landing at Y $A0, the jump's animation (list
+ * 9); when its list has ended the velocity's high bytes are zeroed and it goes on as Object1FacePlayer.
+ * HOW: As PlayerJump, its A tested through a TAY.
+ * WAITS: no.
+ * Entry: X the object. Exit: as object1_exit_shim, V that of the move. X kept.
+ */
+Obj1Arm Object1Jump(uint8_t object)
+{
+    Obj1Arm r = { 0 };
+    uint8_t value;
+    Sum sum;
+
+    value = RD8(OBJ->vy_lo[object]);
+    sum = add_bytes(0x20, value, false);
+    WR8(OBJ->vy_lo[object], sum.value);
+    value = RD8(OBJ->vy_hi[object]);
+    sum = add_bytes(0, value, sum.carry);
+    WR8(OBJ->vy_hi[object], sum.value);
+    jsr_push(0x4923);
+    r.move = ApplyVelocity(object);
+    jsr_pop();
+    r.moved = true;
+    value = RD8(OBJ->y_lo[object]);
+    if (value >= PLAYER_FLOOR) {
+        WR8(OBJ->y_lo[object], PLAYER_FLOOR);
+    }
+    jsr_push(0x4934);
+    r.step = StartObjectAnimation(0x09, object, &r.step_y);
+    jsr_pop();
+    r.stepped = true;
+    r.through_tay = true;
+    if (r.step != FRAME_LIST_ENDED) {
+        r.arm = OBJ1_ANIMATED;
+        return r;
+    }
+    WR8(OBJ->vx_hi[object], 0);
+    WR8(OBJ->vy_hi[object], 0);
+    return object1_face_player(object, r);      /* JMP $48B0 */
+}
+
+void abi_Object1Jump(void)
+{
+    object1_exit_shim(Object1Jump(cpu.x));
+}
+
+/*
+ * @routine 0024:141 Object1Hold
+ * @run 80:4941
+ * WHAT IT DOES: Object 1 holding the thrown piece: when the hold runs out the piece (object 2) loses its frame and
+ * object 1 goes on as Object1FacePlayer.
+ * HOW: The hold's decrement, one store.
+ * WAITS: no.
+ * Entry: X the object. Exit: as object1_exit_shim. X kept.
+ */
+Obj1Arm Object1Hold(uint8_t object)
+{
+    Obj1Arm r = { 0 };
+    uint8_t value;
+
+    value = DEC8(OBJ->f3510[object]);
+    if (value != 0) {
+        r.arm = OBJ1_NZ_ONLY;
+        r.second = value;
+        return r;
+    }
+    WR8(OBJ->frame[object + 1], 0);
+    return object1_face_player(object, r);      /* JMP $48B0 */
+}
+
+void abi_Object1Hold(void)
+{
+    object1_exit_shim(Object1Hold(cpu.x));
+}
+
+/*
+ * @routine 0024:14D Object1StepLeft
+ * @run 80:494D
+ * WHAT IT DOES: Object 1 walking left a pixel a frame (list 8); at X $40 it faces right and waits.
+ * HOW: StartObjectAnimation, the X byte's decrement read back and compared; the wait at $489D.
+ * WAITS: no.
+ * Entry: X the object. Exit: as object1_exit_shim. X kept.
+ */
+Obj1Arm Object1StepLeft(uint8_t object)
+{
+    Obj1Arm r = { 0 };
+    uint8_t x;
+
+    jsr_push(0x4952);
+    r.step = StartObjectAnimation(0x08, object, &r.step_y);
+    jsr_pop();
+    r.stepped = true;
+    DEC8(OBJ->x_lo[object]);
+    x = RD8(OBJ->x_lo[object]);
+    if (x != OBJECT1_LEFT_END) {
+        r.arm = OBJ1_COMPARED;
+        r.first = x;
+        r.second = OBJECT1_LEFT_END;
+        return r;
+    }
+    WR8(OBJ->facing_left[object], 0);
+    return object1_pick_wait(object, r);        /* JMP $489D */
+}
+
+void abi_Object1StepLeft(void)
+{
+    object1_exit_shim(Object1StepLeft(cpu.x));
+}
+
+/*
+ * @routine 0024:163 Object1StepRight
+ * @run 80:4963
+ * WHAT IT DOES: Object 1 walking right a pixel a frame (list 8); at X $C0 it faces left and waits.
+ * HOW: As Object1StepLeft, the other way.
+ * WAITS: no.
+ * Entry: X the object. Exit: as object1_exit_shim. X kept.
+ */
+Obj1Arm Object1StepRight(uint8_t object)
+{
+    Obj1Arm r = { 0 };
+    uint8_t x;
+
+    jsr_push(0x4968);
+    r.step = StartObjectAnimation(0x08, object, &r.step_y);
+    jsr_pop();
+    r.stepped = true;
+    INC8(OBJ->x_lo[object]);
+    x = RD8(OBJ->x_lo[object]);
+    if (x != OBJECT1_WALK_END) {
+        r.arm = OBJ1_COMPARED;
+        r.first = x;
+        r.second = OBJECT1_WALK_END;
+        return r;
+    }
+    WR8(OBJ->facing_left[object], 0x01);
+    return object1_pick_wait(object, r);        /* JMP $489D */
+}
+
+void abi_Object1StepRight(void)
+{
+    object1_exit_shim(Object1StepRight(cpu.x));
 }

@@ -115,8 +115,8 @@ PathShow FollowPathB(uint8_t slot, uint8_t y);
 ObjArm StartDriftingPiece(uint8_t slot, uint8_t y);
 ObjArm DropAndBurst(uint8_t slot, uint8_t y);
 ObjArm StepFallAfterFour(uint8_t slot);
-Jump JumpByStateTableC(uint8_t slot);
-Jump FaceBreakAndRun(uint8_t slot, Ended *before);
+ObjArm JumpByStateTableC(uint8_t slot);
+ObjArm FaceBreakAndRun(uint8_t slot);
 ObjArm JumpByStateTableB(uint8_t slot);
 ObjArm RunDriftObject(uint8_t slot);
 
@@ -279,15 +279,15 @@ ObjArm SwayThenRestart(uint8_t slot);
 ObjArm JumpByStateTable(uint8_t slot);
 
 /* object/enemies_stage0a_temp.c */
-Ended BreakWhenHit(uint8_t slot);
-Ended StartWithPartner(uint8_t slot);
-LandWait StopWhenLanded(uint8_t slot, uint8_t column, bool carry_in);
-Ended SlowToPlayer(uint8_t slot);
-Ended ChooseAttackByDistance(uint8_t slot);
-Ended TurnWhenWaitEnds(uint8_t slot);
-Ended StepWithArmor(uint8_t slot, uint8_t y);
-Ended ChooseNextMove(uint8_t slot, bool carry_in);
-ScreenSoundEnd StepAndShout(uint8_t slot);
+ObjArm BreakWhenHit(uint8_t slot);
+ObjArm StartWithPartner(uint8_t slot);
+MoverArm StopWhenLanded(uint8_t slot, uint8_t column, bool carry_in);
+ObjArm SlowToPlayer(uint8_t slot);
+ObjArm ChooseAttackByDistance(uint8_t slot);
+ObjArm TurnWhenWaitEnds(uint8_t slot);
+ObjArm StepWithArmor(uint8_t slot, uint8_t y);
+ObjArm ChooseNextMove(uint8_t slot, bool carry_in);
+ObjArm StepAndShout(uint8_t slot);
 
 /* A shooting routine's exit: what came before, the sound call, what followed it, and the rest. */
 typedef struct {
@@ -298,8 +298,8 @@ typedef struct {
     Ended mid;
     AxisMove move;
 } ShotEnd;
-ShotEnd ShootArrow(uint8_t slot, uint8_t cue);
-ShotEnd FlashAndCount(uint8_t slot, uint8_t y);
+ObjArm ShootArrow(uint8_t slot, uint8_t cue);
+ObjArm FlashAndCount(uint8_t slot, uint8_t y);
 
 
 /* Exits of the hopping and waiting routines of stage 0A51. */
@@ -316,67 +316,56 @@ typedef struct {
     Ended after;
 } WaitEnd;
 typedef struct {
-    WaitEnd first;
-    WaitEnd second;
-} WaitPair;
-HopEnd HopAndSettle(uint8_t slot, uint8_t column, bool carry_in);
-Ended SetHitboxByFrame(uint8_t slot);
-WaitEnd CountDownThenAdvance(uint8_t slot);
-WaitEnd CountDownAngleThenAdvance(uint8_t slot);
-WaitPair CountBothWaits(uint8_t slot);
+    ObjArm first;
+    ObjArm second;
+} WaitArms;
+/* HopAndSettle's arm and the terrain probe it made. */
+typedef struct {
+    ObjArm arm;
+    Probe probe;
+} HopArm;
+HopArm HopAndSettle(uint8_t slot, uint8_t column, bool carry_in);
+ObjArm SetHitboxByFrame(uint8_t slot);
+ObjArm CountDownThenAdvance(uint8_t slot);
+ObjArm CountDownAngleThenAdvance(uint8_t slot);
+WaitArms CountBothWaits(uint8_t slot);
 void wait_exit_shim(WaitEnd r);
 
-/* A routine that picks a throw, then timers, then an angle: the exits of the three in order. */
-typedef struct {
-    Ended before;
-    ObjArm thrown;   /* what ThrowByNextKindB, PickTimersAtRandomB and PickAngleAtRandomB ended on */
-    ObjArm timers;
-    ObjArm angle;
-} ThrowChain;
-ThrowChain StartKnifeThrower(uint8_t slot);
+ObjArm StartKnifeThrower(uint8_t slot);   /* sub, sub2 and sub3: what ThrowByNextKindB, PickTimersAtRandomB and PickAngleAtRandomB ended on */
 
-/* BounceAtWalls: two probes and what each step left. */
+/* BounceAtWalls: what it ended on, and the two terrain probes it made. */
 typedef struct {
-    Ended e0;
+    ObjArm arm;
     Probe probe1;
-    bool second;
-    Ended e1;
     Probe probe2;
-    bool turned;
-    Ended e2;
-    Ended e3;
-} TurnEnd;
-TurnEnd BounceAtWalls(uint8_t slot, uint8_t column);
+} BounceArm;
+BounceArm BounceAtWalls(uint8_t slot, uint8_t column);
 
 typedef struct {
-    Ended pre;
-    bool walked;
-    TurnEnd turn;
-} WalkEnd;
+    ObjArm arm;
+    BounceArm turn;
+} WalkArm;
 typedef struct {
-    WalkEnd walk;
-    Ended rest;
-} AttackWalk;
+    WalkArm walk;
+    ObjArm rest;
+} AttackArm;
 typedef struct {
-    Ended head;
-    WalkEnd walk;
-    Ended mid;
-    Ended tail;
-} ChaseEnd;
-TurnEnd BounceWithHeight4(uint8_t slot, uint8_t column);
-WalkEnd WalkByPhase(uint8_t slot, uint8_t phase, uint8_t column);
-AttackWalk WalkAndAttackA(uint8_t slot, uint8_t column);
-AttackWalk WalkAndAttackB(uint8_t slot, uint8_t column);
-ChaseEnd ChasePlayerA(uint8_t slot, uint8_t column, bool carry_in);
-ChaseEnd ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in);
-void bounce_exit_shim(TurnEnd r);
-void walk_phase_exit_shim(WalkEnd r);
+    ObjArm head;
+    WalkArm walk;
+    ObjArm mid;
+    ObjArm tail;
+} ChaseArm;
+BounceArm BounceWithHeight4(uint8_t slot, uint8_t column);
+WalkArm WalkByPhase(uint8_t slot, uint8_t phase, uint8_t column);
+AttackArm WalkAndAttackA(uint8_t slot, uint8_t column);
+AttackArm WalkAndAttackB(uint8_t slot, uint8_t column);
+ChaseArm ChasePlayerA(uint8_t slot, uint8_t column, bool carry_in);
+ChaseArm ChasePlayerB(uint8_t slot, uint8_t column, bool carry_in);
 
 typedef struct {
-    Ended pre;
-    bool bounced;
-    TurnEnd turn;
-} StepBounce;
+    ObjArm arm;
+    BounceArm turn;
+} StepBounceArm;
 typedef struct {
     Ended before;
     Ended end;
@@ -384,10 +373,10 @@ typedef struct {
     SoundOnScreen sound;
     Ended unused;
 } FollowEnd;
-StepBounce StepAndLunge(uint8_t slot, uint8_t y);
-StepBounce StepAndPounce(uint8_t slot, uint8_t y);
-AttackWalk WalkThenTurn(uint8_t slot, uint8_t column);
-FollowEnd FollowPartner(uint8_t slot, uint8_t y);
+StepBounceArm StepAndLunge(uint8_t slot, uint8_t y);
+StepBounceArm StepAndPounce(uint8_t slot, uint8_t y);
+AttackArm WalkThenTurn(uint8_t slot, uint8_t column);
+ObjArm FollowPartner(uint8_t slot, uint8_t y);
 
 /* object/enemies_stage0c_temp.c */
 typedef struct {

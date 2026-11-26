@@ -764,16 +764,17 @@ static void object_exit_shim(ObjExit result)
  * WAITS: no.
  * Entry: A the list, X the object. Exit: as StepObjectFrames; X kept.
  */
-ObjExit ObjectFrameList(uint8_t list, uint8_t object)
+/* The body with the list table's address given: the copies of the routine in other overlays differ only there. */
+ObjExit ObjectFrameListAt(uint8_t list, uint8_t object, uint16_t table)
 {
     ObjExit result = { 0 };
     uint8_t index, value, y;
     FrameStep step;
 
     index = (uint8_t)(list << 1);
-    value = rd8((uint16_t)(FRAME_LISTS + index));
+    value = rd8((uint16_t)(table + index));
     WR8(ZP->temp10, value);
-    value = rd8((uint16_t)(FRAME_LISTS + 1 + index));
+    value = rd8((uint16_t)(table + 1 + index));
     WR8(ZP->temp11, value);
     y = index;
     step = StepObjectFrames(object, &y);
@@ -783,6 +784,11 @@ ObjExit ObjectFrameList(uint8_t list, uint8_t object)
     result.exit.c = step == FRAME_CHANGED;
     result.exit.x_kept = true;
     return result;
+}
+
+ObjExit ObjectFrameList(uint8_t list, uint8_t object)
+{
+    return ObjectFrameListAt(list, object, FRAME_LISTS);
 }
 
 void abi_ObjectFrameList(void)

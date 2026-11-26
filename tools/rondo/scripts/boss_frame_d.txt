@@ -1,0 +1,30 @@
+# Unit calls of BossFrameRoutinesD (0F6C:39C, run $BB9C once resident: the overlay's boss frame, which no script reaches). Overlay 0F6C is
+# Stage $89's (attract_89); at its dump d2 the boss is slot $28 (kind $99, state 6) and the overlay is mapped (bank $70 at $A000). The boss frame
+# runs its state's handler (table at $BBD2) and, for the states marked at $BBB0 (10, 11, 12), the code at $C523. So: a call with the state as it is (6, not marked),
+# then the same call with the boss's state ($27D0) set to 10, 11 and 12 in turn, then put back to 6. Expected: BossFrameRoutinesD whole (its 3-byte call of $C523 included)
+# and the handlers of states 6, 10, 11, 12 (BDC6, BFCA, C04C, C085) and the code at $C523 as the original runs them.
+wait 120
+press RUN 6
+wait 1000
+poke 51B2 08
+poke 208C 05      # zField8C 5 or more: StageEnter keeps bit 0, the stage's second route
+wait 19500
+shot d1
+dump d1
+wait 2000
+shot d2
+dump d2
+call BossFrameRoutinesD X=28 Y=00
+wait 2
+poke 27D0 0A
+call BossFrameRoutinesD X=28 Y=00
+wait 2
+poke 27D0 0B
+call BossFrameRoutinesD X=28 Y=00
+wait 2
+poke 27D0 0C
+call BossFrameRoutinesD X=28 Y=00
+wait 2
+poke 27D0 06
+wait 60
+dump boss

@@ -188,7 +188,7 @@ static ScreensLoad load_screens(uint16_t first_return)
 
     wr8(zMusicWanted, 0);
     jsr_push(first_return);
-    ResetGameState();
+    ResetGameState(cpu.x, cpu.y);
     jsr_pop();
     jsr_push((uint16_t)(first_return + 5));
     load.a = LoadSceneScript(SCENE_SCREENS_A);
@@ -499,7 +499,7 @@ AttractPlayRun ModeAttractPlay(uint8_t kept_x, uint8_t kept_y)
     jsr_pop();
     wr8(zWaitTimer, GAME_OVER_WAIT);
     jsr_push(0x51D8);
-    ResetGameState();
+    ResetGameState(cpu.x, cpu.y);
     jsr_pop();
     SetGameMode(MODE_GAME_OVER);
     return run;
@@ -843,7 +843,7 @@ StageDoneRun ModeStageDone(void)
         return run;
     }
     run.mark = mark_stage(StagesVisited, 0x5235);
-    ResetGameState();
+    ResetGameState(cpu.x, cpu.y);
     run.stop = SoundStopAll(0, 0xFF);    /* X and Y as ResetGameState leaves them */
     run.slot = rd8(zSaveSlot);
     if (!(run.slot & 0x80)) {
@@ -967,7 +967,7 @@ StageRun ModeStage(void)
     } else if (rd8(zModeEvents) & EVENT_SCREEN) {
         run.path = STAGE_SCREEN;
         wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREEN));
-        ResetGameState();
+        ResetGameState(cpu.x, cpu.y);
         wr8(zMusicWanted, 0xFF);
         wr8(zCharacterLoaded, 0xFF);
         run.stage = rd8(zStage);
@@ -1283,7 +1283,7 @@ DeadRun ModeDead(void)
     run.choice = rd8(ContinueChoice);
     if (run.choice == 1) {
         jsr_push(0x53B7);
-        ResetGameState();
+        ResetGameState(cpu.x, cpu.y);
         jsr_pop();
         run.title = ModeBackToTitle();
         return run;
@@ -1429,7 +1429,7 @@ ScreenRun ModeScreen(void)
     if (run.frame.done == 0)
         return run;
     jsr_push(0x5459);
-    ResetGameState();
+    ResetGameState(cpu.x, cpu.y);
     jsr_pop();
     jsr_push(0x545E);
     run.scene = LoadSceneScript(SCENE_COMMON);
@@ -1519,7 +1519,7 @@ EndingRun ModeEnding(void)
         return run;
     wr8(zGameRunning, 0);
     jsr_push(0x54A7);
-    ResetGameState();
+    ResetGameState(cpu.x, cpu.y);
     jsr_pop();
     jsr_push(0x54AC);
     run.scene = LoadSceneScript(SCENE_COMMON);

@@ -1023,8 +1023,20 @@ static void hy_int_pass(Span *s, uint64_t i, uint64_t r)
                     x->addr, x->pc, x->s, x->val);
         }
     }
-    if (cpu.s != ev.s)
-        defect(D_STACK, "at the interrupt S is %02X, the original's %02X", cpu.s, ev.s);
+    /* The original took this interrupt before its RTS pulled the call's return address; the C's call has already ended
+     * (jsr_pop, or a return that reads nothing), so its S is the original's plus the bytes those pulls took: the RTPULL
+     * events between the interrupt's return and the access that dispatched it. */
+    uint8_t pulled = 0;
+
+    for (uint64_t k = r + 1; k + 1 < s->cur; k++) {
+        Ev *x = evp(k);
+
+        if (x && x->type == EV_RTPULL)
+            pulled++;
+    }
+    if (cpu.s != ev.s && cpu.s != (uint8_t)(ev.s + pulled))
+        defect(D_STACK, "at the interrupt S is %02X, the original's %02X (%u bytes of the call's own RTS pulls come after it)", cpu.s, ev.s,
+               (unsigned)pulled);
     /* The interrupt's own pushes on the live stack, as the CPU makes them. */
     chk_bus_wr((uint16_t)(0x2100 | ev.s), (uint8_t)(ev.pc >> 8));
     chk_bus_wr((uint16_t)(0x2100 | (uint8_t)(ev.s - 1)), (uint8_t)ev.pc);

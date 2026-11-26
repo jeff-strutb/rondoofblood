@@ -223,6 +223,7 @@ StageExit StepStageFrameLong(uint8_t x, uint8_t y);
 /* object/hit_test.c: the overlay's hit test and its two handlers. */
 StageExit HitTestObject(uint8_t x);
 StageExit HitTestObjectLong(uint8_t x);
+StageExit HitTestObjectLongB(uint8_t x);
 StageExit HitStoreHandler(uint8_t x, uint8_t y);
 StageExit HitReportHandler(uint8_t x, uint8_t y);
 StageExit HitTestAllObjects(uint8_t x);

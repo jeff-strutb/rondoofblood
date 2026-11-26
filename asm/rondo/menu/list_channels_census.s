@@ -18,6 +18,9 @@
 ; a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_list_channels_0441.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
 RunListChannel0441:
     dec a
     beq TitleSteps
@@ -182,6 +185,9 @@ RunListChannel0441_at5:
 ; a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_list_channels_0651.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
 RunListChannel0651:
     dec a
     beq TitleSteps
@@ -346,6 +352,9 @@ RunListChannel0651_at5:
 ; a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_list_channels_1231.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
 RunListChannel1231:
     dec a
     beq TitleSteps
@@ -510,6 +519,9 @@ RunListChannel1231_at5:
 ; a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_list_channels_1A31.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
 RunListChannel1A31:
     dec a
     beq TitleSteps
@@ -674,6 +686,9 @@ RunListChannel1A31_at5:
 ; a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+; census_list_channels_1B91.txt, every path); every lifted line reached. The draft's line for $80FA is reported
+; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
 RunListChannel1B91:
     dec a
     beq TitleSteps

@@ -12,22 +12,21 @@ enum {
     HOLD_TIMER = 0x20, PLAYER_MODE_TWO = 2
 };
 
-typedef SpawnedObject (*SpawnRow)(uint8_t row);
 
 /*
  * Spawns rows 0 and 1, clears the stage's two state bytes at $3616 and $3617 to 0 and $C0,
  * clears the pair flag (bit 5 of zField8E) and starts list channel 2 with the list $65.
  */
-static StageSpawnEnd spawn_first_pair(SpawnRow spawn)
+StageSpawnEnd SpawnFirstPairBody(SpawnRow spawn, const SpawnPairLayout *layout)
 {
     StageSpawnEnd end;
     SpawnedObject second;
     uint8_t flags;
 
-    jsr_push(FIRST_PAIR_RETURN_1);
+    jsr_push(layout->first_return_1);
     (void)spawn(0);
     jsr_pop();
-    jsr_push(FIRST_PAIR_RETURN_2);
+    jsr_push(layout->first_return_2);
     second = spawn(1);
     jsr_pop();
     WR8(STAGEVARS->state_3616[0], 0);
@@ -45,7 +44,7 @@ static StageSpawnEnd spawn_first_pair(SpawnRow spawn)
  * Unless zField8E bit 0 is set, spawns rows 3 and 4, then backs the two anchor objects' high
  * position bytes off by one, gives them speed 4 and a hold of $20, and sets the player byte to 2.
  */
-static StageSpawnEnd spawn_second_pair(SpawnRow spawn)
+StageSpawnEnd SpawnSecondPairBody(SpawnRow spawn, const SpawnPairLayout *layout)
 {
     StageSpawnEnd end = { 0, 0, 0, false };
     SpawnedObject second;
@@ -53,10 +52,10 @@ static StageSpawnEnd spawn_second_pair(SpawnRow spawn)
     if ((RD8(ZP->field8e) & SECOND_PAIR_SKIP_BIT) != 0) {
         return end;
     }
-    jsr_push(SECOND_PAIR_RETURN_1);
+    jsr_push(layout->second_return_1);
     (void)spawn(3);
     jsr_pop();
-    jsr_push(SECOND_PAIR_RETURN_2);
+    jsr_push(layout->second_return_2);
     second = spawn(4);
     jsr_pop();
     DEC8(OBJ->x_hi[ANCHOR_X]);
@@ -72,6 +71,21 @@ static StageSpawnEnd spawn_second_pair(SpawnRow spawn)
     end.y = second.slot;
     end.ran = true;
     return end;
+}
+
+/* 024E's layout: the returns of the four spawn calls. */
+static const SpawnPairLayout spawn_layout_024e = {
+    FIRST_PAIR_RETURN_1, FIRST_PAIR_RETURN_2, SECOND_PAIR_RETURN_1, SECOND_PAIR_RETURN_2
+};
+
+static StageSpawnEnd spawn_first_pair(SpawnRow spawn)
+{
+    return SpawnFirstPairBody(spawn, &spawn_layout_024e);
+}
+
+static StageSpawnEnd spawn_second_pair(SpawnRow spawn)
+{
+    return SpawnSecondPairBody(spawn, &spawn_layout_024e);
 }
 
 /* What the pair leaves: A, X and Y (the second spawn's slot); N and Z from A. C and V are as the spawn left them. */

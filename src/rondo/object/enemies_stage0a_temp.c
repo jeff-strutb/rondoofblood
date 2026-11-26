@@ -51,7 +51,7 @@ void wait_exit_shim(WaitEnd r)
 {
     abi_ended(r.before);
     if (r.picked) {
-        abi_random_end(r.timers);
+        abi_random_end(pick_pair_at_random_exit_shim(r.timers));
     }
     abi_ended(r.after);
 }
@@ -745,7 +745,7 @@ void abi_SetHitboxByFrame(void)
  */
 WaitEnd CountDownThenAdvance(uint8_t slot)
 {
-    WaitEnd r = { { 0 }, false, { 0 }, { 0 } };
+    WaitEnd r = { 0 };
     uint8_t high, low, merged, state;
     Sum sum;
 
@@ -792,7 +792,7 @@ void abi_CountDownThenAdvance(void)
  */
 WaitEnd CountDownAngleThenAdvance(uint8_t slot)
 {
-    WaitEnd r = { { 0 }, false, { 0 }, { 0 } };
+    WaitEnd r = { 0 };
     uint8_t x_high, high, low, merged;
     Sum sum;
 
@@ -874,7 +874,7 @@ void abi_CountBothWaits(void)
  */
 ThrowChain StartKnifeThrower(uint8_t slot)
 {
-    ThrowChain r = { { 0 }, { 0 }, { { 0 }, false, { 0 } }, { { 0 }, false, { 0 } } };
+    ThrowChain r = { 0 };
     uint8_t nz, last, kind, count, to, number, shared, bits, remaining;
     bool carry;
     Sum sum;
@@ -937,9 +937,9 @@ void abi_StartKnifeThrower(void)
     ThrowChain r = StartKnifeThrower(cpu.x);
 
     abi_ended(r.before);
-    abi_ended(r.thrown);
-    abi_random_end(r.timers);
-    abi_random_end(r.angle);
+    abi_ended(throw_by_next_kind_exit_shim(r.thrown));
+    abi_random_end(pick_pair_at_random_exit_shim(r.timers));
+    abi_random_end(pick_pair_at_random_exit_shim(r.angle));
 }
 
 /*
@@ -1594,7 +1594,7 @@ Jump FaceBreakAndRun(uint8_t slot, Ended *before)
 
     INC8(OBJ->life_timer[slot]);
     jsr_push(0xBFF8);
-    side = FaceThePlayerInSomeStatesD(slot);
+    side = face_player_in_states_exit_shim(FaceThePlayerInSomeStatesD(slot));
     jsr_pop();
     e = side.side_used ? ended_of_side(side.side) : ended_kept();
     e = then(e, side.end);

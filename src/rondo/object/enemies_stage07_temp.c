@@ -17,14 +17,14 @@
  * WAITS: no.
  * Entry: X object. Exit: A the masked bit, or 4 when entered; N, Z from it; X, Y and C kept.
  */
-Ended EnterState4IfFlagged(uint8_t slot)
+ObjArm EnterState4IfFlagged(uint8_t slot)
 {
     return enter_state_if_flagged(slot, 4);
 }
 
 void abi_EnterState4IfFlagged(void)
 {
-    abi_ended(EnterState4IfFlagged(cpu.x));
+    abi_ended(load_exit_shim(EnterState4IfFlagged(cpu.x)));
 }
 
 /*
@@ -118,14 +118,14 @@ void abi_SetHitboxSizeFromFrame(void)
  * WAITS: no.
  * Entry: X object. Exit: A $9C, N set, Z clear; X, Y and C kept.
  */
-Ended ChangeToType9C(uint8_t slot)
+ObjArm ChangeToType9C(uint8_t slot)
 {
     return become_type(slot, 0x9C);
 }
 
 void abi_ChangeToType9C(void)
 {
-    abi_ended(ChangeToType9C(cpu.x));
+    abi_ended(load_exit_shim(ChangeToType9C(cpu.x)));
 }
 
 /*

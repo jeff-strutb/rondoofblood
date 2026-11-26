@@ -10,12 +10,10 @@
 #include "vram_update.h"
 #include "vram_update_census.h"
 
-/* What the list loop leaves, set on the registers: every exit is the CMP #$FF that matched (as vram_update.c's). */
+/* What the list loop leaves, set on the registers: every exit is the CMP #$FF that matched (as vram_update.c's).
+ * VramListRun never goes on into original code, so its exit is always these. */
 static void census_vram_exit_shim(VramExit out)
 {
-    if (out.left) {
-        return;
-    }
     cpu.a = out.a;
     cpu.x = out.x;
     cpu.y = out.y;
@@ -62,6 +60,9 @@ static VramExit census_list_from_table(uint16_t table, uint8_t a, uint8_t x, boo
  * HOW: A doubled indexes the table at $8E6A, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
  * WAITS: no.
  * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ * liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_vram_list_0441.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+ * VramListRun, as VramListFromTableC's does.
  */
 VramExit VramListFromTable0441(uint8_t a, uint8_t x, bool overflow)
 {
@@ -91,6 +92,9 @@ void abi_VramListFromTable0441(void)
  * HOW: A doubled indexes the table at $8E65, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
  * WAITS: no.
  * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ * liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_vram_list_0651.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+ * VramListRun, as VramListFromTableC's does.
  */
 VramExit VramListFromTable0651(uint8_t a, uint8_t x, bool overflow)
 {
@@ -120,6 +124,9 @@ void abi_VramListFromTable0651(void)
  * HOW: A doubled indexes the table at $9118, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
  * WAITS: no.
  * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ * liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_vram_list_1231.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+ * VramListRun, as VramListFromTableC's does.
  */
 VramExit VramListFromTable1231(uint8_t a, uint8_t x, bool overflow)
 {
@@ -149,6 +156,9 @@ void abi_VramListFromTable1231(void)
  * HOW: A doubled indexes the table at $8ED2, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
  * WAITS: no.
  * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ * liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_vram_list_1A31.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+ * VramListRun, as VramListFromTableC's does.
  */
 VramExit VramListFromTable1A31(uint8_t a, uint8_t x, bool overflow)
 {
@@ -178,6 +188,9 @@ void abi_VramListFromTable1A31(void)
  * HOW: A doubled indexes the table at $8D82, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
  * WAITS: no.
  * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ * liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_vram_list_1B91.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+ * VramListRun, as VramListFromTableC's does.
  */
 VramExit VramListFromTable1B91(uint8_t a, uint8_t x, bool overflow)
 {
@@ -207,6 +220,9 @@ void abi_VramListFromTable1B91(void)
  * HOW: A doubled indexes the table at $829F, the pointer goes to zp $14, Y 0, and the loop runs on at VramListRun.
  * WAITS: no.
  * Entry: A the list number ($80 or more). Exit: as VramListRun.
+ * liftcmp: 402 of 402 cases match its census draft (census_draft.py; callees as filed wrappers; curated
+ * census_vram_list_25F7.txt). The exit shim's last line is not reached there: a case ends in the tail-called
+ * VramListRun, as VramListFromTableC's does.
  */
 VramExit VramListFromTable25F7(uint8_t a, uint8_t x, bool overflow)
 {

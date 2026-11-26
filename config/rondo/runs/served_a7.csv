@@ -1,48 +1,48 @@
 script,mode,verdict,code,frames,defects,first_stop,cause,source
-attract,serve-all,IDENTICAL,-1,6126/6126,0,,,61e65bc
-attract_82,serve-all,STOPPED,-3,20672/-1,0,,stopped at frame 20672: the hybrid calls card_card_irq1 (SE0); the record's next is r0043_027 (SE1),24cddb3
-attract_83,serve-all,IDENTICAL,-1,24626/24626,0,,,61e65bc
-attract_84,serve-all,IDENTICAL,-1,24626/24626,0,,,61e65bc
-attract_85,serve-all,IDENTICAL,-1,24626/24626,0,,,61e65bc
-attract_86,serve-all,IDENTICAL,-1,24626/24626,0,,,61e65bc
-attract_87,serve-all,IDENTICAL,-1,24626/24626,0,,,61e65bc
-attract_88,serve-all,IDENTICAL,-1,24626/24626,0,,,61e65bc
-attract_89,serve-all,DIVERGENT,22000,24626/24626,0,,,24cddb3
-attract_8A,serve-all,STOPPED,-3,22117/-1,0,,stopped at frame 22117: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),24cddb3
-attract_8E,serve-all,IDENTICAL,-1,24626/24626,0,,,61e65bc
-boot,serve-all,IDENTICAL,-1,900/900,0,,,61e65bc
-camera_modes,serve-all,IDENTICAL,-1,16354/16354,0,,,24cddb3
-card_unit_adpcm,serve-all,NORESULT,,,,,a7: card_unit_adpcm: record exit 2: lt,24cddb3
-card_unit_backup,serve-all,NORESULT,,,,,a7: card_unit_backup: record exit 2: ault,24cddb3
-card_unit_bank2,serve-all,NORESULT,,,,,a7: card_unit_bank2: record exit 2: pcebox: option pce_p4_turbo_II_enable left at the core's default,24cddb3
-card_unit_cd,serve-all,NORESULT,,,,,a7: card_unit_cd: record exit 2: t,24cddb3
-card_unit_cplay,serve-all,NORESULT,,,,,a7: card_unit_cplay: record exit 2: efault,24cddb3
-card_unit_misc,serve-all,NORESULT,,,,,a7: card_unit_misc: record exit 2: box: option pce_p4_turbo_II_enable left at the core's default,24cddb3
-card_unit_read,serve-all,NORESULT,,,,,a7: card_unit_read: record exit 2:  default,24cddb3
-card_unit_trans,serve-all,NORESULT,,,,,a7: card_unit_trans: record exit 2: ,24cddb3
-card_unit_vdc,serve-all,NORESULT,,,,,a7: card_unit_vdc: record exit 2:  default,24cddb3
-gameover,serve-all,IDENTICAL,-1,29092/29092,0,,,61e65bc
-menu_files,serve-all,IDENTICAL,-1,10746/10746,0,,,61e65bc
-menu_names,serve-all,IDENTICAL,-1,13582/13582,0,,,61e65bc
-mode_screen,serve-all,IDENTICAL,-1,11386/11386,0,,,61e65bc
-play_s0_r1,serve-all,STOPPED,-3,18205/-1,0,,stopped at frame 18205: the hybrid calls card_card_irq1 (SE0); the record's next is r0043_027 (SE1),24cddb3
-play_s0_r2,serve-all,STOPPED,-3,17306/-1,0,,stopped at frame 17306: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),24cddb3
-play_s0_r3,serve-all,DIVERGENT,24797,28186/28186,0,,,24cddb3
-play_s0_r4,serve-all,DIVERGENT,17845,18512/-1,0,,stopped at frame 18512: the hybrid calls card_card_irq1 (SE5); the record's next is r05C9_029 (SEE),24cddb3
-play_s0_r5,serve-all,DIVERGENT,17061,18037/-1,0,,stopped at frame 18037: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),24cddb3
-play_s0_r6,serve-all,STOPPED,-3,18835/-1,0,,stopped at frame 18835: the hybrid calls card_card_irq1 (SE0); the record's next is r0043_027 (SE1),24cddb3
-raster_effects,serve-all,IDENTICAL,-1,10526/10526,0,,,61e65bc
-richter_hurt,serve-all,IDENTICAL,-1,16936/16936,0,,,24cddb3
-sound_test,serve-all,IDENTICAL,-1,17134/17134,0,,,61e65bc
-stage_04,serve-all,DIVERGENT,29133,35092/35092,0,,,24cddb3
-stage_05,serve-all,STOPPED,-3,29613/-1,63,"card_card_irq1 REGS call 114017 frame 29613: entry A00 X22 Y03 SE2 P16, the record's AFF X22 Y03 SE0 P94",stopped at frame 29613: the hybrid calls card_card_irq2 (SE3); the record's next is r05C9_029 (SEE),24cddb3
-stage_06,serve-all,DIVERGENT,29872,35092/35092,0,,,24cddb3
-stage_07,serve-all,DIVERGENT,29275,35092/35092,0,,,24cddb3
-stage_08,serve-all,IDENTICAL,-1,35092/35092,0,,,24cddb3
-stage_09,serve-all,DIVERGENT,35092,35092/35092,0,,,24cddb3
-stage_0A,serve-all,DIVERGENT,29393,30423/-1,0,,stopped at frame 30423: the hybrid calls card_card_irq1 (SDD); the record's next is r01BC_27A (SE0),24cddb3
-stage_0B,serve-all,STOPPED,-3,29189/-1,0,,stopped at frame 29189: the hybrid calls r0043_297 (SFC); the record's next is card_card_irq1 (SF8),24cddb3
-stage_0C,serve-all,IDENTICAL,-1,35092/35092,0,,,61e65bc
-stage_0E,serve-all,DIVERGENT,30232,32896/-1,0,,stopped at frame 32896: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),24cddb3
-stage_10,serve-all,DIVERGENT,35092,35092/35092,0,,,24cddb3
-unit_video,serve-all,DIVERGENT,827,830/-1,5,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1085, past 7 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,24cddb3
+attract,serve-all,IDENTICAL,-1,6126/6126,0,,,9b724a6
+attract_82,serve-all,DIVERGENT,20950,24626/24626,0,,,9b724a6
+attract_83,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
+attract_84,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
+attract_85,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
+attract_86,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
+attract_87,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
+attract_88,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
+attract_89,serve-all,DIVERGENT,22000,24626/24626,0,,,9b724a6
+attract_8A,serve-all,STOPPED,-3,22117/-1,0,,stopped at frame 22117: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),9b724a6
+attract_8E,serve-all,IDENTICAL,-1,24626/24626,0,,,9b724a6
+boot,serve-all,IDENTICAL,-1,900/900,0,,,9b724a6
+camera_modes,serve-all,IDENTICAL,-1,16354/16354,0,,,9b724a6
+card_unit_adpcm,serve-all,NORESULT,,,,,a7: card_unit_adpcm: hybrid exit 2: core's default,9b724a6
+card_unit_backup,serve-all,DIVERGENT,827,827/-1,3,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 13482, past 12376 of the original's accesses it has not made first: write 1F01F3 (00) at 1069 (a read the C skips is reported here, on the access after it)",stopped at frame 827: the hybrid calls card_card_irq1 (SF2); the record's next is r0046_366 (SF3),9b724a6
+card_unit_bank2,serve-all,STOPPED,-3,826/-1,7,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 2327, past 795 of the original's accesses it has not made first: write 1F01F3 (00) at 1068 (a read the C skips is reported here, on the access after it)",stopped at frame 826: a call into original code the record does not have,9b724a6
+card_unit_cd,serve-all,NORESULT,,,,,a7: card_unit_cd: hybrid exit 2: he core's default,9b724a6
+card_unit_cplay,serve-all,NORESULT,,,,,a7: card_unit_cplay: hybrid exit 2: core's default,9b724a6
+card_unit_misc,serve-all,NORESULT,,,,,a7: card_unit_misc: hybrid exit 2:  core's default,9b724a6
+card_unit_read,serve-all,DIVERGENT,827,879/-1,1163,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 22297, past 20604 of the original's accesses it has not made first: write 1F01F3 (00) at 1075 (a read the C skips is reported here, on the access after it)","stopped at frame 884: a unit call ran over 2,000,000 instructions",9b724a6
+card_unit_trans,serve-all,NORESULT,,,,,a7: card_unit_trans: hybrid exit 2: core's default,9b724a6
+card_unit_vdc,serve-all,DIVERGENT,827,830/-1,2,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1084, past 12 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,9b724a6
+gameover,serve-all,IDENTICAL,-1,29092/29092,0,,,9b724a6
+menu_files,serve-all,IDENTICAL,-1,10746/10746,0,,,9b724a6
+menu_names,serve-all,IDENTICAL,-1,13582/13582,0,,,9b724a6
+mode_screen,serve-all,IDENTICAL,-1,11386/11386,0,,,9b724a6
+play_s0_r1,serve-all,DIVERGENT,18238,28186/28186,0,,,9b724a6
+play_s0_r2,serve-all,DIVERGENT,18711,28186/28186,0,,,9b724a6
+play_s0_r3,serve-all,DIVERGENT,24797,28186/28186,0,,,9b724a6
+play_s0_r4,serve-all,DIVERGENT,17845,28186/28186,0,,,9b724a6
+play_s0_r5,serve-all,DIVERGENT,17061,28186/28186,0,,,9b724a6
+play_s0_r6,serve-all,DIVERGENT,19059,28186/28186,0,,,9b724a6
+raster_effects,serve-all,IDENTICAL,-1,10526/10526,0,,,9b724a6
+richter_hurt,serve-all,IDENTICAL,-1,16936/16936,0,,,9b724a6
+sound_test,serve-all,IDENTICAL,-1,17134/17134,0,,,9b724a6
+stage_04,serve-all,DIVERGENT,29133,35092/35092,0,,,9b724a6
+stage_05,serve-all,DIVERGENT,29883,30748/-1,0,,stopped at frame 30748: the hybrid calls card_card_irq1 (SEA); the record's next is r01BB_6DD (SEB),9b724a6
+stage_06,serve-all,DIVERGENT,29872,35092/35092,0,,,9b724a6
+stage_07,serve-all,DIVERGENT,29275,35092/35092,0,,,9b724a6
+stage_08,serve-all,IDENTICAL,-1,35092/35092,0,,,9b724a6
+stage_09,serve-all,DIVERGENT,35092,35092/35092,0,,,9b724a6
+stage_0A,serve-all,DIVERGENT,29393,30423/-1,0,,stopped at frame 30423: the hybrid calls card_card_irq1 (SDD); the record's next is r01BC_27A (SE0),9b724a6
+stage_0B,serve-all,STOPPED,-3,29189/-1,0,,stopped at frame 29189: the hybrid calls r0043_297 (SFC); the record's next is card_card_irq1 (SF8),9b724a6
+stage_0C,serve-all,IDENTICAL,-1,35092/35092,0,,,9b724a6
+stage_0E,serve-all,DIVERGENT,30232,35092/35092,0,,,9b724a6
+stage_10,serve-all,DIVERGENT,35092,35092/35092,0,,,9b724a6
+unit_video,serve-all,DIVERGENT,827,830/-1,5,"r00D1_000 MOVED call 447 frame 825: C hardware write 1FE002 placed at access 1085, past 7 of the original's accesses it has not made first: write 1F01F3 (00) at 1067 (a read the C skips is reported here, on the access after it)",stopped at frame 830: a wait with no interrupt in the record,9b724a6

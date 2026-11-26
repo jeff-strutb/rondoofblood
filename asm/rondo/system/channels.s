@@ -5,7 +5,7 @@
 ; WAITS: no.
 ; Entry: nothing. Exit: all registers and flags kept.
 ClearListChannels:
-    tai KernelZeros,ListChannelKind,ListChannelClearEnd-ListChannelKind
+    tai KernelZeros,ListChannelKind,$007F
     rts
 
 ; @routine 0045:50E StartListChannel0Kind1
@@ -82,7 +82,15 @@ StartScriptSlotKind1:
     tay
     bsr ClearScriptSlot
     lda #$01
-StartScriptSlotKind1_at0:
+
+; @routine 0045:533 SetScriptSlotKindAndScript
+; @run 69:5533
+; WHAT IT DOES: Stores a script slot's kind and its script: the end that StartScriptSlotKind1 runs into and that the sole slot
+; start calls.
+; HOW: Two stores.
+; WAITS: no.
+; Entry: A kind, Y script, X slot. Exit: A the script, N and Z from it. X and Y kept.
+SetScriptSlotKindAndScript:
     sta a:ScriptSlotKind,x
     tya
     sta a:ScriptSlotScript,x
@@ -107,7 +115,7 @@ StartScriptSlotKind2:
     tay
     bsr ClearScriptSlot
     lda #$02
-    bra StartScriptSlotKind1_at0
+    bra SetScriptSlotKindAndScript
 
 ; @routine 0045:543 StartScriptSlot0Kind3
 ; @run 69:5543
@@ -128,7 +136,7 @@ StartScriptSlotKind3:
     tay
     bsr ClearScriptSlot
     lda #$03
-    bra StartScriptSlotKind1_at0
+    bra SetScriptSlotKindAndScript
 
 ; @routine 0045:54B StartScriptSlotKind4
 ; @run 69:554B
@@ -140,7 +148,7 @@ StartScriptSlotKind4:
     tay
     bsr ClearScriptSlot
     lda #$04
-    bra StartScriptSlotKind1_at0
+    bra SetScriptSlotKindAndScript
 
 ; @routine 0045:552 StartSoleScriptSlot
 ; @run 69:5552
@@ -158,7 +166,7 @@ StartSoleScriptSlot:
     bne StartSoleScriptSlot_at0
     bsr ClearScriptSlot
     lda #$05
-    bsr StartScriptSlotKind1_at0
+    bsr SetScriptSlotKindAndScript
     sec
     rts
 StartSoleScriptSlot_at0:
@@ -174,7 +182,7 @@ StartSoleScriptSlot_at0:
 StartScriptSlotKind6:
     bsr ClearScriptSlot
     lda #$06
-    bra StartScriptSlotKind1_at0
+    bra SetScriptSlotKindAndScript
 
 ; @routine 0045:568 StartScriptSlotKind7
 ; @run 69:5568
@@ -185,7 +193,7 @@ StartScriptSlotKind6:
 StartScriptSlotKind7:
     bsr ClearScriptSlot
     lda #$07
-    bra StartScriptSlotKind1_at0
+    bra SetScriptSlotKindAndScript
 
 ; @routine 0045:56E ClearScriptSlot
 ; @run 69:556E

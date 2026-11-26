@@ -256,6 +256,15 @@ static BlockIndex block_index(uint16_t ret, CallRegs r)
  * CopyTileBlockToVram with the bank bit; Y steps by 8 (a row of blocks) with the bit read again, and past $40 the
  * next screen row's map byte selects the tables again. zTemp08 counts the blocks. Each JSR goes to the overlay's
  * routine when that is the one resident at its address, to the original otherwise, as the original does.
+ * RESIDENT: the code's callees at $A000 (CopyTileBlockToVram) and $A878 (BitmapBitShifted) are bytes $0000 and $0878
+ * of the bank that holds this routine (6F under MPR5: sectors 0255 to 0258 and each overlay's copy of them), so when
+ * these bytes run at $A7A5 those are the bytes at $A000 and $A878. Every scene record that loads one of the 21
+ * overlays reads its sector B+$44 for 12 sectors to $8000 under MPR4 7 (the op before reads B+$38 into bank 7's first
+ * three sectors, overwritten by it; the ops after go to banks 10 to 12), so 0255 and 0256 land together and whole;
+ * no other read the game makes reaches the bank (the boot's, the old-card program's, the five constant cd_reads), and
+ * nothing writes its code bytes after. The resident_at fallbacks are what the original does where other code is
+ * mapped; liftcmp's curated cases (tools/rondo/curated/layer_columns.txt) keep zRamBaseBank $68, the game's, so
+ * CopyTileBlockToVram's MPR6 lands on a mapper the trace has.
  * WAITS: no.
  * Entry: X the entry, Y the offset's index. Exit: A as the last block copy left it ($10), N 0, Z 1 (the count's
  * decrement), C and V from the copy, Y the last block's index, X kept.

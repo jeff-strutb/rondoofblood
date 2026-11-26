@@ -1872,7 +1872,7 @@ StageLevelStart152D_at0:
 DoorHandler152D:
     lda a:$2818,x
     bne DoorHandler152D_at0
-    jsr RichterStandStep2_at11
+    jsr $A36C
     lda a:$2F20,x
     tay
     and #$0F
@@ -1929,7 +1929,7 @@ DoorHandler152D_at1:
 DoorHandlerB152D:
     lda a:$2818,x
     bne DoorHandlerB152D_at0
-    jsr RichterStandStep2_at11
+    jsr $A36C
     lda a:$2F20,x
     tay
     and #$0F
@@ -5166,7 +5166,7 @@ GateObjectStep152D:
 ; WAITS: no.
 ; Entry: X the object. Exit: A the sprite, N and Z from it, Y the bit; C and V from the add.
 GateStart152D:
-    jsr RichterStandStep2_at11
+    jsr $A36C
     lda a:ScrollYLo
     eor #$FF
     inc a

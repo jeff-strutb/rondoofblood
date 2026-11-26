@@ -439,4 +439,7 @@ CardExit run_bank2_tasks(uint8_t x, uint8_t y);
 
 CardExit psg_tempo_tick(void);
 
+CardExit psg_wave_offset(uint8_t number);
+CardExit psg_write_channels(void);
+
 #endif

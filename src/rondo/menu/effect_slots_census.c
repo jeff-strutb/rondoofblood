@@ -1,0 +1,1467 @@
+/*
+ * The ending's palette effects in the versions of its overlay no read the game makes can load (sectors 0441, 0651
+ * and 1231, bank $6C at $8000). The overlay at sector 0111 is the loaded one (ending.c holds EndingEffectStep,
+ * EndingEffectDispatch, EndingEffectList and EndingEffectFade); these versions carry the same engine at the run
+ * addresses $829F to $85E6: twelve slots at $3C00 (SLOTS), each of a kind 1 to 5 that the dispatcher sends to
+ * one of five handlers, and every frame EffectStep runs them. Kind 1 plays a list of packed palettes, kind 2 darkens
+ * palettes in steps, kind 3 steps palette colours down by a growing amount, kind 4 writes one colour, kind 5 flashes
+ * palettes and puts them back. The three versions differ only in the address of one table of lists (the kind 2 and
+ * kind 4 lists a negative list number picks), so each routine is one body here with that table as its argument.
+ * What lies between: the 64 bytes at $84BB are LoadPackedPaletteC's bytes (vram_update.c, 0111:4CE), and $8151 to
+ * $829E are the 00C5 overlay's (VramListRun and the rest), which their C serves.
+ *
+ * Fields with no name yet and kept in their old address form until the owner of the lists adds them: the 32 bytes at
+ * $3C60 are 16 colours as low and high bytes by turns (SAVCOL's two columns of 16 do not describe them as these
+ * handlers use them), and zero page $3C, set while the kind 5 effect runs.
+ */
+#include "machine.h"
+#include "ram.h"
+#include "access.h"
+#include "routines.h"
+#include "front_end.h"
+#include "vram_update.h"
+#include "effect_slots_census.h"
+
+enum {
+    EFFECT_COLOURS = 0x3C60, EFFECT_COLOUR_BYTES = 0x20,
+    EFFECT_ACTIVE = 0x203C,             /* zero page $3C: 1 while kind 5 runs, 0 when it ends */
+    TYPE_TABLE = 0x82DB,
+    LIST_NEGATIVE = 0x8998, LIST_POINTER = 0x9400, FADE_POINTER = 0x9402, SHADE_POINTER = 0x9404,
+    COLOUR_POINTER = 0x9406,
+    FLASH_COLOURS = 0x85E7, FLASH_PALETTES = 0x8667, SAVED_BACKGROUND = 0x8698, SAVED_SPRITES = 0x8898,
+    SAVED_BACKGROUND_BYTES = 0x200, SAVED_SPRITE_BYTES = 0x100,
+    KIND_LIST = 0x82E5, KIND_FADE = 0x835E, KIND_SHADE = 0x8407, KIND_COLOUR = 0x84FB, KIND_FLASH = 0x8535,
+    LIST_END = 0xFF, FADE_ROUNDS = 8, SHADE_ROUNDS = 8, FLASH_ROUNDS = 0x10
+};
+
+/* A plain Exit that keeps what it does not name. */
+static Exit effect_exit(uint8_t a, uint8_t nz)
+{
+    Exit exit = { 0 };
+
+    exit.a = a;
+    exit.nz = nz;
+    exit.x_kept = exit.y_kept = exit.c_kept = true;
+    return exit;
+}
+
+/* The slot given back: all eight of its fields cleared, in the order of the columns. */
+static void clear_effect_slot(uint8_t slot)
+{
+    WR8(SLOTS->kind[slot], 0);
+    WR8(SLOTS->script[slot], 0);
+    WR8(SLOTS->f18[slot], 0);
+    WR8(SLOTS->f24[slot], 0);
+    WR8(SLOTS->timer[slot], 0);
+    WR8(SLOTS->f3c[slot], 0);
+    WR8(SLOTS->f48[slot], 0);
+    WR8(SLOTS->f54[slot], 0);
+}
+
+/* What a palette load leaves in Y, C and V, laid over an exit. */
+static void effect_after_load(Exit *exit, PaletteLoad load)
+{
+    exit->y = 9;
+    exit->y_kept = false;
+    exit->c = load.sum.carry;
+    exit->c_kept = false;
+    exit->v = load.sum.overflow;
+    exit->v_set = true;
+}
+
+/* The slot's list address in zTemp00 and zTemp01: from the table for a negative list number (a word each), else
+ * through the pointer the overlay keeps at POINTER (a table of the lists, a word each). */
+static void select_effect_list(uint8_t list, uint16_t negative_table, uint16_t pointer)
+{
+    uint8_t y = (uint8_t)(list << 1);
+
+    if ((list & 0x80) != 0) {
+        WR8(ZP->temp00, rd8((uint16_t)(negative_table + y)));
+        WR8(ZP->temp01, rd8((uint16_t)(negative_table + 1 + y)));
+        return;
+    }
+    WR8(ZP->bios_a.lo, rd8(pointer));
+    WR8(ZP->bios_a.hi, rd8((uint16_t)(pointer + 1)));
+    WR8(ZP->temp00, RD8_PTR_Y(ZP->bios_a.lo, y));
+    y++;
+    WR8(ZP->temp01, RD8_PTR_Y(ZP->bios_a.lo, y));
+}
+
+/*
+ * Kind 1: a palette effect that plays a list of palette loads. Once its timer has run down it takes the list's
+ * palettes one a step (each loaded by the packed palette loader, the timer set from the list's first byte); when the
+ * list ends it counts a round and starts the list again, and when the rounds the list names have been played it gives
+ * the slot back.
+ */
+static Exit run_effect_list(uint8_t slot)
+{
+    Exit exit;
+    PaletteLoad load = { { 0, false, false }, 0 };
+    uint8_t timer, y, value, rounds, count;
+    bool loaded = false;
+
+    for (;;) {
+        timer = RD8(SLOTS->timer[slot]);
+        if (timer != 0) {
+            exit = effect_exit(timer, DEC8(SLOTS->timer[slot]));
+            if (loaded) {
+                effect_after_load(&exit, load);
+            }
+            return exit;
+        }
+        select_effect_list(RD8(SLOTS->script[slot]), LIST_NEGATIVE, LIST_POINTER);
+        y = 0;
+        value = RD8_PTR_Y(ZP->temp00, y);
+        WR8(SLOTS->timer[slot], value);
+        for (;;) {
+            y = (uint8_t)((uint8_t)(RD8(SLOTS->f18[slot]) << 2) + 2);
+            value = RD8_PTR_Y(ZP->temp00, y);
+            if (value != LIST_END) {
+                jsr_push(0x832D);
+                load = LoadPackedPaletteC(y);
+                jsr_pop();
+                loaded = true;
+                INC8(SLOTS->f18[slot]);
+                break;
+            }
+            INC8(SLOTS->f24[slot]);
+            WR8(SLOTS->f18[slot], 0);
+            y = 1;
+            value = RD8_PTR_Y(ZP->temp00, y);
+            if ((value & 0x80) != 0) {
+                continue;
+            }
+            rounds = (uint8_t)(value & 0x7F);
+            count = RD8(SLOTS->f24[slot]);
+            if (rounds >= count) {
+                continue;
+            }
+            clear_effect_slot(slot);
+            exit = effect_exit(rounds, (uint8_t)(rounds - count));
+            exit.c = false;
+            exit.c_kept = false;
+            exit.y = 1;
+            exit.y_kept = false;
+            if (loaded) {
+                exit.v = load.sum.overflow;
+                exit.v_set = true;
+            }
+            return exit;
+        }
+    }
+}
+
+/* The V the last SBC of a colour left (set false: none ran). */
+typedef struct { bool set; bool v; } FadeV;
+
+/* One colour word of the fade: each of its three 3-bit components counted down by one unless it is zero; the V of
+ * the last subtract it ran. */
+static FadeV fade_colour(uint8_t x)
+{
+    uint8_t low, part, blue, high, carry_out, red;
+    FadeV last = { false, false };
+
+    low = rd8((uint16_t)(EFFECT_COLOURS + x));
+    part = (uint8_t)(low & 0x07);
+    if (part != 0) {
+        part--;
+    }
+    WR8(ZP->temp02, part);
+    low = rd8((uint16_t)(EFFECT_COLOURS + x));
+    blue = (uint8_t)(low & 0x38);
+    if (blue != 0) {
+        last.v = sub_bytes(blue, 0x08, true).overflow;
+        last.set = true;
+        blue = (uint8_t)(blue - 0x08);
+    }
+    part = (uint8_t)(blue | RD8(ZP->temp02));
+    WR8(ZP->temp02, part);
+    low = rd8((uint16_t)(EFFECT_COLOURS + x));
+    high = rd8((uint16_t)(EFFECT_COLOURS + 1 + x));
+    carry_out = (uint8_t)(high & 1);
+    wr8((uint16_t)(EFFECT_COLOURS + 1 + x), (uint8_t)(high >> 1));
+    low = (uint8_t)((low >> 1) | (carry_out << 7));
+    red = (uint8_t)(low & 0xE0);
+    if (red != 0) {
+        last.v = sub_bytes(red, 0x20, true).overflow;
+        last.set = true;
+        red = (uint8_t)(red - 0x20);
+    }
+    carry_out = (uint8_t)(red >> 7);
+    red = (uint8_t)(red << 1);
+    high = rd8((uint16_t)(EFFECT_COLOURS + 1 + x));
+    wr8((uint16_t)(EFFECT_COLOURS + 1 + x), (uint8_t)((high << 1) | carry_out));
+    part = RD8(ZP->temp02);
+    wr8((uint16_t)(EFFECT_COLOURS + x), (uint8_t)(red | part));
+    return last;
+}
+
+/*
+ * Kind 2: a palette effect that fades palettes down. Once its timer has run down it counts a round, gives the slot
+ * back after the eighth, and otherwise takes the list's palettes (an address of the VCE and a count each) and darkens
+ * every colour of them by one step in each of its three components, writing them back to the VCE. The list comes
+ * from the table of this version for a negative list number, else through the pointer at $9402.
+ */
+static Exit run_effect_fade(uint16_t negative_table, uint8_t slot)
+{
+    Exit exit;
+    uint8_t timer, y, value, count, low, high, x;
+    FadeV seen, v = { false, false };
+
+    timer = RD8(SLOTS->timer[slot]);
+    if (timer != 0) {
+        return effect_exit(timer, DEC8(SLOTS->timer[slot]));
+    }
+    INC8(SLOTS->f24[slot]);
+    count = RD8(SLOTS->f24[slot]);
+    if (count >= FADE_ROUNDS) {
+        clear_effect_slot(slot);
+        exit = effect_exit(count, (uint8_t)(count - FADE_ROUNDS));
+        exit.c = true;
+        exit.c_kept = false;
+        return exit;
+    }
+    select_effect_list(RD8(SLOTS->script[slot]), negative_table, FADE_POINTER);
+    y = 0;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(SLOTS->timer[slot], value);
+    x = slot;
+    y++;
+    for (;;) {
+        value = RD8_PTR_Y(ZP->temp00, y);
+        if (value == LIST_END) {
+            exit = effect_exit(LIST_END, 0);
+            exit.c = true;
+            exit.c_kept = false;
+            exit.x = x;
+            exit.x_kept = false;
+            exit.y = y;
+            exit.y_kept = false;
+            exit.v = v.v;
+            exit.v_set = v.set;
+            return exit;
+        }
+        WR8(ZP->temp08, value);
+        WR8(VCE->addr_lo, value);
+        y++;
+        high = RD8_PTR_Y(ZP->temp00, y);
+        WR8(ZP->temp09, high);
+        WR8(VCE->addr_hi, high);
+        y++;
+        block_move_tai(ADDR_OF(VCE->data_lo), EFFECT_COLOURS, EFFECT_COLOUR_BYTES, high, x, y);
+        for (x = 0; x < EFFECT_COLOUR_BYTES; x = (uint8_t)(x + 2)) {
+            seen = fade_colour(x);
+            if (seen.set) {
+                v = seen;
+            }
+        }
+        low = RD8(ZP->temp08);
+        WR8(VCE->addr_lo, low);
+        high = RD8(ZP->temp09);
+        WR8(VCE->addr_hi, high);
+        block_move_tia(EFFECT_COLOURS, ADDR_OF(VCE->data_lo), EFFECT_COLOUR_BYTES, high, x, y);
+    }
+}
+
+/* A colour component taken down by an amount and not below zero: the subtract's result, or zero when it borrowed. */
+static uint8_t take_down(uint8_t component, uint8_t amount)
+{
+    Sum sum = sub_bytes(component, amount, true);
+
+    return sum.carry ? sum.value : 0;
+}
+
+/*
+ * Kind 3: a palette effect that darkens palettes by an amount that grows with its count. Once its timer has run down
+ * it counts a round (the slot is given back after the eighth), and takes the list's palettes (a VCE address and a
+ * pointer to blocks of eight colours with their ninth bits in the first byte each) from the pointer at $9404; each
+ * colour is written to the VCE with each of its three components taken down by 7 less the count (blue), that times
+ * 8 (green) and that times 32 (red, the top two bits of the low byte and the ninth bit), not below zero.
+ */
+static Exit run_effect_shade(uint8_t slot)
+{
+    Exit exit;
+    Sum sum;
+    uint8_t timer, count, step, y, value, entries, ninth, a, blue, green, red, left;
+    bool v = false, v_set = false, carry;
+
+    timer = RD8(SLOTS->timer[slot]);
+    if (timer != 0) {
+        return effect_exit(timer, DEC8(SLOTS->timer[slot]));
+    }
+    INC8(SLOTS->f24[slot]);
+    count = RD8(SLOTS->f24[slot]);
+    if (count >= SHADE_ROUNDS) {
+        clear_effect_slot(slot);
+        exit = effect_exit(count, (uint8_t)(count - SHADE_ROUNDS));
+        exit.c = true;
+        exit.c_kept = false;
+        return exit;
+    }
+    step = (uint8_t)(count ^ 7);
+    WR8(ZP->temp08, step);
+    WR8(ZP->temp09, (uint8_t)(step << 3));
+    WR8(ZP->temp0a, (uint8_t)(step << 5));
+    y = (uint8_t)(RD8(SLOTS->script[slot]) << 1);
+    WR8(ZP->bios_a.lo, rd8(SHADE_POINTER));
+    WR8(ZP->bios_a.hi, rd8(SHADE_POINTER + 1));
+    WR8(ZP->temp00, RD8_PTR_Y(ZP->bios_a.lo, y));
+    y++;
+    WR8(ZP->temp01, RD8_PTR_Y(ZP->bios_a.lo, y));
+    y = 0;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(SLOTS->timer[slot], value);
+    y++;
+    for (;;) {
+        value = RD8_PTR_Y(ZP->temp00, y);
+        if (value == LIST_END) {
+            exit = effect_exit(LIST_END, 0);
+            exit.c = true;
+            exit.c_kept = false;
+            exit.y = y;
+            exit.y_kept = false;
+            exit.v = v;
+            exit.v_set = v_set;
+            return exit;
+        }
+        WR8(VCE->addr_lo, value);
+        y++;
+        value = RD8_PTR_Y(ZP->temp00, y);
+        WR8(VCE->addr_hi, value);
+        y++;
+        value = RD8_PTR_Y(ZP->temp00, y);
+        WR8(ZP->temp02, value);
+        y++;
+        value = RD8_PTR_Y(ZP->temp00, y);
+        WR8(ZP->temp03, value);
+        y++;
+        WR8(ZP->hit_slot, y);
+        entries = RD8_PTR(ZP->temp02);
+        WR8(ZP->temp05, entries);
+        do {
+            y = 1;
+            ninth = RD8_PTR_Y(ZP->temp02, y);
+            WR8(ZP->temp04, ninth);
+            do {
+                y++;
+                value = RD8_PTR_Y(ZP->temp02, y);
+                blue = take_down((uint8_t)(value & 0x07), RD8(ZP->temp08));
+                WR8(ZP->temp0b, blue);
+                value = RD8_PTR_Y(ZP->temp02, y);
+                green = take_down((uint8_t)(value & 0x38), RD8(ZP->temp09));
+                WR8(ZP->temp0b, (uint8_t)(green | RD8(ZP->temp0b)));
+                value = RD8_PTR_Y(ZP->temp02, y);
+                carry = ASL8(ZP->temp04);
+                a = (uint8_t)(((value >> 1) | (carry ? 0x80 : 0)) & 0xE0);
+                red = take_down(a, RD8(ZP->temp0a));
+                carry = (red & 0x80) != 0;
+                WR8(VCE->data_lo, (uint8_t)((uint8_t)(red << 1) | RD8(ZP->temp0b)));
+                WR8(VCE->data_hi, carry ? 1 : 0);
+            } while (y < 9);
+            sum = add_bytes(RD8(ZP->temp02), 9, false);
+            WR8(ZP->temp02, sum.value);
+            if (sum.carry) {
+                INC8(ZP->temp03);
+            }
+            v = sum.overflow;
+            v_set = true;
+            left = DEC8(ZP->temp05);
+        } while ((left & 0x80) == 0);
+        y = RD8(ZP->hit_slot);
+    }
+}
+
+/*
+ * Kind 4: a palette effect that writes one colour and ends: the list number times 4 indexes a table of four bytes
+ * (a VCE address, then the colour's low and high bytes), through the pointer at $9406 for a positive number, else from
+ * the table of this version. The carry the shifts leave is added in, as the original's; the slot is given back.
+ */
+static Exit run_effect_colour(uint16_t negative_table, uint8_t slot)
+{
+    Exit exit;
+    Sum low, high;
+    uint8_t list, a, y, value;
+    bool carry;
+
+    list = RD8(SLOTS->script[slot]);
+    carry = (list & 0x40) != 0;
+    a = (uint8_t)(list << 2);
+    if ((list & 0x80) == 0) {
+        low = add_bytes(a, rd8(COLOUR_POINTER), carry);
+        WR8(ZP->temp00, low.value);
+        high = add_bytes(0, rd8(COLOUR_POINTER + 1), low.carry);
+        WR8(ZP->temp01, high.value);
+    } else {
+        low = add_bytes(a, (uint8_t)(negative_table & 0xFF), carry);
+        WR8(ZP->temp00, low.value);
+        high = add_bytes(0, (uint8_t)(negative_table >> 8), low.carry);
+        WR8(ZP->temp01, high.value);
+    }
+    y = 0;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(VCE->addr_lo, value);
+    y++;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(VCE->addr_hi, value);
+    y++;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(VCE->data_lo, value);
+    y++;
+    value = RD8_PTR_Y(ZP->temp00, y);
+    WR8(VCE->data_hi, value);
+    clear_effect_slot(slot);
+    exit = effect_exit(value, value);
+    exit.y = y;
+    exit.y_kept = false;
+    exit.c = high.carry;
+    exit.c_kept = false;
+    exit.v = high.overflow;
+    exit.v_set = true;
+    return exit;
+}
+
+/* The end of kind 5: the two palettes it saved are written back, the flag at zero page $3C cleared, the slot given
+ * back. A is $80 at the end, N set; X, Y and C as they were (the block moves push and pull them). */
+static Exit end_effect_flash(uint8_t slot, uint8_t y_in)
+{
+    Exit exit;
+
+    wr8(EFFECT_ACTIVE, 0);
+    WR8(VCE->addr_hi, 0);
+    WR8(VCE->addr_lo, 0);
+    block_move_tia(SAVED_BACKGROUND, ADDR_OF(VCE->data_lo), SAVED_BACKGROUND_BYTES, 0, slot, y_in);
+    WR8(VCE->addr_hi, 1);
+    WR8(VCE->addr_lo, 0x80);
+    block_move_tia(SAVED_SPRITES, ADDR_OF(VCE->data_lo), SAVED_SPRITE_BYTES, 0x80, slot, y_in);
+    clear_effect_slot(slot);
+    exit = effect_exit(0x80, 0x80);
+    return exit;
+}
+
+/*
+ * Kind 5: a palette effect that flashes. The first time (count 0) it saves the VCE's 256 background and 128 sprite
+ * colours in the overlay's RAM ($8698, $8898); each round after it fills a 16 colour palette buffer with one colour
+ * of its table at $85E7 (the slot's list number times 16 colours, the count times one) and writes the buffer over every
+ * palette the list at $8667 names; after the sixteenth round it writes the saved colours back and gives the slot up.
+ */
+static Exit run_effect_flash(uint8_t slot, uint8_t y_in)
+{
+    Exit exit;
+    Sum sum;
+    uint8_t count, a, y, x, value, low, high;
+
+    wr8(EFFECT_ACTIVE, 1);
+    count = RD8(SLOTS->f24[slot]);
+    if (count == 0) {
+        WR8(VCE->addr_hi, 0);
+        WR8(VCE->addr_lo, 0);
+        block_move_tai(ADDR_OF(VCE->data_lo), SAVED_BACKGROUND, SAVED_BACKGROUND_BYTES, 0, slot, y_in);
+        WR8(VCE->addr_hi, 1);
+        WR8(VCE->addr_lo, 0x80);
+        block_move_tai(ADDR_OF(VCE->data_lo), SAVED_SPRITES, SAVED_SPRITE_BYTES, 0x80, slot, y_in);
+    }
+    INC8(SLOTS->f24[slot]);
+    count = RD8(SLOTS->f24[slot]);
+    if (count >= FLASH_ROUNDS) {
+        exit = end_effect_flash(slot, y_in);
+        exit.c = true;
+        exit.c_kept = false;
+        return exit;
+    }
+    a = (uint8_t)(RD8(SLOTS->script[slot]) << 5);
+    WR8(ZP->temp04, a);
+    count = RD8(SLOTS->f24[slot]);
+    sum = add_bytes((uint8_t)(count << 1), RD8(ZP->temp04), false);
+    y = sum.value;
+    WR8(ZP->temp02, rd8((uint16_t)(FLASH_COLOURS + y)));
+    WR8(ZP->temp03, rd8((uint16_t)(FLASH_COLOURS + 1 + y)));
+    y = 0;
+    x = slot;
+    for (;;) {
+        value = rd8((uint16_t)(FLASH_PALETTES + y));
+        if (value == LIST_END) {
+            exit = effect_exit(LIST_END, 0);
+            exit.x = x;
+            exit.x_kept = false;
+            exit.y = y;
+            exit.y_kept = false;
+            exit.c = true;
+            exit.c_kept = false;
+            exit.v = sum.overflow;
+            exit.v_set = true;
+            return exit;
+        }
+        WR8(ZP->temp08, value);
+        y++;
+        value = rd8((uint16_t)(FLASH_PALETTES + y));
+        WR8(ZP->temp09, value);
+        y++;
+        for (x = 0; x < EFFECT_COLOUR_BYTES; x = (uint8_t)(x + 2)) {
+            low = RD8(ZP->temp02);
+            wr8((uint16_t)(EFFECT_COLOURS + x), low);
+            high = RD8(ZP->temp03);
+            wr8((uint16_t)(EFFECT_COLOURS + 1 + x), high);
+        }
+        low = RD8(ZP->temp08);
+        WR8(VCE->addr_lo, low);
+        high = RD8(ZP->temp09);
+        WR8(VCE->addr_hi, high);
+        block_move_tia(EFFECT_COLOURS, ADDR_OF(VCE->data_lo), EFFECT_COLOUR_BYTES, high, x, y);
+    }
+}
+
+/* A handler entered by original code at an address this C does not hold: the registers as the dispatcher leaves them. */
+static void effect_entry_shim(uint8_t high, uint8_t slot, uint8_t index, bool carry)
+{
+    cpu.a = high;
+    cpu.x = slot;
+    cpu.y = index;
+    abi_nz(high);
+    abi_flag(P_C, carry);
+}
+
+/*
+ * The dispatcher: the type less one, doubled, indexes the word table at $82DB (kind 1 first); the word goes through
+ * zTemp00 and zTemp01 and the jump is made through them, with A the word's high byte, Y the index, C bit 7 of the type
+ * less one, X the slot. A type past 5 jumps into whatever the next bytes name.
+ */
+static Exit run_effect_dispatch(uint16_t negative_table, uint8_t type, uint8_t slot)
+{
+    Exit exit = { 0 };
+    uint8_t less, index, low, high, high_read;
+    uint16_t target;
+    bool carry;
+
+    less = (uint8_t)(type - 1);
+    index = (uint8_t)(less << 1);
+    carry = (less & 0x80) != 0;
+    low = rd8((uint16_t)(TYPE_TABLE + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(TYPE_TABLE + 1 + index));
+    WR8(ZP->temp01, high);
+    low = RD8(ZP->temp00);
+    high_read = RD8(ZP->temp01);
+    target = (uint16_t)(low | (high_read << 8));
+    switch (target) {
+    case KIND_LIST: exit = run_effect_list(slot); break;
+    case KIND_FADE: exit = run_effect_fade(negative_table, slot); break;
+    case KIND_SHADE: exit = run_effect_shade(slot); break;
+    case KIND_COLOUR: exit = run_effect_colour(negative_table, slot); break;
+    case KIND_FLASH: exit = run_effect_flash(slot, index); break;
+    default:
+        effect_entry_shim(high, slot, index, carry);
+        call_original(target);
+        exit.from_cpu = true;
+        return exit;
+    }
+    if (exit.a_kept) {
+        exit.a = high;
+        exit.a_kept = false;
+    }
+    if (exit.x_kept) {
+        exit.x = slot;
+        exit.x_kept = false;
+    }
+    if (exit.y_kept) {
+        exit.y = index;
+        exit.y_kept = false;
+    }
+    if (exit.c_kept) {
+        exit.c = carry;
+        exit.c_kept = false;
+    }
+    return exit;
+}
+
+/* The end of the loop over the slots when the last handler ran as original code: X $FF from the DEX. */
+static void effect_loop_end_shim(bool a_loaded)
+{
+    if (a_loaded) {
+        cpu.a = 0;
+    }
+    cpu.x = 0xFF;
+    abi_nz(0xFF);
+}
+
+/*
+ * One frame of the palette effects: while the game is paused (bit 0 of zPaused) only slots 2 and $0B are run;
+ * otherwise, if slot 3 holds kind 5 only that runs, with X 3; else every slot from $0B down to 0 that has a kind is
+ * run through the dispatcher, the slot kept in zRichterObject's byte across each.
+ */
+static Exit run_effect_step(uint16_t negative_table, uint8_t y_in)
+{
+    Exit exit = { 0 };
+    Exit last;
+    uint8_t type, slot;
+    bool have_last = false;
+    uint8_t last_slot = 0;
+    bool y_set = false, c_set = false, v_set = false, v = false, c = false;
+    uint8_t y = 0, a = 0;
+
+    if ((RD8(ZP->paused) & 1) != 0) {
+        jsr_push(0x82A6);
+        type = RD8(SLOTS->kind[2]);
+        if (type != 0) {
+            exit = run_effect_dispatch(negative_table, type, 2);
+            if (exit.from_cpu) {
+                jsr_pop();
+                return exit;
+            }
+        }
+        jsr_pop();
+        type = RD8(SLOTS->kind[0x0B]);
+        if (type == 0) {
+            exit = effect_exit(0, 0);
+            exit.x = 0x0B;
+            exit.x_kept = false;
+            return exit;
+        }
+        return run_effect_dispatch(negative_table, type, 0x0B);
+    }
+    type = RD8(SLOTS->kind[3]);
+    c = type >= 5;
+    c_set = true;
+    if (type == 5) {
+        exit = run_effect_flash(3, y_in);
+        if (exit.x_kept) {
+            exit.x = 3;
+            exit.x_kept = false;
+        }
+        return exit;
+    }
+    for (slot = 0x0B; (int8_t)slot >= 0; slot--) {
+        type = RD8(SLOTS->kind[slot]);
+        a = type;
+        if (type != 0) {
+            WR8(ZP->richter_object, slot);
+            jsr_push(0x82C5);
+            last = run_effect_dispatch(negative_table, type, slot);
+            jsr_pop();
+            if (last.from_cpu) {
+                have_last = true;
+                last_slot = slot;
+                exit = last;
+            } else {
+                have_last = false;
+                a = last.a;
+                y = last.y;
+                y_set = true;
+                c = last.c;
+                c_set = true;
+                if (last.v_set) {
+                    v = last.v;
+                    v_set = true;
+                }
+            }
+            slot = RD8(ZP->richter_object);
+        }
+    }
+    if (have_last) {
+        effect_loop_end_shim(last_slot != 0);
+        exit.from_cpu = true;
+        return exit;
+    }
+    exit.a = a;
+    exit.x = 0xFF;
+    exit.nz = 0xFF;
+    exit.y = y;
+    exit.y_kept = !y_set;
+    exit.c = c;
+    exit.c_kept = !c_set;
+    exit.v = v;
+    exit.v_set = v_set;
+    return exit;
+}
+
+/*
+ * @routine 0441:29F EffectStep0441
+ * @run 6C:829F
+ * @unreachable 6C:829F-6C:82CA no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $829F runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: One frame of the ending's palette effects: while the game is paused only slots 2 and $0B are run;
+ * otherwise slot 3 alone when it holds kind 5, else every slot from $0B down to 0 that has a kind.
+ * HOW: zPaused, the kinds at $3C00; EffectDispatch for each slot, the slot kept in zRichterObject's byte across it; kind
+ * 5 at slot 3 is entered with X 3.
+ * WAITS: no.
+ * Entry: Y only for kind 5's block moves. Exit: X $FF, N set, Z clear; A the last kind loaded or what the last handler
+ * left; C, Y and V as the last handler left them.
+ */
+Exit EffectStep0441(uint8_t y)
+{
+    return run_effect_step(0x89BC, y);
+}
+
+void abi_EffectStep0441(void)
+{
+    exit_shim(EffectStep0441(cpu.y));
+}
+
+/*
+ * @routine 0441:2CB EffectDispatch0441
+ * @run 6C:82CB
+ * @stop 82DB
+ * @unreachable 6C:82CB-6C:82DA no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $82CB runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Sends a palette effect slot to the handler its kind names: the table at $82DB holds one address per
+ * kind, kind 1 first.
+ * HOW: The kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through,
+ * with A the word's high byte, Y the index, C bit 7 of the kind less one, X the slot.
+ * WAITS: no.
+ * Entry: A the kind (not zero), X the slot. Exit: as the handler leaves them.
+ */
+Exit EffectDispatch0441(uint8_t type, uint8_t slot)
+{
+    return run_effect_dispatch(0x89BC, type, slot);
+}
+
+void abi_EffectDispatch0441(void)
+{
+    exit_shim(EffectDispatch0441(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 0441:2E5 EffectList0441
+ * @run 6C:82E5
+ * @unreachable 6C:82E5-6C:8344 no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $82E5 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 1: a palette effect that plays a list of palette loads; once its timer has run down it takes the
+ * list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
+ * again, and when the rounds the list names have been played it gives the slot back.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
+ * $8998); each palette loaded by LoadPackedPaletteC's bytes at $84BB.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
+ * Z and C from comparing it with the rounds played, Y 1; X kept.
+ */
+Exit EffectList0441(uint8_t slot)
+{
+    return run_effect_list(slot);
+}
+
+void abi_EffectList0441(void)
+{
+    exit_shim(EffectList0441(cpu.x));
+}
+
+/*
+ * @routine 0441:345 ClearEffectSlot0441
+ * @run 6C:8345
+ * @unreachable 6C:8345-6C:835D no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8345 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Gives a palette effect slot back: its eight fields cleared.
+ * HOW: Eight STZ of the slot's columns, the kind first.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A, X, Y and the flags kept.
+ */
+void ClearEffectSlot0441(uint8_t slot)
+{
+    clear_effect_slot(slot);
+}
+
+void abi_ClearEffectSlot0441(void)
+{
+    ClearEffectSlot0441(cpu.x);
+}
+
+/*
+ * @routine 0441:35E EffectFade0441
+ * @run 6C:835E
+ * @unreachable 6C:835E-6C:8406 no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $835E runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 2: a palette effect that fades palettes down: once its timer has run down it counts a round, gives
+ * the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
+ * every colour of them by one step in each of its three components, writing them back to the VCE.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
+ * table at ${T:04X}; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
+ * $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
+ */
+Exit EffectFade0441(uint8_t slot)
+{
+    return run_effect_fade(0x89BC, slot);
+}
+
+void abi_EffectFade0441(void)
+{
+    exit_shim(EffectFade0441(cpu.x));
+}
+
+/*
+ * @routine 0441:407 EffectShade0441
+ * @run 6C:8407
+ * @stop 84BB
+ * @unreachable 6C:8407-6C:84BA no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8407 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 3: a palette effect that darkens palettes by an amount that grows each round: once its timer has
+ * run down it counts a round (the slot is given back after the eighth) and writes the list's palettes to the VCE, each
+ * colour's blue, green and red parts taken down by 7 less the count, by that times 8 and times 32, not below zero.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9404; zTemp08 to zTemp0A the three amounts;
+ * the blocks (eight colours, their ninth bits first) read through zTemp02.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, Y
+ * the list's place, V from the last block's pointer add (else kept).
+ */
+Exit EffectShade0441(uint8_t slot)
+{
+    return run_effect_shade(slot);
+}
+
+void abi_EffectShade0441(void)
+{
+    exit_shim(EffectShade0441(cpu.x));
+}
+
+/*
+ * @routine 0441:4FB EffectColour0441
+ * @run 6C:84FB
+ * @unreachable 6C:84FB-6C:8534 no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $84FB runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
+ * colour's two bytes) picked by the list number, the slot then given back.
+ * HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
+ * or for a negative number the table at ${T:04X}; the four bytes go to the VCE ports.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
+ * kept.
+ */
+Exit EffectColour0441(uint8_t slot)
+{
+    return run_effect_colour(0x89BC, slot);
+}
+
+void abi_EffectColour0441(void)
+{
+    exit_shim(EffectColour0441(cpu.x));
+}
+
+/*
+ * @routine 0441:535 EffectFlash0441
+ * @run 6C:8535
+ * @stop 85C0
+ * @unreachable 6C:8535-6C:85BF no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8535 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 5: a palette effect that flashes: the first time it saves the VCE's background and sprite palettes
+ * in the overlay's RAM; each round it fills a 16 colour buffer with one colour of its table and writes it over every
+ * palette the list at $8667 names; after the sixteenth round it puts the saved palettes back and gives the slot up.
+ * HOW: Zero page $3C set to 1; the count in $3C24; TAI and TIA between the VCE's data port and $8698, $8898 and $3C60;
+ * the colour table at $85E7 indexed by the list number times 32 and the count times 2.
+ * WAITS: no.
+ * Entry: X the slot, Y kept for the block moves. Exit: A $FF at the list's end with Z and C set, X $20 (or the slot when
+ * no palette was written), Y the list's place, V from the table index's add; after the sixteenth round as EffectFlashEnd
+ * with C set.
+ */
+Exit EffectFlash0441(uint8_t slot, uint8_t y)
+{
+    return run_effect_flash(slot, y);
+}
+
+void abi_EffectFlash0441(void)
+{
+    exit_shim(EffectFlash0441(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0441:5C0 EffectFlashEnd0441
+ * @run 6C:85C0
+ * @unreachable 6C:85C0-6C:85E6 no read the game makes loads disc sector 0441, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $85C0 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
+ * the slot given back.
+ * HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes at
+ * $8345.
+ * WAITS: no.
+ * Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
+ */
+Exit EffectFlashEnd0441(uint8_t slot, uint8_t y)
+{
+    return end_effect_flash(slot, y);
+}
+
+void abi_EffectFlashEnd0441(void)
+{
+    exit_shim(EffectFlashEnd0441(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0651:29F EffectStep0651
+ * @run 6C:829F
+ * @unreachable 6C:829F-6C:82CA no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $829F runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: One frame of the ending's palette effects: while the game is paused only slots 2 and $0B are run;
+ * otherwise slot 3 alone when it holds kind 5, else every slot from $0B down to 0 that has a kind.
+ * HOW: zPaused, the kinds at $3C00; EffectDispatch for each slot, the slot kept in zRichterObject's byte across it; kind
+ * 5 at slot 3 is entered with X 3.
+ * WAITS: no.
+ * Entry: Y only for kind 5's block moves. Exit: X $FF, N set, Z clear; A the last kind loaded or what the last handler
+ * left; C, Y and V as the last handler left them.
+ */
+Exit EffectStep0651(uint8_t y)
+{
+    return run_effect_step(0x89AC, y);
+}
+
+void abi_EffectStep0651(void)
+{
+    exit_shim(EffectStep0651(cpu.y));
+}
+
+/*
+ * @routine 0651:2CB EffectDispatch0651
+ * @run 6C:82CB
+ * @stop 82DB
+ * @unreachable 6C:82CB-6C:82DA no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $82CB runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Sends a palette effect slot to the handler its kind names: the table at $82DB holds one address per
+ * kind, kind 1 first.
+ * HOW: The kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through,
+ * with A the word's high byte, Y the index, C bit 7 of the kind less one, X the slot.
+ * WAITS: no.
+ * Entry: A the kind (not zero), X the slot. Exit: as the handler leaves them.
+ */
+Exit EffectDispatch0651(uint8_t type, uint8_t slot)
+{
+    return run_effect_dispatch(0x89AC, type, slot);
+}
+
+void abi_EffectDispatch0651(void)
+{
+    exit_shim(EffectDispatch0651(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 0651:2E5 EffectList0651
+ * @run 6C:82E5
+ * @unreachable 6C:82E5-6C:8344 no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $82E5 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 1: a palette effect that plays a list of palette loads; once its timer has run down it takes the
+ * list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
+ * again, and when the rounds the list names have been played it gives the slot back.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
+ * $8998); each palette loaded by LoadPackedPaletteC's bytes at $84BB.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
+ * Z and C from comparing it with the rounds played, Y 1; X kept.
+ */
+Exit EffectList0651(uint8_t slot)
+{
+    return run_effect_list(slot);
+}
+
+void abi_EffectList0651(void)
+{
+    exit_shim(EffectList0651(cpu.x));
+}
+
+/*
+ * @routine 0651:345 ClearEffectSlot0651
+ * @run 6C:8345
+ * @unreachable 6C:8345-6C:835D no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8345 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Gives a palette effect slot back: its eight fields cleared.
+ * HOW: Eight STZ of the slot's columns, the kind first.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A, X, Y and the flags kept.
+ */
+void ClearEffectSlot0651(uint8_t slot)
+{
+    clear_effect_slot(slot);
+}
+
+void abi_ClearEffectSlot0651(void)
+{
+    ClearEffectSlot0651(cpu.x);
+}
+
+/*
+ * @routine 0651:35E EffectFade0651
+ * @run 6C:835E
+ * @unreachable 6C:835E-6C:8406 no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $835E runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 2: a palette effect that fades palettes down: once its timer has run down it counts a round, gives
+ * the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
+ * every colour of them by one step in each of its three components, writing them back to the VCE.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
+ * table at ${T:04X}; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
+ * $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
+ */
+Exit EffectFade0651(uint8_t slot)
+{
+    return run_effect_fade(0x89AC, slot);
+}
+
+void abi_EffectFade0651(void)
+{
+    exit_shim(EffectFade0651(cpu.x));
+}
+
+/*
+ * @routine 0651:407 EffectShade0651
+ * @run 6C:8407
+ * @stop 84BB
+ * @unreachable 6C:8407-6C:84BA no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8407 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 3: a palette effect that darkens palettes by an amount that grows each round: once its timer has
+ * run down it counts a round (the slot is given back after the eighth) and writes the list's palettes to the VCE, each
+ * colour's blue, green and red parts taken down by 7 less the count, by that times 8 and times 32, not below zero.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9404; zTemp08 to zTemp0A the three amounts;
+ * the blocks (eight colours, their ninth bits first) read through zTemp02.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, Y
+ * the list's place, V from the last block's pointer add (else kept).
+ */
+Exit EffectShade0651(uint8_t slot)
+{
+    return run_effect_shade(slot);
+}
+
+void abi_EffectShade0651(void)
+{
+    exit_shim(EffectShade0651(cpu.x));
+}
+
+/*
+ * @routine 0651:4FB EffectColour0651
+ * @run 6C:84FB
+ * @unreachable 6C:84FB-6C:8534 no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $84FB runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
+ * colour's two bytes) picked by the list number, the slot then given back.
+ * HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
+ * or for a negative number the table at ${T:04X}; the four bytes go to the VCE ports.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
+ * kept.
+ */
+Exit EffectColour0651(uint8_t slot)
+{
+    return run_effect_colour(0x89AC, slot);
+}
+
+void abi_EffectColour0651(void)
+{
+    exit_shim(EffectColour0651(cpu.x));
+}
+
+/*
+ * @routine 0651:535 EffectFlash0651
+ * @run 6C:8535
+ * @stop 85C0
+ * @unreachable 6C:8535-6C:85BF no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8535 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 5: a palette effect that flashes: the first time it saves the VCE's background and sprite palettes
+ * in the overlay's RAM; each round it fills a 16 colour buffer with one colour of its table and writes it over every
+ * palette the list at $8667 names; after the sixteenth round it puts the saved palettes back and gives the slot up.
+ * HOW: Zero page $3C set to 1; the count in $3C24; TAI and TIA between the VCE's data port and $8698, $8898 and $3C60;
+ * the colour table at $85E7 indexed by the list number times 32 and the count times 2.
+ * WAITS: no.
+ * Entry: X the slot, Y kept for the block moves. Exit: A $FF at the list's end with Z and C set, X $20 (or the slot when
+ * no palette was written), Y the list's place, V from the table index's add; after the sixteenth round as EffectFlashEnd
+ * with C set.
+ */
+Exit EffectFlash0651(uint8_t slot, uint8_t y)
+{
+    return run_effect_flash(slot, y);
+}
+
+void abi_EffectFlash0651(void)
+{
+    exit_shim(EffectFlash0651(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0651:5C0 EffectFlashEnd0651
+ * @run 6C:85C0
+ * @unreachable 6C:85C0-6C:85E6 no read the game makes loads disc sector 0651, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $85C0 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
+ * the slot given back.
+ * HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes at
+ * $8345.
+ * WAITS: no.
+ * Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
+ */
+Exit EffectFlashEnd0651(uint8_t slot, uint8_t y)
+{
+    return end_effect_flash(slot, y);
+}
+
+void abi_EffectFlashEnd0651(void)
+{
+    exit_shim(EffectFlashEnd0651(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 1231:29F EffectStep1231
+ * @run 6C:829F
+ * @unreachable 6C:829F-6C:82CA no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $829F runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: One frame of the ending's palette effects: while the game is paused only slots 2 and $0B are run;
+ * otherwise slot 3 alone when it holds kind 5, else every slot from $0B down to 0 that has a kind.
+ * HOW: zPaused, the kinds at $3C00; EffectDispatch for each slot, the slot kept in zRichterObject's byte across it; kind
+ * 5 at slot 3 is entered with X 3.
+ * WAITS: no.
+ * Entry: Y only for kind 5's block moves. Exit: X $FF, N set, Z clear; A the last kind loaded or what the last handler
+ * left; C, Y and V as the last handler left them.
+ */
+Exit EffectStep1231(uint8_t y)
+{
+    return run_effect_step(0x89B2, y);
+}
+
+void abi_EffectStep1231(void)
+{
+    exit_shim(EffectStep1231(cpu.y));
+}
+
+/*
+ * @routine 1231:2CB EffectDispatch1231
+ * @run 6C:82CB
+ * @stop 82DB
+ * @unreachable 6C:82CB-6C:82DA no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $82CB runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Sends a palette effect slot to the handler its kind names: the table at $82DB holds one address per
+ * kind, kind 1 first.
+ * HOW: The kind less one doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through,
+ * with A the word's high byte, Y the index, C bit 7 of the kind less one, X the slot.
+ * WAITS: no.
+ * Entry: A the kind (not zero), X the slot. Exit: as the handler leaves them.
+ */
+Exit EffectDispatch1231(uint8_t type, uint8_t slot)
+{
+    return run_effect_dispatch(0x89B2, type, slot);
+}
+
+void abi_EffectDispatch1231(void)
+{
+    exit_shim(EffectDispatch1231(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 1231:2E5 EffectList1231
+ * @run 6C:82E5
+ * @unreachable 6C:82E5-6C:8344 no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $82E5 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 1: a palette effect that plays a list of palette loads; once its timer has run down it takes the
+ * list's palettes one a step, the timer set from the list's first byte; at the list's end it counts a round and starts
+ * again, and when the rounds the list names have been played it gives the slot back.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9400 (for a negative list number, a table at
+ * $8998); each palette loaded by LoadPackedPaletteC's bytes at $84BB.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; when finished, A the rounds named, N,
+ * Z and C from comparing it with the rounds played, Y 1; X kept.
+ */
+Exit EffectList1231(uint8_t slot)
+{
+    return run_effect_list(slot);
+}
+
+void abi_EffectList1231(void)
+{
+    exit_shim(EffectList1231(cpu.x));
+}
+
+/*
+ * @routine 1231:345 ClearEffectSlot1231
+ * @run 6C:8345
+ * @unreachable 6C:8345-6C:835D no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8345 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Gives a palette effect slot back: its eight fields cleared.
+ * HOW: Eight STZ of the slot's columns, the kind first.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A, X, Y and the flags kept.
+ */
+void ClearEffectSlot1231(uint8_t slot)
+{
+    clear_effect_slot(slot);
+}
+
+void abi_ClearEffectSlot1231(void)
+{
+    ClearEffectSlot1231(cpu.x);
+}
+
+/*
+ * @routine 1231:35E EffectFade1231
+ * @run 6C:835E
+ * @unreachable 6C:835E-6C:8406 no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $835E runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 2: a palette effect that fades palettes down: once its timer has run down it counts a round, gives
+ * the slot back after the eighth, and otherwise takes the list's palettes (a VCE address and colours each) and darkens
+ * every colour of them by one step in each of its three components, writing them back to the VCE.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9402, or for a negative list number from the
+ * table at ${T:04X}; the VCE read into $3C60 by a TAI, changed word by word, and written back by a TIA.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X
+ * $20 when a palette was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
+ */
+Exit EffectFade1231(uint8_t slot)
+{
+    return run_effect_fade(0x89B2, slot);
+}
+
+void abi_EffectFade1231(void)
+{
+    exit_shim(EffectFade1231(cpu.x));
+}
+
+/*
+ * @routine 1231:407 EffectShade1231
+ * @run 6C:8407
+ * @stop 84BB
+ * @unreachable 6C:8407-6C:84BA no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8407 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 3: a palette effect that darkens palettes by an amount that grows each round: once its timer has
+ * run down it counts a round (the slot is given back after the eighth) and writes the list's palettes to the VCE, each
+ * colour's blue, green and red parts taken down by 7 less the count, by that times 8 and times 32, not below zero.
+ * HOW: The slot's fields at $3C00 and up; the list through the pointer at $9404; zTemp08 to zTemp0A the three amounts;
+ * the blocks (eight colours, their ninth bits first) read through zTemp02.
+ * WAITS: no.
+ * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, Y
+ * the list's place, V from the last block's pointer add (else kept).
+ */
+Exit EffectShade1231(uint8_t slot)
+{
+    return run_effect_shade(slot);
+}
+
+void abi_EffectShade1231(void)
+{
+    exit_shim(EffectShade1231(cpu.x));
+}
+
+/*
+ * @routine 1231:4FB EffectColour1231
+ * @run 6C:84FB
+ * @unreachable 6C:84FB-6C:8534 no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $84FB runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 4: a palette effect that sets one VCE colour and ends: four bytes of a table (a VCE address, the
+ * colour's two bytes) picked by the list number, the slot then given back.
+ * HOW: The list number times 4 (the carry the shifts leave added in, as the original does) indexes the table at $9406,
+ * or for a negative number the table at ${T:04X}; the four bytes go to the VCE ports.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A the last byte read, N and Z from it, Y 3, C and V from the table address's high byte add; X
+ * kept.
+ */
+Exit EffectColour1231(uint8_t slot)
+{
+    return run_effect_colour(0x89B2, slot);
+}
+
+void abi_EffectColour1231(void)
+{
+    exit_shim(EffectColour1231(cpu.x));
+}
+
+/*
+ * @routine 1231:535 EffectFlash1231
+ * @run 6C:8535
+ * @stop 85C0
+ * @unreachable 6C:8535-6C:85BF no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8535 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Kind 5: a palette effect that flashes: the first time it saves the VCE's background and sprite palettes
+ * in the overlay's RAM; each round it fills a 16 colour buffer with one colour of its table and writes it over every
+ * palette the list at $8667 names; after the sixteenth round it puts the saved palettes back and gives the slot up.
+ * HOW: Zero page $3C set to 1; the count in $3C24; TAI and TIA between the VCE's data port and $8698, $8898 and $3C60;
+ * the colour table at $85E7 indexed by the list number times 32 and the count times 2.
+ * WAITS: no.
+ * Entry: X the slot, Y kept for the block moves. Exit: A $FF at the list's end with Z and C set, X $20 (or the slot when
+ * no palette was written), Y the list's place, V from the table index's add; after the sixteenth round as EffectFlashEnd
+ * with C set.
+ */
+Exit EffectFlash1231(uint8_t slot, uint8_t y)
+{
+    return run_effect_flash(slot, y);
+}
+
+void abi_EffectFlash1231(void)
+{
+    exit_shim(EffectFlash1231(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 1231:5C0 EffectFlashEnd1231
+ * @run 6C:85C0
+ * @unreachable 6C:85C0-6C:85E6 no read the game makes loads disc sector 1231, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $85C0 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The end of kind 5: the two saved palettes written back to the VCE, the flag at zero page $3C cleared,
+ * the slot given back.
+ * HOW: Two TIA from $8698 (256 colours) and $8898 (128) to the VCE; the slot cleared by ClearEffectSlot's bytes at
+ * $8345.
+ * WAITS: no.
+ * Entry: X the slot, Y kept. Exit: A $80, N set, Z clear; X, Y, C and V kept.
+ */
+Exit EffectFlashEnd1231(uint8_t slot, uint8_t y)
+{
+    return end_effect_flash(slot, y);
+}
+
+void abi_EffectFlashEnd1231(void)
+{
+    exit_shim(EffectFlashEnd1231(cpu.x, cpu.y));
+}
+

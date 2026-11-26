@@ -1942,7 +1942,18 @@ void call_return_point(void)
         uint64_t r;
 
         if (e && is_noise(e) && e->type != EV_RTPULL)
-            continue;            /* a read of ROM or a poke between the C's last access and the interrupt (uncounted); the RTS's pulls stop the scan */
+            continue;            /* a read of ROM or a poke between the C's last access and the interrupt (uncounted) */
+        if (e && (e->type == EV_CLOSE || e->type == EV_RET))
+            continue;            /* the end of a call nested in this one, which the C has returned from already (its own return point has passed) */
+        if (e && e->type == EV_RTPULL) {
+            /* The pulls of this call's own RTS (its return address at S+1 and S+2 of the stack) stop the scan: the interrupt or
+             * frame end comes before them. Pulls of a nested call's RTS, already returned from, are passed. */
+            uint32_t own = 0x1F0100u + (uint8_t)(cpu.s + 1);
+
+            if (e->addr == own || e->addr == own + 1)
+                break;
+            continue;
+        }
         if (e && e->type == EV_FRAME) {
             /* The frame ended in the original with the call's RTS not yet run (the pulls follow): the hash is taken with
              * the frame still on the stack, as the record took it. */

@@ -454,4 +454,9 @@ CardExit psg_volume_envelope(void);
 
 CardExit psg_start_song(void);
 
+CardExit psg_tempo_tick_alt(void);
+
+CardExit psg_wave_offset_alt(uint8_t number);
+CardExit psg_write_channels_alt(void);
+
 #endif

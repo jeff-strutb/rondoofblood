@@ -30,19 +30,17 @@ enum {
     CHANNEL_START_HIGH = 0x2491, CHANNEL_LOOP_LOW = 0x24C1, CHANNEL_LOOP_HIGH = 0x24C7, SCALE_BASE_AT = 0x2497, ENV_RELEASE_HIGH_AT = 0x2509
 };
 
-/*
- * @card 02:D623 psg_tempo_tick
- * WHAT IT DOES: Counts the sound's fade-out time: while the fade is on, adds the step to a phase and counts its overflows,
- * and when the count reaches $1E asks every channel that is playing to stop.
- * HOW: $2613 the fade's step (zero: off), added to $2614 in seven bits; a carry into bit 7 is one tick of $2615; at $1E ticks every
- * channel whose state ($2607 plus the channel) is not zero is set to 2.
- * WAITS: no.
- * Entry: nothing. Exit: A, X and the flags as the last step left them: off, A 0, Z; below the limit, A the ticks, C 0; else X $FF,
- * N, C 1.
- */
-CardExit psg_tempo_tick(void)
+/* An array of the second player (mode 0) lies lower than the first's: those from $2480 to $25A5 by $19D, those from $25E1 to $2615 by $18B. */
+static inline uint16_t ar(uint8_t set, uint16_t address)
 {
-    uint8_t step = rd8(TEMPO_ON);
+    if (set == 0)
+        return address;
+    return address >= 0x25E1 ? (uint16_t)(address - 0x18B) : (uint16_t)(address - 0x19D);
+}
+
+static CardExit tempo_tick_body(uint8_t set)
+{
+    uint8_t step = rd8(ar(set, TEMPO_ON));
     uint8_t phase;
     uint8_t ticks;
     uint8_t state = 0;
@@ -52,22 +50,22 @@ CardExit psg_tempo_tick(void)
 
     if (step == 0)
         return exit_a(0);
-    phase = rd8(TEMPO_PHASE);
+    phase = rd8(ar(set, TEMPO_PHASE));
     sum = add8(step, phase, false);
     a = sum.value;
     if ((a & 0x80) != 0) {
-        ticks = rd8(TEMPO_TICKS);
-        wr8(TEMPO_TICKS, (uint8_t)(ticks + 1));
+        ticks = rd8(ar(set, TEMPO_TICKS));
+        wr8(ar(set, TEMPO_TICKS), (uint8_t)(ticks + 1));
         a = (uint8_t)(a & 0x7F);
     }
-    wr8(TEMPO_PHASE, a);
-    ticks = rd8(TEMPO_TICKS);
+    wr8(ar(set, TEMPO_PHASE), a);
+    ticks = rd8(ar(set, TEMPO_TICKS));
     if (ticks < TEMPO_LIMIT)
         return with_v(exit_cmp(ticks, TEMPO_LIMIT), sum.overflow);
     for (int x = CHANNELS - 1; x >= 0; x--) {
-        state = rd8((uint16_t)(CHANNEL_STATE + x));
+        state = rd8((uint16_t)(ar(set, CHANNEL_STATE) + x));
         if (state != 0) {
-            wr8((uint16_t)(CHANNEL_STATE + x), STATE_STOP_ASKED);
+            wr8((uint16_t)(ar(set, CHANNEL_STATE) + x), STATE_STOP_ASKED);
             state = STATE_STOP_ASKED;
         }
     }
@@ -80,19 +78,48 @@ CardExit psg_tempo_tick(void)
     return e;
 }
 
+
+/*
+ * @card 02:D623 psg_tempo_tick
+ * WHAT IT DOES: Counts the sound's fade-out time: while the fade is on, adds the step to a phase and counts its overflows,
+ * and when the count reaches $1E asks every channel that is playing to stop.
+ * HOW: $2613 the fade's step (zero: off), added to $2614 in seven bits; a carry into bit 7 is one tick of $2615; at $1E ticks every
+ * channel whose state ($2607 plus the channel) is not zero is set to 2.
+ * WAITS: no.
+ * Entry: nothing. Exit: A, X and the flags as the last step left them: off, A 0, Z; below the limit, A the ticks, C 0; else X $FF,
+ * N, C 1.
+ */
+CardExit psg_tempo_tick(void)
+{
+    return tempo_tick_body(0);
+}
+
 void abi_psg_tempo_tick(void)
 {
     card_exit_apply(psg_tempo_tick());
 }
 
 /*
- * @card 02:D706 psg_wave_offset
- * WHAT IT DOES: Makes a waveform's number into its offset in the table: the number times 32, in _EX and _EY zero page.
- * HOW: Three shifts through zero page $E8.
+ * @card 02:CC26 psg_tempo_tick_alt
+ * WHAT IT DOES: The second player's psg_tempo_tick (mode 0): counts the sound's fade-out time: while the fade is on, adds the step to a phase and counts its overflows,
+ * and when the count reaches $1E asks every channel that is playing to stop.
+ * HOW: $2488 the fade's step (zero: off), added to $2489 in seven bits; a carry into bit 7 is one tick of $248A; at $1E ticks every
+ * channel whose state ($247C plus the channel) is not zero is set to 2.
  * WAITS: no.
- * Entry: A the number. Exit: $E8 the low byte and $E9 the high; A the high byte, C the last bit shifted out. N, Z from the last ROR; X, Y kept.
+ * Entry: nothing. Exit: A, X and the flags as the last step left them: off, A 0, Z; below the limit, A the ticks, C 0; else X $FF,
+ * N, C 1.
  */
-CardExit psg_wave_offset(uint8_t number)
+CardExit psg_tempo_tick_alt(void)
+{
+    return tempo_tick_body(1);
+}
+
+void abi_psg_tempo_tick_alt(void)
+{
+    card_exit_apply(psg_tempo_tick_alt());
+}
+
+static CardExit wave_offset_body(uint8_t number)
 {
     CardExit e = { 0 };
     uint8_t a = number;
@@ -117,9 +144,39 @@ CardExit psg_wave_offset(uint8_t number)
     return e;
 }
 
+
+/*
+ * @card 02:D706 psg_wave_offset
+ * WHAT IT DOES: Makes a waveform's number into its offset in the table: the number times 32, in _EX and _EY zero page.
+ * HOW: Three shifts through zero page $E8.
+ * WAITS: no.
+ * Entry: A the number. Exit: $E8 the low byte and $E9 the high; A the high byte, C the last bit shifted out. N, Z from the last ROR; X, Y kept.
+ */
+CardExit psg_wave_offset(uint8_t number)
+{
+    return wave_offset_body(number);
+}
+
 void abi_psg_wave_offset(void)
 {
     card_exit_apply(psg_wave_offset(cpu.a));
+}
+
+/*
+ * @card 02:CD04 psg_wave_offset_alt
+ * WHAT IT DOES: The second player's psg_wave_offset: Makes a waveform's number into its offset in the table: the number times 32, in _EX and _EY zero page.
+ * HOW: Three shifts through zero page $E8.
+ * WAITS: no.
+ * Entry: A the number. Exit: $E8 the low byte and $E9 the high; A the high byte, C the last bit shifted out. N, Z from the last ROR; X, Y kept.
+ */
+CardExit psg_wave_offset_alt(uint8_t number)
+{
+    return wave_offset_body(number);
+}
+
+void abi_psg_wave_offset_alt(void)
+{
+    card_exit_apply(psg_wave_offset_alt(cpu.a));
 }
 
 /* The table's address plus the offset psg_wave_offset left in $E8 and $E9, as the two adds make it: the second add's sum. */
@@ -143,7 +200,7 @@ static Sum wave_address(uint8_t low_base, uint8_t high_base, bool from_memory, u
 }
 
 /* One channel of psg_write_channels: what its path leaves in A, C, V and Y (those it touches). */
-static CardExit write_channel(uint8_t channel)
+static CardExit write_channel(uint8_t set, uint8_t channel)
 {
     CardExit e = { 0 };
     uint8_t value;
@@ -152,45 +209,53 @@ static CardExit write_channel(uint8_t channel)
     bool noise = false;
     Sum sum;
 
-    state = rd8((uint16_t)(CHANNEL_STATE + channel));
+    state = rd8((uint16_t)(ar(set, CHANNEL_STATE) + channel));
     e = exit_cmp(state, 1);
     if (((uint8_t)(state - 1) & 0x80) != 0)
         return e;
     wr8(PSG_SELECT, channel);
     if (state != 1) {
         wr8(PSG_CONTROL, 0);
-        wr8((uint16_t)(CHANNEL_STATE + channel), 0);
+        wr8((uint16_t)(ar(set, CHANNEL_STATE) + channel), 0);
+        if (set != 0)
+            return e;
         value = rd8(PLAYER_MODE_AT);
         e = exit_cmp(value, 1);
         if (value == 1)
             return e;
-        value = rd8((uint16_t)(CHANNEL_USED + channel));
+        value = rd8((uint16_t)(ar(set, CHANNEL_USED) + channel));
         e.a = value;
         if (value == 0)
             return e;
-        value = rd8((uint16_t)(CHANNEL_BUSY + channel));
+        value = rd8((uint16_t)(ar(set, CHANNEL_BUSY) + channel));
         e.a = (uint8_t)(value & 0x7F);
-        wr8((uint16_t)(CHANNEL_BUSY + channel), e.a);
+        wr8((uint16_t)(ar(set, CHANNEL_BUSY) + channel), e.a);
         return e;
     }
-    value = rd8((uint16_t)(CHANNEL_FLAGS + channel));
+    if (set != 0 && rd8(PLAYER_MODE_AT) != 0) {
+        value = rd8((uint16_t)(CHANNEL_STATE + channel));
+        e = exit_cmp(value, 1);
+        if (value == 1)
+            return e;
+    }
+    value = rd8((uint16_t)(ar(set, CHANNEL_FLAGS) + channel));
     a = value;
     if ((value & 0x80) == 0) {
         uint8_t number;
         CardExit step;
 
         a = (uint8_t)(value | 0x80);
-        wr8((uint16_t)(CHANNEL_FLAGS + channel), a);
+        wr8((uint16_t)(ar(set, CHANNEL_FLAGS) + channel), a);
         number = (uint8_t)(a & 0x7F);
         if (number < WAVE_BUILT_IN_COUNT) {
-            jsr_push(0xD68E);
-            step = psg_wave_offset(number);
+            jsr_push(set ? 0xCC8C : 0xD68E);
+            step = set ? psg_wave_offset_alt(number) : psg_wave_offset(number);
             jsr_pop();
             (void)step;
             sum = wave_address(0xA6, 0xD9, false, 0);
         } else {
-            jsr_push(0xD6A3);
-            step = psg_wave_offset((uint8_t)(number - WAVE_BUILT_IN_COUNT));
+            jsr_push(set ? 0xCCA1 : 0xD6A3);
+            step = set ? psg_wave_offset_alt((uint8_t)(number - WAVE_BUILT_IN_COUNT)) : psg_wave_offset((uint8_t)(number - WAVE_BUILT_IN_COUNT));
             jsr_pop();
             (void)step;
             sum = wave_address(0, 0, true, WAVE_TABLE_USER);
@@ -206,7 +271,7 @@ static CardExit write_channel(uint8_t channel)
         e.a = a;
     }
     if (channel >= 4) {
-        value = rd8((uint16_t)(NOISE_FLAGS + channel));
+        value = rd8((uint16_t)(ar(set, NOISE_FLAGS) + channel));
         a = value;
         if ((value & 0x80) == 0) {
             a = (uint8_t)(value | 0x80);
@@ -216,15 +281,15 @@ static CardExit write_channel(uint8_t channel)
     }
     if (!noise) {
         wr8(PSG_NOISE, 0);
-        a = rd8((uint16_t)(FREQ_LOW + channel));
+        a = rd8((uint16_t)(ar(set, FREQ_LOW) + channel));
         wr8(PSG_FREQ_LOW, a);
-        a = rd8((uint16_t)(FREQ_HIGH + channel));
+        a = rd8((uint16_t)(ar(set, FREQ_HIGH) + channel));
         wr8(PSG_FREQ_HIGH, a);
     }
-    a = rd8((uint16_t)(BALANCE + channel));
+    a = rd8((uint16_t)(ar(set, BALANCE) + channel));
     wr8(PSG_BALANCE, a);
-    value = rd8((uint16_t)(VOLUME + channel));
-    a = rd8(TEMPO_TICKS);
+    value = rd8((uint16_t)(ar(set, VOLUME) + channel));
+    a = rd8(ar(set, TEMPO_TICKS));
     sum = sub8(value, a, true);
     if (sum.value == 0 || (sum.value & 0x80) != 0) {
         wr8(PSG_CONTROL, 0);
@@ -236,6 +301,19 @@ static CardExit write_channel(uint8_t channel)
     e.a = a;
     e.set_a = true;
     return with_v(with_c(e, sum.carry), sum.overflow);
+}
+
+static CardExit write_channels_body(uint8_t set)
+{
+    CardExit e = { 0 };
+
+    for (int x = CHANNELS - 1; x >= 0; x--)
+        e = card_exit_over(e, write_channel(set, (uint8_t)x));
+    e.x = 0xFF;
+    e.nz = 0xFF;
+    e.set_x = e.set_nz = true;
+    e.set_n = e.set_z = false;
+    return e;
 }
 
 /*
@@ -252,20 +330,34 @@ static CardExit write_channel(uint8_t channel)
  */
 CardExit psg_write_channels(void)
 {
-    CardExit e = { 0 };
-
-    for (int x = CHANNELS - 1; x >= 0; x--)
-        e = card_exit_over(e, write_channel((uint8_t)x));
-    e.x = 0xFF;
-    e.nz = 0xFF;
-    e.set_x = e.set_nz = true;
-    e.set_n = e.set_z = false;
-    return e;
+    return write_channels_body(0);
 }
 
 void abi_psg_write_channels(void)
 {
     card_exit_apply(psg_write_channels());
+}
+
+/*
+ * @card 02:CC50 psg_write_channels_alt
+ * WHAT IT DOES: The second player's psg_write_channels (mode 0): Writes the six channels' state to the PSG, from channel 5 down to 0: a channel asked to stop is silenced and forgotten; a
+ * new one gets its waveform, noise or frequency, balance and volume.
+ * HOW: Each channel's state at $247C: below 1 skipped; 2 and up: key off, state cleared, and the channel's busy bit cleared in $2474
+ * unless the player's mode is 1 or the channel is not used; 1: a new note: the waveform ($2474 bit 7 not yet set) copied as 32 bytes
+ * from the built-in table at $D9A6 or the user's at $22D2, then noise (channels 4 and 5, if bit 7 of $2476 is clear) or frequency,
+ * the balance, and the volume less the fade ($2615), written with the key on, or the key off if none is left.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $FF, N from it; A and the other flags as the last channel left them.
+ * The PSG's registers at $0800 to $0807 and the arrays are by address; psg_wave_offset's frames are at $D68E and $D6A3.
+ */
+CardExit psg_write_channels_alt(void)
+{
+    return write_channels_body(1);
+}
+
+void abi_psg_write_channels_alt(void)
+{
+    card_exit_apply(psg_write_channels_alt());
 }
 
 /* The sum's top bit, which two ROLs and an AND of 1 bring round: the fraction's carry into the whole part. */

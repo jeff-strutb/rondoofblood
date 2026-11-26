@@ -13,7 +13,7 @@ enum {
     SCENE_MENU_A = 4, SCENE_MENU_B = 6, ADPCM_MENU = 0x24,
     STAGE_AFTER_LAST_SECRET = 0x80, STAGE_TITLE = 0x02, ROUTE_SECOND = 0x05,
     STAGE_KEEPS_VRAM_A = 0x10, STAGE_KEEPS_VRAM_B = 0x0C,
-    VRAM_COPY_ROWS = 8, VRAM_COPY_ROW_BYTES = 0x80, VRAM_COPY_ADDR_HI = 0x7E,
+    VRAM_COPY_ROWS = 8, VRAM_COPY_ROW_BYTES = 0x80, VRAM_COPY_ADDR_HI = 0x7E, READ_ADDRESS_RETURN = 0x6E14, DATA_RETURN = 0x6E1B,
     VRAM_COPY_RAM_HI = 0x9C
 };
 
@@ -301,6 +301,7 @@ void abi_StageLoad(void)
  * zRamBaseBank.
  * HOW: Eight rows of $80 bytes, read through the VDC's data port, through a pointer in
  * the BIOS's zBiosAl-Ah.
+ * WAITS: no.
  * Entry: nothing. Exit: A the pointer's low byte, N and Z from X reaching zero, C from its
  * add, V too; X 0, Y $80.
  */
@@ -309,10 +310,14 @@ Sum SaveVramToRam(void)
     Sum low = { 0, false, false };
 
     tam(MPR4, rd8(zRamBaseBank));
-    SelectVramReadAddress();
+    jsr_push(READ_ADDRESS_RETURN);
+    SelectVramReadAddress();               /* through the vector's JMP: one frame */
+    jsr_pop();
     st1(0x00);
     st2(VRAM_COPY_ADDR_HI);
+    jsr_push(DATA_RETURN);
     SelectVramData();
+    jsr_pop();
     wr8(zBiosAl, 0);
     wr8(zBiosAh, VRAM_COPY_RAM_HI);
     for (uint8_t row = 0; row < VRAM_COPY_ROWS; row++) {

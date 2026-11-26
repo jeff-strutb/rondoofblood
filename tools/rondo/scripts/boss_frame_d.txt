@@ -26,5 +26,19 @@ poke 27D0 0C
 call BB9C X=28 Y=00 MPR5=70 MPR6=71
 wait 2
 poke 27D0 06
+poke 2A90 00
+call C523 X=28 MPR6=71
+wait 2
+poke 2A90 07
+call C523 X=28 MPR6=71
+wait 2
+poke 2A90 0B
+call C523 X=28 MPR6=71
+wait 2
+poke 2A90 0C
+call C523 X=28 MPR6=71
+wait 2
+poke 2A90 05
 wait 60
 dump boss
+# HitBoxRowByFrameKind (0F6D:523, resident at $C523 in bank $71, which the dump shows holding its 34 bytes at offset $523): unit calls for the boss slot at frames 0, 7, 11 and 12 (OBJ_2A68 of slot $28, $2A90), then the frame put back.

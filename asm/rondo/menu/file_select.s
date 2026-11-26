@@ -884,9 +884,8 @@ PlaceObjectList_at0:
     clc
     adc #$03
     sta z:zTemp00
-    bcc PlaceObjectList_at2
+    bcc JumpByKindTable
     inc z:zTemp01
-PlaceObjectList_at2:
     inx
     bra PlaceObjectList_at0
 PlaceObjectList_at1:
@@ -1048,14 +1047,13 @@ BlankTextRow:
     sta a:VDC_DATA_HI
     jsr VecSelectVramData
     clx
-BlankTextRow_at0:
     lda a:VDC_DATA_LO
     st1 #$3D
     lda a:VDC_DATA_HI
     sta a:VDC_DATA_HI
     inx
     cpx #$08
-    bne BlankTextRow_at0
+    bne DrawTilePiece072A
     plx
     rts
 
@@ -1401,7 +1399,7 @@ SlotLastClearedFlag:
     bsr SlotClearedFlags
     ldx #$0C
 SlotLastClearedFlag_at1:
-    lda a:ListChannelClearEnd+1,x
+    lda a:StageVramBuffer,x
     bne SlotLastClearedFlag_at0
     dex
     bpl SlotLastClearedFlag_at1
@@ -1423,7 +1421,7 @@ SlotLastClearedFlag_at0:
 SlotClearedFlags:
     clx
 SlotClearedFlags_at1:
-    stz a:ListChannelClearEnd+1,x
+    stz a:StageVramBuffer,x
     ldy z:zSaveSlot
     lda a:$9252,y
     clc
@@ -1433,12 +1431,12 @@ SlotClearedFlags_at1:
     ora a:SaveBuffer+6,y
     and a:$AFE3,x
     beq SlotClearedFlags_at0
-    inc a:ListChannelClearEnd+1,x
+    inc a:StageVramBuffer,x
 SlotClearedFlags_at0:
     inx
     cpx #$0D
     bne SlotClearedFlags_at1
-    stz a:ListChannelClearEnd+1,x
+    stz a:StageVramBuffer,x
     rts
 
 ; @routine 00E0:3DF StartScriptSlotKind6B
@@ -1450,9 +1448,9 @@ SlotClearedFlags_at0:
 ; WAITS: no.
 ; Entry: X the slot, Y the script. Exit: A the script, N and Z from it; X and Y kept.
 StartScriptSlotKind6B:
-    bsr $BBF1
+    bsr ClearScriptSlotB
     lda #$06
-    bra StartScriptSlotKind7B_at0
+    bra NearObject19
 
 ; @routine 00E0:3E5 StartScriptSlotKind7B
 ; @run 6F:BBE5
@@ -1462,14 +1460,20 @@ StartScriptSlotKind6B:
 ; WAITS: no.
 ; Entry: X the slot, Y the script. Exit: A the script, N and Z from it; X and Y kept.
 StartScriptSlotKind7B:
-    bsr StartScriptSlotKind7B_at1
+    bsr ClearScriptSlotB
     lda #$07
-StartScriptSlotKind7B_at0:
     sta a:ScriptSlotKind,x
     tya
     sta a:ScriptSlotScript,x
     rts
-StartScriptSlotKind7B_at1:
+
+; @routine 00E0:3F1 ClearScriptSlotB
+; @run 6F:BBF1
+; WHAT IT DOES: Empties a script slot (the overlay's copy of ClearScriptSlot).
+; HOW: Zeroes its first eight fields, 12 bytes apart.
+; WAITS: no.
+; Entry: X slot. Exit: all registers and flags kept.
+ClearScriptSlotB:
     stz a:ScriptSlotKind,x
     stz a:ScriptSlotScript,x
     stz a:ScriptSlotField18,x

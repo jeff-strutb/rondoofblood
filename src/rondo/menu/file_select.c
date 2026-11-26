@@ -2592,6 +2592,31 @@ void abi_CursorMoveByPad(void)
 }
 
 /*
+ * @routine 00E0:3F1 ClearScriptSlotB
+ * @run 6F:BBF1
+ * WHAT IT DOES: Empties a script slot (the overlay's copy of ClearScriptSlot).
+ * HOW: Zeroes its first eight fields, 12 bytes apart.
+ * WAITS: no.
+ * Entry: X slot. Exit: all registers and flags kept.
+ */
+void ClearScriptSlotB(uint8_t slot)
+{
+    WR8(SLOTS->kind[slot], 0);
+    WR8(SLOTS->script[slot], 0);
+    WR8(SLOTS->f18[slot], 0);
+    WR8(SLOTS->f24[slot], 0);
+    WR8(SLOTS->timer[slot], 0);
+    WR8(SLOTS->f3c[slot], 0);
+    WR8(SLOTS->f48[slot], 0);
+    WR8(SLOTS->f54[slot], 0);
+}
+
+void abi_ClearScriptSlotB(void)
+{
+    ClearScriptSlotB(cpu.x);
+}
+
+/*
  * @routine 00E0:3DF StartScriptSlotKind6B
  * @run 6F:BBDF
  * WHAT IT DOES: Starts a script on a script slot as kind 6.
@@ -2604,7 +2629,7 @@ void abi_CursorMoveByPad(void)
 uint8_t StartScriptSlotKind6B(uint8_t script, uint8_t slot)
 {
     jsr_push(0xBBE1);
-    ClearScriptSlot(slot);
+    ClearScriptSlotB(slot);
     jsr_pop();
     WR8(SLOTS->kind[slot], 6);
     WR8(SLOTS->script[slot], script);
@@ -2628,7 +2653,7 @@ void abi_StartScriptSlotKind6B(void)
 uint8_t StartScriptSlotKind7B(uint8_t script, uint8_t slot)
 {
     jsr_push(0xBBE7);
-    ClearScriptSlot(slot);
+    ClearScriptSlotB(slot);
     jsr_pop();
     WR8(SLOTS->kind[slot], 7);
     WR8(SLOTS->script[slot], script);

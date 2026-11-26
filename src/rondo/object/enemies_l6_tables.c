@@ -607,20 +607,28 @@ void abi_JumpByPhaseTable0E0B16C(void)
  * WAITS: no.
  * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
  */
-Jump JumpByPhaseTable025C068(uint8_t slot)
+Jump JumpByPhaseTableBody(uint8_t slot, const JumpTableLayout *layout)
 {
     Jump jump = { { 0 }, 0, true };
     uint8_t phase, index, low, high;
 
     phase = RD8(OBJ->f2800[slot]);
     index = (uint8_t)(phase << 1);
-    low = rd8((uint16_t)(0xB87A + index));
+    low = rd8((uint16_t)(layout->table + index));
     WR8(ZP->temp00, low);
-    high = rd8((uint16_t)(0xB87B + index));
+    high = rd8((uint16_t)(layout->table + 1 + index));
     WR8(ZP->temp01, high);
     jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (phase & 0x80) != 0);
     jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
     return jump;
+}
+
+/* This copy's table is the one the loaded overlay holds; the copies the disc holds in sectors no scene loads pass their own. */
+static const JumpTableLayout JumpByPhaseTable025C068Loaded = { 0xB87A };
+
+Jump JumpByPhaseTable025C068(uint8_t slot)
+{
+    return JumpByPhaseTableBody(slot, &JumpByPhaseTable025C068Loaded);
 }
 
 void abi_JumpByPhaseTable025C068(void)
@@ -1041,20 +1049,28 @@ void abi_JumpByPhaseTable088B06C(void)
  * WAITS: no.
  * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
  */
-Jump JumpByStateTable025B545(uint8_t slot)
+Jump JumpByStateTableBody(uint8_t slot, const JumpTableLayout *layout)
 {
     Jump jump = { { 0 }, 0, true };
     uint8_t state, index, low, high;
 
     state = RD8(OBJ->state[slot]);
     index = (uint8_t)(state << 1);
-    low = rd8((uint16_t)(0xB557 + index));
+    low = rd8((uint16_t)(layout->table + index));
     WR8(ZP->temp00, low);
-    high = rd8((uint16_t)(0xB558 + index));
+    high = rd8((uint16_t)(layout->table + 1 + index));
     WR8(ZP->temp01, high);
     jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
     jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
     return jump;
+}
+
+/* This copy's table is the one the loaded overlay holds; the copies the disc holds in sectors no scene loads pass their own. */
+static const JumpTableLayout JumpByStateTable025B545Loaded = { 0xB557 };
+
+Jump JumpByStateTable025B545(uint8_t slot)
+{
+    return JumpByStateTableBody(slot, &JumpByStateTable025B545Loaded);
 }
 
 void abi_JumpByStateTable025B545(void)

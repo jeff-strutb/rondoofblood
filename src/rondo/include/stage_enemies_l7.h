@@ -687,6 +687,10 @@ Jump JumpByStateTable072B1B1(uint8_t slot);
 Jump JumpByStateTable072B24C(uint8_t slot);
 Jump JumpByStateTable0F6C3C0(uint8_t slot);
 Jump JumpByStateTable05CB1CF(uint8_t slot);
+/* The state and phase jump tables of the overlays' copies: the table's address is all that moves between copies. */
+typedef struct { uint16_t table; } JumpTableLayout;
+Jump JumpByStateTableBody(uint8_t slot, const JumpTableLayout *layout);
+Jump JumpByPhaseTableBody(uint8_t slot, const JumpTableLayout *layout);
 Jump JumpByStateTable025B545(uint8_t slot);
 Jump JumpByStateTable0B4B64C(uint8_t slot);
 Jump JumpByStateTable0F6B3EC(uint8_t slot);

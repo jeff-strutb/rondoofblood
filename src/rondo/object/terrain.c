@@ -17,13 +17,14 @@
 #include "ram.h"
 #include "access.h"
 #include "routines.h"
+#include "player_objects.h"
 
 enum {
     TILE_FIRST_HANDLED = 0x80, TILE_END_HANDLED = 0x9C, TILE_HANDLED_RESULT = 0x81,
     TILE_PAGE_BASE = 0x7D, PROBE_COLUMNS = 4, PROBE_COLUMN_BYTES = 4, PROBE_NO_COLUMN = 0x80,
     HIT_NEEDS_SECOND_LOOK = 0xA1, HIT_SECOND_LOOK_SKIP = 0x80, SECOND_LOOK_SOLID = 0x01,
     HIT_CLEARED_BY_SECOND_LOOK = 0x5E, SECOND_LOOK_RAISE = 0xF8,
-    TILE_READ_RUN = 0x967F, LOOKUP_RUN = 0x95AB, LOOKUP_ALT_RUN = 0x960B
+    TILE_READ_RUN = 0x967F, TILE_READ_RUN_9991 = 0x9991, LOOKUP_RUN = 0x95AB, LOOKUP_ALT_RUN = 0x960B
 };
 
 static HandlerExit exit_with(uint8_t y, Sum sum)
@@ -801,6 +802,9 @@ TileRead StageTileRead(void)
 
     if (resident_at(TILE_READ_RUN) == DISC(0x050F, 0x67F)) {
         return TerrainTileRead();
+    }
+    if (resident_at(TILE_READ_RUN_9991) == DISC(0x05C0, 0x191)) {
+        return ProbeTileRead9991();
     }
     read.attribute = read_by_original_shim();
     return read;

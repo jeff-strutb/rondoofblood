@@ -321,6 +321,19 @@ static ChannelExit run_list_channel(uint16_t table, uint8_t kind, uint8_t slot, 
     }
 }
 
+/* The body for any version of the overlay, with the address of its table of kind 3's copy lists: the census versions below
+ * and the loaded ones (00C5, 0111 and the rest) serve through it. */
+ChannelExit RunListChannelBody(uint16_t table, uint8_t kind, uint8_t slot, uint8_t y, bool c, bool v)
+{
+    return run_list_channel(table, kind, slot, y, c, v);
+}
+
+/* What a list channel run leaves, set on the registers. */
+void ChannelExitShim(ChannelExit exit)
+{
+    channel_exit_shim(exit);
+}
+
 static ChannelExit abi_run_list_channel(uint16_t table)
 {
     return run_list_channel(table, cpu.a, cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0);

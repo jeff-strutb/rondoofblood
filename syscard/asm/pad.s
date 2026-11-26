@@ -8,10 +8,7 @@
 ; Entry: the mask of the pads asked for, at $2227. Exit: A the last value it loaded, Y 5, N 0, Z 1, C 1. X, V kept. Soft reset: the
 ; reset mark set to $80 and a jump through CardSoftResetLo.
 ; The pad port reads are by their address, with the stack's push and pull the original makes to wait on the port.
-CardPadPort = $1000
-CardPadNow = $2228
-CardPadBefore = $2232
-CardPadAsked = $2227
+; The port and the pads' bytes are named in ram.inc (CardPadPort, CardPadNow, CardPadBefore, CardPadAsked).
 CardPadBits = $E504
 ex_joysns:
     lda #$01

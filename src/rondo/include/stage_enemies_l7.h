@@ -6,49 +6,77 @@
 #include "enemy_objects.h"
 #include "common_objects.h"
 
-/* Whether a block touches the player, and what the routine's last instructions left. */
+/* The values a contact test read and what it ended on: the player is touched (the player stands on the object) or not. */
 typedef struct {
     bool contact;
-    Ended end;
-} Contact;
+    int arm;
+    SideResult side;
+    uint8_t v[48];
+} ContactArm;
+
+/* A piece that asks the contact test, and what it ended on. */
+typedef struct {
+    ObjArm arm;
+    ContactArm contact;
+} ContactStep;
+
+/* A follow routine: the move from the path tables, then ShowByVelocity's result. */
+typedef struct {
+    ObjArm head;
+    ObjArm show;
+} PathShow;
+
+typedef struct {
+    ObjArm first;
+    PathShow path;
+} HitboxPathShow;
+
+/* A tile piece object: its own arm and, when it asks, TilePieceInRange072A's. */
+typedef struct {
+    ObjArm arm;
+    ObjArm range;
+} PieceObjArm;
+
+Ended contact_exit_shim(ContactArm a);
+Ended start_debris_burst_exit_shim(ObjArm r);
 
 /* object/enemies_stage06_temp.c */
-Ended WrapVerticalDrift(uint8_t slot);
-Ended MoveAndWrapDriftA(uint8_t slot);
-Ended MoveAndWrapDriftB(uint8_t slot);
-Ended RisingDriftBlock(uint8_t slot);
-Ended LevelDriftBlock(uint8_t slot);
-Ended StartRisingPiece(uint8_t slot);
-Ended StartLevelPiece(uint8_t slot);
-Ended DropPieceEvery32(uint8_t slot);
-Contact ContactWithPlayer(uint8_t slot);
-Ended StepPieceOnParent(uint8_t slot);
-Ended FollowParentUntilTouched(uint8_t slot);
-Ended FallingPieceMove(uint8_t slot);
-Ended FallingPieceStep(uint8_t slot);
+ObjArm WrapVerticalDrift(uint8_t slot);
+ObjArm MoveAndWrapDriftA(uint8_t slot);
+ObjArm MoveAndWrapDriftB(uint8_t slot);
+ObjArm RisingDriftBlock(uint8_t slot);
+ObjArm LevelDriftBlock(uint8_t slot);
+ObjArm StartRisingPiece(uint8_t slot);
+ObjArm StartLevelPiece(uint8_t slot);
+ObjArm DropPieceEvery32(uint8_t slot);
+ContactArm ContactWithPlayer(uint8_t slot);
+ContactStep StepPieceOnParent(uint8_t slot);
+ContactStep FollowParentUntilTouched(uint8_t slot);
+ContactStep FallingPieceMove(uint8_t slot);
+ContactStep FallingPieceStep(uint8_t slot);
 
-Ended HitboxByVerticalDirection(uint8_t slot);
-Ended LiftObjectsBySlowFraction(uint8_t slot);
-Ended ShiftObjectsX(uint8_t slot);
-Ended OrbitingObject(uint8_t slot);
-Ended AccelerateAndSway(uint8_t slot);
-Ended StepThenCount(uint8_t slot);
-Ended StepThenStop(uint8_t slot);
-Ended FallUntilLevel2(uint8_t slot);
-Ended StartPieceChain(uint8_t slot);
-Ended StartPieceStreamA(uint8_t slot, uint8_t y);
-Ended StartPieceStreamB(uint8_t slot, uint8_t y);
-Ended StartPieceStreamC(uint8_t slot);
-Ended StepFallingPieceStream(uint8_t slot);
-Ended StepPieceEmitter(uint8_t slot);
-Ended StartOnFirstState(uint8_t slot);
-Ended FaceByVelocityAndCatch(uint8_t slot);
-Ended FallingDebris(uint8_t slot);
-Ended FlashByHeight(uint8_t slot);
-Ended StartWithEvent(uint8_t slot);
-Ended RaiseStateOnFlag(uint8_t slot);
+ObjArm HitboxByVerticalDirection(uint8_t slot);
+ObjArm LiftObjectsBySlowFraction(uint8_t slot);
+ObjArm ShiftObjectsX(uint8_t slot);
+ObjArm OrbitingObject(uint8_t slot);
+ObjArm AccelerateAndSway(uint8_t slot);
+ObjArm StepThenCount(uint8_t slot);
+ObjArm StepThenStop(uint8_t slot);
+ObjArm FallUntilLevel2(uint8_t slot);
+ObjArm StartPieceChain(uint8_t slot);
+ObjArm StartPieceStreamA(uint8_t slot, uint8_t y);
+ObjArm StartPieceStreamB(uint8_t slot, uint8_t y);
+ObjArm StartPieceStreamC(uint8_t slot);
+ObjArm StepFallingPieceStream(uint8_t slot);
+ObjArm StepPieceEmitter(uint8_t slot);
+ObjArm StartOnFirstState(uint8_t slot);
+ObjArm FaceByVelocityAndCatch(uint8_t slot);
+ObjArm FallingDebris(uint8_t slot);
+ObjArm FlashByHeight(uint8_t slot);
+ObjArm StartWithEvent(uint8_t slot);
+ObjArm RaiseStateOnFlag(uint8_t slot);
 void StopVerticalSpeed(uint8_t slot);
-Jump JumpByStageStep(void);
+ObjArm JumpByStageStep(void);
 
 typedef struct {
     Ended first;
@@ -75,21 +103,21 @@ typedef struct {
     TrackPlay track;
     Ended post;
 } MusicEnd;
-BreakEnd BreakIntoPieces(uint8_t slot, uint8_t y_entry);
-Ended StartScriptsAndLists(uint8_t slot);
-MusicEnd StepThenMusicAgain(uint8_t slot, uint8_t y);
-SoundEnd BurstAtHeightE0(uint8_t slot, uint8_t y);
-ShowEnd ShowByVelocity(uint8_t slot, uint8_t y);
-ShowEnd FollowPathAndShow(uint8_t slot, uint8_t y);
-ShowEnd SetHitboxThenFollowPath(uint8_t slot, uint8_t y);
-ShowEnd FollowPathB(uint8_t slot, uint8_t y);
-SoundEnd StartDriftingPiece(uint8_t slot, uint8_t y);
-BurstTail DropAndBurst(uint8_t slot, uint8_t y);
-Ended StepFallAfterFour(uint8_t slot);
+ObjArm BreakIntoPieces(uint8_t slot, uint8_t y_entry);
+ObjArm StartScriptsAndLists(uint8_t slot);
+ObjArm StepThenMusicAgain(uint8_t slot, uint8_t y);
+ObjArm BurstAtHeightE0(uint8_t slot, uint8_t y);
+ObjArm ShowByVelocity(uint8_t slot, uint8_t y);
+PathShow FollowPathAndShow(uint8_t slot, uint8_t y);
+HitboxPathShow SetHitboxThenFollowPath(uint8_t slot, uint8_t y);
+PathShow FollowPathB(uint8_t slot, uint8_t y);
+ObjArm StartDriftingPiece(uint8_t slot, uint8_t y);
+ObjArm DropAndBurst(uint8_t slot, uint8_t y);
+ObjArm StepFallAfterFour(uint8_t slot);
 Jump JumpByStateTableC(uint8_t slot);
 Jump FaceBreakAndRun(uint8_t slot, Ended *before);
-Jump JumpByStateTableB(uint8_t slot);
-void RunDriftObject(uint8_t slot);
+ObjArm JumpByStateTableB(uint8_t slot);
+ObjArm RunDriftObject(uint8_t slot);
 
 /* The registers the original holds at this point: what the typed steps so far left, put into the machine before original code runs. */
 static inline void sync(Ended *e)
@@ -129,7 +157,7 @@ SoundEnd ScoreForKind(uint8_t slot, uint8_t y);
 Ended BlendStockRows(uint8_t slot, uint8_t y);
 SoundEnd GiveExtraLife(uint8_t slot, uint8_t y);
 Ended BlendStageRowsOfPlayer(uint8_t slot, uint8_t y);
-Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
+ObjArm StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
 
 /* An exit built from several callees' exits in order: each step is a plain exit, a sound call's, or a first-screen sound's. */
 typedef enum { STEP_ENDED, STEP_SOUND_END, STEP_SCREEN_END, STEP_PROBE } StepKind;
@@ -503,10 +531,10 @@ Ended RunObjects1619(uint8_t entry_x);
 Ended RunObjects16C9(uint8_t entry_x);
 Ended RunObjects18D9(uint8_t entry_x);
 uint8_t BitMaskFromIndex072A(uint8_t count);
-Jump TilePieceObject072A(uint8_t slot);
+PieceObjArm TilePieceObject072A(uint8_t slot);
 ObjArm ShatterOnHits(uint8_t slot);
-Jump TilePieceInRange072A(uint8_t slot);
-Jump DrawTilePiece072A(uint8_t slot);
+ObjArm TilePieceInRange072A(uint8_t slot);
+ObjArm DrawTilePiece072A(uint8_t slot);
 
 /* object/enemies_l6_*.c: lot L6 */
 ObjArm LoadRecordA04(uint8_t slot);

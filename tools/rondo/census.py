@@ -426,7 +426,7 @@ class Census:
 
     def extent(self, d, cache=True):
         """The instructions from d to its first return or jump: ([(offset, length)], ok, score). Context
-        free, so cached. ok: ends properly, with no undefined opcode, nothing the scripts never ran (strict),
+        free, so cached. ok: ends properly, with no undefined opcode, no BRK (strict),
         no jump into I/O, and it reads as code (the model's score at least TAU)."""
         v = self._ext.get(d)
         if v is not None:

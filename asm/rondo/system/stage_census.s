@@ -126,13 +126,12 @@ LoadStageEntry026E:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry026E_x0
+    bbr1 zField8E,LoadStageEntry026E_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry026E_at1
 LoadStageEntry026E_at0:
-LoadStageEntry026E_x0:
     lda (zTemp00),y
     bne LoadStageEntry026E_at2
     lda z:zBiosAl
@@ -314,14 +313,13 @@ SpawnStageObjectsRows01026E:
 StepStageFrame026E:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame026E_x0
+    bbs1 zPaused,StepStageFrame026E_at0
     lda a:StageVar3616+1
     beq StepStageFrame026E_at1
     dec a:StageVar3616+1
     bne StepStageFrame026E_at1
     smb1 z:zPaused
 StepStageFrame026E_at0:
-StepStageFrame026E_x0:
     jsr $8EAF
     bra StepStageFrame026E_at2
 StepStageFrame026E_at1:
@@ -357,15 +355,14 @@ StepStageFrame026E_at3:
     ldy #$F0
     jsr $9350
     dec z:zField99
-    bra StepStageFrame026E_x1
+    bra StepStageFrame026E_x0
 StepStageFrame026E_at6:
-    bbr5 StepStageFrame026E_x2
-    bbs6 StepStageFrame026E_x2
+    bbr5 zField8E,StepStageFrame026E_at7
+    bbs6 zField8E,StepStageFrame026E_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame026E_at7:
-StepStageFrame026E_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -374,13 +371,12 @@ StepStageFrame026E_x2:
     bra StepStageFrame026E_at8
 StepStageFrame026E_at5:
     smb5 z:zField8E
-StepStageFrame026E_x1:
-    bbr6 StepStageFrame026E_x3
+StepStageFrame026E_x0:
+    bbr6 zField8E,StepStageFrame026E_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame026E_at8:
-StepStageFrame026E_x3:
     jsr $9307
     stz a:StageBlendOn
     lda z:zField94
@@ -398,10 +394,9 @@ StepStageFrame026E_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame026E_at9:
-    bbs2 StepStageFrame026E_x4
+    bbs2 zField8E,StepStageFrame026E_at10
     rts
 StepStageFrame026E_at10:
-StepStageFrame026E_x4:
     jmp $8C2A
 
 ; @routine 031E:0A2 InitStage031E
@@ -532,13 +527,12 @@ LoadStageEntry031E:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry031E_x0
+    bbr1 zField8E,LoadStageEntry031E_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry031E_at1
 LoadStageEntry031E_at0:
-LoadStageEntry031E_x0:
     lda (zTemp00),y
     bne LoadStageEntry031E_at2
     lda z:zBiosAl
@@ -720,14 +714,13 @@ SpawnStageObjectsRows01031E:
 StepStageFrame031E:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame031E_x0
+    bbs1 zPaused,StepStageFrame031E_at0
     lda a:StageVar3616+1
     beq StepStageFrame031E_at1
     dec a:StageVar3616+1
     bne StepStageFrame031E_at1
     smb1 z:zPaused
 StepStageFrame031E_at0:
-StepStageFrame031E_x0:
     jsr $8EA3
     bra StepStageFrame031E_at2
 StepStageFrame031E_at1:
@@ -763,15 +756,14 @@ StepStageFrame031E_at3:
     ldy #$F0
     jsr $9631
     dec z:zField99
-    bra StepStageFrame031E_x1
+    bra StepStageFrame031E_x0
 StepStageFrame031E_at6:
-    bbr5 StepStageFrame031E_x2
-    bbs6 StepStageFrame031E_x2
+    bbr5 zField8E,StepStageFrame031E_at7
+    bbs6 zField8E,StepStageFrame031E_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame031E_at7:
-StepStageFrame031E_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -780,13 +772,12 @@ StepStageFrame031E_x2:
     bra StepStageFrame031E_at8
 StepStageFrame031E_at5:
     smb5 z:zField8E
-StepStageFrame031E_x1:
-    bbr6 StepStageFrame031E_x3
+StepStageFrame031E_x0:
+    bbr6 zField8E,StepStageFrame031E_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame031E_at8:
-StepStageFrame031E_x3:
     jsr $95E8
     stz a:StageBlendOn
     lda z:zField94
@@ -804,10 +795,9 @@ StepStageFrame031E_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame031E_at9:
-    bbs2 StepStageFrame031E_x4
+    bbs2 zField8E,StepStageFrame031E_at10
     rts
 StepStageFrame031E_at10:
-StepStageFrame031E_x4:
     jmp $8C2A
 
 ; @routine 043E:0A2 InitStage043E
@@ -938,13 +928,12 @@ LoadStageEntry043E:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry043E_x0
+    bbr1 zField8E,LoadStageEntry043E_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry043E_at1
 LoadStageEntry043E_at0:
-LoadStageEntry043E_x0:
     lda (zTemp00),y
     bne LoadStageEntry043E_at2
     lda z:zBiosAl
@@ -1126,14 +1115,13 @@ SpawnStageObjectsRows01043E:
 StepStageFrame043E:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame043E_x0
+    bbs1 zPaused,StepStageFrame043E_at0
     lda a:StageVar3616+1
     beq StepStageFrame043E_at1
     dec a:StageVar3616+1
     bne StepStageFrame043E_at1
     smb1 z:zPaused
 StepStageFrame043E_at0:
-StepStageFrame043E_x0:
     jsr $8EA3
     bra StepStageFrame043E_at2
 StepStageFrame043E_at1:
@@ -1169,15 +1157,14 @@ StepStageFrame043E_at3:
     ldy #$F0
     jsr $9631
     dec z:zField99
-    bra StepStageFrame043E_x1
+    bra StepStageFrame043E_x0
 StepStageFrame043E_at6:
-    bbr5 StepStageFrame043E_x2
-    bbs6 StepStageFrame043E_x2
+    bbr5 zField8E,StepStageFrame043E_at7
+    bbs6 zField8E,StepStageFrame043E_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame043E_at7:
-StepStageFrame043E_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -1186,13 +1173,12 @@ StepStageFrame043E_x2:
     bra StepStageFrame043E_at8
 StepStageFrame043E_at5:
     smb5 z:zField8E
-StepStageFrame043E_x1:
-    bbr6 StepStageFrame043E_x3
+StepStageFrame043E_x0:
+    bbr6 zField8E,StepStageFrame043E_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame043E_at8:
-StepStageFrame043E_x3:
     jsr $95E8
     stz a:StageBlendOn
     lda z:zField94
@@ -1210,10 +1196,9 @@ StepStageFrame043E_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame043E_at9:
-    bbs2 StepStageFrame043E_x4
+    bbs2 zField8E,StepStageFrame043E_at10
     rts
 StepStageFrame043E_at10:
-StepStageFrame043E_x4:
     jmp $8C2A
 
 ; @routine 064E:0A2 InitStage064E
@@ -1344,13 +1329,12 @@ LoadStageEntry064E:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry064E_x0
+    bbr1 zField8E,LoadStageEntry064E_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry064E_at1
 LoadStageEntry064E_at0:
-LoadStageEntry064E_x0:
     lda (zTemp00),y
     bne LoadStageEntry064E_at2
     lda z:zBiosAl
@@ -1532,14 +1516,13 @@ SpawnStageObjectsRows01064E:
 StepStageFrame064E:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame064E_x0
+    bbs1 zPaused,StepStageFrame064E_at0
     lda a:StageVar3616+1
     beq StepStageFrame064E_at1
     dec a:StageVar3616+1
     bne StepStageFrame064E_at1
     smb1 z:zPaused
 StepStageFrame064E_at0:
-StepStageFrame064E_x0:
     jsr $8EAF
     bra StepStageFrame064E_at2
 StepStageFrame064E_at1:
@@ -1575,15 +1558,14 @@ StepStageFrame064E_at3:
     ldy #$F0
     jsr $9350
     dec z:zField99
-    bra StepStageFrame064E_x1
+    bra StepStageFrame064E_x0
 StepStageFrame064E_at6:
-    bbr5 StepStageFrame064E_x2
-    bbs6 StepStageFrame064E_x2
+    bbr5 zField8E,StepStageFrame064E_at7
+    bbs6 zField8E,StepStageFrame064E_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame064E_at7:
-StepStageFrame064E_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -1592,13 +1574,12 @@ StepStageFrame064E_x2:
     bra StepStageFrame064E_at8
 StepStageFrame064E_at5:
     smb5 z:zField8E
-StepStageFrame064E_x1:
-    bbr6 StepStageFrame064E_x3
+StepStageFrame064E_x0:
+    bbr6 zField8E,StepStageFrame064E_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame064E_at8:
-StepStageFrame064E_x3:
     jsr $9307
     stz a:StageBlendOn
     lda z:zField94
@@ -1616,10 +1597,9 @@ StepStageFrame064E_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame064E_at9:
-    bbs2 StepStageFrame064E_x4
+    bbs2 zField8E,StepStageFrame064E_at10
     rts
 StepStageFrame064E_at10:
-StepStageFrame064E_x4:
     jmp $8C2A
 
 ; @routine 10DE:0A2 InitStage10DE
@@ -1750,13 +1730,12 @@ LoadStageEntry10DE:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry10DE_x0
+    bbr1 zField8E,LoadStageEntry10DE_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry10DE_at1
 LoadStageEntry10DE_at0:
-LoadStageEntry10DE_x0:
     lda (zTemp00),y
     bne LoadStageEntry10DE_at2
     lda z:zBiosAl
@@ -1938,14 +1917,13 @@ SpawnStageObjectsRows0110DE:
 StepStageFrame10DE:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame10DE_x0
+    bbs1 zPaused,StepStageFrame10DE_at0
     lda a:StageVar3616+1
     beq StepStageFrame10DE_at1
     dec a:StageVar3616+1
     bne StepStageFrame10DE_at1
     smb1 z:zPaused
 StepStageFrame10DE_at0:
-StepStageFrame10DE_x0:
     jsr $8EA3
     bra StepStageFrame10DE_at2
 StepStageFrame10DE_at1:
@@ -1981,15 +1959,14 @@ StepStageFrame10DE_at3:
     ldy #$F0
     jsr $9631
     dec z:zField99
-    bra StepStageFrame10DE_x1
+    bra StepStageFrame10DE_x0
 StepStageFrame10DE_at6:
-    bbr5 StepStageFrame10DE_x2
-    bbs6 StepStageFrame10DE_x2
+    bbr5 zField8E,StepStageFrame10DE_at7
+    bbs6 zField8E,StepStageFrame10DE_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame10DE_at7:
-StepStageFrame10DE_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -1998,13 +1975,12 @@ StepStageFrame10DE_x2:
     bra StepStageFrame10DE_at8
 StepStageFrame10DE_at5:
     smb5 z:zField8E
-StepStageFrame10DE_x1:
-    bbr6 StepStageFrame10DE_x3
+StepStageFrame10DE_x0:
+    bbr6 zField8E,StepStageFrame10DE_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame10DE_at8:
-StepStageFrame10DE_x3:
     jsr $95E8
     stz a:StageBlendOn
     lda z:zField94
@@ -2022,10 +1998,9 @@ StepStageFrame10DE_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame10DE_at9:
-    bbs2 StepStageFrame10DE_x4
+    bbs2 zField8E,StepStageFrame10DE_at10
     rts
 StepStageFrame10DE_at10:
-StepStageFrame10DE_x4:
     jmp $8C2A
 
 ; @routine 122E:0A2 InitStage122E
@@ -2156,13 +2131,12 @@ LoadStageEntry122E:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry122E_x0
+    bbr1 zField8E,LoadStageEntry122E_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry122E_at1
 LoadStageEntry122E_at0:
-LoadStageEntry122E_x0:
     lda (zTemp00),y
     bne LoadStageEntry122E_at2
     lda z:zBiosAl
@@ -2344,14 +2318,13 @@ SpawnStageObjectsRows01122E:
 StepStageFrame122E:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame122E_x0
+    bbs1 zPaused,StepStageFrame122E_at0
     lda a:StageVar3616+1
     beq StepStageFrame122E_at1
     dec a:StageVar3616+1
     bne StepStageFrame122E_at1
     smb1 z:zPaused
 StepStageFrame122E_at0:
-StepStageFrame122E_x0:
     jsr $8EAF
     bra StepStageFrame122E_at2
 StepStageFrame122E_at1:
@@ -2387,15 +2360,14 @@ StepStageFrame122E_at3:
     ldy #$F0
     jsr $9350
     dec z:zField99
-    bra StepStageFrame122E_x1
+    bra StepStageFrame122E_x0
 StepStageFrame122E_at6:
-    bbr5 StepStageFrame122E_x2
-    bbs6 StepStageFrame122E_x2
+    bbr5 zField8E,StepStageFrame122E_at7
+    bbs6 zField8E,StepStageFrame122E_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame122E_at7:
-StepStageFrame122E_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -2404,13 +2376,12 @@ StepStageFrame122E_x2:
     bra StepStageFrame122E_at8
 StepStageFrame122E_at5:
     smb5 z:zField8E
-StepStageFrame122E_x1:
-    bbr6 StepStageFrame122E_x3
+StepStageFrame122E_x0:
+    bbr6 zField8E,StepStageFrame122E_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame122E_at8:
-StepStageFrame122E_x3:
     jsr $9307
     stz a:StageBlendOn
     lda z:zField94
@@ -2428,10 +2399,9 @@ StepStageFrame122E_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame122E_at9:
-    bbs2 StepStageFrame122E_x4
+    bbs2 zField8E,StepStageFrame122E_at10
     rts
 StepStageFrame122E_at10:
-StepStageFrame122E_x4:
     jmp $8C2A
 
 ; @routine 1A2E:0A2 InitStage1A2E
@@ -2562,13 +2532,12 @@ LoadStageEntry1A2E:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry1A2E_x0
+    bbr1 zField8E,LoadStageEntry1A2E_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry1A2E_at1
 LoadStageEntry1A2E_at0:
-LoadStageEntry1A2E_x0:
     lda (zTemp00),y
     bne LoadStageEntry1A2E_at2
     lda z:zBiosAl
@@ -2750,14 +2719,13 @@ SpawnStageObjectsRows011A2E:
 StepStageFrame1A2E:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame1A2E_x0
+    bbs1 zPaused,StepStageFrame1A2E_at0
     lda a:StageVar3616+1
     beq StepStageFrame1A2E_at1
     dec a:StageVar3616+1
     bne StepStageFrame1A2E_at1
     smb1 z:zPaused
 StepStageFrame1A2E_at0:
-StepStageFrame1A2E_x0:
     jsr $8EAF
     bra StepStageFrame1A2E_at2
 StepStageFrame1A2E_at1:
@@ -2793,15 +2761,14 @@ StepStageFrame1A2E_at3:
     ldy #$F0
     jsr $9350
     dec z:zField99
-    bra StepStageFrame1A2E_x1
+    bra StepStageFrame1A2E_x0
 StepStageFrame1A2E_at6:
-    bbr5 StepStageFrame1A2E_x2
-    bbs6 StepStageFrame1A2E_x2
+    bbr5 zField8E,StepStageFrame1A2E_at7
+    bbs6 zField8E,StepStageFrame1A2E_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame1A2E_at7:
-StepStageFrame1A2E_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -2810,13 +2777,12 @@ StepStageFrame1A2E_x2:
     bra StepStageFrame1A2E_at8
 StepStageFrame1A2E_at5:
     smb5 z:zField8E
-StepStageFrame1A2E_x1:
-    bbr6 StepStageFrame1A2E_x3
+StepStageFrame1A2E_x0:
+    bbr6 zField8E,StepStageFrame1A2E_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame1A2E_at8:
-StepStageFrame1A2E_x3:
     jsr $9307
     stz a:StageBlendOn
     lda z:zField94
@@ -2834,10 +2800,9 @@ StepStageFrame1A2E_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame1A2E_at9:
-    bbs2 StepStageFrame1A2E_x4
+    bbs2 zField8E,StepStageFrame1A2E_at10
     rts
 StepStageFrame1A2E_at10:
-StepStageFrame1A2E_x4:
     jmp $8C2A
 
 ; @routine 1B8E:0A2 InitStage1B8E
@@ -2968,13 +2933,12 @@ LoadStageEntry1B8E:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry1B8E_x0
+    bbr1 zField8E,LoadStageEntry1B8E_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry1B8E_at1
 LoadStageEntry1B8E_at0:
-LoadStageEntry1B8E_x0:
     lda (zTemp00),y
     bne LoadStageEntry1B8E_at2
     lda z:zBiosAl
@@ -3156,14 +3120,13 @@ SpawnStageObjectsRows011B8E:
 StepStageFrame1B8E:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame1B8E_x0
+    bbs1 zPaused,StepStageFrame1B8E_at0
     lda a:StageVar3616+1
     beq StepStageFrame1B8E_at1
     dec a:StageVar3616+1
     bne StepStageFrame1B8E_at1
     smb1 z:zPaused
 StepStageFrame1B8E_at0:
-StepStageFrame1B8E_x0:
     jsr $8EAF
     bra StepStageFrame1B8E_at2
 StepStageFrame1B8E_at1:
@@ -3199,15 +3162,14 @@ StepStageFrame1B8E_at3:
     ldy #$F0
     jsr $9350
     dec z:zField99
-    bra StepStageFrame1B8E_x1
+    bra StepStageFrame1B8E_x0
 StepStageFrame1B8E_at6:
-    bbr5 StepStageFrame1B8E_x2
-    bbs6 StepStageFrame1B8E_x2
+    bbr5 zField8E,StepStageFrame1B8E_at7
+    bbs6 zField8E,StepStageFrame1B8E_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame1B8E_at7:
-StepStageFrame1B8E_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -3216,13 +3178,12 @@ StepStageFrame1B8E_x2:
     bra StepStageFrame1B8E_at8
 StepStageFrame1B8E_at5:
     smb5 z:zField8E
-StepStageFrame1B8E_x1:
-    bbr6 StepStageFrame1B8E_x3
+StepStageFrame1B8E_x0:
+    bbr6 zField8E,StepStageFrame1B8E_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame1B8E_at8:
-StepStageFrame1B8E_x3:
     jsr $9307
     stz a:StageBlendOn
     lda z:zField94
@@ -3240,10 +3201,9 @@ StepStageFrame1B8E_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame1B8E_at9:
-    bbs2 StepStageFrame1B8E_x4
+    bbs2 zField8E,StepStageFrame1B8E_at10
     rts
 StepStageFrame1B8E_at10:
-StepStageFrame1B8E_x4:
     jmp $8C2A
 
 ; @routine 1CEE:0A2 InitStage1CEE
@@ -3374,13 +3334,12 @@ LoadStageEntry1CEE:
     lda (zTemp00),y
     iny
     sta a:ScrollYMaxHi
-    bbr1 LoadStageEntry1CEE_x0
+    bbr1 zField8E,LoadStageEntry1CEE_at0
     rmb1 z:zField8E
     iny
     iny
     bra LoadStageEntry1CEE_at1
 LoadStageEntry1CEE_at0:
-LoadStageEntry1CEE_x0:
     lda (zTemp00),y
     bne LoadStageEntry1CEE_at2
     lda z:zBiosAl
@@ -3562,14 +3521,13 @@ SpawnStageObjectsRows011CEE:
 StepStageFrame1CEE:
     lda a:$2ABF
     beq $8B22
-    bbs1 StepStageFrame1CEE_x0
+    bbs1 zPaused,StepStageFrame1CEE_at0
     lda a:StageVar3616+1
     beq StepStageFrame1CEE_at1
     dec a:StageVar3616+1
     bne StepStageFrame1CEE_at1
     smb1 z:zPaused
 StepStageFrame1CEE_at0:
-StepStageFrame1CEE_x0:
     jsr $8EAF
     bra StepStageFrame1CEE_at2
 StepStageFrame1CEE_at1:
@@ -3605,15 +3563,14 @@ StepStageFrame1CEE_at3:
     ldy #$F0
     jsr $9350
     dec z:zField99
-    bra StepStageFrame1CEE_x1
+    bra StepStageFrame1CEE_x0
 StepStageFrame1CEE_at6:
-    bbr5 StepStageFrame1CEE_x2
-    bbs6 StepStageFrame1CEE_x2
+    bbr5 zField8E,StepStageFrame1CEE_at7
+    bbs6 zField8E,StepStageFrame1CEE_at7
     lda #$0E
     jsr VecSoundCommand
     smb6 z:zField8E
 StepStageFrame1CEE_at7:
-StepStageFrame1CEE_x2:
     inc z:zField99
     bsr $8BF9
     ldx #$00
@@ -3622,13 +3579,12 @@ StepStageFrame1CEE_x2:
     bra StepStageFrame1CEE_at8
 StepStageFrame1CEE_at5:
     smb5 z:zField8E
-StepStageFrame1CEE_x1:
-    bbr6 StepStageFrame1CEE_x3
+StepStageFrame1CEE_x0:
+    bbr6 zField8E,StepStageFrame1CEE_at8
     rmb6 z:zField8E
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame1CEE_at8:
-StepStageFrame1CEE_x3:
     jsr $9307
     stz a:StageBlendOn
     lda z:zField94
@@ -3646,8 +3602,7 @@ StepStageFrame1CEE_x3:
     ldx #$09
     jsr $8D3A
 StepStageFrame1CEE_at9:
-    bbs2 StepStageFrame1CEE_x4
+    bbs2 zField8E,StepStageFrame1CEE_at10
     rts
 StepStageFrame1CEE_at10:
-StepStageFrame1CEE_x4:
     jmp $8C2A

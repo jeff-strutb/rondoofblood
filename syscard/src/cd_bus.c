@@ -1500,7 +1500,7 @@ static CardExit vram_read_end(CardExit e)
  * WAITS: on the drive's bus, with the stack as the caller's.
  * Entry: _AX count, VDC on its data port. Exit, status phase first: as the end of a read. Exit,
  * count out: as cd_read_data_in's end. X, Y as the loop left them. Clobbers _AX.
- * Not run by any script: it is the read to VRAM of a sector count.
+ * Checked by unit calls (card_unit_read): the read to VRAM of a sector count.
  */
 CardExit cd_read_to_vram_fast(void)
 {
@@ -1535,6 +1535,8 @@ CardExit cd_read_to_vram_fast(void)
             high = RD8(CZP->a.hi);
             step = sub8(high, 0, step.carry);
             WR8(CZP->a.hi, step.value);
+            e.v = step.overflow;        /* the last SBC of the count's high byte leaves V */
+            e.set_v = true;
             low = RD8(CZP->a.lo);
             if ((uint8_t)(step.value | low) == 0) {
                 e.x = x;
@@ -1571,7 +1573,7 @@ void abi_cd_read_to_vram_fast(void)
  * WAITS: on the drive's bus, with the stack as the caller's.
  * Entry: _AX count. Exit, status phase first: A $D8, N 0, Z 1, C 1. Exit, count out: as
  * cd_read_data_in's end. Clobbers _AX, _BX.
- * Not run by any script: it is the read to VRAM of a byte count.
+ * Checked by unit calls (card_unit_read): the read to VRAM of a byte count.
  */
 CardExit cd_read_to_vram_slow(void)
 {
@@ -1715,7 +1717,7 @@ static void stub_tam(uint8_t mask, uint8_t bank, uint16_t ret)
  * WAITS: only through the exchanges.
  * Entry: _CL, _CH, _DL address; the rest by _DH; A, X (pushed). Exit: A 0 if well, $22 for a bad request;
  * else as cd_retry_after_error. C 1 if well. X, Y and V as the last step left them.
- * Not run by any script: a read through an MPR, a read to VRAM, a bad request.
+ * Read to VRAM and the bad request by unit calls (card_unit_read). The read through an MPR is not checked: the TMA and TAM stubs it writes in RAM are done in C, until the checker compares RAM-built code with its caller.
  */
 CardExit cd_read(uint8_t a, uint8_t x)
 {

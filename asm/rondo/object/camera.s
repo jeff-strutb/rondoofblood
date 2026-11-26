@@ -565,6 +565,7 @@ NextPastMiddle_at0:
 ; WHAT IT DOES: Sets C if the next position's fraction, zTemp04, is not zero. Nothing in
 ; the kernel reaches it: left over from an earlier NextPastMiddle.
 ; HOW: A read and a branch.
+; WAITS: no.
 ; Entry: zTemp04. Exit: A zTemp04, N and Z from it; C set if not zero, else kept.
 NextFractionSet:
     lda z:zTemp04

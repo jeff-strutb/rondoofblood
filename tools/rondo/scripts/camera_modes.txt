@@ -9,6 +9,37 @@ random 102 3000 8
 poke 3EB6 04
 run 60
 shot leftwall
+# CameraModeLeftWall's other paths (each poke is one frame of the player's own state, run for a few frames): the position near the left edge with
+# a speed of -1 (the next position's high byte $10, then below $10: PlayerAtLeftEdge), then no speed with bit 2 and bit 1 of zPlayerPush
+# (the forced wall check left, and right), then none.
+poke 2BC8 11
+poke 2C20 00
+poke 2D80 FF
+poke 2DD8 FF
+run 3
+poke 2BC8 0A
+poke 2C20 00
+poke 2D80 FF
+poke 2DD8 FF
+run 3
+poke 2D80 00
+poke 2DD8 00
+poke 20C9 04
+run 3
+poke 2D80 00
+poke 2DD8 00
+poke 20C9 02
+run 3
+poke 2D80 00
+poke 2DD8 00
+poke 20C9 00
+run 3
+# CheckPlayerAtLevelEnd's last path: the scroll at the level's end (ScrollXHiScreen equal to ScrollXMaxHi) and the position in $C0 to $EB,
+# which sets the player's two exit fields.
+poke 3E96 00
+poke 3EC6 00
+poke 2BC8 D0
+run 3
 poke 3EB6 17
 run 60
 shot carried

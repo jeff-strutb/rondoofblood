@@ -18,16 +18,24 @@ static bool map_bank_pair(uint8_t offset)
 }
 
 /* Maps the first pair, the overlay's second pair, and steps the stream with the scroll. */
-static StageScrollEnd scroll_step_with_banks(uint16_t second_offset_at, uint8_t x)
+StageScrollEnd ScrollStepBody(uint8_t x, const ScrollStepLayout *layout)
 {
     StageScrollEnd end;
 
     map_bank_pair(FIRST_BANK_OFFSET);
-    end.v_before = map_bank_pair(rd8(second_offset_at));
-    jsr_push(SCROLL_STEP_RETURN);
+    end.v_before = map_bank_pair(rd8(layout->second_offset_at));
+    jsr_push(layout->step_return);
     end.walk = StreamScrollStep(x);
     jsr_pop();
     return end;
+}
+
+/* 024E's layout: the call's return address is $8A4E. */
+static StageScrollEnd scroll_step_with_banks(uint16_t second_offset_at, uint8_t x)
+{
+    ScrollStepLayout layout = { second_offset_at, SCROLL_STEP_RETURN };
+
+    return ScrollStepBody(x, &layout);
 }
 
 /*

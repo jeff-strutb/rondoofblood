@@ -16,8 +16,6 @@ enum {
     SOUND_HOOK_RUN = 0x401B
 };
 
-typedef void (*SetBarAddress)(uint8_t lo, uint8_t hi);
-
 /* The sound command the frame sends: A the command (N and Z from its load), X and Y as the code holds them, C and V as the
  * last instructions to set them left them; what Y is after it. */
 static uint8_t sound_command_shim(uint8_t command, uint8_t x, uint8_t y, bool c, bool v)
@@ -33,7 +31,7 @@ static uint8_t sound_command_shim(uint8_t command, uint8_t x, uint8_t y, bool c,
 }
 
 /* The jump into the code that follows the frame's end, which has no C: it gets the registers and flags and returns for this routine. */
-static StageExit original_tail_shim(StageExit end)
+static StageExit original_tail_shim(StageExit end, uint16_t tail_run)
 {
     StageExit done = { 0, 0, 0, false, false, 0, EXIT_CPU };
 
@@ -43,7 +41,7 @@ static StageExit original_tail_shim(StageExit end)
     abi_nz(end.nz);
     abi_flag(P_C, end.c);
     abi_flag(P_V, end.v);
-    call_original(TAIL_RUN);
+    call_original(tail_run);
     return done;
 }
 
@@ -203,7 +201,7 @@ static void apply_step(BlendStepEnd step, uint8_t *y)
  * One tick of the stage: the sequence or the blends, the wave script, the frames, the health bar, the banks and the shown bytes.
  * v is the overflow the routine was entered with; the sound command is called with the carry and overflow the code holds there.
  */
-static StageExit step_stage_frame(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar)
+StageExit StepStageFrameBody(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar, const StepFrameLayout *layout)
 {
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     StageExit other;
@@ -237,7 +235,7 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, bool v, SetBarAddress se
         }
     }
     if (sequence) {
-        jsr_push(SEQUENCE_RETURN);
+        jsr_push(layout->sequence_return);
         other = StepStageSequence(x, y);
         jsr_pop();
         apply_exit(other, &x, &y);
@@ -245,27 +243,27 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, bool v, SetBarAddress se
             v = other.v;
         }
     } else {
-        jsr_push(STOCK_RETURN);
+        jsr_push(layout->stock_return);
         step = BlendStageStockRows(x, y);
         jsr_pop();
         apply_step(step, &y);
-        jsr_push(ADD_RETURN);
+        jsr_push(layout->add_return);
         step = BlendStageScoreAddRows(x, y);
         jsr_pop();
         apply_step(step, &y);
-        jsr_push(SCORE_RETURN);
+        jsr_push(layout->score_return);
         step = BlendStageScoreRows(x);
         jsr_pop();
         apply_step(step, &y);
         v = step.v;
     }
-    jsr_push(WAVE_RETURN);
+    jsr_push(layout->wave_return);
     other = StageScriptByWave();
     jsr_pop();
     apply_exit(other, &x, &y);
     WR8(OBJ->y_lo[FRAME_SLOT], Y_LO_DEFAULT);
     x = RD8(ZP->field93);
-    a = rd8((uint16_t)(FRAME_TABLE + x));
+    a = rd8((uint16_t)(layout->frame_table + x));
     x = RD8(ZP->character);
     if (x != 0) {
         if (a == CHARACTER_STAGE_A) {
@@ -284,42 +282,42 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, bool v, SetBarAddress se
     if (health == shown) {
         RMW8(ZP->field8e, flags, flags | FLAG_HEALTH_SHOWN);
     } else if (health < shown) {
-        jsr_push(BAR_DOWN_RETURN);
+        jsr_push(layout->bar_down_return);
         bar = set_health_bar_address(set_bar);
         jsr_pop();
         carry = bar.c;
         v = bar.v;
         x = 0xFF;
         y = 0xF0;
-        jsr_push(AND_RETURN);
+        jsr_push(layout->and_return);
         AndVramData(x, y);
         jsr_pop();
         DEC8(ZP->field99);
     } else {
         check_sound = false;
         if ((RD8(ZP->field8e) & FLAG_HEALTH_SHOWN) != 0 && (RD8(ZP->field8e) & FLAG_SOUND_DONE) == 0) {
-            jsr_push(SOUND_UP_RETURN);
+            jsr_push(layout->sound_up_return);
             y = sound_command_shim(SOUND_HEALTH_UP, x, y, true, v);
             jsr_pop();
             RMW8(ZP->field8e, flags, flags | FLAG_SOUND_DONE);
         }
         INC8(ZP->field99);
-        jsr_push(BAR_UP_RETURN);
+        jsr_push(layout->bar_up_return);
         (void)set_health_bar_address(set_bar);
         jsr_pop();
         x = 0;
         y = 0x0F;
-        jsr_push(OR_RETURN);
+        jsr_push(layout->or_return);
         OrVramData(x, y);
         jsr_pop();
     }
     if (check_sound && (RD8(ZP->field8e) & FLAG_SOUND_DONE) != 0) {
         RMW8(ZP->field8e, flags, flags & ~FLAG_SOUND_DONE);
-        jsr_push(SOUND_DOWN_RETURN);
+        jsr_push(layout->sound_down_return);
         y = sound_command_shim(SOUND_HEALTH_DOWN, x, y, carry, v);
         jsr_pop();
     }
-    jsr_push(MAP_RETURN);
+    jsr_push(layout->map_return);
     map = MapStageBanks();
     jsr_pop();
     WR8(STAGEVARS->blend_on[0], 0);
@@ -334,12 +332,12 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, bool v, SetBarAddress se
     end.set = EXIT_X | EXIT_Y | EXIT_C | EXIT_V;
     if (a != shown) {
         WR8(ZP->field95, a);
-        jsr_push(BLEND_RETURN_1);
+        jsr_push(layout->blend_return_1);
         blend = BlendStageTileRows(8, (uint8_t)(a & 0x0F), y);
         jsr_pop();
         a = RD8(ZP->field94);
         a = (uint8_t)(a >> 4);
-        jsr_push(BLEND_RETURN_2);
+        jsr_push(layout->blend_return_2);
         blend = BlendStageTileRows(9, a, ROW_ENTRIES);
         jsr_pop();
         end.a = blend.a;
@@ -348,9 +346,20 @@ static StageExit step_stage_frame(uint8_t x, uint8_t y, bool v, SetBarAddress se
         end.v = blend.v;
     }
     if ((RD8(ZP->field8e) & FLAG_TAIL) != 0) {
-        return original_tail_shim(end);
+        return original_tail_shim(end, layout->tail_run);
     }
     return end;
+}
+
+/* 024E's layout of the frame step: the returns of its calls, the frame table, and the code its tail jumps on to. */
+static const StepFrameLayout step_frame_layout_024e = {
+    SEQUENCE_RETURN, STOCK_RETURN, ADD_RETURN, SCORE_RETURN, WAVE_RETURN, BAR_DOWN_RETURN, AND_RETURN, BAR_UP_RETURN, OR_RETURN,
+    SOUND_UP_RETURN, SOUND_DOWN_RETURN, MAP_RETURN, BLEND_RETURN_1, BLEND_RETURN_2, FRAME_TABLE, TAIL_RUN
+};
+
+static StageExit step_stage_frame(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar)
+{
+    return StepStageFrameBody(x, y, v, set_bar, &step_frame_layout_024e);
 }
 
 /*

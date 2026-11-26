@@ -148,7 +148,6 @@ static void get_glyph(uint8_t buffer_low, uint8_t buffer_high, uint16_t ret)
  * WAITS: no.
  * Entry: the string at zTemp00 and zTemp01. Exit: as WriteGlyphRowsTwice: A the last byte written, X
  * that plus 16, Y 8, Z and C set, N clear. V as the tile place's add left it.
- * not checked: agrees for 40 events, then differs inside the card's sjis_to_font_index.
  */
 Exit DrawGlyphPair(void)
 {
@@ -158,6 +157,7 @@ Exit DrawGlyphPair(void)
     int i;
     GlyphRows rows;
     bool overflow;
+    bool fonted = false;                        /* the card's font call leaves V clear */
 
     jsr_push(0x84D8);
     SelectVramWriteAddress();
@@ -189,6 +189,7 @@ Exit DrawGlyphPair(void)
         copy_glyph(TABLE_FIRST, GLYPH_FIRST);
     } else {
         get_glyph(FONT_LOW_BUFFER, FONT_HIGH_BUFFER, 0x8522);
+        fonted = true;
     }
     second = RD8_PTR(ZP->temp00);
     if (second == 0) {
@@ -213,6 +214,7 @@ Exit DrawGlyphPair(void)
             copy_glyph(TABLE_E081, GLYPH_SECOND);
         } else {
             get_glyph(FONT_SECOND_LOW, FONT_HIGH_BUFFER, 0x8588);
+            fonted = true;
         }
     }
     for (x = GLYPH_BYTES - 1; (int8_t)x >= 0; x = (uint8_t)(x - 2)) {
@@ -239,7 +241,7 @@ Exit DrawGlyphPair(void)
     exit.y = 8;
     exit.nz = 0;
     exit.c = true;
-    exit.v = overflow;
+    exit.v = fonted ? false : overflow;
     exit.v_set = true;
     return exit;
 }
@@ -259,7 +261,6 @@ void abi_DrawGlyphPair(void)
  * WAITS: no.
  * Entry: the string at zTemp00 and zTemp01. Exit: A 0, Z set, N clear; X, Y, C and V as the last pair's
  * map rows left them, or as the pointer's last step left them when there was no pair.
- * not checked: matches only with the callees as filed wrappers on both sides.
  */
 Exit DrawGlyphText(void)
 {

@@ -119,9 +119,12 @@ typedef struct {
 
 Ended HitDamage(uint8_t slot);
 SoundEnd ScoreForKind(uint8_t slot, uint8_t y);
-Ended BlendStockRows(uint8_t slot, uint8_t y);
-SoundEnd GiveExtraLife(uint8_t slot, uint8_t y);
-Ended BlendStageRowsOfPlayer(uint8_t slot, uint8_t y);
+ObjArm BlendStockRows(uint8_t slot, uint8_t y);
+Ended blend_stock_rows_exit_shim(ObjArm r);
+ObjArm GiveExtraLife(uint8_t slot, uint8_t y);
+SoundEnd give_extra_life_exit_shim(ObjArm r);
+ObjArm BlendStageRowsOfPlayer(uint8_t slot, uint8_t y);
+Ended blend_stage_rows_of_player_exit_shim(ObjArm r);
 Ended StartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
 
 /* An exit built from several callees' exits in order: each step is a plain exit, a sound call's, or a first-screen sound's. */

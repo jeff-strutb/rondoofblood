@@ -18,53 +18,74 @@
  * WAITS: no.
  * Entry: X kept, Y the second row of the blend. Exit: A the bank restored, N and Z from it; C and V as the last blend or the bank add left them.
  */
-Ended BlendStockRows(uint8_t slot, uint8_t y)
+/* The arms BlendStockRows ends on. */
+enum { BS_BLENDED, BS_UNCHANGED, BS_OTHER_MODE, BS_PAUSE_ASKED };
+
+ObjArm BlendStockRows(uint8_t slot, uint8_t y)
 {
+    ObjArm r = { 0 };
     TileRowsExit blend;
-    Sum mapped;
-    uint8_t flag, noted, stock, mode, bank;
-    Ended e;
 
     jsr_push(0x9154);
-    mapped = SaveAndMapStageBanks();
+    r.sum = SaveAndMapStageBanks();
     jsr_pop();
-    e = ended_with_a(ended_with_overflow(ended_with_carry(ended_nz((uint8_t)(mapped.value + 1)), mapped.carry), mapped.overflow),
-                     (uint8_t)(mapped.value + 1));
-    flag = RD8(STAGEVARS->blend_on[1]);
-    e = ended_then(e, ended_load(flag));
-    if (flag == 0) {
+    r.first = RD8(STAGEVARS->blend_on[1]);
+    if (r.first == 0) {
+        r.arm = BS_BLENDED;
         push8(slot);
         WR8(STAGEVARS->blend_on[0], 0);
-        stock = RD8(ZP->stock);
-        WR8(STAGEVARS->state_3616[0], stock);
-        e = ended_then(e, ended_load(stock));
+        r.second = RD8(ZP->stock);
+        WR8(STAGEVARS->state_3616[0], r.second);
         jsr_push(0x917D);
-        blend = BlendStageRowPair(0, stock, y);
+        blend = BlendStageRowPair(0, r.second, y);
         jsr_pop();
-        e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(0), blend.a), true), blend.v), 5));
-        slot = pull8();
-        e = ended_then(e, ended_nz(slot));
+        r.third = blend.a;
+        r.flag = blend.v;
+        r.sixth = pull8();
     } else {
-        noted = RD8(STAGEVARS->state_3616[0]);
-        stock = RD8(ZP->stock);
-        e = ended_then(e, ended_with_carry(ended_load(noted), noted >= stock));
-        if (noted != stock) {
-            mode = RD8(ZP->game_sub_mode);
-            e = ended_then(e, ended_with_carry(ended_load(mode), mode >= 1));
-            if (mode == 1) {
+        r.fourth = RD8(STAGEVARS->state_3616[0]);
+        r.second = RD8(ZP->stock);
+        r.arm = BS_UNCHANGED;
+        if (r.fourth != r.second) {
+            r.fifth = RD8(ZP->game_sub_mode);
+            r.arm = BS_OTHER_MODE;
+            if (r.fifth == 1) {
                 RMW8(ZP->paused, old, old | 0x02);
                 WR8(STAGEVARS->state_3616[1], 0xC0);
+                r.arm = BS_PAUSE_ASKED;
+            }
+        }
+    }
+    r.seventh = RestoreStageBanks();
+    return r;
+}
+
+/* BlendStockRows' exit: A the bank restored, N and Z from it; C and V as the last blend or the bank add left them. */
+Ended blend_stock_rows_exit_shim(ObjArm r)
+{
+    Ended e = ended_with_a(ended_with_overflow(ended_with_carry(ended_nz((uint8_t)(r.sum.value + 1)), r.sum.carry), r.sum.overflow),
+                           (uint8_t)(r.sum.value + 1));
+
+    e = ended_then(e, ended_load(r.first));
+    if (r.arm == BS_BLENDED) {
+        e = ended_then(e, ended_load(r.second));
+        e = ended_then(e, ended_with_y(ended_with_overflow(ended_with_carry(ended_with_a(ended_nz(0), r.third), true), r.flag), 5));
+        e = ended_then(e, ended_nz(r.sixth));
+    } else {
+        e = ended_then(e, ended_with_carry(ended_load(r.fourth), r.fourth >= r.second));
+        if (r.arm != BS_UNCHANGED) {
+            e = ended_then(e, ended_with_carry(ended_load(r.fifth), r.fifth >= 1));
+            if (r.arm == BS_PAUSE_ASKED) {
                 e = ended_then(e, ended_load(0xC0));
             }
         }
     }
-    bank = RestoreStageBanks();
-    return ended_then(e, ended_load(bank));
+    return ended_then(e, ended_load(r.seventh));
 }
 
 void abi_BlendStockRows(void)
 {
-    abi_ended(BlendStockRows(cpu.x, cpu.y));
+    abi_ended(blend_stock_rows_exit_shim(BlendStockRows(cpu.x, cpu.y)));
 }
 
 /*
@@ -76,14 +97,13 @@ void abi_BlendStockRows(void)
  * WAITS: no.
  * Entry: X kept, Y the sound driver's. Exit: as BlendStockRows.
  */
-SoundEnd GiveExtraLife(uint8_t slot, uint8_t y)
+ObjArm GiveExtraLife(uint8_t slot, uint8_t y)
 {
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
+    ObjArm r = { 0 };
     uint8_t stock;
     bool carry;
     unsigned sum;
 
-    r.before = ended_load(0x52);
     r.sounded = true;
     r.command = 0x52;
     jsr_push(0xA6F1);
@@ -104,11 +124,24 @@ SoundEnd GiveExtraLife(uint8_t slot, uint8_t y)
     if (carry) {
         WR8(ZP->stock, 0x99);
     }
-    r.end = BlendStockRows(slot, y);
+    r.sub = obj_sub(BlendStockRows(slot, y));
     return r;
+}
+
+/* GiveExtraLife's exit: the sound's flags, then what BlendStockRows left. */
+SoundEnd give_extra_life_exit_shim(ObjArm r)
+{
+    SoundEnd e = { { 0 }, { 0 }, false, 0, { 0 } };
+
+    e.before = ended_load(0x52);
+    e.sounded = r.sounded;
+    e.command = r.command;
+    e.call = r.call;
+    e.end = blend_stock_rows_exit_shim(obj_arm(r.sub));
+    return e;
 }
 
 void abi_GiveExtraLife(void)
 {
-    abi_sound_end(GiveExtraLife(cpu.x, cpu.y));
+    abi_sound_end(give_extra_life_exit_shim(GiveExtraLife(cpu.x, cpu.y)));
 }

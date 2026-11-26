@@ -1565,7 +1565,7 @@ SoundEnd CollectHearts(uint8_t slot, uint8_t y_entry)
     }
     r.end = e;
     jsr_push(0xA5AD);
-    r.end = ended_then(e, BlendStageRowsOfPlayer(slot, index));
+    r.end = ended_then(e, blend_stage_rows_of_player_exit_shim(BlendStageRowsOfPlayer(slot, index)));
     jsr_pop();
     ClearObject(slot);
     (void)y_entry;
@@ -1624,7 +1624,7 @@ SoundEnd CollectScoreItem(uint8_t slot, uint8_t y_entry)
     }
     push8(index);
     jsr_push(0xA5DE);
-    e = ended_then(e, BlendStageRowsOfPlayer(slot, index));
+    e = ended_then(e, blend_stage_rows_of_player_exit_shim(BlendStageRowsOfPlayer(slot, index)));
     jsr_pop();
     previous = pull8();
     e = ended_then(e, ended_load(previous));
@@ -1674,7 +1674,7 @@ SoundEnd StartScorePickup(uint8_t slot, uint8_t y_entry)
     e = ended_then(e, ended_with_carry(ended_load(changed), changed != 0));
     if (changed != 0) {
         jsr_push(0xA9C5);
-        life = GiveExtraLife(slot, y_entry);
+        life = give_extra_life_exit_shim(GiveExtraLife(slot, y_entry));
         jsr_pop();
         r.before = ended_then(e, life.before);
         r.sounded = life.sounded;

@@ -94,6 +94,23 @@ census is audited as hard as the gates: tables read to their full length,
 no block thrown out for an opcode the game uses, and a second, relaxed
 census whose every disagreeing byte is explained.
 
+**Duplicates and unreached code** (the maintainer's ruling, 2026-11-26):
+"If it can be proven to be duplicate code (for disc read speed purposes?)
+then we should record it as such and leave it out. If it's actual code
+(not data) we should keep it until we prove otherwise. Unreachable code
+still needs to be decomp'd even if we can't reach it, we just do so
+optimistically since we can't prove it until something reaches it and
+document it as such." Applied:
+
+1. A disc area proven a byte-exact copy of code counted elsewhere goes in
+   a recorded list of duplicates (its range, the copy it duplicates, the
+   proof) and out of the denominator.
+2. Anything that decodes as code and is not proven data or a proven
+   duplicate stays in the denominator, loadable or not.
+3. Code nothing reaches stays in, and is filed with C marked unreached.
+   It cannot reach T3 until something runs it. The README shows it as a
+   line of its own, never inside M1.
+
 | Tier | Meaning |
 |---|---|
 | T1 | traced; in the raw intake with address labels; reassembles exact |

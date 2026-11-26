@@ -104,7 +104,7 @@ TitleScreenStep:
 ; on slot 0 as kind 1, zTemp3F and the script's step cleared, and on to the next sub-mode.
 ; HOW: ClearScreenState, five stores, the two starts, two stores and zGameSubMode counted up.
 ; WAITS: no.
-; Entry: X the doubled sub-mode and Y kept (ClearScreenState saves them). Exit: A and Y 3, X 0, N and Z from the new sub-mode; C and V kept.
+; Entry: nothing. Exit: A and Y 3, X 0, N and Z from the new sub-mode; C and V kept.
 TitleScreenBegin:
     jsr VecClearScreenState
     stz a:OBJ_2A68

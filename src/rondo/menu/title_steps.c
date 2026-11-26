@@ -166,14 +166,14 @@ void abi_TitleSetUp(void)
  * on slot 0 as kind 1, zTemp3F and the script's step cleared, and on to the next sub-mode.
  * HOW: ClearScreenState, five stores, the two starts, two stores and zGameSubMode counted up.
  * WAITS: no.
- * Entry: X the doubled sub-mode and Y kept (ClearScreenState saves them). Exit: A and Y 3, X 0, N and Z from the new sub-mode; C and V kept.
+ * Entry: nothing. Exit: A and Y 3, X 0, N and Z from the new sub-mode; C and V kept.
  */
-Exit TitleScreenBegin(uint8_t kept_x, uint8_t kept_y)
+Exit TitleScreenBegin(void)
 {
     Exit exit = { 0 };
 
     jsr_push(0x8208);
-    ClearScreenState(kept_x, kept_y);
+    ClearScreenState();
     jsr_pop();
     wr8(F2A68, 0);
     wr8(F2A8A, 0);
@@ -198,7 +198,7 @@ Exit TitleScreenBegin(uint8_t kept_x, uint8_t kept_y)
 
 void abi_TitleScreenBegin(void)
 {
-    exit_shim(TitleScreenBegin(cpu.x, cpu.y));
+    exit_shim(TitleScreenBegin());
 }
 
 /*
@@ -383,7 +383,7 @@ Exit TitleScreenStep(uint8_t kept_y)
     high = rd8((uint16_t)(SETUP_STEPS + 1 + index));
     target = (uint16_t)(low | (high << 8));
     switch (target) {
-    case 0x8205: return through_table(TitleScreenBegin(index, kept_y), index, state, kept_y, v_in);
+    case 0x8205: return through_table(TitleScreenBegin(), index, state, kept_y, v_in);
     case 0x822F:
         table_entry_shim(index, state, kept_y, v_in);
         title_sound_exit_shim(TitleSoundBegin(index, kept_y));
@@ -628,7 +628,7 @@ Exit AttractStep(uint8_t kept_y)
         begin.a = 0xFF;
         begin.x = 0;
         begin.y = 0xFF;
-        begin.nz = AttractBegin(index, kept_y);
+        begin.nz = AttractBegin();
         begin.c_kept = true;
         return through_table(begin, index, state, kept_y, v_in);
     }
@@ -639,7 +639,7 @@ Exit AttractStep(uint8_t kept_y)
         exit.from_cpu = true;
         return exit;
     case 0x87D3: {
-        AttractEnd end = AttractEndCountdown(index, kept_y);
+        AttractEnd end = AttractEndCountdown();
         Exit done = kept_exit(end.value);
 
         if (end.reset) {

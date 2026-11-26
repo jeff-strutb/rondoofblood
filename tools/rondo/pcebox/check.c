@@ -483,6 +483,7 @@ static struct {
 } hold;
 static unsigned long idle_until_frame;     /* after a frame hold: the core runs nothing until this frame has ended */
 static uint64_t frame_holds;
+static uint64_t jsr_after_int;   /* JSRs whose target an interrupt came in at: their return address marked after it */
 static uint64_t left_back;       /* left hand-overs made at the close's PC, the C standing past it with the original's registers */
 static uint64_t left_run_holds;  /* left hand-overs whose interrupt came after a few work RAM accesses of the run-on */
 static uint64_t end_target_ints; /* at the script's end: an interrupt the original took at a jump's target, handed over there */
@@ -3672,6 +3673,10 @@ int check_exec(uint32_t pc)
             before_pc = ipend[nipend - 1].from;
             before_pc = ipend[nipend - 1].from;
         prev_op = ipend[--nipend].prev;
+        if (prev_op == 0x20 || prev_op == 0x44) {        /* the JSR an interrupt came in after: its return address, as at its own hook */
+            jsrmark[(uint8_t)(r.s + 1)] = stack_return(r.s);
+            jsr_after_int++;
+        }
             computed_entry = prev_op == 0x60 && tag_pick(pc & 0xFFFF) >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
             classify_arrival(tag_pick(pc & 0xFFFF), (uint16_t)pc);
         }
@@ -3706,6 +3711,10 @@ int check_exec(uint32_t pc)
     if (prev_op == 0x40 && nipend && pc == ipend[nipend - 1].resume && r.s == ipend[nipend - 1].s) {
         before_pc = ipend[nipend - 1].from;
         prev_op = ipend[--nipend].prev;
+        if (prev_op == 0x20 || prev_op == 0x44) {        /* the JSR an interrupt came in after: its return address, as at its own hook */
+            jsrmark[(uint8_t)(r.s + 1)] = stack_return(r.s);
+            jsr_after_int++;
+        }
         computed_entry = prev_op == 0x60 && tag_pick(pc & 0xFFFF) >= 0 && jsrmark[(uint8_t)(r.s - 1)] != (uint16_t)pc;
         classify_arrival(tag_pick(pc & 0xFFFF), (uint16_t)pc);
     }
@@ -3986,6 +3995,8 @@ void check_finish(void)
                 (unsigned long long)other_call, (unsigned long long)other_branch);
         fprintf(report, "RTS below the entry S that the original did not make (judged whole, not as a dispatch): %llu calls\n",
                 (unsigned long long)not_dispatched);
+        fprintf(report, "JSRs an interrupt came in at the target of, their return marked after it: %llu\n",
+                (unsigned long long)jsr_after_int);
         if (probe_calls)
             fprintf(report, "PROBE resident_at: %llu calls, %llu differ, variants seen %u and %u\n",
                     (unsigned long long)probe_calls, (unsigned long long)probe_bad, probe_seen[0], probe_seen[1]);
@@ -4098,6 +4109,8 @@ void check_finish(void)
                 (unsigned long long)other_call, (unsigned long long)other_branch);
         fprintf(report, "RTS below the entry S that the original did not make (judged whole, not as a dispatch): %llu calls\n",
                 (unsigned long long)not_dispatched);
+        fprintf(report, "JSRs an interrupt came in at the target of, their return marked after it: %llu\n",
+                (unsigned long long)jsr_after_int);
         fprintf(report, "calls swapped %llu; access defects %llu; parked %llu, kept %llu, unreached %lld\n"
                 "frames compared %llu of %lld, identical %lu, first differing %ld\n", (unsigned long long)swapped,
                 (unsigned long long)defects, (unsigned long long)parked_n, (unsigned long long)kept_n,

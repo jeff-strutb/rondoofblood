@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="592" height="284" viewBox="0 0 592 284" role="img" aria-label="Decompilation progress">
 <style>.t{font:13px sans-serif;fill:#57606a}.h{font:bold 14px sans-serif;fill:#57606a}.track{fill:#8c959f;fill-opacity:.25}</style>
-<text x="16" y="22" class="h">Progress against 495,505 B of game code (traced code + the census)</text>
+<text x="16" y="22" class="h">Progress against 476,267 B of game code (traced code + the census)</text>
 <text x="16" y="50" class="t">M1, T3 or better: 0.00% (0 B, 0 routines)</text><rect x="16" y="56" width="560" height="18" class="track"/><rect x="16" y="56" width="0" height="18" fill="#2da44e"/>
 <text x="16" y="98" class="t">M2, T4: 0.00% (0 B, 0 routines)</text><rect x="16" y="104" width="560" height="18" class="track"/><rect x="16" y="104" width="0" height="18" fill="#0969da"/>
 <text x="16" y="146" class="t">Below proper C: 1 routines, 123 B, a stepping stone</text>

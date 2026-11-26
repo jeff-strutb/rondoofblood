@@ -8,7 +8,7 @@
 #include "card.h"
 #include "card_access.h"
 #include "syscard.h"
-#include "card_trk.h"
+#include "card_exit.h"
 
 enum {
     ZP_CD_OWED = 0x20F2, ZP_VDC_STATUS = 0x20F6, VECTOR_IRQ2 = 0x2200, VECTOR_IRQ1 = 0x2202, VECTOR_VSYNC = 0x2208,
@@ -105,21 +105,6 @@ void abi_jump_user_irq1(void)
     jump_user_irq1(cpu.a, cpu.x, cpu.y);
 }
 
-/* JSR into original code with no C (the unwritten reads of the disc): the registers are the ones given, and those it leaves come back. */
-static void call_original_shim(uint16_t ret, uint16_t target, uint8_t *a, uint8_t *x, uint8_t *y, uint8_t *p)
-{
-    cpu.a = *a;
-    cpu.x = *x;
-    cpu.y = *y;
-    abi_nz(*a);
-    call_orig(ret, target);
-    *a = cpu.a;
-    *x = cpu.x;
-    *y = cpu.y;
-    *p = cpu.p;
-}
-
-
 /* The same with the flags the instruction before the JSR left: the N, Z and C (or V) bits in `flags` under `mask` are set, the rest kept. */
 static void call_original_flags_shim(uint16_t ret, uint16_t target, uint8_t *a, uint8_t *x, uint8_t *y, uint8_t *p, uint8_t flags,
                                      uint8_t mask)
@@ -162,13 +147,181 @@ static void block_move_tii(uint16_t src, uint16_t dst, uint16_t length, uint8_t 
     (void)pull8();
 }
 
+/* LDA #mask; TSB or TRB: A the mask, N and V from the byte before, Z when the byte written is zero. */
+static CardExit exit_mask(uint8_t mask, uint8_t old, bool set)
+{
+    CardExit e = { 0 };
+    uint8_t written = set ? (uint8_t)(old | mask) : (uint8_t)(old & ~mask);
+
+    e.a = mask;
+    e.n = (old & 0x80) != 0;
+    e.v = (old & 0x40) != 0;
+    e.z = written == 0;
+    e.set_a = e.set_n = e.set_v = e.set_z = true;
+    return e;
+}
+
 /* LDA #mask; TRB $F2: the bit the interrupt answered is no longer owed. */
-static void clear_owed(Trk *t, uint8_t bit)
+static void clear_owed(uint8_t bit)
 {
     uint8_t value = rd8(ZP_CD_OWED);
 
     wr8(ZP_CD_OWED, (uint8_t)(value & ~bit));
-    t_mask(t, bit, value, false);
+}
+
+/* The answer to a sector of an ADPCM play read: the next ones asked for. What it leaves. */
+static CardExit irq_sector_done(uint8_t x, uint8_t y)
+{
+    CardExit e;
+    CardExit sent;
+    uint8_t held;
+    uint8_t value;
+    uint8_t amount;
+
+    held = TRB8(CCDU->irq_control, OWED_DONE);
+    (void)held;
+    clear_owed(OWED_DONE);
+    cli();
+    value = rd8(CardAdpcmSectorsLeft);
+    value = (uint8_t)(value | rd8((uint16_t)(CardAdpcmSectorsLeft + 1)));
+    value = (uint8_t)(value | rd8((uint16_t)(CardAdpcmSectorsLeft + 2)));
+    e = exit_a(value);
+    if (value == 0)
+        return e;
+    value = (uint8_t)(RD8(CCDU->bus_status) & CD_BUSY);
+    e = exit_a(value);
+    if (value != 0) {
+        WR8(CRAM->cd_busy, 0);
+        jsr_push(0xE771);
+        ad_stop_clear();
+        jsr_pop();
+        return e;
+    }
+    jsr_push(0xE776);
+    clear_cd_command(x);
+    jsr_pop();
+    WR8_IDX(COL(CRAM->cd_command), 0, CD_COMMAND_READ);
+    value = RD8(CRAM->adpcm_next_sector.hi);
+    WR8_IDX(COL(CRAM->cd_command), 1, value);
+    value = RD8(CRAM->adpcm_next_sector.mid);
+    WR8_IDX(COL(CRAM->cd_command), 2, value);
+    value = RD8(CRAM->adpcm_next_sector.lo);
+    WR8_IDX(COL(CRAM->cd_command), 3, value);
+    amount = SECTORS_AT_ONCE;
+    value = rd8((uint16_t)(CardAdpcmSectorsLeft + 1));
+    value = (uint8_t)(value | rd8((uint16_t)(CardAdpcmSectorsLeft + 2)));
+    if (value == 0) {
+        value = rd8(CardAdpcmSectorsLeft);
+        if (value < SECTORS_AT_ONCE)
+            amount = value;
+    }
+    WR8(CRAM->adpcm_step, amount);
+    WR8_IDX(COL(CRAM->cd_command), 4, amount);
+    WR8(CRAM->cd_busy, 1);
+    jsr_push(0xE7AE);
+    sent = cd_send_command_start();
+    jsr_pop();
+    held = TSB8(CCDU->irq_control, IRQ_PLAY_BITS);
+    e = card_exit_over(with_x(sent, sent.set_x ? sent.x : amount), exit_mask(IRQ_PLAY_BITS, held, true));
+    (void)y;
+    return e;
+}
+
+/* The answer to the data phase: the handshake of the data and the message bytes, and a play's next step. What it leaves. */
+static CardExit irq_data(void)
+{
+    CardExit e;
+    uint8_t held;
+    uint8_t value;
+    uint8_t bus;
+
+    held = TRB8(CCDU->irq_control, OWED_DATA);
+    (void)held;
+    clear_owed(OWED_DATA);
+    cli();
+    value = RD8(CRAM->cd_busy);
+    if (value != 0)
+        WR8(CCDU->adpcm_dma, 0);
+    value = RD8(CCDU->data);
+    WR8(CRAM->cd_status, value);
+    if (value != 0) {
+        WR8(CRAM->cd_busy, 0);
+        jsr_push(0xE7E8);
+        ad_stop_clear();
+        jsr_pop();
+    }
+    (void)TSB8(CCDU->irq_control, CD_ACK);
+    do {
+        bus = RD8(CCDU->bus_status);
+    } while ((bus & CD_REQUEST) != 0);
+    (void)TRB8(CCDU->irq_control, CD_ACK);
+    do {
+        value = (uint8_t)(RD8(CCDU->bus_status) & PHASE_BITS);
+    } while (value != PHASE_MESSAGE);
+    (void)RD8(CCDU->data);
+    (void)TSB8(CCDU->irq_control, CD_ACK);
+    do {
+        bus = RD8(CCDU->bus_status);
+    } while ((bus & CD_REQUEST) != 0);
+    (void)TRB8(CCDU->irq_control, CD_ACK);
+    do {
+        bus = RD8(CCDU->bus_status);
+    } while ((bus & CD_BUSY) != 0);
+    value = RD8(CRAM->cd_busy);
+    e = with_c(with_v(exit_a(value), (bus & 0x40) != 0), true);     /* the C of the last compare of the message phase */
+    if (value == 0)
+        return e;
+    WR8(CRAM->cd_busy, 0);
+    jsr_push(0xE825);
+    e = cplay_advance();
+    jsr_pop();
+    WR8(CRAM->adpcm_step, 0);
+    held = TSB8(CCDU->irq_control, OWED_DONE);
+    return card_exit_over(e, exit_mask(OWED_DONE, held, true));
+}
+
+/* The answer to a subcode byte ready. What it leaves. */
+static CardExit irq_subcode(void)
+{
+    uint8_t held;
+
+    held = TRB8(CCDU->irq_control, OWED_SUBCODE);
+    (void)held;
+    clear_owed(OWED_SUBCODE);
+    cli();
+    jsr_push(0xE83D);
+    (void)cd_subrd_read();
+    jsr_pop();
+    held = TSB8(CCDU->irq_control, OWED_SUBCODE);
+    return with_c(exit_mask(OWED_SUBCODE, held, true), false);
+}
+
+/* The answer to the ADPCM play half way or ended. What it leaves. */
+static CardExit irq_adpcm(void)
+{
+    CardExit e;
+    uint8_t held;
+    uint8_t value;
+
+    held = TRB8(CCDU->irq_control, IRQ_HALF_AND_END);
+    (void)held;
+    clear_owed(OWED_ADPCM);
+    held = TRB8(CCDU->adpcm_control, IRQ_PLAY_BITS);
+    jsr_push(0xE856);
+    ad_stop_clear();
+    jsr_pop();
+    cli();
+    value = RD8(CRAM->adpcm_active);
+    e = with_v(exit_a(value), (held & 0x40) != 0);
+    if (value == 0)
+        return e;
+    do {
+        value = RD8(CCDU->adpcm_status);
+    } while ((value & ADPCM_BUSY) != 0);
+    jsr_push(0xE866);
+    e = ad_play_latch();
+    jsr_pop();
+    return e;
 }
 
 /*
@@ -183,186 +336,30 @@ static void clear_owed(Trk *t, uint8_t bit)
  */
 CardExit cd_interrupt(uint8_t x, uint8_t y)
 {
-    Trk t = { 0 };
     uint8_t value;
-    uint8_t held;
-    uint8_t amount;
+    CardExit e;
 
-    t.x = x;
-    t.y = y;
-    held = RD8(CCDU->irq_control);
-    t_a(&t, held);
-    value = RD8(CCDU->irq_status);
-    t_a(&t, (uint8_t)(t.a & value));
-    value = rd8(ZP_CD_OWED);
-    t_a(&t, (uint8_t)(t.a | value));
-    wr8(ZP_CD_OWED, t.a);
-    if ((rd8(ZP_CD_OWED) & OWED_DONE) != 0) {
-        held = TRB8(CCDU->irq_control, OWED_DONE);
-        t_mask(&t, OWED_DONE, held, false);
-        clear_owed(&t, OWED_DONE);
-        cli();
-        value = rd8(CardAdpcmSectorsLeft);
-        t_a(&t, value);
-        value = rd8((uint16_t)(CardAdpcmSectorsLeft + 1));
-        t_a(&t, (uint8_t)(t.a | value));
-        value = rd8((uint16_t)(CardAdpcmSectorsLeft + 2));
-        t_a(&t, (uint8_t)(t.a | value));
-        if (t.a != 0) {
-            value = RD8(CCDU->bus_status);
-            t_a(&t, (uint8_t)(value & CD_BUSY));
-            if (t.a != 0) {
-                WR8(CRAM->cd_busy, 0);
-                jsr_push(0xE771);
-                ad_stop_clear();
-                jsr_pop();
-            } else {
-                jsr_push(0xE776);
-                clear_cd_command(t.x);
-                jsr_pop();
-                t_nz(&t, t.x);
-                t_a(&t, CD_COMMAND_READ);
-                WR8_IDX(COL(CRAM->cd_command), 0, CD_COMMAND_READ);
-                value = RD8(CRAM->adpcm_next_sector.hi);
-                t_a(&t, value);
-                WR8_IDX(COL(CRAM->cd_command), 1, value);
-                value = RD8(CRAM->adpcm_next_sector.mid);
-                t_a(&t, value);
-                WR8_IDX(COL(CRAM->cd_command), 2, value);
-                value = RD8(CRAM->adpcm_next_sector.lo);
-                t_a(&t, value);
-                WR8_IDX(COL(CRAM->cd_command), 3, value);
-                t.x = SECTORS_AT_ONCE;
-                t.x_set = true;
-                value = rd8((uint16_t)(CardAdpcmSectorsLeft + 1));
-                t_a(&t, value);
-                value = rd8((uint16_t)(CardAdpcmSectorsLeft + 2));
-                t_a(&t, (uint8_t)(t.a | value));
-                if (t.a == 0) {
-                    value = rd8(CardAdpcmSectorsLeft);
-                    t_a(&t, value);
-                    t_cmp(&t, value, SECTORS_AT_ONCE);
-                    if (value < SECTORS_AT_ONCE) {
-                        t.x = value;
-                        t_nz(&t, value);
-                    }
-                }
-                amount = t.x;
-                t_a(&t, amount);
-                WR8(CRAM->adpcm_step, amount);
-                WR8_IDX(COL(CRAM->cd_command), 4, amount);
-                t_a(&t, 1);
-                WR8(CRAM->cd_busy, 1);
-                jsr_push(0xE7AE);
-                t_take(&t, cd_send_command_start());
-                jsr_pop();
-                held = TSB8(CCDU->irq_control, IRQ_PLAY_BITS);
-                t_mask(&t, IRQ_PLAY_BITS, held, true);
-            }
-        }
-    }
+    value = RD8(CCDU->irq_control);
+    value = (uint8_t)(value & RD8(CCDU->irq_status));
+    value = (uint8_t)(value | rd8(ZP_CD_OWED));
+    wr8(ZP_CD_OWED, value);
+    e = exit_a(value);
+    if ((rd8(ZP_CD_OWED) & OWED_DONE) != 0)
+        e = card_exit_over(e, irq_sector_done(x, y));
     if ((rd8(ZP_CD_OWED) & OWED_DMA) != 0) {
-        held = TRB8(CCDU->irq_control, OWED_DMA);
-        t_mask(&t, OWED_DMA, held, false);
-        clear_owed(&t, OWED_DMA);
+        (void)TRB8(CCDU->irq_control, OWED_DMA);
+        clear_owed(OWED_DMA);
         cli();
-        t_a(&t, ADPCM_DMA_START);
         WR8(CCDU->adpcm_dma, ADPCM_DMA_START);
+        e = card_exit_over(e, exit_a(ADPCM_DMA_START));
     }
-    if ((rd8(ZP_CD_OWED) & OWED_DATA) != 0) {
-        held = TRB8(CCDU->irq_control, OWED_DATA);
-        t_mask(&t, OWED_DATA, held, false);
-        clear_owed(&t, OWED_DATA);
-        cli();
-        value = RD8(CRAM->cd_busy);
-        t_a(&t, value);
-        if (value != 0)
-            WR8(CCDU->adpcm_dma, 0);
-        value = RD8(CCDU->data);
-        t_a(&t, value);
-        WR8(CRAM->cd_status, value);
-        if (value != 0) {
-            WR8(CRAM->cd_busy, 0);
-            jsr_push(0xE7E8);
-            ad_stop_clear();
-            jsr_pop();
-        }
-        held = TSB8(CCDU->irq_control, CD_ACK);
-        t_mask(&t, CD_ACK, held, true);
-        do {
-            value = RD8(CCDU->bus_status);
-            t_tst(&t, CD_REQUEST, value);
-        } while ((value & CD_REQUEST) != 0);
-        held = TRB8(CCDU->irq_control, CD_ACK);
-        t_mask(&t, CD_ACK, held, false);
-        do {
-            value = RD8(CCDU->bus_status);
-            t_a(&t, (uint8_t)(value & PHASE_BITS));
-            t_cmp(&t, t.a, PHASE_MESSAGE);
-        } while (t.a != PHASE_MESSAGE);
-        value = RD8(CCDU->data);
-        t_a(&t, value);
-        held = TSB8(CCDU->irq_control, CD_ACK);
-        t_mask(&t, CD_ACK, held, true);
-        do {
-            value = RD8(CCDU->bus_status);
-            t_tst(&t, CD_REQUEST, value);
-        } while ((value & CD_REQUEST) != 0);
-        held = TRB8(CCDU->irq_control, CD_ACK);
-        t_mask(&t, CD_ACK, held, false);
-        do {
-            value = RD8(CCDU->bus_status);
-            t_tst(&t, CD_BUSY, value);
-        } while ((value & CD_BUSY) != 0);
-        value = RD8(CRAM->cd_busy);
-        t_a(&t, value);
-        if (value != 0) {
-            WR8(CRAM->cd_busy, 0);
-            jsr_push(0xE825);
-            t_take(&t, cplay_advance());
-            jsr_pop();
-            WR8(CRAM->adpcm_step, 0);
-            held = TSB8(CCDU->irq_control, OWED_DONE);
-            t_mask(&t, OWED_DONE, held, true);
-        }
-    }
-    if ((rd8(ZP_CD_OWED) & OWED_SUBCODE) != 0) {
-        held = TRB8(CCDU->irq_control, OWED_SUBCODE);
-        t_mask(&t, OWED_SUBCODE, held, false);
-        clear_owed(&t, OWED_SUBCODE);
-        cli();
-        jsr_push(0xE83D);
-        value = cd_subrd_read();
-        jsr_pop();
-        t_a(&t, value);
-        t.c = false;
-        t.c_set = true;
-        held = TSB8(CCDU->irq_control, OWED_SUBCODE);
-        t_mask(&t, OWED_SUBCODE, held, true);
-    }
-    if ((rd8(ZP_CD_OWED) & OWED_ADPCM) != 0) {
-        held = TRB8(CCDU->irq_control, IRQ_HALF_AND_END);
-        t_mask(&t, IRQ_HALF_AND_END, held, false);
-        clear_owed(&t, OWED_ADPCM);
-        held = TRB8(CCDU->adpcm_control, IRQ_PLAY_BITS);
-        t_mask(&t, IRQ_PLAY_BITS, held, false);
-        jsr_push(0xE856);
-        ad_stop_clear();
-        jsr_pop();
-        cli();
-        value = RD8(CRAM->adpcm_active);
-        t_a(&t, value);
-        if (value != 0) {
-            do {
-                value = RD8(CCDU->adpcm_status);
-                t_a(&t, (uint8_t)(value & ADPCM_BUSY));
-            } while (t.a != 0);
-            jsr_push(0xE866);
-            t_take(&t, ad_play_latch());
-            jsr_pop();
-        }
-    }
-    return t_exit(&t);
+    if ((rd8(ZP_CD_OWED) & OWED_DATA) != 0)
+        e = card_exit_over(e, irq_data());
+    if ((rd8(ZP_CD_OWED) & OWED_SUBCODE) != 0)
+        e = card_exit_over(e, irq_subcode());
+    if ((rd8(ZP_CD_OWED) & OWED_ADPCM) != 0)
+        e = card_exit_over(e, irq_adpcm());
+    return e;
 }
 
 void abi_cd_interrupt(void)
@@ -418,87 +415,67 @@ void abi_card_irq2(void)
  */
 CardExit run_bank2_tasks(uint8_t x, uint8_t y)
 {
-    Trk t = { 0 };
+    CardExit e = { 0 };
     uint8_t value;
     uint8_t a;
-    uint8_t xr = x;
-    uint8_t yr = y;
     uint8_t p = 0;
+    uint8_t mode;
 
-    t.x = x;
-    t.y = y;
     value = tma(MPR4_BIT);
-    t.a = value;
-    t.a_set = true;
     push8(value);
     value = tma(MPR5_BIT);
-    t.a = value;
     push8(value);
     value = tma(MPR6_BIT);
-    t.a = value;
     push8(value);
     value = rd8(PLAYER_BANK_4);
-    t_a(&t, value);
     tam(MPR4_BIT, value);
     value = rd8(PLAYER_BANK_5);
-    t_a(&t, value);
     tam(MPR5_BIT, value);
-    t_a(&t, 2);
     tam(MPR6_BIT, 2);
-    value = rd8(PLAYER_MODE);
-    t_a(&t, value);
-    if (value != 0) {
-        a = value;
-        call_original_flags_shim(0xE6EE, 0xCD12, &a, &xr, &yr, &p, (uint8_t)((t.n ? P_N : 0) | (t.z ? P_Z : 0)), P_N | P_Z);
-        t_a(&t, a);
-        t_cmp(&t, a, 0);
+    mode = rd8(PLAYER_MODE);
+    if (mode != 0) {
+        a = mode;
+        call_original_flags_shim(0xE6EE, 0xCD12, &a, &x, &y, &p, (uint8_t)(mode & 0x80 ? P_N : 0) | (mode == 0 ? P_Z : 0), P_N | P_Z);
         if (a == 0) {
             value = rd8(PLAYER_DONE);
-            t_a(&t, value);
-            t_a(&t, (uint8_t)(value | 0x40));
-            wr8(PLAYER_DONE, t.a);
+            wr8(PLAYER_DONE, (uint8_t)(value | 0x40));
         }
     }
-    value = rd8(PLAYER_MODE);
-    t_a(&t, value);
-    t_cmp(&t, value, 1);
-    if (value != 1) {
-        a = value;
-        call_original_flags_shim(0xE704, 0xC2EF, &a, &xr, &yr, &p, (uint8_t)((t.n ? P_N : 0) | (t.z ? P_Z : 0) | (t.c ? P_C : 0)),
-                                 P_N | P_Z | P_C);
-        t_a(&t, a);
-        t_cmp(&t, a, 0);
+    mode = rd8(PLAYER_MODE);
+    if (mode != 1) {
+        uint8_t compare = (uint8_t)(mode - 1);
+        uint8_t flags = (uint8_t)((compare & 0x80 ? P_N : 0) | (compare == 0 ? P_Z : 0) | (mode >= 1 ? P_C : 0));
+
+        a = mode;
+        call_original_flags_shim(0xE704, 0xC2EF, &a, &x, &y, &p, flags, P_N | P_Z | P_C);
         if (a == 0) {
             value = rd8(PLAYER_DONE);
-            t_a(&t, value);
-            t_a(&t, (uint8_t)(value | 0x80));
-            wr8(PLAYER_DONE, t.a);
+            wr8(PLAYER_DONE, (uint8_t)(value | 0x80));
         }
     }
     value = RD8(CZP->reset_mark);
-    t_a(&t, (uint8_t)(value & 1));
-    if (t.a == 0) {
+    if ((value & 1) == 0) {
         value = rd8(PLAYER_TIMER);
-        t_a(&t, value);
         if ((value & 0x80) == 0) {
             wr8(TIMER_COUNT_PORT, value);
-            t_a(&t, (uint8_t)(value | 0x80));
-            wr8(PLAYER_TIMER, t.a);
+            wr8(PLAYER_TIMER, (uint8_t)(value | 0x80));
         }
     }
     value = pull8();
-    t.a = value;
     tam(MPR6_BIT, value);
     value = pull8();
-    t.a = value;
     tam(MPR5_BIT, value);
     value = pull8();
-    t.a = value;
     tam(MPR4_BIT, value);
     value = rd8(PLAYER_PSG_SELECT);
-    t_a(&t, value);
     wr8(PSG_SELECT_PORT, value);
-    return t_exit(&t);
+    e.a = e.nz = value;
+    e.x = x;
+    e.y = y;
+    e.c = true;
+    e.v = (p & P_V) != 0;
+    e.set_a = e.set_nz = e.set_x = e.set_y = e.set_c = e.set_v = true;
+    return e;
 }
 
 void abi_run_bank2_tasks(void)

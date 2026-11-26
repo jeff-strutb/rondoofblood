@@ -72,9 +72,9 @@ Ended TileHalfStepBAt9AA7(uint8_t tile);
 
 /* object/player_input.c */
 typedef struct { Ended end; bool x_set; uint8_t x; } TurnWindow;
-Ended RichterFaceByPad(void);
+ObjArm RichterFaceByPad(void);
 TurnWindow RichterCheckTurnWindow(void);
-EndedX RichterCheckItemHearts(void);
+ObjArm RichterCheckItemHearts(void);
 
 /* object/player_terrain.c: the two halves of the ledge check */
 typedef struct { bool found; LowColumns low; uint8_t a; uint8_t x; bool c; } LedgeLowPart;

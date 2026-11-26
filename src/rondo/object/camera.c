@@ -1186,7 +1186,9 @@ RightOrWall MovePlayerRightOrWall(void)
 {
     RightOrWall result = { 0 };
 
+    jsr_push(0x6806);
     result.wall = PlayerWallRight();
+    jsr_pop();
     if (result.wall.how == WALL_NOT_THERE) {
         result.moved = true;
         result.move = MovePlayerRight();
@@ -1593,13 +1595,16 @@ void abi_PlayerWallLeft(void)
  * @run 6A:6946
  * WHAT IT DOES: Moves the player left, unless there is a wall.
  * HOW: PlayerWallLeft, then MovePlayerLeft.
+ * WAITS: no.
  * Entry: cpu flags current. Exit: as the one that ran last.
  */
 LeftOrWall MovePlayerLeftOrWall(void)
 {
     LeftOrWall result = { 0 };
 
+    jsr_push(0x6949);
     result.wall = PlayerWallLeft();
+    jsr_pop();
     if (result.wall.how == WALL_NOT_THERE) {
         result.moved = true;
         result.move = MovePlayerLeft();

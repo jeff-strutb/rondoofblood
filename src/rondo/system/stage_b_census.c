@@ -27,7 +27,7 @@ enum {
     FADE_SOUND = 0x209D, STAGE_FLAG_2743 = 0x2743,
     KERNEL_4006 = 0x4006, KERNEL_4009 = 0x4009, SOUND_HOOK = 0x401B, KERNEL_407B = 0x407B,
     SUB_MODE_TABLE = 0x8013, SUB_STEP_TABLE = 0x8112, DEATH_PHASE_TABLE = 0x81E8, FACING_SPEEDS = 0x8209,
-    ROW_MAP = 0x3A00, SCREEN_3EB4 = 0x3EB4, SCREEN_3EC4 = 0x3EC4
+    ROW_MAP = 0x3A00, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4, SCREEN_3EC4 = 0x3EC4
 };
 
 typedef StageRegs Regs;
@@ -2510,10 +2510,10 @@ void abi_StageLoadRowMap152D(void)
  * left there, not these bytes.
  *
  * WHAT IT DOES: The kernel's pieces at $403F and at $400C (with A the route's byte from the table at $9A59 by
- * zField82), then the stage's bit rows cleared (StageClearBitRows152D).
- * HOW: Two calls into the kernel; a jump to StageClearBitRows152D.
+ * zField82), then the route's list unpacked into SaveBuffer (StageUnpackList152D).
+ * HOW: Two calls into the kernel; a jump to StageUnpackList152D.
  * WAITS: where the kernel's pieces wait.
- * Entry: nothing. Exit: as StageClearBitRows152D.
+ * Entry: nothing. Exit: as StageUnpackList152D.
  */
 StageRegs StageRouteSetUpA152D(StageRegs r)
 {
@@ -2522,7 +2522,7 @@ StageRegs StageRouteSetUpA152D(StageRegs r)
     r.nz = r.x;
     r = loaded(r, rd8((uint16_t)(0x9A59 + r.x)));
     r = orig_shim(r, 0x8624, 0x400C);
-    return StageClearBitRows152D(r);
+    return StageUnpackList152D(r);
 }
 
 void abi_StageRouteSetUpA152D(void)
@@ -2986,8 +2986,8 @@ void abi_DoorHandlerB152D(void)
  * run. No input or poke of work RAM can load the sector, and a unit call at $8801 runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: Draws the stage's display at its start: the two pieces of StageDrawPiece152D 0 and 1, the score and the
- * stock (StageDrawScore152D, StageDrawStock152D); zField8E's bit 5 cleared; then runs on into StageHudStep152D.
+ * WHAT IT DOES: Draws the stage's display at its start: the pieces 0 and 1 of StageDrawPiece152D, the stock and the
+ * points to add (StageDrawStock152D, StageDrawScoreAdd152D); zField8E's bit 5 cleared; then runs on into StageHudStep152D.
  * HOW: Calls with X 0 and 1; a bit cleared.
  * WAITS: no.
  * Entry: nothing. Exit: as StageHudStep152D.
@@ -2999,8 +2999,8 @@ StageRegs StageHudStart152D(StageRegs r)
     r.x++;
     r.nz = r.x;
     CALL(0x8809, StageDrawPiece152D(r));
-    CALL(0x880C, StageDrawScore152D(r));
-    CALL(0x880F, StageDrawStock152D(r));
+    CALL(0x880C, StageDrawStock152D(r));
+    CALL(0x880F, StageDrawScoreAdd152D(r));
     RMW8(ZP->field8e, old, old & (uint8_t)~0x20);
     return StageHudStep152D(r);
 }
@@ -3216,4 +3216,1388 @@ StageRegs StageHealthBarAddress152D(StageRegs r)
 void abi_StageHealthBarAddress152D(void)
 {
     regs_exit_shim(StageHealthBarAddress152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:8C2 StageBossBarReset152D
+ * @run 6B:88C2
+ * @unreachable 6B:88C2-6B:88CB no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $88C2 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The boss's bar drawn anew (StageDrawPiece152D 2) and its length at $2745 set to $5C; then runs on into
+ * StageBossBar152D. Reached from StageBossBar152D while the boss's frame at $2A9D is 0.
+ * HOW: A call with X 2; a store.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StageBossBar152D.
+ */
+StageRegs StageBossBarReset152D(StageRegs r)
+{
+    r.x = 2;
+    r.nz = 2;
+    CALL(0x88C7, StageDrawPiece152D(r));
+    r = loaded(r, 0x5C);
+    wr8(BOSS_BAR, 0x5C);
+    return StageBossBar152D(r);
+}
+
+void abi_StageBossBarReset152D(void)
+{
+    regs_exit_shim(StageBossBarReset152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:8CC StageBossBar152D
+ * @run 6B:88CC
+ * @unreachable 6B:88CC-6B:88DA no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $88CC runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The boss's bar each frame: while the boss's frame at $2A9D is 0 the bar is drawn anew
+ * (StageBossBarReset152D); the boss's X at $2BBD is moved left until it reaches $D8; then StageBossBarStep152D.
+ * HOW: Tests; a decrement; a branch or run into StageBossBarStep152D.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StageBossBarStep152D.
+ */
+StageRegs StageBossBar152D(StageRegs r)
+{
+    r = loaded(r, RD8(OBJ->frame[53]));
+    if (r.a == 0) {
+        return StageBossBarReset152D(r);
+    }
+    r = loaded(r, RD8(OBJ->x_hi[77]));
+    r = compared(r, 0xD8);
+    if (r.nz != 0) {
+        r.nz = DEC8(OBJ->x_hi[77]);
+    }
+    return StageBossBarStep152D(r);
+}
+
+void abi_StageBossBar152D(void)
+{
+    regs_exit_shim(StageBossBar152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:8DB StageBossBarStep152D
+ * @run 6B:88DB
+ * @unreachable 6B:88DB-6B:891B no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $88DB runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Moves the boss's bar at $2745 one step toward the boss's health at $3128: down, the piece cleared; up,
+ * set. A negative health is the boss's end: the bar is stepped with a health of 0 (by a call of this routine) and the
+ * health put back; once the bar is empty, the count at $330D takes the health. While the count at $330D is not 0 the
+ * bar flashes instead (StageBossBarFlash152D).
+ * HOW: Compares; StageBossBarAddress152D by BSR with AndVramData or OrVramData (map_draw.c's C, census duplicates at
+ * $942A and $9439); the health kept on the stack across the call of itself.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last piece that ran left them; at the bar, A the health, N, Z and C from the compare.
+ */
+StageRegs StageBossBarStep152D(StageRegs r)
+{
+    uint8_t health, bar;
+
+    r = loaded(r, RD8(OBJ->f3300[13]));
+    if (r.a != 0) {
+        return StageBossBarFlash152D(r);
+    }
+    health = RD8(OBJ->f30f0[56]);
+    r = loaded(r, health);
+    if ((health & 0x80) != 0) {
+        push8(r.a);
+        WR8(OBJ->f30f0[56], 0);
+        CALL(0x8902, StageBossBarStep152D(r));
+        health = pull8();
+        r = loaded(r, health);
+        WR8(OBJ->f30f0[56], health);
+        r.y = rd8(BOSS_BAR);
+        r.nz = r.y;
+        if (r.y != 0) {
+            return r;
+        }
+        WR8(OBJ->f3300[13], r.a);
+        return r;
+    }
+    bar = rd8(BOSS_BAR);
+    r = compared(r, bar);
+    if (r.nz == 0) {
+        return r;
+    }
+    if (r.c) {
+        r.nz = (uint8_t)(rd8(BOSS_BAR) + 1);
+        wr8(BOSS_BAR, r.nz);
+        CALL(0x8914, StageBossBarAddress152D(r));
+        r.x = 0xF0;
+        r.y = 0;
+        r.nz = 0;
+        return or_vram(r, 0x891B);
+    }
+    CALL(0x88F1, StageBossBarAddress152D(r));
+    r.x = 0x0F;
+    r.y = 0xFF;
+    r.nz = 0xFF;
+    r = and_vram(r, 0x88F8);
+    r.nz = (uint8_t)(rd8(BOSS_BAR) - 1);
+    wr8(BOSS_BAR, r.nz);
+    return r;
+}
+
+void abi_StageBossBarStep152D(void)
+{
+    regs_exit_shim(StageBossBarStep152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:91C StageBossBarAddress152D
+ * @run 6B:891C
+ * @unreachable 6B:891C-6B:8964 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $891C runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Points the VDC at the boss's bar's piece for the length at $2745 ($5E less it, from $5D40, a page on
+ * at $3F and more), unless the length is 0.
+ * HOW: The page in zTemp08-09; a subtract, nibbles and shifts into zTemp00-01, adds; SetVramAddresses (map_draw.c's C,
+ * a census duplicate at $9415) with the address in X and Y.
+ * WAITS: no.
+ * Entry: nothing. Exit, length 0: A 0, N and Z from it. Else: A 2, N and Z clear; X and Y the address, C and V from the
+ * last add. Clobbers zTemp00-01 and zTemp08-09.
+ */
+StageRegs StageBossBarAddress152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t length, value;
+
+    r = loaded(r, rd8(BOSS_BAR));
+    if (r.a == 0) {
+        return r;
+    }
+    WR8(ZP->temp08, 0);
+    WR8(ZP->temp09, 0);
+    r = compared(r, 0x3F);
+    if (r.c) {
+        r = loaded(r, 0xC0);
+        WR8(ZP->temp08, 0xC0);
+        r.nz = INC8(ZP->temp09);
+    }
+    length = rd8(BOSS_BAR);
+    r = bar_address(r, length, 0x40, 0);
+    WR8(ZP->temp00, r.a);
+    value = RD8(ZP->temp01);
+    sum = add_bytes(value, 0x5D, r.c);
+    WR8(ZP->temp01, sum.value);
+    value = RD8(ZP->temp08);
+    sum = add_bytes(value, RD8(ZP->temp00), false);
+    r.x = sum.value;
+    value = RD8(ZP->temp09);
+    sum = add_bytes(value, RD8(ZP->temp01), sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    r.y = sum.value;
+    return set_vram_addresses(r, 0x8964);
+}
+
+void abi_StageBossBarAddress152D(void)
+{
+    regs_exit_shim(StageBossBarAddress152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:97D StageBossBarFlash152D
+ * @run 6B:897D
+ * @unreachable 6B:897D-6B:89BD no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $897D runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The boss's bar at its end: every other piece of the four (by the wave counter's bit 0, from the table
+ * of addresses at $8965) blanked by StageBarErase152D; the flash's step at $339D counted; the boss's speed at $2DFD and
+ * $2DB5 raised by $0C; the kernel's piece at $4045 with X $45; once the boss's page at $2C4D is 0 the boss's frame at
+ * $2A9D and zField8E's bit 2 are cleared.
+ * HOW: A loop of four in zTemp01; adds; the kernel; stores.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the boss's page, N and Z from it, the rest as $4045 left them.
+ */
+StageRegs StageBossBarFlash152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t index, value;
+
+    r = loaded(r, (uint8_t)(RD8(ZP->wave_counter) & 0x01));
+    WR8(ZP->temp01, r.a);
+    do {
+        value = RD8(ZP->temp01);
+        index = (uint8_t)(value << 1);
+        r.c = (value & 0x80) != 0;
+        r.x = index;
+        r.y = rd8((uint16_t)(0x8966 + index));
+        r = loaded(r, rd8((uint16_t)(0x8965 + index)));
+        r.x = r.a;
+        CALL(0x8991, StageBarErase152D(r));
+        r.nz = INC8(ZP->temp01);
+        r.nz = INC8(ZP->temp01);
+        r = loaded(r, RD8(ZP->temp01));
+        r = compared(r, 0x08);
+    } while (!r.c);
+    r.nz = INC8(OBJ->f3358[69]);
+    value = RD8(OBJ->vx_lo[37]);
+    sum = add_bytes(value, 0x0C, false);
+    WR8(OBJ->vx_lo[37], sum.value);
+    value = RD8(OBJ->vx_hi[53]);
+    sum = add_bytes(0, value, sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(OBJ->vx_hi[53], sum.value);
+    r.x = 0x45;
+    r.nz = 0x45;
+    r = orig_shim(r, 0x89B3, 0x4045);
+    r = loaded(r, RD8(OBJ->x_frac[45]));
+    if (r.a == 0) {
+        return r;
+    }
+    WR8(OBJ->frame[53], 0);
+    RMW8(ZP->field8e, old, old & (uint8_t)~0x04);
+    return r;
+}
+
+void abi_StageBossBarFlash152D(void)
+{
+    regs_exit_shim(StageBossBarFlash152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:9BE StageBarErase152D
+ * @run 6B:89BE
+ * @unreachable 6B:89BE-6B:89E8 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $89BE runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Blanks a bar's piece in VRAM at the address in X and Y, in 64 words: each word ANDed with a mask of
+ * the kernel's random piece at $4051, zRandom2 and zRandom1, and the flash step's row of the table at $8975.
+ * HOW: SetVramAddresses (map_draw.c's C, a census duplicate at $9415); a loop down X of reads and writes of the VDC's
+ * data port.
+ * WAITS: no.
+ * Entry: X, Y the VRAM address. Exit: X 0, N and Z from it; A the word's high byte, Y the flash step's row; C and V
+ * as $4051 left them. Clobbers zTemp00.
+ */
+StageRegs StageBarErase152D(StageRegs r)
+{
+    uint8_t mask, value;
+
+    r = set_vram_addresses(r, 0x89C1);
+    for (r.x = 0x40; r.x != 0; r.x--) {
+        r.y = (uint8_t)(RD8(OBJ->f3358[69]) & 0x07);
+        r = orig_shim(r, 0x89CC, 0x4051);
+        mask = (uint8_t)(r.a | RD8(ZP->random2));
+        mask = (uint8_t)(mask | RD8(ZP->random1));
+        mask = (uint8_t)(mask | rd8((uint16_t)(0x8975 + r.y)));
+        WR8(ZP->temp00, mask);
+        value = RD8(VDC->data_lo);
+        value = (uint8_t)(value & RD8(ZP->temp00));
+        WR8(VDC->data_lo, value);
+        value = RD8(VDC->data_hi);
+        value = (uint8_t)(value & RD8(ZP->temp00));
+        r = loaded(r, value);
+        WR8(VDC->data_hi, value);
+    }
+    r.nz = 0;
+    return r;
+}
+
+void abi_StageBarErase152D(void)
+{
+    regs_exit_shim(StageBarErase152D(regs_entry_shim()));
+}
+
+/* One row of a digit's five: its two bits at SHIFT placed into the VDC's word with the mask the side keeps. */
+static uint8_t digit_row(uint8_t y)
+{
+    return RD8_PTR_Y(ZP->temp00, y);
+}
+
+/*
+ * @routine 152D:9E9 StageDrawDigit152D
+ * @run 6B:89E9
+ * @unreachable 6B:89E9-6B:8A68 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $89E9 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Draws the digit in A into the display at the place in X (StageDigitAddress152D): the digit's five rows
+ * (five bytes from $8A84 up) laid into the VRAM words' bit planes; an even place takes bits 4 to 7 of the low byte and
+ * bits 0 and 1 of the high, an odd place bits 4 to 7 of the high byte, then the next place's low two bits.
+ * HOW: The glyph's address in zTemp00-01; StageDigitAddress152D by BSR; loops of five reads and writes of the VDC's
+ * data port with shifts through zTemp02-03.
+ * WAITS: no.
+ * Entry: A the digit, X the place. Exit: Y 5, Z set from the compare, C set; A the last high byte written. Clobbers
+ * zTemp00-04.
+ */
+StageRegs StageDrawDigit152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t digit, value, old;
+
+    WR8(ZP->temp04, r.x);
+    digit = r.a;
+    WR8(ZP->temp00, digit);
+    r.c = (digit & 0x40) != 0;
+    value = RD8(ZP->temp00);
+    sum = add_bytes((uint8_t)(digit << 2), value, r.c);
+    sum = add_bytes(sum.value, 0x84, sum.carry);
+    WR8(ZP->temp00, sum.value);
+    sum = add_bytes(0, 0x8A, sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp01, sum.value);
+    CALL(0x89FC, StageDigitAddress152D(r));
+    r = loaded(r, RD8(ZP->temp04));
+    r.c = (r.a & 0x01) != 0;
+    r = loaded(r, (uint8_t)(r.a >> 1));
+    if (!r.c) {
+        for (r.y = 0; r.y != 5; r.y++) {
+            value = digit_row(r.y);
+            WR8(ZP->temp03, 0);
+            for (int i = 0; i < 2; i++) {
+                bool out = (value & 0x80) != 0;
+
+                value = (uint8_t)(value << 1);
+                old = RD8(ZP->temp03);
+                WR8(ZP->temp03, (uint8_t)((old << 1) | (out ? 1 : 0)));
+            }
+            WR8(ZP->temp02, value);
+            value = (uint8_t)(RD8(VDC->data_lo) & 0x0F);
+            value = (uint8_t)(value | RD8(ZP->temp02));
+            WR8(VDC->data_lo, value);
+            value = (uint8_t)(RD8(VDC->data_hi) & 0xFC);
+            value = (uint8_t)(value | RD8(ZP->temp03));
+            r = loaded(r, value);
+            WR8(VDC->data_hi, value);
+        }
+        r.c = true;
+        r.nz = 0;
+        return r;
+    }
+    for (r.y = 0; r.y != 5; r.y++) {
+        value = (uint8_t)(digit_row(r.y) << 2);
+        WR8(ZP->temp02, value);
+        value = RD8(VDC->data_lo);
+        WR8(VDC->data_lo, value);
+        value = (uint8_t)(RD8(VDC->data_hi) & 0x0F);
+        value = (uint8_t)(value | RD8(ZP->temp02));
+        WR8(VDC->data_hi, value);
+    }
+    r.nz = INC8(ZP->temp04);
+    CALL(0x8A48, StageDigitAddress152D(r));
+    for (r.y = 0; r.y != 5; r.y++) {
+        value = digit_row(r.y);
+        WR8(ZP->temp02, 0);
+        for (int i = 0; i < 2; i++) {
+            bool out = (value & 0x80) != 0;
+
+            value = (uint8_t)(value << 1);
+            old = RD8(ZP->temp02);
+            WR8(ZP->temp02, (uint8_t)((old << 1) | (out ? 1 : 0)));
+        }
+        value = (uint8_t)(RD8(VDC->data_lo) & 0xFC);
+        value = (uint8_t)(value | RD8(ZP->temp02));
+        WR8(VDC->data_lo, value);
+        value = RD8(VDC->data_hi);
+        r = loaded(r, value);
+        WR8(VDC->data_hi, value);
+    }
+    r.c = true;
+    r.nz = 0;
+    return r;
+}
+
+void abi_StageDrawDigit152D(void)
+{
+    regs_exit_shim(StageDrawDigit152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:A69 StageDigitAddress152D
+ * @run 6B:8A69
+ * @unreachable 6B:8A69-6B:8A77 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8A69 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Points the VDC at the display's place zTemp04 (its even pair) from the table of addresses at $8A78.
+ * HOW: Two table reads; a jump to SetVramAddresses (map_draw.c's C, a census duplicate at $9415).
+ * WAITS: no.
+ * Entry: zTemp04 the place. Exit: A 2, N and Z clear; X and Y the address.
+ */
+StageRegs StageDigitAddress152D(StageRegs r)
+{
+    uint8_t index = (uint8_t)(RD8(ZP->temp04) & 0xFE);
+
+    r.x = index;
+    r.a = rd8((uint16_t)(0x8A78 + index));
+    r.y = rd8((uint16_t)(0x8A79 + index));
+    r.x = r.a;
+    SetVramAddresses(r.x, r.y);
+    r.a = 2;
+    r.nz = 2;
+    return r;
+}
+
+void abi_StageDigitAddress152D(void)
+{
+    regs_exit_shim(StageDigitAddress152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:ACC StagePausedSelect152D
+ * @run 6B:8ACC
+ * @unreachable 6B:8ACC-6B:8AF0 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8ACC runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The pause screen's choice, reached from StagePausedFrame152D: on the first pad's left or right (bits 4
+ * and 6 of BiosJoyTrigger) the sub-weapon at zField93 moves to the next or the one before (the table at $8AC0, two on
+ * for right), its frame at $2A9E from the table at $8878, PlayerByte3BD6 1 and zField94 $99.
+ * HOW: Pad bits; table reads; stores.
+ * WAITS: no.
+ * Entry: nothing. Exit, no press: A 0, N and Z from it. Else: A $99, N and Z from it, X the new choice. Y, C and V
+ * kept.
+ */
+StageRegs StagePausedSelect152D(StageRegs r)
+{
+    uint8_t choice;
+
+    r = loaded(r, (uint8_t)(rd8(BiosJoyTrigger) & 0x50));
+    if (r.a == 0) {
+        return r;
+    }
+    r.x = RD8(ZP->field93);
+    r = loaded(r, (uint8_t)(r.a & 0x40));
+    if (r.a != 0) {
+        r.x = (uint8_t)(r.x + 2);
+    }
+    choice = rd8((uint16_t)(0x8AC0 + r.x));
+    WR8(ZP->field93, choice);
+    r.x = choice;
+    r = loaded(r, rd8((uint16_t)(0x8878 + choice)));
+    WR8(OBJ->frame[54], r.a);
+    r = loaded(r, 1);
+    wr8(PlayerByte3BD6, 1);
+    r = loaded(r, 0x99);
+    WR8(ZP->field94, 0x99);
+    return r;
+}
+
+void abi_StagePausedSelect152D(void)
+{
+    regs_exit_shim(StagePausedSelect152D(regs_entry_shim()));
+}
+
+/* The pause's menu step: the kernel's piece at $4018 twice (X 2 and 3, A from the row's first two bytes at $8B70), the
+ * row's frame into $2A9F, then the kernel's piece at $400F with X 4 for the row's sound unless it is the one zPaused's
+ * bit 2 (after its shift into zTemp01) already has. */
+static Regs pause_menu_row(Regs r, uint8_t row)
+{
+    WR8(ZP->temp00, row);
+    r = loaded(r, rd8((uint16_t)(0x8B70 + row)));
+    r.x = 2;
+    r.nz = 2;
+    r = orig_shim(r, 0x8B2A, 0x4018);
+    r.x = RD8(ZP->temp00);
+    r = loaded(r, rd8((uint16_t)(0x8B71 + r.x)));
+    r.x = 3;
+    r.nz = 3;
+    r = orig_shim(r, 0x8B34, 0x4018);
+    r.x = RD8(ZP->temp00);
+    r = loaded(r, rd8((uint16_t)(0x8B73 + r.x)));
+    WR8(OBJ->frame[55], r.a);
+    r = loaded(r, RD8(ZP->paused));
+    WR8(ZP->temp01, r.a);
+    r.x = RD8(ZP->temp00);
+    r = loaded(r, rd8((uint16_t)(0x8B72 + r.x)));
+    if (r.a == 0) {
+        return r;
+    }
+    if (LSR8(ZP->temp01)) {
+        r = compared(r, 0x65);
+    } else {
+        r = compared(r, 0x64);
+    }
+    if (r.nz == 0) {
+        return r;
+    }
+    r.x = 4;
+    r.nz = 4;
+    return orig_tail_shim(r, 0x400F);
+}
+
+/*
+ * @routine 152D:AF1 StagePausedFrame152D
+ * @run 6B:8AF1
+ * @unreachable 6B:8AF1-6B:8B6F no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8AF1 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The paused frame. zPaused's bit 1 clear: the choice (StagePausedSelect152D). Else zPaused counts up by
+ * 4 a frame (its bits 2 up the menu's step, bit 0 the side it scrolls from) through the menu's rows (the table of four
+ * bytes a row at $8B70, from $19 down or up to $1A); past them only bit 0 is kept. Steps $25 and $27 at the end of the
+ * scroll redraw the score, or the stock and the points to add.
+ * HOW: Shifts of zPaused through zTemp00; a subtract; the row's step through the kernel (pause_menu_row); jumps to
+ * StageDrawScore152D or StageDrawScoreAdd152D, a call of StageDrawStock152D.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the step that ran left them.
+ */
+StageRegs StagePausedFrame152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t paused, old, step;
+    bool carry, down;
+
+    paused = RD8(ZP->paused);
+    carry = (paused & 0x01) != 0;
+    old = RD8(ZP->temp00);
+    WR8(ZP->temp00, (uint8_t)((carry ? 0x80 : 0) | (old >> 1)));
+    step = (uint8_t)(paused >> 2);
+    r = loaded(r, step);
+    r.c = (paused & 0x02) != 0;
+    if (!r.c) {
+        return StagePausedSelect152D(r);
+    }
+    old = RD8(ZP->temp00);
+    WR8(ZP->temp00, (uint8_t)((old << 1) | 1));
+    down = (old & 0x80) != 0;
+    r.c = down;
+    if (down) {
+        r = compared(r, 0x1A);
+        if (r.c) {
+            r = loaded(r, (uint8_t)(RD8(ZP->paused) & 0x01));
+            WR8(ZP->paused, r.a);
+            return r;
+        }
+    } else {
+        WR8(ZP->temp00, r.a);
+        sum = sub_bytes(0x19, RD8(ZP->temp00), true);
+        r = loaded(r, sum.value);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        if (!r.c) {
+            r = loaded(r, (uint8_t)(RD8(ZP->paused) & 0x01));
+            WR8(ZP->paused, r.a);
+            return r;
+        }
+    }
+    r.c = (r.a & 0x01) != 0;
+    r = loaded(r, (uint8_t)(r.a >> 1));
+    php_shim(r);
+    step = (uint8_t)(r.a << 2);
+    r.c = (r.a & 0x40) != 0;
+    r = loaded(r, step);
+    r.x = step;
+    sum = add_bytes(RD8(ZP->paused), 0x04, false);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->paused, sum.value);
+    r = plp_shim(r);
+    if (!r.c) {
+        return pause_menu_row(r, r.x);
+    }
+    r = loaded(r, RD8(ZP->paused));
+    r.c = (r.a & 0x01) != 0;
+    r = loaded(r, (uint8_t)(r.a >> 1));
+    if (r.c) {
+        r = compared(r, 0x25);
+        if (r.nz != 0) {
+            return r;
+        }
+        return StageDrawScore152D(r);
+    }
+    r = compared(r, 0x27);
+    if (r.nz != 0) {
+        return r;
+    }
+    CALL(0x8B6D, StageDrawStock152D(r));
+    return StageDrawScoreAdd152D(r);
+}
+
+void abi_StagePausedFrame152D(void)
+{
+    regs_exit_shim(StagePausedFrame152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:BA4 StageOpeningStart152D
+ * @run 6B:8BA4
+ * @unreachable 6B:8BA4-6B:8BD4 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8BA4 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Starts the stage's opening when zField8E's bit 0 is clear: the display's pieces 3 and 4
+ * (StageDrawPiece152D), the opening's objects placed (pages at $2B74 and $2C4D one less, speeds at $2D24 and $2DB5 4,
+ * counts at $3354 and $3355 $20), PlayerByte3BD8 2, sound $3B, the CD's wait at $33E4 cleared.
+ * HOW: A bit test; calls with X 3 and 4; stores; the sound hook.
+ * WAITS: no.
+ * Entry: nothing. Exit, bit 0 set: everything kept. Else: as the sound hook left them.
+ */
+StageRegs StageOpeningStart152D(StageRegs r)
+{
+    if ((RD8(ZP->field8e) & 0x01) != 0) {
+        return r;
+    }
+    r.x = 3;
+    r.nz = 3;
+    CALL(0x8BAD, StageDrawPiece152D(r));
+    r.x++;
+    r.nz = r.x;
+    CALL(0x8BB1, StageDrawPiece152D(r));
+    r.nz = DEC8(OBJ->x_hi[4]);
+    r.nz = DEC8(OBJ->x_frac[45]);
+    r = loaded(r, 0x04);
+    WR8(OBJ->y_lo[84], 0x04);
+    WR8(OBJ->vx_hi[53], 0x04);
+    r = loaded(r, 0x20);
+    WR8(OBJ->f3300[84], 0x20);
+    WR8(OBJ->f3300[85], 0x20);
+    r = loaded(r, 0x02);
+    wr8(PlayerByte3BD8, 0x02);
+    r = loaded(r, 0x3B);
+    r = orig_shim(r, 0x8BD1, SOUND_HOOK);
+    WR8(OBJ->hit_taken[52], 0);
+    return r;
+}
+
+void abi_StageOpeningStart152D(void)
+{
+    regs_exit_shim(StageOpeningStart152D(regs_entry_shim()));
+}
+
+/* A count of the opening's motion run out: the next of its five steps from the tables at $8C86 (the speed, halved into
+ * HIGH and its low bit into the top of LOW) and $8C8C (the count). */
+static Regs opening_next_step(Regs r, uint16_t high, uint16_t low, uint16_t count)
+{
+    uint8_t value = rd8((uint16_t)(0x8C86 + r.y));
+
+    wr8(high, (uint8_t)(value >> 1));
+    wr8(low, (uint8_t)((value & 0x01) != 0 ? 0x80 : 0x00));
+    r = loaded(r, rd8((uint16_t)(0x8C8C + r.y)));
+    r.c = false;
+    wr8(count, r.a);
+    return r;
+}
+
+/* A 24-bit position moved by a 16-bit speed: the low and middle bytes added with the carry, the carry into the top. */
+static Regs move_by_speed(Regs r, uint16_t speed_lo, uint16_t pos_lo, uint16_t speed_hi, uint16_t pos_mid,
+                          uint16_t pos_hi)
+{
+    Sum sum;
+    uint8_t a, b;
+
+    a = rd8(speed_lo);
+    b = rd8(pos_lo);
+    sum = add_bytes(a, b, false);
+    wr8(pos_lo, sum.value);
+    a = rd8(speed_hi);
+    b = rd8(pos_mid);
+    sum = add_bytes(a, b, sum.carry);
+    wr8(pos_mid, sum.value);
+    b = rd8(pos_hi);
+    sum = add_bytes(0, b, sum.carry);
+    wr8(pos_hi, sum.value);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    return r;
+}
+
+/*
+ * @routine 152D:BD5 StageOpeningStep152D
+ * @run 6B:8BD5
+ * @stop 8C87
+ * @unreachable 6B:8BD5-6B:8C86 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8BD5 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: One frame of the stage's opening: once the ADPCM is idle the kernel's piece at $407B runs once ($33E4
+ * set). Two objects move in steps: each step's count ($3355, $3354) runs down, then the step's number ($330D, $330C)
+ * counts on and its speed and count come from the tables at $8C86 and $8C8C; at the first's step 7 the opening ends
+ * (the boss's frame at $2A9D cleared, zField8E's bit 0 set, $407B if not yet run). At the first's step 6 the count is
+ * kept at $339C ($2A9C cleared at $1F); at the second's step 6 the screen's row fade runs with it
+ * (StageOpeningFade152D).
+ * HOW: ad_stat; decrements and table reads; 24-bit adds of the speeds into the positions.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last piece that ran left them.
+ */
+StageRegs StageOpeningStep152D(StageRegs r)
+{
+    AdStat stat;
+
+    r = loaded(r, RD8(OBJ->hit_taken[52]));
+    if (r.a == 0) {
+        jsr_push(0x8BDD);
+        stat = vec_ad_stat();
+        jsr_pop();
+        r.x = stat.playing;
+        r = loaded(r, stat.playing);
+        if (r.a == 0) {
+            r = orig_shim(r, 0x8BE3, KERNEL_407B);
+            r.nz = INC8(OBJ->hit_taken[52]);
+        }
+    }
+    r.nz = DEC8(OBJ->f3300[85]);
+    if (r.nz == 0) {
+        r.nz = INC8(OBJ->f3300[13]);
+        r.y = RD8(OBJ->f3300[13]);
+        r.c = r.y >= 0x07;
+        r.nz = (uint8_t)(r.y - 0x07);
+        if (r.nz == 0) {
+            WR8(OBJ->frame[53], 0);
+            RMW8(ZP->field8e, old, old | 0x01);
+            r = loaded(r, RD8(OBJ->hit_taken[52]));
+            if (r.a != 0) {
+                return r;
+            }
+            return orig_shim(r, 0x8C02, KERNEL_407B);
+        }
+        r = opening_next_step(r, ADDR_OF8(OBJ->vx_hi[53]), ADDR_OF8(OBJ->vx_lo[37]), ADDR_OF8(OBJ->f3300[85]));
+    }
+    r = loaded(r, RD8(OBJ->f3300[13]));
+    r = compared(r, 0x06);
+    if (r.nz == 0) {
+        r = loaded(r, RD8(OBJ->f3300[85]));
+        r = compared(r, 0x1F);
+        if (r.nz == 0) {
+            WR8(OBJ->frame[52], 0);
+        }
+        WR8(OBJ->f3358[68], r.a);
+    }
+    r = move_by_speed(r, ADDR_OF8(OBJ->vx_lo[37]), ADDR_OF8(OBJ->y_lo[13]), ADDR_OF8(OBJ->vx_hi[53]),
+                      ADDR_OF8(OBJ->y_hi[29]), ADDR_OF8(OBJ->x_frac[45]));
+    r.nz = DEC8(OBJ->f3300[84]);
+    if (r.nz == 0) {
+        r.nz = INC8(OBJ->f3300[12]);
+        r.y = RD8(OBJ->f3300[12]);
+        r = opening_next_step(r, ADDR_OF8(OBJ->y_lo[84]), ADDR_OF8(OBJ->y_frac[68]), ADDR_OF8(OBJ->f3300[84]));
+    }
+    r = move_by_speed(r, ADDR_OF8(OBJ->y_frac[68]), ADDR_OF8(OBJ->x_lo[60]), ADDR_OF8(OBJ->y_lo[84]),
+                      ADDR_OF8(OBJ->x_hi[76]), ADDR_OF8(OBJ->x_hi[4]));
+    r = loaded(r, RD8(OBJ->f3300[12]));
+    r = compared(r, 0x06);
+    if (r.nz != 0) {
+        return r;
+    }
+    r = loaded(r, RD8(OBJ->f3358[68]));
+    return StageOpeningFade152D(r);
+}
+
+void abi_StageOpeningStep152D(void)
+{
+    regs_exit_shim(StageOpeningStep152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:CA3 StageOpeningFade152D
+ * @run 6B:8CA3
+ * @unreachable 6B:8CA3-6B:8CEE no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8CA3 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: The opening's fade of the screen's rows, with A the count kept at $339C: from it the rows' fade level
+ * (zMultiplierHi, $10 less the low nibble) and the group of rows (the table of four bytes a group at $8C93: the first
+ * row's VRAM address, the count of rows, the step between them); each row is faded by StageOpeningCopyRow152D after
+ * the kernel's piece at $4051.
+ * HOW: Masks, a subtract and table reads into zTemp10-12 and zProduct0; a loop of rows with a 16-bit add.
+ * WAITS: no.
+ * Entry: A the count. Exit: N and Z from the last row count's decrement (Z set); A the address's high byte, C and V
+ * from its add; X and Y as StageOpeningCopyRow152D left them.
+ */
+StageRegs StageOpeningFade152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t count, level, value;
+
+    WR8(ZP->multiplier.hi, r.a);
+    r = compared(r, 0x20);
+    if (r.c) {
+        r = loaded(r, (uint8_t)(r.a & 0x1F));
+        r.c = (r.a & 0x01) != 0;
+        r = loaded(r, (uint8_t)(r.a >> 1));
+        if (r.c) {
+            sum = add_bytes(r.a, 0x10, false);
+            r = loaded(r, sum.value);
+            r.c = sum.carry;
+            r.v = sum.overflow;
+        }
+        sum = add_bytes(r.a, 0x20, r.c);
+        r = loaded(r, sum.value);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+    }
+    count = r.a;
+    push8(count);
+    r = loaded(r, (uint8_t)(count & 0x0F));
+    WR8(ZP->temp10, r.a);
+    level = RD8(ZP->temp10);
+    sum = sub_bytes(0x10, level, true);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->multiplier.hi, sum.value);
+    count = pull8();
+    r.x = (uint8_t)((count >> 2) & 0x0C);
+    r.c = (count & 0x02) != 0;
+    r = loaded(r, rd8((uint16_t)(0x8C93 + r.x)));
+    WR8(ZP->temp10, r.a);
+    r = loaded(r, rd8((uint16_t)(0x8C94 + r.x)));
+    WR8(ZP->temp11, r.a);
+    r = loaded(r, rd8((uint16_t)(0x8C95 + r.x)));
+    WR8(ZP->temp12, r.a);
+    r = loaded(r, rd8((uint16_t)(0x8C96 + r.x)));
+    WR8(ZP->product.lo, r.a);
+    do {
+        r = orig_shim(r, 0x8CDC, 0x4051);
+        CALL(0x8CDE, StageOpeningCopyRow152D(r));
+        value = RD8(ZP->temp10);
+        sum = add_bytes(value, RD8(ZP->product.lo), false);
+        WR8(ZP->temp10, sum.value);
+        value = RD8(ZP->temp11);
+        sum = add_bytes(0, value, sum.carry);
+        r = loaded(r, sum.value);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        WR8(ZP->temp11, sum.value);
+        r.nz = DEC8(ZP->temp12);
+    } while (r.nz != 0);
+    return r;
+}
+
+void abi_StageOpeningFade152D(void)
+{
+    regs_exit_shim(StageOpeningFade152D(regs_entry_shim()));
+}
+
+/* One pass of the row's fade: each of the row's words in the buffer at $3980 ANDed with the mask, from the word itself
+ * or from the next word (NEXT 2), the four planes a pass (offsets 0, $20, $40 and $60). */
+static void fade_row_pass(uint8_t x, uint8_t next)
+{
+    static const uint8_t planes[4] = { 0x00, 0x20, 0x40, 0x60 };
+    uint8_t value;
+
+    for (int i = 0; i < 4; i++) {
+        value = rd8((uint16_t)(ROW_BUFFER + 2 + planes[i] + next + x));
+        value = (uint8_t)(value & RD8(ZP->temp00));
+        wr8((uint16_t)(ROW_BUFFER + 2 + planes[i] + x), value);
+        value = rd8((uint16_t)(ROW_BUFFER + 3 + planes[i] + next + x));
+        value = (uint8_t)(value & RD8(ZP->temp00));
+        wr8((uint16_t)(ROW_BUFFER + 3 + planes[i] + x), value);
+    }
+}
+
+/*
+ * @routine 152D:CEF StageOpeningCopyRow152D
+ * @run 6B:8CEF
+ * @unreachable 6B:8CEF-6B:8DB7 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8CEF runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Fades one row of the screen in VRAM: the row's 64 words (at the address in zTemp10-11) read into the
+ * buffer at $397E; at a level of $10 or more cleared; else, for each level step below the last, every word ANDed with
+ * the next word under a random mask (zRandom2 rotated with bit 7 set, ORed with itself), then every word ANDed with
+ * zRandom2 OR zRandom3; then runs on into StageOpeningWriteRow152D, which writes the buffer back.
+ * HOW: SetVramAddresses (map_draw.c's C, a census duplicate at $9415); loops of the VDC's data port and of the buffer.
+ * WAITS: no.
+ * Entry: zTemp10-11 the row's address, zMultiplierHi the level. Exit: as StageOpeningWriteRow152D. Clobbers zTemp00.
+ */
+StageRegs StageOpeningCopyRow152D(StageRegs r)
+{
+    uint8_t value, mask;
+
+    r.x = RD8(ZP->temp10);
+    r.y = RD8(ZP->temp11);
+    r = set_vram_addresses(r, 0x8CF6);
+    for (r.x = 0x80; r.x != 0; r.x = (uint8_t)(r.x - 2)) {
+        value = RD8(VDC->data_lo);
+        wr8((uint16_t)(ROW_BUFFER + 1 + r.x), value);
+        value = RD8(VDC->data_hi);
+        r = loaded(r, value);
+        wr8((uint16_t)(ROW_BUFFER + r.x), value);
+    }
+    r.y = RD8(ZP->multiplier.hi);
+    r.c = r.y >= 0x10;
+    if (r.c) {
+        for (r.x = 0x7F; (r.x & 0x80) == 0; r.x--) {
+            wr8((uint16_t)(ROW_BUFFER + 2 + r.x), 0);
+        }
+        r.nz = r.x;
+        return StageOpeningWriteRow152D(r);
+    }
+    r.y--;
+    if (r.y != 0) {
+        r.x = 0;
+        do {
+            value = RD8(ZP->random2);
+            mask = (uint8_t)(0x80 | (value >> 1));
+            r.c = (value & 0x01) != 0;
+            mask = (uint8_t)(mask | RD8(ZP->random2));
+            WR8(ZP->temp00, mask);
+            fade_row_pass(r.x, 2);
+            r.x = (uint8_t)(r.x + 2);
+            r.y--;
+        } while (r.y != 0);
+    }
+    r.y = RD8(ZP->multiplier.hi);
+    r.x = 0;
+    do {
+        mask = RD8(ZP->random2);
+        mask = (uint8_t)(mask | RD8(ZP->random3));
+        WR8(ZP->temp00, mask);
+        fade_row_pass(r.x, 0);
+        r.x = (uint8_t)(r.x + 2);
+        r.y--;
+    } while (r.y != 0);
+    return StageOpeningWriteRow152D(r);
+}
+
+void abi_StageOpeningCopyRow152D(void)
+{
+    regs_exit_shim(StageOpeningCopyRow152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:DB8 StageOpeningWriteRow152D
+ * @run 6B:8DB8
+ * @unreachable 6B:8DB8-6B:8DCA no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8DB8 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Writes the row's 64 words from the buffer at $397E back through the VDC's data port.
+ * HOW: A loop down X by two.
+ * WAITS: no.
+ * Entry: the VDC pointed at the row. Exit: X 0, Z set; A the last high byte written. Y, C and V kept.
+ */
+StageRegs StageOpeningWriteRow152D(StageRegs r)
+{
+    uint8_t value;
+
+    for (r.x = 0x80; r.x != 0; r.x = (uint8_t)(r.x - 2)) {
+        value = rd8((uint16_t)(ROW_BUFFER + 1 + r.x));
+        WR8(VDC->data_lo, value);
+        value = rd8((uint16_t)(ROW_BUFFER + r.x));
+        r.a = value;
+        WR8(VDC->data_hi, value);
+    }
+    r.nz = 0;
+    return r;
+}
+
+void abi_StageOpeningWriteRow152D(void)
+{
+    regs_exit_shim(StageOpeningWriteRow152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:DCB StageDrawStock152D
+ * @run 6B:8DCB
+ * @unreachable 6B:8DCB-6B:8DD3 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8DCB runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Draws the stock zStock (two digits at places 0 and 1).
+ * HOW: StageDrawNumber152D with X 0, X kept on the stack across it.
+ * WAITS: no.
+ * Entry: nothing. Exit: X kept, N and Z from it; A, Y, C and V as StageDrawNumber152D left them.
+ */
+StageRegs StageDrawStock152D(StageRegs r)
+{
+    push8(r.x);
+    r = loaded(r, RD8(ZP->stock));
+    r.x = 0;
+    CALL(0x8DD2, StageDrawNumber152D(r));
+    r.x = pull8();
+    r.nz = r.x;
+    return r;
+}
+
+void abi_StageDrawStock152D(void)
+{
+    regs_exit_shim(StageDrawStock152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:DD4 StageDrawScoreAdd152D
+ * @run 6B:8DD4
+ * @unreachable 6B:8DD4-6B:8DE4 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8DD4 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Draws the points to add, zScoreAddLo and zScoreAddHi (four digits from place 3).
+ * HOW: StageDrawNumber152D with X 3 and 5, X kept on the stack across them.
+ * WAITS: no.
+ * Entry: nothing. Exit: X kept, N and Z from it; A, Y, C and V as StageDrawNumber152D left them.
+ */
+StageRegs StageDrawScoreAdd152D(StageRegs r)
+{
+    push8(r.x);
+    r = loaded(r, RD8(ZP->score_add.lo));
+    r.x = 3;
+    r.nz = 3;
+    CALL(0x8DDC, StageDrawNumber152D(r));
+    r = loaded(r, RD8(ZP->score_add.hi));
+    r.x = 5;
+    r.nz = 5;
+    CALL(0x8DE3, StageDrawNumber152D(r));
+    r.x = pull8();
+    r.nz = r.x;
+    return r;
+}
+
+void abi_StageDrawScoreAdd152D(void)
+{
+    regs_exit_shim(StageDrawScoreAdd152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:DE5 StageDrawScore152D
+ * @run 6B:8DE5
+ * @unreachable 6B:8DE5-6B:8DFC no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8DE5 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Draws the score zScore0-2 (six digits from place 1).
+ * HOW: StageDrawNumber152D with X 1, 3 and 5, X kept on the stack across them.
+ * WAITS: no.
+ * Entry: nothing. Exit: X kept, N and Z from it; A, Y, C and V as StageDrawNumber152D left them.
+ */
+StageRegs StageDrawScore152D(StageRegs r)
+{
+    push8(r.x);
+    r = loaded(r, RD8(ZP->score.lo));
+    r.x = 1;
+    r.nz = 1;
+    CALL(0x8DED, StageDrawNumber152D(r));
+    r = loaded(r, RD8(ZP->score.mid));
+    r.x = 3;
+    r.nz = 3;
+    CALL(0x8DF4, StageDrawNumber152D(r));
+    r = loaded(r, RD8(ZP->score.hi));
+    r.x = 5;
+    r.nz = 5;
+    CALL(0x8DFB, StageDrawNumber152D(r));
+    r.x = pull8();
+    r.nz = r.x;
+    return r;
+}
+
+void abi_StageDrawScore152D(void)
+{
+    regs_exit_shim(StageDrawScore152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:DFD StageDrawNumber152D
+ * @run 6B:8DFD
+ * @unreachable 6B:8DFD-6B:8E0D no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8DFD runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Draws the two decimal digits of A at the places X and X + 1, the low digit first.
+ * HOW: StageDrawDigit152D with the low nibble, X and A kept on the stack; then a jump to it with the high nibble.
+ * WAITS: no.
+ * Entry: A the number, X the place. Exit: as StageDrawDigit152D.
+ */
+StageRegs StageDrawNumber152D(StageRegs r)
+{
+    uint8_t number;
+
+    push8(r.x);
+    push8(r.a);
+    r = loaded(r, (uint8_t)(r.a & 0x0F));
+    CALL(0x8E04, StageDrawDigit152D(r));
+    number = pull8();
+    r.c = (number & 0x08) != 0;
+    r = loaded(r, (uint8_t)(number >> 4));
+    r.x = pull8();
+    r.x++;
+    r.nz = r.x;
+    return StageDrawDigit152D(r);
+}
+
+void abi_StageDrawNumber152D(void)
+{
+    regs_exit_shim(StageDrawNumber152D(regs_entry_shim()));
+}
+
+/* The list's pointer in zTemp00-01 moved on by A bytes. */
+static Regs list_advance(Regs r)
+{
+    Sum sum;
+    uint8_t value;
+
+    value = RD8(ZP->temp00);
+    sum = add_bytes(r.a, value, false);
+    WR8(ZP->temp00, sum.value);
+    value = RD8(ZP->temp01);
+    sum = add_bytes(0, value, sum.carry);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp01, sum.value);
+    return r;
+}
+
+/*
+ * @routine 152D:E0E StageUnpackList152D
+ * @run 6B:8E0E
+ * @unreachable 6B:8E0E-6B:8E71 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8E0E runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Unpacks the route's list (the table at $9A62 by zField82) into memory: SaveBuffer's 767 bytes cleared
+ * from KernelZeros and its first 8 taken from the list; then records: 0 sets the target address (the next two bytes),
+ * $FF ends, any other count fills that many bytes from the target with the next byte and moves the target on.
+ * HOW: TAI; the list in zTemp00-01, the target in zTemp02-03, the count in zTemp04; loops of reads and writes
+ * through the pointers.
+ * WAITS: no.
+ * Entry: nothing. Exit: A $FF, Z set, C set; X 0 or as it was, Y as the last record left it. Clobbers zTemp00-04.
+ */
+StageRegs StageUnpackList152D(StageRegs r)
+{
+    uint8_t route, count, value;
+
+    tai_shim(r, KernelZeros, SaveBuffer, 0x02FF);
+    route = RD8(ZP->field82);
+    r.c = (route & 0x80) != 0;
+    r = loaded(r, (uint8_t)(route << 1));
+    r.y = r.a;
+    r = loaded(r, rd8((uint16_t)(0x9A62 + r.y)));
+    WR8(ZP->temp00, r.a);
+    r = loaded(r, rd8((uint16_t)(0x9A63 + r.y)));
+    WR8(ZP->temp01, r.a);
+    for (r.y = 0; r.y != 8; r.y++) {
+        value = RD8_PTR_Y(ZP->temp00, r.y);
+        wr8((uint16_t)(SaveBuffer + r.y), value);
+    }
+    r = loaded(r, 8);
+    for (;;) {
+        r = list_advance(r);
+        r = loaded(r, RD8_PTR(ZP->temp00));
+        if (r.a == 0) {
+            r.y = 1;
+            r = loaded(r, RD8_PTR_Y(ZP->temp00, r.y));
+            WR8(ZP->temp02, r.a);
+            r.y++;
+            r = loaded(r, RD8_PTR_Y(ZP->temp00, r.y));
+            WR8(ZP->temp03, r.a);
+            r = loaded(r, 3);
+            continue;
+        }
+        r = compared(r, 0xFF);
+        if (r.nz == 0) {
+            return r;
+        }
+        WR8(ZP->temp04, r.a);
+        count = r.a;
+        r.x = count;
+        r.y = 1;
+        r = loaded(r, RD8_PTR_Y(ZP->temp00, r.y));
+        for (r.y = 0; r.x != 0; r.x--) {
+            WR8_PTR_Y(ZP->temp02, r.y, r.a);
+            r.y++;
+        }
+        r = loaded(r, RD8(ZP->temp04));
+        value = RD8(ZP->temp02);
+        {
+            Sum sum = add_bytes(r.a, value, false);
+
+            WR8(ZP->temp02, sum.value);
+            value = RD8(ZP->temp03);
+            sum = add_bytes(0, value, sum.carry);
+            WR8(ZP->temp03, sum.value);
+        }
+        r = loaded(r, 2);
+    }
+}
+
+void abi_StageUnpackList152D(void)
+{
+    regs_exit_shim(StageUnpackList152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:E72 ClearBitRowsFour152D
+ * @run 6B:8E72
+ * @unreachable 6B:8E72-6B:8E77 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8E72 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Runs StageClearBitRows152D four times: three calls and the run into it.
+ * HOW: Three BSR and the bytes of StageClearBitRows152D after them.
+ * WAITS: no.
+ * Entry, exit: as StageClearBitRows152D.
+ */
+StageRegs ClearBitRowsFour152D(StageRegs r)
+{
+    CALL(0x8E74, StageClearBitRows152D(r));
+    CALL(0x8E76, StageClearBitRows152D(r));
+    CALL(0x8E78, StageClearBitRows152D(r));
+    return StageClearBitRows152D(r);
+}
+
+void abi_ClearBitRowsFour152D(void)
+{
+    regs_exit_shim(ClearBitRowsFour152D(regs_entry_shim()));
+}
+
+/*
+ * @routine 152D:E78 StageClearBitRows152D
+ * @run 6B:8E78
+ * @unreachable 6B:8E78-6B:8ED1 no read the game makes loads disc sector 152D, so these bytes are never in memory.
+ * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
+ * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
+ * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
+ * on the disc); SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot
+ * run. No input or poke of work RAM can load the sector, and a unit call at $8E78 runs whatever overlay another scene
+ * left there, not these bytes.
+ *
+ * WHAT IT DOES: Clears one bit of four VRAM words $10 apart, for the map entry zTemp0F names: its low nibble picks the
+ * bit (the masks at $8ED2 and $8EDA), its high nibble is added to the base in zTemp08-09; then zTemp0F moves on by
+ * $23. Each word is pointed at by the kernel's pieces at $4024, $4021 and $4027 and ANDed in place.
+ * HOW: The address in zTemp0A-0B, the count in zTemp0E; the VDC's data port.
+ * WAITS: no.
+ * Entry: zTemp08-09 the base, zTemp0F the entry. Exit: A the new zTemp0F, N, Z, C and V from its add; X as $4027
+ * left it; Y the bit.
+ */
+StageRegs StageClearBitRows152D(StageRegs r)
+{
+    Sum sum;
+    uint8_t entry, value;
+
+    r.y = (uint8_t)(RD8(ZP->temp0f) & 0x0F);
+    entry = RD8(ZP->temp0f);
+    value = RD8(ZP->temp08);
+    sum = add_bytes((uint8_t)(entry >> 4), value, false);
+    WR8(ZP->temp0a, sum.value);
+    WR8(ZP->temp0b, RD8(ZP->temp09));
+    WR8(ZP->temp0e, 0x04);
+    r = loaded(r, 0x04);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    do {
+        r = orig_shim(r, 0x8E93, 0x4024);
+        WR8(VDC->data_lo, RD8(ZP->temp0a));
+        r = loaded(r, RD8(ZP->temp0b));
+        WR8(VDC->data_hi, r.a);
+        r = orig_shim(r, 0x8EA0, 0x4021);
+        WR8(VDC->data_lo, RD8(ZP->temp0a));
+        r = loaded(r, RD8(ZP->temp0b));
+        WR8(VDC->data_hi, r.a);
+        r = orig_shim(r, 0x8EAD, 0x4027);
+        value = RD8(VDC->data_lo);
+        value = (uint8_t)(value & rd8((uint16_t)(0x8ED2 + r.y)));
+        WR8(VDC->data_lo, value);
+        value = RD8(VDC->data_hi);
+        value = (uint8_t)(value & rd8((uint16_t)(0x8EDA + r.y)));
+        WR8(VDC->data_hi, value);
+        value = RD8(ZP->temp0a);
+        sum = add_bytes(value, 0x10, false);
+        r = loaded(r, sum.value);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        WR8(ZP->temp0a, sum.value);
+        r.nz = DEC8(ZP->temp0e);
+    } while (r.nz != 0);
+    value = RD8(ZP->temp0f);
+    sum = add_bytes(value, 0x23, false);
+    r = loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp0f, sum.value);
+    return r;
+}
+
+void abi_StageClearBitRows152D(void)
+{
+    regs_exit_shim(StageClearBitRows152D(regs_entry_shim()));
 }

@@ -1,0 +1,36 @@
+# Coverage by pokes of the player's own state (PROCEDURE section 6, step 2): in Stage 0 the item in hand (zField93, $2093)
+# is set to 6, 7 and 8 with 20 hearts (zField94, BCD), and the item is used with the use press (button II) and each
+# direction that could be the use direction (the first 3000 frames of seeded random play of play_s0_r1 get past the
+# intro screens: the player is in the stage and playing): the game's own handlers for those items then run. Reached by no script before.
+include _newgame.txt
+wait 1500
+random 101 3000 8
+shot play
+poke 2093 06
+poke 2094 20
+press UP+II 6
+wait 90
+poke 2093 06
+poke 2094 20
+press DOWN+II 6
+wait 90
+shot item6
+poke 2093 07
+poke 2094 20
+press UP+II 6
+wait 90
+poke 2093 07
+poke 2094 20
+press DOWN+II 6
+wait 90
+shot item7
+poke 2093 08
+poke 2094 20
+press UP+II 6
+wait 90
+poke 2093 08
+poke 2094 20
+press DOWN+II 6
+wait 90
+shot item8
+dump items

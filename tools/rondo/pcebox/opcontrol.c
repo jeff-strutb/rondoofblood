@@ -51,7 +51,7 @@ static uint8_t pat_ram(unsigned off) { return (uint8_t)(off * 29 + (off >> 8) * 
 
 static uint32_t key(uint16_t a) { return ((uint32_t)mpr[a >> 13] << 13) | (a & 0x1FFF); }
 
-int enters(uint16_t a) { (void)a; return 1; }
+int enters(uint16_t a, uint16_t f, int j) { (void)a; (void)f; (void)j; return 1; }
 
 uint8_t code8(uint16_t a)
 {

@@ -150,6 +150,8 @@ static int16_t *tag_at;     /* run address to the first tag index there, or -1 *
 static int16_t *tag_next;   /* the next tag with the same run address (another overlay's bytes), or -1 */
 static int tag_resident(const Tag *t);
 static unsigned res_mpr(unsigned i);
+static uint32_t a5_phys(uint16_t addr);
+static int in_routine(int index, uint16_t pc);
 
 /* The tag at a run address: the first whose bytes are resident, else the first. */
 static int tag_pick(unsigned pc)
@@ -427,6 +429,7 @@ static uint64_t held_ints, held_not;
 static unsigned hold_acc;     /* data accesses the core made under the hold */
 void hold_prepare(Span *s, const Ev *closing);
 int hold_arm(uint64_t end_idx, int tag);
+int hold_arm_from(uint64_t k, int tag, int need, uint16_t pc, uint8_t sp_s);
 void hand_over(uint16_t addr);
 static unsigned long extra_run;
 static const char *stopped_why;
@@ -587,6 +590,23 @@ static int64_t place(Span *s, int type, uint32_t phys, const uint8_t *mpr, uint8
         }
         if (e->type == EV_CALL && e->kind == K_JSR && tag_pick(e->pc) < 0 && !hw) {
             /* The original called code the C has not: the C must say so (call_original) first. */
+            static uint64_t last_j = UINT64_MAX;
+
+            if (getenv("RONDO_DIAG_UNTAGGED") && mode == MODE_A5 && j != last_j) {
+                uint32_t tp = a5_phys(e->pc);
+                uint8_t w[16];
+                const uint8_t *page = is_ram(tp) ? ram_bank[tp >> 13] : is_rom(tp) ? rom_bank[tp >> 13] : NULL;
+                const uint8_t *hit = NULL;
+
+                /* Disc origin: the 16 bytes at the target are somewhere in the disc's data track, or are not (built in RAM). */
+                if (page && (tp & 0x1FFF) <= 0x1FF0) {
+                    memcpy(w, page + (tp & 0x1FFF), 16);
+                    hit = memmem(user, 20785152, w, 16);
+                }
+                last_j = j;
+                fprintf(stderr, "UNTAGGEDCALL routine %s target %04X phys %06X %s frame %lu\n", rondo_tags[s->tag].name, e->pc, tp,
+                        !page ? "hw" : hit ? "disc" : "nodisc", cur_frame);
+            }
             break;
         }
         if (!is_counted(e))
@@ -1005,13 +1025,15 @@ static unsigned hy_bank_phys(uint16_t addr, uint32_t *phys)
     return *phys >> 13;
 }
 
-int enters(uint16_t addr)
+int enters(uint16_t addr, uint16_t from, int jmp)
 {
-    int r = tag_pick(addr) >= 0;
+    int index = tag_pick(addr);
+    int inside = index >= 0 && in_routine(index, from);
+    int r = jmp ? !inside : (index >= 0 && !inside);
 
     if (!r && getenv("RONDO_DIAG_CTX") && mode != MODE_RECORD)
-        fprintf(stderr, "ENTERS no tag at %04X frame %lu mode %d top %s\n", addr, cur_frame, mode,
-                mode == MODE_HYBRID && top ? rondo_tags[top->tag].name : "-");
+        fprintf(stderr, "ENTERS no call at %04X from %04X (%s, tag %d) frame %lu mode %d\n", addr, from, jmp ? "jmp" : "branch", index,
+                cur_frame, mode);
     return r;
 }
 
@@ -1390,6 +1412,18 @@ static void original_at(uint16_t ret, uint16_t addr)
             break;
         }
     }
+    if (!found && mode == MODE_HYBRID && sp == span && record_ends_here(span)) {
+        /* The record's call has ended (the script did, or the original left it) before the call the C goes on to make:
+         * as at an access past the end (place), the original takes the machine over where the C is when it left the
+         * call, and a call the record never closes in a stream that ended parks the C. */
+        Ev *closing = span->end != SPAN_OPEN ? evp(span->end) : NULL;
+
+        if (rondo_pc && closing && closing->type == EV_CLOSE && closing->kind == CL_LEFT) {
+            hold_prepare(span, closing);
+            hand_over(rondo_pc);
+        }
+        park_forever();
+    }
     if (!found) {
         if (getenv("RONDO_DIAG_CTX") && mode == MODE_HYBRID) {
             int ti = tag_pick(addr);
@@ -1443,6 +1477,16 @@ static void original_at(uint16_t ret, uint16_t addr)
         }
         defect(D_CALL, "to %04X: C A%02X X%02X Y%02X P%02X, original A%02X X%02X Y%02X P%02X", addr, cpu.a, cpu.x,
                cpu.y, cpu.p, ec.a, ec.x, ec.y, ec.p);
+    }
+    /* The stack at the call: the callee's first instruction runs at the S the JSR left (a tail jump, the S it was at).
+     * The C carries its own S, so a push or pop it has and the original has not shows here, at the call, and not only
+     * where the call ends or an interrupt comes. */
+    if (ec.s != cpu.s) {
+        if (mode == MODE_A5) {
+            snprintf(why, sizeof why, "to %04X: C S%02X, original S%02X", addr, cpu.s, ec.s);
+            longjmp(c_abort, ABORT_DIVERGED);
+        }
+        defect(D_STACK, "at the call to %04X the C's S is %02X, the original's %02X", addr, cpu.s, ec.s);
     }
     /* Where it comes back: the RET that pops the callee's frame. A tail jump pushes none, and its code returns
      * to the caller of the routine that jumped. */
@@ -1602,6 +1646,11 @@ void hand_over(uint16_t addr)
         uint8_t p = cpu.p;
 
         stats[sp->tag].originals++;
+        /* The machine goes to the original here. When the record's next event past the markers is the interrupt it took at
+         * this very PC and S (before it ran the instruction at addr), it is held and dispatched from the record, as after a
+         * left close; else the original's own timing carries on. */
+        if (!hold.active)
+            hold_arm_from(sp->cur, sp->tag, 1, addr, cpu.s);
         if (hold.active) {
             hold.i_orig = p & P_I;
             p |= P_I;
@@ -1616,17 +1665,14 @@ void hand_over(uint16_t addr)
 
 /* At a left hand-over: the C's registers against the original's at the close (when the C is at the PC the original
  * left at), and the interrupt that follows the close in the record, if the next event after the close markers is one. */
-/* The interrupt the record has right after the close at end_idx (past the other closes and MPR changes), if any: armed as the
- * hold, 1; else 0. */
-int hold_arm(uint64_t end_idx, int tag)
+int hold_arm_from(uint64_t k, int tag, int need, uint16_t pc, uint8_t sp_s)
 {
-    uint64_t k;
     Ev *x;
 
     hold.active = 0;
-    for (k = end_idx + 1; (x = evp(k)) && (x->type == EV_CLOSE || x->type == EV_STATE); k++)
+    for (; (x = evp(k)) && (x->type == EV_CLOSE || x->type == EV_STATE); k++)
         ;
-    if (!x || x->type != EV_INT)
+    if (!x || x->type != EV_INT || (need && (x->pc != pc || x->s != sp_s)))
         return 0;
     hold.ev = *x;
     hold.handler = 0;
@@ -1643,6 +1689,13 @@ int hold_arm(uint64_t end_idx, int tag)
     hold_acc = 0;
     hold.active = 1;
     return 1;
+}
+
+/* The interrupt the record has right after the close at end_idx (past the other closes and MPR changes), if any: armed as
+ * the hold, 1; else 0. */
+int hold_arm(uint64_t end_idx, int tag)
+{
+    return hold_arm_from(end_idx + 1, tag, 0, 0, 0);
 }
 
 void hold_prepare(Span *s, const Ev *closing)

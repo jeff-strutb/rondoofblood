@@ -162,14 +162,14 @@ class Draft:
 
     def tail(self, addr, frompc, branch=False):
         """A tail jump: the instruction at frompc makes it. The hybrid needs that address (the code a branch runs
-        on into can be a piece inlined from another routine, outside this routine's own range). A JMP always is a
-        call event of the record (an entry instruction); a branch or a fall-through is one only when a tagged routine
-        is at the address, else the code is part of the routine running: the rest is the original's from addr."""
+        on into can be a piece inlined from another routine, outside this routine's own range). Whether the record
+        has a call there is the record's rule (classify_arrival), asked at run time: enters(addr, from, jmp). A
+        JMP is an entry unless it lands inside the range of the routine tagged at its target (a loop); a branch or a
+        fall-through is an entry only when a tagged routine is at the target and the source is outside its range.
+        Where it is no entry the code is part of the routine running: the rest is the original's from addr."""
         self.stat["tail"] += 1
-        if not branch:
-            return "{ call_original_at(0x%04X, 0x%04X); return; }" % (frompc, addr)
-        return "{ if (enters(0x%04X)) { call_original_at(0x%04X, 0x%04X); return; } leave_original(0x%04X); return; }" % (
-            addr, frompc, addr, addr)
+        return "{ if (enters(0x%04X, 0x%04X, %d)) { call_original_at(0x%04X, 0x%04X); return; } leave_original(0x%04X); return; }" % (
+            addr, frompc, 0 if branch else 1, frompc, addr, addr)
 
     def smod(self, seg, pc, ln):
         """Does a store of this draft hit a byte of the instruction at pc (ln bytes)?"""
@@ -227,8 +227,8 @@ class Draft:
                     s2 = self.seg_for(g2, (addr - off2) & 0xFFFF)
                     if s2:
                         self.stat["conditional_tail"] += 1
-                        return "if (enters(0x%04X)) { call_original_at(0x%04X, 0x%04X); return; } goto %s;" % (
-                            addr, frompc, addr, self.label(s2, 0))
+                        return "if (enters(0x%04X, 0x%04X, 0)) { call_original_at(0x%04X, 0x%04X); return; } goto %s;" % (
+                            addr, frompc, frompc, addr, self.label(s2, 0))
                     return self.tail(addr, frompc, branch)
                 if off2 in g2.istart:
                     s2 = self.seg_for(g2, (addr - off2) & 0xFFFF)

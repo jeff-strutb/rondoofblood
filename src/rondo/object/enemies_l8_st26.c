@@ -285,13 +285,13 @@ void abi_CapPlayerXOnScreen1(void)
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_drift_count_exit_shim).
  */
-DriftArm LoadRecordThenDriftAndCount(uint8_t slot)
+DriftArm LoadRecordThenDriftAndCount(uint8_t slot, L8Layout lay)
 {
     DriftArm r = { 0 };
 
     r.state = RD8(OBJ->state[slot]);
     if (r.state == 0) {
-        jsr_push(0xCE1F);
+        jsr_push(l8_at(lay, 0xCE1F));
         r.record = l8_record(slot);
         jsr_pop();
         WR8(OBJ->sprite_set[slot], 6);
@@ -306,7 +306,7 @@ DriftArm LoadRecordThenDriftAndCount(uint8_t slot)
         r.arm = DRIFT_LATER;
         return r;
     }
-    jsr_push(0xCE3D);
+    jsr_push(l8_at(lay, 0xCE3D));
     r.move = ApplyVelocity(slot);
     jsr_pop();
     r.timer = DEC8(OBJ->f34b8[slot]);
@@ -351,7 +351,7 @@ static Ended l8_drift_count_exit_shim(DriftArm r)
 
 void abi_LoadRecordThenDriftAndCount(void)
 {
-    abi_ended(l8_drift_count_exit_shim(LoadRecordThenDriftAndCount(cpu.x)));
+    abi_ended(l8_drift_count_exit_shim(LoadRecordThenDriftAndCount(cpu.x, L8_LOADED)));
 }
 
 /*

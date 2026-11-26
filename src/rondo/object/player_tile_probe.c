@@ -36,34 +36,34 @@ static bool run_probe_handler(uint16_t code, uint8_t tile, HandlerExit *out)
 {
     switch (code) {
     case 0x9A93:
-        *out = handler_of_ended(TileHalfStepAAt9A93(tile));
+        *out = handler_of_ended(tile_half_step_exit_shim(TileHalfStepAAt9A93(tile)));
         return true;
     case 0x9AA7:
-        *out = handler_of_ended(TileHalfStepBAt9AA7(tile));
+        *out = handler_of_ended(tile_half_step_exit_shim(TileHalfStepBAt9AA7(tile)));
         return true;
     case 0x9C82:
-        *out = handler_of_ended(TileNudgeAt9C82());
+        *out = handler_of_ended(tile_nudge_exit_shim(TileNudgeAt9C82()));
         return true;
     case 0x9C87:
-        *out = handler_of_ended(TileLift7At9C87());
+        *out = handler_of_ended(tile_row_up_exit_shim(TileLift7At9C87()));
         return true;
     case 0x9C91:
-        *out = handler_of_ended(TileLift6At9C91());
+        *out = handler_of_ended(tile_row_up_exit_shim(TileLift6At9C91()));
         return true;
     case 0x9C9B:
-        *out = handler_of_ended(TileLift5At9C9B());
+        *out = handler_of_ended(tile_row_up_exit_shim(TileLift5At9C9B()));
         return true;
     case 0x9CA5:
-        *out = handler_of_ended(TileLift4At9CA5());
+        *out = handler_of_ended(tile_row_up_exit_shim(TileLift4At9CA5()));
         return true;
     case 0x9CAF:
-        *out = handler_of_ended(TileLift3At9CAF());
+        *out = handler_of_ended(tile_row_up_exit_shim(TileLift3At9CAF()));
         return true;
     case 0x9CB9:
-        *out = handler_of_ended(TileLift2At9CB9());
+        *out = handler_of_ended(tile_row_up_exit_shim(TileLift2At9CB9()));
         return true;
     case 0x9CC3:
-        *out = handler_of_ended(TileLift1At9CC3());
+        *out = handler_of_ended(tile_row_up_exit_shim(TileLift1At9CC3()));
         return true;
     default:
         return false;

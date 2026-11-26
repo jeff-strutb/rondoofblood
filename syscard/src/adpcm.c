@@ -10,6 +10,26 @@ enum {
 };
 
 /*
+ * @card 00:F6CE ad_stop_clear
+ * WHAT IT DOES: Forgets what ad_cplay was doing: its step and the sectors it has left.
+ * HOW: Four bytes zeroed. A named entry into ad_stop, which falls into it; the interrupt that ends a play calls it alone.
+ * WAITS: no.
+ * Entry: nothing. Exit: all registers and flags kept.
+ */
+void ad_stop_clear(void)
+{
+    wr8(CardAdpcmStep, 0);
+    wr8(CardAdpcmSectorsLeft, 0);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), 0);
+    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), 0);
+}
+
+void abi_ad_stop_clear(void)
+{
+    ad_stop_clear();
+}
+
+/*
  * @card 00:F6C1 ad_stop
  * WHAT IT DOES: Stops ADPCM playback and forgets what was playing.
  * HOW: Clears its interrupt enables and its control bits, then the card's play state.
@@ -24,10 +44,7 @@ uint8_t ad_stop(void)
     control = rd8(AdpcmControl);
     wr8(AdpcmControl, (uint8_t)(control & ~AD_CONTROL_PLAY_BITS));
     wr8(CardAdpcmActive, 0);
-    wr8(CardAdpcmStep, 0);
-    wr8(CardAdpcmSectorsLeft, 0);
-    wr8((uint16_t)(CardAdpcmSectorsLeft + 1), 0);
-    wr8((uint16_t)(CardAdpcmSectorsLeft + 2), 0);
+    ad_stop_clear();
     return control;
 }
 
@@ -128,6 +145,59 @@ static void call_set_address(uint8_t x, uint8_t y, uint16_t ret)
     jsr_pop();
 }
 
+/* The start every play ends in, at $F613: the half-way interrupt on, the unit started. */
+static CardExit ad_play_start(void)
+{
+    CardExit e = { 0 };
+    uint8_t held = TSB8(CCDU->irq_control, AD_HALF_IRQ);
+
+    WR8(CCDU->adpcm_control, AD_CONTROL_PLAY_BITS);
+    e.a = 0;
+    e.nz = AD_CONTROL_PLAY_BITS;
+    e.v = (held & 0x40) != 0;
+    e.set_a = e.set_nz = e.set_v = true;
+    return e;
+}
+
+/*
+ * @card 00:F5F5 ad_play_latch
+ * WHAT IT DOES: Latches the address and the length ad_play kept and the rate, and starts the play.
+ * HOW: ad_set_address and the latch for the address, again for the length, the rate to the unit, then the start ad_play ends in.
+ * A named entry into ad_play, which falls into it; the interrupt that carries a play on calls it alone.
+ * WAITS: no.
+ * Entry: CardAdpcmAddress, CardAdpcmLength, CardAdpcmRate. Exit: A 0, N 0, Z 0, X and Y the length, V bit 6 of the interrupt enables as
+ * they were. C kept.
+ */
+CardExit ad_play_latch(void)
+{
+    CardExit e = { 0 };
+    uint8_t x = RD8(CRAM->adpcm_address);
+    uint8_t y = rd8((uint16_t)(CardAdpcmAddress + 1));
+    uint8_t value;
+
+    call_set_address(x, y, 0xF5FE);
+    jsr_push(0xF601);
+    (void)ad_latch_read_address();
+    jsr_pop();
+    x = RD8(CRAM->adpcm_length);
+    y = rd8((uint16_t)(CardAdpcmLength + 1));
+    call_set_address(x, y, 0xF60A);
+    jsr_push(0xF60D);
+    (void)ad_latch_length();
+    jsr_pop();
+    value = RD8(CRAM->adpcm_rate);
+    WR8(CCDU->adpcm_rate, value);
+    e.x = x;
+    e.y = y;
+    e.set_x = e.set_y = true;
+    return card_exit_over(e, ad_play_start());
+}
+
+void abi_ad_play_latch(void)
+{
+    card_exit_apply(ad_play_latch());
+}
+
 /*
  * @card 00:F5C6 ad_play
  * WHAT IT DOES: Plays ADPCM: _AX bytes from address _BX at rate _DH; bit 7 of _DL repeats it,
@@ -149,8 +219,6 @@ AdPlay ad_play(void)
     AdStat stat;
     uint8_t value;
     uint8_t rate;
-    uint8_t x;
-    uint8_t y;
 
     jsr_push(0xF5C9);
     stat = ad_stat();
@@ -183,32 +251,12 @@ AdPlay ad_play(void)
             return play;
         }
         WR8(CRAM->adpcm_rate, rate);
-        x = RD8(CRAM->adpcm_address);
-        y = rd8((uint16_t)(CardAdpcmAddress + 1));
-        call_set_address(x, y, 0xF5FE);
-        jsr_push(0xF601);
-        (void)ad_latch_read_address();
-        jsr_pop();
-        x = RD8(CRAM->adpcm_length);
-        y = rd8((uint16_t)(CardAdpcmLength + 1));
-        call_set_address(x, y, 0xF60A);
-        jsr_push(0xF60D);
-        (void)ad_latch_length();
-        jsr_pop();
-        value = RD8(CRAM->adpcm_rate);
-        WR8(CCDU->adpcm_rate, value);
-        r->x = x;
-        r->y = y;
-        r->set_y = true;
         r->c = false;
+        *r = card_exit_over(*r, ad_play_latch());
         play.how = AD_PLAY_STARTED;
+        return play;
     }
-    value = TSB8(CCDU->irq_control, AD_HALF_IRQ);
-    WR8(CCDU->adpcm_control, AD_CONTROL_PLAY_BITS);
-    r->a = 0;
-    r->nz = AD_CONTROL_PLAY_BITS;
-    r->v = (value & 0x40) != 0;
-    r->set_v = true;
+    *r = card_exit_over(*r, ad_play_start());
     return play;
 }
 

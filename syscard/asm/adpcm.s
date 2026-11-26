@@ -9,6 +9,13 @@ ad_stop:
     lda #$60
     trb a:AdpcmControl
     stz a:CardAdpcmActive
+
+; @card 00:F6CE ad_stop_clear
+; WHAT IT DOES: Forgets what ad_cplay was doing: its step and the sectors it has left.
+; HOW: Four bytes zeroed. A named entry into ad_stop, which falls into it; the interrupt that ends a play calls it alone.
+; WAITS: no.
+; Entry: nothing. Exit: all registers and flags kept.
+ad_stop_clear:
     stz a:CardAdpcmStep
     stz a:CardAdpcmSectorsLeft
     stz a:CardAdpcmSectorsLeft+1
@@ -84,6 +91,15 @@ ad_play:
     cmp #$10
     bcs ad_play_at0
     sta a:CardAdpcmRate
+
+; @card 00:F5F5 ad_play_latch
+; WHAT IT DOES: Latches the address and the length ad_play kept and the rate, and starts the play.
+; HOW: ad_set_address and the latch for the address, again for the length, the rate to the unit, then the start ad_play ends in.
+; A named entry into ad_play, which falls into it; the interrupt that carries a play on calls it alone.
+; WAITS: no.
+; Entry: CardAdpcmAddress, CardAdpcmLength, CardAdpcmRate. Exit: A 0, N 0, Z 0, X and Y the length, V bit 6 of the interrupt enables as
+; they were. C kept.
+ad_play_latch:
     ldx a:CardAdpcmAddress
     ldy a:CardAdpcmAddress+1
     jsr ad_set_address

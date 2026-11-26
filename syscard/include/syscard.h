@@ -421,4 +421,8 @@ CardExit card_boot_init(uint8_t a, uint8_t x, uint8_t y);
 
 CardExit check_boot_disc(uint8_t entry_a, uint8_t entry_x, uint8_t entry_y);
 
+void ad_stop_clear(void);
+CardExit ad_play_latch(void);
+uint8_t cd_subrd_read(void);
+
 #endif

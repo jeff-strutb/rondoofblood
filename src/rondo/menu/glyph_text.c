@@ -130,7 +130,7 @@ static void get_glyph(uint8_t buffer_low, uint8_t buffer_high, uint16_t ret)
     WR8(ZP->bios_b.hi, buffer_high);
     WR8(ZP->bios_d.hi, 1);
     jsr_push(ret);
-    (void)ex_getfnt();
+    (void)vec_ex_getfnt();
     jsr_pop();
 }
 

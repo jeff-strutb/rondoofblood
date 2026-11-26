@@ -2368,7 +2368,7 @@ Exit EndingCommandLoadBanks(void)
         WR8(ZP->bios_a.lo, 0);
         WR8(ZP->bios_a.hi, 0x40);
         jsr_push(0x81CF);
-        (void)ad_read();
+        (void)vec_ad_read();
         jsr_pop();
         INC8(ZP->temp00);
     } while (RD8(ZP->temp00) != 4);

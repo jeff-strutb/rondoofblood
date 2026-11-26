@@ -52,7 +52,7 @@ static void backup_file_arguments(void)
 BackupAccess BackupRead(void)
 {
     backup_file_arguments();
-    return bm_read(0);
+    return vec_bm_read(0);
 }
 
 void backup_read_exit_shim(BackupAccess read)
@@ -86,10 +86,10 @@ BackupWriteRun BackupWrite(void)
     wr8(zBiosAl, BACKUP_NAME_LO);
     wr8(zBiosAh, BACKUP_NAME_HI);
     jsr_push(0x6C4E);
-    run.removal = bm_delete(BACKUP_NAME_HI);
+    run.removal = vec_bm_delete(BACKUP_NAME_HI);
     jsr_pop();
     jsr_push(0x6C51);
-    run.free_space = bm_free(bm_delete_result(run.removal));
+    run.free_space = vec_bm_free(bm_delete_result(run.removal));
     jsr_pop();
     low = rd8(zBiosCl);
     high = rd8(zBiosCh);
@@ -98,7 +98,7 @@ BackupWriteRun BackupWrite(void)
     if (!run.fits)
         return run;
     backup_file_arguments();
-    run.write = bm_write(0);
+    run.write = vec_bm_write(0);
     return run;
 }
 
@@ -288,7 +288,7 @@ static void wait_drive_idle(DiscLog *log, uint8_t entry_x, uint16_t ret_stat, ui
         DiscCall stat = disc_call(DISC_CD_STAT);
 
         jsr_push(ret_stat);
-        stat.as.cd_stat = cd_stat(0, disc_log_x(log, entry_x));
+        stat.as.cd_stat = vec_cd_stat(0, disc_log_x(log, entry_x));
         jsr_pop();
         log_call(log, stat);
         if (cd_stat_result(stat.as.cd_stat) == 0)
@@ -297,7 +297,7 @@ static void wait_drive_idle(DiscLog *log, uint8_t entry_x, uint16_t ret_stat, ui
             DiscCall pause = disc_call(DISC_CD_PAUSE);
 
             jsr_push(ret_pause);
-            pause.as.cd_pause = cd_pause(disc_log_x(log, entry_x));
+            pause.as.cd_pause = vec_cd_pause(disc_log_x(log, entry_x));
             jsr_pop();
             log_call(log, pause);
             if (cd_pause_result(pause.as.cd_pause) == 0)
@@ -337,7 +337,7 @@ static void record_at(DiscLog *log, uint16_t table, uint8_t index, uint8_t size,
     wr8(zBiosAl, index);
     wr8(zBiosBl, size);
     jsr_push(ret);
-    mul.as.mul = ma_mul8u(size, MUL_ENTRY_FLAGS);
+    mul.as.mul = vec_ma_mul8u(size, MUL_ENTRY_FLAGS);
     jsr_pop();
     log_call(log, mul);
     low = add_bytes((uint8_t)table, rd8(zBiosCl), false);
@@ -360,7 +360,7 @@ static AdTrans adpcm_transfer(DiscLog *log, uint8_t entry_x, uint8_t sectors, Su
     trans.summed = true;
     trans.sum = last;
     jsr_push(ret);
-    trans.as.ad_trans = ad_trans(sectors, disc_log_x(log, entry_x));
+    trans.as.ad_trans = vec_ad_trans(sectors, disc_log_x(log, entry_x));
     jsr_pop();
     log_call(log, trans);
     return trans.as.ad_trans;
@@ -392,13 +392,13 @@ AdpcmLoadRun AdpcmLoad(uint8_t sound)
     wr8(zMusicWanted, sound);
     push8(sound);
     jsr_push(0x6E4D);
-    stop.as.control = ad_stop();
+    stop.as.control = vec_ad_stop();
     jsr_pop();
     log_call(&run.log, stop);
     do {
         stat = disc_call(DISC_AD_STAT);
         jsr_push(0x6E50);
-        stat.as.ad_stat = ad_stat();
+        stat.as.ad_stat = vec_ad_stat();
         jsr_pop();
         log_call(&run.log, stat);
     } while (stat.as.ad_stat.playing != 0);
@@ -633,7 +633,7 @@ static TrackEntry track_entry(uint8_t track, uint16_t ret)
     wr8(zBiosAl, track);
     wr8(zBiosBl, CD_TRACK_ENTRY);
     jsr_push(ret);
-    entry.mul = ma_mul8u(CD_TRACK_ENTRY, MUL_ENTRY_FLAGS);
+    entry.mul = vec_ma_mul8u(CD_TRACK_ENTRY, MUL_ENTRY_FLAGS);
     jsr_pop();
     low = add_bytes((uint8_t)CdTrackTable, rd8(zBiosCl), false);
     wr8(zTemp00, low.value);
@@ -669,7 +669,7 @@ static TrackPlay play_track(uint8_t track, uint8_t mode, uint8_t kept_x, uint8_t
         play.dl = rd8_zp_y(zTemp00, 5);
         wr8(zBiosDl, play.dl);
         jsr_push(0x6F94);
-        tried = cd_play(play.dl, play.tries == 0 ? (uint8_t)(play.entry.mul.product >> 8) : play.results[(play.tries - 1) % CD_PLAY_KEPT]);
+        tried = vec_cd_play(play.dl, play.tries == 0 ? (uint8_t)(play.entry.mul.product >> 8) : play.results[(play.tries - 1) % CD_PLAY_KEPT]);
         jsr_pop();
         result = cd_play_result(tried);
         play.results[play.tries % CD_PLAY_KEPT] = result;
@@ -677,7 +677,7 @@ static TrackPlay play_track(uint8_t track, uint8_t mode, uint8_t kept_x, uint8_t
         play.tries++;
     } while (result != 0);
     jsr_push(0x6F9B);
-    cd_fade(0);
+    vec_cd_fade(0);
     jsr_pop();
     play.y = pull8();
     play.x = pull8();
@@ -799,7 +799,7 @@ TrackSearch CdSearchTrack(uint8_t track, uint8_t kept_x, uint8_t kept_y)
         seek.given = rd8_zp_y(zTemp00, 2);
         wr8(zBiosBl, seek.given);
         jsr_push(0x6FD2);
-        seek.as.cd_search = cd_search(seek.given, disc_log_x(&search.log, 0));
+        seek.as.cd_search = vec_cd_search(seek.given, disc_log_x(&search.log, 0));
         jsr_pop();
         log_call(&search.log, seek);
         if (cd_search_result(seek.as.cd_search) == 0)
@@ -966,7 +966,7 @@ static void scene_read(DiscLog *log, uint8_t op)
         read.given = rd8_zp_y(zTemp08, 2);
         wr8(zBiosAl, read.given);
         jsr_push(0x70F2);
-        read.as.cd_read = cd_read(read.given, disc_log_x(log, 0));
+        read.as.cd_read = vec_cd_read(read.given, disc_log_x(log, 0));
         jsr_pop();
         log_call(log, read);
         index = cd_read_result(read.as.cd_read);

@@ -496,7 +496,7 @@ static FadeEnd step_scroll_then_move_or_fade_out(uint8_t slot)
     kind_hi = 0x0C;
     r.pre = then(e, ended_with_y(ended_load(0x0C), y));
     r.faded = true;
-    r.nibble = cd_fade(kind_hi);
+    r.nibble = vec_cd_fade(kind_hi);
     return r;
 }
 

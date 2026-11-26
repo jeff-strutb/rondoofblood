@@ -303,7 +303,7 @@ BootRun ModeBoot(void)
     jsr_pop();
     wr8(zDisplayDelay, BOOT_DISPLAY_DELAY);
     jsr_push(0x5138);
-    run.width = ex_scrsiz(SCREEN_SIZE);
+    run.width = vec_ex_scrsiz(SCREEN_SIZE);
     jsr_pop();
     wr8(zStage, 0);
     wr8(zCharacterLoaded, 0xFF);
@@ -495,7 +495,7 @@ AttractPlayRun ModeAttractPlay(uint8_t kept_x, uint8_t kept_y)
     run.sound = SoundCommand(SOUND_FADE, kept_x, kept_y);
     jsr_pop();
     jsr_push(0x51D1);
-    cd_fade(CD_FADE_OUT);
+    vec_cd_fade(CD_FADE_OUT);
     jsr_pop();
     wr8(zWaitTimer, GAME_OVER_WAIT);
     jsr_push(0x51D8);
@@ -1654,7 +1654,7 @@ FadeStop FadeAndStopSound(uint8_t kept_x, uint8_t kept_y)
     run.keep = rd8(zField8E) & SOUND_KEEP_TRACK;
     if (run.keep == 0) {
         jsr_push(0x5592);
-        cd_fade(CD_FADE_OUT);
+        vec_cd_fade(CD_FADE_OUT);
         jsr_pop();
     }
     run.sound = SoundCommand(SOUND_STOP, kept_x, kept_y);

@@ -3704,7 +3704,7 @@ VoiceStart SoundStartVoice(void)
     uint16_t table;
 
     jsr_push(0xB3F3);
-    voice.stat_before = ad_stat();
+    voice.stat_before = vec_ad_stat();
     jsr_pop();
     if (voice.stat_before.playing == 0 && !(rd8(SoundVoiceFlags) & VOICE_WAITING))
         wr8(SoundVoicePriority, 0);
@@ -3739,10 +3739,10 @@ VoiceStart SoundStartVoice(void)
     }
     wr8(SoundVoicePriority, voice.priority);
     jsr_push(0xB46D);
-    voice.stop = ad_stop();
+    voice.stop = vec_ad_stop();
     jsr_pop();
     jsr_push(0xB470);
-    voice.stat = ad_stat();
+    voice.stat = vec_ad_stat();
     jsr_pop();
     if (voice.stat.playing != 0) {
         voice.flags = (uint8_t)(rd8(SoundVoiceFlags) | VOICE_WAITING);
@@ -4090,7 +4090,7 @@ PauseCheck SoundCheckPause(uint8_t kept_x, uint8_t kept_y)
         SoundSilenceAll(kept_x);
         jsr_pop();
         jsr_push(0xB4EA);
-        check.stop = ad_stop();
+        check.stop = vec_ad_stop();
         jsr_pop();
         jsr_push(0xB4EF);
         check.command = SoundDriverCommand(PAUSE_EFFECT, kept_x, kept_y);
@@ -4258,12 +4258,12 @@ DriverTick SoundDriverTick(uint8_t kept_a, uint8_t kept_x, uint8_t kept_y)
     tick.voice_waited = false;
     tick.stop_ran = false;
     jsr_push(tick.paused ? 0xB53A : 0xB54D);
-    tick.stat = ad_stat();
+    tick.stat = vec_ad_stat();
     jsr_pop();
     if (tick.paused) {
         if (tick.stat.playing != 0) {
             jsr_push(0xB541);
-            tick.stop = ad_stop();
+            tick.stop = vec_ad_stop();
             jsr_pop();
             tick.stop_ran = true;
         }
@@ -4275,11 +4275,11 @@ DriverTick SoundDriverTick(uint8_t kept_a, uint8_t kept_x, uint8_t kept_y)
     }
     if (tick.stat.playing == 0 && (rd8(SoundVoiceFlags) & VOICE_WAITING)) {
         jsr_push(0xB55E);
-        tick.stop = ad_stop();
+        tick.stop = vec_ad_stop();
         jsr_pop();
         tick.stop_ran = true;
         jsr_push(0xB561);
-        tick.stat_again = ad_stat();
+        tick.stat_again = vec_ad_stat();
         jsr_pop();
         if (tick.stat_again.playing == 0) {
             tick.voice_waited = true;

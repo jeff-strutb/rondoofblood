@@ -31,7 +31,7 @@ CardVersion CardIsVersionOne(void)
     CardVersion version;
 
     jsr_push(0x5CC9);
-    version = ex_getver();
+    version = vec_ex_getver();
     jsr_pop();
     return version;
 }
@@ -135,7 +135,7 @@ KernelPlay KernelAdpcmPlay(void)
     jsr_pop();
     if (play.version.major != 1 || play.version.minor != 0) {
         play.how = KERNEL_PLAY_CARD;
-        play.card = ad_play();
+        play.card = vec_ad_play();
         return play;
     }
     jsr_push(0x5CD9);

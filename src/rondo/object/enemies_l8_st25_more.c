@@ -219,3 +219,158 @@ void abi_WalkAndTurnAtEdge(void)
 {
     abi_ended(WalkAndTurnAtEdge(cpu.x, cpu.y));
 }
+
+Ended StepListByNumberTable(uint8_t slot, uint8_t y_entry);
+Ended SpawnFlashingPieceWhenRising(uint8_t slot);
+Ended CountDownThenClearOnTimer(uint8_t slot);
+
+enum {
+    PIECE_LIFE = 0xB919, PIECE_FACING = 0xB91D, PIECE_SPEED = 0xB921, PIECE_VX = 0xB925, PIECE_VY = 0xB92D,
+    PIECE_FALL_STEP = 0x10, PIECE_FEET = 0x08, PIECE_TYPE = 0x9B
+};
+
+/*
+ * @routine 0F6C:024 DroppingPieceStep
+ * @run 70:B824
+ * WHAT IT DOES: A piece that falls and lands: its first frame loads its record and takes its animation, facing and speeds from
+ * tables by the record's kind; in state 1 each frame steps its list, may start a flashing piece, moves, falls faster (Y speed +$10)
+ * and, once falling, reads the tile $08 below it: when that tile has bit 0 the piece is set back out of the floor, may start a
+ * type $9B object in a free slot of $30 to $4F, and goes to state 2 with its timer 6; other states count the timer down.
+ * HOW: LoadObjectRecord, StepListByNumberTable, SpawnFlashingPieceWhenRising, ApplyVelocityX and Y, the tile read vector at $8006,
+ * FindFreeSlotFrom30 and StartObjectAtPlace.
+ * WAITS: no.
+ * Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran.
+ */
+Ended DroppingPieceStep(uint8_t slot, uint8_t y_entry)
+{
+    Ended e;
+    Sum sum;
+    Sum row;
+    AxisMove move;
+    SideReadEnd read;
+    uint8_t a;
+    uint8_t m;
+    uint8_t y = y_entry;
+    uint8_t last;
+    uint8_t nz;
+    uint8_t found_slot;
+    uint8_t placed;
+    bool carry;
+    bool found;
+
+    a = RD8(OBJ->state[slot]);
+    if (a == 0) {
+        jsr_push(0xB82C);
+        last = LoadObjectRecord(slot, &nz, &carry);
+        jsr_pop();
+        e = ended_of_record(last, nz, carry);
+        y = RD8(OBJ->next_kind[slot]);
+        e = then(e, ended_with_y(ended_nz(y), y));
+        a = rd8((uint16_t)(PIECE_LIFE + y));
+        WR8(OBJ->life_timer[slot], a);
+        a = rd8((uint16_t)(PIECE_FACING + y));
+        WR8(OBJ->facing_left[slot], a);
+        a = rd8((uint16_t)(PIECE_SPEED + y));
+        WR8(OBJ->vx_hi[slot], a);
+        e = then(e, ended_load(a));
+        jsr_push(0xB844);
+        move = ApplyVelocityX(slot);
+        jsr_pop();
+        e = then(e, ended_of_axis_move(move));
+        a = y;
+        carry = (a & 0x80) != 0;
+        y = (uint8_t)(a << 1);
+        a = rd8((uint16_t)(PIECE_VX + y));
+        WR8(OBJ->vx_lo[slot], a);
+        a = rd8((uint16_t)(PIECE_VX + 1 + y));
+        WR8(OBJ->vx_hi[slot], a);
+        a = rd8((uint16_t)(PIECE_VY + y));
+        WR8(OBJ->vy_lo[slot], a);
+        a = rd8((uint16_t)(PIECE_VY + 1 + y));
+        WR8(OBJ->vy_hi[slot], a);
+        return then(e, ended_with_y(ended_with_carry(ended_load(a), carry), y));
+    }
+    a = (uint8_t)(a - 1);
+    if (a != 0) {
+        return then(ended_load(a), CountDownThenClearOnTimer(slot));
+    }
+    e = ended_load(a);
+    jsr_push(0xB869);
+    e = then(e, StepListByNumberTable(slot, y));
+    jsr_pop();
+    y = ended_y_or(e, y);
+    jsr_push(0xB86C);
+    e = then(e, SpawnFlashingPieceWhenRising(slot));
+    jsr_pop();
+    y = ended_y_or(e, y);
+    jsr_push(0xB86F);
+    move = ApplyVelocityX(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    jsr_push(0xB872);
+    move = ApplyVelocityY(slot);
+    jsr_pop();
+    e = then(e, ended_of_axis_move(move));
+    a = RD8(OBJ->vy_lo[slot]);
+    sum = add_bytes(a, PIECE_FALL_STEP, false);
+    WR8(OBJ->vy_lo[slot], sum.value);
+    a = RD8(OBJ->vy_hi[slot]);
+    sum = add_bytes(a, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], sum.value);
+    a = RD8(OBJ->vy_hi[slot]);
+    e = then(e, ended_load(a));
+    if ((a & 0x80) != 0) {
+        return e;
+    }
+    a = RD8(OBJ->x_lo[slot]);
+    WR8(ZP->temp00, a);
+    a = RD8(OBJ->x_hi[slot]);
+    WR8(ZP->temp01, a);
+    a = RD8(OBJ->y_lo[slot]);
+    sum = add_bytes(a, PIECE_FEET, false);
+    WR8(ZP->temp02, sum.value);
+    a = RD8(OBJ->y_hi[slot]);
+    row = add_bytes(a, 0, sum.carry);
+    WR8(ZP->temp03, row.value);
+    jsr_push(0xB8A4);
+    read = StageTileReadVector9991();
+    jsr_pop();
+    e = then(e, read.e);
+    if (read.x_changed) {
+        slot = read.x;
+    }
+    a = (uint8_t)(read.e.a & 0x01);
+    e = then(e, ended_load(a));
+    if (a == 0) {
+        return e;
+    }
+    a = RD8(OBJ->y_lo[slot]);
+    m = RD8(ZP->temp02);
+    sum = sub_bytes(a, m, true);
+    WR8(OBJ->y_lo[slot], sum.value);
+    e = then(e, ended_of_sum(sum));
+    jsr_push(0xB8B4);
+    found_slot = FindFreeSlotFrom30(&last, &found);
+    jsr_pop();
+    e = then(e, ended_of_find_slot(found_slot, last, found));
+    if (found) {
+        jsr_push(0xB8BB);
+        placed = StartObjectAtPlace(PIECE_TYPE, slot, found_slot);
+        jsr_pop();
+        e = then(e, ended_load(placed));
+        a = RD8(OBJ->y_lo[found_slot]);
+        sum = add_bytes(a, PIECE_FEET, false);
+        WR8(OBJ->y_lo[found_slot], sum.value);
+        e = then(e, ended_of_sum(sum));
+    }
+    WR8(OBJ->f3510[slot], 6);
+    WR8(OBJ->hitbox_on[slot], 0);
+    WR8(OBJ->flash_flags[slot], PIECE_FALL_STEP);
+    a = INC8(OBJ->state[slot]);
+    return then(e, ended_nz(a));
+}
+
+void abi_DroppingPieceStep(void)
+{
+    abi_ended(DroppingPieceStep(cpu.x, cpu.y));
+}

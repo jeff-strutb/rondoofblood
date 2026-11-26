@@ -7,6 +7,94 @@
 StageTileReadVector9991:
     jmp ProbeTileRead9991
 
+; @routine 0F6C:024 DroppingPieceStep
+; @run 70:B824
+; WHAT IT DOES: A piece that falls and lands: its first frame loads its record and takes its animation, facing and speeds from
+; tables by the record's kind; in state 1 each frame steps its list, may start a flashing piece, moves, falls faster (Y speed +$10)
+; and, once falling, reads the tile $08 below it: when that tile has bit 0 the piece is set back out of the floor, may start a
+; type $9B object in a free slot of $30 to $4F, and goes to state 2 with its timer 6; other states count the timer down.
+; HOW: LoadObjectRecord, StepListByNumberTable, SpawnFlashingPieceWhenRising, ApplyVelocityX and Y, the tile read vector at $8006,
+; FindFreeSlotFrom30 and StartObjectAtPlace.
+; WAITS: no.
+; Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran.
+DroppingPieceStep:
+    lda a:OBJ_27A8,x
+    bne DroppingPieceStep_at0
+    jsr VecLoadObjectRecord
+    ldy a:OBJ_3040,x
+    lda a:SoundVoicesFirst+5,y
+    sta a:OBJ_34B8,x
+    lda a:$B91D,y
+    sta a:OBJ_2AC0,x
+    lda a:$B921,y
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    tya
+    asl a
+    tay
+    lda a:$B925,y
+    sta a:OBJ_VX_LO,x
+    lda a:$B926,y
+    sta a:OBJ_VX_HI,x
+    lda a:$B92D,y
+    sta a:OBJ_VY_LO,x
+    lda a:$B92E,y
+    sta a:OBJ_VY_HI,x
+    rts
+DroppingPieceStep_at0:
+    dec a
+    beq DroppingPieceStep_at1
+    jmp CountDownThenClearOnTimer
+DroppingPieceStep_at1:
+    jsr StepListByNumberTable
+    jsr SpawnFlashingPieceWhenRising
+    jsr VecApplyVelocityX
+    jsr VecApplyVelocityY
+    lda a:OBJ_VY_LO,x
+    clc
+    adc #$10
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_VY_HI,x
+    adc #$00
+    sta a:OBJ_VY_HI,x
+    lda a:OBJ_VY_HI,x
+    bmi DroppingPieceStep_at2
+    lda a:OBJ_X_LO,x
+    sta z:zTemp00
+    lda a:OBJ_X_HI,x
+    sta z:zTemp01
+    lda a:OBJ_Y_LO,x
+    clc
+    adc #$08
+    sta z:zTemp02
+    lda a:OBJ_Y_HI,x
+    adc #$00
+    sta z:zTemp03
+    jsr StageTileReadVector9991
+    and #$01
+    beq DroppingPieceStep_at2
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc z:zTemp02
+    sta a:OBJ_Y_LO,x
+    jsr VecFindFreeSlotFrom30
+    bcc DroppingPieceStep_at3
+    lda #$9B
+    jsr VecStartObjectAtPlace
+    lda a:OBJ_Y_LO,y
+    clc
+    adc #$08
+    sta a:OBJ_Y_LO,y
+DroppingPieceStep_at3:
+    lda #$06
+    sta a:OBJ_3510,x
+    stz a:OBJ_3250,x
+    lda #$10
+    sta a:OBJ_2B18,x
+    inc a:OBJ_27A8,x
+DroppingPieceStep_at2:
+    rts
+
 ; @routine 0F6C:4A4 WalkAndTurnAtEdge
 ; @run 70:BCA4
 ; WHAT IT DOES: A walking object's step: the leap or the hurt answer ends it (C 1); otherwise it steps its animation, moves along X and,

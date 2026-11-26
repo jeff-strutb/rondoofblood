@@ -12,6 +12,13 @@ typedef struct {
     bool a_set, x_set, y_set, v_set, c_set;
 } Trk;
 
+/* LDX, LDY, TAX or TAY: the register and N, Z from it. */
+static inline void t_xy_nz(Trk *t, uint8_t value)
+{
+    t->n = (value & 0x80) != 0;
+    t->z = value == 0;
+}
+
 static inline void t_nz(Trk *t, uint8_t value)
 {
     t->n = (value & 0x80) != 0;
@@ -154,6 +161,15 @@ static inline void t_lsr(Trk *t)
     bool out = (t->a & 1) != 0;
 
     t_a(t, (uint8_t)(t->a >> 1));
+    t->c = out;
+    t->c_set = true;
+}
+
+static inline void t_asl(Trk *t)
+{
+    bool out = (t->a & 0x80) != 0;
+
+    t_a(t, (uint8_t)(t->a << 1));
     t->c = out;
     t->c_set = true;
 }

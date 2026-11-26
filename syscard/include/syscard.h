@@ -444,4 +444,6 @@ CardExit psg_write_channels(void);
 
 CardExit psg_slide_channel(void);
 
+CardExit psg_read_notes(void);
+
 #endif

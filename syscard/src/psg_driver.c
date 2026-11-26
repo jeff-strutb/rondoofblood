@@ -18,7 +18,9 @@ enum {
     BALANCE = 0x25F9, VOLUME = 0x25F3, PLAYER_MODE_AT = 0x22DF, CHANNEL_USED = 0x247C, CHANNEL_BUSY = 0x2474, WAVE_TABLE_USER = 0x22D2,
     WAVE_TABLE_BUILT_IN = 0xD9A6, WAVE_BUILT_IN_COUNT = 0x2D, WAVE_BYTES = 0x20, ZP_E8 = 0x20E8, ZP_E9 = 0x20E9, ZP_EA = 0x20EA, ZP_EB = 0x20EB,
     CHANNEL_NOW = 0x22E0, PITCH_STEP = 0x255D, PITCH_FRACTION = 0x2563, PITCH_HIGH = 0x24AF, LEFT_STEP = 0x2569, LEFT_FRACTION = 0x256F,
-    RIGHT_STEP = 0x2575, RIGHT_FRACTION = 0x257B
+    RIGHT_STEP = 0x2575, RIGHT_FRACTION = 0x257B, SEQ_KIND = 0x25E1, SEQ_STATE = 0x260D, SEQ_POINTER_LOW = 0x259F, SEQ_POINTER_HIGH = 0x25A5,
+    NOISE_AT = 0x2601, FREQ_HIGH_AT = 0x25ED, FREQ_LOW_AT = 0x25E7, SHAPE_LOW = 0x24D9, SHAPE_HIGH = 0x24DF, BALANCE_AT = 0x25F9, FLAGS_AT = 0x25FF,
+    SHAPES_BUILT_IN = 0xD8A1, SHAPES_USER = 0x22D5
 };
 
 /*
@@ -468,4 +470,178 @@ CardExit psg_slide_channel(void)
 void abi_psg_slide_channel(void)
 {
     card_exit_apply(psg_slide_channel());
+}
+
+/* INC of a zero page pair: the low byte, and the high if it wrapped; N and Z from the last one. */
+static void step_pair(Trk *t, uint16_t low)
+{
+    uint8_t value = rd8(low);
+
+    value = (uint8_t)(value + 1);
+    wr8(low, value);
+    t_nz(t, value);
+    if (value == 0) {
+        value = rd8((uint16_t)(low + 1));
+        value = (uint8_t)(value + 1);
+        wr8((uint16_t)(low + 1), value);
+        t_nz(t, value);
+    }
+}
+
+/* The pointer in $E8 and $E9 kept in the channel's arrays, and the end of the routine. */
+static CardExit keep_sequence_pointer(Trk *t, uint8_t y)
+{
+    uint8_t value = rd8(ZP_E8);
+
+    t_a(t, value);
+    wr8((uint16_t)(SEQ_POINTER_LOW + y), value);
+    value = rd8(ZP_E9);
+    t_a(t, value);
+    wr8((uint16_t)(SEQ_POINTER_HIGH + y), value);
+    return t_exit(t);
+}
+
+/*
+ * @card 02:D350 psg_read_notes
+ * WHAT IT DOES: Reads the current channel's note stream when the channel is in the state that wants it: a note's pitch, the sound's
+ * shape (its waveform pair), the volume or the channel flags, until a note or the stream's end.
+ * HOW: Only for a channel whose kind ($25E1, high nibble) is 1 and whose state ($260D) is not zero. Each byte of the stream at the
+ * pointer kept in $259F and $25A5: below $B0 a noise value (channels 4 and 5); $B0 to $BF the high pitch and the next byte the low, and
+ * the note is read; $C0 a shape number, built-in or the user's, $D0 the balance, $E0 the flags; anything else ends the stream. A
+ * shape, balance or flags byte goes on to the next byte.
+ * WAITS: no.
+ * Entry: CardPlayChannel ($22E0) the channel. Exit: A, X, Y and the flags as the last step left them.
+ */
+CardExit psg_read_notes(void)
+{
+    Trk t = { 0 };
+    uint8_t y = rd8(CHANNEL_NOW);
+    uint8_t value;
+    uint8_t note;
+
+    t.y = y;
+    t.y_set = true;
+    t_nz(&t, y);
+    value = rd8((uint16_t)(SEQ_KIND + y));
+    t_a(&t, value);
+    t_a(&t, (uint8_t)(value & 0xF0));
+    t_cmp(&t, t.a, 0x10);
+    if (t.a != 0x10)
+        return t_exit(&t);
+    value = rd8((uint16_t)(SEQ_STATE + y));
+    t_a(&t, value);
+    if (value == 0)
+        return t_exit(&t);
+    value = rd8((uint16_t)(SEQ_POINTER_LOW + y));
+    t_a(&t, value);
+    wr8(ZP_E8, value);
+    value = rd8((uint16_t)(SEQ_POINTER_HIGH + y));
+    t_a(&t, value);
+    wr8(ZP_E9, value);
+    for (;;) {
+        note = rd8_zp_y(ZP_E8, 0);
+        t_a(&t, note);
+        step_pair(&t, ZP_E8);
+        t.x = note;
+        t.x_set = true;
+        t_a(&t, note);
+        t_cmp(&t, note, 0xB0);
+        if (note < 0xB0) {
+            t_cmp(&t, y, 4);
+            if (y >= 4) {
+                t_a(&t, (uint8_t)(note & 0x1F));
+                wr8((uint16_t)(NOISE_AT + y), t.a);
+            }
+            return keep_sequence_pointer(&t, y);
+        }
+        t_a(&t, (uint8_t)(note & 0xF0));
+        t_cmp(&t, t.a, 0xB0);
+        if (t.a == 0xB0) {
+            t_a(&t, note);
+            t_sec(&t);
+            t_sbc(&t, 0xB0);
+            wr8((uint16_t)(FREQ_HIGH_AT + y), t.a);
+            value = rd8_zp_y(ZP_E8, 0);
+            t_a(&t, value);
+            step_pair(&t, ZP_E8);
+            wr8((uint16_t)(FREQ_LOW_AT + y), value);
+            t_cmp(&t, y, 4);
+            if (y >= 4) {
+                t_a(&t, 0x80);
+                wr8((uint16_t)(NOISE_AT + y), 0x80);
+            }
+            return keep_sequence_pointer(&t, y);
+        }
+        t_cmp(&t, t.a, 0xC0);
+        if (t.a == 0xC0) {
+            value = rd8_zp_y(ZP_E8, 0);
+            t_a(&t, value);
+            t_cmp(&t, value, 0x10);
+            if (value < 0x10) {
+                t_asl(&t);
+                t.x = t.a;
+                t_xy_nz(&t, t.a);
+                value = rd8((uint16_t)(SHAPES_BUILT_IN + t.x));
+                t_a(&t, value);
+                wr8((uint16_t)(SHAPE_LOW + y), value);
+                value = rd8((uint16_t)(SHAPES_BUILT_IN + 1 + t.x));
+                t_a(&t, value);
+                wr8((uint16_t)(SHAPE_HIGH + y), value);
+            } else {
+                t_sec(&t);
+                t_sbc(&t, 0x10);
+                t_asl(&t);
+                t_clc(&t);
+                t_adc(&t, rd8(SHAPES_USER));
+                wr8(ZP_EA, t.a);
+                t.a = 0;
+                t.a_set = true;
+                t_adc(&t, rd8((uint16_t)(SHAPES_USER + 1)));
+                wr8(ZP_EB, t.a);
+                value = rd8_zp_y(ZP_EA, 0);
+                t_a(&t, value);
+                wr8((uint16_t)(SHAPE_LOW + y), value);
+                step_pair(&t, ZP_EA);
+                value = rd8_zp_y(ZP_EA, 0);
+                t_a(&t, value);
+                wr8((uint16_t)(SHAPE_HIGH + y), value);
+            }
+            step_pair(&t, ZP_E8);
+            continue;
+        }
+        t_cmp(&t, t.a, 0xD0);
+        if (t.a == 0xD0) {
+            value = rd8_zp_y(ZP_E8, 0);
+            t_a(&t, value);
+            wr8((uint16_t)(BALANCE_AT + y), value);
+            step_pair(&t, ZP_E8);
+            continue;
+        }
+        t_cmp(&t, t.a, 0xE0);
+        if (t.a == 0xE0) {
+            value = rd8_zp_y(ZP_E8, 0);
+            t_a(&t, value);
+            wr8((uint16_t)(FLAGS_AT + y), value);
+            step_pair(&t, ZP_E8);
+            continue;
+        }
+        t.a = 0;
+        t.a_set = true;
+        wr8((uint16_t)(SEQ_STATE + y), 0);
+        value = rd8(ZP_E8);
+        t_a(&t, value);
+        t_sec(&t);
+        t_sbc(&t, 1);
+        wr8((uint16_t)(SEQ_POINTER_LOW + y), t.a);
+        value = rd8(ZP_E9);
+        t_a(&t, value);
+        t_sbc(&t, 0);
+        wr8((uint16_t)(SEQ_POINTER_HIGH + y), t.a);
+        return t_exit(&t);
+    }
+}
+
+void abi_psg_read_notes(void)
+{
+    card_exit_apply(psg_read_notes());
 }

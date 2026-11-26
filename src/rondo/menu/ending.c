@@ -2888,10 +2888,15 @@ void abi_EndingEffectList(void)
     exit_shim(EndingEffectList(cpu.x));
 }
 
-/* One colour word of the fade: each of its three 3-bit components counted down by one unless it is zero. */
-static void fade_colour(uint8_t x)
+/* The V the last SBC of a colour left (set false: none ran). */
+typedef struct { bool set; bool v; } FadeV;
+
+/* One colour word of the fade: each of its three 3-bit components counted down by one unless it is zero; the V of
+ * the last subtract it ran. */
+static FadeV fade_colour(uint8_t x)
 {
     uint8_t low, part, blue, high, carry_out, red;
+    FadeV last = { false, false };
 
     low = rd8((uint16_t)(EFFECT_COLOURS + x));
     part = (uint8_t)(low & 0x07);
@@ -2902,6 +2907,8 @@ static void fade_colour(uint8_t x)
     low = rd8((uint16_t)(EFFECT_COLOURS + x));
     blue = (uint8_t)(low & 0x38);
     if (blue != 0) {
+        last.v = (((blue ^ 0x08) & (blue ^ (uint8_t)(blue - 0x08))) & 0x80) != 0;
+        last.set = true;
         blue = (uint8_t)(blue - 0x08);
     }
     part = (uint8_t)(blue | RD8(ZP->temp02));
@@ -2913,6 +2920,8 @@ static void fade_colour(uint8_t x)
     low = (uint8_t)((low >> 1) | (carry_out << 7));
     red = (uint8_t)(low & 0xE0);
     if (red != 0) {
+        last.v = (((red ^ 0x20) & (red ^ (uint8_t)(red - 0x20))) & 0x80) != 0;
+        last.set = true;
         red = (uint8_t)(red - 0x20);
     }
     carry_out = (uint8_t)(red >> 7);
@@ -2921,6 +2930,7 @@ static void fade_colour(uint8_t x)
     wr8((uint16_t)(EFFECT_COLOURS + 1 + x), (uint8_t)((high << 1) | carry_out));
     part = RD8(ZP->temp02);
     wr8((uint16_t)(EFFECT_COLOURS + x), (uint8_t)(red | part));
+    return last;
 }
 
 /*
@@ -2933,12 +2943,13 @@ static void fade_colour(uint8_t x)
  * changed word by word, and written back by a TIA.
  * WAITS: no.
  * Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X $20 when a palette
- * was changed (else the slot), Y the list's place.
+ * was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
  */
 Exit EndingEffectFade(uint8_t slot)
 {
     Exit exit;
     uint8_t timer, y, value, count, low, high, x;
+    FadeV seen, v = { false, false };
 
     timer = rd8((uint16_t)(EFFECT_TIMER + slot));
     if (timer != 0) {
@@ -2969,6 +2980,8 @@ Exit EndingEffectFade(uint8_t slot)
             exit.x_kept = false;
             exit.y = y;
             exit.y_kept = false;
+            exit.v = v.v;
+            exit.v_set = v.set;
             return exit;
         }
         WR8(ZP->temp08, value);
@@ -2980,7 +2993,9 @@ Exit EndingEffectFade(uint8_t slot)
         y++;
         block_move_tai(VCE_DATA_LO, EFFECT_COLOURS, 0x20, high, x, y);
         for (x = 0; x < 0x20; x = (uint8_t)(x + 2)) {
-            fade_colour(x);
+            seen = fade_colour(x);
+            if (seen.set)
+                v = seen;
         }
         low = RD8(ZP->temp08);
         wr8(VCE_ADDR_LO, low);

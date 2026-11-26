@@ -1790,7 +1790,7 @@ EndingEffectList_at5:
 ; changed word by word, and written back by a TIA.
 ; WAITS: no.
 ; Entry: X the slot. Exit: while waiting, A the timer, N and Z from its new value; at a list's end A $FF, Z and C set, X $20 when a palette
-; was changed (else the slot), Y the list's place.
+; was changed (else the slot), Y the list's place, V from the last subtract run (else kept).
 EndingEffectFade:
     lda a:ScriptSlotTimer,x
     beq EndingEffectFade_at0

@@ -80,18 +80,17 @@ static StageExit exit_of(Regs r)
 }
 
 /* One frame of the stage: the tick, the common code, the player and camera, the objects, the ending. */
-static StageExit run_stage_frame(uint8_t x, uint8_t y)
+static StageExit run_stage_frame(Regs r)
 {
-    Regs r = { 0, x, y, false, false, 0 };
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     uint8_t a;
 
-    INC8(ZP->wave_counter);
+    r.nz = INC8(ZP->wave_counter);
     jsr_push(TICK_RETURN);
     if (resident_at(TICK_RUN) == DISC(0x05BE, 0x36D)) {
-        r = regs_of(StepStageFrameLong(r.x, r.y), r);
+        r = regs_of(StepStageFrameLong(r.x, r.y, r.v), r);
     } else {
-        r = regs_of(StepStageFrame(r.x, r.y), r);
+        r = regs_of(StepStageFrame(r.x, r.y, r.v), r);
     }
     jsr_pop();
     r = original_call_shim(r, COMMON_A_RETURN, COMMON_A_RUN);
@@ -140,14 +139,17 @@ static StageExit run_stage_frame(uint8_t x, uint8_t y)
  * code), PlayerAndCameraFrame, StepScrollAndRunObjects and StepStageEnding.
  * Every stage overlay holds the same code here.
  * WAITS: it can wait where a handler's code does.
- * Entry: X and Y as the tick takes them. Exit: as the last piece left it.
+ * Entry: X and Y as the tick takes them; A, C and V as the caller left them, which the pieces after
+ * a tick that ends early are called with. Exit: as the last piece left it.
  */
-StageExit RunStageFrame(uint8_t x, uint8_t y)
+StageExit RunStageFrame(uint8_t a, uint8_t x, uint8_t y, bool c, bool v)
 {
-    return run_stage_frame(x, y);
+    Regs r = { a, x, y, c, v, 0 };
+
+    return run_stage_frame(r);
 }
 
 void abi_RunStageFrame(void)
 {
-    stage_exit_shim(RunStageFrame(cpu.x, cpu.y));
+    stage_exit_shim(RunStageFrame(cpu.a, cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
 }

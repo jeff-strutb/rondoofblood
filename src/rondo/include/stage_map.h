@@ -221,8 +221,8 @@ StageExit StepStageSequence(uint8_t x, uint8_t y);
 StageExit StageScriptByWave(void);
 StageExit SetHealthBarAddress(void);
 StageExit SetHealthBarAddressLong(void);
-StageExit StepStageFrame(uint8_t x, uint8_t y);
-StageExit StepStageFrameLong(uint8_t x, uint8_t y);
+StageExit StepStageFrame(uint8_t x, uint8_t y, bool v);
+StageExit StepStageFrameLong(uint8_t x, uint8_t y, bool v);
 
 /* object/hit_test.c: the overlay's hit test and its two handlers. */
 StageExit HitTestObject(uint8_t x);
@@ -237,7 +237,7 @@ StageExit HitTestAllObjectsLong(uint8_t x);
 StageExit StepStageEnding(uint8_t x, uint8_t y);
 
 /* system/stage_main.c: one frame of the stage. */
-StageExit RunStageFrame(uint8_t x, uint8_t y);
+StageExit RunStageFrame(uint8_t a, uint8_t x, uint8_t y, bool c, bool v);
 
 /* system/stage_entry.c: loads the stage section's entry record. */
 StageExit LoadStageEntry(void);

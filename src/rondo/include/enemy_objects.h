@@ -425,6 +425,20 @@ static inline bool frame_step_carry_shim(ObjArm r, bool entry)
     return ended_carry_or(frame_step_exit_shim(r), entry);
 }
 
+/* A step whose routine, when the list ended, does LDA #value and an INC kept in first. */
+static inline Ended step_then_load_inc_shim(ObjArm r, uint8_t value)
+{
+    Ended e = frame_step_exit_shim(r);
+
+    return r.step != FRAME_LIST_ENDED ? e : ended_then(ended_then(e, ended_load(value)), ended_nz(r.first));
+}
+
+/* LoadObjectRecord's exit, then an LDA #value. */
+static inline Ended record_then_load_shim(ObjArm r, uint8_t value)
+{
+    return ended_then(record_exit_shim(r), ended_load(value));
+}
+
 /* An LDY of the list index before such a step: Y stands as loaded unless the step set it. */
 static inline Ended ldy_frame_step_shim(uint8_t y, ObjArm r)
 {

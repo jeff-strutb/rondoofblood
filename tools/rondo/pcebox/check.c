@@ -483,6 +483,7 @@ static uint64_t held_ints, held_not;
 static uint64_t handover_ints;     /* interrupts the record took before the instruction a C handed over at: delivered by the C */
 static uint64_t handover_frames;   /* frame ends the record took at the place a C handed over to the original: passed by the C */
 static uint64_t retpoint_ints;
+static uint64_t retpoint_frames;  /* frame ends the record had at that return place, passed by the C */
 static uint64_t dispatch_held;    /* interrupts the record took at an RTS dispatch's target: held for the core's arrival there */   /* interrupts the record took at a resume place after original code that the core reached early: delivered by the C */
 static unsigned hold_acc;     /* data accesses the core made under the hold */
 void hold_prepare(Span *s, const Ev *closing);
@@ -1820,25 +1821,37 @@ static void original_at(uint16_t ret, uint16_t addr)
          * no time (a draft's hand-over to the original a few instructions before the RTS), so the C resumes before the
          * interrupt is due. The original took it before the instruction at the return address: it is delivered here, at
          * the record's clock, with S as it was there, as call_return_point delivers one at a C's own return. */
-        if (top && natural0 == 0 && took == 0) {
-            for (uint64_t k = call + 1; k < retidx; k++) {
-                Ev *x = evp(k);
-                uint64_t r2;
+        /* A frame end the record has at the return place itself (the callee's RTS run, before the instruction at the
+         * return address), for the same reason: the core came back before the frame ended, and the C would go on and make
+         * accesses the original made in the next frame. It is passed here with the return S (frame_pass does nothing when
+         * the core has ended that frame already). */
+        for (uint64_t k = call + 1; top && k < retidx; k++) {
+            Ev *x = evp(k);
+            uint64_t r2;
 
-                if (!x || x->type != EV_INT)
-                    continue;
-                r2 = section_end(span, k);
-                if (r2 == NO_RETURN)
-                    break;
-                if (x->pc == back && x->s == (uint8_t)(s0 + 2)) {
-                    cpu.s = (uint8_t)(s0 + 2);
-                    retpoint_ints++;
-                    hy_int_pass(span, k, r2);
-                    cpu.s = s0;
-                    break;
-                }
-                k = r2;
+            if (!x)
+                break;
+            if (x->type == EV_FRAME && x->pc == back && x->s == (uint8_t)(s0 + 2)) {
+                cpu.s = (uint8_t)(s0 + 2);
+                if (cur_frame < x->addr)
+                    retpoint_frames++;
+                frame_pass(span, k, 0);
+                cpu.s = s0;
+                continue;
             }
+            if (x->type != EV_INT)
+                continue;
+            r2 = section_end(span, k);
+            if (r2 == NO_RETURN)
+                break;
+            if (natural0 == 0 && took == 0 && x->pc == back && x->s == (uint8_t)(s0 + 2)) {
+                cpu.s = (uint8_t)(s0 + 2);
+                retpoint_ints++;
+                hy_int_pass(span, k, r2);
+                cpu.s = s0;
+                break;
+            }
+            k = r2;
         }
         span->cur = retidx + 1;
         span->nest = nest;
@@ -3121,6 +3134,16 @@ static void stop_context(uint64_t from)
     fprintf(report, "\n");
 }
 
+/* RONDO_DIAG_DRIFT=FROM[,TO]: the frames whose swapped calls print their entry clock against the record's. */
+static int drift_in(unsigned long frame)
+{
+    const char *v = getenv("RONDO_DIAG_DRIFT");
+    char *end;
+    unsigned long from = strtoul(v, &end, 10), to = *end == ',' ? strtoul(end + 1, NULL, 10) : (unsigned long)-1;
+
+    return frame >= from && frame <= to;
+}
+
 static int hy_enter(int index, const Regs *r, int kind, int keep)
 {
     uint64_t i = scan;
@@ -3160,6 +3183,11 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
         sp = NULL;
         blame_tag = -1;
     }
+    if (getenv("RONDO_DIAG_DRIFT") && drift_in(cur_frame))
+        fprintf(stderr, "DRIFT frame %lu enter %s call %llu pc %04X S%02X: core clock %llu, the record's %llu (%+lld)\n", cur_frame,
+                rondo_tags[index].name, (unsigned long long)stats[index].calls + 1, r->pc, r->s,
+                (unsigned long long)hybrid_clock_now(), (unsigned long long)e->clock,
+                (long long)hybrid_clock_now() - (long long)e->clock);
     c = ctx_new();
     memset(&c->span, 0, sizeof c->span);
     c->span.start = c->span.cur = i + 1;
@@ -3923,6 +3951,8 @@ void check_finish(void)
                     (unsigned long long)held_ints, (unsigned long long)held_not);
         fprintf(report, "interrupts at the return from original code delivered from the record (the core came back before they were due): %llu\n",
                 (unsigned long long)retpoint_ints);
+        fprintf(report, "frame ends at the return from original code passed by the C (the core came back before the frame ended): %llu\n",
+                (unsigned long long)retpoint_frames);
         fprintf(report, "interrupts at the address an RTS dispatch goes to, held for the core's arrival there: %llu\n",
                 (unsigned long long)dispatch_held);
         fprintf(report, "interrupts before the instruction a C handed over at, delivered by the C: %llu\n",

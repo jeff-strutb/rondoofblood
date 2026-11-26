@@ -1,6 +1,5 @@
-# The scene script interpreter's handlers (ScriptSound, ScriptStartList*, ScriptStartSlotKind1 to 3, ScriptPlayTrack, ScriptPlace*,
-# ScriptAdvance and the rest of that group) are entered with Y 3 (the script step's own LDY #3 before the jump), not the seeded Y.
-# Run by name, not as a whole file (other routines in attract.c are not entered with Y 3): the @seed line fixes Y 3 in the seeded cases too.
+# Cases for the 00C2 script handlers only (ScriptSound, ScriptStartList*, ScriptStartSlotKind1 to 3, ScriptPlayTrack, ScriptPlace*): entered with Y 3.
+# The @seed line fixes Y 3 in every seeded case, so use this file with --curated for those routines by name, never for a whole-file run.
 @seed y=03
 a=D6 x=54 y=03 s=F0 p=
 a=90 x=35 y=03 s=F0 p=Z

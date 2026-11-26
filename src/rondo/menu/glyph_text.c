@@ -148,6 +148,7 @@ static void get_glyph(uint8_t buffer_low, uint8_t buffer_high, uint16_t ret)
  * WAITS: no.
  * Entry: the string at zTemp00 and zTemp01. Exit: as WriteGlyphRowsTwice: A the last byte written, X
  * that plus 16, Y 8, Z and C set, N clear. V as the tile place's add left it.
+ * not checked: agrees for 40 events, then differs inside the card's sjis_to_font_index.
  */
 Exit DrawGlyphPair(void)
 {
@@ -258,6 +259,7 @@ void abi_DrawGlyphPair(void)
  * WAITS: no.
  * Entry: the string at zTemp00 and zTemp01. Exit: A 0, Z set, N clear; X, Y, C and V as the last pair's
  * map rows left them, or as the pointer's last step left them when there was no pair.
+ * not checked: matches only with the callees as filed wrappers on both sides.
  */
 Exit DrawGlyphText(void)
 {

@@ -115,6 +115,7 @@ static void load_exit_shim(uint8_t value)
  * WAITS: no.
  * Entry: X the doubled sub-mode, Y kept. Exit: A, X and Y 0, N and Z from the new sub-mode, C and V
  * as ex_scrsiz leaves them.
+ * not checked: the draft only ran a backup read that returns 0; the other results are untraced.
  */
 Exit TitleSetUp(uint8_t kept_x, uint8_t kept_y)
 {
@@ -279,6 +280,7 @@ static void title_logo_start_exit_shim(LogoStart start)
  * this overlay does not hold runs as the original code.
  * WAITS: no.
  * Entry: Y kept. Exit: as the handler leaves them.
+ * not checked: the START skip arm (the 3 bytes at 8024) has no draft code.
  */
 Exit TitleStep(uint8_t kept_y)
 {
@@ -344,6 +346,7 @@ void abi_TitleStep(void)
  * HOW: A jump to TitleStep.
  * WAITS: no.
  * Entry: Y kept. Exit: as TitleStep.
+ * not checked: as TitleStep.
  */
 Exit TitleEntry(uint8_t kept_y)
 {
@@ -364,6 +367,7 @@ void abi_TitleEntry(void)
  * hold runs as the original code.
  * WAITS: no.
  * Entry: Y kept. Exit: as the handler leaves them.
+ * not checked: one case reaches the skip arm of TitleStep.
  */
 Exit TitleScreenStep(uint8_t kept_y)
 {
@@ -466,6 +470,7 @@ void abi_AttractWaitStart(void)
  * WAITS: no.
  * Entry: X the doubled sub-mode, Y kept. Exit, no start: A 0, N and Z set, the rest as ScriptStep left them.
  * With start: A 5, N and Z clear, as SoundCommand leaves the rest.
+ * not checked: one case differs inside SoundDriverCommand (the sound driver's own frames).
  */
 AttractStart AttractStartCheck(uint8_t index, uint8_t kept_y)
 {
@@ -596,6 +601,7 @@ void abi_AttractBlink(void)
  * hold runs as the original code.
  * WAITS: yes, through AttractBegin and AttractEndCountdown, which reach ResetGameState.
  * Entry: Y kept. Exit: as the handler leaves them.
+ * not checked: two cases reach the skip arm of TitleStep.
  */
 Exit AttractStep(uint8_t kept_y)
 {

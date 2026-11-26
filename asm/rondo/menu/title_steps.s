@@ -4,6 +4,7 @@
 ; HOW: A jump to TitleStep.
 ; WAITS: no.
 ; Entry: Y kept. Exit: as TitleStep.
+; not checked: as TitleStep.
 TitleEntry:
     jmp TitleStep
 
@@ -18,6 +19,7 @@ TitleEntry:
 ; this overlay does not hold runs as the original code.
 ; WAITS: no.
 ; Entry: Y kept. Exit: as the handler leaves them.
+; not checked: the START skip arm (the 3 bytes at 8024) has no draft code.
 TitleStep:
     lda z:zGameSubMode
     beq TitleStep_at0
@@ -47,6 +49,7 @@ TitleStep_at0:
 ; WAITS: no.
 ; Entry: X the doubled sub-mode, Y kept. Exit: A, X and Y 0, N and Z from the new sub-mode, C and V
 ; as ex_scrsiz leaves them.
+; not checked: the draft only ran a backup read that returns 0; the other results are untraced.
 TitleSetUp:
     jsr VecSoundStopAll
     jsr VecBackupRead
@@ -87,6 +90,7 @@ TitleSetUp_at1:
 ; hold runs as the original code.
 ; WAITS: no.
 ; Entry: Y kept. Exit: as the handler leaves them.
+; not checked: one case reaches the skip arm of TitleStep.
 TitleScreenStep:
     lda z:zGameSubMode
     asl a
@@ -136,7 +140,6 @@ TitleSoundBegin:
     lda a:BiosJoyTrigger
     and #$09
     beq $826A
-TitleSoundBegin_at0:
     lda a:$3B81
     eor #$01
     ora a:$3B80
@@ -159,6 +162,7 @@ TitleSoundBegin_at0:
 ; hold runs as the original code.
 ; WAITS: yes, through AttractBegin and AttractEndCountdown, which reach ResetGameState.
 ; Entry: Y kept. Exit: as the handler leaves them.
+; not checked: two cases reach the skip arm of TitleStep.
 AttractStep:
     lda #$07
     clc
@@ -208,6 +212,7 @@ AttractWaitStart:
 ; WAITS: no.
 ; Entry: X the doubled sub-mode, Y kept. Exit, no start: A 0, N and Z set, the rest as ScriptStep left them.
 ; With start: A 5, N and Z clear, as SoundCommand leaves the rest.
+; not checked: one case differs inside SoundDriverCommand (the sound driver's own frames).
 AttractStartCheck:
     jsr AttractFrameTick
     jsr ScriptStep

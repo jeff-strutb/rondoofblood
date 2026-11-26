@@ -22,6 +22,7 @@ AttractEntry:
 ; HOW: A jump to StepSceneObjects.
 ; WAITS: no.
 ; Entry: nothing. Exit: as StepSceneObjects.
+; not checked: as StepSceneObjects.
 SceneObjectsEntry:
     jmp StepSceneObjects
 
@@ -32,6 +33,7 @@ SceneObjectsEntry:
 ; WAITS: no.
 ; Entry: nothing. Exit: X $58, Z and C set, N clear (the loop's last compare); A the last slot's kind or what its handler left;
 ; Y and V as the last handler left them.
+; not checked: as EndingObjectsStep: only the idle loop is compared (curated/scene_objects_idle.txt).
 StepSceneObjects:
     clx
 StepSceneObjects_at1:

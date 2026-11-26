@@ -1081,9 +1081,22 @@ DiscLog LoadSceneScript(uint8_t scene)
     return log;
 }
 
+/* LoadSceneScript's exit: the record's multiply first and then Y 4 (the list's last byte read), when the log still holds it; the later calls over that. */
+static void scene_script_exit_shim(const DiscLog *log)
+{
+    if (log->count == 0 || log->count > DISC_CALLS_KEPT) {
+        disc_log_exit_shim(log);
+        return;
+    }
+    disc_call_exit_shim(&log->calls[0]);
+    cpu.y = 4;
+    for (unsigned i = 1; i < log->count; i++)
+        disc_call_exit_shim(&log->calls[i]);
+}
+
 void abi_LoadSceneScript(void)
 {
     DiscLog log = LoadSceneScript(cpu.a);
 
-    disc_log_exit_shim(&log);
+    scene_script_exit_shim(&log);
 }

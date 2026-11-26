@@ -1,0 +1,326 @@
+# Every sound command by unit calls of SoundDriverCommand (76:B284), from the sound test screen of sound_test.txt (the driver and the songs resident):
+# the music commands $55 to $61 for 900 frames each, $62 (a voice up), the balance tables $FC and $FD, every effect $00 to $54 for 45 frames, the fade $FE and the stop $FF.
+# The pause (SoundCheckPause: bit 0 of zPaused, $203B) is poked on for 30 frames while music $55 plays, then off.
+wait 120
+press RUN 6
+wait 7280
+press RUN 6
+wait 300
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press I 6
+wait 120
+press I 6
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press DOWN 4
+wait 20
+press I 6
+wait 120
+press UP 4
+wait 20
+press UP 4
+wait 20
+press UP 4
+wait 20
+press I 6
+wait 120
+wait 60
+press DOWN 4
+wait 30
+press DOWN 4
+wait 30
+press I 6
+wait 120
+press I 6
+wait 600
+shot t01
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t02
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t03
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t04
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t05
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t06
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t07
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t08
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t09
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t10
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t11
+press RIGHT 4
+wait 60
+press I 6
+wait 600
+shot t12
+call SoundDriverCommand A=FF
+wait 60
+call SoundDriverCommand A=55
+wait 900
+call SoundDriverCommand A=56
+wait 900
+call SoundDriverCommand A=57
+wait 900
+call SoundDriverCommand A=58
+wait 900
+call SoundDriverCommand A=59
+wait 900
+call SoundDriverCommand A=5A
+wait 900
+call SoundDriverCommand A=5B
+wait 900
+call SoundDriverCommand A=5C
+wait 900
+call SoundDriverCommand A=5D
+wait 900
+call SoundDriverCommand A=5E
+wait 900
+call SoundDriverCommand A=5F
+wait 900
+call SoundDriverCommand A=60
+wait 900
+call SoundDriverCommand A=61
+wait 900
+call SoundDriverCommand A=62
+wait 300
+call SoundDriverCommand A=FC
+wait 60
+call SoundDriverCommand A=FD
+wait 60
+call SoundDriverCommand A=00
+wait 45
+call SoundDriverCommand A=01
+wait 45
+call SoundDriverCommand A=02
+wait 45
+call SoundDriverCommand A=03
+wait 45
+call SoundDriverCommand A=04
+wait 45
+call SoundDriverCommand A=05
+wait 45
+call SoundDriverCommand A=06
+wait 45
+call SoundDriverCommand A=07
+wait 45
+call SoundDriverCommand A=08
+wait 45
+call SoundDriverCommand A=09
+wait 45
+call SoundDriverCommand A=0A
+wait 45
+call SoundDriverCommand A=0B
+wait 45
+call SoundDriverCommand A=0C
+wait 45
+call SoundDriverCommand A=0D
+wait 45
+call SoundDriverCommand A=0E
+wait 45
+call SoundDriverCommand A=0F
+wait 45
+call SoundDriverCommand A=10
+wait 45
+call SoundDriverCommand A=11
+wait 45
+call SoundDriverCommand A=12
+wait 45
+call SoundDriverCommand A=13
+wait 45
+call SoundDriverCommand A=14
+wait 45
+call SoundDriverCommand A=15
+wait 45
+call SoundDriverCommand A=16
+wait 45
+call SoundDriverCommand A=17
+wait 45
+call SoundDriverCommand A=18
+wait 45
+call SoundDriverCommand A=19
+wait 45
+call SoundDriverCommand A=1A
+wait 45
+call SoundDriverCommand A=1B
+wait 45
+call SoundDriverCommand A=1C
+wait 45
+call SoundDriverCommand A=1D
+wait 45
+call SoundDriverCommand A=1E
+wait 45
+call SoundDriverCommand A=1F
+wait 45
+call SoundDriverCommand A=20
+wait 45
+call SoundDriverCommand A=21
+wait 45
+call SoundDriverCommand A=22
+wait 45
+call SoundDriverCommand A=23
+wait 45
+call SoundDriverCommand A=24
+wait 45
+call SoundDriverCommand A=25
+wait 45
+call SoundDriverCommand A=26
+wait 45
+call SoundDriverCommand A=27
+wait 45
+call SoundDriverCommand A=28
+wait 45
+call SoundDriverCommand A=29
+wait 45
+call SoundDriverCommand A=2A
+wait 45
+call SoundDriverCommand A=2B
+wait 45
+call SoundDriverCommand A=2C
+wait 45
+call SoundDriverCommand A=2D
+wait 45
+call SoundDriverCommand A=2E
+wait 45
+call SoundDriverCommand A=2F
+wait 45
+call SoundDriverCommand A=30
+wait 45
+call SoundDriverCommand A=31
+wait 45
+call SoundDriverCommand A=32
+wait 45
+call SoundDriverCommand A=33
+wait 45
+call SoundDriverCommand A=34
+wait 45
+call SoundDriverCommand A=35
+wait 45
+call SoundDriverCommand A=36
+wait 45
+call SoundDriverCommand A=37
+wait 45
+call SoundDriverCommand A=38
+wait 45
+call SoundDriverCommand A=39
+wait 45
+call SoundDriverCommand A=3A
+wait 45
+call SoundDriverCommand A=3B
+wait 45
+call SoundDriverCommand A=3C
+wait 45
+call SoundDriverCommand A=3D
+wait 45
+call SoundDriverCommand A=3E
+wait 45
+call SoundDriverCommand A=3F
+wait 45
+call SoundDriverCommand A=40
+wait 45
+call SoundDriverCommand A=41
+wait 45
+call SoundDriverCommand A=42
+wait 45
+call SoundDriverCommand A=43
+wait 45
+call SoundDriverCommand A=44
+wait 45
+call SoundDriverCommand A=45
+wait 45
+call SoundDriverCommand A=46
+wait 45
+call SoundDriverCommand A=47
+wait 45
+call SoundDriverCommand A=48
+wait 45
+call SoundDriverCommand A=49
+wait 45
+call SoundDriverCommand A=4A
+wait 45
+call SoundDriverCommand A=4B
+wait 45
+call SoundDriverCommand A=4C
+wait 45
+call SoundDriverCommand A=4D
+wait 45
+call SoundDriverCommand A=4E
+wait 45
+call SoundDriverCommand A=4F
+wait 45
+call SoundDriverCommand A=50
+wait 45
+call SoundDriverCommand A=51
+wait 45
+call SoundDriverCommand A=52
+wait 45
+call SoundDriverCommand A=53
+wait 45
+call SoundDriverCommand A=54
+wait 45
+call SoundDriverCommand A=55
+wait 300
+poke 203B 01
+wait 30
+poke 203B 00
+wait 60
+call SoundDriverCommand A=FE
+wait 600
+call SoundDriverCommand A=FF
+wait 60
+dump silent

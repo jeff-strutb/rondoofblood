@@ -18,7 +18,10 @@
 #include "ram.h"
 #include "access.h"
 #include "routines.h"
+#include "front_end.h"
 #include "old_card.h"
+
+void abi_NextRandom(void);   /* math/trig.c: the kernel routine the copy at $4692 duplicates */
 
 enum {
     VDC_REG_BXR = 0x07, VDC_REG_BYR = 0x08,
@@ -41,7 +44,16 @@ enum {
     MIRROR_OFFSETS = 0x4453,           /* $F0 and $E0: a part's X mirrored, by its width bit; then $10 and 0, the
                                         * left edge a part at X high byte 0 must reach, by the same bit */
     OPENING_TRACK = 0x4498,            /* PlayCdTrack's six bytes of the card's play arguments */
-    CD_PLAY_FROM = 0x40, CD_PLAY_REPEAT_MODE = 0x41
+    CD_PLAY_FROM = 0x40, CD_PLAY_REPEAT_MODE = 0x41,
+    MPR2 = 0x04, MPR3 = 0x08, MPR4 = 0x10, MPR5 = 0x20,
+    CARD_RAM_BASE = 0xFFF5,            /* the card's byte naming its first CD RAM bank ($80 on card 3.0) */
+    CARD_RESET = 0xE000,
+    CARD_E063 = 0xE063, CARD_E069 = 0xE069, CARD_E06F = 0xE06F, CARD_E072 = 0xE072, CARD_E07B = 0xE07B,
+    CARD_E096 = 0xE096, CARD_E099 = 0xE099, CARD_E09F = 0xE09F, CARD_E0A2 = 0xE0A2, CARD_E009 = 0xE009,
+    CARD_E05D = 0xE05D, CARD_ARG_2223 = 0x2223, CARD_ARG_2224 = 0x2224,
+    VECTOR_SOFT_RESET = 0x06, SOFT_RESET_RUN = 0x4225,
+    TRIGGER_RUN = 0x08,
+    ALL_OBJECTS = 0x58
 };
 
 static void follow_exit_shim(FollowArm r);
@@ -54,6 +66,306 @@ static void demo_player_regs_shim(PlayerArm r)
         cpu.x = PLAYER;
     }
     player_exit_shim(r);
+}
+
+/* Register shims for the calls the main program makes into the card, each named for the instructions before the JSR
+ * that set what the card is handed (the card's own code reads them). */
+static void lda_shim(uint8_t a)           /* LDA #: A, N and Z */
+{
+    cpu.a = a;
+    abi_nz(a);
+}
+
+static void cla_shim(void)                /* CLA: flags kept */
+{
+    cpu.a = 0;
+}
+
+static void cla_clx_shim(void)            /* CLA, CLX */
+{
+    cpu.a = 0;
+    cpu.x = 0;
+}
+
+static void lda_ldx_ldy_shim(uint8_t a, uint8_t x, uint8_t y)  /* N and Z from the LDY */
+{
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    abi_nz(y);
+}
+
+static void cla_ldx_ldy_shim(uint8_t x, uint8_t y)
+{
+    cpu.a = 0;
+    cpu.x = x;
+    cpu.y = y;
+    abi_nz(y);
+}
+
+static void nz_shim(uint8_t value)        /* a store or an INC of memory: N and Z from the byte */
+{
+    abi_nz(value);
+}
+
+static void cpx_shim(uint8_t x, uint8_t operand)
+{
+    cpu.x = x;
+    abi_nz((uint8_t)(x - operand));
+    abi_flag(P_C, x >= operand);
+}
+
+/* TAX after the card's cd_read: its answer, into X, N and Z from it. */
+static uint8_t tax_answer_shim(void)
+{
+    cpu.x = cpu.a;
+    abi_nz(cpu.a);
+    return cpu.a;
+}
+
+/* The TIA, which pushes and pulls Y, A and X as the registers stand. */
+static void tia_shim(uint16_t src, uint16_t dst, uint16_t len)
+{
+    block_move_tia(src, dst, len, cpu.a, cpu.x, cpu.y);
+}
+
+/* Every object slot emptied through the program's copy of ClearObject: X from 0 to $57, then the CPX's flags. */
+static void clear_all_objects(uint16_t ret)
+{
+    uint8_t slot = 0;
+
+    do {
+        jsr_push(ret);
+        ClearObject(slot);
+        jsr_pop();
+        slot++;
+    } while (slot != ALL_OBJECTS);
+    cpx_shim(slot, ALL_OBJECTS);
+}
+
+/* The six scroll bytes the program keeps into band 0's (ScrollMain to ScrollBands), each read then written. */
+static void copy_scroll_to_band(void)
+{
+    uint8_t value;
+
+    value = RD8(SCROLL->x_frac[0]);
+    WR8(BANDS->band_first[0], value);
+    value = RD8(SCROLL->x_lo[0]);
+    WR8(BANDS->bgx_lo[0], value);
+    value = RD8(SCROLL->x_hi[0]);
+    WR8(BANDS->bgx_hi[0], value);
+    value = RD8(SCROLL->y_frac[0]);
+    WR8(BANDS->band_fourth[0], value);
+    value = RD8(SCROLL->y_lo[0]);
+    WR8(BANDS->bgy_lo[0], value);
+    value = RD8(SCROLL->y_hi[0]);
+    WR8(BANDS->bgy_hi[0], value);
+    lda_shim(value);
+}
+
+/* The screen's VRAM address for the card ($1000 at $2214-$2215), then the card's entry at $E09F with A $10. */
+static void card_e09f(uint16_t ret)
+{
+    WR16_LH(BIOS->screen, 0x1000);
+    lda_shim(0x10);
+    call_orig(ret, CARD_E09F);
+}
+
+/* The VDC's BXR and BYR zeroed with interrupts off, by ST0, ST1 and ST2 straight to the ports. */
+static void zero_background_scroll(void)
+{
+    /* SEI */
+    st0(0x07);
+    st1(0x00);
+    st2(0x00);
+    st0(0x08);
+    st1(0x00);
+    st2(0x00);
+    cli();
+}
+
+/* The card's arguments at $2220 to $2225 and $221F, then its entry at $E0E4 with A 2. */
+static void card_e0e4(uint16_t ret, uint8_t first, uint8_t second)
+{
+    wr8(CARD_ARG_2220, 0xDF);
+    wr8(CARD_ARG_2221, first);
+    wr8(CARD_ARG_2222, 0x10);
+    wr8(CARD_ARG_2223, 0xDF);
+    wr8(CARD_ARG_2224, second);
+    wr8(CARD_ARG_2225, 0x10);
+    wr8(CARD_ARG_221F, 0x02);
+    lda_shim(0x02);
+    call_orig(ret, CARD_E0E4);
+}
+
+/*
+ * @routine 0023:000 OldCardMain
+ * @run 80:4000
+ * WHAT IT DOES: The program from where the boot program lands: empties the objects and the scroll, sets the screen
+ * through the card, loads (the card's entry at $E0E4 with $57 and $59), maps the CD RAM banks from $FFF5's byte,
+ * asks the card's cd_read (sector 3, its arguments in zp $F8 to $FF as given) until it answers zero, starts the
+ * CD track, writes the title's tiles (8 KB from $7FDF by TIA to the VDC's data port), puts the soft reset's vector
+ * at $4225, and runs the title a frame at a time until RUN is pressed; then empties the objects again, loads the
+ * player screen ($53 and $55), sets up the player and object $20, and runs that screen a frame at a time for good.
+ * HOW: Calls of the card's entries with the registers its code is handed (most have no typed C yet), and of this
+ * program's routines by their frames. The frame loops wait on the card's entry at $E07B.
+ * WAITS: yes, in the card's entries it calls (not read yet); it never returns.
+ * Entry: from the boot program's jump, MPR2 to MPR6 $80 to $84. Exit: never.
+ */
+void OldCardMain(void)
+{
+    uint8_t bank, answer, trigger, value;
+
+    clear_all_objects(0x4004);
+    WR8(SCROLL->x_frac[0], 0);
+    WR8(SCROLL->x_lo[0], 0);
+    WR8(SCROLL->x_hi[0], 0);
+    WR8(SCROLL->y_frac[0], 0);
+    WR8(SCROLL->y_lo[0], 0);
+    WR8(SCROLL->y_hi[0], 0);
+    WR8(SCROLL->x_frac[1], 0);
+    lda_shim(0x02);
+    call_orig(0x4023, CARD_E069);                   /* ex_scrsiz */
+    cla_ldx_ldy_shim(0x20, 0x1E);
+    call_orig(0x402B, CARD_E06F);                   /* ex_scrmod */
+    WR8(ZP->bios_irq_disable, 0);
+    call_orig(0x4030, CARD_E099);
+    call_orig(0x4033, CARD_E07B);
+    cla_shim();
+    call_orig(0x4037, CARD_E072);
+    card_e0e4(0x405D, 0x57, 0x59);
+    bank = rd8(CARD_RAM_BASE);
+    WR8(ZP->ram_base_bank, bank);
+    tam(MPR2, bank);
+    tam(MPR3, (uint8_t)(bank + 1));
+    tam(MPR4, (uint8_t)(bank + 2));
+    tam(MPR5, (uint8_t)(bank + 3));
+    do {
+        wr8(zBiosCl, 0x00);
+        wr8(zBiosCh, 0x00);
+        wr8(zBiosDl, 0x03);
+        wr8(zBiosDh, 0xFE);
+        wr8(zBiosBl, 0x00);
+        wr8(zBiosBh, 0x10);
+        wr8(zBiosAl, 0x00);
+        wr8(zBiosAh, 0xC0);
+        lda_shim(0xC0);
+        call_orig(0x4090, CARD_E009);               /* cd_read */
+        answer = tax_answer_shim();
+    } while (answer != 0);
+    if (call_frame(0x4096, abi_PlayCdTrack))
+        return;
+    cla_clx_shim();
+    call_orig(0x409B, CARD_E0AE);
+    tia_shim(0x7FDF, ADDR_OF(VDC->data_lo), 0x2000);
+    zero_background_scroll();
+    WR16_LH(BIOS->screen, 0x1000);
+    lda_shim(0x10);
+    call_orig(0x40BB, CARD_E0A2);                   /* ex_satclr */
+    card_e09f(0x40C6);
+    call_orig(0x40C9, CARD_E07B);
+    if (call_frame(0x40CC, abi_SpawnTitleObjects))
+        return;
+    call_orig(0x40CF, CARD_E096);
+    if (call_frame(0x40D2, abi_DrawSprites))
+        return;
+    card_e09f(0x40DD);
+    call_orig(0x40E0, CARD_E07B);
+    lda_ldx_ldy_shim(VECTOR_SOFT_RESET, (uint8_t)SOFT_RESET_RUN, (uint8_t)(SOFT_RESET_RUN >> 8));
+    call_orig(0x40E9, CARD_E05D);                   /* ex_setvec */
+    for (;;) {
+        call_orig(0x40EC, CARD_E063);               /* ex_joysns */
+        nz_shim(INC8(ZP->frame_tick));
+        call_orig(0x40F1, CARD_E07B);
+        copy_scroll_to_band();
+        if (call_frame(0x4118, abi_SetBackgroundScroll))
+            return;
+        value = RD8(SCROLL->x_hi[0]);
+        value = (uint8_t)((value + 1) & 0x03);
+        WR8(SCROLL->x_hi[0], value);
+        lda_shim(value);
+        if (call_frame(0x4124, abi_NextRandom))     /* the copy at $4692 */
+            return;
+        if (call_frame(0x4127, abi_StepTitleTimer))
+            return;
+        trigger = rd8(BiosJoyTrigger);
+        trigger = (uint8_t)(trigger & TRIGGER_RUN);
+        lda_shim(trigger);
+        if (trigger != 0)
+            break;
+        if (call_frame(0x4131, abi_DrawSprites))
+            return;
+        card_e09f(0x413C);
+    }
+    call_orig(0x4141, CARD_E099);
+    call_orig(0x4144, CARD_E07B);
+    WR8(SCROLL->x_hi[0], 0);
+    clear_all_objects(0x414B);
+    cla_shim();
+    call_orig(0x4154, CARD_E072);
+    card_e0e4(0x417A, 0x53, 0x55);
+    cla_clx_shim();
+    call_orig(0x417F, CARD_E0AE);
+    tia_shim(0x5FDF, ADDR_OF(VDC->data_lo), 0x2000);
+    zero_background_scroll();
+    WR16_LH(BIOS->screen, 0x1000);
+    lda_shim(0x10);
+    call_orig(0x419F, CARD_E0A2);                   /* ex_satclr */
+    card_e09f(0x41AA);
+    call_orig(0x41AD, CARD_E07B);
+    if (call_frame(0x41B0, abi_InitPlayerObject))
+        return;
+    call_orig(0x41B3, 0x4846);
+    call_orig(0x41B6, 0x4AFC);
+    call_orig(0x41B9, 0x49A2);
+    WR8(OBJ->frame[DEMO_TIMER], 0x37);
+    WR8(OBJ->x_lo[DEMO_TIMER], 0x80);
+    WR8(OBJ->y_lo[DEMO_TIMER], 0x58);
+    WR8(OBJ->f3510[DEMO_TIMER], 0x02);
+    lda_shim(0x02);
+    call_orig(0x41D0, CARD_E096);
+    if (call_frame(0x41D3, abi_DrawSprites))
+        return;
+    card_e09f(0x41DE);
+    call_orig(0x41E1, CARD_E07B);
+    for (;;) {
+        call_orig(0x41E4, CARD_E063);               /* ex_joysns */
+        nz_shim(INC8(ZP->frame_tick));
+        call_orig(0x41E9, CARD_E07B);
+        copy_scroll_to_band();
+        if (call_frame(0x4210, abi_SetBackgroundScroll))
+            return;
+        if (call_frame(0x4213, abi_NextRandom))     /* the copy at $4692 */
+            return;
+        if (call_frame(0x4215, abi_StepDemoFrame))  /* BSR */
+            return;
+        if (call_frame(0x4218, abi_DrawSprites))
+            return;
+        card_e09f(0x4223);
+    }
+}
+
+void abi_OldCardMain(void)
+{
+    OldCardMain();
+}
+
+/*
+ * @routine 0023:225 OldCardSoftReset
+ * @run 80:4225
+ * WHAT IT DOES: The soft reset's handler the main program installs (ex_setvec, vector 6): the card's reset.
+ * HOW: JMP $E000.
+ * WAITS: no; it does not return.
+ * Entry: from the card's soft reset. Exit: never.
+ */
+void OldCardSoftReset(void)
+{
+    call_original(CARD_RESET);
+}
+
+void abi_OldCardSoftReset(void)
+{
+    OldCardSoftReset();
 }
 
 /*

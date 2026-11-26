@@ -1,3 +1,252 @@
+; @routine 0023:000 OldCardMain
+; @run 80:4000
+; WHAT IT DOES: The program from where the boot program lands: empties the objects and the scroll, sets the screen
+; through the card, loads (the card's entry at $E0E4 with $57 and $59), maps the CD RAM banks from $FFF5's byte,
+; asks the card's cd_read (sector 3, its arguments in zp $F8 to $FF as given) until it answers zero, starts the
+; CD track, writes the title's tiles (8 KB from $7FDF by TIA to the VDC's data port), puts the soft reset's vector
+; at $4225, and runs the title a frame at a time until RUN is pressed; then empties the objects again, loads the
+; player screen ($53 and $55), sets up the player and object $20, and runs that screen a frame at a time for good.
+; HOW: Calls of the card's entries with the registers its code is handed (most have no typed C yet), and of this
+; program's routines by their frames. The frame loops wait on the card's entry at $E07B.
+; WAITS: yes, in the card's entries it calls (not read yet); it never returns.
+; Entry: from the boot program's jump, MPR2 to MPR6 $80 to $84. Exit: never.
+OldCardMain:
+    clx
+OldCardMain_at0:
+    jsr $4584
+    inx
+    cpx #$58
+    bne OldCardMain_at0
+    stz a:ScrollXFrac
+    stz a:ScrollXLo
+    stz a:ScrollXHi
+    stz a:ScrollYFrac
+    stz a:ScrollYLo
+    stz a:ScrollYHi
+    stz a:ScrollXFrac+1
+    lda #$02
+    jsr BiosExScrSiz
+    cla
+    ldx #$20
+    ldy #$1E
+    jsr BiosE06F
+    stz z:BiosIrqDisable
+    jsr $E099
+    jsr $E07B
+    cla
+    jsr $E072
+    lda #$DF
+    sta a:$2220
+    lda #$57
+    sta a:$2221
+    lda #$10
+    sta a:$2222
+    lda #$DF
+    sta a:$2223
+    lda #$59
+    sta a:$2224
+    lda #$10
+    sta a:$2225
+    lda #$02
+    sta a:$221F
+    jsr $E0E4
+    lda a:$FFF5
+    sta z:zRamBaseBank
+    tam #$04
+    inc a
+    tam #$08
+    inc a
+    tam #$10
+    inc a
+    tam #$20
+OldCardMain_at1:
+    lda #$00
+    sta z:zBiosCl
+    lda #$00
+    sta z:zBiosCh
+    lda #$03
+    sta z:zBiosDl
+    lda #$FE
+    sta z:zBiosDh
+    lda #$00
+    sta z:zBiosBl
+    lda #$10
+    sta z:zBiosBh
+    lda #$00
+    sta z:zBiosAl
+    lda #$C0
+    sta z:zBiosAh
+    jsr BiosCdRead
+    tax
+    bne OldCardMain_at1
+    jsr PlayCdTrack
+    cla
+    clx
+    jsr $E0AE
+    tia $7FDF,VDC_DATA_LO,$2000
+    sei
+    st0 #$07
+    st1 #$00
+    st2 #$00
+    st0 #$08
+    st1 #$00
+    st2 #$00
+    cli
+    stz a:BiosScreenLo
+    lda #$10
+    sta a:BiosScreenHi
+    jsr BiosE0A2
+    stz a:BiosScreenLo
+    lda #$10
+    sta a:BiosScreenHi
+    jsr $E09F
+    jsr $E07B
+    jsr SpawnTitleObjects
+    jsr $E096
+    jsr DrawSprites
+    stz a:BiosScreenLo
+    lda #$10
+    sta a:BiosScreenHi
+    jsr $E09F
+    jsr $E07B
+    lda #$06
+    ldx #$25
+    ldy #$42
+    jsr BiosE05D
+OldCardMain_at3:
+    jsr BiosE063
+    inc z:zFrameTick
+    jsr $E07B
+    lda a:ScrollXFrac
+    sta a:ScrollBandFirst
+    lda a:ScrollXLo
+    sta a:ScrollBgxLo
+    lda a:ScrollXHi
+    sta a:ScrollBgxHi
+    lda a:ScrollYFrac
+    sta a:ScrollBandFourth
+    lda a:ScrollYLo
+    sta a:ScrollBgyLo
+    lda a:ScrollYHi
+    sta a:ScrollBgyHi
+    jsr SetBackgroundScroll
+    lda a:ScrollXHi
+    inc a
+    and #$03
+    sta a:ScrollXHi
+    jsr $4692
+    jsr StepTitleTimer
+    lda a:BiosJoyTrigger
+    and #$08
+    bne OldCardMain_at2
+    jsr DrawSprites
+    stz a:BiosScreenLo
+    lda #$10
+    sta a:BiosScreenHi
+    jsr $E09F
+    bra OldCardMain_at3
+OldCardMain_at2:
+    jsr $E099
+    jsr $E07B
+    stz a:ScrollXHi
+    clx
+OldCardMain_at4:
+    jsr $4584
+    inx
+    cpx #$58
+    bne OldCardMain_at4
+    cla
+    jsr $E072
+    lda #$DF
+    sta a:$2220
+    lda #$53
+    sta a:$2221
+    lda #$10
+    sta a:$2222
+    lda #$DF
+    sta a:$2223
+    lda #$55
+    sta a:$2224
+    lda #$10
+    sta a:$2225
+    lda #$02
+    sta a:$221F
+    jsr $E0E4
+    cla
+    clx
+    jsr $E0AE
+    tia $5FDF,VDC_DATA_LO,$2000
+    sei
+    st0 #$07
+    st1 #$00
+    st2 #$00
+    st0 #$08
+    st1 #$00
+    st2 #$00
+    cli
+    stz a:BiosScreenLo
+    lda #$10
+    sta a:BiosScreenHi
+    jsr BiosE0A2
+    stz a:BiosScreenLo
+    lda #$10
+    sta a:BiosScreenHi
+    jsr $E09F
+    jsr $E07B
+    jsr InitPlayerObject
+    jsr $4846
+    jsr $4AFC
+    jsr $49A2
+    lda #$37
+    sta a:$2A88
+    lda #$80
+    sta a:$2BE8
+    lda #$58
+    sta a:$2CF0
+    lda #$02
+    sta a:$3530
+    jsr $E096
+    jsr DrawSprites
+    stz a:BiosScreenLo
+    lda #$10
+    sta a:BiosScreenHi
+    jsr $E09F
+    jsr $E07B
+OldCardMain_at5:
+    jsr BiosE063
+    inc z:zFrameTick
+    jsr $E07B
+    lda a:ScrollXFrac
+    sta a:ScrollBandFirst
+    lda a:ScrollXLo
+    sta a:ScrollBgxLo
+    lda a:ScrollXHi
+    sta a:ScrollBgxHi
+    lda a:ScrollYFrac
+    sta a:ScrollBandFourth
+    lda a:ScrollYLo
+    sta a:ScrollBgyLo
+    lda a:ScrollYHi
+    sta a:ScrollBgyHi
+    jsr SetBackgroundScroll
+    jsr $4692
+    bsr StepDemoFrame
+    jsr DrawSprites
+    stz a:BiosScreenLo
+    lda #$10
+    sta a:BiosScreenHi
+    jsr $E09F
+    bra OldCardMain_at5
+
+; @routine 0023:225 OldCardSoftReset
+; @run 80:4225
+; WHAT IT DOES: The soft reset's handler the main program installs (ex_setvec, vector 6): the card's reset.
+; HOW: JMP $E000.
+; WAITS: no; it does not return.
+; Entry: from the card's soft reset. Exit: never.
+OldCardSoftReset:
+    jmp $E000
+
 ; @routine 0023:228 StepDemoFrame
 ; @run 80:4228
 ; WHAT IT DOES: One frame of the player screen: counts down object $20's timer (its $34B8 byte, then its $3510 byte

@@ -42,12 +42,6 @@ static inline void t_tst(Trk *t, uint8_t mask, uint8_t memory)
     t->z = (mask & memory) == 0;
 }
 
-/* TSB or TRB with A the mask just loaded: N and V from the old byte, Z from A AND it. */
-static inline void t_tb(Trk *t, uint8_t old)
-{
-    t_tst(t, t->a, old);
-}
-
 static inline void t_cmp(Trk *t, uint8_t value, uint8_t operand)
 {
     t_nz(t, (uint8_t)(value - operand));
@@ -106,11 +100,16 @@ static inline CardExit t_exit(const Trk *t)
     return e;
 }
 
-/* LDA #mask; TRB or TSB $1802 (or the port named): the old byte is what the flags come from. */
-static inline void t_mask(Trk *t, uint8_t mask, uint8_t old)
+/* LDA #mask; TSB or TRB: A the mask, N and V from the old byte, Z set when the byte written is zero (TSB: old OR mask; TRB: old AND NOT mask). */
+static inline void t_mask(Trk *t, uint8_t mask, uint8_t old, bool set)
 {
+    uint8_t written = set ? (uint8_t)(old | mask) : (uint8_t)(old & ~mask);
+
     t_a(t, mask);
-    t_tb(t, old);
+    t->n = (old & 0x80) != 0;
+    t->v = (old & 0x40) != 0;
+    t->v_set = true;
+    t->z = written == 0;
 }
 
 

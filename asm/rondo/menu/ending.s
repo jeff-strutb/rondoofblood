@@ -967,8 +967,8 @@ EndingNothing:
 ; HOW: OBJ->life_timer counted down; when it is not zero the return address of the call is pulled off the
 ; stack (two PLA) before the RTS.
 ; WAITS: no.
-; Entry: X the object, the caller's frame on the stack. Exit: N and Z from the timer (it returns the timer), Z set when
-; it has run out; A, X, Y and C kept.
+; Entry: X the object, the caller's frame on the stack. Exit: while the hold lasts A the high byte of the caller's return
+; address (the last PLA), N and Z from it; when it has run out N and Z from the timer (zero). X, Y and C kept.
 ; not checked: it pulls its caller's frame and cannot run alone; its callers compare it.
 EndingHoldTimer:
     dec a:OBJ_34B8,x

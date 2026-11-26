@@ -13,7 +13,7 @@ jump_user_irq2:
 ; WAITS: through cd_interrupt.
 ; Entry: interrupt; A, X, Y the interrupted code's. Exit: RTI, every register as it was.
 card_irq2:
-    bbs0 z:CardIrqFlags,jump_user_irq2
+    bbs0 CardIrqFlags,jump_user_irq2
     pha
     phx
     phy
@@ -36,7 +36,7 @@ cd_interrupt:
     and a:CdIrqStatus
     ora z:$F2
     sta z:$F2
-    bbr2 z:$F2,cd_interrupt_at3
+    bbr2 $F2,cd_interrupt_at3
     lda #$04
     trb a:CdIrqControl
     lda #$04
@@ -80,7 +80,7 @@ cd_interrupt_at1:
     lda #$60
     tsb a:CdIrqControl
 cd_interrupt_at3:
-    bbr6 z:$F2,cd_interrupt_at4
+    bbr6 $F2,cd_interrupt_at4
     lda #$40
     trb a:CdIrqControl
     lda #$40
@@ -89,7 +89,7 @@ cd_interrupt_at3:
     lda #$02
     sta a:AdpcmDma
 cd_interrupt_at4:
-    bbr5 z:$F2,cd_interrupt_at9
+    bbr5 $F2,cd_interrupt_at9
     lda #$20
     trb a:CdIrqControl
     lda #$20
@@ -136,7 +136,7 @@ cd_interrupt_at11:
     lda #$04
     tsb a:CdIrqControl
 cd_interrupt_at9:
-    bbr4 z:$F2,cd_interrupt_at12
+    bbr4 $F2,cd_interrupt_at12
     lda #$10
     trb a:CdIrqControl
     lda #$10
@@ -146,7 +146,7 @@ cd_interrupt_at9:
     lda #$10
     tsb a:CdIrqControl
 cd_interrupt_at12:
-    bbr3 z:$F2,cd_interrupt_at15
+    bbr3 $F2,cd_interrupt_at15
     lda #$0C
     trb a:CdIrqControl
     lda #$08
@@ -199,20 +199,20 @@ jump_user_irq1:
 ; WAITS: no.
 ; Entry: interrupt; A, X, Y the interrupted code's. Exit: RTI, every register as it was.
 card_irq1:
-    bbs1 z:CardIrqFlags,jump_user_irq1
+    bbs1 CardIrqFlags,jump_user_irq1
     pha
     phx
     phy
     lda a:VdcAddress
     sta z:$F6
-    bbr5 z:$F6,card_irq1_at2
+    bbr5 $F6,card_irq1_at2
     st0 #$05
     lda z:CardVdcCrLo
     sta a:VdcDataLo
     lda z:CardVdcCrHi
     sta a:VdcDataHi
     inc a:CardFrameTick
-    bbs5 z:CardIrqFlags,card_irq1_at1
+    bbs5 CardIrqFlags,card_irq1_at1
     st0 #$07
     tii $220C,$0002,$0002
     st0 #$08
@@ -226,11 +226,11 @@ card_irq1:
 card_irq1_at0:
     jsr ex_joysns
 card_irq1_at1:
-    bbr4 z:CardIrqFlags,card_irq1_at2
+    bbr4 CardIrqFlags,card_irq1_at2
     bsr jump_user_vsync
 card_irq1_at2:
-    bbr2 z:$F6,card_irq1_at5
-    bbs7 z:CardIrqFlags,card_irq1_at4
+    bbr2 $F6,card_irq1_at5
+    bbs7 CardIrqFlags,card_irq1_at4
     bsr cd_interrupt_at15
     bsr cd_interrupt_at15
     st0 #$07
@@ -238,7 +238,7 @@ card_irq1_at2:
     st0 #$08
     tii $2212,$0002,$0002
 card_irq1_at4:
-    bbr6 z:CardIrqFlags,card_irq1_at5
+    bbr6 CardIrqFlags,card_irq1_at5
     bsr jump_user_hsync
 card_irq1_at5:
     lda z:CardVdcReg

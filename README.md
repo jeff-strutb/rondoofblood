@@ -154,15 +154,15 @@ decomps:
 <!-- progress:start -->
 ![Progress against the traced floor of the game's code](docs/rondo/progress.svg)
 
-Measured on `92e8c9f`: gate records from `d89c150`, every one of the 47 scripts traced and with a gate A7 result.
+Measured on `29a7e1f`: gate records from `d89c150`, every one of the 47 scripts traced and with a gate A7 result.
 
-**Denominator: 495,841 B: 111,974 B the 47 scripts ran, counted by distinct whole routines, + 383,867 B of code no script runs that the static census finds (288,786 B by the strict census; 95,081 B only by the relaxed one, counted as code until each byte is explained as code to file or data to name). Left out: 276,932 B proven duplicates, whole runs byte for byte equal to code counted elsewhere (`config/rondo/census_duplicates.csv`), and 8,223 B proven data (sent to a video or sound port, read in place by code, or a decode a trace contradicts).**
+**Denominator: 495,505 B: 111,974 B the 47 scripts ran, counted by distinct whole routines, + 383,531 B of code no script runs that the static census finds (288,786 B by the strict census; 94,745 B only by the relaxed one, counted as code until each byte is explained as code to file or data to name). Left out: 276,932 B proven duplicates, whole runs byte for byte equal to code counted elsewhere (`config/rondo/census_duplicates.csv`), and 8,559 B proven data (sent to a video or sound port, read in place by code, or a decode a trace contradicts).**
 
-**Code no script runs: 383,867 B (77.42% of the denominator), a line of its own** (188,794 B of it in disc areas no script loads). It is decompiled like any other code. It counts in M1 only when a script runs it and the gates pass it, or when it is proven unreachable and filed as proper C whose header records the proof (PLAN section 1, the rulings of 2026-11-26): 0 routines, 0 B so far.
+**Code no script runs: 383,531 B (77.40% of the denominator), a line of its own** (188,794 B of it in disc areas no script loads). It is decompiled like any other code. It counts in M1 only when a script runs it and the gates pass it, or when it is proven unreachable and filed as proper C whose header records the proof (PLAN section 1, the rulings of 2026-11-26): 0 routines, 0 B so far.
 
 **1 of 2058 routines (123 B) fail the proper-C check: register-shaped C, a stepping stone, not decompiled.** The check is a pattern check, so every count above T2 is a ceiling until reviewed.
 
-| Measure | Routines | Bytes | Of the 495,841 B |
+| Measure | Routines | Bytes | Of the 495,505 B |
 |---|---:|---:|---:|
 | M2: T4 | 0 | 0 | 0.00% |
 | M1: T3 or better | 0 | 0 | 0.00% |
@@ -181,7 +181,7 @@ The System Card, its own project and [ledger](syscard/ledger.csv), held to the s
 | T2: filed, not certified | 197 | 10,579 | |
 | below proper C | 0 | 0 | |
 
-Card routines short of a gate, overlapping: A7 swap 197, every byte run 87, A5 judged call 4, symbolic assembly 26, image 197.
+Card routines short of a gate, overlapping: A7 swap 197, every byte run 87, A5 judged call 4, symbolic assembly 26, image 0.
 
 **A5, each routine's C against the original call by call: 2078 routines identical, game 1885 and card 193** (49 and 0 divergent, 2 and 0 unverified, 122 and 4 uncovered). 1 of 47 scripts are identical in lockstep.
 

@@ -84,7 +84,7 @@ static bool past_edge(uint8_t high_value, uint8_t low_value)
  * WAITS: no.
  * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
  */
-Ended RunObjects(uint8_t entry_x)
+static Ended run_objects(uint8_t entry_x, Jump (*by_kind)(uint8_t))
 {
     ExitChain c;
     Ended e = ended_kept();
@@ -220,7 +220,7 @@ Ended RunObjects(uint8_t entry_x)
 
             sync(&e);
             jsr_push(0xA115);
-            jump = DispatchByKind0259(x);
+            jump = by_kind(x);
             x = enter_handler(x, jump);
             jsr_pop();
             e = ended_kept();
@@ -255,10 +255,389 @@ Ended RunObjects(uint8_t entry_x)
     return e;
 }
 
+Ended RunObjects(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0259);
+}
+
 void abi_RunObjects(void)
 {
     uint8_t entry_x = cpu.x;
 
     abi_ended(RunObjects(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 07D9:000 RunObjects07D9
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 07D9's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind07D9 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects07D9(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind07D9);
+}
+
+void abi_RunObjects07D9(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects07D9(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 0889:000 RunObjects0889
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 0889's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0889 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects0889(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0889);
+}
+
+void abi_RunObjects0889(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects0889(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 0A99:000 RunObjects0A99
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 0A99's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0A99 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects0A99(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0A99);
+}
+
+void abi_RunObjects0A99(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects0A99(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 0B49:000 RunObjects0B49
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 0B49's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0889 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects0B49(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0889);
+}
+
+void abi_RunObjects0B49(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects0B49(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 0CA9:000 RunObjects0CA9
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 0CA9's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0CA9 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects0CA9(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0CA9);
+}
+
+void abi_RunObjects0CA9(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects0CA9(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 0D59:000 RunObjects0D59
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 0D59's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0A99 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects0D59(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0A99);
+}
+
+void abi_RunObjects0D59(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects0D59(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 0E09:000 RunObjects0E09
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 0E09's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0E09 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects0E09(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0E09);
+}
+
+void abi_RunObjects0E09(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects0E09(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 0EB9:000 RunObjects0EB9
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 0EB9's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0A99 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects0EB9(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0A99);
+}
+
+void abi_RunObjects0EB9(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects0EB9(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 0F69:000 RunObjects0F69
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 0F69's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0889 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects0F69(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0889);
+}
+
+void abi_RunObjects0F69(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects0F69(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 1019:000 RunObjects1019
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 1019's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0A99 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects1019(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0A99);
+}
+
+void abi_RunObjects1019(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects1019(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 10C9:000 RunObjects10C9
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 10C9's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind10C9 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects10C9(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind10C9);
+}
+
+void abi_RunObjects10C9(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects10C9(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 1179:000 RunObjects1179
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 1179's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0A99 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects1179(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0A99);
+}
+
+void abi_RunObjects1179(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects1179(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 12D9:000 RunObjects12D9
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 12D9's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind12D9 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects12D9(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind12D9);
+}
+
+void abi_RunObjects12D9(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects12D9(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 13F9:000 RunObjects13F9
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 13F9's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind12D9 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects13F9(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind12D9);
+}
+
+void abi_RunObjects13F9(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects13F9(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 1619:000 RunObjects1619
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 1619's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind0A99 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects1619(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind0A99);
+}
+
+void abi_RunObjects1619(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects1619(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 16C9:000 RunObjects16C9
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 16C9's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind16C9 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects16C9(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind16C9);
+}
+
+void abi_RunObjects16C9(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects16C9(entry_x));
+    cpu.x = entry_x;
+}
+
+/*
+ * @routine 18D9:000 RunObjects18D9
+ * @run 70:A000
+ * @stop A13C
+ * WHAT IT DOES: The sector 18D9's copy of RunObjects: the same code, its dispatch by kind through the table at the address DispatchByKind18D9 reads (this overlay's own).
+ * HOW: run_objects, the body RunObjects shares.
+ * WAITS: no.
+ * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+ */
+Ended RunObjects18D9(uint8_t entry_x)
+{
+    return run_objects(entry_x, DispatchByKind18D9);
+}
+
+void abi_RunObjects18D9(void)
+{
+    uint8_t entry_x = cpu.x;
+
+    abi_ended(RunObjects18D9(entry_x));
     cpu.x = entry_x;
 }

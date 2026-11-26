@@ -451,6 +451,23 @@ SoundEnd StepShootOnCue(uint8_t slot, uint8_t y);
     RMW8(field, old_s, ((carry_var) = (old_s & 1) != 0, old_s >> 1))
 
 Ended RunObjects(uint8_t entry_x);
+Ended RunObjects07D9(uint8_t entry_x);
+Ended RunObjects0889(uint8_t entry_x);
+Ended RunObjects0A99(uint8_t entry_x);
+Ended RunObjects0B49(uint8_t entry_x);
+Ended RunObjects0CA9(uint8_t entry_x);
+Ended RunObjects0D59(uint8_t entry_x);
+Ended RunObjects0E09(uint8_t entry_x);
+Ended RunObjects0EB9(uint8_t entry_x);
+Ended RunObjects0F69(uint8_t entry_x);
+Ended RunObjects1019(uint8_t entry_x);
+Ended RunObjects10C9(uint8_t entry_x);
+Ended RunObjects1179(uint8_t entry_x);
+Ended RunObjects12D9(uint8_t entry_x);
+Ended RunObjects13F9(uint8_t entry_x);
+Ended RunObjects1619(uint8_t entry_x);
+Ended RunObjects16C9(uint8_t entry_x);
+Ended RunObjects18D9(uint8_t entry_x);
 uint8_t BitMaskFromIndex072A(uint8_t count);
 Jump TilePieceObject072A(uint8_t slot);
 Jump ShatterOnHits(uint8_t slot);

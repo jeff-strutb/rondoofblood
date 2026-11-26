@@ -1573,6 +1573,11 @@ typedef struct {
     Sum diff, list;
 } L8St27BossCArm;
 
+/* HitBoxRowByFrameKind: the frame read as Y, the table's byte for it, the row it picks (four times the byte) and the last byte of the row. */
+typedef struct {
+    uint8_t frame, kind, row, last;
+} L8HitBoxRowArm;
+
 /* BossFrameRoutinesD: the two callees' results, the table's jump, the state read as Y and the mark. */
 typedef struct {
     int arm;

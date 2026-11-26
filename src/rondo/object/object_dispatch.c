@@ -1544,47 +1544,59 @@ static uint8_t add_decimal(uint8_t a, uint8_t b, bool *carry)
  * WAITS: no.
  * Entry: X object, Y the sound driver's. Exit: as BlendStageRowsOfPlayer.
  */
-SoundEnd CollectHearts(uint8_t slot, uint8_t y_entry)
+ObjArm CollectHearts(uint8_t slot, uint8_t y_entry)
 {
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
-    uint8_t kind, index, command, hearts, add;
-    bool carry;
-    Sum diff;
-    Ended e;
+    ObjArm r = { 0 };
+    uint8_t kind, hearts, add;
 
     kind = RD8(OBJ->kind[slot]);
-    diff = sub_bytes(kind, 0x83, true);
-    index = diff.value;
-    command = rd8((uint16_t)(0xA5B0 + index));
-    e = ended_then(ended_of_sum(diff), ended_with_y(ended_load(command), index));
-    r.before = e;
+    r.sum = sub_bytes(kind, 0x83, true);
+    r.y = r.sum.value;
+    r.first = rd8((uint16_t)(0xA5B0 + r.y));
     r.sounded = true;
-    r.command = command;
+    r.command = r.first;
     jsr_push(0xA59A);
-    r.call = SoundCommand(command, slot, index);
+    r.call = SoundCommand(r.command, slot, r.y);
     jsr_pop();
     hearts = RD8(ZP->field94);
-    add = rd8((uint16_t)(0xA5B2 + index));
-    carry = false;
-    hearts = add_decimal(hearts, add, &carry);
+    add = rd8((uint16_t)(0xA5B2 + r.y));
+    r.flag = false;
+    hearts = add_decimal(hearts, add, &r.flag);
     WR8(ZP->field94, hearts);
-    e = ended_with_carry(ended_load(hearts), carry);
-    if (carry) {
+    r.second = hearts;
+    if (r.flag) {
         WR8(ZP->field94, 0x99);
-        e = ended_then(e, ended_load(0x99));
     }
-    r.end = e;
     jsr_push(0xA5AD);
-    r.end = ended_then(e, blend_stage_rows_of_player_exit_shim(BlendStageRowsOfPlayer(slot, index)));
+    r.sub = obj_sub(BlendStageRowsOfPlayer(slot, r.y));
     jsr_pop();
     ClearObject(slot);
     (void)y_entry;
     return r;
 }
 
+/* Before the sound: the kind's subtraction and the command's load with Y the index; after it, the hearts' load with C from the add
+   (and $99 when it overflowed), then the row blend's exit. */
+static SoundEnd collect_hearts_exit_shim(ObjArm r)
+{
+    SoundEnd s = { { 0 }, { 0 }, false, 0, { 0 } };
+    Ended e;
+
+    s.before = ended_then(ended_of_sum(r.sum), ended_with_y(ended_load(r.first), r.y));
+    s.sounded = r.sounded;
+    s.command = r.command;
+    s.call = r.call;
+    e = ended_with_carry(ended_load(r.second), r.flag);
+    if (r.flag) {
+        e = ended_then(e, ended_load(0x99));
+    }
+    s.end = ended_then(e, blend_stage_rows_of_player_exit_shim(obj_arm(r.sub)));
+    return s;
+}
+
 void abi_CollectHearts(void)
 {
-    abi_sound_end(CollectHearts(cpu.x, cpu.y));
+    abi_sound_end(collect_hearts_exit_shim(CollectHearts(cpu.x, cpu.y)));
 }
 
 /*
@@ -1597,57 +1609,76 @@ void abi_CollectHearts(void)
  * WAITS: no.
  * Entry: X object, Y the sound driver's. Exit: A $9F, N set, Z clear; C and V as the blend left them.
  */
-SoundEnd CollectScoreItem(uint8_t slot, uint8_t y_entry)
+ObjArm CollectScoreItem(uint8_t slot, uint8_t y_entry)
 {
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
-    uint8_t kind, index, low, high, add, previous;
+    ObjArm r = { 0 };
+    uint8_t kind, low, high, add;
     bool carry;
-    Sum diff;
-    Ended e;
 
-    r.before = ended_load(0x0B);
     r.sounded = true;
     r.command = 0x0B;
     jsr_push(0xA5B9);
     r.call = SoundCommand(0x0B, slot, y_entry);
     jsr_pop();
     kind = RD8(OBJ->kind[slot]);
-    diff = sub_bytes(kind, 0x85, true);
-    index = diff.value;
-    e = ended_then(ended_of_sum(diff), ended_with_y(ended_kept(), index));
+    r.sum = sub_bytes(kind, 0x85, true);
+    r.y = r.sum.value;
     low = RD8(ZP->score_add.lo);
     WR8(ZP->temp10, low);
-    e = ended_then(e, ended_load(low));
-    add = rd8((uint16_t)(0xA5EB + index));
+    r.first = low;
+    add = rd8((uint16_t)(0xA5EB + r.y));
     carry = false;
     low = add_decimal(low, add, &carry);
     WR8(ZP->score_add.lo, low);
-    e = ended_then(e, ended_with_carry(ended_load(low), carry));
+    r.second = low;
+    r.flag = carry;
     high = RD8(ZP->score_add.hi);
     high = add_decimal(high, 0, &carry);
     WR8(ZP->score_add.hi, high);
-    e = ended_then(e, ended_with_carry(ended_load(high), carry));
+    r.third = high;
+    r.other = carry;
     if (carry) {
         WR8(ZP->score_add.lo, 0x99);
         WR8(ZP->score_add.hi, 0x99);
-        e = ended_then(e, ended_load(0x99));
     }
-    push8(index);
+    push8(r.y);
     jsr_push(0xA5DE);
-    e = ended_then(e, blend_stage_rows_of_player_exit_shim(BlendStageRowsOfPlayer(slot, index)));
+    r.sub = obj_sub(BlendStageRowsOfPlayer(slot, r.y));
     jsr_pop();
-    previous = pull8();
-    e = ended_then(e, ended_load(previous));
-    WR8(OBJ->life_timer[slot], previous);
+    r.fourth = pull8();
+    WR8(OBJ->life_timer[slot], r.fourth);
     WR8(OBJ->kind[slot], 0x9F);
     WR8(OBJ->state[slot], 0);
-    r.end = ended_then(e, ended_load(0x9F));
     return r;
+}
+
+/* Before the sound: A $0B. After it: the kind's subtraction, the score's loads with C from each add (and $99 on overflow), the row
+   blend's exit, the pulled index's load and the kind $9F's. */
+static SoundEnd collect_score_item_exit_shim(ObjArm r)
+{
+    SoundEnd s = { { 0 }, { 0 }, false, 0, { 0 } };
+    Ended e;
+
+    s.before = ended_load(0x0B);
+    s.sounded = r.sounded;
+    s.command = r.command;
+    s.call = r.call;
+    e = ended_then(ended_of_sum(r.sum), ended_with_y(ended_kept(), r.y));
+    e = ended_then(e, ended_load(r.first));
+    e = ended_then(e, ended_with_carry(ended_load(r.second), r.flag));
+    e = ended_then(e, ended_with_carry(ended_load(r.third), r.other));
+    if (r.other) {
+        e = ended_then(e, ended_load(0x99));
+    }
+    e = ended_then(e, blend_stage_rows_of_player_exit_shim(obj_arm(r.sub)));
+    e = ended_then(e, ended_load(r.fourth));
+    s.end = ended_then(e, ended_load(0x9F));
+    return s;
 }
 
 void abi_CollectScoreItem(void)
 {
-    abi_sound_end(CollectScoreItem(cpu.x, cpu.y));
+    abi_sound_end(collect_score_item_exit_shim(CollectScoreItem(cpu.x, cpu.y)));
 }
 
 /*
@@ -1660,53 +1691,61 @@ void abi_CollectScoreItem(void)
  * WAITS: no.
  * Entry: X object, Y the sound driver's. Exit: see the wrapper.
  */
-SoundEnd StartScorePickup(uint8_t slot, uint8_t y_entry)
+ObjArm StartScorePickup(uint8_t slot, uint8_t y_entry)
 {
-    SoundEnd r = { { 0 }, { 0 }, false, 0, { 0 } };
-    SoundEnd life;
-    uint8_t nz, last, timer, index, changed, y, frame;
-    bool carry;
-    Ended e;
+    ObjArm r = { 0 };
 
     jsr_push(0xA9AB);
-    last = LoadObjectRecord(slot, &nz, &carry);
+    r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    e = ended_of_record(last, nz, carry);
     WR8(OBJ->facing_left[slot], 0);
-    timer = RD8(OBJ->life_timer[slot]);
-    index = (uint8_t)(timer << 1);
-    e = ended_then(e, ended_with_carry(ended_with_y(ended_load(index), index), (timer & 0x80) != 0));
-    WR8(ZP->temp00, rd8((uint16_t)(0xA9E1 + index)));
-    WR8(ZP->temp01, rd8((uint16_t)(0xA9E2 + index)));
+    r.third = RD8(OBJ->life_timer[slot]);
+    r.y = (uint8_t)(r.third << 1);
+    WR8(ZP->temp00, rd8((uint16_t)(0xA9E1 + r.y)));
+    WR8(ZP->temp01, rd8((uint16_t)(0xA9E2 + r.y)));
     jsr_push(0xA9C0);
-    changed = AddScoreWord();
+    r.fourth = AddScoreWord();
     jsr_pop();
-    e = ended_then(e, ended_with_carry(ended_load(changed), changed != 0));
-    if (changed != 0) {
+    if (r.fourth != 0) {
         jsr_push(0xA9C5);
-        life = give_extra_life_exit_shim(GiveExtraLife(slot, y_entry));
+        r.sub = obj_sub(GiveExtraLife(slot, y_entry));
         jsr_pop();
-        r.before = ended_then(e, life.before);
-        r.sounded = life.sounded;
-        r.command = life.command;
-        r.call = life.call;
+    }
+    r.fifth = RD8(OBJ->life_timer[slot]);
+    r.sixth = rd8((uint16_t)(0xA9DC + r.fifth));
+    WR8(OBJ->frame[slot], r.sixth);
+    WR8(OBJ->f3510[slot], 0x18);
+    WR8(OBJ->vy_hi[slot], 0xFE);
+    WR8(OBJ->vy_lo[slot], 0);
+    return r;
+}
+
+/* The record's exit, the timer's doubled load with C from its bit 7, the score's add result; when it changed, the extra life's
+   exit (its sound and what it left); then the frame, timer and speed loads. */
+static SoundEnd start_score_pickup_exit_shim(ObjArm r)
+{
+    SoundEnd s = { { 0 }, { 0 }, false, 0, { 0 } };
+    Ended e = record_exit_shim(r);
+
+    e = ended_then(e, ended_with_carry(ended_with_y(ended_load(r.y), r.y), (r.third & 0x80) != 0));
+    e = ended_then(e, ended_with_carry(ended_load(r.fourth), r.fourth != 0));
+    if (r.fourth != 0) {
+        SoundEnd life = give_extra_life_exit_shim(obj_arm(r.sub));
+
+        s.before = ended_then(e, life.before);
+        s.sounded = life.sounded;
+        s.command = life.command;
+        s.call = life.call;
         e = life.end;
     }
-    y = RD8(OBJ->life_timer[slot]);
-    e = ended_then(e, ended_with_y(ended_nz(y), y));
-    frame = rd8((uint16_t)(0xA9DC + y));
-    WR8(OBJ->frame[slot], frame);
-    e = ended_then(e, ended_load(frame));
-    WR8(OBJ->f3510[slot], 0x18);
+    e = ended_then(e, ended_with_y(ended_nz(r.fifth), r.fifth));
+    e = ended_then(e, ended_load(r.sixth));
     e = ended_then(e, ended_load(0x18));
-    WR8(OBJ->vy_hi[slot], 0xFE);
-    e = ended_then(e, ended_load(0xFE));
-    WR8(OBJ->vy_lo[slot], 0);
-    r.end = e;
-    return r;
+    s.end = ended_then(e, ended_load(0xFE));
+    return s;
 }
 
 void abi_StartScorePickup(void)
 {
-    abi_sound_end(StartScorePickup(cpu.x, cpu.y));
+    abi_sound_end(start_score_pickup_exit_shim(StartScorePickup(cpu.x, cpu.y)));
 }

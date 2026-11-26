@@ -361,11 +361,17 @@ void invincible_exit_shim(InvincibleTick tick);
 void move_push_exit_shim(MovePush move);
 void columns_exit_shim(ColumnsEnd end);
 /* A spike under his feet: whether found, at which point, and the last read. */
-typedef struct { bool found; uint8_t column; bool on_the_map; TileRead read; } SpikeProbe;
+typedef struct { bool found; uint8_t column; bool on_the_map; TileRead read; uint8_t state; } SpikeProbe;
 typedef enum { PUSH_HIT_CAMERA, PUSH_HIT_NOT_PUSHED, PUSH_HIT_HELD, PUSH_HIT_NO_SPIKE, PUSH_HIT_SPIKE } PushHitHow;
 /* A hit while pushed: how far it got, what it read on the way, and the spike probe. */
 typedef struct { PushHitHow how; uint8_t camera; uint8_t push; uint8_t held; SpikeProbe spike; } PushHit;
 SpikeProbe RichterSpikeBelow(void);
+/* X and Y as the spike probe holds them when it asks the overlay to read. */
+static void spike_entry_shim(uint8_t column, uint8_t state)
+{
+    cpu.x = column;
+    cpu.y = state;
+}
 PushHit RichterHitWhilePushed(void);
 void spike_exit_shim(SpikeProbe probe);
 void push_hit_exit_shim(PushHit hit);
@@ -825,24 +831,31 @@ void abi_RichterHitWhilePushed(void)
  */
 SpikeProbe RichterSpikeBelow(void)
 {
-    SpikeProbe probe = { false, 0, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 } };
+    SpikeProbe probe = { false, 0, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0 };
+    ColumnOffset offset;
+    uint8_t across, base, state;
+    Sum column, row;
 
     for (probe.column = 0; probe.column < SPIKE_COLUMNS; probe.column++) {
         jsr_push(0xA0D9);
-        uint8_t across = RichterColumnOffset(probe.column).value;
+        offset = RichterColumnOffset(probe.column);
         jsr_pop();
-        uint8_t y = rd8(OBJ_Y_LO);
-        uint8_t foot = rd8((uint16_t)(PlayerFootYByState + rd8(OBJ_27A8)));
-
+        across = offset.value;
         /* One pixel in toward him, whichever side the column lies. */
-        if (across & 0x80)
-            across++;
-        else if (across != 0)
-            across--;
-        wr8(zTemp00, (uint8_t)(across + rd8(OBJ_X_LO)));
-        probe.on_the_map = y + foot > 0xFF;
+        if (across != 0) {
+            across = (across & 0x80) ? (uint8_t)(across + 1) : (uint8_t)(across - 1);
+        }
+        base = RD8(OBJ->x_lo[0]);
+        column = add_bytes(across, base, false);
+        WR8(ZP->temp00, column.value);
+        base = RD8(OBJ->y_lo[0]);
+        state = RD8(OBJ->state[0]);
+        row = add_bytes(base, rd8((uint16_t)(PlayerFootYByState + state)), false);
+        probe.on_the_map = row.carry;
+        probe.state = state;
+        spike_entry_shim(probe.column, state);
         jsr_push(0xA0F4);
-        probe.read = RichterReadAbove((uint8_t)(y + foot), probe.on_the_map);
+        probe.read = RichterReadAbove(row.value, row.carry);
         jsr_pop();
         if (tile_answer(probe.read) & TILE_SPIKE) {
             probe.found = true;
@@ -854,7 +867,9 @@ SpikeProbe RichterSpikeBelow(void)
 
 void spike_exit_shim(SpikeProbe probe)
 {
-    cpu.y = rd8(OBJ_27A8);
+    if (!(probe.on_the_map && probe.read.kind == TILE_BY_ORIGINAL)) {
+        cpu.y = probe.state;
+    }
     read_above_exit_shim(probe.read, probe.on_the_map);
     cpu.x = probe.column;
     if (probe.found) {

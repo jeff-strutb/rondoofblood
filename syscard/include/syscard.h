@@ -446,4 +446,8 @@ CardExit psg_slide_channel(void);
 
 CardExit psg_read_notes(void);
 
+CardExit psg_pitch_effects(void);
+CardExit psg_scale_amount(uint8_t x);
+CardExit psg_add_pitch(uint8_t x);
+
 #endif

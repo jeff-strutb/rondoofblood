@@ -133,7 +133,7 @@ Exit TitleSetUp(uint8_t kept_x, uint8_t kept_y)
         wr8(TitleSaveRead, 1);
     }
     jsr_push(0x8063);
-    card = ex_scrsiz(SCREEN_SIZE_TITLE);
+    card = vec_ex_scrsiz(SCREEN_SIZE_TITLE);
     jsr_pop();
     jsr_push(0x8067);
     (void)StartListChannel0Kind2(0);
@@ -452,7 +452,7 @@ Exit AttractWaitStart(void)
     WR8(ZP->wait_timer3, 0xFF);
     WR8(ZP->wait_timer4, 0xFF);
     next_step();
-    return after_load(exit, cd_fade(FADE_TYPE));
+    return after_load(exit, vec_cd_fade(FADE_TYPE));
 }
 
 void abi_AttractWaitStart(void)

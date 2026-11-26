@@ -413,4 +413,41 @@ uint8_t ad_trans_start_dma(void);
 AdTransFinish ad_trans_finish(void);
 AdTransStep ad_trans_step(void);
 
+/* What ex_setvec leaves: the flags it pulled, and X unless the vector was the soft reset's. */
+typedef struct {
+    uint8_t flags;
+    bool sets_x;
+    uint8_t x;
+} SetVec;
+
+SetVec ex_setvec(uint8_t which, uint8_t low, uint8_t high, uint8_t flags);
+
+
+/* The jump table's entries (vectors.c): the game calls these, each a tail call. */
+CardExit vec_cd_base(uint8_t a, uint8_t x);
+CdRead vec_cd_read(uint8_t a, uint8_t x);
+CdPlay vec_cd_play(uint8_t a, uint8_t x);
+CdSearch vec_cd_search(uint8_t a, uint8_t x);
+CdPause vec_cd_pause(uint8_t x);
+CdStat vec_cd_stat(uint8_t what, uint8_t x);
+uint8_t vec_cd_fade(uint8_t type);
+AdTrans vec_ad_trans(uint8_t a, uint8_t x);
+CardExit vec_ad_read(void);
+AdPlay vec_ad_play(void);
+uint8_t vec_ad_stop(void);
+AdStat vec_ad_stat(void);
+BackupAccess vec_bm_free(uint8_t a);
+BackupAccess vec_bm_read(uint8_t a);
+BackupAccess vec_bm_write(uint8_t a);
+BackupAccess vec_bm_delete(uint8_t a);
+CardVersion vec_ex_getver(void);
+SetVec vec_ex_setvec(uint8_t which, uint8_t low, uint8_t high, uint8_t flags);
+CardExit vec_ex_getfnt(void);
+CardExit vec_ex_scrsiz(uint8_t size);
+CardExit vec_ex_dotmod(uint8_t mode);
+CardExit vec_ex_scrmod(uint8_t mode, uint8_t columns, uint8_t rows);
+CardExit vec_ex_satclr(void);
+MaMul8u vec_ma_mul8u(uint8_t a, uint8_t flags);
+MemOpen vec_ex_memopen(void);
+
 #endif

@@ -57,13 +57,6 @@ void abi_ex_memopen(void)
     }
 }
 
-/* What ex_setvec leaves: the flags it pulled, and X unless the vector was the soft reset's. */
-typedef struct {
-    uint8_t flags;
-    bool sets_x;
-    uint8_t x;
-} SetVec;
-
 /*
  * @card 00:F034 ex_setvec
  * WHAT IT DOES: Sets an interrupt handler the card calls.

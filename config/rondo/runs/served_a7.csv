@@ -20,7 +20,7 @@ card_unit_cplay,serve-all,IDENTICAL,-1,1013/1013,0,,,b328065
 card_unit_misc,serve-all,IDENTICAL,-1,894/894,0,,,b328065
 card_unit_read,serve-all,IDENTICAL,-1,879/879,0,,,b328065
 card_unit_trans,serve-all,IDENTICAL,-1,904/904,0,,,b328065
-card_unit_vdc,serve-all,STOPPED,-3,834/-1,0,,stopped at frame 834: the hybrid calls ex_rcron (SFD); the record's next is r0043_174 (SFF),b328065
+card_unit_vdc,serve-all,IDENTICAL,-1,922/922,0,,,8723974
 gameover,serve-all,IDENTICAL,-1,29092/29092,0,,,b328065
 menu_files,serve-all,IDENTICAL,-1,10746/10746,0,,,b328065
 menu_names,serve-all,IDENTICAL,-1,13582/13582,0,,,b328065
@@ -35,7 +35,7 @@ raster_effects,serve-all,IDENTICAL,-1,10526/10526,0,,,b328065
 richter_hurt,serve-all,IDENTICAL,-1,16936/16936,0,,,b328065
 sound_test,serve-all,IDENTICAL,-1,17134/17134,0,,,b328065
 stage_04,serve-all,IDENTICAL,-1,35092/35092,0,,,b328065
-stage_05,serve-all,STOPPED,-3,33490/-1,366,"r093B_24C VALUE call 37 frame 33490: C read 1F0000 gave 93, the original's read 1F0000 (95) (the core's clock before the read 12022771440, after 12022771440; the record's 0)",stopped at frame 33490: a call into original code the record does not have,b328065
+stage_05,serve-all,STOPPED,-3,33490/-1,366,"r093B_24C VALUE call 37 frame 33490: C read 1F0000 gave 93, the original's read 1F0000 (95) (the core's clock before the read 12022771440, after 12022771440; the record's 0)",stopped at frame 33490: a call into original code the record does not have,8723974
 stage_06,serve-all,IDENTICAL,-1,35092/35092,0,,,b328065
 stage_07,serve-all,IDENTICAL,-1,35092/35092,0,,,b328065
 stage_08,serve-all,IDENTICAL,-1,35092/35092,0,,,b328065

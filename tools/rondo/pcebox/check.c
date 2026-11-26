@@ -490,6 +490,8 @@ static struct {
     uint8_t s;
     void *host;          /* hybrid: the C on top when the call was made (parked, often waiting for the frame end) */
     uint64_t ubegin;     /* hybrid: the record's UBEGIN of this call, where the called routine's OPEN is looked for; 0 none */
+    unsigned mpr_mask;   /* MPRs the script staged for the call (MPRn=hh): put back when it returns */
+    uint8_t saved_mpr[8];
 } unit;
 static uint64_t frame_holds;
 static uint64_t nested_jumps;    /* jumps into original code made by a C another C called: no stand-in frame */
@@ -3380,18 +3382,52 @@ static int hy_enter(int index, const Regs *r, int kind, int keep)
 
 
 /* NULL on success; otherwise why not. Called between frames, in every run alike. */
+/* The MPRs a unit call staged are put back, and the record's last mapping set to them: the harness's own mapping
+ * changes are no events of the program. */
+static void unit_mpr_restore(void)
+{
+    for (unsigned i = 0; i < 8; i++)
+        if (unit.mpr_mask & (1u << i))
+            chk_set_mpr(i, unit.saved_mpr[i]);
+    if (unit.mpr_mask)
+        for (unsigned i = 0; i < 8; i++)
+            last_mpr[i] = (uint8_t)chk_mpr(i);
+    unit.mpr_mask = 0;
+}
+
 const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint8_t x, int has_y, uint8_t y,
-                            int has_p, uint8_t p)
+                            int has_p, uint8_t p, unsigned mpr_mask, const uint8_t *mpr)
 {
     Regs r;
-    int index = tag_pick(addr);
+    int index;
 
     if (unit.active)
         return "a unit call is still running";
-    if (index < 0)
+    /* MPRn=hh: the mapping the call runs under, set for it only (the bytes of an overlay bank that the frame boundary
+     * does not have mapped), in the record and the hybrid alike; put back when it returns. */
+    unit.mpr_mask = mpr_mask & 0x7C;
+    for (unsigned i = 0; i < 8; i++)
+        unit.saved_mpr[i] = (uint8_t)chk_mpr(i);
+    for (unsigned i = 0; i < 8; i++)
+        if (unit.mpr_mask & (1u << i))
+            chk_set_mpr(i, mpr[i]);
+    if (unit.mpr_mask)
+        for (unsigned i = 0; i < 8; i++)
+            last_mpr[i] = (uint8_t)chk_mpr(i);
+    index = tag_pick(addr);
+    if (index < 0 && mode == MODE_OFF) {
+        /* A traced run with no oracle: a call at an address with no tag is coverage, when a bank is mapped there. */
+        if (!chk_bank(chk_mpr(addr >> 13))) {
+            unit_mpr_restore();
+            return "no bank is mapped at the address";
+        }
+    } else if (index < 0) {
+        unit_mpr_restore();
         return "the address is not a routine's own entry";
-    if (!tag_resident(&rondo_tags[index]))
+    } else if (!tag_resident(&rondo_tags[index])) {
+        unit_mpr_restore();
         return "the routine's bytes are not resident at its address";
+    }
     chk_get_regs(&r.a, &r.x, &r.y, &r.s, &r.p, &r.pc);
     if (mode == MODE_HYBRID && getenv("RONDO_DIAG_CTX"))
         fprintf(stderr, "UNITCALL frame %lu %04X: core PC %04X S%02X; top %s parked %d wait_frame %lu resume %04X S%02X\n", cur_frame,
@@ -3712,6 +3748,7 @@ int check_exec(uint32_t pc)
         }
         if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
             unit.active = 0;
+            unit_mpr_restore();
             chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
         last_pc = unit.saved.pc;     /* the machine put back where it was: the arrival there is no entry (no tail from the mark) */
             prev_op = -1;
@@ -3732,6 +3769,7 @@ int check_exec(uint32_t pc)
     if (mode != MODE_A5 && mode != MODE_RECORD) {
         if (unit.active && unit.entered && pc == UNIT_MARK && r.s == (uint8_t)(unit.s + 2)) {
             unit.active = 0;
+            unit_mpr_restore();
             chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
         last_pc = unit.saved.pc;     /* the machine put back where it was: the arrival there is no entry (no tail from the mark) */
         }
@@ -3752,7 +3790,8 @@ int check_exec(uint32_t pc)
         unit.active = 0;
         if (depth)
             marker(EV_UEND, &r, 0, 0, 0);
-        chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
+        unit_mpr_restore();
+            chk_set_regs(unit.saved.a, unit.saved.x, unit.saved.y, unit.saved.s, unit.saved.p, unit.saved.pc);
         last_pc = unit.saved.pc;     /* the machine put back where it was: the arrival there is no entry (no tail from the mark) */
         prev_op = -1;
         return 0;

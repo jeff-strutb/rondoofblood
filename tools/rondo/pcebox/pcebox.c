@@ -80,7 +80,7 @@ extern void (*chk_charge)(int);
 extern uint8_t (*chk_get_speed)(void);
 extern void (*chk_set_speed)(uint8_t);
 const char *check_unit_call(uint16_t addr, int has_a, uint8_t a, int has_x, uint8_t x, int has_y, uint8_t y,
-                            int has_p, uint8_t p);
+                            int has_p, uint8_t p, unsigned mpr_mask, const uint8_t *mpr);
 int check_tag_run(const char *name);
 void check_where(const char *text);
 int check_unit_active(void);
@@ -375,7 +375,7 @@ static int poke(unsigned addr, unsigned value)
 }
 
 /*
- * call ADDR|NAME [A=hh] [X=hh] [Y=hh] [P=hh] [M=aaaa:hh,aaaa:hh...]
+ * call ADDR|NAME [A=hh] [X=hh] [Y=hh] [P=hh] [M=aaaa:hh,aaaa:hh...] [MPRn=hh ...]   (n 2 to 6)
  * A unit call at a routine's own entry, from outside: the CPU's context is saved, the registers set,
  * the bytes of M written, and the routine run on the next frame; when it returns the context is
  * restored and the game goes on. The address must be a tagged routine's own entry with its bytes
@@ -389,6 +389,8 @@ static int unit_call(const char *line, const char *script, int ln)
     unsigned v[4] = { 0 };
     long addr = -1;
     const char *err;
+    unsigned mpr_mask = 0;
+    uint8_t mpr[8] = { 0 };
 
     snprintf(where, sizeof where, "%s:%d", strrchr(script, '/') ? strrchr(script, '/') + 1 : script, ln);
     check_where(where);
@@ -409,6 +411,12 @@ static int unit_call(const char *line, const char *script, int ln)
                 fprintf(stderr, "pcebox: %s:%d: call: %s is neither a routine's name nor an address\n", script, ln, word);
                 return 1;
             }
+        } else if (!strncmp(word, "MPR", 3) && word[3] >= '2' && word[3] <= '6' && word[4] == '=') {
+            /* MPRn=hh: the bank mapped at n for the call only */
+            unsigned n = (unsigned)(word[3] - '0');
+
+            mpr_mask |= 1u << n;
+            mpr[n] = (uint8_t)strtoul(word + 5, NULL, 16);
         } else if (word[1] == '=' && strchr("AXYP", word[0])) {
             int i = (int)(strchr("AXYP", word[0]) - "AXYP");
 
@@ -438,7 +446,7 @@ static int unit_call(const char *line, const char *script, int ln)
         }
     }
     err = check_unit_call((uint16_t)addr, has[0], (uint8_t)v[0], has[1], (uint8_t)v[1], has[2], (uint8_t)v[2],
-                          has[3], (uint8_t)v[3]);
+                          has[3], (uint8_t)v[3], mpr_mask, mpr);
     if (err) {
         fprintf(stderr, "pcebox: %s:%d: call: %s\n", script, ln, err);
         return 1;

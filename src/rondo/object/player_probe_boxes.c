@@ -45,9 +45,10 @@ static uint8_t status_after_y_step(bool carry, bool overflow, uint8_t y)
     return status;
 }
 
-/* How a probe routine ended: the state its last instructions left, and the V and B bits that a PLP or an add left in P. */
+/* How a probe routine ended: the count and Y its last compare left, and the V and B bits that a PLP or an add left in P. */
 typedef struct {
-    Ended end;
+    uint8_t count;   /* the box count the last compare saw */
+    uint8_t y;       /* Y as the last box left it */
     bool v;          /* V as the last add (or the PLP) left it */
     bool probed;     /* the last probe's own exit then follows the add's V */
     TileRead read;
@@ -65,7 +66,7 @@ static void abi_boxes_end(BoxesEnd e)
     if (e.probed) {
         terrain_read_exit_shim(e.read);
     }
-    abi_ended(e.end);
+    abi_ended(ended_with_y(ended_compare(e.count, BOX_COUNT), e.y));
 }
 
 /* The first routine's body: the entry's pointer from the table, then the four boxes. */
@@ -135,7 +136,7 @@ static BoxesEnd probe_boxes(uint8_t entry, uint8_t slot, uint16_t table)
         y = pull8();
         count = RD8(ZP->temp0a);
         if (count == BOX_COUNT) {
-            BoxesEnd done = { ended_with_y(ended_compare(count, BOX_COUNT), y), v, probed, read };
+            BoxesEnd done = { count, y, v, probed, read };
 
             return done;
         }
@@ -225,7 +226,7 @@ static BoxesEnd probe_boxes_flagged(uint8_t entry, uint8_t slot, uint16_t table,
         INC8(ZP->temp0a);
         count = RD8(ZP->temp0a);
         if (count == BOX_COUNT) {
-            BoxesEnd done = { ended_with_y(ended_compare(count, BOX_COUNT), y), v, probed, read };
+            BoxesEnd done = { count, y, v, probed, read };
 
             return done;
         }

@@ -1,0 +1,25 @@
+# Unit calls of System Card entries no game path reaches, at each routine's own first byte with the registers and RAM its
+# header names (see card_unit_vdc.txt for the first group). Power on, RUN on the card's title, let the kernel start.
+wait 120
+press RUN 6
+wait 700
+call cd_bytes_to_sectors M=20F8:00,20F9:09
+wait 2
+call cd_bytes_to_sectors M=20F8:00,20F9:08
+wait 2
+call clear_cd_result X=03
+wait 2
+call cd_pcmrd A=00
+wait 2
+call write_vram_word_pending M=20FA:34,20FB:12
+wait 2
+call cplay_advance M=229D:20,229E:00,229F:01,22A0:00,22A1:00,22A2:00,22A3:10
+wait 2
+call cplay_advance M=229D:20,229E:10,229F:00,22A0:00,22A1:00,22A2:FF,22A3:F0
+wait 2
+call disc_end_minus_one_frame A=00 M=226F:12,2270:34,2271:00
+wait 2
+call disc_end_minus_one_frame A=00 M=226F:12,2270:00,2271:00
+wait 2
+call ex_sprput Y=00 M=2200:00
+wait 30

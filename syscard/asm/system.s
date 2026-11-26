@@ -119,9 +119,11 @@ init_card_vectors:
 ; HOW: The state's low byte is XORed into its middle byte, and its high byte XORed with it
 ; becomes the new low byte; those two then shift left one as a word, taking in bit 6 of the old
 ; middle byte XOR bit 0 of the old low byte. The high byte never changes. The byte given is the
-; new low and middle bytes XORed.
-; Entry: CardRndSeed. Exit: A the byte, N and Z from it, C the bit shifted out of the middle
-; byte. X, Y, V kept.
+; new low and middle bytes XORed. The flags the first rotate leaves are kept on the stack across the
+; update and taken back.
+; WAITS: no.
+; Entry: CardRndSeed; the flags, which go on the stack. Exit: A the byte, N and Z from it, C the bit
+; shifted out of the middle byte. X, Y, V kept.
 ex_rnd:
     lda a:CardRndSeed+1
     rol a

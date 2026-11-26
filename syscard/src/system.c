@@ -208,34 +208,59 @@ enum { RND_FEEDBACK_BIT = 6 };
  * HOW: The state's low byte is XORed into its middle byte, and its high byte XORed with it
  * becomes the new low byte; those two then shift left one as a word, taking in bit 6 of the old
  * middle byte XOR bit 0 of the old low byte. The high byte never changes. The byte given is the
- * new low and middle bytes XORed.
- * Entry: CardRndSeed. Exit: A the byte, N and Z from it, C the bit shifted out of the middle
- * byte. X, Y, V kept.
+ * new low and middle bytes XORed. The flags the first rotate leaves are kept on the stack across the
+ * update and taken back.
+ * WAITS: no.
+ * Entry: CardRndSeed; the flags, which go on the stack. Exit: A the byte, N and Z from it, C the bit
+ * shifted out of the middle byte. X, Y, V kept.
  */
-RandomByte ex_rnd(void)
+RandomByte ex_rnd(uint8_t flags)
 {
-    uint8_t low = rd8(CardRndSeed);
-    uint8_t middle = rd8((uint16_t)(CardRndSeed + 1));
-    uint8_t high = rd8((uint16_t)(CardRndSeed + 2));
-    uint8_t feedback = (uint8_t)(((middle >> RND_FEEDBACK_BIT) ^ low) & 1);
-    uint8_t mixed_middle = (uint8_t)(middle ^ low);
-    uint8_t mixed_low = (uint8_t)(high ^ low);
     RandomByte random;
+    uint8_t a = rd8((uint16_t)(CardRndSeed + 1));
+    uint8_t carry = (uint8_t)(flags & P_C);
+    uint8_t value;
+    uint8_t low;
+    uint8_t pushed;
 
-    wr8((uint16_t)(CardRndSeed + 1), mixed_middle);
-    wr8(CardRndSeed, mixed_low);
-    low = (uint8_t)((mixed_low << 1) | feedback);
-    wr8(CardRndSeed, low);
-    middle = (uint8_t)((mixed_middle << 1) | (mixed_low >> 7));
-    wr8((uint16_t)(CardRndSeed + 1), middle);
-    random.value = (uint8_t)(middle ^ low);
-    random.carry = (mixed_middle & 0x80) != 0;
+    for (unsigned i = 0; i < 3; i++) {
+        uint8_t next = (uint8_t)((a << 1) | carry);
+
+        carry = (uint8_t)(a >> 7);
+        a = next;
+    }
+    low = rd8(CardRndSeed);
+    a = (uint8_t)(a ^ low);
+    value = (uint8_t)(a & 1);
+    a = (uint8_t)((carry << 7) | (a >> 1));
+    carry = value;
+    pushed = (uint8_t)((flags & ~(P_N | P_Z | P_C)) | (a & P_N) | (a == 0 ? P_Z : 0) | carry);
+    push8(php_byte(pushed));
+    a = rd8((uint16_t)(CardRndSeed + 1));
+    low = rd8(CardRndSeed);
+    a = (uint8_t)(a ^ low);
+    wr8((uint16_t)(CardRndSeed + 1), a);
+    a = rd8((uint16_t)(CardRndSeed + 2));
+    low = rd8(CardRndSeed);
+    a = (uint8_t)(a ^ low);
+    wr8(CardRndSeed, a);
+    carry = (uint8_t)(pull8() & P_C);
+    value = rd8(CardRndSeed);
+    wr8(CardRndSeed, (uint8_t)((value << 1) | carry));
+    carry = (uint8_t)(value >> 7);
+    value = rd8((uint16_t)(CardRndSeed + 1));
+    wr8((uint16_t)(CardRndSeed + 1), (uint8_t)((value << 1) | carry));
+    carry = (uint8_t)(value >> 7);
+    a = rd8((uint16_t)(CardRndSeed + 1));
+    low = rd8(CardRndSeed);
+    random.value = (uint8_t)(a ^ low);
+    random.carry = carry != 0;
     return random;
 }
 
 void abi_ex_rnd(void)
 {
-    RandomByte random = ex_rnd();
+    RandomByte random = ex_rnd(cpu.p);
 
     cpu.a = random.value;
     abi_nz(random.value);

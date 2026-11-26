@@ -1828,7 +1828,7 @@ void call_return_point(void)
     int nest;
     uint64_t j;
 
-    if (mode != MODE_HYBRID || !s)
+    if (mode != MODE_HYBRID || !s || getenv("RONDO_NO_RETURN_POINT"))      /* the switch is for comparing runs with and without the hook */
         return;
     nest = s->nest;
     for (j = s->cur;; j++) {

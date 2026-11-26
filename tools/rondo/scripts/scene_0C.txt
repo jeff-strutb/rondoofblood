@@ -3,6 +3,8 @@
 # when its timer runs out it sets bit 1 of zModeEvents ($9A, SMB1) and writes $09 to zA3. Before it, it clears bits 0 and 1 of $26EF, which is 0 during play, so nothing is poked there.
 # Stage $09 by a continue restart (as stage_09), seeded random play, then those bytes in one frame (zModeEvents
 # and zA3 are 0 during play, so the poke is the trigger's result), then the screens as the game plays them.
+# It ends while the screens still play (game mode 9). Left 1,800 frames longer, the run leaves them for a state the poke
+# made and the stage's real end would not: the continue screen, game mode 7.
 include _continue_to.txt
 poke 2081 09
 press I 6
@@ -38,6 +40,3 @@ dump loaded
 wait 1800
 shot s1
 dump s1
-wait 1800
-shot s2
-dump s2

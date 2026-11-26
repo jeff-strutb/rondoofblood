@@ -2,7 +2,7 @@
 # Stage $10 scene $56 (StageScenes plus zCharacter), then scenes $5A and $5B (the clear screens for zCharacter 1).
 # To the continue screen (as stage_10), then ContinueChoice ($3F24) 2, the screen's third choice: ModeDead then
 # switches zCharacter (EOR 1) and restarts the stage, as the game does when the player continues as the other
-# character. zStage $10, seeded random play as Maria, then the clear as clear_10 pokes it (zModeEvents 4, the result of
+# character. zStage $10, seeded random play as Maria, then the clear as scene_58 pokes it (zModeEvents 4, the result of
 # the stage-end sequence's SMB2 in Stage $10).
 include _continue_to.txt
 poke 2081 10

@@ -466,4 +466,6 @@ CardExit psg_scale_amount_alt(uint8_t x);
 CardExit psg_pitch_effects_alt(void);
 CardExit psg_volume_envelope_alt(void);
 
+CardExit psg_start_song_alt(void);
+
 #endif

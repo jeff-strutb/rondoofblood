@@ -1536,3 +1536,94 @@ psg_volume_envelope_alt_at28:
     stz a:$235A,x
     stz a:$2360,x
     jmp psg_volume_envelope_alt_at16
+
+; @card 02:C330 psg_start_song_alt
+; WHAT IT DOES: The second player's psg_start_song (mode 0): Starts the song that was asked for, if one was: sets up each channel the song's header names.
+; HOW: $22E1 the song asked for (bit 7 set: none, or already started); the song's header found through the pointer at $22D0 and the list
+; of headers, its first byte a mask of channels (bit 7 set: it is a song); for each channel in the mask the state, counts and effects
+; arrays cleared, the default shape, balance and scale set, the channel's start pointer taken from the header, the flags set from
+; $22E2 if the header's bit 6 says so; then the fade cleared, the song marked started and the player's done flag cleared.
+; WAITS: no.
+; Entry: nothing. Exit: A $40, X 6, Y the bytes of the header read, C 1, N and V from the done flags' old byte, Z from A and it.
+psg_start_song_alt:
+    lda a:$22E1
+    bpl psg_start_song_alt_at0
+psg_start_song_alt_at12:
+    rts
+psg_start_song_alt_at0:
+    asl a
+    tay
+    lda a:$22D0
+    sta z:$EA
+    lda a:$22D1
+    sta z:$EB
+    lda (<$EA),y
+    sta z:$E8
+    iny
+    lda (<$EA),y
+    sta z:$E9
+    lda (<$E8)
+    bmi psg_start_song_alt_at12
+    sta z:$EA
+    sta z:$EB
+    cly
+    clx
+psg_start_song_alt_at3:
+    lsr z:$EA
+    bcc psg_start_song_alt_at10
+    lda #$01
+    sta a:$247C,x
+    sta a:$230C,x
+    stz a:$2482,x
+    stz a:$2318,x
+    stz a:$2312,x
+    stz a:$238A,x
+    stz a:$23AE,x
+    stz a:$2396,x
+    stz a:$23BA,x
+    stz a:$23E4,x
+    stz a:$23F6,x
+    stz a:$2456,x
+    stz a:$2330,x
+    stz a:$23C0,x
+    stz a:$23CC,x
+    stz a:$23D8,x
+    stz a:$2336,x
+    lda a:$D8A1
+    sta a:$233C,x
+    lda a:$D8A2
+    sta a:$2342,x
+    lda #$84
+    sta a:$236C,x
+    lda #$04
+    sta a:$22FA,x
+    iny
+    lda (<$E8),y
+    sta a:$22EE,x
+    sta a:$2324,x
+    iny
+    lda (<$E8),y
+    sta a:$22F4,x
+    sta a:$232A,x
+    lda #$80
+    cpx #$04
+    bcc psg_start_song_alt_at8
+    sta a:$2476,x
+psg_start_song_alt_at8:
+    sta a:$2474,x
+    bbr6 $EB,psg_start_song_alt_at10
+    lda a:$22E2
+    sta a:$2474,x
+psg_start_song_alt_at10:
+    inx
+    cpx #$06
+    bcc psg_start_song_alt_at3
+    stz a:$2488
+    stz a:$248A
+    lda #$80
+    tsb a:$22E1
+    lda a:$22DE
+    and #$70
+    ora a:$22DD
+    sta a:$22DE
+    rts

@@ -26,7 +26,7 @@ enum {
     PORT_LOW = 0x2515, PORT_HIGH = 0x251B, PORT_AT = 0x2521, SCALE = 0x2533, SCALE_BASE = 0x2497, ENV_STATE = 0x260D, ENV_TIMER = 0x24BB,
     ENV_LEFT = 0x250F, ENV_LEVEL_LOW = 0x24EB, ENV_LEVEL_HIGH = 0x24F1, ENV_RATE_LOW = 0x24F7, ENV_RATE_HIGH = 0x24FD, ENV_RELEASE_LOW = 0x2503,
     ENV_RELEASE_HIGH = 0x2509, ENV_AT = 0x24E5, VOLUME_BASE = 0x24AF, VOLUME_OUT = 0x25F3, ENV_LEVEL_MAX = 0x7C, SONG_NEXT = 0x22E1, SONG_LIST = 0x22D0,
-    SONG_FLAGS = 0x22DE, SONG_CHANNEL_FLAGS = 0x22E2, NOTE_COUNT = 0x24A9, CHANNEL_DEFAULT_SHAPE = 0xD8A1, CHANNEL_START_LOW = 0x248B,
+    SONG_FLAGS = 0x22DE, SONG_MODE_LIMIT = 0x22DD, SONG_CHANNEL_FLAGS = 0x22E2, NOTE_COUNT = 0x24A9, CHANNEL_DEFAULT_SHAPE = 0xD8A1, CHANNEL_START_LOW = 0x248B,
     CHANNEL_START_HIGH = 0x2491, CHANNEL_LOOP_LOW = 0x24C1, CHANNEL_LOOP_HIGH = 0x24C7, SCALE_BASE_AT = 0x2497, ENV_RELEASE_HIGH_AT = 0x2509
 };
 
@@ -1271,17 +1271,7 @@ static const uint16_t SONG_CLEARED[] = {
     0x260D, 0x24B5, 0x24AF, 0x2527, 0x254B, 0x2533, 0x2557, 0x2581, 0x2593, 0x25E1, 0x24CD, 0x255D, 0x2569, 0x2575, 0x24D3
 };
 
-/*
- * @card 02:CD45 psg_start_song
- * WHAT IT DOES: Starts the song that was asked for, if one was: sets up each channel the song's header names.
- * HOW: $22E1 the song asked for (bit 7 set: none, or already started); the song's header found through the pointer at $22D0 and the list
- * of headers, its first byte a mask of channels (bit 7 set: it is a song); for each channel in the mask the state, counts and effects
- * arrays cleared, the default shape, balance and scale set, the channel's start pointer taken from the header, the flags set from
- * $22E2 if the header's bit 6 says so; then the fade cleared, the song marked started and the player's done flag cleared.
- * WAITS: no.
- * Entry: nothing. Exit: A $40, X 6, Y the bytes of the header read, C 1, N and V from the done flags' old byte, Z from A and it.
- */
-CardExit psg_start_song(void)
+static CardExit start_song_body(uint8_t set)
 {
     CardExit e = { 0 };
     uint8_t value;
@@ -1303,7 +1293,7 @@ CardExit psg_start_song(void)
     value = rd8_zp_y(ZP_EA, y);
     wr8(ZP_E9, value);
     header = rd8_zp_y(ZP_E8, 0);
-    if ((header & 0x80) == 0)
+    if (((header & 0x80) == 0) == (set == 0))
         return with_y(with_c(exit_a(header), false), y);
     wr8(ZP_EA, header);
     wr8(ZP_EB, header);
@@ -1314,51 +1304,99 @@ CardExit psg_start_song(void)
         wr8(ZP_EA, (uint8_t)(mask >> 1));
         if ((mask & 1) == 0)
             continue;
-        wr8((uint16_t)(CHANNEL_STATE + x), 1);
-        wr8((uint16_t)(NOTE_COUNT + x), 1);
+        wr8((uint16_t)(ar(set, CHANNEL_STATE) + x), 1);
+        wr8((uint16_t)(ar(set, NOTE_COUNT) + x), 1);
         for (unsigned i = 0; i < sizeof SONG_CLEARED / sizeof SONG_CLEARED[0]; i++)
-            wr8((uint16_t)(SONG_CLEARED[i] + x), 0);
+            wr8((uint16_t)(ar(set, SONG_CLEARED[i]) + x), 0);
         value = rd8(CHANNEL_DEFAULT_SHAPE);
-        wr8((uint16_t)(SHAPE_LOW + x), value);
+        wr8((uint16_t)(ar(set, SHAPE_LOW) + x), value);
         value = rd8((uint16_t)(CHANNEL_DEFAULT_SHAPE + 1));
-        wr8((uint16_t)(SHAPE_HIGH + x), value);
-        wr8((uint16_t)(ENV_RELEASE_HIGH_AT + x), 0x84);
-        wr8((uint16_t)(SCALE_BASE_AT + x), 4);
+        wr8((uint16_t)(ar(set, SHAPE_HIGH) + x), value);
+        wr8((uint16_t)(ar(set, ENV_RELEASE_HIGH_AT) + x), 0x84);
+        wr8((uint16_t)(ar(set, SCALE_BASE_AT) + x), 4);
         y++;
         value = rd8_zp_y(ZP_E8, y);
-        wr8((uint16_t)(CHANNEL_START_LOW + x), value);
-        wr8((uint16_t)(CHANNEL_LOOP_LOW + x), value);
+        wr8((uint16_t)(ar(set, CHANNEL_START_LOW) + x), value);
+        wr8((uint16_t)(ar(set, CHANNEL_LOOP_LOW) + x), value);
         y++;
         value = rd8_zp_y(ZP_E8, y);
-        wr8((uint16_t)(CHANNEL_START_HIGH + x), value);
-        wr8((uint16_t)(CHANNEL_LOOP_HIGH + x), value);
+        wr8((uint16_t)(ar(set, CHANNEL_START_HIGH) + x), value);
+        wr8((uint16_t)(ar(set, CHANNEL_LOOP_HIGH) + x), value);
         if (x >= 4)
-            wr8((uint16_t)(NOISE_AT + x), 0x80);
-        wr8((uint16_t)(FLAGS_AT + x), 0x80);
+            wr8((uint16_t)(ar(set, NOISE_AT) + x), 0x80);
+        wr8((uint16_t)(ar(set, FLAGS_AT) + x), 0x80);
         value = rd8(ZP_EB);
         if ((value & 0x40) != 0) {
             value = rd8(SONG_CHANNEL_FLAGS);
-            wr8((uint16_t)(FLAGS_AT + x), value);
+            wr8((uint16_t)(ar(set, FLAGS_AT) + x), value);
         }
     }
-    wr8(TEMPO_ON, 0);
-    wr8(TEMPO_TICKS, 0);
+    wr8(ar(set, TEMPO_ON), 0);
+    wr8(ar(set, TEMPO_TICKS), 0);
     value = rd8(SONG_NEXT);
     wr8(SONG_NEXT, (uint8_t)(value | 0x80));
-    value = rd8(SONG_FLAGS);
-    wr8(SONG_FLAGS, (uint8_t)(value & ~0x40));
-    e.a = 0x40;
+    if (set == 0) {
+        uint8_t flags = rd8(SONG_FLAGS);
+
+        wr8(SONG_FLAGS, (uint8_t)(flags & ~0x40));
+        e.a = 0x40;
+        e.n = (flags & 0x80) != 0;
+        e.v = (flags & 0x40) != 0;
+        e.z = (uint8_t)(flags & ~0x40) == 0;
+        e.set_n = e.set_v = e.set_z = true;
+    } else {
+        uint8_t flags = rd8(SONG_FLAGS);
+        uint8_t kept = (uint8_t)((flags & 0x70) | rd8(SONG_MODE_LIMIT));
+
+        wr8(SONG_FLAGS, kept);
+        e.a = e.nz = kept;
+        e.v = (value & 0x40) != 0;
+        e.set_nz = e.set_v = true;
+    }
+    e.set_a = true;
     e.x = CHANNELS;
     e.y = y;
     e.c = true;
-    e.n = (value & 0x80) != 0;
-    e.v = (value & 0x40) != 0;
-    e.z = (uint8_t)(value & ~0x40) == 0;
-    e.set_a = e.set_x = e.set_y = e.set_c = e.set_n = e.set_v = e.set_z = true;
+    e.set_x = e.set_y = e.set_c = true;
     return e;
+}
+
+/*
+ * @card 02:CD45 psg_start_song
+ * WHAT IT DOES: Starts the song that was asked for, if one was: sets up each channel the song's header names.
+ * HOW: $22E1 the song asked for (bit 7 set: none, or already started); the song's header found through the pointer at $22D0 and the list
+ * of headers, its first byte a mask of channels (bit 7 set: it is a song); for each channel in the mask the state, counts and effects
+ * arrays cleared, the default shape, balance and scale set, the channel's start pointer taken from the header, the flags set from
+ * $22E2 if the header's bit 6 says so; then the fade cleared, the song marked started and the player's done flag cleared.
+ * WAITS: no.
+ * Entry: nothing. Exit: A $40, X 6, Y the bytes of the header read, C 1, N and V from the done flags' old byte, Z from A and it.
+ */
+CardExit psg_start_song(void)
+{
+    return start_song_body(0);
+}
+
+/*
+ * @card 02:C330 psg_start_song_alt
+ * WHAT IT DOES: The second player's psg_start_song (mode 0): Starts the song that was asked for, if one was: sets up each channel the song's header names.
+ * HOW: $22E1 the song asked for (bit 7 set: none, or already started); the song's header found through the pointer at $22D0 and the list
+ * of headers, its first byte a mask of channels (bit 7 set: it is a song); for each channel in the mask the state, counts and effects
+ * arrays cleared, the default shape, balance and scale set, the channel's start pointer taken from the header, the flags set from
+ * $22E2 if the header's bit 6 says so; then the fade cleared, the song marked started and the player's done flag cleared.
+ * WAITS: no.
+ * Entry: nothing. Exit: A $40, X 6, Y the bytes of the header read, C 1, N and V from the done flags' old byte, Z from A and it.
+ */
+CardExit psg_start_song_alt(void)
+{
+    return start_song_body(1);
 }
 
 void abi_psg_start_song(void)
 {
     card_exit_apply(psg_start_song());
+}
+
+void abi_psg_start_song_alt(void)
+{
+    card_exit_apply(psg_start_song_alt());
 }

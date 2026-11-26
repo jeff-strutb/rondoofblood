@@ -76,11 +76,11 @@ Ended HurtSoundsThenRunTable(uint8_t slot, uint8_t y_entry)
     Jump jump;
 
     jsr_push(0xB390);
-    sound = SoundWhenHurtThenFlag(slot, y_entry);
+    sound = l8_hurt_then_flag_exit_shim(SoundWhenHurtThenFlag(slot, y_entry));
     jsr_pop();
     abi_sound_end(sound);
     jsr_push(0xB392);
-    sound = SoundAndState6WhenFlagged(slot, y_entry);
+    sound = l8_state6_when_flagged_exit_shim(SoundAndState6WhenFlagged(slot, y_entry));
     jsr_pop();
     abi_sound_end(sound);
     jsr_push(0xB394);

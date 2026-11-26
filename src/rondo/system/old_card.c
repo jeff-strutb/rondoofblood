@@ -56,20 +56,15 @@ enum {
     ALL_OBJECTS = 0x58,
     OBJECT1 = 1,                       /* the program's second character */
     OBJECT1_HANDLERS = 0x4877,         /* RunObject1's table: a handler address per state */
-    OBJECT1_WALK_END = 0xC0, OBJECT1_LEFT_END = 0x40
+    OBJECT1_WALK_END = 0xC0, OBJECT1_LEFT_END = 0x40,
+    WORLD_FIRST = 0x04, WORLD_END = 0x14,  /* the objects WorldToScreen places, 4 to $13 */
+    WORLD_RUN_FIRST = 0x05, WORLD_RUN_END = 0x15, /* the odd slots RunWorldObjects and the hit tests go through */
+    WORLD_HANDLERS = 0x49D0,           /* RunWorldObject's table: a handler address per state */
+    WORLD_HURT_SPEEDS = 0x4A8B, WORLD_PIECE_SPEEDS = 0x4A8D,
+    SPAWNER = 0x03, SPAWNER_HANDLERS = 0x4B25,
+    WHIP_FRAME = 0x0B                  /* the player's frame whose whip hits */
 };
 
-static void follow_exit_shim(FollowArm r);
-static void player_exit_shim(PlayerArm r);
-
-/* The registers StepDemoFrame hands the original code it calls after RunPlayerObject: what the player left. */
-static void demo_player_regs_shim(PlayerArm r)
-{
-    if (r.arm != PLAYER_ORIGINAL) {
-        cpu.x = PLAYER;
-    }
-    player_exit_shim(r);
-}
 
 /* Register shims for the calls the main program makes into the card, each named for the instructions before the JSR
  * that set what the card is handed (the card's own code reads them). */
@@ -318,9 +313,12 @@ void OldCardMain(void)
     call_orig(0x41AD, CARD_E07B);
     if (call_frame(0x41B0, abi_InitPlayerObject))
         return;
-    call_orig(0x41B3, 0x4846);
-    call_orig(0x41B6, 0x4AFC);
-    call_orig(0x41B9, 0x49A2);
+    if (call_frame(0x41B3, abi_InitObject1))
+        return;
+    if (call_frame(0x41B6, abi_InitSpawner))
+        return;
+    if (call_frame(0x41B9, abi_ClearWorldObjects))
+        return;
     WR8(OBJ->frame[DEMO_TIMER], 0x37);
     WR8(OBJ->x_lo[DEMO_TIMER], 0x80);
     WR8(OBJ->y_lo[DEMO_TIMER], 0x58);
@@ -375,36 +373,33 @@ void abi_OldCardSoftReset(void)
  * @routine 0023:228 StepDemoFrame
  * @run 80:4228
  * WHAT IT DOES: One frame of the player screen: counts down object $20's timer (its $34B8 byte, then its $3510 byte
- * when that reaches zero) and clears its frame when both have; runs the player, the program's routines at $4863,
- * $4B11 and $49AD, ScrollWithPlayer, and the routines at $497B and $4BE8.
- * HOW: Two decrements, then seven calls; the four with no C yet are run as original with the registers the call
- * before left.
- * WAITS: where the original code it calls does (not read yet).
- * Entry: nothing. Exit: as the routine at $4BE8 leaves them.
+ * when that reaches zero) and clears its frame when both have; then runs the player, object 1, the spawner, the
+ * world objects, ScrollWithPlayer, WorldToScreen and CheckPlayerHits.
+ * HOW: Two decrements, then seven calls, each made by its frame so that the registers one leaves are those the next
+ * is entered with, as in the original.
+ * WAITS: no.
+ * Entry: nothing. Exit: as CheckPlayerHits leaves them, with what it keeps from the calls before.
  */
 void StepDemoFrame(void)
 {
-    PlayerArm player;
-    FollowArm follow;
-
     if (DEC8(OBJ->f34b8[DEMO_TIMER]) == 0) {
         if (DEC8(OBJ->f3510[DEMO_TIMER]) == 0) {
             WR8(OBJ->frame[DEMO_TIMER], 0);
         }
     }
-    jsr_push(0x4238);
-    player = RunPlayerObject();
-    jsr_pop();
-    demo_player_regs_shim(player);
-    call_orig(0x423B, 0x4863);
-    call_orig(0x423E, 0x4B11);
-    call_orig(0x4241, 0x49AD);
-    jsr_push(0x4244);
-    follow = ScrollWithPlayer();
-    jsr_pop();
-    follow_exit_shim(follow);
-    call_orig(0x4247, 0x497B);
-    call_orig(0x424A, 0x4BE8);
+    if (call_frame(0x4238, abi_RunPlayerObject))
+        return;
+    if (call_frame(0x423B, abi_RunObject1))
+        return;
+    if (call_frame(0x423E, abi_RunSpawner))
+        return;
+    if (call_frame(0x4241, abi_RunWorldObjects))
+        return;
+    if (call_frame(0x4244, abi_ScrollWithPlayer))
+        return;
+    if (call_frame(0x4247, abi_WorldToScreen))
+        return;
+    (void)call_frame(0x424A, abi_CheckPlayerHits);
 }
 
 void abi_StepDemoFrame(void)
@@ -2074,4 +2069,925 @@ Obj1Arm Object1StepRight(uint8_t object)
 void abi_Object1StepRight(void)
 {
     object1_exit_shim(Object1StepRight(cpu.x));
+}
+
+/*
+ * @routine 0024:17B WorldToScreen
+ * @run 80:497B
+ * WHAT IT DOES: Places objects 4 to $13 on the screen from their world places: X is the world X ($3568 low, $35C0
+ * high) less the scroll (ScrollXLo and Hi), Y the world Y ($3670 and $36C8) as it is.
+ * HOW: A loop over the slots; a subtract with borrow for X, two copies for Y.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the last Y high byte, X $14, N 0, Z 1, C 1 (the CPX), V from the last subtract. Y kept.
+ */
+Sum WorldToScreen(void)
+{
+    Sum last = { 0 };
+    uint8_t slot = WORLD_FIRST, value;
+
+    do {
+        value = RD8(OBJ->f3568[slot]);
+        last = sub_bytes(value, RD8(SCROLL->x_lo[0]), true);
+        WR8(OBJ->x_lo[slot], last.value);
+        value = RD8(OBJ->f35c0[slot]);
+        last = sub_bytes(value, RD8(SCROLL->x_hi[0]), last.carry);
+        WR8(OBJ->x_hi[slot], last.value);
+        value = RD8(OBJ->f3670[slot]);
+        WR8(OBJ->y_lo[slot], value);
+        value = RD8(OBJ->f36c8[slot]);
+        WR8(OBJ->y_hi[slot], value);
+        last.value = value;
+        slot++;
+    } while (slot != WORLD_END);
+    return last;
+}
+
+void abi_WorldToScreen(void)
+{
+    Sum last = WorldToScreen();
+
+    cpu.a = last.value;
+    cpu.x = WORLD_END;
+    abi_nz(0);
+    abi_flag(P_C, true);
+    abi_flag(P_V, last.overflow);
+}
+
+/*
+ * @routine 0024:1A2 ClearWorldObjects
+ * @run 80:49A2
+ * WHAT IT DOES: Empties objects 4 to $13.
+ * HOW: The program's copy of ClearObject in a loop.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $14, N 0, Z 1, C 1 (the CPX). A, Y and V kept.
+ */
+void ClearWorldObjects(void)
+{
+    uint8_t slot = WORLD_FIRST;
+
+    do {
+        jsr_push(0x49A7);
+        ClearObject(slot);
+        jsr_pop();
+        slot++;
+    } while (slot != WORLD_END);
+}
+
+void abi_ClearWorldObjects(void)
+{
+    ClearWorldObjects();
+    cpx_shim(WORLD_END, WORLD_END);
+}
+
+/* What a world object's routine leaves, from the values its arm recorded (WorldArm, old_card.h). */
+static void world_exit_shim(WorldArm r)
+{
+    if (r.arm == WORLD_ORIGINAL) {
+        return;
+    }
+    if (r.stepped && !r.step_last) {
+        step_frames_exit_shim(r.step, r.step_y);
+    }
+    if (r.moved) {
+        cpu.a = axis_move_flags_shim(r.move);
+        abi_nz(cpu.a);
+    }
+    if (r.stepped && r.step_last) {
+        step_frames_exit_shim(r.step, r.step_y);
+    }
+    switch (r.arm) {
+    case WORLD_LOADED:
+        cpu.a = r.first;
+        abi_nz(r.second);
+        if (r.c_set) {
+            abi_flag(P_C, r.carry);
+        }
+        return;
+    case WORLD_COMPARED:
+        cpu.a = r.first;
+        abi_nz((uint8_t)(r.first - r.second));
+        abi_flag(P_C, r.first >= r.second);
+        return;
+    case WORLD_NZ_ONLY:
+        abi_nz(r.second);
+        return;
+    case WORLD_HIT:
+        cpu.a = 0x1E;
+        cpu.y = (uint8_t)(r.first >> 1);
+        abi_nz(0x1E);
+        abi_flag(P_C, (r.first & 0x01) != 0);
+        abi_flag(P_V, r.sub_v);
+        return;
+    default:
+        return;
+    }
+}
+
+/* A handler with no C (the table names none past state 4), run with the registers RunWorldObject holds at its JMP: A
+ * the table's high byte (N and Z from it), X the object, Y the doubled state, C the state's bit 7. */
+static void world_handler_shim(uint16_t handler, uint8_t object, uint8_t high, uint8_t index, bool carry)
+{
+    cpu.a = high;
+    cpu.x = object;
+    cpu.y = index;
+    abi_nz(high);
+    abi_flag(P_C, carry);
+    call_original(handler);
+}
+
+/*
+ * @routine 0024:1AD RunWorldObjects
+ * @run 80:49AD
+ * WHAT IT DOES: Runs every odd world object from 5 to $13 that has a frame, through RunWorldObject.
+ * HOW: A loop over the slots two at a time.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the last frame byte read, or the last handler's A when the last slot ran; X $15, N 0, Z 1,
+ * C 1 (the CPX); Y and V as the last handler left them, kept when none ran.
+ */
+WorldRun RunWorldObjects(void)
+{
+    WorldRun r = { 0 };
+    uint8_t slot = WORLD_RUN_FIRST;
+
+    do {
+        r.frame = RD8(OBJ->frame[slot]);
+        r.ran_last = false;
+        if (r.frame != 0) {
+            jsr_push(0x49B7);
+            r.last = RunWorldObject(slot);
+            jsr_pop();
+            r.ran = true;
+            r.ran_last = true;
+        }
+        slot = (uint8_t)(slot + 2);
+    } while (slot != WORLD_RUN_END);
+    return r;
+}
+
+void abi_RunWorldObjects(void)
+{
+    WorldRun r = RunWorldObjects();
+
+    if (r.ran) {
+        world_exit_shim(r.last);
+    }
+    if (!r.ran_last) {
+        cpu.a = r.frame;
+    }
+    cpu.x = WORLD_RUN_END;
+    abi_nz(0);
+    abi_flag(P_C, true);
+}
+
+/*
+ * @routine 0024:1BE RunWorldObject
+ * @run 80:49BE
+ * WHAT IT DOES: Runs a world object's handler for its state: fall in, walk, stunned, fall away, the thrown piece.
+ * HOW: The state doubled indexes the table at $49D0; the word goes to zTemp00-01 and an indirect jump takes it.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the handler leaves them. X kept.
+ */
+WorldArm RunWorldObject(uint8_t object)
+{
+    WorldArm r = { 0 };
+    uint8_t state, index, low, high;
+    uint16_t handler;
+
+    state = RD8(OBJ->f34b8[object]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(WORLD_HANDLERS + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(WORLD_HANDLERS + 1 + index));
+    WR8(ZP->temp01, high);
+    handler = RD16_LH2(ZP->temp00, ZP->temp01);  /* JMP [$2000] */
+    switch (handler) {
+    case 0x49DA:
+        return WorldObjectFallIn(object);
+    case 0x4A10:
+        return WorldObjectWalk(object);
+    case 0x4A8F:
+        return WorldObjectStunned(object);
+    case 0x4AAC:
+        return WorldObjectFallAway(object);
+    case 0x4ACD:
+        return WorldObjectPiece(object);
+    default:
+        world_handler_shim(handler, object, high, index, (state & 0x80) != 0);
+        r.arm = WORLD_ORIGINAL;
+        return r;
+    }
+}
+
+void abi_RunWorldObject(void)
+{
+    world_exit_shim(RunWorldObject(cpu.x));
+}
+
+/* Gravity: the Y velocity word plus the step given, the low byte's carry into the high byte. */
+static void world_gravity(uint8_t object, uint8_t step)
+{
+    uint8_t value;
+    Sum sum;
+
+    value = RD8(OBJ->vy_lo[object]);
+    sum = add_bytes(step, value, false);
+    WR8(OBJ->vy_lo[object], sum.value);
+    value = RD8(OBJ->vy_hi[object]);
+    sum = add_bytes(0, value, sum.carry);
+    WR8(OBJ->vy_hi[object], sum.value);
+}
+
+/*
+ * @routine 0024:1DA WorldObjectFallIn
+ * @run 80:49DA
+ * WHAT IT DOES: A world object falling in ($20 a frame) until world Y $A0, where it lands and starts walking left
+ * (X velocity $FF80, state 1).
+ * HOW: The velocity word's add, ApplyWorldVelocity, a compare; the landing's stores.
+ * WAITS: no.
+ * Entry: X the object. Exit: as world_exit_shim. X kept.
+ */
+WorldArm WorldObjectFallIn(uint8_t object)
+{
+    WorldArm r = { 0 };
+    uint8_t y;
+
+    world_gravity(object, 0x20);
+    jsr_push(0x49ED);
+    r.move = ApplyWorldVelocity(object);
+    jsr_pop();
+    r.moved = true;
+    y = RD8(OBJ->f3670[object]);
+    if (y < PLAYER_FLOOR) {
+        r.arm = WORLD_COMPARED;
+        r.first = y;
+        r.second = PLAYER_FLOOR;
+        return r;
+    }
+    WR8(OBJ->f3670[object], PLAYER_FLOOR);
+    WR8(OBJ->vx_lo[object], 0x80);
+    WR8(OBJ->vx_hi[object], 0xFF);
+    WR8(OBJ->vy_lo[object], 0);
+    WR8(OBJ->vy_hi[object], 0);
+    WR8(OBJ->f34b8[object], 0x01);
+    r.arm = WORLD_LOADED;
+    r.first = 0x01;
+    r.second = 0x01;
+    r.c_set = true;
+    r.carry = true;
+    return r;
+}
+
+void abi_WorldObjectFallIn(void)
+{
+    world_exit_shim(WorldObjectFallIn(cpu.x));
+}
+
+/* $4A39: hit by the whip: knocked back (X velocity from the table at $4A8B by the hurt byte halved, Y velocity
+ * $FC00, state 4), and the object before it made a piece flying off: its world place this one's, $10 higher, its Y
+ * velocity $FE00 and X velocity from the table at $4A8D, frame $1E. */
+static WorldArm world_object_hit(uint8_t object)
+{
+    WorldArm r = { 0 };
+    uint8_t value;
+    Sum sum;
+
+    WR8(OBJ->anim_step[object], 0);
+    WR8(OBJ->anim_timer[object], 0);
+    WR8(OBJ->vx_lo[object], 0);
+    r.first = RD8(OBJ->f3250[object]);
+    value = rd8((uint16_t)(WORLD_HURT_SPEEDS + (r.first >> 1)));
+    WR8(OBJ->vx_hi[object], value);
+    WR8(OBJ->vy_lo[object], 0);
+    WR8(OBJ->vy_hi[object], 0xFC);
+    WR8(OBJ->f34b8[object], 0x04);
+    value = RD8(OBJ->f3568[object]);
+    WR8(OBJ->f3568[object - 1], value);
+    value = RD8(OBJ->f35c0[object]);
+    WR8(OBJ->f35c0[object - 1], value);
+    value = RD8(OBJ->f3670[object]);
+    sum = sub_bytes(value, 0x10, true);
+    WR8(OBJ->f3670[object - 1], sum.value);
+    r.sub_v = sum.overflow;
+    value = RD8(OBJ->f36c8[object]);
+    WR8(OBJ->f36c8[object - 1], value);
+    WR8(OBJ->vy_hi[object - 1], 0xFE);
+    r.first = RD8(OBJ->f3250[object]);
+    value = rd8((uint16_t)(WORLD_PIECE_SPEEDS + (r.first >> 1)));
+    WR8(OBJ->vx_hi[object - 1], value);
+    WR8(OBJ->frame[object - 1], 0x1E);
+    r.arm = WORLD_HIT;
+    return r;
+}
+
+/*
+ * @routine 0024:210 WorldObjectWalk
+ * @run 80:4A10
+ * WHAT IT DOES: A world object walking: hit by the whip ($3250 set) it is knocked back; otherwise it moves, and once
+ * left of world X $28 it stops, stunned (frame $1A, state 2 for $40 frames); otherwise the walk's animation.
+ * HOW: ApplyWorldVelocity, tests of the world X's bytes; StartObjectAnimation on list 5.
+ * WAITS: no.
+ * Entry: X the object. Exit: as world_exit_shim. X kept.
+ */
+WorldArm WorldObjectWalk(uint8_t object)
+{
+    WorldArm r = { 0 };
+    uint8_t high, low;
+    bool stop;
+
+    if (RD8(OBJ->f3250[object]) != 0) {
+        return world_object_hit(object);
+    }
+    jsr_push(0x4A18);
+    r.move = ApplyWorldVelocity(object);
+    jsr_pop();
+    r.moved = true;
+    high = RD8(OBJ->f35c0[object]);
+    if ((high & 0x80) != 0) {
+        stop = true;
+    } else if (high != 0) {
+        stop = false;
+    } else {
+        low = RD8(OBJ->f3568[object]);
+        stop = low < 0x28;
+        r.c_set = true;
+        r.carry = !stop;
+    }
+    if (!stop) {
+        r.arm = WORLD_ANIMATED;
+        r.stepped = true;
+        r.step_last = true;
+        r.step = StartObjectAnimation(0x05, object, &r.step_y);  /* JMP $4276 */
+        return r;
+    }
+    INC8(OBJ->f34b8[object]);
+    WR8(OBJ->frame[object], 0x1A);
+    WR8(OBJ->f3720[object], 0x40);
+    r.arm = WORLD_LOADED;
+    r.first = 0x40;
+    r.second = 0x40;
+    return r;
+}
+
+void abi_WorldObjectWalk(void)
+{
+    world_exit_shim(WorldObjectWalk(cpu.x));
+}
+
+/*
+ * @routine 0024:28F WorldObjectStunned
+ * @run 80:4A8F
+ * WHAT IT DOES: A world object stunned: when its count runs out it stops and falls away (Y velocity $FC00, the next
+ * state).
+ * HOW: The count's decrement; the velocity's and the animation's stores.
+ * WAITS: no.
+ * Entry: X the object. Exit: as world_exit_shim. X kept.
+ */
+WorldArm WorldObjectStunned(uint8_t object)
+{
+    WorldArm r = { 0 };
+    uint8_t value;
+
+    value = DEC8(OBJ->f3720[object]);
+    if (value != 0) {
+        r.arm = WORLD_NZ_ONLY;
+        r.second = value;
+        return r;
+    }
+    WR8(OBJ->anim_step[object], 0);
+    WR8(OBJ->anim_timer[object], 0);
+    WR8(OBJ->vx_lo[object], 0);
+    WR8(OBJ->vx_hi[object], 0);
+    WR8(OBJ->vy_lo[object], 0);
+    WR8(OBJ->vy_hi[object], 0xFC);
+    r.arm = WORLD_LOADED;
+    r.first = 0xFC;
+    r.second = INC8(OBJ->f34b8[object]);
+    return r;
+}
+
+void abi_WorldObjectStunned(void)
+{
+    world_exit_shim(WorldObjectStunned(cpu.x));
+}
+
+/*
+ * @routine 0024:2AC WorldObjectFallAway
+ * @run 80:4AAC
+ * WHAT IT DOES: A world object falling away ($40 a frame): emptied once its world Y's high byte is set (off the
+ * bottom), otherwise the fall's animation (list 6).
+ * HOW: The velocity word's add, ApplyWorldVelocity, a test; the program's copy of ClearObject by a JMP.
+ * WAITS: no.
+ * Entry: X the object. Exit: as world_exit_shim. X kept.
+ */
+WorldArm WorldObjectFallAway(uint8_t object)
+{
+    WorldArm r = { 0 };
+    uint8_t high;
+
+    world_gravity(object, 0x40);
+    jsr_push(0x4ABF);
+    r.move = ApplyWorldVelocity(object);
+    jsr_pop();
+    r.moved = true;
+    high = RD8(OBJ->f36c8[object]);
+    if (high != 0) {
+        ClearObject(object);                    /* JMP $4584 */
+        r.arm = WORLD_LOADED;
+        r.first = high;
+        r.second = high;
+        return r;
+    }
+    jsr_push(0x4AC9);
+    r.step = StartObjectAnimation(0x06, object, &r.step_y);
+    jsr_pop();
+    r.stepped = true;
+    r.step_last = true;
+    r.arm = WORLD_ANIMATED;
+    return r;
+}
+
+void abi_WorldObjectFallAway(void)
+{
+    world_exit_shim(WorldObjectFallAway(cpu.x));
+}
+
+/*
+ * @routine 0024:2CD WorldObjectPiece
+ * @run 80:4ACD
+ * WHAT IT DOES: A world object knocked back: while the piece before it has a frame, the piece's animation (list 7)
+ * and move; then its own fall ($40 a frame), emptied off the bottom, otherwise the fall's animation (list 6).
+ * HOW: The piece's routines with X one lower (DEX, then INX); the velocity word's add, ApplyWorldVelocity.
+ * WAITS: no.
+ * Entry: X the object. Exit: as world_exit_shim. X kept.
+ */
+WorldArm WorldObjectPiece(uint8_t object)
+{
+    WorldArm r = { 0 };
+    uint8_t high;
+
+    if (RD8(OBJ->frame[object - 1]) != 0) {
+        jsr_push(0x4AD8);
+        r.step = StartObjectAnimation(0x07, (uint8_t)(object - 1), &r.step_y);
+        jsr_pop();
+        r.stepped = true;
+        jsr_push(0x4ADB);
+        r.move = ApplyWorldVelocity((uint8_t)(object - 1));
+        jsr_pop();
+        r.moved = true;
+    }
+    world_gravity(object, 0x40);
+    jsr_push(0x4AEF);
+    r.move = ApplyWorldVelocity(object);
+    jsr_pop();
+    r.moved = true;
+    high = RD8(OBJ->f36c8[object]);
+    if (high != 0) {
+        ClearObject(object);                    /* JMP $4584 */
+        r.arm = WORLD_LOADED;
+        r.first = high;
+        r.second = high;
+        return r;
+    }
+    r.step = StartObjectAnimation(0x06, object, &r.step_y);   /* JMP $4276 */
+    r.stepped = true;
+    r.step_last = true;
+    r.arm = WORLD_ANIMATED;
+    return r;
+}
+
+void abi_WorldObjectPiece(void)
+{
+    world_exit_shim(WorldObjectPiece(cpu.x));
+}
+
+/*
+ * @routine 0024:2FC InitSpawner
+ * @run 80:4AFC
+ * WHAT IT DOES: Empties object 3, the spawner, and places it at world X $2E0 with a count of 1.
+ * HOW: The program's copy of ClearObject, then three stores.
+ * WAITS: no.
+ * Entry: nothing. Exit: A 2, X 3, N and Z from A. Y, C and V kept.
+ */
+void InitSpawner(void)
+{
+    jsr_push(0x4B01);
+    ClearObject(SPAWNER);
+    jsr_pop();
+    WR8(OBJ->f3720[SPAWNER], 0x01);
+    WR8(OBJ->f3568[SPAWNER], 0xE0);
+    WR8(OBJ->f35c0[SPAWNER], 0x02);
+}
+
+void abi_InitSpawner(void)
+{
+    InitSpawner();
+    cpu.a = 0x02;
+    cpu.x = SPAWNER;
+    abi_nz(0x02);
+}
+
+/* What the spawner leaves: A, N and Z and C by arm; X 3 where the PLX made it, with N and Z from it. Y and V kept. */
+static void spawn_exit_shim(SpawnArm r)
+{
+    if (r.arm == SPAWN_ORIGINAL) {
+        return;
+    }
+    cpu.a = r.first;
+    abi_nz(r.second);
+    abi_flag(P_C, r.carry);
+    if (r.arm == SPAWN_NO_SLOT || r.arm == SPAWN_PLACED) {
+        cpu.x = SPAWNER;
+        abi_nz(SPAWNER);
+    }
+}
+
+/* A handler with no C (the table has one entry), run with the registers RunSpawner holds at its JMP. */
+static void spawner_handler_shim(uint16_t handler, uint8_t high, uint8_t index, bool carry)
+{
+    cpu.a = high;
+    cpu.x = SPAWNER;
+    cpu.y = index;
+    abi_nz(high);
+    abi_flag(P_C, carry);
+    call_original(handler);
+}
+
+/*
+ * @routine 0024:311 RunSpawner
+ * @run 80:4B11
+ * WHAT IT DOES: Runs the spawner's handler for its state (its table at $4B25 has one).
+ * HOW: The state doubled indexes the table; the word goes to zTemp00-01 and an indirect jump takes it.
+ * WAITS: no.
+ * Entry: nothing. Exit: X 3 or as the handler leaves it; the rest as the handler leaves them.
+ */
+SpawnArm RunSpawner(void)
+{
+    SpawnArm r = { 0 };
+    uint8_t state, index, low, high;
+    uint16_t handler;
+
+    state = RD8(OBJ->f34b8[SPAWNER]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(SPAWNER_HANDLERS + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(SPAWNER_HANDLERS + 1 + index));
+    WR8(ZP->temp01, high);
+    handler = RD16_LH2(ZP->temp00, ZP->temp01);  /* JMP [$2000] */
+    if (handler == 0x4B27) {
+        return SpawnerStep(SPAWNER);
+    }
+    spawner_handler_shim(handler, high, index, (state & 0x80) != 0);
+    r.arm = SPAWN_ORIGINAL;
+    return r;
+}
+
+void abi_RunSpawner(void)
+{
+    SpawnArm r = RunSpawner();
+
+    if (r.arm != SPAWN_ORIGINAL) {
+        cpu.x = SPAWNER;
+    }
+    spawn_exit_shim(r);
+}
+
+/*
+ * @routine 0024:327 SpawnerStep
+ * @run 80:4B27
+ * WHAT IT DOES: The spawner: while the scroll is below $200, every other frame it counts down, and at zero it puts a
+ * new world object in the first free pair of slots from 4 (frame $15 in the odd one, at the spawner's world place);
+ * from $200 on it counts down to 1 and holds there.
+ * HOW: zFrameTick's bit 0 by an LSR; the slot loop with X pushed and pulled; the program's copy of ClearObject twice.
+ * WAITS: no.
+ * Entry: X the spawner. Exit: by arm (SpawnArm): A, N, Z and C; X 3 on the loop's arms. Y and V kept.
+ */
+SpawnArm SpawnerStep(uint8_t object)
+{
+    SpawnArm r = { 0 };
+    uint8_t value, slot;
+
+    value = RD8(SCROLL->x_hi[0]);
+    if (value >= 0x02) {
+        value = RD8(OBJ->f3720[object]);
+        r.first = value;
+        r.carry = value >= 0x01;
+        if (value == 0x01) {
+            r.arm = SPAWN_HELD;
+            r.second = 0;
+            return r;
+        }
+        r.arm = SPAWN_COUNTED;
+        r.second = DEC8(OBJ->f3720[object]);
+        return r;
+    }
+    value = RD8(ZP->frame_tick);
+    r.first = (uint8_t)(value >> 1);
+    r.second = r.first;
+    r.carry = (value & 0x01) != 0;
+    if (!r.carry) {
+        r.arm = SPAWN_EVEN_FRAME;
+        return r;
+    }
+    r.second = DEC8(OBJ->f3720[object]);
+    if (r.second != 0) {
+        r.arm = SPAWN_TICKED;
+        return r;
+    }
+    push8(object);
+    slot = WORLD_FIRST;
+    do {
+        value = RD8(OBJ->frame[slot + 1]);
+        r.first = value;
+        if (value == 0) {
+            jsr_push(0x4B56);
+            ClearObject(slot);
+            jsr_pop();
+            slot++;
+            jsr_push(0x4B5A);
+            ClearObject(slot);
+            jsr_pop();
+            value = RD8(OBJ->f3568[SPAWNER]);
+            WR8(OBJ->f3568[slot], value);
+            value = RD8(OBJ->f35c0[SPAWNER]);
+            WR8(OBJ->f35c0[slot], value);
+            value = RD8(OBJ->f3670[SPAWNER]);
+            WR8(OBJ->f3670[slot], value);
+            value = RD8(OBJ->f36c8[SPAWNER]);
+            WR8(OBJ->f36c8[slot], value);
+            WR8(OBJ->frame[slot], 0x15);
+            (void)pull8();
+            r.arm = SPAWN_PLACED;
+            r.first = 0x15;
+            r.second = 0x15;
+            return r;                          /* the carry as the CPX before left it, or the LSR's on the first slot */
+        }
+        slot = (uint8_t)(slot + 2);
+        r.carry = slot >= WORLD_END;
+    } while (slot != WORLD_END);
+    (void)pull8();
+    r.arm = SPAWN_NO_SLOT;
+    r.second = r.first;
+    return r;
+}
+
+void abi_SpawnerStep(void)
+{
+    spawn_exit_shim(SpawnerStep(cpu.x));
+}
+
+/* One axis of a world place: as motion.c's apply_axis, the 8.8 velocity added to the 16.8 world position at the
+ * columns given, zTemp10 the velocity's sign. */
+static AxisMove world_axis(uint16_t velocity_lo, uint16_t velocity_hi, uint16_t frac_col, uint16_t low_col,
+                           uint16_t high_col, uint8_t object)
+{
+    AxisMove move;
+    uint8_t high_for_sign, low, high, frac, mid, top, sign;
+    unsigned sum;
+    uint8_t carry;
+
+    WR8(ZP->temp10, 0);
+    high_for_sign = RD8_IDX(velocity_hi, object);
+    if (high_for_sign & 0x80) {
+        DEC8(ZP->temp10);
+    }
+    low = RD8_IDX(velocity_lo, object);
+    frac = RD8_IDX(frac_col, object);
+    sum = (unsigned)low + frac;
+    carry = sum > 0xFF;
+    WR8_IDX(frac_col, object, (uint8_t)sum);
+    high = RD8_IDX(velocity_hi, object);
+    mid = RD8_IDX(low_col, object);
+    sum = (unsigned)high + mid + carry;
+    carry = sum > 0xFF;
+    WR8_IDX(low_col, object, (uint8_t)sum);
+    sign = RD8(ZP->temp10);
+    top = RD8_IDX(high_col, object);
+    sum = (unsigned)sign + top + carry;
+    WR8_IDX(high_col, object, (uint8_t)sum);
+    move.velocity = (int16_t)(low | (high << 8));
+    move.before = frac | ((uint32_t)mid << 8) | ((uint32_t)top << 16);
+    return move;
+}
+
+static AxisMove world_x(uint8_t object)
+{
+    return world_axis(COL(OBJ->vx_lo), COL(OBJ->vx_hi), COL(OBJ->f3510), COL(OBJ->f3568), COL(OBJ->f35c0), object);
+}
+
+static AxisMove world_y(uint8_t object)
+{
+    return world_axis(COL(OBJ->vy_lo), COL(OBJ->vy_hi), COL(OBJ->f3618), COL(OBJ->f3670), COL(OBJ->f36c8), object);
+}
+
+/*
+ * @routine 0024:37A ApplyWorldVelocity
+ * @run 80:4B7A
+ * WHAT IT DOES: Moves a world object by its velocity on both axes: X into $3510, $3568 and $35C0, Y into $3618,
+ * $3670 and $36C8.
+ * HOW: As ApplyVelocity, on the world columns.
+ * WAITS: no.
+ * Entry: X object. Exit: A the Y position's high byte, N, Z, C and V from its add. X and Y kept. Clobbers zTemp10.
+ */
+AxisMove ApplyWorldVelocity(uint8_t object)
+{
+    world_x(object);
+    return world_y(object);
+}
+
+void abi_ApplyWorldVelocity(void)
+{
+    AxisMove move = ApplyWorldVelocity(cpu.x);
+
+    cpu.a = axis_move_flags_shim(move);
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 0024:3C3 ApplyWorldVelocityX
+ * @run 80:4BC3
+ * WHAT IT DOES: Moves a world object along X by its X velocity.
+ * HOW: The head of ApplyWorldVelocity, as its own entry that returns.
+ * WAITS: no.
+ * Entry: X object. Exit: A the X position's high byte, N, Z, C and V from its add. X and Y kept. Clobbers zTemp10.
+ */
+AxisMove ApplyWorldVelocityX(uint8_t object)
+{
+    return world_x(object);
+}
+
+void abi_ApplyWorldVelocityX(void)
+{
+    AxisMove move = ApplyWorldVelocityX(cpu.x);
+
+    cpu.a = axis_move_flags_shim(move);
+    abi_nz(cpu.a);
+}
+
+/* The distance of a byte from zTemp00 or 01 (or a place), as the program takes it: SEC, SBC, and when it borrowed
+ * EOR #$FF and INC; then the compare with the reach. Records the A, the V of the subtract and the compare's C into
+ * the arm. Returns whether the distance is inside the reach. */
+static bool within_reach(HitsArm *r, uint8_t value, uint8_t from, uint8_t reach, bool *borrowed)
+{
+    Sum sum = sub_bytes(value, from, true);
+    uint8_t distance = sum.value;
+
+    r->v_set = true;
+    r->overflow = sum.overflow;
+    *borrowed = !sum.carry;
+    if (*borrowed) {
+        distance = (uint8_t)((distance ^ 0xFF) + 1);
+    }
+    r->a = distance;
+    r->nz = (uint8_t)(distance - reach);
+    r->carry = distance >= reach;
+    return distance < reach;
+}
+
+/*
+ * @routine 0024:3E8 CheckPlayerHits
+ * @run 80:4BE8
+ * WHAT IT DOES: The touches of the player with the walking world objects (odd slots 5 to $13, on screen, state 0 or
+ * 1): one within $20 in Y and $12 in X hurts the player ($3250 of object 0: 1 from the right, 3 from the left). Then,
+ * when the player's frame is the whip's ($0B), the whip's point ($30 ahead of the player, $D0 behind when facing
+ * left, if it is on the screen) hits each such object within 8 in Y and $24 in X ($3250 of the object: 1 when it is
+ * right of the player, 3 when left).
+ * HOW: The player's place in zTemp00-01, zTemp08 the side; two loops over the slots.
+ * WAITS: no.
+ * Entry: nothing. Exit: by arm (HitsArm): A, N, Z, C; Y 2 and V where the arm set them; X $15 after a loop.
+ */
+HitsArm CheckPlayerHits(void)
+{
+    HitsArm r = { 0 };
+    uint8_t value, slot, side;
+    bool borrowed;
+    Sum sum;
+
+    value = RD8(OBJ->x_lo[PLAYER]);
+    WR8(ZP->temp00, value);
+    value = RD8(OBJ->y_lo[PLAYER]);
+    WR8(ZP->temp01, value);
+    WR8(OBJ->f3250[PLAYER], 0);
+    for (slot = WORLD_RUN_FIRST; slot != WORLD_RUN_END; slot = (uint8_t)(slot + 2)) {
+        value = RD8(OBJ->x_hi[slot]);
+        r.a = value;
+        r.nz = value;
+        if (value != 0) {
+            continue;
+        }
+        value = RD8(OBJ->f34b8[slot]);
+        r.a = value;
+        r.nz = (uint8_t)(value - 0x02);
+        r.carry = value >= 0x02;
+        if (r.carry) {
+            continue;
+        }
+        value = RD8(OBJ->y_lo[slot]);
+        if (!within_reach(&r, value, RD8(ZP->temp01), 0x20, &borrowed)) {
+            continue;
+        }
+        WR8(ZP->temp08, 0);
+        value = RD8(OBJ->x_lo[slot]);
+        if (!within_reach(&r, value, RD8(ZP->temp00), 0x12, &borrowed)) {
+            if (borrowed) {
+                WR8(ZP->temp08, 0x02);
+                r.y_set = true;
+            }
+            continue;
+        }
+        if (borrowed) {
+            WR8(ZP->temp08, 0x02);
+            r.y_set = true;
+        }
+        side = RD8(ZP->temp08);
+        side = (uint8_t)(side + 1);
+        WR8(OBJ->f3250[PLAYER], side);
+        r.a = side;
+        r.nz = side;
+    }
+    value = RD8(OBJ->frame[PLAYER]);
+    r.a = value;
+    r.nz = (uint8_t)(value - WHIP_FRAME);
+    r.carry = value >= WHIP_FRAME;
+    if (value != WHIP_FRAME) {
+        return r;
+    }
+    if (RD8(OBJ->facing_left[PLAYER]) != 0) {
+        sum = add_bytes(0xD0, RD8(ZP->temp00), false);
+        WR8(ZP->temp00, sum.value);
+        r.a = sum.value;
+        r.nz = sum.value;
+        r.carry = sum.carry;
+        r.v_set = true;
+        r.overflow = sum.overflow;
+        if (!sum.carry) {
+            return r;
+        }
+    } else {
+        sum = add_bytes(0x30, RD8(ZP->temp00), false);
+        WR8(ZP->temp00, sum.value);
+        r.a = sum.value;
+        r.nz = sum.value;
+        r.carry = sum.carry;
+        r.v_set = true;
+        r.overflow = sum.overflow;
+        if (sum.carry) {
+            return r;
+        }
+    }
+    for (slot = WORLD_RUN_FIRST; slot != WORLD_RUN_END; slot = (uint8_t)(slot + 2)) {
+        WR8(OBJ->f3250[slot], 0);
+        value = RD8(OBJ->x_hi[slot]);
+        r.a = value;
+        r.nz = value;
+        if (value != 0) {
+            continue;
+        }
+        value = RD8(OBJ->f34b8[slot]);
+        r.a = value;
+        r.nz = (uint8_t)(value - 0x02);
+        r.carry = value >= 0x02;
+        if (r.carry) {
+            continue;
+        }
+        value = RD8(OBJ->y_lo[slot]);
+        if (!within_reach(&r, value, RD8(ZP->temp01), 0x08, &borrowed)) {
+            continue;
+        }
+        value = RD8(OBJ->x_lo[slot]);
+        if (!within_reach(&r, value, RD8(ZP->temp00), 0x24, &borrowed)) {
+            continue;
+        }
+        WR8(ZP->temp08, 0);
+        value = RD8(OBJ->x_lo[slot]);
+        sum = sub_bytes(value, RD8(OBJ->x_lo[PLAYER]), true);
+        r.v_set = true;
+        r.overflow = sum.overflow;
+        if (!sum.carry) {
+            WR8(ZP->temp08, 0x02);
+            r.y_set = true;
+        }
+        side = RD8(ZP->temp08);
+        side = (uint8_t)(side + 1);
+        WR8(OBJ->f3250[slot], side);
+        r.a = side;
+        r.nz = side;
+    }
+    r.nz = 0;                                  /* CPX #$15: Z 1, C 1 */
+    r.carry = true;
+    return r;
+}
+
+void abi_CheckPlayerHits(void)
+{
+    HitsArm r = CheckPlayerHits();
+
+    cpu.a = r.a;
+    abi_nz(r.nz);
+    abi_flag(P_C, r.carry);
+    if (r.y_set) {
+        cpu.y = 0x02;
+    }
+    if (r.v_set) {
+        abi_flag(P_V, r.overflow);
+    }
 }

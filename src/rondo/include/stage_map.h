@@ -301,7 +301,7 @@ StageScrollEnd ScrollStepBody(uint8_t x, const ScrollStepLayout *layout);
 typedef struct { uint16_t record_table, second_offset_at, clear_return, map_return, walk_return; } SetUpLayout;
 SetUpEnd SetUpObjectsBody(uint8_t x, const SetUpLayout *layout);
 typedef SpawnedObject (*SpawnRow)(uint8_t row);
-typedef struct { uint16_t first_return_1, first_return_2, second_return_1, second_return_2; } SpawnPairLayout;
+typedef struct { uint16_t first_return_1, first_return_2, second_return_1, second_return_2; uint8_t list_channel; } SpawnPairLayout;
 StageSpawnEnd SpawnFirstPairBody(SpawnRow spawn, const SpawnPairLayout *layout);
 StageSpawnEnd SpawnSecondPairBody(SpawnRow spawn, const SpawnPairLayout *layout);
 typedef void (*SetBarAddress)(uint8_t lo, uint8_t hi);
@@ -309,6 +309,7 @@ typedef struct {
     uint16_t sequence_return, stock_return, add_return, score_return, wave_return, bar_down_return, and_return, bar_up_return,
              or_return, sound_up_return, sound_down_return, map_return, blend_return_1, blend_return_2;
     uint16_t frame_table, tail_run;
+    uint8_t sound_up, sound_down;   /* the health bar's sound commands */
 } StepFrameLayout;
 StageExit StepStageFrameBody(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar, const StepFrameLayout *layout);
 

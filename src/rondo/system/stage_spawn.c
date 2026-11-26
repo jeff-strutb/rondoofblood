@@ -33,8 +33,8 @@ StageSpawnEnd SpawnFirstPairBody(SpawnRow spawn, const SpawnPairLayout *layout)
     WR8(STAGEVARS->state_3616[1], FLAG_MARK);
     flags = RD8(ZP->field8e);
     WR8(ZP->field8e, (uint8_t)(flags & ~PAIR_FLAG_BIT5));
-    end.a = StartListChannelKind2(LIST_FOR_PAIR, LIST_CHANNEL);
-    end.x = LIST_CHANNEL;
+    end.a = StartListChannelKind2(LIST_FOR_PAIR, layout->list_channel);
+    end.x = layout->list_channel;
     end.y = second.slot;
     end.ran = true;
     return end;
@@ -75,7 +75,7 @@ StageSpawnEnd SpawnSecondPairBody(SpawnRow spawn, const SpawnPairLayout *layout)
 
 /* 024E's layout: the returns of the four spawn calls. */
 static const SpawnPairLayout spawn_layout_024e = {
-    FIRST_PAIR_RETURN_1, FIRST_PAIR_RETURN_2, SECOND_PAIR_RETURN_1, SECOND_PAIR_RETURN_2
+    FIRST_PAIR_RETURN_1, FIRST_PAIR_RETURN_2, SECOND_PAIR_RETURN_1, SECOND_PAIR_RETURN_2, LIST_CHANNEL
 };
 
 static StageSpawnEnd spawn_first_pair(SpawnRow spawn)

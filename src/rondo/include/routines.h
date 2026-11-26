@@ -1041,7 +1041,7 @@ TrackSearch CdSearchTrack(uint8_t track, uint8_t kept_x, uint8_t kept_y);
 typedef struct { Sum bank; uint8_t pointer_high; Cpu after; } SceneCall;
 SceneCall SceneCallOverlay(uint8_t offset);
 DiscLog LoadSceneScript(uint8_t scene);
-DiscLog SceneReadSectors(uint8_t op);
+DiscLog SceneReadSectors(uint8_t op, uint8_t x);
 void abi_SceneCallOverlay(void);
 void abi_SceneReadSectors(void);
 void disc_log_exit_shim(const DiscLog *log);

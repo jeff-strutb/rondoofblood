@@ -939,7 +939,8 @@ static uint8_t scene_call_offset(uint8_t scene)
  * An op from 1 to $7F: the BIOS's read of _AL sectors to the op's destination. A failed read is
  * asked again with the destination the BIOS's answer indexes, as the original's A holds it.
  */
-static void scene_read(DiscLog *log, uint8_t op)
+/* entry_x: the X the code holds before the log's first call (the routine's entry X). */
+static void scene_read(DiscLog *log, uint8_t op, uint8_t entry_x)
 {
     uint8_t index = op;
 
@@ -967,7 +968,7 @@ static void scene_read(DiscLog *log, uint8_t op)
         read.given = rd8_zp_y(zTemp08, 2);
         wr8(zBiosAl, read.given);
         jsr_push(0x70F2);
-        read.as.cd_read = vec_cd_read(read.given, disc_log_x(log, 0));
+        read.as.cd_read = vec_cd_read(read.given, disc_log_x(log, entry_x));
         jsr_pop();
         log_call(log, read);
         index = cd_read_result(read.as.cd_read);
@@ -978,7 +979,7 @@ static void scene_read(DiscLog *log, uint8_t op)
 }
 
 /* The scene's ops, one at a time from the list at zTemp08-09, until one it does not know. */
-static void scene_ops(DiscLog *log)
+static void scene_ops(DiscLog *log, uint8_t entry_x)
 {
     static const uint8_t mprs[] = { MPR4, MPR5, MPR6 };
 
@@ -995,7 +996,7 @@ static void scene_ops(DiscLog *log)
             log_call(log, disc_call(DISC_SCENE_BANKS));
             scene_next(log, SCENE_BANKS_BYTES);
         } else if (!(op & 0x80)) {
-            scene_read(log, op);
+            scene_read(log, op, entry_x);
         } else if (op == OP_GOTO) {
             step = disc_call(DISC_SCENE_GOTO);
             step.index = rd8_zp_y(zTemp08, 1);
@@ -1039,21 +1040,22 @@ static void scene_ops(DiscLog *log)
  * third the count; the BIOS's read, asked again until it answers zero, and each time the table
  * is indexed by what A then holds.
  * WAITS: yes, on the drive: the card's read is asked until it answers zero; the stack there is the caller's return and this call's two bytes.
- * Entry: A the op. Exit: as LoadSceneScript.
+ * Entry: A the op; X as the scene code left it, which the first read gets (a retry gets the read's
+ * answer, from TAX). Exit: as LoadSceneScript.
  */
-DiscLog SceneReadSectors(uint8_t op)
+DiscLog SceneReadSectors(uint8_t op, uint8_t x)
 {
     DiscLog log;
 
     log.count = 0;
-    scene_read(&log, op);
-    scene_ops(&log);
+    scene_read(&log, op, x);
+    scene_ops(&log, x);
     return log;
 }
 
 void abi_SceneReadSectors(void)
 {
-    DiscLog log = SceneReadSectors(cpu.a);
+    DiscLog log = SceneReadSectors(cpu.a, cpu.x);
 
     disc_log_exit_shim(&log);
 }
@@ -1079,7 +1081,7 @@ DiscLog LoadSceneScript(uint8_t scene)
     record_at(&log, SceneRecords, scene, SCENE_RECORD_BYTES, 0x6FE3);
     wr8(zTemp08, rd8_zp_y(zTemp00, 3));
     wr8(zTemp09, rd8_zp_y(zTemp00, 4));
-    scene_ops(&log);
+    scene_ops(&log, 0);                 /* the multiply is the log's first call: it sets X */
     return log;
 }
 

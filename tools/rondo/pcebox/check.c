@@ -251,7 +251,7 @@ static int at_eof;
 static FILE *in;
 
 /* Frames the hybrid has read ahead of its own: the record's hashes. */
-static struct { uint64_t ram, pic, when; uint16_t pc; uint8_t s; } *fq;
+static struct { uint64_t ram, pic, when; uint16_t pc, top; uint8_t s; } *fq;
 static uint64_t fq_head, fq_tail, fq_cap;
 
 static void store_push(const Ev *e)
@@ -304,6 +304,7 @@ static int fetch_one(void)
         fq[fq_tail].pic = e.hash2;
         fq[fq_tail].pc = e.pc;
         fq[fq_tail].s = e.s;
+        fq[fq_tail].top = e.ret;
         memcpy(&fq[fq_tail].when, e.mpr, 8);
         fq_tail++;
     }
@@ -3091,6 +3092,24 @@ int check_unit_active(void)
     return unit.active;
 }
 
+/*
+ * Is the machine between work: the innermost call the game has open is the kernel's idle loop (the tag at run 4174,
+ * KernelIdle, drafted r0043_174), none of the game's routines beyond it? A script `call` is made there, so its accesses are
+ * not counted into a routine the game has open. The record and A5 ask their own stack of open calls (frames[]); the
+ * hybrid has no original calls open while a C is parked, so it asks the record's answer carried by the frame event of the
+ * last frame end (the innermost open call then), which is the same frame boundary on both sides.
+ */
+int check_idle(void)
+{
+    int idle = tag_at[0x4174];
+
+    if (idle < 0)
+        return 1;            /* no idle loop known: do not hold the call back */
+    if (mode == MODE_HYBRID)
+        return fq_head == 0 || fq[fq_head - 1].top == idle + 1;
+    return depth > 0 && frames[depth - 1].tag_index == idle;
+}
+
 /* The run address of a routine by name, or -1. */
 int check_tag_run(const char *name)
 {
@@ -3381,6 +3400,7 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
         e.hash2 = picture;
         e.pc = pc;
         e.s = s;
+        e.ret = (uint16_t)(depth ? frames[depth - 1].tag_index + 1 : 0);      /* the innermost open call, plus one: 0 none */
         {
             uint64_t when = cur_clock();
 

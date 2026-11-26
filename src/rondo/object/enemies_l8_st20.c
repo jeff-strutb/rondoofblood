@@ -185,7 +185,7 @@ DropArm MaybeDropItemByPlayerDistance(uint8_t slot)
     return r;
 }
 
-static Ended l8_drop_item_exit_shim(DropArm r)
+Ended l8_drop_item_exit_shim(DropArm r)
 {
     Ended e = ended_compare(r.hits, 5);
 
@@ -604,22 +604,6 @@ void abi_HopBetweenSidesWithBox(void)
 }
 
 /*
- * What a scan of the slot kinds left (SpawnerByKindAndScreen): each slot read is a load with Y the slot, each step a CPY of the next slot against
- * the limit. Only the last load and the last compare stand. full: it ran past the limit (y is the slot past it, kind the last read).
- */
-static Ended scan_ended(Ended e, L8Scan s, uint8_t step, uint8_t limit, bool full)
-{
-    if (full) {
-        e = then(e, ended_with_y(ended_load(s.kind), (uint8_t)(s.y - step)));
-        return then(e, ended_with_y(l8_compare_y(s.y, limit), s.y));
-    }
-    if (s.stepped) {
-        e = then(e, ended_with_y(l8_compare_y(s.y, limit), s.y));
-    }
-    return then(e, ended_with_y(ended_load(s.kind), s.y));
-}
-
-/*
  * @routine 0EBD:2A7 SpawnerByKindAndScreen
  * @run 71:C2A7
  * WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_34B8 down; then by OBJ_3040: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_3568 below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_35C0 with one random number to 3 in OBJ_3670, and waits $F0.
@@ -788,7 +772,7 @@ static Ended l8_spawner_exit_shim(SpawnerArm r)
         if (r.arm == SPAWN_SCREEN_HIGH) {
             return e;
         }
-        e = scan_ended(e, r.scan, 2, 0x20, r.arm == SPAWN_PAIRS_FULL);
+        e = l8_scan_ended(e, r.scan, 2, 0x20, r.arm == SPAWN_PAIRS_FULL);
         if (r.arm == SPAWN_PAIRS_FULL) {
             return e;
         }
@@ -808,7 +792,7 @@ static Ended l8_spawner_exit_shim(SpawnerArm r)
     if (r.arm == SPAWN_AIM_HIGH) {
         return e;
     }
-    e = scan_ended(e, r.scan, 4, 0x40, r.arm == SPAWN_GROUPS_FULL);
+    e = l8_scan_ended(e, r.scan, 4, 0x40, r.arm == SPAWN_GROUPS_FULL);
     if (r.arm == SPAWN_GROUPS_FULL) {
         return e;
     }

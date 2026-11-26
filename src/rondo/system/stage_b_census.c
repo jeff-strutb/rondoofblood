@@ -29,7 +29,8 @@ enum {
     SUB_MODE_TABLE = 0x8013, SUB_STEP_TABLE = 0x8112, DEATH_PHASE_TABLE = 0x81E8, FACING_SPEEDS = 0x8209,
     HIT_X = 0x2713, HIT_Y = 0x2723, HIT_HI = 0x2733, TEST_X = 0x2702, TEST_Y = 0x2703, REACH_X = 0x2704,
     REACH_Y = 0x2705, HIT_GATE = 0x2748, PROBE_HIT = 0x26F6, PROBE_X = 0x26FA, PROBE_Y = 0x26FE, PROBE_LISTS = 0xDB54,
-    ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4, SCREEN_3EC4 = 0x3EC4
+    ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4,
+    SCREEN_3EC4 = 0x3EC4
 };
 
 typedef StageRegs Regs;
@@ -351,7 +352,7 @@ StageRegs StageSubModeStep152D(StageRegs r)
     case 0x852C:
         return StageSubModeFade152D(r);
     case 0x85C4:
-        return StageSubModeEnd152D(r);
+        return StageSubModeOpening152D(r);
     case 0x90F8:
         return StageSubModeTally152D(r);
     default:
@@ -375,12 +376,13 @@ void abi_StageSubModeStep152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $8034 runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: Sub-mode 0, the stage's start: sets the stage up (the kernel's piece at $4006, the overlay's tables, the
- * overlay at $A000's start, the screen), clears the pause and the fade, and goes on to sub-mode 1; zField86 takes
- * zField83. When zField8E's bit 0 is clear the stage goes straight to sub-mode 5 instead, with the count at $3310
- * one less; otherwise, unless zStage is negative, the kernel's piece at $407B runs last.
- * HOW: Calls in turn $4006, StageClearTables152D, StageClearRows152D, StageResetObjects152D, StageResetPlayer152D,
- * MapOverlayBanks5And6, $A003, StageSetUpScroll152D, StageLoadLists152D and StageObjectsStart152D.
+ * WHAT IT DOES: Sub-mode 0, the stage's start: sets the stage up (the kernel's piece at $4006, the route's pieces, the
+ * row map, the screen, the overlay at $A000's start, the display, the opening, the level), clears the pause and the
+ * fade, and goes on to sub-mode 1; zField86 takes zField83. When zField8E's bit 0 is clear the stage goes straight to
+ * sub-mode 5 instead, with the count at $3310 one less; otherwise, unless zStage is negative, the kernel's piece at
+ * $407B runs last.
+ * HOW: Calls in turn $4006, StageRouteSetUpA152D, StageRouteSetUpB152D, StageLoadRowMap152D, StageResetScroll152D,
+ * MapOverlayBanks5And6, $A003, StageHudStart152D, StageOpeningStart152D and StageLevelStart152D.
  * WAITS: where the pieces it calls wait.
  * Entry: nothing. Exit, sub-mode 5: A 5, N and Z from the count's decrement. Else: A zStage, N and Z from it, or as
  * $407B leaves them; X, Y, C and V as the last piece left them.
@@ -390,15 +392,15 @@ StageRegs StageSubModeStart152D(StageRegs r)
     uint8_t value;
 
     r = orig_shim(r, 0x8037, KERNEL_4006);
-    CALL(0x803A, StageClearTables152D(r));
-    CALL(0x803D, StageClearRows152D(r));
-    CALL(0x8040, StageResetObjects152D(r));
-    CALL(0x8043, StageResetPlayer152D(r));
+    CALL(0x803A, StageRouteSetUpA152D(r));
+    CALL(0x803D, StageRouteSetUpB152D(r));
+    CALL(0x8040, StageLoadRowMap152D(r));
+    CALL(0x8043, StageResetScroll152D(r));
     r = map_banks_5_6(r, 0x8046);
     r = orig_shim(r, 0x8049, 0xA003);
-    CALL(0x804C, StageSetUpScroll152D(r));
-    CALL(0x804F, StageLoadLists152D(r));
-    CALL(0x8052, StageObjectsStart152D(r));
+    CALL(0x804C, StageHudStart152D(r));
+    CALL(0x804F, StageOpeningStart152D(r));
+    CALL(0x8052, StageLevelStart152D(r));
     WR8(ZP->paused, 0);
     wr8(FADE_ACTIVE, 0);
     r.nz = INC8(ZP->game_sub_mode);
@@ -594,11 +596,12 @@ void abi_StageModeEventsStep152D(void)
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 1, the stage in play: the fade and the pause; paused, the paused frame (StagePausedFrame152D)
- * runs instead. Else the events step and the overlay at $A000's frame; unless a sub-step is asked for, the player, the
- * camera, the objects and the screen; then the sub-step zSubStep held (cleared) runs from the table at $8112.
+ * runs instead. Else the events step and the overlay at $A000's frame; unless a sub-step is asked for, the overlay's
+ * pieces, the overlays' frame, the objects' hits and the display; then the sub-step zSubStep held (cleared) runs from
+ * the table at $8112.
  * HOW: Calls StageFadeTimer152D and StagePauseToggle152D; jumps to StagePausedFrame152D; calls StageModeEventsStep152D,
- * MapOverlayBanks5And6, $A000, then $A006, MapOverlayBank7, $A08D, MapOverlayBanks5And6, $A009, StageScroll152D,
- * StageObjectHits152D and StageRows152D; the sub-step doubled indexes the table.
+ * MapOverlayBanks5And6, $A000, then $A006, MapOverlayBank7, $A08D, MapOverlayBanks5And6, $A009, StageOverlayFrame152D,
+ * StageObjectHits152D and StageHudStep152D; the sub-step doubled indexes the table.
  * WAITS: where the pieces it calls wait.
  * Entry: nothing. Exit: as the sub-step's handler leaves them; it is entered with A and X twice the sub-step, N and Z
  * from it, C its bit 7. Paused: as StagePausedFrame152D.
@@ -624,9 +627,9 @@ StageRegs StageSubModePlay152D(StageRegs r)
         r = orig_shim(r, 0x80FA, 0xA08D);
         r = map_banks_5_6(r, 0x80FD);
         r = orig_shim(r, 0x8100, 0xA009);
-        CALL(0x8103, StageScroll152D(r));
+        CALL(0x8103, StageOverlayFrame152D(r));
         CALL(0x8106, StageObjectHits152D(r));
-        CALL(0x8109, StageRows152D(r));
+        CALL(0x8109, StageHudStep152D(r));
     }
     step = RD8(ZP->sub_step);
     WR8(ZP->sub_step, 0);
@@ -928,11 +931,11 @@ void abi_StageSubStepBoss152D(void)
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 2, the player's death: sound command $FF, then the death's phase; once the phase has put the
- * stage back in sub-mode 1, the overlay at $A000's piece at $A015 and the objects' start.
+ * stage back in sub-mode 1, the overlay at $A000's piece at $A015 and the level's start.
  * HOW: The sound hook at $401B; StageDeathPhase152D; a compare of zGameSubMode; MapOverlayBanks5And6, $A015 and a jump
- * to StageObjectsStart152D.
+ * to StageLevelStart152D.
  * WAITS: where the pieces it calls wait.
- * Entry: nothing. Exit: A zGameSubMode, N, Z and C from its compare with 1; else as StageObjectsStart152D.
+ * Entry: nothing. Exit: A zGameSubMode, N, Z and C from its compare with 1; else as StageLevelStart152D.
  */
 StageRegs StageSubModeDeath152D(StageRegs r)
 {
@@ -946,7 +949,7 @@ StageRegs StageSubModeDeath152D(StageRegs r)
     }
     r = map_banks_5_6(r, 0x81DB);
     r = orig_shim(r, 0x81DE, 0xA015);
-    return StageObjectsStart152D(r);
+    return StageLevelStart152D(r);
 }
 
 void abi_StageSubModeDeath152D(void)
@@ -1001,13 +1004,13 @@ void abi_StageDeathPhase152D(void)
     regs_exit_shim(StageDeathPhase152D(regs_entry_shim()));
 }
 
-/* The player put back: StageResetPlayer152D, sub-mode 1, the count at $3310 $18, the step at $3358 from the table at
+/* The player put back: StageResetScroll152D, sub-mode 1, the count at $3310 $18, the step at $3358 from the table at
  * $8209 by the facing bit of the byte at $2818. */
 static Regs respawn(Regs r, uint16_t ret)
 {
     uint8_t facing;
 
-    CALL(ret, StageResetPlayer152D(r));
+    CALL(ret, StageResetScroll152D(r));
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
     r = loaded(r, 0x18);
@@ -1032,9 +1035,9 @@ static Regs respawn(Regs r, uint16_t ret)
  *
  * WHAT IT DOES: Phase 0 of the death: the player put back and the stage in play again (sub-mode 1), the player's count
  * at $3310 $18 and its step at $3358 from the two at $8209 by the facing bit of the byte at $2818.
- * HOW: StageResetPlayer152D; stores; one table read.
+ * HOW: StageResetScroll152D; stores; one table read.
  * WAITS: no.
- * Entry: nothing. Exit: A the step, X the facing bit, N and Z from A; Y, C and V as StageResetPlayer152D left them.
+ * Entry: nothing. Exit: A the step, X the facing bit, N and Z from A; Y, C and V as StageResetScroll152D left them.
  */
 StageRegs StageDeathRespawn152D(StageRegs r)
 {
@@ -1058,7 +1061,7 @@ void abi_StageDeathRespawn152D(void)
  * left there, not these bytes.
  *
  * WHAT IT DOES: Phase 1 of the death: as phase 0 (the same bytes, the same table at $8209).
- * HOW: StageResetPlayer152D; stores; one table read.
+ * HOW: StageResetScroll152D; stores; one table read.
  * WAITS: no.
  * Entry: nothing. Exit: as StageDeathRespawn152D.
  */
@@ -1075,7 +1078,7 @@ void abi_StageDeathRespawnB152D(void)
 /* The fall's last step: the player put back, sub-mode 1, the count at $3310 $20 and the step at $3358 as given. */
 static Regs fall_ends(Regs r, uint16_t ret, uint8_t step)
 {
-    CALL(ret, StageResetPlayer152D(r));
+    CALL(ret, StageResetScroll152D(r));
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
     r = loaded(r, 0x20);
@@ -1119,13 +1122,13 @@ static Regs fall_moves(Regs r, uint16_t at, bool right)
  *
  * WHAT IT DOES: Phase 2 of the death, the fall to the left, by the fall's step at $88: step 0 sets the player's Y
  * ($2D28 $40, $2CE0 1) and runs on into StageDeathFallStart152D; step 1 moves the player while it is shown and left
- * of X $10, else ends through $A01E; step 2 puts the player back (StageResetPlayer152D, sub-mode 1, the count at $3310
+ * of X $10, else ends through $A01E; step 2 puts the player back (StageResetScroll152D, sub-mode 1, the count at $3310
  * $20, the step at $3358 $20).
  * HOW: Two decrements of the step's copy in A; the pieces of the overlay at $A000 at $A01B, $A012 and $A01E.
  * WAITS: no.
  * Entry: nothing. Exit, step 0: as StageDeathFallStart152D. Step 1, the step counted: A the player's X, N and Z from
  * the increment, C from the compare; else as $A01E leaves them. Step 2: A $20, N and Z from it, the rest as
- * StageResetPlayer152D left them.
+ * StageResetScroll152D left them.
  */
 StageRegs StageDeathFallLeft152D(StageRegs r)
 {
@@ -1153,7 +1156,7 @@ void abi_StageDeathFallLeft152D(void)
 /*
  * @routine 152D:236 StageDeathFallStart152D
  * @run 6B:8236
- * @unreachable 6B:8236-6B:8270 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
+ * @unreachable 6B:8236-6B:825E no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
  * five cd_read calls no script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector
@@ -1194,11 +1197,11 @@ void abi_StageDeathFallStart152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $825F runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: The left fall's last step, reached from StageDeathFallLeft152D: the player put back
- * (StageResetPlayer152D), sub-mode 1, the count at $3310 $20 and the step at $3358 $20.
- * HOW: StageResetPlayer152D; stores.
+ * WHAT IT DOES: The left fall's last step, reached from StageDeathFallLeft152D: the screen and the player put back
+ * (StageResetScroll152D), sub-mode 1, the count at $3310 $20 and the step at $3358 $20.
+ * HOW: StageResetScroll152D; stores.
  * WAITS: no.
- * Entry: nothing. Exit: A $20, N and Z from it; X, Y, C and V as StageResetPlayer152D left them.
+ * Entry: nothing. Exit: A $20, N and Z from it; X, Y, C and V as StageResetScroll152D left them.
  */
 StageRegs StageDeathFallBackLeft152D(StageRegs r)
 {
@@ -1223,13 +1226,13 @@ void abi_StageDeathFallBackLeft152D(void)
  *
  * WHAT IT DOES: Phase 3 of the death, the fall to the right, by the fall's step at $88: step 0 sets the player's Y
  * ($2D28 $C0, $2CE0 $FE) and calls StageDeathFallStart152D, then moves the player as step 1 does; step 1 moves the
- * player while it is shown and left of X $F0, else ends through $A01E; step 2 puts the player back (StageResetPlayer152D,
- * sub-mode 1, the count at $3310 $20, the step at $3358 $80).
+ * player while it is shown and left of X $F0, else ends through $A01E; step 2 puts the player back
+ * (StageResetScroll152D, sub-mode 1, the count at $3310 $20, the step at $3358 $80).
  * HOW: Two decrements of the step's copy in A; StageDeathFallStart152D; the pieces of the overlay at $A000 at $A01B,
  * $A012 and $A01E.
  * WAITS: no.
  * Entry: nothing. Exit, steps 0 and 1, the step counted: A the player's X, N and Z from the increment, C from the
- * compare; else as $A01E leaves them. Step 2: A $80, N and Z from it, the rest as StageResetPlayer152D left them.
+ * compare; else as $A01E leaves them. Step 2: A $80, N and Z from it, the rest as StageResetScroll152D left them.
  */
 StageRegs StageDeathFallRight152D(StageRegs r)
 {
@@ -1316,26 +1319,27 @@ void abi_StageSubModeCleared152D(void)
  * left there, not these bytes.
  *
  * WHAT IT DOES: The cleared stage's first table: the next stage set up as the start does (the kernel's piece at $4009,
- * the overlay's tables, the scroll, zField8A 2, the overlay at $A000's start, the objects) and put in play, sub-mode 1,
+ * the route's pieces, the row map, the screen, the display, zField8A 2, the overlay at $A000's start, the level) and
+ * put in play, sub-mode 1,
  * unpaused, zField86 zField83.
- * HOW: Calls in turn $4009, StageClearTables152D, StageClearRows152D, StageResetObjects152D, StageResetPlayer152D,
- * StageSetUpScroll152D, MapOverlayBanks5And6, $A003 and StageObjectsStart152D.
+ * HOW: Calls in turn $4009, StageRouteSetUpA152D, StageRouteSetUpB152D, StageLoadRowMap152D, StageResetScroll152D,
+ * StageHudStart152D, MapOverlayBanks5And6, $A003 and StageLevelStart152D.
  * WAITS: where the pieces it calls wait.
- * Entry: nothing. Exit: A zField83, N and Z from it; X, Y, C and V as StageObjectsStart152D left them.
+ * Entry: nothing. Exit: A zField83, N and Z from it; X, Y, C and V as StageLevelStart152D left them.
  */
 StageRegs StageClearedNextStage152D(StageRegs r)
 {
     r = orig_shim(r, 0x82C9, KERNEL_4009);
-    CALL(0x82CC, StageClearTables152D(r));
-    CALL(0x82CF, StageClearRows152D(r));
-    CALL(0x82D2, StageResetObjects152D(r));
-    CALL(0x82D5, StageResetPlayer152D(r));
-    CALL(0x82D8, StageSetUpScroll152D(r));
+    CALL(0x82CC, StageRouteSetUpA152D(r));
+    CALL(0x82CF, StageRouteSetUpB152D(r));
+    CALL(0x82D2, StageLoadRowMap152D(r));
+    CALL(0x82D5, StageResetScroll152D(r));
+    CALL(0x82D8, StageHudStart152D(r));
     r = loaded(r, 2);
     WR8(ZP->field8a, 2);
     r = map_banks_5_6(r, 0x82DF);
     r = orig_shim(r, 0x82E2, 0xA003);
-    CALL(0x82E5, StageObjectsStart152D(r));
+    CALL(0x82E5, StageLevelStart152D(r));
     WR8(ZP->paused, 0);
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
@@ -1412,10 +1416,11 @@ void abi_StageClearedWalkOut152D(void)
  * WHAT IT DOES: A step of the cleared stage: the overlay at $A000's pieces at $A009 and $A08D and the scroll, then,
  * once no object slot from $40 down to 1 holds a state from 1 to $7F in the column at $27D0, $2743 cleared and the
  * step counted.
- * HOW: MapOverlayBanks5And6, $A009, MapOverlayBank7, $A08D, StageScroll152D; a loop down X; a store and an increment.
+ * HOW: MapOverlayBanks5And6, $A009, MapOverlayBank7, $A08D, StageOverlayFrame152D; a loop down X; a store and an
+ * increment.
  * WAITS: no.
  * Entry: nothing. Exit, an object still busy: A its state, X its slot, N and Z from A. Else: X 0, N and Z from the
- * step's increment; A, Y, C and V as StageScroll152D left them.
+ * step's increment; A, Y, C and V as StageOverlayFrame152D left them.
  */
 StageRegs StageClearedWaitObjects152D(StageRegs r)
 {
@@ -1425,7 +1430,7 @@ StageRegs StageClearedWaitObjects152D(StageRegs r)
     r = orig_shim(r, 0x8313, 0xA009);
     r = map_bank_7(r, 0x8316);
     r = orig_shim(r, 0x8319, 0xA08D);
-    CALL(0x831C, StageScroll152D(r));
+    CALL(0x831C, StageOverlayFrame152D(r));
     for (slot = 0x40; slot != 0; slot--) {
         r = loaded(r, RD8(OBJ->state[40 + slot]));
         r.x = slot;
@@ -1483,7 +1488,7 @@ static Regs walk_frame(Regs r, uint16_t at)
 {
     r = map_bank_7(r, at);
     r = orig_shim(r, (uint16_t)(at + 3), 0xA08D);
-    CALL((uint16_t)(at + 6), StageScroll152D(r));
+    CALL((uint16_t)(at + 6), StageOverlayFrame152D(r));
     return orig_shim(r, (uint16_t)(at + 9), 0xA321);
 }
 
@@ -1501,7 +1506,7 @@ static Regs walk_frame(Regs r, uint16_t at)
  * WHAT IT DOES: A step of the cleared stage: the player walks the scroll ($3E74 the step from $82F0 by the side,
  * $3E6C and $3E00 cleared, its X moved by $82F2); when its X reaches the side's end ($82F4) the overlay at $A000's
  * piece at $A067 runs, $3E74 is cleared and the step counted.
- * HOW: The side from zField8C; table reads, an add; MapOverlayBank7, $A08D, StageScroll152D, $A321; a compare.
+ * HOW: The side from zField8C; table reads, an add; MapOverlayBank7, $A08D, StageOverlayFrame152D, $A321; a compare.
  * WAITS: no.
  * Entry: nothing. Exit, short of the end: A the X, N, Z and C from the compare, Y the side. At the end: N and Z from
  * the step's increment, the rest as $A067 left them.
@@ -1547,13 +1552,13 @@ void abi_StageClearedWalk152D(void)
  *
  * WHAT IT DOES: A step of the cleared stage: the scroll and the overlay at $A000's piece at $A321; once zField8C is
  * negative the step is counted.
- * HOW: StageScroll152D, $A321; a test of zField8C; an increment.
+ * HOW: StageOverlayFrame152D, $A321; a test of zField8C; an increment.
  * WAITS: no.
  * Entry: nothing. Exit: A zField8C, N and Z from it, or from the step's increment; X, Y, C and V as $A321 left them.
  */
 StageRegs StageClearedWaitScroll152D(StageRegs r)
 {
-    CALL(0x8374, StageScroll152D(r));
+    CALL(0x8374, StageOverlayFrame152D(r));
     r = orig_shim(r, 0x8377, 0xA321);
     r = loaded(r, RD8(ZP->field8c));
     if ((r.a & 0x80) == 0) {
@@ -1647,11 +1652,11 @@ void abi_StageClearedWalkBack152D(void)
  * zField83 and zField86), else zField83 counted; zField8E's bit 1 set; the stage's tables, rows and objects set up
  * again (the first and the last only below 5), the scroll's bytes at $3E00 and $3E54 cleared from KernelZeros, the
  * screen loaded; zField8C and the pause cleared and the stage in play, sub-mode 1.
- * HOW: The walk's push and frame as StageClearedWalk152D; StageClearTables152D, StageClearRows152D,
- * StageResetObjects152D, two TAI, StageLoadScreen152D, StageObjectsStart152D.
+ * HOW: The walk's push and frame as StageClearedWalk152D; StageRouteSetUpA152D, StageRouteSetUpB152D,
+ * StageLoadRowMap152D, two TAI, StageLoadScreen152D, StageLevelStart152D.
  * WAITS: where the pieces it calls wait.
  * Entry: nothing. Exit, walking: A $3E08, N and Z from it, the rest as $A321 left them. Else: A 1, N and Z from it;
- * X, Y, C and V as the last piece left them, C from the compare when StageObjectsStart152D did not run.
+ * X, Y, C and V as the last piece left them, C from the compare when StageLevelStart152D did not run.
  */
 StageRegs StageClearedWalkOn152D(StageRegs r)
 {
@@ -1678,16 +1683,16 @@ StageRegs StageClearedWalkOn152D(StageRegs r)
     r = loaded(r, RD8(ZP->field8c));
     r = compared(r, 0x05);
     if (!r.c) {
-        CALL(0x840D, StageClearTables152D(r));
+        CALL(0x840D, StageRouteSetUpA152D(r));
     }
-    CALL(0x8410, StageClearRows152D(r));
-    CALL(0x8413, StageResetObjects152D(r));
+    CALL(0x8410, StageRouteSetUpB152D(r));
+    CALL(0x8413, StageLoadRowMap152D(r));
     clear_scroll_bytes(r);
     CALL(0x8424, StageLoadScreen152D(r));
     r = loaded(r, RD8(ZP->field8c));
     r = compared(r, 0x05);
     if (!r.c) {
-        CALL(0x842D, StageObjectsStart152D(r));
+        CALL(0x842D, StageLevelStart152D(r));
     }
     WR8(ZP->field8c, 0);
     WR8(ZP->paused, 0);
@@ -1713,8 +1718,8 @@ void abi_StageClearedWalkOn152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $8436 runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: The cleared stage's third table, after a boss: the fade's countdown, then its step at $85 from the three
- * at $8440 (the scroll to the boss's door, the wait for the door, the walk out).
+ * WHAT IT DOES: The cleared stage's third table, after a boss: the fade's countdown, then its step at $85 from the
+ * three at $8440 (the scroll to the boss's door, the wait for the door, the walk out).
  * HOW: StageFadeTimer152D; $85 doubled indexes the table, whose word is jumped through.
  * WAITS: as the step.
  * Entry: nothing. Exit: as the step leaves them; it is entered with A and X twice $85, N and Z from it, C its bit 7.
@@ -1762,11 +1767,11 @@ void abi_StageClearedBossWalk152D(void)
  * WHAT IT DOES: A step after the boss: the overlay at $A000's piece at $A009, the scroll stepped by 1 with the player's
  * X one less, the scroll frame; once ScrollXHi is 4 the overlay's piece at $A067 runs, the scroll's steps are cleared,
  * sound command $3D is sent and the step counted.
- * HOW: MapOverlayBanks5And6, $A009; stores and a decrement; MapOverlayBank7, $A08D, StageScroll152D; a compare;
+ * HOW: MapOverlayBanks5And6, $A009; stores and a decrement; MapOverlayBank7, $A08D, StageOverlayFrame152D; a compare;
  * MapOverlayBank7, $A067, the sound hook at $401B.
  * WAITS: no.
- * Entry: nothing. Exit, short of 4: A ScrollXHi, N, Z and C from the compare, the rest as StageScroll152D left them.
- * Else: N and Z from the step's increment, the rest as the sound hook left them.
+ * Entry: nothing. Exit, short of 4: A ScrollXHi, N, Z and C from the compare, the rest as StageOverlayFrame152D left
+ * them. Else: N and Z from the step's increment, the rest as the sound hook left them.
  */
 StageRegs StageBossScrollToDoor152D(StageRegs r)
 {
@@ -1778,7 +1783,7 @@ StageRegs StageBossScrollToDoor152D(StageRegs r)
     r.nz = DEC8(OBJ->x_hi[8]);
     r = map_bank_7(r, 0x845A);
     r = orig_shim(r, 0x845D, 0xA08D);
-    CALL(0x8460, StageScroll152D(r));
+    CALL(0x8460, StageOverlayFrame152D(r));
     r = loaded(r, RD8(SCROLL->x_hi[0]));
     r = compared(r, 0x04);
     if (r.nz != 0) {
@@ -1813,16 +1818,16 @@ void abi_StageBossScrollToDoor152D(void)
  *
  * WHAT IT DOES: A step after the boss: the overlay at $A000's piece at $A009 and the scroll; once the door object's
  * byte at $283A is 4 and its animation step at $340A is 0, the player's step at $3358 is $20 and the step is counted.
- * HOW: MapOverlayBanks5And6, $A009, StageScroll152D; two tests; a store and an increment.
+ * HOW: MapOverlayBanks5And6, $A009, StageOverlayFrame152D; two tests; a store and an increment.
  * WAITS: no.
  * Entry: nothing. Exit: A the last byte tested, N and Z from its test (C from the compare with 4), or $20 with N and Z
- * from the step's increment; X, Y and V as StageScroll152D left them.
+ * from the step's increment; X, Y and V as StageOverlayFrame152D left them.
  */
 StageRegs StageBossWaitDoor152D(StageRegs r)
 {
     r = map_banks_5_6(r, 0x847F);
     r = orig_shim(r, 0x8482, 0xA009);
-    CALL(0x8485, StageScroll152D(r));
+    CALL(0x8485, StageOverlayFrame152D(r));
     r = loaded(r, RD8(OBJ->f2800[58]));
     r = compared(r, 0x04);
     if (r.nz != 0) {
@@ -1857,12 +1862,12 @@ void abi_StageBossWaitDoor152D(void)
  *
  * WHAT IT DOES: The last step after the boss: the player walks out (its count at $3310 $B8) with the overlay at $A000's
  * frame; when its X reaches $F0 the player stops, $2743 is cleared, the next of the route's stages is taken from the
- * table at $9A5F (zField82 counted, into zField83), $84 and the byte at $2A58 are cleared and the objects start.
- * HOW: MapOverlayBanks5And6, $A000, $A006, $A009, MapOverlayBank7, $A08D, StageScroll152D; a compare; stores; a table
- * read; StageObjectsStart152D.
+ * table at $9A5F (zField82 counted, into zField83), $84 and the byte at $2A58 are cleared and the level starts.
+ * HOW: MapOverlayBanks5And6, $A000, $A006, $A009, MapOverlayBank7, $A08D, StageOverlayFrame152D; a compare;
+ * stores; a table read; StageLevelStart152D.
  * WAITS: no.
- * Entry: nothing. Exit, short of $F0: A the X, N, Z and C from the compare, the rest as StageScroll152D left them.
- * Else: as StageObjectsStart152D.
+ * Entry: nothing. Exit, short of $F0: A the X, N, Z and C from the compare, the rest as StageOverlayFrame152D left
+ * them. Else: as StageLevelStart152D.
  */
 StageRegs StageBossWalkOut152D(StageRegs r)
 {
@@ -1874,7 +1879,7 @@ StageRegs StageBossWalkOut152D(StageRegs r)
     r = orig_shim(r, 0x84AA, 0xA009);
     r = map_bank_7(r, 0x84AD);
     r = orig_shim(r, 0x84B0, 0xA08D);
-    CALL(0x84B3, StageScroll152D(r));
+    CALL(0x84B3, StageOverlayFrame152D(r));
     r = loaded(r, RD8(OBJ->x_hi[8]));
     r = compared(r, 0xF0);
     if (r.nz != 0) {
@@ -1891,7 +1896,7 @@ StageRegs StageBossWalkOut152D(StageRegs r)
     r.a = 0;
     wr8(SUB3_STEP_TABLE, 0);
     WR8(OBJ->sprite_set[72], 0);
-    CALL(0x84D7, StageObjectsStart152D(r));
+    CALL(0x84D7, StageLevelStart152D(r));
     return r;
 }
 
@@ -2055,7 +2060,7 @@ void abi_StageClearedWalkOff152D(void)
  * WHAT IT DOES: Sub-mode 4, the fade out after the death or the stage: the events step and the rows, then the step at
  * zField80 from the seven at $8542 (the fade's start, its wait, the CD's stop and the stock taken, the waits, the
  * restart).
- * HOW: StageModeEventsStep152D, StageRows152D; a compare that branches to the next instruction either way;
+ * HOW: StageModeEventsStep152D, StageHudStep152D; a compare that branches to the next instruction either way;
  * MapOverlayBanks5And6; zField80 doubled indexes the table, whose word is jumped through. Step 3, at $85A1, is the
  * bytes of StageWaitTimerStep (stage_mode.c, 024E:023), a census duplicate run through its C.
  * WAITS: as the step.
@@ -2068,7 +2073,7 @@ StageRegs StageSubModeFade152D(StageRegs r)
     uint16_t handler;
 
     CALL(0x852F, StageModeEventsStep152D(r));
-    CALL(0x8532, StageRows152D(r));
+    CALL(0x8532, StageHudStep152D(r));
     r = loaded(r, RD8(ZP->field80));
     r = compared(r, 0x03);
     r = map_banks_5_6(r, 0x853B);
@@ -2425,18 +2430,18 @@ void abi_StageFadeRestart152D(void)
  * WHAT IT DOES: Sub-mode 5, the stage's opening: the events step, the rows, the overlay at $A000's frame, the scroll,
  * the opening's piece at $8BD5; once zField8E's bit 0 is set PlayerByte3BD8 and the player's count at $3310 are
  * cleared and the stage is in play, sub-mode 1.
- * HOW: StageModeEventsStep152D, StageRows152D, MapOverlayBanks5And6, $A000, StageScroll152D, MapOverlayBank7, $A08D,
- * StageOpeningStep152D; a bit test; stores.
+ * HOW: StageModeEventsStep152D, StageHudStep152D, MapOverlayBanks5And6, $A000, StageOverlayFrame152D, MapOverlayBank7,
+ * $A08D, StageOpeningStep152D; a bit test; stores.
  * WAITS: no.
  * Entry: nothing. Exit: A 1, N and Z from it when the stage goes into play; else as StageOpeningStep152D left them.
  */
 StageRegs StageSubModeOpening152D(StageRegs r)
 {
     CALL(0x85C7, StageModeEventsStep152D(r));
-    CALL(0x85CA, StageRows152D(r));
+    CALL(0x85CA, StageHudStep152D(r));
     r = map_banks_5_6(r, 0x85CD);
     r = orig_shim(r, 0x85D0, 0xA000);
-    CALL(0x85D3, StageScroll152D(r));
+    CALL(0x85D3, StageOverlayFrame152D(r));
     r = map_bank_7(r, 0x85D6);
     r = orig_shim(r, 0x85D9, 0xA08D);
     CALL(0x85DC, StageOpeningStep152D(r));
@@ -2466,9 +2471,9 @@ void abi_StageSubModeOpening152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $85EA runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: Fills the stage's row map at $3A00: cleared from KernelZeros (255 bytes), then unpacked from the route's
- * list (the table at $9A68 by zField82): a byte that starts a run gives the map's index, and each byte after it is a
- * row's value in its low seven bits, its bit 7 saying that the next byte starts a new run; $FF ends the list.
+ * WHAT IT DOES: Fills the stage's row map at $3A00: cleared from KernelZeros (255 bytes), then unpacked from the
+ * route's list (the table at $9A68 by zField82): a byte that starts a run gives the map's index, and each byte after
+ * it is a row's value in its low seven bits, its bit 7 saying that the next byte starts a new run; $FF ends the list.
  * HOW: TAI; the list's address in zTemp00-01; two loops, the run bit rotated into zTemp02.
  * WAITS: no.
  * Entry: nothing. Exit: A $FF, Z set, C set; X the map index reached, Y the list offset after the end. V kept.
@@ -2668,8 +2673,8 @@ static Regs screen_byte(Regs r)
  * $8730 by the byte at $2818 less 5; then zRasterEffect (zRasterArg cleared) and the byte at $2AA0.
  * HOW: The record's address in zTemp00-01; a byte at a time through it, each stored where it goes.
  * WAITS: no.
- * Entry: nothing. Exit: A the record's last byte, N and Z from it, Y past it; X, C and V as the moves of the player left
- * them. Clobbers zTemp00-01.
+ * Entry: nothing. Exit: A the record's last byte, N and Z from it, Y past it; X, C and V as the moves of the player
+ * left them. Clobbers zTemp00-01.
  */
 StageRegs StageLoadScreen152D(StageRegs r)
 {
@@ -2809,8 +2814,8 @@ void abi_StageOverlayFrame152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $8748 runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: Starts the stage's level: the kernel's piece at $4057 under bank 7, the level's stream and axis from the
- * four bytes at $9B20 by zField83, the 32 event flags cleared when the fourth byte is not 0, then the overlay at
+ * WHAT IT DOES: Starts the stage's level: the kernel's piece at $4057 under bank 7, the level's stream and axis from
+ * the four bytes at $9B20 by zField83, the 32 event flags cleared when the fourth byte is not 0, then the overlay at
  * $A000's piece at $ADAF.
  * HOW: MapOverlayBank7, $4057; table reads; a loop of stores with Y kept on the stack; $ADAF.
  * WAITS: where the pieces wait.
@@ -3009,7 +3014,8 @@ void abi_DoorHandlerB152D(void)
  * left there, not these bytes.
  *
  * WHAT IT DOES: Draws the stage's display at its start: the pieces 0 and 1 of StageDrawPiece152D, the stock and the
- * points to add (StageDrawStock152D, StageDrawScoreAdd152D); zField8E's bit 5 cleared; then runs on into StageHudStep152D.
+ * points to add (StageDrawStock152D, StageDrawScoreAdd152D); zField8E's bit 5 cleared; then runs on into
+ * StageHudStep152D.
  * HOW: Calls with X 0 and 1; a bit cleared.
  * WAITS: no.
  * Entry: nothing. Exit: as StageHudStep152D.
@@ -3035,6 +3041,7 @@ void abi_StageHudStart152D(void)
 /*
  * @routine 152E:011 StageHudStep152D
  * @run 6B:8811
+ * @stop 8878
  * @unreachable 6B:8811-6B:8877 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
  * the boot block's three reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the
@@ -3045,11 +3052,12 @@ void abi_StageHudStart152D(void)
  *
  * WHAT IT DOES: The stage's display each frame: the item sound's step, the item's frame at $2A9E from the table at
  * $8878 by zField93; the health bar moved one step toward zPlayerHealth (zField99 the shown health: down, the bar's
- * piece cleared; up, set, with sound $0B once when the bar was full and zField8E's bit 6 not yet set), sound $2C when it
- * reaches it after rising; the hearts' two digits when zField94 changed; and while zField8E's bit 2 is set the boss's
- * bar (StageBossBar152D).
+ * piece cleared; up, set, with sound $0B once when the bar was full and zField8E's bit 6 not yet set), sound $2C when
+ * it reaches it after rising; the hearts' two digits when zField94 changed; and while zField8E's bit 2 is set the
+ * boss's bar (StageBossBar152D).
  * HOW: StageHudSound152D; compares of zPlayerHealth with zField99; StageHealthBarAddress152D by BSR with AndVramData
- * or OrVramData (census duplicates at $942A and $9439, through map_draw.c's C); the sound hook; StageDrawDigit152D for each digit; a jump to StageBossBar152D.
+ * or OrVramData (census duplicates at $942A and $9439, through map_draw.c's C); the sound hook; StageDrawDigit152D for
+ * each digit; a jump to StageBossBar152D.
  * WAITS: no.
  * Entry: nothing. Exit: as the last piece that ran left them.
  */
@@ -3134,8 +3142,8 @@ void abi_StageHudStep152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $8881 runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: The item's glow: the kernel's piece at $4018 with X 1 and A the colour of the step the wave counter's low
- * three bits (masked by RichterItemReady) pick from the eight at $8891.
+ * WHAT IT DOES: The item's glow: the kernel's piece at $4018 with X 1 and A the colour of the step the wave counter's
+ * low three bits (masked by RichterItemReady) pick from the eight at $8891.
  * HOW: Two ANDs and a table read; a jump into the kernel.
  * WAITS: no.
  * Entry: nothing. Exit: as $4018 leaves them.
@@ -3395,7 +3403,8 @@ void abi_StageBossBarStep152D(void)
  *
  * WHAT IT DOES: Points the VDC at the boss's bar's piece for the length at $2745 ($5E less it, from $5D40, a page on
  * at $3F and more), unless the length is 0.
- * HOW: The page in zTemp08-09; a subtract, nibbles and shifts into zTemp00-01, adds; SetVramAddresses152D with the address in X and Y.
+ * HOW: The page in zTemp08-09; a subtract, nibbles and shifts into zTemp00-01, adds; SetVramAddresses152D with the
+ * address in X and Y.
  * WAITS: no.
  * Entry: nothing. Exit, length 0: A 0, N and Z from it. Else: A 2, N and Z clear; X and Y the address, C and V from the
  * last add. Clobbers zTemp00-01 and zTemp08-09.
@@ -4671,7 +4680,6 @@ void abi_ContinueStep152D(void)
 /* A row's VRAM address from $6E00: the row (in A) times $40, into zTemp00-01. */
 static Regs continue_row_address(Regs r, uint8_t row)
 {
-    Sum sum;
     uint8_t old, value;
 
     WR8(ZP->temp00, 0);
@@ -5171,7 +5179,7 @@ void abi_ContinueBlink152D(void)
 }
 
 /*
- * @routine 1530:0F8 StageSubModeTally152D
+ * @routine 152F:0F8 StageSubModeTally152D
  * @run 6B:90F8
  * @stop 9108
  * @unreachable 6B:90F8-6B:9107 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
@@ -5233,7 +5241,7 @@ void abi_StageSubModeTally152D(void)
 }
 
 /*
- * @routine 1530:34D TallyWait152D
+ * @routine 152F:34D TallyWait152D
  * @run 6B:934D
  * @unreachable 6B:934D-6B:9357 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5288,7 +5296,7 @@ static TallyWaitEnd tally_wait(Regs r, uint16_t ret)
 }
 
 /*
- * @routine 1530:118 TallyStart152D
+ * @routine 152F:118 TallyStart152D
  * @run 6B:9118
  * @unreachable 6B:9118-6B:9122 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5324,7 +5332,7 @@ void abi_TallyStart152D(void)
 }
 
 /*
- * @routine 1530:123 TallyNext152D
+ * @routine 152F:123 TallyNext152D
  * @run 6B:9123
  * @unreachable 6B:9123-6B:9125 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5351,7 +5359,7 @@ void abi_TallyNext152D(void)
 }
 
 /*
- * @routine 1530:126 TallyBoard152D
+ * @routine 152F:126 TallyBoard152D
  * @run 6B:9126
  * @unreachable 6B:9126-6B:916F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5418,7 +5426,7 @@ void abi_TallyBoard152D(void)
 }
 
 /*
- * @routine 1530:170 TallyDigits152D
+ * @routine 152F:170 TallyDigits152D
  * @run 6B:9170
  * @unreachable 6B:9170-6B:9197 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5428,9 +5436,9 @@ void abi_TallyBoard152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $9170 runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: Puts the health and the hearts on the board as digits: zPlayerHealth's tens and units (StageSplitTens152D)
- * at $3991 and $3992, zField94's two BCD digits at $39A1 and $39A2, each one more than the digit; a leading zero is
- * left out.
+ * WHAT IT DOES: Puts the health and the hearts on the board as digits: zPlayerHealth's tens and units
+ * (StageSplitTens152D) at $3991 and $3992, zField94's two BCD digits at $39A1 and $39A2, each one more than the digit;
+ * a leading zero is left out.
  * HOW: StageSplitTens152D; shifts and masks; stores.
  * WAITS: no.
  * Entry: nothing. Exit: A the hearts' last cell, N and Z from its increment; X the health's tens cell; C from the
@@ -5483,7 +5491,7 @@ static Regs map_stage_banks(Regs r)
 }
 
 /*
- * @routine 1530:198 TallyReveal152D
+ * @routine 152F:198 TallyReveal152D
  * @run 6B:9198
  * @unreachable 6B:9198-6B:922B no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5603,7 +5611,7 @@ void abi_TallyReveal152D(void)
 }
 
 /*
- * @routine 1530:22C TallyCell152D
+ * @routine 152F:22C TallyCell152D
  * @run 6B:922C
  * @unreachable 6B:922C-6B:92B0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5710,7 +5718,7 @@ void abi_TallyCell152D(void)
 }
 
 /*
- * @routine 1530:2B1 TallyPause152D
+ * @routine 152F:2B1 TallyPause152D
  * @run 6B:92B1
  * @unreachable 6B:92B1-6B:92BB no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5744,7 +5752,7 @@ void abi_TallyPause152D(void)
 }
 
 /*
- * @routine 1530:2BC TallyCount152D
+ * @routine 152F:2BC TallyCount152D
  * @run 6B:92BC
  * @unreachable 6B:92BC-6B:9311 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5821,7 +5829,7 @@ void abi_TallyCount152D(void)
 }
 
 /*
- * @routine 1530:312 TallyWaitPress152D
+ * @routine 152F:312 TallyWaitPress152D
  * @run 6B:9312
  * @unreachable 6B:9312-6B:9323 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5860,7 +5868,7 @@ void abi_TallyWaitPress152D(void)
 }
 
 /*
- * @routine 1530:324 TallyStockBonus152D
+ * @routine 152F:324 TallyStockBonus152D
  * @run 6B:9324
  * @unreachable 6B:9324-6B:9341 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5903,7 +5911,7 @@ void abi_TallyStockBonus152D(void)
 }
 
 /*
- * @routine 1530:342 TallyEnd152D
+ * @routine 152F:342 TallyEnd152D
  * @run 6B:9342
  * @unreachable 6B:9342-6B:934C no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5955,7 +5963,7 @@ static Regs tally_count_cells(Regs r, uint8_t value, uint8_t limit, uint8_t cell
 }
 
 /*
- * @routine 1530:358 TallyHealth152D
+ * @routine 152F:358 TallyHealth152D
  * @run 6B:9358
  * @unreachable 6B:9358-6B:937B no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -5988,7 +5996,7 @@ void abi_TallyHealth152D(void)
 }
 
 /*
- * @routine 1530:37C TallyHearts152D
+ * @routine 152F:37C TallyHearts152D
  * @run 6B:937C
  * @unreachable 6B:937C-6B:939F no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6021,7 +6029,7 @@ void abi_TallyHearts152D(void)
 }
 
 /*
- * @routine 1530:3A0 TallyDigitCell152D
+ * @routine 152F:3A0 TallyDigitCell152D
  * @run 6B:93A0
  * @unreachable 6B:93A0-6B:93B8 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6068,7 +6076,7 @@ void abi_TallyDigitCell152D(void)
 }
 
 /*
- * @routine 1530:3F7 StageClearWords152D
+ * @routine 152F:3F7 StageClearWords152D
  * @run 6B:93F7
  * @unreachable 6B:93F7-6B:9409 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6104,7 +6112,7 @@ void abi_StageClearWords152D(void)
 }
 
 /*
- * @routine 1530:40A StageSplitTens152D
+ * @routine 152F:40A StageSplitTens152D
  * @run 6B:940A
  * @unreachable 6B:940A-6B:9414 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6145,7 +6153,7 @@ void abi_StageSplitTens152D(void)
 }
 
 /*
- * @routine 1530:415 SetVramAddresses152D
+ * @routine 152F:415 SetVramAddresses152D
  * @run 6B:9415
  * @unreachable 6B:9415-6B:941D no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6176,7 +6184,7 @@ void abi_SetVramAddresses152D(void)
 }
 
 /*
- * @routine 1530:41E SetVramWriteAddress152D
+ * @routine 152F:41E SetVramWriteAddress152D
  * @run 6B:941E
  * @unreachable 6B:941E-6B:9429 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6205,7 +6213,7 @@ void abi_SetVramWriteAddress152D(void)
 }
 
 /*
- * @routine 1530:448 StageDrawPiece152D
+ * @routine 152F:448 StageDrawPiece152D
  * @run 6B:9448
  * @unreachable 6B:9448-6B:9467 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6388,7 +6396,7 @@ static Regs hit_loop(Regs r, HitEntry entry)
 }
 
 /*
- * @routine 1530:490 StageObjectHits152D
+ * @routine 152F:490 StageObjectHits152D
  * @run 6B:9490
  * @unreachable 6B:9490-6B:949A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6420,7 +6428,7 @@ void abi_StageObjectHits152D(void)
 }
 
 /*
- * @routine 1530:49B StageHitTimer152D
+ * @routine 152F:49B StageHitTimer152D
  * @run 6B:949B
  * @unreachable 6B:949B-6B:94A5 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6447,7 +6455,7 @@ void abi_StageHitTimer152D(void)
 }
 
 /*
- * @routine 1530:4A6 StageHitNext152D
+ * @routine 152F:4A6 StageHitNext152D
  * @run 6B:94A6
  * @unreachable 6B:94A6-6B:94AC no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6474,7 +6482,7 @@ void abi_StageHitNext152D(void)
 }
 
 /*
- * @routine 1530:4FD StageHitEvent152D
+ * @routine 152F:4FD StageHitEvent152D
  * @run 6B:94FD
  * @unreachable 6B:94FD-6B:958A no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6504,7 +6512,7 @@ void abi_StageHitEvent152D(void)
 }
 
 /*
- * @routine 1530:4AD StagePlaceHitBoxes152D
+ * @routine 152F:4AD StagePlaceHitBoxes152D
  * @run 6B:94AD
  * @unreachable 6B:94AD-6B:94B7 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6537,7 +6545,7 @@ void abi_StagePlaceHitBoxes152D(void)
 }
 
 /*
- * @routine 1530:4B8 StagePlaceHitBox152D
+ * @routine 152F:4B8 StagePlaceHitBox152D
  * @run 6B:94B8
  * @unreachable 6B:94B8-6B:94FC no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6600,7 +6608,7 @@ void abi_StagePlaceHitBox152D(void)
 }
 
 /*
- * @routine 1530:58B StageHitHandler152D
+ * @routine 152F:58B StageHitHandler152D
  * @run 6B:958B
  * @unreachable 6B:958B-6B:95A8 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6661,7 +6669,7 @@ void abi_StageHitHandler152D(void)
 }
 
 /*
- * @routine 1530:5C7 HitKindSpawn152D
+ * @routine 152F:5C7 HitKindSpawn152D
  * @run 6B:95C7
  * @unreachable 6B:95C7-6B:95E3 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6715,7 +6723,7 @@ static Regs hit_side_set(Regs r, uint8_t side)
 }
 
 /*
- * @routine 1530:5E4 HitKindFacing152D
+ * @routine 152F:5E4 HitKindFacing152D
  * @run 6B:95E4
  * @unreachable 6B:95E4-6B:95F0 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6744,7 +6752,7 @@ void abi_HitKindFacing152D(void)
 }
 
 /*
- * @routine 1530:5F1 HitKindState152D
+ * @routine 152F:5F1 HitKindState152D
  * @run 6B:95F1
  * @unreachable 6B:95F1-6B:95F7 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6772,7 +6780,7 @@ void abi_HitKindState152D(void)
 }
 
 /*
- * @routine 1530:5F8 HitKindSide152D
+ * @routine 152F:5F8 HitKindSide152D
  * @run 6B:95F8
  * @unreachable 6B:95F8-6B:9603 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6847,7 +6855,7 @@ static Regs probe_list(Regs r, uint8_t index)
 }
 
 /*
- * @routine 1530:604 StageProbePoints152D
+ * @routine 152F:604 StageProbePoints152D
  * @run 6B:9604
  * @unreachable 6B:9604-6B:9651 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6895,7 +6903,7 @@ void abi_StageProbePoints152D(void)
 }
 
 /*
- * @routine 1530:652 StageProbeAgain152D
+ * @routine 152F:652 StageProbeAgain152D
  * @run 6B:9652
  * @unreachable 6B:9652-6B:96C5 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;
@@ -6993,7 +7001,7 @@ static Regs tile_row_by_column(Regs r, uint16_t table)
 }
 
 /*
- * @routine 1530:6C6 ProbeTile152D
+ * @routine 152F:6C6 ProbeTile152D
  * @run 6B:96C6
  * @unreachable 6B:96C6-6B:97D2 no read the game makes loads disc sectors 152D to 1530, so these bytes are never in memory.
  * Read in full: the 95 scene records at $74D1 and every op of their lists, the reads a later op overwrites included;

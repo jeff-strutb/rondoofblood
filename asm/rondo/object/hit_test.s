@@ -308,3 +308,111 @@ HitTestObjectLong_at11:
     sta z:zTemp01
     ldy z:zHitSlot
     jmp (ZeroPage)
+
+; @routine 18CF:778 HitTestObjectLongB
+; @run 6B:9778
+; @stop 9837
+; WHAT IT DOES: HitTestObjectLong for the overlay at 18CF, whose bytes the intake keeps apart from the
+; other overlays' because its handler table and what follows it differ.
+; HOW: The same code with the same table address.
+; WAITS: no.
+; Entry, exit: as HitTestObject.
+HitTestObjectLongB:
+    stz a:OBJ_33B0,x
+    lda a:OBJ_3250,x
+    bne HitTestObjectLongB_at0
+    jmp HitTestObjectLongB_at1
+HitTestObjectLongB_at0:
+    lda a:OBJ_3988,x
+    ora a:OBJ_3A38,x
+    bne HitTestObjectLongB_at2
+    jmp HitTestObjectLongB_at1
+HitTestObjectLongB_at2:
+    lda a:OBJ_3930,x
+    sta z:zTemp01
+    lda a:OBJ_2AC0,x
+    beq HitTestObjectLongB_at3
+    lda z:zTemp01
+    eor #$FF
+    inc a
+    sta z:zTemp01
+HitTestObjectLongB_at3:
+    stz z:zTemp00
+    lda z:zTemp01
+    bpl HitTestObjectLongB_at4
+    dec z:zTemp00
+HitTestObjectLongB_at4:
+    clc
+    adc a:OBJ_X_LO,x
+    sta a:WorkByteA
+    lda a:OBJ_X_HI,x
+    adc z:zTemp00
+    bne HitTestObjectLongB_at1
+    stz z:zTemp00
+    lda a:OBJ_39E0,x
+    bpl HitTestObjectLongB_at5
+    dec z:zTemp00
+HitTestObjectLongB_at5:
+    clc
+    adc a:OBJ_Y_LO,x
+    sta a:WorkByteB
+    lda a:OBJ_Y_HI,x
+    adc z:zTemp00
+    bne HitTestObjectLongB_at1
+    lda a:OBJ_3250,x
+    bpl HitTestObjectLongB_at6
+    cly
+    bra HitTestObjectLongB_at7
+HitTestObjectLongB_at6:
+    ldy #$0F
+HitTestObjectLongB_at7:
+    lda a:OBJ_3250,y
+    beq HitTestObjectLongB_at8
+    lda a:HitboxHi,y
+    bne HitTestObjectLongB_at8
+    lda a:OBJ_3988,x
+    clc
+    adc a:OBJ_3988,y
+    sta a:StreamStepLo
+    lda a:OBJ_3A38,x
+    clc
+    adc a:OBJ_3A38,y
+    sta a:StreamStepHi
+    lda a:WorkByteA
+    sec
+    sbc a:HitboxXLo,y
+    bcs HitTestObjectLongB_at9
+    eor #$FF
+    inc a
+HitTestObjectLongB_at9:
+    cmp a:StreamStepLo
+    bcs HitTestObjectLongB_at8
+    lda a:WorkByteB
+    sec
+    sbc a:HitboxYLo,y
+    bcs HitTestObjectLongB_at10
+    eor #$FF
+    inc a
+HitTestObjectLongB_at10:
+    cmp a:StreamStepHi
+    bcc HitTestObjectLongB_at11
+HitTestObjectLongB_at8:
+    dey
+    bpl HitTestObjectLongB_at7
+HitTestObjectLongB_at1:
+    rts
+HitTestObjectLongB_at11:
+    txa
+    sta a:OBJ_3880,y
+    sty z:zHitSlot
+    lda a:OBJ_3828,y
+    beq $986C
+    dec a
+    asl a
+    tay
+    lda a:TileRowsB+2,y
+    sta z:zTemp00
+    lda a:TileRowsB+3,y
+    sta z:zTemp01
+    ldy z:zHitSlot
+    jmp (ZeroPage)

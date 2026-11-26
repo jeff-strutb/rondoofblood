@@ -303,6 +303,26 @@ void abi_HitTestObjectLong(void)
     stage_exit_shim(HitTestObjectLong(cpu.x));
 }
 
+/*
+ * @routine 18CF:778 HitTestObjectLongB
+ * @run 6B:9778
+ * @stop 9837
+ * WHAT IT DOES: HitTestObjectLong for the overlay at 18CF, whose bytes the intake keeps apart from the
+ * other overlays' because its handler table and what follows it differ.
+ * HOW: The same code with the same table address.
+ * WAITS: no.
+ * Entry, exit: as HitTestObject.
+ */
+StageExit HitTestObjectLongB(uint8_t x)
+{
+    return hit_test(x, TABLE_B, HANDLER_STORE_B, HANDLER_REPORT_B);
+}
+
+void abi_HitTestObjectLongB(void)
+{
+    stage_exit_shim(HitTestObjectLongB(cpu.x));
+}
+
 enum { LAST_OBJECT = 0x57, FIRST_OBJECT = 0x10 };
 
 /*

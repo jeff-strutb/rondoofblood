@@ -169,7 +169,7 @@ typedef struct {
     L8NumberStep step;
     L8FlashPieceArm flash;
     SideReadEnd read;
-    Sum lift, feet;
+    Sum lift, feet, vy;
     L8Slot found;
 } L8DropPieceArm;
 
@@ -373,8 +373,8 @@ L8DropPieceArm DroppingPieceStep(uint8_t slot, uint8_t y_entry)
     sum = add_bytes(a, PIECE_FALL_STEP, false);
     WR8(OBJ->vy_lo[slot], sum.value);
     a = RD8(OBJ->vy_hi[slot]);
-    sum = add_bytes(a, 0, sum.carry);
-    WR8(OBJ->vy_hi[slot], sum.value);
+    r.vy = add_bytes(a, 0, sum.carry);
+    WR8(OBJ->vy_hi[slot], r.vy.value);
     r.last = RD8(OBJ->vy_hi[slot]);
     if ((r.last & 0x80) != 0) {
         r.arm = ST25M_DROP_RISING;
@@ -444,6 +444,7 @@ static Ended l8_drop_piece_exit_shim(L8DropPieceArm r)
     e = then(e, l8_flash_piece_exit_shim(r.flash));
     e = then(e, ended_of_axis_move(r.move1));
     e = then(e, ended_of_axis_move(r.move2));
+    e = then(e, ended_of_sum(r.vy));
     e = then(e, ended_load(r.last));
     if (r.arm == ST25M_DROP_RISING) {
         return e;

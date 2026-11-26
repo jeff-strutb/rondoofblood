@@ -1,5 +1,6 @@
 /* The stage overlay's object set-up: the enemies cleared, the stream placed, the frame started. */
 #include "machine.h"
+#include "ops6280.h"
 #include "access.h"
 #include "routines.h"
 #include "ram.h"
@@ -8,7 +9,7 @@
 
 enum {
     MPR5 = 0x20, MPR6 = 0x40, OBJECT_BANK_OFFSET = 8, EVENT_FLAG_BYTES = 32, SECTION_RECORD_SHIFT = 2,
-    CLEAR_RETURN = 0x8A62, MAP_RETURN = 0x8A65, WALK_RETURN = 0x8AA1
+    CLEAR_RETURN = 0x8A62, WALK_JUMP = 0x8AA1, STEP_OBJECTS_ENTRY = 0x8A4F, MAP_RETURN = 0x8A65, WALK_RETURN = 0x8AA1
 };
 
 Ended MapOverlayBank7(void);
@@ -57,7 +58,8 @@ static void set_up_stage_objects(uint16_t record_table, uint16_t second_offset_a
     jsr_push(WALK_RETURN);
     StreamFullWalk(x);
     jsr_pop();
-    StepScrollAndRunObjects(x);
+    cpu.x = x;
+    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP: the span's owner makes it */
 }
 
 /*

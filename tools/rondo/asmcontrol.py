@@ -6,7 +6,7 @@ with operands chosen to tempt the assembler (byte operands $00, $5A, $FF;
 word operands $0000, $0012 and $00FF, which fit a zero page, and $1234,
 $FFFF; branches at their shortest, nearest and longest reach), and the 22
 undefined ones as data. It decodes the image with huc.py, writes the
-listing in the text form the intake uses, assembles and links it with the
+listing in ca65 text form, assembles and links it with the
 pinned ca65 and ld65, and compares the bytes.
 
     python3 tools/rondo/asmcontrol.py            0 differing bytes or exit 1

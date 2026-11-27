@@ -1,17 +1,14 @@
 /*
- * ops6280.h: every HuC6280 instruction as a C step on the register file `cpu`, for the C that
- * tools/rondo/cdraft.py drafts from the assembly (a stepping stone: never counted as decompiled).
+ * ops6280.h: every HuC6280 instruction as a C step on the register file `cpu`, for C that follows
+ * its assembly instruction for instruction.
  *
- * Each step does what the core does (tools/toolchains/src/pce/mednafen/pce/huc6280_ops.inc and
- * huc6280.cpp), in the core's order and with its flags, and every counted access goes through
+ * Each step does what the CPU does, in its order and with its flags, and every counted access goes through
  * rd8/wr8/st0-st2/tam/tma/push8/pull8: pointer low byte, pointer high byte, then the data;
  * a read-modify-write is one read then one write; BBR and BBS read the zero page byte; a block
  * move pushes Y, A, X, reads a source byte and writes a destination byte for each count, then
- * pulls X, A, Y. Instruction and operand fetches are not accesses here (the checker does not
- * count them).
+ * pulls X, A, Y. Instruction and operand fetches are not accesses here.
  *
- * Where the core differs from the manual the core is followed, because it is the original the
- * oracles run: TSB sets Z when (m | A) == 0 and TRB when (m & ~A) == 0, BIT #imm sets N and V
+ * Where the chip differs from the manual the chip is followed: TSB sets Z when (m | A) == 0 and TRB when (m & ~A) == 0, BIT #imm sets N and V
  * from the immediate, ADC and SBC in decimal mode leave V alone, PHP pushes P with B set and T
  * clear, the T flag is cleared after every instruction but SET, PLP and RTI (the drafter
  * emits SET and the instruction after it together, as the _t forms), a zero page pointer
@@ -384,13 +381,10 @@ static inline uint16_t op_jmp_ptr(uint16_t a)
  * original from here when the original's call ended (left by the stack) before the C's did. */
 extern uint16_t rondo_pc;
 
-/*
- * A branch or fall-through into bytes no script ran: the draft has no code for them. Defined by
- * the drafter's support file (counts, reports, ends the run).
- */
+/* A branch or fall-through into bytes the draft has no code for. */
 void untraced(uint16_t addr);
 void hand_over(uint16_t addr);
-/* The routine left its frame (it set S outright): in lockstep the original runs on from addr; in A5 it returns. */
+/* The routine left its frame (it set S outright): the original runs on from addr. */
 void leave_original(uint16_t addr);
 /* A tail jump (a JMP, a branch or a fall-through out of the routine) made by the instruction at from. */
 void call_original_at(uint16_t from, uint16_t addr);

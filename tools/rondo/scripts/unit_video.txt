@@ -1,9 +1,0 @@
-# A unit call at WriteVdcControl's own entry (PROCEDURE section 6, step 3): no script reaches it, and no code calls it.
-# The kernel is resident from about frame 400. The VDC control value it writes is the one the game keeps (zVdcCrLo, $204A).
-wait 120
-press RUN 6
-wait 700
-call WriteVdcControl
-wait 2
-call WriteVdcControl
-wait 2

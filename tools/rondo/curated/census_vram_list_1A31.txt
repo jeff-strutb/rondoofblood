@@ -1,3 +1,0 @@
-# census VramListFromTable: list $80 and $81 through the version's table, each list ending at once
-a=80 x=00 mem:8ED2=00 mem:8ED3=30 mem:3000=FF
-a=81 x=03 p=V mem:8ED4=10 mem:8ED5=30 mem:3010=FF

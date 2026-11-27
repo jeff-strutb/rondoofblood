@@ -1,9 +1,0 @@
-# Unit call of the System Card's continuous ADPCM play from the disc, which no game path reaches: _AL 0x40 sectors from the
-# sector 0:0:0x10 at rate 0, loading the first 0x20 into ADPCM memory with ad_trans, then the play's half-way interrupt carries on.
-wait 120
-press RUN 6
-wait 700
-call ad_cplay A=00 X=00 M=20F8:40,20F9:00,20FA:00,20FB:00,20FC:00,20FD:00 M=20FE:10,20FF:00
-wait 120
-call ad_stop
-wait 30

@@ -111,7 +111,7 @@
 #define WR8_PTR_Y(pointer_lo, y, value) wr8_zp_y(ADDR_OF8(pointer_lo), (y), (value))
 
 /*
- * A disc table (config/rondo/tables.csv, settled from the traces by tools/rondo/tables.py): data in code or in a block
+ * A disc table (config/rondo/tables.csv, each table's bank settled from the code that maps it): data in code or in a block
  * the loader brought in. TBL8 reads the byte at a byte index; TBL16_LH and TBL16_HL read the element at an element index
  * of a word table, low byte first or high byte first (the order is the assembly's, as for RD16_LH). Each is the same
  * checked read as rd8 of the table's address plus the index. A table no script has read in one bank has no

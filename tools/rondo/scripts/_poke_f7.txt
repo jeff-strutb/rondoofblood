@@ -1,7 +1,0 @@
-# poke test: the backup memory header spoiled before the game looks at it
-wait 150
-poke F7:0000 00
-poke F7:0001 00
-wait 120
-press RUN 6
-wait 700

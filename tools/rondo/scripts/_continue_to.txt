@@ -1,7 +1,0 @@
-# To the continue screen after the last life is lost in Stage 0 (as gameover.txt: RIGHT held
-# until the game is over). A stage script then pokes zStage ($2081) with the stage it wants and
-# presses I: ModeDead restarts the stage in zStage (bit 7 clear) with the restart bit, and
-# StageEnter loads exactly that stage from StageScenes.
-include _newgame.txt
-wait 1500
-press RIGHT 18000

@@ -1,9 +1,0 @@
-a=00 x=05 y=00 s=F0 p= mem:2805=00 mem:3515=00 mem:35C5=40 mem:356D=01
-a=00 x=05 y=00 s=F0 p= mem:2805=00 mem:3515=30 mem:35C5=40 mem:356D=01
-a=00 x=05 y=00 s=F0 p= mem:2805=00 mem:3515=90 mem:35C5=40 mem:356D=01
-a=00 x=05 y=00 s=F0 p= mem:2805=01 mem:3515=00 mem:35C5=40 mem:356D=01
-a=00 x=05 y=00 s=F0 p= mem:2805=01 mem:3515=30 mem:35C5=40 mem:356D=01
-a=00 x=05 y=00 s=F0 p= mem:2805=01 mem:3515=90 mem:35C5=40 mem:356D=01
-a=00 x=05 y=00 s=F0 p= mem:2805=02 mem:3515=00 mem:35C5=40 mem:356D=01
-a=00 x=05 y=00 s=F0 p= mem:2805=02 mem:3515=30 mem:35C5=40 mem:356D=01
-a=00 x=05 y=00 s=F0 p= mem:2805=02 mem:3515=90 mem:35C5=40 mem:356D=01

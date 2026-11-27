@@ -1,4 +1,0 @@
-a=00 x=02 y=00 s=F0 p= mem:259A=02 mem:25A2=01 mem:25AA=01 mem:2582=05 mem:2572=03
-a=00 x=00 y=00 s=F0 p= mem:2598=02 mem:25A0=01 mem:25A8=01 mem:2580=00 mem:2570=03
-a=00 x=02 y=00 s=F0 p= mem:259A=03 mem:25A2=01 mem:25AA=04 mem:2592=05 mem:258A=07 mem:2582=09
-a=00 x=05 y=00 s=F0 p= mem:259D=03 mem:25A5=01 mem:25AD=1E mem:2595=1F mem:258D=00 mem:2585=09

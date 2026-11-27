@@ -5,10 +5,8 @@
  * work RAM read and write, every hardware access, every push and pull, and every TAM, CSL
  * and CSH the original makes, the C makes: where the assembly makes it, in its order and
  * number. No value is kept in a C variable across a point where the original reads memory
- * again (docs/rondo/PLAN.md, section 1). The checker judges the order of these accesses, A5
- * per call and A7 in lockstep with interrupts delivered inside the C where the original took
- * them. What it does not count: instruction and operand fetches, reads of ROM, and the pulls
- * an RTS or RTI makes of its return address.
+ * again (docs/rondo/PLAN.md, section 1). Not accesses here: instruction and operand fetches,
+ * reads of ROM, and the pulls an RTS or RTI makes of its return address.
  *
  * Registers: `cpu` is touched only by abi_ wrappers, the one place that meets the assembly's
  * calling convention, by call_original and the stack helpers below. A routine's body takes
@@ -67,8 +65,8 @@ void call_orig(uint16_t ret, uint16_t addr);
 void call_orig_framed(uint16_t ret, uint16_t addr);
 /*
  * call_return_point(): the C is about to make the RTS of a call it made (jsr_pop). The original took an interrupt that came
- * before that RTS at the RTS, with the frame still on the stack: the lockstep delivers it here, before S is popped. It is
- * not an access of the original and nothing else; a port without a checker defines it empty.
+ * before that RTS at the RTS, with the frame still on the stack: an interrupt pending there is taken here, before S is
+ * popped. It is not an access of the original; a port with no interrupt to deliver at that point defines it empty.
  */
 void call_return_point(void);
 void cli(void);                           /* CLI: interrupts on */

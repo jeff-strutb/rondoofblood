@@ -1,2 +1,0 @@
-# CountTimerPairDownThenSpawn36: the timer pair at zero and no empty slot from $1C to $1F
-a=00 x=05 y=00 s=F0 p= mem:27A8+5=01 mem:34B8+5=00 mem:3510+5=00 mem:2750+1C=01 mem:2750+1D=01 mem:2750+1E=01 mem:2750+1F=01

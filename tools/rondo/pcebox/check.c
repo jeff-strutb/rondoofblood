@@ -2338,8 +2338,23 @@ void __cyg_profile_func_enter(void *fn, void *site)
 
         if (!nonres_calls)
             nonres_calls = calloc((size_t)rondo_tag_count * 2, sizeof *nonres_calls);
-        if (!nonres_calls[2 * tag]++)
+        if (!nonres_calls[2 * tag]++) {
+            const Tag *tg = &rondo_tags[tag];
+
             nonres_calls[2 * tag + 1] = (uint64_t)(from + 1);
+            fprintf(report, "NONRESIDENT-BYTES %s frame %lu mpr", tg->name, cur_frame);
+            for (unsigned m = 0; m < 8; m++)
+                fprintf(report, " %02X", res_mpr(m));
+            fprintf(report, " at %04X:", tg->run);
+            for (unsigned i = 0; i < tg->len && i < 24; i++) {
+                uint16_t logical = (uint16_t)(tg->run + i);
+                uint32_t ph = canon(((uint32_t)res_mpr(logical >> 13) << 13) | (logical & 0x1FFF));
+                const uint8_t *b = rom_bank[ph >> 13];
+
+                fprintf(report, " %02X", b ? b[ph & 0x1FFF] : 0xFF);
+            }
+            fprintf(report, "\n");
+        }
     }
     if (in_swap >= 0 && tag >= 0 && tag != in_swap) {
         if (!ran_inside)

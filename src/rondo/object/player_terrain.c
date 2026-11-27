@@ -1165,6 +1165,28 @@ void abi_RichterSolidUnderColumn(void)
 }
 
 /*
+ * @routine 01DE:1C9 MariaSolidUnderColumn
+ * @run 6D:A9C9
+ * WHAT IT DOES: RichterSolidUnderColumn in Maria's player overlay (01DD).
+ * HOW: The same instructions, calling MariaColumnOffset and MariaReadBelow.
+ * WAITS: no.
+ * Entry, exit: as RichterSolidUnderColumn.
+ */
+ColumnRead MariaSolidUnderColumn(uint8_t column)
+{
+    return column_probe(column, COLUMNS_BELOW_CHECK, 0xA9CC, 0xA9DB, &maria_columns);
+}
+
+void abi_MariaSolidUnderColumn(void)
+{
+    ColumnRead one = MariaSolidUnderColumn(cpu.x);
+
+    column_read_exit_shim(one);
+    cpu.a = solid_answer(one);
+    abi_nz(cpu.a);
+}
+
+/*
  * @routine 01BA:248 RichterReadUnderFeet
  * @run 6D:AA48
  * WHAT IT DOES: Reads the terrain straight under his feet, $1E below his position.
@@ -1172,7 +1194,7 @@ void abi_RichterSolidUnderColumn(void)
  * WAITS: no.
  * Entry: nothing. Exit: as the read.
  */
-ColumnRead RichterReadUnderFeet(void)
+static ColumnRead read_under_feet(TileRead (*read_below)(uint8_t row, bool carry))
 {
     ColumnRead one = { 0, 0, COLUMNS_BELOW_SOLES, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, false };
     uint8_t value, base;
@@ -1183,10 +1205,15 @@ ColumnRead RichterReadUnderFeet(void)
     base = RD8(OBJ->y_lo[0]);
     row = add_bytes(base, COLUMNS_BELOW_SOLES, false);
     read_entry_kept_shim(row);
-    one.read = RichterReadBelow(row.value, row.carry);
+    one.read = read_below(row.value, row.carry);
     one.row = base;
     one.read_made = !row.carry;
     return one;
+}
+
+ColumnRead RichterReadUnderFeet(void)
+{
+    return read_under_feet(RichterReadBelow);
 }
 
 /* Past the screen the row's add leaves all four flags, and the CLA that follows changes none. */
@@ -1207,6 +1234,24 @@ void under_feet_exit_shim(ColumnRead one)
 void abi_RichterReadUnderFeet(void)
 {
     under_feet_exit_shim(RichterReadUnderFeet());
+}
+
+/*
+ * @routine 01DE:1E2 MariaReadUnderFeet
+ * @run 6D:A9E2
+ * WHAT IT DOES: RichterReadUnderFeet in Maria's player overlay (01DD).
+ * HOW: The same instructions, its tail jump to MariaReadBelow.
+ * WAITS: no.
+ * Entry, exit: as RichterReadUnderFeet.
+ */
+ColumnRead MariaReadUnderFeet(void)
+{
+    return read_under_feet(MariaReadBelow);
+}
+
+void abi_MariaReadUnderFeet(void)
+{
+    under_feet_exit_shim(MariaReadUnderFeet());
 }
 
 /*
@@ -1235,14 +1280,37 @@ void abi_RichterUpHeld(void)
  * WAITS: no.
  * Entry: nothing. Exit: C the answer. All else kept.
  */
-bool RichterJumpPressed(void)
+static bool jump_pressed_body(void)
 {
     return (rd8(zPadPressed) & PAD_JUMP_PRESS) != 0;
+}
+
+bool RichterJumpPressed(void)
+{
+    return jump_pressed_body();
 }
 
 void abi_RichterJumpPressed(void)
 {
     abi_flag(P_C, RichterJumpPressed());
+}
+
+/*
+ * @routine 01E0:389 MariaJumpPressed
+ * @run 6D:BB89
+ * WHAT IT DOES: RichterJumpPressed in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterJumpPressed's body.
+ * WAITS: no.
+ * Entry, exit: as RichterJumpPressed.
+ */
+bool MariaJumpPressed(void)
+{
+    return jump_pressed_body();
+}
+
+void abi_MariaJumpPressed(void)
+{
+    abi_flag(P_C, MariaJumpPressed());
 }
 
 /*

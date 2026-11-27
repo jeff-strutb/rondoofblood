@@ -518,3 +518,46 @@ TileLift1At9CC3:
     sta z:zTemp02
     lda #$81
     rts
+
+; @routine 01E1:4E4 MariaStateDoubled
+; @run 6E:C4E4
+; WHAT IT DOES: RichterStateDoubled in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterStateDoubled's body.
+; WAITS: no.
+; Entry, exit: as RichterStateDoubled.
+MariaStateDoubled:
+    ldx z:zRichterObject
+    lda a:OBJ_27A8,x
+    asl a
+    tax
+    rts
+
+; @routine 01E1:28B MariaSetVelocityYFromTable
+; @run 6E:C28B
+; WHAT IT DOES: SetVelocityYFromTable in Maria's player overlay (01DD).
+; HOW: The same instructions with her table of words at $C29A.
+; WAITS: no.
+; Entry, exit: as SetVelocityYFromTable.
+MariaSetVelocityYFromTable:
+    asl a
+    tay
+    lda a:$C29A,y
+    sta a:OBJ_VY_LO,x
+    lda a:$C29B,y
+    sta a:OBJ_VY_HI,x
+    rts
+
+; @routine 01E1:2BC MariaSetVelocityXFromTable
+; @run 6E:C2BC
+; WHAT IT DOES: SetVelocityXFromTable in Maria's player overlay (01DD).
+; HOW: The same instructions with her table of words at $C2ED.
+; WAITS: no.
+; Entry, exit: as SetVelocityXFromTable.
+MariaSetVelocityXFromTable:
+    asl a
+    tay
+    lda a:$C2ED,y
+    sta a:OBJ_VX_LO,x
+    lda a:$C2EE,y
+    sta a:OBJ_VX_HI,x
+    rts

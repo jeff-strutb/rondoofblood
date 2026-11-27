@@ -2088,3 +2088,89 @@ MariaVecWall:
 ; Entry, exit: as MariaFloor.
 MariaVecFloor:
     jmp MariaFloor
+
+; @routine 01DD:16B MariaClearWork
+; @run 6D:A16B
+; WHAT IT DOES: RichterClearWork in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterClearWork's body.
+; WAITS: no.
+; Entry, exit: as RichterClearWork.
+MariaClearWork:
+    tai KernelZeros,$3BC0,$0040
+    tai KernelZeros,zPadHeld+$2000,$0019
+    rts
+
+; @routine 01DD:359 MariaStartHitScript
+; @run 6D:A359
+; WHAT IT DOES: RichterStartHitScript in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterStartHitScript's body.
+; WAITS: no.
+; Entry, exit: as RichterStartHitScript.
+MariaStartHitScript:
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 01DD:5DC MariaStepIndex
+; @run 6D:A5DC
+; WHAT IT DOES: RichterStepIndex in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterStepIndex's body.
+; WAITS: no.
+; Entry, exit: as RichterStepIndex.
+MariaStepIndex:
+    lda a:OBJ_2800
+    asl a
+    tax
+    rts
+
+; @routine 01E0:266 MariaInvincibleTick
+; @run 6D:BA66
+; WHAT IT DOES: RichterInvincibleTick in Maria's player overlay (01DD).
+; HOW: The same instructions with her tables of marks and scripts at $BAC1 and $BABB, $329 above his, and her script start, MariaStartHitScript.
+; WAITS: no.
+; Entry, exit: as RichterInvincibleTick.
+MariaInvincibleTick:
+    lda a:PlayerInvincibleTimer
+    bne MariaInvincibleTick_at0
+    rts
+MariaInvincibleTick_at0:
+    stz a:PlayerByte3BE8
+    stz a:PlayerByte3BE9
+    lda #$02
+    sta a:OBJ_3828
+    lda z:zWaveCounter
+    and #$03
+    beq MariaInvincibleTick_at1
+    rts
+MariaInvincibleTick_at1:
+    lda #$80
+    sta a:OBJ_3460
+    lda a:PlayerInvincibleTimer
+    cmp #$80
+    bne MariaInvincibleTick_at2
+    lda #$31
+    jsr VecSoundCommand
+MariaInvincibleTick_at2:
+    cmp #$10
+    bne MariaInvincibleTick_at3
+    lda #$32
+    jsr VecSoundCommand
+MariaInvincibleTick_at3:
+    dec a:PlayerInvincibleTimer
+    beq MariaInvincibleTick_at4
+    cly
+MariaInvincibleTick_at6:
+    lda a:PlayerInvincibleTimer
+    cmp a:RichterInvincibleMarks+$329,y
+    beq MariaInvincibleTick_at5
+    iny
+    cpy #$06
+    bne MariaInvincibleTick_at6
+    rts
+MariaInvincibleTick_at5:
+    lda a:RichterInvincibleScripts+$329,y
+    jmp MariaStartHitScript
+MariaInvincibleTick_at4:
+    lda #$01
+    sta a:OBJ_3460
+    sta a:OBJ_3828
+    rts

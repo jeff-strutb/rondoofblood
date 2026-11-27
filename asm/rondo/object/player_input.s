@@ -469,3 +469,96 @@ RichterUseItemEight_at0:
     jsr VecStartScriptSlotKind1
     stz a:PlayerByte3BD6
     bra $B99D
+
+; @routine 01E0:173 MariaClearPadOverrides
+; @run 6D:B973
+; WHAT IT DOES: RichterClearPadOverrides in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterClearPadOverrides's body.
+; WAITS: no.
+; Entry, exit: as RichterClearPadOverrides.
+MariaClearPadOverrides:
+    stz a:PadOverrides
+    stz a:PadOverrides+1
+    stz a:PadOverrides+2
+    stz a:PadOverrides+3
+    rts
+
+; @routine 01E0:306 MariaNoteItemPress
+; @run 6D:BB06
+; WHAT IT DOES: RichterNoteItemPress in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterNoteItemPress's body.
+; WAITS: no.
+; Entry, exit: as RichterNoteItemPress.
+MariaNoteItemPress:
+    tst #$04,z:zPadPressed
+    bne MariaNoteItemPress_at0
+    rts
+MariaNoteItemPress_at0:
+    lda #$04
+    sta a:PadForcedPress
+    rts
+
+; @routine 01E0:1C3 MariaAnimationPoint
+; @run 6D:B9C3
+; WHAT IT DOES: RichterAnimationPoint in Maria's player overlay (01DD).
+; HOW: The same instructions with her table of animation lists at $BF3D, $322 above his.
+; WAITS: no.
+; Entry, exit: as RichterAnimationPoint.
+MariaAnimationPoint:
+    lda a:OBJ_FIELDS_2EE0
+    asl a
+    tay
+    lda a:AnimationLists+$322,y
+    sta z:zTemp00
+    lda a:AnimationLists+$322+1,y
+    sta z:zTemp01
+    lda a:OBJ_FLAGS_2F38
+    asl a
+    tay
+    rts
+
+; @routine 01E0:22B MariaCheckTurnWindow
+; @run 6D:BA2B
+; WHAT IT DOES: RichterCheckTurnWindow in Maria's player overlay (01DD).
+; HOW: The same instructions with her table of turn states at $BA54, $327 above his.
+; WAITS: no.
+; Entry, exit: as RichterCheckTurnWindow.
+MariaCheckTurnWindow:
+    stz a:PlayerByte3BD7
+    lda a:OBJ_2800
+    beq MariaCheckTurnWindow_at0
+    rts
+MariaCheckTurnWindow_at0:
+    ldx a:OBJ_27A8
+    lda a:RichterTurnStates+$327,x
+    sta a:PlayerByte3BD7
+    lda a:OBJ_2AC0
+    bne MariaCheckTurnWindow_at1
+    lda a:OBJ_X_LO
+    bmi MariaCheckTurnWindow_at2
+    stz a:PlayerByte3BD7
+    rts
+MariaCheckTurnWindow_at1:
+    lda a:OBJ_X_LO
+    bpl MariaCheckTurnWindow_at2
+    stz a:PlayerByte3BD7
+MariaCheckTurnWindow_at2:
+    rts
+
+; @routine 01E0:312 MariaCheckItemHearts
+; @run 6D:BB12
+; WHAT IT DOES: RichterCheckItemHearts in Maria's player overlay (01DD).
+; HOW: The same instructions with her table of item costs at $BD4A, $4FD above his.
+; WAITS: no.
+; Entry, exit: as RichterCheckItemHearts.
+MariaCheckItemHearts:
+    stz a:RichterItemReady
+    ldx z:zField93
+    lda z:zField94
+    cmp a:RichterItemCosts+$4FD,x
+    bcs MariaCheckItemHearts_at0
+    rts
+MariaCheckItemHearts_at0:
+    lda #$0F
+    sta a:RichterItemReady
+    rts

@@ -917,3 +917,52 @@ MariaFloor_at2:
     stz a:OBJ_Y_HI
     lda #$01
     rts
+
+; @routine 01E0:389 MariaJumpPressed
+; @run 6D:BB89
+; WHAT IT DOES: RichterJumpPressed in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterJumpPressed's body.
+; WAITS: no.
+; Entry, exit: as RichterJumpPressed.
+MariaJumpPressed:
+    bbs0 zPadPressed,MariaJumpPressed_at0
+    clc
+    rts
+MariaJumpPressed_at0:
+    sec
+    rts
+
+; @routine 01DE:1C9 MariaSolidUnderColumn
+; @run 6D:A9C9
+; WHAT IT DOES: RichterSolidUnderColumn in Maria's player overlay (01DD).
+; HOW: The same instructions, calling MariaColumnOffset and MariaReadBelow.
+; WAITS: no.
+; Entry, exit: as RichterSolidUnderColumn.
+MariaSolidUnderColumn:
+    jsr MariaColumnOffset
+    clc
+    adc a:OBJ_X_LO
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc #$0E
+    jsr MariaReadBelow
+    and #$81
+    bpl MariaSolidUnderColumn_at0
+    lda #$00
+MariaSolidUnderColumn_at0:
+    rts
+
+; @routine 01DE:1E2 MariaReadUnderFeet
+; @run 6D:A9E2
+; WHAT IT DOES: RichterReadUnderFeet in Maria's player overlay (01DD).
+; HOW: The same instructions, its tail jump to MariaReadBelow.
+; WAITS: no.
+; Entry, exit: as RichterReadUnderFeet.
+MariaReadUnderFeet:
+    lda a:OBJ_X_LO
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc #$1E
+    jmp MariaReadBelow

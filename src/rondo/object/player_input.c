@@ -82,15 +82,38 @@ void abi_RichterReadPad(void)
  * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
-void RichterClearPadOverrides(void)
+static void clear_pad_overrides_body(void)
 {
     for (uint16_t i = 0; i < 4; i++)
         wr8((uint16_t)(PadOverrides + i), 0);
 }
 
+void RichterClearPadOverrides(void)
+{
+    clear_pad_overrides_body();
+}
+
 void abi_RichterClearPadOverrides(void)
 {
     RichterClearPadOverrides();
+}
+
+/*
+ * @routine 01E0:173 MariaClearPadOverrides
+ * @run 6D:B973
+ * WHAT IT DOES: RichterClearPadOverrides in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterClearPadOverrides's body.
+ * WAITS: no.
+ * Entry, exit: as RichterClearPadOverrides.
+ */
+void MariaClearPadOverrides(void)
+{
+    clear_pad_overrides_body();
+}
+
+void abi_MariaClearPadOverrides(void)
+{
+    MariaClearPadOverrides();
 }
 
 /* The exit state of an animation routine as the assembly leaves it. */
@@ -109,19 +132,50 @@ static AnimationStep animation_exit(uint8_t a, uint8_t nz, bool c, bool y_set, u
  * WAITS: no.
  * Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
  */
-ObjectListStep RichterAnimationPoint(void)
+static ObjectListStep animation_point(uint16_t lists)
 {
     ObjectListStep r;
     uint8_t animation = RD8(OBJ->fields_2ee0[0]);
     uint8_t doubled = (uint8_t)(animation << 1);
     uint8_t step;
 
-    WR8(ZP->temp00, rd8((uint16_t)(AnimationLists + doubled)));
-    WR8(ZP->temp01, rd8((uint16_t)(AnimationLists + 1 + doubled)));
+    WR8(ZP->temp00, rd8((uint16_t)(lists + doubled)));
+    WR8(ZP->temp01, rd8((uint16_t)(lists + 1 + doubled)));
     step = RD8(OBJ->flags[0]);
     r.y = (uint8_t)(step << 1);
     r.carry = (step & 0x80) != 0;
     return r;
+}
+
+ObjectListStep RichterAnimationPoint(void)
+{
+    return animation_point(AnimationLists);
+}
+
+static void animation_point_exit_shim(ObjectListStep r)
+{
+    cpu.a = r.y;
+    cpu.y = r.y;
+    abi_nz(r.y);
+    abi_flag(P_C, r.carry);
+}
+
+/*
+ * @routine 01E0:1C3 MariaAnimationPoint
+ * @run 6D:B9C3
+ * WHAT IT DOES: RichterAnimationPoint in Maria's player overlay (01DD).
+ * HOW: The same instructions with her table of animation lists at $BF3D, $322 above his.
+ * WAITS: no.
+ * Entry, exit: as RichterAnimationPoint.
+ */
+ObjectListStep MariaAnimationPoint(void)
+{
+    return animation_point(AnimationLists + 0x322);
+}
+
+void abi_MariaAnimationPoint(void)
+{
+    animation_point_exit_shim(MariaAnimationPoint());
 }
 
 void abi_RichterAnimationPoint(void)
@@ -350,7 +404,7 @@ void abi_RichterSetAnimation(void)
  * Entry: nothing. Exit: A the last read, N and Z from it; X the state if it went that far. Y,
  * C and V kept.
  */
-TurnWindow RichterCheckTurnWindow(void)
+static TurnWindow check_turn_window(uint16_t turn_states)
 {
     TurnWindow r = { ended_kept(), false, 0 };
     uint8_t value, facing, x_lo;
@@ -363,7 +417,7 @@ TurnWindow RichterCheckTurnWindow(void)
     }
     r.x_set = true;
     r.x = RD8(OBJ->state[0]);
-    value = rd8((uint16_t)(RichterTurnStates + r.x));
+    value = rd8((uint16_t)(turn_states + r.x));
     wr8(PlayerByte3BD7, value);
     r.end = ended_load(value);
     facing = RD8(OBJ->facing_left[0]);
@@ -375,9 +429,37 @@ TurnWindow RichterCheckTurnWindow(void)
     return r;
 }
 
+TurnWindow RichterCheckTurnWindow(void)
+{
+    return check_turn_window(RichterTurnStates);
+}
+
 void abi_RichterCheckTurnWindow(void)
 {
     TurnWindow r = RichterCheckTurnWindow();
+
+    abi_ended(r.end);
+    if (r.x_set) {
+        cpu.x = r.x;
+    }
+}
+
+/*
+ * @routine 01E0:22B MariaCheckTurnWindow
+ * @run 6D:BA2B
+ * WHAT IT DOES: RichterCheckTurnWindow in Maria's player overlay (01DD).
+ * HOW: The same instructions with her table of turn states at $BA54, $327 above his.
+ * WAITS: no.
+ * Entry, exit: as RichterCheckTurnWindow.
+ */
+TurnWindow MariaCheckTurnWindow(void)
+{
+    return check_turn_window(RichterTurnStates + 0x327);
+}
+
+void abi_MariaCheckTurnWindow(void)
+{
+    TurnWindow r = MariaCheckTurnWindow();
 
     abi_ended(r.end);
     if (r.x_set) {
@@ -437,7 +519,7 @@ void abi_RichterFaceByPad(void)
  * Entry: nothing. Exit: Z from the test, N and V bits 7 and 6 of the presses; A 4 if pressed.
  * X, Y and C kept.
  */
-ObjArm RichterNoteItemPress(void)
+static ObjArm note_item_press_body(void)
 {
     ObjArm r = { 0 };
 
@@ -449,6 +531,11 @@ ObjArm RichterNoteItemPress(void)
     wr8(PadForcedPress, ITEM_REQUEST);
     r.arm = PI_NP_NOTED;
     return r;
+}
+
+ObjArm RichterNoteItemPress(void)
+{
+    return note_item_press_body();
 }
 
 static EndedTst richter_note_item_press_exit_shim(ObjArm r)
@@ -469,6 +556,24 @@ void abi_RichterNoteItemPress(void)
 }
 
 /*
+ * @routine 01E0:306 MariaNoteItemPress
+ * @run 6D:BB06
+ * WHAT IT DOES: RichterNoteItemPress in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterNoteItemPress's body.
+ * WAITS: no.
+ * Entry, exit: as RichterNoteItemPress.
+ */
+ObjArm MariaNoteItemPress(void)
+{
+    return note_item_press_body();
+}
+
+void abi_MariaNoteItemPress(void)
+{
+    abi_ended_tst(richter_note_item_press_exit_shim(MariaNoteItemPress()));
+}
+
+/*
  * @routine 01BB:7E9 RichterCheckItemHearts
  * @run 6D:B7E9
  * WHAT IT DOES: Says whether he has the hearts the item in hand costs.
@@ -477,14 +582,14 @@ void abi_RichterNoteItemPress(void)
  * Entry: nothing. Exit: X the item; A the hearts, N, Z and C from the compare, or A $0F. Y and
  * V kept.
  */
-ObjArm RichterCheckItemHearts(void)
+static ObjArm check_item_hearts(uint16_t costs)
 {
     ObjArm r = { 0 };
 
     wr8(RichterItemReady, 0);
     r.first = RD8(ZP->field93);
     r.second = RD8(ZP->field94);
-    r.third = rd8((uint16_t)(RichterItemCosts + r.first));
+    r.third = rd8((uint16_t)(costs + r.first));
     r.arm = PI_CH_SHORT;
     if (r.second >= r.third) {
         wr8(RichterItemReady, ITEM_READY);
@@ -504,6 +609,32 @@ static EndedX richter_check_item_hearts_exit_shim(ObjArm r)
         x.end = ended_with_carry(x.end, true);
     }
     return x;
+}
+
+ObjArm RichterCheckItemHearts(void)
+{
+    return check_item_hearts(RichterItemCosts);
+}
+
+/*
+ * @routine 01E0:312 MariaCheckItemHearts
+ * @run 6D:BB12
+ * WHAT IT DOES: RichterCheckItemHearts in Maria's player overlay (01DD).
+ * HOW: The same instructions with her table of item costs at $BD4A, $4FD above his.
+ * WAITS: no.
+ * Entry, exit: as RichterCheckItemHearts.
+ */
+ObjArm MariaCheckItemHearts(void)
+{
+    return check_item_hearts(RichterItemCosts + 0x4FD);
+}
+
+void abi_MariaCheckItemHearts(void)
+{
+    EndedX r = richter_check_item_hearts_exit_shim(MariaCheckItemHearts());
+
+    abi_ended(r.end);
+    cpu.x = r.x;
 }
 
 void abi_RichterCheckItemHearts(void)

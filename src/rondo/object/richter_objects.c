@@ -52,7 +52,7 @@ static const uint8_t flash_frames[] = { 0x07, 0x0E, 0x15, 0x1C };
  * WAITS: no.
  * Entry: X object. Exit: A the new OBJ_2B18, N and Z from it. X, Y, C and V kept.
  */
-uint8_t RichterObjectMarkOn(uint8_t object)
+static uint8_t object_mark_on_body(uint8_t object)
 {
     uint8_t flags = (uint8_t)(rd8((uint16_t)(OBJ_2B18 + object)) | OBJECT_MARK);
 
@@ -60,9 +60,33 @@ uint8_t RichterObjectMarkOn(uint8_t object)
     return flags;
 }
 
+uint8_t RichterObjectMarkOn(uint8_t object)
+{
+    return object_mark_on_body(object);
+}
+
 void abi_RichterObjectMarkOn(void)
 {
     cpu.a = RichterObjectMarkOn(cpu.x);
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 01E1:37C MariaObjectMarkOn
+ * @run 6E:C37C
+ * WHAT IT DOES: RichterObjectMarkOn in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterObjectMarkOn's body.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectMarkOn.
+ */
+uint8_t MariaObjectMarkOn(uint8_t object)
+{
+    return object_mark_on_body(object);
+}
+
+void abi_MariaObjectMarkOn(void)
+{
+    cpu.a = MariaObjectMarkOn(cpu.x);
     abi_nz(cpu.a);
 }
 
@@ -151,14 +175,38 @@ void abi_RichterObjectFromPlayer(void)
  * WAITS: no.
  * Entry: nothing. Exit: X the slot, N and Z from it. A, Y, C and V kept.
  */
-uint8_t RichterObjectSlot(void)
+static uint8_t object_slot_body(void)
 {
     return rd8(zRichterObject);
+}
+
+uint8_t RichterObjectSlot(void)
+{
+    return object_slot_body();
 }
 
 void abi_RichterObjectSlot(void)
 {
     cpu.x = RichterObjectSlot();
+    abi_nz(cpu.x);
+}
+
+/*
+ * @routine 01E1:703 MariaObjectSlot
+ * @run 6E:C703
+ * WHAT IT DOES: RichterObjectSlot in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterObjectSlot's body.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectSlot.
+ */
+uint8_t MariaObjectSlot(void)
+{
+    return object_slot_body();
+}
+
+void abi_MariaObjectSlot(void)
+{
+    cpu.x = MariaObjectSlot();
     abi_nz(cpu.x);
 }
 
@@ -170,7 +218,7 @@ void abi_RichterObjectSlot(void)
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the new state. A, X, Y, C and V kept.
  */
-uint8_t RichterObjectNextState(uint8_t object)
+static uint8_t object_next_state_body(uint8_t object)
 {
     uint8_t state = (uint8_t)(rd8((uint16_t)(OBJ_27A8 + object)) + 1);
 
@@ -178,9 +226,32 @@ uint8_t RichterObjectNextState(uint8_t object)
     return state;
 }
 
+uint8_t RichterObjectNextState(uint8_t object)
+{
+    return object_next_state_body(object);
+}
+
 void abi_RichterObjectNextState(void)
 {
     abi_nz(RichterObjectNextState(cpu.x));
+}
+
+/*
+ * @routine 01E1:589 MariaObjectNextState
+ * @run 6E:C589
+ * WHAT IT DOES: RichterObjectNextState in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterObjectNextState's body.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectNextState.
+ */
+uint8_t MariaObjectNextState(uint8_t object)
+{
+    return object_next_state_body(object);
+}
+
+void abi_MariaObjectNextState(void)
+{
+    abi_nz(MariaObjectNextState(cpu.x));
 }
 
 /*
@@ -434,7 +505,7 @@ void abi_RichterObjectAtPlayer(void)
  * WAITS: no.
  * Entry: A the amount, X object. Exit: A the low byte, N, Z, C and V from the add. X and Y kept.
  */
-Sum RichterObjectAddXLow(uint8_t object, uint8_t amount)
+static Sum object_add_x_low_body(uint8_t object, uint8_t amount)
 {
     Sum sum = add_bytes(amount, rd8((uint16_t)(OBJ_X_LO + object)), false);
 
@@ -442,9 +513,32 @@ Sum RichterObjectAddXLow(uint8_t object, uint8_t amount)
     return sum;
 }
 
+Sum RichterObjectAddXLow(uint8_t object, uint8_t amount)
+{
+    return object_add_x_low_body(object, amount);
+}
+
 void abi_RichterObjectAddXLow(void)
 {
     abi_exit_sum(RichterObjectAddXLow(cpu.x, cpu.a));
+}
+
+/*
+ * @routine 01E1:27C MariaObjectAddXLow
+ * @run 6E:C27C
+ * WHAT IT DOES: RichterObjectAddXLow in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterObjectAddXLow's body.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectAddXLow.
+ */
+Sum MariaObjectAddXLow(uint8_t object, uint8_t amount)
+{
+    return object_add_x_low_body(object, amount);
+}
+
+void abi_MariaObjectAddXLow(void)
+{
+    abi_exit_sum(MariaObjectAddXLow(cpu.x, cpu.a));
 }
 
 /*
@@ -456,7 +550,7 @@ void abi_RichterObjectAddXLow(void)
  * Entry: A the amount, C the carry, X object. Exit: A the high byte, N, Z, C and V from the add.
  * X and Y kept.
  */
-Sum RichterObjectAddXHigh(uint8_t object, uint8_t amount, bool carry)
+static Sum object_add_x_high_body(uint8_t object, uint8_t amount, bool carry)
 {
     Sum sum = add_bytes(amount, rd8((uint16_t)(OBJ_X_HI + object)), carry);
 
@@ -464,9 +558,32 @@ Sum RichterObjectAddXHigh(uint8_t object, uint8_t amount, bool carry)
     return sum;
 }
 
+Sum RichterObjectAddXHigh(uint8_t object, uint8_t amount, bool carry)
+{
+    return object_add_x_high_body(object, amount, carry);
+}
+
 void abi_RichterObjectAddXHigh(void)
 {
     abi_exit_sum(RichterObjectAddXHigh(cpu.x, cpu.a, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 01E1:284 MariaObjectAddXHigh
+ * @run 6E:C284
+ * WHAT IT DOES: RichterObjectAddXHigh in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterObjectAddXHigh's body.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectAddXHigh.
+ */
+Sum MariaObjectAddXHigh(uint8_t object, uint8_t amount, bool carry)
+{
+    return object_add_x_high_body(object, amount, carry);
+}
+
+void abi_MariaObjectAddXHigh(void)
+{
+    abi_exit_sum(MariaObjectAddXHigh(cpu.x, cpu.a, (cpu.p & P_C) != 0));
 }
 
 /*
@@ -715,18 +832,46 @@ void abi_RichterObjectHitboxOn(void)
  * Entry: X object. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V
  * kept.
  */
-ObjectListStep RichterObjectAnimationList(uint8_t object)
+static ObjectListStep object_animation_list(uint8_t object, uint16_t lists)
 {
     ObjectListStep r;
     uint8_t doubled = (uint8_t)(RD8(OBJ->fields_2ee0[object]) << 1);
     uint8_t step;
 
-    WR8(ZP->temp00, rd8((uint16_t)(RichterObjectAnimations + doubled)));
-    WR8(ZP->temp01, rd8((uint16_t)(RichterObjectAnimations + 1 + doubled)));
+    WR8(ZP->temp00, rd8((uint16_t)(lists + doubled)));
+    WR8(ZP->temp01, rd8((uint16_t)(lists + 1 + doubled)));
     step = RD8(OBJ->flags[object]);
     r.y = (uint8_t)(step << 1);
     r.carry = (step & 0x80) != 0;
     return r;
+}
+
+ObjectListStep RichterObjectAnimationList(uint8_t object)
+{
+    return object_animation_list(object, RichterObjectAnimations);
+}
+
+/*
+ * @routine 01E4:5C8 MariaObjectAnimationList
+ * @run 6E:DDC8
+ * WHAT IT DOES: RichterObjectAnimationList in Maria's player overlay (01DD).
+ * HOW: The same instructions with her table of object animations at $DDDD, $344 above his.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectAnimationList.
+ */
+ObjectListStep MariaObjectAnimationList(uint8_t object)
+{
+    return object_animation_list(object, RichterObjectAnimations + 0x344);
+}
+
+void abi_MariaObjectAnimationList(void)
+{
+    ObjectListStep r = MariaObjectAnimationList(cpu.x);
+
+    cpu.a = r.y;
+    cpu.y = r.y;
+    abi_nz(r.y);
+    abi_flag(P_C, r.carry);
 }
 
 void abi_RichterObjectAnimationList(void)

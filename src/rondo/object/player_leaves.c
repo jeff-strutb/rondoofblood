@@ -15,7 +15,8 @@
 #include "enemy_objects.h"
 #include "player_objects.h"
 
-enum { TILE_HANDLED_A = 0x81, STAGE_TABLE_9C20 = 0x9C20, VY_TABLE = 0xBFCB, VX_TABLE = 0xBFEC };
+enum { TILE_HANDLED_A = 0x81, STAGE_TABLE_9C20 = 0x9C20, VY_TABLE = 0xBFCB, VX_TABLE = 0xBFEC, MARIA_VY_TABLE = 0xC29A,
+       MARIA_VX_TABLE = 0xC2ED };
 
 /* Arms: one enum per routine that has more than one way out. */
 enum { PL_CLEAR_LOAD, PL_CLEAR_COMPARE_40, PL_CLEAR_COMPARE_C0 };
@@ -238,7 +239,7 @@ void abi_TileLift1At9CC3(void)
  * WAITS: no.
  * Entry: nothing. Exit: A and X the doubled state, N and Z from it, C the state's bit 7. Y, V kept.
  */
-ObjArm RichterStateDoubled(void)
+static ObjArm state_doubled_body(void)
 {
     ObjArm r = { 0 };
     uint8_t slot = RD8(ZP->richter_object);
@@ -247,6 +248,11 @@ ObjArm RichterStateDoubled(void)
     r.first = (uint8_t)(state << 1);
     r.flag = (state & 0x80) != 0;
     return r;
+}
+
+ObjArm RichterStateDoubled(void)
+{
+    return state_doubled_body();
 }
 
 /* A and X the doubled state; C its bit 7. */
@@ -262,6 +268,26 @@ static EndedX richter_state_doubled_exit_shim(ObjArm r)
 void abi_RichterStateDoubled(void)
 {
         EndedX r = richter_state_doubled_exit_shim(RichterStateDoubled());
+    abi_ended(r.end);
+    cpu.x = r.x;
+}
+
+/*
+ * @routine 01E1:4E4 MariaStateDoubled
+ * @run 6E:C4E4
+ * WHAT IT DOES: RichterStateDoubled in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterStateDoubled's body.
+ * WAITS: no.
+ * Entry, exit: as RichterStateDoubled.
+ */
+ObjArm MariaStateDoubled(void)
+{
+    return state_doubled_body();
+}
+
+void abi_MariaStateDoubled(void)
+{
+        EndedX r = richter_state_doubled_exit_shim(MariaStateDoubled());
     abi_ended(r.end);
     cpu.x = r.x;
 }
@@ -404,22 +430,45 @@ static Ended set_velocity_from_table_exit_shim(ObjArm r)
     return ended_with_y(ended_with_carry(ended_load(r.first), r.flag), r.y);
 }
 
-ObjArm SetVelocityYFromTable(uint8_t slot, uint8_t entry)
+static ObjArm set_velocity_y_from_table(uint8_t slot, uint8_t entry, uint16_t table)
 {
     ObjArm r = { 0 };
 
     r.y = (uint8_t)(entry << 1);
-    r.first = rd8((uint16_t)(VY_TABLE + r.y));
+    r.first = rd8((uint16_t)(table + r.y));
     WR8(OBJ->vy_lo[slot], r.first);
-    r.first = rd8((uint16_t)(VY_TABLE + 1 + r.y));
+    r.first = rd8((uint16_t)(table + 1 + r.y));
     WR8(OBJ->vy_hi[slot], r.first);
     r.flag = (entry & 0x80) != 0;
     return r;
 }
 
+ObjArm SetVelocityYFromTable(uint8_t slot, uint8_t entry)
+{
+    return set_velocity_y_from_table(slot, entry, VY_TABLE);
+}
+
 void abi_SetVelocityYFromTable(void)
 {
     abi_ended(set_velocity_from_table_exit_shim(SetVelocityYFromTable(cpu.x, cpu.a)));
+}
+
+/*
+ * @routine 01E1:28B MariaSetVelocityYFromTable
+ * @run 6E:C28B
+ * WHAT IT DOES: SetVelocityYFromTable in Maria's player overlay (01DD).
+ * HOW: The same instructions with her table of words at $C29A.
+ * WAITS: no.
+ * Entry, exit: as SetVelocityYFromTable.
+ */
+ObjArm MariaSetVelocityYFromTable(uint8_t slot, uint8_t entry)
+{
+    return set_velocity_y_from_table(slot, entry, MARIA_VY_TABLE);
+}
+
+void abi_MariaSetVelocityYFromTable(void)
+{
+    abi_ended(set_velocity_from_table_exit_shim(MariaSetVelocityYFromTable(cpu.x, cpu.a)));
 }
 
 /*
@@ -430,22 +479,45 @@ void abi_SetVelocityYFromTable(void)
  * WAITS: no.
  * Entry and exit: as SetVelocityYFromTable.
  */
-ObjArm SetVelocityXFromTable(uint8_t slot, uint8_t entry)
+static ObjArm set_velocity_x_from_table(uint8_t slot, uint8_t entry, uint16_t table)
 {
     ObjArm r = { 0 };
 
     r.y = (uint8_t)(entry << 1);
-    r.first = rd8((uint16_t)(VX_TABLE + r.y));
+    r.first = rd8((uint16_t)(table + r.y));
     WR8(OBJ->vx_lo[slot], r.first);
-    r.first = rd8((uint16_t)(VX_TABLE + 1 + r.y));
+    r.first = rd8((uint16_t)(table + 1 + r.y));
     WR8(OBJ->vx_hi[slot], r.first);
     r.flag = (entry & 0x80) != 0;
     return r;
 }
 
+ObjArm SetVelocityXFromTable(uint8_t slot, uint8_t entry)
+{
+    return set_velocity_x_from_table(slot, entry, VX_TABLE);
+}
+
 void abi_SetVelocityXFromTable(void)
 {
     abi_ended(set_velocity_from_table_exit_shim(SetVelocityXFromTable(cpu.x, cpu.a)));
+}
+
+/*
+ * @routine 01E1:2BC MariaSetVelocityXFromTable
+ * @run 6E:C2BC
+ * WHAT IT DOES: SetVelocityXFromTable in Maria's player overlay (01DD).
+ * HOW: The same instructions with her table of words at $C2ED.
+ * WAITS: no.
+ * Entry, exit: as SetVelocityXFromTable.
+ */
+ObjArm MariaSetVelocityXFromTable(uint8_t slot, uint8_t entry)
+{
+    return set_velocity_x_from_table(slot, entry, MARIA_VX_TABLE);
+}
+
+void abi_MariaSetVelocityXFromTable(void)
+{
+    abi_ended(set_velocity_from_table_exit_shim(MariaSetVelocityXFromTable(cpu.x, cpu.a)));
 }
 
 /*

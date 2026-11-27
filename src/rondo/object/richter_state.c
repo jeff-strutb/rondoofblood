@@ -315,7 +315,7 @@ typedef enum {
 /* A frame of the invincibility: how it went, the A compared with $10, the sounds and the mark. */
 typedef struct {
     InvincibleHow how; uint8_t value; uint8_t compared; bool first_sound; bool second_sound;
-    CommandCall first; CommandCall second; uint8_t mark;
+    CommandCall first; CommandCall second; uint8_t mark; uint16_t scripts;
 } InvincibleTick;
 InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y);
 /* The death started: the sound command it ends with. */
@@ -1045,16 +1045,39 @@ static void clear_work_regs_shim(uint8_t a, uint8_t x, uint8_t y)
  * WAITS: no.
  * Entry: nothing. Exit: all registers and flags kept.
  */
-void RichterClearWork(uint8_t a, uint8_t x, uint8_t y)
+static void clear_work_body(uint8_t a, uint8_t x, uint8_t y)
 {
     clear_work_regs_shim(a, x, y);
     tai(KernelZeros, 0x3BC0, 0x0040);
     tai(KernelZeros, ADDR_OF(ZP->pad_held), 0x0019);
 }
 
+void RichterClearWork(uint8_t a, uint8_t x, uint8_t y)
+{
+    clear_work_body(a, x, y);
+}
+
 void abi_RichterClearWork(void)
 {
     RichterClearWork(cpu.a, cpu.x, cpu.y);
+}
+
+/*
+ * @routine 01DD:16B MariaClearWork
+ * @run 6D:A16B
+ * WHAT IT DOES: RichterClearWork in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterClearWork's body.
+ * WAITS: no.
+ * Entry, exit: as RichterClearWork.
+ */
+void MariaClearWork(uint8_t a, uint8_t x, uint8_t y)
+{
+    clear_work_body(a, x, y);
+}
+
+void abi_MariaClearWork(void)
+{
+    MariaClearWork(cpu.a, cpu.x, cpu.y);
 }
 
 /*
@@ -1731,9 +1754,14 @@ void abi_RichterHitReact(void)
  * WAITS: no.
  * Entry: A script. Exit: A and Y the script, X 7, N and Z from the script. C and V kept.
  */
-void RichterStartHitScript(uint8_t script)
+static void start_hit_script_body(uint8_t script)
 {
     StartScriptSlotKind1(script, SCRIPT_SLOT_PLAYER);
+}
+
+void RichterStartHitScript(uint8_t script)
+{
+    start_hit_script_body(script);
 }
 
 void hit_script_exit_shim(uint8_t script)
@@ -1749,6 +1777,27 @@ void abi_RichterStartHitScript(void)
     uint8_t script = cpu.a;
 
     RichterStartHitScript(script);
+    hit_script_exit_shim(script);
+}
+
+/*
+ * @routine 01DD:359 MariaStartHitScript
+ * @run 6D:A359
+ * WHAT IT DOES: RichterStartHitScript in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterStartHitScript's body.
+ * WAITS: no.
+ * Entry, exit: as RichterStartHitScript.
+ */
+void MariaStartHitScript(uint8_t script)
+{
+    start_hit_script_body(script);
+}
+
+void abi_MariaStartHitScript(void)
+{
+    uint8_t script = cpu.a;
+
+    MariaStartHitScript(script);
     hit_script_exit_shim(script);
 }
 
@@ -2144,9 +2193,14 @@ void abi_RichterStandStep2(void)
  * WAITS: no.
  * Entry: nothing. Exit: A and X the offset, N and Z from it, C the step's bit 7. Y, V kept.
  */
-uint8_t RichterStepIndex(void)
+static uint8_t step_index_body(void)
 {
     return rd8(OBJ_2800);
+}
+
+uint8_t RichterStepIndex(void)
+{
+    return step_index_body();
 }
 
 void step_index_exit_shim(uint8_t step)
@@ -2162,6 +2216,24 @@ void step_index_exit_shim(uint8_t step)
 void abi_RichterStepIndex(void)
 {
     step_index_exit_shim(RichterStepIndex());
+}
+
+/*
+ * @routine 01DD:5DC MariaStepIndex
+ * @run 6D:A5DC
+ * WHAT IT DOES: RichterStepIndex in Maria's player overlay (01DD), the same instructions at her address.
+ * HOW: RichterStepIndex's body.
+ * WAITS: no.
+ * Entry, exit: as RichterStepIndex.
+ */
+uint8_t MariaStepIndex(void)
+{
+    return step_index_body();
+}
+
+void abi_MariaStepIndex(void)
+{
+    step_index_exit_shim(MariaStepIndex());
 }
 
 /* A handler of the stand with no C, entered as the table's jump leaves the registers. */
@@ -4710,9 +4782,15 @@ void abi_RichterMoveStopped(void)
  * second sound was dropped or not made. Ended, A 1, N and Z clear. A mark, as
  * RichterStartHitScript with its script, C set. No mark, A the timer, Y 6, Z and C set, N clear.
  */
-InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y)
+/* A character's overlay's invincibility tick: its two tables, the returns of its two sound calls and its script start. */
+typedef struct {
+    uint16_t marks, scripts, first_return, second_return;
+    void (*start_script)(uint8_t script);
+} InvincibleLayout;
+
+static InvincibleTick invincible_tick(uint8_t x, uint8_t y, const InvincibleLayout *layout)
 {
-    InvincibleTick tick = { INVINCIBLE_OFF, 0, 0, false, false, { 0 }, { 0 }, 0 };
+    InvincibleTick tick = { INVINCIBLE_OFF, 0, 0, false, false, { 0 }, { 0 }, 0, layout->scripts };
 
     tick.value = rd8(PlayerInvincibleTimer);
     if (tick.value == 0)
@@ -4729,14 +4807,14 @@ InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y)
     tick.compared = rd8(PlayerInvincibleTimer);
     if (tick.compared == INVINCIBLE_START) {
         tick.first_sound = true;
-        jsr_push(0xB766);
+        jsr_push(layout->first_return);
         tick.first = SoundCommand(SOUND_INVINCIBLE_START, x, y);
         jsr_pop();
         tick.compared = tick.first.taken ? tick.first.mpr4 : SOUND_INVINCIBLE_START;
     }
     if (tick.compared == INVINCIBLE_ENDING) {
         tick.second_sound = true;
-        jsr_push(0xB76F);
+        jsr_push(layout->second_return);
         tick.second = SoundCommand(SOUND_INVINCIBLE_ENDING, x, y);
         jsr_pop();
     }
@@ -4750,13 +4828,28 @@ InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y)
     }
     tick.how = INVINCIBLE_RUNNING;
     for (tick.mark = 0; tick.mark < INVINCIBLE_MARKS; tick.mark++) {
-        if (rd8(PlayerInvincibleTimer) == rd8((uint16_t)(RichterInvincibleMarks + tick.mark))) {
+        uint8_t timer = rd8(PlayerInvincibleTimer);    /* LDA, then the CMP's read of the mark */
+
+        if (timer == rd8((uint16_t)(layout->marks + tick.mark))) {
             tick.how = INVINCIBLE_MARK;
-            RichterStartHitScript(rd8((uint16_t)(RichterInvincibleScripts + tick.mark)));
+            layout->start_script(rd8((uint16_t)(layout->scripts + tick.mark)));
             return tick;
         }
     }
     return tick;
+}
+
+/* Richter's: tables at $B798 and $B792; Maria's $329 above them, her script start at $A359. */
+static const InvincibleLayout richter_invincible = {
+    RichterInvincibleMarks, RichterInvincibleScripts, 0xB766, 0xB76F, RichterStartHitScript
+};
+static const InvincibleLayout maria_invincible = {
+    RichterInvincibleMarks + 0x329, RichterInvincibleScripts + 0x329, 0xBA8F, 0xBA98, MariaStartHitScript
+};
+
+InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y)
+{
+    return invincible_tick(x, y, &richter_invincible);
 }
 
 void invincible_exit_shim(InvincibleTick tick)
@@ -4777,7 +4870,7 @@ void invincible_exit_shim(InvincibleTick tick)
         abi_nz(1);
         break;
     case INVINCIBLE_MARK:
-        hit_script_exit_shim(rd8((uint16_t)(RichterInvincibleScripts + tick.mark)));
+        hit_script_exit_shim(rd8((uint16_t)(tick.scripts + tick.mark)));
         abi_flag(P_C, true);
         break;
     default:
@@ -4792,4 +4885,22 @@ void invincible_exit_shim(InvincibleTick tick)
 void abi_RichterInvincibleTick(void)
 {
     invincible_exit_shim(RichterInvincibleTick(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 01E0:266 MariaInvincibleTick
+ * @run 6D:BA66
+ * WHAT IT DOES: RichterInvincibleTick in Maria's player overlay (01DD).
+ * HOW: The same instructions with her tables of marks and scripts at $BAC1 and $BABB, $329 above his, and her script start, MariaStartHitScript.
+ * WAITS: no.
+ * Entry, exit: as RichterInvincibleTick.
+ */
+InvincibleTick MariaInvincibleTick(uint8_t x, uint8_t y)
+{
+    return invincible_tick(x, y, &maria_invincible);
+}
+
+void abi_MariaInvincibleTick(void)
+{
+    invincible_exit_shim(MariaInvincibleTick(cpu.x, cpu.y));
 }

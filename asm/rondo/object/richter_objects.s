@@ -447,3 +447,77 @@ RichterObjectHitboxFrom:
     lda a:RichterObjectHitboxes+3,y
     sta a:OBJ_3A38,x
     rts
+
+; @routine 01E1:27C MariaObjectAddXLow
+; @run 6E:C27C
+; WHAT IT DOES: RichterObjectAddXLow in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterObjectAddXLow's body.
+; WAITS: no.
+; Entry, exit: as RichterObjectAddXLow.
+MariaObjectAddXLow:
+    clc
+    adc a:OBJ_X_LO,x
+    sta a:OBJ_X_LO,x
+    rts
+
+; @routine 01E1:284 MariaObjectAddXHigh
+; @run 6E:C284
+; WHAT IT DOES: RichterObjectAddXHigh in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterObjectAddXHigh's body.
+; WAITS: no.
+; Entry, exit: as RichterObjectAddXHigh.
+MariaObjectAddXHigh:
+    adc a:OBJ_X_HI,x
+    sta a:OBJ_X_HI,x
+    rts
+
+; @routine 01E1:37C MariaObjectMarkOn
+; @run 6E:C37C
+; WHAT IT DOES: RichterObjectMarkOn in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterObjectMarkOn's body.
+; WAITS: no.
+; Entry, exit: as RichterObjectMarkOn.
+MariaObjectMarkOn:
+    lda #$10
+    ora a:OBJ_2B18,x
+    sta a:OBJ_2B18,x
+    rts
+
+; @routine 01E1:589 MariaObjectNextState
+; @run 6E:C589
+; WHAT IT DOES: RichterObjectNextState in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterObjectNextState's body.
+; WAITS: no.
+; Entry, exit: as RichterObjectNextState.
+MariaObjectNextState:
+    inc a:OBJ_27A8,x
+    rts
+
+; @routine 01E1:703 MariaObjectSlot
+; @run 6E:C703
+; WHAT IT DOES: RichterObjectSlot in Maria's player overlay (01DD), the same instructions at her address.
+; HOW: RichterObjectSlot's body.
+; WAITS: no.
+; Entry, exit: as RichterObjectSlot.
+MariaObjectSlot:
+    ldx z:zRichterObject
+    rts
+
+; @routine 01E4:5C8 MariaObjectAnimationList
+; @run 6E:DDC8
+; WHAT IT DOES: RichterObjectAnimationList in Maria's player overlay (01DD).
+; HOW: The same instructions with her table of object animations at $DDDD, $344 above his.
+; WAITS: no.
+; Entry, exit: as RichterObjectAnimationList.
+MariaObjectAnimationList:
+    lda a:OBJ_FIELDS_2EE0,x
+    asl a
+    tay
+    lda a:RichterObjectAnimations+$344,y
+    sta z:zTemp00
+    lda a:RichterObjectAnimations+$344+1,y
+    sta z:zTemp01
+    lda a:OBJ_FLAGS_2F38,x
+    asl a
+    tay
+    rts

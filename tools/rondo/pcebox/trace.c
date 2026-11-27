@@ -526,6 +526,13 @@ void trace_poke(uint32_t phys)
         prov[canon(phys)] = NONE;
 }
 
+/* A byte the script placed from the disc (pcebox's place): its origin is that byte of track 02's user data. */
+void trace_place(uint32_t phys, uint32_t user_off)
+{
+    if (prov && user_off < USER_BYTES)
+        prov[canon(phys)] = USER_LBA * 2048u + user_off;
+}
+
 void trace_irq(void)
 {
     irq_pending = 1;

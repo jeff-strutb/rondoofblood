@@ -28,6 +28,8 @@
  *                       base RAM or a RAM bank mapped there) between frames; the
  *                       byte loses its disc origin in a trace. Same frame, same byte,
  *                       in a record and its hybrid, so the oracles see one game
+ *   place SECTOR COUNT BANK[:OFFSET]  (hex) copy track 02's sectors into RAM
+ *                       from that bank on, as the game's loader would
  *   dump NAME           OUT/NAME.ram: frame number, MPR0-7 and PC, then
  *                       Super System Card RAM ($68-$7F), CD RAM ($80-$87)
  *                       and base RAM ($F8), 8 KB a bank in that order
@@ -63,6 +65,7 @@ void trace_check(const char *name, const uint8_t *(*bank)(unsigned));
 void trace_finish(const char *dir);
 void trace_watch(uint32_t phys);
 void trace_poke(uint32_t phys);
+void trace_place(uint32_t phys, uint32_t user_off);
 uint32_t *trace_prov(size_t *bytes);
 static const char *trace_user;
 static int trace_plant;
@@ -441,6 +444,42 @@ static int poke(unsigned addr, unsigned value)
 }
 
 /*
+ * place SECTOR COUNT BANK[:OFFSET]: copy COUNT sectors of track 02's user data, from SECTOR (counted as DISC() counts
+ * them), into RAM from BANK:OFFSET on through the banks that follow, as the game's loader would put them. The bytes are
+ * the disc's own; nothing is made up. Both oracles see the writes as a poke's, and a traced run gives each byte its disc
+ * origin, so what runs from it folds onto the disc as loaded code does. It lets a script load any overlay the game has,
+ * without playing to the point where the game loads it. 0, or 1 if the disc has no such sectors or RAM no such room.
+ */
+static int place(unsigned sector, unsigned count, unsigned bank, unsigned off)
+{
+    const char *user = check_user ? check_user : trace_user;
+    size_t n = (size_t)count * 2048u;
+    uint8_t *buf;
+    FILE *f;
+
+    if (!user || !count || off >= 0x2000 || !(f = fopen(user, "rb")))
+        return 1;
+    buf = malloc(n);
+    if (!buf || fseek(f, (long)sector * 2048L, SEEK_SET) || fread(buf, 1, n, f) != n) {
+        free(buf);
+        fclose(f);
+        return 1;
+    }
+    fclose(f);
+    for (size_t i = 0; i < n; i++) {
+        unsigned b = bank + (unsigned)((off + i) >> 13), o = (unsigned)((off + i) & 0x1FFF);
+        if (b == 0xF7 || poke_bank(b, o, buf[i])) {
+            free(buf);
+            return 1;
+        }
+        if (trace_user)
+            trace_place((uint32_t)b << 13 | o, (uint32_t)sector * 2048u + (uint32_t)i);
+    }
+    free(buf);
+    return 0;
+}
+
+/*
  * call ADDR|NAME [A=hh] [X=hh] [Y=hh] [P=hh] [M=aaaa:hh,aaaa:hh...] [MPRn=hh ...]   (n 2 to 6)
  * A unit call at a routine's own entry, from outside: the CPU's context is saved, the registers set,
  * the bytes of M written, and the routine run on the next frame; when it returns the context is
@@ -599,6 +638,18 @@ static int run_script(const char *script, int depth)
             if (v > 0xFF || (colon ? poke_bank((unsigned)strtoul(a1, NULL, 16), (unsigned)strtoul(colon + 1, NULL, 16), v)
                                    : poke((unsigned)strtoul(a1[0] == '$' ? a1 + 1 : a1, NULL, 16), v))) {
                 fprintf(stderr, "pcebox: %s:%d: poke: no RAM there, or a bad value\n", script, ln);
+                fclose(s);
+                return 2;
+            }
+        } else if (!strcmp(cmd, "place") && k >= 2) {
+            char a2[32], a3[32];
+            const char *colon;
+
+            if (sscanf(line, "%*s %*s %31s %31s", a2, a3) != 2 ||
+                (colon = strchr(a3, ':'),
+                 place((unsigned)strtoul(a1, NULL, 16), (unsigned)strtoul(a2, NULL, 16), (unsigned)strtoul(a3, NULL, 16),
+                       colon ? (unsigned)strtoul(colon + 1, NULL, 16) : 0))) {
+                fprintf(stderr, "pcebox: %s:%d: place: no such sectors, or no RAM room for them\n", script, ln);
                 fclose(s);
                 return 2;
             }

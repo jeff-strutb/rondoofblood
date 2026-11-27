@@ -21,7 +21,7 @@ Regenerated after every landing (the runner does it with each commit). Four part
      changed by this);
   4. routines with no C yet and ready to decompile, bottom up, smallest first (the old worklist).
 Reads docs/rondo/ledger.csv, the records (records.py), the traces and the catalog; compiles for the
-hashes (compiled.py) unless --chash FILE. Needs the queue: run it through cpu-run.
+hashes (compiled.py) unless --chash FILE.
 """
 import argparse
 import csv
@@ -32,7 +32,6 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
-import cpuguard  # noqa: E402
 import catalog  # noqa: E402
 import ledger  # noqa: E402
 import records  # noqa: E402
@@ -252,8 +251,6 @@ def part_nocode(args, cat):
 
 
 def main():
-    if "--chash" not in sys.argv and "--catalog" not in sys.argv:           # without a stored compiled-hash file it compiles every C file
-        cpuguard.require("worklist.py", jobs=4, mem="3G")
     ap = argparse.ArgumentParser()
     ap.add_argument("--by-script", action="store_true")
     ap.add_argument("--by-routine", action="store_true")

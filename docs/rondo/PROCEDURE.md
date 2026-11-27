@@ -24,9 +24,7 @@ cache will shorten step 3 of section 5 when it lands.
 - Never touch the records: `config/rondo/*.csv`, `docs/rondo/ledger.csv`,
   `syscard/ledger.csv`, `docs/rondo/progress.svg`, the README's progress
   block. The runner writes them.
-- Every job that uses a core for more than a few seconds, or whose memory
-  can grow, goes through the machine's slot queue with a stated slot and
-  memory claim. Your own output folder and your own checker binary, always.
+- Your own output folder and your own checker binary, always.
 - Watch everything you start. Nothing is left running when you report.
 - Do not stop between items. An idle writer asks the master for the next.
 - A question that would change the standard, the checker or the design is
@@ -180,7 +178,7 @@ once known). M is the main checkout, W your worktree. Run from W.
 `tools/rondo/gate.py` lists them (`references`, `tools/toolchains/src`,
 `cc65`, `pce`, and `build/rondo/disc`, `system`, `trace`). Then, once:
 
-    cpu-run -j 4 -m 2G -- python3 tools/rondo/liftcmp.py --warm
+    python3 tools/rondo/liftcmp.py --warm
 
 **Per routine or small batch:**
 
@@ -188,7 +186,7 @@ once known). M is the main checkout, W your worktree. Run from W.
    routine's intake assembly there (the intake text is written only with
    `--raw`):
 
-       cpu-run -j 1 -m 3G -- python3 tools/rondo/asmbuild.py --raw build/rondo/raw
+       python3 tools/rondo/asmbuild.py --raw build/rondo/raw
 
    Read its draft too. The intake header gives `@run BB:AAAA` from the
    trace's run map (from a47053d): use it as printed, never a guess. Write
@@ -204,8 +202,8 @@ once known). M is the main checkout, W your worktree. Run from W.
    offset; never leave the bare address.
 3. The image, a few seconds of work:
 
-       cpu-run -j 1 -m 3G -- python3 tools/rondo/asmbuild.py --raw build/rondo/raw
-       cpu-run -j 1 -m 2G -- python3 tools/rondo/image.py --user build/rondo/asm/image.bin
+       python3 tools/rondo/asmbuild.py --raw build/rondo/raw
+       python3 tools/rondo/image.py --user build/rondo/asm/image.bin
 
    Required: 0 differing bytes, and in `build/rondo/asm/coverage.csv` (it
    holds totals) `source_filed` up by the routines you filed and
@@ -234,17 +232,16 @@ once known). M is the main checkout, W your worktree. Run from W.
    one shortest script that runs it (the intake header's "run by" line),
    in your own folders:
 
-       RONDO_BOX=W/build/rondo/box/pcebox cpu-run -j 1 -m 3G -- ./setup.sh pcebox
+       RONDO_BOX=W/build/rondo/box/pcebox ./setup.sh pcebox
        RONDO_BOX=W/build/rondo/box/pcebox RONDO_ORACLE_OUT=W/build/rondo/oracle \
-           cpu-run -j 1 -m 2G -- python3 tools/rondo/oracle.py a5 SCRIPT
+           python3 tools/rondo/oracle.py a5 SCRIPT
 
    Read your routines' rows in `a5.csv` there; the report's lines about
    other routines are the whole hybrid's, not yours.
    The box embeds the C: rerun `setup.sh pcebox` after any C change,
    before `oracle.py`.
-6. Commit with explicit paths, then land. `land.sh` takes its own slot and
-   waits in the queue itself, printing a line while it waits: do not wrap
-   it in `cpu-run`. A slot wait is not a hang.
+6. Commit with explicit paths, then land. `land.sh` waits for the landing
+   lock itself, printing a line while it waits: that wait is not a hang.
 
        timeout 1800 tools/rondo/land.sh W
 

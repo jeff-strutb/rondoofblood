@@ -19,7 +19,6 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
-import cpuguard  # noqa: E402
 import ledger  # noqa: E402
 import progress  # noqa: E402
 import records  # noqa: E402
@@ -72,8 +71,6 @@ def bars(rows, tier):
 
 
 def main():
-    if "--chash" not in sys.argv:           # without a stored compiled-hash file it compiles every C file
-        cpuguard.require("whatif.py", jobs=4, mem="3G")
     ap = argparse.ArgumentParser()
     ap.add_argument("--scripts", default="")
     ap.add_argument("--routines", default="")

@@ -12,11 +12,9 @@ import collections
 import sys
 
 import catalog
-import cpuguard
 
 
 def main():
-    cpuguard.require("blockers.py", jobs=1, mem="2G")
     cat = catalog.load()
     done = {k for k, r in cat.items() if r["name"]}
     calls = catalog.callees(cat, catalog.edges(), catalog.CALLS + (catalog.JMP,) + catalog.TABLES)

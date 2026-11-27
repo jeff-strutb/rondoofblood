@@ -5,6 +5,7 @@
     python3 tools/rondo/runner.py watch [--main DIR] [options]    the same whenever the tip moves (every 60 s)
     python3 tools/rondo/runner.py plan  [--main DIR] [options]    print what would run and the time expected
     python3 tools/rondo/runner.py served [--main DIR] --scripts a [--a7]   drafts in place of failing routines (served.py)
+    python3 tools/rondo/runner.py core DIR                        exit 1 and say what to run when DIR's core is older than its patches
     python3 tools/rondo/runner.py commit [--main DIR]             commit the records, views and ledgers as they stand
                                                                   in DIR (under the landing lock, explicit paths)
     options: --routines A,B   re-measure the scripts reaching these routines (after a checker change)
@@ -22,7 +23,7 @@
              --proper         with `served --a7`: the filed C where proper, the draft for every other routine (the M1 run)
              --serve-all      with `served --a7`: every filed routine and every content served by its draft (the drafter's recipe)
              --a7             with `served`: build the served box and measure A7 on --scripts alone
-             --workers N      scripts measured at once (default 8; each is one cpu-run claim)
+             --workers N      scripts measured at once (default 8)
 
 What it does for main's tip (design: build/rondo/pipeline/DESIGN.md, the rule: records.py):
   1. exports the tip into its own private tree (git archive), links the untracked inputs, builds its own
@@ -30,9 +31,8 @@ What it does for main's tip (design: build/rondo/pipeline/DESIGN.md, the rule: r
   2. plans: a script is measured when it is new or its text changed, or the compiled hash of a routine it
      reaches changed (a new routine, a changed one, a callee of one). Nothing else plans anything: not
      a checker or harness change, not a commit elsewhere. The plan prints with the time it should take;
-  3. measures each planned script alone: A5 then A7 (oracle_io.py), one cpu-run claim of 1 core and 2 GB
-     each, in a private output folder, with the private pcebox; at most --workers waiting or running;
-  4. reruns every red script (A7 not identical, A5 divergent) alone, each in its own process and cpu-run
+  3. measures each planned script alone: A5 then A7 (oracle_io.py), each in its own process, in a private output folder, with the private pcebox; at most --workers waiting or running;
+  4. reruns every red script (A7 not identical, A5 divergent) alone, each in its own process
      claim, all reds at once within --workers, and records the second result; a flip is logged as a flake;
   5. writes the records, then the ledger (only if every script has a result), and commits them under the
      landing lock with explicit paths. It never holds or edits C: failures are reported (reds.txt, the log).
@@ -43,6 +43,7 @@ import concurrent.futures
 import csv
 import datetime
 import fcntl
+import glob
 import json
 import os
 import re
@@ -54,7 +55,6 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
-import cpuguard  # noqa: E402
 import records  # noqa: E402
 
 LINKS = ("references", "tools/toolchains/src", "tools/toolchains/cc65", "tools/toolchains/pce",
@@ -79,9 +79,27 @@ def git(main, *a):
     return subprocess.run(["git", "-C", main, *a], capture_output=True, text=True)
 
 
-def cpu_run(jobs, mem, *cmd, **kw):
-    return subprocess.run([cpuguard.cpu_run(), "-j", str(jobs), "-m", mem, "--", *cmd], capture_output=True,
-                          text=True, **kw)
+def run_job(*cmd, **kw):
+    return subprocess.run(list(cmd), capture_output=True, text=True, **kw)
+
+
+def core_problem(main):
+    """None when main's core is at least as new as every patch under tools/toolchains/patches/pce, else the
+    one line that says what to run. (Main's build fell behind main's source twice in one day after a patch landed;
+    a measurement or a trace with an older core gives wrong values or none.) The core a run uses is RONDO_CORE
+    when set, else main's own."""
+    core = os.environ.get("RONDO_CORE") or os.path.join(main, "tools", "toolchains", "pce", "mednafen_pce_libretro.dylib")
+    patches = glob.glob(os.path.join(main, "tools", "toolchains", "patches", "pce", "*.patch"))
+    if not os.path.exists(core):
+        return f"core {core} does not exist: in {main} run: sh setup.sh pce (then sh setup.sh pcebox)"
+    if not patches:
+        return None
+    newest = max(patches, key=os.path.getmtime)
+    if os.path.getmtime(core) < os.path.getmtime(newest):
+        return (f"main's core ({core}) is older than the newest core patch ({os.path.basename(newest)}): in {main} "
+                "run: sh setup.sh pce, then sh setup.sh pcebox (a clean make; the core's Makefile does not track "
+                "headers), then run this again")
+    return None
 
 
 def export(main, rev, b, tag=""):
@@ -109,7 +127,7 @@ def prepare(main, rev, b, d, tag=""):
     tree = export(main, rev, b, tag)
     box = os.path.join(b, "pcebox-" + rev)
     if not os.path.exists(box) or not os.path.exists(box + ".gen"):      # a box of this revision is reused
-        r = cpu_run(1, "2G", "env", "RONDO_BOX=" + box, "sh", os.path.join(tree, "setup.sh"), "pcebox")
+        r = run_job("env", "RONDO_BOX=" + box, "sh", os.path.join(tree, "setup.sh"), "pcebox")
         if r.returncode:
             raise SystemExit(f"pcebox build of {rev} failed:\n{(r.stdout + r.stderr)[-800:]}")
     gen = os.path.join(tree, "build", "rondo", "pcebox")      # setup.sh puts a private build's generated files beside the binary
@@ -117,7 +135,7 @@ def prepare(main, rev, b, d, tag=""):
     for f in ("hybrid_table.c", "opclass.h"):
         shutil.copy(os.path.join(box + ".gen", f), os.path.join(gen, f))
     out = os.path.join(tree, "chash.txt")
-    r = cpu_run(2, "3G", sys.executable, os.path.join(tree, "tools", "rondo", "compiled.py"), "--tree", tree,
+    r = run_job(sys.executable, os.path.join(tree, "tools", "rondo", "compiled.py"), "--tree", tree,
                 "--out", out)
     if r.returncode:
         raise SystemExit(f"compiled.py failed on {rev}:\n{(r.stdout + r.stderr)[-800:]}")
@@ -197,7 +215,7 @@ def landing_report(rec, chash, changed, rev, main):
 
 
 def measure(tree, box, out, script, mode="both"):
-    r = cpu_run(1, "2G", sys.executable, os.path.join(tree, "tools", "rondo", "oracle_io.py"), "job", tree,
+    r = run_job(sys.executable, os.path.join(tree, "tools", "rondo", "oracle_io.py"), "job", tree,
                 script, os.path.join(out, script), box, mode, timeout=SCRIPT_TIMEOUT)
     path = os.path.join(out, script, "result.json")
     if not os.path.exists(path):
@@ -250,7 +268,7 @@ def cycle(main, opts):
         print("runner: another runner holds " + lock.name)
         return 2
     rev = git(main, "rev-parse", "--short=7", "HEAD").stdout.strip()
-    problem = cpuguard.core_problem(main)
+    problem = core_problem(main)
     if problem:
         print("runner: REFUSED: " + problem)
         return 3
@@ -282,7 +300,7 @@ def cycle(main, opts):
             log(f"  measured {res['script']}: " + ("FAILED " + "; ".join(res["errors"]) if res.get("errors") else
                 f"A7 {res['a7']['verdict']}, {len(res['a5'])} routines called"), b)
     # each red script is rerun alone, in its own process and out folder slot, all reds at once (the claims queue
-    # them through cpu-run); a rerun's result is on disk the moment it ends
+    # them as their own processes); a rerun's result is on disk the moment it ends
     reds_first = [s for s in sorted(results) if red(results[s]) and not opts["norerun"]]
     if reds_first:
         log(f"  {len(reds_first)} red script(s): each rerun alone, {workers} at once", b)
@@ -339,7 +357,7 @@ def cycle(main, opts):
                              os.path.join(tree, "chash.txt")])]
         ok = True
         for name, cmd in steps:
-            r = cpu_run(1, "3G", *cmd, cwd=tree)
+            r = run_job(*cmd, cwd=tree)
             if r.returncode:
                 log(f"  {name} failed: {(r.stdout + r.stderr).strip()[-300:]}", b)
                 ok = False
@@ -359,13 +377,13 @@ def served(main, opts):
     import served as sv
     b = os.path.join(main, "build", "rondo", "runner")
     os.makedirs(b, exist_ok=True)
-    problem = cpuguard.core_problem(main)
+    problem = core_problem(main)
     if problem:
         print("runner: REFUSED: " + problem)
         return 3
     cache = sv.cache_dir(main)
     if not cache:
-        print("runner: REFUSED: the draft cache is stale or missing: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache")
+        print("runner: REFUSED: the draft cache is stale or missing: python3 tools/rondo/cdraft.py --cache")
         return 3
     rev = git(main, "rev-parse", "--short=7", "HEAD").stdout.strip()
     tree, box, chash, ext = prepare(main, rev, b, b, "-served")
@@ -407,7 +425,7 @@ def served(main, opts):
         if not os.path.exists(allbox):
             dst = os.path.join(b, "tree-alldrafts")
             d = sv.make_tree(tree, dst, cache, drafts, {r["name"] for r in drafts}, set(labels), filed_of)
-            ok, text = cpu_run_build(dst, d, allbox)
+            ok, text = build_box(dst, d, allbox)
             if not ok:
                 print("runner: the all-drafts box did not build:\n" + text)
                 return 1
@@ -483,12 +501,12 @@ def served(main, opts):
         sbox = os.path.join(b, f"pcebox-served-{rev}")
         if os.path.exists(sbox):
             os.remove(sbox)
-        ok, text = cpu_run_build(dst, d, sbox)
+        ok, text = build_box(dst, d, sbox)
         if not ok:
             print("runner: the served box did not build:\n" + text)
             return 1
         new_extra, all_identical = set(), True
-        # each script alone in its own process and cpu-run claim, --workers at once; the records below are then
+        # each script alone in its own process, --workers at once; the records below are then
         # written one script at a time
         with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(opts["workers"], len(scripts)))) as ex:
             runs = dict(zip(scripts, ex.map(lambda x: measure(tree, sbox, os.path.join(out, "a7"), x, "a7"), scripts)))
@@ -611,8 +629,8 @@ def write_table(main, out, mode, rev, scripts, table, b):
             "have no row yet; run every script once", b)
 
 
-def cpu_run_build(tree, draftdir, box):
-    r = cpu_run(1, "3G", "env", "RONDO_BOX=" + box, "RONDO_DRAFTS=" + draftdir, "sh", os.path.join(tree, "setup.sh"), "pcebox")
+def build_box(tree, draftdir, box):
+    r = run_job("env", "RONDO_BOX=" + box, "RONDO_DRAFTS=" + draftdir, "sh", os.path.join(tree, "setup.sh"), "pcebox")
     if r.returncode or not os.path.exists(box):
         text = r.stdout + r.stderr
         errs = [ln for ln in text.splitlines() if "error" in ln or "undefined" in ln]
@@ -679,6 +697,11 @@ def parse(argv):
 
 
 def main():
+    if sys.argv[1:2] == ["core"] and len(sys.argv) == 3:
+        problem = core_problem(sys.argv[2])     # land.sh: is DIR's core as new as its core patches
+        if problem:
+            print(problem)
+        return 1 if problem else 0
     opts = parse(sys.argv[1:])
     if opts["mode"] == "served":
         return served(opts["main"], opts)

@@ -59,7 +59,7 @@ def census_counts():
         import census
         if rows.get("stamp") != census.trace_stamp(script_names()):
             refuse("config/rondo/census.csv was worked out from other traces: "
-                   "cpu-run -j 1 -m 3G -- python3 tools/rondo/census.py")
+                   "python3 tools/rondo/census.py")
     return {k: int(v) for k, v in rows.items() if k != "stamp"}
 
 

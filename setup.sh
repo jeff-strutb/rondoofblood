@@ -97,22 +97,11 @@ build_pcebox() {
 }
 
 disc() {
-    # disc.py and image.py run only under the machine's queue (they refuse without CPU_RUN_JOBS).
-    if [ -z "${CPU_RUN_JOBS:-}" ]; then
-        echo "setup.sh: CPU_RUN_JOBS is not set; the disc steps run only under the queue:" >&2
-        echo "  cpu-run -j N -m SIZE -- ./setup.sh   (or: ./setup.sh disc)" >&2
-        exit 2
-    fi
     python3 -I "$top/tools/rondo/disc.py"
     python3 -I "$top/tools/rondo/image.py"
 }
 
 if [ $# -eq 0 ]; then
-    if [ -z "${CPU_RUN_JOBS:-}" ]; then
-        echo "setup.sh: CPU_RUN_JOBS is not set; the whole setup runs only under the queue:" >&2
-        echo "  cpu-run -j N -m SIZE -- ./setup.sh" >&2
-        exit 2
-    fi
     python3 "$top/tools/common/install_hooks.py"
     build_cc65
     build_pce

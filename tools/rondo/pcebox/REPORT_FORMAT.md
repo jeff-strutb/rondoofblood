@@ -6,9 +6,8 @@ ends inside calls, calls into original code): old records of either gate no long
 
 ## Running
 
-`oracle.py a5 [SCRIPT...]` and `oracle.py a7 [SCRIPT...]` refuse to run unless `CPU_RUN_JOBS` is set (run them under
-`cpu-run`). Pools come only from it: A5 runs `CPU_RUN_JOBS` scripts at once (one slot, about 0.9 GB each); A7 runs
-`CPU_RUN_JOBS / 2` scripts at once, each a record process and a hybrid process joined by a FIFO. Output goes to
+`oracle.py a5 [SCRIPT...]` and `oracle.py a7 [SCRIPT...]` use every core: A5 runs one script per core (about 0.9 GB
+each); A7 runs half as many at once, each a record process and a hybrid process joined by a FIFO. Output goes to
 `$RONDO_ORACLE_OUT` (default `build/rondo/oracle`). `RONDO_BOX` names the pcebox binary, `RONDO_CORE` the core.
 A run whose environment holds `RONDO_KEEP`, `RONDO_ONLY`, `RONDO_KEEP_WAITS`, `RONDO_PLACE`, `RONDO_SKIPS` or
 `RONDO_DUMP_FRAME` is a diagnostic: it never writes the `.stamp` and its A7 lines never read identical.

@@ -253,8 +253,6 @@ gate, an audited census, and a unit call for scripts.
   changed and the scripts that reach them, reports failures, holds
   nothing, and commits the ledgers itself.
 - **Landing** goes through one script under one lock.
-- Every job that uses a core or can grow in memory runs under the
-  machine's slot queue.
 
 ### Order of work
 

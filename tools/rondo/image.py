@@ -69,10 +69,6 @@ def compare(name, built, path, pinned):
 
 
 def main():
-    if not os.environ.get("CPU_RUN_JOBS"):
-        print("refusing to run outside the slot queue (CPU_RUN_JOBS is not set); run it as:\n"
-              "  cpu-run -j N -m SIZE -- python3 tools/rondo/image.py ...")
-        return 2
     ap = argparse.ArgumentParser()
     ap.add_argument("--user", default=os.path.join(disc.OUT, "track02.bin"))
     ap.add_argument("--plant", type=int, default=None)
@@ -91,7 +87,7 @@ def main():
         t["file_lba"] = lba
         lba += os.path.getsize(os.path.join(disc.REF, t["file"])) // RAW
     ok = True
-    with ProcessPoolExecutor(max_workers=int(os.environ["CPU_RUN_JOBS"])) as pool:
+    with ProcessPoolExecutor(max_workers=os.cpu_count() or 1) as pool:
         for num, src, tail in ((2, user, 0), (22, user[:9999 * USER], 1)):
             t = tracks[num]
             built = build_track(pool, t["file_lba"], bytes(src), tail)

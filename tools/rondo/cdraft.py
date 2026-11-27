@@ -2,8 +2,8 @@
 """cdraft.py -- draft C for every traced routine, instruction for instruction from its assembly.
 
     python3 tools/rondo/cdraft.py --only NAME[,NAME...] [--out DIR] [--as-filed]   from the cache, under a second, no slot
-    cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache                    build the cache (about a minute)
-    cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --fresh [--all|--only ...] generate without the cache
+    python3 tools/rondo/cdraft.py --cache                    build the cache (about a minute)
+    python3 tools/rondo/cdraft.py --fresh [--all|--only ...] generate without the cache
 
 A draft is register-shaped C: one statement of ops6280.h per instruction a script ran, on the
 register file `cpu`, so every access, push and pull is made where the assembly makes it, in its order.
@@ -35,7 +35,7 @@ own build/rondo/drafts/). The stamp hashes the sources' bytes and the big files'
 `--only NAME` takes NAME as an intake label (r0043_100) or as a filed routine's name: a filed name is resolved
 at lookup time from this tree's `@routine` and `@card` tags (disc location and run address) through
 members.csv, so a routine filed a minute ago needs no regeneration. A stale cache is rebuilt by `--cache`
-(a slot: run it under cpu-run); `--only` says so and exits 4 instead of taking a slot silently. In Python:
+; `--only` says so and exits 4 instead of rebuilding it silently. In Python:
 `import cdraft; text = cdraft.fetch("Name", as_filed=True)` returns the compilable unit (the includes and the
 function, named abi_Name with as_filed, abi_<label> without) or raises KeyError.
 """
@@ -847,7 +847,7 @@ def fetch(name, as_filed=False, cache=None):
     """The compilable unit for one routine from the cache: the includes and its function."""
     cache = cache or current_cache()
     if not cache:
-        raise LookupError("the draft cache is stale or missing: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache")
+        raise LookupError("the draft cache is stale or missing: python3 tools/rondo/cdraft.py --cache")
     lines = open(os.path.join(cache, "drafts.c")).read().split("\n")
     out = ['#include "machine.h"', '#include "ops6280.h"', ""]
     for r in resolve(cache, name):
@@ -878,7 +878,7 @@ def main():
     if only and not a.fresh and not a.all:
         cache = current_cache()
         if not cache:
-            print("cdraft: the draft cache is stale or missing; build it: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache",
+            print("cdraft: the draft cache is stale or missing; build it: python3 tools/rondo/cdraft.py --cache",
                   file=sys.stderr)
             return 4
         os.makedirs(a.out, exist_ok=True)

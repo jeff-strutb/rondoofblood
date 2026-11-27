@@ -11,7 +11,7 @@
 
 Run from the tree being checked (its own tools/rondo/landcheck.py), so every output lands in that
 tree's own build/rondo and OUTDIR; nothing is shared with another tree. One line per refusal, exit 1.
-Heavy (assembler, compiler): run through cpu-run (land.sh does).
+Heavy (assembler, compiler): land.sh runs it.
 """
 import os
 import re
@@ -21,9 +21,6 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
-import cpuguard  # noqa: E402
-
-cpuguard.require("landcheck.py")
 import asmfile  # noqa: E402
 
 TRACK = os.path.join(TOP, "build", "rondo", "disc", "track02.bin")

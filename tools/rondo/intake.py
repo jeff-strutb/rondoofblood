@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """intake.py -- the raw intake (tier T1): every traced routine with no filed assembly, as labelled ca65.
 
-    cpu-run -j 1 -m 2G -- python3 tools/rondo/intake.py [--out DIR] [--stats]
+    python3 tools/rondo/intake.py [--out DIR] [--stats]
 
 asmbuild.py calls build() on every run (the intake is regenerated, never tracked; see
 build/rondo/intake-design.md for the reasons) and assembles what it returns in place beside the
@@ -891,8 +891,6 @@ def summary(out, filed_n=0):
 
 
 def main():
-    import cpuguard
-    cpuguard.require("intake.py", jobs=1, mem="2G")
     import asmbuild
     argv = sys.argv[1:]
     path = argv[argv.index("--out") + 1] if "--out" in argv else RAW

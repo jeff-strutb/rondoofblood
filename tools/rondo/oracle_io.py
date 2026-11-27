@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """oracle_io.py -- the one place that runs the oracles for a script and reads what they report.
 
-    python3 tools/rondo/oracle_io.py job TREE SCRIPT OUT BOX     (under cpu-run: one claim per script)
+    python3 tools/rondo/oracle_io.py job TREE SCRIPT OUT BOX     (one process per script)
 
 A job runs A5 and then A7 for ONE script with the tree's own oracle.py, into the private folder OUT,
 with the private pcebox BOX, and writes OUT/result.json:
@@ -33,7 +33,6 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import cpuguard  # noqa: E402
 
 def run_oracle(tree, what, script, out, box):
     env = dict(os.environ, RONDO_ORACLE_OUT=out, RONDO_BOX=box)
@@ -178,7 +177,6 @@ def job(tree, script, out, box, mode="both"):
 
 
 def main():
-    cpuguard.require("oracle_io.py", jobs=1, mem="2G")
     if len(sys.argv) in (6, 7) and sys.argv[1] == "job":
         return job(os.path.abspath(sys.argv[2]), sys.argv[3], os.path.abspath(sys.argv[4]),
                    os.path.abspath(sys.argv[5]), sys.argv[6] if len(sys.argv) == 7 else "both")

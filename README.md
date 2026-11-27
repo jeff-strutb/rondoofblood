@@ -287,8 +287,7 @@ byte exact.
   their pinned commits into the repo and builds them with the local
   patches (nothing installed on the host), checks the disc and the System
   Cards, splits the disc and runs the image gate, then builds `pcebox`.
-  The whole setup runs under the machine's job queue; `./setup.sh cc65`,
-  `pce`, `pcebox` or `disc` runs one part.
+  `./setup.sh cc65`, `pce`, `pcebox` or `disc` runs one part.
 
 ### Reference disc (you supply; not tracked in git)
 

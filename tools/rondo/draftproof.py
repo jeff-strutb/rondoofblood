@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """draftproof.py -- build a pcebox in which chosen filed routines are served by their drafts.
 
-    cpu-run -j 4 -m 4G -- python3 tools/rondo/draftproof.py --names A,B,C [--tree DIR] [--box FILE]
+    python3 tools/rondo/draftproof.py --names A,B,C [--tree DIR] [--box FILE]
 
 Copies this work tree to DIR (build/rondo/drafter/tree), renames each named routine's hand-written
 abi_ function to abi_NAME_hand, adds the drafts (cdraft.py --as-filed) in its place, and builds

@@ -2,8 +2,7 @@
 # land.sh WORKTREE: land a writer's finished batch on main, one landing at a time.
 #
 # Takes the landing lock first (build/rondo/land.lock in the main checkout: the runner, the state session and the
-# master commit to main under the same lock), then the cpu-run slots (1 to 4, never more), so a landing waiting
-# behind the lock holds no slot and a wide claim never sits at the head of the queue while it waits; then:
+# master commit to main under the same lock); then:
 #   1. refuses uncommitted changes in asm, src, syscard, tools (untracked files count);
 #   2. rebases the worktree's branch on main (a conflict aborts the rebase and refuses);
 #   3. when asm, src, syscard or tools differ from main: assembles all filed assembly in place and
@@ -11,15 +10,14 @@
 #      the worktree's C and requires a clean link, no undefined abi_ symbol (landcheck.py);
 #   4. when the landing adds or changes a file in tools/rondo/scripts, traces those scripts, with a box built
 #      from the landing tree in its own folder (the link check's build, made first; never main's box) (and the ones
-#      including a changed include file) into a private copy of the trace folder, one cpu-run slot each, up to
-#      4: a failed or inconsistent trace refuses the landing here, before main is touched;
+#      including a changed include file) into a private copy of the trace folder: a failed or inconsistent trace refuses the landing here, before main is touched;
 #      (before 5: a landing that changes tools/toolchains/patches/pce applies the whole patch set, in order, to a
 #      clean copy of the pinned core source and is refused if any patch fails)
 #   5. fast-forwards main to the branch;
 #   6. then publishes the new traces and the re-merged code maps into main's build/rondo/trace, rebuilds the
 #      catalog there, and prints the merged code bytes before and after and any catalog entry that now
 #      falls inside a routine with C and has no tag (worklist.py --catalog).
-# The trace step and the runner refuse when main's core is older than the newest core patch (cpuguard.py core).
+# The trace step and the runner refuse when main's core is older than the newest core patch (runner.py core).
 # Every output goes to the landing worktree's own build/rondo/land-out. A refusal prints one line
 # "LAND REFUSED (rule): what to do" and exits non-zero.
 set -u
@@ -30,20 +28,11 @@ M=$(dirname "$COMMON")
 [ "$W" != "$M" ] || { echo "LAND REFUSED (input): $W is the main checkout; land from a worktree"; exit 2; }
 BR=$(git -C "$W" rev-parse --abbrev-ref HEAD)
 [ "$BR" != "main" ] && [ "$BR" != "HEAD" ] || { echo "LAND REFUSED (input): the worktree must be on its own branch, not $BR"; exit 2; }
-# The machine's queue command: CPU_RUN, else cpu-run on PATH, else the one in the user'"'"'s tool folder.
-CR=${CPU_RUN:-$(command -v cpu-run || ls "$HOME"/.c*/bin/cpu-run 2>/dev/null | head -1)}
-[ -x "$CR" ] || { echo "LAND REFUSED (input): cpu-run not found; set CPU_RUN to the queue command"; exit 2; }
 O=$W/build/rondo/land-out
 mkdir -p "$O" "$M/build/rondo"
-# A landing that touches scripts claims one slot per script to trace (up to 4, 2 GB each).
-NS=$(git -C "$W" diff --name-only --diff-filter=ACMR "$(git -C "$W" merge-base main "$BR")" "$BR" -- tools/rondo/scripts | wc -l)
-[ "$NS" -ge 1 ] || NS=1
-[ "$NS" -le 4 ] || NS=4
-MEM=$((1 + 2 * NS))
-[ "$MEM" -ge 3 ] || MEM=3
-export M W BR O CR
-echo "land: waiting for the landing lock (no CPU slot is held meanwhile), then for its CPU slot(s); the work itself takes about 15 s (cpu-run prints its queue state; this is not a hang)"
-exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
+export M W BR O
+echo "land: waiting for the landing lock; the work itself takes about 15 s (this is not a hang)"
+exec flock "$M/build/rondo/land.lock" sh -c '
   cd "$W" || exit 2
   D=$(git status --porcelain --untracked-files=all -- asm src syscard tools ":(exclude)tools/toolchains")
   [ -z "$D" ] || { echo "LAND REFUSED (dirty): uncommitted changes in the worktree, commit or drop them: $(echo "$D" | head -5 | tr "\n" ";")"; exit 3; }
@@ -73,7 +62,7 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
     X=$(python3 tools/rondo/landcheck.py merge "$M/build/rondo/trace") || { echo "LAND REFUSED (trace merge): $X"; exit 9; }
   fi
   if [ -n "$S" ]; then
-    P=$(python3 tools/rondo/cpuguard.py core "$M") || { echo "LAND REFUSED (trace): $P"; exit 9; }
+    P=$(python3 tools/rondo/runner.py core "$M") || { echo "LAND REFUSED (trace): $P"; exit 9; }
     # The box that traces is built from this landing tree, in the landing folder (landcheck.py link, the same
     # build the link check below makes, so it is built once): main shared box has the tag table of whatever
     # commit last built it, and refuses a script that calls a routine tagged since.
@@ -129,12 +118,12 @@ exec flock "$M/build/rondo/land.lock" "$CR" -j "$NS" -m "${MEM}G" -- sh -c '
   git -C "$M" merge -q --ff-only "$BR" || { echo "LAND REFUSED (main): main could not fast-forward to $BR (main checkout has changes at those paths, or main moved); land again"; exit 7; }
   echo "LANDED $(git -C "$M" log --oneline -1)"
   PP=$(git diff --name-only --diff-filter=ACMR "$OLDMAIN" HEAD -- tools/toolchains/patches/pce | tr "\n" " ")
-  [ -z "$PP" ] || echo "WARNING: this landing adds or changes core patch(es) $PP: main core is now out of date; rebuild it before the next measurement or trace: cpu-run -j 4 -m 6G -- sh setup.sh pce, then sh setup.sh pcebox, in $M"
+  [ -z "$PP" ] || echo "WARNING: this landing adds or changes core patch(es) $PP: main core is now out of date; rebuild it before the next measurement or trace: sh setup.sh pce, then sh setup.sh pcebox, in $M"
   (cd "$M" && python3 tools/rondo/intake.py > "$O/intake.out" 2> "$O/intake.err") \
     || echo "WARNING: the raw intake (build/rondo/raw, with bank, unresolved.csv and fragments.csv) was not refreshed: $(tail -1 "$O/intake.err")"
   # the draft cache of main (cdraft.py --cache) is stamped on the disc image, the merged trace map, cdraft.py, ops6280.h,
   # intake.py and huc.py: when a landing changes one of them it is stale and the liftcmp of every writer would rebuild
-  # its own or stop (exit 4), so it is rebuilt here, one slot, a warning (not an undo) if that fails.
+  # its own or stop (exit 4), so it is rebuilt here, a warning (not an undo) if that fails.
   if ! (cd "$M" && python3 -c "import sys; sys.path.insert(0, \"tools/rondo\"); import cdraft; sys.exit(0 if cdraft.current_cache() else 1)") 2>/dev/null; then
     if (cd "$M" && python3 tools/rondo/cdraft.py --cache > "$O/cdraft.out" 2> "$O/cdraft.err"); then
       echo "draft cache of main rebuilt (its stamp no longer matched the inputs): $(tail -1 "$O/cdraft.out")"

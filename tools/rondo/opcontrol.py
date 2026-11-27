@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """opcontrol.py -- the control for ops6280.h and cdraft.py's emitter.
 
-    cpu-run -j 1 -m 2G -- python3 tools/rondo/opcontrol.py [--plant NAME] [--seed N] [--core LIB]
+    python3 tools/rondo/opcontrol.py [--plant NAME] [--seed N] [--core LIB]
 
 Every instruction form the drafter emits (and SET followed by the four ALU forms that have a T
 mode) is run on the core with chosen registers, flags and memory, and the same instruction as

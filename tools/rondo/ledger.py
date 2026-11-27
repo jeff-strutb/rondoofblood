@@ -45,7 +45,6 @@ sys.path.insert(0, HERE)
 import asmfile  # noqa: E402
 import cardfile  # noqa: E402
 import compiled  # noqa: E402
-import cpuguard  # noqa: E402
 import oracle  # noqa: E402
 import records  # noqa: E402
 
@@ -334,7 +333,6 @@ def card_ledger(funcs, a7):
 
 
 def main():
-    cpuguard.require("ledger.py", jobs=1, mem="3G")
     args = sys.argv[1:]
     load_records(args[args.index("--chash") + 1] if "--chash" in args else None)
     missing = records.complete(STATE["rec"])

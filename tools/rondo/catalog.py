@@ -30,7 +30,6 @@ TOP = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import asmfile  # noqa: E402
 import cardfile  # noqa: E402
-import cpuguard  # noqa: E402
 
 TRACE = os.path.join(TOP, "build", "rondo", "trace")
 OUT = os.path.join(TOP, "build", "rondo", "routines.csv")
@@ -166,7 +165,6 @@ def callees(cat, es, kinds):
 
 
 def main():
-    cpuguard.require("catalog.py", jobs=1, mem="2G")
     rows, es = build()
     for space, label in (("D", "disc"), ("C", "System Card")):
         mine = [r for r in rows if r["space"] == space]

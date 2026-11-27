@@ -10,7 +10,7 @@ ran and no routine spans is included from the disc. Writes build/rondo/asm/image
 Assembling only: comparing the result with the disc is the image gate's job. Before assembling it
 refuses a plan in which two pieces overlap or a byte a script ran is in no piece.
 
-    cpu-run -j 1 -m 3G -- python3 tools/rondo/asmbuild.py [--raw DIR] [--control NAME] [--allow-missing-trace]
+    python3 tools/rondo/asmbuild.py [--raw DIR] [--control NAME] [--allow-missing-trace]
 
 --raw DIR also writes the readable intake files there. --control plants a fault, to prove the
 checks catch it: alter (one intake instruction changed), omit (one intake routine left out),
@@ -25,7 +25,6 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import cpuguard  # noqa: E402
 import huc  # noqa: E402
 
 TOP = os.path.dirname(os.path.dirname(HERE))
@@ -174,7 +173,6 @@ def plan(filed, intake, disc, dm):
 
 
 def main():
-    cpuguard.require("asmbuild.py", jobs=1, mem="3G")
     argv = sys.argv[1:]
     control = argv[argv.index("--control") + 1] if "--control" in argv else None
     raw = argv[argv.index("--raw") + 1] if "--raw" in argv else None

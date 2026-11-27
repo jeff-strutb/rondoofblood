@@ -46,13 +46,8 @@ KINDS = ["MOVED", "EXTRA", "MISSING", "VALUE", "STACK", "STATE", "REGS", "CALL",
 
 
 def jobs():
-    """The cores this run may use: CPU_RUN_JOBS, set by the machine's cpu-run queue, and nothing else."""
-    value = os.environ.get("CPU_RUN_JOBS")
-    if not value or not value.isdigit() or int(value) < 1:
-        sys.exit("oracle.py: CPU_RUN_JOBS is not set. Every run goes through the machine's queue, which sets it:\n"
-                 "  cpu-run -j N -m SIZE -- python3 tools/rondo/oracle.py " + " ".join(sys.argv[1:]) +
-                 "\nA5 uses one slot a script at a time; A7 two (the record and the hybrid), so N is the pool.")
-    return int(value)
+    """The cores this run may use: every core of the machine."""
+    return os.cpu_count() or 1
 
 
 def scripts_from(args):

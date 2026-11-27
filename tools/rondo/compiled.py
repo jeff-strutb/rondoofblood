@@ -27,7 +27,7 @@ Comments, local names, the order of functions in a file and unrelated functions 
 file's merged constants (strings, small literals) count for every function that uses any of them,
 which can only re-test too much. The checker, harness, hybrid.py and setup.sh are not in the hash:
 a checker fix re-measures only the routines it is told to (runner.py --routines).
-Output: NAME HASH RUN LENGTH DISC ROM OWN per line (ROM 1: the card). Compiles under cpu-run (a few seconds on CPU_RUN_JOBS cores).
+Output: NAME HASH RUN LENGTH DISC ROM OWN per line (ROM 1: the card). Compiles on every core (a few seconds).
 """
 import collections
 import concurrent.futures
@@ -40,7 +40,6 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import cpuguard  # noqa: E402
 
 FLAGS = ["-O2", "-finstrument-functions",
          "-finstrument-functions-exclude-file-list=tools/rondo/pcebox/,build/rondo/pcebox/",
@@ -114,7 +113,7 @@ def compile_all(tree, work):
             raise SystemExit(f"compiled.py: {rel} does not compile:\n{r.stderr[-600:]}")
         return rel, read_object(obj)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=int(os.environ.get("CPU_RUN_JOBS") or 1)) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 1) as ex:
         return dict(ex.map(one, files))
 
 
@@ -253,7 +252,6 @@ def hashes(tree, work, names=None):
 
 
 def main():
-    cpuguard.require("compiled.py", jobs=4, mem="3G")
     args = sys.argv[1:]
     tree = os.getcwd()
     outfile = None

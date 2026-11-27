@@ -18,7 +18,7 @@ A call is `RET NAME(ARGT)`; ARGT is one integer type or void. A struct return ne
 plain integer return is mixed whole.
 
 It proves a pure renaming or a lift only for the inputs it runs and the memory it is given; it does
-not replace the gates. Compile and run go through cpu-run: use `cpu-run -j 1 -m 1G --` in front.
+not replace the gates.
 Exit 0 when every call's hashes are equal, 1 when any differ, 2 on a setup error.
 """
 import argparse

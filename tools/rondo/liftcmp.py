@@ -46,7 +46,7 @@ is not modelled. It is a check on a lift, not a replacement for the gates.
 
 It takes under a second per routine once the game's C is compiled (the objects are cached under
 build/rondo/liftcmp, keyed by the source and the headers); the first run compiles every file, a few tens of seconds
-on one core, and goes through `cpu-run -j N -m 2G -- ... --warm`. Comparing a routine needs no slot: it is a short
+on one core, and goes through `... --warm`. Comparing a routine needs no slot: it is a short
 check of bounded memory.
 Exit 0 when every compared case matches and at least one was compared; 1 when any differs; 2 on a setup error.
 """
@@ -551,7 +551,7 @@ def draft_library(drafts_dirs, work_cache):
         import cdraft
         d = cdraft.current_cache()
         if not d:
-            raise SystemExit("liftcmp: the draft cache is stale or missing: cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache")
+            raise SystemExit("liftcmp: the draft cache is stale or missing: python3 tools/rondo/cdraft.py --cache")
         members = {}
         for r in csv.DictReader(open(os.path.join(d, "members.csv"))):
             key = (r["offset"], r["run"].upper().lstrip("0") or "0")
@@ -815,7 +815,7 @@ def one(name, a, ctx):
         label = ("r%04X_%03X" % divmod(disc, 2048)) if disc is not None else None
         raise SystemExit(f"liftcmp: {name} has no draft ({'in ' + ', '.join(ctx['drafts']) if ctx['drafts'] else 'not in the draft cache'}); "
                          + (f"its disc location is {disc} ({label}); if the routine has traced code, rebuild the cache: "
-                            "cpu-run -j 1 -m 3G -- python3 tools/rondo/cdraft.py --cache"
+                            "python3 tools/rondo/cdraft.py --cache"
                             if label else "it has no @routine tag with a @run, so it cannot be looked up by location"))
     row, body, ndraft = found
     work = os.path.join(BUILD, "work", name)
@@ -1053,7 +1053,7 @@ def main():
     cache = os.path.join(BUILD, "obj")
     sources = game_sources() + card_sources()
     hh = header_hash()
-    jobs = int(os.environ.get("CPU_RUN_JOBS") or 1)
+    jobs = os.cpu_count() or 1
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as ex:
         objs = dict(zip(sources, ex.map(lambda s: compile_obj(s, None, cache, hh), sources)))
     if a.warm:

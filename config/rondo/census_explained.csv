@@ -15,7 +15,6 @@ A05800,313,code,calls an entered kernel entry (17); the test fires on 4.4% of th
 6B6528,305,code,calls an entered kernel entry (18); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 136E65,297,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 1E6C3D,295,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-A6EC3D,295,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 9754F9,284,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 6B61FA,280,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91E371,274,code,calls an entered kernel entry (5); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -52,12 +51,9 @@ A0676A,228,code,calls an entered kernel entry (6); the test fires on 4.4% of the
 32CB9C,213,code,calls an entered kernel entry (7); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A04B9C,213,code,calls an entered kernel entry (7); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91E91D,212,code,calls an entered kernel entry (6); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-7B546A,210,code,calls an entered kernel entry (6); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BEFC2,209,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 785B9D,207,code,calls an entered kernel entry (10); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91F579,207,code,calls an entered kernel entry (10); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-1E7E22,205,code,no data proof
-A6FE22,205,code,no data proof
 32F604,202,code,calls an entered kernel entry (8); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 12D5C9,200,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BE765,199,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -72,16 +68,15 @@ DCE5EA,186,code,calls an entered kernel entry (8); the test fires on 4.4% of the
 7BF408,185,code,calls an entered kernel entry (6); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCE280,185,code,calls an entered kernel entry (11); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DD01C5,184,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-1E6B47,180,code,no data proof
 D1E30F,179,code,calls an entered kernel entry (6); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91F946,178,code,no data proof
-136965,177,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-18E965,177,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCE3E0,177,code,calls an entered kernel entry (9); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A062D9,176,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A972C0,176,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1D79D,175,code,calls an entered kernel entry (7); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32D8F5,174,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+136969,173,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+18E969,173,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BF2BF,173,code,calls an entered kernel entry (6); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A05D8B,173,code,calls an entered kernel entry (9); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 136DB3,172,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -105,6 +100,7 @@ A97B1A,159,code,calls an entered kernel entry (1); the test fires on 4.4% of the
 E7DA0C,156,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32FD51,155,code,calls an entered kernel entry (7); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCE6F3,155,code,calls an entered kernel entry (8); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+1E7E55,154,code,no data proof
 32DCCB,153,code,calls an entered kernel entry (10); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1FCBD,153,code,calls an entered kernel entry (8); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 785626,151,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -126,11 +122,11 @@ A9717A,136,code,calls an entered kernel entry (2); the test fires on 4.4% of the
 D1F1BA,132,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BED6D,131,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7ED77,131,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-2340B,130,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 1E6850,130,code,no data proof
+1E6B79,130,code,no data proof
 11D03,129,code,no data proof
+2340C,129,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A06192,129,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-1E6AC6,128,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCE195,128,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 1960F3,127,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7867BD,126,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -197,7 +193,6 @@ E7FA07,104,code,calls an entered kernel entry (2); the test fires on 4.4% of the
 330048,102,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91E5B4,102,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A06016,102,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-137BB6,101,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 1E7B44,101,code,no data proof
 7BD19D,101,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 8BD7F3,101,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -208,10 +203,10 @@ E19EC5,101,code,no data proof
 22551A,100,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BECC9,100,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7DBD7,100,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-1374D8,98,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-18F4D8,98,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91ED0B,98,code,calls an entered kernel entry (5); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+A6FE8D,98,code,no data proof
 12F9A75,98,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+1E6AC6,97,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCD8FF,97,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 75489A,96,code,no data proof
 7BD822,96,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -237,7 +232,6 @@ DC681F,93,code,calls an entered kernel entry (3); the test fires on 4.4% of the 
 7BCAFF,92,code,calls an entered kernel entry (5); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 974AFF,92,code,calls an entered kernel entry (5); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A04AFF,92,code,calls an entered kernel entry (5); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-A6F7EC,92,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 AD305B,92,code,no data proof
 D20088,92,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 136A26,91,code,no data proof
@@ -268,6 +262,7 @@ E7F0BD,86,code,calls an entered kernel entry (2); the test fires on 4.4% of the 
 D1FD61,84,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCD9DB,84,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 1E6A60,83,code,no data proof
+A6ED11,83,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 28D673,82,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7FD89,82,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BEC65,80,code,calls an entered kernel entry (7); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -324,7 +319,6 @@ DCDDDF,69,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 32FBA1,68,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BE003,68,code,no data proof
 91E6E2,68,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-A6EFED,68,code,no data proof
 DCE396,68,code,no data proof
 2FA13,67,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 226928,67,code,calls an entered kernel entry (5); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -363,6 +357,7 @@ D1FA45,63,code,calls an entered kernel entry (3); the test fires on 4.4% of the 
 225646,62,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32F517,62,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 696C31,62,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+7B546A,62,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BE641,62,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7DF3A,62,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 194800,61,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -403,7 +398,6 @@ E7F18A,58,code,calls an entered kernel entry (2); the test fires on 4.4% of the 
 7BF649,57,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BF71A,57,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91EDF9,57,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-A6F070,57,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1EF0E,57,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91B749,56,code,no data proof
 D1E000,56,code,no data proof
@@ -437,7 +431,6 @@ E7F7DE,54,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 91F4BD,53,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7EC08,53,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 2F9D1,52,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-19045F,52,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32E5BC,52,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32F70F,52,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 330265,52,code,no data proof
@@ -466,7 +459,6 @@ A968E0,50,code,no data proof
 A063BB,49,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A065E6,49,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A06A8B,49,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-12FDF7E,49,code,no data proof
 32EBA4,48,code,no data proof
 32F3D7,48,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32F7C8,48,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -496,6 +488,7 @@ C6D532,46,code,calls an entered kernel entry (3); the test fires on 4.4% of the 
 A0574A,45,code,calls an entered kernel entry (4); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1FB85,45,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1FDD6,45,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+19045F,44,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 195DA7,44,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BDD3C,44,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 8BD58F,44,code,no data proof
@@ -503,9 +496,11 @@ A06163,44,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 A065A9,44,code,no data proof
 32F0F2,43,code,no data proof
 32FC36,43,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+3ED34A,43,code,no data proof
 4983B0,43,code,no data proof
 78542B,43,code,calls an entered kernel entry (5); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91EBEC,43,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+C24BB0,43,code,no data proof
 19288F,42,code,no data proof
 32D4A7,42,code,no data proof
 32F5D6,42,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -514,6 +509,7 @@ A97BEB,42,code,no data proof
 DCF61A,42,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E79AA3,42,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7D4DA,42,code,no data proof
+137BB6,41,code,no data proof
 137D45,41,code,no data proof
 32E9DD,41,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91EA65,41,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -526,7 +522,6 @@ E7F5C0,41,code,no data proof
 136C15,40,code,no data proof
 226763,40,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32D9C2,40,code,no data proof
-3ED34D,40,code,no data proof
 7BE2B6,40,code,no data proof
 A05F34,40,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A97C90,40,code,no data proof
@@ -574,6 +569,7 @@ DCF464,37,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 32D23E,36,code,no data proof
 32E65F,36,code,no data proof
 32F47E,36,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+7B553C,36,code,no data proof
 7BD23E,36,code,no data proof
 91D23E,36,code,no data proof
 91EFD6,36,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -591,12 +587,10 @@ E7EF1D,36,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 195D6B,35,code,no data proof
 32FAF5,35,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 3EFD0A,35,code,no data proof
-7B553D,35,code,no data proof
 7BDC06,35,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91E055,35,code,no data proof
 91E22E,35,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A05B2F,35,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-A969E6,35,code,no data proof
 D1F018,35,code,no data proof
 DCF1E6,35,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 1E7FF1,34,code,no data proof
@@ -615,7 +609,6 @@ E7E795,34,code,no data proof
 E7F236,34,code,no data proof
 E7F25B,34,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7FDFF,34,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-1381F0,33,code,no data proof
 32EB2C,33,code,no data proof
 32F40B,33,code,no data proof
 75B723,33,code,no data proof
@@ -633,6 +626,7 @@ DCDA46,33,code,calls an entered kernel entry (3); the test fires on 4.4% of the 
 19593B,32,code,no data proof
 1959BC,32,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 195FCE,32,code,no data proof
+1E6B47,32,code,no data proof
 22596B,32,code,no data proof
 2259EC,32,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 226587,32,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -661,16 +655,11 @@ A97C49,31,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 B083B7,31,code,no data proof
 D1FE0F,31,code,no data proof
 DD211,30,code,no data proof
-13730A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 137B1D,30,code,no data proof
-18F30A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-1E6F90,30,code,no data proof
 1E7B22,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 1E7C45,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-21F30A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 2255C0,30,code,no data proof
 22606A,30,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-32730A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32EB50,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 395542,30,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 5A5D38,30,code,no data proof
@@ -679,14 +668,9 @@ DD211,30,code,no data proof
 80ED6C,30,code,no data proof
 86F30A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 8BF503,30,code,no data proof
-91730A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91E8F2,30,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-96AC8B,30,code,no data proof
-A6EF90,30,code,no data proof
-D1730A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1EFF8,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1F92B,30,code,no data proof
-DC730A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7730A,30,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 137218,29,code,no data proof
 18F218,29,code,no data proof
@@ -712,7 +696,6 @@ E77218,29,code,no data proof
 32F800,28,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 4F0652,28,code,no data proof
 7BDD86,28,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-8BD3DA,28,code,no data proof
 C24EC8,28,code,no data proof
 F34C12,28,code,no data proof
 18FFD5,27,code,no data proof
@@ -726,42 +709,41 @@ D18552,27,code,no data proof
 D1FC92,27,code,no data proof
 133E40F,27,code,no data proof
 F23C3,26,code,no data proof
-1370A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-18F0A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 194D48,26,code,no data proof
-21F0A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-3270A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 54DE5C,26,code,no data proof
-6AD406,26,code,no data proof
 80E883,26,code,no data proof
-86F0A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-9170A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91DFD0,26,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A0519D,26,code,no data proof
-D170A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1F430,26,code,no data proof
 D1F58F,26,code,no data proof
 D2015C,26,code,no data proof
-DC70A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCF278,26,code,no data proof
 DCFCAF,26,code,no data proof
 E770A1,26,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+12FDF95,26,code,no data proof
+13730A,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+1381F0,25,code,no data proof
+18F30A,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 19506E,25,code,no data proof
+21F30A,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 24B8A7,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 2E550E,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+32730A,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32D06E,25,code,no data proof
 3E852E,25,code,no data proof
 6B05DA,25,code,no data proof
 7BD973,25,code,no data proof
 7BE0F6,25,code,no data proof
+91730A,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 91D6C7,25,code,no data proof
 91DE59,25,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-96D405,25,code,no data proof
 A0506E,25,code,no data proof
 A05B65,25,code,no data proof
 AD335F,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+D1730A,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D1E789,25,code,no data proof
 D5269C,25,code,no data proof
+DC730A,25,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 192F06,24,code,no data proof
 195339,24,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 226270,24,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -775,6 +757,7 @@ D5269C,25,code,no data proof
 91EDD9,24,code,no data proof
 91F3B5,24,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A060A1,24,code,no data proof
+A6EC3D,24,code,no data proof
 D20386,24,code,no data proof
 DCDA68,24,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E19F2F,24,code,no data proof
@@ -812,18 +795,17 @@ E77072,23,code,calls an entered kernel entry (2); the test fires on 4.4% of the 
 2F804,22,code,no data proof
 2F8B2,22,code,no data proof
 6200E,22,code,no data proof
-EEAEB,22,code,no data proof
 19547D,22,code,no data proof
+1E7E22,22,code,no data proof
 2E64F2,22,code,no data proof
 3F02E0,22,code,no data proof
 65554A,22,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 706492,22,code,no data proof
-7B63DA,22,code,no data proof
 7BEE01,22,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-862C90,22,code,no data proof
 91E0CD,22,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A00BCB,22,code,no data proof
 A0629A,22,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+A6FE22,22,code,no data proof
 D1F090,22,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D203F9,22,code,calls an entered kernel entry (3); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 D4E2A8,22,code,no data proof
@@ -831,7 +813,6 @@ DCE78F,22,code,no data proof
 DCF2F4,22,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCF99B,22,code,no data proof
 12F9B86,22,code,no data proof
-299D2,21,code,no data proof
 195C8B,21,code,no data proof
 21F074,21,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 2257C8,21,code,no data proof
@@ -862,7 +843,6 @@ E7E127,21,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 E7E5DA,21,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 E7F377,21,code,no data proof
 E7F8B4,21,code,no data proof
-EFA92,20,code,no data proof
 195AAD,20,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 32FDFF,20,code,no data proof
 3EED72,20,code,no data proof
@@ -876,13 +856,12 @@ EFA92,20,code,no data proof
 7BF5AE,20,code,no data proof
 91DC41,20,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 C6B44E,20,code,no data proof
-C6D2FF,20,code,no data proof
 D4E2E0,20,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DD0280,20,code,no data proof
 E19C1C,20,code,no data proof
 E7E513,20,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 EEB3FB,20,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-127D2F,19,code,no data proof
+12FDF7E,20,code,no data proof
 137E2E,19,code,no data proof
 1900B0,19,code,no data proof
 195E96,19,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -892,12 +871,10 @@ EEB3FB,20,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 2E554D,19,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 327E2E,19,code,no data proof
 32E908,19,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-49EFE9,19,code,no data proof
-75D3F1,19,code,no data proof
+49D422,19,code,no data proof
 7BD51B,19,code,no data proof
 7BE563,19,code,no data proof
 8084BC,19,code,no data proof
-8606D9,19,code,no data proof
 8700B0,19,code,no data proof
 8BFF1C,19,code,no data proof
 917E2E,19,code,no data proof
@@ -905,6 +882,8 @@ EEB3FB,20,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 A05AB5,19,code,no data proof
 A064F7,19,code,no data proof
 A06ADE,19,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+A6F01E,19,code,no data proof
+A6F835,19,code,no data proof
 D17E2E,19,code,no data proof
 D1B5C9,19,code,no data proof
 D1F052,19,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -945,7 +924,6 @@ E7E4A2,18,code,calls an entered kernel entry (1); the test fires on 4.4% of the 
 E7F9EB,18,code,no data proof
 12F9B62,18,code,no data proof
 11C52,17,code,no data proof
-DCE22,17,code,no data proof
 12CFAD,17,code,no data proof
 1950B1,17,code,no data proof
 196522,17,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
@@ -959,11 +937,11 @@ DCE22,17,code,no data proof
 54DA66,17,code,no data proof
 54DCBE,17,code,no data proof
 5FB328,17,code,no data proof
-5FF579,17,code,no data proof
 785279,17,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7BD0B1,17,code,no data proof
 80CFAD,17,code,no data proof
 80D96A,17,code,no data proof
+8606DB,17,code,no data proof
 91D0B1,17,code,no data proof
 96EC49,17,code,no data proof
 9750B1,17,code,no data proof
@@ -994,10 +972,8 @@ F02E1,16,code,no data proof
 1E6828,16,code,no data proof
 22594E,16,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 395434,16,code,no data proof
-3EE7EA,16,code,no data proof
 3F01EA,16,code,no data proof
 446A5D,16,code,no data proof
-49F2F5,16,code,no data proof
 54B535,16,code,no data proof
 54B5AE,16,code,no data proof
 54B656,16,code,no data proof
@@ -1036,7 +1012,6 @@ DDFB9,15,code,no data proof
 394976,15,code,no data proof
 3E8394,15,code,no data proof
 3ECFAF,15,code,no data proof
-444976,15,code,no data proof
 44654D,15,code,no data proof
 49C976,15,code,no data proof
 4F4976,15,code,no data proof
@@ -1048,14 +1023,11 @@ DDFB9,15,code,no data proof
 6AB6AF,15,code,no data proof
 704976,15,code,no data proof
 75CFAF,15,code,no data proof
-7B4976,15,code,no data proof
 7BEA7D,15,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-864976,15,code,no data proof
 8BCFAF,15,code,no data proof
 8BE8D5,15,code,no data proof
 91B6EB,15,code,no data proof
 91E743,15,code,no data proof
-96C976,15,code,no data proof
 9A683D,15,code,no data proof
 9FC976,15,code,no data proof
 A049A1,15,code,no data proof
@@ -1069,15 +1041,11 @@ B1683D,15,code,no data proof
 B64976,15,code,no data proof
 B64FAF,15,code,no data proof
 BBE83D,15,code,no data proof
-C22AAE,15,code,no data proof
-C6C976,15,code,no data proof
 D1E94C,15,code,no data proof
-D502AE,15,code,no data proof
 DCB64B,15,code,no data proof
 DCD547,15,code,no data proof
 DCE4D6,15,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 DCFA9A,15,code,no data proof
-E17AAE,15,code,no data proof
 E7E99F,15,code,no data proof
 E7F49A,15,code,no data proof
 EED2AE,15,code,no data proof
@@ -1093,9 +1061,9 @@ EED2AE,15,code,no data proof
 226793,14,code,no data proof
 290BF1,14,code,no data proof
 32F8C5,14,code,no data proof
+3EE7EC,14,code,no data proof
 49FB17,14,code,no data proof
 4ECD17,14,code,no data proof
-54F02C,14,code,no data proof
 59C88D,14,code,no data proof
 6B0BF1,14,code,no data proof
 760BF1,14,code,no data proof
@@ -1104,16 +1072,17 @@ EED2AE,15,code,no data proof
 862B82,14,code,no data proof
 8BDB9C,14,code,no data proof
 8C0BF1,14,code,no data proof
+91EFFB,14,code,no data proof
 96AB79,14,code,no data proof
 96F710,14,code,no data proof
 A00BF1,14,code,no data proof
 A06554,14,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 A6E811,14,code,no data proof
+A6EFED,14,code,no data proof
 A70E20,14,code,no data proof
 A98E15,14,code,no data proof
 AA8E20,14,code,no data proof
 ADE811,14,code,no data proof
-B0E2E1,14,code,no data proof
 BBE811,14,code,no data proof
 BC0E20,14,code,no data proof
 C6E926,14,code,no data proof
@@ -1122,8 +1091,6 @@ E7DE7D,14,code,no data proof
 E7E8E8,14,code,no data proof
 E7FB68,14,code,no data proof
 12FDD3B,14,code,no data proof
-DFEF3,13,code,no data proof
-12D36B,13,code,no data proof
 138429,13,code,no data proof
 1905F4,13,code,no data proof
 2206B8,13,code,no data proof
@@ -1132,7 +1099,6 @@ DFEF3,13,code,no data proof
 2E4FB1,13,code,no data proof
 3284DA,13,code,no data proof
 49CFB1,13,code,no data proof
-4F5656,13,code,no data proof
 5A69B0,13,code,no data proof
 5FBCE8,13,code,no data proof
 5FD51E,13,code,no data proof
@@ -1140,7 +1106,6 @@ DFEF3,13,code,no data proof
 86648C,13,code,no data proof
 8706AE,13,code,no data proof
 9184B3,13,code,no data proof
-91EFFC,13,code,no data proof
 91F653,13,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 9F871C,13,code,no data proof
 B0CFB1,13,code,no data proof
@@ -1155,7 +1120,6 @@ E7F439,13,code,no data proof
 12FDD2A,13,code,no data proof
 133E218,13,code,no data proof
 6F9AA,12,code,no data proof
-EF740,12,code,no data proof
 124D08,12,code,no data proof
 136B17,12,code,no data proof
 13775B,12,code,no data proof
@@ -1177,6 +1141,7 @@ EF740,12,code,no data proof
 398BF3,12,code,no data proof
 43FE45,12,code,no data proof
 448BF3,12,code,no data proof
+448EB5,12,code,no data proof
 49F330,12,code,no data proof
 49FBD7,12,code,no data proof
 4EC8DC,12,code,no data proof
@@ -1187,6 +1152,7 @@ EF740,12,code,no data proof
 59FE45,12,code,no data proof
 5A66E7,12,code,no data proof
 5A8BF3,12,code,no data proof
+5A8EB5,12,code,no data proof
 5FF7C1,12,code,no data proof
 64FE45,12,code,no data proof
 658BF3,12,code,no data proof
@@ -1196,17 +1162,17 @@ EF740,12,code,no data proof
 706030,12,code,no data proof
 706562,12,code,no data proof
 708BF3,12,code,no data proof
-75D40D,12,code,no data proof
+708EB5,12,code,no data proof
 7AFE45,12,code,no data proof
 7B0AA2,12,code,no data proof
 7B8BF3,12,code,no data proof
+7B8EB5,12,code,no data proof
+810EB5,12,code,no data proof
 85FE45,12,code,no data proof
 860AA2,12,code,no data proof
 868BF3,12,code,no data proof
-8BE864,12,code,no data proof
+868EB5,12,code,no data proof
 8BEEC7,12,code,no data proof
-8BF215,12,code,no data proof
-8BFA8A,12,code,no data proof
 8C01BE,12,code,no data proof
 918AA2,12,code,no data proof
 91D120,12,code,no data proof
@@ -1216,8 +1182,11 @@ EF740,12,code,no data proof
 96F55D,12,code,no data proof
 970BF3,12,code,no data proof
 9F7E45,12,code,no data proof
+A00EB5,12,code,no data proof
 A04F48,12,code,no data proof
+A08EB5,12,code,no data proof
 A1D120,12,code,no data proof
+B10EB5,12,code,no data proof
 B5FE45,12,code,no data proof
 B68BCD,12,code,no data proof
 B68BF3,12,code,no data proof
@@ -1228,17 +1197,21 @@ C67E45,12,code,no data proof
 C6867D,12,code,no data proof
 C6DB42,12,code,no data proof
 C6E56A,12,code,no data proof
+C70EB5,12,code,no data proof
 D18AA2,12,code,no data proof
 D1D120,12,code,no data proof
 D1E8EC,12,code,no data proof
 D1F610,12,code,no data proof
+D20EB5,12,code,no data proof
 D52564,12,code,no data proof
 DC8AA2,12,code,no data proof
 DCD120,12,code,no data proof
 DCFD30,12,code,no data proof
+DD0EB5,12,code,no data proof
 E78AA2,12,code,no data proof
 E79AD3,12,code,no data proof
 E7D120,12,code,no data proof
+E80EB5,12,code,no data proof
 12F9B54,12,code,no data proof
 12FBAA2,12,code,no data proof
 31B,11,code,no data proof
@@ -1254,7 +1227,6 @@ E7D120,12,code,no data proof
 288407,11,code,no data proof
 28FAD3,11,code,no data proof
 2DEC3D,11,code,no data proof
-2E0259,11,code,no data proof
 2E0662,11,code,no data proof
 2E5EC5,11,code,no data proof
 32CAAC,11,code,no data proof
@@ -1270,7 +1242,6 @@ E7D120,12,code,no data proof
 4F069D,11,code,no data proof
 546C3D,11,code,no data proof
 548491,11,code,no data proof
-54DD55,11,code,no data proof
 54F805,11,code,no data proof
 5A0668,11,code,no data proof
 5F6C3D,11,code,no data proof
@@ -1290,30 +1261,23 @@ E7D120,12,code,no data proof
 804800,11,code,no data proof
 806C3D,11,code,no data proof
 808461,11,code,no data proof
-80EC04,11,code,no data proof
-85EA30,11,code,no data proof
 85EC3D,11,code,no data proof
 8606F8,11,code,no data proof
-86573B,11,code,no data proof
 8B6C3D,11,code,no data proof
 8B845A,11,code,no data proof
 91CAAC,11,code,no data proof
 91EC1C,11,code,no data proof
 96871C,11,code,no data proof
-96AC7E,11,code,no data proof
 974AAC,11,code,no data proof
 9F6C3D,11,code,no data proof
 9FCA82,11,code,no data proof
 A04AAC,11,code,no data proof
 A1CAAC,11,code,no data proof
 A1D709,11,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-B06A30,11,code,no data proof
 B06C3D,11,code,no data proof
 B08491,11,code,no data proof
 B0CA82,11,code,no data proof
-B0E79C,11,code,no data proof
 B60734,11,code,no data proof
-C66A30,11,code,no data proof
 C66C3D,11,code,no data proof
 C68695,11,code,no data proof
 C6B40C,11,code,no data proof
@@ -1331,6 +1295,7 @@ E7F652,11,code,no data proof
 133DE14,11,code,no data proof
 4B6,10,code,no data proof
 DE7AA,10,code,no data proof
+130EB5,10,code,no data proof
 13689E,10,code,no data proof
 137908,10,code,no data proof
 18E89E,10,code,no data proof
@@ -1339,53 +1304,61 @@ DE7AA,10,code,no data proof
 1EABC9,10,code,no data proof
 21E89E,10,code,no data proof
 21F8FC,10,code,no data proof
-220ADB,10,code,no data proof
 22620A,10,code,no data proof
 22641C,10,code,no data proof
 2268E2,10,code,no data proof
 28D416,10,code,no data proof
+290EB5,10,code,no data proof
 2E5EFC,10,code,no data proof
+2E8EB5,10,code,no data proof
 32689E,10,code,no data proof
 327908,10,code,no data proof
-328ADB,10,code,no data proof
 32EE24,10,code,no data proof
 32EE6C,10,code,no data proof
 32F2F2,10,code,no data proof
+398EB5,10,code,no data proof
 3EDA98,10,code,no data proof
 3EEB61,10,code,no data proof
 3EFEC2,10,code,no data proof
+3F0EB5,10,code,no data proof
 44694C,10,code,no data proof
-49D3C2,10,code,no data proof
 49D517,10,code,no data proof
 49F16F,10,code,no data proof
+4A0EB5,10,code,no data proof
 4F5964,10,code,no data proof
 4F6310,10,code,no data proof
+4F8EB5,10,code,no data proof
 54D9EA,10,code,no data proof
 55007B,10,code,no data proof
 55028E,10,code,no data proof
+550EB5,10,code,no data proof
 5FECAD,10,code,no data proof
 5FF505,10,code,no data proof
+600EB5,10,code,no data proof
 655D50,10,code,no data proof
+658EB5,10,code,no data proof
+6B0EB5,10,code,no data proof
 75DA45,10,code,no data proof
-7B526B,10,code,no data proof
+760EB5,10,code,no data proof
 7B6D9B,10,code,no data proof
 80D8FD,10,code,no data proof
-862CA8,10,code,no data proof
-8653A0,10,code,no data proof
 865520,10,code,no data proof
 86E89E,10,code,no data proof
 86F8FC,10,code,no data proof
 8C01A8,10,code,no data proof
+8C0EB5,10,code,no data proof
 91689E,10,code,no data proof
 917908,10,code,no data proof
-918ADB,10,code,no data proof
-96E39E,10,code,no data proof
+970EB5,10,code,no data proof
 A04C86,10,code,no data proof
 A05A16,10,code,no data proof
 A06CF3,10,code,no data proof
+A6EC62,10,code,no data proof
+A969E6,10,code,no data proof
 B0E664,10,code,no data proof
 B0F82C,10,code,no data proof
 B6552A,10,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+B68EB5,10,code,no data proof
 C24E3E,10,code,no data proof
 D1689E,10,code,no data proof
 D17908,10,code,no data proof
@@ -1405,14 +1378,15 @@ E7E9D8,10,code,no data proof
 70198,9,code,no data proof
 12CA83,9,code,no data proof
 12E8B7,9,code,no data proof
+1374D8,9,code,no data proof
 13778A,9,code,no data proof
+18F4D8,9,code,no data proof
 18F77E,9,code,no data proof
 19623A,9,code,no data proof
 1962BF,9,code,no data proof
 1E751A,9,code,no data proof
 28CA83,9,code,no data proof
 28EC04,9,code,no data proof
-2E5367,9,code,no data proof
 32E3D5,9,code,no data proof
 32EBF7,9,code,no data proof
 32EE51,9,code,no data proof
@@ -1423,10 +1397,7 @@ E7E9D8,10,code,no data proof
 3D4827,9,code,no data proof
 3ECA83,9,code,no data proof
 3EEE10,9,code,no data proof
-3EF2E7,9,code,no data proof
-3EFBF9,9,code,no data proof
 444A83,9,code,no data proof
-445DCC,9,code,no data proof
 49C7F7,9,code,no data proof
 49CA83,9,code,no data proof
 4F4FAD,9,code,no data proof
@@ -1435,7 +1406,6 @@ E7E9D8,10,code,no data proof
 54FD2D,9,code,no data proof
 5A4A83,9,code,no data proof
 5A4FAD,9,code,no data proof
-5A64F3,9,code,no data proof
 5F849B,9,code,no data proof
 5FCA83,9,code,no data proof
 5FE6F7,9,code,no data proof
@@ -1447,8 +1417,6 @@ E7E9D8,10,code,no data proof
 75853E,9,code,no data proof
 75CA83,9,code,no data proof
 75ED6E,9,code,no data proof
-75EDB2,9,code,no data proof
-75F193,9,code,no data proof
 7B4A83,9,code,no data proof
 7BDB5F,9,code,no data proof
 8083C0,9,code,no data proof
@@ -1478,8 +1446,8 @@ DCF545,9,code,no data proof
 E7EA05,9,code,no data proof
 E7EA72,9,code,no data proof
 EEB22B,9,code,no data proof
-133DFBE,9,code,no data proof
 2448C,8,code,no data proof
+711EE,8,code,no data proof
 195CFA,8,code,no data proof
 2883AD,8,code,no data proof
 28C976,8,code,no data proof
@@ -1489,21 +1457,17 @@ EEB22B,9,code,no data proof
 32E339,8,code,no data proof
 3307F8,8,code,no data proof
 38EA83,8,code,no data proof
-395372,8,code,no data proof
 3E84A7,8,code,no data proof
 3EC588,8,code,no data proof
-3EE35A,8,code,no data proof
 3EE4CD,8,code,no data proof
 3EEC05,8,code,no data proof
 3EED4A,8,code,no data proof
 43EA83,8,code,no data proof
-448EB9,8,code,no data proof
-49D42D,8,code,no data proof
 49F43C,8,code,no data proof
 49F688,8,code,no data proof
-49FF57,8,code,no data proof
 4EEA83,8,code,no data proof
 534809,8,code,no data proof
+54F02C,8,code,no data proof
 54FE76,8,code,no data proof
 55034F,8,code,no data proof
 59EA83,8,code,no data proof
@@ -1519,16 +1483,11 @@ EEB22B,9,code,no data proof
 7585CB,8,code,no data proof
 75DA53,8,code,no data proof
 75FA12,8,code,no data proof
-75FA2C,8,code,no data proof
-7603BB,8,code,no data proof
 760528,8,code,no data proof
 7AEA83,8,code,no data proof
-7B528F,8,code,no data proof
-7B8EB9,8,code,no data proof
 80C976,8,code,no data proof
 80E236,8,code,no data proof
 80F19A,8,code,no data proof
-810EB9,8,code,no data proof
 8638A4,8,code,no data proof
 8B8400,8,code,no data proof
 8B9908,8,code,no data proof
@@ -1543,6 +1502,7 @@ EEB22B,9,code,no data proof
 A04F08,8,code,no data proof
 A0509A,8,code,no data proof
 A05E58,8,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
+A6F070,8,code,no data proof
 B0B6EC,8,code,no data proof
 B0D5D8,8,code,no data proof
 B0E72A,8,code,no data proof
@@ -1551,7 +1511,6 @@ B0FB43,8,code,no data proof
 B5EA83,8,code,no data proof
 B60720,8,code,no data proof
 C66A83,8,code,no data proof
-C70EB9,8,code,no data proof
 D1F561,8,code,no data proof
 DC935D,8,code,no data proof
 DCF713,8,code,no data proof
@@ -1563,14 +1522,12 @@ F30C87,8,code,no data proof
 2740D,7,code,no data proof
 620F1,7,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 7018C,7,code,no data proof
-EF525,7,code,no data proof
 137049,7,code,no data proof
 13781D,7,code,no data proof
 18F811,7,code,no data proof
 1E7700,7,code,no data proof
 225B59,7,code,no data proof
 22689B,7,code,no data proof
-28E5C7,7,code,no data proof
 28EE67,7,code,no data proof
 2DF85F,7,code,no data proof
 327049,7,code,no data proof
@@ -1581,20 +1538,18 @@ EF525,7,code,no data proof
 394FB7,7,code,no data proof
 3EB57A,7,code,no data proof
 3EC97E,7,code,no data proof
-3EE82A,7,code,no data proof
-3EEAC9,7,code,no data proof
 3EECC7,7,code,no data proof
 49E72A,7,code,no data proof
 4A0543,7,code,no data proof
 4F4FB7,7,code,no data proof
 54C97E,7,code,no data proof
 54D544,7,code,no data proof
+54DD55,7,code,no data proof
 54DE2C,7,code,no data proof
 5A4FB7,7,code,no data proof
-5FE459,7,code,no data proof
-5FF1DF,7,code,no data proof
 5FF2C6,7,code,no data proof
 5FFA5F,7,code,no data proof
+5FFC23,7,code,no data proof
 650620,7,code,no data proof
 654FB7,7,code,no data proof
 656195,7,code,no data proof
@@ -1604,15 +1559,11 @@ EF525,7,code,no data proof
 6AF3F5,7,code,no data proof
 6B0307,7,code,no data proof
 704A85,7,code,no data proof
-756A30,7,code,no data proof
 7585D7,7,code,no data proof
 75EC21,7,code,no data proof
-75F00E,7,code,no data proof
 7B6CAF,7,code,no data proof
 7BDF22,7,code,no data proof
-80FE88,7,code,no data proof
 864FB7,7,code,no data proof
-86612F,7,code,no data proof
 86F049,7,code,no data proof
 8BEE86,7,code,no data proof
 8BF607,7,code,no data proof
@@ -1620,14 +1571,12 @@ EF525,7,code,no data proof
 917049,7,code,no data proof
 96CFB7,7,code,no data proof
 96ECED,7,code,no data proof
-9F6A30,7,code,no data proof
-9FEA01,7,code,no data proof
-9FEACD,7,code,no data proof
+A6FE7A,7,code,no data proof
 A9749C,7,code,no data proof
 B08420,7,code,no data proof
-B0C97E,7,code,no data proof
 B0E413,7,code,no data proof
 B661F4,7,code,no data proof
+C6C97E,7,code,no data proof
 C6E36C,7,code,no data proof
 C6E7DE,7,code,no data proof
 D1E9D3,7,code,no data proof
@@ -1638,96 +1587,72 @@ DC7049,7,code,no data proof
 DCFEAD,7,code,no data proof
 DD0394,7,code,no data proof
 E7F6C4,7,code,no data proof
-133D8A1,7,code,no data proof
 6FF15,6,code,no data proof
 DF2C9,6,code,no data proof
 EECBE,6,code,no data proof
-EED01,6,code,no data proof
 EF602,6,code,no data proof
 F04F2,6,code,no data proof
-127D27,6,code,no data proof
 12D17A,6,code,no data proof
 136F96,6,code,no data proof
+137C15,6,code,no data proof
 18F04A,6,code,no data proof
 18FE97,6,code,no data proof
 195186,6,code,no data proof
 19527E,6,code,no data proof
 1960A4,6,code,no data proof
+1E6FA8,6,code,no data proof
 21F04A,6,code,no data proof
 225186,6,code,no data proof
 225CD1,6,code,no data proof
 226190,6,code,no data proof
-287D27,6,code,no data proof
 288400,6,code,no data proof
 28E9FA,6,code,no data proof
 28F6BB,6,code,no data proof
-290EB9,6,code,no data proof
 2E4A86,6,code,no data proof
 32D186,6,code,no data proof
 32E784,6,code,no data proof
 32EA55,6,code,no data proof
 32FE44,6,code,calls an entered kernel entry (2); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-38EA35,6,code,no data proof
 38F94A,6,code,no data proof
-396378,6,code,no data proof
 3964E0,6,code,no data proof
-3E7D27,6,code,no data proof
 3E8491,6,code,no data proof
 3EB58A,6,code,no data proof
 3ED80A,6,code,no data proof
 3EE53A,6,code,no data proof
 3EE55A,6,code,no data proof
 3EE658,6,code,no data proof
-3EE672,6,code,no data proof
-3EF146,6,code,no data proof
 3EF48C,6,code,no data proof
 3EF823,6,code,no data proof
-3EFC14,6,code,no data proof
-497D27,6,code,no data proof
 498403,6,code,no data proof
-49D3BA,6,code,no data proof
 49D4E9,6,code,no data proof
 49D73F,6,code,no data proof
 49E810,6,code,no data proof
 49F5FC,6,code,no data proof
 49F722,6,code,no data proof
-4A0EB9,6,code,no data proof
-4EEA35,6,code,no data proof
 4EF94A,6,code,no data proof
-547D27,6,code,no data proof
 54D512,6,code,no data proof
 54D524,6,code,no data proof
 54DAD2,6,code,no data proof
-54DB8B,6,code,no data proof
 54F28F,6,code,no data proof
-54F468,6,code,no data proof
 5500B5,6,code,no data proof
 55058C,6,code,no data proof
-550EB9,6,code,no data proof
 5A585D,6,code,no data proof
 5A5865,6,code,no data proof
 5A5885,6,code,no data proof
 5A62FE,6,code,no data proof
-5F7D27,6,code,no data proof
 5FC29F,6,code,no data proof
-600EB9,6,code,no data proof
 650664,6,code,no data proof
 654A86,6,code,no data proof
-655CFB,6,code,no data proof
 65613F,6,code,no data proof
-6A7D27,6,code,no data proof
 6A950F,6,code,no data proof
-6ADF95,6,code,no data proof
 6AE3DE,6,code,no data proof
 6AEE74,6,code,no data proof
 6AEF70,6,code,no data proof
 6AFECB,6,code,no data proof
-6FEA35,6,code,no data proof
 6FF94A,6,code,no data proof
 70541E,6,code,no data proof
 705426,6,code,no data proof
 7065A2,6,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-757D27,6,code,no data proof
 75E126,6,code,no data proof
 75E169,6,code,no data proof
 75E2B6,6,code,no data proof
@@ -1739,20 +1664,15 @@ F04F2,6,code,no data proof
 7BD9F8,6,code,no data proof
 7BDE91,6,code,no data proof
 7BEB40,6,code,no data proof
-807D27,6,code,no data proof
 80DA62,6,code,no data proof
 80E076,6,code,no data proof
-80F3A9,6,code,no data proof
 80F5E5,6,code,no data proof
 85F94A,6,code,no data proof
-865E7A,6,code,no data proof
 86626D,6,code,no data proof
 866D17,6,code,no data proof
-8B7D27,6,code,no data proof
 8BD492,6,code,no data proof
 8BE2B0,6,code,no data proof
 8BEFE5,6,code,no data proof
-8C0EB9,6,code,no data proof
 91D186,6,code,no data proof
 91DB5D,6,code,no data proof
 96E219,6,code,no data proof
@@ -1760,13 +1680,11 @@ F04F2,6,code,no data proof
 9F794A,6,code,no data proof
 9FDF09,6,code,no data proof
 9FE8E3,6,code,no data proof
-9FE93E,6,code,no data proof
 A05186,6,code,no data proof
 A0674C,6,code,no data proof
 A1D186,6,code,no data proof
-B07D27,6,code,no data proof
+A6F7EC,6,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 B08439,6,code,no data proof
-B0E146,6,code,no data proof
 B0EC75,6,code,no data proof
 B0EFA4,6,code,no data proof
 B0F11F,6,code,no data proof
@@ -1785,15 +1703,12 @@ E7E157,6,code,no data proof
 E7F3DE,6,code,no data proof
 EEB370,6,code,no data proof
 F30C6F,6,code,no data proof
-133DA85,6,code,no data proof
 133DDAD,6,code,no data proof
 1381CC8,6,code,no data proof
 446,5,code,no data proof
 6F4DA,5,code,no data proof
 DD302,5,code,no data proof
 DF2F4,5,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
-E0076,5,code,no data proof
-EECF9,5,code,no data proof
 EF5E0,5,code,no data proof
 EF72C,5,code,no data proof
 12741D,5,code,no data proof
@@ -1802,10 +1717,7 @@ EF72C,5,code,no data proof
 28B60F,5,code,no data proof
 28CC44,5,code,no data proof
 28E324,5,code,no data proof
-28E404,5,code,no data proof
 28E4D4,5,code,no data proof
-28E7DD,5,code,no data proof
-2DEA30,5,code,no data proof
 2DF41D,5,code,no data proof
 2E5FEA,5,code,no data proof
 32E4ED,5,code,no data proof
@@ -1814,7 +1726,6 @@ EF72C,5,code,no data proof
 394A87,5,code,no data proof
 394C44,5,code,no data proof
 3E6942,5,code,no data proof
-3E6A30,5,code,no data proof
 3E843E,5,code,no data proof
 3EC1A8,5,code,no data proof
 3ECC44,5,code,no data proof
@@ -1829,32 +1740,23 @@ EF72C,5,code,no data proof
 49CC44,5,code,no data proof
 49D439,5,code,no data proof
 49FA47,5,code,no data proof
-49FB57,5,code,no data proof
 4EF41D,5,code,no data proof
 4F4A87,5,code,no data proof
 4F4C44,5,code,no data proof
 4F517A,5,code,no data proof
-4F6236,5,code,no data proof
-546A30,5,code,no data proof
 54CC44,5,code,no data proof
 54D50B,5,code,no data proof
 54F1E4,5,code,no data proof
 54FFF9,5,code,no data proof
-5504D7,5,code,no data proof
 59F41D,5,code,no data proof
 5A4C44,5,code,no data proof
-5A5AD7,5,code,no data proof
-5F6A30,5,code,no data proof
 5FCC44,5,code,no data proof
 5FD17A,5,code,no data proof
-5FF277,5,code,no data proof
-5FFC6C,5,code,no data proof
 64F41D,5,code,no data proof
 654C44,5,code,no data proof
 654E6C,5,code,no data proof
 654FB1,5,code,no data proof
 65517A,5,code,no data proof
-6A6A30,5,code,no data proof
 6A741D,5,code,no data proof
 6ACC44,5,code,no data proof
 6AF093,5,code,no data proof
@@ -1863,50 +1765,39 @@ EF72C,5,code,no data proof
 704FAD,5,code,no data proof
 705EC8,5,code,no data proof
 75B803,5,code,no data proof
-75E3B6,5,code,no data proof
 760221,5,code,no data proof
 7B4FAD,5,code,no data proof
-7B5E46,5,code,no data proof
 7B6D1E,5,code,no data proof
 7BD926,5,code,no data proof
 7BDC3C,5,code,no data proof
 7BDC9C,5,code,no data proof
 7BDF53,5,code,no data proof
-806A30,5,code,no data proof
 80741D,5,code,no data proof
 80BA5A,5,code,no data proof
 80C4DC,5,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 80F2D6,5,code,no data proof
 80F902,5,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 81018B,5,code,no data proof
-85E826,5,code,no data proof
 85F41D,5,code,no data proof
-862C89,5,code,no data proof
 864C44,5,code,no data proof
 86517A,5,code,no data proof
 865503,5,code,no data proof
-8B6A30,5,code,no data proof
 8BCC44,5,code,no data proof
-8BE67E,5,code,no data proof
-8BFBB9,5,code,no data proof
 8BFC81,5,code,no data proof
 8BFD7F,5,code,no data proof
-8BFE8F,5,code,no data proof
 91ECD2,5,code,no data proof
 96867F,5,code,no data proof
 96E832,5,code,no data proof
 96F515,5,code,no data proof
-96F5FB,5,code,no data proof
 96F6B1,5,code,no data proof
 9F741D,5,code,no data proof
 9F867F,5,code,no data proof
-9FD8A6,5,code,no data proof
 9FE3DA,5,code,no data proof
-9FE78E,5,code,no data proof
 A96AB9,5,code,no data proof
 B0741D,5,code,no data proof
 B0BF0B,5,code,no data proof
 B0CC44,5,code,no data proof
+B0F144,5,code,no data proof
 B0F3D4,5,code,no data proof
 B1022A,5,code,no data proof
 B64C44,5,code,no data proof
@@ -1932,19 +1823,12 @@ E7F2D9,5,code,no data proof
 86839,4,code,no data proof
 DCD19,4,code,no data proof
 DCD7C,4,code,no data proof
-DDACB,4,code,no data proof
-DDAD1,4,code,no data proof
 DDB7F,4,code,no data proof
 DDCAB,4,code,no data proof
 DF805,4,code,no data proof
-EEB03,4,code,no data proof
 EEC4C,4,code,no data proof
 F06E1,4,code,no data proof
-F228B,4,code,no data proof
 126943,4,code,no data proof
-126A37,4,code,no data proof
-13692C,4,code,no data proof
-18E92C,4,code,no data proof
 195B5B,4,code,no data proof
 195B9B,4,code,no data proof
 195BD1,4,code,no data proof
@@ -1954,30 +1838,21 @@ F228B,4,code,no data proof
 28E1B9,4,code,no data proof
 28E225,4,code,no data proof
 28F8A4,4,code,no data proof
-2DEA37,4,code,no data proof
-2E5372,4,code,no data proof
-2E537C,4,code,no data proof
 32E30D,4,code,no data proof
 32E44B,4,code,no data proof
 32ECE0,4,code,no data proof
-38E827,4,code,no data proof
 39517A,4,code,no data proof
-39537C,4,code,no data proof
 398BCD,4,code,no data proof
-3E6A37,4,code,no data proof
 3EC145,4,code,no data proof
 3EC195,4,code,no data proof
 3EE73C,4,code,no data proof
-3EE7A4,4,code,no data proof
 3EE8D7,4,code,no data proof
 3EEC49,4,code,no data proof
 3EF376,4,code,no data proof
 3EF678,4,code,no data proof
 3EF792,4,code,no data proof
 3EF8A0,4,code,no data proof
-43EA37,4,code,no data proof
 43F41E,4,code,no data proof
-445691,4,code,no data proof
 44580D,4,code,no data proof
 446031,4,code,no data proof
 448BCD,4,code,no data proof
@@ -1991,33 +1866,23 @@ F228B,4,code,no data proof
 49F194,4,code,no data proof
 49F47E,4,code,no data proof
 4EC876,4,code,no data proof
-4EE827,4,code,no data proof
 4F595F,4,code,no data proof
 4F8BCD,4,code,no data proof
-546A37,4,code,no data proof
 54D51C,4,code,no data proof
 54FBBF,4,code,no data proof
-59EA37,4,code,no data proof
 5A0640,4,code,no data proof
 5A587F,4,code,no data proof
 5A8BCD,4,code,no data proof
 5FB985,4,code,no data proof
 5FC151,4,code,no data proof
 5FC1E7,4,code,no data proof
-5FEB44,4,code,no data proof
 5FF1B5,4,code,no data proof
 5FF1F8,4,code,no data proof
-5FF329,4,code,no data proof
 5FF87B,4,code,no data proof
-64EA37,4,code,no data proof
 655D3C,4,code,no data proof
 6A6814,4,code,no data proof
-6A6A37,4,code,no data proof
-6ADDB8,4,code,no data proof
 6AE1B9,4,code,no data proof
-6AE20A,4,code,no data proof
 6AE389,4,code,no data proof
-6FE827,4,code,no data proof
 6FF41E,4,code,no data proof
 70517A,4,code,no data proof
 705F56,4,code,no data proof
@@ -2026,30 +1891,23 @@ F228B,4,code,no data proof
 75C502,4,code,no data proof
 75C5D4,4,code,no data proof
 75D17A,4,code,no data proof
-75D3C6,4,code,no data proof
-75D407,4,code,no data proof
 75E7E1,4,code,no data proof
 75F0B9,4,code,no data proof
 75FE44,4,code,no data proof
 75FF5C,4,code,no data proof
 760146,4,code,no data proof
-7AEA37,4,code,no data proof
 7AF41E,4,code,no data proof
-7B5277,4,code,no data proof
 7B5298,4,code,no data proof
 7B6A22,4,code,no data proof
-7B6B5B,4,code,no data proof
 7B8BCD,4,code,no data proof
+7B8BD9,4,code,no data proof
 7BD9C8,4,code,no data proof
 7BDA1C,4,code,no data proof
 7BDD03,4,code,no data proof
 7BDFE5,4,code,no data proof
-806A37,4,code,no data proof
 808439,4,code,no data proof
 80845C,4,code,no data proof
 80EE91,4,code,no data proof
-86539A,4,code,no data proof
-86550E,4,code,no data proof
 86551A,4,code,no data proof
 86638B,4,code,no data proof
 8666A9,4,code,no data proof
@@ -2066,7 +1924,6 @@ F228B,4,code,no data proof
 96E9F5,4,code,no data proof
 96EA0B,4,code,no data proof
 96F389,4,code,no data proof
-9F6829,4,code,no data proof
 9FD17A,4,code,no data proof
 9FDAB6,4,code,no data proof
 9FDDAB,4,code,no data proof
@@ -2081,15 +1938,13 @@ B0E3FC,4,code,no data proof
 B0EC36,4,code,no data proof
 B0ED03,4,code,no data proof
 B0EDA0,4,code,no data proof
-B0F145,4,code,no data proof
-B0F273,4,code,no data proof
 B0F5A9,4,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 B0F5E1,4,code,no data proof
-B5EA37,4,code,no data proof
 C25025,4,code,no data proof
 C6480C,4,code,no data proof
 C6DEA6,4,code,no data proof
 C6DFEA,4,code,no data proof
+D1692C,4,code,no data proof
 DCF57B,4,code,no data proof
 E7E83B,4,code,no data proof
 E7E891,4,code,no data proof
@@ -2099,7 +1954,6 @@ F30C67,4,code,no data proof
 2185A,3,code,no data proof
 218DE,3,code,calls an entered kernel entry (1); the test fires on 4.4% of the bytes of data pieces of the same lengths (measured 2026-11-26)
 218ED,3,code,no data proof
-218F3,3,code,no data proof
 24CCD,3,code,no data proof
 26817,3,code,no data proof
 29F77,3,code,no data proof
@@ -2112,13 +1966,9 @@ F30C67,4,code,no data proof
 6F913,3,code,no data proof
 70121,3,code,no data proof
 DC81E,3,code,no data proof
-DE156,3,code,no data proof
 DE7DA,3,code,no data proof
 DF4E0,3,code,no data proof
-DF713,3,code,no data proof
-DF869,3,code,no data proof
 EF9B1,3,code,no data proof
-EFB3C,3,code,no data proof
 EFCC5,3,code,no data proof
 EFD6B,3,code,no data proof
 EFE54,3,code,no data proof
@@ -2127,7 +1977,6 @@ F1A68,3,code,no data proof
 F1B04,3,code,no data proof
 F1DBD,3,code,no data proof
 F2510,3,code,no data proof
-126A30,3,code,no data proof
 127522,3,code,no data proof
 12E123,3,code,no data proof
 136FBD,3,code,no data proof
@@ -2158,7 +2007,6 @@ F2510,3,code,no data proof
 32EEDE,3,code,no data proof
 32F064,3,code,no data proof
 32F383,3,code,no data proof
-38EA30,3,code,no data proof
 38F857,3,code,no data proof
 394A83,3,code,no data proof
 39617C,3,code,no data proof
@@ -2170,18 +2018,15 @@ F2510,3,code,no data proof
 3ED46D,3,code,no data proof
 3ED4AC,3,code,no data proof
 3EDD50,3,code,no data proof
-3EE464,3,code,no data proof
 3EE5B2,3,code,no data proof
 3EE6DA,3,code,no data proof
 3EECEB,3,code,no data proof
-3EEEFF,3,code,no data proof
 3EEFE8,3,code,no data proof
 3EF59C,3,code,no data proof
 3EF615,3,code,no data proof
 3EF67D,3,code,no data proof
 3EF8B5,3,code,no data proof
 3EF984,3,code,no data proof
-43EA30,3,code,no data proof
 445812,3,code,no data proof
 445AAB,3,code,no data proof
 446869,3,code,no data proof
@@ -2194,8 +2039,6 @@ F2510,3,code,no data proof
 49FB8E,3,code,no data proof
 49FC76,3,code,no data proof
 49FDB6,3,code,no data proof
-4A0031,3,code,no data proof
-4EEA30,3,code,no data proof
 4F4A83,3,code,no data proof
 4F616D,3,code,no data proof
 4F62E2,3,code,no data proof
@@ -2210,12 +2053,10 @@ F2510,3,code,no data proof
 54FC07,3,code,no data proof
 5503F0,3,code,no data proof
 5504BA,3,code,no data proof
-59EA30,3,code,no data proof
 59F857,3,code,no data proof
 5A615C,3,code,no data proof
 5A6686,3,code,no data proof
 5A6752,3,code,no data proof
-5A6828,3,code,no data proof
 5A688C,3,code,no data proof
 5A68FC,3,code,no data proof
 5F741F,3,code,no data proof
@@ -2223,12 +2064,10 @@ F2510,3,code,no data proof
 5FC10C,3,code,no data proof
 5FCE6A,3,code,no data proof
 5FD441,3,code,no data proof
-5FDD1B,3,code,no data proof
 5FE036,3,code,no data proof
 5FECF2,3,code,no data proof
 5FEF3E,3,code,no data proof
 5FF5F8,3,code,no data proof
-5FF782,3,code,no data proof
 5FF855,3,code,no data proof
 5FF859,3,code,no data proof
 64F857,3,code,no data proof
@@ -2239,7 +2078,6 @@ F2510,3,code,no data proof
 6ACDB1,3,code,no data proof
 6ADCEA,3,code,no data proof
 6ADF6B,3,code,no data proof
-6AE288,3,code,no data proof
 6AE2F0,3,code,no data proof
 6AE430,3,code,no data proof
 6AE82A,3,code,no data proof
@@ -2247,15 +2085,12 @@ F2510,3,code,no data proof
 6AEECA,3,code,no data proof
 6AEFF2,3,code,no data proof
 6AF102,3,code,no data proof
-6AF14C,3,code,no data proof
 6AF313,3,code,no data proof
 6AFF0C,3,code,no data proof
 6AFF40,3,code,no data proof
-6FEA30,3,code,no data proof
 6FF857,3,code,no data proof
 70549D,3,code,no data proof
 705CE6,3,code,no data proof
-7065D5,3,code,no data proof
 706686,3,code,no data proof
 706C80,3,code,no data proof
 738867,3,code,no data proof
@@ -2264,19 +2099,16 @@ F2510,3,code,no data proof
 75C405,3,code,no data proof
 75CDB1,3,code,no data proof
 75DEF4,3,code,no data proof
-75F19E,3,code,no data proof
 75F30F,3,code,no data proof
 75F5EC,3,code,no data proof
 75FAC6,3,code,no data proof
 75FB70,3,code,no data proof
-75FDBB,3,code,no data proof
 76006A,3,code,no data proof
 7600E3,3,code,no data proof
 76014B,3,code,no data proof
 760383,3,code,no data proof
 7605F3,3,code,no data proof
 7609AF,3,code,no data proof
-7AEA30,3,code,no data proof
 7AF857,3,code,no data proof
 7B06B9,3,code,no data proof
 7B6662,3,code,no data proof
@@ -2288,9 +2120,6 @@ F2510,3,code,no data proof
 80C48E,3,code,no data proof
 80DD9C,3,code,no data proof
 80DF6A,3,code,no data proof
-80E398,3,code,no data proof
-80E669,3,code,no data proof
-80EC7D,3,code,no data proof
 80F860,3,code,no data proof
 864A83,3,code,no data proof
 864A87,3,code,no data proof
@@ -2314,16 +2143,12 @@ F2510,3,code,no data proof
 91D0D4,3,code,no data proof
 91D0EC,3,code,no data proof
 91E313,3,code,no data proof
-966A30,3,code,no data proof
 96741F,3,code,no data proof
 96AA65,3,code,no data proof
 96CE6E,3,code,no data proof
 96CFB3,3,code,no data proof
-96D733,3,code,no data proof
 96E16C,3,code,no data proof
 96E6E2,3,code,no data proof
-96E9AE,3,code,no data proof
-96EF66,3,code,no data proof
 9750D4,3,code,no data proof
 9750EC,3,code,no data proof
 9F7522,3,code,no data proof
@@ -2333,7 +2158,6 @@ F2510,3,code,no data proof
 9FE1A5,3,code,no data proof
 9FE1BF,3,code,no data proof
 9FE2C6,3,code,no data proof
-9FE402,3,code,no data proof
 9FE41F,3,code,no data proof
 9FE9B0,3,code,no data proof
 A04EB5,3,code,no data proof
@@ -2343,20 +2167,16 @@ A1D0D4,3,code,no data proof
 A1D0EC,3,code,no data proof
 A70AA4,3,code,no data proof
 AA8AA4,3,code,no data proof
-B06826,3,code,no data proof
 B0CFAD,3,code,no data proof
-B0E4C5,3,code,no data proof
 B0E5EF,3,code,no data proof
 B0E63B,3,code,no data proof
 B0EB63,3,code,no data proof
 B0F254,3,code,no data proof
 B0F6B5,3,code,no data proof
 B11585,3,code,no data proof
-B5EA30,3,code,no data proof
 B5F41F,3,code,no data proof
 B5F857,3,code,no data proof
 B64E6A,3,code,no data proof
-C66826,3,code,no data proof
 C6B449,3,code,no data proof
 C6CDB1,3,code,no data proof
 C6E208,3,code,no data proof
@@ -2377,7 +2197,6 @@ E7D0EC,3,code,no data proof
 E7DFF0,3,code,no data proof
 E7E561,3,code,no data proof
 E7F685,3,code,no data proof
-F30A74,3,code,no data proof
 11FB3FD,3,code,no data proof
 133D848,3,code,no data proof
 133E2A7,3,code,no data proof
@@ -2390,9 +2209,7 @@ F30A74,3,code,no data proof
 13821DF,3,code,no data proof
 22D60,2,code,no data proof
 240C7,2,code,no data proof
-27552,2,code,no data proof
 2F8E7,2,code,no data proof
-61043,2,code,no data proof
 61A4E,2,code,no data proof
 62166,2,code,no data proof
 68C49,2,code,no data proof
@@ -2404,18 +2221,14 @@ F30A74,3,code,no data proof
 6F9F7,2,code,no data proof
 6FADA,2,code,no data proof
 DC90D,2,code,no data proof
-DCA94,2,code,no data proof
 DCB54,2,code,no data proof
 DE0F0,2,code,no data proof
 DED10,2,code,no data proof
-DEE5B,2,code,no data proof
 DF075,2,code,no data proof
-DF378,2,code,no data proof
 DF3EF,2,code,no data proof
 DF833,2,code,no data proof
 DFB98,2,code,no data proof
 E00D6,2,code,no data proof
-EE937,2,code,no data proof
 F00E8,2,code,no data proof
 F0219,2,code,no data proof
 F0AB9,2,code,no data proof
@@ -2424,22 +2237,17 @@ F1474,2,code,no data proof
 F2223,2,code,no data proof
 1248BC,2,code,no data proof
 1280FB,2,code,no data proof
-12D38E,2,code,no data proof
 12D4EA,2,code,no data proof
-12E2E8,2,code,no data proof
 130BC7,2,code,no data proof
-1368B2,2,code,no data proof
-18E8B2,2,code,no data proof
 192F22,2,code,no data proof
 194E0D,2,code,no data proof
 195BB4,2,code,no data proof
 195CA8,2,code,no data proof
 1EAD4A,2,code,no data proof
-21E8B2,2,code,no data proof
 222F22,2,code,no data proof
 225B98,2,code,no data proof
 286816,2,code,no data proof
-286A39,2,code,no data proof
+286943,2,code,no data proof
 28B60A,2,code,no data proof
 28CE6B,2,code,no data proof
 28DA23,2,code,no data proof
@@ -2450,26 +2258,21 @@ F2223,2,code,no data proof
 28FB84,2,code,no data proof
 28FCE8,2,code,no data proof
 290BC7,2,code,no data proof
-2DE829,2,code,no data proof
 2DE943,2,code,no data proof
 2DF94A,2,code,no data proof
 2E040D,2,code,no data proof
 2E4A83,2,code,no data proof
-2E4C68,2,code,no data proof
-2E538C,2,code,no data proof
 2E538F,2,code,no data proof
 2E5C72,2,code,no data proof
 2E5F54,2,code,no data proof
 2E6374,2,code,no data proof
 2E63F8,2,code,no data proof
 2E8BC7,2,code,no data proof
-3268B2,2,code,no data proof
 32AF22,2,code,no data proof
 32ED37,2,code,no data proof
 32EDF8,2,code,no data proof
 38E943,2,code,no data proof
 38EC45,2,code,no data proof
-395394,2,code,no data proof
 396493,2,code,no data proof
 396706,2,code,no data proof
 398BC7,2,code,no data proof
@@ -2482,26 +2285,20 @@ F2223,2,code,no data proof
 3EF0C7,2,code,no data proof
 3EF125,2,code,no data proof
 3EF3C9,2,code,no data proof
-3EF7B1,2,code,no data proof
 3EFCFF,2,code,no data proof
 3F00EA,2,code,no data proof
 3F01E4,2,code,no data proof
 3F0BC7,2,code,no data proof
-43E829,2,code,no data proof
 43E943,2,code,no data proof
 43EC45,2,code,no data proof
 43F94A,2,code,no data proof
 444E6A,2,code,no data proof
-44567F,2,code,no data proof
 445786,2,code,no data proof
 4457DB,2,code,no data proof
-445809,2,code,no data proof
 445A18,2,code,no data proof
 445C75,2,code,no data proof
 446A57,2,code,no data proof
 448BC7,2,code,no data proof
-496A33,2,code,no data proof
-496A39,2,code,no data proof
 4984A7,2,code,no data proof
 49C78D,2,code,no data proof
 49D4E3,2,code,no data proof
@@ -2524,7 +2321,6 @@ F2223,2,code,no data proof
 4F6254,2,code,no data proof
 4F63D7,2,code,no data proof
 4F8BC7,2,code,no data proof
-54DDE9,2,code,no data proof
 54DE51,2,code,no data proof
 54E2BD,2,code,no data proof
 54EB1C,2,code,no data proof
@@ -2534,14 +2330,11 @@ F2223,2,code,no data proof
 55052B,2,code,no data proof
 550BC7,2,code,no data proof
 59C800,2,code,no data proof
-59E829,2,code,no data proof
 59E943,2,code,no data proof
 59EC45,2,code,no data proof
 59F94A,2,code,no data proof
 5A586F,2,code,no data proof
-5A5E7C,2,code,no data proof
 5A8BC7,2,code,no data proof
-5F6A39,2,code,no data proof
 5FB8FE,2,code,no data proof
 5FD446,2,code,no data proof
 5FD4E6,2,code,no data proof
@@ -2554,9 +2347,7 @@ F2223,2,code,no data proof
 5FFBD8,2,code,no data proof
 600BC7,2,code,no data proof
 64C800,2,code,no data proof
-64E829,2,code,no data proof
 64E943,2,code,no data proof
-64EA33,2,code,no data proof
 64F94A,2,code,no data proof
 654A83,2,code,no data proof
 655CCC,2,code,no data proof
@@ -2566,7 +2357,6 @@ F2223,2,code,no data proof
 65680B,2,code,no data proof
 656961,2,code,no data proof
 658BC7,2,code,no data proof
-6ACC68,2,code,no data proof
 6ADFAF,2,code,no data proof
 6AE103,2,code,no data proof
 6AE4BC,2,code,no data proof
@@ -2585,15 +2375,11 @@ F2223,2,code,no data proof
 705416,2,code,no data proof
 705432,2,code,no data proof
 705F67,2,code,no data proof
-7060EF,2,code,no data proof
 70632B,2,code,no data proof
 7065BE,2,code,no data proof
 708BC7,2,code,no data proof
 754800,2,code,no data proof
-756A39,2,code,no data proof
-75CC68,2,code,no data proof
-75D3ED,2,code,no data proof
-75DB88,2,code,no data proof
+756943,2,code,no data proof
 75DC31,2,code,no data proof
 75DD96,2,code,no data proof
 75E971,2,code,no data proof
@@ -2604,14 +2390,11 @@ F2223,2,code,no data proof
 75FE97,2,code,no data proof
 760BC7,2,code,no data proof
 7AE816,2,code,no data proof
-7AE829,2,code,no data proof
 7AE943,2,code,no data proof
-7AEC45,2,code,no data proof
 7AF94A,2,code,no data proof
-7B4C68,2,code,no data proof
 7B4E6A,2,code,no data proof
-7B5267,2,code,no data proof
 7B6962,2,code,no data proof
+7B6B5D,2,code,no data proof
 7B8BC7,2,code,no data proof
 7BD3FC,2,code,no data proof
 7BD8C3,2,code,no data proof
@@ -2621,7 +2404,7 @@ F2223,2,code,no data proof
 7BDEB3,2,code,no data proof
 7BDF08,2,code,no data proof
 7BE15A,2,code,no data proof
-80DE78,2,code,no data proof
+806943,2,code,no data proof
 80DF39,2,code,no data proof
 80E98D,2,code,no data proof
 80ECE6,2,code,no data proof
@@ -2630,11 +2413,11 @@ F2223,2,code,no data proof
 80EF7F,2,code,no data proof
 810BC7,2,code,no data proof
 85E943,2,code,no data proof
+86497D,2,code,no data proof
+865510,2,code,no data proof
 86635D,2,code,no data proof
 866453,2,code,no data proof
 868BC7,2,code,no data proof
-86E8B2,2,code,no data proof
-8B6A39,2,code,no data proof
 8BD587,2,code,no data proof
 8BD930,2,code,no data proof
 8BE2B8,2,code,no data proof
@@ -2644,33 +2427,21 @@ F2223,2,code,no data proof
 8BFA09,2,code,no data proof
 8C0BC7,2,code,no data proof
 8E2D4A,2,code,no data proof
-9168B2,2,code,no data proof
 91AF22,2,code,no data proof
 91E147,2,code,no data proof
 91F41D,2,code,no data proof
 91F8D6,2,code,no data proof
-966A35,2,code,no data proof
-966A39,2,code,no data proof
 966C45,2,code,no data proof
-96D3E7,2,code,no data proof
-96D3EB,2,code,no data proof
-96D3F5,2,code,no data proof
-96D401,2,code,no data proof
 96D54A,2,code,no data proof
 96D84D,2,code,no data proof
-96DC38,2,code,no data proof
 96E411,2,code,no data proof
 96F1E3,2,code,no data proof
 96F311,2,code,no data proof
 96F823,2,code,no data proof
 970BC7,2,code,no data proof
-9F6A39,2,code,no data proof
-9FCC68,2,code,no data proof
 9FDCA5,2,code,no data proof
-9FDD9E,2,code,no data proof
 9FE06E,2,code,no data proof
 9FE09D,2,code,no data proof
-9FE1E8,2,code,no data proof
 A00BC7,2,code,no data proof
 A049D7,2,code,no data proof
 A70CA3,2,code,no data proof
@@ -2678,7 +2449,6 @@ A98807,2,code,no data proof
 A98C98,2,code,no data proof
 AA8CA3,2,code,no data proof
 B084E4,2,code,no data proof
-B0CC68,2,code,no data proof
 B0DBB5,2,code,no data proof
 B0E095,2,code,no data proof
 B0E5B7,2,code,no data proof
@@ -2691,11 +2461,9 @@ B0FAD3,2,code,no data proof
 B0FAFE,2,code,no data proof
 B10BC7,2,code,no data proof
 B5E816,2,code,no data proof
-B5E829,2,code,no data proof
 B5E943,2,code,no data proof
 B5F94A,2,code,no data proof
 B65E1B,2,code,no data proof
-B65E3A,2,code,no data proof
 B65EEA,2,code,no data proof
 B66110,2,code,no data proof
 B68BC7,2,code,no data proof
@@ -2703,40 +2471,25 @@ C6DAD3,2,code,no data proof
 C6DB92,2,code,no data proof
 C6DCAD,2,code,no data proof
 C6E0B4,2,code,no data proof
-C6E2E9,2,code,no data proof
 C6E484,2,code,no data proof
 C6E54B,2,code,no data proof
 C6E649,2,code,no data proof
 C6E815,2,code,no data proof
-C6E956,2,code,no data proof
 C70BC7,2,code,no data proof
-D168B2,2,code,no data proof
-D18D52,2,code,no data proof
 D1AF22,2,code,no data proof
 D1E85B,2,code,no data proof
 D1F68B,2,code,no data proof
-DC68B2,2,code,no data proof
-DC8D52,2,code,no data proof
 DCAF22,2,code,no data proof
 E15809,2,code,no data proof
-E768B2,2,code,no data proof
-E78D52,2,code,no data proof
 E7AF22,2,code,no data proof
 E7E454,2,code,no data proof
 E7E7D2,2,code,no data proof
 EEB009,2,code,no data proof
-F30A2E,2,code,no data proof
 F30C4C,2,code,no data proof
-105E22E,2,code,no data proof
-11FB22C,2,code,no data proof
-12E986F,2,code,no data proof
 12FBD52,2,code,no data proof
-133D812,2,code,no data proof
 133D852,2,code,no data proof
 133DE0D,2,code,no data proof
 133DFA9,2,code,no data proof
-1381812,2,code,no data proof
-13818A0,2,code,no data proof
 1381AA2,2,code,no data proof
 1381D28,2,code,no data proof
 33F,1,code,no data proof
@@ -2751,6 +2504,7 @@ F30C4C,2,code,no data proof
 22CF9,1,code,no data proof
 26C9D,1,code,no data proof
 27479,1,code,no data proof
+27552,1,code,no data proof
 29860,1,code,no data proof
 2A506,1,code,no data proof
 60FF2,1,code,no data proof
@@ -2766,9 +2520,7 @@ F30C4C,2,code,no data proof
 86837,1,code,no data proof
 DD511,1,code,no data proof
 DD658,1,code,no data proof
-DDAD7,1,code,no data proof
 DDC34,1,code,no data proof
-DF37C,1,code,no data proof
 DF76E,1,code,no data proof
 DF9AF,1,code,no data proof
 DFB1B,1,code,no data proof
@@ -2797,15 +2549,16 @@ F2660,1,code,no data proof
 F2673,1,code,no data proof
 F2686,1,code,no data proof
 126803,1,code,no data proof
-12692A,1,code,no data proof
 126B3F,1,code,no data proof
 12736C,1,code,no data proof
 12D01C,1,code,no data proof
 12D15E,1,code,no data proof
 12D943,1,code,no data proof
+1370A1,1,code,no data proof
 1378D6,1,code,no data proof
 137AFC,1,code,no data proof
 158888,1,code,no data proof
+18F0A1,1,code,no data proof
 192EC8,1,code,no data proof
 194B5A,1,code,no data proof
 194B96,1,code,no data proof
@@ -2814,12 +2567,13 @@ F2686,1,code,no data proof
 1E7E19,1,code,no data proof
 1EACF0,1,code,no data proof
 1F098B,1,code,no data proof
+21F0A1,1,code,no data proof
 224B5A,1,code,no data proof
 224B96,1,code,no data proof
 2263DC,1,code,no data proof
 24AB8E,1,code,no data proof
 286803,1,code,no data proof
-286A30,1,code,no data proof
+28692A,1,code,no data proof
 28736C,1,code,no data proof
 28741D,1,code,no data proof
 288D52,1,code,no data proof
@@ -2843,7 +2597,6 @@ F2686,1,code,no data proof
 29002B,1,code,no data proof
 29004F,1,code,no data proof
 2DE803,1,code,no data proof
-2DE826,1,code,no data proof
 2DEB3F,1,code,no data proof
 2DF36C,1,code,no data proof
 2DFE12,1,code,no data proof
@@ -2856,6 +2609,7 @@ F2686,1,code,no data proof
 2E5829,1,code,no data proof
 2E58B8,1,code,no data proof
 2E5C63,1,code,no data proof
+3270A1,1,code,no data proof
 32CB5A,1,code,no data proof
 32CB96,1,code,no data proof
 32CCB4,1,code,no data proof
@@ -2882,7 +2636,6 @@ F2686,1,code,no data proof
 39674D,1,code,no data proof
 3D114C,1,code,no data proof
 3E6803,1,code,no data proof
-3E6826,1,code,no data proof
 3E736C,1,code,no data proof
 3E741D,1,code,no data proof
 3E84C7,1,code,no data proof
@@ -2893,7 +2646,6 @@ F2686,1,code,no data proof
 3ED5BD,1,code,no data proof
 3EDACB,1,code,no data proof
 3EDC9A,1,code,no data proof
-3EDFAE,1,code,no data proof
 3EE149,1,code,no data proof
 3EE4E7,1,code,no data proof
 3EE558,1,code,no data proof
@@ -2907,6 +2659,7 @@ F2686,1,code,no data proof
 3EF6E5,1,code,no data proof
 3EF726,1,code,no data proof
 3EFBEE,1,code,no data proof
+3EFBF9,1,code,no data proof
 43E803,1,code,no data proof
 43EC3D,1,code,no data proof
 43EC3F,1,code,no data proof
@@ -2915,9 +2668,9 @@ F2686,1,code,no data proof
 43F36C,1,code,no data proof
 444B28,1,code,no data proof
 4454B8,1,code,no data proof
-445697,1,code,no data proof
 4457E1,1,code,no data proof
 4457E6,1,code,no data proof
+445809,1,code,no data proof
 445C57,1,code,no data proof
 445E64,1,code,no data proof
 44606F,1,code,no data proof
@@ -2926,8 +2679,6 @@ F2686,1,code,no data proof
 494809,1,code,no data proof
 49480F,1,code,no data proof
 496803,1,code,no data proof
-496826,1,code,no data proof
-496A30,1,code,no data proof
 49736C,1,code,no data proof
 4984C4,1,code,no data proof
 49B787,1,code,no data proof
@@ -2970,7 +2721,6 @@ F2686,1,code,no data proof
 4F673D,1,code,no data proof
 5338CA,1,code,no data proof
 546803,1,code,no data proof
-546826,1,code,no data proof
 54736C,1,code,no data proof
 54741D,1,code,no data proof
 54849D,1,code,no data proof
@@ -3005,6 +2755,7 @@ F2686,1,code,no data proof
 5A4E6A,1,code,no data proof
 5A501C,1,code,no data proof
 5A51DD,1,code,no data proof
+5A5844,1,code,no data proof
 5A5AB4,1,code,no data proof
 5A5B43,1,code,no data proof
 5A5F6C,1,code,no data proof
@@ -3013,7 +2764,6 @@ F2686,1,code,no data proof
 5A6884,1,code,no data proof
 5A68CC,1,code,no data proof
 5F6803,1,code,no data proof
-5F6826,1,code,no data proof
 5F736C,1,code,no data proof
 5F741D,1,code,no data proof
 5F84BC,1,code,no data proof
@@ -3040,8 +2790,6 @@ F2686,1,code,no data proof
 5FF90B,1,code,no data proof
 637A20,1,code,no data proof
 64E803,1,code,no data proof
-64E826,1,code,no data proof
-64EA30,1,code,no data proof
 64F36C,1,code,no data proof
 654B28,1,code,no data proof
 655875,1,code,no data proof
@@ -3052,7 +2800,6 @@ F2686,1,code,no data proof
 694812,1,code,no data proof
 694867,1,code,no data proof
 6A6803,1,code,no data proof
-6A6826,1,code,no data proof
 6A736C,1,code,no data proof
 6A84DC,1,code,no data proof
 6AB902,1,code,no data proof
@@ -3071,7 +2818,6 @@ F2686,1,code,no data proof
 6AE6BE,1,code,no data proof
 6AEDFF,1,code,no data proof
 6AEE70,1,code,no data proof
-6AF898,1,code,no data proof
 6AF979,1,code,no data proof
 6AFAEF,1,code,no data proof
 6AFB0B,1,code,no data proof
@@ -3091,8 +2837,6 @@ F2686,1,code,no data proof
 705413,1,code,no data proof
 705639,1,code,no data proof
 7056C8,1,code,no data proof
-70586F,1,code,no data proof
-705BAD,1,code,no data proof
 705C2D,1,code,no data proof
 705D1B,1,code,no data proof
 706346,1,code,no data proof
@@ -3102,7 +2846,6 @@ F2686,1,code,no data proof
 70789D,1,code,no data proof
 754803,1,code,no data proof
 756803,1,code,no data proof
-756826,1,code,no data proof
 75736C,1,code,no data proof
 75741D,1,code,no data proof
 7585EB,1,code,no data proof
@@ -3110,6 +2853,7 @@ F2686,1,code,no data proof
 75CFAD,1,code,no data proof
 75D01C,1,code,no data proof
 75D17F,1,code,no data proof
+75DB88,1,code,no data proof
 75E5A8,1,code,no data proof
 75EA67,1,code,no data proof
 75EA7B,1,code,no data proof
@@ -3119,7 +2863,6 @@ F2686,1,code,no data proof
 75F7B8,1,code,no data proof
 75FA88,1,code,no data proof
 75FC2D,1,code,no data proof
-75FC90,1,code,no data proof
 75FE95,1,code,no data proof
 75FFF3,1,code,no data proof
 7601B3,1,code,no data proof
@@ -3135,7 +2878,6 @@ F2686,1,code,no data proof
 7B501C,1,code,no data proof
 7B5765,1,code,no data proof
 7B57F4,1,code,no data proof
-7B5C0A,1,code,no data proof
 7B652F,1,code,no data proof
 7B6796,1,code,no data proof
 7B6AE2,1,code,no data proof
@@ -3146,7 +2888,6 @@ F2686,1,code,no data proof
 7BF0EB,1,code,no data proof
 7BF22E,1,code,no data proof
 806803,1,code,no data proof
-806826,1,code,no data proof
 80736C,1,code,no data proof
 80846D,1,code,no data proof
 80C0BD,1,code,no data proof
@@ -3163,20 +2904,19 @@ F2686,1,code,no data proof
 80E5F8,1,code,no data proof
 80EBEA,1,code,no data proof
 80EFD9,1,code,no data proof
-80F24D,1,code,no data proof
 80F42A,1,code,no data proof
 810C82,1,code,no data proof
 85E803,1,code,no data proof
 85F36C,1,code,no data proof
 85FF05,1,code,no data proof
+864976,1,code,no data proof
 864B28,1,code,no data proof
 864E6A,1,code,no data proof
 8658C1,1,code,no data proof
 865950,1,code,no data proof
-865AC9,1,code,no data proof
 866658,1,code,no data proof
+86F0A1,1,code,no data proof
 8B6803,1,code,no data proof
-8B6826,1,code,no data proof
 8B736C,1,code,no data proof
 8B741D,1,code,no data proof
 8B8466,1,code,no data proof
@@ -3196,6 +2936,7 @@ F2686,1,code,no data proof
 8BF939,1,code,no data proof
 8BFD74,1,code,no data proof
 8BFF5E,1,code,no data proof
+9170A1,1,code,no data proof
 91CB5A,1,code,no data proof
 91CB96,1,code,no data proof
 966803,1,code,no data proof
@@ -3222,7 +2963,6 @@ F2686,1,code,no data proof
 96F6EB,1,code,no data proof
 96F782,1,code,no data proof
 9F6803,1,code,no data proof
-9F6826,1,code,no data proof
 9F736C,1,code,no data proof
 9FAF83,1,code,no data proof
 9FCB28,1,code,no data proof
@@ -3272,15 +3012,16 @@ C6D01C,1,code,no data proof
 C6D15E,1,code,no data proof
 C6D899,1,code,no data proof
 C6D928,1,code,no data proof
-C6E1BE,1,code,no data proof
 C6E68A,1,code,no data proof
 C6E8C0,1,code,no data proof
 C6E91C,1,code,no data proof
+D170A1,1,code,no data proof
 D1CB5A,1,code,no data proof
 D1CB96,1,code,no data proof
 D1EBD4,1,code,no data proof
 D1F87B,1,code,no data proof
 D1FC09,1,code,no data proof
+DC70A1,1,code,no data proof
 DCCB5A,1,code,no data proof
 DCCB96,1,code,no data proof
 DCFF9B,1,code,no data proof

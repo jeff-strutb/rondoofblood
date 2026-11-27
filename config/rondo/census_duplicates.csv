@@ -13,15 +13,17 @@ F02F3,19,DDFCA,the whole run equal byte for byte to a kept copy a script ran som
 F058D,17,DE269,the whole run equal byte for byte to a kept copy a script ran some of
 F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the disc
 12686E,50,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
-1268EC,59,2DE8EC,the whole run equal byte for byte to a kept copy a script ran some of
+1268EC,59,2868EC,the whole run equal byte for byte to a kept copy a script ran some of
+12692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+12697C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 126A3D,35,286A3D,the whole run equal byte for byte to a kept copy a script ran some of
 126A66,33,38EA66,the whole run equal byte for byte to a kept copy a script ran some of
 126AAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
 126C13,41,286C13,the whole run equal byte for byte to a kept copy a script ran some of
-1271E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-127206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+1271E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+127206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 1272A4,175,2872A4,the whole run equal byte for byte to a kept copy a script ran some of
-1273A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+1273A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 1275BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 127607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 12764D,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -40,19 +42,22 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 12B092,34,393092,the whole run equal byte for byte to a kept copy a script ran some of
 12B1D0,20,28B1D0,the whole run equal byte for byte to a kept copy a script ran some of
 12C8A1,31,28C8A1,the whole run equal byte for byte to a kept copy a script ran some of
+12C8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 12CA3C,17,3ECA3C,the whole run equal byte for byte to a kept copy a script ran some of
 12CB28,61,28CB28,the whole run equal byte for byte to a kept copy a script ran some of
 12CB6A,71,28CB6A,the whole run equal byte for byte to a kept copy a script ran some of
 12CC44,26,28CC44,the whole run equal byte for byte to a kept copy a script ran some of
-12CC68,328,9FCC68,the whole run equal byte for byte to a kept copy a script ran some of
+12CC6A,326,9FCC6A,the whole run equal byte for byte to a kept copy a script ran some of
 12CDB1,159,75CDB1,the whole run equal byte for byte to a kept copy a script ran some of
 12D1EB,26,28D1EB,the whole run equal byte for byte to a kept copy a script ran some of
 12D235,261,395235,the whole run equal byte for byte to a kept copy a script ran some of
-136913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+136913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+13692C,60,3E6943,the whole run equal byte for byte to a kept copy a script ran some of
 138192,74,860482,the whole run equal byte for byte to a kept copy a script ran some of
 1383E3,23,13839D,the whole run equal byte for byte to a kept copy earlier on the disc
 160800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
-18E913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+18E913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+18E92C,60,3E6943,the whole run equal byte for byte to a kept copy a script ran some of
 18EA26,110,136A26,the whole run equal byte for byte to a kept copy earlier on the disc
 18EA96,128,136A96,the whole run equal byte for byte to a kept copy earlier on the disc
 18EB17,202,136B17,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -77,8 +82,9 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 1F8800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 208800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 210800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
-21E913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-21E92C,234,18E92C,the whole run equal byte for byte to a kept copy earlier on the disc
+21E913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+21E92C,60,3E6943,the whole run equal byte for byte to a kept copy a script ran some of
+21E969,173,18E969,the whole run equal byte for byte to a kept copy earlier on the disc
 21EA26,110,136A26,the whole run equal byte for byte to a kept copy earlier on the disc
 21EA96,128,136A96,the whole run equal byte for byte to a kept copy earlier on the disc
 21EB17,202,136B17,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -138,26 +144,21 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 24A800,106,12A800,the whole run equal byte for byte to a kept copy a script ran some of
 250800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 28686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
-2868EC,59,2DE8EC,the whole run equal byte for byte to a kept copy a script ran some of
-28692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-286943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-28697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+2868F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
+28694F,41,2DE94F,the whole run equal byte for byte to a kept copy a script ran some of
+28697C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 2869D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 286A66,33,38EA66,the whole run equal byte for byte to a kept copy a script ran some of
 286B61,159,126B61,the whole run equal byte for byte to a kept copy earlier on the disc
 286C3D,535,126C3D,the whole run equal byte for byte to a kept copy earlier on the disc
 286E75,149,126E75,the whole run equal byte for byte to a kept copy earlier on the disc
 286F20,129,126F20,the whole run equal byte for byte to a kept copy a script ran some of
-2871E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-287206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
 2872FC,87,4972FC,the whole run equal byte for byte to a kept copy a script ran some of
-2873A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
 28746D,160,12746D,the whole run equal byte for byte to a kept copy earlier on the disc
 287522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 2876AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 2879DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 287B60,29,127B60,the whole run equal byte for byte to a kept copy earlier on the disc
-287D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 287D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 2880FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
 288170,93,128170,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -175,7 +176,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 28AEAF,43,392EAF,the whole run equal byte for byte to a kept copy a script ran some of
 28AF29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 28C8A6,26,3948A6,the whole run equal byte for byte to a kept copy a script ran some of
-28C8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+28C8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 28CA3C,17,3ECA3C,the whole run equal byte for byte to a kept copy a script ran some of
 28CE75,141,4F4E75,the whole run equal byte for byte to a kept copy a script ran some of
 28CF33,17,96CF33,the whole run equal byte for byte to a kept copy a script ran some of
@@ -184,25 +185,26 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 290BD1,16,130BD1,the whole run equal byte for byte to a kept copy earlier on the disc
 2DE887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 2DE8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-2DE92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-2DE97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+2DE92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+2DE97C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 2DE9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 2DEA3D,101,38EA3D,the whole run equal byte for byte to a kept copy a script ran some of
 2DEAAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
 2DF048,58,127048,the whole run equal byte for byte to a kept copy a script ran some of
-2DF1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-2DF206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+2DF1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+2DF206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 2DF2A4,175,5472A4,the whole run equal byte for byte to a kept copy a script ran some of
-2DF3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+2DF3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 2DF3BC,42,4EF3BC,the whole run equal byte for byte to a kept copy a script ran some of
 2DF443,41,4EF443,the whole run equal byte for byte to a kept copy a script ran some of
-2DF4A5,18,1274A5,the whole run equal byte for byte to a kept copy earlier on the disc
+2DF4A5,18,7AF4A5,the whole run equal byte for byte to a kept copy a script ran some of
 2DF5BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 2DF607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 2DF64D,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 2DF6AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 2DF79C,174,96779C,the whole run equal byte for byte to a kept copy a script ran some of
 2DF9DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
+2E0264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 2E0482,391,860482,the whole run equal byte for byte to a kept copy a script ran some of
 2E082A,60,6282A,the whole run equal byte for byte to a kept copy a script ran some of
 2E0A47,56,62A47,the whole run equal byte for byte to a kept copy a script ran some of
@@ -233,8 +235,9 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 2F8800,379,19C800,the whole run equal byte for byte to a kept copy earlier on the disc
 310800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 318800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
-326913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-32692C,234,13692C,the whole run equal byte for byte to a kept copy earlier on the disc
+326913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+32692C,60,3E6943,the whole run equal byte for byte to a kept copy a script ran some of
+326969,173,136969,the whole run equal byte for byte to a kept copy earlier on the disc
 326A26,110,136A26,the whole run equal byte for byte to a kept copy earlier on the disc
 326A96,128,136A96,the whole run equal byte for byte to a kept copy earlier on the disc
 326B17,202,136B17,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -280,8 +283,8 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 358800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 38E887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 38E8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-38E92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-38E97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+38E92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+38E97C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 38E9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 38EA3D,35,286A3D,the whole run equal byte for byte to a kept copy a script ran some of
 38EAA2,156,3E6AA2,the whole run equal byte for byte to a kept copy a script ran some of
@@ -290,13 +293,13 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 38ED4D,46,7AED4D,the whole run equal byte for byte to a kept copy a script ran some of
 38EFD5,173,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
 38F12B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-38F1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-38F206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+38F1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+38F206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 38F2A4,175,5472A4,the whole run equal byte for byte to a kept copy a script ran some of
-38F3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+38F3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 38F3BC,42,4EF3BC,the whole run equal byte for byte to a kept copy a script ran some of
 38F443,41,4EF443,the whole run equal byte for byte to a kept copy a script ran some of
-38F4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
+38F4A4,19,7AF4A4,the whole run equal byte for byte to a kept copy a script ran some of
 38F522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 38F5BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 38F607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -310,7 +313,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 38FE72,29,2DFE72,the whole run equal byte for byte to a kept copy earlier on the disc
 3900A5,24,2E00A5,the whole run equal byte for byte to a kept copy a script ran some of
 390213,25,2E0213,the whole run equal byte for byte to a kept copy a script ran some of
-390259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+390264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 39040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 390482,75,860482,the whole run equal byte for byte to a kept copy a script ran some of
 390540,22,12822E,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -343,21 +346,20 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 398BD9,24,2E8BD9,the whole run equal byte for byte to a kept copy earlier on the disc
 3E686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
 3E68EC,59,43E8EC,the whole run equal byte for byte to a kept copy a script ran some of
-3E692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-3E697C,37,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+3E692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+3E697C,37,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 3E69D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 3E6A3C,102,43EA3C,the whole run equal byte for byte to a kept copy a script ran some of
 3E6AAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
 3E6B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
-3E71E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-3E7206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+3E71E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+3E7206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 3E72A4,175,5472A4,the whole run equal byte for byte to a kept copy a script ran some of
-3E73A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+3E73A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 3E746C,161,12746C,the whole run equal byte for byte to a kept copy earlier on the disc
 3E7522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 3E76AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 3E79DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
-3E7D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 3E7D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 3E7F03,218,287F03,the whole run equal byte for byte to a kept copy earlier on the disc
 3E80FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -376,7 +378,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 3EAF29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 3EB092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 3EB6B3,19,24B06C,the whole run equal byte for byte to a kept copy earlier on the disc
-3EC8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+3EC8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 3ECB28,61,28CB28,the whole run equal byte for byte to a kept copy a script ran some of
 3ECE11,63,28CE11,the whole run equal byte for byte to a kept copy a script ran some of
 3ECE6E,149,4F4E6E,the whole run equal byte for byte to a kept copy a script ran some of
@@ -385,8 +387,8 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 3ED235,61,54D33A,the whole run equal byte for byte to a kept copy a script ran some of
 43E887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 43E8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-43E92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-43E97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+43E92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+43E97C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 43E9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 43EA3C,36,496A3C,the whole run equal byte for byte to a kept copy a script ran some of
 43EAAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
@@ -395,12 +397,12 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 43ED66,21,966D66,the whole run equal byte for byte to a kept copy a script ran some of
 43F048,58,127048,the whole run equal byte for byte to a kept copy a script ran some of
 43F12B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-43F1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-43F206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+43F1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+43F206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 43F2A4,175,5472A4,the whole run equal byte for byte to a kept copy a script ran some of
-43F3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+43F3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 43F3BC,42,4EF3BC,the whole run equal byte for byte to a kept copy a script ran some of
-43F4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
+43F4A4,19,7AF4A4,the whole run equal byte for byte to a kept copy a script ran some of
 43F522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 43F5BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 43F607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -412,7 +414,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 43FB3F,724,2DFB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 440099,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 440215,23,2E0215,the whole run equal byte for byte to a kept copy earlier on the disc
-440259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+440264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 44040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 440482,75,860482,the whole run equal byte for byte to a kept copy a script ran some of
 440540,22,12822E,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -424,10 +426,9 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 4428BE,29,12A8BE,the whole run equal byte for byte to a kept copy a script ran some of
 442C92,530,49AC92,the whole run equal byte for byte to a kept copy a script ran some of
 442EAF,43,392EAF,the whole run equal byte for byte to a kept copy a script ran some of
-442F28,52,2E2F28,the whole run equal byte for byte to a kept copy earlier on the disc
+442F29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 443092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 4431B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-4448E2,48,49C8E2,the whole run equal byte for byte to a kept copy a script ran some of
 444A29,36,3ECA29,the whole run equal byte for byte to a kept copy a script ran some of
 444A4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 444D08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
@@ -443,24 +444,21 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 448BD9,24,2E8BD9,the whole run equal byte for byte to a kept copy earlier on the disc
 49686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
 4968EC,59,4EE8EC,the whole run equal byte for byte to a kept copy a script ran some of
-49692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+49692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 496943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-49697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+49697C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 4969D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 496A56,76,4EEA56,the whole run equal byte for byte to a kept copy a script ran some of
 496ABA,43,286ABA,the whole run equal byte for byte to a kept copy earlier on the disc
 496B19,37,286B19,the whole run equal byte for byte to a kept copy a script ran some of
 496B61,219,2DEB61,the whole run equal byte for byte to a kept copy earlier on the disc
-497206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
 4972A4,45,2872A4,the whole run equal byte for byte to a kept copy a script ran some of
 4972D6,38,2872D6,the whole run equal byte for byte to a kept copy a script ran some of
-4973A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
 49746D,160,12746D,the whole run equal byte for byte to a kept copy earlier on the disc
 497522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 4976AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 4979DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 497B60,29,127B60,the whole run equal byte for byte to a kept copy earlier on the disc
-497D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 497D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 497F04,217,287F04,the whole run equal byte for byte to a kept copy earlier on the disc
 4980FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -480,7 +478,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 49AEAF,43,392EAF,the whole run equal byte for byte to a kept copy a script ran some of
 49AF29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 49B092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
-49C8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+49C8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 49CE11,63,28CE11,the whole run equal byte for byte to a kept copy a script ran some of
 49CE6A,153,12CE6A,the whole run equal byte for byte to a kept copy earlier on the disc
 49CF33,17,96CF33,the whole run equal byte for byte to a kept copy a script ran some of
@@ -489,12 +487,13 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 49D8CE,40,32D9C2,the whole run equal byte for byte to a kept copy earlier on the disc
 49DB10,17,32DC04,the whole run equal byte for byte to a kept copy earlier on the disc
 49EC7C,17,8BE841,the whole run equal byte for byte to a kept copy a script ran some of
+49F305,39,32F3E0,the whole run equal byte for byte to a kept copy earlier on the disc
 4A0318,119,3303F3,the whole run equal byte for byte to a kept copy earlier on the disc
 4A0BD1,46,3F0BD1,the whole run equal byte for byte to a kept copy earlier on the disc
 4EE887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 4EE8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-4EE92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-4EE97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+4EE92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+4EE97C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 4EE9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 4EEA3C,36,64EA3C,the whole run equal byte for byte to a kept copy a script ran some of
 4EEAA2,156,546AA2,the whole run equal byte for byte to a kept copy a script ran some of
@@ -503,11 +502,11 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 4EED66,21,966D66,the whole run equal byte for byte to a kept copy a script ran some of
 4EEFD5,173,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
 4EF12B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-4EF1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-4EF206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+4EF1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+4EF206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 4EF2A4,175,5472A4,the whole run equal byte for byte to a kept copy a script ran some of
-4EF3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
-4EF4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
+4EF3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
+4EF4A4,19,7AF4A4,the whole run equal byte for byte to a kept copy a script ran some of
 4EF522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 4EF6AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 4EF79C,174,96779C,the whole run equal byte for byte to a kept copy a script ran some of
@@ -519,7 +518,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 4EFE71,30,43FE71,the whole run equal byte for byte to a kept copy earlier on the disc
 4F00A5,24,2E00A5,the whole run equal byte for byte to a kept copy a script ran some of
 4F0212,26,2E0212,the whole run equal byte for byte to a kept copy a script ran some of
-4F0259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+4F0264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 4F040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 4F0482,75,860482,the whole run equal byte for byte to a kept copy a script ran some of
 4F0540,22,12822E,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -536,7 +535,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 4F2F29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 4F3092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 4F31B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-4F48D6,60,54C8D6,the whole run equal byte for byte to a kept copy a script ran some of
+4F48D6,60,4448D6,the whole run equal byte for byte to a kept copy a script ran some of
 4F4A4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 4F4D08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
 4F4E11,63,28CE11,the whole run equal byte for byte to a kept copy a script ran some of
@@ -551,18 +550,18 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 4F8BD9,24,2E8BD9,the whole run equal byte for byte to a kept copy earlier on the disc
 54686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
 5468EC,59,59E8EC,the whole run equal byte for byte to a kept copy a script ran some of
-54692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+54692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 546943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-54697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+54697C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 5469D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 546A3C,102,59EA3C,the whole run equal byte for byte to a kept copy a script ran some of
 546AAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
 546B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 54712B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-5471E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-547206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+5471E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+547206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 5472E0,115,64F2E0,the whole run equal byte for byte to a kept copy a script ran some of
-5473A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+5473A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 54746C,161,12746C,the whole run equal byte for byte to a kept copy earlier on the disc
 547522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 547607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -570,7 +569,6 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 5476AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 5479DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 547B5F,30,3E7B5F,the whole run equal byte for byte to a kept copy earlier on the disc
-547D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 547D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 547F03,218,287F03,the whole run equal byte for byte to a kept copy earlier on the disc
 5480FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -588,7 +586,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 54B1B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
 54B62E,16,54B5AE,the whole run equal byte for byte to a kept copy earlier on the disc
 54C885,18,12C885,the whole run equal byte for byte to a kept copy a script ran some of
-54C8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+54C8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 54CA3C,17,3ECA3C,the whole run equal byte for byte to a kept copy a script ran some of
 54CD08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
 54CE11,63,28CE11,the whole run equal byte for byte to a kept copy a script ran some of
@@ -603,8 +601,8 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 550BD1,46,3F0BD1,the whole run equal byte for byte to a kept copy earlier on the disc
 59E887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 59E8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-59E92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-59E97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+59E92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+59E97C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 59E9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 59EA3C,36,64EA3C,the whole run equal byte for byte to a kept copy a script ran some of
 59EAAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
@@ -613,11 +611,11 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 59ED66,21,966D66,the whole run equal byte for byte to a kept copy a script ran some of
 59F048,58,127048,the whole run equal byte for byte to a kept copy a script ran some of
 59F12B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-59F1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-59F206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+59F1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+59F206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 59F2A4,175,64F2A4,the whole run equal byte for byte to a kept copy a script ran some of
-59F3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
-59F4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
+59F3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
+59F4A4,19,7AF4A4,the whole run equal byte for byte to a kept copy a script ran some of
 59F522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 59F607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 59F64D,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -630,11 +628,12 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 5A0041,20,440041,the whole run equal byte for byte to a kept copy earlier on the disc
 5A0099,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 5A0215,23,2E0215,the whole run equal byte for byte to a kept copy earlier on the disc
-5A0259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+5A0264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 5A040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 5A0482,75,860482,the whole run equal byte for byte to a kept copy a script ran some of
 5A0540,22,12822E,the whole run equal byte for byte to a kept copy earlier on the disc
 5A082A,60,6282A,the whole run equal byte for byte to a kept copy a script ran some of
+5A08B1,46,628B1,the whole run equal byte for byte to a kept copy a script ran some of
 5A0A47,56,62A47,the whole run equal byte for byte to a kept copy a script ran some of
 5A0AA2,17,4F0AA2,the whole run equal byte for byte to a kept copy a script ran some of
 5A0D39,217,6A8D39,the whole run equal byte for byte to a kept copy a script ran some of
@@ -647,7 +646,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 5A2F29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 5A3092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 5A31B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-5A48E2,48,5FC8E2,the whole run equal byte for byte to a kept copy a script ran some of
+5A48E2,48,4448E2,the whole run equal byte for byte to a kept copy a script ran some of
 5A4A29,36,3ECA29,the whole run equal byte for byte to a kept copy a script ran some of
 5A4A4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 5A4D08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
@@ -660,23 +659,22 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 5A8BD9,24,2E8BD9,the whole run equal byte for byte to a kept copy earlier on the disc
 5F686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
 5F68EC,59,64E8EC,the whole run equal byte for byte to a kept copy a script ran some of
-5F692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+5F692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 5F6943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-5F697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+5F697C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 5F69D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 5F6A3C,102,64EA3C,the whole run equal byte for byte to a kept copy a script ran some of
 5F6B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 5F712B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-5F71E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-5F7206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+5F71E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+5F7206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 5F72A4,175,64F2A4,the whole run equal byte for byte to a kept copy a script ran some of
-5F73A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+5F73A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 5F746C,161,12746C,the whole run equal byte for byte to a kept copy earlier on the disc
 5F7522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 5F76AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 5F79DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 5F7B5F,30,3E7B5F,the whole run equal byte for byte to a kept copy earlier on the disc
-5F7D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 5F7D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 5F7F03,218,287F03,the whole run equal byte for byte to a kept copy earlier on the disc
 5F80FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -693,7 +691,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 5FB092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 5FB1B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
 5FC8A1,31,3948A1,the whole run equal byte for byte to a kept copy a script ran some of
-5FC8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+5FC8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 5FC995,16,12C995,the whole run equal byte for byte to a kept copy a script ran some of
 5FCE11,63,28CE11,the whole run equal byte for byte to a kept copy a script ran some of
 5FCE6E,149,704E6E,the whole run equal byte for byte to a kept copy a script ran some of
@@ -703,8 +701,8 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 600BD1,46,3F0BD1,the whole run equal byte for byte to a kept copy earlier on the disc
 64E887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 64E8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-64E92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-64E97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+64E92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+64E97C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 64E9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 64EA56,76,6FEA56,the whole run equal byte for byte to a kept copy a script ran some of
 64EAAD,56,286AAD,the whole run equal byte for byte to a kept copy a script ran some of
@@ -712,11 +710,11 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 64EB61,219,2DEB61,the whole run equal byte for byte to a kept copy earlier on the disc
 64F048,58,127048,the whole run equal byte for byte to a kept copy a script ran some of
 64F12B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-64F1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-64F206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+64F1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+64F206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 64F2FC,87,4972FC,the whole run equal byte for byte to a kept copy a script ran some of
-64F3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
-64F4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
+64F3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
+64F4A4,19,7AF4A4,the whole run equal byte for byte to a kept copy a script ran some of
 64F522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 64F6AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 64F79C,174,96779C,the whole run equal byte for byte to a kept copy a script ran some of
@@ -725,7 +723,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 64FB3F,724,2DFB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 64FE71,30,43FE71,the whole run equal byte for byte to a kept copy earlier on the disc
 650212,26,2E0212,the whole run equal byte for byte to a kept copy a script ran some of
-650259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+650264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 65040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 650482,391,860482,the whole run equal byte for byte to a kept copy a script ran some of
 65082A,60,6282A,the whole run equal byte for byte to a kept copy a script ran some of
@@ -741,7 +739,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 652F29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 653092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 6531B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-6548E2,48,6AC8E2,the whole run equal byte for byte to a kept copy a script ran some of
+6548E2,48,4448E2,the whole run equal byte for byte to a kept copy a script ran some of
 654A4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 654D08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
 654E73,61,12CE73,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -754,24 +752,20 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 658BCD,36,2E8BCD,the whole run equal byte for byte to a kept copy earlier on the disc
 6A686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
 6A68EC,59,6FE8EC,the whole run equal byte for byte to a kept copy a script ran some of
-6A692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+6A692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 6A6943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-6A697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+6A697C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 6A69D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 6A6A3C,102,6FEA3C,the whole run equal byte for byte to a kept copy a script ran some of
 6A6AAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
 6A6B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 6A712B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-6A71E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-6A7206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
 6A72E0,115,137296,the whole run equal byte for byte to a kept copy earlier on the disc
-6A73A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
 6A746C,161,12746C,the whole run equal byte for byte to a kept copy earlier on the disc
 6A7522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 6A76AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 6A79DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 6A7B5F,30,3E7B5F,the whole run equal byte for byte to a kept copy earlier on the disc
-6A7D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 6A7D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 6A7F00,221,287F00,the whole run equal byte for byte to a kept copy a script ran some of
 6A80FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -790,7 +784,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 6AAF29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 6AB092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 6AB1B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-6AC8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+6AC8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 6AC995,16,12C995,the whole run equal byte for byte to a kept copy a script ran some of
 6ACA4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 6ACDEC,100,28CDEC,the whole run equal byte for byte to a kept copy a script ran some of
@@ -813,8 +807,8 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 6C38A7,25,24B8A7,the whole run equal byte for byte to a kept copy earlier on the disc
 6FE887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 6FE8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-6FE92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-6FE97C,37,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+6FE92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+6FE97C,37,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 6FE9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 6FEAA2,156,5F6AA2,the whole run equal byte for byte to a kept copy a script ran some of
 6FEB3F,193,126B3F,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -822,11 +816,11 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 6FED66,21,966D66,the whole run equal byte for byte to a kept copy a script ran some of
 6FEFD5,173,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
 6FF12B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-6FF1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-6FF206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+6FF1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+6FF206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 6FF2A4,175,C672A4,the whole run equal byte for byte to a kept copy a script ran some of
-6FF3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
-6FF4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
+6FF3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
+6FF4A4,19,7AF4A4,the whole run equal byte for byte to a kept copy a script ran some of
 6FF522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 6FF607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 6FF64D,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -841,7 +835,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 700045,16,440045,the whole run equal byte for byte to a kept copy earlier on the disc
 700099,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 700212,26,2E0212,the whole run equal byte for byte to a kept copy a script ran some of
-700259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+700264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 70040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 700482,75,860482,the whole run equal byte for byte to a kept copy a script ran some of
 700540,22,12822E,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -859,7 +853,6 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 702F29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 703092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 7031B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-7048D6,60,75C8D6,the whole run equal byte for byte to a kept copy a script ran some of
 704A29,36,3ECA29,the whole run equal byte for byte to a kept copy a script ran some of
 704A4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 704D08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
@@ -873,20 +866,17 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 70538F,89,44654D,the whole run equal byte for byte to a kept copy earlier on the disc
 708BD9,24,2E8BD9,the whole run equal byte for byte to a kept copy earlier on the disc
 75686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
-7568EC,59,7AE8EC,the whole run equal byte for byte to a kept copy a script ran some of
-75692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-756943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-75697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+7568F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
+75692A,18,28692A,the whole run equal byte for byte to a kept copy earlier on the disc
+75694F,41,2DE94F,the whole run equal byte for byte to a kept copy a script ran some of
+75697C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 7569D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 756A3C,113,7AEA3C,the whole run equal byte for byte to a kept copy a script ran some of
 756ABA,132,5F6ABA,the whole run equal byte for byte to a kept copy earlier on the disc
 756B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 756FD5,30,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
 75712B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-7571E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-757206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
 7572A4,175,C672A4,the whole run equal byte for byte to a kept copy a script ran some of
-7573A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
 75746C,161,12746C,the whole run equal byte for byte to a kept copy earlier on the disc
 757522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 7575BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -894,7 +884,6 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 7579DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 757AD9,78,127AD9,the whole run equal byte for byte to a kept copy a script ran some of
 757B5F,30,3E7B5F,the whole run equal byte for byte to a kept copy earlier on the disc
-757D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 757D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 757F00,221,287F00,the whole run equal byte for byte to a kept copy a script ran some of
 7580FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -914,7 +903,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 75B092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 75B1B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
 75C8A1,31,3948A1,the whole run equal byte for byte to a kept copy a script ran some of
-75C8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+75C8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 75C995,16,12C995,the whole run equal byte for byte to a kept copy a script ran some of
 75CA4F,26,12CA4F,the whole run equal byte for byte to a kept copy a script ran some of
 75CC44,26,28CC44,the whole run equal byte for byte to a kept copy a script ran some of
@@ -930,8 +919,8 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 785D49,32,445C57,the whole run equal byte for byte to a kept copy earlier on the disc
 7AE887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 7AE8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-7AE92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-7AE97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+7AE92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+7AE97C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 7AE9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 7AEA3C,36,6FEA3C,the whole run equal byte for byte to a kept copy earlier on the disc
 7AEAAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
@@ -940,14 +929,12 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 7AED51,42,B5ED51,the whole run equal byte for byte to a kept copy a script ran some of
 7AF048,58,127048,the whole run equal byte for byte to a kept copy a script ran some of
 7AF12B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-7AF1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-7AF206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+7AF1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+7AF206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 7AF2A4,175,C672A4,the whole run equal byte for byte to a kept copy a script ran some of
-7AF3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+7AF3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 7AF3BC,42,4EF3BC,the whole run equal byte for byte to a kept copy a script ran some of
 7AF43C,48,43F43C,the whole run equal byte for byte to a kept copy earlier on the disc
-7AF4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
-7AF522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 7AF5BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 7AF607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 7AF64D,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -959,9 +946,8 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 7AFE71,30,43FE71,the whole run equal byte for byte to a kept copy earlier on the disc
 7B0041,20,440041,the whole run equal byte for byte to a kept copy earlier on the disc
 7B0099,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
-7B013E,68,2E013E,the whole run equal byte for byte to a kept copy a script ran some of
 7B0215,23,2E0215,the whole run equal byte for byte to a kept copy earlier on the disc
-7B0259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+7B0264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 7B040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 7B0482,75,860482,the whole run equal byte for byte to a kept copy a script ran some of
 7B0540,22,12822E,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -977,11 +963,9 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 7B292F,700,80A92F,the whole run equal byte for byte to a kept copy a script ran some of
 7B2BF6,686,80ABF6,the whole run equal byte for byte to a kept copy a script ran some of
 7B2EAF,43,392EAF,the whole run equal byte for byte to a kept copy a script ran some of
-7B2F28,52,2E2F28,the whole run equal byte for byte to a kept copy earlier on the disc
+7B2F29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 7B3092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 7B31B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-7B48A1,31,3948A1,the whole run equal byte for byte to a kept copy a script ran some of
-7B48E2,48,80C8E2,the whole run equal byte for byte to a kept copy a script ran some of
 7B4A29,36,3ECA29,the whole run equal byte for byte to a kept copy a script ran some of
 7B4A4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 7B4B28,61,28CB28,the whole run equal byte for byte to a kept copy a script ran some of
@@ -997,7 +981,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 7B51EB,26,28D1EB,the whole run equal byte for byte to a kept copy a script ran some of
 7B59DF,20,28EC0D,the whole run equal byte for byte to a kept copy a script ran some of
 7B6E8B,69,195531,the whole run equal byte for byte to a kept copy earlier on the disc
-7B8BD9,24,2E8BD9,the whole run equal byte for byte to a kept copy earlier on the disc
+7B8BE1,16,2E8BE1,the whole run equal byte for byte to a kept copy earlier on the disc
 7BC800,358,194800,the whole run equal byte for byte to a kept copy earlier on the disc
 7BC9A1,242,1949A1,the whole run equal byte for byte to a kept copy earlier on the disc
 7BCB6F,40,28CB3D,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1014,24 +998,19 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 7BD2EF,26,28D1EB,the whole run equal byte for byte to a kept copy a script ran some of
 7BDB44,16,96DAA2,the whole run equal byte for byte to a kept copy a script ran some of
 80686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
-8068EC,59,85E8EC,the whole run equal byte for byte to a kept copy a script ran some of
-80692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-806943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-80697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+8068F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
+80692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+80697C,38,85E97C,the whole run equal byte for byte to a kept copy a script ran some of
 8069D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 806A3C,102,6FEA3C,the whole run equal byte for byte to a kept copy a script ran some of
 806AAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
 806B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
-8071E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-807206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
 8072A4,175,C672A4,the whole run equal byte for byte to a kept copy a script ran some of
-8073A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
 80746C,161,12746C,the whole run equal byte for byte to a kept copy earlier on the disc
 807522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 8076AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 8079DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 807B60,29,127B60,the whole run equal byte for byte to a kept copy earlier on the disc
-807D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 807D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 807F04,217,287F04,the whole run equal byte for byte to a kept copy earlier on the disc
 8080FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1053,7 +1032,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 80AF28,52,2E2F28,the whole run equal byte for byte to a kept copy earlier on the disc
 80B092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 80C8A1,31,3948A1,the whole run equal byte for byte to a kept copy a script ran some of
-80C8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+80C8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 80C995,16,12C995,the whole run equal byte for byte to a kept copy a script ran some of
 80CA4F,26,12CA4F,the whole run equal byte for byte to a kept copy a script ran some of
 80CDB3,157,8BCDB3,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1065,19 +1044,19 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 810BD1,46,3F0BD1,the whole run equal byte for byte to a kept copy earlier on the disc
 85E887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 85E8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-85E92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-85E97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+85E92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+85E98E,20,136977,the whole run equal byte for byte to a kept copy earlier on the disc
 85E9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
-85EA3D,257,8B6A3D,the whole run equal byte for byte to a kept copy a script ran some of
-85EB3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
+85EA60,133,8B6A60,the whole run equal byte for byte to a kept copy a script ran some of
+85EB19,37,286B19,the whole run equal byte for byte to a kept copy a script ran some of
+85EB61,219,2DEB61,the whole run equal byte for byte to a kept copy earlier on the disc
 85EFD5,173,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
-85F1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-85F206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+85F1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+85F206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 85F2A4,45,2872A4,the whole run equal byte for byte to a kept copy a script ran some of
 85F2D6,38,2872D6,the whole run equal byte for byte to a kept copy a script ran some of
-85F338,27,497338,the whole run equal byte for byte to a kept copy a script ran some of
-85F3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
-85F4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
+85F3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
+85F4A4,19,7AF4A4,the whole run equal byte for byte to a kept copy a script ran some of
 85F522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 85F6AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 85F79C,174,96779C,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1088,15 +1067,11 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 85FB3E,725,38FB3E,the whole run equal byte for byte to a kept copy earlier on the disc
 85FE72,29,2DFE72,the whole run equal byte for byte to a kept copy earlier on the disc
 8600A5,24,2E00A5,the whole run equal byte for byte to a kept copy a script ran some of
-860264,47,2E0264,the whole run equal byte for byte to a kept copy earlier on the disc
-8602BB,52,2E02BB,the whole run equal byte for byte to a kept copy earlier on the disc
 86040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 86082A,60,6282A,the whole run equal byte for byte to a kept copy a script ran some of
 860A47,56,62A47,the whole run equal byte for byte to a kept copy a script ran some of
 860D39,39,62DFA,the whole run equal byte for byte to a kept copy a script ran some of
 862C4F,28,12A8BF,the whole run equal byte for byte to a kept copy a script ran some of
-8648A6,26,3948A6,the whole run equal byte for byte to a kept copy a script ran some of
-8648D6,60,8BC8D6,the whole run equal byte for byte to a kept copy a script ran some of
 864A3C,17,3ECA3C,the whole run equal byte for byte to a kept copy a script ran some of
 864D08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
 864DB4,59,394DB4,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1111,8 +1086,9 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 8651EB,26,28D1EB,the whole run equal byte for byte to a kept copy a script ran some of
 865305,69,195531,the whole run equal byte for byte to a kept copy earlier on the disc
 868BCD,36,2E8BCD,the whole run equal byte for byte to a kept copy earlier on the disc
-86E913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-86E92C,234,18E92C,the whole run equal byte for byte to a kept copy earlier on the disc
+86E913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+86E92C,60,8B6943,the whole run equal byte for byte to a kept copy a script ran some of
+86E969,173,18E969,the whole run equal byte for byte to a kept copy earlier on the disc
 86EA26,110,136A26,the whole run equal byte for byte to a kept copy earlier on the disc
 86EA96,128,136A96,the whole run equal byte for byte to a kept copy earlier on the disc
 86EB17,202,136B17,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1144,23 +1120,21 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 870668,23,13839D,the whole run equal byte for byte to a kept copy earlier on the disc
 8B686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
 8B68EC,59,B5E8EC,the whole run equal byte for byte to a kept copy a script ran some of
-8B692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+8B692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 8B6943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-8B697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
 8B69D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 8B6A3D,101,6FEA3D,the whole run equal byte for byte to a kept copy a script ran some of
 8B6ABA,132,5F6ABA,the whole run equal byte for byte to a kept copy earlier on the disc
 8B6B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
-8B71E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-8B7206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+8B71E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+8B7206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 8B72A4,175,C672A4,the whole run equal byte for byte to a kept copy a script ran some of
-8B73A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+8B73A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 8B746C,161,12746C,the whole run equal byte for byte to a kept copy earlier on the disc
 8B7522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 8B76AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 8B79DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 8B7B60,29,127B60,the whole run equal byte for byte to a kept copy earlier on the disc
-8B7D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 8B7D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 8B7F03,218,287F03,the whole run equal byte for byte to a kept copy earlier on the disc
 8B80FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1184,7 +1158,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 8BAF29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 8BB092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 8BC8A1,31,3948A1,the whole run equal byte for byte to a kept copy a script ran some of
-8BC8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
+8BC8FE,20,4448FE,the whole run equal byte for byte to a kept copy a script ran some of
 8BCD6D,16,75CD6D,the whole run equal byte for byte to a kept copy earlier on the disc
 8BCDB3,60,75CDB3,the whole run equal byte for byte to a kept copy earlier on the disc
 8BCE11,63,28CE11,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1242,8 +1216,9 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 8E67BD,126,7867BD,the whole run equal byte for byte to a kept copy earlier on the disc
 8E8800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 8F0800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
-916913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-91692C,234,13692C,the whole run equal byte for byte to a kept copy earlier on the disc
+916913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+91692C,60,966943,the whole run equal byte for byte to a kept copy a script ran some of
+916969,173,136969,the whole run equal byte for byte to a kept copy earlier on the disc
 916A26,110,136A26,the whole run equal byte for byte to a kept copy earlier on the disc
 916A96,128,136A96,the whole run equal byte for byte to a kept copy earlier on the disc
 916B17,202,136B17,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1293,9 +1268,9 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 920800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 930800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 9668EC,59,B5E8EC,the whole run equal byte for byte to a kept copy a script ran some of
-96692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+96692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 966943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-96697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+96697C,38,8B697C,the whole run equal byte for byte to a kept copy earlier on the disc
 9669D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 966A3C,36,6FEA3C,the whole run equal byte for byte to a kept copy earlier on the disc
 966ABA,132,5F6ABA,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1303,11 +1278,11 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 966C0D,47,2DEC0D,the whole run equal byte for byte to a kept copy earlier on the disc
 966D55,16,B5ED55,the whole run equal byte for byte to a kept copy a script ran some of
 966FD5,30,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
-9671E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-967206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+9671E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+967206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 9672A4,175,C672A4,the whole run equal byte for byte to a kept copy a script ran some of
-9673A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
-967497,32,B5F497,the whole run equal byte for byte to a kept copy a script ran some of
+9673A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
+967497,32,7AF497,the whole run equal byte for byte to a kept copy a script ran some of
 967522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 9675BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 9676AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1318,7 +1293,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 968041,20,440041,the whole run equal byte for byte to a kept copy earlier on the disc
 968099,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 968212,26,2E0212,the whole run equal byte for byte to a kept copy a script ran some of
-968259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+968264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 96840D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 968482,75,860482,the whole run equal byte for byte to a kept copy a script ran some of
 968540,22,12822E,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1327,7 +1302,6 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 96882A,60,6282A,the whole run equal byte for byte to a kept copy a script ran some of
 9688B1,46,628B1,the whole run equal byte for byte to a kept copy a script ran some of
 968A66,25,62A66,the whole run equal byte for byte to a kept copy earlier on the disc
-96C8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
 96C995,16,12C995,the whole run equal byte for byte to a kept copy a script ran some of
 96CA4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 96CD08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1384,21 +1358,22 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 9A7E22,452,1E7E22,the whole run equal byte for byte to a kept copy earlier on the disc
 9A7FF1,34,1E7FF1,the whole run equal byte for byte to a kept copy earlier on the disc
 9A803C,17,86029F,the whole run equal byte for byte to a kept copy a script ran some of
+9F682D,61,96682D,the whole run equal byte for byte to a kept copy a script ran some of
 9F686E,50,B5E86E,the whole run equal byte for byte to a kept copy a script ran some of
 9F68EC,59,B5E8EC,the whole run equal byte for byte to a kept copy a script ran some of
-9F692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+9F692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 9F6943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-9F697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+9F697C,38,8B697C,the whole run equal byte for byte to a kept copy earlier on the disc
 9F69D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 9F6A3C,113,B5EA3C,the whole run equal byte for byte to a kept copy a script ran some of
 9F6ABA,132,5F6ABA,the whole run equal byte for byte to a kept copy earlier on the disc
 9F6B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 9F6FD5,30,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
 9F7023,171,967023,the whole run equal byte for byte to a kept copy a script ran some of
-9F73A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+9F73A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 9F73CC,26,4EF3CC,the whole run equal byte for byte to a kept copy a script ran some of
 9F73FE,20,1273FE,the whole run equal byte for byte to a kept copy a script ran some of
-9F746C,161,B5F46C,the whole run equal byte for byte to a kept copy a script ran some of
+9F746C,161,7AF46C,the whole run equal byte for byte to a kept copy a script ran some of
 9F76AD,183,1276AD,the whole run equal byte for byte to a kept copy a script ran some of
 9F7798,178,967798,the whole run equal byte for byte to a kept copy a script ran some of
 9F785F,234,2DF85F,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1411,7 +1386,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 9F8041,20,440041,the whole run equal byte for byte to a kept copy earlier on the disc
 9F8099,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 9F8212,26,2E0212,the whole run equal byte for byte to a kept copy a script ran some of
-9F8259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+9F8264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 9F840D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 9F8482,391,860482,the whole run equal byte for byte to a kept copy a script ran some of
 9F8690,23,13839D,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1431,7 +1406,7 @@ F0F07,29,E0046,the whole run equal byte for byte to a kept copy earlier on the d
 9FAFF0,31,12AFF0,the whole run equal byte for byte to a kept copy a script ran some of
 9FB092,259,B0B092,the whole run equal byte for byte to a kept copy a script ran some of
 9FB1B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-9FC8E2,48,B0C8E2,the whole run equal byte for byte to a kept copy a script ran some of
+9FC8E2,48,4448E2,the whole run equal byte for byte to a kept copy a script ran some of
 9FC995,16,12C995,the whole run equal byte for byte to a kept copy a script ran some of
 9FC9E0,109,3EC9E0,the whole run equal byte for byte to a kept copy a script ran some of
 9FCA4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1638,17 +1613,17 @@ ADFFF1,34,1E7FF1,the whole run equal byte for byte to a kept copy earlier on the
 AE003C,17,86029F,the whole run equal byte for byte to a kept copy a script ran some of
 B0686E,25,2DE86E,the whole run equal byte for byte to a kept copy a script ran some of
 B068EC,59,B5E8EC,the whole run equal byte for byte to a kept copy a script ran some of
-B0692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+B0692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 B06943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-B0697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+B0697C,38,8B697C,the whole run equal byte for byte to a kept copy earlier on the disc
 B069D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 B06A3D,257,B5EA3D,the whole run equal byte for byte to a kept copy a script ran some of
 B06B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 B06FD5,124,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
-B071E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-B07206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+B071E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+B07206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 B072A4,175,C672A4,the whole run equal byte for byte to a kept copy a script ran some of
-B073A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
+B073A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
 B0746C,161,12746C,the whole run equal byte for byte to a kept copy earlier on the disc
 B07522,98,127522,the whole run equal byte for byte to a kept copy earlier on the disc
 B075BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1659,7 +1634,6 @@ B07960,16,127960,the whole run equal byte for byte to a kept copy a script ran s
 B079DF,18,1279DF,the whole run equal byte for byte to a kept copy earlier on the disc
 B07AD9,78,127AD9,the whole run equal byte for byte to a kept copy a script ran some of
 B07B60,29,127B60,the whole run equal byte for byte to a kept copy earlier on the disc
-B07D2F,19,127D2F,the whole run equal byte for byte to a kept copy earlier on the disc
 B07D87,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 B07F03,218,287F03,the whole run equal byte for byte to a kept copy earlier on the disc
 B080FB,53,1280FB,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1682,9 +1656,6 @@ B0AF29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran s
 B0B092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 B0B70D,24,91B6A9,the whole run equal byte for byte to a kept copy earlier on the disc
 B0B7AD,56,91B749,the whole run equal byte for byte to a kept copy earlier on the disc
-B0C885,18,12C885,the whole run equal byte for byte to a kept copy a script ran some of
-B0C8A1,31,3948A1,the whole run equal byte for byte to a kept copy a script ran some of
-B0C8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
 B0C995,16,12C995,the whole run equal byte for byte to a kept copy a script ran some of
 B0C9E0,109,3EC9E0,the whole run equal byte for byte to a kept copy a script ran some of
 B0CA4F,26,12CA4F,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1730,8 +1701,8 @@ B17FF1,34,1E7FF1,the whole run equal byte for byte to a kept copy earlier on the
 B1803C,17,86029F,the whole run equal byte for byte to a kept copy a script ran some of
 B5E887,25,C66887,the whole run equal byte for byte to a kept copy a script ran some of
 B5E8F8,47,1368E1,the whole run equal byte for byte to a kept copy earlier on the disc
-B5E92A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-B5E97C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+B5E92A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+B5E97C,38,8B697C,the whole run equal byte for byte to a kept copy earlier on the disc
 B5E9D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 B5EA3C,36,6FEA3C,the whole run equal byte for byte to a kept copy earlier on the disc
 B5EAAD,145,5F6AAD,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1740,11 +1711,11 @@ B5EC0D,47,2DEC0D,the whole run equal byte for byte to a kept copy earlier on the
 B5ED5D,30,126D5D,the whole run equal byte for byte to a kept copy earlier on the disc
 B5F048,58,127048,the whole run equal byte for byte to a kept copy a script ran some of
 B5F12B,25,12712B,the whole run equal byte for byte to a kept copy a script ran some of
-B5F1E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-B5F206,25,C67206,the whole run equal byte for byte to a kept copy a script ran some of
+B5F1E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+B5F206,25,287206,the whole run equal byte for byte to a kept copy a script ran some of
 B5F2A4,175,C672A4,the whole run equal byte for byte to a kept copy a script ran some of
-B5F3A0,19,C673A0,the whole run equal byte for byte to a kept copy a script ran some of
-B5F4A4,19,1274A4,the whole run equal byte for byte to a kept copy earlier on the disc
+B5F3A0,19,2873A0,the whole run equal byte for byte to a kept copy a script ran some of
+B5F4A4,19,7AF4A4,the whole run equal byte for byte to a kept copy a script ran some of
 B5F522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 B5F6AD,64,1276AD,the whole run equal byte for byte to a kept copy earlier on the disc
 B5F79C,174,96779C,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1755,7 +1726,7 @@ B5FE71,30,43FE71,the whole run equal byte for byte to a kept copy earlier on the
 B60043,18,440043,the whole run equal byte for byte to a kept copy earlier on the disc
 B60099,36,2E0099,the whole run equal byte for byte to a kept copy a script ran some of
 B60215,23,2E0215,the whole run equal byte for byte to a kept copy earlier on the disc
-B60259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+B60264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 B6040D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 B60482,75,860482,the whole run equal byte for byte to a kept copy a script ran some of
 B60540,22,12822E,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1772,7 +1743,7 @@ B62EAF,43,392EAF,the whole run equal byte for byte to a kept copy a script ran s
 B62F29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 B63092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 B631B1,59,28B1B1,the whole run equal byte for byte to a kept copy a script ran some of
-B648E2,48,C6C8E2,the whole run equal byte for byte to a kept copy a script ran some of
+B648E2,48,4448E2,the whole run equal byte for byte to a kept copy a script ran some of
 B64A4E,27,12CA4E,the whole run equal byte for byte to a kept copy a script ran some of
 B64D08,78,28CD08,the whole run equal byte for byte to a kept copy a script ran some of
 B64DB4,59,394DB4,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1873,15 +1844,16 @@ C22E88,16,62F65,the whole run equal byte for byte to a kept copy earlier on the 
 C24800,415,448800,the whole run equal byte for byte to a kept copy a script ran some of
 C30800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 C668EC,59,1368D5,the whole run equal byte for byte to a kept copy earlier on the disc
-C6692A,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
+C6692A,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
 C66943,53,126943,the whole run equal byte for byte to a kept copy earlier on the disc
-C6697C,38,12697C,the whole run equal byte for byte to a kept copy earlier on the disc
+C6697C,38,8B697C,the whole run equal byte for byte to a kept copy earlier on the disc
 C669D3,35,1269D3,the whole run equal byte for byte to a kept copy earlier on the disc
 C66B3F,253,2DEB3F,the whole run equal byte for byte to a kept copy earlier on the disc
 C66FD5,124,126FD5,the whole run equal byte for byte to a kept copy a script ran some of
-C671E0,18,4971E0,the whole run equal byte for byte to a kept copy a script ran some of
-C6720D,18,9F720D,the whole run equal byte for byte to a kept copy earlier on the disc
+C671E0,18,2871E0,the whole run equal byte for byte to a kept copy a script ran some of
+C6720D,18,28720D,the whole run equal byte for byte to a kept copy a script ran some of
 C672E0,115,137296,the whole run equal byte for byte to a kept copy earlier on the disc
+C6746D,160,7AF46D,the whole run equal byte for byte to a kept copy a script ran some of
 C67522,98,2DF522,the whole run equal byte for byte to a kept copy earlier on the disc
 C675BA,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
 C67607,26,2875BA,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1893,7 +1865,7 @@ C67AD9,78,2DFAD9,the whole run equal byte for byte to a kept copy a script ran s
 C67B3E,725,38FB3E,the whole run equal byte for byte to a kept copy earlier on the disc
 C67E71,30,43FE71,the whole run equal byte for byte to a kept copy earlier on the disc
 C68213,25,2E0213,the whole run equal byte for byte to a kept copy a script ran some of
-C68259,150,2E0259,the whole run equal byte for byte to a kept copy earlier on the disc
+C68264,139,860264,the whole run equal byte for byte to a kept copy a script ran some of
 C6840D,53,2E040D,the whole run equal byte for byte to a kept copy earlier on the disc
 C68482,391,860482,the whole run equal byte for byte to a kept copy a script ran some of
 C6882A,60,6282A,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1909,17 +1881,13 @@ C6AEAF,43,392EAF,the whole run equal byte for byte to a kept copy a script ran s
 C6AF29,51,12AF29,the whole run equal byte for byte to a kept copy a script ran some of
 C6B092,186,28B092,the whole run equal byte for byte to a kept copy earlier on the disc
 C6B1D0,20,28B1D0,the whole run equal byte for byte to a kept copy a script ran some of
-C6C86A,22,12C86A,the whole run equal byte for byte to a kept copy a script ran some of
-C6C885,18,12C885,the whole run equal byte for byte to a kept copy a script ran some of
-C6C8A1,31,3948A1,the whole run equal byte for byte to a kept copy a script ran some of
-C6C8FE,20,12C8FE,the whole run equal byte for byte to a kept copy earlier on the disc
 C6C995,16,12C995,the whole run equal byte for byte to a kept copy a script ran some of
 C6C9E0,109,3EC9E0,the whole run equal byte for byte to a kept copy a script ran some of
 C6CA4F,26,12CA4F,the whole run equal byte for byte to a kept copy a script ran some of
 C6CB28,61,28CB28,the whole run equal byte for byte to a kept copy a script ran some of
 C6CB6A,71,28CB6A,the whole run equal byte for byte to a kept copy a script ran some of
 C6CC44,26,28CC44,the whole run equal byte for byte to a kept copy a script ran some of
-C6CC68,328,9FCC68,the whole run equal byte for byte to a kept copy a script ran some of
+C6CC6A,326,9FCC6A,the whole run equal byte for byte to a kept copy a script ran some of
 C6CE6A,308,12CE6A,the whole run equal byte for byte to a kept copy earlier on the disc
 C6D17A,98,12D17A,the whole run equal byte for byte to a kept copy earlier on the disc
 C6D1EB,26,28D1EB,the whole run equal byte for byte to a kept copy a script ran some of
@@ -1929,8 +1897,8 @@ C98800,273,158800,the whole run equal byte for byte to a kept copy earlier on th
 CA0800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 CD0800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 CE0800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
-D16913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-D1692C,234,13692C,the whole run equal byte for byte to a kept copy earlier on the disc
+D16913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+D16969,173,136969,the whole run equal byte for byte to a kept copy earlier on the disc
 D16A26,110,136A26,the whole run equal byte for byte to a kept copy earlier on the disc
 D16A96,128,136A96,the whole run equal byte for byte to a kept copy earlier on the disc
 D16B17,202,136B17,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -1996,8 +1964,9 @@ D50800,273,158800,the whole run equal byte for byte to a kept copy earlier on th
 D52000,415,448800,the whole run equal byte for byte to a kept copy a script ran some of
 D80800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 D90800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
-DC6913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-DC692C,234,13692C,the whole run equal byte for byte to a kept copy earlier on the disc
+DC6913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+DC692C,60,D1692C,the whole run equal byte for byte to a kept copy earlier on the disc
+DC6969,173,136969,the whole run equal byte for byte to a kept copy earlier on the disc
 DC6A26,110,136A26,the whole run equal byte for byte to a kept copy earlier on the disc
 DC6A96,128,136A96,the whole run equal byte for byte to a kept copy earlier on the disc
 DC6B17,202,136B17,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -2061,8 +2030,9 @@ E17E88,16,62F65,the whole run equal byte for byte to a kept copy earlier on the 
 E19800,415,448800,the whole run equal byte for byte to a kept copy a script ran some of
 E30800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
 E40800,273,158800,the whole run equal byte for byte to a kept copy earlier on the disc
-E76913,21,12692A,the whole run equal byte for byte to a kept copy earlier on the disc
-E7692C,234,13692C,the whole run equal byte for byte to a kept copy earlier on the disc
+E76913,21,28692A,the whole run equal byte for byte to a kept copy a script ran some of
+E7692C,60,D1692C,the whole run equal byte for byte to a kept copy earlier on the disc
+E76969,173,136969,the whole run equal byte for byte to a kept copy earlier on the disc
 E76A26,110,136A26,the whole run equal byte for byte to a kept copy earlier on the disc
 E76A96,128,136A96,the whole run equal byte for byte to a kept copy earlier on the disc
 E76B17,202,136B17,the whole run equal byte for byte to a kept copy earlier on the disc
@@ -2142,6 +2112,7 @@ F34956,17,68956,the whole run equal byte for byte to a kept copy a script ran so
 1060073,222,F32873,the whole run equal byte for byte to a kept copy earlier on the disc
 1060266,25,62A66,the whole run equal byte for byte to a kept copy earlier on the disc
 10602B1,17,88AB1,the whole run equal byte for byte to a kept copy earlier on the disc
+106041A,180,F32C1A,the whole run equal byte for byte to a kept copy a script ran some of
 106050E,275,88D0E,the whole run equal byte for byte to a kept copy earlier on the disc
 10606B3,16,62F65,the whole run equal byte for byte to a kept copy earlier on the disc
 1062156,17,68956,the whole run equal byte for byte to a kept copy a script ran some of
@@ -2150,6 +2121,7 @@ F34956,17,68956,the whole run equal byte for byte to a kept copy a script ran so
 1127873,222,F32873,the whole run equal byte for byte to a kept copy earlier on the disc
 1127A66,57,62A66,the whole run equal byte for byte to a kept copy a script ran some of
 1127AB1,17,88AB1,the whole run equal byte for byte to a kept copy earlier on the disc
+1127C1A,180,F32C1A,the whole run equal byte for byte to a kept copy a script ran some of
 1127D0E,275,88D0E,the whole run equal byte for byte to a kept copy earlier on the disc
 1127EB3,16,62F65,the whole run equal byte for byte to a kept copy earlier on the disc
 1129956,17,68956,the whole run equal byte for byte to a kept copy a script ran some of
@@ -2160,6 +2132,7 @@ F34956,17,68956,the whole run equal byte for byte to a kept copy a script ran so
 11FD073,222,F32873,the whole run equal byte for byte to a kept copy earlier on the disc
 11FD266,57,62A66,the whole run equal byte for byte to a kept copy a script ran some of
 11FD2B1,17,88AB1,the whole run equal byte for byte to a kept copy earlier on the disc
+11FD41A,180,F32C1A,the whole run equal byte for byte to a kept copy a script ran some of
 11FD50E,275,88D0E,the whole run equal byte for byte to a kept copy earlier on the disc
 11FD6B3,16,62F65,the whole run equal byte for byte to a kept copy earlier on the disc
 11FF156,17,68956,the whole run equal byte for byte to a kept copy a script ran some of
@@ -2167,7 +2140,6 @@ F34956,17,68956,the whole run equal byte for byte to a kept copy a script ran so
 12EB873,222,F32873,the whole run equal byte for byte to a kept copy earlier on the disc
 12EBA66,57,62A66,the whole run equal byte for byte to a kept copy a script ran some of
 12EBAB1,17,88AB1,the whole run equal byte for byte to a kept copy earlier on the disc
-12EBB71,349,1127B71,the whole run equal byte for byte to a kept copy earlier on the disc
 12EBD0E,275,88D0E,the whole run equal byte for byte to a kept copy earlier on the disc
 12EBEB3,16,62F65,the whole run equal byte for byte to a kept copy earlier on the disc
 12ED956,17,68956,the whole run equal byte for byte to a kept copy a script ran some of
@@ -2192,7 +2164,8 @@ F34956,17,68956,the whole run equal byte for byte to a kept copy a script ran so
 1383CFF,275,12FBCFF,the whole run equal byte for byte to a kept copy earlier on the disc
 1383EA4,16,62F65,the whole run equal byte for byte to a kept copy earlier on the disc
 1385956,17,68956,the whole run equal byte for byte to a kept copy a script ran some of
-1385F8C,49,12FDF7E,the whole run equal byte for byte to a kept copy earlier on the disc
+1385F8C,20,12FDF7E,the whole run equal byte for byte to a kept copy earlier on the disc
+1385FA3,26,12FDF95,the whole run equal byte for byte to a kept copy earlier on the disc
 11C9E,50,2398A,"the whole run equal byte for byte to the whole span of filed routine StepObjectFrames, decoded from a census instruction start"
 11D84,30,231ED,"the whole run equal byte for byte to the whole span of filed routine ClearObject, decoded from a census instruction start"
 11DA2,130,2320B,"the whole run equal byte for byte to the whole span of filed routine ClearObjectExceptPlace, decoded from a census instruction start"
@@ -2201,6 +2174,7 @@ F34956,17,68956,the whole run equal byte for byte to a kept copy a script ran so
 11E6D,36,22DD2,"the whole run equal byte for byte to the whole span of filed routine ApplyVelocity, decoded from a census instruction start"
 11E92,56,2329A,"the whole run equal byte for byte to the whole span of filed routine NextRandom, decoded from a census instruction start"
 2F8EA,95,60911,"the whole run equal byte for byte to the whole span of filed routine TitleCycle, decoded from a census instruction start"
+88D5C,19,D18D4D,"the whole run equal byte for byte to the whole span of filed routine SelectSavedBank1A31, decoded from a census instruction start"
 DDEB1,20,23D9F,"the whole run equal byte for byte to the whole span of filed routine MovePlayerX, decoded from a census instruction start"
 EF828,35,DD6D0,"the whole run equal byte for byte to the whole span of filed routine StartDebrisBurst, decoded from a census instruction start"
 F039E,95,DE093,"the whole run equal byte for byte to the whole span of filed routine RichterLadderCheck, decoded from a census instruction start"
@@ -2211,6 +2185,7 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 127D93,24,2E00A5,"the whole run equal byte for byte to the whole span of filed routine HitKindFromBit7, decoded from a census instruction start"
 12829D,39,3905AF,"the whole run equal byte for byte to the whole span of filed routine NextStateByKindBits, decoded from a census instruction start"
 128933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+128C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 12CF03,27,28CF03,"the whole run equal byte for byte to the whole span of filed routine RunObjectState, decoded from a census instruction start"
 12CF4E,22,28CF4E,"the whole run equal byte for byte to the whole span of filed routine SetBlinkFlash, decoded from a census instruction start"
 12CFBE,16,28CFBE,"the whole run equal byte for byte to the whole span of filed routine SettleOnLanding, decoded from a census instruction start"
@@ -2222,14 +2197,20 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 12D180,16,28D180,"the whole run equal byte for byte to the whole span of filed routine DropOffScreen, decoded from a census instruction start"
 12D190,18,28D190,"the whole run equal byte for byte to the whole span of filed routine JumpByStateTable051A190, decoded from a census instruction start"
 12D1A8,52,28D1A8,"the whole run equal byte for byte to the whole span of filed routine StartScorePickup, decoded from a census instruction start"
+136FC9,23,A96D80,"the whole run equal byte for byte to the whole span of filed routine StageFadeTakeStock152D, decoded from a census instruction start"
+1370A2,102,18F0A2,"the whole run equal byte for byte to the whole span of filed routine InitStage031E, decoded from a census instruction start"
 13725A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 1372B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
+137323,172,327323,"the whole run equal byte for byte to the whole span of filed routine StepStageFrame064E, decoded from a census instruction start"
 137B3B,21,127B7D,"the whole run equal byte for byte to the whole span of filed routine SetVramAddresses, decoded from a census instruction start"
+137BDF,54,1E7CB4,"the whole run equal byte for byte to the whole span of filed routine StageMapDebugPage3CD, decoded from a census instruction start"
 137C30,83,127C13,"the whole run equal byte for byte to the whole span of filed routine ComputeHitboxPositions, decoded from a census instruction start"
 137D8A,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
 1382BF,39,3905AF,"the whole run equal byte for byte to the whole span of filed routine NextStateByKindBits, decoded from a census instruction start"
+18F0A2,102,21F0A2,"the whole run equal byte for byte to the whole span of filed routine InitStage043E, decoded from a census instruction start"
 18F25A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 18F2B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
+18F323,172,21F323,"the whole run equal byte for byte to the whole span of filed routine StepStageFrame043E, decoded from a census instruction start"
 18FE1C,21,127B7D,"the whole run equal byte for byte to the whole span of filed routine SetVramAddresses, decoded from a census instruction start"
 18FEB2,83,127C13,"the whole run equal byte for byte to the whole span of filed routine ComputeHitboxPositions, decoded from a census instruction start"
 19000C,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
@@ -2257,19 +2238,36 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 195CD3,20,2E5BCA,"the whole run equal byte for byte to the whole span of filed routine InsideCenterBand, decoded from a census instruction start"
 195ECD,21,2E5DC4,"the whole run equal byte for byte to the whole span of filed routine PickRandomThenState3, decoded from a census instruction start"
 195EE2,21,625D4,"the whole run equal byte for byte to the whole span of filed routine HalveObjectVelocity, decoded from a census instruction start"
+1E69AD,38,A968B1,"the whole run equal byte for byte to the whole span of filed routine StageModeEventsStep152D, decoded from a census instruction start"
+1E6B27,31,1E6B48,"the whole run equal byte for byte to the whole span of filed routine StageDeathRespawnB3CD, decoded from a census instruction start"
+1E6B67,18,A96A24,"the whole run equal byte for byte to the whole span of filed routine StageDeathFallLeft152D, decoded from a census instruction start"
+1E6F90,24,A96D59,"the whole run equal byte for byte to the whole span of filed routine StageFadeWait152D, decoded from a census instruction start"
+1E6FB7,23,A96D80,"the whole run equal byte for byte to the whole span of filed routine StageFadeTakeStock152D, decoded from a census instruction start"
+1E77A1,19,A975B8,"the whole run equal byte for byte to the whole span of filed routine StageOpeningWriteRow152D, decoded from a census instruction start"
 1E7C10,21,127B7D,"the whole run equal byte for byte to the whole span of filed routine SetVramAddresses, decoded from a census instruction start"
+1E7E38,29,A97DC7,"the whole run equal byte for byte to the whole span of filed routine HitKindSpawn152D, decoded from a census instruction start"
 1EAE6A,26,12B078,"the whole run equal byte for byte to the whole span of filed routine BitmapBitShifted, decoded from a census instruction start"
+21F0A2,102,3270A2,"the whole run equal byte for byte to the whole span of filed routine InitStage064E, decoded from a census instruction start"
 21F25A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 21F2B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
+21F323,172,86F323,"the whole run equal byte for byte to the whole span of filed routine StepStageFrame10DE, decoded from a census instruction start"
 22000C,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
 220933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
 220969,100,62969,"the whole run equal byte for byte to the whole span of filed routine VramListRun, decoded from a census instruction start"
 2209CD,52,629CD,"the whole run equal byte for byte to the whole span of filed routine VramCommandsFetch, decoded from a census instruction start"
 220A01,13,62A01,"the whole run equal byte for byte to the whole span of filed routine VramCommandsNext, decoded from a census instruction start"
 220A0E,29,62A0E,"the whole run equal byte for byte to the whole span of filed routine VramCommandsRepeat, decoded from a census instruction start"
+220A2B,28,62A2B,"the whole run equal byte for byte to the whole span of filed routine VramCommandsPairs, decoded from a census instruction start"
+220A47,31,62A47,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddressAdd, decoded from a census instruction start"
+220A66,25,62A66,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddress, decoded from a census instruction start"
 220A7F,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
+220ACB,16,328ACB,"the whole run equal byte for byte to the whole span of filed routine EffectDispatch0651, decoded from a census instruction start"
+220AE5,96,328AE5,"the whole run equal byte for byte to the whole span of filed routine EffectList0651, decoded from a census instruction start"
 220B45,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
+220C07,180,328C07,"the whole run equal byte for byte to the whole span of filed routine EffectShade0651, decoded from a census instruction start"
 220CBB,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+220D35,139,328D35,"the whole run equal byte for byte to the whole span of filed routine EffectFlash0651, decoded from a census instruction start"
+220DC0,39,328DC0,"the whole run equal byte for byte to the whole span of filed routine EffectFlashEnd0651, decoded from a census instruction start"
 223018,26,12B078,"the whole run equal byte for byte to the whole span of filed routine BitmapBitShifted, decoded from a census instruction start"
 2250C2,16,28CFBE,"the whole run equal byte for byte to the whole span of filed routine SettleOnLanding, decoded from a census instruction start"
 225164,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
@@ -2284,33 +2282,44 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 226443,17,39634C,"the whole run equal byte for byte to the whole span of filed routine FallUntilLevel2, decoded from a census instruction start"
 24B73A,33,23723,"the whole run equal byte for byte to the whole span of filed routine StreamDistance, decoded from a census instruction start"
 288933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+288C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 28B092,34,393092,"the whole run equal byte for byte to the whole span of filed routine ScrollYPlusOffset, decoded from a census instruction start"
 28DA0E,16,28D180,"the whole run equal byte for byte to the whole span of filed routine DropOffScreen, decoded from a census instruction start"
+28F357,38,28D082,"the whole run equal byte for byte to the whole span of filed routine DrawTilePiece051A, decoded from a census instruction start"
 2DF019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
 2DF8B1,98,9678B1,"the whole run equal byte for byte to the whole span of filed routine MaskVramRowsRandomLong, decoded from a census instruction start"
 2DF913,27,127913,"the whole run equal byte for byte to the whole span of filed routine MaskStageRowCopy, decoded from a census instruction start"
 2DF92E,27,12792E,"the whole run equal byte for byte to the whole span of filed routine MaskStageRow, decoded from a census instruction start"
 2E0099,12,390099,"the whole run equal byte for byte to the whole span of filed routine HitKindFromBit1, decoded from a census instruction start"
-2E0293,20,860293,"the whole run equal byte for byte to the whole span of filed routine TileHalfStepAAt9A93, decoded from a census instruction start"
-2E02A7,20,8602A7,"the whole run equal byte for byte to the whole span of filed routine TileHalfStepBAt9AA7, decoded from a census instruction start"
 2E0933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+2E0C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 2E2F29,51,392F29,"the whole run equal byte for byte to the whole span of filed routine AdvanceScrollY, decoded from a census instruction start"
 2E4FE6,35,28CFE6,"the whole run equal byte for byte to the whole span of filed routine LandThenClear, decoded from a census instruction start"
 2E5055,11,28D055,"the whole run equal byte for byte to the whole span of filed routine BitMaskFromIndex, decoded from a census instruction start"
 2E5060,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
 2E510B,35,DD6D0,"the whole run equal byte for byte to the whole span of filed routine StartDebrisBurst, decoded from a census instruction start"
 2E512E,48,28D12E,"the whole run equal byte for byte to the whole span of filed routine StartThrownItem, decoded from a census instruction start"
+3270A2,102,86F0A2,"the whole run equal byte for byte to the whole span of filed routine InitStage10DE, decoded from a census instruction start"
 32725A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 3272B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
+327323,172,917323,"the whole run equal byte for byte to the whole span of filed routine StepStageFrame122E, decoded from a census instruction start"
 327D8A,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
 328933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
 328969,100,62969,"the whole run equal byte for byte to the whole span of filed routine VramListRun, decoded from a census instruction start"
 3289CD,52,629CD,"the whole run equal byte for byte to the whole span of filed routine VramCommandsFetch, decoded from a census instruction start"
 328A01,13,62A01,"the whole run equal byte for byte to the whole span of filed routine VramCommandsNext, decoded from a census instruction start"
 328A0E,29,62A0E,"the whole run equal byte for byte to the whole span of filed routine VramCommandsRepeat, decoded from a census instruction start"
+328A2B,28,62A2B,"the whole run equal byte for byte to the whole span of filed routine VramCommandsPairs, decoded from a census instruction start"
+328A47,31,62A47,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddressAdd, decoded from a census instruction start"
+328A66,25,62A66,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddress, decoded from a census instruction start"
 328A7F,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
+328ACB,16,918ACB,"the whole run equal byte for byte to the whole span of filed routine EffectDispatch1231, decoded from a census instruction start"
+328AE5,96,918AE5,"the whole run equal byte for byte to the whole span of filed routine EffectList1231, decoded from a census instruction start"
 328B45,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
+328C07,180,918C07,"the whole run equal byte for byte to the whole span of filed routine EffectShade1231, decoded from a census instruction start"
 328CBB,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+328D35,139,918D35,"the whole run equal byte for byte to the whole span of filed routine EffectFlash1231, decoded from a census instruction start"
+328DC0,39,918DC0,"the whole run equal byte for byte to the whole span of filed routine EffectFlashEnd1231, decoded from a census instruction start"
 32B018,26,12B078,"the whole run equal byte for byte to the whole span of filed routine BitmapBitShifted, decoded from a census instruction start"
 32D052,22,28CF4E,"the whole run equal byte for byte to the whole span of filed routine SetBlinkFlash, decoded from a census instruction start"
 32D0C2,16,28CFBE,"the whole run equal byte for byte to the whole span of filed routine SettleOnLanding, decoded from a census instruction start"
@@ -2333,10 +2342,12 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 32F07B,39,49EFA0,"the whole run equal byte for byte to the whole span of filed routine StartThenBlinkAndExpire, decoded from a census instruction start"
 330800,102,68800,"the whole run equal byte for byte to the whole span of filed routine WriteObjectSprites, decoded from a census instruction start"
 390933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+390C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 394DB4,55,28CDB4,"the whole run equal byte for byte to the whole span of filed routine CollectScoreItem, decoded from a census instruction start"
 3966D4,37,3965D0,"the whole run equal byte for byte to the whole span of filed routine FollowPathAndShow, decoded from a census instruction start"
 39671D,37,3965D0,"the whole run equal byte for byte to the whole span of filed routine FollowPathAndShow, decoded from a census instruction start"
 3E7019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
+3E8C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 3EA922,13,12A922,"the whole run equal byte for byte to the whole span of filed routine ScrollYFromLevelWord, decoded from a census instruction start"
 3ED055,11,28D055,"the whole run equal byte for byte to the whole span of filed routine BitMaskFromIndex, decoded from a census instruction start"
 3ED060,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
@@ -2347,10 +2358,12 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 43F019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
 43F443,41,4EF443,"the whole run equal byte for byte to the whole span of filed routine SetHealthBarAddressLong, decoded from a census instruction start"
 440933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+440C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 442922,13,12A922,"the whole run equal byte for byte to the whole span of filed routine ScrollYFromLevelWord, decoded from a census instruction start"
 442931,20,3EA931,"the whole run equal byte for byte to the whole span of filed routine HalveScrollStepFromFirst, decoded from a census instruction start"
 445C01,34,2302D,"the whole run equal byte for byte to the whole span of filed routine AngleToPlayer, decoded from a census instruction start"
 497019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
+498C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 49D055,11,28D055,"the whole run equal byte for byte to the whole span of filed routine BitMaskFromIndex, decoded from a census instruction start"
 49D060,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
 49D10B,35,DD6D0,"the whole run equal byte for byte to the whole span of filed routine StartDebrisBurst, decoded from a census instruction start"
@@ -2358,6 +2371,8 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 49EA23,37,3EDF60,"the whole run equal byte for byte to the whole span of filed routine OrbitStepForward, decoded from a census instruction start"
 547019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
 548933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+548B62,169,D18B62,"the whole run equal byte for byte to the whole span of filed routine EffectFade1A31, decoded from a census instruction start"
+548C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 54A922,13,12A922,"the whole run equal byte for byte to the whole span of filed routine ScrollYFromLevelWord, decoded from a census instruction start"
 54A931,20,3EA931,"the whole run equal byte for byte to the whole span of filed routine HalveScrollStepFromFirst, decoded from a census instruction start"
 54D10B,35,DD6D0,"the whole run equal byte for byte to the whole span of filed routine StartDebrisBurst, decoded from a census instruction start"
@@ -2366,13 +2381,14 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 54F8A0,20,49E48F,"the whole run equal byte for byte to the whole span of filed routine FollowParentYAndLeave, decoded from a census instruction start"
 54F945,24,49E534,"the whole run equal byte for byte to the whole span of filed routine CountdownSoundThenNextState, decoded from a census instruction start"
 59F019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
-5A0933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+5A0C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 5A4FE6,35,28CFE6,"the whole run equal byte for byte to the whole span of filed routine LandThenClear, decoded from a census instruction start"
 5A5055,11,28D055,"the whole run equal byte for byte to the whole span of filed routine BitMaskFromIndex, decoded from a census instruction start"
 5A5060,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
 5A510B,35,DD6D0,"the whole run equal byte for byte to the whole span of filed routine StartDebrisBurst, decoded from a census instruction start"
 5F7019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
 5F8933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+5F8C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 5FA922,13,12A922,"the whole run equal byte for byte to the whole span of filed routine ScrollYFromLevelWord, decoded from a census instruction start"
 5FA931,20,3EA931,"the whole run equal byte for byte to the whole span of filed routine HalveScrollStepFromFirst, decoded from a census instruction start"
 5FD055,11,28D055,"the whole run equal byte for byte to the whole span of filed routine BitMaskFromIndex, decoded from a census instruction start"
@@ -2387,6 +2403,8 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 655235,261,395235,"the whole run equal byte for byte to the whole span of filed routine ContactWithPlayer, decoded from a census instruction start"
 6A7019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
 6A8933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+6A8B62,169,E78B62,"the whole run equal byte for byte to the whole span of filed routine EffectFade1CF1, decoded from a census instruction start"
+6A8C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 6ACD8D,35,28CD8D,"the whole run equal byte for byte to the whole span of filed routine CollectHearts, decoded from a census instruction start"
 6ACFE6,35,28CFE6,"the whole run equal byte for byte to the whole span of filed routine LandThenClear, decoded from a census instruction start"
 6AD055,11,28D055,"the whole run equal byte for byte to the whole span of filed routine BitMaskFromIndex, decoded from a census instruction start"
@@ -2398,6 +2416,7 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 6AFE7F,24,49E534,"the whole run equal byte for byte to the whole span of filed routine CountdownSoundThenNextState, decoded from a census instruction start"
 700933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
 758933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+758C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 75CDB4,55,28CDB4,"the whole run equal byte for byte to the whole span of filed routine CollectScoreItem, decoded from a census instruction start"
 75D055,11,28D055,"the whole run equal byte for byte to the whole span of filed routine BitMaskFromIndex, decoded from a census instruction start"
 75D060,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
@@ -2436,7 +2455,9 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 8605AF,39,3905AF,"the whole run equal byte for byte to the whole span of filed routine NextStateByKindBits, decoded from a census instruction start"
 8605D6,51,3905D6,"the whole run equal byte for byte to the whole span of filed routine StepFlashTimerDown, decoded from a census instruction start"
 860933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+860C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 865235,61,54D33A,"the whole run equal byte for byte to the whole span of filed routine BounceAtWalls, decoded from a census instruction start"
+86F0A2,102,9170A2,"the whole run equal byte for byte to the whole span of filed routine InitStage122E, decoded from a census instruction start"
 86F25A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 86F2B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
 87000C,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
@@ -2449,15 +2470,21 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 8BF2EF,48,54E933,"the whole run equal byte for byte to the whole span of filed routine ChooseAttackByDistance, decoded from a census instruction start"
 8BF446,24,54EA8A,"the whole run equal byte for byte to the whole span of filed routine TurnWhenWaitEnds, decoded from a census instruction start"
 8E2E6A,26,12B078,"the whole run equal byte for byte to the whole span of filed routine BitmapBitShifted, decoded from a census instruction start"
+9170A2,102,D170A2,"the whole run equal byte for byte to the whole span of filed routine InitStage1A2E, decoded from a census instruction start"
 91725A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 9172B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
+917323,172,D17323,"the whole run equal byte for byte to the whole span of filed routine StepStageFrame1A2E, decoded from a census instruction start"
 917D8A,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
 918933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
 918969,100,62969,"the whole run equal byte for byte to the whole span of filed routine VramListRun, decoded from a census instruction start"
 9189CD,52,629CD,"the whole run equal byte for byte to the whole span of filed routine VramCommandsFetch, decoded from a census instruction start"
 918A01,13,62A01,"the whole run equal byte for byte to the whole span of filed routine VramCommandsNext, decoded from a census instruction start"
 918A0E,29,62A0E,"the whole run equal byte for byte to the whole span of filed routine VramCommandsRepeat, decoded from a census instruction start"
+918A2B,28,62A2B,"the whole run equal byte for byte to the whole span of filed routine VramCommandsPairs, decoded from a census instruction start"
+918A47,31,62A47,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddressAdd, decoded from a census instruction start"
+918A66,25,62A66,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddress, decoded from a census instruction start"
 918A7F,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
+918ACB,16,D18ACB,"the whole run equal byte for byte to the whole span of filed routine EffectDispatch1A31, decoded from a census instruction start"
 918B45,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
 918CBB,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
 91B018,26,12B078,"the whole run equal byte for byte to the whole span of filed routine BitmapBitShifted, decoded from a census instruction start"
@@ -2468,6 +2495,7 @@ F0D43,21,DF6D2,"the whole run equal byte for byte to the whole span of filed rou
 91E045,16,28D180,"the whole run equal byte for byte to the whole span of filed routine DropOffScreen, decoded from a census instruction start"
 91E17B,17,3EE09D,"the whole run equal byte for byte to the whole span of filed routine CountdownStopThenState4, decoded from a census instruction start"
 91F41F,57,B0F617,"the whole run equal byte for byte to the whole span of filed routine LoadRecordThenDriftAndCount, decoded from a census instruction start"
+968C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 96ACBA,20,3EA931,"the whole run equal byte for byte to the whole span of filed routine HalveScrollStepFromFirst, decoded from a census instruction start"
 96D235,261,395235,"the whole run equal byte for byte to the whole span of filed routine ContactWithPlayer, decoded from a census instruction start"
 9750C2,16,28CFBE,"the whole run equal byte for byte to the whole span of filed routine SettleOnLanding, decoded from a census instruction start"
@@ -2500,15 +2528,45 @@ A1CAEF,57,49CAC5,"the whole run equal byte for byte to the whole span of filed r
 A1D0C2,16,28CFBE,"the whole run equal byte for byte to the whole span of filed routine SettleOnLanding, decoded from a census instruction start"
 A1D164,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
 A1D20F,35,DD6D0,"the whole run equal byte for byte to the whole span of filed routine StartDebrisBurst, decoded from a census instruction start"
+A6EC55,13,1E6C55,"the whole run equal byte for byte to the whole span of filed routine StageClearedWalkOut3CD, decoded from a census instruction start"
+A6EC6C,30,1E6C6C,"the whole run equal byte for byte to the whole span of filed routine StageClearedWaitObjects3CD, decoded from a census instruction start"
+A6EC8A,58,1E6C8A,"the whole run equal byte for byte to the whole span of filed routine StageClearedWalk3CD, decoded from a census instruction start"
+A6ECC4,10,1E6CC4,"the whole run equal byte for byte to the whole span of filed routine StageClearedWaitScroll3CD, decoded from a census instruction start"
+A6ECCE,67,1E6CCE,"the whole run equal byte for byte to the whole span of filed routine StageClearedWalkBack3CD, decoded from a census instruction start"
+A6EDA3,10,1E6DA3,"the whole run equal byte for byte to the whole span of filed routine StageClearedBossWalk3CD, decoded from a census instruction start"
+A6EDE3,26,1E6DE3,"the whole run equal byte for byte to the whole span of filed routine StageBossWaitDoor3CD, decoded from a census instruction start"
+A6EDFD,28,1E6DFD,"the whole run equal byte for byte to the whole span of filed routine StageBossWalkOut3CD, decoded from a census instruction start"
+A6EE37,13,1E6E37,"the whole run equal byte for byte to the whole span of filed routine StageClearedLastWalk3CD, decoded from a census instruction start"
+A6EF90,24,A96D59,"the whole run equal byte for byte to the whole span of filed routine StageFadeWait152D, decoded from a census instruction start"
+A6EFA8,15,1E6FA8,"the whole run equal byte for byte to the whole span of filed routine StageFadeStopCd3CD, decoded from a census instruction start"
+A6EFB7,23,A96D80,"the whole run equal byte for byte to the whole span of filed routine StageFadeTakeStock152D, decoded from a census instruction start"
+A6EFFB,35,1E6FFB,"the whole run equal byte for byte to the whole span of filed routine StageSubModeOpening3CD, decoded from a census instruction start"
+A6F078,90,1E7078,"the whole run equal byte for byte to the whole span of filed routine StageResetScroll3CD, decoded from a census instruction start"
+A6F19E,20,1E719E,"the whole run equal byte for byte to the whole span of filed routine StageOverlayFrame3CD, decoded from a census instruction start"
+A6F1E8,79,1E71E8,"the whole run equal byte for byte to the whole span of filed routine DoorHandler3CD, decoded from a census instruction start"
+A6F237,78,1E7237,"the whole run equal byte for byte to the whole span of filed routine DoorHandlerB3CD, decoded from a census instruction start"
+A6F285,16,1E7285,"the whole run equal byte for byte to the whole span of filed routine StageHudStart3CD, decoded from a census instruction start"
+A6F295,131,1E7295,"the whole run equal byte for byte to the whole span of filed routine StageHudStep3CD, decoded from a census instruction start"
+A6F7F2,9,1E77F2,"the whole run equal byte for byte to the whole span of filed routine StageDrawStock3CD, decoded from a census instruction start"
+A6F7FB,17,1E77FB,"the whole run equal byte for byte to the whole span of filed routine StageDrawScoreAdd3CD, decoded from a census instruction start"
+A6F80C,24,1E780C,"the whole run equal byte for byte to the whole span of filed routine StageDrawScore3CD, decoded from a census instruction start"
+A6F824,17,1E7824,"the whole run equal byte for byte to the whole span of filed routine StageDrawNumber3CD, decoded from a census instruction start"
+A6F89D,72,1E789D,"the whole run equal byte for byte to the whole span of filed routine StageClearBitRows3CD, decoded from a census instruction start"
+A6FE38,29,A97DC7,"the whole run equal byte for byte to the whole span of filed routine HitKindSpawn152D, decoded from a census instruction start"
+A6FE55,13,1E7E55,"the whole run equal byte for byte to the whole span of filed routine HitKindFacing3CD, decoded from a census instruction start"
+A6FE62,24,1E7E62,"the whole run equal byte for byte to the whole span of filed routine HitKindReport3CD, decoded from a census instruction start"
+A6FE81,12,1E7E81,"the whole run equal byte for byte to the whole span of filed routine HitKindSide3CD, decoded from a census instruction start"
+A6FF4F,151,1E7F4F,"the whole run equal byte for byte to the whole span of filed routine ProbeTile3CD, decoded from a census instruction start"
 A70A40,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
 A70C62,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+A969F0,25,A96A0B,"the whole run equal byte for byte to the whole span of filed routine StageDeathRespawnB152D, decoded from a census instruction start"
 A97C15,21,127B7D,"the whole run equal byte for byte to the whole span of filed routine SetVramAddresses, decoded from a census instruction start"
 A98A35,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
 A98C57,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
 AA8A40,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
 AA8C62,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
 AD31F2,33,23723,"the whole run equal byte for byte to the whole span of filed routine StreamDistance, decoded from a census instruction start"
-B07B92,15,127B92,"the whole run equal byte for byte to the whole span of filed routine AndVramData, decoded from a census instruction start"
+B08C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
 B0CFE6,35,28CFE6,"the whole run equal byte for byte to the whole span of filed routine LandThenClear, decoded from a census instruction start"
 B0D055,11,28D055,"the whole run equal byte for byte to the whole span of filed routine BitMaskFromIndex, decoded from a census instruction start"
 B0D060,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
@@ -2519,12 +2577,16 @@ B0DF93,16,28D180,"the whole run equal byte for byte to the whole span of filed r
 B0E0C9,17,3EE09D,"the whole run equal byte for byte to the whole span of filed routine CountdownStopThenState4, decoded from a census instruction start"
 B5F019,10,287019,"the whole run equal byte for byte to the whole span of filed routine StageWaitTimerToStep2, decoded from a census instruction start"
 B60933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+B60C0B,180,D18C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1A31, decoded from a census instruction start"
+C22AAE,44,D502AE,"the whole run equal byte for byte to the whole span of filed routine EffectStep1AA0, decoded from a census instruction start"
 C22ADA,16,88ADA,"the whole run equal byte for byte to the whole span of filed routine EndingEffectDispatch, decoded from a census instruction start"
+C22AF4,96,D502F4,"the whole run equal byte for byte to the whole span of filed routine EffectList1AA0, decoded from a census instruction start"
 C22B54,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
+C22C16,180,D50416,"the whole run equal byte for byte to the whole span of filed routine EffectShade1AA0, decoded from a census instruction start"
 C22CCA,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
-C674B7,13,2DF4B7,"the whole run equal byte for byte to the whole span of filed routine GaugeStepUp, decoded from a census instruction start"
-C674C4,73,2DF4C4,"the whole run equal byte for byte to the whole span of filed routine SetGaugeAddress, decoded from a census instruction start"
-C67EA4,15,2DFEA4,"the whole run equal byte for byte to the whole span of filed routine AndVramDataLong, decoded from a census instruction start"
+C22D0A,58,D5050A,"the whole run equal byte for byte to the whole span of filed routine EffectColour1AA0, decoded from a census instruction start"
+C22D44,139,D50544,"the whole run equal byte for byte to the whole span of filed routine EffectFlash1AA0, decoded from a census instruction start"
+C22DCF,39,D505CF,"the whole run equal byte for byte to the whole span of filed routine EffectFlashEnd1AA0, decoded from a census instruction start"
 C68055,24,127D43,"the whole run equal byte for byte to the whole span of filed routine HitStoreHandler, decoded from a census instruction start"
 C68076,35,390076,"the whole run equal byte for byte to the whole span of filed routine ReportHitUnlessTwo, decoded from a census instruction start"
 C68099,12,390099,"the whole run equal byte for byte to the whole span of filed routine HitKindFromBit1, decoded from a census instruction start"
@@ -2540,8 +2602,10 @@ C6D10B,35,DD6D0,"the whole run equal byte for byte to the whole span of filed ro
 C6D12E,48,28D12E,"the whole run equal byte for byte to the whole span of filed routine StartThrownItem, decoded from a census instruction start"
 C6D235,61,54D33A,"the whole run equal byte for byte to the whole span of filed routine BounceAtWalls, decoded from a census instruction start"
 D1703D,47,5F7082,"the whole run equal byte for byte to the whole span of filed routine ExpandStageVramRunsK, decoded from a census instruction start"
+D170A2,102,DC70A2,"the whole run equal byte for byte to the whole span of filed routine InitStage1B8E, decoded from a census instruction start"
 D1725A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 D172B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
+D17323,172,DC7323,"the whole run equal byte for byte to the whole span of filed routine StepStageFrame1B8E, decoded from a census instruction start"
 D17D8A,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
 D17DB5,24,2E00A5,"the whole run equal byte for byte to the whole span of filed routine HitKindFromBit7, decoded from a census instruction start"
 D18933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
@@ -2549,9 +2613,19 @@ D18969,100,62969,"the whole run equal byte for byte to the whole span of filed r
 D189CD,52,629CD,"the whole run equal byte for byte to the whole span of filed routine VramCommandsFetch, decoded from a census instruction start"
 D18A01,13,62A01,"the whole run equal byte for byte to the whole span of filed routine VramCommandsNext, decoded from a census instruction start"
 D18A0E,29,62A0E,"the whole run equal byte for byte to the whole span of filed routine VramCommandsRepeat, decoded from a census instruction start"
+D18A2B,28,62A2B,"the whole run equal byte for byte to the whole span of filed routine VramCommandsPairs, decoded from a census instruction start"
+D18A47,31,62A47,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddressAdd, decoded from a census instruction start"
+D18A66,25,62A66,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddress, decoded from a census instruction start"
 D18A7F,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
+D18ACB,16,DC8ACB,"the whole run equal byte for byte to the whole span of filed routine EffectDispatch1B91, decoded from a census instruction start"
+D18AE9,96,DC8AE9,"the whole run equal byte for byte to the whole span of filed routine EffectList1B91, decoded from a census instruction start"
 D18B49,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
+D18C0B,180,DC8C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1B91, decoded from a census instruction start"
 D18CBF,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+D18D39,10,DC8D39,"the whole run equal byte for byte to the whole span of filed routine EffectVceSave1B91, decoded from a census instruction start"
+D18D4D,19,DC8D4D,"the whole run equal byte for byte to the whole span of filed routine SelectSavedBank1B91, decoded from a census instruction start"
+D18D60,139,DC8D60,"the whole run equal byte for byte to the whole span of filed routine EffectFlash1B91, decoded from a census instruction start"
+D18DEB,39,DC8DEB,"the whole run equal byte for byte to the whole span of filed routine EffectFlashEnd1B91, decoded from a census instruction start"
 D1B018,26,12B078,"the whole run equal byte for byte to the whole span of filed routine BitmapBitShifted, decoded from a census instruction start"
 D1D0C2,16,28CFBE,"the whole run equal byte for byte to the whole span of filed routine SettleOnLanding, decoded from a census instruction start"
 D1D164,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
@@ -2563,11 +2637,19 @@ D1E9B5,24,54EA8A,"the whole run equal byte for byte to the whole span of filed r
 D1F13E,17,3EE09D,"the whole run equal byte for byte to the whole span of filed routine CountdownStopThenState4, decoded from a census instruction start"
 D1F389,26,49E068,"the whole run equal byte for byte to the whole span of filed routine EnterStateFourOnFlag, decoded from a census instruction start"
 D1F7A8,20,49E48F,"the whole run equal byte for byte to the whole span of filed routine FollowParentYAndLeave, decoded from a census instruction start"
+D502AE,44,E17AAE,"the whole run equal byte for byte to the whole span of filed routine EffectStep1C2F, decoded from a census instruction start"
 D502DA,16,88ADA,"the whole run equal byte for byte to the whole span of filed routine EndingEffectDispatch, decoded from a census instruction start"
+D502F4,96,E17AF4,"the whole run equal byte for byte to the whole span of filed routine EffectList1C2F, decoded from a census instruction start"
 D50354,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
+D50416,180,E17C16,"the whole run equal byte for byte to the whole span of filed routine EffectShade1C2F, decoded from a census instruction start"
 D504CA,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+D5050A,58,E17D0A,"the whole run equal byte for byte to the whole span of filed routine EffectColour1C2F, decoded from a census instruction start"
+D50544,139,E17D44,"the whole run equal byte for byte to the whole span of filed routine EffectFlash1C2F, decoded from a census instruction start"
+D505CF,39,E17DCF,"the whole run equal byte for byte to the whole span of filed routine EffectFlashEnd1C2F, decoded from a census instruction start"
+DC70A2,102,E770A2,"the whole run equal byte for byte to the whole span of filed routine InitStage1CEE, decoded from a census instruction start"
 DC725A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 DC72B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
+DC7323,172,E77323,"the whole run equal byte for byte to the whole span of filed routine StepStageFrame1CEE, decoded from a census instruction start"
 DC7D8A,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
 DC7DB5,24,2E00A5,"the whole run equal byte for byte to the whole span of filed routine HitKindFromBit7, decoded from a census instruction start"
 DC8933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
@@ -2575,9 +2657,19 @@ DC8969,100,62969,"the whole run equal byte for byte to the whole span of filed r
 DC89CD,52,629CD,"the whole run equal byte for byte to the whole span of filed routine VramCommandsFetch, decoded from a census instruction start"
 DC8A01,13,62A01,"the whole run equal byte for byte to the whole span of filed routine VramCommandsNext, decoded from a census instruction start"
 DC8A0E,29,62A0E,"the whole run equal byte for byte to the whole span of filed routine VramCommandsRepeat, decoded from a census instruction start"
+DC8A2B,28,62A2B,"the whole run equal byte for byte to the whole span of filed routine VramCommandsPairs, decoded from a census instruction start"
+DC8A47,31,62A47,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddressAdd, decoded from a census instruction start"
+DC8A66,25,62A66,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddress, decoded from a census instruction start"
 DC8A7F,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
+DC8ACB,16,E78ACB,"the whole run equal byte for byte to the whole span of filed routine EffectDispatch1CF1, decoded from a census instruction start"
+DC8AE9,96,E78AE9,"the whole run equal byte for byte to the whole span of filed routine EffectList1CF1, decoded from a census instruction start"
 DC8B49,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
+DC8C0B,180,E78C0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade1CF1, decoded from a census instruction start"
 DC8CBF,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+DC8D39,10,E78D39,"the whole run equal byte for byte to the whole span of filed routine EffectVceSave1CF1, decoded from a census instruction start"
+DC8D4D,19,E78D4D,"the whole run equal byte for byte to the whole span of filed routine SelectSavedBank1CF1, decoded from a census instruction start"
+DC8D60,139,E78D60,"the whole run equal byte for byte to the whole span of filed routine EffectFlash1CF1, decoded from a census instruction start"
+DC8DEB,39,E78DEB,"the whole run equal byte for byte to the whole span of filed routine EffectFlashEnd1CF1, decoded from a census instruction start"
 DCB018,26,12B078,"the whole run equal byte for byte to the whole span of filed routine BitmapBitShifted, decoded from a census instruction start"
 DCD0C2,16,28CFBE,"the whole run equal byte for byte to the whole span of filed routine SettleOnLanding, decoded from a census instruction start"
 DCD164,34,395060,"the whole run equal byte for byte to the whole span of filed routine TilePieceInRange072A, decoded from a census instruction start"
@@ -2589,9 +2681,15 @@ DCF3AA,17,3EE09D,"the whole run equal byte for byte to the whole span of filed r
 DCF7DF,30,6AF6A6,"the whole run equal byte for byte to the whole span of filed routine EnterState3WithTallHitbox, decoded from a census instruction start"
 DCFAA9,26,49E068,"the whole run equal byte for byte to the whole span of filed routine EnterStateFourOnFlag, decoded from a census instruction start"
 DCFEC8,20,49E48F,"the whole run equal byte for byte to the whole span of filed routine FollowParentYAndLeave, decoded from a census instruction start"
+E17AAE,44,EED2AE,"the whole run equal byte for byte to the whole span of filed routine EffectStep1DDA, decoded from a census instruction start"
 E17ADA,16,88ADA,"the whole run equal byte for byte to the whole span of filed routine EndingEffectDispatch, decoded from a census instruction start"
+E17AF4,96,EED2F4,"the whole run equal byte for byte to the whole span of filed routine EffectList1DDA, decoded from a census instruction start"
 E17B54,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
+E17C16,180,EED416,"the whole run equal byte for byte to the whole span of filed routine EffectShade1DDA, decoded from a census instruction start"
 E17CCA,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+E17D0A,58,EED50A,"the whole run equal byte for byte to the whole span of filed routine EffectColour1DDA, decoded from a census instruction start"
+E17D44,139,EED544,"the whole run equal byte for byte to the whole span of filed routine EffectFlash1DDA, decoded from a census instruction start"
+E17DCF,39,EED5CF,"the whole run equal byte for byte to the whole span of filed routine EffectFlashEnd1DDA, decoded from a census instruction start"
 E7725A,88,2872A4,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObject, decoded from a census instruction start"
 E772B2,87,4972FC,"the whole run equal byte for byte to the whole span of filed routine StageTriggerObjectB, decoded from a census instruction start"
 E77D8A,31,127D68,"the whole run equal byte for byte to the whole span of filed routine HitReportHandler, decoded from a census instruction start"
@@ -2599,9 +2697,18 @@ E77DB5,24,2E00A5,"the whole run equal byte for byte to the whole span of filed r
 E78933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
 E78942,204,8B8942,"the whole run equal byte for byte to the whole span of filed routine VramListFromTableT, decoded from a census instruction start"
 E78A0E,29,62A0E,"the whole run equal byte for byte to the whole span of filed routine VramCommandsRepeat, decoded from a census instruction start"
+E78A2B,28,62A2B,"the whole run equal byte for byte to the whole span of filed routine VramCommandsPairs, decoded from a census instruction start"
+E78A47,31,62A47,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddressAdd, decoded from a census instruction start"
+E78A66,25,62A66,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddress, decoded from a census instruction start"
 E78A7F,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
+E78ACB,16,12FBACB,"the whole run equal byte for byte to the whole span of filed routine EffectDispatch25F7, decoded from a census instruction start"
+E78AE9,96,12FBAE9,"the whole run equal byte for byte to the whole span of filed routine EffectList25F7, decoded from a census instruction start"
 E78B49,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
+E78C0B,180,12FBC0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade25F7, decoded from a census instruction start"
 E78CBF,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+E78D4D,19,12FBD4D,"the whole run equal byte for byte to the whole span of filed routine SelectSavedBank25F7, decoded from a census instruction start"
+E78D60,139,12FBD60,"the whole run equal byte for byte to the whole span of filed routine EffectFlash25F7, decoded from a census instruction start"
+E78DEB,39,12FBDEB,"the whole run equal byte for byte to the whole span of filed routine EffectFlashEnd25F7, decoded from a census instruction start"
 E79A05,30,8B9A0C,"the whole run equal byte for byte to the whole span of filed routine SpawnType2AThenRestartTimer, decoded from a census instruction start"
 E7B018,26,12B078,"the whole run equal byte for byte to the whole span of filed routine BitmapBitShifted, decoded from a census instruction start"
 E7D0C2,16,28CFBE,"the whole run equal byte for byte to the whole span of filed routine SettleOnLanding, decoded from a census instruction start"
@@ -2627,9 +2734,14 @@ EED2DA,16,88ADA,"the whole run equal byte for byte to the whole span of filed ro
 EED354,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
 EED4CA,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
 F32933,15,62933,"the whole run equal byte for byte to the whole span of filed routine AddToListWord, decoded from a census instruction start"
+12EBB71,169,1127B71,"the whole run equal byte for byte to the whole span of filed routine EndingEffectFadeC, decoded from a census instruction start"
 12FB969,100,62969,"the whole run equal byte for byte to the whole span of filed routine VramListRun, decoded from a census instruction start"
 12FB9CD,52,629CD,"the whole run equal byte for byte to the whole span of filed routine VramCommandsFetch, decoded from a census instruction start"
 12FBA0E,29,62A0E,"the whole run equal byte for byte to the whole span of filed routine VramCommandsRepeat, decoded from a census instruction start"
+12FBA2B,28,62A2B,"the whole run equal byte for byte to the whole span of filed routine VramCommandsPairs, decoded from a census instruction start"
+12FBA47,31,62A47,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddressAdd, decoded from a census instruction start"
+12FBA66,25,62A66,"the whole run equal byte for byte to the whole span of filed routine VramCommandsAddress, decoded from a census instruction start"
 12FBA7F,32,62A7F,"the whole run equal byte for byte to the whole span of filed routine CopyWordsToVdc, decoded from a census instruction start"
 12FBB49,25,22D6E,"the whole run equal byte for byte to the whole span of filed routine ClearScriptSlot, decoded from a census instruction start"
 12FBCBF,64,62D80,"the whole run equal byte for byte to the whole span of filed routine LoadPackedPaletteB, decoded from a census instruction start"
+1383C0B,180,12FBC0B,"the whole run equal byte for byte to the whole span of filed routine EffectShade25F7, decoded from a census instruction start"

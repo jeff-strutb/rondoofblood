@@ -354,3 +354,110 @@ HitDamage16C9:
     lda a:$AB66,y
     sta z:zTemp00
     rts
+
+
+; @routine 0F69:28D HitDamage0F69
+; @run 70:A28D
+; WHAT IT DOES: HitDamage with the overlay's own table at $AA98: the damage the object takes from the hit it has taken, into zTemp00.
+; HOW: hit_damage_from.
+; WAITS: no.
+; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamage0F69:
+    lda a:OBJ_FIELDS_2EE0,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_33B0,x
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AA98,y
+    sta z:zTemp00
+    rts
+
+; @routine 12D9:28D HitDamage12D9
+; @run 70:A28D
+; WHAT IT DOES: HitDamage with the overlay's own table at $AC28: the damage the object takes from the hit it has taken, into zTemp00.
+; HOW: hit_damage_from.
+; WAITS: no.
+; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamage12D9:
+    lda a:OBJ_FIELDS_2EE0,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_33B0,x
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AC28,y
+    sta z:zTemp00
+    rts
+
+; @routine 13F9:28D HitDamage13F9
+; @run 70:A28D
+; WHAT IT DOES: HitDamage with the overlay's own table at $AC38: the damage the object takes from the hit it has taken, into zTemp00.
+; HOW: hit_damage_from.
+; WAITS: no.
+; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamage13F9:
+    lda a:OBJ_FIELDS_2EE0,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_33B0,x
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AC38,y
+    sta z:zTemp00
+    rts
+
+; @routine 1619:28D HitDamage1619
+; @run 70:A28D
+; WHAT IT DOES: HitDamage with the overlay's own table at $AC22: the damage the object takes from the hit it has taken, into zTemp00.
+; HOW: hit_damage_from.
+; WAITS: no.
+; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamage1619:
+    lda a:OBJ_FIELDS_2EE0,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_33B0,x
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AC22,y
+    sta z:zTemp00
+    rts
+
+; @routine 18D9:28D HitDamage18D9
+; @run 70:A28D
+; WHAT IT DOES: HitDamage with the overlay's own table at $AB3A: the damage the object takes from the hit it has taken, into zTemp00.
+; HOW: hit_damage_from.
+; WAITS: no.
+; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamage18D9:
+    lda a:OBJ_FIELDS_2EE0,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp00
+    lda a:OBJ_33B0,x
+    clc
+    adc z:zTemp00
+    tay
+    lda a:$AB3A,y
+    sta z:zTemp00
+    rts
+

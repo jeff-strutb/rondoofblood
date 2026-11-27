@@ -341,3 +341,95 @@ void abi_HitDamage16C9(void)
 {
     abi_ended(l8_hit_damage_exit_shim(HitDamage16C9(cpu.x)));
 }
+
+
+/*
+ * @routine 0F69:28D HitDamage0F69
+ * @run 70:A28D
+ * WHAT IT DOES: HitDamage with the overlay's own table at $AA98: the damage the object takes from the hit it has taken, into zTemp00.
+ * HOW: hit_damage_from.
+ * WAITS: no.
+ * Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add (l8_hit_damage_exit_shim).
+ */
+L8HitDamage HitDamage0F69(uint8_t slot)
+{
+    return hit_damage_from(slot, 0xAA98);
+}
+
+void abi_HitDamage0F69(void)
+{
+    abi_ended(l8_hit_damage_exit_shim(HitDamage0F69(cpu.x)));
+}
+
+/*
+ * @routine 12D9:28D HitDamage12D9
+ * @run 70:A28D
+ * WHAT IT DOES: HitDamage with the overlay's own table at $AC28: the damage the object takes from the hit it has taken, into zTemp00.
+ * HOW: hit_damage_from.
+ * WAITS: no.
+ * Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add (l8_hit_damage_exit_shim).
+ */
+L8HitDamage HitDamage12D9(uint8_t slot)
+{
+    return hit_damage_from(slot, 0xAC28);
+}
+
+void abi_HitDamage12D9(void)
+{
+    abi_ended(l8_hit_damage_exit_shim(HitDamage12D9(cpu.x)));
+}
+
+/*
+ * @routine 13F9:28D HitDamage13F9
+ * @run 70:A28D
+ * WHAT IT DOES: HitDamage with the overlay's own table at $AC38: the damage the object takes from the hit it has taken, into zTemp00.
+ * HOW: hit_damage_from.
+ * WAITS: no.
+ * Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add (l8_hit_damage_exit_shim).
+ */
+L8HitDamage HitDamage13F9(uint8_t slot)
+{
+    return hit_damage_from(slot, 0xAC38);
+}
+
+void abi_HitDamage13F9(void)
+{
+    abi_ended(l8_hit_damage_exit_shim(HitDamage13F9(cpu.x)));
+}
+
+/*
+ * @routine 1619:28D HitDamage1619
+ * @run 70:A28D
+ * WHAT IT DOES: HitDamage with the overlay's own table at $AC22: the damage the object takes from the hit it has taken, into zTemp00.
+ * HOW: hit_damage_from.
+ * WAITS: no.
+ * Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add (l8_hit_damage_exit_shim).
+ */
+L8HitDamage HitDamage1619(uint8_t slot)
+{
+    return hit_damage_from(slot, 0xAC22);
+}
+
+void abi_HitDamage1619(void)
+{
+    abi_ended(l8_hit_damage_exit_shim(HitDamage1619(cpu.x)));
+}
+
+/*
+ * @routine 18D9:28D HitDamage18D9
+ * @run 70:A28D
+ * WHAT IT DOES: HitDamage with the overlay's own table at $AB3A: the damage the object takes from the hit it has taken, into zTemp00.
+ * HOW: hit_damage_from.
+ * WAITS: no.
+ * Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add (l8_hit_damage_exit_shim).
+ */
+L8HitDamage HitDamage18D9(uint8_t slot)
+{
+    return hit_damage_from(slot, 0xAB3A);
+}
+
+void abi_HitDamage18D9(void)
+{
+    abi_ended(l8_hit_damage_exit_shim(HitDamage18D9(cpu.x)));
+}
+

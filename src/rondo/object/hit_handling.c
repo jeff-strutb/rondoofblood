@@ -41,7 +41,8 @@ ObjArm HitDamage(uint8_t slot)
 
 /*
  * The JSR $A28D goes to the HitDamage of the overlay loaded there: the table of the copy resident at $A28D (this
- * file's and the 17 of enemies_l8_hit_damage.c), 0 when the copy there has no C.
+ * file's, the 22 of enemies_l8_hit_damage.c and 09E9's HitRowByKindAndHits, every overlay that holds the
+ * routine); 0259's when none of them is.
  */
 static uint16_t hit_damage_table_resident(void)
 {
@@ -49,28 +50,15 @@ static uint16_t hit_damage_table_resident(void)
         { 0x0259, 0xABA6 }, { 0x0519, 0xABDB }, { 0x05C9, 0xAB8F }, { 0x0729, 0xAB97 }, { 0x07D9, 0xAB0D },
         { 0x0889, 0xAA94 }, { 0x0939, 0xABCD }, { 0x0A99, 0xAC14 }, { 0x0B49, 0xAA98 }, { 0x0BF9, 0xABE8 },
         { 0x0CA9, 0xABFC }, { 0x0D59, 0xACA2 }, { 0x0E09, 0xAB01 }, { 0x0EB9, 0xAC50 }, { 0x1019, 0xAC0C },
-        { 0x10C9, 0xABAB }, { 0x1179, 0xAC16 }, { 0x16C9, 0xAB66 },
+        { 0x10C9, 0xABAB }, { 0x1179, 0xAC16 }, { 0x16C9, 0xAB66 }, { 0x09E9, 0xAB9F }, { 0x0F69, 0xAA98 },
+        { 0x12D9, 0xAC28 }, { 0x13F9, 0xAC38 }, { 0x1619, 0xAC22 }, { 0x18D9, 0xAB3A },
     };
     uint32_t at = resident_at(0xA28D);
 
     for (unsigned i = 0; i < sizeof copies / sizeof copies[0]; i++)
         if (at == DISC(copies[i].sector, 0x28D))
             return copies[i].table;
-    return 0;
-}
-
-/* A copy with no C: its code run as the original's (the frame already pushed), its exit as the arm the shim reads. */
-static ObjArm hit_damage_original_shim(uint8_t slot)
-{
-    ObjArm r = { 0 };
-
-    cpu.x = slot;
-    call_orig_framed(0xA1E8, 0xA28D);
-    r.second = cpu.a;
-    r.sum.value = cpu.y;
-    r.sum.carry = (cpu.p & P_C) != 0;
-    r.sum.overflow = (cpu.p & P_V) != 0;
-    return r;
+    return 0xABA6;
 }
 
 /* The shifted row's load with C clear, the table index's sum, the damage's load with Y the index. */
@@ -258,7 +246,7 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
         {
             uint16_t table = hit_damage_table_resident();
 
-            r->sub3 = obj_sub(table ? hit_damage_at(slot, table) : hit_damage_original_shim(slot));
+            r->sub3 = obj_sub(hit_damage_at(slot, table));
         }
         jsr_pop();
         r->bytes[OH_DAMAGE] = RD8(ZP->temp00);

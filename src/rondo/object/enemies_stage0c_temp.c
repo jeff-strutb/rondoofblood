@@ -1533,7 +1533,7 @@ static Jump shatter_on_hits_exit_shim(ObjArm r)
         if (r.arm == SO_NO_SLOT) {
             jump.end = e;
             jump.target = r.target;
-            jump.jumps = true;
+            jump.jumps = r.target != 0xC15F;    /* $C15F is the RTS the branches go to */
             return jump;
         }
         e = then(e, ended_load(0x9B));
@@ -1552,7 +1552,7 @@ static Jump shatter_on_hits_exit_shim(ObjArm r)
     e = then(e, ended_load(r.bytes[2]));
     jump.end = e;
     jump.target = r.target;
-    jump.jumps = true;
+    jump.jumps = r.target != 0xC15F;        /* $C15F is the RTS the branches go to */
     return jump;
 }
 

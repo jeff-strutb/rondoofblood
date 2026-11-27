@@ -2896,8 +2896,53 @@ static void abi_jump_exit(Jump jump)
     }
 }
 
-/* The part of DrawTilePiece072A from $A890 on, which the position test at $A860 also reaches: the table entry at $AEA4 decides whether the code at $A8A8 runs. */
-static ObjArm piece_table_entry(uint8_t slot)
+/*
+ * DrawTilePiece's three tables in each of the 24 overlays that hold it at $A882 (the same instructions in all, only these
+ * operands differ, read from the disc): the items by OBJ_3510, the rows by OBJ_3510, the entries by row plus OBJ_33B0.
+ * TilePieceInRange at $A860 is the same bytes in all 24, so its C runs whichever is loaded; it and DrawTilePiece go to
+ * the tables of the copy resident at $A882.
+ */
+typedef struct { uint16_t items, rows, entries; } PieceTables;
+
+static const struct { uint16_t sector; PieceTables t; } PIECE_TABLES[] = {
+    { 0x025A, { 0xAE9D, 0xAE9E, 0xAE9A } },
+    { 0x051A, { 0xB081, 0xB082, 0xB0DE } },
+    { 0x05CA, { 0xAE63, 0xAE64, 0xAE70 } },
+    { 0x072A, { 0xAE97, 0xAE98, 0xAEA4 } },
+    { 0x07DA, { 0xD39D, 0xD39E, 0xD3CA } },
+    { 0x088A, { 0xC224, 0xC225, 0xC231 } },
+    { 0x093A, { 0xB3AA, 0xB3AB, 0xB3B7 } },
+    { 0x09EA, { 0xBCE4, 0xBCE5, 0xBCF1 } },
+    { 0x0A9A, { 0xB67A, 0xB67B, 0xB6C7 } },
+    { 0x0B4A, { 0xB371, 0xB372, 0xB36E } },
+    { 0x0BFA, { 0xB039, 0xB03A, 0xB0A6 } },
+    { 0x0CAA, { 0xAE9F, 0xAEA0, 0xAEBC } },
+    { 0x0D5A, { 0xB01E, 0xB01F, 0xB07B } },
+    { 0x0E0A, { 0xAEF6, 0xAEF7, 0xAF03 } },
+    { 0x0EBA, { 0xAF1F, 0xAF20, 0xAF3C } },
+    { 0x0F6A, { 0xADBF, 0xADC0, 0xADBC } },
+    { 0x101A, { 0xB019, 0xB01A, 0xB046 } },
+    { 0x10CA, { 0xAEF6, 0xAEF7, 0xAF03 } },
+    { 0x117A, { 0xB075, 0xB076, 0xB0B2 } },
+    { 0x12DA, { 0xAEE1, 0xAEE2, 0xAEFE } },
+    { 0x13FA, { 0xAEA9, 0xAEAA, 0xAEC6 } },
+    { 0x161A, { 0xB0A5, 0xB0A6, 0xB0F2 } },
+    { 0x16CA, { 0xAE7F, 0xAE80, 0xAEBC } },
+    { 0x18DA, { 0xAE87, 0xAE88, 0xAEC4 } },
+};
+
+static PieceTables piece_tables_loaded(void)
+{
+    uint32_t at = resident_at(0xA882);
+
+    for (unsigned i = 0; i < sizeof PIECE_TABLES / sizeof PIECE_TABLES[0]; i++)
+        if (at == DISC(PIECE_TABLES[i].sector, 0x082))
+            return PIECE_TABLES[i].t;
+    return (PieceTables){ 0xAE97, 0xAE98, 0xAEA4 };   /* none of the 24 at $A882: 072A's, this file's own */
+}
+
+/* The part of DrawTilePiece from $A890 on, which the position test at $A860 also reaches: the table entry decides whether the code at $A8A8 runs. */
+static ObjArm piece_table_entry_at(uint8_t slot, PieceTables tables)
 {
     ObjArm r = { 0 };
     uint8_t row;
@@ -2905,19 +2950,24 @@ static ObjArm piece_table_entry(uint8_t slot)
     r.first = RD8(OBJ->f33b0[slot]);
     WR8(ZP->temp00, r.first);
     r.second = RD8(OBJ->f3510[slot]);
-    r.third = rd8((uint16_t)(0xAE98 + r.second));
+    r.third = rd8((uint16_t)(tables.rows + r.second));
     r.fourth = (uint8_t)(r.third << 4);
     row = RD8(ZP->temp00);
     r.sum = add_bytes(r.fourth, row, false);
-    r.fifth = rd8((uint16_t)(0xAEA4 + r.sum.value));
+    r.fifth = rd8((uint16_t)(tables.entries + r.sum.value));
     r.target = r.fifth != 0 ? 0xA8A8 : 0xA8ED;
     return r;
+}
+
+static ObjArm piece_table_entry(uint8_t slot)
+{
+    return piece_table_entry_at(slot, piece_tables_loaded());
 }
 
 /* The table entry's loads over the exit `e` the caller's instructions left. */
 static Jump piece_table_entry_exit_shim(Ended e, ObjArm r)
 {
-    Jump jump = { ended_kept(), r.target, true };
+    Jump jump = { ended_kept(), r.target, r.fifth != 0 };    /* entry 0: $A8ED is the RTS, no jump */
 
     e = then(e, ended_load(r.first));
     e = then(e, ended_with_y(ended_nz(r.second), r.second));
@@ -2960,19 +3010,24 @@ void abi_BitMaskFromIndex072A(void)
  * WAITS: no.
  * Entry: X object. Exit: entry zero: as the table read; else the jump's.
  */
-ObjArm DrawTilePiece072A(uint8_t slot)
+static ObjArm draw_tile_piece_at(uint8_t slot, PieceTables tables)
 {
     ObjArm r = { 0 };
     uint8_t item;
 
     r.first = RD8(OBJ->f3510[slot]);
-    item = rd8((uint16_t)(0xAE97 + r.first));
+    item = rd8((uint16_t)(tables.items + r.first));
     r.sum = add_bytes(item, RD8(OBJ->f34b8[slot]), false);
     jsr_push(0xA890);
     r.run = DrawTileScript(r.sum.value, 0);
     jsr_pop();
-    r.sub = obj_sub(piece_table_entry(slot));
+    r.sub = obj_sub(piece_table_entry_at(slot, tables));
     return r;
+}
+
+ObjArm DrawTilePiece072A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAE97, 0xAE98, 0xAEA4 });
 }
 
 static Jump draw_tile_piece072a_exit_shim(ObjArm r)
@@ -3028,7 +3083,7 @@ ObjArm TilePieceInRange072A(uint8_t slot)
         }
     }
     r.arm = TI_DRAW;
-    r.sub2 = obj_sub(DrawTilePiece072A(slot));
+    r.sub2 = obj_sub(draw_tile_piece_at(slot, piece_tables_loaded()));
     return r;
 }
 
@@ -3056,9 +3111,7 @@ static Jump tile_piece_in_range072a_exit_shim(ObjArm r)
     }
     e = then(e, ended_compare(r.second, 0x01));
     if (r.arm == TI_OFF) {
-        jump.end = e;
-        jump.target = 0xA8ED;
-        jump.jumps = true;
+        jump.end = e;       /* the branch to $A8ED, the RTS: the routine returns */
         return jump;
     }
     e = then(e, ended_load(r.third));
@@ -3147,4 +3200,465 @@ static Jump tile_piece_object072a_exit_shim(PieceObjArm p)
 void abi_TilePieceObject072A(void)
 {
     abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject072A(cpu.x)));
+}
+
+/* DrawTilePiece in the other 23 overlays that hold it at $A882: the same code, its own three tables. */
+/*
+ * @routine 025A:082 DrawTilePiece025A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 025A: draws the object's tile script (the item $AE9D gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AE9A at the row $AE9E gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece025A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAE9D, 0xAE9E, 0xAE9A });
+}
+
+void abi_DrawTilePiece025A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece025A(cpu.x)));
+}
+
+/*
+ * @routine 051A:082 DrawTilePiece051A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 051A: draws the object's tile script (the item $B081 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B0DE at the row $B082 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece051A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB081, 0xB082, 0xB0DE });
+}
+
+void abi_DrawTilePiece051A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece051A(cpu.x)));
+}
+
+/*
+ * @routine 05CA:082 DrawTilePiece05CA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 05CA: draws the object's tile script (the item $AE63 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AE70 at the row $AE64 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece05CA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAE63, 0xAE64, 0xAE70 });
+}
+
+void abi_DrawTilePiece05CA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece05CA(cpu.x)));
+}
+
+/*
+ * @routine 07DA:082 DrawTilePiece07DA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 07DA: draws the object's tile script (the item $D39D gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $D3CA at the row $D39E gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece07DA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xD39D, 0xD39E, 0xD3CA });
+}
+
+void abi_DrawTilePiece07DA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece07DA(cpu.x)));
+}
+
+/*
+ * @routine 088A:082 DrawTilePiece088A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 088A: draws the object's tile script (the item $C224 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $C231 at the row $C225 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece088A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xC224, 0xC225, 0xC231 });
+}
+
+void abi_DrawTilePiece088A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece088A(cpu.x)));
+}
+
+/*
+ * @routine 093A:082 DrawTilePiece093A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 093A: draws the object's tile script (the item $B3AA gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B3B7 at the row $B3AB gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece093A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB3AA, 0xB3AB, 0xB3B7 });
+}
+
+void abi_DrawTilePiece093A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece093A(cpu.x)));
+}
+
+/*
+ * @routine 09EA:082 DrawTilePiece09EA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 09EA: draws the object's tile script (the item $BCE4 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $BCF1 at the row $BCE5 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece09EA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xBCE4, 0xBCE5, 0xBCF1 });
+}
+
+void abi_DrawTilePiece09EA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece09EA(cpu.x)));
+}
+
+/*
+ * @routine 0A9A:082 DrawTilePiece0A9A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0A9A: draws the object's tile script (the item $B67A gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B6C7 at the row $B67B gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece0A9A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB67A, 0xB67B, 0xB6C7 });
+}
+
+void abi_DrawTilePiece0A9A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece0A9A(cpu.x)));
+}
+
+/*
+ * @routine 0B4A:082 DrawTilePiece0B4A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0B4A: draws the object's tile script (the item $B371 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B36E at the row $B372 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece0B4A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB371, 0xB372, 0xB36E });
+}
+
+void abi_DrawTilePiece0B4A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece0B4A(cpu.x)));
+}
+
+/*
+ * @routine 0BFA:082 DrawTilePiece0BFA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0BFA: draws the object's tile script (the item $B039 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B0A6 at the row $B03A gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece0BFA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB039, 0xB03A, 0xB0A6 });
+}
+
+void abi_DrawTilePiece0BFA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece0BFA(cpu.x)));
+}
+
+/*
+ * @routine 0CAA:082 DrawTilePiece0CAA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0CAA: draws the object's tile script (the item $AE9F gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AEBC at the row $AEA0 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece0CAA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAE9F, 0xAEA0, 0xAEBC });
+}
+
+void abi_DrawTilePiece0CAA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece0CAA(cpu.x)));
+}
+
+/*
+ * @routine 0D5A:082 DrawTilePiece0D5A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0D5A: draws the object's tile script (the item $B01E gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B07B at the row $B01F gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece0D5A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB01E, 0xB01F, 0xB07B });
+}
+
+void abi_DrawTilePiece0D5A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece0D5A(cpu.x)));
+}
+
+/*
+ * @routine 0E0A:082 DrawTilePiece0E0A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0E0A: draws the object's tile script (the item $AEF6 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AF03 at the row $AEF7 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece0E0A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAEF6, 0xAEF7, 0xAF03 });
+}
+
+void abi_DrawTilePiece0E0A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece0E0A(cpu.x)));
+}
+
+/*
+ * @routine 0EBA:082 DrawTilePiece0EBA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0EBA: draws the object's tile script (the item $AF1F gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AF3C at the row $AF20 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece0EBA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAF1F, 0xAF20, 0xAF3C });
+}
+
+void abi_DrawTilePiece0EBA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece0EBA(cpu.x)));
+}
+
+/*
+ * @routine 0F6A:082 DrawTilePiece0F6A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0F6A: draws the object's tile script (the item $ADBF gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $ADBC at the row $ADC0 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece0F6A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xADBF, 0xADC0, 0xADBC });
+}
+
+void abi_DrawTilePiece0F6A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece0F6A(cpu.x)));
+}
+
+/*
+ * @routine 101A:082 DrawTilePiece101A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 101A: draws the object's tile script (the item $B019 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B046 at the row $B01A gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece101A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB019, 0xB01A, 0xB046 });
+}
+
+void abi_DrawTilePiece101A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece101A(cpu.x)));
+}
+
+/*
+ * @routine 10CA:082 DrawTilePiece10CA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 10CA: draws the object's tile script (the item $AEF6 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AF03 at the row $AEF7 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece10CA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAEF6, 0xAEF7, 0xAF03 });
+}
+
+void abi_DrawTilePiece10CA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece10CA(cpu.x)));
+}
+
+/*
+ * @routine 117A:082 DrawTilePiece117A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 117A: draws the object's tile script (the item $B075 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B0B2 at the row $B076 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece117A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB075, 0xB076, 0xB0B2 });
+}
+
+void abi_DrawTilePiece117A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece117A(cpu.x)));
+}
+
+/*
+ * @routine 12DA:082 DrawTilePiece12DA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 12DA: draws the object's tile script (the item $AEE1 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AEFE at the row $AEE2 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece12DA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAEE1, 0xAEE2, 0xAEFE });
+}
+
+void abi_DrawTilePiece12DA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece12DA(cpu.x)));
+}
+
+/*
+ * @routine 13FA:082 DrawTilePiece13FA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 13FA: draws the object's tile script (the item $AEA9 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AEC6 at the row $AEAA gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece13FA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAEA9, 0xAEAA, 0xAEC6 });
+}
+
+void abi_DrawTilePiece13FA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece13FA(cpu.x)));
+}
+
+/*
+ * @routine 161A:082 DrawTilePiece161A
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 161A: draws the object's tile script (the item $B0A5 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $B0F2 at the row $B0A6 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece161A(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xB0A5, 0xB0A6, 0xB0F2 });
+}
+
+void abi_DrawTilePiece161A(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece161A(cpu.x)));
+}
+
+/*
+ * @routine 16CA:082 DrawTilePiece16CA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 16CA: draws the object's tile script (the item $AE7F gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AEBC at the row $AE80 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece16CA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAE7F, 0xAE80, 0xAEBC });
+}
+
+void abi_DrawTilePiece16CA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece16CA(cpu.x)));
+}
+
+/*
+ * @routine 18DA:082 DrawTilePiece18DA
+ * @run 70:A882
+ * @stop A8A8
+ * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 18DA: draws the object's tile script (the item $AE87 gives by
+ * OBJ_3510, plus OBJ_34B8), then looks in $AEC4 at the row $AE88 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+ * HOW: draw_tile_piece_at with this overlay's tables.
+ * WAITS: no.
+ * Entry: X object. Exit: as DrawTilePiece072A.
+ */
+ObjArm DrawTilePiece18DA(uint8_t slot)
+{
+    return draw_tile_piece_at(slot, (PieceTables){ 0xAE87, 0xAE88, 0xAEC4 });
+}
+
+void abi_DrawTilePiece18DA(void)
+{
+    abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece18DA(cpu.x)));
 }

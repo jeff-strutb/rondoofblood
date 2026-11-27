@@ -99,7 +99,7 @@ StageExit LoadStageEntryBody(uint16_t table, uint16_t character_offsets)
         WR8(OBJ->x_hi[X_LO_SLOT], 0);
         a = RD8(ZP->character);
         if (a != 0) {
-            /* Untraced: the second character's start is moved by the kind of the first object. */
+            /* The second character's start is moved by the kind of the first object (units_stage_09 runs it). */
             kind = RD8(OBJ->f27a8[0]);
             end.c = kind >= KIND_FIRST;
             end.set |= EXIT_C;
@@ -107,6 +107,8 @@ StageExit LoadStageEntryBody(uint16_t table, uint16_t character_offsets)
                 sum = sub_bytes(kind, KIND_FIRST, true);
                 end.c = sum.value >= KIND_SPAN;
                 if (sum.value < KIND_SPAN) {
+                    end.x = sum.value;              /* TAX: the offsets' index, which X keeps to the exit */
+                    end.set |= EXIT_X;
                     value = RD8(OBJ->x_lo[X_LO_SLOT]);
                     a = rd8((uint16_t)(character_offsets + sum.value));
                     sum = add_bytes(a, value, false);
@@ -149,7 +151,8 @@ static StageExit load_stage_entry(uint16_t table)
  * HOW: The record is a pointer from the overlay's table by zField83; its bytes go to the scroll
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntry(void)
@@ -171,7 +174,8 @@ void abi_LoadStageEntry(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9C71.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryB(void)
@@ -193,7 +197,8 @@ void abi_LoadStageEntryB(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9EAD.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryC(void)
@@ -215,7 +220,8 @@ void abi_LoadStageEntryC(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9F70.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryD(void)
@@ -237,7 +243,8 @@ void abi_LoadStageEntryD(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9D29.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryE(void)
@@ -259,7 +266,8 @@ void abi_LoadStageEntryE(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9E70.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryF(void)
@@ -281,7 +289,8 @@ void abi_LoadStageEntryF(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9D6C.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryG(void)
@@ -303,7 +312,8 @@ void abi_LoadStageEntryG(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9EB6.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryH(void)
@@ -325,7 +335,8 @@ void abi_LoadStageEntryH(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9D50.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryI(void)
@@ -347,7 +358,8 @@ void abi_LoadStageEntryI(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9E81.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryJ(void)
@@ -369,7 +381,8 @@ void abi_LoadStageEntryJ(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9D05.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryK(void)
@@ -391,7 +404,8 @@ void abi_LoadStageEntryK(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9E84.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryL(void)
@@ -413,7 +427,8 @@ void abi_LoadStageEntryL(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9D41.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryM(void)
@@ -435,7 +450,8 @@ void abi_LoadStageEntryM(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9EB3.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryN(void)
@@ -457,7 +473,8 @@ void abi_LoadStageEntryN(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9E76.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryO(void)
@@ -479,7 +496,8 @@ void abi_LoadStageEntryO(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9F27.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryP(void)
@@ -501,7 +519,8 @@ void abi_LoadStageEntryP(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9CBA.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryQ(void)
@@ -523,7 +542,8 @@ void abi_LoadStageEntryQ(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9F1A.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryR(void)
@@ -545,7 +565,8 @@ void abi_LoadStageEntryR(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9CD4.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryS(void)
@@ -567,7 +588,8 @@ void abi_LoadStageEntryS(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9F5E.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryT(void)
@@ -589,7 +611,8 @@ void abi_LoadStageEntryT(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9CE6.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryU(void)
@@ -611,7 +634,8 @@ void abi_LoadStageEntryU(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9F4D.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryV(void)
@@ -633,7 +657,8 @@ void abi_LoadStageEntryV(void)
  * state, SCROLLLIM and the player's slot in the order the record keeps them.
  * The same code as LoadStageEntry; this overlay's table of section records is at $9EC1.
  * WAITS: no.
- * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
+ * Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y; X the first
+ * object's kind less 5 when it moved the second character's start.
  * Clobbers zTemp00-01.
  */
 StageExit LoadStageEntryW(void)

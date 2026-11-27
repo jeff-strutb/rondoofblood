@@ -552,7 +552,6 @@ ObjArm TurnAroundInState9(uint8_t slot);
 ObjArm FallBackInState9(uint8_t slot);
 ObjArm PlaySoundTwo(uint8_t slot, uint8_t y_entry);
 ObjArm ClearHitsTaken(uint8_t slot);
-ObjArm StepListB819(uint8_t slot, uint8_t y_entry);
 ObjArm RandomTimer10(uint8_t slot);
 ObjArm CopyScrollToTimer(uint8_t slot);
 ObjArm LoadThenSpeedF0(uint8_t slot);

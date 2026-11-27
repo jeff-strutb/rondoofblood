@@ -10,6 +10,7 @@
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
 
+
 /* The arms the converted routines end on (ObjArm, enemy_objects.h); each routine's exit shim builds the registers and flags from them. */
 enum { SS_ABOVE, SS_CLEAR, SS_SET };
 enum { UF_STEPPED, UF_NEXT };
@@ -87,29 +88,103 @@ void abi_LoadRecordB04(void)
 /*
  * @routine 051B:7C4 StepListB819
  * @run 70:B7C4
- * WHAT IT DOES: Steps the animation list at $B819, then goes on into the code that follows it ($B7CF).
- * HOW: StepObjectFrames; the code after it is entered by a tail jump.
+ * WHAT IT DOES: Steps the animation list at $B819, then asks StopOnLanding with a probe height of 6. Against a wall it
+ * sets bit 7 of OBJ_31A0. On landing it takes its speeds from the four-byte row of the table at $B83A that OBJ_34B8
+ * picks (X high, X low, Y high, Y low at +1, +0, +3, +2) and, while OBJ_34B8 is under 5, counts it up, with sound
+ * $2C the first time.
+ * HOW: StepObjectFrames, StopOnLanding (its flags kept across the wall test by PHP and PLP), table reads (bank 70),
+ * SoundCommand, an INC.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: as the step, then the code at $B7CF.
+ * Entry: X object, Y the probe's column kept unless the step sets it, C passed on. Exit: the mover's registers, then
+ * by the arm: the ORA (wall); A the AND's 0 (in the air); the CMP #5 (bounced 5 times); the INC's N and Z.
  */
-ObjArm StepListB819(uint8_t slot, uint8_t y_entry)
+enum { SL_WALLED, SL_FLYING, SL_SPED, SL_COUNTED };
+
+typedef struct {
+    ObjArm arm;          /* step and y: the frame step; first: the value the routine ended on; second: the row index */
+    Mover mover;
+    bool sounded;
+    CommandCall sound;
+} StepListB819Run;
+
+StepListB819Run StepListB819(uint8_t slot, uint8_t y_entry, bool carry_entry)
 {
-    ObjArm r = { 0 };
-    uint8_t y = y_entry;
+    StepListB819Run run = { { 0 }, { 0 }, false, { 0 } };
+    uint8_t y = y_entry, timer, row;
 
     WR8(ZP->temp10, 0x19);
     WR8(ZP->temp11, 0xB8);
     jsr_push(0xB7CF);
-    r.step = StepObjectFrames(slot, &y);
+    run.arm.step = StepObjectFrames(slot, &y);
     jsr_pop();
-    r.y = y;
-    return r;
+    run.arm.y = y;
+    jsr_push(0xB7D4);
+    run.mover = StopOnLanding(6, slot, y, frame_step_carry_shim(run.arm, carry_entry));
+    jsr_pop();
+    /* PHP: the flags the mover left, which the PLP on either side of the wall test puts back. */
+    abi_ended(frame_step_exit_shim(run.arm));
+    mover_exit_shim(run.mover, 0x01);
+    push8((uint8_t)((cpu.p | P_B) & (uint8_t)~P_T));
+    if (mover_walled(run.mover)) {
+        (void)pull8();
+        run.arm.first = (uint8_t)(RD8(OBJ->f31a0[slot]) | 0x80);
+        WR8(OBJ->f31a0[slot], run.arm.first);
+        run.arm.arm = SL_WALLED;
+        return run;
+    }
+    (void)pull8();
+    run.arm.arm = SL_FLYING;
+    if (!mover_landed(run.mover)) {
+        return run;
+    }
+    timer = RD8(OBJ->f34b8[slot]);
+    row = (uint8_t)(timer << 2);
+    run.arm.second = row;
+    WR8(OBJ->vx_hi[slot], rd8((uint16_t)(0xB83B + row)));
+    WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xB83A + row)));
+    WR8(OBJ->vy_hi[slot], rd8((uint16_t)(0xB83D + row)));
+    WR8(OBJ->vy_lo[slot], rd8((uint16_t)(0xB83C + row)));
+    timer = RD8(OBJ->f34b8[slot]);
+    run.arm.first = timer;
+    run.arm.arm = SL_SPED;
+    if (timer >= 5) {
+        return run;
+    }
+    if (RD8(OBJ->f34b8[slot]) == 0) {
+        jsr_push(0xB815);
+        run.sound = SoundCommand(0x2C, slot, row);
+        jsr_pop();
+        run.sounded = true;
+    }
+    run.arm.first = INC8(OBJ->f34b8[slot]);
+    run.arm.arm = SL_COUNTED;
+    return run;
 }
 
-/* The step's exit, then the jump to $B7CF. */
 void abi_StepListB819(void)
 {
-    jump_shim(frame_step_exit_shim(StepListB819(cpu.x, cpu.y)), 0xB7CF);
+    StepListB819Run run = StepListB819(cpu.x, cpu.y, (cpu.p & P_C) != 0);
+
+    abi_ended(frame_step_exit_shim(run.arm));
+    mover_exit_shim(run.mover, 0x01);
+    switch (run.arm.arm) {
+    case SL_WALLED:
+        abi_ended(ended_load(run.arm.first));                 /* LDA, ORA #$80, STA: A and N, Z; C and V as the PLP left */
+        return;
+    case SL_FLYING:
+        cpu.a = (uint8_t)(run.mover.hits & 0x02);             /* AND #$02 (0); then PLP puts the mover's flags back */
+        return;
+    case SL_SPED:
+        abi_ended(ended_with_y(ended_compare(run.arm.first, 0x05), run.arm.second));
+        return;
+    default:
+        abi_ended(ended_with_y(ended_compare((uint8_t)(run.arm.first - 1), 0x05), run.arm.second));   /* the timer before the INC */
+        if (run.sounded) {
+            sound_command_exit_shim(0x2C, run.sound);
+        }
+        abi_ended(ended_nz(run.arm.first));                   /* the INC: N and Z; C as before it */
+        return;
+    }
 }
 
 /*
@@ -1118,7 +1193,9 @@ static Ended load_then_spawn_while_scrolling_exit_shim(ObjArm r)
     if (r.arm == LS_FULL) {
         return e;
     }
-    e = ended_then(ended_then(e, ended_of_random(r.random)), ended_with_y(ended_load((uint8_t)(r.random.value & 0x03)), r.ninth));
+    /* AND #$03, then ASL A (C 0: the value is under 4) and TAY. */
+    e = ended_then(ended_then(e, ended_of_random(r.random)), ended_load((uint8_t)(r.random.value & 0x03)));
+    e = ended_then(e, ended_with_y(ended_with_carry(ended_load((uint8_t)((r.random.value & 0x03) << 1)), false), r.ninth));
     return ended_then(e, ended_load(r.tenth));
 }
 

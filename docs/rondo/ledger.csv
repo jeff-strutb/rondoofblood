@@ -1,5 +1,5 @@
 routine,where,bytes,tier,proper_c,gate_0,symbolic,gate_c,gate_a5,gate_a7,unreachable,unverified_calls,faults,c_hash
-BootStart,0002:000,156,T2,0,1,0,0,1,0,,0,runs original code,160ac8e61d1c
+BootStart,0002:000,156,T2,0,1,0,0,0,0,,,runs original code,160ac8e61d1c
 LoadBootBlocks,0002:09C,147,T2,0,1,1,0,1,0,,0,runs original code,f4c5a44ce1b6
 OldCardMain,0023:000,549,T2,0,1,0,0,0,0,,,runs original code,ddfb9d004ead
 OldCardSoftReset,0023:225,3,T2,0,1,0,0,0,0,,,runs original code,580e210d2bd2
@@ -49,7 +49,7 @@ SpawnerStep,0024:327,83,T2,1,1,0,0,0,0,,,,e0d386617930
 ApplyWorldVelocity,0024:37A,73,T2,1,1,1,0,0,0,,,,aeb64dc718f8
 ApplyWorldVelocityX,0024:3C3,37,T2,1,1,1,0,0,0,,,,472463e92cd2
 CheckPlayerHits,0024:3E8,181,T2,1,1,1,0,0,0,,,,1ab8e3644dae
-VecKernelStart,0043:000,3,T4,1,1,1,1,1,0,,0,,71aadc823f87
+VecKernelStart,0043:000,3,T2,1,1,1,1,0,0,,,,71aadc823f87
 VecResetGameState,0043:006,3,T4,1,1,1,1,1,0,,0,,bd0948215b87
 VecClearScreenState,0043:009,3,T4,1,1,1,1,1,0,,0,,4bdcd9420946
 VecStartListChannel0Kind2,0043:00C,3,T4,1,1,1,1,1,0,,0,,083177a03620
@@ -97,21 +97,21 @@ VecStopSound,0043:087,3,T4,1,1,1,1,1,0,,0,,df06f4900f31
 VecAddScoreByte,0043:08A,3,T2,1,1,1,0,0,0,,,,fa30ded2eb46
 VecAddScoreWord,0043:08D,3,T4,1,1,1,1,1,0,,0,,31336b256636
 VecAdpcmLoad,0043:090,3,T4,1,1,1,1,1,0,,0,,e3540f6129b3
-VecStreamFullWalk,0043:093,3,T4,1,1,1,1,1,0,,0,,872d67c775de
-VecStreamScrollStep,0043:096,3,T4,1,1,1,1,1,0,,0,,aaeb7ebe8811
+VecStreamFullWalk,0043:093,3,T2,1,1,1,1,0,0,,,,872d67c775de
+VecStreamScrollStep,0043:096,3,T2,1,1,1,1,0,0,,,,aaeb7ebe8811
 VecAngleToPlayerOffset,0043:099,3,T4,1,1,1,1,1,0,,0,,82ada3b8ae21
 VecAngleToPoint,0043:09C,3,T4,1,1,1,1,1,0,,0,,333c87c14af0
 VecStartObjectAtPlace,0043:09F,3,T4,1,1,1,1,1,0,,0,,5bed5d81d1f6
 VecCopyObjectPlace,0043:0A2,3,T4,1,1,1,1,1,0,,0,,835d70182520
 VecCopyObjectPlaceBack,0043:0A5,3,T4,1,1,1,1,1,0,,0,,608627c70ca6
 VecStepObjectFrames,0043:0A8,3,T4,1,1,1,1,1,0,,0,,a1e060849e55
-VecProbeTerrain,0043:0AB,3,T2,1,1,1,1,0,0,,0,,bc48e96122bc
+VecProbeTerrain,0043:0AB,3,T2,1,1,1,1,0,0,,,,bc48e96122bc
 VecDistanceXToPlayer,0043:0AE,3,T4,1,1,1,1,1,0,,0,,de000f3a68e8
 VecDistanceYToPlayer,0043:0B1,3,T4,1,1,1,1,1,0,,0,,442d27307d77
 VecSideOfPlayer,0043:0B4,3,T4,1,1,1,1,1,0,,0,,050ecf8625c7
-VecMoveAndLand,0043:0B7,3,T4,1,1,1,1,1,0,,0,,e928fc38d1c1
-VecStopOnLanding,0043:0BA,3,T4,1,1,1,1,1,0,,0,,b4abe6e1017a
-VecStopOnLandingFrontColumn,0043:0BD,3,T4,1,1,1,1,1,0,,0,,6ef1c19a3c21
+VecMoveAndLand,0043:0B7,3,T2,1,1,1,1,0,0,,,,e928fc38d1c1
+VecStopOnLanding,0043:0BA,3,T2,1,1,1,1,0,0,,,,b4abe6e1017a
+VecStopOnLandingFrontColumn,0043:0BD,3,T2,1,1,1,1,0,0,,,,6ef1c19a3c21
 VecFindFreeSlotFrom30,0043:0C0,3,T4,1,1,1,1,1,0,,0,,898645b4b27d
 VecFindFreeSlotFrom20,0043:0C3,3,T4,1,1,1,1,1,0,,0,,b7b054befc2e
 VecFindFreeSlotFrom50,0043:0C6,3,T4,1,1,1,1,1,0,,0,,dec794a4e58e
@@ -129,11 +129,11 @@ VecBackupRead,0043:0E7,3,T4,1,1,1,1,1,0,,0,,075a80ef4713
 VecBackupWrite,0043:0EA,3,T4,1,1,1,1,1,0,,0,,53c94f501778
 VecBackupFormat,0043:0ED,3,T2,1,1,1,0,0,0,,,,03079dc03e54
 VecAdpcmPlayFromDisc,0043:0F0,3,T4,1,1,1,1,1,0,,0,,e4c21914f01d
-VecStopOnLandingNoMove,0043:0F3,3,T4,1,1,1,1,1,0,,0,,ddd6d12a5e08
+VecStopOnLandingNoMove,0043:0F3,3,T2,1,1,1,1,0,0,,,,ddd6d12a5e08
 VecSoundIfOnFirstScreen,0043:0F6,3,T4,1,1,1,1,1,0,,0,,ca60962d1884
-KernelStart,0043:0F9,123,T2,0,1,1,1,1,0,,0,runs original code,70cc0de4a9ad
+KernelStart,0043:0F9,123,T2,1,1,1,1,0,0,,,,f6ca29046357
 KernelIdle,0043:174,3,T4,1,1,1,1,1,0,,0,,47c9dd9430be
-FrameInterrupt,0043:177,272,T2,0,1,1,0,0,0,,0,runs original code,09573e33b34f
+FrameInterrupt,0043:177,272,T2,0,1,1,0,0,0,,,runs original code,09573e33b34f
 FrameInterruptExit,0043:287,16,T2,1,1,1,1,0,0,,5605328,,6f90a51eb7c4
 IgnoredInterrupt,0043:297,1,T4,1,1,1,1,1,0,,0,,60d5307f20ba
 LateFrame,0043:298,60,T2,0,1,1,1,0,0,,60059,runs original code,d28f22771192
@@ -144,7 +144,7 @@ SoundStopAll,0043:33F,39,T4,1,1,1,1,1,0,,0,,5902b1beacb7
 SoundFrameTick,0043:366,45,T2,1,1,1,1,0,0,,0,,220cf55ace18
 SoundCommand,0043:393,59,T4,1,1,1,1,1,0,,0,,dae56f2450d4
 WaitVblankDisplayOff,0043:3D8,22,T4,1,1,1,1,1,0,,0,,a4cb563bc697
-WriteVdcControl,0043:3EE,14,T4,1,1,1,1,1,1,,0,,355cea86c00e
+WriteVdcControl,0043:3EE,14,T4,1,1,1,1,1,0,,0,,355cea86c00e
 RasterStart,0043:3FC,8,T4,1,1,1,1,1,0,,0,,d284caeb3f98
 CopyBands7Down,0043:444,6,T4,1,1,1,1,1,0,,0,,350560c88734
 CopyBands6Down,0043:44A,48,T4,1,1,1,1,1,0,,0,,154c6926527d
@@ -154,66 +154,66 @@ CopyBandsYFrom3,0043:49E,12,T4,1,1,1,1,1,0,,0,,646504c0e67c
 CopyBandsWaterDown,0043:4AA,30,T4,1,1,1,1,1,0,,0,,9e1918a2f05e
 CopyBand1,0043:4C8,24,T4,1,1,1,1,1,0,,0,,d781690f5d19
 CopyNoBands,0043:4E0,1,T4,1,1,1,1,1,0,,0,,f21509f0aa5d
-RasterInterrupt,0043:4E1,8,T2,0,1,1,1,1,0,,0,runs original code,521eea7ed6f2
+RasterInterrupt,0043:4E1,8,T2,1,1,1,1,0,0,,,,521eea7ed6f2
 RasterEndBand1,0043:529,5,T4,1,1,1,1,1,0,,0,,24f2fdbaa5cb
 RasterDone,0043:52E,4,T4,1,1,1,1,1,0,,0,,513d00d3eb0d
 RasterEndWorkBand,0043:532,4,T4,1,1,1,1,1,0,,0,,3e691e986063
-RasterEffect2,0043:536,38,T4,1,1,1,1,1,1,,0,,c31e2156081f
+RasterEffect2,0043:536,38,T4,1,1,1,1,1,0,,0,,c31e2156081f
 RasterEffect3,0043:55C,85,T4,1,1,1,1,1,0,,0,,f7ff0e7dfe12
-RasterEffect4,0043:5B1,27,T4,1,1,1,1,1,1,,0,,e7d4552d99ec
-RasterEffect5,0043:5CC,119,T4,1,1,1,1,1,1,,0,,c46259925e23
-RasterEffect6,0043:643,100,T4,1,1,1,1,1,1,,0,,c16ccf35818c
-RasterEffect7,0043:6B6,112,T4,1,1,1,1,1,1,,0,,a84ad02a2996
-RasterEffect8Step4,0043:730,15,T4,1,1,1,1,1,1,,0,,2ff36d40df99
-RasterEffect8Step0,0043:73F,16,T4,1,1,1,1,1,1,,0,,f56bd63592bb
-RasterEffect8Step3,0043:74F,27,T4,1,1,1,1,1,1,,0,,2198d8b5dfcd
+RasterEffect4,0043:5B1,27,T4,1,1,1,1,1,0,,0,,e7d4552d99ec
+RasterEffect5,0043:5CC,119,T4,1,1,1,1,1,0,,0,,c46259925e23
+RasterEffect6,0043:643,100,T4,1,1,1,1,1,0,,0,,c16ccf35818c
+RasterEffect7,0043:6B6,112,T4,1,1,1,1,1,0,,0,,a84ad02a2996
+RasterEffect8Step4,0043:730,15,T4,1,1,1,1,1,0,,0,,2ff36d40df99
+RasterEffect8Step0,0043:73F,16,T4,1,1,1,1,1,0,,0,,f56bd63592bb
+RasterEffect8Step3,0043:74F,27,T4,1,1,1,1,1,0,,0,,2198d8b5dfcd
 RasterEffect8,0043:76A,201,T4,1,1,1,1,1,0,,0,,33219967b667
-RasterEffect9,0044:03D,66,T4,1,1,1,1,1,1,,0,,cb343cf091cd
-RasterEffect10,0044:07F,66,T4,1,1,1,1,1,1,,0,,0e9cdfec38f7
+RasterEffect9,0044:03D,66,T4,1,1,1,1,1,0,,0,,cb343cf091cd
+RasterEffect10,0044:07F,66,T4,1,1,1,1,1,0,,0,,0e9cdfec38f7
 RasterEffect11,0044:0C1,13,T4,1,1,1,1,1,0,,0,,79cda63ec1ef
 RasterEffect12,0044:0CE,100,T4,1,1,1,1,1,0,,0,,03f16f406c2c
 RasterEffect13,0044:139,136,T2,1,1,1,0,1,0,,0,,b9a0f65688ee
 RasterEffect14,0044:1D1,69,T4,1,1,1,1,1,0,,0,,6823a1431ca1
-RasterEffect15,0044:216,139,T4,1,1,1,1,1,1,,0,,c97d1bad9ec6
+RasterEffect15,0044:216,139,T4,1,1,1,1,1,0,,0,,c97d1bad9ec6
 RasterEffect16,0044:2B1,100,T4,1,1,1,1,1,0,,0,,61742f2b50ab
 RasterEffect17,0044:321,100,T4,1,1,1,1,1,0,,0,,bf164818086f
 RasterEffect18,0044:38F,134,T4,1,1,1,1,1,0,,0,,bbd1f7612a14
 RasterEffect19,0044:415,100,T4,1,1,1,1,1,0,,0,,e995c2a851b0
 RasterEffect20,0044:479,185,T2,1,1,1,0,1,0,,0,,3eeedb232ad1
 RasterEffect21,0044:532,114,T2,1,1,1,0,1,0,,0,,7609584a9767
-RasterEffect22,0044:5A4,61,T4,1,1,1,1,1,1,,0,,24d4221b9384
+RasterEffect22,0044:5A4,61,T4,1,1,1,1,1,0,,0,,24d4221b9384
 RasterEffect23,0044:5E1,29,T4,1,1,1,1,1,0,,0,,e9879d17e72e
-RasterEffect25,0044:5FE,11,T4,1,1,1,1,1,1,,0,,9c07d5891603
-RasterEffect29,0044:609,29,T4,1,1,1,1,1,1,,0,,0fec06117e43
-RasterEffect24,0044:626,122,T2,1,1,1,0,1,1,,0,,3ccf0da7e821
-RasterEffect26,0044:6B0,118,T2,1,1,1,0,1,1,,0,,31f4bc74a910
-RasterEffect27,0044:726,122,T2,1,1,1,0,1,1,,0,,e213634ab9b0
+RasterEffect25,0044:5FE,11,T4,1,1,1,1,1,0,,0,,9c07d5891603
+RasterEffect29,0044:609,29,T4,1,1,1,1,1,0,,0,,0fec06117e43
+RasterEffect24,0044:626,122,T2,1,1,1,0,1,0,,0,,3ccf0da7e821
+RasterEffect26,0044:6B0,118,T2,1,1,1,0,1,0,,0,,31f4bc74a910
+RasterEffect27,0044:726,122,T2,1,1,1,0,1,0,,0,,e213634ab9b0
 RasterEffect28,0044:7A0,141,T4,1,1,1,1,1,0,,0,,51cf23f094c6
-RasterEffect30,0045:02D,103,T4,1,1,1,1,1,1,,0,,c458afed0419
-RasterEffect31,0045:09B,82,T4,1,1,1,1,1,1,,0,,4404a4b42e51
+RasterEffect30,0045:02D,103,T4,1,1,1,1,1,0,,0,,c458afed0419
+RasterEffect31,0045:09B,82,T4,1,1,1,1,1,0,,0,,4404a4b42e51
 RasterSetNextLine,0045:0ED,3,T4,1,1,1,1,1,0,,0,,e49d94d77725
 RasterBandThenLine,0045:0F0,21,T4,1,1,1,1,1,0,,0,,24ee6ac30c9d
-FrameModeDispatch,0045:105,9,T2,0,1,1,1,0,0,,0,runs original code,4f577ce892df
-ModeBoot,0045:124,43,T2,0,1,1,0,1,0,,0,runs original code,f8b63eeb6bf9
-ModeLogo,0045:14F,15,T2,0,1,1,1,1,0,,0,runs original code,7e8872a7de8c
-ModeAttract,0045:15E,84,T2,0,1,1,0,1,0,,0,runs original code,60e1ed027f8f
+FrameModeDispatch,0045:105,9,T2,0,1,1,1,0,0,,,runs original code,4f577ce892df
+ModeBoot,0045:124,43,T2,1,1,1,0,0,0,,,,f8b63eeb6bf9
+ModeLogo,0045:14F,15,T2,1,1,1,1,0,0,,,,7e8872a7de8c
+ModeAttract,0045:15E,84,T2,0,1,1,0,0,0,,,runs original code,60e1ed027f8f
 ModeAttractPlay,0045:1B6,39,T2,0,1,1,0,1,0,,0,runs original code,e092bbec30b8
-ModeStageLoad,0045:1DD,19,T2,0,1,1,0,0,0,,0,runs original code,6178acb9c995
-StageEnterNext,0045:1F0,9,T2,0,1,1,1,1,0,,0,runs original code,09c55809e1bf
-ModeStageLoadScreens,0045:1F9,30,T2,0,1,1,1,1,0,,0,runs original code,51645601092c
-ModeStageLoadContinue,0045:217,18,T2,0,1,1,0,0,0,,,runs original code,eb15a4a818eb
-ModeStageDone,0045:229,60,T2,0,1,1,0,1,0,,0,runs original code,6e06b9274d1f
-ModeStage,0045:265,153,T2,0,1,1,0,1,0,,0,runs original code,d9c8f73d8391
-ModeStageCleared,0045:2FE,8,T2,0,1,1,1,1,0,,0,runs original code,b16634bb44e0
-StageClearedNext,0045:306,31,T2,0,1,1,0,1,0,,0,runs original code,5ab1a0077bba
+ModeStageLoad,0045:1DD,19,T2,1,1,1,0,0,0,,,,6178acb9c995
+StageEnterNext,0045:1F0,9,T2,1,1,1,1,0,0,,,,09c55809e1bf
+ModeStageLoadScreens,0045:1F9,30,T2,1,1,1,1,0,0,,,,51645601092c
+ModeStageLoadContinue,0045:217,18,T2,1,1,1,0,0,0,,,,eb15a4a818eb
+ModeStageDone,0045:229,60,T2,1,1,1,0,0,0,,,,6e06b9274d1f
+ModeStage,0045:265,153,T2,1,1,1,0,0,0,,,,d9c8f73d8391
+ModeStageCleared,0045:2FE,8,T2,1,1,1,1,0,0,,,,b16634bb44e0
+StageClearedNext,0045:306,31,T2,1,1,1,0,0,0,,,,5ab1a0077bba
 StageClearBit,0045:325,41,T4,1,1,1,1,1,0,,0,,efd14055af09
-ModeDead,0045:34E,105,T2,0,1,1,0,1,0,,0,runs original code,15d04bee43e7
-ModeBackToTitle,0045:3B7,29,T2,0,1,1,1,1,0,,0,runs original code,30ad5c316c7c
+ModeDead,0045:34E,105,T2,0,1,1,0,0,0,,,runs original code,15d04bee43e7
+ModeBackToTitle,0045:3B7,29,T2,1,1,1,1,0,0,,,,30ad5c316c7c
 SaveProgress,0045:3D7,10,T4,1,1,1,1,1,0,,0,,9661a9f814ab
 SaveScore,0045:3E1,81,T2,1,1,1,0,1,0,,0,,1be1d6de2028
-ModeGameOverWait,0045:432,28,T2,0,1,1,0,1,0,,0,runs original code,5dcb2560ed1b
-ModeScreen,0045:44E,76,T2,0,1,1,0,1,0,,0,runs original code,282ec8959fb0
-ModeEnding,0045:49A,29,T2,0,1,1,1,1,0,,0,runs original code,4fb50bb84073
+ModeGameOverWait,0045:432,28,T2,1,1,1,0,0,0,,,,5dcb2560ed1b
+ModeScreen,0045:44E,76,T2,1,1,1,0,0,0,,,,282ec8959fb0
+ModeEnding,0045:49A,29,T2,1,1,1,1,0,0,,,,4fb50bb84073
 NextGameMode,0045:4B7,3,T4,1,1,1,1,1,0,,0,,55cd2e98ccad
 SetGameMode,0045:4BA,7,T4,1,1,1,1,1,0,,0,,adec68690fbc
 NextSubMode,0045:4C1,8,T2,1,1,1,0,0,0,,,,04a04b603173
@@ -271,53 +271,53 @@ SelectVdcRegister,0046:366,6,T2,1,1,1,1,0,0,,0,,8eca9ed0f2b2
 ClearVdcControlHigh,0046:36C,9,T4,1,1,1,1,1,0,,0,,0d4a26a1093a
 ResetGameState,0046:375,43,T4,1,1,1,1,1,0,,0,,924564b7f0d2
 ClearScreenState,0046:3A0,45,T4,1,1,1,1,1,0,,0,,e351d76b8451
-WriteVramList,0046:3CD,63,T4,1,1,1,1,1,1,,0,,469eb0868de0
+WriteVramList,0046:3CD,63,T4,1,1,1,1,1,0,,0,,469eb0868de0
 CardIsVersionOne,0046:4C6,8,T2,1,1,1,0,1,0,,0,,c420272e9945
 KernelAdpcmPlay,0046:4CE,67,T2,1,1,1,0,1,0,,0,,13263d2d712c
 KernelAdpcmStat,0046:511,26,T2,1,1,1,0,0,0,,,,454a4d059306
 KernelAdpcmLatchWrite,0046:52B,19,T2,1,1,1,0,0,0,,,,c489a9fc36fd
-StreamFullWalk,0046:53E,169,T2,0,1,1,1,1,0,,0,runs original code,759e3be04b38
-StreamWalkLines,0046:5E7,71,T2,0,1,1,1,1,0,,0,runs original code,ff724b6623bb
-StreamScrollStep,0046:62E,54,T2,0,1,1,1,1,0,,0,runs original code,aef58d171eea
-StreamEdgeRight,0046:664,23,T2,0,1,1,1,1,0,,0,runs original code,8f374441002e
-StreamEdgeLeft,0046:67B,29,T2,0,1,1,1,1,0,,0,runs original code,f1539b86a68e
-StreamEdgeDown,0046:698,23,T2,0,1,1,1,1,0,,0,runs original code,f3e811c87774
-StreamEdgeUp,0046:6AF,29,T2,0,1,1,1,1,0,,0,runs original code,bcd116fac32e
-StreamWalkForward,0046:6CC,87,T2,0,1,1,1,1,0,,0,runs original code,9b6b7db2b1a9
+StreamFullWalk,0046:53E,169,T2,1,1,1,1,0,0,,,,759e3be04b38
+StreamWalkLines,0046:5E7,71,T2,1,1,1,1,0,0,,,,ff724b6623bb
+StreamScrollStep,0046:62E,54,T2,1,1,1,1,0,0,,,,aef58d171eea
+StreamEdgeRight,0046:664,23,T2,1,1,1,1,0,0,,,,8f374441002e
+StreamEdgeLeft,0046:67B,29,T2,1,1,1,1,0,0,,,,f1539b86a68e
+StreamEdgeDown,0046:698,23,T2,1,1,1,1,0,0,,,,f3e811c87774
+StreamEdgeUp,0046:6AF,29,T2,1,1,1,1,0,0,,,,bcd116fac32e
+StreamWalkForward,0046:6CC,87,T2,1,1,1,1,0,0,,,,9b6b7db2b1a9
 StreamDistance,0046:723,33,T4,1,1,1,1,1,0,,0,,8fbf64e67883
-StreamWalkBack,0046:744,97,T2,0,1,1,0,1,0,,0,runs original code,478a81bbc9a9
-RunStreamRecord,0046:7A5,70,T2,0,1,1,1,1,0,,0,runs original code,b9ad262553bd
+StreamWalkBack,0046:744,97,T2,1,1,1,0,0,0,,,,478a81bbc9a9
+RunStreamRecord,0046:7A5,70,T2,1,1,1,1,0,0,,,,3abd78ca24e6
 StreamSpawnIfFree,0046:7F9,11,T4,1,1,1,1,1,0,,0,,d6885f3fc1b4
 StreamPlaceObject,0047:004,134,T2,1,1,1,0,1,0,,0,,c5f1e7d2d18a
 StreamSpawnEnd,0047:08A,2,T4,1,1,1,1,1,0,,0,,923e9d87c1cd
 StreamStartScript,0047:08C,9,T4,1,1,1,1,1,0,,0,,07b0ad3b0b88
 RecordIfMarked,0047:095,10,T4,1,1,1,1,1,0,,0,,a1a15bac6916
-StreamStartListKind2,0047:09F,17,T4,1,1,1,1,1,1,,0,,7b4a3ce60c5c
+StreamStartListKind2,0047:09F,17,T4,1,1,1,1,1,0,,0,,7b4a3ce60c5c
 StreamStartListKind3,0047:0B0,11,T4,1,1,1,1,1,0,,0,,6a97725d749b
 StreamClearObject,0047:0BB,9,T2,1,1,1,0,0,0,,,,2864a7537dda
 StreamSpawnIfOther,0047:0C4,23,T4,1,1,1,1,1,0,,0,,132911309bf6
-StreamCallOverlay,0047:0DB,8,T2,0,1,1,1,1,0,,0,runs original code,a5659991bd04
-JumpThroughRecord,0047:0E3,3,T2,0,1,1,1,1,0,,0,runs original code,d295bf9c3e20
+StreamCallOverlay,0047:0DB,8,T2,1,1,1,1,0,0,,,,a5659991bd04
+JumpThroughRecord,0047:0E3,3,T2,1,1,1,1,0,0,,,,8a797af5972c
 LoadObjectRecord,0047:0E6,118,T4,1,1,1,1,1,0,,0,,bf01e4e0aeb9
 StartObjectAtPlace,0047:15C,3,T4,1,1,1,1,1,0,,0,,b239650b37f9
 CopyObjectPlace,0047:15F,37,T4,1,1,1,1,1,0,,0,,f178cda5c5d0
 CopyObjectPlaceBack,0047:184,6,T4,1,1,1,1,1,0,,0,,1ca9e672b234
 StepObjectFrames,0047:18A,50,T4,1,1,1,1,1,0,,0,,b87884c657cf
-ProbeTerrain,0047:1BC,13,T2,0,1,1,1,0,0,,0,runs original code,735b353cebf8
-ProbeFloorRead,0047:1C9,50,T2,0,1,1,1,1,0,,0,runs original code,f65e35dfd39c
-ProbeFloorHit,0047:1FB,42,T2,0,1,1,1,1,0,,0,runs original code,b3fbbef53414
-ProbeWalls,0047:225,93,T2,0,1,1,0,1,0,,0,runs original code,cdda8aab7bca
-ProbeTerrainAlt,0047:282,19,T2,0,1,1,0,1,0,,0,runs original code,d284b67e4535
-ProbeTerrainFrontColumn,0047:295,40,T2,0,1,1,0,1,0,,0,runs original code,0244cbf07265
-LookUpTerrainBelow,0047:2BD,3,T2,0,1,1,1,0,0,,0,runs original code,ed5d67f0b223
-LookUpTerrainBelowAlt,0047:2C0,3,T2,0,1,1,1,1,0,,0,runs original code,0679141708c1
+ProbeTerrain,0047:1BC,13,T2,1,1,1,1,0,0,,,,735b353cebf8
+ProbeFloorRead,0047:1C9,50,T2,1,1,1,1,0,0,,,,f65e35dfd39c
+ProbeFloorHit,0047:1FB,42,T2,1,1,1,1,0,0,,,,b3fbbef53414
+ProbeWalls,0047:225,93,T2,1,1,1,0,0,0,,,,cdda8aab7bca
+ProbeTerrainAlt,0047:282,19,T2,1,1,1,0,0,0,,,,d284b67e4535
+ProbeTerrainFrontColumn,0047:295,40,T2,1,1,1,0,0,0,,,,0244cbf07265
+LookUpTerrainBelow,0047:2BD,3,T2,1,1,1,1,0,0,,,,ed5d67f0b223
+LookUpTerrainBelowAlt,0047:2C0,3,T2,1,1,1,1,0,0,,,,0679141708c1
 DistanceXToPlayer,0047:2CB,24,T4,1,1,1,1,1,0,,0,,ff5b472985db
 DistanceYToPlayer,0047:2E3,24,T4,1,1,1,1,1,0,,0,,0a2d78ebe313
 SideOfPlayer,0047:2FB,50,T4,1,1,1,1,1,0,,0,,891d199410f3
-MoveAndLand,0047:32D,58,T2,0,1,1,0,1,0,,0,runs original code,6dca992a373d
-StopOnLanding,0047:367,14,T2,0,1,1,1,1,0,,0,runs original code,cd7bc9699148
-StopOnLandingNoMove,0047:375,54,T2,0,1,1,1,1,0,,0,runs original code,da18869c7cf1
-StopOnLandingFrontColumn,0047:3AB,29,T2,0,1,1,1,1,0,,0,runs original code,d3f37a61f5ef
+MoveAndLand,0047:32D,58,T2,1,1,1,0,0,0,,,,6dca992a373d
+StopOnLanding,0047:367,14,T2,1,1,1,1,0,0,,,,cd7bc9699148
+StopOnLandingNoMove,0047:375,54,T2,1,1,1,1,0,0,,,,da18869c7cf1
+StopOnLandingFrontColumn,0047:3AB,29,T2,1,1,1,1,0,0,,,,d3f37a61f5ef
 FindFreeSlotFrom30,0047:3C8,19,T4,1,1,1,1,1,0,,0,,0c653d7a1baa
 FindFreeSlotFrom20,0047:3DB,4,T4,1,1,1,1,1,0,,0,,1fa2c9839077
 FindFreeSlotFrom50,0047:3DF,14,T2,1,1,1,0,1,0,,0,,fb79acc51c18
@@ -345,10 +345,10 @@ ScrollStepXFromPlayer,0047:5E7,13,T2,1,1,1,0,0,0,,,,98627fde3467
 MovePlayerYIfMoving,0047:5F4,20,T2,0,1,1,1,0,0,,0,runs original code,45f27ec42289
 PlayerAndCameraFrame,0047:608,121,T2,0,1,1,1,0,0,,0,runs original code,3c5a0a2332e0
 CameraModeDispatch,0047:681,8,T2,0,1,1,1,0,0,,0,runs original code,d3a2637af199
-CameraModeCarried,0047:6C5,42,T2,0,1,1,0,1,1,,0,runs original code,5772f92eabf4
+CameraModeCarried,0047:6C5,42,T2,0,1,1,0,1,0,,0,runs original code,5772f92eabf4
 PlayerNextX,0047:6EF,18,T4,1,1,1,1,1,0,,0,,0dbaeeab09cf
-CheckPlayerAtLevelEnd,0047:701,33,T2,1,1,1,0,1,1,,0,,626b808e72fd
-CameraModeLeftWall,0047:722,108,T2,0,1,1,0,1,1,,0,runs original code,91cb7242a14a
+CheckPlayerAtLevelEnd,0047:701,33,T2,1,1,1,0,1,0,,0,,626b808e72fd
+CameraModeLeftWall,0047:722,108,T2,0,1,1,0,1,0,,0,runs original code,91cb7242a14a
 CameraModeFollow,0047:78E,45,T2,0,1,1,0,0,0,,0,runs original code,f16d97ecf7e6
 PlayerWallRight,0047:7BB,72,T2,0,1,1,0,1,0,,0,runs original code,063df77f35c6
 MovePlayerRightOrWall,0048:003,9,T2,0,1,1,1,1,0,,0,runs original code,ffb24253c930
@@ -381,8 +381,8 @@ BackupRead,0048:424,31,T4,1,1,1,1,1,0,,0,,2dc8872414cb
 BackupWrite,0048:443,55,T2,1,1,1,0,1,0,,0,,58f32612b68f
 BackupFormat,0048:47A,18,T2,1,1,1,0,0,0,,,,5ce1e01ad6ce
 BackupFailed,0048:48C,3,T2,1,1,1,0,0,0,,,,20c6b4cf2343
-StageEnter,0048:4A6,214,T2,0,1,1,0,1,0,,0,runs original code,86926a222ac9
-StageLoad,0048:57C,142,T2,0,1,1,1,1,0,,0,runs original code,3096038d36ca
+StageEnter,0048:4A6,214,T2,1,1,1,0,0,0,,,,86926a222ac9
+StageLoad,0048:57C,142,T2,1,1,1,1,0,0,,,,3096038d36ca
 SaveVramToRam,0048:60A,57,T4,1,1,1,1,1,0,,0,,eb83dc9ee21e
 AdpcmLoad,0048:643,90,T2,1,1,1,0,1,0,,0,,7378e40fd4ad
 AdpcmLoadFixed,0048:69D,78,T2,1,1,1,0,1,0,,0,,d0ca836ad1c4
@@ -391,9 +391,9 @@ CdPlayOnce,0048:743,8,T4,1,1,1,1,1,0,,0,,b1bbfd262557
 CdPlayAgain,0048:74B,2,T4,1,1,1,1,1,0,,0,,0e749e8d5abe
 CdPlayRepeat,0048:74D,81,T2,1,1,1,0,1,0,,0,,e933b8ef22b5
 CdSearchTrack,0048:79E,58,T2,1,1,1,0,1,0,,0,,fba011c83975
-LoadSceneScript,0048:7D8,217,T2,0,1,0,0,1,0,,0,runs original code,d36f3af3cf7a
-SceneReadSectors,0049:0B1,73,T2,0,1,1,0,1,0,,0,runs original code,b643a8dac27e
-SceneCallOverlay,0049:100,21,T2,0,1,1,1,1,0,,0,runs original code,b1aec1d0962c
+LoadSceneScript,0048:7D8,217,T2,1,1,0,0,0,0,,,,d36f3af3cf7a
+SceneReadSectors,0049:0B1,73,T2,1,1,1,0,0,0,,,,b643a8dac27e
+SceneCallOverlay,0049:100,21,T2,1,1,1,1,0,0,,,,9ca4c18c0548
 SoundStartChannel,004D:4EE,164,T4,1,1,1,1,1,0,,0,,9ab90aa53f33
 SoundChannelTick,004D:592,95,T2,1,1,1,0,0,0,,0,,cf6b879982c5
 SoundLoadSequence,004D:5F1,11,T2,1,1,1,1,0,0,,0,,9ea3763c1585
@@ -470,11 +470,11 @@ SoundWaveAddress,0053:721,36,T4,1,1,1,1,1,0,,0,,e8a35552a539
 SoundCommandJump,0053:745,11,T2,1,1,1,0,0,0,,,,82374c4a67f8
 SoundCommandCall,0053:750,21,T4,1,1,1,1,1,0,,0,,bc7cdc8ce4bb
 SoundCommandReturn,0053:765,61,T2,1,1,1,0,0,0,,0,,78eb55e9fd5f
-TitleEntry,00C1:000,3,T2,0,1,1,1,1,0,,0,runs original code,b7c88811a82b
-TitleScreenEntry,00C1:003,3,T2,0,1,1,1,1,0,,0,runs original code,5423fc2e7f43
-AttractEntry,00C1:006,3,T2,0,1,1,1,1,0,,0,runs original code,66136678c7a6
-SceneObjectsEntry,00C1:009,3,T2,0,1,1,1,1,0,,0,runs original code,68d2d2645eb4
-TitleStep,00C1:00F,31,T2,0,1,1,0,1,0,,0,runs original code,a938be90ba36
+TitleEntry,00C1:000,3,T2,1,1,1,1,0,0,,,,b7c88811a82b
+TitleScreenEntry,00C1:003,3,T2,1,1,1,1,0,0,,,,5423fc2e7f43
+AttractEntry,00C1:006,3,T2,1,1,1,1,0,0,,,,66136678c7a6
+SceneObjectsEntry,00C1:009,3,T2,1,1,1,1,0,0,,,,68d2d2645eb4
+TitleStep,00C1:00F,31,T2,1,1,1,0,0,0,,,,d3dd01360515
 TitleSetUp,00C1:048,60,T2,1,1,1,0,1,0,,0,,3b4419904913
 TitleScrollIn,00C1:084,26,T4,1,1,1,1,1,0,,0,,283be46e4c63
 TitleBlink,00C1:09E,17,T4,1,1,1,1,1,0,,0,,9277e08c4709
@@ -488,7 +488,7 @@ TitleWait,00C1:182,7,T4,1,1,1,1,1,0,,0,,7c20949025ec
 TitlePaletteRotate,00C1:189,65,T4,1,1,1,1,1,0,,0,,17e3e7e9f963
 TitleTileRows,00C1:1CA,36,T4,1,1,1,1,1,0,,0,,6ad9a627639c
 TitleTileWrite,00C1:1EE,10,T4,1,1,1,1,1,0,,0,,896e70fc782c
-TitleScreenStep,00C1:1F8,7,T2,0,1,0,1,1,0,,0,runs original code,93413c090927
+TitleScreenStep,00C1:1F8,7,T2,1,1,0,1,0,0,,,,1bb9c49ffe1c
 TitleScreenBegin,00C1:205,35,T3,1,1,0,1,1,0,,0,,a26f4dd7e299
 IncrementTempWord,00C1:228,7,T4,1,1,1,1,1,0,,0,,bb01adce6f1b
 TitleSoundBegin,00C1:22F,54,T2,1,1,0,0,1,0,,0,,89511b6f4ee1
@@ -498,33 +498,33 @@ DrawGlyphPair,00C1:4D5,245,T2,1,1,0,0,1,0,,0,,00a203ecf4d2
 WriteGlyphRowsTwice,00C1:5CA,5,T4,1,1,1,1,1,0,,0,,55f19a550842
 WriteGlyphRows,00C1:5CF,17,T4,1,1,1,1,1,0,,0,,25d73df8f40a
 WriteGlyphMapRows,00C1:660,160,T2,1,1,1,0,1,0,,0,,ba691bf0731c
-AttractStep,00C1:700,14,T2,0,1,0,1,1,0,,0,runs original code,17e281e54108
+AttractStep,00C1:700,14,T2,1,1,0,1,0,0,,,,ac532abf4483
 AttractBegin,00C1:71A,20,T3,1,1,0,1,1,0,,0,,ace0f0121b02
-AttractWaitStart,00C1:742,39,T2,0,1,0,0,1,0,,0,runs original code,80825c11d3af
-AttractStartCheck,00C1:769,41,T2,0,1,0,1,1,0,,0,runs original code,bb7c8c9bf3c7
+AttractWaitStart,00C1:742,39,T2,1,1,0,0,0,0,,,,80825c11d3af
+AttractStartCheck,00C1:769,41,T2,1,1,0,1,0,0,,,,bb7c8c9bf3c7
 AttractBlink,00C1:792,58,T3,1,1,0,1,1,0,,0,,93fe4bfe63e8
 AttractFrameTick,00C1:7CC,7,T4,1,1,1,1,1,0,,0,,7bf4b1ce0f3d
 AttractEndCountdown,00C1:7D3,10,T4,1,1,1,1,1,0,,0,,696710b9676f
 AttractHoldBeforeEnd,00C1:7DD,19,T3,1,1,0,1,1,0,,0,,6ffd49e4c337
-ScriptAdvance,00C2:000,15,T2,0,1,0,1,1,0,,0,runs original code,ff05c1722f11
-ScriptStep,00C2:00F,24,T2,0,1,0,1,1,0,,0,runs original code,d035543dcbcb
-ScriptSaveReadAndState,00C2:047,11,T2,0,1,1,1,1,0,,0,runs original code,fb9f6b8da40c
-ScriptSound,00C2:052,7,T2,0,1,0,1,1,0,,0,runs original code,71726032e2b2
-ScriptStartListAndClear,00C2:059,13,T2,0,1,0,1,1,0,,0,runs original code,4d3fcab5b7f3
-ScriptStartList,00C2:066,7,T2,0,1,0,1,1,0,,0,runs original code,0d933c166559
-ScriptStartSlotKind1,00C2:06D,7,T2,0,1,0,1,1,0,,0,runs original code,51ba23a70d27
-ScriptStartSlotKind2,00C2:074,7,T2,0,1,0,1,1,0,,0,runs original code,55c7f236a725
-ScriptStartSlotKind3,00C2:07B,8,T2,0,1,0,1,1,0,,0,runs original code,69c358316d83
-ScriptPlayTrack,00C2:08B,8,T2,0,1,0,1,1,0,,0,runs original code,5db710f7c988
-ScriptPlaceObjectState,00C2:093,15,T2,0,1,0,1,1,0,,0,runs original code,fa1861b4eddf
-ScriptPlaceObjectKind2,00C2:0A2,26,T2,0,1,0,1,1,0,,0,runs original code,4d4c20f20d57
-ScriptPlaceObjectFrame,00C2:0BC,21,T2,0,1,0,1,1,0,,0,runs original code,d626cab95a36
+ScriptAdvance,00C2:000,15,T2,1,1,0,1,0,0,,,,ff05c1722f11
+ScriptStep,00C2:00F,24,T2,1,1,0,1,0,0,,,,b3115125c02f
+ScriptSaveReadAndState,00C2:047,11,T2,1,1,1,1,0,0,,,,fb9f6b8da40c
+ScriptSound,00C2:052,7,T2,1,1,0,1,0,0,,,,71726032e2b2
+ScriptStartListAndClear,00C2:059,13,T2,1,1,0,1,0,0,,,,4d3fcab5b7f3
+ScriptStartList,00C2:066,7,T2,1,1,0,1,0,0,,,,0d933c166559
+ScriptStartSlotKind1,00C2:06D,7,T2,1,1,0,1,0,0,,,,51ba23a70d27
+ScriptStartSlotKind2,00C2:074,7,T2,1,1,0,1,0,0,,,,55c7f236a725
+ScriptStartSlotKind3,00C2:07B,8,T2,1,1,0,1,0,0,,,,69c358316d83
+ScriptPlayTrack,00C2:08B,8,T2,1,1,0,1,0,0,,,,5db710f7c988
+ScriptPlaceObjectState,00C2:093,15,T2,1,1,0,1,0,0,,,,fa1861b4eddf
+ScriptPlaceObjectKind2,00C2:0A2,26,T2,1,1,0,1,0,0,,,,4d4c20f20d57
+ScriptPlaceObjectFrame,00C2:0BC,21,T2,1,1,0,1,0,0,,,,d626cab95a36
 ClearAllObjects,00C2:0F7,10,T4,1,1,1,1,1,0,,0,,184a74fd7fd2
 ScriptPlaceObject,00C2:101,28,T3,1,1,0,1,1,0,,0,,207787f8e337
-ScriptPlaceTitleObjectA,00C2:11D,39,T2,0,1,0,1,1,0,,0,runs original code,91e6e653eda1
-ScriptPlaceTitleObjectB,00C2:144,39,T2,0,1,0,1,1,0,,0,runs original code,b9ae0a3f7cb1
-StepSceneObjects,00C2:16B,15,T2,0,1,1,1,1,0,,0,runs original code,c9da23d41f3d
-DispatchSceneObject,00C2:17A,16,T2,0,1,0,1,1,0,,0,runs original code,44d10c0363ae
+ScriptPlaceTitleObjectA,00C2:11D,39,T2,1,1,0,1,0,0,,,,91e6e653eda1
+ScriptPlaceTitleObjectB,00C2:144,39,T2,1,1,0,1,0,0,,,,b9ae0a3f7cb1
+StepSceneObjects,00C2:16B,15,T2,1,1,1,1,0,0,,,,c9da23d41f3d
+DispatchSceneObject,00C2:17A,16,T2,1,1,0,1,0,0,,,,7daa4e81efc6
 PlayFrameListOnce,00C2:1B0,17,T4,1,1,1,1,1,0,,0,,a40547194f5d
 AnimateAndCueSeven,00C2:1EC,34,T4,1,1,1,1,1,0,,0,,7849ea24be06
 AnimateList1AndCueSeven,00C2:20E,17,T3,1,1,0,1,1,0,,0,,c5c4a8836d53
@@ -549,7 +549,7 @@ MenuBackOnButtonII,00C3:31B,7,T4,1,1,1,1,1,0,,0,,077eea6bdd2f
 MenuBackToPageEight,00C3:322,5,T4,1,1,1,1,1,0,,0,,5ccb9c8cc67b
 NameTypeCharacter,00C3:5D2,51,T3,1,1,0,1,1,0,,0,,d135b78546bc
 ShowNameCursor,00C3:605,30,T3,1,1,0,1,1,0,,0,,43874272c3d3
-NameBackspace,00C3:623,34,T3,1,1,0,1,1,1,,0,,0ef99b0f69a7
+NameBackspace,00C3:623,34,T3,1,1,0,1,1,0,,0,,0ef99b0f69a7
 NameCursorTarget,00C3:665,49,T3,1,1,0,1,1,0,,0,,f36839f5ac31
 PadRepeatUpdate,00C4:025,51,T2,1,1,0,0,1,0,,0,,675ce546dff0
 DrawSelectedFileDigit,00C4:0CC,22,T3,1,1,0,1,1,0,,0,,be33d2158cb0
@@ -588,7 +588,7 @@ LoadPackedPaletteB,00C5:580,64,T4,1,1,1,1,1,0,,0,,615476497b0a
 WriteObjectSprites,00D1:000,102,T2,0,1,0,0,0,0,,0,runs original code,394b4ea19a01
 EmitObjectSprites,00D1:066,313,T2,0,1,0,0,0,0,,0,runs original code,f69c080133e5
 ClearVramBlock,00DD:01C,45,T3,1,1,0,1,1,0,,0,,4d259cc2df7c
-GlyphPassByStep,00DD:0DC,22,T2,0,1,0,1,1,0,,0,runs original code,c019044aac54
+GlyphPassByStep,00DD:0DC,22,T2,1,1,0,1,0,0,,,,bb15b76662d1
 OverlayGlyphPass,00DD:0FA,10,T4,1,1,1,1,1,0,,0,,7b7d596e2e3c
 OverlayGlyphRows,00DD:104,47,T3,1,1,0,1,1,0,,0,,5e5c98dd2825
 OrBufferIntoVramLow,00DD:133,25,T4,1,1,1,1,1,0,,0,,a1688c903b3b
@@ -600,7 +600,7 @@ GlideObjectUp,00DD:1E3,18,T4,1,1,1,1,1,0,,0,,064b325c970c
 GlideObjectDown,00DD:215,17,T3,1,1,0,1,1,0,,0,,ed0833d5954e
 PlaceObjectList,00DD:50A,80,T2,1,1,0,0,1,0,,0,,2827a75c15e9
 SlotToWorkArea,00DD:699,55,T3,1,1,0,1,1,0,,0,,227a2437b3af
-DrawSlotName,00DD:7D2,52,T3,1,1,0,1,1,0,,0,,98152904edc1
+DrawSlotName,00DD:7D2,52,T2,1,1,0,1,0,0,,,,98152904edc1
 DrawSlotPercent,00DE:006,63,T2,1,1,0,0,1,0,,0,,b046399d9ed6
 BlankTextRow,00DE:05D,55,T3,1,1,0,1,1,0,,0,,e8453ec0a72e
 RecolorTextRun,00DE:0B2,79,T3,1,1,0,1,1,0,,0,,965643c72d59
@@ -621,26 +621,26 @@ SlotClearedFlags,00DE:7B1,37,T2,1,1,0,0,1,0,,0,,28f9e5352084
 StartScriptSlotKind6B,00E0:3DF,6,T4,1,1,1,1,1,0,,0,,052dc89da9e8
 StartScriptSlotKind7B,00E0:3E5,12,T4,1,1,1,1,1,0,,0,,a7bf6641f71b
 ClearScriptSlotB,00E0:3F1,25,T4,1,1,1,1,1,0,,0,,ddf5e1e70c30
-EndingStep,010D:000,7,T2,0,1,1,1,1,0,,0,runs original code,462896c395a6
+EndingStep,010D:000,7,T2,1,1,1,1,0,0,,,,98bfafca1477
 EndingBegin,010D:00B,20,T3,1,1,0,1,1,0,,0,,f2a88ba94c96
-EndingFrame,010D:01F,10,T2,0,1,1,1,1,0,,0,runs original code,de97e644bb63
+EndingFrame,010D:01F,10,T2,1,1,1,1,0,0,,,,de97e644bb63
 EndingFrameTick,010D:029,7,T4,1,1,1,1,1,0,,0,,9f99e6780ddd
-EndingScriptAdvance,010D:040,15,T2,0,1,0,1,1,0,,0,runs original code,4c728e0b96b9
-EndingScriptStep,010D:04F,24,T2,0,1,0,1,1,0,,0,runs original code,c8cdb5ad178c
+EndingScriptAdvance,010D:040,15,T2,1,1,0,1,0,0,,,,4c728e0b96b9
+EndingScriptStep,010D:04F,24,T2,1,1,0,1,0,0,,,,c8cdb5ad178c
 EndingModeDoneBack,010D:067,3,T4,1,1,1,1,1,0,,0,,c8a4504338e9
-EndingCommandStartList,010D:090,20,T2,0,1,0,1,1,0,,0,runs original code,b57b5c1819cb
-EndingCommandStartScript1,010D:0AB,7,T2,0,1,0,1,1,0,,0,runs original code,cede5204207e
-EndingCommandStartScript2,010D:0B2,8,T2,0,1,0,1,1,0,,0,runs original code,414e291e7c75
-EndingCommandCdPlay,010D:0C5,8,T2,0,1,0,1,1,0,,0,runs original code,9139991cd187
-EndingCommandPlaceKind,010D:0CD,15,T2,0,1,0,1,1,0,,0,runs original code,60cd10f0d0ff
-EndingCommandPlaceNext,010D:0DC,26,T2,0,1,0,1,1,0,,0,runs original code,a2d5f841e526
-EndingCommandPlaceFrame,010D:0F6,21,T2,0,1,0,1,1,0,,0,runs original code,649b1793fe9d
-EndingCommandPlaceTimed,010D:10B,38,T2,0,1,0,1,1,0,,0,runs original code,f40f06e5da5d
+EndingCommandStartList,010D:090,20,T2,1,1,0,1,0,0,,,,b57b5c1819cb
+EndingCommandStartScript1,010D:0AB,7,T2,1,1,0,1,0,0,,,,cede5204207e
+EndingCommandStartScript2,010D:0B2,8,T2,1,1,0,1,0,0,,,,414e291e7c75
+EndingCommandCdPlay,010D:0C5,8,T2,1,1,0,1,0,0,,,,9139991cd187
+EndingCommandPlaceKind,010D:0CD,15,T2,1,1,0,1,0,0,,,,60cd10f0d0ff
+EndingCommandPlaceNext,010D:0DC,26,T2,1,1,0,1,0,0,,,,a2d5f841e526
+EndingCommandPlaceFrame,010D:0F6,21,T2,1,1,0,1,0,0,,,,649b1793fe9d
+EndingCommandPlaceTimed,010D:10B,38,T2,1,1,0,1,0,0,,,,f40f06e5da5d
 EndingClearObjects,010D:131,10,T4,1,1,1,1,1,0,,0,,13697359bb2c
 EndingPlaceObject,010D:13B,28,T3,1,1,0,1,1,0,,0,,e5e4018b728a
-EndingCommandLoadBanks,010D:1A5,53,T2,0,1,0,1,1,0,,0,runs original code,09e84b7c82ff
-EndingObjectsStep,010D:1DA,15,T2,0,1,1,1,1,0,,0,runs original code,b8dd1b955c74
-EndingDispatchKind,010D:1E9,16,T2,0,1,0,1,1,0,,0,runs original code,dacdff95a956
+EndingCommandLoadBanks,010D:1A5,53,T2,1,1,0,1,0,0,,,,09e84b7c82ff
+EndingObjectsStep,010D:1DA,15,T2,1,1,1,1,0,0,,,,b8dd1b955c74
+EndingDispatchKind,010D:1E9,16,T2,1,1,0,1,0,0,,,,13fa1b277884
 EndingCreditScrollStart,010D:239,77,T3,1,1,0,1,1,0,,0,,f78b2adbc8cd
 EndingFallingPiece,010D:298,61,T3,1,1,0,1,1,0,,0,,2c3ff917f92d
 EndingClearAfterScrollX,010D:2DC,6,T4,1,1,1,1,1,0,,0,,abedab1b0dec
@@ -689,11 +689,11 @@ EndingEffectDispatch,0111:2DA,16,T2,0,1,0,1,0,0,,0,runs original code,ef3524a7ff
 EndingEffectList,0111:2F8,121,T2,1,1,0,0,1,0,,0,,e1690c53593e
 EndingEffectFade,0111:371,169,T2,1,1,0,0,1,0,,0,,8de074f35c78
 LoadPackedPaletteC,0111:4CE,64,T4,1,1,1,1,1,0,,0,,841818192c96
-RichterVecFrame,01B9:000,3,T2,1,1,1,1,0,0,,0,,f85a1b3cddcd
-RichterVecStart,01B9:003,3,T4,1,1,1,1,1,0,,0,,334402df0dc1
+RichterVecFrame,01B9:000,3,T2,1,1,1,1,0,0,,,,f85a1b3cddcd
+RichterVecStart,01B9:003,3,T2,1,1,1,1,0,0,,,,334402df0dc1
 RichterVecApplyMove,01B9:006,3,T2,0,1,1,1,1,0,,0,runs original code,a4e3266e199c
 RichterVecC3A7,01B9:009,3,T2,0,1,0,1,1,0,,0,runs original code,53a72495a782
-RichterVecC023,01B9:00C,3,T4,1,1,1,1,1,0,,0,,f7081dde5b68
+RichterVecC023,01B9:00C,3,T2,1,1,1,1,0,0,,,,f7081dde5b68
 RichterVecC076,01B9:00F,3,T2,0,1,0,1,1,0,,0,runs original code,65c317989791
 RichterVecAnimationSound,01B9:012,3,T4,1,1,1,1,1,0,,0,,133a3f901751
 RichterVecCE1D,01B9:015,3,T4,1,1,1,1,1,0,,0,,03b8cf6f4489
@@ -704,73 +704,73 @@ RichterVecWall,01B9:021,3,T2,0,1,1,1,1,0,,0,runs original code,4398297f8d2e
 RichterVecFloor,01B9:024,3,T2,0,1,1,1,1,0,,0,runs original code,e2770615a290
 RichterApplyMoveAndPushGoTo,01B9:027,3,T4,1,1,1,1,1,0,,0,,6955f1ee5ccf
 RichterApplyMoveAndPush,01B9:02A,33,T4,1,1,1,1,1,0,,0,,37c17255bab1
-RichterFrame,01B9:04B,99,T2,0,1,1,1,0,0,,0,runs original code,2315ef90140b
-RichterHitWhilePushed,01B9:0AE,39,T2,0,1,1,0,1,0,,0,runs original code,64fd4675e69f
-RichterSpikeBelow,01B9:0D5,42,T2,0,1,1,0,1,0,,0,runs original code,51c3ea9c6071
-RichterStart,01B9:10F,7,T4,1,1,1,1,1,0,,0,,c4f22121462d
-RichterClearWork,01B9:11E,15,T3,1,1,0,1,1,0,,0,,c687feb45e76
+RichterFrame,01B9:04B,99,T2,0,1,1,1,0,0,,,runs original code,2315ef90140b
+RichterHitWhilePushed,01B9:0AE,39,T2,1,1,1,0,0,0,,,,64fd4675e69f
+RichterSpikeBelow,01B9:0D5,42,T2,1,1,1,0,0,0,,,,51c3ea9c6071
+RichterStart,01B9:10F,7,T2,1,1,1,1,0,0,,,,c4f22121462d
+RichterClearWork,01B9:11E,15,T2,1,1,0,1,0,0,,,,c687feb45e76
 RichterClearKeepPlace,01B9:12D,29,T4,1,1,1,1,1,0,,0,,6d21f9dea8df
-RichterStartNew,01B9:14A,6,T4,1,1,1,1,1,0,,0,,e457dba4e2ce
-RichterStartHealth,01B9:150,4,T4,1,1,1,1,1,0,,0,,ed3a6f8d5525
-RichterStartClear,01B9:154,19,T4,1,1,1,1,1,0,,0,,93cad2825f89
-RichterStartStand,01B9:167,8,T4,1,1,1,1,1,0,,0,,83d197745519
+RichterStartNew,01B9:14A,6,T2,1,1,1,1,0,0,,,,e457dba4e2ce
+RichterStartHealth,01B9:150,4,T2,1,1,1,1,0,0,,,,ed3a6f8d5525
+RichterStartClear,01B9:154,19,T2,1,1,1,1,0,0,,,,93cad2825f89
+RichterStartStand,01B9:167,8,T2,1,1,1,1,0,0,,,,83d197745519
 RichterAnimationSound,01B9:16F,11,T4,1,1,1,1,1,0,,0,,82470e9428ef
-RichterDyingStep,01B9:17A,42,T2,1,1,1,0,1,0,,0,,acb315a485e8
+RichterDyingStep,01B9:17A,42,T2,1,1,1,0,0,0,,,,acb315a485e8
 RichterDie,01B9:1A4,18,T4,1,1,1,1,1,0,,0,,730c882c976e
 RichterDeathSound,01B9:1B6,8,T4,1,1,1,1,1,0,,0,,1449ddc1547d
-RichterStateFrame,01B9:1BE,192,T2,0,1,1,0,0,0,,0,runs original code,ac84f51e91cc
-RichterOutOfHealth,01B9:298,26,T2,0,1,0,1,1,0,,0,runs original code,e1c40681d08e
-RichterHitReact,01B9:2B2,37,T4,1,1,1,1,1,0,,0,,99d1d06e96f2
-RichterStartHitScript,01B9:2D7,5,T4,1,1,1,1,1,0,,0,,d93698949706
+RichterStateFrame,01B9:1BE,192,T2,0,1,1,0,0,0,,,runs original code,ac84f51e91cc
+RichterOutOfHealth,01B9:298,26,T2,0,1,0,1,0,0,,,runs original code,e1c40681d08e
+RichterHitReact,01B9:2B2,37,T2,1,1,1,1,0,0,,,,99d1d06e96f2
+RichterStartHitScript,01B9:2D7,5,T2,1,1,1,1,0,0,,,,d93698949706
 RichterTurnOnPress,01B9:2E4,25,T4,1,1,1,1,1,0,,0,,30a055f02145
-RichterStandStep1,01B9:2FD,79,T2,0,1,1,0,1,0,,0,runs original code,fd1b6b5ec0e2
+RichterStandStep1,01B9:2FD,79,T2,0,1,1,0,0,0,,,runs original code,fd1b6b5ec0e2
 RichterClearWhip,01B9:34C,5,T4,1,1,1,1,1,0,,0,,e3c561149d6f
 RichterOrphanClearWhipAir,01B9:351,5,T2,1,1,1,0,0,0,,,,f83b2eaf5d2b
-RichterStandStep2,01B9:358,120,T2,0,1,1,0,1,0,,0,runs original code,3c71a4c2951b
-RichterStepIndex,01B9:3D0,6,T4,1,1,1,1,1,0,,0,,ed19b2fc7a8d
-RichterStateStand,01B9:3D6,5,T2,0,1,1,1,0,0,,0,runs original code,13630e404229
-RichterStandStep0,01B9:3E1,97,T2,0,1,1,1,0,0,,0,runs original code,fcbac493d049
-RichterStartWalk,01B9:442,42,T4,1,1,1,1,1,0,,0,,fa46efb13bec
+RichterStandStep2,01B9:358,120,T2,1,1,1,0,0,0,,,,3c71a4c2951b
+RichterStepIndex,01B9:3D0,6,T2,1,1,1,1,0,0,,,,ed19b2fc7a8d
+RichterStateStand,01B9:3D6,5,T2,0,1,1,1,0,0,,,runs original code,13630e404229
+RichterStandStep0,01B9:3E1,97,T2,1,1,1,1,0,0,,,,fcbac493d049
+RichterStartWalk,01B9:442,42,T2,1,1,1,1,0,0,,,,fa46efb13bec
 RichterSpeedWalk,01B9:46C,18,T4,1,1,1,1,1,0,,0,,afb2389222c4
 RichterSpeedJump,01B9:47E,18,T4,1,1,1,1,1,0,,0,,ef345df66d1f
 RichterSpeedBackstep,01B9:494,18,T4,1,1,1,1,1,0,,0,,82dc1ed4639a
-RichterCrouch,01B9:4AE,18,T4,1,1,1,1,1,0,,0,,b83bf4bbe67a
+RichterCrouch,01B9:4AE,18,T2,1,1,1,1,0,0,,,,b83bf4bbe67a
 RichterStopMoving,01B9:4C0,6,T4,1,1,1,1,1,0,,0,,1823148fa949
 RichterStopX,01B9:4C6,7,T4,1,1,1,1,1,0,,0,,b9e599ea4625
-RichterAttack,01B9:4CD,80,T2,1,1,1,0,1,0,,0,,bd768c237204
-RichterToFall,01B9:521,33,T4,1,1,1,1,1,0,,0,,b7deb3a2a8f6
+RichterAttack,01B9:4CD,80,T2,1,1,1,0,0,0,,,,bd768c237204
+RichterToFall,01B9:521,33,T2,1,1,1,1,0,0,,,,b7deb3a2a8f6
 RichterPadOverridesOff,01B9:542,9,T4,1,1,1,1,1,0,,0,,1f4c8eb8d751
 RichterLedgeHurtA,01B9:54B,15,T2,1,1,1,0,0,0,,,,04bde9098666
 RichterLedgeHurtB,01B9:55A,38,T2,1,1,1,0,0,0,,,,f5db0b2a7d6e
-RichterUpWhipLeft,01B9:580,43,T2,0,1,1,0,1,0,,0,runs original code,4353e6a98508
+RichterUpWhipLeft,01B9:580,43,T2,1,1,1,0,0,0,,,,4353e6a98508
 RichterNudgeA,01B9:5AB,17,T4,1,1,1,1,1,0,,0,,160b8785c4d0
 RichterNudgeB,01B9:5BC,8,T4,1,1,1,1,1,0,,0,,3eb954f61625
-RichterNudgeBJump,01B9:5C4,4,T3,1,1,0,1,1,0,,0,,6c87fa4966c6
-RichterUpWhipRight,01B9:5C8,38,T2,0,1,1,0,1,0,,0,runs original code,413eca3c0028
-RichterToHurtAir,01B9:5F2,47,T2,1,1,1,0,1,0,,0,,ea8a15d69b18
+RichterNudgeBJump,01B9:5C4,4,T2,1,1,0,1,0,0,,,,6c87fa4966c6
+RichterUpWhipRight,01B9:5C8,38,T2,1,1,1,0,0,0,,,,413eca3c0028
+RichterToHurtAir,01B9:5F2,47,T2,1,1,1,0,0,0,,,,ea8a15d69b18
 RichterReactFillD,01B9:633,13,T2,1,1,1,0,0,0,,,,6521923dec46
 RichterReactFillB,01B9:640,4,T2,1,1,1,0,0,0,,,,41dd2e4a0dcc
-RichterItemCrashFive,01B9:644,29,T4,1,1,1,1,1,0,,0,,6d3c1e50d325
+RichterItemCrashFive,01B9:644,29,T2,1,1,1,1,0,0,,,,6d3c1e50d325
 RichterReactE,01B9:661,6,T2,1,1,1,0,0,0,,,,e1992acd334b
 RichterReact11,01B9:667,16,T2,1,1,1,0,0,0,,,,4183e5742f2d
 RichterReact10,01B9:677,4,T2,1,1,1,0,0,0,,,,edbf5a7dc260
 RichterReact12,01B9:67B,4,T2,1,1,1,0,0,0,,,,d4b96850a389
 RichterReact13,01B9:67F,4,T2,1,1,1,0,0,0,,,,e93161b054ef
-RichterKnockBack,01B9:683,62,T4,1,1,1,1,1,0,,0,,4fe95899dc57
-RichterToAir,01B9:6C5,71,T4,1,1,1,1,1,0,,0,,7e1b1401567e
+RichterKnockBack,01B9:683,62,T2,1,1,1,1,0,0,,,,4fe95899dc57
+RichterToAir,01B9:6C5,71,T2,1,1,1,1,0,0,,,,7e1b1401567e
 RichterJumpSpeed,01B9:70C,16,T4,1,1,1,1,1,0,,0,,f45db16edc59
 RichterLiftThree,01B9:71C,29,T2,1,1,1,0,1,0,,0,,81ead72a59da
-RichterStateWalk,01B9:739,115,T2,0,1,1,0,1,0,,0,runs original code,1d8c334f8dd8
-RichterStand,01B9:7AC,24,T4,1,1,1,1,1,0,,0,,278db8d89b0d
-RichterClimbStart,01B9:7C4,154,T2,0,1,1,1,1,0,,0,runs original code,ce66e55fb6c0
-RichterStateCrouch,01B9:85E,6,T2,0,1,1,1,0,0,,0,runs original code,cc34e3c1a9d8
-RichterCrouchStep0,01B9:86E,72,T2,0,1,1,0,1,0,,0,runs original code,3dfeb36bdff2
-RichterCrouchAttack,01B9:8B6,17,T3,1,1,0,1,1,0,,0,,cab3d2dea219
-RichterCrouchStep1,01B9:8C7,64,T2,0,1,1,1,1,0,,0,runs original code,db6da2ad7f2e
-RichterCrouchStep3,01B9:907,48,T2,0,1,1,0,1,0,,0,runs original code,cfed0ea03cc0
-RichterCrouchStep4,01B9:937,44,T2,0,1,1,0,1,0,,0,runs original code,ec8e0e4ac77a
-RichterSolidUnderColumn,01BA:22F,25,T2,0,1,1,0,0,0,,0,runs original code,fe18342ce76e
-RichterReadUnderFeet,01BA:248,14,T2,0,1,1,1,1,0,,0,runs original code,997e44fd1993
+RichterStateWalk,01B9:739,115,T2,1,1,1,0,0,0,,,,1d8c334f8dd8
+RichterStand,01B9:7AC,24,T2,1,1,1,1,0,0,,,,278db8d89b0d
+RichterClimbStart,01B9:7C4,154,T2,1,1,1,1,0,0,,,,ce66e55fb6c0
+RichterStateCrouch,01B9:85E,6,T2,0,1,1,1,0,0,,,runs original code,cc34e3c1a9d8
+RichterCrouchStep0,01B9:86E,72,T2,1,1,1,0,0,0,,,,3dfeb36bdff2
+RichterCrouchAttack,01B9:8B6,17,T2,1,1,0,1,0,0,,,,cab3d2dea219
+RichterCrouchStep1,01B9:8C7,64,T2,0,1,1,1,0,0,,,runs original code,db6da2ad7f2e
+RichterCrouchStep3,01B9:907,48,T2,1,1,1,0,0,0,,,,cfed0ea03cc0
+RichterCrouchStep4,01B9:937,44,T2,1,1,1,0,0,0,,,,ec8e0e4ac77a
+RichterSolidUnderColumn,01BA:22F,25,T2,1,1,1,0,0,0,,0,,fe18342ce76e
+RichterReadUnderFeet,01BA:248,14,T2,1,1,1,1,0,0,,,,997e44fd1993
 RichterOnMarkedFloor,01BA:389,27,T2,1,1,1,0,1,0,,0,,ba81c7ac9007
 RichterFallGravity,01BA:3CB,27,T4,1,1,1,1,1,0,,0,,4ebd48af4109
 RichterMoveStopped,01BA:62F,19,T4,1,1,1,1,1,0,,0,,65b59690e7c0
@@ -778,31 +778,31 @@ StartDebrisBurst,01BA:6D0,35,T4,1,1,1,1,1,0,,0,,f3b9e6c5e20f
 RichterCrashFrame,01BA:73A,18,T4,1,1,1,1,1,0,,0,,c8e964cd82c9
 RichterTurnOnPad,01BB:0A0,38,T3,1,1,0,1,1,0,,0,,6956efd9f293
 RichterEndItemCrash,01BB:180,32,T4,1,1,1,1,1,0,,0,,a2481d746b25
-CountDownThenStand,01BB:1AA,9,T4,1,1,1,1,1,0,,0,,c4bed004952c
+CountDownThenStand,01BB:1AA,9,T2,1,1,1,1,0,0,,,,c4bed004952c
 RichterReadPad,01BB:611,59,T4,1,1,1,1,1,0,,0,,28c041cb3646
-RichterClearPadOverrides,01BB:64C,13,T4,1,1,1,1,1,0,,0,,efc29af6ce40
-RichterAnimationWait,01BB:659,7,T4,1,1,1,1,1,0,,0,,eeeab8d71620
-RichterAnimationRunning,01BB:660,9,T4,1,1,1,1,1,0,,0,,385770c9d033
-RichterAnimationTick,01BB:669,18,T3,1,1,0,1,1,0,,0,,c9055c25e0f3
-RichterSetAnimation,01BB:67B,33,T4,1,1,1,1,1,0,,0,,b466c0c6f583
-RichterAnimationPoint,01BB:69C,21,T4,1,1,1,1,1,0,,0,,86a395aae79f
-RichterReadAbove,01BB:6D2,11,T2,0,1,0,0,1,0,,0,runs original code,9f6af7eedd8b
-RichterReadBelow,01BB:6DD,13,T2,0,1,1,1,0,0,,0,runs original code,d5f4026245b2
-RichterReadOnScreen,01BB:6EA,10,T2,0,1,0,1,1,0,,0,runs original code,7cab3f3d981a
-RichterReadIfOnPage,01BB:6F4,5,T2,0,1,0,1,1,0,,0,runs original code,46cd4860d3bc
+RichterClearPadOverrides,01BB:64C,13,T2,1,1,1,1,0,0,,,,efc29af6ce40
+RichterAnimationWait,01BB:659,7,T2,1,1,1,1,0,0,,,,eeeab8d71620
+RichterAnimationRunning,01BB:660,9,T2,1,1,1,1,0,0,,,,385770c9d033
+RichterAnimationTick,01BB:669,18,T2,1,1,0,1,0,0,,,,c9055c25e0f3
+RichterSetAnimation,01BB:67B,33,T2,1,1,1,1,0,0,,,,b466c0c6f583
+RichterAnimationPoint,01BB:69C,21,T2,1,1,1,1,0,0,,,,86a395aae79f
+RichterReadAbove,01BB:6D2,11,T2,1,1,0,0,0,0,,,,9f6af7eedd8b
+RichterReadBelow,01BB:6DD,13,T2,1,1,1,1,0,0,,,,d5f4026245b2
+RichterReadOnScreen,01BB:6EA,10,T2,1,1,0,1,0,0,,,,7cab3f3d981a
+RichterReadIfOnPage,01BB:6F4,5,T2,1,1,0,1,0,0,,,,46cd4860d3bc
 RichterColumnOffset,01BB:6F9,11,T4,1,1,1,1,1,0,,0,,8dee94e3340d
-RichterCheckTurnWindow,01BB:704,41,T4,1,1,1,1,1,0,,0,,c5edf4127a01
-RichterInvincibleTick,01BB:73D,85,T4,1,1,1,1,1,0,,0,,27d5ab1c0058
-RichterReadAtOffset,01BB:79E,19,T2,0,1,0,1,1,0,,0,runs original code,5c8e003b1f22
+RichterCheckTurnWindow,01BB:704,41,T2,1,1,1,1,0,0,,,,c5edf4127a01
+RichterInvincibleTick,01BB:73D,85,T2,1,1,1,1,0,0,,,,27d5ab1c0058
+RichterReadAtOffset,01BB:79E,19,T2,1,1,0,1,0,0,,,,5c8e003b1f22
 RichterFaceByPad,01BB:7CA,19,T4,1,1,1,1,1,0,,0,,a66c770906e7
-RichterNoteItemPress,01BB:7DD,12,T2,1,1,1,0,1,0,,0,,f7a56b262f12
-RichterCheckItemHearts,01BB:7E9,19,T4,1,1,1,1,1,0,,0,,8f60246222f5
+RichterNoteItemPress,01BB:7DD,12,T2,1,1,1,0,0,0,,,,f7a56b262f12
+RichterCheckItemHearts,01BB:7E9,19,T2,1,1,1,1,0,0,,,,8f60246222f5
 RichterTryItemCrash,01BB:7FC,81,T2,1,1,1,0,1,0,,0,,b23f3fddb8ee
 RichterUpHeld,01BC:068,7,T4,1,1,1,1,1,0,,0,,66189d8c068c
-RichterJumpOrClimb,01BC:06F,15,T2,0,1,0,1,1,0,,0,runs original code,9a1806fc12cc
-RichterJumpPressed,01BC:07E,7,T4,1,1,1,1,1,0,,0,,3ff4f1ced44e
-RichterHasNoFooting,01BC:085,14,T2,0,1,1,1,0,0,,0,runs original code,fdb0c85a2de5
-RichterLadderCheck,01BC:093,95,T2,0,1,1,0,1,0,,0,runs original code,67dbcbe440e6
+RichterJumpOrClimb,01BC:06F,15,T2,1,1,0,1,0,0,,,,9a1806fc12cc
+RichterJumpPressed,01BC:07E,7,T2,1,1,1,1,0,0,,,,3ff4f1ced44e
+RichterHasNoFooting,01BC:085,14,T2,1,1,1,1,0,0,,0,,fdb0c85a2de5
+RichterLadderCheck,01BC:093,95,T2,1,1,1,0,0,0,,,,67dbcbe440e6
 RichterLadderPoint,01BC:0F2,23,T4,1,1,1,1,1,0,,0,,b2b0e50a8c9d
 RichterLatchButtons,01BB:909,10,T4,1,1,1,1,1,0,,0,,c9025548e2cb
 RichterLatchBits,01BC:113,7,T4,1,1,1,1,1,0,,0,,ed3d494501a2
@@ -812,39 +812,39 @@ RichterUseItemSix,01BC:1B1,28,T2,1,1,0,0,0,0,,,,810fff5534e2
 RichterUseItemSeven,01BC:1CD,18,T2,1,1,0,0,0,0,,,,f47db8e08c91
 RichterFindItemOut,01BC:1DF,13,T2,1,1,1,0,1,0,,0,,33024e2e6d91
 RichterUseItemEight,01BC:1EC,31,T2,1,1,0,0,0,0,,,,9dd9397e3faf
-RichterLedgeCheck,01BC:241,15,T2,0,1,0,1,0,0,,0,runs original code,f9c8fd889b99
-RichterLedgeLow,01BC:250,20,T2,0,1,0,0,0,0,,0,runs original code,8cdd66c5d3e9
+RichterLedgeCheck,01BC:241,15,T2,1,1,0,1,0,0,,0,,f9c8fd889b99
+RichterLedgeLow,01BC:250,20,T2,1,1,0,0,0,0,,0,,8cdd66c5d3e9
 RichterLedgeHigh,01BC:264,22,T2,1,1,0,0,1,0,,0,,fc450c3dacb1
 RichterLandOnFloor,01BC:27A,6,T2,1,1,1,0,0,0,,0,,83e6b05ec58f
 RichterLiftByColumn,01BC:280,45,T2,1,1,1,0,0,0,,0,,cfd209ad0142
 RichterColumnsBlocked,01BC:2AD,15,T4,1,1,1,1,1,0,,0,,d1018e8d3ce6
 RichterFloorOddScreen,01BC:2BC,6,T2,1,1,0,0,0,0,,,,5be468b1c3c8
 RichterFloorCheck,01BC:2C2,61,T2,1,1,1,0,1,0,,0,,c3e7a372e641
-RichterLowColumnsBlocked,01BC:2FF,30,T2,0,1,1,1,0,0,,0,runs original code,7fd7e9a67281
-RichterReadColumnsHigh,01BC:31D,6,T2,0,1,0,0,0,0,,,runs original code,03bcf692df95
-RichterReadColumns,01BC:323,42,T2,0,1,1,1,0,0,,0,runs original code,c3d822f8858e
+RichterLowColumnsBlocked,01BC:2FF,30,T2,1,1,1,1,0,0,,0,,7fd7e9a67281
+RichterReadColumnsHigh,01BC:31D,6,T2,1,1,0,0,0,0,,,,03bcf692df95
+RichterReadColumns,01BC:323,42,T2,1,1,1,1,0,0,,0,,c3d822f8858e
 RichterWallPushed,01BC:367,7,T4,1,1,1,1,1,0,,0,,638d84bb3d05
-RichterWall,01BC:36E,83,T2,0,1,1,1,1,0,,0,runs original code,3e19538a5952
-RichterFloor,01BC:3C1,90,T2,0,1,1,0,0,0,,0,runs original code,c1bbe06cdba6
-RichterStateDoubled,01BC:7B4,8,T4,1,1,1,1,1,0,,0,,403efed11cb2
-SetVelocityYFromTable,01BC:7BC,15,T3,1,1,0,1,1,0,,0,,525a2a237f55
-SetVelocityXFromTable,01BC:7DD,15,T3,1,1,0,1,1,0,,0,,4ef07c795ec3
-RichterObjectAddXLow,01BD:00C,8,T4,1,1,1,1,1,0,,0,,077d7bb1d6e6
-RichterObjectAddXHigh,01BD:014,7,T4,1,1,1,1,1,0,,0,,54c90599835d
+RichterWall,01BC:36E,83,T4,1,1,1,1,1,0,,0,,3e19538a5952
+RichterFloor,01BC:3C1,90,T2,1,1,1,0,0,0,,0,,c1bbe06cdba6
+RichterStateDoubled,01BC:7B4,8,T2,1,1,1,1,0,0,,,,403efed11cb2
+SetVelocityYFromTable,01BC:7BC,15,T2,1,1,0,1,0,0,,,,525a2a237f55
+SetVelocityXFromTable,01BC:7DD,15,T2,1,1,0,1,0,0,,,,4ef07c795ec3
+RichterObjectAddXLow,01BD:00C,8,T2,1,1,1,1,0,0,,,,077d7bb1d6e6
+RichterObjectAddXHigh,01BD:014,7,T2,1,1,1,1,0,0,,,,54c90599835d
 RichterFlagsAgainstFour,01BD:01B,8,T4,1,1,1,1,1,0,,0,,9ff456159ee6
-RichterLeapClearingOthers,01BD:023,79,T2,1,1,1,0,1,0,,0,,1af5e7f714a9
+RichterLeapClearingOthers,01BD:023,79,T2,1,1,1,0,0,0,,,,1af5e7f714a9
 RichterObjectFall,01BD:1CF,6,T4,1,1,1,1,1,0,,0,,88662578ef97
 RichterObjectSetFall,01BD:1D5,11,T4,1,1,1,1,1,0,,0,,eafc9cca1263
 RichterObjectFallSlow,01BD:1E0,8,T4,1,1,1,1,1,0,,0,,cb21bbbe0f14
-RichterObjectMarkOn,01BD:238,9,T4,1,1,1,1,1,0,,0,,680c9dc27ec3
+RichterObjectMarkOn,01BD:238,9,T2,1,1,1,1,0,0,,,,680c9dc27ec3
 RichterObjectMarkOff,01BD:3EC,9,T4,1,1,1,1,1,0,,0,,29a16a7f43dd
 RichterObjectFromPlayer,01BD:3F8,9,T4,1,1,1,1,1,0,,0,,8287ea3bb79b
 RichterObjectTake2FE8,01BD:401,8,T4,1,1,1,1,1,0,,0,,4f152e129c1d
-RichterObjectSlot,01BD:409,3,T4,1,1,1,1,1,0,,0,,255d1daac6d1
+RichterObjectSlot,01BD:409,3,T2,1,1,1,1,0,0,,,,255d1daac6d1
 RichterObjectQuicken,01BD:47C,35,T4,1,1,1,1,1,0,,0,,8351f4cbd4ef
 RichterObjectFlash,01BD:49F,50,T4,1,1,1,1,1,0,,0,,31e16f27b260
 RichterObjectCharge,01BD:4D1,26,T4,1,1,1,1,1,0,,0,,ede23d4c18ab
-RichterObjectNextState,01BD:5C5,4,T4,1,1,1,1,1,0,,0,,27c78695414d
+RichterObjectNextState,01BD:5C5,4,T2,1,1,1,1,0,0,,,,27c78695414d
 ObjectTouchesPlayerBox,01BD:7C9,52,T2,1,1,1,0,1,0,,0,,db85b036c33f
 ClearObjectIfOffRange,01BE:174,25,T2,1,1,1,0,1,0,,0,,dc3bf9eada76
 NudgeAngleByVelocityAndScroll,01BE:4E6,71,T2,1,1,0,0,1,0,,0,,50c713efd63f
@@ -855,42 +855,42 @@ RichterObjectAtPlayerPlace,01BE:6BE,20,T4,1,1,1,1,1,0,,0,,385dd86d67c4
 RichterObjectToPoint,01BE:6D2,21,T4,1,1,1,1,1,0,,0,,fb44a66fd7eb
 NegateVelocityXIfFacingLeft,01C0:063,9,T4,1,1,1,1,1,0,,0,,2fbe1875b764
 ClearObjectInYAndCopyPlace,01C0:129,28,T4,1,1,1,1,1,0,,0,,38a9caf1e7c8
-RichterObjectAnimationWait,01C0:240,8,T4,1,1,1,1,1,0,,0,,35a7bee8f008
-RichterObjectAnimationRunning,01C0:248,9,T4,1,1,1,1,1,0,,0,,3a722ff0e25a
-RichterObjectAnimationTick,01C0:251,18,T2,1,1,1,0,1,0,,0,,7db6ac5a7baf
-RichterObjectSetAnimation,01C0:263,33,T4,1,1,1,1,1,0,,0,,c9cb59004c95
-RichterObjectAnimationList,01C0:284,21,T4,1,1,1,1,1,0,,0,,0d68789a38a0
+RichterObjectAnimationWait,01C0:240,8,T2,1,1,1,1,0,0,,,,35a7bee8f008
+RichterObjectAnimationRunning,01C0:248,9,T2,1,1,1,1,0,0,,,,3a722ff0e25a
+RichterObjectAnimationTick,01C0:251,18,T2,1,1,1,0,0,0,,,,7db6ac5a7baf
+RichterObjectSetAnimation,01C0:263,33,T2,1,1,1,1,0,0,,,,c9cb59004c95
+RichterObjectAnimationList,01C0:284,21,T2,1,1,1,1,0,0,,,,0d68789a38a0
 RichterObjectHitboxOff,01C0:51B,4,T4,1,1,1,1,1,0,,0,,5acf59ed92a7
 RichterObjectHitboxOn,01C0:51F,5,T4,1,1,1,1,1,0,,0,,691a7fb82a20
 RichterObjectHitboxByFrame,01C0:524,6,T4,1,1,1,1,1,0,,0,,6e1bffc62c58
 RichterObjectHitboxFrom,01C0:52A,30,T4,1,1,1,1,1,0,,0,,005fc9c24868
-MariaVecApplyMove,01DD:006,3,T2,0,1,1,1,1,0,,0,runs original code,818ca992db87
-MariaVecWall,01DD:021,3,T2,0,1,1,1,1,0,,0,runs original code,65955c3f769a
-MariaVecFloor,01DD:024,3,T2,0,1,1,1,1,0,,0,runs original code,c39e36fc7457
-MariaApplyMoveAndPush,01DD:02A,38,T2,1,1,1,0,1,1,,0,,cbb6c5b3a394
+MariaVecApplyMove,01DD:006,3,T4,1,1,1,1,1,0,,0,,818ca992db87
+MariaVecWall,01DD:021,3,T4,1,1,1,1,1,0,,0,,65955c3f769a
+MariaVecFloor,01DD:024,3,T4,1,1,1,1,1,0,,0,,c39e36fc7457
+MariaApplyMoveAndPush,01DD:02A,38,T2,1,1,1,0,1,0,,0,,cbb6c5b3a394
 MariaClearWork,01DD:16B,15,T2,1,1,0,1,0,0,,,,6658db103ba0
 MariaStartHitScript,01DD:359,5,T2,1,1,1,1,0,0,,,,070c5df70057
 MariaStepIndex,01DD:5DC,6,T2,1,1,1,1,0,0,,,,fde0ae82d9f0
-MariaSolidUnderColumn,01DE:1C9,25,T2,0,1,1,0,0,0,,,runs original code,17fa0f30bdb3
-MariaReadUnderFeet,01DE:1E2,14,T2,0,1,1,1,0,0,,,runs original code,2aa9797c2a8c
+MariaSolidUnderColumn,01DE:1C9,25,T2,1,1,1,0,0,0,,,,17fa0f30bdb3
+MariaReadUnderFeet,01DE:1E2,14,T2,1,1,1,1,0,0,,,,2aa9797c2a8c
 MariaClearPadOverrides,01E0:173,13,T2,1,1,1,1,0,0,,,,204f0621e28c
 MariaAnimationPoint,01E0:1C3,21,T2,1,1,0,1,0,0,,,,59a42da1ddde
-MariaReadBelow,01E0:20E,13,T2,0,1,1,0,1,1,,0,runs original code,3a6c7eb320c4
-MariaReadIfOnPage,01E0:21B,5,T2,0,1,1,0,1,1,,0,runs original code,e64ad1b24bc2
-MariaColumnOffset,01E0:220,11,T3,1,1,0,1,1,1,,0,,f52f7563a8e7
+MariaReadBelow,01E0:20E,13,T2,1,1,1,0,0,0,,,,3a6c7eb320c4
+MariaReadIfOnPage,01E0:21B,5,T2,1,1,1,0,0,0,,,,e64ad1b24bc2
+MariaColumnOffset,01E0:220,11,T3,1,1,0,1,1,0,,0,,f52f7563a8e7
 MariaCheckTurnWindow,01E0:22B,41,T2,1,1,0,0,0,0,,,,55c48da56e6b
 MariaInvincibleTick,01E0:266,85,T2,1,1,0,0,0,0,,,,19873e7faf6e
 MariaNoteItemPress,01E0:306,12,T2,1,1,1,0,0,0,,,,f7c0ed75c40c
 MariaCheckItemHearts,01E0:312,19,T2,1,1,0,0,0,0,,,,a22ddda11845
 MariaJumpPressed,01E0:389,7,T2,1,1,1,1,0,0,,,,b694eaeff125
-MariaLiftByColumn,01E0:5A4,37,T2,1,1,1,0,1,1,,0,,acd4c6a73bb5
+MariaLiftByColumn,01E0:5A4,37,T2,1,1,1,0,1,0,,0,,acd4c6a73bb5
 MariaFloorOddScreen,01E0:5D8,6,T2,1,1,1,0,0,0,,,,666601ea69bd
-MariaFloorCheck,01E0:5DE,61,T2,1,1,1,0,1,1,,0,,fb73d69d58f6
-MariaReadColumnsHigh,01E0:639,6,T2,0,1,1,0,0,0,,,runs original code,e970bc9a5692
-MariaReadColumns,01E0:63F,42,T2,0,1,1,1,1,1,,0,runs original code,a15b9d892709
+MariaFloorCheck,01E0:5DE,61,T2,1,1,1,0,1,0,,0,,fb73d69d58f6
+MariaReadColumnsHigh,01E0:639,6,T2,1,1,1,0,0,0,,,,e970bc9a5692
+MariaReadColumns,01E0:63F,42,T4,1,1,1,1,1,0,,0,,a15b9d892709
 MariaWallPushed,01E0:683,7,T2,1,1,1,0,0,0,,,,3ec4b2ce5040
-MariaWall,01E0:68A,91,T2,0,1,0,0,1,1,,0,runs original code,47a41b6c120c
-MariaFloor,01E0:6E5,88,T2,0,1,1,0,1,1,,0,runs original code,068f7624eda3
+MariaWall,01E0:68A,91,T2,1,1,0,0,1,0,,0,,47a41b6c120c
+MariaFloor,01E0:6E5,88,T2,1,1,1,0,1,0,,0,,068f7624eda3
 MariaObjectAddXLow,01E1:27C,8,T2,1,1,1,1,0,0,,,,b3c6d7ed86eb
 MariaObjectAddXHigh,01E1:284,7,T2,1,1,1,1,0,0,,,,1a1141b6fa23
 MariaSetVelocityYFromTable,01E1:28B,15,T2,1,1,0,1,0,0,,,,b970fe35f2ca
@@ -906,14 +906,14 @@ ResetStageVariables024D,024D:0CB,29,T2,1,1,0,0,1,0,,0,,0e38af3fabf0
 EmptyHandler823B,024D:23B,1,T4,1,1,1,1,1,0,,0,,ec268bc16453
 StageWaitTimerStep,024E:023,8,T4,1,1,1,1,1,0,,0,,7bd325f108cb
 EnterStageState,024E:02B,38,T2,0,1,1,0,1,0,,0,runs original code,aaf31fba310a
-RunStageFrame,024E:051,49,T2,0,1,0,0,0,0,,0,runs original code,3c3da683a206
+RunStageFrame,024E:051,49,T2,0,1,0,0,0,0,,,runs original code,3c3da683a206
 ExpandStageVramRuns,024E:082,47,T2,1,1,0,0,1,0,,0,,579a000dad78
 StartStageLists,024E:0B1,29,T3,1,1,0,1,1,0,,0,,7e9426f808f2
 InitStage,024E:0EC,102,T2,0,1,0,0,1,0,,0,runs original code,1d7ea242d278
 LoadStageEntry,024E:152,224,T2,1,1,0,0,1,0,,0,,43a94c718e13
-StageScrollStep,024E:236,25,T2,0,1,0,1,1,0,,0,runs original code,053acaabae15
-StepScrollAndRunObjects,024E:24F,16,T2,0,1,1,1,0,0,,0,runs original code,24b6218e1daa
-SetUpStageObjects,024E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,f214ce977b41
+StageScrollStep,024E:236,25,T2,1,1,0,1,0,0,,,,053acaabae15
+StepScrollAndRunObjects,024E:24F,16,T2,0,1,1,1,0,0,,,runs original code,24b6218e1daa
+SetUpStageObjects,024E:25F,69,T2,0,1,0,0,0,0,,,runs original code,f214ce977b41
 SpawnStageObjectsRows01,024E:353,25,T4,1,1,1,1,1,0,,0,,d4143b542781
 StepStageFrame,024E:36D,172,T2,0,1,0,0,0,0,,0,runs original code,90512d697fc1
 StageScriptByWave,024E:422,25,T3,1,1,0,1,1,0,,0,,381120c2502e
@@ -958,18 +958,18 @@ ScrollYFromLevelWord,0255:122,13,T3,1,1,0,1,1,0,,0,,3bcc0baf0117
 ScreenMapAt,0255:6E2,18,T4,1,1,1,1,1,0,,0,,4c6794e01d85
 AdvanceScrollX,0255:6F4,51,T3,1,1,0,1,1,0,,0,,1257c147908a
 ScrollXPlusOffset,0255:75C,34,T2,1,1,0,0,1,0,,0,,cacc92974cb7
-DrawBlockColumn,0255:7A5,106,T2,0,1,0,1,1,0,,0,runs original code,791294940822
+DrawBlockColumn,0255:7A5,106,T2,1,1,0,1,0,0,,,,5229afb0ccc7
 SelectBlockTablesA,0256:00F,46,T4,1,1,1,1,1,0,,0,,27d6635ec1c6
-BlockIndexForPlace,0256:03D,59,T2,0,1,1,1,1,0,,0,runs original code,e5e6cc094b8a
+BlockIndexForPlace,0256:03D,59,T2,1,1,1,1,0,0,,,,e5e6cc094b8a
 BitmapBitShifted,0256:078,26,T4,1,1,1,1,1,0,,0,,870532129a07
 ScrollXAddWrap,0256:180,21,T4,1,1,1,1,1,0,,0,,15f94a1a6187
-RunObjects,0259:000,316,T2,0,1,0,0,0,0,,0,runs original code,6cacfb74958c
+RunObjects,0259:000,316,T2,0,1,0,0,0,0,,,runs original code,6cacfb74958c
 ObjectHit,0259:186,227,T2,0,1,0,0,0,0,,0,runs original code,6ba5d7b841ac
 HitDamage,0259:28D,22,T3,1,1,0,1,1,0,,0,,58fee54e45ea
 ScoreForKind,0259:2A3,34,T2,1,1,0,0,1,0,,0,,f8af6809883e
 DropItemWhenHitF,0259:2C5,57,T2,1,1,0,0,1,0,,0,,b7e47f082244
 PlayHitSoundA,0259:2FE,21,T3,1,1,0,1,1,0,,0,,c49e40fd73d0
-DispatchByKind0259,0259:313,22,T2,0,1,0,0,1,0,,0,runs original code,ac1dd3394862
+DispatchByKind0259,0259:313,22,T2,1,1,0,0,0,0,,,,ac1dd3394862
 DrawTilePiece025A,025A:082,38,,1,1,0,0,0,0,,,,8bbceb010536
 LoadRecordOrCapPlayerX,025A:6BA,21,T4,1,1,1,1,1,0,,0,,3478f842c834
 StartAtX120OrApplyVelocity,025A:6CF,45,T4,1,1,1,1,1,0,,0,,11ab2386c3ff
@@ -994,13 +994,13 @@ LoadRecordThenStepListByKind,025B:1BC,57,T3,1,1,0,1,1,0,,0,,07d2b02901b4
 LoadRecordSinkThenStepListByKind,025B:229,39,T3,1,1,0,1,1,0,,0,,6a6069bf79c3
 StateMachineWithSoundAndList,025B:266,148,T2,1,1,0,0,1,0,,0,,8b9a5443494b
 DriftRecordThenMoveWithJitter,025B:308,103,T2,1,1,0,0,1,0,,0,,7f87bd5d93bf
-BossFrameRoutines,025B:471,22,T2,0,1,1,1,1,0,,0,runs original code,cdcce26d3d52
+BossFrameRoutines,025B:471,22,T2,1,1,1,1,0,0,,,,cdcce26d3d52
 SwingByCosineFromState0B,025B:487,44,T4,1,1,1,1,1,0,,0,,91d95577e146
 StartRandomScriptWhenFlagged,025B:4B3,38,T3,1,1,0,1,1,0,,0,,62d643a155b2
 PushPlayerWhenFlagged,025B:4ED,18,T4,1,1,1,1,1,0,,0,,555116bf38b6
 HitSoundThenSpawnPieces,025B:4FF,47,T2,1,1,1,0,1,0,,0,,d63c29281386
 EnterState0BWhenFlagged,025B:52E,23,T2,1,1,1,0,1,0,,0,,71d9b309903f
-JumpByStateTable025B545,025B:545,18,T2,0,1,0,1,1,0,,0,runs original code,8675093f6bdd
+JumpByStateTable025B545,025B:545,18,T2,1,1,0,1,0,0,,,,8675093f6bdd
 StartPieceAtTopLeft,025B:56F,45,T4,1,1,1,1,1,0,,0,,90ffde9dd2fc
 CountDownThenStartScripts,025B:59C,50,T4,1,1,1,1,1,0,,0,,9fb279f443e4
 CountDownWithSound77,025B:5CE,27,T4,1,1,1,1,1,0,,0,,a4f2af768d3b
@@ -1014,7 +1014,7 @@ SpinThenCountPhaseDown,025B:73C,37,T4,1,1,1,1,1,0,,0,,31b5754df9d5
 StepListThenBurstAtFrame18,025B:761,57,T4,1,1,1,1,1,0,,0,,cab5d63331da
 SpinThenCountWordDown,025B:7C7,46,T4,1,1,1,1,1,0,,0,,ee76bf83120c
 HomeOnPointThenRingAndSound,025B:7F5,115,T2,1,1,1,0,1,0,,0,,10acbf6fa8ac
-JumpByPhaseTable025C068,025C:068,18,T2,0,1,0,1,1,0,,0,runs original code,877ef95b3e69
+JumpByPhaseTable025C068,025C:068,18,T2,1,1,0,1,0,0,,,,877ef95b3e69
 StepListThenStartChannel85,025C:131,44,T3,1,1,0,1,1,0,,0,,de5fcc6b4b23
 StepListThenStopAnimation,025C:15D,29,T4,1,1,1,1,1,0,,0,,e9bf3d983d9e
 StepListB995ThenWait,025C:17A,27,T4,1,1,1,1,1,0,,0,,b9d668ae3684
@@ -1031,12 +1031,12 @@ StepListThenCountdownNextState,025C:348,33,T4,1,1,1,1,1,0,,0,,597eacc75c0b
 StepListThenSound43AtZero,025C:376,25,T4,1,1,1,1,1,0,,0,,a2fe40a17a18
 SeekObject19ThenHitAndClear,025C:38F,86,T3,1,1,0,1,1,0,,0,,1a3b31ee9887
 NearObject19,025C:3E9,36,T3,1,1,0,1,1,0,,0,,3bbf0f562d4a
-JumpByPhaseTable025C40D,025C:40D,18,T2,0,1,1,1,1,0,,0,runs original code,f72b7c76b40a
+JumpByPhaseTable025C40D,025C:40D,18,T2,1,1,1,1,0,0,,,,f72b7c76b40a
 StartRiseAndSpawnRing,025C:425,35,T3,1,1,0,1,1,0,,0,,60b6a52312be
 SpawnRingOfSeven,025C:448,25,T4,1,1,1,1,1,0,,0,,c0cb42ea180e
 FallAlongListUntilGround,025C:461,55,T4,1,1,1,1,1,0,,0,,0bbf62e7640b
 StepListCCThenMoveOrClear,025C:4B9,19,T4,1,1,1,1,1,0,,0,,71dd4a8f54b2
-JumpByStateTable025C51C,025C:51C,18,T2,0,1,0,1,1,0,,0,runs original code,c2fd494c2b07
+JumpByStateTable025C51C,025C:51C,18,T2,1,1,0,1,0,0,,,,c2fd494c2b07
 LoadRecordThrowByNumber,025C:534,50,T3,1,1,0,1,1,0,,0,,ddeba5f2c857
 FallThenTurnAtTimerEnd,025C:58E,42,T4,1,1,1,1,1,0,,0,,fb81a3d39e75
 StepListCBThenMoveOrClear,025C:5B8,19,T4,1,1,1,1,1,0,,0,,616eae3ef3d6
@@ -1046,19 +1046,19 @@ LoadRecordWithSound1C,025C:6E5,9,T4,1,1,1,1,1,0,,0,,7fbaceb57849
 FollowObject19ThenLaunch,025C:6EE,40,T4,1,1,1,1,1,0,,0,,da3c3ca89f0e
 StepListThenSpawnUntilHurt,025C:757,55,T4,1,1,1,1,1,0,,0,,bd9687d864f1
 SpawnType30EveryFourthFrame,025C:797,17,T2,1,1,1,0,1,0,,0,,e908a4d0da2a
-StepListSlowSideways,025C:7A8,52,T4,1,1,1,1,1,1,,0,,66f1a68c9aa7
-SpawnType2FAtWaveMarks,025C:7ED,59,T2,1,1,0,0,1,1,,0,,59079b02d510
-LoadRecordFlashByNumberThenMoveOrClear,025D:040,54,T2,1,1,0,0,1,1,,0,,89fc0682057f
+StepListSlowSideways,025C:7A8,52,T4,1,1,1,1,1,0,,0,,66f1a68c9aa7
+SpawnType2FAtWaveMarks,025C:7ED,59,T2,1,1,0,0,1,0,,0,,59079b02d510
+LoadRecordFlashByNumberThenMoveOrClear,025D:040,54,T2,1,1,0,0,1,0,,0,,89fc0682057f
 LoadRecordRandomLiftThenMoveOrClear,025D:0C0,60,T4,1,1,1,1,1,0,,0,,7d783e2a714c
 InitStage026E,026E:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,b8f0b6371e69
 LoadStageEntry026E,026E:108,224,T2,1,1,0,0,0,0,contradicted,,,8b0d484d40f4
-StageScrollStep026E,026E:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,58989f39dff9
+StageScrollStep026E,026E:1EC,25,T2,1,1,0,0,0,0,contradicted,,,58989f39dff9
 SetUpStageObjects026E,026E:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,9f872909b392
 SpawnStageObjectsRows01026E,026E:309,25,T2,1,1,0,0,0,0,contradicted,,,bd6a43b77ed7
 StepStageFrame026E,026E:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,656a37c0913f
 InitStage031E,031E:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,ca88dfebc9fd
 LoadStageEntry031E,031E:108,224,T2,1,1,0,0,0,0,contradicted,,,2ad29cd9aa9c
-StageScrollStep031E,031E:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,7bb2743dfd10
+StageScrollStep031E,031E:1EC,25,T2,1,1,0,0,0,0,contradicted,,,7bb2743dfd10
 SetUpStageObjects031E,031E:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,3bd36ec29fb5
 SpawnStageObjectsRows01031E,031E:309,25,T2,1,1,0,0,0,0,contradicted,,,5caa2d8174ff
 StepStageFrame031E,031E:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,c52dd41ce473
@@ -1205,7 +1205,7 @@ GateWaitClear3CD,03D0:289,29,T2,1,1,0,0,0,0,contradicted,,,a43b6047d8e5
 GateClose3CD,03D0:2A6,51,T2,0,1,0,0,0,0,contradicted,,runs original code,e96e63e02cc0
 InitStage043E,043E:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,cc12a11680b5
 LoadStageEntry043E,043E:108,224,T2,1,1,0,0,0,0,contradicted,,,0284dddbb7f6
-StageScrollStep043E,043E:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,57071e8e682c
+StageScrollStep043E,043E:1EC,25,T2,1,1,0,0,0,0,contradicted,,,57071e8e682c
 SetUpStageObjects043E,043E:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,c4b689b28a94
 SpawnStageObjectsRows01043E,043E:309,25,T2,1,1,0,0,0,0,contradicted,,,6a0ca83d7f76
 StepStageFrame043E,043E:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,94756ed7f6bf
@@ -1226,13 +1226,13 @@ StageWaitTimerToStep2,050E:019,10,T4,1,1,1,1,1,0,,0,,cf51a1093865
 ExpandStageVramRunsB,050E:082,47,T3,1,1,0,1,1,0,,0,,60c6f820584c
 StartStageListsB,050E:0B1,29,T3,1,1,0,1,1,0,,0,,c1b651057d7e
 LoadStageEntryB,050E:152,224,T2,1,1,0,0,1,0,,0,,ce3ee2361880
-StageScrollStepB,050E:236,25,T2,0,1,0,1,1,0,,0,runs original code,e391a989e038
-SetUpStageObjectsB,050E:25F,69,T2,0,1,0,1,1,0,,0,runs original code,fd625c41549d
+StageScrollStepB,050E:236,25,T2,1,1,0,1,0,0,,,,e391a989e038
+SetUpStageObjectsB,050E:25F,69,T2,1,1,0,1,0,0,,,,794e6c9abe2c
 StageTriggerObject,050E:2A4,88,T2,1,1,1,0,1,0,,0,,8c0b4a2d0c2a
 ExpandStageListsB,050F:277,98,T2,1,1,0,0,1,0,,0,,73b8bfd83ce4
 TerrainLookup,050F:5AB,96,T2,1,1,1,0,1,0,,0,,ea4d000ae46b
 TerrainLookupAlt,050F:60B,116,T2,1,1,1,0,1,0,,0,,47a853bf742e
-TerrainTileRead,050F:67F,155,T2,0,1,0,0,0,0,,0,runs original code,d18a60579f47
+TerrainTileRead,050F:67F,155,T2,1,1,0,0,0,0,,,,d18a60579f47
 TileStepC,050F:752,13,T2,1,1,1,0,0,0,,,,b93208ed01d4
 TileRowA,050F:75F,17,T2,1,1,1,0,0,0,,,,46c9244bef85
 TileRowB,050F:770,17,T2,1,1,1,0,0,0,,,,282122e522b3
@@ -1267,28 +1267,28 @@ StepReleaseOnHit,0519:329,60,T2,1,1,1,0,1,0,,0,,a470f8fac5fe
 StepFallingItem,0519:36D,68,T3,1,1,0,1,1,0,,0,,be677f899682
 EnterHurtStateOnHit,0519:46A,24,T2,1,1,1,0,1,0,,0,,318de795491e
 InitObjectFromRecord,0519:482,28,T4,1,1,1,1,1,0,,0,,9bc42c06c267
-ClearOnLanding,0519:49E,31,T2,0,1,1,0,1,0,,0,runs original code,c5448314ca57
-FallAndBounce,0519:4BD,75,T2,0,1,1,0,1,0,,0,runs original code,c03499079ff5
-FallThenWait,0519:508,17,T2,0,1,1,1,1,0,,0,runs original code,4bc0562bc187
-FallUntilFloor,0519:519,33,T2,0,1,0,0,1,0,,0,runs original code,49fbde8e1747
-FallThenClear,0519:53A,28,T2,0,1,1,1,1,0,,0,runs original code,a5fdc25d4a85
-JumpByKindTable,0519:556,21,T2,0,1,0,1,1,0,,0,runs original code,1b09ae4e3177
+ClearOnLanding,0519:49E,31,T2,1,1,1,0,0,0,,,,c5448314ca57
+FallAndBounce,0519:4BD,75,T2,1,1,1,0,0,0,,,,c03499079ff5
+FallThenWait,0519:508,17,T2,1,1,1,1,0,0,,,,4bc0562bc187
+FallUntilFloor,0519:519,33,T2,1,1,0,0,0,0,,,,49fbde8e1747
+FallThenClear,0519:53A,28,T2,1,1,1,1,0,0,,,,a5fdc25d4a85
+JumpByKindTable,0519:556,21,T2,1,1,0,1,0,0,,,,1b09ae4e3177
 CollectHearts,0519:58D,35,T2,1,1,0,0,1,0,,0,,57a5cf95423c
 CollectScoreItem,0519:5B4,55,T2,1,1,0,0,1,0,,0,,8a132729e1f7
 ChangeKindFromTable,0519:5EF,97,T3,1,1,0,1,1,0,,0,,f8e2eac11e0f
 GiveExtraLife,0519:6EC,23,T2,1,1,1,0,0,0,,,,c43e6d137431
-RunObjectState,0519:703,27,T2,0,1,0,1,1,0,,0,runs original code,0c91f23a1bee
+RunObjectState,0519:703,27,T2,1,1,0,1,0,0,,,,0c91f23a1bee
 AnimateKind88,0519:72C,25,T2,1,1,1,0,1,0,,0,,6ccfa33296ae
 SetBlinkFlash,0519:74E,22,T4,1,1,1,1,1,0,,0,,43620a9b5b83
 StartKindFromCharacter,0519:764,58,T2,1,1,0,0,1,0,,0,,e889b38baa13
-SettleOnLanding,0519:7BE,16,T2,0,1,1,1,1,0,,0,runs original code,22c3900e5d47
-LandThenWait,0519:7CE,24,T2,0,1,1,0,1,0,,0,runs original code,27cff9818b14
-LandThenClear,0519:7E6,35,T2,0,1,1,0,1,0,,0,runs original code,dfda901424da
+SettleOnLanding,0519:7BE,16,T2,1,1,1,1,0,0,,,,22c3900e5d47
+LandThenWait,0519:7CE,24,T2,1,1,1,0,0,0,,,,27cff9818b14
+LandThenClear,0519:7E6,35,T2,1,1,1,0,0,0,,,,dfda901424da
 BitMaskFromIndex,051A:055,11,T4,1,1,1,1,1,0,,0,,9be8276e5fea
 DrawTilePiece051A,051A:082,38,,1,1,0,0,0,0,,,,75caa4e59eb4
 StartThrownItem,051A:12E,48,T3,1,1,0,1,1,0,,0,,328471afc754
 DropOffScreen,051A:180,16,T2,1,1,1,0,1,0,,0,,f6fdcd76d2a8
-JumpByStateTable051A190,051A:190,18,T2,0,1,0,1,1,0,,0,runs original code,5a52debad519
+JumpByStateTable051A190,051A:190,18,T2,1,1,0,1,0,0,,,,5a52debad519
 StartScorePickup,051A:1A8,52,T2,1,1,0,0,1,0,,0,,f7687744372c
 FallThenState,051A:1EB,17,T4,1,1,1,1,1,0,,0,,ab2cb2661159
 ClearWhenCountEnds,051A:1FC,9,T4,1,1,1,1,1,0,,0,,b93aa030c840
@@ -1296,44 +1296,44 @@ LoadThenBreakIntoThrownPiece,051A:7C5,83,T2,1,1,1,0,1,0,,0,,d505a1544495
 LoadThenStepListBreakAtFive,051B:02F,70,T2,1,1,1,0,1,0,,0,,0614d3f0b225
 LoadOrFallAlongListByTimer,051B:0FE,39,T3,1,1,0,1,1,0,,0,,41fffc2b44a3
 StepListByTimerWithGravity,051B:135,24,T3,1,1,0,1,1,0,,0,,116a8e010c6e
-JumpByStateTable051B225,051B:225,18,T2,0,1,1,1,1,0,,0,runs original code,1e471dba406b
+JumpByStateTable051B225,051B:225,18,T2,1,1,1,1,0,0,,,,1e471dba406b
 LoadRecordA04,051B:23D,4,T4,1,1,1,1,1,0,,0,,17d02cbfbc83
 StartPhaseWhenScrolled,051B:241,35,T3,1,1,0,1,1,0,,0,,5606e209d81e
 SetFirstObjectTimersThenCount,051B:264,34,T4,1,1,1,1,1,0,,0,,223b87c8c53b
 LoadThenSpawnWhileScrolling,051B:286,89,T2,1,1,0,0,1,0,,0,,b8c3631d7c26
 StateSixOnStatusBit7,051B:30D,23,T4,1,1,1,1,1,0,,0,,4a36364f2c44
 LoadThenStateByKindByte,051B:324,44,T4,1,1,1,1,1,0,,0,,6ead7839ebe1
-JumpByPhaseTable051B350,051B:350,18,T2,0,1,0,1,1,0,,0,runs original code,aee932f53144
+JumpByPhaseTable051B350,051B:350,18,T2,1,1,0,1,0,0,,,,aee932f53144
 StepListB37FThenNext,051B:368,23,T4,1,1,1,1,1,0,,0,,8fca97c727e8
-StepListB3B8ThenLand,051B:392,38,T2,0,1,1,1,1,0,,0,runs original code,7f5ef62482b2
+StepListB3B8ThenLand,051B:392,38,T2,1,1,1,1,0,0,,,,7f5ef62482b2
 StepListB37FUnlessFar,051B:3C3,31,T4,1,1,1,1,1,0,,0,,5bd259d2cc42
-WalkTurnOrJumpOnLanding,051B:3E2,124,T2,0,1,1,1,1,0,,0,runs original code,1da8b0fbf30e
+WalkTurnOrJumpOnLanding,051B:3E2,124,T2,1,1,1,1,0,0,,,,1da8b0fbf30e
 SetHitBox0C18,051B:4BF,14,T4,1,1,1,1,1,0,,0,,ce1379e0e00e
 ResetAnimThenNextPhase,051B:514,18,T4,1,1,1,1,1,0,,0,,df8c3ff5fab5
 CountdownNextStepA,051B:526,9,T4,1,1,1,1,1,0,,0,,38421fb72259
-JumpByPhaseTable051B5B5,051B:5B5,18,T2,0,1,0,1,1,0,,0,runs original code,dc1584f2fa13
+JumpByPhaseTable051B5B5,051B:5B5,18,T2,1,1,0,1,0,0,,,,dc1584f2fa13
 StartPieceAtNextSlot,051B:5CD,15,T4,1,1,1,1,1,0,,0,,b45f04ff4e6c
 WalkWhileNearPlayer,051B:5DC,83,T3,1,1,0,1,1,0,,0,,a40361355d68
 StepListB66BToState2,051B:648,35,T4,1,1,1,1,1,0,,0,,a25c0a17b8cc
 DrawTileScriptByHighBits,051B:690,17,T4,1,1,1,1,1,0,,0,,470d553f0373
 StartFourPiecesWithCount,051B:6ED,26,T2,1,1,1,0,1,0,,0,,0acc6652d382
-LandThenFaceAndRun,051B:707,41,T2,0,1,0,1,1,0,,0,runs original code,fbdcda62db93
+LandThenFaceAndRun,051B:707,41,T2,1,1,0,1,0,0,,,,fbdcda62db93
 LoadRecordB04,051B:76A,4,T4,1,1,1,1,1,0,,0,,5232e6313993
 FollowBlockWhileState5,051B:76E,62,T2,1,1,0,0,1,0,,0,,e32d5287851b
 StartJumpUpLeft,051B:7AC,24,T4,1,1,1,1,1,0,,0,,4e0b2ed0cbfe
-StepListB819,051B:7C4,85,T2,0,1,0,0,1,0,,0,runs original code,670f4304c66e
+StepListB819,051B:7C4,85,T2,1,1,0,0,0,0,,,,670f4304c66e
 CopyScrollToTimer,051D:4E8,13,T4,1,1,1,1,1,0,,0,,d1532dad7ab7
 LoadThenSinkAlongList,051E:090,64,T4,1,1,1,1,1,0,,0,,8497d76609ea
 RandomTimer10,051E:109,12,T4,1,1,1,1,1,0,,0,,68bfec371aa2
 SpawnPointFromTables,051E:115,101,T3,1,1,0,1,1,0,,0,,e6e45e29fd4a
 WaitForPressThenAnimate,051F:454,112,T4,1,1,1,1,1,0,,0,,f3e07cb50294
-StageTileReadVector9991,05BD:006,3,T2,0,1,1,1,0,0,,0,runs original code,d359cd419171
+StageTileReadVector9991,05BD:006,3,T2,1,1,1,1,0,0,,,,d359cd419171
 ResetStageVariables05BD,05BD:0CB,29,T2,1,1,0,0,1,0,,0,,05cf70048c68
 ExpandStageVramRunsC,05BE:082,47,T3,1,1,0,1,1,0,,0,,54382fab8373
 StartStageListsC,05BE:0B1,29,T3,1,1,0,1,1,0,,0,,01cc00e1d325
 LoadStageEntryC,05BE:152,224,T2,1,1,0,0,1,0,,0,,ab1ad473407d
-StageScrollStepC,05BE:236,25,T2,0,1,0,1,1,0,,0,runs original code,7ae5052da211
-SetUpStageObjectsC,05BE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,7beadf256f4e
+StageScrollStepC,05BE:236,25,T2,1,1,0,1,0,0,,,,7ae5052da211
+SetUpStageObjectsC,05BE:25F,69,T2,0,1,0,0,0,0,,,runs original code,7beadf256f4e
 SpawnStageObjectsRows01Long,05BE:353,25,T4,1,1,1,1,1,0,,0,,d906137cb30a
 StepStageFrameLong,05BE:36D,172,T2,0,1,0,0,1,0,,0,runs original code,0ba102ff8c5e
 RunStageGauge,05BE:46C,31,T2,0,1,0,0,0,0,,,runs original code,9c8f82ed09e6
@@ -1362,7 +1362,7 @@ HitReportHandlerLong,05C0:07A,31,T4,1,1,1,1,1,0,,0,,a2bad20275e8
 HitKindFromBit7,05C0:0A5,24,T2,1,1,1,0,1,0,,0,,9371c717e78a
 ProbeBoxes05C0,05C0:0BD,96,T2,1,1,0,0,1,0,,0,,ece35a9a02a6
 ProbeBoxesFlagged05C0,05C0:11D,116,T2,1,1,0,0,1,0,,0,,6db9a44fb439
-ProbeTileRead9991,05C0:191,155,T2,0,1,0,0,0,0,,0,runs original code,774f05e42e39
+ProbeTileRead9991,05C0:191,155,T2,1,1,0,0,0,0,,,,774f05e42e39
 VramListFromTableE,05C1:142,204,T2,1,1,0,0,0,0,,,,c631c91781bf
 SelectBlockTablesC,05C6:00F,46,T4,1,1,1,1,1,0,,0,,af71bc83ed2f
 HitDamage05C9,05C9:28D,22,T3,1,1,0,1,1,0,,0,,9ed7f43a314f
@@ -1371,13 +1371,13 @@ DropItemWhenHit05C9,05C9:2C5,57,,1,1,0,0,0,0,,,,2629173346b8
 PlayHitSound05C9,05C9:2FE,21,,1,1,0,0,0,0,,,,52c5b334df4a
 DrawTilePiece05CA,05CA:082,38,,1,1,0,0,0,0,,,,8370954f0e70
 LoadRecordThenRecordEventAtFifth,05CB:0E3,83,T2,1,1,1,0,1,0,,0,,dfdb94fd9e8a
-BossFrameRoutinesC,05CB:13F,42,T2,0,1,0,0,1,0,,0,runs original code,d7874a3eba95
+BossFrameRoutinesC,05CB:13F,42,T2,1,1,0,0,0,0,,,,d7874a3eba95
 FlagThenHitsCompare,05CB:1A9,15,T2,1,1,1,0,1,0,,0,,554568044b2b
 EnterState5WhenFlagged,05CB:1B8,23,T2,1,1,1,0,1,0,,0,,b86fd46068bb
-JumpByStateTable05CB1CF,05CB:1CF,18,T2,0,1,0,1,1,0,,0,runs original code,32a6c33aba6d
+JumpByStateTable05CB1CF,05CB:1CF,18,T2,1,1,0,1,0,0,,,,32a6c33aba6d
 LoadRecordStartTwoPieces,05CB:1ED,28,T4,1,1,1,1,1,0,,0,,59f1bed8791a
 CountdownNextStateA,05CB:209,9,T4,1,1,1,1,1,0,,0,,0c99a163e391
-JumpByPhaseTable05CB212,05CB:212,18,T2,0,1,0,1,1,0,,0,runs original code,4fbd425163be
+JumpByPhaseTable05CB212,05CB:212,18,T2,1,1,0,1,0,0,,,,4fbd425163be
 SetUpEntryFromLeft,05CB:232,30,T4,1,1,1,1,1,0,,0,,767488472c0e
 StepListMoveXThenTurnUp,05CB:250,57,T4,1,1,1,1,1,0,,0,,3bcd2d0dc532
 WaitForScreenByte2,05CB:296,16,T4,1,1,1,1,1,0,,0,,a2623636127f
@@ -1392,7 +1392,7 @@ StepListThenTurnAround,05CB:3F3,30,T4,1,1,1,1,1,0,,0,,6d00a1be3963
 StepSideToSideWithCenterCheck,05CB:41C,69,T2,1,1,0,0,1,0,,0,,e176c166a1ab
 EdgeCodeByDirection,05CB:465,26,T2,1,1,1,0,1,0,,0,,e2785f808153
 StepListThenCountDownToState4,05CB:49D,27,T2,1,1,1,0,1,0,,0,,4c2c29deb7de
-JumpByPhaseTable05CB4B8,05CB:4B8,18,T2,0,1,0,1,1,0,,0,runs original code,a83eae124b20
+JumpByPhaseTable05CB4B8,05CB:4B8,18,T2,1,1,0,1,0,0,,,,a83eae124b20
 PickNextPhaseFromTable,05CB:4D6,22,T3,1,1,0,1,1,0,,0,,3b57135b986d
 StepListThenLeapWithSound,05CB:4F4,49,T3,1,1,0,1,1,0,,0,,9a14f78daa6b
 FlyAndSagWithTwoLists,05CB:536,63,T3,1,1,0,1,1,0,,0,,89c7bba5c4c5
@@ -1401,13 +1401,13 @@ StepListSlowDownThenPickRandom,05CB:59A,42,T2,1,1,0,0,1,0,,0,,08e13594f677
 PickRandomThenState3,05CB:5C4,21,T4,1,1,1,1,1,0,,0,,390f1a0ab629
 StepListThenSoundAndSpawn,05CB:5EE,61,T2,1,1,1,0,1,0,,0,,520d62a75b70
 StepListThenBurstAtFrame14,05CB:648,45,T4,1,1,1,1,1,0,,0,,dfd7390bd2bc
-JumpByStateTable05CC0E9,05CC:0E9,18,T2,0,1,1,1,1,0,,0,runs original code,4a0f2775075c
+JumpByStateTable05CC0E9,05CC:0E9,18,T2,1,1,1,1,0,0,,,,4a0f2775075c
 LoadRecordLaunchByFacing,05CC:103,43,T3,1,1,0,1,1,0,,0,,be1089dd488f
 StepListBounceOffFloorAtRandom,05CC:134,74,T3,1,1,0,1,1,0,,0,,6ab1ea6ed937
 StepListFallThenLandOrClear,05CC:1B9,64,T4,1,1,1,1,1,0,,0,,b0a385814623
 StepListThenClearWhenEnded,05CC:204,17,T4,1,1,1,1,1,0,,0,,d4061d1b6b5c
 LoadRecordThenFollowOrHomeIn,05CC:282,222,T2,1,1,0,0,1,0,,0,,a8c4944e3ba9
-CountFramesThenRunByState,05CC:376,21,T2,0,1,0,1,1,0,,0,runs original code,499f258d0165
+CountFramesThenRunByState,05CC:376,21,T2,1,1,0,1,0,0,,,,499f258d0165
 LoadRecordLaunchSideways,05CC:391,37,T3,1,1,0,1,1,0,,0,,4b087c929a68
 StepListFallThenTurnToPlayer,05CC:3BA,55,T3,1,1,0,1,1,0,,0,,c436f417e441
 StepListSpawnAndMoveXOrClear,05CC:3FA,26,T4,1,1,1,1,1,0,,0,,dae8db033df5
@@ -1417,7 +1417,7 @@ ClearIfAboveOrFall,05CC:489,14,T4,1,1,1,1,1,0,,0,,edaddaf1ce50
 LoadRecordThenClearEnemiesAtScreen2,05CC:498,64,T4,1,1,1,1,1,0,,0,,c9d39fede1e6
 InitStage064E,064E:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,599932fe5cd2
 LoadStageEntry064E,064E:108,224,T2,1,1,0,0,0,0,contradicted,,,4fe2c59946ee
-StageScrollStep064E,064E:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,133be69a4e67
+StageScrollStep064E,064E:1EC,25,T2,1,1,0,0,0,0,contradicted,,,133be69a4e67
 SetUpStageObjects064E,064E:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,92daa0b94e72
 SpawnStageObjectsRows01064E,064E:309,25,T2,1,1,0,0,0,0,contradicted,,,4cc9342c07d5
 StepStageFrame064E,064E:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,89ee0e9d98d0
@@ -1436,8 +1436,8 @@ ResetStageVariables071D,071D:0CB,29,T2,1,1,0,0,1,0,,0,,285b8daf2dfd
 ExpandStageVramRunsD,071E:082,47,T3,1,1,0,1,1,0,,0,,f4da5da510fb
 StartStageListsD,071E:0B1,29,T3,1,1,0,1,1,0,,0,,93b88edefd79
 LoadStageEntryD,071E:152,224,T2,1,1,0,0,1,0,,0,,bbcc51606bdc
-StageScrollStepD,071E:236,25,T2,0,1,0,1,1,0,,0,runs original code,3de63bf55b75
-SetUpStageObjectsD,071E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,5f5c4ee280fa
+StageScrollStepD,071E:236,25,T2,1,1,0,1,0,0,,,,3de63bf55b75
+SetUpStageObjectsD,071E:25F,69,T2,0,1,0,0,0,0,,,runs original code,5f5c4ee280fa
 ExpandStageListsD,071F:277,98,T2,1,1,0,0,1,0,,0,,2b0238508f6d
 ReportHitUnlessTwo,0720:076,35,T2,1,1,1,0,1,0,,0,,5a12592fda02
 HitKindFromBit1,0720:099,12,T4,1,1,1,1,1,0,,0,,34ae7e16d194
@@ -1457,37 +1457,37 @@ HitDamage0729,0729:28D,22,T3,1,1,0,1,1,0,,0,,a50870fb1f37
 ScoreForKind0729,0729:2A3,34,,1,1,0,0,0,0,,,,14667d8a2c0c
 DropItemWhenHit0729,0729:2C5,57,,1,1,0,0,0,0,,,,b862154a7861
 PlayHitSound0729,0729:2FE,21,,1,1,0,0,0,0,,,,941c83ede085
-TilePieceObject072A,072A:01D,56,T2,1,1,0,0,1,0,,0,,ca514d220e3d
+TilePieceObject072A,072A:01D,56,T2,1,1,0,0,0,0,,,,ca514d220e3d
 BitMaskFromIndex072A,072A:055,11,T2,1,1,1,0,0,0,,,,6205743dda29
-TilePieceInRange072A,072A:060,34,T2,1,1,0,0,0,0,,0,,28579e648d3f
-DrawTilePiece072A,072A:082,38,T3,1,1,0,1,1,0,,0,,198ae230766e
+TilePieceInRange072A,072A:060,34,T2,1,1,0,0,0,0,,,,28579e648d3f
+DrawTilePiece072A,072A:082,38,T2,1,1,0,1,0,0,,,,198ae230766e
 ContactWithPlayer,072A:235,261,T2,1,1,1,0,1,0,,0,,a6d2f4403fae
 RisingDriftBlock,072B:11B,41,T3,1,1,0,1,1,0,,0,,89e07f6c80b9
 MoveAndWrapDriftA,072B:14C,7,T4,1,1,1,1,1,0,,0,,10ff23232fef
 WrapVerticalDrift,072B:153,38,T4,1,1,1,1,1,0,,0,,8144d602cc3e
 LevelDriftBlock,072B:179,41,T3,1,1,0,1,1,0,,0,,620dfae9ddb3
 MoveAndWrapDriftB,072B:1AA,7,T4,1,1,1,1,1,0,,0,,6f147580e26f
-JumpByStateTable072B1B1,072B:1B1,18,T2,0,1,0,1,1,0,,0,runs original code,8d8a9b88eba9
+JumpByStateTable072B1B1,072B:1B1,18,T2,1,1,0,1,0,0,,,,8d8a9b88eba9
 StartRisingPiece,072B:1C9,19,T4,1,1,1,1,1,0,,0,,bc9f58978cba
 StepPieceOnParent,072B:1DC,39,T4,1,1,1,1,1,0,,0,,204d3140aea1
 DropPieceEvery32,072B:208,17,T2,1,1,1,0,1,0,,0,,ea39bda0bc4f
 FallingPieceStep,072B:219,51,T4,1,1,1,1,1,0,,0,,eeca4896c9e3
-JumpByStateTable072B24C,072B:24C,18,T2,0,1,1,1,1,0,,0,runs original code,8e58f1270de2
+JumpByStateTable072B24C,072B:24C,18,T2,1,1,1,1,0,0,,,,8e58f1270de2
 StartLevelPiece,072B:264,19,T4,1,1,1,1,1,0,,0,,a753e69bd2d2
 FollowParentUntilTouched,072B:277,25,T4,1,1,1,1,1,0,,0,,dab779125bda
 FallingPieceMove,072B:290,37,T4,1,1,1,1,1,0,,0,,d7067320e1e0
 BreakIntoPieces,072B:2B5,90,T3,1,1,0,1,1,0,,0,,399924d7a984
 StartOnFirstState,072B:31B,9,T4,1,1,1,1,1,0,,0,,88140f749c4a
 FallingDebris,072B:324,35,T4,1,1,1,1,1,0,,0,,bc06331e09bc
-RunDriftObject,072B:348,69,T2,0,1,0,1,0,0,,0,runs original code,5c9ba9ea65d2
+RunDriftObject,072B:348,69,T2,1,1,0,1,0,0,,,,0dd2a7b4034c
 RaiseStateOnFlag,072B:38D,23,T2,1,1,1,0,1,0,,0,,c0f551a81e80
 FlashByHeight,072B:3A4,39,T3,1,1,0,1,1,0,,0,,654df0f8d875
 FaceByVelocityAndCatch,072B:3DB,50,T3,1,1,0,1,1,0,,0,,8fab1c9a2cb5
-JumpByStateTableB,072B:40D,18,T2,0,1,0,1,1,0,,0,runs original code,e619e0a21b32
+JumpByStateTableB,072B:40D,18,T2,1,1,0,1,0,0,,,,e619e0a21b32
 StartWithEvent,072B:427,7,T4,1,1,1,1,1,0,,0,,9828f1142c0f
 StartPieceChain,072B:42E,64,T3,1,1,0,1,1,0,,0,,52ee97e9e697
 StepThenMusicAgain,072B:76E,63,T4,1,1,1,1,1,0,,0,,f6b1c678d41f
-JumpByPhaseTable072C004,072C:004,18,T2,0,1,0,1,1,0,,0,runs original code,46429dbc51e2
+JumpByPhaseTable072C004,072C:004,18,T2,1,1,0,1,0,0,,,,46429dbc51e2
 StopAndPickPhase,072C:02C,31,T3,1,1,0,1,1,0,,0,,d0d8641b8a15
 StartPieceStreamA,072C:053,65,T3,1,1,0,1,1,0,,0,,61efcbbc300b
 OrbitingObject,072C:09C,71,T2,1,1,0,0,1,0,,0,,5ba8a72a6827
@@ -1503,14 +1503,14 @@ StepPieceEmitter,072C:29F,71,T2,1,1,1,0,0,0,,0,,aeecb45d3307
 StepThenStop,072C:329,28,T4,1,1,1,1,1,0,,0,,ad3929756295
 FallUntilLevel2,072C:34C,17,T4,1,1,1,1,1,0,,0,,f5e66164efd6
 LoadRecordA06,072C:5A7,4,T4,1,1,1,1,1,0,,0,,92273d9abaa7
-JumpByStageStep,072C:5AB,18,T2,0,1,0,1,1,0,,0,runs original code,bcf6ae6c33d7
+JumpByStageStep,072C:5AB,18,T2,1,1,0,1,0,0,,,,bcf6ae6c33d7
 SetHitboxThenFollowPath,072C:5CD,3,T4,1,1,1,1,1,0,,0,,cc7895d5a785
 FollowPathAndShow,072C:5D0,37,T3,1,1,0,1,1,0,,0,,281777b56f70
 ShowByVelocity,072C:5F5,47,T3,1,1,0,1,1,0,,0,,315ec6a2ddcd
 BurstAtHeightE0,072C:656,24,T4,1,1,1,1,1,0,,0,,6285da2224a0
 FollowPathB,072C:671,40,T3,1,1,0,1,1,0,,0,,29ec931ff2e0
 StopVerticalSpeed,072C:6AE,7,T4,1,1,1,1,1,0,,0,,4b7d71a09104
-JumpByStateTable072C763,072C:763,18,T2,0,1,0,1,1,0,,0,runs original code,4a8b3da3fd2a
+JumpByStateTable072C763,072C:763,18,T2,1,1,0,1,0,0,,,,4a8b3da3fd2a
 StartDriftingPiece,072C:77B,39,T3,1,1,0,1,1,0,,0,,5eec45c762c3
 DropAndBurst,072C:7AA,69,T4,1,1,1,1,1,0,,0,,1a87183f80d4
 StepFallAfterFour,072C:7F4,28,T4,1,1,1,1,1,0,,0,,f65f3f4c5663
@@ -1519,8 +1519,8 @@ ResetStageVariables07CD,07CD:0CB,29,T2,1,1,0,0,1,0,,0,,002a909d7a5b
 ExpandStageVramRunsE,07CE:082,47,T3,1,1,0,1,1,0,,0,,2b1a9feb407e
 StartStageListsE,07CE:0B1,29,T3,1,1,0,1,1,0,,0,,d06e275322e6
 LoadStageEntryE,07CE:152,224,T2,1,1,0,0,1,0,,0,,74519c14e73a
-StageScrollStepE,07CE:236,25,T2,0,1,0,1,1,0,,0,runs original code,50529cefb959
-SetUpStageObjectsE,07CE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,4c9dc28d5685
+StageScrollStepE,07CE:236,25,T2,1,1,0,1,0,0,,,,50529cefb959
+SetUpStageObjectsE,07CE:25F,69,T2,0,1,0,0,0,0,,,runs original code,4c9dc28d5685
 ExpandStageListsE,07CF:277,98,T2,1,1,0,0,1,0,,0,,a68fdefabe7e
 TerrainLookupC,07CF:5AB,96,T2,1,1,0,0,1,0,,0,,2265f54c442a
 TerrainLookupAltC,07CF:60B,116,T2,1,1,0,0,1,0,,0,,0e40c39b4056
@@ -1533,7 +1533,7 @@ HitDamage07D9,07D9:28D,22,T3,1,1,0,1,1,0,,0,,fb0c5a38206e
 ScoreForKind07D9,07D9:2A3,34,,1,1,0,0,1,0,,0,,7ec4425fd695
 DropItemWhenHitA,07D9:2C5,57,T2,1,1,0,0,1,0,,0,,082d6691d2f0
 PlayHitSoundC,07D9:2FE,21,T2,1,1,0,0,1,0,,0,,9f4fc376fee0
-DispatchByKind07D9,07D9:313,22,T2,0,1,0,0,1,0,,0,runs original code,5d950c95cef7
+DispatchByKind07D9,07D9:313,22,T2,1,1,0,0,0,0,,,,5d950c95cef7
 DrawTilePiece07DA,07DA:082,38,,1,1,0,0,0,0,,,,b1400b51a527
 BurstWhenFlaggedHit,07DB:311,37,T4,1,1,1,1,1,0,,0,,b480f926054f
 SpawnSixPiecesA,07DB:336,54,T2,1,1,0,0,1,0,,0,,a249ecddc85c
@@ -1572,8 +1572,8 @@ ResetStageVariables087D,087D:0CB,29,T2,1,1,0,0,1,0,,0,,086d702b627a
 ExpandStageVramRunsF,087E:082,47,T3,1,1,0,1,1,0,,0,,455cf74798b1
 StartStageListsF,087E:0B1,29,T3,1,1,0,1,1,0,,0,,b3899548c191
 LoadStageEntryF,087E:152,224,T2,1,1,0,0,1,0,,0,,5b818ca32718
-StageScrollStepF,087E:236,25,T2,0,1,0,1,1,0,,0,runs original code,5a7eb0758c37
-SetUpStageObjectsF,087E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,ae80ed7bef29
+StageScrollStepF,087E:236,25,T2,1,1,0,1,0,0,,,,5a7eb0758c37
+SetUpStageObjectsF,087E:25F,69,T2,0,1,0,0,0,0,,,runs original code,ae80ed7bef29
 ExpandStageListsF,087F:277,98,T2,1,1,0,0,1,0,,0,,278728f0a6d4
 ProbeBoxes0880,0880:0BD,96,T2,1,1,0,0,1,0,,0,,ae6f77983365
 ProbeBoxesFlagged0880,0880:11D,116,T2,1,1,0,0,1,0,,0,,9d08770bb1c5
@@ -1583,9 +1583,9 @@ HitDamage0889,0889:28D,22,T3,1,1,0,1,1,0,,0,,a310041b2f0e
 ScoreForKind0889,0889:2A3,34,,1,1,0,0,0,0,,,,6189d547b4f4
 DropItemWhenHit0889,0889:2C5,57,,1,1,0,0,0,0,,,,160dd67d047c
 PlayHitSound0889,0889:2FE,21,,1,1,0,0,0,0,,,,98238ab4df5a
-DispatchByKind0889,0889:313,22,T2,0,1,0,0,1,0,,0,runs original code,3782b65333fb
-DrawTilePiece088A,088A:082,38,T3,1,1,0,1,1,0,,0,,93babcf3addf
-JumpByStateTable088A304,088A:304,18,T2,0,1,0,1,1,0,,0,runs original code,ed08ddbd568c
+DispatchByKind0889,0889:313,22,T2,1,1,0,0,0,0,,,,3782b65333fb
+DrawTilePiece088A,088A:082,38,,1,1,0,1,0,0,,,,93babcf3addf
+JumpByStateTable088A304,088A:304,18,T2,1,1,0,1,0,0,,,,ed08ddbd568c
 LoadThenSpeedF0,088A:31C,9,T4,1,1,1,1,1,0,,0,,7d3f80f239ad
 NextStateOnScrollY,088A:325,9,T4,1,1,1,1,1,0,,0,,bda7f7c3f478
 DrawStepCountThenClear,088A:32E,43,T2,1,1,1,0,1,0,,0,,6821cd7c351e
@@ -1594,7 +1594,7 @@ FrameBySideThenTimerOnScroll,088A:39B,29,T4,1,1,1,1,1,0,,0,,407d7ee82c6d
 StepListACB2ThenNextOnScreen,088A:400,30,T4,1,1,1,1,1,0,,0,,bdbd2b42e0ab
 StartListSoundThenSpawn20,088A:41E,19,T4,1,1,1,1,1,0,,0,,8b41a3319e23
 StartThreeNumberedObjects,088A:4B9,43,T4,1,1,1,1,1,0,,0,,81f6c223400c
-JumpByStateTable088A4E4,088A:4E4,18,T2,0,1,0,1,1,0,,0,runs original code,08e43ce2359f
+JumpByStateTable088A4E4,088A:4E4,18,T2,1,1,0,1,0,0,,,,08e43ce2359f
 LoadThenSpeedFromTable,088A:4FC,37,T3,1,1,0,1,1,0,,0,,9bb494c9aca6
 CountThenNextStateF3510,088A:52D,14,T4,1,1,1,1,1,0,,0,,7b6ee2c0a3c9
 FallAndBlinkThenClear,088A:53B,47,T4,1,1,1,1,1,0,,0,,48ed06ab09fd
@@ -1605,7 +1605,7 @@ PlaySoundTwo,088A:71E,6,T4,1,1,1,1,1,0,,0,,353e14c16a5d
 SetFrameThenCountToNext,088A:724,19,T4,1,1,1,1,1,0,,0,,d3b3f1218ee7
 StepListByIndex088A,088A:765,13,T3,1,1,0,1,1,0,,0,,06a7a789db19
 CheckPlayerThenStepListIndex08,088B:044,40,T2,1,1,1,0,1,0,,0,,252ab480a3ad
-JumpByPhaseTable088B06C,088B:06C,18,T2,0,1,0,1,1,0,,0,runs original code,6e86045ac14a
+JumpByPhaseTable088B06C,088B:06C,18,T2,1,1,0,1,0,0,,,,6e86045ac14a
 StartFallWithFrame21,088B:084,20,T4,1,1,1,1,1,0,,0,,249c16748987
 FallThenSoundAtPeak,088B:098,20,T4,1,1,1,1,1,0,,0,,8cb90d391ee1
 StepListIndex0AThenSpawn,088B:0AC,39,T2,1,1,1,0,1,0,,0,,75b68412bd64
@@ -1622,87 +1622,87 @@ SetTimersOf12To15,088B:777,13,T4,1,1,1,1,1,0,,0,,45ed3194afb5
 ClearStageTimers,088B:784,13,T3,1,1,0,1,1,0,,0,,c4e3c6112b65
 FollowSlot10WithHitBox,088B:7AF,80,T2,1,1,0,0,1,0,,0,,3ba8919b59cd
 StartThenWaitForField83,088C:43C,54,T4,1,1,1,1,1,0,,0,,b8c4558d1c3f
-ResetStageVariables092D,092D:0CB,29,T3,1,1,0,1,1,1,,0,,ef7264ab3b1f
-ExpandStageVramRunsG,092E:082,47,T3,1,1,0,1,1,1,,0,,2ce51e5dc333
-StartStageListsG,092E:0B1,29,T3,1,1,0,1,1,1,,0,,db3fefeb748e
-LoadStageEntryG,092E:152,224,T2,1,1,0,0,1,1,,0,,fa88b4607c8c
-StageScrollStepG,092E:236,25,T2,0,1,0,1,1,1,,0,runs original code,3694fc669089
-SetUpStageObjectsG,092E:25F,69,T2,0,1,0,1,1,1,,0,runs original code,0593edd59a89
+ResetStageVariables092D,092D:0CB,29,T3,1,1,0,1,1,0,,0,,ef7264ab3b1f
+ExpandStageVramRunsG,092E:082,47,T3,1,1,0,1,1,0,,0,,2ce51e5dc333
+StartStageListsG,092E:0B1,29,T3,1,1,0,1,1,0,,0,,db3fefeb748e
+LoadStageEntryG,092E:152,224,T2,1,1,0,0,1,0,,0,,fa88b4607c8c
+StageScrollStepG,092E:236,25,T2,1,1,0,1,0,0,,,,3694fc669089
+SetUpStageObjectsG,092E:25F,69,T2,1,1,0,1,0,0,,,,149c4e955eb3
 ClearHitsTaken,092E:2D1,4,T4,1,1,1,1,1,0,,0,,5e2e77a88c27
 StageTriggerObjectB,092E:2FC,87,T2,1,1,1,0,1,0,,0,,ff128ccee0a8
-ExpandStageListsG,092F:277,98,T3,1,1,0,1,1,1,,0,,be498b7bbfa5
-TerrainLookupD,092F:5AB,96,T2,1,1,0,0,0,1,,0,,ba97baf58b8f
-TerrainLookupAltD,092F:60B,116,T2,1,1,0,0,1,1,,0,,a784421c7a3a
-RunListChannel0931,0931:018,283,T2,0,1,0,0,0,1,,0,runs original code,a4616efd3a68
-VramListFromTableI,0931:142,204,T2,1,1,0,0,0,1,,,,27ddbfa9ecbb
-SelectBlockTablesF,0936:00F,46,T4,1,1,1,1,1,1,,0,,5bfb3dca9004
-SelectRasterStage1,0938:7F2,5,T4,1,1,1,1,1,1,,0,,799b1e09f71d
-HitDamage0939,0939:28D,22,T3,1,1,0,1,1,1,,0,,636302665f82
+ExpandStageListsG,092F:277,98,T3,1,1,0,1,1,0,,0,,be498b7bbfa5
+TerrainLookupD,092F:5AB,96,T2,1,1,0,0,0,0,,0,,ba97baf58b8f
+TerrainLookupAltD,092F:60B,116,T2,1,1,0,0,1,0,,0,,a784421c7a3a
+RunListChannel0931,0931:018,283,T2,0,1,0,0,0,0,,0,runs original code,a4616efd3a68
+VramListFromTableI,0931:142,204,T2,1,1,0,0,0,0,,,,27ddbfa9ecbb
+SelectBlockTablesF,0936:00F,46,T4,1,1,1,1,1,0,,0,,5bfb3dca9004
+SelectRasterStage1,0938:7F2,5,T4,1,1,1,1,1,0,,0,,799b1e09f71d
+HitDamage0939,0939:28D,22,T3,1,1,0,1,1,0,,0,,636302665f82
 ScoreForKind0939,0939:2A3,34,,1,1,0,0,1,0,,0,,080c8430b8c0
 DropItemWhenHitB,0939:2C5,57,T2,1,1,0,0,1,0,,0,,9fafbbd331aa
 PlayHitSoundD,0939:2FE,21,T2,1,1,0,0,1,0,,0,,ffe382c9fa0f
 DrawTilePiece093A,093A:082,38,,1,1,0,0,0,0,,,,dd54ca7e9c77
-StartWithFrame1A,093B:0F6,14,T4,1,1,1,1,1,1,,0,,eb545e47259c
-ShowOnScreenAndWrapX,093B:4C3,98,T4,1,1,1,1,1,1,,0,,a776946480fa
-ContactWithPlayerBox14By20,093C:05D,11,T4,1,1,1,1,1,1,,0,,272edd149762
-EnterStateFourOnFlag,093C:068,26,T4,1,1,1,1,1,1,,0,,a537b7741044
-TouchesPlayerMark,093C:082,48,T2,1,1,0,0,1,1,,0,,04e5c3a26a6f
-SetHitboxDxFromFrame,093C:10A,30,T3,1,1,0,1,1,1,,0,,c8c521120349
-StartGroupThenThrow,093C:12E,82,T2,1,1,1,0,1,1,,0,,cdf1323b6e95
-ThrowByNextKind,093C:180,35,T3,1,1,0,1,1,1,,0,,029e516f89ca
-PickTimersAtRandom,093C:1A5,20,T3,1,1,0,1,1,1,,0,,ea32d0e1b033
-PickAngleAtRandom,093C:1C1,20,T3,1,1,0,1,1,1,,0,,c10542313f95
-CountBothPairs,093C:1DD,7,T4,1,1,1,1,1,1,,0,,a425896ce7cd
-CountTimerPairDownOrRepick,093C:1E4,41,T4,1,1,1,1,1,1,,0,,8130dc94c64d
-CountAnglePairDownOrRepick,093C:20D,49,T4,1,1,1,1,1,1,,0,,8a6cd4422882
-AnimateThenState1,093C:23E,31,T3,1,1,0,1,1,1,,0,,85195f1cb038
-ChooseNextMoveWhenFacingAway,093C:28D,72,T3,1,1,0,1,1,1,,0,,3ed75056674e
-AnimateThenNextStep,093C:338,28,T4,1,1,1,1,1,1,,0,,b6cad9697130
-PhaseTimerToState1,093C:374,38,T4,1,1,1,1,1,1,,0,,e09ebc71b328
-AnimateThenNumberGroupAndLeave,093C:39A,75,T2,1,1,0,0,1,1,,0,,7b386fc6ac18
-JumpByStateTable093C3FF,093C:3FF,18,T2,0,1,0,1,1,1,,0,runs original code,e3e44964d69b
-StartSidewaysAndSpawn29,093C:417,77,T2,1,1,0,0,1,1,,0,,65714dbbfb43
-CountdownSoundThenFollowParent,093C:474,27,T4,1,1,1,1,1,1,,0,,68717ead19f7
-FollowParentYAndLeave,093C:48F,20,T4,1,1,1,1,1,1,,0,,166816351645
-AnimateMoveAndSag,093C:4A3,46,T2,1,1,0,0,1,1,,0,,5fd0d41db433
-JumpByStateTable093C4E5,093C:4E5,18,T2,0,1,0,1,1,1,,0,runs original code,f076db22df82
-StartSidewaysAndSpawn29B,093C:4FD,53,T2,1,1,0,0,1,1,,0,,a3de9e5e7895
-CountdownSoundThenNextState,093C:534,24,T4,1,1,1,1,1,1,,0,,ad74e606b0f7
-AnimateHitboxThenExpire,093C:54C,23,T4,1,1,1,1,1,1,,0,,d00b97b781d9
-SetHitboxFromFrameRows,093C:586,34,T3,1,1,0,1,1,1,,0,,476cd8d96647
-StartThenAnimateAndExpire,093C:5C4,52,T3,1,1,0,1,1,1,,0,,447c24ec9889
-StartChargeWhenPlayerNear,093C:6AB,60,T4,1,1,1,1,1,1,,0,,7cd5eea08d79
-StepFramesFacingPlayerC,093C:6E9,21,T3,1,1,0,1,1,1,,0,,c3a8fc68c0a2
-PickStateByPlayerDistanceB,093C:731,38,T2,1,1,0,0,1,1,,0,,25cd2a6d43e0
-PickSpeedAndTurnFromTableC,093C:7AA,44,T2,1,1,0,0,1,1,,0,,f6a6c0e32188
-AnimateMoveThenSetUpAtRandom,093D:02B,42,T4,1,1,1,1,1,1,,0,,944fb635fcb9
-SoundEveryFourthFrame,093D:0F5,13,T4,1,1,1,1,1,1,,0,,dda48d030338
-TurnOnRandomBeatWalkB,093D:13E,49,T3,1,1,0,1,1,1,,0,,465c6fccd6a3
-TurnOnRandomBeatWalkFollowB,093D:17B,22,T4,1,1,1,1,1,1,,0,,14f62c5c5ad3
-WaitThenState2B,093D:191,30,T4,1,1,1,1,1,1,,0,,d4a073be5738
-FaceThePlayerInSomeStates,093D:282,17,T3,1,1,0,1,1,1,,0,,98721f2e3993
-EnterState7OnFlagOrYSignChange,093D:2B7,32,T2,1,1,1,0,1,1,,0,,f425eb0a0cd7
-SetHitboxFromFrameRowsIndirect,093D:2D7,38,T3,1,1,0,1,1,1,,0,,480e88c93d47
-StartAndMakeNeighbour,093D:2FD,25,T4,1,1,1,1,1,1,,0,,a9bdc20f2d52
-WalkWhileFrameChangesB,093D:33A,28,T3,1,1,0,1,1,1,,0,,7e7435316476
-LaunchHopByF3510,093D:43A,34,T3,1,1,0,1,1,1,,0,,f7804a9dae66
-CountdownNextStepB,093D:45E,9,T4,1,1,1,1,1,1,,0,,9e7119272a73
-NextPhaseAtRandom,093D:4AB,35,T3,1,1,0,1,1,1,,0,,dc94f751827d
-SpawnShotFromFrame,093D:51F,30,T2,1,1,1,0,1,1,,0,,393b7d048bfa
-LeapAwayFromPlayerTable,093D:53D,44,T3,1,1,0,1,1,1,,0,,5195de9f1677
-AnimateThenNextStepB,093D:579,23,T4,1,1,1,1,1,1,,0,,a2bb20d2a2df
-CountdownStopThenState3,093D:5C3,17,T4,1,1,1,1,1,1,,0,,0eaadd3486d7
-BurstIntoEightPieces,093D:619,91,T2,1,1,0,0,1,1,,0,,dbff33c315e9
-FollowPreviousPieceB,093D:6A4,66,T2,1,1,0,0,1,1,,0,,df113e87568e
-StartWithFrameAndFace,093D:76B,28,T2,1,1,0,0,1,1,,0,,5a6ac3aa9f28
-CountdownThenFallOrBecomeType9B,093D:78C,20,T4,1,1,1,1,1,1,,0,,8f087faa8b5d
-StartThenBlinkAndExpire,093D:7A0,39,T4,1,1,1,1,1,1,,0,,45c53cdd3835
+StartWithFrame1A,093B:0F6,14,T4,1,1,1,1,1,0,,0,,eb545e47259c
+ShowOnScreenAndWrapX,093B:4C3,98,T4,1,1,1,1,1,0,,0,,a776946480fa
+ContactWithPlayerBox14By20,093C:05D,11,T4,1,1,1,1,1,0,,0,,272edd149762
+EnterStateFourOnFlag,093C:068,26,T4,1,1,1,1,1,0,,0,,a537b7741044
+TouchesPlayerMark,093C:082,48,T2,1,1,0,0,1,0,,0,,04e5c3a26a6f
+SetHitboxDxFromFrame,093C:10A,30,T3,1,1,0,1,1,0,,0,,c8c521120349
+StartGroupThenThrow,093C:12E,82,T2,1,1,1,0,1,0,,0,,cdf1323b6e95
+ThrowByNextKind,093C:180,35,T3,1,1,0,1,1,0,,0,,029e516f89ca
+PickTimersAtRandom,093C:1A5,20,T3,1,1,0,1,1,0,,0,,ea32d0e1b033
+PickAngleAtRandom,093C:1C1,20,T3,1,1,0,1,1,0,,0,,c10542313f95
+CountBothPairs,093C:1DD,7,T4,1,1,1,1,1,0,,0,,a425896ce7cd
+CountTimerPairDownOrRepick,093C:1E4,41,T4,1,1,1,1,1,0,,0,,8130dc94c64d
+CountAnglePairDownOrRepick,093C:20D,49,T4,1,1,1,1,1,0,,0,,8a6cd4422882
+AnimateThenState1,093C:23E,31,T3,1,1,0,1,1,0,,0,,85195f1cb038
+ChooseNextMoveWhenFacingAway,093C:28D,72,T3,1,1,0,1,1,0,,0,,3ed75056674e
+AnimateThenNextStep,093C:338,28,T4,1,1,1,1,1,0,,0,,b6cad9697130
+PhaseTimerToState1,093C:374,38,T4,1,1,1,1,1,0,,0,,e09ebc71b328
+AnimateThenNumberGroupAndLeave,093C:39A,75,T2,1,1,0,0,1,0,,0,,7b386fc6ac18
+JumpByStateTable093C3FF,093C:3FF,18,T2,1,1,0,1,0,0,,,,e3e44964d69b
+StartSidewaysAndSpawn29,093C:417,77,T2,1,1,0,0,1,0,,0,,65714dbbfb43
+CountdownSoundThenFollowParent,093C:474,27,T4,1,1,1,1,1,0,,0,,68717ead19f7
+FollowParentYAndLeave,093C:48F,20,T4,1,1,1,1,1,0,,0,,166816351645
+AnimateMoveAndSag,093C:4A3,46,T2,1,1,0,0,1,0,,0,,5fd0d41db433
+JumpByStateTable093C4E5,093C:4E5,18,T2,1,1,0,1,0,0,,,,f076db22df82
+StartSidewaysAndSpawn29B,093C:4FD,53,T2,1,1,0,0,1,0,,0,,a3de9e5e7895
+CountdownSoundThenNextState,093C:534,24,T4,1,1,1,1,1,0,,0,,ad74e606b0f7
+AnimateHitboxThenExpire,093C:54C,23,T4,1,1,1,1,1,0,,0,,d00b97b781d9
+SetHitboxFromFrameRows,093C:586,34,T3,1,1,0,1,1,0,,0,,476cd8d96647
+StartThenAnimateAndExpire,093C:5C4,52,T3,1,1,0,1,1,0,,0,,447c24ec9889
+StartChargeWhenPlayerNear,093C:6AB,60,T4,1,1,1,1,1,0,,0,,7cd5eea08d79
+StepFramesFacingPlayerC,093C:6E9,21,T3,1,1,0,1,1,0,,0,,c3a8fc68c0a2
+PickStateByPlayerDistanceB,093C:731,38,T2,1,1,0,0,1,0,,0,,25cd2a6d43e0
+PickSpeedAndTurnFromTableC,093C:7AA,44,T2,1,1,0,0,1,0,,0,,f6a6c0e32188
+AnimateMoveThenSetUpAtRandom,093D:02B,42,T4,1,1,1,1,1,0,,0,,944fb635fcb9
+SoundEveryFourthFrame,093D:0F5,13,T4,1,1,1,1,1,0,,0,,dda48d030338
+TurnOnRandomBeatWalkB,093D:13E,49,T3,1,1,0,1,1,0,,0,,465c6fccd6a3
+TurnOnRandomBeatWalkFollowB,093D:17B,22,T4,1,1,1,1,1,0,,0,,14f62c5c5ad3
+WaitThenState2B,093D:191,30,T4,1,1,1,1,1,0,,0,,d4a073be5738
+FaceThePlayerInSomeStates,093D:282,17,T3,1,1,0,1,1,0,,0,,98721f2e3993
+EnterState7OnFlagOrYSignChange,093D:2B7,32,T2,1,1,1,0,1,0,,0,,f425eb0a0cd7
+SetHitboxFromFrameRowsIndirect,093D:2D7,38,T3,1,1,0,1,1,0,,0,,480e88c93d47
+StartAndMakeNeighbour,093D:2FD,25,T4,1,1,1,1,1,0,,0,,a9bdc20f2d52
+WalkWhileFrameChangesB,093D:33A,28,T3,1,1,0,1,1,0,,0,,7e7435316476
+LaunchHopByF3510,093D:43A,34,T3,1,1,0,1,1,0,,0,,f7804a9dae66
+CountdownNextStepB,093D:45E,9,T4,1,1,1,1,1,0,,0,,9e7119272a73
+NextPhaseAtRandom,093D:4AB,35,T3,1,1,0,1,1,0,,0,,dc94f751827d
+SpawnShotFromFrame,093D:51F,30,T2,1,1,1,0,1,0,,0,,393b7d048bfa
+LeapAwayFromPlayerTable,093D:53D,44,T3,1,1,0,1,1,0,,0,,5195de9f1677
+AnimateThenNextStepB,093D:579,23,T4,1,1,1,1,1,0,,0,,a2bb20d2a2df
+CountdownStopThenState3,093D:5C3,17,T4,1,1,1,1,1,0,,0,,0eaadd3486d7
+BurstIntoEightPieces,093D:619,91,T2,1,1,0,0,1,0,,0,,dbff33c315e9
+FollowPreviousPieceB,093D:6A4,66,T2,1,1,0,0,1,0,,0,,df113e87568e
+StartWithFrameAndFace,093D:76B,28,T2,1,1,0,0,1,0,,0,,5a6ac3aa9f28
+CountdownThenFallOrBecomeType9B,093D:78C,20,T4,1,1,1,1,1,0,,0,,8f087faa8b5d
+StartThenBlinkAndExpire,093D:7A0,39,T4,1,1,1,1,1,0,,0,,45c53cdd3835
 ResetStageVariables09DD,09DD:0CB,29,T2,1,1,0,0,1,0,,0,,079fbe151bab
 ExpandStageVramRunsH,09DE:082,47,T2,1,1,0,0,1,0,,0,,9ceb9b002f10
 StartStageListsH,09DE:0B1,29,T3,1,1,0,1,1,0,,0,,26510e0e4c5c
 LoadStageEntryH,09DE:152,224,T2,1,1,0,0,1,0,,0,,971cc8361648
-StageScrollStepH,09DE:236,25,T2,0,1,0,1,1,0,,0,runs original code,40aad1765c0b
-SetUpStageObjectsH,09DE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,05295156f9f3
+StageScrollStepH,09DE:236,25,T2,1,1,0,1,0,0,,,,40aad1765c0b
+SetUpStageObjectsH,09DE:25F,69,T2,0,1,0,0,0,0,,,runs original code,05295156f9f3
 SetHealthBarAddressLong,09DE:443,41,T2,1,1,1,0,1,0,,0,,ca8623b4909b
 ExpandStageListsH,09DF:277,98,T2,1,1,0,0,1,0,,0,,1abe17c6b734
 ProbeBoxes09E0,09E0:0BD,96,T2,1,1,0,0,1,0,,0,,bb3481622c2f
@@ -1714,13 +1714,13 @@ ScoreForKind09E9,09E9:2A3,34,,1,1,0,0,1,0,,0,,f92ee6678f6f
 DropItemWhenHitG,09E9:2C5,57,T2,1,1,0,0,1,0,,0,,9db50e385a04
 PlayHitSoundE,09E9:2FE,21,T2,1,1,0,0,1,0,,0,,1105051449ce
 HealAndClear,09E9:6B0,43,T2,1,1,1,0,1,0,,0,,2e03f7837c08
-DrawTilePiece09EA,09EA:082,38,T3,1,1,0,1,1,0,,0,,2943055209d7
-StepWithHitTable,09EA:547,19,T2,0,1,1,1,1,0,,0,runs original code,922db8ea90d1
+DrawTilePiece09EA,09EA:082,38,,1,1,0,1,0,0,,,,2943055209d7
+StepWithHitTable,09EA:547,19,T2,1,1,1,1,0,0,,,,92496225e635
 FaceByCue,09EA:55A,22,T3,1,1,0,1,1,0,,0,,755c47ca8d97
 SwitchStateOnHitRow,09EA:588,40,T3,1,1,0,1,1,0,,0,,7fd70137b9da
 AdvanceByHealth,09EA:5CB,62,T2,1,1,0,0,1,0,,0,,382a079c0aa7
 SetHitboxFromFrameFive,09EA:60E,34,T3,1,1,0,1,1,0,,0,,50549772ed0d
-JumpByStateTableF,09EA:630,18,T2,0,1,0,1,1,0,,0,runs original code,86e085253d98
+JumpByStateTableF,09EA:630,18,T2,1,1,0,1,0,0,,,,86e085253d98
 StartTwinSpawner,09EA:664,37,T4,1,1,1,1,1,0,,0,,cc1733415535
 WalkTowardPlayer,09EA:689,25,T2,1,1,1,0,1,0,,0,,3e83c8941578
 WalkSideways,09EA:6A2,33,T4,1,1,1,1,1,0,,0,,5bfa036028c6
@@ -1735,7 +1735,7 @@ StepThenQuarterWait,09EB:03B,37,T4,1,1,1,1,1,0,,0,,0f7a39f64887
 StartShotRing,09EB:067,71,T4,1,1,1,1,1,0,,0,,b73e3cf9e8b5
 EnterStateWhenSlotClear,09EB:0AE,9,T3,1,1,0,1,1,0,,0,,9d45708cfe6c
 BurstOnLanding,09EB:0B7,74,T4,1,1,1,1,1,0,,0,,da4dc0b2b50a
-StepFacingAndJump,09EB:108,41,T2,0,1,0,1,1,0,,0,runs original code,7d715545f77c
+StepFacingAndJump,09EB:108,41,T2,1,1,0,1,0,0,,,,7d715545f77c
 MoveThenPick,09EB:14A,3,T4,1,1,1,1,1,0,,0,,a52c5dc757ad
 PickGroundSpeedInWindow,09EB:14D,18,T3,1,1,0,1,1,0,,0,,caaa68d9652c
 InWindowRange,09EB:16F,39,T4,1,1,1,1,1,0,,0,,0404174ae315
@@ -1744,9 +1744,9 @@ SwingAndPick,09EB:1C7,33,T4,1,1,1,1,1,0,,0,,fe2ecef05b33
 StartSplitterLow,09EB:1E8,41,T2,1,1,0,0,1,0,,0,,6264a4a362fc
 ShootMoveAndPickSpeed,09EB:211,9,T4,1,1,1,1,1,0,,0,,04f4e7ffdf2c
 MaybeShootAhead,09EB:21A,31,T2,1,1,1,0,1,0,,0,,1adaa8add19f
-PickWaterOnTenth,09EB:4FF,31,T2,0,1,1,1,1,0,,0,runs original code,77aa3c0c4464
+PickWaterOnTenth,09EB:4FF,31,T2,1,1,1,1,0,0,,,,c464c12b05db
 PickWaterLevel,09EB:51E,19,T3,1,1,0,1,1,0,,0,,940c116e3522
-JumpByStateTableE,09EB:539,18,T2,0,1,0,1,1,0,,0,runs original code,bfc55e88ee7f
+JumpByStateTableE,09EB:539,18,T2,1,1,0,1,0,0,,,,bfc55e88ee7f
 LoadRecordThenRecordEvent,09EB:559,6,T4,1,1,1,1,1,0,,0,,2fa57b6b7ecc
 WaitForPage2,09EB:55F,25,T4,1,1,1,1,1,0,,0,,2626d95697b8
 LaunchOnTimer,09EB:578,35,T3,1,1,0,1,1,0,,0,,3fb318541a1c
@@ -1758,7 +1758,7 @@ StartOnPlayerAnimation,09EB:6CD,50,T3,1,1,0,1,1,0,,0,,182f61070888
 StartFallingSpark09,09EB:725,41,T3,1,1,0,1,1,0,,0,,61935c20afa2
 StepFallingSpark,09EB:752,47,T4,1,1,1,1,1,0,,0,,c442a6db3d78
 FollowPlayerHitbox,09EB:7A4,47,T3,1,1,0,1,1,0,,0,,9c45f5a832e8
-JumpByStateTable09EB7D3,09EB:7D3,18,T2,0,1,0,1,1,0,,0,runs original code,709de2e44e1c
+JumpByStateTable09EB7D3,09EB:7D3,18,T2,1,1,0,1,0,0,,,,709de2e44e1c
 StartNumberedPiece,09EB:7EB,22,T4,1,1,1,1,1,0,,0,,7f31f8163e1c
 CountdownNextStateC,09EC:011,9,T4,1,1,1,1,1,0,,0,,177a511c4600
 RiseAndClear,09EC:01A,34,T4,1,1,1,1,1,0,,0,,82a62241f6ef
@@ -1767,11 +1767,11 @@ StartChainLink,09EC:06D,27,T3,1,1,0,1,1,0,,0,,47715f8972f8
 ChainCountdown,09EC:090,12,T4,1,1,1,1,1,0,,0,,3c88a74525f9
 ChainSwings,09EC:09C,72,T3,1,1,0,1,1,0,,0,,8f6144c01d35
 ChainFollowsPrevious,09EC:0F4,47,T3,1,1,0,1,1,0,,0,,a36d8a8c6ea2
-JumpByStateTable09EC18D,09EC:18D,18,T2,0,1,0,1,1,0,,0,runs original code,d7a2a0bdf55d
+JumpByStateTable09EC18D,09EC:18D,18,T2,1,1,0,1,0,0,,,,d7a2a0bdf55d
 StartKickedPiece,09EC:1A5,24,T3,1,1,0,1,1,0,,0,,6e99cdd922c0
 FallStepAndLeave,09EC:1BF,51,T4,1,1,1,1,1,0,,0,,21b0d5fb8fb5
 StepThenClear,09EC:203,17,T4,1,1,1,1,1,0,,0,,66905421609b
-JumpByStateTable,09EC:7BC,18,T2,0,1,0,1,1,0,,0,runs original code,18f2af076362
+JumpByStateTable,09EC:7BC,18,T2,1,1,0,1,0,0,,,,18f2af076362
 StartTracker,09EC:7D8,26,T4,1,1,1,1,1,0,,0,,e3d5b14c5f95
 SwayThenReact,09EC:7F2,12,T4,1,1,1,1,1,0,,0,,0bc0ab887393
 SwayOrAdvance,09EC:7FE,14,T4,1,1,1,1,1,0,,0,,cc4835d4c0ce
@@ -1785,64 +1785,64 @@ FlipSide,09ED:07D,9,T4,1,1,1,1,1,0,,0,,ab20feb9ff1c
 BobAndMove,09ED:086,61,T4,1,1,1,1,1,0,,0,,efa06251f0cf
 SetSwaySpeed,09ED:0C3,27,T3,1,1,0,1,1,0,,0,,b509fc2a8011
 StartThenStepList,09ED:0EA,25,T4,1,1,1,1,1,0,,0,,1580d721779a
-ResetStageVariables0A8D,0A8D:0CB,29,T2,1,1,0,0,1,1,,0,,97c3fb8757c3
-ExpandStageVramRunsI,0A8E:082,47,T3,1,1,0,1,1,1,,0,,f2fd3efb32c7
-StartStageListsI,0A8E:0B1,29,T3,1,1,0,1,1,1,,0,,d6566d348d79
+ResetStageVariables0A8D,0A8D:0CB,29,T2,1,1,0,0,1,0,,0,,97c3fb8757c3
+ExpandStageVramRunsI,0A8E:082,47,T3,1,1,0,1,1,0,,0,,f2fd3efb32c7
+StartStageListsI,0A8E:0B1,29,T3,1,1,0,1,1,0,,0,,d6566d348d79
 LoadStageEntryI,0A8E:152,224,T2,1,1,0,0,1,0,,0,,1497356c918d
-StageScrollStepI,0A8E:236,25,T2,0,1,0,1,1,1,,0,runs original code,39ef445f6d56
-SetUpStageObjectsI,0A8E:25F,69,T2,0,1,0,0,1,1,,0,runs original code,f4ec3c17d746
-ExpandStageListsI,0A8F:277,98,T2,1,1,0,0,1,1,,0,,5d382ce45a73
-TerrainLookupE,0A8F:5AB,96,T3,1,1,0,1,1,1,,0,,057acf04bd82
-TerrainLookupAltE,0A8F:60B,116,T2,1,1,0,0,1,1,,0,,a9ddeeb2d2ff
-VramListFromTableK,0A91:142,204,T2,1,1,0,0,0,1,,,,0bec59081e04
-SelectBlockTablesG,0A96:00F,46,T4,1,1,1,1,1,1,,0,,2a5d654e1366
+StageScrollStepI,0A8E:236,25,T2,1,1,0,1,0,0,,,,39ef445f6d56
+SetUpStageObjectsI,0A8E:25F,69,T2,0,1,0,0,0,0,,,runs original code,f4ec3c17d746
+ExpandStageListsI,0A8F:277,98,T2,1,1,0,0,1,0,,0,,5d382ce45a73
+TerrainLookupE,0A8F:5AB,96,T3,1,1,0,1,1,0,,0,,057acf04bd82
+TerrainLookupAltE,0A8F:60B,116,T2,1,1,0,0,1,0,,0,,a9ddeeb2d2ff
+VramListFromTableK,0A91:142,204,T2,1,1,0,0,0,0,,,,0bec59081e04
+SelectBlockTablesG,0A96:00F,46,T4,1,1,1,1,1,0,,0,,2a5d654e1366
 RunObjects0A99,0A99:000,316,T2,0,1,0,0,0,0,,,runs original code,de5b975029d8
 HitDamage0A99,0A99:28D,22,T3,1,1,0,1,1,0,,0,,0b540a5b5255
 ScoreForKind0A99,0A99:2A3,34,,1,1,0,0,1,0,,0,,e99adac3fd28
 DropItemWhenHitH,0A99:2C5,57,T2,1,1,0,0,1,0,,0,,6f20b445a7ce
 PlayHitSoundM,0A99:2FE,21,T2,1,1,0,0,1,0,,0,,84139ea20cce
-DispatchByKind0A99,0A99:313,22,T2,0,1,0,0,1,0,,0,runs original code,fce6c93e8d5f
-DrawTilePiece0A9A,0A9A:082,38,T3,1,1,0,1,1,0,,0,,2ba240af5da5
-BounceAtWalls,0A9A:33A,61,T2,0,1,1,1,1,0,,0,runs original code,f6929b856e53
-FaceBreakAndRun,0A9C:7F2,12,T2,0,1,1,1,1,1,,0,runs original code,04f87c49435d
-FaceThePlayerInSomeStatesD,0A9C:7FE,17,T3,1,1,0,1,1,1,,0,,12c446702322
-BreakWhenHit,0A9D:01F,39,T4,1,1,1,1,1,1,,0,,2c0abda453a1
-JumpByStateTableC,0A9D:046,18,T2,0,1,0,1,1,1,,0,runs original code,2c2583166345
-StartWithPartner,0A9D:070,24,T4,1,1,1,1,1,1,,0,,eb0d84b854ae
-StopWhenLanded,0A9D:088,24,T2,0,1,0,0,1,1,,0,runs original code,3c0dcf2ac542
-WalkAndAttackA,0A9D:0A0,32,T2,0,1,1,1,1,1,,0,runs original code,eab21a4ad093
-WalkByPhase,0A9D:0C0,45,T2,0,1,0,1,1,1,,0,runs original code,7bb93806c91c
-SlowToPlayer,0A9D:113,24,T4,1,1,1,1,1,1,,0,,4921aa652848
-BounceWithHeight4,0A9D:12B,8,T2,0,1,1,1,1,1,,0,runs original code,3faa01e876b6
-ChooseAttackByDistance,0A9D:133,48,T4,1,1,1,1,1,1,,0,,410213da0b1c
-WalkAndAttackB,0A9D:163,33,T2,0,1,1,1,1,1,,0,runs original code,2378befe0329
-ChasePlayerA,0A9D:184,45,T2,0,1,1,1,1,1,,0,runs original code,e624b6cd52fc
-ChasePlayerB,0A9D:1B1,30,T2,0,1,0,1,1,1,,0,runs original code,47295046a32f
-ChooseNextMove,0A9D:1CF,76,T3,1,1,0,1,1,1,,0,,e174e0124f73
-StepAndLunge,0A9D:22A,52,T2,0,1,0,1,1,1,,0,runs original code,894758b20016
-WalkThenTurn,0A9D:269,33,T2,0,1,1,1,1,1,,0,runs original code,bacdddc019bb
-TurnWhenWaitEnds,0A9D:28A,24,T4,1,1,1,1,1,1,,0,,e0a0b5eadf24
-StepAndShout,0A9D:2A2,62,T3,1,1,0,1,1,1,,0,,02eead11488e
-StepWithArmor,0A9D:31E,41,T4,1,1,1,1,1,1,,0,,155383a08a12
-StepAndPounce,0A9D:366,87,T2,0,1,0,1,1,1,,0,runs original code,081bd5705528
-FlashAndCount,0A9D:3DA,39,T3,1,1,0,1,1,1,,0,,b8f03e44debe
-ShootArrow,0A9D:410,43,T2,1,1,0,0,1,1,,0,,5106bea5e921
-FollowPartner,0A9D:453,87,T2,1,1,0,0,1,1,,0,,2e1b91e9c306
-HopAndSettle,0A9E:4C3,88,T2,0,1,1,0,1,1,,0,runs original code,87c163e57ff9
-SetHitboxByFrame,0A9E:51B,30,T2,1,1,0,0,1,1,,0,,1f6a7abbf2fb
-StartKnifeThrower,0A9E:53F,82,T2,1,1,1,0,1,1,,0,,51f9658db82b
-ThrowByNextKindB,0A9E:591,35,T3,1,1,0,1,1,1,,0,,7c7a1f4094ad
-PickTimersAtRandomB,0A9E:5B6,20,T3,1,1,0,1,1,1,,0,,43b015ff767b
-PickAngleAtRandomB,0A9E:5D2,20,T3,1,1,0,1,1,1,,0,,c2e5039b9ccf
-CountBothWaits,0A9E:5EE,7,T4,1,1,1,1,1,1,,0,,38c82eaa254a
-CountDownThenAdvance,0A9E:5F5,41,T2,1,1,1,0,1,1,,0,,a0cda30aaedf
-CountDownAngleThenAdvance,0A9E:61E,49,T2,1,1,1,0,1,1,,0,,1a2cc732a272
+DispatchByKind0A99,0A99:313,22,T2,1,1,0,0,0,0,,,,fce6c93e8d5f
+DrawTilePiece0A9A,0A9A:082,38,,1,1,0,1,0,0,,,,2ba240af5da5
+BounceAtWalls,0A9A:33A,61,T2,1,1,1,1,0,0,,,,f6929b856e53
+FaceBreakAndRun,0A9C:7F2,12,T2,1,1,1,1,0,0,,,,04f87c49435d
+FaceThePlayerInSomeStatesD,0A9C:7FE,17,T3,1,1,0,1,1,0,,0,,12c446702322
+BreakWhenHit,0A9D:01F,39,T4,1,1,1,1,1,0,,0,,2c0abda453a1
+JumpByStateTableC,0A9D:046,18,T2,1,1,0,1,0,0,,,,2c2583166345
+StartWithPartner,0A9D:070,24,T4,1,1,1,1,1,0,,0,,eb0d84b854ae
+StopWhenLanded,0A9D:088,24,T2,1,1,0,0,0,0,,,,3c0dcf2ac542
+WalkAndAttackA,0A9D:0A0,32,T2,1,1,1,1,0,0,,,,eab21a4ad093
+WalkByPhase,0A9D:0C0,45,T2,1,1,0,1,0,0,,,,7bb93806c91c
+SlowToPlayer,0A9D:113,24,T4,1,1,1,1,1,0,,0,,4921aa652848
+BounceWithHeight4,0A9D:12B,8,T2,1,1,1,1,0,0,,,,3faa01e876b6
+ChooseAttackByDistance,0A9D:133,48,T4,1,1,1,1,1,0,,0,,410213da0b1c
+WalkAndAttackB,0A9D:163,33,T2,1,1,1,1,0,0,,,,2378befe0329
+ChasePlayerA,0A9D:184,45,T2,1,1,1,1,0,0,,,,e624b6cd52fc
+ChasePlayerB,0A9D:1B1,30,T2,1,1,0,1,0,0,,,,47295046a32f
+ChooseNextMove,0A9D:1CF,76,T3,1,1,0,1,1,0,,0,,e174e0124f73
+StepAndLunge,0A9D:22A,52,T2,1,1,0,1,0,0,,,,894758b20016
+WalkThenTurn,0A9D:269,33,T2,1,1,1,1,0,0,,,,bacdddc019bb
+TurnWhenWaitEnds,0A9D:28A,24,T4,1,1,1,1,1,0,,0,,e0a0b5eadf24
+StepAndShout,0A9D:2A2,62,T3,1,1,0,1,1,0,,0,,02eead11488e
+StepWithArmor,0A9D:31E,41,T4,1,1,1,1,1,0,,0,,155383a08a12
+StepAndPounce,0A9D:366,87,T2,1,1,0,1,0,0,,,,081bd5705528
+FlashAndCount,0A9D:3DA,39,T3,1,1,0,1,1,0,,0,,b8f03e44debe
+ShootArrow,0A9D:410,43,T2,1,1,0,0,1,0,,0,,5106bea5e921
+FollowPartner,0A9D:453,87,T2,1,1,0,0,1,0,,0,,2e1b91e9c306
+HopAndSettle,0A9E:4C3,88,T2,1,1,1,0,0,0,,,,87c163e57ff9
+SetHitboxByFrame,0A9E:51B,30,T2,1,1,0,0,1,0,,0,,1f6a7abbf2fb
+StartKnifeThrower,0A9E:53F,82,T2,1,1,1,0,1,0,,0,,51f9658db82b
+ThrowByNextKindB,0A9E:591,35,T3,1,1,0,1,1,0,,0,,7c7a1f4094ad
+PickTimersAtRandomB,0A9E:5B6,20,T3,1,1,0,1,1,0,,0,,43b015ff767b
+PickAngleAtRandomB,0A9E:5D2,20,T3,1,1,0,1,1,0,,0,,c2e5039b9ccf
+CountBothWaits,0A9E:5EE,7,T4,1,1,1,1,1,0,,0,,38c82eaa254a
+CountDownThenAdvance,0A9E:5F5,41,T2,1,1,1,0,1,0,,0,,a0cda30aaedf
+CountDownAngleThenAdvance,0A9E:61E,49,T2,1,1,1,0,1,0,,0,,1a2cc732a272
 ResetStageVariables0B3D,0B3D:0CB,29,T2,1,1,0,0,1,0,,0,,4a463810dc6f
 ExpandStageVramRunsJ,0B3E:082,47,T2,1,1,0,0,1,0,,0,,0cfcac9c725f
 StartStageListsJ,0B3E:0B1,29,T3,1,1,0,1,1,0,,0,,53ed5fedeae7
 LoadStageEntryJ,0B3E:152,224,T2,1,1,0,0,1,0,,0,,8cf7d03b9d92
-StageScrollStepJ,0B3E:236,25,T2,0,1,0,1,1,0,,0,runs original code,ff0030c06add
-SetUpStageObjectsJ,0B3E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,bdfd9f523e92
+StageScrollStepJ,0B3E:236,25,T2,1,1,0,1,0,0,,,,ff0030c06add
+SetUpStageObjectsJ,0B3E:25F,69,T2,0,1,0,0,0,0,,,runs original code,bdfd9f523e92
 ExpandStageListsJ,0B3F:277,98,T2,1,1,0,0,1,0,,0,,a1a65f87ce83
 ProbeBoxes0B40,0B40:0BD,96,T2,1,1,0,0,1,0,,0,,57e9d4de516b
 ProbeBoxesFlagged0B40,0B40:11D,116,T2,1,1,0,0,1,0,,0,,3e4e877aa7fa
@@ -1856,11 +1856,11 @@ PlayHitSound0B49,0B49:2FE,21,,1,1,0,0,0,0,,,,a7f1b9324fa4
 DrawTilePiece0B4A,0B4A:082,38,,1,1,0,0,0,0,,,,4f43f7046c2e
 StartRingOfPieces,0B4A:39F,73,T2,1,1,0,0,1,0,,0,,516a741dd353
 LoadRecordFlingThenFall,0B4A:4A8,51,T4,1,1,1,1,1,0,,0,,cc1eb0a0f18d
-JumpByStateTable0B4A4DC,0B4A:4DC,18,T2,0,1,0,1,1,0,,0,runs original code,67d4f1794b4f
+JumpByStateTable0B4A4DC,0B4A:4DC,18,T2,1,1,0,1,0,0,,,,67d4f1794b4f
 LoadRecordFacingLeftRising,0B4A:4F4,19,T4,1,1,1,1,1,0,,0,,a8a7f3f16dc1
 SoundBAAtScreen2,0B4A:507,16,T4,1,1,1,1,1,0,,0,,fb730168f878
 PulseWaterLevelAndScatter,0B4A:517,84,T3,1,1,0,1,1,0,,0,,3aca6a76c75a
-JumpByStateTable0B4A573,0B4A:573,18,T2,0,1,0,1,1,0,,0,runs original code,3f917359e600
+JumpByStateTable0B4A573,0B4A:573,18,T2,1,1,0,1,0,0,,,,3f917359e600
 LoadRecordThenDrawTileScript2,0B4A:58B,24,T2,1,1,1,0,1,0,,0,,6428d130b3d9
 DrawTileScriptStepsThenScatter,0B4A:5A3,95,T3,1,1,0,1,1,0,,0,,a0a8b43e2692
 ScatterPiecesDownward,0B4A:608,70,T2,1,1,0,0,1,0,,0,,89ab6ec18aba
@@ -1868,50 +1868,50 @@ ClearWhenHurtThenWait,0B4A:650,41,T2,1,1,1,0,1,0,,0,,44963e5fbec7
 BossPhasesHurtFallAndTileWrites,0B4A:6B6,212,T2,1,1,1,0,0,0,,0,,8b22042d1ead
 LoadRecordThenWatchThenDropTwice,0B4A:79D,129,T2,1,1,1,0,1,0,,0,,ae8ed5948bba
 LoadRecordInStateZero,0B4B:01E,9,T4,1,1,1,1,1,0,,0,,2d40507e1690
-BossFrameRoutinesB,0B4B:556,40,T2,0,1,1,1,1,0,,0,runs original code,d70af5bd25bb
+BossFrameRoutinesB,0B4B:556,40,T2,1,1,1,1,0,0,,,,d70af5bd25bb
 FaceThePlayerByStateTable,0B4B:57E,24,T3,1,1,0,1,1,0,,0,,f81d6114a536
 StateTableHurtFlag,0B4B:5AE,36,T3,1,1,0,1,1,0,,0,,ae581ddef655
 EnterState0FWhenFlagged,0B4B:5F2,46,T2,1,1,1,0,1,0,,0,,1a7c070ec336
 HitBoxByFrameTable,0B4B:620,44,T3,1,1,0,1,1,0,,0,,30f27ccf41da
-JumpByStateTable0B4B64C,0B4B:64C,18,T2,0,1,0,1,1,0,,0,runs original code,fe5643787a7f
+JumpByStateTable0B4B64C,0B4B:64C,18,T2,1,1,0,1,0,0,,,,fe5643787a7f
 LoadRecordStartPieceAtPlace,0B4B:67E,18,T4,1,1,1,1,1,0,,0,,0623832cc272
 CountDownThenDrawAndSpawnRing,0B4B:690,45,T4,1,1,1,1,1,0,,0,,0f8f04d364be
 CountDownThenMusicAgain,0B4B:6BD,26,T4,1,1,1,1,1,0,,0,,b04a5bb4b8cb
 StartScriptsFromTable,0B4B:6D7,82,T3,1,1,0,1,1,0,,0,,60d50046af6e
-FallThenSoundAtGround,0B4B:76E,14,T2,0,1,1,1,1,0,,0,runs original code,b44f8eb7cf08
-FallToGroundAt98,0B4B:77C,31,T2,0,1,1,1,1,0,,0,runs original code,e8d1aeb70c5e
-CountDownThenHopTowardPlayer,0B4B:79B,27,T2,0,1,1,1,1,0,,0,runs original code,5f08bbe68d72
-StepListThenWallBounce,0B4B:7B6,22,T2,0,1,0,1,1,0,,0,runs original code,13cf4d1af96c
-MoveXAndProbeWallBounce,0B4B:7CC,43,T2,0,1,1,0,1,0,,0,runs original code,67c8ad159bb5
+FallThenSoundAtGround,0B4B:76E,14,T2,1,1,1,1,0,0,,,,b44f8eb7cf08
+FallToGroundAt98,0B4B:77C,31,T2,1,1,1,1,0,0,,,,e8d1aeb70c5e
+CountDownThenHopTowardPlayer,0B4B:79B,27,T2,1,1,1,1,0,0,,,,5f08bbe68d72
+StepListThenWallBounce,0B4B:7B6,22,T2,1,1,0,1,0,0,,,,13cf4d1af96c
+MoveXAndProbeWallBounce,0B4B:7CC,43,T2,1,1,1,0,0,0,,,,67c8ad159bb5
 CountDownOrPickNextTimer,0B4C:007,41,T3,1,1,0,1,1,0,,0,,688109f06d2b
-CountDownThenHopAwayFromPlayer,0B4C:034,29,T2,0,1,1,1,1,0,,0,runs original code,7a424e990b20
+CountDownThenHopAwayFromPlayer,0B4C:034,29,T2,1,1,1,1,0,0,,,,7a424e990b20
 StepListThenPickStateByLuck,0B4C:051,76,T2,1,1,0,0,1,0,,0,,e229a2f27b96
-JumpByPhaseTable0B4C0D7,0B4C:0D7,18,T2,0,1,0,1,1,0,,0,runs original code,63117b6adf71
+JumpByPhaseTable0B4C0D7,0B4C:0D7,18,T2,1,1,0,1,0,0,,,,63117b6adf71
 StepListThenLeapByDistance,0B4C:0EF,71,T2,1,1,0,0,1,0,,0,,637b2c11aac6
-StepListFallThenSoundAtGround,0B4C:15F,30,T2,0,1,1,1,1,0,,0,runs original code,a76913b9bbc5
+StepListFallThenSoundAtGround,0B4C:15F,30,T2,1,1,1,1,0,0,,,,a76913b9bbc5
 CountDownThenState5,0B4C:18A,17,T4,1,1,1,1,1,0,,0,,cf1ba721b5dd
 StepListThenTileWriteAndSpawn,0B4C:304,27,T4,1,1,1,1,1,0,,0,,db3a8dc539bc
 SoundAndTileWriteAtFrame24,0B4C:336,86,T4,1,1,1,1,1,0,,0,,76c41b28066c
 SoundAndSpawnFiveAtFrame27,0B4C:38C,44,T2,1,1,1,0,1,0,,0,,40c641a64939
-WaitThenStepListWithSoundAndBounce,0B4C:3B8,72,T2,0,1,0,1,1,0,,0,runs original code,5fa94533ccd8
+WaitThenStepListWithSoundAndBounce,0B4C:3B8,72,T2,1,1,0,1,0,0,,,,5fa94533ccd8
 StepListThenState5,0B4C:409,25,T4,1,1,1,1,1,0,,0,,076b32bbc009
-JumpByPhaseTable0B4C42F,0B4C:42F,18,T2,0,1,0,1,1,0,,0,runs original code,0a44cec5d493
+JumpByPhaseTable0B4C42F,0B4C:42F,18,T2,1,1,0,1,0,0,,,,0a44cec5d493
 SoundThenLeapByFacing,0B4C:447,36,T3,1,1,0,1,1,0,,0,,25f91e70faee
-StepListFallThenCountLandings,0B4C:46F,44,T2,0,1,1,0,1,0,,0,runs original code,216958ba19fa
+StepListFallThenCountLandings,0B4C:46F,44,T2,1,1,1,0,0,0,,,,216958ba19fa
 MaybeSound19AndSpawnPiece,0B4C:5BB,42,T2,1,1,1,0,1,0,,0,,464b34515c5e
 LoadRecordLeapByNumberThenFall,0B4C:755,70,T2,1,1,0,0,1,0,,0,,6319f800402d
 FollowObject10HitBoxByFrame,0B4C:7B1,78,T2,1,1,0,0,1,0,,0,,6543022456a9
-JumpByStateTable0B4D08F,0B4D:08F,18,T2,0,1,0,1,1,0,,0,runs original code,7d52abb3ecb6
+JumpByStateTable0B4D08F,0B4D:08F,18,T2,1,1,0,1,0,0,,,,7d52abb3ecb6
 RecordEventWhenSlot10InState0F,0B4D:0A9,23,T2,1,1,0,0,1,0,,0,,808832510361
 ResetStageVariables0BED,0BED:0CB,29,T2,1,1,0,0,1,0,,0,,599b5dc5e593
 ExpandStageVramRunsK,0BEE:082,47,T3,1,1,0,1,1,0,,0,,542764c3f7ac
 StartStageListsK,0BEE:0B1,29,T3,1,1,0,1,1,0,,0,,5b5a27542214
 LoadStageEntryK,0BEE:152,224,T2,1,1,0,0,1,0,,0,,8c94dac55859
-StageScrollStepK,0BEE:236,25,T2,0,1,0,1,1,0,,0,runs original code,ff8fc491b1ff
-SetUpStageObjectsK,0BEE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,172ac02e3339
+StageScrollStepK,0BEE:236,25,T2,1,1,0,1,0,0,,,,ff8fc491b1ff
+SetUpStageObjectsK,0BEE:25F,69,T2,0,1,0,0,0,0,,,runs original code,172ac02e3339
 ExpandStageListsK,0BEF:277,98,T2,1,1,0,0,1,0,,0,,e8decf31cc04
 TerrainLookupF,0BEF:5AB,96,T2,1,1,0,0,1,0,,0,,061205f40369
-TerrainLookupAltF,0BEF:60B,116,T2,1,1,0,0,1,1,,0,,5ad92784be47
+TerrainLookupAltF,0BEF:60B,116,T2,1,1,0,0,1,0,,0,,5ad92784be47
 VramListFromTableM,0BF1:142,204,T2,1,1,0,0,0,0,,,,55addad1aab2
 SelectBlockTablesH,0BF6:00F,46,T4,1,1,1,1,1,0,,0,,bd06a4ff7ee3
 HitDamage0BF9,0BF9:28D,22,T3,1,1,0,1,1,0,,0,,e73bd1e87546
@@ -1921,28 +1921,28 @@ PlayHitSoundF,0BF9:2FE,21,T2,1,1,0,0,1,0,,0,,3d75e36d9f88
 DrawTilePiece0BFA,0BFA:082,38,,1,1,0,0,0,0,,,,5caa0caed0f2
 EnterState4IfFlagged,0BFB:3DC,13,T4,1,1,1,1,1,0,,0,,2a41f3fe1d97
 EnterNextStateWhenPlayerNear,0BFB:3E9,22,T4,1,1,1,1,1,0,,0,,b272f03266fd
-JumpByStateTable0BFC12B,0BFC:12B,18,T2,0,1,0,1,1,0,,0,runs original code,b2bf5738b751
+JumpByStateTable0BFC12B,0BFC:12B,18,T2,1,1,0,1,0,0,,,,b2bf5738b751
 ScrollNotAtRightEnd,0BFC:141,30,T2,1,1,1,0,1,0,,0,,c8e280d5334d
 StartFromScreenEdgeByScroll,0BFC:15F,103,T2,1,1,1,0,1,0,,0,,2b379fe5bdba
 SwingOnCosine,0BFC:1C6,48,T4,1,1,1,1,1,0,,0,,00d7db4f5c1f
 CountTimerPairDownThenSpawn36,0BFC:1FF,64,T4,1,1,1,1,1,0,,0,,afa485ae956f
 RemoveFirstFreeSlotFrom1C,0BFC:247,19,T4,1,1,1,1,1,0,,0,,13824646009b
 SpawnPiecesWhenFlaggedHit,0BFC:27C,21,T4,1,1,1,1,1,0,,0,,e2f43cf43b3f
-SpawnEightPiecesType37,0BFC:291,26,T4,1,1,1,1,1,1,,0,,554eb813ab2d
+SpawnEightPiecesType37,0BFC:291,26,T4,1,1,1,1,1,0,,0,,554eb813ab2d
 SetHitboxSizeFromFrame,0BFC:2AB,30,T3,1,1,0,1,1,0,,0,,602fccc73e07
 StartAtRandomSpeedTowardPlayer,0BFC:2E3,61,T3,1,1,0,1,1,0,,0,,d01dd069d39e
 AnimateThenFrameRecord,0BFC:330,27,T4,1,1,1,1,1,0,,0,,4a6563d6148c
 AnimateThenRemove,0BFC:395,17,T4,1,1,1,1,1,0,,0,,39bfcc196b28
-ChangeToType9C,0BFC:3B3,9,T4,1,1,1,1,1,1,,0,,158cec3bccd5
-StartWithRecordTableRow,0BFC:3BC,57,T3,1,1,0,1,1,1,,0,,1614303b0d49
-FallAndLeaveWhenLow,0BFC:435,15,T4,1,1,1,1,1,1,,0,,2bef051cc6cf
+ChangeToType9C,0BFC:3B3,9,T4,1,1,1,1,1,0,,0,,158cec3bccd5
+StartWithRecordTableRow,0BFC:3BC,57,T3,1,1,0,1,1,0,,0,,1614303b0d49
+FallAndLeaveWhenLow,0BFC:435,15,T4,1,1,1,1,1,0,,0,,2bef051cc6cf
 StartThenAnimate,0BFF:1A3,25,T4,1,1,1,1,1,0,,0,,e1d00a224b48
 ResetStageVariables0C9D,0C9D:0CB,29,T2,1,1,0,0,1,0,,0,,cc18a14f2a60
 ExpandStageVramRunsL,0C9E:082,47,T3,1,1,0,1,1,0,,0,,6527b927c5e4
 StartStageListsL,0C9E:0B1,29,T3,1,1,0,1,1,0,,0,,45bbaebd5d16
 LoadStageEntryL,0C9E:152,224,T2,1,1,0,0,1,0,,0,,be51472a5956
-StageScrollStepL,0C9E:236,25,T2,0,1,0,1,1,0,,0,runs original code,d4267991501e
-SetUpStageObjectsL,0C9E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,1b02ba69a01e
+StageScrollStepL,0C9E:236,25,T2,1,1,0,1,0,0,,,,d4267991501e
+SetUpStageObjectsL,0C9E:25F,69,T2,0,1,0,0,0,0,,,runs original code,1b02ba69a01e
 ExpandStageListsL,0C9F:277,98,T2,1,1,0,0,1,0,,0,,70fd3fa4708c
 ProbeBoxes0CA0,0CA0:0BD,96,T3,1,1,0,1,1,0,,0,,c8495cdfade0
 ProbeBoxesFlagged0CA0,0CA0:11D,116,T2,1,1,0,0,1,0,,0,,ffb4ffb68c3f
@@ -1951,31 +1951,31 @@ HitDamage0CA9,0CA9:28D,22,T3,1,1,0,1,1,0,,0,,c2f08ab33d02
 ScoreForKind0CA9,0CA9:2A3,34,,1,1,0,0,1,0,,0,,4f12993980f1
 DropItemWhenHitI,0CA9:2C5,57,T2,1,1,0,0,1,0,,0,,a9603700e024
 PlayHitSoundG,0CA9:2FE,21,T2,1,1,0,0,1,0,,0,,f7839ee56aec
-DispatchByKind0CA9,0CA9:313,22,T2,0,1,0,0,1,0,,0,runs original code,3b528b6df7ce
-DrawTilePiece0CAA,0CAA:082,38,T3,1,1,0,1,1,0,,0,,50a636d959b8
-JumpByStateTable0CAB12F,0CAB:12F,18,T2,0,1,0,1,1,0,,0,runs original code,1809c9b95f9f
+DispatchByKind0CA9,0CA9:313,22,T2,1,1,0,0,0,0,,,,3b528b6df7ce
+DrawTilePiece0CAA,0CAA:082,38,,1,1,0,1,0,0,,,,50a636d959b8
+JumpByStateTable0CAB12F,0CAB:12F,18,T2,1,1,0,1,0,0,,,,1809c9b95f9f
 StartTileScriptByKind,0CAB:147,22,T3,1,1,0,1,1,0,,0,,73148426424d
 CountThenTileScript,0CAB:161,20,T4,1,1,1,1,1,0,,0,,abbb7b096729
 FallingWithGravity,0CAB:175,18,T4,1,1,1,1,1,0,,0,,0801c34a1aab
-StepWithGuardTable,0CAB:18E,37,T2,0,1,0,1,0,0,,0,runs original code,c9088a487d8c
+StepWithGuardTable,0CAB:18E,37,T2,1,1,0,1,0,0,,,,7f048686cb60
 StartWhenHurt,0CAB:203,29,T4,1,1,1,1,1,0,,0,,0dbacc9f25e5
 EnterStateSevenOnFlag,0CAB:220,32,T2,1,1,1,0,1,0,,0,,01dcaf9e6416
 EnterStateFiveOnPlayerState9,0CAB:240,32,T4,1,1,1,1,1,0,,0,,f8787bbe6422
 SetHitboxFromFrame,0CAB:260,50,T3,1,1,0,1,1,0,,0,,8ba8c62c898a
-JumpByStateTableD,0CAB:2E2,18,T2,0,1,0,1,1,0,,0,runs original code,59f0f60ed456
+JumpByStateTableD,0CAB:2E2,18,T2,1,1,0,1,0,0,,,,59f0f60ed456
 StartWithGuard,0CAB:304,24,T4,1,1,1,1,1,0,,0,,033bf53d3769
 CountThenCue,0CAB:31C,29,T2,1,1,1,1,0,0,,0,,37757cbb9965
-SlideTurnByTable,0CAB:339,74,T2,0,1,0,1,1,0,,0,runs original code,bd154877b156
+SlideTurnByTable,0CAB:339,74,T2,1,1,0,1,0,0,,,,bd154877b156
 SlideAngleDown,0CAB:389,23,T4,1,1,1,1,1,0,,0,,d3a17436c5e8
 SlideAngleUp,0CAB:3A0,25,T4,1,1,1,1,1,0,,0,,e7e01365de09
 TurnAngleBack,0CAB:3B9,39,T4,1,1,1,1,1,0,,0,,0db13d638ef6
-StepPhaseThenPause,0CAB:3E5,33,T2,0,1,0,1,0,0,,0,runs original code,ca5004f8d553
-JumpByPhaseTable,0CAB:40A,18,T2,0,1,0,1,1,0,,0,runs original code,de2c9a466737
+StepPhaseThenPause,0CAB:3E5,33,T2,1,1,0,1,0,0,,,,366bec0dadec
+JumpByPhaseTable,0CAB:40A,18,T2,1,1,0,1,0,0,,,,de2c9a466737
 AimAtPlayerThenArm,0CAB:422,45,T3,1,1,0,1,1,0,,0,,b213a20a2c0a
 MoveAlongAndSlow,0CAB:457,73,T2,1,1,0,0,1,0,,0,,b152d6f93398
 InsideScreenBox,0CAB:4AC,34,T2,1,1,1,0,1,0,,0,,8997b7ea25b0
 CountThenStop,0CAB:4CE,9,T4,1,1,1,1,1,0,,0,,3ef2badff741
-JumpByPhaseTable0CAB4D7,0CAB:4D7,18,T2,0,1,0,1,1,0,,0,runs original code,aae0e8baa12d
+JumpByPhaseTable0CAB4D7,0CAB:4D7,18,T2,1,1,0,1,0,0,,,,aae0e8baa12d
 PickNextMoveBySide,0CAB:509,35,T3,1,1,0,1,1,0,,0,,fb1c6c8fdae4
 StepThenSpawnShot,0CAB:55C,38,T4,1,1,1,1,1,0,,0,,cfdc61339f8b
 StartShotsUnlessThere,0CAB:591,15,T3,1,1,0,1,1,0,,0,,871023bf6d52
@@ -2003,19 +2003,19 @@ StartSideDrifter,0CAC:34E,59,T3,1,1,0,1,1,0,,0,,060f2e65f7a2
 StepListAndMove,0CAC:399,19,T2,1,1,0,1,0,0,,,,db623c19a017
 StartScatteringPiece,0CAC:3C1,91,T3,1,1,0,1,1,0,,0,,1127433ca20c
 StepMoveOrClear,0CAC:45C,19,T4,1,1,1,1,1,0,,0,,8467ceafa312
-JumpByStateTable0CAC47A,0CAC:47A,18,T2,0,1,0,1,1,0,,0,runs original code,7a2ee83c713d
+JumpByStateTable0CAC47A,0CAC:47A,18,T2,1,1,0,1,0,0,,,,7a2ee83c713d
 StartThrownPiece,0CAC:492,63,T2,1,1,0,0,1,0,,0,,7a15ab4030f3
-BounceSparkOffWalls,0CAC:4EB,102,T2,0,1,0,1,1,0,,0,runs original code,0420c609658f
+BounceSparkOffWalls,0CAC:4EB,102,T2,1,1,0,1,0,0,,,,0420c609658f
 StepCountClear,0CAC:57C,33,T3,1,1,0,1,1,0,,0,,8b02d1c035c1
-JumpByStateTable0CAC59D,0CAC:59D,18,T2,0,1,0,1,1,0,,0,runs original code,768b11a16b72
+JumpByStateTable0CAC59D,0CAC:59D,18,T2,1,1,0,1,0,0,,,,768b11a16b72
 StartFallingSpark,0CAC:5B5,44,T3,1,1,0,1,1,0,,0,,ff763eb894b5
 TrackThenAimAtPlayer,0CAC:5E5,37,T4,1,1,1,1,1,0,,0,,adb1dfe34f1d
 TrackPointOrLand,0CAC:60A,185,T3,1,1,0,1,1,0,,0,,84152aa5b7b6
-JumpByStateTable0CAC6C3,0CAC:6C3,18,T2,0,1,0,1,1,0,,0,runs original code,4a66c8ee6a17
+JumpByStateTable0CAC6C3,0CAC:6C3,18,T2,1,1,0,1,0,0,,,,4a66c8ee6a17
 StartFromTable,0CAC:6DD,21,T3,1,1,0,1,1,0,,0,,ff6238f84743
 CountdownNextStateD,0CAC:6FA,9,T4,1,1,1,1,1,0,,0,,3f954abcfc0e
 OrbitThenLeave,0CAC:703,99,T3,1,1,0,1,1,0,,0,,2c2325ec4c85
-ShatterOnHits,0CAD:0BC,99,T2,0,1,0,0,1,0,,0,runs original code,249b1057ebf0
+ShatterOnHits,0CAD:0BC,99,T2,1,1,0,0,0,0,,,,249b1057ebf0
 StepPartList,0CAD:12A,11,T4,1,1,1,1,1,0,,0,,9ac46a55d308
 DoNothing,0CAD:15F,1,T4,1,1,1,1,1,0,,0,,f2e05f3f9202
 WatchVramForMark,0CAD:165,44,T4,1,1,1,1,1,0,,0,,020b5e39e536
@@ -2023,8 +2023,8 @@ ResetStageVariables0D4D,0D4D:0CB,29,T3,1,1,0,1,1,0,,0,,8b8ee3496032
 ExpandStageVramRunsM,0D4E:082,47,T3,1,1,0,1,1,0,,0,,8e31ed53ad51
 StartStageListsM,0D4E:0B1,29,T3,1,1,0,1,1,0,,0,,e4de14f9cea8
 LoadStageEntryM,0D4E:152,224,T2,1,1,0,0,1,0,,0,,16ed65257e33
-StageScrollStepM,0D4E:236,25,T2,0,1,0,1,1,0,,0,runs original code,a5bb731d8e89
-SetUpStageObjectsM,0D4E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,9cf0991c57be
+StageScrollStepM,0D4E:236,25,T2,1,1,0,1,0,0,,,,a5bb731d8e89
+SetUpStageObjectsM,0D4E:25F,69,T2,0,1,0,0,0,0,,,runs original code,9cf0991c57be
 ExpandStageListsM,0D4F:277,98,T2,1,1,0,0,1,0,,0,,c7d0cbc910f2
 TerrainLookupG,0D4F:5AB,96,T3,1,1,0,1,1,0,,0,,4a9022ca1c16
 TerrainLookupAltG,0D4F:60B,116,T2,1,1,0,0,1,0,,0,,a8358c43ae36
@@ -2060,8 +2060,8 @@ ResetStageVariables0DFD,0DFD:0CB,29,T2,1,1,0,0,1,0,,0,,a5efb6d39fdb
 ExpandStageVramRunsN,0DFE:082,47,T2,1,1,0,0,1,0,,0,,1833dcbac246
 StartStageListsN,0DFE:0B1,29,T3,1,1,0,1,1,0,,0,,a99ef3e4aa83
 LoadStageEntryN,0DFE:152,224,T2,1,1,0,0,1,0,,0,,b380d5524aec
-StageScrollStepN,0DFE:236,25,T2,0,1,0,1,1,0,,0,runs original code,024df4b6ffca
-SetUpStageObjectsN,0DFE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,33d417589879
+StageScrollStepN,0DFE:236,25,T2,1,1,0,1,0,0,,,,024df4b6ffca
+SetUpStageObjectsN,0DFE:25F,69,T2,0,1,0,0,0,0,,,runs original code,33d417589879
 ExpandStageListsN,0DFF:277,98,T2,1,1,0,0,1,0,,0,,cfcb85cb9001
 ReportHitToStage,0E00:07A,24,T2,1,1,1,1,0,0,,,,1f0827d82333
 StoreHitFromTable,0E00:092,7,T4,1,1,1,1,1,0,,0,,de7f5109ce69
@@ -2073,18 +2073,18 @@ HitDamage0E09,0E09:28D,22,T3,1,1,0,1,1,0,,0,,a57a92e9a5f6
 ScoreForKind0E09,0E09:2A3,34,,1,1,0,0,0,0,,,,cc49478d067c
 DropItemWhenHit0E09,0E09:2C5,57,,1,1,0,0,0,0,,,,088f0d0f51a2
 PlayHitSound0E09,0E09:2FE,21,,1,1,0,0,0,0,,,,6e9bad42acf8
-DispatchByKind0E09,0E09:313,22,T2,0,1,0,0,1,0,,0,runs original code,781a9eedcf91
-DrawTilePiece0E0A,0E0A:082,38,T3,1,1,0,1,1,0,,0,,39231c4851ec
+DispatchByKind0E09,0E09:313,22,T2,1,1,0,0,0,0,,,,781a9eedcf91
+DrawTilePiece0E0A,0E0A:082,38,,1,1,0,1,0,0,,,,39231c4851ec
 FaceThePlayerByStateTableB,0E0B:071,24,T3,1,1,0,1,1,0,,0,,c368063d5110
 HalveDirectionWhenHurt,0E0B:099,18,T4,1,1,1,1,1,0,,0,,43101f3cfe4a
 StateSevenOnStatusBit7,0E0B:0AB,23,T2,1,1,1,0,1,0,,0,,b3fbf6e56a59
 SetHitBoxFromTable,0E0B:0C2,73,T4,1,1,1,1,1,0,,0,,f84f7af80a30
 LoadThenSpawn24,0E0B:10B,18,T4,1,1,1,1,1,0,,0,,2f8d00dd0e1d
-JumpByPhaseTable0E0B16C,0E0B:16C,18,T2,0,1,0,1,1,0,,0,runs original code,0b8800562d00
+JumpByPhaseTable0E0B16C,0E0B:16C,18,T2,1,1,0,1,0,0,,,,0b8800562d00
 FallThenStopForRaster,0E0B:184,22,T4,1,1,1,1,1,0,,0,,8c0affeff740
 StepListB1BAThenSound,0E0B:19A,32,T4,1,1,1,1,1,0,,0,,366365a73e37
 StepListB25CThenStartList,0E0B:237,37,T4,1,1,1,1,1,0,,0,,c1cb76897b87
-LandThenNextState,0E0B:27B,11,T2,0,1,1,0,1,0,,0,runs original code,054c16578abc
+LandThenNextState,0E0B:27B,11,T2,1,1,1,0,0,0,,,,054c16578abc
 CountDownThenState6,0E0B:34D,30,T3,1,1,0,1,1,0,,0,,c49aa7141c4a
 StepListB53CToState5,0E0B:51C,32,T4,1,1,1,1,1,0,,0,,472e9b5dd46d
 SetRasterSpawnThenStepList,0E0B:543,37,T4,1,1,1,1,1,0,,0,,0ddfc6bc0c3e
@@ -2101,8 +2101,8 @@ ResetStageVariables0EAD,0EAD:0CB,29,T3,1,1,0,1,1,0,,0,,d6e500df8c58
 ExpandStageVramRunsO,0EAE:082,47,T2,1,1,0,0,1,0,,0,,84b26a872649
 StartStageListsO,0EAE:0B1,29,T3,1,1,0,1,1,0,,0,,8210c8ec447a
 LoadStageEntryO,0EAE:152,224,T2,1,1,0,0,1,0,,0,,a4e0a873c281
-StageScrollStepO,0EAE:236,25,T2,0,1,0,1,1,0,,0,runs original code,15410fba5e38
-SetUpStageObjectsO,0EAE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,bfc3c534e86b
+StageScrollStepO,0EAE:236,25,T2,1,1,0,1,0,0,,,,15410fba5e38
+SetUpStageObjectsO,0EAE:25F,69,T2,0,1,0,0,0,0,,,runs original code,bfc3c534e86b
 ExpandStageListsO,0EAF:277,98,T3,1,1,0,1,1,0,,0,,fb49a6629f96
 TerrainLookupH,0EAF:5AB,96,T2,1,1,0,0,1,0,,0,,fe24ca9c2be9
 TerrainLookupAltH,0EAF:60B,116,T2,1,1,0,0,1,0,,0,,9513e9e84f74
@@ -2119,15 +2119,15 @@ HitBoxByFrameTableCE8F,0EBE:66D,34,T3,1,1,0,1,1,0,,0,,b826459f037e
 StepListFacePlayerUntilNear,0EBE:6AB,36,T4,1,1,1,1,1,0,,0,,5a4537aeae3c
 FacePlayerThenPickPhase,0EBE:6F6,24,T3,1,1,0,1,1,0,,0,,abebc8772882
 LeapByPlayerDistance,0EBE:71E,74,T2,1,1,1,0,1,0,,0,,07e1746bc51b
-StepListByPhaseThenLand,0EBE:768,63,T2,0,1,0,1,1,0,,0,runs original code,609e1891109e
+StepListByPhaseThenLand,0EBE:768,63,T2,1,1,0,1,0,0,,,,609e1891109e
 CountDownThenClearPhase,0EBE:7B9,9,T4,1,1,1,1,1,0,,0,,e9c32ba7c9b2
 HopBetweenSidesWithBox,0EBF:006,178,T3,1,1,0,1,1,0,,0,,d373537da015
 ResetStageVariables0F5D,0F5D:0CB,29,T2,1,1,0,0,1,0,,0,,6cc52fcb9faa
 ExpandStageVramRunsP,0F5E:082,47,T2,1,1,0,0,1,0,,0,,1c1422fddfc1
 StartStageListsP,0F5E:0B1,29,T3,1,1,0,1,1,0,,0,,e1cc3f7126ca
 LoadStageEntryP,0F5E:152,224,T2,1,1,0,0,1,0,,0,,f199d0dbfe8a
-StageScrollStepP,0F5E:236,25,T2,0,1,0,1,1,0,,0,runs original code,89b5b8fb9eb2
-SetUpStageObjectsP,0F5E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,6153f1677d97
+StageScrollStepP,0F5E:236,25,T2,1,1,0,1,0,0,,,,89b5b8fb9eb2
+SetUpStageObjectsP,0F5E:25F,69,T2,0,1,0,0,0,0,,,runs original code,6153f1677d97
 ExpandStageListsP,0F5F:277,98,T2,1,1,0,0,1,0,,0,,2861a17ab896
 ProbeBoxes0F60,0F60:0BD,96,T3,1,1,0,1,1,0,,0,,77858c2538aa
 ProbeBoxesFlagged0F60,0F60:11D,116,T2,1,1,0,0,1,0,,0,,9e84c579ca86
@@ -2143,16 +2143,16 @@ BreakIntoPiecesAtFifthHit,0F6B:100,80,T2,1,1,1,0,1,0,,0,,06691e2bf628
 StartPieceWithSpeedFromTable,0F6B:150,58,T2,1,1,0,0,1,0,,0,,876b1877c110
 LoadRecordFlipByPlayerThenFall,0F6B:19A,48,T4,1,1,1,1,1,0,,0,,e31938ed6b28
 LoadRecordThenClearAtSubStep3,0F6B:1CA,21,T4,1,1,1,1,1,0,,0,,3dd0f606dd23
-HurtSoundsThenRunTable,0F6B:38E,7,T2,0,1,1,1,1,0,,0,runs original code,a03655205ee4
+HurtSoundsThenRunTable,0F6B:38E,7,T2,1,1,1,1,0,0,,,,a03655205ee4
 SoundWhenHurtThenFlag,0F6B:395,43,T2,1,1,0,0,1,0,,0,,58ea06ed7170
 SoundAndState6WhenFlagged,0F6B:3C0,44,T2,1,1,1,0,1,0,,0,,de075f42526b
-JumpByStateTable0F6B3EC,0F6B:3EC,18,T2,0,1,0,1,1,0,,0,runs original code,84bae5aac65e
+JumpByStateTable0F6B3EC,0F6B:3EC,18,T2,1,1,0,1,0,0,,,,84bae5aac65e
 LoadRecordFrame0D,0F6B:40C,9,T4,1,1,1,1,1,0,,0,,4f435c12f572
 ClearFourAtScreen2,0F6B:415,53,T2,1,1,1,0,1,0,,0,,327eba7db161
 MoveUpUntilY40,0F6B:44A,19,T4,1,1,1,1,1,0,,0,,f7897e8b9327
 StepListThenStartFivePieces,0F6B:45D,43,T4,1,1,1,1,1,0,,0,,79450e2fabdb
 CountDownThenRestartMusicAndScript,0F6B:488,65,T4,1,1,1,1,1,0,,0,,c44641c074ba
-StepListThenRunPhaseTable,0F6B:4C9,56,T2,0,1,0,0,1,0,,0,runs original code,34cd3b445d03
+StepListThenRunPhaseTable,0F6B:4C9,56,T2,1,1,0,0,0,0,,,,34cd3b445d03
 CountDownThenCopyPhase,0F6B:50B,17,T2,1,1,1,0,1,0,,0,,3c7720bee753
 ResetPieceAndAdvance,0F6B:51C,19,T4,1,1,1,1,1,0,,0,,172ed086d7af
 OrbitCosineSineThenSettle,0F6B:52F,111,T4,1,1,1,1,1,0,,0,,7d9423b353fb
@@ -2163,20 +2163,20 @@ StepListByNumberTable,0F6B:711,18,T3,1,1,0,1,1,0,,0,,d4b13917a962
 StartPieceABInFreeSlot,0F6B:723,12,T2,1,1,1,0,1,0,,0,,79eea77bcf2a
 LoadRecordFrameByKindThenFall,0F6B:72F,61,T3,1,1,0,1,1,0,,0,,2bc7dd2f4afc
 ThrownPieceThenScatterAndLeave,0F6B:776,174,T2,1,1,1,0,1,0,,0,,aec93e65f913
-DroppingPieceStep,0F6C:024,177,T2,0,1,0,0,1,0,,0,runs original code,a7cec086313e
+DroppingPieceStep,0F6C:024,177,T2,1,1,0,0,0,0,,,,a7cec086313e
 SpawnFlashingPieceWhenRising,0F6C:0D5,56,T3,1,1,0,1,1,0,,0,,d72789ad3e14
 CountDownThenClearOnTimer,0F6C:111,8,T3,1,1,0,1,1,0,,0,,31299c1670aa
-BossFrameRoutinesD,0F6C:39C,36,T2,0,1,0,0,1,0,,0,runs original code,501b9095c219
-JumpByStateTable0F6C3C0,0F6C:3C0,18,T2,0,1,0,1,1,0,,0,runs original code,9ecefbed7f3d
+BossFrameRoutinesD,0F6C:39C,36,T2,1,1,0,0,0,0,,,,501b9095c219
+JumpByStateTable0F6C3C0,0F6C:3C0,18,T2,1,1,0,1,0,0,,,,9ecefbed7f3d
 FlashWhenHurtThenSound,0F6C:3F0,61,T2,1,1,0,0,1,0,,0,,8887f3a39a83
 EnterState0EWhenFlagged,0F6C:42D,32,T2,1,1,0,0,1,0,,0,,6c169a39aa06
 LoadRecordFrame24,0F6C:44D,12,T4,1,1,1,1,1,0,,0,,21189b384d6a
 StartTimerWhenSlot10Ready,0F6C:459,23,T3,1,1,0,1,1,0,,0,,1a8ed2e0156e
 StepListThenStartPieceAndWalk,0F6C:470,52,T2,1,1,1,0,1,0,,0,,6990d0ee13a4
-WalkAndTurnAtEdge,0F6C:4A4,47,T2,0,1,0,0,1,0,,0,runs original code,233acc432e71
+WalkAndTurnAtEdge,0F6C:4A4,47,T2,0,1,0,0,0,0,,,runs original code,233acc432e71
 HurtOnceThenAnswerYes,0F6C:580,54,T2,1,1,1,0,1,0,,0,,5f6cce7492a6
 StartLeapWhenHurtAnswerYes,0F6C:6F7,81,T2,1,1,1,0,1,0,,0,,f49dbacd1e69
-ProbeTileSideBit1,0F6D:324,51,T2,0,1,0,1,1,0,,0,runs original code,cc37c35b4901
+ProbeTileSideBit1,0F6D:324,51,T2,1,1,0,1,0,0,,,,cc37c35b4901
 ClearAnimationThenStepListC585,0F6D:35F,6,T4,1,1,1,1,1,0,,0,,b4df787eb8dd
 StepListByNumberTableC585,0F6D:365,18,T3,1,1,0,1,1,0,,0,,4405f8bdfc66
 ToggleFacing,0F6D:377,11,T4,1,1,1,1,1,0,,0,,26f2a6dfe5a2
@@ -2186,8 +2186,8 @@ ResetStageVariables100D,100D:0CB,29,T3,1,1,0,1,1,0,,0,,69a97b1cccac
 ExpandStageVramRunsQ,100E:082,47,T3,1,1,0,1,1,0,,0,,28726a7d61ee
 StartStageListsQ,100E:0B1,29,T3,1,1,0,1,1,0,,0,,35bc77a0fd2c
 LoadStageEntryQ,100E:152,224,T2,1,1,0,0,1,0,,0,,1242c9b6bc02
-StageScrollStepQ,100E:236,25,T2,0,1,0,1,1,0,,0,runs original code,587a62cc41fc
-SetUpStageObjectsQ,100E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,2b1a3abfdd0d
+StageScrollStepQ,100E:236,25,T2,1,1,0,1,0,0,,,,587a62cc41fc
+SetUpStageObjectsQ,100E:25F,69,T2,0,1,0,0,0,0,,,runs original code,2b1a3abfdd0d
 ExpandStageListsQ,100F:277,98,T2,1,1,0,0,1,0,,0,,7c55266370b4
 TerrainLookupI,100F:5AB,96,T2,1,1,0,0,1,0,,0,,9d5d6e754e6b
 TerrainLookupAltI,100F:60B,116,T2,1,1,0,0,0,0,,,,a8a6440b3e6e
@@ -2209,8 +2209,8 @@ ExpandStageVramRunsR,10BE:082,47,T3,1,1,0,1,1,0,,0,,d645626e46f9
 StartStageListsR,10BE:0B1,29,T3,1,1,0,1,1,0,,0,,535c0ebd55c2
 InitStageB,10BE:0EC,102,T2,0,1,0,0,1,0,,0,runs original code,e0f01183f4f8
 LoadStageEntryR,10BE:152,224,T2,1,1,0,0,1,0,,0,,26769246603f
-StageScrollStepR,10BE:236,25,T2,0,1,0,1,1,0,,0,runs original code,5118565a1150
-SetUpStageObjectsR,10BE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,0cd8c49c787f
+StageScrollStepR,10BE:236,25,T2,1,1,0,1,0,0,,,,5118565a1150
+SetUpStageObjectsR,10BE:25F,69,T2,0,1,0,0,0,0,,,runs original code,0cd8c49c787f
 ExpandStageListsR,10BF:277,98,T2,1,1,0,0,1,0,,0,,2e8f29d787c5
 ProbeBoxes10C0,10C0:0BD,96,T2,1,1,0,0,1,0,,0,,f8087fc86685
 ProbeBoxesFlagged10C0,10C0:11D,116,T2,1,1,0,0,1,0,,0,,27e4731e7008
@@ -2238,7 +2238,7 @@ HitDamage10C9,10C9:28D,22,T3,1,1,0,1,1,0,,0,,4a899eea6cc9
 ScoreForKind10C9,10C9:2A3,34,,1,1,0,0,1,0,,0,,bc78b57d48bf
 DropItemWhenHit10C9,10C9:2C5,57,,1,1,0,0,1,0,,0,,ef4d4c89cc5d
 PlayHitSound10C9,10C9:2FE,21,,1,1,0,0,1,0,,0,,ebce28957086
-DispatchByKind10C9,10C9:313,22,T2,0,1,0,0,1,0,,0,runs original code,6ed35bfe5a0b
+DispatchByKind10C9,10C9:313,22,T2,1,1,0,0,0,0,,,,6ed35bfe5a0b
 DrawTilePiece10CA,10CA:082,38,,1,1,0,0,0,0,,,,1ac2c3f16671
 LoadThenStartTwoScripts,10CB:28D,30,T4,1,1,1,1,1,0,,0,,24f100410f50
 ClearSlot4EUnlessCamera18,10CB:2CB,21,T4,1,1,1,1,1,0,,0,,b72ed59255bb
@@ -2258,7 +2258,7 @@ StepListC192ThenClear,10CD:181,17,T4,1,1,1,1,1,0,,0,,a293b936e774
 StartFirstObjectWhenCamera2,10CD:334,36,T2,1,1,1,0,1,0,,0,,7f95a7fe991e
 InitStage10DE,10DE:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,c2d2802eac6c
 LoadStageEntry10DE,10DE:108,224,T2,1,1,0,0,0,0,contradicted,,,f5e2a45ad6ed
-StageScrollStep10DE,10DE:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,4e6b73ce5dbf
+StageScrollStep10DE,10DE:1EC,25,T2,1,1,0,0,0,0,contradicted,,,4e6b73ce5dbf
 SetUpStageObjects10DE,10DE:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,450973030ce8
 SpawnStageObjectsRows0110DE,10DE:309,25,T2,1,1,0,0,0,0,contradicted,,,8cac79e35816
 StepStageFrame10DE,10DE:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,3300f0ff042f
@@ -2266,8 +2266,8 @@ ResetStageVariables116D,116D:0CB,29,T2,1,1,0,0,1,0,,0,,435e44f43fc6
 ExpandStageVramRunsS,116E:082,47,T3,1,1,0,1,1,0,,0,,b7514d16ec38
 StartStageListsS,116E:0B1,29,T3,1,1,0,1,1,0,,0,,b3dd3952b35d
 LoadStageEntryS,116E:152,224,T2,1,1,0,0,1,0,,0,,5c2a5b71cc22
-StageScrollStepS,116E:236,25,T2,0,1,0,1,1,0,,0,runs original code,c9342ebe6cfe
-SetUpStageObjectsS,116E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,c6b590a01c58
+StageScrollStepS,116E:236,25,T2,1,1,0,1,0,0,,,,c9342ebe6cfe
+SetUpStageObjectsS,116E:25F,69,T2,0,1,0,0,0,0,,,runs original code,c6b590a01c58
 ExpandStageListsS,116F:277,98,T2,1,1,0,0,1,0,,0,,5a20740cfa64
 TerrainLookupJ,116F:5AB,96,T2,1,1,0,0,1,0,,0,,8c7ccd4b91f8
 TerrainLookupAltJ,116F:60B,116,T2,1,1,0,0,1,0,,0,,5b60785aff6f
@@ -2329,7 +2329,7 @@ StartFromScreenEdgeByPlayer,117D:3CB,84,T2,1,1,1,0,1,0,,0,,6ea340bc5f1e
 SwingOnCosineB,117D:41F,37,T4,1,1,1,1,1,0,,0,,9e775591056e
 InitStage122E,122E:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,c5af1e20eb79
 LoadStageEntry122E,122E:108,224,T2,1,1,0,0,0,0,contradicted,,,cbc8ce6ca214
-StageScrollStep122E,122E:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,f4a495c8d714
+StageScrollStep122E,122E:1EC,25,T2,1,1,0,0,0,0,contradicted,,,f4a495c8d714
 SetUpStageObjects122E,122E:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,125471d6faee
 SpawnStageObjectsRows01122E,122E:309,25,T2,1,1,0,0,0,0,contradicted,,,d5890bd067e2
 StepStageFrame122E,122E:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,bad1b3df0988
@@ -2349,8 +2349,8 @@ ExpandStageVramRunsT,12CE:082,47,T2,1,1,0,0,1,0,,0,,f317bec73974
 StartStageListsT,12CE:0B1,29,T3,1,1,0,1,1,0,,0,,86e8999fc9cb
 InitStageC,12CE:0EC,102,T2,0,1,0,0,1,0,,0,runs original code,af62d8caf691
 LoadStageEntryT,12CE:152,224,T2,1,1,0,0,1,0,,0,,d093830bf61a
-StageScrollStepT,12CE:236,25,T2,0,1,0,1,1,0,,0,runs original code,a7c740652e19
-SetUpStageObjectsT,12CE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,a1df2f9d7c00
+StageScrollStepT,12CE:236,25,T2,1,1,0,1,0,0,,,,a7c740652e19
+SetUpStageObjectsT,12CE:25F,69,T2,0,1,0,0,0,0,,,runs original code,a1df2f9d7c00
 MaskVramRowsRandomLong,12CF:0B1,98,T3,1,1,0,1,1,0,,0,,8e7f671c3b87
 ExpandStageListsT,12CF:277,98,T2,1,1,0,0,1,0,,0,,413da472d907
 ProbeBoxes12D0,12D0:0BD,96,T2,1,1,0,0,1,0,,0,,3df2fc3d7127
@@ -2364,8 +2364,8 @@ RunObjects12D9,12D9:000,316,T2,0,1,0,0,0,0,,,runs original code,77c5e83438ef
 ScoreForKind12D9,12D9:2A3,34,,1,1,0,0,1,0,,0,,8c042aa8413d
 DropItemWhenHit12D9,12D9:2C5,57,,1,1,0,0,1,0,,0,,f0c5f7f0efe2
 PlayHitSound12D9,12D9:2FE,21,,1,1,0,0,1,0,,0,,337c6b83f33c
-DispatchByKind12D9,12D9:313,22,T2,0,1,0,0,1,0,,0,runs original code,2f59fc69fc8c
-DrawTilePiece12DA,12DA:082,38,T3,1,1,0,1,1,0,,0,,fd1d7e36e38f
+DispatchByKind12D9,12D9:313,22,T2,1,1,0,0,0,0,,,,2f59fc69fc8c
+DrawTilePiece12DA,12DA:082,38,,1,1,0,1,0,0,,,,fd1d7e36e38f
 RandomTimerC0,12DF:038,9,T4,1,1,1,1,1,0,,0,,39b8dd089f48
 ProbeBoxes13F0,13F0:0BD,96,T2,1,1,0,0,1,0,,0,,474ef82943ee
 ProbeBoxesFlagged13F0,13F0:11D,116,T2,1,1,0,0,1,0,,0,,132b758f4739
@@ -2373,7 +2373,7 @@ RunObjects13F9,13F9:000,316,T2,0,1,0,0,0,0,,,runs original code,b394e3a9e532
 ScoreForKind13F9,13F9:2A3,34,,1,1,0,0,0,0,,,,33b6084a3cf8
 DropItemWhenHit13F9,13F9:2C5,57,,1,1,0,0,0,0,,,,6634e2eeb7c9
 PlayHitSound13F9,13F9:2FE,21,,1,1,0,0,0,0,,,,edbf12253595
-DrawTilePiece13FA,13FA:082,38,T3,1,1,0,1,1,0,,0,,9ee8ec4f43d1
+DrawTilePiece13FA,13FA:082,38,,1,1,0,1,0,0,,,,9ee8ec4f43d1
 StageEntryA152D,152D:000,3,T2,0,1,1,0,0,0,contradicted,,runs original code,8333a95f55e8
 StageEntryB152D,152D:003,3,T2,0,1,1,0,0,0,contradicted,,runs original code,e9468b099435
 StageEntryC152D,152D:006,3,T2,0,1,1,0,0,0,contradicted,,runs original code,508b59ecd8e5
@@ -2512,8 +2512,8 @@ ResetStageVariables160D,160D:0CB,29,T2,1,1,0,0,1,0,,0,,1634b7457872
 ExpandStageVramRunsU,160E:082,47,T2,1,1,0,0,1,0,,0,,94908f2c52be
 StartStageListsU,160E:0B1,29,T3,1,1,0,1,1,0,,0,,971c8953160d
 LoadStageEntryU,160E:152,224,T2,1,1,0,0,1,0,,0,,39d2faee8657
-StageScrollStepU,160E:236,25,T2,0,1,0,1,1,0,,0,runs original code,797a4ec0331d
-SetUpStageObjectsU,160E:25F,69,T2,0,1,0,0,1,0,,0,runs original code,76a8556c6076
+StageScrollStepU,160E:236,25,T2,1,1,0,1,0,0,,,,797a4ec0331d
+SetUpStageObjectsU,160E:25F,69,T2,0,1,0,0,0,0,,,runs original code,76a8556c6076
 ExpandStageListsU,160F:277,98,T2,1,1,0,0,1,0,,0,,7aceaee4fae9
 TerrainLookupK,160F:5AB,96,T2,1,1,0,0,1,0,,0,,a30d50d77d48
 TerrainLookupAltK,160F:60B,116,T2,1,1,0,0,1,0,,0,,8a0cc27349d1
@@ -2531,8 +2531,8 @@ LoadRecordThenDriftAndCount,161E:617,57,T4,1,1,1,1,1,0,,0,,c32032b2e740
 ResetStageVariables16BD,16BD:0CB,29,T2,1,1,0,0,1,0,,0,,fafce91c51fb
 StartStageListsV,16BE:0B1,29,T3,1,1,0,1,1,0,,0,,ef462327de3c
 LoadStageEntryV,16BE:152,224,T2,1,1,0,0,1,0,,0,,eaa977cb0648
-StageScrollStepV,16BE:236,25,T2,0,1,0,1,1,0,,0,runs original code,3a53a9c730e1
-SetUpStageObjectsV,16BE:25F,69,T2,0,1,0,0,1,0,,0,runs original code,f263ef27122d
+StageScrollStepV,16BE:236,25,T2,1,1,0,1,0,0,,,,3a53a9c730e1
+SetUpStageObjectsV,16BE:25F,69,T2,0,1,0,0,0,0,,,runs original code,f263ef27122d
 ProbeBoxes16C0,16C0:0BD,96,T2,1,1,0,0,1,0,,0,,4c8e0769f9ea
 ProbeBoxesFlagged16C0,16C0:11D,116,T2,1,1,0,0,1,0,,0,,24620b952a4d
 VramListFromTableV,16C1:142,204,T2,1,1,0,0,0,0,,,,da3936112078
@@ -2541,8 +2541,8 @@ HitDamage16C9,16C9:28D,22,T3,1,1,0,1,1,0,,0,,d2908161b635
 ScoreForKind16C9,16C9:2A3,34,,1,1,0,0,1,0,,0,,96d3791a3f9c
 DropItemWhenHit16C9,16C9:2C5,57,,1,1,0,0,1,0,,0,,fb4c102bc90b
 PlayHitSoundL,16C9:2FE,21,T2,1,1,0,0,1,0,,0,,c4a155e50aae
-DispatchByKind16C9,16C9:313,22,T2,0,1,0,0,1,0,,0,runs original code,3380aa5be508
-DrawTilePiece16CA,16CA:082,38,T3,1,1,0,1,1,0,,0,,6b12d85587a5
+DispatchByKind16C9,16C9:313,22,T2,1,1,0,0,0,0,,,,3380aa5be508
+DrawTilePiece16CA,16CA:082,38,,1,1,0,1,0,0,,,,6b12d85587a5
 CountThenSpawnInState2,16CB:175,32,T2,1,1,1,0,1,0,,0,,6d261a08d2df
 StateFiveOnStatusBit7,16CB:1F4,26,T2,1,1,1,0,1,0,,0,,ae198dc748a1
 LoadThenStartRise,16CB:20E,24,T4,1,1,1,1,1,0,,0,,9d16b042d7c1
@@ -2567,28 +2567,28 @@ EffectShade1845,1845:416,180,T2,1,1,0,0,0,0,contradicted,,,1f93befef749
 EffectColour1845,1845:50A,58,T2,1,1,0,0,0,0,contradicted,,,54011f09e05e
 EffectFlash1845,1845:544,139,T2,1,1,0,0,0,0,contradicted,,,7d6887c0daf6
 EffectFlashEnd1845,1845:5CF,39,T2,1,1,0,0,0,0,contradicted,,,481e7b037160
-ResetStageVariables18CD,18CD:0CB,29,T2,1,1,0,0,1,1,,0,,187e84f474f3
-ExpandStageVramRunsV,18CE:082,47,T3,1,1,0,1,1,1,,0,,a46ef8244760
-StartStageListsW,18CE:0B1,29,T3,1,1,0,1,1,1,,0,,6f18f02f948e
+ResetStageVariables18CD,18CD:0CB,29,T2,1,1,0,0,1,0,,0,,187e84f474f3
+ExpandStageVramRunsV,18CE:082,47,T3,1,1,0,1,1,0,,0,,a46ef8244760
+StartStageListsW,18CE:0B1,29,T3,1,1,0,1,1,0,,0,,6f18f02f948e
 LoadStageEntryW,18CE:152,224,T2,1,1,0,0,1,0,,0,,53aa7b182231
-StageScrollStepW,18CE:236,25,T2,0,1,0,1,1,1,,0,runs original code,89ccc80d1b4e
-SetUpStageObjectsW,18CE:25F,69,T2,0,1,0,0,1,1,,0,runs original code,4fd81d6127cf
-ExpandStageListsV,18CF:277,98,T2,1,1,0,0,1,1,,0,,4d3e2ac257a3
+StageScrollStepW,18CE:236,25,T2,1,1,0,1,0,0,,,,89ccc80d1b4e
+SetUpStageObjectsW,18CE:25F,69,T2,0,1,0,0,0,0,,,runs original code,4fd81d6127cf
+ExpandStageListsV,18CF:277,98,T2,1,1,0,0,1,0,,0,,4d3e2ac257a3
 HitTestObjectLongB,18CF:778,191,T2,0,1,0,0,0,0,,,runs original code,055656ae3a10
 ProbeBoxes18D0,18D0:0BD,96,T2,1,1,0,0,0,0,,,,968feaa39658
 ProbeBoxesFlagged18D0,18D0:11D,116,T2,1,1,0,0,0,0,,,,95a4dc143439
-VramListFromTableW,18D1:142,204,T2,1,1,0,0,0,1,,,,194e0ffd6af4
-SelectBlockTablesP,18D6:00F,46,T4,1,1,1,1,1,1,,0,,66bd40d325ed
+VramListFromTableW,18D1:142,204,T2,1,1,0,0,0,0,,,,194e0ffd6af4
+SelectBlockTablesP,18D6:00F,46,T4,1,1,1,1,1,0,,0,,66bd40d325ed
 RunObjects18D9,18D9:000,316,T2,0,1,0,0,0,0,,,runs original code,e591f8915921
 ScoreForKind18D9,18D9:2A3,34,,1,1,0,0,0,0,,,,424d3e5ccf79
 DropItemWhenHit18D9,18D9:2C5,57,,1,1,0,0,0,0,,,,bf409d2214a2
 PlayHitSound18D9,18D9:2FE,21,,1,1,0,0,0,0,,,,07162a85eb6b
-DispatchByKind18D9,18D9:313,22,T2,0,1,0,0,1,1,,0,runs original code,6665871f0058
+DispatchByKind18D9,18D9:313,22,T2,1,1,0,0,0,0,,,,6665871f0058
 DrawTilePiece18DA,18DA:082,38,,1,1,0,0,0,0,,,,77385c64598c
-LoadRecordAtX80,18DD:260,17,T4,1,1,1,1,1,1,,0,,fb4a4f9d578e
+LoadRecordAtX80,18DD:260,17,T4,1,1,1,1,1,0,,0,,fb4a4f9d578e
 InitStage1A2E,1A2E:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,817dca669f79
 LoadStageEntry1A2E,1A2E:108,224,T2,1,1,0,0,0,0,contradicted,,,8370235ef3c9
-StageScrollStep1A2E,1A2E:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,4e741a58c649
+StageScrollStep1A2E,1A2E:1EC,25,T2,1,1,0,0,0,0,contradicted,,,4e741a58c649
 SetUpStageObjects1A2E,1A2E:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,b681cf886033
 SpawnStageObjectsRows011A2E,1A2E:309,25,T2,1,1,0,0,0,0,contradicted,,,8a32441edb4f
 StepStageFrame1A2E,1A2E:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,ca226f637d0c
@@ -2617,7 +2617,7 @@ EffectFlash1AA0,1AA0:544,139,T2,1,1,0,0,0,0,contradicted,,,1c915e931d5e
 EffectFlashEnd1AA0,1AA0:5CF,39,T2,1,1,0,0,0,0,contradicted,,,99fa7883f70f
 InitStage1B8E,1B8E:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,009340c52829
 LoadStageEntry1B8E,1B8E:108,224,T2,1,1,0,0,0,0,contradicted,,,6c0ae8babbed
-StageScrollStep1B8E,1B8E:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,5af39447d872
+StageScrollStep1B8E,1B8E:1EC,25,T2,1,1,0,0,0,0,contradicted,,,5af39447d872
 SetUpStageObjects1B8E,1B8E:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,3b46f6f96b06
 SpawnStageObjectsRows011B8E,1B8E:309,25,T2,1,1,0,0,0,0,contradicted,,,e650187f1f10
 StepStageFrame1B8E,1B8E:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,8872a6fc6681
@@ -2646,7 +2646,7 @@ EffectFlash1C2F,1C2F:544,139,T2,1,1,0,0,0,0,contradicted,,,da667100ceb8
 EffectFlashEnd1C2F,1C2F:5CF,39,T2,1,1,0,0,0,0,contradicted,,,8b5fdd126ad9
 InitStage1CEE,1CEE:0A2,102,T2,0,1,0,0,0,0,contradicted,,runs original code,b54c5e75053e
 LoadStageEntry1CEE,1CEE:108,224,T2,1,1,0,0,0,0,contradicted,,,9b4740b2cd25
-StageScrollStep1CEE,1CEE:1EC,25,T2,0,1,0,0,0,0,contradicted,,runs original code,f4c98a7f0ae2
+StageScrollStep1CEE,1CEE:1EC,25,T2,1,1,0,0,0,0,contradicted,,,f4c98a7f0ae2
 SetUpStageObjects1CEE,1CEE:215,69,T2,0,1,0,0,0,0,contradicted,,runs original code,c2a476bdcea7
 SpawnStageObjectsRows011CEE,1CEE:309,25,T2,1,1,0,0,0,0,contradicted,,,4338ab84a521
 StepStageFrame1CEE,1CEE:323,172,T2,0,1,0,0,0,0,contradicted,,runs original code,184b59555ed7

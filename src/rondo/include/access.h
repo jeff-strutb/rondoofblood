@@ -6,7 +6,10 @@
  * exactly the rd8 or wr8 calls the original makes, in the order the macro says, so the checker
  * sees the same accesses as it does for the untyped form (docs/rondo/PLAN.md, section 1). The
  * records are placed at their original addresses and never dereferenced: a field's address is
- * all a macro uses of it. For the native port only the bodies of RD8 and WR8 change.
+ * all a macro uses of it. This is the decompilation's C, shaped by the proof (the original's addresses, its
+ * accesses in order, its frames). A native port is written from it afterwards, as Aladdin's was: native
+ * records and pointers, none of that bookkeeping; changing the bodies of RD8 and WR8 alone would only run
+ * this C over the original's memory layout.
  *
  * What a macro checks at compile time: a byte macro takes a one-byte field (a wide field or a
  * whole column is a compile error, not a quiet read of its first byte); a wide macro takes a

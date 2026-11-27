@@ -64,6 +64,11 @@ BAD = (("cpu", re.compile(r"\bcpu\.")), ("alu helper", re.compile(r"\balu_\w+\s*
        ("adc8/sbc8", re.compile(r"\b(adc8|sbc8|adc8_bcd)\s*\(")), ("Alu", re.compile(r"\bAlu\b")),
        ("goto", re.compile(r"\bgoto\b")))
 WRAPPER_MAX_LINES = 14
+# Code that is not the routine's own C: original machine code run from inside a routine (2026-11-26: the _shim
+# helpers a body calls were exempt from every check, so register reads and calls into original code hid there).
+ORIGINAL = re.compile(r"\b(call_orig\w*|call_original\w*|enter_handler|jump_original\w*)\s*\(")
+CPU_WRITE = re.compile(r"\bcpu\.(a|x|y|p|s)\s*(=(?!=)|\|=|&=|\^=)")
+CPU_READ = re.compile(r"\bcpu\.(a|x|y|p|s)\b")
 
 
 def source_texts():
@@ -97,8 +102,27 @@ def tagged_names(sources):
     return out
 
 
+@functools.lru_cache(maxsize=None)
+def header_helpers():
+    """The inline helpers of the C's headers, which a body reaches as it reaches a .c file's (the machine's own
+    primitives in machine.h, access.h and ops6280.h, the drafts' instruction steps, are the access layer, not C)."""
+    skip = {"machine.h", "access.h", "ops6280.h", "card.h", "card_access.h"}   # the access layers, the card's too
+    paths = [q for q in glob.glob(os.path.join(TOP, "src", "rondo", "include", "*.h")) + glob.glob(os.path.join(TOP, "syscard", "include", "*.h"))
+             if os.path.basename(q) not in skip]
+    def no_macros(text):
+        """The text without its preprocessor lines (a #define and its continued lines are no function)."""
+        out, cont = [], False
+        for line in text.split("\n"):
+            skip = cont or line.lstrip().startswith("#")
+            cont = skip and line.rstrip().endswith("\\")
+            out.append("" if skip else line)
+        return "\n".join(out)
+    return functions([(q, no_macros(open(q, encoding="utf-8").read())) for q in paths])
+
+
 def proper_c_faults(name, funcs):
     """What keeps a routine from proper C, through the plain helpers it reaches."""
+    funcs = {**header_helpers(), **funcs}
     faults = set()
     wrapper = funcs.get("abi_" + name, "")
     if name not in funcs and wrapper.count("\n") > WRAPPER_MAX_LINES:
@@ -112,11 +136,22 @@ def proper_c_faults(name, funcs):
         if current in seen or current not in funcs:
             continue
         seen.add(current)
-        for label, pattern in BAD:
-            if pattern.search(funcs[current]):
-                faults.add(label)
-        for callee in CALL.findall(funcs[current]):
-            if not callee.startswith("abi_") and not callee.endswith("_shim"):
+        body = funcs[current]
+        if current.endswith("_shim"):
+            # A shim the body calls may set the registers a callee or the exit sees (the calling convention), but
+            # it may not read the processor's registers back into the body's logic, nor run original code.
+            if CPU_READ.search(re.sub(CPU_WRITE, "", body)):
+                faults.add("reads registers")
+            if ORIGINAL.search(body):
+                faults.add("runs original code")
+        else:
+            for label, pattern in BAD:
+                if pattern.search(body):
+                    faults.add(label)
+            if ORIGINAL.search(body):
+                faults.add("runs original code")
+        for callee in CALL.findall(body):
+            if not callee.startswith("abi_"):
                 work.append(callee)
     return sorted(faults)
 

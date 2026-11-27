@@ -258,7 +258,9 @@ def main():
     game_floor, card_floor, by_location = floors()
     cen = census_counts()
     CENSUS_COUNTED = cen is not None
-    census_code = cen["counted"] if cen else 0      # code no script ran that the census finds, counted as code
+    # Code no script ran that the strict census finds. The relaxed census's further bytes are left out: holding scripts
+    # out (d3a8acb, 2026-11-26) found it takes data as code (12,423 to 244,241 B of bytes sent to the ports claimed).
+    census_code = cen["counted_strict"] if cen else 0
     game_whole = game_floor + census_code
     card_whole = card_floor
     head = git("rev-parse", "--short", "HEAD").strip()
@@ -267,8 +269,8 @@ def main():
     if CENSUS_COUNTED:
         denom = (f"{game_whole:,} B: {game_floor:,} B the {n_scripts} scripts ran, counted by distinct whole routines, "
                  f"+ {census_code:,} B of code no script runs that the static census finds "
-                 f"({cen['counted_strict']:,} B by the strict census; {cen['counted_relaxed_only']:,} B only by the "
-                 "relaxed one, counted as code until each byte is explained as code to file or data to name). "
+                 f"(the strict census; the {cen['counted_relaxed_only']:,} B only the relaxed one finds are left out, "
+                 "since holding scripts out showed it takes data as code). "
                  f"Left out: {cen['duplicates']:,} B proven duplicates, whole runs byte for byte equal to code counted "
                  f"elsewhere (`config/rondo/census_duplicates.csv`), and {cen['proven_data']:,} B proven data (sent to "
                  "a video or sound port, read in place by code, or a decode a trace contradicts)")

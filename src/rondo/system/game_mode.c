@@ -160,6 +160,13 @@ static void scene_shim(uint8_t scene, const DiscLog *log)
     disc_log_exit_shim(log);
 }
 
+/* The demo's LDY zAttractStep, LDA AttractStages,Y: Y the step, A the stage, N and Z from it. */
+static void demo_stage_shim(uint8_t step, uint8_t stage)
+{
+    cpu.y = step;
+    load_shim(stage);
+}
+
 /* A compare's flags: N and Z from the difference, C from no borrow. */
 static void compare_shim(uint8_t a, uint8_t b)
 {
@@ -445,6 +452,10 @@ AttractRun ModeAttract(void)
     run.step = rd8(zAttractStep);
     run.stage = rd8((uint16_t)(AttractStages + run.step));
     wr8(zStage, run.stage);
+    /* StageEnter hands its caller's X and Y to ResetGameState: X as the scene left it, Y the step, A the stage. */
+    reset_score_shim();
+    scene_shim(SCENE_COMMON, &run.scene);
+    demo_stage_shim(run.step, run.stage);
     jsr_push(0x5187);
     run.enter = StageEnter();
     jsr_pop();
@@ -656,6 +667,9 @@ ContinueRun ModeStageLoadContinue(void)
     jsr_push(0x521F);
     run.scene = LoadSceneScript(SCENE_COMMON);
     jsr_pop();
+    /* StageEnter hands its caller's X and Y to ResetGameState: the registers as the scene left them. */
+    reset_score_shim();
+    scene_shim(SCENE_COMMON, &run.scene);
     jsr_push(0x5222);
     run.enter = StageEnter();
     jsr_pop();
@@ -718,6 +732,7 @@ ModeStageLoadRun ModeStageLoad(void)
         jsr_push(0x51F0);
         run.scene = LoadSceneScript(SCENE_COMMON);
         jsr_pop();
+        scene_shim(SCENE_COMMON, &run.scene);   /* falls into StageEnterNext with the scene's registers */
         run.next = StageEnterNext();
     }
     return run;
@@ -893,6 +908,7 @@ StageDoneRun ModeStageDone(void)
         return run;
     }
     run.mark = mark_stage(StagesVisited, 0x5235);
+    mark_stage_shim(run.mark);          /* the registers StageClearBit and the ORA, STA leave, which the wait pushes */
     jsr_push(0x523E);
     ResetGameState(wait_regs_live_shim());   /* entered by ModeStage's BNE: the live registers */
     jsr_pop();
@@ -1229,6 +1245,7 @@ StageClearedRun ModeStageCleared(void)
     StageClearedRun run;
 
     run.mark = mark_stage(StagesVisited, 0x5300);
+    mark_stage_shim(run.mark);          /* runs into StageClearedNext, whose StageEnter hands these X and Y on */
     run.next = StageClearedNext();
     return run;
 }
@@ -1374,6 +1391,18 @@ static WaitRegs dead_wait_shim(const DeadRun *run)
     return wait_regs_live_shim();
 }
 
+/* What the retry path holds at its JMP StageEnterNext: the overlay's X and Y, or SaveScore's when it ran; A and N, Z
+ * from the score reset, then C from CMP #$43 and A, N, Z from LDA #4 and SetGameMode. */
+static void dead_retry_shim(const DeadRun *run)
+{
+    overlay_done_shim(run->after, run->done);
+    if (!(run->slot & 0x80))
+        save_exit_shim(&run->save);
+    reset_score_shim();
+    compare_shim(run->retry, STAGE_RETRY_FROM);
+    set_mode_shim(MODE_STAGE_LOAD);
+}
+
 DeadRun ModeDead(void)
 {
     DeadRun run;
@@ -1427,6 +1456,7 @@ DeadRun ModeDead(void)
     jsr_push(0x53B1);
     SetGameMode(MODE_STAGE_LOAD);
     jsr_pop();
+    dead_retry_shim(&run);              /* StageEnterNext's StageEnter hands these X and Y to ResetGameState */
     run.next = StageEnterNext();
     return run;
 }

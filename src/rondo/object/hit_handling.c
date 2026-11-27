@@ -18,7 +18,8 @@
  * WAITS: no.
  * Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
  */
-ObjArm HitDamage(uint8_t slot)
+/* HitDamage's body with the table of the overlay that holds it (the copies differ only in the table's address). */
+static ObjArm hit_damage_at(uint8_t slot, uint16_t table)
 {
     ObjArm r = { 0 };
     uint8_t row, hit;
@@ -28,8 +29,47 @@ ObjArm HitDamage(uint8_t slot)
     WR8(ZP->temp00, r.first);
     hit = RD8(OBJ->hit_taken[slot]);
     r.sum = add_bytes(hit, RD8(ZP->temp00), false);
-    r.second = rd8((uint16_t)(0xABA6 + r.sum.value));
+    r.second = rd8((uint16_t)(table + r.sum.value));
     WR8(ZP->temp00, r.second);
+    return r;
+}
+
+ObjArm HitDamage(uint8_t slot)
+{
+    return hit_damage_at(slot, 0xABA6);
+}
+
+/*
+ * The JSR $A28D goes to the HitDamage of the overlay loaded there: the table of the copy resident at $A28D (this
+ * file's and the 17 of enemies_l8_hit_damage.c), 0 when the copy there has no C.
+ */
+static uint16_t hit_damage_table_resident(void)
+{
+    static const struct { uint16_t sector; uint16_t table; } copies[] = {
+        { 0x0259, 0xABA6 }, { 0x0519, 0xABDB }, { 0x05C9, 0xAB8F }, { 0x0729, 0xAB97 }, { 0x07D9, 0xAB0D },
+        { 0x0889, 0xAA94 }, { 0x0939, 0xABCD }, { 0x0A99, 0xAC14 }, { 0x0B49, 0xAA98 }, { 0x0BF9, 0xABE8 },
+        { 0x0CA9, 0xABFC }, { 0x0D59, 0xACA2 }, { 0x0E09, 0xAB01 }, { 0x0EB9, 0xAC50 }, { 0x1019, 0xAC0C },
+        { 0x10C9, 0xABAB }, { 0x1179, 0xAC16 }, { 0x16C9, 0xAB66 },
+    };
+    uint32_t at = resident_at(0xA28D);
+
+    for (unsigned i = 0; i < sizeof copies / sizeof copies[0]; i++)
+        if (at == DISC(copies[i].sector, 0x28D))
+            return copies[i].table;
+    return 0;
+}
+
+/* A copy with no C: its code run as the original's (the frame already pushed), its exit as the arm the shim reads. */
+static ObjArm hit_damage_original_shim(uint8_t slot)
+{
+    ObjArm r = { 0 };
+
+    cpu.x = slot;
+    call_orig_framed(0xA1E8, 0xA28D);
+    r.second = cpu.a;
+    r.sum.value = cpu.y;
+    r.sum.carry = (cpu.p & P_C) != 0;
+    r.sum.overflow = (cpu.p & P_V) != 0;
     return r;
 }
 
@@ -209,7 +249,11 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
             return h;
         }
         jsr_push(0xA1E8);
-        r->sub3 = obj_sub(HitDamage(slot));
+        {
+            uint16_t table = hit_damage_table_resident();
+
+            r->sub3 = obj_sub(table ? hit_damage_at(slot, table) : hit_damage_original_shim(slot));
+        }
         jsr_pop();
         r->bytes[OH_DAMAGE] = RD8(ZP->temp00);
         if (r->bytes[OH_DAMAGE] == 0) {

@@ -3951,11 +3951,23 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
         }
         fprintf(stderr, "\n");
     }
+    /* The stack is compared from S up. A C parked at the frame's end has no instruction timing: it may already have
+     * made the pushes of a call the original makes after the frame's end (its S lower than the original's), the
+     * bytes it wrote checked one by one as accesses. The machine's state at the frame's end is then the original's
+     * at its own S: the stack is compared from the S the record has for the frame. */
+    uint8_t hs = s;
+
+    if (mode == MODE_HYBRID && top && top->parked) {
+        while (fq_head == fq_tail && fetch_one())
+            ;
+        if (fq_head < fq_tail)
+            hs = fq[fq_head].s;
+    }
     for (unsigned b = 0x68; b <= 0x87; b++)
         if (ram_bank[b])
             hash = hash_bytes(hash, ram_bank[b], 8192);
     hash = hash_bytes(hash, ram_bank[0xF8], 0x100);
-    hash = hash_bytes(hash, ram_bank[0xF8] + 0x100 + (size_t)s + 1, 0xFF - (size_t)s);
+    hash = hash_bytes(hash, ram_bank[0xF8] + 0x100 + (size_t)hs + 1, 0xFF - (size_t)hs);
     hash = hash_bytes(hash, ram_bank[0xF8] + 0x200, 8192 - 0x200);
     picture = hash_bytes(picture, (const uint8_t *)pixels, (size_t)w * h * 4);
     if (mode == MODE_RECORD) {

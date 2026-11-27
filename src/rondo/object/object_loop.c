@@ -96,7 +96,29 @@ static bool past_edge(uint8_t high_value, uint8_t low_value)
  * WAITS: no.
  * Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
  */
-static Ended run_objects(uint8_t entry_x, void (*by_kind)(void))
+/*
+ * The JSR $A313 of the loop goes to the kind dispatch of the overlay loaded there, whichever it is: the RunObjects
+ * bytes are the same in overlays whose dispatches read different tables, so the copy is the one resident at $A313
+ * when the call is made, its C when it has one, else the original code (0).
+ */
+static void (*resident_kind_dispatch(void))(void)
+{
+    switch (resident_at(0xA313)) {
+    case DISC(0x0259, 0x313): return abi_DispatchByKind0259;
+    case DISC(0x07D9, 0x313): return abi_DispatchByKind07D9;
+    case DISC(0x0889, 0x313): return abi_DispatchByKind0889;
+    case DISC(0x0A99, 0x313): return abi_DispatchByKind0A99;
+    case DISC(0x0CA9, 0x313): return abi_DispatchByKind0CA9;
+    case DISC(0x0E09, 0x313): return abi_DispatchByKind0E09;
+    case DISC(0x10C9, 0x313): return abi_DispatchByKind10C9;
+    case DISC(0x12D9, 0x313): return abi_DispatchByKind12D9;
+    case DISC(0x16C9, 0x313): return abi_DispatchByKind16C9;
+    case DISC(0x18D9, 0x313): return abi_DispatchByKind18D9;
+    default: return 0;
+    }
+}
+
+static Ended run_objects(uint8_t entry_x)
 {
     HitArm hit;
     Ended e = ended_kept();
@@ -230,7 +252,7 @@ static Ended run_objects(uint8_t entry_x, void (*by_kind)(void))
         if (dispatch) {
             sync(&e);
             jsr_push(0xA115);
-            x = call_kind_dispatch(x, by_kind);
+            x = call_kind_dispatch(x, resident_kind_dispatch());
             jsr_pop();
             e = ended_kept();
         }
@@ -266,7 +288,7 @@ static Ended run_objects(uint8_t entry_x, void (*by_kind)(void))
 
 Ended RunObjects(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind0259);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects(void)
@@ -288,7 +310,7 @@ void abi_RunObjects(void)
  */
 Ended RunObjects07D9(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind07D9);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects07D9(void)
@@ -310,7 +332,7 @@ void abi_RunObjects07D9(void)
  */
 Ended RunObjects0889(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind0889);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects0889(void)
@@ -332,7 +354,7 @@ void abi_RunObjects0889(void)
  */
 Ended RunObjects0A99(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind0A99);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects0A99(void)
@@ -354,7 +376,7 @@ void abi_RunObjects0A99(void)
  */
 Ended RunObjects0B49(uint8_t entry_x)
 {
-    return run_objects(entry_x, 0);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects0B49(void)
@@ -376,7 +398,7 @@ void abi_RunObjects0B49(void)
  */
 Ended RunObjects0CA9(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind0CA9);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects0CA9(void)
@@ -398,7 +420,7 @@ void abi_RunObjects0CA9(void)
  */
 Ended RunObjects0D59(uint8_t entry_x)
 {
-    return run_objects(entry_x, 0);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects0D59(void)
@@ -420,7 +442,7 @@ void abi_RunObjects0D59(void)
  */
 Ended RunObjects0E09(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind0E09);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects0E09(void)
@@ -442,7 +464,7 @@ void abi_RunObjects0E09(void)
  */
 Ended RunObjects0EB9(uint8_t entry_x)
 {
-    return run_objects(entry_x, 0);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects0EB9(void)
@@ -464,7 +486,7 @@ void abi_RunObjects0EB9(void)
  */
 Ended RunObjects0F69(uint8_t entry_x)
 {
-    return run_objects(entry_x, 0);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects0F69(void)
@@ -486,7 +508,7 @@ void abi_RunObjects0F69(void)
  */
 Ended RunObjects1019(uint8_t entry_x)
 {
-    return run_objects(entry_x, 0);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects1019(void)
@@ -508,7 +530,7 @@ void abi_RunObjects1019(void)
  */
 Ended RunObjects10C9(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind10C9);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects10C9(void)
@@ -530,7 +552,7 @@ void abi_RunObjects10C9(void)
  */
 Ended RunObjects1179(uint8_t entry_x)
 {
-    return run_objects(entry_x, 0);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects1179(void)
@@ -552,7 +574,7 @@ void abi_RunObjects1179(void)
  */
 Ended RunObjects12D9(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind12D9);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects12D9(void)
@@ -574,7 +596,7 @@ void abi_RunObjects12D9(void)
  */
 Ended RunObjects13F9(uint8_t entry_x)
 {
-    return run_objects(entry_x, 0);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects13F9(void)
@@ -596,7 +618,7 @@ void abi_RunObjects13F9(void)
  */
 Ended RunObjects1619(uint8_t entry_x)
 {
-    return run_objects(entry_x, 0);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects1619(void)
@@ -618,7 +640,7 @@ void abi_RunObjects1619(void)
  */
 Ended RunObjects16C9(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind16C9);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects16C9(void)
@@ -640,7 +662,7 @@ void abi_RunObjects16C9(void)
  */
 Ended RunObjects18D9(uint8_t entry_x)
 {
-    return run_objects(entry_x, abi_DispatchByKind18D9);
+    return run_objects(entry_x);
 }
 
 void abi_RunObjects18D9(void)

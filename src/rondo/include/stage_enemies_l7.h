@@ -156,6 +156,13 @@ typedef struct {
 ObjArm HitDamage(uint8_t slot);
 ObjArm ScoreForKind(uint8_t slot, uint8_t y);
 SoundEnd score_for_kind_exit_shim(ObjArm r);
+ObjArm score_for_kind_at(uint8_t slot, uint8_t y, uint16_t table);
+ObjArm drop_item_when_hit(uint8_t slot, uint16_t limits, uint16_t items);
+ObjArm sound_from_hit_code(uint8_t slot, uint16_t table);
+/* object/hit_copies.c: the copy loaded at $A2A3, $A2C5 and $A2FE, called as ObjectHit's JSRs reach it. */
+ObjArm score_for_kind_loaded(uint8_t slot, uint8_t y);
+ObjArm drop_item_when_hit_loaded(uint8_t slot);
+ObjArm play_hit_sound_loaded(uint8_t slot);
 ObjArm BlendStockRows(uint8_t slot, uint8_t y);
 Ended blend_stock_rows_exit_shim(ObjArm r);
 ObjArm GiveExtraLife(uint8_t slot, uint8_t y);

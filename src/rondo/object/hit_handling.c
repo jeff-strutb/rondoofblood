@@ -99,7 +99,8 @@ void abi_HitDamage(void)
  */
 enum { HH_SK_FLAGGED, HH_SK_NO_CHANGE, HH_SK_LIFE };
 
-ObjArm ScoreForKind(uint8_t slot, uint8_t y)
+/* ScoreForKind's body with the score table of the overlay that holds it (its 24 copies differ only in that address). */
+ObjArm score_for_kind_at(uint8_t slot, uint8_t y, uint16_t table)
 {
     ObjArm r = { 0 };
     uint8_t kind;
@@ -113,8 +114,8 @@ ObjArm ScoreForKind(uint8_t slot, uint8_t y)
     kind = RD8(OBJ->kind[slot]);
     r.sum = sub_bytes(kind, 0x20, true);
     r.y = (uint8_t)(r.sum.value << 1);
-    WR8(ZP->temp00, rd8((uint16_t)(0xABF5 + r.y)));
-    WR8(ZP->temp01, rd8((uint16_t)(0xABF6 + r.y)));
+    WR8(ZP->temp00, rd8((uint16_t)(table + r.y)));
+    WR8(ZP->temp01, rd8((uint16_t)(table + 1 + r.y)));
     jsr_push(0xA2BF);
     r.second = AddScoreWord();
     jsr_pop();
@@ -127,6 +128,11 @@ ObjArm ScoreForKind(uint8_t slot, uint8_t y)
     jsr_pop();
     r.arm = HH_SK_LIFE;
     return r;
+}
+
+ObjArm ScoreForKind(uint8_t slot, uint8_t y)
+{
+    return score_for_kind_at(slot, y, 0xABF5);
 }
 
 /* The attack flags' load; else the kind's subtraction, the score table's load with Y and C, and the add's result; when it changed,
@@ -304,13 +310,13 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
         r->bytes[OH_RECORD_BYTE] = byte;
     }
     jsr_push(0xA22F);
-    h.score = ScoreForKind(slot, y);
+    h.score = score_for_kind_loaded(slot, y);
     jsr_pop();
     jsr_push(0xA232);
-    r->sub = obj_sub(DropItemWhenHitF(slot));
+    r->sub = obj_sub(drop_item_when_hit_loaded(slot));
     jsr_pop();
     jsr_push(0xA235);
-    r->sub2 = obj_sub(PlayHitSoundA(slot));
+    r->sub2 = obj_sub(play_hit_sound_loaded(slot));
     jsr_pop();
     status = RD8(OBJ->status_flags[slot]);
     number = (uint8_t)(status & 0x07);

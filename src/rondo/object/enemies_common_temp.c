@@ -14,7 +14,7 @@ enum { CT_HS_NONE, CT_HS_PLAYED };
 enum { CT_WD_STEPPED, CT_WD_MOVED };
 
 /* Whether an item drops when the object is hit hard enough: see DropItemWhenHitA. */
-static ObjArm drop_item_when_hit(uint8_t slot, uint16_t limits, uint16_t items)
+ObjArm drop_item_when_hit(uint8_t slot, uint16_t limits, uint16_t items)
 {
     ObjArm r = { 0 };
     uint8_t found_slot;
@@ -93,7 +93,7 @@ Ended drop_item_when_hit_exit_shim(ObjArm r)
 }
 
 /* Plays the sound the object's f31f8 asks for (its bits 5 to 7, minus one, index the table), if it is on the first screen. */
-static ObjArm sound_from_hit_code(uint8_t slot, uint16_t table)
+ObjArm sound_from_hit_code(uint8_t slot, uint16_t table)
 {
     ObjArm r = { 0 };
     uint8_t code = RD8(OBJ->f31f8[slot]);

@@ -54,8 +54,8 @@ ComputeHitboxPositions_at0:
 
 ; @routine 05BF:725 ComputeHitboxPositionsLong
 ; @run 6B:9725
-; WHAT IT DOES: ComputeHitboxPositions, as the stages whose overlay runs it at $9725 have it.
-; HOW: The same bytes at another run address. Its C is ComputeHitboxPositions.
+; WHAT IT DOES: ComputeHitboxPositions in 05BF's group of stage overlays: the hitbox centres of the first sixteen objects.
+; HOW: The same instructions as ComputeHitboxPositions.
 ; WAITS: no.
 ; Entry: nothing. Exit: as ComputeHitboxPositions.
 ComputeHitboxPositionsLong:

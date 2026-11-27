@@ -1538,8 +1538,9 @@ static uint8_t add_decimal(uint8_t a, uint8_t b, bool *carry)
  * @routine 0519:58D CollectHearts
  * @run 70:A58D
  * WHAT IT DOES: A heart item taken: plays the sound a table at $A5B0 names for its kind less $83, adds the hearts a table at $A5B2 gives to the player's hearts (zField94, decimal, at
- * most 99), blends the stage rows (BlendStageRowsOfPlayer) and clears the item.
- * HOW: SoundCommand, a decimal add, BlendStageRowsOfPlayer, a tail jump into ClearObject.
+ * most 99), blends the stage rows (the blend at $9181) and clears the item.
+ * HOW: SoundCommand, a decimal add, the blend at $9181 (BlendStageRowsOfPlayer or 024F's group's BlendStageScoreAddRows, whichever
+ * is loaded), a tail jump into ClearObject.
  * Untraced: the carry out of the decimal add (the cap of 99, A5A5).
  * WAITS: no.
  * Entry: X object, Y the sound driver's. Exit: as BlendStageRowsOfPlayer.
@@ -1568,7 +1569,7 @@ ObjArm CollectHearts(uint8_t slot, uint8_t y_entry)
         WR8(ZP->field94, 0x99);
     }
     jsr_push(0xA5AD);
-    r.sub = obj_sub(BlendStageRowsOfPlayer(slot, r.y));
+    r.sub = obj_sub(blend_rows_of_player_loaded(slot, r.y));
     jsr_pop();
     ClearObject(slot);
     (void)y_entry;
@@ -1604,7 +1605,8 @@ void abi_CollectHearts(void)
  * @run 70:A5B4
  * WHAT IT DOES: A score item taken: plays sound $0B, adds the points a table at $A5EB gives (decimal, the two bytes zScoreAddLo and zScoreAddHi, at most 9999) for its kind less $85,
  * blends the stage rows, and the item turns into a kind $9F that waits the number of beats its first byte said ($34B8 timer) in state 0.
- * HOW: SoundCommand, a decimal add through the two bytes, BlendStageRowsOfPlayer with Y kept on the stack.
+ * HOW: SoundCommand, a decimal add through the two bytes, the blend at $9181 (BlendStageRowsOfPlayer or 024F's group's
+ * BlendStageScoreAddRows, whichever is loaded) with Y kept on the stack.
  * Untraced: the carry out of the add (the cap of 9999, A5D4).
  * WAITS: no.
  * Entry: X object, Y the sound driver's. Exit: A $9F, N set, Z clear; C and V as the blend left them.
@@ -1643,7 +1645,7 @@ ObjArm CollectScoreItem(uint8_t slot, uint8_t y_entry)
     }
     push8(r.y);
     jsr_push(0xA5DE);
-    r.sub = obj_sub(BlendStageRowsOfPlayer(slot, r.y));
+    r.sub = obj_sub(blend_rows_of_player_loaded(slot, r.y));
     jsr_pop();
     r.fourth = pull8();
     WR8(OBJ->life_timer[slot], r.fourth);

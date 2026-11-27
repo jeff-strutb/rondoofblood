@@ -181,7 +181,7 @@ HitReportHandler:
 ; @routine 05BF:70A HitTestAllObjectsLong
 ; @run 6B:970A
 ; WHAT IT DOES: HitTestAllObjects for the other stage group, whose hit test is at $9778.
-; HOW: The same code at other run addresses, calling HitTestObjectLong.
+; HOW: The same code at other run addresses, calling ComputeHitboxPositionsLong and HitTestObjectLong.
 ; WAITS: no.
 ; Entry, exit: as HitTestAllObjects.
 HitTestAllObjectsLong:

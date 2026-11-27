@@ -2,6 +2,8 @@
 ; @run 6B:9151
 ; WHAT IT DOES: Blends the stock number into the stage: with no blend running, its rows from step 0; with one running, marks the shown stock as done when the game is at mode 1.
 ; HOW: Saves and maps the stage banks, then by the blend flag either blends the stock's two rows with BlendStageRowPair or checks the stock shown against the stock; RestoreStageBanks ends it.
+; The same instructions as 05BF's group's BlendStockRows, calling the bank routines at $933F and $9354: its body,
+; blend_stock_rows_with (stock_display.c), with this group's bank routines.
 ; WAITS: no.
 ; Entry: X kept on the stack, Y the second row of the first blend. Exit: A the bank restored, N and Z from it, C and V as the steps left them, Y 5 once a blend ran,
 ; else kept; X kept.
@@ -34,6 +36,8 @@ BlendStageStockRows_at1:
 ; @run 6B:9181
 ; WHAT IT DOES: Blends the two bytes of the score being added into the stage (steps 3 and 5), when no blend is running.
 ; HOW: Saves and maps the stage banks, and when no blend is running calls BlendStageRowPair for each of the two bytes of the added score; RestoreStageBanks ends it.
+; The same instructions as 05BF's group's BlendStageRowsOfPlayer, calling the bank routines at $933F and $9354: its body,
+; blend_rows_of_player_with (stage_blend_long.c), with this group's bank routines.
 ; WAITS: no.
 ; Entry: X kept on the stack, Y the second row of the first blend. Exit: A the bank restored, N and Z from it, C and V as the steps left them, Y 5 once a blend ran,
 ; else kept; X kept.
@@ -124,8 +128,8 @@ BlendStageScoreRows_at0:
 
 ; @routine 05BF:1AC BlendStageScoreRowsLong
 ; @run 6B:91AC
-; WHAT IT DOES: The same code for the other stage group, which keeps its bank routines at $9651 and $9666.
-; HOW: The same code, calling the bank routines at their other run addresses.
+; WHAT IT DOES: BlendStageScoreRows in 05BF's group of stage overlays, which keeps its bank routines at $9651 and $9666.
+; HOW: The same instructions, calling SaveAndMapStageBanksLong and RestoreStageBanksLong.
 ; WAITS: no.
 ; Entry: X kept on the stack. Exit: A the bank restored, N and Z from it, C and V as the steps left them, Y 5 once a blend ran,
 ; else kept; X kept.

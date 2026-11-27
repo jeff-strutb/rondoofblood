@@ -120,7 +120,7 @@ void abi_SetGaugeAddress(void)
  * @routine 05BE:4B7 GaugeStepUp
  * @run 6B:8CB7
  * WHAT IT DOES: Grows the gauge one: its value up by one, its cell found, and its bits set.
- * HOW: SetGaugeAddress, then OrVramData with $F0 and 0.
+ * HOW: SetGaugeAddress, then OrVramDataLong with $F0 and 0.
  * Ten stage overlays hold this code.
  * WAITS: no.
  * Entry: nothing. Exit: A the high byte written, N and Z from it, X $F0, Y 0.
@@ -140,7 +140,7 @@ StageExit GaugeStepUp(void)
     end.y = UP_Y;
     end.set |= EXIT_X | EXIT_Y;
     jsr_push(UP_RETURN);
-    a = OrVramData(UP_X, UP_Y);
+    a = OrVramDataLong(UP_X, UP_Y);
     jsr_pop();
     end.a = a;
     end.nz = a;
@@ -159,7 +159,7 @@ static StageExit gauge_timer_check(StageExit held);
  * @run 6B:8C8B
  * WHAT IT DOES: Moves the gauge one step towards its target (slot 16 of the f32a8 column): up when the target
  * is above the value, down when below, nothing when equal.
- * HOW: Compares the target with Field2742; GaugeStepUp for up; for down SetGaugeAddress, AndVramData with
+ * HOW: Compares the target with Field2742; GaugeStepUp for up; for down SetGaugeAddress, AndVramDataLong with
  * $0F and $FF and the value down by one. A negative target is held, the timer check run and the
  * target put back (untraced).
  * Ten stage overlays hold this code.
@@ -208,7 +208,7 @@ StageExit GaugeStep(void)
     jsr_pop();
     end = merge_exit(end, address);
     jsr_push(DOWN_RETURN);
-    a = AndVramData(DOWN_X, DOWN_Y);
+    a = AndVramDataLong(DOWN_X, DOWN_Y);
     jsr_pop();
     end.a = a;
     end.x = DOWN_X;

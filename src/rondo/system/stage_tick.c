@@ -244,15 +244,15 @@ StageExit StepStageFrameBody(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar
         }
     } else {
         jsr_push(layout->stock_return);
-        step = BlendStageStockRows(x, y);
+        step = blend_stock_step_loaded(x, y);
         jsr_pop();
         apply_step(step, &y);
         jsr_push(layout->add_return);
-        step = BlendStageScoreAddRows(x, y);
+        step = blend_score_add_step_loaded(x, y);
         jsr_pop();
         apply_step(step, &y);
         jsr_push(layout->score_return);
-        step = BlendStageScoreRows(x);
+        step = blend_score_rows_loaded(x);
         jsr_pop();
         apply_step(step, &y);
         v = step.v;
@@ -290,7 +290,7 @@ StageExit StepStageFrameBody(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar
         x = 0xFF;
         y = 0xF0;
         jsr_push(layout->and_return);
-        AndVramData(x, y);
+        and_vram_data_loaded(x, y);
         jsr_pop();
         DEC8(ZP->field99);
     } else {
@@ -308,7 +308,7 @@ StageExit StepStageFrameBody(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar
         x = 0;
         y = 0x0F;
         jsr_push(layout->or_return);
-        OrVramData(x, y);
+        or_vram_data_loaded(x, y);
         jsr_pop();
     }
     if (check_sound && (RD8(ZP->field8e) & FLAG_SOUND_DONE) != 0) {
@@ -318,7 +318,7 @@ StageExit StepStageFrameBody(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar
         jsr_pop();
     }
     jsr_push(layout->map_return);
-    map = MapStageBanks();
+    map = map_stage_banks_loaded();
     jsr_pop();
     WR8(STAGEVARS->blend_on[0], 0);
     a = RD8(ZP->field94);
@@ -395,7 +395,9 @@ void abi_StepStageFrame(void)
  * @stop 8C19
  * WHAT IT DOES: StepStageFrame for the other stage group, whose VRAM routines are at $96A4 and
  * $96B3 and whose bank mapping is at $965B.
- * HOW: The same code, calling the Long routines.
+ * HOW: The same body as StepStageFrame with SetVramAddressesLong for the health bar; its blends at $9151, $9181
+ * and $91AC, the VRAM masks and the bank mapping go to the copies loaded there (stage_copies.c), which are 05BF's
+ * group's wherever these bytes are.
  * WAITS: no.
  * Entry, exit: as StepStageFrame.
  */

@@ -329,7 +329,8 @@ enum { LAST_OBJECT = 0x57, FIRST_OBJECT = 0x10 };
  * Works out the hitbox positions, then tests each object from the last down to $10, clearing its
  * hit-taken byte and counting its timer down when the timer is not zero.
  */
-static StageExit hit_test_all(uint8_t entry_x, StageExit (*test)(uint8_t x), uint16_t compute_return, uint16_t test_return)
+static StageExit hit_test_all(uint8_t entry_x, HitboxEnd (*compute)(void), StageExit (*test)(uint8_t x), uint16_t compute_return,
+                              uint16_t test_return)
 {
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     StageExit step;
@@ -341,7 +342,7 @@ static StageExit hit_test_all(uint8_t entry_x, StageExit (*test)(uint8_t x), uin
 
     push8(entry_x);
     jsr_push(compute_return);
-    boxes = ComputeHitboxPositions();
+    boxes = compute();
     jsr_pop();
     a = boxes.a;
     if (boxes.v_seen) {
@@ -400,7 +401,7 @@ static StageExit hit_test_all(uint8_t entry_x, StageExit (*test)(uint8_t x), uin
  */
 StageExit HitTestAllObjects(uint8_t x)
 {
-    return hit_test_all(x, HitTestObject, 0x93FC, 0x9401);
+    return hit_test_all(x, ComputeHitboxPositions, HitTestObject, 0x93FC, 0x9401);
 }
 
 void abi_HitTestAllObjects(void)
@@ -412,13 +413,13 @@ void abi_HitTestAllObjects(void)
  * @routine 05BF:70A HitTestAllObjectsLong
  * @run 6B:970A
  * WHAT IT DOES: HitTestAllObjects for the other stage group, whose hit test is at $9778.
- * HOW: The same code at other run addresses, calling HitTestObjectLong.
+ * HOW: The same code at other run addresses, calling ComputeHitboxPositionsLong and HitTestObjectLong.
  * WAITS: no.
  * Entry, exit: as HitTestAllObjects.
  */
 StageExit HitTestAllObjectsLong(uint8_t x)
 {
-    return hit_test_all(x, HitTestObjectLong, 0x970E, 0x9713);
+    return hit_test_all(x, ComputeHitboxPositionsLong, HitTestObjectLong, 0x970E, 0x9713);
 }
 
 void abi_HitTestAllObjectsLong(void)

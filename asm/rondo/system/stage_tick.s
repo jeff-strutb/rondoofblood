@@ -168,7 +168,9 @@ SetHealthBarAddress_at0:
 ; @stop 8C19
 ; WHAT IT DOES: StepStageFrame for the other stage group, whose VRAM routines are at $96A4 and
 ; $96B3 and whose bank mapping is at $965B.
-; HOW: The same code, calling the Long routines.
+; HOW: The same body as StepStageFrame with SetVramAddressesLong for the health bar; its blends at $9151, $9181
+; and $91AC, the VRAM masks and the bank mapping go to the copies loaded there (stage_copies.c), which are 05BF's
+; group's wherever these bytes are.
 ; WAITS: no.
 ; Entry, exit: as StepStageFrame.
 StepStageFrameLong:

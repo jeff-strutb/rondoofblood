@@ -139,13 +139,13 @@ static StageExit sequence_odd_step(uint8_t step, uint8_t x, uint8_t y)
         jsr_push(CLEAR_RETURN);
         ClearStageStateBytes();
         jsr_pop();
-        return exit_of_step(BlendStageScoreRows(x));
+        return exit_of_step(blend_score_rows_loaded(x));
     }
     WR8(STAGEVARS->blend_on[1], 0);
     jsr_push(STOCK_RETURN);
-    stock = BlendStageStockRows(x, y);
+    stock = blend_stock_step_loaded(x, y);
     jsr_pop();
-    return exit_of_step(BlendStageScoreAddRows(x, stock.y_set ? ROW_ENTRIES : y));
+    return exit_of_step(blend_score_add_step_loaded(x, stock.y_set ? ROW_ENTRIES : y));
 }
 
 /* An even step: starts the step's two scripts, sets the sprite frame, and starts the step's list if it has one. */

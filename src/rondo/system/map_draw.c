@@ -14,7 +14,7 @@
  * WAITS: no.
  * Entry: X low mask, Y high mask. Exit: A the high byte written, N and Z from it. X and Y kept.
  */
-uint8_t AndVramData(uint8_t lo_mask, uint8_t hi_mask)
+static uint8_t and_vram_data(uint8_t lo_mask, uint8_t hi_mask)
 {
     uint8_t byte;
 
@@ -25,6 +25,11 @@ uint8_t AndVramData(uint8_t lo_mask, uint8_t hi_mask)
     byte = (uint8_t)(hi_mask & byte);
     WR8(VDC->data_hi, byte);
     return byte;
+}
+
+uint8_t AndVramData(uint8_t lo_mask, uint8_t hi_mask)
+{
+    return and_vram_data(lo_mask, hi_mask);
 }
 
 void abi_AndVramData(void)
@@ -42,7 +47,7 @@ void abi_AndVramData(void)
  * WAITS: no.
  * Entry: X low mask, Y high mask. Exit: A the high byte written, N and Z from it. X and Y kept.
  */
-uint8_t OrVramData(uint8_t lo_mask, uint8_t hi_mask)
+static uint8_t or_vram_data(uint8_t lo_mask, uint8_t hi_mask)
 {
     uint8_t byte;
 
@@ -55,6 +60,11 @@ uint8_t OrVramData(uint8_t lo_mask, uint8_t hi_mask)
     return byte;
 }
 
+uint8_t OrVramData(uint8_t lo_mask, uint8_t hi_mask)
+{
+    return or_vram_data(lo_mask, hi_mask);
+}
+
 void abi_OrVramData(void)
 {
     cpu.a = OrVramData(cpu.x, cpu.y);
@@ -64,27 +74,39 @@ void abi_OrVramData(void)
 /*
  * @routine 05BF:6A4 AndVramDataLong
  * @run 6B:96A4
- * WHAT IT DOES: AndVramData, as the stages whose overlay runs it at $96A4 have it.
- * HOW: The same bytes as AndVramData at another run address. Its C is AndVramData.
+ * WHAT IT DOES: AndVramData in 05BF's group of stage overlays: ANDs the VRAM word under the VDC's address with a mask in place.
+ * HOW: The same instructions as AndVramData.
  * WAITS: no.
  * Entry: X low mask, Y high mask. Exit: as AndVramData.
  */
+uint8_t AndVramDataLong(uint8_t lo_mask, uint8_t hi_mask)
+{
+    return and_vram_data(lo_mask, hi_mask);
+}
+
 void abi_AndVramDataLong(void)
 {
-    abi_AndVramData();
+    cpu.a = AndVramDataLong(cpu.x, cpu.y);
+    abi_nz(cpu.a);
 }
 
 /*
  * @routine 05BF:6B3 OrVramDataLong
  * @run 6B:96B3
- * WHAT IT DOES: OrVramData, as the stages whose overlay runs it at $96B3 have it.
- * HOW: The same bytes as OrVramData at another run address. Its C is OrVramData.
+ * WHAT IT DOES: OrVramData in 05BF's group of stage overlays: ORs the VRAM word under the VDC's address with a mask in place.
+ * HOW: The same instructions as OrVramData.
  * WAITS: no.
  * Entry: X low mask, Y high mask. Exit: as OrVramData.
  */
+uint8_t OrVramDataLong(uint8_t lo_mask, uint8_t hi_mask)
+{
+    return or_vram_data(lo_mask, hi_mask);
+}
+
 void abi_OrVramDataLong(void)
 {
-    abi_OrVramData();
+    cpu.a = OrVramDataLong(cpu.x, cpu.y);
+    abi_nz(cpu.a);
 }
 
 /* Both VRAM addresses, read then write, set to one word; the data port selected. */

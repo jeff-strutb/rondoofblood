@@ -80,9 +80,9 @@ SpawnStageObject:
 
 ; @routine 05BF:651 SaveAndMapStageBanksLong
 ; @run 6B:9651
-; WHAT IT DOES: SaveAndMapStageBanks, as the stages whose overlay runs it at $9651 have it.
-; HOW: The same bytes as SaveAndMapStageBanks at another run address; runs on into
-; MapStageBanksLong. Its C is SaveAndMapStageBanks.
+; WHAT IT DOES: SaveAndMapStageBanks in the thirteen stage overlays that keep their stage helpers $312 higher (05BF's
+; group): keeps MPR5 and MPR6 and maps the stage's two banks there.
+; HOW: The same instructions as SaveAndMapStageBanks; it runs on into MapStageBanksLong at $965B.
 ; WAITS: no.
 ; Entry: nothing. Exit: as MapStageBanks.
 SaveAndMapStageBanksLong:
@@ -93,8 +93,8 @@ SaveAndMapStageBanksLong:
 
 ; @routine 05BF:65B MapStageBanksLong
 ; @run 6B:965B
-; WHAT IT DOES: MapStageBanks, as the stages whose overlay runs it at $965B have it.
-; HOW: The same bytes as MapStageBanks at another run address. Its C is MapStageBanks.
+; WHAT IT DOES: MapStageBanks in 05BF's group of stage overlays: maps the stage's two Super RAM banks into MPR5 and MPR6.
+; HOW: The same instructions as MapStageBanks.
 ; WAITS: no.
 ; Entry: nothing. Exit: as MapStageBanks.
 MapStageBanksLong:
@@ -108,8 +108,8 @@ MapStageBanksLong:
 
 ; @routine 05BF:666 RestoreStageBanksLong
 ; @run 6B:9666
-; WHAT IT DOES: RestoreStageBanks, as the stages whose overlay runs it at $9666 have it.
-; HOW: The same bytes as RestoreStageBanks at another run address. Its C is RestoreStageBanks.
+; WHAT IT DOES: RestoreStageBanks in 05BF's group of stage overlays: puts back the banks SaveAndMapStageBanksLong kept.
+; HOW: The same instructions as RestoreStageBanks.
 ; WAITS: no.
 ; Entry: nothing. Exit: as RestoreStageBanks.
 RestoreStageBanksLong:

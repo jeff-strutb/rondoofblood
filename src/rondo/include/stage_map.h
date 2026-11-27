@@ -14,11 +14,19 @@ void ClearStageStateBytes(void);
 Sum SaveAndMapStageBanks(void);  /* the add that mapped the second bank: C and V at exit */
 Sum MapStageBanks(void);
 uint8_t RestoreStageBanks(void);
+Sum SaveAndMapStageBanksLong(void);
+Sum MapStageBanksLong(void);
+uint8_t RestoreStageBanksLong(void);
+/* The bank routines a group of stage overlays' blends call: 024F's at $933F and $9354, 05BF's at $9651 and $9666. */
+typedef struct { Sum (*save_and_map)(void); uint8_t (*restore)(void); } StageBanks;
+extern const StageBanks stage_banks_024f;
+extern const StageBanks stage_banks_05bf;
 
 /* object/hitbox_position.c: A at exit, the last value the loop had in A. */
 /* A, and the overflow of the last add when one was made; X $10, N 0, Z 1, C 1 follow. */
 typedef struct { uint8_t a; bool v_seen; bool v; } HitboxEnd;
 HitboxEnd ComputeHitboxPositions(void);
+HitboxEnd ComputeHitboxPositionsLong(void);
 
 /* system/map_draw.c: the VDC data port's word, masked in place; the high byte read back and returned. */
 void SetVramAddresses(uint8_t lo, uint8_t hi);
@@ -34,6 +42,8 @@ typedef struct { uint8_t a; uint8_t x; bool y_set; bool v_set; bool v; } RowChan
 RowChangesExit BlendStageRowChanges(uint8_t x, uint8_t new_byte);
 uint8_t AndVramData(uint8_t lo_mask, uint8_t hi_mask);
 uint8_t OrVramData(uint8_t lo_mask, uint8_t hi_mask);
+uint8_t AndVramDataLong(uint8_t lo_mask, uint8_t hi_mask);
+uint8_t OrVramDataLong(uint8_t lo_mask, uint8_t hi_mask);
 
 /* system/stage_mask.c: x the row's base offset in the mask buffer; y is kept on the stack and handed back. */
 /* The last cell written and the last offset add: A, C and V at exit. */
@@ -199,10 +209,16 @@ StageSpawnEnd SpawnStageObjectsRows34Long(void);
 
 /* system/stage_blend_steps.c: A the restored bank, C and V as left, Y 5 once a blend ran. */
 typedef struct { uint8_t a; bool c; bool v; bool y_set; } BlendStepEnd;
-BlendStepEnd BlendStageStockRows(uint8_t x, uint8_t y);
-BlendStepEnd BlendStageScoreAddRows(uint8_t x, uint8_t y);
 BlendStepEnd BlendStageScoreRows(uint8_t x);
 BlendStepEnd BlendStageScoreRowsLong(uint8_t x);
+/* system/stage_copies.c: the copy of a stage helper resident at its address, called as the JSR there reaches it (024F's
+ * group's when 05BF's group's is not loaded). */
+BlendStepEnd blend_stock_step_loaded(uint8_t x, uint8_t y);
+BlendStepEnd blend_score_add_step_loaded(uint8_t x, uint8_t y);
+BlendStepEnd blend_score_rows_loaded(uint8_t x);
+uint8_t and_vram_data_loaded(uint8_t lo_mask, uint8_t hi_mask);
+uint8_t or_vram_data_loaded(uint8_t lo_mask, uint8_t hi_mask);
+Sum map_stage_banks_loaded(void);
 
 /* system/stage_sequence.c: the registers and flags a stage routine with several exits sets; the set mask names which; N and Z are those of nz, which a compare leaves as its difference. */
 enum { EXIT_X = 1, EXIT_Y = 2, EXIT_C = 4, EXIT_V = 8, EXIT_CPU = 16 };

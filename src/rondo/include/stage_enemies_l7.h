@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "enemy_objects.h"
 #include "common_objects.h"
+#include "stage_map.h"
 
 /* The values a contact test read and what it ended on: the player is touched (the player stands on the object) or not. */
 typedef struct {
@@ -164,6 +165,16 @@ ObjArm score_for_kind_loaded(uint8_t slot, uint8_t y);
 ObjArm drop_item_when_hit_loaded(uint8_t slot);
 ObjArm play_hit_sound_loaded(uint8_t slot);
 ObjArm BlendStockRows(uint8_t slot, uint8_t y);
+/* The stock blend at $9151 and the added score's at $9181, one body each for both groups of stage overlays, and the copy
+ * loaded there (system/stage_copies.c). */
+ObjArm blend_stock_rows_with(uint8_t slot, uint8_t y, const StageBanks *banks);
+ObjArm blend_rows_of_player_with(uint8_t slot, uint8_t y, const StageBanks *banks);
+ObjArm BlendStageStockRows(uint8_t slot, uint8_t y);
+ObjArm BlendStageScoreAddRows(uint8_t slot, uint8_t y);
+ObjArm blend_stock_rows_loaded(uint8_t slot, uint8_t y);
+ObjArm blend_rows_of_player_loaded(uint8_t slot, uint8_t y);
+BlendStepEnd blend_stock_rows_step(ObjArm r);
+BlendStepEnd blend_rows_of_player_step(ObjArm r);
 Ended blend_stock_rows_exit_shim(ObjArm r);
 ObjArm GiveExtraLife(uint8_t slot, uint8_t y);
 SoundEnd give_extra_life_exit_shim(ObjArm r);

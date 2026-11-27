@@ -109,7 +109,7 @@ void abi_SaveAndMapStageBanks(void)
  * WAITS: no.
  * Entry: nothing. Exit: A the MPR5 bank, N and Z from it. X and Y kept.
  */
-uint8_t RestoreStageBanks(void)
+static uint8_t restore_stage_banks(void)
 {
     uint8_t bank;
 
@@ -118,6 +118,11 @@ uint8_t RestoreStageBanks(void)
     bank = RD8(STAGEVARS->blend_step[1]);
     tam(MPR5, bank);
     return bank;
+}
+
+uint8_t RestoreStageBanks(void)
+{
+    return restore_stage_banks();
 }
 
 void abi_RestoreStageBanks(void)
@@ -129,42 +134,62 @@ void abi_RestoreStageBanks(void)
 /*
  * @routine 05BF:651 SaveAndMapStageBanksLong
  * @run 6B:9651
- * WHAT IT DOES: SaveAndMapStageBanks, as the stages whose overlay runs it at $9651 have it.
- * HOW: The same bytes as SaveAndMapStageBanks at another run address; runs on into
- * MapStageBanksLong. Its C is SaveAndMapStageBanks.
+ * WHAT IT DOES: SaveAndMapStageBanks in the thirteen stage overlays that keep their stage helpers $312 higher (05BF's
+ * group): keeps MPR5 and MPR6 and maps the stage's two banks there.
+ * HOW: The same instructions as SaveAndMapStageBanks; it runs on into MapStageBanksLong at $965B.
  * WAITS: no.
  * Entry: nothing. Exit: as MapStageBanks.
  */
+Sum SaveAndMapStageBanksLong(void)
+{
+    return save_and_map_stage_banks();
+}
+
 void abi_SaveAndMapStageBanksLong(void)
 {
-    abi_SaveAndMapStageBanks();
+    map_exit_shim(SaveAndMapStageBanksLong());
 }
 
 /*
  * @routine 05BF:65B MapStageBanksLong
  * @run 6B:965B
- * WHAT IT DOES: MapStageBanks, as the stages whose overlay runs it at $965B have it.
- * HOW: The same bytes as MapStageBanks at another run address. Its C is MapStageBanks.
+ * WHAT IT DOES: MapStageBanks in 05BF's group of stage overlays: maps the stage's two Super RAM banks into MPR5 and MPR6.
+ * HOW: The same instructions as MapStageBanks.
  * WAITS: no.
  * Entry: nothing. Exit: as MapStageBanks.
  */
+Sum MapStageBanksLong(void)
+{
+    return map_stage_banks();
+}
+
 void abi_MapStageBanksLong(void)
 {
-    abi_MapStageBanks();
+    map_exit_shim(MapStageBanksLong());
 }
 
 /*
  * @routine 05BF:666 RestoreStageBanksLong
  * @run 6B:9666
- * WHAT IT DOES: RestoreStageBanks, as the stages whose overlay runs it at $9666 have it.
- * HOW: The same bytes as RestoreStageBanks at another run address. Its C is RestoreStageBanks.
+ * WHAT IT DOES: RestoreStageBanks in 05BF's group of stage overlays: puts back the banks SaveAndMapStageBanksLong kept.
+ * HOW: The same instructions as RestoreStageBanks.
  * WAITS: no.
  * Entry: nothing. Exit: as RestoreStageBanks.
  */
+uint8_t RestoreStageBanksLong(void)
+{
+    return restore_stage_banks();
+}
+
 void abi_RestoreStageBanksLong(void)
 {
-    abi_RestoreStageBanks();
+    cpu.a = RestoreStageBanksLong();
+    abi_nz(cpu.a);
 }
+
+/* The bank routines each group's blends call: 024F's at $933F and $9354, 05BF's at $9651 and $9666. */
+const StageBanks stage_banks_024f = { SaveAndMapStageBanks, RestoreStageBanks };
+const StageBanks stage_banks_05bf = { SaveAndMapStageBanksLong, RestoreStageBanksLong };
 
 typedef struct { uint16_t slot, frame, kind, x_lo, y_lo; } SpawnTables;
 

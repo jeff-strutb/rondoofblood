@@ -26,7 +26,7 @@ RunStageGauge_at1:
 ; @run 6B:8C8B
 ; WHAT IT DOES: Moves the gauge one step towards its target (slot 16 of the f32a8 column): up when the target
 ; is above the value, down when below, nothing when equal.
-; HOW: Compares the target with Field2742; GaugeStepUp for up; for down SetGaugeAddress, AndVramData with
+; HOW: Compares the target with Field2742; GaugeStepUp for up; for down SetGaugeAddress, AndVramDataLong with
 ; $0F and $FF and the value down by one. A negative target is held, the timer check run and the
 ; target put back (untraced).
 ; Ten stage overlays hold this code.
@@ -58,7 +58,7 @@ GaugeStep_at0:
 ; @routine 05BE:4B7 GaugeStepUp
 ; @run 6B:8CB7
 ; WHAT IT DOES: Grows the gauge one: its value up by one, its cell found, and its bits set.
-; HOW: SetGaugeAddress, then OrVramData with $F0 and 0.
+; HOW: SetGaugeAddress, then OrVramDataLong with $F0 and 0.
 ; Ten stage overlays hold this code.
 ; WAITS: no.
 ; Entry: nothing. Exit: A the high byte written, N and Z from it, X $F0, Y 0.

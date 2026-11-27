@@ -12,20 +12,22 @@
  * @run 6B:9181
  * WHAT IT DOES: Maps the stage's banks and, unless the byte at $366F (StageVars blend_on[1]) is set, clears the blend step $366E and blends the two row pairs the bytes zScoreAddLo and zScoreAddHi name
  * (steps 3 and 5); then puts the banks back.
- * HOW: SaveAndMapStageBanksLong, BlendStageRowPair twice with X pushed around them, a tail jump into RestoreStageBanksLong.
+ * HOW: SaveAndMapStageBanksLong, BlendStageRowPair twice with X pushed around them, a tail jump into RestoreStageBanksLong. The
+ * body is blend_rows_of_player_with, which 024F's group's copy at the same address (BlendStageScoreAddRows) runs with its bank
+ * routines at $933F and $9354.
  * WAITS: no.
  * Entry: X kept, Y the second row of the first blend. Exit: A the bank restored, N and Z from it; C and V as the last blend or the bank add left them.
  */
 /* The arms BlendStageRowsOfPlayer ends on. */
 enum { BR_BLEND_OFF, BR_BLENDED };
 
-ObjArm BlendStageRowsOfPlayer(uint8_t slot, uint8_t y)
+ObjArm blend_rows_of_player_with(uint8_t slot, uint8_t y, const StageBanks *banks)
 {
     ObjArm r = { 0 };
     TileRowsExit blend;
 
     jsr_push(0x9184);
-    r.sum = SaveAndMapStageBanks();
+    r.sum = banks->save_and_map();
     jsr_pop();
     r.first = RD8(STAGEVARS->blend_on[1]);
     r.arm = r.first == 0 ? BR_BLENDED : BR_BLEND_OFF;
@@ -46,8 +48,13 @@ ObjArm BlendStageRowsOfPlayer(uint8_t slot, uint8_t y)
         r.other = blend.v;
         r.sixth = pull8();
     }
-    r.seventh = RestoreStageBanks();
+    r.seventh = banks->restore();
     return r;
+}
+
+ObjArm BlendStageRowsOfPlayer(uint8_t slot, uint8_t y)
+{
+    return blend_rows_of_player_with(slot, y, &stage_banks_05bf);
 }
 
 /* BlendStageRowsOfPlayer's exit: A the bank restored, N and Z from it; C and V as the last blend or the bank add left them. */
@@ -65,6 +72,24 @@ Ended blend_stage_rows_of_player_exit_shim(ObjArm r)
         e = ended_then(e, ended_nz(r.sixth));
     }
     return ended_then(e, ended_load(r.seventh));
+}
+
+/* BlendStageRowsOfPlayer's end as a step: A the bank restored; with a blend, C 1 and V the second pair's; with none, C and V
+ * the bank add's. */
+BlendStepEnd blend_rows_of_player_step(ObjArm r)
+{
+    BlendStepEnd step;
+
+    step.a = r.seventh;
+    step.y_set = r.arm == BR_BLENDED;
+    if (r.arm == BR_BLENDED) {
+        step.c = true;
+        step.v = r.other;
+    } else {
+        step.c = r.sum.carry;
+        step.v = r.sum.overflow;
+    }
+    return step;
 }
 
 void abi_BlendStageRowsOfPlayer(void)

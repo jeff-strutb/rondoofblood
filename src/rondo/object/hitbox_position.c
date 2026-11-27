@@ -86,10 +86,8 @@ HitboxEnd ComputeHitboxPositions(void)
     return end;
 }
 
-void abi_ComputeHitboxPositions(void)
+static void hitbox_positions_exit_shim(HitboxEnd end)
 {
-    HitboxEnd end = ComputeHitboxPositions();
-
     cpu.a = end.a;
     if (end.v_seen) {
         abi_flag(P_V, end.v);
@@ -100,15 +98,30 @@ void abi_ComputeHitboxPositions(void)
     abi_flag(P_C, true);
 }
 
+void abi_ComputeHitboxPositions(void)
+{
+    hitbox_positions_exit_shim(ComputeHitboxPositions());
+}
+
 /*
  * @routine 05BF:725 ComputeHitboxPositionsLong
  * @run 6B:9725
- * WHAT IT DOES: ComputeHitboxPositions, as the stages whose overlay runs it at $9725 have it.
- * HOW: The same bytes at another run address. Its C is ComputeHitboxPositions.
+ * WHAT IT DOES: ComputeHitboxPositions in 05BF's group of stage overlays: the hitbox centres of the first sixteen objects.
+ * HOW: The same instructions as ComputeHitboxPositions.
  * WAITS: no.
  * Entry: nothing. Exit: as ComputeHitboxPositions.
  */
+HitboxEnd ComputeHitboxPositionsLong(void)
+{
+    HitboxEnd end;
+
+    end.v_seen = false;
+    end.v = false;
+    end.a = hitbox_loop(&end.v_seen, &end.v);
+    return end;
+}
+
 void abi_ComputeHitboxPositionsLong(void)
 {
-    abi_ComputeHitboxPositions();
+    hitbox_positions_exit_shim(ComputeHitboxPositionsLong());
 }

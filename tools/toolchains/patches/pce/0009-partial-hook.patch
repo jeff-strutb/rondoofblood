@@ -1,0 +1,60 @@
+diff --git a/mednafen/pce/huc6280.cpp b/mednafen/pce/huc6280.cpp
+--- a/mednafen/pce/huc6280.cpp
++++ b/mednafen/pce/huc6280.cpp
+@@ -641,6 +641,14 @@ NO_INLINE void HuC6280::RunSub(void)
+ 		{
+ 			int owed = rondo_exec_hook(PC);
+ 
++			if(owed < 0)
++			{
++				// The C parked where the original's CPU ended a partial run, owing no
++				// clocks: the run ends here, sampling no interrupt (as when parked).
++				IRQSample = 0;
++				IFlagSample = I_FLAG;
++				continue;
++			}
+ 			if(owed)
+ 			{
+ 				// The C ran in the routine's place: charge what the routine
+diff --git a/mednafen/pce/huc6280.h b/mednafen/pce/huc6280.h
+--- a/mednafen/pce/huc6280.h
++++ b/mednafen/pce/huc6280.h
+@@ -14,7 +14,9 @@ extern int rondo_kind;
+ // The logical address of the access the read or write hook is being called for; 0xFFFF for ST0-ST2.
+ extern uint32 rondo_logical_cur;
+ // For the oracles. Before each instruction: nonzero means the C ran in its
+-// place, and that many master clocks are owed. Before each write: the byte.
++// place, and that many master clocks are owed (negative: none, and the CPU's
++// partial run ends there if the frame's timing asked for it). Before each
++// write: the byte.
+ typedef int (*rondo_exec_t)(uint32 pc);
+ extern rondo_exec_t rondo_exec_hook;
+ extern rondo_wr_t rondo_wr_pre_hook;
+diff --git a/mednafen/pce/vce.cpp b/mednafen/pce/vce.cpp
+--- a/mednafen/pce/vce.cpp
++++ b/mednafen/pce/vce.cpp
+@@ -32,6 +32,14 @@
+ #include <math.h>
+ #include <mednafen/settings.h>
+ 
++// The oracles: called where each partial run of the CPU ends (scanline 123 and the frame's end),
++// before the CD unit is brought up to date there. No effect on emulation.
++extern "C" { void (*rondo_partial_hook)(int frame_done) = NULL; }
++extern "C" __attribute__((visibility("default"))) void rondo_set_partial_hook(void (*hook)(int frame_done))
++{
++	rondo_partial_hook = hook;
++}
++
+ 
+ vce_resolution_t vce_resolution;
+ 
+@@ -346,6 +354,9 @@ bool VCE::RunPartial(void)
+ 		}
+ 	}
+ 
++	if(rondo_partial_hook)
++		rondo_partial_hook(FrameDone);
++
+ 	Update(HuCPU.Timestamp());
+ 
+ 	return(FrameDone);

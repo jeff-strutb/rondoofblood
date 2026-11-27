@@ -162,6 +162,14 @@ entry S where the original made no such jump: routine, entry S, the C's S and th
 addr pc s val clock` (types: 0 R, 1 W, 2 ROMR, 3 HWR, 4 HWW, 5 RTPULL, 6 STATE, 7 OPEN, 8 CLOSE, 9 CALL, 10 RET, 11 INT, 12 IRET, 13 FRAME); in A5 the
 number is the order the calls are judged in (close order for nested calls), in the hybrid the order they are swapped in.
 
+Partial runs. The core ends a run of its CPU twice a frame, at scanline 123 and at the frame's end, and brings the CD unit up to date
+there; the unit starts a DMA its port ($180B) asked for only when brought up to date, so where a run ends decides when ADPCM data
+starts to move. The record marks each mid-frame end made with a call open (event 17, PART, with its clock; the hybrid keeps these apart from the
+events it matches). Where the C is running at that clock, the hybrid parks it there, or stops the clocks the hook owes the core there and
+pays the rest at the next hook, so its core ends the run where the original's did. `RONDO_DIAG_PART=1` (the hybrid) prints `PART` for
+each run the core ended at another clock than the original (the C, whether parked, and the last pace) and `PARTPACE` for a pace that
+crossed one it could not park at.
+
 The script's unit call: `call ADDR|NAME [A=hh] [X=hh] [Y=hh] [P=hh] [M=aaaa:hh,...] [MPRn=hh ...]`. `MPRn=hh` (n 2 to 6) maps bank hh at
 MPRn for the call only, before its entry is checked for residency, and puts the old bank back when the call returns to its mark; the same in
 the record, A5 and the hybrid, and neither change is logged as a mapping change of the program.

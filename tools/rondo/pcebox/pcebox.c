@@ -96,6 +96,7 @@ void check_wr_pre(uint32_t phys, uint8_t v);
 void check_irq(void);
 int check_exec(uint32_t pc);
 void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsigned h);
+void check_partial(int frame_done);
 static int check_mode;
 static const char *check_file, *check_user;
 
@@ -771,6 +772,7 @@ int main(int argc, char **argv)
                 (void *)check_rd, NULL, (void *)check_irq);
             ((void (*)(void *, void *))sym(lib, "rondo_set_check_hooks"))(
                 (void *)check_exec, (void *)check_wr_pre);
+            ((void (*)(void (*)(int)))sym(lib, "rondo_set_partial_hook"))(check_partial);
         } else {
             /* A traced run keeps the trace's read and write hooks; the oracles' exec hook only
              * serves the script's unit calls. */

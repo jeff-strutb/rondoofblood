@@ -86,7 +86,9 @@ enum { MODE_OFF, MODE_A5, MODE_RECORD, MODE_HYBRID };
 enum {
     EV_R, EV_W, EV_ROMR, EV_HWR, EV_HWW, EV_RTPULL, EV_STATE,
     EV_OPEN, EV_CLOSE, EV_CALL, EV_RET, EV_INT, EV_IRET, EV_FRAME, EV_END,
-    EV_UBEGIN, EV_UEND          /* the script's unit call: what the harness and the called routine do, between the two */
+    EV_UBEGIN, EV_UEND,         /* the script's unit call: what the harness and the called routine do, between the two */
+    EV_PART                     /* the record: the core ended a partial run of its CPU mid-frame (scanline 123) with a call
+                                 * open, at this clock. The hybrid keeps it apart from the window (pq), never matches it */
 };
 enum { K_JSR, K_IRQ, K_JMP };          /* OPEN, CALL: how the entry was made */
 enum { CL_OK, CL_DROP, CL_LEFT, CL_END };   /* CLOSE: how it ended; CL_END: the script ended with the call open (the record's closing flush, not a hand-over) */
@@ -280,6 +282,29 @@ static void store_push(const Ev *e)
     win[wn++] = *e;
 }
 
+/*
+ * The record's partial runs ended mid-frame with a call open (EV_PART), by clock, in order. The core brings the CD
+ * unit up to date where a partial run ends, and the unit starts a DMA its port asked for only when it is brought up to
+ * date: so the hybrid's core must end its partial runs where the original's did. While the C runs inside the exec hook
+ * the core cannot end one (it ends when the hook returns), so the C parks at that clock (partial_pass) instead.
+ */
+static uint64_t *pq;
+static uint64_t pq_head, pq_tail, pq_cap;
+static unsigned long hy_partials;          /* the partial runs the hybrid's core has ended */
+
+static void pq_push(uint64_t clock)
+{
+    if (pq_tail == pq_cap) {
+        pq_cap = pq_cap ? pq_cap * 2 : 1024;
+        pq = realloc(pq, pq_cap * sizeof *pq);
+        if (!pq) {
+            fprintf(stderr, "check: out of memory for the partial runs\n");
+            exit(5);
+        }
+    }
+    pq[pq_tail++] = clock;
+}
+
 /* Reads one event from the record's stream into the window. */
 static void frame_wrote(uint32_t phys);
 
@@ -319,6 +344,10 @@ static int fetch_one(void)
     }
     if (e.type == EV_UBEGIN || e.type == EV_UEND)
         unit_note(wbase + wn, e.type);
+    if (e.type == EV_PART) {
+        pq_push(e.clock);
+        return 1;
+    }
     store_push(&e);
     return 1;
 }
@@ -1083,6 +1112,7 @@ typedef struct Ctx {
     uint16_t resume_pc;
     uint8_t resume_s;
     unsigned long wait_frame;      /* parked until the core has ended this frame */
+    unsigned long wait_partial;    /* parked until the core has ended this many partial runs (partial_pass) */
     uint64_t wait_clock;
     int fs[FS_MAX], fsn;
     struct Ctx *below;
@@ -1102,9 +1132,22 @@ static uint64_t hybrid_clock_now(void) { return chk_ts_abs(); }
 /* Brings the hybrid's clock to the original's at an access of hardware. */
 static const char *pace_site = "";
 
+static void partial_pass(uint64_t at);
+static int in_c;        /* the C is running: its coroutine, not the hook's context, is on the CPU */
+
 static void pace_to(uint64_t want)
 {
     uint64_t now = hybrid_clock_now();
+
+    /* The original ended a partial run before this clock, the C running: the core ends its own there. */
+    if (in_c && top && !top->parked && pq_head < pq_tail && pq[pq_head] >= now && pq[pq_head] <= want) {
+        partial_pass(pq[pq_head]);
+        now = hybrid_clock_now();
+    }
+    else if (pq_head < pq_tail && pq[pq_head] >= now && pq[pq_head] <= want && getenv("RONDO_DIAG_PART"))
+        fprintf(stderr, "PARTPACE frame %lu site '%s' charges %llu..%llu over the original's partial end %llu: in_c %d top %s parked %d\n", cur_frame,
+                pace_site, (unsigned long long)now, (unsigned long long)want, (unsigned long long)pq[pq_head], in_c,
+                top ? rondo_tags[top->tag].name : "-", top ? top->parked : 0);
 
     if (want > now) {
         uint64_t d = want - now;
@@ -1252,6 +1295,26 @@ static void frame_pass(Span *s, uint64_t idx, unsigned pulls)
     chk_get_regs(&a, &x, &y, &st, &p, &pc);
     /* pulls: the bytes of its return address the original's RTS or RTI had taken when the frame ended. */
     chk_set_regs(cpu.a, cpu.x, cpu.y, (uint8_t)(cpu.s + pulls), (uint8_t)(cpu.p | P_I), pc);
+    c->parked = 1;
+    c->saved_cpu = cpu;
+    swapcontext(&c->uc, &main_uc);
+    cpu = c->saved_cpu;
+}
+
+/*
+ * The original's CPU ended a partial run here (mid-frame), the C running: park the C, the interrupts masked as at a
+ * frame end, until the core has charged to that clock and ended its partial run there, then go on.
+ */
+static void partial_pass(uint64_t at)
+{
+    Ctx *c = top;
+    uint8_t a, x, y, st, p;
+    uint16_t pc;
+
+    c->wait_partial = hy_partials + 1;
+    c->wait_clock = at;
+    chk_get_regs(&a, &x, &y, &st, &p, &pc);
+    chk_set_regs(cpu.a, cpu.x, cpu.y, cpu.s, (uint8_t)(cpu.p | P_I), pc);
     c->parked = 1;
     c->saved_cpu = cpu;
     swapcontext(&c->uc, &main_uc);
@@ -3266,7 +3329,9 @@ static void hy_switch_in(Ctx *c)
     cur_fs = c->fs;
     cur_fsn = &c->fsn;
     blame_tag = c->fsn ? c->fs[c->fsn - 1] : c->tag;
+    in_c = 1;
     swapcontext(&main_uc, &c->uc);
+    in_c = 0;
 }
 
 static int hy_finish(Ctx *c)
@@ -3347,9 +3412,11 @@ static int hy_after(void)
     cur_fs = NULL;
     cur_fsn = NULL;
     blame_tag = -1;
-    if (c && c->parked && c->wait_frame) {
+    if (c && c->parked && (c->wait_frame || c->wait_partial)) {
         int64_t owed = (int64_t)c->wait_clock - (int64_t)hybrid_clock_now();
 
+        if (owed <= 0 && c->wait_partial)
+            return -1;                 /* the clock is at the original's partial end already: end the run, owing nothing */
         return owed > 0 ? (int)(owed > 0x7FFFFFFF ? 0x7FFFFFFF : owed) : 1;
     }
     if (c && c->abandoned) {
@@ -3726,7 +3793,7 @@ int check_tag_run(const char *name)
 /* ------------------------------------------------------------------------------------------ */
 /* The hook before every instruction.                                                           */
 
-int check_exec(uint32_t pc);
+static int exec_step(uint32_t pc);
 static int hook_again(void);
 
 /* The interrupt the record has after a left hand-over, at the interrupted PC: compared with the core's registers and
@@ -3807,10 +3874,10 @@ static int hook_again(void)
     uint16_t pc;
 
     chk_get_regs(&a, &x, &y, &s, &p, &pc);
-    return check_exec(pc);
+    return exec_step(pc);
 }
 
-int check_exec(uint32_t pc)
+static int exec_step(uint32_t pc)
 {
     Regs r;
     int index;
@@ -3856,6 +3923,13 @@ int check_exec(uint32_t pc)
 
         if (hold.active)
             return hold_step(&r);
+        if (!unit_over_host && top && top->parked && top->wait_partial) {
+            if (hy_partials < top->wait_partial)
+                return 1;                    /* the partial run has not ended: the core goes on, running nothing */
+            top->wait_partial = 0;
+            hy_switch_in(top);
+            return hy_after();
+        }
         if (!unit_over_host && top && top->parked && top->wait_frame) {
             if (cur_frame < top->wait_frame)
                 return 1;                    /* the frame has not ended: the core goes on, running nothing */
@@ -3969,6 +4043,34 @@ static uint64_t hash_bytes(uint64_t h, const uint8_t *p, size_t n)
         h *= 0x100000001B3ull;
     }
     return h;
+}
+
+/*
+ * The core ended a partial run of its CPU (frame_done: at the frame's end, else at scanline 123). The record marks the
+ * mid-frame ones made with a call open, where the hybrid may be running C; the hybrid counts its own and drops the
+ * record's it has reached.
+ */
+void check_partial(int frame_done)
+{
+    if (mode == MODE_RECORD && !frame_done && depth) {
+        Ev e;
+
+        memset(&e, 0, sizeof e);
+        e.type = EV_PART;
+        e.clock = cur_clock();
+        log_event(&e);
+    } else if (mode == MODE_HYBRID) {
+        uint64_t now = hybrid_clock_now();
+
+        hy_partials++;
+        while (pq_head < pq_tail && pq[pq_head] <= now) {
+            if (pq[pq_head] != now && getenv("RONDO_DIAG_PART"))
+                fprintf(stderr, "PART frame %lu the original ended a partial run at %llu, the core at %llu (%s); top %s parked %d wait_frame %lu, last pace at '%s'\n",
+                        cur_frame, (unsigned long long)pq[pq_head], (unsigned long long)now, frame_done ? "frame end" : "scanline 123",
+                        top ? rondo_tags[top->tag].name : "-", top ? top->parked : 0, top ? top->wait_frame : 0, pace_site);
+            pq_head++;
+        }
+    }
 }
 
 /* RAM and the picture; the stack at and below S is not state. */
@@ -4454,4 +4556,50 @@ void check_finish(void)
                    stopped_why ? -1LL : (long long)unreached, (unsigned long long)unopened, diagnostic ? 1 : 0);
         }
     }
+}
+
+/*
+ * The exec hook. In the hybrid a hook that owes the core clocks (a C call's time, a park's wait) can owe it past a clock
+ * where the original's CPU ended a partial run, the C running (EV_PART): the core would end its own only where the
+ * charge ends. The charge stops at that clock instead, the interrupts masked so it samples none there, and the rest is
+ * paid at the next hook, in the next partial run, with the registers put back: the same clocks, the same sampling at
+ * their end, and the partial run ended where the original's was.
+ */
+static uint64_t debt_until;
+static uint8_t debt_p;
+
+int check_exec(uint32_t pc)
+{
+    int owed;
+
+    if (mode == MODE_HYBRID && debt_until) {
+        uint64_t now = hybrid_clock_now();
+        uint8_t a, x, y, s, p;
+        uint16_t rpc;
+
+        chk_get_regs(&a, &x, &y, &s, &p, &rpc);
+        chk_set_regs(a, x, y, s, debt_p, rpc);
+        owed = debt_until > now ? (int)(debt_until - now > 0x7FFFFFFF ? 0x7FFFFFFF : debt_until - now) : 0;
+        debt_until = 0;
+        if (owed)
+            return owed;
+    }
+    owed = exec_step(pc);
+    if (mode == MODE_HYBRID && owed > 0) {
+        uint64_t now = hybrid_clock_now();
+
+        while (pq_head < pq_tail && pq[pq_head] < now)
+            pq_head++;                       /* passed: the core ended that partial run (late, if not where the original did) */
+        if (pq_head < pq_tail && pq[pq_head] < now + (uint64_t)owed) {
+            uint8_t a, x, y, s, p;
+            uint16_t rpc;
+
+            chk_get_regs(&a, &x, &y, &s, &p, &rpc);
+            debt_p = p;
+            chk_set_regs(a, x, y, s, (uint8_t)(p | P_I), rpc);
+            debt_until = now + (uint64_t)owed;
+            owed = pq[pq_head] > now ? (int)(pq[pq_head] - now) : -1;
+        }
+    }
+    return owed;
 }

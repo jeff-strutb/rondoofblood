@@ -2636,6 +2636,47 @@ void abi_EndingBegin(void)
 }
 
 /*
+ * @routine 1E61:00B EndingBegin1E61
+ * @run 6B:800B
+ * WHAT IT DOES: Starts the ending of the overlay at sector 1E61: the game state is wiped, bit 3 of ProgressCharacter is set,
+ * the script runs from the address the table at $802D gives for the character, its frame counter is set to $FFFF and the
+ * state goes on.
+ * HOW: ResetGameState; an ORA into ProgressCharacter; zCharacter doubled indexes the table; the counter written;
+ * zGameSubMode counted up.
+ * WAITS: yes, through ResetGameState (the vertical blank, the display off); the stack there is this routine's return
+ * address and the call's.
+ * Entry: X the doubled sub-mode and Y kept (ResetGameState saves them). Exit: A $FF, X 0, Y the character doubled, N and
+ * Z from the new state, C bit 7 of zCharacter (the ASL).
+ */
+Exit EndingBegin1E61(uint8_t kept_x, uint8_t kept_y)
+{
+    Exit exit = { 0 };
+    uint8_t character, row;
+
+    jsr_push(0x800E);
+    ResetGameState(wait_regs_xy_shim(kept_x, kept_y));
+    jsr_pop();
+    wr8(ProgressCharacter, (uint8_t)(rd8(ProgressCharacter) | 0x08));
+    character = rd8(zCharacter);
+    row = (uint8_t)(character << 1);
+    WR8(ZP->ENDING_PTR, rd8((uint16_t)(0x802D + row)));
+    WR8(ZP->ENDING_PTR_HI, rd8((uint16_t)(0x802E + row)));
+    WR8(ZP->wait_timer3, 0xFF);
+    WR8(ZP->wait_timer4, 0xFF);
+    exit.a = 0xFF;
+    exit.x = 0;
+    exit.y = row;
+    exit.c = (character & 0x80) != 0;
+    exit.nz = INC8(ZP->game_sub_mode);
+    return exit;
+}
+
+void abi_EndingBegin1E61(void)
+{
+    exit_shim(EndingBegin1E61(cpu.x, cpu.y));
+}
+
+/*
  * @routine 010D:1E9 EndingDispatchKind
  * @run 6B:81E9
  * WHAT IT DOES: Sends an object to the handler its kind names: the table at $81F9 holds one address per kind, kind 1 first.
@@ -2858,11 +2899,18 @@ Exit EndingStep(uint8_t kept_y)
     low = rd8((uint16_t)(0x8007 + index));
     high = rd8((uint16_t)(0x8008 + index));
     target = (uint16_t)(low | (high << 8));
-    switch (target) {
-    case 0x800B: return EndingBegin(index, kept_y);
-    case 0x801F: return EndingFrame();
-    default:
-        break;
+    /* The overlay loaded at $8000 decides what its table's words are: this file's 010D, or 1E61, whose $800B begins with
+     * the character's script and whose $801F is inside that routine. */
+    if (resident_at(0x800B) == DISC(0x1E61, 0x00B)) {
+        if (target == 0x800B)
+            return EndingBegin1E61(index, kept_y);
+    } else if (resident_at(0x800B) == DISC(0x010D, 0x00B)) {
+        switch (target) {
+        case 0x800B: return EndingBegin(index, kept_y);
+        case 0x801F: return EndingFrame();
+        default:
+            break;
+        }
     }
     cpu_entry_shim(index, index, kept_y, (state & 0x80) != 0);
     call_original(target);

@@ -511,6 +511,7 @@ void EndingClearObjects(void);
 Exit EndingScriptAdvance(void);
 Exit EndingScriptStep(void);
 Exit EndingBegin(uint8_t kept_x, uint8_t kept_y);
+Exit EndingBegin1E61(uint8_t kept_x, uint8_t kept_y);
 ObjExit EndingDispatchKind(uint8_t kind, uint8_t object);
 Exit EndingObjectsStep(void);
 Exit EndingFrame(void);

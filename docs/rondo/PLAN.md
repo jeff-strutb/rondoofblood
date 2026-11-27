@@ -21,14 +21,13 @@ SNES decomps do:
 | C | the behaviour-exact decompilation: proper C, each routine's inputs to outputs exactly the original's: the RAM it leaves, the registers and flags it leaves visible, and its hardware accesses in order (A5 + A7). The C makes every work RAM read, write, push and pull where the assembly makes it, in its order and number. No value is kept in a C variable across a point where the original reads memory again (decided 2026-11-21; it replaces "the order and count of plain RAM accesses are the ASM's to keep") |
 | Enhanced | later, beside the C, never in place of it |
 
-**Proper C** means typed arguments and returns, locals, loops, structs and
-named RAM: written as C, not as assembly in C's syntax. No register file,
-flag helpers or gotos standing in for branches in a routine's body; the
-registers and flags the original leaves visible (to its caller, at a wait,
-to a callee) are set only in the routine's `abi_` wrapper, the one place
-that meets the assembly's calling convention. Register-shaped C is at most
-a stepping stone, reported as one with its count, never as decompiled
-(playbook sections 0.15 and 18). Where ASM and C disagree, the ASM and
+**Proper C** is the Aladdin standard, no stricter (the maintainer's ruling of
+2026-11-26, which replaces the stricter wording that stood here): readable,
+documented C per routine, which may keep the register file, flag helpers and
+the pushed frames its proof needs, in its body or its `abi_` wrapper, as
+Aladdin's certified C does. It may not run original code: code not yet C is
+not decompiled, reported with its count (`ledger.py`, proper_c_faults), and A7
+counts it against the script there. Where ASM and C disagree, the ASM and
 the original disc are right.
 
 **Shaped for the native target** (decided 2026-11-21, from Aladdin's

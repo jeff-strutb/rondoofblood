@@ -362,8 +362,8 @@ def main():
            + (f"; {contra[0]} routines marked unreachable were reached and fail a gate, and do not count" if contra[0]
               else "") + ".", ""] if CENSUS_COUNTED else []),
         f"**{below[0]} of {len(rows)} routines ({below[1]:,} B) fail the proper-C check: "
-        "register-shaped C, a stepping stone, not decompiled.** The check is a pattern check, so "
-        "every count above T2 is a ceiling until reviewed.",
+        "they run original code, which is not yet decompiled (the Aladdin standard).** The check is a pattern "
+        "check, so every count above T2 is a ceiling until reviewed.",
         "",
         f"| Measure | Routines | Bytes | Of the {game_whole:,} B |",
         "|---|---:|---:|---:|",

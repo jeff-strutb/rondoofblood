@@ -48,11 +48,11 @@ cache will shorten step 3 of section 5 when it lands.
 
 ## 3. The C you write
 
-It is proper C (PLAN section 1): typed arguments and returns, locals,
-loops, structs, named RAM. No register file, flag helpers or gotos in a
-routine's body. Registers and flags appear only in the routine's `abi_`
-wrapper and at the places the checker needs them: its exits, its waits and
-its calls that can be interrupted.
+It is proper C by the Aladdin standard (PLAN section 1, ruled 2026-11-26):
+readable, documented C that may keep the register file, flag helpers and
+the frames its proof needs, and runs no original code. Typed arguments,
+locals, loops, structs and named RAM are preferred where the proof allows,
+as Aladdin's strategy (section 12) advises for the native step.
 
 It also makes every access where the assembly makes it:
 

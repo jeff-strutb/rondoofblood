@@ -120,7 +120,7 @@ static int is_noise(const Ev *e) { return e->type == EV_ROMR || e->type == EV_RT
 #define LOG_START (1u << 22)
 static uint64_t log_hard_events = 1u << 24;      /* RONDO_LOG_HARD overrides, for finding a fault */
 #define LOG_HARD log_hard_events
-#define C_MAX (1u << 20)
+#define C_MAX (1u << 23)     /* the C's RAM writes one call may make, undone after it: BootStart loads the game in one call (over 1 << 20) */
 #define UNIT_MARK 0x0001
 
 enum { D_MOVED, D_EXTRA, D_MISSING, D_VALUE, D_STACK, D_STATE, D_REGS, D_CALL, D_INT, NKIND };

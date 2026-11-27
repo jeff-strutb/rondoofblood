@@ -80,6 +80,13 @@ void cli(void);                           /* CLI: interrupts on */
  */
 #define DISC(sector, offset) ((uint32_t)(sector) * 2048u + (uint32_t)(offset))
 uint32_t resident_at(uint16_t run_address);
+/*
+ * routine_at(run): the C of the routine loaded at a run address (the one resident_at names), for code that goes
+ * through a table or a vector: it goes to that routine's C, never to original code. A port fills the table when an
+ * overlay loads. run_routine is the JMP there; call_routine the JSR (ret the address after it), its frame pushed and
+ * dropped as jsr_push and jsr_pop do; call_routine_framed the JSR whose frame the C has pushed already.
+ */
+void (*routine_at(uint16_t run_address))(void);
 /* A wait the original spins on with no data access (a jump or branch to itself): returns once the
  * interrupt the original took there has run. A spin that reads memory is a loop of reads in the C. */
 void wait_interrupt(void);
@@ -117,6 +124,32 @@ static inline void jsr_pop(void)
 {
     call_return_point();
     cpu.s = (uint8_t)(cpu.s + 2);
+}
+
+static inline void run_routine(uint16_t run)
+{
+    routine_at(run)();
+}
+
+/* A JMP to run from inside another routine's bytes at from: the same as run_routine (from names the jump's site). */
+static inline void run_routine_from(uint16_t from, uint16_t run)
+{
+    (void)from;
+    routine_at(run)();
+}
+
+static inline void call_routine(uint16_t ret, uint16_t run)
+{
+    jsr_push(ret);
+    routine_at(run)();
+    jsr_pop();
+}
+
+static inline void call_routine_framed(uint16_t ret, uint16_t run)
+{
+    (void)ret;
+    routine_at(run)();
+    jsr_pop();
 }
 
 /*

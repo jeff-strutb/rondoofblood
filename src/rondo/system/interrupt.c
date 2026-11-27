@@ -383,13 +383,13 @@ void KernelStart(void)
     cpu.x = SCREEN_COLUMNS;
     cpu.y = SCREEN_ROWS;
     abi_nz(SCREEN_ROWS);
-    call_orig(0x410F, 0xE06F);                      /* ex_scrmod */
+    call_routine(0x410F, 0xE06F);                      /* ex_scrmod */
     cpu.a = 0;
-    call_orig(0x4113, 0xE06C);                      /* ex_dotmod */
+    call_routine(0x4113, 0xE06C);                      /* ex_dotmod */
     WR16_LH(BIOS->screen, 0x1000);
     cpu.a = 0x10;
     abi_nz(0x10);
-    call_orig(0x411E, 0xE0A2);                      /* ex_satclr */
+    call_routine(0x411E, 0xE0A2);                      /* ex_satclr */
     WR8(ZP->game_mode, 0);
     sum = add_bytes(0x0D, RD8(ZP->ram_base_bank), false);
     base = sum.value;
@@ -400,8 +400,8 @@ void KernelStart(void)
     abi_nz(cpu.a);
     abi_flag(P_C, sum.carry);
     abi_flag(P_V, sum.overflow);
-    call_orig(0x4132, 0xB233);                      /* SoundDrvInit */
-    call_orig(0x4135, 0x42D4);                      /* ResetDisplayControl */
+    call_routine(0x4132, 0xB233);                      /* SoundDrvInit */
+    call_routine(0x4135, 0x42D4);                      /* ResetDisplayControl */
     abi_nz(0x0D);
     jsr_push(0x413A);
     SelectVdcRegister(0x0D);
@@ -409,24 +409,24 @@ void KernelStart(void)
     WR8(VDC->data_lo, 0xE0);
     cpu.a = SCENE_MENU_A;
     abi_nz(SCENE_MENU_A);
-    call_orig(0x4144, 0x6FD8);                      /* LoadSceneScript */
+    call_routine(0x4144, 0x6FD8);                      /* LoadSceneScript */
     cpu.a = SCENE_MENU_B;
     abi_nz(SCENE_MENU_B);
-    call_orig(0x4149, 0x6FD8);
+    call_routine(0x4149, 0x6FD8);
     cpu.a = ADPCM_MENU;
     abi_nz(ADPCM_MENU);
-    call_orig(0x414E, 0x6E43);                      /* AdpcmLoad */
+    call_routine(0x414E, 0x6E43);                      /* AdpcmLoad */
     WR8(ZP->music_wanted, 0xFF);
     cpu.a = VECTOR_VDC;
     cpu.x = (uint8_t)FRAME_INTERRUPT_RUN;
     cpu.y = (uint8_t)(FRAME_INTERRUPT_RUN >> 8);
     abi_nz(cpu.y);
-    call_orig(0x415B, 0xE05D);                      /* ex_setvec */
+    call_routine(0x415B, 0xE05D);                      /* ex_setvec */
     cpu.a = VECTOR_TIMER;
     cpu.x = (uint8_t)IGNORED_INTERRUPT_RUN;
     cpu.y = (uint8_t)(IGNORED_INTERRUPT_RUN >> 8);
     abi_nz(cpu.y);
-    call_orig(0x4164, 0xE05D);
+    call_routine(0x4164, 0xE05D);
     WR8(ZP->bios_irq_disable, 0x06);
     sum = add_bytes(0x03, RD8(ZP->ram_base_bank), false);
     tam(MPR4, sum.value);

@@ -25,7 +25,7 @@ static uint8_t l8_enter_framed(uint8_t x, Jump jump, uint16_t ret)
     cpu.x = x;
     abi_ended(jump.end);
     if (jump.jumps) {
-        call_orig_framed(ret, jump.target);
+        call_routine_framed(ret, jump.target);
     } else {
         jsr_pop();
     }

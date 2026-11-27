@@ -3328,7 +3328,7 @@ GuardArm StepWithGuardTable(uint8_t slot)
     jsr_push(0xB1A0);
     r->sub3 = obj_sub(JumpByStateTableD(slot));
     step_with_guard_table_enter_shim(g);
-    slot = enter_handler(slot, jump_by_state_table_d_exit_shim(obj_arm(r->sub3)));
+    slot = enter_state_handler(slot, jump_by_state_table_d_exit_shim(obj_arm(r->sub3)));
     jsr_pop();
     r->second = RD8(OBJ->frame[slot]);
     r->third = rd8((uint16_t)(0xB1B3 + r->second));
@@ -3381,7 +3381,7 @@ ObjArm StepPhaseThenPause(uint8_t slot)
 
     jsr_push(0xB3E8);
     table = JumpByPhaseTable(slot);
-    slot = enter_handler(slot, jump_by_phase_table_exit_shim(table));
+    slot = enter_state_handler(slot, jump_by_phase_table_exit_shim(table));
     jsr_pop();
     r.first = RD8(OBJ->f36c8[slot]);
     r.arm = PP_COUNTING;

@@ -125,7 +125,7 @@ void abi_SetUpStageObjectsB(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -265,7 +265,7 @@ void abi_SetUpStageObjectsG(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*

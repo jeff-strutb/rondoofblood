@@ -2852,7 +2852,7 @@ ObjArm RunDriftObject(uint8_t slot)
     jsr_push(0xB357);
     r.sub4 = obj_sub(JumpByStateTableB(slot));
     run_drift_object_enter_shim(r);
-    slot = enter_handler(slot, jump_by_state_exit_shim(obj_arm(r.sub4)));
+    slot = enter_state_handler(slot, jump_by_state_exit_shim(obj_arm(r.sub4)));
     jsr_pop();
     for (y = 0xBF; y != 0; y--) {
         byte = rd8((uint16_t)(0xB46D + y));

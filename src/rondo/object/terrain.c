@@ -738,7 +738,7 @@ static uint8_t tile_to_original_shim(uint8_t tile, uint8_t y, uint16_t code)
     abi_nz(tile);
     abi_flag(P_C, false);
     abi_flag(P_V, true);
-    call_original(code);
+    run_routine(code);
     return cpu.a;
 }
 
@@ -790,7 +790,7 @@ void abi_TerrainTileRead(void)
 /* The overlay's own read, which has no C: its answer in A. */
 static uint8_t read_by_original_shim(void)
 {
-    call_original(FrameOverlay8006);
+    run_routine(FrameOverlay8006);
     return cpu.a;
 }
 
@@ -1565,7 +1565,7 @@ static LookupEnd original_lookup_shim(uint16_t vector, uint8_t probe, uint8_t ob
     cpu.x = object;
     cpu.y = column;
     abi_flag(P_C, carry_in);
-    call_original(vector);
+    run_routine(vector);
     end.column_after = cpu.y;
     return end;
 }

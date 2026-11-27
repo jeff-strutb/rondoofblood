@@ -1944,7 +1944,7 @@ Exit GlyphPassByStep(uint8_t object)
         return OverlayGlyphPassBoth(object);
     }
     glyph_tail_shim(value, index);
-    call_original(target);
+    run_routine(target);
     exit.from_cpu = true;
     return exit;
 }

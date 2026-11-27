@@ -1848,7 +1848,7 @@ static void raster_handler_shim(uint16_t target)
             return;
         }
     }
-    call_original(target);
+    run_routine(target);
 }
 
 /*

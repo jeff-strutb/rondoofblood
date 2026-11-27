@@ -578,7 +578,7 @@ void abi_StreamSpawnIfOther(void)
 /* One run of the code a record names, which leaves X as it likes: the X it left. */
 static uint8_t record_code_shim(uint16_t code)
 {
-    call_original(code);
+    run_routine(code);
     return cpu.x;
 }
 
@@ -601,7 +601,7 @@ void abi_JumpThroughRecord(void)
 {
     uint16_t code = RD16_LH2(ZP->temp09, ZP->temp0a);
 
-    call_original(code);
+    run_routine(code);
 }
 
 /*
@@ -806,7 +806,7 @@ void abi_RunStreamRecord(void)
         abi_StreamCallOverlay();
         break;
     default:
-        call_original(run.code);
+        run_routine(run.code);
         break;
     }
 }

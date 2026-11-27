@@ -78,7 +78,7 @@ static uint8_t tile_to_original_shim(uint8_t tile, uint8_t y, uint16_t code)
     abi_nz(tile);
     abi_flag(P_C, false);
     abi_flag(P_V, true);
-    call_original(code);
+    run_routine(code);
     return cpu.a;
 }
 

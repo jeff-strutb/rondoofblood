@@ -2586,7 +2586,7 @@ Exit EndingScriptStepV(int v_in)
         break;
     }
     ending_tail_shim(index, command, v_in);
-    call_original(target);
+    run_routine(target);
     exit.from_cpu = true;
     return exit;
 }
@@ -2739,7 +2739,7 @@ ObjExit EndingDispatchKind(uint8_t kind, uint8_t object)
         result.exit = exit;
         result.moved = false;
         cpu_entry_shim(high, object, index, carry);
-        call_original(target);
+        run_routine(target);
         return result;
     }
     if (result.exit.a_kept) {
@@ -2913,7 +2913,7 @@ Exit EndingStep(uint8_t kept_y)
         }
     }
     cpu_entry_shim(index, index, kept_y, (state & 0x80) != 0);
-    call_original(target);
+    run_routine(target);
     exit.from_cpu = true;
     return exit;
 }

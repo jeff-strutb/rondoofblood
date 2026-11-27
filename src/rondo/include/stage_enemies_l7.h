@@ -129,7 +129,7 @@ static inline void sync(Ended *e)
 }
 
 /* The object's own code is entered with X its slot, as the dispatch left the other registers. A dispatch with nothing to jump to (the object's kind was cleared meanwhile, the original's `beq` to its `rts`) leaves only its registers. */
-static inline uint8_t enter_handler(uint8_t x, Jump jump)
+static inline uint8_t enter_state_handler(uint8_t x, Jump jump)
 {
     cpu.x = x;
     if (jump.jumps) {

@@ -66,7 +66,7 @@ static Sum add_decimal(uint8_t a, uint8_t b, bool carry_in)
 /* An overlay's entry, run with the registers as the handler was entered with them. */
 static Cpu overlay_shim(uint16_t entry, uint16_t ret)
 {
-    call_orig(ret, entry);
+    call_routine(ret, entry);
     return cpu;
 }
 

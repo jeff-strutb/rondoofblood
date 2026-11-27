@@ -85,7 +85,7 @@ ObjExit DispatchSceneObject(uint8_t kind, uint8_t object)
     default:
         result.exit.from_cpu = true;
         kind_entry_shim(high, object, index, carry);
-        call_original(target);
+        run_routine(target);
         return result;
     }
     if (result.exit.a_kept) {

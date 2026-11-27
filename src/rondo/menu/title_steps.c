@@ -330,7 +330,7 @@ Exit TitleStep(uint8_t kept_y)
         break;
     }
     table_entry_shim(index, state, kept_y, v_in);
-    call_original(target);
+    run_routine(target);
     exit.from_cpu = true;
     return exit;
 }
@@ -393,7 +393,7 @@ Exit TitleScreenStep(uint8_t kept_y)
         break;
     }
     table_entry_shim(index, state, kept_y, v_in);
-    call_original(target);
+    run_routine(target);
     exit.from_cpu = true;
     return exit;
 }
@@ -655,7 +655,7 @@ Exit AttractStep(uint8_t kept_y)
         break;
     }
     table_entry_shim(index, state, kept_y, v_in);
-    call_original(target);
+    run_routine(target);
     exit.from_cpu = true;
     return exit;
 }

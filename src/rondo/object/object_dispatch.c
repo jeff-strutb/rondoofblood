@@ -895,7 +895,7 @@ void abi_FallThenClear(void)
 void jump_shim(Ended end, uint16_t target)
 {
     abi_ended(end);
-    call_original(target);
+    run_routine(target);
 }
 
 /*

@@ -289,7 +289,7 @@ Exit ScriptStep(void)
         break;
     }
     script_tail_shim(index, command);
-    call_original(target);
+    run_routine(target);
     exit.from_cpu = true;
     return exit;
 }

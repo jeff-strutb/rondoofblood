@@ -3452,7 +3452,7 @@ ObjArm PickWaterOnTenth(uint8_t slot)
 
     jsr_push(0xB502);
     table = JumpByStateTableE(slot);
-    slot = enter_handler(slot, jump_by_state_table_e_exit_shim(table));
+    slot = enter_state_handler(slot, jump_by_state_table_e_exit_shim(table));
     jsr_pop();
     r.first = slot;
     r.arm = PW_NOT_TENTH;
@@ -3636,7 +3636,7 @@ ObjArm StepWithHitTable(uint8_t slot)
     jsr_push(0xAD59);
     r.sub4 = obj_sub(JumpByStateTableF(slot));
     step_with_hit_table_enter_shim(r);
-    slot = enter_handler(slot, jump_by_state_table_f_exit_shim(obj_arm(r.sub4)));
+    slot = enter_state_handler(slot, jump_by_state_table_f_exit_shim(obj_arm(r.sub4)));
     jsr_pop();
     return r;
 }

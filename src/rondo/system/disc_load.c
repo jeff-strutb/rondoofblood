@@ -871,7 +871,7 @@ SceneCall SceneCallOverlay(uint8_t offset)
 void abi_SceneCallOverlay(void)
 {
     cpu = SceneCallOverlay(cpu.x).after;
-    call_original(FrameOverlay8006);
+    run_routine(FrameOverlay8006);
 }
 
 static void log_overlay(DiscLog *log, uint8_t offset, uint16_t ret)
@@ -880,7 +880,7 @@ static void log_overlay(DiscLog *log, uint8_t offset, uint16_t ret)
 
     jsr_push(ret);
     cpu = SceneCallOverlay(offset).after;
-    call_orig_framed(ret, FrameOverlay8006);        /* the overlay's code returns to ret; its frame is the JSR's, pushed above */
+    call_routine_framed(ret, FrameOverlay8006);        /* the overlay's code returns to ret; its frame is the JSR's, pushed above */
     call.as.after = cpu;
     log_call(log, call);
 }

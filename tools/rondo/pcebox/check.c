@@ -1630,6 +1630,30 @@ uint32_t resident_at(uint16_t run)
     return rondo_tags[i].disc;
 }
 
+/*
+ * routine_at(run): the C of the tagged routine loaded at run, under the mapping the caller sees (as resident_at). A
+ * routine with no C there is not yet decompiled: A5 stops the call and judges it divergent with that reason; the
+ * lockstep, which certifies nothing, runs the original there.
+ */
+static uint16_t no_c_run;
+
+static void no_c(void)
+{
+    if (mode == MODE_A5)
+        stop_c(ABORT_DIVERGED, "the code at %04X has no C: not yet decompiled", no_c_run, 0, 0);
+    call_original(no_c_run);
+}
+
+void (*routine_at(uint16_t run))(void)
+{
+    int i = tag_pick(run);
+
+    if (i >= 0 && rondo_tags[i].run == run && tag_resident(&rondo_tags[i]) && rondo_tags[i].abi)
+        return rondo_tags[i].abi;
+    no_c_run = run;
+    return no_c;
+}
+
 void cli(void)
 {
     cpu.p &= (uint8_t)~P_I;

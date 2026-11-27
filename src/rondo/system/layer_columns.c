@@ -102,7 +102,7 @@ static bool block_tables(uint16_t ret, CallRegs r)
         }
     }
     call_regs_shim(r);
-    call_orig(ret, BLOCK_TABLES_RUN);
+    call_routine(ret, BLOCK_TABLES_RUN);
     return cpu_overflow_shim();
 }
 
@@ -120,7 +120,7 @@ static uint8_t screen_map(uint16_t ret, CallRegs r, bool *carry, bool *overflow)
         return byte;
     }
     call_regs_shim(r);
-    call_orig(ret, SCREEN_MAP_RUN);
+    call_routine(ret, SCREEN_MAP_RUN);
     *carry = cpu_carry_shim();
     *overflow = cpu_overflow_shim();
     return cpu_a_shim();
@@ -143,9 +143,9 @@ static BitmapBit bitmap_bit(uint16_t ret, CallRegs r)
     }
     call_regs_shim(r);
     if (ret != 0) {
-        call_orig(ret, BITMAP_BIT_RUN);
+        call_routine(ret, BITMAP_BIT_RUN);
     } else {
-        call_original(BITMAP_BIT_RUN);
+        run_routine(BITMAP_BIT_RUN);
     }
     bit.a = cpu_a_shim();
     bit.x = r.x;
@@ -237,7 +237,7 @@ static BlockIndex block_index(uint16_t ret, CallRegs r)
         return index;
     }
     call_regs_shim(r);
-    call_orig(ret, BLOCK_INDEX_RUN);
+    call_routine(ret, BLOCK_INDEX_RUN);
     index.bit.a = cpu_a_shim();
     index.bit.x = r.x;
     index.bit.y = cpu_y_shim();
@@ -291,7 +291,7 @@ ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool e
     } else {
         regs = (CallRegs){ count, entry, index, count, entry_carry, entry_overflow };
         call_regs_shim(regs);
-        call_orig(0xA7AF, SCROLL_X_OFFSET_RUN);
+        call_routine(0xA7AF, SCROLL_X_OFFSET_RUN);
         index = cpu_y_shim();
         carry = cpu_carry_shim();
         overflow = cpu_overflow_shim();
@@ -330,7 +330,7 @@ ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool e
         } else {
             regs = (CallRegs){ block, entry, y, block, bit.carry, overflow };
             call_regs_shim(regs);
-            call_orig(0xA7DC, BLOCK_COPY_RUN);
+            call_routine(0xA7DC, BLOCK_COPY_RUN);
             r.from_original = true;
             r.carry = cpu_carry_shim();
             overflow = cpu_overflow_shim();

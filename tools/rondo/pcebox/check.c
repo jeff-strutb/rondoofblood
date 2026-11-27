@@ -281,6 +281,8 @@ static void store_push(const Ev *e)
 }
 
 /* Reads one event from the record's stream into the window. */
+static void frame_wrote(uint32_t phys);
+
 static int fetch_one(void)
 {
     Ev e;
@@ -300,6 +302,8 @@ static int fetch_one(void)
         end_frames = e.hash2;
         end_left = e.addr;
     }
+    if (e.type == EV_W && e.kind != 1 && mode == MODE_HYBRID)
+        frame_wrote(e.addr);    /* the original's writes of the frame: in flight too when it ends inside a call */
     if (e.type == EV_FRAME) {
         if (fq_tail == fq_cap) {
             fq_cap = fq_cap ? fq_cap * 2 : 1024;
@@ -1359,6 +1363,44 @@ uint8_t rd8(uint16_t addr)
     }
 }
 
+/*
+ * A frame that ends inside a call (the frame interrupt's work running past the frame's end): the C has made all of
+ * its call's RAM writes, the original only some (the C has no instruction timing, so the original code after it ran
+ * early too). As on Aladdin, the bytes written in that frame are not judged at that frame. A later frame judges them by its hash; the script's last frame,
+ * which has none after it, is judged byte by byte against the record's RAM at the script's end with those bytes
+ * and the dead stack left out.
+ */
+#define SNAP_BYTES (33u * 8192u)        /* banks $68 to $87, then $F8 */
+static uint8_t c_wrote[256u * 8192u / 8u];   /* per physical byte: written in this frame, on either side */
+static int pend_set;
+static unsigned long pend_frame;
+static uint8_t pend_s;
+static uint8_t *pend_ram, *pend_wrote;
+
+static void snap_ram(uint8_t *out)
+{
+    for (unsigned b = 0x68; b <= 0x87; b++)
+        if (ram_bank[b])
+            memcpy(out + (b - 0x68) * 8192u, ram_bank[b], 8192);
+        else
+            memset(out + (b - 0x68) * 8192u, 0, 8192);
+    memcpy(out + 32u * 8192u, ram_bank[0xF8], 8192);
+}
+
+static void frame_wrote(uint32_t phys)
+{
+    phys = canon(phys);
+    c_wrote[phys >> 3] |= (uint8_t)(1u << (phys & 7));
+}
+
+static int irq_ctx_open(void)
+{
+    for (const Ctx *c = top; c; c = c->below)
+        if (c->kind == K_IRQ)
+            return 1;
+    return 0;
+}
+
 void wr8(uint16_t addr, uint8_t value)
 {
     uint32_t p;
@@ -1372,6 +1414,8 @@ void wr8(uint16_t addr, uint8_t value)
             chk_bus_wr(addr, value);
             return;
         }
+        if (is_ram(p))
+            c_wrote[canon(p) >> 3] |= (uint8_t)(1u << (canon(p) & 7));
         j = place(sp, is_ram(p) ? EV_W : EV_HWW, p, NULL, 0);
         e = j >= 0 ? evp((uint64_t)j) : NULL;
         if (e && !is_ram(p)) {
@@ -2539,6 +2583,8 @@ void check_wr_pre(uint32_t phys, uint8_t v)
 
     if (hold.active)
         hold_acc++;
+    if (mode == MODE_HYBRID && is_ram(canon(phys)))
+        c_wrote[canon(phys) >> 3] |= (uint8_t)(1u << (canon(phys) & 7));   /* original code run in the frame, ahead too */
     if (!depth || (mode != MODE_A5 && mode != MODE_RECORD))
         return;
     phys = canon(phys);
@@ -4039,7 +4085,25 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
             ;
         if (fq_head < fq_tail) {
             hy_frames_total++;
-            if (fq[fq_head].ram != hash || fq[fq_head].pic != picture) {
+            if (pend_set) {
+                /* A frame after the one held: that one was not the script's last, so it stands as it was judged. */
+                pend_set = 0;
+                if (hy_first_bad == (unsigned long)-1)
+                    hy_first_bad = pend_frame;
+            }
+            if (fq[fq_head].pic == picture && fq[fq_head].ram != hash && hy_first_bad == (unsigned long)-1 &&
+                irq_ctx_open()) {
+                /* Ended inside the frame interrupt's call: held until it is known whether this is the last frame. */
+                if (!pend_ram) {
+                    pend_ram = malloc(SNAP_BYTES);
+                    pend_wrote = malloc(sizeof c_wrote);
+                }
+                snap_ram(pend_ram);
+                memcpy(pend_wrote, c_wrote, sizeof c_wrote);
+                pend_s = fq[fq_head].s;
+                pend_frame = frame;
+                pend_set = 1;
+            } else if (fq[fq_head].ram != hash || fq[fq_head].pic != picture) {
                 if (hy_first_bad == (unsigned long)-1) {
                     hy_first_bad = frame;
                     fprintf(report, "first differing frame %lu: RAM %s, picture %s; the core at PC %04X S%02X clock %llu%s, the original at PC %04X S%02X clock %llu\n",
@@ -4051,6 +4115,7 @@ void check_frame(unsigned long frame, const uint32_t *pixels, unsigned w, unsign
                 hy_frames_ok++;
             }
             fq_head++;
+            memset(c_wrote, 0, sizeof c_wrote);   /* the next frame's writes from here */
         }
     }
 }
@@ -4184,6 +4249,20 @@ void check_finish(void)
             close_event(&frames[depth - 1], &z, CL_END);
             depth--;
         }
+        {
+            /* The RAM at the script's end, for a hybrid whose last frame ended inside a call (snap_ram's layout). */
+            char name[4200];
+            FILE *d;
+            uint8_t *snap = malloc(SNAP_BYTES);
+
+            snprintf(name, sizeof name, "%s.end.ram", check_path);
+            snap_ram(snap);
+            if ((d = fopen(name, "wb")) != NULL) {
+                fwrite(snap, 1, SNAP_BYTES, d);
+                fclose(d);
+            }
+            free(snap);
+        }
         memset(&e, 0, sizeof e);
         e.type = EV_END;
         e.addr = left;
@@ -4235,6 +4314,47 @@ void check_finish(void)
         }
         diagnostic = getenv("RONDO_KEEP") || getenv("RONDO_ONLY") || getenv("RONDO_KEEP_WAITS") ||
                      getenv("RONDO_PLACE") || getenv("RONDO_SKIPS") || getenv("RONDO_DUMP_FRAME");
+        if (pend_set) {
+            /* The last frame ended inside a call: its bytes against the record's RAM at the script's end, all but those
+             * the C wrote in the call and the stack below the original's S. */
+            char name[4200];
+            FILE *d;
+            uint8_t *theirs = malloc(SNAP_BYTES);
+            unsigned long same = 0, diff = 0, held = 0;
+
+            snprintf(name, sizeof name, "%s.end.ram", check_path);
+            if ((d = fopen(name, "rb")) != NULL && fread(theirs, 1, SNAP_BYTES, d) == SNAP_BYTES) {
+                for (uint32_t i = 0; i < SNAP_BYTES; i++) {
+                    uint32_t phys = i < 32u * 8192u ? ((0x68u + i / 8192u) << 13) | (i % 8192u) : (0xF8u << 13) | (i % 8192u);
+                    uint32_t off = phys & 0x1FFF;
+
+                    if ((phys >> 13) == 0xF8 && off >= 0x100 && off <= 0x100u + pend_s)
+                        continue;                       /* the dead stack */
+                    if (!ram_bank[phys >> 13])
+                        continue;
+                    if (pend_wrote[canon(phys) >> 3] & (1u << (canon(phys) & 7))) {
+                        held += pend_ram[i] != theirs[i];
+                        continue;                       /* written by the C in the call the original had not finished */
+                    }
+                    if (pend_ram[i] == theirs[i])
+                        same++;
+                    else if (diff++ < 8)
+                        fprintf(report, "last frame %lu: RAM %06X hybrid %02X, original %02X\n", pend_frame, phys, pend_ram[i], theirs[i]);
+                }
+                fprintf(report, "last frame %lu ended inside a call: %lu bytes written in the frame on either side differ and are left out; %lu others match, %lu differ\n",
+                        pend_frame, held, same, diff);
+                if (!diff)
+                    hy_frames_ok++;
+                else if (hy_first_bad == (unsigned long)-1)
+                    hy_first_bad = pend_frame;
+            } else if (hy_first_bad == (unsigned long)-1) {
+                hy_first_bad = pend_frame;
+            }
+            if (d)
+                fclose(d);
+            free(theirs);
+            pend_set = 0;
+        }
         /* Identical only when everything was compared and nothing is left over. A diagnostic run, a run that
          * stopped, one that swapped nothing, or one that left calls or frames unreached has no verdict. */
         if (hy_first_bad != (unsigned long)-1)

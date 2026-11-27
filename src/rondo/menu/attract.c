@@ -767,28 +767,21 @@ static void object_exit_shim(ObjExit result)
 /* The body with the list table's address given: the copies of the routine in other overlays differ only there. */
 ObjExit ObjectFrameListAt(uint8_t list, uint8_t object, uint16_t table)
 {
-    FrameListEnd end;
-    uint8_t index, value;
+    ObjExit result = { 0 };
+    uint8_t index, value, y;
+    FrameStep step;
 
     index = (uint8_t)(list << 1);
     value = rd8((uint16_t)(table + index));
     WR8(ZP->temp10, value);
     value = rd8((uint16_t)(table + 1 + index));
     WR8(ZP->temp11, value);
-    end.y = index;
-    end.step = StepObjectFrames(object, &end.y);
-    return end;
-}
-
-/* What ObjectFrameList leaves: A 0 at the list's end, else $FF, N and Z from it; Y as the step left it; C set when the picture changed. */
-ObjExit frame_list_exit_shim(FrameListEnd end)
-{
-    ObjExit result = { 0 };
-
-    result.exit.a = (end.step == FRAME_LIST_ENDED) ? 0x00 : 0xFF;
+    y = index;
+    step = StepObjectFrames(object, &y);
+    result.exit.a = (step == FRAME_LIST_ENDED) ? 0x00 : 0xFF;
     result.exit.nz = result.exit.a;
-    result.exit.y = end.y;
-    result.exit.c = end.step == FRAME_CHANGED;
+    result.exit.y = y;
+    result.exit.c = step == FRAME_CHANGED;
     result.exit.x_kept = true;
     return result;
 }
@@ -800,18 +793,7 @@ ObjExit ObjectFrameList(uint8_t list, uint8_t object)
 
 void abi_ObjectFrameList(void)
 {
-    object_exit_shim(frame_list_exit_shim(ObjectFrameList(cpu.a, cpu.x)));
-}
-
-/* A scene arm that ended on a value: A it, N and Z from it, the rest kept. */
-static SceneArm scene_arm(int arm, uint8_t value)
-{
-    SceneArm r = { 0 };
-
-    r.arm = arm;
-    r.a = value;
-    r.value = value;
-    return r;
+    object_exit_shim(ObjectFrameList(cpu.a, cpu.x));
 }
 
 /*
@@ -823,65 +805,50 @@ static SceneArm scene_arm(int arm, uint8_t value)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-SceneArm PlayFrameListOnce(uint8_t object)
+ObjExit PlayFrameListOnce(uint8_t object)
 {
-    SceneArm r;
+    ObjExit result;
     uint8_t state, list;
 
     state = RD8(OBJ->state[object]);
     if (state != 0) {
-        return scene_arm(SCENE_VALUE, state);
+        return object_exit(state, state);
     }
     list = RD8(OBJ->next_kind[object]);
-    r = scene_arm(SCENE_LIST, 0);
     jsr_push(0x89BB);
-    r.list = ObjectFrameList(list, object);
+    result = ObjectFrameList(list, object);
     jsr_pop();
-    if (r.list.step != FRAME_LIST_ENDED) {
-        return r;
+    if (result.exit.nz != 0) {
+        return result;
     }
-    r.arm = SCENE_LIST_COUNTED;
-    r.value = INC8(OBJ->state[object]);
-    return r;
-}
-
-/* PlayFrameListOnce's exit: the state's value, or the list's exit with N and Z from the state counted up at its end. */
-ObjExit play_frame_list_once_exit_shim(SceneArm r)
-{
-    ObjExit result;
-
-    if (r.arm == SCENE_VALUE) {
-        return object_exit(r.value, r.value);
-    }
-    result = frame_list_exit_shim(r.list);
-    if (r.arm == SCENE_LIST_COUNTED) {
-        result.exit.nz = r.value;
-    }
+    result.exit.nz = INC8(OBJ->state[object]);
     return result;
 }
 
 void abi_PlayFrameListOnce(void)
 {
-    object_exit_shim(play_frame_list_once_exit_shim(PlayFrameListOnce(cpu.x)));
+    object_exit_shim(PlayFrameListOnce(cpu.x));
 }
 
 /* The end 1EC and 20E share: a frame list stepped, and a script slot started when the picture changes. */
-static SceneArm frame_list_then_cue(uint8_t list, uint8_t object)
+static ObjExit frame_list_then_cue(uint8_t list, uint8_t object)
 {
-    SceneArm r = scene_arm(SCENE_LIST, 0);
+    ObjExit result;
     uint8_t frame, script;
 
     jsr_push(0x89FD);
-    r.list = ObjectFrameList(list, object);
+    result = ObjectFrameList(list, object);
     jsr_pop();
-    if (r.list.step != FRAME_CHANGED) {
-        return r;
+    if (!result.exit.c) {
+        return result;
     }
     frame = RD8(OBJ->frame[object]);
     if (frame == 0) {
-        r.arm = SCENE_LIST_HELD;
-        r.value = frame;
-        return r;
+        result.exit.a = frame;
+        result.exit.nz = frame;
+        result.exit.c = true;
+        result.exit.c_kept = false;
+        return result;
     }
     push8(object);
     script = 7;
@@ -889,43 +856,14 @@ static SceneArm frame_list_then_cue(uint8_t list, uint8_t object)
     StartScriptSlotKind1(script, 1);
     jsr_pop();
     object = pull8();
-    r.arm = SCENE_CUED;
-    r.value = script;
-    r.object = object;
-    return r;
-}
-
-/*
- * The exit of the cue handlers (frame_list_then_cue, scroll_idle_cue): a value that stopped them, the list's exit, the list's
- * exit with A and N, Z from the byte that held the cue and C set, or the cue started: A and Y the script, X and N, Z the
- * object pulled back, C set.
- */
-ObjExit scene_cue_exit_shim(SceneArm r)
-{
-    ObjExit result;
-
-    switch (r.arm) {
-    case SCENE_VALUE:
-        return object_exit(r.value, r.value);
-    case SCENE_LIST_HELD:
-        result = frame_list_exit_shim(r.list);
-        result.exit.a = r.value;
-        result.exit.nz = r.value;
-        result.exit.c = true;
-        result.exit.c_kept = false;
-        return result;
-    case SCENE_CUED:
-        result = object_exit(r.value, r.object);
-        result.exit.y = r.value;
-        result.exit.y_kept = false;
-        result.exit.x = r.object;
-        result.exit.x_kept = false;
-        result.exit.c = true;
-        result.exit.c_kept = false;
-        return result;
-    default:
-        return frame_list_exit_shim(r.list);
-    }
+    result = object_exit(script, object);
+    result.exit.y = script;
+    result.exit.y_kept = false;
+    result.exit.x = object;
+    result.exit.x_kept = false;
+    result.exit.c = true;
+    result.exit.c_kept = false;
+    return result;
 }
 
 /*
@@ -939,7 +877,7 @@ ObjExit scene_cue_exit_shim(SceneArm r)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-SceneArm AnimateAndCueSeven(uint8_t object)
+ObjExit AnimateAndCueSeven(uint8_t object)
 {
     uint8_t state;
 
@@ -953,7 +891,7 @@ SceneArm AnimateAndCueSeven(uint8_t object)
 
 void abi_AnimateAndCueSeven(void)
 {
-    object_exit_shim(scene_cue_exit_shim(AnimateAndCueSeven(cpu.x)));
+    object_exit_shim(AnimateAndCueSeven(cpu.x));
 }
 
 /*
@@ -964,7 +902,7 @@ void abi_AnimateAndCueSeven(void)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-SceneArm AnimateList1AndCueSeven(uint8_t object)
+ObjExit AnimateList1AndCueSeven(uint8_t object)
 {
     uint8_t state;
 
@@ -978,49 +916,56 @@ SceneArm AnimateList1AndCueSeven(uint8_t object)
 
 void abi_AnimateList1AndCueSeven(void)
 {
-    object_exit_shim(scene_cue_exit_shim(AnimateList1AndCueSeven(cpu.x)));
+    object_exit_shim(AnimateList1AndCueSeven(cpu.x));
 }
 
 /* The first-frame set-up and the scroll test that 21F and 252 share, then the frame list and cue. */
-static SceneArm scroll_idle_cue(uint8_t list, uint8_t object)
+static ObjExit scroll_idle_cue(uint8_t list, uint8_t object)
 {
-    SceneArm r;
+    ObjExit result;
     uint8_t busy, frame, kind;
 
     busy = RD8(SCROLL->x_hi[0]);
     busy = (uint8_t)(busy | RD8(SCROLL->y_hi[0]));
     busy = (uint8_t)(busy | RD8(SCROLL->y_lo[0]));
     if (busy != 0) {
-        return scene_arm(SCENE_VALUE, busy);
+        return object_exit(busy, busy);
     }
-    r = scene_arm(SCENE_LIST, 0);
     jsr_push(0x8A3C);
-    r.list = ObjectFrameList(list, object);
+    result = ObjectFrameList(list, object);
     jsr_pop();
-    if (r.list.step != FRAME_CHANGED) {
-        return r;
+    if (!result.exit.c) {
+        return result;
     }
     frame = RD8(OBJ->frame[object]);
     if (frame == 0) {
-        r.arm = SCENE_LIST_HELD;
-        r.value = frame;
-        return r;
+        result.exit.a = frame;
+        result.exit.nz = frame;
+        result.exit.c = true;
+        result.exit.c_kept = false;
+        return result;
     }
     kind = RD8(SLOTS->kind[0]);
     if (kind != 0) {
-        r.arm = SCENE_LIST_HELD;
-        r.value = kind;
-        return r;
+        result.exit.a = kind;
+        result.exit.nz = kind;
+        result.exit.c = true;
+        result.exit.c_kept = false;
+        return result;
     }
     push8(object);
     jsr_push(0x8A50);
     StartScriptSlotKind1(9, 1);
     jsr_pop();
     object = pull8();
-    r.arm = SCENE_CUED;
-    r.value = 9;
-    r.object = object;
-    return r;
+    result = object_exit(9, object);
+    result.exit.y = 9;
+    result.exit.y_kept = false;
+    result.exit.x = object;
+    result.exit.x_kept = false;
+    result.exit.c = true;
+    result.exit.c_kept = false;
+    return result;
 }
 
 /*
@@ -1034,7 +979,7 @@ static SceneArm scroll_idle_cue(uint8_t list, uint8_t object)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-SceneArm AnimateAndCueNine(uint8_t object)
+ObjExit AnimateAndCueNine(uint8_t object)
 {
     uint8_t state;
 
@@ -1048,7 +993,7 @@ SceneArm AnimateAndCueNine(uint8_t object)
 
 void abi_AnimateAndCueNine(void)
 {
-    object_exit_shim(scene_cue_exit_shim(AnimateAndCueNine(cpu.x)));
+    object_exit_shim(AnimateAndCueNine(cpu.x));
 }
 
 /*
@@ -1059,7 +1004,7 @@ void abi_AnimateAndCueNine(void)
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
-SceneArm AnimateList9AndCueNine(uint8_t object)
+ObjExit AnimateList9AndCueNine(uint8_t object)
 {
     uint8_t state;
 
@@ -1073,7 +1018,7 @@ SceneArm AnimateList9AndCueNine(uint8_t object)
 
 void abi_AnimateList9AndCueNine(void)
 {
-    object_exit_shim(scene_cue_exit_shim(AnimateList9AndCueNine(cpu.x)));
+    object_exit_shim(AnimateList9AndCueNine(cpu.x));
 }
 
 /*
@@ -1085,8 +1030,9 @@ void abi_AnimateList9AndCueNine(void)
  * WAITS: no.
  * Entry: X the object. Exit: A 0 or 1, N and Z from it, C clear.
  */
-uint8_t BlinkScrollFlag(uint8_t object)
+ObjExit BlinkScrollFlag(uint8_t object)
 {
+    ObjExit result;
     uint8_t state, count, flag;
 
     state = RD8(OBJ->state[object]);
@@ -1097,14 +1043,7 @@ uint8_t BlinkScrollFlag(uint8_t object)
     count = RD8(OBJ->f34b8[object]);
     flag = (uint8_t)((count & 0x7F) >= 0x78 ? 1 : 0);
     WR8(SCROLL->x_hi[0], flag);
-    return flag;
-}
-
-/* BlinkScrollFlag's exit: A the flag, N and Z from it, C clear (the compare's carry rotated out). */
-ObjExit blink_scroll_flag_exit_shim(uint8_t flag)
-{
-    ObjExit result = object_exit(flag, flag);
-
+    result = object_exit(flag, flag);
     result.exit.c = false;
     result.exit.c_kept = false;
     return result;
@@ -1112,7 +1051,7 @@ ObjExit blink_scroll_flag_exit_shim(uint8_t flag)
 
 void abi_BlinkScrollFlag(void)
 {
-    object_exit_shim(blink_scroll_flag_exit_shim(BlinkScrollFlag(cpu.x)));
+    object_exit_shim(BlinkScrollFlag(cpu.x));
 }
 
 /*

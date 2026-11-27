@@ -41,6 +41,14 @@ static void lda_y_shim(uint8_t a, uint8_t y)  /* INY then LDA: N and Z from the 
     abi_nz(a);
 }
 
+/* Before LoadBootBlocks's cd_read: INY then LDA (zTemp08),Y; C and V stand from the CLA, ADC zBiosCl before them. */
+static void cd_read_entry_shim(uint8_t a, Sum last)
+{
+    lda_y_shim(a, 2);
+    abi_flag(P_C, last.carry);
+    abi_flag(P_V, last.overflow);
+}
+
 /* After cd_read: its answer by TAX into X, N and Z from it. */
 static uint8_t tax_answer_shim(void)
 {
@@ -273,7 +281,7 @@ BootLoad LoadBootBlocks(uint8_t record)
                 wr8(zBiosCl, sum.value);
                 value = RD8_PTR_Y(ZP->temp08, 2);
                 wr8(zBiosAl, value);
-                lda_y_shim(value, 2);
+                cd_read_entry_shim(value, sum);
                 call_orig(0x3128, CARD_CD_READ);
                 answer = tax_answer_shim();
             } while (answer != 0);

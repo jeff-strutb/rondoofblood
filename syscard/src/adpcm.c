@@ -212,7 +212,7 @@ void abi_ad_play_latch(void)
  * The address and length words are read by their addresses, the high bytes plus one: no record yet
  * (row request to the typed access session).
  */
-CardExit ad_play(void)
+AdPlay ad_play(void)
 {
     AdPlay play = { AD_PLAY_BUSY, { 0 } };
     CardExit *r = &play.exit;

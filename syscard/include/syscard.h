@@ -453,8 +453,6 @@ CardExit psg_add_pitch(uint8_t x);
 CardExit psg_volume_envelope(void);
 
 CardExit psg_start_song(void);
-CardExit psg_call_stack(uint8_t x);
-CardExit psg_sequencer(uint8_t x, uint8_t y);
 
 CardExit psg_tempo_tick_alt(void);
 

@@ -109,6 +109,25 @@ StepFallingItem_at0:
 StepFallingItem_at1:
     rts
 
+; @routine 0519:449 HurtCheckThenJumpByState
+; @run 70:A449
+; WHAT IT DOES: Sends a hit object into its hurt state (EnterHurtStateOnHit), then goes to the code
+; the table at $A45E names for the object's state.
+; HOW: The hurt check, then the table's two bytes go to zTemp00-01 and the code is jumped through them.
+; WAITS: no.
+; Entry: X object. Exit: as the code jumped to; A the table's high byte, N and Z from it, Y the
+; doubled state, C the state's bit 7, X kept, V as on entry.
+HurtCheckThenJumpByState:
+    jsr EnterHurtStateOnHit
+    lda a:OBJ_27A8,x
+    asl a
+    tay
+    lda a:$A45E,y
+    sta z:zTemp00
+    lda a:$A45F,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
 ; @routine 0519:46A EnterHurtStateOnHit
 ; @run 70:A46A
 ; WHAT IT DOES: Sends an object that is in one of its first four states and has taken a hit

@@ -57,6 +57,42 @@ HurtCheck EnterHurtStateOnHit(uint8_t slot)
     return result;
 }
 
+/*
+ * @routine 0519:449 HurtCheckThenJumpByState
+ * @run 70:A449
+ * WHAT IT DOES: Sends a hit object into its hurt state (EnterHurtStateOnHit), then goes to the code
+ * the table at $A45E names for the object's state.
+ * HOW: The hurt check, then the table's two bytes go to zTemp00-01 and the code is jumped through them.
+ * WAITS: no.
+ * Entry: X object. Exit: as the code jumped to; A the table's high byte, N and Z from it, Y the
+ * doubled state, C the state's bit 7, X kept, V as on entry.
+ */
+Jump HurtCheckThenJumpByState(uint8_t slot)
+{
+    Jump jump = { { 0 }, 0, true };
+    uint8_t state, index, low, high;
+
+    jsr_push(0xA44C);
+    EnterHurtStateOnHit(slot);
+    jsr_pop();
+    state = RD8(OBJ->state[slot]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0xA45E + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0xA45F + index));
+    WR8(ZP->temp01, high);
+    jump.end = ended_with_carry(ended_with_y(ended_load(high), index), (state & 0x80) != 0);
+    jump.target = RD16_LH2(ZP->temp00, ZP->temp01);
+    return jump;
+}
+
+void abi_HurtCheckThenJumpByState(void)
+{
+    Jump jump = HurtCheckThenJumpByState(cpu.x);
+
+    jump_shim(jump.end, jump.target);
+}
+
 /* A and flags as the hurt check's last compare or load left them. */
 void hurt_exit_shim(HurtCheck result)
 {

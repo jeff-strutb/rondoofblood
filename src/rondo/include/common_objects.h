@@ -216,6 +216,7 @@ typedef struct {
     bool jumps;           /* false: nothing is jumped to (the end is the whole exit) */
 } Jump;
 void jump_shim(Ended end, uint16_t target);
+Jump HurtCheckThenJumpByState(uint8_t slot);
 ObjArm JumpByKindTable(uint8_t slot);
 void dispatch_exit_shim(ObjArm r);
 ObjArm DispatchByKind0259(uint8_t slot);

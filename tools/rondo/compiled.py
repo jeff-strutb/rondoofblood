@@ -49,6 +49,21 @@ RELOC = re.compile(r"^\s+[0-9a-f]+:\s+R_X86_64_\w+\s+(\S+?)(?:[+-]0x[0-9a-f]+)?$
 ROW = re.compile(r'^\s*\{ (0x[0-9A-F]+), (\d+), (\d+), "(\w+)", abi_\w+, \d+, (0x[0-9A-F]+), (\d) \},$', re.M)
 
 
+# The hashes read ELF x86-64 objects (one section per function, R_X86_64 relocations). On a Mac the objects are made
+# for that target by Homebrew's LLVM against an Ubuntu sysroot (RONDO_ELF_SYSROOT, default ~/jammy-root): the host's
+# Mach-O objects have neither, and every hash came out "noc", so no record ever went stale.
+if sys.platform == "darwin":
+    CC = ["/opt/homebrew/opt/llvm/bin/clang", "--target=x86_64-linux-gnu",
+          "--sysroot=" + os.environ.get("RONDO_ELF_SYSROOT", os.path.expanduser("~/jammy-root"))]
+    OBJDUMP = "/opt/homebrew/opt/llvm/bin/llvm-objdump"
+    # clang has no -finstrument-functions-exclude-file-list; the hash only needs every function's code the same way
+    # each time, so the Mac's hashes are its own (a row measured on Linux does not count here, which is only safe).
+    FLAGS = [f for f in FLAGS if not f.startswith("-finstrument-functions-exclude-file-list")]
+else:
+    CC = ["cc"]
+    OBJDUMP = "objdump"
+
+
 def tool(args, **kw):
     return subprocess.run(args, capture_output=True, text=True, **kw)
 
@@ -58,7 +73,7 @@ def read_object(path):
     nodes = {}
     # code: instructions without offsets, relocations inline
     cur = None
-    for line in tool(["objdump", "-dr", "--no-show-raw-insn", path]).stdout.splitlines():
+    for line in tool([OBJDUMP, "-dr", "--no-show-raw-insn", path]).stdout.splitlines():
         m = SECTION.match(line)
         if m:
             cur = m.group(1)
@@ -76,7 +91,7 @@ def read_object(path):
         nodes[cur][0].update(body.encode() + b"\n")
     # data: contents and the relocations inside them (pointer tables)
     cur = None
-    for line in tool(["objdump", "-s", path]).stdout.splitlines():
+    for line in tool([OBJDUMP, "-s", path]).stdout.splitlines():
         m = re.match(r"^Contents of section (\S+):$", line)
         if m:
             cur = m.group(1)
@@ -84,7 +99,7 @@ def read_object(path):
         elif cur and line.startswith(" ") and cur in nodes:
             nodes[cur][0].update(line[6:].encode() + b"\n")
     cur = None
-    for line in tool(["objdump", "-r", path]).stdout.splitlines():
+    for line in tool([OBJDUMP, "-r", path]).stdout.splitlines():
         m = re.match(r"^RELOCATION RECORDS FOR \[(\S+)\]:", line)
         if m:
             cur = m.group(1)
@@ -108,7 +123,7 @@ def compile_all(tree, work):
     def one(path):
         rel = os.path.relpath(path, tree)
         obj = os.path.join(work, rel.replace(os.sep, "__") + ".o")
-        r = tool(["cc", *FLAGS, *incs, path, "-o", obj], cwd=tree)
+        r = tool([*CC, *FLAGS, *incs, path, "-o", obj], cwd=tree)
         if r.returncode:
             raise SystemExit(f"compiled.py: {rel} does not compile:\n{r.stderr[-600:]}")
         return rel, read_object(obj)

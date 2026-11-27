@@ -4,11 +4,13 @@
  * $80-$9B are slopes and steps, each with a handler that moves the point's row within the
  * tile. The two lookups read a probe's columns around an object into TileHit.
  *
- * Eleven stage overlays hold this code at these addresses. The tile read and the handlers
- * are the same bytes in all eleven; each overlay's two lookups differ only in the address of
- * its probe table, so each of the eleven has its own routine, sharing one body. Which one is
- * loaded is asked of the machine layer (resident_at); no other overlay holds this code, and
- * for those the lookups stay the original's.
+ * Eleven stage overlays (024F's group) hold this code at these addresses. The tile read and
+ * the handlers are the same bytes in all eleven; each overlay's two lookups differ only in the
+ * address of its probe table, so each of the eleven has its own routine, sharing one body. The
+ * thirteen overlays of 05BF's group hold the same two lookups $312 higher, reading with
+ * ProbeTileRead9991; their routines (player_probe_boxes.c) share the same body. Which one is
+ * loaded is asked of the machine layer (resident_at); for any other overlay the lookups stay
+ * the original's.
  *
  * zTemp00-09 and zTemp0A-0D are RAM these routines leave behind, so they are written here.
  * Only the wrappers and exit shims know registers and flags.
@@ -24,7 +26,7 @@ enum {
     TILE_PAGE_BASE = 0x7D, PROBE_COLUMNS = 4, PROBE_COLUMN_BYTES = 4, PROBE_NO_COLUMN = 0x80,
     HIT_NEEDS_SECOND_LOOK = 0xA1, HIT_SECOND_LOOK_SKIP = 0x80, SECOND_LOOK_SOLID = 0x01,
     HIT_CLEARED_BY_SECOND_LOOK = 0x5E, SECOND_LOOK_RAISE = 0xF8,
-    TILE_READ_RUN = 0x967F, TILE_READ_RUN_9991 = 0x9991, LOOKUP_RUN = 0x95AB, LOOKUP_ALT_RUN = 0x960B
+    TILE_READ_RUN = 0x967F, TILE_READ_RUN_9991 = 0x9991, LOOKUP_RUN = 0x95AB, LOOKUP_ALT_RUN = 0x960B, LOOKUP_RUN_05BF = 0x98BD
 };
 
 static HandlerExit exit_with(uint8_t y, Sum sum)
@@ -827,7 +829,15 @@ static void store_column(uint8_t column, uint8_t answer)
  * into the tile, for each. A column marked as absent reads as nothing. The probe table is the
  * overlay's.
  */
-static LookupEnd lookup_columns(uint8_t probe, uint8_t object, uint16_t table)
+/*
+ * The two stage groups' lookups are the same instructions: 024F's eleven overlays hold them at $95AB and $960B and read
+ * with TerrainTileRead at $967F, 05BF's thirteen at $98BD and $991D with ProbeTileRead9991 at $9991. A group gives the
+ * returns of the calls and its read; each overlay gives its probe table.
+ */
+const LookupGroup lookup_group_024f = { 0x95E6, 0x960F, 0x965F, TerrainTileRead };
+const LookupGroup lookup_group_05bf = { 0x98F8, 0x9921, 0x9971, ProbeTileRead9991 };
+
+LookupEnd terrain_lookup_columns(uint8_t probe, uint8_t object, uint16_t table, const LookupGroup *group)
 {
     LookupEnd end = { false, false, 0, 0, false, { TILE_PLAIN, 0, 0, 0, 0, 0, { false, 0, false, false, false } }, 0 };
     uint8_t y = (uint8_t)(probe << 1);
@@ -884,8 +894,9 @@ static LookupEnd lookup_columns(uint8_t probe, uint8_t object, uint16_t table)
             WR8(ZP->temp03, yhigh.value);
             y++;
             push8(y);
-            jsr_push(0x95E6);
-            read = TerrainTileRead();
+            jsr_push(group->read_return);
+            abi_flag(P_B, true);    /* the PLP above pulled the B the PHP pushed; the read may run the overlay's own code */
+            read = group->read();
             jsr_pop();
             end.last = read;
             end.read_any = true;
@@ -927,7 +938,8 @@ void lookup_exit_shim(LookupEnd end)
  * The second look: TerrainLookup, then each column that found floor looked at again eight
  * pixels above its point; if that too is solid the floor bits come off the column's answer.
  */
-static LookupEnd lookup_alt_columns(uint8_t probe, uint8_t object, uint16_t table, LookupEnd (*lookup)(uint8_t, uint8_t))
+LookupEnd terrain_lookup_alt_columns(uint8_t probe, uint8_t object, uint16_t table, const LookupGroup *group,
+                                     LookupEnd (*lookup)(uint8_t, uint8_t))
 {
     LookupEnd end;
     uint8_t y;
@@ -935,7 +947,7 @@ static LookupEnd lookup_alt_columns(uint8_t probe, uint8_t object, uint16_t tabl
     uint8_t column;
 
     push8(probe);
-    jsr_push(0x960F);
+    jsr_push(group->lookup_return);
     end = lookup(probe, object);
     jsr_pop();
     probe = pull8();
@@ -993,8 +1005,9 @@ static LookupEnd lookup_alt_columns(uint8_t probe, uint8_t object, uint16_t tabl
             second = add_bytes(0xFF, other, first.carry);
             WR8(ZP->temp02, second.value);
             push8(y);
-            jsr_push(0x965F);
-            read = TerrainTileRead();
+            jsr_push(group->alt_read_return);
+            abi_flag(P_B, true);    /* as the first look's read: the B of the first routine's PLP */
+            read = group->read();
             jsr_pop();
             end.last = read;
             end.read_any = true;
@@ -1018,7 +1031,7 @@ static LookupEnd lookup_alt_columns(uint8_t probe, uint8_t object, uint16_t tabl
 
 static LookupEnd TerrainLookup_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xCBE0);
+    return terrain_lookup_columns(probe, object, 0xCBE0, &lookup_group_024f);
 }
 
 /*
@@ -1054,7 +1067,7 @@ void abi_TerrainLookup(void)
  */
 LookupEnd TerrainLookupAlt(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xCBE0, TerrainLookup_body);
+    return terrain_lookup_alt_columns(probe, object, 0xCBE0, &lookup_group_024f, TerrainLookup_body);
 }
 
 void abi_TerrainLookupAlt(void)
@@ -1064,7 +1077,7 @@ void abi_TerrainLookupAlt(void)
 
 static LookupEnd TerrainLookupB_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xC11F);
+    return terrain_lookup_columns(probe, object, 0xC11F, &lookup_group_024f);
 }
 
 /*
@@ -1102,7 +1115,7 @@ void abi_TerrainLookupB(void)
  */
 LookupEnd TerrainLookupAltB(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xC11F, TerrainLookupB_body);
+    return terrain_lookup_alt_columns(probe, object, 0xC11F, &lookup_group_024f, TerrainLookupB_body);
 }
 
 void abi_TerrainLookupAltB(void)
@@ -1112,7 +1125,7 @@ void abi_TerrainLookupAltB(void)
 
 static LookupEnd TerrainLookupC_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xD9DE);
+    return terrain_lookup_columns(probe, object, 0xD9DE, &lookup_group_024f);
 }
 
 /*
@@ -1150,7 +1163,7 @@ void abi_TerrainLookupC(void)
  */
 LookupEnd TerrainLookupAltC(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xD9DE, TerrainLookupC_body);
+    return terrain_lookup_alt_columns(probe, object, 0xD9DE, &lookup_group_024f, TerrainLookupC_body);
 }
 
 void abi_TerrainLookupAltC(void)
@@ -1160,7 +1173,7 @@ void abi_TerrainLookupAltC(void)
 
 static LookupEnd TerrainLookupD_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xB547);
+    return terrain_lookup_columns(probe, object, 0xB547, &lookup_group_024f);
 }
 
 /*
@@ -1198,7 +1211,7 @@ void abi_TerrainLookupD(void)
  */
 LookupEnd TerrainLookupAltD(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xB547, TerrainLookupD_body);
+    return terrain_lookup_alt_columns(probe, object, 0xB547, &lookup_group_024f, TerrainLookupD_body);
 }
 
 void abi_TerrainLookupAltD(void)
@@ -1208,7 +1221,7 @@ void abi_TerrainLookupAltD(void)
 
 static LookupEnd TerrainLookupE_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xBD92);
+    return terrain_lookup_columns(probe, object, 0xBD92, &lookup_group_024f);
 }
 
 /*
@@ -1246,7 +1259,7 @@ void abi_TerrainLookupE(void)
  */
 LookupEnd TerrainLookupAltE(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xBD92, TerrainLookupE_body);
+    return terrain_lookup_alt_columns(probe, object, 0xBD92, &lookup_group_024f, TerrainLookupE_body);
 }
 
 void abi_TerrainLookupAltE(void)
@@ -1256,7 +1269,7 @@ void abi_TerrainLookupAltE(void)
 
 static LookupEnd TerrainLookupF_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xD658);
+    return terrain_lookup_columns(probe, object, 0xD658, &lookup_group_024f);
 }
 
 /*
@@ -1294,7 +1307,7 @@ void abi_TerrainLookupF(void)
  */
 LookupEnd TerrainLookupAltF(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xD658, TerrainLookupF_body);
+    return terrain_lookup_alt_columns(probe, object, 0xD658, &lookup_group_024f, TerrainLookupF_body);
 }
 
 void abi_TerrainLookupAltF(void)
@@ -1304,7 +1317,7 @@ void abi_TerrainLookupAltF(void)
 
 static LookupEnd TerrainLookupG_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xD771);
+    return terrain_lookup_columns(probe, object, 0xD771, &lookup_group_024f);
 }
 
 /*
@@ -1342,7 +1355,7 @@ void abi_TerrainLookupG(void)
  */
 LookupEnd TerrainLookupAltG(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xD771, TerrainLookupG_body);
+    return terrain_lookup_alt_columns(probe, object, 0xD771, &lookup_group_024f, TerrainLookupG_body);
 }
 
 void abi_TerrainLookupAltG(void)
@@ -1352,7 +1365,7 @@ void abi_TerrainLookupAltG(void)
 
 static LookupEnd TerrainLookupH_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xB23F);
+    return terrain_lookup_columns(probe, object, 0xB23F, &lookup_group_024f);
 }
 
 /*
@@ -1390,7 +1403,7 @@ void abi_TerrainLookupH(void)
  */
 LookupEnd TerrainLookupAltH(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xB23F, TerrainLookupH_body);
+    return terrain_lookup_alt_columns(probe, object, 0xB23F, &lookup_group_024f, TerrainLookupH_body);
 }
 
 void abi_TerrainLookupAltH(void)
@@ -1400,7 +1413,7 @@ void abi_TerrainLookupAltH(void)
 
 static LookupEnd TerrainLookupI_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xD2CF);
+    return terrain_lookup_columns(probe, object, 0xD2CF, &lookup_group_024f);
 }
 
 /*
@@ -1438,7 +1451,7 @@ void abi_TerrainLookupI(void)
  */
 LookupEnd TerrainLookupAltI(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xD2CF, TerrainLookupI_body);
+    return terrain_lookup_alt_columns(probe, object, 0xD2CF, &lookup_group_024f, TerrainLookupI_body);
 }
 
 void abi_TerrainLookupAltI(void)
@@ -1448,7 +1461,7 @@ void abi_TerrainLookupAltI(void)
 
 static LookupEnd TerrainLookupJ_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xD9A2);
+    return terrain_lookup_columns(probe, object, 0xD9A2, &lookup_group_024f);
 }
 
 /*
@@ -1486,7 +1499,7 @@ void abi_TerrainLookupJ(void)
  */
 LookupEnd TerrainLookupAltJ(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xD9A2, TerrainLookupJ_body);
+    return terrain_lookup_alt_columns(probe, object, 0xD9A2, &lookup_group_024f, TerrainLookupJ_body);
 }
 
 void abi_TerrainLookupAltJ(void)
@@ -1496,7 +1509,7 @@ void abi_TerrainLookupAltJ(void)
 
 static LookupEnd TerrainLookupK_body(uint8_t probe, uint8_t object)
 {
-    return lookup_columns(probe, object, 0xD6C8);
+    return terrain_lookup_columns(probe, object, 0xD6C8, &lookup_group_024f);
 }
 
 /*
@@ -1534,7 +1547,7 @@ void abi_TerrainLookupK(void)
  */
 LookupEnd TerrainLookupAltK(uint8_t probe, uint8_t object)
 {
-    return lookup_alt_columns(probe, object, 0xD6C8, TerrainLookupK_body);
+    return terrain_lookup_alt_columns(probe, object, 0xD6C8, &lookup_group_024f, TerrainLookupK_body);
 }
 
 void abi_TerrainLookupAltK(void)
@@ -1575,14 +1588,30 @@ static const LookupVariant lookup_variants[] = {
     { DISC(0x100F, 0x5AB), TerrainLookupI, TerrainLookupAltI },
     { DISC(0x116F, 0x5AB), TerrainLookupJ, TerrainLookupAltJ },
     { DISC(0x160F, 0x5AB), TerrainLookupK, TerrainLookupAltK },
+    { DISC(0x05C0, 0x0BD), ProbeBoxes05C0, ProbeBoxesFlagged05C0 },
+    { DISC(0x0720, 0x0BD), ProbeBoxes0720, ProbeBoxesFlagged0720 },
+    { DISC(0x0880, 0x0BD), ProbeBoxes0880, ProbeBoxesFlagged0880 },
+    { DISC(0x09E0, 0x0BD), ProbeBoxes09E0, ProbeBoxesFlagged09E0 },
+    { DISC(0x0B40, 0x0BD), ProbeBoxes0B40, ProbeBoxesFlagged0B40 },
+    { DISC(0x0CA0, 0x0BD), ProbeBoxes0CA0, ProbeBoxesFlagged0CA0 },
+    { DISC(0x0E00, 0x0BD), ProbeBoxes0E00, ProbeBoxesFlagged0E00 },
+    { DISC(0x0F60, 0x0BD), ProbeBoxes0F60, ProbeBoxesFlagged0F60 },
+    { DISC(0x10C0, 0x0BD), ProbeBoxes10C0, ProbeBoxesFlagged10C0 },
+    { DISC(0x12D0, 0x0BD), ProbeBoxes12D0, ProbeBoxesFlagged12D0 },
+    { DISC(0x13F0, 0x0BD), ProbeBoxes13F0, ProbeBoxesFlagged13F0 },
+    { DISC(0x16C0, 0x0BD), ProbeBoxes16C0, ProbeBoxesFlagged16C0 },
+    { DISC(0x18D0, 0x0BD), ProbeBoxes18D0, ProbeBoxesFlagged18D0 },
 };
 
-static const LookupVariant *resident_lookup(uint32_t disc)
+/* The copy loaded: 024F's group keeps its first lookup at $95AB, 05BF's at $98BD. */
+static const LookupVariant *resident_lookup(void)
 {
+    uint32_t at_024f = resident_at(LOOKUP_RUN);
+    uint32_t at_05bf = resident_at(LOOKUP_RUN_05BF);
     unsigned i;
 
     for (i = 0; i < sizeof lookup_variants / sizeof lookup_variants[0]; i++) {
-        if (lookup_variants[i].disc == disc) {
+        if (lookup_variants[i].disc == at_024f || lookup_variants[i].disc == at_05bf) {
             return &lookup_variants[i];
         }
     }
@@ -1595,7 +1624,7 @@ static const LookupVariant *resident_lookup(uint32_t disc)
  */
 LookupEnd StageLookup(uint8_t probe, uint8_t object, uint8_t column, bool carry_in)
 {
-    const LookupVariant *variant = resident_lookup(resident_at(LOOKUP_RUN));
+    const LookupVariant *variant = resident_lookup();
     LookupEnd end;
 
     if (variant == 0) {
@@ -1608,7 +1637,7 @@ LookupEnd StageLookup(uint8_t probe, uint8_t object, uint8_t column, bool carry_
 
 LookupEnd StageLookupAlt(uint8_t probe, uint8_t object, uint8_t column, bool carry_in)
 {
-    const LookupVariant *variant = resident_lookup(resident_at(LOOKUP_RUN));
+    const LookupVariant *variant = resident_lookup();
     LookupEnd end;
 
     if (variant == 0) {

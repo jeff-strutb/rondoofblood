@@ -90,6 +90,43 @@ typedef struct {
     TileRead last;
     uint8_t column_after;
 } LookupEnd;
+/* object/terrain.c: the body both stage groups' lookups share; a group gives its calls' returns and its tile read. */
+typedef struct {
+    uint16_t read_return, lookup_return, alt_read_return;
+    TileRead (*read)(void);
+} LookupGroup;
+extern const LookupGroup lookup_group_024f;
+extern const LookupGroup lookup_group_05bf;
+LookupEnd terrain_lookup_columns(uint8_t probe, uint8_t object, uint16_t table, const LookupGroup *group);
+LookupEnd terrain_lookup_alt_columns(uint8_t probe, uint8_t object, uint16_t table, const LookupGroup *group,
+                                     LookupEnd (*lookup)(uint8_t, uint8_t));
+/* object/player_probe_boxes.c: 05BF's group's lookups at $98BD and $991D, one per overlay. */
+LookupEnd ProbeBoxes05C0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged05C0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes0720(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged0720(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes0880(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged0880(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes09E0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged09E0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes0B40(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged0B40(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes0CA0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged0CA0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes0E00(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged0E00(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes0F60(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged0F60(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes10C0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged10C0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes12D0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged12D0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes13F0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged13F0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes16C0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged16C0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxes18D0(uint8_t probe, uint8_t object);
+LookupEnd ProbeBoxesFlagged18D0(uint8_t probe, uint8_t object);
 
 LookupEnd StageLookup(uint8_t probe, uint8_t object, uint8_t column, bool carry_in);
 LookupEnd StageLookupAlt(uint8_t probe, uint8_t object, uint8_t column, bool carry_in);

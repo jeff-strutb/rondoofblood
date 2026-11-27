@@ -2100,6 +2100,29 @@ MariaClearWork:
     tai KernelZeros,zPadHeld+$2000,$0019
     rts
 
+; @routine 01DD:17A MariaClearKeepPlace
+; @run 6D:A17A
+; WHAT IT DOES: RichterClearKeepPlace in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterClearKeepPlace's body; its call of ClearObject returns to $A18A.
+; WAITS: no.
+; Entry, exit: as RichterClearKeepPlace.
+MariaClearKeepPlace:
+    lda a:OBJ_X_LO
+    pha
+    lda a:OBJ_Y_LO
+    pha
+    lda a:OBJ_2AC0
+    pha
+    clx
+    jsr VecClearObject
+    pla
+    sta a:OBJ_2AC0
+    pla
+    sta a:OBJ_Y_LO
+    pla
+    sta a:OBJ_X_LO
+    rts
+
 ; @routine 01DD:359 MariaStartHitScript
 ; @run 6D:A359
 ; WHAT IT DOES: RichterStartHitScript in Maria's player overlay (01DD), the same instructions at her address.
@@ -2120,6 +2143,147 @@ MariaStepIndex:
     lda a:OBJ_2800
     asl a
     tax
+    rts
+
+; @routine 01DE:095 MariaPadForcesOff
+; @run 6D:A895
+; WHAT IT DOES: Clears the two bytes that force presses onto her pad.
+; HOW: STZ of PadForcedPress and PadForcedPressB.
+; WAITS: no.
+; Entry: any. Exit: every register and flag kept.
+MariaPadForcesOff:
+    stz a:PadForcedPress
+    stz a:PadForcedPressB
+    rts
+
+; @routine 01DE:143 MariaTurnOnPress
+; @run 6D:A943
+; WHAT IT DOES: A press of the way she faces sets her walking speed; a press of the other way turns her round
+; first, counting the turn in zFieldC6.
+; HOW: Bits 5 (right) and 7 (left) of zPadPressed by OBJ_2AC0; the speed from her table at $A9C5.
+; WAITS: no.
+; Entry: nothing. Exit: no press, A the facing, Z set, N clear, V bit 6 of the pad; otherwise A the speed's high
+; byte, N and Z from it, Y twice the facing, C clear, V bit 6 of the pad. X kept.
+MariaTurnOnPress:
+    lda a:OBJ_2AC0
+    bne MariaTurnOnPress_at0
+    tst #$20,z:zPadPressed
+    bne MariaTurnOnPress_at1
+    tst #$80,z:zPadPressed
+    bne MariaTurnOnPress_at3
+    rts
+MariaTurnOnPress_at3:
+    inc z:zFieldC6
+    lda #$01
+    sta a:OBJ_2AC0
+MariaTurnOnPress_at1:
+    lda a:OBJ_2AC0
+    asl a
+    tay
+    lda a:MariaAirTurn+$46,y
+    sta a:OBJ_VX_LO
+    lda a:MariaAirTurn+$47,y
+    sta a:OBJ_VX_HI
+    rts
+MariaTurnOnPress_at0:
+    tst #$80,z:zPadPressed
+    bne MariaTurnOnPress_at1
+    tst #$20,z:zPadPressed
+    bne MariaTurnOnPress_at2
+    rts
+MariaTurnOnPress_at2:
+    inc z:zFieldC6
+    stz a:OBJ_2AC0
+    jmp MariaTurnOnPress_at1
+
+; @routine 01DE:17F MariaAirTurn
+; @run 6D:A97F
+; WHAT IT DOES: Her turn in the air: in animations $0A and $14 as MariaTurnOnPress; otherwise a press against the
+; way she moves turns her and sets her air speed, counting the turn in zFieldC6.
+; HOW: OBJ_FIELDS_2EE0; the sign of OBJ_VX_HI picks the press looked for; the speed from her table at $A9C1.
+; Untraced: everything for a speed to the left ($A9A0 to $A9AC), and the return when she faces left while moving
+; right ($A992); no script turned her in the air that way.
+; WAITS: no.
+; Entry: nothing. Exit: as MariaTurnOnPress in those animations, C set; else no turn, A the facing or 0, N and Z
+; from it or the press, C from comparing the animation with $14; a turn, A the speed's high byte, Y twice the
+; facing, C clear; V bit 6 of the pad after a press was looked at. X kept.
+MariaAirTurn:
+    lda a:OBJ_FIELDS_2EE0
+    cmp #$0A
+    beq MariaTurnOnPress
+    cmp #$14
+    beq MariaTurnOnPress
+    lda a:OBJ_VX_HI
+    bmi MariaAirTurn_at0
+    lda a:OBJ_2AC0
+    bne MariaAirTurn_at1
+    tst #$80,z:zPadPressed
+    beq MariaAirTurn_at1
+    lda #$01
+    sta a:OBJ_2AC0
+    bra MariaAirTurn_at2
+MariaAirTurn_at0:
+    lda a:OBJ_2AC0
+    beq MariaAirTurn_at1
+    tst #$20,z:zPadPressed
+    beq MariaAirTurn_at1
+    stz a:OBJ_2AC0
+MariaAirTurn_at2:
+    inc z:zFieldC6
+    lda a:OBJ_2AC0
+    asl a
+    tay
+    lda a:MariaAirTurn+$42,y
+    sta a:OBJ_VX_LO
+    lda a:MariaAirTurn+$43,y
+    sta a:OBJ_VX_HI
+MariaAirTurn_at1:
+    rts
+
+; @routine 01DE:20B MariaFallGravity
+; @run 6D:AA0B
+; WHAT IT DOES: RichterFallGravity in Maria's player overlay (01DD): $24 more Y speed a frame, not $38, held at $0700.
+; HOW: RichterFallGravity's body with her pull.
+; Untraced: the hold at $0700 ($AA22); no script let her fall that fast.
+; WAITS: no.
+; Entry, exit: as RichterFallGravity.
+MariaFallGravity:
+    lda a:OBJ_VY_LO
+    clc
+    adc #$24
+    sta a:OBJ_VY_LO
+    lda a:OBJ_VY_HI
+    adc #$00
+    sta a:OBJ_VY_HI
+    bmi MariaFallGravity_at0
+    cmp #$07
+    bcc MariaFallGravity_at0
+    stz a:OBJ_VY_LO
+MariaFallGravity_at0:
+    rts
+
+; @routine 01DE:226 MariaOnMarkedFloor
+; @run 6D:AA26
+; WHAT IT DOES: RichterOnMarkedFloor in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterOnMarkedFloor's body.
+; WAITS: no.
+; Entry, exit: as RichterOnMarkedFloor.
+MariaOnMarkedFloor:
+    lda a:OBJ_Y_LO
+    cmp #$10
+    bcc MariaOnMarkedFloor_at0
+    lda a:RichterColumnHit
+    and #$24
+    beq MariaOnMarkedFloor_at0
+    and #$20
+    bne MariaOnMarkedFloor_at1
+    tst #$10,z:zPadHeld
+    beq MariaOnMarkedFloor_at0
+MariaOnMarkedFloor_at1:
+    sec
+    rts
+MariaOnMarkedFloor_at0:
+    clc
     rts
 
 ; @routine 01E0:266 MariaInvincibleTick

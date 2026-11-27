@@ -10,6 +10,7 @@
 #include "ram.h"
 #include "routines.h"
 #include "access.h"
+#include "enemy_objects.h"
 
 enum {
     OBJECT_MARK = 0x10, OBJECT_STATE_QUICK = 6, OBJECT_QUICKEN = 4, OBJECT_FLASH_FIRST = 0x8E,
@@ -128,13 +129,66 @@ uint8_t RichterObjectTake2FE8(uint8_t object)
     return player;
 }
 
-void abi_RichterObjectTake2FE8(void)
+static void take_2fe8_exit_shim(uint8_t player)
 {
-    uint8_t player = RichterObjectTake2FE8(cpu.x);
-
     cpu.a = (uint8_t)(player << 1);
     abi_nz(cpu.a);
     abi_flag(P_C, (player & 0x80) != 0);
+}
+
+void abi_RichterObjectTake2FE8(void)
+{
+    take_2fe8_exit_shim(RichterObjectTake2FE8(cpu.x));
+}
+
+/*
+ * @routine 01E1:397 MariaObjectTake2FE8
+ * @run 6E:C397
+ * WHAT IT DOES: RichterObjectTake2FE8 in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterObjectTake2FE8's body.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectTake2FE8.
+ */
+uint8_t MariaObjectTake2FE8(uint8_t object)
+{
+    return RichterObjectTake2FE8(object);
+}
+
+void abi_MariaObjectTake2FE8(void)
+{
+    take_2fe8_exit_shim(MariaObjectTake2FE8(cpu.x));
+}
+
+/*
+ * @routine 01E1:387 MariaObjectFromPlayer
+ * @run 6E:C387
+ * WHAT IT DOES: Gives an object Maria's OBJ_2FE8, doubled, and her facing; the doubled byte is written twice.
+ * HOW: The doubling once inline, then on into the copy of RichterObjectFromPlayer at $C38E, which calls
+ * MariaObjectTake2FE8 and copies the facing.
+ * WAITS: no.
+ * Entry: X object. Exit: as RichterObjectFromPlayer.
+ */
+ObjectFromPlayer MariaObjectFromPlayer(uint8_t object)
+{
+    ObjectFromPlayer from;
+    uint8_t player = rd8(OBJ_2FE8 + PLAYER);
+
+    wr8((uint16_t)(OBJ_2FE8 + object), (uint8_t)(player << 1));
+    jsr_push(0xC390);
+    from.player_2fe8 = MariaObjectTake2FE8(object);
+    jsr_pop();
+    from.facing = rd8(OBJ_2AC0 + PLAYER);
+    wr8((uint16_t)(OBJ_2AC0 + object), from.facing);
+    return from;
+}
+
+void abi_MariaObjectFromPlayer(void)
+{
+    ObjectFromPlayer from = MariaObjectFromPlayer(cpu.x);
+
+    cpu.a = from.facing;
+    abi_nz(from.facing);
+    abi_flag(P_C, (from.player_2fe8 & 0x80) != 0);
 }
 
 /*
@@ -490,6 +544,29 @@ Sum RichterObjectAtPlayer(uint8_t object)
 void abi_RichterObjectAtPlayer(void)
 {
     Sum high = RichterObjectAtPlayer(cpu.x);
+
+    cpu.a = high.value;
+    abi_nz(high.value);
+    abi_flag(P_C, high.carry);
+    abi_flag(P_V, high.overflow);
+}
+
+/*
+ * @routine 01E1:4EC MariaObjectAtPlayer
+ * @run 6E:C4EC
+ * WHAT IT DOES: RichterObjectAtPlayer in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterObjectAtPlayer's body.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectAtPlayer.
+ */
+Sum MariaObjectAtPlayer(uint8_t object)
+{
+    return RichterObjectAtPlayer(object);
+}
+
+void abi_MariaObjectAtPlayer(void)
+{
+    Sum high = MariaObjectAtPlayer(cpu.x);
 
     cpu.a = high.value;
     abi_nz(high.value);
@@ -892,16 +969,33 @@ static AnimationStep object_animation_exit(uint8_t a, uint8_t nz, bool c, bool y
     return r;
 }
 
+/*
+ * Where one character's copy of the object animation routines lies: the return address each of its
+ * calls pushes (the wait's, the running test's, the entry read's and the tick's), and its list
+ * pointer. Maria's overlay (01DD) holds the same instructions at $DD84 to $DDC7.
+ */
+typedef struct {
+    uint16_t wait_ret, running_ret, entry_ret, tick_ret;
+    ObjectListStep (*list)(uint8_t object);
+} ObjectAnimationLayout;
+
+static const ObjectAnimationLayout RICHTER_OBJECT_ANIMATION = {
+    0xDA43, 0xDA4B, 0xDA6B, 0xDA82, RichterObjectAnimationList
+};
+static const ObjectAnimationLayout MARIA_OBJECT_ANIMATION = {
+    0xDD87, 0xDD8F, 0xDDAF, 0xDDC6, MariaObjectAnimationList
+};
+
 /* The entry of the object's step in play: how long, then which frame; a mark of $FE starts the list over. */
-static AnimationStep object_read_entry(uint8_t object)
+static AnimationStep object_read_entry(const ObjectAnimationLayout *layout, uint8_t object)
 {
     AnimationStep result;
     ObjectListStep list;
     uint8_t time, frame, y;
 
     for (;;) {
-        jsr_push(0xDA6B);
-        list = RichterObjectAnimationList(object);
+        jsr_push(layout->entry_ret);
+        list = layout->list(object);
         jsr_pop();
         y = list.y;
         time = RD8_PTR_Y(ZP->temp00, y);
@@ -934,11 +1028,16 @@ static AnimationStep object_read_entry(uint8_t object)
  * WAITS: no.
  * Entry: A animation, X object. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
  */
-AnimationStep RichterObjectSetAnimation(uint8_t object, uint8_t animation)
+static AnimationStep object_set_animation(const ObjectAnimationLayout *layout, uint8_t object, uint8_t animation)
 {
     WR8(OBJ->fields_2ee0[object], animation);
     WR8(OBJ->flags[object], 0);
-    return object_read_entry(object);
+    return object_read_entry(layout, object);
+}
+
+AnimationStep RichterObjectSetAnimation(uint8_t object, uint8_t animation)
+{
+    return object_set_animation(&RICHTER_OBJECT_ANIMATION, object, animation);
 }
 
 void abi_RichterObjectSetAnimation(void)
@@ -955,7 +1054,7 @@ void abi_RichterObjectSetAnimation(void)
  * WAITS: no.
  * Entry: X object. Exit: as RichterAnimationTick.
  */
-AnimationStep RichterObjectAnimationTick(uint8_t object)
+static AnimationStep object_animation_tick(const ObjectAnimationLayout *layout, uint8_t object)
 {
     AnimationStep result;
     ObjectListStep list;
@@ -968,10 +1067,10 @@ AnimationStep RichterObjectAnimationTick(uint8_t object)
     left = DEC8(OBJ->f2f90[object]);
     if (left == 0) {
         INC8(OBJ->flags[object]);
-        return object_read_entry(object);
+        return object_read_entry(layout, object);
     }
-    jsr_push(0xDA82);
-    list = RichterObjectAnimationList(object);
+    jsr_push(layout->tick_ret);
+    list = layout->list(object);
     jsr_pop();
     y = (uint8_t)(list.y + 1);
     frame = RD8_PTR_Y(ZP->temp00, y);
@@ -981,6 +1080,11 @@ AnimationStep RichterObjectAnimationTick(uint8_t object)
     result.same_frame = true;
     result.frame = frame;
     return result;
+}
+
+AnimationStep RichterObjectAnimationTick(uint8_t object)
+{
+    return object_animation_tick(&RICHTER_OBJECT_ANIMATION, object);
 }
 
 void abi_RichterObjectAnimationTick(void)
@@ -997,16 +1101,21 @@ void abi_RichterObjectAnimationTick(void)
  * Entry: X object. Exit: A the timer, N, Z and C from comparing it with $FF. Y as the tick. X and
  * V kept. Clobbers zTemp00-01.
  */
-AnimationStep RichterObjectAnimationRunning(uint8_t object)
+static AnimationStep object_animation_running(const ObjectAnimationLayout *layout, uint8_t object)
 {
     AnimationStep tick;
     uint8_t time;
 
-    jsr_push(0xDA4B);
-    tick = RichterObjectAnimationTick(object);
+    jsr_push(layout->running_ret);
+    tick = object_animation_tick(layout, object);
     jsr_pop();
     time = RD8(OBJ->f2f90[object]);
     return object_animation_exit(time, (uint8_t)(time - OBJECT_ANIMATION_STOPPED), time >= OBJECT_ANIMATION_STOPPED, tick.y_set, tick.y);
+}
+
+AnimationStep RichterObjectAnimationRunning(uint8_t object)
+{
+    return object_animation_running(&RICHTER_OBJECT_ANIMATION, object);
 }
 
 void abi_RichterObjectAnimationRunning(void)
@@ -1028,8 +1137,8 @@ AnimationWaitEnd RichterObjectAnimationWait(uint8_t object)
 {
     AnimationWaitEnd r = { { FRAME_STOPPED }, false, 0 };
 
-    jsr_push(0xDA43);
-    r.step = RichterObjectAnimationTick(object);
+    jsr_push(RICHTER_OBJECT_ANIMATION.wait_ret);
+    r.step = object_animation_tick(&RICHTER_OBJECT_ANIMATION, object);
     jsr_pop();
     if (r.step.nz == 0) {
         return r;
@@ -1045,4 +1154,441 @@ AnimationWaitEnd RichterObjectAnimationWait(uint8_t object)
 void abi_RichterObjectAnimationWait(void)
 {
     animation_exit_shim(RichterObjectAnimationWait(cpu.x).step);
+}
+
+/*
+ * @routine 01E4:58C MariaObjectAnimationRunning
+ * @run 6E:DD8C
+ * WHAT IT DOES: RichterObjectAnimationRunning in Maria's player overlay (01DD).
+ * HOW: The same instructions with her tick, MariaObjectAnimationTick at $DD95.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectAnimationRunning.
+ */
+AnimationStep MariaObjectAnimationRunning(uint8_t object)
+{
+    return object_animation_running(&MARIA_OBJECT_ANIMATION, object);
+}
+
+void abi_MariaObjectAnimationRunning(void)
+{
+    animation_exit_shim(MariaObjectAnimationRunning(cpu.x));
+}
+
+/*
+ * @routine 01E4:595 MariaObjectAnimationTick
+ * @run 6E:DD95
+ * WHAT IT DOES: RichterObjectAnimationTick in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterObjectAnimationTick's body with her layout: its calls go to MariaObjectAnimationList
+ * at $DDC8, where his C would read his list.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectAnimationTick.
+ */
+AnimationStep MariaObjectAnimationTick(uint8_t object)
+{
+    return object_animation_tick(&MARIA_OBJECT_ANIMATION, object);
+}
+
+void abi_MariaObjectAnimationTick(void)
+{
+    animation_exit_shim(MariaObjectAnimationTick(cpu.x));
+}
+
+/*
+ * @routine 01E4:5A7 MariaObjectSetAnimation
+ * @run 6E:DDA7
+ * @stop DDC8
+ * WHAT IT DOES: RichterObjectSetAnimation in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterObjectSetAnimation's body with her layout: its calls go to MariaObjectAnimationList.
+ * WAITS: no.
+ * Entry, exit: as RichterObjectSetAnimation.
+ */
+AnimationStep MariaObjectSetAnimation(uint8_t object, uint8_t animation)
+{
+    return object_set_animation(&MARIA_OBJECT_ANIMATION, object, animation);
+}
+
+void abi_MariaObjectSetAnimation(void)
+{
+    animation_exit_shim(MariaObjectSetAnimation(cpu.x, cpu.a));
+}
+
+
+/*
+ * Maria's own object code (her overlay 01DD, from $C000): routines with no copy in Richter's overlay. Tables of her
+ * overlay are read by address: they have no row in config/rondo/tables.csv yet.
+ */
+enum {
+    MARIA_OBJECT_FALL_LIMIT = 7, MARIA_ACCEL_TABLE = 0xC8A2, CAMERA_MODE_STILL = 0x17,
+    NEAR_TOP_SCREEN = 1, NEAR_ACROSS_HALF = 4, NEAR_ACROSS = 8, NEAR_DOWN_HALF = 0x12, NEAR_DOWN = 0x24
+};
+
+/*
+ * @routine 01E1:2CB MariaObjectFallCapped
+ * @run 6E:C2CB
+ * WHAT IT DOES: Adds an object's own pull (OBJ_3618 and OBJ_3670) to its Y speed, held at $0700.
+ * HOW: A word add into OBJ_VY_LO and OBJ_VY_HI; at 7 and up the speed is set to $0700.
+ * Untraced: the hold at $0700 ($C2E4); no script let one of her objects fall that fast.
+ * WAITS: no.
+ * Entry: X object. Exit: A the speed's high byte, V from its add; rising, N, Z and C from the add; falling slower
+ * than 7, N, Z and C from comparing it with 7; held, A 7, N and Z from it, C set. X and Y kept.
+ */
+Ended MariaObjectFallCapped(uint8_t object)
+{
+    Sum low, high;
+    uint8_t pull;
+    Ended e;
+
+    pull = RD8(OBJ->f3618[object]);
+    low = add_bytes(pull, RD8(OBJ->vy_lo[object]), false);
+    WR8(OBJ->vy_lo[object], low.value);
+    pull = RD8(OBJ->f3670[object]);
+    high = add_bytes(pull, RD8(OBJ->vy_hi[object]), low.carry);
+    WR8(OBJ->vy_hi[object], high.value);
+    e = ended_of_sum(high);
+    if (high.value & 0x80) {
+        return e;
+    }
+    e = ended_then(e, ended_compare(high.value, MARIA_OBJECT_FALL_LIMIT));
+    if (high.value < MARIA_OBJECT_FALL_LIMIT) {
+        return e;
+    }
+    WR8(OBJ->vy_hi[object], MARIA_OBJECT_FALL_LIMIT);
+    WR8(OBJ->vy_lo[object], 0);
+    return ended_then(e, ended_load(MARIA_OBJECT_FALL_LIMIT));
+}
+
+void abi_MariaObjectFallCapped(void)
+{
+    abi_ended(MariaObjectFallCapped(cpu.x));
+}
+
+/* The negative of a scroll speed, and zTemp10 its sign byte ($FF for a negative). */
+static uint8_t against_scroll(uint16_t speed_field)
+{
+    uint8_t value;
+
+    WR8(ZP->temp10, 0);
+    value = (uint8_t)((rd8(speed_field) ^ 0xFF) + 1);
+    if (value & 0x80) {
+        DEC8(ZP->temp10);
+    }
+    return value;
+}
+
+/*
+ * @routine 01E1:328 MariaObjectAgainstScroll
+ * @run 6E:C328
+ * WHAT IT DOES: Moves an object by the negative of the frame's scroll on both axes, so it stays put on the map
+ * while the screen moves.
+ * HOW: ScrollSpeedX and ScrollSpeedY negated, signed into zTemp10; X through MariaObjectAddXLow and
+ * MariaObjectAddXHigh, Y by a word add of its own.
+ * Untraced: the sign byte of a negative scroll, $C332 and $C346 (the scroll's negative was never below zero).
+ * WAITS: no.
+ * Entry: X object. Exit: A the Y position's high byte, N, Z, C and V from its add. X and Y kept. Clobbers zTemp10.
+ */
+Sum MariaObjectAgainstScroll(uint8_t object)
+{
+    uint8_t amount, sign;
+    Sum sum;
+
+    amount = against_scroll(ScrollSpeedX);
+    jsr_push(0xC337);
+    sum = MariaObjectAddXLow(object, amount);
+    jsr_pop();
+    sign = RD8(ZP->temp10);
+    jsr_push(0xC33C);
+    MariaObjectAddXHigh(object, sign, sum.carry);
+    jsr_pop();
+    amount = against_scroll(ScrollSpeedY);
+    sum = add_bytes(amount, RD8(OBJ->y_lo[object]), false);
+    WR8(OBJ->y_lo[object], sum.value);
+    sign = RD8(ZP->temp10);
+    sum = add_bytes(sign, RD8(OBJ->y_hi[object]), sum.carry);
+    WR8(OBJ->y_hi[object], sum.value);
+    return sum;
+}
+
+void abi_MariaObjectAgainstScroll(void)
+{
+    abi_exit_sum(MariaObjectAgainstScroll(cpu.x));
+}
+
+/*
+ * @routine 01E1:361 MariaObjectApplyVelocity
+ * @run 6E:C361
+ * WHAT IT DOES: Moves an object by its velocity, Y then X.
+ * HOW: ApplyVelocityY, then a tail jump into ApplyVelocityX (through their kernel vectors).
+ * WAITS: no.
+ * Entry: X object. Exit: as ApplyVelocityX. Clobbers zTemp10.
+ */
+AxisMove MariaObjectApplyVelocity(uint8_t object)
+{
+    jsr_push(0xC364);
+    ApplyVelocityY(object);
+    jsr_pop();
+    return ApplyVelocityX(object);
+}
+
+void abi_MariaObjectApplyVelocity(void)
+{
+    abi_ended(ended_of_axis_move(MariaObjectApplyVelocity(cpu.x)));
+}
+
+/*
+ * @routine 01E1:358 MariaObjectMove
+ * @run 6E:C358
+ * WHAT IT DOES: Moves an object by its velocity, and against the scroll unless the camera holds still (mode $17).
+ * HOW: CameraMode, MariaObjectAgainstScroll, then on into MariaObjectApplyVelocity.
+ * Untraced: the camera's mode $17, which skips the scroll ($C35D taken).
+ * WAITS: no.
+ * Entry: X object. Exit: as MariaObjectApplyVelocity. Clobbers zTemp10.
+ */
+AxisMove MariaObjectMove(uint8_t object)
+{
+    if (rd8(CameraMode) != CAMERA_MODE_STILL) {
+        jsr_push(0xC361);
+        MariaObjectAgainstScroll(object);
+        jsr_pop();
+    }
+    return MariaObjectApplyVelocity(object);
+}
+
+void abi_MariaObjectMove(void)
+{
+    abi_ended(ended_of_axis_move(MariaObjectMove(cpu.x)));
+}
+
+/*
+ * @routine 01E1:369 MariaObjectFacingVelocity
+ * @run 6E:C369
+ * WHAT IT DOES: Turns an object's X velocity round when it faces left.
+ * HOW: OBJ_2AC0, then NegateVelocityX (through its kernel vector).
+ * WAITS: no.
+ * Entry: X object. Exit: facing right, A 0, Z set; else as NegateVelocityX. X and Y kept.
+ */
+Ended MariaObjectFacingVelocity(uint8_t object)
+{
+    uint8_t facing = RD8(OBJ->facing_left[object]);
+    Sum negated;
+
+    if (facing == 0) {
+        return ended_load(facing);
+    }
+    jsr_push(0xC371);
+    negated = NegateVelocityX(object);
+    jsr_pop();
+    return ended_of_sum(negated);
+}
+
+void abi_MariaObjectFacingVelocity(void)
+{
+    abi_ended(MariaObjectFacingVelocity(cpu.x));
+}
+
+/*
+ * @routine 01E1:677 MariaObjectClear
+ * @run 6E:C677
+ * WHAT IT DOES: Clears an object: the end her object handlers branch to.
+ * HOW: A tail jump into ClearObject (through its kernel vector).
+ * WAITS: no.
+ * Entry: X object. Exit: every register and flag kept.
+ */
+void MariaObjectClear(uint8_t object)
+{
+    ClearObject(object);
+}
+
+void abi_MariaObjectClear(void)
+{
+    MariaObjectClear(cpu.x);
+}
+
+/*
+ * @routine 01E2:080 MariaObjectAccelerate
+ * @run 6E:C880
+ * WHAT IT DOES: Adds to an object's X speed the step for the way it faces, and says whether the speed's sign
+ * changed.
+ * HOW: The word from her table at $C8A2 by OBJ_2AC0, added into OBJ_VX_LO and OBJ_VX_HI; the old high byte kept in
+ * zTemp00 and its bit 7 compared.
+ * WAITS: no.
+ * Entry: X object. Exit: A $80 if the sign changed, else 0, N and Z from it; C and V from the high byte's add; Y
+ * twice the facing. X kept.
+ */
+Ended MariaObjectAccelerate(uint8_t object)
+{
+    uint8_t y = (uint8_t)(RD8(OBJ->facing_left[object]) << 1);
+    uint8_t step, before, changed;
+    Sum low, high;
+
+    step = rd8((uint16_t)(MARIA_ACCEL_TABLE + y));
+    low = add_bytes(step, RD8(OBJ->vx_lo[object]), false);
+    WR8(OBJ->vx_lo[object], low.value);
+    before = RD8(OBJ->vx_hi[object]);
+    WR8(ZP->temp00, before);
+    step = rd8((uint16_t)(MARIA_ACCEL_TABLE + 1 + y));
+    high = add_bytes(step, RD8(OBJ->vx_hi[object]), low.carry);
+    WR8(OBJ->vx_hi[object], high.value);
+    changed = (uint8_t)((high.value ^ RD8(ZP->temp00)) & 0x80);
+    return ended_with_y(ended_with_overflow(ended_with_carry(ended_load(changed), high.carry), high.overflow), y);
+}
+
+void abi_MariaObjectAccelerate(void)
+{
+    abi_ended(MariaObjectAccelerate(cpu.x));
+}
+
+/*
+ * @routine 01E2:0A6 MariaObjectNearPlayer
+ * @run 6E:C8A6
+ * WHAT IT DOES: Says whether an object is at Maria: within 4 across and $12 down of her point (her Y plus her
+ * OBJ_HITBOX_DY), on the first screen; on the second screen down it counts as near at once.
+ * HOW: OBJ_Y_HI against 1, OBJ_X_HI, the X difference plus 4 against 8, the Y difference plus $12 against $24.
+ * Untraced: the second screen ($C8AB taken) and an object below the first screen ($C8CC taken).
+ * WAITS: no.
+ * Entry: X object. Exit: C set if near; A the last value tested, N and Z from its test; V from the last add. X and
+ * Y kept. Clobbers zTemp00.
+ */
+Ended MariaObjectNearPlayer(uint8_t object)
+{
+    uint8_t value, point;
+    Sum sum;
+    Ended e;
+
+    value = RD8(OBJ->y_hi[object]);
+    if (value == NEAR_TOP_SCREEN) {
+        return ended_with_carry(ended_compare(value, NEAR_TOP_SCREEN), true);
+    }
+    value = RD8(OBJ->y_lo[0]);
+    sum = add_bytes(value, RD8(OBJ->hitbox_dy[0]), false);
+    WR8(ZP->temp00, sum.value);
+    e = ended_with_overflow(ended_kept(), sum.overflow);
+    value = RD8(OBJ->x_hi[object]);
+    if (value != 0) {
+        return ended_with_carry(ended_then(e, ended_load(value)), false);
+    }
+    value = RD8(OBJ->x_lo[object]);
+    sum = sub_bytes(value, RD8(OBJ->x_lo[0]), true);
+    sum = add_bytes(sum.value, NEAR_ACROSS_HALF, false);
+    e = ended_then(ended_with_overflow(e, sum.overflow), ended_compare(sum.value, NEAR_ACROSS));
+    if (sum.value >= NEAR_ACROSS) {
+        return ended_with_carry(e, false);
+    }
+    value = RD8(OBJ->y_hi[object]);
+    if (value != 0) {
+        return ended_with_carry(ended_then(e, ended_load(value)), false);
+    }
+    value = RD8(OBJ->y_lo[object]);
+    point = RD8(ZP->temp00);
+    sum = sub_bytes(value, point, true);
+    sum = add_bytes(sum.value, NEAR_DOWN_HALF, false);
+    e = ended_then(ended_with_overflow(e, sum.overflow), ended_compare(sum.value, NEAR_DOWN));
+    return ended_with_carry(e, sum.value < NEAR_DOWN);
+}
+
+void abi_MariaObjectNearPlayer(void)
+{
+    abi_ended(MariaObjectNearPlayer(cpu.x));
+}
+
+enum { MARIA_SLOTS_B_FIRST = 0x0B, MARIA_SLOTS_B_END = 0x0F, MARIA_KIND_18 = 0x18, MARIA_KIND_4 = 4 };
+
+/*
+ * @routine 01DE:48B MariaClaimSlotsB
+ * @run 6D:AC8B
+ * WHAT IT DOES: Takes every free one of object slots $0B to $0E for an object of kind $18.
+ * HOW: OBJ_2750 zero is free: ClearObject (through its kernel vector), then the kind.
+ * Untraced: a slot already in use ($AC90 taken); no script had one taken when she jumped.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $0F; A the last kind read or $18; N clear, Z and C set from the CPX. Y and V kept.
+ */
+uint8_t MariaClaimSlotsB(void)
+{
+    uint8_t slot, kind = 0;
+
+    for (slot = MARIA_SLOTS_B_FIRST; slot != MARIA_SLOTS_B_END; slot++) {
+        kind = RD8(OBJ->kind[slot]);
+        if (kind != 0) {
+            continue;
+        }
+        jsr_push(0xAC95);
+        ClearObject(slot);
+        jsr_pop();
+        kind = MARIA_KIND_18;
+        WR8(OBJ->kind[slot], kind);
+    }
+    return kind;
+}
+
+void abi_MariaClaimSlotsB(void)
+{
+    cpu.a = MariaClaimSlotsB();
+    cpu.x = MARIA_SLOTS_B_END;
+    abi_nz(0);
+    abi_flag(P_C, true);
+}
+
+/*
+ * @routine 01DE:7D7 MariaClearSlotAsKind
+ * @run 6D:AFD7
+ * WHAT IT DOES: Clears an object slot and gives it a kind.
+ * HOW: ClearObject (through its kernel vector), then Y into OBJ_2750.
+ * WAITS: no.
+ * Entry: X object, Y the kind. Exit: A the kind, N and Z from it. X, Y, C and V kept.
+ */
+uint8_t MariaClearSlotAsKind(uint8_t object, uint8_t kind)
+{
+    jsr_push(0xAFDA);
+    ClearObject(object);
+    jsr_pop();
+    WR8(OBJ->kind[object], kind);
+    return kind;
+}
+
+void abi_MariaClearSlotAsKind(void)
+{
+    cpu.a = MariaClearSlotAsKind(cpu.x, cpu.y);
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 01DE:7BA MariaReplaceSlotsOneTwo
+ * @run 6D:AFBA
+ * WHAT IT DOES: Clears object slots 1 and 2 as kind 4, each unless it holds kind 1 or 2.
+ * HOW: OBJ_2750 compared with 1 and 2; MariaClearSlotAsKind for slot 1, then a run on into it for slot 2.
+ * Untraced: a slot of kind 1 or 2 ($AFC3, $AFC7, $AFD1 and $AFD5 taken); no script had one there.
+ * WAITS: no.
+ * Entry: nothing. Exit: Y 4, X 2; slot 2 kept, A its kind, N, Z and C from comparing it with 1 or 2; else A 4, N
+ * and Z from it, C from comparing the kind with 2. V kept.
+ */
+Ended MariaReplaceSlotsOneTwo(void)
+{
+    uint8_t slot, kind;
+    Ended e = ended_with_y(ended_kept(), MARIA_KIND_4);
+
+    for (slot = 1; slot <= 2; slot++) {
+        kind = RD8(OBJ->kind[slot]);
+        e = ended_then(e, ended_compare(kind, 1));
+        if (kind == 1) {
+            continue;
+        }
+        e = ended_then(e, ended_compare(kind, 2));
+        if (kind == 2) {
+            continue;
+        }
+        if (slot == 1) {
+            jsr_push(0xAFCB);
+            MariaClearSlotAsKind(slot, MARIA_KIND_4);
+            jsr_pop();
+        } else {
+            MariaClearSlotAsKind(slot, MARIA_KIND_4);
+        }
+        e = ended_then(e, ended_load(MARIA_KIND_4));
+    }
+    return e;
+}
+
+void abi_MariaReplaceSlotsOneTwo(void)
+{
+    abi_ended(MariaReplaceSlotsOneTwo());
+    cpu.x = 2;
 }

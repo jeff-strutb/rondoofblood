@@ -1,0 +1,34 @@
+a=00 x=05 y=00 s=F0 p= mem:3098=00 mem:20C1=02 mem:27A8=00 mem:3BE7=01
+a=00 x=05 y=00 s=F0 p= mem:3098=00 mem:20C1=02 mem:27A8=05 mem:20C0=10 mem:2093=02 mem:2094=99 mem:BCDE+2=01 mem:3BD6=00 mem:2755=00
+a=00 x=05 y=00 s=F0 p= mem:3098=00 mem:20C1=02 mem:27A8=05 mem:20C0=10 mem:2093=02 mem:2094=99 mem:BCDE+2=01 mem:3BD6=01 mem:2755=00 mem:2756=00 mem:2757=00 mem:2758=00 mem:2759=00 mem:275A=00 mem:275B=00 mem:275C=00 mem:275D=00 mem:275E=00 mem:BCE7+2=05 mem:BCF0+2=07
+a=00 x=05 y=00 s=F0 p= mem:3098=00 mem:20C1=02 mem:27A8=05 mem:20C0=10 mem:2093=02 mem:2094=99 mem:BCDE+2=01 mem:3BD6=01 mem:2755=00 mem:2756=03 mem:BCE7+2=05 mem:BCF0+2=07
+a=00 x=05 y=00 s=F0 p= mem:3098=00 mem:20C1=02 mem:27A8=05 mem:20C0=10 mem:2093=03 mem:2094=50 mem:BCDE+3=10 mem:3BD6=00 mem:2755=01 mem:BCD5+3=20 mem:2758=00
+a=00 x=05 y=00 s=F0 p= mem:3098=00 mem:20C1=02 mem:27A8=05 mem:20C0=10 mem:2093=03 mem:2094=50 mem:BCDE+3=10 mem:3BD6=00 mem:2755=01 mem:BCD5+3=20 mem:2758=02
+a=00 x=05 y=00 s=F0 p= mem:3098=00 mem:20C1=02 mem:27A8=05 mem:20C0=10 mem:2093=03 mem:2094=05 mem:BCDE+3=10 mem:2755=01
+a=00 x=05 y=00 s=F0 p= mem:20C1=04 mem:2753=00 mem:2754=00 mem:2755=00 mem:2756=00 mem:2757=00 mem:2758=00 mem:2759=00 mem:275A=00 mem:275B=00 mem:275C=00 mem:275D=00 mem:275E=00 mem:2093=01 mem:2094=99 mem:BD4A+1=01 mem:BD53+1=02 mem:BD5C+1=03
+a=00 x=05 y=00 s=F0 p= mem:20C1=04 mem:2753=00 mem:2754=00 mem:2755=00 mem:2756=00 mem:2757=00 mem:2758=00 mem:2759=00 mem:275A=00 mem:275B=00 mem:275C=00 mem:275D=00 mem:275E=00 mem:2093=01 mem:2094=00 mem:BD4A+1=01
+a=00 x=05 y=00 s=F0 p= mem:3BE6=05 mem:3BE5=02 mem:2AC0=00 mem:20C0=20 mem:B96B+4=20
+a=00 x=05 y=00 s=F0 p= mem:3BE6=05 mem:3BE5=00 mem:2AC0=01 mem:20C0=80 mem:B96B+1=80
+a=00 x=05 y=00 s=F0 p= mem:3BC3=00 mem:3BC4=00 mem:3BC5=24 mem:20C0=40
+a=00 x=05 y=00 s=F0 p= mem:3BC3=00 mem:3BC4=00 mem:3BC5=24 mem:20C0=00
+a=00 x=05 y=00 s=F0 p= mem:3BC3=00 mem:3BC4=20 mem:3BC5=00 mem:20C0=00
+a=00 x=05 y=00 s=F0 p= mem:3BC3=04 mem:3BC4=00 mem:3BC5=00 mem:20C0=40
+a=00 x=05 y=00 s=F0 p= mem:2E30=06 mem:2E88=F0
+a=00 x=05 y=00 s=F0 p= mem:2E30+5=06 mem:2E88+5=F0 mem:3670+5=00 mem:3618+5=20
+a=00 x=05 y=00 s=F0 p= mem:3E9E=01 mem:3EA6=01 mem:3EB6=00
+a=00 x=05 y=00 s=F0 p= mem:3EB6=17
+a=00 x=05 y=00 s=F0 p= mem:2C78+5=01
+a=00 x=05 y=00 s=F0 p= mem:2C78+5=02 mem:2B70+5=00 mem:2BC8+5=10 mem:2BC8=10
+a=00 x=05 y=00 s=F0 p= mem:2C78+5=00 mem:2B70+5=00 mem:2BC8+5=10 mem:2BC8=10 mem:2CD0+5=40 mem:2CD0=40 mem:39E0=00
+a=00 x=05 y=04 s=F0 p= mem:2751=01 mem:2752=02
+a=00 x=05 y=04 s=F0 p= mem:2751=02 mem:2752=01
+a=00 x=05 y=04 s=F0 p= mem:2751=00 mem:2752=05
+a=00 x=05 y=00 s=F0 p= mem:275B=05 mem:275C=00 mem:275D=00 mem:275E=00
+a=00 x=05 y=00 s=F0 p= mem:2EE0=00 mem:2D80=80 mem:2AC0=01 mem:20C1=20
+a=00 x=05 y=00 s=F0 p= mem:2EE0=00 mem:2D80=80 mem:2AC0=01 mem:20C1=00
+a=00 x=05 y=00 s=F0 p= mem:2EE0=00 mem:2D80=00 mem:2AC0=01 mem:20C1=80
+a=00 x=05 y=00 s=F0 p= mem:2EE0=0A mem:2AC0=01 mem:20C1=20
+a=00 x=05 y=00 s=F0 p= mem:2EE0=14 mem:2AC0=00 mem:20C1=00
+a=00 x=05 y=00 s=F0 p= mem:2AC0=00 mem:20C1=80
+a=00 x=05 y=00 s=F0 p= mem:2AC0=01 mem:20C1=20
+a=00 x=05 y=00 s=F0 p= mem:2AC0=01 mem:20C1=80

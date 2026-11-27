@@ -636,6 +636,7 @@ MariaReadBelow:
     sta z:zTemp02
     bcs MariaReadBelow_at0
     stz z:zTemp03
+MariaReadBelow_at1:
     stz z:zTemp01
     jmp AttractEntry
 MariaReadBelow_at0:
@@ -966,3 +967,269 @@ MariaReadUnderFeet:
     clc
     adc #$1E
     jmp MariaReadBelow
+
+; @routine 01E0:1F9 MariaReadAbove
+; @run 6D:B9F9
+; WHAT IT DOES: RichterReadAbove in Maria's player overlay (01DD).
+; HOW: The same instructions; her overlay keeps its reads in another order, so its branches go into MariaReadBelow.
+; Untraced: the row above the map ($BA00 taken).
+; WAITS: no.
+; Entry, exit: as RichterReadAbove.
+MariaReadAbove:
+    sta z:zTemp02
+    cla
+    adc #$FF
+    sta z:zTemp03
+    bne MariaReadBelow_at0
+    bra MariaReadBelow_at1
+
+; @routine 01E0:204 MariaReadOnScreen
+; @run 6D:BA04
+; WHAT IT DOES: RichterReadOnScreen in Maria's player overlay (01DD).
+; HOW: The same instructions; its branch goes into MariaReadBelow.
+; Untraced: all of it; nothing in her overlay that a script ran calls it.
+; WAITS: no.
+; Entry, exit: as RichterReadOnScreen.
+MariaReadOnScreen:
+    sta z:zTemp02
+    cla
+    adc a:OBJ_Y_HI
+    sta z:zTemp03
+    bra MariaReadBelow_at1
+
+; @routine 01E0:325 MariaMarkedAbove
+; @run 6D:BB25
+; WHAT IT DOES: Reads her three columns four rows above her, each a pixel nearer her middle, and says whether one
+; has the tile's bit $02.
+; HOW: MariaColumnOffset with the offset nudged toward zero, MariaReadAbove.
+; Untraced: the return at a column of bit $02 ($BB44).
+; WAITS: no.
+; Entry: nothing. Exit: at that column, A 2, N and Z from it, X the column; else A 0, X 3, Z and C set. Y, C and V
+; as the last read left them. Clobbers zTemp00-03.
+MariaMarkedAbove:
+    clx
+MariaMarkedAbove_at2:
+    jsr MariaColumnOffset
+    beq MariaMarkedAbove_at0
+    bmi MariaMarkedAbove_at3
+    dec a
+    bra MariaMarkedAbove_at0
+MariaMarkedAbove_at3:
+    inc a
+MariaMarkedAbove_at0:
+    clc
+    adc a:OBJ_X_LO
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc #$FC
+    jsr MariaReadAbove
+    and #$02
+    beq MariaMarkedAbove_at1
+    rts
+MariaMarkedAbove_at1:
+    inx
+    cpx #$03
+    bne MariaMarkedAbove_at2
+    rts
+
+; @routine 01E0:34B MariaFeetMarked
+; @run 6D:BB4B
+; WHAT IT DOES: Reads her three columns four rows below her and notes in PlayerByte3BE4 whether one has the tile's
+; bit $02.
+; HOW: MariaColumnOffset, MariaReadBelow; the byte cleared first and incremented at such a column.
+; Untraced: the count at a column of bit $02 ($BB6B).
+; WAITS: no.
+; Entry: nothing. Exit: at that column, A 2, X the column, N and Z from the increment; else A 0, X 3, Z and C set.
+; Y, C and V as the last read left them. Clobbers zTemp00-03.
+MariaFeetMarked:
+    stz a:PlayerByte3BE3+1
+    clx
+MariaFeetMarked_at1:
+    jsr MariaColumnOffset
+    clc
+    adc a:OBJ_X_LO
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc #$04
+    jsr MariaReadBelow
+    and #$02
+    bne MariaFeetMarked_at0
+    inx
+    cpx #$03
+    bne MariaFeetMarked_at1
+    rts
+MariaFeetMarked_at0:
+    inc a:PlayerByte3BE3+1
+    rts
+
+; @routine 01E0:36F MariaUpOrMarkedAbove
+; @run 6D:BB6F
+; WHAT IT DOES: Says whether a column above her has the tile's bit $02, or else whether up is held.
+; HOW: MariaMarkedAbove, then on into MariaUpHeld.
+; Untraced: the answer at a column of bit $02 ($BB71 taken).
+; WAITS: no.
+; Entry: nothing. Exit: C the answer; A, X, Y, N, Z and V as MariaMarkedAbove left them.
+MariaUpOrMarkedAbove:
+    bsr MariaMarkedAbove
+    bne MariaUpHeld_at0
+
+; @routine 01E0:373 MariaUpHeld
+; @run 6D:BB73
+; WHAT IT DOES: RichterUpHeld in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterUpHeld's body.
+; WAITS: no.
+; Entry, exit: as RichterUpHeld.
+MariaUpHeld:
+    bbs6 zPadHeld,MariaUpHeld_at0
+    clc
+    rts
+MariaUpHeld_at0:
+    sec
+    rts
+
+; @routine 01E0:390 MariaHasNoFooting
+; @run 6D:BB90
+; WHAT IT DOES: RichterHasNoFooting in Maria's player overlay (01DD).
+; HOW: The same instructions with her checks, MariaFloorCheck and MariaSolidUnderColumn.
+; WAITS: no.
+; Entry, exit: as RichterHasNoFooting.
+MariaHasNoFooting:
+    jsr MariaFloorCheck
+    bcc MariaHasNoFooting_at0
+    jsr MariaSolidUnderColumn
+    beq MariaHasNoFooting_at1
+MariaHasNoFooting_at0:
+    sec
+    rts
+MariaHasNoFooting_at1:
+    clc
+    rts
+
+; @routine 01E0:565 MariaLedgeCheck
+; @run 6D:BD65
+; WHAT IT DOES: RichterLedgeCheck in Maria's player overlay (01DD), on her halves, MariaLedgeLow and MariaLedgeHigh.
+; HOW: The same instructions at her addresses.
+; Untraced: the return while a push holds her ($BD72 from the TST) and the two returns at a ledge ($BD9C).
+; WAITS: no.
+; Entry: nothing. Exit: C the answer, with what the last half left; held by a push, N and V the push's bits 7 and 6,
+; Z and C clear.
+MariaLedgeCheck:
+    tst #$01,z:zPlayerPush
+    bne MariaLedgeCheck_at0
+    bsr MariaLedgeLow
+    bcs MariaLedgeHigh_at2
+    bsr MariaLedgeHigh
+    bcs MariaLedgeHigh_at2
+MariaLedgeCheck_at0:
+    clc
+    rts
+
+; @routine 01E0:574 MariaLedgeLow
+; @run 6D:BD74
+; WHAT IT DOES: RichterLedgeLow in Maria's player overlay (01DD): her three low columns, the third counting only with
+; down held.
+; HOW: MariaLowColumnsBlocked, the answer's bit $20 and the column against 2, bit 4 of zPadHeld; zTemp01 cleared at a
+; ledge.
+; Untraced: everything after a column blocks ($BD79 to $BD87); no script had a low column block under her.
+; WAITS: no.
+; Entry: nothing. Exit: C set at a ledge; A the bit $20 looked at, X the column, N and Z from the bit or from the
+; column less 2. No column: as MariaLowColumnsBlocked with C clear.
+MariaLedgeLow:
+    jsr MariaLowColumnsBlocked
+    beq MariaLedgeCheck_at0
+    and #$20
+    beq MariaLedgeLow_at0
+    cpx #$02
+    bne MariaLedgeLow_at1
+MariaLedgeLow_at0:
+    bbr4 zPadHeld,MariaLedgeCheck_at0
+MariaLedgeLow_at1:
+    stz z:zTemp01
+    sec
+    rts
+
+; @routine 01E0:588 MariaLedgeHigh
+; @run 6D:BD88
+; WHAT IT DOES: RichterLedgeHigh in Maria's player overlay (01DD): her first three columns, the third counting only
+; with up held.
+; HOW: MariaColumnsBlocked, the answer's bit $20 and the column against 2, bit 6 of zPadHeld; zTemp01 set to 1 at a
+; ledge.
+; Untraced: everything after a column blocks ($BD8D to $BD9D).
+; WAITS: no.
+; Entry: nothing. Exit: C set at a ledge with A 1, N and Z from it, X the column; else C clear, A the bit $20
+; looked at, N and Z from it or from the column less 2. No column: A 0, X 3, Z set, C clear.
+MariaLedgeHigh:
+    jsr MariaColumnsBlocked
+    beq MariaLedgeCheck_at0
+    and #$20
+    beq MariaLedgeHigh_at0
+    cpx #$02
+    bne MariaLedgeHigh_at1
+MariaLedgeHigh_at0:
+    bbr6 zPadHeld,MariaLedgeCheck_at0
+MariaLedgeHigh_at1:
+    lda #$01
+    sta z:zTemp01
+MariaLedgeHigh_at2:
+    sec
+    rts
+
+; @routine 01E0:59E MariaLandOnFloor
+; @run 6D:BD9E
+; WHAT IT DOES: RichterLandOnFloor in Maria's player overlay (01DD).
+; HOW: The same instructions with her checks: MariaFloorCheck, then a branch into MariaLiftByColumn.
+; WAITS: no.
+; Entry, exit: as RichterLandOnFloor.
+MariaLandOnFloor:
+    jsr MariaFloorCheck
+    bcs MariaLiftByColumn
+    rts
+
+; @routine 01E0:5C9 MariaColumnsBlocked
+; @run 6D:BDC9
+; WHAT IT DOES: RichterColumnsBlocked in Maria's player overlay (01DD), over three columns, not two.
+; HOW: RichterColumnsBlocked's body, with the count her CPX compares with.
+; WAITS: no.
+; Entry: nothing. Exit: as RichterColumnsBlocked, X 3 when no column blocks.
+MariaColumnsBlocked:
+    clx
+MariaColumnsBlocked_at1:
+    lda a:RichterColumnHit,x
+    and #$24
+    beq MariaColumnsBlocked_at0
+    rts
+MariaColumnsBlocked_at0:
+    inx
+    cpx #$03
+    bne MariaColumnsBlocked_at1
+    rts
+
+; @routine 01E0:61B MariaLowColumnsBlocked
+; @run 6D:BE1B
+; WHAT IT DOES: RichterLowColumnsBlocked in Maria's player overlay (01DD), over three columns, not two.
+; HOW: RichterLowColumnsBlocked's body with her column offset and read (MariaColumnOffset, MariaReadBelow) and the
+; count her CPX compares with.
+; Untraced: the return at a blocked column ($BE32); no script had a low column block under her.
+; WAITS: no.
+; Entry: nothing. Exit: as RichterLowColumnsBlocked, X 3 when no column blocks.
+MariaLowColumnsBlocked:
+    clx
+MariaLowColumnsBlocked_at1:
+    jsr MariaColumnOffset
+    clc
+    adc a:OBJ_X_LO
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc #$12
+    jsr MariaReadBelow
+    and #$24
+    beq MariaLowColumnsBlocked_at0
+    rts
+MariaLowColumnsBlocked_at0:
+    inx
+    cpx #$03
+    bne MariaLowColumnsBlocked_at1
+    rts

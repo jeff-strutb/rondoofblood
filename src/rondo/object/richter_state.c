@@ -41,7 +41,7 @@ enum {
     START_NEW_RUN = 0, START_HEALTH = 1, START_STAND = 2, START_FIELD94 = 0x10,
     FACING_RIGHT = 0, FACING_LEFT = 1, ANIM_AIR = 0x0A, ANIM_AIR_MOVING = 0x02, AIR_SAME_WAY = 0x80,
     SOUND_WHIP = 0x03, FLOOR_MARK_FROM = 0x10, FLOOR_MARKS = 0x24, FLOOR_MARK_ALWAYS = 0x20,
-    FALL_PULL = 0x38, FALL_LIMIT = 7, DEATH_SUB_STEP = 5, SCRIPT_DEATH = 9, ANIM_LEDGE_CRASH_A = 0x2B,
+    FALL_PULL = 0x38, MARIA_FALL_PULL = 0x24, FALL_LIMIT = 7, DEATH_SUB_STEP = 5, SCRIPT_DEATH = 9, ANIM_LEDGE_CRASH_A = 0x2B,
     ANIM_LEDGE_CRASH_B = 0x2C, LEDGE_CRASH_STEP = 5, LEDGE_JUMP_LO = 0xC0, LEDGE_JUMP_HI = 0xFA, SOUND_HURT = 0x65, ANIM_CRASH_FIVE = 0x2A, ANIM_HURT_AIR = 0x23,
     CRASH_FIVE_TIMER = 0x60, ITEM_CRASH_FIVE = 5, HURT_TIMER = 0xFF, REACT_FILL_D = 0x0D,
     REACT_FILL_B = 0x0B, REACT_E = 0x0E, REACT_10 = 0x10, REACT_11 = 0x11, REACT_12 = 0x12,
@@ -1088,7 +1088,7 @@ void abi_MariaClearWork(void)
  * WAITS: no.
  * Entry: nothing. Exit: A the X position, N and Z from it, X 0. Y, C and V kept.
  */
-uint8_t RichterClearKeepPlace(void)
+static uint8_t clear_keep_place(uint16_t clear_ret)
 {
     uint8_t value;
 
@@ -1098,7 +1098,7 @@ uint8_t RichterClearKeepPlace(void)
     push8(value);
     value = RD8(OBJ->facing_left[0]);
     push8(value);
-    jsr_push(0xA13D);
+    jsr_push(clear_ret);
     ClearObject(OBJECT_PLAYER);
     jsr_pop();
     value = pull8();
@@ -1110,9 +1110,36 @@ uint8_t RichterClearKeepPlace(void)
     return value;
 }
 
+uint8_t RichterClearKeepPlace(void)
+{
+    return clear_keep_place(0xA13D);
+}
+
 void abi_RichterClearKeepPlace(void)
 {
     uint8_t x = RichterClearKeepPlace();
+
+    cpu.a = x;
+    cpu.x = OBJECT_PLAYER;
+    abi_nz(x);
+}
+
+/*
+ * @routine 01DD:17A MariaClearKeepPlace
+ * @run 6D:A17A
+ * WHAT IT DOES: RichterClearKeepPlace in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterClearKeepPlace's body; its call of ClearObject returns to $A18A.
+ * WAITS: no.
+ * Entry, exit: as RichterClearKeepPlace.
+ */
+uint8_t MariaClearKeepPlace(void)
+{
+    return clear_keep_place(0xA18A);
+}
+
+void abi_MariaClearKeepPlace(void)
+{
+    uint8_t x = MariaClearKeepPlace();
 
     cpu.a = x;
     cpu.x = OBJECT_PLAYER;
@@ -4672,6 +4699,41 @@ void abi_RichterOnMarkedFloor(void)
 }
 
 /*
+ * @routine 01DE:226 MariaOnMarkedFloor
+ * @run 6D:AA26
+ * WHAT IT DOES: RichterOnMarkedFloor in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterOnMarkedFloor's body.
+ * WAITS: no.
+ * Entry, exit: as RichterOnMarkedFloor.
+ */
+MarkedFloor MariaOnMarkedFloor(void)
+{
+    return RichterOnMarkedFloor();
+}
+
+void abi_MariaOnMarkedFloor(void)
+{
+    MarkedFloor floor = MariaOnMarkedFloor();
+
+    cpu.a = floor.value;
+    switch (floor.how) {
+    case FLOOR_TOO_HIGH:
+        abi_nz((uint8_t)(floor.value - FLOOR_MARK_FROM));
+        break;
+    case FLOOR_UNMARKED:
+    case FLOOR_MARKED:
+        abi_nz(floor.value);
+        break;
+    default:
+        abi_flag(P_Z, floor.how == FLOOR_NOT_DOWN);
+        abi_flag(P_N, (floor.held & 0x80) != 0);
+        abi_flag(P_V, (floor.held & 0x40) != 0);
+        break;
+    }
+    abi_flag(P_C, floor.how == FLOOR_MARKED || floor.how == FLOOR_MARKED_DOWN);
+}
+
+/*
  * @routine 01BA:3CB RichterFallGravity
  * @run 6D:ABCB
  * WHAT IT DOES: Pulls him down while he falls: $38 more Y speed a frame, held at $0700.
@@ -4680,9 +4742,9 @@ void abi_RichterOnMarkedFloor(void)
  * Entry: nothing. Exit: A the speed's high byte, V from its add; rising, N, Z and C from the add;
  * falling, N, Z and C from comparing it with 7. X and Y kept.
  */
-Sum RichterFallGravity(void)
+static Sum fall_gravity(uint8_t pull)
 {
-    Sum low = add_bytes(rd8(OBJ_VY_LO), FALL_PULL, false);
+    Sum low = add_bytes(rd8(OBJ_VY_LO), pull, false);
     Sum high;
 
     wr8(OBJ_VY_LO, low.value);
@@ -4693,10 +4755,13 @@ Sum RichterFallGravity(void)
     return high;
 }
 
-void abi_RichterFallGravity(void)
+Sum RichterFallGravity(void)
 {
-    Sum high = RichterFallGravity();
+    return fall_gravity(FALL_PULL);
+}
 
+static void fall_gravity_exit_shim(Sum high)
+{
     cpu.a = high.value;
     abi_flag(P_V, high.overflow);
     if (high.value & 0x80) {
@@ -4706,6 +4771,30 @@ void abi_RichterFallGravity(void)
     }
     abi_nz((uint8_t)(high.value - FALL_LIMIT));
     abi_flag(P_C, high.value >= FALL_LIMIT);
+}
+
+void abi_RichterFallGravity(void)
+{
+    fall_gravity_exit_shim(RichterFallGravity());
+}
+
+/*
+ * @routine 01DE:20B MariaFallGravity
+ * @run 6D:AA0B
+ * WHAT IT DOES: RichterFallGravity in Maria's player overlay (01DD): $24 more Y speed a frame, not $38, held at $0700.
+ * HOW: RichterFallGravity's body with her pull.
+ * Untraced: the hold at $0700 ($AA22); no script let her fall that fast.
+ * WAITS: no.
+ * Entry, exit: as RichterFallGravity.
+ */
+Sum MariaFallGravity(void)
+{
+    return fall_gravity(MARIA_FALL_PULL);
+}
+
+void abi_MariaFallGravity(void)
+{
+    fall_gravity_exit_shim(MariaFallGravity());
 }
 
 /*
@@ -4903,4 +4992,160 @@ InvincibleTick MariaInvincibleTick(uint8_t x, uint8_t y)
 void abi_MariaInvincibleTick(void)
 {
     invincible_exit_shim(MariaInvincibleTick(cpu.x, cpu.y));
+}
+
+/*
+ * Maria's own player code (her overlay 01DD at $A000): routines with no copy in Richter's overlay. Tables of her
+ * overlay are read by address: they have no row in config/rondo/tables.csv yet.
+ */
+enum {
+    MARIA_WALK_SPEEDS = 0xA9C5, MARIA_AIR_SPEEDS = 0xA9C1, PAD_TURN_LEFT = 0x80, PAD_TURN_RIGHT = 0x20,
+    MARIA_ANIM_TURN_A = 0x0A, MARIA_ANIM_TURN_B = 0x14
+};
+
+/*
+ * @routine 01DE:095 MariaPadForcesOff
+ * @run 6D:A895
+ * WHAT IT DOES: Clears the two bytes that force presses onto her pad.
+ * HOW: STZ of PadForcedPress and PadForcedPressB.
+ * WAITS: no.
+ * Entry: any. Exit: every register and flag kept.
+ */
+void MariaPadForcesOff(void)
+{
+    wr8(PadForcedPress, 0);
+    wr8(PadForcedPressB, 0);
+}
+
+void abi_MariaPadForcesOff(void)
+{
+    MariaPadForcesOff();
+}
+
+/* Her X speed for the way she faces from a table of two words; A the high byte, Y twice the facing, C the facing's bit 7. */
+static Ended maria_speed_by_facing(uint16_t table)
+{
+    uint8_t facing = RD8(OBJ->facing_left[0]);
+    uint8_t y = (uint8_t)(facing << 1);
+    uint8_t value;
+
+    value = rd8((uint16_t)(table + y));
+    WR8(OBJ->vx_lo[0], value);
+    value = rd8((uint16_t)(table + 1 + y));
+    WR8(OBJ->vx_hi[0], value);
+    return ended_with_carry(ended_with_y(ended_load(value), y), (facing & 0x80) != 0);
+}
+
+/*
+ * @routine 01DE:143 MariaTurnOnPress
+ * @run 6D:A943
+ * WHAT IT DOES: A press of the way she faces sets her walking speed; a press of the other way turns her round
+ * first, counting the turn in zFieldC6.
+ * HOW: Bits 5 (right) and 7 (left) of zPadPressed by OBJ_2AC0; the speed from her table at $A9C5.
+ * WAITS: no.
+ * Entry: nothing. Exit: no press, A the facing, Z set, N clear, V bit 6 of the pad; otherwise A the speed's high
+ * byte, N and Z from it, Y twice the facing, C clear, V bit 6 of the pad. X kept.
+ */
+EndedTst MariaTurnOnPress(void)
+{
+    EndedTst r;
+    uint8_t facing, pressed;
+
+    facing = RD8(OBJ->facing_left[0]);
+    r = ended_tst_none(ended_load(facing));
+    if (facing == 0) {
+        pressed = RD8(ZP->pad_pressed);
+        r = ended_tst(r.end, pressed, PAD_TURN_RIGHT);
+        if (!(pressed & PAD_TURN_RIGHT)) {
+            pressed = RD8(ZP->pad_pressed);
+            r = ended_tst(r.end, pressed, PAD_TURN_LEFT);
+            if (!(pressed & PAD_TURN_LEFT)) {
+                return r;
+            }
+            INC8(ZP->field_c6);
+            WR8(OBJ->facing_left[0], 1);
+        }
+    } else {
+        pressed = RD8(ZP->pad_pressed);
+        r = ended_tst(r.end, pressed, PAD_TURN_LEFT);
+        if (!(pressed & PAD_TURN_LEFT)) {
+            pressed = RD8(ZP->pad_pressed);
+            r = ended_tst(r.end, pressed, PAD_TURN_RIGHT);
+            if (!(pressed & PAD_TURN_RIGHT)) {
+                return r;
+            }
+            INC8(ZP->field_c6);
+            WR8(OBJ->facing_left[0], 0);
+        }
+    }
+    r.end = ended_then(r.end, maria_speed_by_facing(MARIA_WALK_SPEEDS));
+    r.v_only = true;
+    return r;
+}
+
+void abi_MariaTurnOnPress(void)
+{
+    abi_ended_tst(MariaTurnOnPress());
+}
+
+/*
+ * @routine 01DE:17F MariaAirTurn
+ * @run 6D:A97F
+ * WHAT IT DOES: Her turn in the air: in animations $0A and $14 as MariaTurnOnPress; otherwise a press against the
+ * way she moves turns her and sets her air speed, counting the turn in zFieldC6.
+ * HOW: OBJ_FIELDS_2EE0; the sign of OBJ_VX_HI picks the press looked for; the speed from her table at $A9C1.
+ * Untraced: everything for a speed to the left ($A9A0 to $A9AC), and the return when she faces left while moving
+ * right ($A992); no script turned her in the air that way.
+ * WAITS: no.
+ * Entry: nothing. Exit: as MariaTurnOnPress in those animations, C set; else no turn, A the facing or 0, N and Z
+ * from it or the press, C from comparing the animation with $14; a turn, A the speed's high byte, Y twice the
+ * facing, C clear; V bit 6 of the pad after a press was looked at. X kept.
+ */
+EndedTst MariaAirTurn(void)
+{
+    EndedTst r;
+    uint8_t animation, value, pressed;
+
+    animation = RD8(OBJ->fields_2ee0[0]);
+    if (animation == MARIA_ANIM_TURN_A || animation == MARIA_ANIM_TURN_B) {
+        r = MariaTurnOnPress();
+        r.end = ended_then(ended_with_carry(ended_kept(), true), r.end);
+        return r;
+    }
+    r = ended_tst_none(ended_compare(animation, MARIA_ANIM_TURN_B));
+    value = RD8(OBJ->vx_hi[0]);
+    if (!(value & 0x80)) {
+        value = RD8(OBJ->facing_left[0]);
+        r.end = ended_then(r.end, ended_load(value));
+        if (value != 0) {
+            return r;
+        }
+        pressed = RD8(ZP->pad_pressed);
+        r = ended_tst(r.end, pressed, PAD_TURN_LEFT);
+        if (!(pressed & PAD_TURN_LEFT)) {
+            return r;
+        }
+        WR8(OBJ->facing_left[0], 1);
+    } else {
+        value = RD8(OBJ->facing_left[0]);
+        r.end = ended_then(r.end, ended_load(value));
+        if (value == 0) {
+            return r;
+        }
+        pressed = RD8(ZP->pad_pressed);
+        r = ended_tst(r.end, pressed, PAD_TURN_RIGHT);
+        if (!(pressed & PAD_TURN_RIGHT)) {
+            return r;
+        }
+        WR8(OBJ->facing_left[0], 0);
+    }
+    INC8(ZP->field_c6);
+    r.end = ended_then(r.end, maria_speed_by_facing(MARIA_AIR_SPEEDS));
+    r.v_only = true;
+    return r;
+}
+
+void abi_MariaAirTurn(void)
+{
+    abi_ended_tst(MariaAirTurn());
 }

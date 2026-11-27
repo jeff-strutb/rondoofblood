@@ -18,7 +18,8 @@ enum { PI_CH_SHORT, PI_CH_READY };
 enum {
     PAD_LEFT_OR_RIGHT = 0xA0, PAD_RIGHT_ONLY = 0x20, PAD_TURBO_BIT = 0x01, PAD_ORDINARY_BITS = 0xFE,
     PAD_SELECT_BIT = 0x04, ANIMATION_STOPPED = 0xFF, ANIMATION_LOOPS = 0xFE,
-    ITEM_READY = 0x0F, ITEM_REQUEST = 0x04, ITEM_FIRST_SLOT = 3, ITEM_SLOT_END = 0x10,
+    ITEM_READY = 0x0F, ITEM_REQUEST = 0x04, ITEM_FIRST_SLOT = 3, ITEM_SLOT_END = 0x10, MARIA_ITEM_SLOT_END = 0x0F,
+    MARIA_ITEM_TABLES = 0x4FD,
     ITEM_CRASH_CHANNEL = 6, ITEM_CRASH_SLOT = 6, ITEM_USE_PRESS = 0x02, ITEM_USE_HELD = 0x10,
     ITEM_THROWN_FIRST = 2, ITEM_THROWN_LAST = 5, ITEM_SIX = 6, ITEM_SEVEN = 7, ITEM_EIGHT = 8,
     ITEM_SLOT_A = 5, ITEM_SLOT_B = 8, ITEM_SLOT_C = 11, ITEM_SIX_LIST = 0x54, ITEM_SIX_SCRIPT = 7,
@@ -188,24 +189,37 @@ void abi_RichterAnimationPoint(void)
     abi_flag(P_C, r.carry);
 }
 
-static uint8_t animation_list_and_step(bool *carry)
+/*
+ * Where one character's copy of the animation routines lies: the return address each of its calls
+ * pushes (RichterAnimationWait's, Running's, the entry read's and the tick's), and its list pointer.
+ * Maria's overlay (01DD) holds the same instructions at $B980 to $B9C2.
+ */
+typedef struct {
+    uint16_t wait_ret, running_ret, entry_ret, tick_ret;
+    ObjectListStep (*point)(void);
+} AnimationLayout;
+
+static const AnimationLayout RICHTER_ANIMATION = { 0xB65B, 0xB663, 0xB683, 0xB695, RichterAnimationPoint };
+static const AnimationLayout MARIA_ANIMATION = { 0xB982, 0xB98A, 0xB9AA, 0xB9BC, MariaAnimationPoint };
+
+static uint8_t animation_list_and_step(const AnimationLayout *layout, bool *carry)
 {
-    ObjectListStep r = RichterAnimationPoint();
+    ObjectListStep r = layout->point();
 
     *carry = r.carry;
     return r.y;
 }
 
 /* The entry of the step in play: how long, then which frame; a mark of $FE starts the list over. */
-static AnimationStep animation_read_entry(void)
+static AnimationStep animation_read_entry(const AnimationLayout *layout)
 {
     AnimationStep result;
     bool carry;
     uint8_t y, time, frame;
 
     for (;;) {
-        jsr_push(0xB683);
-        y = animation_list_and_step(&carry);
+        jsr_push(layout->entry_ret);
+        y = animation_list_and_step(layout, &carry);
         jsr_pop();
         time = RD8_PTR_Y(ZP->temp00, y);
         WR8(OBJ->f2f90[0], time);
@@ -240,12 +254,14 @@ static AnimationStep animation_read_entry(void)
  * Entry: nothing. Exit, ended: as RichterAnimationRunning. Otherwise the caller's return address
  * is gone, A its high byte, N and Z from it; its caller then ends at once.
  */
-AnimationWaitEnd RichterAnimationWait(void)
+static AnimationStep animation_running(const AnimationLayout *layout);
+
+static AnimationWaitEnd animation_wait(const AnimationLayout *layout)
 {
     AnimationWaitEnd r = { { FRAME_STOPPED }, false, 0 };
 
-    jsr_push(0xB65B);
-    r.step = RichterAnimationRunning();
+    jsr_push(layout->wait_ret);
+    r.step = animation_running(layout);
     jsr_pop();
     if (r.step.nz == 0) {
         return r;
@@ -256,6 +272,11 @@ AnimationWaitEnd RichterAnimationWait(void)
     r.step.a = r.high;
     r.step.nz = r.high;
     return r;
+}
+
+AnimationWaitEnd RichterAnimationWait(void)
+{
+    return animation_wait(&RICHTER_ANIMATION);
 }
 
 void abi_RichterAnimationWait(void)
@@ -274,16 +295,23 @@ void abi_RichterAnimationWait(void)
  * Entry: nothing. Exit: A the timer, N, Z and C from comparing it with $FF. Y as the tick. X and V
  * kept. Clobbers zTemp00-01.
  */
-AnimationStep RichterAnimationRunning(void)
+static AnimationStep animation_tick(const AnimationLayout *layout);
+
+static AnimationStep animation_running(const AnimationLayout *layout)
 {
     AnimationStep tick;
     uint8_t time;
 
-    jsr_push(0xB663);
-    tick = RichterAnimationTick();
+    jsr_push(layout->running_ret);
+    tick = animation_tick(layout);
     jsr_pop();
     time = RD8(OBJ->f2f90[0]);
     return animation_exit(time, (uint8_t)(time - ANIMATION_STOPPED), time >= ANIMATION_STOPPED, tick.y_set, tick.y);
+}
+
+AnimationStep RichterAnimationRunning(void)
+{
+    return animation_running(&RICHTER_ANIMATION);
 }
 
 void animation_running_exit_shim(AnimationStep step)
@@ -306,7 +334,7 @@ void abi_RichterAnimationRunning(void)
  * Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
  * from what was read. X and V kept. Clobbers zTemp00-01.
  */
-AnimationStep RichterAnimationTick(void)
+static AnimationStep animation_tick(const AnimationLayout *layout)
 {
     AnimationStep result;
     uint8_t time = RD8(OBJ->f2f90[0]);
@@ -319,10 +347,10 @@ AnimationStep RichterAnimationTick(void)
     left = DEC8(OBJ->f2f90[0]);
     if (left == 0) {
         INC8(OBJ->flags[0]);
-        return animation_read_entry();
+        return animation_read_entry(layout);
     }
-    jsr_push(0xB695);
-    y = animation_list_and_step(&carry);
+    jsr_push(layout->tick_ret);
+    y = animation_list_and_step(layout, &carry);
     jsr_pop();
     y++;
     frame = RD8_PTR_Y(ZP->temp00, y);
@@ -333,6 +361,11 @@ AnimationStep RichterAnimationTick(void)
     result.frame = frame;
     result.step = (uint8_t)((y - 1) >> 1);
     return result;
+}
+
+AnimationStep RichterAnimationTick(void)
+{
+    return animation_tick(&RICHTER_ANIMATION);
 }
 
 void animation_exit_shim(AnimationStep result)
@@ -382,16 +415,95 @@ void abi_RichterAnimationTick(void)
  * WAITS: no.
  * Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
  */
-AnimationStep RichterSetAnimation(uint8_t animation)
+static AnimationStep set_animation(const AnimationLayout *layout, uint8_t animation)
 {
     WR8(OBJ->fields_2ee0[0], animation);
     WR8(OBJ->flags[0], 0);
-    return animation_read_entry();
+    return animation_read_entry(layout);
+}
+
+AnimationStep RichterSetAnimation(uint8_t animation)
+{
+    return set_animation(&RICHTER_ANIMATION, animation);
 }
 
 void abi_RichterSetAnimation(void)
 {
     animation_exit_shim(RichterSetAnimation(cpu.a));
+}
+
+/*
+ * @routine 01E0:180 MariaAnimationWait
+ * @run 6D:B980
+ * WHAT IT DOES: RichterAnimationWait in Maria's player overlay (01DD), the same instructions.
+ * HOW: RichterAnimationWait's body with her layout (MariaAnimationRunning at $B987).
+ * WAITS: no.
+ * Entry, exit: as RichterAnimationWait.
+ */
+AnimationWaitEnd MariaAnimationWait(void)
+{
+    return animation_wait(&MARIA_ANIMATION);
+}
+
+void abi_MariaAnimationWait(void)
+{
+    AnimationWaitEnd r = MariaAnimationWait();
+
+    animation_exit_shim(r.step);
+}
+
+/*
+ * @routine 01E0:187 MariaAnimationRunning
+ * @run 6D:B987
+ * WHAT IT DOES: RichterAnimationRunning in Maria's player overlay (01DD).
+ * HOW: The same instructions with her tick, MariaAnimationTick at $B990.
+ * WAITS: no.
+ * Entry, exit: as RichterAnimationRunning.
+ */
+AnimationStep MariaAnimationRunning(void)
+{
+    return animation_running(&MARIA_ANIMATION);
+}
+
+void abi_MariaAnimationRunning(void)
+{
+    animation_exit_shim(MariaAnimationRunning());
+}
+
+/*
+ * @routine 01E0:190 MariaAnimationTick
+ * @run 6D:B990
+ * WHAT IT DOES: RichterAnimationTick in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterAnimationTick's body with her layout: its calls go to MariaAnimationPoint at $B9C3.
+ * WAITS: no.
+ * Entry, exit: as RichterAnimationTick.
+ */
+AnimationStep MariaAnimationTick(void)
+{
+    return animation_tick(&MARIA_ANIMATION);
+}
+
+void abi_MariaAnimationTick(void)
+{
+    animation_exit_shim(MariaAnimationTick());
+}
+
+/*
+ * @routine 01E0:1A2 MariaSetAnimation
+ * @run 6D:B9A2
+ * WHAT IT DOES: RichterSetAnimation in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterSetAnimation's body with her layout: its calls go to MariaAnimationPoint at $B9C3.
+ * WAITS: no.
+ * Entry, exit: as RichterSetAnimation.
+ */
+AnimationStep MariaSetAnimation(uint8_t animation)
+{
+    return set_animation(&MARIA_ANIMATION, animation);
+}
+
+void abi_MariaSetAnimation(void)
+{
+    animation_exit_shim(MariaSetAnimation(cpu.a));
 }
 
 /*
@@ -673,14 +785,21 @@ static uint8_t bcd_subtract(uint8_t hearts, uint8_t cost)
  * the presses, Z set, A, X, Y kept; an item out, A its OBJ_2750, N and Z from it, X its slot;
  * too few hearts, A the hearts, N and Z from comparing them with the cost, X the item. Y kept.
  */
-ItemCrash RichterTryItemCrash(void)
+/* One character's copy of the item crash: the end of its slot scan, its three tables, its calls' returns. */
+typedef struct {
+    uint8_t slot_end;
+    uint16_t costs, lists, scripts;
+    uint16_t clear_ret, list_ret, script_ret;
+} ItemCrashLayout;
+
+static ItemCrash try_item_crash(const ItemCrashLayout *layout)
 {
     ItemCrash crash = { CRASH_NO_PRESS };
     uint8_t list;
 
     crash.pressed = rd8(zPadPressed);
     if (crash.pressed & PAD_SELECT_BIT) {
-        for (crash.slot = ITEM_FIRST_SLOT; crash.slot < ITEM_SLOT_END; crash.slot++) {
+        for (crash.slot = ITEM_FIRST_SLOT; crash.slot < layout->slot_end; crash.slot++) {
             crash.out = rd8((uint16_t)(OBJ_2750 + crash.slot));
             if (crash.out != 0) {
                 crash.how = CRASH_ITEM_OUT;
@@ -689,36 +808,45 @@ ItemCrash RichterTryItemCrash(void)
         }
     }
     if (crash.pressed & PAD_SELECT_BIT && crash.how != CRASH_ITEM_OUT) {
-        for (uint8_t slot = ITEM_SLOT_END - 1; slot >= ITEM_FIRST_SLOT; slot--) {
-            jsr_push(0xB811);
+        for (uint8_t slot = (uint8_t)(layout->slot_end - 1); slot >= ITEM_FIRST_SLOT; slot--) {
+            jsr_push(layout->clear_ret);
             ClearObject(slot);
             jsr_pop();
         }
         crash.item = rd8(zField93);
         crash.hearts = rd8(zField94);
-        crash.cost = rd8((uint16_t)(RichterItemCosts + crash.item));
+        crash.cost = rd8((uint16_t)(layout->costs + crash.item));
         crash.how = crash.hearts >= crash.cost ? CRASH_STARTED : CRASH_TOO_FEW_HEARTS;
     }
     if (crash.how != CRASH_STARTED) {
         wr8(PadForcedPress, 0);
         return crash;
     }
-    list = rd8((uint16_t)(RichterItemCrashLists + crash.item));
+    list = rd8((uint16_t)(layout->lists + crash.item));
     if (list != 0) {
-        jsr_push(0xB830);
+        jsr_push(layout->list_ret);
         StartListChannelKind2(list, ITEM_CRASH_CHANNEL);
         jsr_pop();
     }
     wr8(PlayerByte3BD6, 0);
-    crash.script = rd8((uint16_t)(RichterItemCrashScripts + crash.item));
+    crash.script = rd8((uint16_t)(layout->scripts + crash.item));
     if (crash.script != 0) {
-        jsr_push(0xB83F);
+        jsr_push(layout->script_ret);
         StartScriptSlotKind1(crash.script, ITEM_CRASH_SLOT);
         jsr_pop();
     }
     crash.hearts = bcd_subtract(rd8(zField94), crash.cost);
     wr8(zField94, crash.hearts);
     return crash;
+}
+
+ItemCrash RichterTryItemCrash(void)
+{
+    static const ItemCrashLayout richter = {
+        ITEM_SLOT_END, RichterItemCosts, RichterItemCrashLists, RichterItemCrashScripts, 0xB811, 0xB830, 0xB83F
+    };
+
+    return try_item_crash(&richter);
 }
 
 void item_crash_exit_shim(ItemCrash crash)
@@ -753,6 +881,31 @@ void item_crash_exit_shim(ItemCrash crash)
 void abi_RichterTryItemCrash(void)
 {
     item_crash_exit_shim(RichterTryItemCrash());
+}
+
+/*
+ * @routine 01E0:4F9 MariaTryItemCrash
+ * @run 6D:BCF9
+ * WHAT IT DOES: RichterTryItemCrash in Maria's player overlay (01DD): her item slots are 3 to 14, not 3 to 15.
+ * HOW: RichterTryItemCrash's body with her end of the scan and her tables of costs, lists and scripts at $BD4A,
+ * $BD53 and $BD5C, $4FD above his.
+ * Untraced: everything after a press of the item button ($BCFE to $BD1B, $BD21 to $BD49); no script pressed it.
+ * WAITS: no.
+ * Entry, exit: as RichterTryItemCrash.
+ */
+ItemCrash MariaTryItemCrash(void)
+{
+    static const ItemCrashLayout maria = {
+        MARIA_ITEM_SLOT_END, RichterItemCosts + MARIA_ITEM_TABLES, RichterItemCrashLists + MARIA_ITEM_TABLES,
+        RichterItemCrashScripts + MARIA_ITEM_TABLES, 0xBD0E, 0xBD2D, 0xBD3C
+    };
+
+    return try_item_crash(&maria);
+}
+
+void abi_MariaTryItemCrash(void)
+{
+    item_crash_exit_shim(MariaTryItemCrash());
 }
 
 /*
@@ -1136,4 +1289,297 @@ void abi_RichterLatchButtons(void)
 {
     cpu.a = RichterLatchButtons();
     abi_nz(cpu.a);
+}
+
+/*
+ * Maria's own pad and item code (her overlay 01DD): routines with no copy in Richter's overlay. Her player bytes
+ * $3BE4 to $3BE7 have no symbol yet: they are named here as PlayerByte3BE3 plus an offset until the rows land.
+ */
+enum {
+    MARIA_SEQUENCE_TIMER = PlayerByte3BE3 + 3, MARIA_SEQUENCE_STEP = PlayerByte3BE3 + 2,
+    MARIA_SEQUENCE_DONE = PlayerByte3BE3 + 4, MARIA_SEQUENCE_TABLE = 0xB96B, MARIA_SEQUENCE_STEPS = 3,
+    MARIA_SEQUENCE_TIME = 0x0A, PAD_DIRECTION_BITS = 0xF0,
+    MARIA_ITEM_DELAY = 0x10, MARIA_ITEM_USE_PRESS = 0x02, MARIA_ITEM_USE_HELD = 0x10, MARIA_ITEM_STATES = 5,
+    MARIA_ITEM_COSTS = 0xBCDE, MARIA_ITEM_SECOND_COSTS = 0xBCD5, MARIA_ITEM_LISTS = 0xBCE7, MARIA_ITEM_SCRIPTS = 0xBCF0,
+    MARIA_ITEM_THROWN = 2, MARIA_ITEM_CHANNEL = 6, MARIA_LIVE_FIRST = 5, MARIA_LIVE_END = 0x0F, MARIA_KIND_IGNORED = 0x18,
+    MARIA_ITEM_ALL = 0xFF, MARIA_ITEM_SLOT_A = 5, MARIA_ITEM_SLOT_B = 8
+};
+
+/*
+ * @routine 01E0:124 MariaReadPad
+ * @run 6D:B924
+ * WHAT IT DOES: Reads the pad for the frame: what is held, and what is newly pressed.
+ * HOW: The last frame's zPadHeld into zPadPrevious, BiosPadState into zPadHeld, the bits newly set into zPadPressed.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the presses, N and Z from them. X, Y, C and V kept.
+ */
+uint8_t MariaReadPad(void)
+{
+    uint8_t held, previous, pressed;
+
+    held = RD8(ZP->pad_held);
+    WR8(ZP->pad_previous, held);
+    held = rd8(BiosPadState);
+    WR8(ZP->pad_held, held);
+    previous = RD8(ZP->pad_previous);
+    pressed = (uint8_t)(held ^ previous);
+    pressed &= RD8(ZP->pad_held);
+    WR8(ZP->pad_pressed, pressed);
+    return pressed;
+}
+
+void abi_MariaReadPad(void)
+{
+    cpu.a = MariaReadPad();
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 01E0:134 MariaPadSequence
+ * @run 6D:B934
+ * WHAT IT DOES: Follows a sequence of directions on her pad: each must come within ten frames of the last, in the
+ * order her table at $B96B gives for the way she faces; the third sets the done flag.
+ * HOW: A timer, the step and the done flag, three bytes after PlayerByte3BE3; the table by twice the step plus her
+ * facing; a timer run out clears the step and the flag.
+ * Untraced: the third step ($B95A); no script finished a sequence.
+ * WAITS: no.
+ * Entry: nothing. Exit: timer out or a step made, A $0A, N and Z from it; no direction, A 0, Z set; a direction not
+ * the next, A the directions, N, Z and C from comparing them. X the table index unless the timer was out; C from
+ * the index's add, or from comparing the step with 3; V from the index's add. Y kept.
+ */
+TurnWindow MariaPadSequence(void)
+{
+    TurnWindow r = { ended_kept(), false, 0 };
+    uint8_t value, held;
+    Sum index;
+
+    value = rd8(MARIA_SEQUENCE_TIMER);
+    r.end = ended_load(value);
+    if (value == 0) {
+        wr8(MARIA_SEQUENCE_STEP, 0);
+        wr8(MARIA_SEQUENCE_DONE, 0);
+    } else {
+        rd8(MARIA_SEQUENCE_TIMER);
+        wr8(MARIA_SEQUENCE_TIMER, (uint8_t)(value - 1));
+        value = rd8(MARIA_SEQUENCE_STEP);
+        index = add_bytes((uint8_t)(value << 1), RD8(OBJ->facing_left[0]), false);
+        r.x_set = true;
+        r.x = index.value;
+        r.end = ended_of_sum(index);
+        held = (uint8_t)(RD8(ZP->pad_held) & PAD_DIRECTION_BITS);
+        r.end = ended_then(r.end, ended_load(held));
+        if (held == 0) {
+            return r;
+        }
+        value = rd8((uint16_t)(MARIA_SEQUENCE_TABLE + r.x));
+        r.end = ended_then(r.end, ended_compare(held, value));
+        if (held != value) {
+            return r;
+        }
+        value = rd8(MARIA_SEQUENCE_STEP);
+        wr8(MARIA_SEQUENCE_STEP, (uint8_t)(value + 1));
+        value = rd8(MARIA_SEQUENCE_STEP);
+        r.end = ended_then(r.end, ended_compare(value, MARIA_SEQUENCE_STEPS));
+        if (value == MARIA_SEQUENCE_STEPS) {
+            value = rd8(MARIA_SEQUENCE_DONE);
+            wr8(MARIA_SEQUENCE_DONE, (uint8_t)(value + 1));
+        }
+    }
+    wr8(MARIA_SEQUENCE_TIMER, MARIA_SEQUENCE_TIME);
+    r.end = ended_then(r.end, ended_load(MARIA_SEQUENCE_TIME));
+    return r;
+}
+
+void abi_MariaPadSequence(void)
+{
+    TurnWindow r = MariaPadSequence();
+
+    abi_ended(r.end);
+    if (r.x_set) {
+        cpu.x = r.x;
+    }
+}
+
+/* A search for a live object in slots 5 to 14: the slot (Y), the kind last read, and whether one was found. */
+typedef struct { bool found; uint8_t y; uint8_t kind; } LiveObject;
+
+/*
+ * @routine 01E0:4C3 MariaFindLiveObject
+ * @run 6D:BCC3
+ * WHAT IT DOES: Looks for an object alive in slots 5 to 14, other than one of kind $18.
+ * HOW: OBJ_2750 by Y.
+ * Untraced: all of it; only MariaUseItem calls it, past its own untraced test.
+ * WAITS: no.
+ * Entry: nothing. Exit: found, Y the slot, A its kind, N, Z and C from comparing it with $18; else Y $0F, A the
+ * last kind read, Z and C set, N clear. X and V kept.
+ */
+LiveObject MariaFindLiveObject(void)
+{
+    LiveObject r = { false, 0, 0 };
+
+    for (r.y = MARIA_LIVE_FIRST; r.y != MARIA_LIVE_END; r.y++) {
+        r.kind = RD8(OBJ->kind[r.y]);
+        if (r.kind != 0 && r.kind != MARIA_KIND_IGNORED) {
+            r.found = true;
+            return r;
+        }
+    }
+    return r;
+}
+
+static Ended live_object_exit(LiveObject r)
+{
+    if (r.found) {
+        return ended_with_y(ended_compare(r.kind, MARIA_KIND_IGNORED), r.y);
+    }
+    return ended_with_y(ended_with_a(ended_compare(MARIA_LIVE_END, MARIA_LIVE_END), r.kind), r.y);
+}
+
+void abi_MariaFindLiveObject(void)
+{
+    abi_ended(live_object_exit(MariaFindLiveObject()));
+}
+
+/* The end every use of her item makes: the delay of $10 frames, C set. */
+static Ended item_delay(Ended e)
+{
+    wr8(OBJ_EVENT_ID, MARIA_ITEM_DELAY);
+    return ended_with_carry(ended_then(e, ended_load(MARIA_ITEM_DELAY)), true);
+}
+
+/*
+ * @routine 01E0:43A MariaItemUseAll
+ * @run 6D:BC3A
+ * WHAT IT DOES: The end of MariaUseItem when her sequence is done: PlayerByte3BD5 $FF, then the item delay.
+ * HOW: A jump into MariaUseItem's end.
+ * Untraced: all of it; no script finished a sequence.
+ * WAITS: no.
+ * Entry: nothing. Exit: A $10, N and Z from it, C set. X, Y and V kept.
+ */
+Ended MariaItemUseAll(void)
+{
+    wr8(PlayerByte3BD5, MARIA_ITEM_ALL);
+    return item_delay(ended_load(MARIA_ITEM_ALL));
+}
+
+void abi_MariaItemUseAll(void)
+{
+    abi_ended(MariaItemUseAll());
+}
+
+/*
+ * @routine 01E0:442 MariaUseItem
+ * @run 6D:BC42
+ * WHAT IT DOES: Her attack button: unless the delay in OBJ_EVENT_ID runs, on a press of button II says she attacks
+ * (C set) and starts the delay. With down held and the hearts her table at $BCDE asks, an item of 2 and up is
+ * thrown: its list and script start once (PlayerByte3BD6) unless an object is alive in slots 5 to 14, it waits for
+ * slot 5, and slot 8 past the second cost at $BCD5, and the hearts are paid; PlayerByte3BD5 then says the item is
+ * in use. In states below 5 with her pad sequence done, PlayerByte3BD5 is $FF.
+ * HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, zField93 the item, zField94 the hearts in BCD; MariaFindLiveObject;
+ * the list on channel 6 and the script in slot 6.
+ * Untraced: the sequence's arm ($BC56 taken, into MariaItemUseAll) and the throw ($BC77 to $BCC0); no script threw
+ * one of her items or finished a sequence.
+ * WAITS: no.
+ * Entry: nothing. Exit: the delay runs, A the delay, N and Z from it, C clear; no press, A 0, Z set, C clear;
+ * otherwise A $10, N and Z from it, C set, X the item once it was read, Y as the throw's last call left it. V kept.
+ */
+/* The throw of an item of 2 and up: false where it is not thrown (an object alive, or slot 5 or 8 not ready). */
+static bool maria_throw_item(TurnWindow *r)
+{
+    uint8_t value, hearts;
+    LiveObject live;
+
+    value = rd8(PlayerByte3BD6);
+    if (value != 0) {
+        jsr_push(0xBC7F);
+        live = MariaFindLiveObject();
+        jsr_pop();
+        r->end = ended_then(r->end, live_object_exit(live));
+        if (live.found) {
+            return false;
+        }
+        r->x = RD8(ZP->field93);
+        value = rd8((uint16_t)(MARIA_ITEM_LISTS + r->x));
+        if (value != 0) {
+            jsr_push(0xBC8D);
+            StartListChannelKind2(value, MARIA_ITEM_CHANNEL);
+            jsr_pop();
+        }
+        wr8(PlayerByte3BD6, 0);
+        r->x = RD8(ZP->field93);
+        value = rd8((uint16_t)(MARIA_ITEM_SCRIPTS + r->x));
+        if (value != 0) {
+            jsr_push(0xBC9C);
+            StartScriptSlotKind1(value, MARIA_ITEM_CHANNEL);
+            jsr_pop();
+            r->end = ended_with_y(r->end, value);
+        }
+    }
+    r->x = RD8(ZP->field93);
+    value = RD8(OBJ->kind[MARIA_ITEM_SLOT_A]);
+    if (value != 0) {
+        r->x = RD8(ZP->field93);
+        hearts = RD8(ZP->field94);
+        value = rd8((uint16_t)(MARIA_ITEM_SECOND_COSTS + r->x));
+        if (hearts < value) {
+            return false;
+        }
+        value = RD8(OBJ->kind[MARIA_ITEM_SLOT_B]);
+        if (value != 0) {
+            return false;
+        }
+    }
+    wr8(PlayerByte3BD5, 1);
+    hearts = RD8(ZP->field94);
+    value = rd8((uint16_t)(MARIA_ITEM_COSTS + r->x));
+    WR8(ZP->field94, bcd_subtract(hearts, value));
+    r->end = item_delay(r->end);
+    return true;
+}
+
+TurnWindow MariaUseItem(void)
+{
+    TurnWindow r = { ended_kept(), false, 0 };
+    uint8_t value, hearts;
+
+    value = rd8(OBJ_EVENT_ID);
+    r.end = ended_load(value);
+    if (value != 0 || !(RD8(ZP->pad_pressed) & MARIA_ITEM_USE_PRESS)) {
+        r.end = ended_with_carry(r.end, false);
+        return r;
+    }
+    value = RD8(OBJ->state[0]);
+    if (value < MARIA_ITEM_STATES) {
+        value = rd8(MARIA_SEQUENCE_DONE);
+        if (value != 0) {
+            r.end = MariaItemUseAll();
+            return r;
+        }
+    }
+    value = (uint8_t)(RD8(ZP->pad_held) & MARIA_ITEM_USE_HELD);
+    if (value != 0) {
+        r.x_set = true;
+        r.x = RD8(ZP->field93);
+        hearts = RD8(ZP->field94);
+        value = rd8((uint16_t)(MARIA_ITEM_COSTS + r.x));
+        if (hearts >= value) {
+            value = RD8(ZP->field93);
+            if (value >= MARIA_ITEM_THROWN && maria_throw_item(&r)) {
+                return r;
+            }
+        }
+    }
+    wr8(PlayerByte3BD5, 0);
+    r.end = item_delay(r.end);
+    return r;
+}
+
+void abi_MariaUseItem(void)
+{
+    TurnWindow r = MariaUseItem();
+
+    abi_ended(r.end);
+    if (r.x_set) {
+        cpu.x = r.x;
+    }
 }

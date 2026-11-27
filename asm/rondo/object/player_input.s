@@ -470,6 +470,62 @@ RichterUseItemEight_at0:
     stz a:PlayerByte3BD6
     bra $B99D
 
+; @routine 01E0:124 MariaReadPad
+; @run 6D:B924
+; WHAT IT DOES: Reads the pad for the frame: what is held, and what is newly pressed.
+; HOW: The last frame's zPadHeld into zPadPrevious, BiosPadState into zPadHeld, the bits newly set into zPadPressed.
+; WAITS: no.
+; Entry: nothing. Exit: A the presses, N and Z from them. X, Y, C and V kept.
+MariaReadPad:
+    lda z:zPadHeld
+    sta z:zPadPrevious
+    lda a:BiosPadState
+    sta z:zPadHeld
+    eor z:zPadPrevious
+    and z:zPadHeld
+    sta z:zPadPressed
+    rts
+
+; @routine 01E0:134 MariaPadSequence
+; @run 6D:B934
+; WHAT IT DOES: Follows a sequence of directions on her pad: each must come within ten frames of the last, in the
+; order her table at $B96B gives for the way she faces; the third sets the done flag.
+; HOW: A timer, the step and the done flag, three bytes after PlayerByte3BE3; the table by twice the step plus her
+; facing; a timer run out clears the step and the flag.
+; Untraced: the third step ($B95A); no script finished a sequence.
+; WAITS: no.
+; Entry: nothing. Exit: timer out or a step made, A $0A, N and Z from it; no direction, A 0, Z set; a direction not
+; the next, A the directions, N, Z and C from comparing them. X the table index unless the timer was out; C from
+; the index's add, or from comparing the step with 3; V from the index's add. Y kept.
+MariaPadSequence:
+    lda a:PlayerByte3BE3+3
+    beq MariaPadSequence_at2
+    dec a:PlayerByte3BE3+3
+    lda a:PlayerByte3BE3+2
+    asl a
+    clc
+    adc a:OBJ_2AC0
+    tax
+    lda z:zPadHeld
+    and #$F0
+    beq MariaPadSequence_at0
+    cmp a:MariaPadSequence+$37,x
+    bne MariaPadSequence_at0
+    inc a:PlayerByte3BE3+2
+    lda a:PlayerByte3BE3+2
+    cmp #$03
+    bne MariaPadSequence_at1
+    inc a:PlayerByte3BE3+4
+    bra MariaPadSequence_at1
+MariaPadSequence_at2:
+    stz a:PlayerByte3BE3+2
+    stz a:PlayerByte3BE3+4
+MariaPadSequence_at1:
+    lda #$0A
+    sta a:PlayerByte3BE3+3
+MariaPadSequence_at0:
+    rts
+
 ; @routine 01E0:173 MariaClearPadOverrides
 ; @run 6D:B973
 ; WHAT IT DOES: RichterClearPadOverrides in Maria's player overlay (01DD), the same instructions at her address.
@@ -481,6 +537,78 @@ MariaClearPadOverrides:
     stz a:PadOverrides+1
     stz a:PadOverrides+2
     stz a:PadOverrides+3
+    rts
+
+; @routine 01E0:180 MariaAnimationWait
+; @run 6D:B980
+; WHAT IT DOES: RichterAnimationWait in Maria's player overlay (01DD), the same instructions.
+; HOW: RichterAnimationWait's body with her layout (MariaAnimationRunning at $B987).
+; WAITS: no.
+; Entry, exit: as RichterAnimationWait.
+MariaAnimationWait:
+    bsr MariaAnimationRunning
+    beq MariaAnimationWait_at0
+    pla
+    pla
+MariaAnimationWait_at0:
+    rts
+
+; @routine 01E0:187 MariaAnimationRunning
+; @run 6D:B987
+; WHAT IT DOES: RichterAnimationRunning in Maria's player overlay (01DD).
+; HOW: The same instructions with her tick, MariaAnimationTick at $B990.
+; WAITS: no.
+; Entry, exit: as RichterAnimationRunning.
+MariaAnimationRunning:
+    jsr MariaAnimationTick
+    lda a:OBJ_2F90
+    cmp #$FF
+    rts
+
+; @routine 01E0:190 MariaAnimationTick
+; @run 6D:B990
+; WHAT IT DOES: RichterAnimationTick in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterAnimationTick's body with her layout: its calls go to MariaAnimationPoint at $B9C3.
+; WAITS: no.
+; Entry, exit: as RichterAnimationTick.
+MariaAnimationTick:
+    lda a:OBJ_2F90
+    cmp #$FF
+    bne MariaAnimationTick_at0
+    rts
+MariaAnimationTick_at0:
+    dec a:OBJ_2F90
+    bne MariaSetAnimation_at3
+    inc a:OBJ_FLAGS_2F38
+    bra MariaSetAnimation_at2
+
+; @routine 01E0:1A2 MariaSetAnimation
+; @run 6D:B9A2
+; WHAT IT DOES: RichterSetAnimation in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterSetAnimation's body with her layout: its calls go to MariaAnimationPoint at $B9C3.
+; WAITS: no.
+; Entry, exit: as RichterSetAnimation.
+MariaSetAnimation:
+    sta a:OBJ_FIELDS_2EE0
+MariaSetAnimation_at4:
+    stz a:OBJ_FLAGS_2F38
+MariaSetAnimation_at2:
+    bsr MariaAnimationPoint
+    lda (zTemp00),y
+    sta a:OBJ_2F90
+    cmp #$FF
+    bne MariaSetAnimation_at0
+    rts
+MariaSetAnimation_at0:
+    cmp #$FE
+    beq MariaSetAnimation_at4
+    bra MariaSetAnimation_at1
+MariaSetAnimation_at3:
+    bsr MariaAnimationPoint
+MariaSetAnimation_at1:
+    iny
+    lda (zTemp00),y
+    sta a:OBJ_2A68
     rts
 
 ; @routine 01E0:306 MariaNoteItemPress
@@ -561,4 +689,178 @@ MariaCheckItemHearts:
 MariaCheckItemHearts_at0:
     lda #$0F
     sta a:RichterItemReady
+    rts
+
+; @routine 01E0:43A MariaItemUseAll
+; @run 6D:BC3A
+; WHAT IT DOES: The end of MariaUseItem when her sequence is done: PlayerByte3BD5 $FF, then the item delay.
+; HOW: A jump into MariaUseItem's end.
+; Untraced: all of it; no script finished a sequence.
+; WAITS: no.
+; Entry: nothing. Exit: A $10, N and Z from it, C set. X, Y and V kept.
+MariaItemUseAll:
+    lda #$FF
+    sta a:PlayerByte3BD5
+    jmp MariaUseItem_at8
+
+; @routine 01E0:442 MariaUseItem
+; @run 6D:BC42
+; WHAT IT DOES: Her attack button: unless the delay in OBJ_EVENT_ID runs, on a press of button II says she attacks
+; (C set) and starts the delay. With down held and the hearts her table at $BCDE asks, an item of 2 and up is
+; thrown: its list and script start once (PlayerByte3BD6) unless an object is alive in slots 5 to 14, it waits for
+; slot 5, and slot 8 past the second cost at $BCD5, and the hearts are paid; PlayerByte3BD5 then says the item is
+; in use. In states below 5 with her pad sequence done, PlayerByte3BD5 is $FF.
+; HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, zField93 the item, zField94 the hearts in BCD; MariaFindLiveObject;
+; the list on channel 6 and the script in slot 6.
+; Untraced: the sequence's arm ($BC56 taken, into MariaItemUseAll) and the throw ($BC77 to $BCC0); no script threw
+; one of her items or finished a sequence.
+; WAITS: no.
+; Entry: nothing. Exit: the delay runs, A the delay, N and Z from it, C clear; no press, A 0, Z set, C clear;
+; otherwise A $10, N and Z from it, C set, X the item once it was read, Y as the throw's last call left it. V kept.
+MariaUseItem:
+    lda a:OBJ_EVENT_ID
+    bne MariaUseItem_at0
+    bbs1 zPadPressed,MariaUseItem_at1
+MariaUseItem_at0:
+    clc
+    rts
+MariaUseItem_at1:
+    lda a:OBJ_27A8
+    cmp #$05
+    bcs MariaUseItem_at2
+    lda a:PlayerByte3BE3+4
+    bne MariaItemUseAll
+MariaUseItem_at2:
+    lda z:zPadHeld
+    and #$10
+    beq MariaUseItem_at3
+    ldx z:zField93
+    lda z:zField94
+    cmp a:MariaUseItem+$9C,x
+    bcs MariaUseItem_at4
+MariaUseItem_at3:
+    stz a:PlayerByte3BD5
+MariaUseItem_at8:
+    lda #$10
+    sta a:OBJ_EVENT_ID
+    sec
+    rts
+MariaUseItem_at4:
+    lda z:zField93
+    cmp #$02
+    bcc MariaUseItem_at3
+    lda a:PlayerByte3BD6
+    beq MariaUseItem_at5
+    jsr MariaFindLiveObject
+    bne MariaUseItem_at3
+    ldx z:zField93
+    lda a:MariaUseItem+$A5,x
+    beq MariaUseItem_at6
+    ldx #$06
+    jsr VecStartListChannelKind2
+MariaUseItem_at6:
+    stz a:PlayerByte3BD6
+    ldx z:zField93
+    lda a:MariaUseItem+$AE,x
+    beq MariaUseItem_at5
+    ldx #$06
+    jsr VecStartScriptSlotKind1
+MariaUseItem_at5:
+    ldx z:zField93
+    lda a:OBJ_2750+5
+    beq MariaUseItem_at7
+    ldx z:zField93
+    lda z:zField94
+    cmp a:MariaUseItem+$93,x
+    bcc MariaUseItem_at3
+    lda a:OBJ_2750+8
+    bne MariaUseItem_at3
+MariaUseItem_at7:
+    lda #$01
+    sta a:PlayerByte3BD5
+    lda z:zField94
+    sed
+    sec
+    sbc a:MariaUseItem+$9C,x
+    cld
+    sta z:zField94
+    jmp MariaUseItem_at8
+
+; @routine 01E0:4C3 MariaFindLiveObject
+; @run 6D:BCC3
+; WHAT IT DOES: Looks for an object alive in slots 5 to 14, other than one of kind $18.
+; HOW: OBJ_2750 by Y.
+; Untraced: all of it; only MariaUseItem calls it, past its own untraced test.
+; WAITS: no.
+; Entry: nothing. Exit: found, Y the slot, A its kind, N, Z and C from comparing it with $18; else Y $0F, A the
+; last kind read, Z and C set, N clear. X and V kept.
+MariaFindLiveObject:
+    ldy #$05
+MariaFindLiveObject_at1:
+    lda a:OBJ_2750,y
+    bne MariaFindLiveObject_at0
+MariaFindLiveObject_at2:
+    iny
+    cpy #$0F
+    bne MariaFindLiveObject_at1
+    rts
+MariaFindLiveObject_at0:
+    cmp #$18
+    beq MariaFindLiveObject_at2
+    rts
+
+; @routine 01E0:4F9 MariaTryItemCrash
+; @run 6D:BCF9
+; WHAT IT DOES: RichterTryItemCrash in Maria's player overlay (01DD): her item slots are 3 to 14, not 3 to 15.
+; HOW: RichterTryItemCrash's body with her end of the scan and her tables of costs, lists and scripts at $BD4A,
+; $BD53 and $BD5C, $4FD above his.
+; Untraced: everything after a press of the item button ($BCFE to $BD1B, $BD21 to $BD49); no script pressed it.
+; WAITS: no.
+; Entry, exit: as RichterTryItemCrash.
+MariaTryItemCrash:
+    tst #$04,z:zPadPressed
+    beq MariaTryItemCrash_at5
+    ldx #$03
+MariaTryItemCrash_at0:
+    lda a:OBJ_2750,x
+    bne MariaTryItemCrash_at5
+    inx
+    cpx #$0F
+    bne MariaTryItemCrash_at0
+    dex
+MariaTryItemCrash_at1:
+    jsr VecClearObject
+    dex
+    cpx #$02
+    bne MariaTryItemCrash_at1
+    ldx z:zField93
+    lda z:zField94
+    cmp a:RichterItemCosts+$4FD,x
+    bcs MariaTryItemCrash_at2
+MariaTryItemCrash_at5:
+    stz a:PadForcedPress
+    clc
+    rts
+MariaTryItemCrash_at2:
+    ldx z:zField93
+    lda a:RichterItemCrashLists+$4FD,x
+    beq MariaTryItemCrash_at3
+    ldx #$06
+    jsr VecStartListChannelKind2
+MariaTryItemCrash_at3:
+    stz a:PlayerByte3BD6
+    ldx z:zField93
+    lda a:RichterItemCrashScripts+$4FD,x
+    beq MariaTryItemCrash_at4
+    ldx #$06
+    jsr VecStartScriptSlotKind1
+MariaTryItemCrash_at4:
+    ldx z:zField93
+    lda z:zField94
+    sed
+    sec
+    sbc a:RichterItemCosts+$4FD,x
+    cld
+    sta z:zField94
+    sec
     rts

@@ -18,7 +18,7 @@ enum {
     WALL_FIRST_COLUMN_CROUCHING = 3, WALL_FIRST_COLUMN_IN_AIR = 5,
     STATE_CROUCHING = 2, STATE_IN_AIR = 3, STATE_FALLING = 4,
     RICHTER_COLUMNS = 5, COLUMNS_BELOW_WAIST = 0x0B, COLUMNS_BELOW_FEET = 0x16,
-    BLOCKED_COLUMNS = 2, TILE_BLOCKS = 0x24, FLOOR_COLUMNS = 3, TILE_FLOOR = 0x81,
+    BLOCKED_COLUMNS = 2, MARIA_BLOCKED_COLUMNS = 3, MARIA_THIRD_COLUMN = 2, TILE_BLOCKS = 0x24, FLOOR_COLUMNS = 3, TILE_FLOOR = 0x81,
     PUSH_ON_FLOOR = 0x01, PUSH_LIFTING = 0x20, CHARACTER_RICHTER = 0, COLUMNS_BELOW_LOW = 0x12, COLUMNS_BELOW_CHECK = 0x0E,
     FLOOR_TOP_OF_MAP = 0x02, ROW_ABOVE_THE_MAP = 0xFF, COLUMNS_BELOW_SOLES = 0x1E, PAD_UP = 0x40, PAD_DOWN = 0x10,
     PAD_JUMP_PRESS = 0x01, CAMERA_NO_LADDER = 0x01, CAMERA_LADDER = 0x18, LADDER_LOWEST_Y = 0xB0,
@@ -116,6 +116,27 @@ void abi_RichterReadAbove(void)
 }
 
 /*
+ * @routine 01E0:1F9 MariaReadAbove
+ * @run 6D:B9F9
+ * WHAT IT DOES: RichterReadAbove in Maria's player overlay (01DD).
+ * HOW: The same instructions; her overlay keeps its reads in another order, so its branches go into MariaReadBelow.
+ * Untraced: the row above the map ($BA00 taken).
+ * WAITS: no.
+ * Entry, exit: as RichterReadAbove.
+ */
+TileRead MariaReadAbove(uint8_t row, bool on_the_map)
+{
+    return RichterReadAbove(row, on_the_map);
+}
+
+void abi_MariaReadAbove(void)
+{
+    bool on_the_map = (cpu.p & P_C) != 0;
+
+    read_above_exit_shim(MariaReadAbove(cpu.a, on_the_map), on_the_map);
+}
+
+/*
  * @routine 01BB:6DD RichterReadBelow
  * @run 6D:B6DD
  * WHAT IT DOES: Reads the terrain at a row on the first screen down: a row past it reads as
@@ -186,6 +207,25 @@ TileRead RichterReadOnScreen(uint8_t row, bool carry)
 void abi_RichterReadOnScreen(void)
 {
     terrain_read_exit_shim(RichterReadOnScreen(cpu.a, (cpu.p & P_C) != 0));
+}
+
+/*
+ * @routine 01E0:204 MariaReadOnScreen
+ * @run 6D:BA04
+ * WHAT IT DOES: RichterReadOnScreen in Maria's player overlay (01DD).
+ * HOW: The same instructions; its branch goes into MariaReadBelow.
+ * Untraced: all of it; nothing in her overlay that a script ran calls it.
+ * WAITS: no.
+ * Entry, exit: as RichterReadOnScreen.
+ */
+TileRead MariaReadOnScreen(uint8_t row, bool carry)
+{
+    return RichterReadOnScreen(row, carry);
+}
+
+void abi_MariaReadOnScreen(void)
+{
+    terrain_read_exit_shim(MariaReadOnScreen(cpu.a, (cpu.p & P_C) != 0));
 }
 
 /*
@@ -677,12 +717,12 @@ void abi_MariaReadColumns(void)
  * Entry: nothing. Exit: at one, A those bits, X the column; else A 0, X 2, C 1, Z 1. V and,
  * at one, C kept. Y kept.
  */
-BlockedColumns RichterColumnsBlocked(void)
+static BlockedColumns columns_blocked(int columns)
 {
     BlockedColumns r = { -1, 0 };
     uint8_t hit;
 
-    for (int column = 0; column < BLOCKED_COLUMNS; column++) {
+    for (int column = 0; column < columns; column++) {
         hit = rd8((uint16_t)(RichterColumnHit + column));
         if (hit & TILE_BLOCKS) {
             r.column = column;
@@ -693,21 +733,48 @@ BlockedColumns RichterColumnsBlocked(void)
     return r;
 }
 
-void abi_RichterColumnsBlocked(void)
+BlockedColumns RichterColumnsBlocked(void)
 {
-    BlockedColumns r = RichterColumnsBlocked();
+    return columns_blocked(BLOCKED_COLUMNS);
+}
 
+/* At a blocked column: A its bits, X the column, C clear past the first; else A 0, X the count, C and Z set. */
+static void columns_blocked_exit_shim(BlockedColumns r, int columns)
+{
     if (r.column >= 0) {
         cpu.x = (uint8_t)r.column;
         cpu.a = r.bits;
         abi_nz(cpu.a);
         abi_flag(P_C, r.column > 0 ? false : (cpu.p & P_C) != 0);
     } else {
-        cpu.x = BLOCKED_COLUMNS;
+        cpu.x = (uint8_t)columns;
         cpu.a = 0;
         abi_nz(0);
         abi_flag(P_C, true);
     }
+}
+
+void abi_RichterColumnsBlocked(void)
+{
+    columns_blocked_exit_shim(RichterColumnsBlocked(), BLOCKED_COLUMNS);
+}
+
+/*
+ * @routine 01E0:5C9 MariaColumnsBlocked
+ * @run 6D:BDC9
+ * WHAT IT DOES: RichterColumnsBlocked in Maria's player overlay (01DD), over three columns, not two.
+ * HOW: RichterColumnsBlocked's body, with the count her CPX compares with.
+ * WAITS: no.
+ * Entry: nothing. Exit: as RichterColumnsBlocked, X 3 when no column blocks.
+ */
+BlockedColumns MariaColumnsBlocked(void)
+{
+    return columns_blocked(MARIA_BLOCKED_COLUMNS);
+}
+
+void abi_MariaColumnsBlocked(void)
+{
+    columns_blocked_exit_shim(MariaColumnsBlocked(), MARIA_BLOCKED_COLUMNS);
 }
 
 /* A floor was found: RMB 0 of the push, then RMB 5 unless the push is carrying him up; the A the check ends with. */
@@ -915,14 +982,13 @@ static ColumnRead column_probe(uint8_t column, uint8_t below, uint16_t ret_offse
  * Entry: nothing. Exit: at one, A those bits, X the column; else A 0, X 2, C 1, Z 1. Y and V
  * from the last read.
  */
-LowColumns RichterLowColumnsBlocked(void)
+static LowColumns low_columns_blocked(int columns, uint16_t offset_ret, uint16_t read_ret, const ColumnsLayout *layout)
 {
     LowColumns low = { -1, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, 0, 0, false };
     ColumnRead one;
-    static const uint16_t offset_ret[2] = { 0xBB03, 0xBB03 };
 
-    for (int column = 0; column < BLOCKED_COLUMNS; column++) {
-        one = column_probe((uint8_t)column, COLUMNS_BELOW_LOW, offset_ret[column], 0xBB12, &richter_columns);
+    for (int column = 0; column < columns; column++) {
+        one = column_probe((uint8_t)column, COLUMNS_BELOW_LOW, offset_ret, read_ret, layout);
         low.row = one.row;
         low.read_made = one.read_made;
         low.last = one.read;
@@ -937,7 +1003,12 @@ LowColumns RichterLowColumnsBlocked(void)
     return low;
 }
 
-void low_columns_exit_shim(LowColumns low)
+LowColumns RichterLowColumnsBlocked(void)
+{
+    return low_columns_blocked(BLOCKED_COLUMNS, 0xBB03, 0xBB12, &richter_columns);
+}
+
+static void low_columns_exit_columns(LowColumns low, int columns)
 {
     if (low.read_made) {
         terrain_read_exit_shim(low.last);
@@ -950,16 +1021,41 @@ void low_columns_exit_shim(LowColumns low)
         cpu.a = low.answer & TILE_BLOCKS;
         abi_nz(cpu.a);
     } else {
-        cpu.x = BLOCKED_COLUMNS;
+        cpu.x = (uint8_t)columns;
         cpu.a = 0;
         abi_nz(0);
         abi_flag(P_C, true);
     }
 }
 
+void low_columns_exit_shim(LowColumns low)
+{
+    low_columns_exit_columns(low, BLOCKED_COLUMNS);
+}
+
 void abi_RichterLowColumnsBlocked(void)
 {
     low_columns_exit_shim(RichterLowColumnsBlocked());
+}
+
+/*
+ * @routine 01E0:61B MariaLowColumnsBlocked
+ * @run 6D:BE1B
+ * WHAT IT DOES: RichterLowColumnsBlocked in Maria's player overlay (01DD), over three columns, not two.
+ * HOW: RichterLowColumnsBlocked's body with her column offset and read (MariaColumnOffset, MariaReadBelow) and the
+ * count her CPX compares with.
+ * Untraced: the return at a blocked column ($BE32); no script had a low column block under her.
+ * WAITS: no.
+ * Entry: nothing. Exit: as RichterLowColumnsBlocked, X 3 when no column blocks.
+ */
+LowColumns MariaLowColumnsBlocked(void)
+{
+    return low_columns_blocked(MARIA_BLOCKED_COLUMNS, 0xBE1F, 0xBE2E, &maria_columns);
+}
+
+void abi_MariaLowColumnsBlocked(void)
+{
+    low_columns_exit_columns(MariaLowColumnsBlocked(), MARIA_BLOCKED_COLUMNS);
 }
 
 /*
@@ -1273,6 +1369,24 @@ void abi_RichterUpHeld(void)
 }
 
 /*
+ * @routine 01E0:373 MariaUpHeld
+ * @run 6D:BB73
+ * WHAT IT DOES: RichterUpHeld in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterUpHeld's body.
+ * WAITS: no.
+ * Entry, exit: as RichterUpHeld.
+ */
+bool MariaUpHeld(void)
+{
+    return RichterUpHeld();
+}
+
+void abi_MariaUpHeld(void)
+{
+    abi_flag(P_C, MariaUpHeld());
+}
+
+/*
  * @routine 01BC:07E RichterJumpPressed
  * @run 6D:B87E
  * WHAT IT DOES: Says whether the jump button was newly pressed.
@@ -1322,23 +1436,37 @@ void abi_MariaJumpPressed(void)
  * WAITS: no.
  * Entry: nothing. Exit: C the answer; A, X, Y and V as the last step left them.
  */
-FootingCheck RichterHasNoFooting(void)
+/* One character's copy of the footing check: its two calls' return addresses and its floor and column checks. */
+typedef struct {
+    uint16_t floor_ret, solid_ret;
+    FloorResult (*floor)(void);
+    ColumnRead (*solid)(uint8_t column);
+} FootingLayout;
+
+static FootingCheck has_no_footing(const FootingLayout *layout)
 {
     FootingCheck footing = { { FLOOR_NONE } };
 
-    jsr_push(0xB888);
-    footing.check = RichterFloorCheck();
+    jsr_push(layout->floor_ret);
+    footing.check = layout->floor();
     jsr_pop();
     if (footing.check.how == FLOOR_NONE) {
         footing.no_floor = true;
         return footing;
     }
     footing.read_made = true;
-    jsr_push(0xB88D);
-    footing.under = RichterSolidUnderColumn(footing.check.column);
+    jsr_push(layout->solid_ret);
+    footing.under = layout->solid(footing.check.column);
     jsr_pop();
     footing.no_floor = solid_answer(footing.under) != 0;
     return footing;
+}
+
+FootingCheck RichterHasNoFooting(void)
+{
+    static const FootingLayout richter = { 0xB888, 0xB88D, RichterFloorCheck, RichterSolidUnderColumn };
+
+    return has_no_footing(&richter);
 }
 
 void footing_exit_shim(FootingCheck footing)
@@ -1357,6 +1485,26 @@ void footing_exit_shim(FootingCheck footing)
 void abi_RichterHasNoFooting(void)
 {
     footing_exit_shim(RichterHasNoFooting());
+}
+
+/*
+ * @routine 01E0:390 MariaHasNoFooting
+ * @run 6D:BB90
+ * WHAT IT DOES: RichterHasNoFooting in Maria's player overlay (01DD).
+ * HOW: The same instructions with her checks, MariaFloorCheck and MariaSolidUnderColumn.
+ * WAITS: no.
+ * Entry, exit: as RichterHasNoFooting.
+ */
+FootingCheck MariaHasNoFooting(void)
+{
+    static const FootingLayout maria = { 0xBB93, 0xBB98, MariaFloorCheck, MariaSolidUnderColumn };
+
+    return has_no_footing(&maria);
+}
+
+void abi_MariaHasNoFooting(void)
+{
+    footing_exit_shim(MariaHasNoFooting());
 }
 
 /*
@@ -1736,6 +1884,178 @@ void abi_RichterLedgeCheck(void)
 }
 
 /*
+ * One half of Maria's ledge check: what its column check found, and the A, X, N and Z and C it leaves. With three
+ * columns her CPX #2 can be equal, so a column of bit $20 at the third column counts only with the pad, and the
+ * compare's N and Z stand.
+ */
+typedef struct { bool blocked; bool found; LowColumns low; BlockedColumns high; uint8_t a, nz, x; bool c; } MariaLedgePart;
+
+/* The bit $20 test shared by both halves: a column of bit $20 counts unless it is the third (CPX #2). */
+static void maria_ledge_bits(MariaLedgePart *r, uint8_t bits, uint8_t column, uint8_t pad_bit)
+{
+    uint8_t held;
+
+    r->blocked = true;
+    r->x = column;
+    r->a = (uint8_t)(bits & TILE_BLOCK_ANY);
+    r->nz = r->a;
+    if (r->a != 0) {
+        r->nz = (uint8_t)(column - MARIA_THIRD_COLUMN);
+        r->found = column != MARIA_THIRD_COLUMN;
+    }
+    if (!r->found) {
+        held = RD8(ZP->pad_held);
+        r->found = (held & pad_bit) != 0;
+    }
+}
+
+/*
+ * @routine 01E0:574 MariaLedgeLow
+ * @run 6D:BD74
+ * WHAT IT DOES: RichterLedgeLow in Maria's player overlay (01DD): her three low columns, the third counting only with
+ * down held.
+ * HOW: MariaLowColumnsBlocked, the answer's bit $20 and the column against 2, bit 4 of zPadHeld; zTemp01 cleared at a
+ * ledge.
+ * Untraced: everything after a column blocks ($BD79 to $BD87); no script had a low column block under her.
+ * WAITS: no.
+ * Entry: nothing. Exit: C set at a ledge; A the bit $20 looked at, X the column, N and Z from the bit or from the
+ * column less 2. No column: as MariaLowColumnsBlocked with C clear.
+ */
+MariaLedgePart MariaLedgeLow(void)
+{
+    MariaLedgePart r = { false, false, { -1 }, { -1, 0 }, 0, 0, MARIA_BLOCKED_COLUMNS, false };
+
+    jsr_push(0xBD77);
+    r.low = MariaLowColumnsBlocked();
+    jsr_pop();
+    if (r.low.blocked_column < 0) {
+        return r;
+    }
+    maria_ledge_bits(&r, r.low.answer, (uint8_t)r.low.blocked_column, PAD_DOWN);
+    if (r.found) {
+        WR8(ZP->temp01, 0);
+        r.c = true;
+    }
+    return r;
+}
+
+static void maria_ledge_low_exit_shim(MariaLedgePart r)
+{
+    low_columns_exit_columns(r.low, MARIA_BLOCKED_COLUMNS);
+    if (r.blocked) {
+        cpu.a = r.a;
+        cpu.x = r.x;
+        abi_nz(r.nz);
+    }
+    abi_flag(P_C, r.c);
+}
+
+void abi_MariaLedgeLow(void)
+{
+    maria_ledge_low_exit_shim(MariaLedgeLow());
+}
+
+/*
+ * @routine 01E0:588 MariaLedgeHigh
+ * @run 6D:BD88
+ * WHAT IT DOES: RichterLedgeHigh in Maria's player overlay (01DD): her first three columns, the third counting only
+ * with up held.
+ * HOW: MariaColumnsBlocked, the answer's bit $20 and the column against 2, bit 6 of zPadHeld; zTemp01 set to 1 at a
+ * ledge.
+ * Untraced: everything after a column blocks ($BD8D to $BD9D).
+ * WAITS: no.
+ * Entry: nothing. Exit: C set at a ledge with A 1, N and Z from it, X the column; else C clear, A the bit $20
+ * looked at, N and Z from it or from the column less 2. No column: A 0, X 3, Z set, C clear.
+ */
+MariaLedgePart MariaLedgeHigh(void)
+{
+    MariaLedgePart r = { false, false, { -1 }, { -1, 0 }, 0, 0, MARIA_BLOCKED_COLUMNS, false };
+
+    jsr_push(0xBD8B);
+    r.high = MariaColumnsBlocked();
+    jsr_pop();
+    if (r.high.column < 0) {
+        return r;
+    }
+    maria_ledge_bits(&r, r.high.bits, (uint8_t)r.high.column, PAD_UP);
+    if (r.found) {
+        r.a = 1;
+        r.nz = 1;
+        WR8(ZP->temp01, r.a);
+        r.c = true;
+    }
+    return r;
+}
+
+static void maria_ledge_high_exit_shim(MariaLedgePart r)
+{
+    cpu.a = r.a;
+    cpu.x = r.x;
+    abi_nz(r.nz);
+    abi_flag(P_C, r.c);
+}
+
+void abi_MariaLedgeHigh(void)
+{
+    maria_ledge_high_exit_shim(MariaLedgeHigh());
+}
+
+/* Maria's ledge check: the push, then her low half and her high half. */
+typedef struct { LedgeEnd how; uint8_t push; MariaLedgePart low, high; } MariaLedge;
+
+/*
+ * @routine 01E0:565 MariaLedgeCheck
+ * @run 6D:BD65
+ * WHAT IT DOES: RichterLedgeCheck in Maria's player overlay (01DD), on her halves, MariaLedgeLow and MariaLedgeHigh.
+ * HOW: The same instructions at her addresses.
+ * Untraced: the return while a push holds her ($BD72 from the TST) and the two returns at a ledge ($BD9C).
+ * WAITS: no.
+ * Entry: nothing. Exit: C the answer, with what the last half left; held by a push, N and V the push's bits 7 and 6,
+ * Z and C clear.
+ */
+MariaLedge MariaLedgeCheck(void)
+{
+    MariaLedge check = { LEDGE_PUSHED };
+
+    check.push = RD8(ZP->player_push);
+    if (check.push & PUSH_ON_FLOOR) {
+        return check;
+    }
+    jsr_push(0xBD6C);
+    check.low = MariaLedgeLow();
+    jsr_pop();
+    if (check.low.c) {
+        check.how = LEDGE_LOW;
+        return check;
+    }
+    jsr_push(0xBD70);
+    check.high = MariaLedgeHigh();
+    jsr_pop();
+    check.how = check.high.c ? LEDGE_HIGH : LEDGE_NONE;
+    return check;
+}
+
+static void maria_ledge_check_exit_shim(MariaLedge check)
+{
+    if (check.how == LEDGE_PUSHED) {
+        abi_flag(P_V, (check.push & 0x40) != 0);
+        abi_flag(P_N, (check.push & 0x80) != 0);
+        abi_flag(P_Z, false);
+        abi_flag(P_C, false);
+        return;
+    }
+    maria_ledge_low_exit_shim(check.low);
+    if (check.how != LEDGE_LOW) {
+        maria_ledge_high_exit_shim(check.high);
+    }
+}
+
+void abi_MariaLedgeCheck(void)
+{
+    maria_ledge_check_exit_shim(MariaLedgeCheck());
+}
+
+/*
  * @routine 01BC:280 RichterLiftByColumn
  * @run 6D:BA80
  * WHAT IT DOES: Lifts him out of the floor by how deep this column read, and not above the top
@@ -1845,18 +2165,23 @@ void abi_MariaLiftByColumn(void)
  * WAITS: no.
  * Entry: nothing. Exit: as RichterLiftByColumn, or as RichterFloorCheck with no floor.
  */
-LandingLift RichterLandOnFloor(void)
+static LandingLift land_on_floor(uint16_t floor_ret, FloorResult (*floor)(void), ColumnLift (*lift)(uint8_t column))
 {
     LandingLift landing = { { FLOOR_NONE } };
 
-    jsr_push(0xBA7D);
-    landing.check = RichterFloorCheck();
+    jsr_push(floor_ret);
+    landing.check = floor();
     jsr_pop();
     if (landing.check.how == FLOOR_NONE)
         return landing;
     landing.lifted = true;
-    landing.lift = RichterLiftByColumn(landing.check.column);
+    landing.lift = lift(landing.check.column);
     return landing;
+}
+
+LandingLift RichterLandOnFloor(void)
+{
+    return land_on_floor(0xBA7D, RichterFloorCheck, RichterLiftByColumn);
 }
 
 void landing_exit_shim(LandingLift landing)
@@ -1869,6 +2194,24 @@ void landing_exit_shim(LandingLift landing)
 void abi_RichterLandOnFloor(void)
 {
     landing_exit_shim(RichterLandOnFloor());
+}
+
+/*
+ * @routine 01E0:59E MariaLandOnFloor
+ * @run 6D:BD9E
+ * WHAT IT DOES: RichterLandOnFloor in Maria's player overlay (01DD).
+ * HOW: The same instructions with her checks: MariaFloorCheck, then a branch into MariaLiftByColumn.
+ * WAITS: no.
+ * Entry, exit: as RichterLandOnFloor.
+ */
+LandingLift MariaLandOnFloor(void)
+{
+    return land_on_floor(0xBDA1, MariaFloorCheck, MariaLiftByColumn);
+}
+
+void abi_MariaLandOnFloor(void)
+{
+    landing_exit_shim(MariaLandOnFloor());
 }
 
 /* The answers a caller branches on. */
@@ -1957,4 +2300,166 @@ ColumnsEnd PlayerMoved(void)
     }
     player_overlay_shim(PlayerOvlMoved, false, 0);
     return other;
+}
+
+/*
+ * Maria's own probes (her overlay 01DD): three columns read for the tile's bit $02, above her head and below her
+ * feet. PlayerByte3BE4 has no symbol yet: it is named PlayerByte3BE3 plus one until the row lands.
+ */
+enum { TILE_BIT_02 = 0x02, MARIA_ROWS_ABOVE = 0xFC, MARIA_ROWS_BELOW = 0x04, MARIA_FEET_MARKED = PlayerByte3BE3 + 1 };
+
+/* One of her three columns read for bit $02: what the read left, and the bit. */
+typedef struct {
+    int column;           /* the column of bit $02, or -1 */
+    uint8_t index;        /* MariaColumnOffset's Y */
+    bool above;           /* read by MariaReadAbove, not MariaReadBelow */
+    bool on_map;          /* the row's add kept it on the map */
+    TileRead last;
+    uint8_t answer;       /* A after the read */
+} MarkedColumns;
+
+/* The three columns: the offset (nudged a pixel inward for the read above), her X, her Y plus `rows`, the read. */
+static MarkedColumns marked_columns(bool above, uint8_t rows, uint16_t offset_ret, uint16_t read_ret)
+{
+    MarkedColumns r = { -1, 0, above, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0 };
+    ColumnOffset offset;
+    Sum across, row;
+    uint8_t value, base;
+
+    for (int column = 0; column < MARIA_BLOCKED_COLUMNS; column++) {
+        jsr_push(offset_ret);
+        offset = MariaColumnOffset((uint8_t)column);
+        jsr_pop();
+        value = offset.value;
+        if (above && value != 0) {
+            value = (value & 0x80) ? (uint8_t)(value + 1) : (uint8_t)(value - 1);
+        }
+        base = RD8(OBJ->x_lo[0]);
+        across = add_bytes(value, base, false);
+        WR8(ZP->temp00, across.value);
+        base = RD8(OBJ->y_lo[0]);
+        row = add_bytes(base, rows, false);
+        read_entry_shim(row, (uint8_t)column, offset.index);
+        r.index = offset.index;
+        jsr_push(read_ret);
+        if (above) {
+            r.on_map = row.carry;
+            r.last = MariaReadAbove(row.value, row.carry);
+        } else {
+            r.on_map = !row.carry;
+            r.last = MariaReadBelow(row.value, row.carry);
+        }
+        jsr_pop();
+        r.answer = r.on_map ? tile_answer(r.last) : 0;
+        if (r.answer & TILE_BIT_02) {
+            r.column = column;
+            return r;
+        }
+    }
+    return r;
+}
+
+/* The registers the last read left, then A the bit: at the column of the bit, X the column; else X 3, Z and C set. */
+static void marked_columns_exit_shim(MarkedColumns r)
+{
+    cpu.y = r.index;
+    if (r.above) {
+        read_above_exit_shim(r.last, r.on_map);
+    } else {
+        read_or_nothing_exit_shim(r.last, r.on_map);
+    }
+    cpu.a = (uint8_t)(r.answer & TILE_BIT_02);
+    abi_nz(cpu.a);
+    if (r.column >= 0) {
+        cpu.x = (uint8_t)r.column;
+        return;
+    }
+    cpu.x = MARIA_BLOCKED_COLUMNS;
+    abi_nz(0);
+    abi_flag(P_C, true);
+}
+
+/*
+ * @routine 01E0:325 MariaMarkedAbove
+ * @run 6D:BB25
+ * WHAT IT DOES: Reads her three columns four rows above her, each a pixel nearer her middle, and says whether one
+ * has the tile's bit $02.
+ * HOW: MariaColumnOffset with the offset nudged toward zero, MariaReadAbove.
+ * Untraced: the return at a column of bit $02 ($BB44).
+ * WAITS: no.
+ * Entry: nothing. Exit: at that column, A 2, N and Z from it, X the column; else A 0, X 3, Z and C set. Y, C and V
+ * as the last read left them. Clobbers zTemp00-03.
+ */
+MarkedColumns MariaMarkedAbove(void)
+{
+    return marked_columns(true, MARIA_ROWS_ABOVE, 0xBB29, 0xBB40);
+}
+
+void abi_MariaMarkedAbove(void)
+{
+    marked_columns_exit_shim(MariaMarkedAbove());
+}
+
+/*
+ * @routine 01E0:34B MariaFeetMarked
+ * @run 6D:BB4B
+ * WHAT IT DOES: Reads her three columns four rows below her and notes in PlayerByte3BE4 whether one has the tile's
+ * bit $02.
+ * HOW: MariaColumnOffset, MariaReadBelow; the byte cleared first and incremented at such a column.
+ * Untraced: the count at a column of bit $02 ($BB6B).
+ * WAITS: no.
+ * Entry: nothing. Exit: at that column, A 2, X the column, N and Z from the increment; else A 0, X 3, Z and C set.
+ * Y, C and V as the last read left them. Clobbers zTemp00-03.
+ */
+MarkedColumns MariaFeetMarked(void)
+{
+    MarkedColumns r;
+
+    wr8(MARIA_FEET_MARKED, 0);
+    r = marked_columns(false, MARIA_ROWS_BELOW, 0xBB52, 0xBB61);
+    if (r.column >= 0) {
+        wr8(MARIA_FEET_MARKED, (uint8_t)(rd8(MARIA_FEET_MARKED) + 1));
+    }
+    return r;
+}
+
+void abi_MariaFeetMarked(void)
+{
+    MarkedColumns r = MariaFeetMarked();
+
+    marked_columns_exit_shim(r);
+    if (r.column >= 0) {
+        abi_nz(1);
+    }
+}
+
+/* Up held, or a column of bit $02 above her: the probe and the pad. */
+typedef struct { MarkedColumns above; bool c; } UpOrMarked;
+
+/*
+ * @routine 01E0:36F MariaUpOrMarkedAbove
+ * @run 6D:BB6F
+ * WHAT IT DOES: Says whether a column above her has the tile's bit $02, or else whether up is held.
+ * HOW: MariaMarkedAbove, then on into MariaUpHeld.
+ * Untraced: the answer at a column of bit $02 ($BB71 taken).
+ * WAITS: no.
+ * Entry: nothing. Exit: C the answer; A, X, Y, N, Z and V as MariaMarkedAbove left them.
+ */
+UpOrMarked MariaUpOrMarkedAbove(void)
+{
+    UpOrMarked r;
+
+    jsr_push(0xBB71);
+    r.above = MariaMarkedAbove();
+    jsr_pop();
+    r.c = r.above.column >= 0 || MariaUpHeld();
+    return r;
+}
+
+void abi_MariaUpOrMarkedAbove(void)
+{
+    UpOrMarked r = MariaUpOrMarkedAbove();
+
+    marked_columns_exit_shim(r.above);
+    abi_flag(P_C, r.c);
 }

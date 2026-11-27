@@ -448,6 +448,64 @@ RichterObjectHitboxFrom:
     sta a:OBJ_3A38,x
     rts
 
+; @routine 01DE:48B MariaClaimSlotsB
+; @run 6D:AC8B
+; WHAT IT DOES: Takes every free one of object slots $0B to $0E for an object of kind $18.
+; HOW: OBJ_2750 zero is free: ClearObject (through its kernel vector), then the kind.
+; Untraced: a slot already in use ($AC90 taken); no script had one taken when she jumped.
+; WAITS: no.
+; Entry: nothing. Exit: X $0F; A the last kind read or $18; N clear, Z and C set from the CPX. Y and V kept.
+MariaClaimSlotsB:
+    ldx #$0B
+MariaClaimSlotsB_at1:
+    lda a:OBJ_2750,x
+    bne MariaClaimSlotsB_at0
+    jsr VecClearObject
+    lda #$18
+    sta a:OBJ_2750,x
+MariaClaimSlotsB_at0:
+    inx
+    cpx #$0F
+    bne MariaClaimSlotsB_at1
+    rts
+
+; @routine 01DE:7BA MariaReplaceSlotsOneTwo
+; @run 6D:AFBA
+; WHAT IT DOES: Clears object slots 1 and 2 as kind 4, each unless it holds kind 1 or 2.
+; HOW: OBJ_2750 compared with 1 and 2; MariaClearSlotAsKind for slot 1, then a run on into it for slot 2.
+; Untraced: a slot of kind 1 or 2 ($AFC3, $AFC7, $AFD1 and $AFD5 taken); no script had one there.
+; WAITS: no.
+; Entry: nothing. Exit: Y 4, X 2; slot 2 kept, A its kind, N, Z and C from comparing it with 1 or 2; else A 4, N
+; and Z from it, C from comparing the kind with 2. V kept.
+MariaReplaceSlotsOneTwo:
+    ldy #$04
+    ldx #$01
+    lda a:OBJ_2750,x
+    cmp #$01
+    beq MariaReplaceSlotsOneTwo_at0
+    cmp #$02
+    beq MariaReplaceSlotsOneTwo_at0
+    bsr MariaClearSlotAsKind
+MariaReplaceSlotsOneTwo_at0:
+    inx
+    lda a:OBJ_2750,x
+    cmp #$01
+    beq StepScrollThenMoveOrFadeOut
+    cmp #$02
+    beq StepScrollThenMoveOrFadeOut
+
+; @routine 01DE:7D7 MariaClearSlotAsKind
+; @run 6D:AFD7
+; WHAT IT DOES: Clears an object slot and gives it a kind.
+; HOW: ClearObject (through its kernel vector), then Y into OBJ_2750.
+; WAITS: no.
+; Entry: X object, Y the kind. Exit: A the kind, N and Z from it. X, Y, C and V kept.
+MariaClearSlotAsKind:
+    jsr VecClearObject
+    tya
+    sta a:OBJ_2750,x
+    rts
+
 ; @routine 01E1:27C MariaObjectAddXLow
 ; @run 6E:C27C
 ; WHAT IT DOES: RichterObjectAddXLow in Maria's player overlay (01DD), the same instructions at her address.
@@ -471,6 +529,101 @@ MariaObjectAddXHigh:
     sta a:OBJ_X_HI,x
     rts
 
+; @routine 01E1:2CB MariaObjectFallCapped
+; @run 6E:C2CB
+; WHAT IT DOES: Adds an object's own pull (OBJ_3618 and OBJ_3670) to its Y speed, held at $0700.
+; HOW: A word add into OBJ_VY_LO and OBJ_VY_HI; at 7 and up the speed is set to $0700.
+; Untraced: the hold at $0700 ($C2E4); no script let one of her objects fall that fast.
+; WAITS: no.
+; Entry: X object. Exit: A the speed's high byte, V from its add; rising, N, Z and C from the add; falling slower
+; than 7, N, Z and C from comparing it with 7; held, A 7, N and Z from it, C set. X and Y kept.
+MariaObjectFallCapped:
+    lda a:OBJ_3618,x
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    lda a:OBJ_3670,x
+    adc a:OBJ_VY_HI,x
+    sta a:OBJ_VY_HI,x
+    bmi MariaObjectFallCapped_at0
+    cmp #$07
+    bcc MariaObjectFallCapped_at0
+    lda #$07
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+MariaObjectFallCapped_at0:
+    rts
+
+; @routine 01E1:328 MariaObjectAgainstScroll
+; @run 6E:C328
+; WHAT IT DOES: Moves an object by the negative of the frame's scroll on both axes, so it stays put on the map
+; while the screen moves.
+; HOW: ScrollSpeedX and ScrollSpeedY negated, signed into zTemp10; X through MariaObjectAddXLow and
+; MariaObjectAddXHigh, Y by a word add of its own.
+; Untraced: the sign byte of a negative scroll, $C332 and $C346 (the scroll's negative was never below zero).
+; WAITS: no.
+; Entry: X object. Exit: A the Y position's high byte, N, Z, C and V from its add. X and Y kept. Clobbers zTemp10.
+MariaObjectAgainstScroll:
+    stz z:zTemp10
+    lda a:ScrollSpeedX
+    eor #$FF
+    inc a
+    bpl StartFirstObjectWhenCamera2
+    dec z:zTemp10
+    jsr MariaObjectAddXLow
+    lda z:zTemp10
+    jsr MariaObjectAddXHigh
+    stz z:zTemp10
+    lda a:ScrollSpeedY
+    eor #$FF
+    inc a
+    bpl MariaObjectAgainstScroll_at0
+    dec z:zTemp10
+MariaObjectAgainstScroll_at0:
+    clc
+    adc a:OBJ_Y_LO,x
+    sta a:OBJ_Y_LO,x
+    lda z:zTemp10
+    adc a:OBJ_Y_HI,x
+    sta a:OBJ_Y_HI,x
+    rts
+
+; @routine 01E1:358 MariaObjectMove
+; @run 6E:C358
+; WHAT IT DOES: Moves an object by its velocity, and against the scroll unless the camera holds still (mode $17).
+; HOW: CameraMode, MariaObjectAgainstScroll, then on into MariaObjectApplyVelocity.
+; Untraced: the camera's mode $17, which skips the scroll ($C35D taken).
+; WAITS: no.
+; Entry: X object. Exit: as MariaObjectApplyVelocity. Clobbers zTemp10.
+MariaObjectMove:
+    lda a:CameraMode
+    cmp #$17
+    beq MariaObjectApplyVelocity
+    bsr MariaObjectAgainstScroll
+
+; @routine 01E1:361 MariaObjectApplyVelocity
+; @run 6E:C361
+; WHAT IT DOES: Moves an object by its velocity, Y then X.
+; HOW: ApplyVelocityY, then a tail jump into ApplyVelocityX (through their kernel vectors).
+; WAITS: no.
+; Entry: X object. Exit: as ApplyVelocityX. Clobbers zTemp10.
+MariaObjectApplyVelocity:
+    jsr VecApplyVelocityY
+    jmp VecApplyVelocityX
+
+; @routine 01E1:369 MariaObjectFacingVelocity
+; @run 6E:C369
+; WHAT IT DOES: Turns an object's X velocity round when it faces left.
+; HOW: OBJ_2AC0, then NegateVelocityX (through its kernel vector).
+; WAITS: no.
+; Entry: X object. Exit: facing right, A 0, Z set; else as NegateVelocityX. X and Y kept.
+MariaObjectFacingVelocity:
+    lda a:OBJ_2AC0,x
+    beq MariaObjectFacingVelocity_at0
+    jsr VecNegateVelocityX
+MariaObjectFacingVelocity_at0:
+    rts
+
 ; @routine 01E1:37C MariaObjectMarkOn
 ; @run 6E:C37C
 ; WHAT IT DOES: RichterObjectMarkOn in Maria's player overlay (01DD), the same instructions at her address.
@@ -483,6 +636,77 @@ MariaObjectMarkOn:
     sta a:OBJ_2B18,x
     rts
 
+; @routine 01E1:387 MariaObjectFromPlayer
+; @run 6E:C387
+; WHAT IT DOES: Gives an object Maria's OBJ_2FE8, doubled, and her facing; the doubled byte is written twice.
+; HOW: The doubling once inline, then on into the copy of RichterObjectFromPlayer at $C38E, which calls
+; MariaObjectTake2FE8 and copies the facing.
+; WAITS: no.
+; Entry: X object. Exit: as RichterObjectFromPlayer.
+MariaObjectFromPlayer:
+    lda a:OBJ_2FE8
+    asl a
+    sta a:OBJ_2FE8,x
+    bsr MariaObjectTake2FE8
+    lda a:OBJ_2AC0
+    sta a:OBJ_2AC0,x
+    rts
+
+; @routine 01E1:397 MariaObjectTake2FE8
+; @run 6E:C397
+; WHAT IT DOES: RichterObjectTake2FE8 in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterObjectTake2FE8's body.
+; WAITS: no.
+; Entry, exit: as RichterObjectTake2FE8.
+MariaObjectTake2FE8:
+    lda a:OBJ_2FE8
+    asl a
+    sta a:OBJ_2FE8,x
+    rts
+
+; @routine 01E1:4EC MariaObjectAtPlayer
+; @run 6E:C4EC
+; WHAT IT DOES: RichterObjectAtPlayer in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterObjectAtPlayer's body.
+; WAITS: no.
+; Entry, exit: as RichterObjectAtPlayer.
+MariaObjectAtPlayer:
+    stz z:zTemp05
+    stz z:zTemp07
+    lda z:zTemp04
+    bpl MariaObjectAtPlayer_at0
+    dec z:zTemp05
+MariaObjectAtPlayer_at0:
+    lda z:zTemp06
+    bpl MariaObjectAtPlayer_at1
+    dec z:zTemp07
+MariaObjectAtPlayer_at1:
+    lda a:OBJ_2AC0,x
+    beq MariaObjectAtPlayer_at2
+    cla
+    sec
+    sbc z:zTemp04
+    sta z:zTemp04
+    cla
+    sbc z:zTemp05
+    sta z:zTemp05
+MariaObjectAtPlayer_at2:
+    lda a:OBJ_X_LO
+    clc
+    adc z:zTemp04
+    sta a:OBJ_X_LO,x
+    lda a:OBJ_X_HI
+    adc z:zTemp05
+    sta a:OBJ_X_HI,x
+    lda a:OBJ_Y_LO
+    clc
+    adc z:zTemp06
+    sta a:OBJ_Y_LO,x
+    lda a:OBJ_Y_HI
+    adc z:zTemp07
+    sta a:OBJ_Y_HI,x
+    rts
+
 ; @routine 01E1:589 MariaObjectNextState
 ; @run 6E:C589
 ; WHAT IT DOES: RichterObjectNextState in Maria's player overlay (01DD), the same instructions at her address.
@@ -493,6 +717,15 @@ MariaObjectNextState:
     inc a:OBJ_27A8,x
     rts
 
+; @routine 01E1:677 MariaObjectClear
+; @run 6E:C677
+; WHAT IT DOES: Clears an object: the end her object handlers branch to.
+; HOW: A tail jump into ClearObject (through its kernel vector).
+; WAITS: no.
+; Entry: X object. Exit: every register and flag kept.
+MariaObjectClear:
+    jmp VecClearObject
+
 ; @routine 01E1:703 MariaObjectSlot
 ; @run 6E:C703
 ; WHAT IT DOES: RichterObjectSlot in Maria's player overlay (01DD), the same instructions at her address.
@@ -502,6 +735,134 @@ MariaObjectNextState:
 MariaObjectSlot:
     ldx z:zRichterObject
     rts
+
+; @routine 01E2:080 MariaObjectAccelerate
+; @run 6E:C880
+; WHAT IT DOES: Adds to an object's X speed the step for the way it faces, and says whether the speed's sign
+; changed.
+; HOW: The word from her table at $C8A2 by OBJ_2AC0, added into OBJ_VX_LO and OBJ_VX_HI; the old high byte kept in
+; zTemp00 and its bit 7 compared.
+; WAITS: no.
+; Entry: X object. Exit: A $80 if the sign changed, else 0, N and Z from it; C and V from the high byte's add; Y
+; twice the facing. X kept.
+MariaObjectAccelerate:
+    lda a:OBJ_2AC0,x
+    asl a
+    tay
+    lda a:MariaObjectAccelerate+$22,y
+    clc
+    adc a:OBJ_VX_LO,x
+    sta a:OBJ_VX_LO,x
+    lda a:OBJ_VX_HI,x
+    sta z:zTemp00
+    lda a:MariaObjectAccelerate+$23,y
+    adc a:OBJ_VX_HI,x
+    sta a:OBJ_VX_HI,x
+    eor z:zTemp00
+    and #$80
+    rts
+
+; @routine 01E2:0A6 MariaObjectNearPlayer
+; @run 6E:C8A6
+; WHAT IT DOES: Says whether an object is at Maria: within 4 across and $12 down of her point (her Y plus her
+; OBJ_HITBOX_DY), on the first screen; on the second screen down it counts as near at once.
+; HOW: OBJ_Y_HI against 1, OBJ_X_HI, the X difference plus 4 against 8, the Y difference plus $12 against $24.
+; Untraced: the second screen ($C8AB taken) and an object below the first screen ($C8CC taken).
+; WAITS: no.
+; Entry: X object. Exit: C set if near; A the last value tested, N and Z from its test; V from the last add. X and
+; Y kept. Clobbers zTemp00.
+MariaObjectNearPlayer:
+    lda a:OBJ_Y_HI,x
+    cmp #$01
+    beq MariaObjectNearPlayer_at0
+    lda a:OBJ_Y_LO
+    clc
+    adc a:OBJ_39E0
+    sta z:zTemp00
+    lda a:OBJ_X_HI,x
+    bne MariaObjectNearPlayer_at1
+    lda a:OBJ_X_LO,x
+    sec
+    sbc a:OBJ_X_LO
+    clc
+    adc #$04
+    cmp #$08
+    bcs MariaObjectNearPlayer_at1
+    lda a:OBJ_Y_HI,x
+    bne MariaObjectNearPlayer_at1
+    lda a:OBJ_Y_LO,x
+    sec
+    sbc z:zTemp00
+    clc
+    adc #$12
+    cmp #$24
+    bcs MariaObjectNearPlayer_at1
+MariaObjectNearPlayer_at0:
+    sec
+    rts
+MariaObjectNearPlayer_at1:
+    clc
+    rts
+
+; @routine 01E4:58C MariaObjectAnimationRunning
+; @run 6E:DD8C
+; WHAT IT DOES: RichterObjectAnimationRunning in Maria's player overlay (01DD).
+; HOW: The same instructions with her tick, MariaObjectAnimationTick at $DD95.
+; WAITS: no.
+; Entry, exit: as RichterObjectAnimationRunning.
+MariaObjectAnimationRunning:
+    jsr MariaObjectAnimationTick
+    lda a:OBJ_2F90,x
+    cmp #$FF
+    rts
+
+; @routine 01E4:595 MariaObjectAnimationTick
+; @run 6E:DD95
+; WHAT IT DOES: RichterObjectAnimationTick in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterObjectAnimationTick's body with her layout: its calls go to MariaObjectAnimationList
+; at $DDC8, where his C would read his list.
+; WAITS: no.
+; Entry, exit: as RichterObjectAnimationTick.
+MariaObjectAnimationTick:
+    lda a:OBJ_2F90,x
+    cmp #$FF
+    bne MariaObjectAnimationTick_at0
+    rts
+MariaObjectAnimationTick_at0:
+    dec a:OBJ_2F90,x
+    bne MariaObjectSetAnimation_at0
+    inc a:OBJ_FLAGS_2F38,x
+    bra MariaObjectSetAnimation_at1
+
+; @routine 01E4:5A7 MariaObjectSetAnimation
+; @run 6E:DDA7
+; @stop DDC8
+; WHAT IT DOES: RichterObjectSetAnimation in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterObjectSetAnimation's body with her layout: its calls go to MariaObjectAnimationList.
+; WAITS: no.
+; Entry, exit: as RichterObjectSetAnimation.
+MariaObjectSetAnimation:
+    sta a:OBJ_FIELDS_2EE0,x
+MariaObjectSetAnimation_at3:
+    stz a:OBJ_FLAGS_2F38,x
+MariaObjectSetAnimation_at1:
+    bsr MariaObjectAnimationList
+    lda (zTemp00),y
+    sta a:OBJ_2F90,x
+    cmp #$FF
+    bne MariaObjectSetAnimation_at2
+    rts
+MariaObjectSetAnimation_at2:
+    cmp #$FE
+    beq MariaObjectSetAnimation_at3
+MariaObjectSetAnimation_at4:
+    iny
+    lda (zTemp00),y
+    sta a:OBJ_2A68,x
+    rts
+MariaObjectSetAnimation_at0:
+    bsr MariaObjectAnimationList
+    bra MariaObjectSetAnimation_at4
 
 ; @routine 01E4:5C8 MariaObjectAnimationList
 ; @run 6E:DDC8

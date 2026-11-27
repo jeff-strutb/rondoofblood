@@ -1,58 +1,77 @@
 script,verdict,detail,source
-attract,IDENTICAL,"IDENTICAL: 6126 of 6126 frames compared, 6126 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-attract_82,DIVERGENT,"DIVERGENT: first differing frame 12422; 21258 of unknown frames compared, 21253 identical; access defects 142; parked 5, kept 0, unreached -1, unopened arrivals 1",2dbfce4
-attract_83,DIVERGENT,"DIVERGENT: first differing frame 12422; 20171 of unknown frames compared, 20168 identical; access defects 9; parked 5, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-attract_84,DIVERGENT,"DIVERGENT: first differing frame 12422; 20169 of unknown frames compared, 20166 identical; access defects 17; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-attract_85,DIVERGENT,"DIVERGENT: first differing frame 12422; 20313 of unknown frames compared, 20310 identical; access defects 43615; parked 5, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-attract_86,DIVERGENT,"DIVERGENT: first differing frame 12422; 20169 of unknown frames compared, 20166 identical; access defects 17; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-attract_87,DIVERGENT,"DIVERGENT: first differing frame 12422; 20169 of unknown frames compared, 20166 identical; access defects 17; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-attract_88,DIVERGENT,"DIVERGENT: first differing frame 12422; 20169 of unknown frames compared, 20166 identical; access defects 17; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-attract_89,DIVERGENT,"DIVERGENT: first differing frame 12422; 20169 of unknown frames compared, 20166 identical; access defects 15; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-attract_8A,DIVERGENT,"DIVERGENT: first differing frame 12422; 20169 of unknown frames compared, 20166 identical; access defects 17; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-attract_8E,DIVERGENT,"DIVERGENT: first differing frame 12422; 20169 of unknown frames compared, 20166 identical; access defects 18; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-boot,IDENTICAL,"IDENTICAL: 900 of 900 frames compared, 900 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-camera_modes,DIVERGENT,"DIVERGENT: first differing frame 12583; 16354 of 16354 frames compared, 16349 identical; access defects 68; parked 3, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_adpcm,IDENTICAL,"IDENTICAL: 902 of 902 frames compared, 902 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_backup,IDENTICAL,"IDENTICAL: 911 of 911 frames compared, 911 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_bank2,IDENTICAL,"IDENTICAL: 1322 of 1322 frames compared, 1322 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_cd,IDENTICAL,"IDENTICAL: 901 of 901 frames compared, 901 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_cplay,IDENTICAL,"IDENTICAL: 1013 of 1013 frames compared, 1013 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_misc,IDENTICAL,"IDENTICAL: 894 of 894 frames compared, 894 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_read,IDENTICAL,"IDENTICAL: 879 of 879 frames compared, 879 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_trans,IDENTICAL,"IDENTICAL: 904 of 904 frames compared, 904 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-card_unit_vdc,IDENTICAL,"IDENTICAL: 922 of 922 frames compared, 922 identical; access defects 0; parked 1, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-gameover,DIVERGENT,"DIVERGENT: first differing frame 12583; 29092 of 29092 frames compared, 29078 identical; access defects 341; parked 3, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-menu_files,IDENTICAL,"IDENTICAL: 10746 of 10746 frames compared, 10746 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-menu_names,IDENTICAL,"IDENTICAL: 13582 of 13582 frames compared, 13582 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-mode_screen,IDENTICAL,"IDENTICAL: 11386 of 11386 frames compared, 11386 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-play_s0_r1,DIVERGENT,"DIVERGENT: first differing frame 12583; 19150 of unknown frames compared, 18188 identical; access defects 252930; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-play_s0_r2,DIVERGENT,"DIVERGENT: first differing frame 12583; 17091 of unknown frames compared, 17085 identical; access defects 396; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-play_s0_r3,DIVERGENT,"DIVERGENT: first differing frame 12583; 23072 of unknown frames compared, 21739 identical; access defects 334775; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-play_s0_r4,DIVERGENT,"DIVERGENT: first differing frame 12583; 18048 of unknown frames compared, 18041 identical; access defects 388; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-play_s0_r5,DIVERGENT,"DIVERGENT: first differing frame 12583; 18105 of unknown frames compared, 17069 identical; access defects 151970; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-play_s0_r6,DIVERGENT,"DIVERGENT: first differing frame 12583; 18582 of unknown frames compared, 18572 identical; access defects 398; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-raster_effects,IDENTICAL,"IDENTICAL: 10526 of 10526 frames compared, 10526 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-richter_hurt,DIVERGENT,"DIVERGENT: first differing frame 12583; 16936 of 16936 frames compared, 16930 identical; access defects 77; parked 3, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-scene_01,MISSING,,
-scene_02,MISSING,,
-scene_0A,MISSING,,
-scene_0C,MISSING,,
-scene_0E,MISSING,,
-scene_58,MISSING,,
-scene_5C,MISSING,,
-scene_5E,MISSING,,
-sound_test,IDENTICAL,"IDENTICAL: 17134 of 17134 frames compared, 17134 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-stage_04,DIVERGENT,"DIVERGENT: first differing frame 12583; 28366 of unknown frames compared, 28352 identical; access defects 308; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_05,DIVERGENT,"DIVERGENT: first differing frame 12583; 29557 of unknown frames compared, 29542 identical; access defects 872; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_06,DIVERGENT,"DIVERGENT: first differing frame 12583; 28365 of unknown frames compared, 28351 identical; access defects 308; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_07,DIVERGENT,"DIVERGENT: first differing frame 12583; 28742 of unknown frames compared, 28728 identical; access defects 780; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_08,DIVERGENT,"DIVERGENT: first differing frame 12583; 28365 of unknown frames compared, 28351 identical; access defects 308; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_09,DIVERGENT,"DIVERGENT: first differing frame 12583; 28365 of unknown frames compared, 28351 identical; access defects 308; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_0A,DIVERGENT,"DIVERGENT: first differing frame 12583; 28366 of unknown frames compared, 28352 identical; access defects 308; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_0B,DIVERGENT,"DIVERGENT: first differing frame 12583; 28365 of unknown frames compared, 28351 identical; access defects 308; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_0C,DIVERGENT,"DIVERGENT: first differing frame 12583; 28365 of unknown frames compared, 28351 identical; access defects 310; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_0E,DIVERGENT,"DIVERGENT: first differing frame 12583; 28367 of unknown frames compared, 28353 identical; access defects 308; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-stage_10,DIVERGENT,"DIVERGENT: first differing frame 12583; 28367 of unknown frames compared, 28353 identical; access defects 310; parked 4, kept 0, unreached -1, unopened arrivals 0",2dbfce4
-unit_video,IDENTICAL,"IDENTICAL: 834 of 834 frames compared, 834 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",2dbfce4
-unrun_attract_86,MISSING,,
-unrun_kernel,MISSING,,
+attract,IDENTICAL,"IDENTICAL: 6126 of 6126 frames compared, 6126 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+attract_82,DEFECTS,"DEFECTS: 24626 of 24626 frames compared, 24626 identical; access defects 740; parked 2, kept 0, unreached 0, unopened arrivals 1",8744476
+attract_83,DEFECTS,"DEFECTS: 24626 of 24626 frames compared, 24626 identical; access defects 10; parked 3, kept 0, unreached 0, unopened arrivals 1",8744476
+attract_84,STOPPED,"STOPPED: 20732 of unknown frames compared, 20732 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+attract_85,STOPPED,"STOPPED: 20449 of unknown frames compared, 20449 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+attract_86,DEFECTS,"DEFECTS: 24626 of 24626 frames compared, 24626 identical; access defects 436; parked 2, kept 0, unreached 0, unopened arrivals 1",8744476
+attract_87,STOPPED,"STOPPED: 20566 of unknown frames compared, 20566 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+attract_88,STOPPED,"STOPPED: 21106 of unknown frames compared, 21106 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+attract_89,IDENTICAL,"IDENTICAL: 24626 of 24626 frames compared, 24626 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 1",8744476
+attract_8A,STOPPED,"STOPPED: 20461 of unknown frames compared, 20461 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+attract_8E,STOPPED,"STOPPED: 20522 of unknown frames compared, 20522 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+boot,IDENTICAL,"IDENTICAL: 900 of 900 frames compared, 900 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+boss_frame_d,STOPPED,"STOPPED: 22630 of unknown frames compared, 22630 identical; access defects 1; parked 4, kept 0, unreached -1, unopened arrivals 1",8744476
+camera_modes,IDENTICAL,"IDENTICAL: 16354 of 16354 frames compared, 16354 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_adpcm,IDENTICAL,"IDENTICAL: 902 of 902 frames compared, 902 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_backup,IDENTICAL,"IDENTICAL: 911 of 911 frames compared, 911 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_bank2,IDENTICAL,"IDENTICAL: 1322 of 1322 frames compared, 1322 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_cd,IDENTICAL,"IDENTICAL: 901 of 901 frames compared, 901 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_cplay,IDENTICAL,"IDENTICAL: 1013 of 1013 frames compared, 1013 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_misc,IDENTICAL,"IDENTICAL: 894 of 894 frames compared, 894 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_read,IDENTICAL,"IDENTICAL: 879 of 879 frames compared, 879 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_trans,IDENTICAL,"IDENTICAL: 904 of 904 frames compared, 904 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+card_unit_vdc,IDENTICAL,"IDENTICAL: 922 of 922 frames compared, 922 identical; access defects 0; parked 1, kept 0, unreached 0, unopened arrivals 0",8744476
+gameover,IDENTICAL,"IDENTICAL: 29092 of 29092 frames compared, 29092 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+menu_files,IDENTICAL,"IDENTICAL: 10746 of 10746 frames compared, 10746 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+menu_names,IDENTICAL,"IDENTICAL: 13582 of 13582 frames compared, 13582 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+mode_screen,IDENTICAL,"IDENTICAL: 11386 of 11386 frames compared, 11386 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+play_s0_r1,IDENTICAL,"IDENTICAL: 28186 of 28186 frames compared, 28186 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+play_s0_r2,IDENTICAL,"IDENTICAL: 28186 of 28186 frames compared, 28186 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+play_s0_r3,STOPPED,"STOPPED: 27742 of unknown frames compared, 27742 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+play_s0_r4,IDENTICAL,"IDENTICAL: 28186 of 28186 frames compared, 28186 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+play_s0_r5,IDENTICAL,"IDENTICAL: 28186 of 28186 frames compared, 28186 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+play_s0_r6,IDENTICAL,"IDENTICAL: 28186 of 28186 frames compared, 28186 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+poke_objloop_0E,IDENTICAL,"IDENTICAL: 35180 of 35180 frames compared, 35180 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+poke_objloop_10,IDENTICAL,"IDENTICAL: 35182 of 35182 frames compared, 35182 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+poke_objloop_5E,STOPPED,"STOPPED: 31655 of unknown frames compared, 31655 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+poke_objloop_84,STOPPED,"STOPPED: 20732 of unknown frames compared, 20732 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+poke_objloop_88,STOPPED,"STOPPED: 21106 of unknown frames compared, 21106 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+poke_objloop_89,IDENTICAL,"IDENTICAL: 22713 of 22713 frames compared, 22713 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 1",8744476
+poke_objloop_8A,STOPPED,"STOPPED: 20461 of unknown frames compared, 20461 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+raster_effects,IDENTICAL,"IDENTICAL: 10526 of 10526 frames compared, 10526 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+richter_arms,DEFECTS,"DEFECTS: 14738 of 14738 frames compared, 14738 identical; access defects 7; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+richter_hurt,IDENTICAL,"IDENTICAL: 16936 of 16936 frames compared, 16936 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+scene_01,IDENTICAL,"IDENTICAL: 39292 of 39292 frames compared, 39292 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+scene_02,DEFECTS,"DEFECTS: 36292 of 36292 frames compared, 36292 identical; access defects 3; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+scene_0A,DEFECTS,"DEFECTS: 34492 of 34492 frames compared, 34492 identical; access defects 2; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+scene_0C,IDENTICAL,"IDENTICAL: 34492 of 34492 frames compared, 34492 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+scene_0E,DEFECTS,"DEFECTS: 36292 of 36292 frames compared, 36292 identical; access defects 1; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+scene_58,IDENTICAL,"IDENTICAL: 36292 of 36292 frames compared, 36292 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+scene_5C,DEFECTS,"DEFECTS: 40792 of 40792 frames compared, 40792 identical; access defects 2; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+scene_5E,STOPPED,"STOPPED: 31655 of unknown frames compared, 31655 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+sound_commands,DEFECTS,"DEFECTS: 34175 of 34175 frames compared, 34175 identical; access defects 6; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+sound_test,IDENTICAL,"IDENTICAL: 17134 of 17134 frames compared, 17134 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_04,IDENTICAL,"IDENTICAL: 35092 of 35092 frames compared, 35092 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_05,IDENTICAL,"IDENTICAL: 35092 of 35092 frames compared, 35092 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_06,IDENTICAL,"IDENTICAL: 35092 of 35092 frames compared, 35092 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_07,IDENTICAL,"IDENTICAL: 35092 of 35092 frames compared, 35092 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_08,IDENTICAL,"IDENTICAL: 35092 of 35092 frames compared, 35092 identical; access defects 0; parked 3, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_09,IDENTICAL,"IDENTICAL: 35092 of 35092 frames compared, 35092 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_0A,DEFECTS,"DEFECTS: 35092 of 35092 frames compared, 35092 identical; access defects 2; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_0B,DEFECTS,"DEFECTS: 35092 of 35092 frames compared, 35092 identical; access defects 1; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_0C,STOPPED,"STOPPED: 31655 of unknown frames compared, 31655 identical; access defects 1; parked 5, kept 0, unreached -1, unopened arrivals 0",8744476
+stage_0E,IDENTICAL,"IDENTICAL: 35092 of 35092 frames compared, 35092 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+stage_10,IDENTICAL,"IDENTICAL: 35092 of 35092 frames compared, 35092 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+unit_video,IDENTICAL,"IDENTICAL: 834 of 834 frames compared, 834 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+units_play_s0_r1,IDENTICAL,"IDENTICAL: 28296 of 28296 frames compared, 28296 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+units_stage_05,IDENTICAL,"IDENTICAL: 35172 of 35172 frames compared, 35172 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+units_stage_08,DIVERGENT,"DIVERGENT: first differing frame 35123; 35123 of unknown frames compared, 35122 identical; access defects 295; parked 4, kept 0, unreached -1, unopened arrivals 0",8744476
+units_stage_09,DIVERGENT,"DIVERGENT: first differing frame 35140; 35202 of 35202 frames compared, 35139 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+units_stage_0A,DEFECTS,"DEFECTS: 35202 of 35202 frames compared, 35202 identical; access defects 2; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+unrun_attract_86,DEFECTS,"DEFECTS: 20682 of 20682 frames compared, 20682 identical; access defects 220; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+unrun_effects_02,DIVERGENT,"DIVERGENT: first differing frame 34503; 34503 of unknown frames compared, 34502 identical; access defects 200819; parked 3, kept 0, unreached -1, unopened arrivals 0",8744476
+unrun_effects_0A,DIVERGENT,"DIVERGENT: first differing frame 34503; 34503 of unknown frames compared, 34502 identical; access defects 200562; parked 3, kept 0, unreached -1, unopened arrivals 0",8744476
+unrun_effects_0C,DIVERGENT,"DIVERGENT: first differing frame 34509; 34512 of 34512 frames compared, 34508 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+unrun_effects_0E,DEFECTS,"DEFECTS: 34512 of 34512 frames compared, 34512 identical; access defects 1; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476
+unrun_kernel,IDENTICAL,"IDENTICAL: 834 of 834 frames compared, 834 identical; access defects 0; parked 2, kept 0, unreached 0, unopened arrivals 0",8744476

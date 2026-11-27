@@ -76,9 +76,16 @@ def main():
         serve = {r["name"] for r in csv.DictReader(open(SERVE, newline=""))}
     bad = 0
     swappable = 0
+    unreachable = 0
     for i, r in enumerate(routines):
         abi = "abi_" + r["name"]
         if r["name"] in serve:
+            continue
+        # A routine marked @unreachable states that its bytes are never in memory. It has no row: a row would let
+        # the C run wherever a few of its bytes match another overlay's at the same address (the maintainer's
+        # ruling of 2026-11-26), and that code is the other overlay's, run as its own C or as original code.
+        if any(ln.startswith("@unreachable") for ln in r["header"]):
+            unreachable += 1
             continue
         if abi not in calls:
             print(f"{r['tag']} {r['name']}: no {abi}")
@@ -142,7 +149,7 @@ def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="ascii", newline="\n") as f:
         f.write("\n".join(out))
-    print(f"{len(rows)} routines with C, {swappable} can run on the live machine")
+    print(f"{len(rows)} routines with C, {swappable} can run on the live machine; {unreachable} marked @unreachable left out")
     return 1 if bad else 0
 
 

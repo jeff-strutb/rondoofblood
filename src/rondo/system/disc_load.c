@@ -516,7 +516,7 @@ DiscLog AdpcmPlayFromDisc(uint8_t sound)
         wr8(zBiosDh, CPLAY_MODE);
         play.given = CPLAY_MODE;
         jsr_push(0x6F3B);
-        play.as.ad_cplay = ad_cplay(CPLAY_MODE, disc_log_x(&log, 0));
+        play.as.ad_cplay = vec_ad_cplay(CPLAY_MODE, disc_log_x(&log, 0));
         jsr_pop();
         log_call(&log, play);
         if (ad_cplay_result(play.as.ad_cplay) == 0)

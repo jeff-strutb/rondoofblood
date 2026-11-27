@@ -396,6 +396,7 @@ uint8_t vec_cd_fade(uint8_t type);
 AdTrans vec_ad_trans(uint8_t a, uint8_t x);
 CardExit vec_ad_read(void);
 AdPlay vec_ad_play(void);
+AdCplay vec_ad_cplay(uint8_t a, uint8_t x);
 uint8_t vec_ad_stop(void);
 AdStat vec_ad_stat(void);
 BackupAccess vec_bm_free(uint8_t a);

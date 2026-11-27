@@ -78,6 +78,14 @@ vec_ad_read:
 vec_ad_play:
     jmp ad_play
 
+; @card 00:E03F vec_ad_cplay
+; WHAT IT DOES: The jump table's entry for ad_cplay: goes to it.
+; HOW: A JMP to ad_cplay, no frame of its own: the caller's JSR frame is the one ad_cplay returns through.
+; WAITS: only through ad_cplay.
+; Entry, exit: as ad_cplay.
+vec_ad_cplay:
+    jmp ad_cplay
+
 ; @card 00:E042 vec_ad_stop
 ; WHAT IT DOES: The jump table's entry for ad_stop: goes to it.
 ; HOW: A JMP to ad_stop, no frame of its own: the caller's JSR frame is the one ad_stop returns through.

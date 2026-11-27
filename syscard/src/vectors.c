@@ -14,6 +14,7 @@ void abi_cd_fade(void);
 void abi_ad_trans(void);
 void abi_ad_read(void);
 void abi_ad_play(void);
+void abi_ad_cplay(void);
 void abi_ad_stop(void);
 void abi_ad_stat(void);
 void abi_bm_free(void);
@@ -199,6 +200,23 @@ AdPlay vec_ad_play(void)
 void abi_vec_ad_play(void)
 {
     abi_ad_play();
+}
+
+/*
+ * @card 00:E03F vec_ad_cplay
+ * WHAT IT DOES: The jump table's entry for ad_cplay: goes to it.
+ * HOW: A JMP to ad_cplay, no frame of its own: the caller's JSR frame is the one ad_cplay returns through.
+ * WAITS: only through ad_cplay.
+ * Entry, exit: as ad_cplay.
+ */
+AdCplay vec_ad_cplay(uint8_t a, uint8_t x)
+{
+    return ad_cplay(a, x);
+}
+
+void abi_vec_ad_cplay(void)
+{
+    abi_ad_cplay();
 }
 
 /*

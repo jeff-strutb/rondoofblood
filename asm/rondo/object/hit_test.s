@@ -416,3 +416,43 @@ HitTestObjectLongB_at11:
     sta z:zTemp01
     ldy z:zHitSlot
     jmp (ZeroPage)
+
+; @routine 05C0:055 HitStoreHandlerLong
+; @run 6B:9855
+; WHAT IT DOES: HitStoreHandler in 05BF's group of stage overlays: the hit slot's value into the object's hit-taken
+; byte, and slot 0's given the object's two stored bytes when its own was empty.
+; HOW: The same instructions as HitStoreHandler, the entry of HitTestObjectLong's jump table for the first four kinds.
+; The thirteen overlays of 05BF's group hold these bytes.
+; WAITS: no.
+; Entry: X the object, Y the hit slot. Exit: as HitStoreHandler.
+HitStoreHandlerLong:
+    lda a:OBJ_3828,y
+    sta a:OBJ_33B0,x
+    lda a:OBJ_33B0
+    bne HitStoreHandlerLong_at0
+    lda a:OBJ_3358,x
+    sta a:OBJ_33B0
+    lda a:OBJ_3300,x
+    sta a:OBJ_32A8
+HitStoreHandlerLong_at0:
+    rts
+
+; @routine 05C0:07A HitReportHandlerLong
+; @run 6B:987A
+; WHAT IT DOES: HitReportHandler in 05BF's group of stage overlays: the hit's position to the stage hit report and the
+; hit slot's value to the object's hit-taken byte.
+; HOW: The same instructions as HitReportHandler. The thirteen overlays of 05BF's group hold these bytes.
+; WAITS: no.
+; Entry: X the object, Y the hit slot. Exit: as HitReportHandler.
+HitReportHandlerLong:
+    lda a:WorkByteA
+    sta a:StageHitReport
+    lda a:WorkByteB
+    sta a:StageHitReport+1
+    lda a:HitboxXLo+3
+    sta a:StageHitReport+2
+    lda a:HitboxYLo+3
+    sta a:StageHitReport+3
+    lda a:OBJ_3828,y
+    sta a:OBJ_33B0,x
+    rts

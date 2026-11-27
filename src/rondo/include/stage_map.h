@@ -246,6 +246,8 @@ StageExit HitTestObjectLong(uint8_t x);
 StageExit HitTestObjectLongB(uint8_t x);
 StageExit HitStoreHandler(uint8_t x, uint8_t y);
 StageExit HitReportHandler(uint8_t x, uint8_t y);
+StageExit HitStoreHandlerLong(uint8_t x, uint8_t y);
+StageExit HitReportHandlerLong(uint8_t x, uint8_t y);
 StageExit HitTestAllObjects(uint8_t x);
 StageExit HitTestAllObjectsLong(uint8_t x);
 

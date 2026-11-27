@@ -29,7 +29,7 @@ static StageExit hit_exit(uint8_t a, uint8_t y, bool c, bool v, uint8_t nz, uint
  * WAITS: no.
  * Entry: X the object, Y the hit slot. Exit: A the last byte loaded, N and Z from it. C and V kept.
  */
-StageExit HitStoreHandler(uint8_t x, uint8_t y)
+static StageExit hit_store(uint8_t x, uint8_t y)
 {
     uint8_t a = RD8(OBJ->f3828[y]);
 
@@ -42,6 +42,11 @@ StageExit HitStoreHandler(uint8_t x, uint8_t y)
         WR8(OBJ->f32a8[0], a);
     }
     return hit_exit(a, 0, false, false, a, 0);
+}
+
+StageExit HitStoreHandler(uint8_t x, uint8_t y)
+{
+    return hit_store(x, y);
 }
 
 void abi_HitStoreHandler(void)
@@ -60,7 +65,7 @@ void abi_HitStoreHandler(void)
  * WAITS: no.
  * Entry: X the object, Y the hit slot. Exit: A the value stored, N and Z from it. C and V kept.
  */
-StageExit HitReportHandler(uint8_t x, uint8_t y)
+static StageExit hit_report(uint8_t x, uint8_t y)
 {
     uint8_t a;
 
@@ -77,9 +82,53 @@ StageExit HitReportHandler(uint8_t x, uint8_t y)
     return hit_exit(a, 0, false, false, a, 0);
 }
 
+StageExit HitReportHandler(uint8_t x, uint8_t y)
+{
+    return hit_report(x, y);
+}
+
 void abi_HitReportHandler(void)
 {
     stage_exit_shim(HitReportHandler(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 05C0:055 HitStoreHandlerLong
+ * @run 6B:9855
+ * WHAT IT DOES: HitStoreHandler in 05BF's group of stage overlays: the hit slot's value into the object's hit-taken
+ * byte, and slot 0's given the object's two stored bytes when its own was empty.
+ * HOW: The same instructions as HitStoreHandler, the entry of HitTestObjectLong's jump table for the first four kinds.
+ * The thirteen overlays of 05BF's group hold these bytes.
+ * WAITS: no.
+ * Entry: X the object, Y the hit slot. Exit: as HitStoreHandler.
+ */
+StageExit HitStoreHandlerLong(uint8_t x, uint8_t y)
+{
+    return hit_store(x, y);
+}
+
+void abi_HitStoreHandlerLong(void)
+{
+    stage_exit_shim(HitStoreHandlerLong(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 05C0:07A HitReportHandlerLong
+ * @run 6B:987A
+ * WHAT IT DOES: HitReportHandler in 05BF's group of stage overlays: the hit's position to the stage hit report and the
+ * hit slot's value to the object's hit-taken byte.
+ * HOW: The same instructions as HitReportHandler. The thirteen overlays of 05BF's group hold these bytes.
+ * WAITS: no.
+ * Entry: X the object, Y the hit slot. Exit: as HitReportHandler.
+ */
+StageExit HitReportHandlerLong(uint8_t x, uint8_t y)
+{
+    return hit_report(x, y);
+}
+
+void abi_HitReportHandlerLong(void)
+{
+    stage_exit_shim(HitReportHandlerLong(cpu.x, cpu.y));
 }
 
 /* The jump into a handler this overlay's hit test names that has no C: the registers as the test leaves them. */
@@ -103,7 +152,17 @@ static StageExit original_handler_shim(uint16_t handler, uint8_t a, uint8_t x, u
  * records the object in its slot, and its kind (StageVar f3828) picks the handler from the
  * overlay's table.
  */
-static StageExit hit_test(uint8_t x, uint16_t table, uint16_t store, uint16_t report)
+/* A group's two handlers that have C: their run addresses, which the jump table names, and their C. */
+typedef struct {
+    uint16_t store, report;
+    StageExit (*store_c)(uint8_t x, uint8_t y);
+    StageExit (*report_c)(uint8_t x, uint8_t y);
+} HitHandlers;
+
+static const HitHandlers handlers_024f = { HANDLER_STORE_A, HANDLER_REPORT_A, HitStoreHandler, HitReportHandler };
+static const HitHandlers handlers_05bf = { HANDLER_STORE_B, HANDLER_REPORT_B, HitStoreHandlerLong, HitReportHandlerLong };
+
+static StageExit hit_test(uint8_t x, uint16_t table, const HitHandlers *handlers)
 {
     uint8_t a;
     uint8_t m;
@@ -248,8 +307,8 @@ static StageExit hit_test(uint8_t x, uint16_t table, uint16_t store, uint16_t re
     WR8(ZP->temp01, a);
     y = RD8(ZP->hit_slot);
     handler = RD16_LH2(ZP->temp00, ZP->temp01);
-    if (handler == store || handler == report) {
-        StageExit done = handler == store ? HitStoreHandler(x, y) : HitReportHandler(x, y);
+    if (handler == handlers->store || handler == handlers->report) {
+        StageExit done = handler == handlers->store ? handlers->store_c(x, y) : handlers->report_c(x, y);
 
         done.y = y;
         done.c = c;
@@ -275,7 +334,7 @@ static StageExit hit_test(uint8_t x, uint16_t table, uint16_t store, uint16_t re
  */
 StageExit HitTestObject(uint8_t x)
 {
-    return hit_test(x, TABLE_A, HANDLER_STORE_A, HANDLER_REPORT_A);
+    return hit_test(x, TABLE_A, &handlers_024f);
 }
 
 void abi_HitTestObject(void)
@@ -289,13 +348,13 @@ void abi_HitTestObject(void)
  * @stop 9837
  * WHAT IT DOES: HitTestObject for the other stage group, which keeps its hit test at $9778 and its
  * handlers at $9855 and $987A.
- * HOW: The same code with its own table.
+ * HOW: The same code with its own table; its handlers with C are HitStoreHandlerLong and HitReportHandlerLong.
  * WAITS: no.
  * Entry, exit: as HitTestObject.
  */
 StageExit HitTestObjectLong(uint8_t x)
 {
-    return hit_test(x, TABLE_B, HANDLER_STORE_B, HANDLER_REPORT_B);
+    return hit_test(x, TABLE_B, &handlers_05bf);
 }
 
 void abi_HitTestObjectLong(void)
@@ -315,7 +374,7 @@ void abi_HitTestObjectLong(void)
  */
 StageExit HitTestObjectLongB(uint8_t x)
 {
-    return hit_test(x, TABLE_B, HANDLER_STORE_B, HANDLER_REPORT_B);
+    return hit_test(x, TABLE_B, &handlers_05bf);
 }
 
 void abi_HitTestObjectLongB(void)

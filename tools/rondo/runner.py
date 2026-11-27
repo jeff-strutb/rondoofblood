@@ -58,7 +58,7 @@ sys.path.insert(0, HERE)
 import records  # noqa: E402
 
 LINKS = ("references", "tools/toolchains/src", "tools/toolchains/cc65", "tools/toolchains/pce",
-         "build/rondo/disc", "build/rondo/system", "build/rondo/trace")
+         "build/rondo/disc", "build/rondo/system", "build/rondo/trace", "build/rondo/states")
 OWNED = ("config/rondo/runs", "config/rondo/gate_a5.csv", "config/rondo/gate_a7.csv",
          "config/rondo/gate_a7_routines.csv", "docs/rondo/ledger.csv", "syscard/ledger.csv", "config/rondo/drafted.csv",
          "config/rondo/lockstep_defects.csv", "config/rondo/lockstep_held.csv",
@@ -109,6 +109,7 @@ def export(main, rev, b, tag=""):
     a = subprocess.Popen(["git", "-C", main, "archive", rev], stdout=subprocess.PIPE)
     subprocess.run(["tar", "-x", "-C", tree], stdin=a.stdout, check=True)
     a.wait()
+    os.makedirs(os.path.join(main, "build", "rondo", "states"), exist_ok=True)   # save states scripts load
     for rel in LINKS:
         src = os.path.realpath(os.path.join(main, rel))
         if not os.path.exists(src):

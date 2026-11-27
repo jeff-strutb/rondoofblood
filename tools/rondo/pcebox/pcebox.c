@@ -63,6 +63,7 @@ void trace_check(const char *name, const uint8_t *(*bank)(unsigned));
 void trace_finish(const char *dir);
 void trace_watch(uint32_t phys);
 void trace_poke(uint32_t phys);
+uint32_t *trace_prov(size_t *bytes);
 static const char *trace_user;
 static int trace_plant;
 
@@ -254,6 +255,71 @@ static const uint8_t *(*core_bank)(unsigned);
 static unsigned (*core_mpr)(unsigned);
 static unsigned (*core_pc)(void);
 static void (*core_save_poke)(unsigned, uint8_t);
+static size_t (*core_serialize_size)(void);
+static bool (*core_serialize)(void *, size_t);
+static bool (*core_unserialize)(const void *, size_t);
+static int trace_mode;
+
+/*
+ * A save state: the core's own (retro_serialize) and, in a trace, the provenance of every RAM byte (which disc byte it
+ * holds), so code run from a loaded state still folds onto the disc. A state is made in a trace run ("save" refuses
+ * otherwise) and loaded only as a script's first command, before any frame: the checker then starts from it as it
+ * starts from power-on.
+ */
+static const char STATE_MAGIC[16] = "RONDOSTATE1";
+
+static int state_save(const char *path)
+{
+    size_t n = core_serialize_size(), pn = 0;
+    uint32_t *pv = trace_prov(&pn);
+    void *buf = malloc(n);
+    FILE *f;
+    uint64_t sizes[2] = { n, pn };
+
+    if (!trace_mode || !pv) {
+        fprintf(stderr, "pcebox: save: a state is made in a trace run (--trace), so its RAM keeps its provenance\n");
+        free(buf);
+        return 1;
+    }
+    if (!buf || !core_serialize(buf, n) || !(f = fopen(path, "wb"))) {
+        fprintf(stderr, "pcebox: save: cannot write %s\n", path);
+        free(buf);
+        return 1;
+    }
+    fwrite(STATE_MAGIC, 1, sizeof STATE_MAGIC, f);
+    fwrite(sizes, sizeof sizes, 1, f);
+    fwrite(buf, 1, n, f);
+    fwrite(pv, 1, pn, f);
+    fclose(f);
+    free(buf);
+    return 0;
+}
+
+static int state_load(const char *path)
+{
+    char magic[16];
+    uint64_t sizes[2];
+    FILE *f = fopen(path, "rb");
+    void *buf = NULL;
+    size_t pn = 0;
+    uint32_t *pv = trace_prov(&pn);
+    int ok = 0;
+
+    if (f && fread(magic, 1, sizeof magic, f) == sizeof magic && !memcmp(magic, STATE_MAGIC, sizeof magic) &&
+        fread(sizes, sizeof sizes, 1, f) == 1 && (buf = malloc((size_t)sizes[0])) != NULL &&
+        fread(buf, 1, (size_t)sizes[0], f) == sizes[0] && core_unserialize(buf, (size_t)sizes[0])) {
+        ok = 1;
+        if (pv) {                      /* a trace run: the provenance the state was saved with */
+            ok = sizes[1] == pn && fread(pv, 1, pn, f) == pn;
+        }
+    }
+    if (f)
+        fclose(f);
+    free(buf);
+    if (!ok)
+        fprintf(stderr, "pcebox: load: %s is not a state this build can load\n", path);
+    return ok ? 0 : 1;
+}
 
 static void run(unsigned long n)
 {
@@ -501,6 +567,21 @@ static int run_script(const char *script, int depth)
                 fclose(s);
                 return 2;
             }
+        } else if (!strcmp(cmd, "save") && k == 2) {
+            if (state_save(a1)) {
+                fclose(s);
+                return 2;
+            }
+        } else if (!strcmp(cmd, "load") && k == 2) {
+            if (frames != 0) {
+                fprintf(stderr, "pcebox: %s:%d: load: only as the script's first command (before any frame)\n", script, ln);
+                fclose(s);
+                return 2;
+            }
+            if (state_load(a1)) {
+                fclose(s);
+                return 2;
+            }
         } else if (!strcmp(cmd, "shot") && k == 2) {
             shot(a1);
         } else if (!strcmp(cmd, "dump") && k == 2) {
@@ -596,6 +677,9 @@ int main(int argc, char **argv)
     ((void (*)(retro_input_poll_t))sym(lib, "retro_set_input_poll"))(input_poll);
     ((void (*)(retro_input_state_t))sym(lib, "retro_set_input_state"))(input_state);
     core_run = (void (*)(void))sym(lib, "retro_run");
+    core_serialize_size = (size_t (*)(void))sym(lib, "retro_serialize_size");
+    core_serialize = (bool (*)(void *, size_t))sym(lib, "retro_serialize");
+    core_unserialize = (bool (*)(const void *, size_t))sym(lib, "retro_unserialize");
     core_bank = (const uint8_t *(*)(unsigned))sym(lib, "rondo_bank");
     core_mpr = (unsigned (*)(unsigned))sym(lib, "rondo_mpr");
     core_pc = (unsigned (*)(void))sym(lib, "rondo_pc");
@@ -611,6 +695,7 @@ int main(int argc, char **argv)
     if (trace_user) {
         if (trace_init(trace_user, trace_plant, (uint32_t (*)(void))sym(lib, "rondo_cd_origin")))
             return 1;
+        trace_mode = 1;
         ((void (*)(void *, void *, void *))sym(lib, "rondo_set_hooks"))(
             (void *)trace_rd, (void *)trace_wr, (void *)trace_irq);
     }

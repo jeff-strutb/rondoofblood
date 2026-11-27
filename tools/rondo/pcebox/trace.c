@@ -512,6 +512,14 @@ static void write_more(const char *dir)
 }
 
 /* A script's poke: the byte now holds no disc byte. */
+/* The provenance of every physical byte, for a save state: what a load restores with the machine's RAM. NULL outside a trace. */
+uint32_t *trace_prov(size_t *bytes)
+{
+    if (bytes)
+        *bytes = prov ? (size_t)PHYS * sizeof *prov : 0;
+    return prov;
+}
+
 void trace_poke(uint32_t phys)
 {
     if (prov)

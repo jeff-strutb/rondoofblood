@@ -11,7 +11,7 @@
 ; The attribute's palette comes from the object's flags (bit 7: the part's own bit 7 and the
 ; object's palette; bit 6 with bit 7 clear, untraced: the part's attribute plus the palette).
 ; The scratch is zTemp00 to zTemp11 and three more zero page bytes, left as the assembly leaves them.
-; An object with no parts runs on at $819E (untraced, original code).
+; An object with no parts returns at once: the jump to the routine's own RTS at $819E.
 ; WAITS: no.
 ; Entry: X the object. Exit: N set when the frame's room ran out, else Z set (the parts ran out);
 ; A, X, Y, C and V as the last part's work leaves them (SpriteExit).
@@ -63,7 +63,7 @@ EmitObjectSprites_at0:
     lda (zTemp10)
     sta z:zMultiplierLo
     bne EmitObjectSprites_at1
-    jmp a:$819E
+    jmp EmitObjectSprites_at18
 EmitObjectSprites_at1:
     inc z:zTemp10
     bne EmitObjectSprites_at2

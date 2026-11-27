@@ -8,7 +8,7 @@
 /* The registers and flags EmitObjectSprites leaves; nz holds the P bits N and Z. */
 typedef struct {
     uint8_t a, x, y, nz;
-    bool c, v, tail;
+    bool c, v;
 } SpriteExit;
 
 SpriteExit EmitObjectSprites(uint8_t object);

@@ -15,7 +15,7 @@ static uint8_t nz_bits(uint8_t value)
 enum {
     SPRITE_Y_BIAS = 0x40, SPRITE_X_BIAS = 0x20, SPRITE_PART_BYTES = 5,
     SPRITE_Y_FAR_LOW = 0x30, SPRITE_X_FAR_LOW = 0x20, SPRITE_X_WIDE_MIRROR = 0x819F,
-    SPRITE_X_MIN = 0x81A1, SPRITE_SET_TABLE = 0x81A3, TAIL_NO_PARTS = 0x819E
+    SPRITE_X_MIN = 0x81A1, SPRITE_SET_TABLE = 0x81A3
 };
 /* Zero page bytes with no name yet (rows requested from the owner of the records). */
 enum { ZpFlipMask = 0x2014, ZpPartsLeft = 0x2016, ZpSpritesLeft = 0x2017 };
@@ -34,7 +34,7 @@ enum { ZpFlipMask = 0x2014, ZpPartsLeft = 0x2016, ZpSpritesLeft = 0x2017 };
  * The attribute's palette comes from the object's flags (bit 7: the part's own bit 7 and the
  * object's palette; bit 6 with bit 7 clear, untraced: the part's attribute plus the palette).
  * The scratch is zTemp00 to zTemp11 and three more zero page bytes, left as the assembly leaves them.
- * An object with no parts runs on at $819E (untraced, original code).
+ * An object with no parts returns at once: the jump to the routine's own RTS at $819E.
  * WAITS: no.
  * Entry: X the object. Exit: N set when the frame's room ran out, else Z set (the parts ran out);
  * A, X, Y, C and V as the last part's work leaves them (SpriteExit).
@@ -96,7 +96,6 @@ SpriteExit EmitObjectSprites(uint8_t object)
     value = RD8_PTR(ZP->temp10);
     wr8(ZpPartsLeft, value);
     if (value == 0) {
-        out.tail = true;
         out.a = 0;
         out.x = object;
         out.y = y;
@@ -284,9 +283,6 @@ void abi_EmitObjectSprites(void)
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | out.nz);
     abi_flag(P_C, out.c);
     abi_flag(P_V, out.v);
-    if (out.tail) {
-        call_original(TAIL_NO_PARTS);
-    }
 }
 
 /* The object order list of each stage's section (word per stage value, in the 00D1 overlay), the sprite count. */
@@ -295,41 +291,6 @@ enum {
     OBJECT_LIST_FLAG = 0x10, ZpObjectsLeft = 0x2015, ZpListHigh = 0x2013, ZpListIndex = 0x20DA,
     MAPPED_OBJECT_ACTIVE = 1
 };
-
-/* The no-parts tail runs original code at $819E, which ends in the RTS that takes the frame EmitObjectSprites was called under. */
-static SpriteExit no_parts_shim(SpriteExit in)
-{
-    SpriteExit out = { 0 };
-
-    cpu.a = in.a;
-    cpu.x = in.x;
-    cpu.y = in.y;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | in.nz);
-    abi_flag(P_C, in.c);
-    abi_flag(P_V, in.v);
-    call_original(TAIL_NO_PARTS);
-    out.a = cpu.a;
-    out.x = cpu.x;
-    out.y = cpu.y;
-    out.nz = (uint8_t)(cpu.p & (P_N | P_Z));
-    out.c = (cpu.p & P_C) != 0;
-    out.v = (cpu.p & P_V) != 0;
-    return out;
-}
-
-/* The stack as it stands after the call's return address was pushed, to tell a callee that dropped it. */
-static uint8_t frame_mark_shim(void)
-{
-    return cpu.s;
-}
-
-/* The pop of a call's return address, unless the callee's RTS already took it (original code does). */
-static void frame_return_shim(uint8_t mark)
-{
-    if (cpu.s == mark) {
-        jsr_pop();
-    }
-}
 
 /*
  * @routine 00D1:000 WriteObjectSprites
@@ -352,7 +313,7 @@ ObjectSpritesExit WriteObjectSprites(bool carry, bool overflow)
 {
     ObjectSpritesExit out = { 0 };
     SpriteExit emitted;
-    uint8_t a = 0, x, y, object, value, tick, mark;
+    uint8_t a = 0, x, y, object, value, tick;
     bool shows;
 
     jsr_push(0x8003);
@@ -395,12 +356,8 @@ ObjectSpritesExit WriteObjectSprites(bool carry, bool overflow)
         if (shows) {
             WR8(ZP->richter_object, object);
             jsr_push(0x8043);
-            mark = frame_mark_shim();
             emitted = EmitObjectSprites(object);
-            if (emitted.tail) {
-                emitted = no_parts_shim(emitted);
-            }
-            frame_return_shim(mark);
+            jsr_pop();
             a = emitted.a;
             carry = emitted.c;
             overflow = emitted.v;

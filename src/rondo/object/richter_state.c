@@ -301,12 +301,14 @@ void abi_RichterNudgeA(void);
 void abi_RichterNudgeB(void);
 void abi_RichterJumpSpeed(void);
 void lift_exit_shim(Lift lift);
-typedef enum { MOVE_PUSH_BLOCKED, MOVE_PUSH_NOT_PUSHED, MOVE_PUSH_LIFTED } MovePushHow;
+typedef enum { MOVE_PUSH_BLOCKED, MOVE_PUSH_NOT_PUSHED, MOVE_PUSH_LIFTED, MOVE_PUSH_MAY_LEAVE_TOP } MovePushHow;
 /* After the move: the columns read, the first column hit, the push, and the lift it made. */
 typedef struct {
     MovePushHow how; ColumnsEnd columns; uint8_t column; uint8_t hit; uint8_t push; ColumnLift lift;
 } MovePush;
 MovePush RichterApplyMoveAndPush(void);
+MovePush MariaApplyMoveAndPush(void);
+void abi_MariaApplyMoveAndPush(void);
 typedef enum {
     INVINCIBLE_OFF, INVINCIBLE_OFF_FRAME, INVINCIBLE_ENDED, INVINCIBLE_RUNNING, INVINCIBLE_MARK
 } InvincibleHow;
@@ -595,12 +597,22 @@ void abi_RichterVecFloor(void)
  * them, X the column, C and V from the read. Not pushed, A 0, X 3, Z and C set, N and V the
  * push's bits 7 and 6. Lifted, as RichterLiftByColumn, X 0.
  */
-MovePush RichterApplyMoveAndPush(void)
+/* A character's overlay's move-and-push: the returns of its two calls and the copies it calls. */
+typedef struct {
+    uint16_t columns_return, lift_return;
+    ColumnsEnd (*columns)(void);
+    ColumnLift (*lift)(uint8_t column);
+} MovePushLayout;
+
+static const MovePushLayout richter_move_push = { 0xA02D, 0xA048, RichterReadColumns, RichterLiftByColumn };
+static const MovePushLayout maria_move_push = { 0xA032, 0xA04D, MariaReadColumns, MariaLiftByColumn };
+
+static MovePush apply_move_and_push(const MovePushLayout *layout)
 {
     MovePush move = { MOVE_PUSH_BLOCKED, { 0 }, 0, 0, 0, { false, 0, 0 } };
 
-    jsr_push(0xA02D);
-    move.columns = RichterReadColumns();
+    jsr_push(layout->columns_return);
+    move.columns = layout->columns();
     jsr_pop();
 
     for (move.column = 0; move.column < FLOOR_COLUMNS; move.column++) {
@@ -613,16 +625,26 @@ MovePush RichterApplyMoveAndPush(void)
     if (!(move.push & PUSH_ON_FLOOR))
         return move;
     wr8(RichterColumnRow, rd8(zFieldCA));
-    jsr_push(0xA048);
-    move.lift = RichterLiftByColumn(0);
+    jsr_push(layout->lift_return);
+    move.lift = layout->lift(0);
     jsr_pop();
     wr8(zFieldCA, 0);
     move.how = MOVE_PUSH_LIFTED;
     return move;
 }
 
+MovePush RichterApplyMoveAndPush(void)
+{
+    return apply_move_and_push(&richter_move_push);
+}
+
 void move_push_exit_shim(MovePush move)
 {
+    if (move.how == MOVE_PUSH_MAY_LEAVE_TOP) {
+        cpu.a = move.hit;
+        abi_nz(move.hit);
+        return;
+    }
     columns_exit_shim(move.columns);
     cpu.x = move.column;
     switch (move.how) {
@@ -662,7 +684,78 @@ void abi_RichterApplyMoveAndPush(void)
  */
 void abi_RichterApplyMoveAndPushGoTo(void)
 {
+    /* Maria's overlay holds the same jump here, to her copy at $A02A. */
+    if (resident_at(0xA02A) == DISC(0x01DD, 0x02A)) {
+        abi_MariaApplyMoveAndPush();
+        return;
+    }
     abi_RichterApplyMoveAndPush();
+}
+
+/*
+ * @routine 01DD:02A MariaApplyMoveAndPush
+ * @run 6D:A02A
+ * WHAT IT DOES: RichterApplyMoveAndPush in Maria's overlay (01DD), unless she may go above the map
+ * (PlayerMayLeaveTop not zero), when it does nothing: reads the five columns under her and, if none of the first
+ * three is solid or a floor, lets a push on the floor lift her by zFieldCA.
+ * HOW: A test of PlayerMayLeaveTop, then RichterApplyMoveAndPush's instructions calling MariaReadColumns and
+ * MariaLiftByColumn.
+ * WAITS: no.
+ * Entry: nothing. Exit: may go above, A PlayerMayLeaveTop, N and Z from it; else as RichterApplyMoveAndPush.
+ */
+MovePush MariaApplyMoveAndPush(void)
+{
+    MovePush move = { MOVE_PUSH_MAY_LEAVE_TOP, { 0 }, 0, 0, 0, { false, 0, 0 } };
+
+    move.hit = rd8(PlayerMayLeaveTop);
+    if (move.hit != 0) {
+        return move;
+    }
+    return apply_move_and_push(&maria_move_push);
+}
+
+void abi_MariaApplyMoveAndPush(void)
+{
+    move_push_exit_shim(MariaApplyMoveAndPush());
+}
+
+/*
+ * @routine 01DD:006 MariaVecApplyMove
+ * @run 6D:A006
+ * WHAT IT DOES: Goes to MariaReadColumns, the step Maria's overlay makes after she has moved.
+ * HOW: One jump.
+ * WAITS: no.
+ * Entry, exit: as MariaReadColumns.
+ */
+void abi_MariaVecApplyMove(void)
+{
+    columns_exit_shim(MariaReadColumns());
+}
+
+/*
+ * @routine 01DD:021 MariaVecWall
+ * @run 6D:A021
+ * WHAT IT DOES: Goes to MariaWall, her overlay's wall probe.
+ * HOW: One jump.
+ * WAITS: no.
+ * Entry, exit: as MariaWall.
+ */
+void abi_MariaVecWall(void)
+{
+    wall_exit_shim(MariaWall(cpu.y));
+}
+
+/*
+ * @routine 01DD:024 MariaVecFloor
+ * @run 6D:A024
+ * WHAT IT DOES: Goes to MariaFloor, her overlay's floor probe.
+ * HOW: One jump.
+ * WAITS: no.
+ * Entry, exit: as MariaFloor.
+ */
+void abi_MariaVecFloor(void)
+{
+    floor_exit_shim(MariaFloor());
 }
 
 /*

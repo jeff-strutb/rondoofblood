@@ -2030,3 +2030,61 @@ RichterClearOthersKeepWhip_at0:
     stz a:PadForcedPress
     stz a:PadForcedPressB
     rts
+
+; @routine 01DD:006 MariaVecApplyMove
+; @run 6D:A006
+; WHAT IT DOES: Goes to MariaReadColumns, the step Maria's overlay makes after she has moved.
+; HOW: One jump.
+; WAITS: no.
+; Entry, exit: as MariaReadColumns.
+MariaVecApplyMove:
+    jmp MariaReadColumns
+
+; @routine 01DD:02A MariaApplyMoveAndPush
+; @run 6D:A02A
+; WHAT IT DOES: RichterApplyMoveAndPush in Maria's overlay (01DD), unless she may go above the map
+; (PlayerMayLeaveTop not zero), when it does nothing: reads the five columns under her and, if none of the first
+; three is solid or a floor, lets a push on the floor lift her by zFieldCA.
+; HOW: A test of PlayerMayLeaveTop, then RichterApplyMoveAndPush's instructions calling MariaReadColumns and
+; MariaLiftByColumn.
+; WAITS: no.
+; Entry: nothing. Exit: may go above, A PlayerMayLeaveTop, N and Z from it; else as RichterApplyMoveAndPush.
+MariaApplyMoveAndPush:
+    lda a:PlayerMayLeaveTop
+    bne MariaApplyMoveAndPush_at0
+    jsr MariaReadColumns
+    clx
+MariaApplyMoveAndPush_at1:
+    lda a:RichterColumnHit,x
+    and #$81
+    bne MariaApplyMoveAndPush_at0
+    inx
+    cpx #$03
+    bne MariaApplyMoveAndPush_at1
+    tst #$01,z:zPlayerPush
+    beq MariaApplyMoveAndPush_at0
+    lda z:zFieldCA
+    sta a:RichterColumnRow
+    clx
+    jsr MariaLiftByColumn
+    stz z:zFieldCA
+MariaApplyMoveAndPush_at0:
+    rts
+
+; @routine 01DD:021 MariaVecWall
+; @run 6D:A021
+; WHAT IT DOES: Goes to MariaWall, her overlay's wall probe.
+; HOW: One jump.
+; WAITS: no.
+; Entry, exit: as MariaWall.
+MariaVecWall:
+    jmp MariaWall
+
+; @routine 01DD:024 MariaVecFloor
+; @run 6D:A024
+; WHAT IT DOES: Goes to MariaFloor, her overlay's floor probe.
+; HOW: One jump.
+; WAITS: no.
+; Entry, exit: as MariaFloor.
+MariaVecFloor:
+    jmp MariaFloor

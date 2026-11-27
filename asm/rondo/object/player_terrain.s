@@ -624,3 +624,296 @@ RichterFloor_at2:
     stz a:OBJ_Y_HI
     lda #$01
     rts
+
+; @routine 01E0:20E MariaReadBelow
+; @run 6D:BA0E
+; WHAT IT DOES: RichterReadBelow in Maria's overlay (01DD): reads the terrain at a row on the first screen down; a row
+; past it reads as nothing.
+; HOW: The same instructions as RichterReadBelow.
+; WAITS: no.
+; Entry, exit: as RichterReadBelow.
+MariaReadBelow:
+    sta z:zTemp02
+    bcs MariaReadBelow_at0
+    stz z:zTemp03
+    stz z:zTemp01
+    jmp AttractEntry
+MariaReadBelow_at0:
+    cla
+    rts
+
+; @routine 01E0:220 MariaColumnOffset
+; @run 6D:BA20
+; WHAT IT DOES: RichterColumnOffset in Maria's overlay: how far across a probe's column lies, by column and facing.
+; HOW: The same instructions, with her overlay's table at $BE69.
+; WAITS: no.
+; Entry, exit: as RichterColumnOffset.
+MariaColumnOffset:
+    txa
+    asl a
+    clc
+    adc a:OBJ_2AC0
+    tay
+    lda a:RichterColumnOffsets+$31C,y
+    rts
+
+; @routine 01E0:5A4 MariaLiftByColumn
+; @run 6D:BDA4
+; WHAT IT DOES: Lifts Maria out of the floor by how deep this column read; above the top of the map she is put at 0.
+; HOW: Her Y less the column's depth in RichterColumnRow, signed. Unlike RichterLiftByColumn the depth is not
+; cleared, and a lift past the top leaves her Y at 0, not 2.
+; WAITS: no.
+; Entry: X column. Exit: A her Y high byte, N and Z from it; C and V from the subtract. X and Y kept. Clobbers zTemp10.
+MariaLiftByColumn:
+    stz z:zTemp10
+    lda a:RichterColumnRow,x
+    bpl MariaLiftByColumn_at0
+    dec z:zTemp10
+MariaLiftByColumn_at0:
+    lda a:OBJ_Y_LO
+    sec
+    sbc a:RichterColumnRow,x
+    sta a:OBJ_Y_LO
+    lda a:OBJ_Y_HI
+    sbc z:zTemp10
+    sta a:OBJ_Y_HI
+    bmi MariaLiftByColumn_at1
+    rts
+MariaLiftByColumn_at1:
+    stz a:OBJ_Y_LO
+    stz a:OBJ_Y_HI
+    rts
+
+; @routine 01E0:639 MariaReadColumnsHigh
+; @run 6D:BE39
+; WHAT IT DOES: RichterReadColumnsHigh in Maria's overlay: the five columns of terrain at her waist.
+; HOW: As MariaReadColumns, $0B below her position.
+; WAITS: no.
+; Entry and exit: as RichterReadColumns.
+MariaReadColumnsHigh:
+    lda #$0B
+    sta z:zTemp10
+    bra MariaReadColumns_at1
+
+; @routine 01E0:63F MariaReadColumns
+; @run 6D:BE3F
+; WHAT IT DOES: RichterReadColumns in Maria's overlay: the five columns of terrain under her, into RichterColumnHit,
+; RichterColumnRow and RichterColumnX; the step her overlay makes after she has moved.
+; HOW: The same instructions as RichterReadColumns, calling MariaColumnOffset and MariaReadBelow.
+; WAITS: no.
+; Entry, exit: as RichterReadColumns.
+MariaReadColumns:
+    lda #$16
+    sta z:zTemp10
+MariaReadColumns_at1:
+    clx
+MariaReadColumns_at0:
+    jsr MariaColumnOffset
+    clc
+    adc a:OBJ_X_LO
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc z:zTemp10
+    jsr MariaReadBelow
+    sta a:RichterColumnHit,x
+    lda z:zTemp02
+    sta a:RichterColumnRow,x
+    lda z:zTemp00
+    sta a:RichterColumnX,x
+    inx
+    cpx #$05
+    bne MariaReadColumns_at0
+    rts
+
+; @routine 01E0:21B MariaReadIfOnPage
+; @run 6D:BA1B
+; WHAT IT DOES: RichterReadIfOnPage in Maria's overlay: reads the terrain at the point in zTemp00-03, unless the Y high byte just
+; added is not zero.
+; HOW: The same instructions as RichterReadIfOnPage; its branch goes to the end of MariaReadBelow.
+; WAITS: no.
+; Entry, exit: as RichterReadIfOnPage.
+MariaReadIfOnPage:
+    bne MariaReadBelow_at0
+    jmp AttractEntry
+
+; @routine 01E0:5D8 MariaFloorOddScreen
+; @run 6D:BDD8
+; WHAT IT DOES: RichterFloorOddScreen in Maria's overlay: a floor at the first column on an odd screen across.
+; HOW: The same instructions. Sits before MariaFloorCheck, which branches back to it.
+; WAITS: no.
+; Entry, exit: as RichterFloorOddScreen.
+MariaFloorOddScreen:
+    clx
+    stz a:RichterColumnRow,x
+    bra MariaFloorCheck_at0
+
+; @routine 01E0:5DE MariaFloorCheck
+; @run 6D:BDDE
+; WHAT IT DOES: RichterFloorCheck in Maria's overlay: whether the columns read have a floor under her, and at which.
+; HOW: The same instructions, branching back to MariaFloorOddScreen on an odd screen.
+; WAITS: no.
+; Entry, exit: as RichterFloorCheck.
+MariaFloorCheck:
+    lda a:OBJ_X_HI
+    and #$01
+    bne MariaFloorOddScreen
+    clx
+MariaFloorCheck_at1:
+    lda a:RichterColumnHit,x
+    and #$81
+    bne MariaFloorCheck_at0
+MariaFloorCheck_at4:
+    inx
+    cpx #$03
+    bne MariaFloorCheck_at1
+    tst #$01,z:zPlayerPush
+    bne MariaFloorCheck_at2
+    rmb0 z:zPlayerPush
+    rmb5 z:zPlayerPush
+    clc
+    rts
+MariaFloorCheck_at0:
+    bpl MariaFloorCheck_at3
+    cpx #$00
+    bne MariaFloorCheck_at4
+MariaFloorCheck_at3:
+    rmb0 z:zPlayerPush
+    lda z:zFieldCA
+    bpl MariaFloorCheck_at5
+MariaFloorCheck_at6:
+    rmb5 z:zPlayerPush
+    sec
+    rts
+MariaFloorCheck_at5:
+    lda z:zPushYHi
+    bpl MariaFloorCheck_at6
+    sec
+    rts
+MariaFloorCheck_at2:
+    clx
+    lda z:zFieldCA
+    sta a:RichterColumnRow,x
+    sec
+    rts
+
+; @routine 01E0:683 MariaWallPushed
+; @run 6D:BE83
+; WHAT IT DOES: RichterWallPushed in Maria's overlay: the wall probe's answer when a push holds her against that side.
+; HOW: The same instructions as RichterWallPushed. Sits before MariaWall, which branches back to it.
+; WAITS: no.
+; Entry, exit: as RichterWallPushed.
+MariaWallPushed:
+    lda z:zPlayerPushDepth
+    sta z:zTemp00
+    lda #$02
+    rts
+
+; @routine 01E0:68A MariaWall
+; @run 6D:BE8A
+; WHAT IT DOES: RichterWall in Maria's overlay: whether she runs into a wall on one side, and how deep. Her states
+; choose the first column otherwise: 3, 4, $0E and $0F start at 5, $0D at 2, the rest at 0.
+; HOW: RichterWall's instructions with her overlay's tables, MariaWallPushed and MariaReadIfOnPage, and more
+; compares of the state.
+; WAITS: no.
+; Entry, exit: as RichterWall.
+MariaWall:
+    lda a:PlayerMayLeaveTop
+    cmp #$01
+    beq MariaWall_at2
+    lda z:zPlayerPush
+    and a:RichterWallPushBits+$31C,y
+    bne MariaWallPushed
+    lda a:RichterWallReach+$31C,y
+    sta z:zTemp10
+    lda a:OBJ_27A8
+    cmp #$03
+    beq MariaWall_at0
+    cmp #$04
+    beq MariaWall_at0
+    cmp #$0D
+    beq MariaWall_at1
+    cmp #$0F
+    beq MariaWall_at0
+    cmp #$0E
+    beq MariaWall_at0
+    clx
+MariaWall_at3:
+    lda a:OBJ_X_LO
+    clc
+    adc z:zTemp10
+    sta z:zTemp00
+    stz z:zTemp01
+    lda a:OBJ_Y_LO
+    clc
+    adc a:RichterWallLift+$31C,x
+    sta z:zTemp02
+    lda a:OBJ_Y_HI
+    adc a:RichterWallLiftHigh+$31C,x
+    sta z:zTemp03
+    jsr MariaReadIfOnPage
+    and #$02
+    bne MariaWall_at2
+    inx
+    cpx #$06
+    bne MariaWall_at3
+MariaWall_at2:
+    rts
+MariaWall_at0:
+    ldx #$05
+    bra MariaWall_at3
+MariaWall_at1:
+    ldx #$02
+    bra MariaWall_at3
+
+; @routine 01E0:6E5 MariaFloor
+; @run 6D:BEE5
+; WHAT IT DOES: RichterFloor in Maria's overlay: whether she stands on a floor, and lifts her out of it; a lift past
+; the top of the map leaves her Y at 0, not 2.
+; HOW: RichterFloor's instructions calling MariaReadColumns, MariaFloorCheck, MariaColumnOffset and MariaReadBelow.
+; WAITS: no.
+; Entry, exit: as RichterFloor.
+MariaFloor:
+    lda a:PlayerMayLeaveTop
+    bne MariaFloor_at3
+    jsr MariaReadColumns
+    jsr MariaFloorCheck
+    bcc MariaFloor_at3
+    jsr MariaColumnOffset
+    clc
+    adc a:OBJ_X_LO
+    sta z:zTemp00
+    lda a:OBJ_Y_LO
+    clc
+    adc #$0E
+    jsr MariaReadBelow
+    and #$81
+    beq MariaFloor_at0
+    bmi MariaFloor_at0
+    bra MariaFloor_at3
+MariaFloor_at0:
+    stz z:zTemp10
+    lda a:RichterColumnRow,x
+    bpl MariaFloor_at1
+    dec z:zTemp10
+MariaFloor_at1:
+    lda a:OBJ_Y_LO
+    sec
+    sbc a:RichterColumnRow,x
+    sta a:OBJ_Y_LO
+    lda a:OBJ_Y_HI
+    sbc z:zTemp10
+    sta a:OBJ_Y_HI
+    bmi MariaFloor_at2
+    tst #$20,z:zPlayerPush
+    bne MariaFloor_at3
+    lda #$01
+    rts
+MariaFloor_at3:
+    lda #$00
+    rts
+MariaFloor_at2:
+    stz a:OBJ_Y_LO
+    stz a:OBJ_Y_HI
+    lda #$01
+    rts

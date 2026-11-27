@@ -268,6 +268,18 @@ TileRead RichterReadAbove(uint8_t row, bool on_the_map);
 void read_above_exit_shim(TileRead read, bool on_the_map);
 ColumnOffset RichterColumnOffset(uint8_t column);
 ColumnLift RichterLiftByColumn(uint8_t column);
+/* object/player_terrain.c: Maria's overlay's copies (01DD), the same code at her addresses (MariaLiftByColumn differs). */
+ColumnOffset MariaColumnOffset(uint8_t column);
+ColumnLift MariaLiftByColumn(uint8_t column);
+TileRead MariaReadBelow(uint8_t row, bool carry);
+ColumnsEnd MariaReadColumns(void);
+ColumnsEnd MariaReadColumnsHigh(void);
+TileRead MariaReadIfOnPage(bool on_page);
+void MariaWallPushed(void);
+WallProbe MariaWall(uint8_t side);
+FloorResult MariaFloorOddScreen(void);
+FloorResult MariaFloorCheck(void);
+FloorProbe MariaFloor(void);
 void column_lift_exit_shim(ColumnLift lift);
 LadderCheck RichterLadderCheck(void);
 bool ladder_found(LadderCheck check);

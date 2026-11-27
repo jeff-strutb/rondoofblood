@@ -124,7 +124,7 @@ void abi_RichterReadAbove(void)
  * WAITS: no.
  * Entry: A row, C its add's carry, zTemp00 X. Exit: as the read, or A 0 with N, Z, C and V kept.
  */
-TileRead RichterReadBelow(uint8_t row, bool carry)
+static TileRead read_below(uint8_t row, bool carry)
 {
     wr8(zTemp02, row);
     if (carry)
@@ -134,11 +134,37 @@ TileRead RichterReadBelow(uint8_t row, bool carry)
     return read_point_or_nothing(false);
 }
 
+TileRead RichterReadBelow(uint8_t row, bool carry)
+{
+    return read_below(row, carry);
+}
+
 void abi_RichterReadBelow(void)
 {
     bool carry = (cpu.p & P_C) != 0;
 
     read_or_nothing_exit_shim(RichterReadBelow(cpu.a, carry), !carry);
+}
+
+/*
+ * @routine 01E0:20E MariaReadBelow
+ * @run 6D:BA0E
+ * WHAT IT DOES: RichterReadBelow in Maria's overlay (01DD): reads the terrain at a row on the first screen down; a row
+ * past it reads as nothing.
+ * HOW: The same instructions as RichterReadBelow.
+ * WAITS: no.
+ * Entry, exit: as RichterReadBelow.
+ */
+TileRead MariaReadBelow(uint8_t row, bool carry)
+{
+    return read_below(row, carry);
+}
+
+void abi_MariaReadBelow(void)
+{
+    bool carry = (cpu.p & P_C) != 0;
+
+    read_or_nothing_exit_shim(MariaReadBelow(cpu.a, carry), !carry);
 }
 
 /*
@@ -171,9 +197,14 @@ void abi_RichterReadOnScreen(void)
  * WAITS: no.
  * Entry: Z from that byte, zTemp00-03 the point. Exit: as the read, or A 0 with N and Z kept.
  */
-TileRead RichterReadIfOnPage(bool on_page)
+static TileRead read_if_on_page(bool on_page)
 {
     return read_point_or_nothing(!on_page);
+}
+
+TileRead RichterReadIfOnPage(bool on_page)
+{
+    return read_if_on_page(on_page);
 }
 
 void abi_RichterReadIfOnPage(void)
@@ -181,6 +212,27 @@ void abi_RichterReadIfOnPage(void)
     bool on_page = (cpu.p & P_Z) != 0;
 
     read_or_nothing_exit_shim(RichterReadIfOnPage(on_page), on_page);
+}
+
+/*
+ * @routine 01E0:21B MariaReadIfOnPage
+ * @run 6D:BA1B
+ * WHAT IT DOES: RichterReadIfOnPage in Maria's overlay: reads the terrain at the point in zTemp00-03, unless the Y high byte just
+ * added is not zero.
+ * HOW: The same instructions as RichterReadIfOnPage; its branch goes to the end of MariaReadBelow.
+ * WAITS: no.
+ * Entry, exit: as RichterReadIfOnPage.
+ */
+TileRead MariaReadIfOnPage(bool on_page)
+{
+    return read_if_on_page(on_page);
+}
+
+void abi_MariaReadIfOnPage(void)
+{
+    bool on_page = (cpu.p & P_Z) != 0;
+
+    read_or_nothing_exit_shim(MariaReadIfOnPage(on_page), on_page);
 }
 
 /*
@@ -192,28 +244,57 @@ void abi_RichterReadIfOnPage(void)
  * Entry: X column. Exit: A the offset, N and Z from it, Y its index, C and V from the index's
  * add. X kept.
  */
-ColumnOffset RichterColumnOffset(uint8_t column)
+static ColumnOffset column_offset(uint8_t column, uint16_t table)
 {
     ColumnOffset r;
     uint8_t facing = RD8(OBJ->facing_left[0]);
     Sum index = add_bytes((uint8_t)(column << 1), facing, false);
 
-    r.value = rd8((uint16_t)(RichterColumnOffsets + index.value));
+    r.value = rd8((uint16_t)(table + index.value));
     r.index = index.value;
     r.carry = index.carry;
     r.overflow = index.overflow;
     return r;
 }
 
-void abi_RichterColumnOffset(void)
+static void column_offset_exit_shim(ColumnOffset r)
 {
-    ColumnOffset r = RichterColumnOffset(cpu.x);
-
     cpu.a = r.value;
     abi_nz(r.value);
     cpu.y = r.index;
     abi_flag(P_C, r.carry);
     abi_flag(P_V, r.overflow);
+}
+
+ColumnOffset RichterColumnOffset(uint8_t column)
+{
+    return column_offset(column, RichterColumnOffsets);
+}
+
+void abi_RichterColumnOffset(void)
+{
+    column_offset_exit_shim(RichterColumnOffset(cpu.x));
+}
+
+/* Maria's overlay's copy of the table of column offsets, $31C above Richter's. */
+enum { MARIA_COLUMN_OFFSETS = RichterColumnOffsets + 0x31C };
+
+/*
+ * @routine 01E0:220 MariaColumnOffset
+ * @run 6D:BA20
+ * WHAT IT DOES: RichterColumnOffset in Maria's overlay: how far across a probe's column lies, by column and facing.
+ * HOW: The same instructions, with her overlay's table at $BE69.
+ * WAITS: no.
+ * Entry, exit: as RichterColumnOffset.
+ */
+ColumnOffset MariaColumnOffset(uint8_t column)
+{
+    return column_offset(column, MARIA_COLUMN_OFFSETS);
+}
+
+void abi_MariaColumnOffset(void)
+{
+    column_offset_exit_shim(MariaColumnOffset(cpu.x));
 }
 
 /*
@@ -225,9 +306,14 @@ void abi_RichterColumnOffset(void)
  * WAITS: no.
  * Entry: nothing. Exit: A 2, N and Z clear. X, Y, C and V kept.
  */
-void RichterWallPushed(void)
+static void wall_pushed(void)
 {
     wr8(zTemp00, rd8(zPlayerPushDepth));
+}
+
+void RichterWallPushed(void)
+{
+    wall_pushed();
 }
 
 void abi_RichterWallPushed(void)
@@ -236,6 +322,60 @@ void abi_RichterWallPushed(void)
     cpu.a = WALL_ANSWER;
     abi_nz(WALL_ANSWER);
 }
+
+/*
+ * @routine 01E0:683 MariaWallPushed
+ * @run 6D:BE83
+ * WHAT IT DOES: RichterWallPushed in Maria's overlay: the wall probe's answer when a push holds her against that side.
+ * HOW: The same instructions as RichterWallPushed. Sits before MariaWall, which branches back to it.
+ * WAITS: no.
+ * Entry, exit: as RichterWallPushed.
+ */
+void MariaWallPushed(void)
+{
+    wall_pushed();
+}
+
+void abi_MariaWallPushed(void)
+{
+    MariaWallPushed();
+    cpu.a = WALL_ANSWER;
+    abi_nz(WALL_ANSWER);
+}
+
+/* Maria's overlay keeps the wall probe's four tables $31C above Richter's. */
+enum { MARIA_TABLES = 0x31C };
+
+/* The column the wall probe starts at by player state: Richter's, in the air (3, 4) 5, crouching (2) 3. */
+static uint8_t richter_wall_first_column(uint8_t state)
+{
+    return state == STATE_IN_AIR || state == STATE_FALLING ? WALL_FIRST_COLUMN_IN_AIR :
+           state == STATE_CROUCHING ? WALL_FIRST_COLUMN_CROUCHING : WALL_FIRST_COLUMN_STANDING;
+}
+
+/* Maria's: states 3, 4, $0F and $0E 5, state $0D 2. */
+static uint8_t maria_wall_first_column(uint8_t state)
+{
+    return state == STATE_IN_AIR || state == STATE_FALLING || state == 0x0F || state == 0x0E ? WALL_FIRST_COLUMN_IN_AIR :
+           state == 0x0D ? 2 : WALL_FIRST_COLUMN_STANDING;
+}
+
+/* A character's overlay's wall probe: its tables, the return of its read and the copies it reaches. */
+typedef struct {
+    uint16_t push_bits, reach, lift, lift_high, read_return;
+    void (*pushed)(void);
+    TileRead (*read_if_on_page)(bool on_page);
+    uint8_t (*first_column)(uint8_t state);
+} WallLayout;
+
+static const WallLayout richter_wall = {
+    RichterWallPushBits, RichterWallReach, RichterWallLift, RichterWallLiftHigh, 0xBBAF,
+    RichterWallPushed, RichterReadIfOnPage, richter_wall_first_column
+};
+static const WallLayout maria_wall = {
+    RichterWallPushBits + MARIA_TABLES, RichterWallReach + MARIA_TABLES, RichterWallLift + MARIA_TABLES,
+    RichterWallLiftHigh + MARIA_TABLES, 0xBED3, MariaWallPushed, MariaReadIfOnPage, maria_wall_first_column
+};
 
 /*
  * @routine 01BC:36E RichterWall
@@ -248,7 +388,7 @@ void abi_RichterWallPushed(void)
  * Entry: Y side. Exit: A 2 with N 0, Z 0 at a wall, zTemp00 how deep; else Z set. Other
  * registers and flags as the last step left them.
  */
-WallProbe RichterWall(uint8_t side)
+static WallProbe wall_probe(uint8_t side, const WallLayout *layout)
 {
     WallProbe probe = { WALL_BARRED };
     uint8_t state, reach, value, x_lo, y_lo, y_hi, column;
@@ -260,17 +400,16 @@ WallProbe RichterWall(uint8_t side)
         return probe;
     }
     value = RD8(ZP->player_push);
-    if (value & rd8((uint16_t)(RichterWallPushBits + side))) {
-        RichterWallPushed();
+    if (value & rd8((uint16_t)(layout->push_bits + side))) {
+        layout->pushed();
         probe.how = WALL_PUSHED;
         return probe;
     }
-    reach = rd8((uint16_t)(RichterWallReach + side));
+    reach = rd8((uint16_t)(layout->reach + side));
     wall_side_shim(side);
     WR8(ZP->temp10, reach);
     state = RD8(OBJ->state[0]);
-    column = state == STATE_IN_AIR || state == STATE_FALLING ? WALL_FIRST_COLUMN_IN_AIR :
-             state == STATE_CROUCHING ? WALL_FIRST_COLUMN_CROUCHING : WALL_FIRST_COLUMN_STANDING;
+    column = layout->first_column(state);
     probe.column = column;
     for (; probe.column < WALL_COLUMNS; probe.column++) {
         x_lo = RD8(OBJ->x_lo[0]);
@@ -279,16 +418,16 @@ WallProbe RichterWall(uint8_t side)
         WR8(ZP->temp00, across.value);
         WR8(ZP->temp01, 0);
         y_lo = RD8(OBJ->y_lo[0]);
-        low = add_bytes(y_lo, rd8((uint16_t)(RichterWallLift + probe.column)), false);
+        low = add_bytes(y_lo, rd8((uint16_t)(layout->lift + probe.column)), false);
         WR8(ZP->temp02, low.value);
         y_hi = RD8(OBJ->y_hi[0]);
-        high = add_bytes(y_hi, rd8((uint16_t)(RichterWallLiftHigh + probe.column)), low.carry);
+        high = add_bytes(y_hi, rd8((uint16_t)(layout->lift_high + probe.column)), low.carry);
         WR8(ZP->temp03, high.value);
         probe.v = high.overflow;
         probe.read_made = high.value == 0;
         wall_entry_shim(high, probe.column);
-        jsr_push(0xBBAF);
-        read = RichterReadIfOnPage(probe.read_made);
+        jsr_push(layout->read_return);
+        read = layout->read_if_on_page(probe.read_made);
         jsr_pop();
         if (probe.read_made) {
             probe.last_read = read;
@@ -301,6 +440,11 @@ WallProbe RichterWall(uint8_t side)
     }
     probe.how = WALL_NONE;
     return probe;
+}
+
+WallProbe RichterWall(uint8_t side)
+{
+    return wall_probe(side, &richter_wall);
 }
 
 void wall_exit_shim(WallProbe probe)
@@ -344,6 +488,26 @@ void abi_RichterWall(void)
     wall_exit_shim(RichterWall(cpu.y));
 }
 
+/*
+ * @routine 01E0:68A MariaWall
+ * @run 6D:BE8A
+ * WHAT IT DOES: RichterWall in Maria's overlay: whether she runs into a wall on one side, and how deep. Her states
+ * choose the first column otherwise: 3, 4, $0E and $0F start at 5, $0D at 2, the rest at 0.
+ * HOW: RichterWall's instructions with her overlay's tables, MariaWallPushed and MariaReadIfOnPage, and more
+ * compares of the state.
+ * WAITS: no.
+ * Entry, exit: as RichterWall.
+ */
+WallProbe MariaWall(uint8_t side)
+{
+    return wall_probe(side, &maria_wall);
+}
+
+void abi_MariaWall(void)
+{
+    wall_exit_shim(MariaWall(cpu.y));
+}
+
 /* The overlay's read may run its own code: it is entered with the row add's A and flags. */
 static void read_entry_kept_shim(Sum row);
 static void read_entry_shim(Sum row, uint8_t x, uint8_t y)
@@ -362,7 +526,17 @@ static void read_entry_kept_shim(Sum row)
     abi_flag(P_V, row.overflow);
 }
 
-static ColumnsEnd read_five_columns(uint8_t below)
+/* A character's overlay's five-column read: the returns of its two calls and the copies it calls. */
+typedef struct {
+    uint16_t offset_return, read_return;
+    ColumnOffset (*offset)(uint8_t column);
+    TileRead (*read_below)(uint8_t row, bool carry);
+} ColumnsLayout;
+
+static const ColumnsLayout richter_columns = { 0xBB2B, 0xBB3A, RichterColumnOffset, RichterReadBelow };
+static const ColumnsLayout maria_columns = { 0xBE47, 0xBE56, MariaColumnOffset, MariaReadBelow };
+
+static ColumnsEnd read_five_columns(uint8_t below, const ColumnsLayout *layout)
 {
     ColumnsEnd end = { false, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, below, 0, 0, false };
     ColumnOffset offset;
@@ -371,8 +545,8 @@ static ColumnsEnd read_five_columns(uint8_t below)
 
     WR8(ZP->temp10, below);
     for (uint8_t column = 0; column < RICHTER_COLUMNS; column++) {
-        jsr_push(0xBB2B);
-        offset = RichterColumnOffset(column);
+        jsr_push(layout->offset_return);
+        offset = layout->offset(column);
         jsr_pop();
         base = RD8(OBJ->x_lo[0]);
         across = add_bytes(offset.value, base, false);
@@ -381,8 +555,8 @@ static ColumnsEnd read_five_columns(uint8_t below)
         value = RD8(ZP->temp10);
         row = add_bytes(base, value, false);
         read_entry_shim(row, column, offset.index);
-        jsr_push(0xBB3A);
-        end.last = RichterReadBelow(row.value, row.carry);
+        jsr_push(layout->read_return);
+        end.last = layout->read_below(row.value, row.carry);
         jsr_pop();
         end.read_made = !row.carry;
         end.row = base;
@@ -428,7 +602,7 @@ void columns_exit_shim(ColumnsEnd end)
  */
 ColumnsEnd RichterReadColumnsHigh(void)
 {
-    return read_five_columns(COLUMNS_BELOW_WAIST);
+    return read_five_columns(COLUMNS_BELOW_WAIST, &richter_columns);
 }
 
 void abi_RichterReadColumnsHigh(void)
@@ -449,12 +623,49 @@ void abi_RichterReadColumnsHigh(void)
  */
 ColumnsEnd RichterReadColumns(void)
 {
-    return read_five_columns(COLUMNS_BELOW_FEET);
+    return read_five_columns(COLUMNS_BELOW_FEET, &richter_columns);
 }
 
 void abi_RichterReadColumns(void)
 {
     columns_exit_shim(RichterReadColumns());
+}
+
+/*
+ * @routine 01E0:639 MariaReadColumnsHigh
+ * @run 6D:BE39
+ * WHAT IT DOES: RichterReadColumnsHigh in Maria's overlay: the five columns of terrain at her waist.
+ * HOW: As MariaReadColumns, $0B below her position.
+ * WAITS: no.
+ * Entry and exit: as RichterReadColumns.
+ */
+ColumnsEnd MariaReadColumnsHigh(void)
+{
+    return read_five_columns(COLUMNS_BELOW_WAIST, &maria_columns);
+}
+
+void abi_MariaReadColumnsHigh(void)
+{
+    columns_exit_shim(MariaReadColumnsHigh());
+}
+
+/*
+ * @routine 01E0:63F MariaReadColumns
+ * @run 6D:BE3F
+ * WHAT IT DOES: RichterReadColumns in Maria's overlay: the five columns of terrain under her, into RichterColumnHit,
+ * RichterColumnRow and RichterColumnX; the step her overlay makes after she has moved.
+ * HOW: The same instructions as RichterReadColumns, calling MariaColumnOffset and MariaReadBelow.
+ * WAITS: no.
+ * Entry, exit: as RichterReadColumns.
+ */
+ColumnsEnd MariaReadColumns(void)
+{
+    return read_five_columns(COLUMNS_BELOW_FEET, &maria_columns);
+}
+
+void abi_MariaReadColumns(void)
+{
+    columns_exit_shim(MariaReadColumns());
 }
 
 /*
@@ -530,7 +741,7 @@ static void floor_clears_push(FloorResult *result)
  * WAITS: no.
  * Entry: nothing. Exit: as RichterFloorCheck finding a floor at column 0.
  */
-FloorResult RichterFloorOddScreen(void)
+static FloorResult floor_odd_screen(void)
 {
     FloorResult result = { FLOOR_HIGH_ON_ODD_SCREEN, 0, 0, 0, 0 };
 
@@ -540,9 +751,32 @@ FloorResult RichterFloorOddScreen(void)
     return result;
 }
 
+FloorResult RichterFloorOddScreen(void)
+{
+    return floor_odd_screen();
+}
+
 void abi_RichterFloorOddScreen(void)
 {
     floor_check_exit_shim(RichterFloorOddScreen());
+}
+
+/*
+ * @routine 01E0:5D8 MariaFloorOddScreen
+ * @run 6D:BDD8
+ * WHAT IT DOES: RichterFloorOddScreen in Maria's overlay: a floor at the first column on an odd screen across.
+ * HOW: The same instructions. Sits before MariaFloorCheck, which branches back to it.
+ * WAITS: no.
+ * Entry, exit: as RichterFloorOddScreen.
+ */
+FloorResult MariaFloorOddScreen(void)
+{
+    return floor_odd_screen();
+}
+
+void abi_MariaFloorOddScreen(void)
+{
+    floor_check_exit_shim(MariaFloorOddScreen());
 }
 
 /*
@@ -555,14 +789,14 @@ void abi_RichterFloorOddScreen(void)
  * WAITS: no.
  * Entry: nothing. Exit: C the answer, X the column. A, N, Z and V as the path left them.
  */
-FloorResult RichterFloorCheck(void)
+static FloorResult floor_check(FloorResult (*odd_screen)(void))
 {
     FloorResult result = { FLOOR_NONE, 0, 0, 0, 0 };
     uint8_t hit, push;
 
     hit = RD8(OBJ->x_hi[0]);
     if (hit & 1) {
-        return RichterFloorOddScreen();
+        return odd_screen();
     }
     for (uint8_t column = 0; column < FLOOR_COLUMNS; column++) {
         hit = (uint8_t)(rd8((uint16_t)(RichterColumnHit + column)) & TILE_FLOOR);
@@ -613,16 +847,40 @@ void floor_check_exit_shim(FloorResult result)
     abi_flag(P_C, true);
 }
 
+FloorResult RichterFloorCheck(void)
+{
+    return floor_check(RichterFloorOddScreen);
+}
+
 void abi_RichterFloorCheck(void)
 {
     floor_check_exit_shim(RichterFloorCheck());
 }
 
 /*
+ * @routine 01E0:5DE MariaFloorCheck
+ * @run 6D:BDDE
+ * WHAT IT DOES: RichterFloorCheck in Maria's overlay: whether the columns read have a floor under her, and at which.
+ * HOW: The same instructions, branching back to MariaFloorOddScreen on an odd screen.
+ * WAITS: no.
+ * Entry, exit: as RichterFloorCheck.
+ */
+FloorResult MariaFloorCheck(void)
+{
+    return floor_check(MariaFloorOddScreen);
+}
+
+void abi_MariaFloorCheck(void)
+{
+    floor_check_exit_shim(MariaFloorCheck());
+}
+
+/*
  * One column's point read a fixed number of rows below him, as the low column check, the floor and the solid check make it:
  * the offset (a call), its add to his X, his Y plus the rows, and the read (a call) entered with that add's A and flags.
  */
-static ColumnRead column_probe(uint8_t column, uint8_t below, uint16_t ret_offset, uint16_t ret_read)
+static ColumnRead column_probe(uint8_t column, uint8_t below, uint16_t ret_offset, uint16_t ret_read,
+                               const ColumnsLayout *layout)
 {
     ColumnRead one = { column, 0, below, false, { TILE_EMPTY_PAGE, 0, 0, 0, 0, 0 }, 0, false };
     ColumnOffset offset;
@@ -630,7 +888,7 @@ static ColumnRead column_probe(uint8_t column, uint8_t below, uint16_t ret_offse
     uint8_t base;
 
     jsr_push(ret_offset);
-    offset = RichterColumnOffset(column);
+    offset = layout->offset(column);
     jsr_pop();
     base = RD8(OBJ->x_lo[0]);
     across = add_bytes(offset.value, base, false);
@@ -639,7 +897,7 @@ static ColumnRead column_probe(uint8_t column, uint8_t below, uint16_t ret_offse
     row = add_bytes(base, below, false);
     read_entry_shim(row, column, offset.index);
     jsr_push(ret_read);
-    one.read = RichterReadBelow(row.value, row.carry);
+    one.read = layout->read_below(row.value, row.carry);
     jsr_pop();
     one.row = base;
     one.read_made = !row.carry;
@@ -664,7 +922,7 @@ LowColumns RichterLowColumnsBlocked(void)
     static const uint16_t offset_ret[2] = { 0xBB03, 0xBB03 };
 
     for (int column = 0; column < BLOCKED_COLUMNS; column++) {
-        one = column_probe((uint8_t)column, COLUMNS_BELOW_LOW, offset_ret[column], 0xBB12);
+        one = column_probe((uint8_t)column, COLUMNS_BELOW_LOW, offset_ret[column], 0xBB12, &richter_columns);
         low.row = one.row;
         low.read_made = one.read_made;
         low.last = one.read;
@@ -714,7 +972,24 @@ void abi_RichterLowColumnsBlocked(void)
  * Entry: X kept unless a column was found. Exit: A 1 and N 0, Z 0 on a floor, else A 0, Z set.
  * C from the lift, V as the last step left it. Clobbers zTemp00-03, zTemp10.
  */
-FloorProbe RichterFloor(void)
+/* A character's overlay's floor probe: the returns of its four calls, the copies it calls, and the Y it sets past
+ * the top of the map. */
+typedef struct {
+    uint16_t columns_return, check_return, offset_return, read_return;
+    ColumnsEnd (*columns)(void);
+    FloorResult (*check)(void);
+    const ColumnsLayout *probe;
+    uint8_t top_y;
+} FloorLayout;
+
+static const FloorLayout richter_floor = {
+    0xBBC9, 0xBBCC, 0xBBD1, 0xBBE0, RichterReadColumns, RichterFloorCheck, &richter_columns, FLOOR_TOP_OF_MAP
+};
+static const FloorLayout maria_floor = {
+    0xBEED, 0xBEF0, 0xBEF5, 0xBF04, MariaReadColumns, MariaFloorCheck, &maria_columns, 0
+};
+
+static FloorProbe floor_probe(const FloorLayout *layout)
 {
     FloorProbe probe = { 0 };
     ColumnRead one;
@@ -726,17 +1001,17 @@ FloorProbe RichterFloor(void)
         probe.how = FLOOR_BARRED;
         return probe;
     }
-    jsr_push(0xBBC9);
-    probe.columns = RichterReadColumns();
+    jsr_push(layout->columns_return);
+    probe.columns = layout->columns();
     jsr_pop();
-    jsr_push(0xBBCC);
-    probe.check = RichterFloorCheck();
+    jsr_push(layout->check_return);
+    probe.check = layout->check();
     jsr_pop();
     if (probe.check.how == FLOOR_NONE) {
         probe.how = FLOOR_NOTHING_UNDER;
         return probe;
     }
-    one = column_probe(probe.check.column, COLUMNS_BELOW_CHECK, 0xBBD1, 0xBBE0);
+    one = column_probe(probe.check.column, COLUMNS_BELOW_CHECK, layout->offset_return, layout->read_return, layout->probe);
     probe.row = one.row;
     probe.read_made = one.read_made;
     probe.read = one.read;
@@ -765,7 +1040,7 @@ FloorProbe RichterFloor(void)
     probe.lift_c = high.carry;
     probe.lift_v = high.overflow;
     if (high.value & 0x80) {
-        WR8(OBJ->y_lo[0], FLOOR_TOP_OF_MAP);
+        WR8(OBJ->y_lo[0], layout->top_y);
         WR8(OBJ->y_hi[0], 0);
         probe.how = FLOOR_OFF_THE_TOP;
         return probe;
@@ -774,6 +1049,11 @@ FloorProbe RichterFloor(void)
     probe.push = push;
     probe.how = (push & PUSH_LIFTING) ? FLOOR_LANDED_PUSHED : FLOOR_LANDED;
     return probe;
+}
+
+FloorProbe RichterFloor(void)
+{
+    return floor_probe(&richter_floor);
 }
 
 void floor_exit_shim(FloorProbe probe)
@@ -820,6 +1100,25 @@ void abi_RichterFloor(void)
     floor_exit_shim(RichterFloor());
 }
 
+/*
+ * @routine 01E0:6E5 MariaFloor
+ * @run 6D:BEE5
+ * WHAT IT DOES: RichterFloor in Maria's overlay: whether she stands on a floor, and lifts her out of it; a lift past
+ * the top of the map leaves her Y at 0, not 2.
+ * HOW: RichterFloor's instructions calling MariaReadColumns, MariaFloorCheck, MariaColumnOffset and MariaReadBelow.
+ * WAITS: no.
+ * Entry, exit: as RichterFloor.
+ */
+FloorProbe MariaFloor(void)
+{
+    return floor_probe(&maria_floor);
+}
+
+void abi_MariaFloor(void)
+{
+    floor_exit_shim(MariaFloor());
+}
+
 static uint8_t column_answer(ColumnRead one)
 {
     return one.read_made ? tile_answer(one.read) : 0;
@@ -846,7 +1145,7 @@ void column_read_exit_shim(ColumnRead one)
  */
 ColumnRead RichterSolidUnderColumn(uint8_t column)
 {
-    return column_probe(column, COLUMNS_BELOW_CHECK, 0xAA32, 0xAA41);
+    return column_probe(column, COLUMNS_BELOW_CHECK, 0xAA32, 0xAA41, &richter_columns);
 }
 
 static uint8_t solid_answer(ColumnRead one)
@@ -1426,6 +1725,51 @@ void abi_RichterLiftByColumn(void)
 }
 
 /*
+ * @routine 01E0:5A4 MariaLiftByColumn
+ * @run 6D:BDA4
+ * WHAT IT DOES: Lifts Maria out of the floor by how deep this column read; above the top of the map she is put at 0.
+ * HOW: Her Y less the column's depth in RichterColumnRow, signed. Unlike RichterLiftByColumn the depth is not
+ * cleared, and a lift past the top leaves her Y at 0, not 2.
+ * WAITS: no.
+ * Entry: X column. Exit: A her Y high byte, N and Z from it; C and V from the subtract. X and Y kept. Clobbers zTemp10.
+ */
+ColumnLift MariaLiftByColumn(uint8_t column)
+{
+    uint16_t depth_field = (uint16_t)(RichterColumnRow + column);
+    ColumnLift lift = { false, 0, 0, 0, false, false };
+    uint8_t value, y_lo, y_hi;
+    Sum low, high;
+
+    WR8(ZP->temp10, 0);
+    value = rd8(depth_field);
+    if (value & 0x80) {
+        DEC8(ZP->temp10);
+    }
+    y_lo = RD8(OBJ->y_lo[0]);
+    value = rd8(depth_field);
+    low = sub_bytes(y_lo, value, true);
+    WR8(OBJ->y_lo[0], low.value);
+    y_hi = RD8(OBJ->y_hi[0]);
+    value = RD8(ZP->temp10);
+    high = sub_bytes(y_hi, value, low.carry);
+    WR8(OBJ->y_hi[0], high.value);
+    lift.c = high.carry;
+    lift.v = high.overflow;
+    lift.a = high.value;
+    if (high.value & 0x80) {
+        WR8(OBJ->y_lo[0], 0);
+        WR8(OBJ->y_hi[0], 0);
+        lift.off_the_top = true;
+    }
+    return lift;
+}
+
+void abi_MariaLiftByColumn(void)
+{
+    column_lift_exit_shim(MariaLiftByColumn(cpu.x));
+}
+
+/*
  * @routine 01BC:27A RichterLandOnFloor
  * @run 6D:BA7A
  * WHAT IT DOES: If there is a floor under him, lifts him out of it.
@@ -1512,6 +1856,9 @@ WallProbe PlayerWall(uint8_t side)
     if (resident_at(PlayerOvlWall) == DISC(0x01B9, 0x021)) {
         return RichterWall(side);
     }
+    if (resident_at(PlayerOvlWall) == DISC(0x01DD, 0x021)) {
+        return MariaWall(side);
+    }
     other.answer = player_overlay_shim(PlayerOvlWall, true, side);
     return other;
 }
@@ -1523,6 +1870,9 @@ FloorProbe PlayerFloor(void)
     if (resident_at(PlayerOvlFloor) == DISC(0x01B9, 0x024)) {
         return RichterFloor();
     }
+    if (resident_at(PlayerOvlFloor) == DISC(0x01DD, 0x024)) {
+        return MariaFloor();
+    }
     other.answer = player_overlay_shim(PlayerOvlFloor, false, 0);
     return other;
 }
@@ -1533,6 +1883,9 @@ ColumnsEnd PlayerMoved(void)
 
     if (resident_at(PlayerOvlMoved) == DISC(0x01B9, 0x006)) {
         return RichterReadColumns();
+    }
+    if (resident_at(PlayerOvlMoved) == DISC(0x01DD, 0x006)) {
+        return MariaReadColumns();
     }
     player_overlay_shim(PlayerOvlMoved, false, 0);
     return other;

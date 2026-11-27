@@ -2321,6 +2321,8 @@ static int tag_of_fn(void *fn)
     return fn_cache[h].tag;
 }
 
+static uint64_t *nonres_calls;   /* per tag: entries of its C while its bytes were not resident, and the first caller + 1 */
+
 void __cyg_profile_func_enter(void *fn, void *site)
 {
     int tag;
@@ -2329,6 +2331,16 @@ void __cyg_profile_func_enter(void *fn, void *site)
     if (!cur_fs)
         return;
     tag = tag_of_fn(fn);
+    if (mode == MODE_HYBRID && tag >= 0 && !rondo_tags[tag].rom && !tag_resident(&rondo_tags[tag])) {
+        /* The C of a routine entered while its bytes are not the ones loaded at its address: another overlay's copy
+         * is there, which the original's JSR reaches. Reported with the C that called it. */
+        int n = *cur_fsn, from = n ? cur_fs[(n < FS_MAX ? n : FS_MAX) - 1] : -1;
+
+        if (!nonres_calls)
+            nonres_calls = calloc((size_t)rondo_tag_count * 2, sizeof *nonres_calls);
+        if (!nonres_calls[2 * tag]++)
+            nonres_calls[2 * tag + 1] = (uint64_t)(from + 1);
+    }
     if (in_swap >= 0 && tag >= 0 && tag != in_swap) {
         if (!ran_inside)
             ran_inside = calloc(rondo_tag_count, sizeof *ran_inside);
@@ -4244,6 +4256,12 @@ void check_finish(void)
                 (unsigned long long)left_run_holds);
         fprintf(report, "left hand-overs made at the close's PC, the C past it with the original's registers: %llu\n",
                 (unsigned long long)left_back);
+        if (nonres_calls)
+            for (unsigned i = 0; i < rondo_tag_count; i++)
+                if (nonres_calls[2 * i])
+                    fprintf(report, "NONRESIDENT %s entered %llu times while another copy was loaded at %04X (first from %s)\n",
+                            rondo_tags[i].name, (unsigned long long)nonres_calls[2 * i], rondo_tags[i].run,
+                            nonres_calls[2 * i + 1] ? rondo_tags[nonres_calls[2 * i + 1] - 1].name : "-");
         fprintf(report, "calls into original code still running at the script's end, run on the machine: %llu\n",
                 (unsigned long long)end_calls);
         fprintf(report, "jumps into original code from a C called by another C, run with the original's stack: %llu\n",

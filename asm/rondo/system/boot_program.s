@@ -107,7 +107,8 @@ BootStart_at4:
 ; HOW: ma_mul8u for the record's offset (A times 5), zTemp00-01 the record, zTemp08-09 the op; the sector less
 ; $F32 into zBiosCl, Ch and Dl, zBiosDh 1, zBiosB $8000, zBiosAl the count.
 ; WAITS: yes, in the card's cd_read.
-; Entry: A the record. Exit: A the op that ended the list, N and Z from it; Y as the last op left it; C and V from
+; Entry: A the record. Exit: A the op that ended the list, N and Z from it; Y 4 for an empty list, 3 after a bank op,
+; as cd_read left it after a read op (nothing loads Y again before the RTS); C and V from
 ; the last pointer add; X as the card's last call left it (0 after a read).
 LoadBootBlocks:
     sta z:zBiosAl

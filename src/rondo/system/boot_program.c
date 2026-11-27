@@ -57,6 +57,12 @@ static uint8_t tax_answer_shim(void)
     return cpu.a;
 }
 
+/* After cd_read: the Y it left, which no instruction of the read op loads again before the list's next op. */
+static uint8_t card_y_shim(void)
+{
+    return cpu.y;
+}
+
 /* After ex_getver: the version in X, compared with 3 (CPX), the carry the answer. */
 static bool card_version_shim(void)
 {
@@ -215,7 +221,8 @@ void abi_BootStart(void)
  * HOW: ma_mul8u for the record's offset (A times 5), zTemp00-01 the record, zTemp08-09 the op; the sector less
  * $F32 into zBiosCl, Ch and Dl, zBiosDh 1, zBiosB $8000, zBiosAl the count.
  * WAITS: yes, in the card's cd_read.
- * Entry: A the record. Exit: A the op that ended the list, N and Z from it; Y as the last op left it; C and V from
+ * Entry: A the record. Exit: A the op that ended the list, N and Z from it; Y 4 for an empty list, 3 after a bank op,
+ * as cd_read left it after a read op (nothing loads Y again before the RTS); C and V from
  * the last pointer add; X as the card's last call left it (0 after a read).
  */
 BootLoad LoadBootBlocks(uint8_t record)
@@ -284,8 +291,8 @@ BootLoad LoadBootBlocks(uint8_t record)
                 cd_read_entry_shim(value, sum);
                 call_orig(0x3128, CARD_CD_READ);
                 answer = tax_answer_shim();
+                r.y = card_y_shim();
             } while (answer != 0);
-            r.y = 2;
             step = 3;
         }
         sum = add_bytes(step, RD8(ZP->temp08), false);

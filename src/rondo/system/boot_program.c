@@ -49,6 +49,12 @@ static void cd_read_entry_shim(uint8_t a, Sum last)
     abi_flag(P_V, last.overflow);
 }
 
+/* After cd_read: the Y the card leaves, which nothing after it in LoadBootBlocks changes until the next op. */
+static uint8_t cd_read_y_shim(void)
+{
+    return cpu.y;
+}
+
 /* After cd_read: its answer by TAX into X, N and Z from it. */
 static uint8_t tax_answer_shim(void)
 {
@@ -284,8 +290,8 @@ BootLoad LoadBootBlocks(uint8_t record)
                 cd_read_entry_shim(value, sum);
                 call_orig(0x3128, CARD_CD_READ);
                 answer = tax_answer_shim();
+                r.y = cd_read_y_shim();
             } while (answer != 0);
-            r.y = 2;
             step = 3;
         }
         sum = add_bytes(step, RD8(ZP->temp08), false);

@@ -1648,6 +1648,9 @@ EndingRun ModeEnding(void)
     jsr_push(0x54AC);
     run.scene = LoadSceneScript(SCENE_COMMON);
     jsr_pop();
+    /* StageEnter hands its caller's X and Y to ResetGameState: the registers as ResetGameState and the scene left them. */
+    reset_game_state_exit_shim();
+    scene_shim(SCENE_COMMON, &run.scene);
     jsr_push(0x54AF);
     run.enter = StageEnter();
     jsr_pop();

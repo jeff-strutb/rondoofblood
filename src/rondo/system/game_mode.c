@@ -1067,14 +1067,14 @@ StageRun ModeStage(void)
         run.path = STAGE_BOSS;
         wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_BOSS));
         run.adpcm_sum = add_bytes(ADPCM_BOSS, rd8(zCharacter), false);
-        jsr_push(0x5279);
+        jsr_push(0x527B);
         run.adpcm = AdpcmLoad(run.adpcm_sum.value);
         jsr_pop();
         run.scene_a = LoadSceneScript(SCENE_BOSS);   /* a tail JMP: no frame */
     } else if (rd8(zModeEvents) & EVENT_SCREEN) {
         run.path = STAGE_SCREEN;
         wr8(zModeEvents, (uint8_t)(rd8(zModeEvents) & ~EVENT_SCREEN));
-        jsr_push(0x528E);
+        jsr_push(0x5291);
         ResetGameState(wait_regs_live_shim());
         jsr_pop();
         wr8(zMusicWanted, 0xFF);

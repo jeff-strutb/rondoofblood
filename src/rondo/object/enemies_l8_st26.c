@@ -809,7 +809,7 @@ GatesArm SpawnerWithScrollGates(uint8_t slot)
     jsr_push(0xB1BB);
     ClearObjectInY(y);
     jsr_pop();
-    jsr_push(0xB1C2);
+    jsr_push(0xB1C0);
     placed = StartObjectAtPlace(0x55, slot, y);
     jsr_pop();
     WR8(OBJ->f34b8[slot], 0xD0);

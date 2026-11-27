@@ -2102,7 +2102,7 @@ ObjArm StartThrownPiece(uint8_t slot)
     r.fifth = RD8(OBJ->facing_left[slot]);
     r.arm = TH_STRAIGHT;
     if (r.fifth != 0) {
-        jsr_push(0xBCCD);
+        jsr_push(0xBCD0);
         r.sum = NegateVelocityX(slot);
         jsr_pop();
         r.arm = TH_REVERSED;

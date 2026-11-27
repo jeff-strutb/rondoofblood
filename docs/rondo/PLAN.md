@@ -77,7 +77,7 @@ instruction timing.
 | 0 | the routine's bytes in the built image equal the disc's, and its header is complete |
 | C | every byte of the routine was run by a script, or is exempt by proof |
 | A5 | each call of the C, alone, gives the original's outputs, with its accesses in the original's order |
-| A7 | whole scripts in lockstep, the C running in place for every call: calls an interrupt lands in, calls that cross a frame, calls into original code and waits included. A routine passes when every script that reaches it is identical and measured |
+| A7 | (not a gate for T3 until the game is done: the ruling below) whole scripts in lockstep, the C running in place for every call: calls an interrupt lands in, calls that cross a frame, calls into original code and waits included. A routine passes when every script that reaches it is identical and measured |
 
 **Exempt by proof** (decided 2026-11-21): only bytes that no input, no
 poke of work RAM and no unit call at the routine's own entry can run
@@ -121,8 +121,14 @@ document it as such." Applied:
 |---|---|
 | T1 | traced; in the raw intake with address labels; reassembles exact |
 | T2 | C written and filed, assembly named and filed; not yet certified |
-| T3 | the C is proper C and certified behaviour exact: gates 0, C, A5, A7 pass |
+| T3 | the C is proper C and certified behaviour exact: gates 0, C and A5 pass (A7 not required: the ruling below) |
 | T4 | T3, and its assembly is symbolic and byte identical in place in the whole image |
+
+**A5 alone certifies** (the maintainer's ruling of 2026-11-27, verbatim: "A5 it is, solely, until we
+think the game is done. Then and only then we discuss more."). A routine is certified on its own
+calls: each call's real inputs from the record, run through the C, every output the original's
+(gate A5), with every byte of it run (gate C). Lockstep (A7) is not run by the runner and certifies
+nothing until the game is done; the ledger still shows its column.
 
 M1 = every routine T3. M2 = every routine T4 and the data track rebuilt
 byte exact. Progress is measured in code bytes on the disc, with code no

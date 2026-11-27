@@ -215,6 +215,11 @@ def landing_report(rec, chash, changed, rev, main):
     return lines
 
 
+# A5 alone: the maintainer's ruling of 2026-11-27 ("A5 it is, solely, until we think the game is done"). Lockstep
+# (A7) is not run by `once`; `served --a7` still runs it when asked.
+ONCE_MODE = "a5"
+
+
 def measure(tree, box, out, script, mode="both"):
     r = run_job(sys.executable, os.path.join(tree, "tools", "rondo", "oracle_io.py"), "job", tree,
                 script, os.path.join(out, script), box, mode, timeout=SCRIPT_TIMEOUT)
@@ -225,10 +230,11 @@ def measure(tree, box, out, script, mode="both"):
 
 
 def red(res):
-    """A script with a result is red when its A7 is not identical or A5 found a defect (a divergent or
-    order-flagged call): the script is then run again alone."""
+    """A script with a result is red when A5 found a defect (a divergent or order-flagged call), or its A7,
+    when run, is not identical: the script is then run again alone."""
     return bool(res.get("errors")) is False and (
-        res["a7"].get("verdict") != "IDENTICAL" or any(v["divergent"] or v["order_flags"] for v in res["a5"].values()))
+        (bool(res["a7"]) and res["a7"].get("verdict") != "IDENTICAL") or
+        any(v["divergent"] or v["order_flags"] for v in res["a5"].values()))
 
 
 def pack(d):
@@ -247,10 +253,13 @@ def store(rec, res, rev, chash, ext, top):
     a7 = [{"script": s, "routine": r, "swapped": res["reach"].get(r, [0, 0])[0],
            "ran_inside": res["reach"].get(r, [0, 0])[1], "chash": "", "epoch": ep, "defects": pack(defects.get(r, {}))}
           for r in sorted(set(res["reach"]) | set(defects))]
-    f = res["a7"]["fields"]
-    row = {"script": s, "script_hash": records.script_hash(s, top), "verdict": res["a7"]["verdict"],
-           "detail": res["a7"]["detail"], "a5_secs": res["secs"]["a5"], "a7_secs": res["secs"]["a7"],
-           "world": "", "epoch": ep, "source": rev, "a7_code": res["a7"]["code"],
+    a7r = res["a7"] or {"verdict": "NOT RUN", "detail": "A7 not run (A5 alone, the ruling of 2026-11-27)", "code": "",
+                        "fields": {k: "" for k in ("compared", "expected", "defects", "parked", "kept", "unreached",
+                                                    "unopened")}}
+    f = a7r["fields"]
+    row = {"script": s, "script_hash": records.script_hash(s, top), "verdict": a7r["verdict"],
+           "detail": a7r["detail"], "a5_secs": res["secs"]["a5"], "a7_secs": res["secs"]["a7"],
+           "world": "", "epoch": ep, "source": rev, "a7_code": a7r["code"],
            "a7_frames": f"{f['compared']}/{f['expected']}", "a7_defects": f["defects"],
            "a7_open": f"{f['parked']}/{f['kept']}/{f['unreached']}/{f['unopened']}"}
     rec.replace_script(s, row, a5, a7)
@@ -296,7 +305,7 @@ def cycle(main, opts):
     t0 = time.time()
     results = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-        for res in ex.map(lambda s: measure(tree, box, out, s), sorted(plan)):
+        for res in ex.map(lambda s: measure(tree, box, out, s, ONCE_MODE), sorted(plan)):
             results[res["script"]] = res
             log(f"  measured {res['script']}: " + ("FAILED " + "; ".join(res["errors"]) if res.get("errors") else
                 f"A7 {res['a7']['verdict']}, {len(res['a5'])} routines called"), b)
@@ -306,7 +315,7 @@ def cycle(main, opts):
     if reds_first:
         log(f"  {len(reds_first)} red script(s): each rerun alone, {workers} at once", b)
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-            for s, second in zip(reds_first, ex.map(lambda x: measure(tree, box, out, x), reds_first)):
+            for s, second in zip(reds_first, ex.map(lambda x: measure(tree, box, out, x, ONCE_MODE), reds_first)):
                 flipped = not red(second) if not second.get("errors") else False
                 log(f"  {s} rerun: " + ("FAILED " + "; ".join(second["errors"]) if second.get("errors") else
                     "now green (a flake)" if flipped else "red again"), b)
@@ -329,7 +338,7 @@ def cycle(main, opts):
         res = results[s]
         if s in failed:
             continue
-        if res["a7"]["verdict"] != "IDENTICAL":
+        if res["a7"] and res["a7"]["verdict"] != "IDENTICAL":
             reds.append(f"{rev} A7 {s}: {res['a7']['detail']}")
         reds += [f"{rev} A5 {s} {r}: {v['divergent']} divergent, {v['order_flags']} order of {v['calls']}: {v['detail']}"
                  for r, v in sorted(res["a5"].items()) if v["divergent"] or v["order_flags"]]

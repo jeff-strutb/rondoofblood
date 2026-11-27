@@ -142,8 +142,9 @@ decomps:
   the original disc are right.
 - **C, behaviour exact.** Readable, documented C per routine, held to
   the Aladdin standard. Certified against the running original (T3): at
-  every call the scripts make, and with every routine swapped in at once,
-  in lockstep with the original, frame for frame. C that runs original
+  every call the scripts make, each call's real inputs run through the C
+  and every output compared (A5), with every byte run. Lockstep waits until
+  the game is done (the maintainer's ruling of 2026-11-27). C that runs original
   code is not yet decompiled, and is reported with its count.
 
 ## Current Status

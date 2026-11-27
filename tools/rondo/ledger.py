@@ -27,7 +27,8 @@ has a counting, identical A7 result. With any script unmeasured the ledger is no
 output, as the runner passes it) or are worked out from this checkout. A waiver is a line in
 config/rondo/ledger_waivers.csv (routine,gate,reason), which only the maintainer writes.
 
-T2 C and assembly filed. T3 proper_c, gate_0, gate_c, gate_a5 and gate_a7. T4 T3 and symbolic.
+T2 C and assembly filed. T3 proper_c, gate_0, gate_c and gate_a5 (gate_a7 is shown, not required:
+the maintainer's ruling of 2026-11-27, A5 solely until the game is done). T4 T3 and symbolic.
 It reads the gate records, the traces and the image, and runs nothing but git.
 """
 import csv
@@ -269,7 +270,7 @@ def optimistic(gates, marked, reached, held=False):
     if not marked:
         return ""
     if reached:
-        return "" if all(gates[g] for g in ("proper_c", "gate_0", "gate_c", "gate_a5", "gate_a7")) else "contradicted"
+        return "" if all(gates[g] for g in CERT_GATES) else "contradicted"
     if len(marked[1]) < PROOF_MIN:
         return "no proof"
     if held:
@@ -283,8 +284,14 @@ def waivers():
     return {(row["routine"], row["gate"]) for row in csv.DictReader(open(WAIVERS, newline=""))}
 
 
+# The gates a routine is certified on. The maintainer's ruling of 2026-11-27: "A5 it is, solely, until we
+# think the game is done." A routine is certified on its own calls matching (A5) with every byte run (gate C);
+# lockstep (gate_a7) is still shown in the ledger but certifies nothing until the game is done.
+CERT_GATES = ("proper_c", "gate_0", "gate_c", "gate_a5")
+
+
 def tier_of(gates, filed):
-    t3 = all(gates[g] for g in ("proper_c", "gate_0", "gate_c", "gate_a5", "gate_a7"))
+    t3 = all(gates[g] for g in CERT_GATES)
     return "T4" if t3 and gates["symbolic"] else "T3" if t3 else "T2" if filed else ""
 
 

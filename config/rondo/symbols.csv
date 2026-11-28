@@ -130,6 +130,8 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 34B8,abs,OBJ_FALL_DRIFT_DELAY,the player's use of OBJ_WORK_D while falling: frames until the fall's small X speed is given (4 from RichterToFall; $FF none)
 3510,abs,OBJ_PAD_FORCE_FRAMES,the player's use of OBJ_WORK_E: frames left of a forced pad (RichterFrame holds the pad at OBJ_PAD_FORCED meanwhile)
 3568,abs,OBJ_PAD_FORCED,the player's use of OBJ_WORK_F: the pad RichterFrame gives while OBJ_PAD_FORCE_FRAMES runs
+34B8,abs,OBJ_FLING_SOURCE,a flung object's use of OBJ_WORK_D: the slot it was flung from (FlungObjectLaunch reads its place; FlungObject its kind)
+3510,abs,OBJ_FLING_WAIT,a flung object's use of OBJ_WORK_E: frames left before it flies (FlungObjectWait)
 2EE0,abs,OBJ_WORK_A,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
 2F38,abs,OBJ_SCROLL_BAND,bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to
 3098,abs,OBJ_EVENT_ID,event this object records

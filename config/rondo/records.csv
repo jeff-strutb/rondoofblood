@@ -530,6 +530,8 @@ member,PlayerVarsB,anchor_object,u8,07,PlayerAnchorObject,
 member,PlayerVarsB,f3bf7,u8,08,PlayerByte3BF7,
 member,PlayerVarsB,pad_history,u8[4],09,PadHistory,
 alias,ObjectTable,state_before_hit,work_g,OBJ_STATE_BEFORE_HIT
+alias,ObjectTable,fling_source,work_d,OBJ_FLING_SOURCE
+alias,ObjectTable,fling_wait,work_e,OBJ_FLING_WAIT
 alias,ObjectTable,step_before_hit,work_h,OBJ_STEP_BEFORE_HIT
 alias,ObjectTable,hit_frames,work_i,OBJ_HIT_FRAMES
 alias,ObjectTable,knock_right,work_l,OBJ_KNOCK_RIGHT

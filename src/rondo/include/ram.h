@@ -127,6 +127,8 @@
 #define OBJ_FALL_DRIFT_DELAY 0x34B8 /* the player's use of OBJ_WORK_D while falling: frames until the fall's small X speed is given (4 from RichterToFall; $FF none) */
 #define OBJ_PAD_FORCE_FRAMES 0x3510 /* the player's use of OBJ_WORK_E: frames left of a forced pad (RichterFrame holds the pad at OBJ_PAD_FORCED meanwhile) */
 #define OBJ_PAD_FORCED 0x3568 /* the player's use of OBJ_WORK_F: the pad RichterFrame gives while OBJ_PAD_FORCE_FRAMES runs */
+#define OBJ_FLING_SOURCE 0x34B8 /* a flung object's use of OBJ_WORK_D: the slot it was flung from (FlungObjectLaunch reads its place; FlungObject its kind) */
+#define OBJ_FLING_WAIT 0x3510 /* a flung object's use of OBJ_WORK_E: frames left before it flies (FlungObjectWait) */
 #define OBJ_WORK_A 0x2EE0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_SCROLL_BAND 0x2F38 /* bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */

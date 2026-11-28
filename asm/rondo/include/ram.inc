@@ -859,3 +859,5 @@ MariaFrameByPlayerFrame = $D3D1 ; an object's frame by her frame less $53 (Maria
 LayerPlaceOffsetsLoAlt = $A77E ; the place offsets' low bytes ScrollXPlusOffset takes when ScrollOffsetSwitch is set, by the index word (0 ahead, 1 behind)
 LayerPlaceOffsetsLo = $A780 ; the place offsets' low bytes by the index word (0 ahead, 1 behind): ScrollXPlusOffset, ScrollYPlusOffset, and DrawBlockColumn and DrawBlockRow for a ScrollColumnBlocks with bit 7
 LayerPlaceOffsetsHi = $A782 ; the place offsets' high bytes by the index word, for LayerPlaceOffsetsLo and LayerPlaceOffsetsLoAlt
+CameraWavePhase = $3EBD ; the phase of the water camera's wave (CameraWaterWave counts it on)
+CameraModes = $A0E6 ; the camera mode handlers by CameraMode, a word each (StageCameraModeDispatch)

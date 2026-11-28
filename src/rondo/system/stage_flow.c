@@ -442,3 +442,29 @@ void abi_StageClearedScrollOn(void)
 {
     stage_regs_load_shim(StageClearedScrollOn(entry_shim()));
 }
+
+/*
+ * @routine 024D:0BF StageCameraStep
+ * @run 6B:80BF
+ * WHAT IT DOES: The camera's frame with the overlay's bank 7 mapped.
+ * HOW: MapOverlayBank7, then the tail JMP to $A08D, the C of the routine loaded there.
+ * WAITS: no.
+ * Entry: nothing. Exit: as CameraStep, entered with A the bank, N, Z, C and V from the map's add.
+ */
+StageRegs StageCameraStep(StageRegs r)
+{
+    ObjArm bank;
+
+    jsr_push(0x80C2);
+    bank = MapOverlayBank7();
+    jsr_pop();
+    r = loaded(r, bank.sum.value);
+    r.c = bank.sum.carry;
+    r.v = bank.sum.overflow;
+    return tail_to(r, 0x80C2, 0xA08D);
+}
+
+void abi_StageCameraStep(void)
+{
+    stage_regs_load_shim(StageCameraStep(entry_shim()));
+}

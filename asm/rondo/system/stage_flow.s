@@ -7,6 +7,16 @@
 StageVec8009_024D:
     jmp ClearStageBitRowsFour
 
+; @routine 024D:0BF StageCameraStep
+; @run 6B:80BF
+; WHAT IT DOES: The camera's frame with the overlay's bank 7 mapped.
+; HOW: MapOverlayBank7, then the tail JMP to $A08D, the C of the routine loaded there.
+; WAITS: no.
+; Entry: nothing. Exit: as CameraStep, entered with A the bank, N, Z, C and V from the map's add.
+StageCameraStep:
+    jsr MapOverlayBank7
+    jmp CameraStep
+
 ; @routine 024D:0C5 StageScrollSpeedsOff
 ; @run 6B:80C5
 ; WHAT IT DOES: Stops the layers' scroll: maps the overlay's bank 7 and runs its ClearScrollSpeeds.

@@ -862,5 +862,7 @@
 #define LayerPlaceOffsetsLoAlt 0xA77E /* the place offsets' low bytes ScrollXPlusOffset takes when ScrollOffsetSwitch is set, by the index word (0 ahead, 1 behind) */
 #define LayerPlaceOffsetsLo 0xA780 /* the place offsets' low bytes by the index word (0 ahead, 1 behind): ScrollXPlusOffset, ScrollYPlusOffset, and DrawBlockColumn and DrawBlockRow for a ScrollColumnBlocks with bit 7 */
 #define LayerPlaceOffsetsHi 0xA782 /* the place offsets' high bytes by the index word, for LayerPlaceOffsetsLo and LayerPlaceOffsetsLoAlt */
+#define CameraWavePhase 0x3EBD /* the phase of the water camera's wave (CameraWaterWave counts it on) */
+#define CameraModes 0xA0E6 /* the camera mode handlers by CameraMode, a word each (StageCameraModeDispatch) */
 
 #endif

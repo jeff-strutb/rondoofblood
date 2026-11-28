@@ -566,6 +566,7 @@ StartTypeAndLaunchUp:
     jsr VecApplyVelocityY
     stz a:OBJ_VY_HI,x
     sxy
+StartTypeAndLaunchUp_end:
     rts
 
 ; @routine 07DC:0C8 AnimateThenFireOrWait

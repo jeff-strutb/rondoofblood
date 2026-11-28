@@ -128,6 +128,15 @@ static inline void list_to_temp10(uint16_t list)
     WR8(ZP->temp11, cpu.a);
 }
 
+/* The same, the high byte loaded and stored first. */
+static inline void list_to_temp10_high_first(uint16_t list)
+{
+    lda((uint8_t)(list >> 8));
+    WR8(ZP->temp11, cpu.a);
+    lda((uint8_t)list);
+    WR8(ZP->temp10, cpu.a);
+}
+
 /* JMP (ZeroPage) through a table of handlers by the object's state or substate. */
 static inline void jump_by_state(uint8_t slot, uint16_t table)
 {

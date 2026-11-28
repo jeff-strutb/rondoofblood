@@ -106,16 +106,16 @@ TossObjectByCount093C:
     jmp State1ByWorkJ093C
 TossObjectByCount093C_at0:
     sty z:zBurstCount
-    ldy a:OBJ_RAIN_COUNT,x
+    ldy a:OBJ_WORK_I,x
     lda a:TossObjectByCount093CKinds,y
     ldy z:zBurstCount
     jsr VecStartObjectAtPlace
-    lda a:OBJ_RAIN_COUNT,x
-    sta a:OBJ_PIECE_NEXT,y
+    lda a:OBJ_WORK_I,x
+    sta a:OBJ_WORK_D,y
     lda a:OBJ_FACING_LEFT,x
     sta a:OBJ_FACING_LEFT,y
     txa
-    sta a:OBJ_SWOOP_SPEED_LO,y
+    sta a:OBJ_WORK_F,y
     lda a:OBJ_WORK_J,x
     bne TossObjectByCount093C_at1
     lda #$F8
@@ -167,7 +167,7 @@ TableThenFollow093C:
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 CountHitThenByState093CStates = $BE2A ; a handler per state
 CountHitThenByState093C:
-    inc a:OBJ_FALL_LO,x
+    inc a:OBJ_WORK_H,x
     jsr BurstWhenHit093C
     lda a:OBJ_STATE,x
     asl a
@@ -223,9 +223,9 @@ ScatterSix093C_at0:
     asl a
     tax
     lda a:ScatterSix093CRows,x
-    sta a:OBJ_PIECE_NEXT,y
+    sta a:OBJ_WORK_D,y
     lda a:ScatterSix093CRows+1,x
-    sta a:OBJ_PIECE_PLACE,y
+    sta a:OBJ_WORK_E,y
     lda a:ScatterSix093CRows+2,x
     sta a:OBJ_VX_HI,y
     lda a:ScatterSix093CRows+3,x
@@ -266,13 +266,13 @@ SpringAway093C:
     sta a:OBJ_WORK_K,x
     jsr VecPlayerDistanceSum
     and #$0F
-    sta a:OBJ_RAIN_COUNT,x
+    sta a:OBJ_WORK_I,x
     jsr PickSpeedAndTurnFromTableC
     jsr VecNegateVelocityX
     jsr VecNegateVelocityY
     jsr HalveVelocity093D
     lda #$0C
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_SUBSTATE,x
@@ -408,7 +408,7 @@ HoverNearTop093D:
     lda a:OBJ_Y_LO,x
     cmp #$10
     bcc HoverNearTop093D_at0
-    lda a:OBJ_FALL_LO,x
+    lda a:OBJ_WORK_H,x
     and #$01
     bne HoverNearTop093D_at1
     jsr HalveVelocity093D
@@ -467,7 +467,7 @@ CountThenByState093D1BF:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 CountdownThenState4_093D:
-    dec a:OBJ_PIECE_PLACE,x
+    dec a:OBJ_WORK_E,x
     bne CountdownThenState4_093D_at0
     lda #$04
     sta a:OBJ_STATE,x
@@ -484,7 +484,7 @@ LoadRecordStartAngle40_093D:
     jsr VecLoadObjectRecord
     jsr VecApplyVelocity
     lda #$40
-    sta a:OBJ_SWOOP_SPEED_LO,x
+    sta a:OBJ_WORK_F,x
     rts
 
 ; @routine 093D:1FE OrbitStepBack093D
@@ -497,17 +497,17 @@ OrbitStepBack093D:
     stz z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_SWOOP_SPEED_LO,x
+    lda a:OBJ_WORK_F,x
     jsr VecSetVelocityFromAngle
     jsr VecApplyVelocity
-    lda a:OBJ_SWOOP_SPEED_LO,x
+    lda a:OBJ_WORK_F,x
     sec
     sbc #$04
-    sta a:OBJ_SWOOP_SPEED_LO,x
+    sta a:OBJ_WORK_F,x
     cmp #$E0
     bne OrbitStepBack093D_at0
     lda #$40
-    sta a:OBJ_SWOOP_SPEED_LO,x
+    sta a:OBJ_WORK_F,x
     inc a:OBJ_STATE,x
 OrbitStepBack093D_at0:
     rts
@@ -522,17 +522,17 @@ OrbitStepForward093D:
     stz z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_SWOOP_SPEED_LO,x
+    lda a:OBJ_WORK_F,x
     jsr VecSetVelocityFromAngle
     jsr VecApplyVelocity
-    lda a:OBJ_SWOOP_SPEED_LO,x
+    lda a:OBJ_WORK_F,x
     clc
     adc #$04
-    sta a:OBJ_SWOOP_SPEED_LO,x
+    sta a:OBJ_WORK_F,x
     cmp #$A0
     bne OrbitStepForward093D_at0
     lda #$40
-    sta a:OBJ_SWOOP_SPEED_LO,x
+    sta a:OBJ_WORK_F,x
     dec a:OBJ_STATE,x
 OrbitStepForward093D_at0:
     rts
@@ -546,7 +546,7 @@ OrbitStepForward093D_at0:
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 ChecksThenByState093D251States = $C272 ; a handler per state
 ChecksThenByState093D251:
-    inc a:OBJ_FALL_LO,x
+    inc a:OBJ_WORK_H,x
     jsr FaceThePlayerInSomeStates
     jsr DamageToState6_093D
     jsr EnterState7OnFlagOrYSignChange
@@ -567,7 +567,7 @@ ChecksThenByState093D251:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 DamageToState6_093D:
-    lda a:OBJ_RAIN_COUNT,x
+    lda a:OBJ_WORK_I,x
     beq DamageToState6_093D_at0
     lda a:OBJ_STATE,x
     cmp #$06
@@ -605,7 +605,7 @@ WalkNearOrAttack093D:
     cly
     jsr WalkWhileFrameChangesB
     lda a:OBJ_FACING_LEFT,x
-    sta a:OBJ_PIECE_PLACE,x
+    sta a:OBJ_WORK_E,x
     jsr VecDistanceXToPlayer
     cmp #$4C
     bcs WalkNearOrAttack093D_at0
@@ -680,7 +680,7 @@ CheckGroundAhead093D:
     sta z:SpriteFlipMask
     lda #$22
     jsr VecProbeTerrain
-    lda a:OBJ_PIECE_PLACE,x
+    lda a:OBJ_WORK_E,x
     asl a
     tay
     lda a:TileHit,y
@@ -695,7 +695,7 @@ CheckGroundAhead093D_at0:
     stz a:OBJ_SUBSTATE,x
     rts
 CheckGroundAhead093D_at1:
-    dec a:OBJ_PIECE_NEXT,x
+    dec a:OBJ_WORK_D,x
     bne CheckGroundAhead093D_at2
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -716,7 +716,7 @@ WalkFarOrRetreat093D:
     jsr WalkWhileFrameChangesB
     lda a:OBJ_FACING_LEFT,x
     eor #$01
-    sta a:OBJ_PIECE_PLACE,x
+    sta a:OBJ_WORK_E,x
     jsr VecDistanceXToPlayer
     cmp #$6C
     bcc WalkFarOrRetreat093D_at0
@@ -753,7 +753,7 @@ LandThenFrame39_093D:
     jsr VecStopOnLandingFrontColumn
     bcc LandThenFrame39_093D_at0
     lda #$0C
-    sta a:OBJ_SWOOP_SPEED_HI,x
+    sta a:OBJ_WORK_G,x
     lda #$39
     sta a:OBJ_FRAME,x
     inc a:OBJ_SUBSTATE,x
@@ -767,7 +767,7 @@ LandThenFrame39_093D_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 CountThenState2_093D:
-    dec a:OBJ_SWOOP_SPEED_HI,x
+    dec a:OBJ_WORK_G,x
     bne CountThenState2_093D_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -804,7 +804,7 @@ BySubstate093DC48D:
 SlashAlongList093DSpeeds = $C50A ; VX high by OBJ_PIECE_PLACE
 SlashAlongList093DList = $C50C ; a frame list
 SlashAlongList093D:
-    stz a:OBJ_RAIN_COUNT,x
+    stz a:OBJ_WORK_I,x
     lda #$C5
     sta z:zTemp11
     lda #$0C
@@ -818,7 +818,7 @@ SlashAlongList093D:
     lda #$46
     jsr VecSoundCommand
 SlashAlongList093D_at0:
-    ldy a:OBJ_PIECE_PLACE,x
+    ldy a:OBJ_WORK_E,x
     lda a:SlashAlongList093DSpeeds,y
     sta a:OBJ_VX_HI,x
     jsr MoveTurningAtWalls093D
@@ -826,7 +826,7 @@ SlashAlongList093D_at0:
     rts
 SlashAlongList093D_at1:
     lda #$01
-    sta a:OBJ_RAIN_COUNT,x
+    sta a:OBJ_WORK_I,x
     lda #$03
     sta a:OBJ_STATE,x
 SlashAlongList093D_at2:
@@ -851,7 +851,7 @@ LandThenWait093DC595:
     lda #$02
     jsr VecSoundCommand
     lda #$18
-    sta a:OBJ_SWOOP_SPEED_HI,x
+    sta a:OBJ_WORK_G,x
     lda #$39
     sta a:OBJ_FRAME,x
     inc a:OBJ_SUBSTATE,x
@@ -912,7 +912,7 @@ LandThenState3_093D_at0:
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 ChecksThenByState093D7C7States = $C7E8 ; a handler per state
 ChecksThenByState093D7C7:
-    inc a:OBJ_PIECE_NEXT,x
+    inc a:OBJ_WORK_D,x
     jsr FacePlayerInSomeStates093D
     jsr GrabWhenStruckOrIdle093E
     jsr State9WhenHit093E
@@ -950,7 +950,7 @@ FacePlayerInSomeStates093D_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 CountdownNextState093D:
-    dec a:OBJ_PIECE_NEXT,x
+    dec a:OBJ_WORK_D,x
     bne CountdownNextState093D_at0
     inc a:OBJ_STATE,x
 CountdownNextState093D_at0:

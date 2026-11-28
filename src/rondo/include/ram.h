@@ -1089,5 +1089,16 @@
 #define MariaWallPushBits 0xBE81 /* the push bits her wall probe tests by side (MariaWall) */
 #define MariaObjectSpeedsY 0xC29A /* the Y speed words her objects take by entry (MariaSetVelocityYFromTable) */
 #define MariaObjectSpeedsX 0xC2ED /* the X speed words her objects take by entry (MariaSetVelocityXFromTable) */
+#define OBJ_SWOOP_SPEED_LO 0x3568 /* kinds 15 and 16's use of OBJ_WORK_F: the speed's low byte MariaObjectFlyAlong gives SetVelocityFromAngle in zTemp00 */
+#define OBJ_SWOOP_SPEED_HI 0x35C0 /* kinds 15 and 16's use of OBJ_WORK_G: the speed's high byte, in zTemp01 (MariaObjectFlyAlong) */
+#define OBJ_RAIN_COUNT 0x3670 /* kind 15's use of OBJ_WORK_I: the pieces of kind 11 it has dropped; its low three bits pick the next one's place (MariaKind15Rain) */
+#define MariaKind16States 0xD603 /* five words by OBJ_STATE: kind 16's states (MariaKind16) */
+#define MariaKind15States 0xD783 /* six words by OBJ_STATE: kind 15's states (MariaKind15) */
+#define MariaKind15StartPlaces 0xD9E5 /* kind 15's X and Y low bytes at its start facing right, a pair by slot less 5 (MariaKind15Start) */
+#define MariaKind15RideSpeedsHi 0xD9E9 /* kind 15's X speed high byte added as it rides, by facing (MariaKind15Ride) */
+#define MariaKind15StartPlacesLeft 0xD9ED /* kind 15's X and Y low bytes at its start facing left (MariaKind15Start) */
+#define MariaKind15StartSpeedsX 0xD9F5 /* kind 15's X speed words at its start, by slot less 5 (MariaKind15Start) */
+#define MariaKind15StartSpeedsY 0xD9FD /* kind 15's Y speed words at its start, by slot less 5 (MariaKind15Start) */
+#define MariaKind15RainPlaces 0xDA05 /* the place of a kind 11 piece from kind 15: X low and high, Y low and high, four bytes by OBJ_RAIN_COUNT's low bits (MariaKind15Rain) */
 
 #endif

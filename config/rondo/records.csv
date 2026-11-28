@@ -579,3 +579,6 @@ alias,ObjectTable,fly_speed_lo,work_e,OBJ_FLY_SPEED_LO
 alias,ObjectTable,fly_speed_hi,work_f,OBJ_FLY_SPEED_HI
 alias,ObjectTable,piece_next,work_d,OBJ_PIECE_NEXT
 alias,ObjectTable,piece_place,work_e,OBJ_PIECE_PLACE
+alias,ObjectTable,swoop_speed_lo,work_f,OBJ_SWOOP_SPEED_LO
+alias,ObjectTable,swoop_speed_hi,work_g,OBJ_SWOOP_SPEED_HI
+alias,ObjectTable,rain_count,work_i,OBJ_RAIN_COUNT

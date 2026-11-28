@@ -148,7 +148,7 @@ typedef struct {
     union { uint8_t fieldd3; uint8_t field_d3; }; /* zFieldD3 */
     uint8_t _gap_00D4[5]; /* no name yet: $20D4-$20D8 */
     uint8_t richter_object; /* zRichterObject */
-    uint8_t hit_slot; /* zHitSlot */
+    union { uint8_t hit_slot; uint8_t burst_count; }; /* zHitSlot */
     uint8_t ram_base_bank; /* zRamBaseBank */
     uint8_t _gap_00DC[25]; /* no name yet: $20DC-$20F4 */
     uint8_t bios_irq_disable; /* BiosIrqDisable */
@@ -310,6 +310,7 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fieldd3) + 0 == zFieldD3
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field_d3) + 0 == zFieldD3, "ZeroPageRec.field_d3 is not at zFieldD3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, richter_object) + 0 == zRichterObject, "ZeroPageRec.richter_object is not at zRichterObject");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, hit_slot) + 0 == zHitSlot, "ZeroPageRec.hit_slot is not at zHitSlot");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, burst_count) == zBurstCount, "ZeroPageRec.burst_count is not at zBurstCount");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, ram_base_bank) + 0 == zRamBaseBank, "ZeroPageRec.ram_base_bank is not at zRamBaseBank");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, bios_irq_disable) + 0 == BiosIrqDisable, "ZeroPageRec.bios_irq_disable is not at BiosIrqDisable");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, bios_a) + 0 == zBiosAl, "ZeroPageRec.bios_a is not at zBiosAl");

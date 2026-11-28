@@ -16,6 +16,8 @@
 #include "ram.h"
 #include "access.h"
 #include "routines.h"
+#include "enemy_objects.h"
+#include "player_objects.h"
 
 enum { R_A = 0x01, R_X = 0x02, R_Y = 0x04, R_NZ = 0x08, R_C = 0x10, R_V = 0x20 };
 
@@ -176,7 +178,7 @@ static inline void regs_exit(Regs r)
  * MExit: a routine's exit when it passes through calls whose exits have their own shims: the registers set before
  * each such call, the call's exit, and the registers set after the last. The wrapper gives them in that order.
  */
-typedef enum { MX_ANIMATION, MX_SOUND, MX_SCRIPT, MX_COLUMNS, MX_FOOTING, MX_LANDING } MxKind;
+typedef enum { MX_ANIMATION, MX_SOUND, MX_SCRIPT, MX_COLUMNS, MX_FOOTING, MX_LANDING, MX_LEDGE, MX_CRASH, MX_TURN, MX_FLOOR, MX_UP_MARKED, MX_READ_BELOW } MxKind;
 
 typedef struct {
     MxKind kind;
@@ -189,7 +191,14 @@ typedef struct {
         ColumnsEnd columns;
         FootingCheck footing;
         LandingLift landing;
+        MariaLedge ledge;
+        ItemCrash crash;
+        TurnWindow turn;
+        FloorResult floor;
+        UpOrMarked up_marked;
+        TileRead read;
     } u;
+    bool carry;             /* MX_READ_BELOW: the row's carry, which says no read was made */
 } MxStep;
 
 /*
@@ -205,6 +214,7 @@ typedef struct {
 } MExit;
 
 void hit_script_exit_shim(uint8_t script);                         /* object/richter_state.c */
+void item_crash_exit_shim(ItemCrash crash);                        /* object/player_input.c */
 
 static inline MExit mx_none(void)
 {
@@ -275,6 +285,62 @@ static inline void mx_landing(MExit *e, LandingLift landing)
     mx_push(e, s);
 }
 
+static inline void mx_ledge(MExit *e, MariaLedge ledge)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_LEDGE;
+    s.u.ledge = ledge;
+    mx_push(e, s);
+}
+
+static inline void mx_crash(MExit *e, ItemCrash crash)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_CRASH;
+    s.u.crash = crash;
+    mx_push(e, s);
+}
+
+static inline void mx_turn(MExit *e, TurnWindow turn)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_TURN;
+    s.u.turn = turn;
+    mx_push(e, s);
+}
+
+static inline void mx_floor(MExit *e, FloorResult floor)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_FLOOR;
+    s.u.floor = floor;
+    mx_push(e, s);
+}
+
+static inline void mx_up_marked(MExit *e, UpOrMarked up)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_UP_MARKED;
+    s.u.up_marked = up;
+    mx_push(e, s);
+}
+
+/* MariaReadBelow's exit, as its wrapper gives it. */
+static inline void mx_read_below(MExit *e, TileRead read, bool carry)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_READ_BELOW;
+    s.u.read = read;
+    s.carry = carry;
+    mx_push(e, s);
+}
+
 static inline void mx_script(MExit *e, uint8_t script)
 {
     MxStep s = { 0 };
@@ -328,6 +394,28 @@ static inline void mx_exit(MExit e)
             break;
         case MX_LANDING:
             landing_exit_shim(e.step[i].u.landing);
+            break;
+        case MX_LEDGE:
+            maria_ledge_check_exit_shim(e.step[i].u.ledge);
+            break;
+        case MX_CRASH:
+            item_crash_exit_shim(e.step[i].u.crash);
+            break;
+        case MX_FLOOR:
+            floor_check_exit_shim(e.step[i].u.floor);
+            break;
+        case MX_UP_MARKED:
+            marked_columns_exit_shim(e.step[i].u.up_marked.above);
+            abi_flag(P_C, e.step[i].u.up_marked.c);
+            break;
+        case MX_READ_BELOW:
+            read_or_nothing_exit_shim(e.step[i].u.read, !e.step[i].carry);
+            break;
+        case MX_TURN:
+            abi_ended(e.step[i].u.turn.end);
+            if (e.step[i].u.turn.x_set) {
+                cpu.x = e.step[i].u.turn.x;
+            }
             break;
         }
     }
@@ -424,6 +512,14 @@ TileRead MariaReadAbove(uint8_t row, bool on_the_map);             /* object/pla
 AnimationStep MariaAnimationRunning(void);                         /* object/player_input.c */
 FootingCheck MariaHasNoFooting(void);                              /* object/player_terrain.c */
 LandingLift MariaLandOnFloor(void);                                /* object/player_terrain.c */
+bool MariaJumpPressed(void);                                       /* object/player_terrain.c */
+bool MariaUpHeld(void);                                            /* object/player_terrain.c */
+ItemCrash MariaTryItemCrash(void);                                 /* object/player_input.c */
+TurnWindow MariaUseItem(void);                                     /* object/player_input.c */
+uint8_t MariaStepIndex(void);                                      /* object/richter_state.c */
+AnimationWaitEnd MariaAnimationWait(void);                         /* object/player_input.c */
+uint8_t MariaClearSlotAsKind(uint8_t slot, uint8_t kind);          /* object/richter_objects.c */
+Ended MariaReplaceSlotsOneTwo(void);                               /* object/richter_objects.c */
 
 /* object/maria_frame.c */
 /* What an animation set left, then the registers set after it (its wrapper gives the animation's exit first). */
@@ -475,6 +571,35 @@ Regs MariaLiftThree(void);
 Regs MariaJumpSpeed(void);
 MExit MariaJump(void);
 void MariaHitReact(void);
+
+/* object/maria_stand.c */
+/* A routine that may pull its caller's return address off the stack (PLA, PLA) and jump on: dropped says it did. */
+typedef struct { MExit e; bool dropped; } MariaDrop;
+MariaDrop MariaGroundChecks(uint8_t x, uint8_t y);
+MExit MariaStandFrame(uint8_t x, uint8_t y);
+MExit MariaStandAttackFrame(uint8_t x, uint8_t y);
+MExit MariaStateStand(uint8_t x, uint8_t y);
+MExit MariaClimbStart(uint8_t column);
+
+/* object/maria_ground.c */
+MExit MariaStateWalk(uint8_t x, uint8_t y);
+Regs MariaStart9AObjects(uint8_t value, uint8_t from, uint8_t y);
+MExit MariaBit3Burst(uint8_t x, uint8_t y);
+MExit MariaCheckBit3Under(uint8_t x, uint8_t y);
+Regs MariaReplaceSlotsOneTwoKind5(void);
+MExit MariaReadAhead(uint8_t distance, uint8_t x, uint8_t y);
+MExit MariaSlideCheck(uint8_t x, uint8_t y);
+MExit MariaSlideStart(uint8_t x, uint8_t y);
+Regs MariaFaceByPad(uint8_t pad);
+MExit MariaCrouchRise(void);
+MExit MariaCrouchAttack(uint8_t x, uint8_t y);
+MariaDrop MariaCrouchChecks(uint8_t x, uint8_t y);
+MExit MariaCrouchFrame(uint8_t x, uint8_t y);
+void MariaCrouchIdle(void);
+MExit MariaCrouchAttackFrame(uint8_t x, uint8_t y);
+MExit MariaCrouchStart(uint8_t x, uint8_t y);
+MExit MariaStandUp(uint8_t x, uint8_t y);
+MExit MariaStateCrouch(uint8_t x, uint8_t y);
 
 void abi_MariaObjectApplyVelocity(void);                           /* object/richter_objects.c */
 void abi_MariaApplyMoveAndPush(void);                              /* object/richter_state.c */

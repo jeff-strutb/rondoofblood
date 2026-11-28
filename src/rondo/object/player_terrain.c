@@ -1885,7 +1885,6 @@ void abi_RichterLedgeCheck(void)
  * columns her CPX #2 can be equal, so a column of bit $20 at the third column counts only with the pad, and the
  * compare's N and Z stand.
  */
-typedef struct { bool blocked; bool found; LowColumns low; BlockedColumns high; uint8_t a, nz, x; bool c; } MariaLedgePart;
 
 /* The bit $20 test shared by both halves: a column of bit $20 counts unless it is the third (CPX #2). */
 static void maria_ledge_bits(MariaLedgePart *r, uint8_t bits, uint8_t column, uint8_t pad_bit)
@@ -1998,7 +1997,6 @@ void abi_MariaLedgeHigh(void)
 }
 
 /* Maria's ledge check: the push, then her low half and her high half. */
-typedef struct { LedgeEnd how; uint8_t push; MariaLedgePart low, high; } MariaLedge;
 
 /*
  * @routine 01E0:565 MariaLedgeCheck
@@ -2032,7 +2030,7 @@ MariaLedge MariaLedgeCheck(void)
     return check;
 }
 
-static void maria_ledge_check_exit_shim(MariaLedge check)
+void maria_ledge_check_exit_shim(MariaLedge check)
 {
     if (check.how == LEDGE_PUSHED) {
         abi_flag(P_V, (check.push & 0x40) != 0);
@@ -2305,15 +2303,6 @@ ColumnsEnd PlayerMoved(void)
  */
 enum { TILE_BIT_02 = 0x02, MARIA_ROWS_ABOVE = 0xFC, MARIA_ROWS_BELOW = 0x04, MARIA_FEET_MARKED = PlayerByte3BE3 + 1 };
 
-/* One of her three columns read for bit $02: what the read left, and the bit. */
-typedef struct {
-    int column;           /* the column of bit $02, or -1 */
-    uint8_t index;        /* MariaColumnOffset's Y */
-    bool above;           /* read by MariaReadAbove, not MariaReadBelow */
-    bool on_map;          /* the row's add kept it on the map */
-    TileRead last;
-    uint8_t answer;       /* A after the read */
-} MarkedColumns;
 
 /* The three columns: the offset (nudged a pixel inward for the read above), her X, her Y plus `rows`, the read. */
 static MarkedColumns marked_columns(bool above, uint8_t rows, uint16_t offset_ret, uint16_t read_ret)
@@ -2357,7 +2346,7 @@ static MarkedColumns marked_columns(bool above, uint8_t rows, uint16_t offset_re
 }
 
 /* The registers the last read left, then A the bit: at the column of the bit, X the column; else X 3, Z and C set. */
-static void marked_columns_exit_shim(MarkedColumns r)
+void marked_columns_exit_shim(MarkedColumns r)
 {
     cpu.y = r.index;
     if (r.above) {
@@ -2430,8 +2419,6 @@ void abi_MariaFeetMarked(void)
     }
 }
 
-/* Up held, or a column of bit $02 above her: the probe and the pad. */
-typedef struct { MarkedColumns above; bool c; } UpOrMarked;
 
 /*
  * @routine 01E0:36F MariaUpOrMarkedAbove

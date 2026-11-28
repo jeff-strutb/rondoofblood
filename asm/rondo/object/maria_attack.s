@@ -471,6 +471,7 @@ MariaSpeedWalk:
     sta a:OBJ_VX_LO
     lda a:MariaWalkSpeeds+1,y
     sta a:OBJ_VX_HI
+MariaSpeedWalk_done:
     rts
 
 ; @routine 01DD:6C8 MariaJump

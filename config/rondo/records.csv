@@ -452,6 +452,7 @@ alias,ZeroPageRec,field_c4,fieldc4,
 alias,ZeroPageRec,field_c6,fieldc6,
 alias,ZeroPageRec,field_ca,fieldca,
 alias,ZeroPageRec,field_d3,fieldd3,
+alias,ZeroPageRec,burst_count,hit_slot,zBurstCount
 alias,SoundChannels,channel25_b0,f25b0,
 alias,SoundChannels,channel25_e0,f25e0,
 

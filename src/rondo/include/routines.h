@@ -1194,6 +1194,32 @@ typedef struct {
 } FootingCheck;
 
 typedef enum { LEDGE_PUSHED, LEDGE_LOW, LEDGE_HIGH, LEDGE_NONE } LedgeEnd;
+/*
+ * One half of Maria's ledge check (object/player_terrain.c): what its column check found, and the A, X, N and Z and C
+ * it leaves; then the whole check: the push, then her low half and her high half.
+ */
+typedef struct { bool blocked; bool found; LowColumns low; BlockedColumns high; uint8_t a, nz, x; bool c; } MariaLedgePart;
+typedef struct { LedgeEnd how; uint8_t push; MariaLedgePart low, high; } MariaLedge;
+MariaLedge MariaLedgeCheck(void);
+void maria_ledge_check_exit_shim(MariaLedge check);
+/* object/player_terrain.c: */
+/* One of her three columns read for bit $02: what the read left, and the bit. */
+typedef struct {
+    int column;           /* the column of bit $02, or -1 */
+    uint8_t index;        /* MariaColumnOffset's Y */
+    bool above;           /* read by MariaReadAbove, not MariaReadBelow */
+    bool on_map;          /* the row's add kept it on the map */
+    TileRead last;
+    uint8_t answer;       /* A after the read */
+} MarkedColumns;
+/* Up held, or a column of bit $02 above her: the probe and the pad. */
+typedef struct { MarkedColumns above; bool c; } UpOrMarked;
+MarkedColumns MariaMarkedAbove(void);
+MarkedColumns MariaFeetMarked(void);
+UpOrMarked MariaUpOrMarkedAbove(void);
+void marked_columns_exit_shim(MarkedColumns r);
+/* A read made, or not (A 0 by CLA, N and Z as they stood). */
+void read_or_nothing_exit_shim(TileRead read, bool read_made);
 
 typedef struct {
     LedgeEnd how;

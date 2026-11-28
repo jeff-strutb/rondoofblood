@@ -906,5 +906,10 @@
 #define OBJ_FLASH_FRAMES 0x34B8 /* the screen flash object's use of OBJ_WORK_D: frames left (StageFlashStart, StageFlashEnd) */
 #define OBJ_TALLY_WAIT 0x3510 /* the player's use of OBJ_WORK_E in the stage tally: the wait StageSubStepTally sets */
 #define OBJ_TALLY_STEP 0x3568 /* the player's use of OBJ_WORK_F in the stage tally: cleared by StageSubStepTally */
+#define MariaStandSteps 0xA5E7 /* three words by OBJ_SUBSTATE: standing still, the attack, the item crash (MariaStateStand) */
+#define MariaCrouchSteps 0xA8A2 /* five words by OBJ_SUBSTATE: crouched, the attack, nothing, going down, standing up (MariaStateCrouch) */
+#define MariaSlideAhead 0xB095 /* how far ahead the slide check reads, by facing: 7, -7 (MariaSlideCheck) */
+#define MariaSlideSpeeds 0xB0FF /* her slide's X speed by facing, two words: $02C0, $FD40 (MariaSlideStart) */
+#define zBurstCount 0x20DA /* MariaStart9AObjects's use of zHitSlot: how many of its $9A objects it has started */
 
 #endif

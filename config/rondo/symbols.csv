@@ -920,3 +920,8 @@ C73B,abs,MariaObjectHandlers,the handlers of her objects in slots 3 to 15 by OBJ
 34B8,abs,OBJ_FLASH_FRAMES,the screen flash object's use of OBJ_WORK_D: frames left (StageFlashStart, StageFlashEnd)
 3510,abs,OBJ_TALLY_WAIT,the player's use of OBJ_WORK_E in the stage tally: the wait StageSubStepTally sets
 3568,abs,OBJ_TALLY_STEP,the player's use of OBJ_WORK_F in the stage tally: cleared by StageSubStepTally
+A5E7,abs,MariaStandSteps,three words by OBJ_SUBSTATE: standing still, the attack, the item crash (MariaStateStand)
+A8A2,abs,MariaCrouchSteps,five words by OBJ_SUBSTATE: crouched, the attack, nothing, going down, standing up (MariaStateCrouch)
+B095,abs,MariaSlideAhead,how far ahead the slide check reads, by facing: 7, -7 (MariaSlideCheck)
+B0FF,abs,MariaSlideSpeeds,her slide's X speed by facing, two words: $02C0, $FD40 (MariaSlideStart)
+DA,zp,zBurstCount,MariaStart9AObjects's use of zHitSlot: how many of its $9A objects it has started

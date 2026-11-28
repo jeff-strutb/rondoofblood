@@ -17,7 +17,7 @@ RunStageFrame:
     jsr StepScrollAndRunObjects
     jsr StepStageEnding
     bbr0 zField8E,RunStageFrame_at0
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     lda #$01
     sta z:zGameSubMode
     lda z:zStage
@@ -28,6 +28,6 @@ RunStageFrame:
 RunStageFrame_at1:
     lda #$01
     sta a:OBJ_WORK_E
-    stz a:PlayerByte3BF0
+    stz a:PlayerStartPose
 RunStageFrame_at0:
     rts

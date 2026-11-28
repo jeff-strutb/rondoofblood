@@ -229,7 +229,7 @@ StepScrollThenMoveOrFadeOut:
     lda #$10
     sta a:OBJ_WORK_E
     lda #$02
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     stz a:OBJ_WORK_F
     ldy a:OBJ_START_ARG,x
     lda a:OBJ_SPRITE_SET
@@ -256,7 +256,7 @@ StepScrollThenMoveOrFadeOut_at0:
     lda #$10
     sta a:OBJ_WORK_E
     lda #$02
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     stz a:OBJ_WORK_F
     lda #$0C
     jmp BiosCdFade

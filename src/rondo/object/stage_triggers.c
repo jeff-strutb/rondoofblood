@@ -215,7 +215,7 @@ TriggerEnd StageTriggerObjectB(uint8_t x)
     end.a = a;
     if ((a & 0x80) != 0) {
         /* Untraced: a negative number takes the same exit as a missing hit. */
-        a = rd8(PlayerByte3BD7);
+        a = rd8(PlayerDoorReady);
         end.a = a;
         if (a == 0) {
             WR8(OBJ->hit_taken[x], 0);

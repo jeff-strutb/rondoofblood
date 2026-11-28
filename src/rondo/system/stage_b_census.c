@@ -752,14 +752,14 @@ void abi_StageSubStepNoneB152D(void)
 {
 }
 
-/* The fade restarted when PlayerByte3BD8 is set: cleared, $9B 2, and the fade's countdown run on. */
+/* The fade restarted when TimeSlowMode is set: cleared, $9B 2, and the fade's countdown run on. */
 static Regs restart_fade(Regs r)
 {
-    r = loaded(r, rd8(PlayerByte3BD8));
+    r = loaded(r, rd8(TimeSlowMode));
     if (r.a == 0) {
         return r;
     }
-    wr8(PlayerByte3BD8, 0);
+    wr8(TimeSlowMode, 0);
     r = loaded(r, 2);
     wr8(FADE_COUNT, 2);
     return StageFadeTimer152D(r);
@@ -777,11 +777,11 @@ static Regs restart_fade(Regs r)
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-step 2, the player died: sub-mode 2 with zField80, zField89 and the fall's step cleared, the
- * overlay at $A000's piece at $A067, the forced presses cleared; when PlayerByte3BD8 is set it is cleared and the fade
+ * overlay at $A000's piece at $A067, the forced presses cleared; when TimeSlowMode is set it is cleared and the fade
  * starts again from 2.
  * HOW: Stores; MapOverlayBank7 and $A067; a jump into StageFadeTimer152D.
  * WAITS: no.
- * Entry: nothing. Exit: A PlayerByte3BD8 (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer152D.
+ * Entry: nothing. Exit: A TimeSlowMode (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer152D.
  */
 StageRegs StageSubStepDeath152D(StageRegs r)
 {
@@ -815,7 +815,7 @@ void abi_StageSubStepDeath152D(void)
  *
  * WHAT IT DOES: Sub-step 3, the stage cleared: sub-mode 3 with its step 0, its table at $84 picked by zField8C (none:
  * 2; 3 or 4: 3; else 1, with $2743 set to 1); the overlay at $A000's piece at $A067, the forced presses and
- * PlayerByte3BD8 cleared.
+ * TimeSlowMode cleared.
  * HOW: Compares of zField8C; stores; MapOverlayBank7 and $A067.
  * WAITS: no.
  * Entry: nothing. Exit: as $A067 left them.
@@ -845,7 +845,7 @@ StageRegs StageSubStepCleared152D(StageRegs r)
     r = resident_call(r, 0x8171, 0xA067);
     wr8(PadForcedPress, 0);
     wr8(PadForcedPressB, 0);
-    wr8(PlayerByte3BD8, 0);
+    wr8(TimeSlowMode, 0);
     return r;
 }
 
@@ -931,10 +931,10 @@ void abi_StageSubStepFadeOutB152D(void)
  *
  * WHAT IT DOES: Sub-step 6: sub-mode 6 with zField80, zField89 and the fall's step cleared, the overlay at $A000's
  * piece at $A067, the forced presses cleared, the player's step at $3358 0 and its count at $3310 $40; when
- * PlayerByte3BD8 is set it is cleared and the fade starts again from 2.
+ * TimeSlowMode is set it is cleared and the fade starts again from 2.
  * HOW: Stores; MapOverlayBank7 and $A067; a jump into StageFadeTimer152D.
  * WAITS: no.
- * Entry: nothing. Exit: A PlayerByte3BD8 (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer152D.
+ * Entry: nothing. Exit: A TimeSlowMode (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer152D.
  */
 StageRegs StageSubStepBoss152D(StageRegs r)
 {
@@ -2467,7 +2467,7 @@ void abi_StageFadeRestart152D(void)
  * left there, not these bytes.
  *
  * WHAT IT DOES: Sub-mode 5, the stage's opening: the events step, the rows, the overlay at $A000's frame, the scroll,
- * the opening's piece at $8BD5; once zField8E's bit 0 is set PlayerByte3BD8 and the player's count at $3310 are
+ * the opening's piece at $8BD5; once zField8E's bit 0 is set TimeSlowMode and the player's count at $3310 are
  * cleared and the stage is in play, sub-mode 1.
  * HOW: StageModeEventsStep152D, StageHudStep152D, MapOverlayBanks5And6, $A000, StageOverlayFrame152D, MapOverlayBank7,
  * $A08D, StageOpeningStep152D; a bit test; stores.
@@ -2487,7 +2487,7 @@ StageRegs StageSubModeOpening152D(StageRegs r)
     if ((RD8(ZP->field8e) & 0x01) == 0) {
         return r;
     }
-    wr8(PlayerByte3BD8, 0);
+    wr8(TimeSlowMode, 0);
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
     WR8(OBJ->work_b[16], 0);
@@ -2953,7 +2953,7 @@ static Regs take_door(Regs r, bool by_pad)
         r.nz = r.y;
         r = loaded(r, rd8((uint16_t)(PadOverrides + r.y)));
     } else {
-        r = loaded(r, rd8(PlayerByte3BD7));
+        r = loaded(r, rd8(PlayerDoorReady));
     }
     if (r.a != 0) {
         r = loaded(r, RD8(OBJ->hit_status[80 + slot]));
@@ -3020,8 +3020,8 @@ void abi_DoorHandler152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $87C6 runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: An object handler for a door PlayerByte3BD7 opens: as DoorHandler152D, with no pad override (the
- * packed byte gives the room and the entry only), the gate PlayerByte3BD7. Its fall-back that clears the state is
+ * WHAT IT DOES: An object handler for a door PlayerDoorReady opens: as DoorHandler152D, with no pad override (the
+ * packed byte gives the room and the entry only), the gate PlayerDoorReady. Its fall-back that clears the state is
  * DoorHandler152D's bytes at $87C2.
  * HOW: Loads, shifts through the carry and stores; the tests and the stores of the door.
  * WAITS: no.
@@ -3758,7 +3758,7 @@ void abi_StageDigitAddress152D(void)
  *
  * WHAT IT DOES: The pause screen's choice, reached from StagePausedFrame152D: on the first pad's left or right (bits 4
  * and 6 of BiosJoyTrigger) the sub-weapon at zField93 moves to the next or the one before (the table at $8AC0, two on
- * for right), its frame at $2A9E from the table at $8878, PlayerByte3BD6 1 and zField94 $99.
+ * for right), its frame at $2A9E from the table at $8878, PlayerItemFirstUse 1 and zField94 $99.
  * HOW: Pad bits; table reads; stores.
  * WAITS: no.
  * Entry: nothing. Exit, no press: A 0, N and Z from it. Else: A $99, N and Z from it, X the new choice. Y, C and V
@@ -3783,7 +3783,7 @@ StageRegs StagePausedSelect152D(StageRegs r)
     r = loaded(r, rd8((uint16_t)(0x8878 + choice)));
     WR8(OBJ->frame[54], r.a);
     r = loaded(r, 1);
-    wr8(PlayerByte3BD6, 1);
+    wr8(PlayerItemFirstUse, 1);
     r = loaded(r, 0x99);
     WR8(ZP->field94, 0x99);
     return r;
@@ -3943,7 +3943,7 @@ void abi_StagePausedFrame152D(void)
  *
  * WHAT IT DOES: Starts the stage's opening when zField8E's bit 0 is clear: the display's pieces 3 and 4
  * (StageDrawPiece152D), the opening's objects placed (pages at $2B74 and $2C4D one less, speeds at $2D24 and $2DB5 4,
- * counts at $3354 and $3355 $20), PlayerByte3BD8 2, sound $3B, the CD's wait at $33E4 cleared.
+ * counts at $3354 and $3355 $20), TimeSlowMode 2, sound $3B, the CD's wait at $33E4 cleared.
  * HOW: A bit test; calls with X 3 and 4; stores; the sound hook.
  * WAITS: no.
  * Entry: nothing. Exit, bit 0 set: everything kept. Else: as the sound hook left them.
@@ -3968,7 +3968,7 @@ StageRegs StageOpeningStart152D(StageRegs r)
     WR8(OBJ->work_b[84], 0x20);
     WR8(OBJ->work_b[85], 0x20);
     r = loaded(r, 0x02);
-    wr8(PlayerByte3BD8, 0x02);
+    wr8(TimeSlowMode, 0x02);
     r = loaded(r, 0x3B);
     r = vector_call(r, 0x8BD1, abi_VecSoundCommand);
     WR8(OBJ->hit_taken[52], 0);
@@ -7293,7 +7293,7 @@ void abi_GateStart152D(void)
  * run. No input or poke of work RAM can load the sectors, and a unit call at $992B runs whatever overlay another scene
  * left there, not these bytes.
  *
- * WHAT IT DOES: The gate waits for the player: with PlayerByte3BD7 set and the byte at $2746 clear, and the gate's
+ * WHAT IT DOES: The gate waits for the player: with PlayerDoorReady set and the byte at $2746 clear, and the gate's
  * state at $31F0 1 or 2, the stage is cleared through it (zField8C its packed byte's low nibble plus one, zSubStep 3),
  * the gate goes on to its next step (its count 0, its timer 4); a packed byte's high nibble names a sound (raster
  * effect and $3EA4 cleared, the kernel's piece at $400F with X 6 and A the nibble with bit 7).
@@ -7306,7 +7306,7 @@ StageRegs GateWaitPlayer152D(StageRegs r)
     uint8_t gate;
 
     gate = (uint8_t)(rd8(GATE_BUSY) ^ 0x01);
-    r = loaded(r, (uint8_t)(gate & rd8(PlayerByte3BD7)));
+    r = loaded(r, (uint8_t)(gate & rd8(PlayerDoorReady)));
     if (r.a == 0) {
         return r;
     }

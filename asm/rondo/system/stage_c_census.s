@@ -410,7 +410,7 @@ DemoPlay3CD_at2:
 ; WHAT IT DOES: Sub-mode 0, the stage's start: as StageSubModeStart152D (the kernel's piece at $4006, the route's
 ; pieces, the row map, the screen, the overlay at $A000's start, the display, the opening, the level), the pause and
 ; the fade cleared, sub-mode 1, zField86 zField83; the demo recorder started (DemoStart3CD). zField8E's bit 0 clear
-; sends the stage to sub-mode 5 with the count at $3310 one less and PlayerByte3BF0 1; else $407B runs unless zStage is
+; sends the stage to sub-mode 5 with the count at $3310 one less and PlayerStartPose 1; else $407B runs unless zStage is
 ; negative.
 ; HOW: Calls in turn $4006, StageRouteSetUpA3CD, StageRouteSetUpB3CD, StageLoadRowMap3CD, StageResetScroll3CD,
 ; MapOverlayBanks5And6, $A003, StageHudStart3CD, StageOpeningStart3CD, StageLevelStart3CD and DemoStart3CD.
@@ -444,7 +444,7 @@ StageSubModeStart3CD_at0:
     sta z:zGameSubMode
     dec a:$3310
     lda #$01
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     rts
 
 ; @routine 03CD:168 StageFadeTimer3CD
@@ -556,7 +556,7 @@ StageFrameSkip3CD_at0:
 ; these bytes.
 ;
 ; WHAT IT DOES: Sub-mode 1, the stage in play: the demo recorder, the fade and the pause; paused, the paused frame.
-; Else the events step; the stage's timer PlayerByte3BE8-3BE9 counted down (at its end the kernel's piece at $4015
+; Else the events step; the stage's timer PlayerSlowTimerLo-3BE9 counted down (at its end the kernel's piece at $4015
 ; with A 9 and X 7), and while it runs the scroll's steps cleared and, on odd counts, the overlay's frame skipped;
 ; unless a sub-step is asked for the kernel's piece at $40D8; then for a stage with zField8E's bit 7 the scroll by
 ; StageCenterPlayer3CD, else the overlay's piece at $A08D (and $A009 on even counts); the overlays' frame, the
@@ -574,12 +574,12 @@ StageSubModePlay3CD:
     jmp StagePausedFrame3CD
 StageSubModePlay3CD_at1:
     jsr $81AD
-    lda a:PlayerByte3BE8
-    ora a:PlayerByte3BE9
+    lda a:PlayerSlowTimerLo
+    ora a:PlayerSlowTimerHi
     beq StageSubModePlay3CD_at2
-    dec a:PlayerByte3BE8
+    dec a:PlayerSlowTimerLo
     bne StageSubModePlay3CD_at3
-    dec a:PlayerByte3BE9
+    dec a:PlayerSlowTimerHi
     bne StageSubModePlay3CD_at3
     lda #$09
     ldx #$07
@@ -589,7 +589,7 @@ StageSubModePlay3CD_at3:
     stz a:ScrollStepXLo
     stz a:ScrollStepYHi
     stz a:ScrollStepYLo
-    tst #$01,a:PlayerByte3BE8
+    tst #$01,a:PlayerSlowTimerLo
     bne StageSubModePlay3CD_at4
 StageSubModePlay3CD_at2:
     jsr StageFrameA0003CD
@@ -604,7 +604,7 @@ StageSubModePlay3CD_at0:
     bra StageSubModePlay3CD_at7
 StageSubModePlay3CD_at6:
     jsr StageFrameA08D3CD
-    tst #$01,a:PlayerByte3BE8
+    tst #$01,a:PlayerSlowTimerLo
     bne StageSubModePlay3CD_at7
     jsr StageFrameA0093CD
 StageSubModePlay3CD_at7:
@@ -630,11 +630,11 @@ StageSubModePlay3CD_at5:
 ; these bytes.
 ;
 ; WHAT IT DOES: Sub-step 2, the player died: sub-mode 2 with zField80, zField89 and the fall's step cleared, the
-; overlay at $A000's piece at $A067 (StageFrameA0673CD), the forced presses cleared; when PlayerByte3BD8 is set it is
+; overlay at $A000's piece at $A067 (StageFrameA0673CD), the forced presses cleared; when TimeSlowMode is set it is
 ; cleared and the fade starts again from 2.
 ; HOW: Stores; StageFrameA0673CD; a jump into StageFadeTimer3CD.
 ; WAITS: no.
-; Entry: nothing. Exit: A PlayerByte3BD8 (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer3CD.
+; Entry: nothing. Exit: A TimeSlowMode (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer3CD.
 StageSubStepDeath3CD:
     lda #$02
     sta z:zGameSubMode
@@ -644,11 +644,11 @@ StageSubStepDeath3CD:
     stz a:PadForcedPress
     stz a:PadForcedPressB
     stz z:$88
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     bne StageSubStepDeath3CD_at0
     rts
 StageSubStepDeath3CD_at0:
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     lda #$02
     sta z:$9B
     jmp StageFadeTimer3CD
@@ -666,7 +666,7 @@ StageSubStepDeath3CD_at0:
 ;
 ; WHAT IT DOES: Sub-step 3, the stage cleared: sub-mode 3 with its step 0 and its table at $84 picked by zField8C
 ; (none: 2; negative: 4; 3 to 6 or $0F up: 3; else 1, with $2743 set to 1); the overlay at $A000's piece at $A067, the
-; forced presses and PlayerByte3BD8 cleared.
+; forced presses and TimeSlowMode cleared.
 ; HOW: Tests and compares of zField8C; stores; StageFrameA0673CD.
 ; WAITS: no.
 ; Entry: nothing. Exit: as $A067 left them.
@@ -701,7 +701,7 @@ StageSubStepCleared3CD_at4:
     jsr StageFrameA0673CD
     stz a:PadForcedPress
     stz a:PadForcedPressB
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     rts
 
 ; @routine 03CD:2BD StageSubStepFadeOut3CD
@@ -763,10 +763,10 @@ StageSubStepFadeOutB3CD:
 ;
 ; WHAT IT DOES: Sub-step 6: sub-mode 6 with zField80, zField89 and the fall's step cleared, the overlay at $A000's
 ; piece at $A067, the forced presses cleared, the player's step at $3358 0 and its count at $3310 $40; when
-; PlayerByte3BD8 is set it is cleared and the fade starts again from 2.
+; TimeSlowMode is set it is cleared and the fade starts again from 2.
 ; HOW: Stores; StageFrameA0673CD; a jump into StageFadeTimer3CD.
 ; WAITS: no.
-; Entry: nothing. Exit: A PlayerByte3BD8 (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer3CD.
+; Entry: nothing. Exit: A TimeSlowMode (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer3CD.
 StageSubStepTally3CD:
     lda #$06
     sta z:zGameSubMode
@@ -779,11 +779,11 @@ StageSubStepTally3CD:
     stz a:OBJ_WORK_C
     lda #$40
     sta a:$3310
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     bne StageSubStepTally3CD_at0
     rts
 StageSubStepTally3CD_at0:
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     lda #$02
     sta z:$9B
     jmp StageFadeTimer3CD
@@ -1748,7 +1748,7 @@ StageClearedEnding3CD_at0:
 ;
 ; WHAT IT DOES: The play frame's scroll while zField8E's bit 7 is set: the player's count at $3310 $80 and its step
 ; cleared, the overlay at $A000's piece at $A009. Unless the byte at $2860 is set or the player's state at $2818 is 2
-; or more, PlayerByte3BF0 is 1 and the player is walked to the screen's middle ($80) by 4 a frame with the scroll
+; or more, PlayerStartPose is 1 and the player is walked to the screen's middle ($80) by 4 a frame with the scroll
 ; moving the other way and the overlay's piece at $A08D; there the centring ends.
 ; HOW: Tests; StageFrameA0093CD; adds, masks and compares; StageFrameA08D3CD; stores and a bit cleared.
 ; WAITS: no.
@@ -1770,7 +1770,7 @@ StageCenterPlayer3CD_at1:
     sta a:$3310
     stz a:OBJ_WORK_C
     lda #$01
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     jsr StageFrameA0093CD
     lda a:OBJ_X_HI+8
     clc
@@ -1807,7 +1807,7 @@ StageCenterPlayer3CD_at3:
 StageCenterPlayer3CD_at5:
     rmb7 z:zField8E
     stz a:$3310
-    stz a:PlayerByte3BF0
+    stz a:PlayerStartPose
 StageCenterPlayer3CD_at4:
     rts
 
@@ -1825,7 +1825,7 @@ StageCenterPlayer3CD_at4:
 ;
 ; WHAT IT DOES: Sub-mode 4, the fade out: the events step and the display; unless the fade is at its step 3, the
 ; overlay's piece at $A08D for the raster effects $0C and $0D, the overlays' frame on every fourth frame, and
-; PlayerByte3BD8 cleared; then the step at zField80 from the seven at $8779, under banks 5 and 6.
+; TimeSlowMode cleared; then the step at zField80 from the seven at $8779, under banks 5 and 6.
 ; HOW: StageModeEventsStep152D, StageHudStep3CD; compares; StageFrameA08D3CD; TST of zFrameTick;
 ; StageOverlayFrame3CD; MapOverlayBanks5And6; zField80 doubled indexes the table, whose word is jumped through.
 ; WAITS: as the step.
@@ -1848,7 +1848,7 @@ StageSubModeFade3CD_at1:
     bne StageSubModeFade3CD_at2
     jsr StageOverlayFrame3CD
 StageSubModeFade3CD_at2:
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
 StageSubModeFade3CD_at3:
     jsr $802D
     lda z:zField80
@@ -1984,8 +1984,8 @@ StageFadeRestart3CD_at0:
 ; these bytes.
 ;
 ; WHAT IT DOES: Sub-mode 5, the stage's opening: the events step, the display, the overlay at $A000's frame and its
-; piece at $A08D, the overlays' frame, the opening's step; once zField8E's bit 0 is set PlayerByte3BD8 is cleared,
-; sub-mode 1 (the player's count at $3310 1) and PlayerByte3BF0 cleared.
+; piece at $A08D, the overlays' frame, the opening's step; once zField8E's bit 0 is set TimeSlowMode is cleared,
+; sub-mode 1 (the player's count at $3310 1) and PlayerStartPose cleared.
 ; HOW: StageModeEventsStep152D, StageHudStep3CD, StageFrameA0003CD, StageFrameA08D3CD, StageOverlayFrame3CD,
 ; StageOpeningStep3CD; a bit test; stores.
 ; WAITS: no.
@@ -1998,11 +1998,11 @@ StageSubModeOpening3CD:
     jsr StageOverlayFrame3CD
     jsr StageOpeningStep3CD
     bbr0 zField8E,StageSubModeOpening3CD_at0
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     lda #$01
     sta z:zGameSubMode
     sta a:$3310
-    stz a:PlayerByte3BF0
+    stz a:PlayerStartPose
 StageSubModeOpening3CD_at0:
     rts
 
@@ -2419,7 +2419,7 @@ DoorHandler3CD_at1:
 ; these bytes.
 ;
 ; WHAT IT DOES: An object handler for a door: not yet placed, $40D2 and the packed byte unpacked (its room in five
-; bits). Placed: the byte at $3790 cleared; a door whose packed byte has bit 7 needs PlayerByte3BD7; with the byte at
+; bits). Placed: the byte at $3790 cleared; a door whose packed byte has bit 7 needs PlayerDoorReady; with the byte at
 ; $3BD3 other than 1 and the object's state at $31F0 from 1 to 4 the stage goes through it (zField83 the room,
 ; zField87 the entry, zField8C 0, zSubStep 2, the player's Y bytes at $2CE0 and $2D28 cleared); else the state is
 ; cleared (at $3BD3 1 nothing is done).
@@ -2446,7 +2446,7 @@ DoorHandlerB3CD_at1:
     stz a:$3790,x
     lda a:$2F20,x
     bpl DoorHandlerB3CD_at2
-    lda a:PlayerByte3BD7
+    lda a:PlayerDoorReady
     beq DoorHandler3CD_at1
 DoorHandlerB3CD_at2:
     lda a:PlayerMayLeaveTop
@@ -3047,7 +3047,7 @@ StagePausedSelect3CD_at1:
     lda a:$8B18,x
     sta a:$2A9E
     lda #$01
-    sta a:PlayerByte3BD6
+    sta a:PlayerItemFirstUse
     lda #$99
     sta z:zField94
     rts
@@ -3157,7 +3157,7 @@ StagePausedFrame3CD_at7:
 ; these bytes.
 ;
 ; WHAT IT DOES: Starts the stage's opening when zField8E's bit 0 is clear, as StageOpeningStart152D without its sound:
-; the display's pieces 3 and 4, the opening's objects placed, PlayerByte3BD8 2, the wait at $33E4 cleared.
+; the display's pieces 3 and 4, the opening's objects placed, TimeSlowMode 2, the wait at $33E4 cleared.
 ; HOW: A bit test; calls with X 3 and 4; stores.
 ; WAITS: no.
 ; Entry: nothing. Exit, bit 0 set: everything kept. Else: A 2, N and Z from it, X 4, Y and the flags as
@@ -3179,7 +3179,7 @@ StageOpeningStart3CD_at0:
     sta a:$3354
     sta a:$3355
     lda #$02
-    sta a:PlayerByte3BD8
+    sta a:TimeSlowMode
     stz a:$33E4
     rts
 
@@ -5411,7 +5411,7 @@ GateStart3CD:
 GateWaitPlayer3CD:
     lda a:LevelFullWalk+2
     eor #$01
-    and a:PlayerByte3BD7
+    and a:PlayerDoorReady
     beq GateWaitPlayer3CD_at0
     lda a:$31F0,x
     beq GateWaitPlayer3CD_at0

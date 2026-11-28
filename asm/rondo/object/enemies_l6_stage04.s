@@ -171,7 +171,7 @@ SetFirstObjectTimersThenCount:
     lda #$04
     sta a:OBJ_WORK_E
     lda #$02
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     lda #$20
     sta a:OBJ_WORK_F
     dec a:OBJ_WORK_D,x

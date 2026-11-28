@@ -1132,22 +1132,22 @@ typedef struct {
     uint8_t climb_reach; /* PlayerClimbReach */
     uint8_t may_leave_top; /* PlayerMayLeaveTop */
     uint8_t climb_land_facing; /* PlayerClimbLandFacing */
-    union { uint8_t f3bd5; uint8_t attack_kind; }; /* PlayerByte3BD5 */
+    uint8_t attack_kind; /* PlayerAttackKind */
     uint8_t item_first_use; /* PlayerItemFirstUse */
-    union { uint8_t f3bd7; uint8_t door_ready; }; /* PlayerByte3BD7 */
+    uint8_t door_ready; /* PlayerDoorReady */
     uint8_t time_slow_mode; /* TimeSlowMode */
     uint8_t pad_overrides[4]; /* PadOverrides */
     uint8_t forced_press; /* PadForcedPress */
     uint8_t invincible_timer; /* PlayerInvincibleTimer */
     uint8_t forced_press_b; /* PadForcedPressB */
     uint8_t item_ready; /* RichterItemReady */
-    union { uint8_t f3be1; uint8_t whip_struck; }; /* PlayerByte3BE1 */
-    union { uint8_t f3be2; uint8_t held; }; /* PlayerByte3BE2 */
-    union { uint8_t f3be3; uint8_t held_count; }; /* PlayerByte3BE3 */
+    uint8_t whip_struck; /* PlayerWhipStruck */
+    uint8_t held; /* PlayerHeld */
+    uint8_t held_count; /* PlayerHeldCount */
     uint8_t feet_on_mark; /* PlayerFeetOnMark */
     uint8_t _gap_0025[3]; /* no name yet: $3BE5-$3BE7 */
-    union { uint8_t f3be8; uint8_t slow_timer_lo; }; /* PlayerByte3BE8 */
-    union { uint8_t f3be9; uint8_t slow_timer_hi; }; /* PlayerByte3BE9 */
+    uint8_t slow_timer_lo; /* PlayerSlowTimerLo */
+    uint8_t slow_timer_hi; /* PlayerSlowTimerHi */
     uint8_t kept_raster_stage; /* PlayerKeptRasterStage */
 } PlayerVars;
 _Static_assert(sizeof(PlayerVars) == 0x2B, "PlayerVars size");
@@ -1157,28 +1157,21 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, column_x) + 0 == RichterCo
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, climb_reach) + 0 == PlayerClimbReach, "PlayerVars.climb_reach is not at PlayerClimbReach");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, may_leave_top) + 0 == PlayerMayLeaveTop, "PlayerVars.may_leave_top is not at PlayerMayLeaveTop");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, climb_land_facing) + 0 == PlayerClimbLandFacing, "PlayerVars.climb_land_facing is not at PlayerClimbLandFacing");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3bd5) + 0 == PlayerByte3BD5, "PlayerVars.f3bd5 is not at PlayerByte3BD5");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, attack_kind) == PlayerAttackKind, "PlayerVars.attack_kind is not at PlayerAttackKind");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, attack_kind) + 0 == PlayerAttackKind, "PlayerVars.attack_kind is not at PlayerAttackKind");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, item_first_use) + 0 == PlayerItemFirstUse, "PlayerVars.item_first_use is not at PlayerItemFirstUse");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3bd7) + 0 == PlayerByte3BD7, "PlayerVars.f3bd7 is not at PlayerByte3BD7");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, door_ready) == PlayerDoorReady, "PlayerVars.door_ready is not at PlayerDoorReady");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, door_ready) + 0 == PlayerDoorReady, "PlayerVars.door_ready is not at PlayerDoorReady");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, time_slow_mode) + 0 == TimeSlowMode, "PlayerVars.time_slow_mode is not at TimeSlowMode");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, pad_overrides) + 0 == PadOverrides, "PlayerVars.pad_overrides is not at PadOverrides");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, forced_press) + 0 == PadForcedPress, "PlayerVars.forced_press is not at PadForcedPress");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, invincible_timer) + 0 == PlayerInvincibleTimer, "PlayerVars.invincible_timer is not at PlayerInvincibleTimer");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, forced_press_b) + 0 == PadForcedPressB, "PlayerVars.forced_press_b is not at PadForcedPressB");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, item_ready) + 0 == RichterItemReady, "PlayerVars.item_ready is not at RichterItemReady");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be1) + 0 == PlayerByte3BE1, "PlayerVars.f3be1 is not at PlayerByte3BE1");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, whip_struck) == PlayerWhipStruck, "PlayerVars.whip_struck is not at PlayerWhipStruck");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be2) + 0 == PlayerByte3BE2, "PlayerVars.f3be2 is not at PlayerByte3BE2");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held) == PlayerHeld, "PlayerVars.held is not at PlayerHeld");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be3) + 0 == PlayerByte3BE3, "PlayerVars.f3be3 is not at PlayerByte3BE3");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held_count) == PlayerHeldCount, "PlayerVars.held_count is not at PlayerHeldCount");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, whip_struck) + 0 == PlayerWhipStruck, "PlayerVars.whip_struck is not at PlayerWhipStruck");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held) + 0 == PlayerHeld, "PlayerVars.held is not at PlayerHeld");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held_count) + 0 == PlayerHeldCount, "PlayerVars.held_count is not at PlayerHeldCount");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, feet_on_mark) + 0 == PlayerFeetOnMark, "PlayerVars.feet_on_mark is not at PlayerFeetOnMark");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be8) + 0 == PlayerByte3BE8, "PlayerVars.f3be8 is not at PlayerByte3BE8");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_lo) == PlayerSlowTimerLo, "PlayerVars.slow_timer_lo is not at PlayerSlowTimerLo");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be9) + 0 == PlayerByte3BE9, "PlayerVars.f3be9 is not at PlayerByte3BE9");
-_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_hi) == PlayerSlowTimerHi, "PlayerVars.slow_timer_hi is not at PlayerSlowTimerHi");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_lo) + 0 == PlayerSlowTimerLo, "PlayerVars.slow_timer_lo is not at PlayerSlowTimerLo");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_hi) + 0 == PlayerSlowTimerHi, "PlayerVars.slow_timer_hi is not at PlayerSlowTimerHi");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, kept_raster_stage) + 0 == PlayerKeptRasterStage, "PlayerVars.kept_raster_stage is not at PlayerKeptRasterStage");
 #define PVARS ((PlayerVars *)PlayerVars_BASE)
 
@@ -1186,31 +1179,27 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, kept_raster_stage) + 0 == 
 #define PlayerVarsB_BASE 0x3BEF
 #define PlayerVarsB_COUNT 1
 typedef struct {
-    union { uint8_t f3bef; uint8_t kind7_caught; }; /* PlayerByte3BEF */
-    union { uint8_t f3bf0; uint8_t start_pose; }; /* PlayerByte3BF0 */
-    union { uint8_t f3bf1; uint8_t jump_kind; }; /* PlayerByte3BF1 */
+    uint8_t kind7_caught; /* PlayerKind7Caught */
+    uint8_t start_pose; /* PlayerStartPose */
+    uint8_t jump_kind; /* PlayerJumpKind */
     U16LE jump_start_y; /* PlayerJumpStartYLo +1 */
     uint8_t dying; /* PlayerDying */
     uint8_t dying_timer; /* PlayerDyingTimer */
     uint8_t anchor_object; /* PlayerAnchorObject */
-    union { uint8_t f3bf7; uint8_t keeps_last_point; }; /* PlayerByte3BF7 */
+    uint8_t keeps_last_point; /* PlayerKeepsLastPoint */
     uint8_t pad_history[4]; /* PadHistory */
     uint8_t _gap_000D[4]; /* no name yet: $3BFC-$3BFF */
 } PlayerVarsB;
 _Static_assert(sizeof(PlayerVarsB) == 0x11, "PlayerVarsB size");
-_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bef) + 0 == PlayerByte3BEF, "PlayerVarsB.f3bef is not at PlayerByte3BEF");
-_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, kind7_caught) == PlayerKind7Caught, "PlayerVarsB.kind7_caught is not at PlayerKind7Caught");
-_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf0) + 0 == PlayerByte3BF0, "PlayerVarsB.f3bf0 is not at PlayerByte3BF0");
-_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, start_pose) == PlayerStartPose, "PlayerVarsB.start_pose is not at PlayerStartPose");
-_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf1) + 0 == PlayerByte3BF1, "PlayerVarsB.f3bf1 is not at PlayerByte3BF1");
-_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, jump_kind) == PlayerJumpKind, "PlayerVarsB.jump_kind is not at PlayerJumpKind");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, kind7_caught) + 0 == PlayerKind7Caught, "PlayerVarsB.kind7_caught is not at PlayerKind7Caught");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, start_pose) + 0 == PlayerStartPose, "PlayerVarsB.start_pose is not at PlayerStartPose");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, jump_kind) + 0 == PlayerJumpKind, "PlayerVarsB.jump_kind is not at PlayerJumpKind");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, jump_start_y) + 0 == PlayerJumpStartYLo, "PlayerVarsB.jump_start_y is not at PlayerJumpStartYLo");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, jump_start_y) + 1 == PlayerJumpStartYHi, "PlayerVarsB.jump_start_y is not at PlayerJumpStartYHi");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying) + 0 == PlayerDying, "PlayerVarsB.dying is not at PlayerDying");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying_timer) + 0 == PlayerDyingTimer, "PlayerVarsB.dying_timer is not at PlayerDyingTimer");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, anchor_object) + 0 == PlayerAnchorObject, "PlayerVarsB.anchor_object is not at PlayerAnchorObject");
-_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf7) + 0 == PlayerByte3BF7, "PlayerVarsB.f3bf7 is not at PlayerByte3BF7");
-_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, keeps_last_point) == PlayerKeepsLastPoint, "PlayerVarsB.keeps_last_point is not at PlayerKeepsLastPoint");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, keeps_last_point) + 0 == PlayerKeepsLastPoint, "PlayerVarsB.keeps_last_point is not at PlayerKeepsLastPoint");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, pad_history) + 0 == PadHistory, "PlayerVarsB.pad_history is not at PadHistory");
 #define PVARS2 ((PlayerVarsB *)PlayerVarsB_BASE)
 

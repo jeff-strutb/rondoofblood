@@ -426,23 +426,11 @@ C4,zp,zFieldC4,cleared on starting to climb
 C6,zp,zFieldC6,cleared on a knockback or a jump
 D3,zp,zFieldD3,cleared with the player's pad overrides
 94,zp,zField94,hearts in BCD; set when the player starts
-3BD5,abs,PlayerByte3BD5,player state not yet identified
-3BD6,abs,PlayerByte3BD6,player state not yet identified
-3BD8,abs,PlayerByte3BD8,player state not yet identified
-3BD7,abs,PlayerByte3BD7,player state not yet identified
 3BDD,abs,PadForcedPress,ORed into zPadPressed each frame
 3BDF,abs,PadForcedPressB,ORed into zPadPressed each frame
-3BE1,abs,PlayerByte3BE1,player state not yet identified
 3BDE,abs,PlayerInvincibleTimer,the potion's invincibility: counts down every fourth frame while not zero
-3BE2,abs,PlayerByte3BE2,player state not yet identified
-3BE3,abs,PlayerByte3BE3,player state not yet identified
-3BE8,abs,PlayerByte3BE8,player state not yet identified
-3BE9,abs,PlayerByte3BE9,player state not yet identified
-3BF0,abs,PlayerByte3BF0,player state not yet identified
-3BF1,abs,PlayerByte3BF1,player state not yet identified
 3BF4,abs,PlayerDying,not zero while the player's death runs
 3BF5,abs,PlayerDyingTimer,frames left in a step of the death
-3BF7,abs,PlayerByte3BF7,player state not yet identified
 # Names for the player bytes above, from Richter's code (the old names stay while other files use them).
 3BD5,abs,PlayerAttackKind,the attack under way: 0 the whip; else the thrown item's attack (Richter's item handlers store it from the table at $BA38 by item); the attack's animation, its frames and the landing's by it
 3BE2,abs,PlayerHeld,not zero while a hit's hold is on him (bit 5 of OBJ_HIT_TAKEN counts it up): hits are then shrugged off with script 1, and presses shake it off (PlayerHeldCount)
@@ -455,7 +443,7 @@ D3,zp,zFieldD3,cleared with the player's pad overrides
 3BE1,abs,PlayerWhipStruck,1 once the whip has struck an enemy in this attack: the whip's handler (kind 1) sets it when the object that tested it is an enemy (slot $10 up) with OBJ_HITBOX_ON 2 or more; the whip's frame at step 6 is then held 4 longer (RichterObjectQuicken); every attack and landing clears it
 3BF7,abs,PlayerKeepsLastPoint,1: a hit that takes the last of his health leaves him one point and goes on as a hit (RichterOutOfHealth); some stage objects set it as they run
 3BEA,abs,PlayerKeptRasterStage,zRasterStage kept while Richter's kind $0E runs (it sets the stage to 2); given back at its end
-3BEF,abs,PlayerKind7Caught,1 when a stage object has caught Richter's kind 7 in slot 5 (it sets this); kind 7 then clears it and the item in hand (zField93) and ends
+3BEF,abs,PlayerKind7Caught,1 when a stage object has caught Richter's kind 7 in slot 5: stage code at 07E0:15A and 0EBB:0AC stores 1 when OBJ_KIND of slot 5 is 7; kind 7 then clears it and the item in hand (zField93) and ends (Maria's item 7's part, MariaItem7Part, clears it the same way)
 A02A,abs,OverlayOrphanA02A,a piece of the player overlay nothing reaches
 A0FF,abs,PlayerFootYByState,how far above the position to probe by state
 A116,abs,PlayerStartHandlers,4 words by zField8A
@@ -1029,7 +1017,6 @@ AD16,abs,MariaFallDriftSpeeds,her X speed when the fall's drift delay ends, by f
 C773,abs,MariaAttackStates,the states of her attack's object, four words: start, fly, fall, return (MariaAttackObject)
 C823,abs,MariaAttackAngles,the angle her attack's object turns back on, by its facing (MariaAttackFall)
 C8E5,abs,MariaItem5States,the states of item 5, four words (MariaItem5)
-3BEF,abs,PlayerByte3BEF,player state not yet identified: set, item 7's part is cleared and zField93 (the item in hand) with it (MariaItem7Part clears it); nothing filed sets it
 CD96,abs,MariaPieceSpeedsX,the X speed of each of the four pieces of kind 9, a word by slot less 5 (MariaObjectKind9)
 AD5B,abs,MariaClimbMoveSpeeds,her X and Y speed high bytes on a ledge's step, by state less 5 doubled (MariaClimbMove)
 ADDC,abs,MariaClimbPadsA,the first pad she holds to climb, by state less 5 (MariaClimbPad)

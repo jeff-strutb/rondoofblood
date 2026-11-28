@@ -64,7 +64,7 @@ StageSpawnEnd SpawnSecondPairBody(SpawnRow spawn, const SpawnPairLayout *layout)
     WR8(OBJ->vy_hi[ANCHOR_Y], SPEED_ONE);
     WR8(OBJ->work_e[ANCHOR_X], HOLD_TIMER);
     WR8(OBJ->work_e[ANCHOR_Y], HOLD_TIMER);
-    wr8(PlayerByte3BD8, PLAYER_MODE_TWO);
+    wr8(TimeSlowMode, PLAYER_MODE_TWO);
     WR8(OBJ->angle_lo[ANCHOR_X], 0);
     end.a = PLAYER_MODE_TWO;
     end.x = 4;

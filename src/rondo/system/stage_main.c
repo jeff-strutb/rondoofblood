@@ -102,7 +102,7 @@ static StageExit run_stage_frame(Regs r)
     if ((RD8(ZP->field8e) & DONE_BIT) == 0) {
         return exit_of(r);
     }
-    wr8(PlayerByte3BD8, 0);
+    wr8(TimeSlowMode, 0);
     WR8(ZP->game_sub_mode, MODE_AFTER);
     a = RD8(ZP->stage);
     end.set = EXIT_X | EXIT_Y | EXIT_C | EXIT_V;
@@ -117,7 +117,7 @@ static StageExit run_stage_frame(Regs r)
         return end;
     }
     WR8(OBJ->work_e[0], STAGE_NONZERO_TIMER);
-    wr8(PlayerByte3BF0, 0);
+    wr8(PlayerStartPose, 0);
     end.a = STAGE_NONZERO_TIMER;
     end.nz = STAGE_NONZERO_TIMER;
     return end;

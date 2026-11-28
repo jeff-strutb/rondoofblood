@@ -1043,7 +1043,7 @@ MariaMarkedAbove_at1:
 
 ; @routine 01E0:34B MariaFeetMarked
 ; @run 6D:BB4B
-; WHAT IT DOES: Reads her three columns four rows below her and notes in PlayerByte3BE4 whether one has the tile's
+; WHAT IT DOES: Reads her three columns four rows below her and notes in PlayerFeetOnMark whether one has the tile's
 ; bit $02.
 ; HOW: MariaColumnOffset, MariaReadBelow; the byte cleared first and incremented at such a column.
 ; Untraced: the count at a column of bit $02 ($BB6B).
@@ -1051,7 +1051,7 @@ MariaMarkedAbove_at1:
 ; Entry: nothing. Exit: at that column, A 2, X the column, N and Z from the increment; else A 0, X 3, Z and C set.
 ; Y, C and V as the last read left them. Clobbers zTemp00-03.
 MariaFeetMarked:
-    stz a:PlayerByte3BE3+1
+    stz a:PlayerFeetOnMark
     clx
 MariaFeetMarked_at1:
     jsr MariaColumnOffset
@@ -1069,7 +1069,7 @@ MariaFeetMarked_at1:
     bne MariaFeetMarked_at1
     rts
 MariaFeetMarked_at0:
-    inc a:PlayerByte3BE3+1
+    inc a:PlayerFeetOnMark
     rts
 
 ; @routine 01E0:36F MariaUpOrMarkedAbove

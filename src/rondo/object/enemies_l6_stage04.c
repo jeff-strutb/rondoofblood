@@ -1335,7 +1335,7 @@ ObjArm SetFirstObjectTimersThenCount(uint8_t slot)
 
     WR8(ZP->wave_counter, 0);
     WR8(OBJ->work_e[0], 4);
-    wr8(PlayerByte3BF0, 2);
+    wr8(PlayerStartPose, 2);
     WR8(OBJ->f3568[0], 0x20);
     r.first = DEC8(OBJ->f34b8[slot]);
     if (r.first != 0) {

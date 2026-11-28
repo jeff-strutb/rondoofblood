@@ -78,7 +78,7 @@ void abi_MariaObjectSetFall(void)
  * WHAT IT DOES: The handler of kind 7, item 7's part: while the attack's object in its OBJ_WORK_D is out, sits 7 rows
  * below it, as it faces and flips, sprite set 3 frame $13, an 8 by 8 hitbox 6 down, live, OBJ_WORK_N $0C. When the
  * attack's object is gone it makes sure her kind-3 companion is out (MariaClaimKind3Slot) and is cleared. With
- * PlayerByte3BEF set it is cleared at once, and zField93 (the item in hand) with it; PlayerByte3BEF is cleared.
+ * PlayerKind7Caught set it is cleared at once, and zField93 (the item in hand) with it; PlayerKind7Caught is cleared.
  * HOW: The attack's slot in Y; the copies; MariaClaimKind3Slot; the tail JMPs to ClearObject.
  * WAITS: no.
  * Entry: zRichterObject the slot. Exit: the processor as the last step left it.
@@ -95,17 +95,17 @@ void MariaItem7Part(void)
     value = RD8_IDX(COL(OBJ->kind), attack);
     p_lda(value);
     if (value == 0) {
-        value = RD8(PVARS2->f3bef);
+        value = RD8(PVARS2->kind7_caught);
         p_lda(value);
         if (value == 0) {
             jsr_push(0xCCFB);
             regs_exit(MariaClaimKind3Slot(object));
             jsr_pop();
-            WR8(PVARS2->f3bef, 0);
+            WR8(PVARS2->kind7_caught, 0);
             ClearObject(cpu.x);
             return;
         }
-        WR8(PVARS2->f3bef, 0);
+        WR8(PVARS2->kind7_caught, 0);
         WR8(ZP->field93, 0);
         ClearObject(cpu.x);
         return;
@@ -144,12 +144,12 @@ void MariaItem7Part(void)
     WR8(OBJ->hitbox_on[object], 1);
     p_lda(PART_WORK_N);
     WR8(OBJ->work_n[object], PART_WORK_N);
-    value = RD8(PVARS2->f3bef);
+    value = RD8(PVARS2->kind7_caught);
     p_lda(value);
     if (value == 0) {
         return;
     }
-    WR8(PVARS2->f3bef, 0);
+    WR8(PVARS2->kind7_caught, 0);
     WR8(ZP->field93, 0);
     ClearObject(cpu.x);
 }

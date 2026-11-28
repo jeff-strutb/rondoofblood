@@ -2323,8 +2323,8 @@ MariaInvincibleTick:
     bne MariaInvincibleTick_at0
     rts
 MariaInvincibleTick_at0:
-    stz a:PlayerByte3BE8
-    stz a:PlayerByte3BE9
+    stz a:PlayerSlowTimerLo
+    stz a:PlayerSlowTimerHi
     lda #$02
     sta a:OBJ_WORK_N
     lda z:zWaveCounter

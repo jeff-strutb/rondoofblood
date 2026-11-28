@@ -46,7 +46,7 @@ SpawnStageObjectsRows34_at0:
     sta a:$3564
     sta a:$3565
     lda #$02
-    sta a:PlayerByte3BD8
+    sta a:TimeSlowMode
     stz a:$3614
     rts
 
@@ -92,6 +92,6 @@ SpawnStageObjectsRows34Long_at0:
     sta a:$3564
     sta a:$3565
     lda #$02
-    sta a:PlayerByte3BD8
+    sta a:TimeSlowMode
     stz a:$3614
     rts

@@ -868,7 +868,7 @@ void abi_DemoPlay3CD(void)
  * WHAT IT DOES: Sub-mode 0, the stage's start: as StageSubModeStart152D (the kernel's piece at $4006, the route's
  * pieces, the row map, the screen, the overlay at $A000's start, the display, the opening, the level), the pause and
  * the fade cleared, sub-mode 1, zField86 zField83; the demo recorder started (DemoStart3CD). zField8E's bit 0 clear
- * sends the stage to sub-mode 5 with the count at $3310 one less and PlayerByte3BF0 1; else $407B runs unless zStage is
+ * sends the stage to sub-mode 5 with the count at $3310 one less and PlayerStartPose 1; else $407B runs unless zStage is
  * negative.
  * HOW: Calls in turn $4006, StageRouteSetUpA3CD, StageRouteSetUpB3CD, StageLoadRowMap3CD, StageResetScroll3CD,
  * MapOverlayBanks5And6, $A003, StageHudStart3CD, StageOpeningStart3CD, StageLevelStart3CD and DemoStart3CD.
@@ -900,7 +900,7 @@ StageRegs StageSubModeStart3CD(StageRegs r)
         WR8(ZP->game_sub_mode, 5);
         r.nz = DEC8(OBJ->work_b[16]);
         r = loaded(r, 1);
-        wr8(PlayerByte3BF0, 1);
+        wr8(PlayerStartPose, 1);
         return r;
     }
     value = RD8(ZP->stage);
@@ -1091,7 +1091,7 @@ static bool frame_and_sub_step_clear(Regs *r)
  * these bytes.
  *
  * WHAT IT DOES: Sub-mode 1, the stage in play: the demo recorder, the fade and the pause; paused, the paused frame.
- * Else the events step; the stage's timer PlayerByte3BE8-3BE9 counted down (at its end the kernel's piece at $4015
+ * Else the events step; the stage's timer PlayerSlowTimerLo-3BE9 counted down (at its end the kernel's piece at $4015
  * with A 9 and X 7), and while it runs the scroll's steps cleared and, on odd counts, the overlay's frame skipped;
  * unless a sub-step is asked for the kernel's piece at $40D8; then for a stage with zField8E's bit 7 the scroll by
  * StageCenterPlayer3CD, else the overlay's piece at $A08D (and $A009 on even counts); the overlays' frame, the
@@ -1115,15 +1115,15 @@ StageRegs StageSubModePlay3CD(StageRegs r)
         return StagePausedFrame3CD(r);
     }
     CALL(0x81F4, StageModeEventsStep152D(r));
-    r = loaded(r, rd8(PlayerByte3BE8));
-    low = rd8(PlayerByte3BE9);
+    r = loaded(r, rd8(PlayerSlowTimerLo));
+    low = rd8(PlayerSlowTimerHi);
     r = loaded(r, (uint8_t)(r.a | low));
     if (r.a != 0) {
-        r.nz = (uint8_t)(rd8(PlayerByte3BE8) - 1);
-        wr8(PlayerByte3BE8, r.nz);
+        r.nz = (uint8_t)(rd8(PlayerSlowTimerLo) - 1);
+        wr8(PlayerSlowTimerLo, r.nz);
         if (r.nz == 0) {
-            r.nz = (uint8_t)(rd8(PlayerByte3BE9) - 1);
-            wr8(PlayerByte3BE9, r.nz);
+            r.nz = (uint8_t)(rd8(PlayerSlowTimerHi) - 1);
+            wr8(PlayerSlowTimerHi, r.nz);
             if (r.nz == 0) {
                 r = loaded(r, 0x09);
                 r.x = 0x07;
@@ -1135,7 +1135,7 @@ StageRegs StageSubModePlay3CD(StageRegs r)
         WR8(SCROLLE->step_x_lo[0], 0);
         WR8(SCROLLE->step_y_hi[0], 0);
         WR8(SCROLLE->step_y_lo[0], 0);
-        r = tested(r, 0x01, PlayerByte3BE8);
+        r = tested(r, 0x01, PlayerSlowTimerLo);
         timed = r.nz != 0;
     }
     if (timed || frame_and_sub_step_clear(&r)) {
@@ -1144,7 +1144,7 @@ StageRegs StageSubModePlay3CD(StageRegs r)
             CALL(0x8230, StageCenterPlayer3CD(r));
         } else {
             CALL(0x8235, StageFrameA08D3CD(r));
-            r = tested(r, 0x01, PlayerByte3BE8);
+            r = tested(r, 0x01, PlayerSlowTimerLo);
             if (r.nz == 0) {
                 CALL(0x823E, StageFrameA0093CD(r));
             }
@@ -1184,14 +1184,14 @@ void abi_StageSubModePlay3CD(void)
     regs_exit_shim(StageSubModePlay3CD(regs_entry_shim()));
 }
 
-/* The fade restarted when PlayerByte3BD8 is set: cleared, $9B 2, and the fade's countdown run on. */
+/* The fade restarted when TimeSlowMode is set: cleared, $9B 2, and the fade's countdown run on. */
 static Regs restart_fade(Regs r)
 {
-    r = loaded(r, rd8(PlayerByte3BD8));
+    r = loaded(r, rd8(TimeSlowMode));
     if (r.a == 0) {
         return r;
     }
-    wr8(PlayerByte3BD8, 0);
+    wr8(TimeSlowMode, 0);
     r = loaded(r, 2);
     wr8(FADE_COUNT, 2);
     return StageFadeTimer3CD(r);
@@ -1210,11 +1210,11 @@ static Regs restart_fade(Regs r)
  * these bytes.
  *
  * WHAT IT DOES: Sub-step 2, the player died: sub-mode 2 with zField80, zField89 and the fall's step cleared, the
- * overlay at $A000's piece at $A067 (StageFrameA0673CD), the forced presses cleared; when PlayerByte3BD8 is set it is
+ * overlay at $A000's piece at $A067 (StageFrameA0673CD), the forced presses cleared; when TimeSlowMode is set it is
  * cleared and the fade starts again from 2.
  * HOW: Stores; StageFrameA0673CD; a jump into StageFadeTimer3CD.
  * WAITS: no.
- * Entry: nothing. Exit: A PlayerByte3BD8 (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer3CD.
+ * Entry: nothing. Exit: A TimeSlowMode (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer3CD.
  */
 StageRegs StageSubStepDeath3CD(StageRegs r)
 {
@@ -1248,7 +1248,7 @@ void abi_StageSubStepDeath3CD(void)
  *
  * WHAT IT DOES: Sub-step 3, the stage cleared: sub-mode 3 with its step 0 and its table at $84 picked by zField8C
  * (none: 2; negative: 4; 3 to 6 or $0F up: 3; else 1, with $2743 set to 1); the overlay at $A000's piece at $A067, the
- * forced presses and PlayerByte3BD8 cleared.
+ * forced presses and TimeSlowMode cleared.
  * HOW: Tests and compares of zField8C; stores; StageFrameA0673CD.
  * WAITS: no.
  * Entry: nothing. Exit: as $A067 left them.
@@ -1286,7 +1286,7 @@ StageRegs StageSubStepCleared3CD(StageRegs r)
     CALL(0x82B3, StageFrameA0673CD(r));
     wr8(PadForcedPress, 0);
     wr8(PadForcedPressB, 0);
-    wr8(PlayerByte3BD8, 0);
+    wr8(TimeSlowMode, 0);
     return r;
 }
 
@@ -1373,10 +1373,10 @@ void abi_StageSubStepFadeOutB3CD(void)
  *
  * WHAT IT DOES: Sub-step 6: sub-mode 6 with zField80, zField89 and the fall's step cleared, the overlay at $A000's
  * piece at $A067, the forced presses cleared, the player's step at $3358 0 and its count at $3310 $40; when
- * PlayerByte3BD8 is set it is cleared and the fade starts again from 2.
+ * TimeSlowMode is set it is cleared and the fade starts again from 2.
  * HOW: Stores; StageFrameA0673CD; a jump into StageFadeTimer3CD.
  * WAITS: no.
- * Entry: nothing. Exit: A PlayerByte3BD8 (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer3CD.
+ * Entry: nothing. Exit: A TimeSlowMode (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer3CD.
  */
 StageRegs StageSubStepTally3CD(StageRegs r)
 {
@@ -2698,12 +2698,12 @@ static Regs center_near(Regs r, uint8_t mask)
     return compared(r, 0x80);
 }
 
-/* The centring done: zField8E's bit 7, the count at $3310 and PlayerByte3BF0 cleared. */
+/* The centring done: zField8E's bit 7, the count at $3310 and PlayerStartPose cleared. */
 static Regs center_done(Regs r)
 {
     RMW8(ZP->field8e, old, old & (uint8_t)~0x80);
     WR8(OBJ->work_b[16], 0);
-    wr8(PlayerByte3BF0, 0);
+    wr8(PlayerStartPose, 0);
     return r;
 }
 
@@ -2721,7 +2721,7 @@ static Regs center_done(Regs r)
  *
  * WHAT IT DOES: The play frame's scroll while zField8E's bit 7 is set: the player's count at $3310 $80 and its step
  * cleared, the overlay at $A000's piece at $A009. Unless the byte at $2860 is set or the player's state at $2818 is 2
- * or more, PlayerByte3BF0 is 1 and the player is walked to the screen's middle ($80) by 4 a frame with the scroll
+ * or more, PlayerStartPose is 1 and the player is walked to the screen's middle ($80) by 4 a frame with the scroll
  * moving the other way and the overlay's piece at $A08D; there the centring ends.
  * HOW: Tests; StageFrameA0093CD; adds, masks and compares; StageFrameA08D3CD; stores and a bit cleared.
  * WAITS: no.
@@ -2746,7 +2746,7 @@ StageRegs StageCenterPlayer3CD(StageRegs r)
         return r;
     }
     r = loaded(r, 0x01);
-    wr8(PlayerByte3BF0, 0x01);
+    wr8(PlayerStartPose, 0x01);
     CALL(0x86FE, StageFrameA0093CD(r));
     r = center_near(r, 0xFC);
     if (r.nz == 0) {
@@ -2788,7 +2788,7 @@ static StageRegs StageWaitTimerStep3CD(StageRegs r)
  *
  * WHAT IT DOES: Sub-mode 4, the fade out: the events step and the display; unless the fade is at its step 3, the
  * overlay's piece at $A08D for the raster effects $0C and $0D, the overlays' frame on every fourth frame, and
- * PlayerByte3BD8 cleared; then the step at zField80 from the seven at $8779, under banks 5 and 6.
+ * TimeSlowMode cleared; then the step at zField80 from the seven at $8779, under banks 5 and 6.
  * HOW: StageModeEventsStep152D, StageHudStep3CD; compares; StageFrameA08D3CD; TST of zFrameTick;
  * StageOverlayFrame3CD; MapOverlayBanks5And6; zField80 doubled indexes the table, whose word is jumped through.
  * WAITS: as the step.
@@ -2819,7 +2819,7 @@ StageRegs StageSubModeFade3CD(StageRegs r)
         if (r.nz == 0) {
             CALL(0x876C, StageOverlayFrame3CD(r));
         }
-        wr8(PlayerByte3BD8, 0);
+        wr8(TimeSlowMode, 0);
     }
     r = map_banks_5_6(r, 0x8772);
     return step_by_table(r, RD8(ZP->field80), 0x8779, steps, 7);
@@ -3074,8 +3074,8 @@ void abi_StageFadeRestart3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: Sub-mode 5, the stage's opening: the events step, the display, the overlay at $A000's frame and its
- * piece at $A08D, the overlays' frame, the opening's step; once zField8E's bit 0 is set PlayerByte3BD8 is cleared,
- * sub-mode 1 (the player's count at $3310 1) and PlayerByte3BF0 cleared.
+ * piece at $A08D, the overlays' frame, the opening's step; once zField8E's bit 0 is set TimeSlowMode is cleared,
+ * sub-mode 1 (the player's count at $3310 1) and PlayerStartPose cleared.
  * HOW: StageModeEventsStep152D, StageHudStep3CD, StageFrameA0003CD, StageFrameA08D3CD, StageOverlayFrame3CD,
  * StageOpeningStep3CD; a bit test; stores.
  * WAITS: no.
@@ -3092,11 +3092,11 @@ StageRegs StageSubModeOpening3CD(StageRegs r)
     if ((RD8(ZP->field8e) & 0x01) == 0) {
         return r;
     }
-    wr8(PlayerByte3BD8, 0);
+    wr8(TimeSlowMode, 0);
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
     WR8(OBJ->work_b[16], 1);
-    wr8(PlayerByte3BF0, 0);
+    wr8(PlayerStartPose, 0);
     return r;
 }
 
@@ -3670,7 +3670,7 @@ void abi_DoorHandler3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: An object handler for a door: not yet placed, $40D2 and the packed byte unpacked (its room in five
- * bits). Placed: the byte at $3790 cleared; a door whose packed byte has bit 7 needs PlayerByte3BD7; with the byte at
+ * bits). Placed: the byte at $3790 cleared; a door whose packed byte has bit 7 needs PlayerDoorReady; with the byte at
  * $3BD3 other than 1 and the object's state at $31F0 from 1 to 4 the stage goes through it (zField83 the room,
  * zField87 the entry, zField8C 0, zSubStep 2, the player's Y bytes at $2CE0 and $2D28 cleared); else the state is
  * cleared (at $3BD3 1 nothing is done).
@@ -3689,7 +3689,7 @@ StageRegs DoorHandlerB3CD(StageRegs r)
     WR8(OBJ->work_l[24 + slot], 0);
     r = loaded(r, RD8(OBJ->work_a[64 + slot]));
     if ((r.a & 0x80) != 0) {
-        r = loaded(r, rd8(PlayerByte3BD7));
+        r = loaded(r, rd8(PlayerDoorReady));
         if (r.a == 0) {
             return door_closed(r);
         }
@@ -4472,7 +4472,7 @@ StageRegs StagePausedSelect3CD(StageRegs r)
     r = loaded(r, rd8((uint16_t)(0x8B18 + choice)));
     WR8(OBJ->frame[54], r.a);
     r = loaded(r, 1);
-    wr8(PlayerByte3BD6, 1);
+    wr8(PlayerItemFirstUse, 1);
     r = loaded(r, 0x99);
     WR8(ZP->field94, 0x99);
     return r;
@@ -4634,7 +4634,7 @@ void abi_StagePausedFrame3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: Starts the stage's opening when zField8E's bit 0 is clear, as StageOpeningStart152D without its sound:
- * the display's pieces 3 and 4, the opening's objects placed, PlayerByte3BD8 2, the wait at $33E4 cleared.
+ * the display's pieces 3 and 4, the opening's objects placed, TimeSlowMode 2, the wait at $33E4 cleared.
  * HOW: A bit test; calls with X 3 and 4; stores.
  * WAITS: no.
  * Entry: nothing. Exit, bit 0 set: everything kept. Else: A 2, N and Z from it, X 4, Y and the flags as
@@ -4660,7 +4660,7 @@ StageRegs StageOpeningStart3CD(StageRegs r)
     WR8(OBJ->work_b[84], 0x20);
     WR8(OBJ->work_b[85], 0x20);
     r = loaded(r, 0x02);
-    wr8(PlayerByte3BD8, 0x02);
+    wr8(TimeSlowMode, 0x02);
     WR8(OBJ->hit_taken[52], 0);
     return r;
 }
@@ -7602,7 +7602,7 @@ StageRegs GateWaitPlayer3CD(StageRegs r)
     uint8_t gate;
 
     gate = (uint8_t)(rd8(GATE_BUSY) ^ 0x01);
-    r = loaded(r, (uint8_t)(gate & rd8(PlayerByte3BD7)));
+    r = loaded(r, (uint8_t)(gate & rd8(PlayerDoorReady)));
     if (r.a == 0) {
         return r;
     }

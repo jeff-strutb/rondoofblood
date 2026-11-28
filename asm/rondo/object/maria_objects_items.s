@@ -18,7 +18,7 @@ MariaObjectSetFall:
 ; WHAT IT DOES: The handler of kind 7, item 7's part: while the attack's object in its OBJ_WORK_D is out, sits 7 rows
 ; below it, as it faces and flips, sprite set 3 frame $13, an 8 by 8 hitbox 6 down, live, OBJ_WORK_N $0C. When the
 ; attack's object is gone it makes sure her kind-3 companion is out (MariaClaimKind3Slot) and is cleared. With
-; PlayerByte3BEF set it is cleared at once, and zField93 (the item in hand) with it; PlayerByte3BEF is cleared.
+; PlayerKind7Caught set it is cleared at once, and zField93 (the item in hand) with it; PlayerKind7Caught is cleared.
 ; HOW: The attack's slot in Y; the copies; MariaClaimKind3Slot; the tail JMPs to ClearObject.
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: the processor as the last step left it.
@@ -56,17 +56,17 @@ MariaItem7Part:
     sta a:OBJ_HITBOX_ON,x
     lda #$0C
     sta a:OBJ_WORK_N,x
-    lda a:PlayerByte3BEF
+    lda a:PlayerKind7Caught
     bne MariaItem7Part_at1
     rts
 MariaItem7Part_at0:
-    lda a:PlayerByte3BEF
+    lda a:PlayerKind7Caught
     bne MariaItem7Part_at1
     jsr MariaClaimKind3Slot
-    stz a:PlayerByte3BEF
+    stz a:PlayerKind7Caught
     jmp VecClearObject
 MariaItem7Part_at1:
-    stz a:PlayerByte3BEF
+    stz a:PlayerKind7Caught
     stz z:zField93
     jmp VecClearObject
 

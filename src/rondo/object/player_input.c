@@ -1416,7 +1416,7 @@ void abi_MariaReadPad(void)
  * @run 6D:B934
  * WHAT IT DOES: Follows a sequence of directions on her pad: each must come within ten frames of the last, in the
  * order her table at $B96B gives for the way she faces; the third sets the done flag.
- * HOW: A timer, the step and the done flag, three bytes after PlayerByte3BE3; the table by twice the step plus her
+ * HOW: A timer, the step and the done flag, three bytes after PlayerHeldCount; the table by twice the step plus her
  * facing; a timer run out clears the step and the flag.
  * Untraced: the third step ($B95A); no script finished a sequence.
  * WAITS: no.
@@ -1527,7 +1527,7 @@ static Ended item_delay(Ended e)
 /*
  * @routine 01E0:43A MariaItemUseAll
  * @run 6D:BC3A
- * WHAT IT DOES: The end of MariaUseItem when her sequence is done: PlayerByte3BD5 $FF, then the item delay.
+ * WHAT IT DOES: The end of MariaUseItem when her sequence is done: PlayerAttackKind $FF, then the item delay.
  * HOW: A jump into MariaUseItem's end.
  * Untraced: all of it; no script finished a sequence.
  * WAITS: no.
@@ -1535,7 +1535,7 @@ static Ended item_delay(Ended e)
  */
 Ended MariaItemUseAll(void)
 {
-    wr8(PlayerByte3BD5, MARIA_ITEM_ALL);
+    wr8(PlayerAttackKind, MARIA_ITEM_ALL);
     return item_delay(ended_load(MARIA_ITEM_ALL));
 }
 
@@ -1549,9 +1549,9 @@ void abi_MariaItemUseAll(void)
  * @run 6D:BC42
  * WHAT IT DOES: Her attack button: unless the delay in OBJ_EVENT_ID runs, on a press of button II says she attacks
  * (C set) and starts the delay. With down held and the hearts her table at $BCDE asks, an item of 2 and up is
- * thrown: its list and script start once (PlayerByte3BD6) unless an object is alive in slots 5 to 14, it waits for
- * slot 5, and slot 8 past the second cost at $BCD5, and the hearts are paid; PlayerByte3BD5 then says the item is
- * in use. In states below 5 with her pad sequence done, PlayerByte3BD5 is $FF.
+ * thrown: its list and script start once (PlayerItemFirstUse) unless an object is alive in slots 5 to 14, it waits for
+ * slot 5, and slot 8 past the second cost at $BCD5, and the hearts are paid; PlayerAttackKind then says the item is
+ * in use. In states below 5 with her pad sequence done, PlayerAttackKind is $FF.
  * HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, zField93 the item, zField94 the hearts in BCD; MariaFindLiveObject;
  * the list on channel 6 and the script in slot 6.
  * Untraced: the sequence's arm ($BC56 taken, into MariaItemUseAll) and the throw ($BC77 to $BCC0); no script threw
@@ -1566,7 +1566,7 @@ static bool maria_throw_item(TurnWindow *r)
     uint8_t value, hearts;
     LiveObject live;
 
-    value = rd8(PlayerByte3BD6);
+    value = rd8(PlayerItemFirstUse);
     if (value != 0) {
         jsr_push(0xBC7F);
         live = MariaFindLiveObject();
@@ -1582,7 +1582,7 @@ static bool maria_throw_item(TurnWindow *r)
             StartListChannelKind2(value, MARIA_ITEM_CHANNEL);
             jsr_pop();
         }
-        wr8(PlayerByte3BD6, 0);
+        wr8(PlayerItemFirstUse, 0);
         r->x = RD8(ZP->field93);
         value = rd8((uint16_t)(MARIA_ITEM_SCRIPTS + r->x));
         if (value != 0) {
@@ -1606,7 +1606,7 @@ static bool maria_throw_item(TurnWindow *r)
             return false;
         }
     }
-    wr8(PlayerByte3BD5, 1);
+    wr8(PlayerAttackKind, 1);
     hearts = RD8(ZP->field94);
     value = rd8((uint16_t)(MARIA_ITEM_COSTS + r->x));
     WR8(ZP->field94, bcd_subtract(hearts, value));
@@ -1629,7 +1629,7 @@ static TurnWindow use_item_throw(TurnWindow r)
             return r;
         }
     }
-    wr8(PlayerByte3BD5, 0);
+    wr8(PlayerAttackKind, 0);
     r.end = item_delay(r.end);
     return r;
 }
@@ -1657,7 +1657,7 @@ TurnWindow MariaUseItem(void)
     if (value != 0) {
         return use_item_throw(r);
     }
-    wr8(PlayerByte3BD5, 0);
+    wr8(PlayerAttackKind, 0);
     r.end = item_delay(r.end);
     return r;
 }

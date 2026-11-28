@@ -2681,7 +2681,7 @@ void abi_FallStepAndLeave(void)
 /*
  * @routine 093C:082 TouchesPlayerMark
  * @run 70:B882
- * WHAT IT DOES: Says, with C, whether a mark applies to the object: false (C clear) when the object has no state or is in state 4 or the player byte PlayerByte3BD8 is 0;
+ * WHAT IT DOES: Says, with C, whether a mark applies to the object: false (C clear) when the object has no state or is in state 4 or the player byte TimeSlowMode is 0;
  * otherwise a table byte decides: with the player byte 2 the table at $A166, else the table at $A146, indexed by the wave counter's low three bits plus $18; a nonzero
  * byte (zero for the first table) says yes (C set).
  * HOW: Compares and a table read (bank 70).
@@ -2703,7 +2703,7 @@ ObjArm TouchesPlayerMark(uint8_t slot)
     if (r.first == 4) {
         return r;
     }
-    r.second = rd8(PlayerByte3BD8);
+    r.second = rd8(TimeSlowMode);
     r.arm = TM_NO_MODE;
     if (r.second == 0) {
         return r;
@@ -3439,7 +3439,7 @@ void abi_StepFacingAndJump(void)
 /*
  * @routine 09EB:4FF PickWaterOnTenth
  * @run 70:B4FF
- * WHAT IT DOES: Runs the code the state table names (JumpByStateTableE); then, for object $10 in a state of 2 or more, picks the water level (PickWaterLevel), sets PlayerByte3BF0 to 2 and gives
+ * WHAT IT DOES: Runs the code the state table names (JumpByStateTableE); then, for object $10 in a state of 2 or more, picks the water level (PickWaterLevel), sets PlayerStartPose to 2 and gives
  * object 0 the angle word $0003 (OBJ_WORK_E 3, OBJ_WORK_F 0).
  * HOW: JumpByStateTableE, PickWaterLevel.
  * WAITS: no.
@@ -3467,7 +3467,7 @@ ObjArm PickWaterOnTenth(uint8_t slot)
     jsr_push(0xB510);
     r.sub = obj_sub(PickWaterLevel());
     jsr_pop();
-    wr8(PlayerByte3BF0, 2);
+    wr8(PlayerStartPose, 2);
     WR8(OBJ->work_e[0], 3);
     WR8(OBJ->angle_hi[0], 0);
     r.arm = PW_PICKED;

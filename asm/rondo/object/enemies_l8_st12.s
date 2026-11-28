@@ -8,7 +8,7 @@ CountdownThenStartScript80:
     lda #$10
     sta a:OBJ_WORK_E
     lda #$02
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     stz a:OBJ_WORK_F
     stz a:OBJ_FRAME
     stz a:ScrollXLo+1
@@ -593,7 +593,7 @@ SpinOutThenLeave:
     lda #$02
     sta a:OBJ_WORK_E
     lda #$02
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     stz a:OBJ_WORK_F
     lda #$C0
     sta a:OBJ_WORK_G,x

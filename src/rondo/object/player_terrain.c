@@ -2342,9 +2342,9 @@ ColumnsEnd PlayerMoved(void)
 
 /*
  * Maria's own probes (her overlay 01DD): three columns read for the tile's bit $02, above her head and below her
- * feet. PlayerByte3BE4 has no symbol yet: it is named PlayerByte3BE3 plus one until the row lands.
+ * feet; the answer below goes to PlayerFeetOnMark.
  */
-enum { TILE_BIT_02 = 0x02, MARIA_ROWS_ABOVE = 0xFC, MARIA_ROWS_BELOW = 0x04, MARIA_FEET_MARKED = PlayerByte3BE3 + 1 };
+enum { TILE_BIT_02 = 0x02, MARIA_ROWS_ABOVE = 0xFC, MARIA_ROWS_BELOW = 0x04, MARIA_FEET_MARKED = PlayerFeetOnMark };
 
 
 /* The three columns: the offset (nudged a pixel inward for the read above), her X, her Y plus `rows`, the read. */
@@ -2432,7 +2432,7 @@ void abi_MariaMarkedAbove(void)
 /*
  * @routine 01E0:34B MariaFeetMarked
  * @run 6D:BB4B
- * WHAT IT DOES: Reads her three columns four rows below her and notes in PlayerByte3BE4 whether one has the tile's
+ * WHAT IT DOES: Reads her three columns four rows below her and notes in PlayerFeetOnMark whether one has the tile's
  * bit $02.
  * HOW: MariaColumnOffset, MariaReadBelow; the byte cleared first and incremented at such a column.
  * Untraced: the count at a column of bit $02 ($BB6B).

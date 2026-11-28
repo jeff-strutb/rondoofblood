@@ -121,7 +121,7 @@ HandlerExit TileRowB(void)
 }
 
 /* The tiles $87-$8A and $8C-$8F: a step that differs between the tile's halves. */
-static HandlerExit half_step(uint16_t table, uint8_t first_tile, uint8_t tile, bool right_for_bit)
+HandlerExit TileHalfStepAt(uint16_t table, uint8_t first_tile, uint8_t tile, bool right_for_bit)
 {
     uint8_t pair = (uint8_t)((uint8_t)(tile - first_tile) << 1);
     uint8_t column = RD8(ZP->temp00);
@@ -145,7 +145,7 @@ static HandlerExit half_step(uint16_t table, uint8_t first_tile, uint8_t tile, b
  */
 HandlerExit TileHalfStepA(uint8_t tile)
 {
-    return half_step(TileHalfStepsA, 0x83, tile, true);
+    return TileHalfStepAt(TileHalfStepsA, 0x83, tile, true);
 }
 
 /*
@@ -158,7 +158,7 @@ HandlerExit TileHalfStepA(uint8_t tile)
  */
 HandlerExit TileHalfStepB(uint8_t tile)
 {
-    return half_step(TileHalfStepsB, 0x8C, tile, false);
+    return TileHalfStepAt(TileHalfStepsB, 0x8C, tile, false);
 }
 
 /*

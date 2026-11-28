@@ -12,6 +12,74 @@
 #include "stage_regs.h"
 #include "stage_programs_census.h"
 
+/* StartStageLists with a program's own tables, list expansion, script slot 7 and return addresses. */
+static void list_channel_registers_shim(uint8_t a, uint8_t x);
+
+static StageStartEnd start_lists(uint16_t lists_at, uint16_t scripts_at, StageListEnd (*expand)(void))
+{
+    StageStartEnd end;
+    StageListEnd lists;
+    uint8_t section;
+    uint8_t list;
+    uint8_t script;
+    uint8_t x;
+
+    jsr_push(0x886F);
+    ClearListChannels();
+    jsr_pop();
+    x = RD8(ZP->field82);
+    list = rd8((uint16_t)(lists_at + x));
+    jsr_push(0x8877);
+    list_channel_registers_shim(StartListChannel0Kind2(list), 0);
+    jsr_pop();
+    jsr_push(0x887A);
+    lists = expand();
+    lists_exit_shim(lists);
+    jsr_pop();
+    section = RD8(ZP->field82);
+    end.index = add_bytes((uint8_t)(section << 1), RD8(ZP->character), false);
+    script = rd8((uint16_t)(scripts_at + end.index.value));
+    end.script = StartScriptSlotKind1(script, 7);
+    return end;
+}
+
+/* The registers the list channel start leaves, which the list expansion's block move pushes. */
+static void list_channel_registers_shim(uint8_t a, uint8_t x)
+{
+    cpu.a = a;
+    cpu.x = x;
+}
+
+static void start_lists_exit_shim(StageStartEnd end)
+{
+    script_slot_exit_shim(end.script);
+    cpu.x = 7;
+    abi_flag(P_C, end.index.carry);
+    abi_flag(P_V, end.index.overflow);
+}
+
+/* A row of a program's five spawn tables (slot, frame, sprite set, X low, Y low): SpawnStageObject's body. */
+static SpawnedObject spawn_row(uint8_t row, const uint16_t tables[5], uint16_t ret)
+{
+    SpawnedObject out;
+    uint8_t byte;
+
+    out.slot = rd8((uint16_t)(tables[0] + row));
+    jsr_push(ret);
+    ClearObjectInY(out.slot);
+    jsr_pop();
+    byte = rd8((uint16_t)(tables[1] + row));
+    WR8(OBJ->frame[out.slot], byte);
+    byte = rd8((uint16_t)(tables[2] + row));
+    WR8(OBJ->f2a10[out.slot], byte);
+    byte = rd8((uint16_t)(tables[3] + row));
+    WR8(OBJ->x_lo[out.slot], byte);
+    byte = rd8((uint16_t)(tables[4] + row));
+    WR8(OBJ->y_lo[out.slot], byte);
+    out.y_lo = byte;
+    return out;
+}
+
 /* The body of StageSectionNext (stage_flow.c) with a program's own section table. */
 static StageRegs section_next(StageRegs r, uint16_t table)
 {
@@ -1001,4 +1069,281 @@ StageExit SetHealthBarAddress031E(void)
 void abi_SetHealthBarAddress031E(void)
 {
     stage_exit_shim(SetHealthBarAddress031E());
+}
+
+/*
+ * @routine 026E:06C StartStageLists026E
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists026F, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists026E(void)
+{
+    return start_lists(0x9C34, 0x9C3C, ExpandStageLists026F);
+}
+
+void abi_StartStageLists026E(void)
+{
+    start_lists_exit_shim(StartStageLists026E());
+}
+
+/*
+ * @routine 031E:06C StartStageLists031E
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists031F, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists031E(void)
+{
+    return start_lists(0x9DFF, 0x9E07, ExpandStageLists031F);
+}
+
+void abi_StartStageLists031E(void)
+{
+    start_lists_exit_shim(StartStageLists031E());
+}
+
+/*
+ * @routine 043E:06C StartStageLists043E
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists043F, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists043E(void)
+{
+    return start_lists(0x9EC3, 0x9ECB, ExpandStageLists043F);
+}
+
+void abi_StartStageLists043E(void)
+{
+    start_lists_exit_shim(StartStageLists043E());
+}
+
+/*
+ * @routine 064E:06C StartStageLists064E
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists064F, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists064E(void)
+{
+    return start_lists(0x9CE5, 0x9CED, ExpandStageLists064F);
+}
+
+void abi_StartStageLists064E(void)
+{
+    start_lists_exit_shim(StartStageLists064E());
+}
+
+/*
+ * @routine 10DE:06C StartStageLists10DE
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists10DF, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists10DE(void)
+{
+    return start_lists(0x9EB9, 0x9EC1, ExpandStageLists10DF);
+}
+
+void abi_StartStageLists10DE(void)
+{
+    start_lists_exit_shim(StartStageLists10DE());
+}
+
+/*
+ * @routine 122E:06C StartStageLists122E
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists122F, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists122E(void)
+{
+    return start_lists(0x9CBE, 0x9CC1, ExpandStageLists122F);
+}
+
+void abi_StartStageLists122E(void)
+{
+    start_lists_exit_shim(StartStageLists122E());
+}
+
+/*
+ * @routine 1A2E:06C StartStageLists1A2E
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists1A2F, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists1A2E(void)
+{
+    return start_lists(0x9CAD, 0x9CB5, ExpandStageLists1A2F);
+}
+
+void abi_StartStageLists1A2E(void)
+{
+    start_lists_exit_shim(StartStageLists1A2E());
+}
+
+/*
+ * @routine 1B8E:06C StartStageLists1B8E
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists1B8F, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists1B8E(void)
+{
+    return start_lists(0x9CFD, 0x9D01, ExpandStageLists1B8F);
+}
+
+void abi_StartStageLists1B8E(void)
+{
+    start_lists_exit_shim(StartStageLists1B8E());
+}
+
+/*
+ * @routine 1CEE:06C StartStageLists1CEE
+ * @run 6B:886C
+ * WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+ * HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists1CEF, script slot 7 (the loaded routine: 6) and its return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageStartEnd StartStageLists1CEE(void)
+{
+    return start_lists(0x9C87, 0x9C8D, ExpandStageLists1CEF);
+}
+
+void abi_StartStageLists1CEE(void)
+{
+    start_lists_exit_shim(StartStageLists1CEE());
+}
+
+/*
+ * @routine 026F:36E SpawnStageObject026F
+ * @run 6B:936E
+ * WHAT IT DOES: Puts a new object in the slot a row of this program's spawn tables names, with the row's frame, sprite set and X and Y low bytes.
+ * HOW: As SpawnStageObject (024F:3B0), with this program's tables and return address.
+ * WAITS: no.
+ * Entry: X the row. Exit: A the Y low byte, N and Z from it, Y the slot. X kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+SpawnedObject SpawnStageObject026F(uint8_t row)
+{
+    static const uint16_t tables[5] = { 0x938E, 0x9396, 0x939E, 0x93A6, 0x93AE };
+
+    return spawn_row(row, tables, 0x9375);
+}
+
+void abi_SpawnStageObject026F(void)
+{
+    SpawnedObject out = SpawnStageObject026F(cpu.x);
+
+    cpu.a = out.y_lo;
+    cpu.y = out.slot;
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 031F:64F SpawnStageObject031F
+ * @run 6B:964F
+ * WHAT IT DOES: Puts a new object in the slot a row of this program's spawn tables names, with the row's frame, sprite set and X and Y low bytes.
+ * HOW: As SpawnStageObject (024F:3B0), with this program's tables and return address.
+ * WAITS: no.
+ * Entry: X the row. Exit: A the Y low byte, N and Z from it, Y the slot. X kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+SpawnedObject SpawnStageObject031F(uint8_t row)
+{
+    static const uint16_t tables[5] = { 0x966F, 0x9677, 0x967F, 0x9687, 0x968F };
+
+    return spawn_row(row, tables, 0x9656);
+}
+
+void abi_SpawnStageObject031F(void)
+{
+    SpawnedObject out = SpawnStageObject031F(cpu.x);
+
+    cpu.a = out.y_lo;
+    cpu.y = out.slot;
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 026E:75A SpawnStageObjectsRows34026E
+ * @run 6B:8F5A
+ * WHAT IT DOES: Unless zField8E bit 0 is set, spawns rows 3 and 4 and sets up the two anchor objects and the player byte.
+ * HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with SpawnStageObject026F, with this copy's return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit when it spawned: A 2, X 4, Y the second slot, N and Z from A; else as entered.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageSpawnEnd SpawnStageObjectsRows34026E(void)
+{
+    static const SpawnPairLayout layout = { 0, 0, 0x8F63, 0x8F67, 0 };
+
+    return SpawnSecondPairBody(SpawnStageObject026F, &layout);
+}
+
+void abi_SpawnStageObjectsRows34026E(void)
+{
+    StageSpawnEnd end = SpawnStageObjectsRows34026E();
+
+    if (end.ran) {
+        cpu.a = end.a;
+        cpu.x = end.x;
+        cpu.y = end.y;
+        abi_nz(end.a);
+    }
+}
+
+/*
+ * @routine 031E:74E SpawnStageObjectsRows34031E
+ * @run 6B:8F4E
+ * WHAT IT DOES: Unless zField8E bit 0 is set, spawns rows 3 and 4 and sets up the two anchor objects and the player byte.
+ * HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with SpawnStageObject031F, with this copy's return addresses.
+ * WAITS: no.
+ * Entry: nothing. Exit when it spawned: A 2, X 4, Y the second slot, N and Z from A; else as entered.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageSpawnEnd SpawnStageObjectsRows34031E(void)
+{
+    static const SpawnPairLayout layout = { 0, 0, 0x8F57, 0x8F5B, 0 };
+
+    return SpawnSecondPairBody(SpawnStageObject031F, &layout);
+}
+
+void abi_SpawnStageObjectsRows34031E(void)
+{
+    StageSpawnEnd end = SpawnStageObjectsRows34031E();
+
+    if (end.ran) {
+        cpu.a = end.a;
+        cpu.x = end.x;
+        cpu.y = end.y;
+        abi_nz(end.a);
+    }
 }

@@ -99,4 +99,31 @@ void abi_SetStageTileVramAddress031E(void);
 StageExit SetHealthBarAddress031E(void);
 void abi_SetHealthBarAddress031E(void);
 
+StageStartEnd StartStageLists026E(void);
+void abi_StartStageLists026E(void);
+StageStartEnd StartStageLists031E(void);
+void abi_StartStageLists031E(void);
+StageStartEnd StartStageLists043E(void);
+void abi_StartStageLists043E(void);
+StageStartEnd StartStageLists064E(void);
+void abi_StartStageLists064E(void);
+StageStartEnd StartStageLists10DE(void);
+void abi_StartStageLists10DE(void);
+StageStartEnd StartStageLists122E(void);
+void abi_StartStageLists122E(void);
+StageStartEnd StartStageLists1A2E(void);
+void abi_StartStageLists1A2E(void);
+StageStartEnd StartStageLists1B8E(void);
+void abi_StartStageLists1B8E(void);
+StageStartEnd StartStageLists1CEE(void);
+void abi_StartStageLists1CEE(void);
+SpawnedObject SpawnStageObject026F(uint8_t row);
+void abi_SpawnStageObject026F(void);
+SpawnedObject SpawnStageObject031F(uint8_t row);
+void abi_SpawnStageObject031F(void);
+StageSpawnEnd SpawnStageObjectsRows34026E(void);
+void abi_SpawnStageObjectsRows34026E(void);
+StageSpawnEnd SpawnStageObjectsRows34031E(void);
+void abi_SpawnStageObjectsRows34031E(void);
+
 #endif

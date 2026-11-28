@@ -1562,3 +1562,327 @@ SetHealthBarAddress031E:
     jsr SetVramAddresses031F
 SetHealthBarAddress031E_at0:
     rts
+
+; @routine 026E:06C StartStageLists026E
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists026F, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers026E = $9C34 ; the list channel's list by section
+StageScriptNumbers026E = $9C3C ; the script by section and character
+StartStageLists026E:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers026E,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists026F
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers026E,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 031E:06C StartStageLists031E
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists031F, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers031E = $9DFF ; the list channel's list by section
+StageScriptNumbers031E = $9E07 ; the script by section and character
+StartStageLists031E:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers031E,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists031F
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers031E,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 043E:06C StartStageLists043E
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists043F, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers043E = $9EC3 ; the list channel's list by section
+StageScriptNumbers043E = $9ECB ; the script by section and character
+StartStageLists043E:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers043E,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists043F
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers043E,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 064E:06C StartStageLists064E
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists064F, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers064E = $9CE5 ; the list channel's list by section
+StageScriptNumbers064E = $9CED ; the script by section and character
+StartStageLists064E:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers064E,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists064F
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers064E,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 10DE:06C StartStageLists10DE
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists10DF, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers10DE = $9EB9 ; the list channel's list by section
+StageScriptNumbers10DE = $9EC1 ; the script by section and character
+StartStageLists10DE:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers10DE,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists10DF
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers10DE,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 122E:06C StartStageLists122E
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists122F, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers122E = $9CBE ; the list channel's list by section
+StageScriptNumbers122E = $9CC1 ; the script by section and character
+StartStageLists122E:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers122E,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists122F
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers122E,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 1A2E:06C StartStageLists1A2E
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists1A2F, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers1A2E = $9CAD ; the list channel's list by section
+StageScriptNumbers1A2E = $9CB5 ; the script by section and character
+StartStageLists1A2E:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers1A2E,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists1A2F
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers1A2E,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 1B8E:06C StartStageLists1B8E
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists1B8F, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers1B8E = $9CFD ; the list channel's list by section
+StageScriptNumbers1B8E = $9D01 ; the script by section and character
+StartStageLists1B8E:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers1B8E,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists1B8F
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers1B8E,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 1CEE:06C StartStageLists1CEE
+; @run 6B:886C
+; WHAT IT DOES: Starts the stage's lists: the list channel for the section, the section's stage lists, and the section's script for the character in script slot 7.
+; HOW: As StartStageLists (024E:0B1), with this program's tables, ExpandStageLists1CEF, script slot 7 (the loaded routine: 6) and its return addresses.
+; WAITS: no.
+; Entry: nothing. Exit: as StartScriptSlotKind1, X 7; C and V from the script index's add. Y as the list expansion left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListNumbers1CEE = $9C87 ; the list channel's list by section
+StageScriptNumbers1CEE = $9C8D ; the script by section and character
+StartStageLists1CEE:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageListNumbers1CEE,x
+    jsr VecStartListChannel0Kind2
+    jsr ExpandStageLists1CEF
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageScriptNumbers1CEE,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+; @routine 026F:36E SpawnStageObject026F
+; @run 6B:936E
+; WHAT IT DOES: Puts a new object in the slot a row of this program's spawn tables names, with the row's frame, sprite set and X and Y low bytes.
+; HOW: As SpawnStageObject (024F:3B0), with this program's tables and return address.
+; WAITS: no.
+; Entry: X the row. Exit: A the Y low byte, N and Z from it, Y the slot. X kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageSpawnSlot026F = $938E ; by spawn row
+StageSpawnFrame026F = $9396 ; by spawn row
+StageSpawnKind026F = $939E ; by spawn row
+StageSpawnXLo026F = $93A6 ; by spawn row
+StageSpawnYLo026F = $93AE ; by spawn row
+SpawnStageObject026F:
+    lda a:StageSpawnSlot026F,x
+    tay
+    jsr VecClearObjectInY
+    lda a:StageSpawnFrame026F,x
+    sta a:OBJ_FRAME,y
+    lda a:StageSpawnKind026F,x
+    sta a:OBJ_SPRITE_SET,y
+    lda a:StageSpawnXLo026F,x
+    sta a:OBJ_X_LO,y
+    lda a:StageSpawnYLo026F,x
+    sta a:OBJ_Y_LO,y
+    rts
+
+; @routine 031F:64F SpawnStageObject031F
+; @run 6B:964F
+; WHAT IT DOES: Puts a new object in the slot a row of this program's spawn tables names, with the row's frame, sprite set and X and Y low bytes.
+; HOW: As SpawnStageObject (024F:3B0), with this program's tables and return address.
+; WAITS: no.
+; Entry: X the row. Exit: A the Y low byte, N and Z from it, Y the slot. X kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageSpawnSlot031F = $966F ; by spawn row
+StageSpawnFrame031F = $9677 ; by spawn row
+StageSpawnKind031F = $967F ; by spawn row
+StageSpawnXLo031F = $9687 ; by spawn row
+StageSpawnYLo031F = $968F ; by spawn row
+SpawnStageObject031F:
+    lda a:StageSpawnSlot031F,x
+    tay
+    jsr VecClearObjectInY
+    lda a:StageSpawnFrame031F,x
+    sta a:OBJ_FRAME,y
+    lda a:StageSpawnKind031F,x
+    sta a:OBJ_SPRITE_SET,y
+    lda a:StageSpawnXLo031F,x
+    sta a:OBJ_X_LO,y
+    lda a:StageSpawnYLo031F,x
+    sta a:OBJ_Y_LO,y
+    rts
+
+; @routine 026E:75A SpawnStageObjectsRows34026E
+; @run 6B:8F5A
+; WHAT IT DOES: Unless zField8E bit 0 is set, spawns rows 3 and 4 and sets up the two anchor objects and the player byte.
+; HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with SpawnStageObject026F, with this copy's return addresses.
+; WAITS: no.
+; Entry: nothing. Exit when it spawned: A 2, X 4, Y the second slot, N and Z from A; else as entered.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SpawnStageObjectsRows34026E:
+    bbr0 zField8E,SpawnStageObjectsRows34026E_at0
+    rts
+SpawnStageObjectsRows34026E_at0:
+    ldx #$03
+    jsr SpawnStageObject026F
+    inx
+    jsr SpawnStageObject026F
+    dec a:OBJ_X_HI+84
+    dec a:OBJ_Y_HI+85
+    lda #$04
+    sta a:OBJ_VX_HI+84
+    sta a:OBJ_VY_HI+85
+    lda #$20
+    sta a:OBJ_WORK_E+84
+    sta a:OBJ_WORK_E+85
+    lda #$02
+    sta a:TimeSlowMode
+    stz a:OBJ_WORK_G+84
+    rts
+
+; @routine 031E:74E SpawnStageObjectsRows34031E
+; @run 6B:8F4E
+; WHAT IT DOES: Unless zField8E bit 0 is set, spawns rows 3 and 4 and sets up the two anchor objects and the player byte.
+; HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with SpawnStageObject031F, with this copy's return addresses.
+; WAITS: no.
+; Entry: nothing. Exit when it spawned: A 2, X 4, Y the second slot, N and Z from A; else as entered.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SpawnStageObjectsRows34031E:
+    bbr0 zField8E,SpawnStageObjectsRows34031E_at0
+    rts
+SpawnStageObjectsRows34031E_at0:
+    ldx #$03
+    jsr SpawnStageObject031F
+    inx
+    jsr SpawnStageObject031F
+    dec a:OBJ_X_HI+84
+    dec a:OBJ_Y_HI+85
+    lda #$04
+    sta a:OBJ_VX_HI+84
+    sta a:OBJ_VY_HI+85
+    lda #$20
+    sta a:OBJ_WORK_E+84
+    sta a:OBJ_WORK_E+85
+    lda #$02
+    sta a:TimeSlowMode
+    stz a:OBJ_WORK_G+84
+    rts

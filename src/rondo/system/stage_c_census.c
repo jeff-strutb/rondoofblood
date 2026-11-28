@@ -6164,13 +6164,19 @@ void abi_TallyStockBonus3CD(void)
  */
 StageRegs TallyEnd3CD(StageRegs r)
 {
-    TallyWaitEnd wait = tally_wait(r, 0x9343);
+    return TallyEnd3CDAt(r, 0x9340, &tally_3cd);
+}
+
+/* TallyEnd3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyEnd3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
+    TallyWaitEnd wait = tally_wait_at(r, at + 0x3, build->wait);
 
     r = wait.r;
     if (wait.dropped) {
         return r;
     }
-    r = loaded(r, RD8(OBJ->work_b[13]));
+    r = loaded(r, rd8(build->health_kept));
     WR8(ZP->field94, r.a);
     r.nz = INC8(ZP->mode_done);
     return r;

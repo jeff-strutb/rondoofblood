@@ -85,4 +85,10 @@ typedef struct { bool found; BlockedColumns high; uint8_t a; uint8_t x; bool c; 
 LedgeLowPart RichterLedgeLow(void);
 LedgeHighPart RichterLedgeHigh(void);
 
+/* object/player_leaves.c: the overlay bank mappings, and their exits as the registers see them. */
+ObjArm MapOverlayBanks5And6(void);
+ObjArm MapOverlayBank7(void);
+Ended map_overlay_banks_exit_shim(ObjArm r);
+Ended map_overlay_bank7_exit_shim(ObjArm r);
+
 #endif

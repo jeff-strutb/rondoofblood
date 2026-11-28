@@ -346,7 +346,7 @@ ObjArm MapOverlayBank7(void)
     return r;
 }
 
-static Ended map_overlay_bank7_exit_shim(ObjArm r)
+Ended map_overlay_bank7_exit_shim(ObjArm r)
 {
     return ended_of_sum(r.sum);
 }
@@ -377,7 +377,7 @@ ObjArm MapOverlayBanks5And6(void)
 }
 
 /* A the second bank; C and V from the add. */
-static Ended map_overlay_banks_exit_shim(ObjArm r)
+Ended map_overlay_banks_exit_shim(ObjArm r)
 {
     return ended_with_overflow(ended_with_carry(ended_load(r.first), r.sum.carry), r.sum.overflow);
 }

@@ -19,6 +19,7 @@
 #include "routines.h"
 #include "stage_map.h"
 #include "enemy_objects.h"
+#include "player_objects.h"
 #include "syscard.h"
 #include "stage_b_census.h"
 
@@ -61,8 +62,6 @@ static Regs loaded(Regs r, uint8_t value);
 /* A JSR to one of this file's routines: the frame the original pushes, the routine, the pop. */
 #define CALL(ret, expr) do { jsr_push(ret); r = (expr); jsr_pop(); } while (0)
 
-Ended MapOverlayBanks5And6(void);
-Ended MapOverlayBank7(void);
 
 /* The registers and flags the routine is entered with: N and Z as the flags hold them. */
 static Regs regs_entry_shim(void)
@@ -217,7 +216,7 @@ static Regs after_ended(Regs r, Ended e)
 static Regs map_banks_5_6(Regs r, uint16_t ret)
 {
     jsr_push(ret);
-    r = after_ended(r, MapOverlayBanks5And6());
+    r = after_ended(r, map_overlay_banks_exit_shim(MapOverlayBanks5And6()));
     jsr_pop();
     return r;
 }
@@ -226,7 +225,7 @@ static Regs map_banks_5_6(Regs r, uint16_t ret)
 static Regs map_bank_7(Regs r, uint16_t ret)
 {
     jsr_push(ret);
-    r = after_ended(r, MapOverlayBank7());
+    r = after_ended(r, map_overlay_bank7_exit_shim(MapOverlayBank7()));
     jsr_pop();
     return r;
 }

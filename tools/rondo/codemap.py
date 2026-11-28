@@ -1216,7 +1216,8 @@ def progress(disc, mems, maps, cps):
     source is, and a finished routine filed on a copy counts on its source. M1: bytes in routines whose C is finished
     (it calls no original code); M2: those whose assembly is filed too, written in names (no raw address
     and no placeholder named by its address as an operand), and whose C file compiles (ccheck.py). A stretch the disc holds more than once
-    counts once, in the area of its first place on the disc, done where any copy of it is done."""
+    counts once: routines with the same bytes are one, counted in the area of the first's place on the disc, done
+    where any copy of it is done."""
     buf = disc.buf
     import asmbuild
     pieces = {p["disc"]: p["end"] for p in asmbuild.filed_pieces(buf)}
@@ -1251,32 +1252,50 @@ def progress(disc, mems, maps, cps):
                     done1.add(x)
                     if built.get(d) and not names_.get(d):   # assembly filed (pieces) and all names; C compiles
                         done2.add(x)
+    # a routine the disc holds more than once counts once: every routine body (the map's, from each kept entry in
+    # one piece, and every filed routine's) grouped by its exact bytes; each byte of a later member belongs to the
+    # first member, unless the first's own bodies hold it; a byte is done when any copy of it is
+    bodies = dict(pieces)
+    for m in maps.values():
+        for key in m.keep:
+            ln = {dd: n for (dd, _), n in m.bodies.get(key, {}).items()}
+            e = key[0]
+            while e in ln:
+                e += ln[e]
+            if e > key[0]:
+                bodies[key[0]] = max(bodies.get(key[0], 0), e - key[0])
+    groups = collections.defaultdict(list)
+    for d, n in bodies.items():
+        groups[buf[d:d + n]].append(d)
+    own = set()
+    for k, ds in groups.items():
+        own.update(range(min(ds), min(ds) + len(k)))
+    canon = {}
+    for k, ds in groups.items():
+        f = min(ds)
+        for d in ds:
+            if d != f:
+                for j in range(len(k)):
+                    if d + j not in own:
+                        canon.setdefault(d + j, f + j)
     srt = sorted(code)
-    runs, st, pr = [], srt[0], srt[0]
-    for x in srt[1:]:
-        if x != pr + 1:
-            runs.append((st, pr + 1))
-            st = x
-        pr = x
-    runs.append((st, pr + 1))
-    first, m1, m2 = {}, {}, {}
-    for a, b in runs:
-        k = buf[a:b]
-        first.setdefault(k, a)
-        f1 = m1.setdefault(k, bytearray(b - a))
-        f2 = m2.setdefault(k, bytearray(b - a))
-        for i in range(b - a):
-            if a + i in done1:
-                f1[i] = 1
-            if a + i in done2:
-                f2[i] = 1
+
+    def root(x):
+        while x in canon:
+            x = canon[x]
+        return x
+    for done in (done1, done2):
+        for x in [x for x in done if x in canon]:
+            done.add(root(x))
     names, order = areas(mems)
     out = {n: [0, 0, 0] for n in order}
-    for k, a in first.items():
-        row = out[names.get(a // SECTOR, "Not loaded")]
-        row[0] += len(k)
-        row[1] += sum(m1[k])
-        row[2] += sum(m2[k])
+    for x in srt:
+        if x in canon:
+            continue
+        row = out[names.get(x // SECTOR, "Not loaded")]
+        row[0] += 1
+        row[1] += x in done1
+        row[2] += x in done2
     return {n: tuple(v) for n, v in out.items() if v[0]}, [n for n in order if out[n][0]]
 
 

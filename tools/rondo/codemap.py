@@ -1168,11 +1168,54 @@ def areas(mems):
     return names, order
 
 
+RAW_OPERAND = re.compile(r"(?<![#\w])(?:[az]:)?\$[0-9A-Fa-f]{2,4}")
+INSTRUCTION = re.compile(r"^\s+([a-z]{2,4}\d?)\b(.*)$")
+
+
+def placeholders():
+    """Symbols named by nothing but their own address (3 or more hex digits): OBJ_27A8, BiosE05D. Not names yet."""
+    out = set()
+    path = os.path.join(TOP, "config", "rondo", "symbols.csv")
+    for row in csv.reader(l for l in open(path, encoding="ascii") if not l.startswith("#")):
+        if len(row) > 2 and row[0] != "addr":
+            a = row[0].strip().lstrip("$").upper()
+            if len(a) >= 3 and row[2].upper().endswith(a):
+                out.add(row[2])
+    return out
+
+
+def unnamed():
+    """Each filed routine's disc offset -> the operands of its assembly that are not names: a raw address (an
+    operand that is a number and not an immediate) or a placeholder symbol. [] when its assembly is all names."""
+    ph = placeholders()
+    word = re.compile(r"[A-Za-z_]\w*")
+    out = {}
+    for path in glob.glob(os.path.join(TOP, "asm", "rondo", "**", "*.s"), recursive=True):
+        t = open(path, encoding="ascii").read()
+        ms = list(TAG.finditer(t))
+        for i, m in enumerate(ms):
+            body = t[m.end(): ms[i + 1].start() if i + 1 < len(ms) else len(t)]
+            bad = []
+            for line in body.split("\n"):
+                code_ = line.split(";")[0]
+                im = INSTRUCTION.match(code_)
+                if not im:
+                    continue
+                op = im.group(2)
+                if im.group(1) in ("tii", "tdd", "tin", "tia", "tai"):
+                    op = ",".join(op.split(",")[:2])    # the third operand is a length, not an address
+                bad += RAW_OPERAND.findall(op)
+                bad += [w for w in word.findall(op) if w in ph]
+            out[int(m.group(1), 16) * SECTOR + int(m.group(2), 16)] = bad
+    return out
+
+
 def progress(disc, mems, maps, cps):
     """M1 and M2 by area, every copy counted once: {area: (code bytes, M1 bytes, M2 bytes)} and the order.
     Code: what the map reached, and every filed routine that is not a copy of it; a copy is done when its
     source is, and a finished routine filed on a copy counts on its source. M1: bytes in routines whose C is finished
-    (it calls no original code); M2: those whose assembly is filed too and whose C file compiles (ccheck.py). A stretch the disc holds more than once
+    (it calls no original code); M2: those whose assembly is filed too, written in names (no raw address
+    and no placeholder named by its address as an operand), and whose C file compiles (ccheck.py). A stretch the disc holds more than once
     counts once, in the area of its first place on the disc, done where any copy of it is done."""
     buf = disc.buf
     import asmbuild
@@ -1192,6 +1235,7 @@ def progress(disc, mems, maps, cps):
             d = int(m.group(1), 16) * SECTOR + int(m.group(2), 16)
             finished[d] = not runs_game_code(body)
             built[d] = compiles[path]
+    names_ = unnamed()
     code = set()
     for m in maps.values():
         for d, runs in m.kstarts.items():
@@ -1205,7 +1249,7 @@ def progress(disc, mems, maps, cps):
             if finished.get(d):
                 for x in (q,) if src is None else (src,):
                     done1.add(x)
-                    if built.get(d):            # its assembly is filed (pieces), and its C file compiles
+                    if built.get(d) and not names_.get(d):   # assembly filed (pieces) and all names; C compiles
                         done2.add(x)
     srt = sorted(code)
     runs, st, pr = [], srt[0], srt[0]

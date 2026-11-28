@@ -333,26 +333,27 @@ MariaSlideCheck:
     lda z:zPadHeld
     jsr MariaFaceByPad
     jsr MariaJumpPressed
-    bcc LoadRecordSplitIntoFourAndClear
+    bcc MariaSlideCheck_to1
     lda a:OBJ_FACING_LEFT
     beq MariaSlideCheck_at0
     lda a:OBJ_X_LO
     cmp #$10
-    bcc LoadRecordSplitIntoFourAndClear
-    beq LoadRecordSplitIntoFourAndClear
+    bcc MariaSlideCheck_to1
+    beq MariaSlideCheck_to1
     bra MariaSlideCheck_at1
 MariaSlideCheck_at0:
     lda a:OBJ_X_LO
     cmp #$F0
-    bcs LoadRecordSplitIntoFourAndClear
+    bcs MariaSlideCheck_to1
 MariaSlideCheck_at1:
     ldy a:OBJ_FACING_LEFT
     lda a:MariaSlideAhead,y
     bsr MariaReadAhead
-    bne LoadRecordSplitIntoFourAndClear
+    bne MariaSlideCheck_to1
     pla
     sec
     rts
+MariaSlideCheck_to1:
     pla
     sta a:OBJ_FACING_LEFT
     clc
@@ -393,9 +394,10 @@ MariaSlideStart:
     adc #$10
     jsr MariaReadBelow
     and #$08
-    beq EnterStateWhenSlotClear
+    beq MariaSlideStart_to1
     jsr MariaBit3Burst
     bra MariaSlideStart_at0
+MariaSlideStart_to1:
     lda a:OBJ_X_LO
     sta z:zTemp00
     lda a:OBJ_Y_LO
@@ -418,13 +420,14 @@ MariaSlideStart_at0:
     lda a:MariaSlideSpeeds+1,y
     sta a:OBJ_VX_HI
     tst #$A0,z:zPadHeld
-    beq StepVerticalScrollTable
+    beq MariaSlideStart_to2
     lda #$0D
     sta a:OBJ_STATE
     lda #$00
     sta a:OBJ_SUBSTATE
     lda #$16
     jmp MariaSetAnimation
+MariaSlideStart_to2:
     lda #$0F
     sta a:OBJ_STATE
     lda #$00

@@ -213,11 +213,12 @@ MariaThrowItem_at5:
 MariaThrowItem_at1:
     ldx a:OBJ_STATE
     lda a:MariaItem4ByState,x
-    beq InitObjectFromRecord
+    beq MariaThrowItem_to1
     cmp #$02
     beq MariaThrowItem_at7
     lda #$27
     bra MariaThrowItem_at8
+MariaThrowItem_to1:
     lda #$26
 MariaThrowItem_at8:
     jsr MariaSetAnimation
@@ -409,8 +410,9 @@ MariaCrashRise_at0:
 ; Entry: nothing. Exit: as MariaCrashWait, MariaAnimationRunning, or the crash's end.
 MariaCrashFall:
     lda z:zCrashPhase
-    bne CollectScoreItem
+    bne MariaCrashFall_to1
     jmp MariaCrashWait
+MariaCrashFall_to1:
     jsr MariaAnimationRunning
     beq MariaCrashFall_at0
     rts

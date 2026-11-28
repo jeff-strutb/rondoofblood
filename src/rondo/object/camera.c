@@ -319,18 +319,6 @@ typedef struct {
     FloorProbe floor;
 } YMove;
 
-/* What a wall pushed the player back to. */
-typedef enum { WALL_NOT_THERE, WALL_STOPPED_ONLY, WALL_PAST_EDGE, WALL_PUSHED_BACK } WallPushEnd;
-
-typedef struct {
-    WallPushEnd how;
-    bool leftward;
-    WallProbe first;
-    WallProbe second;
-    uint8_t amount;
-    uint8_t position;
-    uint8_t index;
-} WallPush;
 
 /* Which way the player's speed or push asked it to go. */
 typedef enum { GOES_NOWHERE, GOES_LEFT, GOES_RIGHT } Direction;
@@ -1234,7 +1222,7 @@ static void push_from_wall(WallPush *push, const PushFrames *frames, uint8_t oth
 }
 
 /* Registers and flags as the steps of a wall push left them, in the assembly's order. */
-static void wall_push_exit_shim(WallPush push)
+void wall_push_exit_shim(WallPush push)
 {
     cpu.y = push.leftward ? 1 : 0;
     wall_exit_shim(push.first);

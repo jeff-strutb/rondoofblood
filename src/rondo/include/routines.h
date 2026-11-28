@@ -1220,6 +1220,22 @@ UpOrMarked MariaUpOrMarkedAbove(void);
 void marked_columns_exit_shim(MarkedColumns r);
 /* A read made, or not (A 0 by CLA, N and Z as they stood). */
 void read_or_nothing_exit_shim(TileRead read, bool read_made);
+/* object/camera.c: */
+/* What a wall pushed the player back to. */
+typedef enum { WALL_NOT_THERE, WALL_STOPPED_ONLY, WALL_PAST_EDGE, WALL_PUSHED_BACK } WallPushEnd;
+
+typedef struct {
+    WallPushEnd how;
+    bool leftward;
+    WallProbe first;
+    WallProbe second;
+    uint8_t amount;
+    uint8_t position;
+    uint8_t index;
+} WallPush;
+WallPush PlayerWallRight(void);
+WallPush PlayerWallLeft(void);
+void wall_push_exit_shim(WallPush push);
 
 typedef struct {
     LedgeEnd how;

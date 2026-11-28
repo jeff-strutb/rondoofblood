@@ -96,8 +96,9 @@ MariaStandFrame:
     jmp MariaClimbStart
 MariaStandFrame_at0:
     jsr MariaUpHeld
-    bcc CameraMode0A
+    bcc MariaStandFrame_to1
     jmp MariaCrouch
+MariaStandFrame_to1:
     lda a:OBJ_SUBSTATE
     cmp #$01
     beq MariaStandFrame_at1

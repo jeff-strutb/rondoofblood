@@ -911,5 +911,13 @@
 #define MariaSlideAhead 0xB095 /* how far ahead the slide check reads, by facing: 7, -7 (MariaSlideCheck) */
 #define MariaSlideSpeeds 0xB0FF /* her slide's X speed by facing, two words: $02C0, $FD40 (MariaSlideStart) */
 #define zBurstCount 0x20DA /* MariaStart9AObjects's use of zHitSlot: how many of its $9A objects it has started */
+#define MariaLedgeStates 0xABF3 /* the hold she takes on a ledge from a jump, by facing, plus 2 for the ledge behind her: states 5, 8, 7, 6 (MariaLedgePose) */
+#define MariaLedgeFrames 0xABF7 /* her frame in that hold (MariaLedgePose) */
+#define MariaLedgeAnimations 0xABFB /* her OBJ_ANIMATION in that hold (MariaLedgePose) */
+#define MariaLedgeNudgeX 0xABFF /* what her X moves by onto the ledge ahead, by column 0's pixel across its tile (MariaLandOnMarked) */
+#define MariaLedgeNudgeY 0xAC07 /* what her Y moves by onto the ledge ahead, by the same pixel (MariaLandOnMarked) */
+#define MariaLedgeNudgeXBehind 0xAC0F /* what her X moves by onto the ledge behind her, by the same pixel (MariaLandOnMarked) */
+#define MariaLedgeNudgeYBehind 0xAC17 /* what her Y moves by onto the ledge behind her, by the same pixel (MariaLandOnMarked) */
+#define MariaFallDriftSpeeds 0xAD16 /* her X speed when the fall's drift delay ends, by facing: $0040, $FFC0 (MariaStateFall) */
 
 #endif

@@ -925,3 +925,11 @@ A8A2,abs,MariaCrouchSteps,five words by OBJ_SUBSTATE: crouched, the attack, noth
 B095,abs,MariaSlideAhead,how far ahead the slide check reads, by facing: 7, -7 (MariaSlideCheck)
 B0FF,abs,MariaSlideSpeeds,her slide's X speed by facing, two words: $02C0, $FD40 (MariaSlideStart)
 DA,zp,zBurstCount,MariaStart9AObjects's use of zHitSlot: how many of its $9A objects it has started
+ABF3,abs,MariaLedgeStates,the hold she takes on a ledge from a jump, by facing, plus 2 for the ledge behind her: states 5, 8, 7, 6 (MariaLedgePose)
+ABF7,abs,MariaLedgeFrames,her frame in that hold (MariaLedgePose)
+ABFB,abs,MariaLedgeAnimations,her OBJ_ANIMATION in that hold (MariaLedgePose)
+ABFF,abs,MariaLedgeNudgeX,what her X moves by onto the ledge ahead, by column 0's pixel across its tile (MariaLandOnMarked)
+AC07,abs,MariaLedgeNudgeY,what her Y moves by onto the ledge ahead, by the same pixel (MariaLandOnMarked)
+AC0F,abs,MariaLedgeNudgeXBehind,what her X moves by onto the ledge behind her, by the same pixel (MariaLandOnMarked)
+AC17,abs,MariaLedgeNudgeYBehind,what her Y moves by onto the ledge behind her, by the same pixel (MariaLandOnMarked)
+AD16,abs,MariaFallDriftSpeeds,her X speed when the fall's drift delay ends, by facing: $0040, $FFC0 (MariaStateFall)

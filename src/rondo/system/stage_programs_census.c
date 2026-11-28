@@ -13,6 +13,7 @@
 #include "stage_enemies_l7.h"
 #include "stage_regs.h"
 #include "front_end.h"
+#include "stage_c_census.h"
 #include "stage_programs_census.h"
 #include "stage_gauge.h"
 
@@ -3801,4 +3802,235 @@ StageRegs StageHitReportTop026F(StageRegs r)
 void abi_StageHitReportTop026F(void)
 {
     stage_regs_load_shim(StageHitReportTop026F(regs_entry_shim()));
+}
+
+/* The tables of 03CD's program as the copy at 14DD holds them. */
+static const StageRouteBuild route_14dd = { 0x9B6C, 0x9B6E, 0x9B68, 0x9B69, 0x9B77, 0x9B97, 0x9B6B, 0xC3B5 };
+
+/*
+ * @routine 14DF:035 StageUnpackList14DD
+ * @run 6B:9035
+ * WHAT IT DOES: StageUnpackList3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageUnpackList3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageUnpackList3CD waits.
+ * Entry: as StageUnpackList3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageUnpackList14DD(StageRegs r)
+{
+    return StageUnpackList3CDAt(r, &route_14dd);
+}
+
+void abi_StageUnpackList14DD(void)
+{
+    stage_regs_load_shim(StageUnpackList14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DE:01E StageLoadRowMap14DD
+ * @run 6B:881E
+ * WHAT IT DOES: StageLoadRowMap3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageLoadRowMap3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageLoadRowMap3CD waits.
+ * Entry: as StageLoadRowMap3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageLoadRowMap14DD(StageRegs r)
+{
+    return StageLoadRowMap3CDAt(r, &route_14dd);
+}
+
+void abi_StageLoadRowMap14DD(void)
+{
+    stage_regs_load_shim(StageLoadRowMap14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DE:04D StageRouteSetUpA14DD
+ * @run 6B:884D
+ * WHAT IT DOES: StageRouteSetUpA3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageRouteSetUpA3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageRouteSetUpA3CD waits.
+ * Entry: as StageRouteSetUpA3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageRouteSetUpA14DD(StageRegs r)
+{
+    return StageRouteSetUpA3CDAt(r, &route_14dd);
+}
+
+void abi_StageRouteSetUpA14DD(void)
+{
+    stage_regs_load_shim(StageRouteSetUpA14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DE:05B StageRouteSetUpB14DD
+ * @run 6B:885B
+ * WHAT IT DOES: StageRouteSetUpB3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageRouteSetUpB3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageRouteSetUpB3CD waits.
+ * Entry: as StageRouteSetUpB3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageRouteSetUpB14DD(StageRegs r)
+{
+    return StageRouteSetUpB3CDAt(r, &route_14dd);
+}
+
+void abi_StageRouteSetUpB14DD(void)
+{
+    stage_regs_load_shim(StageRouteSetUpB14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DE:0D2 StageLoadScreen14DD
+ * @run 6B:88D2
+ * WHAT IT DOES: StageLoadScreen3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageLoadScreen3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageLoadScreen3CD waits.
+ * Entry: as StageLoadScreen3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageLoadScreen14DD(StageRegs r)
+{
+    return StageLoadScreen3CDAt(r, &route_14dd);
+}
+
+void abi_StageLoadScreen14DD(void)
+{
+    stage_regs_load_shim(StageLoadScreen14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DE:078 StageResetScroll14DD
+ * @run 6B:8878
+ * WHAT IT DOES: StageResetScroll3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageResetScroll3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageResetScroll3CD waits.
+ * Entry: as StageResetScroll3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageResetScroll14DD(StageRegs r)
+{
+    return StageResetScroll3CDAt(r, &route_14dd);
+}
+
+void abi_StageResetScroll14DD(void)
+{
+    stage_regs_load_shim(StageResetScroll14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DE:1B2 StageLevelStart14DD
+ * @run 6B:89B2
+ * WHAT IT DOES: StageLevelStart3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageLevelStart3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageLevelStart3CD waits.
+ * Entry: as StageLevelStart3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageLevelStart14DD(StageRegs r)
+{
+    return StageLevelStart3CDAt(r, &route_14dd);
+}
+
+void abi_StageLevelStart14DD(void)
+{
+    stage_regs_load_shim(StageLevelStart14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DD:619 StageNextRouteStage14DD
+ * @run 6B:8619
+ * WHAT IT DOES: StageNextRouteStage3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageNextRouteStage3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageNextRouteStage3CD waits.
+ * Entry: as StageNextRouteStage3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageNextRouteStage14DD(StageRegs r)
+{
+    return StageNextRouteStage3CDAt(r, &route_14dd);
+}
+
+void abi_StageNextRouteStage14DD(void)
+{
+    stage_regs_load_shim(StageNextRouteStage14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DD:5FD StageBossWalkOut14DD
+ * @run 6B:85FD
+ * WHAT IT DOES: StageBossWalkOut3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageBossWalkOut3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageBossWalkOut3CD waits.
+ * Entry: as StageBossWalkOut3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageBossWalkOut14DD(StageRegs r)
+{
+    return StageBossWalkOut3CDAt(r, &route_14dd);
+}
+
+void abi_StageBossWalkOut14DD(void)
+{
+    stage_regs_load_shim(StageBossWalkOut14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DD:511 StageClearedWalkOn14DD
+ * @run 6B:8511
+ * WHAT IT DOES: StageClearedWalkOn3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageClearedWalkOn3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageClearedWalkOn3CD waits.
+ * Entry: as StageClearedWalkOn3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedWalkOn14DD(StageRegs r)
+{
+    return StageClearedWalkOn3CDAt(r, &route_14dd);
+}
+
+void abi_StageClearedWalkOn14DD(void)
+{
+    stage_regs_load_shim(StageClearedWalkOn14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DF:68D StageProbePoints14DD
+ * @run 6B:968D
+ * WHAT IT DOES: StageProbePoints3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageProbePoints3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageProbePoints3CD waits.
+ * Entry: as StageProbePoints3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageProbePoints14DD(StageRegs r)
+{
+    return StageProbePoints3CDAt(r, &route_14dd);
+}
+
+void abi_StageProbePoints14DD(void)
+{
+    stage_regs_load_shim(StageProbePoints14DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 14DF:6DB StageProbeAgain14DD
+ * @run 6B:96DB
+ * WHAT IT DOES: StageProbeAgain3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+ * HOW: StageProbeAgain3CDAt (stage_c_census.c) with this build's tables (route_14dd).
+ * WAITS: where StageProbeAgain3CD waits.
+ * Entry: as StageProbeAgain3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageProbeAgain14DD(StageRegs r)
+{
+    return StageProbeAgain3CDAt(r, &route_14dd);
+}
+
+void abi_StageProbeAgain14DD(void)
+{
+    stage_regs_load_shim(StageProbeAgain14DD(stage_regs_entry_shim()));
 }

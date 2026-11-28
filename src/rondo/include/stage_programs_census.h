@@ -410,4 +410,40 @@ void abi_TileRowE0320(void);
 StageRegs StageHitReportTop026F(StageRegs r);
 void abi_StageHitReportTop026F(void);
 
+StageRegs StageUnpackList14DD(StageRegs r);
+void abi_StageUnpackList14DD(void);
+
+StageRegs StageLoadRowMap14DD(StageRegs r);
+void abi_StageLoadRowMap14DD(void);
+
+StageRegs StageRouteSetUpA14DD(StageRegs r);
+void abi_StageRouteSetUpA14DD(void);
+
+StageRegs StageRouteSetUpB14DD(StageRegs r);
+void abi_StageRouteSetUpB14DD(void);
+
+StageRegs StageLoadScreen14DD(StageRegs r);
+void abi_StageLoadScreen14DD(void);
+
+StageRegs StageResetScroll14DD(StageRegs r);
+void abi_StageResetScroll14DD(void);
+
+StageRegs StageLevelStart14DD(StageRegs r);
+void abi_StageLevelStart14DD(void);
+
+StageRegs StageNextRouteStage14DD(StageRegs r);
+void abi_StageNextRouteStage14DD(void);
+
+StageRegs StageBossWalkOut14DD(StageRegs r);
+void abi_StageBossWalkOut14DD(void);
+
+StageRegs StageClearedWalkOn14DD(StageRegs r);
+void abi_StageClearedWalkOn14DD(void);
+
+StageRegs StageProbePoints14DD(StageRegs r);
+void abi_StageProbePoints14DD(void);
+
+StageRegs StageProbeAgain14DD(StageRegs r);
+void abi_StageProbeAgain14DD(void);
+
 #endif

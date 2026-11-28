@@ -5989,3 +5989,590 @@ StageHitReportTop026F:
     lda #$06
     sta a:OBJ_ATTACK_POWER,y
     bra *-65 ; the report at $958A
+
+; @routine 14DF:035 StageUnpackList14DD
+; @run 6B:9035
+; WHAT IT DOES: StageUnpackList3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageUnpackList3CD's code with this build's table addresses.
+; WAITS: where StageUnpackList3CD waits.
+; Entry: as StageUnpackList3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageListPointers14DD = $9B6C ; this build's table
+StageRowMapPointers14DD = $9B6E ; this build's table
+StageRouteSounds14DD = $9B68 ; this build's table
+StageRouteScripts14DD = $9B69 ; this build's table
+StageScreenPointers14DD = $9B77 ; this build's table
+StageLevelRecords14DD = $9B97 ; this build's table
+StageNextByRoute14DD = $9B6B ; this build's table
+StageProbeLists14DD = $C3B5 ; this build's table
+StageUnpackList14DD:
+    tai KernelZeros,SaveBuffer,$02FF
+    lda z:zField82
+    asl a
+    tay
+    lda a:StageListPointers14DD,y
+    sta z:zTemp00
+    lda a:StageListPointers14DD+1,y
+    sta z:zTemp01
+    cly
+StageUnpackList14DD_at0:
+    lda (zTemp00),y
+    sta a:SaveBuffer,y
+    iny
+    cpy #$08
+    bne StageUnpackList14DD_at0
+    lda #$08
+    bra StageUnpackList14DD_at1
+StageUnpackList14DD_at7:
+    lda (zTemp00)
+    bne StageUnpackList14DD_at2
+    ldy #$01
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    lda #$03
+    bra StageUnpackList14DD_at1
+StageUnpackList14DD_at2:
+    cmp #$FF
+    bne StageUnpackList14DD_at3
+    rts
+StageUnpackList14DD_at3:
+    sta z:zTemp04
+    tax
+    ldy #$01
+    lda (zTemp00),y
+    cly
+StageUnpackList14DD_at4:
+    sta (zTemp02),y
+    iny
+    dex
+    bne StageUnpackList14DD_at4
+    lda z:zTemp04
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    bcc StageUnpackList14DD_at5
+    inc z:zTemp03
+StageUnpackList14DD_at5:
+    lda #$02
+StageUnpackList14DD_at1:
+    clc
+    adc z:zTemp00
+    sta z:zTemp00
+    bcc StageUnpackList14DD_at6
+    inc z:zTemp01
+StageUnpackList14DD_at6:
+    bra StageUnpackList14DD_at7
+
+
+; @routine 14DE:01E StageLoadRowMap14DD
+; @run 6B:881E
+; WHAT IT DOES: StageLoadRowMap3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageLoadRowMap3CD's code with this build's table addresses.
+; WAITS: where StageLoadRowMap3CD waits.
+; Entry: as StageLoadRowMap3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageLoadRowMap14DD:
+    tai KernelZeros,$3A00,$00FF
+    lda z:zField82
+    asl a
+    tay
+    lda a:StageRowMapPointers14DD,y
+    sta z:zTemp00
+    lda a:StageRowMapPointers14DD+1,y
+    sta z:zTemp01
+    cly
+StageLoadRowMap14DD_at1:
+    lda (zTemp00),y
+    tax
+    iny
+StageLoadRowMap14DD_at2:
+    lda (zTemp00),y
+    iny
+    cmp #$FF
+    bne StageLoadRowMap14DD_at0
+    rts
+StageLoadRowMap14DD_at0:
+    asl a
+    rol z:zTemp02
+    lsr a
+    sta a:$3A00,x
+    inx
+    bbs0 zTemp02,StageLoadRowMap14DD_at1
+    bra StageLoadRowMap14DD_at2
+
+
+; @routine 14DE:04D StageRouteSetUpA14DD
+; @run 6B:884D
+; WHAT IT DOES: StageRouteSetUpA3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageRouteSetUpA3CD's code with this build's table addresses.
+; WAITS: where StageRouteSetUpA3CD waits.
+; Entry: as StageRouteSetUpA3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageRouteSetUpA14DD:
+    jsr VecClearListChannels
+    ldx z:zField82
+    lda a:StageRouteSounds14DD,x
+    jsr VecStartListChannel0Kind2
+    jmp StageUnpackList14DD
+
+
+; @routine 14DE:05B StageRouteSetUpB14DD
+; @run 6B:885B
+; WHAT IT DOES: StageRouteSetUpB3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageRouteSetUpB3CD's code with this build's table addresses.
+; WAITS: where StageRouteSetUpB3CD waits.
+; Entry: as StageRouteSetUpB3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageRouteSetUpB14DD:
+    lda z:zField82
+    asl a
+    clc
+    adc z:zCharacter
+    tax
+    lda a:StageRouteScripts14DD,x
+    ldx #$07
+    jmp VecStartScriptSlotKind1
+
+
+; @routine 14DE:0D2 StageLoadScreen14DD
+; @run 6B:88D2
+; WHAT IT DOES: StageLoadScreen3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageLoadScreen3CD's code with this build's table addresses.
+; WAITS: where StageLoadScreen3CD waits.
+; Entry: as StageLoadScreen3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageLoadScreen14DD:
+    stz z:zRasterStage
+    lda z:zField83
+    asl a
+    tay
+    lda a:StageScreenPointers14DD,y
+    sta z:zTemp00
+    lda a:StageScreenPointers14DD+1,y
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    iny
+    sta a:ScrollXHiScreen
+    sta a:ScrollXHiScreen+1
+    sta a:ScrollXHiScreen+2
+    sta a:ScrollXHiScreen+3
+    and #$01
+    sta a:ScrollXHi
+    sta a:ScrollXHi+1
+    sta a:ScrollXHi+2
+    sta a:ScrollXHi+3
+    lda (zTemp00),y
+    iny
+    sta a:ScrollYHiScreen
+    and #$01
+    sta a:ScrollYHi
+    lda (zTemp00),y
+    iny
+    sta a:ScrollXLo
+    lda (zTemp00),y
+    iny
+    sta a:ScrollYLo
+    lda (zTemp00),y
+    iny
+    sta a:CameraMode
+    lda (zTemp00),y
+    iny
+    sta a:Scroll3E66
+    lda (zTemp00),y
+    iny
+    sta a:ScrollXMinHi
+    lda (zTemp00),y
+    iny
+    sta a:ScrollXMaxHi
+    lda (zTemp00),y
+    iny
+    sta a:ScrollYMinHi
+    lda (zTemp00),y
+    iny
+    sta a:ScrollYMaxHi
+    bbr1 zField8E,StageLoadScreen14DD_at5
+    rmb1 z:zField8E
+    iny
+    iny
+    bra StageLoadScreen14DD_at0
+StageLoadScreen14DD_at5:
+    lda (zTemp00),y
+    bne StageLoadScreen14DD_at1
+    lda z:zBiosAl
+    sta a:ScrollXHiScreen
+    and #$01
+    sta a:ScrollXHi
+    lda z:zBiosAh
+    sta a:ScrollXLo
+    iny
+    bra StageLoadScreen14DD_at2
+StageLoadScreen14DD_at1:
+    iny
+    sta a:OBJ_X_HI+8
+StageLoadScreen14DD_at2:
+    lda (zTemp00),y
+    iny
+    sta a:$2C50
+    stz a:$2C08
+    stz a:$2B30
+    lda z:zCharacter
+    beq StageLoadScreen14DD_at0
+    lda a:$2818
+    cmp #$05
+    bcc StageLoadScreen14DD_at0
+    sec
+    sbc #$05
+    cmp #$04
+    bcs StageLoadScreen14DD_at0
+    tax
+    lda a:OBJ_X_HI+8
+    clc
+    adc a:$899A,x
+    sta a:OBJ_X_HI+8
+StageLoadScreen14DD_at0:
+    lda (zTemp00),y
+    iny
+    sta z:zRasterEffect
+    stz z:zRasterArg
+    lda (zTemp00),y
+    bmi StageLoadScreen14DD_at3
+    iny
+    sta a:$2AA0
+    bra StageLoadScreen14DD_at4
+StageLoadScreen14DD_at3:
+    iny
+StageLoadScreen14DD_at4:
+    rts
+
+
+; @routine 14DE:078 StageResetScroll14DD
+; @run 6B:8878
+; WHAT IT DOES: StageResetScroll3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageResetScroll3CD's code with this build's table addresses.
+; WAITS: where StageResetScroll3CD waits.
+; Entry: as StageResetScroll3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageResetScroll14DD:
+    lda a:ScrollXHiScreen
+    sta z:zBiosAl
+    lda a:ScrollXLo
+    sta z:zBiosAh
+    jsr VecClearScreenState
+    tai KernelZeros,ScrollXFrac,$0030
+    tai KernelZeros,Scroll3E66,$0088
+    stz a:$2ED8
+    lda z:zField8E
+    pha
+    bsr StageLoadScreen14DD
+    pla
+    sta z:zField8E
+    jsr $8044
+    jsr SetBlinkFlash
+    ldy z:zRasterEffect
+    lda a:$886A,y
+    beq StageResetScroll14DD_at0
+    tai KernelZeros,ScrollXFrac,$0030
+    tai KernelZeros,Scroll3E66,$0088
+    lda z:zField8E
+    pha
+    bsr StageLoadScreen14DD
+    pla
+    sta z:zField8E
+    jsr $A79D
+StageResetScroll14DD_at0:
+    tai KernelZeros,ScrollXFrac,$0030
+    tai KernelZeros,Scroll3E66,$0088
+
+
+; @routine 14DE:1B2 StageLevelStart14DD
+; @run 6B:89B2
+; WHAT IT DOES: StageLevelStart3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageLevelStart3CD's code with this build's table addresses.
+; WAITS: where StageLevelStart3CD waits.
+; Entry: as StageLevelStart3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageLevelStart14DD:
+    jsr VecClearEnemySlots
+    jsr $8044
+    lda z:zField83
+    asl a
+    asl a
+    tay
+    lda a:StageLevelRecords14DD,y
+    sta a:LevelStreamLo
+    lda a:StageLevelRecords14DD+1,y
+    sta a:LevelStreamHi
+    lda a:StageLevelRecords14DD+2,y
+    sta a:LevelAxis
+    lda a:StageLevelRecords14DD+3,y
+    beq StageLevelStart14DD_at0
+    phy
+    cly
+StageLevelStart14DD_at1:
+    lda #$00
+    sta a:EventFlags,y
+    iny
+    cpy #$20
+    bcc StageLevelStart14DD_at1
+    ply
+StageLevelStart14DD_at0:
+    jsr VecStreamFullWalk
+    jsr StageOverlayFrame3CD
+    rts
+
+
+; @routine 14DD:619 StageNextRouteStage14DD
+; @run 6B:8619
+; WHAT IT DOES: StageNextRouteStage3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageNextRouteStage3CD's code with this build's table addresses.
+; WAITS: where StageNextRouteStage3CD waits.
+; Entry: as StageNextRouteStage3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageNextRouteStage14DD:
+    lda #$02
+    sta z:zDisplayDelay
+    stz a:$3310
+    stz a:Field2742+1
+    stz a:OBJ_WORK_C
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:StageNextByRoute14DD,y
+    sta z:zField83
+    cla
+    sta z:$84
+    stz a:$2A58
+    rts
+
+
+; @routine 14DD:5FD StageBossWalkOut14DD
+; @run 6B:85FD
+; WHAT IT DOES: StageBossWalkOut3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageBossWalkOut3CD's code with this build's table addresses.
+; WAITS: where StageBossWalkOut3CD waits.
+; Entry: as StageBossWalkOut3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageBossWalkOut14DD:
+    lda #$B8
+    sta a:$3310
+    jsr StageFrameA0003CD
+    jsr VecPlayerAndCameraFrame
+    jsr RichterVecC3A7
+    jsr StageFrameA08D3CD
+    jsr StageOverlayFrame3CD
+    lda a:OBJ_X_HI+8
+    cmp #$F0
+    beq StageNextRouteStage14DD
+    rts
+
+
+; @routine 14DD:511 StageClearedWalkOn14DD
+; @run 6B:8511
+; WHAT IT DOES: StageClearedWalkOn3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageClearedWalkOn3CD's code with this build's table addresses.
+; WAITS: where StageClearedWalkOn3CD waits.
+; Entry: as StageClearedWalkOn3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearedWalkOn14DD:
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:$8439,y
+    sta a:ScrollStepXHi
+    stz a:ScrollStepXLo
+    lda a:OBJ_X_HI+8
+    clc
+    adc a:$843B,y
+    sta a:OBJ_X_HI+8
+    jsr StageFrameA08D3CD
+    jsr StageOverlayFrame3CD
+    lda a:ScrollXLo
+    beq StageClearedWalkOn14DD_at0
+    rts
+StageClearedWalkOn14DD_at0:
+    lda z:zField8C
+    cmp #$07
+    bcs StageClearedWalkOn14DD_at1
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:StageNextByRoute14DD,y
+    sta z:zField83
+    sta z:zField86
+    bra StageClearedWalkOn14DD_at2
+StageClearedWalkOn14DD_at1:
+    inc z:zField83
+    smb4 z:zField8E
+    lda #$FF
+    jsr VecSoundCommand
+StageClearedWalkOn14DD_at2:
+    smb1 z:zField8E
+    lda z:zField8C
+    cmp #$07
+    bcs StageClearedWalkOn14DD_at3
+    jsr StageRouteSetUpA14DD
+    jsr StageRouteSetUpB14DD
+StageClearedWalkOn14DD_at3:
+    jsr StageLoadRowMap14DD
+    tai KernelZeros,ScrollXFrac,$0030
+    tai KernelZeros,Scroll3E66,$0088
+    lda z:zField8E
+    pha
+    jsr StageLoadScreen14DD
+    pla
+    sta z:zField8E
+    lda a:CameraMode
+    cmp #$0D
+    bne StageClearedWalkOn14DD_at4
+    jsr $8044
+    jsr SetBlinkFlash
+    jsr StageLoadScreen14DD
+StageClearedWalkOn14DD_at4:
+    rmb1 z:zField8E
+    lda z:zField8C
+    cmp #$09
+    bcs StageClearedWalkOn14DD_at6
+    cmp #$07
+    bcs StageClearedWalkOn14DD_at5
+StageClearedWalkOn14DD_at6:
+    jsr StageLevelStart14DD
+StageClearedWalkOn14DD_at5:
+    stz z:zField8C
+    stz z:zPaused
+    lda #$01
+    sta z:zGameSubMode
+    rts
+
+
+; @routine 14DF:68D StageProbePoints14DD
+; @run 6B:968D
+; WHAT IT DOES: StageProbePoints3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageProbePoints3CD's code with this build's table addresses.
+; WAITS: where StageProbePoints3CD waits.
+; Entry: as StageProbePoints3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageProbePoints14DD:
+    asl a
+    tay
+    lda a:StageProbeLists14DD,y
+    sta z:zTemp0C
+    lda a:StageProbeLists14DD+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+StageProbePoints14DD_at0:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_HI+8,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:$2B30,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:$2C50,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:$2C08,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr ProbeTile3CD
+    ldy z:zTemp0A
+    sta a:TileHit+3,y
+    lda z:zTemp00
+    sta a:TileDepthX+3,y
+    lda z:zTemp02
+    sta a:TileDepthY+3,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne StageProbePoints14DD_at0
+    rts
+
+
+; @routine 14DF:6DB StageProbeAgain14DD
+; @run 6B:96DB
+; WHAT IT DOES: StageProbeAgain3CD's code in the copy of its program at 14DD (and 15BD, 177D), which reads its own tables.
+; HOW: StageProbeAgain3CD's code with this build's table addresses.
+; WAITS: where StageProbeAgain3CD waits.
+; Entry: as StageProbeAgain3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageProbeAgain14DD:
+    pha
+    jsr StageProbePoints14DD
+    pla
+    asl a
+    tay
+    lda a:StageProbeLists14DD,y
+    sta z:zTemp0C
+    lda a:StageProbeLists14DD+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+StageProbeAgain14DD_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit+3,y
+    ply
+    and #$81
+    bmi StageProbeAgain14DD_at0
+    beq StageProbeAgain14DD_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_HI+8,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:$2B30,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:$2C50,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:$2C08,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr ProbeTile3CD
+    ldy z:zTemp0A
+    and #$01
+    beq StageProbeAgain14DD_at1
+    ldy z:zTemp0A
+    lda a:TileHit+3,y
+    and #$7E
+    sta a:TileHit+3,y
+StageProbeAgain14DD_at1:
+    ply
+StageProbeAgain14DD_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne StageProbeAgain14DD_at2
+    rts
+StageProbeAgain14DD_at0:
+    iny
+    iny
+    iny
+    iny
+    bra StageProbeAgain14DD_at3
+

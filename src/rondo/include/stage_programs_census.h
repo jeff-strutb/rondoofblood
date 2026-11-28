@@ -521,4 +521,10 @@ void abi_StageStartPlain026D(void);
 StageRegs StageStart026D(StageRegs r);
 void abi_StageStart026D(void);
 
+StageRegs StageClearedWalkOn026D(StageRegs r);
+void abi_StageClearedWalkOn026D(void);
+
+StageRegs StageClearedWalkOff026D(StageRegs r);
+void abi_StageClearedWalkOff026D(void);
+
 #endif

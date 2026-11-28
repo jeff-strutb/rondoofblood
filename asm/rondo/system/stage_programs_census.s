@@ -7205,3 +7205,178 @@ StageStart026D:
     cmp #$0C
     beq StageStartMusic026D
     jmp VecCdPlayAgain
+
+; @routine 026D:4EB StageClearedWalkOn026D
+; @run 6B:84EB
+; WHAT IT DOES: The walk into the next screen: the player and the scroll move until ScrollXLo is 0; then the next section (below zField8C 7, by the program's own table at $8634's routine) or the next one counted, the sound or the ADPCM for it, the screen cleared and loaded and the stage's objects set up; back to sub-mode 1.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ClearedWalkPushes026D = $8414 ; the walk's scroll push by side
+LoadStageEntryAt026D = $8908 ; the stage entry's loader in this program
+StageSetUpAt026D = $88B1
+MapOverlayBanks5And6Alt026D = $80A0
+ClearedWalkBankEntry026D = $A8EC ; the player bank's entry
+StageClearedWalkOn026D:
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:ClearedWalkPushes026D,y
+    sta a:ScrollStepXHi
+    stz a:ScrollStepXLo
+    lda a:OBJ_X_LO
+    clc
+    adc a:ClearedWalkSides026D,y
+    sta a:OBJ_X_LO
+    jsr StageCameraStep026D
+    jsr StepScrollAndRunObjects026E
+    lda a:ScrollXLo
+    beq StageClearedWalkOn026D_at0
+    rts
+StageClearedWalkOn026D_at0:
+    lda z:zField8C
+    cmp #$07
+    bcs StageClearedWalkOn026D_at1
+    jsr StageSectionNext026D
+    sta z:zField86
+    bra StageClearedWalkOn026D_at5
+StageClearedWalkOn026D_at1:
+    inc z:zField83
+    lda z:zStage
+    cmp #$83
+    beq StageClearedWalkOn026D_at5
+    cmp #$0C
+    beq StageClearedWalkOn026D_at2
+    smb4 z:zField8E
+    lda #$FF
+    jsr VecSoundCommand
+    bra StageClearedWalkOn026D_at5
+StageClearedWalkOn026D_at2:
+    lda z:zField92
+    cmp #$04
+    beq StageClearedWalkOn026D_at4
+    lda #$1C
+    clc
+    adc z:zCharacter
+    jsr VecAdpcmLoad
+StageClearedWalkOn026D_at4:
+    lda #$50
+    jsr VecSoundCommand
+StageClearedWalkOn026D_at5:
+    smb1 z:zField8E
+    lda z:zField8C
+    cmp #$07
+    bcs StageClearedWalkOn026D_at6
+    jsr StartStageListsAt026D
+StageClearedWalkOn026D_at6:
+    jsr ExpandStageVramRunsAt026D
+    tai KernelZeros,ScrollXFrac,$0030
+    tai KernelZeros,Scroll3E66,$0088
+    lda z:zField8E
+    pha
+    jsr LoadStageEntryAt026D
+    pla
+    sta z:zField8E
+    lda z:zRasterEffect
+    cmp #$0E
+    beq StageClearedWalkOn026D_at7
+    cmp #$0F
+    bne StageClearedWalkOn026D_at8
+StageClearedWalkOn026D_at7:
+    jsr StageSetUpAt026D
+    bra StageClearedWalkOn026D_at10
+StageClearedWalkOn026D_at8:
+    lda a:CameraMode
+    cmp #$0D
+    beq StageClearedWalkOn026D_at9
+    cmp #$11
+    bne StageClearedWalkOn026D_at10
+StageClearedWalkOn026D_at9:
+    jsr MapOverlayBanks5And6Alt026D
+    jsr ClearedWalkBankEntry026D
+    jsr LoadStageEntryAt026D
+StageClearedWalkOn026D_at10:
+    rmb1 z:zField8E
+    lda z:zField8C
+    cmp #$09
+    bcs StageClearedWalkOn026D_at11
+    cmp #$07
+    bcs StageClearedWalkOn026D_at12
+StageClearedWalkOn026D_at11:
+    jsr SetUpStageObjectsAt026D
+StageClearedWalkOn026D_at12:
+    stz z:zField8C
+    stz z:zPaused
+    lda #$01
+    sta z:zGameSubMode
+    rts
+
+; @routine 026D:667 StageClearedWalkOff026D
+; @run 6B:8667
+; WHAT IT DOES: The walk off: the player walks on until X reaches the side's end; then zModeDone counted, or the sub-mode's own turns: from zField8C $0F the death's way, with $0B or $0C a list started and the walk out's end.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ClearedWalkOffEnds026D = $841E ; where the walk off ends, by side
+StageClearedWalkOff026D:
+    jsr StepScrollAndRunObjects026E
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:ClearedWalkTimers026D,y
+    sta a:OBJ_WORK_F
+    sta a:OBJ_TALLY_WAIT
+    jsr StagePlayerFrame026D
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:ClearedWalkPushes026D,y
+    clc
+    adc a:OBJ_X_LO
+    sta a:OBJ_X_LO
+    bne StageClearedWalkOff026D_at0
+    lda a:ClearedWalkPushes026D,y
+    clc
+    adc a:OBJ_X_HI
+    sta a:OBJ_X_HI
+StageClearedWalkOff026D_at0:
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:OBJ_X_LO
+    cmp a:ClearedWalkOffEnds026D,y
+    bne StageClearedWalkOff026D_at2
+    lda z:zField8C
+    cmp #$0F
+    bcs StageClearedWalkOff026D_at3
+    cmp #$0B
+    beq StageClearedWalkOff026D_at4
+    cmp #$0C
+    beq StageClearedWalkOff026D_at4
+    inc z:zModeDone
+StageClearedWalkOff026D_at2:
+    rts
+StageClearedWalkOff026D_at3:
+    dec a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta z:zField83
+    lda z:zField8C
+    dec a
+    and #$01
+    ora #$02
+    sta z:zField87
+    jmp StageSubStepDeath026D
+StageClearedWalkOff026D_at4:
+    lda #$66
+    ldx #$05
+    jsr VecStartListChannelKind2
+    jmp StageBossWalkOut026D_at0

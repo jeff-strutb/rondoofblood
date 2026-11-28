@@ -4796,3 +4796,221 @@ void abi_StageStart026D(void)
 {
     stage_regs_load_shim(StageStart026D(stage_regs_entry_shim()));
 }
+
+void abi_VecAdpcmLoad(void);   /* system/vectors.c */
+void abi_VecStartListChannelKind2(void);
+
+/*
+ * @routine 026D:4EB StageClearedWalkOn026D
+ * @run 6B:84EB
+ * WHAT IT DOES: The walk into the next screen: the player and the scroll move until ScrollXLo is 0; then the next section (below zField8C 7, by the program's own table at $8634's routine) or the next one counted, the sound or the ADPCM for it, the screen cleared and loaded and the stage's objects set up; back to sub-mode 1.
+ * HOW: The calls to the routines loaded there and the kernel; the tables at $8414 and $8416 by side.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedWalkOn026D(StageRegs r)
+{
+    Sum sum;
+    uint8_t side, x, step, flags;
+    bool start;
+
+    side = (uint8_t)((uint8_t)(RD8(ZP->field8c) - 1) & 0x01);
+    r.y = side;
+    r = regs_loaded(r, rd8((uint16_t)(0x8414 + side)));
+    WR8(SCROLLE->step_x_hi[0], r.a);
+    WR8(SCROLLE->step_x_lo[0], 0);
+    x = RD8(OBJ->x_lo[0]);
+    step = rd8((uint16_t)(0x8416 + side));
+    sum = add_bytes(x, step, false);
+    r = regs_loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(OBJ->x_lo[0], sum.value);
+    r = call_at(r, 0x8507, 0x80A8);
+    r = call_at(r, 0x850A, 0x8A05);
+    r = regs_loaded(r, RD8(SCROLL->x_lo[0]));
+    if (r.a != 0) {
+        return r;
+    }
+    r = regs_loaded(r, RD8(ZP->field8c));
+    r = regs_compared(r, r.a, 0x07);
+    if (!r.c) {
+        r = call_at(r, 0x8519, 0x8634);
+        WR8(ZP->field86, r.a);
+    } else {
+        r.nz = INC8(ZP->field83);
+        r = regs_loaded(r, RD8(ZP->stage));
+        r = regs_compared(r, r.a, 0x83);
+        if (r.a != 0x83) {
+            r = regs_compared(r, r.a, 0x0C);
+            if (r.a != 0x0C) {
+                RMW8(ZP->field8e, old, old | 0x10);
+                r = regs_loaded(r, 0xFF);
+    stage_regs_load_shim(r);
+    jsr_push(0x8530);
+    abi_VecSoundCommand();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+            } else {
+                r = regs_loaded(r, RD8(ZP->field92));
+                r = regs_compared(r, r.a, 0x04);
+                if (r.a != 0x04) {
+                    r = regs_loaded(r, 0x1C);
+                    sum = add_bytes(r.a, RD8(ZP->character), false);
+                    r = regs_loaded(r, sum.value);
+                    r.c = sum.carry;
+                    r.v = sum.overflow;
+    stage_regs_load_shim(r);
+    jsr_push(0x8540);
+    abi_VecAdpcmLoad();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+                }
+                r = regs_loaded(r, 0x50);
+    stage_regs_load_shim(r);
+    jsr_push(0x8545);
+    abi_VecSoundCommand();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+            }
+        }
+    }
+    RMW8(ZP->field8e, old, old | 0x02);
+    r = regs_loaded(r, RD8(ZP->field8c));
+    r = regs_compared(r, r.a, 0x07);
+    if (!r.c) {
+        r = call_at(r, 0x8550, 0x886C);
+    }
+    r = call_at(r, 0x8553, 0x883D);
+    stage_regs_load_shim(r);
+    tai(KernelZeros, ADDR_OF8(SCROLL->x_frac[0]), 0x0030);
+    tai(KernelZeros, ADDR_OF8(SCROLLE->f3e66[0]), 0x0088);
+    r = regs_loaded(r, RD8(ZP->field8e));
+    push8(r.a);
+    r = call_at(r, 0x8567, 0x8908);
+    flags = pull8();
+    r = regs_loaded(r, flags);
+    WR8(ZP->field8e, flags);
+    r = regs_loaded(r, RD8(ZP->raster_effect));
+    r = regs_compared(r, r.a, 0x0E);
+    if (r.a != 0x0E) {
+        r = regs_compared(r, r.a, 0x0F);
+    }
+    if (r.nz == 0) {
+        r = call_at(r, 0x8577, 0x88B1);
+    } else {
+        r = regs_loaded(r, RD8(SCROLLLIM->camera_mode));
+        r = regs_compared(r, r.a, 0x0D);
+        if (r.a != 0x0D) {
+            r = regs_compared(r, r.a, 0x11);
+        }
+        if (r.nz == 0) {
+            r = call_at(r, 0x8587, 0x80A0);
+            r = call_at(r, 0x858A, 0xA8EC);
+            r = call_at(r, 0x858D, 0x8908);
+        }
+    }
+    RMW8(ZP->field8e, old, old & (uint8_t)~0x02);
+    r = regs_loaded(r, RD8(ZP->field8c));
+    r = regs_compared(r, r.a, 0x09);
+    start = r.c;
+    if (!start) {
+        r = regs_compared(r, r.a, 0x07);
+        start = !r.c;
+    }
+    if (start) {
+        r = call_at(r, 0x859C, 0x8A15);
+    }
+    WR8(ZP->field8c, 0);
+    WR8(ZP->paused, 0);
+    r = regs_loaded(r, 0x01);
+    WR8(ZP->game_sub_mode, 0x01);
+    return r;
+}
+
+void abi_StageClearedWalkOn026D(void)
+{
+    stage_regs_load_shim(StageClearedWalkOn026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:667 StageClearedWalkOff026D
+ * @run 6B:8667
+ * WHAT IT DOES: The walk off: the player walks on until X reaches the side's end; then zModeDone counted, or the sub-mode's own turns: from zField8C $0F the death's way, with $0B or $0C a list started and the walk out's end.
+ * HOW: The tables at $8414, $841C and $841E by side; boss_walk_end_026d is the jump to $861E.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedWalkOff026D(StageRegs r)
+{
+    Sum sum;
+    uint8_t side, step, value;
+
+    r = call_at(r, 0x866A, 0x8A05);
+    side = (uint8_t)((uint8_t)(RD8(ZP->field8c) - 1) & 0x01);
+    r.y = side;
+    r = regs_loaded(r, rd8((uint16_t)(0x841C + side)));
+    WR8(OBJ->work_f[0], r.a);
+    WR8(OBJ->tally_wait[0], r.a);
+    r = call_at(r, 0x867C, 0x8094);
+    side = (uint8_t)((uint8_t)(RD8(ZP->field8c) - 1) & 0x01);
+    r.y = side;
+    step = rd8((uint16_t)(0x8414 + side));
+    value = RD8(OBJ->x_lo[0]);
+    sum = add_bytes(step, value, false);
+    r = regs_loaded(r, sum.value);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(OBJ->x_lo[0], sum.value);
+    if (sum.value == 0) {
+        step = rd8((uint16_t)(0x8414 + side));
+        value = RD8(OBJ->x_hi[0]);
+        sum = add_bytes(step, value, false);
+        r = regs_loaded(r, sum.value);
+        r.c = sum.carry;
+        r.v = sum.overflow;
+        WR8(OBJ->x_hi[0], sum.value);
+    }
+    side = (uint8_t)((uint8_t)(RD8(ZP->field8c) - 1) & 0x01);
+    r.y = side;
+    r = regs_loaded(r, RD8(OBJ->x_lo[0]));
+    r = regs_compared(r, r.a, rd8((uint16_t)(0x841E + side)));
+    if (r.nz != 0) {
+        return r;
+    }
+    r = regs_loaded(r, RD8(ZP->field8c));
+    r = regs_compared(r, r.a, 0x0F);
+    if (r.c) {
+        value = (uint8_t)(r.a - 1);
+        r.c = (value & 0x08) != 0;
+        r = regs_loaded(r, (uint8_t)(value >> 4));
+        WR8(ZP->field83, r.a);
+        r = regs_loaded(r, (uint8_t)(((uint8_t)(RD8(ZP->field8c) - 1) & 0x01) | 0x02));
+        WR8(ZP->field87, r.a);
+        return tail_at(r, 0x8226);
+    }
+    r = regs_compared(r, r.a, 0x0B);
+    if (r.a != 0x0B) {
+        r = regs_compared(r, r.a, 0x0C);
+    }
+    if (r.nz != 0) {
+        r.nz = INC8(ZP->mode_done);
+        return r;
+    }
+    r = regs_loaded(r, 0x66);
+    r.x = 0x05;
+    r.nz = 0x05;
+    stage_regs_load_shim(r);
+    jsr_push(0x86D1);
+    abi_VecStartListChannelKind2();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+    return boss_walk_end_026d(r);
+}
+
+void abi_StageClearedWalkOff026D(void)
+{
+    stage_regs_load_shim(StageClearedWalkOff026D(stage_regs_entry_shim()));
+}

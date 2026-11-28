@@ -125,6 +125,7 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 3618,abs,OBJ_STEP_BEFORE_HIT,the player's use of OBJ_WORK_H: the step of the state he was hit in; given back with it
 3670,abs,OBJ_HIT_FRAMES,the player's use of OBJ_WORK_I: frames left in a step of the hit's reaction
 3778,abs,OBJ_KNOCK_RIGHT,the player's use of OBJ_WORK_L: 1 when the hit throws him right, 0 left
+3880,abs,OBJ_HIT_BY_SLOT,the hit objects' use of OBJ_WORK_O: the slot of the object whose hit test found it (HitTestObject stores it; the player's hit reads it)
 2EE0,abs,OBJ_WORK_A,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
 2F38,abs,OBJ_SCROLL_BAND,bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to
 3098,abs,OBJ_EVENT_ID,event this object records
@@ -390,6 +391,14 @@ D3,zp,zFieldD3,cleared with the player's pad overrides
 3BF4,abs,PlayerDying,not zero while the player's death runs
 3BF5,abs,PlayerDyingTimer,frames left in a step of the death
 3BF7,abs,PlayerByte3BF7,player state not yet identified
+# Names for the player bytes above, from Richter's code (the old names stay while other files use them).
+3BD5,abs,PlayerAttackKind,the attack under way: 0 the whip; else the thrown item's attack (Richter's item handlers store it from the table at $BA38 by item); the attack's animation, its frames and the landing's by it
+3BE2,abs,PlayerHeld,not zero while a hit's hold is on him (bit 5 of OBJ_HIT_TAKEN counts it up): hits are then shrugged off with script 1, and presses shake it off (PlayerHeldCount)
+3BE3,abs,PlayerHeldCount,the hold's count: 1 when it starts (script 0), one more each frame a button is newly pressed; at 8 the hold ends (PlayerHeld 0, script 9)
+3BE8,abs,PlayerSlowTimerLo,low byte of a 16-bit timer a hit sets ($01FF, bit 6 of OBJ_HIT_TAKEN): while it runs the stage clears the scroll's steps and runs the player's frame on even counts only; at its end script 9
+3BE9,abs,PlayerSlowTimerHi,high byte of PlayerSlowTimerLo's timer
+3BF0,abs,PlayerStartPose,1 from the stage's start until its forced pad has run out (RichterFrame clears it): standing still he shows frame $47 then
+3BF1,abs,PlayerJumpKind,how the jump in the air started: bit 7 a jump the way he faced (RichterToAir), bit 0 a knock-back (RichterKnockBack); 0 any other
 A02A,abs,OverlayOrphanA02A,a piece of the player overlay nothing reaches
 A0FF,abs,PlayerFootYByState,how far above the position to probe by state
 A116,abs,PlayerStartHandlers,4 words by zField8A
@@ -452,6 +461,11 @@ BA26,abs,RichterItemUseLists,the sound list each thrown item starts
 BA2F,abs,RichterItemUseScripts,the script each thrown item starts
 B5AA,abs,RichterKnockSpeedsX,X speed words by the side a hit throws him: $FF00 left for 0; $0100 right for 1
 B5D5,abs,RichterHurtResumeFrames,the hurt frame by the state he was hit in: (the state less 5) / 2
+B2C1,abs,RichterHurtByState,the hit's start by the state he was hit in: thirteen words
+B37D,abs,RichterClimbStepsHurtAsStanding,1 for the steps of states 5 to 8 a hit is taken in as if standing (2 to 4)
+B428,abs,RichterHurtFromAirStates,1 for the states a hit of kind 3 finds him in the air in (3, 4, 11 and 12)
+B435,abs,RichterThrowSpeedsX,X speed words of a kind 3 throw by OBJ_KNOCK_RIGHT: $FD80, $0280
+B4C1,abs,RichterThrownLandSpeedsX,X speed words as a throw lands, by OBJ_KNOCK_RIGHT: $FE00, $0200
 BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 0800,abs,PsgSelect,PSG: which channel the channel registers address
 0801,abs,PsgMainVolume,PSG: main volume, left and right nibbles

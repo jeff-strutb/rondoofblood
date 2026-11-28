@@ -1244,7 +1244,7 @@ ColumnRead RichterSolidUnderColumn(uint8_t column)
     return column_probe(column, COLUMNS_BELOW_CHECK, 0xAA32, 0xAA41, &richter_columns);
 }
 
-static uint8_t solid_answer(ColumnRead one)
+uint8_t solid_answer(ColumnRead one)
 {
     uint8_t answer = column_answer(one) & TILE_FLOOR;
 

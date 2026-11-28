@@ -366,7 +366,7 @@ typedef struct {
     union { uint8_t work_l[88]; uint8_t knock_right[88]; }; /* OBJ_WORK_L */
     uint8_t work_m[88]; /* OBJ_WORK_M */
     uint8_t work_n[88]; /* OBJ_WORK_N */
-    uint8_t work_o[88]; /* OBJ_WORK_O */
+    union { uint8_t work_o[88]; uint8_t hit_by_slot[88]; }; /* OBJ_WORK_O */
     uint8_t work_p[88]; /* OBJ_WORK_P */
     union { uint8_t hitbox_dx[88]; uint8_t f3930[88]; }; /* OBJ_HITBOX_DX */
     union { uint8_t hitbox_half_w[88]; uint8_t f3988[88]; }; /* OBJ_HITBOX_HALF_W */
@@ -444,6 +444,7 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, knock_right) == OBJ_KNOC
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_m) + 0 == OBJ_WORK_M, "ObjectTable.work_m is not at OBJ_WORK_M");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_n) + 0 == OBJ_WORK_N, "ObjectTable.work_n is not at OBJ_WORK_N");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_o) + 0 == OBJ_WORK_O, "ObjectTable.work_o is not at OBJ_WORK_O");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hit_by_slot) == OBJ_HIT_BY_SLOT, "ObjectTable.hit_by_slot is not at OBJ_HIT_BY_SLOT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_p) + 0 == OBJ_WORK_P, "ObjectTable.work_p is not at OBJ_WORK_P");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hitbox_dx) + 0 == OBJ_HITBOX_DX, "ObjectTable.hitbox_dx is not at OBJ_HITBOX_DX");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3930) + 0 == OBJ_HITBOX_DX, "ObjectTable.f3930 is not at OBJ_HITBOX_DX");
@@ -1091,7 +1092,7 @@ typedef struct {
     uint8_t climb_reach; /* PlayerClimbReach */
     uint8_t may_leave_top; /* PlayerMayLeaveTop */
     uint8_t _gap_0014[1]; /* no name yet: $3BD4-$3BD4 */
-    uint8_t f3bd5; /* PlayerByte3BD5 */
+    union { uint8_t f3bd5; uint8_t attack_kind; }; /* PlayerByte3BD5 */
     uint8_t item_first_use; /* PlayerItemFirstUse */
     uint8_t f3bd7; /* PlayerByte3BD7 */
     uint8_t time_slow_mode; /* TimeSlowMode */
@@ -1101,11 +1102,11 @@ typedef struct {
     uint8_t forced_press_b; /* PadForcedPressB */
     uint8_t item_ready; /* RichterItemReady */
     uint8_t f3be1; /* PlayerByte3BE1 */
-    uint8_t f3be2; /* PlayerByte3BE2 */
-    uint8_t f3be3; /* PlayerByte3BE3 */
+    union { uint8_t f3be2; uint8_t held; }; /* PlayerByte3BE2 */
+    union { uint8_t f3be3; uint8_t held_count; }; /* PlayerByte3BE3 */
     uint8_t _gap_0024[4]; /* no name yet: $3BE4-$3BE7 */
-    uint8_t f3be8; /* PlayerByte3BE8 */
-    uint8_t f3be9; /* PlayerByte3BE9 */
+    union { uint8_t f3be8; uint8_t slow_timer_lo; }; /* PlayerByte3BE8 */
+    union { uint8_t f3be9; uint8_t slow_timer_hi; }; /* PlayerByte3BE9 */
     uint8_t _gap_002A[1]; /* no name yet: $3BEA-$3BEA */
 } PlayerVars;
 _Static_assert(sizeof(PlayerVars) == 0x2B, "PlayerVars size");
@@ -1115,6 +1116,7 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, column_x) + 0 == RichterCo
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, climb_reach) + 0 == PlayerClimbReach, "PlayerVars.climb_reach is not at PlayerClimbReach");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, may_leave_top) + 0 == PlayerMayLeaveTop, "PlayerVars.may_leave_top is not at PlayerMayLeaveTop");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3bd5) + 0 == PlayerByte3BD5, "PlayerVars.f3bd5 is not at PlayerByte3BD5");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, attack_kind) == PlayerAttackKind, "PlayerVars.attack_kind is not at PlayerAttackKind");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, item_first_use) + 0 == PlayerItemFirstUse, "PlayerVars.item_first_use is not at PlayerItemFirstUse");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3bd7) + 0 == PlayerByte3BD7, "PlayerVars.f3bd7 is not at PlayerByte3BD7");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, time_slow_mode) + 0 == TimeSlowMode, "PlayerVars.time_slow_mode is not at TimeSlowMode");
@@ -1125,9 +1127,13 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, forced_press_b) + 0 == Pad
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, item_ready) + 0 == RichterItemReady, "PlayerVars.item_ready is not at RichterItemReady");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be1) + 0 == PlayerByte3BE1, "PlayerVars.f3be1 is not at PlayerByte3BE1");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be2) + 0 == PlayerByte3BE2, "PlayerVars.f3be2 is not at PlayerByte3BE2");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held) == PlayerHeld, "PlayerVars.held is not at PlayerHeld");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be3) + 0 == PlayerByte3BE3, "PlayerVars.f3be3 is not at PlayerByte3BE3");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held_count) == PlayerHeldCount, "PlayerVars.held_count is not at PlayerHeldCount");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be8) + 0 == PlayerByte3BE8, "PlayerVars.f3be8 is not at PlayerByte3BE8");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_lo) == PlayerSlowTimerLo, "PlayerVars.slow_timer_lo is not at PlayerSlowTimerLo");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be9) + 0 == PlayerByte3BE9, "PlayerVars.f3be9 is not at PlayerByte3BE9");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_hi) == PlayerSlowTimerHi, "PlayerVars.slow_timer_hi is not at PlayerSlowTimerHi");
 #define PVARS ((PlayerVars *)PlayerVars_BASE)
 
 /* PlayerVarsB: one struct at $3BEF, 1 element(s), 17 bytes */
@@ -1135,8 +1141,8 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be9) + 0 == PlayerByte3B
 #define PlayerVarsB_COUNT 1
 typedef struct {
     uint8_t _gap_0000[1]; /* no name yet: $3BEF-$3BEF */
-    uint8_t f3bf0; /* PlayerByte3BF0 */
-    uint8_t f3bf1; /* PlayerByte3BF1 */
+    union { uint8_t f3bf0; uint8_t start_pose; }; /* PlayerByte3BF0 */
+    union { uint8_t f3bf1; uint8_t jump_kind; }; /* PlayerByte3BF1 */
     uint8_t _gap_0003[2]; /* no name yet: $3BF2-$3BF3 */
     uint8_t dying; /* PlayerDying */
     uint8_t dying_timer; /* PlayerDyingTimer */
@@ -1147,7 +1153,9 @@ typedef struct {
 } PlayerVarsB;
 _Static_assert(sizeof(PlayerVarsB) == 0x11, "PlayerVarsB size");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf0) + 0 == PlayerByte3BF0, "PlayerVarsB.f3bf0 is not at PlayerByte3BF0");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, start_pose) == PlayerStartPose, "PlayerVarsB.start_pose is not at PlayerStartPose");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf1) + 0 == PlayerByte3BF1, "PlayerVarsB.f3bf1 is not at PlayerByte3BF1");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, jump_kind) == PlayerJumpKind, "PlayerVarsB.jump_kind is not at PlayerJumpKind");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying) + 0 == PlayerDying, "PlayerVarsB.dying is not at PlayerDying");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying_timer) + 0 == PlayerDyingTimer, "PlayerVarsB.dying_timer is not at PlayerDyingTimer");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, anchor_object) + 0 == PlayerAnchorObject, "PlayerVarsB.anchor_object is not at PlayerAnchorObject");

@@ -266,7 +266,7 @@ RichterTryItemCrash_at0:
     ldx #$06
     jsr VecStartListChannelKind2
 RichterTryItemCrash_at3:
-    stz a:PlayerByte3BD6
+    stz a:PlayerItemFirstUse
     ldx z:zField93
     lda a:RichterItemCrashScripts,x
     beq RichterTryItemCrash_at4
@@ -311,7 +311,7 @@ RichterLatchBits:
 ; @run 6D:B929
 ; WHAT IT DOES: Using the item in hand: on the use press with the use direction held and the
 ; hearts the item costs, goes to the item's own handler, which throws it or not. Says whether
-; to attack, and with what in PlayerByte3BD5: 0 the whip, or the item's attack.
+; to attack, and with what in PlayerAttackKind: 0 the whip, or the item's attack.
 ; HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, RichterItemUseCosts by item, then the jump
 ; through RichterItemUseHandlers: items 0 and 1 attack with the whip. zField93 is 0 to 8; the
 ; C takes anything past 8 as the whip.
@@ -332,7 +332,7 @@ RichterUseItem:
     cmp a:RichterItemUseCosts,x
     bcs RichterUseItem_at1
 RichterUseItem_at0:
-    stz a:PlayerByte3BD5
+    stz a:PlayerAttackKind
     sec
     rts
 RichterUseItem_at1:
@@ -346,12 +346,12 @@ RichterUseItem_at1:
 ; WHAT IT DOES: Items 2 to 5, which can be thrown up to three at a time: the first throw of a
 ; use starts the item's sound and script, unless one is out already; a second or third throw
 ; needs more hearts, and a fourth is refused. Then the item's attack, and its hearts paid.
-; HOW: PlayerByte3BD6 marks the first throw. The items fly in slots 5, 8 and 11; with one out
+; HOW: PlayerItemFirstUse marks the first throw. The items fly in slots 5, 8 and 11; with one out
 ; the hearts must reach RichterItemSecondCosts, with two RichterItemThirdCosts.
 ; WAITS: no.
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseThrownItem:
-    lda a:PlayerByte3BD6
+    lda a:PlayerItemFirstUse
     beq RichterUseThrownItem_at0
     jsr RichterFindItemOut
     bne $B93D
@@ -359,7 +359,7 @@ RichterUseThrownItem:
     lda a:RichterItemUseLists,x
     ldx #$06
     jsr VecStartListChannelKind2
-    stz a:PlayerByte3BD6
+    stz a:PlayerItemFirstUse
     ldx z:zField93
     lda a:RichterItemUseScripts,x
     ldx #$06
@@ -382,7 +382,7 @@ RichterUseThrownItem_at0:
 RichterUseThrownItem_at1:
     ldx z:zField93
     lda a:RichterItemAttacks,x
-    sta a:PlayerByte3BD5
+    sta a:PlayerAttackKind
     lda z:zField94
     sed
     sec
@@ -396,13 +396,13 @@ RichterUseThrownItem_at1:
 ; @run 6D:B9B1
 ; WHAT IT DOES: Item 6: only with no item out; the first use starts sound list $54 and script 7.
 ; Then the item's attack, and its hearts paid.
-; HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+; HOW: RichterFindItemOut; PlayerItemFirstUse marks the first use.
 ; WAITS: no.
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseItemSix:
     bsr RichterFindItemOut
     bne $B93D
-    lda a:PlayerByte3BD6
+    lda a:PlayerItemFirstUse
     beq RichterUseItemSix_at0
     lda #$54
     ldx #$06
@@ -410,7 +410,7 @@ RichterUseItemSix:
     lda #$07
     ldx #$06
     jsr VecStartScriptSlotKind1
-    stz a:PlayerByte3BD6
+    stz a:PlayerItemFirstUse
 RichterUseItemSix_at0:
     bra $B99D
 
@@ -451,7 +451,7 @@ RichterFindItemOut_at0:
 ; @run 6D:B9EC
 ; WHAT IT DOES: Item 8: only with no item out; the first use starts sound list $53 and script
 ; $15. Then the item's attack, and its hearts paid.
-; HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+; HOW: RichterFindItemOut; PlayerItemFirstUse marks the first use.
 ; WAITS: no.
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseItemEight:
@@ -459,7 +459,7 @@ RichterUseItemEight:
     beq RichterUseItemEight_at0
     jmp $B93D
 RichterUseItemEight_at0:
-    lda a:PlayerByte3BD6
+    lda a:PlayerItemFirstUse
     beq $B9CB
     lda #$53
     ldx #$06
@@ -467,7 +467,7 @@ RichterUseItemEight_at0:
     lda #$15
     ldx #$06
     jsr VecStartScriptSlotKind1
-    stz a:PlayerByte3BD6
+    stz a:PlayerItemFirstUse
     bra $B99D
 
 ; @routine 01E0:124 MariaReadPad

@@ -828,7 +828,7 @@ static ItemCrash try_item_crash(const ItemCrashLayout *layout)
         StartListChannelKind2(list, ITEM_CRASH_CHANNEL);
         jsr_pop();
     }
-    wr8(PlayerByte3BD6, 0);
+    wr8(PlayerItemFirstUse, 0);
     crash.script = rd8((uint16_t)(layout->scripts + crash.item));
     if (crash.script != 0) {
         jsr_push(layout->script_ret);
@@ -913,7 +913,7 @@ void abi_MariaTryItemCrash(void)
  * @run 6D:B929
  * WHAT IT DOES: Using the item in hand: on the use press with the use direction held and the
  * hearts the item costs, goes to the item's own handler, which throws it or not. Says whether
- * to attack, and with what in PlayerByte3BD5: 0 the whip, or the item's attack.
+ * to attack, and with what in PlayerAttackKind: 0 the whip, or the item's attack.
  * HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, RichterItemUseCosts by item, then the jump
  * through RichterItemUseHandlers: items 0 and 1 attack with the whip. zField93 is 0 to 8; the
  * C takes anything past 8 as the whip.
@@ -1014,7 +1014,7 @@ void abi_RichterUseItem(void)
 static ItemUse item_not_used(ItemUse use, ItemUseHow how)
 {
     use.how = how;
-    wr8(PlayerByte3BD5, 0);
+    wr8(PlayerAttackKind, 0);
     return use;
 }
 
@@ -1023,7 +1023,7 @@ static ItemUse item_used(ItemUse use)
 {
     use.how = USE_STARTED;
     use.item = RD8(ZP->field93);
-    wr8(PlayerByte3BD5, rd8((uint16_t)(RichterItemAttacks + use.item)));
+    wr8(PlayerAttackKind, rd8((uint16_t)(RichterItemAttacks + use.item)));
     use.hearts = RD8(ZP->field94);
     use.cost = rd8((uint16_t)(RichterItemUseCosts + use.item));
     use.hearts = bcd_subtract(use.hearts, use.cost);
@@ -1075,7 +1075,7 @@ static void start_item(ItemUse *use, uint8_t list, uint8_t script, uint16_t ret_
  * WHAT IT DOES: Items 2 to 5, which can be thrown up to three at a time: the first throw of a
  * use starts the item's sound and script, unless one is out already; a second or third throw
  * needs more hearts, and a fourth is refused. Then the item's attack, and its hearts paid.
- * HOW: PlayerByte3BD6 marks the first throw. The items fly in slots 5, 8 and 11; with one out
+ * HOW: PlayerItemFirstUse marks the first throw. The items fly in slots 5, 8 and 11; with one out
  * the hearts must reach RichterItemSecondCosts, with two RichterItemThirdCosts.
  * WAITS: no.
  * Entry: X twice the item. Exit: as RichterUseItem.
@@ -1084,14 +1084,14 @@ ItemUse RichterUseThrownItem(uint8_t item)
 {
     ItemUse use = item_handler(item);
 
-    if (rd8(PlayerByte3BD6) != 0) {
+    if (rd8(PlayerItemFirstUse) != 0) {
         if (item_out(&use, 0xB963))
             return item_not_used(use, USE_ITEM_OUT);
         use.item = RD8(ZP->field93);
         jsr_push(0xB96F);
         StartListChannelKind2(rd8((uint16_t)(RichterItemUseLists + use.item)), ITEM_CRASH_CHANNEL);
         jsr_pop();
-        wr8(PlayerByte3BD6, 0);
+        wr8(PlayerItemFirstUse, 0);
         use.item = RD8(ZP->field93);
         use.script = rd8((uint16_t)(RichterItemUseScripts + use.item));
         jsr_push(0xB97C);
@@ -1130,7 +1130,7 @@ void abi_RichterUseThrownItem(void)
  * @run 6D:B9B1
  * WHAT IT DOES: Item 6: only with no item out; the first use starts sound list $54 and script 7.
  * Then the item's attack, and its hearts paid.
- * HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+ * HOW: RichterFindItemOut; PlayerItemFirstUse marks the first use.
  * WAITS: no.
  * Entry: X twice the item. Exit: as RichterUseItem.
  */
@@ -1140,9 +1140,9 @@ ItemUse RichterUseItemSix(uint8_t item)
 
     if (item_out(&use, 0xB9B3))
         return item_not_used(use, USE_ITEM_OUT);
-    if (rd8(PlayerByte3BD6) != 0) {
+    if (rd8(PlayerItemFirstUse) != 0) {
         start_item(&use, ITEM_SIX_LIST, ITEM_SIX_SCRIPT, 0xB9C1, 0xB9C8);
-        wr8(PlayerByte3BD6, 0);
+        wr8(PlayerItemFirstUse, 0);
     }
     return item_used(use);
 }
@@ -1219,7 +1219,7 @@ void abi_RichterFindItemOut(void)
  * @run 6D:B9EC
  * WHAT IT DOES: Item 8: only with no item out; the first use starts sound list $53 and script
  * $15. Then the item's attack, and its hearts paid.
- * HOW: RichterFindItemOut; PlayerByte3BD6 marks the first use.
+ * HOW: RichterFindItemOut; PlayerItemFirstUse marks the first use.
  * WAITS: no.
  * Entry: X twice the item. Exit: as RichterUseItem.
  */
@@ -1229,9 +1229,9 @@ ItemUse RichterUseItemEight(uint8_t item)
 
     if (item_out(&use, 0xB9EE))
         return item_not_used(use, USE_ITEM_OUT);
-    if (rd8(PlayerByte3BD6) != 0) {
+    if (rd8(PlayerItemFirstUse) != 0) {
         start_item(&use, ITEM_EIGHT_LIST, ITEM_EIGHT_SCRIPT, 0xB9FF, 0xBA06);
-        wr8(PlayerByte3BD6, 0);
+        wr8(PlayerItemFirstUse, 0);
     }
     return item_used(use);
 }
@@ -1293,11 +1293,11 @@ void abi_RichterLatchButtons(void)
 
 /*
  * Maria's own pad and item code (her overlay 01DD): routines with no copy in Richter's overlay. Her player bytes
- * $3BE4 to $3BE7 have no symbol yet: they are named here as PlayerByte3BE3 plus an offset until the rows land.
+ * $3BE4 to $3BE7 have no symbol yet: they are named here as PlayerHeldCount plus an offset until the rows land.
  */
 enum {
-    MARIA_SEQUENCE_TIMER = PlayerByte3BE3 + 3, MARIA_SEQUENCE_STEP = PlayerByte3BE3 + 2,
-    MARIA_SEQUENCE_DONE = PlayerByte3BE3 + 4, MARIA_SEQUENCE_TABLE = 0xB96B, MARIA_SEQUENCE_STEPS = 3,
+    MARIA_SEQUENCE_TIMER = PlayerHeldCount + 3, MARIA_SEQUENCE_STEP = PlayerHeldCount + 2,
+    MARIA_SEQUENCE_DONE = PlayerHeldCount + 4, MARIA_SEQUENCE_TABLE = 0xB96B, MARIA_SEQUENCE_STEPS = 3,
     MARIA_SEQUENCE_TIME = 0x0A, PAD_DIRECTION_BITS = 0xF0,
     MARIA_ITEM_DELAY = 0x10, MARIA_ITEM_USE_PRESS = 0x02, MARIA_ITEM_USE_HELD = 0x10, MARIA_ITEM_STATES = 5,
     MARIA_ITEM_COSTS = 0xBCDE, MARIA_ITEM_SECOND_COSTS = 0xBCD5, MARIA_ITEM_LISTS = 0xBCE7, MARIA_ITEM_SCRIPTS = 0xBCF0,

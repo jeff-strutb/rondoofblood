@@ -10,7 +10,19 @@
 #include "enemy_objects.h"
 
 /* object/richter_state.c */
+typedef struct { uint8_t facing; uint8_t high; } FacingSpeed;
+typedef struct { uint8_t facing; uint8_t step; uint8_t was; } Nudge;
 typedef struct { uint8_t state; uint8_t index; } CrashEnd;
+void nudge_exit_shim(Nudge nudge);
+Nudge RichterNudgeA(void);
+Nudge RichterNudgeB(void);
+Lift RichterLiftThree(void);
+void lift_exit_shim(Lift lift);
+Sum RichterFallGravity(void);
+void fall_gravity_exit_shim(Sum high);
+AnimationStep RichterToFall(void);
+void to_fall_exit_shim(AnimationStep fall);
+void RichterPadOverridesOff(void);
 CrashEnd RichterEndItemCrash(void);
 void crash_end_exit_shim(CrashEnd end);
 void RichterStopMoving(void);
@@ -37,6 +49,72 @@ typedef struct {
     uint8_t resumed_state; uint8_t step; CrashEnd end;
 } HurtResume;
 
+/* RichterDebrisOnMarkedColumns: whether the burst ran, its result, the V of the Y add, his Y pulled back. */
+typedef struct { bool burst_started; ObjArm burst; bool overflow; uint8_t y_low; } DebrisColumns;
+
+/*
+ * object/richter_exits.c: what a routine's instructions and its callees left in the registers and
+ * flags, in the order they ran, for its abi_ wrapper to give back. A callee's step replays that
+ * callee's own exit; an ENDED step is the routine's own instructions after it (Ended, and X).
+ */
+typedef enum {
+    RX_ENDED, RX_COLUMNS, RX_FLOOR, RX_LANDING, RX_ANIMATION, RX_SOUND, RX_SCRIPT, RX_LIFT, RX_NUDGE,
+    RX_FALL, RX_GRAVITY, RX_CRASH_END, RX_COLUMN_READ, RX_TST, RX_SOLID, RX_HIT_EFFECTS, RX_HIT_SOUND,
+    RX_SLOTS, RX_DEBRIS, RX_LOG
+} RegKind;
+typedef struct {
+    RegKind kind;
+    union {
+        struct { Ended e; bool x_set; uint8_t x; } ended;
+        ColumnsEnd columns;
+        FloorResult floor;
+        LandingLift landing;
+        AnimationStep animation;
+        struct { uint8_t command; CommandCall call; } sound;
+        uint8_t script;
+        Lift lift;
+        Nudge nudge;
+        Sum gravity;
+        CrashEnd crash_end;
+        ColumnRead column;
+        struct { uint8_t mask; uint8_t memory; } tst;
+        HitEffects hit_effects;
+        HitSound hit_sound;
+        Ended slots;
+        DebrisColumns debris;
+    };
+} RegStep;
+typedef struct { uint8_t count; RegStep step[24]; } RegLog;
+void reg_log_replay(const RegLog *log);
+/* The X and Y the log leaves, from the X and Y the routine was entered with: for a callee that takes them
+ * (SoundCommand pushes them). Replays on a copy of the registers; cpu is as it was after. */
+void rl_xy(const RegLog *log, uint8_t x_in, uint8_t y_in, uint8_t *x, uint8_t *y);
+void rl_ended(RegLog *log, Ended e);
+void rl_x(RegLog *log, uint8_t x);
+void rl_ended_x(RegLog *log, Ended e, uint8_t x);
+void rl_tst(RegLog *log, uint8_t mask, uint8_t memory);
+void rl_columns(RegLog *log, ColumnsEnd r);
+void rl_floor(RegLog *log, FloorResult r);
+void rl_landing(RegLog *log, LandingLift r);
+void rl_animation(RegLog *log, AnimationStep r);
+void rl_sound(RegLog *log, uint8_t command, CommandCall r);
+void rl_script(RegLog *log, uint8_t script);
+void rl_lift(RegLog *log, Lift r);
+void rl_nudge(RegLog *log, Nudge r);
+void rl_fall(RegLog *log, AnimationStep r);
+void rl_gravity(RegLog *log, Sum r);
+void rl_crash_end(RegLog *log, CrashEnd r);
+void rl_column(RegLog *log, ColumnRead r);
+void rl_solid(RegLog *log, ColumnRead r);
+void rl_hit_effects(RegLog *log, HitEffects r);
+void rl_hit_sound(RegLog *log, HitSound r);
+void rl_slots(RegLog *log, Ended r);
+void rl_debris(RegLog *log, DebrisColumns r);
+/* object/player_terrain.c */
+uint8_t solid_answer(ColumnRead one);
+FloorResult RichterFloorCheck(void);
+ColumnRead RichterSolidUnderColumn(uint8_t column);
+
 void RichterClearSlotKindFour(uint8_t slot);
 Ended RichterReplaceSlotsOneTwo(void);
 HurtLandSound RichterHurtLandSound(uint8_t y);
@@ -48,7 +126,24 @@ void RichterHurtToCrouch(void);
 HitEffects RichterHitEffects(uint8_t x, uint8_t y);
 void hit_effects_exit_shim(HitEffects r);
 HitSound RichterHitSoundAndEffects(uint8_t x, uint8_t y);
+void hit_sound_exit_shim(HitSound r);
 HurtResume RichterHurtResume(void);
+void RichterHurtKnockUp(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtDown(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtFromStand(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtFromCrouch(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtInAir(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtClimbKindFive(RegLog *log, uint8_t y);
+void RichterHurtWhileClimbing(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtKindThree(RegLog *log, uint8_t y);
+void RichterHurtKindFour(RegLog *log, uint8_t y);
+void RichterHurtStart(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtThrown(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtThrownLanded(RegLog *log);
+void RichterHurtSlide(RegLog *log);
+void RichterHurtSlideStart(RegLog *log);
+void RichterHurtHoldFrame(RegLog *log);
+void RichterHurtDownStep(RegLog *log);
 
 /* object/debris_burst.c */
 ObjArm RichterStartDebrisBurst(uint8_t slot, uint8_t timer, uint8_t y_entry);
@@ -56,8 +151,6 @@ Ended start_debris_burst_exit_shim(ObjArm r);
 void abi_RichterStartDebrisBurst(void);
 
 /* object/richter_fall.c */
-/* RichterDebrisOnMarkedColumns: whether the burst ran, its result, the V of the Y add, his Y pulled back. */
-typedef struct { bool burst_started; ObjArm burst; bool overflow; uint8_t y_low; } DebrisColumns;
 DebrisColumns RichterDebrisOnMarkedColumns(uint8_t x, uint8_t y);
 void debris_columns_exit_shim(DebrisColumns r);
 void abi_RichterDebrisOnMarkedColumns(void);
@@ -74,5 +167,21 @@ void abi_RichterHurtToCrouch(void);
 void abi_RichterHitEffects(void);
 void abi_RichterHitSoundAndEffects(void);
 void abi_RichterHurtResume(void);
+void abi_RichterHurtKnockUp(void);
+void abi_RichterHurtDown(void);
+void abi_RichterHurtFromStand(void);
+void abi_RichterHurtFromCrouch(void);
+void abi_RichterHurtInAir(void);
+void abi_RichterHurtClimbKindFive(void);
+void abi_RichterHurtWhileClimbing(void);
+void abi_RichterHurtKindThree(void);
+void abi_RichterHurtKindFour(void);
+void abi_RichterHurtStart(void);
+void abi_RichterHurtThrown(void);
+void abi_RichterHurtThrownLanded(void);
+void abi_RichterHurtSlide(void);
+void abi_RichterHurtSlideStart(void);
+void abi_RichterHurtHoldFrame(void);
+void abi_RichterHurtDownStep(void);
 
 #endif

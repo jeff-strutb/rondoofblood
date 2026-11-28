@@ -122,6 +122,7 @@
 #define OBJ_STEP_BEFORE_HIT 0x3618 /* the player's use of OBJ_WORK_H: the step of the state he was hit in; given back with it */
 #define OBJ_HIT_FRAMES 0x3670 /* the player's use of OBJ_WORK_I: frames left in a step of the hit's reaction */
 #define OBJ_KNOCK_RIGHT 0x3778 /* the player's use of OBJ_WORK_L: 1 when the hit throws him right, 0 left */
+#define OBJ_HIT_BY_SLOT 0x3880 /* the hit objects' use of OBJ_WORK_O: the slot of the object whose hit test found it (HitTestObject stores it; the player's hit reads it) */
 #define OBJ_WORK_A 0x2EE0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_SCROLL_BAND 0x2F38 /* bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */
@@ -382,6 +383,13 @@
 #define PlayerDying 0x3BF4 /* not zero while the player's death runs */
 #define PlayerDyingTimer 0x3BF5 /* frames left in a step of the death */
 #define PlayerByte3BF7 0x3BF7 /* player state not yet identified */
+#define PlayerAttackKind 0x3BD5 /* the attack under way: 0 the whip; else the thrown item's attack (Richter's item handlers store it from the table at $BA38 by item); the attack's animation, its frames and the landing's by it */
+#define PlayerHeld 0x3BE2 /* not zero while a hit's hold is on him (bit 5 of OBJ_HIT_TAKEN counts it up): hits are then shrugged off with script 1, and presses shake it off (PlayerHeldCount) */
+#define PlayerHeldCount 0x3BE3 /* the hold's count: 1 when it starts (script 0), one more each frame a button is newly pressed; at 8 the hold ends (PlayerHeld 0, script 9) */
+#define PlayerSlowTimerLo 0x3BE8 /* low byte of a 16-bit timer a hit sets ($01FF, bit 6 of OBJ_HIT_TAKEN): while it runs the stage clears the scroll's steps and runs the player's frame on even counts only; at its end script 9 */
+#define PlayerSlowTimerHi 0x3BE9 /* high byte of PlayerSlowTimerLo's timer */
+#define PlayerStartPose 0x3BF0 /* 1 from the stage's start until its forced pad has run out (RichterFrame clears it): standing still he shows frame $47 then */
+#define PlayerJumpKind 0x3BF1 /* how the jump in the air started: bit 7 a jump the way he faced (RichterToAir), bit 0 a knock-back (RichterKnockBack); 0 any other */
 #define OverlayOrphanA02A 0xA02A /* a piece of the player overlay nothing reaches */
 #define PlayerFootYByState 0xA0FF /* how far above the position to probe by state */
 #define PlayerStartHandlers 0xA116 /* 4 words by zField8A */
@@ -444,6 +452,11 @@
 #define RichterItemUseScripts 0xBA2F /* the script each thrown item starts */
 #define RichterKnockSpeedsX 0xB5AA /* X speed words by the side a hit throws him: $FF00 left for 0; $0100 right for 1 */
 #define RichterHurtResumeFrames 0xB5D5 /* the hurt frame by the state he was hit in: (the state less 5) / 2 */
+#define RichterHurtByState 0xB2C1 /* the hit's start by the state he was hit in: thirteen words */
+#define RichterClimbStepsHurtAsStanding 0xB37D /* 1 for the steps of states 5 to 8 a hit is taken in as if standing (2 to 4) */
+#define RichterHurtFromAirStates 0xB428 /* 1 for the states a hit of kind 3 finds him in the air in (3, 4, 11 and 12) */
+#define RichterThrowSpeedsX 0xB435 /* X speed words of a kind 3 throw by OBJ_KNOCK_RIGHT: $FD80, $0280 */
+#define RichterThrownLandSpeedsX 0xB4C1 /* X speed words as a throw lands, by OBJ_KNOCK_RIGHT: $FE00, $0200 */
 #define RichterItemAttacks 0xBA38 /* the attack kind using each item gives; 0 the whip */
 #define PsgSelect 0x0800 /* PSG: which channel the channel registers address */
 #define PsgMainVolume 0x0801 /* PSG: main volume, left and right nibbles */

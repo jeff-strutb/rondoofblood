@@ -37,9 +37,9 @@ DebrisColumns RichterDebrisOnMarkedColumns(uint8_t x, uint8_t y)
     Sum low, high;
     uint8_t value, slot;
 
-    value = rd8(RichterColumnHit);
-    value |= rd8((uint16_t)(RichterColumnHit + 1));
-    value |= rd8((uint16_t)(RichterColumnHit + 2));
+    value = RD8(PVARS->column_hit[0]);
+    value |= RD8(PVARS->column_hit[1]);
+    value |= RD8(PVARS->column_hit[2]);
     if (!(value & COLUMN_DEBRIS_BIT)) {
         return r;
     }

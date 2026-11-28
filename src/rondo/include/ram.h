@@ -950,5 +950,23 @@
 #define MariaItem5States 0xC8E5 /* the states of item 5, four words (MariaItem5) */
 #define PlayerByte3BEF 0x3BEF /* player state not yet identified: set, item 7's part is cleared and zField93 (the item in hand) with it (MariaItem7Part clears it); nothing filed sets it */
 #define MariaPieceSpeedsX 0xCD96 /* the X speed of each of the four pieces of kind 9, a word by slot less 5 (MariaObjectKind9) */
+#define MariaClimbMoveSpeeds 0xAD5B /* her X and Y speed high bytes on a ledge's step, by state less 5 doubled (MariaClimbMove) */
+#define MariaClimbPadsA 0xADDC /* the first pad she holds to climb, by state less 5 (MariaClimbPad) */
+#define MariaClimbPadsB 0xADE0 /* the second (MariaClimbPad) */
+#define MariaClimbPadsC 0xADE4 /* the third, without the pad's second forced press (MariaClimbPad) */
+#define MariaClimbTurnPadsA 0xADE8 /* the first pad she holds to change her hold, by state less 5 (MariaClimbPad) */
+#define MariaClimbTurnPadsB 0xADEC /* the second (MariaClimbPad) */
+#define MariaClimbTurnPadsC 0xADF0 /* the third, with the pad's second forced press (MariaClimbPad) */
+#define MariaClimbTurnAnimations 0xADF4 /* her OBJ_ANIMATION in the new hold (MariaClimbPad) */
+#define MariaClimbTurnFrames 0xADF8 /* her frame in the new hold (MariaClimbPad) */
+#define MariaClimbTurnFacings 0xADFC /* her facing in the new hold (MariaClimbPad) */
+#define MariaClimbTurnStates 0xAE00 /* her state in the new hold (MariaClimbPad) */
+#define MariaClimbLowLooks 0xAE64 /* the MariaReadAtOffset offset of states 5 and 6's look ahead (MariaClimbLowFrame) */
+#define MariaClimbFacings 0xAF27 /* her facing as she goes up from a ledge, by state less 5 or 7 (MariaClimbAcross) */
+#define MariaClimbTurnPads 0xAF2B /* the pad that turns her hold, by state less 5 (MariaClimbTurn) */
+#define MariaProbeOffsets 0xBADA /* the X and Y offsets of MariaReadAtOffset's point from her own: pairs by the offset */
+#define zClimbStepBefore 0x20D9 /* MariaClimbMove's use of zRichterObject: her animation's step before the tick */
+#define MariaClimbLowSteps 0xAD20 /* six words by OBJ_SUBSTATE: states 5 and 6 (MariaStateClimbLow) */
+#define MariaClimbHighSteps 0xAF40 /* six words by OBJ_SUBSTATE: states 7 and 8 (MariaStateClimbHigh) */
 
 #endif

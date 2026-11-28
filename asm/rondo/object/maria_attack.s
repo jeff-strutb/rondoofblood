@@ -141,6 +141,7 @@ MariaStandAttack:
     lda #$00
     sta a:OBJ_STATE
     lda #$20
+MariaStandAttack_animate:
     jsr MariaSetAnimation
     lda #$01
     sta a:OBJ_SUBSTATE

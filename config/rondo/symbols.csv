@@ -964,3 +964,21 @@ C823,abs,MariaAttackAngles,the angle her attack's object turns back on, by its f
 C8E5,abs,MariaItem5States,the states of item 5, four words (MariaItem5)
 3BEF,abs,PlayerByte3BEF,player state not yet identified: set, item 7's part is cleared and zField93 (the item in hand) with it (MariaItem7Part clears it); nothing filed sets it
 CD96,abs,MariaPieceSpeedsX,the X speed of each of the four pieces of kind 9, a word by slot less 5 (MariaObjectKind9)
+AD5B,abs,MariaClimbMoveSpeeds,her X and Y speed high bytes on a ledge's step, by state less 5 doubled (MariaClimbMove)
+ADDC,abs,MariaClimbPadsA,the first pad she holds to climb, by state less 5 (MariaClimbPad)
+ADE0,abs,MariaClimbPadsB,the second (MariaClimbPad)
+ADE4,abs,MariaClimbPadsC,the third, without the pad's second forced press (MariaClimbPad)
+ADE8,abs,MariaClimbTurnPadsA,the first pad she holds to change her hold, by state less 5 (MariaClimbPad)
+ADEC,abs,MariaClimbTurnPadsB,the second (MariaClimbPad)
+ADF0,abs,MariaClimbTurnPadsC,the third, with the pad's second forced press (MariaClimbPad)
+ADF4,abs,MariaClimbTurnAnimations,her OBJ_ANIMATION in the new hold (MariaClimbPad)
+ADF8,abs,MariaClimbTurnFrames,her frame in the new hold (MariaClimbPad)
+ADFC,abs,MariaClimbTurnFacings,her facing in the new hold (MariaClimbPad)
+AE00,abs,MariaClimbTurnStates,her state in the new hold (MariaClimbPad)
+AE64,abs,MariaClimbLowLooks,the MariaReadAtOffset offset of states 5 and 6's look ahead (MariaClimbLowFrame)
+AF27,abs,MariaClimbFacings,her facing as she goes up from a ledge, by state less 5 or 7 (MariaClimbAcross)
+AF2B,abs,MariaClimbTurnPads,the pad that turns her hold, by state less 5 (MariaClimbTurn)
+BADA,abs,MariaProbeOffsets,the X and Y offsets of MariaReadAtOffset's point from her own: pairs by the offset
+D9,zp,zClimbStepBefore,MariaClimbMove's use of zRichterObject: her animation's step before the tick
+AD20,abs,MariaClimbLowSteps,six words by OBJ_SUBSTATE: states 5 and 6 (MariaStateClimbLow)
+AF40,abs,MariaClimbHighSteps,six words by OBJ_SUBSTATE: states 7 and 8 (MariaStateClimbHigh)

@@ -1614,10 +1614,30 @@ static bool maria_throw_item(TurnWindow *r)
     return true;
 }
 
+/* MariaUseItem from $BC5E: the item's hearts, then the throw; else the plain attack's outcome and the delay. */
+static TurnWindow use_item_throw(TurnWindow r)
+{
+    uint8_t value, hearts;
+
+    r.x_set = true;
+    r.x = RD8(ZP->field93);
+    hearts = RD8(ZP->field94);
+    value = rd8((uint16_t)(MARIA_ITEM_COSTS + r.x));
+    if (hearts >= value) {
+        value = RD8(ZP->field93);
+        if (value >= MARIA_ITEM_THROWN && maria_throw_item(&r)) {
+            return r;
+        }
+    }
+    wr8(PlayerByte3BD5, 0);
+    r.end = item_delay(r.end);
+    return r;
+}
+
 TurnWindow MariaUseItem(void)
 {
     TurnWindow r = { ended_kept(), false, 0 };
-    uint8_t value, hearts;
+    uint8_t value;
 
     value = rd8(OBJ_EVENT_ID);
     r.end = ended_load(value);
@@ -1635,20 +1655,22 @@ TurnWindow MariaUseItem(void)
     }
     value = (uint8_t)(RD8(ZP->pad_held) & MARIA_ITEM_USE_HELD);
     if (value != 0) {
-        r.x_set = true;
-        r.x = RD8(ZP->field93);
-        hearts = RD8(ZP->field94);
-        value = rd8((uint16_t)(MARIA_ITEM_COSTS + r.x));
-        if (hearts >= value) {
-            value = RD8(ZP->field93);
-            if (value >= MARIA_ITEM_THROWN && maria_throw_item(&r)) {
-                return r;
-            }
-        }
+        return use_item_throw(r);
     }
     wr8(PlayerByte3BD5, 0);
     r.end = item_delay(r.end);
     return r;
+}
+
+/*
+ * Her item use from the throw's test on ($BC5E): the hearts the item asks, the throw, or the plain attack. MariaItemOrAttack
+ * branches here with up pressed and button II held.
+ */
+TurnWindow MariaUseItemFromThrow(void)
+{
+    TurnWindow r = { ended_kept(), false, 0 };
+
+    return use_item_throw(r);
 }
 
 void abi_MariaUseItem(void)

@@ -1241,3 +1241,83 @@ MariaLowColumnsBlocked_at0:
     cpx #$03
     bne MariaLowColumnsBlocked_at1
     rts
+
+; @routine 01E0:39E MariaLadderCheck
+; @run 6D:BB9E
+; WHAT IT DOES: RichterLadderCheck in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterLadderCheck's body; its calls return $30B further on (to $BBC0 to $BBF3), its BSRs go to
+; MariaLadderPoint.
+; WAITS: no.
+; Entry, exit: as RichterLadderCheck.
+MariaLadderCheck:
+    lda a:CameraMode
+    cmp #$01
+    beq MariaLadderCheck_at0
+    lda a:CameraMode
+    cmp #$18
+    beq MariaLadderCheck_at1
+    lda a:OBJ_Y_HI
+    bne MariaLadderCheck_at0
+    lda a:OBJ_Y_LO
+    cmp #$B0
+    bcs MariaLadderCheck_at0
+    lda #$18
+    sta z:zTemp10
+    stz z:zTemp11
+    bsr MariaLadderPoint
+    bne MariaLadderCheck_at0
+    jsr StageVecTerrainTileRead
+    and #$01
+    bne MariaLadderCheck_at0
+    bra MariaLadderCheck_at2
+MariaLadderCheck_at4:
+    bsr MariaLadderPoint
+    bne MariaLadderCheck_at0
+    jsr StageVecTerrainTileRead
+    and #$01
+    bne MariaLadderCheck_at3
+MariaLadderCheck_at2:
+    lda #$08
+    clc
+    adc z:zTemp10
+    sta z:zTemp10
+    bcs MariaLadderCheck_at0
+    bra MariaLadderCheck_at4
+MariaLadderCheck_at3:
+    lda #$F8
+    clc
+    adc z:zTemp10
+    sta z:zTemp10
+    lda #$FF
+    adc z:zTemp11
+    sta z:zTemp11
+    bsr MariaLadderPoint
+    jsr StageVecTerrainTileRead
+    and #$05
+    beq MariaLadderCheck_at1
+    bra MariaLadderCheck_at0
+MariaLadderCheck_at1:
+    sec
+    rts
+MariaLadderCheck_at0:
+    clc
+    rts
+
+; @routine 01E0:3FD MariaLadderPoint
+; @run 6D:BBFD
+; WHAT IT DOES: RichterLadderPoint in Maria's player overlay (01DD), the same bytes.
+; HOW: RichterLadderPoint's body (it makes no call).
+; WAITS: no.
+; Entry, exit: as RichterLadderPoint.
+MariaLadderPoint:
+    lda a:OBJ_X_LO
+    sta z:zTemp00
+    stz z:zTemp01
+    lda a:OBJ_Y_LO
+    clc
+    adc z:zTemp10
+    sta z:zTemp02
+    lda a:OBJ_Y_HI
+    adc z:zTemp11
+    sta z:zTemp03
+    rts

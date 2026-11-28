@@ -129,19 +129,31 @@ void abi_MariaAttackSlot(void)
  * WAITS: no.
  * Entry: nothing. Exit: A 1, N and Z from it; Y and C as MariaSetAnimation left them; X and V kept.
  */
-MExit MariaStandAttack(void)
+/*
+ * MariaStandAttack from its JSR on ($A422): an animation set, step 1. MariaClimbAttack jumps in here with $20, keeping
+ * the state it is in.
+ */
+MExit stand_attack_animation(uint8_t animation_number)
 {
     MExit e = mx_none();
     AnimationStep animation;
 
-    WR8(OBJ->state[OBJECT_PLAYER], STATE_STAND);
-    mx_regs(&e, r_lda(regs_kept(), ANIMATION_ATTACK));
     jsr_push(0xA425);
-    animation = MariaSetAnimation(ANIMATION_ATTACK);
+    animation = MariaSetAnimation(animation_number);
     jsr_pop();
     mx_animation(&e, animation);
     WR8(OBJ->substate[OBJECT_PLAYER], STEP_ATTACK);
     mx_regs(&e, r_lda(regs_kept(), STEP_ATTACK));
+    return e;
+}
+
+MExit MariaStandAttack(void)
+{
+    MExit e = mx_none();
+
+    WR8(OBJ->state[OBJECT_PLAYER], STATE_STAND);
+    mx_regs(&e, r_lda(regs_kept(), ANIMATION_ATTACK));
+    mx_then(&e, stand_attack_animation(ANIMATION_ATTACK));
     return e;
 }
 

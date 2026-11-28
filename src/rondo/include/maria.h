@@ -180,7 +180,8 @@ static inline void regs_exit(Regs r)
  * each such call, the call's exit, and the registers set after the last. The wrapper gives them in that order.
  */
 typedef enum { MX_ANIMATION, MX_SOUND, MX_SCRIPT, MX_COLUMNS, MX_FOOTING, MX_LANDING, MX_LEDGE, MX_CRASH, MX_TURN, MX_FLOOR, MX_UP_MARKED, MX_READ_BELOW,
-    MX_SOLID, MX_LIFT, MX_MARKED, MX_WALL, MX_TST, MX_GRAVITY, MX_UNDER_FEET, MX_ON_MARKED } MxKind;
+    MX_SOLID, MX_LIFT, MX_MARKED, MX_WALL, MX_TST, MX_GRAVITY, MX_UNDER_FEET, MX_ON_MARKED,
+    MX_OFFSET_READ, MX_JUMP_OR_CLIMB, MX_LADDER } MxKind;
 
 typedef struct {
     MxKind kind;
@@ -206,6 +207,9 @@ typedef struct {
         EndedTst tst;
         Sum gravity;
         MarkedFloor on_marked;
+        OffsetRead offset_read;
+        JumpOrClimb jump_or_climb;
+        LadderCheck ladder;
     } u;
     bool carry;             /* MX_READ_BELOW: the row's carry, which says no read was made */
 } MxStep;
@@ -422,6 +426,33 @@ static inline void mx_on_marked(MExit *e, MarkedFloor value)
     mx_push(e, s);
 }
 
+static inline void mx_offset_read(MExit *e, OffsetRead value)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_OFFSET_READ;
+    s.u.offset_read = value;
+    mx_push(e, s);
+}
+
+static inline void mx_jump_or_climb(MExit *e, JumpOrClimb value)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_JUMP_OR_CLIMB;
+    s.u.jump_or_climb = value;
+    mx_push(e, s);
+}
+
+static inline void mx_ladder(MExit *e, LadderCheck value)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_LADDER;
+    s.u.ladder = value;
+    mx_push(e, s);
+}
+
 static inline void mx_script(MExit *e, uint8_t script)
 {
     MxStep s = { 0 };
@@ -517,6 +548,15 @@ static inline void mx_exit(MExit e)
             break;
         case MX_ON_MARKED:
             marked_floor_exit_shim(e.step[i].u.on_marked);
+            break;
+        case MX_OFFSET_READ:
+            offset_read_exit_shim(e.step[i].u.offset_read);
+            break;
+        case MX_JUMP_OR_CLIMB:
+            jump_or_climb_exit_shim(e.step[i].u.jump_or_climb);
+            break;
+        case MX_LADDER:
+            ladder_exit_shim(e.step[i].u.ladder);
             break;
         case MX_TURN:
             abi_ended(e.step[i].u.turn.end);
@@ -678,6 +718,9 @@ Sum MariaFallGravity(void);                                        /* object/ric
 EndedTst MariaAirTurn(void);                                       /* object/richter_state.c */
 ObjArm MariaNoteItemPress(void);                                   /* object/player_input.c */
 uint8_t MariaClaimSlotsB(void);                                    /* object/richter_objects.c */
+TileRead MariaReadOnScreen(uint8_t row, bool carry);               /* object/player_terrain.c */
+TurnWindow MariaUseItemFromThrow(void);                            /* object/player_input.c */
+void MariaClearPadOverrides(void);                                 /* object/player_input.c */
 
 /* object/maria_frame.c */
 /* What an animation set left, then the registers set after it (its wrapper gives the animation's exit first). */
@@ -704,6 +747,7 @@ CommandCall MariaDie(uint8_t x, uint8_t y);
 typedef struct { MExit e; bool claimed; } MariaClaim;
 MariaClaim MariaAttackSlot(uint8_t y);
 MExit MariaStandAttack(void);
+MExit stand_attack_animation(uint8_t animation_number);
 MExit MariaSequenceMoveStart(uint8_t x, uint8_t y);
 MExit MariaThrowItem(uint8_t x, uint8_t y);
 MExit MariaAttackAndThrow(uint8_t x, uint8_t y);
@@ -774,6 +818,25 @@ MExit MariaStateLanded(void);
 MExit MariaSecondJump(void);
 MExit MariaStateJump(uint8_t x, uint8_t y);
 MExit MariaStateFall(uint8_t x, uint8_t y);
+
+/* object/maria_climb.c */
+OffsetRead MariaReadAtOffset(uint8_t offset);
+JumpOrClimb MariaJumpOrClimb(void);
+Regs MariaOrForcedPressB(uint8_t bits);
+Regs MariaNotePressesB(void);
+MExit MariaItemOrAttack(void);
+MExit MariaClimbMove(void);
+MExit MariaClimbPad(void);
+MExit MariaClimbLetGo(void);
+MExit MariaClimbAttack(uint8_t x, uint8_t y);
+MExit MariaClimbLowFrame(uint8_t x, uint8_t y);
+MExit MariaClimbHighFrame(uint8_t x, uint8_t y);
+MExit MariaClimbWait(void);
+MExit MariaClimbAcross(void);
+MExit MariaClimbTurn(void);
+MExit MariaClimbUp(void);
+MExit MariaStateClimbLow(uint8_t x, uint8_t y);
+MExit MariaStateClimbHigh(uint8_t x, uint8_t y);
 
 void abi_MariaObjectApplyVelocity(void);                           /* object/richter_objects.c */
 void abi_MariaApplyMoveAndPush(void);                              /* object/richter_state.c */

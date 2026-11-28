@@ -319,6 +319,8 @@ FloorResult MariaFloorCheck(void);
 FloorProbe MariaFloor(void);
 void column_lift_exit_shim(ColumnLift lift);
 LadderCheck RichterLadderCheck(void);
+LadderCheck MariaLadderCheck(void);
+Sum MariaLadderPoint(void);
 bool ladder_found(LadderCheck check);
 void ladder_exit_shim(LadderCheck check);
 

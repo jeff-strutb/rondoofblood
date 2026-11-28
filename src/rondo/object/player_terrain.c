@@ -1570,7 +1570,8 @@ static LadderCheck ladder_end(LadderCheck check, LadderEnd how, uint8_t a, uint8
  * Entry: nothing. Exit: C the answer. A, Y and V as the last step left them. X kept. Clobbers
  * zTemp00-03, zTemp10-11.
  */
-LadderCheck RichterLadderCheck(void)
+/* The ladder check's body; `shift` moves its return addresses to the copy's (Maria's at $BB9E, $30B on). */
+static LadderCheck ladder_check(uint16_t shift)
 {
     LadderCheck check = { LADDER_CAMERA_NO };
     uint8_t value, answer;
@@ -1594,7 +1595,7 @@ LadderCheck RichterLadderCheck(void)
     }
     WR8(ZP->temp10, LADDER_FIRST_REACH);
     WR8(ZP->temp11, 0);
-    jsr_push(0xB8B5);
+    jsr_push((uint16_t)(0xB8B5 + shift));
     high = RichterLadderPoint();
     jsr_pop();
     for (bool first = true;; first = false) {
@@ -1604,7 +1605,7 @@ LadderCheck RichterLadderCheck(void)
             return ladder_end(check, LADDER_OFF_PAGE, high.value, high.value, false);
         }
         ladder_entry_shim(high);
-        jsr_push(first ? 0xB8BA : 0xB8C7);
+        jsr_push((uint16_t)((first ? 0xB8BA : 0xB8C7) + shift));
         check.last = StageTileRead();
         jsr_pop();
         check.any_read = true;
@@ -1623,7 +1624,7 @@ LadderCheck RichterLadderCheck(void)
             check.v = step.overflow;
             return ladder_end(check, LADDER_REACH_OUT, step.value, step.value, false);
         }
-        jsr_push(0xB8C2);
+        jsr_push((uint16_t)(0xB8C2 + shift));
         high = RichterLadderPoint();
         jsr_pop();
     }
@@ -1633,16 +1634,21 @@ LadderCheck RichterLadderCheck(void)
     value = RD8(ZP->temp11);
     high = add_bytes(0xFF, value, step.carry);
     WR8(ZP->temp11, high.value);
-    jsr_push(0xB8E5);
+    jsr_push((uint16_t)(0xB8E5 + shift));
     high = RichterLadderPoint();
     jsr_pop();
     ladder_entry_shim(high);
-    jsr_push(0xB8E8);
+    jsr_push((uint16_t)(0xB8E8 + shift));
     check.last = StageTileRead();
     jsr_pop();
     answer = (uint8_t)(tile_answer(check.last) & TILE_LADDER_BITS);
     check.answer = answer;
     return ladder_end(check, LADDER_ANSWERED, answer, answer, answer == 0);
+}
+
+LadderCheck RichterLadderCheck(void)
+{
+    return ladder_check(0);
 }
 
 bool ladder_found(LadderCheck check)
@@ -1666,6 +1672,43 @@ void ladder_exit_shim(LadderCheck check)
 void abi_RichterLadderCheck(void)
 {
     ladder_exit_shim(RichterLadderCheck());
+}
+
+/*
+ * @routine 01E0:39E MariaLadderCheck
+ * @run 6D:BB9E
+ * WHAT IT DOES: RichterLadderCheck in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterLadderCheck's body; its calls return $30B further on (to $BBC0 to $BBF3), its BSRs go to
+ * MariaLadderPoint.
+ * WAITS: no.
+ * Entry, exit: as RichterLadderCheck.
+ */
+LadderCheck MariaLadderCheck(void)
+{
+    return ladder_check(0x30B);
+}
+
+void abi_MariaLadderCheck(void)
+{
+    ladder_exit_shim(MariaLadderCheck());
+}
+
+/*
+ * @routine 01E0:3FD MariaLadderPoint
+ * @run 6D:BBFD
+ * WHAT IT DOES: RichterLadderPoint in Maria's player overlay (01DD), the same bytes.
+ * HOW: RichterLadderPoint's body (it makes no call).
+ * WAITS: no.
+ * Entry, exit: as RichterLadderPoint.
+ */
+Sum MariaLadderPoint(void)
+{
+    return RichterLadderPoint();
+}
+
+void abi_MariaLadderPoint(void)
+{
+    abi_RichterLadderPoint();
 }
 
 

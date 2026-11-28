@@ -6951,13 +6951,19 @@ void abi_StageProbePoints3CD(void)
  */
 StageRegs StageProbeAgain3CD(StageRegs r)
 {
+    return StageProbeAgain3CDAt(r, &route_3cd);
+}
+
+/* StageProbeAgain3CD's body, for the builds of it with their own tables. */
+StageRegs StageProbeAgain3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     Sum sum;
     uint8_t list, value, answer;
 
     push8(r.a);
-    CALL(0x96DF, StageProbePoints3CD(r));
+    CALL(0x96DF, StageProbePoints3CDAt(r, build));
     list = pull8();
-    r = probe_list(r, list, PROBE_LISTS_3CD);
+    r = probe_list(r, list, build->probe_lists);
     do {
         push8(r.y);
         r.y = RD8(ZP->temp0a);

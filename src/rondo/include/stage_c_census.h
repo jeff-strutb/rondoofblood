@@ -317,5 +317,6 @@ StageRegs StageNextRouteStage3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageBossWalkOut3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageClearedWalkOn3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageProbePoints3CDAt(StageRegs r, const StageRouteBuild *build);
+StageRegs StageProbeAgain3CDAt(StageRegs r, const StageRouteBuild *build);
 
 #endif

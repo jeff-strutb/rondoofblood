@@ -1040,5 +1040,14 @@
 #define BossFlashMasks 0x8D1D /* the boss gauge flash's mask patterns by its step's low three bits */
 #define MariaItem4WalkSpeeds 0xB809 /* item 4's walking X speed by facing: $0050, $FFB0 (MariaItem4Walk) */
 #define MariaItem4Steps 0xB6B7 /* three words by OBJ_SUBSTATE: item 4's start, walk and air (MariaStateItem4) */
+#define MariaKind2States 0xC951 /* seven words by OBJ_STATE: start, walk, state 2, in the air twice, the step, walk (MariaKind2) */
+#define MariaKind2WallAhead 0xCA6D /* how far across kind 2 reads for a wall, by facing: $0C, -$0C (MariaKind2Walk) */
+#define MariaKind2DropAhead 0xCAD4 /* how far across kind 2 reads for bit 1 in state 2, by facing (MariaKind2Walk2) */
+#define MariaKind2FloorAhead 0xCAD6 /* how far across kind 2 reads for its floor in state 2, by facing (MariaKind2Walk2) */
+#define MariaKind2StepAhead 0xCBDD /* how far across kind 2 reads for bit 1 on the step, by facing (MariaKind2State5) */
+#define OBJ_WALL_TURNS 0x34B8 /* kind 2's use of OBJ_WORK_D: the turns it has left at walls; counted down at each, at 0 it goes to state 4 instead of 3 (MariaKind2Walk, MariaKind2Turn) */
+#define MariaItem4ExtraStates 0xCDB6 /* three words by OBJ_STATE: wait, follow, held above her (MariaItem4Extra) */
+#define MariaSequenceObjectStates 0xCE77 /* four words by OBJ_STATE: start, rise, turn, fall (MariaSequenceObject) */
+#define OBJ_HELD_X_OFFSET 0x3510 /* kind 12's use of OBJ_WORK_E: her X less its own when it is caught above her; it is kept at her X less this (MariaItem4ExtraFollow, MariaItem4ExtraHeld) */
 
 #endif

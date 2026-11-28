@@ -1054,3 +1054,13 @@ B653,abs,MariaKnockSpeeds,X speed words of the knock by OBJ_KNOCK_RIGHT: $FF00, 
 8D1D,abs,BossFlashMasks,the boss gauge flash's mask patterns by its step's low three bits
 B809,abs,MariaItem4WalkSpeeds,item 4's walking X speed by facing: $0050, $FFB0 (MariaItem4Walk)
 B6B7,abs,MariaItem4Steps,three words by OBJ_SUBSTATE: item 4's start, walk and air (MariaStateItem4)
+# Maria's objects, kind 2 (the object that walks the terrain).
+C951,abs,MariaKind2States,seven words by OBJ_STATE: start, walk, state 2, in the air twice, the step, walk (MariaKind2)
+CA6D,abs,MariaKind2WallAhead,how far across kind 2 reads for a wall, by facing: $0C, -$0C (MariaKind2Walk)
+CAD4,abs,MariaKind2DropAhead,how far across kind 2 reads for bit 1 in state 2, by facing (MariaKind2Walk2)
+CAD6,abs,MariaKind2FloorAhead,how far across kind 2 reads for its floor in state 2, by facing (MariaKind2Walk2)
+CBDD,abs,MariaKind2StepAhead,how far across kind 2 reads for bit 1 on the step, by facing (MariaKind2State5)
+34B8,abs,OBJ_WALL_TURNS,kind 2's use of OBJ_WORK_D: the turns it has left at walls; counted down at each, at 0 it goes to state 4 instead of 3 (MariaKind2Walk, MariaKind2Turn)
+CDB6,abs,MariaItem4ExtraStates,three words by OBJ_STATE: wait, follow, held above her (MariaItem4Extra)
+CE77,abs,MariaSequenceObjectStates,four words by OBJ_STATE: start, rise, turn, fall (MariaSequenceObject)
+3510,abs,OBJ_HELD_X_OFFSET,kind 12's use of OBJ_WORK_E: her X less its own when it is caught above her; it is kept at her X less this (MariaItem4ExtraFollow, MariaItem4ExtraHeld)

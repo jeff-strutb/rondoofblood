@@ -572,3 +572,5 @@ alias,ObjectTable,fly_phase,work_i,OBJ_FLY_PHASE
 alias,ObjectTable,fall_lo,work_h,OBJ_FALL_LO
 alias,ObjectTable,fall_hi,work_i,OBJ_FALL_HI
 member,PlayerVarsB,kind7_caught,u8,00,PlayerKind7Caught,
+alias,ObjectTable,wall_turns,work_d,OBJ_WALL_TURNS
+alias,ObjectTable,held_x_offset,work_e,OBJ_HELD_X_OFFSET

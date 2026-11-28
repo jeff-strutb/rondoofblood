@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="990" viewBox="0 0 760 990" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
 <rect width="760" height="990" fill="#ffffff"/>
-<text x="16" y="28" font-size="17" font-weight="600" fill="#24292f">Rondo of Blood: M1 34.5%  M2 15.5%</text>
+<text x="16" y="28" font-size="17" font-weight="600" fill="#24292f">Rondo of Blood: M1 34.6%  M2 15.6%</text>
 <text x="16" y="48" font-size="12" fill="#57606a">376,626 B of distinct code found so far, every copy counted once. Dark: M2. Light: M1 only. Grey: to do.</text>
 <text x="182" y="82" font-size="12" text-anchor="end" fill="#24292f" font-weight="600">Whole game</text>
 <rect x="190" y="70" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="70" width="165.7" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="70" width="74.6" height="16" rx="3" fill="#1f6feb"/>
+<rect x="190" y="70" width="166.1" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="70" width="75.0" height="16" rx="3" fill="#1f6feb"/>
 <text x="678" y="82" font-size="11" fill="#57606a">35% of 367.8 KB</text>
 <text x="182" y="110" font-size="12" text-anchor="end" fill="#24292f">Boot</text>
 <rect x="190" y="98" width="480" height="16" rx="3" fill="#e6e9ed"/>
@@ -29,9 +29,9 @@
 <text x="678" y="176" font-size="11" fill="#57606a">45% of 12.1 KB</text>
 <text x="182" y="198" font-size="12" text-anchor="end" fill="#24292f">Maria</text>
 <rect x="190" y="186" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="186" width="110.8" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="186" width="80.0" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="198" font-size="11" fill="#57606a">23% of 13.1 KB</text>
+<rect x="190" y="186" width="122.0" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="186" width="91.3" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="198" font-size="11" fill="#57606a">25% of 13.1 KB</text>
 <text x="182" y="220" font-size="12" text-anchor="end" fill="#24292f">Title and system</text>
 <rect x="190" y="208" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="208" width="391.9" height="16" rx="3" fill="#8cb4f5"/>

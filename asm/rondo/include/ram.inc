@@ -829,3 +829,6 @@ PlayerJumpStartYHi = $3BF3 ; the high byte of PlayerJumpStartYLo
 zCrashKind = $D0 ; her item crash's kind less $0D: the index of its frame handlers (MariaCrashStart, MariaCrashFrame)
 zCrashPhase = $D1 ; her item crash's phase: the index of its phase handlers (MariaCrashPhase)
 zFieldD2 = $D2 ; cleared when her item crash starts; her crash phases wait on it; the crash's objects set it
+MariaSlotPlaces = $C6BD ; her companions' places beside her: X and Y offset pairs (MariaObjectPlaceByState)
+MariaSlotPlaceByState = $C6D1 ; the first pair in MariaSlotPlaces by her state (MariaObjectPlaceByState)
+MariaFrameByPlayerFrame = $D3D1 ; an object's frame by her frame less $53 (MariaObjectFrameByPlayerFrame)

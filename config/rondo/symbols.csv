@@ -845,3 +845,7 @@ AF2F,abs,MariaClimbWork,her OBJ_WORK_A in a ledge's hold, by low or high ledge (
 D0,zp,zCrashKind,her item crash's kind less $0D: the index of its frame handlers (MariaCrashStart, MariaCrashFrame)
 D1,zp,zCrashPhase,her item crash's phase: the index of its phase handlers (MariaCrashPhase)
 D2,zp,zFieldD2,cleared when her item crash starts; her crash phases wait on it; the crash's objects set it
+# Maria's objects (her overlay's $C000-$DFFF, bank $6E).
+C6BD,abs,MariaSlotPlaces,her companions' places beside her: X and Y offset pairs (MariaObjectPlaceByState)
+C6D1,abs,MariaSlotPlaceByState,the first pair in MariaSlotPlaces by her state (MariaObjectPlaceByState)
+D3D1,abs,MariaFrameByPlayerFrame,an object's frame by her frame less $53 (MariaObjectFrameByPlayerFrame)

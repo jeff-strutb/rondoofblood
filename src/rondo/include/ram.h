@@ -832,5 +832,8 @@
 #define zCrashKind 0x20D0 /* her item crash's kind less $0D: the index of its frame handlers (MariaCrashStart, MariaCrashFrame) */
 #define zCrashPhase 0x20D1 /* her item crash's phase: the index of its phase handlers (MariaCrashPhase) */
 #define zFieldD2 0x20D2 /* cleared when her item crash starts; her crash phases wait on it; the crash's objects set it */
+#define MariaSlotPlaces 0xC6BD /* her companions' places beside her: X and Y offset pairs (MariaObjectPlaceByState) */
+#define MariaSlotPlaceByState 0xC6D1 /* the first pair in MariaSlotPlaces by her state (MariaObjectPlaceByState) */
+#define MariaFrameByPlayerFrame 0xD3D1 /* an object's frame by her frame less $53 (MariaObjectFrameByPlayerFrame) */
 
 #endif

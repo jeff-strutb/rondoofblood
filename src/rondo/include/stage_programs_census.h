@@ -294,4 +294,19 @@ void abi_ClearStageBitRowsFour026F(void);
 StageExit ClearStageBitRowsFour031F(uint8_t x);
 void abi_ClearStageBitRowsFour031F(void);
 
+StageExit HitStoreHandler026F(uint8_t x, uint8_t y);
+void abi_HitStoreHandler026F(void);
+
+StageExit HitTestObject026F(uint8_t x);
+void abi_HitTestObject026F(void);
+
+StageExit HitTestObject031F(uint8_t x);
+void abi_HitTestObject031F(void);
+
+StageExit HitTestAllObjects026F(uint8_t x);
+void abi_HitTestAllObjects026F(void);
+
+StageExit HitTestAllObjects031F(uint8_t x);
+void abi_HitTestAllObjects031F(void);
+
 #endif

@@ -3,6 +3,7 @@
  * 1B8D and 1CED: other builds of the stage overlay at 024D. Each routine here is a loaded stage routine with its own
  * program's operands; its C calls the loaded routine's body with them.
  */
+#include <stddef.h>
 #include "machine.h"
 #include "access.h"
 #include "routines.h"
@@ -2697,4 +2698,161 @@ StageExit ClearStageBitRowsFour031F(uint8_t x)
 void abi_ClearStageBitRowsFour031F(void)
 {
     stage_exit_shim(ClearStageBitRowsFour031F(cpu.x));
+}
+
+/* The byte the programs' build of the store handler tests before the first object takes the hitter's bytes. */
+enum { HIT_STORE_GATE = 0x2745 };
+
+/*
+ * @routine 026F:560 HitStoreHandler026F
+ * @run 6B:9560
+ * WHAT IT DOES: The hit store handler of the stage programs (as HitStoreHandler, 024F:543): the hit slot's value into
+ * the object's hit-taken byte; when the first object's hit-taken byte is empty and the byte at $2745 is 0, the first
+ * object's hit-taken byte and health take the object's two stored bytes. Programs 064F, 122F, 1A2F, 1B8F and 1CEF
+ * hold the same bytes, and 031F, 043F and 10DF at $97E2 (none of its operands points into it, so it runs the same
+ * there).
+ * HOW: HitStoreHandlerAt (hit_test.c), the body of 024F:543, with the loaded columns and the gate at $2745.
+ * WAITS: no.
+ * Entry: X the object, Y the hit slot. Exit: A the last byte loaded, N and Z from it. X, Y, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit HitStoreHandler026F(uint8_t x, uint8_t y)
+{
+    const HitStoreColumns c = { COL(OBJ->work_n), COL(OBJ->hit_taken), COL(OBJ->work_c), COL(OBJ->work_b),
+                                ADDR_OF8(OBJ->health[0]), HIT_STORE_GATE };
+
+    return HitStoreHandlerAt(x, y, &c);
+}
+
+void abi_HitStoreHandler026F(void)
+{
+    stage_exit_shim(HitStoreHandler026F(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 026F:483 HitTestObject026F
+ * @run 6B:9483
+ * @stop 9542
+ * WHAT IT DOES: The stage programs' hit test (as HitTestObject, 024F:466): the object X's hitbox against the other
+ * side's slots and, on the first overlap, the handler its kind names in this program's table at $9542. Programs 064F,
+ * 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: HitTestObjectAt (hit_test.c), the body of 024F:466, with the table at $9542; every handler it names is the
+ * routine loaded at its address (the tables of the programs holding these bytes are their own).
+ * WAITS: no.
+ * Entry: X the object. Exit: with no hit A the last value, Y $FF, N set; with one, as the handler.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit HitTestObject026F(uint8_t x)
+{
+    return HitTestObjectAt(x, 0x9542, NULL);
+}
+
+void abi_HitTestObject026F(void)
+{
+    stage_exit_shim(HitTestObject026F(cpu.x));
+}
+
+/*
+ * @routine 031F:705 HitTestObject031F
+ * @run 6B:9705
+ * @stop 97C4
+ * WHAT IT DOES: The hit test of programs 031F, 043F and 10DF (as HitTestObject, 024F:466), with the table at $97C4.
+ * HOW: HitTestObjectAt (hit_test.c), the body of 024F:466, with the table at $97C4; every handler it names is the
+ * routine loaded at its address.
+ * WAITS: no.
+ * Entry, exit: as HitTestObject026F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit HitTestObject031F(uint8_t x)
+{
+    return HitTestObjectAt(x, 0x97C4, NULL);
+}
+
+void abi_HitTestObject031F(void)
+{
+    stage_exit_shim(HitTestObject031F(cpu.x));
+}
+
+/* The JSR to the hitbox positions loaded at run (ComputeHitboxPositions' bytes in these programs): what it leaves. */
+static HitboxEnd loaded_hitbox_positions(uint16_t run)
+{
+    HitboxEnd end;
+
+    routine_at(run)();
+    end.a = cpu.a;
+    end.v_seen = true;
+    end.v = (cpu.p & P_V) != 0;
+    return end;
+}
+
+static HitboxEnd hitbox_positions_9430(void)
+{
+    return loaded_hitbox_positions(0x9430);
+}
+
+static HitboxEnd hitbox_positions_96b2(void)
+{
+    return loaded_hitbox_positions(0x96B2);
+}
+
+/* The JSR to the hit test loaded at run, X the object; the registers and flags it leaves are the machine's. */
+static StageExit loaded_hit_test(uint16_t run, uint8_t x)
+{
+    StageExit end = { 0, 0, 0, false, false, 0, EXIT_CPU };
+
+    cpu.x = x;
+    routine_at(run)();
+    return end;
+}
+
+static StageExit hit_test_9483(uint8_t x)
+{
+    return loaded_hit_test(0x9483, x);
+}
+
+static StageExit hit_test_9705(uint8_t x)
+{
+    return loaded_hit_test(0x9705, x);
+}
+
+/*
+ * @routine 026F:415 HitTestAllObjects026F
+ * @run 6B:9415
+ * WHAT IT DOES: One frame of hit testing in the stage programs (as HitTestAllObjects, 024F:3F8): places the first
+ * sixteen hitboxes and tests the objects from $57 down to $10, clearing the hit-taken byte of each whose timer is
+ * running and counting that timer down. Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: HitTestAllObjectsAt (hit_test.c), the body of 024F:3F8, with the routines loaded at $9430 (the hitbox
+ * positions) and $9483 (the hit test) and its JSRs' returns at $9419 and $941E.
+ * WAITS: no.
+ * Entry: X kept on the stack. Exit: as the last object left it; X kept, C 0.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit HitTestAllObjects026F(uint8_t x)
+{
+    return HitTestAllObjectsAt(x, hitbox_positions_9430, hit_test_9483, 0x9419, 0x941E);
+}
+
+void abi_HitTestAllObjects026F(void)
+{
+    stage_exit_shim(HitTestAllObjects026F(cpu.x));
+}
+
+/*
+ * @routine 031F:697 HitTestAllObjects031F
+ * @run 6B:9697
+ * WHAT IT DOES: One frame of hit testing in programs 031F, 043F and 10DF (as HitTestAllObjects, 024F:3F8).
+ * HOW: HitTestAllObjectsAt (hit_test.c), the body of 024F:3F8, with the routines loaded at $96B2 and $9705 and its
+ * JSRs' returns at $969B and $96A0.
+ * WAITS: no.
+ * Entry, exit: as HitTestAllObjects026F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit HitTestAllObjects031F(uint8_t x)
+{
+    return HitTestAllObjectsAt(x, hitbox_positions_96b2, hit_test_9705, 0x969B, 0x96A0);
+}
+
+void abi_HitTestAllObjects031F(void)
+{
+    stage_exit_shim(HitTestAllObjects031F(cpu.x));
 }

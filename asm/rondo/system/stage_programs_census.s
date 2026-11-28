@@ -3719,3 +3719,302 @@ ClearStageBitRowsFour031F:
     bsr ClearStageBitRows031F
     bsr ClearStageBitRows031F
     bsr ClearStageBitRows031F
+
+; @routine 026F:560 HitStoreHandler026F
+; @run 6B:9560
+; WHAT IT DOES: The hit store handler of the stage programs (as HitStoreHandler, 024F:543): the hit slot's value into
+; the object's hit-taken byte; when the first object's hit-taken byte is empty and the byte at $2745 is 0, the first
+; object's hit-taken byte and health take the object's two stored bytes. Programs 064F, 122F, 1A2F, 1B8F and 1CEF
+; hold the same bytes, and 031F, 043F and 10DF at $97E2.
+; HOW: HitStoreHandler's code with a test of $2745 before the two copies.
+; WAITS: no.
+; Entry: X the object, Y the hit slot. Exit: A the last byte loaded, N and Z from it. X, Y, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+HitStoreHandler026F:
+    lda a:OBJ_WORK_N,y
+    sta a:OBJ_HIT_TAKEN,x
+    lda a:OBJ_HIT_TAKEN
+    bne HitStoreHandler026F_at0
+    lda a:LevelFullWalk+1
+    bne HitStoreHandler026F_at0
+    lda a:OBJ_WORK_C,x
+    sta a:OBJ_HIT_TAKEN
+    lda a:OBJ_WORK_B,x
+    sta a:OBJ_HEALTH
+HitStoreHandler026F_at0:
+    rts
+
+; @routine 026F:483 HitTestObject026F
+; @run 6B:9483
+; @stop 9542
+; WHAT IT DOES: The stage programs' hit test (as HitTestObject, 024F:466): the object X's hitbox against the other
+; side's slots and, on the first overlap, the handler its kind names in this program's table at $9542. Programs 064F,
+; 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: HitTestObject's code with this program's table; with no handler for the kind it returns through
+; HitStoreHandler026F's RTS.
+; WAITS: no.
+; Entry: X the object. Exit: with no hit A the last value, Y $FF, N set; with one, as the handler.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+HitHandlers026F = $9542 ; the hit handler of each kind from 1, a word each
+HitTestObject026F:
+    stz a:OBJ_HIT_TAKEN,x
+    lda a:OBJ_HITBOX_ON,x
+    bne HitTestObject026F_at0
+    jmp HitTestObject026F_at1
+HitTestObject026F_at0:
+    lda a:OBJ_HITBOX_HALF_W,x
+    ora a:OBJ_HITBOX_HALF_H,x
+    bne HitTestObject026F_at2
+    jmp HitTestObject026F_at1
+HitTestObject026F_at2:
+    lda a:OBJ_HITBOX_DX,x
+    sta z:zTemp01
+    lda a:OBJ_FACING_LEFT,x
+    beq HitTestObject026F_at3
+    lda z:zTemp01
+    eor #$FF
+    inc a
+    sta z:zTemp01
+HitTestObject026F_at3:
+    stz z:zTemp00
+    lda z:zTemp01
+    bpl HitTestObject026F_at4
+    dec z:zTemp00
+HitTestObject026F_at4:
+    clc
+    adc a:OBJ_X_LO,x
+    sta a:WorkByteA
+    lda a:OBJ_X_HI,x
+    adc z:zTemp00
+    bne HitTestObject026F_at1
+    stz z:zTemp00
+    lda a:OBJ_HITBOX_DY,x
+    bpl HitTestObject026F_at5
+    dec z:zTemp00
+HitTestObject026F_at5:
+    clc
+    adc a:OBJ_Y_LO,x
+    sta a:WorkByteB
+    lda a:OBJ_Y_HI,x
+    adc z:zTemp00
+    bne HitTestObject026F_at1
+    lda a:OBJ_HITBOX_ON,x
+    bpl HitTestObject026F_at6
+    cly
+    bra HitTestObject026F_at7
+HitTestObject026F_at6:
+    ldy #$0F
+HitTestObject026F_at7:
+    lda a:OBJ_HITBOX_ON,y
+    beq HitTestObject026F_at8
+    lda a:HitboxHi,y
+    bne HitTestObject026F_at8
+    lda a:OBJ_HITBOX_HALF_W,x
+    clc
+    adc a:OBJ_HITBOX_HALF_W,y
+    sta a:StreamStepLo
+    lda a:OBJ_HITBOX_HALF_H,x
+    clc
+    adc a:OBJ_HITBOX_HALF_H,y
+    sta a:StreamStepHi
+    lda a:WorkByteA
+    sec
+    sbc a:HitboxXLo,y
+    bcs HitTestObject026F_at9
+    eor #$FF
+    inc a
+HitTestObject026F_at9:
+    cmp a:StreamStepLo
+    bcs HitTestObject026F_at8
+    lda a:WorkByteB
+    sec
+    sbc a:HitboxYLo,y
+    bcs HitTestObject026F_at10
+    eor #$FF
+    inc a
+HitTestObject026F_at10:
+    cmp a:StreamStepHi
+    bcc HitTestObject026F_at11
+HitTestObject026F_at8:
+    dey
+    bpl HitTestObject026F_at7
+HitTestObject026F_at1:
+    rts
+HitTestObject026F_at11:
+    txa
+    sta a:OBJ_WORK_O,y
+    sty z:zHitSlot
+    lda a:OBJ_WORK_N,y
+    beq HitStoreHandler026F_at0
+    dec a
+    asl a
+    tay
+    lda a:HitHandlers026F,y
+    sta z:zTemp00
+    lda a:HitHandlers026F+1,y
+    sta z:zTemp01
+    ldy z:zHitSlot
+    jmp (ZeroPage)
+
+; @routine 031F:705 HitTestObject031F
+; @run 6B:9705
+; @stop 97C4
+; WHAT IT DOES: The hit test of programs 031F, 043F and 10DF (as HitTestObject, 024F:466), with the table at $97C4.
+; HOW: HitTestObject's code with this program's table; with no handler for the kind it returns through the RTS of the
+; store handler's bytes at $97E2 (HitStoreHandler026F's).
+; WAITS: no.
+; Entry, exit: as HitTestObject026F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+HitHandlers031F = $97C4 ; the hit handler of each kind from 1, a word each
+HitStoreRts031F = HitTestObject031F+$F9 ; the RTS of the store handler's bytes at $97E2
+HitTestObject031F:
+    stz a:OBJ_HIT_TAKEN,x
+    lda a:OBJ_HITBOX_ON,x
+    bne HitTestObject031F_at0
+    jmp HitTestObject031F_at1
+HitTestObject031F_at0:
+    lda a:OBJ_HITBOX_HALF_W,x
+    ora a:OBJ_HITBOX_HALF_H,x
+    bne HitTestObject031F_at2
+    jmp HitTestObject031F_at1
+HitTestObject031F_at2:
+    lda a:OBJ_HITBOX_DX,x
+    sta z:zTemp01
+    lda a:OBJ_FACING_LEFT,x
+    beq HitTestObject031F_at3
+    lda z:zTemp01
+    eor #$FF
+    inc a
+    sta z:zTemp01
+HitTestObject031F_at3:
+    stz z:zTemp00
+    lda z:zTemp01
+    bpl HitTestObject031F_at4
+    dec z:zTemp00
+HitTestObject031F_at4:
+    clc
+    adc a:OBJ_X_LO,x
+    sta a:WorkByteA
+    lda a:OBJ_X_HI,x
+    adc z:zTemp00
+    bne HitTestObject031F_at1
+    stz z:zTemp00
+    lda a:OBJ_HITBOX_DY,x
+    bpl HitTestObject031F_at5
+    dec z:zTemp00
+HitTestObject031F_at5:
+    clc
+    adc a:OBJ_Y_LO,x
+    sta a:WorkByteB
+    lda a:OBJ_Y_HI,x
+    adc z:zTemp00
+    bne HitTestObject031F_at1
+    lda a:OBJ_HITBOX_ON,x
+    bpl HitTestObject031F_at6
+    cly
+    bra HitTestObject031F_at7
+HitTestObject031F_at6:
+    ldy #$0F
+HitTestObject031F_at7:
+    lda a:OBJ_HITBOX_ON,y
+    beq HitTestObject031F_at8
+    lda a:HitboxHi,y
+    bne HitTestObject031F_at8
+    lda a:OBJ_HITBOX_HALF_W,x
+    clc
+    adc a:OBJ_HITBOX_HALF_W,y
+    sta a:StreamStepLo
+    lda a:OBJ_HITBOX_HALF_H,x
+    clc
+    adc a:OBJ_HITBOX_HALF_H,y
+    sta a:StreamStepHi
+    lda a:WorkByteA
+    sec
+    sbc a:HitboxXLo,y
+    bcs HitTestObject031F_at9
+    eor #$FF
+    inc a
+HitTestObject031F_at9:
+    cmp a:StreamStepLo
+    bcs HitTestObject031F_at8
+    lda a:WorkByteB
+    sec
+    sbc a:HitboxYLo,y
+    bcs HitTestObject031F_at10
+    eor #$FF
+    inc a
+HitTestObject031F_at10:
+    cmp a:StreamStepHi
+    bcc HitTestObject031F_at11
+HitTestObject031F_at8:
+    dey
+    bpl HitTestObject031F_at7
+HitTestObject031F_at1:
+    rts
+HitTestObject031F_at11:
+    txa
+    sta a:OBJ_WORK_O,y
+    sty z:zHitSlot
+    lda a:OBJ_WORK_N,y
+    beq HitStoreRts031F
+    dec a
+    asl a
+    tay
+    lda a:HitHandlers031F,y
+    sta z:zTemp00
+    lda a:HitHandlers031F+1,y
+    sta z:zTemp01
+    ldy z:zHitSlot
+    jmp (ZeroPage)
+
+; @routine 026F:415 HitTestAllObjects026F
+; @run 6B:9415
+; WHAT IT DOES: One frame of hit testing in the stage programs (as HitTestAllObjects, 024F:3F8): places the first
+; sixteen hitboxes and tests the objects from $57 down to $10, clearing the hit-taken byte of each whose timer is
+; running and counting that timer down. Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: A JSR to ComputeHitboxPositions' bytes at $9430, then HitTestObject026F for each object.
+; WAITS: no.
+; Entry: X kept on the stack. Exit: as the last object left it; X kept, C 0.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+HitboxPositions026F = $9430 ; ComputeHitboxPositions' bytes in these programs
+HitTestAllObjects026F:
+    phx
+    jsr HitboxPositions026F
+    ldx #$57
+HitTestAllObjects026F_at1:
+    jsr HitTestObject026F
+    lda a:OBJ_INVULN_TIMER,x
+    beq HitTestAllObjects026F_at0
+    stz a:OBJ_HIT_TAKEN,x
+    dec a:OBJ_INVULN_TIMER,x
+HitTestAllObjects026F_at0:
+    dex
+    cpx #$10
+    bcs HitTestAllObjects026F_at1
+    plx
+    rts
+
+; @routine 031F:697 HitTestAllObjects031F
+; @run 6B:9697
+; WHAT IT DOES: One frame of hit testing in programs 031F, 043F and 10DF (as HitTestAllObjects, 024F:3F8).
+; HOW: A JSR to ComputeHitboxPositions' bytes at $96B2, then HitTestObject031F for each object.
+; WAITS: no.
+; Entry, exit: as HitTestAllObjects026F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+HitboxPositions031F = $96B2 ; ComputeHitboxPositions' bytes in these programs
+HitTestAllObjects031F:
+    phx
+    jsr HitboxPositions031F
+    ldx #$57
+HitTestAllObjects031F_at1:
+    jsr HitTestObject031F
+    lda a:OBJ_INVULN_TIMER,x
+    beq HitTestAllObjects031F_at0
+    stz a:OBJ_HIT_TAKEN,x
+    dec a:OBJ_INVULN_TIMER,x
+HitTestAllObjects031F_at0:
+    dex
+    cpx #$10
+    bcs HitTestAllObjects031F_at1
+    plx
+    rts

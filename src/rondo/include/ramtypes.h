@@ -373,9 +373,9 @@ typedef struct {
     union { uint8_t work_k[88]; uint8_t dissolve_phase_k[88]; uint8_t vx_sum_frac[88]; }; /* OBJ_WORK_K */
     union { uint8_t work_l[88]; uint8_t dissolve_phase_l[88]; uint8_t vx_sum[88]; uint8_t knock_right[88]; }; /* OBJ_WORK_L */
     union { uint8_t work_m[88]; uint8_t vx_sum_hi[88]; uint8_t knock_forward[88]; uint8_t spawn_held[88]; }; /* OBJ_WORK_M */
-    union { uint8_t work_n[88]; uint8_t dissolve_phase_n[88]; }; /* OBJ_WORK_N */
+    union { uint8_t work_n[88]; uint8_t dissolve_phase_n[88]; uint8_t attack_power[88]; }; /* OBJ_WORK_N */
     union { uint8_t work_o[88]; uint8_t hit_by_slot[88]; }; /* OBJ_WORK_O */
-    union { uint8_t work_p[88]; uint8_t dissolve_phase_p[88]; }; /* OBJ_WORK_P */
+    union { uint8_t work_p[88]; uint8_t dissolve_phase_p[88]; uint8_t attack_side[88]; }; /* OBJ_WORK_P */
     union { uint8_t hitbox_dx[88]; uint8_t f3930[88]; }; /* OBJ_HITBOX_DX */
     union { uint8_t hitbox_half_w[88]; uint8_t f3988[88]; }; /* OBJ_HITBOX_HALF_W */
     union { uint8_t hitbox_dy[88]; uint8_t f39e0[88]; }; /* OBJ_HITBOX_DY */
@@ -492,10 +492,12 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, knock_forward) == OBJ_KN
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, spawn_held) == OBJ_SPAWN_HELD, "ObjectTable.spawn_held is not at OBJ_SPAWN_HELD");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_n) + 0 == OBJ_WORK_N, "ObjectTable.work_n is not at OBJ_WORK_N");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, dissolve_phase_n) == OBJ_DISSOLVE_PHASE_N, "ObjectTable.dissolve_phase_n is not at OBJ_DISSOLVE_PHASE_N");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, attack_power) == OBJ_ATTACK_POWER, "ObjectTable.attack_power is not at OBJ_ATTACK_POWER");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_o) + 0 == OBJ_WORK_O, "ObjectTable.work_o is not at OBJ_WORK_O");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hit_by_slot) == OBJ_HIT_BY_SLOT, "ObjectTable.hit_by_slot is not at OBJ_HIT_BY_SLOT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_p) + 0 == OBJ_WORK_P, "ObjectTable.work_p is not at OBJ_WORK_P");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, dissolve_phase_p) == OBJ_DISSOLVE_PHASE_P, "ObjectTable.dissolve_phase_p is not at OBJ_DISSOLVE_PHASE_P");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, attack_side) == OBJ_ATTACK_SIDE, "ObjectTable.attack_side is not at OBJ_ATTACK_SIDE");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hitbox_dx) + 0 == OBJ_HITBOX_DX, "ObjectTable.hitbox_dx is not at OBJ_HITBOX_DX");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3930) + 0 == OBJ_HITBOX_DX, "ObjectTable.f3930 is not at OBJ_HITBOX_DX");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hitbox_half_w) + 0 == OBJ_HITBOX_HALF_W, "ObjectTable.hitbox_half_w is not at OBJ_HITBOX_HALF_W");

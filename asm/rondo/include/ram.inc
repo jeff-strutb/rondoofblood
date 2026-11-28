@@ -1097,3 +1097,6 @@ MariaKind15StartPlacesLeft = $D9ED ; kind 15's X and Y low bytes at its start fa
 MariaKind15StartSpeedsX = $D9F5 ; kind 15's X speed words at its start, by slot less 5 (MariaKind15Start)
 MariaKind15StartSpeedsY = $D9FD ; kind 15's Y speed words at its start, by slot less 5 (MariaKind15Start)
 MariaKind15RainPlaces = $DA05 ; the place of a kind 11 piece from kind 15: X low and high, Y low and high, four bytes by OBJ_RAIN_COUNT's low bits (MariaKind15Rain)
+OBJ_ATTACK_SIDE = $38D8 ; an attack object's use of OBJ_WORK_P: which side its hit report counts, 1 or 2
+OBJ_ATTACK_POWER = $3828 ; an attack object's use of OBJ_WORK_N: the hit it gives the object it reports on
+StageDoorHeld = $2743 ; 1 while the stage holds its doors shut: StageDoorTouched does nothing

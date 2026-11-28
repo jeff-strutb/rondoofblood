@@ -1117,3 +1117,6 @@ D9ED,abs,MariaKind15StartPlacesLeft,kind 15's X and Y low bytes at its start fac
 D9F5,abs,MariaKind15StartSpeedsX,kind 15's X speed words at its start, by slot less 5 (MariaKind15Start)
 D9FD,abs,MariaKind15StartSpeedsY,kind 15's Y speed words at its start, by slot less 5 (MariaKind15Start)
 DA05,abs,MariaKind15RainPlaces,the place of a kind 11 piece from kind 15: X low and high, Y low and high, four bytes by OBJ_RAIN_COUNT's low bits (MariaKind15Rain)
+38D8,abs,OBJ_ATTACK_SIDE,an attack object's use of OBJ_WORK_P: which side its hit report counts, 1 or 2
+3828,abs,OBJ_ATTACK_POWER,an attack object's use of OBJ_WORK_N: the hit it gives the object it reports on
+2743,abs,StageDoorHeld,1 while the stage holds its doors shut: StageDoorTouched does nothing

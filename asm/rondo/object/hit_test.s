@@ -176,6 +176,7 @@ HitReportHandler:
     sta a:StageHitReport+3
     lda a:OBJ_WORK_N,y
     sta a:OBJ_HIT_TAKEN,x
+HitReportHandler_ret:
     rts
 
 ; @routine 05BF:70A HitTestAllObjectsLong

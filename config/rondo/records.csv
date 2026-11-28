@@ -582,3 +582,5 @@ alias,ObjectTable,piece_place,work_e,OBJ_PIECE_PLACE
 alias,ObjectTable,swoop_speed_lo,work_f,OBJ_SWOOP_SPEED_LO
 alias,ObjectTable,swoop_speed_hi,work_g,OBJ_SWOOP_SPEED_HI
 alias,ObjectTable,rain_count,work_i,OBJ_RAIN_COUNT
+alias,ObjectTable,attack_side,work_p,OBJ_ATTACK_SIDE
+alias,ObjectTable,attack_power,work_n,OBJ_ATTACK_POWER

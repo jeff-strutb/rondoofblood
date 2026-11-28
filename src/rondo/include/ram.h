@@ -1100,5 +1100,8 @@
 #define MariaKind15StartSpeedsX 0xD9F5 /* kind 15's X speed words at its start, by slot less 5 (MariaKind15Start) */
 #define MariaKind15StartSpeedsY 0xD9FD /* kind 15's Y speed words at its start, by slot less 5 (MariaKind15Start) */
 #define MariaKind15RainPlaces 0xDA05 /* the place of a kind 11 piece from kind 15: X low and high, Y low and high, four bytes by OBJ_RAIN_COUNT's low bits (MariaKind15Rain) */
+#define OBJ_ATTACK_SIDE 0x38D8 /* an attack object's use of OBJ_WORK_P: which side its hit report counts, 1 or 2 */
+#define OBJ_ATTACK_POWER 0x3828 /* an attack object's use of OBJ_WORK_N: the hit it gives the object it reports on */
+#define StageDoorHeld 0x2743 /* 1 while the stage holds its doors shut: StageDoorTouched does nothing */
 
 #endif

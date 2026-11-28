@@ -727,20 +727,27 @@ BreakRaftIntoSix051B_at0:
 
 ; @routine 051D:7F6 DebrisFall051B
 ; @run 71:C7F6
-; WHAT IT DOES: State 0 loads the record as sprite set 6 frame $37; after that falls by $28 a frame and is cleared on Y screen 1.
-; HOW: A 16-bit add to the Y speed, then ApplyVelocityY and ApplyVelocityX.
+; WHAT IT DOES: State 0 loads the record as sprite set 6 frame $37; else falls ($C809).
+; HOW: A branch by state.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 DebrisFall051B:
     lda a:OBJ_STATE,x
-    bne DebrisFall051B_at0
+    bne FallAndClearBelow051B
     jsr VecLoadObjectRecord
     lda #$06
     sta a:OBJ_SPRITE_SET,x
     lda #$37
     sta a:OBJ_FRAME,x
     rts
-DebrisFall051B_at0:
+
+; @routine 051E:009 FallAndClearBelow051B
+; @run 71:C809
+; WHAT IT DOES: Falls by $28 a frame and clears the object on Y screen 1.
+; HOW: A 16-bit add to the Y speed, then ApplyVelocityY and ApplyVelocityX.
+; WAITS: no.
+; Entry: X object. Exit: as the last instruction, call or jump left them.
+FallAndClearBelow051B:
     lda a:OBJ_VY_LO,x
     clc
     adc #$28
@@ -752,7 +759,7 @@ DebrisFall051B_at0:
     jsr VecApplyVelocityX
     lda a:OBJ_Y_HI,x
     cmp #$01
-    bne DebrisFall051B_at1
+    bne FallAndClearBelow051B_at0
     jmp VecClearObject
-DebrisFall051B_at1:
+FallAndClearBelow051B_at0:
     rts

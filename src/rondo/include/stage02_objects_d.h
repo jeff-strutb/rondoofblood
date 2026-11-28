@@ -48,5 +48,7 @@ void BreakRaftIntoSix051B(uint8_t slot);
 void abi_BreakRaftIntoSix051B(void);
 void DebrisFall051B(uint8_t slot);
 void abi_DebrisFall051B(void);
+void FallAndClearBelow051B(uint8_t slot);
+void abi_FallAndClearBelow051B(void);
 
 #endif

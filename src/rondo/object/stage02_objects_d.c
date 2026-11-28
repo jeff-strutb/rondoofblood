@@ -955,22 +955,40 @@ void abi_BreakRaftIntoSix051B(void)
 /*
  * @routine 051D:7F6 DebrisFall051B
  * @run 71:C7F6
- * WHAT IT DOES: State 0 loads the record as sprite set 6 frame $37; after that falls by $28 a frame and is cleared on Y screen 1.
- * HOW: A 16-bit add to the Y speed, then ApplyVelocityY and ApplyVelocityX.
+ * WHAT IT DOES: State 0 loads the record as sprite set 6 frame $37; else falls ($C809).
+ * HOW: A branch by state.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction, call or jump left them.
  */
 void DebrisFall051B(uint8_t slot)
 {
     lda(RD8(OBJ->state[slot]));
-    if (EQ) {
-        JSR(0xC7FE, k_load_record());
-        lda(0x06);
-        WR8(OBJ->sprite_set[cpu.x], cpu.a);
-        lda(0x37);
-        WR8(OBJ->frame[cpu.x], cpu.a);
+    if (NE) {
+        run_routine(0xC809);
         return;
     }
+    JSR(0xC7FE, k_load_record());
+    lda(0x06);
+    WR8(OBJ->sprite_set[cpu.x], cpu.a);
+    lda(0x37);
+    WR8(OBJ->frame[cpu.x], cpu.a);
+}
+
+void abi_DebrisFall051B(void)
+{
+    DebrisFall051B(cpu.x);
+}
+
+/*
+ * @routine 051E:009 FallAndClearBelow051B
+ * @run 71:C809
+ * WHAT IT DOES: Falls by $28 a frame and clears the object on Y screen 1.
+ * HOW: A 16-bit add to the Y speed, then ApplyVelocityY and ApplyVelocityX.
+ * WAITS: no.
+ * Entry: X object. Exit: as the last instruction, call or jump left them.
+ */
+void FallAndClearBelow051B(uint8_t slot)
+{
     lda(RD8(OBJ->vy_lo[slot]));
     clc();
     adc_a(0x28);
@@ -987,7 +1005,7 @@ void DebrisFall051B(uint8_t slot)
     }
 }
 
-void abi_DebrisFall051B(void)
+void abi_FallAndClearBelow051B(void)
 {
-    DebrisFall051B(cpu.x);
+    FallAndClearBelow051B(cpu.x);
 }

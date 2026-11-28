@@ -3,7 +3,7 @@
  * her death, and the moves that stand, crouch and drop her.
  *
  * Most of these are Richter's (richter_state.c) at her addresses, some with her own numbers: her start fills the
- * health to $5C and keeps no PlayerByte3BD5 clear in the stand; her spike check ends a state $10 through
+ * health to $5C and keeps no PlayerAttackKind clear in the stand; her spike check ends a state $10 through
  * MariaClearSlot5AsKind9; her death's wait holds her at Y $00FF and, while another object is out, sets its timer back
  * to one frame instead of waiting on.
  */
@@ -725,7 +725,7 @@ MariaDying MariaDyingStep(void)
     MariaStartHitScript(SCRIPT_DEATH);
     jsr_pop();
     WR8(ZP->sub_step, DEATH_SUB_STEP);
-    WR8(PVARS->f3bd7, 0);
+    WR8(PVARS->door_ready, 0);
     WR8(PVARS2->dying, 0);
     step.how = DYING_OVER;
     return step;

@@ -326,7 +326,7 @@ MExit MariaStandFrame(uint8_t x, uint8_t y)
             value = RD8(OBJ->state[OBJECT_PLAYER]);
             mx_regs(&e, r_lda(regs_kept(), value));
             if (value != STATE_STAND) {
-                value = RD8(PVARS2->f3bf0);
+                value = RD8(PVARS2->start_pose);
                 mx_regs(&e, r_lda(regs_kept(), value));
             }
             if (value != 0) {

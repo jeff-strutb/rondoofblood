@@ -527,7 +527,7 @@ MariaReadPad:
 ; @run 6D:B934
 ; WHAT IT DOES: Follows a sequence of directions on her pad: each must come within ten frames of the last, in the
 ; order her table at $B96B gives for the way she faces; the third sets the done flag.
-; HOW: A timer, the step and the done flag, three bytes after PlayerByte3BE3; the table by twice the step plus her
+; HOW: A timer, the step and the done flag, three bytes after PlayerHeldCount; the table by twice the step plus her
 ; facing; a timer run out clears the step and the flag.
 ; Untraced: the third step ($B95A); no script finished a sequence.
 ; WAITS: no.
@@ -535,10 +535,10 @@ MariaReadPad:
 ; the next, A the directions, N, Z and C from comparing them. X the table index unless the timer was out; C from
 ; the index's add, or from comparing the step with 3; V from the index's add. Y kept.
 MariaPadSequence:
-    lda a:PlayerByte3BE3+3
+    lda a:PlayerHeldCount+3
     beq MariaPadSequence_at2
-    dec a:PlayerByte3BE3+3
-    lda a:PlayerByte3BE3+2
+    dec a:PlayerHeldCount+3
+    lda a:PlayerHeldCount+2
     asl a
     clc
     adc a:OBJ_FACING_LEFT
@@ -548,18 +548,18 @@ MariaPadSequence:
     beq MariaPadSequence_at0
     cmp a:MariaPadSequence+$37,x
     bne MariaPadSequence_at0
-    inc a:PlayerByte3BE3+2
-    lda a:PlayerByte3BE3+2
+    inc a:PlayerHeldCount+2
+    lda a:PlayerHeldCount+2
     cmp #$03
     bne MariaPadSequence_at1
-    inc a:PlayerByte3BE3+4
+    inc a:PlayerHeldCount+4
     bra MariaPadSequence_at1
 MariaPadSequence_at2:
-    stz a:PlayerByte3BE3+2
-    stz a:PlayerByte3BE3+4
+    stz a:PlayerHeldCount+2
+    stz a:PlayerHeldCount+4
 MariaPadSequence_at1:
     lda #$0A
-    sta a:PlayerByte3BE3+3
+    sta a:PlayerHeldCount+3
 MariaPadSequence_at0:
     rts
 
@@ -689,24 +689,24 @@ MariaAnimationPoint:
 ; WAITS: no.
 ; Entry, exit: as RichterCheckTurnWindow.
 MariaCheckTurnWindow:
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
     lda a:OBJ_SUBSTATE
     beq MariaCheckTurnWindow_at0
     rts
 MariaCheckTurnWindow_at0:
     ldx a:OBJ_STATE
     lda a:RichterTurnStates+$327,x
-    sta a:PlayerByte3BD7
+    sta a:PlayerDoorReady
     lda a:OBJ_FACING_LEFT
     bne MariaCheckTurnWindow_at1
     lda a:OBJ_X_LO
     bmi MariaCheckTurnWindow_at2
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
     rts
 MariaCheckTurnWindow_at1:
     lda a:OBJ_X_LO
     bpl MariaCheckTurnWindow_at2
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
 MariaCheckTurnWindow_at2:
     rts
 
@@ -730,23 +730,23 @@ MariaCheckItemHearts_at0:
 
 ; @routine 01E0:43A MariaItemUseAll
 ; @run 6D:BC3A
-; WHAT IT DOES: The end of MariaUseItem when her sequence is done: PlayerByte3BD5 $FF, then the item delay.
+; WHAT IT DOES: The end of MariaUseItem when her sequence is done: PlayerAttackKind $FF, then the item delay.
 ; HOW: A jump into MariaUseItem's end.
 ; Untraced: all of it; no script finished a sequence.
 ; WAITS: no.
 ; Entry: nothing. Exit: A $10, N and Z from it, C set. X, Y and V kept.
 MariaItemUseAll:
     lda #$FF
-    sta a:PlayerByte3BD5
+    sta a:PlayerAttackKind
     jmp MariaUseItem_at8
 
 ; @routine 01E0:442 MariaUseItem
 ; @run 6D:BC42
 ; WHAT IT DOES: Her attack button: unless the delay in OBJ_EVENT_ID runs, on a press of button II says she attacks
 ; (C set) and starts the delay. With down held and the hearts her table at $BCDE asks, an item of 2 and up is
-; thrown: its list and script start once (PlayerByte3BD6) unless an object is alive in slots 5 to 14, it waits for
-; slot 5, and slot 8 past the second cost at $BCD5, and the hearts are paid; PlayerByte3BD5 then says the item is
-; in use. In states below 5 with her pad sequence done, PlayerByte3BD5 is $FF.
+; thrown: its list and script start once (PlayerItemFirstUse) unless an object is alive in slots 5 to 14, it waits for
+; slot 5, and slot 8 past the second cost at $BCD5, and the hearts are paid; PlayerAttackKind then says the item is
+; in use. In states below 5 with her pad sequence done, PlayerAttackKind is $FF.
 ; HOW: Bit 1 of zPadPressed, bit 4 of zPadHeld, zField93 the item, zField94 the hearts in BCD; MariaFindLiveObject;
 ; the list on channel 6 and the script in slot 6.
 ; Untraced: the sequence's arm ($BC56 taken, into MariaItemUseAll) and the throw ($BC77 to $BCC0); no script threw
@@ -765,7 +765,7 @@ MariaUseItem_at1:
     lda a:OBJ_STATE
     cmp #$05
     bcs MariaUseItem_at2
-    lda a:PlayerByte3BE3+4
+    lda a:PlayerHeldCount+4
     bne MariaItemUseAll
 MariaUseItem_at2:
     lda z:zPadHeld
@@ -776,7 +776,7 @@ MariaUseItem_at2:
     cmp a:MariaUseItem+$9C,x
     bcs MariaUseItem_at4
 MariaUseItem_at3:
-    stz a:PlayerByte3BD5
+    stz a:PlayerAttackKind
 MariaUseItem_at8:
     lda #$10
     sta a:OBJ_EVENT_ID
@@ -786,7 +786,7 @@ MariaUseItem_at4:
     lda z:zField93
     cmp #$02
     bcc MariaUseItem_at3
-    lda a:PlayerByte3BD6
+    lda a:PlayerItemFirstUse
     beq MariaUseItem_at5
     jsr MariaFindLiveObject
     bne MariaUseItem_at3
@@ -796,7 +796,7 @@ MariaUseItem_at4:
     ldx #$06
     jsr VecStartListChannelKind2
 MariaUseItem_at6:
-    stz a:PlayerByte3BD6
+    stz a:PlayerItemFirstUse
     ldx z:zField93
     lda a:MariaUseItem+$AE,x
     beq MariaUseItem_at5
@@ -814,7 +814,7 @@ MariaUseItem_at5:
     bne MariaUseItem_at3
 MariaUseItem_at7:
     lda #$01
-    sta a:PlayerByte3BD5
+    sta a:PlayerAttackKind
     lda z:zField94
     sed
     sec
@@ -885,7 +885,7 @@ MariaTryItemCrash_at2:
     ldx #$06
     jsr VecStartListChannelKind2
 MariaTryItemCrash_at3:
-    stz a:PlayerByte3BD6
+    stz a:PlayerItemFirstUse
     ldx z:zField93
     lda a:RichterItemCrashScripts+$4FD,x
     beq MariaTryItemCrash_at4

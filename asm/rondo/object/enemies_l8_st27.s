@@ -15,7 +15,7 @@ SpawnRowsWhenScrollAtZero:
     sta z:zGameSubMode
     dec a:OBJ_WORK_E
     lda #$01
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     rmb0 z:zField8E
     phx
     jsr SpawnStageObjectsRows34

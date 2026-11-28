@@ -88,7 +88,7 @@ static bool past_edge(uint8_t high_value, uint8_t low_value)
  * @stop A13C
  * WHAT IT DOES: Runs every object slot from $10 to $57 once. For each slot with a kind and a state: unless its flags bit 0 says it stays put, it moves by the scroll speeds (the table
  * entry by its flags); an object whose flags bit 1 is clear and which is far off the first screen is cleared; the hit handler runs (ObjectHit); an object whose flags bit 2 is
- * set is held while it is outside the window; one with a hurt timer counts it down; the player's mode (PlayerByte3BD8) may skip the object on some frames by a wave-counter table;
+ * set is held while it is outside the window; one with a hurt timer counts it down; the player's mode (TimeSlowMode) may skip the object on some frames by a wave-counter table;
  * the rest dispatch by kind (DispatchByKind0259). A slot with no state dispatches at once. At the end, every fourth wave tick it starts the next script of a cue table at $A13C.
  * HOW: A loop of X from $10 over the pieces of the original (000, 044, 05E, 090, 0C0, 0D1, 112), which are one function here; each place the original code is entered, the registers the
  * typed steps so far left are put into the machine first.
@@ -216,7 +216,7 @@ static Ended run_objects(uint8_t entry_x)
             }
         }
         if (!next && !dispatch) {
-            mode = rd8(PlayerByte3BD8);
+            mode = rd8(TimeSlowMode);
             e = ended_then(e, ended_load(mode));
             if (mode == 0) {
                 dispatch = true;

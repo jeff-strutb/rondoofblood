@@ -428,7 +428,7 @@ ChangeKindFromTable:
     lda z:zField93
     pha
     lda #$01
-    sta a:PlayerByte3BD6
+    sta a:PlayerItemFirstUse
     lda a:OBJ_KIND,x
     sec
     sbc #$80

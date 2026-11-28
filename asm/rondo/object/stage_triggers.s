@@ -101,7 +101,7 @@ StageTriggerObjectB_at0:
     stz a:OBJ_INVULN_TIMER,x
     lda a:OBJ_START_ARG,x
     bpl StageTriggerObjectB_at1
-    lda a:PlayerByte3BD7
+    lda a:PlayerDoorReady
     beq ClearHitsTaken
 StageTriggerObjectB_at1:
     lda a:PlayerMayLeaveTop

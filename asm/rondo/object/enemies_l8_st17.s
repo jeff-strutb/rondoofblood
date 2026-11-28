@@ -108,7 +108,7 @@ SoundBAAtScreen2_at0:
 ; Entry: X object, Y kept for the sounds. Exit: as the last instruction that ran. The byte at $3BF0 keeps its address form until it has a name.
 PulseWaterLevelAndScatter:
     lda #$02
-    sta a:PlayerByte3BF0
+    sta a:PlayerStartPose
     lda #$03
     sta a:OBJ_WORK_E
     stz a:OBJ_WORK_F

@@ -227,7 +227,7 @@ MariaDyingStep_at2:
     jsr MariaStartHitScript
     lda #$05
     sta z:zSubStep
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
     stz a:PlayerDying
 MariaDyingStep_at0:
     rts

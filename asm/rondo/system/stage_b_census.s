@@ -343,11 +343,11 @@ StageSubStepNoneB152D:
 ; left there, not these bytes.
 ;
 ; WHAT IT DOES: Sub-step 2, the player died: sub-mode 2 with zField80, zField89 and the fall's step cleared, the
-; overlay at $A000's piece at $A067, the forced presses cleared; when PlayerByte3BD8 is set it is cleared and the fade
+; overlay at $A000's piece at $A067, the forced presses cleared; when TimeSlowMode is set it is cleared and the fade
 ; starts again from 2.
 ; HOW: Stores; MapOverlayBank7 and $A067; a jump into StageFadeTimer152D.
 ; WAITS: no.
-; Entry: nothing. Exit: A PlayerByte3BD8 (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer152D.
+; Entry: nothing. Exit: A TimeSlowMode (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer152D.
 StageSubStepDeath152D:
     lda #$02
     sta z:zGameSubMode
@@ -358,11 +358,11 @@ StageSubStepDeath152D:
     stz a:PadForcedPress
     stz a:PadForcedPressB
     stz z:$88
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     bne StageSubStepDeath152D_at0
     rts
 StageSubStepDeath152D_at0:
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     lda #$02
     sta z:$9B
     jmp StageFadeTimer152D
@@ -379,7 +379,7 @@ StageSubStepDeath152D_at0:
 ;
 ; WHAT IT DOES: Sub-step 3, the stage cleared: sub-mode 3 with its step 0, its table at $84 picked by zField8C (none:
 ; 2; 3 or 4: 3; else 1, with $2743 set to 1); the overlay at $A000's piece at $A067, the forced presses and
-; PlayerByte3BD8 cleared.
+; TimeSlowMode cleared.
 ; HOW: Compares of zField8C; stores; MapOverlayBank7 and $A067.
 ; WAITS: no.
 ; Entry: nothing. Exit: as $A067 left them.
@@ -408,7 +408,7 @@ StageSubStepCleared152D_at2:
     jsr ClearScrollSpeeds
     stz a:PadForcedPress
     stz a:PadForcedPressB
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     rts
 
 ; @routine 152D:17B StageSubStepFadeOut152D
@@ -471,10 +471,10 @@ StageSubStepFadeOutB152D:
 ;
 ; WHAT IT DOES: Sub-step 6: sub-mode 6 with zField80, zField89 and the fall's step cleared, the overlay at $A000's
 ; piece at $A067, the forced presses cleared, the player's step at $3358 0 and its count at $3310 $40; when
-; PlayerByte3BD8 is set it is cleared and the fade starts again from 2.
+; TimeSlowMode is set it is cleared and the fade starts again from 2.
 ; HOW: Stores; MapOverlayBank7 and $A067; a jump into StageFadeTimer152D.
 ; WAITS: no.
-; Entry: nothing. Exit: A PlayerByte3BD8 (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer152D.
+; Entry: nothing. Exit: A TimeSlowMode (0), N and Z from it, the rest as $A067 left them; else as StageFadeTimer152D.
 StageSubStepBoss152D:
     lda #$06
     sta z:zGameSubMode
@@ -488,11 +488,11 @@ StageSubStepBoss152D:
     stz a:OBJ_WORK_C
     lda #$40
     sta a:$3310
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     bne StageSubStepBoss152D_at0
     rts
 StageSubStepBoss152D_at0:
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     lda #$02
     sta z:$9B
     jmp StageFadeTimer152D
@@ -1517,7 +1517,7 @@ StageFadeRestart152D_at1:
 ; left there, not these bytes.
 ;
 ; WHAT IT DOES: Sub-mode 5, the stage's opening: the events step, the rows, the overlay at $A000's frame, the scroll,
-; the opening's piece at $8BD5; once zField8E's bit 0 is set PlayerByte3BD8 and the player's count at $3310 are
+; the opening's piece at $8BD5; once zField8E's bit 0 is set TimeSlowMode and the player's count at $3310 are
 ; cleared and the stage is in play, sub-mode 1.
 ; HOW: StageModeEventsStep152D, StageHudStep152D, MapOverlayBanks5And6, $A000, StageOverlayFrame152D, MapOverlayBank7,
 ; $A08D, StageOpeningStep152D; a bit test; stores.
@@ -1533,7 +1533,7 @@ StageSubModeOpening152D:
     jsr $A08D
     jsr StageOpeningStep152D
     bbr0 zField8E,StageSubModeOpening152D_at0
-    stz a:PlayerByte3BD8
+    stz a:TimeSlowMode
     lda #$01
     sta z:zGameSubMode
     stz a:$3310
@@ -1920,8 +1920,8 @@ DoorHandler152D_at1:
 ; run. No input or poke of work RAM can load the sectors, and a unit call at $87C6 runs whatever overlay another scene
 ; left there, not these bytes.
 ;
-; WHAT IT DOES: An object handler for a door PlayerByte3BD7 opens: as DoorHandler152D, with no pad override (the
-; packed byte gives the room and the entry only), the gate PlayerByte3BD7. Its fall-back that clears the state is
+; WHAT IT DOES: An object handler for a door PlayerDoorReady opens: as DoorHandler152D, with no pad override (the
+; packed byte gives the room and the entry only), the gate PlayerDoorReady. Its fall-back that clears the state is
 ; DoorHandler152D's bytes at $87C2.
 ; HOW: Loads, shifts through the carry and stores; the tests and the stores of the door.
 ; WAITS: no.
@@ -1943,7 +1943,7 @@ DoorHandlerB152D:
     rts
 DoorHandlerB152D_at0:
     stz a:$3790,x
-    lda a:PlayerByte3BD7
+    lda a:PlayerDoorReady
     beq DoorHandler152D_at1
     lda a:$31F0,x
     beq DoorHandler152D_at1
@@ -2502,7 +2502,7 @@ StageDigitAddress152D:
 ;
 ; WHAT IT DOES: The pause screen's choice, reached from StagePausedFrame152D: on the first pad's left or right (bits 4
 ; and 6 of BiosJoyTrigger) the sub-weapon at zField93 moves to the next or the one before (the table at $8AC0, two on
-; for right), its frame at $2A9E from the table at $8878, PlayerByte3BD6 1 and zField94 $99.
+; for right), its frame at $2A9E from the table at $8878, PlayerItemFirstUse 1 and zField94 $99.
 ; HOW: Pad bits; table reads; stores.
 ; WAITS: no.
 ; Entry: nothing. Exit, no press: A 0, N and Z from it. Else: A $99, N and Z from it, X the new choice. Y, C and V
@@ -2523,7 +2523,7 @@ StagePausedSelect152D_at0:
     lda a:$8878,x
     sta a:$2A9E
     lda #$01
-    sta a:PlayerByte3BD6
+    sta a:PlayerItemFirstUse
     lda #$99
     sta z:zField94
     rts
@@ -2632,7 +2632,7 @@ StagePausedFrame152D_at7:
 ;
 ; WHAT IT DOES: Starts the stage's opening when zField8E's bit 0 is clear: the display's pieces 3 and 4
 ; (StageDrawPiece152D), the opening's objects placed (pages at $2B74 and $2C4D one less, speeds at $2D24 and $2DB5 4,
-; counts at $3354 and $3355 $20), PlayerByte3BD8 2, sound $3B, the CD's wait at $33E4 cleared.
+; counts at $3354 and $3355 $20), TimeSlowMode 2, sound $3B, the CD's wait at $33E4 cleared.
 ; HOW: A bit test; calls with X 3 and 4; stores; the sound hook.
 ; WAITS: no.
 ; Entry: nothing. Exit, bit 0 set: everything kept. Else: as the sound hook left them.
@@ -2653,7 +2653,7 @@ StageOpeningStart152D_at0:
     sta a:$3354
     sta a:$3355
     lda #$02
-    sta a:PlayerByte3BD8
+    sta a:TimeSlowMode
     lda #$3B
     jsr VecSoundCommand
     stz a:$33E4
@@ -5189,7 +5189,7 @@ GateStart152D:
 ; run. No input or poke of work RAM can load the sectors, and a unit call at $992B runs whatever overlay another scene
 ; left there, not these bytes.
 ;
-; WHAT IT DOES: The gate waits for the player: with PlayerByte3BD7 set and the byte at $2746 clear, and the gate's
+; WHAT IT DOES: The gate waits for the player: with PlayerDoorReady set and the byte at $2746 clear, and the gate's
 ; state at $31F0 1 or 2, the stage is cleared through it (zField8C its packed byte's low nibble plus one, zSubStep 3),
 ; the gate goes on to its next step (its count 0, its timer 4); a packed byte's high nibble names a sound (raster
 ; effect and $3EA4 cleared, the kernel's piece at $400F with X 6 and A the nibble with bit 7).
@@ -5199,7 +5199,7 @@ GateStart152D:
 GateWaitPlayer152D:
     lda a:LevelFullWalk+2
     eor #$01
-    and a:PlayerByte3BD7
+    and a:PlayerDoorReady
     beq GateWaitPlayer152D_at0
     lda a:$31F0,x
     beq GateWaitPlayer152D_at0

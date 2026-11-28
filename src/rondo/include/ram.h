@@ -418,23 +418,11 @@
 #define zFieldC6 0x20C6 /* cleared on a knockback or a jump */
 #define zFieldD3 0x20D3 /* cleared with the player's pad overrides */
 #define zField94 0x2094 /* hearts in BCD; set when the player starts */
-#define PlayerByte3BD5 0x3BD5 /* player state not yet identified */
-#define PlayerByte3BD6 0x3BD6 /* player state not yet identified */
-#define PlayerByte3BD8 0x3BD8 /* player state not yet identified */
-#define PlayerByte3BD7 0x3BD7 /* player state not yet identified */
 #define PadForcedPress 0x3BDD /* ORed into zPadPressed each frame */
 #define PadForcedPressB 0x3BDF /* ORed into zPadPressed each frame */
-#define PlayerByte3BE1 0x3BE1 /* player state not yet identified */
 #define PlayerInvincibleTimer 0x3BDE /* the potion's invincibility: counts down every fourth frame while not zero */
-#define PlayerByte3BE2 0x3BE2 /* player state not yet identified */
-#define PlayerByte3BE3 0x3BE3 /* player state not yet identified */
-#define PlayerByte3BE8 0x3BE8 /* player state not yet identified */
-#define PlayerByte3BE9 0x3BE9 /* player state not yet identified */
-#define PlayerByte3BF0 0x3BF0 /* player state not yet identified */
-#define PlayerByte3BF1 0x3BF1 /* player state not yet identified */
 #define PlayerDying 0x3BF4 /* not zero while the player's death runs */
 #define PlayerDyingTimer 0x3BF5 /* frames left in a step of the death */
-#define PlayerByte3BF7 0x3BF7 /* player state not yet identified */
 #define PlayerAttackKind 0x3BD5 /* the attack under way: 0 the whip; else the thrown item's attack (Richter's item handlers store it from the table at $BA38 by item); the attack's animation, its frames and the landing's by it */
 #define PlayerHeld 0x3BE2 /* not zero while a hit's hold is on him (bit 5 of OBJ_HIT_TAKEN counts it up): hits are then shrugged off with script 1, and presses shake it off (PlayerHeldCount) */
 #define PlayerHeldCount 0x3BE3 /* the hold's count: 1 when it starts (script 0), one more each frame a button is newly pressed; at 8 the hold ends (PlayerHeld 0, script 9) */
@@ -446,7 +434,7 @@
 #define PlayerWhipStruck 0x3BE1 /* 1 once the whip has struck an enemy in this attack: the whip's handler (kind 1) sets it when the object that tested it is an enemy (slot $10 up) with OBJ_HITBOX_ON 2 or more; the whip's frame at step 6 is then held 4 longer (RichterObjectQuicken); every attack and landing clears it */
 #define PlayerKeepsLastPoint 0x3BF7 /* 1: a hit that takes the last of his health leaves him one point and goes on as a hit (RichterOutOfHealth); some stage objects set it as they run */
 #define PlayerKeptRasterStage 0x3BEA /* zRasterStage kept while Richter's kind $0E runs (it sets the stage to 2); given back at its end */
-#define PlayerKind7Caught 0x3BEF /* 1 when a stage object has caught Richter's kind 7 in slot 5 (it sets this); kind 7 then clears it and the item in hand (zField93) and ends */
+#define PlayerKind7Caught 0x3BEF /* 1 when a stage object has caught Richter's kind 7 in slot 5: stage code at 07E0:15A and 0EBB:0AC stores 1 when OBJ_KIND of slot 5 is 7; kind 7 then clears it and the item in hand (zField93) and ends (Maria's item 7's part, MariaItem7Part, clears it the same way) */
 #define OverlayOrphanA02A 0xA02A /* a piece of the player overlay nothing reaches */
 #define PlayerFootYByState 0xA0FF /* how far above the position to probe by state */
 #define PlayerStartHandlers 0xA116 /* 4 words by zField8A */
@@ -1015,7 +1003,6 @@
 #define MariaAttackStates 0xC773 /* the states of her attack's object, four words: start, fly, fall, return (MariaAttackObject) */
 #define MariaAttackAngles 0xC823 /* the angle her attack's object turns back on, by its facing (MariaAttackFall) */
 #define MariaItem5States 0xC8E5 /* the states of item 5, four words (MariaItem5) */
-#define PlayerByte3BEF 0x3BEF /* player state not yet identified: set, item 7's part is cleared and zField93 (the item in hand) with it (MariaItem7Part clears it); nothing filed sets it */
 #define MariaPieceSpeedsX 0xCD96 /* the X speed of each of the four pieces of kind 9, a word by slot less 5 (MariaObjectKind9) */
 #define MariaClimbMoveSpeeds 0xAD5B /* her X and Y speed high bytes on a ledge's step, by state less 5 doubled (MariaClimbMove) */
 #define MariaClimbPadsA 0xADDC /* the first pad she holds to climb, by state less 5 (MariaClimbPad) */

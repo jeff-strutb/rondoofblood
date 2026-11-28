@@ -3,7 +3,7 @@
 ; @stop A13C
 ; WHAT IT DOES: Runs every object slot from $10 to $57 once. For each slot with a kind and a state: unless its flags bit 0 says it stays put, it moves by the scroll speeds (the table
 ; entry by its flags); an object whose flags bit 1 is clear and which is far off the first screen is cleared; the hit handler runs (ObjectHit); an object whose flags bit 2 is
-; set is held while it is outside the window; one with a hurt timer counts it down; the player's mode (PlayerByte3BD8) may skip the object on some frames by a wave-counter table;
+; set is held while it is outside the window; one with a hurt timer counts it down; the player's mode (TimeSlowMode) may skip the object on some frames by a wave-counter table;
 ; the rest dispatch by kind (DispatchByKind0259). A slot with no state dispatches at once. At the end, every fourth wave tick it starts the next script of a cue table at $A13C.
 ; HOW: A loop of X from $10 over the pieces of the original (000, 044, 05E, 090, 0C0, 0D1, 112), which are one function here; each place the original code is entered, the registers the
 ; typed steps so far left are put into the machine first.
@@ -112,7 +112,7 @@ RunObjects_at12:
     bne RunObjects_at14
     bra RunObjects_at1
 RunObjects_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects_at3
     cmp #$03
     bne RunObjects_at15
@@ -279,7 +279,7 @@ RunObjects07D9_at12:
     bne RunObjects07D9_at14
     bra RunObjects07D9_at1
 RunObjects07D9_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects07D9_at3
     cmp #$03
     bne RunObjects07D9_at15
@@ -447,7 +447,7 @@ RunObjects0889_at12:
     bne RunObjects0889_at14
     bra RunObjects0889_at1
 RunObjects0889_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects0889_at3
     cmp #$03
     bne RunObjects0889_at15
@@ -615,7 +615,7 @@ RunObjects0A99_at12:
     bne RunObjects0A99_at14
     bra RunObjects0A99_at1
 RunObjects0A99_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects0A99_at3
     cmp #$03
     bne RunObjects0A99_at15
@@ -783,7 +783,7 @@ RunObjects0B49_at12:
     bne RunObjects0B49_at14
     bra RunObjects0B49_at1
 RunObjects0B49_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects0B49_at3
     cmp #$03
     bne RunObjects0B49_at15
@@ -951,7 +951,7 @@ RunObjects0CA9_at12:
     bne RunObjects0CA9_at14
     bra RunObjects0CA9_at1
 RunObjects0CA9_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects0CA9_at3
     cmp #$03
     bne RunObjects0CA9_at15
@@ -1119,7 +1119,7 @@ RunObjects0D59_at12:
     bne RunObjects0D59_at14
     bra RunObjects0D59_at1
 RunObjects0D59_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects0D59_at3
     cmp #$03
     bne RunObjects0D59_at15
@@ -1287,7 +1287,7 @@ RunObjects0E09_at12:
     bne RunObjects0E09_at14
     bra RunObjects0E09_at1
 RunObjects0E09_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects0E09_at3
     cmp #$03
     bne RunObjects0E09_at15
@@ -1455,7 +1455,7 @@ RunObjects0EB9_at12:
     bne RunObjects0EB9_at14
     bra RunObjects0EB9_at1
 RunObjects0EB9_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects0EB9_at3
     cmp #$03
     bne RunObjects0EB9_at15
@@ -1623,7 +1623,7 @@ RunObjects0F69_at12:
     bne RunObjects0F69_at14
     bra RunObjects0F69_at1
 RunObjects0F69_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects0F69_at3
     cmp #$03
     bne RunObjects0F69_at15
@@ -1791,7 +1791,7 @@ RunObjects1019_at12:
     bne RunObjects1019_at14
     bra RunObjects1019_at1
 RunObjects1019_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects1019_at3
     cmp #$03
     bne RunObjects1019_at15
@@ -1959,7 +1959,7 @@ RunObjects10C9_at12:
     bne RunObjects10C9_at14
     bra RunObjects10C9_at1
 RunObjects10C9_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects10C9_at3
     cmp #$03
     bne RunObjects10C9_at15
@@ -2127,7 +2127,7 @@ RunObjects1179_at12:
     bne RunObjects1179_at14
     bra RunObjects1179_at1
 RunObjects1179_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects1179_at3
     cmp #$03
     bne RunObjects1179_at15
@@ -2295,7 +2295,7 @@ RunObjects12D9_at12:
     bne RunObjects12D9_at14
     bra RunObjects12D9_at1
 RunObjects12D9_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects12D9_at3
     cmp #$03
     bne RunObjects12D9_at15
@@ -2463,7 +2463,7 @@ RunObjects13F9_at12:
     bne RunObjects13F9_at14
     bra RunObjects13F9_at1
 RunObjects13F9_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects13F9_at3
     cmp #$03
     bne RunObjects13F9_at15
@@ -2631,7 +2631,7 @@ RunObjects1619_at12:
     bne RunObjects1619_at14
     bra RunObjects1619_at1
 RunObjects1619_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects1619_at3
     cmp #$03
     bne RunObjects1619_at15
@@ -2799,7 +2799,7 @@ RunObjects16C9_at12:
     bne RunObjects16C9_at14
     bra RunObjects16C9_at1
 RunObjects16C9_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects16C9_at3
     cmp #$03
     bne RunObjects16C9_at15
@@ -2967,7 +2967,7 @@ RunObjects18D9_at12:
     bne RunObjects18D9_at14
     bra RunObjects18D9_at1
 RunObjects18D9_at14:
-    lda a:PlayerByte3BD8
+    lda a:TimeSlowMode
     beq RunObjects18D9_at3
     cmp #$03
     bne RunObjects18D9_at15

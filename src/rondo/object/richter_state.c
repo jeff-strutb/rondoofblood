@@ -305,10 +305,10 @@ typedef struct {
     bool paid;
     Sum health;                   /* the hit's damage taken off the health */
     bool out_of_health;
-    uint8_t one_more;             /* PlayerByte3BF7 */
+    uint8_t one_more;             /* PlayerKeepsLastPoint */
     CommandCall sound;            /* the life lost's sound */
     bool taken;
-    uint8_t blinking_hit;         /* PlayerByte3BE2 as the hit was taken */
+    uint8_t blinking_hit;         /* PlayerHeld as the hit was taken */
     bool after_hit;
     uint8_t blinking, state, count, pressed, counted;
     uint8_t y_high_late, handler_state;

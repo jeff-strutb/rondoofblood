@@ -823,7 +823,7 @@ void StartSixAt0EBF(uint8_t slot)
         ldy(RD8(ZP->spread_count));
         iny();
         cmp(cpu.y, 0x06);
-    } while (cpu.y != 0x06);
+    } while (cpu.y < 0x06);
 }
 
 void abi_StartSixAt0EBF(void)

@@ -14,8 +14,8 @@ ResetStageVariables026D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$41
     sta z:zScriptPtr
     lda #$D5
@@ -145,8 +145,8 @@ ResetStageVariables031D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$1E
     sta z:zScriptPtr
     lda #$BF
@@ -276,8 +276,8 @@ ResetStageVariables043D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$40
     sta z:zScriptPtr
     lda #$C3
@@ -407,8 +407,8 @@ ResetStageVariables064D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$6A
     sta z:zScriptPtr
     lda #$DC
@@ -538,8 +538,8 @@ ResetStageVariables10DD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$F1
     sta z:zScriptPtr
     lda #$C6
@@ -669,8 +669,8 @@ ResetStageVariables122D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$12
     sta z:zScriptPtr
     lda #$D7
@@ -800,8 +800,8 @@ ResetStageVariables1A2D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$A3
     sta z:zScriptPtr
     lda #$DC
@@ -931,8 +931,8 @@ ResetStageVariables1B8D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$C4
     sta z:zScriptPtr
     lda #$D9
@@ -1062,8 +1062,8 @@ ResetStageVariables1CED:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$06
     sta z:zScriptPtr
     lda #$DC
@@ -3211,7 +3211,7 @@ BlendStageStockRows026F:
     jsr SaveAndMapStageBanks_026F
     lda a:StageBlendOn+1
     beq BlendStageStockRows026F_at0
-    lda a:StageVar3616
+    lda a:StageShownStock
     cmp z:zStock
     beq BlendStageStockRows026F_at1
     lda z:zGameSubMode
@@ -3219,13 +3219,13 @@ BlendStageStockRows026F:
     bne BlendStageStockRows026F_at1
     smb1 z:zPaused
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     jmp RestoreStageBanks_026F
 BlendStageStockRows026F_at0:
     phx
     stz a:StageBlendOn
     lda z:zStock
-    sta a:StageVar3616
+    sta a:StageShownStock
     clx
     jsr BlendStageRowPair026F
     plx
@@ -3245,7 +3245,7 @@ BlendStageStockRows031F:
     jsr SaveAndMapStageBanks_031F
     lda a:StageBlendOn+1
     beq BlendStageStockRows031F_at0
-    lda a:StageVar3616
+    lda a:StageShownStock
     cmp z:zStock
     beq BlendStageStockRows031F_at1
     lda z:zGameSubMode
@@ -3253,13 +3253,13 @@ BlendStageStockRows031F:
     bne BlendStageStockRows031F_at1
     smb1 z:zPaused
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     jmp RestoreStageBanks_031F
 BlendStageStockRows031F_at0:
     phx
     stz a:StageBlendOn
     lda z:zStock
-    sta a:StageVar3616
+    sta a:StageShownStock
     clx
     jsr BlendStageRowPair031F
     plx
@@ -3349,9 +3349,9 @@ BlendStageScoreRows026F_at3:
     lda z:zScore0
     sta a:StageVar371E
     lda z:zScore1
-    sta a:$3776
+    sta a:OBJ_WORK_K+86
     lda z:zScore2
-    sta a:$37CE
+    sta a:OBJ_WORK_L+86
 BlendStageScoreRows026F_at1:
     phx
     lda a:StageVar350E
@@ -3421,9 +3421,9 @@ BlendStageScoreRows031F_at3:
     lda z:zScore0
     sta a:StageVar371E
     lda z:zScore1
-    sta a:$3776
+    sta a:OBJ_WORK_K+86
     lda z:zScore2
-    sta a:$37CE
+    sta a:OBJ_WORK_L+86
 BlendStageScoreRows031F_at1:
     phx
     lda a:StageVar350E
@@ -6098,7 +6098,7 @@ StageLoadRowMap14DD_at0:
     asl a
     rol z:zTemp02
     lsr a
-    sta a:$3A00,x
+    sta a:OBJ_HITBOX_DY+32,x
     inx
     bbs0 zTemp02,StageLoadRowMap14DD_at1
     bra StageLoadRowMap14DD_at2
@@ -6181,7 +6181,7 @@ StageLoadScreen14DD:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -6216,12 +6216,12 @@ StageLoadScreen14DD_at1:
 StageLoadScreen14DD_at2:
     lda (zTemp00),y
     iny
-    sta a:$2C50
-    stz a:$2C08
-    stz a:$2B30
+    sta a:OBJ_X_FRAC+48
+    stz a:OBJ_X_LO+64
+    stz a:OBJ_SPRITE_ATTR+24
     lda z:zCharacter
     beq StageLoadScreen14DD_at0
-    lda a:$2818
+    lda a:OBJ_SUBSTATE+24
     cmp #$05
     bcc StageLoadScreen14DD_at0
     sec
@@ -6241,7 +6241,7 @@ StageLoadScreen14DD_at0:
     lda (zTemp00),y
     bmi StageLoadScreen14DD_at3
     iny
-    sta a:$2AA0
+    sta a:OBJ_FRAME+56
     bra StageLoadScreen14DD_at4
 StageLoadScreen14DD_at3:
     iny
@@ -6263,20 +6263,20 @@ StageResetScroll14DD:
     sta z:zBiosAh
     jsr VecClearScreenState
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
-    stz a:$2ED8
+    tai KernelZeros,ScrollColumnBlocks,$0088
+    stz a:OBJ_VY_LO+80
     lda z:zField8E
     pha
     bsr StageLoadScreen14DD
     pla
     sta z:zField8E
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jsr SetBlinkFlash
     ldy z:zRasterEffect
     lda a:$886A,y
     beq StageResetScroll14DD_at0
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr StageLoadScreen14DD
@@ -6285,7 +6285,7 @@ StageResetScroll14DD:
     jsr $A79D
 StageResetScroll14DD_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 
 ; @routine 14DE:1B2 StageLevelStart14DD
@@ -6297,7 +6297,7 @@ StageResetScroll14DD_at0:
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
 StageLevelStart14DD:
     jsr VecClearEnemySlots
-    jsr $8044
+    jsr MapOverlayBank7At8044
     lda z:zField83
     asl a
     asl a
@@ -6335,7 +6335,7 @@ StageLevelStart14DD_at0:
 StageNextRouteStage14DD:
     lda #$02
     sta z:zDisplayDelay
-    stz a:$3310
+    stz a:OBJ_WORK_B+16
     stz a:Field2742+1
     stz a:OBJ_WORK_C
     inc z:zField82
@@ -6344,8 +6344,8 @@ StageNextRouteStage14DD:
     lda a:StageNextByRoute14DD,y
     sta z:zField83
     cla
-    sta z:$84
-    stz a:$2A58
+    sta z:zClearKind
+    stz a:OBJ_SPRITE_SET+72
     rts
 
 
@@ -6358,7 +6358,7 @@ StageNextRouteStage14DD:
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
 StageBossWalkOut14DD:
     lda #$B8
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jsr StageFrameA0003CD
     jsr VecPlayerAndCameraFrame
     jsr RichterVecC3A7
@@ -6420,7 +6420,7 @@ StageClearedWalkOn14DD_at2:
 StageClearedWalkOn14DD_at3:
     jsr StageLoadRowMap14DD
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     jsr StageLoadScreen14DD
@@ -6429,7 +6429,7 @@ StageClearedWalkOn14DD_at3:
     lda a:CameraMode
     cmp #$0D
     bne StageClearedWalkOn14DD_at4
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jsr SetBlinkFlash
     jsr StageLoadScreen14DD
 StageClearedWalkOn14DD_at4:
@@ -6472,16 +6472,16 @@ StageProbePoints14DD_at0:
     sta z:zTemp00
     iny
     lda (zTemp0C),y
-    adc a:$2B30,x
+    adc a:OBJ_SPRITE_ATTR+24,x
     sta z:zTemp01
     iny
     lda (zTemp0C),y
     clc
-    adc a:$2C50,x
+    adc a:OBJ_X_FRAC+48,x
     sta z:zTemp02
     iny
     lda (zTemp0C),y
-    adc a:$2C08,x
+    adc a:OBJ_X_LO+64,x
     sta z:zTemp03
     iny
     phy
@@ -6533,16 +6533,16 @@ StageProbeAgain14DD_at2:
     sta z:zTemp00
     iny
     lda (zTemp0C),y
-    adc a:$2B30,x
+    adc a:OBJ_SPRITE_ATTR+24,x
     sta z:zTemp01
     iny
     lda (zTemp0C),y
     clc
-    adc a:$2C50,x
+    adc a:OBJ_X_FRAC+48,x
     sta z:zTemp02
     iny
     lda (zTemp0C),y
-    adc a:$2C08,x
+    adc a:OBJ_X_LO+64,x
     sta z:zTemp03
     iny
     lda #$F8
@@ -7273,7 +7273,7 @@ StageClearedWalkOn026D_at5:
 StageClearedWalkOn026D_at6:
     jsr ExpandStageVramRunsAt026D
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     jsr LoadStageEntryAt026D

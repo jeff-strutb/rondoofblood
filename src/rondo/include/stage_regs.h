@@ -94,4 +94,9 @@ StageRegs StageFallLeftDoneAt(StageRegs r, uint16_t init_ret, uint16_t init);
 /* system/stage_flow.c: StageFallLeftLand (024D:3D0) run at `at`. */
 StageRegs StageFallLeftLandAt(StageRegs r, uint16_t at);
 
+
+/* system/stage_flow.c: StageFallRight (024D:361) with the steps it goes on into. */
+StageRegs StageFallRightAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (*done)(StageRegs),
+                           StageRegs (*pose)(StageRegs));
+
 #endif

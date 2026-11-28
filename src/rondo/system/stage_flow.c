@@ -799,20 +799,27 @@ void abi_StageFallPose(void)
  */
 StageRegs StageFallRight(StageRegs r)
 {
+    return StageFallRightAt(r, StageFallRightLand, StageFallRightDone, StageFallPose);
+}
+
+/* StageFallRight's body, with the C of the steps it branches or runs into (land, done, pose): the builds of the overlay
+ * that hold these instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StageFallRightAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (*done)(StageRegs), StageRegs (*pose)(StageRegs))
+{
     r = loaded(r, RD8(ZP->fall_step));
     r = loaded(r, (uint8_t)(r.a - 1));
     if (r.a == 0) {
-        return StageFallRightLand(r);
+        return land(r);
     }
     r = loaded(r, (uint8_t)(r.a - 1));
     if (r.a == 0) {
-        return StageFallRightDone(r);
+        return done(r);
     }
     r = loaded(r, 0x40);
     WR8(OBJ->vx_lo[0], 0x40);
     r = loaded(r, 0x01);
     WR8(OBJ->vx_hi[0], 0x01);
-    return StageFallPose(r);
+    return pose(r);
 }
 
 void abi_StageFallRight(void)

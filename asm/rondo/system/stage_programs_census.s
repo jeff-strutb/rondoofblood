@@ -2362,3 +2362,23 @@ StageFallLeftLand026D:
 StageFallLeftLand026D_at0:
     clx
     jmp MariaVecObjectApplyVelocity
+
+; @routine 026D:339 StageFallRight026D
+; @run 6B:8339
+; WHAT IT DOES: The fall to the right, a step a frame: the first sets the player's speed $0140 and runs into
+; StageFallPose026D; the second StageFallRightLand026D; the third StageFallRightDone026D (as StageFallRight,
+; 024D:361). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: zFallStep decremented twice with BEQs.
+; WAITS: as the step taken.
+; Entry: nothing. Exit: as the step taken.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFallRight026D:
+    lda z:zFallStep
+    dec a
+    beq StageFallRightLand026D
+    dec a
+    beq StageFallRightDone026D
+    lda #$40
+    sta a:OBJ_VX_LO
+    lda #$01
+    sta a:OBJ_VX_HI

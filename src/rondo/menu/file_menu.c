@@ -1552,3 +1552,503 @@ void abi_FileMenuCharacterPage(void)
 
     menu_regs_shim(&r);
 }
+
+/* The name typed to open everything on a new slot, and the three default names. */
+#define NAME_CHEAT 0x97EF
+#define DEFAULT_NAMES 0x980D
+#define SLOT_NAME 0x15                      /* a slot's eight name characters */
+#define NAME_OBJECT 2                       /* the grid cursor, with object 3 */
+
+static void r_name(MenuRegs *r, NameExit n)             /* ShowNameCursor, NameBackspace, NameTypeCharacter */
+{
+    ra(r, n.a);
+    r->y = n.y;
+    r->set |= REG_Y;
+    rnz(r, n.full ? 0 : n.a);
+    rc(r, n.carry);
+    rv(r, n.overflow);
+}
+
+static void r_name_target(MenuRegs *r, NameCursorExit n)   /* NameCursorTarget */
+{
+    ra(r, 1);
+    r->y = n.y;
+    r->set |= REG_Y;
+    rnz(r, 1);
+    rc(r, n.carry);
+}
+
+/* PadRepeatUpdate: A the value it ends with, X 8, Z and C set, N clear. */
+static void r_pad_repeat(MenuRegs *r, uint8_t a)
+{
+    ra(r, a);
+    rx(r, 8);
+    rnz(r, 0);
+    rc(r, true);
+}
+
+/*
+ * @routine 00C3:599 NameEntryStart
+ * @run 6B:9599
+ * WHAT IT DOES: The name page's first step: the grid cursor (objects 2 and 3) is emptied, given its picture set and put
+ * at the middle of the screen, sent to its grid place, the key repeat started afresh, the name buffer filled with
+ * spaces, the count cleared and the first blank tile drawn; then the step goes on.
+ * HOW: ClearObject twice, six stores, NameCursorTarget, PadRepeatReset, a loop over MenuName, ShowNameCursor,
+ * MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: A the new step, N and Z from it, X $FF, Y the count, C and V from ShowNameCursor.
+ */
+MenuRegs NameEntryStart(MenuRegs r)
+{
+    uint8_t i;
+
+    rx(&r, 3);
+    jsr_push(0x959E);
+    ClearObject(3);
+    jsr_pop();
+    rx(&r, NAME_OBJECT);
+    jsr_push(0x95A3);
+    ClearObject(NAME_OBJECT);
+    jsr_pop();
+    ra(&r, 4);
+    WR8(OBJ->sprite_set[NAME_OBJECT], 4);
+    WR8(OBJ->sprite_set[NAME_OBJECT + 1], 4);
+    ra(&r, 0x80);
+    WR8(OBJ->x_lo[NAME_OBJECT], 0x80);
+    WR8(OBJ->y_lo[NAME_OBJECT], 0x80);
+    WR8(OBJ->x_lo[NAME_OBJECT + 1], 0x80);
+    WR8(OBJ->y_lo[NAME_OBJECT + 1], 0x80);
+    jsr_push(0x95BC);
+    r_name_target(&r, NameCursorTarget(NAME_OBJECT));
+    jsr_pop();
+    jsr_push(0x95BF);
+    PadRepeatReset();
+    jsr_pop();
+    ra(&r, 0x20);
+    rx(&r, 7);
+    i = 7;
+    do {
+        wr8((uint16_t)(MenuName + i), 0x20);
+        i--;
+    } while (i != 0xFF);
+    rx(&r, 0xFF);
+    wr8(MenuNameLength, 0);
+    jsr_push(0x95CF);
+    r_name(&r, ShowNameCursor());
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_NameEntryStart(void)
+{
+    MenuRegs r = NameEntryStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C3:7F7 NameUseDefault
+ * @run 6B:97F7
+ * WHAT IT DOES: Fills the name buffer with the selected slot's default name.
+ * HOW: Slot less one times eight indexes DEFAULT_NAMES; eight bytes copied.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the last character, X 8, Y past it, Z and C set, N clear.
+ */
+MenuRegs NameUseDefault(MenuRegs r)
+{
+    uint8_t slot, y, x, value = 0;
+
+    slot = rd8(MenuSelectedSlot);
+    y = (uint8_t)((uint8_t)(slot - 1) << 3);
+    x = 0;
+    do {
+        value = rd8((uint16_t)(DEFAULT_NAMES + y));
+        wr8((uint16_t)(MenuName + x), value);
+        y++;
+        x++;
+    } while (x != NAME_LENGTH);
+    ra(&r, value);
+    rx(&r, x);
+    r.y = y;
+    r.set |= REG_Y;
+    rcmp(&r, x, NAME_LENGTH);
+    return r;
+}
+
+void abi_NameUseDefault(void)
+{
+    MenuRegs r = NameUseDefault(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DD:76D DrawUsedSlotRows
+ * @run 6F:A76D
+ * WHAT IT DOES: Draws the three slots' rows of the slot list: a slot with data gets its name; each row is coloured
+ * with palette 0 or 1 by whether it has data, swapped unless the page row (MenuChosenItem) is 4.
+ * HOW: zTemp01 0 or 1 from MenuChosenItem; zTemp00 counted down from 3; EventBitTest; DrawSlotName at the slot plus 2;
+ * RecolorTextRun at the slot plus 6.
+ * WAITS: no.
+ * Entry: nothing. Exit: as RecolorTextRun leaves the last row, Z set, N clear (the count).
+ */
+MenuRegs DrawUsedSlotRows(MenuRegs r)
+{
+    uint8_t value, slot, row;
+
+    WR8(ZP->temp01, 0);
+    value = rd8(MenuChosenItem);
+    ra(&r, value);
+    rcmp(&r, value, 0x04);
+    if (value != 0x04) {
+        rnz(&r, INC8(ZP->temp01));
+    }
+    ra(&r, 3);
+    WR8(ZP->temp00, 3);
+    do {
+        slot = RD8(ZP->temp00);
+        ra(&r, slot);
+        jsr_push(0xA781);
+        r_event(&r, EventBitTest(slot));
+        jsr_pop();
+        if (r.nz != 0) {
+            slot = RD8(ZP->temp00);
+            row = radd(&r, slot, 0x02);
+            jsr_push(0xA78B);
+            rexit(&r, DrawSlotName(row, r.x));
+            jsr_pop();
+            ra_keep(&r, 0);
+        } else {
+            ra(&r, 1);
+        }
+        value = (uint8_t)(r.a ^ RD8(ZP->temp01));
+        ra(&r, value);
+        ry(&r, value);
+        slot = RD8(ZP->temp00);
+        row = radd(&r, slot, 0x06);
+        jsr_push(0xA79B);
+        rexit(&r, RecolorTextRun(row, value));
+        jsr_pop();
+        rnz(&r, DEC8(ZP->temp00));
+    } while (r.nz != 0);
+    return r;
+}
+
+void abi_DrawUsedSlotRows(void)
+{
+    MenuRegs r = DrawUsedSlotRows(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* The end of the name page ($97C1): the grid cursor and objects 0 and 1's attributes cleared, and page $0A. */
+static MenuRegs name_leave(MenuRegs r)
+{
+    WR8(OBJ->sprite_attr[0], 0);
+    WR8(OBJ->sprite_attr[1], 0);
+    rx(&r, NAME_OBJECT);
+    jsr_push(0x97CC);
+    ClearObject(NAME_OBJECT);
+    jsr_pop();
+    rx(&r, NAME_OBJECT + 1);
+    jsr_push(0x97D0);
+    ClearObject(NAME_OBJECT + 1);
+    jsr_pop();
+    ra(&r, 0x0A);
+    SetMenuPage(0x0A);
+    ra(&r, 0);
+    rnz(&r, 0x0A);
+    return r;
+}
+
+/*
+ * The name accepted ($9763): the default name when nothing was typed, the name put in the slot's bytes ($15 on), a
+ * byte at 1 set unless the page row is 5; a name equal to the cheat code fills the slot's bytes 1 to 5 with $C5, $FF,
+ * $7F, $45 and 1; the slot's event is set and the rows drawn.
+ */
+static MenuRegs name_accept(MenuRegs r)
+{
+    uint8_t value, slot, y, x;
+
+    value = rd8(MenuNameLength);
+    ra(&r, value);
+    if (value == 0) {
+        jsr_push(0x976B);
+        r = NameUseDefault(r);
+        jsr_pop();
+    }
+    slot = rd8(MenuSelectedSlot);
+    rx(&r, slot);
+    y = rd8((uint16_t)(SLOT_OFFSETS_BY_NUMBER + slot));
+    ry(&r, y);
+    value = rd8(MenuChosenItem);
+    ra(&r, value);
+    rcmp(&r, value, 0x05);
+    if (value != 0x05) {
+        ra(&r, 1);
+        wr8((uint16_t)(SaveBuffer + 1 + y), 1);
+    }
+    WR8(ZP->bios_a.lo, 0);
+    x = 0;
+    do {
+        value = rd8((uint16_t)(MenuName + x));
+        wr8((uint16_t)(SaveBuffer + SLOT_NAME + y), value);
+        if (value == rd8((uint16_t)(NAME_CHEAT + x))) {
+            INC8(ZP->bios_a.lo);
+        }
+        y++;
+        x++;
+    } while (x != NAME_LENGTH);
+    rx(&r, x);
+    r.y = y;
+    r.set |= REG_Y;
+    rcmp(&r, x, NAME_LENGTH);
+    value = RD8(ZP->bios_a.lo);
+    ra(&r, value);
+    rcmp(&r, value, NAME_LENGTH);
+    if (value == NAME_LENGTH) {
+        slot = rd8(MenuSelectedSlot);
+        rx(&r, slot);
+        y = rd8((uint16_t)(SLOT_OFFSETS_BY_NUMBER + slot));
+        ry(&r, y);
+        wr8((uint16_t)(SaveBuffer + 1 + y), 0xC5);
+        wr8((uint16_t)(SaveBuffer + 2 + y), 0xFF);
+        wr8((uint16_t)(SaveBuffer + 3 + y), 0x7F);
+        wr8((uint16_t)(SaveBuffer + 4 + y), 0x45);
+        ra(&r, 1);
+        wr8((uint16_t)(SaveBuffer + 5 + y), 1);
+    }
+    value = rd8(MenuSelectedSlot);
+    ra(&r, value);
+    jsr_push(0x97BE);
+    r_event(&r, EventBitSet(value));
+    jsr_pop();
+    jsr_push(0x97C1);
+    r = DrawUsedSlotRows(r);
+    jsr_pop();
+    return name_leave(r);
+}
+
+/*
+ * @routine 00C3:6A3 NameEntryType
+ * @run 6B:96A3
+ * WHAT IT DOES: The name page's typing step: the pad with repeat moves the grid cursor (left and right by column,
+ * except on the last row; up and down by row, five rows), the cursor objects glide and shake. Button I types the
+ * character (sound $3B; a full name moves the cursor to the last row, keeping the place it came from, and goes on a
+ * step), or on the last row accepts the name; button II erases the last character, or with an empty name leaves.
+ * HOW: PadRepeatUpdate; MenuPadRepeatBits shifted out a bit at a time with PHA and PLA; NameCursorTarget on any
+ * direction; GlideCursorObjects, JitterCursorObjects; NameTypeCharacter, NameBackspace, the ends at $9763 and $97C1.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as the arm that ran last leaves them.
+ */
+MenuRegs NameEntryType(MenuRegs r)
+{
+    CommandCall sound;
+    MenuReplay *p;
+    uint8_t value, a, row, column, trigger;
+    bool carry;
+
+    jsr_push(0x96A6);
+    r_pad_repeat(&r, PadRepeatUpdate());
+    jsr_pop();
+    rx(&r, NAME_OBJECT);
+    a = (uint8_t)(rd8(MenuPadRepeatBits) & 0xF0);
+    ra(&r, a);
+    if (a != 0) {
+        carry = (a & 0x80) != 0;
+        a = (uint8_t)(a << 1);
+        ra(&r, a);
+        rc(&r, carry);
+        if (carry) {
+            push8(a);
+            row = RD8(OBJ->work_h[NAME_OBJECT]);
+            rcmp(&r, row, 4);
+            if (row != 4) {
+                column = (uint8_t)(RD8(OBJ->work_d[NAME_OBJECT]) - 1);
+                WR8(OBJ->work_d[NAME_OBJECT], (uint8_t)(column & 7));
+            }
+            a = pull8();
+            ra(&r, a);
+        }
+        carry = (a & 0x80) != 0;
+        a = (uint8_t)(a << 1);
+        ra(&r, a);
+        rc(&r, carry);
+        if (carry) {
+            push8(a);
+            row = (uint8_t)(RD8(OBJ->work_h[NAME_OBJECT]) + 1);
+            rcmp(&r, row, 5);
+            if (row == 5) {
+                row = 0;
+            }
+            WR8(OBJ->work_h[NAME_OBJECT], row);
+            a = pull8();
+            ra(&r, a);
+        }
+        carry = (a & 0x80) != 0;
+        a = (uint8_t)(a << 1);
+        ra(&r, a);
+        rc(&r, carry);
+        if (carry) {
+            push8(a);
+            row = RD8(OBJ->work_h[NAME_OBJECT]);
+            rcmp(&r, row, 4);
+            if (row != 4) {
+                column = (uint8_t)(RD8(OBJ->work_d[NAME_OBJECT]) + 1);
+                WR8(OBJ->work_d[NAME_OBJECT], (uint8_t)(column & 7));
+            }
+            a = pull8();
+            ra(&r, a);
+        }
+        carry = (a & 0x80) != 0;
+        a = (uint8_t)(a << 1);
+        ra(&r, a);
+        rc(&r, carry);
+        if (carry) {
+            row = (uint8_t)(RD8(OBJ->work_h[NAME_OBJECT]) - 1);
+            ra(&r, row);
+            if (row & 0x80) {
+                row = 4;
+                ra(&r, row);
+            }
+            WR8(OBJ->work_h[NAME_OBJECT], row);
+        }
+        jsr_push(0x96FB);
+        r_name_target(&r, NameCursorTarget(NAME_OBJECT));
+        jsr_pop();
+    }
+    jsr_push(0x96FE);
+    r_glide(&r, GlideCursorObjects(), 3);
+    jsr_pop();
+    jsr_push(0x9701);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    trigger = rd8(BiosJoyTrigger);
+    ra(&r, (uint8_t)(trigger & 0x01));
+    if (r.a != 0) {
+        row = RD8(OBJ->work_h[NAME_OBJECT]);
+        ra(&r, row);
+        rcmp(&r, row, 4);
+        if (row == 4) {
+            return name_accept(r);
+        }
+        jsr_push(0x9712);
+        r_name(&r, NameTypeCharacter());
+        jsr_pop();
+        ra(&r, 0x3B);
+        jsr_push(0x9717);
+        sound = SoundCommand(0x3B, r.x, menu_y(&r));
+        jsr_pop();
+        p = menu_replay(&r, REPLAY_SOUND);
+        p->command = 0x3B;
+        p->call.sound = sound;
+        value = rd8(MenuNameLength);
+        ra(&r, value);
+        rcmp(&r, value, NAME_LENGTH);
+        if (value != NAME_LENGTH) {
+            return r;
+        }
+        rx(&r, NAME_OBJECT);
+        value = RD8(OBJ->work_d[NAME_OBJECT]);
+        wr8(MenuCopyFrom, value);
+        value = RD8(OBJ->work_h[NAME_OBJECT]);
+        ra(&r, value);
+        wr8(MenuCopyTo, value);
+        ra(&r, 4);
+        WR8(OBJ->work_h[NAME_OBJECT], 4);
+        jsr_push(0x9734);
+        r_name_target(&r, NameCursorTarget(NAME_OBJECT));
+        jsr_pop();
+        ra(&r, MenuStepAdvance());
+        return r;
+    }
+    trigger = rd8(BiosJoyTrigger);
+    ra(&r, (uint8_t)(trigger & 0x02));
+    if (r.a == 0) {
+        return r;
+    }
+    row = RD8(OBJ->work_h[NAME_OBJECT]);
+    ra(&r, row);
+    rcmp(&r, row, 4);
+    if (row == 4) {
+        return r;
+    }
+    value = rd8(MenuNameLength);
+    ra(&r, value);
+    if (value == 0) {
+        return name_leave(r);
+    }
+    jsr_push(0x974D);
+    r_name(&r, NameBackspace());
+    jsr_pop();
+    return r;
+}
+
+void abi_NameEntryType(void)
+{
+    MenuRegs r = NameEntryType(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C3:74E NameEntryEnd
+ * @run 6B:974E
+ * WHAT IT DOES: The name page's last step, with the cursor on the last row: button I accepts the name; button II goes
+ * back to typing: the cursor returns to the grid place it came from, the last character is dropped and the step goes
+ * back one.
+ * HOW: PadRepeatUpdate, GlideCursorObjects, JitterCursorObjects, the trigger's bits 0 and 1 (LSR gives I); the end at
+ * $9763, or MenuCopyFrom and MenuCopyTo restored, NameCursorTarget, MenuNameLength counted down, ShowNameCursor, zField80
+ * counted down.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as the arm that ran last leaves them.
+ */
+MenuRegs NameEntryEnd(MenuRegs r)
+{
+    uint8_t trigger, value;
+
+    jsr_push(0x9751);
+    r_pad_repeat(&r, PadRepeatUpdate());
+    jsr_pop();
+    rx(&r, NAME_OBJECT);
+    jsr_push(0x9756);
+    r_glide(&r, GlideCursorObjects(), 3);
+    jsr_pop();
+    jsr_push(0x9759);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    trigger = rd8(BiosJoyTrigger);
+    ra(&r, (uint8_t)(trigger & 0x03));
+    if (r.a == 0) {
+        return r;
+    }
+    rc(&r, (r.a & 0x01) != 0);
+    ra(&r, (uint8_t)(r.a >> 1));
+    if (r.c) {
+        return name_accept(r);
+    }
+    rx(&r, NAME_OBJECT);
+    value = rd8(MenuCopyFrom);
+    WR8(OBJ->work_d[NAME_OBJECT], value);
+    value = rd8(MenuCopyTo);
+    ra(&r, value);
+    WR8(OBJ->work_h[NAME_OBJECT], value);
+    jsr_push(0x97E6);
+    r_name_target(&r, NameCursorTarget(NAME_OBJECT));
+    jsr_pop();
+    rnz(&r, (uint8_t)(rd8(MenuNameLength) - 1));
+    wr8(MenuNameLength, r.nz);
+    jsr_push(0x97EC);
+    r_name(&r, ShowNameCursor());
+    jsr_pop();
+    rnz(&r, DEC8(ZP->field80));
+    return r;
+}
+
+void abi_NameEntryEnd(void)
+{
+    MenuRegs r = NameEntryEnd(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}

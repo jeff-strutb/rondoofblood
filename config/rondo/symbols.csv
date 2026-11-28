@@ -344,6 +344,10 @@ FF,zp,zBiosDh,BIOS argument _DH
 7DE6,abs,MenuCopyTo,the file menu: the slot number a copy is made to; the name page keeps the grid cursor's row here
 7DE7,abs,MenuCopyFrom,the file menu: the slot number a copy is made from; the name page keeps the grid cursor's column here
 7DF1,abs,MenuSelectedSlot,the file menu: the slot number the file pages picked
+7DE8,abs,MenuNameLength,the file menu's name page: characters typed
+7DE9,abs,MenuName,the file menu's name page: the name being typed; 8 bytes
+7DFA,abs,MenuPadRepeatBits,the file menu: the pad bits that count this frame, with key repeat
+7DFF,abs,MenuChosenItem,the file menu: the item picked on page 9; the slot pages after it depend on it
 7115,abs,StageTrack,CD track by stage
 7126,abs,StageTrackSecret,CD track by secret stage
 7230,abs,StageAdpcm,ADPCM by stage

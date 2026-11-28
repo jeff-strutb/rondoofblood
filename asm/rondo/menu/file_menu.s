@@ -18,6 +18,8 @@ StartStages = $9574 ; the stage a slot starts on, by its progress
 StartStagesHeld = $9581 ; the stages the second pad's held buttons pick instead
 PortraitLists = $BC90 ; the character picture's animation lists by its start argument
 PortraitFlashLists = $BC98 ; object $34's lists by the picture's character
+NameCheat = $97EF ; the name that opens everything on a new slot
+DefaultNames = $980D ; the three slots' default names, 8 bytes each
 FileMenuReadSave:
     jsr VecResetGameState
     jsr VecBackupRead
@@ -187,7 +189,7 @@ FileMenuEraseStart_at0:
     lda #$3C
     jsr VecSoundCommand
     lda #$80
-    sta a:$7DFE
+    sta a:MenuPadRepeatBits+4
     jmp MenuStepAdvance
 
 ; @routine 00C3:37F FileMenuEraseWait
@@ -206,7 +208,7 @@ FileMenuEraseWait:
     lda a:BiosJoyTrigger
     and #$02
     bne FileMenuEraseWait_at0
-    dec a:$7DFE
+    dec a:MenuPadRepeatBits+4
     bne FileMenuEraseWait_at1
     lda a:OBJ_WORK_D
     sec
@@ -504,6 +506,287 @@ FileMenuCharacterPage_at8:
 FileMenuCharacterPage_at9:
     lda #$10
     jmp SetMenuPage
+
+; @routine 00C3:599 NameEntryStart
+; @run 6B:9599
+; WHAT IT DOES: The name page's first step: the grid cursor (objects 2 and 3) is emptied, given its picture set and put
+; at the middle of the screen, sent to its grid place, the key repeat started afresh, the name buffer filled with
+; spaces, the count cleared and the first blank tile drawn; then the step goes on.
+; HOW: ClearObject twice, six stores, NameCursorTarget, PadRepeatReset, a loop over MenuName, ShowNameCursor,
+; MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: A the new step, N and Z from it, X $FF, Y the count, C and V from ShowNameCursor.
+NameEntryStart:
+    ldx #$03
+    jsr VecClearObject
+    ldx #$02
+    jsr VecClearObject
+    lda #$04
+    sta a:OBJ_SPRITE_SET,x
+    sta a:OBJ_SPRITE_SET+1,x
+    lda #$80
+    sta a:OBJ_X_LO,x
+    sta a:OBJ_Y_LO,x
+    sta a:OBJ_X_LO+1,x
+    sta a:OBJ_Y_LO+1,x
+    jsr NameCursorTarget
+    jsr PadRepeatReset
+    lda #$20
+    ldx #$07
+NameEntryStart_at0:
+    sta a:MenuName,x
+    dex
+    bpl NameEntryStart_at0
+    stz a:MenuNameLength
+    jsr ShowNameCursor
+    jmp MenuStepAdvance
+
+; @routine 00C3:6A3 NameEntryType
+; @run 6B:96A3
+; WHAT IT DOES: The name page's typing step: the pad with repeat moves the grid cursor (left and right by column,
+; except on the last row; up and down by row, five rows), the cursor objects glide and shake. Button I types the
+; character (sound $3B; a full name moves the cursor to the last row, keeping the place it came from, and goes on a
+; step), or on the last row accepts the name; button II erases the last character, or with an empty name leaves.
+; HOW: PadRepeatUpdate; MenuPadRepeatBits shifted out a bit at a time with PHA and PLA; NameCursorTarget on any
+; direction; GlideCursorObjects, JitterCursorObjects; NameTypeCharacter, NameBackspace, the ends at $9763 and $97C1.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as the arm that ran last leaves them.
+NameEntryType:
+    jsr PadRepeatUpdate
+    ldx #$02
+    lda a:MenuPadRepeatBits
+    and #$F0
+    beq NameEntryType_at0
+    asl a
+    bcc NameEntryType_at1
+    pha
+    lda a:OBJ_WORK_H,x
+    cmp #$04
+    beq NameEntryType_at2
+    lda a:OBJ_WORK_D,x
+    dec a
+    and #$07
+    sta a:OBJ_WORK_D,x
+NameEntryType_at2:
+    pla
+NameEntryType_at1:
+    asl a
+    bcc NameEntryType_at3
+    pha
+    lda a:OBJ_WORK_H,x
+    inc a
+    cmp #$05
+    bne NameEntryType_at4
+    cla
+NameEntryType_at4:
+    sta a:OBJ_WORK_H,x
+    pla
+NameEntryType_at3:
+    asl a
+    bcc StageSpawnFrameB
+    pha
+    lda a:OBJ_WORK_H,x
+    cmp #$04
+    beq NameEntryType_at5
+    lda a:OBJ_WORK_D,x
+    inc a
+    and #$07
+    sta a:OBJ_WORK_D,x
+NameEntryType_at5:
+    pla
+    asl a
+    bcc NameEntryType_at6
+    lda a:OBJ_WORK_H,x
+    dec a
+    bpl NameEntryType_at7
+    lda #$04
+NameEntryType_at7:
+    sta a:OBJ_WORK_H,x
+NameEntryType_at6:
+    jsr NameCursorTarget
+NameEntryType_at0:
+    jsr GlideCursorObjects
+    jsr JitterCursorObjects
+    lda a:BiosJoyTrigger
+    and #$01
+    beq NameEntryType_at8
+    lda a:OBJ_WORK_H+2
+    cmp #$04
+    beq NameEntryEnd+21
+    jsr NameTypeCharacter
+    lda #$3B
+    jsr VecSoundCommand
+    lda a:MenuNameLength
+    cmp #$08
+    bne NameEntryType_at9
+    ldx #$02
+    lda a:OBJ_WORK_D,x
+    sta a:MenuCopyFrom
+    lda a:OBJ_WORK_H,x
+    sta a:MenuCopyTo
+    lda #$04
+    sta a:OBJ_WORK_H,x
+    jsr NameCursorTarget
+    jmp MenuStepAdvance
+NameEntryType_at8:
+    lda a:BiosJoyTrigger
+    and #$02
+    beq NameEntryType_at9
+    lda a:OBJ_WORK_H+2
+    cmp #$04
+    beq NameEntryType_at9
+    lda a:MenuNameLength
+    beq NameEntryEnd+115
+    jsr NameBackspace
+NameEntryType_at9:
+    rts
+
+; @routine 00C3:74E NameEntryEnd
+; @run 6B:974E
+; WHAT IT DOES: The name page's last step, with the cursor on the last row: button I accepts the name; button II goes
+; back to typing: the cursor returns to the grid place it came from, the last character is dropped and the step goes
+; back one.
+; HOW: PadRepeatUpdate, GlideCursorObjects, JitterCursorObjects, the trigger's bits 0 and 1 (LSR gives I); the end at
+; $9763, or MenuCopyFrom and MenuCopyTo restored, NameCursorTarget, MenuNameLength counted down, ShowNameCursor, zField80
+; counted down.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as the arm that ran last leaves them.
+NameEntryEnd:
+    jsr PadRepeatUpdate
+    ldx #$02
+    jsr GlideCursorObjects
+    jsr JitterCursorObjects
+    lda a:BiosJoyTrigger
+    and #$03
+    beq NameEntryType+170
+    lsr a
+    bcc NameEntryEnd_at0
+    lda a:MenuNameLength
+    bne NameEntryEnd_at1
+    jsr NameUseDefault
+NameEntryEnd_at1:
+    ldx a:MenuSelectedSlot
+    ldy a:SlotOffsets-1,x
+    lda a:MenuChosenItem
+    cmp #$05
+    beq NameEntryEnd_at2
+    lda #$01
+    sta a:SaveBuffer+1,y
+NameEntryEnd_at2:
+    stz z:zBiosAl
+    clx
+NameEntryEnd_at4:
+    lda a:MenuName,x
+    sta a:SaveBuffer+$15,y
+    cmp a:TileStepsC+2,x
+    bne NameEntryEnd_at3
+    inc z:zBiosAl
+NameEntryEnd_at3:
+    iny
+    inx
+    cpx #$08
+    bne NameEntryEnd_at4
+    lda z:zBiosAl
+    cmp #$08
+    bne NameEntryEnd_at5
+    ldx a:MenuSelectedSlot
+    ldy a:SlotOffsets-1,x
+    lda #$C5
+    sta a:SaveBuffer+1,y
+    lda #$FF
+    sta a:SaveBuffer+2,y
+    lda #$7F
+    sta a:SaveBuffer+3,y
+    lda #$45
+    sta a:SaveBuffer+4,y
+    lda #$01
+    sta a:SaveBuffer+5,y
+NameEntryEnd_at5:
+    lda a:MenuSelectedSlot
+    jsr EventBitSet
+    jsr DrawUsedSlotRows
+    stz a:OBJ_SPRITE_ATTR
+    stz a:OBJ_SPRITE_ATTR+1
+    ldx #$02
+    jsr VecClearObject
+    inx
+    jsr VecClearObject
+    lda #$0A
+    jmp SetMenuPage
+NameEntryEnd_at0:
+    ldx #$02
+    lda a:MenuCopyFrom
+    sta a:OBJ_WORK_D,x
+    lda a:MenuCopyTo
+    sta a:OBJ_WORK_H,x
+    jsr NameCursorTarget
+    dec a:MenuNameLength
+    jsr ShowNameCursor
+    dec z:zField80
+    rts
+
+; @routine 00C3:7F7 NameUseDefault
+; @run 6B:97F7
+; WHAT IT DOES: Fills the name buffer with the selected slot's default name.
+; HOW: Slot less one times eight indexes DEFAULT_NAMES; eight bytes copied.
+; WAITS: no.
+; Entry: nothing. Exit: A the last character, X 8, Y past it, Z and C set, N clear.
+NameUseDefault:
+    lda a:MenuSelectedSlot
+    dec a
+    asl a
+    asl a
+    asl a
+    tay
+    clx
+NameUseDefault_at0:
+    lda a:DefaultNames,y
+    sta a:MenuName,x
+    iny
+    inx
+    cpx #$08
+    bne NameUseDefault_at0
+    rts
+
+; @routine 00DD:76D DrawUsedSlotRows
+; @run 6F:A76D
+; WHAT IT DOES: Draws the three slots' rows of the slot list: a slot with data gets its name; each row is coloured
+; with palette 0 or 1 by whether it has data, swapped unless the page row (MenuChosenItem) is 4.
+; HOW: zTemp01 0 or 1 from MenuChosenItem; zTemp00 counted down from 3; EventBitTest; DrawSlotName at the slot plus 2;
+; RecolorTextRun at the slot plus 6.
+; WAITS: no.
+; Entry: nothing. Exit: as RecolorTextRun leaves the last row, Z set, N clear (the count).
+DrawUsedSlotRows:
+    stz z:zTemp01
+    lda a:MenuChosenItem
+    cmp #$04
+    beq DrawUsedSlotRows_at0
+    inc z:zTemp01
+DrawUsedSlotRows_at0:
+    lda #$03
+    sta z:zTemp00
+DrawUsedSlotRows_at3:
+    lda z:zTemp00
+    jsr EventBitTest
+    beq DrawUsedSlotRows_at1
+    lda z:zTemp00
+    clc
+    adc #$02
+    jsr DrawSlotName
+    cla
+    bra DrawUsedSlotRows_at2
+DrawUsedSlotRows_at1:
+    lda #$01
+DrawUsedSlotRows_at2:
+    eor z:zTemp01
+    tay
+    lda z:zTemp00
+    clc
+    adc #$06
+    jsr RecolorTextRun
+    dec z:zTemp00
+    bne DrawUsedSlotRows_at3
+    rts
 
 ; @routine 00DD:7A0 DrawSlotRows
 ; @run 6F:A7A0

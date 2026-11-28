@@ -337,6 +337,10 @@
 #define MenuCopyTo 0x7DE6 /* the file menu: the slot number a copy is made to; the name page keeps the grid cursor's row here */
 #define MenuCopyFrom 0x7DE7 /* the file menu: the slot number a copy is made from; the name page keeps the grid cursor's column here */
 #define MenuSelectedSlot 0x7DF1 /* the file menu: the slot number the file pages picked */
+#define MenuNameLength 0x7DE8 /* the file menu's name page: characters typed */
+#define MenuName 0x7DE9 /* the file menu's name page: the name being typed; 8 bytes */
+#define MenuPadRepeatBits 0x7DFA /* the file menu: the pad bits that count this frame, with key repeat */
+#define MenuChosenItem 0x7DFF /* the file menu: the item picked on page 9; the slot pages after it depend on it */
 #define StageTrack 0x7115 /* CD track by stage */
 #define StageTrackSecret 0x7126 /* CD track by secret stage */
 #define StageAdpcm 0x7230 /* ADPCM by stage */

@@ -62,4 +62,9 @@ StageRegs StageSubStepTallyAt(StageRegs r, uint16_t ret, uint16_t scroll_off);
  * scroll_off the address that JMP goes to. */
 StageRegs StageSubStepFadeOutAt(StageRegs r, uint16_t site, uint16_t scroll_off);
 
+
+/* system/stage_flow.c: StageSubStepFadeOutLate (024D:2AD) with site the address of its tail JMP to StageScrollSpeedsOff and
+ * scroll_off the address that JMP goes to. */
+StageRegs StageSubStepFadeOutLateAt(StageRegs r, uint16_t site, uint16_t scroll_off);
+
 #endif

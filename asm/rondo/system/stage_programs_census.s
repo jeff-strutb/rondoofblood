@@ -2190,3 +2190,19 @@ StageSubStepFadeOut026D:
     stz z:zField80
     stz z:zField89
     jmp StageScrollSpeedsOff026D
+
+; @routine 026D:296 StageSubStepFadeOutLate026D
+; @run 6B:8296
+; WHAT IT DOES: Sub-step to the fade at its step 5: sub-mode 4, zField80 5, zField89 cleared, the scroll stopped (as StageSubStepFadeOutLate, 024D:2AD). Programs 031D, 043D, 064D,
+; 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: Stores, then the tail JMP to StageScrollSpeedsOff026D.
+; WAITS: no.
+; Entry: X and Y the caller's. Exit: as StageScrollSpeedsOff026D.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageSubStepFadeOutLate026D:
+    lda #$04
+    sta z:zGameSubMode
+    lda #$05
+    sta z:zField80
+    stz z:zField89
+    jmp StageScrollSpeedsOff026D

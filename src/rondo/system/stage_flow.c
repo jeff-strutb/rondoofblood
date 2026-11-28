@@ -343,12 +343,19 @@ void abi_StageSubStepFadeOut(void)
  */
 StageRegs StageSubStepFadeOutLate(StageRegs r)
 {
+    return StageSubStepFadeOutLateAt(r, 0x82B7, SCROLL_SPEEDS_OFF_RUN);
+}
+
+/* StageSubStepFadeOutLate's body, site the address of its tail JMP to StageScrollSpeedsOff and scroll_off where that JMP goes:
+ * the builds of the overlay that hold these instructions at other addresses (stage_programs_census.c) pass their own. */
+StageRegs StageSubStepFadeOutLateAt(StageRegs r, uint16_t site, uint16_t scroll_off)
+{
     r = loaded(r, SUB_MODE_FADE);
     WR8(ZP->game_sub_mode, SUB_MODE_FADE);
     r = loaded(r, FADE_STEP_LATE);
     WR8(ZP->field80, FADE_STEP_LATE);
     WR8(ZP->field89, 0);
-    return tail_to(r, 0x82B7, SCROLL_SPEEDS_OFF_RUN);
+    return tail_to(r, site, scroll_off);
 }
 
 void abi_StageSubStepFadeOutLate(void)

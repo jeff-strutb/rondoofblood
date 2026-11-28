@@ -3412,16 +3412,15 @@ void abi_ErodePattern05CC058(void)
 /*
  * @routine 072C:541 ErodeVramWords072C541
  * @run 70:BD41
- * WHAT IT DOES: Erodes 64 words of VRAM from the address in zBiosCl-Ch: each word's low byte is shifted left and
- * its high byte right.
- * HOW: For each word, the write and read addresses set to it, then read and written back.
+ * WHAT IT DOES: Of the 64 VRAM words from zBiosCl-Ch on, ANDs every fourth one, from the row zTemp00 names, with
+ * zTemp01 (low byte) and zTemp02 (high byte); a copy of DissolveWords0E0A260.
+ * HOW: For each such word, the write and read addresses set to it, then read, masked and written back.
  * WAITS: no.
- * Entry: zBiosCl-Ch the address (zBiosCl steps through the 64 words). Exit: A the last word's new high byte, C 1,
- * N and Z from Y restored; X, Y and V kept.
+ * Entry: zBiosCl-Ch the address, zTemp00-02 the row and masks. Exit: zBiosCl-Ch 64 on; Y kept.
  */
 void ErodeVramWords072C541(void)
 {
-    erode_words(0xBD41);
+    DissolveWordsAt(0xBD41);
 }
 
 void abi_ErodeVramWords072C541(void)

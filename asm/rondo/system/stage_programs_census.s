@@ -2485,3 +2485,47 @@ StageClearedScrollOn026D:
     rmb7 z:zField8C
     inc z:zField85
     rts
+
+; @routine 026D:465 StageWalkOutScroll026D
+; @run 6B:8465
+; WHAT IT DOES: A frame of walking the player out of a cleared room: the scroll stepped by the route's direction, the player
+; moved with it, the camera and objects run; at the route's stop the scroll halts and the next step comes (as
+; StageWalkOutScroll, 024D:48D). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: (zField8C - 1) AND 1 picks the route; WalkScrollStepByRoute026D into entry 0's X step, WalkPlayerStepByRoute026D
+; added to the player's X; StageCameraStep026D and StepScrollAndRunObjects026E; the X compared with
+; WalkStopXByRoute026D.
+; WAITS: as the calls.
+; Entry: nothing. Exit: walking: A the player's X, N, Z and C from the compare, Y the route; stopped: N and Z from
+; zField85's INC.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+WalkScrollStepByRoute026D = $8414 ; the scroll's X step high byte in a walk-out by route, in the 026D programs
+WalkPlayerStepByRoute026D = $8416 ; what the player's X low gets each frame of a walk-out by route
+WalkStopXByRoute026D = $8418 ; the player's X low a walk-out stops at by route
+StageWalkOutScroll026D:
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:WalkScrollStepByRoute026D,y
+    sta a:ScrollStepXHi
+    stz a:ScrollStepXLo
+    stz a:ScrollXFrac
+    lda a:OBJ_X_LO
+    clc
+    adc a:WalkPlayerStepByRoute026D,y
+    sta a:OBJ_X_LO
+    jsr StageCameraStep026D
+    jsr StepScrollAndRunObjects026E
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:OBJ_X_LO
+    cmp a:WalkStopXByRoute026D,y
+    beq StageWalkOutScroll026D_at0
+    rts
+StageWalkOutScroll026D_at0:
+    jsr StageScrollSpeedsOff026D
+    stz a:ScrollStepXHi
+    inc z:zField85
+    rts

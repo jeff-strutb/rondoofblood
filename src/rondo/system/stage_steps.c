@@ -172,30 +172,40 @@ void abi_StagePauseCdThenStock(void)
  */
 StageRegs StageWalkOutScroll(StageRegs r)
 {
+    return StageWalkOutScrollAt(r, 0x848D, WalkScrollStepByRoute, WalkPlayerStepByRoute, WalkStopXByRoute, 0x80BF,
+                                0x8A4F, 0x80C5);
+}
+
+/* StageWalkOutScroll's body, at the address it runs at (its JSRs return to at + $1F, + $22 and + $34), with its three
+ * tables by route and where its calls to StageCameraStep, StepScrollAndRunObjects and StageScrollSpeedsOff go: the
+ * builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StageWalkOutScrollAt(StageRegs r, uint16_t at, uint16_t scroll_steps, uint16_t player_steps, uint16_t stop_x,
+                                 uint16_t camera, uint16_t step, uint16_t scroll_off)
+{
     uint8_t route;
     Sum sum;
 
     route = (uint8_t)((uint8_t)(RD8(ZP->field8c) - 1) & 0x01);
     r.y = route;
-    r = regs_loaded(r, rd8((uint16_t)(WalkScrollStepByRoute + route)));
+    r = regs_loaded(r, rd8((uint16_t)(scroll_steps + route)));
     WR8(SCROLLE->step_x_hi[0], r.a);
     WR8(SCROLLE->step_x_lo[0], 0);
     WR8(SCROLL->x_frac[0], 0);
-    sum = add_bytes(RD8(OBJ->x_lo[0]), rd8((uint16_t)(WalkPlayerStepByRoute + route)), false);
+    sum = add_bytes(RD8(OBJ->x_lo[0]), rd8((uint16_t)(player_steps + route)), false);
     r = regs_loaded(r, sum.value);
     r.c = sum.carry;
     r.v = sum.overflow;
     WR8(OBJ->x_lo[0], sum.value);
-    r = call_to(r, 0x84AC, 0x80BF);
-    r = call_to(r, 0x84AF, 0x8A4F);
+    r = call_to(r, (uint16_t)(at + 0x1F), camera);
+    r = call_to(r, (uint16_t)(at + 0x22), step);
     route = (uint8_t)((uint8_t)(RD8(ZP->field8c) - 1) & 0x01);
     r.y = route;
     r = regs_loaded(r, RD8(OBJ->x_lo[0]));
-    r = regs_compared(r, r.a, rd8((uint16_t)(WalkStopXByRoute + route)));
+    r = regs_compared(r, r.a, rd8((uint16_t)(stop_x + route)));
     if (r.nz != 0 || !r.c) {
         return r;
     }
-    r = call_to(r, 0x84C1, 0x80C5);
+    r = call_to(r, (uint16_t)(at + 0x34), scroll_off);
     WR8(SCROLLE->step_x_hi[0], 0);
     r.nz = INC8(ZP->field85);
     return r;

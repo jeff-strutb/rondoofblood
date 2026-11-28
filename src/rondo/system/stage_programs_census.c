@@ -2034,3 +2034,26 @@ void abi_StageClearedScrollOn026D(void)
 {
     stage_regs_load_shim(StageClearedScrollOn026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:465 StageWalkOutScroll026D
+ * @run 6B:8465
+ * WHAT IT DOES: A frame of walking the player out of a cleared room: the scroll stepped by the route's direction, the player
+ * moved with it, the camera and objects run; at the route's stop the scroll halts and the next step comes (as
+ * StageWalkOutScroll, 024D:48D). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageWalkOutScrollAt (stage_steps.c), the body of 024D:48D, at $8465 with this program's tables at $8414, $8416
+ * and $8418 and its calls to $80A8, $8A05 and $80AE, each the C of the routine loaded there.
+ * WAITS: as the calls.
+ * Entry: nothing. Exit: walking: A the player's X, N, Z and C from the compare, Y the route; stopped: N and Z from
+ * zField85's INC.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageWalkOutScroll026D(StageRegs r)
+{
+    return StageWalkOutScrollAt(r, 0x8465, 0x8414, 0x8416, 0x8418, 0x80A8, 0x8A05, 0x80AE);
+}
+
+void abi_StageWalkOutScroll026D(void)
+{
+    stage_regs_load_shim(StageWalkOutScroll026D(stage_regs_entry_shim()));
+}

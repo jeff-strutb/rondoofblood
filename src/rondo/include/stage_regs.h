@@ -123,4 +123,10 @@ StageRegs StageClearedWaitScrollAt(StageRegs r, uint16_t ret, uint16_t step);
  * and step the address it goes to. */
 StageRegs StageClearedScrollOnAt(StageRegs r, uint16_t ret, uint16_t step);
 
+
+/* system/stage_steps.c: StageWalkOutScroll (024D:48D) run at `at`, with its tables by route and where its three calls
+ * go. */
+StageRegs StageWalkOutScrollAt(StageRegs r, uint16_t at, uint16_t scroll_steps, uint16_t player_steps, uint16_t stop_x,
+                                 uint16_t camera, uint16_t step, uint16_t scroll_off);
+
 #endif

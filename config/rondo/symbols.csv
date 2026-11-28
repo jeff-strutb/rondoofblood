@@ -395,6 +395,7 @@ E018,abs,BiosCdPause,cd_pause
 E01B,abs,BiosCdStat,cd_stat
 E02D,abs,BiosCdFade,cd_fade
 E033,abs,BiosAdTrans,ad_trans
+E036,abs,BiosAdRead,ad_read
 E03C,abs,BiosAdPlay,ad_play
 E03F,abs,BiosAdCplay,ad_cplay
 E042,abs,BiosAdStop,ad_stop

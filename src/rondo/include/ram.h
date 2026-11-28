@@ -388,6 +388,7 @@
 #define BiosCdStat 0xE01B /* cd_stat */
 #define BiosCdFade 0xE02D /* cd_fade */
 #define BiosAdTrans 0xE033 /* ad_trans */
+#define BiosAdRead 0xE036 /* ad_read */
 #define BiosAdPlay 0xE03C /* ad_play */
 #define BiosAdCplay 0xE03F /* ad_cplay */
 #define BiosAdStop 0xE042 /* ad_stop */

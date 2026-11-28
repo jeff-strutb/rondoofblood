@@ -385,6 +385,7 @@ BiosCdPause = $E018 ; cd_pause
 BiosCdStat = $E01B ; cd_stat
 BiosCdFade = $E02D ; cd_fade
 BiosAdTrans = $E033 ; ad_trans
+BiosAdRead = $E036 ; ad_read
 BiosAdPlay = $E03C ; ad_play
 BiosAdCplay = $E03F ; ad_cplay
 BiosAdStop = $E042 ; ad_stop

@@ -894,16 +894,25 @@ void abi_StageFallLeft(void)
  */
 StageRegs StageRestartInPlace(StageRegs r)
 {
-    r = call_to(r, 0x8416, 0x4009);
-    r = call_to(r, 0x8419, 0x88B1);
-    r = call_to(r, 0x841C, 0x8882);
-    r = call_to(r, 0x841F, 0x88EC);
-    r = call_to(r, 0x8422, 0x8B53);
+    return StageRestartInPlaceAt(r, 0x8413, 0x88B1, 0x8882, 0x88EC, 0x8B53, 0x8A5F);
+}
+
+/* StageRestartInPlace's body, at the address it runs at (its JSRs return to at + 3 to at + $1C), with where its calls to
+ * StartStageLists, ExpandStageVramRuns, InitStage, SpawnStageObjectsRows01 and SetUpStageObjects go: the builds of the
+ * overlay that hold these instructions at other addresses (stage_programs_census.c) pass their own. */
+StageRegs StageRestartInPlaceAt(StageRegs r, uint16_t at, uint16_t lists, uint16_t runs, uint16_t init, uint16_t spawn,
+                                uint16_t setup)
+{
+    r = call_to(r, (uint16_t)(at + 3), 0x4009);
+    r = call_to(r, (uint16_t)(at + 6), lists);
+    r = call_to(r, (uint16_t)(at + 9), runs);
+    r = call_to(r, (uint16_t)(at + 0x0C), init);
+    r = call_to(r, (uint16_t)(at + 0x0F), spawn);
     r = loaded(r, 0x02);
     WR8(ZP->field8a, 0x02);
-    r = map_banks_5_6(r, 0x8429);
-    r = call_to(r, 0x842C, 0xA003);
-    r = call_to(r, 0x842F, 0x8A5F);
+    r = map_banks_5_6(r, (uint16_t)(at + 0x16));
+    r = call_to(r, (uint16_t)(at + 0x19), 0xA003);
+    r = call_to(r, (uint16_t)(at + 0x1C), setup);
     WR8(ZP->fade_active, 0);
     WR8(ZP->paused, 0);
     r = loaded(r, 0x01);

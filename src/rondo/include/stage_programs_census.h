@@ -190,4 +190,7 @@ void abi_StageFallRight026D(void);
 StageRegs StageFallLeft026D(StageRegs r);
 void abi_StageFallLeft026D(void);
 
+StageRegs StageRestartInPlace026D(StageRegs r);
+void abi_StageRestartInPlace026D(void);
+
 #endif

@@ -104,4 +104,9 @@ StageRegs StageFallRightAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs 
 StageRegs StageFallLeftAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (*done)(StageRegs),
                           StageRegs (*pose)(StageRegs), uint16_t step_ret, uint16_t pose_ret);
 
+
+/* system/stage_flow.c: StageRestartInPlace (024D:413) run at `at`, with where its five calls into the overlay go. */
+StageRegs StageRestartInPlaceAt(StageRegs r, uint16_t at, uint16_t lists, uint16_t runs, uint16_t init, uint16_t spawn,
+                                uint16_t setup);
+
 #endif

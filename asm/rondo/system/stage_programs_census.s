@@ -2410,3 +2410,32 @@ StageFallLeft026D_at0:
     lda #$FE
     sta a:OBJ_VX_HI
     jsr StageFallPose026D
+
+; @routine 026D:3EB StageRestartInPlace026D
+; @run 6B:83EB
+; WHAT IT DOES: Sets the stage up anew in place: the screen cleared, its lists, VRAM runs, set-up, objects and the player's start,
+; then sub-mode 1 with zField86 from zField83 (as StageRestartInPlace, 024D:413). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes, their calls going to the routines
+; each loads at the same addresses.
+; HOW: ClearScreenState, StartStageLists026E, ExpandStageVramRuns026E, InitStage026E, SpawnStageObjectsRows01026E,
+; zField8A 2, MapOverlayBanks5And6's bytes, $A003, SetUpStageObjects026E.
+; WAITS: where its calls wait.
+; Entry: nothing. Exit: A zField83, N and Z from it; X, Y, C and V as SetUpStageObjects026E left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageRestartInPlace026D:
+    jsr VecClearScreenState
+    jsr StartStageLists026E
+    jsr ExpandStageVramRuns026E
+    jsr InitStage026E
+    jsr SpawnStageObjectsRows01026E
+    lda #$02
+    sta z:zField8A
+    jsr MapOverlayBanks5And6_026D
+    jsr MariaVecStart
+    jsr SetUpStageObjects026E
+    stz z:zFadeActive
+    stz z:zPaused
+    lda #$01
+    sta z:zGameSubMode
+    lda z:zField83
+    sta z:zField86
+    rts

@@ -1947,3 +1947,26 @@ void abi_StageFallLeft026D(void)
 {
     stage_regs_load_shim(StageFallLeft026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:3EB StageRestartInPlace026D
+ * @run 6B:83EB
+ * WHAT IT DOES: Sets the stage up anew in place: the screen cleared, its lists, VRAM runs, set-up, objects and the player's start,
+ * then sub-mode 1 with zField86 from zField83 (as StageRestartInPlace, 024D:413). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes, their calls going to the routines
+ * each loads at the same addresses.
+ * HOW: StageRestartInPlaceAt (stage_flow.c), the body of 024D:413, at $83EB, with this program's calls to $886C, $883D,
+ * $88A2, $8B09 and $8A15, each the C of the routine loaded there; its JSR to $8089 goes to MapOverlayBanks5And6's
+ * bytes (024D:0A0) in all nine programs, so its C is MapOverlayBanks5And6's.
+ * WAITS: where its calls wait.
+ * Entry: nothing. Exit: A zField83, N and Z from it; X, Y, C and V as SetUpStageObjects026E left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageRestartInPlace026D(StageRegs r)
+{
+    return StageRestartInPlaceAt(r, 0x83EB, 0x886C, 0x883D, 0x88A2, 0x8B09, 0x8A15);
+}
+
+void abi_StageRestartInPlace026D(void)
+{
+    stage_regs_load_shim(StageRestartInPlace026D(stage_regs_entry_shim()));
+}

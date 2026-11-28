@@ -368,6 +368,12 @@ void abi_StageDemoPadRecord(void)
  */
 StageRegs StagePlayerToCentre(StageRegs r)
 {
+    return StagePlayerToCentreAt(r, 0x872C, 0x80B1, 0x80BF);
+}
+
+/* StagePlayerToCentre's body, for its builds elsewhere: where it runs and the two routines it calls. */
+StageRegs StagePlayerToCentreAt(StageRegs r, uint16_t at, uint16_t player_frame, uint16_t camera_step)
+{
     uint8_t step = RD8(OBJ->substate[0]);
     Sum near;
 
@@ -382,7 +388,7 @@ StageRegs StagePlayerToCentre(StageRegs r)
             WR8(OBJ->pad_forced[0], 0x00);
             r = loaded(r, 0x01);
             WR8(PVARS2->start_pose, r.a);
-            r = call_to(r, 0x8754, 0x80B1);
+            r = call_to(r, (uint16_t)(at + 0x28), player_frame);
             near = add_bytes(RD8(OBJ->x_lo[0]), 0x02, false);
             r.v = near.overflow;
             r = loaded(r, (uint8_t)(near.value & 0xFC));
@@ -407,7 +413,7 @@ StageRegs StagePlayerToCentre(StageRegs r)
                 r.c = moved.carry;
                 r.v = moved.overflow;
                 WR8(OBJ->x_lo[0], moved.value);
-                r = call_to(r, 0x878C, 0x80BF);
+                r = call_to(r, (uint16_t)(at + 0x60), camera_step);
                 near = add_bytes(RD8(OBJ->x_lo[0]), 0x02, false);
                 r.v = near.overflow;
                 r = loaded(r, (uint8_t)(near.value & 0xF8));
@@ -425,7 +431,7 @@ StageRegs StagePlayerToCentre(StageRegs r)
     r = loaded(r, CENTRE_PAD_FRAMES);
     WR8(OBJ->pad_force_frames[0], r.a);
     WR8(OBJ->pad_forced[0], 0x00);
-    return call_to(r, 0x8743, 0x80B1);
+    return call_to(r, (uint16_t)(at + 0x17), player_frame);
 }
 
 void abi_StagePlayerToCentre(void)

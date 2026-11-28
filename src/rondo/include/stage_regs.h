@@ -202,4 +202,6 @@ StageRegs StageHitReportTopAt(StageRegs r, uint8_t side_two_power);
 
 StageRegs StagePauseCdThenStockAt(StageRegs r, uint16_t at);
 
+StageRegs StagePlayerToCentreAt(StageRegs r, uint16_t at, uint16_t player_frame, uint16_t camera_step);
+
 #endif

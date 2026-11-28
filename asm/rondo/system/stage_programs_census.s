@@ -2286,3 +2286,18 @@ StageFallRightLand026D_at1:
 StageFallRightLand026D_at0:
     inc z:zFallStep
     rts
+
+; @routine 026D:34B StageFallPose026D
+; @run 6B:834B
+; WHAT IT DOES: The fall's first step: the player's animation 0 set and its sound, then the step counted on (as StageFallPose,
+; 024D:373). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: MapOverlayBanks5And6's bytes at $8089, $A018 with A 0, $A012, BRA to the INC of zFallStep.
+; WAITS: no.
+; Entry: nothing. Exit: N and Z from the new step; the rest as $A012 left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFallPose026D:
+    jsr MapOverlayBanks5And6_026D
+    lda #$00
+    jsr MariaVecSetAnimation
+    jsr MariaVecAnimationSound
+    bra StageFallRightLand026D_at0

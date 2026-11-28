@@ -172,4 +172,7 @@ void abi_StageForcedWalkB026D(void);
 StageRegs StageFallRightLand026D(StageRegs r);
 void abi_StageFallRightLand026D(void);
 
+StageRegs StageFallPose026D(StageRegs r);
+void abi_StageFallPose026D(void);
+
 #endif

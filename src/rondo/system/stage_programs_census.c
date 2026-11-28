@@ -1816,3 +1816,25 @@ void abi_StageFallRightLand026D(void)
 {
     stage_regs_load_shim(StageFallRightLand026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:34B StageFallPose026D
+ * @run 6B:834B
+ * WHAT IT DOES: The fall's first step: the player's animation 0 set and its sound, then the step counted on (as StageFallPose,
+ * 024D:373). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageFallPoseAt (stage_flow.c), the body of 024D:373, at $834B. Its JSR to $8089 goes to MapOverlayBanks5And6's
+ * bytes (024D:0A0) in all nine programs, so its C is MapOverlayBanks5And6's; the BRA goes to the INC of zFallStep in
+ * StageFallRightLand026D.
+ * WAITS: no.
+ * Entry: nothing. Exit: N and Z from the new step; the rest as $A012 left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageFallPose026D(StageRegs r)
+{
+    return StageFallPoseAt(r, 0x834B);
+}
+
+void abi_StageFallPose026D(void)
+{
+    stage_regs_load_shim(StageFallPose026D(stage_regs_entry_shim()));
+}

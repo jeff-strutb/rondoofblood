@@ -1470,12 +1470,13 @@ def map_svg(routines, title):
          f'font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">',
          f'<rect width="{W}" height="{H + T}" fill="#ffffff"/>',
          f'<text x="8" y="22" font-size="16" font-weight="600" fill="{ink}">{html.escape(title)}: '
-         f'every routine, sized by its code bytes</text>']
+         f'M1 {100 * (by["M1"] + by["M2"]) / total:.1f}%  M2 {100 * by["M2"] / total:.1f}%, every routine, '
+         f'sized by its code bytes</text>']
     lx = 8
     for k in MAP_ORDER:
-        lab = {"M2": "M2", "M1": "M1 only", "filed": "assembly filed, C not finished", "to do": "to do"}[k]
+        txt = {"M2": "M2 (counts in M1 too)", "M1": "M1, not yet M2", "filed": "assembly filed, C not finished",
+               "to do": "to do"}[k]
         o.append(f'<rect x="{lx}" y="32" width="12" height="12" fill="{MAP_COLOUR[k]}"/>')
-        txt = f"{lab} {100 * by[k] / total:.1f}%" if total else lab
         o.append(f'<text x="{lx + 16}" y="42" font-size="12" fill="{sub}">{txt}</text>')
         lx += 30 + 7 * len(txt)
     gitems = sorted(((sum(r[5] for r in rs), (k, rs)) for k, rs in groups.items()), key=lambda it: -it[0])

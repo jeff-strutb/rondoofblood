@@ -421,3 +421,25 @@ CopyWordsToVdc0111_at0:
     dex
     bne CopyWordsToVdc0111
     rts
+
+; @routine 25D3:029 Scene5CFrameTick
+; @run 6B:8029
+; WHAT IT DOES: As EndingFrameTick (010D:029), whose bytes these are.
+; HOW: The same instructions.
+; WAITS: no.
+; Entry, exit: as EndingFrameTick.
+Scene5CFrameTick:
+    inc z:zWaitTimer3
+    bne Scene5CFrameTick_at0
+    inc z:zWaitTimer4
+Scene5CFrameTick_at0:
+    rts
+
+; @routine 0111:000 VecRunListChannels0111
+; @run 6C:8000
+; WHAT IT DOES: Goes to RunListChannels0111.
+; HOW: One jump.
+; WAITS: no.
+; Entry, exit: as RunListChannels0111.
+VecRunListChannels0111:
+    jmp RunListChannels0111

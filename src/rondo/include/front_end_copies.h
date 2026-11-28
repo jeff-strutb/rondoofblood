@@ -29,5 +29,8 @@ VramExit VramCommandsAddress0111(uint8_t y, bool carry, bool overflow);
 void abi_VramCommandsAddress0111(void);
 Sum CopyWordsToVdc0111(uint8_t blocks);
 void abi_CopyWordsToVdc0111(void);
+uint8_t Scene5CFrameTick(void);
+void abi_Scene5CFrameTick(void);
+void abi_VecRunListChannels0111(void);
 
 #endif

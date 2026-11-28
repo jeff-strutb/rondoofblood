@@ -9,6 +9,8 @@
 #include "list_channels.h"
 #include "vram_update.h"
 #include "front_end_copies.h"
+#include "effect_slots_census.h"
+void abi_EndingFrameTick(void);
 void abi_VramCommandsAddress(void);
 VramExit VramCommandsAddress(uint8_t y, bool carry, bool overflow);
 void abi_VramCommandsAddressAdd(void);
@@ -212,4 +214,35 @@ Sum CopyWordsToVdc0111(uint8_t blocks)
 void abi_CopyWordsToVdc0111(void)
 {
     abi_CopyWordsToVdc();
+}
+
+/*
+ * @routine 25D3:029 Scene5CFrameTick
+ * @run 6B:8029
+ * WHAT IT DOES: As EndingFrameTick (010D:029), whose bytes these are.
+ * HOW: The same instructions; filed here so that they are assembled at this origin too.
+ * WAITS: no.
+ * Entry, exit: as EndingFrameTick.
+ */
+uint8_t Scene5CFrameTick(void)
+{
+    return EndingFrameTick();
+}
+
+void abi_Scene5CFrameTick(void)
+{
+    abi_EndingFrameTick();
+}
+
+/*
+ * @routine 0111:000 VecRunListChannels0111
+ * @run 6C:8000
+ * WHAT IT DOES: Goes to the overlay's routine at $8009 (RunListChannels0111).
+ * HOW: One jump.
+ * WAITS: no.
+ * Entry, exit: as the routine it goes to.
+ */
+void abi_VecRunListChannels0111(void)
+{
+    run_routine(0x8009);
 }

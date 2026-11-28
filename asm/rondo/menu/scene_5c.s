@@ -86,6 +86,8 @@ Scene5CScriptStep:
     tax
     ldy #$03
     jmp (Scene5CCommands,x)
+    dec z:zModeDone
+    rts
 
 ; @routine 25D3:08D Scene5CCommandSubModeTwo
 ; @run 6B:808D

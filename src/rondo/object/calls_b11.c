@@ -570,22 +570,20 @@ void abi_LoadRiser0EBF(void)
 void WalkAndTurnEvery101B(uint8_t slot)
 {
     step_list(slot, 0xB0FE, true, 0xB0D7);
-    if ((cpu.p & P_C) == 0) {
-        return;
+    if ((cpu.p & P_C) != 0) {
+        cpu.y = RD8(OBJ->work_e[slot]);
+        abi_nz(cpu.y);
+        lda(rd8((uint16_t)(0xB0FC + cpu.y)));
+        WR8(OBJ->vx_hi[slot], cpu.a);
+        move_x(slot, 0xB0E5);
+        if (counted_out(DEC8(OBJ->work_l[slot]))) {
+            lda(RD8(OBJ->start_arg[slot]));
+            WR8(OBJ->work_l[slot], cpu.a);
+            lda(RD8(OBJ->work_e[slot]));
+            lda((uint8_t)(cpu.a ^ 0x01));
+            WR8(OBJ->work_e[slot], cpu.a);
+        }
     }
-    cpu.y = RD8(OBJ->work_e[slot]);
-    abi_nz(cpu.y);
-    lda(rd8((uint16_t)(0xB0FC + cpu.y)));
-    WR8(OBJ->vx_hi[slot], cpu.a);
-    move_x(slot, 0xB0E5);
-    if (!counted_out(DEC8(OBJ->work_l[slot]))) {
-        return;
-    }
-    lda(RD8(OBJ->start_arg[slot]));
-    WR8(OBJ->work_l[slot], cpu.a);
-    lda(RD8(OBJ->work_e[slot]));
-    lda((uint8_t)(cpu.a ^ 0x01));
-    WR8(OBJ->work_e[slot], cpu.a);
     call_routine(0xB0FB, 0xB107);
 }
 

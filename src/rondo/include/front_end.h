@@ -575,4 +575,6 @@ Exit WaitThenStartGlide(uint8_t object);
 void abi_WaitThenStartGlide(void);
 Exit SetVramAddressXYAt(uint8_t lo, uint8_t hi, uint16_t select_return);
 
+Exit ClearVramRowsAt(uint8_t rows, uint8_t lo, uint8_t hi, uint16_t address_return, uint16_t select_return);
+
 #endif

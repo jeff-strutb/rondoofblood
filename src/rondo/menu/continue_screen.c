@@ -160,9 +160,16 @@ void abi_SetVramAddressXY(void)
  */
 Exit ClearVramRows(uint8_t rows, uint8_t lo, uint8_t hi)
 {
+    return ClearVramRowsAt(rows, lo, hi, 0x84CD, 0x84DE);
+}
+
+/* ClearVramRows' body, for the copies of it at other addresses: the return of its JSR and of the JSR in the
+ * SetVramAddressXY it calls there. */
+Exit ClearVramRowsAt(uint8_t rows, uint8_t lo, uint8_t hi, uint16_t address_return, uint16_t select_return)
+{
     WR8(ZP->temp00, rows);
-    jsr_push(0x84CD);
-    SetVramAddressXY(lo, hi);
+    jsr_push(address_return);
+    SetVramAddressXYAt(lo, hi, select_return);
     jsr_pop();
     do {
         for (uint8_t words = 0x40; words != 0; words--) {

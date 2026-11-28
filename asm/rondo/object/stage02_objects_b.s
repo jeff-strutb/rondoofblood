@@ -30,7 +30,7 @@ SoundAtStepNine051B:
     lda #$1A
     jmp VecSoundCommand
 SoundAtStepNine051B_at0:
-    stz a:OBJ_PIECE_PLACE,x
+    stz a:OBJ_WORK_E,x
     lda #$01
     sta a:OBJ_STATE,x
     stz a:OBJ_SUBSTATE,x
@@ -65,7 +65,7 @@ StartFortyCountAndCountNext051B:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$40
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE+2,x
     inc a:OBJ_SUBSTATE,x
     rts
@@ -78,7 +78,7 @@ StartFortyCountAndCountNext051B:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 SinkWhileCounting051B:
-    dec a:OBJ_PIECE_NEXT,x
+    dec a:OBJ_WORK_D,x
     bne SinkWhileCounting051B_at0
     jsr VecClearObject
     rts
@@ -170,7 +170,7 @@ ByState051BBB29:
 LoadWithBoxAndCount051BBB41:
     jsr VecLoadObjectRecord
     lda #$40
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     lda #$FC
     sta a:OBJ_HITBOX_DX,x
     lda #$20
@@ -208,7 +208,7 @@ RiseAndExpire051B:
     lda a:OBJ_SPRITE_ATTR,x
     ora #$10
     sta a:OBJ_SPRITE_ATTR,x
-    dec a:OBJ_PIECE_NEXT,x
+    dec a:OBJ_WORK_D,x
     bne RiseAndExpire051B_at0
     jmp VecClearObject
 RiseAndExpire051B_at0:
@@ -347,25 +347,25 @@ SpawnWhileSlot16Absent051B_at0:
     lda a:OBJ_KIND+16
     cmp #$24
     beq SpawnWhileSlot16Absent051B_at2
-    lda a:OBJ_PIECE_PLACE,x
-    ora a:OBJ_PIECE_NEXT,x
+    lda a:OBJ_WORK_E,x
+    ora a:OBJ_WORK_D,x
     beq SpawnWhileSlot16Absent051B_at1
-    lda a:OBJ_PIECE_PLACE,x
+    lda a:OBJ_WORK_E,x
     sec
     sbc #$01
-    sta a:OBJ_PIECE_PLACE,x
-    lda a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_D,x
     sbc #$00
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     rts
 SpawnWhileSlot16Absent051B_at1:
     jsr VecFindFreeSlotFrom30
     bcc SpawnWhileSlot16Absent051B_at2
     lda #$46
     jsr VecStartObjectAtPlace
-    stz a:OBJ_PIECE_NEXT,x
+    stz a:OBJ_WORK_D,x
     lda #$C0
-    sta a:OBJ_PIECE_PLACE,x
+    sta a:OBJ_WORK_E,x
 SpawnWhileSlot16Absent051B_at2:
     rts
 
@@ -487,17 +487,17 @@ BobOnCosine051B:
     sta z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_PIECE_NEXT,x
+    lda a:OBJ_WORK_D,x
     jsr VecScaleByCosine
     lda z:zPlaneRowsLeft
     sta a:OBJ_VY_HI,x
     lda z:SpriteFlipMask
     sta a:OBJ_VY_LO,x
     jsr VecApplyVelocity
-    lda a:OBJ_PIECE_NEXT,x
+    lda a:OBJ_WORK_D,x
     clc
     adc #$02
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 051C:59E CountHitThenByState051BBD9E
@@ -508,7 +508,7 @@ BobOnCosine051B:
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 CountHitThenByState051BBD9EStates = $BDB6 ; a handler per state
 CountHitThenByState051BBD9E:
-    inc a:OBJ_PIECE_NEXT,x
+    inc a:OBJ_WORK_D,x
     jsr State11WhenHit051BBDCE
     lda a:OBJ_STATE,x
     asl a

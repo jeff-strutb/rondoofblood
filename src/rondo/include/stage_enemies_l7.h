@@ -172,6 +172,9 @@ ObjArm blend_rows_of_player_with(uint8_t slot, uint8_t y, const StageBanks *bank
 /* The stock blend's body run at `at`, with the C of its row pair blend, for the builds that hold it elsewhere. */
 ObjArm blend_stock_rows_at(uint8_t slot, uint8_t y, const StageBanks *banks, uint16_t at,
                            TileRowsExit (*row_pair)(uint8_t, uint8_t, uint8_t));
+/* The added score's blend body run at `at`, with the C of its row pair blend, for the builds that hold it elsewhere. */
+ObjArm blend_rows_of_player_at(uint8_t slot, uint8_t y, const StageBanks *banks, uint16_t at,
+                               TileRowsExit (*row_pair)(uint8_t, uint8_t, uint8_t));
 ObjArm BlendStageStockRows(uint8_t slot, uint8_t y);
 ObjArm BlendStageScoreAddRows(uint8_t slot, uint8_t y);
 ObjArm blend_stock_rows_loaded(uint8_t slot, uint8_t y);

@@ -23,10 +23,18 @@ enum { BR_BLEND_OFF, BR_BLENDED };
 
 ObjArm blend_rows_of_player_with(uint8_t slot, uint8_t y, const StageBanks *banks)
 {
+    return blend_rows_of_player_at(slot, y, banks, 0x9181, BlendStageRowPair);
+}
+
+/* The body, at the address it runs at (its JSRs return to at + 3, + $13 and + $1A), with the C of its row pair blend:
+ * the builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
+ObjArm blend_rows_of_player_at(uint8_t slot, uint8_t y, const StageBanks *banks, uint16_t at,
+                               TileRowsExit (*row_pair)(uint8_t, uint8_t, uint8_t))
+{
     ObjArm r = { 0 };
     TileRowsExit blend;
 
-    jsr_push(0x9184);
+    jsr_push((uint16_t)(at + 3));
     r.sum = banks->save_and_map();
     jsr_pop();
     r.first = RD8(STAGEVARS->blend_on[1]);
@@ -35,14 +43,14 @@ ObjArm blend_rows_of_player_with(uint8_t slot, uint8_t y, const StageBanks *bank
         push8(slot);
         WR8(STAGEVARS->blend_on[0], 0);
         r.second = RD8(ZP->score_add.lo);
-        jsr_push(0x9194);
-        blend = BlendStageRowPair(3, r.second, y);
+        jsr_push((uint16_t)(at + 0x13));
+        blend = row_pair(3, r.second, y);
         jsr_pop();
         r.third = blend.a;
         r.flag = blend.v;
         r.fourth = RD8(ZP->score_add.hi);
-        jsr_push(0x919B);
-        blend = BlendStageRowPair(5, r.fourth, 5);
+        jsr_push((uint16_t)(at + 0x1A));
+        blend = row_pair(5, r.fourth, 5);
         jsr_pop();
         r.fifth = blend.a;
         r.other = blend.v;

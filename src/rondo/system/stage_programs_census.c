@@ -2488,3 +2488,47 @@ void abi_BlendStageStockRows031F(void)
 {
     abi_ended(blend_stock_rows_exit_shim(BlendStageStockRows031F(cpu.x, cpu.y)));
 }
+
+/*
+ * @routine 026F:13F BlendStageScoreAddRows026F
+ * @run 6B:913F
+ * WHAT IT DOES: Shows the score being added on the stage's tile rows while the blend is off (as BlendStageScoreAddRows,
+ * 024F:181). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: blend_rows_of_player_at (stage_blend_long.c), the body of 024F:181, at $913F, with BlendStageRowPair026F; its JSR
+ * to $92FD and its jumps to $9312 go to SaveAndMapStageBanks' and RestoreStageBanks' bytes (024F:33F and 024F:354),
+ * so their C is theirs.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as BlendStageScoreAddRows.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+ObjArm BlendStageScoreAddRows026F(uint8_t slot, uint8_t y)
+{
+    return blend_rows_of_player_at(slot, y, &stage_banks_024f, 0x913F, BlendStageRowPair026F);
+}
+
+void abi_BlendStageScoreAddRows026F(void)
+{
+    abi_ended(blend_stage_rows_of_player_exit_shim(BlendStageScoreAddRows026F(cpu.x, cpu.y)));
+}
+
+/*
+ * @routine 031F:133 BlendStageScoreAddRows031F
+ * @run 6B:9133
+ * WHAT IT DOES: Shows the score being added on the stage's tile rows while the blend is off (as BlendStageScoreAddRows,
+ * 024F:181). Programs 043F and 10DF hold the same bytes.
+ * HOW: blend_rows_of_player_at (stage_blend_long.c), the body of 024F:181, at $9133, with BlendStageRowPair031F; its JSR
+ * to $95DE and its jumps to $95F3 go to SaveAndMapStageBanks' and RestoreStageBanks' bytes (024F:33F and 024F:354),
+ * so their C is theirs.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as BlendStageScoreAddRows.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+ObjArm BlendStageScoreAddRows031F(uint8_t slot, uint8_t y)
+{
+    return blend_rows_of_player_at(slot, y, &stage_banks_024f, 0x9133, BlendStageRowPair031F);
+}
+
+void abi_BlendStageScoreAddRows031F(void)
+{
+    abi_ended(blend_stage_rows_of_player_exit_shim(BlendStageScoreAddRows031F(cpu.x, cpu.y)));
+}

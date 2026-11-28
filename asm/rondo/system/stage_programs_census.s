@@ -3265,3 +3265,49 @@ BlendStageStockRows031F_at0:
     plx
 BlendStageStockRows031F_at1:
     jmp RestoreStageBanks_031F
+
+; @routine 026F:13F BlendStageScoreAddRows026F
+; @run 6B:913F
+; WHAT IT DOES: Shows the score being added on the stage's tile rows while the blend is off (as BlendStageScoreAddRows,
+; 024F:181). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: SaveAndMapStageBanks' bytes, BlendStageRowPair026F twice, a tail jump into RestoreStageBanks' bytes.
+; WAITS: no.
+; Entry: X and Y the caller's. Exit: as BlendStageScoreAddRows.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BlendStageScoreAddRows026F:
+    jsr SaveAndMapStageBanks_026F
+    lda a:StageBlendOn+1
+    bne BlendStageStockRows026F_at1
+    phx
+    stz a:StageBlendOn
+    lda z:zScoreAddLo
+    ldx #$03
+    jsr BlendStageRowPair026F
+    lda z:zScoreAddHi
+    ldx #$05
+    jsr BlendStageRowPair026F
+    plx
+    jmp RestoreStageBanks_026F
+
+; @routine 031F:133 BlendStageScoreAddRows031F
+; @run 6B:9133
+; WHAT IT DOES: Shows the score being added on the stage's tile rows while the blend is off (as BlendStageScoreAddRows,
+; 024F:181). Programs 043F and 10DF hold the same bytes.
+; HOW: SaveAndMapStageBanks' bytes, BlendStageRowPair031F twice, a tail jump into RestoreStageBanks' bytes.
+; WAITS: no.
+; Entry: X and Y the caller's. Exit: as BlendStageScoreAddRows.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BlendStageScoreAddRows031F:
+    jsr SaveAndMapStageBanks_031F
+    lda a:StageBlendOn+1
+    bne BlendStageStockRows031F_at1
+    phx
+    stz a:StageBlendOn
+    lda z:zScoreAddLo
+    ldx #$03
+    jsr BlendStageRowPair031F
+    lda z:zScoreAddHi
+    ldx #$05
+    jsr BlendStageRowPair031F
+    plx
+    jmp RestoreStageBanks_031F

@@ -475,15 +475,22 @@ void abi_StageClearedScrollOn(void)
  */
 StageRegs StageCameraStep(StageRegs r)
 {
+    return StageCameraStepAt(r, 0x80C2);
+}
+
+/* StageCameraStep's body, ret the address after its JSR to MapOverlayBank7 (the JMP that follows is at the same address):
+ * the builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StageCameraStepAt(StageRegs r, uint16_t ret)
+{
     ObjArm bank;
 
-    jsr_push(0x80C2);
+    jsr_push(ret);
     bank = MapOverlayBank7();
     jsr_pop();
     r = loaded(r, bank.sum.value);
     r.c = bank.sum.carry;
     r.v = bank.sum.overflow;
-    return tail_to(r, 0x80C2, 0xA08D);
+    return tail_to(r, ret, 0xA08D);
 }
 
 void abi_StageCameraStep(void)

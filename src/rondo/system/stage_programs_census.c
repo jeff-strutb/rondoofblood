@@ -1593,3 +1593,25 @@ void abi_StagePauseToggle031D(void)
 {
     stage_regs_load_shim(StagePauseToggle031D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:0A8 StageCameraStep026D
+ * @run 6B:80A8
+ * WHAT IT DOES: The camera's frame with the overlay's bank 7 mapped (as StageCameraStep, 024D:0BF). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same
+ * bytes.
+ * HOW: StageCameraStepAt (stage_flow.c), the body of 024D:0BF: the JSR goes to $80A0, which holds MapOverlayBank7's bytes
+ * (024D:0B7) in all nine programs, so its C is MapOverlayBank7's; then the tail JMP to $A08D, the C of the routine
+ * loaded there.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as CameraStep, entered with A the bank, N, Z, C and V from the map's add.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageCameraStep026D(StageRegs r)
+{
+    return StageCameraStepAt(r, 0x80AB);
+}
+
+void abi_StageCameraStep026D(void)
+{
+    stage_regs_load_shim(StageCameraStep026D(stage_regs_entry_shim()));
+}

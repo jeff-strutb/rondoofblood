@@ -2038,3 +2038,18 @@ StagePauseToggle031D:
     jsr StagePauseSet031E
 StagePauseToggle031D_at0:
     rts
+
+MapOverlayBank7_026D = $80A0 ; MapOverlayBank7's bytes (024D:0B7) in the 026D programs
+
+; @routine 026D:0A8 StageCameraStep026D
+; @run 6B:80A8
+; WHAT IT DOES: The camera's frame with the overlay's bank 7 mapped (as StageCameraStep, 024D:0BF). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same
+; bytes.
+; HOW: MapOverlayBank7's bytes at $80A0, then the tail JMP to CameraStep.
+; WAITS: no.
+; Entry: X and Y the caller's. Exit: as CameraStep, entered with A the bank, N, Z, C and V from the map's add.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageCameraStep026D:
+    jsr MapOverlayBank7_026D
+    jmp CameraStep
+

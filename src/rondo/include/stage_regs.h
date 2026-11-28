@@ -37,4 +37,7 @@ StageRegs StageStartAt(StageRegs r, uint16_t order_table);
 /* system/stage_flow.c: StagePauseToggle (024D:1A2) with ret the address after its JSR to StagePauseSet. */
 StageRegs StagePauseToggleAt(StageRegs r, uint16_t ret);
 
+/* system/stage_flow.c: StageCameraStep (024D:0BF) with ret the address after its JSR to MapOverlayBank7. */
+StageRegs StageCameraStepAt(StageRegs r, uint16_t ret);
+
 #endif

@@ -4517,26 +4517,23 @@ static ChannelExit run_all_channels(uint8_t y, bool c, bool v)
         out.a = kind;
         out.nz = kind;
         if (kind != 0) {
-            ChannelExit run;
-
+            /* The BSR to $8018 goes to the list runner loaded there: the overlays holding these bytes differ in it
+             * (07D1, 0931 and the others read their own table, and 1531's is an older runner), so it is the C of the
+             * routine loaded there, entered with A the kind, X the channel and N and Z from the kind. */
             push8(slot);
-            jsr_push(0x8013);
-            run = RunListChannel00C5(kind, slot, out.y, out.c, out.v);
-            jsr_pop();
+            cpu.a = kind;
+            cpu.x = slot;
+            cpu.y = out.y;
+            abi_nz(kind);
+            abi_flag(P_C, out.c);
+            abi_flag(P_V, out.v);
+            call_routine(0x8013, 0x8018);
             slot = pull8();
-            out.a = run.a;
-            if (run.y_set) {
-                out.y = run.y;
-                out.y_set = true;
-            }
-            if (run.c_set) {
-                out.c = run.c;
-                out.c_set = true;
-            }
-            if (run.v_set) {
-                out.v = run.v;
-                out.v_set = true;
-            }
+            out.a = cpu.a;
+            out.y = cpu.y;
+            out.c = (cpu.p & P_C) != 0;
+            out.v = (cpu.p & P_V) != 0;
+            out.y_set = out.c_set = out.v_set = true;
         }
         slot--;
     } while ((slot & 0x80) == 0);

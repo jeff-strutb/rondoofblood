@@ -210,7 +210,7 @@ HoldWhenHitBit7_101D:
     cmp #$03
     bcs HoldWhenHitBit7_101D_at0
     lda #$40
-    sta a:OBJ_FLASH_FRAMES,x
+    sta a:OBJ_WORK_D,x
     lda #$AA
     sta a:OBJ_FRAME,x
     lda #$03
@@ -475,7 +475,7 @@ PlaceChain16CC_at1:
     stz z:zTemp00
     lda #$06
     sta z:zTemp01
-    lda a:OBJ_FLASH_FRAMES,x
+    lda a:OBJ_WORK_D,x
     jsr VecSetVelocityFromAngle
     lda a:OBJ_VX_HI,x
     asl a

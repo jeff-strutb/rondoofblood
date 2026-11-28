@@ -27,7 +27,7 @@ CheckedJump072C58B:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump0E0B040Handlers = $B061 ; the handlers by state
 CheckedJump0E0B040:
-    inc a:OBJ_CHILD_ORDER,x
+    inc a:OBJ_WORK_F,x
     jsr FaceThePlayerByStateTableB
     jsr HalveDirectionWhenHurt
     jsr StateSevenOnStatusBit7
@@ -50,7 +50,7 @@ CheckedJump0E0B040:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump0E0C4A8Handlers = $BCBD ; the handlers by state
 CheckedJump0E0C4A8:
-    inc a:OBJ_FLASH_FRAMES,x
+    inc a:OBJ_WORK_D,x
     lda a:OBJ_STATE,x
     asl a
     tay
@@ -69,7 +69,7 @@ CheckedJump0E0C4A8:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump0EBD428Handlers = $C443 ; the handlers by state
 CheckedJump0EBD428:
-    inc a:OBJ_FLYER_WAIT,x
+    inc a:OBJ_WORK_E,x
     jsr MarkWhenPlayerNear0EBD
     jsr HitToState4Frame0EBD
     lda a:OBJ_STATE,x
@@ -90,7 +90,7 @@ CheckedJump0EBD428:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump0EBD599Handlers = $C5B1 ; the handlers by state
 CheckedJump0EBD599:
-    inc a:OBJ_FLYER_WAIT,x
+    inc a:OBJ_WORK_E,x
     jsr HitToState4Frame0EBD
     lda a:OBJ_STATE,x
     asl a
@@ -110,7 +110,7 @@ CheckedJump0EBD599:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump0EBF0C5Handlers = $D0DD ; the handlers by state
 CheckedJump0EBF0C5:
-    inc a:OBJ_FALL_LO,x
+    inc a:OBJ_WORK_H,x
     jsr HitSoundAndSix0EBF
     lda a:OBJ_STATE,x
     asl a
@@ -172,7 +172,7 @@ CheckedJump101B066:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump101B43CHandlers = $B454 ; the handlers by state
 CheckedJump101B43C:
-    inc a:OBJ_FLASH_FRAMES,x
+    inc a:OBJ_WORK_D,x
     jsr HitToState11_101B
     lda a:OBJ_STATE,x
     asl a
@@ -192,7 +192,7 @@ CheckedJump101B43C:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump101C289Handlers = $BAA4 ; the handlers by state
 CheckedJump101C289:
-    inc a:OBJ_FLASH_FRAMES,x
+    inc a:OBJ_WORK_D,x
     jsr HitSoundToState4_101C
     jsr HitBoxSizeByFrame101C
     lda a:OBJ_STATE,x
@@ -213,7 +213,7 @@ CheckedJump101C289:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump101C64BHandlers = $BE66 ; the handlers by state
 CheckedJump101C64B:
-    inc a:OBJ_FLASH_FRAMES,x
+    inc a:OBJ_WORK_D,x
     jsr HitSoundToState4_101C
     jsr HitBoxSizeByFrame101C
     lda a:OBJ_STATE,x
@@ -274,7 +274,7 @@ CheckedJump101D3EB:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump101E671Handlers = $CE89 ; the handlers by state
 CheckedJump101E671:
-    inc a:OBJ_FLYER_WAIT,x
+    inc a:OBJ_WORK_E,x
     jsr HitToState2Frame101E
     lda a:OBJ_STATE,x
     asl a
@@ -294,7 +294,7 @@ CheckedJump101E671:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump117B515Handlers = $B52D ; the handlers by state
 CheckedJump117B515:
-    inc a:OBJ_FALL_LO,x
+    inc a:OBJ_WORK_H,x
     jsr BurstWhenFlaggedHitB
     lda a:OBJ_STATE,x
     asl a
@@ -334,7 +334,7 @@ CheckedJump117C19B:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump117C653Handlers = $BE74 ; the handlers by state
 CheckedJump117C653:
-    inc a:OBJ_FALL_LO,x
+    inc a:OBJ_WORK_H,x
     jsr FaceThePlayerInSomeStatesB
     jsr EnterState6WhenHitHard
     jsr EnterState7IfYHighOrFlagged
@@ -357,7 +357,7 @@ CheckedJump117C653:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump12DB418Handlers = $B430 ; the handlers by state
 CheckedJump12DB418:
-    inc a:OBJ_CHILD_ORDER,x
+    inc a:OBJ_WORK_F,x
     jsr HitToState4_12DB
     lda a:OBJ_STATE,x
     asl a
@@ -377,7 +377,7 @@ CheckedJump12DB418:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump12DC0C8Handlers = $B8DD ; the handlers by state
 CheckedJump12DC0C8:
-    inc a:OBJ_FLASH_FRAMES,x
+    inc a:OBJ_WORK_D,x
     lda a:OBJ_STATE,x
     asl a
     tay
@@ -396,7 +396,7 @@ CheckedJump12DC0C8:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump12DD358Handlers = $C373 ; the handlers by state
 CheckedJump12DD358:
-    inc a:OBJ_FLASH_FRAMES,x
+    inc a:OBJ_WORK_D,x
     jsr DropAndShake12DD
     jsr HitStopAll12DD
     lda a:OBJ_STATE,x
@@ -417,7 +417,7 @@ CheckedJump12DD358:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump12DE24CHandlers = $CA67 ; the handlers by state
 CheckedJump12DE24C:
-    inc a:OBJ_FLASH_FRAMES,x
+    inc a:OBJ_WORK_D,x
     jsr HalveWhenHit12DE
     jsr HitStopAll12DE
     lda a:OBJ_STATE,x
@@ -456,7 +456,7 @@ CheckedJump161B2E2:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump161B31FHandlers = $B337 ; the handlers by state
 CheckedJump161B31F:
-    inc a:OBJ_FLYER_WAIT,x
+    inc a:OBJ_WORK_E,x
     jsr HitSpawn92_161B
     lda a:OBJ_STATE,x
     asl a
@@ -476,7 +476,7 @@ CheckedJump161B31F:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump161B605Handlers = $B61D ; the handlers by state
 CheckedJump161B605:
-    inc a:OBJ_FALL_HI,x
+    inc a:OBJ_WORK_I,x
     jsr HitHold32_161B
     lda a:OBJ_STATE,x
     asl a
@@ -496,7 +496,7 @@ CheckedJump161B605:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump161C2C4Handlers = $BADF ; the handlers by state
 CheckedJump161C2C4:
-    inc a:OBJ_FALL_LO,x
+    inc a:OBJ_WORK_H,x
     jsr HitToState7_161C
     jsr HitBoxByFrameRange161C
     lda a:OBJ_STATE,x
@@ -537,7 +537,7 @@ CheckedJump18DC011:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump18DC2D0Handlers = $BAE5 ; the handlers by state
 CheckedJump18DC2D0:
-    inc a:OBJ_FLASH_FRAMES,x
+    inc a:OBJ_WORK_D,x
     lda a:OBJ_STATE,x
     asl a
     tay

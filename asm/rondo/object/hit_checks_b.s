@@ -86,9 +86,9 @@ StartSixAt0EBF_at1:
     asl a
     tax
     lda a:StartSixAt0EBFPieces,x
-    sta a:OBJ_FLASH_FRAMES,y
+    sta a:OBJ_WORK_D,y
     lda a:StartSixAt0EBFPieces+1,x
-    sta a:OBJ_FLYER_WAIT,y
+    sta a:OBJ_WORK_E,y
     lda a:StartSixAt0EBFPieces+2,x
     sta a:OBJ_VX_HI,y
     lda a:StartSixAt0EBFPieces+3,x
@@ -192,14 +192,14 @@ CycleWhileUnderState2_101C:
     cmp #$02
     bcc CycleWhileUnderState2_101C_at0
     lda #$FF
-    sta a:OBJ_KNOCK_FORWARD,x
-    dec a:OBJ_FALL_HI,x
+    sta a:OBJ_WORK_M,x
+    dec a:OBJ_WORK_I,x
     bne CycleWhileUnderState2_101C_at0
     lda #$E0
-    sta a:OBJ_FALL_HI,x
+    sta a:OBJ_WORK_I,x
     ldy a:OBJ_WORK_L,x
     lda a:CycleWhileUnderState2_101COrder,y
-    sta a:OBJ_KNOCK_FORWARD,x
+    sta a:OBJ_WORK_M,x
     clc
     adc #$11
     tay
@@ -207,7 +207,7 @@ CycleWhileUnderState2_101C:
     cmp #$36
     beq CycleWhileUnderState2_101C_at1
     lda #$01
-    sta a:OBJ_FALL_HI,x
+    sta a:OBJ_WORK_I,x
 CycleWhileUnderState2_101C_at1:
     inc a:OBJ_WORK_L,x
     lda a:OBJ_WORK_L,x
@@ -360,10 +360,10 @@ HitToState4_12DB_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last test, call or shift; X kept.
 DropAndShake12DD:
-    lda a:OBJ_FALL_HI,x
+    lda a:OBJ_WORK_I,x
     beq DropAndShake12DD_at0
-    dec a:OBJ_FALL_HI,x
-    lda a:OBJ_FLASH_FRAMES,x
+    dec a:OBJ_WORK_I,x
+    lda a:OBJ_WORK_D,x
     and #$03
     bne DropAndShake12DD_at1
     jsr VecFindFreeSlotFrom30
@@ -378,8 +378,8 @@ DropAndShake12DD_at0:
     cmp #$05
     bcc DropAndShake12DD_at1
     lda #$08
-    sta a:OBJ_FALL_HI,x
-    lsr a:OBJ_CHILD_ORDER,x
+    sta a:OBJ_WORK_I,x
+    lsr a:OBJ_WORK_F,x
 DropAndShake12DD_at1:
     rts
 
@@ -427,7 +427,7 @@ HalveWhenHit12DE:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc HalveWhenHit12DE_at0
-    lsr a:OBJ_CHILD_ORDER,x
+    lsr a:OBJ_WORK_F,x
 HalveWhenHit12DE_at0:
     rts
 
@@ -511,7 +511,7 @@ HitHold32_161B:
     beq HitHold32_161B_at0
     stz a:OBJ_HITBOX_ON,x
     lda #$20
-    sta a:OBJ_FALL_LO,x
+    sta a:OBJ_WORK_H,x
     stz a:OBJ_FRAME,x
     lda #$03
     sta a:OBJ_STATE,x

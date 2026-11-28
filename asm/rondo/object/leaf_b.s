@@ -24,7 +24,7 @@ StopWhenSlot16Marked0E0C:
     lda #$1E
     sta a:OBJ_FRAME,x
     lda #$60
-    sta a:OBJ_TALLY_WAIT,x
+    sta a:OBJ_WORK_E,x
     lda #$07
     sta a:OBJ_STATE,x
 StopWhenSlot16Marked0E0C_at0:

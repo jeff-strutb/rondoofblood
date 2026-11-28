@@ -148,7 +148,7 @@ StartByPlayerSide161D_at2:
     beq StartByPlayerSide161D_at1
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    inc a:OBJ_KNOCK_FORWARD,x
+    inc a:OBJ_WORK_M,x
     lda #$03
     sta a:OBJ_STATE,x
     stz a:OBJ_SUBSTATE,x
@@ -191,7 +191,7 @@ HitStopToState5_161D_at0:
 ; Entry: X object. Exit: as the last test or load left them; X kept.
 FaceThePlayerEvery8_161DTurns = $C5E8 ; by state: 0 does not turn
 FaceThePlayerEvery8_161D:
-    lda a:OBJ_CHILD_ORDER,x
+    lda a:OBJ_WORK_F,x
     and #$07
     bne FaceThePlayerEvery8_161D_at0
     ldy a:OBJ_STATE,x
@@ -217,7 +217,7 @@ HalveWhenHit161D:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc HalveWhenHit161D_at0
-    lsr a:OBJ_FALL_LO,x
+    lsr a:OBJ_WORK_H,x
 HalveWhenHit161D_at0:
     rts
 

@@ -51,7 +51,7 @@ CheckedJump13FD11C:
 ; Entry: X object. Exit: as the code jumped to; A the handler's high byte, Y the doubled value.
 CheckedJump161D5A4Handlers = $C5C2 ; the handlers by state
 CheckedJump161D5A4:
-    inc a:OBJ_CHILD_ORDER,x
+    inc a:OBJ_WORK_F,x
     jsr FaceThePlayerEvery8_161D
     jsr HalveWhenHit161D
     jsr HitStopAndClearNext161D

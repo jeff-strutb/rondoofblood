@@ -11,6 +11,15 @@
 #include "player_objects.h"
 
 /* object/richter_state.c */
+typedef enum {
+    INVINCIBLE_OFF, INVINCIBLE_OFF_FRAME, INVINCIBLE_ENDED, INVINCIBLE_RUNNING, INVINCIBLE_MARK
+} InvincibleHow;
+/* A frame of the invincibility: how it went, the A compared with $10, the sounds and the mark. */
+typedef struct {
+    InvincibleHow how; uint8_t value; uint8_t compared; bool first_sound; bool second_sound;
+    CommandCall first; CommandCall second; uint8_t mark; uint16_t scripts;
+} InvincibleTick;
+void invincible_exit_shim(InvincibleTick tick);
 typedef struct { uint8_t facing; uint8_t high; } FacingSpeed;
 typedef struct { uint8_t facing; uint8_t step; uint8_t was; } Nudge;
 typedef struct { uint8_t state; uint8_t index; } CrashEnd;

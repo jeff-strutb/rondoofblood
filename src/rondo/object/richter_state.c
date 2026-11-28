@@ -273,14 +273,6 @@ typedef struct {
 MovePush RichterApplyMoveAndPush(void);
 MovePush MariaApplyMoveAndPush(void);
 void abi_MariaApplyMoveAndPush(void);
-typedef enum {
-    INVINCIBLE_OFF, INVINCIBLE_OFF_FRAME, INVINCIBLE_ENDED, INVINCIBLE_RUNNING, INVINCIBLE_MARK
-} InvincibleHow;
-/* A frame of the invincibility: how it went, the A compared with $10, the sounds and the mark. */
-typedef struct {
-    InvincibleHow how; uint8_t value; uint8_t compared; bool first_sound; bool second_sound;
-    CommandCall first; CommandCall second; uint8_t mark; uint16_t scripts;
-} InvincibleTick;
 InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y);
 /* The death started: the sound command it ends with. */
 typedef enum {

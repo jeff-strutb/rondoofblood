@@ -1122,3 +1122,9 @@ DA05,abs,MariaKind15RainPlaces,the place of a kind 11 piece from kind 15: X low 
 38D8,abs,OBJ_ATTACK_SIDE,an attack object's use of OBJ_WORK_P: which side its hit report counts, 1 or 2
 3828,abs,OBJ_ATTACK_POWER,an attack object's use of OBJ_WORK_N: the hit it gives the object it reports on
 2743,abs,StageDoorHeld,1 while the stage holds its doors shut: StageDoorTouched does nothing
+A9C1,abs,MariaAirTurnSpeeds,X speed words by facing after a turn in the air: $FF50, $00B0 (MariaAirTurn)
+A9C5,abs,MariaTurnSpeeds,her walking X speed words by facing after a press: $00B0, $FF50 (MariaTurnOnPress)
+BABB,abs,MariaInvincibleScripts,the flashing script started at each of the invincibility's marks (MariaInvincibleTick)
+BAC1,abs,MariaInvincibleMarks,the invincibility timer's values that start a flashing script (MariaInvincibleTick)
+C8A2,abs,MariaObjectAccelSteps,the X speed step words her objects add by facing: $FFD0, $0030 (MariaObjectAccelerate)
+DDDD,abs,MariaObjectAnimations,the animation lists of her objects, a word each by OBJ_WORK_A (MariaObjectAnimationList)

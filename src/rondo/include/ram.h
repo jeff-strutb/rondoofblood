@@ -1105,5 +1105,11 @@
 #define OBJ_ATTACK_SIDE 0x38D8 /* an attack object's use of OBJ_WORK_P: which side its hit report counts, 1 or 2 */
 #define OBJ_ATTACK_POWER 0x3828 /* an attack object's use of OBJ_WORK_N: the hit it gives the object it reports on */
 #define StageDoorHeld 0x2743 /* 1 while the stage holds its doors shut: StageDoorTouched does nothing */
+#define MariaAirTurnSpeeds 0xA9C1 /* X speed words by facing after a turn in the air: $FF50, $00B0 (MariaAirTurn) */
+#define MariaTurnSpeeds 0xA9C5 /* her walking X speed words by facing after a press: $00B0, $FF50 (MariaTurnOnPress) */
+#define MariaInvincibleScripts 0xBABB /* the flashing script started at each of the invincibility's marks (MariaInvincibleTick) */
+#define MariaInvincibleMarks 0xBAC1 /* the invincibility timer's values that start a flashing script (MariaInvincibleTick) */
+#define MariaObjectAccelSteps 0xC8A2 /* the X speed step words her objects add by facing: $FFD0, $0030 (MariaObjectAccelerate) */
+#define MariaObjectAnimations 0xDDDD /* the animation lists of her objects, a word each by OBJ_WORK_A (MariaObjectAnimationList) */
 
 #endif

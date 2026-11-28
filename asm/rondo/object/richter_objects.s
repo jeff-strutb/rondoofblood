@@ -749,13 +749,13 @@ MariaObjectAccelerate:
     lda a:OBJ_FACING_LEFT,x
     asl a
     tay
-    lda a:MariaObjectAccelerate+$22,y
+    lda a:MariaObjectAccelSteps,y
     clc
     adc a:OBJ_VX_LO,x
     sta a:OBJ_VX_LO,x
     lda a:OBJ_VX_HI,x
     sta z:zTemp00
-    lda a:MariaObjectAccelerate+$23,y
+    lda a:MariaObjectAccelSteps+1,y
     adc a:OBJ_VX_HI,x
     sta a:OBJ_VX_HI,x
     eor z:zTemp00
@@ -874,9 +874,9 @@ MariaObjectAnimationList:
     lda a:OBJ_WORK_A,x
     asl a
     tay
-    lda a:RichterObjectAnimations+$344,y
+    lda a:MariaObjectAnimations,y
     sta z:zTemp00
-    lda a:RichterObjectAnimations+$344+1,y
+    lda a:MariaObjectAnimations+1,y
     sta z:zTemp01
     lda a:OBJ_SCROLL_BAND,x
     asl a

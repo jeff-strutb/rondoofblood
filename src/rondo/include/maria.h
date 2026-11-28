@@ -219,19 +219,8 @@ typedef struct {
     uint8_t object;     /* the slot the loop stopped at */
 } MariaDying;
 
-/*
- * MariaInvincibleTick's result (object/richter_state.c). The type is that file's; it is declared here member for member,
- * kept in step with it, until it moves to a shared header.
- */
-typedef enum {
-    INVINCIBLE_OFF, INVINCIBLE_OFF_FRAME, INVINCIBLE_ENDED, INVINCIBLE_RUNNING, INVINCIBLE_MARK
-} InvincibleHow;
-typedef struct {
-    InvincibleHow how; uint8_t value; uint8_t compared; bool first_sound; bool second_sound;
-    CommandCall first; CommandCall second; uint8_t mark; uint16_t scripts;
-} InvincibleTick;
+/* MariaInvincibleTick (object/richter_state.c); its result type is in richter.h. */
 InvincibleTick MariaInvincibleTick(uint8_t x, uint8_t y);          /* object/richter_state.c */
-void invincible_exit_shim(InvincibleTick tick);                    /* object/richter_state.c */
 EndedX richter_check_item_hearts_exit_shim(ObjArm r);              /* object/player_input.c */
 ObjArm MariaCheckItemHearts(void);                                 /* object/player_input.c */
 TurnWindow MariaPadSequence(void);                                 /* object/player_input.c */

@@ -2122,8 +2122,8 @@ MariaVecFloor:
 ; WAITS: no.
 ; Entry, exit: as RichterClearWork.
 MariaClearWork:
-    tai KernelZeros,$3BC0,$0040
-    tai KernelZeros,zPadHeld+$2000,$0019
+    tai KernelZeros,PlayerVarsBlock,$0040
+    tai KernelZeros,ZeroPage+zPadHeld,$0019
     rts
 
 ; @routine 01DD:17A MariaClearKeepPlace
@@ -2206,9 +2206,9 @@ MariaTurnOnPress_at1:
     lda a:OBJ_FACING_LEFT
     asl a
     tay
-    lda a:MariaAirTurn+$46,y
+    lda a:MariaTurnSpeeds,y
     sta a:OBJ_VX_LO
-    lda a:MariaAirTurn+$47,y
+    lda a:MariaTurnSpeeds+1,y
     sta a:OBJ_VX_HI
     rts
 MariaTurnOnPress_at0:
@@ -2259,9 +2259,9 @@ MariaAirTurn_at2:
     lda a:OBJ_FACING_LEFT
     asl a
     tay
-    lda a:MariaAirTurn+$42,y
+    lda a:MariaAirTurnSpeeds,y
     sta a:OBJ_VX_LO
-    lda a:MariaAirTurn+$43,y
+    lda a:MariaAirTurnSpeeds+1,y
     sta a:OBJ_VX_HI
 MariaAirTurn_at1:
     rts
@@ -2350,14 +2350,14 @@ MariaInvincibleTick_at3:
     cly
 MariaInvincibleTick_at6:
     lda a:PlayerInvincibleTimer
-    cmp a:RichterInvincibleMarks+$329,y
+    cmp a:MariaInvincibleMarks,y
     beq MariaInvincibleTick_at5
     iny
     cpy #$06
     bne MariaInvincibleTick_at6
     rts
 MariaInvincibleTick_at5:
-    lda a:RichterInvincibleScripts+$329,y
+    lda a:MariaInvincibleScripts,y
     jmp MariaStartHitScript
 MariaInvincibleTick_at4:
     lda #$01

@@ -6201,7 +6201,7 @@ StageSubModeTally031F:
 ; @run 6B:94AB
 ; WHAT IT DOES: The tally's count: while there is health it is counted into the score (zPlayerHealth down by one, the board's health
 ; redrawn, 1 point); then after the wait the hearts (zField94 down by one in BCD, redrawn, $10 points). A carry from the
-; score gives a life more and puts zStock at $3616. The score's rows are blended, and sound 1 plays every fourth frame. With
+; score gives a life more and puts zStock in StageShownStock. The score's rows are blended, and sound 1 plays every fourth frame. With
 ; both at 0 the tally goes on two steps with a wait of $C0, or, with the full-health mark at $2ABB set, stays with a wait
 ; of $40.
 ; HOW: Decrements; TallyHealth031F, TallyWait031F, TallyHearts031F; the kernel's score add; TallyExtraLife031F by BSR on a
@@ -6232,7 +6232,7 @@ TallyCount031F_at1:
     bcc TallyCount031F_at3
     bsr TallyExtraLife031F
     lda z:zStock
-    sta a:StageVar3616
+    sta a:StageShownStock
 TallyCount031F_at3:
     jsr BlendStageScoreRows031F
     lda z:zWaveCounter

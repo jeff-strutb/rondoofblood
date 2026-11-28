@@ -10,6 +10,7 @@
 #include "front_end.h"
 #include "scene_engine.h"
 #include "scene_0c.h"
+#include "scene_5a.h"
 
 
 static void scene_entry_shim(uint8_t high, uint8_t object, uint8_t index)
@@ -171,6 +172,10 @@ void abi_Scene0CFrameList(void)
 /* This overlay's object handlers by their addresses, for the engine's dispatch. */
 static bool scene_0c_handler(uint16_t target, uint8_t object, ObjExit *out)
 {
+    /* The $5A overlay holds this overlay's objects' loop and dispatch bytes: whichever is loaded gives its handlers. */
+    if (resident_at(0x820B) == DISC(0x2703, 0x20B)) {
+        return scene_5a_handler(target, object, out);
+    }
     switch (target) {
     case 0x828F: *out = Scene0CPlayListOnce(object); return true;
     case 0x82A5: *out = Scene0CSlideForCount(object); return true;

@@ -11,35 +11,13 @@
 #include "vram_update.h"
 #include "scene_5c.h"
 #include "front_end_copies.h"
+#include "scene_engine.h"
 
 enum {
-    SCENE_LENGTHS = 0x8030, SCENE_COMMANDS = 0x806B, SCENE_KINDS = 0x8214, SCENE_DRIFTERS = 0x8284,
+    SCENE_DRIFTERS = 0x8284,
     SCENE_SPEEDS_XL = 0x82D9, SCENE_SPEEDS_XH = 0x82DE, SCENE_SPEEDS_YL = 0x82E3, SCENE_SPEEDS_YH = 0x82E8,
-    SCENE_FRAME_LISTS = 0x82FC, SCENE_OBJECTS = 0x58, VDC_REG_VRAM_A = 2
+    SCENE_FRAME_LISTS = 0x82FC, SCENE_OBJECTS = 0x58
 };
-
-static void scene_obj_shim(ObjExit result)
-{
-    uint8_t moved_a = 0;
-
-    if (result.moved) {
-        moved_a = axis_move_flags_shim(result.move);
-        if (result.exit.a_kept) {
-            result.exit.a = moved_a;
-            result.exit.a_kept = false;
-        }
-    }
-    exit_shim(result.exit);
-}
-
-static void cpu_command_shim(uint8_t index, uint8_t command)
-{
-    cpu.a = index;
-    cpu.x = index;
-    cpu.y = 3;
-    abi_nz(3);
-    abi_flag(P_C, (command & 0x80) != 0);
-}
 
 static void scene_entry_shim(uint8_t high, uint8_t object, uint8_t index, bool carry)
 {
@@ -50,6 +28,20 @@ static void scene_entry_shim(uint8_t high, uint8_t object, uint8_t index, bool c
     abi_flag(P_C, carry);
 }
 
+static bool scene_5c_handler(uint16_t target, uint8_t object, ObjExit *out)
+{
+    switch (target) {
+    case 0x8293: *out = Scene5CPlayListOnce(object); return true;
+    case 0x82A9: *out = Scene5CSlideForCount(object); return true;
+    case 0x8249: *out = Scene5CDriftFiveObjects(object); return true;
+    case 0x8226: *out = Scene5CScrollUpAndClear(object); return true;
+    case 0x8220: *out = Scene5CShowFirstObject(object); return true;
+    default: return false;
+    }
+}
+
+static const SceneOverlay SCENE_5C = { 0, scene_5c_handler };
+
 static ObjExit kept_obj(uint8_t a, uint8_t nz)
 {
     ObjExit result = { 0 };
@@ -58,60 +50,6 @@ static ObjExit kept_obj(uint8_t a, uint8_t nz)
     result.exit.nz = nz;
     result.exit.x_kept = result.exit.y_kept = result.exit.c_kept = true;
     return result;
-}
-
-/* The objects' loop ($81F5), with what the registers held before it. */
-static Exit scene_objects(Exit prior)
-{
-    Exit exit = { 0 };
-    ObjExit result;
-    uint8_t slot, kind, a = 0, y = 0;
-    bool y_set = false, v_set = false, v = false, via_cpu = false;
-
-    for (slot = 0; slot != SCENE_OBJECTS; slot++) {
-        kind = RD8(OBJ->kind[slot]);
-        a = kind;
-        if (kind == 0) {
-            continue;
-        }
-        jsr_push(0x81FE);
-        result = Scene5CDispatchKind(kind, slot);
-        jsr_pop();
-        if (result.exit.from_cpu) {
-            via_cpu = true;
-            continue;
-        }
-        via_cpu = false;
-        a = result.exit.a;
-        if (!result.exit.x_kept) {
-            slot = result.exit.x;
-        }
-        if (!result.exit.y_kept) {
-            y = result.exit.y;
-            y_set = true;
-        }
-        if (result.exit.v_set) {
-            v = result.exit.v;
-            v_set = true;
-        }
-    }
-    if (via_cpu) {
-        exit.from_cpu = true;
-        cpu.a = a;
-        cpu.x = SCENE_OBJECTS;
-        abi_nz(0);
-        abi_flag(P_C, true);
-        return exit;
-    }
-    exit.a = a;
-    exit.x = SCENE_OBJECTS;
-    exit.y = y_set ? y : prior.y;
-    exit.y_kept = y_set ? false : prior.y_kept;
-    exit.nz = 0;
-    exit.c = true;
-    exit.v = v_set ? v : prior.v;
-    exit.v_set = v_set ? true : prior.v_set;
-    return exit;
 }
 
 /*
@@ -156,18 +94,7 @@ void abi_Scene5CBegin(void)
  */
 Exit Scene5CFrame(void)
 {
-    Exit exit;
-
-    jsr_push(0x8022);
-    (void)Scene5CFrameTick();
-    jsr_pop();
-    jsr_push(0x8025);
-    exit = Scene5CScriptStep();
-    jsr_pop();
-    jsr_push(0x8028);
-    exit = scene_objects(exit);
-    jsr_pop();
-    return exit;
+    return SceneFrame(&SCENE_5C);
 }
 
 void abi_Scene5CFrame(void)
@@ -185,31 +112,7 @@ void abi_Scene5CFrame(void)
  */
 Exit Scene5CScriptAdvance(void)
 {
-    Exit exit;
-    uint8_t command, length, low, sum;
-    unsigned total;
-    bool overflow;
-
-    command = RD8_PTR(ZP->script_ptr);
-    length = rd8((uint16_t)(SCENE_LENGTHS + command));
-    low = RD8(ZP->script_ptr);
-    total = (unsigned)length + low;
-    sum = (uint8_t)total;
-    overflow = ((length ^ sum) & (low ^ sum) & 0x80) != 0;
-    WR8(ZP->script_ptr, sum);
-    if (total > 0xFF) {
-        INC8(ZP->script_ptr_hi);
-    }
-    exit = Scene5CScriptStep();
-    if (exit.x_kept) {
-        exit.x = command;
-        exit.x_kept = false;
-    }
-    if (!exit.v_set) {
-        exit.v = overflow;
-        exit.v_set = true;
-    }
-    return exit;
+    return SceneScriptAdvance(&SCENE_5C);
 }
 
 void abi_Scene5CScriptAdvance(void)
@@ -227,66 +130,7 @@ void abi_Scene5CScriptAdvance(void)
  */
 Exit Scene5CScriptStep(void)
 {
-    Exit exit = { 0 };
-    uint8_t time, counter, command, index, low, high;
-    uint16_t target;
-
-    time = RD8_PTR_Y(ZP->script_ptr, 1);
-    counter = RD8(ZP->wait_timer3);
-    if (time != counter) {
-        exit.a = time;
-        exit.y = 1;
-        exit.nz = (uint8_t)(time - counter);
-        exit.c = time >= counter;
-        exit.x_kept = true;
-        return exit;
-    }
-    time = RD8_PTR_Y(ZP->script_ptr, 2);
-    counter = RD8(ZP->wait_timer4);
-    if (time != counter) {
-        exit.a = time;
-        exit.y = 2;
-        exit.nz = (uint8_t)(time - counter);
-        exit.c = time >= counter;
-        exit.x_kept = true;
-        return exit;
-    }
-    command = RD8_PTR(ZP->script_ptr);
-    index = (uint8_t)(command << 1);
-    low = rd8((uint16_t)(SCENE_COMMANDS + index));
-    high = rd8((uint16_t)(SCENE_COMMANDS + 1 + index));
-    target = (uint16_t)(low | (high << 8));
-    switch (target) {
-    case 0x80A5: return Scene5CCommandStartListAndClear();
-    case 0x80C0: return Scene5CCommandStartScript1();
-    case 0x80E8: return Scene5CCommandPlaceKind();
-    case 0x8111: return Scene5CCommandPlaceFrame();
-    case 0x80D8: return Scene5CCommandPlayAdpcm();
-    case 0x80C8: return Scene5CCommandStartScript2();
-    case 0x80D0: return Scene5CCommandStartScript3();
-    case 0x80E0: return Scene5CCommandCdPlay(index);
-    case 0x8172: return Scene5CCommandPlaceTitleObjectA();
-    case 0x8199: return Scene5CCommandPlaceTitleObjectB();
-    case 0x808D: return Scene5CCommandSubModeTwo();
-    case 0x80B9: return Scene5CCommandStartList();
-    case 0x80F7: return Scene5CCommandPlaceNext();
-    case 0x8126: return Scene5CCommandPlaceTimed();
-    case 0x81C0: return Scene5CCommandLoadBanks();
-    case 0x8093: return Scene5CCommandSetScroll();
-    case 0x8068:
-        exit.a = index;
-        exit.x = index;
-        exit.y = 3;
-        exit.nz = DEC8(ZP->mode_done);
-        exit.c = (command & 0x80) != 0;
-        return exit;
-    default:
-        break;
-    }
-    cpu_command_shim(index, command);
-    run_routine(target);
-    exit.from_cpu = true;
-    return exit;
+    return SceneScriptStep(&SCENE_5C);
 }
 
 void abi_Scene5CScriptStep(void)
@@ -304,8 +148,7 @@ void abi_Scene5CScriptStep(void)
  */
 Exit Scene5CCommandSubModeTwo(void)
 {
-    WR8(ZP->game_sub_mode, 2);
-    return Scene5CScriptAdvance();
+    return SceneCommandSubModeTwo(&SCENE_5C);
 }
 
 void abi_Scene5CCommandSubModeTwo(void)
@@ -323,13 +166,7 @@ void abi_Scene5CCommandSubModeTwo(void)
  */
 Exit Scene5CCommandSetScroll(void)
 {
-    uint8_t operand = RD8_PTR_Y(ZP->script_ptr, 3);
-
-    push8(operand);
-    WR8(SCROLL->x_hi[0], (uint8_t)(operand >> 4));
-    operand = pull8();
-    WR8(SCROLL->y_hi[0], (uint8_t)(operand & 0x0F));
-    return Scene5CScriptAdvance();
+    return SceneCommandSetScroll(&SCENE_5C);
 }
 
 void abi_Scene5CCommandSetScroll(void)
@@ -347,19 +184,7 @@ void abi_Scene5CCommandSetScroll(void)
  */
 Exit Scene5CCommandStartListAndClear(void)
 {
-    uint8_t list = RD8_PTR_Y(ZP->script_ptr, 3);
-
-    jsr_push(0x80AA);
-    StartListChannel0Kind2(list);
-    jsr_pop();
-    jsr_push(0x80AD);
-    ClearScreenState(wait_regs_xy_shim(0, 3));
-    jsr_pop();
-    jsr_push(0x80B0);
-    Scene5CClearObjects();
-    jsr_pop();
-    block_move_tai(KernelZeros, ScrollXFrac, 0x00EE, VDC_REG_VRAM_A, SCENE_OBJECTS, 0xFF);
-    return Scene5CScriptAdvance();
+    return SceneCommandStartListAndClear(&SCENE_5C);
 }
 
 void abi_Scene5CCommandStartListAndClear(void)
@@ -377,12 +202,7 @@ void abi_Scene5CCommandStartListAndClear(void)
  */
 Exit Scene5CCommandStartList(void)
 {
-    uint8_t list = RD8_PTR_Y(ZP->script_ptr, 3);
-
-    jsr_push(0x80BE);
-    StartListChannel0Kind2(list);
-    jsr_pop();
-    return Scene5CScriptAdvance();
+    return SceneCommandStartList(&SCENE_5C);
 }
 
 void abi_Scene5CCommandStartList(void)
@@ -400,12 +220,7 @@ void abi_Scene5CCommandStartList(void)
  */
 Exit Scene5CCommandStartScript1(void)
 {
-    uint8_t script = RD8_PTR_Y(ZP->script_ptr, 3);
-
-    jsr_push(0x80C5);
-    (void)StartScriptSlot0Kind1(script);
-    jsr_pop();
-    return Scene5CScriptAdvance();
+    return SceneCommandStartScript1(&SCENE_5C);
 }
 
 void abi_Scene5CCommandStartScript1(void)
@@ -423,12 +238,7 @@ void abi_Scene5CCommandStartScript1(void)
  */
 Exit Scene5CCommandStartScript2(void)
 {
-    uint8_t script = RD8_PTR_Y(ZP->script_ptr, 3);
-
-    jsr_push(0x80CD);
-    (void)StartScriptSlot0Kind2(script);
-    jsr_pop();
-    return Scene5CScriptAdvance();
+    return SceneCommandStartScript2(&SCENE_5C);
 }
 
 void abi_Scene5CCommandStartScript2(void)
@@ -446,12 +256,7 @@ void abi_Scene5CCommandStartScript2(void)
  */
 Exit Scene5CCommandStartScript3(void)
 {
-    uint8_t script = RD8_PTR_Y(ZP->script_ptr, 3);
-
-    jsr_push(0x80D5);
-    (void)StartScriptSlot0Kind3(script);
-    jsr_pop();
-    return Scene5CScriptAdvance();
+    return SceneCommandStartScript3(&SCENE_5C);
 }
 
 void abi_Scene5CCommandStartScript3(void)
@@ -469,12 +274,7 @@ void abi_Scene5CCommandStartScript3(void)
  */
 Exit Scene5CCommandPlayAdpcm(void)
 {
-    uint8_t sound = RD8_PTR_Y(ZP->script_ptr, 3);
-
-    jsr_push(0x80DD);
-    (void)AdpcmPlayFromDisc(sound);
-    jsr_pop();
-    return Scene5CScriptAdvance();
+    return SceneCommandPlayAdpcm(&SCENE_5C);
 }
 
 void abi_Scene5CCommandPlayAdpcm(void)
@@ -492,12 +292,7 @@ void abi_Scene5CCommandPlayAdpcm(void)
  */
 Exit Scene5CCommandCdPlay(uint8_t index)
 {
-    uint8_t track = RD8_PTR_Y(ZP->script_ptr, 3);
-
-    jsr_push(0x80E5);
-    (void)CdPlayOnce(track, index, 3);
-    jsr_pop();
-    return Scene5CScriptAdvance();
+    return SceneCommandCdPlay(&SCENE_5C, index);
 }
 
 void abi_Scene5CCommandCdPlay(void)
@@ -515,17 +310,7 @@ void abi_Scene5CCommandCdPlay(void)
  */
 Exit Scene5CCommandPlaceKind(void)
 {
-    uint8_t object, y, value;
-
-    object = RD8_PTR_Y(ZP->script_ptr, 3);
-    jsr_push(0x80EE);
-    (void)Scene5CPlaceObject(object, 3);
-    jsr_pop();
-    y = 7;
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->kind[object], value);
-    return Scene5CScriptAdvance();
+    return SceneCommandPlaceKind(&SCENE_5C);
 }
 
 void abi_Scene5CCommandPlaceKind(void)
@@ -543,21 +328,7 @@ void abi_Scene5CCommandPlaceKind(void)
  */
 Exit Scene5CCommandPlaceNext(void)
 {
-    uint8_t object, y, value;
-
-    object = RD8_PTR_Y(ZP->script_ptr, 3);
-    jsr_push(0x80FD);
-    (void)Scene5CPlaceObject(object, 3);
-    jsr_pop();
-    y = 7;
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->start_arg[object], value);
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->sprite_set[object], value);
-    WR8(OBJ->kind[object], 2);
-    return Scene5CScriptAdvance();
+    return SceneCommandPlaceNext(&SCENE_5C);
 }
 
 void abi_Scene5CCommandPlaceNext(void)
@@ -575,20 +346,7 @@ void abi_Scene5CCommandPlaceNext(void)
  */
 Exit Scene5CCommandPlaceFrame(void)
 {
-    uint8_t object, y, value;
-
-    object = RD8_PTR_Y(ZP->script_ptr, 3);
-    jsr_push(0x8117);
-    (void)Scene5CPlaceObject(object, 3);
-    jsr_pop();
-    y = 7;
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->frame[object], value);
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->sprite_set[object], value);
-    return Scene5CScriptAdvance();
+    return SceneCommandPlaceFrame(&SCENE_5C);
 }
 
 void abi_Scene5CCommandPlaceFrame(void)
@@ -606,27 +364,7 @@ void abi_Scene5CCommandPlaceFrame(void)
  */
 Exit Scene5CCommandPlaceTimed(void)
 {
-    uint8_t object, y, value;
-
-    object = RD8_PTR_Y(ZP->script_ptr, 3);
-    jsr_push(0x812C);
-    (void)Scene5CPlaceObject(object, 3);
-    jsr_pop();
-    y = 7;
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->frame[object], value);
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->sprite_set[object], value);
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->start_arg[object], value);
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->work_d[object], value);
-    WR8(OBJ->kind[object], 3);
-    return Scene5CScriptAdvance();
+    return SceneCommandPlaceTimed(&SCENE_5C);
 }
 
 void abi_Scene5CCommandPlaceTimed(void)
@@ -644,13 +382,7 @@ void abi_Scene5CCommandPlaceTimed(void)
  */
 void Scene5CClearObjects(void)
 {
-    uint8_t slot;
-
-    for (slot = 0; slot != SCENE_OBJECTS; slot++) {
-        jsr_push(0x8150);
-        ClearObject(slot);
-        jsr_pop();
-    }
+    SceneClearObjects(&SCENE_5C);
 }
 
 void abi_Scene5CClearObjects(void)
@@ -671,30 +403,7 @@ void abi_Scene5CClearObjects(void)
  */
 Exit Scene5CPlaceObject(uint8_t object, uint8_t y)
 {
-    Exit exit = { 0 };
-    uint8_t value;
-
-    jsr_push(0x8159);
-    ClearObject(object);
-    jsr_pop();
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->x_lo[object], value);
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->x_hi[object], value);
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->y_lo[object], value);
-    y++;
-    value = RD8_PTR_Y(ZP->script_ptr, y);
-    WR8(OBJ->y_hi[object], value);
-    exit.a = value;
-    exit.y = y;
-    exit.nz = value;
-    exit.x_kept = true;
-    exit.c_kept = true;
-    return exit;
+    return ScenePlaceObject(&SCENE_5C, object, y);
 }
 
 void abi_Scene5CPlaceObject(void)
@@ -712,22 +421,7 @@ void abi_Scene5CPlaceObject(void)
  */
 Exit Scene5CCommandPlaceTitleObjectA(void)
 {
-    uint8_t value;
-
-    jsr_push(0x8177);
-    ClearObject(0x2E);
-    jsr_pop();
-    INC8(OBJ->kind[0x2E]);
-    value = RD8_PTR_Y(ZP->script_ptr, 3);
-    WR8(OBJ->start_arg[0x2E], value);
-    value = RD8_PTR_Y(ZP->script_ptr, 4);
-    WR8(OBJ->work_d[0x2E], value);
-    value = RD8_PTR_Y(ZP->script_ptr, 5);
-    WR8(OBJ->work_e[0x2E], value);
-    value = RD8_PTR_Y(ZP->script_ptr, 6);
-    WR8(OBJ->work_f[0x2E], value);
-    WR8(OBJ->y_lo[0x2E], 0xC8);
-    return Scene5CScriptAdvance();
+    return SceneCommandPlaceTitleObjectA(&SCENE_5C);
 }
 
 void abi_Scene5CCommandPlaceTitleObjectA(void)
@@ -745,22 +439,7 @@ void abi_Scene5CCommandPlaceTitleObjectA(void)
  */
 Exit Scene5CCommandPlaceTitleObjectB(void)
 {
-    uint8_t value;
-
-    jsr_push(0x819E);
-    ClearObject(0x2F);
-    jsr_pop();
-    INC8(OBJ->kind[0x2F]);
-    value = RD8_PTR_Y(ZP->script_ptr, 3);
-    WR8(OBJ->start_arg[0x2F], value);
-    value = RD8_PTR_Y(ZP->script_ptr, 4);
-    WR8(OBJ->work_d[0x2F], value);
-    value = RD8_PTR_Y(ZP->script_ptr, 5);
-    WR8(OBJ->work_e[0x2F], value);
-    value = RD8_PTR_Y(ZP->script_ptr, 6);
-    WR8(OBJ->work_f[0x2F], value);
-    WR8(OBJ->y_lo[0x2F], 0xD8);
-    return Scene5CScriptAdvance();
+    return SceneCommandPlaceTitleObjectB(&SCENE_5C);
 }
 
 void abi_Scene5CCommandPlaceTitleObjectB(void)
@@ -778,34 +457,7 @@ void abi_Scene5CCommandPlaceTitleObjectB(void)
  */
 Exit Scene5CCommandLoadBanks(void)
 {
-    uint8_t i, bank, rotated, carry, out, round;
-
-    WR8(ZP->temp00, 0);
-    do {
-        i = RD8(ZP->temp00);
-        bank = (uint8_t)((uint8_t)(i << 1) + 0x10 + RD8(ZP->ram_base_bank));
-        tam(0x20, bank);
-        tam(0x40, (uint8_t)(bank + 1));
-        WR8(ZP->bios_c.lo, 0);
-        rotated = RD8(ZP->temp00);
-        carry = 0;
-        for (round = 0; round < 3; round++) {
-            out = (uint8_t)(rotated & 1);
-            rotated = (uint8_t)((rotated >> 1) | (carry << 7));
-            carry = out;
-        }
-        WR8(ZP->bios_c.hi, rotated);
-        WR8(ZP->bios_d.hi, 0);
-        WR8(ZP->bios_b.lo, 0);
-        WR8(ZP->bios_b.hi, 0xA0);
-        WR8(ZP->bios_a.lo, 0);
-        WR8(ZP->bios_a.hi, 0x40);
-        jsr_push(0x81EA);
-        (void)vec_ad_read();
-        jsr_pop();
-        INC8(ZP->temp00);
-    } while (RD8(ZP->temp00) != 4);
-    return Scene5CScriptAdvance();
+    return SceneCommandLoadBanks(&SCENE_5C);
 }
 
 void abi_Scene5CCommandLoadBanks(void)
@@ -823,10 +475,7 @@ void abi_Scene5CCommandLoadBanks(void)
  */
 Exit Scene5CObjectsStep(void)
 {
-    Exit none = { 0 };
-
-    none.y_kept = true;
-    return scene_objects(none);
+    return SceneObjectsStep(&SCENE_5C);
 }
 
 void abi_Scene5CObjectsStep(void)
@@ -844,46 +493,7 @@ void abi_Scene5CObjectsStep(void)
  */
 ObjExit Scene5CDispatchKind(uint8_t kind, uint8_t object)
 {
-    ObjExit result = { 0 };
-    uint8_t less, index, low, high, high_read;
-    uint16_t target;
-    bool carry;
-
-    less = (uint8_t)(kind - 1);
-    index = (uint8_t)(less << 1);
-    carry = (less & 0x80) != 0;
-    low = rd8((uint16_t)(SCENE_KINDS + index));
-    WR8(ZP->temp00, low);
-    high = rd8((uint16_t)(SCENE_KINDS + 1 + index));
-    WR8(ZP->temp01, high);
-    low = RD8(ZP->temp00);
-    high_read = RD8(ZP->temp01);
-    target = (uint16_t)(low | (high_read << 8));
-    switch (target) {
-    case 0x8293: result = Scene5CPlayListOnce(object); break;
-    case 0x82A9: result = Scene5CSlideForCount(object); break;
-    case 0x8249: result = Scene5CDriftFiveObjects(object); break;
-    case 0x8226: result = Scene5CScrollUpAndClear(object); break;
-    case 0x8220: result = Scene5CShowFirstObject(object); break;
-    default:
-        scene_entry_shim(high, object, index, carry);
-        run_routine(target);
-        result.exit.from_cpu = true;
-        return result;
-    }
-    if (result.exit.a_kept) {
-        result.exit.a = high;
-        result.exit.a_kept = false;
-    }
-    if (result.exit.y_kept) {
-        result.exit.y = index;
-        result.exit.y_kept = false;
-    }
-    if (result.exit.c_kept && !result.moved) {
-        result.exit.c = carry;
-        result.exit.c_kept = false;
-    }
-    return result;
+    return SceneDispatchKind(&SCENE_5C, kind, object);
 }
 
 void abi_Scene5CDispatchKind(void)
@@ -1123,7 +733,8 @@ void abi_Scene5CFrameList(void)
  * @run 6B:8000
  * @stop 8007
  * WHAT IT DOES: One call of the scene: the handler of the sub-mode in the table at $8007 (0 begins, 1 runs a frame).
- * HOW: zGameSubMode doubled indexes the table and is jumped through.
+ * HOW: zGameSubMode doubled indexes the table and is jumped through, to the routine loaded there: the cutscene
+ * overlays hold these bytes with their own tables.
  * WAITS: yes, through Scene5CBegin.
  * Entry: nothing. Exit: as the handler leaves them.
  */
@@ -1138,12 +749,6 @@ Exit Scene5CStep(uint8_t kept_y)
     low = rd8((uint16_t)(0x8007 + index));
     high = rd8((uint16_t)(0x8008 + index));
     target = (uint16_t)(low | (high << 8));
-    switch (target) {
-    case 0x800B: return Scene5CBegin(index, kept_y);
-    case 0x801F: return Scene5CFrame();
-    default:
-        break;
-    }
     scene_entry_shim(index, index, kept_y, (state & 0x80) != 0);
     run_routine(target);
     exit.from_cpu = true;

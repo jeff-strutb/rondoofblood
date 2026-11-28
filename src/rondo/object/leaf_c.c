@@ -1242,8 +1242,9 @@ void abi_HitBoxOffWait40_0BFE(void)
 /*
  * @routine 0BFF:4C1 StateOnAndMarkField8C0BFF
  * @run 71:D4C1
- * WHAT IT DOES: Steps the state on and sets bit 7 of zField8C (Stage 07's overlay).
- * HOW: INC, ORA.
+ * WHAT IT DOES: Steps the state on and sets bit 7 of zField8C, then returns through ReturnFromStep0BFF (Stage 07's
+ * overlay).
+ * HOW: INC, ORA; it runs into the RTS other steps jump to.
  * WAITS: no.
  * Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
  */
@@ -1253,6 +1254,8 @@ void StateOnAndMarkField8C0BFF(uint8_t slot)
     op_lda(RD8(ZP->field8c));
     op_ora(0x80);
     WR8(ZP->field8c, cpu.a);
+    /* falls into $D4CA */
+    run_routine(0xD4CA);
 }
 
 void abi_StateOnAndMarkField8C0BFF(void)

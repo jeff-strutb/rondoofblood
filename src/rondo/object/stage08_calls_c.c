@@ -227,17 +227,13 @@ void abi_FollowLinkAtAngle0D2D(void)
  * @run 81:C477
  * WHAT IT DOES: Clears the object unless the slot below holds kind $C4; else puts it at that slot's place, moves it
  * at angle OBJ_WORK_D with speed $1000, and swings the 16-bit angle OBJ_WORK_D-E by a cosine of OBJ_WORK_F, which
- * steps by 2; when that wraps to 0 the angle goes back to $40 (Stage 08's overlay).
- * HOW: A kind compare, CopyObjectPlaceBack, SetVelocityFromAngle, ApplyVelocity, then ScaleByCosine of a word from
- * a table by OBJ_START_ARG and a 16-bit add.
+ * steps by 2; when that wraps to 0 the angle goes back to $40: that part is MoveAndSwingByCosine0D2D, which it runs
+ * into (Stage 08's overlay).
+ * HOW: A kind compare, CopyObjectPlaceBack, SetVelocityFromAngle, then MoveAndSwingByCosine0D2D's ApplyVelocity,
+ * ScaleByCosine of a word from a table by OBJ_START_ARG and a 16-bit add.
  * WAITS: no.
- * Entry: X the object; D as the caller left it. Exit: A, X, Y and the flags as its last instruction or call left
- * them.
+ * Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
  */
-enum {
-    SwingLinkByCosine0D2DSwings = 0xC4D0,   /* the swing's size, a word per OBJ_START_ARG */
-};
-
 void SwingLinkByCosine0D2D(uint8_t slot)
 {
     op_lda(rd8((uint16_t)(COL(OBJ->kind) - 1 + slot)));
@@ -259,36 +255,8 @@ void SwingLinkByCosine0D2D(uint8_t slot)
     jsr_push(0xC493);
     scale_exit_shim(SetVelocityFromAngle(cpu.a, slot));
     jsr_pop();
-    jsr_push(0xC496);
-    axis_move_exit_shim(ApplyVelocity(slot));
-    jsr_pop();
-    op_lda(RD8(OBJ->start_arg[slot]));
-    cpu.a = f_asl(cpu.a);
-    op_tay();
-    op_lda(rd8((uint16_t)(SwingLinkByCosine0D2DSwings + cpu.y)));
-    WR8(ZP->temp00, cpu.a);
-    op_lda(rd8((uint16_t)(SwingLinkByCosine0D2DSwings + 1 + cpu.y)));
-    WR8(ZP->temp01, cpu.a);
-    op_lda(RD8(OBJ->work_f[slot]));
-    jsr_push(0xC4AB);
-    scale_exit_shim(ScaleByCosine(cpu.a));
-    jsr_pop();
-    op_lda(RD8(OBJ->work_e[slot]));
-    op_clc();
-    op_adc(RD8(ZP->product.mid));
-    WR8(OBJ->work_e[slot], cpu.a);
-    op_lda(RD8(OBJ->work_d[slot]));
-    op_adc(RD8(ZP->product.hi));
-    WR8(OBJ->work_d[slot], cpu.a);
-    op_lda(RD8(OBJ->work_f[slot]));
-    op_clc();
-    op_adc(0x02);
-    WR8(OBJ->work_f[slot], cpu.a);
-    if (flag_z()) {
-        op_lda(0x40);
-        WR8(OBJ->work_d[slot], cpu.a);
-        WR8(OBJ->work_e[slot], 0);
-    }
+    /* falls into $C493 */
+    run_routine(0xC493);
 }
 
 void abi_SwingLinkByCosine0D2D(void)

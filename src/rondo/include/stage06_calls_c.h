@@ -80,6 +80,8 @@ void RandomMinusOneToOne0A9C(void);
 void abi_RandomMinusOneToOne0A9C(void);
 void SoundOnce0A9C(uint8_t slot);
 void abi_SoundOnce0A9C(void);
+void ReturnAfterSound0A9C(void);
+void abi_ReturnAfterSound0A9C(void);
 void RandomMinusTwoToTwo0A9C(void);
 void abi_RandomMinusTwoToTwo0A9C(void);
 void EnterFromScreenEdge0A9D(uint8_t slot);

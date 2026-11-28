@@ -846,8 +846,9 @@ HitBoxOffWait40_0BFE:
 
 ; @routine 0BFF:4C1 StateOnAndMarkField8C0BFF
 ; @run 71:D4C1
-; WHAT IT DOES: Steps the state on and sets bit 7 of zField8C (Stage 07's overlay).
-; HOW: INC, ORA.
+; WHAT IT DOES: Steps the state on and sets bit 7 of zField8C, then returns through ReturnFromStep0BFF (Stage 07's
+; overlay).
+; HOW: INC, ORA; it runs into the RTS other steps jump to.
 ; WAITS: no.
 ; Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
 StateOnAndMarkField8C0BFF:
@@ -855,7 +856,6 @@ StateOnAndMarkField8C0BFF:
     lda z:zField8C
     ora #$80
     sta z:zField8C
-    rts
 
 ; @routine 0D2D:29C SetUpByStartArg0D2D
 ; @run 81:C29C

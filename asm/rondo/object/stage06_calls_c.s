@@ -1117,18 +1117,23 @@ RandomMinusOneToOne0A9C_at0:
 
 ; @routine 0A9C:467 SoundOnce0A9C
 ; @run 70:BC67
-; WHAT IT DOES: The first time only (OBJ_WORK_F 0), sets OBJ_WORK_F and plays sound $AB (Stage 06's overlay).
-; HOW: A test, INC, SoundCommand.
+; WHAT IT DOES: The first time only (OBJ_WORK_F 0), sets OBJ_WORK_F and plays sound $AB, through
+; MarkAndSoundAB0A9C; else returns through the RTS after it (Stage 06's overlay).
+; HOW: A test; the rest is MarkAndSoundAB0A9C's or ReturnAfterSound0A9C's.
 ; WAITS: no.
-; Entry: X the object; Y as the caller set it. Exit: A, X, Y and the flags as its last instruction or call left
-; them.
+; Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
 SoundOnce0A9C:
     lda a:OBJ_WORK_F,x
-    bne SoundOnce0A9C_at0
-    inc a:OBJ_WORK_F,x
-    lda #$AB
-    jsr VecSoundCommand
-SoundOnce0A9C_at0:
+    bne ReturnAfterSound0A9C
+
+; @routine 0A9C:474 ReturnAfterSound0A9C
+; @run 70:BC74
+; WHAT IT DOES: Returns: the RTS that ends MarkAndSoundAB0A9C, which SoundOnce0A9C branches to when the sound has
+; been made (Stage 06's overlay).
+; HOW: RTS.
+; WAITS: no.
+; Entry: nothing. Exit: A, X, Y and the flags as its last instruction or call left them.
+ReturnAfterSound0A9C:
     rts
 
 ; @routine 0A9C:522 RandomMinusTwoToTwo0A9C

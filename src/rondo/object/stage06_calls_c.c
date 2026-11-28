@@ -1911,32 +1911,44 @@ void abi_RandomMinusOneToOne0A9C(void)
 /*
  * @routine 0A9C:467 SoundOnce0A9C
  * @run 70:BC67
- * WHAT IT DOES: The first time only (OBJ_WORK_F 0), sets OBJ_WORK_F and plays sound $AB (Stage 06's overlay).
- * HOW: A test, INC, SoundCommand.
+ * WHAT IT DOES: The first time only (OBJ_WORK_F 0), sets OBJ_WORK_F and plays sound $AB, through
+ * MarkAndSoundAB0A9C; else returns through the RTS after it (Stage 06's overlay).
+ * HOW: A test; the rest is MarkAndSoundAB0A9C's or ReturnAfterSound0A9C's.
  * WAITS: no.
- * Entry: X the object; Y as the caller set it. Exit: A, X, Y and the flags as its last instruction or call left
- * them.
+ * Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
  */
 void SoundOnce0A9C(uint8_t slot)
 {
     op_lda(RD8(OBJ->work_f[slot]));
-    if (flag_z()) {
-        RMW8(OBJ->work_f[slot], v, f_inc(v));
-        op_lda(0xAB);
-        {
-            uint8_t command;
-
-            jsr_push(0xBC74);
-            command = cpu.a;
-            sound_command_exit_shim(command, SoundCommand(command, slot, cpu.y));
-            jsr_pop();
-        }
+    if (!flag_z()) {
+        ReturnAfterSound0A9C();
+        return;
     }
+    /* falls into $BC6C */
+    run_routine(0xBC6C);
 }
 
 void abi_SoundOnce0A9C(void)
 {
     SoundOnce0A9C(cpu.x);
+}
+
+/*
+ * @routine 0A9C:474 ReturnAfterSound0A9C
+ * @run 70:BC74
+ * WHAT IT DOES: Returns: the RTS that ends MarkAndSoundAB0A9C, which SoundOnce0A9C branches to when the sound has
+ * been made (Stage 06's overlay).
+ * HOW: RTS.
+ * WAITS: no.
+ * Entry: nothing. Exit: A, X, Y and the flags as its last instruction or call left them.
+ */
+void ReturnAfterSound0A9C(void)
+{
+}
+
+void abi_ReturnAfterSound0A9C(void)
+{
+    ReturnAfterSound0A9C();
 }
 
 /*

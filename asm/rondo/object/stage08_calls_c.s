@@ -126,13 +126,12 @@ FollowLinkAtAngle0D2D_at1:
 ; @run 81:C477
 ; WHAT IT DOES: Clears the object unless the slot below holds kind $C4; else puts it at that slot's place, moves it
 ; at angle OBJ_WORK_D with speed $1000, and swings the 16-bit angle OBJ_WORK_D-E by a cosine of OBJ_WORK_F, which
-; steps by 2; when that wraps to 0 the angle goes back to $40 (Stage 08's overlay).
-; HOW: A kind compare, CopyObjectPlaceBack, SetVelocityFromAngle, ApplyVelocity, then ScaleByCosine of a word from
-; a table by OBJ_START_ARG and a 16-bit add.
+; steps by 2; when that wraps to 0 the angle goes back to $40: that part is MoveAndSwingByCosine0D2D, which it runs
+; into (Stage 08's overlay).
+; HOW: A kind compare, CopyObjectPlaceBack, SetVelocityFromAngle, then MoveAndSwingByCosine0D2D's ApplyVelocity,
+; ScaleByCosine of a word from a table by OBJ_START_ARG and a 16-bit add.
 ; WAITS: no.
-; Entry: X the object; D as the caller left it. Exit: A, X, Y and the flags as its last instruction or call left
-; them.
-SwingLinkByCosine0D2DSwings = $C4D0 ; the swing's size, a word per OBJ_START_ARG
+; Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
 SwingLinkByCosine0D2D:
     lda a:OBJ_KIND-1,x
     cmp #$C4
@@ -148,33 +147,6 @@ SwingLinkByCosine0D2D_at0:
     sta z:zTemp01
     lda a:OBJ_WORK_D,x
     jsr VecSetVelocityFromAngle
-    jsr VecApplyVelocity
-    lda a:OBJ_START_ARG,x
-    asl a
-    tay
-    lda a:SwingLinkByCosine0D2DSwings,y
-    sta z:zTemp00
-    lda a:SwingLinkByCosine0D2DSwings+1,y
-    sta z:zTemp01
-    lda a:OBJ_WORK_F,x
-    jsr VecScaleByCosine
-    lda a:OBJ_WORK_E,x
-    clc
-    adc z:SpriteFlipMask
-    sta a:OBJ_WORK_E,x
-    lda a:OBJ_WORK_D,x
-    adc z:zPlaneRowsLeft
-    sta a:OBJ_WORK_D,x
-    lda a:OBJ_WORK_F,x
-    clc
-    adc #$02
-    sta a:OBJ_WORK_F,x
-    bne SwingLinkByCosine0D2D_at1
-    lda #$40
-    sta a:OBJ_WORK_D,x
-    stz a:OBJ_WORK_E,x
-SwingLinkByCosine0D2D_at1:
-    rts
 
 ; @routine 0D2D:4EE StartLinkByIndex0D2D
 ; @run 81:C4EE

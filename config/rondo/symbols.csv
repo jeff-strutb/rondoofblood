@@ -81,6 +81,8 @@ E05D,abs,BiosExSetvec,ex_setvec: sets an interrupt handler: A which, X and Y its
 E063,abs,BiosExJoysns,ex_joysns: reads the pads; called every frame
 E06C,abs,BiosExDotmod,ex_dotmod: sets the dot clock; called once at start
 E06F,abs,BiosExScrmod,ex_scrmod: sets the screen mode; called once at start
+E08A,abs,BiosExBgon,ex_bgon: the background shown
+E099,abs,BiosExDspoff,ex_dspoff: the display off
 E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 # Work RAM.
 22D0,abs,SoundCommandIn,the sound driver: the command it is taking; also the first byte of low game RAM the start clears

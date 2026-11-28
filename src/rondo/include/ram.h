@@ -80,6 +80,8 @@
 #define BiosExJoysns 0xE063 /* ex_joysns: reads the pads; called every frame */
 #define BiosExDotmod 0xE06C /* ex_dotmod: sets the dot clock; called once at start */
 #define BiosExScrmod 0xE06F /* ex_scrmod: sets the screen mode; called once at start */
+#define BiosExBgon 0xE08A /* ex_bgon: the background shown */
+#define BiosExDspoff 0xE099 /* ex_dspoff: the display off */
 #define BiosExSatclr 0xE0A2 /* ex_satclr: clears the sprite table; called once at start */
 #define SoundCommandIn 0x22D0 /* the sound driver: the command it is taking; also the first byte of low game RAM the start clears */
 #define LevelStreamLo 0x26D0 /* the object stream's position low */

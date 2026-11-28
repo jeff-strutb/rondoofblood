@@ -5604,3 +5604,119 @@ GateClose3CD_at1:
     plx
 GateClose3CD_at0:
     rts
+
+; @routine 03CD:1AD StageModeEventsStep3CD
+; @run 6B:81AD
+; @unreachable 6B:81AD-6B:81D2 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $81AD runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: As StageModeEventsStep152D (152D:0B1), whose bytes these are.
+; HOW: The same instructions; none of its absolute operands points into its own bytes, so it runs the same here.
+; WAITS: no.
+; Entry: nothing. Exit: as StageModeEventsStep152D: A the last value masked, N and Z from the last compare or mask; C
+; from the last compare; V from the add. X and Y kept.
+StageModeEventsStep3CD:
+    inc z:zWaveCounter
+    lda z:zModeEvents
+    clc
+    adc #$11
+    cmp #$50
+    bcc StageModeEventsStep3CD_at0
+    and #$0F
+StageModeEventsStep3CD_at0:
+    sta z:zModeEvents
+    and #$03
+    cmp #$03
+    bne StageModeEventsStep3CD_at1
+    inc z:zModeEvents
+    lda z:zModeEvents
+    and #$0C
+    cmp #$0C
+    bne StageModeEventsStep3CD_at1
+    lda z:zModeEvents
+    and #$F0
+    sta z:zModeEvents
+StageModeEventsStep3CD_at1:
+    rts
+
+; @routine 03CF:34B TallyWait3CD
+; @run 6B:934B
+; @unreachable 6B:934B-6B:9355 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $934B runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: As TallyWait152D (152F:34D), whose bytes these are.
+; HOW: The same instructions; none of its absolute operands points into its own bytes, so it runs the same here.
+; WAITS: no.
+; Entry: nothing. Exit: as TallyWait152D: count 0, A 0, N and Z from it, the rest kept; else the caller's frame
+; dropped, A the last byte pulled, N and Z from it.
+TallyWait3CD:
+    lda a:OBJ_WORK_B+16
+    beq TallyWait3CD_at0
+    dec a:OBJ_WORK_B+16
+    pla
+    pla
+TallyWait3CD_at0:
+    rts
+
+; @routine 03CF:638 HitKindSpawn3CD
+; @run 6B:9638
+; @unreachable 6B:9638-6B:9654 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $9638 runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: As HitKindSpawn152D (152F:5C7), whose bytes these are.
+; HOW: The same instructions; none of its absolute operands points into its own bytes, so it runs the same here.
+; WAITS: no.
+; Entry: X the object, Y the slot. Exit: as HitKindSpawn152D: A the last byte loaded, N and Z from it. X, Y, C and
+; V kept.
+HitKindSpawn3CD:
+    lda a:OBJ_WORK_F+48,y
+    sta a:OBJ_HIT_STATUS+80,x
+    lda a:OBJ_HIT_STATUS+80
+    bne HitKindSpawn3CD_at0
+    lda a:LevelFullWalk+4
+    bne HitKindSpawn3CD_at0
+    lda a:OBJ_HIT_STATUS+8,x
+    sta a:OBJ_HIT_STATUS+80
+    lda a:OBJ_PACE+24,x
+    sta a:OBJ_LOOP_FLAGS+40
+HitKindSpawn3CD_at0:
+    rts
+
+; @routine 03CF:67A HitKindState3CD
+; @run 6B:967A
+; @unreachable 6B:967A-6B:9680 no read the game makes loads sectors 03CD to 03D0 or their six copies, so these
+; bytes are never in memory (the copies are at 134D, 14DD, 154D, 15BD, 162D and 177D). Read in full: the 95 scene
+; records at $74D1 and every op of their lists, the reads a later op overwrites included; the boot block's three
+; reads; the card's reads of sectors 0 to 2; the old-card program's 20 sectors from $23; the five cd_read calls no
+; script runs; LoadSceneScript for every value of A (the records past scene $5E name no sector on the disc);
+; SceneReadSectors, entered only from the op loop at $7001; the ADPCM loads, to memory the CPU cannot run. No input or
+; poke of work RAM can load the sectors, and a unit call at $967A runs whatever overlay another scene left there, not
+; these bytes.
+;
+; WHAT IT DOES: As HitKindState152D (152F:5F1), whose bytes these are.
+; HOW: The same instructions; none of its absolute operands points into its own bytes, so it runs the same here.
+; WAITS: no.
+; Entry: X the object, Y the slot. Exit: as HitKindState152D: A the kind, N and Z from it. X, Y, C and V kept.
+HitKindState3CD:
+    lda a:OBJ_WORK_F+48,y
+    sta a:OBJ_HIT_STATUS+80,x
+    rts
+

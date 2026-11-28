@@ -292,4 +292,14 @@ void abi_GateOpen3CD(void);
 void abi_GateWaitClear3CD(void);
 void abi_GateClose3CD(void);
 
+/* Byte copies of 152D routines, filed at this origin. */
+StageRegs StageModeEventsStep3CD(StageRegs r);
+TallyWaitEnd TallyWait3CD(StageRegs r);
+StageRegs HitKindSpawn3CD(StageRegs r);
+StageRegs HitKindState3CD(StageRegs r);
+void abi_StageModeEventsStep3CD(void);
+void abi_TallyWait3CD(void);
+void abi_HitKindSpawn3CD(void);
+void abi_HitKindState3CD(void);
+
 #endif

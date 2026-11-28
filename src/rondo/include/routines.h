@@ -1259,6 +1259,7 @@ typedef struct {
 void floor_check_exit_shim(FloorResult result);
 void column_read_exit_shim(ColumnRead one);
 void low_columns_exit_shim(LowColumns low);
+void maria_low_columns_exit_shim(LowColumns low);
 FootingCheck RichterHasNoFooting(void);
 void footing_exit_shim(FootingCheck footing);
 LedgeCheck RichterLedgeCheck(void);

@@ -1038,5 +1038,7 @@
 #define BossFlashStep 0x35BD /* slot 85's OBJ_WORK_F: the boss gauge flash's step, picking its mask pattern */
 #define BossFlashAddresses 0x8D0D /* the boss gauge flash's VRAM cells, a word each */
 #define BossFlashMasks 0x8D1D /* the boss gauge flash's mask patterns by its step's low three bits */
+#define MariaItem4WalkSpeeds 0xB809 /* item 4's walking X speed by facing: $0050, $FFB0 (MariaItem4Walk) */
+#define MariaItem4Steps 0xB6B7 /* three words by OBJ_SUBSTATE: item 4's start, walk and air (MariaStateItem4) */
 
 #endif

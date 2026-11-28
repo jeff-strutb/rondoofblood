@@ -1054,9 +1054,15 @@ LowColumns MariaLowColumnsBlocked(void)
     return low_columns_blocked(MARIA_BLOCKED_COLUMNS, 0xBE1F, 0xBE2E, &maria_columns);
 }
 
+/* MariaLowColumnsBlocked's exit, for a caller that gives it. */
+void maria_low_columns_exit_shim(LowColumns low)
+{
+    low_columns_exit_columns(low, MARIA_BLOCKED_COLUMNS);
+}
+
 void abi_MariaLowColumnsBlocked(void)
 {
-    low_columns_exit_columns(MariaLowColumnsBlocked(), MARIA_BLOCKED_COLUMNS);
+    maria_low_columns_exit_shim(MariaLowColumnsBlocked());
 }
 
 /*

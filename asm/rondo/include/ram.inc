@@ -1035,3 +1035,5 @@ BossGaugeEnding = $350D ; slot 85's OBJ_WORK_D: not zero, the gauge's timer chec
 BossFlashStep = $35BD ; slot 85's OBJ_WORK_F: the boss gauge flash's step, picking its mask pattern
 BossFlashAddresses = $8D0D ; the boss gauge flash's VRAM cells, a word each
 BossFlashMasks = $8D1D ; the boss gauge flash's mask patterns by its step's low three bits
+MariaItem4WalkSpeeds = $B809 ; item 4's walking X speed by facing: $0050, $FFB0 (MariaItem4Walk)
+MariaItem4Steps = $B6B7 ; three words by OBJ_SUBSTATE: item 4's start, walk and air (MariaStateItem4)

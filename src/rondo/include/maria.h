@@ -20,13 +20,14 @@
 #include "player_objects.h"
 #include "richter.h"
 
-enum { R_A = 0x01, R_X = 0x02, R_Y = 0x04, R_NZ = 0x08, R_C = 0x10, R_V = 0x20 };
+enum { R_A = 0x01, R_X = 0x02, R_Y = 0x04, R_NZ = 0x08, R_C = 0x10, R_V = 0x20, R_B = 0x40 };
 
 typedef struct {
     uint8_t a, x, y;
     uint8_t nz;     /* the value N and Z come from */
     bool n_on;      /* N set although nz is zero (a TST whose memory had bit 7) */
     bool c, v;
+    bool b;         /* B, as a PLP leaves it */
     uint8_t set;
 } Regs;
 
@@ -145,6 +146,9 @@ static inline Regs r_then(Regs before, Regs after)
     if (!(after.set & R_V)) {
         after.v = before.v;
     }
+    if (!(after.set & R_B)) {
+        after.b = before.b;
+    }
     after.set |= before.set;
     return after;
 }
@@ -173,6 +177,22 @@ static inline void regs_exit(Regs r)
     if (r.set & R_V) {
         abi_flag(P_V, r.v);
     }
+    if (r.set & R_B) {
+        abi_flag(P_B, r.b);
+    }
+}
+
+/* PLP: N, Z, C, V and B as the byte pulled has them. */
+static inline Regs r_plp(Regs r, uint8_t p)
+{
+    bool zero = (p & P_Z) != 0;
+
+    r = r_nz(r, zero ? 0 : (uint8_t)((p & P_N) | 0x01));
+    r.n_on = zero && (p & P_N) != 0;
+    r = r_v(r_c(r, (p & P_C) != 0), (p & P_V) != 0);
+    r.b = (p & P_B) != 0;
+    r.set |= R_B;
+    return r;
 }
 
 /*
@@ -181,7 +201,7 @@ static inline void regs_exit(Regs r)
  */
 typedef enum { MX_ANIMATION, MX_SOUND, MX_SCRIPT, MX_COLUMNS, MX_FOOTING, MX_LANDING, MX_LEDGE, MX_CRASH, MX_TURN, MX_FLOOR, MX_UP_MARKED, MX_READ_BELOW,
     MX_SOLID, MX_LIFT, MX_MARKED, MX_WALL, MX_TST, MX_GRAVITY, MX_UNDER_FEET, MX_ON_MARKED,
-    MX_OFFSET_READ, MX_JUMP_OR_CLIMB, MX_LADDER } MxKind;
+    MX_OFFSET_READ, MX_JUMP_OR_CLIMB, MX_LADDER, MX_LOW } MxKind;
 
 typedef struct {
     MxKind kind;
@@ -210,6 +230,7 @@ typedef struct {
         OffsetRead offset_read;
         JumpOrClimb jump_or_climb;
         LadderCheck ladder;
+        LowColumns low;
     } u;
     bool carry;             /* MX_READ_BELOW: the row's carry, which says no read was made */
 } MxStep;
@@ -453,6 +474,15 @@ static inline void mx_ladder(MExit *e, LadderCheck value)
     mx_push(e, s);
 }
 
+static inline void mx_low(MExit *e, LowColumns value)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_LOW;
+    s.u.low = value;
+    mx_push(e, s);
+}
+
 static inline void mx_script(MExit *e, uint8_t script)
 {
     MxStep s = { 0 };
@@ -557,6 +587,9 @@ static inline void mx_exit(MExit e)
             break;
         case MX_LADDER:
             ladder_exit_shim(e.step[i].u.ladder);
+            break;
+        case MX_LOW:
+            maria_low_columns_exit_shim(e.step[i].u.low);
             break;
         case MX_TURN:
             abi_ended(e.step[i].u.turn.end);
@@ -720,6 +753,7 @@ ObjArm MariaNoteItemPress(void);                                   /* object/pla
 uint8_t MariaClaimSlotsB(void);                                    /* object/richter_objects.c */
 TileRead MariaReadOnScreen(uint8_t row, bool carry);               /* object/player_terrain.c */
 TurnWindow MariaUseItemFromThrow(void);                            /* object/player_input.c */
+LowColumns MariaLowColumnsBlocked(void);                           /* object/player_terrain.c */
 void MariaClearPadOverrides(void);                                 /* object/player_input.c */
 
 /* object/maria_frame.c */
@@ -876,6 +910,22 @@ MExit MariaHurtKnocked(uint8_t x, uint8_t y);
 MExit MariaHurtThrown(uint8_t x, uint8_t y);
 MExit MariaHurtThrownLanded(void);
 MExit MariaStateHurt(uint8_t x, uint8_t y);
+
+/* object/maria_item4.c */
+Regs MariaCopyVramWord(void);
+Regs MariaItem4CopyTiles(void);
+Regs MariaItem4Cancel(void);
+MExit MariaItem4End(uint8_t y);
+Regs MariaItem4ToAir(void);
+Regs MariaItem4Jump(void);
+Regs MariaItem4Still(void);
+MExit MariaItem4Blocked(void);
+MExit MariaItem4Landed(void);
+MExit MariaItem4Start(void);
+MExit MariaItem4Walk(uint8_t y);
+MExit MariaItem4Air(uint8_t y);
+MExit MariaStateItem4(uint8_t y);
+MExit MariaStateSequence(void);
 
 void abi_MariaObjectApplyVelocity(void);                           /* object/richter_objects.c */
 void abi_MariaApplyMoveAndPush(void);                              /* object/richter_state.c */

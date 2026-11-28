@@ -37,6 +37,9 @@ enum {
 
 typedef StageRegs Regs;
 
+/* 03CD's tables. */
+static const StageRouteBuild route_3cd = { 0x9D63, 0x9D69, 0x9D57, 0x9D5A, 0x9D91, 0x9E21, 0x9D60, PROBE_LISTS_3CD };
+
 void abi_VecAddScoreByte(void);   /* system/vectors.c */
 void abi_VecApplyVelocity(void);   /* system/vectors.c */
 void abi_VecApplyVelocityX(void);   /* system/vectors.c */
@@ -5198,6 +5201,12 @@ static Regs list_advance(Regs r)
  */
 StageRegs StageUnpackList3CD(StageRegs r)
 {
+    return StageUnpackList3CDAt(r, &route_3cd);
+}
+
+/* StageUnpackList3CD's body, for the builds of it with their own tables. */
+StageRegs StageUnpackList3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     Sum sum;
     uint8_t route, count, value;
 
@@ -5206,9 +5215,9 @@ StageRegs StageUnpackList3CD(StageRegs r)
     r.c = (route & 0x80) != 0;
     r = loaded(r, (uint8_t)(route << 1));
     r.y = r.a;
-    r = loaded(r, rd8((uint16_t)(0x9D63 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->unpack_lists + r.y)));
     WR8(ZP->temp00, r.a);
-    r = loaded(r, rd8((uint16_t)(0x9D64 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->unpack_lists + 1 + r.y)));
     WR8(ZP->temp01, r.a);
     for (r.y = 0; r.y != 8; r.y++) {
         value = RD8_PTR_Y(ZP->temp00, r.y);

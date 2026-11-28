@@ -302,4 +302,10 @@ void abi_TallyWait3CD(void);
 void abi_HitKindSpawn3CD(void);
 void abi_HitKindState3CD(void);
 
+/* The tables a build of the route and screen routines at $8000-$97FF reads: 03CD's and its table-only copies'. */
+typedef struct {
+    uint16_t unpack_lists, row_maps, route_a, route_b, screens, levels, next_stage, probe_lists;
+} StageRouteBuild;
+StageRegs StageUnpackList3CDAt(StageRegs r, const StageRouteBuild *build);
+
 #endif

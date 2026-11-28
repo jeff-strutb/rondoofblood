@@ -1,0 +1,63 @@
+/* The unloaded stage programs' routines (system/stage_programs_census.c). */
+#ifndef RONDO_STAGE_PROGRAMS_CENSUS_H
+#define RONDO_STAGE_PROGRAMS_CENSUS_H
+
+#include "stage_map.h"
+#include "enemy_objects.h"
+
+ObjArm ResetStageVariables026D(void);
+void abi_ResetStageVariables026D(void);
+StageRunsEnd ExpandStageVramRuns026E(void);
+void abi_ExpandStageVramRuns026E(void);
+StageListEnd ExpandStageLists026F(void);
+void abi_ExpandStageLists026F(void);
+ObjArm ResetStageVariables031D(void);
+void abi_ResetStageVariables031D(void);
+StageRunsEnd ExpandStageVramRuns031E(void);
+void abi_ExpandStageVramRuns031E(void);
+StageListEnd ExpandStageLists031F(void);
+void abi_ExpandStageLists031F(void);
+ObjArm ResetStageVariables043D(void);
+void abi_ResetStageVariables043D(void);
+StageRunsEnd ExpandStageVramRuns043E(void);
+void abi_ExpandStageVramRuns043E(void);
+StageListEnd ExpandStageLists043F(void);
+void abi_ExpandStageLists043F(void);
+ObjArm ResetStageVariables064D(void);
+void abi_ResetStageVariables064D(void);
+StageRunsEnd ExpandStageVramRuns064E(void);
+void abi_ExpandStageVramRuns064E(void);
+StageListEnd ExpandStageLists064F(void);
+void abi_ExpandStageLists064F(void);
+ObjArm ResetStageVariables10DD(void);
+void abi_ResetStageVariables10DD(void);
+StageRunsEnd ExpandStageVramRuns10DE(void);
+void abi_ExpandStageVramRuns10DE(void);
+StageListEnd ExpandStageLists10DF(void);
+void abi_ExpandStageLists10DF(void);
+ObjArm ResetStageVariables122D(void);
+void abi_ResetStageVariables122D(void);
+StageRunsEnd ExpandStageVramRuns122E(void);
+void abi_ExpandStageVramRuns122E(void);
+StageListEnd ExpandStageLists122F(void);
+void abi_ExpandStageLists122F(void);
+ObjArm ResetStageVariables1A2D(void);
+void abi_ResetStageVariables1A2D(void);
+StageRunsEnd ExpandStageVramRuns1A2E(void);
+void abi_ExpandStageVramRuns1A2E(void);
+StageListEnd ExpandStageLists1A2F(void);
+void abi_ExpandStageLists1A2F(void);
+ObjArm ResetStageVariables1B8D(void);
+void abi_ResetStageVariables1B8D(void);
+StageRunsEnd ExpandStageVramRuns1B8E(void);
+void abi_ExpandStageVramRuns1B8E(void);
+StageListEnd ExpandStageLists1B8F(void);
+void abi_ExpandStageLists1B8F(void);
+ObjArm ResetStageVariables1CED(void);
+void abi_ResetStageVariables1CED(void);
+StageRunsEnd ExpandStageVramRuns1CEE(void);
+void abi_ExpandStageVramRuns1CEE(void);
+StageListEnd ExpandStageLists1CEF(void);
+void abi_ExpandStageLists1CEF(void);
+
+#endif

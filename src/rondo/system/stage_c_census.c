@@ -5527,15 +5527,21 @@ static TallyWaitEnd tally_wait(Regs r, uint16_t ret)
  */
 StageRegs TallyStart3CD(StageRegs r)
 {
-    TallyWaitEnd wait = tally_wait(r, 0x9120);
+    return TallyStart3CDAt(r, 0x911D, &tally_3cd);
+}
+
+/* TallyStart3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyStart3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
+    TallyWaitEnd wait = tally_wait_at(r, at + 0x3, build->wait);
 
     r = wait.r;
     if (wait.dropped) {
         return r;
     }
-    r = vector_call(r, 0x9123, abi_VecStopSound);
-    r = loaded(r, 0x46);
-    r = vector_call(r, 0x9128, abi_VecSoundCommand);
+    r = vector_call(r, at + 0x6, abi_VecStopSound);
+    r = loaded(r, build->start_sound);
+    r = vector_call(r, at + 0xB, abi_VecSoundCommand);
     return TallyNext152D(r);
 }
 

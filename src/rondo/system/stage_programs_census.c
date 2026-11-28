@@ -1991,3 +1991,25 @@ void abi_StageShowStartFrame026D(void)
 {
     stage_regs_load_shim(StageShowStartFrame026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:49F StageClearedWaitScroll026D
+ * @run 6B:849F
+ * WHAT IT DOES: A cleared stage's step: the scroll and the objects run, and once zField8C's bit 7 is set the next step comes (as
+ * StageClearedWaitScroll, 024D:4C7). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageClearedWaitScrollAt (stage_flow.c), the body of 024D:4C7, with this program's JSR at $849F to
+ * StepScrollAndRunObjects026E at $8A05, the C of the routine loaded there.
+ * WAITS: as StepScrollAndRunObjects026E.
+ * Entry: X the caller's. Exit: A zField8C, N and Z from it or from zField85's INC; X, Y, C and V as the objects left
+ * them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedWaitScroll026D(StageRegs r)
+{
+    return StageClearedWaitScrollAt(r, 0x84A2, 0x8A05);
+}
+
+void abi_StageClearedWaitScroll026D(void)
+{
+    stage_regs_load_shim(StageClearedWaitScroll026D(stage_regs_entry_shim()));
+}

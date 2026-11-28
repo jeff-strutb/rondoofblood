@@ -113,4 +113,9 @@ StageRegs StageRestartInPlaceAt(StageRegs r, uint16_t at, uint16_t lists, uint16
 /* system/stage_flow.c: StageShowStartFrame (024D:448) run at `at`, with its table of frames. */
 StageRegs StageShowStartFrameAt(StageRegs r, uint16_t at, uint16_t frames);
 
+
+/* system/stage_flow.c: StageClearedWaitScroll (024D:4C7) with ret the address after its JSR to StepScrollAndRunObjects
+ * and step the address it goes to. */
+StageRegs StageClearedWaitScrollAt(StageRegs r, uint16_t ret, uint16_t step);
+
 #endif

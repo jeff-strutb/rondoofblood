@@ -417,14 +417,11 @@ void abi_StageFallStepNext(void)
     stage_regs_load_shim(StageFallStepNext(entry_shim()));
 }
 
-/* JSR $8A4F, StepScrollAndRunObjects: it ends in the code at $A000, so what it leaves is the machine's. */
-static Regs step_and_run_objects(Regs r, uint16_t ret)
+/* The JSR to StepScrollAndRunObjects at run ($8A4F in the loaded overlays), returning to ret: the C of the routine
+ * loaded there (routine_at). It ends in the code at $A000, so what it leaves is the machine's. */
+static Regs step_and_run_objects(Regs r, uint16_t ret, uint16_t run)
 {
-    stage_regs_load_shim(r);
-    jsr_push(ret);
-    StepScrollAndRunObjects(r.x);
-    jsr_pop();
-    return stage_regs_from_cpu_shim(r);
+    return call_to(r, ret, run);
 }
 
 /*
@@ -439,7 +436,14 @@ static Regs step_and_run_objects(Regs r, uint16_t ret)
  */
 StageRegs StageClearedWaitScroll(StageRegs r)
 {
-    r = step_and_run_objects(r, 0x84CA);
+    return StageClearedWaitScrollAt(r, 0x84CA, 0x8A4F);
+}
+
+/* StageClearedWaitScroll's body, ret the address after its JSR to StepScrollAndRunObjects and step where it goes: the
+ * builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StageClearedWaitScrollAt(StageRegs r, uint16_t ret, uint16_t step)
+{
+    r = step_and_run_objects(r, ret, step);
     r = loaded(r, RD8(ZP->field8c));
     if (r.a & 0x80) {
         r.nz = INC8(ZP->field85);
@@ -490,7 +494,7 @@ void abi_StageSectionNext(void)
  */
 StageRegs StageClearedScrollOn(StageRegs r)
 {
-    r = step_and_run_objects(r, 0x8698);
+    r = step_and_run_objects(r, 0x8698, 0x8A4F);
     RMW8(ZP->field8c, old, old & 0x7F);
     r.nz = INC8(ZP->field85);
     return r;

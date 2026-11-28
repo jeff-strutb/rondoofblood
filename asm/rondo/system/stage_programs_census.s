@@ -2454,3 +2454,20 @@ StageShowStartFrame026D:
     lda a:StartFrameByCharacter026D,x
     sta a:OBJ_FRAME
     jmp MariaVecAnimationSound
+
+; @routine 026D:49F StageClearedWaitScroll026D
+; @run 6B:849F
+; WHAT IT DOES: A cleared stage's step: the scroll and the objects run, and once zField8C's bit 7 is set the next step comes (as
+; StageClearedWaitScroll, 024D:4C7). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: StepScrollAndRunObjects026E; zField8C negative counts zField85 on.
+; WAITS: as StepScrollAndRunObjects026E.
+; Entry: X the caller's. Exit: A zField8C, N and Z from it or from zField85's INC; X, Y, C and V as the objects left
+; them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearedWaitScroll026D:
+    jsr StepScrollAndRunObjects026E
+    lda z:zField8C
+    bpl StageClearedWaitScroll026D_at0
+    inc z:zField85
+StageClearedWaitScroll026D_at0:
+    rts

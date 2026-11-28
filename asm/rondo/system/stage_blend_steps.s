@@ -30,6 +30,7 @@ BlendStageStockRows_at0:
     jsr BlendStageRowPair
     plx
 BlendStageStockRows_at1:
+BlendStageStockRows_end:
     jmp RestoreStageBanks
 
 ; @routine 024F:181 BlendStageScoreAddRows
@@ -44,7 +45,7 @@ BlendStageStockRows_at1:
 BlendStageScoreAddRows:
     jsr SaveAndMapStageBanks
     lda a:StageBlendOn+1
-    bne $917E
+    bne BlendStageStockRows_end
     phx
     stz a:StageBlendOn
     lda z:zScoreAddLo

@@ -140,7 +140,7 @@ SpawnPiece21Mask1F:
 ; Entry: A the mask, X object. Exit: the AND, or the start's A and N, Z with Y and C from the slot search.
 SpawnPiece21UnlessMasked:
     and a:ScrollXLo+5
-    bne $AFDD
+    bne HoldScrollStepThenNextState_scroll
     jsr VecFindFreeSlotFrom30
     lda #$21
     jmp VecStartObjectAtPlace
@@ -162,10 +162,10 @@ CountdownThenSpawnPieces_at0:
     lda a:ScrollXLo+5
     and #$7F
     cmp #$40
-    bne $AFDD
+    bne HoldScrollStepThenNextState_scroll
     jsr VecNextRandom
     and #$03
-    bne $AFDD
+    bne HoldScrollStepThenNextState_scroll
     jsr VecFindFreeSlotFrom30
     lda #$21
     jsr VecStartObjectAtPlace
@@ -192,6 +192,7 @@ HoldScrollStepThenNextState:
 HoldScrollStepThenNextState_at0:
     dec a:ScrollStepXHi+1
     dec a:ScrollStepXHi+1
+HoldScrollStepThenNextState_scroll:
     rts
 
 ; @routine 025A:7DE StepScrollThenMoveOrFadeOut
@@ -204,11 +205,11 @@ StepScrollThenMoveOrFadeOut:
     jsr StepVerticalScrollTable
     lda a:OBJ_STATE
     ora a:OBJ_SUBSTATE
-    bne $AFDD
+    bne HoldScrollStepThenNextState_scroll
     lda a:OBJ_VY_HI
-    bne $AFDD
+    bne HoldScrollStepThenNextState_scroll
     lda a:RichterColumnHit
-    beq $AFDD
+    beq HoldScrollStepThenNextState_scroll
     lda a:OBJ_WORK_I,x
     bne StepScrollThenMoveOrFadeOut_at0
     phx

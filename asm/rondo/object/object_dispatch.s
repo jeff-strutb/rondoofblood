@@ -226,6 +226,7 @@ FallAndBounce_at0:
     lda z:zProduct0
     and #$10
     bne FallAndBounce_out
+FallAndBounce_bounce:
     lda #$00
     sta z:zTemp00
     lda #$01
@@ -294,7 +295,7 @@ FallUntilFloor_at1:
     and #$01
     bne FallUntilFloor_at0
     jsr VecApplyVelocity
-    bra $A4D6
+    bra FallAndBounce_bounce
 FallUntilFloor_at0:
     rts
 

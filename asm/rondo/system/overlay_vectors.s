@@ -9,7 +9,7 @@
 ; WAITS: where the routine at $8018 waits; the jump adds nothing to the stack.
 ; Entry, exit: as the routine at $8018.
 StageVec8000_050D:
-    jmp $8018
+    jmp StageModeStep026D
 
 ; @routine 050D:006 StageVec8006_050D
 ; @run 6B:8006

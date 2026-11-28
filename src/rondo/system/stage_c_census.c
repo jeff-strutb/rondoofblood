@@ -3362,6 +3362,12 @@ static Regs screen_byte(Regs r)
  */
 StageRegs StageLoadScreen3CD(StageRegs r)
 {
+    return StageLoadScreen3CDAt(r, &route_3cd);
+}
+
+/* StageLoadScreen3CD's body, for the builds of it with their own tables. */
+StageRegs StageLoadScreen3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     Sum sum;
     uint8_t stage, index, value, move;
 
@@ -3371,9 +3377,9 @@ StageRegs StageLoadScreen3CD(StageRegs r)
     r.c = (stage & 0x80) != 0;
     r = loaded(r, index);
     r.y = index;
-    r = loaded(r, rd8((uint16_t)(0x9D91 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->screens + r.y)));
     WR8(ZP->temp00, r.a);
-    r = loaded(r, rd8((uint16_t)(0x9D92 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->screens + 1 + r.y)));
     WR8(ZP->temp01, r.a);
     r.y = 0;
     r = screen_byte(r);

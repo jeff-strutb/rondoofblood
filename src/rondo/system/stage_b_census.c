@@ -89,7 +89,7 @@ static void clear_scroll_bytes(Regs r)
 }
 
 /* JSR $9415, SetVramAddresses152D. */
-static Regs set_vram_addresses(Regs r, uint16_t ret)
+static Regs set_vram_addresses_call(Regs r, uint16_t ret)
 {
     CALL(ret, SetVramAddresses152D(r));
     return r;
@@ -3240,7 +3240,7 @@ StageRegs StageHealthBarAddress152D(StageRegs r)
     }
     shown = RD8(ZP->field99);
     r = bar_address(r, shown, 0, 0x65);
-    return set_vram_addresses(r, 0x88C1);
+    return set_vram_addresses_call(r, 0x88C1);
 }
 
 void abi_StageHealthBarAddress152D(void)
@@ -3441,7 +3441,7 @@ StageRegs StageBossBarAddress152D(StageRegs r)
     r.c = sum.carry;
     r.v = sum.overflow;
     r.y = sum.value;
-    return set_vram_addresses(r, 0x8964);
+    return set_vram_addresses_call(r, 0x8964);
 }
 
 void abi_StageBossBarAddress152D(void)
@@ -3539,7 +3539,7 @@ StageRegs StageBarErase152D(StageRegs r)
 {
     uint8_t mask, value;
 
-    r = set_vram_addresses(r, 0x89C1);
+    r = set_vram_addresses_call(r, 0x89C1);
     for (r.x = 0x40; r.x != 0; r.x--) {
         r.y = (uint8_t)(RD8(OBJ->work_c[69]) & 0x07);
         r = orig_shim(r, 0x89CC, 0x4051);
@@ -4195,7 +4195,7 @@ StageRegs StageOpeningCopyRow152D(StageRegs r)
 
     r.x = RD8(ZP->temp10);
     r.y = RD8(ZP->temp11);
-    r = set_vram_addresses(r, 0x8CF6);
+    r = set_vram_addresses_call(r, 0x8CF6);
     for (r.x = 0x80; r.x != 0; r.x = (uint8_t)(r.x - 2)) {
         value = RD8(VDC->data_lo);
         wr8((uint16_t)(ROW_BUFFER + 1 + r.x), value);
@@ -5685,7 +5685,7 @@ StageRegs TallyCell152D(StageRegs r)
     r.c = sum.carry;
     r.v = sum.overflow;
     WR8(ZP->temp11, sum.value);
-    r = set_vram_addresses(r, 0x9285);
+    r = set_vram_addresses_call(r, 0x9285);
     r.y = 0;
     if ((RD8(ZP->temp01) & 0x01) == 0) {
         do {

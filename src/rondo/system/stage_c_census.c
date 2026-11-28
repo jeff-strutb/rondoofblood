@@ -83,7 +83,7 @@ static void tai_shim(Regs r, uint16_t src, uint16_t dst, uint16_t len)
 }
 
 /* JSR $9410, SetVramAddresses3CD. */
-static Regs set_vram_addresses(Regs r, uint16_t ret)
+static Regs set_vram_addresses_call(Regs r, uint16_t ret)
 {
     CALL(ret, SetVramAddresses3CD(r));
     return r;
@@ -3924,7 +3924,7 @@ StageRegs StageHealthBarAddress3CD(StageRegs r)
     }
     shown = RD8(ZP->field99);
     r = bar_address(r, shown, 0, 0x65);
-    return set_vram_addresses(r, 0x8B61);
+    return set_vram_addresses_call(r, 0x8B61);
 }
 
 void abi_StageHealthBarAddress3CD(void)
@@ -4123,7 +4123,7 @@ StageRegs StageBossBarAddress3CD(StageRegs r)
     r.c = sum.carry;
     r.v = sum.overflow;
     r.y = sum.value;
-    return set_vram_addresses(r, 0x8C02);
+    return set_vram_addresses_call(r, 0x8C02);
 }
 
 void abi_StageBossBarAddress3CD(void)
@@ -4220,7 +4220,7 @@ StageRegs StageBarErase3CD(StageRegs r)
 {
     uint8_t mask;
 
-    r = set_vram_addresses(r, 0x8C5D);
+    r = set_vram_addresses_call(r, 0x8C5D);
     for (r.x = 0x40; r.x != 0; r.x--) {
         r.y = (uint8_t)(RD8(OBJ->work_c[69]) & 0x07);
         r = orig_shim(r, 0x8C68, 0x4051);
@@ -4830,7 +4830,7 @@ StageRegs StageOpeningCopyRow3CD(StageRegs r)
 
     r.x = RD8(ZP->temp10);
     r.y = RD8(ZP->temp11);
-    r = set_vram_addresses(r, 0x8F59);
+    r = set_vram_addresses_call(r, 0x8F59);
     for (r.x = 0x80; r.x != 0; r.x = (uint8_t)(r.x - 2)) {
         value = RD8(VDC->data_lo);
         wr8((uint16_t)(ROW_BUFFER + 1 + r.x), value);
@@ -5282,7 +5282,7 @@ StageRegs StageClearBitRows3CD(StageRegs r)
         push8(r.y);
         r.x = RD8(ZP->temp0a);
         r.y = RD8(ZP->temp0b);
-        r = set_vram_addresses(r, 0x90BE);
+        r = set_vram_addresses_call(r, 0x90BE);
         r.y = pull8();
         value = RD8(VDC->data_lo);
         value = (uint8_t)(value & rd8((uint16_t)(0x90E5 + r.y)));
@@ -5759,7 +5759,7 @@ StageRegs TallyCell3CD(StageRegs r)
     r.c = sum.carry;
     r.v = sum.overflow;
     WR8(ZP->temp11, sum.value);
-    r = set_vram_addresses(r, 0x9283);
+    r = set_vram_addresses_call(r, 0x9283);
     r.y = 0;
     if ((RD8(ZP->temp01) & 0x01) == 0) {
         do {

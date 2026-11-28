@@ -541,7 +541,7 @@ void LandOnRowThenDebris117C(uint8_t slot)
     if (cpu.a != 0xD0) {
         return;
     }
-    sound(0x23, 0xBBE4);
+    sound(0x23, 0xBBE6);
     cpu.a = 0;
     run_routine(0xA90B);
 }

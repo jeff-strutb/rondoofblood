@@ -184,7 +184,7 @@ void abi_MariaObjectPlaceByState(void)
  * Entry: X kept. Exit: A the last kind read or 3, N and Z from X; C from comparing slot 1's kind with 3 when it was
  * out, else kept. Y and V kept.
  */
-Regs MariaClaimKind3Slot(uint8_t object)
+Regs claim_kind3_slot(uint8_t object, uint16_t clear_ret)
 {
     Regs r = regs_kept();
     uint8_t slot = SLOT_COMPANION_1;
@@ -205,7 +205,7 @@ Regs MariaClaimKind3Slot(uint8_t object)
             goto done;
         }
     }
-    jsr_push(0xC71D);
+    jsr_push(clear_ret);
     ClearObject(slot);
     jsr_pop();
     WR8(OBJ->kind[slot], KIND_COMPANION);
@@ -213,6 +213,11 @@ Regs MariaClaimKind3Slot(uint8_t object)
 done:
     object = pull8();
     return r_ldx(r, object);
+}
+
+Regs MariaClaimKind3Slot(uint8_t object)
+{
+    return claim_kind3_slot(object, 0xC71D);
 }
 
 void abi_MariaClaimKind3Slot(void)

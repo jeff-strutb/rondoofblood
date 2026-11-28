@@ -27,12 +27,12 @@ RichterVecApplyMove:
 
 ; @routine 01B9:009 RichterVecC3A7
 ; @run 6D:A009
-; WHAT IT DOES: Goes to $C3A7.
+; WHAT IT DOES: Goes to RichterObjects.
 ; HOW: One jump.
 ; WAITS: no.
-; Entry, exit: as that code.
+; Entry, exit: as RichterObjects.
 RichterVecC3A7:
-    jmp $C3A7
+    jmp RichterObjects
 
 ; @routine 01B9:00C RichterVecC023
 ; @run 6D:A00C
@@ -45,12 +45,12 @@ RichterVecC023:
 
 ; @routine 01B9:00F RichterVecC076
 ; @run 6D:A00F
-; WHAT IT DOES: Goes to $C076.
+; WHAT IT DOES: Goes to RichterDeathObjects.
 ; HOW: One jump.
 ; WAITS: no.
-; Entry, exit: as that code.
+; Entry, exit: as RichterDeathObjects.
 RichterVecC076:
-    jmp $C076
+    jmp RichterDeathObjects
 
 ; @routine 01B9:012 RichterVecAnimationSound
 ; @run 6D:A012

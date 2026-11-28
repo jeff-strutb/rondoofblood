@@ -320,7 +320,7 @@ ObjArm ObjectTouchesPlayerBox(uint8_t slot)
     return r;
 }
 
-static Ended object_touches_player_box_exit_shim(ObjArm r)
+Ended object_touches_player_box_exit_shim(ObjArm r)
 {
     Ended e = ended_then(ended_of_sum(r.sum), ended_load(r.first));
 
@@ -351,11 +351,10 @@ void abi_ObjectTouchesPlayerBox(void)
  * @routine 01BE:4E6 NudgeAngleByVelocityAndScroll
  * @run 6E:CCE6
  * WHAT IT DOES: Moves the object's angle pair OBJ_WORK_F and OBJ_WORK_G (and the counter OBJ_WORK_H): by two tables when it
- * moves sideways (by its X speed's sign), then by the scroll speed ScrollSpeedX negated, the table at $CE79 by its sign.
+ * moves sideways (by its X speed's sign), then by the scroll speed ScrollSpeedX negated, NudgeAngleScrollFill by its sign.
  * HOW: Chains of 8-bit adds with the carry carried from one to the next.
  * WAITS: no.
  * Entry: X object. Exit: A the angle low byte stored, N and Z from it, C and V from its add. X kept, Y the sign index.
- * Tables at $CD2D, $CD2F and $CE79 have no rows yet (the old address form).
  */
 ObjArm NudgeAngleByVelocityAndScroll(uint8_t slot)
 {
@@ -368,13 +367,13 @@ ObjArm NudgeAngleByVelocityAndScroll(uint8_t slot)
     if ((uint8_t)(vx_hi | vx_lo) != 0) {
         vx_hi = RD8(OBJ->vx_hi[slot]);
         index = (uint8_t)((vx_hi >> 7) & 1);
-        value = rd8((uint16_t)(0xCD2D + index));
+        value = rd8((uint16_t)(NudgeAngleStepLo + index));
         sum = add_bytes(value, RD8(OBJ->work_h[slot]), false);
         WR8(OBJ->work_h[slot], sum.value);
-        value = rd8((uint16_t)(0xCD2F + index));
+        value = rd8((uint16_t)(NudgeAngleStepFill + index));
         sum = add_bytes(value, RD8(OBJ->angle_hi[slot]), sum.carry);
         WR8(OBJ->angle_hi[slot], sum.value);
-        value = rd8((uint16_t)(0xCD2F + index));
+        value = rd8((uint16_t)(NudgeAngleStepFill + index));
         sum = add_bytes(value, RD8(OBJ->angle_lo[slot]), sum.carry);
         WR8(OBJ->angle_lo[slot], sum.value);
     }
@@ -386,14 +385,14 @@ ObjArm NudgeAngleByVelocityAndScroll(uint8_t slot)
     }
     sum = add_bytes(negated, RD8(OBJ->angle_hi[slot]), false);
     WR8(OBJ->angle_hi[slot], sum.value);
-    value = rd8((uint16_t)(0xCE79 + index));
+    value = rd8((uint16_t)(NudgeAngleScrollFill + index));
     r.sum = add_bytes(value, RD8(OBJ->angle_lo[slot]), sum.carry);
     WR8(OBJ->angle_lo[slot], r.sum.value);
     r.first = index;
     return r;
 }
 
-static Ended nudge_angle_by_velocity_and_scroll_exit_shim(ObjArm r)
+Ended nudge_angle_by_velocity_and_scroll_exit_shim(ObjArm r)
 {
     return ended_with_y(ended_of_sum(r.sum), r.first);
 }

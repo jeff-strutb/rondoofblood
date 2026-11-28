@@ -1146,7 +1146,7 @@ typedef struct {
     uint8_t _gap_0024[4]; /* no name yet: $3BE4-$3BE7 */
     union { uint8_t f3be8; uint8_t slow_timer_lo; }; /* PlayerByte3BE8 */
     union { uint8_t f3be9; uint8_t slow_timer_hi; }; /* PlayerByte3BE9 */
-    uint8_t _gap_002A[1]; /* no name yet: $3BEA-$3BEA */
+    uint8_t kept_raster_stage; /* PlayerKeptRasterStage */
 } PlayerVars;
 _Static_assert(sizeof(PlayerVars) == 0x2B, "PlayerVars size");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, column_hit) + 0 == RichterColumnHit, "PlayerVars.column_hit is not at RichterColumnHit");
@@ -1176,13 +1176,14 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be8) + 0 == PlayerByte3B
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_lo) == PlayerSlowTimerLo, "PlayerVars.slow_timer_lo is not at PlayerSlowTimerLo");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be9) + 0 == PlayerByte3BE9, "PlayerVars.f3be9 is not at PlayerByte3BE9");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_hi) == PlayerSlowTimerHi, "PlayerVars.slow_timer_hi is not at PlayerSlowTimerHi");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, kept_raster_stage) + 0 == PlayerKeptRasterStage, "PlayerVars.kept_raster_stage is not at PlayerKeptRasterStage");
 #define PVARS ((PlayerVars *)PlayerVars_BASE)
 
 /* PlayerVarsB: one struct at $3BEF, 1 element(s), 17 bytes */
 #define PlayerVarsB_BASE 0x3BEF
 #define PlayerVarsB_COUNT 1
 typedef struct {
-    uint8_t f3bef; /* PlayerByte3BEF */
+    union { uint8_t f3bef; uint8_t kind7_caught; }; /* PlayerByte3BEF */
     union { uint8_t f3bf0; uint8_t start_pose; }; /* PlayerByte3BF0 */
     union { uint8_t f3bf1; uint8_t jump_kind; }; /* PlayerByte3BF1 */
     U16LE jump_start_y; /* PlayerJumpStartYLo +1 */
@@ -1195,6 +1196,7 @@ typedef struct {
 } PlayerVarsB;
 _Static_assert(sizeof(PlayerVarsB) == 0x11, "PlayerVarsB size");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bef) + 0 == PlayerByte3BEF, "PlayerVarsB.f3bef is not at PlayerByte3BEF");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, kind7_caught) == PlayerKind7Caught, "PlayerVarsB.kind7_caught is not at PlayerKind7Caught");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf0) + 0 == PlayerByte3BF0, "PlayerVarsB.f3bf0 is not at PlayerByte3BF0");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, start_pose) == PlayerStartPose, "PlayerVarsB.start_pose is not at PlayerStartPose");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf1) + 0 == PlayerByte3BF1, "PlayerVarsB.f3bf1 is not at PlayerByte3BF1");

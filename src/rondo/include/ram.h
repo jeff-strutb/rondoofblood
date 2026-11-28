@@ -379,6 +379,7 @@
 #define SceneCallTable 0x72C8 /* pointers for the scene overlay */
 #define StageVecTerrainTileRead 0x8006 /* the stage overlay's vector to its terrain tile read (TerrainTileRead, overlay_vectors.c): the player's terrain reads call it */
 #define FrameOverlay8006 0x8006 /* a mode overlay's entry; the scene overlay's call */
+#define StageVecClearBitRows 0x8009 /* the stage overlay's vector at $8009: all 41 stage overlays jump to ClearStageBitRowsFour (StageVec8009_024D); Richter's death point rows call it */
 #define FrameOverlay8009 0x8009 /* a mode overlay's entry */
 #define BiosCdRead 0xE009 /* cd_read */
 #define BiosCdPlay 0xE012 /* cd_play */
@@ -434,6 +435,8 @@
 #define PlayerDoorReady 0x3BD7 /* 1 while a flagged door may take him: RichterCheckTurnWindow's table by state (standing or walking), at step 0, facing away from the screen's middle; the stages' door objects with bit 7 of OBJ_START_ARG wait on it */
 #define PlayerWhipStruck 0x3BE1 /* 1 once the whip has struck an enemy in this attack: the whip's handler (kind 1) sets it when the object that tested it is an enemy (slot $10 up) with OBJ_HITBOX_ON 2 or more; the whip's frame at step 6 is then held 4 longer (RichterObjectQuicken); every attack and landing clears it */
 #define PlayerKeepsLastPoint 0x3BF7 /* 1: a hit that takes the last of his health leaves him one point and goes on as a hit (RichterOutOfHealth); some stage objects set it as they run */
+#define PlayerKeptRasterStage 0x3BEA /* zRasterStage kept while Richter's kind $0E runs (it sets the stage to 2); given back at its end */
+#define PlayerKind7Caught 0x3BEF /* 1 when a stage object has caught Richter's kind 7 in slot 5 (it sets this); kind 7 then clears it and the item in hand (zField93) and ends */
 #define OverlayOrphanA02A 0xA02A /* a piece of the player overlay nothing reaches */
 #define PlayerFootYByState 0xA0FF /* how far above the position to probe by state */
 #define PlayerStartHandlers 0xA116 /* 4 words by zField8A */
@@ -499,6 +502,60 @@
 #define RichterProbeOffsets 0xB7B1 /* the X and Y offsets of RichterReadAtOffset's point from his own: pairs by the offset */
 #define RichterObjectSpeedsY 0xBFCB /* Y speed words by entry for SetVelocityYFromTable */
 #define RichterObjectSpeedsX 0xBFEC /* X speed words by entry for SetVelocityXFromTable */
+#define RichterDeathPieceStates 0xC13D /* the death pieces' state handlers: four words */
+#define RichterDeathPieceSpeedsY 0xC1E8 /* the death pieces' Y speed low bytes by slot (high $FF) */
+#define RichterDeathPieceSpeedsX 0xC1F8 /* the death pieces' X speed words by slot */
+#define RichterDeathPieceOffsetsX 0xC218 /* the death pieces' places across from the player by slot */
+#define RichterDeathPieceOffsetsY 0xC228 /* the death pieces' places down from the player by slot */
+#define RichterCompanionOffsetsY 0xC2EF /* slots 1 and 2's kind 1 places down from the player; by the slot less 1 and bit 1 of zFrameTick */
+#define RichterCompanionOffsetsX 0xC2F3 /* the same; across */
+#define RichterCompanionKinds 0xC340 /* slots 1 and 2's handlers by kind: five words */
+#define RichterCompanionPlaces 0xC386 /* kind 4 companions' offset pairs from the player */
+#define RichterCompanionPlaceByState 0xC396 /* where in RichterCompanionPlaces by the player's state */
+#define RichterObjectKinds 0xC3BE /* the handlers of slots 3 to 15 by kind: 23 words */
+#define RichterWhipAnimations 0xC505 /* the whip's animation by the player's state; $FF none */
+#define RichterKind3States 0xC653 /* kind 3's state handlers: five words */
+#define RichterKind3DeflectSpeeds 0xC7C7 /* kind 3's X speed after a deflection; by facing (both bytes) */
+#define RichterKind3EdgeScreens 0xC7FD /* the X high byte kind 3 is emptied at by facing */
+#define RichterKind3Animations 0xC7FF /* kind 3's animation by its count's high nibble */
+#define RichterKind3Eases 0xC80F /* kind 3's X speed steps by facing: words */
+#define RichterKind3TopSpeeds 0xC813 /* kind 3's X speed high byte it eases to by facing */
+#define RichterKind5States 0xC85E /* kind 5's state handlers: four words */
+#define RichterKind5SpeedsY 0xC866 /* kind 5's Y speed words by its place among three */
+#define RichterBounceSpeedsX 0xC98D /* X speed words of a bounce by facing */
+#define RichterKind6States 0xC997 /* kind 6's state handlers: seven words */
+#define RichterKind6Places 0xCA87 /* kind 6's places; four bytes by slot less 4: X low; X high; Y low; Y high */
+#define RichterKind6Timers 0xCAB7 /* kind 6's two timers by slot less 4 */
+#define RichterKind7Frames 0xCB5F /* kind 7's frame by the player's state */
+#define RichterKind4States 0xCB72 /* kind 4's state handlers: six words */
+#define NudgeAngleStepLo 0xCD2D /* NudgeAngleByVelocityAndScroll's step to OBJ_WORK_H by the X speed's sign: $40 right, $C0 left */
+#define NudgeAngleStepFill 0xCD2F /* NudgeAngleByVelocityAndScroll's high bytes for that step by the sign: $00, $FF */
+#define RichterKind4WallReach 0xCE0F /* how far across kind 4 looks for a wall by facing: words */
+#define RichterKind10States 0xCE19 /* kind $0A's state handlers: two words */
+#define NudgeAngleScrollFill 0xCE79 /* NudgeAngleByVelocityAndScroll's high byte for the negated scroll speed by its sign: $00, $FF */
+#define RichterKind11States 0xCF12 /* kind $0B's state handlers: two words */
+#define RichterKind11Wobble 0xCF57 /* kind $0B's angle step by facing plus OBJ_WORK_J */
+#define RichterKind11WobbleSteps 0xCF5F /* kind $0B's OBJ_WORK_J by its speed's high byte */
+#define RichterKind11Angles 0xCFFF /* kind $0B's starting angle by slot */
+#define RichterKind6Angles 0xD025 /* kind 6's starting angle by slot */
+#define RichterKind12States 0xD065 /* kind $0C's state handlers: four words */
+#define RichterKind12Across 0xD0A0 /* kind $0C's offset across by facing: words */
+#define RichterKind12Drops 0xD0A4 /* kind $0C's offset down by its place among three: words */
+#define RichterKind8Delays 0xD133 /* kind 8's delay and count by slot */
+#define RichterKind8Path 0xD1DE /* kind 8's path: the lead's X and Y speeds; four bytes by its count; the links follow */
+#define RichterKind13States 0xD2E4 /* kind $0D's state handlers: four words */
+#define RichterKind13ReachA 0xD392 /* kind $0D's offset across in the player's state $0B by facing: words */
+#define RichterKind13ReachB 0xD396 /* the same in state $0C */
+#define RichterKind13Lists 0xDD48 /* kind $0D's piece lists by its frame less $6E: words */
+#define RichterKind15Frames 0xD569 /* kind $0F's frame by its slot's bit 0 and the wave counter */
+#define RichterKind14Drops 0xD56D /* kind $0E's drops' places; four bytes by its count: Y low; Y high; X low; X high */
+#define RichterKind16States 0xD5B3 /* kind $10's state handlers: seven words */
+#define RichterKind17Attributes 0xD6EA /* kind $11's sprite attribute by bit 0 of the wave counter */
+#define RichterKind18States 0xD6F2 /* kind $12's state handlers: seven words */
+#define RichterKind18Sounds 0xD843 /* the sound of kind $12's step across by bit 7 of the step's sum */
+#define RichterKind19States 0xD875 /* kind $13's state handlers: three words */
+#define RichterKind19Pulls 0xD8D4 /* kind $13's X speed step by facing: words */
+#define RichterKind20Angles 0xDA2F /* kind $14's starting angle by slot */
 #define RichterClimbLowSteps 0xAF5A /* the step handlers of states 5 and 6: six words by the step */
 #define RichterClimbStepSpeeds 0xAF8F /* the climb's step by the state less 5: X high and Y high speed pairs */
 #define RichterClimbPadOn 0xB017 /* the directions held that go on along the climb, by the state less 5: both */

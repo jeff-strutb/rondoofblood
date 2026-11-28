@@ -523,6 +523,7 @@ member,PlayerVars,f3be2,u8,22,PlayerByte3BE2,
 member,PlayerVars,f3be3,u8,23,PlayerByte3BE3,
 member,PlayerVars,f3be8,u8,28,PlayerByte3BE8,
 member,PlayerVars,f3be9,u8,29,PlayerByte3BE9,
+member,PlayerVars,kept_raster_stage,u8,2A,PlayerKeptRasterStage,
 record,PlayerVarsB,aos,3BEF,1,11,PVARS2
 member,PlayerVarsB,f3bf0,u8,01,PlayerByte3BF0,
 member,PlayerVarsB,f3bf1,u8,02,PlayerByte3BF1,
@@ -556,6 +557,7 @@ alias,PlayerVars,held,f3be2,PlayerHeld
 alias,PlayerVars,held_count,f3be3,PlayerHeldCount
 alias,PlayerVars,slow_timer_lo,f3be8,PlayerSlowTimerLo
 alias,PlayerVars,slow_timer_hi,f3be9,PlayerSlowTimerHi
+alias,PlayerVarsB,kind7_caught,f3bef,PlayerKind7Caught
 alias,PlayerVarsB,start_pose,f3bf0,PlayerStartPose
 alias,PlayerVarsB,jump_kind,f3bf1,PlayerJumpKind
 alias,ObjectTable,animation,work_a,OBJ_ANIMATION

@@ -74,7 +74,7 @@ uint8_t axis_move_flags_shim(AxisMove move)
     return result;
 }
 
-static void axis_move_exit_shim(AxisMove move)
+void axis_move_exit_shim(AxisMove move)
 {
     cpu.a = axis_move_flags_shim(move);
     abi_nz(cpu.a);

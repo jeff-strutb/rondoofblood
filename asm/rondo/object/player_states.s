@@ -37,11 +37,10 @@ ObjectTouchesPlayerBox_at0:
 ; @routine 01BE:4E6 NudgeAngleByVelocityAndScroll
 ; @run 6E:CCE6
 ; WHAT IT DOES: Moves the object's angle pair OBJ_WORK_F and OBJ_WORK_G (and the counter OBJ_WORK_H): by two tables when it
-; moves sideways (by its X speed's sign), then by the scroll speed ScrollSpeedX negated, the table at $CE79 by its sign.
+; moves sideways (by its X speed's sign), then by the scroll speed ScrollSpeedX negated, NudgeAngleScrollFill by its sign.
 ; HOW: Chains of 8-bit adds with the carry carried from one to the next.
 ; WAITS: no.
 ; Entry: X object. Exit: A the angle low byte stored, N and Z from it, C and V from its add. X kept, Y the sign index.
-; Tables at $CD2D, $CD2F and $CE79 have no rows yet (the old address form).
 NudgeAngleByVelocityAndScroll:
     lda a:OBJ_VX_HI,x
     ora a:OBJ_VX_LO,x
@@ -51,14 +50,14 @@ NudgeAngleByVelocityAndScroll:
     rol a
     and #$01
     tay
-    lda a:$CD2D,y
+    lda a:NudgeAngleStepLo,y
     clc
     adc a:OBJ_WORK_H,x
     sta a:OBJ_WORK_H,x
-    lda a:$CD2F,y
+    lda a:NudgeAngleStepFill,y
     adc a:OBJ_WORK_F,x
     sta a:OBJ_WORK_F,x
-    lda a:$CD2F,y
+    lda a:NudgeAngleStepFill,y
     adc a:OBJ_WORK_G,x
     sta a:OBJ_WORK_G,x
 NudgeAngleByVelocityAndScroll_at0:
@@ -72,7 +71,7 @@ NudgeAngleByVelocityAndScroll_at1:
     clc
     adc a:OBJ_WORK_F,x
     sta a:OBJ_WORK_F,x
-    lda a:$CE79,y
+    lda a:NudgeAngleScrollFill,y
     adc a:OBJ_WORK_G,x
     sta a:OBJ_WORK_G,x
     rts

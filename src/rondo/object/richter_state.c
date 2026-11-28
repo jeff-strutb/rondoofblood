@@ -283,7 +283,6 @@ typedef struct {
 } InvincibleTick;
 InvincibleTick RichterInvincibleTick(uint8_t x, uint8_t y);
 /* The death started: the sound command it ends with. */
-typedef struct { CommandCall sound; } Death;
 typedef enum {
     FRAME_DYING, FRAME_DIED, FRAME_LIFE_LOST, FRAME_BLINK_IDLE, FRAME_BLINK_COUNTING, FRAME_HANDLER
 } StateFrameHow;
@@ -423,14 +422,14 @@ void abi_RichterVecApplyMove(void)
 /*
  * @routine 01B9:009 RichterVecC3A7
  * @run 6D:A009
- * WHAT IT DOES: Goes to $C3A7.
+ * WHAT IT DOES: Goes to RichterObjects.
  * HOW: One jump.
  * WAITS: no.
- * Entry, exit: as that code.
+ * Entry, exit: as RichterObjects.
  */
 void abi_RichterVecC3A7(void)
 {
-    call_original(RH_C3A7);
+    abi_RichterObjects();
 }
 
 /*
@@ -449,14 +448,14 @@ void abi_RichterVecC023(void)
 /*
  * @routine 01B9:00F RichterVecC076
  * @run 6D:A00F
- * WHAT IT DOES: Goes to $C076.
+ * WHAT IT DOES: Goes to RichterDeathObjects.
  * HOW: One jump.
  * WAITS: no.
- * Entry, exit: as that code.
+ * Entry, exit: as RichterDeathObjects.
  */
 void abi_RichterVecC076(void)
 {
-    call_original(RH_C076);
+    abi_RichterDeathObjects();
 }
 
 /*
@@ -514,14 +513,14 @@ void abi_RichterVecSetIdle(void)
 /*
  * @routine 01B9:01E RichterVecCE73
  * @run 6D:A01E
- * WHAT IT DOES: Goes to $CE73.
+ * WHAT IT DOES: Goes to RichterObjectMove.
  * HOW: One jump.
  * WAITS: no.
- * Entry, exit: as that code.
+ * Entry, exit: as RichterObjectMove.
  */
 void abi_RichterVecCE73(void)
 {
-    call_original(RH_CE73);
+    abi_RichterObjectMove();
 }
 
 /*

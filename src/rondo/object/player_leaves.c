@@ -257,7 +257,7 @@ ObjArm RichterStateDoubled(void)
 }
 
 /* A and X the doubled state; C its bit 7. */
-static EndedX richter_state_doubled_exit_shim(ObjArm r)
+EndedX richter_state_doubled_exit_shim(ObjArm r)
 {
     EndedX e;
 
@@ -311,7 +311,7 @@ ObjArm RichterFlagsAgainstFour(void)
 }
 
 /* The flags compared with 4; X the Richter's slot. */
-static EndedX richter_flags_against_four_exit_shim(ObjArm r)
+EndedX richter_flags_against_four_exit_shim(ObjArm r)
 {
     EndedX e;
 
@@ -426,7 +426,7 @@ void abi_StepStageTable9C20(void)
  * Entry: A the entry, X the object. Exit: A the high byte, N and Z from it, C the entry's bit 7, Y the doubled entry.
  */
 /* A the high byte read, C the entry's bit 7, Y twice the entry. */
-static Ended set_velocity_from_table_exit_shim(ObjArm r)
+Ended set_velocity_from_table_exit_shim(ObjArm r)
 {
     return ended_with_y(ended_with_carry(ended_load(r.first), r.flag), r.y);
 }
@@ -544,7 +544,7 @@ ObjArm NegateVelocityXIfFacingLeft(uint8_t slot)
 }
 
 /* The facing's load; when it was set, the negation's sum after it. */
-static Ended negate_velocity_exit_shim(ObjArm r)
+Ended negate_velocity_exit_shim(ObjArm r)
 {
     Ended e = ended_load(r.first);
 
@@ -629,7 +629,7 @@ ObjArm ClearObjectIfOffRange(uint8_t slot)
 }
 
 /* The last load or compare the walk made: of y_hi or x_hi, or of x_lo with $40 or $C0. */
-static Ended clear_object_exit_shim(ObjArm r)
+Ended clear_object_exit_shim(ObjArm r)
 {
     if (r.arm == PL_CLEAR_LOAD) {
         return ended_load(r.first);
@@ -670,7 +670,7 @@ ObjArm ClearObjectInYAndCopyPlace(uint8_t source, uint8_t target)
 }
 
 /* A the last byte copied. */
-static Ended clear_in_y_exit_shim(ObjArm r)
+Ended clear_in_y_exit_shim(ObjArm r)
 {
     return ended_load(r.first);
 }
@@ -918,7 +918,7 @@ ObjArm MoveObjectUpBySigned(uint8_t slot)
 }
 
 /* The high byte's subtraction. */
-static Ended move_object_up_exit_shim(ObjArm r)
+Ended move_object_up_exit_shim(ObjArm r)
 {
     return ended_of_sum(r.sum);
 }

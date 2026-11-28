@@ -9,7 +9,93 @@
 #include "ram.h"
 #include "stage_map.h"
 #include "enemy_objects.h"
+#include "stage_regs.h"
 #include "stage_programs_census.h"
+
+/* The body of StageSectionNext (stage_flow.c) with a program's own section table. */
+static StageRegs section_next(StageRegs r, uint16_t table)
+{
+    INC8(ZP->field82);
+    r.y = RD8(ZP->field82);
+    r = regs_loaded(r, rd8((uint16_t)(table + r.y)));
+    WR8(ZP->field83, r.a);
+    return r;
+}
+
+/* MaskStageRowCopy and MaskStageRow with a program's own offset table; from is 2 or 0. */
+static MaskExit mask_row(uint8_t x, uint8_t y, uint16_t offsets, uint8_t from)
+{
+    MaskExit out = { 0, { 0, false, false } };
+
+    WR8(ZP->temp08, x);
+    push8(x);
+    push8(y);
+    for (int step = 7; step >= 0; step--) {
+        uint8_t offset = rd8((uint16_t)(offsets + step));
+        uint8_t base = RD8(ZP->temp08);
+        uint8_t cell;
+        uint8_t mask;
+
+        out.last = add_bytes(offset, base, false);
+        cell = RD8(STAGEWORK->mask_buffer[(uint16_t)(out.last.value + from)]);
+        mask = RD8(ZP->temp00);
+        out.a = (uint8_t)(cell & mask);
+        WR8(STAGEWORK->mask_buffer[out.last.value], out.a);
+    }
+    pull8();
+    pull8();
+    return out;
+}
+
+static void mask_row_exit_shim(MaskExit out, uint8_t x)
+{
+    cpu.a = out.a;
+    abi_nz(x);
+    abi_flag(P_C, out.last.carry);
+    abi_flag(P_V, out.last.overflow);
+}
+
+/* The body of SetHealthBarAddress (stage_tick.c) with a copy's address setter and return address. */
+static StageExit health_bar_address(void (*set)(uint8_t, uint8_t), uint16_t ret)
+{
+    StageExit end = { 0, 0, 0, false, false, 0, 0 };
+    uint8_t value;
+    uint8_t low;
+    uint8_t high;
+    Sum lo_sum;
+    Sum hi_sum;
+
+    value = RD8(ZP->field99);
+    if (value == 0) {
+        return end;
+    }
+    value = (uint8_t)(0x5E - RD8(ZP->field99));
+    push8(value);
+    WR8(ZP->temp00, (uint8_t)(value & 0x0F));
+    value = (uint8_t)(pull8() & 0xF0);
+    WR8(ZP->temp01, 0);
+    for (int bit = 0; bit < 3; bit++) {
+        bool carry = (value & 0x80) != 0;
+
+        value = (uint8_t)(value << 1);
+        ROL8(ZP->temp01, carry);
+    }
+    low = RD8(ZP->temp00);
+    lo_sum = add_bytes(value, low, false);
+    high = RD8(ZP->temp01);
+    hi_sum = add_bytes(high, 0x65, lo_sum.carry);
+    jsr_push(ret);
+    set(lo_sum.value, hi_sum.value);
+    jsr_pop();
+    end.a = 2;
+    end.nz = 2;
+    end.x = lo_sum.value;
+    end.y = hi_sum.value;
+    end.c = hi_sum.carry;
+    end.v = hi_sum.overflow;
+    end.set = EXIT_X | EXIT_Y | EXIT_C | EXIT_V;
+    return end;
+}
 
 /*
  * @routine 026D:0B4 ResetStageVariables026D
@@ -522,4 +608,397 @@ StageListEnd ExpandStageLists1CEF(void)
 void abi_ExpandStageLists1CEF(void)
 {
     lists_exit_shim(ExpandStageLists1CEF());
+}
+
+/*
+ * @routine 026F:33B SetVramAddresses026F
+ * @run 6B:933B
+ * WHAT IT DOES: Points the VDC's read and write addresses at X and Y and selects the data register: this program's SetVramAddresses.
+ * HOW: set_vram_addresses (map_draw.c), the body of 024F:37D, with this copy's return addresses.
+ * WAITS: no.
+ * Entry: X the address low, Y the high. Exit: A 2, N and Z from it. X, Y kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+void SetVramAddresses026F(uint8_t lo, uint8_t hi)
+{
+    set_vram_addresses(lo, hi, 0x933E, 0x9347);
+}
+
+void abi_SetVramAddresses026F(void)
+{
+    SetVramAddresses026F(cpu.x, cpu.y);
+    cpu.a = 2;
+    abi_nz(2);
+}
+
+/*
+ * @routine 031F:61C SetVramAddresses031F
+ * @run 6B:961C
+ * WHAT IT DOES: Points the VDC's read and write addresses at X and Y and selects the data register: this program's SetVramAddresses.
+ * HOW: set_vram_addresses (map_draw.c), the body of 024F:37D, with this copy's return addresses.
+ * WAITS: no.
+ * Entry: X the address low, Y the high. Exit: A 2, N and Z from it. X, Y kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+void SetVramAddresses031F(uint8_t lo, uint8_t hi)
+{
+    set_vram_addresses(lo, hi, 0x961F, 0x9628);
+}
+
+void abi_SetVramAddresses031F(void)
+{
+    SetVramAddresses031F(cpu.x, cpu.y);
+    cpu.a = 2;
+    abi_nz(2);
+}
+
+/*
+ * @routine 026D:634 StageSectionNext026D
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext026D(StageRegs r)
+{
+    return section_next(r, 0x9C42);
+}
+
+void abi_StageSectionNext026D(void)
+{
+    stage_regs_load_shim(StageSectionNext026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 031D:634 StageSectionNext031D
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext031D(StageRegs r)
+{
+    return section_next(r, 0x9E09);
+}
+
+void abi_StageSectionNext031D(void)
+{
+    stage_regs_load_shim(StageSectionNext031D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 043D:634 StageSectionNext043D
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext043D(StageRegs r)
+{
+    return section_next(r, 0x9ECD);
+}
+
+void abi_StageSectionNext043D(void)
+{
+    stage_regs_load_shim(StageSectionNext043D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 064D:634 StageSectionNext064D
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext064D(StageRegs r)
+{
+    return section_next(r, 0x9CF3);
+}
+
+void abi_StageSectionNext064D(void)
+{
+    stage_regs_load_shim(StageSectionNext064D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 10DD:634 StageSectionNext10DD
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext10DD(StageRegs r)
+{
+    return section_next(r, 0x9EC7);
+}
+
+void abi_StageSectionNext10DD(void)
+{
+    stage_regs_load_shim(StageSectionNext10DD(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 122D:634 StageSectionNext122D
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext122D(StageRegs r)
+{
+    return section_next(r, 0x9CC7);
+}
+
+void abi_StageSectionNext122D(void)
+{
+    stage_regs_load_shim(StageSectionNext122D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 1A2D:634 StageSectionNext1A2D
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext1A2D(StageRegs r)
+{
+    return section_next(r, 0x9CBD);
+}
+
+void abi_StageSectionNext1A2D(void)
+{
+    stage_regs_load_shim(StageSectionNext1A2D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 1B8D:634 StageSectionNext1B8D
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext1B8D(StageRegs r)
+{
+    return section_next(r, 0x9D09);
+}
+
+void abi_StageSectionNext1B8D(void)
+{
+    stage_regs_load_shim(StageSectionNext1B8D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 1CED:634 StageSectionNext1CED
+ * @run 6B:8634
+ * WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+ * HOW: As StageSectionNext (024D:66A), with this program's table.
+ * WAITS: no.
+ * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSectionNext1CED(StageRegs r)
+{
+    return section_next(r, 0x9C99);
+}
+
+void abi_StageSectionNext1CED(void)
+{
+    stage_regs_load_shim(StageSectionNext1CED(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026F:0D1 MaskStageRowCopy026F
+ * @run 6B:90D1
+ * WHAT IT DOES: Masks one row of the stage's mask buffer from the cells two on: each of the row's eight cells ANDed with the mask in zTemp00.
+ * HOW: As MaskStageRowCopy (024F:113), with this program's offset table.
+ * WAITS: no.
+ * Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last cell written, N and Z from X, C and V from the last offset add. X and Y kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+MaskExit MaskStageRowCopy026F(uint8_t x, uint8_t y)
+{
+    return mask_row(x, y, 0x9107, 2);
+}
+
+void abi_MaskStageRowCopy026F(void)
+{
+    uint8_t x = cpu.x;
+
+    mask_row_exit_shim(MaskStageRowCopy026F(x, cpu.y), x);
+}
+
+/*
+ * @routine 026F:0EC MaskStageRow026F
+ * @run 6B:90EC
+ * WHAT IT DOES: Masks one row of the stage's mask buffer from the cells in place: each of the row's eight cells ANDed with the mask in zTemp00.
+ * HOW: As MaskStageRow (024F:12E), with this program's offset table.
+ * WAITS: no.
+ * Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last cell written, N and Z from X, C and V from the last offset add. X and Y kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+MaskExit MaskStageRow026F(uint8_t x, uint8_t y)
+{
+    return mask_row(x, y, 0x9107, 0);
+}
+
+void abi_MaskStageRow026F(void)
+{
+    uint8_t x = cpu.x;
+
+    mask_row_exit_shim(MaskStageRow026F(x, cpu.y), x);
+}
+
+/*
+ * @routine 031F:0C5 MaskStageRowCopy031F
+ * @run 6B:90C5
+ * WHAT IT DOES: Masks one row of the stage's mask buffer from the cells two on: each of the row's eight cells ANDed with the mask in zTemp00.
+ * HOW: As MaskStageRowCopy (024F:113), with this program's offset table.
+ * WAITS: no.
+ * Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last cell written, N and Z from X, C and V from the last offset add. X and Y kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+MaskExit MaskStageRowCopy031F(uint8_t x, uint8_t y)
+{
+    return mask_row(x, y, 0x90FB, 2);
+}
+
+void abi_MaskStageRowCopy031F(void)
+{
+    uint8_t x = cpu.x;
+
+    mask_row_exit_shim(MaskStageRowCopy031F(x, cpu.y), x);
+}
+
+/*
+ * @routine 031F:0E0 MaskStageRow031F
+ * @run 6B:90E0
+ * WHAT IT DOES: Masks one row of the stage's mask buffer from the cells in place: each of the row's eight cells ANDed with the mask in zTemp00.
+ * HOW: As MaskStageRow (024F:12E), with this program's offset table.
+ * WAITS: no.
+ * Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last cell written, N and Z from X, C and V from the last offset add. X and Y kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+MaskExit MaskStageRow031F(uint8_t x, uint8_t y)
+{
+    return mask_row(x, y, 0x90FB, 0);
+}
+
+void abi_MaskStageRow031F(void)
+{
+    uint8_t x = cpu.x;
+
+    mask_row_exit_shim(MaskStageRow031F(x, cpu.y), x);
+}
+
+/*
+ * @routine 026E:63D SetStageTileVramAddress026E
+ * @run 6B:8E3D
+ * WHAT IT DOES: Sets the VRAM address of the tile pair zTemp04 names, from this program's table of addresses.
+ * HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to SetVramAddresses026F.
+ * WAITS: no.
+ * Entry: zTemp04. Exit: A 2, N and Z from it, X the address low, Y the high.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+uint16_t SetStageTileVramAddress026E(void)
+{
+    uint8_t index = (uint8_t)(RD8(ZP->temp04) & 0xFE);
+    uint8_t lo = rd8((uint16_t)(0x8E4C + index));
+    uint8_t hi = rd8((uint16_t)(0x8E4D + index));
+
+    SetVramAddresses026F(lo, hi);
+    return (uint16_t)(lo | hi << 8);
+}
+
+void abi_SetStageTileVramAddress026E(void)
+{
+    uint16_t address = SetStageTileVramAddress026E();
+
+    cpu.x = (uint8_t)address;
+    cpu.y = (uint8_t)(address >> 8);
+    cpu.a = 2;
+    abi_nz(2);
+}
+
+/*
+ * @routine 026E:3F9 SetHealthBarAddress026E
+ * @run 6B:8BF9
+ * WHAT IT DOES: While zField99 is not 0, sets the VRAM address of the bar at the cell $5E less it counts.
+ * HOW: As SetHealthBarAddress (024E:443), calling SetVramAddresses026F.
+ * WAITS: no.
+ * Entry: nothing. Exit, zField99 0: A 0, Z set. Else: A 2, X and Y the address, C and V from the last add.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit SetHealthBarAddress026E(void)
+{
+    return health_bar_address(SetVramAddresses026F, 0x8C21);
+}
+
+void abi_SetHealthBarAddress026E(void)
+{
+    stage_exit_shim(SetHealthBarAddress026E());
+}
+
+/*
+ * @routine 031E:63D SetStageTileVramAddress031E
+ * @run 6B:8E3D
+ * WHAT IT DOES: Sets the VRAM address of the tile pair zTemp04 names, from this program's table of addresses.
+ * HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to SetVramAddresses031F.
+ * WAITS: no.
+ * Entry: zTemp04. Exit: A 2, N and Z from it, X the address low, Y the high.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+uint16_t SetStageTileVramAddress031E(void)
+{
+    uint8_t index = (uint8_t)(RD8(ZP->temp04) & 0xFE);
+    uint8_t lo = rd8((uint16_t)(0x8E4C + index));
+    uint8_t hi = rd8((uint16_t)(0x8E4D + index));
+
+    SetVramAddresses031F(lo, hi);
+    return (uint16_t)(lo | hi << 8);
+}
+
+void abi_SetStageTileVramAddress031E(void)
+{
+    uint16_t address = SetStageTileVramAddress031E();
+
+    cpu.x = (uint8_t)address;
+    cpu.y = (uint8_t)(address >> 8);
+    cpu.a = 2;
+    abi_nz(2);
+}
+
+/*
+ * @routine 031E:3F9 SetHealthBarAddress031E
+ * @run 6B:8BF9
+ * WHAT IT DOES: While zField99 is not 0, sets the VRAM address of the bar at the cell $5E less it counts.
+ * HOW: As SetHealthBarAddress (024E:443), calling SetVramAddresses031F.
+ * WAITS: no.
+ * Entry: nothing. Exit, zField99 0: A 0, Z set. Else: A 2, X and Y the address, C and V from the last add.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit SetHealthBarAddress031E(void)
+{
+    return health_bar_address(SetVramAddresses031F, 0x8C21);
+}
+
+void abi_SetHealthBarAddress031E(void)
+{
+    stage_exit_shim(SetHealthBarAddress031E());
 }

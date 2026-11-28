@@ -1176,3 +1176,389 @@ ExpandStageLists1CEF_at1:
     inc z:zTemp01
 ExpandStageLists1CEF_at6:
     bra ExpandStageLists1CEF_at7
+
+; @routine 026F:33B SetVramAddresses026F
+; @run 6B:933B
+; WHAT IT DOES: Points the VDC's read and write addresses at X and Y and selects the data register: this program's SetVramAddresses.
+; HOW: set_vram_addresses (map_draw.c), the body of 024F:37D, with this copy's return addresses.
+; WAITS: no.
+; Entry: X the address low, Y the high. Exit: A 2, N and Z from it. X, Y kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SetVramAddresses026F:
+    jsr VecSelectVramReadAddress
+    stx a:VDC_DATA_LO
+    sty a:VDC_DATA_HI
+    jsr VecSelectVramWriteAddress
+    stx a:VDC_DATA_LO
+    sty a:VDC_DATA_HI
+    jmp VecSelectVramData
+
+; @routine 031F:61C SetVramAddresses031F
+; @run 6B:961C
+; WHAT IT DOES: Points the VDC's read and write addresses at X and Y and selects the data register: this program's SetVramAddresses.
+; HOW: set_vram_addresses (map_draw.c), the body of 024F:37D, with this copy's return addresses.
+; WAITS: no.
+; Entry: X the address low, Y the high. Exit: A 2, N and Z from it. X, Y kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SetVramAddresses031F:
+    jsr VecSelectVramReadAddress
+    stx a:VDC_DATA_LO
+    sty a:VDC_DATA_HI
+    jsr VecSelectVramWriteAddress
+    stx a:VDC_DATA_LO
+    sty a:VDC_DATA_HI
+    jmp VecSelectVramData
+
+; @routine 026D:634 StageSectionNext026D
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder026D = $9C42 ; the section record by the step through the stage
+StageSectionNext026D:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder026D,y
+    sta z:zField83
+    rts
+
+; @routine 031D:634 StageSectionNext031D
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder031D = $9E09 ; the section record by the step through the stage
+StageSectionNext031D:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder031D,y
+    sta z:zField83
+    rts
+
+; @routine 043D:634 StageSectionNext043D
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder043D = $9ECD ; the section record by the step through the stage
+StageSectionNext043D:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder043D,y
+    sta z:zField83
+    rts
+
+; @routine 064D:634 StageSectionNext064D
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder064D = $9CF3 ; the section record by the step through the stage
+StageSectionNext064D:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder064D,y
+    sta z:zField83
+    rts
+
+; @routine 10DD:634 StageSectionNext10DD
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder10DD = $9EC7 ; the section record by the step through the stage
+StageSectionNext10DD:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder10DD,y
+    sta z:zField83
+    rts
+
+; @routine 122D:634 StageSectionNext122D
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder122D = $9CC7 ; the section record by the step through the stage
+StageSectionNext122D:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder122D,y
+    sta z:zField83
+    rts
+
+; @routine 1A2D:634 StageSectionNext1A2D
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder1A2D = $9CBD ; the section record by the step through the stage
+StageSectionNext1A2D:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder1A2D,y
+    sta z:zField83
+    rts
+
+; @routine 1B8D:634 StageSectionNext1B8D
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder1B8D = $9D09 ; the section record by the step through the stage
+StageSectionNext1B8D:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder1B8D,y
+    sta z:zField83
+    rts
+
+; @routine 1CED:634 StageSectionNext1CED
+; @run 6B:8634
+; WHAT IT DOES: Moves the stage on to its next section: zField82 counted on and zField83 set from this program's section order by it.
+; HOW: As StageSectionNext (024D:66A), with this program's table.
+; WAITS: no.
+; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SectionOrder1CED = $9C99 ; the section record by the step through the stage
+StageSectionNext1CED:
+    inc z:zField82
+    lda z:zField82
+    tay
+    lda a:SectionOrder1CED,y
+    sta z:zField83
+    rts
+
+; @routine 026F:0D1 MaskStageRowCopy026F
+; @run 6B:90D1
+; WHAT IT DOES: Masks one row of the stage's mask buffer from the cells two on: each of the row's eight cells ANDed with the mask in zTemp00.
+; HOW: As MaskStageRowCopy (024F:113), with this program's offset table.
+; WAITS: no.
+; Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last cell written, N and Z from X, C and V from the last offset add. X and Y kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageMaskOffsets026F = $9107 ; the eight offsets of the mask buffer's cells one step touches
+MaskStageRowCopy026F:
+    stx z:zTemp08
+    phx
+    phy
+    ldx #$07
+MaskStageRowCopy026F_at0:
+    lda a:StageMaskOffsets026F,x
+    clc
+    adc z:zTemp08
+    tay
+    lda a:StageMaskBuffer+2,y
+    and z:zTemp00
+    sta a:StageMaskBuffer,y
+    dex
+    bpl MaskStageRowCopy026F_at0
+    ply
+    plx
+    rts
+
+; @routine 026F:0EC MaskStageRow026F
+; @run 6B:90EC
+; WHAT IT DOES: Masks one row of the stage's mask buffer from the cells in place: each of the row's eight cells ANDed with the mask in zTemp00.
+; HOW: As MaskStageRow (024F:12E), with this program's offset table.
+; WAITS: no.
+; Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last cell written, N and Z from X, C and V from the last offset add. X and Y kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+MaskStageRow026F:
+    stx z:zTemp08
+    phx
+    phy
+    ldx #$07
+MaskStageRow026F_at0:
+    lda a:StageMaskOffsets026F,x
+    clc
+    adc z:zTemp08
+    tay
+    lda a:StageMaskBuffer,y
+    and z:zTemp00
+    sta a:StageMaskBuffer,y
+    dex
+    bpl MaskStageRow026F_at0
+    ply
+    plx
+    rts
+
+; @routine 031F:0C5 MaskStageRowCopy031F
+; @run 6B:90C5
+; WHAT IT DOES: Masks one row of the stage's mask buffer from the cells two on: each of the row's eight cells ANDed with the mask in zTemp00.
+; HOW: As MaskStageRowCopy (024F:113), with this program's offset table.
+; WAITS: no.
+; Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last cell written, N and Z from X, C and V from the last offset add. X and Y kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageMaskOffsets031F = $90FB ; the eight offsets of the mask buffer's cells one step touches
+MaskStageRowCopy031F:
+    stx z:zTemp08
+    phx
+    phy
+    ldx #$07
+MaskStageRowCopy031F_at0:
+    lda a:StageMaskOffsets031F,x
+    clc
+    adc z:zTemp08
+    tay
+    lda a:StageMaskBuffer+2,y
+    and z:zTemp00
+    sta a:StageMaskBuffer,y
+    dex
+    bpl MaskStageRowCopy031F_at0
+    ply
+    plx
+    rts
+
+; @routine 031F:0E0 MaskStageRow031F
+; @run 6B:90E0
+; WHAT IT DOES: Masks one row of the stage's mask buffer from the cells in place: each of the row's eight cells ANDed with the mask in zTemp00.
+; HOW: As MaskStageRow (024F:12E), with this program's offset table.
+; WAITS: no.
+; Entry: X the row's base offset, zTemp00 the mask, Y kept for the caller. Exit: A the last cell written, N and Z from X, C and V from the last offset add. X and Y kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+MaskStageRow031F:
+    stx z:zTemp08
+    phx
+    phy
+    ldx #$07
+MaskStageRow031F_at0:
+    lda a:StageMaskOffsets031F,x
+    clc
+    adc z:zTemp08
+    tay
+    lda a:StageMaskBuffer,y
+    and z:zTemp00
+    sta a:StageMaskBuffer,y
+    dex
+    bpl MaskStageRow031F_at0
+    ply
+    plx
+    rts
+
+; @routine 026E:63D SetStageTileVramAddress026E
+; @run 6B:8E3D
+; WHAT IT DOES: Sets the VRAM address of the tile pair zTemp04 names, from this program's table of addresses.
+; HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to SetVramAddresses026F.
+; WAITS: no.
+; Entry: zTemp04. Exit: A 2, N and Z from it, X the address low, Y the high.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageTileVramAddress026E = $8E4C ; VRAM addresses of the stage's tile pairs, a word each
+SetStageTileVramAddress026E:
+    lda z:zTemp04
+    and #$FE
+    tax
+    lda a:StageTileVramAddress026E,x
+    ldy a:StageTileVramAddress026E+1,x
+    tax
+    jmp SetVramAddresses026F
+
+; @routine 026E:3F9 SetHealthBarAddress026E
+; @run 6B:8BF9
+; WHAT IT DOES: While zField99 is not 0, sets the VRAM address of the bar at the cell $5E less it counts.
+; HOW: As SetHealthBarAddress (024E:443), calling SetVramAddresses026F.
+; WAITS: no.
+; Entry: nothing. Exit, zField99 0: A 0, Z set. Else: A 2, X and Y the address, C and V from the last add.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SetHealthBarAddress026E:
+    lda z:zField99
+    beq SetHealthBarAddress026E_at0
+    lda #$5E
+    sec
+    sbc z:zField99
+    pha
+    and #$0F
+    sta z:zTemp00
+    pla
+    and #$F0
+    stz z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    clc
+    adc z:zTemp00
+    tax
+    lda z:zTemp01
+    adc #$65
+    tay
+    jsr SetVramAddresses026F
+SetHealthBarAddress026E_at0:
+    rts
+
+; @routine 031E:63D SetStageTileVramAddress031E
+; @run 6B:8E3D
+; WHAT IT DOES: Sets the VRAM address of the tile pair zTemp04 names, from this program's table of addresses.
+; HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to SetVramAddresses031F.
+; WAITS: no.
+; Entry: zTemp04. Exit: A 2, N and Z from it, X the address low, Y the high.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageTileVramAddress031E = $8E4C ; VRAM addresses of the stage's tile pairs, a word each
+SetStageTileVramAddress031E:
+    lda z:zTemp04
+    and #$FE
+    tax
+    lda a:StageTileVramAddress031E,x
+    ldy a:StageTileVramAddress031E+1,x
+    tax
+    jmp SetVramAddresses031F
+
+; @routine 031E:3F9 SetHealthBarAddress031E
+; @run 6B:8BF9
+; WHAT IT DOES: While zField99 is not 0, sets the VRAM address of the bar at the cell $5E less it counts.
+; HOW: As SetHealthBarAddress (024E:443), calling SetVramAddresses031F.
+; WAITS: no.
+; Entry: nothing. Exit, zField99 0: A 0, Z set. Else: A 2, X and Y the address, C and V from the last add.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SetHealthBarAddress031E:
+    lda z:zField99
+    beq SetHealthBarAddress031E_at0
+    lda #$5E
+    sec
+    sbc z:zField99
+    pha
+    and #$0F
+    sta z:zTemp00
+    pla
+    and #$F0
+    stz z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    clc
+    adc z:zTemp00
+    tax
+    lda z:zTemp01
+    adc #$65
+    tay
+    jsr SetVramAddresses031F
+SetHealthBarAddress031E_at0:
+    rts

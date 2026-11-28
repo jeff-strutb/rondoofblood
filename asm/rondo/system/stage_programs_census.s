@@ -5968,3 +5968,24 @@ TileRowE0320_at1:
     sta z:zTemp02
     lda #$81
     rts
+
+; @routine 026F:5B5 StageHitReportTop026F
+; @run 6B:95B5
+; WHAT IT DOES: As StageHitReportTop (024F:593), but side 2 gives the attack power 6.
+; HOW: StageHitReportTop's code with the power 6; both branches go to the report at $958A, which holds HitReportHandler's bytes.
+; WAITS: no.
+; Entry: as StageHitReportTop.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageHitReportTop026F:
+    lda a:OBJ_PACE,x
+    and #$80
+    rol a
+    rol a
+    and #$01
+    inc a
+    sta a:OBJ_ATTACK_SIDE,y
+    cmp #$02
+    bne *-58 ; the report at $958A
+    lda #$06
+    sta a:OBJ_ATTACK_POWER,y
+    bra *-65 ; the report at $958A

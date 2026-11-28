@@ -3783,3 +3783,22 @@ void abi_TileRowE0320(void)
 {
     handler_exit_shim(TileRowE0320());
 }
+
+/*
+ * @routine 026F:5B5 StageHitReportTop026F
+ * @run 6B:95B5
+ * WHAT IT DOES: As StageHitReportTop (024F:593), but side 2 gives the attack power 6.
+ * HOW: StageHitReportTopAt (stage_attack.c), the body of 024F:593, with the power 6. The report at $958A holds HitReportHandler's bytes (024F:568).
+ * WAITS: no.
+ * Entry: as StageHitReportTop.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageHitReportTop026F(StageRegs r)
+{
+    return StageHitReportTopAt(r, 0x06);
+}
+
+void abi_StageHitReportTop026F(void)
+{
+    stage_regs_load_shim(StageHitReportTop026F(regs_entry_shim()));
+}

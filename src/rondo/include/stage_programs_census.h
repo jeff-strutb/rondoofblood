@@ -407,4 +407,7 @@ void abi_TileStepOffset0320(void);
 HandlerExit TileRowE0320(void);
 void abi_TileRowE0320(void);
 
+StageRegs StageHitReportTop026F(StageRegs r);
+void abi_StageHitReportTop026F(void);
+
 #endif

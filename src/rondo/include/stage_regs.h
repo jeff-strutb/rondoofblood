@@ -165,4 +165,11 @@ RowChangesExit BlendStageRowChangesAt(uint8_t x, uint8_t new_byte, uint16_t at,
                                       TileRowsExit (*tile_rows)(uint8_t, uint8_t, uint8_t));
 void row_changes_exit_shim(RowChangesExit out);
 
+
+/* system/stage_blend_steps.c: BlendStageScoreRows (024F:1AC) run at `at`, with its banks and its row changes blend; and
+ * what a blend step leaves, set on the registers. */
+BlendStepEnd BlendStageScoreRowsAt(uint8_t x, const StageBanks *banks, uint16_t at,
+                                   RowChangesExit (*row_changes)(uint8_t, uint8_t));
+void blend_step_exit_shim(BlendStepEnd end);
+
 #endif

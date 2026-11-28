@@ -2532,3 +2532,47 @@ void abi_BlendStageScoreAddRows031F(void)
 {
     abi_ended(blend_stage_rows_of_player_exit_shim(BlendStageScoreAddRows031F(cpu.x, cpu.y)));
 }
+
+/*
+ * @routine 026F:16A BlendStageScoreRows026F
+ * @run 6B:916A
+ * WHAT IT DOES: Shows the score on the stage's tile rows, a row of changes a step, when it changed (as BlendStageScoreRows,
+ * 024F:1AC). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: BlendStageScoreRowsAt (stage_blend_steps.c), the body of 024F:1AC, at $916A, with BlendStageRowChanges026F; its
+ * JSR to $92FD and its jumps to $9312 go to SaveAndMapStageBanks' and RestoreStageBanks' bytes (024F:33F and
+ * 024F:354), so their C is theirs.
+ * WAITS: no.
+ * Entry: X the caller's. Exit: as BlendStageScoreRows.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+BlendStepEnd BlendStageScoreRows026F(uint8_t x)
+{
+    return BlendStageScoreRowsAt(x, &stage_banks_024f, 0x916A, BlendStageRowChanges026F);
+}
+
+void abi_BlendStageScoreRows026F(void)
+{
+    blend_step_exit_shim(BlendStageScoreRows026F(cpu.x));
+}
+
+/*
+ * @routine 031F:15E BlendStageScoreRows031F
+ * @run 6B:915E
+ * WHAT IT DOES: Shows the score on the stage's tile rows, a row of changes a step, when it changed (as BlendStageScoreRows,
+ * 024F:1AC). Programs 043F and 10DF hold the same bytes.
+ * HOW: BlendStageScoreRowsAt (stage_blend_steps.c), the body of 024F:1AC, at $915E, with BlendStageRowChanges031F; its
+ * JSR to $95DE and its jumps to $95F3 go to SaveAndMapStageBanks' and RestoreStageBanks' bytes (024F:33F and
+ * 024F:354), so their C is theirs.
+ * WAITS: no.
+ * Entry: X the caller's. Exit: as BlendStageScoreRows.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+BlendStepEnd BlendStageScoreRows031F(uint8_t x)
+{
+    return BlendStageScoreRowsAt(x, &stage_banks_024f, 0x915E, BlendStageRowChanges031F);
+}
+
+void abi_BlendStageScoreRows031F(void)
+{
+    blend_step_exit_shim(BlendStageScoreRows031F(cpu.x));
+}

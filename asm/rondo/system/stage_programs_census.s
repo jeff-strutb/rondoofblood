@@ -3311,3 +3311,147 @@ BlendStageScoreAddRows031F:
     jsr BlendStageRowPair031F
     plx
     jmp RestoreStageBanks_031F
+
+; @routine 026F:16A BlendStageScoreRows026F
+; @run 6B:916A
+; WHAT IT DOES: Shows the score on the stage's tile rows, a row of changes a step, when it changed (as BlendStageScoreRows,
+; 024F:1AC). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: SaveAndMapStageBanks' bytes, BlendStageRowChanges026F for the score's three bytes, a tail jump into
+; RestoreStageBanks' bytes.
+; WAITS: no.
+; Entry: X the caller's. Exit: as BlendStageScoreRows.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BlendStageScoreRows026F:
+    jsr SaveAndMapStageBanks_026F
+    lda a:StageBlendOn+1
+    beq BlendStageScoreRows026F_at0
+    sta a:StageBlendOn
+    lda a:StageBlendStep
+    bne BlendStageScoreRows026F_at1
+    lda z:zGameSubMode
+    cmp #$06
+    beq BlendStageScoreRows026F_at2
+    bbr1 zPaused,BlendStageScoreRows026F_at3
+BlendStageScoreRows026F_at2:
+    lda #$05
+    sta a:StageBlendStep
+BlendStageScoreRows026F_at3:
+    lda a:StageVar350E
+    cmp z:zScore0
+    bne BlendStageScoreRows026F_at1
+    lda a:StageVar3566
+    cmp z:zScore1
+    bne BlendStageScoreRows026F_at1
+    lda a:StageVar35BE
+    cmp z:zScore2
+    beq BlendStageScoreRows026F_at0
+    inc a:StageBlendStep
+    lda z:zScore0
+    sta a:StageVar371E
+    lda z:zScore1
+    sta a:$3776
+    lda z:zScore2
+    sta a:$37CE
+BlendStageScoreRows026F_at1:
+    phx
+    lda a:StageVar350E
+    sta z:zBiosAl
+    lda z:zScore0
+    ldx #$01
+    jsr BlendStageRowChanges026F
+    lda a:StageVar3566
+    sta z:zBiosAl
+    lda z:zScore1
+    ldx #$03
+    jsr BlendStageRowChanges026F
+    lda a:StageVar35BE
+    sta z:zBiosAl
+    lda z:zScore2
+    ldx #$05
+    jsr BlendStageRowChanges026F
+    plx
+    inc a:StageBlendStep
+    lda a:StageBlendStep
+    cmp #$06
+    bne BlendStageScoreRows026F_at0
+    stz a:StageBlendStep
+    lda z:zScore0
+    sta a:StageVar350E
+    lda z:zScore1
+    sta a:StageVar3566
+    lda z:zScore2
+    sta a:StageVar35BE
+BlendStageScoreRows026F_at0:
+    jmp RestoreStageBanks_026F
+
+; @routine 031F:15E BlendStageScoreRows031F
+; @run 6B:915E
+; WHAT IT DOES: Shows the score on the stage's tile rows, a row of changes a step, when it changed (as BlendStageScoreRows,
+; 024F:1AC). Programs 043F and 10DF hold the same bytes.
+; HOW: SaveAndMapStageBanks' bytes, BlendStageRowChanges031F for the score's three bytes, a tail jump into
+; RestoreStageBanks' bytes.
+; WAITS: no.
+; Entry: X the caller's. Exit: as BlendStageScoreRows.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BlendStageScoreRows031F:
+    jsr SaveAndMapStageBanks_031F
+    lda a:StageBlendOn+1
+    beq BlendStageScoreRows031F_at0
+    sta a:StageBlendOn
+    lda a:StageBlendStep
+    bne BlendStageScoreRows031F_at1
+    lda z:zGameSubMode
+    cmp #$06
+    beq BlendStageScoreRows031F_at2
+    bbr1 zPaused,BlendStageScoreRows031F_at3
+BlendStageScoreRows031F_at2:
+    lda #$05
+    sta a:StageBlendStep
+BlendStageScoreRows031F_at3:
+    lda a:StageVar350E
+    cmp z:zScore0
+    bne BlendStageScoreRows031F_at1
+    lda a:StageVar3566
+    cmp z:zScore1
+    bne BlendStageScoreRows031F_at1
+    lda a:StageVar35BE
+    cmp z:zScore2
+    beq BlendStageScoreRows031F_at0
+    inc a:StageBlendStep
+    lda z:zScore0
+    sta a:StageVar371E
+    lda z:zScore1
+    sta a:$3776
+    lda z:zScore2
+    sta a:$37CE
+BlendStageScoreRows031F_at1:
+    phx
+    lda a:StageVar350E
+    sta z:zBiosAl
+    lda z:zScore0
+    ldx #$01
+    jsr BlendStageRowChanges031F
+    lda a:StageVar3566
+    sta z:zBiosAl
+    lda z:zScore1
+    ldx #$03
+    jsr BlendStageRowChanges031F
+    lda a:StageVar35BE
+    sta z:zBiosAl
+    lda z:zScore2
+    ldx #$05
+    jsr BlendStageRowChanges031F
+    plx
+    inc a:StageBlendStep
+    lda a:StageBlendStep
+    cmp #$06
+    bne BlendStageScoreRows031F_at0
+    stz a:StageBlendStep
+    lda z:zScore0
+    sta a:StageVar350E
+    lda z:zScore1
+    sta a:StageVar3566
+    lda z:zScore2
+    sta a:StageVar35BE
+BlendStageScoreRows031F_at0:
+    jmp RestoreStageBanks_031F

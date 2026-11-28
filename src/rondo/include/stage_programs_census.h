@@ -270,4 +270,10 @@ void abi_BlendStageScoreAddRows026F(void);
 ObjArm BlendStageScoreAddRows031F(uint8_t slot, uint8_t y);
 void abi_BlendStageScoreAddRows031F(void);
 
+BlendStepEnd BlendStageScoreRows026F(uint8_t x);
+void abi_BlendStageScoreRows026F(void);
+
+BlendStepEnd BlendStageScoreRows031F(uint8_t x);
+void abi_BlendStageScoreRows031F(void);
+
 #endif

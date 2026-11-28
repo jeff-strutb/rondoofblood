@@ -4,11 +4,11 @@
 #include "routines.h"
 #include "ram.h"
 #include "stage_map.h"
+#include "stage_regs.h"
 #include "stage_enemies_l7.h"
 
 enum {
-    SCORE_SAVE_RETURN = 0x91AF, SCORE_CHANGES_RETURN_1 = 0x91FE, SCORE_CHANGES_RETURN_2 = 0x920A,
-    SCORE_CHANGES_RETURN_3 = 0x9216, ROW_ENTRIES = 5, MODE_SIX = 6,
+    ROW_ENTRIES = 5, MODE_SIX = 6,
     PAUSED_NEXT_BIT = 0x02, STEPS = 6, FIRST_STEP = 1, SECOND_STEP = 3, THIRD_STEP = 5, STEP_RESET = 5,
     SCORE_COPY_LO = 0x371E, SCORE_COPY_MID = 0x3776, SCORE_COPY_HI = 0x37CE
 };
@@ -42,7 +42,10 @@ static void step_exit_shim(BlendStepEnd end)
  * reaches 6, when the shown bytes become the score's. Starts the counter at 5 when the game is
  * at mode 6 or paused with bit 1; when the shown bytes already equal the score, nothing blends.
  */
-static BlendStepEnd blend_score_rows(uint8_t x, const StageBanks *banks)
+/* The body, at the address it runs at (its JSRs return to at + 3, + $52, + $5E and + $6A), with the C of its row
+ * changes blend. */
+static BlendStepEnd blend_score_rows(uint8_t x, const StageBanks *banks, uint16_t at,
+                                     RowChangesExit (*row_changes)(uint8_t, uint8_t))
 {
     Sum map;
     RowChangesExit changes;
@@ -56,7 +59,7 @@ static BlendStepEnd blend_score_rows(uint8_t x, const StageBanks *banks)
     bool y_set = false;
     bool blend = false;
 
-    jsr_push(SCORE_SAVE_RETURN);
+    jsr_push((uint16_t)(at + 3));
     map = banks->save_and_map();
     jsr_pop();
     carry = map.carry;
@@ -99,8 +102,8 @@ static BlendStepEnd blend_score_rows(uint8_t x, const StageBanks *banks)
     shown = RD8(STAGEVARS->state_350e[0]);
     WR8(ZP->bios_a.lo, shown);
     score = RD8(ZP->score.lo);
-    jsr_push(SCORE_CHANGES_RETURN_1);
-    changes = BlendStageRowChanges(FIRST_STEP, score);
+    jsr_push((uint16_t)(at + 0x52));
+    changes = row_changes(FIRST_STEP, score);
     jsr_pop();
     y_set = y_set || changes.y_set;
     if (changes.v_set) {
@@ -109,8 +112,8 @@ static BlendStepEnd blend_score_rows(uint8_t x, const StageBanks *banks)
     shown = RD8(STAGEVARS->state_3566[0]);
     WR8(ZP->bios_a.lo, shown);
     score = RD8(ZP->score.mid);
-    jsr_push(SCORE_CHANGES_RETURN_2);
-    changes = BlendStageRowChanges(SECOND_STEP, score);
+    jsr_push((uint16_t)(at + 0x5E));
+    changes = row_changes(SECOND_STEP, score);
     jsr_pop();
     y_set = y_set || changes.y_set;
     if (changes.v_set) {
@@ -119,8 +122,8 @@ static BlendStepEnd blend_score_rows(uint8_t x, const StageBanks *banks)
     shown = RD8(STAGEVARS->state_35be[0]);
     WR8(ZP->bios_a.lo, shown);
     score = RD8(ZP->score.hi);
-    jsr_push(SCORE_CHANGES_RETURN_3);
-    changes = BlendStageRowChanges(THIRD_STEP, score);
+    jsr_push((uint16_t)(at + 0x6A));
+    changes = row_changes(THIRD_STEP, score);
     jsr_pop();
     y_set = y_set || changes.y_set;
     if (changes.v_set) {
@@ -195,7 +198,7 @@ void abi_BlendStageScoreAddRows(void)
  */
 BlendStepEnd BlendStageScoreRows(uint8_t x)
 {
-    return blend_score_rows(x, &stage_banks_024f);
+    return blend_score_rows(x, &stage_banks_024f, 0x91AC, BlendStageRowChanges);
 }
 
 void abi_BlendStageScoreRows(void)
@@ -214,10 +217,23 @@ void abi_BlendStageScoreRows(void)
  */
 BlendStepEnd BlendStageScoreRowsLong(uint8_t x)
 {
-    return blend_score_rows(x, &stage_banks_05bf);
+    return blend_score_rows(x, &stage_banks_05bf, 0x91AC, BlendStageRowChanges);
 }
 
 void abi_BlendStageScoreRowsLong(void)
 {
     step_exit_shim(BlendStageScoreRowsLong(cpu.x));
+}
+
+/* The score blend's body for the builds of the overlay that hold it elsewhere (stage_programs_census.c), at the
+ * address their code runs at, with their row changes blend; and what a blend step leaves, set on the registers. */
+BlendStepEnd BlendStageScoreRowsAt(uint8_t x, const StageBanks *banks, uint16_t at,
+                                   RowChangesExit (*row_changes)(uint8_t, uint8_t))
+{
+    return blend_score_rows(x, banks, at, row_changes);
+}
+
+void blend_step_exit_shim(BlendStepEnd end)
+{
+    step_exit_shim(end);
 }

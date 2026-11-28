@@ -4,11 +4,15 @@
 #include "routines.h"
 #include "ram.h"
 #include "stage_map.h"
+#include "stage_regs.h"
 
 enum { MASK_WORDS = 0x80, MASK_BYTES = 0x80, ROW_LIMIT = 0x10, ROW_STEP = 2 };
 
 
-static VramMaskExit mask_vram_rows(bool long_variant)
+/* The body, at the address it runs at (its JSRs return to at + 7, + $39 and + $4A), with the C of its VRAM address
+ * setter and of the two row masks it calls. */
+static VramMaskExit mask_vram_rows(uint16_t at, void (*point)(uint8_t lo, uint8_t hi),
+                                   MaskExit (*row_copy)(uint8_t x, uint8_t y), MaskExit (*row)(uint8_t x, uint8_t y))
 {
     VramMaskExit out = { 0, false, { 0, false, false }, 0 };
     uint8_t x;
@@ -20,12 +24,8 @@ static VramMaskExit mask_vram_rows(bool long_variant)
     uint8_t x_lo = RD8(ZP->temp10);
     uint8_t y_hi = RD8(ZP->temp11);
 
-    jsr_push(0x90B8);
-    if (long_variant) {
-        SetVramAddressesLong(x_lo, y_hi);
-    } else {
-        SetVramAddresses(x_lo, y_hi);
-    }
+    jsr_push((uint16_t)(at + 7));
+    point(x_lo, y_hi);
     jsr_pop();
     for (x = MASK_WORDS; x != 0; x = (uint8_t)(x - ROW_STEP)) {
         byte = RD8(VDC->data_lo);
@@ -50,8 +50,8 @@ static VramMaskExit mask_vram_rows(bool long_variant)
                 byte = (uint8_t)((random >> 1) | 0x80);
                 other = RD8(ZP->random2);
                 WR8(ZP->temp00, (uint8_t)(byte | other));
-                jsr_push(0x90EA);
-                step = MaskStageRowCopy(x, y);
+                jsr_push((uint16_t)(at + 0x39));
+                step = row_copy(x, y);
                 jsr_pop();
                 out.mask = step.last;
                 out.flags_from_mask = true;
@@ -65,8 +65,8 @@ static VramMaskExit mask_vram_rows(bool long_variant)
             random = RD8(ZP->random2);
             other = RD8(ZP->random3);
             WR8(ZP->temp00, (uint8_t)(random | other));
-            jsr_push(0x90FB);
-            step = MaskStageRow(x, y);
+            jsr_push((uint16_t)(at + 0x4A));
+            step = row(x, y);
             jsr_pop();
             out.mask = step.last;
             out.flags_from_mask = true;
@@ -115,12 +115,12 @@ static void vram_mask_exit_shim(VramMaskExit out)
  */
 VramMaskExit MaskVramRowsRandom(void)
 {
-    return mask_vram_rows(false);
+    return mask_vram_rows(0x90B1, SetVramAddresses, MaskStageRowCopy, MaskStageRow);
 }
 
 void abi_MaskVramRowsRandom(void)
 {
-    vram_mask_exit_shim(mask_vram_rows(false));
+    vram_mask_exit_shim(mask_vram_rows(0x90B1, SetVramAddresses, MaskStageRowCopy, MaskStageRow));
 }
 
 /*
@@ -133,10 +133,23 @@ void abi_MaskVramRowsRandom(void)
  */
 VramMaskExit MaskVramRowsRandomLong(void)
 {
-    return mask_vram_rows(true);
+    return mask_vram_rows(0x90B1, SetVramAddressesLong, MaskStageRowCopy, MaskStageRow);
 }
 
 void abi_MaskVramRowsRandomLong(void)
 {
-    vram_mask_exit_shim(mask_vram_rows(true));
+    vram_mask_exit_shim(mask_vram_rows(0x90B1, SetVramAddressesLong, MaskStageRowCopy, MaskStageRow));
+}
+
+/* MaskVramRowsRandom's body for the builds of the overlay that hold it elsewhere (stage_programs_census.c), at the
+ * address their code runs at, with their VRAM address setter and row masks; and what it leaves, set on the registers. */
+VramMaskExit MaskVramRowsRandomAt(uint16_t at, void (*point)(uint8_t lo, uint8_t hi),
+                                  MaskExit (*row_copy)(uint8_t x, uint8_t y), MaskExit (*row)(uint8_t x, uint8_t y))
+{
+    return mask_vram_rows(at, point, row_copy, row);
+}
+
+void mask_vram_rows_exit_shim(VramMaskExit out)
+{
+    vram_mask_exit_shim(out);
 }

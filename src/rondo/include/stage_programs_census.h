@@ -276,4 +276,10 @@ void abi_BlendStageScoreRows026F(void);
 BlendStepEnd BlendStageScoreRows031F(uint8_t x);
 void abi_BlendStageScoreRows031F(void);
 
+VramMaskExit MaskVramRowsRandom026F(void);
+void abi_MaskVramRowsRandom026F(void);
+
+VramMaskExit MaskVramRowsRandom031F(void);
+void abi_MaskVramRowsRandom031F(void);
+
 #endif

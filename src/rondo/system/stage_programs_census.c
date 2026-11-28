@@ -2576,3 +2576,45 @@ void abi_BlendStageScoreRows031F(void)
 {
     blend_step_exit_shim(BlendStageScoreRows031F(cpu.x));
 }
+
+/*
+ * @routine 026F:06F MaskVramRowsRandom026F
+ * @run 6B:906F
+ * WHAT IT DOES: Masks a region of VRAM with random bits: copied into the mask buffer, masked row by row, and written back (as
+ * MaskVramRowsRandom, 024F:0B1). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: MaskVramRowsRandomAt (stage_vram_mask.c), the body of 024F:0B1, at $906F with this program's
+ * SetVramAddresses026F, MaskStageRowCopy026F and MaskStageRow026F.
+ * WAITS: no.
+ * Entry: zTemp10 and zTemp11 the VRAM address. Exit: as MaskVramRowsRandom.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+VramMaskExit MaskVramRowsRandom026F(void)
+{
+    return MaskVramRowsRandomAt(0x906F, SetVramAddresses026F, MaskStageRowCopy026F, MaskStageRow026F);
+}
+
+void abi_MaskVramRowsRandom026F(void)
+{
+    mask_vram_rows_exit_shim(MaskVramRowsRandom026F());
+}
+
+/*
+ * @routine 031F:063 MaskVramRowsRandom031F
+ * @run 6B:9063
+ * WHAT IT DOES: Masks a region of VRAM with random bits: copied into the mask buffer, masked row by row, and written back (as
+ * MaskVramRowsRandom, 024F:0B1). Programs 043F and 10DF hold the same bytes.
+ * HOW: MaskVramRowsRandomAt (stage_vram_mask.c), the body of 024F:0B1, at $9063 with this program's
+ * SetVramAddresses031F, MaskStageRowCopy031F and MaskStageRow031F.
+ * WAITS: no.
+ * Entry: zTemp10 and zTemp11 the VRAM address. Exit: as MaskVramRowsRandom.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+VramMaskExit MaskVramRowsRandom031F(void)
+{
+    return MaskVramRowsRandomAt(0x9063, SetVramAddresses031F, MaskStageRowCopy031F, MaskStageRow031F);
+}
+
+void abi_MaskVramRowsRandom031F(void)
+{
+    mask_vram_rows_exit_shim(MaskVramRowsRandom031F());
+}

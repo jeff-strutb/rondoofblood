@@ -3455,3 +3455,141 @@ BlendStageScoreRows031F_at1:
     sta a:StageVar35BE
 BlendStageScoreRows031F_at0:
     jmp RestoreStageBanks_031F
+
+; @routine 026F:06F MaskVramRowsRandom026F
+; @run 6B:906F
+; WHAT IT DOES: Masks a region of VRAM with random bits: copied into the mask buffer, masked row by row, and written back (as
+; MaskVramRowsRandom, 024F:0B1). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: As MaskVramRowsRandom, with this program's VRAM address setter and row masks.
+; WAITS: no.
+; Entry: zTemp10 and zTemp11 the VRAM address. Exit: as MaskVramRowsRandom.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+MaskVramRowsRandom026F:
+    ldx z:zTemp10
+    ldy z:zTemp11
+    jsr SetVramAddresses026F
+    ldx #$80
+MaskVramRowsRandom026F_at0:
+    lda a:VDC_DATA_LO
+    sta a:$3B3F,x
+    lda a:VDC_DATA_HI
+    sta a:$3B3E,x
+    dex
+    dex
+    bne MaskVramRowsRandom026F_at0
+    ldy z:SpritesLeft
+    cpy #$10
+    bcc MaskVramRowsRandom026F_at1
+    ldx #$7F
+MaskVramRowsRandom026F_at2:
+    stz a:StageMaskBuffer,x
+    dex
+    bpl MaskVramRowsRandom026F_at2
+    jmp MaskVramRowsRandom026F_at3
+MaskVramRowsRandom026F_at1:
+    dey
+    beq MaskVramRowsRandom026F_at4
+    clx
+MaskVramRowsRandom026F_at5:
+    lda z:zRandom2
+    sec
+    ror a
+    ora z:zRandom2
+    sta z:zTemp00
+    jsr MaskStageRowCopy026F
+    inx
+    inx
+    dey
+    bne MaskVramRowsRandom026F_at5
+MaskVramRowsRandom026F_at4:
+    ldy z:SpritesLeft
+    clx
+MaskVramRowsRandom026F_at6:
+    lda z:zRandom2
+    ora z:zRandom3
+    sta z:zTemp00
+    jsr MaskStageRow026F
+    inx
+    inx
+    dey
+    bne MaskVramRowsRandom026F_at6
+MaskVramRowsRandom026F_at3:
+    ldx #$80
+MaskVramRowsRandom026F_at7:
+    lda a:$3B3F,x
+    sta a:VDC_DATA_LO
+    lda a:$3B3E,x
+    sta a:VDC_DATA_HI
+    dex
+    dex
+    bne MaskVramRowsRandom026F_at7
+    rts
+
+; @routine 031F:063 MaskVramRowsRandom031F
+; @run 6B:9063
+; WHAT IT DOES: Masks a region of VRAM with random bits: copied into the mask buffer, masked row by row, and written back (as
+; MaskVramRowsRandom, 024F:0B1). Programs 043F and 10DF hold the same bytes.
+; HOW: As MaskVramRowsRandom, with this program's VRAM address setter and row masks.
+; WAITS: no.
+; Entry: zTemp10 and zTemp11 the VRAM address. Exit: as MaskVramRowsRandom.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+MaskVramRowsRandom031F:
+    ldx z:zTemp10
+    ldy z:zTemp11
+    jsr SetVramAddresses031F
+    ldx #$80
+MaskVramRowsRandom031F_at0:
+    lda a:VDC_DATA_LO
+    sta a:$3B3F,x
+    lda a:VDC_DATA_HI
+    sta a:$3B3E,x
+    dex
+    dex
+    bne MaskVramRowsRandom031F_at0
+    ldy z:SpritesLeft
+    cpy #$10
+    bcc MaskVramRowsRandom031F_at1
+    ldx #$7F
+MaskVramRowsRandom031F_at2:
+    stz a:StageMaskBuffer,x
+    dex
+    bpl MaskVramRowsRandom031F_at2
+    jmp MaskVramRowsRandom031F_at3
+MaskVramRowsRandom031F_at1:
+    dey
+    beq MaskVramRowsRandom031F_at4
+    clx
+MaskVramRowsRandom031F_at5:
+    lda z:zRandom2
+    sec
+    ror a
+    ora z:zRandom2
+    sta z:zTemp00
+    jsr MaskStageRowCopy031F
+    inx
+    inx
+    dey
+    bne MaskVramRowsRandom031F_at5
+MaskVramRowsRandom031F_at4:
+    ldy z:SpritesLeft
+    clx
+MaskVramRowsRandom031F_at6:
+    lda z:zRandom2
+    ora z:zRandom3
+    sta z:zTemp00
+    jsr MaskStageRow031F
+    inx
+    inx
+    dey
+    bne MaskVramRowsRandom031F_at6
+MaskVramRowsRandom031F_at3:
+    ldx #$80
+MaskVramRowsRandom031F_at7:
+    lda a:$3B3F,x
+    sta a:VDC_DATA_LO
+    lda a:$3B3E,x
+    sta a:VDC_DATA_HI
+    dex
+    dex
+    bne MaskVramRowsRandom031F_at7
+    rts

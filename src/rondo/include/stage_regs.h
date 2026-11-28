@@ -172,4 +172,11 @@ BlendStepEnd BlendStageScoreRowsAt(uint8_t x, const StageBanks *banks, uint16_t 
                                    RowChangesExit (*row_changes)(uint8_t, uint8_t));
 void blend_step_exit_shim(BlendStepEnd end);
 
+
+/* system/stage_vram_mask.c: MaskVramRowsRandom (024F:0B1) run at `at`, with its VRAM address setter and row masks;
+ * and what it leaves, set on the registers. */
+VramMaskExit MaskVramRowsRandomAt(uint16_t at, void (*point)(uint8_t lo, uint8_t hi),
+                                  MaskExit (*row_copy)(uint8_t x, uint8_t y), MaskExit (*row)(uint8_t x, uint8_t y));
+void mask_vram_rows_exit_shim(VramMaskExit out);
+
 #endif

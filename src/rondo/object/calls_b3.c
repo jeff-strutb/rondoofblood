@@ -88,21 +88,6 @@ static void start_at_place(uint8_t kind, uint16_t ret)
     jsr_pop();
 }
 
-/* A free slot looked for from $30 (or $20) and, when found, an object of a kind started in it. */
-static void start_in_free_slot(bool from20, uint8_t kind, uint16_t find_ret, uint16_t start_ret)
-{
-    uint8_t found_a, to;
-    bool found;
-
-    jsr_push(find_ret);
-    to = from20 ? FindFreeSlotFrom20(&found_a, &found) : FindFreeSlotFrom30(&found_a, &found);
-    find_slot_exit_shim(to, found_a, found);
-    jsr_pop();
-    if (found) {
-        start_at_place(kind, start_ret);
-    }
-}
-
 
 /*
  * @routine 161E:3D9 RecordThenClear161E

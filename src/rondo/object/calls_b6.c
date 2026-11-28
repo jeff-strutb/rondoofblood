@@ -90,21 +90,6 @@ static void start_at_place(uint8_t kind, uint16_t ret)
     jsr_pop();
 }
 
-/* A free slot looked for from $30 (or $20) and, when found, an object of a kind started in it. */
-static void start_in_free_slot(bool from20, uint8_t kind, uint16_t find_ret, uint16_t start_ret)
-{
-    uint8_t found_a, to;
-    bool found;
-
-    jsr_push(find_ret);
-    to = from20 ? FindFreeSlotFrom20(&found_a, &found) : FindFreeSlotFrom30(&found_a, &found);
-    find_slot_exit_shim(to, found_a, found);
-    jsr_pop();
-    if (found) {
-        start_at_place(kind, start_ret);
-    }
-}
-
 /* LDA #script, LDX #slot, JSR StartScriptSlotKind1, between PHX and PLX. */
 static void script_kept_x(uint8_t number, uint8_t at_slot, uint16_t ret)
 {
@@ -138,27 +123,6 @@ static void gravity(uint8_t slot, uint16_t ret)
     jsr_push(ret);
     gravity_exit_shim(ApplyGravity(slot));
     jsr_pop();
-}
-
-static void step_list_tail_(uint8_t slot, uint16_t list)
-{
-    uint8_t y = cpu.y;
-    FrameStep step;
-
-    lda((uint8_t)list);
-    WR8(ZP->temp10, cpu.a);
-    lda((uint8_t)(list >> 8));
-    WR8(ZP->temp11, cpu.a);
-    step = StepObjectFrames(slot, &y);
-    step_frames_exit_shim(step, y);
-}
-
-static uint8_t INC8_IDX_(uint16_t column, uint8_t slot)
-{
-    uint8_t value = (uint8_t)(RD8_IDX(column, slot) + 1);
-
-    WR8_IDX(column, slot, value);
-    return value;
 }
 
 /* DEC of a column: true when it reached zero. */

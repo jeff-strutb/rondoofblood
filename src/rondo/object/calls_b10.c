@@ -90,42 +90,6 @@ static void start_at_place(uint8_t kind, uint16_t ret)
     jsr_pop();
 }
 
-/* A free slot looked for from $30 (or $20) and, when found, an object of a kind started in it. */
-static void start_in_free_slot(bool from20, uint8_t kind, uint16_t find_ret, uint16_t start_ret)
-{
-    uint8_t found_a, to;
-    bool found;
-
-    jsr_push(find_ret);
-    to = from20 ? FindFreeSlotFrom20(&found_a, &found) : FindFreeSlotFrom30(&found_a, &found);
-    find_slot_exit_shim(to, found_a, found);
-    jsr_pop();
-    if (found) {
-        start_at_place(kind, start_ret);
-    }
-}
-
-/* LDA #script, LDX #slot, JSR StartScriptSlotKind1, between PHX and PLX. */
-static void script_kept_x(uint8_t number, uint8_t at_slot, uint16_t ret)
-{
-    push8(cpu.x);
-    lda(number);
-    cpu.x = at_slot;
-    abi_nz(at_slot);
-    jsr_push(ret);
-    script_slot_exit_shim(StartScriptSlotKind1(cpu.a, cpu.x));
-    jsr_pop();
-    cpu.x = pull8();
-    abi_nz(cpu.x);
-}
-
-static void move_x(uint8_t slot, uint16_t ret)
-{
-    jsr_push(ret);
-    axis_move_exit_shim(ApplyVelocityX(slot));
-    jsr_pop();
-}
-
 static void move_y(uint8_t slot, uint16_t ret)
 {
     jsr_push(ret);
@@ -138,27 +102,6 @@ static void gravity(uint8_t slot, uint16_t ret)
     jsr_push(ret);
     gravity_exit_shim(ApplyGravity(slot));
     jsr_pop();
-}
-
-static void step_list_tail_(uint8_t slot, uint16_t list)
-{
-    uint8_t y = cpu.y;
-    FrameStep step;
-
-    lda((uint8_t)list);
-    WR8(ZP->temp10, cpu.a);
-    lda((uint8_t)(list >> 8));
-    WR8(ZP->temp11, cpu.a);
-    step = StepObjectFrames(slot, &y);
-    step_frames_exit_shim(step, y);
-}
-
-static uint8_t INC8_IDX_(uint16_t column, uint8_t slot)
-{
-    uint8_t value = (uint8_t)(RD8_IDX(column, slot) + 1);
-
-    WR8_IDX(column, slot, value);
-    return value;
 }
 
 /* DEC of a column: true when it reached zero. */
@@ -219,46 +162,12 @@ static void random_a(uint16_t ret)
     jsr_pop();
 }
 
-static void face_by_side(uint8_t slot, uint16_t column, uint16_t ret)
-{
-    jsr_push(ret);
-    side_of_player_exit_shim(SideOfPlayer(slot));
-    jsr_pop();
-    lda((uint8_t)(cpu.a & 0x01));
-    WR8_IDX(column, slot, cpu.a);
-}
-
-static bool find_from20(uint16_t ret)
-{
-    uint8_t found_a, to;
-    bool found;
-
-    jsr_push(ret);
-    to = FindFreeSlotFrom20(&found_a, &found);
-    find_slot_exit_shim(to, found_a, found);
-    jsr_pop();
-    return found;
-}
-
 static void clear_this(uint8_t slot, uint16_t ret)
 {
     jsr_push(ret);
     ClearObject(slot);
     jsr_pop();
 }
-/* JSR FindFreeSlotFrom50's vector: true when a slot was found, in Y. */
-static bool find_from50(uint16_t ret)
-{
-    uint8_t found_a, to;
-    bool found;
-
-    jsr_push(ret);
-    to = FindFreeSlotFrom50(&found_a, &found);
-    find_slot_exit_shim(to, found_a, found);
-    jsr_pop();
-    return found;
-}
-
 static void script_at(uint8_t number, uint8_t at_slot, uint16_t ret)
 {
     lda(number);
@@ -275,37 +184,12 @@ static void pull_x(void)
     abi_nz(cpu.x);
 }
 
-static void ldy(uint8_t value)
-{
-    cpu.y = value;
-    abi_nz(value);
-}
-
-static void stop_here(uint8_t slot)
-{
-    WR8(OBJ->vx_hi[slot], 0);
-    WR8(OBJ->vx_lo[slot], 0);
-    WR8(OBJ->vy_hi[slot], 0);
-    WR8(OBJ->vy_lo[slot], 0);
-}
-static void load_then(uint8_t slot, uint16_t ret) { load_record(slot, ret); }
-
 /* LDA, ASL, TAY: a word index from an object column. */
 static void word_index(uint8_t value)
 {
     abi_flag(P_C, (value & 0x80) != 0);
     lda((uint8_t)(value << 1));
     cpu.y = cpu.a;
-}
-
-static void aim_at_player(uint16_t ret)
-{
-    AngleExit angle;
-
-    jsr_push(ret);
-    angle = AngleToPlayer(cpu.x);
-    angle_exit_shim(angle);
-    jsr_pop();
 }
 
 static void velocity_from_a(uint8_t slot, uint16_t ret)
@@ -315,12 +199,6 @@ static void velocity_from_a(uint8_t slot, uint16_t ret)
     jsr_pop();
 }
 
-static void near_x(uint8_t slot, uint16_t ret)
-{
-    jsr_push(ret);
-    abi_ended(ended_of_distance(DistanceXToPlayer(slot)));
-    jsr_pop();
-}
 static void negate_x(uint8_t slot, uint16_t ret)
 {
     jsr_push(ret);
@@ -328,24 +206,6 @@ static void negate_x(uint8_t slot, uint16_t ret)
     jsr_pop();
 }
 
-static void record_event(uint8_t slot, uint16_t ret)
-{
-    uint8_t stored, event, byte;
-    bool marked;
-
-    jsr_push(ret);
-    marked = RecordObjectEvent(slot, &stored, &event, &byte);
-    abi_ended(l8_of_event(marked, stored, event, byte));
-    jsr_pop();
-}
-
-static void swap_xy(void)
-{
-    uint8_t keep = cpu.x;
-
-    cpu.x = cpu.y;
-    cpu.y = keep;
-}
 /* ROL of A through the carry. */
 static void rol_a(void)
 {

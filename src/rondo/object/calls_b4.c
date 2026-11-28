@@ -1037,7 +1037,7 @@ void abi_ListMoveCount0E0C_32D(void)
 void ListMoveCount0E0C_4E0(uint8_t slot)
 {
     step_list(slot, 0xB972, true, 0xBCEB);
-    move_x(slot, 0xBCEE);
+    move_y(slot, 0xBCEE);
     gravity(slot, 0xBCF1);
     if (!counted_out(DEC8(OBJ->work_e[slot]))) {
         return;

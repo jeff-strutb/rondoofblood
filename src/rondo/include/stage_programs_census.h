@@ -217,4 +217,26 @@ void abi_BossFlashMaskCell026E(void);
 StageRegs BossFlashMaskCell031E(StageRegs r);
 void abi_BossFlashMaskCell031E(void);
 
+void abi_GaugeTimerCheckB026E(void);
+
+StageExit GaugeStepB026E(void);
+void abi_GaugeStepB026E(void);
+
+StageExit GaugeStepUpB026E(void);
+void abi_GaugeStepUpB026E(void);
+
+StageExit SetGaugeAddressB026E(void);
+void abi_SetGaugeAddressB026E(void);
+
+void abi_GaugeTimerCheckB031E(void);
+
+StageExit GaugeStepB031E(void);
+void abi_GaugeStepB031E(void);
+
+StageExit GaugeStepUpB031E(void);
+void abi_GaugeStepUpB031E(void);
+
+StageExit SetGaugeAddressB031E(void);
+void abi_SetGaugeAddressB031E(void);
+
 #endif

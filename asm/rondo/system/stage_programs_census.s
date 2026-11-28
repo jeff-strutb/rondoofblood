@@ -2628,3 +2628,229 @@ BossFlashMaskCell031E_at0:
     dex
     bne BossFlashMaskCell031E_at0
     rts
+
+; @routine 026E:439 GaugeTimerCheckB026E
+; @run 6B:8C39
+; WHAT IT DOES: While the life timer of slot 85 is zero, the gauge steps (GaugeStepB026E); else the boss gauge's flash
+; at $8CDB (as GaugeTimerCheckB, 024E:483). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+; HOW: LDA and the two jumps.
+; WAITS: no.
+; Entry: nothing. Exit: as the step or the flash taken.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BossGaugeFlash_026E = $8CDB ; the boss gauge's flash, in the 026D programs
+OrVramData_026F = $935F ; OrVramData's bytes (024F:3A1) in the 026D programs
+GaugeTimerCheckB026E:
+    lda a:BossGaugeEnding
+    beq GaugeStepB026E
+    jmp BossGaugeFlash_026E
+
+; @routine 026E:441 GaugeStepB026E
+; @run 6B:8C41
+; WHAT IT DOES: Moves the gauge one step towards its target, as GaugeStep with this program's VRAM routines (024E:48B). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+; HOW: As GaugeStepB, the VRAM routines at $933B, $9350 and $935F.
+; WAITS: no.
+; Entry: nothing. Exit: as GaugeStep.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+GaugeStepB026E:
+    lda a:OBJ_HEALTH+16
+    bmi GaugeStepB026E_at0
+    cmp a:BossGaugeShown
+    beq GaugeStepUpB026E_at0
+    bcs GaugeStepUpB026E
+    bsr SetGaugeAddressB026E
+    ldx #$0F
+    ldy #$FF
+    jsr AndVramData_026F
+    dec a:BossGaugeShown
+    rts
+GaugeStepB026E_at0:
+    pha
+    stz a:OBJ_HEALTH+16
+    bsr GaugeTimerCheckB026E
+    pla
+    sta a:OBJ_HEALTH+16
+    ldy a:BossGaugeShown
+    bne GaugeStepUpB026E_at0
+    sta a:BossGaugeEnding
+    rts
+
+; @routine 026E:46D GaugeStepUpB026E
+; @run 6B:8C6D
+; WHAT IT DOES: Grows the gauge one, as GaugeStepUp with this program's VRAM routines (024E:4B7). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+; HOW: As GaugeStepUpB, the VRAM routines at $933B, $9350 and $935F.
+; WAITS: no.
+; Entry: nothing. Exit: as GaugeStepUp.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+GaugeStepUpB026E:
+    inc a:BossGaugeShown
+    bsr SetGaugeAddressB026E
+    ldx #$F0
+    ldy #$00
+    jsr OrVramData_026F
+GaugeStepUpB026E_at0:
+    rts
+
+; @routine 026E:47A SetGaugeAddressB026E
+; @run 6B:8C7A
+; WHAT IT DOES: Points the VDC at the gauge's cell for its value, as SetGaugeAddress with this program's VRAM routine (024E:4C4). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+; HOW: As SetGaugeAddressB, the VRAM routines at $933B, $9350 and $935F.
+; WAITS: no.
+; Entry: nothing. Exit: as SetGaugeAddress.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SetGaugeAddressB026E:
+    lda a:BossGaugeShown
+    beq GaugeStepUpB026E_at0
+    stz z:zTemp08
+    stz z:zTemp09
+    cmp #$3F
+    bcc SetGaugeAddressB026E_at0
+    lda #$C0
+    sta z:zTemp08
+    inc z:zTemp09
+SetGaugeAddressB026E_at0:
+    lda #$5E
+    sec
+    sbc a:BossGaugeShown
+    pha
+    and #$0F
+    clc
+    adc #$40
+    sta z:zTemp00
+    pla
+    and #$F0
+    stz z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    clc
+    adc z:zTemp00
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$7D
+    sta z:zTemp01
+    lda z:zTemp08
+    clc
+    adc z:zTemp00
+    tax
+    lda z:zTemp09
+    adc z:zTemp01
+    tay
+    jsr SetVramAddresses026F
+SetGaugeAddressB026E_ret:
+    rts
+
+; @routine 031E:439 GaugeTimerCheckB031E
+; @run 6B:8C39
+; WHAT IT DOES: While the life timer of slot 85 is zero, the gauge steps (GaugeStepB031E); else the boss gauge's flash
+; at $8CDB (as GaugeTimerCheckB, 024E:483). Programs 043E and 10DE hold the same bytes.
+; HOW: LDA and the two jumps.
+; WAITS: no.
+; Entry: nothing. Exit: as the step or the flash taken.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BossGaugeFlash_031E = $8CDB ; the boss gauge's flash, in the 031D programs
+OrVramData_031F = $9640 ; OrVramData's bytes (024F:3A1) in the 031D programs
+GaugeTimerCheckB031E:
+    lda a:BossGaugeEnding
+    beq GaugeStepB031E
+    jmp BossGaugeFlash_031E
+
+; @routine 031E:441 GaugeStepB031E
+; @run 6B:8C41
+; WHAT IT DOES: Moves the gauge one step towards its target, as GaugeStep with this program's VRAM routines (024E:48B). Programs 043E and 10DE hold the same bytes.
+; HOW: As GaugeStepB, the VRAM routines at $961C, $9631 and $9640.
+; WAITS: no.
+; Entry: nothing. Exit: as GaugeStep.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+GaugeStepB031E:
+    lda a:OBJ_HEALTH+16
+    bmi GaugeStepB031E_at0
+    cmp a:BossGaugeShown
+    beq GaugeStepUpB031E_at0
+    bcs GaugeStepUpB031E
+    bsr SetGaugeAddressB031E
+    ldx #$0F
+    ldy #$FF
+    jsr AndVramData_031F
+    dec a:BossGaugeShown
+    rts
+GaugeStepB031E_at0:
+    pha
+    stz a:OBJ_HEALTH+16
+    bsr GaugeTimerCheckB031E
+    pla
+    sta a:OBJ_HEALTH+16
+    ldy a:BossGaugeShown
+    bne GaugeStepUpB031E_at0
+    sta a:BossGaugeEnding
+    rts
+
+; @routine 031E:46D GaugeStepUpB031E
+; @run 6B:8C6D
+; WHAT IT DOES: Grows the gauge one, as GaugeStepUp with this program's VRAM routines (024E:4B7). Programs 043E and 10DE hold the same bytes.
+; HOW: As GaugeStepUpB, the VRAM routines at $961C, $9631 and $9640.
+; WAITS: no.
+; Entry: nothing. Exit: as GaugeStepUp.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+GaugeStepUpB031E:
+    inc a:BossGaugeShown
+    bsr SetGaugeAddressB031E
+    ldx #$F0
+    ldy #$00
+    jsr OrVramData_031F
+GaugeStepUpB031E_at0:
+    rts
+
+; @routine 031E:47A SetGaugeAddressB031E
+; @run 6B:8C7A
+; WHAT IT DOES: Points the VDC at the gauge's cell for its value, as SetGaugeAddress with this program's VRAM routine (024E:4C4). Programs 043E and 10DE hold the same bytes.
+; HOW: As SetGaugeAddressB, the VRAM routines at $961C, $9631 and $9640.
+; WAITS: no.
+; Entry: nothing. Exit: as SetGaugeAddress.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SetGaugeAddressB031E:
+    lda a:BossGaugeShown
+    beq GaugeStepUpB031E_at0
+    stz z:zTemp08
+    stz z:zTemp09
+    cmp #$3F
+    bcc SetGaugeAddressB031E_at0
+    lda #$C0
+    sta z:zTemp08
+    inc z:zTemp09
+SetGaugeAddressB031E_at0:
+    lda #$5E
+    sec
+    sbc a:BossGaugeShown
+    pha
+    and #$0F
+    clc
+    adc #$40
+    sta z:zTemp00
+    pla
+    and #$F0
+    stz z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    clc
+    adc z:zTemp00
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$7D
+    sta z:zTemp01
+    lda z:zTemp08
+    clc
+    adc z:zTemp00
+    tax
+    lda z:zTemp09
+    adc z:zTemp01
+    tay
+    jsr SetVramAddresses031F
+SetGaugeAddressB031E_ret:
+    rts

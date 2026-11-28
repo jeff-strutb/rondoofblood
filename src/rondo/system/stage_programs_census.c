@@ -12,6 +12,7 @@
 #include "stage_regs.h"
 #include "front_end.h"
 #include "stage_programs_census.h"
+#include "stage_gauge.h"
 
 /* The routines below serve the same bytes in several programs, so a call or jump into the overlay's own window goes
  * to the C of the routine loaded there (routine_at), not to one program's function. */
@@ -2141,4 +2142,167 @@ StageRegs BossFlashMaskCell031E(StageRegs r)
 void abi_BossFlashMaskCell031E(void)
 {
     stage_regs_load_shim(BossFlashMaskCell031E(stage_regs_entry_shim()));
+}
+
+/* The gauge of the 026D and 031D programs: the loaded one's code moved down $4A ($8C39 to $8D19 where the loaded
+ * overlays have $8C83 to $8D63), drawing through each program's own VRAM routines. */
+static const GaugeVram GAUGE_026E = { SetVramAddresses026F, AndVramData, OrVramData, (uint16_t)-0x4A };
+static const GaugeVram GAUGE_031E = { SetVramAddresses031F, AndVramData, OrVramData, (uint16_t)-0x4A };
+
+/*
+ * @routine 026E:439 GaugeTimerCheckB026E
+ * @run 6B:8C39
+ * @stop 8C41
+ * WHAT IT DOES: While the life timer of slot 85 is zero, the gauge steps (GaugeStepB026E); else the boss gauge's flash
+ * at $8CDB (as GaugeTimerCheckB, 024E:483). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+ * HOW: GaugeTimerCheckAt (stage_gauge.c), the body of 024E:483, its jumps $4A below the loaded overlays', each to the
+ * C of the routine loaded there.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the step or the flash taken.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+void abi_GaugeTimerCheckB026E(void)
+{
+    GaugeTimerCheckAt((uint16_t)-0x4A);
+}
+
+/*
+ * @routine 026E:441 GaugeStepB026E
+ * @run 6B:8C41
+ * @stop 8C6D
+ * WHAT IT DOES: Moves the gauge one step towards its target, as GaugeStep with this program's VRAM routines (024E:48B). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+ * HOW: GaugeStepAt (stage_gauge.c), the body of 024E:48B, with this program's VRAM routines ($933B, and the bytes of
+ * AndVramData and OrVramData at $9350 and $935F) and its code $4A below the loaded overlays'.
+ * WAITS: no.
+ * Entry: nothing. Exit: as GaugeStep.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit GaugeStepB026E(void)
+{
+    return GaugeStepAt(&GAUGE_026E);
+}
+
+void abi_GaugeStepB026E(void)
+{
+    stage_exit_shim(GaugeStepB026E());
+}
+
+/*
+ * @routine 026E:46D GaugeStepUpB026E
+ * @run 6B:8C6D
+ * @stop 8C7A
+ * WHAT IT DOES: Grows the gauge one, as GaugeStepUp with this program's VRAM routines (024E:4B7). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+ * HOW: GaugeStepUpAt (stage_gauge.c), the body of 024E:4B7, with this program's VRAM routines ($933B, and the bytes of
+ * AndVramData and OrVramData at $9350 and $935F) and its code $4A below the loaded overlays'.
+ * WAITS: no.
+ * Entry: nothing. Exit: as GaugeStepUp.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit GaugeStepUpB026E(void)
+{
+    return GaugeStepUpAt(&GAUGE_026E);
+}
+
+void abi_GaugeStepUpB026E(void)
+{
+    stage_exit_shim(GaugeStepUpB026E());
+}
+
+/*
+ * @routine 026E:47A SetGaugeAddressB026E
+ * @run 6B:8C7A
+ * WHAT IT DOES: Points the VDC at the gauge's cell for its value, as SetGaugeAddress with this program's VRAM routine (024E:4C4). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+ * HOW: SetGaugeAddressAt (stage_gauge.c), the body of 024E:4C4, with this program's VRAM routines ($933B, and the bytes of
+ * AndVramData and OrVramData at $9350 and $935F) and its code $4A below the loaded overlays'.
+ * WAITS: no.
+ * Entry: nothing. Exit: as SetGaugeAddress.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit SetGaugeAddressB026E(void)
+{
+    return SetGaugeAddressAt(&GAUGE_026E);
+}
+
+void abi_SetGaugeAddressB026E(void)
+{
+    stage_exit_shim(SetGaugeAddressB026E());
+}
+
+/*
+ * @routine 031E:439 GaugeTimerCheckB031E
+ * @run 6B:8C39
+ * @stop 8C41
+ * WHAT IT DOES: While the life timer of slot 85 is zero, the gauge steps (GaugeStepB031E); else the boss gauge's flash
+ * at $8CDB (as GaugeTimerCheckB, 024E:483). Programs 043E and 10DE hold the same bytes.
+ * HOW: GaugeTimerCheckAt (stage_gauge.c), the body of 024E:483, its jumps $4A below the loaded overlays', each to the
+ * C of the routine loaded there.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the step or the flash taken.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+void abi_GaugeTimerCheckB031E(void)
+{
+    GaugeTimerCheckAt((uint16_t)-0x4A);
+}
+
+/*
+ * @routine 031E:441 GaugeStepB031E
+ * @run 6B:8C41
+ * @stop 8C6D
+ * WHAT IT DOES: Moves the gauge one step towards its target, as GaugeStep with this program's VRAM routines (024E:48B). Programs 043E and 10DE hold the same bytes.
+ * HOW: GaugeStepAt (stage_gauge.c), the body of 024E:48B, with this program's VRAM routines ($961C, and the bytes of
+ * AndVramData and OrVramData at $9631 and $9640) and its code $4A below the loaded overlays'.
+ * WAITS: no.
+ * Entry: nothing. Exit: as GaugeStep.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit GaugeStepB031E(void)
+{
+    return GaugeStepAt(&GAUGE_031E);
+}
+
+void abi_GaugeStepB031E(void)
+{
+    stage_exit_shim(GaugeStepB031E());
+}
+
+/*
+ * @routine 031E:46D GaugeStepUpB031E
+ * @run 6B:8C6D
+ * @stop 8C7A
+ * WHAT IT DOES: Grows the gauge one, as GaugeStepUp with this program's VRAM routines (024E:4B7). Programs 043E and 10DE hold the same bytes.
+ * HOW: GaugeStepUpAt (stage_gauge.c), the body of 024E:4B7, with this program's VRAM routines ($961C, and the bytes of
+ * AndVramData and OrVramData at $9631 and $9640) and its code $4A below the loaded overlays'.
+ * WAITS: no.
+ * Entry: nothing. Exit: as GaugeStepUp.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit GaugeStepUpB031E(void)
+{
+    return GaugeStepUpAt(&GAUGE_031E);
+}
+
+void abi_GaugeStepUpB031E(void)
+{
+    stage_exit_shim(GaugeStepUpB031E());
+}
+
+/*
+ * @routine 031E:47A SetGaugeAddressB031E
+ * @run 6B:8C7A
+ * WHAT IT DOES: Points the VDC at the gauge's cell for its value, as SetGaugeAddress with this program's VRAM routine (024E:4C4). Programs 043E and 10DE hold the same bytes.
+ * HOW: SetGaugeAddressAt (stage_gauge.c), the body of 024E:4C4, with this program's VRAM routines ($961C, and the bytes of
+ * AndVramData and OrVramData at $9631 and $9640) and its code $4A below the loaded overlays'.
+ * WAITS: no.
+ * Entry: nothing. Exit: as SetGaugeAddress.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit SetGaugeAddressB031E(void)
+{
+    return SetGaugeAddressAt(&GAUGE_031E);
+}
+
+void abi_SetGaugeAddressB031E(void)
+{
+    stage_exit_shim(SetGaugeAddressB031E());
 }

@@ -356,6 +356,9 @@ FF,zp,zBiosDh,BIOS argument _DH
 7D00,abs,SaveBuffer,the backup file in RAM
 7D1D,abs,SaveContinues,continues in a slot
 7D1F,abs,SaveScoreTotal,total score in a slot; BCD
+7DDA,abs,MenuMusicPlaying,the file menu's music select: the track playing; $FF paused
+7DDC,abs,MenuShowRecords,the file menu: nonzero: the slot page shows the records; 0: the music select
+7DDD,abs,MenuSlotMusic,the file menu: each slot's music selection, 0 to 12; 3 bytes by slot
 7DE0,abs,MenuSlotCharacter,the file menu: each slot's character (zCharacter when its game starts); 3 bytes by slot
 7DE3,abs,MenuSlotProgress,the file menu: each slot's progress as SlotLastClearedFlag finds it; picks its face and start stage; 3 bytes by slot
 7DE6,abs,MenuCopyTo,the file menu: the slot number a copy is made to; the name page keeps the grid cursor's row here

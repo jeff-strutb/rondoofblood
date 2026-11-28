@@ -2017,3 +2017,345 @@ MenuStepDispatch:
     sta a:MenuDispatchOperand+1
     jmp (MenuDispatchOperand,x)
 
+
+; @routine 00DF:027 PlaceMenuPortraits
+; @run 6F:B027
+; WHAT IT DOES: Puts objects $0E and $0F on the screen at Y $D8, X from $B049, frames 2 and 1.
+; HOW: ClearObject, three stores and TYA, INC, EOR 3 to the frame, twice (the second falls through).
+; WAITS: no.
+; Entry: nothing. Exit: A 1, N and Z from it, X $0F, Y 1, C kept.
+PortraitXs = $B049 ; the X of objects $0E and $0F
+MarkXs = $B066 ; the X of objects $0C and $0D
+MusicTracks = $B705 ; the CD track of each music choice
+MenuMessages = $BD6D ; the notice strings
+PlaceMenuPortraits:
+    ldx #$0E
+    cly
+    bsr PlaceMenuPortraits_at0
+    inx
+    iny
+PlaceMenuPortraits_at0:
+    jsr VecClearObject
+    lda #$05
+    sta a:OBJ_SPRITE_SET,x
+    lda #$D8
+    sta a:OBJ_Y_LO,x
+    lda a:PieceEntries101A+3,y
+    sta a:OBJ_X_LO,x
+    tya
+    inc a
+    eor #$03
+    sta a:OBJ_FRAME,x
+    rts
+
+; @routine 00DF:04B PlaceMenuMarks
+; @run 6F:B04B
+; WHAT IT DOES: Puts objects $0C and $0D on the screen at Y $C0, X from $B066.
+; HOW: ClearObject and three stores, twice (the second falls through).
+; WAITS: no.
+; Entry: nothing. Exit: A the second X, N and Z from it, X $0D, Y 1, C kept.
+PlaceMenuMarks:
+    ldx #$0C
+    cly
+    bsr PlaceMenuMarks_at0
+    inx
+    iny
+PlaceMenuMarks_at0:
+    jsr VecClearObject
+    lda #$05
+    sta a:OBJ_SPRITE_SET,x
+    lda #$C0
+    sta a:OBJ_Y_LO,x
+    lda a:MarkXs,y
+    sta a:OBJ_X_LO,x
+    rts
+
+; @routine 00DF:17C AnimateMenuMarks
+; @run 6F:B17C
+; WHAT IT DOES: Turns objects $0C and $0D through frames 5 to 12, one every four frames.
+; HOW: zFrameTick shifted right twice, ANDed with 7, plus 5, into both frames.
+; WAITS: no.
+; Entry: nothing. Exit: A the frame, N and Z from it, C and V clear; X and Y kept.
+AnimateMenuMarks:
+    lda z:zFrameTick
+    lsr a
+    lsr a
+    and #$07
+    clc
+    adc #$05
+    sta a:OBJ_FRAME+$0C
+    sta a:OBJ_FRAME+$0D
+    rts
+
+; @routine 00DF:68B MusicSelectStep
+; @run 6F:B68B
+; WHAT IT DOES: The slot page's frame. Button II, or button I on item $1E, leaves for page $0A (the track playing
+; started again, repeating, if one was). Button I on item $1D pauses the CD and marks it paused; on item $1C pauses it
+; and plays the slot's chosen track once. Left and right change the slot's choice among 13 and draw it. Otherwise the
+; cursor moves by the pad and shakes.
+; HOW: The trigger's bits one at a time; MenuSlotMusic of zSaveSlot; DrawSlotMark; CdPlayRepeat, cd_pause, CdPlayOnce
+; with the track from $B705; CursorMoveByPad (menu 5), JitterCursorObjects.
+; WAITS: yes, on the drive, in the CD calls.
+; Entry: from the menu's page table. Exit: as the arm that ran last leaves them.
+MusicSelectStep:
+    lda a:BiosJoyTrigger
+    and #$01
+    bne MusicSelectStep_tB6CD
+    lda a:BiosJoyTrigger
+    and #$02
+    bne MusicSelectStep_tB6DD
+    lda a:BiosJoyTrigger
+    and #$80
+    bne MusicSelectStep_at0
+    lda a:BiosJoyTrigger
+    and #$20
+    bne MusicSelectStep_at1
+    ldy #$05
+    jsr CursorMoveByPad
+    jsr JitterCursorObjects
+    rts
+MusicSelectStep_at0:
+    ldy z:zSaveSlot
+    lda a:MenuSlotMusic,y
+    dec a
+    bpl MusicSelectStep_tB6C7
+    lda #$0C
+    bra MusicSelectStep_tB6C7
+MusicSelectStep_at1:
+    ldy z:zSaveSlot
+    lda a:MenuSlotMusic,y
+    inc a
+    cmp #$0D
+    bne MusicSelectStep_tB6C7
+    cla
+MusicSelectStep_tB6C7:
+    sta a:MenuSlotMusic,y
+    jmp DrawSlotMark
+MusicSelectStep_tB6CD:
+    lda a:OBJ_FLASH_FRAMES
+    cmp #$1E
+    beq MusicSelectStep_tB6DD
+    cmp #$1D
+    beq MusicSelectStep_tB6EC
+    cmp #$1C
+    beq MusicSelectStep_tB6F4
+    rts
+MusicSelectStep_tB6DD:
+    lda a:MenuMusicPlaying
+    beq MusicSelectStep_tB6E7
+    lda #$0E
+    jsr VecCdPlayRepeat
+MusicSelectStep_tB6E7:
+    lda #$0A
+    jmp SetMenuPage
+MusicSelectStep_tB6EC:
+    lda #$FF
+    sta a:MenuMusicPlaying
+    jmp BiosCdPause
+MusicSelectStep_tB6F4:
+    jsr BiosCdPause
+    ldx z:zSaveSlot
+    ldy a:MenuSlotMusic,x
+    sty a:MenuMusicPlaying
+    lda a:MusicTracks,y
+    jmp VecCdPlayOnce
+
+; @routine 00E0:31D FileMenuLeaveStep
+; @run 6F:BB1D
+; WHAT IT DOES: The page that leaves the file menu for the game. First: the saved colours cleared, all colours saved
+; to super RAM (script slot 0 as kind 6), nine fade steps set up and the CD faded. Then, a frame at a time: when the
+; step's frames are out, the 512 saved colours are faded one step and written back (kind 7); after the ninth step the
+; screen's first row at $1100 is blanked, the game state wiped, the slot copied to the work area, the backup written
+; (unless there is no slot), and the mode is done.
+; HOW: Two TAIs from the zero bytes at $4003; StartScriptSlotKind6B and 7B; cd_fade; bank $12 (or $30 when bit 0 of
+; zIdleFlag is set) plus the base at MPR6; the fade of $D000 to $D3FF; SelectVramWriteAddress and ST; ResetGameState,
+; SlotToWorkArea, BackupWrite.
+; WAITS: yes, in ResetGameState (the vertical blank) on the last step.
+; Entry: from the menu's page table. Exit: as the arm that ran last leaves them.
+FileMenuLeaveStep:
+    jsr JitterCursorObjects
+    lda z:zField80
+    bne FileMenuLeaveStep_tBB48
+    tai KernelZeros,ListChannelKind,$007F
+    tai KernelZeros,ScriptSlotKind,$0060
+    clx
+    jsr StartScriptSlotKind6B
+    lda #$09
+    sta a:OBJ_WORK_D+$10
+    lda #$01
+    sta a:OBJ_WORK_E+$10
+    lda #$0C
+    jsr BiosCdFade
+    inc z:zField80
+FileMenuLeaveStep_at0:
+    rts
+FileMenuLeaveStep_tBB48:
+    dec a:OBJ_WORK_E+$10
+    bne FileMenuLeaveStep_at0
+    lda #$12
+    bbr0 zIdleFlag,FileMenuLeaveStep_at1
+    lda #$30
+FileMenuLeaveStep_at1:
+    clc
+    adc z:zRamBaseBank
+    tam #$40
+    stz z:zTemp00
+    lda #$D0
+    sta z:zTemp01
+FileMenuLeaveStep_tBB5F:
+    cly
+FileMenuLeaveStep_at3:
+    lda (zTemp00),y
+    and #$07
+    beq FileMenuLeaveStep_tBB67
+    dec a
+FileMenuLeaveStep_tBB67:
+    sta z:zTemp02
+    lda (zTemp00),y
+    and #$38
+    beq FileMenuLeaveStep_at2
+    sec
+    sbc #$08
+FileMenuLeaveStep_at2:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda (zTemp00),y
+    sta z:zTemp03
+    iny
+    lda (zTemp00),y
+    lsr a
+    ror z:zTemp03
+    lda z:zTemp03
+    and #$E0
+    beq FileMenuLeaveStep_tBB89
+    sec
+    sbc #$20
+FileMenuLeaveStep_tBB89:
+    stz z:zTemp03
+    asl a
+    rol z:zTemp03
+    ora z:zTemp02
+    dey
+    sta (zTemp00),y
+    iny
+    lda z:zTemp03
+    sta (zTemp00),y
+    iny
+    cpy #$20
+    bcc FileMenuLeaveStep_at3
+    lda #$20
+    clc
+    adc z:zTemp00
+    sta z:zTemp00
+    bcc FileMenuLeaveStep_at4
+    inc z:zTemp01
+FileMenuLeaveStep_at4:
+    lda z:zTemp01
+    cmp #$D4
+    bne FileMenuLeaveStep_tBB5F
+    clx
+    jsr StartScriptSlotKind7B
+    lda #$08
+    sta a:OBJ_WORK_E+$10
+    dec a:OBJ_WORK_D+$10
+    bne FileMenuLeaveStep_at5
+    jsr VecSelectVramWriteAddress
+    st1 #$00
+    st2 #$11
+    jsr VecSelectVramData
+    ldy #$10
+FileMenuLeaveStep_at6:
+    st1 #$00
+    st2 #$00
+    dey
+    bne FileMenuLeaveStep_at6
+    jsr VecResetGameState
+    jsr SlotToWorkArea
+    lda z:zSaveSlot
+    bmi FileMenuLeaveStep_at7
+    jsr VecBackupWrite
+FileMenuLeaveStep_at7:
+    inc z:zModeDone
+FileMenuLeaveStep_at5:
+    rts
+
+; @routine 00E0:514 FileMenuNoticePage
+; @run 6F:BD14
+; @stop BD19
+; WHAT IT DOES: Page 13: the backup notice.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: yes, in the first step.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuNoticePage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00E0:51F FileMenuNoticeStart
+; @run 6F:BD1F
+; WHAT IT DOES: The backup notice page's first step: the game state wiped, list $19 and script $0E started, the page's
+; objects placed.
+; HOW: ResetGameState, StartListChannel0Kind2, StartScriptSlot0Kind1, PlaceMenuMarks, PlaceMenuPortraits,
+; MenuStepAdvance.
+; WAITS: yes, in ResetGameState (the vertical blank).
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuNoticeStart:
+    jsr VecResetGameState
+    lda #$19
+    jsr VecStartListChannel0Kind2
+    lda #$0E
+    jsr VecStartScriptSlot0Kind1
+    jsr PlaceMenuMarks
+    jsr PlaceMenuPortraits
+    jmp MenuStepAdvance
+
+; @routine 00E0:535 FileMenuNoticeDraw
+; @run 6F:BD35
+; WHAT IT DOES: The notice page's second step: script $0F and the strings drawn.
+; HOW: StartScriptSlot0Kind1, DrawMenuNotice, MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuNoticeDraw:
+    lda #$0F
+    jsr VecStartScriptSlot0Kind1
+    jsr DrawMenuNotice
+    jmp MenuStepAdvance
+
+; @routine 00E0:540 FileMenuNoticeWait
+; @run 6F:BD40
+; WHAT IT DOES: The notice stays up until button I: then the mode is done with no save slot, and the intro scenes are
+; asked for.
+; HOW: AnimateMenuMarks, the trigger's bit 0; SMB3 zModeEvents, zSaveSlot $FF, zModeDone counted up.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: no button: A 0, Z set; else A $FF, N and Z from zModeDone.
+FileMenuNoticeWait:
+    jsr AnimateMenuMarks
+    lda a:BiosJoyTrigger
+    and #$01
+    beq FileMenuNoticeWait_at0
+    smb3 z:zModeEvents
+    lda #$FF
+    sta z:zSaveSlot
+    inc z:zModeDone
+FileMenuNoticeWait_at0:
+    rts
+
+; @routine 00E0:553 DrawMenuNotice
+; @run 6F:BD53
+; WHAT IT DOES: Draws the notice of the backup memory: the string for ContinueChoice (0 or 1), then two more.
+; HOW: The string pointers at $BD6D, drawn by two BSR and a fall through, the Y index 0 or 2, then 4, then 6.
+; WAITS: no.
+; Entry: nothing. Exit: as the last DrawGlyphText leaves them.
+DrawMenuNotice:
+    lda a:ContinueChoice
+    asl a
+    tay
+    bsr DrawMenuNotice_at0
+    ldy #$04
+    bsr DrawMenuNotice_at0
+    ldy #$06
+DrawMenuNotice_at0:
+    lda a:MenuMessages,y
+    sta z:zTemp00
+    lda a:MenuMessages+1,y
+    sta z:zTemp01
+    jmp DrawGlyphText

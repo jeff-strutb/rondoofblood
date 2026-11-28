@@ -17,14 +17,15 @@
 
 /* What a step of the menu leaves: the registers its own code set, over the exits of the callees it replays. */
 enum { REG_A = 1, REG_X = 2, REG_Y = 4, REG_NZ = 8, REG_C = 16, REG_V = 32 };
-typedef enum { REPLAY_RESET, REPLAY_BACKUP_READ, REPLAY_BACKUP_WRITE, REPLAY_FORMAT, REPLAY_TRACK, REPLAY_SOUND } ReplayKind;
+typedef enum { REPLAY_RESET, REPLAY_BACKUP_READ, REPLAY_BACKUP_WRITE, REPLAY_FORMAT, REPLAY_TRACK, REPLAY_SOUND,
+    REPLAY_CD_PAUSE, REPLAY_CD_FADE } ReplayKind;
 typedef struct {
     ReplayKind kind;
     uint8_t set;                    /* the registers set before this callee, in a, x, ... of the record */
     uint8_t a, x, y, nz;
     bool c, v;
     uint8_t command;
-    union { BackupAccess backup; BackupWriteRun write; BackupFormat format; TrackPlay track; CommandCall sound; } call;
+    union { BackupAccess backup; BackupWriteRun write; BackupFormat format; TrackPlay track; CommandCall sound; CdPause pause; } call;
 } MenuReplay;
 typedef struct {
     uint8_t a, x, y, nz;
@@ -99,6 +100,12 @@ static void menu_regs_shim(const MenuRegs *r)
             break;
         case REPLAY_SOUND:
             sound_command_exit_shim(p->command, p->call.sound);
+            break;
+        case REPLAY_CD_PAUSE:
+            cd_pause_exit_shim(p->call.pause);
+            break;
+        case REPLAY_CD_FADE:
+            cd_fade_exit_shim(p->command);
             break;
         }
     }
@@ -368,8 +375,7 @@ static WaitRegs menu_wait_regs(const MenuRegs *r)
 #define SLOT_OFFSETS_BY_NUMBER (SLOT_OFFSETS - 1)   /* by slot number 1 to 3 */
 #define SLOT_PROGRESS_BY_NUMBER (MenuSlotProgress - 1)
 #define SLOT_CHARACTER_BY_NUMBER (MenuSlotCharacter - 1)
-#define SLOT_MARK 0x7DDD                             /* a byte the menu keeps for each slot, by slot 0 to 2: not settled */
-#define SLOT_MARK_BY_NUMBER (SLOT_MARK - 1)
+#define SLOT_MUSIC_BY_NUMBER (MenuSlotMusic - 1)
 #define ERASE_TIMER 0x7DFE                           /* frames left before a slot is erased */
 #define SLOT_BYTES 0x30
 #define MENU_DISPATCH_OPERAND 0x9E00                /* the operand of MenuStepDispatch's JMP, rewritten each call */
@@ -407,9 +413,9 @@ static MenuRegs save_ready(MenuRegs r)
     wr8(MenuSlotCharacter, 0);
     wr8(MenuSlotCharacter + 1, 0);
     wr8(MenuSlotCharacter + 2, 0);
-    wr8(SLOT_MARK, 0);
-    wr8(SLOT_MARK + 1, 0);
-    wr8(SLOT_MARK + 2, 0);
+    wr8(MenuSlotMusic, 0);
+    wr8(MenuSlotMusic + 1, 0);
+    wr8(MenuSlotMusic + 2, 0);
     WR8(ZP->save_slot, 0);
     jsr_push(0x929A);
     found = SlotLastClearedFlag();
@@ -1187,8 +1193,8 @@ MenuRegs FileMenuCopyMake(MenuRegs r)
     wr8((uint16_t)(SLOT_PROGRESS_BY_NUMBER + to), value);
     value = rd8((uint16_t)(SLOT_CHARACTER_BY_NUMBER + from));
     wr8((uint16_t)(SLOT_CHARACTER_BY_NUMBER + to), value);
-    value = rd8((uint16_t)(SLOT_MARK_BY_NUMBER + from));
-    wr8((uint16_t)(SLOT_MARK_BY_NUMBER + to), value);
+    value = rd8((uint16_t)(SLOT_MUSIC_BY_NUMBER + from));
+    wr8((uint16_t)(SLOT_MUSIC_BY_NUMBER + to), value);
     rx(&r, 1);
     ra(&r, 0x18);
     jsr_push(0x94AA);
@@ -1399,7 +1405,7 @@ static uint8_t r_random(MenuRegs *r, RandomResult x)
  * WHAT IT DOES: Page 7, the slot's game page: the character objects animate; without button I the cursor moves and
  * shakes, now and then one of objects $2F to $32 turns round (every 32 frames, one time in 16), and button II goes back
  * to page 8. Button I picks the item: $14 swaps the slot's character (and the picture's), $15 page $0C, $16 and $17
- * set and clear SLOT_MARK's first byte and go to page 9, $13 starts the game: Maria on a slot with no progress is
+ * set and clear MenuSlotMusic's first byte and go to page 9, $13 starts the game: Maria on a slot with no progress is
  * refused (sound $41); otherwise zCharacter is the slot's, zStage the start stage for its progress (from the other
  * table when pads 1 and 3 hold nothing but button I and pad 2 holds $8E), a slot's first game asks for the intro
  * scenes (bit 3 of zModeEvents), and the menu goes to page $10. Any other item is taken as no press.
@@ -1433,7 +1439,7 @@ MenuRegs FileMenuCharacterPage(MenuRegs r)
         }
         rcmp(&r, item, 0x16);
         if (item == 0x16) {
-            wr8(SLOT_MARK - 1, 1);
+            wr8(MenuShowRecords, 1);
             SetMenuPage(0x09);
             ra(&r, 0);
             rnz(&r, 0x09);
@@ -1441,7 +1447,7 @@ MenuRegs FileMenuCharacterPage(MenuRegs r)
         }
         rcmp(&r, item, 0x17);
         if (item == 0x17) {
-            wr8(SLOT_MARK - 1, 0);
+            wr8(MenuShowRecords, 0);
             SetMenuPage(0x09);
             ra(&r, 0);
             rnz(&r, 0x09);
@@ -2060,7 +2066,7 @@ void abi_NameEntryEnd(void)
  * the entries cleared.
  */
 #define RECORD_ENTRIES 14
-#define MARK_TEXTS 0xAA7B                   /* a string pointer for each value of SLOT_MARK */
+#define MARK_TEXTS 0xAA7B                   /* a string pointer for each value of MenuSlotMusic */
 #define RECORD_SCORES 0xAD01                /* a two-byte BCD score for each entry, and one more at index 14 */
 #define ENTRY_OFFSETS 0xB90A                /* the flag byte pair of each entry, from the slot's byte $01 */
 #define ENTRY_MASKS 0xB917                  /* its bit there */
@@ -2148,7 +2154,7 @@ void abi_DrawChosenItemDigit(void)
 /*
  * @routine 00DE:11D DrawSlotMark
  * @run 6F:A91D
- * WHAT IT DOES: Draws the selected slot's SLOT_MARK plus one as a BCD number at $02C4, and the mark's string.
+ * WHAT IT DOES: Draws the selected slot's MenuSlotMusic plus one as a BCD number at $02C4, and the mark's string.
  * HOW: The mark plus one, adjusted past 9 by subtracting $FA with the carry set; WriteHexByteTiles; the string pointer
  * from MARK_TEXTS in zTemp00 and zTemp01; DrawGlyphText.
  * WAITS: no.
@@ -2170,7 +2176,7 @@ MenuRegs DrawSlotMark(MenuRegs r)
     r_select_data(&r);
     slot = RD8(ZP->save_slot);
     ry(&r, slot);
-    mark = rd8((uint16_t)(SLOT_MARK + slot));
+    mark = rd8((uint16_t)(MenuSlotMusic + slot));
     number = (uint8_t)(mark + 1);
     ra(&r, number);
     rcmp(&r, number, 0x0A);
@@ -2183,7 +2189,7 @@ MenuRegs DrawSlotMark(MenuRegs r)
     r_hex(&r, number);
     slot = RD8(ZP->save_slot);
     ry(&r, slot);
-    mark = rd8((uint16_t)(SLOT_MARK + slot));
+    mark = rd8((uint16_t)(MenuSlotMusic + slot));
     index = (uint8_t)(mark << 1);
     rc(&r, (mark & 0x80) != 0);
     rx(&r, index);
@@ -2667,7 +2673,7 @@ MenuRegs FileMenuListStart(MenuRegs r)
     rcmp(&r, chosen, 0x04);
     if (chosen < 0x04) {
         rc(&r, false);
-        list = radd(&r, 0x1A, rd8(SLOT_MARK - 1));
+        list = radd(&r, 0x1A, rd8(MenuShowRecords));
     } else {
         list = 0x11;
         ra(&r, list);
@@ -2724,7 +2730,7 @@ MenuRegs FileMenuListDraw(MenuRegs r)
         jsr_pop();
         list = 4;
     } else {
-        value = rd8(SLOT_MARK - 1);
+        value = rd8(MenuShowRecords);
         ra(&r, value);
         if (value == 0) {
             jsr_push(0x98A0);
@@ -2803,14 +2809,14 @@ MenuRegs FileMenuListLeave(MenuRegs r)
         WR8(OBJ->sprite_attr[1], 0x88);
         page = 0x0B;
     } else {
-        value = rd8(SLOT_MARK - 1);
+        value = rd8(MenuShowRecords);
         ra(&r, value);
         if (value == 0) {
             ra(&r, 0x1C);
             jsr_push(0x991E);
             r_cursor(&r, SetCursorValue(0x1C));
             jsr_pop();
-            wr8(0x7DDA, 0);
+            wr8(MenuMusicPlaying, 0);
             page = 0x0E;
         } else {
             ra(&r, 0x1D);
@@ -3293,7 +3299,7 @@ MenuRegs FileMenuBackStart(MenuRegs r)
     ra(&r, chosen);
     rcmp(&r, chosen, 0x04);
     if (chosen < 0x04) {
-        flag = rd8(SLOT_MARK - 1);
+        flag = rd8(MenuShowRecords);
         value = flag != 0 ? 0x16 : 0x17;
         ra(&r, value);
     } else {
@@ -4125,6 +4131,639 @@ MenuRegs FileMenuCopyPage(MenuRegs r)
 void abi_FileMenuCopyPage(void)
 {
     MenuRegs r = FileMenuCopyPage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* The music select's CD track for each of the 13 choices, and the strings of the menu's three notices. */
+#define MUSIC_TRACKS 0xB705
+#define MENU_MESSAGES 0xBD6D                /* string pointers: ContinueChoice 0 and 1, then $BD71 and $BD73 */
+#define PORTRAIT_X 0xB049                   /* the X of the two objects $0E and $0F */
+#define MARK_X 0xB066                       /* the X of the two objects $0C and $0D */
+#define FADE_OBJECT 0x10                    /* work_d: the fade's steps left; work_e: frames to the next */
+enum { MUSIC_CHOICES = 13 };
+
+/* CdPlayRepeat or CdPlayOnce, its exit replayed. */
+static MenuRegs play_track(MenuRegs r, uint8_t track, bool repeat, uint16_t ret)
+{
+    TrackPlay play;
+    MenuReplay *p;
+
+    if (ret != 0) {
+        jsr_push(ret);
+    }
+    play = repeat ? CdPlayRepeat(track, r.x, menu_y(&r)) : CdPlayOnce(track, r.x, menu_y(&r));
+    if (ret != 0) {
+        jsr_pop();
+    }
+    p = menu_replay(&r, REPLAY_TRACK);
+    p->call.track = play;
+    return r;
+}
+
+static MenuRegs pause_cd(MenuRegs r, uint16_t ret)
+{
+    CdPause pause;
+    MenuReplay *p;
+
+    if (ret != 0) {
+        jsr_push(ret);
+    }
+    pause = vec_cd_pause(r.x);
+    if (ret != 0) {
+        jsr_pop();
+    }
+    p = menu_replay(&r, REPLAY_CD_PAUSE);
+    p->call.pause = pause;
+    return r;
+}
+
+/*
+ * @routine 00DF:68B MusicSelectStep
+ * @run 6F:B68B
+ * WHAT IT DOES: The slot page's frame. Button II, or button I on item $1E, leaves for page $0A (the track playing
+ * started again, repeating, if one was). Button I on item $1D pauses the CD and marks it paused; on item $1C pauses it
+ * and plays the slot's chosen track once. Left and right change the slot's choice among 13 and draw it. Otherwise the
+ * cursor moves by the pad and shakes.
+ * HOW: The trigger's bits one at a time; MenuSlotMusic of zSaveSlot; DrawSlotMark; CdPlayRepeat, cd_pause, CdPlayOnce
+ * with the track from $B705; CursorMoveByPad (menu 5), JitterCursorObjects.
+ * WAITS: yes, on the drive, in the CD calls.
+ * Entry: from the menu's page table. Exit: as the arm that ran last leaves them.
+ */
+MenuRegs MusicSelectStep(MenuRegs r)
+{
+    uint8_t trigger, item, slot, choice, playing, track;
+
+    trigger = rd8(BiosJoyTrigger);
+    ra(&r, (uint8_t)(trigger & 0x01));
+    if (r.a != 0) {
+        item = RD8(OBJ->work_d[0]);
+        ra(&r, item);
+        rcmp(&r, item, 0x1E);
+        if (item != 0x1E) {
+            rcmp(&r, item, 0x1D);
+            if (item == 0x1D) {
+                ra(&r, 0xFF);
+                wr8(MenuMusicPlaying, 0xFF);
+                return pause_cd(r, 0);
+            }
+            rcmp(&r, item, 0x1C);
+            if (item != 0x1C) {
+                return r;
+            }
+            r = pause_cd(r, 0xB6F7);
+            slot = RD8(ZP->save_slot);
+            rx(&r, slot);
+            choice = rd8((uint16_t)(MenuSlotMusic + slot));
+            ry(&r, choice);
+            wr8(MenuMusicPlaying, choice);
+            track = rd8((uint16_t)(MUSIC_TRACKS + choice));
+            ra(&r, track);
+            return play_track(r, track, false, 0);
+        }
+    } else {
+        trigger = rd8(BiosJoyTrigger);
+        ra(&r, (uint8_t)(trigger & 0x02));
+        if (r.a == 0) {
+            trigger = rd8(BiosJoyTrigger);
+            ra(&r, (uint8_t)(trigger & 0x80));
+            if (r.a == 0) {
+                trigger = rd8(BiosJoyTrigger);
+                ra(&r, (uint8_t)(trigger & 0x20));
+                if (r.a == 0) {
+                    ry(&r, 5);
+                    jsr_push(0xB6AC);
+                    r_pad(&r, CursorMoveByPad(5));
+                    jsr_pop();
+                    jsr_push(0xB6AF);
+                    r_glide(&r, JitterCursorObjects(), 1);
+                    jsr_pop();
+                    return r;
+                }
+                slot = RD8(ZP->save_slot);
+                ry(&r, slot);
+                choice = (uint8_t)(rd8((uint16_t)(MenuSlotMusic + slot)) + 1);
+                ra(&r, choice);
+                rcmp(&r, choice, MUSIC_CHOICES);
+                if (choice == MUSIC_CHOICES) {
+                    choice = 0;
+                    ra_keep(&r, 0);
+                }
+            } else {
+                slot = RD8(ZP->save_slot);
+                ry(&r, slot);
+                choice = (uint8_t)(rd8((uint16_t)(MenuSlotMusic + slot)) - 1);
+                ra(&r, choice);
+                if (choice & 0x80) {
+                    choice = MUSIC_CHOICES - 1;
+                    ra(&r, choice);
+                }
+            }
+            wr8((uint16_t)(MenuSlotMusic + slot), choice);
+            return DrawSlotMark(r);
+        }
+    }
+    playing = rd8(MenuMusicPlaying);
+    ra(&r, playing);
+    if (playing != 0) {
+        ra(&r, 0x0E);
+        r = play_track(r, 0x0E, true, 0xB6E7);
+    }
+    ra(&r, 0x0A);
+    SetMenuPage(0x0A);
+    ra(&r, 0);
+    rnz(&r, 0x0A);
+    return r;
+}
+
+void abi_MusicSelectStep(void)
+{
+    MenuRegs r = MusicSelectStep(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* One of the pairs of objects the notice pages show: emptied, given picture set 5 and a place ($B02E, $B052). */
+static uint8_t notice_object(uint8_t object, uint8_t y_lo, uint16_t xs, uint8_t index, uint16_t ret)
+{
+    uint8_t x;
+
+    jsr_push(ret);
+    ClearObject(object);
+    jsr_pop();
+    WR8(OBJ->sprite_set[object], 5);
+    WR8(OBJ->y_lo[object], y_lo);
+    x = rd8((uint16_t)(xs + index));
+    WR8(OBJ->x_lo[object], x);
+    return x;
+}
+
+/*
+ * @routine 00DF:027 PlaceMenuPortraits
+ * @run 6F:B027
+ * WHAT IT DOES: Puts objects $0E and $0F on the screen at Y $D8, X from $B049, frames 2 and 1.
+ * HOW: ClearObject, three stores and TYA, INC, EOR 3 to the frame, twice (the second falls through).
+ * WAITS: no.
+ * Entry: nothing. Exit: A 1, N and Z from it, X $0F, Y 1, C kept.
+ */
+MenuRegs PlaceMenuPortraits(MenuRegs r)
+{
+    uint8_t i, frame = 0;
+
+    for (i = 0; i < 2; i++) {
+        uint8_t object = (uint8_t)(0x0E + i);
+
+        if (i == 0) {
+            jsr_push(0xB02C);
+        }
+        (void)notice_object(object, 0xD8, PORTRAIT_X, i, 0xB031);
+        frame = (uint8_t)((uint8_t)(i + 1) ^ 0x03);
+        WR8(OBJ->frame[object], frame);
+        if (i == 0) {
+            jsr_pop();
+        }
+    }
+    ra(&r, frame);
+    r.x = 0x0F;
+    r.y = 1;
+    r.set |= REG_X | REG_Y;
+    return r;
+}
+
+void abi_PlaceMenuPortraits(void)
+{
+    MenuRegs r = PlaceMenuPortraits(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:04B PlaceMenuMarks
+ * @run 6F:B04B
+ * WHAT IT DOES: Puts objects $0C and $0D on the screen at Y $C0, X from $B066.
+ * HOW: ClearObject and three stores, twice (the second falls through).
+ * WAITS: no.
+ * Entry: nothing. Exit: A the second X, N and Z from it, X $0D, Y 1, C kept.
+ */
+MenuRegs PlaceMenuMarks(MenuRegs r)
+{
+    uint8_t value;
+
+    jsr_push(0xB050);
+    (void)notice_object(0x0C, 0xC0, MARK_X, 0, 0xB055);
+    jsr_pop();
+    value = notice_object(0x0D, 0xC0, MARK_X, 1, 0xB055);
+    ra(&r, value);
+    r.x = 0x0D;
+    r.y = 1;
+    r.set |= REG_X | REG_Y;
+    return r;
+}
+
+void abi_PlaceMenuMarks(void)
+{
+    MenuRegs r = PlaceMenuMarks(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:17C AnimateMenuMarks
+ * @run 6F:B17C
+ * WHAT IT DOES: Turns objects $0C and $0D through frames 5 to 12, one every four frames.
+ * HOW: zFrameTick shifted right twice, ANDed with 7, plus 5, into both frames.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the frame, N and Z from it, C and V clear; X and Y kept.
+ */
+MenuRegs AnimateMenuMarks(MenuRegs r)
+{
+    uint8_t frame = (uint8_t)(((RD8(ZP->frame_tick) >> 2) & 0x07) + 5);
+
+    ra(&r, frame);
+    rc(&r, false);
+    rv(&r, false);
+    WR8(OBJ->frame[0x0C], frame);
+    WR8(OBJ->frame[0x0D], frame);
+    return r;
+}
+
+void abi_AnimateMenuMarks(void)
+{
+    MenuRegs r = AnimateMenuMarks(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* One of the notice's strings, by the table's byte index ($BD60). */
+static MenuRegs menu_message(MenuRegs r, uint8_t index)
+{
+    WR8(ZP->temp00, rd8((uint16_t)(MENU_MESSAGES + index)));
+    ra(&r, rd8((uint16_t)(MENU_MESSAGES + 1 + index)));
+    WR8(ZP->temp01, r.a);
+    rexit(&r, DrawGlyphText());
+    return r;
+}
+
+/*
+ * @routine 00E0:553 DrawMenuNotice
+ * @run 6F:BD53
+ * WHAT IT DOES: Draws the notice of the backup memory: the string for ContinueChoice (0 or 1), then two more.
+ * HOW: The string pointers at $BD6D, drawn by two BSR and a fall through, the Y index 0 or 2, then 4, then 6.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last DrawGlyphText leaves them.
+ */
+MenuRegs DrawMenuNotice(MenuRegs r)
+{
+    uint8_t choice, index;
+
+    choice = rd8(ContinueChoice);
+    index = (uint8_t)(choice << 1);
+    ra(&r, index);
+    rc(&r, (choice & 0x80) != 0);
+    ry(&r, index);
+    jsr_push(0xBD5A);
+    r = menu_message(r, index);
+    jsr_pop();
+    ry(&r, 4);
+    jsr_push(0xBD5E);
+    r = menu_message(r, 4);
+    jsr_pop();
+    ry(&r, 6);
+    return menu_message(r, 6);
+}
+
+void abi_DrawMenuNotice(void)
+{
+    MenuRegs r = DrawMenuNotice(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00E0:51F FileMenuNoticeStart
+ * @run 6F:BD1F
+ * WHAT IT DOES: The backup notice page's first step: the game state wiped, list $19 and script $0E started, the page's
+ * objects placed.
+ * HOW: ResetGameState, StartListChannel0Kind2, StartScriptSlot0Kind1, PlaceMenuMarks, PlaceMenuPortraits,
+ * MenuStepAdvance.
+ * WAITS: yes, in ResetGameState (the vertical blank).
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuNoticeStart(MenuRegs r)
+{
+    jsr_push(0xBD22);
+    ResetGameState(menu_wait_regs(&r));
+    jsr_pop();
+    (void)menu_replay(&r, REPLAY_RESET);
+    ra(&r, 0x19);
+    jsr_push(0xBD27);
+    (void)StartListChannel0Kind2(0x19);
+    jsr_pop();
+    ra(&r, 2);
+    rx(&r, 0);
+    rnz(&r, 2);
+    ra(&r, 0x0E);
+    jsr_push(0xBD2C);
+    (void)StartScriptSlot0Kind1(0x0E);
+    jsr_pop();
+    ry(&r, 0x0E);
+    rx(&r, 0);
+    rnz(&r, 0x0E);
+    jsr_push(0xBD2F);
+    r = PlaceMenuMarks(r);
+    jsr_pop();
+    jsr_push(0xBD32);
+    r = PlaceMenuPortraits(r);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuNoticeStart(void)
+{
+    MenuRegs r = FileMenuNoticeStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00E0:535 FileMenuNoticeDraw
+ * @run 6F:BD35
+ * WHAT IT DOES: The notice page's second step: script $0F and the strings drawn.
+ * HOW: StartScriptSlot0Kind1, DrawMenuNotice, MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuNoticeDraw(MenuRegs r)
+{
+    ra(&r, 0x0F);
+    jsr_push(0xBD3A);
+    (void)StartScriptSlot0Kind1(0x0F);
+    jsr_pop();
+    ry(&r, 0x0F);
+    rx(&r, 0);
+    rnz(&r, 0x0F);
+    jsr_push(0xBD3D);
+    r = DrawMenuNotice(r);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuNoticeDraw(void)
+{
+    MenuRegs r = FileMenuNoticeDraw(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00E0:540 FileMenuNoticeWait
+ * @run 6F:BD40
+ * WHAT IT DOES: The notice stays up until button I: then the mode is done with no save slot, and the intro scenes are
+ * asked for.
+ * HOW: AnimateMenuMarks, the trigger's bit 0; SMB3 zModeEvents, zSaveSlot $FF, zModeDone counted up.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: no button: A 0, Z set; else A $FF, N and Z from zModeDone.
+ */
+MenuRegs FileMenuNoticeWait(MenuRegs r)
+{
+    uint8_t trigger;
+
+    jsr_push(0xBD43);
+    r = AnimateMenuMarks(r);
+    jsr_pop();
+    trigger = rd8(BiosJoyTrigger);
+    ra(&r, (uint8_t)(trigger & 0x01));
+    if (r.a == 0) {
+        return r;
+    }
+    RMW8(ZP->mode_events, events_, events_ | 0x08);
+    ra(&r, 0xFF);
+    WR8(ZP->save_slot, 0xFF);
+    rnz(&r, INC8(ZP->mode_done));
+    return r;
+}
+
+void abi_FileMenuNoticeWait(void)
+{
+    MenuRegs r = FileMenuNoticeWait(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00E0:514 FileMenuNoticePage
+ * @run 6F:BD14
+ * @stop BD19
+ * WHAT IT DOES: Page 13: the backup notice.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: yes, in the first step.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuNoticePage(MenuRegs r)
+{
+    uint16_t target = menu_page(&r, 0xBD19);
+
+    switch (target) {
+    case 0xBD1F: return FileMenuNoticeStart(r);
+    case 0xBD35: return FileMenuNoticeDraw(r);
+    case 0xBD40: return FileMenuNoticeWait(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuNoticePage(void)
+{
+    MenuRegs r = FileMenuNoticePage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* One colour of the saved palette at (zTemp00),Y faded one step: blue, red and green each down by one unless zero. */
+static void fade_saved_colour(MenuRegs *r, uint8_t y)
+{
+    uint8_t part, byte, high, carry;
+
+    byte = RD8_PTR_Y(ZP->temp00, y);
+    part = (uint8_t)(byte & 0x07);
+    if (part != 0) {
+        part--;
+    }
+    WR8(ZP->temp02, part);
+    byte = RD8_PTR_Y(ZP->temp00, y);
+    part = (uint8_t)(byte & 0x38);
+    if (part != 0) {
+        rv(r, ((part ^ 0x08) & (part ^ (uint8_t)(part - 0x08)) & 0x80) != 0);
+        part = (uint8_t)(part - 0x08);
+    }
+    part = (uint8_t)(part | RD8(ZP->temp02));
+    WR8(ZP->temp02, part);
+    byte = RD8_PTR_Y(ZP->temp00, y);
+    WR8(ZP->temp03, byte);
+    high = RD8_PTR_Y(ZP->temp00, (uint8_t)(y + 1));
+    carry = (uint8_t)(high & 1);                    /* LSR A, then ROR of the low byte */
+    ROR8(ZP->temp03, carry != 0);
+    byte = (uint8_t)(RD8(ZP->temp03) & 0xE0);
+    if (byte != 0) {
+        rv(r, ((byte ^ 0x20) & (byte ^ (uint8_t)(byte - 0x20)) & 0x80) != 0);
+        byte = (uint8_t)(byte - 0x20);
+    }
+    WR8(ZP->temp03, 0);
+    carry = (uint8_t)(byte >> 7);
+    byte = (uint8_t)(byte << 1);                    /* ASL A, then ROL of the cleared byte */
+    ROL8(ZP->temp03, carry != 0);
+    byte = (uint8_t)(byte | RD8(ZP->temp02));
+    WR8_PTR_Y(ZP->temp00, y, byte);
+    byte = RD8(ZP->temp03);
+    WR8_PTR_Y(ZP->temp00, (uint8_t)(y + 1), byte);
+}
+
+/*
+ * @routine 00E0:31D FileMenuLeaveStep
+ * @run 6F:BB1D
+ * WHAT IT DOES: The page that leaves the file menu for the game. First: the saved colours cleared, all colours saved
+ * to super RAM (script slot 0 as kind 6), nine fade steps set up and the CD faded. Then, a frame at a time: when the
+ * step's frames are out, the 512 saved colours are faded one step and written back (kind 7); after the ninth step the
+ * screen's first row at $1100 is blanked, the game state wiped, the slot copied to the work area, the backup written
+ * (unless there is no slot), and the mode is done.
+ * HOW: Two TAIs from the zero bytes at $4003; StartScriptSlotKind6B and 7B; cd_fade; bank $12 (or $30 when bit 0 of
+ * zIdleFlag is set) plus the base at MPR6; the fade of $D000 to $D3FF; SelectVramWriteAddress and ST; ResetGameState,
+ * SlotToWorkArea, BackupWrite.
+ * WAITS: yes, in ResetGameState (the vertical blank) on the last step.
+ * Entry: from the menu's page table. Exit: as the arm that ran last leaves them.
+ */
+MenuRegs FileMenuLeaveStep(MenuRegs r)
+{
+    BackupWriteRun write;
+    SlotCopy copy;
+    MenuReplay *p;
+    uint8_t step, timer, bank, base, y, high, count;
+    unsigned total;
+
+    jsr_push(0xBB20);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    step = RD8(ZP->field80);
+    ra(&r, step);
+    if (step == 0) {
+        block_move_tai(KernelZeros, ListChannelKind, 0x007F, r.a, r.x, menu_y(&r));
+        block_move_tai(KernelZeros, ScriptSlotKind, 0x0060, r.a, r.x, menu_y(&r));
+        rx(&r, 0);
+        jsr_push(0xBB36);
+        y = menu_y(&r);
+        (void)StartScriptSlotKind6B(y, 0);
+        jsr_pop();
+        ra(&r, y);
+        ra(&r, 0x09);
+        WR8(OBJ->work_d[FADE_OBJECT], 0x09);
+        ra(&r, 0x01);
+        WR8(OBJ->work_e[FADE_OBJECT], 0x01);
+        ra(&r, 0x0C);
+        jsr_push(0xBB45);
+        (void)vec_cd_fade(0x0C);
+        jsr_pop();
+        p = menu_replay(&r, REPLAY_CD_FADE);
+        p->command = 0x0C;
+        rnz(&r, INC8(ZP->field80));
+        return r;
+    }
+    timer = DEC8(OBJ->work_e[FADE_OBJECT]);
+    rnz(&r, timer);
+    if (timer != 0) {
+        return r;
+    }
+    bank = 0x12;
+    if (RD8(ZP->idle_flag) & 0x01) {
+        bank = 0x30;
+    }
+    base = RD8(ZP->ram_base_bank);
+    total = (unsigned)bank + base;
+    ra(&r, (uint8_t)total);
+    rc(&r, total > 0xFF);
+    rv(&r, ((bank ^ total) & (base ^ total) & 0x80) != 0);
+    tam(0x40, (uint8_t)total);
+    WR8(ZP->temp00, 0);
+    ra(&r, 0xD0);
+    WR8(ZP->temp01, 0xD0);
+    do {
+        uint8_t low, sum;
+
+        y = 0;
+        do {
+            fade_saved_colour(&r, y);
+            y = (uint8_t)(y + 2);
+        } while (y < 0x20);
+        low = RD8(ZP->temp00);
+        sum = (uint8_t)(low + 0x20);
+        rv(&r, ((0x20 ^ sum) & (low ^ sum) & 0x80) != 0);
+        WR8(ZP->temp00, sum);
+        if (low > 0xDF) {
+            INC8(ZP->temp01);
+        }
+        high = RD8(ZP->temp01);
+        ra(&r, high);
+        rcmp(&r, high, 0xD4);
+    } while (high != 0xD4);
+    r.y = y;
+    r.set |= REG_Y;
+    rx(&r, 0);
+    jsr_push(0xBBB2);
+    (void)StartScriptSlotKind7B(y, 0);
+    jsr_pop();
+    ra(&r, y);
+    ra(&r, 0x08);
+    WR8(OBJ->work_e[FADE_OBJECT], 0x08);
+    count = DEC8(OBJ->work_d[FADE_OBJECT]);
+    rnz(&r, count);
+    if (count != 0) {
+        return r;
+    }
+    jsr_push(0xBBBF);
+    SelectVramWriteAddress();
+    jsr_pop();
+    r_select_write(&r);
+    st1(0x00);
+    st2(0x11);
+    jsr_push(0xBBC6);
+    SelectVramData();
+    jsr_pop();
+    r_select_data(&r);
+    ry(&r, 0x10);
+    for (count = 0x10; count != 0; count--) {
+        st1(0x00);
+        st2(0x00);
+    }
+    ry(&r, 0);
+    jsr_push(0xBBD2);
+    ResetGameState(menu_wait_regs(&r));
+    jsr_pop();
+    (void)menu_replay(&r, REPLAY_RESET);
+    jsr_push(0xBBD5);
+    copy = SlotToWorkArea();
+    jsr_pop();
+    ra(&r, copy.a);
+    r.x = copy.x;
+    r.y = 5;
+    r.set |= REG_X | REG_Y;
+    rnz(&r, 0);
+    rc(&r, true);
+    high = RD8(ZP->save_slot);
+    ra(&r, high);
+    if ((high & 0x80) == 0) {
+        jsr_push(0xBBDC);
+        write = BackupWrite();
+        jsr_pop();
+        p = menu_replay(&r, REPLAY_BACKUP_WRITE);
+        p->call.write = write;
+    }
+    rnz(&r, INC8(ZP->mode_done));
+    return r;
+}
+
+void abi_FileMenuLeaveStep(void)
+{
+    MenuRegs r = FileMenuLeaveStep(menu_regs_cpu());
 
     menu_regs_shim(&r);
 }

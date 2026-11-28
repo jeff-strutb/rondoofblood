@@ -349,6 +349,9 @@
 #define SaveBuffer 0x7D00 /* the backup file in RAM */
 #define SaveContinues 0x7D1D /* continues in a slot */
 #define SaveScoreTotal 0x7D1F /* total score in a slot; BCD */
+#define MenuMusicPlaying 0x7DDA /* the file menu's music select: the track playing; $FF paused */
+#define MenuShowRecords 0x7DDC /* the file menu: nonzero: the slot page shows the records; 0: the music select */
+#define MenuSlotMusic 0x7DDD /* the file menu: each slot's music selection, 0 to 12; 3 bytes by slot */
 #define MenuSlotCharacter 0x7DE0 /* the file menu: each slot's character (zCharacter when its game starts); 3 bytes by slot */
 #define MenuSlotProgress 0x7DE3 /* the file menu: each slot's progress as SlotLastClearedFlag finds it; picks its face and start stage; 3 bytes by slot */
 #define MenuCopyTo 0x7DE6 /* the file menu: the slot number a copy is made to; the name page keeps the grid cursor's row here */

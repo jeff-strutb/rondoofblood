@@ -145,5 +145,7 @@ StageRegs StagePauseToggle031D(StageRegs r);
 void abi_StagePauseToggle031D(void);
 StageRegs StageCameraStep026D(StageRegs r);
 void abi_StageCameraStep026D(void);
+StageRegs StageScrollSpeedsOff026D(StageRegs r);
+void abi_StageScrollSpeedsOff026D(void);
 
 #endif

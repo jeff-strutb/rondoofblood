@@ -101,15 +101,22 @@ void abi_StageVec8009_024D(void)
  */
 StageRegs StageScrollSpeedsOff(StageRegs r)
 {
+    return StageScrollSpeedsOffAt(r, 0x80C8);
+}
+
+/* StageScrollSpeedsOff's body, ret the address after its JSR to MapOverlayBank7 (where the JMP that follows starts):
+ * the builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StageScrollSpeedsOffAt(StageRegs r, uint16_t ret)
+{
     ObjArm bank;
 
-    jsr_push(0x80C8);
+    jsr_push(ret);
     bank = MapOverlayBank7();
     jsr_pop();
     r = loaded(r, bank.sum.value);
     r.c = bank.sum.carry;
     r.v = bank.sum.overflow;
-    return tail_to(r, 0x80C8, 0xA067);
+    return tail_to(r, ret, 0xA067);
 }
 
 void abi_StageScrollSpeedsOff(void)
@@ -478,7 +485,7 @@ StageRegs StageCameraStep(StageRegs r)
     return StageCameraStepAt(r, 0x80C2);
 }
 
-/* StageCameraStep's body, ret the address after its JSR to MapOverlayBank7 (the JMP that follows is at the same address):
+/* StageCameraStep's body, ret the address after its JSR to MapOverlayBank7 (where the JMP that follows starts):
  * the builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
 StageRegs StageCameraStepAt(StageRegs r, uint16_t ret)
 {

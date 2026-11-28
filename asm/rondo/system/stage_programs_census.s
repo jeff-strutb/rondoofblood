@@ -2053,3 +2053,15 @@ StageCameraStep026D:
     jsr MapOverlayBank7_026D
     jmp CameraStep
 
+
+; @routine 026D:0AE StageScrollSpeedsOff026D
+; @run 6B:80AE
+; WHAT IT DOES: Stops the layers' scroll: maps the overlay's bank 7 and runs its ClearScrollSpeeds (as StageScrollSpeedsOff, 024D:0C5). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same
+; bytes.
+; HOW: MapOverlayBank7's bytes at $80A0, then the tail JMP to ClearScrollSpeeds.
+; WAITS: no.
+; Entry: X and Y the caller's. Exit: as ClearScrollSpeeds leaves them, entered with A the bank and N, Z, C and V from the map's add.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageScrollSpeedsOff026D:
+    jsr MapOverlayBank7_026D
+    jmp ClearScrollSpeeds

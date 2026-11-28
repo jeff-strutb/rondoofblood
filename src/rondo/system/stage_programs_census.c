@@ -1615,3 +1615,25 @@ void abi_StageCameraStep026D(void)
 {
     stage_regs_load_shim(StageCameraStep026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:0AE StageScrollSpeedsOff026D
+ * @run 6B:80AE
+ * WHAT IT DOES: Stops the layers' scroll: maps the overlay's bank 7 and runs its ClearScrollSpeeds (as StageScrollSpeedsOff, 024D:0C5). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same
+ * bytes.
+ * HOW: StageScrollSpeedsOffAt (stage_flow.c), the body of 024D:0C5: the JSR goes to $80A0, which holds MapOverlayBank7's bytes
+ * (024D:0B7) in all nine programs, so its C is MapOverlayBank7's; then the tail JMP to $A067, the C of the routine
+ * loaded there.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as ClearScrollSpeeds leaves them, entered with A the bank and N, Z, C and V from the map's add.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageScrollSpeedsOff026D(StageRegs r)
+{
+    return StageScrollSpeedsOffAt(r, 0x80B1);
+}
+
+void abi_StageScrollSpeedsOff026D(void)
+{
+    stage_regs_load_shim(StageScrollSpeedsOff026D(stage_regs_entry_shim()));
+}

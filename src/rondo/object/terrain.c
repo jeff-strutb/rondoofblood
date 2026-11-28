@@ -396,7 +396,7 @@ HandlerExit TileLift1(void)
 }
 
 /* A handler's exit: A $81, Y and C and V where it set them. */
-static void handler_exit_shim(HandlerExit e)
+void handler_exit_shim(HandlerExit e)
 {
     cpu.a = TILE_HANDLED_RESULT;
     abi_nz(TILE_HANDLED_RESULT);

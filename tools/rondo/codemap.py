@@ -1317,6 +1317,27 @@ def progress(disc, mems, maps, cps):
                 for j in range(len(k)):
                     if d + j not in own:
                         canon.setdefault(d + j, f + j)
+    # a reached body whose bytes are a filed routine's bytes at the same run address (from its start or from any
+    # place inside it) is a copy of that routine: the map may start or end a body elsewhere than the filed one does
+    def chain(x):
+        seen = set()
+        while x in canon and x not in seen:
+            seen.add(x)
+            x = canon[x]
+        return x
+    at_run = {}                             # (run address, the next 8 bytes) -> a filed byte there
+    for p in filed_:
+        for o in range(p["end"]):
+            at_run.setdefault((p["run"] + o, buf[p["disc"] + o:p["disc"] + o + 8]), p["disc"] + o)
+    for d, n in bodies.items():
+        r = runs_at.get(d)
+        if d in pieces or r is None:
+            continue
+        t = at_run.get((r, buf[d:d + 8]))
+        if t is None or t == d or buf[d:d + n] != buf[t:t + n] or chain(t) == d:
+            continue
+        for j in range(n):
+            canon.setdefault(d + j, t + j)
     srt = sorted(code)
 
     def root(x):

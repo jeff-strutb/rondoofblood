@@ -1931,3 +1931,44 @@ FillMarkedTiles026F_at2:
     iny
     bne FillMarkedTiles026F_at0
     rts
+
+; @routine 1531:2FC ClearEffectSlot1531
+; @run 6B:82FC
+; WHAT IT DOES: Empties a palette effect slot of the list program at sector 1531: its eight fields, 8 bytes apart from $3C00.
+; HOW: Eight STZ of the slot's columns, the kind first. This build has 8 slots where the later ones have 12.
+; WAITS: no.
+; Entry: X the slot. Exit: A, X, Y and the flags kept.
+; Nothing the game does loads sector 1531, and nothing is known to reach this routine.
+ClearEffectSlot1531:
+    stz a:ScriptSlotKind,x
+    stz a:ScriptSlotKind+8,x
+    stz a:ScriptSlotKind+16,x
+    stz a:ScriptSlotKind+24,x
+    stz a:ScriptSlotKind+32,x
+    stz a:ScriptSlotKind+40,x
+    stz a:ScriptSlotKind+48,x
+    stz a:ScriptSlotKind+56,x
+    rts
+
+; @routine 1531:55C EffectRestoreColours1531
+; @run 6B:855C
+; WHAT IT DOES: Ends a palette effect of the list program at sector 1531: clears zFadeActive, sends the program's 256 background and 128 sprite colours to the VCE, and empties the slot.
+; HOW: Two TIA, from $8632 to colour 0 and from $8832 to colour $180, then a jump to ClearEffectSlot1531.
+; WAITS: no.
+; Entry: X the slot; Y pushed by the block moves. Exit: A $80, N set, Z clear. X, Y, C, V kept.
+; Nothing the game does loads sector 1531, and nothing is known to reach this routine.
+EffectColours1531 = $8632 ; the program's 256 background colours
+EffectSpriteColours1531 = $8832 ; and 128 sprite colours
+EffectRestoreColours1531:
+    stz z:zFadeActive
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tia EffectColours1531,VCE_DATA_LO,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tia EffectSpriteColours1531,VCE_DATA_LO,$0100
+    jmp ClearEffectSlot1531

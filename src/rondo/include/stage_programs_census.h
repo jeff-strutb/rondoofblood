@@ -131,4 +131,9 @@ typedef struct { uint8_t a; bool filled; } TileFillEnd;
 TileFillEnd FillMarkedTiles026F(uint8_t page, uint8_t high, uint8_t y);
 void abi_FillMarkedTiles026F(void);
 
+void ClearEffectSlot1531(uint8_t slot);
+void abi_ClearEffectSlot1531(void);
+void EffectRestoreColours1531(uint8_t slot, uint8_t y);
+void abi_EffectRestoreColours1531(void);
+
 #endif

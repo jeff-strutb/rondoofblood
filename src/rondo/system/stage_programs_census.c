@@ -10,6 +10,7 @@
 #include "stage_map.h"
 #include "enemy_objects.h"
 #include "stage_regs.h"
+#include "front_end.h"
 #include "stage_programs_census.h"
 
 /* StartStageLists with a program's own tables, list expansion, script slot 7 and return addresses. */
@@ -1414,4 +1415,53 @@ void abi_FillMarkedTiles026F(void)
         abi_flag(P_C, false);
     }
     abi_nz(0);
+}
+
+/*
+ * @routine 1531:2FC ClearEffectSlot1531
+ * @run 6B:82FC
+ * WHAT IT DOES: Empties a palette effect slot of the list program at sector 1531: its eight fields, 8 bytes apart from $3C00.
+ * HOW: Eight STZ of the slot's columns, the kind first. This build has 8 slots where the later ones have 12.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A, X, Y and the flags kept.
+ * Nothing the game does loads sector 1531, and nothing is known to reach this routine.
+ */
+void ClearEffectSlot1531(uint8_t slot)
+{
+    for (int field = 0; field < 8; field++) {
+        wr8((uint16_t)(ADDR_OF8(SLOTS->kind[0]) + 8 * field + slot), 0);
+    }
+}
+
+void abi_ClearEffectSlot1531(void)
+{
+    ClearEffectSlot1531(cpu.x);
+}
+
+/*
+ * @routine 1531:55C EffectRestoreColours1531
+ * @run 6B:855C
+ * WHAT IT DOES: Ends a palette effect of the list program at sector 1531: clears zFadeActive, sends the program's 256 background and 128 sprite colours to the VCE, and empties the slot.
+ * HOW: Two TIA, from $8632 to colour 0 and from $8832 to colour $180, then a jump to ClearEffectSlot1531.
+ * WAITS: no.
+ * Entry: X the slot; Y pushed by the block moves. Exit: A $80, N set, Z clear. X, Y, C, V kept.
+ * Nothing the game does loads sector 1531, and nothing is known to reach this routine.
+ */
+void EffectRestoreColours1531(uint8_t slot, uint8_t y)
+{
+    WR8(ZP->fade_active, 0);
+    WR8(VCE->addr_hi, 0);
+    WR8(VCE->addr_lo, 0);
+    block_move_tia(0x8632, ADDR_OF(VCE->data_lo), 0x0200, 0x00, slot, y);
+    WR8(VCE->addr_hi, 0x01);
+    WR8(VCE->addr_lo, 0x80);
+    block_move_tia(0x8832, ADDR_OF(VCE->data_lo), 0x0100, 0x80, slot, y);
+    ClearEffectSlot1531(slot);
+}
+
+void abi_EffectRestoreColours1531(void)
+{
+    EffectRestoreColours1531(cpu.x, cpu.y);
+    cpu.a = 0x80;
+    abi_nz(0x80);
 }

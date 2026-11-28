@@ -6876,3 +6876,156 @@ EnterStageState026D_at2:
     stz z:zGameSubMode
     rts
 
+
+; @routine 026D:447 StageClearedWaitObjects026D
+; @run 6B:8447
+; WHAT IT DOES: The cleared stage's wait for its objects in this program.
+; HOW: StageClearedWaitObjects3CD's code with this program's calls and bytes.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePlayerBankEntryA003 = $A003 ; the player bank's entry
+ClearedWalkSides026D = $8416 ; the walk's step by side
+ClearedWalkEnds026D = $841A ; where the walk back ends, by side
+ClearedWalkTimers026D = $841C ; the walk back's OBJ_WORK_F, by side
+StageClearedWaitObjects026D:
+    jsr StageShowStartFrame026D
+    jsr StagePlayerFrameB026D
+    jsr StageCameraStep026D
+    jsr StepScrollAndRunObjects026E
+    ldx #$50
+StageClearedWaitObjects026D_at0:
+    lda a:OBJ_KIND,x
+    bmi StageClearedWaitObjects026D_at1
+    bne *+78 ; the RTS at $84A8, StageClearedWaitScroll026D's
+StageClearedWaitObjects026D_at1:
+    dex
+    bne StageClearedWaitObjects026D_at0
+    stz a:HitAttackFlags
+    inc z:zField85
+    rts
+
+; @routine 026D:4A9 StageClearedWalkBack026D
+; @run 6B:84A9
+; WHAT IT DOES: The player walks back until he reaches the side's end, then the walk's bytes are cleared, the start mode 2 is set, the player bank's $A003 runs and the step counted.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearedWalkBack026D:
+    jsr StepScrollAndRunObjects026E
+    lda #$E0
+    sta a:OBJ_TALLY_WAIT
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:ClearedWalkTimers026D,y
+    sta a:OBJ_WORK_F
+    jsr StagePlayerFrame026D
+    lda z:zField8C
+    dec a
+    and #$01
+    tay
+    lda a:OBJ_X_LO
+    sec
+    sbc a:ClearedWalkSides026D,y
+    sta a:OBJ_X_LO
+    cmp a:ClearedWalkEnds026D,y
+    beq StageClearedWalkBack026D_at0
+    rts
+StageClearedWalkBack026D_at0:
+    rmb7 z:zField8C
+    stz a:OBJ_TALLY_WAIT
+    stz a:OBJ_WORK_F
+    lda #$02
+    sta z:zField8A
+    jsr StagePlayerBankEntryA003
+    jsr StageShowStartFrame026D
+    inc z:zField85
+    rts
+
+; @routine 026D:5B8 StageBossScrollToDoor026D
+; @run 6B:85B8
+; WHAT IT DOES: Scrolls to the boss's door a pixel a frame; at screen 4 the scroll stops, sound $82, the step counted.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageBossScrollToDoor026D:
+    jsr StageShowStartFrame026D
+    jsr StagePlayerFrameB026D
+    lda #$01
+    sta a:ScrollStepXHi
+    stz a:ScrollStepXLo
+    dec a:OBJ_X_LO
+    jsr StageCameraStep026D
+    jsr StepScrollAndRunObjects026E
+    lda a:ScrollXHi
+    cmp #$04
+    beq StageBossScrollToDoor026D_at0
+    rts
+StageBossScrollToDoor026D_at0:
+    jsr StageScrollSpeedsOff026D
+    stz a:ScrollStepXHi
+    stz a:ScrollStepXLo+2
+    lda #$82
+    jsr VecSoundCommand
+    inc z:zField85
+    rts
+
+; @routine 026D:602 StageBossWalkOut026D
+; @run 6B:8602
+; WHAT IT DOES: The player walks out of the boss's room; at X $F0 the walk's bytes cleared, the route's next section and the start frame reset (boss_walk_end_026d, $861E).
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePlayerBankEntryA009At026D = $A009 ; the player bank's entry
+StageBossWalkOut026D:
+    lda #$B8
+    sta a:OBJ_TALLY_WAIT
+    jsr StagePlayerFrame026D
+    jsr VecPlayerAndCameraFrame
+    jsr StagePlayerBankEntryA009At026D
+    jsr StageCameraStep026D
+    jsr StepScrollAndRunObjects026E
+    lda a:OBJ_X_LO
+    cmp #$F0
+    beq StageBossWalkOut026D_at0
+    rts
+StageBossWalkOut026D_at0:
+    lda #$02
+    sta z:zDisplayDelay
+    stz a:OBJ_TALLY_WAIT
+    stz a:HitAttackFlags
+    stz a:OBJ_WORK_F
+    jsr StageSectionNext026D
+    stz z:zClearKind
+    stz a:OBJ_FRAME
+    rts
+
+; @routine 026D:6D4 StageClearedEnding026D
+; @run 6B:86D4
+; WHAT IT DOES: The ending of a cleared stage: sound $FF, the player bank's $A015, then on while zField8C's low bits are not 0 zModeDone counted; else the walk out's end.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearedEnding026D:
+    lda #$FF
+    jsr VecSoundCommand
+    jsr MapOverlayBanks5And6At026D
+    jsr FrameBankEntryA015
+    lda z:zField8C
+    and #$7F
+    bne StageClearedEnding026D_at0
+    stz z:zField8C
+    jmp StageBossWalkOut026D_at0
+StageClearedEnding026D_at0:
+    sta z:zField8C
+    inc z:zModeDone
+    lda #$02
+    sta z:zDisplayDelay
+    stz a:OBJ_FRAME
+    rts

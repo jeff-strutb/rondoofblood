@@ -4390,3 +4390,209 @@ void abi_EnterStageState026D(void)
 {
     stage_exit_shim(EnterStageState026D(stage_regs_entry_shim()));
 }
+
+void abi_VecPlayerAndCameraFrame(void);   /* system/vectors.c */
+
+/* 026D's wait for the stage's objects. */
+static const WaitObjectsBuild wait_objects_026d = {
+    0x8447, { 0x8420, 0x809A, 0x80A8, 0x8A05 }, ADDR_OF8(OBJ->kind[0]), 0x50, HitAttackFlags
+};
+
+/* $861E, the end of StageBossWalkOut026D that StageClearedEnding026D also jumps to. */
+static StageRegs boss_walk_end_026d(StageRegs r)
+{
+    r = regs_loaded(r, 0x02);
+    WR8(ZP->display_delay, 0x02);
+    WR8(OBJ->tally_wait[0], 0);
+    wr8(HitAttackFlags, 0);
+    WR8(OBJ->work_f[0], 0);
+    jsr_push(0x862E);
+    r = StageSectionNext026D(r);
+    jsr_pop();
+    WR8(ZP->clear_kind, 0);
+    WR8(OBJ->frame[0], 0);
+    return r;
+}
+
+/*
+ * @routine 026D:447 StageClearedWaitObjects026D
+ * @run 6B:8447
+ * WHAT IT DOES: The cleared stage's wait for its objects in this program.
+ * HOW: StageClearedWaitObjects3CDAt (stage_c_census.c) with wait_objects_026d.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedWaitObjects026D(StageRegs r)
+{
+    return StageClearedWaitObjects3CDAt(r, &wait_objects_026d);
+}
+
+void abi_StageClearedWaitObjects026D(void)
+{
+    stage_regs_load_shim(StageClearedWaitObjects026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:4A9 StageClearedWalkBack026D
+ * @run 6B:84A9
+ * WHAT IT DOES: The player walks back until he reaches the side's end, then the walk's bytes are cleared, the start mode 2 is set, the player bank's $A003 runs and the step counted.
+ * HOW: The side from zField8C, tables at $841C, $8416 and $841A.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedWalkBack026D(StageRegs r)
+{
+    Sum sum;
+    uint8_t side, x, step;
+
+    r = call_at(r, 0x84AC, 0x8A05);
+    r = regs_loaded(r, 0xE0);
+    WR8(OBJ->tally_wait[0], 0xE0);
+    side = (uint8_t)((uint8_t)(RD8(ZP->field8c) - 1) & 0x01);
+    r.y = side;
+    r = regs_loaded(r, rd8((uint16_t)(0x841C + side)));
+    WR8(OBJ->work_f[0], r.a);
+    r = call_at(r, 0x84C0, 0x8094);
+    side = (uint8_t)((uint8_t)(RD8(ZP->field8c) - 1) & 0x01);
+    r.y = side;
+    x = RD8(OBJ->x_lo[0]);
+    step = rd8((uint16_t)(0x8416 + side));
+    sum = sub_bytes(x, step, true);
+    r = regs_loaded(r, sum.value);
+    r.v = sum.overflow;
+    WR8(OBJ->x_lo[0], sum.value);
+    r = regs_compared(r, r.a, rd8((uint16_t)(0x841A + side)));
+    if (r.nz != 0) {
+        return r;
+    }
+    RMW8(ZP->field8c, old, old & 0x7F);
+    WR8(OBJ->tally_wait[0], 0);
+    WR8(OBJ->work_f[0], 0);
+    r = regs_loaded(r, 0x02);
+    WR8(ZP->field8a, 0x02);
+    r = call_at(r, 0x84E5, 0xA003);
+    r = call_at(r, 0x84E8, 0x8420);
+    r.nz = INC8(ZP->field85);
+    return r;
+}
+
+void abi_StageClearedWalkBack026D(void)
+{
+    stage_regs_load_shim(StageClearedWalkBack026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:5B8 StageBossScrollToDoor026D
+ * @run 6B:85B8
+ * WHAT IT DOES: Scrolls to the boss's door a pixel a frame; at screen 4 the scroll stops, sound $82, the step counted.
+ * HOW: The step and the object set, a compare of ScrollXHi.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageBossScrollToDoor026D(StageRegs r)
+{
+    r = call_at(r, 0x85BB, 0x8420);
+    r = call_at(r, 0x85BE, 0x809A);
+    r = regs_loaded(r, 0x01);
+    WR8(SCROLLE->step_x_hi[0], 0x01);
+    WR8(SCROLLE->step_x_lo[0], 0);
+    r.nz = DEC8(OBJ->x_lo[0]);
+    r = call_at(r, 0x85CC, 0x80A8);
+    r = call_at(r, 0x85CF, 0x8A05);
+    r = regs_loaded(r, RD8(SCROLL->x_hi[0]));
+    r = regs_compared(r, r.a, 0x04);
+    if (r.nz != 0) {
+        return r;
+    }
+    r = call_at(r, 0x85DA, 0x80AE);
+    WR8(SCROLLE->step_x_hi[0], 0);
+    WR8(SCROLLE->step_x_lo[2], 0);
+    r = regs_loaded(r, 0x82);
+    stage_regs_load_shim(r);
+    jsr_push(0x85E5);
+    abi_VecSoundCommand();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+    r.nz = INC8(ZP->field85);
+    return r;
+}
+
+void abi_StageBossScrollToDoor026D(void)
+{
+    stage_regs_load_shim(StageBossScrollToDoor026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:602 StageBossWalkOut026D
+ * @run 6B:8602
+ * WHAT IT DOES: The player walks out of the boss's room; at X $F0 the walk's bytes cleared, the route's next section and the start frame reset (boss_walk_end_026d, $861E).
+ * HOW: The frame calls, a compare, boss_walk_end_026d.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageBossWalkOut026D(StageRegs r)
+{
+    r = regs_loaded(r, 0xB8);
+    WR8(OBJ->tally_wait[0], 0xB8);
+    r = call_at(r, 0x860A, 0x8094);
+    stage_regs_load_shim(r);
+    jsr_push(0x860D);
+    abi_VecPlayerAndCameraFrame();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+    r = call_at(r, 0x8610, 0xA009);
+    r = call_at(r, 0x8613, 0x80A8);
+    r = call_at(r, 0x8616, 0x8A05);
+    r = regs_loaded(r, RD8(OBJ->x_lo[0]));
+    r = regs_compared(r, r.a, 0xF0);
+    if (r.nz != 0) {
+        return r;
+    }
+    return boss_walk_end_026d(r);
+}
+
+void abi_StageBossWalkOut026D(void)
+{
+    stage_regs_load_shim(StageBossWalkOut026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:6D4 StageClearedEnding026D
+ * @run 6B:86D4
+ * WHAT IT DOES: The ending of a cleared stage: sound $FF, the player bank's $A015, then on while zField8C's low bits are not 0 zModeDone counted; else the walk out's end.
+ * HOW: The sound, the bank calls, a mask; boss_walk_end_026d is the jump to $861E.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedEnding026D(StageRegs r)
+{
+    r = regs_loaded(r, 0xFF);
+    stage_regs_load_shim(r);
+    jsr_push(0x86D9);
+    abi_VecSoundCommand();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+    r = call_at(r, 0x86DC, 0x8089);
+    r = call_at(r, 0x86DF, 0xA015);
+    r = regs_loaded(r, (uint8_t)(RD8(ZP->field8c) & 0x7F));
+    if (r.a == 0) {
+        WR8(ZP->field8c, 0);
+        return boss_walk_end_026d(r);
+    }
+    WR8(ZP->field8c, r.a);
+    r.nz = INC8(ZP->mode_done);
+    r = regs_loaded(r, 0x02);
+    WR8(ZP->display_delay, 0x02);
+    WR8(OBJ->frame[0], 0);
+    return r;
+}
+
+void abi_StageClearedEnding026D(void)
+{
+    stage_regs_load_shim(StageClearedEnding026D(stage_regs_entry_shim()));
+}

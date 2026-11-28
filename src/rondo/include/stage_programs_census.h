@@ -488,4 +488,19 @@ void abi_StageBossWaitDoor026D(void);
 StageExit EnterStageState026D(StageRegs r);
 void abi_EnterStageState026D(void);
 
+StageRegs StageClearedWaitObjects026D(StageRegs r);
+void abi_StageClearedWaitObjects026D(void);
+
+StageRegs StageClearedWalkBack026D(StageRegs r);
+void abi_StageClearedWalkBack026D(void);
+
+StageRegs StageBossScrollToDoor026D(StageRegs r);
+void abi_StageBossScrollToDoor026D(void);
+
+StageRegs StageBossWalkOut026D(StageRegs r);
+void abi_StageBossWalkOut026D(void);
+
+StageRegs StageClearedEnding026D(StageRegs r);
+void abi_StageClearedEnding026D(void);
+
 #endif

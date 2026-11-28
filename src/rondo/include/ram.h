@@ -29,6 +29,7 @@
 #define zField86 0x2086 /* the stage overlay's byte copied to zField83 (024E:02B) */
 #define zField87 0x2087 /* the blend row byte the stage overlay stores (050E:2A4) */
 #define zHitSlot 0x20DA /* the hit object's slot kept across a jump (024F:466) */
+#define zSpreadCount 0x20DA /* StartSixAt0EBF's use of zHitSlot: which of its six pieces it starts */
 #define SpriteFlipMask 0x2014 /* EmitObjectSprites' scratch: the object's flip bit; the same byte as zProduct1 */
 #define SpritePartsLeft 0x2016 /* EmitObjectSprites' scratch: parts of the sprite still to draw; the same byte as zMultiplierLo */
 #define SpritesLeft 0x2017 /* EmitObjectSprites' scratch: sprites still to draw; the same byte as zMultiplierHi */
@@ -748,6 +749,7 @@
 #define AdpcmControl 0x180D /* the ADPCM unit's control */
 #define AdpcmRate 0x180E /* the ADPCM unit's playback rate */
 #define zRichterObject 0x20D9 /* the slot of the object of Richter's that is being run */
+#define zSpreadSource 0x20D9 /* StartSixAt0EBF's use of zRichterObject: its object's slot kept while X indexes the table */
 #define RichterChargePads 0xC4EB /* the press that charges an object, by its facing */
 #define RichterFlashFlags 0xC4F9 /* OBJ_2B18 for a charged object's flash, by OBJ_34B8 less $0E */
 #define RichterObjectAnimations 0xDA99 /* the animation lists of Richter's objects, a word each */

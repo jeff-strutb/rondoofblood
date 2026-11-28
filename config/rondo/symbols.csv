@@ -27,6 +27,7 @@ addr,kind,name,note
 86,zp,zField86,the stage overlay's byte copied to zField83 (024E:02B)
 87,zp,zField87,the blend row byte the stage overlay stores (050E:2A4)
 DA,zp,zHitSlot,the hit object's slot kept across a jump (024F:466)
+DA,zp,zSpreadCount,StartSixAt0EBF's use of zHitSlot: which of its six pieces it starts
 14,zp,SpriteFlipMask,EmitObjectSprites' scratch: the object's flip bit; the same byte as zProduct1
 16,zp,SpritePartsLeft,EmitObjectSprites' scratch: parts of the sprite still to draw; the same byte as zMultiplierLo
 17,zp,SpritesLeft,EmitObjectSprites' scratch: sprites still to draw; the same byte as zMultiplierHi
@@ -757,6 +758,7 @@ B8FA,abs,SoundMusicTable,the sound driver: by music command less $55, the addres
 180D,abs,AdpcmControl,the ADPCM unit's control
 180E,abs,AdpcmRate,the ADPCM unit's playback rate
 D9,zp,zRichterObject,the slot of the object of Richter's that is being run
+D9,zp,zSpreadSource,StartSixAt0EBF's use of zRichterObject: its object's slot kept while X indexes the table
 C4EB,abs,RichterChargePads,the press that charges an object, by its facing
 C4F9,abs,RichterFlashFlags,OBJ_2B18 for a charged object's flash, by OBJ_34B8 less $0E
 DA99,abs,RichterObjectAnimations,the animation lists of Richter's objects, a word each

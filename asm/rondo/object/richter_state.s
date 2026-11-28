@@ -18,10 +18,10 @@ RichterVecStart:
 
 ; @routine 01B9:006 RichterVecApplyMove
 ; @run 6D:A006
-; WHAT IT DOES: Goes to $BB23.
+; WHAT IT DOES: Goes to RichterReadColumns.
 ; HOW: One jump.
 ; WAITS: no.
-; Entry, exit: as that code.
+; Entry, exit: as RichterReadColumns.
 RichterVecApplyMove:
     jmp RichterReadColumns
 
@@ -72,19 +72,19 @@ RichterVecCE1D:
 
 ; @routine 01B9:018 RichterVecSetAnimation
 ; @run 6D:A018
-; WHAT IT DOES: Goes to $B67B.
+; WHAT IT DOES: Goes to RichterSetAnimation.
 ; HOW: One jump.
 ; WAITS: no.
-; Entry, exit: as that code.
+; Entry, exit: as RichterSetAnimation.
 RichterVecSetAnimation:
     jmp RichterSetAnimation
 
 ; @routine 01B9:01B RichterVecSetIdle
 ; @run 6D:A01B
-; WHAT IT DOES: Goes to $B669.
+; WHAT IT DOES: Goes to RichterAnimationTick.
 ; HOW: One jump.
 ; WAITS: no.
-; Entry, exit: as that code.
+; Entry, exit: as RichterAnimationTick.
 RichterVecSetIdle:
     jmp RichterAnimationTick
 
@@ -99,19 +99,19 @@ RichterVecCE73:
 
 ; @routine 01B9:021 RichterVecWall
 ; @run 6D:A021
-; WHAT IT DOES: Goes to $BB6E, the wall probe.
+; WHAT IT DOES: Goes to RichterWall, the wall probe.
 ; HOW: One jump.
 ; WAITS: no.
-; Entry, exit: as that code.
+; Entry, exit: as RichterWall.
 RichterVecWall:
     jmp RichterWall
 
 ; @routine 01B9:024 RichterVecFloor
 ; @run 6D:A024
-; WHAT IT DOES: Goes to $BBC1, the floor probe.
+; WHAT IT DOES: Goes to RichterFloor, the floor probe.
 ; HOW: One jump.
 ; WAITS: no.
-; Entry, exit: as that code.
+; Entry, exit: as RichterFloor.
 RichterVecFloor:
     jmp RichterFloor
 
@@ -397,21 +397,22 @@ RichterDyingStep:
     jsr RichterStopX
     stz a:OBJ_FRAME
     dec a:PlayerDyingTimer
-    bne SetGlyphVramPlace
+    bne RichterDyingStep_at0
     ldx #$01
-RichterDyingStep_at0:
+RichterDyingStep_at1:
     lda a:OBJ_KIND,x
-    bne SetGlyphVramPlace
+    bne RichterDyingStep_at0
     jsr VecClearObject
     inx
     cpx #$10
-    bne RichterDyingStep_at0
+    bne RichterDyingStep_at1
     lda #$05
     sta z:zSubStep
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
     stz a:PlayerDying
     lda #$09
     jsr RichterStartHitScript
+RichterDyingStep_at0:
     rts
 
 ; @routine 01B9:1A4 RichterDie
@@ -551,22 +552,22 @@ RichterStateFrame_at11:
 
 ; @routine 01B9:298 RichterOutOfHealth
 ; @run 6D:A298
-; WHAT IT DOES: The health has run out: with the one-more flag PlayerByte3BF7 at 1 the
+; WHAT IT DOES: The health has run out: with the one-more flag PlayerKeepsLastPoint at 1 the
 ; player keeps one point and takes the hit; otherwise the mode's step 4 ends the life.
 ; HOW: SoundCommand $64 on the way out; the hit goes on as RichterStateFrame's.
 ; WAITS: no.
 ; Entry: nothing. Exit: as RichterStateFrame from the health on.
 RichterOutOfHealth:
     stz z:zPlayerHealth
-    lda a:PlayerByte3BF7
+    lda a:PlayerKeepsLastPoint
     cmp #$01
     bne RichterOutOfHealth_at0
     inc z:zPlayerHealth
-    jmp $A21D
+    jmp RichterStateFrame_at5
 RichterOutOfHealth_at0:
     lda #$04
     sta z:zSubStep
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
     lda #$64
     jmp VecSoundCommand
 
@@ -640,7 +641,7 @@ RichterStandStep1:
     jsr RichterReadColumns
     jsr RichterHasNoFooting
     bcc RichterStandStep1_at0
-    jmp EventFlagsClear_at1
+    jmp RichterFallAttacking
 RichterStandStep1_at0:
     jsr RichterLandOnFloor
     lda a:OBJ_SCROLL_BAND
@@ -978,38 +979,51 @@ RichterStopX:
 ; 3 and X 3; an item, A the item, X its slot, N and Z clear (LDX), V from testing the last slot looked at.
 RichterAttack:
     jsr RichterPadOverridesOff
-    stz a:PlayerByte3BE1
+    stz a:PlayerWhipStruck
     jsr RichterFaceByPad
     lda #$00
     sta a:OBJ_STATE
     jsr RichterStopMoving
     ldx a:PlayerAttackKind
-    lda a:LandAnimations,x
+    lda a:RichterAttackAnimations,x
+
+; @routine 01B9:4E4 RichterAttackWithAnimation
+; @run 6D:A4E4
+; WHAT IT DOES: An attack from its animation on: step 1, then the whip with its sound or the
+; item's object in a free slot among 5, 8 and $0B. RichterAttack runs on into it; the crouch's
+; attack and the attack in the air jump to it.
+; HOW: RichterSetAnimation; PlayerAttackKind 0 is the whip, RichterClearWhip and SoundCommand 3;
+; otherwise zField93 goes in the slot.
+; WAITS: no.
+; Entry: A the animation. Exit: as RichterAttack.
+RichterAttackWithAnimation:
     jsr RichterSetAnimation
     lda #$01
     sta a:OBJ_SUBSTATE
     lda a:PlayerAttackKind
-    bne RichterAttack_at0
+    bne RichterAttackWithAnimation_at0
     jsr RichterClearWhip
     lda #$01
     sta a:OBJ_KIND+3
     lda #$03
     jmp VecSoundCommand
-RichterAttack_at0:
+RichterAttackWithAnimation_at0:
     lda z:zField93
     tst #$FF,a:OBJ_KIND+5
-    bne RichterAttack_at1
+    bne RichterAttackWithAnimation_at1
     ldx #$05
+RichterAttackWithAnimation_at3:
     jsr VecClearObject
     sta a:OBJ_KIND,x
     rts
-RichterAttack_at1:
+RichterAttackWithAnimation_at1:
     tst #$FF,a:OBJ_KIND+8
-    bne FallUntilFloor
+    bne RichterAttackWithAnimation_at2
     ldx #$08
-    bra FallThenWait
+    bra RichterAttackWithAnimation_at3
+RichterAttackWithAnimation_at2:
     ldx #$0B
-    bra FallThenWait
+    bra RichterAttackWithAnimation_at3
 
 ; @routine 01B9:521 RichterToFall
 ; @run 6D:A521
@@ -1111,6 +1125,7 @@ RichterUpWhipLeft_at1:
     bra RichterUpWhipRight_at0
 RichterUpWhipLeft_at0:
     bsr RichterNudgeA
+RichterUpWhipLeft_at2:
     jsr RichterToAir
     lda #$C0
     sta a:OBJ_VY_LO
@@ -1154,7 +1169,7 @@ RichterNudgeB:
 ; Entry: nothing. Exit: A $FA, N set, Z clear; C, V and Y as RichterToAir after the nudge.
 RichterNudgeBJump:
     bsr RichterNudgeB
-    bra $A59D
+    bra RichterUpWhipLeft_at2
 
 ; @routine 01B9:5C8 RichterUpWhipRight
 ; @run 6D:A5C8
@@ -1679,11 +1694,11 @@ RichterCrouchStep0_at3:
 ; Entry: nothing. Exit: as RichterAttack.
 RichterCrouchAttack:
     jsr RichterPadOverridesOff
-    stz a:PlayerByte3BE1
+    stz a:PlayerWhipStruck
     jsr RichterFaceByPad
     jsr RichterStopMoving
     lda #$06
-    jmp $A4E4
+    jmp RichterAttackWithAnimation
 
 ; @routine 01B9:8C7 RichterCrouchStep1
 ; @run 6D:A8C7
@@ -1700,7 +1715,7 @@ RichterCrouchStep1:
     jsr RichterReadColumns
     jsr RichterHasNoFooting
     bcc RichterCrouchStep1_at0
-    jmp EventFlagsClear_at1
+    jmp RichterFallAttacking
 RichterCrouchStep1_at0:
     jsr RichterLandOnFloor
     lda a:OBJ_SCROLL_BAND

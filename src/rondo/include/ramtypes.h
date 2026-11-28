@@ -343,7 +343,7 @@ typedef struct {
     uint8_t vx_lo[88]; /* OBJ_VX_LO */
     uint8_t vy_hi[88]; /* OBJ_VY_HI */
     uint8_t vy_lo[88]; /* OBJ_VY_LO */
-    uint8_t work_a[88]; /* OBJ_WORK_A */
+    union { uint8_t work_a[88]; uint8_t animation[88]; }; /* OBJ_WORK_A */
     uint8_t scroll_band[88]; /* OBJ_SCROLL_BAND */
     uint8_t hurt_timer[88]; /* OBJ_HURT_TIMER */
     union { uint8_t sprite_flip[88]; uint8_t f2fe8[88]; }; /* OBJ_SPRITE_FLIP */
@@ -360,9 +360,9 @@ typedef struct {
     union { uint8_t hit_taken[88]; uint8_t f33b0[88]; }; /* OBJ_HIT_TAKEN */
     union { uint8_t anim_step[88]; uint8_t f3408[88]; }; /* OBJ_ANIM_STEP */
     union { uint8_t anim_timer[88]; uint8_t f3460[88]; }; /* OBJ_ANIM_TIMER */
-    union { uint8_t work_d[88]; uint8_t f34b8[88]; uint8_t life_timer[88]; }; /* OBJ_WORK_D */
-    uint8_t work_e[88]; /* OBJ_WORK_E */
-    union { uint8_t work_f[88]; uint8_t f3568[88]; uint8_t angle_hi[88]; }; /* OBJ_WORK_F */
+    union { uint8_t work_d[88]; uint8_t f34b8[88]; uint8_t life_timer[88]; uint8_t fall_drift_delay[88]; }; /* OBJ_WORK_D */
+    union { uint8_t work_e[88]; uint8_t pad_force_frames[88]; }; /* OBJ_WORK_E */
+    union { uint8_t work_f[88]; uint8_t f3568[88]; uint8_t angle_hi[88]; uint8_t pad_forced[88]; }; /* OBJ_WORK_F */
     union { uint8_t work_g[88]; uint8_t f35c0[88]; uint8_t angle_lo[88]; uint8_t state_before_hit[88]; }; /* OBJ_WORK_G */
     union { uint8_t work_h[88]; uint8_t step_before_hit[88]; }; /* OBJ_WORK_H */
     union { uint8_t work_i[88]; uint8_t hit_frames[88]; }; /* OBJ_WORK_I */
@@ -404,6 +404,7 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, vx_lo) + 0 == OBJ_VX_LO,
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, vy_hi) + 0 == OBJ_VY_HI, "ObjectTable.vy_hi is not at OBJ_VY_HI");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, vy_lo) + 0 == OBJ_VY_LO, "ObjectTable.vy_lo is not at OBJ_VY_LO");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_a) + 0 == OBJ_WORK_A, "ObjectTable.work_a is not at OBJ_WORK_A");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, animation) == OBJ_ANIMATION, "ObjectTable.animation is not at OBJ_ANIMATION");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, scroll_band) + 0 == OBJ_SCROLL_BAND, "ObjectTable.scroll_band is not at OBJ_SCROLL_BAND");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hurt_timer) + 0 == OBJ_HURT_TIMER, "ObjectTable.hurt_timer is not at OBJ_HURT_TIMER");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, sprite_flip) + 0 == OBJ_SPRITE_FLIP, "ObjectTable.sprite_flip is not at OBJ_SPRITE_FLIP");
@@ -430,10 +431,13 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3460) + 0 == OBJ_ANIM_T
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_d) + 0 == OBJ_WORK_D, "ObjectTable.work_d is not at OBJ_WORK_D");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f34b8) + 0 == OBJ_WORK_D, "ObjectTable.f34b8 is not at OBJ_WORK_D");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, life_timer) + 0 == OBJ_WORK_D, "ObjectTable.life_timer is not at OBJ_WORK_D");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fall_drift_delay) == OBJ_FALL_DRIFT_DELAY, "ObjectTable.fall_drift_delay is not at OBJ_FALL_DRIFT_DELAY");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_e) + 0 == OBJ_WORK_E, "ObjectTable.work_e is not at OBJ_WORK_E");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, pad_force_frames) == OBJ_PAD_FORCE_FRAMES, "ObjectTable.pad_force_frames is not at OBJ_PAD_FORCE_FRAMES");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_f) + 0 == OBJ_WORK_F, "ObjectTable.work_f is not at OBJ_WORK_F");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3568) + 0 == OBJ_WORK_F, "ObjectTable.f3568 is not at OBJ_WORK_F");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, angle_hi) + 0 == OBJ_WORK_F, "ObjectTable.angle_hi is not at OBJ_WORK_F");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, pad_forced) == OBJ_PAD_FORCED, "ObjectTable.pad_forced is not at OBJ_PAD_FORCED");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_g) + 0 == OBJ_WORK_G, "ObjectTable.work_g is not at OBJ_WORK_G");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f35c0) + 0 == OBJ_WORK_G, "ObjectTable.f35c0 is not at OBJ_WORK_G");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, angle_lo) + 0 == OBJ_WORK_G, "ObjectTable.angle_lo is not at OBJ_WORK_G");
@@ -1096,17 +1100,17 @@ typedef struct {
     uint8_t column_x[5]; /* RichterColumnX */
     uint8_t climb_reach; /* PlayerClimbReach */
     uint8_t may_leave_top; /* PlayerMayLeaveTop */
-    uint8_t _gap_0014[1]; /* no name yet: $3BD4-$3BD4 */
+    uint8_t climb_land_facing; /* PlayerClimbLandFacing */
     union { uint8_t f3bd5; uint8_t attack_kind; }; /* PlayerByte3BD5 */
     uint8_t item_first_use; /* PlayerItemFirstUse */
-    uint8_t f3bd7; /* PlayerByte3BD7 */
+    union { uint8_t f3bd7; uint8_t door_ready; }; /* PlayerByte3BD7 */
     uint8_t time_slow_mode; /* TimeSlowMode */
     uint8_t pad_overrides[4]; /* PadOverrides */
     uint8_t forced_press; /* PadForcedPress */
     uint8_t invincible_timer; /* PlayerInvincibleTimer */
     uint8_t forced_press_b; /* PadForcedPressB */
     uint8_t item_ready; /* RichterItemReady */
-    uint8_t f3be1; /* PlayerByte3BE1 */
+    union { uint8_t f3be1; uint8_t whip_struck; }; /* PlayerByte3BE1 */
     union { uint8_t f3be2; uint8_t held; }; /* PlayerByte3BE2 */
     union { uint8_t f3be3; uint8_t held_count; }; /* PlayerByte3BE3 */
     uint8_t _gap_0024[4]; /* no name yet: $3BE4-$3BE7 */
@@ -1120,10 +1124,12 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, column_row) + 0 == Richter
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, column_x) + 0 == RichterColumnX, "PlayerVars.column_x is not at RichterColumnX");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, climb_reach) + 0 == PlayerClimbReach, "PlayerVars.climb_reach is not at PlayerClimbReach");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, may_leave_top) + 0 == PlayerMayLeaveTop, "PlayerVars.may_leave_top is not at PlayerMayLeaveTop");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, climb_land_facing) + 0 == PlayerClimbLandFacing, "PlayerVars.climb_land_facing is not at PlayerClimbLandFacing");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3bd5) + 0 == PlayerByte3BD5, "PlayerVars.f3bd5 is not at PlayerByte3BD5");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, attack_kind) == PlayerAttackKind, "PlayerVars.attack_kind is not at PlayerAttackKind");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, item_first_use) + 0 == PlayerItemFirstUse, "PlayerVars.item_first_use is not at PlayerItemFirstUse");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3bd7) + 0 == PlayerByte3BD7, "PlayerVars.f3bd7 is not at PlayerByte3BD7");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, door_ready) == PlayerDoorReady, "PlayerVars.door_ready is not at PlayerDoorReady");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, time_slow_mode) + 0 == TimeSlowMode, "PlayerVars.time_slow_mode is not at TimeSlowMode");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, pad_overrides) + 0 == PadOverrides, "PlayerVars.pad_overrides is not at PadOverrides");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, forced_press) + 0 == PadForcedPress, "PlayerVars.forced_press is not at PadForcedPress");
@@ -1131,6 +1137,7 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, invincible_timer) + 0 == P
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, forced_press_b) + 0 == PadForcedPressB, "PlayerVars.forced_press_b is not at PadForcedPressB");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, item_ready) + 0 == RichterItemReady, "PlayerVars.item_ready is not at RichterItemReady");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be1) + 0 == PlayerByte3BE1, "PlayerVars.f3be1 is not at PlayerByte3BE1");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, whip_struck) == PlayerWhipStruck, "PlayerVars.whip_struck is not at PlayerWhipStruck");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be2) + 0 == PlayerByte3BE2, "PlayerVars.f3be2 is not at PlayerByte3BE2");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held) == PlayerHeld, "PlayerVars.held is not at PlayerHeld");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be3) + 0 == PlayerByte3BE3, "PlayerVars.f3be3 is not at PlayerByte3BE3");
@@ -1152,7 +1159,7 @@ typedef struct {
     uint8_t dying; /* PlayerDying */
     uint8_t dying_timer; /* PlayerDyingTimer */
     uint8_t anchor_object; /* PlayerAnchorObject */
-    uint8_t f3bf7; /* PlayerByte3BF7 */
+    union { uint8_t f3bf7; uint8_t keeps_last_point; }; /* PlayerByte3BF7 */
     uint8_t pad_history[4]; /* PadHistory */
     uint8_t _gap_000D[4]; /* no name yet: $3BFC-$3BFF */
 } PlayerVarsB;
@@ -1167,6 +1174,7 @@ _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying) + 0 == PlayerDyin
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying_timer) + 0 == PlayerDyingTimer, "PlayerVarsB.dying_timer is not at PlayerDyingTimer");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, anchor_object) + 0 == PlayerAnchorObject, "PlayerVarsB.anchor_object is not at PlayerAnchorObject");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf7) + 0 == PlayerByte3BF7, "PlayerVarsB.f3bf7 is not at PlayerByte3BF7");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, keeps_last_point) == PlayerKeepsLastPoint, "PlayerVarsB.keeps_last_point is not at PlayerKeepsLastPoint");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, pad_history) + 0 == PadHistory, "PlayerVarsB.pad_history is not at PadHistory");
 #define PVARS2 ((PlayerVarsB *)PlayerVarsB_BASE)
 

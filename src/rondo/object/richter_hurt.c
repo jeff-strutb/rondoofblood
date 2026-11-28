@@ -379,7 +379,11 @@ HurtResume RichterHurtResume(void)
 
 void abi_RichterHurtResume(void)
 {
-    HurtResume r = RichterHurtResume();
+    hurt_resume_exit_shim(RichterHurtResume());
+}
+
+void hurt_resume_exit_shim(HurtResume r)
+{
     uint8_t less = (uint8_t)(r.state - FIRST_STAIR_STATE);
 
     abi_flag(P_V, sub_overflow(r.state, FIRST_STAIR_STATE, less));
@@ -1094,3 +1098,205 @@ LOG_ABI(RichterHurtSlide)
 LOG_ABI(RichterHurtSlideStart)
 LOG_ABI(RichterHurtHoldFrame)
 LOG_ABI(RichterHurtDownStep)
+
+enum { HELD_FALL_HI = 0x02, HURT_FALL_HI = 0x07 };
+
+/* Held ($B54E, $B558): Y speed $0200, then RichterHurtLandSound twice, the second as a tail. */
+static void held_land_sound(RegLog *log, uint8_t y, uint16_t ret)
+{
+    HurtLandSound r;
+
+    WR8(OBJ->vy_hi[0], HELD_FALL_HI);
+    rl_ended(log, ended_load(HELD_FALL_HI));
+    jsr_push(ret);
+    r = RichterHurtLandSound(log_y(log, 0, y));
+    jsr_pop();
+    rl_hurt_land(log, r);
+    rl_hurt_land(log, RichterHurtLandSound(log_y(log, 0, y)));
+}
+
+/*
+ * @routine 01BB:534 RichterHurtLandOnMarked
+ * @run 6D:B534
+ * WHAT IT DOES: The knock lands on a marked floor: held, Y speed $0200 and the landing's sound twice;
+ * else full fall speed and as RichterLandOnMarked.
+ * HOW: PlayerHeld; a jump to RichterLandOnMarked; the held end is RichterHurtLandOnMarkedFeet's ($B54E).
+ * WAITS: no.
+ * Entry: X and Y for the sound driver. Exit: as RichterLandOnMarked, or as RichterHurtLandSound.
+ */
+void RichterHurtLandOnMarked(RegLog *log, uint8_t x, uint8_t y)
+{
+    uint8_t value = RD8(PVARS->held);
+
+    rl_ended(log, ended_load(value));
+    if (value != 0) {
+        held_land_sound(log, y, 0xB556);
+        return;
+    }
+    WR8(OBJ->vy_hi[0], HURT_FALL_HI);
+    rl_ended(log, ended_load(HURT_FALL_HI));
+    RichterLandOnMarked(log, x, y);
+}
+
+/*
+ * @routine 01BB:541 RichterHurtLandOnMarkedFeet
+ * @run 6D:B541
+ * WHAT IT DOES: As RichterHurtLandOnMarked for marked ground under his feet: held, Y speed $0200 and the
+ * landing's sound twice; else full fall speed and as RichterLandOnMarkedFeet.
+ * HOW: PlayerHeld; a jump to RichterLandOnMarkedFeet.
+ * WAITS: no.
+ * Entry: X and Y for the sound driver. Exit: as RichterLandOnMarkedFeet, or as RichterHurtLandSound.
+ */
+void RichterHurtLandOnMarkedFeet(RegLog *log, uint8_t x, uint8_t y)
+{
+    uint8_t value = RD8(PVARS->held);
+
+    rl_ended(log, ended_load(value));
+    if (value != 0) {
+        held_land_sound(log, y, 0xB560);
+        return;
+    }
+    WR8(OBJ->vy_hi[0], HURT_FALL_HI);
+    rl_ended(log, ended_load(HURT_FALL_HI));
+    RichterLandOnMarkedFeet(log, x, y);
+}
+
+/*
+ * @routine 01BB:4ED RichterHurtKnocked
+ * @run 6D:B4ED
+ * WHAT IT DOES: The knock's steps 2, 4 and 5: the knock speed; rising, gravity; falling, lands on a floor
+ * whose column answers 0 (held: at Y speed $0200, then the landing's sound; else at full fall speed), or
+ * on a marked floor or marked ground, or debris on marked columns and gravity.
+ * HOW: RichterKnockSpeedXFromHit; the landing check; RichterLandOnColumn; RichterOnMarkedFloor,
+ * RichterOnMarkedUnderFeet; RichterDebrisOnMarkedColumns; a tail jump to RichterFallGravity. Held, it
+ * runs on into RichterHurtLandSound after the landing.
+ * WAITS: no.
+ * Entry: X and Y for the sound driver. Exit: as the path's last routine.
+ */
+void RichterHurtKnocked(RegLog *log, uint8_t x, uint8_t y)
+{
+    KnockSpeed speed;
+    FloorResult floor;
+    ColumnRead under;
+    MarkedFloor marked;
+    uint8_t value;
+
+    jsr_push(0xB4EF);
+    speed = RichterKnockSpeedXFromHit();
+    jsr_pop();
+    rl_ended(log, ended_with_carry(ended_with_y(ended_load(speed.high), (uint8_t)(speed.side << 1)),
+                                   (speed.side & 0x80) != 0));
+    value = RD8(OBJ->vy_hi[0]);
+    rl_ended(log, ended_load(value));
+    if (!(value & 0x80)) {
+        bool land = false;
+
+        jsr_push(0xB4F7);
+        rl_columns(log, RichterReadColumns());
+        jsr_pop();
+        jsr_push(0xB4FA);
+        floor = RichterFloorCheck();
+        jsr_pop();
+        rl_floor(log, floor);
+        if (floor.how != FLOOR_NONE) {
+            jsr_push(0xB4FF);
+            under = RichterSolidUnderColumn(floor.column);
+            jsr_pop();
+            rl_solid(log, under);
+            land = solid_answer(under) == 0;
+        }
+        if (land) {
+            uint8_t lx, ly;
+
+            value = RD8(PVARS->held);
+            rl_ended(log, ended_load(value));
+            if (value == 0) {
+                WR8(OBJ->vy_hi[0], HURT_FALL_HI);
+                rl_ended(log, ended_load(HURT_FALL_HI));
+                rl_xy(log, x, y, &lx, &ly);
+                RichterLandOnColumn(log, floor.column, floor.column, ly);
+                return;
+            }
+            WR8(OBJ->vy_hi[0], HELD_FALL_HI);
+            rl_ended(log, ended_load(HELD_FALL_HI));
+            rl_xy(log, x, y, &lx, &ly);
+            jsr_push(0xB52C);
+            RichterLandOnColumn(log, floor.column, floor.column, ly);
+            jsr_pop();
+            rl_hurt_land(log, RichterHurtLandSound(log_y(log, x, y)));
+            return;
+        }
+        jsr_push(0xB511);
+        marked = RichterOnMarkedFloor();
+        jsr_pop();
+        rl_marked(log, marked);
+        if (marked.how == FLOOR_MARKED || marked.how == FLOOR_MARKED_DOWN) {
+            RichterHurtLandOnMarked(log, log_x(log, x, y), log_y(log, x, y));
+            return;
+        }
+        jsr_push(0xB519);
+        marked = RichterOnMarkedUnderFeet(log);
+        jsr_pop();
+        if (marked.how == FLOOR_MARKED || marked.how == FLOOR_MARKED_DOWN) {
+            RichterHurtLandOnMarkedFeet(log, log_x(log, x, y), log_y(log, x, y));
+            return;
+        }
+        jsr_push(0xB521);
+        rl_debris(log, RichterDebrisOnMarkedColumns(log_x(log, x, y), log_y(log, x, y)));
+        jsr_pop();
+    }
+    rl_gravity(log, RichterFallGravity());
+}
+
+/*
+ * @routine 01BB:227 RichterStateHurt
+ * @run 6D:B227
+ * WHAT IT DOES: State 9, the hit's reaction: runs the step's handler.
+ * HOW: The twelve words at $B22D by RichterStepIndex.
+ * WAITS: no.
+ * Entry: Y for the sound driver. Exit: as the handler leaves them.
+ */
+void RichterStateHurt(RegLog *log, uint8_t y)
+{
+    uint8_t step, at;
+    uint16_t entry, handler;
+
+    jsr_push(0xB22A);
+    step = RichterStepIndex();
+    jsr_pop();
+    at = (uint8_t)(step << 1);
+    rl_ended_x(log, ended_with_carry(ended_load(at), (step & 0x80) != 0), at);
+    entry = (uint16_t)(RichterHurtSteps + at);
+    handler = (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8));
+    switch (handler) {
+    case 0xB245:
+        RichterHurtStart(log, at, y);
+        break;
+    case 0xB574:
+        RichterHurtSlideStart(log);
+        break;
+    case 0xB4ED:
+        RichterHurtKnocked(log, at, y);
+        break;
+    case 0xB5AE:
+        rl_hurt_resume(log, RichterHurtResume());
+        break;
+    case 0xB5ED:
+        RichterHurtDownStep(log);
+        break;
+    case 0xB457:
+        RichterHurtThrown(log, at, y);
+        break;
+    case 0xB4C5:
+        RichterHurtThrownLanded(log);
+        break;
+    default:
+        RichterHurtSlide(log);
+        break;
+    }
+}
+
+LOG_ABI_XY(RichterHurtLandOnMarked)
+LOG_ABI_XY(RichterHurtLandOnMarkedFeet)
+LOG_ABI_XY(RichterHurtKnocked)
+LOG_ABI_Y(RichterStateHurt)

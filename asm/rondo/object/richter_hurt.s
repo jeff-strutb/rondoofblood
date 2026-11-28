@@ -35,6 +35,16 @@ RichterClearSlotKindFour:
 RichterClearSlotKindFour_at0:
     rts
 
+; @routine 01BB:227 RichterStateHurt
+; @run 6D:B227
+; WHAT IT DOES: State 9, the hit's reaction: runs the step's handler.
+; HOW: The twelve words at $B22D by RichterStepIndex.
+; WAITS: no.
+; Entry: Y for the sound driver. Exit: as the handler leaves them.
+RichterStateHurt:
+    jsr RichterStepIndex
+    jmp (RichterHurtSteps,x)
+
 ; @routine 01BB:245 RichterHurtStart
 ; @run 6D:B245
 ; WHAT IT DOES: The hit's step 0: stands him on a floor a pixel below if there is one, clears the
@@ -65,7 +75,7 @@ RichterHurtStart_at1:
     stz a:PlayerSlowTimerHi
     stz a:PlayerJumpKind
     lda a:OBJ_FACING_LEFT
-    sta a:OBJ_KNOCK_RIGHT
+    sta a:OBJ_WORK_L
     lda a:OBJ_HIT_TAKEN
     and #$07
     cmp #$06
@@ -74,18 +84,18 @@ RichterHurtStart_at1:
     sta a:OBJ_HIT_TAKEN
     bra RichterHurtStart_at3
 RichterHurtStart_at2:
-    stz a:OBJ_KNOCK_RIGHT
-    ldx a:OBJ_HIT_BY_SLOT
+    stz a:OBJ_WORK_L
+    ldx a:OBJ_WORK_O
     lda a:OBJ_X_HI,x
     beq RichterHurtStart_at4
     bpl RichterHurtStart_at3
-    inc a:OBJ_KNOCK_RIGHT
+    inc a:OBJ_WORK_L
     bra RichterHurtStart_at3
 RichterHurtStart_at4:
     lda a:OBJ_X_LO,x
     cmp a:OBJ_X_LO
     bcs RichterHurtStart_at3
-    inc a:OBJ_KNOCK_RIGHT
+    inc a:OBJ_WORK_L
 RichterHurtStart_at3:
     lda a:OBJ_HIT_TAKEN
     and #$07
@@ -98,7 +108,7 @@ RichterHurtStart_at5:
     jmp RichterHurtKindFour
 RichterHurtStart_at6:
     jsr RichterStopMoving
-    lda a:OBJ_STATE_BEFORE_HIT
+    lda a:OBJ_WORK_G
     asl a
     tax
     jmp (RichterHurtByState,x)
@@ -112,7 +122,7 @@ RichterHurtStart_at6:
 ; WAITS: no.
 ; Entry: X and Y for the sound driver. Exit: as the routine it goes to, from the last compare.
 RichterHurtFromStand:
-    lda a:OBJ_STEP_BEFORE_HIT
+    lda a:OBJ_WORK_H
     cmp #$01
     beq RichterHurtKnockUp
     lda a:OBJ_HIT_TAKEN
@@ -161,7 +171,7 @@ RichterHurtDown:
 ; Entry: X and Y for the sound driver. Exit: as RichterHurtKnockUp, or as RichterHitSoundAndEffects
 ; with A 8 where it keeps A.
 RichterHurtFromCrouch:
-    lda a:OBJ_STEP_BEFORE_HIT
+    lda a:OBJ_WORK_H
     bne RichterHurtKnockUp
     lda a:OBJ_HIT_TAKEN
     and #$03
@@ -176,7 +186,7 @@ RichterHurtFromCrouch_at1:
     lda #$72
     sta a:OBJ_FRAME
     lda #$08
-    sta a:OBJ_HIT_FRAMES
+    sta a:OBJ_WORK_I
     jmp RichterHitSoundAndEffects
 
 ; @routine 01BB:333 RichterHurtInAir
@@ -203,7 +213,7 @@ RichterHurtInAir:
 ; Entry: Y for the sound driver. Exit: A $FB, N set, Z clear; X, Y, C and V as RichterHurtKnockUp
 ; left them.
 RichterHurtClimbKindFive:
-    tst #$01,a:OBJ_STATE_BEFORE_HIT
+    tst #$01,a:OBJ_WORK_G
     bne RichterHurtClimbKindFive_at0
     jsr RichterNudgeB
     bra RichterHurtClimbKindFive_at1
@@ -233,13 +243,13 @@ RichterHurtWhileClimbing:
     and #$07
     cmp #$05
     beq RichterHurtClimbKindFive
-    ldy a:OBJ_STEP_BEFORE_HIT
+    ldy a:OBJ_WORK_H
     lda a:RichterClimbStepsHurtAsStanding,y
     beq RichterHurtWhileClimbing_at0
     jmp RichterHurtFromStand
 RichterHurtWhileClimbing_at0:
     lda #$20
-    sta a:OBJ_HIT_FRAMES
+    sta a:OBJ_WORK_I
     lda #$03
     sta a:OBJ_SUBSTATE
     bra RichterHitSoundAndEffects
@@ -320,7 +330,7 @@ RichterHitEffects_at2:
 ; WAITS: no.
 ; Entry: Y for the sound driver. Exit: as RichterHitEffects.
 RichterHurtKindThree:
-    ldx a:OBJ_STATE_BEFORE_HIT
+    ldx a:OBJ_WORK_G
     lda a:RichterHurtFromAirStates,x
     beq RichterHurtKindThree_at0
     lda #$50
@@ -335,7 +345,7 @@ RichterHurtKindThree_at0:
     lda #$FC
     sta a:OBJ_VY_HI
 RichterHurtKindThree_at1:
-    lda a:OBJ_KNOCK_RIGHT
+    lda a:OBJ_WORK_L
     asl a
     tay
     lda a:RichterThrowSpeedsX,y
@@ -359,7 +369,7 @@ RichterHurtKindThree_at2:
 ; WAITS: no.
 ; Entry: Y for the sound driver. Exit: as RichterHitEffects.
 RichterHurtKindFour:
-    ldx a:OBJ_STATE_BEFORE_HIT
+    ldx a:OBJ_WORK_G
     lda #$80
     sta a:OBJ_VY_LO
     lda #$F9
@@ -427,7 +437,7 @@ RichterHurtThrown_at4:
     lda #$01
     bra RichterHurtThrown_at6
 RichterHurtThrown_at5:
-    lda a:OBJ_KNOCK_RIGHT
+    lda a:OBJ_WORK_L
 RichterHurtThrown_at6:
     asl a
     tay
@@ -467,6 +477,47 @@ RichterHurtThrownLanded_at2:
     dec a:OBJ_SUBSTATE
     rts
 
+; @routine 01BB:4ED RichterHurtKnocked
+; @run 6D:B4ED
+; WHAT IT DOES: The knock's steps 2, 4 and 5: the knock speed; rising, gravity; falling, lands on a floor
+; whose column answers 0 (held: at Y speed $0200, then the landing's sound; else at full fall speed), or
+; on a marked floor or marked ground, or debris on marked columns and gravity.
+; HOW: RichterKnockSpeedXFromHit; the landing check; RichterLandOnColumn; RichterOnMarkedFloor,
+; RichterOnMarkedUnderFeet; RichterDebrisOnMarkedColumns; a tail jump to RichterFallGravity. Held, it
+; runs on into RichterHurtLandSound after the landing.
+; WAITS: no.
+; Entry: X and Y for the sound driver. Exit: as the path's last routine.
+RichterHurtKnocked:
+    bsr RichterKnockSpeedXFromHit
+    lda a:OBJ_VY_HI
+    bmi RichterHurtKnocked_at0
+    jsr RichterReadColumns
+    jsr RichterFloorCheck
+    bcc RichterHurtKnocked_at1
+    jsr RichterSolidUnderColumn
+    bne RichterHurtKnocked_at1
+    lda a:PlayerHeld
+    bne RichterHurtKnocked_at2
+    lda #$07
+    sta a:OBJ_VY_HI
+    jmp RichterLandOnColumn
+RichterHurtKnocked_at1:
+    jsr RichterOnMarkedFloor
+    bcc RichterHurtKnocked_at3
+    jmp RichterHurtLandOnMarked
+RichterHurtKnocked_at3:
+    jsr RichterOnMarkedUnderFeet
+    bcc RichterHurtKnocked_at4
+    jmp RichterHurtLandOnMarkedFeet
+RichterHurtKnocked_at4:
+    jsr RichterDebrisOnMarkedColumns
+RichterHurtKnocked_at0:
+    jmp RichterFallGravity
+RichterHurtKnocked_at2:
+    lda #$02
+    sta a:OBJ_VY_HI
+    jsr RichterLandOnColumn
+
 ; @routine 01BB:52C RichterHurtLandSound
 ; @run 6D:B52C
 ; WHAT IT DOES: Slots 1 and 2 to kind 4, then sound $4A.
@@ -479,6 +530,44 @@ RichterHurtLandSound:
     lda #$4A
     jmp VecSoundCommand
 
+; @routine 01BB:534 RichterHurtLandOnMarked
+; @run 6D:B534
+; WHAT IT DOES: The knock lands on a marked floor: held, Y speed $0200 and the landing's sound twice;
+; else full fall speed and as RichterLandOnMarked.
+; HOW: PlayerHeld; a jump to RichterLandOnMarked; the held end is RichterHurtLandOnMarkedFeet's ($B54E).
+; WAITS: no.
+; Entry: X and Y for the sound driver. Exit: as RichterLandOnMarked, or as RichterHurtLandSound.
+RichterHurtLandOnMarked:
+    lda a:PlayerHeld
+    bne RichterHurtLandOnMarkedFeet_at0
+    lda #$07
+    sta a:OBJ_VY_HI
+    jmp RichterLandOnMarked
+
+; @routine 01BB:541 RichterHurtLandOnMarkedFeet
+; @run 6D:B541
+; WHAT IT DOES: As RichterHurtLandOnMarked for marked ground under his feet: held, Y speed $0200 and the
+; landing's sound twice; else full fall speed and as RichterLandOnMarkedFeet.
+; HOW: PlayerHeld; a jump to RichterLandOnMarkedFeet.
+; WAITS: no.
+; Entry: X and Y for the sound driver. Exit: as RichterLandOnMarkedFeet, or as RichterHurtLandSound.
+RichterHurtLandOnMarkedFeet:
+    lda a:PlayerHeld
+    bne RichterHurtLandOnMarkedFeet_at1
+    lda #$07
+    sta a:OBJ_VY_HI
+    jmp RichterLandOnMarkedFeet
+RichterHurtLandOnMarkedFeet_at0:
+    lda #$02
+    sta a:OBJ_VY_HI
+    jsr RichterHurtLandSound
+    bra RichterHurtLandSound
+RichterHurtLandOnMarkedFeet_at1:
+    lda #$02
+    sta a:OBJ_VY_HI
+    jsr RichterHurtLandSound
+    bra RichterHurtLandSound
+
 ; @routine 01BB:562 RichterKnockSpeedXFromHit
 ; @run 6D:B562
 ; WHAT IT DOES: RichterKnockSpeedX for the side the hit throws him to, OBJ_KNOCK_RIGHT.
@@ -486,7 +575,7 @@ RichterHurtLandSound:
 ; WAITS: no.
 ; Entry: nothing. Exit: as RichterKnockSpeedX.
 RichterKnockSpeedXFromHit:
-    lda a:OBJ_KNOCK_RIGHT
+    lda a:OBJ_WORK_L
 
 ; @routine 01BB:565 RichterKnockSpeedX
 ; @run 6D:B565
@@ -531,7 +620,7 @@ RichterHurtSlide:
     jmp RichterToFall
 RichterHurtSlide_at0:
     jsr RichterLandOnFloor
-    dec a:OBJ_HIT_FRAMES
+    dec a:OBJ_WORK_I
     beq RichterHurtToCrouch
     rts
 
@@ -566,18 +655,18 @@ RichterHurtToCrouch:
 ; from the count, C bit 0 of the state less 5. Given back: A the step, N, Z and C from comparing it
 ; with 1; step 1, then as RichterEndItemCrash. Y kept but there.
 RichterHurtResume:
-    lda a:OBJ_STATE_BEFORE_HIT
+    lda a:OBJ_WORK_G
     sec
     sbc #$05
     lsr a
     tax
     lda a:RichterHurtResumeFrames,x
     sta a:OBJ_FRAME
-    dec a:OBJ_HIT_FRAMES
+    dec a:OBJ_WORK_I
     bne RichterHurtResume_at0
-    lda a:OBJ_STATE_BEFORE_HIT
+    lda a:OBJ_WORK_G
     sta a:OBJ_STATE
-    lda a:OBJ_STEP_BEFORE_HIT
+    lda a:OBJ_WORK_H
     sta a:OBJ_SUBSTATE
     cmp #$01
     bne RichterHurtResume_at0

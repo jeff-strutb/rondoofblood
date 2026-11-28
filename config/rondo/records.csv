@@ -505,6 +505,7 @@ member,PlayerVars,column_row,u8[5],08,RichterColumnRow,
 member,PlayerVars,column_x,u8[5],0D,RichterColumnX,
 member,PlayerVars,climb_reach,u8,12,PlayerClimbReach,
 member,PlayerVars,may_leave_top,u8,13,PlayerMayLeaveTop,
+member,PlayerVars,climb_land_facing,u8,14,PlayerClimbLandFacing,
 member,PlayerVars,f3bd5,u8,15,PlayerByte3BD5,
 member,PlayerVars,item_first_use,u8,16,PlayerItemFirstUse,
 member,PlayerVars,f3bd7,u8,17,PlayerByte3BD7,
@@ -540,3 +541,10 @@ alias,PlayerVars,slow_timer_lo,f3be8,PlayerSlowTimerLo
 alias,PlayerVars,slow_timer_hi,f3be9,PlayerSlowTimerHi
 alias,PlayerVarsB,start_pose,f3bf0,PlayerStartPose
 alias,PlayerVarsB,jump_kind,f3bf1,PlayerJumpKind
+alias,ObjectTable,animation,work_a,OBJ_ANIMATION
+alias,ObjectTable,fall_drift_delay,work_d,OBJ_FALL_DRIFT_DELAY
+alias,ObjectTable,pad_force_frames,work_e,OBJ_PAD_FORCE_FRAMES
+alias,ObjectTable,pad_forced,work_f,OBJ_PAD_FORCED
+alias,PlayerVars,door_ready,f3bd7,PlayerDoorReady
+alias,PlayerVars,whip_struck,f3be1,PlayerWhipStruck
+alias,PlayerVarsB,keeps_last_point,f3bf7,PlayerKeepsLastPoint

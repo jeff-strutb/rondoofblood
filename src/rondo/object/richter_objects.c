@@ -312,7 +312,7 @@ void abi_MariaObjectNextState(void)
 /*
  * @routine 01BD:47C RichterObjectQuicken
  * @run 6E:C47C
- * WHAT IT DOES: Once, at its animation's step 6 and while PlayerByte3BE1 is set, makes an object's
+ * WHAT IT DOES: Once, at its animation's step 6 and while PlayerWhipStruck is set, makes an object's
  * frame last 4 longer and Richter's one frame shorter than that.
  * HOW: OBJ_WORK_G marks it done; OBJ_2F38 the step; OBJ_HURT_TIMER the frame's time.
  * WAITS: no.
@@ -332,7 +332,7 @@ Quicken RichterObjectQuicken(uint8_t object)
     quicken.how = QUICKEN_NOT_STEP;
     if (quicken.value != OBJECT_STATE_QUICK)
         return quicken;
-    quicken.value = rd8(PlayerByte3BE1);
+    quicken.value = rd8(PlayerWhipStruck);
     quicken.how = QUICKEN_NOT_ASKED;
     if (quicken.value == 0)
         return quicken;

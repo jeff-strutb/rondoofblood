@@ -70,6 +70,34 @@ void rl_hit_sound(RegLog *log, HitSound r) { rl_next(log, RX_HIT_SOUND)->hit_sou
 void rl_slots(RegLog *log, Ended r) { rl_next(log, RX_SLOTS)->slots = r; }
 void rl_debris(RegLog *log, DebrisColumns r) { rl_next(log, RX_DEBRIS)->debris = r; }
 
+void rl_note_press(RegLog *log, ObjArm r) { rl_next(log, RX_NOTE_PRESS)->arm = r; }
+void rl_item_use(RegLog *log, ItemUse r) { rl_next(log, RX_ITEM_USE)->use = r; }
+void rl_under_feet(RegLog *log, ColumnRead r) { rl_next(log, RX_UNDER_FEET)->column = r; }
+void rl_column_lift(RegLog *log, ColumnLift r) { rl_next(log, RX_COLUMN_LIFT)->column_lift = r; }
+void rl_attack(RegLog *log, AttackStart r) { rl_next(log, RX_ATTACK)->attack = r; }
+void rl_knock(RegLog *log, Knock r) { rl_next(log, RX_KNOCK)->knock = r; }
+void rl_marked(RegLog *log, MarkedFloor r) { rl_next(log, RX_MARKED)->marked = r; }
+void rl_footing(RegLog *log, FootingCheck r) { rl_next(log, RX_FOOTING)->footing = r; }
+void rl_ledge(RegLog *log, LedgeCheck r) { rl_next(log, RX_LEDGE)->ledge = r; }
+void rl_hurt_land(RegLog *log, HurtLandSound r) { rl_next(log, RX_HURT_LAND)->hurt_land = r; }
+void rl_hurt_resume(RegLog *log, HurtResume r) { rl_next(log, RX_HURT_RESUME)->hurt_resume = r; }
+
+void rl_move_stopped(RegLog *log, Sum moved, uint8_t facing)
+{
+    RegStep *s = rl_next(log, RX_MOVE_STOPPED);
+
+    s->move_stopped.moved = moved;
+    s->move_stopped.facing = facing;
+}
+
+void rl_read_below(RegLog *log, TileRead r, bool read_made)
+{
+    RegStep *s = rl_next(log, RX_READ_BELOW);
+
+    s->read_below.read = r;
+    s->read_below.read_made = read_made;
+}
+
 void rl_sound(RegLog *log, uint8_t command, CommandCall r)
 {
     RegStep *s = rl_next(log, RX_SOUND);
@@ -151,6 +179,49 @@ void reg_log_replay(const RegLog *log)
             debris_columns_exit_shim(s->debris);
             break;
         case RX_LOG:
+            break;
+        case RX_NOTE_PRESS:
+            abi_ended_tst(richter_note_item_press_exit_shim(s->arm));
+            break;
+        case RX_ITEM_USE:
+            item_use_exit_shim(s->use);
+            break;
+        case RX_UNDER_FEET:
+            under_feet_exit_shim(s->column);
+            break;
+        case RX_COLUMN_LIFT:
+            column_lift_exit_shim(s->column_lift);
+            break;
+        case RX_MOVE_STOPPED:
+            cpu.a = 0xFF;
+            cpu.x = s->move_stopped.facing;
+            abi_nz(s->move_stopped.facing);
+            abi_flag(P_C, s->move_stopped.moved.carry);
+            abi_flag(P_V, s->move_stopped.moved.overflow);
+            break;
+        case RX_READ_BELOW:
+            read_or_nothing_exit_shim(s->read_below.read, s->read_below.read_made);
+            break;
+        case RX_ATTACK:
+            attack_exit_shim(s->attack);
+            break;
+        case RX_KNOCK:
+            knock_exit_shim(s->knock);
+            break;
+        case RX_MARKED:
+            marked_floor_exit_shim(s->marked);
+            break;
+        case RX_FOOTING:
+            footing_exit_shim(s->footing);
+            break;
+        case RX_LEDGE:
+            ledge_check_exit_shim(s->ledge);
+            break;
+        case RX_HURT_LAND:
+            hurt_land_sound_exit_shim(s->hurt_land);
+            break;
+        case RX_HURT_RESUME:
+            hurt_resume_exit_shim(s->hurt_resume);
             break;
         }
     }

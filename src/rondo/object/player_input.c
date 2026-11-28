@@ -511,7 +511,7 @@ void abi_MariaSetAnimation(void)
  * @run 6D:B704
  * WHAT IT DOES: Says whether the state in play lets him turn at the screen's middle: a table
  * by state, in the first step only, and only on the side of the middle he faces away from.
- * HOW: PlayerByte3BD7 is the answer.
+ * HOW: PlayerDoorReady is the answer.
  * WAITS: no.
  * Entry: nothing. Exit: A the last read, N and Z from it; X the state if it went that far. Y,
  * C and V kept.
@@ -521,7 +521,7 @@ static TurnWindow check_turn_window(uint16_t turn_states)
     TurnWindow r = { ended_kept(), false, 0 };
     uint8_t value, facing, x_lo;
 
-    wr8(PlayerByte3BD7, 0);
+    wr8(PlayerDoorReady, 0);
     value = RD8(OBJ->substate[0]);
     if (value != 0) {
         r.end = ended_load(value);
@@ -530,13 +530,13 @@ static TurnWindow check_turn_window(uint16_t turn_states)
     r.x_set = true;
     r.x = RD8(OBJ->state[0]);
     value = rd8((uint16_t)(turn_states + r.x));
-    wr8(PlayerByte3BD7, value);
+    wr8(PlayerDoorReady, value);
     r.end = ended_load(value);
     facing = RD8(OBJ->facing_left[0]);
     x_lo = RD8(OBJ->x_lo[0]);
     r.end = ended_load(x_lo);
     if ((facing == 0) != ((x_lo & 0x80) != 0)) {
-        wr8(PlayerByte3BD7, 0);
+        wr8(PlayerDoorReady, 0);
     }
     return r;
 }
@@ -650,7 +650,7 @@ ObjArm RichterNoteItemPress(void)
     return note_item_press_body();
 }
 
-static EndedTst richter_note_item_press_exit_shim(ObjArm r)
+EndedTst richter_note_item_press_exit_shim(ObjArm r)
 {
     EndedTst t;
 

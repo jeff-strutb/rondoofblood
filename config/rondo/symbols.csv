@@ -126,6 +126,10 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 3670,abs,OBJ_HIT_FRAMES,the player's use of OBJ_WORK_I: frames left in a step of the hit's reaction
 3778,abs,OBJ_KNOCK_RIGHT,the player's use of OBJ_WORK_L: 1 when the hit throws him right, 0 left
 3880,abs,OBJ_HIT_BY_SLOT,the hit objects' use of OBJ_WORK_O: the slot of the object whose hit test found it (HitTestObject stores it; the player's hit reads it)
+2EE0,abs,OBJ_ANIMATION,Richter's and Maria's use of OBJ_WORK_A for the player and their objects: the animation (RichterSetAnimation and RichterObjectSetAnimation store it, the animation lists are read by it)
+34B8,abs,OBJ_FALL_DRIFT_DELAY,the player's use of OBJ_WORK_D while falling: frames until the fall's small X speed is given (4 from RichterToFall; $FF none)
+3510,abs,OBJ_PAD_FORCE_FRAMES,the player's use of OBJ_WORK_E: frames left of a forced pad (RichterFrame holds the pad at OBJ_PAD_FORCED meanwhile)
+3568,abs,OBJ_PAD_FORCED,the player's use of OBJ_WORK_F: the pad RichterFrame gives while OBJ_PAD_FORCE_FRAMES runs
 2EE0,abs,OBJ_WORK_A,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
 2F38,abs,OBJ_SCROLL_BAND,bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to
 3098,abs,OBJ_EVENT_ID,event this object records
@@ -270,6 +274,7 @@ CE,zp,zPushYLo,push along Y
 CF,zp,zPushYHi,push along Y
 3BD2,abs,PlayerClimbReach,how far across he has to go to the edge of the ledge he climbs
 3BD3,abs,PlayerMayLeaveTop,not zero: the player may go above the map
+3BD4,abs,PlayerClimbLandFacing,the facing kept while a landing on a marked floor looks for the side to climb from (RichterLandOnMarked): not zero there makes it an ordinary landing
 3BF6,abs,PlayerAnchorObject,the object whose Y fraction the player takes when pushed
 3E6E,abs,ScrollStepYLo,this frame's scroll along Y
 3E76,abs,ScrollStepYHi,this frame's scroll along Y
@@ -413,6 +418,9 @@ D3,zp,zFieldD3,cleared with the player's pad overrides
 3BE9,abs,PlayerSlowTimerHi,high byte of PlayerSlowTimerLo's timer
 3BF0,abs,PlayerStartPose,1 from the stage's start until its forced pad has run out (RichterFrame clears it): standing still he shows frame $47 then
 3BF1,abs,PlayerJumpKind,how the jump in the air started: bit 7 a jump the way he faced (RichterToAir), bit 0 a knock-back (RichterKnockBack); 0 any other
+3BD7,abs,PlayerDoorReady,1 while a flagged door may take him: RichterCheckTurnWindow's table by state (standing or walking), at step 0, facing away from the screen's middle; the stages' door objects with bit 7 of OBJ_START_ARG wait on it
+3BE1,abs,PlayerWhipStruck,1 once the whip has struck an enemy in this attack: the whip's handler (kind 1) sets it when the object that tested it is an enemy (slot $10 up) with OBJ_HITBOX_ON 2 or more; the whip's frame at step 6 is then held 4 longer (RichterObjectQuicken); every attack and landing clears it
+3BF7,abs,PlayerKeepsLastPoint,1: a hit that takes the last of his health leaves him one point and goes on as a hit (RichterOutOfHealth); some stage objects set it as they run
 A02A,abs,OverlayOrphanA02A,a piece of the player overlay nothing reaches
 A0FF,abs,PlayerFootYByState,how far above the position to probe by state
 A116,abs,PlayerStartHandlers,4 words by zField8A
@@ -422,7 +430,7 @@ A3DB,abs,PlayerStandHandlers,3 words by the state's step
 A490,abs,WalkSpeeds,walking speed by facing
 A4A6,abs,BackstepSpeeds,back-step speed by facing
 A4AA,abs,JumpSpeeds,jump's X speed by facing
-A51D,abs,LandAnimations,landing's animation by PlayerByte3BD5
+A51D,abs,RichterAttackAnimations,the standing attack's animation by PlayerAttackKind (RichterAttack)
 A5EE,abs,LedgeNudge,X nudge off a ledge by facing
 A5F0,abs,LedgeNudgeB,X nudge off a ledge by facing
 A621,abs,HitReactionHandlers,9 words by zField93
@@ -475,11 +483,25 @@ BA26,abs,RichterItemUseLists,the sound list each thrown item starts
 BA2F,abs,RichterItemUseScripts,the script each thrown item starts
 B5AA,abs,RichterKnockSpeedsX,X speed words by the side a hit throws him: $FF00 left for 0; $0100 right for 1
 B5D5,abs,RichterHurtResumeFrames,the hurt frame by the state he was hit in: (the state less 5) / 2
+B22D,abs,RichterHurtSteps,the hit reaction's step handlers (state 9): twelve words by the step
 B2C1,abs,RichterHurtByState,the hit's start by the state he was hit in: thirteen words
 B37D,abs,RichterClimbStepsHurtAsStanding,1 for the steps of states 5 to 8 a hit is taken in as if standing (2 to 4)
 B428,abs,RichterHurtFromAirStates,1 for the states a hit of kind 3 finds him in the air in (3, 4, 11 and 12)
 B435,abs,RichterThrowSpeedsX,X speed words of a kind 3 throw by OBJ_KNOCK_RIGHT: $FD80, $0280
 B4C1,abs,RichterThrownLandSpeedsX,X speed words as a throw lands, by OBJ_KNOCK_RIGHT: $FE00, $0200
+ABC3,abs,RichterAirSteps,the air's step handlers (states 3, 11 and 12): four words by the step
+AA0D,abs,RichterFallDriftSpeeds,the fall's X speed words by facing once OBJ_FALL_DRIFT_DELAY runs out: $0040, $FFC0
+AAFD,abs,RichterAirStep3Frames,the two frames the air's step 3 shows by bit 1 of OBJ_HURT_TIMER
+AAFF,abs,RichterAirStep3Animations,the animation the air's step 3 ends with, by the item in hand (zField93)
+AB85,abs,RichterAirTurnSpeeds,X speed words by facing after a turn in the air: $00D5, $FF2B
+AC81,abs,RichterAirAttackAnimations,the attack's animation in the air by PlayerAttackKind
+AD08,abs,RichterLandAttackAnimations,the animation a landing while attacking goes on with, by PlayerAttackKind
+AD0C,abs,RichterClimbLandAttackAnimations,the animation a landing on a climb while attacking goes on with: by PlayerAttackKind times 2 plus (the climb's state less 5) / 2
+AE42,abs,RichterClimbLandStates,the climb's state a landing on a marked floor takes: by facing, plus 2 for the other side
+AE46,abs,RichterClimbLandFrames,the frame of that landing, as RichterClimbLandStates
+AE4A,abs,RichterClimbLandAnimations,the animation of that landing, as RichterClimbLandStates
+AE4E,abs,RichterClimbLandStepsRight,how far right the landing moves him, by RichterColumnX: 8 less it
+AE56,abs,RichterClimbLandStepsLeft,how far left the landing moves him, by RichterColumnX: one more than it, negative
 BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 0800,abs,PsgSelect,PSG: which channel the channel registers address
 0801,abs,PsgMainVolume,PSG: main volume, left and right nibbles

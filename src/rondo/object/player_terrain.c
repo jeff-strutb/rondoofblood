@@ -88,7 +88,7 @@ TileRead RichterReadAbove(uint8_t row, bool on_the_map)
  * When nothing was read, A is 0 by CLA, which leaves N and Z as they stood on the HuC6280: A5
  * shows the original's P 01 from an entry of 01 where setting Z gave 03. Otherwise as the read.
  */
-static void read_or_nothing_exit_shim(TileRead read, bool read_made)
+void read_or_nothing_exit_shim(TileRead read, bool read_made)
 {
     if (read_made)
         terrain_read_exit_shim(read);
@@ -1215,7 +1215,7 @@ void abi_MariaFloor(void)
     floor_exit_shim(MariaFloor());
 }
 
-static uint8_t column_answer(ColumnRead one)
+uint8_t column_answer(ColumnRead one)
 {
     return one.read_made ? tile_answer(one.read) : 0;
 }

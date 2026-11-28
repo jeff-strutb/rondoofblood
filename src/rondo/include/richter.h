@@ -8,11 +8,21 @@
 #include "machine.h"
 #include "routines.h"
 #include "enemy_objects.h"
+#include "player_objects.h"
 
 /* object/richter_state.c */
 typedef struct { uint8_t facing; uint8_t high; } FacingSpeed;
 typedef struct { uint8_t facing; uint8_t step; uint8_t was; } Nudge;
 typedef struct { uint8_t state; uint8_t index; } CrashEnd;
+typedef struct { Lift lift; FacingSpeed speed; uint8_t marks; } Knock;
+/* RichterMoveStopped: the move's add and the facing it loads into X. */
+typedef struct { Sum moved; uint8_t facing; } MovedStopped;
+MovedStopped RichterMoveStopped(uint8_t move);
+typedef enum { FLOOR_TOO_HIGH, FLOOR_UNMARKED, FLOOR_MARKED, FLOOR_MARKED_DOWN, FLOOR_NOT_DOWN } FloorHow;
+/* A look at the floor's marks: what it found, the value its exit shows, and the pad held. */
+typedef struct { FloorHow how; uint8_t value; uint8_t held; } MarkedFloor;
+MarkedFloor RichterOnMarkedFloor(void);
+void marked_floor_exit_shim(MarkedFloor floor);
 void nudge_exit_shim(Nudge nudge);
 Nudge RichterNudgeA(void);
 Nudge RichterNudgeB(void);
@@ -23,6 +33,12 @@ void fall_gravity_exit_shim(Sum high);
 AnimationStep RichterToFall(void);
 void to_fall_exit_shim(AnimationStep fall);
 void RichterPadOverridesOff(void);
+void abi_RichterReadColumns(void);
+void abi_RichterSetAnimation(void);
+void abi_RichterAnimationTick(void);
+void abi_RichterWall(void);
+void abi_RichterFloor(void);
+uint8_t RichterStepIndex(void);
 CrashEnd RichterEndItemCrash(void);
 void crash_end_exit_shim(CrashEnd end);
 void RichterStopMoving(void);
@@ -60,7 +76,8 @@ typedef struct { bool burst_started; ObjArm burst; bool overflow; uint8_t y_low;
 typedef enum {
     RX_ENDED, RX_COLUMNS, RX_FLOOR, RX_LANDING, RX_ANIMATION, RX_SOUND, RX_SCRIPT, RX_LIFT, RX_NUDGE,
     RX_FALL, RX_GRAVITY, RX_CRASH_END, RX_COLUMN_READ, RX_TST, RX_SOLID, RX_HIT_EFFECTS, RX_HIT_SOUND,
-    RX_SLOTS, RX_DEBRIS, RX_LOG
+    RX_SLOTS, RX_DEBRIS, RX_LOG, RX_NOTE_PRESS, RX_ITEM_USE, RX_UNDER_FEET, RX_COLUMN_LIFT, RX_MOVE_STOPPED,
+    RX_READ_BELOW, RX_ATTACK, RX_KNOCK, RX_MARKED, RX_FOOTING, RX_LEDGE, RX_HURT_LAND, RX_HURT_RESUME
 } RegKind;
 typedef struct {
     RegKind kind;
@@ -82,6 +99,18 @@ typedef struct {
         HitSound hit_sound;
         Ended slots;
         DebrisColumns debris;
+        ObjArm arm;
+        ItemUse use;
+        ColumnLift column_lift;
+        struct { Sum moved; uint8_t facing; } move_stopped;
+        struct { TileRead read; bool read_made; } read_below;
+        AttackStart attack;
+        Knock knock;
+        MarkedFloor marked;
+        FootingCheck footing;
+        LedgeCheck ledge;
+        HurtLandSound hurt_land;
+        HurtResume hurt_resume;
     };
 } RegStep;
 typedef struct { uint8_t count; RegStep step[24]; } RegLog;
@@ -110,8 +139,32 @@ void rl_hit_effects(RegLog *log, HitEffects r);
 void rl_hit_sound(RegLog *log, HitSound r);
 void rl_slots(RegLog *log, Ended r);
 void rl_debris(RegLog *log, DebrisColumns r);
-/* object/player_terrain.c */
+void rl_note_press(RegLog *log, ObjArm r);
+void rl_item_use(RegLog *log, ItemUse r);
+void rl_under_feet(RegLog *log, ColumnRead r);
+void rl_column_lift(RegLog *log, ColumnLift r);
+void rl_move_stopped(RegLog *log, Sum moved, uint8_t facing);
+void rl_read_below(RegLog *log, TileRead r, bool read_made);
+void rl_attack(RegLog *log, AttackStart r);
+void rl_knock(RegLog *log, Knock r);
+void rl_marked(RegLog *log, MarkedFloor r);
+void rl_footing(RegLog *log, FootingCheck r);
+void rl_ledge(RegLog *log, LedgeCheck r);
+void rl_hurt_land(RegLog *log, HurtLandSound r);
+void rl_hurt_resume(RegLog *log, HurtResume r);
+void hurt_resume_exit_shim(HurtResume r);
+/* object/player_terrain.c and object/player_input.c */
 uint8_t solid_answer(ColumnRead one);
+uint8_t column_answer(ColumnRead one);
+void read_or_nothing_exit_shim(TileRead read, bool read_made);
+ColumnRead RichterReadUnderFeet(void);
+TileRead RichterReadBelow(uint8_t row, bool carry);
+ObjArm RichterNoteItemPress(void);
+EndedTst richter_note_item_press_exit_shim(ObjArm r);
+void attack_exit_shim(AttackStart attack);
+AttackStart RichterAttackWithAnimation(uint8_t animation);
+Knock RichterKnockBack(void);
+void knock_exit_shim(Knock knock);
 FloorResult RichterFloorCheck(void);
 ColumnRead RichterSolidUnderColumn(uint8_t column);
 
@@ -183,5 +236,57 @@ void abi_RichterHurtSlide(void);
 void abi_RichterHurtSlideStart(void);
 void abi_RichterHurtHoldFrame(void);
 void abi_RichterHurtDownStep(void);
+void RichterHurtLandOnMarked(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtLandOnMarkedFeet(RegLog *log, uint8_t x, uint8_t y);
+void RichterHurtKnocked(RegLog *log, uint8_t x, uint8_t y);
+void RichterStateHurt(RegLog *log, uint8_t y);
+void abi_RichterHurtLandOnMarked(void);
+void abi_RichterHurtLandOnMarkedFeet(void);
+void abi_RichterHurtKnocked(void);
+void abi_RichterStateHurt(void);
+
+/* object/richter_fall.c, the states in the air */
+MarkedFloor RichterOnMarkedUnderFeet(RegLog *log);
+void RichterAirTurnSpeed(RegLog *log);
+void RichterAirTurnFacingLeft(RegLog *log);
+void RichterAirTurnStill(RegLog *log);
+void RichterAirControl(RegLog *log);
+void RichterFallAttacking(RegLog *log);
+bool RichterDownOnFirstColumnFloor(RegLog *log);
+void RichterAirStep2(RegLog *log);
+void RichterAirStep3(RegLog *log);
+void RichterStateLandCrouch(RegLog *log);
+void RichterLandOnMarkedFeet(RegLog *log, uint8_t x, uint8_t y);
+void RichterLandOnMarked(RegLog *log, uint8_t x, uint8_t y);
+void RichterLandAttacking(RegLog *log);
+void RichterLandHard(RegLog *log, uint8_t x, uint8_t y);
+void RichterLand(RegLog *log, uint8_t x, uint8_t y);
+void RichterLandOnColumn(RegLog *log, uint8_t column, uint8_t x, uint8_t y);
+void RichterAirAttack(RegLog *log);
+void RichterStateFall(RegLog *log, uint8_t x, uint8_t y);
+void RichterAirStep1(RegLog *log, uint8_t x, uint8_t y);
+void RichterAirStep0(RegLog *log, uint8_t x, uint8_t y);
+void RichterStateAir(RegLog *log, uint8_t y);
+void abi_RichterOnMarkedUnderFeet(void);
+void abi_RichterAirTurnSpeed(void);
+void abi_RichterAirTurnFacingLeft(void);
+void abi_RichterAirTurnStill(void);
+void abi_RichterAirControl(void);
+void abi_RichterFallAttacking(void);
+void abi_RichterDownOnFirstColumnFloor(void);
+void abi_RichterAirStep2(void);
+void abi_RichterAirStep3(void);
+void abi_RichterStateLandCrouch(void);
+void abi_RichterLandOnMarkedFeet(void);
+void abi_RichterLandOnMarked(void);
+void abi_RichterLandAttacking(void);
+void abi_RichterLandHard(void);
+void abi_RichterLand(void);
+void abi_RichterLandOnColumn(void);
+void abi_RichterAirAttack(void);
+void abi_RichterStateFall(void);
+void abi_RichterAirStep1(void);
+void abi_RichterAirStep0(void);
+void abi_RichterStateAir(void);
 
 #endif

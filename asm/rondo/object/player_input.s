@@ -142,29 +142,29 @@ RichterAnimationPoint:
 ; @run 6D:B704
 ; WHAT IT DOES: Says whether the state in play lets him turn at the screen's middle: a table
 ; by state, in the first step only, and only on the side of the middle he faces away from.
-; HOW: PlayerByte3BD7 is the answer.
+; HOW: PlayerDoorReady is the answer.
 ; WAITS: no.
 ; Entry: nothing. Exit: A the last read, N and Z from it; X the state if it went that far. Y,
 ; C and V kept.
 RichterCheckTurnWindow:
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
     lda a:OBJ_SUBSTATE
     beq RichterCheckTurnWindow_at0
     rts
 RichterCheckTurnWindow_at0:
     ldx a:OBJ_STATE
     lda a:RichterTurnStates,x
-    sta a:PlayerByte3BD7
+    sta a:PlayerDoorReady
     lda a:OBJ_FACING_LEFT
     bne RichterCheckTurnWindow_at1
     lda a:OBJ_X_LO
     bmi RichterCheckTurnWindow_at2
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
     rts
 RichterCheckTurnWindow_at1:
     lda a:OBJ_X_LO
     bpl RichterCheckTurnWindow_at2
-    stz a:PlayerByte3BD7
+    stz a:PlayerDoorReady
 RichterCheckTurnWindow_at2:
     rts
 

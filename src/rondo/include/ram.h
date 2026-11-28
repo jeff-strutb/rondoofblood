@@ -123,6 +123,10 @@
 #define OBJ_HIT_FRAMES 0x3670 /* the player's use of OBJ_WORK_I: frames left in a step of the hit's reaction */
 #define OBJ_KNOCK_RIGHT 0x3778 /* the player's use of OBJ_WORK_L: 1 when the hit throws him right, 0 left */
 #define OBJ_HIT_BY_SLOT 0x3880 /* the hit objects' use of OBJ_WORK_O: the slot of the object whose hit test found it (HitTestObject stores it; the player's hit reads it) */
+#define OBJ_ANIMATION 0x2EE0 /* Richter's and Maria's use of OBJ_WORK_A for the player and their objects: the animation (RichterSetAnimation and RichterObjectSetAnimation store it, the animation lists are read by it) */
+#define OBJ_FALL_DRIFT_DELAY 0x34B8 /* the player's use of OBJ_WORK_D while falling: frames until the fall's small X speed is given (4 from RichterToFall; $FF none) */
+#define OBJ_PAD_FORCE_FRAMES 0x3510 /* the player's use of OBJ_WORK_E: frames left of a forced pad (RichterFrame holds the pad at OBJ_PAD_FORCED meanwhile) */
+#define OBJ_PAD_FORCED 0x3568 /* the player's use of OBJ_WORK_F: the pad RichterFrame gives while OBJ_PAD_FORCE_FRAMES runs */
 #define OBJ_WORK_A 0x2EE0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_SCROLL_BAND 0x2F38 /* bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */
@@ -264,6 +268,7 @@
 #define zPushYHi 0x20CF /* push along Y */
 #define PlayerClimbReach 0x3BD2 /* how far across he has to go to the edge of the ledge he climbs */
 #define PlayerMayLeaveTop 0x3BD3 /* not zero: the player may go above the map */
+#define PlayerClimbLandFacing 0x3BD4 /* the facing kept while a landing on a marked floor looks for the side to climb from (RichterLandOnMarked): not zero there makes it an ordinary landing */
 #define PlayerAnchorObject 0x3BF6 /* the object whose Y fraction the player takes when pushed */
 #define ScrollStepYLo 0x3E6E /* this frame's scroll along Y */
 #define ScrollStepYHi 0x3E76 /* this frame's scroll along Y */
@@ -404,6 +409,9 @@
 #define PlayerSlowTimerHi 0x3BE9 /* high byte of PlayerSlowTimerLo's timer */
 #define PlayerStartPose 0x3BF0 /* 1 from the stage's start until its forced pad has run out (RichterFrame clears it): standing still he shows frame $47 then */
 #define PlayerJumpKind 0x3BF1 /* how the jump in the air started: bit 7 a jump the way he faced (RichterToAir), bit 0 a knock-back (RichterKnockBack); 0 any other */
+#define PlayerDoorReady 0x3BD7 /* 1 while a flagged door may take him: RichterCheckTurnWindow's table by state (standing or walking), at step 0, facing away from the screen's middle; the stages' door objects with bit 7 of OBJ_START_ARG wait on it */
+#define PlayerWhipStruck 0x3BE1 /* 1 once the whip has struck an enemy in this attack: the whip's handler (kind 1) sets it when the object that tested it is an enemy (slot $10 up) with OBJ_HITBOX_ON 2 or more; the whip's frame at step 6 is then held 4 longer (RichterObjectQuicken); every attack and landing clears it */
+#define PlayerKeepsLastPoint 0x3BF7 /* 1: a hit that takes the last of his health leaves him one point and goes on as a hit (RichterOutOfHealth); some stage objects set it as they run */
 #define OverlayOrphanA02A 0xA02A /* a piece of the player overlay nothing reaches */
 #define PlayerFootYByState 0xA0FF /* how far above the position to probe by state */
 #define PlayerStartHandlers 0xA116 /* 4 words by zField8A */
@@ -413,7 +421,7 @@
 #define WalkSpeeds 0xA490 /* walking speed by facing */
 #define BackstepSpeeds 0xA4A6 /* back-step speed by facing */
 #define JumpSpeeds 0xA4AA /* jump's X speed by facing */
-#define LandAnimations 0xA51D /* landing's animation by PlayerByte3BD5 */
+#define RichterAttackAnimations 0xA51D /* the standing attack's animation by PlayerAttackKind (RichterAttack) */
 #define LedgeNudge 0xA5EE /* X nudge off a ledge by facing */
 #define LedgeNudgeB 0xA5F0 /* X nudge off a ledge by facing */
 #define HitReactionHandlers 0xA621 /* 9 words by zField93 */
@@ -466,11 +474,25 @@
 #define RichterItemUseScripts 0xBA2F /* the script each thrown item starts */
 #define RichterKnockSpeedsX 0xB5AA /* X speed words by the side a hit throws him: $FF00 left for 0; $0100 right for 1 */
 #define RichterHurtResumeFrames 0xB5D5 /* the hurt frame by the state he was hit in: (the state less 5) / 2 */
+#define RichterHurtSteps 0xB22D /* the hit reaction's step handlers (state 9): twelve words by the step */
 #define RichterHurtByState 0xB2C1 /* the hit's start by the state he was hit in: thirteen words */
 #define RichterClimbStepsHurtAsStanding 0xB37D /* 1 for the steps of states 5 to 8 a hit is taken in as if standing (2 to 4) */
 #define RichterHurtFromAirStates 0xB428 /* 1 for the states a hit of kind 3 finds him in the air in (3, 4, 11 and 12) */
 #define RichterThrowSpeedsX 0xB435 /* X speed words of a kind 3 throw by OBJ_KNOCK_RIGHT: $FD80, $0280 */
 #define RichterThrownLandSpeedsX 0xB4C1 /* X speed words as a throw lands, by OBJ_KNOCK_RIGHT: $FE00, $0200 */
+#define RichterAirSteps 0xABC3 /* the air's step handlers (states 3, 11 and 12): four words by the step */
+#define RichterFallDriftSpeeds 0xAA0D /* the fall's X speed words by facing once OBJ_FALL_DRIFT_DELAY runs out: $0040, $FFC0 */
+#define RichterAirStep3Frames 0xAAFD /* the two frames the air's step 3 shows by bit 1 of OBJ_HURT_TIMER */
+#define RichterAirStep3Animations 0xAAFF /* the animation the air's step 3 ends with, by the item in hand (zField93) */
+#define RichterAirTurnSpeeds 0xAB85 /* X speed words by facing after a turn in the air: $00D5, $FF2B */
+#define RichterAirAttackAnimations 0xAC81 /* the attack's animation in the air by PlayerAttackKind */
+#define RichterLandAttackAnimations 0xAD08 /* the animation a landing while attacking goes on with, by PlayerAttackKind */
+#define RichterClimbLandAttackAnimations 0xAD0C /* the animation a landing on a climb while attacking goes on with: by PlayerAttackKind times 2 plus (the climb's state less 5) / 2 */
+#define RichterClimbLandStates 0xAE42 /* the climb's state a landing on a marked floor takes: by facing, plus 2 for the other side */
+#define RichterClimbLandFrames 0xAE46 /* the frame of that landing, as RichterClimbLandStates */
+#define RichterClimbLandAnimations 0xAE4A /* the animation of that landing, as RichterClimbLandStates */
+#define RichterClimbLandStepsRight 0xAE4E /* how far right the landing moves him, by RichterColumnX: 8 less it */
+#define RichterClimbLandStepsLeft 0xAE56 /* how far left the landing moves him, by RichterColumnX: one more than it, negative */
 #define RichterItemAttacks 0xBA38 /* the attack kind using each item gives; 0 the whip */
 #define PsgSelect 0x0800 /* PSG: which channel the channel registers address */
 #define PsgMainVolume 0x0801 /* PSG: main volume, left and right nibbles */

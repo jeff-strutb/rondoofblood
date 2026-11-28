@@ -120,7 +120,7 @@ RichterObjectSlot:
 
 ; @routine 01BD:47C RichterObjectQuicken
 ; @run 6E:C47C
-; WHAT IT DOES: Once, at its animation's step 6 and while PlayerByte3BE1 is set, makes an object's
+; WHAT IT DOES: Once, at its animation's step 6 and while PlayerWhipStruck is set, makes an object's
 ; frame last 4 longer and Richter's one frame shorter than that.
 ; HOW: OBJ_WORK_G marks it done; OBJ_2F38 the step; OBJ_HURT_TIMER the frame's time.
 ; WAITS: no.
@@ -133,7 +133,7 @@ RichterObjectQuicken:
     lda a:OBJ_SCROLL_BAND,x
     cmp #$06
     bne RichterObjectQuicken_at0
-    lda a:PlayerByte3BE1
+    lda a:PlayerWhipStruck
     beq RichterObjectQuicken_at0
     lda #$04
     clc

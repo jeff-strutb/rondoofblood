@@ -88,9 +88,12 @@ static uint8_t cpu_a_shim(void)
 }
 
 /* The JSR $A80F, to the resident overlay's SelectBlockTables: its add's V, or the original's. */
-static bool block_tables(uint16_t ret, CallRegs r)
+static bool block_tables(uint16_t ret, CallRegs r, uint16_t moved)
 {
-    uint32_t disc = resident_at(BLOCK_TABLES_RUN);
+    uint16_t run = (uint16_t)(BLOCK_TABLES_RUN + moved);
+    uint32_t disc = resident_at(run);
+
+    ret = (uint16_t)(ret + moved);
     Sum sum;
 
     for (unsigned i = 0; i < sizeof BLOCK_TABLES / sizeof BLOCK_TABLES[0]; i++) {
@@ -102,16 +105,17 @@ static bool block_tables(uint16_t ret, CallRegs r)
         }
     }
     call_regs_shim(r);
-    call_routine(ret, BLOCK_TABLES_RUN);
+    call_routine(ret, run);
     return cpu_overflow_shim();
 }
 
 /* The JSR $A6E2: the screen map's byte; ScreenMapAt leaves C and V clear. */
-static uint8_t screen_map(uint16_t ret, CallRegs r, bool *carry, bool *overflow)
+static uint8_t screen_map(uint16_t ret, CallRegs r, bool *carry, bool *overflow, uint16_t moved)
 {
     uint8_t byte;
 
-    if (resident_is(SCREEN_MAP_RUN, DISC(0x0255, 0x6E2))) {
+    ret = (uint16_t)(ret + moved);
+    if (resident_is((uint16_t)(SCREEN_MAP_RUN + moved), DISC(0x0255, 0x6E2))) {
         jsr_push(ret);
         byte = ScreenMapAt(r.a);
         jsr_pop();
@@ -120,18 +124,22 @@ static uint8_t screen_map(uint16_t ret, CallRegs r, bool *carry, bool *overflow)
         return byte;
     }
     call_regs_shim(r);
-    call_routine(ret, SCREEN_MAP_RUN);
+    call_routine(ret, (uint16_t)(SCREEN_MAP_RUN + moved));
     *carry = cpu_carry_shim();
     *overflow = cpu_overflow_shim();
     return cpu_a_shim();
 }
 
 /* The JSR $A878 (or the run into it from BlockIndexForPlace, ret 0): the bit, X and Y kept. */
-static BitmapBit bitmap_bit(uint16_t ret, CallRegs r)
+static BitmapBit bitmap_bit(uint16_t ret, CallRegs r, uint16_t moved)
 {
     BitmapBit bit;
+    uint16_t run = (uint16_t)(BITMAP_BIT_RUN + moved);
 
-    if (resident_is(BITMAP_BIT_RUN, DISC(0x0256, 0x078))) {
+    if (ret != 0) {
+        ret = (uint16_t)(ret + moved);
+    }
+    if (resident_is(run, DISC(0x0256, 0x078))) {
         if (ret != 0) {
             jsr_push(ret);
         }
@@ -143,9 +151,9 @@ static BitmapBit bitmap_bit(uint16_t ret, CallRegs r)
     }
     call_regs_shim(r);
     if (ret != 0) {
-        call_routine(ret, BITMAP_BIT_RUN);
+        call_routine(ret, run);
     } else {
-        run_routine(BITMAP_BIT_RUN);
+        run_routine(run);
     }
     bit.a = cpu_a_shim();
     bit.x = r.x;
@@ -169,6 +177,12 @@ static BitmapBit bitmap_bit(uint16_t ret, CallRegs r)
  * Clobbers zTemp00, 01, 04, 05, 0C to 0E, 10 and 11.
  */
 BlockIndex BlockIndexForPlace(uint8_t entry, uint8_t y, bool overflow)
+{
+    return BlockIndexForPlaceMoved(entry, y, overflow, 0);
+}
+
+/* BlockIndexForPlace's body, with its camera module `moved` on from $A000. */
+BlockIndex BlockIndexForPlaceMoved(uint8_t entry, uint8_t y, bool overflow, uint16_t moved)
 {
     BlockIndex r = { 0 };
     CallRegs regs;
@@ -194,9 +208,9 @@ BlockIndex BlockIndexForPlace(uint8_t entry, uint8_t y, bool overflow)
     WR8(ZP->temp00, value);
     row = RD8(ZP->temp07);
     regs = (CallRegs){ row, entry, y, row, shifted, overflow };
-    map = screen_map(0xA863, regs, &carry, &overflow);
+    map = screen_map(0xA863, regs, &carry, &overflow, moved);
     regs = (CallRegs){ map, entry, y, map, carry, overflow };
-    r.overflow = block_tables(0xA866, regs);
+    r.overflow = block_tables(0xA866, regs, moved);
     low = RD8(ZP->temp02);
     WR8(ZP->temp00, (uint8_t)(low >> 5));
     value = RD8(ZP->temp06);
@@ -204,7 +218,7 @@ BlockIndex BlockIndexForPlace(uint8_t entry, uint8_t y, bool overflow)
     value = (uint8_t)((value >> 2) & 0x38);
     value = (uint8_t)(value | RD8(ZP->temp00));
     regs = (CallRegs){ value, entry, value, value, carry, r.overflow };
-    r.bit = bitmap_bit(0, regs);                    /* runs into $A878 */
+    r.bit = bitmap_bit(0, regs, moved);             /* runs into $A878 */
     return r;
 }
 
@@ -226,18 +240,19 @@ void abi_BlockIndexForPlace(void)
 }
 
 /* The JSR $A83D: this overlay's BlockIndexForPlace when it is resident, the original otherwise. */
-static BlockIndex block_index(uint16_t ret, CallRegs r)
+static BlockIndex block_index(uint16_t ret, CallRegs r, uint16_t moved)
 {
     BlockIndex index;
 
-    if (resident_is(BLOCK_INDEX_RUN, DISC(0x0256, 0x03D))) {
+    ret = (uint16_t)(ret + moved);
+    if (resident_is((uint16_t)(BLOCK_INDEX_RUN + moved), DISC(0x0256, 0x03D))) {
         jsr_push(ret);
         index = BlockIndexForPlace(r.x, r.y, r.v);
         jsr_pop();
         return index;
     }
     call_regs_shim(r);
-    call_routine(ret, BLOCK_INDEX_RUN);
+    call_routine(ret, (uint16_t)(BLOCK_INDEX_RUN + moved));
     index.bit.a = cpu_a_shim();
     index.bit.x = r.x;
     index.bit.y = cpu_y_shim();
@@ -271,6 +286,12 @@ static BlockIndex block_index(uint16_t ret, CallRegs r)
  */
 ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow)
 {
+    return DrawBlockColumnMoved(entry, index, entry_carry, entry_overflow, 0);
+}
+
+/* DrawBlockColumn's body, with its camera module `moved` on from $A000. */
+ColumnEnd DrawBlockColumnMoved(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow, uint16_t moved)
+{
     ColumnEnd r = { 0 };
     CallRegs regs;
     uint8_t value, count, y, block, map, row;
@@ -282,8 +303,8 @@ ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool e
     value = RD8(SCROLLE->f3e66[entry]);
     count = (uint8_t)(value & 0x7F);
     WR8(ZP->temp08, count);
-    if (resident_is(SCROLL_X_OFFSET_RUN, DISC(0x0255, 0x75C))) {
-        jsr_push(0xA7AF);
+    if (resident_is((uint16_t)(SCROLL_X_OFFSET_RUN + moved), DISC(0x0255, 0x75C))) {
+        jsr_push((uint16_t)(0xA7AF + moved));
         sum = ScrollXPlusOffset(entry, index);
         jsr_pop();
         carry = sum.carry;
@@ -291,7 +312,7 @@ ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool e
     } else {
         regs = (CallRegs){ count, entry, index, count, entry_carry, entry_overflow };
         call_regs_shim(regs);
-        call_routine(0xA7AF, SCROLL_X_OFFSET_RUN);
+        call_routine((uint16_t)(0xA7AF + moved), (uint16_t)(SCROLL_X_OFFSET_RUN + moved));
         index = cpu_y_shim();
         carry = cpu_carry_shim();
         overflow = cpu_overflow_shim();
@@ -305,32 +326,32 @@ ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool e
     if ((value & 0x80) != 0) {
         y = 1;
         value = RD8(SCROLL->y_lo[entry]);
-        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + y)), false);
+        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + moved + y)), false);
         WR8(ZP->temp06, sum.value);
         value = RD8(SCROLLE->y_hi_screen[entry]);
-        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + 2 + y)), sum.carry);
+        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + 2 + moved + y)), sum.carry);
         value = (uint8_t)(sum.value & SCREEN_ROWS_MASK);
         WR8(ZP->temp07, value);
         carry = sum.carry;
         overflow = sum.overflow;
     }
     regs = (CallRegs){ value, entry, y, value, carry, overflow };
-    place = block_index(0xA7D6, regs);
+    place = block_index(0xA7D6, regs, moved);
     bit = place.bit;
     overflow = place.overflow;
     y = bit.y;
     for (;;) {
         block = RD8_PTR_Y(ZP->temp04, y);
         push8(y);
-        if (resident_is(BLOCK_COPY_RUN, DISC(0x0255, 0x000))) {
-            jsr_push(0xA7DC);
-            overflow = CopyTileBlockToVram(block, bit.carry);
+        if (resident_is((uint16_t)(BLOCK_COPY_RUN + moved), DISC(0x0255, 0x000))) {
+            jsr_push((uint16_t)(0xA7DC + moved));
+            overflow = CopyTileBlockToVramMoved(block, bit.carry, moved);
             jsr_pop();
             r.carry = true;
         } else {
             regs = (CallRegs){ block, entry, y, block, bit.carry, overflow };
             call_regs_shim(regs);
-            call_routine(0xA7DC, BLOCK_COPY_RUN);
+            call_routine((uint16_t)(0xA7DC + moved), (uint16_t)(BLOCK_COPY_RUN + moved));
             r.from_original = true;
             r.carry = cpu_carry_shim();
             overflow = cpu_overflow_shim();
@@ -347,7 +368,7 @@ ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool e
         overflow = sum.overflow;
         if (y < COLUMN_ROWS_BYTE) {
             regs = (CallRegs){ y, entry, y, (uint8_t)(y - COLUMN_ROWS_BYTE), false, overflow };
-            bit = bitmap_bit(0xA7EE, regs);
+            bit = bitmap_bit(0xA7EE, regs, moved);
             y = bit.y;
             continue;
         }
@@ -357,14 +378,14 @@ ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool e
         row = (uint8_t)((row + 1) & SCREEN_ROWS_MASK);
         WR8(ZP->temp07, row);
         regs = (CallRegs){ row, entry, y, row, true, overflow };
-        map = screen_map(0xA7FE, regs, &carry, &overflow);
+        map = screen_map(0xA7FE, regs, &carry, &overflow, moved);
         regs = (CallRegs){ map, entry, y, map, carry, overflow };
-        overflow = block_tables(0xA801, regs);
+        overflow = block_tables(0xA801, regs, moved);
         value = RD8(ZP->temp02);
         carry = (value & 0x10) != 0;
         y = (uint8_t)(value >> 5);
         regs = (CallRegs){ y, entry, y, y, carry, overflow };
-        bit = bitmap_bit(0xA80C, regs);
+        bit = bitmap_bit(0xA80C, regs, moved);
         y = bit.y;
     }
 }
@@ -390,12 +411,12 @@ typedef struct {
 
 /* The JSR $A892, the place along Y plus the offset: the C of the routine loaded there, with the registers it is called
  * with; it leaves zTemp06-07 and A, N, Z, C, V from its last add, X and Y kept. */
-static RowRegs y_offset(uint16_t ret, CallRegs r)
+static RowRegs y_offset(uint16_t ret, CallRegs r, uint16_t moved)
 {
     RowRegs out;
 
     call_regs_shim(r);
-    call_routine(ret, SCROLL_Y_OFFSET_RUN);
+    call_routine((uint16_t)(ret + moved), (uint16_t)(SCROLL_Y_OFFSET_RUN + moved));
     out.a = cpu_a_shim();
     out.nz = out.a;
     out.y = cpu_y_shim();
@@ -406,18 +427,19 @@ static RowRegs y_offset(uint16_t ret, CallRegs r)
 
 /* The JSR $A000 that copies a block: the overlay's CopyTileBlockToVram when it is resident, the routine loaded there
  * otherwise. V as it leaves it. */
-static bool block_copy(uint16_t ret, CallRegs r)
+static bool block_copy(uint16_t ret, CallRegs r, uint16_t moved)
 {
     bool overflow;
 
-    if (resident_is(BLOCK_COPY_RUN, DISC(0x0255, 0x000))) {
+    ret = (uint16_t)(ret + moved);
+    if (resident_is((uint16_t)(BLOCK_COPY_RUN + moved), DISC(0x0255, 0x000))) {
         jsr_push(ret);
         overflow = CopyTileBlockToVram(r.a, r.c);
         jsr_pop();
         return overflow;
     }
     call_regs_shim(r);
-    call_routine(ret, BLOCK_COPY_RUN);
+    call_routine(ret, (uint16_t)(BLOCK_COPY_RUN + moved));
     return cpu_overflow_shim();
 }
 
@@ -437,6 +459,12 @@ static bool block_copy(uint16_t ret, CallRegs r)
  */
 RowEnd DrawBlockRow(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow)
 {
+    return DrawBlockRowMoved(entry, index, entry_carry, entry_overflow, 0);
+}
+
+/* DrawBlockRow's body, with its camera module `moved` on from $A000. */
+RowEnd DrawBlockRowMoved(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow, uint16_t moved)
+{
     RowEnd r = { 0 };
     CallRegs regs;
     RowRegs place;
@@ -450,7 +478,7 @@ RowEnd DrawBlockRow(uint8_t entry, uint8_t index, bool entry_carry, bool entry_o
     count = (uint8_t)(value & 0x7F);
     WR8(ZP->temp08, count);
     regs = (CallRegs){ count, entry, index, count, entry_carry, entry_overflow };
-    place = y_offset(0xA8DF, regs);
+    place = y_offset(0xA8DF, regs, moved);
     value = RD8(SCROLL->x_lo[entry]);
     WR8(ZP->temp02, value);
     value = RD8(SCROLLE->x_hi_screen[entry]);
@@ -462,17 +490,17 @@ RowEnd DrawBlockRow(uint8_t entry, uint8_t index, bool entry_carry, bool entry_o
     if ((value & 0x80) != 0) {
         y = 1;
         value = RD8(SCROLL->x_lo[entry]);
-        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + y)), false);
+        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + moved + y)), false);
         WR8(ZP->temp02, sum.value);
         value = RD8(SCROLLE->x_hi_screen[entry]);
-        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + 2 + y)), sum.carry);
+        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + 2 + moved + y)), sum.carry);
         value = (uint8_t)(sum.value & SCREEN_ROWS_MASK);
         WR8(ZP->temp03, value);
         carry = sum.carry;
         overflow = sum.overflow;
     }
     regs = (CallRegs){ value, entry, y, value, carry, overflow };
-    first = block_index(0xA906, regs);
+    first = block_index(0xA906, regs, moved);
     bit = first.bit;
     overflow = first.overflow;
     y = bit.y;
@@ -484,7 +512,7 @@ RowEnd DrawBlockRow(uint8_t entry, uint8_t index, bool entry_carry, bool entry_o
         push8(saved_hi);
         block = RD8_PTR_Y(ZP->temp04, y);
         regs = (CallRegs){ block, entry, y, block, bit.carry, overflow };
-        (void)block_copy(0xA912, regs);
+        (void)block_copy(0xA912, regs, moved);
         saved_hi = pull8();
         WR8(ZP->temp11, saved_hi);
         saved_lo = pull8();
@@ -504,7 +532,7 @@ RowEnd DrawBlockRow(uint8_t entry, uint8_t index, bool entry_carry, bool entry_o
         y++;
         if ((y & 0x07) != 0) {
             regs = (CallRegs){ (uint8_t)(y & 0x07), entry, y, (uint8_t)(y & 0x07), carry, overflow };
-            bit = bitmap_bit(0xA92C, regs);
+            bit = bitmap_bit(0xA92C, regs, moved);
             y = bit.y;
             continue;
         }
@@ -514,14 +542,14 @@ RowEnd DrawBlockRow(uint8_t entry, uint8_t index, bool entry_carry, bool entry_o
         WR8(ZP->temp00, screen);
         value = RD8(ZP->temp07);
         regs = (CallRegs){ value, entry, y, value, carry, overflow };
-        value = screen_map(0xA93C, regs, &carry, &overflow);
+        value = screen_map(0xA93C, regs, &carry, &overflow, moved);
         regs = (CallRegs){ value, entry, y, value, carry, overflow };
-        overflow = block_tables(0xA93F, regs);
+        overflow = block_tables(0xA93F, regs, moved);
         value = RD8(ZP->temp06);
         carry = (value & 0x02) != 0;               /* the second LSR's bit out */
         y = (uint8_t)((value >> 2) & 0x38);
         regs = (CallRegs){ y, entry, y, y, carry, overflow };
-        bit = bitmap_bit(0xA949, regs);
+        bit = bitmap_bit(0xA949, regs, moved);
         y = bit.y;
     }
 }
@@ -549,6 +577,12 @@ void abi_DrawBlockRow(void)
  */
 RowDue RowDueUp(uint8_t entry, uint8_t index, bool carry, bool overflow)
 {
+    return RowDueUpMoved(entry, index, carry, overflow, 0);
+}
+
+/* RowDueUp's body, with its camera module `moved` on from $A000. */
+RowDue RowDueUpMoved(uint8_t entry, uint8_t index, bool carry, bool overflow, uint16_t moved)
+{
     RowDue r = { 0 };
     uint8_t band, wanted;
 
@@ -560,7 +594,7 @@ RowDue RowDueUp(uint8_t entry, uint8_t index, bool carry, bool overflow)
         return r;
     }
     r.drawn = true;
-    r.row = DrawBlockRow(entry, index, carry, overflow);
+    r.row = DrawBlockRowMoved(entry, index, carry, overflow, moved);
     return r;
 }
 
@@ -596,11 +630,17 @@ void abi_RowDueUp(void)
  */
 RowDue RowDueAt(uint8_t entry, uint8_t index, bool carry, bool overflow)
 {
+    return RowDueAtMoved(entry, index, carry, overflow, 0);
+}
+
+/* RowDueAt's body, with its camera module `moved` on from $A000. */
+RowDue RowDueAtMoved(uint8_t entry, uint8_t index, bool carry, bool overflow, uint16_t moved)
+{
     RowDue r = { 0 };
     uint8_t wanted;
 
     if (index == 0) {
-        return RowDueUp(entry, index, carry, overflow);
+        return RowDueUpMoved(entry, index, carry, overflow, moved);
     }
     wanted = RD8(SCROLL->y_lo[entry]);
     r.masked = (uint8_t)((wanted ^ RD8(BANDS->bgy_lo[entry])) & 0x20);
@@ -608,11 +648,225 @@ RowDue RowDueAt(uint8_t entry, uint8_t index, bool carry, bool overflow)
         return r;
     }
     r.drawn = true;
-    r.row = DrawBlockRow(entry, index, carry, overflow);
+    r.row = DrawBlockRowMoved(entry, index, carry, overflow, moved);
     return r;
 }
 
 void abi_RowDueAt(void)
 {
     row_due_exit_shim(RowDueAt(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
+}
+
+/*
+ * @routine 10C6:335 DrawBlockColumn10C5
+ * @run 6F:AB35
+ * WHAT IT DOES: DrawBlockColumn's copy in the program at 10C5, its camera module $390 on.
+ * HOW: DrawBlockColumn's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as DrawBlockColumn.
+ */
+ColumnEnd DrawBlockColumn10C5(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow)
+{
+    return DrawBlockColumnMoved(entry, index, entry_carry, entry_overflow, 0x390);
+}
+
+void abi_DrawBlockColumn10C5(void)
+{
+    ColumnEnd r = DrawBlockColumn10C5(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0);
+
+    if (!r.from_original) {
+        cpu.a = 0x10;
+    }
+    cpu.y = r.y;
+    abi_nz(0);
+    abi_flag(P_C, r.carry);
+    abi_flag(P_V, r.overflow);
+}
+
+/*
+ * @routine 10C6:3CD BlockIndexForPlace10C5
+ * @run 6F:ABCD
+ * WHAT IT DOES: BlockIndexForPlace's copy in the program at 10C5, its camera module $390 on.
+ * HOW: BlockIndexForPlace's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as BlockIndexForPlace.
+ */
+BlockIndex BlockIndexForPlace10C5(uint8_t entry, uint8_t y, bool overflow)
+{
+    return BlockIndexForPlaceMoved(entry, y, overflow, 0x390);
+}
+
+void abi_BlockIndexForPlace10C5(void)
+{
+    BlockIndex r = BlockIndexForPlace10C5(cpu.x, cpu.y, (cpu.p & P_V) != 0);
+
+    bitmap_bit_exit_shim(r.bit);
+    abi_flag(P_V, r.overflow);
+}
+
+/*
+ * @routine 10C6:444 RowDueUp10C5
+ * @run 6F:AC44
+ * WHAT IT DOES: RowDueUp's copy in the program at 10C5, its camera module $390 on.
+ * HOW: RowDueUp's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as RowDueUp.
+ */
+RowDue RowDueUp10C5(uint8_t entry, uint8_t index, bool carry, bool overflow)
+{
+    return RowDueUpMoved(entry, index, carry, overflow, 0x390);
+}
+
+void abi_RowDueUp10C5(void)
+{
+    row_due_exit_shim(RowDueUp10C5(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
+}
+
+/*
+ * @routine 10C6:457 RowDueAt10C5
+ * @run 6F:AC57
+ * WHAT IT DOES: RowDueAt's copy in the program at 10C5, its camera module $390 on.
+ * HOW: RowDueAt's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as RowDueAt.
+ */
+RowDue RowDueAt10C5(uint8_t entry, uint8_t index, bool carry, bool overflow)
+{
+    return RowDueAtMoved(entry, index, carry, overflow, 0x390);
+}
+
+void abi_RowDueAt10C5(void)
+{
+    row_due_exit_shim(RowDueAt10C5(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
+}
+
+/*
+ * @routine 10C6:465 DrawBlockRow10C5
+ * @run 6F:AC65
+ * WHAT IT DOES: DrawBlockRow's copy in the program at 10C5, its camera module $390 on.
+ * HOW: DrawBlockRow's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as DrawBlockRow.
+ */
+RowEnd DrawBlockRow10C5(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow)
+{
+    return DrawBlockRowMoved(entry, index, entry_carry, entry_overflow, 0x390);
+}
+
+void abi_DrawBlockRow10C5(void)
+{
+    RowEnd r = DrawBlockRow10C5(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0);
+
+    cpu.a = r.a;
+    cpu.y = r.y;
+    abi_nz(0);
+    abi_flag(P_C, r.carry);
+    abi_flag(P_V, r.overflow);
+}
+
+/*
+ * @routine 12D6:32E DrawBlockColumn12D5
+ * @run 6F:AB2E
+ * WHAT IT DOES: DrawBlockColumn's copy in the program at 12D5, its camera module $389 on.
+ * HOW: DrawBlockColumn's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as DrawBlockColumn.
+ */
+ColumnEnd DrawBlockColumn12D5(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow)
+{
+    return DrawBlockColumnMoved(entry, index, entry_carry, entry_overflow, 0x389);
+}
+
+void abi_DrawBlockColumn12D5(void)
+{
+    ColumnEnd r = DrawBlockColumn12D5(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0);
+
+    if (!r.from_original) {
+        cpu.a = 0x10;
+    }
+    cpu.y = r.y;
+    abi_nz(0);
+    abi_flag(P_C, r.carry);
+    abi_flag(P_V, r.overflow);
+}
+
+/*
+ * @routine 12D6:3C6 BlockIndexForPlace12D5
+ * @run 6F:ABC6
+ * WHAT IT DOES: BlockIndexForPlace's copy in the program at 12D5, its camera module $389 on.
+ * HOW: BlockIndexForPlace's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as BlockIndexForPlace.
+ */
+BlockIndex BlockIndexForPlace12D5(uint8_t entry, uint8_t y, bool overflow)
+{
+    return BlockIndexForPlaceMoved(entry, y, overflow, 0x389);
+}
+
+void abi_BlockIndexForPlace12D5(void)
+{
+    BlockIndex r = BlockIndexForPlace12D5(cpu.x, cpu.y, (cpu.p & P_V) != 0);
+
+    bitmap_bit_exit_shim(r.bit);
+    abi_flag(P_V, r.overflow);
+}
+
+/*
+ * @routine 12D6:43D RowDueUp12D5
+ * @run 6F:AC3D
+ * WHAT IT DOES: RowDueUp's copy in the program at 12D5, its camera module $389 on.
+ * HOW: RowDueUp's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as RowDueUp.
+ */
+RowDue RowDueUp12D5(uint8_t entry, uint8_t index, bool carry, bool overflow)
+{
+    return RowDueUpMoved(entry, index, carry, overflow, 0x389);
+}
+
+void abi_RowDueUp12D5(void)
+{
+    row_due_exit_shim(RowDueUp12D5(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
+}
+
+/*
+ * @routine 12D6:450 RowDueAt12D5
+ * @run 6F:AC50
+ * WHAT IT DOES: RowDueAt's copy in the program at 12D5, its camera module $389 on.
+ * HOW: RowDueAt's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as RowDueAt.
+ */
+RowDue RowDueAt12D5(uint8_t entry, uint8_t index, bool carry, bool overflow)
+{
+    return RowDueAtMoved(entry, index, carry, overflow, 0x389);
+}
+
+void abi_RowDueAt12D5(void)
+{
+    row_due_exit_shim(RowDueAt12D5(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
+}
+
+/*
+ * @routine 12D6:45E DrawBlockRow12D5
+ * @run 6F:AC5E
+ * WHAT IT DOES: DrawBlockRow's copy in the program at 12D5, its camera module $389 on.
+ * HOW: DrawBlockRow's body with the module's addresses and returns moved.
+ * WAITS: no.
+ * Entry, exit: as DrawBlockRow.
+ */
+RowEnd DrawBlockRow12D5(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow)
+{
+    return DrawBlockRowMoved(entry, index, entry_carry, entry_overflow, 0x389);
+}
+
+void abi_DrawBlockRow12D5(void)
+{
+    RowEnd r = DrawBlockRow12D5(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0);
+
+    cpu.a = r.a;
+    cpu.y = r.y;
+    abi_nz(0);
+    abi_flag(P_C, r.carry);
+    abi_flag(P_V, r.overflow);
 }

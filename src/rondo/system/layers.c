@@ -802,3 +802,223 @@ void abi_AdvanceScrollYB(void)
 {
     advance_exit_shim(AdvanceScrollYB(cpu.x));
 }
+
+/*
+ * @routine 10C5:403 ScrollSpeedsFromBands10C5
+ * @run 6F:A403
+ * WHAT IT DOES: ScrollSpeedsFromBands's copy in the program at 10C5, its camera module $390 on.
+ * HOW: ScrollSpeedsFromBands's body.
+ * WAITS: no.
+ * Entry, exit: as ScrollSpeedsFromBands.
+ */
+Sum ScrollSpeedsFromBands10C5(void)
+{
+    return ScrollSpeedsFromBands();
+}
+
+void abi_ScrollSpeedsFromBands10C5(void)
+{
+    Sum last = ScrollSpeedsFromBands10C5();
+
+    sum_exit_shim(last);
+    abi_nz(0xFF);
+    cpu.x = 0xFF;
+}
+
+/*
+ * @routine 10C5:4B2 ScrollYFromLevelWord10C5
+ * @run 6F:A4B2
+ * WHAT IT DOES: ScrollYFromLevelWord's copy in the program at 10C5, its camera module $390 on.
+ * HOW: ScrollYFromLevelWord's body.
+ * WAITS: no.
+ * Entry, exit: as ScrollYFromLevelWord.
+ */
+uint8_t ScrollYFromLevelWord10C5(void)
+{
+    return ScrollYFromLevelWord();
+}
+
+void abi_ScrollYFromLevelWord10C5(void)
+{
+    cpu.a = ScrollYFromLevelWord10C5();
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 10C6:408 BitmapBitShifted10C5
+ * @run 6F:AC08
+ * WHAT IT DOES: BitmapBitShifted's copy in the program at 10C5, its camera module $390 on.
+ * HOW: BitmapBitShifted's body.
+ * WAITS: no.
+ * Entry, exit: as BitmapBitShifted.
+ */
+BitmapBit BitmapBitShifted10C5(uint8_t x, uint8_t y)
+{
+    return BitmapBitShifted(x, y);
+}
+
+void abi_BitmapBitShifted10C5(void)
+{
+    BitmapBit bit = BitmapBitShifted10C5(cpu.x, cpu.y);
+
+    cpu.a = bit.a;
+    cpu.x = bit.x;
+    cpu.y = bit.y;
+    abi_nz(bit.x);
+    abi_flag(P_C, bit.carry);
+}
+
+/*
+ * @routine 10C6:510 ScrollXAddWrap10C5
+ * @run 6F:AD10
+ * WHAT IT DOES: ScrollXAddWrap's copy in the program at 10C5, its camera module $390 on.
+ * HOW: ScrollXAddWrap's body.
+ * WAITS: no.
+ * Entry, exit: as ScrollXAddWrap.
+ */
+Sum ScrollXAddWrap10C5(uint8_t amount, uint8_t entry)
+{
+    return ScrollXAddWrap(amount, entry);
+}
+
+void abi_ScrollXAddWrap10C5(void)
+{
+    sum_exit_shim(ScrollXAddWrap10C5(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 12D5:3FC ScrollSpeedsFromBands12D5
+ * @run 6F:A3FC
+ * WHAT IT DOES: ScrollSpeedsFromBands's copy in the program at 12D5, its camera module $389 on.
+ * HOW: ScrollSpeedsFromBands's body.
+ * WAITS: no.
+ * Entry, exit: as ScrollSpeedsFromBands.
+ */
+Sum ScrollSpeedsFromBands12D5(void)
+{
+    return ScrollSpeedsFromBands();
+}
+
+void abi_ScrollSpeedsFromBands12D5(void)
+{
+    Sum last = ScrollSpeedsFromBands12D5();
+
+    sum_exit_shim(last);
+    abi_nz(0xFF);
+    cpu.x = 0xFF;
+}
+
+/*
+ * @routine 12D5:4AB ScrollYFromLevelWord12D5
+ * @run 6F:A4AB
+ * WHAT IT DOES: ScrollYFromLevelWord's copy in the program at 12D5, its camera module $389 on.
+ * HOW: ScrollYFromLevelWord's body.
+ * WAITS: no.
+ * Entry, exit: as ScrollYFromLevelWord.
+ */
+uint8_t ScrollYFromLevelWord12D5(void)
+{
+    return ScrollYFromLevelWord();
+}
+
+void abi_ScrollYFromLevelWord12D5(void)
+{
+    cpu.a = ScrollYFromLevelWord12D5();
+    abi_nz(cpu.a);
+}
+
+/*
+ * @routine 12D6:26B ScreenMapAt12D5
+ * @run 6F:AA6B
+ * WHAT IT DOES: ScreenMapAt's copy in the program at 12D5, its camera module $389 on.
+ * HOW: ScreenMapAt's body.
+ * WAITS: no.
+ * Entry, exit: as ScreenMapAt.
+ */
+uint8_t ScreenMapAt12D5(uint8_t row)
+{
+    return ScreenMapAt(row);
+}
+
+void abi_ScreenMapAt12D5(void)
+{
+    screen_map_exit_shim(ScreenMapAt12D5(cpu.a));
+}
+
+/*
+ * @routine 12D6:2B2 AdvanceScrollY12D5
+ * @run 6F:AAB2
+ * WHAT IT DOES: AdvanceScrollY's copy in the program at 12D5, its camera module $389 on.
+ * HOW: AdvanceScrollY's body with the sign table moved ($AAB0).
+ * WAITS: no.
+ * Entry, exit: as AdvanceScrollY.
+ */
+AdvanceResult AdvanceScrollY12D5(uint8_t entry)
+{
+    return advance_scroll(entry, y_advance_shape(0xAAB0));
+}
+
+void abi_AdvanceScrollY12D5(void)
+{
+    advance_exit_shim(AdvanceScrollY12D5(cpu.x));
+}
+
+/*
+ * @routine 12D6:401 BitmapBitShifted12D5
+ * @run 6F:AC01
+ * WHAT IT DOES: BitmapBitShifted's copy in the program at 12D5, its camera module $389 on.
+ * HOW: BitmapBitShifted's body.
+ * WAITS: no.
+ * Entry, exit: as BitmapBitShifted.
+ */
+BitmapBit BitmapBitShifted12D5(uint8_t x, uint8_t y)
+{
+    return BitmapBitShifted(x, y);
+}
+
+void abi_BitmapBitShifted12D5(void)
+{
+    BitmapBit bit = BitmapBitShifted12D5(cpu.x, cpu.y);
+
+    cpu.a = bit.a;
+    cpu.x = bit.x;
+    cpu.y = bit.y;
+    abi_nz(bit.x);
+    abi_flag(P_C, bit.carry);
+}
+
+/*
+ * @routine 12D6:41B ScrollYPlusOffset12D5
+ * @run 6F:AC1B
+ * WHAT IT DOES: ScrollYPlusOffset's copy in the program at 12D5, its camera module $389 on.
+ * HOW: ScrollYPlusOffset's body with the offsets moved ($AB09).
+ * WAITS: no.
+ * Entry, exit: as ScrollYPlusOffset.
+ */
+Sum ScrollYPlusOffset12D5(uint8_t entry, uint8_t index)
+{
+    return scroll_plus_offset(entry, index, y_offset_shape(0xAB09));
+}
+
+void abi_ScrollYPlusOffset12D5(void)
+{
+    sum_exit_shim(ScrollYPlusOffset12D5(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 12D6:509 ScrollXAddWrap12D5
+ * @run 6F:AD09
+ * WHAT IT DOES: ScrollXAddWrap's copy in the program at 12D5, its camera module $389 on.
+ * HOW: ScrollXAddWrap's body.
+ * WAITS: no.
+ * Entry, exit: as ScrollXAddWrap.
+ */
+Sum ScrollXAddWrap12D5(uint8_t amount, uint8_t entry)
+{
+    return ScrollXAddWrap(amount, entry);
+}
+
+void abi_ScrollXAddWrap12D5(void)
+{
+    sum_exit_shim(ScrollXAddWrap12D5(cpu.a, cpu.x));
+}

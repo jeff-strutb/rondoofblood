@@ -10,6 +10,7 @@
 #include "layer_columns.h"
 #include "stage_map.h"
 #include "stage_regs.h"
+#include "stage_camera_moved.h"
 
 typedef StageRegs Regs;
 
@@ -39,29 +40,36 @@ static Regs column_end(Regs r, ColumnEnd end)
  * From $A96B, the set-ups' shared end: entry 0's X step $20, then zSetUpColumnsLeft columns drawn, each with the
  * scroll moved on by its step, and one more column.
  */
-static Regs draw_columns(Regs r)
+static Regs draw_columns(Regs r, uint16_t moved)
 {
-    AdvanceResult moved;
+    AdvanceResult advance;
 
     r = regs_loaded(r, COLUMN_STEP);
     WR8(SCROLLE->step_x_hi[0], COLUMN_STEP);
     do {
         r.y = 0;
-        jsr_push(0xA974);
-        r = column_end(r, DrawBlockColumn(0, 0, r.c, r.v));
+        jsr_push((uint16_t)(0xA974 + moved));
+        r = column_end(r, DrawBlockColumnMoved(0, 0, r.c, r.v, moved));
         jsr_pop();
-        jsr_push(0xA977);
-        moved = AdvanceScrollX(0);
-        jsr_pop();
-        r.a = moved.sum.value;
-        r.c = moved.sum.carry;
-        r.v = moved.sum.overflow;
-        r.y = moved.sign;
+        if (moved != 0) {
+            r.x = 0;
+            stage_regs_load_shim(r);
+            call_routine((uint16_t)(0xA977 + moved), (uint16_t)(0xA6F4 + moved));
+            r = stage_regs_from_cpu_shim(r);
+        } else {
+            jsr_push(0xA977);
+            advance = AdvanceScrollX(0);
+            jsr_pop();
+            r.a = advance.sum.value;
+            r.c = advance.sum.carry;
+            r.v = advance.sum.overflow;
+            r.y = advance.sign;
+        }
         r.nz = DEC8(ZP->setup_columns_left);
     } while (r.nz != 0);
     r.y = 0;
-    jsr_push(0xA97F);
-    r = column_end(r, DrawBlockColumn(0, 0, r.c, r.v));
+    jsr_push((uint16_t)(0xA97F + moved));
+    r = column_end(r, DrawBlockColumnMoved(0, 0, r.c, r.v, moved));
     jsr_pop();
     return r;
 }
@@ -78,8 +86,14 @@ static Regs draw_columns(Regs r)
  */
 StageRegs StageSetUpScroll(StageRegs r)
 {
+    return StageSetUpScrollMoved(r, 0);
+}
+
+/* StageSetUpScroll's body, with its camera module `moved` on from $A000. */
+StageRegs StageSetUpScrollMoved(StageRegs r, uint16_t moved)
+{
     uint8_t mode;
-    Sum moved;
+    Sum shifted;
 
     r.x = 0;
     r = regs_loaded(r, FIRST_COLUMN_BLOCKS);
@@ -90,17 +104,17 @@ StageRegs StageSetUpScroll(StageRegs r)
         r.c = true;                                 /* the CMP that matched */
         r = regs_loaded(r, COLUMNS_NARROW);
         WR8(ZP->setup_columns_left, COLUMNS_NARROW);
-        return draw_columns(r);
+        return draw_columns(r, moved);
     }
     r = regs_loaded(r, COLUMNS_WIDE);
     WR8(ZP->setup_columns_left, COLUMNS_WIDE);
-    jsr_push(0xA96B);
-    moved = ScrollXAddWrap(WIDE_SHIFT, 0);
+    jsr_push((uint16_t)(0xA96B + moved));
+    shifted = ScrollXAddWrap(WIDE_SHIFT, 0);
     jsr_pop();
-    r = regs_loaded(r, moved.value);
-    r.c = moved.carry;
-    r.v = moved.overflow;
-    return draw_columns(r);
+    r = regs_loaded(r, shifted.value);
+    r.c = shifted.carry;
+    r.v = shifted.overflow;
+    return draw_columns(r, moved);
 }
 
 void abi_StageSetUpScroll(void)
@@ -121,20 +135,26 @@ void abi_StageSetUpScroll(void)
  */
 StageRegs StageSetUpScrollByEffect(StageRegs r)
 {
+    return StageSetUpScrollByEffectMoved(r, 0);
+}
+
+/* StageSetUpScrollByEffect's body, with its camera module `moved` on from $A000. */
+StageRegs StageSetUpScrollByEffectMoved(StageRegs r, uint16_t moved)
+{
     uint8_t effect, blocks;
     bool count_screen = true;
-    Sum moved;
+    Sum shifted;
 
     effect = RD8(ZP->raster_effect);
     r.y = effect;
-    blocks = rd8((uint16_t)(EffectColumnBlocks + effect));
+    blocks = rd8((uint16_t)(EffectColumnBlocks + moved + effect));
     r.x = 0;
     WR8(SCROLLE->column_blocks[0], blocks);
-    jsr_push(0xA9BE);
-    moved = ScrollXAddWrap(SECOND_SHIFT, 0);
+    jsr_push((uint16_t)(0xA9BE + moved));
+    shifted = ScrollXAddWrap(SECOND_SHIFT, 0);
     jsr_pop();
-    r = regs_loaded(r, moved.value);
-    r.v = moved.overflow;
+    r = regs_loaded(r, shifted.value);
+    r.v = shifted.overflow;
     /* CPY #$0F, #$18, #$0C, #$06, #$07, #$10 in turn, to the first that matches: C from the last one made. */
     {
         static const uint8_t tried[] = { 0x0F, 0x18, 0x0C, 0x06, 0x07, 0x10 };
@@ -155,7 +175,7 @@ StageRegs StageSetUpScrollByEffect(StageRegs r)
     }
     r = regs_loaded(r, COLUMNS_SECOND);
     WR8(ZP->setup_columns_left, COLUMNS_SECOND);
-    return draw_columns(r);
+    return draw_columns(r, moved);
 }
 
 void abi_StageSetUpScrollByEffect(void)

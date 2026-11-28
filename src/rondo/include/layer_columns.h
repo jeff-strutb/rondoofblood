@@ -36,6 +36,12 @@ typedef struct {
 } RowDue;
 
 RowEnd DrawBlockRow(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow);
+/* The column and row drawing with their camera module `moved` on from $A000. */
+RowEnd DrawBlockRowMoved(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow, uint16_t moved);
+ColumnEnd DrawBlockColumnMoved(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow, uint16_t moved);
+BlockIndex BlockIndexForPlaceMoved(uint8_t entry, uint8_t y, bool overflow, uint16_t moved);
+RowDue RowDueUpMoved(uint8_t entry, uint8_t index, bool carry, bool overflow, uint16_t moved);
+RowDue RowDueAtMoved(uint8_t entry, uint8_t index, bool carry, bool overflow, uint16_t moved);
 void abi_DrawBlockRow(void);
 RowDue RowDueUp(uint8_t entry, uint8_t index, bool carry, bool overflow);
 RowDue RowDueAt(uint8_t entry, uint8_t index, bool carry, bool overflow);
@@ -45,5 +51,27 @@ ColumnEnd DrawBlockColumn(uint8_t entry, uint8_t index, bool entry_carry, bool e
 void abi_DrawBlockColumn(void);
 BlockIndex BlockIndexForPlace(uint8_t entry, uint8_t y, bool overflow);
 void abi_BlockIndexForPlace(void);
+
+/* The copies in the programs at 10C5 and 12D5. */
+ColumnEnd DrawBlockColumn10C5(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow);
+void abi_DrawBlockColumn10C5(void);
+BlockIndex BlockIndexForPlace10C5(uint8_t entry, uint8_t y, bool overflow);
+void abi_BlockIndexForPlace10C5(void);
+RowDue RowDueUp10C5(uint8_t entry, uint8_t index, bool carry, bool overflow);
+void abi_RowDueUp10C5(void);
+RowDue RowDueAt10C5(uint8_t entry, uint8_t index, bool carry, bool overflow);
+void abi_RowDueAt10C5(void);
+RowEnd DrawBlockRow10C5(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow);
+void abi_DrawBlockRow10C5(void);
+ColumnEnd DrawBlockColumn12D5(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow);
+void abi_DrawBlockColumn12D5(void);
+BlockIndex BlockIndexForPlace12D5(uint8_t entry, uint8_t y, bool overflow);
+void abi_BlockIndexForPlace12D5(void);
+RowDue RowDueUp12D5(uint8_t entry, uint8_t index, bool carry, bool overflow);
+void abi_RowDueUp12D5(void);
+RowDue RowDueAt12D5(uint8_t entry, uint8_t index, bool carry, bool overflow);
+void abi_RowDueAt12D5(void);
+RowEnd DrawBlockRow12D5(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow);
+void abi_DrawBlockRow12D5(void);
 
 #endif

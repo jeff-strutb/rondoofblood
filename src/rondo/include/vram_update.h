@@ -8,6 +8,8 @@
 #include "routines.h"
 
 bool CopyTileBlockToVram(uint8_t block, bool carry_in);
+/* With its camera module `moved` on from $A000. */
+bool CopyTileBlockToVramMoved(uint8_t block, bool carry_in, uint16_t moved);
 void abi_CopyTileBlockToVram(void);
 
 Sum SelectBlockTablesA(uint8_t index);
@@ -120,5 +122,11 @@ PaletteLoad LoadPackedPaletteC(uint8_t y);
 void abi_LoadPackedPalette(void);
 void abi_LoadPackedPaletteB(void);
 void abi_LoadPackedPaletteC(void);
+
+/* The copies in the programs at 10C5 and 12D5. */
+bool CopyTileBlockToVram10C5(uint8_t block, bool carry_in);
+void abi_CopyTileBlockToVram10C5(void);
+bool CopyTileBlockToVram12D5(uint8_t block, bool carry_in);
+void abi_CopyTileBlockToVram12D5(void);
 
 #endif

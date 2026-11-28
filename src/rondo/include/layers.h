@@ -88,4 +88,28 @@ void abi_AdvanceScrollXC(void);
 void abi_AdvanceScrollY(void);
 void abi_AdvanceScrollYB(void);
 
+/* The copies in the programs at 10C5 and 12D5. */
+Sum ScrollSpeedsFromBands10C5(void);
+void abi_ScrollSpeedsFromBands10C5(void);
+uint8_t ScrollYFromLevelWord10C5(void);
+void abi_ScrollYFromLevelWord10C5(void);
+BitmapBit BitmapBitShifted10C5(uint8_t x, uint8_t y);
+void abi_BitmapBitShifted10C5(void);
+Sum ScrollXAddWrap10C5(uint8_t amount, uint8_t entry);
+void abi_ScrollXAddWrap10C5(void);
+Sum ScrollSpeedsFromBands12D5(void);
+void abi_ScrollSpeedsFromBands12D5(void);
+uint8_t ScrollYFromLevelWord12D5(void);
+void abi_ScrollYFromLevelWord12D5(void);
+uint8_t ScreenMapAt12D5(uint8_t row);
+void abi_ScreenMapAt12D5(void);
+AdvanceResult AdvanceScrollY12D5(uint8_t entry);
+void abi_AdvanceScrollY12D5(void);
+BitmapBit BitmapBitShifted12D5(uint8_t x, uint8_t y);
+void abi_BitmapBitShifted12D5(void);
+Sum ScrollYPlusOffset12D5(uint8_t entry, uint8_t index);
+void abi_ScrollYPlusOffset12D5(void);
+Sum ScrollXAddWrap12D5(uint8_t amount, uint8_t entry);
+void abi_ScrollXAddWrap12D5(void);
+
 #endif

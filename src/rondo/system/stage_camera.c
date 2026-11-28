@@ -12,6 +12,7 @@
 #include "layer_columns.h"
 #include "stage_map.h"
 #include "stage_regs.h"
+#include "stage_camera_moved.h"
 
 typedef StageRegs Regs;
 
@@ -27,21 +28,38 @@ static Regs advanced_x(Regs r, AdvanceResult moved)
     return r;
 }
 
-static Regs advance_x(Regs r, uint8_t entry, uint16_t ret)
+static Regs call_run(Regs r, uint16_t ret, uint16_t run, uint16_t moved);
+
+static Regs advance_x(Regs r, uint8_t entry, uint16_t ret, uint16_t moved)
 {
     r.x = entry;
+    if (moved != 0) {
+        return call_run(r, ret, 0xA6F4, moved);
+    }
     jsr_push(ret);
     r = advanced_x(r, AdvanceScrollX(entry));
     jsr_pop();
     return r;
 }
 
+/* A tail JMP to AdvanceScrollX with X the entry: the moved module's own copy when moved. */
+static Regs tail_x(Regs r, uint8_t entry, uint16_t moved)
+{
+    r.x = entry;
+    if (moved != 0) {
+        stage_regs_load_shim(r);
+        run_routine((uint16_t)(0xA6F4 + moved));
+        return stage_regs_from_cpu_shim(r);
+    }
+    return advanced_x(r, AdvanceScrollX(entry));
+}
+
 /* ScrollYFromLevelWord by JSR: A its high byte, N and Z from it; X, Y, C and V kept. */
-static Regs scroll_y_from_level(Regs r, uint16_t ret)
+static Regs scroll_y_from_level(Regs r, uint16_t ret, uint16_t moved)
 {
     uint8_t high;
 
-    jsr_push(ret);
+    jsr_push((uint16_t)(ret + moved));
     high = ScrollYFromLevelWord();
     jsr_pop();
     return regs_loaded(r, high);
@@ -54,9 +72,9 @@ static uint8_t copy_a_shim(void)
 }
 
 /* DrawBlockColumn reached by a branch: A $10 (or the copy's), N 0, Z 1, C, V and Y as it leaves them, X kept. */
-static Regs draw_column_tail(Regs r)
+static Regs draw_column_tail(Regs r, uint16_t moved)
 {
-    ColumnEnd end = DrawBlockColumn(r.x, r.y, r.c, r.v);
+    ColumnEnd end = DrawBlockColumnMoved(r.x, r.y, r.c, r.v, moved);
 
     r.a = end.from_original ? copy_a_shim() : 0x10;
     r.nz = 0;
@@ -207,6 +225,12 @@ void abi_ScreenMapAtEntry(void)
  */
 StageRegs ColumnDueLeft(StageRegs r)
 {
+    return ColumnDueLeftMoved(r, 0);
+}
+
+/* ColumnDueLeft's body, with its camera module `moved` on from $A000. */
+StageRegs ColumnDueLeftMoved(StageRegs r, uint16_t moved)
+{
     uint8_t band, wanted;
 
     band = (uint8_t)(RD8(BANDS->bgx_lo[r.x]) - 1);
@@ -216,7 +240,7 @@ StageRegs ColumnDueLeft(StageRegs r)
     if (r.a == 0) {
         return r;
     }
-    return draw_column_tail(r);
+    return draw_column_tail(r, moved);
 }
 
 void abi_ColumnDueLeft(void)
@@ -236,18 +260,24 @@ void abi_ColumnDueLeft(void)
  */
 StageRegs ColumnDue(StageRegs r)
 {
+    return ColumnDueMoved(r, 0);
+}
+
+/* ColumnDue's body, with its camera module `moved` on from $A000. */
+StageRegs ColumnDueMoved(StageRegs r, uint16_t moved)
+{
     uint8_t wanted;
 
     r = regs_loaded(r, r.y);
     if (r.a == 0) {
-        return ColumnDueLeft(r);
+        return ColumnDueLeftMoved(r, moved);
     }
     wanted = RD8(SCROLL->x_lo[r.x]);
     r = regs_loaded(r, (uint8_t)((wanted ^ RD8(BANDS->bgx_lo[r.x])) & COLUMN_BIT));
     if (r.a == 0) {
         return r;
     }
-    return draw_column_tail(r);
+    return draw_column_tail(r, moved);
 }
 
 void abi_ColumnDue(void)
@@ -268,12 +298,18 @@ void abi_ColumnDue(void)
  */
 StageRegs CameraMode00(StageRegs r)
 {
-    r = advance_x(r, 0, 0xA6A7);
-    jsr_push(0xA6A9);
+    return CameraMode00Moved(r, 0);
+}
+
+/* CameraMode00's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode00Moved(StageRegs r, uint16_t moved)
+{
+    r = advance_x(r, 0, 0xA6A7, moved);
+    jsr_push((uint16_t)(0xA6A9 + moved));
     r = ScreenMapAtEntry(r);
     jsr_pop();
     wr8(CameraScreenByte, r.a);
-    return ColumnDue(r);
+    return ColumnDueMoved(r, moved);
 }
 
 void abi_CameraMode00(void)
@@ -291,9 +327,15 @@ void abi_CameraMode00(void)
  */
 StageRegs CameraMode00Set(StageRegs r)
 {
+    return CameraMode00SetMoved(r, 0);
+}
+
+/* CameraMode00Set's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode00SetMoved(StageRegs r, uint16_t moved)
+{
     WR8(SCROLLE->column_blocks[0], r.a);
     WR8(SCROLL->y_lo[0], r.y);
-    return CameraMode00(r);
+    return CameraMode00Moved(r, moved);
 }
 
 void abi_CameraMode00Set(void)
@@ -311,14 +353,19 @@ void abi_CameraMode00Set(void)
  */
 StageRegs CameraParallaxAdvance(StageRegs r)
 {
+    return CameraParallaxAdvanceMoved(r, 0);
+}
+
+/* CameraParallaxAdvance's body, with its camera module `moved` on from $A000. */
+StageRegs CameraParallaxAdvanceMoved(StageRegs r, uint16_t moved)
+{
     static const uint16_t rets[] = { 0xA68A, 0xA68E, 0xA692, 0xA696, 0xA69A };
     uint8_t entry;
 
     for (entry = 1; entry <= 5; entry++) {
-        r = advance_x(r, entry, rets[entry - 1]);
+        r = advance_x(r, entry, rets[entry - 1], moved);
     }
-    r.x = 6;
-    return advanced_x(r, AdvanceScrollX(6));
+    return tail_x(r, 6, moved);
 }
 
 void abi_CameraParallaxAdvance(void)
@@ -342,11 +389,11 @@ static Regs parallax_step(Regs r, uint8_t from, uint8_t to, uint8_t add)
 }
 
 /* LDX #from, LDY #to, JSR ScrollStepXHalf. */
-static Regs half_step(Regs r, uint8_t from, uint8_t to, uint16_t ret)
+static Regs half_step(Regs r, uint8_t from, uint8_t to, uint16_t ret, uint16_t moved)
 {
     r.x = from;
     r.y = to;
-    jsr_push(ret);
+    jsr_push((uint16_t)(ret + moved));
     r = ScrollStepXHalf(r);
     jsr_pop();
     return r;
@@ -364,15 +411,21 @@ static Regs half_step(Regs r, uint8_t from, uint8_t to, uint16_t ret)
  */
 StageRegs CameraParallaxSteps(StageRegs r)
 {
-    jsr_push(0xA647);
+    return CameraParallaxStepsMoved(r, 0);
+}
+
+/* CameraParallaxSteps's body, with its camera module `moved` on from $A000. */
+StageRegs CameraParallaxStepsMoved(StageRegs r, uint16_t moved)
+{
+    jsr_push((uint16_t)(0xA647 + moved));
     r = ScrollStepXHalfOf0To1(r);
     jsr_pop();
     r = parallax_step(r, 1, 4, 0x40);
-    r = half_step(r, 1, 2, 0xA65E);
+    r = half_step(r, 1, 2, 0xA65E, moved);
     r = parallax_step(r, 2, 5, 0x20);
-    r = half_step(r, 2, 3, 0xA675);
+    r = half_step(r, 2, 3, 0xA675, moved);
     r = parallax_step(r, 3, 6, 0x10);
-    return CameraParallaxAdvance(r);
+    return CameraParallaxAdvanceMoved(r, moved);
 }
 
 void abi_CameraParallaxSteps(void)
@@ -391,14 +444,20 @@ void abi_CameraParallaxSteps(void)
  */
 StageRegs CameraBandsY(StageRegs r)
 {
+    return CameraBandsYMoved(r, 0);
+}
+
+/* CameraBandsY's body, with its camera module `moved` on from $A000. */
+StageRegs CameraBandsYMoved(StageRegs r, uint16_t moved)
+{
     WR8(SCROLL->y_lo[0], r.a);
-    jsr_push(0xA63C);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA63C + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, BANDS_EIGHT);
     WR8(SCROLLE->column_blocks[0], BANDS_EIGHT);
-    return CameraParallaxSteps(r);
+    return CameraParallaxStepsMoved(r, moved);
 }
 
 void abi_CameraBandsY(void)
@@ -416,8 +475,14 @@ void abi_CameraBandsY(void)
  */
 StageRegs CameraBandsBlocks(StageRegs r)
 {
+    return CameraBandsBlocksMoved(r, 0);
+}
+
+/* CameraBandsBlocks's body, with its camera module `moved` on from $A000. */
+StageRegs CameraBandsBlocksMoved(StageRegs r, uint16_t moved)
+{
     WR8(SCROLLE->column_blocks[0], r.a);
-    return CameraBandsY(regs_loaded(r, BANDS_Y));
+    return CameraBandsYMoved(regs_loaded(r, BANDS_Y), moved);
 }
 
 void abi_CameraBandsBlocks(void)
@@ -435,7 +500,13 @@ void abi_CameraBandsBlocks(void)
  */
 StageRegs CameraMode0A(StageRegs r)
 {
-    return CameraBandsBlocks(regs_loaded(r, BANDS_THREE));
+    return CameraMode0AMoved(r, 0);
+}
+
+/* CameraMode0A's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode0AMoved(StageRegs r, uint16_t moved)
+{
+    return CameraBandsBlocksMoved(regs_loaded(r, BANDS_THREE), moved);
 }
 
 void abi_CameraMode0A(void)
@@ -453,7 +524,13 @@ void abi_CameraMode0A(void)
  */
 StageRegs CameraMode0B(StageRegs r)
 {
-    return CameraBandsBlocks(regs_loaded(r, BANDS_FOUR));
+    return CameraMode0BMoved(r, 0);
+}
+
+/* CameraMode0B's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode0BMoved(StageRegs r, uint16_t moved)
+{
+    return CameraBandsBlocksMoved(regs_loaded(r, BANDS_FOUR), moved);
 }
 
 void abi_CameraMode0B(void)
@@ -471,10 +548,16 @@ void abi_CameraMode0B(void)
  */
 StageRegs CameraMode0C(StageRegs r)
 {
+    return CameraMode0CMoved(r, 0);
+}
+
+/* CameraMode0C's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode0CMoved(StageRegs r, uint16_t moved)
+{
     r = regs_loaded(r, BANDS_EIGHT);
     WR8(SCROLLE->column_blocks[0], BANDS_EIGHT);
     r.a = 0;
-    return CameraBandsY(r);
+    return CameraBandsYMoved(r, moved);
 }
 
 void abi_CameraMode0C(void)
@@ -493,8 +576,14 @@ void abi_CameraMode0C(void)
  */
 StageRegs CameraMode0D(StageRegs r)
 {
-    r = advance_x(r, 0, 0xA3EF);
-    r = scroll_y_from_level(r, 0xA3F2);
+    return CameraMode0DMoved(r, 0);
+}
+
+/* CameraMode0D's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode0DMoved(StageRegs r, uint16_t moved)
+{
+    r = advance_x(r, 0, 0xA3EF, moved);
+    r = scroll_y_from_level(r, 0xA3F2, moved);
     WR8(SCROLLLIM->scroll_y_offset, 0);
     return r;
 }
@@ -515,10 +604,16 @@ void abi_CameraMode0D(void)
  */
 StageRegs CameraMode0F(StageRegs r)
 {
+    return CameraMode0FMoved(r, 0);
+}
+
+/* CameraMode0F's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode0FMoved(StageRegs r, uint16_t moved)
+{
     static const uint8_t highs[] = { 0x01, 0x04, 0x08, 0x0A };
 
-    r = advance_x(r, 0, 0xA3C9);
-    r = scroll_y_from_level(r, 0xA3CC);
+    r = advance_x(r, 0, 0xA3C9, moved);
+    r = scroll_y_from_level(r, 0xA3CC, moved);
     WR8(SCROLLLIM->scroll_y_offset, 0);
     r = regs_loaded(r, 0x40);
     WR8(SCROLLE->step_x_lo[2], 0x40);
@@ -526,7 +621,7 @@ StageRegs CameraMode0F(StageRegs r)
         r = regs_loaded(r, highs[i]);
         WR8(SCROLLE->step_x_hi[3 + i], highs[i]);
     }
-    return CameraParallaxAdvance(r);
+    return CameraParallaxAdvanceMoved(r, moved);
 }
 
 void abi_CameraMode0F(void)
@@ -544,8 +639,14 @@ void abi_CameraMode0F(void)
  */
 StageRegs CameraMode11(StageRegs r)
 {
-    r = advance_x(r, 0, 0xA391);
-    return CameraParallaxSteps(r);
+    return CameraMode11Moved(r, 0);
+}
+
+/* CameraMode11's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode11Moved(StageRegs r, uint16_t moved)
+{
+    r = advance_x(r, 0, 0xA391, moved);
+    return CameraParallaxStepsMoved(r, moved);
 }
 
 void abi_CameraMode11(void)
@@ -564,17 +665,23 @@ void abi_CameraMode11(void)
  */
 StageRegs CameraMode14(StageRegs r)
 {
+    return CameraMode14Moved(r, 0);
+}
+
+/* CameraMode14's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode14Moved(StageRegs r, uint16_t moved)
+{
     r = regs_loaded(r, BANDS_EIGHT);
     r.y = 0;
-    jsr_push(0xA275);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA275 + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, BANDS_EIGHT);
     WR8(SCROLLE->column_blocks[0], BANDS_EIGHT);
     r = regs_loaded(r, 1);
     WR8(SCROLL->y_hi[4], 1);
-    return CameraParallaxSteps(r);
+    return CameraParallaxStepsMoved(r, moved);
 }
 
 void abi_CameraMode14(void)
@@ -593,10 +700,16 @@ void abi_CameraMode14(void)
  */
 StageRegs CameraMode1B(StageRegs r)
 {
+    return CameraMode1BMoved(r, 0);
+}
+
+/* CameraMode1B's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode1BMoved(StageRegs r, uint16_t moved)
+{
     r = regs_loaded(r, BANDS_EIGHT);
     r.y = 0;
-    jsr_push(0xA14B);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA14B + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, BANDS_EIGHT);
@@ -607,8 +720,7 @@ StageRegs CameraMode1B(StageRegs r)
     WR8(SCROLLE->step_x_lo[1], 0xC0);
     r = regs_loaded(r, 0xFF);
     WR8(SCROLLE->step_x_hi[1], 0xFF);
-    r.x = 1;
-    return advanced_x(r, AdvanceScrollX(1));
+    return tail_x(r, 1, moved);
 }
 
 void abi_CameraMode1B(void)
@@ -617,9 +729,12 @@ void abi_CameraMode1B(void)
 }
 
 /* JSR or tail JMP to AdvanceScrollY: as advanced_x along Y. */
-static Regs advance_y(Regs r, uint8_t entry, uint16_t ret)
+static Regs advance_y(Regs r, uint8_t entry, uint16_t ret, uint16_t moved)
 {
     r.x = entry;
+    if (moved != 0) {
+        return call_run(r, ret, 0xA729, moved);
+    }
     jsr_push(ret);
     r = advanced_x(r, AdvanceScrollY(entry));
     jsr_pop();
@@ -627,14 +742,14 @@ static Regs advance_y(Regs r, uint8_t entry, uint16_t ret)
 }
 
 /* RowDueAt by JSR (ret) or by the tail JMP (ret 0): the registers it leaves laid over r. */
-static Regs row_due(Regs r, uint16_t ret)
+static Regs row_due(Regs r, uint16_t ret, uint16_t moved)
 {
     RowDue due;
 
     if (ret != 0) {
-        jsr_push(ret);
+        jsr_push((uint16_t)(ret + moved));
     }
-    due = RowDueAt(r.x, r.y, r.c, r.v);
+    due = RowDueAtMoved(r.x, r.y, r.c, r.v, moved);
     if (ret != 0) {
         jsr_pop();
     }
@@ -673,12 +788,18 @@ static Regs sign_of(Regs r, uint8_t step)
  */
 StageRegs CameraMode01(StageRegs r)
 {
-    r = advance_y(r, 0, 0xA6B2);
-    jsr_push(0xA6B4);
+    return CameraMode01Moved(r, 0);
+}
+
+/* CameraMode01's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode01Moved(StageRegs r, uint16_t moved)
+{
+    r = advance_y(r, 0, 0xA6B2, moved);
+    jsr_push((uint16_t)(0xA6B4 + moved));
     r = ScreenMapAtEntry(r);
     jsr_pop();
     wr8(CameraScreenByte, r.a);
-    return row_due(r, 0);
+    return row_due(r, 0, moved);
 }
 
 void abi_CameraMode01(void)
@@ -698,18 +819,24 @@ void abi_CameraMode01(void)
  */
 StageRegs CameraMode02(StageRegs r)
 {
-    r = advance_x(r, 0, 0xA6BD);
-    r = advance_y(r, 0, 0xA6BF);
-    jsr_push(0xA6C1);
+    return CameraMode02Moved(r, 0);
+}
+
+/* CameraMode02's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode02Moved(StageRegs r, uint16_t moved)
+{
+    r = advance_x(r, 0, 0xA6BD, moved);
+    r = advance_y(r, 0, 0xA6BF, moved);
+    jsr_push((uint16_t)(0xA6C1 + moved));
     r = ScreenMapAtEntry(r);
     jsr_pop();
     wr8(CameraScreenByte, r.a);
     r = sign_of(r, RD8(SCROLLE->step_x_hi[r.x]));
-    jsr_push(0xA6CF);
-    r = ColumnDue(r);
+    jsr_push((uint16_t)(0xA6CF + moved));
+    r = ColumnDueMoved(r, moved);
     jsr_pop();
     r = sign_of(r, RD8(SCROLLE->step_y_hi[r.x]));
-    return row_due(r, 0);
+    return row_due(r, 0, moved);
 }
 
 void abi_CameraMode02(void)
@@ -727,6 +854,12 @@ void abi_CameraMode02(void)
  */
 StageRegs CameraMode00KeepY(StageRegs r)
 {
+    return CameraMode00KeepYMoved(r, 0);
+}
+
+/* CameraMode00KeepY's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode00KeepYMoved(StageRegs r, uint16_t moved)
+{
     uint8_t value;
 
     value = RD8(SCROLL->y_lo[0]);
@@ -735,8 +868,8 @@ StageRegs CameraMode00KeepY(StageRegs r)
     push8(value);
     value = RD8(SCROLLE->y_hi_screen[0]);
     push8(value);
-    jsr_push(0xA559);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA559 + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
     value = pull8();
     WR8(SCROLLE->y_hi_screen[0], value);
@@ -754,10 +887,10 @@ void abi_CameraMode00KeepY(void)
 
 
 /* ColumnDue by JSR. */
-static Regs column_due(Regs r, uint16_t ret)
+static Regs column_due(Regs r, uint16_t ret, uint16_t moved)
 {
-    jsr_push(ret);
-    r = ColumnDue(r);
+    jsr_push((uint16_t)(ret + moved));
+    r = ColumnDueMoved(r, moved);
     jsr_pop();
     return r;
 }
@@ -805,6 +938,12 @@ static Regs parallax_sum(Regs r, uint8_t a, uint8_t b, uint8_t to)
  */
 StageRegs CameraWaterWave(StageRegs r)
 {
+    return CameraWaterWaveMoved(r, 0);
+}
+
+/* CameraWaterWave's body, with its camera module `moved` on from $A000. */
+StageRegs CameraWaterWaveMoved(StageRegs r, uint16_t moved)
+{
     Sum sum;
     uint8_t value;
 
@@ -812,7 +951,7 @@ StageRegs CameraWaterWave(StageRegs r)
     r = regs_loaded(r, 0x0C);
     WR8(ZP->temp01, 0x0C);
     sum = add_bytes(rd8(CameraWavePhase), 0xC0, false);
-    jsr_push(0xA24E);
+    jsr_push((uint16_t)(0xA24E + moved));
     (void)ScaleBySine(sum.value);
     jsr_pop();
     r.y = 0;
@@ -850,15 +989,21 @@ void abi_CameraWaterWave(void)
  */
 StageRegs CameraMode15(StageRegs r)
 {
-    jsr_push(0xA227);
-    r = CameraWaterWave(r);
+    return CameraMode15Moved(r, 0);
+}
+
+/* CameraMode15's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode15Moved(StageRegs r, uint16_t moved)
+{
+    jsr_push((uint16_t)(0xA227 + moved));
+    r = CameraWaterWaveMoved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     WR8(SCROLL->y_hi[0], 0);
-    jsr_push(0xA230);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA230 + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
-    r = scroll_y_from_level(r, 0xA233);
+    r = scroll_y_from_level(r, 0xA233, moved);
     r = regs_loaded(r, (uint8_t)((uint8_t)(RD8(SCROLLE->y_hi_screen[0]) + 1) & 0xFE));
     WR8(SCROLLE->y_hi_screen[0], r.a);
     return r;
@@ -879,6 +1024,12 @@ void abi_CameraMode15(void)
  */
 StageRegs CameraMode16(StageRegs r)
 {
+    return CameraMode16Moved(r, 0);
+}
+
+/* CameraMode16's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode16Moved(StageRegs r, uint16_t moved)
+{
     uint8_t value, count;
 
     r = regs_loaded(r, rd8(ScrollXHi));
@@ -891,7 +1042,7 @@ StageRegs CameraMode16(StageRegs r)
         r = regs_loaded(r, value);
         WR8(SCROLL->x_lo[2], value);
     }
-    return CameraMode15(r);
+    return CameraMode15Moved(r, moved);
 }
 
 void abi_CameraMode16(void)
@@ -909,43 +1060,48 @@ void abi_CameraMode16(void)
  */
 StageRegs CameraMode19(StageRegs r)
 {
+    return CameraMode19Moved(r, 0);
+}
+
+/* CameraMode19's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode19Moved(StageRegs r, uint16_t moved)
+{
     r = regs_loaded(r, 0x03);
     WR8(SCROLLE->column_blocks[0], 0x03);
     r = regs_loaded(r, 0x40);
     WR8(SCROLL->y_lo[0], 0x40);
-    jsr_push(0xA174);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA174 + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, 0x08);
     WR8(SCROLLE->column_blocks[0], 0x08);
-    jsr_push(0xA17F);
+    jsr_push((uint16_t)(0xA17F + moved));
     r = ScrollStepXHalfOf0To1(r);
     jsr_pop();
     r = parallax_less(r, 1, 4, 0x40);
-    r = half_step(r, 1, 2, 0xA197);
+    r = half_step(r, 1, 2, 0xA197, moved);
     r = parallax_less(r, 2, 5, 0x20);
-    r = half_step(r, 2, 3, 0xA1AF);
+    r = half_step(r, 2, 3, 0xA1AF, moved);
     r = parallax_less(r, 3, 6, 0x10);
     r = regs_loaded(r, 0x06);
     WR8(SCROLLE->column_blocks[1], 0x06);
     r = regs_loaded(r, 0xC0);
     WR8(SCROLL->y_lo[1], 0xC0);
-    r = advance_x(r, 1, 0xA1CF);
-    r = column_due(r, 0xA1D2);
+    r = advance_x(r, 1, 0xA1CF, moved);
+    r = column_due(r, 0xA1D2, moved);
     WR8(SCROLL->y_lo[1], 0);
     r = regs_loaded(r, 0x06);
     WR8(SCROLLE->column_blocks[2], 0x06);
     r = regs_loaded(r, 0xA0);
     WR8(SCROLL->y_lo[2], 0xA0);
-    r = advance_x(r, 2, 0xA1E4);
-    r = column_due(r, 0xA1E7);
+    r = advance_x(r, 2, 0xA1E4, moved);
+    r = column_due(r, 0xA1E7, moved);
     WR8(SCROLL->y_lo[2], 0);
-    r = advance_x(r, 3, 0xA1EF);
-    r = advance_x(r, 4, 0xA1F3);
-    r = advance_x(r, 5, 0xA1F7);
-    r.x = 6;
-    return advanced_x(r, AdvanceScrollX(6));
+    r = advance_x(r, 3, 0xA1EF, moved);
+    r = advance_x(r, 4, 0xA1F3, moved);
+    r = advance_x(r, 5, 0xA1F7, moved);
+    return tail_x(r, 6, moved);
 }
 
 void abi_CameraMode19(void)
@@ -963,10 +1119,16 @@ void abi_CameraMode19(void)
  */
 StageRegs CameraMode17(StageRegs r)
 {
-    r = advance_x(r, 0, 0xA1FF);
-    r = column_due(r, 0xA202);
-    r = advance_y(r, 0, 0xA206);
-    r = row_due(r, 0xA209);
+    return CameraMode17Moved(r, 0);
+}
+
+/* CameraMode17's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode17Moved(StageRegs r, uint16_t moved)
+{
+    r = advance_x(r, 0, 0xA1FF, moved);
+    r = column_due(r, 0xA202, moved);
+    r = advance_y(r, 0, 0xA206, moved);
+    r = row_due(r, 0xA209, moved);
     r = regs_loaded(r, RD8(SCROLL->y_lo[0]));
     WR8(SCROLLLIM->scroll_y_offset, r.a);
     return r;
@@ -987,32 +1149,37 @@ void abi_CameraMode17(void)
  */
 StageRegs CameraMode13(StageRegs r)
 {
+    return CameraMode13Moved(r, 0);
+}
+
+/* CameraMode13's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode13Moved(StageRegs r, uint16_t moved)
+{
     r.y = 3;
-    jsr_push(0xA28A);
+    jsr_push((uint16_t)(0xA28A + moved));
     r = ScrollStepXHalfOf0(r);
     jsr_pop();
-    r = half_step(r, 3, 4, 0xA291);
-    r = half_step(r, 4, 5, 0xA298);
+    r = half_step(r, 3, 4, 0xA291, moved);
+    r = half_step(r, 4, 5, 0xA298, moved);
     r = parallax_sum(r, 4, 5, 2);
     r = parallax_sum(r, 3, 5, 1);
     r = parallax_step(r, 1, 1, 0x10);
     r = regs_loaded(r, 0x03);
     r.y = 0xA0;
-    jsr_push(0xA2D5);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA2D5 + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     r.x = 2;
     r = regs_loaded(r, 0x05);
     WR8(SCROLLE->column_blocks[2], 0x05);
-    r = advance_x(r, 2, 0xA2DF);
-    r = column_due(r, 0xA2E2);
-    r = scroll_y_from_level(r, 0xA2E5);
+    r = advance_x(r, 2, 0xA2DF, moved);
+    r = column_due(r, 0xA2E2, moved);
+    r = scroll_y_from_level(r, 0xA2E5, moved);
     r = regs_loaded(r, 0x01);
     WR8(SCROLL->y_hi[0], 0x01);
     r = regs_loaded(r, RD8(SCROLL->y_lo[0]));
     WR8(SCROLL->y_lo[2], r.a);
-    r.x = 1;
-    return advanced_x(r, AdvanceScrollX(1));
+    return tail_x(r, 1, moved);
 }
 
 void abi_CameraMode13(void)
@@ -1030,6 +1197,12 @@ void abi_CameraMode13(void)
  */
 StageRegs CameraMode12(StageRegs r)
 {
+    return CameraMode12Moved(r, 0);
+}
+
+/* CameraMode12's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode12Moved(StageRegs r, uint16_t moved)
+{
     Sum low, high;
 
     low = add_bytes(RD8(SCROLLE->step_x_lo[0]), RD8(SCROLLE->step_x_lo[6]), false);
@@ -1041,38 +1214,38 @@ StageRegs CameraMode12(StageRegs r)
     r = parallax_sum(r, 4, 6, 4);
     WR8(SCROLLE->step_x_lo[6], 0);
     WR8(SCROLLE->step_x_hi[6], 0);
-    jsr_push(0xA32A);
+    jsr_push((uint16_t)(0xA32A + moved));
     r = ScrollStepXHalfOf0To1(r);
     jsr_pop();
     r = regs_loaded(r, 0x3F);
     WR8(SCROLL->y_lo[1], 0x3F);
     r = regs_loaded(r, 0x01);
     WR8(SCROLL->y_hi[1], 0x01);
-    r = half_step(r, 1, 5, 0xA33B);
-    r = half_step(r, 5, 2, 0xA342);
+    r = half_step(r, 1, 5, 0xA33B, moved);
+    r = half_step(r, 5, 2, 0xA342, moved);
     r = parallax_sum(r, 5, 2, 2);
     r = regs_loaded(r, 0x02);
     r.y = 0xC0;
-    jsr_push(0xA35C);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA35C + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     r.x = 3;
     r = regs_loaded(r, 0x04);
     WR8(SCROLLE->column_blocks[3], 0x04);
     r = regs_loaded(r, 0x40);
     WR8(SCROLL->y_lo[3], 0x40);
-    r = advance_x(r, 3, 0xA36B);
-    r = column_due(r, 0xA36E);
+    r = advance_x(r, 3, 0xA36B, moved);
+    r = column_due(r, 0xA36E, moved);
     r = regs_loaded(r, 0x47);
     WR8(SCROLL->y_lo[3], 0x47);
-    r = advance_x(r, 1, 0xA378);
-    r = advance_x(r, 4, 0xA37D);
+    r = advance_x(r, 1, 0xA378, moved);
+    r = advance_x(r, 4, 0xA37D, moved);
     r.x = 2;
     r = regs_loaded(r, 0x02);
     WR8(SCROLLE->column_blocks[2], 0x02);
     WR8(SCROLL->y_lo[0], 0);
-    r = advance_x(r, 2, 0xA38A);
-    return ColumnDue(r);
+    r = advance_x(r, 2, 0xA38A, moved);
+    return ColumnDueMoved(r, moved);
 }
 
 void abi_CameraMode12(void)
@@ -1090,26 +1263,32 @@ void abi_CameraMode12(void)
  */
 StageRegs CameraMode10(StageRegs r)
 {
+    return CameraMode10Moved(r, 0);
+}
+
+/* CameraMode10's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode10Moved(StageRegs r, uint16_t moved)
+{
     r = regs_loaded(r, 0x08);
     r.y = 0;
-    jsr_push(0xA39A);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA39A + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, 0x08);
     WR8(SCROLLE->column_blocks[0], 0x08);
-    jsr_push(0xA3A5);
+    jsr_push((uint16_t)(0xA3A5 + moved));
     r = ScrollStepXHalfOf0To1(r);
     jsr_pop();
     r = regs_loaded(r, 0x80);
     WR8(SCROLLE->step_x_lo[4], 0x80);
-    r = half_step(r, 1, 2, 0xA3B1);
+    r = half_step(r, 1, 2, 0xA3B1, moved);
     r = regs_loaded(r, 0x40);
     WR8(SCROLLE->step_x_lo[5], 0x40);
-    r = half_step(r, 2, 3, 0xA3BD);
+    r = half_step(r, 2, 3, 0xA3BD, moved);
     r = regs_loaded(r, 0x20);
     WR8(SCROLLE->step_x_lo[6], 0x20);
-    return CameraParallaxAdvance(r);
+    return CameraParallaxAdvanceMoved(r, moved);
 }
 
 void abi_CameraMode10(void)
@@ -1127,27 +1306,33 @@ void abi_CameraMode10(void)
  */
 StageRegs CameraMode03(StageRegs r)
 {
+    return CameraMode03Moved(r, 0);
+}
+
+/* CameraMode03's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode03Moved(StageRegs r, uint16_t moved)
+{
     uint8_t value;
     bool c;
 
     r = regs_loaded(r, 0x01);
     r.y = 0xC0;
-    jsr_push(0xA3FD);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA3FD + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, 0x08);
     WR8(SCROLLE->column_blocks[0], 0x08);
     r.y = 3;
-    jsr_push(0xA40A);
+    jsr_push((uint16_t)(0xA40A + moved));
     r = ScrollStepXHalfOf0(r);
     jsr_pop();
-    r = half_step(r, 3, 4, 0xA411);
+    r = half_step(r, 3, 4, 0xA411, moved);
     r = parallax_sum(r, 3, 4, 2);
     r = regs_loaded(r, 0x06);
     WR8(SCROLLE->column_blocks[2], 0x06);
-    r = advance_x(r, 2, 0xA42E);
-    r = column_due(r, 0xA431);
+    r = advance_x(r, 2, 0xA42E, moved);
+    r = column_due(r, 0xA431, moved);
     value = rd8(ScrollXHi);
     c = (value & 0x01) != 0;
     WR8(SCROLL->x_hi[1], (uint8_t)(value >> 1));
@@ -1176,16 +1361,22 @@ void abi_CameraMode03(void)
  */
 StageRegs CameraMode1C(StageRegs r)
 {
+    return CameraMode1CMoved(r, 0);
+}
+
+/* CameraMode1C's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode1CMoved(StageRegs r, uint16_t moved)
+{
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, 0x01);
     WR8(SCROLL->y_hi[0], 0x01);
-    jsr_push(0xA456);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA456 + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
     r = regs_loaded(r, rd8(RasterWaterWanted));
     r = regs_loaded(r, (uint8_t)(r.a | rd8(LevelYHi)));
     if (r.a != 0) {
-        r = scroll_y_from_level(r, 0xA461);
+        r = scroll_y_from_level(r, 0xA461, moved);
     }
     r = regs_loaded(r, 0x01);
     WR8(SCROLLLIM->scroll_y_offset, 0x01);
@@ -1207,12 +1398,18 @@ void abi_CameraMode1C(void)
  */
 StageRegs CameraMode04(StageRegs r)
 {
+    return CameraMode04Moved(r, 0);
+}
+
+/* CameraMode04's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode04Moved(StageRegs r, uint16_t moved)
+{
     WR8(SCROLL->y_lo[0], 0);
     WR8(SCROLL->y_hi[0], 0);
-    jsr_push(0xA470);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA470 + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
-    r = scroll_y_from_level(r, 0xA473);
+    r = scroll_y_from_level(r, 0xA473, moved);
     WR8(SCROLLLIM->scroll_y_offset, 0);
     return r;
 }
@@ -1232,13 +1429,19 @@ void abi_CameraMode04(void)
  */
 StageRegs CameraMode06(StageRegs r)
 {
+    return CameraMode06Moved(r, 0);
+}
+
+/* CameraMode06's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode06Moved(StageRegs r, uint16_t moved)
+{
     uint8_t value;
     bool c;
 
     r = regs_loaded(r, RD8(SCROLL->x_lo[1]));
     WR8(BANDS->bgx_lo[1], r.a);
-    jsr_push(0xA480);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA480 + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
     value = rd8(ScrollXHi);
     c = (value & 0x01) != 0;
@@ -1425,6 +1628,12 @@ void abi_ScrollYSlideBy4(void)
  */
 StageRegs CameraMode07(StageRegs r)
 {
+    return CameraMode07Moved(r, 0);
+}
+
+/* CameraMode07's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode07Moved(StageRegs r, uint16_t moved)
+{
     uint8_t value;
 
     value = RD8(SCROLL->y_lo[0]);
@@ -1433,8 +1642,8 @@ StageRegs CameraMode07(StageRegs r)
     push8(value);
     value = RD8(SCROLLE->y_hi_screen[0]);
     push8(value);
-    jsr_push(0xA4A1);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA4A1 + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
     value = pull8();
     WR8(SCROLLE->y_hi_screen[0], value);
@@ -1482,8 +1691,14 @@ void abi_CameraMode07(void)
  */
 StageRegs CameraMode1A(StageRegs r)
 {
-    jsr_push(0xA52B);
-    r = CameraMode00KeepY(r);
+    return CameraMode1AMoved(r, 0);
+}
+
+/* CameraMode1A's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode1AMoved(StageRegs r, uint16_t moved)
+{
+    jsr_push((uint16_t)(0xA52B + moved));
+    r = CameraMode00KeepYMoved(r, moved);
     jsr_pop();
     r = regs_loaded(r, rd8(ScrollXHiScreen));
     r = regs_compared(r, r.a, 0x07);
@@ -1525,13 +1740,19 @@ void abi_CameraMode1A(void)
  */
 StageRegs CameraMode08(StageRegs r)
 {
+    return CameraMode08Moved(r, 0);
+}
+
+/* CameraMode08's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode08Moved(StageRegs r, uint16_t moved)
+{
     Sum sum;
     bool c;
 
     r = regs_loaded(r, 0x08);
     r.y = 0;
-    jsr_push(0xA56C);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA56C + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     r = regs_loaded(r, 0x02);
     WR8(SCROLLE->y_hi_screen[1], 0x02);
@@ -1553,8 +1774,8 @@ StageRegs CameraMode08(StageRegs r)
     WR8(SCROLLE->step_x_lo[1], 0);
     r = regs_loaded(r, 0x04);
     WR8(SCROLLE->column_blocks[1], 0x04);
-    r = advance_x(r, 1, 0xA59D);
-    r = column_due(r, 0xA5A0);
+    r = advance_x(r, 1, 0xA59D, moved);
+    r = column_due(r, 0xA5A0, moved);
     WR8(SCROLLLIM->scroll_y_offset, 0);
     return r;
 }
@@ -1574,6 +1795,12 @@ void abi_CameraMode08(void)
  */
 StageRegs CameraMode1D(StageRegs r)
 {
+    return CameraMode1DMoved(r, 0);
+}
+
+/* CameraMode1D's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode1DMoved(StageRegs r, uint16_t moved)
+{
     uint8_t value;
     bool c;
 
@@ -1581,8 +1808,8 @@ StageRegs CameraMode1D(StageRegs r)
     WR8(SCROLLE->column_blocks[0], 0x08);
     r.a = 0;
     WR8(SCROLL->y_lo[0], 0);
-    jsr_push(0xA5B0);
-    r = CameraMode00(r);
+    jsr_push((uint16_t)(0xA5B0 + moved));
+    r = CameraMode00Moved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, 0x08);
@@ -1613,23 +1840,29 @@ void abi_CameraMode1D(void)
  */
 StageRegs CameraMode0E(StageRegs r)
 {
+    return CameraMode0EMoved(r, 0);
+}
+
+/* CameraMode0E's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode0EMoved(StageRegs r, uint16_t moved)
+{
     r = regs_loaded(r, 0x08);
     r.y = 0;
-    jsr_push(0xA5CF);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA5CF + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     r = regs_loaded(r, 0x01);
     WR8(SCROLLE->y_hi_screen[1], 0x01);
     WR8(SCROLL->y_hi[1], 0x01);
     r = regs_loaded(r, 0x10);
     WR8(SCROLLE->column_blocks[0], 0x10);
-    jsr_push(0xA5DF);
+    jsr_push((uint16_t)(0xA5DF + moved));
     r = ScrollStepXHalfOf0To1(r);
     jsr_pop();
     r = regs_loaded(r, 0x05);
     WR8(SCROLLE->column_blocks[1], 0x05);
-    r = advance_x(r, 1, 0xA5E9);
-    r = column_due(r, 0xA5EC);
+    r = advance_x(r, 1, 0xA5E9, moved);
+    r = column_due(r, 0xA5EC, moved);
     WR8(SCROLLLIM->scroll_y_offset, 0);
     return r;
 }
@@ -1649,25 +1882,31 @@ void abi_CameraMode0E(void)
  */
 StageRegs CameraMode09(StageRegs r)
 {
+    return CameraMode09Moved(r, 0);
+}
+
+/* CameraMode09's body, with its camera module `moved` on from $A000. */
+StageRegs CameraMode09Moved(StageRegs r, uint16_t moved)
+{
     r = regs_loaded(r, 0x08);
     r.y = 0;
-    jsr_push(0xA5F6);
-    r = CameraMode00Set(r);
+    jsr_push((uint16_t)(0xA5F6 + moved));
+    r = CameraMode00SetMoved(r, moved);
     jsr_pop();
     WR8(SCROLL->y_lo[0], 0);
     r = regs_loaded(r, 0x08);
     WR8(SCROLLE->column_blocks[0], 0x08);
-    jsr_push(0xA601);
+    jsr_push((uint16_t)(0xA601 + moved));
     r = ScrollStepXHalfOf0To1(r);
     jsr_pop();
-    r = half_step(r, 1, 2, 0xA608);
+    r = half_step(r, 1, 2, 0xA608, moved);
     WR8(SCROLL->y_hi[0], 0);
     r = regs_loaded(r, 0x01);
     WR8(SCROLL->y_hi[1], 0x01);
     WR8(SCROLL->y_hi[2], 0x01);
-    r = advance_x(r, 1, 0xA618);
-    r = advance_x(r, 2, 0xA61C);
-    r = scroll_y_from_level(r, 0xA61F);
+    r = advance_x(r, 1, 0xA618, moved);
+    r = advance_x(r, 2, 0xA61C, moved);
+    r = scroll_y_from_level(r, 0xA61F, moved);
     WR8(SCROLLLIM->scroll_y_offset, 0);
     return r;
 }
@@ -1678,21 +1917,21 @@ void abi_CameraMode09(void)
 }
 
 /* A JSR to the routine loaded at run: the registers as they stand, and what it leaves. */
-static Regs call_run(Regs r, uint16_t ret, uint16_t run)
+static Regs call_run(Regs r, uint16_t ret, uint16_t run, uint16_t moved)
 {
     stage_regs_load_shim(r);
-    call_routine(ret, run);
+    call_routine((uint16_t)(ret + moved), (uint16_t)(run + moved));
     return stage_regs_from_cpu_shim(r);
 }
 
 /* JMP (CameraModes,X) at $A0E3: the table's word read, low byte then high, and the C of the routine there run. */
-static Regs jump_to_mode(Regs r)
+static Regs jump_to_mode(Regs r, uint16_t moved)
 {
-    uint8_t lo = rd8((uint16_t)(CameraModes + r.x));
-    uint8_t hi = rd8((uint16_t)(CameraModes + r.x + 1));
+    uint8_t lo = rd8((uint16_t)(CameraModes + moved + r.x));
+    uint8_t hi = rd8((uint16_t)(CameraModes + moved + r.x + 1));
 
     stage_regs_load_shim(r);
-    run_routine_from(0xA0E3, (uint16_t)(lo | (hi << 8)));
+    run_routine_from((uint16_t)(0xA0E3 + moved), (uint16_t)(lo | (hi << 8)));
     return stage_regs_from_cpu_shim(r);
 }
 
@@ -1708,6 +1947,12 @@ static Regs jump_to_mode(Regs r)
  */
 StageRegs StageCameraModeDispatch(StageRegs r)
 {
+    return StageCameraModeDispatchMoved(r, 0);
+}
+
+/* StageCameraModeDispatch's body, with its camera module `moved` on from $A000. */
+StageRegs StageCameraModeDispatchMoved(StageRegs r, uint16_t moved)
+{
     uint8_t mode = RD8(SCROLLLIM->camera_mode);
 
     r.c = (mode & 0x80) != 0;
@@ -1716,7 +1961,7 @@ StageRegs StageCameraModeDispatch(StageRegs r)
         return r;
     }
     r.x = r.a;
-    return jump_to_mode(r);
+    return jump_to_mode(r, moved);
 }
 
 void abi_StageCameraModeDispatch(void)
@@ -1738,16 +1983,22 @@ void abi_StageCameraModeDispatch(void)
  */
 StageRegs CameraStep(StageRegs r)
 {
+    return CameraStepMoved(r, 0);
+}
+
+/* CameraStep's body, with its camera module `moved` on from $A000. */
+StageRegs CameraStepMoved(StageRegs r, uint16_t moved)
+{
     static const uint8_t modes[] = { 0x04, 0x05, 0x07, 0x09, 0x0D, 0x13, 0x15, 0x16, 0x1C };
     uint8_t mode, speed, value;
     Sum sum;
     unsigned i;
 
-    r = call_run(r, 0xA090, 0xA067);
-    jsr_push(0xA093);
-    r = StageCameraModeDispatch(r);
+    r = call_run(r, 0xA090, 0xA067, moved);
+    jsr_push((uint16_t)(0xA093 + moved));
+    r = StageCameraModeDispatchMoved(r, moved);
     jsr_pop();
-    r = call_run(r, 0xA096, 0xA073);
+    r = call_run(r, 0xA096, 0xA073, moved);
     mode = RD8(SCROLLLIM->camera_mode);
     r = regs_loaded(r, mode);
     for (i = 0; i < sizeof modes; i++) {

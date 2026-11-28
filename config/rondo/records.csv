@@ -574,3 +574,8 @@ alias,ObjectTable,fall_hi,work_i,OBJ_FALL_HI
 member,PlayerVarsB,kind7_caught,u8,00,PlayerKind7Caught,
 alias,ObjectTable,wall_turns,work_d,OBJ_WALL_TURNS
 alias,ObjectTable,held_x_offset,work_e,OBJ_HELD_X_OFFSET
+alias,ObjectTable,fly_angle,work_d,OBJ_FLY_ANGLE
+alias,ObjectTable,fly_speed_lo,work_e,OBJ_FLY_SPEED_LO
+alias,ObjectTable,fly_speed_hi,work_f,OBJ_FLY_SPEED_HI
+alias,ObjectTable,piece_next,work_d,OBJ_PIECE_NEXT
+alias,ObjectTable,piece_place,work_e,OBJ_PIECE_PLACE

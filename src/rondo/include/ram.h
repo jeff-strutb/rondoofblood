@@ -1049,5 +1049,27 @@
 #define MariaItem4ExtraStates 0xCDB6 /* three words by OBJ_STATE: wait, follow, held above her (MariaItem4Extra) */
 #define MariaSequenceObjectStates 0xCE77 /* four words by OBJ_STATE: start, rise, turn, fall (MariaSequenceObject) */
 #define OBJ_HELD_X_OFFSET 0x3510 /* kind 12's use of OBJ_WORK_E: her X less its own when it is caught above her; it is kept at her X less this (MariaItem4ExtraFollow, MariaItem4ExtraHeld) */
+#define MariaItem3States 0xCF41 /* three words by OBJ_STATE: start, fly, rush (MariaItem3) */
+#define MariaItem3Angles 0xCF8D /* item 3's first angle by facing (MariaItem3Start) */
+#define MariaItem3Turns 0xCFC6 /* item 3's angle turns by facing: two for its flight, two for its rush (MariaItem3Fly, MariaItem3Rush) */
+#define MariaPieceFacings 0xD16A /* item 6's pieces' facing by slot less 6 (MariaItem6Piece) */
+#define MariaPieceVyLo 0xD170 /* item 6's pieces' Y speed low bytes by slot less 6 (MariaItem6Piece) */
+#define MariaPieceVyHi 0xD176 /* item 6's pieces' Y speed high bytes by slot less 6 (MariaItem6Piece) */
+#define MariaPieceVx 0xD17C /* item 6's pieces' X speed entries by slot less 6 (MariaItem6Piece) */
+#define MariaItem8Adds 0xD24B /* a byte item 8 adds to $80 and leaves unused, by slot less 5 (MariaItem8) */
+#define MariaItem8Timers 0xD253 /* item 8's objects' delay by slot less 5 (MariaItem8) */
+#define MariaItem8Angles 0xD25B /* item 8's objects' first angle by slot less 5 (MariaItem8) */
+#define MariaItem8Animations 0xD263 /* item 8's objects' animation by slot less 5 (MariaItem8) */
+#define MariaCrash1States 0xD279 /* five words by OBJ_STATE: start, come to her, cross twice, go (MariaCrash1Object) */
+#define MariaCrash1Sounds 0xD305 /* the sound crash kind 1's object enters with, by the way it moves: $39 right, $38 left (MariaCrash1Enter) */
+#define MariaCrash1Sides 0xD3CD /* the X words crash kind 1's object enters at, by facing: $FFE0, $0120 (MariaCrash1Enter) */
+#define OBJ_FLY_ANGLE 0x34B8 /* the use of OBJ_WORK_D by items 3 and 8: the angle their velocity is set along (MariaObjectVelocityFromWork, MariaItem8) */
+#define OBJ_FLY_SPEED_LO 0x3510 /* item 3's use of OBJ_WORK_E: its speed's low byte, given to SetVelocityFromAngle in zTemp00 (MariaObjectVelocityFromWork) */
+#define OBJ_FLY_SPEED_HI 0x3568 /* item 3's use of OBJ_WORK_F: its speed's high byte, in zTemp01 (MariaObjectVelocityFromWork) */
+#define MariaCrash0States 0xD3D9 /* five words by OBJ_STATE: start, rise, hover, rain, leave (MariaCrash0Object) */
+#define MariaCrash0PieceFrames 0xD57C /* the frames of crash kind 0's pieces, four (MariaCrash0Piece) */
+#define MariaCrash0PiecePlaces 0xD580 /* sixteen places of four bytes for crash kind 0's pieces: Y word, X word (MariaCrash0Drop) */
+#define OBJ_PIECE_NEXT 0x34B8 /* crash kind 0's use of OBJ_WORK_D: its next piece's slot less 6, 0 to 8 (MariaCrash0Drop) */
+#define OBJ_PIECE_PLACE 0x3510 /* crash kind 0's use of OBJ_WORK_E: its next piece's place in MariaCrash0PiecePlaces, 0 to 15 (MariaCrash0Drop) */
 
 #endif

@@ -363,9 +363,9 @@ typedef struct {
     union { uint8_t hit_taken[88]; uint8_t f33b0[88]; }; /* OBJ_HIT_TAKEN */
     union { uint8_t anim_step[88]; uint8_t f3408[88]; }; /* OBJ_ANIM_STEP */
     union { uint8_t anim_timer[88]; uint8_t f3460[88]; }; /* OBJ_ANIM_TIMER */
-    union { uint8_t work_d[88]; uint8_t f34b8[88]; uint8_t life_timer[88]; uint8_t dissolve_clock_d[88]; uint8_t fling_source[88]; uint8_t pickup_timer[88]; uint8_t fall_drift_delay[88]; uint8_t gate_wait[88]; uint8_t marker_value[88]; uint8_t flash_frames[88]; uint8_t wall_turns[88]; }; /* OBJ_WORK_D */
-    union { uint8_t work_e[88]; uint8_t fling_wait[88]; uint8_t pickup_count[88]; uint8_t pad_force_frames[88]; uint8_t tally_wait[88]; uint8_t gate_step[88]; uint8_t flyer_wait[88]; uint8_t held_x_offset[88]; }; /* OBJ_WORK_E */
-    union { uint8_t work_f[88]; uint8_t f3568[88]; uint8_t angle_hi[88]; uint8_t dissolve_clock_f[88]; uint8_t pad_forced[88]; uint8_t tally_step[88]; uint8_t child_order[88]; }; /* OBJ_WORK_F */
+    union { uint8_t work_d[88]; uint8_t f34b8[88]; uint8_t life_timer[88]; uint8_t dissolve_clock_d[88]; uint8_t fling_source[88]; uint8_t pickup_timer[88]; uint8_t fall_drift_delay[88]; uint8_t gate_wait[88]; uint8_t marker_value[88]; uint8_t flash_frames[88]; uint8_t wall_turns[88]; uint8_t fly_angle[88]; uint8_t piece_next[88]; }; /* OBJ_WORK_D */
+    union { uint8_t work_e[88]; uint8_t fling_wait[88]; uint8_t pickup_count[88]; uint8_t pad_force_frames[88]; uint8_t tally_wait[88]; uint8_t gate_step[88]; uint8_t flyer_wait[88]; uint8_t held_x_offset[88]; uint8_t fly_speed_lo[88]; uint8_t piece_place[88]; }; /* OBJ_WORK_E */
+    union { uint8_t work_f[88]; uint8_t f3568[88]; uint8_t angle_hi[88]; uint8_t dissolve_clock_f[88]; uint8_t pad_forced[88]; uint8_t tally_step[88]; uint8_t child_order[88]; uint8_t fly_speed_hi[88]; }; /* OBJ_WORK_F */
     union { uint8_t work_g[88]; uint8_t f35c0[88]; uint8_t angle_lo[88]; uint8_t state_before_hit[88]; }; /* OBJ_WORK_G */
     union { uint8_t work_h[88]; uint8_t step_before_hit[88]; uint8_t fall_lo[88]; }; /* OBJ_WORK_H */
     union { uint8_t work_i[88]; uint8_t hit_frames[88]; uint8_t fly_phase[88]; uint8_t fall_hi[88]; }; /* OBJ_WORK_I */
@@ -443,6 +443,8 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, gate_wait) == OBJ_GATE_W
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, marker_value) == OBJ_MARKER_VALUE, "ObjectTable.marker_value is not at OBJ_MARKER_VALUE");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, flash_frames) == OBJ_FLASH_FRAMES, "ObjectTable.flash_frames is not at OBJ_FLASH_FRAMES");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, wall_turns) == OBJ_WALL_TURNS, "ObjectTable.wall_turns is not at OBJ_WALL_TURNS");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fly_angle) == OBJ_FLY_ANGLE, "ObjectTable.fly_angle is not at OBJ_FLY_ANGLE");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, piece_next) == OBJ_PIECE_NEXT, "ObjectTable.piece_next is not at OBJ_PIECE_NEXT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_e) + 0 == OBJ_WORK_E, "ObjectTable.work_e is not at OBJ_WORK_E");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fling_wait) == OBJ_FLING_WAIT, "ObjectTable.fling_wait is not at OBJ_FLING_WAIT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, pickup_count) == OBJ_PICKUP_COUNT, "ObjectTable.pickup_count is not at OBJ_PICKUP_COUNT");
@@ -451,6 +453,8 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, tally_wait) == OBJ_TALLY
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, gate_step) == OBJ_GATE_STEP, "ObjectTable.gate_step is not at OBJ_GATE_STEP");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, flyer_wait) == OBJ_FLYER_WAIT, "ObjectTable.flyer_wait is not at OBJ_FLYER_WAIT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, held_x_offset) == OBJ_HELD_X_OFFSET, "ObjectTable.held_x_offset is not at OBJ_HELD_X_OFFSET");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fly_speed_lo) == OBJ_FLY_SPEED_LO, "ObjectTable.fly_speed_lo is not at OBJ_FLY_SPEED_LO");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, piece_place) == OBJ_PIECE_PLACE, "ObjectTable.piece_place is not at OBJ_PIECE_PLACE");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_f) + 0 == OBJ_WORK_F, "ObjectTable.work_f is not at OBJ_WORK_F");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3568) + 0 == OBJ_WORK_F, "ObjectTable.f3568 is not at OBJ_WORK_F");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, angle_hi) + 0 == OBJ_WORK_F, "ObjectTable.angle_hi is not at OBJ_WORK_F");
@@ -458,6 +462,7 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, dissolve_clock_f) == OBJ
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, pad_forced) == OBJ_PAD_FORCED, "ObjectTable.pad_forced is not at OBJ_PAD_FORCED");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, tally_step) == OBJ_TALLY_STEP, "ObjectTable.tally_step is not at OBJ_TALLY_STEP");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, child_order) == OBJ_CHILD_ORDER, "ObjectTable.child_order is not at OBJ_CHILD_ORDER");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fly_speed_hi) == OBJ_FLY_SPEED_HI, "ObjectTable.fly_speed_hi is not at OBJ_FLY_SPEED_HI");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_g) + 0 == OBJ_WORK_G, "ObjectTable.work_g is not at OBJ_WORK_G");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f35c0) + 0 == OBJ_WORK_G, "ObjectTable.f35c0 is not at OBJ_WORK_G");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, angle_lo) + 0 == OBJ_WORK_G, "ObjectTable.angle_lo is not at OBJ_WORK_G");

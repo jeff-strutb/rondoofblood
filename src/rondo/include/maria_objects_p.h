@@ -369,4 +369,49 @@ void MariaKind2Step(void);
 void MariaKind2State5(void);
 void MariaKind2Special(void);
 
+/* object/maria_objects_kind10.c */
+void MariaItem4Extra(void);
+void MariaItem4ExtraStart(void);
+void MariaItem4ExtraFollow(void);
+void MariaItem4ExtraHeld(void);
+void MariaSequenceObject(void);
+void MariaSequenceObjectStart(void);
+void MariaSequenceObjectRise(void);
+void MariaSequenceObjectClear(void);
+void MariaSequenceObjectTurn(void);
+void MariaSequenceObjectFall(void);
+
+/* object/maria_objects_items2.c */
+void MariaItem3(void);
+void MariaItem3Start(void);
+void MariaItem3Fly(void);
+void MariaItem3Rush(void);
+void MariaItem6(void);
+void MariaItem6Piece(void);
+void MariaItem6PieceHitbox(void);
+void MariaItem6PieceFly(void);
+void MariaItem8(void);
+
+/* object/maria_objects_crash.c */
+void MariaCrash1Object(void);
+void MariaCrash1Clear(void);
+void MariaCrash1Start(void);
+void MariaCrash1Enter(void);
+void MariaCrash1Wait(void);
+void MariaCrash1Come(void);
+void MariaCrash1Cross(void);
+void MariaCrash1Go(void);
+void MariaCrash1Leave(void);
+
+/* object/maria_objects_crash0.c */
+void MariaCrash0Object(void);
+void MariaCrash0Clear(void);
+void MariaCrash0Start(void);
+void MariaCrash0Rise(void);
+void MariaCrash0Hover(void);
+void MariaCrash0Rain(void);
+void MariaCrash0Leave(void);
+void MariaCrash0Drop(void);
+void MariaCrash0Piece(void);
+
 #endif

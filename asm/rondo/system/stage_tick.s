@@ -12,8 +12,9 @@
 ; Eleven stage overlays hold this code, the ones whose VRAM routines are at $9392 and $93A1.
 ; WAITS: no.
 ; Entry: X and Y as the blends take them. Exit: as the last step left it.
+StepStageFrameTables = $8C19 ; table StepStageFrame reads
 StepStageFrame:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B6C
     bbs1 zPaused,StepStageFrame_at0
     lda a:StageVar3616+1
@@ -31,9 +32,9 @@ StepStageFrame_at1:
 StepStageFrame_at2:
     jsr StageScriptByWave
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
-    lda a:$8C19,x
+    lda a:StepStageFrameTables,x
     ldx z:zCharacter
     beq ScatterDebris
     cmp #$0D
@@ -41,12 +42,12 @@ StepStageFrame_at2:
     cmp #$11
     bne ScatterDebris
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra ScatterDebris
 StepStageFrame_at3:
     lda #$72
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame_at4
@@ -111,12 +112,13 @@ StepStageFrame_at10:
 ; WAITS: no.
 ; Entry: nothing. Exit: unchanged script: A the script, X the table index, Z 1, C 1;
 ; else as StartScriptSlotKind4 with X 1, C as the compare left it.
+StageScriptByWaveStageVar3566s = $8C3B ; table StageScriptByWave reads
 StageScriptByWave:
     lda z:zWaveCounter
     and #$07
     and a:RichterItemReady
     tax
-    lda a:$8C3B,x
+    lda a:StageScriptByWaveStageVar3566s,x
     cmp a:StageVar3566+1
     beq StageScriptByWave_at0
     sta a:StageVar3566+1

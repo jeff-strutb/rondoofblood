@@ -10,8 +10,12 @@
 ; Every stage overlay holds the same code here (the fade picks the overlay's mask routine).
 ; WAITS: no.
 ; Entry: X and Y as the CD track routine keeps them. Exit: as the last step left it.
+StepStageEndingTables = $9049 ; table StepStageEnding reads
+StepStageEndingTables2 = $904F ; table StepStageEnding reads
+StepStageEndingLists = $9056 ; a list's address by index
+StepStageEndingTemp12s = $9058 ; table StepStageEnding reads
 StepStageEnding:
-    lda a:$3614
+    lda a:OBJ_STATE_BEFORE_HIT+84
     bne StepStageEnding_at0
     lda z:zStage
     beq StepStageEnding_at1
@@ -21,60 +25,60 @@ StepStageEnding:
     beq StepStageEnding_at1
     jsr VecCdPlayAgain
 StepStageEnding_at1:
-    inc a:$3614
+    inc a:OBJ_STATE_BEFORE_HIT+84
 StepStageEnding_at0:
-    dec a:$3565
+    dec a:OBJ_FLING_WAIT+85
     bne StepStageEnding_at2
-    inc a:$350D
-    ldy a:$350D
+    inc a:OBJ_DISSOLVE_CLOCK_D+85
+    ldy a:OBJ_DISSOLVE_CLOCK_D+85
     cpy #$07
     bne StepStageEnding_at3
-    stz a:$2ABD
+    stz a:OBJ_FRAME+85
     smb0 z:zField8E
     rts
 StepStageEnding_at3:
-    lda a:$9049,y
+    lda a:StepStageEndingTables,y
     lsr a
-    sta a:$2E85
+    sta a:OBJ_VY_HI+85
     cla
     ror a
-    sta a:$2EDD
-    lda a:$904F,y
-    sta a:$3565
+    sta a:OBJ_VY_LO+85
+    lda a:StepStageEndingTables2,y
+    sta a:OBJ_FLING_WAIT+85
 StepStageEnding_at2:
-    lda a:$350D
+    lda a:OBJ_DISSOLVE_CLOCK_D+85
     cmp #$06
     bne StepStageEnding_at4
-    lda a:$3565
+    lda a:OBJ_FLING_WAIT+85
     cmp #$1F
     bne StepStageEnding_at5
-    stz a:$2ABC
+    stz a:OBJ_FRAME+84
 StepStageEnding_at5:
-    sta a:$35BC
+    sta a:OBJ_CHILD_ORDER+84
 StepStageEnding_at4:
     ldx #$55
     jsr VecApplyVelocityY
-    dec a:$3564
+    dec a:OBJ_FLING_WAIT+84
     bne StepStageEnding_at6
-    inc a:$350C
-    ldy a:$350C
-    lda a:$9049,y
+    inc a:OBJ_DISSOLVE_CLOCK_D+84
+    ldy a:OBJ_DISSOLVE_CLOCK_D+84
+    lda a:StepStageEndingTables,y
     lsr a
-    sta a:$2DD4
+    sta a:OBJ_VX_HI+84
     cla
     ror a
-    sta a:$2E2C
-    lda a:$904F,y
-    sta a:$3564
+    sta a:OBJ_VX_LO+84
+    lda a:StepStageEndingTables2,y
+    sta a:OBJ_FLING_WAIT+84
 StepStageEnding_at6:
     ldx #$54
     jsr VecApplyVelocityX
-    lda a:$350C
+    lda a:OBJ_DISSOLVE_CLOCK_D+84
     cmp #$06
     beq StepStageEnding_at7
     rts
 StepStageEnding_at7:
-    lda a:$35BC
+    lda a:OBJ_CHILD_ORDER+84
     bra StepStageEnding_at8
     tsb z:zTemp03
     sxy
@@ -116,13 +120,13 @@ StepStageEnding_at11:
     lsr a
     and #$0C
     tax
-    lda a:$9056,x
+    lda a:StepStageEndingLists,x
     sta z:zTemp10
-    lda a:$9057,x
+    lda a:StepStageEndingLists+1,x
     sta z:zTemp11
-    lda a:$9058,x
+    lda a:StepStageEndingTemp12s,x
     sta z:zTemp12
-    lda a:$9059,x
+    lda a:StepStageEndingTemp12s+1,x
     sta z:zProduct0
 StepStageEnding_at14:
     jsr VecNextRandom

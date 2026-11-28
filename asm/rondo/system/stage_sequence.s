@@ -10,6 +10,10 @@
 ; Every stage overlay holds the same code here.
 ; WAITS: no.
 ; Entry: X and Y as the blends take them. Exit: as the last step left it.
+StepStageSequenceValues = $8F64 ; table StepStageSequence reads
+StepStageSequenceTables = $8F71 ; table StepStageSequence reads
+StepStageSequenceTables2 = $8F7E ; table StepStageSequence reads
+StepStageSequenceValues2 = $8F8B ; table StepStageSequence reads
 StepStageSequence:
     lda a:StageVar350E+1
     sta z:zTemp00
@@ -29,18 +33,18 @@ StepStageSequence_at0:
     bbs0 zTemp00,StepStageSequence_at2
     lsr z:zTemp00
     ldx z:zTemp00
-    lda a:$8F64,x
+    lda a:StepStageSequenceValues,x
     ldx #$02
     jsr VecStartScriptSlotKind4
     ldx z:zTemp00
-    lda a:$8F71,x
+    lda a:StepStageSequenceTables,x
     ldx #$0B
     jsr VecStartScriptSlotKind4
     ldx z:zTemp00
-    lda a:$8F7E,x
-    sta a:$2ABF
+    lda a:StepStageSequenceTables2,x
+    sta a:OBJ_FRAME+87
     ldx z:zTemp00
-    lda a:$8F8B,x
+    lda a:StepStageSequenceValues2,x
     beq StepStageSequence_at1
     bmi StepStageSequence_at3
     ldx #$02

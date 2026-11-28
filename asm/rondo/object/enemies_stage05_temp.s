@@ -261,6 +261,7 @@ SelectRasterStage1:
 ; WAITS: no.
 ; Entry: X object. Exit: A the table byte, or the frame; N, Z, C from the last compare or
 ; subtract; Y the table index when read; X kept.
+SetHitboxDxFromFrameHitboxDxs = $B928 ; table SetHitboxDxFromFrame reads
 SetHitboxDxFromFrame:
     lda #$02
     sta a:OBJ_HITBOX_ON,x
@@ -270,7 +271,7 @@ SetHitboxDxFromFrame:
     sec
     sbc #$01
     tay
-    lda a:$B928,y
+    lda a:SetHitboxDxFromFrameHitboxDxs,y
     sta a:OBJ_HITBOX_DX,x
     rts
 SetHitboxDxFromFrame_at0:
@@ -303,6 +304,8 @@ PhaseTimerToState1:
 ; WAITS: no.
 ; Entry: X object. Exit: A the last byte loaded; N, Z from it; C bit 6 of the frame minus $13
 ; (the last shift); Y the row's offset; X kept.
+SetHitboxFromFrameRowsHitboxDxs = $BDA8 ; table SetHitboxFromFrameRows reads
+SetHitboxFromFrameRowsHitboxHalfWs = $BDAA ; table SetHitboxFromFrameRows reads
 SetHitboxFromFrameRows:
     lda a:OBJ_FRAME,x
     sec
@@ -310,13 +313,13 @@ SetHitboxFromFrameRows:
     asl a
     asl a
     tay
-    lda a:$BDA8,y
+    lda a:SetHitboxFromFrameRowsHitboxDxs,y
     sta a:OBJ_HITBOX_DX,x
-    lda a:$BDA9,y
+    lda a:SetHitboxFromFrameRowsHitboxDxs+1,y
     sta a:OBJ_HITBOX_DY,x
-    lda a:$BDAA,y
+    lda a:SetHitboxFromFrameRowsHitboxHalfWs,y
     sta a:OBJ_HITBOX_HALF_W,x
-    lda a:$BDAB,y
+    lda a:SetHitboxFromFrameRowsHitboxHalfWs+1,y
     sta a:OBJ_HITBOX_HALF_H,x
     rts
 
@@ -357,22 +360,25 @@ EnterState7OnFlagOrYSignChange_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: A the last byte loaded; N, Z from it; C bit 6 of the row number; Y the
 ; row's offset; X kept.
+SetHitboxFromFrameRowsIndirectHitboxDxs = $C6E6 ; table SetHitboxFromFrameRowsIndirect reads
+SetHitboxFromFrameRowsIndirectHitboxDxs2 = $C6FF ; table SetHitboxFromFrameRowsIndirect reads
+SetHitboxFromFrameRowsIndirectHitboxHalfWs = $C701 ; table SetHitboxFromFrameRowsIndirect reads
 SetHitboxFromFrameRowsIndirect:
     lda a:OBJ_FRAME,x
     sec
     sbc #$27
     tay
-    lda a:$C6E6,y
+    lda a:SetHitboxFromFrameRowsIndirectHitboxDxs,y
     asl a
     asl a
     tay
-    lda a:$C6FF,y
+    lda a:SetHitboxFromFrameRowsIndirectHitboxDxs2,y
     sta a:OBJ_HITBOX_DX,x
-    lda a:$C700,y
+    lda a:SetHitboxFromFrameRowsIndirectHitboxDxs2+1,y
     sta a:OBJ_HITBOX_DY,x
-    lda a:$C701,y
+    lda a:SetHitboxFromFrameRowsIndirectHitboxHalfWs,y
     sta a:OBJ_HITBOX_HALF_W,x
-    lda a:$C702,y
+    lda a:SetHitboxFromFrameRowsIndirectHitboxHalfWs+1,y
     sta a:OBJ_HITBOX_HALF_H,x
     rts
 
@@ -384,9 +390,10 @@ SetHitboxFromFrameRowsIndirect:
 ; WAITS: no.
 ; Entry: X object. Exit: A 8; N, Z from the step byte's new value; Y the f3510 byte; X and C
 ; kept.
+LaunchHopByF3510VxHis = $C45C ; table LaunchHopByF3510 reads
 LaunchHopByF3510:
     ldy a:OBJ_WORK_E,x
-    lda a:$C45C,y
+    lda a:LaunchHopByF3510VxHis,y
     sta a:OBJ_VX_HI,x
     lda #$FD
     sta a:OBJ_VY_HI,x
@@ -443,11 +450,12 @@ StartWithFrame1A_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: A, N, Z, C and V from ApplyVelocity's add; Y bit 0 of f3040; X kept.
 ; Clobbers zTemp10.
+ThrowByNextKindVxHis = $B9A3 ; table ThrowByNextKind reads
 ThrowByNextKind:
     lda a:OBJ_START_ARG,x
     and #$01
     tay
-    lda a:$B9A3,y
+    lda a:ThrowByNextKindVxHis,y
     sta a:OBJ_VX_HI,x
     lda a:OBJ_START_ARG,x
     asl a
@@ -471,14 +479,15 @@ ThrowByNextKind:
 ; WAITS: no.
 ; Entry: X object. Exit: as StepObjectFrames (Y the list's offset when the step did not change
 ; it); when the list ended, A 1, N clear, Z clear. X and V kept. Clobbers zTemp10-11.
+AnimateThenState1Lists = $BA5D ; a list's address by index
 AnimateThenState1:
     lda a:OBJ_WORK_H,x
     and #$01
     asl a
     tay
-    lda a:$BA5D,y
+    lda a:AnimateThenState1Lists,y
     sta z:zTemp10
-    lda a:$BA5E,y
+    lda a:AnimateThenState1Lists+1,y
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne AnimateThenState1_at0
@@ -581,14 +590,15 @@ CountdownThenFallOrBecomeType9B_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A the second timer, N and Z from it; C 0 (the doubling); V as
 ; NextRandom's last add left it; Y the table offset; X kept.
+PickTimersAtRandomWorkEs = $B9B9 ; table PickTimersAtRandom reads
 PickTimersAtRandom:
     jsr VecNextRandom
     and #$03
     asl a
     tay
-    lda a:$B9B9,y
+    lda a:PickTimersAtRandomWorkEs,y
     sta a:OBJ_WORK_E,x
-    lda a:$B9BA,y
+    lda a:PickTimersAtRandomWorkEs+1,y
     sta a:OBJ_WORK_D,x
     rts
 
@@ -599,14 +609,15 @@ PickTimersAtRandom:
 ; HOW: As PickTimersAtRandom, with the table at overlay address $B9D5.
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PickTimersAtRandom.
+PickAngleAtRandomWorkGs = $B9D5 ; table PickAngleAtRandom reads
 PickAngleAtRandom:
     jsr VecNextRandom
     and #$03
     asl a
     tay
-    lda a:$B9D5,y
+    lda a:PickAngleAtRandomWorkGs,y
     sta a:OBJ_WORK_G,x
-    lda a:$B9D6,y
+    lda a:PickAngleAtRandomWorkGs+1,y
     sta a:OBJ_WORK_F,x
     rts
 
@@ -620,13 +631,14 @@ PickAngleAtRandom:
 ; Entry: X object, D clear. Exit: A, N, Z, C from the compare with 1, or from the last add
 ; (the Y speed's high byte); V from ApplyVelocity or that add; Y the list's offset unless the
 ; animation step changed it; X kept. Clobbers zTemp10-11.
+AnimateMoveAndSagLists = $BCD1 ; a list's address by index
 AnimateMoveAndSag:
     lda a:OBJ_WORK_D,x
     asl a
     tay
-    lda a:$BCD1,y
+    lda a:AnimateMoveAndSagLists,y
     sta z:zTemp10
-    lda a:$BCD2,y
+    lda a:AnimateMoveAndSagLists+1,y
     sta z:zTemp11
     jsr VecStepObjectFrames
     jsr VecApplyVelocity
@@ -651,13 +663,14 @@ AnimateMoveAndSag_at0:
 ; WAITS: no.
 ; Entry: X object, Y the list's offset, D clear. Exit: as StepObjectFrames. Clobbers zTemp00,
 ; zTemp10-11.
+StepFramesFacingPlayerCLists = $BEFE ; a list's address by index
 StepFramesFacingPlayerC:
     jsr VecSideOfPlayer
     and #$01
     sta a:OBJ_FACING_LEFT,x
-    lda a:$BEFE,y
+    lda a:StepFramesFacingPlayerCLists,y
     sta z:zTemp10
-    lda a:$BEFF,y
+    lda a:StepFramesFacingPlayerCLists+1,y
     sta z:zTemp11
     jmp VecStepObjectFrames
 
@@ -669,9 +682,10 @@ StepFramesFacingPlayerC:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A the table byte or the side bit; N, Z from it; C from
 ; SideOfPlayer's last compare when it ran; Y the state; X kept. Clobbers zTemp00.
+FaceThePlayerInSomeStatesFacingLefts = $C293 ; table FaceThePlayerInSomeStates reads
 FaceThePlayerInSomeStates:
     ldy a:OBJ_STATE,x
-    lda a:$C293,y
+    lda a:FaceThePlayerInSomeStatesFacingLefts,y
     beq FaceThePlayerInSomeStates_at0
     jsr VecSideOfPlayer
     and #$01
@@ -688,12 +702,13 @@ FaceThePlayerInSomeStates_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A the new step byte, N and Z from it, C and V clear; Y the table
 ; offset; X kept. Clobbers zTemp00.
+NextPhaseAtRandomWorkDs = $C4CE ; table NextPhaseAtRandom reads
 NextPhaseAtRandom:
     inc a:OBJ_WORK_F,x
     lda a:OBJ_WORK_F,x
     and #$03
     tay
-    lda a:$C4CE,y
+    lda a:NextPhaseAtRandomWorkDs,y
     sta a:OBJ_WORK_D,x
     jsr VecSideOfPlayer
     and #$01
@@ -775,6 +790,9 @@ ShowOnScreenAndWrapX_at3:
 ; Entry: X object, D clear. Exit: A the last byte loaded, N and Z from the step byte's new
 ; value (when picking); C and V from the second add; Y the last table index; X kept. Clobbers
 ; zTemp00, zTemp08.
+ChooseNextMoveWhenFacingAwayWorkIs = $BAD5 ; table ChooseNextMoveWhenFacingAway reads
+ChooseNextMoveWhenFacingAwayWorkKs = $BAE5 ; table ChooseNextMoveWhenFacingAway reads
+ChooseNextMoveWhenFacingAwayWorkJs = $BAF1 ; table ChooseNextMoveWhenFacingAway reads
 ChooseNextMoveWhenFacingAway:
     lda a:OBJ_FACING_LEFT,x
     eor a:OBJ_WORK_H,x
@@ -791,7 +809,7 @@ ChooseNextMoveWhenFacingAway_at0:
     jsr VecNextRandom
     and #$0F
     tay
-    lda a:$BAD5,y
+    lda a:ChooseNextMoveWhenFacingAwayWorkIs,y
     sta a:OBJ_WORK_I,x
     asl a
     asl a
@@ -801,12 +819,12 @@ ChooseNextMoveWhenFacingAway_at0:
     clc
     adc z:zTemp00
     tay
-    lda a:$BAE5,y
+    lda a:ChooseNextMoveWhenFacingAwayWorkKs,y
     sta a:OBJ_WORK_K,x
     lda a:OBJ_WORK_H,x
     and #$01
     tay
-    lda a:$BAF1,y
+    lda a:ChooseNextMoveWhenFacingAwayWorkJs,y
     sta a:OBJ_WORK_J,x
     inc a:OBJ_SUBSTATE,x
     rts
@@ -968,15 +986,17 @@ AnimateHitboxThenExpire_at0:
 ; WAITS: no.
 ; Entry: X object, Y the list's offset, D clear. Exit: after a change as ApplyVelocityX, Y f3510;
 ; otherwise as StepObjectFrames; X kept. Clobbers zTemp10-11.
+WalkWhileFrameChangesBLists = $C356 ; a list's address by index
+WalkWhileFrameChangesBVxHis = $C35A ; table WalkWhileFrameChangesB reads
 WalkWhileFrameChangesB:
-    lda a:$C356,y
+    lda a:WalkWhileFrameChangesBLists,y
     sta z:zTemp10
-    lda a:$C357,y
+    lda a:WalkWhileFrameChangesBLists+1,y
     sta z:zTemp11
     jsr VecStepObjectFrames
     bcc WalkWhileFrameChangesB_at0
     ldy a:OBJ_WORK_E,x
-    lda a:$C35A,y
+    lda a:WalkWhileFrameChangesBVxHis,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
 WalkWhileFrameChangesB_at0:
@@ -991,6 +1011,7 @@ WalkWhileFrameChangesB_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z from f3510 (when zero) or the negated speed's high byte
 ; with C and V from its add; Y the table offset.
+LeapAwayFromPlayerTableVxLos = $C569 ; table LeapAwayFromPlayerTable reads
 LeapAwayFromPlayerTable:
     inc a:OBJ_SUBSTATE,x
     jsr VecDistanceXToPlayer
@@ -1001,9 +1022,9 @@ LeapAwayFromPlayerTable:
     lsr a
     asl a
     tay
-    lda a:$C56A,y
+    lda a:LeapAwayFromPlayerTableVxLos+1,y
     sta a:OBJ_VX_HI,x
-    lda a:$C569,y
+    lda a:LeapAwayFromPlayerTableVxLos,y
     sta a:OBJ_VX_LO,x
     lda #$FB
     sta a:OBJ_VY_HI,x
@@ -1052,6 +1073,7 @@ StartThenBlinkAndExpire_at2:
 ; HOW: The shared body.
 ; WAITS: no.
 ; Entry, exit: as PickStateByPlayerDistance.
+PickStateByPlayerDistanceBStates = $BF57 ; table PickStateByPlayerDistanceB reads
 PickStateByPlayerDistanceB:
     stz a:OBJ_SUBSTATE,x
     lda a:OBJ_X_HI,x
@@ -1069,7 +1091,7 @@ PickStateByPlayerDistanceB_at1:
     jsr VecPlayerDistanceSum
     and #$0F
     tay
-    lda a:$BF57,y
+    lda a:PickStateByPlayerDistanceBStates,y
     sta a:OBJ_STATE,x
     rts
 
@@ -1080,18 +1102,20 @@ PickStateByPlayerDistanceB_at1:
 ; HOW: The shared body.
 ; WAITS: no.
 ; Entry, exit: as PickSpeedAndTurnFromTable.
+PickSpeedAndTurnFromTableCVxLos = $BFD6 ; table PickSpeedAndTurnFromTableC reads
+PickSpeedAndTurnFromTableCVyLos = $BFD8 ; table PickSpeedAndTurnFromTableC reads
 PickSpeedAndTurnFromTableC:
     lda a:OBJ_WORK_I,x
     asl a
     asl a
     tay
-    lda a:$BFD7,y
+    lda a:PickSpeedAndTurnFromTableCVxLos+1,y
     sta a:OBJ_VX_HI,x
-    lda a:$BFD6,y
+    lda a:PickSpeedAndTurnFromTableCVxLos,y
     sta a:OBJ_VX_LO,x
-    lda a:$BFD9,y
+    lda a:PickSpeedAndTurnFromTableCVyLos+1,y
     sta a:OBJ_VY_HI,x
-    lda a:$BFD8,y
+    lda a:PickSpeedAndTurnFromTableCVyLos,y
     sta a:OBJ_VY_LO,x
     inc a:OBJ_WORK_E,x
     jsr VecSideOfPlayer
@@ -1112,6 +1136,8 @@ PickSpeedAndTurnFromTableC_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: first step: A the timer, N, Z from the new step, C and V from
 ; NextRandom, Y its index; later as TurnOnRandomBeatWalkFollowB.
+TurnOnRandomBeatWalkBVxHis = $C16F ; table TurnOnRandomBeatWalkB reads
+TurnOnRandomBeatWalkBWorkDs = $C173 ; table TurnOnRandomBeatWalkB reads
 TurnOnRandomBeatWalkB:
     lda a:OBJ_SUBSTATE,x
     bne TurnOnRandomBeatWalkFollowB
@@ -1119,14 +1145,14 @@ TurnOnRandomBeatWalkB:
     and #$01
     asl a
     tay
-    lda a:$C16F,y
+    lda a:TurnOnRandomBeatWalkBVxHis,y
     sta a:OBJ_VX_HI,x
-    lda a:$C16F+1,y
+    lda a:TurnOnRandomBeatWalkBVxHis+1,y
     sta a:OBJ_VX_LO,x
     jsr VecNextRandom
     and #$07
     tay
-    lda a:$C173,y
+    lda a:TurnOnRandomBeatWalkBWorkDs,y
     sta a:OBJ_WORK_D,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -1163,6 +1189,7 @@ TurnOnRandomBeatWalkFollowB_done:
 ; HOW: LoadObjectRecord; StepObjectFrames; the last two as tail jumps.
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as the last step that ran left them.
+StartThenAnimateAndExpireLists = $BDF8 ; a list's address by index
 StartThenAnimateAndExpire:
     lda a:OBJ_STATE,x
     bne StartThenAnimateAndExpire_at0
@@ -1178,9 +1205,9 @@ StartThenAnimateAndExpire_at0:
     lda a:OBJ_WORK_D,x
     asl a
     tay
-    lda a:$BDF8,y
+    lda a:StartThenAnimateAndExpireLists,y
     sta z:zTemp10
-    lda a:$BDF9,y
+    lda a:StartThenAnimateAndExpireLists+1,y
     sta z:zTemp11
     jsr VecStepObjectFrames
     dec a:OBJ_WORK_E,x
@@ -1244,12 +1271,13 @@ SpawnShotFromFrame_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as the last call or test left them; Y the life_timer used as the
 ; table index.
+StartWithFrameAndFaceFrames = $C787 ; table StartWithFrameAndFace reads
 StartWithFrameAndFace:
     lda a:OBJ_STATE,x
     bne CountdownThenFallOrBecomeType9B
     jsr VecLoadObjectRecord
     ldy a:OBJ_WORK_D,x
-    lda a:$C787,y
+    lda a:StartWithFrameAndFaceFrames,y
     sta a:OBJ_FRAME,x
     jsr VecSideOfPlayer
     and #$01
@@ -1325,14 +1353,15 @@ CountdownSoundThenFollowParent_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: when the list went on, as StepObjectFrames; when it ended, A, N, Z,
 ; C from the loop's last compare and Y the end slot (X kept); clobbers zTemp00, zTemp01, zTemp03.
+AnimateThenNumberGroupAndLeaveLists = $BBE5 ; a list's address by index
 AnimateThenNumberGroupAndLeave:
     lda a:OBJ_WORK_H,x
     and #$01
     asl a
     tay
-    lda a:$BBE5,y
+    lda a:AnimateThenNumberGroupAndLeaveLists,y
     sta z:zTemp10
-    lda a:$BBE6,y
+    lda a:AnimateThenNumberGroupAndLeaveLists+1,y
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne AnimateThenNumberGroupAndLeave_at0
@@ -1400,6 +1429,8 @@ AnimateMoveThenSetUpAtRandom_at0:
 ; HOW: The shared body.
 ; WAITS: no.
 ; Entry, exit: as FollowPreviousPiece.
+FollowPreviousPieceBHitboxDxs = $C71B ; table FollowPreviousPieceB reads
+FollowPreviousPieceBHitboxHalfWs = $C71D ; table FollowPreviousPieceB reads
 FollowPreviousPieceB:
     lda a:OBJ_STATE,x
     bne FollowPreviousPieceB_at0
@@ -1409,9 +1440,9 @@ FollowPreviousPieceB_at0:
     tay
     dey
     jsr VecCopyObjectPlaceBack
-    lda a:$324F,x
+    lda a:OBJ_HIT_REACTION+87,x
     sta a:OBJ_HITBOX_ON,x
-    lda a:$2A67,x
+    lda a:OBJ_SPRITE_SET+87,x
     sec
     sbc #$27
     cmp #$13
@@ -1421,15 +1452,15 @@ FollowPreviousPieceB_at1:
     asl a
     asl a
     tay
-    lda a:$C71B,y
+    lda a:FollowPreviousPieceBHitboxDxs,y
     sta a:OBJ_HITBOX_DX,x
-    lda a:$C71C,y
+    lda a:FollowPreviousPieceBHitboxDxs+1,y
     sta a:OBJ_HITBOX_DY,x
-    lda a:$C71D,y
+    lda a:FollowPreviousPieceBHitboxHalfWs,y
     sta a:OBJ_HITBOX_HALF_W,x
-    lda a:$C71E,y
+    lda a:FollowPreviousPieceBHitboxHalfWs+1,y
     sta a:OBJ_HITBOX_HALF_H,x
-    lda a:$2ABF,x
+    lda a:OBJ_FRAME+87,x
     sta a:OBJ_FACING_LEFT,x
     rts
 
@@ -1443,6 +1474,8 @@ FollowPreviousPieceB_at1:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A the copied f3568 and N, Z from it, C 1, Y the new slot, V from the table
 ; index add; with no free slot, as FindFreeSlotFrom50 left them.
+StartSidewaysAndSpawn29VxLos = $BC64 ; table StartSidewaysAndSpawn29 reads
+StartSidewaysAndSpawn29VyLos = $BC66 ; table StartSidewaysAndSpawn29 reads
 StartSidewaysAndSpawn29:
     jsr VecLoadObjectRecord
     lda #$28
@@ -1463,13 +1496,13 @@ StartSidewaysAndSpawn29_at0:
     clc
     adc z:zTemp00
     tay
-    lda a:$BC65,y
+    lda a:StartSidewaysAndSpawn29VxLos+1,y
     sta a:OBJ_VX_HI,x
-    lda a:$BC64,y
+    lda a:StartSidewaysAndSpawn29VxLos,y
     sta a:OBJ_VX_LO,x
-    lda a:$BC67,y
+    lda a:StartSidewaysAndSpawn29VyLos+1,y
     sta a:OBJ_VY_HI,x
-    lda a:$BC66,y
+    lda a:StartSidewaysAndSpawn29VyLos,y
     sta a:OBJ_VY_LO,x
     jsr VecFindFreeSlotFrom50
     bcc StartSidewaysAndSpawn29_at1
@@ -1490,6 +1523,7 @@ StartSidewaysAndSpawn29_at1:
 ; The reversal ran in no script: the draft stops there, so liftcmp does not judge it.
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last ApplyVelocityX; Y the facing.
+StartSidewaysAndSpawn29BVxHis = $BD32 ; table StartSidewaysAndSpawn29B reads
 StartSidewaysAndSpawn29B:
     jsr VecLoadObjectRecord
     lda #$40
@@ -1509,7 +1543,7 @@ StartSidewaysAndSpawn29B_at0:
     sta a:OBJ_WORK_F,y
 StartSidewaysAndSpawn29B_at1:
     ldy a:OBJ_FACING_LEFT,x
-    lda a:$BD32,y
+    lda a:StartSidewaysAndSpawn29BVxHis,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
     rts
@@ -1524,6 +1558,9 @@ StartSidewaysAndSpawn29B_at1:
 ; the object in zRichterObject while the table is read.
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A $9C, N set, Z clear; C and Y from the last compare or slot search.
+BurstIntoEightPiecesWorkDs = $C674 ; table BurstIntoEightPieces reads
+BurstIntoEightPiecesVxHis = $C676 ; table BurstIntoEightPieces reads
+BurstIntoEightPiecesVyHis = $C678 ; table BurstIntoEightPieces reads
 BurstIntoEightPieces:
     txa
     tay
@@ -1546,17 +1583,17 @@ BurstIntoEightPieces_at1:
     clc
     adc z:zTemp00
     tax
-    lda a:$C674,x
+    lda a:BurstIntoEightPiecesWorkDs,x
     sta a:OBJ_WORK_D,y
-    lda a:$C675,x
+    lda a:BurstIntoEightPiecesWorkDs+1,x
     sta a:OBJ_WORK_E,y
-    lda a:$C676,x
+    lda a:BurstIntoEightPiecesVxHis,x
     sta a:OBJ_VX_HI,y
-    lda a:$C677,x
+    lda a:BurstIntoEightPiecesVxHis+1,x
     sta a:OBJ_VX_LO,y
-    lda a:$C678,x
+    lda a:BurstIntoEightPiecesVyHis,x
     sta a:OBJ_VY_HI,y
-    lda a:$C679,x
+    lda a:BurstIntoEightPiecesVyHis+1,x
     sta a:OBJ_VY_LO,y
     ldx z:zRichterObject
     ldy z:zHitSlot

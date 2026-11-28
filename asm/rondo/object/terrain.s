@@ -82,9 +82,9 @@ TerrainLookupAltB:
     pla
     asl a
     tay
-    lda a:$C11F,y
+    lda a:TerrainProbeTablesB,y
     sta z:zTemp0C
-    lda a:$C120,y
+    lda a:TerrainProbeTablesB+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -803,9 +803,9 @@ TerrainLookupAltC:
     pla
     asl a
     tay
-    lda a:$D9DE,y
+    lda a:TerrainProbeTablesC,y
     sta z:zTemp0C
-    lda a:$D9DF,y
+    lda a:TerrainProbeTablesC+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -950,9 +950,9 @@ TerrainLookupAltD:
     pla
     asl a
     tay
-    lda a:$B547,y
+    lda a:TerrainProbeTablesD,y
     sta z:zTemp0C
-    lda a:$B548,y
+    lda a:TerrainProbeTablesD+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A

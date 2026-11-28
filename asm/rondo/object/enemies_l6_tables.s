@@ -4,13 +4,14 @@
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable025B545Handlers = $B557 ; a handler's address by index
 JumpByStateTable025B545:
     lda a:OBJ_STATE,x
     asl a
     tay
-    lda a:$B557,y
+    lda a:JumpByStateTable025B545Handlers,y
     sta z:zTemp00
-    lda a:$B558,y
+    lda a:JumpByStateTable025B545Handlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -20,13 +21,14 @@ JumpByStateTable025B545:
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE.
+JumpByPhaseTable025C068Handlers = $B87A ; a handler's address by index
 JumpByPhaseTable025C068:
     lda a:OBJ_SUBSTATE,x
     asl a
     tay
-    lda a:$B87A,y
+    lda a:JumpByPhaseTable025C068Handlers,y
     sta z:zTemp00
-    lda a:$B87B,y
+    lda a:JumpByPhaseTable025C068Handlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -52,13 +54,14 @@ JumpByPhaseTable025C40D:
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable025C51CHandlers = $BD2E ; a handler's address by index
 JumpByStateTable025C51C:
     lda a:OBJ_STATE,x
     asl a
     tay
-    lda a:$BD2E,y
+    lda a:JumpByStateTable025C51CHandlers,y
     sta z:zTemp00
-    lda a:$BD2F,y
+    lda a:JumpByStateTable025C51CHandlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -68,13 +71,14 @@ JumpByStateTable025C51C:
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable051A190Handlers = $A9A2 ; a handler's address by index
 JumpByStateTable051A190:
     lda a:OBJ_STATE,x
     asl a
     tay
-    lda a:$A9A2,y
+    lda a:JumpByStateTable051A190Handlers,y
     sta z:zTemp00
-    lda a:$A9A3,y
+    lda a:JumpByStateTable051A190Handlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -100,13 +104,14 @@ JumpByStateTable051B225:
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE.
+JumpByPhaseTable051B350Handlers = $B362 ; a handler's address by index
 JumpByPhaseTable051B350:
     lda a:OBJ_SUBSTATE,x
     asl a
     tay
-    lda a:$B362,y
+    lda a:JumpByPhaseTable051B350Handlers,y
     sta z:zTemp00
-    lda a:$B363,y
+    lda a:JumpByPhaseTable051B350Handlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -116,13 +121,14 @@ JumpByPhaseTable051B350:
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE.
+JumpByPhaseTable051B5B5Handlers = $B5C7 ; a handler's address by index
 JumpByPhaseTable051B5B5:
     lda a:OBJ_SUBSTATE,x
     asl a
     tay
-    lda a:$B5C7,y
+    lda a:JumpByPhaseTable051B5B5Handlers,y
     sta z:zTemp00
-    lda a:$B5C8,y
+    lda a:JumpByPhaseTable051B5B5Handlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -308,13 +314,14 @@ JumpByPhaseTable088B06C:
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable093C3FFHandlers = $BC11 ; a handler's address by index
 JumpByStateTable093C3FF:
     lda a:OBJ_STATE,x
     asl a
     tay
-    lda a:$BC11,y
+    lda a:JumpByStateTable093C3FFHandlers,y
     sta z:zTemp00
-    lda a:$BC12,y
+    lda a:JumpByStateTable093C3FFHandlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -324,13 +331,14 @@ JumpByStateTable093C3FF:
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
+JumpByStateTable093C4E5Handlers = $BCF7 ; a handler's address by index
 JumpByStateTable093C4E5:
     lda a:OBJ_STATE,x
     asl a
     tay
-    lda a:$BCF7,y
+    lda a:JumpByStateTable093C4E5Handlers,y
     sta z:zTemp00
-    lda a:$BCF8,y
+    lda a:JumpByStateTable093C4E5Handlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 

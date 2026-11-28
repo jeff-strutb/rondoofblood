@@ -738,13 +738,14 @@ VramListFromTableB:
 ; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableCProduct1s = $901F ; table VramListFromTableC reads
 VramListFromTableC:
     asl a
     tay
-    lda a:$901F,y
-    sta z:$14
-    lda a:$9020,y
-    sta z:$15
+    lda a:VramListFromTableCProduct1s,y
+    sta z:zProduct1
+    lda a:VramListFromTableCProduct1s+1,y
+    sta z:zProduct2
     cly
     bra VramListRun
 
@@ -756,13 +757,14 @@ VramListFromTableC:
 ; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableDProduct1s = $9349 ; table VramListFromTableD reads
 VramListFromTableD:
     asl a
     tay
-    lda a:$9349,y
-    sta z:$14
-    lda a:$934A,y
-    sta z:$15
+    lda a:VramListFromTableDProduct1s,y
+    sta z:zProduct1
+    lda a:VramListFromTableDProduct1s+1,y
+    sta z:zProduct2
     cly
     bra VramListRun
 
@@ -810,13 +812,14 @@ VramListFromTableF:
 ; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableGProduct1s = $9236 ; table VramListFromTableG reads
 VramListFromTableG:
     asl a
     tay
-    lda a:$9236,y
-    sta z:$14
-    lda a:$9237,y
-    sta z:$15
+    lda a:VramListFromTableGProduct1s,y
+    sta z:zProduct1
+    lda a:VramListFromTableGProduct1s+1,y
+    sta z:zProduct2
     cly
     bra VramListRun
 
@@ -846,13 +849,14 @@ VramListFromTableH:
 ; Every overlay has its own copy of these 15 bytes with its own table, so each is a routine of its own; VramListFromIndex branches here.
 ; WAITS: no.
 ; Entry: A the list number ($80 or more). Exit: as VramListRun.
+VramListFromTableIProduct1s = $8E90 ; table VramListFromTableI reads
 VramListFromTableI:
     asl a
     tay
-    lda a:$8E90,y
-    sta z:$14
-    lda a:$8E91,y
-    sta z:$15
+    lda a:VramListFromTableIProduct1s,y
+    sta z:zProduct1
+    lda a:VramListFromTableIProduct1s+1,y
+    sta z:zProduct2
     cly
     bra VramListRun
 

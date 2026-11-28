@@ -95,7 +95,7 @@ ClearScrollSpeedsC_at0:
 ScrollYFromLevelWord:
     lda a:RasterWaterWanted
     sta a:ScrollYLo
-    lda a:$3EB9
+    lda a:LevelYHi
     sta a:ScrollYHi
     rts
 
@@ -403,6 +403,7 @@ ScrollYPlusOffsetB_at1:
 ; WAITS: no.
 ; Entry: X the entry. Exit: A the screen, N and Z from it, C and V from its add. X kept; Y the step's sign
 ; (AdvanceResult).
+AdvanceScrollXScrollXHiAdds = $A727 ; table AdvanceScrollX reads
 AdvanceScrollX:
     lda a:ScrollStepXHi,x
     rol a
@@ -417,7 +418,7 @@ AdvanceScrollX:
     adc a:ScrollXLo,x
     sta a:ScrollXLo,x
     lda #$00
-    adc a:$A727,y
+    adc a:AdvanceScrollXScrollXHiAdds,y
     pha
     clc
     adc a:ScrollXHi,x

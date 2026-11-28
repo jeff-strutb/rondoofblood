@@ -7,6 +7,8 @@
 ; Untraced: the player byte 2 arm (B88E to B89A).
 ; WAITS: no.
 ; Entry: X object. Exit: C the answer; A and N, Z as the last load or compare left them.
+TouchesPlayerMarkValues = $A146 ; table TouchesPlayerMark reads
+TouchesPlayerMarkValues2 = $A166 ; table TouchesPlayerMark reads
 TouchesPlayerMark:
     lda a:OBJ_STATE,x
     beq TouchesPlayerMark_at0
@@ -21,7 +23,7 @@ TouchesPlayerMark:
     clc
     adc #$18
     tay
-    lda a:$A166,y
+    lda a:TouchesPlayerMarkValues2,y
     beq TouchesPlayerMark_at0
 TouchesPlayerMark_at2:
     sec
@@ -32,7 +34,7 @@ TouchesPlayerMark_at1:
     clc
     adc #$18
     tay
-    lda a:$A146,y
+    lda a:TouchesPlayerMarkValues,y
     bne TouchesPlayerMark_at2
 TouchesPlayerMark_at0:
     clc

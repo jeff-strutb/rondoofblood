@@ -77,8 +77,8 @@ StartBossWhenStageC0OrLoad:
     lda #$8E
     jsr VecStartScriptSlotKind1
     jsr VecClearEnemySlots
-    stz a:$2ABE
-    stz a:$2ABF
+    stz a:OBJ_FRAME+86
+    stz a:OBJ_FRAME+87
     clx
 StartBossWhenStageC0OrLoad_at1:
     jsr VecFindFreeSlotFrom30

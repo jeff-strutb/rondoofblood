@@ -22,7 +22,7 @@ StepListThenStartChannel85:
     lda #$7B
     sta a:OBJ_WORK_E,x
     lda #$2F
-    sta a:$2A67,x
+    sta a:OBJ_SPRITE_SET+87,x
     inc a:OBJ_SUBSTATE,x
 StepListThenStartChannel85_at0:
     rts
@@ -243,7 +243,7 @@ MoveXUntilPastLeftEdge:
 CountDownThenClearAndAdvanceSlot10:
     dec a:OBJ_WORK_E,x
     bne CountDownThenClearAndAdvanceSlot10_at0
-    inc a:$27B8
+    inc a:OBJ_STATE+16
     jsr VecClearObject
 CountDownThenClearAndAdvanceSlot10_at0:
     rts
@@ -359,6 +359,7 @@ StepListThenSound43AtZero_at0:
 ; HOW: StepObjectFrames, AngleToPoint, SetVelocityFromAngle, ApplyVelocity, NearObject19, NextRandom, ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+SeekObject19ThenHitAndClearTables = $BBE5 ; table SeekObject19ThenHitAndClear reads
 SeekObject19ThenHitAndClear:
     lda #$69
     sta z:zTemp10
@@ -366,10 +367,10 @@ SeekObject19ThenHitAndClear:
     sta z:zTemp11
     jsr VecStepObjectFrames
     stz z:zTemp09
-    lda a:$2BE1
+    lda a:OBJ_X_LO+25
     sta z:zTemp08
     stz z:zTemp0B
-    lda a:$2CE9
+    lda a:OBJ_Y_LO+25
     sta z:zTemp0A
     jsr VecAngleToPoint
     pha
@@ -383,18 +384,18 @@ SeekObject19ThenHitAndClear:
     jsr NearObject19
     bcc SeekObject19ThenHitAndClear_at0
     lda #$07
-    sta a:$27C1
+    sta a:OBJ_STATE+25
     lda #$02
-    sta a:$3689
+    sta a:OBJ_FALL_HI+25
     lda #$01
-    sta a:$2A80
-    stz a:$3420
-    stz a:$3478
+    sta a:OBJ_FRAME+24
+    stz a:OBJ_ANIM_STEP+24
+    stz a:OBJ_ANIM_TIMER+24
     jsr VecNextRandom
     and #$03
     tay
-    lda a:$BBE5,y
-    sta a:$36E1
+    lda a:SeekObject19ThenHitAndClearTables,y
+    sta a:OBJ_DISSOLVE_CLOCK_J+25
     jsr VecClearObject
 SeekObject19ThenHitAndClear_at0:
     rts
@@ -408,7 +409,7 @@ SeekObject19ThenHitAndClear_at0:
 NearObject19:
     lda a:OBJ_X_LO,x
     sec
-    sbc a:$2BE1
+    sbc a:OBJ_X_LO+25
     bcs NearObject19_at0
     eor #$FF
     inc a
@@ -417,7 +418,7 @@ NearObject19_at0:
     bcs NearObject19_at1
     lda a:OBJ_Y_LO,x
     sec
-    sbc a:$2CE9
+    sbc a:OBJ_Y_LO+25
     bcs NearObject19_at2
     eor #$FF
     inc a
@@ -439,7 +440,7 @@ NearObject19_at1:
 StartRiseAndSpawnRing:
     jsr SpawnRingOfSeven
     lda #$01
-    sta a:$37E9
+    sta a:OBJ_KNOCK_FORWARD+25
     stz a:OBJ_HITBOX_ON,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -526,22 +527,25 @@ StepListCCThenMoveOrClear_at0:
 ; HOW: LoadObjectRecord, table reads by the number times 4, an add.
 ; WAITS: no.
 ; Entry: X object. Exit: A the frame, C and V from the add, Y the number.
+LoadRecordThrowByNumberVxLos = $BD66 ; table LoadRecordThrowByNumber reads
+LoadRecordThrowByNumberVyLos = $BD68 ; table LoadRecordThrowByNumber reads
+LoadRecordThrowByNumberWorkEs = $BD86 ; table LoadRecordThrowByNumber reads
 LoadRecordThrowByNumber:
     jsr VecLoadObjectRecord
     lda a:OBJ_WORK_D,x
     asl a
     asl a
     tay
-    lda a:$BD67,y
+    lda a:LoadRecordThrowByNumberVxLos+1,y
     sta a:OBJ_VX_HI,x
-    lda a:$BD66,y
+    lda a:LoadRecordThrowByNumberVxLos,y
     sta a:OBJ_VX_LO,x
-    lda a:$BD69,y
+    lda a:LoadRecordThrowByNumberVyLos+1,y
     sta a:OBJ_VY_HI,x
-    lda a:$BD68,y
+    lda a:LoadRecordThrowByNumberVyLos,y
     sta a:OBJ_VY_LO,x
     ldy a:OBJ_WORK_D,x
-    lda a:$BD86,y
+    lda a:LoadRecordThrowByNumberWorkEs,y
     sta a:OBJ_WORK_E,x
     tya
     clc
@@ -597,6 +601,8 @@ StepListCBThenMoveOrClear_at0:
 ; HOW: LoadObjectRecord, CopyObjectPlaceBack, table reads, a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+FollowObject19ThenStepListByModeFrames = $BE33 ; table FollowObject19ThenStepListByMode reads
+FollowObject19ThenStepListByModeLists = $BE3C ; a list's address by index
 FollowObject19ThenStepListByMode:
     lda a:OBJ_STATE,x
     bne FollowObject19ThenStepListByMode_at0
@@ -604,15 +610,15 @@ FollowObject19ThenStepListByMode:
 FollowObject19ThenStepListByMode_at0:
     ldy #$19
     jsr VecCopyObjectPlaceBack
-    lda a:$3689
+    lda a:OBJ_FALL_HI+25
     cmp a:OBJ_WORK_D,x
     beq FollowObject19ThenStepListByMode_at1
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
 FollowObject19ThenStepListByMode_at1:
     sta a:OBJ_WORK_D,x
-    ldy a:$3689
-    lda a:$BE33,y
+    ldy a:OBJ_FALL_HI+25
+    lda a:FollowObject19ThenStepListByModeFrames,y
     bmi FollowObject19ThenStepListByMode_at2
     sta a:OBJ_FRAME,x
     rts
@@ -620,9 +626,9 @@ FollowObject19ThenStepListByMode_at2:
     and #$0F
     asl a
     tay
-    lda a:$BE3C,y
+    lda a:FollowObject19ThenStepListByModeLists,y
     sta z:zTemp10
-    lda a:$BE3D,y
+    lda a:FollowObject19ThenStepListByModeLists+1,y
     sta z:zTemp11
     jmp VecStepObjectFrames
 
@@ -766,11 +772,13 @@ StepListSlowSideways:
 ; HOW: A loop over the marks, FindFreeSlotFrom20, StartObjectAtPlace, SoundCommand, ApplyVelocity with the slots swapped.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. zD9 and zDA keep their address form until they have names.
+SpawnType2FAtWaveMarksLimits = $C028 ; table SpawnType2FAtWaveMarks reads
+SpawnType2FAtWaveMarksVxHis = $C030 ; table SpawnType2FAtWaveMarks reads
 SpawnType2FAtWaveMarks:
     lda z:zWaveCounter
     and #$3F
     cly
-    cmp a:$C028,y
+    cmp a:SpawnType2FAtWaveMarksLimits,y
     beq SpawnType2FAtWaveMarks_at0
     iny
     cpy #$08
@@ -788,9 +796,9 @@ SpawnType2FAtWaveMarks_at0:
     lda z:zHitSlot
     asl a
     tax
-    lda a:$C030,x
+    lda a:SpawnType2FAtWaveMarksVxHis,x
     sta a:OBJ_VX_HI,y
-    lda a:$C031,x
+    lda a:SpawnType2FAtWaveMarksVxHis+1,x
     sta a:OBJ_VY_HI,y
     sxy
     jsr VecApplyVelocity

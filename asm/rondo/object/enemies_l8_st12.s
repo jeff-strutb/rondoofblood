@@ -39,18 +39,20 @@ CountdownThenStartScript80_at0:
 ; HOW: A table read by OBJ_WORK_F as the index, a 16-bit subtract, and NextRandom.
 ; WAITS: no.
 ; Entry: X object. Exit: the last instruction that ran.
+StepVerticalScrollTableWorkEs = $B129 ; table StepVerticalScrollTable reads
+StepVerticalScrollTableScrollYHiAdds = $B133 ; table StepVerticalScrollTable reads
 StepVerticalScrollTable:
     lda a:OBJ_WORK_F,x
     beq StepVerticalScrollTable_at0
     tay
-    lda a:$B129,y
+    lda a:StepVerticalScrollTableWorkEs,y
     sta a:OBJ_WORK_E,x
     lda a:ScrollYLo+1
     sec
-    sbc a:$B129,y
+    sbc a:StepVerticalScrollTableWorkEs,y
     sta a:ScrollYLo+1
     lda a:ScrollYHi+1
-    sbc a:$B133,y
+    sbc a:StepVerticalScrollTableScrollYHiAdds,y
     sta a:ScrollYHi+1
     inc a:OBJ_WORK_F,x
     cpy #$09
@@ -74,6 +76,8 @@ StepVerticalScrollTable_at2:
 ; HOW: LoadObjectRecord, two table reads indexed by OBJ_START_ARG, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
+LoadRecordPlaceByKindFrames = $B17E ; table LoadRecordPlaceByKind reads
+LoadRecordPlaceByKindYLos = $B180 ; table LoadRecordPlaceByKind reads
 LoadRecordPlaceByKind:
     lda a:OBJ_STATE,x
     bne LoadRecordPlaceByKind_at0
@@ -81,7 +85,7 @@ LoadRecordPlaceByKind:
     lda #$06
     sta a:OBJ_SPRITE_SET,x
     ldy a:OBJ_START_ARG,x
-    lda a:$B17E,y
+    lda a:LoadRecordPlaceByKindFrames,y
     sta a:OBJ_FRAME,x
     lda a:OBJ_SCROLL_BAND,x
     bne LoadRecordPlaceByKind_at0
@@ -89,7 +93,7 @@ LoadRecordPlaceByKind:
     sta a:OBJ_X_LO,x
     lda #$01
     sta a:OBJ_X_HI,x
-    lda a:$B180,y
+    lda a:LoadRecordPlaceByKindYLos,y
     sta a:OBJ_Y_LO,x
     lda a:OBJ_SCROLL_BAND,x
     and #$F0
@@ -132,7 +136,7 @@ LoadRecordThenSinkByF3520:
     lda #$06
     sta a:OBJ_FRAME,x
     dec a:OBJ_X_HI,x
-    lda a:$3520
+    lda a:OBJ_FLING_WAIT+16
     clc
     adc a:OBJ_Y_LO,x
     sta a:OBJ_Y_LO,x
@@ -144,6 +148,7 @@ LoadRecordThenSinkByF3520:
 ; HOW: LoadObjectRecord, a decrement, table reads, a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
+LoadRecordThenStepListByKindLists = $B1F5 ; a list's address by index
 LoadRecordThenStepListByKind:
     lda a:OBJ_STATE,x
     bne SwingAndPick
@@ -154,7 +159,7 @@ LoadRecordThenStepListByKind:
     tay
     lda a:OBJ_WORK_D,x
     bne StartSplitterLow
-    lda a:$27B8
+    lda a:OBJ_STATE+16
     cmp #$04
     bcc PickPhaseAtRandomB
     stz a:OBJ_ANIM_STEP,x
@@ -165,9 +170,9 @@ LoadRecordThenStepListByKind:
     clc
     adc #$04
     tay
-    lda a:$B1F5,y
+    lda a:LoadRecordThenStepListByKindLists,y
     sta z:zTemp10
-    lda a:$B1F6,y
+    lda a:LoadRecordThenStepListByKindLists+1,y
     sta z:zTemp11
     jmp VecStepObjectFrames
 
@@ -177,22 +182,23 @@ LoadRecordThenStepListByKind:
 ; HOW: LoadObjectRecord, a decrement, an add, table reads, a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
+LoadRecordSinkThenStepListByKindLists = $B250 ; a list's address by index
 LoadRecordSinkThenStepListByKind:
     lda a:OBJ_STATE,x
     bne LoadRecordSinkThenStepListByKind_at0
     jsr VecLoadObjectRecord
     dec a:OBJ_X_HI,x
 LoadRecordSinkThenStepListByKind_at0:
-    lda a:$3520
+    lda a:OBJ_FLING_WAIT+16
     clc
     adc a:OBJ_Y_LO,x
     sta a:OBJ_Y_LO,x
     lda a:OBJ_START_ARG,x
     asl a
     tay
-    lda a:$B250,y
+    lda a:LoadRecordSinkThenStepListByKindLists,y
     sta z:zTemp10
-    lda a:$B251,y
+    lda a:LoadRecordSinkThenStepListByKindLists+1,y
     sta z:zTemp11
     jmp VecStepObjectFrames
 
@@ -211,7 +217,7 @@ StateMachineWithSoundAndList:
 StateMachineWithSoundAndList_at0:
     dec a
     bne StateMachineWithSoundAndList_at1
-    lda a:$27B8
+    lda a:OBJ_STATE+16
     cmp #$03
     bne StateMachineWithSoundAndList_at2
     lda a:OBJ_WORK_D,x
@@ -293,7 +299,7 @@ DriftRecordThenMoveWithJitter:
     lda #$0C
     sta a:OBJ_VY_HI,x
     rts
-    lda a:$27B8
+    lda a:OBJ_STATE+16
     cmp #$04
     bcc DriftRecordThenMoveWithJitter_at0
     lda a:OBJ_START_ARG,x
@@ -366,6 +372,7 @@ SwingByCosineFromState0B_at0:
 ; HOW: Two NextRandom calls and StartScriptSlotKind1 between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
+StartRandomScriptWhenFlaggedValues = $B4E9 ; table StartRandomScriptWhenFlagged reads
 StartRandomScriptWhenFlagged:
     lda a:OBJ_WORK_K,x
     beq StartRandomScriptWhenFlagged_at0
@@ -380,7 +387,7 @@ StartRandomScriptWhenFlagged:
     jsr VecNextRandom
     and #$03
     tay
-    lda a:$B4E9,y
+    lda a:StartRandomScriptWhenFlaggedValues,y
     ldx #$05
     jsr VecStartScriptSlotKind1
     plx
@@ -537,6 +544,8 @@ CountDownWithSound77_at0:
 ; HOW: A loop over the marks, StartScriptSlotKind1 between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
+StartScriptAtTimerMarksLimits = $B642 ; table StartScriptAtTimerMarks reads
+StartScriptAtTimerMarksValues = $B64A ; table StartScriptAtTimerMarks reads
 StartScriptAtTimerMarks:
     lda a:OBJ_WORK_E,x
     bne ThrowUpward
@@ -546,7 +555,7 @@ StartScriptAtTimerMarks:
     cly
 StartScriptAtTimerMarks_at1:
     lda a:OBJ_WORK_E,x
-    cmp a:$B642,y
+    cmp a:StartScriptAtTimerMarksLimits,y
     beq StartScriptAtTimerMarks_at0
     iny
     cpy #$08
@@ -555,7 +564,7 @@ StartScriptAtTimerMarks_at1:
     rts
 StartScriptAtTimerMarks_at0:
     phx
-    lda a:$B64A,y
+    lda a:StartScriptAtTimerMarksValues,y
     ldx #$05
     jsr VecStartScriptSlotKind1
     plx
@@ -585,7 +594,7 @@ SpinOutThenLeave:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne SoundReadCommand
-    inc a:$27B8
+    inc a:OBJ_STATE+16
     lda #$01
     sta a:OBJ_WORK_L,x
     lda #$02

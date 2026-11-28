@@ -91,9 +91,9 @@ BlendStageScoreRows_at3:
     lda z:zScore0
     sta a:StageVar371E
     lda z:zScore1
-    sta a:$3776
+    sta a:OBJ_DISSOLVE_PHASE_K+86
     lda z:zScore2
-    sta a:$37CE
+    sta a:OBJ_DISSOLVE_PHASE_L+86
 BlendStageScoreRows_at1:
     phx
     lda a:StageVar350E

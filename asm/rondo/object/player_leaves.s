@@ -241,11 +241,12 @@ EmptyHandler823B:
 ; HOW: INC zField82, read it again as the index, one table read, one store.
 ; WAITS: no.
 ; Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. C, V kept.
+StepStageTable9C20Field83s = $9C20 ; table StepStageTable9C20 reads
 StepStageTable9C20:
     inc z:zField82
     lda z:zField82
     tay
-    lda a:$9C20,y
+    lda a:StepStageTable9C20Field83s,y
     sta z:zField83
     rts
 

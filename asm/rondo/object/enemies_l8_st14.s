@@ -4,6 +4,7 @@
 ; HOW: LoadObjectRecord, stores, StepObjectFrames, tail jumps into ClearObject or ApplyVelocity.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
+LoadRecordFlashByNumberThenMoveOrClearSpriteAttrs = $C061 ; table LoadRecordFlashByNumberThenMoveOrClear reads
 LoadRecordFlashByNumberThenMoveOrClear:
     lda a:OBJ_STATE,x
     bne LoadRecordFlashByNumberThenMoveOrClear_at0
@@ -15,7 +16,7 @@ LoadRecordFlashByNumberThenMoveOrClear:
     lda #$FC
     sta a:OBJ_VX_HI,x
     ldy a:OBJ_WORK_D,x
-    lda a:$C061,y
+    lda a:LoadRecordFlashByNumberThenMoveOrClearSpriteAttrs,y
     sta a:OBJ_SPRITE_ATTR,x
     rts
     smb0 z:zTemp00

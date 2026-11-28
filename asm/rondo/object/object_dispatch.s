@@ -76,6 +76,8 @@ StepReleaseOnHit_at1:
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper (started: A the speed's low
 ; byte, Y the table index, C bit 7 of kind less $9B; else as StepObjectFrames).
+StepFallingItemVyLos = $A3B1 ; table StepFallingItem reads
+StepFallingItemLists = $A3B9 ; a list's address by index
 StepFallingItem:
     lda a:OBJ_STATE,x
     bne StepFallingItem_at0
@@ -87,9 +89,9 @@ StepFallingItem:
     sbc #$9B
     asl a
     tay
-    lda a:$A3B2,y
+    lda a:StepFallingItemVyLos+1,y
     sta a:OBJ_VY_HI,x
-    lda a:$A3B1,y
+    lda a:StepFallingItemVyLos,y
     sta a:OBJ_VY_LO,x
     rts
 StepFallingItem_at0:
@@ -100,9 +102,9 @@ StepFallingItem_at0:
     sbc #$9B
     asl a
     tay
-    lda a:$A3B9,y
+    lda a:StepFallingItemLists,y
     sta z:zTemp10
-    lda a:$A3BA,y
+    lda a:StepFallingItemLists+1,y
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne StepFallingItem_at1
@@ -118,14 +120,15 @@ StepFallingItem_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the table's high byte, N and Z from it, Y the
 ; doubled state, C the state's bit 7, X kept, V as on entry.
+HurtCheckThenJumpByStateHandlers = $A45E ; a handler's address by index
 HurtCheckThenJumpByState:
     jsr EnterHurtStateOnHit
     lda a:OBJ_STATE,x
     asl a
     tay
-    lda a:$A45E,y
+    lda a:HurtCheckThenJumpByStateHandlers,y
     sta z:zTemp00
-    lda a:$A45F,y
+    lda a:HurtCheckThenJumpByStateHandlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -326,15 +329,16 @@ FallThenClear_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the table's high byte, Y the index, N and Z from A,
 ; C and V from the kind's subtract and shift.
+JumpByKindTableHandlers = $A56B ; a handler's address by index
 JumpByKindTable:
     lda a:OBJ_KIND,x
     sec
     sbc #$83
     asl a
     tay
-    lda a:$A56B,y
+    lda a:JumpByKindTableHandlers,y
     sta z:zTemp00
-    lda a:$A56C,y
+    lda a:JumpByKindTableHandlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -347,17 +351,19 @@ JumpByKindTable:
 ; Untraced: the carry out of the decimal add (the cap of 99, A5A5).
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: as BlendStageRowsOfPlayer.
+CollectHeartsField94s = $A5B0 ; table CollectHearts reads
+CollectHeartsField94Adds = $A5B2 ; table CollectHearts reads
 CollectHearts:
     lda a:OBJ_KIND,x
     sec
     sbc #$83
     tay
-    lda a:$A5B0,y
+    lda a:CollectHeartsField94s,y
     jsr VecSoundCommand
     sed
     lda z:zField94
     clc
-    adc a:$A5B2,y
+    adc a:CollectHeartsField94Adds,y
     sta z:zField94
     bcc CollectHearts_at0
     lda #$99
@@ -376,6 +382,7 @@ CollectHearts_at0:
 ; Untraced: the carry out of the add (the cap of 9999, A5D4).
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: A $9F, N set, Z clear; C and V as the blend left them.
+CollectScoreItemScoreAddLoAdds = $A5EB ; table CollectScoreItem reads
 CollectScoreItem:
     lda #$0B
     jsr VecSoundCommand
@@ -387,7 +394,7 @@ CollectScoreItem:
     lda z:zScoreAddLo
     sta z:zTemp10
     clc
-    adc a:$A5EB,y
+    adc a:CollectScoreItemScoreAddLoAdds,y
     sta z:zScoreAddLo
     lda z:zScoreAddHi
     adc #$00
@@ -423,6 +430,9 @@ CollectScoreItem_at0:
 ; Entry: X object. Exit: see the wrapper (cleared: A 0, Y the old zField93, C and V from the kind
 ; less $80; changed: A the sideways speed's low byte, Y the facing's table index, C the facing's top
 ; bit, V from the borrow into the Y position's high byte).
+ChangeKindFromTableField93s = $A650 ; table ChangeKindFromTable reads
+ChangeKindFromTableKinds = $A668 ; table ChangeKindFromTable reads
+ChangeKindFromTableVxLos = $A671 ; table ChangeKindFromTable reads
 ChangeKindFromTable:
     lda #$0B
     jsr VecSoundCommand
@@ -434,10 +444,10 @@ ChangeKindFromTable:
     sec
     sbc #$80
     tay
-    lda a:$A650,y
+    lda a:ChangeKindFromTableField93s,y
     sta z:zField93
     ply
-    lda a:$A668,y
+    lda a:ChangeKindFromTableKinds,y
     bne ChangeKindFromTable_at0
     jmp VecClearObject
 ChangeKindFromTable_at0:
@@ -463,9 +473,9 @@ ChangeKindFromTable_at0:
     lda a:OBJ_FACING_LEFT
     asl a
     tay
-    lda a:$A672,y
+    lda a:ChangeKindFromTableVxLos+1,y
     sta a:OBJ_VX_HI,x
-    lda a:$A671,y
+    lda a:ChangeKindFromTableVxLos,y
     sta a:OBJ_VX_LO,x
     rts
 
@@ -479,6 +489,7 @@ ChangeKindFromTable_at0:
 ; Entry: X object, Y kept unless AnimateKind88 sets it. Exit: as the handler leaves it; at the jump A
 ; is the table's high byte, Y the state doubled, N and Z from A, C and V as SetBlinkFlash and the
 ; earlier calls left them.
+RunObjectStateHandlers = $A71E ; a handler's address by index
 RunObjectState:
     jsr AnimateKind88
     jsr EnterHurtStateOnHit
@@ -486,9 +497,9 @@ RunObjectState:
     lda a:OBJ_STATE,x
     asl a
     tay
-    lda a:$A71E,y
+    lda a:RunObjectStateHandlers,y
     sta z:zTemp00
-    lda a:$A71F,y
+    lda a:RunObjectStateHandlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -549,6 +560,8 @@ SetBlinkFlash_out:
 ; WAITS: no.
 ; Entry: X object. Exit: A the table byte, N and Z from it, C and V from the add of the character,
 ; Y the table index.
+StartKindFromCharacterKinds = $A668 ; table StartKindFromCharacter reads
+StartKindFromCharacterWorkEs = $A79E ; table StartKindFromCharacter reads
 StartKindFromCharacter:
     lda a:OBJ_KIND,x
     cmp #$93
@@ -559,7 +572,7 @@ StartKindFromCharacter:
     sta a:OBJ_KIND,x
 StartKindFromCharacter_at0:
     ldy z:zField93
-    lda a:$A668,y
+    lda a:StartKindFromCharacterKinds,y
     cmp a:OBJ_KIND,x
     bne StartKindFromCharacter_at1
     lda #$84
@@ -575,7 +588,7 @@ StartKindFromCharacter_at1:
     clc
     adc z:zCharacter
     tay
-    lda a:$A79E,y
+    lda a:StartKindFromCharacterWorkEs,y
     sta a:OBJ_WORK_E,x
     rts
 
@@ -670,24 +683,27 @@ BitMaskFromIndex_out:
 ; WAITS: no.
 ; Entry: X object. Exit: started: A the last speed byte, Y the row's start, C bit 6 of OBJ_WORK_E, N and
 ; Z from A; else as DropOffScreen.
+StartThrownItemVxLos = $A95E ; table StartThrownItem reads
+StartThrownItemVyLos = $A960 ; table StartThrownItem reads
+StartThrownItemFrames = $A97E ; table StartThrownItem reads
 StartThrownItem:
     lda a:OBJ_STATE,x
     bne DropOffScreen
     jsr VecLoadObjectRecord
     ldy a:OBJ_WORK_D,x
-    lda a:$A97E,y
+    lda a:StartThrownItemFrames,y
     sta a:OBJ_FRAME,x
     lda a:OBJ_WORK_E,x
     asl a
     asl a
     tay
-    lda a:$A95F,y
+    lda a:StartThrownItemVxLos+1,y
     sta a:OBJ_VX_HI,x
-    lda a:$A95E,y
+    lda a:StartThrownItemVxLos,y
     sta a:OBJ_VX_LO,x
-    lda a:$A961,y
+    lda a:StartThrownItemVyLos+1,y
     sta a:OBJ_VY_HI,x
-    lda a:$A960,y
+    lda a:StartThrownItemVyLos,y
     sta a:OBJ_VY_LO,x
     rts
 
@@ -716,22 +732,24 @@ DropOffScreen_at0:
 ; Untraced: the extra life (A9C2).
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+StartScorePickupFrames = $A9DC ; table StartScorePickup reads
+StartScorePickupTemp00s = $A9E1 ; table StartScorePickup reads
 StartScorePickup:
     jsr VecLoadObjectRecord
     stz a:OBJ_FACING_LEFT,x
     lda a:OBJ_WORK_D,x
     asl a
     tay
-    lda a:$A9E1,y
+    lda a:StartScorePickupTemp00s,y
     sta z:zTemp00
-    lda a:$A9E2,y
+    lda a:StartScorePickupTemp00s+1,y
     sta z:zTemp01
     jsr VecAddScoreWord
     bcc StartScorePickup_at0
     jsr GiveExtraLife
 StartScorePickup_at0:
     ldy a:OBJ_WORK_D,x
-    lda a:$A9DC,y
+    lda a:StartScorePickupFrames,y
     sta a:OBJ_FRAME,x
     lda #$18
     sta a:OBJ_WORK_E,x

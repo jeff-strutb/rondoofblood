@@ -8,6 +8,8 @@
 ; then walks the stream from the scroll, and StepScrollAndRunObjects ends it.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+SetUpStageObjectsValues = $AC95 ; table SetUpStageObjects reads
+StageObjectRecords = $9BD2 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -15,13 +17,13 @@ SetUpStageObjects:
     asl a
     asl a
     tay
-    lda a:$9BD2,y
+    lda a:StageObjectRecords,y
     sta a:LevelStreamLo
-    lda a:$9BD3,y
+    lda a:StageObjectRecords+1,y
     sta a:LevelStreamHi
-    lda a:$9BD4,y
+    lda a:StageObjectRecords+2,y
     sta a:LevelAxis
-    lda a:$9BD5,y
+    lda a:StageObjectRecords+3,y
     beq SetUpStageObjects_at0
     ldx #$1F
 SetUpStageObjects_at1:
@@ -35,7 +37,7 @@ SetUpStageObjects_at0:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC95
+    lda a:SetUpStageObjectsValues
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -55,6 +57,8 @@ SetUpStageObjects_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9D01 and its second bank offset is the byte at $ACCA.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+SetUpStageObjectsBValues = $ACCA ; table SetUpStageObjectsB reads
+StageObjectRecordsB = $9D01 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsB:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -62,13 +66,13 @@ SetUpStageObjectsB:
     asl a
     asl a
     tay
-    lda a:$9D01,y
+    lda a:StageObjectRecordsB,y
     sta a:LevelStreamLo
-    lda a:$9D02,y
+    lda a:StageObjectRecordsB+1,y
     sta a:LevelStreamHi
-    lda a:$9D03,y
+    lda a:StageObjectRecordsB+2,y
     sta a:LevelAxis
-    lda a:$9D04,y
+    lda a:StageObjectRecordsB+3,y
     beq SetUpStageObjectsB_at0
     ldx #$1F
 SetUpStageObjectsB_at1:
@@ -82,7 +86,7 @@ SetUpStageObjectsB_at0:
     tam #$20
     inc a
     tam #$40
-    lda a:$ACCA
+    lda a:SetUpStageObjectsBValues
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -102,6 +106,7 @@ SetUpStageObjectsB_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9EBD and its second bank offset is the byte at $AC0E.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsC = $9EBD ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsC:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -109,13 +114,13 @@ SetUpStageObjectsC:
     asl a
     asl a
     tay
-    lda a:$9EBD,y
+    lda a:StageObjectRecordsC,y
     sta a:LevelStreamLo
-    lda a:$9EBE,y
+    lda a:StageObjectRecordsC+1,y
     sta a:LevelStreamHi
-    lda a:$9EBF,y
+    lda a:StageObjectRecordsC+2,y
     sta a:LevelAxis
-    lda a:$9EC0,y
+    lda a:StageObjectRecordsC+3,y
     beq SetUpStageObjectsC_at0
     ldx #$1F
 SetUpStageObjectsC_at1:
@@ -149,6 +154,7 @@ SetUpStageObjectsC_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9F90 and its second bank offset is the byte at $AC16.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsD = $9F90 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsD:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -156,13 +162,13 @@ SetUpStageObjectsD:
     asl a
     asl a
     tay
-    lda a:$9F90,y
+    lda a:StageObjectRecordsD,y
     sta a:LevelStreamLo
-    lda a:$9F91,y
+    lda a:StageObjectRecordsD+1,y
     sta a:LevelStreamHi
-    lda a:$9F92,y
+    lda a:StageObjectRecordsD+2,y
     sta a:LevelAxis
-    lda a:$9F93,y
+    lda a:StageObjectRecordsD+3,y
     beq SetUpStageObjectsD_at0
     ldx #$1F
 SetUpStageObjectsD_at1:
@@ -196,6 +202,8 @@ SetUpStageObjectsD_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9E19 and its second bank offset is the byte at $ABDC.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+SetUpStageObjectsEValues = $ABDC ; table SetUpStageObjectsE reads
+StageObjectRecordsE = $9E19 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsE:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -203,13 +211,13 @@ SetUpStageObjectsE:
     asl a
     asl a
     tay
-    lda a:$9E19,y
+    lda a:StageObjectRecordsE,y
     sta a:LevelStreamLo
-    lda a:$9E1A,y
+    lda a:StageObjectRecordsE+1,y
     sta a:LevelStreamHi
-    lda a:$9E1B,y
+    lda a:StageObjectRecordsE+2,y
     sta a:LevelAxis
-    lda a:$9E1C,y
+    lda a:StageObjectRecordsE+3,y
     beq SetUpStageObjectsE_at0
     ldx #$1F
 SetUpStageObjectsE_at1:
@@ -223,7 +231,7 @@ SetUpStageObjectsE_at0:
     tam #$20
     inc a
     tam #$40
-    lda a:$ABDC
+    lda a:SetUpStageObjectsEValues
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -243,6 +251,7 @@ SetUpStageObjectsE_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9E90 and its second bank offset is the byte at $AB03.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsF = $9E90 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsF:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -250,13 +259,13 @@ SetUpStageObjectsF:
     asl a
     asl a
     tay
-    lda a:$9E90,y
+    lda a:StageObjectRecordsF,y
     sta a:LevelStreamLo
-    lda a:$9E91,y
+    lda a:StageObjectRecordsF+1,y
     sta a:LevelStreamHi
-    lda a:$9E92,y
+    lda a:StageObjectRecordsF+2,y
     sta a:LevelAxis
-    lda a:$9E93,y
+    lda a:StageObjectRecordsF+3,y
     beq SetUpStageObjectsF_at0
     ldx #$1F
 SetUpStageObjectsF_at1:
@@ -290,6 +299,8 @@ SetUpStageObjectsF_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9E00 and its second bank offset is the byte at $AC8E.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+SetUpStageObjectsGValues = $AC8E ; table SetUpStageObjectsG reads
+StageObjectRecordsG = $9E00 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsG:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -297,13 +308,13 @@ SetUpStageObjectsG:
     asl a
     asl a
     tay
-    lda a:$9E00,y
+    lda a:StageObjectRecordsG,y
     sta a:LevelStreamLo
-    lda a:$9E01,y
+    lda a:StageObjectRecordsG+1,y
     sta a:LevelStreamHi
-    lda a:$9E02,y
+    lda a:StageObjectRecordsG+2,y
     sta a:LevelAxis
-    lda a:$9E03,y
+    lda a:StageObjectRecordsG+3,y
     beq SetUpStageObjectsG_at0
     ldx #$1F
 SetUpStageObjectsG_at1:
@@ -317,7 +328,7 @@ SetUpStageObjectsG_at0:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC8E
+    lda a:SetUpStageObjectsGValues
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -337,6 +348,7 @@ SetUpStageObjectsG_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9ED6 and its second bank offset is the byte at $AC5E.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsH = $9ED6 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsH:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -344,13 +356,13 @@ SetUpStageObjectsH:
     asl a
     asl a
     tay
-    lda a:$9ED6,y
+    lda a:StageObjectRecordsH,y
     sta a:LevelStreamLo
-    lda a:$9ED7,y
+    lda a:StageObjectRecordsH+1,y
     sta a:LevelStreamHi
-    lda a:$9ED8,y
+    lda a:StageObjectRecordsH+2,y
     sta a:LevelAxis
-    lda a:$9ED9,y
+    lda a:StageObjectRecordsH+3,y
     beq SetUpStageObjectsH_at0
     ldx #$1F
 SetUpStageObjectsH_at1:
@@ -384,6 +396,7 @@ SetUpStageObjectsH_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9E30 and its second bank offset is the byte at $ACE3.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsI = $9E30 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsI:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -391,13 +404,13 @@ SetUpStageObjectsI:
     asl a
     asl a
     tay
-    lda a:$9E30,y
+    lda a:StageObjectRecordsI,y
     sta a:LevelStreamLo
-    lda a:$9E31,y
+    lda a:StageObjectRecordsI+1,y
     sta a:LevelStreamHi
-    lda a:$9E32,y
+    lda a:StageObjectRecordsI+2,y
     sta a:LevelAxis
-    lda a:$9E33,y
+    lda a:StageObjectRecordsI+3,y
     beq SetUpStageObjectsI_at0
     ldx #$1F
 SetUpStageObjectsI_at1:
@@ -431,6 +444,7 @@ SetUpStageObjectsI_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9EA1 and its second bank offset is the byte at $AB27.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsJ = $9EA1 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsJ:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -438,13 +452,13 @@ SetUpStageObjectsJ:
     asl a
     asl a
     tay
-    lda a:$9EA1,y
+    lda a:StageObjectRecordsJ,y
     sta a:LevelStreamLo
-    lda a:$9EA2,y
+    lda a:StageObjectRecordsJ+1,y
     sta a:LevelStreamHi
-    lda a:$9EA3,y
+    lda a:StageObjectRecordsJ+2,y
     sta a:LevelAxis
-    lda a:$9EA4,y
+    lda a:StageObjectRecordsJ+3,y
     beq SetUpStageObjectsJ_at0
     ldx #$1F
 SetUpStageObjectsJ_at1:
@@ -478,6 +492,7 @@ SetUpStageObjectsJ_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9E05 and its second bank offset is the byte at $ACA7.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsK = $9E05 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsK:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -485,13 +500,13 @@ SetUpStageObjectsK:
     asl a
     asl a
     tay
-    lda a:$9E05,y
+    lda a:StageObjectRecordsK,y
     sta a:LevelStreamLo
-    lda a:$9E06,y
+    lda a:StageObjectRecordsK+1,y
     sta a:LevelStreamHi
-    lda a:$9E07,y
+    lda a:StageObjectRecordsK+2,y
     sta a:LevelAxis
-    lda a:$9E08,y
+    lda a:StageObjectRecordsK+3,y
     beq SetUpStageObjectsK_at0
     ldx #$1F
 SetUpStageObjectsK_at1:
@@ -525,6 +540,7 @@ SetUpStageObjectsK_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9EA4 and its second bank offset is the byte at $AC8B.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsL = $9EA4 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsL:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -532,13 +548,13 @@ SetUpStageObjectsL:
     asl a
     asl a
     tay
-    lda a:$9EA4,y
+    lda a:StageObjectRecordsL,y
     sta a:LevelStreamLo
-    lda a:$9EA5,y
+    lda a:StageObjectRecordsL+1,y
     sta a:LevelStreamHi
-    lda a:$9EA6,y
+    lda a:StageObjectRecordsL+2,y
     sta a:LevelAxis
-    lda a:$9EA7,y
+    lda a:StageObjectRecordsL+3,y
     beq SetUpStageObjectsL_at0
     ldx #$1F
 SetUpStageObjectsL_at1:
@@ -572,6 +588,7 @@ SetUpStageObjectsL_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9EA1 and its second bank offset is the byte at $AD91.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsM = $9EA1 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsM:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -579,13 +596,13 @@ SetUpStageObjectsM:
     asl a
     asl a
     tay
-    lda a:$9EA1,y
+    lda a:StageObjectRecordsM,y
     sta a:LevelStreamLo
-    lda a:$9EA2,y
+    lda a:StageObjectRecordsM+1,y
     sta a:LevelStreamHi
-    lda a:$9EA3,y
+    lda a:StageObjectRecordsM+2,y
     sta a:LevelAxis
-    lda a:$9EA4,y
+    lda a:StageObjectRecordsM+3,y
     beq SetUpStageObjectsM_at0
     ldx #$1F
 SetUpStageObjectsM_at1:
@@ -619,6 +636,7 @@ SetUpStageObjectsM_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9ED3 and its second bank offset is the byte at $AB70.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsN = $9ED3 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsN:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -626,13 +644,13 @@ SetUpStageObjectsN:
     asl a
     asl a
     tay
-    lda a:$9ED3,y
+    lda a:StageObjectRecordsN,y
     sta a:LevelStreamLo
-    lda a:$9ED4,y
+    lda a:StageObjectRecordsN+1,y
     sta a:LevelStreamHi
-    lda a:$9ED5,y
+    lda a:StageObjectRecordsN+2,y
     sta a:LevelAxis
-    lda a:$9ED6,y
+    lda a:StageObjectRecordsN+3,y
     beq SetUpStageObjectsN_at0
     ldx #$1F
 SetUpStageObjectsN_at1:
@@ -666,6 +684,7 @@ SetUpStageObjectsN_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9F36 and its second bank offset is the byte at $AD3F.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsO = $9F36 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsO:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -673,13 +692,13 @@ SetUpStageObjectsO:
     asl a
     asl a
     tay
-    lda a:$9F36,y
+    lda a:StageObjectRecordsO,y
     sta a:LevelStreamLo
-    lda a:$9F37,y
+    lda a:StageObjectRecordsO+1,y
     sta a:LevelStreamHi
-    lda a:$9F38,y
+    lda a:StageObjectRecordsO+2,y
     sta a:LevelAxis
-    lda a:$9F39,y
+    lda a:StageObjectRecordsO+3,y
     beq SetUpStageObjectsO_at0
     ldx #$1F
 SetUpStageObjectsO_at1:
@@ -713,6 +732,7 @@ SetUpStageObjectsO_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9F47 and its second bank offset is the byte at $ABA7.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsP = $9F47 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsP:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -720,13 +740,13 @@ SetUpStageObjectsP:
     asl a
     asl a
     tay
-    lda a:$9F47,y
+    lda a:StageObjectRecordsP,y
     sta a:LevelStreamLo
-    lda a:$9F48,y
+    lda a:StageObjectRecordsP+1,y
     sta a:LevelStreamHi
-    lda a:$9F49,y
+    lda a:StageObjectRecordsP+2,y
     sta a:LevelAxis
-    lda a:$9F4A,y
+    lda a:StageObjectRecordsP+3,y
     beq SetUpStageObjectsP_at0
     ldx #$1F
 SetUpStageObjectsP_at1:
@@ -760,6 +780,7 @@ SetUpStageObjectsP_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9D8A and its second bank offset is the byte at $AD1B.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsQ = $9D8A ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsQ:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -767,13 +788,13 @@ SetUpStageObjectsQ:
     asl a
     asl a
     tay
-    lda a:$9D8A,y
+    lda a:StageObjectRecordsQ,y
     sta a:LevelStreamLo
-    lda a:$9D8B,y
+    lda a:StageObjectRecordsQ+1,y
     sta a:LevelStreamHi
-    lda a:$9D8C,y
+    lda a:StageObjectRecordsQ+2,y
     sta a:LevelAxis
-    lda a:$9D8D,y
+    lda a:StageObjectRecordsQ+3,y
     beq SetUpStageObjectsQ_at0
     ldx #$1F
 SetUpStageObjectsQ_at1:
@@ -807,6 +828,7 @@ SetUpStageObjectsQ_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9F4A and its second bank offset is the byte at $ACC9.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsR = $9F4A ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsR:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -814,13 +836,13 @@ SetUpStageObjectsR:
     asl a
     asl a
     tay
-    lda a:$9F4A,y
+    lda a:StageObjectRecordsR,y
     sta a:LevelStreamLo
-    lda a:$9F4B,y
+    lda a:StageObjectRecordsR+1,y
     sta a:LevelStreamHi
-    lda a:$9F4C,y
+    lda a:StageObjectRecordsR+2,y
     sta a:LevelAxis
-    lda a:$9F4D,y
+    lda a:StageObjectRecordsR+3,y
     beq SetUpStageObjectsR_at0
     ldx #$1F
 SetUpStageObjectsR_at1:
@@ -854,6 +876,7 @@ SetUpStageObjectsR_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9D54 and its second bank offset is the byte at $AD36.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsS = $9D54 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsS:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -861,13 +884,13 @@ SetUpStageObjectsS:
     asl a
     asl a
     tay
-    lda a:$9D54,y
+    lda a:StageObjectRecordsS,y
     sta a:LevelStreamLo
-    lda a:$9D55,y
+    lda a:StageObjectRecordsS+1,y
     sta a:LevelStreamHi
-    lda a:$9D56,y
+    lda a:StageObjectRecordsS+2,y
     sta a:LevelAxis
-    lda a:$9D57,y
+    lda a:StageObjectRecordsS+3,y
     beq SetUpStageObjectsS_at0
     ldx #$1F
 SetUpStageObjectsS_at1:
@@ -901,6 +924,7 @@ SetUpStageObjectsS_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9F7E and its second bank offset is the byte at $ACF7.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsT = $9F7E ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsT:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -908,13 +932,13 @@ SetUpStageObjectsT:
     asl a
     asl a
     tay
-    lda a:$9F7E,y
+    lda a:StageObjectRecordsT,y
     sta a:LevelStreamLo
-    lda a:$9F7F,y
+    lda a:StageObjectRecordsT+1,y
     sta a:LevelStreamHi
-    lda a:$9F80,y
+    lda a:StageObjectRecordsT+2,y
     sta a:LevelAxis
-    lda a:$9F81,y
+    lda a:StageObjectRecordsT+3,y
     beq SetUpStageObjectsT_at0
     ldx #$1F
 SetUpStageObjectsT_at1:
@@ -948,6 +972,7 @@ SetUpStageObjectsT_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9E26 and its second bank offset is the byte at $AD31.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsU = $9E26 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsU:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -955,13 +980,13 @@ SetUpStageObjectsU:
     asl a
     asl a
     tay
-    lda a:$9E26,y
+    lda a:StageObjectRecordsU,y
     sta a:LevelStreamLo
-    lda a:$9E27,y
+    lda a:StageObjectRecordsU+1,y
     sta a:LevelStreamHi
-    lda a:$9E28,y
+    lda a:StageObjectRecordsU+2,y
     sta a:LevelAxis
-    lda a:$9E29,y
+    lda a:StageObjectRecordsU+3,y
     beq SetUpStageObjectsU_at0
     ldx #$1F
 SetUpStageObjectsU_at1:
@@ -995,6 +1020,7 @@ SetUpStageObjectsU_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9F6D and its second bank offset is the byte at $AC65.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsV = $9F6D ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsV:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -1002,13 +1028,13 @@ SetUpStageObjectsV:
     asl a
     asl a
     tay
-    lda a:$9F6D,y
+    lda a:StageObjectRecordsV,y
     sta a:LevelStreamLo
-    lda a:$9F6E,y
+    lda a:StageObjectRecordsV+1,y
     sta a:LevelStreamHi
-    lda a:$9F6F,y
+    lda a:StageObjectRecordsV+2,y
     sta a:LevelAxis
-    lda a:$9F70,y
+    lda a:StageObjectRecordsV+3,y
     beq SetUpStageObjectsV_at0
     ldx #$1F
 SetUpStageObjectsV_at1:
@@ -1042,6 +1068,7 @@ SetUpStageObjectsV_at0:
 ; The same code as SetUpStageObjects; this overlay's section records are at $9F31 and its second bank offset is the byte at $AC49.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecordsW = $9F31 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjectsW:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7
@@ -1049,13 +1076,13 @@ SetUpStageObjectsW:
     asl a
     asl a
     tay
-    lda a:$9F31,y
+    lda a:StageObjectRecordsW,y
     sta a:LevelStreamLo
-    lda a:$9F32,y
+    lda a:StageObjectRecordsW+1,y
     sta a:LevelStreamHi
-    lda a:$9F33,y
+    lda a:StageObjectRecordsW+2,y
     sta a:LevelAxis
-    lda a:$9F34,y
+    lda a:StageObjectRecordsW+3,y
     beq SetUpStageObjectsW_at0
     ldx #$1F
 SetUpStageObjectsW_at1:

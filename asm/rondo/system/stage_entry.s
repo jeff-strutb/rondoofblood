@@ -7,6 +7,7 @@
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
 ; Clobbers zTemp00-01.
+LoadStageEntryXLoAdds = $8A32 ; table LoadStageEntry reads
 StageEntryRecords = $9BC2 ; the section's entry record by zField83
 LoadStageEntry:
     stz z:zRasterStage
@@ -53,7 +54,7 @@ LoadStageEntry:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -101,7 +102,7 @@ LoadStageEntry_at0:
     tax
     lda a:OBJ_X_LO
     clc
-    adc a:$8A32,x
+    adc a:LoadStageEntryXLoAdds,x
     sta a:OBJ_X_LO
     lda (zTemp00),y
     iny
@@ -127,6 +128,7 @@ LoadStageEntry_at2:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
 ; Clobbers zTemp00-01.
+LoadStageEntryBXLoAdds = $8A32 ; table LoadStageEntryB reads
 StageEntryRecordsB = $9C71 ; the section's entry record by zField83
 LoadStageEntryB:
     stz z:zRasterStage
@@ -173,7 +175,7 @@ LoadStageEntryB:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -221,7 +223,7 @@ LoadStageEntryB_at0:
     tax
     lda a:OBJ_X_LO
     clc
-    adc a:$8A32,x
+    adc a:LoadStageEntryBXLoAdds,x
     sta a:OBJ_X_LO
     lda (zTemp00),y
     iny
@@ -487,6 +489,7 @@ LoadStageEntryD_at2:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
 ; Clobbers zTemp00-01.
+LoadStageEntryEXLoAdds = $8A32 ; table LoadStageEntryE reads
 StageEntryRecordsE = $9D29 ; the section's entry record by zField83
 LoadStageEntryE:
     stz z:zRasterStage
@@ -533,7 +536,7 @@ LoadStageEntryE:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -581,7 +584,7 @@ LoadStageEntryE_at0:
     tax
     lda a:OBJ_X_LO
     clc
-    adc a:$8A32,x
+    adc a:LoadStageEntryEXLoAdds,x
     sta a:OBJ_X_LO
     lda (zTemp00),y
     iny
@@ -727,6 +730,7 @@ LoadStageEntryF_at2:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y.
 ; Clobbers zTemp00-01.
+LoadStageEntryGXLoAdds = $8A32 ; table LoadStageEntryG reads
 StageEntryRecordsG = $9D6C ; the section's entry record by zField83
 LoadStageEntryG:
     stz z:zRasterStage
@@ -773,7 +777,7 @@ LoadStageEntryG:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -821,7 +825,7 @@ LoadStageEntryG_at0:
     tax
     lda a:OBJ_X_LO
     clc
-    adc a:$8A32,x
+    adc a:LoadStageEntryGXLoAdds,x
     sta a:OBJ_X_LO
     lda (zTemp00),y
     iny

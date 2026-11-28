@@ -35,6 +35,7 @@ HitTestAllObjects_at0:
 ; Eleven stage overlays hold this code, the ones whose handlers are at $9543 and $9568.
 ; WAITS: no.
 ; Entry: X the object. Exit: with no hit A the last value, Y $FF, N set; with one, as the handler.
+HitTestObjectHandlers = $9525 ; a handler's address by index
 HitTestObject:
     stz a:OBJ_HIT_TAKEN,x
     lda a:OBJ_HITBOX_ON,x
@@ -128,9 +129,9 @@ HitTestObject_at11:
     dec a
     asl a
     tay
-    lda a:$9525,y
+    lda a:HitTestObjectHandlers,y
     sta z:zTemp00
-    lda a:$9526,y
+    lda a:HitTestObjectHandlers+1,y
     sta z:zTemp01
     ldy z:zHitSlot
     jmp (ZeroPage)

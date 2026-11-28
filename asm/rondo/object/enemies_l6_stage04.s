@@ -90,6 +90,8 @@ LoadThenStepListBreakAtFive_at1:
 ; HOW: LoadObjectRecord, table reads (bank 70); a tail jump into StepListByTimerWithGravity.
 ; WAITS: no.
 ; Entry: X object. Exit: state 0: the last table byte, Y the row; else as StepListByTimerWithGravity.
+LoadOrFallAlongListByTimerVxLos = $B125 ; table LoadOrFallAlongListByTimer reads
+LoadOrFallAlongListByTimerVyLos = $B127 ; table LoadOrFallAlongListByTimer reads
 LoadOrFallAlongListByTimer:
     lda a:OBJ_STATE,x
     bne StepListByTimerWithGravity
@@ -98,13 +100,13 @@ LoadOrFallAlongListByTimer:
     asl a
     asl a
     tay
-    lda a:$B126,y
+    lda a:LoadOrFallAlongListByTimerVxLos+1,y
     sta a:OBJ_VX_HI,x
-    lda a:$B125,y
+    lda a:LoadOrFallAlongListByTimerVxLos,y
     sta a:OBJ_VX_LO,x
-    lda a:$B128,y
+    lda a:LoadOrFallAlongListByTimerVyLos+1,y
     sta a:OBJ_VY_HI,x
-    lda a:$B127,y
+    lda a:LoadOrFallAlongListByTimerVyLos,y
     sta a:OBJ_VY_LO,x
     rts
 
@@ -114,13 +116,14 @@ LoadOrFallAlongListByTimer:
 ; HOW: Two table reads (bank 70), StepObjectFrames, ApplyGravityUnlimited, a tail jump into ApplyVelocity.
 ; WAITS: no.
 ; Entry: X object, Y overwritten. Exit: as ApplyVelocity.
+StepListByTimerWithGravityLists = $B14D ; a list's address by index
 StepListByTimerWithGravity:
     lda a:OBJ_WORK_D,x
     asl a
     tay
-    lda a:$B14D,y
+    lda a:StepListByTimerWithGravityLists,y
     sta z:zTemp10
-    lda a:$B14E,y
+    lda a:StepListByTimerWithGravityLists+1,y
     sta z:zTemp11
     jsr VecStepObjectFrames
     jsr VecApplyGravityUnlimited
@@ -155,7 +158,7 @@ StartPhaseWhenScrolled:
     ora #$02
     sta a:HitAttackFlags
     lda #$01
-    sta z:$3C
+    sta z:zFadeActive
     inc a:OBJ_STATE,x
 StartPhaseWhenScrolled_at0:
     rts
@@ -190,6 +193,7 @@ SetFirstObjectTimersThenCount_at0:
 ; HOW: LoadObjectRecord, a 16-bit subtract, a search loop, ClearObjectInY, StartObjectAtPlace, NextRandom.
 ; WAITS: no.
 ; Entry: X object. Exit: the last test or load.
+LoadThenSpawnWhileScrollingWorkEs = $B2DF ; table LoadThenSpawnWhileScrolling reads
 LoadThenSpawnWhileScrolling:
     lda a:OBJ_STATE,x
     bne LoadThenSpawnWhileScrolling_at0
@@ -230,9 +234,9 @@ LoadThenSpawnWhileScrolling_at3:
     and #$03
     asl a
     tay
-    lda a:$B2DF,y
+    lda a:LoadThenSpawnWhileScrollingWorkEs,y
     sta a:OBJ_WORK_E,x
-    lda a:$B2E0,y
+    lda a:LoadThenSpawnWhileScrollingWorkEs+1,y
     sta a:OBJ_WORK_D,x
 LoadThenSpawnWhileScrolling_at2:
     rts
@@ -466,6 +470,7 @@ StartPieceAtNextSlot:
 ; HOW: DistanceXToPlayer, DistanceYToPlayer, tests, StepObjectFrames, ApplyVelocityX.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the last test or step.
+WalkWhileNearPlayerVxLos = $B644 ; table WalkWhileNearPlayer reads
 WalkWhileNearPlayer:
     jsr VecDistanceXToPlayer
     cmp #$60
@@ -500,9 +505,9 @@ WalkWhileNearPlayer_at3:
     lda a:OBJ_WORK_G,x
     asl a
     tay
-    lda a:$B644,y
+    lda a:WalkWhileNearPlayerVxLos,y
     sta a:OBJ_VX_LO,x
-    lda a:$B645,y
+    lda a:WalkWhileNearPlayerVxLos+1,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
     rts
@@ -577,6 +582,7 @@ StartFourPiecesWithCount_at0:
 ; HOW: StopOnLanding, SideOfPlayer, table reads (bank 70), stores.
 ; WAITS: no.
 ; Entry: X object, Y the probe's column, C passed on. Exit: the mover's registers, then A 2 when landed.
+LandThenFaceAndRunVxLos = $B3BF ; table LandThenFaceAndRun reads
 LandThenFaceAndRun:
     lda #$04
     jsr VecStopOnLanding
@@ -586,9 +592,9 @@ LandThenFaceAndRun:
     sta a:OBJ_FACING_LEFT,x
     asl a
     tay
-    lda a:$B3C0,y
+    lda a:LandThenFaceAndRunVxLos+1,y
     sta a:OBJ_VX_HI,x
-    lda a:$B3BF,y
+    lda a:LandThenFaceAndRunVxLos,y
     sta a:OBJ_VX_LO,x
     stz a:OBJ_WORK_G,x
     lda #$02
@@ -613,7 +619,7 @@ LoadRecordB04:
 ; WAITS: no.
 ; Entry: X object. Exit: the last clear (all registers as ApplyVelocity left them but A, N and Z).
 FollowBlockWhileState5:
-    lda a:$27A7,x
+    lda a:OBJ_KIND+87,x
     cmp #$05
     beq FollowBlockWhileState5_at0
     lda a:OBJ_HIT_STATUS,x
@@ -629,7 +635,7 @@ FollowBlockWhileState5_at0:
     sta a:OBJ_VX_HI,x
     lda #$E4
     sta a:OBJ_VY_HI,x
-    lda a:$2A67,x
+    lda a:OBJ_SPRITE_SET+87,x
     cmp #$15
     bne SoundCommandLengths
     lda #$F6
@@ -728,6 +734,9 @@ RandomTimer10:
 ; HOW: RandomTimer10, FindFreeSlotFrom30, table reads (bank 70), NextRandom twice.
 ; WAITS: no.
 ; Entry: X object. Exit: the new OBJ_WORK_E's N and Z, Y the new slot; or the count.
+SpawnPointFromTablesXLoAdds = $C97A ; table SpawnPointFromTables reads
+SpawnPointFromTablesXLos = $CA99 ; table SpawnPointFromTables reads
+SpawnPointFromTablesYLos = $CA9B ; table SpawnPointFromTables reads
 SpawnPointFromTables:
     dec a:OBJ_WORK_D,x
     bne SpawnPointFromTables_at0
@@ -746,15 +755,15 @@ SpawnPointFromTables:
     asl a
     ldx z:zTemp10
     clc
-    adc a:$C97A,x
+    adc a:SpawnPointFromTablesXLoAdds,x
     tax
-    lda a:$CA99,x
+    lda a:SpawnPointFromTablesXLos,x
     sta a:OBJ_X_LO,y
-    lda a:$CA9A,x
+    lda a:SpawnPointFromTablesXLos+1,x
     sta a:OBJ_X_HI,y
-    lda a:$CA9B,x
+    lda a:SpawnPointFromTablesYLos,x
     sta a:OBJ_Y_LO,y
-    lda a:$CA9C,x
+    lda a:SpawnPointFromTablesYLos+1,x
     sta a:OBJ_Y_HI,y
     plx
     jsr VecNextRandom

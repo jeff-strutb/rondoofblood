@@ -37,17 +37,17 @@ SpawnStageObjectsRows34_at0:
     jsr SpawnStageObject
     inx
     jsr SpawnStageObject
-    dec a:$2BC4
-    dec a:$2CCD
+    dec a:OBJ_X_HI+84
+    dec a:OBJ_Y_HI+85
     lda #$04
-    sta a:$2DD4
-    sta a:$2E85
+    sta a:OBJ_VX_HI+84
+    sta a:OBJ_VY_HI+85
     lda #$20
-    sta a:$3564
-    sta a:$3565
+    sta a:OBJ_FLING_WAIT+84
+    sta a:OBJ_FLING_WAIT+85
     lda #$02
     sta a:TimeSlowMode
-    stz a:$3614
+    stz a:OBJ_STATE_BEFORE_HIT+84
     rts
 
 ; @routine 05BE:353 SpawnStageObjectsRows01Long

@@ -228,6 +228,7 @@ StageScrollStep026E:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9D23; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords026E = $9D23 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects026E:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -235,13 +236,13 @@ SetUpStageObjects026E:
     asl a
     asl a
     tay
-    lda a:$9D23,y
+    lda a:StageObjectRecords026E,y
     sta a:LevelStreamLo
-    lda a:$9D24,y
+    lda a:StageObjectRecords026E+1,y
     sta a:LevelStreamHi
-    lda a:$9D25,y
+    lda a:StageObjectRecords026E+2,y
     sta a:LevelAxis
-    lda a:$9D26,y
+    lda a:StageObjectRecords026E+3,y
     beq SetUpStageObjects026E_at0
     ldx #$1F
 SetUpStageObjects026E_at1:
@@ -630,6 +631,7 @@ StageScrollStep031E:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9E4F; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords031E = $9E4F ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects031E:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -637,13 +639,13 @@ SetUpStageObjects031E:
     asl a
     asl a
     tay
-    lda a:$9E4F,y
+    lda a:StageObjectRecords031E,y
     sta a:LevelStreamLo
-    lda a:$9E50,y
+    lda a:StageObjectRecords031E+1,y
     sta a:LevelStreamHi
-    lda a:$9E51,y
+    lda a:StageObjectRecords031E+2,y
     sta a:LevelAxis
-    lda a:$9E52,y
+    lda a:StageObjectRecords031E+3,y
     beq SetUpStageObjects031E_at0
     ldx #$1F
 SetUpStageObjects031E_at1:
@@ -1032,6 +1034,7 @@ StageScrollStep043E:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9F22; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords043E = $9F22 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects043E:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -1039,13 +1042,13 @@ SetUpStageObjects043E:
     asl a
     asl a
     tay
-    lda a:$9F22,y
+    lda a:StageObjectRecords043E,y
     sta a:LevelStreamLo
-    lda a:$9F23,y
+    lda a:StageObjectRecords043E+1,y
     sta a:LevelStreamHi
-    lda a:$9F24,y
+    lda a:StageObjectRecords043E+2,y
     sta a:LevelAxis
-    lda a:$9F25,y
+    lda a:StageObjectRecords043E+3,y
     beq SetUpStageObjects043E_at0
     ldx #$1F
 SetUpStageObjects043E_at1:
@@ -1434,6 +1437,7 @@ StageScrollStep064E:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9E22; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords064E = $9E22 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects064E:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -1441,13 +1445,13 @@ SetUpStageObjects064E:
     asl a
     asl a
     tay
-    lda a:$9E22,y
+    lda a:StageObjectRecords064E,y
     sta a:LevelStreamLo
-    lda a:$9E23,y
+    lda a:StageObjectRecords064E+1,y
     sta a:LevelStreamHi
-    lda a:$9E24,y
+    lda a:StageObjectRecords064E+2,y
     sta a:LevelAxis
-    lda a:$9E25,y
+    lda a:StageObjectRecords064E+3,y
     beq SetUpStageObjects064E_at0
     ldx #$1F
 SetUpStageObjects064E_at1:
@@ -1836,6 +1840,7 @@ StageScrollStep10DE:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9F10; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords10DE = $9F10 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects10DE:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -1843,13 +1848,13 @@ SetUpStageObjects10DE:
     asl a
     asl a
     tay
-    lda a:$9F10,y
+    lda a:StageObjectRecords10DE,y
     sta a:LevelStreamLo
-    lda a:$9F11,y
+    lda a:StageObjectRecords10DE+1,y
     sta a:LevelStreamHi
-    lda a:$9F12,y
+    lda a:StageObjectRecords10DE+2,y
     sta a:LevelAxis
-    lda a:$9F13,y
+    lda a:StageObjectRecords10DE+3,y
     beq SetUpStageObjects10DE_at0
     ldx #$1F
 SetUpStageObjects10DE_at1:
@@ -2238,6 +2243,7 @@ StageScrollStep122E:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9E48; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords122E = $9E48 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects122E:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -2245,13 +2251,13 @@ SetUpStageObjects122E:
     asl a
     asl a
     tay
-    lda a:$9E48,y
+    lda a:StageObjectRecords122E,y
     sta a:LevelStreamLo
-    lda a:$9E49,y
+    lda a:StageObjectRecords122E+1,y
     sta a:LevelStreamHi
-    lda a:$9E4A,y
+    lda a:StageObjectRecords122E+2,y
     sta a:LevelAxis
-    lda a:$9E4B,y
+    lda a:StageObjectRecords122E+3,y
     beq SetUpStageObjects122E_at0
     ldx #$1F
 SetUpStageObjects122E_at1:
@@ -2640,6 +2646,7 @@ StageScrollStep1A2E:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9E12; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords1A2E = $9E12 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects1A2E:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -2647,13 +2654,13 @@ SetUpStageObjects1A2E:
     asl a
     asl a
     tay
-    lda a:$9E12,y
+    lda a:StageObjectRecords1A2E,y
     sta a:LevelStreamLo
-    lda a:$9E13,y
+    lda a:StageObjectRecords1A2E+1,y
     sta a:LevelStreamHi
-    lda a:$9E14,y
+    lda a:StageObjectRecords1A2E+2,y
     sta a:LevelAxis
-    lda a:$9E15,y
+    lda a:StageObjectRecords1A2E+3,y
     beq SetUpStageObjects1A2E_at0
     ldx #$1F
 SetUpStageObjects1A2E_at1:
@@ -3042,6 +3049,7 @@ StageScrollStep1B8E:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9EC3; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords1B8E = $9EC3 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects1B8E:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -3049,13 +3057,13 @@ SetUpStageObjects1B8E:
     asl a
     asl a
     tay
-    lda a:$9EC3,y
+    lda a:StageObjectRecords1B8E,y
     sta a:LevelStreamLo
-    lda a:$9EC4,y
+    lda a:StageObjectRecords1B8E+1,y
     sta a:LevelStreamHi
-    lda a:$9EC5,y
+    lda a:StageObjectRecords1B8E+2,y
     sta a:LevelAxis
-    lda a:$9EC6,y
+    lda a:StageObjectRecords1B8E+3,y
     beq SetUpStageObjects1B8E_at0
     ldx #$1F
 SetUpStageObjects1B8E_at1:
@@ -3444,6 +3452,7 @@ StageScrollStep1CEE:
 ; HOW: SetUpObjectsBody (stage_objects.c); this copy's section records are at $9D76; the tail jump goes to $8A05.
 ; WAITS: no.
 ; Entry: X the caller's. Exit: as RunObjects.
+StageObjectRecords1CEE = $9D76 ; four bytes by zField83: the stream's place, the axis, clear the flags
 SetUpStageObjects1CEE:
     jsr VecClearEnemySlots
     jsr MapOverlayBank7At80A0
@@ -3451,13 +3460,13 @@ SetUpStageObjects1CEE:
     asl a
     asl a
     tay
-    lda a:$9D76,y
+    lda a:StageObjectRecords1CEE,y
     sta a:LevelStreamLo
-    lda a:$9D77,y
+    lda a:StageObjectRecords1CEE+1,y
     sta a:LevelStreamHi
-    lda a:$9D78,y
+    lda a:StageObjectRecords1CEE+2,y
     sta a:LevelAxis
-    lda a:$9D79,y
+    lda a:StageObjectRecords1CEE+3,y
     beq SetUpStageObjects1CEE_at0
     ldx #$1F
 SetUpStageObjects1CEE_at1:

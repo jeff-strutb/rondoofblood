@@ -878,3 +878,8 @@ A780,abs,LayerPlaceOffsetsLo,the place offsets' low bytes by the index word (0 a
 A782,abs,LayerPlaceOffsetsHi,the place offsets' high bytes by the index word, for LayerPlaceOffsetsLo and LayerPlaceOffsetsLoAlt
 3EBD,abs,CameraWavePhase,the phase of the water camera's wave (CameraWaterWave counts it on)
 A0E6,abs,CameraModes,the camera mode handlers by CameraMode, a word each (StageCameraModeDispatch)
+8006,abs,StageTerrainRead,in a stage overlay: its terrain read at the point in zTemp00-03 (StageTileRead; Maria's object probes jump to it)
+C63D,abs,MariaCompanionYOffsets,a companion's Y offset from her by OBJ_WORK_E (its slot less one and bit 1 of the frame tick) (MariaObjectKind1)
+C641,abs,MariaCompanionXOffsets,a companion's X offset from her by OBJ_WORK_E (MariaObjectKind1)
+C6F7,abs,MariaCompanionHandlers,the handlers of her companions in slots 1 and 2 by OBJ_KIND, six words (MariaRunCompanionKind)
+C73B,abs,MariaObjectHandlers,the handlers of her objects in slots 3 to 15 by OBJ_KIND (MariaRunObjectSlot)

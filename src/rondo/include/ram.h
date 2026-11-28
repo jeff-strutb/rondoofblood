@@ -864,5 +864,10 @@
 #define LayerPlaceOffsetsHi 0xA782 /* the place offsets' high bytes by the index word, for LayerPlaceOffsetsLo and LayerPlaceOffsetsLoAlt */
 #define CameraWavePhase 0x3EBD /* the phase of the water camera's wave (CameraWaterWave counts it on) */
 #define CameraModes 0xA0E6 /* the camera mode handlers by CameraMode, a word each (StageCameraModeDispatch) */
+#define StageTerrainRead 0x8006 /* in a stage overlay: its terrain read at the point in zTemp00-03 (StageTileRead; Maria's object probes jump to it) */
+#define MariaCompanionYOffsets 0xC63D /* a companion's Y offset from her by OBJ_WORK_E (its slot less one and bit 1 of the frame tick) (MariaObjectKind1) */
+#define MariaCompanionXOffsets 0xC641 /* a companion's X offset from her by OBJ_WORK_E (MariaObjectKind1) */
+#define MariaCompanionHandlers 0xC6F7 /* the handlers of her companions in slots 1 and 2 by OBJ_KIND, six words (MariaRunCompanionKind) */
+#define MariaObjectHandlers 0xC73B /* the handlers of her objects in slots 3 to 15 by OBJ_KIND (MariaRunObjectSlot) */
 
 #endif

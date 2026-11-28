@@ -5961,14 +5961,20 @@ void abi_TallyCell3CD(void)
  */
 StageRegs TallyPause3CD(StageRegs r)
 {
-    TallyWaitEnd wait = tally_wait(r, 0x92B2);
+    return TallyPause3CDAt(r, 0x92AF, &tally_3cd);
+}
+
+/* TallyPause3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyPause3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
+    TallyWaitEnd wait = tally_wait_at(r, at + 0x3, build->wait);
 
     r = wait.r;
     if (wait.dropped) {
         return r;
     }
     r = loaded(r, 0x40);
-    WR8(OBJ->work_b[16], 0x40);
+    wr8(build->wait, 0x40);
     return TallyNext152D(r);
 }
 

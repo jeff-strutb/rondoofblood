@@ -2166,6 +2166,12 @@ void abi_StageClearedWalkBack3CD(void)
  */
 StageRegs StageClearedWalkOn3CD(StageRegs r)
 {
+    return StageClearedWalkOn3CDAt(r, &route_3cd);
+}
+
+/* StageClearedWalkOn3CD's body, for the builds of it with their own tables. */
+StageRegs StageClearedWalkOn3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     uint8_t flags;
     bool start;
 
@@ -2183,7 +2189,7 @@ StageRegs StageClearedWalkOn3CD(StageRegs r)
         r.nz = INC8(ZP->field82);
         r = loaded(r, RD8(ZP->field82));
         r.y = r.a;
-        r = loaded(r, rd8((uint16_t)(0x9D60 + r.y)));
+        r = loaded(r, rd8((uint16_t)(build->next_stage + r.y)));
         WR8(ZP->field83, r.a);
         WR8(ZP->field86, r.a);
     } else {
@@ -2196,15 +2202,15 @@ StageRegs StageClearedWalkOn3CD(StageRegs r)
     r = loaded(r, RD8(ZP->field8c));
     r = compared(r, 0x07);
     if (!r.c) {
-        CALL(0x855E, StageRouteSetUpA3CD(r));
-        CALL(0x8561, StageRouteSetUpB3CD(r));
+        CALL(0x855E, StageRouteSetUpA3CDAt(r, build));
+        CALL(0x8561, StageRouteSetUpB3CDAt(r, build));
     }
-    CALL(0x8564, StageLoadRowMap3CD(r));
+    CALL(0x8564, StageLoadRowMap3CDAt(r, build));
     tai_shim(r, KernelZeros, ADDR_OF8(SCROLL->x_frac[0]), 0x0030);
     tai_shim(r, KernelZeros, ADDR_OF8(SCROLLE->f3e66[0]), 0x0088);
     r = loaded(r, RD8(ZP->field8e));
     push8(r.a);
-    CALL(0x8578, StageLoadScreen3CD(r));
+    CALL(0x8578, StageLoadScreen3CDAt(r, build));
     flags = pull8();
     r = loaded(r, flags);
     WR8(ZP->field8e, flags);
@@ -2213,7 +2219,7 @@ StageRegs StageClearedWalkOn3CD(StageRegs r)
     if (r.nz == 0) {
         r = map_bank_7(r, 0x8585);
         r = resident_call(r, 0x8588, 0xA74E);
-        CALL(0x858B, StageLoadScreen3CD(r));
+        CALL(0x858B, StageLoadScreen3CDAt(r, build));
     }
     RMW8(ZP->field8e, old, old & (uint8_t)~0x02);
     r = loaded(r, RD8(ZP->field8c));
@@ -2224,7 +2230,7 @@ StageRegs StageClearedWalkOn3CD(StageRegs r)
         start = !r.c;
     }
     if (start) {
-        CALL(0x859A, StageLevelStart3CD(r));
+        CALL(0x859A, StageLevelStart3CDAt(r, build));
     }
     WR8(ZP->field8c, 0);
     WR8(ZP->paused, 0);

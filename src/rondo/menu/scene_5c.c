@@ -10,6 +10,7 @@
 #include "front_end.h"
 #include "vram_update.h"
 #include "scene_5c.h"
+#include "front_end_copies.h"
 
 enum {
     SCENE_LENGTHS = 0x8030, SCENE_COMMANDS = 0x806B, SCENE_KINDS = 0x8214, SCENE_DRIFTERS = 0x8284,
@@ -149,7 +150,7 @@ void abi_Scene5CBegin(void)
  * @routine 25D3:01F Scene5CFrame
  * @run 6B:801F
  * WHAT IT DOES: One frame of the scene: the frame counted, the script's command run if due, every object run.
- * HOW: Scene5CFrameTick (the bytes of EndingFrameTick), Scene5CScriptStep, Scene5CObjectsStep.
+ * HOW: Scene5CFrameTick, Scene5CScriptStep, Scene5CObjectsStep.
  * WAITS: no.
  * Entry: nothing. Exit: as Scene5CObjectsStep.
  */
@@ -158,7 +159,7 @@ Exit Scene5CFrame(void)
     Exit exit;
 
     jsr_push(0x8022);
-    (void)EndingFrameTick();
+    (void)Scene5CFrameTick();
     jsr_pop();
     jsr_push(0x8025);
     exit = Scene5CScriptStep();

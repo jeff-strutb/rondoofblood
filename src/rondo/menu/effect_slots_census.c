@@ -46,6 +46,7 @@ typedef struct {
     uint16_t flash_colours, flash_palettes, saved_background, saved_sprites;
     uint16_t save_ret, restore_ret;
     uint16_t type_table, step_paused_ret, step_loop_ret;
+    uint16_t loader;                /* where this overlay's packed palette loader runs */
 } EffectLayout;
 
 /* A plain Exit that keeps what it does not name. */
@@ -101,6 +102,19 @@ static void select_effect_list(uint8_t list, uint16_t negative_table, uint16_t p
     WR8(ZP->temp01, RD8_PTR_Y(ZP->bios_a.lo, y));
 }
 
+/* The JSR to this overlay's packed palette loader, which goes to the C of the routine loaded there: Y the list's byte
+ * index; what the effect's exit keeps of it is the carry and overflow of the loader's last add. */
+static PaletteLoad overlay_palette_load_shim(const EffectLayout *layout, uint8_t y)
+{
+    PaletteLoad load = { { 0, false, false }, 0 };
+
+    cpu.y = y;
+    call_routine(layout->loader_ret, layout->loader);
+    load.sum.carry = (cpu.p & P_C) != 0;
+    load.sum.overflow = (cpu.p & P_V) != 0;
+    return load;
+}
+
 /*
  * Kind 1: a palette effect that plays a list of palette loads. Once its timer has run down it takes the list's
  * palettes one a step (each loaded by the packed palette loader, the timer set from the list's first byte); when the
@@ -131,9 +145,7 @@ static Exit run_effect_list(const EffectLayout *layout, uint8_t slot)
             y = (uint8_t)((uint8_t)(RD8(SLOTS->f18[slot]) << 2) + 2);
             value = RD8_PTR_Y(ZP->temp00, y);
             if (value != LIST_END) {
-                jsr_push(layout->loader_ret);
-                load = LoadPackedPaletteC(y);
-                jsr_pop();
+                load = overlay_palette_load_shim(layout, y);
                 loaded = true;
                 INC8(SLOTS->f18[slot]);
                 break;
@@ -752,7 +764,8 @@ static const EffectLayout LAYOUT_0441 = {
     { 0x82E5, 0x835E, 0x8407, 0x84FB, 0x8535 }, 5,
     0x85E7, 0x8667, 0x8698, 0x8898,
     0x0000, 0x0000,
-    0x82DB, 0x82A6, 0x82C5
+    0x82DB, 0x82A6, 0x82C5,
+    0x84BB
 };
 
 /*
@@ -1023,7 +1036,8 @@ static const EffectLayout LAYOUT_0651 = {
     { 0x82E5, 0x835E, 0x8407, 0x84FB, 0x8535 }, 5,
     0x85E7, 0x8667, 0x8698, 0x8898,
     0x0000, 0x0000,
-    0x82DB, 0x82A6, 0x82C5
+    0x82DB, 0x82A6, 0x82C5,
+    0x84BB
 };
 
 /*
@@ -1294,7 +1308,8 @@ static const EffectLayout LAYOUT_1231 = {
     { 0x82E5, 0x835E, 0x8407, 0x84FB, 0x8535 }, 5,
     0x85E7, 0x8667, 0x8698, 0x8898,
     0x0000, 0x0000,
-    0x82DB, 0x82A6, 0x82C5
+    0x82DB, 0x82A6, 0x82C5,
+    0x84BB
 };
 
 /*
@@ -1565,7 +1580,8 @@ static const EffectLayout LAYOUT_1A31 = {
     { 0x82E9, 0x8362, 0x840B, 0x84FF, 0x8560, 0x8539, 0x8543 }, 7,
     0x8612, 0x8692, 0x86C3, 0x88C3,
     0x853B, 0x8545,
-    0x82DB, 0x82A6, 0x82C5
+    0x82DB, 0x82A6, 0x82C5,
+    0x84BF
 };
 
 /*
@@ -1914,7 +1930,8 @@ static const EffectLayout LAYOUT_1B91 = {
     { 0x82E9, 0x8362, 0x840B, 0x84FF, 0x8560, 0x8539, 0x8543 }, 7,
     0x8612, 0x8692, 0x86C3, 0x88C3,
     0x853B, 0x8545,
-    0x82DB, 0x82A6, 0x82C5
+    0x82DB, 0x82A6, 0x82C5,
+    0x84BF
 };
 
 /*
@@ -2263,7 +2280,8 @@ static const EffectLayout LAYOUT_25F7 = {
     { 0x82E9, 0x8362, 0x840B, 0x84FF, 0x8560, 0x8539, 0x8543 }, 7,
     0x8612, 0x8692, 0x86C3, 0x88C3,
     0x853B, 0x8545,
-    0x82DB, 0x82A6, 0x82C5
+    0x82DB, 0x82A6, 0x82C5,
+    0x84BF
 };
 
 /*
@@ -2612,7 +2630,8 @@ static const EffectLayout LAYOUT_1CF1 = {
     { 0x82E9, 0x8362, 0x840B, 0x84FF, 0x8560, 0x8539, 0x8543 }, 7,
     0x8612, 0x8692, 0x86C3, 0x88C3,
     0x853B, 0x8545,
-    0x82DB, 0x82A6, 0x82C5
+    0x82DB, 0x82A6, 0x82C5,
+    0x84BF
 };
 
 /*
@@ -2961,7 +2980,8 @@ static const EffectLayout LAYOUT_1845 = {
     { 0x82F4, 0x836D, 0x8416, 0x850A, 0x8544 }, 5,
     0x85F6, 0x8676, 0x86A7, 0x88A7,
     0x0000, 0x0000,
-    0x82EA, 0x82B5, 0x82D4
+    0x82EA, 0x82B5, 0x82D4,
+    0x84CA
 };
 
 /*
@@ -3232,7 +3252,8 @@ static const EffectLayout LAYOUT_1AA0 = {
     { 0x82F4, 0x836D, 0x8416, 0x850A, 0x8544 }, 5,
     0x85F6, 0x8676, 0x86A7, 0x88A7,
     0x0000, 0x0000,
-    0x82EA, 0x82B5, 0x82D4
+    0x82EA, 0x82B5, 0x82D4,
+    0x84CA
 };
 
 /*
@@ -3503,7 +3524,8 @@ static const EffectLayout LAYOUT_1C2F = {
     { 0x82F4, 0x836D, 0x8416, 0x850A, 0x8544 }, 5,
     0x85F6, 0x8676, 0x86A7, 0x88A7,
     0x0000, 0x0000,
-    0x82EA, 0x82B5, 0x82D4
+    0x82EA, 0x82B5, 0x82D4,
+    0x84CA
 };
 
 /*
@@ -3774,7 +3796,8 @@ static const EffectLayout LAYOUT_1DDA = {
     { 0x82F4, 0x836D, 0x8416, 0x850A, 0x8544 }, 5,
     0x85F6, 0x8676, 0x86A7, 0x88A7,
     0x0000, 0x0000,
-    0x82EA, 0x82B5, 0x82D4
+    0x82EA, 0x82B5, 0x82D4,
+    0x84CA
 };
 
 /*
@@ -4068,14 +4091,16 @@ static const EffectLayout LAYOUT_00C5 = {
     { 0x83AA, 0x8423, 0x84CC, 0x85C0, 0x8621, 0x85FA, 0x8604 }, 7,
     0x86D3, 0x8753, 0x8784, 0x8984,
     0x85FC, 0x8606,
-    0x839C, 0x8367, 0x8386
+    0x839C, 0x8367, 0x8386,
+    0x8580
 };
 static const EffectLayout LAYOUT_0111 = {
     0x0000, 0x0000, 0x89D2, 0x0000,
     { 0x82F8, 0x8371, 0x841A, 0x850E, 0x856F, 0x8548, 0x8552 }, 7,
     0x8621, 0x86A1, 0x86D2, 0x88D2,
     0x854A, 0x8554,
-    0x82EA, 0x0000, 0x0000
+    0x82EA, 0x0000, 0x0000,
+    0x84CE
 };
 
 /*

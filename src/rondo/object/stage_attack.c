@@ -112,6 +112,12 @@ void abi_StageHitReportHigh(void)
  */
 StageRegs StageHitReportTop(StageRegs r)
 {
+    return StageHitReportTopAt(r, 0x05);
+}
+
+/* StageHitReportTop's body, for the builds of it that give side 2 another attack power. */
+StageRegs StageHitReportTopAt(StageRegs r, uint8_t side_two_power)
+{
     uint8_t side = (uint8_t)((RD8(OBJ->pace[r.x]) >> 7) + 1);
 
     r = regs_loaded(r, side);
@@ -119,8 +125,8 @@ StageRegs StageHitReportTop(StageRegs r)
     WR8(OBJ->attack_side[r.y], side);
     r = regs_compared(r, side, 0x02);
     if (side == 0x02) {
-        r = regs_loaded(r, 0x05);
-        WR8(OBJ->attack_power[r.y], 0x05);
+        r = regs_loaded(r, side_two_power);
+        WR8(OBJ->attack_power[r.y], side_two_power);
     }
     return report_keep(r);
 }

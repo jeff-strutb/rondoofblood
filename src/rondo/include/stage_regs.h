@@ -198,4 +198,6 @@ StageRegs StagePlayerObjectsAt(StageRegs r, uint16_t ret);
 /* system/stage_play.c: StageDemoPadRecord (024D:0F8) run at `at`. */
 StageRegs StageDemoPadRecordAt(StageRegs r, uint16_t at);
 
+StageRegs StageHitReportTopAt(StageRegs r, uint8_t side_two_power);
+
 #endif

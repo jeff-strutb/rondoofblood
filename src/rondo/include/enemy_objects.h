@@ -389,6 +389,10 @@ typedef struct {
     ObjSub sub, sub2, sub3, sub4;
 } ObjArm;
 
+/* object/player_stage_start.c: the stage variables reset with a program's own pointer, and its exit. */
+ObjArm reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi);
+Ended reset_stage_variables_exit_shim(ObjArm r);
+
 /* A callee's ObjArm as its caller keeps it (one level of its own callees stays), and back for the callee's exit shim. */
 static inline ObjSub obj_sub(ObjArm a)
 {

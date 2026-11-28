@@ -18,7 +18,7 @@
 enum { STAGE_POINTER_LO = 0x207E, STAGE_POINTER_HI = 0x207F, STAGE_CLEAR_7C = 0x207C, STAGE_CLEAR_7D = 0x207D };
 
 /* The one test of zGameRunning, and when the game runs the stores: what the routine ended on. */
-static ObjArm reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
+ObjArm reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
 {
     ObjArm r = { 0 };
 
@@ -42,7 +42,7 @@ static ObjArm reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
 }
 
 /* A when the game was not running, else the pointer's high byte. */
-static Ended reset_stage_variables_exit_shim(ObjArm r)
+Ended reset_stage_variables_exit_shim(ObjArm r)
 {
     return ended_load(r.flag ? r.second : r.first);
 }

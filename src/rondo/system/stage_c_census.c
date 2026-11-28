@@ -2386,6 +2386,12 @@ void abi_StageBossWaitDoor3CD(void)
  */
 StageRegs StageBossWalkOut3CD(StageRegs r)
 {
+    return StageBossWalkOut3CDAt(r, &route_3cd);
+}
+
+/* StageBossWalkOut3CD's body, for the builds of it with their own tables. */
+StageRegs StageBossWalkOut3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     r = loaded(r, 0xB8);
     WR8(OBJ->work_b[16], 0xB8);
     CALL(0x8605, StageFrameA0003CD(r));
@@ -2398,7 +2404,7 @@ StageRegs StageBossWalkOut3CD(StageRegs r)
     if (r.nz != 0) {
         return r;
     }
-    return StageNextRouteStage3CD(r);
+    return StageNextRouteStage3CDAt(r, build);
 }
 
 void abi_StageBossWalkOut3CD(void)

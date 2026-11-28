@@ -339,6 +339,11 @@ FF,zp,zBiosDh,BIOS argument _DH
 7D00,abs,SaveBuffer,the backup file in RAM
 7D1D,abs,SaveContinues,continues in a slot
 7D1F,abs,SaveScoreTotal,total score in a slot; BCD
+7DE0,abs,MenuSlotCharacter,the file menu: each slot's character (zCharacter when its game starts); 3 bytes by slot
+7DE3,abs,MenuSlotProgress,the file menu: each slot's progress as SlotLastClearedFlag finds it; picks its face and start stage; 3 bytes by slot
+7DE6,abs,MenuCopyTo,the file menu: the slot number a copy is made to; the name page keeps the grid cursor's row here
+7DE7,abs,MenuCopyFrom,the file menu: the slot number a copy is made from; the name page keeps the grid cursor's column here
+7DF1,abs,MenuSelectedSlot,the file menu: the slot number the file pages picked
 7115,abs,StageTrack,CD track by stage
 7126,abs,StageTrackSecret,CD track by secret stage
 7230,abs,StageAdpcm,ADPCM by stage

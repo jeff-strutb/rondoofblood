@@ -332,6 +332,11 @@
 #define SaveBuffer 0x7D00 /* the backup file in RAM */
 #define SaveContinues 0x7D1D /* continues in a slot */
 #define SaveScoreTotal 0x7D1F /* total score in a slot; BCD */
+#define MenuSlotCharacter 0x7DE0 /* the file menu: each slot's character (zCharacter when its game starts); 3 bytes by slot */
+#define MenuSlotProgress 0x7DE3 /* the file menu: each slot's progress as SlotLastClearedFlag finds it; picks its face and start stage; 3 bytes by slot */
+#define MenuCopyTo 0x7DE6 /* the file menu: the slot number a copy is made to; the name page keeps the grid cursor's row here */
+#define MenuCopyFrom 0x7DE7 /* the file menu: the slot number a copy is made from; the name page keeps the grid cursor's column here */
+#define MenuSelectedSlot 0x7DF1 /* the file menu: the slot number the file pages picked */
 #define StageTrack 0x7115 /* CD track by stage */
 #define StageTrackSecret 0x7126 /* CD track by secret stage */
 #define StageAdpcm 0x7230 /* ADPCM by stage */

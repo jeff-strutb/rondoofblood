@@ -945,3 +945,5 @@ OBJ_FALL_HI = $3670 ; an object's use of OBJ_WORK_I: the high byte of OBJ_FALL_L
 MariaAttackStates = $C773 ; the states of her attack's object, four words: start, fly, fall, return (MariaAttackObject)
 MariaAttackAngles = $C823 ; the angle her attack's object turns back on, by its facing (MariaAttackFall)
 MariaItem5States = $C8E5 ; the states of item 5, four words (MariaItem5)
+PlayerByte3BEF = $3BEF ; player state not yet identified: set, item 7's part is cleared and zField93 (the item in hand) with it (MariaItem7Part clears it); nothing filed sets it
+MariaPieceSpeedsX = $CD96 ; the X speed of each of the four pieces of kind 9, a word by slot less 5 (MariaObjectKind9)

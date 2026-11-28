@@ -577,3 +577,4 @@ alias,ObjectTable,child_order,work_f,OBJ_CHILD_ORDER
 alias,ObjectTable,fly_phase,work_i,OBJ_FLY_PHASE
 alias,ObjectTable,fall_lo,work_h,OBJ_FALL_LO
 alias,ObjectTable,fall_hi,work_i,OBJ_FALL_HI
+member,PlayerVarsB,f3bef,u8,00,PlayerByte3BEF,

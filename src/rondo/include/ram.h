@@ -948,5 +948,7 @@
 #define MariaAttackStates 0xC773 /* the states of her attack's object, four words: start, fly, fall, return (MariaAttackObject) */
 #define MariaAttackAngles 0xC823 /* the angle her attack's object turns back on, by its facing (MariaAttackFall) */
 #define MariaItem5States 0xC8E5 /* the states of item 5, four words (MariaItem5) */
+#define PlayerByte3BEF 0x3BEF /* player state not yet identified: set, item 7's part is cleared and zField93 (the item in hand) with it (MariaItem7Part clears it); nothing filed sets it */
+#define MariaPieceSpeedsX 0xCD96 /* the X speed of each of the four pieces of kind 9, a word by slot less 5 (MariaObjectKind9) */
 
 #endif

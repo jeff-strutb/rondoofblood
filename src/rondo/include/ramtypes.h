@@ -1181,7 +1181,7 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_hi) == PlayerSl
 #define PlayerVarsB_BASE 0x3BEF
 #define PlayerVarsB_COUNT 1
 typedef struct {
-    uint8_t _gap_0000[1]; /* no name yet: $3BEF-$3BEF */
+    uint8_t f3bef; /* PlayerByte3BEF */
     union { uint8_t f3bf0; uint8_t start_pose; }; /* PlayerByte3BF0 */
     union { uint8_t f3bf1; uint8_t jump_kind; }; /* PlayerByte3BF1 */
     U16LE jump_start_y; /* PlayerJumpStartYLo +1 */
@@ -1193,6 +1193,7 @@ typedef struct {
     uint8_t _gap_000D[4]; /* no name yet: $3BFC-$3BFF */
 } PlayerVarsB;
 _Static_assert(sizeof(PlayerVarsB) == 0x11, "PlayerVarsB size");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bef) + 0 == PlayerByte3BEF, "PlayerVarsB.f3bef is not at PlayerByte3BEF");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf0) + 0 == PlayerByte3BF0, "PlayerVarsB.f3bf0 is not at PlayerByte3BF0");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, start_pose) == PlayerStartPose, "PlayerVarsB.start_pose is not at PlayerStartPose");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf1) + 0 == PlayerByte3BF1, "PlayerVarsB.f3bf1 is not at PlayerByte3BF1");

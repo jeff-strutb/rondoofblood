@@ -1192,7 +1192,7 @@ def areas(mems):
     return names, order
 
 
-RAW_OPERAND = re.compile(r"(?<![#\w])(?:[az]:)?\$[0-9A-Fa-f]{2,4}")
+RAW_OPERAND = re.compile(r"(?<![#\w])(?<![A-Za-z_0-9][+-])(?:[az]:)?\$[0-9A-Fa-f]{2,4}")  # Name+$10 is a named base
 INSTRUCTION = re.compile(r"^\s+([a-z]{2,4}\d?)\b(.*)$")
 
 

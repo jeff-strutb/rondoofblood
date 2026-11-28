@@ -257,12 +257,18 @@ HandlerExit TileStepTwiceAt(uint16_t offsets)
  */
 HandlerExit TileRowOffset(void)
 {
+    return TileRowOffsetAt(TileRowOffsets, TileRowsE);
+}
+
+/* TileRowOffset's body, for the builds of it with their own offsets and rows tables. */
+HandlerExit TileRowOffsetAt(uint16_t offsets, uint16_t rows)
+{
     uint8_t row = RD8(ZP->temp02);
     uint8_t column = RD8(ZP->temp00);
-    uint8_t offset = rd8((uint16_t)(TileRowOffsets + column));
+    uint8_t offset = rd8((uint16_t)(offsets + column));
     Sum sum = add_bytes((uint8_t)(row << 3), offset, false);
     uint8_t index = (uint8_t)(sum.value + 1);
-    uint8_t value = rd8((uint16_t)(TileRowsE + index));
+    uint8_t value = rd8((uint16_t)(rows + index));
 
     WR8(ZP->temp02, value);
     return exit_with(index, sum);

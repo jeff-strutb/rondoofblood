@@ -87,6 +87,7 @@ TileRead TerrainTileReadAt(const TileReadBuild *build);
 HandlerExit TileStepAt(uint16_t table);
 HandlerExit TileStepTwiceAt(uint16_t offsets);
 HandlerExit TileStepOffsetAt(uint16_t offsets);
+HandlerExit TileRowOffsetAt(uint16_t offsets, uint16_t rows);
 /* terrain.c: a slope tile's new row from an eight by eight table (TileRowA's body). */
 HandlerExit TileRowAt(uint16_t table);
 /* terrain.c: the tiles with a step per half (TileHalfStepA's and B's body). */

@@ -93,9 +93,16 @@ The code is found by analysing the disc, never by running the game.
   not anything is known to reach it (the maintainer's ruling of
   2026-11-26).
 
-The tool that does this for the whole disc (the static code map) is the
-next piece of work. Until it exists, `reach.py` reads a piece of the disc
-as code from entry points given by hand.
+`codemap.py` does this for the whole disc: the loads (the boot's table and
+every scene, in the order the game loads them), the code followed from the
+card's call into the disc, the boot program, the kernel's vectors and the
+handlers it gives the card, and the copies. Still open in it: copies loaded
+at another address, and finding code in regions nothing loads.
+
+**Progress.** M1 is the share of the game's code, every copy counted once,
+in routines whose C is finished (it calls no original game code); M2 is the
+share in routines that also have their assembly filed. `codemap.py
+--progress` measures both by disc area for the README.
 
 ## 4. What is different from the SNES decomps
 

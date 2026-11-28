@@ -358,12 +358,12 @@ typedef struct {
     union { uint8_t work_d[88]; uint8_t f34b8[88]; uint8_t life_timer[88]; }; /* OBJ_WORK_D */
     uint8_t work_e[88]; /* OBJ_WORK_E */
     union { uint8_t work_f[88]; uint8_t f3568[88]; uint8_t angle_hi[88]; }; /* OBJ_WORK_F */
-    union { uint8_t work_g[88]; uint8_t f35c0[88]; uint8_t angle_lo[88]; }; /* OBJ_WORK_G */
-    uint8_t work_h[88]; /* OBJ_WORK_H */
-    uint8_t work_i[88]; /* OBJ_WORK_I */
+    union { uint8_t work_g[88]; uint8_t f35c0[88]; uint8_t angle_lo[88]; uint8_t state_before_hit[88]; }; /* OBJ_WORK_G */
+    union { uint8_t work_h[88]; uint8_t step_before_hit[88]; }; /* OBJ_WORK_H */
+    union { uint8_t work_i[88]; uint8_t hit_frames[88]; }; /* OBJ_WORK_I */
     uint8_t work_j[88]; /* OBJ_WORK_J */
     uint8_t work_k[88]; /* OBJ_WORK_K */
-    uint8_t work_l[88]; /* OBJ_WORK_L */
+    union { uint8_t work_l[88]; uint8_t knock_right[88]; }; /* OBJ_WORK_L */
     uint8_t work_m[88]; /* OBJ_WORK_M */
     uint8_t work_n[88]; /* OBJ_WORK_N */
     uint8_t work_o[88]; /* OBJ_WORK_O */
@@ -432,11 +432,15 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, angle_hi) + 0 == OBJ_WOR
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_g) + 0 == OBJ_WORK_G, "ObjectTable.work_g is not at OBJ_WORK_G");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f35c0) + 0 == OBJ_WORK_G, "ObjectTable.f35c0 is not at OBJ_WORK_G");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, angle_lo) + 0 == OBJ_WORK_G, "ObjectTable.angle_lo is not at OBJ_WORK_G");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, state_before_hit) == OBJ_STATE_BEFORE_HIT, "ObjectTable.state_before_hit is not at OBJ_STATE_BEFORE_HIT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_h) + 0 == OBJ_WORK_H, "ObjectTable.work_h is not at OBJ_WORK_H");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, step_before_hit) == OBJ_STEP_BEFORE_HIT, "ObjectTable.step_before_hit is not at OBJ_STEP_BEFORE_HIT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_i) + 0 == OBJ_WORK_I, "ObjectTable.work_i is not at OBJ_WORK_I");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hit_frames) == OBJ_HIT_FRAMES, "ObjectTable.hit_frames is not at OBJ_HIT_FRAMES");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_j) + 0 == OBJ_WORK_J, "ObjectTable.work_j is not at OBJ_WORK_J");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_k) + 0 == OBJ_WORK_K, "ObjectTable.work_k is not at OBJ_WORK_K");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_l) + 0 == OBJ_WORK_L, "ObjectTable.work_l is not at OBJ_WORK_L");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, knock_right) == OBJ_KNOCK_RIGHT, "ObjectTable.knock_right is not at OBJ_KNOCK_RIGHT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_m) + 0 == OBJ_WORK_M, "ObjectTable.work_m is not at OBJ_WORK_M");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_n) + 0 == OBJ_WORK_N, "ObjectTable.work_n is not at OBJ_WORK_N");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_o) + 0 == OBJ_WORK_O, "ObjectTable.work_o is not at OBJ_WORK_O");

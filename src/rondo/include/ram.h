@@ -118,6 +118,10 @@
 #define OBJ_VX_LO 0x2DD8 /* object X velocity low */
 #define OBJ_VY_HI 0x2E30 /* object Y velocity high */
 #define OBJ_VY_LO 0x2E88 /* object Y velocity low */
+#define OBJ_STATE_BEFORE_HIT 0x35C0 /* the player's use of OBJ_WORK_G: the state he was hit in (RichterHitReact); given back as the hit's reaction ends */
+#define OBJ_STEP_BEFORE_HIT 0x3618 /* the player's use of OBJ_WORK_H: the step of the state he was hit in; given back with it */
+#define OBJ_HIT_FRAMES 0x3670 /* the player's use of OBJ_WORK_I: frames left in a step of the hit's reaction */
+#define OBJ_KNOCK_RIGHT 0x3778 /* the player's use of OBJ_WORK_L: 1 when the hit throws him right, 0 left */
 #define OBJ_WORK_A 0x2EE0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_SCROLL_BAND 0x2F38 /* bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */
@@ -438,6 +442,8 @@
 #define RichterItemUseCosts 0xBA1D /* hearts each item's use costs */
 #define RichterItemUseLists 0xBA26 /* the sound list each thrown item starts */
 #define RichterItemUseScripts 0xBA2F /* the script each thrown item starts */
+#define RichterKnockSpeedsX 0xB5AA /* X speed words by the side a hit throws him: $FF00 left for 0; $0100 right for 1 */
+#define RichterHurtResumeFrames 0xB5D5 /* the hurt frame by the state he was hit in: (the state less 5) / 2 */
 #define RichterItemAttacks 0xBA38 /* the attack kind using each item gives; 0 the whip */
 #define PsgSelect 0x0800 /* PSG: which channel the channel registers address */
 #define PsgMainVolume 0x0801 /* PSG: main volume, left and right nibbles */

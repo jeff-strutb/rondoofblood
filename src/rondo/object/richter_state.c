@@ -14,6 +14,7 @@
 #include "access.h"
 #include "enemy_objects.h"
 #include "player_objects.h"
+#include "richter.h"
 
 /* The overlay's routines with no C yet. */
 enum {
@@ -160,7 +161,6 @@ AirStart RichterToAir(void);
 void abi_RichterToAir(void);
 typedef struct { FacingSpeed speed; bool tested; uint8_t hit; } Leap;
 typedef struct { uint8_t whip; } OthersCleared;
-typedef struct { uint8_t state; uint8_t index; } CrashEnd;
 Leap RichterLeapClearingOthers(void);
 OthersCleared RichterClearOthersKeepWhip(void);
 CrashEnd RichterEndItemCrash(void);
@@ -4552,7 +4552,7 @@ void abi_RichterEndItemCrash(void)
 
 /*
  * @routine 01BD:023 RichterLeapClearingOthers
- * @run 6D:C023
+ * @run 6E:C023
  * WHAT IT DOES: Clears every object but him, starts sound list $60 and script 1, and script $0B
  * unless PlayerByte3BE2 is set or bit 5 of his OBJ_HIT_TAKEN is; then leaps up and back: Y speed
  * $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_KIND 1.
@@ -4610,7 +4610,7 @@ void abi_RichterLeapClearingOthers(void)
 
 /*
  * @routine 01BE:61D RichterClearOthersKeepWhip
- * @run 6D:CE1D
+ * @run 6E:CE1D
  * WHAT IT DOES: Clears every object but him, and the whip when its OBJ_KIND is 1; drops the
  * forced presses and PlayerByte3BD8.
  * HOW: ClearObject on 1 to 15, passing over 3 when it is kept.

@@ -11,6 +11,7 @@
 #include "routines.h"
 #include "access.h"
 #include "enemy_objects.h"
+#include "richter.h"
 
 enum {
     OBJECT_MARK = 0x10, OBJECT_STATE_QUICK = 6, OBJECT_QUICKEN = 4, OBJECT_FLASH_FIRST = 0x8E,
@@ -1591,4 +1592,63 @@ void abi_MariaReplaceSlotsOneTwo(void)
 {
     abi_ended(MariaReplaceSlotsOneTwo());
     cpu.x = 2;
+}
+
+/*
+ * @routine 01BC:7FC RichterObjectStopX
+ * @run 6D:BFFC
+ * WHAT IT DOES: Stops an object along X.
+ * HOW: Zeroes OBJ_VX_LO and OBJ_VX_HI.
+ * WAITS: no.
+ * Entry: X object. Exit: all registers and flags kept.
+ */
+void RichterObjectStopX(uint8_t slot)
+{
+    WR8(OBJ->vx_lo[slot], 0);
+    WR8(OBJ->vx_hi[slot], 0);
+}
+
+void abi_RichterObjectStopX(void)
+{
+    RichterObjectStopX(cpu.x);
+}
+
+/*
+ * @routine 01BD:003 RichterObjectStop
+ * @run 6E:C003
+ * WHAT IT DOES: Stops an object along X and Y.
+ * HOW: RichterObjectStopX, then runs on into RichterObjectStopY.
+ * WAITS: no.
+ * Entry: X object. Exit: all registers and flags kept.
+ */
+void RichterObjectStop(uint8_t slot)
+{
+    jsr_push(0xC005);
+    RichterObjectStopX(slot);
+    jsr_pop();
+    RichterObjectStopY(slot);
+}
+
+void abi_RichterObjectStop(void)
+{
+    RichterObjectStop(cpu.x);
+}
+
+/*
+ * @routine 01BD:005 RichterObjectStopY
+ * @run 6E:C005
+ * WHAT IT DOES: Stops an object along Y.
+ * HOW: Zeroes OBJ_VY_LO and OBJ_VY_HI.
+ * WAITS: no.
+ * Entry: X object. Exit: all registers and flags kept.
+ */
+void RichterObjectStopY(uint8_t slot)
+{
+    WR8(OBJ->vy_lo[slot], 0);
+    WR8(OBJ->vy_hi[slot], 0);
+}
+
+void abi_RichterObjectStopY(void)
+{
+    RichterObjectStopY(cpu.x);
 }

@@ -882,3 +882,34 @@ MariaObjectAnimationList:
     asl a
     tay
     rts
+
+; @routine 01BC:7FC RichterObjectStopX
+; @run 6D:BFFC
+; WHAT IT DOES: Stops an object along X.
+; HOW: Zeroes OBJ_VX_LO and OBJ_VX_HI.
+; WAITS: no.
+; Entry: X object. Exit: all registers and flags kept.
+RichterObjectStopX:
+    stz a:OBJ_VX_LO,x
+    stz a:OBJ_VX_HI,x
+    rts
+
+; @routine 01BD:003 RichterObjectStop
+; @run 6E:C003
+; WHAT IT DOES: Stops an object along X and Y.
+; HOW: RichterObjectStopX, then runs on into RichterObjectStopY.
+; WAITS: no.
+; Entry: X object. Exit: all registers and flags kept.
+RichterObjectStop:
+    bsr RichterObjectStopX
+
+; @routine 01BD:005 RichterObjectStopY
+; @run 6E:C005
+; WHAT IT DOES: Stops an object along Y.
+; HOW: Zeroes OBJ_VY_LO and OBJ_VY_HI.
+; WAITS: no.
+; Entry: X object. Exit: all registers and flags kept.
+RichterObjectStopY:
+    stz a:OBJ_VY_LO,x
+    stz a:OBJ_VY_HI,x
+    rts

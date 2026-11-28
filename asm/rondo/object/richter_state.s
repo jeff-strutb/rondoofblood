@@ -1960,7 +1960,7 @@ RichterInvincibleTick_at4:
     rts
 
 ; @routine 01BD:023 RichterLeapClearingOthers
-; @run 6D:C023
+; @run 6E:C023
 ; WHAT IT DOES: Clears every object but him, starts sound list $60 and script 1, and script $0B
 ; unless PlayerByte3BE2 is set or bit 5 of his OBJ_HIT_TAKEN is; then leaps up and back: Y speed
 ; $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_KIND 1.
@@ -2006,7 +2006,7 @@ RichterLeapClearingOthers_at1:
     rts
 
 ; @routine 01BE:61D RichterClearOthersKeepWhip
-; @run 6D:CE1D
+; @run 6E:CE1D
 ; WHAT IT DOES: Clears every object but him, and the whip when its OBJ_KIND is 1; drops the
 ; forced presses and PlayerByte3BD8.
 ; HOW: ClearObject on 1 to 15, passing over 3 when it is kept.

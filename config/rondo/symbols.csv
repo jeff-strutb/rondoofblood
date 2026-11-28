@@ -120,6 +120,11 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 2DD8,abs,OBJ_VX_LO,object X velocity low
 2E30,abs,OBJ_VY_HI,object Y velocity high
 2E88,abs,OBJ_VY_LO,object Y velocity low
+# Area uses of the work bytes, listed before them so a draft names a plain access by the work byte.
+35C0,abs,OBJ_STATE_BEFORE_HIT,the player's use of OBJ_WORK_G: the state he was hit in (RichterHitReact); given back as the hit's reaction ends
+3618,abs,OBJ_STEP_BEFORE_HIT,the player's use of OBJ_WORK_H: the step of the state he was hit in; given back with it
+3670,abs,OBJ_HIT_FRAMES,the player's use of OBJ_WORK_I: frames left in a step of the hit's reaction
+3778,abs,OBJ_KNOCK_RIGHT,the player's use of OBJ_WORK_L: 1 when the hit throws him right, 0 left
 2EE0,abs,OBJ_WORK_A,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
 2F38,abs,OBJ_SCROLL_BAND,bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to
 3098,abs,OBJ_EVENT_ID,event this object records
@@ -445,6 +450,8 @@ BA14,abs,RichterItemSecondCosts,hearts needed by item to throw with one already 
 BA1D,abs,RichterItemUseCosts,hearts each item's use costs
 BA26,abs,RichterItemUseLists,the sound list each thrown item starts
 BA2F,abs,RichterItemUseScripts,the script each thrown item starts
+B5AA,abs,RichterKnockSpeedsX,X speed words by the side a hit throws him: $FF00 left for 0; $0100 right for 1
+B5D5,abs,RichterHurtResumeFrames,the hurt frame by the state he was hit in: (the state less 5) / 2
 BA38,abs,RichterItemAttacks,the attack kind using each item gives; 0 the whip
 0800,abs,PsgSelect,PSG: which channel the channel registers address
 0801,abs,PsgMainVolume,PSG: main volume, left and right nibbles

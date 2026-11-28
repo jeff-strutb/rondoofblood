@@ -1271,8 +1271,8 @@ void abi_VramListFromTableW(void)
 
 /*
  * The branch the routine takes for a list number of $80 or more goes to $8142, which is not in this routine and
- * is another table in each overlay (the operand differs from one to the next): it runs as the original, with the
- * registers the branch left, and joins VramListRun at $8169 itself.
+ * is another table in each overlay (the operand differs from one to the next): the BMI at $8151 goes to the C of
+ * the variant loaded there, with the registers the branch left, and that joins VramListRun at $8169 itself.
  */
 static VramExit branch_to_8142_shim(uint8_t a, uint8_t x, bool carry, bool overflow)
 {
@@ -1282,7 +1282,7 @@ static VramExit branch_to_8142_shim(uint8_t a, uint8_t x, bool carry, bool overf
     cpu.x = x;
     abi_flag(P_C, carry);
     abi_flag(P_V, overflow);
-    call_original(0x8142);
+    run_routine_from(0x8151, 0x8142);
     out.left = true;
     return out;
 }

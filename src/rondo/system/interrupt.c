@@ -48,10 +48,10 @@ static void load_sum_shim(Sum sum)
     abi_flag(P_V, sum.overflow);
 }
 
-/* A JSR into code with no typed C, or whose registers come from the last call: the registers are cpu's. */
+/* A JSR whose registers come from the last call (they are cpu's), to the C of the routine loaded at the target. */
 static void call_with_live_registers_shim(uint16_t ret, uint16_t target)
 {
-    call_orig(ret, target);
+    call_routine(ret, target);
 }
 
 /* The card's pad read, framed, with the registers and flags it leaves taken on. */
@@ -77,7 +77,7 @@ static void late_sound_tick_shim(uint8_t a, uint8_t y, bool line_written, Sum li
         abi_flag(P_C, line.carry);
         abi_flag(P_V, line.overflow);
     }
-    call_orig(0x42D2, 0x4366);
+    call_routine(0x42D2, 0x4366);
 }
 
 /* Sets the raster compare line from a RAM copy; the sum is its low byte's add, whose carry is the high byte. */

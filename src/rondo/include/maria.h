@@ -846,6 +846,37 @@ MExit MariaStateSlideHeld(uint8_t x, uint8_t y);
 MExit MariaStateSlide(uint8_t x, uint8_t y);
 MExit MariaStateSlideAir(uint8_t x, uint8_t y);
 
+/* object/maria_hurt.c */
+Regs MariaHurtSide(void);
+MExit MariaHitEffects(uint8_t x, uint8_t y);
+MExit MariaHitSoundAndEffects(uint8_t x, uint8_t y);
+MExit MariaHurtKnockUp(uint8_t x, uint8_t y);
+MExit MariaHurtDown(uint8_t x, uint8_t y);
+MExit MariaHurtFromStand(uint8_t x, uint8_t y);
+MExit MariaHurtFromCrouch(uint8_t x, uint8_t y);
+MExit MariaHurtInAir(uint8_t x, uint8_t y);
+MExit MariaHurtClimbKindFive(uint8_t x, uint8_t y);
+MExit MariaHurtWhileClimbing(uint8_t x, uint8_t y);
+MExit MariaHurtFromItem4(uint8_t x, uint8_t y);
+MExit MariaHurtFromSequence(uint8_t y);
+MExit MariaHurtKindThree(uint8_t x, uint8_t y);
+MExit MariaHurtKindFour(uint8_t x, uint8_t y);
+MExit MariaHurtStart(uint8_t x, uint8_t y);
+Regs MariaKnockSpeedX(void);
+MExit MariaHurtSlide(void);
+MExit MariaHurtSlideStart(void);
+MExit MariaHurtResume(void);
+MExit MariaHurtHoldFrame(void);
+MExit MariaHurtDownStep(void);
+void MariaHurtHeldLanding(void);
+void MariaHurtHeldLandingFeet(void);
+MExit MariaHurtLandOnMarked(uint8_t x, uint8_t y);
+MExit MariaHurtLandOnMarkedFeet(uint8_t x, uint8_t y);
+MExit MariaHurtKnocked(uint8_t x, uint8_t y);
+MExit MariaHurtThrown(uint8_t x, uint8_t y);
+MExit MariaHurtThrownLanded(void);
+MExit MariaStateHurt(uint8_t x, uint8_t y);
+
 void abi_MariaObjectApplyVelocity(void);                           /* object/richter_objects.c */
 void abi_MariaApplyMoveAndPush(void);                              /* object/richter_state.c */
 

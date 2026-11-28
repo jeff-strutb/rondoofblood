@@ -1030,5 +1030,12 @@
 #define MariaSlideFriction 0xB1AB /* the slide's slowing added to her X speed each frame, by facing: $FFE0, $0020 (MariaSlideSlow) */
 #define MariaSlideAirSpeeds 0xB1B1 /* her X speed as a slide goes off a floor, by facing (MariaToSlideAir) */
 #define MariaCrawlSpeeds 0xB21E /* her X speed crawling on a mark, right or left: $0080, $FF80 (MariaStateSlide) */
+#define OBJ_KNOCK_FORWARD 0x37D0 /* the player's hit's use of OBJ_WORK_M: 1 when the hit knocks her the way she faces (OBJ_KNOCK_RIGHT against OBJ_FACING_LEFT), added to her hurt animations (MariaHurtSide) */
+#define MariaHurtSteps 0xB28E /* twelve words by OBJ_SUBSTATE: the hit's steps (MariaStateHurt) */
+#define MariaHurtByState 0xB33C /* the hit's start by the state she was hit in: eighteen words (MariaHurtStart) */
+#define MariaHurtThrowKinds 0xB4B3 /* by the state she was hit in: 0 on the ground, 1 in the air, 2 in item 4's state (MariaHurtKindThree, MariaHurtKindFour) */
+#define MariaThrowSpeedsX 0xB4C4 /* X speed words of a kind 3 throw by OBJ_KNOCK_RIGHT: $FD80, $0280 (MariaHurtKindThree) */
+#define MariaThrownLandSpeedsX 0xB56A /* X speed words as a throw lands, by OBJ_KNOCK_RIGHT: $FE00, $0200 (MariaHurtThrown) */
+#define MariaKnockSpeeds 0xB653 /* X speed words of the knock by OBJ_KNOCK_RIGHT: $FF00, $0100 (MariaKnockSpeedX) */
 
 #endif

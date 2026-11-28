@@ -30,6 +30,9 @@ DA,zp,zHitSlot,the hit object's slot kept across a jump (024F:466)
 14,zp,SpriteFlipMask,EmitObjectSprites' scratch: the object's flip bit; the same byte as zProduct1
 16,zp,SpritePartsLeft,EmitObjectSprites' scratch: parts of the sprite still to draw; the same byte as zMultiplierLo
 17,zp,SpritesLeft,EmitObjectSprites' scratch: sprites still to draw; the same byte as zMultiplierHi
+15,zp,zPlaneRowsLeft,the continue screen's count of the rows a letter plane step has left; the same byte as zProduct2
+16,zp,zPlaneStep,the continue screen's stretch step for a letter's planes; the same byte as zMultiplierLo
+17,zp,zTransposeRowsLeft,the continue screen's count of the rows a tile transpose has left; the same byte as zMultiplierHi
 20,zp,zRandom0,generator state low
 21,zp,zRandom1,generator state
 22,zp,zRandom2,generator state
@@ -763,3 +766,11 @@ AEA7,abs,PieceRecords13FA,overlay 13FA's tile piece records, 16 bytes by OBJ_304
 B0A3,abs,PieceRecords161A,overlay 161A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row
 AE7D,abs,PieceRecords16CA,overlay 16CA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row
 AE85,abs,PieceRecords18DA,overlay 18DA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row
+# The continue screen (sector 004D, bank $75 at $8000).
+800B,abs,ContinueStepsRichter,the continue screen's steps by sub-mode for Richter, a word each
+801A,abs,ContinueStepsMaria,the continue screen's steps by sub-mode for Maria, a word each
+8492,abs,ContinueMovesTwo,the next choice of two: by choice for UP, by choice plus 2 for the other keys
+8496,abs,ContinueMovesThree,the next choice of three: by choice for UP, by choice plus 2 for the other keys
+849B,abs,ContinueCursorRows,the cursor's Y by choice
+849E,abs,ContinueVoices,the voice a choice sounds by character
+84BE,abs,ContinueBlinkScripts,the cursor's blink scripts by step, ten

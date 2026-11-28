@@ -431,6 +431,9 @@ alias,ZeroPageRec,temp0_c,temp0c,
 alias,ZeroPageRec,temp0_d,temp0d,
 alias,ZeroPageRec,temp0_e,temp0e,
 alias,ZeroPageRec,temp0_f,temp0f,
+alias,ZeroPageRec,plane_rows_left,product.hi,zPlaneRowsLeft
+alias,ZeroPageRec,plane_step,multiplier.lo,zPlaneStep
+alias,ZeroPageRec,transpose_rows_left,multiplier.hi,zTransposeRowsLeft
 alias,ZeroPageRec,field8_a,field8a,
 alias,ZeroPageRec,field8_c,field8c,
 alias,ZeroPageRec,field8_e,field8e,

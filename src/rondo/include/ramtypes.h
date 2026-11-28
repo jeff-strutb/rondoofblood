@@ -38,8 +38,8 @@ typedef struct {
     uint8_t temp10; /* zTemp10 */
     uint8_t temp11; /* zTemp11 */
     uint8_t temp12; /* zTemp12 */
-    union { U24LE product; struct { uint8_t _pad_sprite_flip_mask[1]; uint8_t sprite_flip_mask; }; }; /* zProduct0 +2 */
-    union { U16LE multiplier; struct { uint8_t sprite_parts_left; }; struct { uint8_t _pad_sprites_left[1]; uint8_t sprites_left; }; }; /* zMultiplierLo +1 */
+    union { U24LE product; struct { uint8_t _pad_sprite_flip_mask[1]; uint8_t sprite_flip_mask; }; struct { uint8_t _pad_plane_rows_left[2]; uint8_t plane_rows_left; }; }; /* zProduct0 +2 */
+    union { U16LE multiplier; struct { uint8_t sprite_parts_left; }; struct { uint8_t _pad_sprites_left[1]; uint8_t sprites_left; }; struct { uint8_t plane_step; }; struct { uint8_t _pad_transpose_rows_left[1]; uint8_t transpose_rows_left; }; }; /* zMultiplierLo +1 */
     uint8_t cd_play_mode; /* zCdPlayMode */
     uint8_t _gap_0019[7]; /* no name yet: $2019-$201F */
     uint8_t random0; /* zRandom0 */
@@ -183,11 +183,14 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp11) + 0 == zTemp11, 
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, temp12) + 0 == zTemp12, "ZeroPageRec.temp12 is not at zTemp12");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, product) + 0 == zProduct0, "ZeroPageRec.product is not at zProduct0");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sprite_flip_mask) == SpriteFlipMask, "ZeroPageRec.sprite_flip_mask is not at SpriteFlipMask");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, plane_rows_left) == zPlaneRowsLeft, "ZeroPageRec.plane_rows_left is not at zPlaneRowsLeft");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, product) + 1 == zProduct1, "ZeroPageRec.product is not at zProduct1");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, product) + 2 == zProduct2, "ZeroPageRec.product is not at zProduct2");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, multiplier) + 0 == zMultiplierLo, "ZeroPageRec.multiplier is not at zMultiplierLo");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sprite_parts_left) == SpritePartsLeft, "ZeroPageRec.sprite_parts_left is not at SpritePartsLeft");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sprites_left) == SpritesLeft, "ZeroPageRec.sprites_left is not at SpritesLeft");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, plane_step) == zPlaneStep, "ZeroPageRec.plane_step is not at zPlaneStep");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, transpose_rows_left) == zTransposeRowsLeft, "ZeroPageRec.transpose_rows_left is not at zTransposeRowsLeft");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, multiplier) + 1 == zMultiplierHi, "ZeroPageRec.multiplier is not at zMultiplierHi");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, cd_play_mode) + 0 == zCdPlayMode, "ZeroPageRec.cd_play_mode is not at zCdPlayMode");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, random0) + 0 == zRandom0, "ZeroPageRec.random0 is not at zRandom0");

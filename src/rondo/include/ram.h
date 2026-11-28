@@ -32,6 +32,9 @@
 #define SpriteFlipMask 0x2014 /* EmitObjectSprites' scratch: the object's flip bit; the same byte as zProduct1 */
 #define SpritePartsLeft 0x2016 /* EmitObjectSprites' scratch: parts of the sprite still to draw; the same byte as zMultiplierLo */
 #define SpritesLeft 0x2017 /* EmitObjectSprites' scratch: sprites still to draw; the same byte as zMultiplierHi */
+#define zPlaneRowsLeft 0x2015 /* the continue screen's count of the rows a letter plane step has left; the same byte as zProduct2 */
+#define zPlaneStep 0x2016 /* the continue screen's stretch step for a letter's planes; the same byte as zMultiplierLo */
+#define zTransposeRowsLeft 0x2017 /* the continue screen's count of the rows a tile transpose has left; the same byte as zMultiplierHi */
 #define zRandom0 0x2020 /* generator state low */
 #define zRandom1 0x2021 /* generator state */
 #define zRandom2 0x2022 /* generator state */
@@ -755,5 +758,12 @@
 #define PieceRecords161A 0xB0A3 /* overlay 161A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
 #define PieceRecords16CA 0xAE7D /* overlay 16CA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
 #define PieceRecords18DA 0xAE85 /* overlay 18DA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define ContinueStepsRichter 0x800B /* the continue screen's steps by sub-mode for Richter, a word each */
+#define ContinueStepsMaria 0x801A /* the continue screen's steps by sub-mode for Maria, a word each */
+#define ContinueMovesTwo 0x8492 /* the next choice of two: by choice for UP, by choice plus 2 for the other keys */
+#define ContinueMovesThree 0x8496 /* the next choice of three: by choice for UP, by choice plus 2 for the other keys */
+#define ContinueCursorRows 0x849B /* the cursor's Y by choice */
+#define ContinueVoices 0x849E /* the voice a choice sounds by character */
+#define ContinueBlinkScripts 0x84BE /* the cursor's blink scripts by step, ten */
 
 #endif

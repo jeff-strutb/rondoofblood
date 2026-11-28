@@ -153,4 +153,9 @@ TileRowsExit BlendStageTileRowsAt(uint8_t phase, uint8_t row_a, uint8_t row_b, u
 /* system/stage_tile_rows.c: what a tile row blend leaves, set on the registers. */
 void blend_exit_shim(TileRowsExit out);
 
+
+/* system/stage_tile_rows.c: BlendStageRowPair (024F:266) run at `at`, with the C of its tile row blend. */
+TileRowsExit BlendStageRowPairAt(uint8_t x, uint8_t a, uint8_t y, uint16_t at,
+                                 TileRowsExit (*tile_rows)(uint8_t, uint8_t, uint8_t));
+
 #endif

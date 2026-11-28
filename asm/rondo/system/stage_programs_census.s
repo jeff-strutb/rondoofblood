@@ -3067,3 +3067,50 @@ BlendStageTileRows026E_at11:
     cpy #$05
     bne BlendStageTileRows026E_at12
     rts
+
+; @routine 026F:224 BlendStageRowPair026F
+; @run 6B:9224
+; WHAT IT DOES: Blends the two rows a byte names: its low nibble's row at the step X, its high nibble's row at the step after
+; (as BlendStageRowPair, 024F:266). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: BlendStageTileRows026E for the low nibble, called, then the same for the high nibble with the step one on, a
+; tail jump.
+; WAITS: no.
+; Entry: A the byte, X the step, Y the second row of the first blend. Exit: as BlendStageTileRows026E.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BlendStageRowPair026F:
+    phx
+    pha
+    and #$0F
+    jsr BlendStageTileRows026E
+    pla
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    plx
+    inx
+    jmp BlendStageTileRows026E
+
+; @routine 031F:218 BlendStageRowPair031F
+; @run 6B:9218
+; WHAT IT DOES: Blends the two rows a byte names: its low nibble's row at the step X, its high nibble's row at the step after
+; (as BlendStageRowPair, 024F:266). Programs 043F and 10DF hold the same bytes; these are 026F:224's at $9218, filed again
+; because the JSR's return address is its own.
+; HOW: BlendStageTileRows026E for the low nibble, called, then the same for the high nibble with the step one on, a
+; tail jump.
+; WAITS: no.
+; Entry: A the byte, X the step, Y the second row of the first blend. Exit: as BlendStageTileRows026E.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BlendStageRowPair031F:
+    phx
+    pha
+    and #$0F
+    jsr BlendStageTileRows026E
+    pla
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    plx
+    inx
+    jmp BlendStageTileRows026E

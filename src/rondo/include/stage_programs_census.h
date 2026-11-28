@@ -245,4 +245,10 @@ void abi_BossGaugeFlash026E(void);
 TileRowsExit BlendStageTileRows026E(uint8_t phase, uint8_t row_a, uint8_t row_b);
 void abi_BlendStageTileRows026E(void);
 
+TileRowsExit BlendStageRowPair026F(uint8_t x, uint8_t a, uint8_t y);
+void abi_BlendStageRowPair026F(void);
+
+TileRowsExit BlendStageRowPair031F(uint8_t x, uint8_t a, uint8_t y);
+void abi_BlendStageRowPair031F(void);
+
 #endif

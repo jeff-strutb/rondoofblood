@@ -212,14 +212,23 @@ void abi_BlendStageTileRows(void)
  */
 TileRowsExit BlendStageRowPair(uint8_t x, uint8_t a, uint8_t y)
 {
+    return BlendStageRowPairAt(x, a, y, 0x9266, BlendStageTileRows);
+}
+
+/* BlendStageRowPair's body, at the address it runs at (its JSR returns to at + 7), with the C of the tile row blend it
+ * calls and jumps to: the builds of the overlay that hold these instructions at another address
+ * (stage_programs_census.c) pass their own. */
+TileRowsExit BlendStageRowPairAt(uint8_t x, uint8_t a, uint8_t y, uint16_t at,
+                                 TileRowsExit (*tile_rows)(uint8_t, uint8_t, uint8_t))
+{
     push8(x);
     push8(a);
-    jsr_push(0x926D);
-    BlendStageTileRows(x, (uint8_t)(a & 0x0F), y);
+    jsr_push((uint16_t)(at + 7));
+    tile_rows(x, (uint8_t)(a & 0x0F), y);
     jsr_pop();
     a = pull8();
     x = pull8();
-    return BlendStageTileRows((uint8_t)(x + 1), (uint8_t)(a >> 4), ROW_ENTRIES);
+    return tile_rows((uint8_t)(x + 1), (uint8_t)(a >> 4), ROW_ENTRIES);
 }
 
 void abi_BlendStageRowPair(void)

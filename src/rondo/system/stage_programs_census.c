@@ -2359,3 +2359,46 @@ void abi_BlendStageTileRows026E(void)
 {
     blend_exit_shim(BlendStageTileRows026E(cpu.x, cpu.a, cpu.y));
 }
+
+/*
+ * @routine 026F:224 BlendStageRowPair026F
+ * @run 6B:9224
+ * WHAT IT DOES: Blends the two rows a byte names: its low nibble's row at the step X, its high nibble's row at the step after
+ * (as BlendStageRowPair, 024F:266). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: BlendStageRowPairAt (stage_tile_rows.c), the body of 024F:266, at $9224, with BlendStageTileRows026E at $8D3A
+ * (the bytes of the tile row blend in all these programs).
+ * WAITS: no.
+ * Entry: A the byte, X the step, Y the second row of the first blend. Exit: as BlendStageTileRows026E.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+TileRowsExit BlendStageRowPair026F(uint8_t x, uint8_t a, uint8_t y)
+{
+    return BlendStageRowPairAt(x, a, y, 0x9224, BlendStageTileRows026E);
+}
+
+void abi_BlendStageRowPair026F(void)
+{
+    blend_exit_shim(BlendStageRowPair026F(cpu.x, cpu.a, cpu.y));
+}
+
+/*
+ * @routine 031F:218 BlendStageRowPair031F
+ * @run 6B:9218
+ * WHAT IT DOES: Blends the two rows a byte names: its low nibble's row at the step X, its high nibble's row at the step after
+ * (as BlendStageRowPair, 024F:266). Programs 043F and 10DF hold the same bytes; these are 026F:224's at $9218, filed again
+ * because the JSR's return address is its own.
+ * HOW: BlendStageRowPairAt (stage_tile_rows.c), the body of 024F:266, at $9218, with BlendStageTileRows026E at $8D3A
+ * (the bytes of the tile row blend in all these programs).
+ * WAITS: no.
+ * Entry: A the byte, X the step, Y the second row of the first blend. Exit: as BlendStageTileRows026E.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+TileRowsExit BlendStageRowPair031F(uint8_t x, uint8_t a, uint8_t y)
+{
+    return BlendStageRowPairAt(x, a, y, 0x9218, BlendStageTileRows026E);
+}
+
+void abi_BlendStageRowPair031F(void)
+{
+    blend_exit_shim(BlendStageRowPair031F(cpu.x, cpu.a, cpu.y));
+}

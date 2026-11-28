@@ -1043,6 +1043,12 @@ MExit MariaStateFrame(uint8_t x, uint8_t y);
 MExit MariaFrame(uint8_t x, uint8_t y);
 MExit MariaVecFrame(uint8_t x, uint8_t y);
 
+/* object/maria_death.c */
+MExit MariaDeathLeap(uint8_t x, uint8_t y);
+MExit MariaDeathFrame(uint8_t x, uint8_t y);
+MExit MariaVecDeathLeap(uint8_t x, uint8_t y);
+Regs MariaVecClearObjectsBut(void);
+
 void abi_MariaObjectApplyVelocity(void);                           /* object/richter_objects.c */
 void abi_MariaApplyMoveAndPush(void);                              /* object/richter_state.c */
 

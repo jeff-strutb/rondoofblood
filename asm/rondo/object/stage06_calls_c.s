@@ -1736,7 +1736,6 @@ RunStateUnlessSlowed0A9EStates = $CC64 ; the routine address per state
 RunStateUnlessSlowed0A9E:
     jsr ContactBox14By20_0A9E
     jsr State4WhenHitBit7_0A9E
-RunStateUnlessSlowed0A9E_at1:
     jsr SkipFrameWhenSlowed0A9E
     bcc RunStateUnlessSlowed0A9E_at0
     rts

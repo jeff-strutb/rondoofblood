@@ -477,6 +477,11 @@ void abi_StagePausedStep(void)
     stage_regs_load_shim(StagePausedStep(entry_shim()));
 }
 
+/* StageSubStepPlay's build in 024D. */
+static const PlayStepBuild play_step_024d = {
+    0x80E8, 0x8178, 0x81A2, 0x8EEA, 0x80AB, 0x872C, 0x80BF, 0x80B1, 0x8A4F, 0x93F8, 0x8B6D, 0x80A0, PLAY_HANDLERS
+};
+
 /*
  * @routine 024D:1BA StageSubStepPlay
  * @run 6B:81BA
@@ -497,15 +502,21 @@ void abi_StagePausedStep(void)
  */
 StageRegs StageSubStepPlay(StageRegs r)
 {
+    return StageSubStepPlayAt(r, 0x81BA, &play_step_024d);
+}
+
+/* StageSubStepPlay's body, for its builds elsewhere: where the build runs and the routines and table it uses. */
+StageRegs StageSubStepPlayAt(StageRegs r, uint16_t at, const PlayStepBuild *build)
+{
     uint8_t step;
     uint8_t twice;
     bool player_frame = true;
 
-    r = call_to(r, 0x81BD, 0x80E8);
-    r = call_to(r, 0x81C0, 0x8178);
-    r = call_to(r, 0x81C3, 0x81A2);
+    r = call_to(r, (uint16_t)(at + 0x3), build->demo_pad);
+    r = call_to(r, (uint16_t)(at + 0x6), build->fade_timer);
+    r = call_to(r, (uint16_t)(at + 0x9), build->pause_toggle);
     if ((RD8(ZP->paused) & PAUSED_ON) != 0) {
-        return tail_to(r, 0x81C6, 0x8EEA);
+        return tail_to(r, (uint16_t)(at + 0xC), build->paused);
     }
     r.nz = INC8(ZP->wave_counter);
     {
@@ -521,7 +532,7 @@ StageRegs StageSubStepPlay(StageRegs r)
             if (r.nz == 0) {
                 r = loaded(r, SLOW_TIMER_SCRIPT);
                 r.x = SLOW_TIMER_SLOT;
-                jsr_push(0x81E4);
+                jsr_push((uint16_t)(at + 0x2A));
                 r.y = StartScriptSlotKind1(r.a, r.x);
                 jsr_pop();
                 r.a = r.y;
@@ -536,32 +547,32 @@ StageRegs StageSubStepPlay(StageRegs r)
         player_frame = r.nz == 0;                   /* BNE $8200 on an odd count */
     }
     if (player_frame) {
-        r = call_to(r, 0x81F9, 0x80AB);
+        r = call_to(r, (uint16_t)(at + 0x3F), build->player_frame);
         r = loaded(r, RD8(ZP->sub_step));
         if (r.a != 0) {
             goto handler;
         }
         stage_regs_load_shim(r);
-        jsr_push(0x8200);
+        jsr_push((uint16_t)(at + 0x46));
         columns_exit_shim(PlayerAndCameraFrame());
         jsr_pop();
         r = stage_regs_from_cpu_shim(r);
     }
     r = loaded(r, RD8(ZP->field8e));
     if ((r.a & 0x80) != 0) {
-        r = call_to(r, 0x8207, 0x872C);
+        r = call_to(r, (uint16_t)(at + 0x4D), build->to_centre);
     } else {
-        r = call_to(r, 0x820C, 0x80BF);
+        r = call_to(r, (uint16_t)(at + 0x52), build->camera_step);
         r = tested(r, RD8(PVARS->slow_timer_lo), 0x01);
         if (r.nz == 0) {
-            r = call_to(r, 0x8215, 0x80B1);
+            r = call_to(r, (uint16_t)(at + 0x5B), build->player_objects);
         }
     }
-    r = call_to(r, 0x8218, 0x8A4F);
-    r = call_to(r, 0x821B, 0x93F8);
-    r = call_to(r, 0x821E, 0x8B6D);
-    r = call_to(r, 0x8221, 0x80A0);
-    r = call_to(r, 0x8224, PLAYER_MOVE_RUN);
+    r = call_to(r, (uint16_t)(at + 0x5E), build->scroll_objects);
+    r = call_to(r, (uint16_t)(at + 0x61), build->hit_tests);
+    r = call_to(r, (uint16_t)(at + 0x64), build->stage_frame);
+    r = call_to(r, (uint16_t)(at + 0x67), build->map_banks);
+    r = call_to(r, (uint16_t)(at + 0x6A), PLAYER_MOVE_RUN);
 handler:
     step = RD8(ZP->sub_step);
     WR8(ZP->sub_step, 0x00);
@@ -569,7 +580,7 @@ handler:
     r.c = (step & 0x80) != 0;
     r = loaded(r, twice);
     r.x = twice;
-    return tail_to(r, 0x822A, table_word(PLAY_HANDLERS, twice));
+    return tail_to(r, (uint16_t)(at + 0x70), table_word(build->handlers, twice));
 }
 
 void abi_StageSubStepPlay(void)

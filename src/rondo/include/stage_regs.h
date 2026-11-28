@@ -204,4 +204,10 @@ StageRegs StagePauseCdThenStockAt(StageRegs r, uint16_t at);
 
 StageRegs StagePlayerToCentreAt(StageRegs r, uint16_t at, uint16_t player_frame, uint16_t camera_step);
 
+/* The routines and the handler table a build of StageSubStepPlay uses. */
+typedef struct {
+    uint16_t demo_pad, fade_timer, pause_toggle, paused, player_frame, to_centre, camera_step, player_objects, scroll_objects, hit_tests, stage_frame, map_banks, handlers;
+} PlayStepBuild;
+StageRegs StageSubStepPlayAt(StageRegs r, uint16_t at, const PlayStepBuild *build);
+
 #endif

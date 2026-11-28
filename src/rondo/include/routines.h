@@ -90,6 +90,7 @@ HandlerExit TileStepOffsetAt(uint16_t offsets);
 HandlerExit TileRowOffsetAt(uint16_t offsets, uint16_t rows);
 /* terrain.c: a slope tile's new row from an eight by eight table (TileRowA's body). */
 HandlerExit TileRowAt(uint16_t table);
+HandlerExit TileNudgeA(void);
 /* terrain.c: the tiles with a step per half (TileHalfStepA's and B's body). */
 HandlerExit TileHalfStepAt(uint16_t table, uint8_t first_tile, uint8_t tile, bool right_for_bit);
 /* terrain.c: a tile handler's exit: A $81, Y and C and V where it set them. */

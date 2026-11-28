@@ -7071,57 +7071,16 @@ void abi_ProbeTile3CD(void)
     regs_exit_shim(ProbeTile3CD(regs_entry_shim()));
 }
 
-/* The row moved by a table by the column in zTemp00. */
-static Regs row_moved_by_column(Regs r, uint16_t table)
+/* A loaded tile handler's exit (terrain.c) in these registers: Y and C and V where it set them, then A $81. */
+static Regs tile_handled(Regs r, HandlerExit e)
 {
-    Sum sum;
-    uint8_t row, step;
-
-    r.y = RD8(ZP->temp00);
-    step = rd8((uint16_t)(table + r.y));
-    row = RD8(ZP->temp02);
-    sum = add_bytes(step, row, false);
-    r.c = sum.carry;
-    r.v = sum.overflow;
-    WR8(ZP->temp02, sum.value);
-    return loaded(r, 0x81);
-}
-
-/* The row from an 8 by 8 table by the row in zTemp02 and the column in zTemp00. */
-static Regs row_from_table(Regs r, uint16_t table)
-{
-    Sum sum;
-    uint8_t row = RD8(ZP->temp02);
-    uint8_t column;
-
-    row = (uint8_t)(row << 3);
-    column = RD8(ZP->temp00);
-    sum = add_bytes(row, column, false);
-    r.c = sum.carry;
-    r.v = sum.overflow;
-    r.y = sum.value;
-    r = loaded(r, rd8((uint16_t)(table + r.y)));
-    WR8(ZP->temp02, r.a);
-    return loaded(r, 0x81);
-}
-
-/* The row moved by a table entry, A less BASE (doubled when PAIR, the odd entry when zTemp00's bit 2 is clear). */
-static Regs row_moved_by_kind(Regs r, uint8_t base, uint16_t table, bool pair)
-{
-    Sum sum;
-    uint8_t row, step;
-
-    sum = sub_bytes(r.a, base, true);
-    r.y = pair ? (uint8_t)(sum.value << 1) : sum.value;
-    if (pair && (RD8(ZP->temp00) & 0x04) == 0) {
-        r.y++;
+    if (e.y_set) {
+        r.y = e.y;
     }
-    step = rd8((uint16_t)(table + r.y));
-    row = RD8(ZP->temp02);
-    sum = add_bytes(step, row, false);
-    r.c = sum.carry;
-    r.v = sum.overflow;
-    WR8(ZP->temp02, sum.value);
+    if (e.flags_set) {
+        r.c = e.carry;
+        r.v = e.overflow;
+    }
     return loaded(r, 0x81);
 }
 
@@ -7138,13 +7097,13 @@ static Regs row_moved_by_kind(Regs r, uint8_t base, uint16_t table, bool pair)
  * these bytes.
  *
  * WHAT IT DOES: Tile attribute $80: the row moved by the table at $989C by the column; answers $81.
- * HOW: A table read and an add.
+ * HOW: TileStepAt (terrain.c), the body of 050F:752, with the table at $989C.
  * WAITS: no.
  * Entry: zTemp00 the column, zTemp02 the row. Exit: A $81, N set; Y the column; C and V from the add.
  */
 StageRegs TileSlopeA3CD(StageRegs r)
 {
-    return row_moved_by_column(r, 0x989C);
+    return tile_handled(r, TileStepAt(0x989C));
 }
 
 void abi_TileSlopeA3CD(void)
@@ -7165,13 +7124,13 @@ void abi_TileSlopeA3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: Tile attribute $81: the row from the 8 by 8 table at $98A4; answers $81.
- * HOW: Shifts, an add and a table read.
+ * HOW: TileRowAt (terrain.c), the body of 050F:75F, with the table at $98A4.
  * WAITS: no.
  * Entry: zTemp00 the column, zTemp02 the row. Exit: A $81, N set; Y the index; C and V from the add.
  */
 StageRegs TileSlopeB3CD(StageRegs r)
 {
-    return row_from_table(r, 0x98A4);
+    return tile_handled(r, TileRowAt(0x98A4));
 }
 
 void abi_TileSlopeB3CD(void)
@@ -7192,13 +7151,13 @@ void abi_TileSlopeB3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: Tile attribute $82: the row from the 8 by 8 table at $98E4; answers $81.
- * HOW: Shifts, an add and a table read.
+ * HOW: TileRowAt (terrain.c), the body of 050F:75F, with the table at $98E4.
  * WAITS: no.
  * Entry: zTemp00 the column, zTemp02 the row. Exit: as TileSlopeB3CD.
  */
 StageRegs TileSlopeC3CD(StageRegs r)
 {
-    return row_from_table(r, 0x98E4);
+    return tile_handled(r, TileRowAt(0x98E4));
 }
 
 void abi_TileSlopeC3CD(void)
@@ -7225,7 +7184,17 @@ void abi_TileSlopeC3CD(void)
  */
 StageRegs TileStepRow3CD(StageRegs r)
 {
-    return row_moved_by_kind(r, 0x83, 0x988C, false);
+    Sum sum;
+    uint8_t row, step;
+
+    r.y = sub_bytes(r.a, 0x83, true).value;
+    step = rd8((uint16_t)(0x988C + r.y));
+    row = RD8(ZP->temp02);
+    sum = add_bytes(step, row, false);
+    r.c = sum.carry;
+    r.v = sum.overflow;
+    WR8(ZP->temp02, sum.value);
+    return loaded(r, 0x81);
 }
 
 void abi_TileStepRow3CD(void)
@@ -7247,13 +7216,14 @@ void abi_TileStepRow3CD(void)
  *
  * WHAT IT DOES: Tile attributes $8C to $8F: the row moved by one of a pair in the table at $9894 (the attribute less
  * $8C doubled, the second when the column's bit 2 is clear); answers $81.
- * HOW: A subtract and a shift; BBS2 of zTemp00; a table read and an add.
+ * HOW: TileHalfStepAt (terrain.c), the body of 050F:781, with the table at $9894, from attribute $8C, the second byte when the
+ * bit is clear.
  * WAITS: no.
  * Entry: A the attribute, zTemp00 the column, zTemp02 the row. Exit: as TileStepRow3CD.
  */
 StageRegs TileStepPair3CD(StageRegs r)
 {
-    return row_moved_by_kind(r, 0x8C, 0x9894, true);
+    return tile_handled(r, TileHalfStepAt(0x9894, 0x8C, r.a, false));
 }
 
 void abi_TileStepPair3CD(void)
@@ -7274,14 +7244,13 @@ void abi_TileStepPair3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: Tile attributes $86 and $8B: the row one lower; answers $81.
- * HOW: An increment.
+ * HOW: TileNudgeA (terrain.c, 050F:7A9), the same code.
  * WAITS: no.
  * Entry: zTemp02 the row. Exit: A $81, N set. X, Y, C and V kept.
  */
 StageRegs TileRowDown3CD(StageRegs r)
 {
-    r.nz = INC8(ZP->temp02);
-    return loaded(r, 0x81);
+    return tile_handled(r, TileNudgeA());
 }
 
 void abi_TileRowDown3CD(void)
@@ -7302,13 +7271,13 @@ void abi_TileRowDown3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: Tile attribute $83: the row moved by the table at $9924 by the column; answers $81.
- * HOW: A table read and an add.
+ * HOW: TileStepAt (terrain.c), the body of 050F:752, with the table at $9924.
  * WAITS: no.
  * Entry: zTemp00 the column, zTemp02 the row. Exit: as TileSlopeA3CD.
  */
 StageRegs TileSlopeD3CD(StageRegs r)
 {
-    return row_moved_by_column(r, 0x9924);
+    return tile_handled(r, TileStepAt(0x9924));
 }
 
 void abi_TileSlopeD3CD(void)
@@ -7329,13 +7298,13 @@ void abi_TileSlopeD3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: Tile attribute $84: the row from the 8 by 8 table at $992C; answers $81.
- * HOW: Shifts, an add and a table read.
+ * HOW: TileRowAt (terrain.c), the body of 050F:75F, with the table at $992C.
  * WAITS: no.
  * Entry: zTemp00 the column, zTemp02 the row. Exit: as TileSlopeB3CD.
  */
 StageRegs TileSlopeE3CD(StageRegs r)
 {
-    return row_from_table(r, 0x992C);
+    return tile_handled(r, TileRowAt(0x992C));
 }
 
 void abi_TileSlopeE3CD(void)
@@ -7356,13 +7325,13 @@ void abi_TileSlopeE3CD(void)
  * these bytes.
  *
  * WHAT IT DOES: Tile attribute $85: the row from the 8 by 8 table at $996C; answers $81.
- * HOW: Shifts, an add and a table read.
+ * HOW: TileRowAt (terrain.c), the body of 050F:75F, with the table at $996C.
  * WAITS: no.
  * Entry: zTemp00 the column, zTemp02 the row. Exit: as TileSlopeB3CD.
  */
 StageRegs TileSlopeF3CD(StageRegs r)
 {
-    return row_from_table(r, 0x996C);
+    return tile_handled(r, TileRowAt(0x996C));
 }
 
 void abi_TileSlopeF3CD(void)

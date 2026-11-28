@@ -11,14 +11,15 @@
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecords = $9B98 ; the list buffer's record by the section step (zField82)
 ExpandStageLists:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9B98,y
+    lda a:StageListRecords,y
     sta z:zTemp00
-    lda a:$9B99,y
+    lda a:StageListRecords+1,y
     sta z:zTemp01
     cly
 ExpandStageLists_at0:
@@ -86,14 +87,15 @@ ExpandStageLists_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsB = $9C28 ; the list buffer's record by the section step (zField82)
 ExpandStageListsB:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9C28,y
+    lda a:StageListRecordsB,y
     sta z:zTemp00
-    lda a:$9C29,y
+    lda a:StageListRecordsB+1,y
     sta z:zTemp01
     cly
 ExpandStageListsB_at0:
@@ -161,14 +163,15 @@ ExpandStageListsB_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsC = $9E7F ; the list buffer's record by the section step (zField82)
 ExpandStageListsC:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9E7F,y
+    lda a:StageListRecordsC,y
     sta z:zTemp00
-    lda a:$9E80,y
+    lda a:StageListRecordsC+1,y
     sta z:zTemp01
     cly
 ExpandStageListsC_at0:
@@ -236,14 +239,15 @@ ExpandStageListsC_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsD = $9F43 ; the list buffer's record by the section step (zField82)
 ExpandStageListsD:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9F43,y
+    lda a:StageListRecordsD,y
     sta z:zTemp00
-    lda a:$9F44,y
+    lda a:StageListRecordsD+1,y
     sta z:zTemp01
     cly
 ExpandStageListsD_at0:
@@ -311,14 +315,15 @@ ExpandStageListsD_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsE = $9CDA ; the list buffer's record by the section step (zField82)
 ExpandStageListsE:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9CDA,y
+    lda a:StageListRecordsE,y
     sta z:zTemp00
-    lda a:$9CDB,y
+    lda a:StageListRecordsE+1,y
     sta z:zTemp01
     cly
 ExpandStageListsE_at0:
@@ -386,14 +391,15 @@ ExpandStageListsE_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsF = $9E65 ; the list buffer's record by the section step (zField82)
 ExpandStageListsF:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9E65,y
+    lda a:StageListRecordsF,y
     sta z:zTemp00
-    lda a:$9E66,y
+    lda a:StageListRecordsF+1,y
     sta z:zTemp01
     cly
 ExpandStageListsF_at0:
@@ -461,14 +467,15 @@ ExpandStageListsF_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsG = $9CD9 ; the list buffer's record by the section step (zField82)
 ExpandStageListsG:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9CD9,y
+    lda a:StageListRecordsG,y
     sta z:zTemp00
-    lda a:$9CDA,y
+    lda a:StageListRecordsG+1,y
     sta z:zTemp01
     cly
 ExpandStageListsG_at0:
@@ -536,14 +543,15 @@ ExpandStageListsG_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsH = $9EAC ; the list buffer's record by the section step (zField82)
 ExpandStageListsH:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9EAC,y
+    lda a:StageListRecordsH,y
     sta z:zTemp00
-    lda a:$9EAD,y
+    lda a:StageListRecordsH+1,y
     sta z:zTemp01
     cly
 ExpandStageListsH_at0:
@@ -611,14 +619,15 @@ ExpandStageListsH_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsI = $9CB0 ; the list buffer's record by the section step (zField82)
 ExpandStageListsI:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9CB0,y
+    lda a:StageListRecordsI,y
     sta z:zTemp00
-    lda a:$9CB1,y
+    lda a:StageListRecordsI+1,y
     sta z:zTemp01
     cly
 ExpandStageListsI_at0:
@@ -686,14 +695,15 @@ ExpandStageListsI_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsJ = $9E77 ; the list buffer's record by the section step (zField82)
 ExpandStageListsJ:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9E77,y
+    lda a:StageListRecordsJ,y
     sta z:zTemp00
-    lda a:$9E78,y
+    lda a:StageListRecordsJ+1,y
     sta z:zTemp01
     cly
 ExpandStageListsJ_at0:
@@ -761,14 +771,15 @@ ExpandStageListsJ_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsK = $9CC7 ; the list buffer's record by the section step (zField82)
 ExpandStageListsK:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9CC7,y
+    lda a:StageListRecordsK,y
     sta z:zTemp00
-    lda a:$9CC8,y
+    lda a:StageListRecordsK+1,y
     sta z:zTemp01
     cly
 ExpandStageListsK_at0:
@@ -836,14 +847,15 @@ ExpandStageListsK_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsL = $9E7A ; the list buffer's record by the section step (zField82)
 ExpandStageListsL:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9E7A,y
+    lda a:StageListRecordsL,y
     sta z:zTemp00
-    lda a:$9E7B,y
+    lda a:StageListRecordsL+1,y
     sta z:zTemp01
     cly
 ExpandStageListsL_at0:
@@ -911,14 +923,15 @@ ExpandStageListsL_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsM = $9CEB ; the list buffer's record by the section step (zField82)
 ExpandStageListsM:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9CEB,y
+    lda a:StageListRecordsM,y
     sta z:zTemp00
-    lda a:$9CEC,y
+    lda a:StageListRecordsM+1,y
     sta z:zTemp01
     cly
 ExpandStageListsM_at0:
@@ -986,14 +999,15 @@ ExpandStageListsM_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsN = $9EA8 ; the list buffer's record by the section step (zField82)
 ExpandStageListsN:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9EA8,y
+    lda a:StageListRecordsN,y
     sta z:zTemp00
-    lda a:$9EA9,y
+    lda a:StageListRecordsN+1,y
     sta z:zTemp01
     cly
 ExpandStageListsN_at0:
@@ -1061,14 +1075,15 @@ ExpandStageListsN_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsO = $9DFA ; the list buffer's record by the section step (zField82)
 ExpandStageListsO:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9DFA,y
+    lda a:StageListRecordsO,y
     sta z:zTemp00
-    lda a:$9DFB,y
+    lda a:StageListRecordsO+1,y
     sta z:zTemp01
     cly
 ExpandStageListsO_at0:
@@ -1136,14 +1151,15 @@ ExpandStageListsO_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsP = $9F1D ; the list buffer's record by the section step (zField82)
 ExpandStageListsP:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9F1D,y
+    lda a:StageListRecordsP,y
     sta z:zTemp00
-    lda a:$9F1E,y
+    lda a:StageListRecordsP+1,y
     sta z:zTemp01
     cly
 ExpandStageListsP_at0:
@@ -1211,14 +1227,15 @@ ExpandStageListsP_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsQ = $9C78 ; the list buffer's record by the section step (zField82)
 ExpandStageListsQ:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9C78,y
+    lda a:StageListRecordsQ,y
     sta z:zTemp00
-    lda a:$9C79,y
+    lda a:StageListRecordsQ+1,y
     sta z:zTemp01
     cly
 ExpandStageListsQ_at0:
@@ -1286,14 +1303,15 @@ ExpandStageListsQ_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsR = $9F07 ; the list buffer's record by the section step (zField82)
 ExpandStageListsR:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9F07,y
+    lda a:StageListRecordsR,y
     sta z:zTemp00
-    lda a:$9F08,y
+    lda a:StageListRecordsR+1,y
     sta z:zTemp01
     cly
 ExpandStageListsR_at0:
@@ -1361,14 +1379,15 @@ ExpandStageListsR_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsS = $9C7D ; the list buffer's record by the section step (zField82)
 ExpandStageListsS:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9C7D,y
+    lda a:StageListRecordsS,y
     sta z:zTemp00
-    lda a:$9C7E,y
+    lda a:StageListRecordsS+1,y
     sta z:zTemp01
     cly
 ExpandStageListsS_at0:
@@ -1436,14 +1455,15 @@ ExpandStageListsS_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsT = $9F3D ; the list buffer's record by the section step (zField82)
 ExpandStageListsT:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9F3D,y
+    lda a:StageListRecordsT,y
     sta z:zTemp00
-    lda a:$9F3E,y
+    lda a:StageListRecordsT+1,y
     sta z:zTemp01
     cly
 ExpandStageListsT_at0:
@@ -1511,14 +1531,15 @@ ExpandStageListsT_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsU = $9CA8 ; the list buffer's record by the section step (zField82)
 ExpandStageListsU:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9CA8,y
+    lda a:StageListRecordsU,y
     sta z:zTemp00
-    lda a:$9CA9,y
+    lda a:StageListRecordsU+1,y
     sta z:zTemp01
     cly
 ExpandStageListsU_at0:
@@ -1586,14 +1607,15 @@ ExpandStageListsU_at6:
 ; Entry: zField82 the stage section. Exit: A $FF, N 0, Z 1, C 1, V from the last step added to
 ; the record's place; Y the last index used; X 0 if a run was stored, else kept. Clobbers
 ; zTemp00-04.
+StageListRecordsV = $9EA4 ; the list buffer's record by the section step (zField82)
 ExpandStageListsV:
     tai KernelZeros,SaveBuffer,$0300
     lda z:zField82
     asl a
     tay
-    lda a:$9EA4,y
+    lda a:StageListRecordsV,y
     sta z:zTemp00
-    lda a:$9EA5,y
+    lda a:StageListRecordsV+1,y
     sta z:zTemp01
     cly
 ExpandStageListsV_at0:

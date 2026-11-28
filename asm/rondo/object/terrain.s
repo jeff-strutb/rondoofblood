@@ -8,12 +8,13 @@
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesB = $C11F ; a probe's column offsets by probe number
 TerrainLookupB:
     asl a
     tay
-    lda a:$C11F,y
+    lda a:TerrainProbeTablesB,y
     sta z:zTemp0C
-    lda a:$C120,y
+    lda a:TerrainProbeTablesB+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -728,12 +729,13 @@ TileLift1:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesC = $D9DE ; a probe's column offsets by probe number
 TerrainLookupC:
     asl a
     tay
-    lda a:$D9DE,y
+    lda a:TerrainProbeTablesC,y
     sta z:zTemp0C
-    lda a:$D9DF,y
+    lda a:TerrainProbeTablesC+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -874,12 +876,13 @@ TerrainLookupAltC_at0:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesD = $B547 ; a probe's column offsets by probe number
 TerrainLookupD:
     asl a
     tay
-    lda a:$B547,y
+    lda a:TerrainProbeTablesD,y
     sta z:zTemp0C
-    lda a:$B548,y
+    lda a:TerrainProbeTablesD+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -1020,12 +1023,13 @@ TerrainLookupAltD_at0:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesE = $BD92 ; a probe's column offsets by probe number
 TerrainLookupE:
     asl a
     tay
-    lda a:$BD92,y
+    lda a:TerrainProbeTablesE,y
     sta z:zTemp0C
-    lda a:$BD93,y
+    lda a:TerrainProbeTablesE+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -1166,12 +1170,13 @@ TerrainLookupAltE_at0:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesF = $D658 ; a probe's column offsets by probe number
 TerrainLookupF:
     asl a
     tay
-    lda a:$D658,y
+    lda a:TerrainProbeTablesF,y
     sta z:zTemp0C
-    lda a:$D659,y
+    lda a:TerrainProbeTablesF+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -1312,12 +1317,13 @@ TerrainLookupAltF_at0:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesG = $D771 ; a probe's column offsets by probe number
 TerrainLookupG:
     asl a
     tay
-    lda a:$D771,y
+    lda a:TerrainProbeTablesG,y
     sta z:zTemp0C
-    lda a:$D772,y
+    lda a:TerrainProbeTablesG+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -1458,12 +1464,13 @@ TerrainLookupAltG_at0:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesH = $B23F ; a probe's column offsets by probe number
 TerrainLookupH:
     asl a
     tay
-    lda a:$B23F,y
+    lda a:TerrainProbeTablesH,y
     sta z:zTemp0C
-    lda a:$B240,y
+    lda a:TerrainProbeTablesH+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -1604,12 +1611,13 @@ TerrainLookupAltH_at0:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesI = $D2CF ; a probe's column offsets by probe number
 TerrainLookupI:
     asl a
     tay
-    lda a:$D2CF,y
+    lda a:TerrainProbeTablesI,y
     sta z:zTemp0C
-    lda a:$D2D0,y
+    lda a:TerrainProbeTablesI+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -1750,12 +1758,13 @@ TerrainLookupAltI_at0:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesJ = $D9A2 ; a probe's column offsets by probe number
 TerrainLookupJ:
     asl a
     tay
-    lda a:$D9A2,y
+    lda a:TerrainProbeTablesJ,y
     sta z:zTemp0C
-    lda a:$D9A3,y
+    lda a:TerrainProbeTablesJ+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A
@@ -1896,12 +1905,13 @@ TerrainLookupAltJ_at0:
 ; WAITS: no.
 ; Entry: A probe, X object. Exit: A 4, N 0, Z 1, C 1, Y 16, X kept, V from the last column's
 ; read or add. Clobbers zTemp00-0D.
+TerrainProbeTablesK = $D6C8 ; a probe's column offsets by probe number
 TerrainLookupK:
     asl a
     tay
-    lda a:$D6C8,y
+    lda a:TerrainProbeTablesK,y
     sta z:zTemp0C
-    lda a:$D6C9,y
+    lda a:TerrainProbeTablesK+1,y
     sta z:zTemp0D
     cly
     sty z:zTemp0A

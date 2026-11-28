@@ -68,14 +68,15 @@ InitStage026E_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords026E = $9C93 ; the section's entry record by zField83
 LoadStageEntry026E:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9C93,y
+    lda a:StageEntryRecords026E,y
     sta z:zTemp00
-    lda a:$9C94,y
+    lda a:StageEntryRecords026E+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y
@@ -469,14 +470,15 @@ InitStage031E_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords031E = $9E3F ; the section's entry record by zField83
 LoadStageEntry031E:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9E3F,y
+    lda a:StageEntryRecords031E,y
     sta z:zTemp00
-    lda a:$9E40,y
+    lda a:StageEntryRecords031E+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y
@@ -870,14 +872,15 @@ InitStage043E_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords043E = $9F02 ; the section's entry record by zField83
 LoadStageEntry043E:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9F02,y
+    lda a:StageEntryRecords043E,y
     sta z:zTemp00
-    lda a:$9F03,y
+    lda a:StageEntryRecords043E+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y
@@ -1271,14 +1274,15 @@ InitStage064E_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords064E = $9D8E ; the section's entry record by zField83
 LoadStageEntry064E:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9D8E,y
+    lda a:StageEntryRecords064E,y
     sta z:zTemp00
-    lda a:$9D8F,y
+    lda a:StageEntryRecords064E+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y
@@ -1672,14 +1676,15 @@ InitStage10DE_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords10DE = $9EF0 ; the section's entry record by zField83
 LoadStageEntry10DE:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9EF0,y
+    lda a:StageEntryRecords10DE,y
     sta z:zTemp00
-    lda a:$9EF1,y
+    lda a:StageEntryRecords10DE+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y
@@ -2073,14 +2078,15 @@ InitStage122E_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords122E = $9D08 ; the section's entry record by zField83
 LoadStageEntry122E:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9D08,y
+    lda a:StageEntryRecords122E,y
     sta z:zTemp00
-    lda a:$9D09,y
+    lda a:StageEntryRecords122E+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y
@@ -2474,14 +2480,15 @@ InitStage1A2E_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords1A2E = $9D52 ; the section's entry record by zField83
 LoadStageEntry1A2E:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9D52,y
+    lda a:StageEntryRecords1A2E,y
     sta z:zTemp00
-    lda a:$9D53,y
+    lda a:StageEntryRecords1A2E+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y
@@ -2875,14 +2882,15 @@ InitStage1B8E_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords1B8E = $9D63 ; the section's entry record by zField83
 LoadStageEntry1B8E:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9D63,y
+    lda a:StageEntryRecords1B8E,y
     sta z:zTemp00
-    lda a:$9D64,y
+    lda a:StageEntryRecords1B8E+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y
@@ -3276,14 +3284,15 @@ InitStage1CEE_at1:
 ; WAITS: no.
 ; Entry: zField83 the section. Exit: A the record's last byte, Y the record's length so far, N and Z from Y. Clobbers
 ; zTemp00-01.
+StageEntryRecords1CEE = $9CF6 ; the section's entry record by zField83
 LoadStageEntry1CEE:
     stz z:zRasterStage
     lda z:zField83
     asl a
     tay
-    lda a:$9CF6,y
+    lda a:StageEntryRecords1CEE,y
     sta z:zTemp00
-    lda a:$9CF7,y
+    lda a:StageEntryRecords1CEE+1,y
     sta z:zTemp01
     cly
     lda (zTemp00),y

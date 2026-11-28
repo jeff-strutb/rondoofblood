@@ -163,6 +163,8 @@ RunListChannel00C5_at5:
 ; HOW: RunListChannelBody with the table at $91F2, sector 07D1's overlay.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ListChannelCopySource07D1 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists07D1 = $91F2 ; the VRAM copy lists, a word by list number
 RunListChannel07D1:
     dec a
     beq TitleSteps
@@ -179,9 +181,9 @@ RunListChannel07D1_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel07D1_at1
-    lda a:$9800
+    lda a:ListChannelCopySource07D1
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource07D1+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -223,9 +225,9 @@ RunListChannel07D1_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$91F2,y
+    lda a:ListChannelCopyLists07D1,y
     sta a:ListWordLo,x
-    lda a:$91F3,y
+    lda a:ListChannelCopyLists07D1+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel07D1_at4:
@@ -316,6 +318,8 @@ RunListChannel07D1_at5:
 ; HOW: RunListChannelBody with the table at $8DEC, sector 0931's overlay.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ListChannelCopySource0931 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists0931 = $8DEC ; the VRAM copy lists, a word by list number
 RunListChannel0931:
     dec a
     beq TitleSteps
@@ -332,9 +336,9 @@ RunListChannel0931_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel0931_at1
-    lda a:$9800
+    lda a:ListChannelCopySource0931
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource0931+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -376,9 +380,9 @@ RunListChannel0931_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8DEC,y
+    lda a:ListChannelCopyLists0931,y
     sta a:ListWordLo,x
-    lda a:$8DED,y
+    lda a:ListChannelCopyLists0931+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel0931_at4:
@@ -469,6 +473,8 @@ RunListChannel0931_at5:
 ; HOW: RunListChannelBody with the table at $8FEA, sector 09E1's overlay.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ListChannelCopySource09E1 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists09E1 = $8FEA ; the VRAM copy lists, a word by list number
 RunListChannel09E1:
     dec a
     beq TitleSteps
@@ -485,9 +491,9 @@ RunListChannel09E1_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel09E1_at1
-    lda a:$9800
+    lda a:ListChannelCopySource09E1
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource09E1+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -529,9 +535,9 @@ RunListChannel09E1_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8FEA,y
+    lda a:ListChannelCopyLists09E1,y
     sta a:ListWordLo,x
-    lda a:$8FEB,y
+    lda a:ListChannelCopyLists09E1+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel09E1_at4:
@@ -622,6 +628,8 @@ RunListChannel09E1_at5:
 ; HOW: RunListChannelBody with the table at $8DD8, sector 0B41's overlay.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ListChannelCopySource0B41 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists0B41 = $8DD8 ; the VRAM copy lists, a word by list number
 RunListChannel0B41:
     dec a
     beq TitleSteps
@@ -638,9 +646,9 @@ RunListChannel0B41_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel0B41_at1
-    lda a:$9800
+    lda a:ListChannelCopySource0B41
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource0B41+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -682,9 +690,9 @@ RunListChannel0B41_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8DD8,y
+    lda a:ListChannelCopyLists0B41,y
     sta a:ListWordLo,x
-    lda a:$8DD9,y
+    lda a:ListChannelCopyLists0B41+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel0B41_at4:
@@ -775,6 +783,8 @@ RunListChannel0B41_at5:
 ; HOW: RunListChannelBody with the table at $8F7B, sector 12D1 (13F1 holds the same bytes).
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ListChannelCopySource12D1 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists12D1 = $8F7B ; the VRAM copy lists, a word by list number
 RunListChannel12D1:
     dec a
     beq TitleSteps
@@ -791,9 +801,9 @@ RunListChannel12D1_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel12D1_at1
-    lda a:$9800
+    lda a:ListChannelCopySource12D1
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource12D1+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -835,9 +845,9 @@ RunListChannel12D1_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8F7B,y
+    lda a:ListChannelCopyLists12D1,y
     sta a:ListWordLo,x
-    lda a:$8F7C,y
+    lda a:ListChannelCopyLists12D1+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel12D1_at4:
@@ -928,6 +938,8 @@ RunListChannel12D1_at5:
 ; HOW: RunListChannelBody with the table at $8F06, sector 1611's overlay.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ListChannelCopySource1611 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists1611 = $8F06 ; the VRAM copy lists, a word by list number
 RunListChannel1611:
     dec a
     beq TitleSteps
@@ -944,9 +956,9 @@ RunListChannel1611_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel1611_at1
-    lda a:$9800
+    lda a:ListChannelCopySource1611
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource1611+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -988,9 +1000,9 @@ RunListChannel1611_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8F06,y
+    lda a:ListChannelCopyLists1611,y
     sta a:ListWordLo,x
-    lda a:$8F07,y
+    lda a:ListChannelCopyLists1611+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel1611_at4:

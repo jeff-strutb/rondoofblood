@@ -4,6 +4,7 @@
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0519 = $ABDB ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0519:
     lda a:OBJ_WORK_A,x
     asl a
@@ -15,7 +16,7 @@ HitDamage0519:
     clc
     adc z:zTemp00
     tay
-    lda a:$ABDB,y
+    lda a:HitDamageByAttack0519,y
     sta z:zTemp00
     rts
 
@@ -25,6 +26,7 @@ HitDamage0519:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack05C9 = $AB8F ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage05C9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -36,7 +38,7 @@ HitDamage05C9:
     clc
     adc z:zTemp00
     tay
-    lda a:$AB8F,y
+    lda a:HitDamageByAttack05C9,y
     sta z:zTemp00
     rts
 
@@ -46,6 +48,7 @@ HitDamage05C9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0729 = $AB97 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0729:
     lda a:OBJ_WORK_A,x
     asl a
@@ -57,7 +60,7 @@ HitDamage0729:
     clc
     adc z:zTemp00
     tay
-    lda a:$AB97,y
+    lda a:HitDamageByAttack0729,y
     sta z:zTemp00
     rts
 
@@ -67,6 +70,7 @@ HitDamage0729:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack07D9 = $AB0D ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage07D9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -78,7 +82,7 @@ HitDamage07D9:
     clc
     adc z:zTemp00
     tay
-    lda a:$AB0D,y
+    lda a:HitDamageByAttack07D9,y
     sta z:zTemp00
     rts
 
@@ -88,6 +92,7 @@ HitDamage07D9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0889 = $AA94 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0889:
     lda a:OBJ_WORK_A,x
     asl a
@@ -99,7 +104,7 @@ HitDamage0889:
     clc
     adc z:zTemp00
     tay
-    lda a:$AA94,y
+    lda a:HitDamageByAttack0889,y
     sta z:zTemp00
     rts
 
@@ -109,6 +114,7 @@ HitDamage0889:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0939 = $ABCD ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0939:
     lda a:OBJ_WORK_A,x
     asl a
@@ -120,7 +126,7 @@ HitDamage0939:
     clc
     adc z:zTemp00
     tay
-    lda a:$ABCD,y
+    lda a:HitDamageByAttack0939,y
     sta z:zTemp00
     rts
 
@@ -130,6 +136,7 @@ HitDamage0939:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0A99 = $AC14 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0A99:
     lda a:OBJ_WORK_A,x
     asl a
@@ -141,7 +148,7 @@ HitDamage0A99:
     clc
     adc z:zTemp00
     tay
-    lda a:$AC14,y
+    lda a:HitDamageByAttack0A99,y
     sta z:zTemp00
     rts
 
@@ -151,6 +158,7 @@ HitDamage0A99:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0B49 = $AA98 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0B49:
     lda a:OBJ_WORK_A,x
     asl a
@@ -162,7 +170,7 @@ HitDamage0B49:
     clc
     adc z:zTemp00
     tay
-    lda a:$AA98,y
+    lda a:HitDamageByAttack0B49,y
     sta z:zTemp00
     rts
 
@@ -172,6 +180,7 @@ HitDamage0B49:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0BF9 = $ABE8 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0BF9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -183,7 +192,7 @@ HitDamage0BF9:
     clc
     adc z:zTemp00
     tay
-    lda a:$ABE8,y
+    lda a:HitDamageByAttack0BF9,y
     sta z:zTemp00
     rts
 
@@ -193,6 +202,7 @@ HitDamage0BF9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0CA9 = $ABFC ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0CA9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -204,7 +214,7 @@ HitDamage0CA9:
     clc
     adc z:zTemp00
     tay
-    lda a:$ABFC,y
+    lda a:HitDamageByAttack0CA9,y
     sta z:zTemp00
     rts
 
@@ -214,6 +224,7 @@ HitDamage0CA9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0D59 = $ACA2 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0D59:
     lda a:OBJ_WORK_A,x
     asl a
@@ -225,7 +236,7 @@ HitDamage0D59:
     clc
     adc z:zTemp00
     tay
-    lda a:$ACA2,y
+    lda a:HitDamageByAttack0D59,y
     sta z:zTemp00
     rts
 
@@ -235,6 +246,7 @@ HitDamage0D59:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0E09 = $AB01 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0E09:
     lda a:OBJ_WORK_A,x
     asl a
@@ -246,7 +258,7 @@ HitDamage0E09:
     clc
     adc z:zTemp00
     tay
-    lda a:$AB01,y
+    lda a:HitDamageByAttack0E09,y
     sta z:zTemp00
     rts
 
@@ -256,6 +268,7 @@ HitDamage0E09:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0EB9 = $AC50 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0EB9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -267,7 +280,7 @@ HitDamage0EB9:
     clc
     adc z:zTemp00
     tay
-    lda a:$AC50,y
+    lda a:HitDamageByAttack0EB9,y
     sta z:zTemp00
     rts
 
@@ -277,6 +290,7 @@ HitDamage0EB9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack1019 = $AC0C ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage1019:
     lda a:OBJ_WORK_A,x
     asl a
@@ -288,7 +302,7 @@ HitDamage1019:
     clc
     adc z:zTemp00
     tay
-    lda a:$AC0C,y
+    lda a:HitDamageByAttack1019,y
     sta z:zTemp00
     rts
 
@@ -298,6 +312,7 @@ HitDamage1019:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack10C9 = $ABAB ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage10C9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -309,7 +324,7 @@ HitDamage10C9:
     clc
     adc z:zTemp00
     tay
-    lda a:$ABAB,y
+    lda a:HitDamageByAttack10C9,y
     sta z:zTemp00
     rts
 
@@ -319,6 +334,7 @@ HitDamage10C9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack1179 = $AC16 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage1179:
     lda a:OBJ_WORK_A,x
     asl a
@@ -330,7 +346,7 @@ HitDamage1179:
     clc
     adc z:zTemp00
     tay
-    lda a:$AC16,y
+    lda a:HitDamageByAttack1179,y
     sta z:zTemp00
     rts
 
@@ -340,6 +356,7 @@ HitDamage1179:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack16C9 = $AB66 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage16C9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -351,7 +368,7 @@ HitDamage16C9:
     clc
     adc z:zTemp00
     tay
-    lda a:$AB66,y
+    lda a:HitDamageByAttack16C9,y
     sta z:zTemp00
     rts
 
@@ -362,6 +379,7 @@ HitDamage16C9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack0F69 = $AA98 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage0F69:
     lda a:OBJ_WORK_A,x
     asl a
@@ -373,7 +391,7 @@ HitDamage0F69:
     clc
     adc z:zTemp00
     tay
-    lda a:$AA98,y
+    lda a:HitDamageByAttack0F69,y
     sta z:zTemp00
     rts
 
@@ -383,6 +401,7 @@ HitDamage0F69:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack12D9 = $AC28 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage12D9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -394,7 +413,7 @@ HitDamage12D9:
     clc
     adc z:zTemp00
     tay
-    lda a:$AC28,y
+    lda a:HitDamageByAttack12D9,y
     sta z:zTemp00
     rts
 
@@ -404,6 +423,7 @@ HitDamage12D9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack13F9 = $AC38 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage13F9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -415,7 +435,7 @@ HitDamage13F9:
     clc
     adc z:zTemp00
     tay
-    lda a:$AC38,y
+    lda a:HitDamageByAttack13F9,y
     sta z:zTemp00
     rts
 
@@ -425,6 +445,7 @@ HitDamage13F9:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack1619 = $AC22 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage1619:
     lda a:OBJ_WORK_A,x
     asl a
@@ -436,7 +457,7 @@ HitDamage1619:
     clc
     adc z:zTemp00
     tay
-    lda a:$AC22,y
+    lda a:HitDamageByAttack1619,y
     sta z:zTemp00
     rts
 
@@ -446,6 +467,7 @@ HitDamage1619:
 ; HOW: hit_damage_from.
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack18D9 = $AB3A ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage18D9:
     lda a:OBJ_WORK_A,x
     asl a
@@ -457,7 +479,7 @@ HitDamage18D9:
     clc
     adc z:zTemp00
     tay
-    lda a:$AB3A,y
+    lda a:HitDamageByAttack18D9,y
     sta z:zTemp00
     rts
 

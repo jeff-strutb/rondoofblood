@@ -8,10 +8,12 @@
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStep = $9B86 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStep = $9B8E ; slot 6's script, by twice the section step plus the character
 StartStageLists:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9B86,x
+    lda a:StageListByStep,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageLists
     lda z:zField82
@@ -19,7 +21,7 @@ StartStageLists:
     clc
     adc z:zCharacter
     tax
-    lda a:$9B8E,x
+    lda a:StageScriptByStep,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -34,10 +36,12 @@ StartStageLists:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepB = $9C12 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepB = $9C1A ; slot 6's script, by twice the section step plus the character
 StartStageListsB:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9C12,x
+    lda a:StageListByStepB,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsB
     lda z:zField82
@@ -45,7 +49,7 @@ StartStageListsB:
     clc
     adc z:zCharacter
     tax
-    lda a:$9C1A,x
+    lda a:StageScriptByStepB,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -60,10 +64,12 @@ StartStageListsB:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepC = $9E6D ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepC = $9E75 ; slot 6's script, by twice the section step plus the character
 StartStageListsC:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9E6D,x
+    lda a:StageListByStepC,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsC
     lda z:zField82
@@ -71,7 +77,7 @@ StartStageListsC:
     clc
     adc z:zCharacter
     tax
-    lda a:$9E75,x
+    lda a:StageScriptByStepC,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -86,10 +92,12 @@ StartStageListsC:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepD = $9F31 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepD = $9F39 ; slot 6's script, by twice the section step plus the character
 StartStageListsD:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9F31,x
+    lda a:StageListByStepD,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsD
     lda z:zField82
@@ -97,7 +105,7 @@ StartStageListsD:
     clc
     adc z:zCharacter
     tax
-    lda a:$9F39,x
+    lda a:StageScriptByStepD,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -112,10 +120,12 @@ StartStageListsD:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepE = $9CC6 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepE = $9CCA ; slot 6's script, by twice the section step plus the character
 StartStageListsE:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9CC6,x
+    lda a:StageListByStepE,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsE
     lda z:zField82
@@ -123,7 +133,7 @@ StartStageListsE:
     clc
     adc z:zCharacter
     tax
-    lda a:$9CCA,x
+    lda a:StageScriptByStepE,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -138,10 +148,12 @@ StartStageListsE:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepF = $9E61 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepF = $9E62 ; slot 6's script, by twice the section step plus the character
 StartStageListsF:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9E61,x
+    lda a:StageListByStepF,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsF
     lda z:zField82
@@ -149,7 +161,7 @@ StartStageListsF:
     clc
     adc z:zCharacter
     tax
-    lda a:$9E62,x
+    lda a:StageScriptByStepF,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -164,10 +176,12 @@ StartStageListsF:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepG = $9CC3 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepG = $9CCB ; slot 6's script, by twice the section step plus the character
 StartStageListsG:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9CC3,x
+    lda a:StageListByStepG,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsG
     lda z:zField82
@@ -175,7 +189,7 @@ StartStageListsG:
     clc
     adc z:zCharacter
     tax
-    lda a:$9CCB,x
+    lda a:StageScriptByStepG,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -190,10 +204,12 @@ StartStageListsG:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepH = $9EA8 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepH = $9EA9 ; slot 6's script, by twice the section step plus the character
 StartStageListsH:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9EA8,x
+    lda a:StageListByStepH,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsH
     lda z:zField82
@@ -201,7 +217,7 @@ StartStageListsH:
     clc
     adc z:zCharacter
     tax
-    lda a:$9EA9,x
+    lda a:StageScriptByStepH,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -216,10 +232,12 @@ StartStageListsH:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepI = $9C9C ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepI = $9CA4 ; slot 6's script, by twice the section step plus the character
 StartStageListsI:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9C9C,x
+    lda a:StageListByStepI,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsI
     lda z:zField82
@@ -227,7 +245,7 @@ StartStageListsI:
     clc
     adc z:zCharacter
     tax
-    lda a:$9CA4,x
+    lda a:StageScriptByStepI,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -242,10 +260,12 @@ StartStageListsI:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepJ = $9E73 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepJ = $9E74 ; slot 6's script, by twice the section step plus the character
 StartStageListsJ:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9E73,x
+    lda a:StageListByStepJ,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsJ
     lda z:zField82
@@ -253,7 +273,7 @@ StartStageListsJ:
     clc
     adc z:zCharacter
     tax
-    lda a:$9E74,x
+    lda a:StageScriptByStepJ,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -268,10 +288,12 @@ StartStageListsJ:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepK = $9CBB ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepK = $9CBE ; slot 6's script, by twice the section step plus the character
 StartStageListsK:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9CBB,x
+    lda a:StageListByStepK,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsK
     lda z:zField82
@@ -279,7 +301,7 @@ StartStageListsK:
     clc
     adc z:zCharacter
     tax
-    lda a:$9CBE,x
+    lda a:StageScriptByStepK,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -294,10 +316,12 @@ StartStageListsK:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepL = $9E76 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepL = $9E77 ; slot 6's script, by twice the section step plus the character
 StartStageListsL:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9E76,x
+    lda a:StageListByStepL,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsL
     lda z:zField82
@@ -305,7 +329,7 @@ StartStageListsL:
     clc
     adc z:zCharacter
     tax
-    lda a:$9E77,x
+    lda a:StageScriptByStepL,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -320,10 +344,12 @@ StartStageListsL:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepM = $9CDB ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepM = $9CDF ; slot 6's script, by twice the section step plus the character
 StartStageListsM:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9CDB,x
+    lda a:StageListByStepM,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsM
     lda z:zField82
@@ -331,7 +357,7 @@ StartStageListsM:
     clc
     adc z:zCharacter
     tax
-    lda a:$9CDF,x
+    lda a:StageScriptByStepM,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -346,10 +372,12 @@ StartStageListsM:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepN = $9EA4 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepN = $9EA5 ; slot 6's script, by twice the section step plus the character
 StartStageListsN:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9EA4,x
+    lda a:StageListByStepN,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsN
     lda z:zField82
@@ -357,7 +385,7 @@ StartStageListsN:
     clc
     adc z:zCharacter
     tax
-    lda a:$9EA5,x
+    lda a:StageScriptByStepN,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -372,10 +400,12 @@ StartStageListsN:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepO = $9DEA ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepO = $9DEE ; slot 6's script, by twice the section step plus the character
 StartStageListsO:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9DEA,x
+    lda a:StageListByStepO,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsO
     lda z:zField82
@@ -383,7 +413,7 @@ StartStageListsO:
     clc
     adc z:zCharacter
     tax
-    lda a:$9DEE,x
+    lda a:StageScriptByStepO,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -398,10 +428,12 @@ StartStageListsO:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepP = $9F19 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepP = $9F1A ; slot 6's script, by twice the section step plus the character
 StartStageListsP:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9F19,x
+    lda a:StageListByStepP,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsP
     lda z:zField82
@@ -409,7 +441,7 @@ StartStageListsP:
     clc
     adc z:zCharacter
     tax
-    lda a:$9F1A,x
+    lda a:StageScriptByStepP,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -424,10 +456,12 @@ StartStageListsP:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepQ = $9C6C ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepQ = $9C6F ; slot 6's script, by twice the section step plus the character
 StartStageListsQ:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9C6C,x
+    lda a:StageListByStepQ,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsQ
     lda z:zField82
@@ -435,7 +469,7 @@ StartStageListsQ:
     clc
     adc z:zCharacter
     tax
-    lda a:$9C6F,x
+    lda a:StageScriptByStepQ,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -450,10 +484,12 @@ StartStageListsQ:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepR = $9F03 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepR = $9F04 ; slot 6's script, by twice the section step plus the character
 StartStageListsR:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9F03,x
+    lda a:StageListByStepR,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsR
     lda z:zField82
@@ -461,7 +497,7 @@ StartStageListsR:
     clc
     adc z:zCharacter
     tax
-    lda a:$9F04,x
+    lda a:StageScriptByStepR,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -476,10 +512,12 @@ StartStageListsR:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepS = $9C65 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepS = $9C6B ; slot 6's script, by twice the section step plus the character
 StartStageListsS:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9C65,x
+    lda a:StageListByStepS,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsS
     lda z:zField82
@@ -487,7 +525,7 @@ StartStageListsS:
     clc
     adc z:zCharacter
     tax
-    lda a:$9C6B,x
+    lda a:StageScriptByStepS,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -502,10 +540,12 @@ StartStageListsS:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepT = $9F27 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepT = $9F2F ; slot 6's script, by twice the section step plus the character
 StartStageListsT:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9F27,x
+    lda a:StageListByStepT,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsT
     lda z:zField82
@@ -513,7 +553,7 @@ StartStageListsT:
     clc
     adc z:zCharacter
     tax
-    lda a:$9F2F,x
+    lda a:StageScriptByStepT,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -528,10 +568,12 @@ StartStageListsT:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepU = $9C9C ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepU = $9C9F ; slot 6's script, by twice the section step plus the character
 StartStageListsU:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9C9C,x
+    lda a:StageListByStepU,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsU
     lda z:zField82
@@ -539,7 +581,7 @@ StartStageListsU:
     clc
     adc z:zCharacter
     tax
-    lda a:$9C9F,x
+    lda a:StageScriptByStepU,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -554,10 +596,12 @@ StartStageListsU:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepV = $9F3F ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepV = $9F40 ; slot 6's script, by twice the section step plus the character
 StartStageListsV:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9F3F,x
+    lda a:StageListByStepV,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsU
     lda z:zField82
@@ -565,7 +609,7 @@ StartStageListsV:
     clc
     adc z:zCharacter
     tax
-    lda a:$9F40,x
+    lda a:StageScriptByStepV,x
     ldx #$06
     jmp VecStartScriptSlotKind1
 
@@ -580,10 +624,12 @@ StartStageListsV:
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y the script, X 6, N and Z from it, C and V from the table
 ; index add.
+StageListByStepW = $9EA0 ; the list channel 0 starts, by the section step (zField82)
+StageScriptByStepW = $9EA1 ; slot 6's script, by twice the section step plus the character
 StartStageListsW:
     jsr VecClearListChannels
     ldx z:zField82
-    lda a:$9EA0,x
+    lda a:StageListByStepW,x
     jsr VecStartListChannel0Kind2
     jsr ExpandStageListsV
     lda z:zField82
@@ -591,6 +637,6 @@ StartStageListsW:
     clc
     adc z:zCharacter
     tax
-    lda a:$9EA1,x
+    lda a:StageScriptByStepW,x
     ldx #$06
     jmp VecStartScriptSlotKind1

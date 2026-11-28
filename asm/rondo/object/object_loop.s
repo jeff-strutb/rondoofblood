@@ -10,6 +10,9 @@
 ; Untraced: parts of the position tests and of the player modes' tables.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps2 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps1 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects:
     phx
     ldx #$10
@@ -133,7 +136,7 @@ RunObjects_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps2,y
     bne RunObjects_at1
     bra RunObjects_at3
 RunObjects_at16:
@@ -145,7 +148,7 @@ RunObjects_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps1,y
     bne RunObjects_at1
 RunObjects_at3:
     jsr DispatchByKind0259
@@ -159,7 +162,7 @@ RunObjects_at17:
     and #$03
     bne RunObjects_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -177,6 +180,9 @@ RunObjects_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps207D9 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps107D9 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts07D9 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects07D9:
     phx
     ldx #$10
@@ -300,7 +306,7 @@ RunObjects07D9_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps207D9,y
     bne RunObjects07D9_at1
     bra RunObjects07D9_at3
 RunObjects07D9_at16:
@@ -312,7 +318,7 @@ RunObjects07D9_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps107D9,y
     bne RunObjects07D9_at1
 RunObjects07D9_at3:
     jsr DispatchByKind07D9
@@ -326,7 +332,7 @@ RunObjects07D9_at17:
     and #$03
     bne RunObjects07D9_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts07D9,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -345,6 +351,9 @@ RunObjects07D9_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps20889 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps10889 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts0889 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects0889:
     phx
     ldx #$10
@@ -468,7 +477,7 @@ RunObjects0889_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps20889,y
     bne RunObjects0889_at1
     bra RunObjects0889_at3
 RunObjects0889_at16:
@@ -480,7 +489,7 @@ RunObjects0889_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps10889,y
     bne RunObjects0889_at1
 RunObjects0889_at3:
     jsr DispatchByKind0889
@@ -494,7 +503,7 @@ RunObjects0889_at17:
     and #$03
     bne RunObjects0889_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts0889,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -513,6 +522,9 @@ RunObjects0889_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps20A99 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps10A99 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts0A99 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects0A99:
     phx
     ldx #$10
@@ -636,7 +648,7 @@ RunObjects0A99_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps20A99,y
     bne RunObjects0A99_at1
     bra RunObjects0A99_at3
 RunObjects0A99_at16:
@@ -648,7 +660,7 @@ RunObjects0A99_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps10A99,y
     bne RunObjects0A99_at1
 RunObjects0A99_at3:
     jsr DispatchByKind0A99
@@ -662,7 +674,7 @@ RunObjects0A99_at17:
     and #$03
     bne RunObjects0A99_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts0A99,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -681,6 +693,9 @@ RunObjects0A99_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps20B49 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps10B49 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts0B49 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects0B49:
     phx
     ldx #$10
@@ -804,7 +819,7 @@ RunObjects0B49_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps20B49,y
     bne RunObjects0B49_at1
     bra RunObjects0B49_at3
 RunObjects0B49_at16:
@@ -816,7 +831,7 @@ RunObjects0B49_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps10B49,y
     bne RunObjects0B49_at1
 RunObjects0B49_at3:
     jsr DispatchByKind0A99
@@ -830,7 +845,7 @@ RunObjects0B49_at17:
     and #$03
     bne RunObjects0B49_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts0B49,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -849,6 +864,9 @@ RunObjects0B49_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps20CA9 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps10CA9 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts0CA9 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects0CA9:
     phx
     ldx #$10
@@ -972,7 +990,7 @@ RunObjects0CA9_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps20CA9,y
     bne RunObjects0CA9_at1
     bra RunObjects0CA9_at3
 RunObjects0CA9_at16:
@@ -984,7 +1002,7 @@ RunObjects0CA9_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps10CA9,y
     bne RunObjects0CA9_at1
 RunObjects0CA9_at3:
     jsr DispatchByKind0CA9
@@ -998,7 +1016,7 @@ RunObjects0CA9_at17:
     and #$03
     bne RunObjects0CA9_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts0CA9,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -1017,6 +1035,9 @@ RunObjects0CA9_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps20D59 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps10D59 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts0D59 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects0D59:
     phx
     ldx #$10
@@ -1140,7 +1161,7 @@ RunObjects0D59_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps20D59,y
     bne RunObjects0D59_at1
     bra RunObjects0D59_at3
 RunObjects0D59_at16:
@@ -1152,7 +1173,7 @@ RunObjects0D59_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps10D59,y
     bne RunObjects0D59_at1
 RunObjects0D59_at3:
     jsr DispatchByKind0CA9
@@ -1166,7 +1187,7 @@ RunObjects0D59_at17:
     and #$03
     bne RunObjects0D59_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts0D59,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -1185,6 +1206,9 @@ RunObjects0D59_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps20E09 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps10E09 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts0E09 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects0E09:
     phx
     ldx #$10
@@ -1308,7 +1332,7 @@ RunObjects0E09_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps20E09,y
     bne RunObjects0E09_at1
     bra RunObjects0E09_at3
 RunObjects0E09_at16:
@@ -1320,7 +1344,7 @@ RunObjects0E09_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps10E09,y
     bne RunObjects0E09_at1
 RunObjects0E09_at3:
     jsr DispatchByKind0E09
@@ -1334,7 +1358,7 @@ RunObjects0E09_at17:
     and #$03
     bne RunObjects0E09_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts0E09,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -1353,6 +1377,9 @@ RunObjects0E09_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps20EB9 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps10EB9 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts0EB9 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects0EB9:
     phx
     ldx #$10
@@ -1476,7 +1503,7 @@ RunObjects0EB9_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps20EB9,y
     bne RunObjects0EB9_at1
     bra RunObjects0EB9_at3
 RunObjects0EB9_at16:
@@ -1488,7 +1515,7 @@ RunObjects0EB9_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps10EB9,y
     bne RunObjects0EB9_at1
 RunObjects0EB9_at3:
     jsr DispatchByKind0E09
@@ -1502,7 +1529,7 @@ RunObjects0EB9_at17:
     and #$03
     bne RunObjects0EB9_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts0EB9,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -1521,6 +1548,9 @@ RunObjects0EB9_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps20F69 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps10F69 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts0F69 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects0F69:
     phx
     ldx #$10
@@ -1644,7 +1674,7 @@ RunObjects0F69_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps20F69,y
     bne RunObjects0F69_at1
     bra RunObjects0F69_at3
 RunObjects0F69_at16:
@@ -1656,7 +1686,7 @@ RunObjects0F69_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps10F69,y
     bne RunObjects0F69_at1
 RunObjects0F69_at3:
     jsr DispatchByKind0E09
@@ -1670,7 +1700,7 @@ RunObjects0F69_at17:
     and #$03
     bne RunObjects0F69_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts0F69,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -1689,6 +1719,9 @@ RunObjects0F69_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps21019 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps11019 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts1019 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects1019:
     phx
     ldx #$10
@@ -1812,7 +1845,7 @@ RunObjects1019_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps21019,y
     bne RunObjects1019_at1
     bra RunObjects1019_at3
 RunObjects1019_at16:
@@ -1824,7 +1857,7 @@ RunObjects1019_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps11019,y
     bne RunObjects1019_at1
 RunObjects1019_at3:
     jsr DispatchByKind10C9
@@ -1838,7 +1871,7 @@ RunObjects1019_at17:
     and #$03
     bne RunObjects1019_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts1019,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -1857,6 +1890,9 @@ RunObjects1019_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps210C9 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps110C9 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts10C9 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects10C9:
     phx
     ldx #$10
@@ -1980,7 +2016,7 @@ RunObjects10C9_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps210C9,y
     bne RunObjects10C9_at1
     bra RunObjects10C9_at3
 RunObjects10C9_at16:
@@ -1992,7 +2028,7 @@ RunObjects10C9_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps110C9,y
     bne RunObjects10C9_at1
 RunObjects10C9_at3:
     jsr DispatchByKind10C9
@@ -2006,7 +2042,7 @@ RunObjects10C9_at17:
     and #$03
     bne RunObjects10C9_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts10C9,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -2025,6 +2061,9 @@ RunObjects10C9_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps21179 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps11179 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts1179 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects1179:
     phx
     ldx #$10
@@ -2148,7 +2187,7 @@ RunObjects1179_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps21179,y
     bne RunObjects1179_at1
     bra RunObjects1179_at3
 RunObjects1179_at16:
@@ -2160,7 +2199,7 @@ RunObjects1179_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps11179,y
     bne RunObjects1179_at1
 RunObjects1179_at3:
     jsr DispatchByKind10C9
@@ -2174,7 +2213,7 @@ RunObjects1179_at17:
     and #$03
     bne RunObjects1179_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts1179,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -2193,6 +2232,9 @@ RunObjects1179_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps212D9 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps112D9 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts12D9 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects12D9:
     phx
     ldx #$10
@@ -2316,7 +2358,7 @@ RunObjects12D9_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps212D9,y
     bne RunObjects12D9_at1
     bra RunObjects12D9_at3
 RunObjects12D9_at16:
@@ -2328,7 +2370,7 @@ RunObjects12D9_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps112D9,y
     bne RunObjects12D9_at1
 RunObjects12D9_at3:
     jsr DispatchByKind12D9
@@ -2342,7 +2384,7 @@ RunObjects12D9_at17:
     and #$03
     bne RunObjects12D9_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts12D9,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -2361,6 +2403,9 @@ RunObjects12D9_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps213F9 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps113F9 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts13F9 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects13F9:
     phx
     ldx #$10
@@ -2484,7 +2529,7 @@ RunObjects13F9_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps213F9,y
     bne RunObjects13F9_at1
     bra RunObjects13F9_at3
 RunObjects13F9_at16:
@@ -2496,7 +2541,7 @@ RunObjects13F9_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps113F9,y
     bne RunObjects13F9_at1
 RunObjects13F9_at3:
     jsr DispatchByKind12D9
@@ -2510,7 +2555,7 @@ RunObjects13F9_at17:
     and #$03
     bne RunObjects13F9_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts13F9,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -2529,6 +2574,9 @@ RunObjects13F9_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps21619 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps11619 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts1619 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects1619:
     phx
     ldx #$10
@@ -2652,7 +2700,7 @@ RunObjects1619_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps21619,y
     bne RunObjects1619_at1
     bra RunObjects1619_at3
 RunObjects1619_at16:
@@ -2664,7 +2712,7 @@ RunObjects1619_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps11619,y
     bne RunObjects1619_at1
 RunObjects1619_at3:
     jsr DispatchByKind16C9
@@ -2678,7 +2726,7 @@ RunObjects1619_at17:
     and #$03
     bne RunObjects1619_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts1619,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -2697,6 +2745,9 @@ RunObjects1619_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps216C9 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps116C9 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts16C9 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects16C9:
     phx
     ldx #$10
@@ -2820,7 +2871,7 @@ RunObjects16C9_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps216C9,y
     bne RunObjects16C9_at1
     bra RunObjects16C9_at3
 RunObjects16C9_at16:
@@ -2832,7 +2883,7 @@ RunObjects16C9_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps116C9,y
     bne RunObjects16C9_at1
 RunObjects16C9_at3:
     jsr DispatchByKind16C9
@@ -2846,7 +2897,7 @@ RunObjects16C9_at17:
     and #$03
     bne RunObjects16C9_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts16C9,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex
@@ -2865,6 +2916,9 @@ RunObjects16C9_at18:
 ; HOW: run_objects, the body RunObjects shares.
 ; WAITS: no.
 ; Entry: X pushed and pulled back. Exit: A and the flags as the last instruction left them.
+SlowModeSteps218D9 = $A166 ; mode 2: whether an object steps, by its pace bits 5-6 and the frame
+SlowModeSteps118D9 = $A146 ; mode 1: whether an object steps, by its pace bits 3-4 and the frame
+ObjectCueScripts18D9 = $A13C ; the script the object cue starts, by ObjectCueIndex
 RunObjects18D9:
     phx
     ldx #$10
@@ -2988,7 +3042,7 @@ RunObjects18D9_at15:
     clc
     adc z:zTemp00
     tay
-    lda a:$A166,y
+    lda a:SlowModeSteps218D9,y
     bne RunObjects18D9_at1
     bra RunObjects18D9_at3
 RunObjects18D9_at16:
@@ -3000,7 +3054,7 @@ RunObjects18D9_at16:
     clc
     adc z:zTemp00
     tay
-    lda a:$A146,y
+    lda a:SlowModeSteps118D9,y
     bne RunObjects18D9_at1
 RunObjects18D9_at3:
     jsr DispatchByKind18D9
@@ -3014,7 +3068,7 @@ RunObjects18D9_at17:
     and #$03
     bne RunObjects18D9_at18
     ldy a:ObjectCueIndex
-    lda a:$A13C,y
+    lda a:ObjectCueScripts18D9,y
     clx
     jsr VecStartScriptSlotKind4
     inc a:ObjectCueIndex

@@ -7,15 +7,16 @@
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers0259 = $AB3A ; the code by kind, kind 1 first
 DispatchByKind0259:
     lda a:OBJ_KIND,x
     beq DispatchByKind0259_at0
     dec a
     asl a
     tay
-    lda a:$AB3A,y
+    lda a:KindHandlers0259,y
     sta z:zTemp00
-    lda a:$AB3B,y
+    lda a:KindHandlers0259+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind0259_at0:
@@ -778,15 +779,16 @@ ClearWhenCountEnds_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers07D9 = $AA72 ; the code by kind, kind 1 first
 DispatchByKind07D9:
     lda a:OBJ_KIND,x
     beq DispatchByKind07D9_at0
     dec a
     asl a
     tay
-    lda a:$AA72,y
+    lda a:KindHandlers07D9,y
     sta z:zTemp00
-    lda a:$AA73,y
+    lda a:KindHandlers07D9+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind07D9_at0:
@@ -801,15 +803,16 @@ DispatchByKind07D9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers0889 = $AA35 ; the code by kind, kind 1 first
 DispatchByKind0889:
     lda a:OBJ_KIND,x
     beq DispatchByKind0889_at0
     dec a
     asl a
     tay
-    lda a:$AA35,y
+    lda a:KindHandlers0889,y
     sta z:zTemp00
-    lda a:$AA36,y
+    lda a:KindHandlers0889+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind0889_at0:
@@ -824,15 +827,16 @@ DispatchByKind0889_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers0A99 = $AB77 ; the code by kind, kind 1 first
 DispatchByKind0A99:
     lda a:OBJ_KIND,x
     beq DispatchByKind0A99_at0
     dec a
     asl a
     tay
-    lda a:$AB77,y
+    lda a:KindHandlers0A99,y
     sta z:zTemp00
-    lda a:$AB78,y
+    lda a:KindHandlers0A99+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind0A99_at0:
@@ -847,15 +851,16 @@ DispatchByKind0A99_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers0CA9 = $AB9D ; the code by kind, kind 1 first
 DispatchByKind0CA9:
     lda a:OBJ_KIND,x
     beq DispatchByKind0CA9_at0
     dec a
     asl a
     tay
-    lda a:$AB9D,y
+    lda a:KindHandlers0CA9,y
     sta z:zTemp00
-    lda a:$AB9E,y
+    lda a:KindHandlers0CA9+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind0CA9_at0:
@@ -870,15 +875,16 @@ DispatchByKind0CA9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers0E09 = $AAAA ; the code by kind, kind 1 first
 DispatchByKind0E09:
     lda a:OBJ_KIND,x
     beq DispatchByKind0E09_at0
     dec a
     asl a
     tay
-    lda a:$AAAA,y
+    lda a:KindHandlers0E09,y
     sta z:zTemp00
-    lda a:$AAAB,y
+    lda a:KindHandlers0E09+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind0E09_at0:
@@ -893,15 +899,16 @@ DispatchByKind0E09_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers10C9 = $AB4A ; the code by kind, kind 1 first
 DispatchByKind10C9:
     lda a:OBJ_KIND,x
     beq DispatchByKind10C9_at0
     dec a
     asl a
     tay
-    lda a:$AB4A,y
+    lda a:KindHandlers10C9,y
     sta z:zTemp00
-    lda a:$AB4B,y
+    lda a:KindHandlers10C9+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind10C9_at0:
@@ -916,15 +923,16 @@ DispatchByKind10C9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers12D9 = $ABAF ; the code by kind, kind 1 first
 DispatchByKind12D9:
     lda a:OBJ_KIND,x
     beq DispatchByKind12D9_at0
     dec a
     asl a
     tay
-    lda a:$ABAF,y
+    lda a:KindHandlers12D9,y
     sta z:zTemp00
-    lda a:$ABB0,y
+    lda a:KindHandlers12D9+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind12D9_at0:
@@ -939,15 +947,16 @@ DispatchByKind12D9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers16C9 = $AB0D ; the code by kind, kind 1 first
 DispatchByKind16C9:
     lda a:OBJ_KIND,x
     beq DispatchByKind16C9_at0
     dec a
     asl a
     tay
-    lda a:$AB0D,y
+    lda a:KindHandlers16C9,y
     sta z:zTemp00
-    lda a:$AB0E,y
+    lda a:KindHandlers16C9+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind16C9_at0:
@@ -962,15 +971,16 @@ DispatchByKind16C9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
+KindHandlers18D9 = $AAD5 ; the code by kind, kind 1 first
 DispatchByKind18D9:
     lda a:OBJ_KIND,x
     beq DispatchByKind18D9_at0
     dec a
     asl a
     tay
-    lda a:$AAD5,y
+    lda a:KindHandlers18D9,y
     sta z:zTemp00
-    lda a:$AAD6,y
+    lda a:KindHandlers18D9+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 DispatchByKind18D9_at0:

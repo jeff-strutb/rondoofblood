@@ -7,6 +7,7 @@
 ; step is StreamScrollStep, called through its vector.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffset = $AC95 ; the second bank pair's offset above the RAM base bank
 StageScrollStep:
     lda #$08
     clc
@@ -14,7 +15,7 @@ StageScrollStep:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC95
+    lda a:StageStreamBankOffset
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -33,6 +34,7 @@ StageScrollStep:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $ACCA.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetB = $ACCA ; the second bank pair's offset above the RAM base bank
 StageScrollStepB:
     lda #$08
     clc
@@ -40,7 +42,7 @@ StageScrollStepB:
     tam #$20
     inc a
     tam #$40
-    lda a:$ACCA
+    lda a:StageStreamBankOffsetB
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -59,6 +61,7 @@ StageScrollStepB:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AC0E.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetC = $AC0E ; the second bank pair's offset above the RAM base bank
 StageScrollStepC:
     lda #$08
     clc
@@ -66,7 +69,7 @@ StageScrollStepC:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC0E
+    lda a:StageStreamBankOffsetC
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -85,6 +88,7 @@ StageScrollStepC:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AC16.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetD = $AC16 ; the second bank pair's offset above the RAM base bank
 StageScrollStepD:
     lda #$08
     clc
@@ -92,7 +96,7 @@ StageScrollStepD:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC16
+    lda a:StageStreamBankOffsetD
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -111,6 +115,7 @@ StageScrollStepD:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $ABDC.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetE = $ABDC ; the second bank pair's offset above the RAM base bank
 StageScrollStepE:
     lda #$08
     clc
@@ -118,7 +123,7 @@ StageScrollStepE:
     tam #$20
     inc a
     tam #$40
-    lda a:$ABDC
+    lda a:StageStreamBankOffsetE
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -137,6 +142,7 @@ StageScrollStepE:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AB03.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetF = $AB03 ; the second bank pair's offset above the RAM base bank
 StageScrollStepF:
     lda #$08
     clc
@@ -144,7 +150,7 @@ StageScrollStepF:
     tam #$20
     inc a
     tam #$40
-    lda a:$AB03
+    lda a:StageStreamBankOffsetF
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -163,6 +169,7 @@ StageScrollStepF:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AC8E.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetG = $AC8E ; the second bank pair's offset above the RAM base bank
 StageScrollStepG:
     lda #$08
     clc
@@ -170,7 +177,7 @@ StageScrollStepG:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC8E
+    lda a:StageStreamBankOffsetG
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -189,6 +196,7 @@ StageScrollStepG:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AC5E.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetH = $AC5E ; the second bank pair's offset above the RAM base bank
 StageScrollStepH:
     lda #$08
     clc
@@ -196,7 +204,7 @@ StageScrollStepH:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC5E
+    lda a:StageStreamBankOffsetH
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -215,6 +223,7 @@ StageScrollStepH:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $ACE3.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetI = $ACE3 ; the second bank pair's offset above the RAM base bank
 StageScrollStepI:
     lda #$08
     clc
@@ -222,7 +231,7 @@ StageScrollStepI:
     tam #$20
     inc a
     tam #$40
-    lda a:$ACE3
+    lda a:StageStreamBankOffsetI
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -241,6 +250,7 @@ StageScrollStepI:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AB27.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetJ = $AB27 ; the second bank pair's offset above the RAM base bank
 StageScrollStepJ:
     lda #$08
     clc
@@ -248,7 +258,7 @@ StageScrollStepJ:
     tam #$20
     inc a
     tam #$40
-    lda a:$AB27
+    lda a:StageStreamBankOffsetJ
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -267,6 +277,7 @@ StageScrollStepJ:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $ACA7.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetK = $ACA7 ; the second bank pair's offset above the RAM base bank
 StageScrollStepK:
     lda #$08
     clc
@@ -274,7 +285,7 @@ StageScrollStepK:
     tam #$20
     inc a
     tam #$40
-    lda a:$ACA7
+    lda a:StageStreamBankOffsetK
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -293,6 +304,7 @@ StageScrollStepK:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AC8B.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetL = $AC8B ; the second bank pair's offset above the RAM base bank
 StageScrollStepL:
     lda #$08
     clc
@@ -300,7 +312,7 @@ StageScrollStepL:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC8B
+    lda a:StageStreamBankOffsetL
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -319,6 +331,7 @@ StageScrollStepL:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AD91.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetM = $AD91 ; the second bank pair's offset above the RAM base bank
 StageScrollStepM:
     lda #$08
     clc
@@ -326,7 +339,7 @@ StageScrollStepM:
     tam #$20
     inc a
     tam #$40
-    lda a:$AD91
+    lda a:StageStreamBankOffsetM
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -345,6 +358,7 @@ StageScrollStepM:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AB70.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetN = $AB70 ; the second bank pair's offset above the RAM base bank
 StageScrollStepN:
     lda #$08
     clc
@@ -352,7 +366,7 @@ StageScrollStepN:
     tam #$20
     inc a
     tam #$40
-    lda a:$AB70
+    lda a:StageStreamBankOffsetN
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -371,6 +385,7 @@ StageScrollStepN:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AD3F.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetO = $AD3F ; the second bank pair's offset above the RAM base bank
 StageScrollStepO:
     lda #$08
     clc
@@ -378,7 +393,7 @@ StageScrollStepO:
     tam #$20
     inc a
     tam #$40
-    lda a:$AD3F
+    lda a:StageStreamBankOffsetO
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -397,6 +412,7 @@ StageScrollStepO:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $ABA7.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetP = $ABA7 ; the second bank pair's offset above the RAM base bank
 StageScrollStepP:
     lda #$08
     clc
@@ -404,7 +420,7 @@ StageScrollStepP:
     tam #$20
     inc a
     tam #$40
-    lda a:$ABA7
+    lda a:StageStreamBankOffsetP
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -423,6 +439,7 @@ StageScrollStepP:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AD1B.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetQ = $AD1B ; the second bank pair's offset above the RAM base bank
 StageScrollStepQ:
     lda #$08
     clc
@@ -430,7 +447,7 @@ StageScrollStepQ:
     tam #$20
     inc a
     tam #$40
-    lda a:$AD1B
+    lda a:StageStreamBankOffsetQ
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -449,6 +466,7 @@ StageScrollStepQ:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $ACC9.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetR = $ACC9 ; the second bank pair's offset above the RAM base bank
 StageScrollStepR:
     lda #$08
     clc
@@ -456,7 +474,7 @@ StageScrollStepR:
     tam #$20
     inc a
     tam #$40
-    lda a:$ACC9
+    lda a:StageStreamBankOffsetR
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -475,6 +493,7 @@ StageScrollStepR:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AD36.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetS = $AD36 ; the second bank pair's offset above the RAM base bank
 StageScrollStepS:
     lda #$08
     clc
@@ -482,7 +501,7 @@ StageScrollStepS:
     tam #$20
     inc a
     tam #$40
-    lda a:$AD36
+    lda a:StageStreamBankOffsetS
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -501,6 +520,7 @@ StageScrollStepS:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $ACF7.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetT = $ACF7 ; the second bank pair's offset above the RAM base bank
 StageScrollStepT:
     lda #$08
     clc
@@ -508,7 +528,7 @@ StageScrollStepT:
     tam #$20
     inc a
     tam #$40
-    lda a:$ACF7
+    lda a:StageStreamBankOffsetT
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -527,6 +547,7 @@ StageScrollStepT:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AD31.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetU = $AD31 ; the second bank pair's offset above the RAM base bank
 StageScrollStepU:
     lda #$08
     clc
@@ -534,7 +555,7 @@ StageScrollStepU:
     tam #$20
     inc a
     tam #$40
-    lda a:$AD31
+    lda a:StageStreamBankOffsetU
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -553,6 +574,7 @@ StageScrollStepU:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AC65.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetV = $AC65 ; the second bank pair's offset above the RAM base bank
 StageScrollStepV:
     lda #$08
     clc
@@ -560,7 +582,7 @@ StageScrollStepV:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC65
+    lda a:StageStreamBankOffsetV
     clc
     adc z:zRamBaseBank
     tam #$20
@@ -579,6 +601,7 @@ StageScrollStepV:
 ; The same code as StageScrollStep; this overlay's second bank offset is the byte at $AC49.
 ; WAITS: it can wait where a handler's code does.
 ; Entry: X the caller's. Exit: as StreamScrollStep.
+StageStreamBankOffsetW = $AC49 ; the second bank pair's offset above the RAM base bank
 StageScrollStepW:
     lda #$08
     clc
@@ -586,7 +609,7 @@ StageScrollStepW:
     tam #$20
     inc a
     tam #$40
-    lda a:$AC49
+    lda a:StageStreamBankOffsetW
     clc
     adc z:zRamBaseBank
     tam #$20

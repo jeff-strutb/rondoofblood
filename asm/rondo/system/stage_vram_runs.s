@@ -8,14 +8,15 @@
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunLists = $9BA0 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRuns:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9BA0,y
+    lda a:StageVramRunLists,y
     sta z:zTemp00
-    lda a:$9BA1,y
+    lda a:StageVramRunLists+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRuns_at1:
@@ -48,14 +49,15 @@ ExpandStageVramRuns_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsB = $9C30 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsB:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9C30,y
+    lda a:StageVramRunListsB,y
     sta z:zTemp00
-    lda a:$9C31,y
+    lda a:StageVramRunListsB+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsB_at1:
@@ -88,14 +90,15 @@ ExpandStageVramRunsB_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsC = $9E87 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsC:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9E87,y
+    lda a:StageVramRunListsC,y
     sta z:zTemp00
-    lda a:$9E88,y
+    lda a:StageVramRunListsC+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsC_at1:
@@ -128,14 +131,15 @@ ExpandStageVramRunsC_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsD = $9F4B ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsD:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9F4B,y
+    lda a:StageVramRunListsD,y
     sta z:zTemp00
-    lda a:$9F4C,y
+    lda a:StageVramRunListsD+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsD_at1:
@@ -168,14 +172,15 @@ ExpandStageVramRunsD_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsE = $9CE2 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsE:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9CE2,y
+    lda a:StageVramRunListsE,y
     sta z:zTemp00
-    lda a:$9CE3,y
+    lda a:StageVramRunListsE+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsE_at1:
@@ -208,14 +213,15 @@ ExpandStageVramRunsE_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsF = $9E67 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsF:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9E67,y
+    lda a:StageVramRunListsF,y
     sta z:zTemp00
-    lda a:$9E68,y
+    lda a:StageVramRunListsF+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsF_at1:
@@ -248,14 +254,15 @@ ExpandStageVramRunsF_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsG = $9CDF ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsG:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9CDF,y
+    lda a:StageVramRunListsG,y
     sta z:zTemp00
-    lda a:$9CE0,y
+    lda a:StageVramRunListsG+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsG_at1:
@@ -288,14 +295,15 @@ ExpandStageVramRunsG_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsH = $9EAE ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsH:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9EAE,y
+    lda a:StageVramRunListsH,y
     sta z:zTemp00
-    lda a:$9EAF,y
+    lda a:StageVramRunListsH+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsH_at1:
@@ -328,14 +336,15 @@ ExpandStageVramRunsH_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsI = $9CB8 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsI:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9CB8,y
+    lda a:StageVramRunListsI,y
     sta z:zTemp00
-    lda a:$9CB9,y
+    lda a:StageVramRunListsI+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsI_at1:
@@ -368,14 +377,15 @@ ExpandStageVramRunsI_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsJ = $9E79 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsJ:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9E79,y
+    lda a:StageVramRunListsJ,y
     sta z:zTemp00
-    lda a:$9E7A,y
+    lda a:StageVramRunListsJ+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsJ_at1:
@@ -408,14 +418,15 @@ ExpandStageVramRunsJ_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsK = $9CCD ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsK:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9CCD,y
+    lda a:StageVramRunListsK,y
     sta z:zTemp00
-    lda a:$9CCE,y
+    lda a:StageVramRunListsK+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsK_at1:
@@ -448,14 +459,15 @@ ExpandStageVramRunsK_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsL = $9E7C ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsL:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9E7C,y
+    lda a:StageVramRunListsL,y
     sta z:zTemp00
-    lda a:$9E7D,y
+    lda a:StageVramRunListsL+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsL_at1:
@@ -488,14 +500,15 @@ ExpandStageVramRunsL_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsM = $9CF3 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsM:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9CF3,y
+    lda a:StageVramRunListsM,y
     sta z:zTemp00
-    lda a:$9CF4,y
+    lda a:StageVramRunListsM+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsM_at1:
@@ -528,14 +541,15 @@ ExpandStageVramRunsM_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsN = $9EAA ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsN:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9EAA,y
+    lda a:StageVramRunListsN,y
     sta z:zTemp00
-    lda a:$9EAB,y
+    lda a:StageVramRunListsN+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsN_at1:
@@ -568,14 +582,15 @@ ExpandStageVramRunsN_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsO = $9E04 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsO:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9E04,y
+    lda a:StageVramRunListsO,y
     sta z:zTemp00
-    lda a:$9E05,y
+    lda a:StageVramRunListsO+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsO_at1:
@@ -608,14 +623,15 @@ ExpandStageVramRunsO_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsP = $9F1F ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsP:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9F1F,y
+    lda a:StageVramRunListsP,y
     sta z:zTemp00
-    lda a:$9F20,y
+    lda a:StageVramRunListsP+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsP_at1:
@@ -648,14 +664,15 @@ ExpandStageVramRunsP_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsQ = $9C7E ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsQ:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9C7E,y
+    lda a:StageVramRunListsQ,y
     sta z:zTemp00
-    lda a:$9C7F,y
+    lda a:StageVramRunListsQ+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsQ_at1:
@@ -688,14 +705,15 @@ ExpandStageVramRunsQ_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsR = $9F09 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsR:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9F09,y
+    lda a:StageVramRunListsR,y
     sta z:zTemp00
-    lda a:$9F0A,y
+    lda a:StageVramRunListsR+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsR_at1:
@@ -728,14 +746,15 @@ ExpandStageVramRunsR_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsS = $9C89 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsS:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9C89,y
+    lda a:StageVramRunListsS,y
     sta z:zTemp00
-    lda a:$9C8A,y
+    lda a:StageVramRunListsS+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsS_at1:
@@ -768,14 +787,15 @@ ExpandStageVramRunsS_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsT = $9F45 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsT:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9F45,y
+    lda a:StageVramRunListsT,y
     sta z:zTemp00
-    lda a:$9F46,y
+    lda a:StageVramRunListsT+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsT_at1:
@@ -808,14 +828,15 @@ ExpandStageVramRunsT_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsU = $9CAE ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsU:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9CAE,y
+    lda a:StageVramRunListsU,y
     sta z:zTemp00
-    lda a:$9CAF,y
+    lda a:StageVramRunListsU+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsU_at1:
@@ -848,14 +869,15 @@ ExpandStageVramRunsU_at0:
 ; WAITS: no.
 ; Entry: zField82 the stage section. Exit: A $FF, X the buffer index reached, Y the list
 ; position, N 0, Z 1, C 1. Clobbers zTemp00-02.
+StageVramRunListsV = $9EA6 ; the VRAM run list by the section step (zField82)
 ExpandStageVramRunsV:
     tai KernelZeros,StageVramBuffer,$00FF
     lda z:zField82
     asl a
     tay
-    lda a:$9EA6,y
+    lda a:StageVramRunListsV,y
     sta z:zTemp00
-    lda a:$9EA7,y
+    lda a:StageVramRunListsV+1,y
     sta z:zTemp01
     cly
 ExpandStageVramRunsV_at1:

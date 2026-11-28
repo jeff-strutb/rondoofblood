@@ -182,6 +182,8 @@
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestA = $AB3D ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckA = $AB45 ; the item by the distance sum's low nibble and the request
 DropItemWhenHitA:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -199,14 +201,14 @@ DropItemWhenHitA:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$AB3D,y
+    cmp a:DropChanceByRequestA,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$AB45,y
+    lda a:DropItemByLuckA,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1
@@ -227,6 +229,8 @@ DropItemWhenHitA:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestB = $ABFD ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckB = $AC05 ; the item by the distance sum's low nibble and the request
 DropItemWhenHitB:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -244,14 +248,14 @@ DropItemWhenHitB:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$ABFD,y
+    cmp a:DropChanceByRequestB,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$AC05,y
+    lda a:DropItemByLuckB,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1
@@ -272,6 +276,8 @@ DropItemWhenHitB:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestC = $AC08 ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckC = $AC10 ; the item by the distance sum's low nibble and the request
 DropItemWhenHitC:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -289,14 +295,14 @@ DropItemWhenHitC:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$AC08,y
+    cmp a:DropChanceByRequestC,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$AC10,y
+    lda a:DropItemByLuckC,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1
@@ -317,6 +323,8 @@ DropItemWhenHitC:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestD = $ACD2 ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckD = $ACDA ; the item by the distance sum's low nibble and the request
 DropItemWhenHitD:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -334,14 +342,14 @@ DropItemWhenHitD:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$ACD2,y
+    cmp a:DropChanceByRequestD,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$ACDA,y
+    lda a:DropItemByLuckD,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1
@@ -362,6 +370,8 @@ DropItemWhenHitD:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestE = $AC56 ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckE = $AC5E ; the item by the distance sum's low nibble and the request
 DropItemWhenHitE:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -379,14 +389,14 @@ DropItemWhenHitE:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$AC56,y
+    cmp a:DropChanceByRequestE,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$AC5E,y
+    lda a:DropItemByLuckE,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1
@@ -608,6 +618,7 @@ WalkWhileFrameChangesD_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestA = $ABEE ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundA:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -619,7 +630,7 @@ PlayHitSoundA:
     beq PlayHitSoundA_at0
     dec a
     tay
-    lda a:$ABEE,y
+    lda a:HitSoundsByRequestA,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundA_at0:
     rts
@@ -634,6 +645,7 @@ PlayHitSoundA_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestB = $AC23 ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundB:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -645,7 +657,7 @@ PlayHitSoundB:
     beq PlayHitSoundB_at0
     dec a
     tay
-    lda a:$AC23,y
+    lda a:HitSoundsByRequestB,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundB_at0:
     rts
@@ -660,6 +672,7 @@ PlayHitSoundB_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestC = $AB75 ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundC:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -671,7 +684,7 @@ PlayHitSoundC:
     beq PlayHitSoundC_at0
     dec a
     tay
-    lda a:$AB75,y
+    lda a:HitSoundsByRequestC,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundC_at0:
     rts
@@ -686,6 +699,7 @@ PlayHitSoundC_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestD = $AC35 ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundD:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -697,7 +711,7 @@ PlayHitSoundD:
     beq PlayHitSoundD_at0
     dec a
     tay
-    lda a:$AC35,y
+    lda a:HitSoundsByRequestD,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundD_at0:
     rts
@@ -712,6 +726,7 @@ PlayHitSoundD_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestE = $AC17 ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundE:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -723,7 +738,7 @@ PlayHitSoundE:
     beq PlayHitSoundE_at0
     dec a
     tay
-    lda a:$AC17,y
+    lda a:HitSoundsByRequestE,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundE_at0:
     rts
@@ -738,6 +753,7 @@ PlayHitSoundE_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestF = $AC40 ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundF:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -749,7 +765,7 @@ PlayHitSoundF:
     beq PlayHitSoundF_at0
     dec a
     tay
-    lda a:$AC40,y
+    lda a:HitSoundsByRequestF,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundF_at0:
     rts
@@ -764,6 +780,7 @@ PlayHitSoundF_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestG = $AC64 ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundG:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -775,7 +792,7 @@ PlayHitSoundG:
     beq PlayHitSoundG_at0
     dec a
     tay
-    lda a:$AC64,y
+    lda a:HitSoundsByRequestG,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundG_at0:
     rts
@@ -790,6 +807,7 @@ PlayHitSoundG_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestH = $AD0A ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundH:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -801,7 +819,7 @@ PlayHitSoundH:
     beq PlayHitSoundH_at0
     dec a
     tay
-    lda a:$AD0A,y
+    lda a:HitSoundsByRequestH,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundH_at0:
     rts
@@ -816,6 +834,7 @@ PlayHitSoundH_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestI = $AC98 ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundI:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -827,7 +846,7 @@ PlayHitSoundI:
     beq PlayHitSoundI_at0
     dec a
     tay
-    lda a:$AC98,y
+    lda a:HitSoundsByRequestI,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundI_at0:
     rts
@@ -842,6 +861,7 @@ PlayHitSoundI_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestJ = $AC74 ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundJ:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -853,7 +873,7 @@ PlayHitSoundJ:
     beq PlayHitSoundJ_at0
     dec a
     tay
-    lda a:$AC74,y
+    lda a:HitSoundsByRequestJ,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundJ_at0:
     rts
@@ -868,6 +888,7 @@ PlayHitSoundJ_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestK = $AC8E ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundK:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -879,7 +900,7 @@ PlayHitSoundK:
     beq PlayHitSoundK_at0
     dec a
     tay
-    lda a:$AC8E,y
+    lda a:HitSoundsByRequestK,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundK_at0:
     rts
@@ -894,6 +915,7 @@ PlayHitSoundK_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestL = $ABBE ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundL:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -905,7 +927,7 @@ PlayHitSoundL:
     beq PlayHitSoundL_at0
     dec a
     tay
-    lda a:$ABBE,y
+    lda a:HitSoundsByRequestL,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundL_at0:
     rts
@@ -923,6 +945,8 @@ PlayHitSoundL_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestF = $ABC6 ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckF = $ABCE ; the item by the distance sum's low nibble and the request
 DropItemWhenHitF:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -940,14 +964,14 @@ DropItemWhenHitF:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$ABC6,y
+    cmp a:DropChanceByRequestF,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$ABCE,y
+    lda a:DropItemByLuckF,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1
@@ -968,6 +992,8 @@ DropItemWhenHitF:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestG = $ABEF ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckG = $ABF7 ; the item by the distance sum's low nibble and the request
 DropItemWhenHitG:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -985,14 +1011,14 @@ DropItemWhenHitG:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$ABEF,y
+    cmp a:DropChanceByRequestG,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$ABF7,y
+    lda a:DropItemByLuckG,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1
@@ -1013,6 +1039,8 @@ DropItemWhenHitG:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestH = $AC44 ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckH = $AC4C ; the item by the distance sum's low nibble and the request
 DropItemWhenHitH:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -1030,14 +1058,14 @@ DropItemWhenHitH:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$AC44,y
+    cmp a:DropChanceByRequestH,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$AC4C,y
+    lda a:DropItemByLuckH,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1
@@ -1055,6 +1083,7 @@ DropItemWhenHitH:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
+HitSoundsByRequestM = $AC7C ; the sound by bits 5 to 7 of OBJ_31F8, less one
 PlayHitSoundM:
     lda a:OBJ_HIT_REACTION,x
     lsr a
@@ -1066,7 +1095,7 @@ PlayHitSoundM:
     beq PlayHitSoundM_at0
     dec a
     tay
-    lda a:$AC7C,y
+    lda a:HitSoundsByRequestM,y
     jsr VecSoundIfOnFirstScreen
 PlayHitSoundM_at0:
     rts
@@ -1084,6 +1113,8 @@ PlayHitSoundM_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
+DropChanceByRequestI = $AC3C ; the drop's limit by bits 2 to 4 of OBJ_31F8, less one
+DropItemByLuckI = $AC44 ; the item by the distance sum's low nibble and the request
 DropItemWhenHitI:
     lda a:OBJ_HIT_TAKEN,x
     cmp #$05
@@ -1101,14 +1132,14 @@ DropItemWhenHitI:
     asl a
     sta z:zTemp00
     jsr VecNextRandom
-    cmp a:$AC3C,y
+    cmp a:DropChanceByRequestI,y
     bcs RichterStandStep1
     jsr VecPlayerDistanceSum
     and #$0F
     clc
     adc z:zTemp00
     tay
-    lda a:$AC44,y
+    lda a:DropItemByLuckI,y
     sta z:zTemp00
     jsr VecFindFreeSlotFrom30
     bcc RichterStandStep1

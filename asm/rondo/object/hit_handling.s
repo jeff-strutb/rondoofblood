@@ -8,6 +8,9 @@
 ; Untraced: two arms of the hit and the death are shared with the chain; the draft reaches them as stubs (see liftcmp).
 ; WAITS: no.
 ; Entry: X object, Y the registers' Y for the sound calls. Exit: see abi_chain.
+InvulnTimeByHit = $A26D ; OBJ_INVULN_TIMER by the hit taken
+HurtTimeByHit = $A27D ; OBJ_HURT_TIMER by the hit taken
+HitSoundByStrength = $A269 ; the hit's sound, four of them
 ObjectHit:
     lda a:OBJ_HIT_STATUS,x
     and #$9F
@@ -57,9 +60,9 @@ ObjectHit_at5:
     rts
 ObjectHit_at6:
     ldy a:OBJ_HIT_TAKEN,x
-    lda a:$A26D,y
+    lda a:InvulnTimeByHit,y
     sta a:OBJ_INVULN_TIMER,x
-    lda a:$A27D,y
+    lda a:HurtTimeByHit,y
     sta a:OBJ_HURT_TIMER,x
     lda a:OBJ_SPRITE_ATTR,x
     sta a:OBJ_SAVED_ATTR,x
@@ -79,7 +82,7 @@ ObjectHit_at6:
     lsr a
     and #$03
     tay
-    lda a:$A269,y
+    lda a:HitSoundByStrength,y
     jmp VecSoundIfOnFirstScreen
 ObjectHit_at4:
     jsr VecRecordObjectEvent
@@ -119,6 +122,7 @@ ObjectHit_at7:
 ; HOW: Four shifts, an add, a table read (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
+HitDamageByAttack = $ABA6 ; damage by OBJ_2EE0 times sixteen plus the hit taken
 HitDamage:
     lda a:OBJ_WORK_A,x
     asl a
@@ -130,7 +134,7 @@ HitDamage:
     clc
     adc z:zTemp00
     tay
-    lda a:$ABA6,y
+    lda a:HitDamageByAttack,y
     sta z:zTemp00
     rts
 
@@ -142,6 +146,7 @@ HitDamage:
 ; Untraced: the extra life (A2C1).
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: see the wrapper.
+ScoreByKind = $ABF5 ; BCD score by kind less $20, two bytes each
 ScoreForKind:
     lda a:HitAttackFlags
     and #$01
@@ -151,9 +156,9 @@ ScoreForKind:
     sbc #$20
     asl a
     tay
-    lda a:$ABF5,y
+    lda a:ScoreByKind,y
     sta z:zTemp00
-    lda a:$ABF6,y
+    lda a:ScoreByKind+1,y
     sta z:zTemp01
     jsr VecAddScoreWord
     bcc ScoreForKind_at0

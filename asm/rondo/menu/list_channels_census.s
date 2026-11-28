@@ -21,6 +21,8 @@
 ; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
 ; census_list_channels_0441.txt, every path); every lifted line reached. The draft's line for $80FA is reported
 ; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
+ListChannelCopySource0441 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists0441 = $8E6A ; the VRAM copy lists, a word by list number
 RunListChannel0441:
     dec a
     beq TitleSteps
@@ -37,9 +39,9 @@ RunListChannel0441_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel0441_at1
-    lda a:$9800
+    lda a:ListChannelCopySource0441
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource0441+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -81,9 +83,9 @@ RunListChannel0441_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8E6A,y
+    lda a:ListChannelCopyLists0441,y
     sta a:ListWordLo,x
-    lda a:$8E6B,y
+    lda a:ListChannelCopyLists0441+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel0441_at4:
@@ -188,6 +190,8 @@ RunListChannel0441_at5:
 ; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
 ; census_list_channels_0651.txt, every path); every lifted line reached. The draft's line for $80FA is reported
 ; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
+ListChannelCopySource0651 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists0651 = $8DC1 ; the VRAM copy lists, a word by list number
 RunListChannel0651:
     dec a
     beq TitleSteps
@@ -204,9 +208,9 @@ RunListChannel0651_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel0651_at1
-    lda a:$9800
+    lda a:ListChannelCopySource0651
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource0651+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -248,9 +252,9 @@ RunListChannel0651_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8DC1,y
+    lda a:ListChannelCopyLists0651,y
     sta a:ListWordLo,x
-    lda a:$8DC2,y
+    lda a:ListChannelCopyLists0651+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel0651_at4:
@@ -355,6 +359,8 @@ RunListChannel0651_at5:
 ; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
 ; census_list_channels_1231.txt, every path); every lifted line reached. The draft's line for $80FA is reported
 ; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
+ListChannelCopySource1231 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists1231 = $8EA0 ; the VRAM copy lists, a word by list number
 RunListChannel1231:
     dec a
     beq TitleSteps
@@ -371,9 +377,9 @@ RunListChannel1231_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel1231_at1
-    lda a:$9800
+    lda a:ListChannelCopySource1231
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource1231+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -415,9 +421,9 @@ RunListChannel1231_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8EA0,y
+    lda a:ListChannelCopyLists1231,y
     sta a:ListWordLo,x
-    lda a:$8EA1,y
+    lda a:ListChannelCopyLists1231+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel1231_at4:
@@ -522,6 +528,7 @@ RunListChannel1231_at5:
 ; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
 ; census_list_channels_1A31.txt, every path); every lifted line reached. The draft's line for $80FA is reported
 ; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
+ListChannelCopySource1A31 = $9800 ; the word the VRAM copy lists take as source
 RunListChannel1A31:
     dec a
     beq TitleSteps
@@ -538,9 +545,9 @@ RunListChannel1A31_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel1A31_at1
-    lda a:$9800
+    lda a:ListChannelCopySource1A31
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource1A31+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -689,6 +696,8 @@ RunListChannel1A31_at5:
 ; liftcmp: 414 of 414 cases match its census draft (census_draft.py; callees as filed wrappers; curated
 ; census_list_channels_1B91.txt, every path); every lifted line reached. The draft's line for $80FA is reported
 ; unreached but is in the one straight block from $80F9 to $8103 that curated case 4 runs.
+ListChannelCopySource1B91 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists1B91 = $8CF2 ; the VRAM copy lists, a word by list number
 RunListChannel1B91:
     dec a
     beq TitleSteps
@@ -705,9 +714,9 @@ RunListChannel1B91_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel1B91_at1
-    lda a:$9800
+    lda a:ListChannelCopySource1B91
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource1B91+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -749,9 +758,9 @@ RunListChannel1B91_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$8CF2,y
+    lda a:ListChannelCopyLists1B91,y
     sta a:ListWordLo,x
-    lda a:$8CF3,y
+    lda a:ListChannelCopyLists1B91+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel1B91_at4:
@@ -853,6 +862,8 @@ RunListChannel1B91_at5:
 ; a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ListChannelCopySource1CF1 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists1CF1 = $9049 ; the VRAM copy lists, a word by list number
 RunListChannel1CF1:
     dec a
     beq TitleSteps
@@ -869,9 +880,9 @@ RunListChannel1CF1_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel1CF1_at1
-    lda a:$9800
+    lda a:ListChannelCopySource1CF1
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource1CF1+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -913,9 +924,9 @@ RunListChannel1CF1_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$9049,y
+    lda a:ListChannelCopyLists1CF1,y
     sta a:ListWordLo,x
-    lda a:$904A,y
+    lda a:ListChannelCopyLists1CF1+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel1CF1_at4:
@@ -1017,6 +1028,8 @@ RunListChannel1CF1_at5:
 ; a pair packed in a byte); AddToListWord steps the list word on. Other kinds: VramListFromIndex, then the channel freed.
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ListChannelCopySource25F7 = $9800 ; the word the VRAM copy lists take as source
+ListChannelCopyLists25F7 = $829F ; the VRAM copy lists, a word by list number
 RunListChannel25F7:
     dec a
     beq TitleSteps
@@ -1033,9 +1046,9 @@ RunListChannel25F7_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel25F7_at1
-    lda a:$9800
+    lda a:ListChannelCopySource25F7
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ListChannelCopySource25F7+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -1077,9 +1090,9 @@ RunListChannel25F7_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$829F,y
+    lda a:ListChannelCopyLists25F7,y
     sta a:ListWordLo,x
-    lda a:$82A0,y
+    lda a:ListChannelCopyLists25F7+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel25F7_at4:

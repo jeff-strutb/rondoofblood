@@ -567,3 +567,8 @@ alias,ObjectTable,marker_value,work_d,OBJ_MARKER_VALUE
 alias,ObjectTable,flash_frames,work_d,OBJ_FLASH_FRAMES
 alias,ObjectTable,tally_wait,work_e,OBJ_TALLY_WAIT
 alias,ObjectTable,tally_step,work_f,OBJ_TALLY_STEP
+alias,ObjectTable,gate_step,work_e,OBJ_GATE_STEP
+alias,ObjectTable,flyer_wait,work_e,OBJ_FLYER_WAIT
+alias,ObjectTable,spawn_held,work_m,OBJ_SPAWN_HELD
+alias,ObjectTable,child_order,work_f,OBJ_CHILD_ORDER
+alias,ObjectTable,fly_phase,work_i,OBJ_FLY_PHASE

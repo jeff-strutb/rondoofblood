@@ -30,4 +30,8 @@ static inline StageRegs regs_compared(StageRegs r, uint8_t reg, uint8_t value)
     return r;
 }
 
+/* system/stage_flow.c: StageStart (024D:02D) with the section order table at order_table, for the copies whose
+ * only difference is that operand. */
+StageRegs StageStartAt(StageRegs r, uint16_t order_table);
+
 #endif

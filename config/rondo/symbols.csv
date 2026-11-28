@@ -943,3 +943,13 @@ AC07,abs,MariaLedgeNudgeY,what her Y moves by onto the ledge ahead, by the same 
 AC0F,abs,MariaLedgeNudgeXBehind,what her X moves by onto the ledge behind her, by the same pixel (MariaLandOnMarked)
 AC17,abs,MariaLedgeNudgeYBehind,what her Y moves by onto the ledge behind her, by the same pixel (MariaLandOnMarked)
 AD16,abs,MariaFallDriftSpeeds,her X speed when the fall's drift delay ends, by facing: $0040, $FFC0 (MariaStateFall)
+843C,abs,WalkScrollStepByRoute,the scroll's X step high byte in a walk-out by route: 1 right, $FF left (StageWalkOutScroll)
+843E,abs,WalkPlayerStepByRoute,what the player's X low gets each frame of a walk-out by route
+8440,abs,WalkStopXByRoute,the player's X low a walk-out stops at by route
+99EB,abs,StageGateFrames,a gate's first frame by side (the start argument's bit 0)
+99ED,abs,StageGateLists,added to a gate's frame to give its list by side
+3510,abs,OBJ_GATE_STEP,a stage gate's use of OBJ_WORK_E: the step of its opening, 0 to 3
+3510,abs,OBJ_FLYER_WAIT,the dropped flyer's use of OBJ_WORK_E: its wait
+3670,abs,OBJ_FLY_PHASE,the dropped flyer's use of $3670: 0 flying, 4 once it turns back
+37D0,abs,OBJ_SPAWN_HELD,the flyer's use of OBJ_WORK_M: not zero, it drops no new pickup
+3568,abs,OBJ_CHILD_ORDER,what the flyer tells the pickup in slot $50 through its OBJ_WORK_F: 1 new, 2 again

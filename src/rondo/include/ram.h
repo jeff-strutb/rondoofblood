@@ -929,5 +929,15 @@
 #define MariaLedgeNudgeXBehind 0xAC0F /* what her X moves by onto the ledge behind her, by the same pixel (MariaLandOnMarked) */
 #define MariaLedgeNudgeYBehind 0xAC17 /* what her Y moves by onto the ledge behind her, by the same pixel (MariaLandOnMarked) */
 #define MariaFallDriftSpeeds 0xAD16 /* her X speed when the fall's drift delay ends, by facing: $0040, $FFC0 (MariaStateFall) */
+#define WalkScrollStepByRoute 0x843C /* the scroll's X step high byte in a walk-out by route: 1 right, $FF left (StageWalkOutScroll) */
+#define WalkPlayerStepByRoute 0x843E /* what the player's X low gets each frame of a walk-out by route */
+#define WalkStopXByRoute 0x8440 /* the player's X low a walk-out stops at by route */
+#define StageGateFrames 0x99EB /* a gate's first frame by side (the start argument's bit 0) */
+#define StageGateLists 0x99ED /* added to a gate's frame to give its list by side */
+#define OBJ_GATE_STEP 0x3510 /* a stage gate's use of OBJ_WORK_E: the step of its opening, 0 to 3 */
+#define OBJ_FLYER_WAIT 0x3510 /* the dropped flyer's use of OBJ_WORK_E: its wait */
+#define OBJ_FLY_PHASE 0x3670 /* the dropped flyer's use of $3670: 0 flying, 4 once it turns back */
+#define OBJ_SPAWN_HELD 0x37D0 /* the flyer's use of OBJ_WORK_M: not zero, it drops no new pickup */
+#define OBJ_CHILD_ORDER 0x3568 /* what the flyer tells the pickup in slot $50 through its OBJ_WORK_F: 1 new, 2 again */
 
 #endif

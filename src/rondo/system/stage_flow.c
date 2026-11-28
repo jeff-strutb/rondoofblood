@@ -1064,7 +1064,7 @@ void abi_StageStartPlain(void)
  * WAITS: where its calls wait.
  * Entry: nothing. Exit: as the music routine, or as the play-again.
  */
-StageRegs StageStart(StageRegs r)
+StageRegs StageStartAt(StageRegs r, uint16_t order_table)
 {
     r = call_to(r, 0x8030, 0x4006);
     r = call_to(r, 0x8033, 0x88B1);
@@ -1079,7 +1079,7 @@ StageRegs StageStart(StageRegs r)
     WR8(ZP->fade_active, 0);
     r.nz = INC8(ZP->game_sub_mode);
     r.y = RD8(ZP->field82);
-    r = loaded(r, rd8((uint16_t)(SectionOrder + r.y)));
+    r = loaded(r, rd8((uint16_t)(order_table + r.y)));
     WR8(ZP->field86, r.a);
     r = call_to(r, 0x8058, 0x80CB);
     if (!(RD8(ZP->field8e) & 0x01)) {
@@ -1098,6 +1098,11 @@ StageRegs StageStart(StageRegs r)
         return StageStartMusicBoss(r);
     }
     return tail_to(r, 0x8067, 0x407B);
+}
+
+StageRegs StageStart(StageRegs r)
+{
+    return StageStartAt(r, SectionOrder);
 }
 
 void abi_StageStart(void)

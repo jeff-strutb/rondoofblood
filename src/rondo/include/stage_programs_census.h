@@ -512,4 +512,13 @@ void abi_StageSubModeFade026D(void);
 StageRegs StageSubStepPlay026D(StageRegs r);
 void abi_StageSubStepPlay026D(void);
 
+StageRegs StageStartMusic026D(StageRegs r);
+void abi_StageStartMusic026D(void);
+
+StageRegs StageStartPlain026D(StageRegs r);
+void abi_StageStartPlain026D(void);
+
+StageRegs StageStart026D(StageRegs r);
+void abi_StageStart026D(void);
+
 #endif

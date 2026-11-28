@@ -7134,3 +7134,74 @@ StageSubStepPlay026D_next:
     asl a
     tax
     jmp (StagePlayHandlers026D,x)
+
+; @routine 026D:066 StageStartMusic026D
+; @run 6B:8066
+; WHAT IT DOES: A stage's start music: unless A is $80, the sound stopped, zFadeSound set to $4F and sound $4F sent. When A is $80 the branch goes to the RTS at $8088.
+; HOW: CMP, BEQ to the RTS at $8088, JSR, a store and a JMP.
+; WAITS: where the routines it calls wait.
+; Entry: A the stage.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageStartMusic026D:
+    cmp #$80
+    beq *+32 ; the RTS at $8088
+    jsr VecStopSound
+    lda #$4F
+    sta z:zFadeSound
+    jmp VecSoundCommand
+
+; @routine 026D:074 StageStartPlain026D
+; @run 6B:8074
+; WHAT IT DOES: The end of a stage's start with zField8E's bit 0 clear: stage $0C its music first; then sub-mode 5, the player's forced pad count one less and the start pose set.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageStartPlain026D:
+    lda z:zStage
+    cmp #$0C
+    bne StageStartPlain026D_at0
+    bsr StageStartMusic026D
+StageStartPlain026D_at0:
+    lda #$05
+    sta z:zGameSubMode
+    dec a:OBJ_PAD_FORCE_FRAMES
+    lda #$01
+    sta a:PlayerStartPose
+    rts
+
+; @routine 026D:02D StageStart026D
+; @run 6B:802D
+; WHAT IT DOES: A stage's start in the program at 026D: the game state wiped, its lists, VRAM runs, set-up, objects and player; the section by the route from the table at $9C42; then the music by stage.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StartStageListsAt026D = $886C ; the stage's set up routines in this program
+ExpandStageVramRunsAt026D = $883D
+InitStageAt026D = $88A2
+SpawnStageObjectsRows01At026D = $8B09
+SpawnStageObjectsRows34At026D = $8F5A
+StageStart026D:
+    jsr VecResetGameState
+    jsr StartStageListsAt026D
+    jsr ExpandStageVramRunsAt026D
+    jsr InitStageAt026D
+    jsr MapOverlayBanks5And6At026D
+    jsr StagePlayerBankEntryA003
+    jsr SpawnStageObjectsRows01At026D
+    jsr SpawnStageObjectsRows34At026D
+    jsr SetUpStageObjectsAt026D
+    stz z:zPaused
+    stz z:zFadeActive
+    inc z:zGameSubMode
+    ldy z:zField82
+    lda a:SectionOrder026D,y
+    sta z:zField86
+    jsr ResetStageVariables026D
+    bbr0 zField8E,StageStartPlain026D
+    lda z:zStage
+    bmi StageStartMusic026D
+    cmp #$0C
+    beq StageStartMusic026D
+    jmp VecCdPlayAgain

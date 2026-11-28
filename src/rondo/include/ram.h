@@ -246,6 +246,10 @@
 #define OverlayTerrainLookupAlt 0x800F /* the stage overlay's second terrain lookup */
 #define OverlayObjectRecords 0x8012 /* the stage overlay's pointer to its object records */
 #define OverlayTileScripts 0x8014 /* the stage overlay's pointer to its tile scripts */
+#define OverlayEffectLists 0x9400 /* the stage overlay's pointer to its palette effects' lists of kind 1, a word per list number */
+#define OverlayEffectFadeLists 0x9402 /* the stage overlay's pointer to its palette effects' lists of kind 2, a word per list number */
+#define OverlayEffectShadeLists 0x9404 /* the stage overlay's pointer to its palette effects' lists of kind 4, a word per list number */
+#define OverlayEffectColourLists 0x9406 /* the stage overlay's pointer to its palette effects' lists of kind 3, four bytes per list number */
 #define OverlayListChannelSeqs 0x9800 /* the stage overlay's pointer to its list channels' sequences of VRAM lists (kind 1), a word per list number */
 #define SoundDrvInit 0xB233 /* starts the driver */
 #define SoundDrvStopAll 0xB25A /* stops every channel */

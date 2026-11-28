@@ -11,6 +11,7 @@
 #include "enemy_objects.h"
 #include "stage_map.h"
 #include "stage_regs.h"
+#include "stage_flow_b.h"
 
 typedef StageRegs Regs;
 
@@ -395,13 +396,18 @@ void abi_StageClearedWaitScroll(void)
  * WAITS: no.
  * Entry: nothing. Exit: A zField83's new value, N and Z from it, Y the index. X, C and V kept.
  */
-StageRegs StageSectionNext(StageRegs r)
+StageRegs StageSectionNextAt(StageRegs r, uint16_t order)
 {
     INC8(ZP->field82);
     r.y = RD8(ZP->field82);
-    r = loaded(r, rd8((uint16_t)(SectionOrder + r.y)));
+    r = loaded(r, rd8((uint16_t)(order + r.y)));
     WR8(ZP->field83, r.a);
     return r;
+}
+
+StageRegs StageSectionNext(StageRegs r)
+{
+    return StageSectionNextAt(r, SectionOrder);
 }
 
 void abi_StageSectionNext(void)

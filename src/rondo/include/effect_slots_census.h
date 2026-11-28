@@ -230,4 +230,8 @@ void abi_EffectFlash1DDA(void);
 Exit EffectFlashEnd1DDA(uint8_t slot, uint8_t y);
 void abi_EffectFlashEnd1DDA(void);
 
+/* Version 1A31's kind 2 and kind 3 handlers with a copy's own table of lists. */
+Exit EffectFadeWithTable(uint16_t table, uint8_t slot);
+Exit EffectColourWithTable(uint16_t table, uint8_t slot);
+
 #endif

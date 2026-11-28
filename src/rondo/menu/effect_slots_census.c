@@ -4038,3 +4038,23 @@ void abi_EffectFlashEnd1DDA(void)
     exit_shim(EffectFlashEnd1DDA(cpu.x, cpu.y));
 }
 
+
+/*
+ * The kind 2 and kind 3 handlers of version 1A31 with another table of lists for a negative list number: the copies the
+ * stage overlays hold differ from 1A31's only in that table's address (effect_slots_b.c).
+ */
+Exit EffectFadeWithTable(uint16_t table, uint8_t slot)
+{
+    EffectLayout layout = LAYOUT_1A31;
+
+    layout.fade_table = table;
+    return run_effect_fade(&layout, slot);
+}
+
+Exit EffectColourWithTable(uint16_t table, uint8_t slot)
+{
+    EffectLayout layout = LAYOUT_1A31;
+
+    layout.colour_table = table;
+    return run_effect_colour(&layout, slot);
+}

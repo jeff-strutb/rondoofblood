@@ -251,6 +251,10 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 800F,abs,OverlayTerrainLookupAlt,the stage overlay's second terrain lookup
 8012,abs,OverlayObjectRecords,the stage overlay's pointer to its object records
 8014,abs,OverlayTileScripts,the stage overlay's pointer to its tile scripts
+9400,abs,OverlayEffectLists,the stage overlay's pointer to its palette effects' lists of kind 1, a word per list number
+9402,abs,OverlayEffectFadeLists,the stage overlay's pointer to its palette effects' lists of kind 2, a word per list number
+9404,abs,OverlayEffectShadeLists,the stage overlay's pointer to its palette effects' lists of kind 4, a word per list number
+9406,abs,OverlayEffectColourLists,the stage overlay's pointer to its palette effects' lists of kind 3, four bytes per list number
 9800,abs,OverlayListChannelSeqs,the stage overlay's pointer to its list channels' sequences of VRAM lists (kind 1), a word per list number
 B233,abs,SoundDrvInit,starts the driver
 B25A,abs,SoundDrvStopAll,stops every channel

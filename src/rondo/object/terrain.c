@@ -214,13 +214,12 @@ HandlerExit TileRowD(void)
 }
 
 /* The row's step by the offset found for the column, one more. */
-static HandlerExit step_offset(uint8_t column, uint8_t y)
+static HandlerExit step_offset(uint16_t offsets, uint8_t y)
 {
     uint8_t row = RD8(ZP->temp02);
-    uint8_t offset = rd8((uint16_t)(TileRowOffsets + y));
+    uint8_t offset = rd8((uint16_t)(offsets + y));
     Sum sum = add_bytes(row, offset, false);
 
-    (void)column;
     WR8(ZP->temp02, (uint8_t)(sum.value + 1));
     return exit_with(y, sum);
 }
@@ -235,11 +234,17 @@ static HandlerExit step_offset(uint8_t column, uint8_t y)
  */
 HandlerExit TileStepTwice(void)
 {
+    return TileStepTwiceAt(TileRowOffsets);
+}
+
+/* TileStepTwice's body, for the builds of it with their own offsets table. */
+HandlerExit TileStepTwiceAt(uint16_t offsets)
+{
     uint8_t column = RD8(ZP->temp00);
-    uint8_t first = rd8((uint16_t)(TileRowOffsets + column));
+    uint8_t first = rd8((uint16_t)(offsets + column));
     uint8_t y = (uint8_t)(first + 1);
 
-    return step_offset(column, y);
+    return step_offset(offsets, y);
 }
 
 /*
@@ -273,9 +278,15 @@ HandlerExit TileRowOffset(void)
  */
 HandlerExit TileStepOffset(void)
 {
+    return TileStepOffsetAt(TileRowOffsets);
+}
+
+/* TileStepOffset's body, for the builds of it with their own offsets table. */
+HandlerExit TileStepOffsetAt(uint16_t offsets)
+{
     uint8_t column = RD8(ZP->temp00);
 
-    return step_offset(column, column);
+    return step_offset(offsets, column);
 }
 
 /*

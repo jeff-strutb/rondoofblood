@@ -85,6 +85,8 @@ typedef struct {
 TileRead TerrainTileReadAt(const TileReadBuild *build);
 /* terrain.c: a slope tile's step by a table on the column (TileStepC's body), for the builds with the table elsewhere. */
 HandlerExit TileStepAt(uint16_t table);
+HandlerExit TileStepTwiceAt(uint16_t offsets);
+HandlerExit TileStepOffsetAt(uint16_t offsets);
 /* terrain.c: a slope tile's new row from an eight by eight table (TileRowA's body). */
 HandlerExit TileRowAt(uint16_t table);
 /* terrain.c: the tiles with a step per half (TileHalfStepA's and B's body). */

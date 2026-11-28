@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="990" viewBox="0 0 760 990" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
 <rect width="760" height="990" fill="#ffffff"/>
-<text x="16" y="28" font-size="17" font-weight="600" fill="#24292f">Rondo of Blood: M1 32.2%  M2 13.3%</text>
+<text x="16" y="28" font-size="17" font-weight="600" fill="#24292f">Rondo of Blood: M1 32.9%  M2 14.1%</text>
 <text x="16" y="48" font-size="12" fill="#57606a">375,215 B of distinct code found so far, every copy counted once. Dark: M2. Light: M1 only. Grey: to do.</text>
 <text x="182" y="82" font-size="12" text-anchor="end" fill="#24292f" font-weight="600">Whole game</text>
 <rect x="190" y="70" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="70" width="154.5" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="70" width="63.7" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="82" font-size="11" fill="#57606a">32% of 366.4 KB</text>
+<rect x="190" y="70" width="158.1" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="70" width="67.7" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="82" font-size="11" fill="#57606a">33% of 366.4 KB</text>
 <text x="182" y="110" font-size="12" text-anchor="end" fill="#24292f">Boot</text>
 <rect x="190" y="98" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="98" width="198.1" height="16" rx="3" fill="#8cb4f5"/>
@@ -74,19 +74,19 @@
 <text x="678" y="374" font-size="11" fill="#57606a">13% of 15.5 KB</text>
 <text x="182" y="396" font-size="12" text-anchor="end" fill="#24292f">Stage 09</text>
 <rect x="190" y="384" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="384" width="46.0" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="384" width="5.9" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="396" font-size="11" fill="#57606a">10% of 15.8 KB</text>
+<rect x="190" y="384" width="54.4" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="384" width="14.3" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="396" font-size="11" fill="#57606a">11% of 15.8 KB</text>
 <text x="182" y="418" font-size="12" text-anchor="end" fill="#24292f">Stage 0A</text>
 <rect x="190" y="406" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="406" width="55.4" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="406" width="8.6" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="418" font-size="11" fill="#57606a">12% of 11.3 KB</text>
+<rect x="190" y="406" width="67.1" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="406" width="20.2" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="418" font-size="11" fill="#57606a">14% of 11.3 KB</text>
 <text x="182" y="440" font-size="12" text-anchor="end" fill="#24292f">Stage 0B</text>
 <rect x="190" y="428" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="428" width="101.6" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="428" width="27.9" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="440" font-size="11" fill="#57606a">21% of 12.0 KB</text>
+<rect x="190" y="428" width="106.1" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="428" width="38.9" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="440" font-size="11" fill="#57606a">22% of 12.0 KB</text>
 <text x="182" y="462" font-size="12" text-anchor="end" fill="#24292f">Stage 0C</text>
 <rect x="190" y="450" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="450" width="49.8" height="16" rx="3" fill="#8cb4f5"/>
@@ -99,24 +99,24 @@
 <text x="678" y="484" font-size="11" fill="#57606a">11% of 12.8 KB</text>
 <text x="182" y="506" font-size="12" text-anchor="end" fill="#24292f">Stage 10</text>
 <rect x="190" y="494" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="494" width="57.8" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="494" width="10.1" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="506" font-size="11" fill="#57606a">12% of 8.2 KB</text>
+<rect x="190" y="494" width="74.0" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="494" width="26.3" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="506" font-size="11" fill="#57606a">15% of 8.2 KB</text>
 <text x="182" y="528" font-size="12" text-anchor="end" fill="#24292f">Secret stage 02</text>
 <rect x="190" y="516" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="516" width="208.8" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="516" width="74.2" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="528" font-size="11" fill="#57606a">43% of 10.7 KB</text>
+<rect x="190" y="516" width="214.2" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="516" width="86.6" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="528" font-size="11" fill="#57606a">45% of 10.7 KB</text>
 <text x="182" y="550" font-size="12" text-anchor="end" fill="#24292f">Secret stage 03</text>
 <rect x="190" y="538" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="538" width="186.4" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="538" width="67.3" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="550" font-size="11" fill="#57606a">39% of 7.7 KB</text>
+<rect x="190" y="538" width="203.7" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="538" width="84.5" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="550" font-size="11" fill="#57606a">42% of 7.7 KB</text>
 <text x="182" y="572" font-size="12" text-anchor="end" fill="#24292f">Secret stage 04</text>
 <rect x="190" y="560" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="560" width="118.2" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="560" width="38.1" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="572" font-size="11" fill="#57606a">25% of 7.8 KB</text>
+<rect x="190" y="560" width="135.3" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="560" width="55.2" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="572" font-size="11" fill="#57606a">28% of 7.8 KB</text>
 <text x="182" y="594" font-size="12" text-anchor="end" fill="#24292f">Secret stage 05</text>
 <rect x="190" y="582" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="582" width="228.1" height="16" rx="3" fill="#8cb4f5"/>
@@ -134,19 +134,19 @@
 <text x="678" y="638" font-size="11" fill="#57606a">53% of 6.2 KB</text>
 <text x="182" y="660" font-size="12" text-anchor="end" fill="#24292f">Secret stage 08</text>
 <rect x="190" y="648" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="648" width="124.4" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="648" width="46.1" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="660" font-size="11" fill="#57606a">26% of 6.6 KB</text>
+<rect x="190" y="648" width="144.4" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="648" width="66.1" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="660" font-size="11" fill="#57606a">30% of 6.6 KB</text>
 <text x="182" y="682" font-size="12" text-anchor="end" fill="#24292f">Secret stage 09</text>
 <rect x="190" y="670" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="670" width="179.1" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="670" width="82.8" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="682" font-size="11" fill="#57606a">37% of 7.9 KB</text>
+<rect x="190" y="670" width="195.9" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="670" width="99.5" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="682" font-size="11" fill="#57606a">41% of 7.9 KB</text>
 <text x="182" y="704" font-size="12" text-anchor="end" fill="#24292f">Secret stage 0A</text>
 <rect x="190" y="692" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="692" width="85.7" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="692" width="32.8" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="704" font-size="11" fill="#57606a">18% of 10.9 KB</text>
+<rect x="190" y="692" width="97.8" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="692" width="44.9" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="704" font-size="11" fill="#57606a">20% of 10.9 KB</text>
 <text x="182" y="726" font-size="12" text-anchor="end" fill="#24292f">Secret stage 0C</text>
 <rect x="190" y="714" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="714" width="29.6" height="16" rx="3" fill="#8cb4f5"/>
@@ -154,9 +154,9 @@
 <text x="678" y="726" font-size="11" fill="#57606a">6% of 6.1 KB</text>
 <text x="182" y="748" font-size="12" text-anchor="end" fill="#24292f">Secret stage 0E</text>
 <rect x="190" y="736" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="736" width="98.4" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="736" width="32.6" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="748" font-size="11" fill="#57606a">20% of 6.9 KB</text>
+<rect x="190" y="736" width="117.7" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="736" width="51.9" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="748" font-size="11" fill="#57606a">25% of 6.9 KB</text>
 <text x="182" y="770" font-size="12" text-anchor="end" fill="#24292f">Scenes 07-08-09</text>
 <rect x="190" y="758" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="758" width="367.7" height="16" rx="3" fill="#8cb4f5"/>

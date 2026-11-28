@@ -50,7 +50,7 @@ HandlerExit TileStepAt(uint16_t table)
 }
 
 /* A table of eight rows of eight, by row and column, gives the new row. */
-static HandlerExit row_from_grid(uint16_t table)
+HandlerExit TileRowAt(uint16_t table)
 {
     uint8_t row = RD8(ZP->temp02);
     uint8_t column = RD8(ZP->temp00);
@@ -104,7 +104,7 @@ HandlerExit TileStepC(void)
  */
 HandlerExit TileRowA(void)
 {
-    return row_from_grid(TileRowsA);
+    return TileRowAt(TileRowsA);
 }
 
 /*
@@ -117,7 +117,7 @@ HandlerExit TileRowA(void)
  */
 HandlerExit TileRowB(void)
 {
-    return row_from_grid(TileRowsB);
+    return TileRowAt(TileRowsB);
 }
 
 /* The tiles $87-$8A and $8C-$8F: a step that differs between the tile's halves. */
@@ -197,7 +197,7 @@ HandlerExit TileStepD(void)
  */
 HandlerExit TileRowC(void)
 {
-    return row_from_grid(TileRowsC);
+    return TileRowAt(TileRowsC);
 }
 
 /*
@@ -210,7 +210,7 @@ HandlerExit TileRowC(void)
  */
 HandlerExit TileRowD(void)
 {
-    return row_from_grid(TileRowsD);
+    return TileRowAt(TileRowsD);
 }
 
 /* The row's step by the offset found for the column, one more. */
@@ -288,7 +288,7 @@ HandlerExit TileStepOffset(void)
  */
 HandlerExit TileRowE(void)
 {
-    return row_from_grid(TileRowsE);
+    return TileRowAt(TileRowsE);
 }
 
 /*

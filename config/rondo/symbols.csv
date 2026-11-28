@@ -794,3 +794,4 @@ C1A8,abs,MariaAnimationSounds,the list started on the player's channel, by anima
 C200,abs,MariaAnimationHitboxIndex,hitbox index by animation (MariaFrame)
 C258,abs,MariaAnimationHitbox,her hitboxes, four bytes each: X and Y offsets, half width and half height (MariaFrame)
 3BD6,abs,PlayerItemFirstUse,not zero: the item in hand has not been used; its first use starts its sound list and script and clears this (set at the start and when the pause screen changes the item)
+3EAE,abs,CameraScreenByte,the level map's byte for the screen layer entry 0 has reached (the camera modes write it)

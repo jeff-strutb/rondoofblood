@@ -783,5 +783,6 @@
 #define MariaAnimationHitboxIndex 0xC200 /* hitbox index by animation (MariaFrame) */
 #define MariaAnimationHitbox 0xC258 /* her hitboxes, four bytes each: X and Y offsets, half width and half height (MariaFrame) */
 #define PlayerItemFirstUse 0x3BD6 /* not zero: the item in hand has not been used; its first use starts its sound list and script and clears this (set at the start and when the pause screen changes the item) */
+#define CameraScreenByte 0x3EAE /* the level map's byte for the screen layer entry 0 has reached (the camera modes write it) */
 
 #endif

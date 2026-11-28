@@ -780,3 +780,4 @@ MariaAnimationSounds = $C1A8 ; the list started on the player's channel, by anim
 MariaAnimationHitboxIndex = $C200 ; hitbox index by animation (MariaFrame)
 MariaAnimationHitbox = $C258 ; her hitboxes, four bytes each: X and Y offsets, half width and half height (MariaFrame)
 PlayerItemFirstUse = $3BD6 ; not zero: the item in hand has not been used; its first use starts its sound list and script and clears this (set at the start and when the pause screen changes the item)
+CameraScreenByte = $3EAE ; the level map's byte for the screen layer entry 0 has reached (the camera modes write it)

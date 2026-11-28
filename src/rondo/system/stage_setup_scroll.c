@@ -84,7 +84,7 @@ StageRegs StageSetUpScroll(StageRegs r)
     r.x = 0;
     r = regs_loaded(r, FIRST_COLUMN_BLOCKS);
     WR8(SCROLLE->column_blocks[0], FIRST_COLUMN_BLOCKS);
-    mode = rd8(CameraMode);
+    mode = RD8(SCROLLLIM->camera_mode);
     r = regs_loaded(r, mode);
     if (mode == CAMERA_NARROW_A || mode == CAMERA_NARROW_B) {
         r.c = true;                                 /* the CMP that matched */

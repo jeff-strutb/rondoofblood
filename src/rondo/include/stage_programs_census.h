@@ -257,4 +257,11 @@ void abi_BlendStageRowChanges026F(void);
 RowChangesExit BlendStageRowChanges031F(uint8_t x, uint8_t new_byte);
 void abi_BlendStageRowChanges031F(void);
 
+
+ObjArm BlendStageStockRows026F(uint8_t slot, uint8_t y);
+void abi_BlendStageStockRows026F(void);
+
+ObjArm BlendStageStockRows031F(uint8_t slot, uint8_t y);
+void abi_BlendStageStockRows031F(void);
+
 #endif

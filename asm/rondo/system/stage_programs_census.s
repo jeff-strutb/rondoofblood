@@ -3197,3 +3197,71 @@ BlendStageRowChanges031F_at0:
     jsr BlendStageTileRows026E
 BlendStageRowChanges031F_at1:
     rts
+
+; @routine 026F:10F BlendStageStockRows026F
+; @run 6B:910F
+; WHAT IT DOES: Shows the player's stock on the stage's tile rows when it changed (as BlendStageStockRows, 024F:151). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: SaveAndMapStageBanks' bytes, BlendStageRowPair026F, a tail jump into RestoreStageBanks' bytes.
+; WAITS: no.
+; Entry: X and Y the caller's. Exit: as BlendStageStockRows.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SaveAndMapStageBanks_026F = $92FD ; SaveAndMapStageBanks' bytes (024F:33F) in the 026D programs
+RestoreStageBanks_026F = $9312 ; RestoreStageBanks' bytes (024F:354) in the 026D programs
+BlendStageStockRows026F:
+    jsr SaveAndMapStageBanks_026F
+    lda a:StageBlendOn+1
+    beq BlendStageStockRows026F_at0
+    lda a:StageVar3616
+    cmp z:zStock
+    beq BlendStageStockRows026F_at1
+    lda z:zGameSubMode
+    cmp #$01
+    bne BlendStageStockRows026F_at1
+    smb1 z:zPaused
+    lda #$C0
+    sta a:StageVar3616+1
+    jmp RestoreStageBanks_026F
+BlendStageStockRows026F_at0:
+    phx
+    stz a:StageBlendOn
+    lda z:zStock
+    sta a:StageVar3616
+    clx
+    jsr BlendStageRowPair026F
+    plx
+BlendStageStockRows026F_at1:
+    jmp RestoreStageBanks_026F
+
+; @routine 031F:103 BlendStageStockRows031F
+; @run 6B:9103
+; WHAT IT DOES: Shows the player's stock on the stage's tile rows when it changed (as BlendStageStockRows, 024F:151). Programs 043F and 10DF hold the same bytes.
+; HOW: SaveAndMapStageBanks' bytes, BlendStageRowPair031F, a tail jump into RestoreStageBanks' bytes.
+; WAITS: no.
+; Entry: X and Y the caller's. Exit: as BlendStageStockRows.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+SaveAndMapStageBanks_031F = $95DE ; SaveAndMapStageBanks' bytes (024F:33F) in the 031D programs
+RestoreStageBanks_031F = $95F3 ; RestoreStageBanks' bytes (024F:354) in the 031D programs
+BlendStageStockRows031F:
+    jsr SaveAndMapStageBanks_031F
+    lda a:StageBlendOn+1
+    beq BlendStageStockRows031F_at0
+    lda a:StageVar3616
+    cmp z:zStock
+    beq BlendStageStockRows031F_at1
+    lda z:zGameSubMode
+    cmp #$01
+    bne BlendStageStockRows031F_at1
+    smb1 z:zPaused
+    lda #$C0
+    sta a:StageVar3616+1
+    jmp RestoreStageBanks_031F
+BlendStageStockRows031F_at0:
+    phx
+    stz a:StageBlendOn
+    lda z:zStock
+    sta a:StageVar3616
+    clx
+    jsr BlendStageRowPair031F
+    plx
+BlendStageStockRows031F_at1:
+    jmp RestoreStageBanks_031F

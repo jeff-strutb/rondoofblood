@@ -9,6 +9,7 @@
 #include "ram.h"
 #include "stage_map.h"
 #include "enemy_objects.h"
+#include "stage_enemies_l7.h"
 #include "stage_regs.h"
 #include "front_end.h"
 #include "stage_programs_census.h"
@@ -2444,4 +2445,46 @@ RowChangesExit BlendStageRowChanges031F(uint8_t x, uint8_t new_byte)
 void abi_BlendStageRowChanges031F(void)
 {
     row_changes_exit_shim(BlendStageRowChanges031F(cpu.x, cpu.a));
+}
+
+/*
+ * @routine 026F:10F BlendStageStockRows026F
+ * @run 6B:910F
+ * WHAT IT DOES: Shows the player's stock on the stage's tile rows when it changed (as BlendStageStockRows, 024F:151). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: blend_stock_rows_at (stock_display.c), the body of 024F:151, at $910F, with BlendStageRowPair026F; its JSR to $92FD
+ * and its jumps to $9312 go to SaveAndMapStageBanks' and RestoreStageBanks' bytes (024F:33F and 024F:354), so
+ * their C is theirs.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as BlendStageStockRows.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+ObjArm BlendStageStockRows026F(uint8_t slot, uint8_t y)
+{
+    return blend_stock_rows_at(slot, y, &stage_banks_024f, 0x910F, BlendStageRowPair026F);
+}
+
+void abi_BlendStageStockRows026F(void)
+{
+    abi_ended(blend_stock_rows_exit_shim(BlendStageStockRows026F(cpu.x, cpu.y)));
+}
+
+/*
+ * @routine 031F:103 BlendStageStockRows031F
+ * @run 6B:9103
+ * WHAT IT DOES: Shows the player's stock on the stage's tile rows when it changed (as BlendStageStockRows, 024F:151). Programs 043F and 10DF hold the same bytes.
+ * HOW: blend_stock_rows_at (stock_display.c), the body of 024F:151, at $9103, with BlendStageRowPair031F; its JSR to $95DE
+ * and its jumps to $95F3 go to SaveAndMapStageBanks' and RestoreStageBanks' bytes (024F:33F and 024F:354), so
+ * their C is theirs.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as BlendStageStockRows.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+ObjArm BlendStageStockRows031F(uint8_t slot, uint8_t y)
+{
+    return blend_stock_rows_at(slot, y, &stage_banks_024f, 0x9103, BlendStageRowPair031F);
+}
+
+void abi_BlendStageStockRows031F(void)
+{
+    abi_ended(blend_stock_rows_exit_shim(BlendStageStockRows031F(cpu.x, cpu.y)));
 }

@@ -24,10 +24,18 @@ enum { BS_BLENDED, BS_UNCHANGED, BS_OTHER_MODE, BS_PAUSE_ASKED };
 
 ObjArm blend_stock_rows_with(uint8_t slot, uint8_t y, const StageBanks *banks)
 {
+    return blend_stock_rows_at(slot, y, banks, 0x9151, BlendStageRowPair);
+}
+
+/* The body, at the address it runs at (its JSRs return to at + 3 and + $2C), with the C of its row pair blend: the
+ * builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
+ObjArm blend_stock_rows_at(uint8_t slot, uint8_t y, const StageBanks *banks, uint16_t at,
+                           TileRowsExit (*row_pair)(uint8_t, uint8_t, uint8_t))
+{
     ObjArm r = { 0 };
     TileRowsExit blend;
 
-    jsr_push(0x9154);
+    jsr_push((uint16_t)(at + 3));
     r.sum = banks->save_and_map();
     jsr_pop();
     r.first = RD8(STAGEVARS->blend_on[1]);
@@ -37,8 +45,8 @@ ObjArm blend_stock_rows_with(uint8_t slot, uint8_t y, const StageBanks *banks)
         WR8(STAGEVARS->blend_on[0], 0);
         r.second = RD8(ZP->stock);
         WR8(STAGEVARS->state_3616[0], r.second);
-        jsr_push(0x917D);
-        blend = BlendStageRowPair(0, r.second, y);
+        jsr_push((uint16_t)(at + 0x2C));
+        blend = row_pair(0, r.second, y);
         jsr_pop();
         r.third = blend.a;
         r.flag = blend.v;

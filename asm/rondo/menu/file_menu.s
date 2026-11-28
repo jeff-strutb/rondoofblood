@@ -21,10 +21,10 @@ PortraitFlashLists = $BC98 ; object $34's lists by the picture's character
 NameCheat = $97EF ; the name that opens everything on a new slot
 DefaultNames = $980D ; the three slots' default names, 8 bytes each
 MarkTexts = $AA7B ; a string pointer for each value of a slot's mark
-RecordScores = $AD01 ; a two-byte BCD score for each record entry, and one more
+RecordScores = $AD01 ; a two-byte BCD price for each record entry, and one more
 EntryOffsets = $B90A ; each record entry's flag byte pair
 EntryMasks = $B917 ; each record entry's bit
-ClearedMasks = $B993 ; each record entry's cleared bit
+ClearedMasks = $B993 ; each record entry's bought bit
 EntryPlaces = $BA2F ; the VRAM address of each entry's name
 EntryNames = $BA4B ; a string pointer for each entry's name
 UnknownName = $BA67 ; the string of an entry not reached
@@ -2359,3 +2359,369 @@ DrawMenuNotice_at0:
     lda a:MenuMessages+1,y
     sta z:zTemp01
     jmp DrawGlyphText
+
+; @routine 00DF:712 FileMenuShopPage
+; @run 6F:B712
+; @stop B717
+; WHAT IT DOES: Page 15: the shop.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+ShopStages = $B881 ; the stage each shop entry starts
+ShopFrames = $B8E9 ; the shop cursor's frames
+FileMenuShopPage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00DF:71B FileMenuShopStart
+; @run 6F:B71B
+; WHAT IT DOES: The shop page's first step: the cursor objects to the screen's middle, row and column 0, sent to the
+; row's places, the entry's line shown; the step goes on.
+; HOW: Four stores, two STZ, PlaceShopCursor, ShowShopLine, MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuShopStart:
+    clx
+    lda #$80
+    sta a:OBJ_X_LO,x
+    sta a:OBJ_Y_LO,x
+    sta a:OBJ_X_LO+1,x
+    sta a:OBJ_Y_LO+1,x
+    stz a:OBJ_FLASH_FRAMES,x
+    stz a:OBJ_WORK_H,x
+    jsr PlaceShopCursor
+    jsr ShowShopLine
+    jmp MenuStepAdvance
+
+; @routine 00DF:739 PlaceShopCursor
+; @run 6F:B739
+; WHAT IT DOES: Sends the shop's two cursor objects to the row's places: Y $88 and X $08 and $F8, or, on the last
+; row, Y $C8 and X $60 and $A0; both marked moving.
+; HOW: OBJ->work_h compared with 7; the targets in OBJ->work_f (X) and OBJ->work_g (Y); OBJ->work_e 1.
+; WAITS: no.
+; Entry: X the first object. Exit: A 1, N and Z clear, Y the row, C from the compare; X kept.
+PlaceShopCursor:
+    ldy a:OBJ_WORK_H,x
+    cpy #$07
+    bne PlaceShopCursor_at0
+    lda #$C8
+    sta a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_G+1,x
+    lda #$60
+    sta a:OBJ_TALLY_STEP,x
+    lda #$A0
+    sta a:OBJ_TALLY_STEP+1,x
+    bra PlaceShopCursor_at1
+PlaceShopCursor_at0:
+    lda #$88
+    sta a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_G+1,x
+    lda #$08
+    sta a:OBJ_TALLY_STEP,x
+    lda #$F8
+    sta a:OBJ_TALLY_STEP+1,x
+PlaceShopCursor_at1:
+    lda #$01
+    sta a:OBJ_TALLY_WAIT,x
+    sta a:OBJ_TALLY_WAIT+1,x
+    rts
+
+; @routine 00DF:76F FileMenuShopStep
+; @run 6F:B76F
+; WHAT IT DOES: The shop's frame. The pad moves the cursor (left and right change column, except on the last row; up
+; and down change row) and the old and new entries' lines are redrawn; the objects move. Button I: on the last row,
+; back to page $0A; else an entry already bought starts its stage; one not bought is bought if the slot's total score
+; reaches its price and the slot has reached it (the price taken from the score in decimal, the slot's record redrawn),
+; else sound $41. Button II: back to page $0A.
+; HOW: HideShopLine, the pad's bits, PlaceShopCursor, ShowShopLine; MoveShopCursor; the entry doubled in the card's
+; zero page A; SlotScoreReaches, SlotEntryTest; ORA into the bought bits; SED, three SBCs, CLD; DrawSlotScore; the
+; stage from $B881, sound $3F, SMB4 zModeEvents, page $10.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as the arm that ran last.
+FileMenuShopStep:
+    clx
+    lda a:BiosJoyTrigger
+    and #$F0
+    beq FileMenuShopStep_tB7CA
+    jsr HideShopLine
+    lda a:BiosJoyTrigger
+    and #$A0
+    beq FileMenuShopStep_at0
+    lda a:OBJ_WORK_H,x
+    cmp #$07
+    beq FileMenuShopStep_at0
+    lda a:OBJ_FLASH_FRAMES,x
+    eor #$01
+    sta a:OBJ_FLASH_FRAMES,x
+FileMenuShopStep_at0:
+    lda a:BiosJoyTrigger
+    and #$40
+    beq FileMenuShopStep_at1
+    lda a:OBJ_WORK_H,x
+    inc a
+    cmp #$08
+    bne FileMenuShopStep_at2
+    cla
+FileMenuShopStep_at2:
+    sta a:OBJ_WORK_H,x
+FileMenuShopStep_at1:
+    lda a:BiosJoyTrigger
+    and #$10
+    beq FileMenuShopStep_at3
+    lda a:OBJ_WORK_H,x
+    dec a
+    bpl FileMenuShopStep_at4
+    lda #$07
+FileMenuShopStep_at4:
+    sta a:OBJ_WORK_H,x
+FileMenuShopStep_at3:
+    lda a:OBJ_WORK_H,x
+    cmp #$07
+    beq FileMenuShopStep_tB7C4
+    ldy a:OBJ_FLASH_FRAMES,x
+    beq FileMenuShopStep_tB7C4
+    clc
+    adc #$07
+FileMenuShopStep_tB7C4:
+    jsr PlaceShopCursor
+    jsr ShowShopLine
+FileMenuShopStep_tB7CA:
+    jsr MoveShopCursor
+    lda a:BiosJoyTrigger
+    and #$01
+    bne FileMenuShopStep_at5
+    jmp FileMenuShopStep_tB86F
+FileMenuShopStep_at5:
+    clx
+    lda a:OBJ_WORK_H,x
+    cmp #$07
+    bne FileMenuShopStep_at6
+    jmp FileMenuShopStep_at7
+FileMenuShopStep_at6:
+    ldy a:OBJ_FLASH_FRAMES,x
+    beq FileMenuShopStep_at8
+    clc
+    adc #$07
+FileMenuShopStep_at8:
+    asl a
+    sta z:zBiosAl
+    lda z:zBiosAl
+    lsr a
+    tax
+    ldy z:zSaveSlot
+    lda a:SlotOffsets,y
+    tay
+    cpx #$08
+    bcc FileMenuShopStep_tB7FC
+    iny
+FileMenuShopStep_tB7FC:
+    lda a:SaveScoreTotal+3,y
+    and a:ClearedMasks,x
+    bne FileMenuShopStep_at9
+    ldy z:zBiosAl
+    jsr SlotScoreReaches
+    bcc FileMenuShopStep_at10
+    ldy z:zBiosAl
+    jsr SlotEntryTest
+    beq FileMenuShopStep_at10
+    lda z:zBiosAl
+    lsr a
+    tax
+    ldy z:zSaveSlot
+    lda a:SlotOffsets,y
+    tay
+    cpx #$08
+    bcc FileMenuShopStep_at11
+    iny
+FileMenuShopStep_at11:
+    lda a:SaveScoreTotal+3,y
+    ora a:ClearedMasks,x
+    sta a:SaveScoreTotal+3,y
+    ldx z:zBiosAl
+    ldy z:zSaveSlot
+    lda a:SlotOffsets,y
+    tay
+    sed
+    lda a:SaveScoreTotal,y
+    sec
+    sbc a:RecordScores,x
+    sta a:SaveScoreTotal,y
+    lda a:SaveScoreTotal+1,y
+    sbc a:RecordScores+1,x
+    sta a:SaveScoreTotal+1,y
+    lda a:SaveScoreTotal+2,y
+    sbc #$00
+    sta a:SaveScoreTotal+2,y
+    cld
+    jsr DrawSlotScore
+FileMenuShopStep_at9:
+    stz z:zCharacter
+    lda z:zBiosAl
+    lsr a
+    tay
+    cpy #$0D
+    bne FileMenuShopStep_at12
+    inc z:zCharacter
+FileMenuShopStep_at12:
+    lda a:ShopStages,y
+    sta z:zStage
+    smb4 z:zModeEvents
+    lda #$3F
+    jsr VecSoundCommand
+    lda #$10
+    jmp SetMenuPage
+FileMenuShopStep_tB86F:
+    lda a:BiosJoyTrigger
+    and #$02
+    beq FileMenuShopStep_at13
+FileMenuShopStep_at7:
+    lda #$0A
+    jmp SetMenuPage
+FileMenuShopStep_at10:
+    lda #$41
+    jsr VecSoundCommand
+FileMenuShopStep_at13:
+    rts
+
+; @routine 00E0:08F MoveShopCursor
+; @run 6F:B88F
+; WHAT IT DOES: Moves the two cursor objects: each, while moving, takes a velocity of half the distance left (signed
+; halving by ROR and EOR), halved again, applies it, and stops on its place; both take their frame from the tick.
+; HOW: BSR for object 0, INX, and the same code falls through for object 1.
+; WAITS: no.
+; Entry: nothing. Exit: A object 1's frame, N and Z from it, C bit 1 of the tick, X 1; Y and V as the moves left them.
+MoveShopCursor:
+    clx
+    bsr MoveShopCursor_tB893
+    inx
+MoveShopCursor_tB893:
+    lda a:OBJ_TALLY_WAIT,x
+    beq MoveShopCursor_at0
+    lda a:OBJ_TALLY_STEP,x
+    sec
+    sbc a:OBJ_X_LO,x
+    ror a
+    eor #$80
+    sta a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    ror a:OBJ_VX_LO,x
+    lda a:OBJ_WORK_G,x
+    sec
+    sbc a:OBJ_Y_LO,x
+    ror a
+    eor #$80
+    sta a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    ror a:OBJ_VY_LO,x
+    jsr HalveObjectVelocity
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_LO,x
+    cmp #$B0
+    cla
+    rol a
+    tay
+    lda a:ShopFrames,y
+    sta a:OBJ_FRAME,x
+    lda a:OBJ_X_LO,x
+    cmp a:OBJ_TALLY_STEP,x
+    bne MoveShopCursor_at0
+    lda a:OBJ_Y_LO,x
+    cmp a:OBJ_WORK_G,x
+    bne MoveShopCursor_at0
+    stz a:OBJ_TALLY_WAIT,x
+MoveShopCursor_at0:
+    jsr ObjectFrameFromTick
+    rts
+
+; @routine 00E0:124 ShowShopLine
+; @run 6F:B924
+; WHAT IT DOES: Draws the score line for the cursor's entry and its name highlighted (attribute $11); an entry not
+; reached shows the unknown string.
+; HOW: PHX; DrawSlotRecord; the entry; SlotEntryTest; DrawUnknownName or DrawEntryName; PLX.
+; WAITS: no.
+; Entry: X the cursor object. Exit: X kept, N and Z from it; A, Y, C and V as the last call left them.
+ShowShopLine:
+    phx
+    jsr DrawSlotRecord
+    lda a:OBJ_WORK_H,x
+    cmp #$07
+    beq ShowShopLine_at0
+    ldy a:OBJ_FLASH_FRAMES,x
+    beq ShowShopLine_at1
+    clc
+    adc #$07
+ShowShopLine_at1:
+    sta z:zBiosAl
+    tax
+    jsr SlotEntryTest
+    bne ShowShopLine_at2
+    ldx #$11
+    lda z:zBiosAl
+    jsr DrawUnknownName
+    bra ShowShopLine_at0
+ShowShopLine_at2:
+    lda z:zBiosAl
+    ldx #$11
+    jsr DrawEntryName
+ShowShopLine_at0:
+    plx
+    rts
+
+; @routine 00E0:151 HideShopLine
+; @run 6F:B951
+; WHAT IT DOES: Draws the cursor's entry back in its plain look: the unknown string when not reached, else its name,
+; $51 when bought and $41 when not.
+; HOW: PHX; the entry; SlotEntryTest; the bought bit; SAX to put the attribute in X and the entry in A; DrawEntryName;
+; PLX.
+; WAITS: no.
+; Entry: X the cursor object. Exit: as ShowShopLine.
+HideShopLine:
+    phx
+    lda a:OBJ_WORK_H,x
+    cmp #$07
+    beq HideShopLine_at0
+    ldy a:OBJ_FLASH_FRAMES,x
+    beq HideShopLine_at1
+    clc
+    adc #$07
+HideShopLine_at1:
+    sta z:zBiosAl
+    tax
+    jsr SlotEntryTest
+    bne HideShopLine_at2
+    ldx #$41
+    lda z:zBiosAl
+    jsr DrawUnknownName
+    bra HideShopLine_at0
+HideShopLine_at2:
+    lda z:zBiosAl
+    tax
+    ldy z:zSaveSlot
+    lda a:SlotOffsets,y
+    tay
+    cpx #$08
+    bcc HideShopLine_tB980
+    iny
+HideShopLine_tB980:
+    lda a:SaveScoreTotal+3,y
+    and a:ClearedMasks,x
+    beq HideShopLine_at3
+    lda #$51
+    bra HideShopLine_at4
+HideShopLine_at3:
+    lda #$41
+HideShopLine_at4:
+    sax
+    bsr DrawEntryName
+HideShopLine_at0:
+    plx
+    rts
+    ora (zTemp02,x)
+    tsb z:zTemp08
+    bpl DrawRecordList+24
+    rti
+    bra HideShopLine_at5
+    sxy
+HideShopLine_at5:
+    tsb z:zTemp08
+    bpl DrawRecordList+32

@@ -2063,14 +2063,14 @@ void abi_NameEntryEnd(void)
 
 /*
  * The slot's record pages. A slot's bytes: $01 to $05 flags, $1F to $21 its total score (BCD), $22 and $23 the bits of
- * the entries cleared.
+ * the entries bought with score (FileMenuShopStep).
  */
 #define RECORD_ENTRIES 14
 #define MARK_TEXTS 0xAA7B                   /* a string pointer for each value of MenuSlotMusic */
-#define RECORD_SCORES 0xAD01                /* a two-byte BCD score for each entry, and one more at index 14 */
+#define RECORD_SCORES 0xAD01                /* a two-byte BCD price for each entry, and one more at index 14 */
 #define ENTRY_OFFSETS 0xB90A                /* the flag byte pair of each entry, from the slot's byte $01 */
 #define ENTRY_MASKS 0xB917                  /* its bit there */
-#define CLEARED_MASKS 0xB993                /* the entry's bit in the slot's byte $22 (entries 0 to 7) or $23 */
+#define BOUGHT_MASKS 0xB993                /* the entry's bought bit in the slot's byte $22 (entries 0 to 7) or $23 */
 #define ENTRY_PLACES 0xBA2F                 /* the VRAM address of each entry's name */
 #define ENTRY_NAMES 0xBA4B                  /* a string pointer for each entry */
 #define UNKNOWN_NAME 0xBA67                 /* the string of an entry not reached */
@@ -2368,7 +2368,7 @@ static MenuRegs record_line_lit(MenuRegs r)
  * when its line (OBJ->work_d) is not 0, or 14 for page 7. An entry the slot has cleared (its bit in bytes $22 and
  * $23) shows "00" and the score at index 14; else the entry's score, bright when the slot's total reaches it and with
  * palette 6 when it does not.
- * HOW: The entry number in zTemp (bios_b low); the slot's cleared bit tested with CLEARED_MASKS; PHX, PLX around it;
+ * HOW: The entry number in zTemp (bios_b low); the slot's bought bit tested with BOUGHT_MASKS; PHX, PLX around it;
  * SlotScoreReaches; WriteHexByteTiles or WriteDimHexByte.
  * WAITS: no.
  * Entry: X the cursor object. Exit: A the last digit tile, N and Z clear, C bit 3 of the last byte, X kept, Y the
@@ -2413,7 +2413,7 @@ MenuRegs DrawSlotRecord(MenuRegs r)
         offset++;
         ry(&r, offset);
     }
-    bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) & rd8((uint16_t)(CLEARED_MASKS + entry)));
+    bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) & rd8((uint16_t)(BOUGHT_MASKS + entry)));
     ra(&r, bits);
     if (bits != 0) {
         rx(&r, pull8());
@@ -2590,8 +2590,8 @@ void abi_DrawEntryName(void)
  * @run 6F:B9A1
  * WHAT IT DOES: Draws the selected slot's list of 14 entries and the score line: an entry not reached shows the unknown
  * string (attribute $41), entry 0 its name with attribute $11, a reached entry its name with $51 when the slot's
- * cleared bit for it is set and $41 when not. Then the score line (DrawSlotRecord) with the X the last entry left.
- * HOW: The entry counted in the card's zero page word A (bios_a low); SlotEntryTest; CLEARED_MASKS against bytes $22
+ * bought bit for it is set and $41 when not. Then the score line (DrawSlotRecord) with the X the last entry left.
+ * HOW: The entry counted in the card's zero page word A (bios_a low); SlotEntryTest; BOUGHT_MASKS against bytes $22
  * and $23; DrawUnknownName or DrawEntryName; a tail jump to DrawSlotRecord.
  * WAITS: no.
  * Entry: nothing. Exit: as DrawSlotRecord, X the attribute of entry 13.
@@ -2629,7 +2629,7 @@ MenuRegs DrawRecordList(MenuRegs r)
                     offset++;
                     ry(&r, offset);
                 }
-                bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) & rd8((uint16_t)(CLEARED_MASKS + r.x)));
+                bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) & rd8((uint16_t)(BOUGHT_MASKS + r.x)));
                 ra(&r, bits);
                 rx(&r, bits != 0 ? 0x51 : 0x41);
                 entry = RD8(ZP->bios_a.lo);
@@ -4764,6 +4764,622 @@ MenuRegs FileMenuLeaveStep(MenuRegs r)
 void abi_FileMenuLeaveStep(void)
 {
     MenuRegs r = FileMenuLeaveStep(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * The shop: the record list's entries bought with the slot's total score, and the stage each starts. Two cursor
+ * objects (0 and 1) mark the row (OBJ->work_h, 7 the last) and the column (OBJ->work_d); entry = row plus 7 for the
+ * right column.
+ */
+#define SHOP_FRAMES 0xB8E9                  /* the cursor's frame by whether it is in the lower part (overwritten) */
+#define SHOP_STAGES 0xB881                  /* the stage each entry starts */
+enum { SHOP_ROWS = 8, SHOP_LAST_ROW = 7, SHOP_ENTRY_MARIA = 0x0D, SHOP_SOUND_REFUSED = 0x41, SHOP_SOUND_TAKEN = 0x3F };
+
+/*
+ * @routine 00DF:739 PlaceShopCursor
+ * @run 6F:B739
+ * WHAT IT DOES: Sends the shop's two cursor objects to the row's places: Y $88 and X $08 and $F8, or, on the last
+ * row, Y $C8 and X $60 and $A0; both marked moving.
+ * HOW: OBJ->work_h compared with 7; the targets in OBJ->work_f (X) and OBJ->work_g (Y); OBJ->work_e 1.
+ * WAITS: no.
+ * Entry: X the first object. Exit: A 1, N and Z clear, Y the row, C from the compare; X kept.
+ */
+MenuRegs PlaceShopCursor(MenuRegs r)
+{
+    uint8_t object = r.x, row;
+
+    row = RD8(OBJ->work_h[object]);
+    ry(&r, row);
+    rcmp(&r, row, SHOP_LAST_ROW);
+    if (row == SHOP_LAST_ROW) {
+        ra(&r, 0xC8);
+        WR8(OBJ->work_g[object], 0xC8);
+        WR8(OBJ->work_g[object + 1], 0xC8);
+        ra(&r, 0x60);
+        WR8(OBJ->work_f[object], 0x60);
+        ra(&r, 0xA0);
+        WR8(OBJ->work_f[object + 1], 0xA0);
+    } else {
+        ra(&r, 0x88);
+        WR8(OBJ->work_g[object], 0x88);
+        WR8(OBJ->work_g[object + 1], 0x88);
+        ra(&r, 0x08);
+        WR8(OBJ->work_f[object], 0x08);
+        ra(&r, 0xF8);
+        WR8(OBJ->work_f[object + 1], 0xF8);
+    }
+    ra(&r, 1);
+    WR8(OBJ->work_e[object], 1);
+    WR8(OBJ->work_e[object + 1], 1);
+    return r;
+}
+
+void abi_PlaceShopCursor(void)
+{
+    MenuRegs r = PlaceShopCursor(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* One cursor object's move towards its place ($B893), and its frame from the tick. */
+static MenuRegs move_shop_object(MenuRegs r, uint8_t object)
+{
+    uint8_t moving, target, pos, diff, value, frame_index;
+    ArithExit halved;
+    AxisMove move;
+    ValueCarry tick;
+    bool carry, out;
+
+    moving = RD8(OBJ->work_e[object]);
+    ra(&r, moving);
+    if (moving != 0) {
+        target = RD8(OBJ->work_f[object]);
+        pos = RD8(OBJ->x_lo[object]);
+        diff = (uint8_t)(target - pos);
+        carry = target >= pos;
+        rv(&r, ((target ^ pos) & (target ^ diff) & 0x80) != 0);
+        out = (diff & 1) != 0;                       /* ROR A, EOR #$80 */
+        value = (uint8_t)(((diff >> 1) | (carry ? 0x80 : 0)) ^ 0x80);
+        WR8(OBJ->vx_hi[object], value);
+        WR8(OBJ->vx_lo[object], 0);
+        (void)ROR8(OBJ->vx_lo[object], out);
+        target = RD8(OBJ->work_g[object]);
+        pos = RD8(OBJ->y_lo[object]);
+        diff = (uint8_t)(target - pos);
+        carry = target >= pos;
+        rv(&r, ((target ^ pos) & (target ^ diff) & 0x80) != 0);
+        out = (diff & 1) != 0;
+        value = (uint8_t)(((diff >> 1) | (carry ? 0x80 : 0)) ^ 0x80);
+        WR8(OBJ->vy_hi[object], value);
+        WR8(OBJ->vy_lo[object], 0);
+        (void)ROR8(OBJ->vy_lo[object], out);
+        jsr_push(0xB8C1);
+        halved = HalveObjectVelocity(object);
+        jsr_pop();
+        if (halved.overflow_set) {
+            rv(&r, halved.overflow);
+        }
+        jsr_push(0xB8C4);
+        move = ApplyVelocity(object);
+        jsr_pop();
+        rv(&r, move_overflow(move));
+        pos = RD8(OBJ->y_lo[object]);
+        frame_index = (uint8_t)(pos >= 0xB0 ? 1 : 0);  /* CMP #$B0, CLA, ROL */
+        ry(&r, frame_index);
+        value = rd8((uint16_t)(SHOP_FRAMES + frame_index));
+        WR8(OBJ->frame[object], value);
+        value = RD8(OBJ->x_lo[object]);
+        ra(&r, value);
+        rc(&r, false);
+        target = RD8(OBJ->work_f[object]);
+        rcmp(&r, value, target);
+        if (value == target) {
+            value = RD8(OBJ->y_lo[object]);
+            ra(&r, value);
+            target = RD8(OBJ->work_g[object]);
+            rcmp(&r, value, target);
+            if (value == target) {
+                WR8(OBJ->work_e[object], 0);
+            }
+        }
+    }
+    jsr_push(0xB8E8);
+    tick = ObjectFrameFromTick(object);
+    jsr_pop();
+    ra(&r, tick.value);
+    rc(&r, tick.carry);
+    return r;
+}
+
+/*
+ * @routine 00E0:08F MoveShopCursor
+ * @run 6F:B88F
+ * WHAT IT DOES: Moves the two cursor objects: each, while moving, takes a velocity of half the distance left (signed
+ * halving by ROR and EOR), halved again, applies it, and stops on its place; both take their frame from the tick.
+ * HOW: BSR for object 0, INX, and the same code falls through for object 1.
+ * WAITS: no.
+ * Entry: nothing. Exit: A object 1's frame, N and Z from it, C bit 1 of the tick, X 1; Y and V as the moves left them.
+ */
+MenuRegs MoveShopCursor(MenuRegs r)
+{
+    rx(&r, 0);
+    jsr_push(0xB892);
+    r = move_shop_object(r, 0);
+    jsr_pop();
+    r.x = 1;
+    r.set |= REG_X;
+    return move_shop_object(r, 1);
+}
+
+void abi_MoveShopCursor(void)
+{
+    MenuRegs r = MoveShopCursor(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* The entry the cursor is on, as ShowShopLine and HideShopLine work it out: false on the last row. */
+static bool shop_entry(MenuRegs *r, uint8_t object, uint8_t *entry)
+{
+    uint8_t row, column;
+
+    row = RD8(OBJ->work_h[object]);
+    ra(r, row);
+    rcmp(r, row, SHOP_LAST_ROW);
+    if (row == SHOP_LAST_ROW) {
+        return false;
+    }
+    column = RD8(OBJ->work_d[object]);
+    ry(r, column);
+    if (column != 0) {
+        rc(r, false);
+        row = radd(r, row, SHOP_LAST_ROW);
+    }
+    WR8(ZP->bios_a.lo, row);
+    *entry = row;
+    return true;
+}
+
+/*
+ * @routine 00E0:124 ShowShopLine
+ * @run 6F:B924
+ * WHAT IT DOES: Draws the score line for the cursor's entry and its name highlighted (attribute $11); an entry not
+ * reached shows the unknown string.
+ * HOW: PHX; DrawSlotRecord; the entry; SlotEntryTest; DrawUnknownName or DrawEntryName; PLX.
+ * WAITS: no.
+ * Entry: X the cursor object. Exit: X kept, N and Z from it; A, Y, C and V as the last call left them.
+ */
+MenuRegs ShowShopLine(MenuRegs r)
+{
+    uint8_t object = r.x, entry;
+
+    push8(object);
+    jsr_push(0xB928);
+    r = DrawSlotRecord(r);
+    jsr_pop();
+    if (shop_entry(&r, object, &entry)) {
+        rx(&r, entry);
+        jsr_push(0xB93D);
+        r = SlotEntryTest(r);
+        jsr_pop();
+        if (r.nz == 0) {
+            rx(&r, 0x11);
+            entry = RD8(ZP->bios_a.lo);
+            ra(&r, entry);
+            jsr_push(0xB946);
+            r = DrawUnknownName(r);
+            jsr_pop();
+        } else {
+            entry = RD8(ZP->bios_a.lo);
+            ra(&r, entry);
+            rx(&r, 0x11);
+            jsr_push(0xB94F);
+            r = DrawEntryName(r);
+            jsr_pop();
+        }
+    }
+    rx(&r, pull8());
+    return r;
+}
+
+void abi_ShowShopLine(void)
+{
+    MenuRegs r = ShowShopLine(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00E0:151 HideShopLine
+ * @run 6F:B951
+ * WHAT IT DOES: Draws the cursor's entry back in its plain look: the unknown string when not reached, else its name,
+ * $51 when bought and $41 when not.
+ * HOW: PHX; the entry; SlotEntryTest; the bought bit; SAX to put the attribute in X and the entry in A; DrawEntryName;
+ * PLX.
+ * WAITS: no.
+ * Entry: X the cursor object. Exit: as ShowShopLine.
+ */
+MenuRegs HideShopLine(MenuRegs r)
+{
+    uint8_t object = r.x, entry, slot, offset, bits, attribute;
+
+    push8(object);
+    if (shop_entry(&r, object, &entry)) {
+        rx(&r, entry);
+        jsr_push(0xB967);
+        r = SlotEntryTest(r);
+        jsr_pop();
+        if (r.nz == 0) {
+            rx(&r, 0x41);
+            entry = RD8(ZP->bios_a.lo);
+            ra(&r, entry);
+            jsr_push(0xB970);
+            r = DrawUnknownName(r);
+            jsr_pop();
+        } else {
+            entry = RD8(ZP->bios_a.lo);
+            ra(&r, entry);
+            rx(&r, entry);
+            slot = RD8(ZP->save_slot);
+            ry(&r, slot);
+            offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+            ry(&r, offset);
+            rcmp(&r, entry, 0x08);
+            if (entry >= 0x08) {
+                offset++;
+                ry(&r, offset);
+            }
+            bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) & rd8((uint16_t)(BOUGHT_MASKS + entry)));
+            ra(&r, bits);
+            attribute = bits != 0 ? 0x51 : 0x41;
+            ra(&r, attribute);
+            /* SAX: A the entry, X the attribute; the flags stay. */
+            r.a = entry;
+            r.x = attribute;
+            r.set |= REG_A | REG_X;
+            jsr_push(0xB991);
+            r = DrawEntryName(r);
+            jsr_pop();
+        }
+    }
+    rx(&r, pull8());
+    return r;
+}
+
+void abi_HideShopLine(void)
+{
+    MenuRegs r = HideShopLine(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:71B FileMenuShopStart
+ * @run 6F:B71B
+ * WHAT IT DOES: The shop page's first step: the cursor objects to the screen's middle, row and column 0, sent to the
+ * row's places, the entry's line shown; the step goes on.
+ * HOW: Four stores, two STZ, PlaceShopCursor, ShowShopLine, MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuShopStart(MenuRegs r)
+{
+    rx(&r, 0);
+    ra(&r, 0x80);
+    WR8(OBJ->x_lo[0], 0x80);
+    WR8(OBJ->y_lo[0], 0x80);
+    WR8(OBJ->x_lo[1], 0x80);
+    WR8(OBJ->y_lo[1], 0x80);
+    WR8(OBJ->work_d[0], 0);
+    WR8(OBJ->work_h[0], 0);
+    jsr_push(0xB733);
+    r = PlaceShopCursor(r);
+    jsr_pop();
+    jsr_push(0xB736);
+    r = ShowShopLine(r);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuShopStart(void)
+{
+    MenuRegs r = FileMenuShopStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* Decimal mode set and cleared, and a decimal SBC as the HuC6280 makes it (V left alone). */
+static void decimal_shim(bool on)
+{
+    cpu.p = (uint8_t)(on ? (cpu.p | P_D) : (cpu.p & ~P_D));
+}
+
+static uint8_t sbc_decimal(uint8_t a, uint8_t value, bool *carry)
+{
+    uint8_t low = (uint8_t)((a & 0x0F) - (value & 0x0F) - (*carry ? 0 : 1));
+    uint8_t high = (uint8_t)((a >> 4) - (value >> 4) - ((low >> 4) & 1));
+    uint8_t result = (uint8_t)((high << 4) | (low & 0x0F));
+
+    if (low & 0x10) {
+        result = (uint8_t)(result - 0x06);
+    }
+    if (high & 0x10) {
+        result = (uint8_t)(result - 0x60);
+    }
+    *carry = !((high >> 4) & 1);
+    return result;
+}
+
+/* The slot's offset in Y, plus one for entries 8 and up. */
+static uint8_t shop_flag_offset(MenuRegs *r, uint8_t entry)
+{
+    uint8_t slot, offset;
+
+    slot = RD8(ZP->save_slot);
+    ry(r, slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    ry(r, offset);
+    rcmp(r, entry, 0x08);
+    if (entry >= 0x08) {
+        offset++;
+        ry(r, offset);
+    }
+    return offset;
+}
+
+/* An entry taken: its stage, Maria for the last entry, the screens asked for, and page $10. */
+static MenuRegs shop_take(MenuRegs r)
+{
+    CommandCall sound;
+    MenuReplay *p;
+    uint8_t entry, stage;
+
+    WR8(ZP->character, 0);
+    entry = RD8(ZP->bios_a.lo);
+    rc(&r, (entry & 1) != 0);
+    entry >>= 1;
+    ra(&r, entry);
+    ry(&r, entry);
+    rcmp(&r, entry, SHOP_ENTRY_MARIA);
+    if (entry == SHOP_ENTRY_MARIA) {
+        rnz(&r, INC8(ZP->character));
+    }
+    stage = rd8((uint16_t)(SHOP_STAGES + entry));
+    ra(&r, stage);
+    WR8(ZP->stage, stage);
+    RMW8(ZP->mode_events, events_, events_ | 0x10);
+    ra(&r, SHOP_SOUND_TAKEN);
+    jsr_push(0xB86A);
+    sound = SoundCommand(SHOP_SOUND_TAKEN, r.x, menu_y(&r));
+    jsr_pop();
+    p = menu_replay(&r, REPLAY_SOUND);
+    p->command = SHOP_SOUND_TAKEN;
+    p->call.sound = sound;
+    ra(&r, 0x10);
+    SetMenuPage(0x10);
+    ra(&r, 0);
+    rnz(&r, 0x10);
+    return r;
+}
+
+/*
+ * @routine 00DF:76F FileMenuShopStep
+ * @run 6F:B76F
+ * WHAT IT DOES: The shop's frame. The pad moves the cursor (left and right change column, except on the last row; up
+ * and down change row) and the old and new entries' lines are redrawn; the objects move. Button I: on the last row,
+ * back to page $0A; else an entry already bought starts its stage; one not bought is bought if the slot's total score
+ * reaches its price and the slot has reached it (the price taken from the score in decimal, the slot's record redrawn),
+ * else sound $41. Button II: back to page $0A.
+ * HOW: HideShopLine, the pad's bits, PlaceShopCursor, ShowShopLine; MoveShopCursor; the entry doubled in the card's
+ * zero page A; SlotScoreReaches, SlotEntryTest; ORA into the bought bits; SED, three SBCs, CLD; DrawSlotScore; the
+ * stage from $B881, sound $3F, SMB4 zModeEvents, page $10.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as the arm that ran last.
+ */
+MenuRegs FileMenuShopStep(MenuRegs r)
+{
+    uint8_t trigger, row, column, entry, offset, bits, value;
+    bool carry, take;
+    CommandCall sound;
+    MenuReplay *p;
+
+    rx(&r, 0);
+    trigger = (uint8_t)(rd8(BiosJoyTrigger) & 0xF0);
+    ra(&r, trigger);
+    if (trigger != 0) {
+        jsr_push(0xB77A);
+        r = HideShopLine(r);
+        jsr_pop();
+        trigger = (uint8_t)(rd8(BiosJoyTrigger) & 0xA0);
+        ra(&r, trigger);
+        if (trigger != 0) {
+            row = RD8(OBJ->work_h[0]);
+            ra(&r, row);
+            rcmp(&r, row, SHOP_LAST_ROW);
+            if (row != SHOP_LAST_ROW) {
+                column = (uint8_t)(RD8(OBJ->work_d[0]) ^ 0x01);
+                ra(&r, column);
+                WR8(OBJ->work_d[0], column);
+            }
+        }
+        trigger = (uint8_t)(rd8(BiosJoyTrigger) & 0x40);
+        ra(&r, trigger);
+        if (trigger != 0) {
+            row = (uint8_t)(RD8(OBJ->work_h[0]) + 1);
+            ra(&r, row);
+            rcmp(&r, row, SHOP_ROWS);
+            if (row == SHOP_ROWS) {
+                row = 0;
+                ra_keep(&r, 0);
+            }
+            WR8(OBJ->work_h[0], row);
+        }
+        trigger = (uint8_t)(rd8(BiosJoyTrigger) & 0x10);
+        ra(&r, trigger);
+        if (trigger != 0) {
+            row = (uint8_t)(RD8(OBJ->work_h[0]) - 1);
+            ra(&r, row);
+            if (row & 0x80) {
+                row = SHOP_LAST_ROW;
+                ra(&r, row);
+            }
+            WR8(OBJ->work_h[0], row);
+        }
+        row = RD8(OBJ->work_h[0]);
+        ra(&r, row);
+        rcmp(&r, row, SHOP_LAST_ROW);
+        if (row != SHOP_LAST_ROW) {
+            column = RD8(OBJ->work_d[0]);
+            ry(&r, column);
+            if (column != 0) {
+                rc(&r, false);
+                row = radd(&r, row, SHOP_LAST_ROW);
+            }
+        }
+        jsr_push(0xB7C7);
+        r = PlaceShopCursor(r);
+        jsr_pop();
+        jsr_push(0xB7CA);
+        r = ShowShopLine(r);
+        jsr_pop();
+    }
+    jsr_push(0xB7CD);
+    r = MoveShopCursor(r);
+    jsr_pop();
+    trigger = (uint8_t)(rd8(BiosJoyTrigger) & 0x01);
+    ra(&r, trigger);
+    if (trigger == 0) {
+        trigger = (uint8_t)(rd8(BiosJoyTrigger) & 0x02);
+        ra(&r, trigger);
+        if (trigger == 0) {
+            return r;
+        }
+        goto leave;
+    }
+    rx(&r, 0);
+    row = RD8(OBJ->work_h[0]);
+    ra(&r, row);
+    rcmp(&r, row, SHOP_LAST_ROW);
+    if (row == SHOP_LAST_ROW) {
+        goto leave;
+    }
+    column = RD8(OBJ->work_d[0]);
+    ry(&r, column);
+    if (column != 0) {
+        rc(&r, false);
+        row = radd(&r, row, SHOP_LAST_ROW);
+    }
+    rc(&r, (row & 0x80) != 0);
+    value = (uint8_t)(row << 1);
+    ra(&r, value);
+    WR8(ZP->bios_a.lo, value);
+    value = RD8(ZP->bios_a.lo);
+    rc(&r, (value & 1) != 0);
+    entry = (uint8_t)(value >> 1);
+    ra(&r, entry);
+    rx(&r, entry);
+    offset = shop_flag_offset(&r, entry);
+    bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) & rd8((uint16_t)(BOUGHT_MASKS + entry)));
+    ra(&r, bits);
+    take = bits != 0;
+    if (!take) {
+        value = RD8(ZP->bios_a.lo);
+        ry(&r, value);
+        jsr_push(0xB809);
+        r = SlotScoreReaches(r);
+        jsr_pop();
+        if (!r.c) {
+            goto refused;
+        }
+        value = RD8(ZP->bios_a.lo);
+        ry(&r, value);
+        jsr_push(0xB810);
+        r = SlotEntryTest(r);
+        jsr_pop();
+        if (r.nz == 0) {
+            goto refused;
+        }
+        value = RD8(ZP->bios_a.lo);
+        rc(&r, (value & 1) != 0);
+        entry = (uint8_t)(value >> 1);
+        ra(&r, entry);
+        rx(&r, entry);
+        offset = shop_flag_offset(&r, entry);
+        bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) | rd8((uint16_t)(BOUGHT_MASKS + entry)));
+        ra(&r, bits);
+        wr8((uint16_t)(SaveBuffer + 0x22 + offset), bits);
+        entry = RD8(ZP->bios_a.lo);
+        rx(&r, entry);
+        value = RD8(ZP->save_slot);
+        ry(&r, value);
+        offset = rd8((uint16_t)(SLOT_OFFSETS + value));
+        ry(&r, offset);
+        decimal_shim(true);
+        carry = true;
+        value = sbc_decimal(rd8((uint16_t)(SaveScoreTotal + offset)), rd8((uint16_t)(RECORD_SCORES + entry)), &carry);
+        wr8((uint16_t)(SaveScoreTotal + offset), value);
+        value = sbc_decimal(rd8((uint16_t)(SaveScoreTotal + 1 + offset)), rd8((uint16_t)(RECORD_SCORES + 1 + entry)), &carry);
+        wr8((uint16_t)(SaveScoreTotal + 1 + offset), value);
+        value = sbc_decimal(rd8((uint16_t)(SaveScoreTotal + 2 + offset)), 0, &carry);
+        wr8((uint16_t)(SaveScoreTotal + 2 + offset), value);
+        decimal_shim(false);
+        ra(&r, value);
+        rc(&r, carry);
+        jsr_push(0xB852);
+        r = DrawSlotScore(r);
+        jsr_pop();
+    }
+    return shop_take(r);
+refused:
+    ra(&r, SHOP_SOUND_REFUSED);
+    jsr_push(0xB880);
+    sound = SoundCommand(SHOP_SOUND_REFUSED, r.x, menu_y(&r));
+    jsr_pop();
+    p = menu_replay(&r, REPLAY_SOUND);
+    p->command = SHOP_SOUND_REFUSED;
+    p->call.sound = sound;
+    return r;
+leave:
+    ra(&r, 0x0A);
+    SetMenuPage(0x0A);
+    ra(&r, 0);
+    rnz(&r, 0x0A);
+    return r;
+}
+
+void abi_FileMenuShopStep(void)
+{
+    MenuRegs r = FileMenuShopStep(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:712 FileMenuShopPage
+ * @run 6F:B712
+ * @stop B717
+ * WHAT IT DOES: Page 15: the shop.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuShopPage(MenuRegs r)
+{
+    uint16_t target = menu_page(&r, 0xB717);
+
+    switch (target) {
+    case 0xB71B: return FileMenuShopStart(r);
+    case 0xB76F: return FileMenuShopStep(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuShopPage(void)
+{
+    MenuRegs r = FileMenuShopPage(menu_regs_cpu());
 
     menu_regs_shim(&r);
 }

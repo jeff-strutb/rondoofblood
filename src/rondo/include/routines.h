@@ -76,6 +76,13 @@ typedef struct {
     HandlerExit handler; /* what the tile's handler left, when it ran */
 } TileRead;
 
+/* What differs between the builds of TerrainTileRead (terrain.c): its JSRs' returns, its handler table, and the
+ * handlers with C (NULL: each goes to the routine loaded at its address). */
+typedef struct {
+    uint16_t select_return, data_return, handlers;
+    bool (*typed)(uint16_t code, uint8_t tile, HandlerExit *out);
+} TileReadBuild;
+TileRead TerrainTileReadAt(const TileReadBuild *build);
 TileRead StageTileRead(void);
 uint8_t tile_answer(TileRead read);
 void terrain_read_exit_shim(TileRead read);

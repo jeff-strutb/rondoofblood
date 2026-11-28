@@ -15,6 +15,7 @@
  * zTemp00-09 and zTemp0A-0D are RAM these routines leave behind, so they are written here.
  * Only the wrappers and exit shims know registers and flags.
  */
+#include <stddef.h>
 #include "machine.h"
 #include "ram.h"
 #include "access.h"
@@ -601,6 +602,18 @@ static uint8_t tile_to_original_shim(uint8_t tile, uint8_t y, uint16_t code);
  */
 TileRead TerrainTileRead(void)
 {
+    const TileReadBuild build = { 0x96CE, 0x96DB, TileHandlers, run_tile_handler };
+
+    return TerrainTileReadAt(&build);
+}
+
+/*
+ * TerrainTileRead's body, for the builds of it at other addresses: the returns of its two JSRs into the kernel, its
+ * handler table, and the handlers that have C here (NULL: every handler the table names is the routine loaded at its
+ * address).
+ */
+TileRead TerrainTileReadAt(const TileReadBuild *build)
+{
     TileRead read = { TILE_PLAIN, 0, 0, 0, 0, 0, { false, 0, false, false, false } };
     uint8_t byte;
     uint8_t other;
@@ -658,14 +671,14 @@ TileRead TerrainTileRead(void)
     WR8(ZP->temp02, read.row);
     value = RD8(ZP->temp05);
     WR8(ZP->temp06, value);
-    jsr_push(0x96CE);
+    jsr_push(build->select_return);
     SelectVramReadAddress();
     jsr_pop();
     value = RD8(ZP->temp05);
     WR8(VDC->data_lo, value);
     value = RD8(ZP->temp07);
     WR8(VDC->data_hi, value);
-    jsr_push(0x96DB);
+    jsr_push(build->data_return);
     SelectVramData();
     jsr_pop();
     entry_lo = RD8(VDC->data_lo);
@@ -694,16 +707,16 @@ TileRead TerrainTileRead(void)
     }
     push8(attribute);
     value = (uint8_t)((uint8_t)(attribute - TILE_FIRST_HANDLED) << 1);
-    byte = rd8((uint16_t)(TileHandlers + value));
+    byte = rd8((uint16_t)(build->handlers + value));
     WR8(ZP->temp04, byte);
-    byte = rd8((uint16_t)(TileHandlers + 1 + value));
+    byte = rd8((uint16_t)(build->handlers + 1 + value));
     WR8(ZP->temp05, byte);
     attribute = pull8();
     {
         uint16_t code = RD16_LH2(ZP->temp04, ZP->temp05);
 
         read.kind = TILE_HANDLED;
-        if (!run_tile_handler(code, attribute, &read.handler)) {
+        if (build->typed == NULL || !build->typed(code, attribute, &read.handler)) {
             read.kind = TILE_BY_ORIGINAL;
             read.attribute = tile_to_original_shim(attribute, value, code);
         }

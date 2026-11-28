@@ -384,4 +384,6 @@ void abi_TallyWait031F(void);
 StageRegs ClearVramRows031F(StageRegs r);
 void abi_ClearVramRows031F(void);
 
+StageRegs StageFadeStart3CDAt(StageRegs r, uint16_t at);
+
 #endif

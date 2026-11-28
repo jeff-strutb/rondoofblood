@@ -2871,8 +2871,14 @@ void abi_StageSubModeFade3CD(void)
  */
 StageRegs StageFadeStart3CD(StageRegs r)
 {
-    r = resident_call(r, 0x878A, 0xA00C);
-    r = resident_call(r, 0x878D, 0xA012);
+    return StageFadeStart3CDAt(r, 0x8787);
+}
+
+/* StageFadeStart3CD's body, for its copies at other addresses. */
+StageRegs StageFadeStart3CDAt(StageRegs r, uint16_t at)
+{
+    r = resident_call(r, (uint16_t)(at + 3), 0xA00C);
+    r = resident_call(r, (uint16_t)(at + 6), 0xA012);
     r.nz = INC8(ZP->field80);
     return r;
 }

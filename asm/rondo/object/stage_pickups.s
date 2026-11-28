@@ -77,7 +77,7 @@ StageFlashStart_at0:
     jsr VecStartSoleScriptSlot
     plx
     lda #$12
-    sta a:OBJ_WORK_D,x
+    sta a:OBJ_FLASH_FRAMES,x
     lda a:HitAttackFlags
     ora #$02
     sta a:HitAttackFlags

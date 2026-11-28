@@ -14,4 +14,9 @@ static inline bool flag_c(void) { return (cpu.p & P_C) != 0; }   /* BCS taken; B
 static inline bool flag_n(void) { return (cpu.p & P_N) != 0; }   /* BMI taken; BPL when clear */
 static inline bool flag_v(void) { return (cpu.p & P_V) != 0; }   /* BVS taken; BVC when clear */
 
+/* The probe request bits the landing and walking callees' exit shims take (sensing.c's PROBE_FLOOR and PROBE_WALL). */
+enum { STAGE_C_PROBE_FLOOR = 0x01, STAGE_C_PROBE_WALL = 0x02 };
+/* The VDC register numbers the kernel's VDC selectors leave in A (video.c's VDC_REG_). */
+enum { STAGE_C_VDC_MAWR = 0x00, STAGE_C_VDC_MARR = 0x01, STAGE_C_VDC_VRAM = 0x02, STAGE_C_VDC_CR = 0x05 };
+
 #endif

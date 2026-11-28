@@ -236,29 +236,18 @@ SetSpeedByFacingAndStep0A9E:
 
 ; @routine 0A9E:785 RepeatOrStand0A9E
 ; @run 71:CF85
-; WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, state 1
-; with frame $80, or $83 when OBJ_WORK_J is set (Stage 06's overlay).
-; HOW: DEC and two arms of stores.
+; WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, goes on
+; at $CF96, the stand that another routine jumps to as well (Stage 06's overlay).
+; HOW: DEC; at zero a tail into the routine at $CF96, else three stores.
 ; WAITS: no.
 ; Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
 RepeatOrStand0A9E:
     dec a:OBJ_WORK_K,x
-    beq RepeatOrStand0A9E_at0
+    beq StandInState1_0A9E
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$01
     sta a:OBJ_SUBSTATE,x
-    rts
-RepeatOrStand0A9E_at0:
-    lda #$01
-    sta a:OBJ_STATE,x
-    lda #$80
-    sta a:OBJ_FRAME,x
-    lda a:OBJ_WORK_J,x
-    beq RepeatOrStand0A9E_at1
-    lda #$83
-    sta a:OBJ_FRAME,x
-RepeatOrStand0A9E_at1:
     rts
 
 ; @routine 0A9F:197 HitBoxByFrame0A9F_197
@@ -455,9 +444,9 @@ OpenWhenGuardsDown0BFB_at1:
     cpy #$4C
     bcc OpenWhenGuardsDown0BFB_at2
     stz a:OBJ_HITBOX_ON,x
-    inc a:OBJ_STATE+$01,x
-    inc a:OBJ_STATE+$02,x
-    inc a:OBJ_STATE+$03,x
+    inc a:OBJ_STATE+1,x
+    inc a:OBJ_STATE+2,x
+    inc a:OBJ_STATE+3,x
     lda #$06
     sta a:OBJ_STATE,x
     stz a:OBJ_SUBSTATE,x
@@ -550,29 +539,18 @@ HitBoxXByFrame0BFD_at0:
 
 ; @routine 0BFD:2A5 RepeatOrStand0BFD
 ; @run 71:C2A5
-; WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, state 1
-; with frame $5C, or $5F when OBJ_WORK_J is set (Stage 07's overlay).
-; HOW: DEC and two arms of stores.
+; WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, goes on
+; at $C2B6, the stand that another routine jumps to as well (Stage 07's overlay).
+; HOW: DEC; at zero a tail into the routine at $C2B6, else three stores.
 ; WAITS: no.
 ; Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
 RepeatOrStand0BFD:
     dec a:OBJ_WORK_K,x
-    beq RepeatOrStand0BFD_at0
+    beq Stand5COr5F_0BFD
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$01
     sta a:OBJ_SUBSTATE,x
-    rts
-RepeatOrStand0BFD_at0:
-    lda #$01
-    sta a:OBJ_STATE,x
-    lda #$5C
-    sta a:OBJ_FRAME,x
-    lda a:OBJ_WORK_J,x
-    beq RepeatOrStand0BFD_at1
-    lda #$5F
-    sta a:OBJ_FRAME,x
-RepeatOrStand0BFD_at1:
     rts
 
 ; @routine 0BFD:4B7 HitBoxByFrame0BFD
@@ -1169,14 +1147,13 @@ TurnBackPastColumn0D5C_at0:
 ; @routine 0D5C:577 SetFrame60_0D5C
 ; @run 70:BD77
 ; WHAT IT DOES: Sets frame $60 and clears OBJ_WORK_C (Stage 08's overlay).
-; HOW: Two stores.
+; HOW: Two stores, then the RTS at $BD7F, which other code branches to as well.
 ; WAITS: no.
 ; Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
 SetFrame60_0D5C:
     lda #$60
     sta a:OBJ_FRAME,x
     stz a:OBJ_WORK_C,x
-    rts
 
 ; @routine 0D5D:145 WakeSlotInStartArg0D5D
 ; @run 71:C145
@@ -1211,22 +1188,22 @@ OthersInState2_0D5D:
     beq OthersInState2_0D5D_at0
     cpx #$34
     beq OthersInState2_0D5D_at1
-    lda a:OBJ_STATE+$33
+    lda a:OBJ_STATE+51
 OthersInState2_0D5D_at3:
     cmp #$02
     beq OthersInState2_0D5D_at2
-    lda a:OBJ_STATE+$34
+    lda a:OBJ_STATE+52
     cmp #$02
 OthersInState2_0D5D_at2:
     rts
 OthersInState2_0D5D_at0:
-    lda a:OBJ_STATE+$35
+    lda a:OBJ_STATE+53
     bra OthersInState2_0D5D_at3
 OthersInState2_0D5D_at1:
-    lda a:OBJ_STATE+$33
+    lda a:OBJ_STATE+51
     cmp #$02
     beq OthersInState2_0D5D_at2
-    lda a:OBJ_STATE+$35
+    lda a:OBJ_STATE+53
     cmp #$02
     rts
 
@@ -1337,7 +1314,7 @@ LeapByNextFacing0D5EXSpeeds = $C924 ; the X speed high byte for each facing
 LeapByNextFacing0D5E:
     lda #$FE
     sta a:OBJ_VY_HI,x
-    ldy a:OBJ_FACING_LEFT+$01,x
+    ldy a:OBJ_FACING_LEFT+1,x
     lda a:LeapByNextFacing0D5EXSpeeds,y
     sta a:OBJ_VX_HI,x
     inc a:OBJ_STATE,x
@@ -1371,29 +1348,18 @@ HitBoxXByFrame0D5F_at0:
 
 ; @routine 0D5F:4BF RepeatOrStand0D5F
 ; @run 71:D4BF
-; WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, state 1
-; with frame $8A, or $8D when OBJ_WORK_J is set (Stage 08's overlay).
-; HOW: DEC and two arms of stores.
+; WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, goes on
+; at $D4D0, the stand that another routine jumps to as well (Stage 08's overlay).
+; HOW: DEC; at zero a tail into the routine at $D4D0, else three stores.
 ; WAITS: no.
 ; Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
 RepeatOrStand0D5F:
     dec a:OBJ_WORK_K,x
-    beq RepeatOrStand0D5F_at0
+    beq BackToState1Frame0D5F
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$01
     sta a:OBJ_SUBSTATE,x
-    rts
-RepeatOrStand0D5F_at0:
-    lda #$01
-    sta a:OBJ_STATE,x
-    lda #$8A
-    sta a:OBJ_FRAME,x
-    lda a:OBJ_WORK_J,x
-    beq RepeatOrStand0D5F_at1
-    lda #$8D
-    sta a:OBJ_FRAME,x
-RepeatOrStand0D5F_at1:
     rts
 
 ; @routine 0D5F:6D1 HitBoxByFrame0D5F

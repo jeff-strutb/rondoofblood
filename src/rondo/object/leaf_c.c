@@ -7,6 +7,11 @@
 #include "access.h"
 #include "ops6280.h"
 #include "routines.h"
+#include "common_objects.h"
+#include "enemy_objects.h"
+#include "stage_enemies_l7.h"
+#include "stage_enemies_l8.h"
+#include "richter.h"
 #include "stage_ops_c.h"
 #include "leaf_c.h"
 
@@ -346,31 +351,23 @@ void abi_SetSpeedByFacingAndStep0A9E(void)
 /*
  * @routine 0A9E:785 RepeatOrStand0A9E
  * @run 71:CF85
- * WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, state 1
- * with frame $80, or $83 when OBJ_WORK_J is set (Stage 06's overlay).
- * HOW: DEC and two arms of stores.
+ * WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, goes on
+ * at $CF96, the stand that another routine jumps to as well (Stage 06's overlay).
+ * HOW: DEC; at zero a tail into the routine at $CF96, else three stores.
  * WAITS: no.
  * Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
  */
 void RepeatOrStand0A9E(uint8_t slot)
 {
     RMW8(OBJ->work_k[slot], v, f_dec(v));
-    if (!flag_z()) {
-        WR8(OBJ->anim_step[slot], 0);
-        WR8(OBJ->anim_timer[slot], 0);
-        op_lda(0x01);
-        WR8(OBJ->substate[slot], cpu.a);
+    if (flag_z()) {
+        run_routine(0xCF96);
         return;
     }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
     op_lda(0x01);
-    WR8(OBJ->state[slot], cpu.a);
-    op_lda(0x80);
-    WR8(OBJ->frame[slot], cpu.a);
-    op_lda(RD8(OBJ->work_j[slot]));
-    if (!flag_z()) {
-        op_lda(0x83);
-        WR8(OBJ->frame[slot], cpu.a);
-    }
+    WR8(OBJ->substate[slot], cpu.a);
 }
 
 void abi_RepeatOrStand0A9E(void)
@@ -795,31 +792,23 @@ void abi_HitBoxXByFrame0BFD(void)
 /*
  * @routine 0BFD:2A5 RepeatOrStand0BFD
  * @run 71:C2A5
- * WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, state 1
- * with frame $5C, or $5F when OBJ_WORK_J is set (Stage 07's overlay).
- * HOW: DEC and two arms of stores.
+ * WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, goes on
+ * at $C2B6, the stand that another routine jumps to as well (Stage 07's overlay).
+ * HOW: DEC; at zero a tail into the routine at $C2B6, else three stores.
  * WAITS: no.
  * Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
  */
 void RepeatOrStand0BFD(uint8_t slot)
 {
     RMW8(OBJ->work_k[slot], v, f_dec(v));
-    if (!flag_z()) {
-        WR8(OBJ->anim_step[slot], 0);
-        WR8(OBJ->anim_timer[slot], 0);
-        op_lda(0x01);
-        WR8(OBJ->substate[slot], cpu.a);
+    if (flag_z()) {
+        run_routine(0xC2B6);
         return;
     }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
     op_lda(0x01);
-    WR8(OBJ->state[slot], cpu.a);
-    op_lda(0x5C);
-    WR8(OBJ->frame[slot], cpu.a);
-    op_lda(RD8(OBJ->work_j[slot]));
-    if (!flag_z()) {
-        op_lda(0x5F);
-        WR8(OBJ->frame[slot], cpu.a);
-    }
+    WR8(OBJ->substate[slot], cpu.a);
 }
 
 void abi_RepeatOrStand0BFD(void)
@@ -1677,7 +1666,7 @@ void abi_TurnBackPastColumn0D5C(void)
  * @routine 0D5C:577 SetFrame60_0D5C
  * @run 70:BD77
  * WHAT IT DOES: Sets frame $60 and clears OBJ_WORK_C (Stage 08's overlay).
- * HOW: Two stores.
+ * HOW: Two stores, then the RTS at $BD7F, which other code branches to as well.
  * WAITS: no.
  * Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
  */
@@ -1686,6 +1675,8 @@ void SetFrame60_0D5C(uint8_t slot)
     op_lda(0x60);
     WR8(OBJ->frame[slot], cpu.a);
     WR8(OBJ->work_c[slot], 0);
+    /* falls into $BD7F */
+    run_routine(0xBD7F);
 }
 
 void abi_SetFrame60_0D5C(void)
@@ -1969,31 +1960,23 @@ void abi_HitBoxXByFrame0D5F(void)
 /*
  * @routine 0D5F:4BF RepeatOrStand0D5F
  * @run 71:D4BF
- * WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, state 1
- * with frame $8A, or $8D when OBJ_WORK_J is set (Stage 08's overlay).
- * HOW: DEC and two arms of stores.
+ * WHAT IT DOES: Counts OBJ_WORK_K down: while it runs, restarts the animation in substate 1; when it ends, goes on
+ * at $D4D0, the stand that another routine jumps to as well (Stage 08's overlay).
+ * HOW: DEC; at zero a tail into the routine at $D4D0, else three stores.
  * WAITS: no.
  * Entry: X the object. Exit: A, X, Y and the flags as its last instruction or call left them.
  */
 void RepeatOrStand0D5F(uint8_t slot)
 {
     RMW8(OBJ->work_k[slot], v, f_dec(v));
-    if (!flag_z()) {
-        WR8(OBJ->anim_step[slot], 0);
-        WR8(OBJ->anim_timer[slot], 0);
-        op_lda(0x01);
-        WR8(OBJ->substate[slot], cpu.a);
+    if (flag_z()) {
+        run_routine(0xD4D0);
         return;
     }
+    WR8(OBJ->anim_step[slot], 0);
+    WR8(OBJ->anim_timer[slot], 0);
     op_lda(0x01);
-    WR8(OBJ->state[slot], cpu.a);
-    op_lda(0x8A);
-    WR8(OBJ->frame[slot], cpu.a);
-    op_lda(RD8(OBJ->work_j[slot]));
-    if (!flag_z()) {
-        op_lda(0x8D);
-        WR8(OBJ->frame[slot], cpu.a);
-    }
+    WR8(OBJ->substate[slot], cpu.a);
 }
 
 void abi_RepeatOrStand0D5F(void)

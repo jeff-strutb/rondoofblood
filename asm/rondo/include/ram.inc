@@ -243,6 +243,7 @@ OverlayTerrainLookup = $800C ; the stage overlay's first terrain lookup
 OverlayTerrainLookupAlt = $800F ; the stage overlay's second terrain lookup
 OverlayObjectRecords = $8012 ; the stage overlay's pointer to its object records
 OverlayTileScripts = $8014 ; the stage overlay's pointer to its tile scripts
+OverlayListChannelSeqs = $9800 ; the stage overlay's pointer to its list channels' sequences of VRAM lists (kind 1), a word per list number
 SoundDrvInit = $B233 ; starts the driver
 SoundDrvStopAll = $B25A ; stops every channel
 SoundDrvCommand = $B284 ; takes a command in A

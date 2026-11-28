@@ -246,6 +246,7 @@
 #define OverlayTerrainLookupAlt 0x800F /* the stage overlay's second terrain lookup */
 #define OverlayObjectRecords 0x8012 /* the stage overlay's pointer to its object records */
 #define OverlayTileScripts 0x8014 /* the stage overlay's pointer to its tile scripts */
+#define OverlayListChannelSeqs 0x9800 /* the stage overlay's pointer to its list channels' sequences of VRAM lists (kind 1), a word per list number */
 #define SoundDrvInit 0xB233 /* starts the driver */
 #define SoundDrvStopAll 0xB25A /* stops every channel */
 #define SoundDrvCommand 0xB284 /* takes a command in A */

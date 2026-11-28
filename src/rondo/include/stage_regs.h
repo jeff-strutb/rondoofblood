@@ -34,4 +34,7 @@ static inline StageRegs regs_compared(StageRegs r, uint8_t reg, uint8_t value)
  * only difference is that operand. */
 StageRegs StageStartAt(StageRegs r, uint16_t order_table);
 
+/* system/stage_flow.c: StagePauseToggle (024D:1A2) with ret the address after its JSR to StagePauseSet. */
+StageRegs StagePauseToggleAt(StageRegs r, uint16_t ret);
+
 #endif

@@ -1551,3 +1551,45 @@ void abi_StepScrollAndRunObjects026E(void)
 {
     StepScrollAndRunObjects026E();
 }
+
+/*
+ * @routine 026D:18B StagePauseToggle026D
+ * @run 6B:818B
+ * WHAT IT DOES: Pauses the stage when RUN is pressed, unless the fade is running, the display is still off, or
+ * zPaused's bit 1 holds the pause (as StagePauseToggle, 024D:1A2). Programs 064D, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StagePauseToggleAt (stage_flow.c), the body of 024D:1A2: this program's JSR at $819F goes to $8E96, which
+ * holds StagePauseSet's bytes (026E:696, the same as 024E:6D4), so its C is StagePauseSet's.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the last value loaded or computed, N and Z from it; or as StagePauseSet. X, Y, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StagePauseToggle026D(StageRegs r)
+{
+    return StagePauseToggleAt(r, 0x81A2);
+}
+
+void abi_StagePauseToggle026D(void)
+{
+    stage_regs_load_shim(StagePauseToggle026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 031D:18B StagePauseToggle031D
+ * @run 6B:818B
+ * WHAT IT DOES: Pauses the stage when RUN is pressed, unless the fade is running, the display is still off, or
+ * zPaused's bit 1 holds the pause (as StagePauseToggle, 024D:1A2). Programs 043D and 10DD hold the same bytes.
+ * HOW: StagePauseToggleAt (stage_flow.c), the body of 024D:1A2: this program's JSR at $819F goes to $8E8A, which
+ * holds StagePauseSet's bytes (031E:68A, the same as 024E:6D4), so its C is StagePauseSet's.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the last value loaded or computed, N and Z from it; or as StagePauseSet. X, Y, C and V kept.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StagePauseToggle031D(StageRegs r)
+{
+    return StagePauseToggleAt(r, 0x81A2);
+}
+
+void abi_StagePauseToggle031D(void)
+{
+    stage_regs_load_shim(StagePauseToggle031D(stage_regs_entry_shim()));
+}

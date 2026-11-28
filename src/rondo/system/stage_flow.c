@@ -208,6 +208,13 @@ void abi_StagePauseSet(void)
  */
 StageRegs StagePauseToggle(StageRegs r)
 {
+    return StagePauseToggleAt(r, 0x81B9);
+}
+
+/* StagePauseToggle's body, ret the address after its JSR to StagePauseSet: the builds of the overlay that hold these
+ * instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StagePauseToggleAt(StageRegs r, uint16_t ret)
+{
     r = loaded(r, (uint8_t)(RD8(ZP->fade_active) ^ 0x01));
     if (r.a == 0) {
         return r;
@@ -223,7 +230,7 @@ StageRegs StagePauseToggle(StageRegs r)
     if (RD8(ZP->paused) & PAUSED_HELD) {
         return r;
     }
-    jsr_push(0x81B9);
+    jsr_push(ret);
     r = StagePauseSet(r);
     jsr_pop();
     return r;

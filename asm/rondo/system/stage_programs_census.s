@@ -1990,3 +1990,51 @@ StepScrollAndRunObjects026E:
     inc a
     tam #$40
     jmp StageObjectsEntry026E
+
+; @routine 026D:18B StagePauseToggle026D
+; @run 6B:818B
+; WHAT IT DOES: Pauses the stage when RUN is pressed, unless the fade is running, the display is still off, or
+; zPaused's bit 1 holds the pause (as StagePauseToggle, 024D:1A2). Programs 064D, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: zFadeActive XOR 1 must not be zero; BiosJoyTrigger's bit 3; zDisplayDelay zero; BBS1 of zPaused (a read);
+; StagePauseSet's bytes at $8E96.
+; WAITS: no.
+; Entry: nothing. Exit: A the last value loaded or computed, N and Z from it; or as StagePauseSet. X, Y, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePauseSet026E = $8E96 ; StagePauseSet's bytes (024E:6D4) in this program
+StagePauseToggle026D:
+    lda z:zFadeActive
+    eor #$01
+    beq StagePauseToggle026D_at0
+    lda a:BiosJoyTrigger
+    and #$08
+    beq StagePauseToggle026D_at0
+    lda z:zDisplayDelay
+    bne StagePauseToggle026D_at0
+    bbs1 zPaused,StagePauseToggle026D_at0
+    jsr StagePauseSet026E
+StagePauseToggle026D_at0:
+    rts
+
+; @routine 031D:18B StagePauseToggle031D
+; @run 6B:818B
+; WHAT IT DOES: Pauses the stage when RUN is pressed, unless the fade is running, the display is still off, or
+; zPaused's bit 1 holds the pause (as StagePauseToggle, 024D:1A2). Programs 043D and 10DD hold the same bytes.
+; HOW: zFadeActive XOR 1 must not be zero; BiosJoyTrigger's bit 3; zDisplayDelay zero; BBS1 of zPaused (a read);
+; StagePauseSet's bytes at $8E8A.
+; WAITS: no.
+; Entry: nothing. Exit: A the last value loaded or computed, N and Z from it; or as StagePauseSet. X, Y, C and V kept.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePauseSet031E = $8E8A ; StagePauseSet's bytes (024E:6D4) in this program
+StagePauseToggle031D:
+    lda z:zFadeActive
+    eor #$01
+    beq StagePauseToggle031D_at0
+    lda a:BiosJoyTrigger
+    and #$08
+    beq StagePauseToggle031D_at0
+    lda z:zDisplayDelay
+    bne StagePauseToggle031D_at0
+    bbs1 zPaused,StagePauseToggle031D_at0
+    jsr StagePauseSet031E
+StagePauseToggle031D_at0:
+    rts

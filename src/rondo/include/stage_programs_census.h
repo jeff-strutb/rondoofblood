@@ -139,4 +139,9 @@ void abi_EffectRestoreColours1531(void);
 void StepScrollAndRunObjects026E(void);
 void abi_StepScrollAndRunObjects026E(void);
 
+StageRegs StagePauseToggle026D(StageRegs r);
+void abi_StagePauseToggle026D(void);
+StageRegs StagePauseToggle031D(StageRegs r);
+void abi_StagePauseToggle031D(void);
+
 #endif

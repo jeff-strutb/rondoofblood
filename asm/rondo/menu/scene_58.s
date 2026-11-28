@@ -869,3 +869,126 @@ Scene58SpawnCycleB_at2:
     rts
 Scene58SpawnCycleB_at3:
     jmp VecClearObject
+; @routine 267B:574 Scene58ScrollLayers
+; @run 6B:8574
+; @stop 85A7
+; WHAT IT DOES: An object handler: sets zRasterEffect to $1E, then every frame scrolls layers 1 to 4 by their 24-bit speeds (the tables at $85A6, $85AA and $85AE by layer).
+; HOW: SceneBScrollLayers: three ADC a layer to ScrollXFrac, ScrollXLo and ScrollXHi.
+; WAITS: no.
+; Entry: X the object. Exit: state 0: A $1E, N and Z from the state. Then: A the last high byte, N and Z from X, C set, V from the last add; Y kept.
+Scene58ScrollSpeedsLo = $85A6 ; layer scroll speeds, fraction, by layer (1 to 4)
+Scene58ScrollSpeedsMid = $85AA ; layer scroll speeds, low
+Scene58ScrollSpeedsHi = $85AE ; layer scroll speeds, high
+Scene58SparkleSlots = $860F ; the sixteen slots sparkles start in
+Scene58ScrollLayers:
+    lda a:OBJ_STATE,x
+    bne Scene58ScrollLayers_at0
+    lda #$1E
+    sta z:zRasterEffect
+    inc a:OBJ_STATE,x
+    rts
+Scene58ScrollLayers_at0:
+    phx
+    ldx #$01
+Scene58ScrollLayers_at1:
+    lda a:Scene58ScrollSpeedsLo,x
+    clc
+    adc a:ScrollXFrac,x
+    sta a:ScrollXFrac,x
+    lda a:Scene58ScrollSpeedsMid,x
+    adc a:ScrollXLo,x
+    sta a:ScrollXLo,x
+    lda a:Scene58ScrollSpeedsHi,x
+    adc a:ScrollXHi,x
+    sta a:ScrollXHi,x
+    inx
+    cpx #$05
+    bne Scene58ScrollLayers_at1
+    plx
+    rts
+
+; @routine 267B:5B3 Scene58Sparkles
+; @run 6B:85B3
+; WHAT IT DOES: An object handler: every eight frames starts a sparkle (Scene58SpawnSparkle); when the slot it picks is taken it tries again the next frame.
+; HOW: work_d the count; the spawn's carry.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them; after a try, C, V and Y the spawn's.
+Scene58Sparkles:
+    lda a:OBJ_STATE,x
+    bne Scene58Sparkles_at0
+    inc a:OBJ_STATE,x
+Scene58Sparkles_at2:
+    lda #$08
+    sta a:OBJ_WORK_D,x
+    rts
+Scene58Sparkles_at0:
+    dec a:OBJ_WORK_D,x
+    bne Scene58Sparkles_at1
+    jsr Scene58SpawnSparkle
+    bcs Scene58Sparkles_at2
+    inc a:OBJ_WORK_D,x
+Scene58Sparkles_at1:
+    rts
+
+; @routine 267B:5CF Scene58SpawnSparkle
+; @run 6B:85CF
+; @stop 860F
+; WHAT IT DOES: Starts a sparkle in one of sixteen slots picked at random (the table at $860F) when it is free: X low at random, Y $FF00 plus 0 to $7F at random, frame $28 to $36 at random, sprite set 3, kind 8.
+; HOW: NextRandom four times; the stores.
+; WAITS: no.
+; Entry: X the object (kept). Exit: started: A 8, C set, V from the frame's add; taken: A the slot's kind, C clear, V NextRandom's; Y the slot, N and Z from A.
+Scene58SpawnSparkle:
+    jsr VecNextRandom
+    and #$0F
+    tay
+    lda a:Scene58SparkleSlots,y
+    tay
+    lda a:OBJ_KIND,y
+    bne Scene58SpawnSparkle_at0
+    jsr VecNextRandom
+    sta a:OBJ_X_LO,y
+    jsr VecNextRandom
+    and #$7F
+    sta a:OBJ_Y_LO,y
+    lda #$FF
+    sta a:OBJ_Y_HI,y
+    jsr VecNextRandom
+    and #$0F
+    cmp #$00
+    bne Scene58SpawnSparkle_at85FB
+    inc a
+Scene58SpawnSparkle_at85FB:
+    clc
+    adc #$27
+    sta a:OBJ_FRAME,y
+    lda #$03
+    sta a:OBJ_SPRITE_SET,y
+    lda #$08
+    sta a:OBJ_KIND,y
+    sec
+    rts
+Scene58SpawnSparkle_at0:
+    clc
+    rts
+
+; @routine 267B:61F Scene58SparkleFall
+; @run 6B:861F
+; WHAT IT DOES: An object handler (the sparkle's): falls, $40 more Y speed a frame, and is cleared once its Y high is 1 or more.
+; HOW: ADC to the Y speed; ApplyVelocityY; ClearObject.
+; WAITS: no.
+; Entry: X the object. Exit: A its Y high, N and Z from it, C and V from the move; X and Y kept.
+Scene58SparkleFall:
+    lda #$40
+    clc
+    adc a:OBJ_VY_LO,x
+    sta a:OBJ_VY_LO,x
+    cla
+    adc a:OBJ_VY_HI,x
+    sta a:OBJ_VY_HI,x
+    jsr VecApplyVelocityY
+    lda a:OBJ_Y_HI,x
+    bmi Scene58SparkleFall_at0
+    beq Scene58SparkleFall_at0
+    jmp VecClearObject
+Scene58SparkleFall_at0:
+    rts

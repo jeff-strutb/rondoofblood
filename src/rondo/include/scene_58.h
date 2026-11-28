@@ -81,6 +81,14 @@ void abi_Scene58LoadPatterns(void);
 void abi_Scene58Swing(void);
 void abi_Scene58ShowObjectsAndClear(void);
 void abi_Scene58SpawnCycleB(void);
+ObjExit Scene58ScrollLayers(uint8_t object);
+ObjExit Scene58Sparkles(uint8_t object);
+ObjExit Scene58SpawnSparkle(uint8_t object);
+ObjExit Scene58SparkleFall(uint8_t object);
+void abi_Scene58ScrollLayers(void);
+void abi_Scene58Sparkles(void);
+void abi_Scene58SpawnSparkle(void);
+void abi_Scene58SparkleFall(void);
 bool scene_58_handler(uint16_t target, uint8_t object, ObjExit *out);
 
 #endif

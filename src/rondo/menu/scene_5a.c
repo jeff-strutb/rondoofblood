@@ -52,6 +52,9 @@ static bool scene_5a_command(uint16_t target, uint8_t index, bool carry, Exit *o
 bool scene_5a_handler(uint16_t target, uint8_t object, ObjExit *out)
 {
     switch (target) {
+    case 0x853A: *out = SceneBSparkleFall(0x853A, object); return true;   /* Scene58SparkleFall's bytes */
+    case 0x848F: *out = Scene5AScrollLayers(object); return true;
+    case 0x84CE: *out = Scene5ASparkles(object); return true;
     case 0x82A4: *out = SceneBLoadPatterns(0x82A4, 0x18, object); return true;   /* Scene58LoadPatterns's bytes; kind 13, Y $18 */
     case 0x82D4: *out = Scene5ASwing(object); return true;
     case 0x8391: *out = Scene5ASpawnCycle(object); return true;
@@ -590,4 +593,60 @@ ObjExit Scene5ASpawnCycle(uint8_t object)
 void abi_Scene5ASpawnCycle(void)
 {
     scene_obj_shim(Scene5ASpawnCycle(cpu.x));
+}
+
+/*
+ * @routine 2703:48F Scene5AScrollLayers
+ * @run 6B:848F
+ * @stop 84C2
+ * WHAT IT DOES: An object handler: sets zRasterEffect to $1F, then every frame scrolls layer 1 by its 24-bit speed (the tables at $84C1, $84C5 and $84C9 by layer).
+ * HOW: SceneBScrollLayers: three ADC to ScrollXFrac, ScrollXLo and ScrollXHi.
+ * WAITS: no.
+ * Entry: X the object. Exit: state 0: A $1F, N and Z from the state. Then: A the high byte, N and Z from X, C set, V from the last add; Y kept.
+ */
+ObjExit Scene5AScrollLayers(uint8_t object)
+{
+    return SceneBScrollLayers(0x84C1, 0x84C5, 0x84C9, 0x1F, 2, object);
+}
+
+void abi_Scene5AScrollLayers(void)
+{
+    scene_obj_shim(Scene5AScrollLayers(cpu.x));
+}
+
+/*
+ * @routine 2703:4CE Scene5ASparkles
+ * @run 6B:84CE
+ * WHAT IT DOES: An object handler: every eight frames starts a sparkle (Scene5ASpawnSparkle); when the slot it picks is taken it tries again the next frame.
+ * HOW: work_d the count; the spawn's carry.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them; after a try, C, V and Y the spawn's.
+ */
+ObjExit Scene5ASparkles(uint8_t object)
+{
+    return SceneBSparkles(0x84CE, 0x84EA, 0x852A, 0x33, object);
+}
+
+void abi_Scene5ASparkles(void)
+{
+    scene_obj_shim(Scene5ASparkles(cpu.x));
+}
+
+/*
+ * @routine 2703:4EA Scene5ASpawnSparkle
+ * @run 6B:84EA
+ * @stop 852A
+ * WHAT IT DOES: Starts a sparkle in one of sixteen slots picked at random (the table at $852A) when it is free: X low at random, Y $FF00 plus 0 to $7F at random, frame $34 to $42 at random, sprite set 3, kind 8.
+ * HOW: NextRandom four times; the stores.
+ * WAITS: no.
+ * Entry: X the object (kept). Exit: started: A 8, C set, V from the frame's add; taken: A the slot's kind, C clear, V NextRandom's; Y the slot, N and Z from A.
+ */
+ObjExit Scene5ASpawnSparkle(uint8_t object)
+{
+    return SceneBSpawnSparkle(0x84EA, 0x852A, 0x33, object);
+}
+
+void abi_Scene5ASpawnSparkle(void)
+{
+    scene_obj_shim(Scene5ASpawnSparkle(cpu.x));
 }

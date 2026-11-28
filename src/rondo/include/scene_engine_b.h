@@ -56,5 +56,9 @@ ObjExit SceneBShake(uint16_t xs, uint16_t ys, uint8_t object);
 ObjExit SceneBSpawnCycle(uint16_t slots, uint16_t steps, uint16_t ret, uint8_t object);
 ObjExit SceneBSwing(uint16_t at, const uint8_t lo[6], const uint8_t hi[6], uint8_t object);
 ObjExit SceneBLoadPatterns(uint16_t at, uint8_t y, uint8_t object);
+ObjExit SceneBSpawnSparkle(uint16_t at, uint16_t slots, uint8_t base, uint8_t object);
+ObjExit SceneBSparkles(uint16_t at, uint16_t spawn, uint16_t slots, uint8_t base, uint8_t object);
+ObjExit SceneBSparkleFall(uint16_t at, uint8_t object);
+ObjExit SceneBScrollLayers(uint16_t lo, uint16_t mid, uint16_t hi, uint8_t raster, uint8_t end, uint8_t object);
 
 #endif

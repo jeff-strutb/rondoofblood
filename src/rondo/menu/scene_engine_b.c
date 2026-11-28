@@ -857,3 +857,160 @@ ObjExit SceneBLoadPatterns(uint16_t at, uint8_t y, uint8_t object)
     ClearObject(object);                /* the tail JMP: A, X, Y and the flags kept */
     return scene_kept(0x02, 0x02);
 }
+
+/* One sparkle started in a free slot of sixteen (slots, picked at random): X low at random, Y $FF00 plus a random 0
+ * to $7F, the frame base + 1 to 15 at random, sprite set 3, kind 8. C set when one started, clear when the slot was
+ * taken. at: its address (its four JSRs to NextRandom return to at + 3, + $12, + $18 and + $25). */
+ObjExit SceneBSpawnSparkle(uint16_t at, uint16_t slots, uint8_t base, uint8_t object)
+{
+    ObjExit result;
+    RandomResult random;
+    uint8_t slot, kind, value;
+    unsigned total;
+
+    (void)object;
+    jsr_push((uint16_t)(at + 3));
+    random = NextRandom();
+    jsr_pop();
+    slot = rd8((uint16_t)(slots + (random.value & 0x0F)));
+    kind = RD8(OBJ->kind[slot]);
+    if (kind != 0) {
+        result = scene_kept(kind, kind);
+        result.exit.y = slot;
+        result.exit.y_kept = false;
+        result.exit.c = false;
+        result.exit.c_kept = false;
+        result.exit.v = random.overflow;
+        result.exit.v_set = true;
+        return result;
+    }
+    jsr_push((uint16_t)(at + 0x12));
+    random = NextRandom();
+    jsr_pop();
+    WR8(OBJ->x_lo[slot], random.value);
+    jsr_push((uint16_t)(at + 0x18));
+    random = NextRandom();
+    jsr_pop();
+    WR8(OBJ->y_lo[slot], (uint8_t)(random.value & 0x7F));
+    WR8(OBJ->y_hi[slot], 0xFF);
+    jsr_push((uint16_t)(at + 0x25));
+    random = NextRandom();
+    jsr_pop();
+    value = (uint8_t)(random.value & 0x0F);
+    if (value == 0) {
+        value++;
+    }
+    total = (unsigned)value + base;
+    WR8(OBJ->frame[slot], (uint8_t)total);
+    WR8(OBJ->sprite_set[slot], 3);
+    WR8(OBJ->kind[slot], 8);
+    result = scene_kept(8, 8);
+    result.exit.y = slot;
+    result.exit.y_kept = false;
+    result.exit.c = true;
+    result.exit.c_kept = false;
+    result.exit.v = ((value ^ (uint8_t)total) & (base ^ (uint8_t)total) & 0x80) != 0;
+    result.exit.v_set = true;
+    return result;
+}
+
+/* The handler that starts sparkles: every eight frames (work_d) one, or, when its slot was taken, it tries again next
+ * frame. at: its address; spawn: the spawn's address (the JSR returns to at + $16). */
+ObjExit SceneBSparkles(uint16_t at, uint16_t spawn, uint16_t slots, uint8_t base, uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, left;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        INC8(OBJ->state[object]);
+        WR8(OBJ->work_d[object], 8);
+        return scene_kept(8, 8);
+    }
+    left = DEC8(OBJ->work_d[object]);
+    if (left != 0) {
+        return scene_kept(state, left);
+    }
+    jsr_push((uint16_t)(at + 0x16));
+    result = SceneBSpawnSparkle(spawn, slots, base, object);
+    jsr_pop();
+    if (result.exit.c) {
+        WR8(OBJ->work_d[object], 8);
+        result.exit.a = 8;
+        result.exit.nz = 8;
+        return result;
+    }
+    result.exit.nz = INC8(OBJ->work_d[object]);
+    return result;
+}
+
+/* The sparkle's handler: falls ($40 more Y speed a frame) and is cleared once its Y high is 1 or more. at: its
+ * address (its JSR to ApplyVelocityY returns to at + $13). */
+ObjExit SceneBSparkleFall(uint16_t at, uint8_t object)
+{
+    ObjExit result;
+    AxisMove move;
+    uint8_t low, high;
+    unsigned total;
+
+    low = RD8(OBJ->vy_lo[object]);
+    total = 0x40u + low;
+    WR8(OBJ->vy_lo[object], (uint8_t)total);
+    high = RD8(OBJ->vy_hi[object]);
+    WR8(OBJ->vy_hi[object], (uint8_t)(high + (total > 0xFF ? 1 : 0)));
+    jsr_push((uint16_t)(at + 0x13));
+    move = ApplyVelocityY(object);
+    jsr_pop();
+    high = RD8(OBJ->y_hi[object]);
+    result = scene_kept(high, high);
+    result.move = move;
+    result.moved = true;
+    if ((high & 0x80) == 0 && high != 0) {
+        ClearObject(object);            /* the tail JMP: A, X, Y and the flags kept */
+    }
+    return result;
+}
+
+/* The handler that scrolls layers 1 to end - 1 by their 24-bit speeds (tables lo, mid and hi by layer), after state 0
+ * has set zRasterEffect to raster. */
+ObjExit SceneBScrollLayers(uint16_t lo, uint16_t mid, uint16_t hi, uint8_t raster, uint8_t end, uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, layer, add, have, sum = 0;
+    unsigned total;
+    bool carry, v = false;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        WR8(ZP->raster_effect, raster);
+        return scene_kept(raster, INC8(OBJ->state[object]));
+    }
+    push8(object);
+    for (layer = 1; layer != end; layer++) {
+        add = rd8((uint16_t)(lo + layer));
+        have = RD8(SCROLL->x_frac[layer]);
+        total = (unsigned)add + have;
+        sum = (uint8_t)total;
+        WR8(SCROLL->x_frac[layer], sum);
+        carry = total > 0xFF;
+        add = rd8((uint16_t)(mid + layer));
+        have = RD8(SCROLL->x_lo[layer]);
+        total = (unsigned)add + have + carry;
+        sum = (uint8_t)total;
+        WR8(SCROLL->x_lo[layer], sum);
+        carry = total > 0xFF;
+        add = rd8((uint16_t)(hi + layer));
+        have = RD8(SCROLL->x_hi[layer]);
+        total = (unsigned)add + have + carry;
+        sum = (uint8_t)total;
+        v = ((add ^ sum) & (have ^ sum) & 0x80) != 0;
+        WR8(SCROLL->x_hi[layer], sum);
+    }
+    object = pull8();
+    result = scene_kept(sum, object);
+    result.exit.c = true;
+    result.exit.c_kept = false;
+    result.exit.v = v;
+    result.exit.v_set = true;
+    return result;
+}

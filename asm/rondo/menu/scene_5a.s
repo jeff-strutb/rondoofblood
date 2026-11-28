@@ -648,3 +648,104 @@ Scene5ASpawnCycle_at83B0:
     rts
 Scene5ASpawnCycle_at83EB:
     jmp VecClearObject
+; @routine 2703:48F Scene5AScrollLayers
+; @run 6B:848F
+; @stop 84C2
+; WHAT IT DOES: An object handler: sets zRasterEffect to $1F, then every frame scrolls layer 1 by its 24-bit speed (the tables at $84C1, $84C5 and $84C9 by layer).
+; HOW: SceneBScrollLayers: three ADC to ScrollXFrac, ScrollXLo and ScrollXHi.
+; WAITS: no.
+; Entry: X the object. Exit: state 0: A $1F, N and Z from the state. Then: A the high byte, N and Z from X, C set, V from the last add; Y kept.
+Scene5AScrollSpeedsLo = $84C1 ; layer scroll speeds, fraction, by layer (1)
+Scene5AScrollSpeedsMid = $84C5 ; layer scroll speeds, low
+Scene5AScrollSpeedsHi = $84C9 ; layer scroll speeds, high
+Scene5ASparkleSlots = $852A ; the sixteen slots sparkles start in
+Scene5AScrollLayers:
+    lda a:OBJ_STATE,x
+    bne Scene5AScrollLayers_at0
+    lda #$1F
+    sta z:zRasterEffect
+    inc a:OBJ_STATE,x
+    rts
+Scene5AScrollLayers_at0:
+    phx
+    ldx #$01
+Scene5AScrollLayers_at849F:
+    lda a:Scene5AScrollSpeedsLo,x
+    clc
+    adc a:ScrollXFrac,x
+    sta a:ScrollXFrac,x
+    lda a:Scene5AScrollSpeedsMid,x
+    adc a:ScrollXLo,x
+    sta a:ScrollXLo,x
+    lda a:Scene5AScrollSpeedsHi,x
+    adc a:ScrollXHi,x
+    sta a:ScrollXHi,x
+    inx
+    cpx #$02
+    bne Scene5AScrollLayers_at849F
+    plx
+    rts
+
+; @routine 2703:4CE Scene5ASparkles
+; @run 6B:84CE
+; WHAT IT DOES: An object handler: every eight frames starts a sparkle (Scene5ASpawnSparkle); when the slot it picks is taken it tries again the next frame.
+; HOW: work_d the count; the spawn's carry.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test left them; after a try, C, V and Y the spawn's.
+Scene5ASparkles:
+    lda a:OBJ_STATE,x
+    bne Scene5ASparkles_at0
+    inc a:OBJ_STATE,x
+Scene5ASparkles_at2:
+    lda #$08
+    sta a:OBJ_WORK_D,x
+    rts
+Scene5ASparkles_at0:
+    dec a:OBJ_WORK_D,x
+    bne Scene5ASparkles_at1
+    jsr Scene5ASpawnSparkle
+    bcs Scene5ASparkles_at2
+    inc a:OBJ_WORK_D,x
+Scene5ASparkles_at1:
+    rts
+
+; @routine 2703:4EA Scene5ASpawnSparkle
+; @run 6B:84EA
+; @stop 852A
+; WHAT IT DOES: Starts a sparkle in one of sixteen slots picked at random (the table at $852A) when it is free: X low at random, Y $FF00 plus 0 to $7F at random, frame $34 to $42 at random, sprite set 3, kind 8.
+; HOW: NextRandom four times; the stores.
+; WAITS: no.
+; Entry: X the object (kept). Exit: started: A 8, C set, V from the frame's add; taken: A the slot's kind, C clear, V NextRandom's; Y the slot, N and Z from A.
+Scene5ASpawnSparkle:
+    jsr VecNextRandom
+    and #$0F
+    tay
+    lda a:Scene5ASparkleSlots,y
+    tay
+    lda a:OBJ_KIND,y
+    bne Scene5ASpawnSparkle_at8528
+    jsr VecNextRandom
+    sta a:OBJ_X_LO,y
+    jsr VecNextRandom
+    and #$7F
+    sta a:OBJ_Y_LO,y
+    lda #$FF
+    sta a:OBJ_Y_HI,y
+    jsr VecNextRandom
+    and #$0F
+    cmp #$00
+    bne Scene5ASpawnSparkle_at0
+    inc a
+Scene5ASpawnSparkle_at0:
+    clc
+    adc #$33
+    sta a:OBJ_FRAME,y
+    lda #$03
+    sta a:OBJ_SPRITE_SET,y
+    lda #$08
+    sta a:OBJ_KIND,y
+    sec
+    rts
+Scene5ASpawnSparkle_at8528:
+    clc
+    rts

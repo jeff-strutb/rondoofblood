@@ -94,6 +94,9 @@ static bool scene_58_command(uint16_t target, uint8_t index, bool carry, Exit *o
 bool scene_58_handler(uint16_t target, uint8_t object, ObjExit *out)
 {
     switch (target) {
+    case 0x8574: *out = Scene58ScrollLayers(object); return true;
+    case 0x85B3: *out = Scene58Sparkles(object); return true;
+    case 0x861F: *out = Scene58SparkleFall(object); return true;
     case 0x8389: *out = Scene58LoadPatterns(object, 0x18); return true;   /* kind 13: Y the dispatch's index $18 */
     case 0x828B: *out = Scene58SpawnCycleA(object); return true;
     case 0x83B9: *out = Scene58Swing(object); return true;
@@ -804,4 +807,78 @@ ObjExit Scene58SpawnCycleB(uint8_t object)
 void abi_Scene58SpawnCycleB(void)
 {
     scene_obj_shim(Scene58SpawnCycleB(cpu.x));
+}
+
+/*
+ * @routine 267B:574 Scene58ScrollLayers
+ * @run 6B:8574
+ * @stop 85A7
+ * WHAT IT DOES: An object handler: sets zRasterEffect to $1E, then every frame scrolls layers 1 to 4 by their 24-bit speeds (the tables at $85A6, $85AA and $85AE by layer).
+ * HOW: SceneBScrollLayers: three ADC a layer to ScrollXFrac, ScrollXLo and ScrollXHi.
+ * WAITS: no.
+ * Entry: X the object. Exit: state 0: A $1E, N and Z from the state. Then: A the last high byte, N and Z from X, C set, V from the last add; Y kept.
+ */
+ObjExit Scene58ScrollLayers(uint8_t object)
+{
+    return SceneBScrollLayers(0x85A6, 0x85AA, 0x85AE, 0x1E, 5, object);
+}
+
+void abi_Scene58ScrollLayers(void)
+{
+    scene_obj_shim(Scene58ScrollLayers(cpu.x));
+}
+
+/*
+ * @routine 267B:5B3 Scene58Sparkles
+ * @run 6B:85B3
+ * WHAT IT DOES: An object handler: every eight frames starts a sparkle (Scene58SpawnSparkle); when the slot it picks is taken it tries again the next frame.
+ * HOW: work_d the count; the spawn's carry.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test left them; after a try, C, V and Y the spawn's.
+ */
+ObjExit Scene58Sparkles(uint8_t object)
+{
+    return SceneBSparkles(0x85B3, 0x85CF, 0x860F, 0x27, object);
+}
+
+void abi_Scene58Sparkles(void)
+{
+    scene_obj_shim(Scene58Sparkles(cpu.x));
+}
+
+/*
+ * @routine 267B:5CF Scene58SpawnSparkle
+ * @run 6B:85CF
+ * @stop 860F
+ * WHAT IT DOES: Starts a sparkle in one of sixteen slots picked at random (the table at $860F) when it is free: X low at random, Y $FF00 plus 0 to $7F at random, frame $28 to $36 at random, sprite set 3, kind 8.
+ * HOW: NextRandom four times; the stores.
+ * WAITS: no.
+ * Entry: X the object (kept). Exit: started: A 8, C set, V from the frame's add; taken: A the slot's kind, C clear, V NextRandom's; Y the slot, N and Z from A.
+ */
+ObjExit Scene58SpawnSparkle(uint8_t object)
+{
+    return SceneBSpawnSparkle(0x85CF, 0x860F, 0x27, object);
+}
+
+void abi_Scene58SpawnSparkle(void)
+{
+    scene_obj_shim(Scene58SpawnSparkle(cpu.x));
+}
+
+/*
+ * @routine 267B:61F Scene58SparkleFall
+ * @run 6B:861F
+ * WHAT IT DOES: An object handler (the sparkle's): falls, $40 more Y speed a frame, and is cleared once its Y high is 1 or more.
+ * HOW: ADC to the Y speed; ApplyVelocityY; ClearObject.
+ * WAITS: no.
+ * Entry: X the object. Exit: A its Y high, N and Z from it, C and V from the move; X and Y kept.
+ */
+ObjExit Scene58SparkleFall(uint8_t object)
+{
+    return SceneBSparkleFall(0x861F, object);
+}
+
+void abi_Scene58SparkleFall(void)
+{
+    scene_obj_shim(Scene58SparkleFall(cpu.x));
 }

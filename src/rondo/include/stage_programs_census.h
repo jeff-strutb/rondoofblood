@@ -446,4 +446,46 @@ void abi_StageProbePoints14DD(void);
 StageRegs StageProbeAgain14DD(StageRegs r);
 void abi_StageProbeAgain14DD(void);
 
+StageRegs StageModeStep026D(StageRegs r);
+void abi_StageModeStep026D(void);
+
+StageRegs StagePlayerFrame026D(StageRegs r);
+void abi_StagePlayerFrame026D(void);
+
+StageRegs StagePlayerFrameB026D(StageRegs r);
+void abi_StagePlayerFrameB026D(void);
+
+StageRegs StageSubModeDeath026D(StageRegs r);
+void abi_StageSubModeDeath026D(void);
+
+StageRegs StageDeathPhase026D(StageRegs r);
+void abi_StageDeathPhase026D(void);
+
+StageRegs StageClearedWalkOut026D(StageRegs r);
+void abi_StageClearedWalkOut026D(void);
+
+StageRegs StageClearedBossWalk026D(StageRegs r);
+void abi_StageClearedBossWalk026D(void);
+
+StageRegs StageClearedWalkOutB026D(StageRegs r);
+void abi_StageClearedWalkOutB026D(void);
+
+StageRegs StageFadeWait026D(StageRegs r);
+void abi_StageFadeWait026D(void);
+
+StageRegs StagePauseCdThenStock026D(StageRegs r);
+void abi_StagePauseCdThenStock026D(void);
+
+StageRegs StagePlayerToCentre026D(StageRegs r);
+void abi_StagePlayerToCentre026D(void);
+
+StageRegs StageFadeStart026D(StageRegs r);
+void abi_StageFadeStart026D(void);
+
+StageRegs StageBossWaitDoor026D(StageRegs r);
+void abi_StageBossWaitDoor026D(void);
+
+StageExit EnterStageState026D(StageRegs r);
+void abi_EnterStageState026D(void);
+
 #endif

@@ -4034,3 +4034,359 @@ void abi_StageProbeAgain14DD(void)
 {
     stage_regs_load_shim(StageProbeAgain14DD(stage_regs_entry_shim()));
 }
+
+void abi_VecSoundCommand(void);   /* system/vectors.c */
+
+/* A JSR, and a tail JMP, to the routine loaded at an address, with the registers as they stand. */
+static StageRegs call_at(StageRegs r, uint16_t ret, uint16_t run)
+{
+    stage_regs_load_shim(r);
+    call_routine(ret, run);
+    return stage_regs_from_cpu_shim(r);
+}
+
+static StageRegs tail_at(StageRegs r, uint16_t run)
+{
+    stage_regs_load_shim(r);
+    run_routine(run);
+    return stage_regs_from_cpu_shim(r);
+}
+
+/* A step doubled (in A and X) names a word of a table of the program at 026D, which is jumped to. */
+static StageRegs dispatch_026d(StageRegs r, uint8_t twice, uint16_t table)
+{
+    uint16_t low, high;
+
+    r = regs_loaded(r, twice);
+    r.x = twice;
+    low = rd8((uint16_t)(table + twice));
+    high = rd8((uint16_t)(table + 1 + twice));
+    return tail_at(r, (uint16_t)(low | (high << 8)));
+}
+
+StageRegs StageDeathPhase026D(StageRegs r);
+
+/* 026D's wait at the boss's door. */
+static const BossDoorBuild boss_door_026d = {
+    0x85E8, 0x809A, 0x8A05, ADDR_OF8(OBJ->state[34]), ADDR_OF8(OBJ->work_h[34]), ADDR_OF8(OBJ->work_f[0])
+};
+
+/*
+ * @routine 026D:018 StageModeStep026D
+ * @run 6B:8018
+ * WHAT IT DOES: Goes to the sub-mode's routine by zGameSubMode, through this program's table at $801F.
+ * HOW: The sub-mode doubled indexes the table.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageModeStep026D(StageRegs r)
+{
+    uint8_t mode = RD8(ZP->game_sub_mode);
+
+    r.c = (mode & 0x80) != 0;
+    return dispatch_026d(r, (uint8_t)(mode << 1), 0x801F);
+}
+
+void abi_StageModeStep026D(void)
+{
+    stage_regs_load_shim(StageModeStep026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:094 StagePlayerFrame026D
+ * @run 6B:8094
+ * WHAT IT DOES: Maps banks 5 and 6 and goes to the entry at $A000 there.
+ * HOW: A call and a tail jump to the routines loaded there.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StagePlayerFrame026D(StageRegs r)
+{
+    r = call_at(r, 0x8097, 0x8089);
+    return tail_at(r, 0xA000);
+}
+
+void abi_StagePlayerFrame026D(void)
+{
+    stage_regs_load_shim(StagePlayerFrame026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:09A StagePlayerFrameB026D
+ * @run 6B:809A
+ * WHAT IT DOES: Maps banks 5 and 6 and goes to the entry at $A009 there.
+ * HOW: A call and a tail jump to the routines loaded there.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StagePlayerFrameB026D(StageRegs r)
+{
+    r = call_at(r, 0x809D, 0x8089);
+    return tail_at(r, 0xA009);
+}
+
+void abi_StagePlayerFrameB026D(void)
+{
+    stage_regs_load_shim(StagePlayerFrameB026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:2CE StageSubModeDeath026D
+ * @run 6B:82CE
+ * WHAT IT DOES: The death sub-mode: sound $FF, the death's phase, and once the sub-mode is 1 again the stage's objects set up afresh.
+ * HOW: The sound; StageDeathPhase026D; a compare; the bank calls.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSubModeDeath026D(StageRegs r)
+{
+    r = regs_loaded(r, 0xFF);
+    stage_regs_load_shim(r);
+    jsr_push(0x82D3);
+    abi_VecSoundCommand();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+    jsr_push(0x82D6);
+    r = StageDeathPhase026D(r);
+    jsr_pop();
+    r = regs_loaded(r, RD8(ZP->game_sub_mode));
+    r = regs_compared(r, r.a, 0x01);
+    if (r.a != 0x01) {
+        return r;
+    }
+    r = call_at(r, 0x82E0, 0x8089);
+    r = call_at(r, 0x82E3, 0xA015);
+    return tail_at(r, 0x8A15);
+}
+
+void abi_StageSubModeDeath026D(void)
+{
+    stage_regs_load_shim(StageSubModeDeath026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:2E6 StageDeathPhase026D
+ * @run 6B:82E6
+ * WHAT IT DOES: Goes to the death's phase by zField87 through this program's table at $82ED.
+ * HOW: The phase doubled indexes the table.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageDeathPhase026D(StageRegs r)
+{
+    uint8_t phase = RD8(ZP->field87);
+
+    r.c = (phase & 0x80) != 0;
+    return dispatch_026d(r, (uint8_t)(phase << 1), 0x82ED);
+}
+
+void abi_StageDeathPhase026D(void)
+{
+    stage_regs_load_shim(StageDeathPhase026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:430 StageClearedWalkOut026D
+ * @run 6B:8430
+ * WHAT IT DOES: Runs the scroll step and the stage frame, then goes to the step zField85 names in the table at $843D.
+ * HOW: Two calls to the routines loaded there; the step doubled indexes the table.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedWalkOut026D(StageRegs r)
+{
+    uint8_t step;
+
+    r = call_at(r, 0x8433, 0x89EC);
+    r = call_at(r, 0x8436, 0x8B23);
+    step = RD8(ZP->field85);
+    r.c = (step & 0x80) != 0;
+    return dispatch_026d(r, (uint8_t)(step << 1), 0x843D);
+}
+
+void abi_StageClearedWalkOut026D(void)
+{
+    stage_regs_load_shim(StageClearedWalkOut026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:5A5 StageClearedBossWalk026D
+ * @run 6B:85A5
+ * WHAT IT DOES: Runs the stage frame and the fade timer, then goes to the step zField85 names in the table at $85B2.
+ * HOW: Two calls to the routines loaded there; the step doubled indexes the table.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedBossWalk026D(StageRegs r)
+{
+    uint8_t step;
+
+    r = call_at(r, 0x85A8, 0x8B23);
+    r = call_at(r, 0x85AB, 0x8161);
+    step = RD8(ZP->field85);
+    r.c = (step & 0x80) != 0;
+    return dispatch_026d(r, (uint8_t)(step << 1), 0x85B2);
+}
+
+void abi_StageClearedBossWalk026D(void)
+{
+    stage_regs_load_shim(StageClearedBossWalk026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:63F StageClearedWalkOutB026D
+ * @run 6B:863F
+ * WHAT IT DOES: Runs the scroll step and the stage frame, then goes to the step zField85 names in the table at $864C.
+ * HOW: Two calls to the routines loaded there; the step doubled indexes the table.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageClearedWalkOutB026D(StageRegs r)
+{
+    uint8_t step;
+
+    r = call_at(r, 0x8642, 0x89EC);
+    r = call_at(r, 0x8645, 0x8B23);
+    step = RD8(ZP->field85);
+    r.c = (step & 0x80) != 0;
+    return dispatch_026d(r, (uint8_t)(step << 1), 0x864C);
+}
+
+void abi_StageClearedWalkOutB026D(void)
+{
+    stage_regs_load_shim(StageClearedWalkOutB026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:7A5 StageFadeWait026D
+ * @run 6B:87A5
+ * WHAT IT DOES: Runs the bank's entry at $A00F, calls $A012 if the player's frame changed, and counts zField80 while zField89 is not 0.
+ * HOW: The frame kept on the stack across the call; a compare; a test of zField89.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageFadeWait026D(StageRegs r)
+{
+    r = regs_loaded(r, RD8(OBJ->frame[0]));
+    push8(r.a);
+    r = call_at(r, 0x87AC, 0xA00F);
+    r = regs_loaded(r, pull8());
+    r = regs_compared(r, r.a, RD8(OBJ->frame[0]));
+    if (r.nz != 0) {
+        r = call_at(r, 0x87B5, 0xA012);
+    }
+    r = regs_loaded(r, RD8(ZP->field89));
+    if (r.a != 0) {
+        r.nz = INC8(ZP->field80);
+    }
+    return r;
+}
+
+void abi_StageFadeWait026D(void)
+{
+    stage_regs_load_shim(StageFadeWait026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:7BA StagePauseCdThenStock026D
+ * @run 6B:87BA
+ * WHAT IT DOES: StagePauseCdThenStock's code in the program at 026D.
+ * HOW: StagePauseCdThenStockAt (stage_steps.c) at $87BA.
+ * WAITS: where the routines it calls wait.
+ * Entry: as StagePauseCdThenStock.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StagePauseCdThenStock026D(StageRegs r)
+{
+    return StagePauseCdThenStockAt(r, 0x87BA);
+}
+
+void abi_StagePauseCdThenStock026D(void)
+{
+    stage_regs_load_shim(StagePauseCdThenStock026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:6F6 StagePlayerToCentre026D
+ * @run 6B:86F6
+ * WHAT IT DOES: StagePlayerToCentre's code in the program at 026D, calling its own routines.
+ * HOW: StagePlayerToCentreAt (stage_play.c) at $86F6, calling $809A and $80A8.
+ * WAITS: where the routines it calls wait.
+ * Entry: as StagePlayerToCentre.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StagePlayerToCentre026D(StageRegs r)
+{
+    return StagePlayerToCentreAt(r, 0x86F6, 0x809A, 0x80A8);
+}
+
+void abi_StagePlayerToCentre026D(void)
+{
+    stage_regs_load_shim(StagePlayerToCentre026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:79C StageFadeStart026D
+ * @run 6B:879C
+ * WHAT IT DOES: StageFadeStart3CD's code in the program at 026D.
+ * HOW: StageFadeStart3CDAt (stage_c_census.c) at $879C.
+ * WAITS: where the routines it calls wait.
+ * Entry: as StageFadeStart3CD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageFadeStart026D(StageRegs r)
+{
+    return StageFadeStart3CDAt(r, 0x879C);
+}
+
+void abi_StageFadeStart026D(void)
+{
+    stage_regs_load_shim(StageFadeStart026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:5E8 StageBossWaitDoor026D
+ * @run 6B:85E8
+ * WHAT IT DOES: The wait at the boss's door in this program: its own two calls and bytes.
+ * HOW: StageBossWaitDoor3CDAt (stage_c_census.c) with boss_door_026d.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageBossWaitDoor026D(StageRegs r)
+{
+    return StageBossWaitDoor3CDAt(r, &boss_door_026d);
+}
+
+void abi_StageBossWaitDoor026D(void)
+{
+    stage_regs_load_shim(StageBossWaitDoor026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:7F2 EnterStageState026D
+ * @run 6B:87F2
+ * WHAT IT DOES: EnterStageState's code in the program at 026D.
+ * HOW: EnterStageStateAt (stage_state_start.c) with this address's card return, $8803.
+ * WAITS: where the routines it calls wait.
+ * Entry: as EnterStageState.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit EnterStageState026D(StageRegs r)
+{
+    return EnterStageStateAt(r, 0x8803);
+}
+
+void abi_EnterStageState026D(void)
+{
+    stage_exit_shim(EnterStageState026D(stage_regs_entry_shim()));
+}

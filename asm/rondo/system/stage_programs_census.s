@@ -6576,3 +6576,303 @@ StageProbeAgain14DD_at0:
     iny
     bra StageProbeAgain14DD_at3
 
+
+; @routine 026D:018 StageModeStep026D
+; @run 6B:8018
+; WHAT IT DOES: Goes to the sub-mode's routine by zGameSubMode, through this program's table at $801F.
+; HOW: LDA, ASL, TAX, a jump through the table.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+MapOverlayBanks5And6At026D = $8089 ; the bank mapping at this address of the program at 026D
+StageFadeTimer026D = $8161 ; the fade timer at this address of this program
+StageScrollStepAt026D = $89EC ; the scroll step this program runs
+StepStageFrameAt026D = $8B23 ; the stage frame this program runs
+SetUpStageObjectsAt026D = $8A15 ; the object set up this program runs
+FrameBankEntryA000 = $A000 ; the player bank's entries
+FrameBankEntryA009 = $A009
+FrameBankEntryA00C = $A00C
+FrameBankEntryA00F = $A00F
+FrameBankEntryA012 = $A012
+FrameBankEntryA015 = $A015
+StageModeSteps026D = $801F ; this program's table of sub-modes
+StageDeathPhases026D = $82ED ; its table of the death's phases
+StageClearedSteps026D = $843D ; its tables of the cleared stage's steps
+StageBossSteps026D = $85B2
+StageClearedStepsB026D = $864C
+StageModeStep026D:
+    lda z:zGameSubMode
+    asl a
+    tax
+    jmp (StageModeSteps026D,x)
+
+; @routine 026D:094 StagePlayerFrame026D
+; @run 6B:8094
+; WHAT IT DOES: Maps banks 5 and 6 and goes to the entry at $A000 there.
+; HOW: A JSR and a JMP.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePlayerFrame026D:
+    jsr MapOverlayBanks5And6At026D
+    jmp FrameBankEntryA000
+
+; @routine 026D:09A StagePlayerFrameB026D
+; @run 6B:809A
+; WHAT IT DOES: Maps banks 5 and 6 and goes to the entry at $A009 there.
+; HOW: A JSR and a JMP.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePlayerFrameB026D:
+    jsr MapOverlayBanks5And6At026D
+    jmp FrameBankEntryA009
+
+; @routine 026D:2CE StageSubModeDeath026D
+; @run 6B:82CE
+; WHAT IT DOES: The death sub-mode: sound $FF, the death's phase, and once the sub-mode is 1 again the stage's objects set up afresh.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageSubModeDeath026D:
+    lda #$FF
+    jsr VecSoundCommand
+    jsr StageDeathPhase026D
+    lda z:zGameSubMode
+    cmp #$01
+    beq StageSubModeDeath026D_at0
+    rts
+StageSubModeDeath026D_at0:
+    jsr MapOverlayBanks5And6At026D
+    jsr FrameBankEntryA015
+    jmp SetUpStageObjectsAt026D
+
+; @routine 026D:2E6 StageDeathPhase026D
+; @run 6B:82E6
+; WHAT IT DOES: Goes to the death's phase by zField87 through this program's table at $82ED.
+; HOW: LDA, ASL, TAX, a jump through the table.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageDeathPhase026D:
+    lda z:zField87
+    asl a
+    tax
+    jmp (StageDeathPhases026D,x)
+
+; @routine 026D:430 StageClearedWalkOut026D
+; @run 6B:8430
+; WHAT IT DOES: Runs the scroll step and the stage frame, then goes to the step zField85 names in the table at $843D.
+; HOW: Two JSRs; LDA, ASL, TAX, a jump through the table.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearedWalkOut026D:
+    jsr StageScrollStepAt026D
+    jsr StepStageFrameAt026D
+    lda z:zField85
+    asl a
+    tax
+    jmp (StageClearedSteps026D,x)
+
+; @routine 026D:5A5 StageClearedBossWalk026D
+; @run 6B:85A5
+; WHAT IT DOES: Runs the stage frame and the fade timer, then goes to the step zField85 names in the table at $85B2.
+; HOW: Two JSRs; LDA, ASL, TAX, a jump through the table.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearedBossWalk026D:
+    jsr StepStageFrameAt026D
+    jsr StageFadeTimer026D
+    lda z:zField85
+    asl a
+    tax
+    jmp (StageBossSteps026D,x)
+
+; @routine 026D:63F StageClearedWalkOutB026D
+; @run 6B:863F
+; WHAT IT DOES: Runs the scroll step and the stage frame, then goes to the step zField85 names in the table at $864C.
+; HOW: Two JSRs; LDA, ASL, TAX, a jump through the table.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearedWalkOutB026D:
+    jsr StageScrollStepAt026D
+    jsr StepStageFrameAt026D
+    lda z:zField85
+    asl a
+    tax
+    jmp (StageClearedStepsB026D,x)
+
+; @routine 026D:7A5 StageFadeWait026D
+; @run 6B:87A5
+; WHAT IT DOES: Runs the bank's entry at $A00F, calls $A012 if the player's frame changed, and counts zField80 while zField89 is not 0.
+; HOW: As the C; the count is in StageFadeStart026D.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFadeWait026D:
+    lda a:OBJ_FRAME
+    pha
+    jsr FrameBankEntryA00F
+    pla
+    cmp a:OBJ_FRAME
+    beq StageFadeWait026D_at0
+    jsr FrameBankEntryA012
+StageFadeWait026D_at0:
+    lda z:zField89
+    bne *-21
+    rts
+
+; @routine 026D:7BA StagePauseCdThenStock026D
+; @run 6B:87BA
+; WHAT IT DOES: StagePauseCdThenStock's code in the program at 026D.
+; HOW: StagePauseCdThenStock's code at this address.
+; WAITS: where the routines it calls wait.
+; Entry: as StagePauseCdThenStock.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePauseCdThenStock026D:
+    jsr BiosCdPause
+    tax
+    bne StagePauseCdThenStock026D
+    lda z:zStock
+    bne *+16 ; this program's StageStockTake at $87D2
+    lda #$80
+    sta z:zModeDone
+    rts
+
+; @routine 026D:6F6 StagePlayerToCentre026D
+; @run 6B:86F6
+; WHAT IT DOES: StagePlayerToCentre's code in the program at 026D, calling its own routines.
+; HOW: StagePlayerToCentre's code at this address.
+; WAITS: where the routines it calls wait.
+; Entry: as StagePlayerToCentre.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePlayerToCentre026D:
+    lda a:OBJ_SUBSTATE
+    bne StagePlayerToCentre026D_at0
+    lda a:OBJ_STATE
+    cmp #$02
+    bcc StagePlayerToCentre026D_at1
+StagePlayerToCentre026D_at0:
+    lda #$80
+    sta a:OBJ_PAD_FORCE_FRAMES
+    stz a:OBJ_PAD_FORCED
+    jsr StagePlayerFrameB026D
+    rts
+StagePlayerToCentre026D_at1:
+    lda #$80
+    sta a:OBJ_PAD_FORCE_FRAMES
+    stz a:OBJ_PAD_FORCED
+    lda #$01
+    sta a:PlayerStartPose
+    jsr StagePlayerFrameB026D
+    lda a:OBJ_X_LO
+    clc
+    adc #$02
+    and #$FC
+    cmp #$80
+    beq StagePlayerToCentre026D_at2
+    lda a:OBJ_X_LO
+    bmi StagePlayerToCentre026D_at3
+    lda #$FC
+    sta a:ScrollStepXHi
+    stz a:ScrollStepXLo
+    lda a:OBJ_X_LO
+    clc
+    adc #$04
+    sta a:OBJ_X_LO
+    bra StagePlayerToCentre026D_at4
+StagePlayerToCentre026D_at3:
+    lda #$04
+    sta a:ScrollStepXHi
+    stz a:ScrollStepXLo
+    lda a:OBJ_X_LO
+    clc
+    adc #$FC
+    sta a:OBJ_X_LO
+StagePlayerToCentre026D_at4:
+    jsr StageCameraStep026D
+    lda a:OBJ_X_LO
+    clc
+    adc #$02
+    and #$F8
+    cmp #$80
+    bne StagePlayerToCentre026D_end
+StagePlayerToCentre026D_at2:
+    rmb7 z:zField8E
+    stz a:OBJ_PAD_FORCE_FRAMES
+    stz a:PlayerStartPose
+StagePlayerToCentre026D_end:
+    rts
+
+
+; @routine 026D:79C StageFadeStart026D
+; @run 6B:879C
+; WHAT IT DOES: StageFadeStart3CD's code in the program at 026D.
+; HOW: StageFadeStart3CD's code at this address.
+; WAITS: where the routines it calls wait.
+; Entry: as StageFadeStart3CD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFadeStart026D:
+    jsr RichterVecC023
+    jsr RichterVecAnimationSound
+    inc z:zField80
+    rts
+
+
+; @routine 026D:5E8 StageBossWaitDoor026D
+; @run 6B:85E8
+; WHAT IT DOES: The wait at the boss's door in this program: its own two calls and bytes.
+; HOW: StageBossWaitDoor3CD's code with this program's calls and bytes.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageBossWaitDoor026D:
+    jsr StagePlayerFrameB026D
+    jsr StepScrollAndRunObjects026E
+    lda a:OBJ_STATE+34
+    cmp #$04
+    bne StageBossWaitDoor026D_at0
+    lda a:OBJ_WORK_H+34
+    bne StageBossWaitDoor026D_at0
+    lda #$20
+    sta a:OBJ_WORK_F
+    inc z:zField85
+StageBossWaitDoor026D_at0:
+    rts
+
+; @routine 026D:7F2 EnterStageState026D
+; @run 6B:87F2
+; WHAT IT DOES: EnterStageState's code in the program at 026D.
+; HOW: EnterStageState's code at this address.
+; WAITS: where the routines it calls wait.
+; Entry: as EnterStageState.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+EnterStageState026D:
+    lda z:zField86
+    sta z:zField83
+    stz z:zField8A
+    stz z:zField8F
+    rmb2 z:zField8E
+    lda z:zStage
+    bpl EnterStageState026D_at0
+EnterStageState026D_at1:
+    jsr BiosCdPause
+    tax
+    bne EnterStageState026D_at1
+    smb3 z:zField8E
+EnterStageState026D_at0:
+    lda z:zGameRunning
+    beq EnterStageState026D_at2
+    inc z:zModeDone
+    rts
+EnterStageState026D_at2:
+    stz z:zRasterEffect
+    lda #$02
+    sta z:zDisplayDelay
+    stz z:zGameSubMode
+    rts
+

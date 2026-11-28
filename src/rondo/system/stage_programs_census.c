@@ -2306,3 +2306,26 @@ void abi_SetGaugeAddressB031E(void)
 {
     stage_exit_shim(SetGaugeAddressB031E());
 }
+
+/*
+ * @routine 026E:4DB BossGaugeFlash026E
+ * @run 6B:8CDB
+ * WHAT IT DOES: A frame of the boss gauge's flash: masks four cells, counts the flash's step, makes the object in slot 85 fall
+ * faster and move, and at the bottom hides it and clears bit 2 of zField8E (as BossGaugeFlash, 024E:525). These are
+ * 024E:525's instructions $4A lower, every operand into the code moved alike; their return addresses are their own. Programs 031E, 043E, 064E, 10DE, 122E, 1A2E,
+ * 1B8E and 1CEE hold the same bytes, their call at $8CEC going to their own routine there.
+ * HOW: BossGaugeFlashAt (stage_boss_flash.c), the body of 024E:525, at $8CDB with this program's table of cells at $8CC3;
+ * each cell through the C of the routine loaded at $8D1A (it differs between these programs).
+ * WAITS: no.
+ * Entry: nothing. Exit: A the object's Y high, N and Z from it (RMB sets none); X 85.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs BossGaugeFlash026E(StageRegs r)
+{
+    return BossGaugeFlashAt(r, 0x8CDB, 0x8CC3, 0x8D1A);
+}
+
+void abi_BossGaugeFlash026E(void)
+{
+    stage_regs_load_shim(BossGaugeFlash026E(stage_regs_entry_shim()));
+}

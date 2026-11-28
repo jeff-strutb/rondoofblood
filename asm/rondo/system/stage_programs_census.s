@@ -2637,12 +2637,11 @@ BossFlashMaskCell031E_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the step or the flash taken.
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
-BossGaugeFlash_026E = $8CDB ; the boss gauge's flash, in the 026D programs
 OrVramData_026F = $935F ; OrVramData's bytes (024F:3A1) in the 026D programs
 GaugeTimerCheckB026E:
     lda a:BossGaugeEnding
     beq GaugeStepB026E
-    jmp BossGaugeFlash_026E
+    jmp BossGaugeFlash026E
 
 ; @routine 026E:441 GaugeStepB026E
 ; @run 6B:8C41
@@ -2750,7 +2749,7 @@ SetGaugeAddressB026E_ret:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the step or the flash taken.
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
-BossGaugeFlash_031E = $8CDB ; the boss gauge's flash, in the 031D programs
+BossGaugeFlash_031E = $8CDB ; the boss gauge's flash (BossGaugeFlash026E's bytes), in the 031D programs
 OrVramData_031F = $9640 ; OrVramData's bytes (024F:3A1) in the 031D programs
 GaugeTimerCheckB031E:
     lda a:BossGaugeEnding
@@ -2853,4 +2852,49 @@ SetGaugeAddressB031E_at0:
     tay
     jsr SetVramAddresses031F
 SetGaugeAddressB031E_ret:
+    rts
+
+; @routine 026E:4DB BossGaugeFlash026E
+; @run 6B:8CDB
+; WHAT IT DOES: A frame of the boss gauge's flash: masks four cells, counts the flash's step, makes the object in slot 85 fall
+; faster and move, and at the bottom hides it and clears bit 2 of zField8E (as BossGaugeFlash, 024E:525). These are
+; 024E:525's instructions $4A lower, every operand into the code moved alike; their return addresses are their own. Programs 031E, 043E, 064E, 10DE, 122E, 1A2E,
+; 1B8E and 1CEE hold the same bytes, their call at $8CEC going to their own routine there.
+; HOW: BossFlashAddresses026E by zTemp01 (from the wave count's bit 0, two at a time below 8), the routine at $8D1A;
+; OBJ_VY of slot 85 plus $0C; ApplyVelocity.
+; WAITS: no.
+; Entry: nothing. Exit: A the object's Y high, N and Z from it (RMB sets none); X 85.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BossFlashAddresses026E = $8CC3 ; the boss gauge flash's VRAM cells, a word each, in the 026D programs
+BossGaugeFlash026E:
+    lda z:zWaveCounter
+    and #$01
+    sta z:zTemp01
+BossGaugeFlash026E_at0:
+    lda z:zTemp01
+    asl a
+    tax
+    ldy a:BossFlashAddresses026E+1,x
+    lda a:BossFlashAddresses026E,x
+    tax
+    jsr BossFlashMaskCell026E
+    inc z:zTemp01
+    inc z:zTemp01
+    lda z:zTemp01
+    cmp #$08
+    bcc BossGaugeFlash026E_at0
+    inc a:BossFlashStep
+    lda a:OBJ_VY_LO+85
+    clc
+    adc #$0C
+    sta a:OBJ_VY_LO+85
+    bcc BossGaugeFlash026E_at1
+    inc a:OBJ_VY_HI+85
+BossGaugeFlash026E_at1:
+    ldx #$55
+    jsr VecApplyVelocity
+    lda a:OBJ_Y_HI+85
+    beq SetGaugeAddressB026E_ret
+    stz a:OBJ_FRAME+85
+    rmb2 z:zField8E
     rts

@@ -89,6 +89,14 @@ void abi_BossFlashMaskCell(void)
  */
 StageRegs BossGaugeFlash(StageRegs r)
 {
+    return BossGaugeFlashAt(r, 0x8D25, BossFlashAddresses, 0x8D64);
+}
+
+/* BossGaugeFlash's body, at the address it runs at (its JSRs return to at + $14 and + $34), with its table of cells
+ * and where its call to the mask goes: the builds of the overlay that hold these instructions at another address
+ * (stage_programs_census.c) pass their own. */
+StageRegs BossGaugeFlashAt(StageRegs r, uint16_t at, uint16_t addresses, uint16_t mask_cell)
+{
     AxisMove moved;
     uint8_t value;
     Sum sum;
@@ -100,10 +108,10 @@ StageRegs BossGaugeFlash(StageRegs r)
         r.c = (value & 0x80) != 0;
         r = regs_loaded(r, (uint8_t)(value << 1));
         r.x = r.a;
-        r.y = rd8((uint16_t)(BossFlashAddresses + 1 + r.x));
-        r = regs_loaded(r, rd8((uint16_t)(BossFlashAddresses + r.x)));
+        r.y = rd8((uint16_t)(addresses + 1 + r.x));
+        r = regs_loaded(r, rd8((uint16_t)(addresses + r.x)));
         r.x = r.a;
-        r = call_to(r, 0x8D39, 0x8D64);
+        r = call_to(r, (uint16_t)(at + 0x14), mask_cell);
         INC8(ZP->temp01);
         INC8(ZP->temp01);
         r = regs_loaded(r, RD8(ZP->temp01));
@@ -121,7 +129,7 @@ StageRegs BossGaugeFlash(StageRegs r)
     }
     r.x = BOSS_SLOT;
     r.nz = BOSS_SLOT;
-    jsr_push(0x8D59);
+    jsr_push((uint16_t)(at + 0x34));
     moved = ApplyVelocity(BOSS_SLOT);
     jsr_pop();
     stage_regs_load_shim(r);

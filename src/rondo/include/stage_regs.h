@@ -141,4 +141,8 @@ StageExit StageScriptByWaveAt(uint16_t scripts);
 /* object/stage_boss_flash.c: BossFlashMaskCell (024E:564) run at `at`, with its two VRAM calls' targets and its masks. */
 StageRegs BossFlashMaskCellAt(StageRegs r, uint16_t at, uint16_t point, uint16_t and_bits, uint16_t masks);
 
+
+/* object/stage_boss_flash.c: BossGaugeFlash (024E:525) run at `at`, with its table of cells and its mask's address. */
+StageRegs BossGaugeFlashAt(StageRegs r, uint16_t at, uint16_t addresses, uint16_t mask_cell);
+
 #endif

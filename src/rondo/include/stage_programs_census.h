@@ -239,4 +239,7 @@ void abi_GaugeStepUpB031E(void);
 StageExit SetGaugeAddressB031E(void);
 void abi_SetGaugeAddressB031E(void);
 
+StageRegs BossGaugeFlash026E(StageRegs r);
+void abi_BossGaugeFlash026E(void);
+
 #endif

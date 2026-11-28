@@ -532,6 +532,13 @@ member,PlayerVarsB,anchor_object,u8,07,PlayerAnchorObject,
 member,PlayerVarsB,f3bf7,u8,08,PlayerByte3BF7,
 member,PlayerVarsB,pad_history,u8[4],09,PadHistory,
 alias,ObjectTable,state_before_hit,work_g,OBJ_STATE_BEFORE_HIT
+alias,ObjectTable,dissolve_clock_d,work_d,OBJ_DISSOLVE_CLOCK_D
+alias,ObjectTable,dissolve_clock_f,work_f,OBJ_DISSOLVE_CLOCK_F
+alias,ObjectTable,dissolve_clock_j,work_j,OBJ_DISSOLVE_CLOCK_J
+alias,ObjectTable,dissolve_phase_k,work_k,OBJ_DISSOLVE_PHASE_K
+alias,ObjectTable,dissolve_phase_p,work_p,OBJ_DISSOLVE_PHASE_P
+alias,ObjectTable,dissolve_phase_l,work_l,OBJ_DISSOLVE_PHASE_L
+alias,ObjectTable,dissolve_phase_n,work_n,OBJ_DISSOLVE_PHASE_N
 alias,ObjectTable,fling_source,work_d,OBJ_FLING_SOURCE
 alias,ObjectTable,fling_wait,work_e,OBJ_FLING_WAIT
 alias,ObjectTable,pickup_timer,work_d,OBJ_PICKUP_TIMER

@@ -137,6 +137,13 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 3510,abs,OBJ_FLING_WAIT,a flung object's use of OBJ_WORK_E: frames left before it flies (FlungObjectWait)
 34B8,abs,OBJ_PICKUP_TIMER,a sub-step pickup's use of OBJ_WORK_D: frames left of its wait or its erosion (SubStepPickupStart, SubStepPickupHitCheck)
 3510,abs,OBJ_PICKUP_COUNT,a sub-step pickup's use of OBJ_WORK_E: scripts started in a round (SubStepPickupFirstScripts, SubStepPickupSecondScripts)
+34B8,abs,OBJ_DISSOLVE_CLOCK_D,a dissolving object's use of OBJ_WORK_D: the count whose low bits say which frames dissolve (DissolveStep)
+3568,abs,OBJ_DISSOLVE_CLOCK_F,a dissolving object's use of OBJ_WORK_F: the count whose low bits say which frames dissolve (DissolveStep)
+36C8,abs,OBJ_DISSOLVE_CLOCK_J,a dissolving object's use of OBJ_WORK_J: the count whose low bits say which frames dissolve (DissolveStep)
+3720,abs,OBJ_DISSOLVE_PHASE_K,a dissolving object's use of OBJ_WORK_K: the dissolve's phase 0 to 63 (DissolveStep)
+38D8,abs,OBJ_DISSOLVE_PHASE_P,a dissolving object's use of OBJ_WORK_P: the dissolve's phase 0 to 63 (DissolveStep)
+3778,abs,OBJ_DISSOLVE_PHASE_L,a dissolving object's use of OBJ_WORK_L: the dissolve's phase 0 to 63 (DissolveStep)
+3828,abs,OBJ_DISSOLVE_PHASE_N,a dissolving object's use of OBJ_WORK_N: the dissolve's phase 0 to 63 (DissolveStep)
 2EE0,abs,OBJ_WORK_A,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
 2F38,abs,OBJ_SCROLL_BAND,bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to
 3098,abs,OBJ_EVENT_ID,event this object records

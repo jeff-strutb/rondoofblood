@@ -134,6 +134,13 @@
 #define OBJ_FLING_WAIT 0x3510 /* a flung object's use of OBJ_WORK_E: frames left before it flies (FlungObjectWait) */
 #define OBJ_PICKUP_TIMER 0x34B8 /* a sub-step pickup's use of OBJ_WORK_D: frames left of its wait or its erosion (SubStepPickupStart, SubStepPickupHitCheck) */
 #define OBJ_PICKUP_COUNT 0x3510 /* a sub-step pickup's use of OBJ_WORK_E: scripts started in a round (SubStepPickupFirstScripts, SubStepPickupSecondScripts) */
+#define OBJ_DISSOLVE_CLOCK_D 0x34B8 /* a dissolving object's use of OBJ_WORK_D: the count whose low bits say which frames dissolve (DissolveStep) */
+#define OBJ_DISSOLVE_CLOCK_F 0x3568 /* a dissolving object's use of OBJ_WORK_F: the count whose low bits say which frames dissolve (DissolveStep) */
+#define OBJ_DISSOLVE_CLOCK_J 0x36C8 /* a dissolving object's use of OBJ_WORK_J: the count whose low bits say which frames dissolve (DissolveStep) */
+#define OBJ_DISSOLVE_PHASE_K 0x3720 /* a dissolving object's use of OBJ_WORK_K: the dissolve's phase 0 to 63 (DissolveStep) */
+#define OBJ_DISSOLVE_PHASE_P 0x38D8 /* a dissolving object's use of OBJ_WORK_P: the dissolve's phase 0 to 63 (DissolveStep) */
+#define OBJ_DISSOLVE_PHASE_L 0x3778 /* a dissolving object's use of OBJ_WORK_L: the dissolve's phase 0 to 63 (DissolveStep) */
+#define OBJ_DISSOLVE_PHASE_N 0x3828 /* a dissolving object's use of OBJ_WORK_N: the dissolve's phase 0 to 63 (DissolveStep) */
 #define OBJ_WORK_A 0x2EE0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_SCROLL_BAND 0x2F38 /* bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */

@@ -18,9 +18,9 @@ MaskVramRowsRandom:
     ldx #$80
 MaskVramRowsRandom_at0:
     lda a:VDC_DATA_LO
-    sta a:$3B3F,x
+    sta a:StageMaskBuffer-1,x
     lda a:VDC_DATA_HI
-    sta a:$3B3E,x
+    sta a:StageMaskBuffer-2,x
     dex
     dex
     bne MaskVramRowsRandom_at0
@@ -63,9 +63,9 @@ MaskVramRowsRandom_at6:
 MaskVramRowsRandom_at3:
     ldx #$80
 MaskVramRowsRandom_at7:
-    lda a:$3B3F,x
+    lda a:StageMaskBuffer-1,x
     sta a:VDC_DATA_LO
-    lda a:$3B3E,x
+    lda a:StageMaskBuffer-2,x
     sta a:VDC_DATA_HI
     dex
     dex

@@ -17,9 +17,9 @@ StepStageFrame:
     lda a:OBJ_FRAME+87
     beq $8B6C
     bbs1 zPaused,StepStageFrame_at0
-    lda a:StageVar3616+1
+    lda a:StageShownStock+1
     beq StepStageFrame_at1
-    dec a:StageVar3616+1
+    dec a:StageShownStock+1
     bne StepStageFrame_at1
     smb1 z:zPaused
 StepStageFrame_at0:
@@ -112,16 +112,16 @@ StepStageFrame_at10:
 ; WAITS: no.
 ; Entry: nothing. Exit: unchanged script: A the script, X the table index, Z 1, C 1;
 ; else as StartScriptSlotKind4 with X 1, C as the compare left it.
-StageScriptByWaveStageVar3566s = $8C3B ; table StageScriptByWave reads
+StageScriptByWaveScripts = $8C3B ; table StageScriptByWave reads
 StageScriptByWave:
     lda z:zWaveCounter
     and #$07
     and a:RichterItemReady
     tax
-    lda a:StageScriptByWaveStageVar3566s,x
-    cmp a:StageVar3566+1
+    lda a:StageScriptByWaveScripts,x
+    cmp a:OBJ_PAD_FORCE_FRAMES+86+1
     beq StageScriptByWave_at0
-    sta a:StageVar3566+1
+    sta a:OBJ_PAD_FORCE_FRAMES+86+1
     ldx #$01
     jmp VecStartScriptSlotKind4
 StageScriptByWave_at0:

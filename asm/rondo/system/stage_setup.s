@@ -7,9 +7,9 @@
 ; WAITS: no.
 ; Entry: nothing. Exit: A, X, Y and flags kept.
 ClearStageStateBytes:
-    stz a:StageVar350E
-    stz a:StageVar3566
-    stz a:StageVar35BE
+    stz a:OBJ_FALL_DRIFT_DELAY+86
+    stz a:OBJ_PAD_FORCE_FRAMES+86
+    stz a:OBJ_PAD_FORCED+86
     stz a:StageBlendStep
     rts
 
@@ -24,7 +24,7 @@ SaveAndMapStageBanks:
     tma #$20
     sta a:StageBlendStep+1
     tma #$40
-    sta a:StageVar371E+1
+    sta a:OBJ_DISSOLVE_CLOCK_J+86+1
 
 ; @routine 024F:349 MapStageBanks
 ; @run 6B:9349
@@ -50,7 +50,7 @@ MapStageBanks:
 ; WAITS: no.
 ; Entry: nothing. Exit: A the MPR5 bank, N and Z from it. X and Y kept.
 RestoreStageBanks:
-    lda a:StageVar371E+1
+    lda a:OBJ_DISSOLVE_CLOCK_J+86+1
     tam #$40
     lda a:StageBlendStep+1
     tam #$20

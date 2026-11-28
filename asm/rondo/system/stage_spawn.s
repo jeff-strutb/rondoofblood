@@ -11,9 +11,9 @@ SpawnStageObjectsRows01:
     jsr SpawnStageObject
     inx
     jsr SpawnStageObject
-    stz a:StageVar3616
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageShownStock+1
     rmb5 z:zField8E
     lda #$65
     ldx #$02

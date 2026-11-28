@@ -15,21 +15,21 @@ StepStageSequenceTables = $8F71 ; table StepStageSequence reads
 StepStageSequenceTables2 = $8F7E ; table StepStageSequence reads
 StepStageSequenceValues2 = $8F8B ; table StepStageSequence reads
 StepStageSequence:
-    lda a:StageVar350E+1
+    lda a:OBJ_FALL_DRIFT_DELAY+86+1
     sta z:zTemp00
     cmp #$1A
     bne StepStageSequence_at0
     rmb1 z:zPaused
-    stz a:StageVar350E+1
-    lda a:StageVar35BE+1
+    stz a:OBJ_FALL_DRIFT_DELAY+86+1
+    lda a:OBJ_PAD_FORCED+86+1
     eor #$01
-    sta a:StageVar35BE+1
+    sta a:OBJ_PAD_FORCED+86+1
     beq StepStageSequence_at1
     rmb0 z:zPaused
 StepStageSequence_at1:
     rts
 StepStageSequence_at0:
-    inc a:StageVar350E+1
+    inc a:OBJ_FALL_DRIFT_DELAY+86+1
     bbs0 zTemp00,StepStageSequence_at2
     lsr z:zTemp00
     ldx z:zTemp00
@@ -52,14 +52,14 @@ StepStageSequence_at0:
 StepStageSequence_at3:
     lda #$64
     clc
-    adc a:StageVar35BE+1
+    adc a:OBJ_PAD_FORCED+86+1
     ldx #$02
     jmp VecStartListChannelKind2
 StepStageSequence_at2:
     lda z:zTemp00
     cmp #$11
     bne StepStageSequence_at1
-    lda a:StageVar35BE+1
+    lda a:OBJ_PAD_FORCED+86+1
     bne StepStageSequence_at4
     lda #$01
     sta a:StageBlendOn+1

@@ -276,8 +276,9 @@ CopyWordsToVdc_at0:
 ; Entry: X the entry, Y the table index (a word). Exit: A the screen, N and Z from it, C and V from
 ; its add. X and Y kept. The switch's arm is untraced (00C5 bytes $5..$D of this routine).
 ; Names: the switch is by address until the records name it.
+ScrollOffsetSwitch = $3EBA ; not zero: the entry's offsets come from the word before (ScrollXPlusOffset)
 ScrollXPlusOffset:
-    lda a:$3EBA
+    lda a:ScrollOffsetSwitch
     beq ScrollXPlusOffset_at0
     lda a:ScrollXLo,x
     clc

@@ -1205,7 +1205,8 @@ SubStepPickupFirstScripts09EC5B6_at0:
 ; @routine 09EC:5E6 SubStepPickupSecondScripts09EC5E6
 ; @run 70:BDE6
 ; WHAT IT DOES: The pickup's second round (Secret stage 05): every fourth frame script $89 plus its count; after 8,
-; the pieces are spawned, the object made hittable and the next state.
+; the pieces are spawned, the raster effect turned off,
+; the object made hittable and the next state.
 ; HOW: zWaveCounter's bits, StartScriptSlotKind1, SubStepPickupSpawn09EC613.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last call or compare; X kept.

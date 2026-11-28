@@ -310,7 +310,8 @@ static void pickup_first_scripts(uint8_t slot, uint16_t list, uint8_t base, uint
 }
 
 /* Every fourth frame one more script; after the eighth, the pieces spawned and the object made hittable. */
-static void pickup_second_scripts(uint8_t slot, uint8_t base, uint8_t script_at, uint8_t count, void (*spawn)(void), uint16_t at)
+static void pickup_second_scripts(uint8_t slot, uint8_t base, uint8_t script_at, uint8_t count, void (*spawn)(void), bool raster_off,
+                                  uint16_t at)
 {
     Sum number;
 
@@ -337,6 +338,10 @@ static void pickup_second_scripts(uint8_t slot, uint8_t base, uint8_t script_at,
     jsr_push((uint16_t)(at + 0x20));
     spawn();
     jsr_pop();
+    if (raster_off) {
+        WR8(ZP->raster_effect, 0);
+        WR8(ZP->raster_arg, 0);
+    }
     lda(1);
     WR8(OBJ->hitbox_on[slot], cpu.a);
     abi_nz(INC8(OBJ->state[slot]));
@@ -547,7 +552,7 @@ void abi_SubStepPickupSpawn05CA78E(void)
  */
 void SubStepPickupSecondScripts05CA765(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn05CA78E, 0xAF65);
+    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn05CA78E, false, 0xAF65);
 }
 
 void abi_SubStepPickupSecondScripts05CA765(void)
@@ -793,7 +798,7 @@ void abi_SubStepPickupSpawn072A7BE(void)
  */
 void SubStepPickupSecondScripts072A795(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn072A7BE, 0xAF95);
+    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn072A7BE, false, 0xAF95);
 }
 
 void abi_SubStepPickupSecondScripts072A795(void)
@@ -1039,7 +1044,7 @@ void abi_SubStepPickupSpawn088D0CA(void)
  */
 void SubStepPickupSecondScripts088D0A1(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x8A, 5, 8, SubStepPickupSpawn088D0CA, 0xC0A1);
+    pickup_second_scripts(slot, 0x8A, 5, 8, SubStepPickupSpawn088D0CA, false, 0xC0A1);
 }
 
 void abi_SubStepPickupSecondScripts088D0A1(void)
@@ -1278,14 +1283,15 @@ void abi_SubStepPickupSpawn09EC613(void)
  * @routine 09EC:5E6 SubStepPickupSecondScripts09EC5E6
  * @run 70:BDE6
  * WHAT IT DOES: The pickup's second round (Secret stage 05): every fourth frame script $89 plus its count; after 8,
- * the pieces are spawned, the object made hittable and the next state.
+ * the pieces are spawned, the raster effect turned off,
+ * the object made hittable and the next state.
  * HOW: zWaveCounter's bits, StartScriptSlotKind1, SubStepPickupSpawn09EC613.
  * WAITS: no.
  * Entry: X object. Exit: as the last call or compare; X kept.
  */
 void SubStepPickupSecondScripts09EC5E6(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn09EC613, 0xBDE6);
+    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn09EC613, true, 0xBDE6);
 }
 
 void abi_SubStepPickupSecondScripts09EC5E6(void)
@@ -1531,7 +1537,7 @@ void abi_SubStepPickupSpawn0B4B219(void)
  */
 void SubStepPickupSecondScripts0B4B1F0(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn0B4B219, 0xB1F0);
+    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn0B4B219, false, 0xB1F0);
 }
 
 void abi_SubStepPickupSecondScripts0B4B1F0(void)
@@ -1777,7 +1783,7 @@ void abi_SubStepPickupSpawn0CAA7DA(void)
  */
 void SubStepPickupSecondScripts0CAA7B1(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn0CAA7DA, 0xAFB1);
+    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn0CAA7DA, false, 0xAFB1);
 }
 
 void abi_SubStepPickupSecondScripts0CAA7B1(void)
@@ -2023,7 +2029,7 @@ void abi_SubStepPickupSpawn0E0A59E(void)
  */
 void SubStepPickupSecondScripts0E0A575(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn0E0A59E, 0xAD75);
+    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn0E0A59E, false, 0xAD75);
 }
 
 void abi_SubStepPickupSecondScripts0E0A575(void)
@@ -2269,7 +2275,7 @@ void abi_SubStepPickupSpawn0F6A6CA(void)
  */
 void SubStepPickupSecondScripts0F6A6A1(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn0F6A6CA, 0xAEA1);
+    pickup_second_scripts(slot, 0x89, 5, 8, SubStepPickupSpawn0F6A6CA, false, 0xAEA1);
 }
 
 void abi_SubStepPickupSecondScripts0F6A6A1(void)
@@ -2515,7 +2521,7 @@ void abi_SubStepPickupSpawn10CB026(void)
  */
 void SubStepPickupSecondScripts10CA7FD(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0xA7, 5, 8, SubStepPickupSpawn10CB026, 0xAFFD);
+    pickup_second_scripts(slot, 0xA7, 5, 8, SubStepPickupSpawn10CB026, false, 0xAFFD);
 }
 
 void abi_SubStepPickupSecondScripts10CA7FD(void)
@@ -2761,7 +2767,7 @@ void abi_SubStepPickupSpawn13FA7E8(void)
  */
 void SubStepPickupSecondScripts13FA7BB(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x98, 5, 8, SubStepPickupSpawn13FA7E8, 0xAFBB);
+    pickup_second_scripts(slot, 0x98, 5, 8, SubStepPickupSpawn13FA7E8, false, 0xAFBB);
 }
 
 void abi_SubStepPickupSecondScripts13FA7BB(void)
@@ -3007,7 +3013,7 @@ void abi_SubStepPickupSpawn16CA7F6(void)
  */
 void SubStepPickupSecondScripts16CA7CD(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x8E, 5, 8, SubStepPickupSpawn16CA7F6, 0xAFCD);
+    pickup_second_scripts(slot, 0x8E, 5, 8, SubStepPickupSpawn16CA7F6, false, 0xAFCD);
 }
 
 void abi_SubStepPickupSecondScripts16CA7CD(void)
@@ -3253,7 +3259,7 @@ void abi_SubStepPickupSpawn18DA7FE(void)
  */
 void SubStepPickupSecondScripts18DA7D5(uint8_t slot)
 {
-    pickup_second_scripts(slot, 0x90, 5, 8, SubStepPickupSpawn18DA7FE, 0xAFD5);
+    pickup_second_scripts(slot, 0x90, 5, 8, SubStepPickupSpawn18DA7FE, false, 0xAFD5);
 }
 
 void abi_SubStepPickupSecondScripts18DA7D5(void)

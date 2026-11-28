@@ -6253,18 +6253,24 @@ void abi_TallyHearts3CD(void)
  */
 StageRegs TallyDigitCell3CD(StageRegs r)
 {
+    return TallyDigitCell3CDAt(r, 0x9390, &tally_3cd);
+}
+
+/* TallyDigitCell3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyDigitCell3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
     Sum sum;
     uint8_t value;
 
     for (;;) {
         push8(r.x);
-        r = loaded(r, rd8((uint16_t)(TALLY_CELLS + r.x)));
+        r = loaded(r, rd8((uint16_t)(build->cells + r.x)));
         WR8(ZP->temp00, r.a);
         r = loaded(r, r.x);
-        CALL(0x939A, TallyCell3CD(r));
+        CALL(at + 0xA, TallyCell3CDAt(r, (uint16_t)(at - 0x166), build));
         r.x = pull8();
         r.nz = r.x;
-        value = rd8((uint16_t)(TALLY_CELLS + r.x));
+        value = rd8((uint16_t)(build->cells + r.x));
         sum = add_bytes(value, 0x40, false);
         r = loaded(r, sum.value);
         r.c = sum.carry;
@@ -6272,7 +6278,7 @@ StageRegs TallyDigitCell3CD(StageRegs r)
         if (r.c) {
             return r;
         }
-        wr8((uint16_t)(TALLY_CELLS + r.x), sum.value);
+        wr8((uint16_t)(build->cells + r.x), sum.value);
     }
 }
 

@@ -129,7 +129,13 @@ static uint16_t column_byte(uint8_t x)
  */
 Exit SetVramAddressXY(uint8_t lo, uint8_t hi)
 {
-    jsr_push(0x84DE);
+    return SetVramAddressXYAt(lo, hi, 0x84DE);
+}
+
+/* SetVramAddressXY's body, for the copies of it at other addresses: the return of its JSR. */
+Exit SetVramAddressXYAt(uint8_t lo, uint8_t hi, uint16_t select_return)
+{
+    jsr_push(select_return);
     SelectVramWriteAddress();
     jsr_pop();
     WR8(VDC->data_lo, lo);

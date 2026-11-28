@@ -573,4 +573,6 @@ void abi_EndingCommandPlaceTitleObjectB(void);
 void abi_EndingScrollByState(void);
 Exit WaitThenStartGlide(uint8_t object);
 void abi_WaitThenStartGlide(void);
+Exit SetVramAddressXYAt(uint8_t lo, uint8_t hi, uint16_t select_return);
+
 #endif

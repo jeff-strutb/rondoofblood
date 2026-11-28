@@ -72,4 +72,8 @@ StageRegs StageSubStepFadeOutLateAt(StageRegs r, uint16_t site, uint16_t scroll_
  * JSR to InitStage, init the address it goes to, and pads their table of forced pads. */
 StageRegs StageForcedWalkAt(StageRegs r, uint16_t init_ret, uint16_t init, uint16_t pads);
 
+
+/* system/stage_flow.c: StageFallPose (024D:373) run at `at`. */
+StageRegs StageFallPoseAt(StageRegs r, uint16_t at);
+
 #endif

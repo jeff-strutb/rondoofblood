@@ -735,10 +735,17 @@ void abi_StageFallLeftLand(void)
  */
 StageRegs StageFallPose(StageRegs r)
 {
-    r = map_banks_5_6(r, 0x8376);
+    return StageFallPoseAt(r, 0x8373);
+}
+
+/* StageFallPose's body, at the address it runs at (its JSRs return to at + 3, + 8 and + $0B): the builds of the
+ * overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StageFallPoseAt(StageRegs r, uint16_t at)
+{
+    r = map_banks_5_6(r, (uint16_t)(at + 3));
     r = loaded(r, 0x00);
-    r = call_to(r, 0x837B, 0xA018);
-    r = call_to(r, 0x837E, 0xA012);
+    r = call_to(r, (uint16_t)(at + 8), 0xA018);
+    r = call_to(r, (uint16_t)(at + 0x0B), 0xA012);
     r.nz = INC8(ZP->fall_step);
     return r;
 }

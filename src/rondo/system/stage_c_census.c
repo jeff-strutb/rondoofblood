@@ -5566,45 +5566,51 @@ void abi_TallyStart3CD(void)
  */
 StageRegs TallyBoard3CD(StageRegs r)
 {
+    return TallyBoard3CDAt(r, 0x912B, &tally_3cd);
+}
+
+/* TallyBoard3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyBoard3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
     r = loaded(r, 0x16);
-    r = vector_call(r, 0x9130, abi_VecStartScriptSlot0Kind1);
+    r = vector_call(r, at + 0x5, abi_VecStartScriptSlot0Kind1);
     r.x = 5;
     r.nz = 5;
-    CALL(0x9135, StageDrawPiece3CD(r));
+    CALL(at + 0xA, build->draw_piece(r));
     r.x++;
     r.nz = r.x;
-    CALL(0x9139, StageDrawPiece3CD(r));
+    CALL(at + 0xE, build->draw_piece(r));
     r.x++;
     r.nz = r.x;
-    CALL(0x913D, StageDrawPiece3CD(r));
+    CALL(at + 0x12, build->draw_piece(r));
     r = loaded(r, RD8(ZP->field94));
-    WR8(OBJ->work_b[13], r.a);
+    wr8(build->health_kept, r.a);
     r = loaded(r, RD8(ZP->player_health));
     r = compared(r, 0x5C);
     if (r.nz == 0) {
         r = loaded(r, 0x18);
-        WR8(OBJ->frame[51], 0x18);
+        wr8(build->full_frame, 0x18);
     }
     r.x = 0;
     r.y = 0x50;
     r = loaded(r, 0x0E);
-    CALL(0x9155, StageClearWords3CD(r));
+    CALL(at + 0x2A, build->clear_words(r));
     r.x = 0;
     r.y = 0x54;
     r = loaded(r, 0x0C);
-    CALL(0x915D, StageClearWords3CD(r));
+    CALL(at + 0x32, build->clear_words(r));
     r.x = 0x80;
     r.y = 0x5D;
     r = loaded(r, 0x0A);
-    CALL(0x9166, StageClearWords3CD(r));
+    CALL(at + 0x3B, build->clear_words(r));
     for (r.x = 0; r.x != 0x3E; r.x++) {
-        r = loaded(r, rd8((uint16_t)(0x93A9 + r.x)));
-        wr8((uint16_t)(TALLY_CELLS + r.x), r.a);
+        r = loaded(r, rd8((uint16_t)(build->cell_source + r.x)));
+        wr8((uint16_t)(build->cells + r.x), r.a);
     }
     r.c = true;
     r.nz = 0;
-    CALL(0x9175, TallyNext152D(r));
-    return TallyDigits3CD(r);
+    CALL(at + 0x4A, TallyNext152D(r));
+    return TallyDigits3CDAt(r, (uint16_t)(at + 0x4A), build);
 }
 
 void abi_TallyBoard3CD(void)

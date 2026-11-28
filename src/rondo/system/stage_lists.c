@@ -16,7 +16,7 @@ enum {
  * goes (zTemp02-03); any other byte is a count, followed by the value the fill stores that many
  * times, moving the destination on past them; $FF ends the record.
  */
-static StageListEnd expand_stage_lists(uint16_t table)
+StageListEnd expand_stage_lists(uint16_t table)
 {
     uint8_t y;
     uint8_t x = 0;
@@ -87,7 +87,7 @@ static StageListEnd expand_stage_lists(uint16_t table)
 }
 
 /* The exit the list's end leaves: A $FF compared equal to $FF (N 0, Z 1, C 1), V from the last add. */
-static void lists_exit_shim(StageListEnd end)
+void lists_exit_shim(StageListEnd end)
 {
     cpu.a = LIST_END;
     if (end.x_set) {

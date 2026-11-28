@@ -96,6 +96,8 @@ StageRunsEnd ExpandStageVramRunsV(void);
 
 /* system/stage_lists.c: where the walk stopped: Y the last index, X if a run was stored, V from the last add. */
 typedef struct { uint8_t x; bool x_set; uint8_t y; bool v; } StageListEnd;
+StageListEnd expand_stage_lists(uint16_t table);
+void lists_exit_shim(StageListEnd end);
 StageListEnd ExpandStageLists(void);
 StageListEnd ExpandStageListsB(void);
 StageListEnd ExpandStageListsC(void);

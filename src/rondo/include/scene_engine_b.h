@@ -50,5 +50,8 @@ Exit SceneBCommandBranchOnProgress(const SceneLayoutB *ov);
 Exit SceneBCommandLoadBanks(const SceneLayoutB *ov, uint16_t at);
 Exit SceneBObjectsStep(const SceneLayoutB *ov);
 ObjExit SceneBDispatchKind(const SceneLayoutB *ov, uint8_t kind, uint8_t object);
+ObjExit SceneBAfter(ObjExit second, ObjExit first);
+ObjExit SceneBCycleLists(uint16_t ret, uint8_t delay, uint8_t limit, uint8_t object);
+ObjExit SceneBShake(uint16_t xs, uint16_t ys, uint8_t object);
 
 #endif

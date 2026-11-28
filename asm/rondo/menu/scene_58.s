@@ -473,3 +473,144 @@ Scene58DispatchKind:
     lda a:Scene58Kinds+1,y
     sta z:zTemp01
     jmp (ZeroPage)
+; @routine 267B:63D Scene58CycleLists
+; @run 6B:863D
+; WHAT IT DOES: An object handler: starts list channel 0 on lists $0C, $0D and $0E in turn, one every nine frames.
+; HOW: SceneBCycleLists: work_e the list, work_d the count; StartListChannel0Kind2.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test or store left them; X the object, C from the list's compare after a start.
+Scene58ShakeX = $8686 ; scroll X high by shake step
+Scene58ShakeY = $868A ; scroll Y high by shake step
+Scene58SpeedsXLo = $86E7 ; slide speeds by start argument
+Scene58SpeedsXHi = $86F2 ; slide speeds by start argument
+Scene58SpeedsYLo = $86FD ; slide speeds by start argument
+Scene58SpeedsYHi = $8708 ; slide speeds by start argument
+Scene58FrameLists = $8722 ; frame list pointers
+Scene58CycleLists:
+    lda a:OBJ_STATE,x
+    bne Scene58CycleLists_at0
+    inc a:OBJ_STATE,x
+    lda #$0C
+    sta a:OBJ_WORK_E,x
+Scene58CycleLists_at3:
+    lda #$09
+    sta a:OBJ_WORK_D,x
+Scene58CycleLists_at1:
+    rts
+Scene58CycleLists_at0:
+    dec a:OBJ_WORK_D,x
+    bne Scene58CycleLists_at1
+    phx
+    inc a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_E,x
+    cmp #$0F
+    bne Scene58CycleLists_at2
+    lda #$0C
+    sta a:OBJ_WORK_E,x
+Scene58CycleLists_at2:
+    jsr VecStartListChannel0Kind2
+    plx
+    bra Scene58CycleLists_at3
+
+; @routine 267B:66B Scene58Shake
+; @run 6B:866B
+; @stop 8686
+; WHAT IT DOES: An object handler: shakes the screen, every eighth frame setting the scroll's X high and Y high from
+; the tables at $8686 and $868A by bits 3 and 4 of zFrameTick.
+; HOW: SceneBShake.
+; WAITS: no.
+; Entry: X the object. Exit: A the last value, N and Z from it; Y the index and C clear after a store; X kept.
+Scene58Shake:
+    lda z:zFrameTick
+    and #$07
+    bne Scene58Shake_atR
+    lda z:zFrameTick
+    and #$18
+    lsr a
+    lsr a
+    lsr a
+    tay
+    lda a:Scene58ShakeX,y
+    sta a:ScrollXHi
+    lda a:Scene58ShakeY,y
+    sta a:ScrollYHi
+Scene58Shake_atR:
+    rts
+
+; @routine 267B:698 Scene58SlideThenList
+; @run 6B:8698
+; WHAT IT DOES: An object handler: Scene58Slide, then the frame list work_e names.
+; HOW: JSR Scene58Slide; JMP Scene58FrameList with A work_e.
+; WAITS: no.
+; Entry: X the object. Exit: as Scene58FrameList, V as the slide left it.
+Scene58SlideThenList:
+    jsr Scene58Slide
+    lda a:OBJ_WORK_E,x
+    jmp Scene58FrameList
+
+; @routine 267B:6A1 Scene58PlayListOnce
+; @run 6B:86A1
+; WHAT IT DOES: An object handler: plays the start argument's frame list once, then moves on a state unless the
+; argument is negative.
+; HOW: ScenePlayListOnce with this overlay's lists ($8722).
+; WAITS: no.
+; Entry: X the object. Exit: as the last test or store left them.
+Scene58PlayListOnce:
+    lda a:OBJ_STATE,x
+    bne Scene58PlayListOnce_at0
+    lda a:OBJ_START_ARG,x
+    jsr Scene58FrameList
+    bne Scene58PlayListOnce_at0
+    lda a:OBJ_START_ARG,x
+    bmi Scene58PlayListOnce_at0
+    inc a:OBJ_STATE,x
+Scene58PlayListOnce_at0:
+    rts
+
+; @routine 267B:6B7 Scene58Slide
+; @run 6B:86B7
+; @stop 86E7
+; WHAT IT DOES: An object handler: takes the speeds its start argument names from the tables at $86E7, $86F2,
+; $86FD and $8708, then moves for work_d frames and moves on a state.
+; HOW: SceneSlide.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test or store left them.
+Scene58Slide:
+    lda a:OBJ_STATE,x
+    bne Scene58Slide_at0
+    ldy a:OBJ_START_ARG,x
+    lda a:Scene58SpeedsXLo,y
+    sta a:OBJ_VX_LO,x
+    lda a:Scene58SpeedsXHi,y
+    sta a:OBJ_VX_HI,x
+    lda a:Scene58SpeedsYLo,y
+    sta a:OBJ_VY_LO,x
+    lda a:Scene58SpeedsYHi,y
+    sta a:OBJ_VY_HI,x
+Scene58Slide_at2:
+    inc a:OBJ_STATE,x
+    rts
+Scene58Slide_at0:
+    dec a
+    bne Scene58Slide_at1
+    jsr VecApplyVelocity
+    dec a:OBJ_WORK_D,x
+    beq Scene58Slide_at2
+Scene58Slide_at1:
+    rts
+
+; @routine 267B:713 Scene58FrameList
+; @run 6B:8713
+; @stop 8722
+; WHAT IT DOES: Steps an object through the frame list this overlay's table at $8722 names for A.
+; HOW: ObjectFrameListAt.
+; WAITS: no.
+; Entry: A the list, X the object. Exit: as StepObjectFrames.
+Scene58FrameList:
+    asl a
+    tay
+    lda a:Scene58FrameLists,y
+    sta z:zTemp10
+    lda a:Scene58FrameLists+1,y
+    sta z:zTemp11
+    jmp VecStepObjectFrames

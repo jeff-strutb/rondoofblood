@@ -45,6 +45,18 @@ Exit Scene5ACommandPlaceTitleObjectB(void);
 void abi_Scene5ACommandPlaceTitleObjectB(void);
 Exit Scene5ACommandLoadBanks(void);
 void abi_Scene5ACommandLoadBanks(void);
+ObjExit Scene5ACycleLists(uint8_t object);
+ObjExit Scene5AShake(uint8_t object);
+ObjExit Scene5ASlideThenList(uint8_t object);
+ObjExit Scene5APlayListOnce(uint8_t object);
+ObjExit Scene5ASlide(uint8_t object);
+ObjExit Scene5AFrameList(uint8_t list, uint8_t object);
+void abi_Scene5ACycleLists(void);
+void abi_Scene5AShake(void);
+void abi_Scene5ASlideThenList(void);
+void abi_Scene5APlayListOnce(void);
+void abi_Scene5ASlide(void);
+void abi_Scene5AFrameList(void);
 bool scene_5a_handler(uint16_t target, uint8_t object, ObjExit *out);
 
 #endif

@@ -51,9 +51,12 @@ static bool scene_5a_command(uint16_t target, uint8_t index, bool carry, Exit *o
  * $821A) when this overlay is the one loaded. */
 bool scene_5a_handler(uint16_t target, uint8_t object, ObjExit *out)
 {
-    (void)object;
-    (void)out;
     switch (target) {
+    case 0x8558: *out = Scene5ACycleLists(object); return true;
+    case 0x8586: *out = Scene5AShake(object); return true;
+    case 0x85B3: *out = Scene5ASlideThenList(object); return true;
+    case 0x85BC: *out = Scene5APlayListOnce(object); return true;
+    case 0x85D2: *out = Scene5ASlide(object); return true;
     default: return false;
     }
 }
@@ -416,4 +419,130 @@ Exit Scene5ACommandLoadBanks(void)
 void abi_Scene5ACommandLoadBanks(void)
 {
     exit_shim(Scene5ACommandLoadBanks());
+}
+
+/* ------------------------------------------------------------------ object handlers */
+
+/*
+ * @routine 2703:558 Scene5ACycleLists
+ * @run 6B:8558
+ * WHAT IT DOES: An object handler: starts list channel 0 on lists $0C to $0F in turn, one every $11 frames.
+ * HOW: SceneBCycleLists: work_e the list, work_d the count; StartListChannel0Kind2.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them; X the object, C from the list's compare after a start.
+ */
+ObjExit Scene5ACycleLists(uint8_t object)
+{
+    return SceneBCycleLists(0x8583, 0x11, 0x10, object);
+}
+
+void abi_Scene5ACycleLists(void)
+{
+    scene_obj_shim(Scene5ACycleLists(cpu.x));
+}
+
+/*
+ * @routine 2703:586 Scene5AShake
+ * @run 6B:8586
+ * @stop 85A1
+ * WHAT IT DOES: An object handler: shakes the screen, every eighth frame setting the scroll's X high and Y high from
+ * the tables at $85A1 and $85A5 by bits 3 and 4 of zFrameTick.
+ * HOW: SceneBShake.
+ * WAITS: no.
+ * Entry: X the object. Exit: A the last value, N and Z from it; Y the index and C clear after a store; X kept.
+ */
+ObjExit Scene5AShake(uint8_t object)
+{
+    return SceneBShake(0x85A1, 0x85A5, object);
+}
+
+void abi_Scene5AShake(void)
+{
+    scene_obj_shim(Scene5AShake(cpu.x));
+}
+
+/*
+ * @routine 2703:5B3 Scene5ASlideThenList
+ * @run 6B:85B3
+ * WHAT IT DOES: An object handler: Scene5ASlide, then the frame list work_e names.
+ * HOW: JSR Scene5ASlide; JMP Scene5AFrameList with A work_e.
+ * WAITS: no.
+ * Entry: X the object. Exit: as Scene5AFrameList, V as the slide left it.
+ */
+ObjExit Scene5ASlideThenList(uint8_t object)
+{
+    ObjExit slide, list;
+    uint8_t number;
+
+    jsr_push(0x85B6);
+    slide = Scene5ASlide(object);
+    jsr_pop();
+    number = RD8(OBJ->work_e[object]);
+    list = Scene5AFrameList(number, object);
+    return SceneBAfter(list, slide);
+}
+
+void abi_Scene5ASlideThenList(void)
+{
+    scene_obj_shim(Scene5ASlideThenList(cpu.x));
+}
+
+/*
+ * @routine 2703:5BC Scene5APlayListOnce
+ * @run 6B:85BC
+ * WHAT IT DOES: An object handler: plays the start argument's frame list once, then moves on a state unless the
+ * argument is negative.
+ * HOW: ScenePlayListOnce with this overlay's lists ($863D).
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them.
+ */
+ObjExit Scene5APlayListOnce(uint8_t object)
+{
+    return ScenePlayListOnce(0x863D, 0x85C7, object);
+}
+
+void abi_Scene5APlayListOnce(void)
+{
+    scene_obj_shim(Scene5APlayListOnce(cpu.x));
+}
+
+/*
+ * @routine 2703:5D2 Scene5ASlide
+ * @run 6B:85D2
+ * @stop 8602
+ * WHAT IT DOES: An object handler: takes the speeds its start argument names from the tables at $8602, $860D,
+ * $8618 and $8623, then moves for work_d frames and moves on a state.
+ * HOW: SceneSlide.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them.
+ */
+ObjExit Scene5ASlide(uint8_t object)
+{
+    static const uint16_t speeds[4] = { 0x8602, 0x860D, 0x8618, 0x8623 };
+
+    return SceneSlide(speeds, 0x85FC, object);
+}
+
+void abi_Scene5ASlide(void)
+{
+    scene_obj_shim(Scene5ASlide(cpu.x));
+}
+
+/*
+ * @routine 2703:62E Scene5AFrameList
+ * @run 6B:862E
+ * @stop 863D
+ * WHAT IT DOES: Steps an object through the frame list this overlay's table at $863D names for A.
+ * HOW: ObjectFrameListAt.
+ * WAITS: no.
+ * Entry: A the list, X the object. Exit: as StepObjectFrames.
+ */
+ObjExit Scene5AFrameList(uint8_t list, uint8_t object)
+{
+    return ObjectFrameListAt(list, object, 0x863D);
+}
+
+void abi_Scene5AFrameList(void)
+{
+    scene_obj_shim(Scene5AFrameList(cpu.a, cpu.x));
 }

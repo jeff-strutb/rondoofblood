@@ -637,3 +637,84 @@ ObjExit SceneBDispatchKind(const SceneLayoutB *ov, uint8_t kind, uint8_t object)
     }
     return result;
 }
+
+/* ------------------------------------------------------------------ object handlers both overlays share */
+
+/* What a handler that ends on a second routine shows: the second's exit, with the first's V (and its move's) where
+ * the second sets none. */
+ObjExit SceneBAfter(ObjExit second, ObjExit first)
+{
+    if (!second.exit.v_set) {
+        second.exit.v = first.exit.v;
+        second.exit.v_set = first.exit.v_set;
+        second.moved = first.moved;
+        second.move = first.move;
+    }
+    return second;
+}
+
+/* The handler that starts list channel 0 on lists $0C up to limit - 1 in turn, one every delay frames: state 0 sets
+ * the list to $0C and the count; then each time the count runs out the list steps (back to $0C at limit) and is
+ * started. ret: the return of its JSR to StartListChannel0Kind2. */
+ObjExit SceneBCycleLists(uint16_t ret, uint8_t delay, uint8_t limit, uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, left, list;
+    bool carry;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        INC8(OBJ->state[object]);
+        WR8(OBJ->work_e[object], 0x0C);
+        WR8(OBJ->work_d[object], delay);
+        return scene_kept(delay, delay);
+    }
+    left = DEC8(OBJ->work_d[object]);
+    if (left != 0) {
+        return scene_kept(state, left);
+    }
+    push8(object);
+    INC8(OBJ->work_e[object]);
+    list = RD8(OBJ->work_e[object]);
+    carry = list >= limit;
+    if (list == limit) {
+        list = 0x0C;
+        WR8(OBJ->work_e[object], list);
+    }
+    jsr_push(ret);
+    (void)StartListChannel0Kind2(list);
+    jsr_pop();
+    object = pull8();
+    WR8(OBJ->work_d[object], delay);
+    result = scene_kept(delay, delay);
+    result.exit.x = object;
+    result.exit.x_kept = false;
+    result.exit.c = carry;
+    result.exit.c_kept = false;
+    return result;
+}
+
+/* The handler that shakes the screen: every eighth frame the scroll's X high and Y high from two four-entry tables,
+ * by bits 3 and 4 of zFrameTick. */
+ObjExit SceneBShake(uint16_t xs, uint16_t ys, uint8_t object)
+{
+    ObjExit result;
+    uint8_t tick, index, value;
+
+    (void)object;
+    tick = (uint8_t)(RD8(ZP->frame_tick) & 0x07);
+    if (tick != 0) {
+        return scene_kept(tick, tick);
+    }
+    index = (uint8_t)((RD8(ZP->frame_tick) & 0x18) >> 3);
+    value = rd8((uint16_t)(xs + index));
+    WR8(SCROLL->x_hi[0], value);
+    value = rd8((uint16_t)(ys + index));
+    WR8(SCROLL->y_hi[0], value);
+    result = scene_kept(value, value);
+    result.exit.y = index;
+    result.exit.y_kept = false;
+    result.exit.c = false;
+    result.exit.c_kept = false;
+    return result;
+}

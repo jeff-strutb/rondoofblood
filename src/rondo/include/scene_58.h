@@ -59,6 +59,18 @@ Exit Scene58ObjectsStep(void);
 void abi_Scene58ObjectsStep(void);
 ObjExit Scene58DispatchKind(uint8_t kind, uint8_t object);
 void abi_Scene58DispatchKind(void);
+ObjExit Scene58CycleLists(uint8_t object);
+ObjExit Scene58Shake(uint8_t object);
+ObjExit Scene58SlideThenList(uint8_t object);
+ObjExit Scene58PlayListOnce(uint8_t object);
+ObjExit Scene58Slide(uint8_t object);
+ObjExit Scene58FrameList(uint8_t list, uint8_t object);
+void abi_Scene58CycleLists(void);
+void abi_Scene58Shake(void);
+void abi_Scene58SlideThenList(void);
+void abi_Scene58PlayListOnce(void);
+void abi_Scene58Slide(void);
+void abi_Scene58FrameList(void);
 bool scene_58_handler(uint16_t target, uint8_t object, ObjExit *out);
 
 #endif

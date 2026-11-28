@@ -93,9 +93,12 @@ static bool scene_58_command(uint16_t target, uint8_t index, bool carry, Exit *o
 /* This overlay's object handlers by their addresses, for the engine's dispatch. */
 bool scene_58_handler(uint16_t target, uint8_t object, ObjExit *out)
 {
-    (void)object;
-    (void)out;
     switch (target) {
+    case 0x863D: *out = Scene58CycleLists(object); return true;
+    case 0x866B: *out = Scene58Shake(object); return true;
+    case 0x8698: *out = Scene58SlideThenList(object); return true;
+    case 0x86A1: *out = Scene58PlayListOnce(object); return true;
+    case 0x86B7: *out = Scene58Slide(object); return true;
     default: return false;
     }
 }
@@ -567,4 +570,130 @@ ObjExit Scene58DispatchKind(uint8_t kind, uint8_t object)
 void abi_Scene58DispatchKind(void)
 {
     scene_obj_shim(Scene58DispatchKind(cpu.a, cpu.x));
+}
+
+/* ------------------------------------------------------------------ object handlers */
+
+/*
+ * @routine 267B:63D Scene58CycleLists
+ * @run 6B:863D
+ * WHAT IT DOES: An object handler: starts list channel 0 on lists $0C, $0D and $0E in turn, one every nine frames.
+ * HOW: SceneBCycleLists: work_e the list, work_d the count; StartListChannel0Kind2.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them; X the object, C from the list's compare after a start.
+ */
+ObjExit Scene58CycleLists(uint8_t object)
+{
+    return SceneBCycleLists(0x8668, 0x09, 0x0F, object);
+}
+
+void abi_Scene58CycleLists(void)
+{
+    scene_obj_shim(Scene58CycleLists(cpu.x));
+}
+
+/*
+ * @routine 267B:66B Scene58Shake
+ * @run 6B:866B
+ * @stop 8686
+ * WHAT IT DOES: An object handler: shakes the screen, every eighth frame setting the scroll's X high and Y high from
+ * the tables at $8686 and $868A by bits 3 and 4 of zFrameTick.
+ * HOW: SceneBShake.
+ * WAITS: no.
+ * Entry: X the object. Exit: A the last value, N and Z from it; Y the index and C clear after a store; X kept.
+ */
+ObjExit Scene58Shake(uint8_t object)
+{
+    return SceneBShake(0x8686, 0x868A, object);
+}
+
+void abi_Scene58Shake(void)
+{
+    scene_obj_shim(Scene58Shake(cpu.x));
+}
+
+/*
+ * @routine 267B:698 Scene58SlideThenList
+ * @run 6B:8698
+ * WHAT IT DOES: An object handler: Scene58Slide, then the frame list work_e names.
+ * HOW: JSR Scene58Slide; JMP Scene58FrameList with A work_e.
+ * WAITS: no.
+ * Entry: X the object. Exit: as Scene58FrameList, V as the slide left it.
+ */
+ObjExit Scene58SlideThenList(uint8_t object)
+{
+    ObjExit slide, list;
+    uint8_t number;
+
+    jsr_push(0x869B);
+    slide = Scene58Slide(object);
+    jsr_pop();
+    number = RD8(OBJ->work_e[object]);
+    list = Scene58FrameList(number, object);
+    return SceneBAfter(list, slide);
+}
+
+void abi_Scene58SlideThenList(void)
+{
+    scene_obj_shim(Scene58SlideThenList(cpu.x));
+}
+
+/*
+ * @routine 267B:6A1 Scene58PlayListOnce
+ * @run 6B:86A1
+ * WHAT IT DOES: An object handler: plays the start argument's frame list once, then moves on a state unless the
+ * argument is negative.
+ * HOW: ScenePlayListOnce with this overlay's lists ($8722).
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them.
+ */
+ObjExit Scene58PlayListOnce(uint8_t object)
+{
+    return ScenePlayListOnce(0x8722, 0x86AC, object);
+}
+
+void abi_Scene58PlayListOnce(void)
+{
+    scene_obj_shim(Scene58PlayListOnce(cpu.x));
+}
+
+/*
+ * @routine 267B:6B7 Scene58Slide
+ * @run 6B:86B7
+ * @stop 86E7
+ * WHAT IT DOES: An object handler: takes the speeds its start argument names from the tables at $86E7, $86F2,
+ * $86FD and $8708, then moves for work_d frames and moves on a state.
+ * HOW: SceneSlide.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them.
+ */
+ObjExit Scene58Slide(uint8_t object)
+{
+    static const uint16_t speeds[4] = { 0x86E7, 0x86F2, 0x86FD, 0x8708 };
+
+    return SceneSlide(speeds, 0x86E1, object);
+}
+
+void abi_Scene58Slide(void)
+{
+    scene_obj_shim(Scene58Slide(cpu.x));
+}
+
+/*
+ * @routine 267B:713 Scene58FrameList
+ * @run 6B:8713
+ * @stop 8722
+ * WHAT IT DOES: Steps an object through the frame list this overlay's table at $8722 names for A.
+ * HOW: ObjectFrameListAt.
+ * WAITS: no.
+ * Entry: A the list, X the object. Exit: as StepObjectFrames.
+ */
+ObjExit Scene58FrameList(uint8_t list, uint8_t object)
+{
+    return ObjectFrameListAt(list, object, 0x8722);
+}
+
+void abi_Scene58FrameList(void)
+{
+    scene_obj_shim(Scene58FrameList(cpu.a, cpu.x));
 }

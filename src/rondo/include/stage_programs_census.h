@@ -288,4 +288,10 @@ void abi_ClearStageBitRows026F(void);
 StageExit ClearStageBitRows031F(uint8_t x);
 void abi_ClearStageBitRows031F(void);
 
+StageExit ClearStageBitRowsFour026F(uint8_t x);
+void abi_ClearStageBitRowsFour026F(void);
+
+StageExit ClearStageBitRowsFour031F(uint8_t x);
+void abi_ClearStageBitRowsFour031F(void);
+
 #endif

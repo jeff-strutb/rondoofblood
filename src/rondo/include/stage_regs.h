@@ -185,4 +185,8 @@ void mask_vram_rows_exit_shim(VramMaskExit out);
 StageExit ClearStageBitRowsAt(uint8_t x, void (*set)(uint8_t lo, uint8_t hi), uint16_t at, uint16_t bit_lo,
                               uint16_t bit_hi);
 
+
+/* system/stage_clear_bits.c: ClearStageBitRowsFour (024F:2D9) run at `at`, with the C of the rows it runs. */
+StageExit ClearStageBitRowsFourAt(uint8_t x, uint16_t at, StageExit (*run)(uint8_t x));
+
 #endif

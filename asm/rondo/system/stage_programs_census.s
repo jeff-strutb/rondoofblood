@@ -3695,3 +3695,27 @@ ClearStageBitRows031F_at0:
     adc #$23
     sta z:zTemp0F
     rts
+
+; @routine 026F:297 ClearStageBitRowsFour026F
+; @run 6B:9297
+; WHAT IT DOES: Clears the stage's bit in four rows of VRAM words, four times over (as ClearStageBitRowsFour, 024F:2D9). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: Three BSRs to ClearStageBitRows026F and the fall into it.
+; WAITS: no.
+; Entry: as ClearStageBitRows026F. Exit: as the last ClearStageBitRows026F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ClearStageBitRowsFour026F:
+    bsr ClearStageBitRows026F
+    bsr ClearStageBitRows026F
+    bsr ClearStageBitRows026F
+
+; @routine 031F:28B ClearStageBitRowsFour031F
+; @run 6B:928B
+; WHAT IT DOES: Clears the stage's bit in four rows of VRAM words, four times over (as ClearStageBitRowsFour, 024F:2D9). Programs 043F and 10DF hold the same bytes.
+; HOW: Three BSRs to ClearStageBitRows031F and the fall into it.
+; WAITS: no.
+; Entry: as ClearStageBitRows031F. Exit: as the last ClearStageBitRows031F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ClearStageBitRowsFour031F:
+    bsr ClearStageBitRows031F
+    bsr ClearStageBitRows031F
+    bsr ClearStageBitRows031F

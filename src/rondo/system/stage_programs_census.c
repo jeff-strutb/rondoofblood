@@ -2658,3 +2658,43 @@ void abi_ClearStageBitRows031F(void)
 {
     stage_exit_shim(ClearStageBitRows031F(cpu.x));
 }
+
+/*
+ * @routine 026F:297 ClearStageBitRowsFour026F
+ * @run 6B:9297
+ * WHAT IT DOES: Clears the stage's bit in four rows of VRAM words, four times over (as ClearStageBitRowsFour, 024F:2D9). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: ClearStageBitRowsFourAt (stage_clear_bits.c), the body of 024F:2D9, at $9297 with ClearStageBitRows026F, three
+ * BSRs and the fall into it.
+ * WAITS: no.
+ * Entry: as ClearStageBitRows026F. Exit: as the last ClearStageBitRows026F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit ClearStageBitRowsFour026F(uint8_t x)
+{
+    return ClearStageBitRowsFourAt(x, 0x9297, ClearStageBitRows026F);
+}
+
+void abi_ClearStageBitRowsFour026F(void)
+{
+    stage_exit_shim(ClearStageBitRowsFour026F(cpu.x));
+}
+
+/*
+ * @routine 031F:28B ClearStageBitRowsFour031F
+ * @run 6B:928B
+ * WHAT IT DOES: Clears the stage's bit in four rows of VRAM words, four times over (as ClearStageBitRowsFour, 024F:2D9). Programs 043F and 10DF hold the same bytes.
+ * HOW: ClearStageBitRowsFourAt (stage_clear_bits.c), the body of 024F:2D9, at $928B with ClearStageBitRows031F, three
+ * BSRs and the fall into it.
+ * WAITS: no.
+ * Entry: as ClearStageBitRows031F. Exit: as the last ClearStageBitRows031F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit ClearStageBitRowsFour031F(uint8_t x)
+{
+    return ClearStageBitRowsFourAt(x, 0x928B, ClearStageBitRows031F);
+}
+
+void abi_ClearStageBitRowsFour031F(void)
+{
+    stage_exit_shim(ClearStageBitRowsFour031F(cpu.x));
+}

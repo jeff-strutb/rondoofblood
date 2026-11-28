@@ -6,8 +6,7 @@
 #include "stage_map.h"
 #include "stage_regs.h"
 
-enum { ROWS = 4, ROW_STEP = 0x10, NEXT_ROW_BASE = 0x23, RUN_RETURN_1 = 0x92DB, RUN_RETURN_2 = 0x92DD,
-       RUN_RETURN_3 = 0x92DF, FIRST_ENTRY = 0x92DF };
+enum { ROWS = 4, ROW_STEP = 0x10, NEXT_ROW_BASE = 0x23, FIRST_ENTRY = 0x92DF };
 
 typedef void (*SetAddress)(uint8_t lo, uint8_t hi);
 
@@ -129,17 +128,25 @@ StageExit ClearStageBitRowsAt(uint8_t x, void (*set)(uint8_t lo, uint8_t hi), ui
  */
 StageExit ClearStageBitRowsFour(uint8_t x)
 {
-    StageExit end;
     bool long_group = resident_at(FIRST_ENTRY) == DISC(0x05BF, 0x2DF);
-    StageExit (*run)(uint8_t x) = long_group ? ClearStageBitRowsLong : ClearStageBitRows;
 
-    jsr_push(RUN_RETURN_1);
+    return ClearStageBitRowsFourAt(x, 0x92D9, long_group ? ClearStageBitRowsLong : ClearStageBitRows);
+}
+
+/* ClearStageBitRowsFour's body, at the address it runs at (its BSRs return to at + 2, + 4 and + 6), with the C of the
+ * rows it runs four times: the builds of the overlay that hold these instructions at another address
+ * (stage_programs_census.c) pass their own. */
+StageExit ClearStageBitRowsFourAt(uint8_t x, uint16_t at, StageExit (*run)(uint8_t x))
+{
+    StageExit end;
+
+    jsr_push((uint16_t)(at + 2));
     (void)run(x);
     jsr_pop();
-    jsr_push(RUN_RETURN_2);
+    jsr_push((uint16_t)(at + 4));
     (void)run(x);
     jsr_pop();
-    jsr_push(RUN_RETURN_3);
+    jsr_push((uint16_t)(at + 6));
     (void)run(x);
     jsr_pop();
     end = run(x);

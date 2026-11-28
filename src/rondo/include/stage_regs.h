@@ -52,4 +52,9 @@ StageRegs StageChooseClearKindAt(StageRegs r, uint16_t ret, uint16_t scroll_off)
  * scroll_off the address that JSR goes to. */
 StageRegs StageSubStepDeathAt(StageRegs r, uint16_t ret, uint16_t scroll_off);
 
+
+/* system/stage_flow.c: StageSubStepTally (024D:2BA) with ret the address after its JSR to StageScrollSpeedsOff and
+ * scroll_off the address that JSR goes to. */
+StageRegs StageSubStepTallyAt(StageRegs r, uint16_t ret, uint16_t scroll_off);
+
 #endif

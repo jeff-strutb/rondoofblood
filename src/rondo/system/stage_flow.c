@@ -362,7 +362,14 @@ void abi_StageSubStepFadeOutLate(void)
  */
 StageRegs StageSubStepTally(StageRegs r)
 {
-    r = sub_step_start(r, SUB_MODE_TALLY, 0x82C5, SCROLL_SPEEDS_OFF_RUN);
+    return StageSubStepTallyAt(r, 0x82C5, SCROLL_SPEEDS_OFF_RUN);
+}
+
+/* StageSubStepTally's body, ret the address after its JSR to StageScrollSpeedsOff and scroll_off where that JSR goes:
+ * the builds of the overlay that hold these instructions at other addresses (stage_programs_census.c) pass their own. */
+StageRegs StageSubStepTallyAt(StageRegs r, uint16_t ret, uint16_t scroll_off)
+{
+    r = sub_step_start(r, SUB_MODE_TALLY, ret, scroll_off);
     wr8(PadForcedPress, 0);
     wr8(PadForcedPressB, 0);
     WR8(ZP->fall_step, 0);

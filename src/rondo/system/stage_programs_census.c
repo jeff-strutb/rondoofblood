@@ -1685,3 +1685,28 @@ void abi_StageSubStepDeath026D(void)
 {
     stage_regs_load_shim(StageSubStepDeath026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:2A3 StageSubStepTally026D
+ * @run 6B:82A3
+ * WHAT IT DOES: Sub-step to the tally: sub-mode 6 with zField80 and zField89 cleared, the scroll stopped, the forced presses and
+ * the fall's step cleared, the player's work bytes F cleared and E $40; when the time-slowing mode is set it is cleared
+ * and the fade starts again from 2 (as StageSubStepTally, 024D:2BA). Programs 031D, 043D, 064D,
+ * 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageSubStepTallyAt (stage_flow.c), the body of 024D:2BA, with this program's JSR at $82AB to its
+ * StageScrollSpeedsOff026D at $80AE, the C of the routine loaded there. Its tail JMP goes to $8161, which holds
+ * StageFadeTimer's bytes (024D:178) in all nine programs, so its C is StageFadeTimer's.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: A TimeSlowMode (0), N and Z from it, the rest as StageScrollSpeedsOff026D left
+ * them; else as StageFadeTimer.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSubStepTally026D(StageRegs r)
+{
+    return StageSubStepTallyAt(r, 0x82AE, 0x80AE);
+}
+
+void abi_StageSubStepTally026D(void)
+{
+    stage_regs_load_shim(StageSubStepTally026D(stage_regs_entry_shim()));
+}

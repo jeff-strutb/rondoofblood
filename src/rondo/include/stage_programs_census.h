@@ -154,4 +154,7 @@ void abi_StageChooseClearKind026D(void);
 StageRegs StageSubStepDeath026D(StageRegs r);
 void abi_StageSubStepDeath026D(void);
 
+StageRegs StageSubStepTally026D(StageRegs r);
+void abi_StageSubStepTally026D(void);
+
 #endif
